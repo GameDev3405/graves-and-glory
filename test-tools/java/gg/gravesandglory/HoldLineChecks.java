@@ -75,7 +75,9 @@ import static gg.gravesandglory.Phase2Checks.server;
  * the dummy's vanilla hurt cooldown (a hit 3 ticks before the impact frame, the cooldown left intact) is judged by vanilla's rule then, as
  * an instant blow on that tick was at BASE: nothing after a larger hit, only its excess (through the dummy's armour) after a smaller one.
  * Abilities.attack on a melee troop deals nothing and queues nothing (its blow is Tactics.swing's). After the next round has begun, a map
- * switch with a blow pending clears it and none lands once the battle runs again; the round then restarts on map 0.</li>
+ * switch with a blow pending clears it and none lands once the battle runs again; the round then restarts on map 0. Task 5 fix round 2: Hold is
+ * judged with the Charge on the swing tick, so an order turned during the wind-up neither grants nor costs a braced blow's row (C18c, C18c2, C18d)
+ * on a charging dummy, both ways for each; and the restarted round's variant rolls start afresh from the world's seed and the round's number.</li>
  * </ul>
  */
 final class HoldLineChecks {
@@ -179,6 +181,9 @@ final class HoldLineChecks {
         int impSwings, impHurts, impLastVariant = -1, impMissed, impLanded, impCredits, impKills, impLost, impBounty;
         /** Fix round 1: the Charge stamp the watched swing fell under, the hit put on the dummy before an impact frame and its hurt cooldown then, the hit log's last entry before a step. */
         long impCharged; float impHit; int impRegen; Combat.HitLog impLog;
+        /** Fix round 2: the brace case under way (0-5: each of BRACE_TAGS swung under Hold then turned to Charge, then the reverse), and the orders and target it put aside. */
+        int impBrace; String impOwnOrder, impDuskOrder; Vec3d impDuskTarget;
+        static final String[] BRACE_TAGS = {"brace", "brace2", "bracewall"}, BRACE_ROWS = {"C18c", "C18c2", "C18d"};
         boolean impPass = true;
         final List<String> impWhy = new ArrayList<>();
 
@@ -1084,11 +1089,48 @@ final class HoldLineChecks {
             impWhy.add("a " + fmt(pre) + " hit " + gap + " ticks before the Squire's blow of " + fmt(blow) + " (" + fmt(full) + " through armour " + fmt(armour) + " when fresh) landed on " + impStrike.landsAt() + ": the dummy lost " + fmt(impHealth - h) + " (want " + fmt(want) + ", vanilla's hurt-cooldown rule), its hurt cooldown " + impRegen + " after the hit and " + regen + " after the blow (want 20 and " + (20 - gap) + ", not reset), blows landed " + (Tactics.strikesLanded - impLanded) + " (want 1)=" + vanilla);
             impStrike = null; next(b, then);
         }
+        /**
+         * hl-impact's brace case (Task 5 fix round 2): the Squire carries one of BRACE_TAGS alone and the dummy's army charges. Cases 0, 2 and 4 swing under
+         * Hold and turn to Charge during the wind-up: the blow still braces (its row, as Hold was on the swing tick). Cases 1, 3 and 5 swing under Charge and
+         * turn to Hold: no brace. Judged at the landing instead, each would come out the other way.
+         */
+        void impBraced(GravesAndGlory.Battle b) {
+            int k = impBrace / 2; boolean fromHold = impBrace % 2 == 0; String tag = BRACE_TAGS[k], row = BRACE_ROWS[k];
+            String swungUnder = fromHold ? "hold" : "charge", landsUnder = fromHold ? "charge" : "hold";
+            if (impStrike == null) {
+                var s = impSwung(b);
+                if (s != null && dusk.order.equals(swungUnder) && impKnight.tags.contains(tag)) {
+                    impStrike = s; impSwingAt = b.time; impLog = Combat.LAST.peekLast();
+                    dusk.order = landsUnder; dusk.chargedAt.clear(); impTarget.mob.timeUntilRegen = 0; // the order turns during the wind-up
+                    return;
+                }
+                if (since(b) > 300) {impPass = false; impWhy.add("the Squire never swung under " + swungUnder + " for the " + tag + " case=false"); impBraceNext(b); return;}
+                // this case's tag alone, the Squire on the order of his swing (the dummy inside his Hold leash), the dummy's army charging (the rows' target)
+                impKnight.tags.removeAll(List.of(BRACE_TAGS)); impKnight.tags.add(tag);
+                dusk.assignments.clear(); dusk.order = swungUnder; dusk.target = impHome; dusk.chargedAt.clear();
+                own.assignments.clear(); own.order = "charge"; impTarget.mob.timeUntilRegen = 0;
+                return;
+            }
+            if (b.time < impStrike.landsAt()) return;
+            var hit = impHitLog(impLog); boolean braced = hit != null && hit.rows().contains(row);
+            boolean on = hit != null && braced == fromHold;
+            impPass &= on;
+            impWhy.add("a " + tag + " Squire swung under " + swungUnder + " on tick " + impSwingAt + " at a charging dummy, his order turned to " + landsUnder + " before the blow landed on " + impStrike.landsAt() + ": its rows " + (hit == null ? "none (no hit logged)" : hit.rows()) + " (want " + (fromHold ? row : "no " + row) + ", as on the swing tick)=" + on);
+            impBraceNext(b);
+        }
+        /** The next brace case, or back to the round-end case (89) with the Squire's tags and the armies' orders as they were. */
+        void impBraceNext(GravesAndGlory.Battle b) {
+            impStrike = null; impBrace++;
+            if (impBrace < 2 * BRACE_TAGS.length) {next(b, 98); return;}
+            impKnight.tags.removeAll(List.of(BRACE_TAGS)); impKnight.tags.addAll(ArmyMobs.tags(impKnight.spec));
+            dusk.assignments.clear(); dusk.order = impDuskOrder; dusk.target = impDuskTarget; dusk.chargedAt.clear(); own.assignments.clear(); own.order = impOwnOrder;
+            next(b, 89);
+        }
         /** The next hl-impact stage, and how the check stands so far once the last one is done. */
         void impFinish(GravesAndGlory.Battle b) {report("hl-impact", impPass, String.join("; ", impWhy)); next(b, 99);}
 
         /**
-         * hl-impact (stages 80-97, Task 5 and its fix round 1): see the class comment. Every wait is bounded (200 ticks for a swing that never comes, 400 for the first three).
+         * hl-impact (stages 80-98, Task 5 and its fix rounds 1 and 2): see the class comment. Every wait is bounded (200 ticks for a swing that never comes, 400 for the first three).
          */
         void impactStages(GravesAndGlory.Battle b) {
             var row = Campaign.troop("knight"); int cd = row.cooldown(), beat = (cd + 9) / 10 * 10; // Tactics acts on a 10-tick beat
@@ -1291,8 +1333,9 @@ final class HoldLineChecks {
                     boolean nothing = alive && m.isAlive() && h2 == h && b.strikes.size() == queued && Tactics.swings == swings && hit == null;
                     impPass &= nothing;
                     impWhy.add("Abilities.attack called for the Squire (a melee troop) on tick " + b.time + ": the dummy lost " + fmt(h - h2) + ", blows queued " + (b.strikes.size() - queued) + ", swings begun " + (Tactics.swings - swings) + ", hits logged " + (hit == null ? 0 : 1) + " (want 0 each; the dummy alive before: " + alive + ")=" + nothing);
-                    impStrike = null; next(b, 89);
+                    impStrike = null; impBrace = 0; impOwnOrder = own.order; impDuskOrder = dusk.order; impDuskTarget = dusk.target; next(b, 98);
                 }
+                case 98 -> impBraced(b); // fix round 2: Hold judged with the Charge on the swing tick
                 case 96 -> { // M6: after the next round has begun, a map switch with a blow pending clears it, and none lands once the battle runs again
                     if (impKnight == null) {
                         if (!b.ready) return;
@@ -1328,7 +1371,14 @@ final class HoldLineChecks {
                 }
                 case 97 -> { // back to a round on map 0
                     var p = sp(b);
-                    if (p != null && Phase1Checks.skirmish(b, p, 0, 1, "normal")) {impFinish(b); return;}
+                    if (p != null && Phase1Checks.skirmish(b, p, 0, 1, "normal")) {
+                        // fix round 2: startRound reseeded the variant rolls from the world's seed and this round's number (no tick has run since)
+                        long want = new java.util.Random(BattleMath.roundSeed(b.world.getSeed(), b.rounds)).nextLong(), got = b.rolls.nextLong();
+                        b.rolls.setSeed(BattleMath.roundSeed(b.world.getSeed(), b.rounds)); // the draw taken back
+                        boolean fresh = got == want; impPass &= fresh;
+                        impWhy.add("round " + b.rounds + " began with its variant rolls drawing " + got + " (want " + want + ", a fresh Random on BattleMath.roundSeed of the world's seed and the round)=" + fresh);
+                        impFinish(b); return;
+                    }
                     if (since(b) > 8000) {impPass = false; impWhy.add("the round never restarted on map 0=false"); impFinish(b);}
                 }
                 default -> {}

@@ -321,6 +321,12 @@ public final class BattleMathCheck {
         check(BattleMath.chargeStamp(true, 100L, 160, 60) == 100L && BattleMath.chargeStamp(true, 100L, 161, 60) == null && BattleMath.chargeStamp(true, 100L, 100, 60) == 100L, "the window holds ticks 0 to 60 from the stamp, as Combat judged it before");
         check(BattleMath.chargeStamp(false, 100L, 110, 60) == null && BattleMath.chargeStamp(true, null, 110, 60) == null, "no Charge order at the swing, or no stamp: no impact window");
         check(!BattleMath.chargeImpact(100L, 100) && !BattleMath.chargeImpact(100L, 130) && BattleMath.chargeImpact(100L, 99) && !BattleMath.chargeImpact(null, -1), "one impact per stamp: an attacker that crashed in under it already does not again");
+        // Task 5 fix round 2: each round reseeds its variant rolls from the world's seed and its number alone
+        check(BattleMath.roundSeed(4242, 3) == BattleMath.roundSeed(4242, 3), "a round's variant seed is fixed by the world's seed and the round");
+        Set<Long> seeds = new HashSet<>(); for (int r = 0; r < 200; r++) seeds.add(BattleMath.roundSeed(4242, r));
+        check(seeds.size() == 200 && BattleMath.roundSeed(4242, 1) != BattleMath.roundSeed(4243, 1), "every round, and every world, rolls its own seed");
+        int[] firstPick = new int[3]; for (int r = 1; r <= 300; r++) firstPick[BattleMath.pickVariant(3, -1, new java.util.Random(BattleMath.roundSeed(4242, r)).nextLong())]++;
+        check(firstPick[0] > 60 && firstPick[1] > 60 && firstPick[2] > 60, "neighbouring rounds open on unrelated swings: the first variant over 300 rounds " + java.util.Arrays.toString(firstPick) + " (want each of the 3 more than 60 times)");
         System.out.println("BattleMathCheck: " + checks + " checks passed");
     }
 }

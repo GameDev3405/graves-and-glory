@@ -38,24 +38,30 @@ public final class Combat {
     public static DamageSource source(GravesAndGlory.Battle b, LivingEntity attacker) { return b.world.getDamageSources().create(TROOP, attacker); }
 
     /**
+     * The orders a blow is judged under: whether its attacker was charging (a melee blow under the Charge order), whether he was holding (the Hold order,
+     * which a braced troop's rows C18c, C18c2 and C18d ask for), and the stamp whose impact window held the Charge (BattleMath.chargeStamp; null none).
+     * charging and holding come from one read of one order, so they are never both true.
+     */
+    public record Charge(boolean charging, boolean holding, Long stamp) {}
+
+    /**
+     * The orders of the attacker's blow: for a melee blow landing from its swing (Unit.blow, set by Tactics.land), the ones its swing was judged under on
+     * its swing tick (Ruling R29 for the Charge, and Hold with it, Task 5 fix round 2), so neither its wind-up nor an order given during it costs or grants
+     * a Charge's impact or a brace; otherwise judged now.
+     */
+    static Charge charge(GravesAndGlory.Battle b, GravesAndGlory.Unit attacker, boolean melee) {
+        if (melee && attacker.blow != null) return attacker.blow;
+        String order = b.assignment(attacker).order;
+        boolean charging = melee && order.equals("charge");
+        return new Charge(charging, order.equals("hold"), BattleMath.chargeStamp(charging, attacker.squad.chargedAt.get(attacker.spec.group()), b.time, Spec.COMBATDISCIPLINE[0].chargeImpactTicks()));
+    }
+
+    /**
      * Resolves one troop hit and applies it. kind is melee, arrow, bolt, blight or slam; a secondary hit (a cleave or pierce second target, a
      * slam's splash) does not run the on-hit abilities again. A base of 0 does nothing. Returns the amount handed to the target, 0 when nothing
      * was applied. This is the one place a blow's multiplier is built: the counters table (with the target's covered flanks and whether the blow
      * has a direction), the attacker's fearless stance, the House traits, the auras and the commanders, clamped as one.
      */
-    /** The Charge a blow is judged under: whether its attacker was charging (a melee blow under the Charge order), and the stamp whose impact window held it (BattleMath.chargeStamp; null none). */
-    public record Charge(boolean charging, Long stamp) {}
-
-    /**
-     * The Charge of the attacker's blow: for a melee blow landing from its swing (Unit.blow, set by Tactics.land), the one its swing was judged under on its
-     * swing tick (Ruling R29), so neither its wind-up nor an order given during it costs a Charge's impact or grants one; otherwise judged now.
-     */
-    static Charge charge(GravesAndGlory.Battle b, GravesAndGlory.Unit attacker, boolean melee) {
-        if (melee && attacker.blow != null) return attacker.blow;
-        boolean charging = melee && b.assignment(attacker).order.equals("charge");
-        return new Charge(charging, BattleMath.chargeStamp(charging, attacker.squad.chargedAt.get(attacker.spec.group()), b.time, Spec.COMBATDISCIPLINE[0].chargeImpactTicks()));
-    }
-
     public static float resolve(GravesAndGlory.Battle b, GravesAndGlory.Unit attacker, LivingEntity target, float base, String kind, boolean secondary) {
         if (base <= 0 || target == null || !target.isAlive()) return 0;
         var D = Spec.COMBATDISCIPLINE[0];
@@ -75,9 +81,8 @@ public final class Combat {
             if (theirs.equals("hold")) to.add("holding");
         }
 
-        String order = b.assignment(attacker).order;
-        var charge = charge(b, attacker, melee); // a melee blow's Charge is its swing's (Ruling R29)
-        boolean charging = charge.charging(), holding = order.equals("hold");
+        var charge = charge(b, attacker, melee); // a melee blow's orders are its swing's (Ruling R29; Hold with the Charge, fix round 2)
+        boolean charging = charge.charging(), holding = charge.holding();
         boolean impact = BattleMath.chargeImpact(charge.stamp(), attacker.chargeHitAt);
         double bearing = structure(target) ? 0 : BattleMath.relativeBearing(target.getYaw(), attacker.mob.getX() - target.getX(), attacker.mob.getZ() - target.getZ()); // a structure has no facing, so no flank (C16, C16s)
         boolean raised = victim != null && victim.tags.contains("shield") && victim.mob.isUsingItem() && victim.mob.getActiveItem().isOf(Items.SHIELD);

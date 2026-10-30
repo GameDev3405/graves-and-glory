@@ -223,7 +223,7 @@ public final class GravesAndGlory implements ModInitializer {
         long nextAttack;long abilityAt,windupUntil;Vec3d spellCenter;
         /** The battle tick of the troop's last melee swing whose blow is pending or landed (Tactics.swing; -1 none), and the swing it played: an index into its family's attackVariants rows (Tactics.variants), so the next never repeats it (BattleMath.pickVariant; -1 none yet). */
         long swungAt=-1;int lastVariant=-1;
-        /** The Charge a blow of his carries while it lands (Tactics.land sets it from its swing, Ruling R29, and clears it after): every hit of that blow (its cleave or splash too, and a trample) reads it through Combat.charge; null otherwise. */
+        /** The orders (Charge and Hold) a blow of his carries while it lands (Tactics.land sets them from its swing, Ruling R29, and clears them after): every hit of that blow (its cleave or splash too, and a trample) reads it through Combat.charge; null otherwise. */
         Combat.Charge blow;
         long nextPath;
         Vec3d lastPosition,lastGoal,deployed;
@@ -528,14 +528,18 @@ public final class GravesAndGlory implements ModInitializer {
         public final List<Projectiles.Shot> shots=new ArrayList<>();
         /**
          * A melee swing whose blow is still to come (Task 5): the attacker, its target, the swing it plays (an index into its family's attackVariants rows,
-         * Tactics.variants), the battle tick of the swing and of its impact frame, and the Charge it was judged under on its swing tick (Combat.charge,
-         * Ruling R29: a wind-up never costs a Charge its impact). Tactics.land lands it then, if BattleMath.strikeLands (a stun after swungAt cancels it);
+         * Tactics.variants), the battle tick of the swing and of its impact frame, and the orders (Charge and Hold) it was judged under on its swing tick (Combat.charge,
+         * Ruling R29: a wind-up never costs or grants a Charge's impact or a brace). Tactics.land lands it then, if BattleMath.strikeLands (a stun after swungAt cancels it);
          * an attacker has one at most (Tactics.swing). startRound, Campaign.returnLobby (round end and battle stop) and switchMap clear the list, so no
          * blow crosses a round or a map.
          */
         public record PendingStrike(Unit attacker,LivingEntity target,int variant,long swungAt,long landsAt,Combat.Charge charge){}
         public final List<PendingStrike> strikes=new ArrayList<>();
-        /** The battle's own draws for what only shows (the swing a melee troop plays, Tactics.swing), seeded from the world's seed: they leave the world's random stream, which the fights draw on, as it was before the swings had variants. */
+        /**
+         * The battle's own draws for the swing a melee troop plays (Tactics.swing). That is gameplay, not show: the swing sets its blow's impactTicks, so the
+         * tick it lands on and whether it lands. Kept apart from the world's random stream, which the fights draw on as before the swings had variants, and
+         * reseeded at each round start from the world's seed and the round's number (BattleMath.roundSeed), so a round's swings depend on nothing before it.
+         */
         public final java.util.Random rolls;
         /** Landed shots' arrows held where they landed for a tick or two (Projectiles.LINGER_TICKS) before they go. */
         public final List<Projectiles.Landed> landed=new ArrayList<>();
@@ -629,7 +633,7 @@ public final class GravesAndGlory implements ModInitializer {
         int testBridgeIndex,hillClimbY;
         boolean bridgesPassed=true;
         public Battle(MinecraftServer server){
-            this.server=server;world=server.getOverworld();rolls=new java.util.Random(world.getSeed());campaign=new Campaign(this);
+            this.server=server;world=server.getOverworld();rolls=new java.util.Random(BattleMath.roundSeed(world.getSeed(),0));campaign=new Campaign(this);
             for(var p:Spec.POINTS)points.add(new Capture(p));
             world.getGameRules().get(GameRules.DO_DAYLIGHT_CYCLE).set(false,server);
             world.getGameRules().get(GameRules.DO_WEATHER_CYCLE).set(false,server);
@@ -993,6 +997,7 @@ public final class GravesAndGlory implements ModInitializer {
                 reinforce(s);
             }
             rounds++;roundStarted=time;running=true;message=ROUND_START;
+            rolls.setSeed(BattleMath.roundSeed(world.getSeed(),rounds)); // this round's swings, whatever the rounds before drew
         }
         void reinforce(Squad s){
             Set<Integer> occupied=new HashSet<>();fielded(s).forEach(u->occupied.add(u.slot));

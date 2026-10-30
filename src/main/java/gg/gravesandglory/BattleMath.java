@@ -523,6 +523,17 @@ public final class BattleMath {
         return i >= last ? i + 1 : i;
     }
     /**
+     * The seed of a round's variant rolls (Battle.rolls, reseeded by startRound; round 0 before the first): the world's seed and the round's number mixed
+     * by SplitMix64's finalizer, so a round's swing sequence depends on those two alone, never on how many swings the rounds before it made, and
+     * neighbouring rounds do not start java.util.Random on neighbouring seeds (whose first draws run close together).
+     */
+    public static long roundSeed(long worldSeed, int round) {
+        long z = worldSeed + 0x9E3779B97F4A7C15L * (round + 1L);
+        z = (z ^ (z >>> 30)) * 0xBF58476D1CE4E5B9L;
+        z = (z ^ (z >>> 27)) * 0x94D049BB133111EBL;
+        return z ^ (z >>> 31);
+    }
+    /**
      * Ticks from a melee swing to its blow: the swing's impactTicks, but always at least a tick before the attacker's next swing can
      * start (untilNextSwing ticks off: the cooldown as the swing set it), so no blow is ever still pending when the next swing comes.
      * No attack haste exists; one that shortened a cooldown already running would have to re-clamp the blows then pending
