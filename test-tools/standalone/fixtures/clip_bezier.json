@@ -1,0 +1,221 @@
+{
+ "source": "Blockbench 5.2.2 (resources/app.asar, dist/bundle.js.map sourcesContent): js/animations/keyframe.js Keyframe.getBezierLerp and Keyframe.getCatmullromLerp, with js/util/math_util.js and the bundled three.js r129 (CubicBezierCurve, SplineCurve), lerp chosen as js/animations/timeline_animators.js BoneAnimator.interpolate chooses it; run by test-tools/standalone/fixtures/clip_bezier.mjs",
+ "clip": {
+  "format": 1,
+  "clip": "reference",
+  "length": 1,
+  "loop": false,
+  "markers": {},
+  "bones": {
+   "right_arm": {
+    "rotation": [
+     {
+      "t": 0.2,
+      "i": "bezier",
+      "v": [
+       10,
+       -30,
+       5
+      ],
+      "post": [
+       14,
+       -30,
+       0
+      ],
+      "lt": [
+       -0.1,
+       -0.1,
+       -0.1
+      ],
+      "lv": [
+       0,
+       0,
+       0
+      ],
+      "rt": [
+       0.15,
+       0.05,
+       0.9
+      ],
+      "rv": [
+       35,
+       -10,
+       12
+      ]
+     },
+     {
+      "t": 0.7,
+      "i": "bezier",
+      "v": [
+       80,
+       20,
+       -40
+      ],
+      "lt": [
+       -0.1,
+       -0.35,
+       -0.6
+      ],
+      "lv": [
+       -20,
+       15,
+       0
+      ],
+      "rt": [
+       0.1,
+       0.1,
+       0.1
+      ],
+      "rv": [
+       0,
+       0,
+       0
+      ]
+     }
+    ]
+   },
+   "body": {
+    "position": [
+     {
+      "t": 0,
+      "i": "catmullrom",
+      "v": [
+       0,
+       0,
+       0
+      ]
+     },
+     {
+      "t": 0.25,
+      "i": "catmullrom",
+      "v": [
+       2,
+       -1.5,
+       0.5
+      ]
+     },
+     {
+      "t": 0.5,
+      "i": "catmullrom",
+      "v": [
+       -1,
+       3,
+       0
+      ]
+     },
+     {
+      "t": 1,
+      "i": "catmullrom",
+      "v": [
+       0.5,
+       0,
+       -2
+      ]
+     }
+    ]
+   }
+  }
+ },
+ "samples": [
+  {
+   "bone": "right_arm",
+   "channel": "rotation",
+   "t": 0.25,
+   "value": [
+    24.2208099380732,
+    -24.296875,
+    1.0485211266508239
+   ]
+  },
+  {
+   "bone": "right_arm",
+   "channel": "rotation",
+   "t": 0.35,
+   "value": [
+    39.24631779408327,
+    -0.5998174143264472,
+    1.6759183192447706
+   ]
+  },
+  {
+   "bone": "right_arm",
+   "channel": "rotation",
+   "t": 0.45,
+   "value": [
+    50.68141913494314,
+    14.230441935434765,
+    -15.500000000076701
+   ]
+  },
+  {
+   "bone": "right_arm",
+   "channel": "rotation",
+   "t": 0.55,
+   "value": [
+    60.83227455306564,
+    20.991419981875573,
+    -37.56167407910163
+   ]
+  },
+  {
+   "bone": "right_arm",
+   "channel": "rotation",
+   "t": 0.65,
+   "value": [
+    72.05646158550915,
+    21.583255891588145,
+    -39.80435978027972
+   ]
+  },
+  {
+   "bone": "body",
+   "channel": "position",
+   "t": 0.1,
+   "value": [
+    0.8960000000000001,
+    -0.7800000000000002,
+    0.21200000000000002
+   ]
+  },
+  {
+   "bone": "body",
+   "channel": "position",
+   "t": 0.3,
+   "value": [
+    1.6480000000000001,
+    -0.8640000000000002,
+    0.488
+   ]
+  },
+  {
+   "bone": "body",
+   "channel": "position",
+   "t": 0.45,
+   "value": [
+    -0.6079999999999992,
+    2.4839999999999987,
+    0.2120000000000002
+   ]
+  },
+  {
+   "bone": "body",
+   "channel": "position",
+   "t": 0.6,
+   "value": [
+    -0.9640000000000001,
+    2.8320000000000003,
+    -0.3359999999999999
+   ]
+  },
+  {
+   "bone": "body",
+   "channel": "position",
+   "t": 0.9,
+   "value": [
+    0.2240000000000002,
+    0.5279999999999991,
+    -1.7040000000000002
+   ]
+  }
+ ]
+}

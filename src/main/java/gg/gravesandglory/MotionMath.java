@@ -12,7 +12,7 @@ public final class MotionMath {
     /** Cosine ease, 0 to 1 over 0 to 1. */
     public static double ease(double x) { return 0.5 - 0.5 * Math.cos(Math.PI * clamp01(x)); }
 
-    /** Distorted sine for footfalls: in [-1, 1], peaking before pi/2. */
+    /** Distorted sine for footfalls: in [-1, 1]. It crests early (0.95 by about 0.93 rad, where sine needs 1.25) and still peaks at exactly 1 at pi/2. */
     public static double gait(double phase) { return Math.sin(phase + Math.sin(2 * phase) / 3); }
 
     /** Triangle wave in [-1, 1], period 2pi, in phase with sine. */
@@ -22,14 +22,18 @@ public final class MotionMath {
         return t < 0.25 ? 4 * t : t < 0.75 ? 2 - 4 * t : 4 * t - 4;
     }
 
-    /** Exponential approach toward target; the same after one second at any frame rate. */
+    /** Exponential approach toward target; the same after one second at any frame rate. A negative or NaN rate counts as 0 (no movement). */
     public static double approach(double current, double target, double ratePerSecond, double dt) {
+        if (!(ratePerSecond > 0)) return current;
         return target + (current - target) * Math.exp(-ratePerSecond * clampDt(dt));
     }
 
     public record Spring(double pos, double vel) {}
 
-    /** Semi-implicit Euler spring, sub-stepped at no more than 1/120 s so it stays stable at low frame rates. */
+    /**
+     * Semi-implicit Euler spring, sub-stepped at no more than 1/120 s so it stays stable at low frame rates. At step h it is
+     * stable while stiffness*h^2 + 2*damping*h < 4: with h = 1/120, stiffness under about 57,600 and damping under 240.
+     */
     public static Spring spring(Spring s, double target, double stiffness, double damping, double dt) {
         dt = clampDt(dt);
         int n = Math.max(1, (int) Math.ceil(dt / SPRING_STEP - 1e-9));

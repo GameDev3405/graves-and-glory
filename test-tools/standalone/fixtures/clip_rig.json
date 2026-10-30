@@ -1,0 +1,22 @@
+{
+"rig":"biped",
+"note":"Test fixture for test_clips.py: the jointed biped (animation rework design section 8) before it lands in art/rigs. Forearms pivot at the elbow (arm frame y 4), shins at the knee (leg frame y 6), hands hang from the forearms; the upper and lower boxes split the old 12 px limbs in two.",
+"size":[64, 64],
+"outer":0.25,
+"hands":{"right":"right_hand","left":"left_hand"},
+"bones":[
+{"name":"root","parent":"","pivot":[0,0,0],"boxes":[]},
+{"name":"body","parent":"root","pivot":[0,12,0],"boxes":[{"origin":[-4,-12,-2],"size":[8,12,4],"uv":[16,16]}]},
+{"name":"head","parent":"body","pivot":[0,-12,0],"boxes":[{"origin":[-4,-8,-4],"size":[8,8,8],"uv":[0,0]}]},
+{"name":"right_arm","parent":"body","pivot":[-5,-10,0],"boxes":[{"origin":[-3,-2,-2],"size":[4,6,4],"uv":[40,16]}]},
+{"name":"right_forearm","parent":"right_arm","pivot":[-1,4,0],"boxes":[{"origin":[-2,0,-2],"size":[4,6,4],"uv":[40,22]}]},
+{"name":"right_hand","parent":"right_forearm","pivot":[0,4,0],"boxes":[]},
+{"name":"left_arm","parent":"body","pivot":[5,-10,0],"boxes":[{"origin":[-1,-2,-2],"size":[4,6,4],"uv":[32,48]}]},
+{"name":"left_forearm","parent":"left_arm","pivot":[1,4,0],"boxes":[{"origin":[-2,0,-2],"size":[4,6,4],"uv":[32,54]}]},
+{"name":"left_hand","parent":"left_forearm","pivot":[0,4,0],"boxes":[]},
+{"name":"arms_folded","parent":"body","pivot":[0,-9,-1],"rotation":[-43,0,0],"boxes":[{"origin":[-8,-2,-2],"size":[4,8,4],"uv":[0,48]},{"origin":[-4,2,-2],"size":[8,4,4],"uv":[40,32]},{"origin":[4,-2,-2],"size":[4,8,4],"uv":[48,48],"mirror":true}]},
+{"name":"right_leg","parent":"root","pivot":[-1.9,12,0],"boxes":[{"origin":[-2,0,-2],"size":[4,6,4],"uv":[0,16]}]},
+{"name":"right_shin","parent":"right_leg","pivot":[0,6,0],"boxes":[{"origin":[-2,0,-2],"size":[4,6,4],"uv":[0,22]}]},
+{"name":"left_leg","parent":"root","pivot":[1.9,12,0],"boxes":[{"origin":[-2,0,-2],"size":[4,6,4],"uv":[16,48]}]},
+{"name":"left_shin","parent":"left_leg","pivot":[0,6,0],"boxes":[{"origin":[-2,0,-2],"size":[4,6,4],"uv":[16,54]}]}
+]}

@@ -1,8 +1,14 @@
 package gg.gravesandglory;
 
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Random;
 
-/** Pure motion maths for the troop motion engine (animation rework design section 6): easing, the gait and triangle waves, frame-rate-independent approach, the sub-stepped spring and per-unit seeds. Never shipped. */
+/** Pure motion maths for the troop motion engine (animation rework design section 6): easing, the gait and triangle waves, frame-rate-independent approach, the sub-stepped spring, per-unit seeds and Clip sampling against Blockbench's own curves. Never shipped. */
 public final class MotionMathCheck {
     static int checks;
     static void check(boolean pass, String message) {
@@ -43,6 +49,7 @@ public final class MotionMathCheck {
         check(slow > 0.9 && slow < 1, "approach at rate 3 should be most of the way after 1 s: " + slow);
         check(MotionMath.approach(0, 1, 3, 5) == MotionMath.approach(0, 1, 3, 0.1), "approach should clamp dt to 0.1");
         check(MotionMath.approach(0.4, 1, 3, -1) == 0.4, "approach should clamp negative dt to 0");
+        check(MotionMath.approach(0.4, 1, -3, 0.1) == 0.4 && MotionMath.approach(0.4, 1, Double.NaN, 0.1) == 0.4, "approach should treat a negative or NaN rate as 0");
 
         for (double[] k : new double[][]{{200, 20}, {400, 30}, {80, 6}}) {
             var s = new MotionMath.Spring(0, 0);
@@ -86,6 +93,51 @@ public final class MotionMathCheck {
         check(tempoMin < 0.92 && tempoMax > 1.08, "tempo should use its whole range: " + tempoMin + ".." + tempoMax);
         check(legs > 400 && legs < 600, "idle legs should split roughly evenly: " + legs + " of " + n);
 
+        clips();
         System.out.println("MotionMathCheck: " + checks + " checks passed");
+    }
+
+    /** fixtures/clip_bezier.json holds values computed by Blockbench 5.2.2's own Keyframe.getBezierLerp and getCatmullromLerp (its "source" says how). */
+    static void clips() {
+        JsonObject fixture;
+        try { fixture = JsonParser.parseString(Files.readString(Path.of("test-tools/standalone/fixtures/clip_bezier.json"))).getAsJsonObject(); }
+        catch (java.io.IOException e) { throw new AssertionError("clip_bezier.json: " + e); }
+        Clip clip = Clip.parse(fixture.getAsJsonObject("clip"));
+        Map<String, double[]> out = new HashMap<>();
+        int bezier = 0;
+        for (var e : fixture.getAsJsonArray("samples")) {
+            JsonObject s = e.getAsJsonObject();
+            double t = s.get("t").getAsDouble();
+            int at = s.get("channel").getAsString().equals("rotation") ? 0 : 3;
+            clip.sample(t, out);
+            double[] got = out.get(s.get("bone").getAsString());
+            for (int i = 0; i < 3; i++) {
+                double want = s.getAsJsonArray("value").get(i).getAsDouble();
+                check(near(got[at + i], want, 1e-3), s.get("bone").getAsString() + " " + s.get("channel").getAsString() + " axis " + i + " at " + t + ": " + got[at + i] + ", Blockbench " + want);
+            }
+            if (at == 0) bezier++;
+        }
+        check(bezier == 5, "the fixture should hold 5 bezier samples, held " + bezier);
+        clip.sample(0.2, out);
+        check(near(out.get("right_arm")[0], 10, 1e-12), "on a key, sampling reads its pre value: " + out.get("right_arm")[0]);
+        clip.sample(0.2 + 0.0005, out);
+        check(near(out.get("right_arm")[0], 10, 1e-12), "within 1/1200 s of a key Blockbench still reads the key: " + out.get("right_arm")[0]);
+        clip.sample(0.201, out);
+        check(near(out.get("right_arm")[0], 14, 0.5) && near(out.get("right_arm")[2], 0, 0.5), "just past a split key the curve leaves from its post value: " + out.get("right_arm")[0] + ", " + out.get("right_arm")[2]);
+        clip.sample(5, out);
+        check(near(out.get("right_arm")[0], 80, 1e-12) && near(out.get("body")[5], -2, 1e-12) && out.get("right_arm")[3] == 0, "a clip that does not loop holds its last frame; unkeyed channels are 0");
+        double[] reach = clip.reach();
+        check(reach.length == 6 && reach[0] >= 80 && reach[2] >= 40 && reach[4] >= 3 && reach[4] < 3.5, "reach should bound every channel: " + java.util.Arrays.toString(reach));
+        check(clip.impact() == -1 && !clip.loop() && clip.length() == 1, "the reference clip has no impact, does not loop and lasts 1 s");
+
+        Clip loop = Clip.parse(JsonParser.parseString("{\"format\":1,\"clip\":\"idle\",\"length\":1.2,\"loop\":true,\"markers\":{\"impact\":0.35,\"step\":0.6},"
+            + "\"bones\":{\"body\":{\"rotation\":[{\"t\":0,\"i\":\"step\",\"v\":[1,0,0]},{\"t\":0.6,\"i\":\"linear\",\"v\":[3,0,0]},{\"t\":1.2,\"i\":\"linear\",\"v\":[1,0,0]}]}}}").getAsJsonObject());
+        check(loop.impact() == 7 && loop.markers().get("step") == 0.6, "impact is the impact marker in ticks: " + loop.impact());
+        loop.sample(0.3, out);
+        check(out.get("body")[0] == 1, "a step key holds until the next key: " + out.get("body")[0]);
+        loop.sample(0.9, out);
+        double mid = out.get("body")[0];
+        loop.sample(0.9 + 1.2 * 3, out);
+        check(near(mid, 2, 1e-12) && near(out.get("body")[0], mid, 1e-9), "a looping clip wraps its time: " + mid + " vs " + out.get("body")[0]);
     }
 }
