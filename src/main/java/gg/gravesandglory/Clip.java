@@ -34,7 +34,7 @@ public final class Clip {
     private final Map<String, Double> markers;
     private final String[] bones;
     private final Key[][] rotation, position;
-    private double[] reach;
+    private final double[] reach;
 
     private Clip(String name, double length, boolean loop, Map<String, Double> markers, String[] bones, Key[][] rotation, Key[][] position) {
         this.name = name; this.length = length; this.loop = loop; this.markers = Collections.unmodifiableMap(markers);
@@ -46,6 +46,7 @@ public final class Clip {
             if (Math.abs(ticks - Math.rint(ticks)) > 1e-3) throw new IllegalArgumentException(name + ": impact marker at " + at + " s is not on a tick");
             impact = (int) Math.rint(ticks);
         }
+        reach = envelope();
     }
 
     public static Clip parse(String json) { return parse(JsonParser.parseString(json).getAsJsonObject()); }
@@ -112,21 +113,70 @@ public final class Clip {
         }
     }
 
-    /** The largest |value| each of the six channels reaches on any bone, sampled every 1/100 s and on every key: the clip's envelope for culling. */
-    public double[] reach() {
-        if (reach == null) {
-            double[] r = new double[6];
-            Map<String, double[]> out = new LinkedHashMap<>();
-            List<Double> times = new ArrayList<>();
-            for (int s = 0; s <= (int) Math.ceil(length * 100); s++) times.add(Math.min(s / 100.0, length));
-            for (Key[][] chans : new Key[][][]{rotation, position}) for (Key[] keys : chans) for (Key k : keys) times.add(k.t());
-            for (double t : times) {
-                sample(t, out);
-                for (double[] o : out.values()) for (int c = 0; c < 6; c++) r[c] = Math.max(r[c], Math.abs(o[c]));
+    /**
+     * The largest |value| each of the six channels can reach on any bone at any time: the clip's envelope for culling.
+     * Computed once when the clip is built (final, so safely published) and exact rather than sampled, so a short bezier or
+     * catmullrom overshoot between samples is never missed.
+     */
+    public double[] reach() { return reach.clone(); }
+
+    /**
+     * Every sampled value is a key's v or post (held, stepped or past either end) or lies on one segment between two
+     * consecutive key times, chosen exactly as {@link #channel} chooses it. A linear segment stays between its ends; a bezier
+     * segment is a lerp between two of its 201 curve points, so its bound is the largest point; a catmullrom segment is one
+     * Hermite cubic in alpha, bounded by its ends and the real roots of its derivative in [0, 1].
+     */
+    private double[] envelope() {
+        double[] r = new double[6];
+        for (int at : new int[]{0, 3}) for (Key[] keys : at == 0 ? rotation : position) {
+            for (Key k : keys) for (int a = 0; a < 3; a++) r[at + a] = Math.max(r[at + a], Math.max(Math.abs(k.v()[a]), Math.abs(k.post()[a])));
+            for (int bi = 0; bi < keys.length; bi++) {
+                if (bi > 0 && keys[bi - 1].t() == keys[bi].t()) continue;   // channel() takes the first key of an equal-time group
+                int ai = bi + 1;
+                while (ai < keys.length && keys[ai].t() == keys[bi].t()) ai++;
+                if (ai >= keys.length) break;
+                Key before = keys[bi], after = keys[ai];
+                if (before.i() == STEP || (before.i() == LINEAR && (after.i() == LINEAR || after.i() == STEP))) continue;
+                for (int a = 0; a < 3; a++) {
+                    double m;
+                    if (before.i() == CATMULLROM || after.i() == CATMULLROM) {
+                        Key[] around = around(keys, loop, bi);
+                        m = hermiteReach(hermite(around[0], before, after, around[1], a, 0.5));
+                    } else m = bezierReach(before, after, a);
+                    r[at + a] = Math.max(r[at + a], m);
+                }
             }
-            reach = r;
         }
-        return reach.clone();
+        return r;
+    }
+
+    private static double hermiteReach(double[] h) {
+        double a = h[0], b = h[1], c = h[2], d = h[3];
+        double m = Math.max(Math.abs(d), Math.abs(a + b + c + d));
+        double qa = 3 * a, qb = 2 * b;
+        if (Math.abs(qa) < 1e-12) {
+            if (Math.abs(qb) > 1e-12) m = Math.max(m, cubicAt(h, -c / qb));
+        } else {
+            double disc = qb * qb - 4 * qa * c;
+            if (disc >= 0) {
+                double root = Math.sqrt(disc);
+                m = Math.max(m, Math.max(cubicAt(h, (-qb + root) / (2 * qa)), cubicAt(h, (-qb - root) / (2 * qa))));
+            }
+        }
+        return m;
+    }
+
+    /** |a w^3 + b w^2 + c w + d| at w, or 0 outside [0, 1]. */
+    private static double cubicAt(double[] h, double w) {
+        if (!(w >= 0 && w <= 1)) return 0;
+        return Math.abs(((h[0] * w + h[1]) * w + h[2]) * w + h[3]);
+    }
+
+    private static double bezierReach(Key before, Key after, int axis) {
+        double vb = before.post()[axis], va = after.v()[axis];
+        double y0 = vb, y1 = vb + before.rv()[axis], y2 = va + after.lv()[axis], y3 = va, m = 0;
+        for (int d = 0; d <= 200; d++) m = Math.max(m, Math.abs(cubic(d / 200.0, y0, y1, y2, y3)));
+        return m;
     }
 
     /** BoneAnimator.interpolate for one channel. */
@@ -149,19 +199,35 @@ public final class Clip {
         if (before.i() == LINEAR && (after.i() == LINEAR || after.i() == STEP)) {
             for (int a = 0; a < 3; a++) o[at + a] = before.post()[a] + (after.v()[a] - before.post()[a]) * alpha;
         } else if (before.i() == CATMULLROM || after.i() == CATMULLROM) {
-            Key bp = bi >= 1 ? keys[bi - 1] : null, ap = bi + 2 < keys.length ? keys[bi + 2] : null;
-            if (loop && keys.length >= 3) {
-                if (bp == null) bp = keys[keys.length - 2];
-                if (ap == null) ap = keys[1];
-            }
-            for (int a = 0; a < 3; a++) o[at + a] = catmullrom(bp, before, after, ap, a, alpha);
+            Key[] around = around(keys, loop, bi);
+            for (int a = 0; a < 3; a++) o[at + a] = catmullrom(around[0], before, after, around[1], a, alpha);
         } else {
             for (int a = 0; a < 3; a++) o[at + a] = bezier(before, after, a, alpha);
         }
     }
 
+    /** The catmullrom neighbours Blockbench takes for the segment that starts at keys[bi]: the keys either side, wrapping when the clip loops. */
+    static Key[] around(Key[] keys, boolean loop, int bi) {
+        Key bp = bi >= 1 ? keys[bi - 1] : null, ap = bi + 2 < keys.length ? keys[bi + 2] : null;
+        if (loop && keys.length >= 3) {
+            if (bp == null) bp = keys[keys.length - 2];
+            if (ap == null) ap = keys[1];
+        }
+        return new Key[]{bp, ap};
+    }
+
     /** Keyframe.getCatmullromLerp on three.js SplineCurve.getPoint, term for term. */
     static double catmullrom(Key bp, Key before, Key after, Key ap, int axis, double alpha) {
+        double[] h = hermite(bp, before, after, ap, axis, alpha);
+        double w = h[4], t2 = w * w, t3 = w * t2;
+        return h[0] * t3 + h[1] * t2 + h[2] * w + h[3];
+    }
+
+    /**
+     * The segment's Hermite cubic as {a, b, c, d, w}: the value is a w^3 + b w^2 + c w + d. Inside one segment the spline index
+     * i is fixed (1 with a leading neighbour, else 0), so w equals alpha and the cubic covers the whole segment.
+     */
+    static double[] hermite(Key bp, Key before, Key after, Key ap, int axis, double alpha) {
         double[] pts = new double[4];
         int n = 0;
         if (bp != null && !before.split()) pts[n++] = bp.post()[axis];
@@ -172,8 +238,8 @@ public final class Clip {
         int i = (int) Math.floor(p);
         double w = p - i;
         double p0 = pts[i == 0 ? i : i - 1], p1 = pts[i], p2 = pts[i > n - 2 ? n - 1 : i + 1], p3 = pts[i > n - 3 ? n - 1 : i + 2];
-        double v0 = (p2 - p0) * 0.5, v1 = (p3 - p1) * 0.5, t2 = w * w, t3 = w * t2;
-        return (2 * p1 - 2 * p2 + v0 + v1) * t3 + (-3 * p1 + 3 * p2 - 2 * v0 - v1) * t2 + v0 * w + p1;
+        double v0 = (p2 - p0) * 0.5, v1 = (p3 - p1) * 0.5;
+        return new double[]{2 * p1 - 2 * p2 + v0 + v1, -3 * p1 + 3 * p2 - 2 * v0 - v1, v0, p1, w};
     }
 
     /**
