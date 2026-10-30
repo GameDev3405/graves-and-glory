@@ -327,6 +327,57 @@ public final class BattleMathCheck {
         check(seeds.size() == 200 && BattleMath.roundSeed(4242, 1) != BattleMath.roundSeed(4243, 1), "every round, and every world, rolls its own seed");
         int[] firstPick = new int[3]; for (int r = 1; r <= 300; r++) firstPick[BattleMath.pickVariant(3, -1, new java.util.Random(BattleMath.roundSeed(4242, r)).nextLong())]++;
         check(firstPick[0] > 60 && firstPick[1] > 60 && firstPick[2] > 60, "neighbouring rounds open on unrelated swings: the first variant over 300 rounds " + java.util.Arrays.toString(firstPick) + " (want each of the 3 more than 60 times)");
+        // Task 6 (hit_v1): the zone a projectile strikes from its impact height on the victim's box, and the weight of a blow from its share of the victim's health
+        check(BattleMath.zone(0, 0, 2).equals("legs") && BattleMath.zone(0.88, 0, 2).equals("legs") && BattleMath.zone(0.9, 0, 2).equals("body")
+            && BattleMath.zone(1.58, 0, 2).equals("body") && BattleMath.zone(1.6, 0, 2).equals("head") && BattleMath.zone(64 + 0.5 * 1.8, 64, 1.8).equals("body") && BattleMath.zone(65.75, 64, 1.8).equals("head"),
+            "zone: under 0.45 of the height legs, under 0.8 body, else head");
+        check(BattleMath.zone(63, 64, 1.8).equals("legs") && BattleMath.zone(70, 64, 1.8).equals("head") && BattleMath.zone(64.5, 64, 0).equals("body"), "zone: below the feet legs, over the head head, a box with no height body");
+        check(BattleMath.weight(1, 20, .1, .25) == 0 && BattleMath.weight(1.99, 20, .1, .25) == 0 && BattleMath.weight(2, 20, .1, .25) == 1 && BattleMath.weight(4.99, 20, .1, .25) == 1
+            && BattleMath.weight(5, 20, .1, .25) == 2 && BattleMath.weight(40, 20, .1, .25) == 2, "weight: under mediumHitShare of the max health light (0), under heavyHitShare medium (1), else heavy (2)");
+        check(BattleMath.weight(5, 0, .1, .25) == 0 && BattleMath.weight(0, 20, .1, .25) == 0, "weight: no max health or no damage is light");
+        // carry 1: the signed bearing of a blow's source from the victim's facing (yaw 0 faces +z, so its right hand is -x): + right, - left, 0 front, 180 behind
+        check(Math.abs(BattleMath.signedBearing(0, 0, 1)) < 1e-9, "signedBearing: a source straight ahead is 0");
+        check(Math.abs(BattleMath.signedBearing(0, -1, 0) - 90) < 1e-9 && Math.abs(BattleMath.signedBearing(0, 1, 0) + 90) < 1e-9, "signedBearing: a source on the right (-x at yaw 0) is +90, on the left -90");
+        check(Math.abs(BattleMath.signedBearing(0, 0, -1) - 180) < 1e-9, "signedBearing: a source straight behind is 180 (never -180)");
+        check(Math.abs(BattleMath.signedBearing(0, -0.01, -1) - 179.43) < 0.01 && Math.abs(BattleMath.signedBearing(0, 0.01, -1) + 179.43) < 0.01, "signedBearing: just right of behind is near +180, just left of it near -180 (the wrap)");
+        check(Math.abs(BattleMath.signedBearing(90, 0, -1) - 90) < 1e-9 && Math.abs(BattleMath.signedBearing(-270, 0, -1) - 90) < 1e-9 && Math.abs(BattleMath.signedBearing(450, 0, -1) - 90) < 1e-9, "signedBearing: facing west (yaw 90) north is on the right; any turn of the yaw reads the same");
+        check(Math.abs(BattleMath.signedBearing(30, 0, 0)) < 1e-9, "signedBearing: a source on the victim has no direction (0)");
+        for (double yaw = -180; yaw <= 180; yaw += 37) for (double deg = 0; deg < 360; deg += 23) {
+            double dx = Math.sin(Math.toRadians(deg)), dz = Math.cos(Math.toRadians(deg));
+            check(Math.abs(Math.abs(BattleMath.signedBearing(yaw, dx, dz)) - BattleMath.relativeBearing(yaw, dx, dz)) < 1e-6, "signedBearing's size is relativeBearing at yaw " + yaw + ", source " + deg);
+        }
+        // carry 2: the plain-hold rule. On Hold shield and spear troops brace (a shield troop formed in its wall shows the wall), every other troop holds
+        check(BattleMath.holdStance(true, false, false).equals("brace") && BattleMath.holdStance(true, false, true).equals("wall") && BattleMath.holdStance(false, true, false).equals("brace")
+            && BattleMath.holdStance(false, true, true).equals("brace") && BattleMath.holdStance(true, true, true).equals("wall") && BattleMath.holdStance(false, false, false).equals("hold") && BattleMath.holdStance(false, false, true).equals("hold"),
+            "holdStance: shield or spear brace, a formed shield wall wall, anyone else hold");
+        check(BattleMath.stance("hold", false, false, false, false, false, false).equals("hold") && BattleMath.stance("hold", true, false, false, true, false, true).equals("wall") && BattleMath.stance("hold", false, true, false, false, false, false).equals("brace"),
+            "stance on Hold: the plain-hold rule");
+        check(BattleMath.stance("fall_back", true, false, false, false, false, true).equals("fall_back") && BattleMath.stance("charge", false, false, false, false, false, false).equals("run") && BattleMath.stance("retreat", false, false, true, false, true, false).equals("run")
+            && BattleMath.stance("attack", false, false, false, false, false, false).isEmpty(), "stance: Fall Back fall_back, Charge and Retreat run, other orders none");
+        check(BattleMath.stance("attack", false, false, true, false, false, false).equals("ranged_rest") && BattleMath.stance("attack", false, false, true, false, true, false).equals("ranged_aim")
+            && BattleMath.stance("hold", false, false, true, false, true, false).equals("ranged_aim") && BattleMath.stance("hold", false, false, true, false, false, false).equals("hold") && BattleMath.stance("fall_back", false, false, true, false, true, false).equals("fall_back"),
+            "stance: a ranged troop aims at an enemy in sight and reach on any order but a run or Fall Back; with none it rests, or holds on Hold");
+        check(BattleMath.stance("attack", true, false, false, false, false, true).equals("shield_move") && BattleMath.stance("attack", true, false, false, false, false, false).isEmpty() && BattleMath.stance("move", false, false, false, false, false, true).isEmpty(),
+            "stance: a shield troop moving with its shield up is shield_move");
+        for (String name : List.of("hold", "brace", "wall", "shield_move", "fall_back", "run", "ranged_rest", "ranged_aim")) check(BattleMath.STANCES.indexOf(name) > 0, "STANCES holds " + name);
+        check(BattleMath.STANCES.equals(List.of("", "hold", "brace", "wall", "shield_move", "fall_back", "run", "ranged_rest", "ranged_aim")), "STANCES in the stance_v2 wire order");
+        // hit_v1's kind from Combat.resolve's kind, the shooter's family and its swing's attackVariants kind
+        check(BattleMath.hitKind("slam", "blunt", "blunt").equals("blunt") && BattleMath.hitKind("slam", "bow", "arrow").equals("blunt"), "hitKind: a slam is blunt");
+        check(BattleMath.hitKind("bolt", "caster", "magic").equals("magic") && BattleMath.hitKind("blight", "caster", "magic").equals("magic"), "hitKind: a caster's bolt and blight are magic");
+        check(BattleMath.hitKind("blight", "crew", "blunt").equals("blunt"), "hitKind: the mortar's shell lands blunt (M5)");
+        check(BattleMath.hitKind("arrow", "bow", "arrow").equals("arrow") && BattleMath.hitKind("arrow", "crossbow", "bolt").equals("bolt") && BattleMath.hitKind("arrow", "thrower", "arrow").equals("arrow"),
+            "hitKind: a shot keeps its family's projectile, a crossbow's a bolt");
+        check(BattleMath.hitKind("melee", "stab", "stab").equals("stab") && BattleMath.hitKind("melee", "slash", "slash").equals("slash") && BattleMath.hitKind("melee", "blunt", "blunt").equals("blunt")
+            && BattleMath.hitKind("melee", "", "").equals("slash"), "hitKind: a melee blow keeps its swing's kind, an unknown swing slashes");
+        for (String k : List.of("stab", "slash", "blunt", "arrow", "bolt", "magic")) check(BattleMath.KINDS.contains(k), "KINDS holds " + k);
+        check(BattleMath.weaponKind("minecraft:iron_sword").equals("slash") && BattleMath.weaponKind("minecraft:diamond_axe").equals("slash") && BattleMath.weaponKind("minecraft:trident").equals("stab")
+            && BattleMath.weaponKind("minecraft:air").equals("blunt") && BattleMath.weaponKind("minecraft:stick").equals("blunt"), "weaponKind: a player's sword or axe slashes, a trident stabs, anything else is blunt");
+        // the hit's blocked flag: a counters row of the raised-shield kind (raised_front) applies
+        Set<String> arrowFrom = new HashSet<>(Set.of("ranged", "nonsiege")); arrowFrom.addAll(CounterMath.kindTags("arrow"));
+        check(CounterMath.blocked(new CounterMath.Hit(arrowFrom, Set.of("shield", "infantry"), 10, true, false, false, true, false, false), Spec.COUNTERS), "blocked: an arrow from the front on a raised shield");
+        check(!CounterMath.blocked(new CounterMath.Hit(arrowFrom, Set.of("shield", "infantry"), 10, false, false, false, true, false, false), Spec.COUNTERS), "blocked: not with the shield lowered");
+        check(!CounterMath.blocked(new CounterMath.Hit(arrowFrom, Set.of("shield", "infantry"), 150, true, false, false, true, false, false), Spec.COUNTERS), "blocked: not from behind");
+        check(!CounterMath.blocked(new CounterMath.Hit(arrowFrom, Set.of("infantry"), 10, true, false, false, true, false, false), Spec.COUNTERS), "blocked: not on a troop with no shield");
         System.out.println("BattleMathCheck: " + checks + " checks passed");
     }
 }

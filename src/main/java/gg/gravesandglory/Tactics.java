@@ -1,8 +1,5 @@
 package gg.gravesandglory;
 
-import net.fabricmc.fabric.api.networking.v1.PacketByteBufs;
-import net.fabricmc.fabric.api.networking.v1.PlayerLookup;
-import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import net.minecraft.entity.*;
 import net.minecraft.entity.ai.pathing.PathNodeType;
 import net.minecraft.entity.mob.MobEntity;
@@ -16,11 +13,11 @@ import java.util.*;
 /** Server-authoritative targeting, separation, bridge crossing and local path recovery. */
 final class Tactics {
     static final Spec.NavigationRow N=Spec.NAVIGATION[0];
-    /** The stances a troop shows its clients (stance_v1 sends the index): none, hold, brace, fall_back and run. */
-    static final List<String> STANCES=List.of("","hold","brace","fall_back","run");
-    /** stance_v1 packets sent: on a change at a unit's beat, to a player who starts tracking a troop, and to a player whose client registers the channel late (the harness reads them). */
+    /** The stances a troop shows its clients (stance_v2 sends the index): BattleMath.STANCES. */
+    static final List<String> STANCES=BattleMath.STANCES;
+    /** stance_v2 packets sent: on a change (Tactics.show), to a player who starts tracking a troop, and to a player whose client registers the channel late (the harness reads them; MotionEvents keeps its own). */
     static volatile int stanceSends,trackingSends,registerSends;
-    /** The stance a unit's order gives it (Phase 2 Task 5b; the unit AI phase's stances sheet maps its own rows here later). An arrived Retreat or Move group (arrived) stands as on Hold. */
+    /** The stance a unit's order gives it (BattleMath.stance with the plain-hold rule, unformed, not aiming, shield down): its stance at spawn, and the base Tactics.show refines. An arrived Retreat or Move group (arrived) stands as on Hold. */
     static String stance(GravesAndGlory.Battle b,GravesAndGlory.Unit u){var a=b.assignment(u);return stance(arrived(b,u,a)?held(a):a,u);}
     /** Hold's order row, which an arrived Retreat or Move group fights by. */
     static final Spec.OrdersRow HOLD=Arrays.stream(Spec.ORDERS).filter(o->o.id().equals("hold")).findFirst().orElse(Spec.ORDERS[0]);
@@ -47,27 +44,30 @@ final class Tactics {
     /** The centre of the members' formation slots (Battle.formation): where their walk ends. */
     static Vec3d slotCentre(GravesAndGlory.Battle b,List<GravesAndGlory.Unit> members){Vec3d sum=Vec3d.ZERO;for(var m:members)sum=sum.add(b.formation(m));return sum.multiply(1.0/members.size());}
     static String stance(GravesAndGlory.Assignment a,GravesAndGlory.Unit u){
-        return switch(a.order){
-            case "hold"->ArmyMobs.tags(u.spec).contains("shield")||ArmyMobs.tags(u.spec).contains("spear")?"brace":"hold"; // Hold builds the wall: shield and spear troops brace
-            case "fall_back"->"fall_back";
-            case "charge","retreat"->"run";
-            default->"";
-        };
+        var tags=ArmyMobs.tags(u.spec);return BattleMath.stance(a.order,tags.contains("shield"),tags.contains("spear"),false,false,false,false);
     }
-    /** Sends a unit's stance to each player that can take stance_v1: its entity id and the stance's index in STANCES. Returns how many it sent. */
-    static int sendStance(GravesAndGlory.Unit u,Collection<ServerPlayerEntity> players){
-        int index=Math.max(0,STANCES.indexOf(u.stance)),sent=0;
-        for(ServerPlayerEntity p:players){
-            if(!ServerPlayNetworking.canSend(p,GravesAndGlory.STANCE))continue;
-            var buf=PacketByteBufs.create();buf.writeVarInt(u.mob.getId());buf.writeByte(index);ServerPlayNetworking.send(p,GravesAndGlory.STANCE,buf);sent++;
-        }
-        return sent;
+    /**
+     * The stance a troop shows on its beat (stance_v2, BattleMath.stance): by the order it fights under (a, held when it has arrived), formed when it is a wall
+     * troop (Battle.walls) within the arrival tolerance of its slot, aiming when it is ranged with an enemy in sight and in reach (its aimPitch then
+     * BattleMath.launchPitch at that enemy, pitch, else 0), and a shield troop's shield up. Sent to every player tracking it when the stance changes, or
+     * its aim moves more than AIM_STEP degrees.
+     */
+    static void show(GravesAndGlory.Battle b,GravesAndGlory.Unit u,GravesAndGlory.Assignment a,boolean aiming,float pitch){
+        boolean shield=u.tags.contains("shield"),spear=u.tags.contains("spear");
+        boolean formed=GravesAndGlory.Battle.walls(u,a.order)&&GravesAndGlory.Battle.horizontalDistance(u.mob.getPos(),b.formation(u))<=N.arrivalTolerance()*N.arrivalTolerance();
+        String stance=BattleMath.stance(a.order,shield,spear,u.spec.ranged(),formed,aiming,shield&&u.mob.isUsingItem());
+        set(u,stance,stance.equals("ranged_aim")?pitch:0);
     }
-    /** Sends a player the stance of every troop it tracks that has one: for a player whose client registered stance_v1 after its trackers started. Returns how many it sent. */
-    static int sendTracked(GravesAndGlory.Battle b,ServerPlayerEntity p){
-        int sent=0;
-        for(GravesAndGlory.Unit u:b.units)if(!u.stance.isEmpty()&&PlayerLookup.tracking(u.mob).contains(p))sent+=sendStance(u,List.of(p));
-        return sent;
+    /** How far (degrees) an aiming troop's aim moves before its clients hear of it again. */
+    static final float AIM_STEP=.25f;
+    static void set(GravesAndGlory.Unit u,String stance,float aimPitch){
+        if(stance.equals(u.stance)&&Math.abs(aimPitch-u.aimPitch)<=AIM_STEP)return;
+        u.stance=stance;u.aimPitch=aimPitch;stanceSends+=MotionEvents.sendStance(u,stance,aimPitch);
+    }
+    /** Between beats a shield troop on an order with no stance of its own shows its shield as brace raises or lowers it: shield_move while it is up. */
+    static void shieldStance(GravesAndGlory.Unit u){
+        if(!u.tags.contains("shield")||u.spec.ranged()||!(u.stance.isEmpty()||u.stance.equals("shield_move")))return;
+        set(u,u.mob.isUsingItem()?"shield_move":"",0);
     }
     /** The crawl's movement-speed modifier (MULTIPLY_TOTAL, kept through Abilities.keepSpeed like the Howl's): it multiplies with the Howl, Muster and the order's moveMultiplier. */
     static final UUID CRAWL_ID=UUID.fromString("9c3e7a51-4f2b-4d8e-b6a0-2e5d1c7f3a94");
@@ -177,13 +177,12 @@ final class Tactics {
     static double engageRadius(GravesAndGlory.Battle battle,GravesAndGlory.Unit u,double order){return u.tags.contains("siege")?Math.max(order,Abilities.range(battle,u)):order;}
     static void tick(GravesAndGlory.Battle battle,GravesAndGlory.Unit u,long time){
         hop(u,time); // a wall troop jumping onto its slot on a rise is carried over the edge every tick of the jump
-        if(time%10!=u.slot%10){brace(battle,u);stretch(battle,u,battle.assignment(u),time);return;} // the shield and a wall troop's last stretch every tick; everything else on the unit's 10-tick beat
+        if(time%10!=u.slot%10){brace(battle,u);shieldStance(u);stretch(battle,u,battle.assignment(u),time);return;} // the shield and a wall troop's last stretch every tick; everything else on the unit's 10-tick beat
         u.place=null; // the beat reads the slot again
         var mob=u.mob;var s=u.squad;var a=battle.assignment(u);
         Houses.sample(battle,u); // Entrench: has it stood still since its last beat
         Houses.swim(battle,u); // Riptide: faster while it touches water or it rains
         boolean arrived=arrived(battle,u,a); // a Retreat or Move group at its destination fights as on Hold from its slot (arrived)
-        String stance=stance(arrived?held(a):a,u);if(!stance.equals(u.stance)){u.stance=stance;stanceSends+=sendStance(u,PlayerLookup.tracking(mob));}
         var owner=battle.server.getPlayerManager().getPlayer(s.owner);
         if(a.order.equals("follow")&&owner!=null&&!battle.respawns.containsKey(s.owner)){a.target=owner.getPos();a.yaw=owner.getYaw();}
         var order=arrived?HOLD:Arrays.stream(Spec.ORDERS).filter(o->o.id().equals(a.order)).findFirst().orElse(Spec.ORDERS[0]);
@@ -225,6 +224,8 @@ final class Tactics {
             shield(mob,BattleMath.raiseShield(shieldOrder,underFire(battle,u),near,reach*reach,any));
             crawl(battle,u,shieldOrder);
         }
+        boolean aiming=ranged&&enemy!=null&&nearest<=reach*reach&&mob.canSee(enemy); // stance_v2: a ranged troop with its target in reach and sight aims at it
+        show(battle,u,arrived?held(a):a,aiming,aiming?Projectiles.launchPitch(battle,u,enemy):0);
         Abilities.tick(battle,u,enemy,time); // mend heals and a caster's spell bursts on the beat
         double flee=Math.max(N.rangedRetreatDistance(),Abilities.minRange(u)); // a ranged troop backs off from an enemy this near; one with a minimum range (the Mortar) from anything inside it
         if(enemy!=null){
@@ -504,6 +505,7 @@ final class Tactics {
         int variant=BattleMath.pickVariant(rows.size(),u.lastVariant,b.rolls.nextLong());
         int delay=BattleMath.impactDelay(rows.get(variant).impactTicks(),u.nextAttack-time);
         u.lastVariant=variant;u.swungAt=time;swings++;
+        MotionEvents.sendAttack(u,variant,u.mob.getWorld().getTime()); // attack_v1: the swing Battle picked, from the world tick it begins on (time is swungAt)
         Abilities.animate(b,u);
         var strike=new GravesAndGlory.Battle.PendingStrike(u,enemy,variant,time,time+delay,Combat.charge(b,u,true));
         if(delay>0)b.strikes.add(strike);else land(b,strike);
@@ -528,7 +530,7 @@ final class Tactics {
         if(!BattleMath.strikeLands(attackerAlive,u.stunnedUntil>s.swungAt(),targetAlive,u.mob.squaredDistanceTo(target),Abilities.range(b,u),Spec.COMBATDISCIPLINE[0].meleeReachGrace())){strikesMissed++;return;}
         strikesLanded++;
         BattleEffects.strike(b,u,target);
-        u.blow=s.charge();
-        try{Abilities.land(b,u,target);}finally{u.blow=null;}
+        u.blow=s.charge();u.blowVariant=s.variant();
+        try{Abilities.land(b,u,target);}finally{u.blow=null;u.blowVariant=-1;}
     }
 }

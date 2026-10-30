@@ -296,7 +296,11 @@ for v in variantRows:
         if short: errors.append(f'attackVariants/{vid}: impactTicks {tk} must land inside the swing, below the cooldown of {", ".join(short)}')
     if fam in familyTroops and v.get('kind') in VARIANT_KINDS:
         melee=any(not t['ranged'] for t in familyTroops[fam])
-        if melee!=(v['kind'] in MELEE_KINDS): errors.append(f'attackVariants/{vid}: kind {v["kind"]} '+('must be stab, slash or blunt for a melee family' if melee else 'is a melee kind on a ranged family'))
+        # A shell (the Mortar's crew: every troop of the family fires a shell) lands as a blunt blow (Task 6, M5); any other ranged family flies arrows, bolts or magic.
+        shell=not melee and all(t.get('ability')=='shell' for t in familyTroops[fam])
+        if shell:
+            if v['kind']!='blunt': errors.append(f'attackVariants/{vid}: kind {v["kind"]} must be blunt for a shell family (its shell lands as a blunt blow)')
+        elif melee!=(v['kind'] in MELEE_KINDS): errors.append(f'attackVariants/{vid}: kind {v["kind"]} '+('must be stab, slash or blunt for a melee family' if melee else 'is a melee kind on a ranged family'))
 for fam,famTroops in familyTroops.items():
     if fam not in variantFamilies: errors.append(f'attackVariants: family {fam} (troops {", ".join(t["id"] for t in famTroops)}) has no rows'+(' and a melee family needs at least one' if any(not t['ranged'] for t in famTroops) else ''))
 if 'morale' in data: errors.append('morale: the sheet went with routing (Task 8b); its surviving numbers live in combatDiscipline')

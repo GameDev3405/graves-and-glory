@@ -81,12 +81,18 @@ public final class GravesAndGloryClient implements ClientModInitializer {
         ClientPlayNetworking.registerGlobalReceiver(GravesAndGlory.CAMP,(client,handler,buf,responder)->{String page=buf.readString(32);client.execute(()->CampScreen.open(page));});
         ClientPlayNetworking.registerGlobalReceiver(GravesAndGlory.OPEN_BARRACKS,(client,handler,buf,responder)->client.execute(()->client.setScreen(running?new BarracksScreen():new LobbyScreen())));
         ClientPlayNetworking.registerGlobalReceiver(GravesAndGlory.PARTY,(client,handler,buf,responder)->client.execute(()->client.setScreen(new LobbyScreen(3))));
-        // A troop's stance (stance_v1): TroopAnimator picks its still and move clips by it. The packet a player gets on START_TRACKING comes before
-        // the entity's spawn packet (Fabric calls the event first), so the entry is kept for an id the world does not have yet; an unloaded entity's entry goes.
-        ClientPlayNetworking.registerGlobalReceiver(GravesAndGlory.STANCE,(client,handler,buf,responder)->{int id=buf.readVarInt(),i=buf.readByte();client.execute(()->{
-            String stance=i>=0&&i<Tactics.STANCES.size()?Tactics.STANCES.get(i):"";
+        // The motion events (Task 6): a troop's stance (stance_v2), its swings (attack_v1) and the blows on it (hit_v1), kept in MotionEvents.Client for the
+        // motion engine. A packet a player gets on START_TRACKING comes before the entity's spawn packet (Fabric calls the event first), so entries are
+        // kept for an id the world does not have yet; an unloaded entity's entries go. Until the motion engine (Task 13) takes over, TroopAnimator still
+        // picks its still and move clips by the stance it knows: a formed wall reads brace, and the stances it has no clips for (aiming, resting, shield up) none.
+        ClientPlayNetworking.registerGlobalReceiver(MotionEvents.STANCE,(client,handler,buf,responder)->{int id=buf.readVarInt(),i=buf.readByte();float pitch=buf.readFloat();client.execute(()->{
+            MotionEvents.Client.stance(id,i,pitch);
+            String stance=MotionEvents.Client.stance(id).name();stance=switch(stance){case "wall"->"brace";case "ranged_aim","ranged_rest","shield_move"->"";default->stance;};
             if(stance.isEmpty())TroopAnimator.STANCES.remove(id);else TroopAnimator.STANCES.put(id,stance);});});
-        ClientEntityEvents.ENTITY_UNLOAD.register((entity,world)->TroopAnimator.forget(entity.getId()));
+        ClientPlayNetworking.registerGlobalReceiver(MotionEvents.ATTACK,(client,handler,buf,responder)->{int id=buf.readVarInt(),variant=buf.readVarInt();long start=buf.readVarLong();client.execute(()->MotionEvents.Client.attack(id,variant,start));});
+        ClientPlayNetworking.registerGlobalReceiver(MotionEvents.HIT,(client,handler,buf,responder)->{int id=buf.readVarInt(),kind=buf.readByte(),zone=buf.readByte();float bearing=buf.readFloat();int weight=buf.readByte(),flags=buf.readByte();long tick=buf.readVarLong();
+            client.execute(()->MotionEvents.Client.hit(id,kind,zone,bearing,weight,flags,tick));});
+        ClientEntityEvents.ENTITY_UNLOAD.register((entity,world)->{TroopAnimator.forget(entity.getId());MotionEvents.Client.forget(entity.getId());});
         // A soldier's rank (rank_v1): level, weapon tier and armour tier by entity id, for the troop renderer, the chevrons and the portraits (Task 9).
         RankSync.registerClient();
         ClientPlayNetworking.registerGlobalReceiver(GravesAndGlory.STATE,(client,handler,buf,responder)->{
@@ -117,7 +123,7 @@ public final class GravesAndGloryClient implements ClientModInitializer {
         // thread, and not through client.execute: Fabric can fire this event on the network thread, and MinecraftClient.disconnect
         // wipes the queued tasks (the Task 3 re-review's race). The flag waits for the first client tick without a world, and the
         // next join clears them as well; no HUD frame runs without a world to clear them before the next one.
-        ClientPlayConnectionEvents.DISCONNECT.register((handler,client)->{if(connectingInvitation&&!joined)say("Melty join failed: connection closed before joining");CampaignClient.end(client);CampaignClient.forget();TroopAnimator.clear();RankSync.clear();hudResetPending=true;ready=false;modServer=false;running=false;team=-1;houses=Map.of();opened=false;worldTicks=0;shareCamp=false;connectingInvitation=false;});
+        ClientPlayConnectionEvents.DISCONNECT.register((handler,client)->{if(connectingInvitation&&!joined)say("Melty join failed: connection closed before joining");CampaignClient.end(client);CampaignClient.forget();TroopAnimator.clear();MotionEvents.Client.clear();RankSync.clear();hudResetPending=true;ready=false;modServer=false;running=false;team=-1;houses=Map.of();opened=false;worldTicks=0;shareCamp=false;connectingInvitation=false;});
         ClientTickEvents.END_CLIENT_TICK.register(client->{
             if(hudResetPending&&client.world==null)resetHud();
             if(client.getOverlay()==null&&client.currentScreen instanceof TitleScreen){

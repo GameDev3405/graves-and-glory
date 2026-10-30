@@ -78,6 +78,15 @@ import static gg.gravesandglory.Phase2Checks.server;
  * switch with a blow pending clears it and none lands once the battle runs again; the round then restarts on map 0. Task 5 fix round 2: Hold is
  * judged with the Charge on the swing tick, so an order turned during the wind-up neither grants nor costs a braced blow's row (C18c, C18c2, C18d)
  * on a charging dummy, both ways for each; and the restarted round's variant rolls start afresh from the world's seed and the round's number.</li>
+ * <li>hl-events (Task 6): the motion events as the client holds them (MotionEvents.Client), on the same patch in the restarted round. A Dusk Order
+ * Squire (AI on, pinned, on Attack) swings at a frozen dummy of the commander's army: each swing reaches the client as attack_v1 with the variant
+ * Battle picked (its pending blow's) and the world tick of the swing, and each blow as hit_v1 with its swing's kind, zone and weight, the signed
+ * bearing to the Squire, unblocked, not lethal, on its landing tick; a blow that kills a dummy on 1 health arrives lethal. An arrow on a Hearthguard
+ * holding its shield up arrives blocked, one on an Ironclad Breaker unblocked, each with the zone of the height it struck at; a fall on the Breaker
+ * arrives blunt to the legs and magic damage as magic. Plain-hold rule: on Hold the Hearthguard (shield) and a Tusk (spear) show brace (wall when
+ * formed), the Breaker and a Reaper hold, on the server and the client. Late join, emulated twice: each troop leaves the player's tracking and is
+ * tracked again (START_TRACKING), then the client's tables are emptied and the channel registration replayed (S2CPlayChannelEvents.REGISTER); both
+ * times every tracked troop's stance reaches the client within 2 ticks, the Squire's newest swing with it, and a troop with no stance shows none.</li>
  * </ul>
  */
 final class HoldLineChecks {
@@ -186,6 +195,29 @@ final class HoldLineChecks {
         static final String[] BRACE_TAGS = {"brace", "brace2", "bracewall"}, BRACE_ROWS = {"C18c", "C18c2", "C18d"};
         boolean impPass = true;
         final List<String> impWhy = new ArrayList<>();
+        // hl-events (Task 6)
+        /** hl-events' Squire, its two dummies (the second on 1 health), the holders on Hold (shield, spear and two others), the frozen Dusk archer. */
+        GravesAndGlory.Unit evKnight, evTarget, evLethal, evHg, evTusk, evBreaker, evReaper, evArcher;
+        Vec3d evHome;
+        boolean evPass = true;
+        final List<String> evWhy = new ArrayList<>();
+        /** What the server sent, by entity id, oldest first (a shot's weight -1: not judged). */
+        final Map<Integer, List<MotionInput.Attack>> evAttacks = new HashMap<>();
+        final Map<Integer, List<MotionInput.Hit>> evHits = new HashMap<>();
+        /** The client's tables for the watched ids, copied after each client tick while evSnap is on (the newest non-empty copy kept). */
+        final Set<Integer> evWatch = java.util.concurrent.ConcurrentHashMap.newKeySet();
+        final Map<Integer, List<MotionInput.Attack>> evSeenAttacks = new java.util.concurrent.ConcurrentHashMap<>();
+        final Map<Integer, List<MotionInput.Hit>> evSeenHits = new java.util.concurrent.ConcurrentHashMap<>();
+        volatile boolean evSnap;
+        /** The Squire's pending blows: landing tick to swing variant. */
+        final Map<Long, Integer> evLands = new HashMap<>();
+        /** The troops taken out of tracking and tracked again; the tick they were tracked again; the tick each one's stance reached the client. */
+        final List<GravesAndGlory.Unit> evRetrack = new ArrayList<>();
+        final Map<Integer, Long> evArrived = new HashMap<>();
+        final List<Projectiles.Shot> evShots = new ArrayList<>();
+        long evSeen = -1, evLoadAt;
+        float evHealth;
+        int evSwings, evStep;
 
         static final double WALL = 0.7;
 
@@ -277,7 +309,8 @@ final class HoldLineChecks {
             int arcId = arcClientId; // hl-arc: the shot's arrow as the client draws it, after the client's own tick
             if (arcId >= 0 && c.world != null) {var e = c.world.getEntityById(arcId); if (e != null) arcClient.add(new double[]{e.getYaw(), e.getPitch(), e.prevYaw, e.prevPitch, e.getX(), e.getY(), e.getZ(), e.prevX, e.prevY, e.prevZ});}
             if (stage == 99 && !finished) {finished = true; c.setScreen(null); Phase2Checks.finish(c, "holdline");}
-            if (tick > 9000 && !finished) {finished = true; report("hl-timeout", false, "stuck in stage " + stage); Phase2Checks.finish(c, "holdline");}
+            if (evSnap) evSnapshot(); // hl-events: what the client holds, after its own tick (a dead dummy's tables go when its entity unloads)
+            if (tick > 12000 && !finished) {finished = true; report("hl-timeout", false, "stuck in stage " + stage); Phase2Checks.finish(c, "holdline");}
         }
 
         /** hl-mirror, on the client: the preview's places from the markers and the group card, against the server's. Waits (up to 200 client ticks) for the state packet to show the whole group. */
@@ -296,10 +329,10 @@ final class HoldLineChecks {
         }
 
         @Override public void serverTick(GravesAndGlory.Battle b) {
-            if (player == null || stage >= 99) return;
+            if (player == null || stage == 99) return;
             if (stage == 73 && arcTarget != null) arcAim = Projectiles.aim(arcTarget.mob); // where the battle aimed this tick, before the pins move the dummy on
             hold(); // the pinned enemies of hl-raise and hl-crawl stand where they were put
-            try {stages(b); if (stage >= 40) shieldStages(b); if (stage >= 70) arcStages(b); if (stage >= 80) impactStages(b);} catch (RuntimeException e) {report("hl-exception", false, "stage " + stage + ": " + e); e.printStackTrace(); next(b, 99);}
+            try {stages(b); if (stage >= 40) shieldStages(b); if (stage >= 70) arcStages(b); if (stage >= 80) impactStages(b); if (stage >= 100) eventStages(b);} catch (RuntimeException e) {report("hl-exception", false, "stage " + stage + ": " + e); e.printStackTrace(); next(b, 99);}
         }
 
         void stages(GravesAndGlory.Battle b) {
@@ -527,7 +560,7 @@ final class HoldLineChecks {
             boolean room = marshalRoom >= need - 1e-9; pass &= room;
             why.add("Lord Marshal Aldric's place has " + fmt(marshalRoom) + " of room to the nearest place beside it (want at least his width + 0.1 = " + fmt(need) + "; he stands " + fmt(marshalGap) + " from his nearest neighbour)=" + room);
             // braced, and still: nothing jams or shuffles at 0.7
-            long braced = fixture.stream().filter(u -> u.tags.contains("shield") && u.stance.equals("brace")).count(), shields = fixture.stream().filter(u -> u.tags.contains("shield")).count();
+            long braced = fixture.stream().filter(u -> u.tags.contains("shield") && (u.stance.equals("brace") || u.stance.equals("wall"))).count(), shields = fixture.stream().filter(u -> u.tags.contains("shield")).count();
             boolean brace = braced == shields; pass &= brace;
             why.add(braced + " of " + shields + " shield troops brace (want all)=" + brace);
             // a wall troop is settled onto its slot (Tactics.settle); any other stops where its walk ends, inside the arrival tolerance, as it always has
@@ -1127,7 +1160,7 @@ final class HoldLineChecks {
             next(b, 89);
         }
         /** The next hl-impact stage, and how the check stands so far once the last one is done. */
-        void impFinish(GravesAndGlory.Battle b) {report("hl-impact", impPass, String.join("; ", impWhy)); next(b, 99);}
+        void impFinish(GravesAndGlory.Battle b) {report("hl-impact", impPass, String.join("; ", impWhy)); next(b, 100);}
 
         /**
          * hl-impact (stages 80-98, Task 5 and its fix rounds 1 and 2): see the class comment. Every wait is bounded (200 ticks for a swing that never comes, 400 for the first three).
@@ -1381,6 +1414,204 @@ final class HoldLineChecks {
                     }
                     if (since(b) > 8000) {impPass = false; impWhy.add("the round never restarted on map 0=false"); impFinish(b);}
                 }
+                default -> {}
+            }
+        }
+        /** A frozen troop of the commander's army at 4000 health pinned at this point, facing east, whose motion events the client is watched for (hl-events). */
+        GravesAndGlory.Unit holder(GravesAndGlory.Battle b, String troop, int slot, Vec3d at) {
+            var u = tough(b.spawn(own, Campaign.troop(troop), slot, at)); Phase1Checks.freeze(u);
+            fixture.add(u); pins.add(new Pin(u, at, -90f)); u.deployed = at; Phase2Checks.Engine.apply(u, at, -90f); evWatch.add(u.mob.getId()); return u;
+        }
+        /** hl-events, on the client after its tick: the watched troops' swings and blows as MotionEvents.Client holds them. */
+        void evSnapshot() {
+            for (int id : evWatch) {
+                var a = MotionEvents.Client.attacks(id); if (!a.isEmpty()) evSeenAttacks.put(id, List.copyOf(a));
+                var h = MotionEvents.Client.hits(id); if (!h.isEmpty()) evSeenHits.put(id, List.copyOf(h));
+            }
+        }
+        void evCheck(boolean ok, String why) {evPass &= ok; evWhy.add(why + "=" + ok);}
+        void evFinish(GravesAndGlory.Battle b) {evSnap = false; report("hl-events", evPass, String.join("; ", evWhy)); next(b, 99);}
+        /** A hit as the server meant it and as the client holds it: the same kind, zone, weight (want -1: not judged), flags and tick, the bearing within 10 degrees. */
+        static boolean same(MotionInput.Hit want, MotionInput.Hit got) {
+            return got != null && want.kind().equals(got.kind()) && want.zone().equals(got.zone()) && Math.abs(net.minecraft.util.math.MathHelper.wrapDegrees(want.bearing() - got.bearing())) <= 10
+                && (want.weight() < 0 || want.weight() == got.weight()) && want.blocked() == got.blocked() && want.lethal() == got.lethal() && want.tick() == got.tick();
+        }
+        static String evShow(MotionInput.Hit h) {return h.kind() + "/" + h.zone() + "/" + fmt(h.bearing()) + "/w" + h.weight() + (h.blocked() ? "/blocked" : "") + (h.lethal() ? "/lethal" : "") + "@" + h.tick();}
+        void evCompareHits(String who, GravesAndGlory.Unit u) {
+            int id = u.mob.getId(); var want = evHits.getOrDefault(id, List.of()); var got = evSeenHits.getOrDefault(id, List.of());
+            boolean ok = !want.isEmpty() && want.size() == got.size();
+            for (int i = 0; ok && i < want.size(); i++) ok = same(want.get(i), got.get(i));
+            evCheck(ok, who + ": the client holds hits " + got.stream().map(Wall::evShow).toList() + " (want " + want.stream().map(Wall::evShow).toList() + ")");
+        }
+        /** The hit_v1 the server should send for the Squire's blow of this swing variant on the victim now (Combat): its swing's kind, zone and weight. */
+        MotionInput.Hit evBlow(GravesAndGlory.Battle b, GravesAndGlory.Unit victim, int variant, boolean lethal) {
+            var row = Tactics.variants(evKnight.spec.family()).get(variant);
+            float bearing = (float) BattleMath.signedBearing(victim.mob.getYaw(), evKnight.mob.getX() - victim.mob.getX(), evKnight.mob.getZ() - victim.mob.getZ());
+            return new MotionInput.Hit(BattleMath.hitKind("melee", evKnight.spec.family(), row.kind()), row.zone(), bearing, BattleMath.weightIndex(row.weight()), false, lethal, b.world.getTime());
+        }
+        /** A new swing of hl-events' Squire on this tick: its pending blow's variant is the unit's (carry 5), and the client is owed attack_v1 with it and the world tick now. */
+        void evSwing(GravesAndGlory.Battle b) {
+            var k = evKnight; if (k == null || k.swungAt != b.time || k.swungAt == evSeen) return;
+            evSeen = k.swungAt;
+            GravesAndGlory.Battle.PendingStrike s = null;
+            for (var x : b.strikes) if (x.attacker() == k && x.landsAt() > b.time) s = x;
+            if (s == null) {evCheck(false, "the Squire swung on tick " + b.time + " with no blow pending"); return;}
+            evCheck(s.variant() == k.lastVariant, "swing " + (evSwings + 1) + ": its pending blow's variant " + s.variant() + ", the unit's lastVariant " + k.lastVariant + " (want the same)");
+            evLands.put(s.landsAt(), s.variant());
+            evAttacks.computeIfAbsent(k.mob.getId(), x -> new ArrayList<>()).add(new MotionInput.Attack(k.lastVariant, b.world.getTime()));
+            evSwings++;
+            for (var t : Arrays.asList(evTarget, evLethal)) if (t != null && t.mob.isAlive()) t.mob.timeUntilRegen = 0; // no blow is lost to the hurt cooldown
+        }
+        /** The troop leaves every player's tracking (unloadEntity: its clients unload it) or is tracked again (loadEntity: START_TRACKING, then its spawn packet). */
+        static void evTrack(GravesAndGlory.Battle b, GravesAndGlory.Unit u, boolean load) {
+            try {
+                var m = net.minecraft.server.world.ThreadedAnvilChunkStorage.class.getDeclaredMethod(load ? "loadEntity" : "unloadEntity", net.minecraft.entity.Entity.class);
+                m.setAccessible(true); m.invoke(b.world.getChunkManager().threadedAnvilChunkStorage, u.mob);
+            } catch (ReflectiveOperationException e) {throw new RuntimeException(e);}
+        }
+        /**
+         * Whether the stances owed since evLoadAt have reached the client (or 20 ticks have passed), judging them once they have: each troop with a
+         * stance has it on the client within 2 ticks, a troop with none shows none, and the Squire's swings on the client are its newest alone.
+         */
+        boolean evArrival(GravesAndGlory.Battle b, String how) {
+            for (var u : evRetrack) {int id = u.mob.getId(); if (!u.stance.isEmpty() && !evArrived.containsKey(id) && MotionEvents.Client.STANCES.containsKey(id)) evArrived.put(id, b.time);}
+            long owed = evRetrack.stream().filter(u -> !u.stance.isEmpty()).count();
+            if (evArrived.size() < owed && since(b) <= 20) return false;
+            List<String> seen = new ArrayList<>(); boolean ok = owed > 0;
+            for (var u : evRetrack) {
+                int id = u.mob.getId(); var c = MotionEvents.Client.stance(id); Long at = evArrived.get(id);
+                boolean on = u.stance.isEmpty() ? c.name().isEmpty() : at != null && at - evLoadAt <= 2 && c.name().equals(u.stance) && Math.abs(c.aimPitch() - u.aimPitch) <= Tactics.AIM_STEP + 0.01;
+                ok &= on;
+                seen.add(name(u) + " " + (c.name().isEmpty() ? "none" : c.name() + " " + fmt(c.aimPitch())) + (at == null ? "" : " after " + (at - evLoadAt)) + " (server " + (u.stance.isEmpty() ? "none" : u.stance + " " + fmt(u.aimPitch)) + ")");
+            }
+            var all = evAttacks.getOrDefault(evKnight.mob.getId(), List.of());
+            List<MotionInput.Attack> want = all.isEmpty() ? List.of() : List.of(all.get(all.size() - 1)), got = List.copyOf(MotionEvents.Client.attacks(evKnight.mob.getId()));
+            ok &= !want.isEmpty() && got.equals(want);
+            evCheck(ok, how + ": " + seen + " (want each troop's stance within 2 ticks, none for a troop with none); the Squire's swings on the client " + got + " (want its newest, " + want + ")");
+            return true;
+        }
+
+        /** hl-events (stages 100-110, Task 6): see the class comment. Every wait is bounded. */
+        void eventStages(GravesAndGlory.Battle b) {
+            evSwing(b);
+            switch (stage) {
+                case 100 -> { // a fresh fixture on the same patch, the camera 24 blocks north of it
+                    if (!b.running || since(b) < 20) {if (since(b) > 2000) {evCheck(false, "the round never ran for hl-events"); evFinish(b);} return;}
+                    if (patch == null) {evCheck(false, "no level patch for hl-events"); evFinish(b); return;}
+                    clearFixture(b, "hl-events"); crawlers.clear(); archers.clear(); Projectiles.clear(b); b.strikes.clear();
+                    evHome = ground(b, patch[0] + 4, patch[2]);
+                    own.order = "hold"; own.target = evHome; own.yaw = -90; own.assignments.clear(); own.arrived.clear(); own.shotAt.clear();
+                    dusk.order = "attack"; dusk.assignments.clear(); dusk.shotAt.clear();
+                    var p = sp(b); b.relocate(p, patch[0] + 12, Phase1Checks.top(b, patch[0] + 12, patch[2] - 24) + 6, patch[2] - 24, 0f, 15f);
+                    next(b, 101);
+                }
+                case 101 -> { // the troops: the Squire and its dummy west, the holders and the Dusk archer east
+                    if (since(b) < 40) return; // the client has the chunks round the camera
+                    evTarget = holder(b, "archer", 40, evHome);
+                    evKnight = pinned(b, "knight", 41, ground(b, evHome.x + 1.8, evHome.z), false); evWatch.add(evKnight.mob.getId());
+                    evHg = holder(b, "ic_hearthguard", 42, ground(b, patch[0] + 20, patch[2] + 4));
+                    evTusk = holder(b, "wm_tusk", 43, ground(b, patch[0] + 20, patch[2] + 1));
+                    evBreaker = holder(b, "ic_breaker", 44, ground(b, patch[0] + 20, patch[2] - 2));
+                    evReaper = holder(b, "reaper", 45, ground(b, patch[0] + 20, patch[2] - 5));
+                    evArcher = pinned(b, "archer", 46, ground(b, patch[0] + 28, patch[2] + 4), true); evWatch.add(evArcher.mob.getId());
+                    evHealth = evTarget.mob.getHealth(); evSnap = true;
+                    next(b, 102);
+                }
+                case 102 -> { // three swings, each blow on the dummy; then the Squire stops
+                    if (since(b) == 2) {
+                        var p = sp(b);
+                        evCheck(p != null && net.fabricmc.fabric.api.networking.v1.PlayerLookup.tracking(evKnight.mob).contains(p) && net.fabricmc.fabric.api.networking.v1.PlayerLookup.tracking(evHg.mob).contains(p), "the player tracks the Squire and the Hearthguard once they stand");
+                    }
+                    float h = evTarget.mob.getHealth();
+                    if (h < evHealth) {
+                        Integer v = evLands.remove(b.time);
+                        if (v == null) evCheck(false, "the dummy was hurt on tick " + b.time + " with no blow of the Squire due");
+                        else evHits.computeIfAbsent(evTarget.mob.getId(), x -> new ArrayList<>()).add(evBlow(b, evTarget, v, false));
+                        evHealth = h;
+                    }
+                    for (var it = evLands.keySet().iterator(); it.hasNext(); ) {long t = it.next(); if (t < b.time) {it.remove(); evCheck(false, "the blow due on tick " + t + " never hurt the dummy");}}
+                    if (evSwings >= 3) evKnight.nextAttack = Long.MAX_VALUE;
+                    if (evSwings >= 3 && evLands.isEmpty()) {next(b, 103); return;}
+                    if (since(b) > 600) {evCheck(false, "the Squire swung " + evSwings + " times in 600 ticks (want 3, every blow landed)"); evKnight.nextAttack = Long.MAX_VALUE; evLands.clear(); next(b, 103);}
+                }
+                case 103 -> { // the lethal blow: a dummy on 1 health, the Squire free to swing again
+                    unpin(b, List.of(evTarget));
+                    evLethal = holder(b, "archer", 47, evHome); evLethal.mob.setHealth(1f);
+                    evKnight.nextAttack = b.time;
+                    next(b, 104);
+                }
+                case 104 -> {
+                    if (!evLethal.mob.isAlive()) {
+                        Integer v = evLands.remove(b.time);
+                        if (v == null) evCheck(false, "the 1-health dummy died on tick " + b.time + " with no blow of the Squire due");
+                        else evHits.computeIfAbsent(evLethal.mob.getId(), x -> new ArrayList<>()).add(evBlow(b, evLethal, v, true));
+                        evKnight.nextAttack = Long.MAX_VALUE; evLands.clear(); next(b, 105); return;
+                    }
+                    if (since(b) > 300) {evCheck(false, "the Squire never killed the 1-health dummy"); evKnight.nextAttack = Long.MAX_VALUE; evLands.clear(); next(b, 105);}
+                }
+                case 105 -> { // an arrow at the Hearthguard, its shield up, and one at the Breaker
+                    Tactics.shield(evHg.mob, true);
+                    if (evShots.isEmpty()) {
+                        boolean raised = evHg.mob.isUsingItem() && evHg.mob.getActiveItem().isOf(net.minecraft.item.Items.SHIELD);
+                        if (since(b) < 5 || !raised) {if (since(b) > 100) {evCheck(false, "the Hearthguard never raised its shield"); evStep = 0; next(b, 106);} return;}
+                        for (var t : List.of(evHg, evBreaker)) {
+                            t.mob.timeUntilRegen = 0; t.mob.hurtTime = 0;
+                            Projectiles.fire(b, evArcher, t.mob, "arrow", 2f);
+                            var s = b.shots.get(b.shots.size() - 1); evShots.add(s);
+                            float bearing = (float) BattleMath.signedBearing(t.mob.getYaw(), evArcher.mob.getX() - t.mob.getX(), evArcher.mob.getZ() - t.mob.getZ());
+                            String zone = BattleMath.zone(Projectiles.aim(t.mob).y, t.mob.getY(), t.mob.getHeight());
+                            evHits.computeIfAbsent(t.mob.getId(), x -> new ArrayList<>()).add(new MotionInput.Hit("arrow", zone, bearing, -1, t == evHg, false, b.world.getTime() + (s.lands() - b.time)));
+                        }
+                        return;
+                    }
+                    long last = evShots.stream().mapToLong(Projectiles.Shot::lands).max().orElse(b.time);
+                    if (b.time > last) {evCheck(b.shots.stream().noneMatch(evShots::contains), "both arrows left the queue by tick " + last); evStep = 0; next(b, 106);}
+                }
+                case 106 -> { // a fall on the Breaker, then magic damage, a tick apart
+                    Tactics.shield(evHg.mob, true);
+                    var m = evBreaker.mob; m.timeUntilRegen = 0; m.hurtTime = 0;
+                    boolean fall = evStep == 0;
+                    boolean hurt = m.damage(fall ? b.world.getDamageSources().fall() : b.world.getDamageSources().magic(), 1f);
+                    evCheck(hurt, "the Breaker took " + (fall ? "a fall" : "magic damage") + " on tick " + b.time);
+                    if (hurt) evHits.computeIfAbsent(m.getId(), x -> new ArrayList<>()).add(new MotionInput.Hit(fall ? "blunt" : "magic", fall ? "legs" : "body", 0f, 0, false, false, b.world.getTime()));
+                    if (++evStep >= 2) next(b, 107);
+                }
+                case 107 -> { // what the client holds against what the server sent; the plain-hold rule; then every troop out of the player's tracking
+                    Tactics.shield(evHg.mob, true);
+                    if (since(b) < 8) return;
+                    evSnap = false;
+                    int kid = evKnight.mob.getId(); var want = evAttacks.getOrDefault(kid, List.of()); var got = evSeenAttacks.getOrDefault(kid, List.of());
+                    evCheck(want.size() == 4 && got.equals(want), "the client holds the Squire's swings " + got + " (want the server's four, each with Battle's variant and the world tick of its swing: " + want + ")");
+                    evCompareHits("the first dummy (three blows)", evTarget);
+                    evCompareHits("the 1-health dummy (a killing blow)", evLethal);
+                    evCompareHits("the Hearthguard (an arrow on its raised shield)", evHg);
+                    evCompareHits("the Breaker (an arrow, a fall, magic)", evBreaker);
+                    for (var u : List.of(evHg, evTusk, evBreaker, evReaper)) {
+                        boolean wall = u == evHg || u == evTusk; String c = MotionEvents.Client.stance(u.mob.getId()).name();
+                        boolean on = (wall ? u.stance.equals("brace") || u.stance.equals("wall") : u.stance.equals("hold")) && c.equals(u.stance);
+                        evCheck(on, "plain-hold rule: on Hold " + name(u) + " (" + (u == evHg ? "shield" : u == evTusk ? "spear" : "neither shield nor spear") + ") shows " + (u.stance.isEmpty() ? "none" : u.stance) + " on the server, " + (c.isEmpty() ? "none" : c) + " on the client (want " + (wall ? "brace or wall" : "hold") + ", the same on both)");
+                    }
+                    evRetrack.clear(); for (var u : fixture) if (u.mob.isAlive()) evRetrack.add(u);
+                    for (var u : evRetrack) evTrack(b, u, false);
+                    next(b, 108);
+                }
+                case 108 -> { // the client forgot them; then they are tracked again
+                    boolean gone = evRetrack.stream().allMatch(u -> {int id = u.mob.getId(); return !MotionEvents.Client.STANCES.containsKey(id) && !MotionEvents.Client.ATTACKS.containsKey(id) && !MotionEvents.Client.HITS.containsKey(id);});
+                    if (!gone && since(b) <= 40) return;
+                    evCheck(gone, "out of the player's tracking, the client forgot the stances, swings and hits of " + evRetrack.size() + " troops");
+                    for (var u : evRetrack) evTrack(b, u, true);
+                    var p = sp(b);
+                    evCheck(p != null && evRetrack.stream().allMatch(u -> net.fabricmc.fabric.api.networking.v1.PlayerLookup.tracking(u.mob).contains(p)), "the player tracks the " + evRetrack.size() + " troops again");
+                    evLoadAt = b.time; evArrived.clear(); next(b, 109);
+                }
+                case 109 -> { // late join through START_TRACKING; then the channel registration replayed, the client's tables emptied first
+                    if (!evArrival(b, "tracked again (START_TRACKING)")) return;
+                    MotionEvents.Client.clear();
+                    var p = sp(b);
+                    net.fabricmc.fabric.api.networking.v1.S2CPlayChannelEvents.REGISTER.invoker().onChannelRegister(p.networkHandler, net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking.getSender(p), b.server, List.of(MotionEvents.STANCE));
+                    evLoadAt = b.time; evArrived.clear(); next(b, 110);
+                }
+                case 110 -> {if (evArrival(b, "the channels registered again (REGISTER)")) evFinish(b);}
                 default -> {}
             }
         }

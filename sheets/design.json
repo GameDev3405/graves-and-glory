@@ -2302,7 +2302,7 @@
       "id": "crew_fire",
       "family": "crew",
       "zone": "body",
-      "kind": "arrow",
+      "kind": "blunt",
       "impactTicks": 8,
       "weight": "heavy"
     },

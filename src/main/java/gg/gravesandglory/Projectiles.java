@@ -91,6 +91,18 @@ public final class Projectiles {
         return Double.POSITIVE_INFINITY;
     }
 
+    /**
+     * The angle (degrees above the horizontal, BattleMath.launchPitch) a ranged troop would loose its shot at target now, as fire would: from its eyes to
+     * the target's body, on the arc its weapon gives (an arrow or a trident's volley arc under any roof, a bolt or a shell straight). stance_v2's
+     * aimPitch while it aims (Tactics.show).
+     */
+    static float launchPitch(GravesAndGlory.Battle b,GravesAndGlory.Unit u,LivingEntity target){
+        Vec3d from=u.mob.getEyePos(),to=aim(target);String kind=Abilities.visual(u);boolean arrow=kind.equals("arrow")||kind.equals("trident");
+        double dist=from.distanceTo(to);
+        double peak=arrow?coverPeak(b.world,from,to,BattleMath.arcPeak(dist,C.volleyPeakPerBlock(),C.volleyPeakMax(),arcScale(u))):0;
+        int travel=BattleMath.arcTravelTicks(BattleMath.travelTicks(dist,arrow?C.arrowSpeed():C.boltSpeed(),C.projectileMinTicks(),C.projectileMaxTicks()),peak,C.arcTravelScale());
+        return (float)BattleMath.launchPitch(Math.hypot(to.x-from.x,to.z-from.z),to.y-from.y,peak,travel);
+    }
     public static void fire(GravesAndGlory.Battle b,GravesAndGlory.Unit u,LivingEntity target,String kind,float amount){
         Vec3d from=u.mob.getEyePos(),to=aim(target);
         Tactics.stamp(b,u,target); // archer fire: the target's group is under fire (Squad.shotAt)
@@ -176,12 +188,12 @@ public final class Projectiles {
         switch(s.kind){
             case "arrow","trident"->{
                 // Combat.resolve credits the shooter's army (lastHitBy), applies the counters and hurts the target with the troop damage type.
-                Combat.resolve(b,s.shooter,s.target,s.amount,"arrow",false);
+                Combat.resolve(b,s.shooter,s.target,s.amount,"arrow",false,at.y); // the height it struck at gives hit_v1's zone
                 BattleEffects.flash(b,at,s.squad.team);
             }
             case "bolt"->{
                 // A bolt with a target and an amount is a damaging magic shot; the blight cast's bolt has neither and stays a visual that arrives with the burst.
-                if(s.target!=null&&s.amount>0)Combat.resolve(b,s.shooter,s.target,s.amount,"bolt",false);
+                if(s.target!=null&&s.amount>0)Combat.resolve(b,s.shooter,s.target,s.amount,"bolt",false,at.y);
                 BattleEffects.flash(b,at,s.squad.team);
             }
             case "mend"->{s.target.heal(s.amount);b.world.spawnParticles(ParticleTypes.HEART,s.target.getX(),s.target.getY()+2,s.target.getZ(),3,.3,.2,.3,0);}

@@ -86,6 +86,82 @@ public final class BattleMath {
         if (fullHealth <= 0) return 1;
         return Math.max(0, Math.min(1, livingHealth / fullHealth));
     }
+    /**
+     * The signed bearing of a blow's source from its victim's facing (hit_v1's direction, carry 1 of Task 6): relativeBearing's angle with a side,
+     * + to the victim's right, - to its left, 0 straight ahead and 180 straight behind (never -180), in (-180, 180]. Minecraft's forward for a yaw is
+     * (-sin yaw, cos yaw), so its right hand is (-cos yaw, -sin yaw): at yaw 0 (facing +z) the right is -x. A source on the victim has no direction: 0.
+     */
+    public static double signedBearing(double facingYawDeg, double dx, double dz) {
+        if (Math.hypot(dx, dz) < 1e-9) return 0;
+        double yaw = Math.toRadians(facingYawDeg);
+        double ahead = -Math.sin(yaw) * dx + Math.cos(yaw) * dz, right = -Math.cos(yaw) * dx - Math.sin(yaw) * dz;
+        double deg = Math.toDegrees(Math.atan2(right, ahead));
+        return deg <= -180 + 1e-9 ? 180 : deg;
+    }
+    /** The zone a projectile strikes (hit_v1, spec 6.4): where its impact height sits on the victim's box from its feet, under 0.45 of the height legs, under 0.8 body, else head. A box with no height is struck in the body. */
+    public static String zone(double impactY, double feetY, double height) {
+        if (height <= 0) return "body";
+        double f = (impactY - feetY) / height;
+        return f < 0.45 ? "legs" : f < 0.8 ? "body" : "head";
+    }
+    /** A blow's weight class from its share of the victim's maximum health (combatDiscipline mediumHitShare and heavyHitShare): 0 light, 1 medium, 2 heavy. No max health reads light. */
+    public static int weight(double amount, double maxHealth, double medium, double heavy) {
+        if (maxHealth <= 0) return 0;
+        double share = amount / maxHealth;
+        return share >= heavy ? 2 : share >= medium ? 1 : 0;
+    }
+    /** The weight class index of an attackVariants weight cell (light, medium, heavy); an unknown cell reads light. */
+    public static int weightIndex(String weight) { return switch (weight) {case "heavy" -> 2; case "medium" -> 1; default -> 0;}; }
+    /**
+     * The stances a troop shows its clients, in stance_v2's wire order (the byte is the index): none, hold-ready, brace, the formed shield wall,
+     * shield-up moving, fall back, run, ranged lowered and ranged aiming (spec 6.4).
+     */
+    public static final List<String> STANCES = List.of("", "hold", "brace", "wall", "shield_move", "fall_back", "run", "ranged_rest", "ranged_aim");
+    /** The plain-hold rule (carry 2 of Task 6): on Hold a shield or spear troop braces, a shield troop formed in its wall shows the wall, and every other troop holds. */
+    public static String holdStance(boolean shield, boolean spear, boolean formed) { return shield && formed ? "wall" : shield || spear ? "brace" : "hold"; }
+    /**
+     * A troop's stance (stance_v2) from the order it fights under (an arrived Move or Retreat group's is Hold): Hold by the plain-hold rule
+     * (holdStance), Fall Back fall_back, Charge and Retreat run, any other order none. A ranged troop with an enemy in sight and in reach
+     * (aiming) aims on any order but a run or Fall Back, and with none rests (on Hold it holds); a shield troop on another order walking with
+     * its shield up (shieldUp) is shield_move.
+     */
+    public static String stance(String order, boolean shield, boolean spear, boolean ranged, boolean formed, boolean aiming, boolean shieldUp) {
+        String base = switch (order) {
+            case "hold" -> holdStance(shield, spear, formed);
+            case "fall_back" -> "fall_back";
+            case "charge", "retreat" -> "run";
+            default -> "";
+        };
+        if (ranged && aiming && !base.equals("run") && !base.equals("fall_back")) return "ranged_aim";
+        if (ranged && base.isEmpty()) return "ranged_rest";
+        if (shield && shieldUp && base.isEmpty()) return "shield_move";
+        return base;
+    }
+    /** hit_v1's kinds in wire order (the byte is the index): the three melee kinds, the two shot kinds and magic (spec 6.4). */
+    public static final List<String> KINDS = List.of("stab", "slash", "blunt", "arrow", "bolt", "magic");
+    /** hit_v1's zones in wire order (the byte is the index). */
+    public static final List<String> ZONES = List.of("legs", "body", "head");
+    /**
+     * A troop's blow's hit_v1 kind from Combat.resolve's kind, the attacker's family and its swing's attackVariants kind: a slam is blunt, a
+     * caster's bolt is magic, a blight is magic but the crew's shell is blunt (M5), a shot keeps its family's projectile (a crossbow's a bolt), and a
+     * melee blow keeps its swing's stab, slash or blunt (any other slashes).
+     */
+    public static String hitKind(String kind, String family, String swingKind) {
+        return switch (kind) {
+            case "slam" -> "blunt";
+            case "bolt" -> "magic";
+            case "blight" -> "crew".equals(family) ? "blunt" : "magic";
+            case "arrow" -> "bolt".equals(swingKind) ? "bolt" : "arrow";
+            default -> swingKind != null && (swingKind.equals("stab") || swingKind.equals("slash") || swingKind.equals("blunt")) ? swingKind : "slash";
+        };
+    }
+    /** A player's weapon's hit_v1 kind from its item id: a sword or axe slashes, a trident or spear stabs, anything else (a fist, a stick) is blunt. */
+    public static String weaponKind(String itemId) {
+        String path = itemId.substring(itemId.indexOf(':') + 1);
+        if (path.endsWith("sword") || path.endsWith("_axe") || path.equals("axe")) return "slash";
+        if (path.contains("trident") || path.contains("spear")) return "stab";
+        return "blunt";
+    }
     /** Degrees (0..180) between Minecraft's forward vector for a yaw, (-sin yaw, cos yaw), and the offset (dx,dz). */
     public static double relativeBearing(double facingYawDeg, double dx, double dz) {
         double length = Math.hypot(dx, dz);

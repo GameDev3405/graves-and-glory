@@ -20,7 +20,7 @@ import java.util.function.ToDoubleFunction;
 
 /**
  * Poses a troop's model each frame from its rig's clips (Phase 2 Task 5b). plan picks the clips from the troop's state,
- * its stance (the server's stance_v1 packet) and a scene's pose; pose blends them, every change over BLEND_TICKS, and keeps
+ * its stance (the server's stance_v2 packet, MotionEvents) and a scene's pose; pose blends them, every change over BLEND_TICKS, and keeps
  * per entity the clips playing (State, weak keys by identity). A frame, after TroopModel.setAngles resets every bone:
  * 1. the base: the still clip at 1 - m and the move clip at m (m = min(2.5 limbDistance, 1)), the move clip on the limb
  *    angle (100 ms per unit, as vanilla's animateMovement); a shield arm keeps a third of it; then the idle tell, if one plays: it adds

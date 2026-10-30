@@ -5321,6 +5321,11 @@ public final class Phase2Checks implements ClientModInitializer {
 
         // ---- the stance sync ----
         /** One stance step: the drill's order and formation, and the stance its three knights must then read on this client within 20 ticks. A Retreat's spot lies 40 blocks off, so the group has not arrived (Tactics.arrived) and runs. */
+        /**
+         * The stance this client holds for a troop (MotionEvents.Client, stance_v2; Task 6 ported the check from stance_v1's TroopAnimator.STANCES). A shield troop
+         * formed in its wall on Hold reads wall, which the plain-hold rule counts as its brace (BattleMath.holdStance), so wall reads brace here.
+         */
+        static String stanceOf(int id){String s=MotionEvents.Client.stance(id).name();return s.equals("wall")?"brace":s;}
         record StanceStep(String what,String order,String formation,String want){}
         static final List<StanceStep> STANCE_STEPS=List.of(new StanceStep("hold in Compact (Hold braces a shield troop)","hold","block","brace"),new StanceStep("charge","charge","line","run"),
             new StanceStep("follow","follow","line",""),new StanceStep("retreat in line","retreat","line","run"),new StanceStep("hold in line (Hold braces a shield troop)","hold","line","brace"));
@@ -5331,7 +5336,7 @@ public final class Phase2Checks implements ClientModInitializer {
             if(si<STANCE_STEPS.size()){
                 var st=STANCE_STEPS.get(si);
                 if(wait==1){since=tick;server(c,b->{var d=drill;if(drillTarget==null)drillTarget=d.target;d.order=st.order();d.formation=st.formation();d.target=st.order().equals("retreat")?drillTarget.add(40,0,0):drillTarget;});return;}
-                boolean all=true;for(var u:group){var e=client(c,u.mob);all&=e!=null&&TroopAnimator.STANCES.getOrDefault(e.getId(),"").equals(st.want());}
+                boolean all=true;for(var u:group){var e=client(c,u.mob);all&=e!=null&&stanceOf(e.getId()).equals(st.want());}
                 if(all||tick-since>40){boolean good=all&&tick-since<=20;stanceOk&=good;
                     stanceWhy.append(st.what()).append(": ").append(all?"\""+st.want()+"\" read for all three "+(tick-since)+" ticks after the order":"not all read \""+st.want()+"\" in 40 ticks: "+reads(c)).append(good?"":" (BAD: want 20 ticks or fewer)").append("; ");
                     si++;wait=0;}
@@ -5342,24 +5347,24 @@ public final class Phase2Checks implements ClientModInitializer {
             // a knight spawned into the group on hold in line: its first tick on this client reads brace (Hold braces a shield troop), sent when the player started tracking it
             if(wait==1){trackingBefore=Tactics.trackingSends;beatBefore=Tactics.stanceSends;since=tick;server(c,b->late=post(b,drill,"knight",-2.5,5,180));return;}
             var e=late==null?null:client(c,late.mob);
-            if(e!=null&&lateSeen<0){lateSeen=tick-since;lateStance=TroopAnimator.STANCES.getOrDefault(e.getId(),"");}
+            if(e!=null&&lateSeen<0){lateSeen=tick-since;lateStance=stanceOf(e.getId());}
             if(lateSeen>=0||tick-since>60){
                 int sends=Tactics.trackingSends-trackingBefore;boolean good=lateSeen>=0&&"brace".equals(lateStance)&&sends>=1;stanceOk&=good;
                 stanceWhy.append("a knight spawned into the group on hold in line: on this client ").append(lateSeen<0?"never":lateSeen+" ticks after the spawn").append(", reading \"").append(lateStance)
                     .append("\" on that first tick (want brace: Hold braces a shield troop); ").append(sends).append(" START_TRACKING stance sends (want 1 or more), ").append(Tactics.stanceSends-beatBefore).append(" beat sends meanwhile").append(good?"":" (BAD)");
                 regPhase=1;wait=0;}
         }
-        /** A player whose client registers stance_v1 late (Task 5b review, minor 4): this client's stances are cleared, the REGISTER event runs for it, and the four knights of the drill must read brace again (Hold braces a shield troop). */
+        /** A player whose client registers stance_v2 late (Task 5b review, minor 4): this client's stances are cleared, the REGISTER event runs for it, and the four knights of the drill must read brace again (Hold braces a shield troop). */
         int regPhase,regBefore,regSince;
         void register(MinecraftClient c,int tick){
-            if(regPhase==1){TroopAnimator.STANCES.clear();regBefore=Tactics.registerSends;regSince=tick;UUID id=c.player.getUuid();
+            if(regPhase==1){MotionEvents.Client.STANCES.clear();regBefore=Tactics.registerSends;regSince=tick;UUID id=c.player.getUuid();
                 server(c,b->{var p=b.server.getPlayerManager().getPlayer(id);if(p!=null)net.fabricmc.fabric.api.networking.v1.S2CPlayChannelEvents.REGISTER.invoker().onChannelRegister(p.networkHandler,net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking.getSender(p),b.server,List.of(GravesAndGlory.STANCE));});
                 regPhase=2;return;}
             List<GravesAndGlory.Unit> four=new ArrayList<>(group);if(late!=null)four.add(late);boolean all=true;
-            for(var u:four){var e=client(c,u.mob);all&=e!=null&&TroopAnimator.STANCES.getOrDefault(e.getId(),"").equals("brace");} // on hold in line: Hold braces a shield troop
+            for(var u:four){var e=client(c,u.mob);all&=e!=null&&stanceOf(e.getId()).equals("brace");} // on hold in line: Hold braces a shield troop
             if(all||tick-regSince>40){
                 int sends=Tactics.registerSends-regBefore;boolean good=all&&sends>=four.size();stanceOk&=good;
-                stanceWhy.append("; a client registering stance_v1 late (its stances cleared, then the REGISTER event run for this player): ").append(sends).append(" stance sends (want ").append(four.size()).append(" or more), the four knights read brace again (Hold, a shield troop) ")
+                stanceWhy.append("; a client registering stance_v2 late (its stances cleared, then the REGISTER event run for this player): ").append(sends).append(" stance sends (want ").append(four.size()).append(" or more), the four knights read brace again (Hold, a shield troop) ")
                     .append(all?(tick-regSince)+" ticks later":"never (40 ticks)").append(good?"":" (BAD)");
                 regPhase=3;}
         }
@@ -5367,14 +5372,14 @@ public final class Phase2Checks implements ClientModInitializer {
         volatile GravesAndGlory.Unit plainHold;int plainSince;
         void plainHold(MinecraftClient c,int tick){
             if(regPhase==3){plainSince=tick;server(c,b->plainHold=post(b,drill,"revenant",2.5,5,180));regPhase=4;return;}
-            var e=plainHold==null?null:client(c,plainHold.mob);String read=e==null?"-":TroopAnimator.STANCES.getOrDefault(e.getId(),"");
+            var e=plainHold==null?null:client(c,plainHold.mob);String read=e==null?"-":stanceOf(e.getId());
             if("hold".equals(read)||tick-plainSince>40){
                 boolean good="hold".equals(read)&&tick-plainSince<=20;stanceOk&=good;
                 stanceWhy.append("; a revenant (no shield, no spear) joining the group on hold in line reads \"").append(read).append("\" ").append(tick-plainSince).append(" ticks after the spawn (want hold: Hold braces only shield and spear troops, within 20 ticks)").append(good?"":" (BAD)");
                 report("p2-anim-stance",stanceOk,stanceWhy.toString().trim());
                 server(c,b->{var d=drill;d.order="follow";if(drillTarget!=null)d.target=drillTarget;camera(b,0,1.6,-6,0,8);});cs=3;wait=0;si=0;regPhase=0;}
         }
-        String reads(MinecraftClient c){StringBuilder sb=new StringBuilder();for(var u:group){var e=client(c,u.mob);sb.append(e==null?"absent":"\""+TroopAnimator.STANCES.getOrDefault(e.getId(),"")+"\"").append(" ");}return sb.toString().trim();}
+        String reads(MinecraftClient c){StringBuilder sb=new StringBuilder();for(var u:group){var e=client(c,u.mob);sb.append(e==null?"absent":"\""+stanceOf(e.getId())+"\"").append(" ");}return sb.toString().trim();}
 
         // ---- a scene pose ----
         int sceneAt=-1;boolean kneelOk,helmOk,backOk;String kneelWhy="",helmWhy="",backWhy="";

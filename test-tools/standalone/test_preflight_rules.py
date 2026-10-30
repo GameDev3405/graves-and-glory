@@ -103,6 +103,17 @@ class PreflightRules(unittest.TestCase):
         # Vacate a known family: the harpooner joins the bows, so the thrower rows belong to no troop.
         self.refuses(lambda d: self.troop(d, 'tc_harpooner').__setitem__('family', 'bow'), 'thrower_throw', 'used by no troop')
 
+    def variant(self, data, vid):
+        return next(v for v in data['attackVariants'] if v['id'] == vid)
+
+    def test_shell_family_lands_blunt(self):
+        # Task 6 carry M5: the Mortar's shell (the crew family, every troop's ability shell) lands as a blunt blow, never as an arrow.
+        self.refuses(lambda d: self.variant(d, 'crew_fire').__setitem__('kind', 'arrow'), 'crew_fire', 'shell')
+        self.refuses(lambda d: self.variant(d, 'crew_fire').__setitem__('kind', 'stab'), 'crew_fire', 'shell')
+
+    def test_ranged_family_never_blunt(self):
+        self.refuses(lambda d: self.variant(d, 'bow_volley').__setitem__('kind', 'blunt'), 'bow_volley', 'ranged family')
+
     def test_variant_family_must_be_known(self):
         def orphan(d):
             row = dict(d['attackVariants'][0])

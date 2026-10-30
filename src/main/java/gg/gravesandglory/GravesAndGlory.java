@@ -46,8 +46,8 @@ public final class GravesAndGlory implements ModInitializer {
     public static final Identifier STATE = new Identifier("gravesandglory", "state_v9");
     public static final Identifier OPEN_BARRACKS = new Identifier("gravesandglory", "barracks_v1");
     public static final Identifier PARTY = new Identifier("gravesandglory", "party_v1");
-    /** A troop's stance (Tactics.STANCES), server to client: a varInt entity id and a byte index. */
-    public static final Identifier STANCE = new Identifier("gravesandglory", "stance_v1");
+    /** A troop's stance, server to client: stance_v2 (MotionEvents.STANCE), which retired stance_v1. */
+    public static final Identifier STANCE = MotionEvents.STANCE;
     /** S2C battle event feed lines (FeedEvents): kind, the event's team, text. */
     public static final Identifier FEED = new Identifier("gravesandglory", "feed_v1");
     public static Battle battle;
@@ -83,21 +83,21 @@ public final class GravesAndGlory implements ModInitializer {
             // No hunger in Graves and Glory: food stays full (sprinting and slow natural healing still work) and saturation empty (so healing stays slow).
             for(ServerPlayerEntity p:server.getPlayerManager().getPlayerList()){var hunger=p.getHungerManager();if(hunger.getFoodLevel()!=20)hunger.setFoodLevel(20);hunger.setSaturationLevel(0);hunger.setExhaustion(0);}
         });
-        // A player who starts tracking a troop learns its stance (stance_v1), ahead of the entity's spawn packet (Fabric fires the event first;
+        // A player who starts tracking a troop learns its stance (stance_v2) and its newest swing (attack_v1), ahead of the entity's spawn packet (Fabric fires the event first;
         // the client keeps the stance for an id it does not have yet). START_TRACKING fires inside spawnEntity, so a troop Battle.spawn is
         // placing is found through Battle.spawning (it joins units after).
         EntityTrackingEvents.START_TRACKING.register((entity,player)->{
             if(battle==null||!ArmyMobs.isTroop(entity))return;
             Unit u=battle.spawning!=null&&battle.spawning.mob==entity?battle.spawning:null;
             if(u==null)for(Unit x:battle.units)if(x.mob==entity){u=x;break;}
-            if(u!=null&&!u.stance.isEmpty())Tactics.trackingSends+=Tactics.sendStance(u,List.of(player));
+            if(u!=null){int sent=MotionEvents.catchUp(battle,u,player);MotionEvents.trackingSends+=sent;Tactics.trackingSends+=sent;}
         });
-        // A player whose client registers stance_v1 only after the troops around it began to be tracked (a guest joining a battle in progress: its trackers
+        // A player whose client registers stance_v2 only after the troops around it began to be tracked (a guest joining a battle in progress: its trackers
         // start when it enters the world, before its client says which channels it takes, so canSend was false for those sends) gets the stance of every troop it tracks.
         S2CPlayChannelEvents.REGISTER.register((handler,sender,server,channels)->{
             if(!channels.contains(STANCE))return;
             ServerPlayerEntity joined=handler.player;
-            server.execute(()->{if(battle!=null)Tactics.registerSends+=Tactics.sendTracked(battle,joined);});
+            server.execute(()->{if(battle!=null){int sent=MotionEvents.sendTracked(battle,joined);MotionEvents.registerSends+=sent;Tactics.registerSends+=sent;}});
         });
         // A soldier's rank (rank_v1: level, weapon tier, armour tier) goes the same two ways as his stance: on START_TRACKING and on a late channel registration.
         RankSync.registerServer();
@@ -225,6 +225,8 @@ public final class GravesAndGlory implements ModInitializer {
         long swungAt=-1;int lastVariant=-1;
         /** The orders (Charge and Hold) a blow of his carries while it lands (Tactics.land sets them from its swing, Ruling R29, and clears them after): every hit of that blow (its cleave or splash too, and a trample) reads it through Combat.charge; null otherwise. */
         Combat.Charge blow;
+        /** The swing (an index into Tactics.variants of its family) of the blow that is landing, set and cleared with blow: hit_v1 reads its kind, zone and weight. -1 otherwise. */
+        int blowVariant=-1;
         long nextPath;
         Vec3d lastPosition,lastGoal,deployed;
         /** A wall troop's jump onto its slot on a rise (Tactics.settle, Tactics.hop): the slot (null: none), the tick it ends by, and whether it has left the ground. */
@@ -265,8 +267,8 @@ public final class GravesAndGlory implements ModInitializer {
         String seenOrder;
         /** Where the troop stood when it last moved more than the Entrench radius, and the battle time (ticks) it has stood there since (Houses.sample, on each Tactics beat). Null before its first beat. */
         Vec3d stillAt;long stillSince;
-        /** The stance its clients show (Tactics.STANCES, from its order on its beat; stance_v1 carries it); "" for none. */
-        String stance="";
+        /** The stance its clients show (BattleMath.STANCES, Tactics.show on its beat; stance_v2 carries it with aimPitch, BattleMath.launchPitch at its target while ranged_aim, else 0); "" for none. */
+        String stance="";float aimPitch;
         Unit(MobEntity m,Squad s,Spec.TroopsRow t,int slot){mob=m;squad=s;spec=t;this.slot=slot;lastPosition=m.getPos();deployed=m.getPos();tags=new HashSet<>(ArmyMobs.tags(t));}
     }
     public static final class Capture {
@@ -509,7 +511,7 @@ public final class GravesAndGlory implements ModInitializer {
         final Map<Squad,Map<Integer,Integer>> targeters=new HashMap<>();
         /** How many of an army's living Pack Hunters troops had this target at the last count. */
         int targeters(Squad s,LivingEntity target){var m=targeters.get(s);return m==null?0:m.getOrDefault(target.getId(),0);}
-        /** The unit spawn is placing, while spawnEntity runs (the stance_v1 and rank_v1 tracking sends find it here); null otherwise. */
+        /** The unit spawn is placing, while spawnEntity runs (the stance_v2, attack_v1 and rank_v1 tracking sends find it here); null otherwise. */
         Unit spawning;
         /** The kill-credit logs of in-match progression (design 3.2): who hit, slowed, pulled or zoned each victim and who healed or buffed each troop, within progression.assistSeconds (Veterans.helped and supported write it); and when Veterans last trimmed it. clearProgression empties it. */
         final CreditLog credit=new CreditLog();long creditTrimmedAt;
