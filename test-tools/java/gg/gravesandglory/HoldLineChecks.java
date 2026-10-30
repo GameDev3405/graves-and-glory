@@ -15,11 +15,14 @@ import static gg.gravesandglory.Phase2Checks.server;
  * <ul>
  * <li>hl-wall: twelve Order Squires and Lord Marshal Aldric of the commander's army on Hold in Line, and an Ironclad army (six Hearthguard,
  * four Shieldbreakers) on Hold in Compact, all with their AI on, start a few blocks off their slots and walk in. After 200 ticks the
- * neighbouring Squires stand 0.7 apart (the wall cell, give or take 0.05), no two bodies' boxes overlap by more than 0.02, every Shieldbreaker
- * stands behind the Hearthguard's ranks, the Marshal keeps at least his width and 0.1 to his nearest neighbour, the shield troops brace, and
- * nothing still shuffles in the last 40 ticks (no jam, no stutter). The screenshot is hl-wall.png.</li>
+ * wall's neighbours in each rank (by the places of its layout) stand 0.7 apart (the wall cell, give or take 0.05), no two bodies' boxes overlap
+ * by more than 0.02, every Shieldbreaker stands behind the Hearthguard's ranks, the Marshal's place has at least his width and 0.1 of room to
+ * the places beside it, the shield troops brace, and nothing still shuffles in the last 40 ticks (no jam, no stutter). The screenshot is hl-wall.png.</li>
+ * <li>hl-wall-loss: then a front-rank man of the wall with a man behind him in his file is killed. 240 ticks later at most 2 of the survivors
+ * have another place than they had (the man behind steps up, one closes the rank behind), the front rank is whole, every wall man stands within
+ * 0.1 of his place, none moved 0.05 in the last 40 ticks, and the rank neighbours stand 0.7 apart again. The screenshot is hl-wall-loss.png.</li>
  * <li>hl-mirror: the command preview's places (CommandMode.places, from the client's own markers and group counts) are the server's slots
- * (Battle.formation) of the commander's Line on Hold, as a set of {side, back} from the order's point.</li>
+ * (Battle.formation) of the commander's Line on Hold after the loss, as a set of {side, back} from the order's point.</li>
  * </ul>
  */
 final class HoldLineChecks {
@@ -32,6 +35,9 @@ final class HoldLineChecks {
         GravesAndGlory.Unit marshal;
         Vec3d lineAt, blockAt, cameraAt;
         final Map<GravesAndGlory.Unit, Vec3d> settledAt = new HashMap<>();
+        /** The commander's units' places ({side, back}) just before the loss, and the man killed. */
+        final Map<GravesAndGlory.Unit, double[]> placeBefore = new HashMap<>();
+        GravesAndGlory.Unit fallen;
         /** The server's places of the commander's Line, {side, back} from its point, as "side,back" to three places; set with the last stage. */
         volatile Set<String> serverPlaces;
         volatile boolean mirrorDone;
@@ -146,28 +152,69 @@ final class HoldLineChecks {
                     if (since(b) == 190) requestShot("hl-wall", 4);
                     if (since(b) < 200) return;
                     wall(b);
-                    Set<String> places = new TreeSet<>();
-                    for (var u : fixture) if (u.squad == own) {double[] sb = sideBack(b, u); places.add(key(sb[0], sb[1]));}
-                    serverPlaces = places;
+                    // hl-wall-loss: a front-rank man with a man directly behind him falls
+                    List<GravesAndGlory.Unit> line = wallLine();
+                    for (var u : line) placeBefore.put(u, sideBack(b, u));
+                    double front = 99;
+                    for (var u : line) front = Math.min(front, placeBefore.get(u)[1]);
+                    for (var u : line) {
+                        double[] p = placeBefore.get(u); if (Math.abs(p[1] - front) > 1e-6 || u == marshal) continue;
+                        boolean behind = false;
+                        for (var o : line) {double[] q = placeBefore.get(o); behind |= o != u && Math.abs(q[0] - p[0]) < 1e-6 && q[1] > p[1] + 1e-6;}
+                        if (behind) {fallen = u; break;}
+                    }
+                    if (fallen == null) {report("hl-wall-loss", false, "no front-rank Squire with a man behind him in his file"); serverPlaces = places(b); next(b, 30); return;}
+                    fallen.mob.kill(); b.units.removeIf(u -> !u.mob.isAlive() || u.mob.isRemoved()); knights.remove(fallen);
+                    next(b, 20);
+                }
+                case 20 -> {
+                    if (since(b) == 200) {settledAt.clear(); for (var u : wallLine()) settledAt.put(u, u.mob.getPos());}
+                    if (since(b) == 210) requestShot("hl-wall-loss", 4);
+                    if (since(b) < 240) return;
+                    wallLoss(b);
+                    serverPlaces = places(b);
                     next(b, 30);
                 }
                 default -> {}
             }
         }
 
+        /** The commander's living wall: the Squires and the Marshal. */
+        List<GravesAndGlory.Unit> wallLine() {
+            List<GravesAndGlory.Unit> line = new ArrayList<>();
+            for (var k : knights) if (k.mob.isAlive()) line.add(k);
+            if (marshal.mob.isAlive()) line.add(marshal);
+            return line;
+        }
+        /** The server's places of the commander's living units, {side, back} from the order's point, as keys. */
+        Set<String> places(GravesAndGlory.Battle b) {
+            Set<String> places = new TreeSet<>();
+            for (var u : fixture) if (u.squad == own && u.mob.isAlive()) {double[] sb = sideBack(b, u); places.add(key(sb[0], sb[1]));}
+            return places;
+        }
+        /**
+         * How far apart the wall's rank neighbours stand: the units grouped into ranks by the back of their places, each rank in order of side,
+         * and the distance between the bodies of each two that neighbour in it: {least, most, pairs}.
+         */
+        static double[] rankGaps(GravesAndGlory.Battle b, List<GravesAndGlory.Unit> line) {
+            Map<Long, List<GravesAndGlory.Unit>> ranks = new TreeMap<>(); Map<GravesAndGlory.Unit, double[]> at = new HashMap<>();
+            for (var u : line) {double[] p = sideBack(b, u); at.put(u, p); ranks.computeIfAbsent(Math.round(p[1] * 1000), k -> new ArrayList<>()).add(u);}
+            double least = 9, most = 0, pairs = 0;
+            for (var rank : ranks.values()) {
+                rank.sort(Comparator.comparingDouble(u -> at.get(u)[0]));
+                for (int i = 1; i < rank.size(); i++) {double d = distance(rank.get(i - 1).mob.getPos(), rank.get(i).mob.getPos()); least = Math.min(least, d); most = Math.max(most, d); pairs++;}
+            }
+            return new double[]{least, most, pairs};
+        }
+
         /** hl-wall, on the server after 200 ticks. */
         void wall(GravesAndGlory.Battle b) {
             List<String> why = new ArrayList<>(); boolean pass = true;
-            // neighbouring Squires: each one's nearest shield neighbour of its army
-            double gapMin = 9, gapMax = 0;
-            List<GravesAndGlory.Unit> line = new ArrayList<>(knights); line.add(marshal);
-            for (var k : knights) {
-                double best = 9;
-                for (var o : line) if (o != k) best = Math.min(best, distance(k.mob.getPos(), o.mob.getPos()));
-                gapMin = Math.min(gapMin, best); gapMax = Math.max(gapMax, best);
-            }
-            boolean gaps = gapMin >= WALL - 0.05 && gapMax <= WALL + 0.05; pass &= gaps;
-            why.add("the twelve Squires' nearest neighbours stand " + fmt(gapMin) + " to " + fmt(gapMax) + " apart (want 0.70 +/- 0.05)=" + gaps);
+            // the wall's rank neighbours, by the places of its layout
+            List<GravesAndGlory.Unit> line = wallLine();
+            double[] g = rankGaps(b, line);
+            boolean gaps = g[2] > 0 && g[0] >= WALL - 0.05 && g[1] <= WALL + 0.05; pass &= gaps;
+            why.add("the wall's " + (int) g[2] + " pairs of rank neighbours stand " + fmt(g[0]) + " to " + fmt(g[1]) + " apart (want 0.70 +/- 0.05)=" + gaps);
             // no two bodies' boxes overlap by more than 0.02
             double overlap = 0; String worst = "none";
             for (int i = 0; i < fixture.size(); i++) for (int j = i + 1; j < fixture.size(); j++) {
@@ -184,12 +231,12 @@ final class HoldLineChecks {
             for (var k : breakers) breakerFront = Math.min(breakerFront, backNow(b, k));
             boolean behind = breakerFront > guardBack + 0.3; pass &= behind;
             why.add("the Hearthguard's rearmost stands " + fmt(guardBack) + " behind the Ironclad point, the Shieldbreakers' foremost " + fmt(breakerFront) + " (want behind them)=" + behind);
-            // the Marshal's gap
-            double marshalGap = 9;
-            for (var o : line) if (o != marshal) marshalGap = Math.min(marshalGap, distance(marshal.mob.getPos(), o.mob.getPos()));
+            // the Marshal's room: his place to the nearest place beside it, with no slack; where he stands is reported, the box overlap above bounds it
+            double marshalRoom = 9, marshalGap = 9; Vec3d marshalPlace = b.formation(marshal);
+            for (var o : line) if (o != marshal) {marshalRoom = Math.min(marshalRoom, distance(marshalPlace, b.formation(o))); marshalGap = Math.min(marshalGap, distance(marshal.mob.getPos(), o.mob.getPos()));}
             double need = marshal.mob.getWidth() + 0.1;
-            boolean room = marshalGap >= need - 0.05; pass &= room;
-            why.add("Lord Marshal Aldric's nearest neighbour is " + fmt(marshalGap) + " off (want his width + 0.1 = " + fmt(need) + ", less the 0.05 the Squires are allowed)=" + room);
+            boolean room = marshalRoom >= need - 1e-9; pass &= room;
+            why.add("Lord Marshal Aldric's place has " + fmt(marshalRoom) + " of room to the nearest place beside it (want at least his width + 0.1 = " + fmt(need) + "; he stands " + fmt(marshalGap) + " from his nearest neighbour)=" + room);
             // braced, and still: nothing jams or shuffles at 0.7
             long braced = fixture.stream().filter(u -> u.tags.contains("shield") && u.stance.equals("brace")).count(), shields = fixture.stream().filter(u -> u.tags.contains("shield")).count();
             boolean brace = braced == shields; pass &= brace;
@@ -206,6 +253,40 @@ final class HoldLineChecks {
             boolean still = moved < 0.05 && wallOff < 0.1 && restOff <= tolerance + 0.05; pass &= still;
             why.add("in the last 40 ticks the most any troop moved is " + fmt(moved) + " (" + mover + "; want under 0.05: no jam, no stutter); the farthest wall troop from its slot stands " + fmt(wallOff) + " off it (" + wallWorst + "; want under 0.1), the farthest of the rest " + fmt(restOff) + " (" + restWorst + "; want within the arrival tolerance " + fmt(tolerance) + ")=" + still);
             report("hl-wall", pass, String.join("; ", why));
+        }
+
+        /** hl-wall-loss, on the server 240 ticks after the front-rank man fell. */
+        void wallLoss(GravesAndGlory.Battle b) {
+            List<String> why = new ArrayList<>(); boolean pass = true;
+            List<GravesAndGlory.Unit> line = wallLine();
+            // at most 2 survivors took another place
+            List<String> movers = new ArrayList<>();
+            for (var u : line) {double[] was = placeBefore.get(u), now = sideBack(b, u); if (was == null || Math.hypot(now[0] - was[0], now[1] - was[1]) > 0.05) movers.add(u.spec.id() + " " + u.slot);}
+            boolean few = movers.size() <= 2; pass &= few;
+            why.add(fallen.spec.id() + " " + fallen.slot + " fell from the front rank; " + movers.size() + " of the " + line.size() + " survivors took another place " + movers + " (want at most 2)=" + few);
+            // the gap is closed: the front rank has its places, each held
+            double front = 99; int columns = BattleMath.groupColumns("infantry", 10);
+            for (var u : line) front = Math.min(front, sideBack(b, u)[1]);
+            int inFront = 0; double off = 0; String worst = "none";
+            for (var u : line) {
+                if (Math.abs(sideBack(b, u)[1] - front) > 1e-6) continue;
+                inFront++; double o = distance(u.mob.getPos(), b.formation(u));
+                if (o > off) {off = o; worst = u.spec.id() + " " + u.slot;}
+            }
+            boolean whole = inFront == columns && off < 0.1; pass &= whole;
+            why.add(inFront + " stand in the front rank (want " + columns + "), the farthest " + fmt(off) + " off his place (" + worst + "; want under 0.1)=" + whole);
+            // every wall man (the ranks behind too) on his place, and still
+            double wallOff = 0, moved = 0; String wallWorst = "none", mover = "none";
+            for (var u : line) {
+                double o = distance(u.mob.getPos(), b.formation(u)); if (o > wallOff) {wallOff = o; wallWorst = u.spec.id() + " " + u.slot;}
+                Vec3d then = settledAt.get(u); double m = then == null ? 9 : distance(then, u.mob.getPos()); if (m > moved) {moved = m; mover = u.spec.id() + " " + u.slot;}
+            }
+            boolean settled = wallOff < 0.1 && moved < 0.05; pass &= settled;
+            why.add("the farthest wall man from his place stands " + fmt(wallOff) + " off it (" + wallWorst + "; want under 0.1), the most one moved in the last 40 ticks " + fmt(moved) + " (" + mover + "; want under 0.05)=" + settled);
+            double[] g = rankGaps(b, line);
+            boolean gaps = g[2] > 0 && g[0] >= WALL - 0.05 && g[1] <= WALL + 0.05; pass &= gaps;
+            why.add("the wall's " + (int) g[2] + " pairs of rank neighbours stand " + fmt(g[0]) + " to " + fmt(g[1]) + " apart (want 0.70 +/- 0.05)=" + gaps);
+            report("hl-wall-loss", pass, String.join("; ", why));
         }
     }
 }

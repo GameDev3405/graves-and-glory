@@ -224,8 +224,10 @@ final class Tactics {
         });
         if(c==null)return false;
         if(TRACE_HOPS)System.out.println("[Graves and Glory] step hop of slot "+u.slot+" from ("+String.format("%.1f,%.1f,%.1f",mob.getX(),mob.getY(),mob.getZ())+") to ("+c[0]+","+c[1]+","+c[2]+") on its way to ("+String.format("%.1f,%.1f",goal.x,goal.z)+")");
-        // on the point of the step nearest the waypoint, not its middle: two wall neighbours 0.7 apart that hop onto one block stand apart, as they walked
-        double half=mob.getWidth()/2;double x=net.minecraft.util.math.MathHelper.clamp(goal.x,c[0]+half,c[0]+1-half),z=net.minecraft.util.math.MathHelper.clamp(goal.z,c[2]+half,c[2]+1-half);
+        // on the point of the step nearest the waypoint, not its middle, so two wall neighbours that hop onto one block land up to 1 - width apart
+        // (0.4 for a 0.6-wide troop, their boxes still overlapping by 0.2 until settle walks them back to their places); a body a block wide or wider
+        // has no room to slide on the block and takes its middle
+        double half=mob.getWidth()/2;double x=half>=0.5?c[0]+0.5:net.minecraft.util.math.MathHelper.clamp(goal.x,c[0]+half,c[0]+1-half),z=half>=0.5?c[2]+0.5:net.minecraft.util.math.MathHelper.clamp(goal.z,c[2]+half,c[2]+1-half);
         mob.refreshPositionAndAngles(x,c[1],z,mob.getYaw(),mob.getPitch());mob.setVelocity(Vec3d.ZERO);stepHops++;
         PINS.remove(u);
         return true;

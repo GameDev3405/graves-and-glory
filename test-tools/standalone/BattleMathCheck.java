@@ -9,6 +9,17 @@ public final class BattleMathCheck {
         if (!pass) throw new AssertionError(message);
         checks++;
     }
+    /** How many units stand somewhere else than they did: unit i was at prev[i] (null: new), it now takes places[at[i]]. */
+    static int moved(double[][] prev, double[][] places, int[] at) {
+        int n = 0;
+        for (int i = 0; i < at.length; i++) if (prev[i] != null && Math.hypot(places[at[i]][0] - prev[i][0], places[at[i]][1] - prev[i][1]) > 1e-9) n++;
+        return n;
+    }
+    static boolean permutation(int[] at) {
+        boolean[] seen = new boolean[at.length];
+        for (int a : at) { if (a < 0 || a >= at.length || seen[a]) return false; seen[a] = true; }
+        return true;
+    }
     public static void main(String[] args) {
         check(BattleMath.travelTicks(22, 2.2, 2, 14) == 10, "arrow at max range lands in 10 ticks");
         check(BattleMath.travelTicks(1, 2.2, 2, 14) == 2, "point-blank shots still travel the minimum");
@@ -43,8 +54,10 @@ public final class BattleMathCheck {
         check(wedgeOld[0][0] == 0 && wedgeOld[0][1] == 1.8 && wedgeOld[1][0] == -1.8 && wedgeOld[3][0] == 1.8 && Math.abs(wedgeOld[2][1] - 3.6) < 1e-9 && Math.abs(wedgeOld[4][1] - 5.4) < 1e-9 && wedgeOld[4][0] == -3.6, "the old wedge: 1, then 3 a rank, then 5");
         boolean[] mix = {true,false,true,true,false,true,true,true};double[] w8 = {.6,.6,.6,.6,.6,.6,.6,.6};
         double[][] hold = BattleMath.holdLayout(mix, w8, 1.8, 0.7, 5, false);
-        check(Math.abs(hold[0][0] + 1.4) < 1e-9 && Math.abs(hold[2][0] + 0.7) < 1e-9 && Math.abs(hold[0][1] - 0.7) < 1e-9 && Math.abs(hold[7][1] - 1.4) < 1e-9, "six shield units in block: five abreast 0.7 apart, 0.7 back, the sixth a rank behind");
-        check(Math.abs(hold[1][1] - (1.4 + 1.8)) < 1e-9 && Math.abs(hold[4][1] - (1.4 + 1.8)) < 1e-9 && Math.abs(hold[1][0] + 3.6) < 1e-9 && Math.abs(hold[4][0] + 1.8) < 1e-9, "the two others form behind the two shield ranks at the 1.8 cell, in the columns of the block");
+        check(Math.abs(hold[0][0] + 1.4) < 1e-9 && Math.abs(hold[2][0] + 0.7) < 1e-9 && Math.abs(hold[0][1] - 0.7) < 1e-9 && Math.abs(hold[7][1] - 1.4) < 1e-9 && Math.abs(hold[7][0]) < 1e-9, "six shield units in block: five abreast 0.7 apart, 0.7 back, the sixth a rank behind at the middle");
+        check(Math.abs(hold[1][1] - (1.4 + 1.8)) < 1e-9 && Math.abs(hold[4][1] - (1.4 + 1.8)) < 1e-9 && Math.abs(hold[1][0]) < 1e-9 && Math.abs(hold[4][0] - 1.8) < 1e-9, "the two others form behind the two shield ranks at the 1.8 cell, centred in the columns of the block");
+        int[] order5 = BattleMath.centreOrder(5), order10 = BattleMath.centreOrder(10);
+        check(java.util.Arrays.equals(order5, new int[]{2,3,1,4,0}) && order10[0] == 5 && order10[1] == 4 && order10[2] == 6 && order10[9] == 0, "a partial rank fills from the middle out, the right of a tie first");
         check(BattleMath.ranks(0,5,false) == 0 && BattleMath.ranks(5,5,false) == 1 && BattleMath.ranks(6,5,false) == 2 && BattleMath.ranks(1,5,true) == 1 && BattleMath.ranks(4,5,true) == 2 && BattleMath.ranks(5,5,true) == 3, "ranks in rows and in the wedge");
         double[][] wedgeHold = BattleMath.holdLayout(new boolean[]{true,true,true,true,false}, new double[]{.6,.6,.6,.6,.6}, 1.8, 0.7, 5, true);
         check(Math.abs(wedgeHold[1][0] + 0.7) < 1e-9 && Math.abs(wedgeHold[3][1] - 1.4) < 1e-9 && wedgeHold[4][0] == 0 && Math.abs(wedgeHold[4][1] - (1.4 + 1.8)) < 1e-9, "a wedge on Hold keeps its shape at 0.7, the rest start a wedge of their own behind it");
@@ -54,6 +67,30 @@ public final class BattleMathCheck {
         java.util.Set<String> setA = new java.util.TreeSet<>(), setB = new java.util.TreeSet<>();
         for (int i = 0; i < 8; i++) { setA.add(String.format(java.util.Locale.ROOT, "%.4f,%.4f", hold[i][0], hold[i][1])); setB.add(String.format(java.util.Locale.ROOT, "%.4f,%.4f", other[i][0], other[i][1])); }
         check(setA.equals(setB) && setA.size() == 8, "the places depend on the counts and cells, not on the order the units come in");
+        // the wall keeps its places through a loss (Battle.formation): the man behind steps up, the flank man of the last rank closes behind him
+        boolean[] s13 = new boolean[13], s12 = new boolean[12], s4 = new boolean[4], s5 = new boolean[5]; double[] w13 = new double[13];
+        java.util.Arrays.fill(s13, true); java.util.Arrays.fill(s12, true); java.util.Arrays.fill(s4, true); java.util.Arrays.fill(s5, true); java.util.Arrays.fill(w13, .6);
+        double[][] l13 = BattleMath.holdLayout(s13, w13, 1.8, 0.7, 10, false), l12 = BattleMath.holdLayout(s12, java.util.Arrays.copyOf(w13, 12), 1.8, 0.7, 10, false);
+        check(Math.abs(l13[10][0] - l13[5][0]) < 1e-9 && Math.abs(l13[10][1] - 1.4) < 1e-9 && Math.abs(l13[11][0] - l13[4][0]) < 1e-9 && Math.abs(l13[12][0] - l13[6][0]) < 1e-9, "thirteen in ten columns: three behind the middle files");
+        double[][] lost = new double[12][];
+        for (int i = 0, j = 0; i < 13; i++) if (i != 5) lost[j++] = l13[i];
+        int[] after = BattleMath.keepPlaces(lost, s12, l12);
+        check(permutation(after) && moved(lost, l12, after) == 2 && Math.abs(l12[after[9]][0] - l13[5][0]) < 1e-9 && Math.abs(l12[after[9]][1] - 0.7) < 1e-9, "a front man falls: the man behind him steps up, one other closes the rank behind; nobody else moves");
+        double[][] l5 = BattleMath.holdLayout(s5, new double[]{.6,.6,.6,.6,.6}, 1.8, 0.7, 5, false), l4 = BattleMath.holdLayout(s4, new double[]{.6,.6,.6,.6}, 1.8, 0.7, 5, false);
+        double[][] lostOne = {l5[0], l5[1], l5[3], l5[4]};
+        int[] one4 = BattleMath.keepPlaces(lostOne, s4, l4);
+        check(permutation(one4) && moved(lostOne, l4, one4) == 1 && Math.abs(l4[one4[0]][0] - l5[2][0]) < 1e-9, "one rank, its middle man falls: the man whose flank place is gone takes his place, the rest stand");
+        double[][] grown = java.util.Arrays.copyOf(l12, 13);
+        int[] arrival = BattleMath.keepPlaces(grown, s13, l13);
+        check(permutation(arrival) && moved(grown, l13, arrival) == 0, "a man joins: everyone keeps his place, he takes the new one");
+        double[][] fresh = new double[12][];
+        for (int i = 0; i < 12; i++) fresh[i] = new double[]{100 + i, 100};
+        int[] reformed = BattleMath.keepPlaces(fresh, s12, l12);
+        boolean identity = true;
+        for (int i = 0; i < 12; i++) identity &= reformed[i] == i;
+        check(identity, "a new order (no place kept): the units take the places in slot order");
+        double[] depths = BattleMath.deployDepths(new boolean[]{true,true,false,true,true}, new double[]{.7,.7,0,.7,1.0}, 3);
+        check(depths[0] == 0 && Math.abs(depths[1] - 0.7) < 1e-9 && Math.abs(depths[2] - 3.7) < 1e-9 && Math.abs(depths[3] - 6.7) < 1e-9 && Math.abs(depths[4] - 7.7) < 1e-9, "deploy rows: shield rows a cell apart (the wider of the two), any other row 3 back");
         double[] row = BattleMath.deployRow(new double[]{2.5,2.5,2.5,2.5,2.5}), wall = BattleMath.deployRow(new double[]{.7,.7,.7,2.5,2.5});
         check(row[0] == -5 && row[2] == 0 && row[4] == 5 && Math.abs(wall[1] - wall[0] - 0.7) < 1e-9 && Math.abs(wall[2] - wall[1] - 0.7) < 1e-9 && wall[2] == 0 && Math.abs(wall[3] - wall[2] - 1.6) < 1e-9, "a deploy row: the old 2.5 places, and shield troops shoulder to shoulder at 0.7");
         double[] px={-44,0,44}, pz={-43,0,43}; int[] own={-1,-1,-1};

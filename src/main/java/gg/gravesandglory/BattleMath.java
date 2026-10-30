@@ -1,5 +1,7 @@
 package gg.gravesandglory;
 
+import java.util.Arrays;
+
 /** Pure battle arithmetic shared by the server, the HUD and standalone checks. No Minecraft types. */
 public final class BattleMath {
     private BattleMath() {}
@@ -64,6 +66,9 @@ public final class BattleMath {
      * all false on any other order). The shield units come first, in the front ranks of the formation's shape, at the widest of their cells; the
      * others take the ranks behind them at the widest of theirs. With no shield unit this is the old layout: one cell, the formation's spacing or
      * the widest body's room. The places depend only on how many units of each kind there are and their cells, not on their order.
+     * With a wall (some shield unit, not the wedge) a partial rank, of the wall or of the rest, stands centred on the formation's columns, filled
+     * from the middle out (centreOrder): so a rank one man short is the rank with its outermost place gone, and a wall that loses men stays
+     * centred within half a cell. With no shield unit the partial rank stands at the left, as it always has.
      */
     public static double[][] holdLayout(boolean[] shield, double[] width, double formationCell, double wallCell, int columns, boolean wedge) {
         double[] cells = holdSlots(shield, width, formationCell, wallCell);
@@ -71,14 +76,88 @@ public final class BattleMath {
         for (int i = 0; i < cells.length; i++) if (shield[i]) { shields++; front = Math.max(front, cells[i]); } else rear = Math.max(rear, cells[i]);
         double depth = ranks(shields, columns, wedge) * front;
         double[][] places = new double[cells.length][];
-        int s = 0, o = 0;
+        int s = 0, o = 0, others = cells.length - shields; boolean centre = shields > 0 && !wedge; int[] order = centreOrder(columns);
         for (int i = 0; i < cells.length; i++) {
             boolean wall = shield[i]; int index = wall ? s++ : o++; double cell = wall ? front : rear;
-            double side = (index % columns - (columns - 1) / 2.0) * cell, back = (index / columns + 1) * cell;
+            int count = wall ? shields : others, inRank = Math.min(columns, count - index / columns * columns);
+            int column = centre && inRank < columns ? order[index % columns] : index % columns;
+            double side = (column - (columns - 1) / 2.0) * cell, back = (index / columns + 1) * cell;
             if (wedge) { int rank = (int) Math.floor(Math.sqrt(index)); side = (index - rank * rank - rank) * cell; back = (rank + 1) * cell; }
             places[i] = new double[]{side, wall ? back : depth + back};
         }
         return places;
+    }
+    /** The columns of a rank in the order a partial rank fills them: the middle first, then out to either side alternately (the right of a tie first). */
+    public static int[] centreOrder(int columns) {
+        Integer[] c = new Integer[Math.max(columns, 0)];
+        for (int i = 0; i < c.length; i++) c[i] = i;
+        Arrays.sort(c, (a, b) -> { int d = Integer.compare(Math.abs(2 * a - (columns - 1)), Math.abs(2 * b - (columns - 1))); return d != 0 ? d : Integer.compare(b, a); });
+        int[] out = new int[c.length];
+        for (int i = 0; i < c.length; i++) out[i] = c[i];
+        return out;
+    }
+    /**
+     * Which of a held group's places each unit takes (Battle.formation): an index into `places` (holdLayout's, one place per unit, place j of the
+     * kind of unit j). prev[i] is unit i's place the last time (null: none, a new unit). A wall that loses a man closes the gap with as few men moving
+     * as can be: every unit whose place is still in the layout keeps it; a place left empty, front first, takes the unit directly behind it in its
+     * file (of its kind), whose own place is then empty in turn; with none behind it, a unit left without a place (the one whose place is gone, the
+     * outermost of the last rank, or a newcomer), the nearest; with none of those, the nearest unit of the rearmost rank. So a rank-2 man steps up
+     * behind his file and nobody crosses the line. When no unit keeps a place (a new order, a new shape) the units take the places in order.
+     */
+    public static int[] keepPlaces(double[][] prev, boolean[] shield, double[][] places) {
+        int n = places.length; int[] at = new int[n]; boolean[] taken = new boolean[n]; boolean any = false;
+        Arrays.fill(at, -1);
+        for (int i = 0; i < n; i++) {
+            if (prev[i] == null) continue;
+            for (int j = 0; j < n; j++) if (!taken[j] && shield[j] == shield[i] && same(places[j], prev[i])) { at[i] = j; taken[j] = true; any = true; break; }
+        }
+        if (!any) { for (int i = 0; i < n; i++) at[i] = i; return at; }
+        for (int guard = 0; guard < n * n + n; guard++) {
+            int h = -1;
+            for (int j = 0; j < n; j++) if (!taken[j] && (h < 0 || places[j][1] < places[h][1] - EPS || Math.abs(places[j][1] - places[h][1]) < EPS && places[j][0] < places[h][0])) h = j;
+            if (h < 0) break;
+            boolean kind = shield[h]; int pick = -1; double best = Double.MAX_VALUE;
+            // directly behind it in its file: the nearest of its kind standing (or, without a place now, last standing) further back at its side
+            for (int i = 0; i < n; i++) {
+                if (shield[i] != kind) continue;
+                double[] p = at[i] >= 0 ? places[at[i]] : prev[i];
+                if (p != null && Math.abs(p[0] - places[h][0]) < EPS && p[1] > places[h][1] + EPS && p[1] < best) { best = p[1]; pick = i; }
+            }
+            // a unit without a place: the nearest by where it was (a newcomer, with none, after them)
+            if (pick < 0) for (int i = 0; i < n; i++) {
+                if (shield[i] != kind || at[i] >= 0) continue;
+                double d = prev[i] == null ? Double.MAX_VALUE / 2 : Math.hypot(prev[i][0] - places[h][0], prev[i][1] - places[h][1]);
+                if (d < best) { best = d; pick = i; }
+            }
+            // the nearest of the rearmost rank of its kind, unless the empty place is in that rank
+            if (pick < 0) {
+                double rearmost = -Double.MAX_VALUE;
+                for (int j = 0; j < n; j++) if (shield[j] == kind) rearmost = Math.max(rearmost, places[j][1]);
+                if (places[h][1] < rearmost - EPS) for (int i = 0; i < n; i++) {
+                    if (shield[i] != kind || at[i] < 0 || Math.abs(places[at[i]][1] - rearmost) > EPS) continue;
+                    double d = Math.abs(places[at[i]][0] - places[h][0]);
+                    if (d < best) { best = d; pick = i; }
+                }
+            }
+            if (pick < 0) break; // cannot happen: each kind has a place for each of its units
+            if (at[pick] >= 0) taken[at[pick]] = false;
+            at[pick] = h; taken[h] = true;
+        }
+        // a unit still without a place (a guard, never expected): the first free place
+        for (int i = 0; i < n; i++) if (at[i] < 0) for (int j = 0; j < n; j++) if (!taken[j]) { at[i] = j; taken[j] = true; break; }
+        return at;
+    }
+    private static final double EPS = 1e-6;
+    private static boolean same(double[] a, double[] b) { return Math.abs(a[0] - b[0]) < EPS && Math.abs(a[1] - b[1]) < EPS; }
+    /**
+     * How far behind the first deploy row each row of five stands (Battle.reinforce): rows 3 apart, as always, but two rows of shield troops
+     * (wall[r]: the row has troops and every one of them carries a shield) stand their cell apart (cell[r], the row's widest shield cell), so an
+     * uncommanded shield group deploys as one deep wall.
+     */
+    public static double[] deployDepths(boolean[] wall, double[] cell, double rowGap) {
+        double[] depth = new double[wall.length];
+        for (int r = 1; r < wall.length; r++) depth[r] = depth[r - 1] + (wall[r - 1] && wall[r] ? Math.max(cell[r - 1], cell[r]) : rowGap);
+        return depth;
     }
     /** How far behind its order's point a group forms (Battle.formation and CommandMode): support 9, siege 7 (a mortar cannot fire within its minimum range), ranged 5, the rest 0. */
     public static double roleDepth(String group) {

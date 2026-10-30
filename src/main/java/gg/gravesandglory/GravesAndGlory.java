@@ -201,9 +201,16 @@ public final class GravesAndGlory implements ModInitializer {
         long abilityReadyAt,abilityUntil;Object abilityData;
         /** The most troops of each group alive at once this round (the HUD card's "of" count), raised with fullHealth and cleared with it. */
         final Map<String,Integer> fullCount=new HashMap<>();
+        /** Each group's places on Hold, kept through losses (Battle.heldPlace): a fallen wall man's place is filled from behind, not by re-counting the group. */
+        final Map<String,Places> places=new HashMap<>();
         /** The commander's last enemy blow (a player commander is no Unit): the army whose troop or commander landed it and when (battle ticks). Battle.allowDamage sets it; a death with no attacker within Projectiles.CREDIT_WINDOW_TICKS of it (a pull into lava, a knock off an edge) is that army's (Veterans.onCommanderDeath, which clears it). */
         Squad hitBy;long hitAt;
         Squad(UUID owner,int team,Vec3d pos) {this.owner=owner;this.team=team;target=pos;}
+    }
+    /** A held group's members (slot order) and the layout they stood in, with the place each took (BattleMath.keepPlaces). */
+    static final class Places {
+        final List<Unit> members;final double[][] layout;final Map<Unit,double[]> at=new IdentityHashMap<>();
+        Places(List<Unit> members,double[][] layout){this.members=members;this.layout=layout;}
     }
     public static final class Assignment {
         String order,formation;Vec3d target;float yaw;int enemy=-1;long issued;
@@ -823,20 +830,36 @@ public final class GravesAndGlory implements ModInitializer {
         }
         /** The room a troop's body takes in a formation and the lane it takes on a bridge: its width and 0.3, at least 1.3 (BattleMath.spacing). */
         public static double spacing(Unit u){return BattleMath.spacing(u.mob.getWidth());}
-        /** Whether the unit closes into the shield wall under this order: a shield troop on Hold (animation rework §7.2). */
+        /** Whether the unit closes into the shield wall under this order: a shield troop on Hold (animation rework §7.1). */
         static boolean walls(Unit u,String order){return order.equals("hold")&&u.tags.contains("shield");}
         /** The unit's formation slot: its deploy spot on a player's default Hold, else its place in its group's formation round the order's point (BattleMath.holdLayout). */
         Vec3d formation(Unit u){
             Assignment a=assignment(u);if(!u.squad.bot&&u.squad.order.equals("hold")&&!u.squad.assignments.containsKey(u.spec.group()))return u.deployed;var f=Arrays.stream(Spec.FORMATIONS).filter(v->v.id().equals(a.formation)).findFirst().orElse(Spec.FORMATIONS[0]);
-            // the group in slot order (u before any other of its slot, as the old count of lower slots placed it); BattleMath.holdLayout lays it out: on Hold its shield troops close into the wall in the front ranks, the rest form behind them
+            // the group in slot order (then entity id, so every member sees the same order); BattleMath.holdLayout lays it out: on Hold its shield troops close into the wall in the front ranks, the rest form behind them
             List<Unit> group=new ArrayList<>();group.add(u);
             for(Unit other:units)if(other!=u&&other.squad==u.squad&&other.spec.group().equals(u.spec.group())&&other.mob.isAlive())group.add(other);
-            group.sort(Comparator.comparingInt(m->m.slot));
+            group.sort(Comparator.<Unit>comparingInt(m->m.slot).thenComparingInt(m->m.mob.getId()));
             boolean[] shield=new boolean[group.size()];double[] width=new double[group.size()];int at=0;
             for(int i=0;i<shield.length;i++){Unit m=group.get(i);shield[i]=walls(m,a.order);width[i]=m.mob.getWidth();if(m==u)at=i;}
-            double[] place=BattleMath.holdLayout(shield,width,f.spacing(),Spec.COMBATDISCIPLINE[0].shieldWallCell(),BattleMath.groupColumns(u.spec.group(),f.columns()),f.wedge())[at];
+            double[][] layout=BattleMath.holdLayout(shield,width,f.spacing(),Spec.COMBATDISCIPLINE[0].shieldWallCell(),BattleMath.groupColumns(u.spec.group(),f.columns()),f.wedge());
+            double[] place=a.order.equals("hold")&&u.mob.isAlive()?heldPlace(u,group,shield,layout):layout[at];
             double side=place[0],back=BattleMath.roleDepth(u.spec.group())+place[1];
             double angle=Math.toRadians(a.yaw);return a.target.add(Math.cos(angle)*side+Math.sin(angle)*back,0,Math.sin(angle)*side-Math.cos(angle)*back);
+        }
+        /**
+         * A held unit's place (animation rework §7.1): while its group's members and layout stand, the place it took; when one falls or joins,
+         * BattleMath.keepPlaces hands out the new layout keeping every place it can, so the man behind a fallen wall man steps up and the rest stand.
+         */
+        double[] heldPlace(Unit u,List<Unit> group,boolean[] shield,double[][] layout){
+            Places kept=u.squad.places.get(u.spec.group());
+            if(kept==null||!kept.members.equals(group)||!Arrays.deepEquals(kept.layout,layout)){
+                double[][] prev=new double[group.size()][];
+                for(int i=0;i<prev.length;i++)prev[i]=kept==null?null:kept.at.get(group.get(i));
+                int[] at=BattleMath.keepPlaces(prev,shield,layout);
+                Places next=new Places(List.copyOf(group),layout);for(int i=0;i<at.length;i++)next.at.put(group.get(i),layout[at[i]]);
+                u.squad.places.put(u.spec.group(),next);kept=next;
+            }
+            return kept.at.get(u);
         }
         /** The cell the unit takes under its order: on Hold a shield troop's wall cell (BattleMath.shieldCell), any other its body's room (spacing). The bridge lanes use it (Tactics.route). */
         double cell(Unit u){return walls(u,assignment(u).order)?BattleMath.shieldCell(u.mob.getWidth(),Spec.COMBATDISCIPLINE[0].shieldWallCell()):spacing(u);}
@@ -884,7 +907,7 @@ public final class GravesAndGlory implements ModInitializer {
                 int slot=-1;for(int i=0;i<s.banner.size()&&i<R.squadSize();i++)if(s.banner.get(i).equals(t.spec().id())&&!used.contains(i)){slot=i;break;} // its own banner slot, so it forms where the banner puts it
                 if(slot<0){slot=0;while(used.contains(slot))slot++;}
                 if(slot>=R.squadSize()){s.gold+=t.paid();continue;}
-                var at=deploy(s,slot);spawn(s,t.spec(),slot,at.at());Morale.fielded(this,s,t.spec().group());
+                var at=deploy(s,slot,t.spec());spawn(s,t.spec(),slot,at.at());Morale.fielded(this,s,t.spec().group());
                 FeedEvents.deployed(this,s,t.spec());
             }
         }
@@ -912,8 +935,11 @@ public final class GravesAndGlory implements ModInitializer {
         }
         /** Where a troop trained now appears, and the anchor it deploys at (null: the barracks). Chosen at spawn time, so a point or banner that was lost, contested or approached since the purchase sends the troop home. */
         record Deploy(Vec3d at,Anchor anchor){}
-        Deploy deploy(Squad s,int slot){
-            Vec3d home=base(s.team),ring=new Vec3d((slot%5-2)*2,0,(slot/5-2)*2),barracks=home.add(ring);
+        Deploy deploy(Squad s,int slot){return deploy(s,slot,null);}
+        /** As deploy(s,slot), for a troop of this kind (null: any): a shield troop's ring place is its wall cell apart, not 2, so trained shield troops stand shoulder to shoulder (animation rework spec decision 7). */
+        Deploy deploy(Squad s,int slot,Spec.TroopsRow spec){
+            double cell=spec!=null&&ArmyMobs.tags(spec).contains("shield")?BattleMath.shieldCell(ArmyMobs.width(spec),Spec.COMBATDISCIPLINE[0].shieldWallCell()):2;
+            Vec3d home=base(s.team),ring=new Vec3d((slot%5-2)*cell,0,(slot/5-2)*cell),barracks=home.add(ring);
             if(!forwardReinforcement)return new Deploy(barracks,null);
             List<Anchor> anchors=reinforcementAnchors(s.team);if(anchors.isEmpty())return new Deploy(barracks,null);
             Vec3d target=storedAssignment(s,"infantry").target;double[] ax=new double[anchors.size()],az=new double[anchors.size()];
@@ -935,7 +961,7 @@ public final class GravesAndGlory implements ModInitializer {
             for(Capture p:points){p.owner=-1;p.progress=0;p.challenger=-1;Arena.flag(world,p.spec,-1);}
             respawns.clear();BattleEffects.startRound();Morale.startRound();
             for(Squad s:squads.values()){
-                Commander.reset(this,s);if(!s.seated)continue;s.assignments.clear();s.arrived.clear();s.training.clear();s.lastStand.clear();s.lastStandAt.clear();s.fullHealth.clear();s.fullCount.clear();s.chargedAt.clear();s.traits.clear();s.fallen.clear();s.hitBy=null;s.gold=Spec.ECONOMY[0].startingGold();s.stats=new MatchStats.SquadStats();s.order=s.bot?"attack":"hold";s.target=base(s.team);s.reinforceAt=time+R.reinforceSeconds()*20L;
+                Commander.reset(this,s);if(!s.seated)continue;s.assignments.clear();s.arrived.clear();s.training.clear();s.lastStand.clear();s.lastStandAt.clear();s.fullHealth.clear();s.fullCount.clear();s.places.clear();s.chargedAt.clear();s.traits.clear();s.fallen.clear();s.hitBy=null;s.gold=Spec.ECONOMY[0].startingGold();s.stats=new MatchStats.SquadStats();s.order=s.bot?"attack":"hold";s.target=base(s.team);s.reinforceAt=time+R.reinforceSeconds()*20L;
                 var player=server.getPlayerManager().getPlayer(s.owner);
                 if(player!=null){toBase(player,s.team);player.changeGameMode(GameMode.ADVENTURE);equipPlayer(player);}
                 reinforce(s);
@@ -948,13 +974,18 @@ public final class GravesAndGlory implements ModInitializer {
             for(Squad other:squads.values())if(other!=s&&other.seated&&other.team==s.team)count++; // this team's armies, this one included (a joining squad is not in squads yet)
             List<String> line=s.banner; // from Campaign.prepareRound: the slot index is the position, and empty and ^ slots stay empty
             Morale.lineup(this,s,line);
-            // each row of 5 places: 2.5 apart, a shield troop's at its wall cell, so the player's default Hold (his troops stand where they deployed) already closes the wall (BattleMath.deployRow)
+            // each row of 5 places: 2.5 apart, a shield troop's at its wall cell, so the player's default Hold (his troops stand where they deployed) already closes the wall (BattleMath.deployRow);
+            // rows 3 apart, but two rows of nothing but shield troops their cell apart, one deep wall (BattleMath.deployDepths); a wall row's empty places take its cell, so a short row stands behind the files
             double wall=Spec.COMBATDISCIPLINE[0].shieldWallCell();double[] cells=new double[(Math.max(line.size(),1)+4)/5*5];Arrays.fill(cells,2.5);
-            for(int i=0;i<line.size();i++){var spec=Campaign.troop(line.get(i));if(spec!=null&&ArmyMobs.tags(spec).contains("shield"))cells[i]=BattleMath.shieldCell(ArmyMobs.width(spec),wall);}
+            int rows=cells.length/5;boolean[] wallRow=new boolean[rows],troops=new boolean[rows];double[] rowCell=new double[rows];Arrays.fill(wallRow,true);
+            for(int i=0;i<line.size();i++){var spec=Campaign.troop(line.get(i));if(spec==null)continue;troops[i/5]=true;
+                if(ArmyMobs.tags(spec).contains("shield")){cells[i]=BattleMath.shieldCell(ArmyMobs.width(spec),wall);rowCell[i/5]=Math.max(rowCell[i/5],cells[i]);}else wallRow[i/5]=false;}
+            for(int r=0;r<rows;r++){wallRow[r]&=troops[r];if(wallRow[r])for(int i=r*5;i<r*5+5;i++)if(i>=line.size()||Campaign.troop(line.get(i))==null)cells[i]=rowCell[r];}
+            double[] depth=BattleMath.deployDepths(wallRow,rowCell,3);
             for(String id:line){int position=slot++;if(position>=R.squadSize()||occupied.contains(position))continue;
                 var spec=Campaign.troop(id);if(spec==null)continue;
                 double row=BattleMath.deployRow(Arrays.copyOfRange(cells,position/5*5,position/5*5+5))[position%5];
-                double side=s.team==0?1:-1,x=base(s.team).x+side*(20-position/5*3),z=base(s.team).z+side*((index-(count-1)/2.0)*22+row); // rows centred on the base for any army count; Dusk's mirror Dawn's, so army i forms on the side of its lane point (BattleMath.laneTarget)
+                double side=s.team==0?1:-1,x=base(s.team).x+side*(20-depth[position/5]),z=base(s.team).z+side*((index-(count-1)/2.0)*22+row); // rows centred on the base for any army count; Dusk's mirror Dawn's, so army i forms on the side of its lane point (BattleMath.laneTarget)
                 spawn(s,spec,position,new Vec3d(x,Arena.ground((int)x,(int)z)+1,z));
             }
             Houses.recompute(s);
