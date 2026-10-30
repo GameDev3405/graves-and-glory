@@ -19,6 +19,7 @@ add to it, never remove from it. Date and source on each line.
 - Free-for-all with alliances and betrayal; war table with fog of war; land conquest (Kingdom & Army vision, 2026-10-09).
 - Player classes Knight/Mage/Ranger/Healer/Tank (Kingdom & Army; replaced by the six-class vision).
 - Three bot numbers live in code, not sheets (a fourth, the rout home radius, went with routing): MELEE_THREAT_RANGE 8 and NEAR_RADIUS_FACTOR 2 (Campaign.java), and the +20 in Projectiles.CREDIT_WINDOW_TICKS. Move to `botCommand` columns when tier tuning reopens in Phase 3 (final review 2026-10-18).
+- Overhead cover on a volley's arc lives in code, not sheets: Projectiles.COVER_AT (the columns at 0.25, 0.5 and 0.75 of the line), COVER_MARGIN 0.5 (blocks kept under the first solid block over the line) and COVER_MIN_PEAK 1 (a capped arc lower than this flies flat). Move to `combatDiscipline` columns if arcs under cover need tuning (animation rework Task 4 fix round 1, 2026-10-30).
 
 ## Content
 - OGG sound variants (night session).

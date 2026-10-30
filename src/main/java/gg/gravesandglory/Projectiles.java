@@ -10,7 +10,12 @@ import net.minecraft.item.ItemStack;
 import net.minecraft.item.Items;
 import net.minecraft.particle.DustParticleEffect;
 import net.minecraft.particle.ParticleTypes;
+import net.minecraft.util.math.BlockPos;
+import net.minecraft.util.math.Direction;
+import net.minecraft.util.math.MathHelper;
 import net.minecraft.util.math.Vec3d;
+import net.minecraft.util.shape.VoxelShape;
+import net.minecraft.world.World;
 import org.joml.Vector3f;
 import java.util.ArrayList;
 
@@ -32,9 +37,33 @@ public final class Projectiles {
     private Projectiles(){}
 
     static Vec3d aim(LivingEntity target){return new Vec3d(target.getX(),target.getBodyY(.5),target.getZ());}
-    /** How the shooter's weapon scales a volley's arc (BattleMath.arcScale): a bow 1, a crossbow crossbowArcScale, a thrown trident thrownArcScale; a siege troop (the Ballista and Mortar crews) none. */
-    static double arcScale(GravesAndGlory.Unit u){
-        return BattleMath.arcScale(u.spec.family(),u.tags.contains("siege")||u.spec.group().equals("siege"),C.crossbowArcScale(),C.thrownArcScale());
+    /** How the shooter's weapon scales a volley's arc (BattleMath.arcScale): a bow 1, a crossbow crossbowArcScale (the Ballista crew's too, R24), a thrown trident thrownArcScale; the Mortar's crew none. */
+    static double arcScale(GravesAndGlory.Unit u){return BattleMath.arcScale(u.spec.family(),C.crossbowArcScale(),C.thrownArcScale());}
+    /**
+     * Overhead cover (M2): where along the straight line the columns are read (a quarter, half and three quarters of the way), how far under the
+     * first solid block over the line the arc keeps, and the least peak worth flying under cover (below it the shot flies flat). Code-held tuning
+     * numbers; see docs/PARKED.md.
+     */
+    static final double[] COVER_AT={.25,.5,.75};
+    static final double COVER_MARGIN=.5,COVER_MIN_PEAK=1;
+    /** Where a shot from from to to, peaking at peak over ticks of flight, stands k ticks after it was fired (R26): the straight line's point lifted by the arc's height there. */
+    static Vec3d curve(Vec3d from,Vec3d to,double peak,int ticks,long k){double t=k/(double)Math.max(1,ticks);return from.lerp(to,Math.min(1,t)).add(0,BattleMath.arcHeight(t,peak),0);}
+    /** The peak a shot from from to to may take under what stands over its line (BattleMath.arcCoverPeak): peak in open sky. */
+    static double coverPeak(World w,Vec3d from,Vec3d to,double peak){
+        if(peak<=0)return peak;
+        double[] clears=new double[COVER_AT.length];
+        for(int i=0;i<COVER_AT.length;i++)clears[i]=headroom(w,from.lerp(to,COVER_AT[i]),BattleMath.arcHeight(COVER_AT[i],peak)+COVER_MARGIN);
+        return BattleMath.arcCoverPeak(peak,COVER_AT,clears,COVER_MARGIN,COVER_MIN_PEAK);
+    }
+    /** How far the underside of the first solid block over p stands above it, read up to reach over p (0 if p is inside a block); infinite if none is that low. */
+    static double headroom(World w,Vec3d p,double reach){
+        int x=MathHelper.floor(p.x),z=MathHelper.floor(p.z);
+        for(int y=MathHelper.floor(p.y);y<=MathHelper.floor(p.y+reach);y++){
+            BlockPos at=new BlockPos(x,y,z);VoxelShape shape=w.getBlockState(at).getCollisionShape(w,at);
+            if(shape.isEmpty()||y+shape.getMax(Direction.Axis.Y)<=p.y)continue;
+            return Math.max(0,y+shape.getMin(Direction.Axis.Y)-p.y);
+        }
+        return Double.POSITIVE_INFINITY;
     }
 
     public static void fire(GravesAndGlory.Battle b,GravesAndGlory.Unit u,LivingEntity target,String kind,float amount){
@@ -43,8 +72,9 @@ public final class Projectiles {
         boolean arrow=kind.equals("arrow")||kind.equals("trident");
         double dist=from.distanceTo(to);
         // A volley's arc (animation rework section 5): an arrow or a trident rises volleyPeakPerBlock a block of range over its straight line, up to
-        // volleyPeakMax, scaled by the weapon; bolts, mends and siege shots fly straight. Flight time is the straight shot's times arcTravelScale (1: unchanged).
-        double peak=arrow?BattleMath.arcPeak(dist,C.volleyPeakPerBlock(),C.volleyPeakMax(),arcScale(u)):0;
+        // volleyPeakMax, scaled by the weapon, and kept under any roof over the line (M2); bolts, mends and the Mortar's shot fly straight. Flight time
+        // is the straight shot's times arcTravelScale (1: unchanged).
+        double peak=arrow?coverPeak(b.world,from,to,BattleMath.arcPeak(dist,C.volleyPeakPerBlock(),C.volleyPeakMax(),arcScale(u))):0;
         int travel=BattleMath.arcTravelTicks(BattleMath.travelTicks(dist,arrow?C.arrowSpeed():C.boltSpeed(),C.projectileMinTicks(),C.projectileMaxTicks()),peak,C.arcTravelScale());
         long lands=b.time+travel;
         Entity visual=null;
@@ -53,8 +83,8 @@ public final class Projectiles {
             PersistentProjectileEntity a=kind.equals("trident")?new TridentEntity(b.world,u.mob,new ItemStack(Items.TRIDENT)):new ArrowEntity(b.world,from.x,from.y,from.z);
             a.setPosition(from);
             a.setNoGravity(true);a.setNoClip(true);a.pickupType=PersistentProjectileEntity.PickupPermission.DISALLOWED;a.addCommandTag(TAG);
-            // The straight line's step plus the arc's starting climb (the slope of BattleMath.arcHeight at launch), so the arrow leaves at BattleMath.launchPitch.
-            Vec3d v=to.subtract(from).multiply(1.0/travel).add(0,4*peak/travel,0);a.setVelocity(v.x,v.y,v.z,(float)v.length(),0);
+            // The first tick's step along the curve (R26), so the arrow stands on it after its first move; setVelocity points it there, nose first.
+            Vec3d v=curve(from,to,peak,travel,1).subtract(from);a.setVelocity(v.x,v.y,v.z,(float)v.length(),0);
             visual=a;
         }
         b.shots.add(new Shot(u,u.squad,target,kind,amount,from,b.time,lands,visual,null,peak,travel));
@@ -76,10 +106,9 @@ public final class Projectiles {
             Vec3d to=s.target==null?s.at:aim(s.target);
             if(b.time>=s.lands){drop(b,s);land(b,s,to);continue;}
             if(s.visual!=null){
-                // Steer so the arrow meets a moving target exactly on its landing tick, riding its arc: the aim point is the target lifted by the arc's
-                // height now, so the straight part of the step closes on the target as before; the arc's step to its next height rides on top. Peak 0 is a straight shot.
-                long age=b.time-s.fired;double n=Math.max(1,s.ticks),now=BattleMath.arcHeight(age/n,s.peak),then=BattleMath.arcHeight((age+1)/n,s.peak);
-                Vec3d v=to.add(0,now,0).subtract(s.visual.getPos()).multiply(1.0/Math.max(1,s.lands-b.time)).add(0,then-now,0);
+                // Steer onto the curve (R26): next tick the arrow stands exactly where the curve to the target as it is now puts it, so its peak holds
+                // at every range and it meets a moving target on its landing tick. Peak 0 is a straight shot.
+                Vec3d v=curve(s.from,to,s.peak,s.ticks,b.time-s.fired+1).subtract(s.visual.getPos());
                 s.visual.setVelocity(v);s.visual.velocityModified=true;
             }else{
                 double t=Math.min(1,(b.time-s.fired)/(double)Math.max(1,s.lands-s.fired));Vec3d p=s.from.lerp(to,t);

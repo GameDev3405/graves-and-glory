@@ -26,20 +26,20 @@ public final class BattleMath {
     }
     /**
      * The launch angle, in degrees above the horizontal (Minecraft's own pitch is its negative), of a shot dist out horizontally and dy up whose
-     * arc peaks at peak over ticks of flight: the tangent of the path at launch. A shot's launch velocity is (dist, dy + 4 peak) / ticks, the
-     * straight line's plus the parabola's starting climb (arcHeight's slope at 0); the flight time scales both alike, so it never tilts the angle.
+     * arc peaks at peak over ticks of flight: the tangent of the path at launch, the straight line's slope plus the parabola's starting climb
+     * (arcHeight's slope at 0); the flight time scales both alike, so it never tilts the angle. A flying shot's launch velocity is the first
+     * tick's secant instead (Projectiles.fire, R26), a little flatter than this tangent, so the shot sits on its curve every tick.
      */
     public static double launchPitch(double dist, double dy, double peak, int ticks) {
         double n = Math.max(1, ticks), rise = (dy + 4 * peak) / n, run = dist / n;
         return rise == 0 ? 0 : Math.toDegrees(Math.atan2(rise, run));
     }
     /**
-     * How a weapon scales the volley's arc: a bow 1, a crossbow crossbowScale (combatDiscipline crossbowArcScale; a flatter, faster bolt), a thrown
-     * trident thrownScale (thrownArcScale). Siege weapons (the Ballista Crew's bolt), the Mortar's crew, casters and every other family keep their
-     * straight flight: 0.
+     * How a weapon scales the volley's arc: a bow 1, a crossbow crossbowScale (combatDiscipline crossbowArcScale; a flatter, faster bolt; the
+     * Arbalist's and the Ballista Crew's alike, R24), a thrown trident thrownScale (thrownArcScale). The Mortar's crew, casters (whose bolts are
+     * particles) and every other family keep their straight flight: 0.
      */
-    public static double arcScale(String family, boolean siege, double crossbowScale, double thrownScale) {
-        if (siege) return 0;
+    public static double arcScale(String family, double crossbowScale, double thrownScale) {
         return switch (family) {
             case "bow" -> 1;
             case "crossbow" -> crossbowScale;
@@ -47,6 +47,23 @@ public final class BattleMath {
             default -> 0;
         };
     }
+    /**
+     * A volley's peak under overhead cover (M2): clears[i] is how far the first solid block above the straight line stands over it at ts[i] of the
+     * flight (infinite in open sky). The arc keeps margin under every one of them: at t it stands arcHeight(t, 1) of its peak, so each caps the
+     * peak at (clear - margin) / (4 t (1 - t)). A peak that cover lowers under minPeak flies flat (0); cover a small arc never reaches leaves it be.
+     */
+    public static double arcCoverPeak(double peak, double[] ts, double[] clears, double margin, double minPeak) {
+        double capped = peak;
+        for (int i = 0; i < ts.length; i++) {
+            double shape = arcHeight(ts[i], 1);
+            if (shape > 0) capped = Math.min(capped, Math.max(0, clears[i] - margin) / shape);
+        }
+        return capped < peak && capped < minPeak ? 0 : capped;
+    }
+    /** The yaw, in degrees, of an arrow flying (vx, vz) nose first, in the convention vanilla gives a flying arrow: atan2(vx, vz); +z is 0, +x 90 (R25). */
+    public static double arrowYaw(double vx, double vz) { return Math.toDegrees(Math.atan2(vx, vz)); }
+    /** The pitch, in degrees, of an arrow flying (vx, vy, vz) nose first, as vanilla gives a flying arrow: up while it climbs, down while it falls (R25). */
+    public static double arrowPitch(double vx, double vy, double vz) { return Math.toDegrees(Math.atan2(vy, Math.hypot(vx, vz))); }
     /** An arced shot's flight in ticks: travelTicks times scale (combatDiscipline arcTravelScale, 1 to 2), rounded; a shot with no arc keeps travelTicks. At 1, no flight time changes. */
     public static int arcTravelTicks(int travel, double peak, double scale) { return peak > 0 ? (int) Math.round(travel * scale) : travel; }
     /** Whether a blow struck at lastHitAt can still credit a death at now: no more than window ticks ago, and not in the future. */
