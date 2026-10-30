@@ -25,4 +25,21 @@ final class StepHop {
         }
         return cell;
     }
+    /** Where on the step cell (cx, cz) a unit of this width lands on its way to (gx, gz) (Tactics.stepHop): at the point of the cell nearest the
+     *  waypoint, its body inside the cell, so two wall neighbours that hop onto one block land up to 1 - width apart; a body a block wide or wider
+     *  has no room to slide on the block and takes its middle. {x, z}. */
+    static double[] landing(double width,int cx,int cz,double gx,double gz){
+        double half=width/2;
+        if(half>=0.5)return new double[]{cx+0.5,cz+0.5};
+        return new double[]{Math.max(cx+half,Math.min(cx+1-half,gx)),Math.max(cz+half,Math.min(cz+1-half,gz))};
+    }
+    /** What the world says about a box: whether a unit's body would fit in it (no block collision). */
+    interface Room{boolean empty(double x0,double y0,double z0,double x1,double y1,double z1);}
+    /** Whether a wall troop's slot (gx, gz) reaches over the edge of a rise one block high (Tactics.settle jumps it on): its body (half width,
+     *  height) on the slot, at the troop's own level y, would stand in the rise higher than its step height climbs; one block up it has room, as
+     *  it has above itself for the jump. The level is the troop's own, not the block it stands in, so a troop on soul sand or mud (0.125 under a
+     *  block top) is not on a rise on flat ground, and a slab is a step the walk climbs. */
+    static boolean onRise(double x,double y,double z,double half,double height,double gx,double gz,double step,Room w){
+        return !w.empty(gx-half,y+step,gz-half,gx+half,y+step+height,gz+half)&&w.empty(gx-half,y+1,gz-half,gx+half,y+1+height,gz+half)&&w.empty(x-half,y+1,z-half,x+half,y+1+height,z+half);
+    }
 }

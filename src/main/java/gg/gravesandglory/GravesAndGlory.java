@@ -202,15 +202,10 @@ public final class GravesAndGlory implements ModInitializer {
         /** The most troops of each group alive at once this round (the HUD card's "of" count), raised with fullHealth and cleared with it. */
         final Map<String,Integer> fullCount=new HashMap<>();
         /** Each group's places on Hold, kept through losses (Battle.heldPlace): a fallen wall man's place is filled from behind, not by re-counting the group. */
-        final Map<String,Places> places=new HashMap<>();
+        final Map<String,BattleMath.Held<Unit>> places=new HashMap<>();
         /** The commander's last enemy blow (a player commander is no Unit): the army whose troop or commander landed it and when (battle ticks). Battle.allowDamage sets it; a death with no attacker within Projectiles.CREDIT_WINDOW_TICKS of it (a pull into lava, a knock off an edge) is that army's (Veterans.onCommanderDeath, which clears it). */
         Squad hitBy;long hitAt;
         Squad(UUID owner,int team,Vec3d pos) {this.owner=owner;this.team=team;target=pos;}
-    }
-    /** A held group's members (slot order), the shape (formation, columns, wedge) and layout they stood in, and the place each took in cells (BattleMath.holdGrid, keepPlaces) and in blocks. */
-    static final class Places {
-        final List<Unit> members;final String shape;final double[][] layout;final Map<Unit,double[]> grid=new IdentityHashMap<>(),at=new IdentityHashMap<>();
-        Places(List<Unit> members,String shape,double[][] layout){this.members=members;this.shape=shape;this.layout=layout;}
     }
     public static final class Assignment {
         String order,formation;Vec3d target;float yaw;int enemy=-1;long issued;
@@ -226,6 +221,8 @@ public final class GravesAndGlory implements ModInitializer {
         long nextAttack;long abilityAt,windupUntil;Vec3d spellCenter;
         long nextPath;
         Vec3d lastPosition,lastGoal,deployed;
+        /** A wall troop's jump onto its slot on a rise (Tactics.settle, Tactics.hop): the slot (null: none), the tick it ends by, and whether it has left the ground. */
+        Vec3d hopTo;long hopUntil;boolean hopAirborne;
         int stuckTicks;
         /** The last sidestep of Tactics.walk (battle tick, where, and how many times in a row at that wedge before it), for Wedge; and the detour a unit stuck again is on (its point, the goal it was made for, and the tick it is dropped at); detourRetryAt: no new search before this tick (the last found nothing). */
         long wedgeTime,detourUntil,detourRetryAt;Vec3d wedgeAt,detour,detourFor;int wedgeRepeats;
@@ -843,25 +840,20 @@ public final class GravesAndGlory implements ModInitializer {
             for(int i=0;i<shield.length;i++){Unit m=group.get(i);shield[i]=walls(m,a.order);width[i]=m.mob.getWidth();if(m==u)at=i;}
             int columns=BattleMath.groupColumns(u.spec.group(),f.columns());
             double[][] layout=BattleMath.holdLayout(shield,width,f.spacing(),Spec.COMBATDISCIPLINE[0].shieldWallCell(),columns,f.wedge());
-            double[] place=a.order.equals("hold")&&u.mob.isAlive()?heldPlace(u,group,shield,layout,BattleMath.holdGrid(shield,columns,f.wedge()),f.id()+"/"+columns+"/"+f.wedge()):layout[at];
+            double[] place=a.order.equals("hold")&&u.mob.isAlive()?heldPlace(u,group,shield,layout,columns,f.wedge(),f.id()+"/"+columns+"/"+f.wedge()):layout[at];
             double side=place[0],back=BattleMath.roleDepth(u.spec.group())+place[1];
             double angle=Math.toRadians(a.yaw);return a.target.add(Math.cos(angle)*side+Math.sin(angle)*back,0,Math.sin(angle)*side-Math.cos(angle)*back);
         }
         /**
          * A held unit's place (animation rework §7.1): while its group's members, shape and layout stand, the place it took; when one falls or
-         * joins, or the wall's cell changes (its widest man fell), BattleMath.keepPlaces hands out the new places by file and rank (holdGrid, so a
-         * new cell keeps every man's file and rank and only the spacing changes): the man behind a fallen wall man steps up, the rank slides one
-         * place toward the gap, the rest stand. A new shape (formation or columns) re-forms in slot order.
+         * joins, or the wall's cell changes (its widest man fell), BattleMath.held rebuilds the places by file and rank (keepPlaces on holdGrid, so
+         * a new cell keeps every man's file and rank and only the spacing changes): the man behind a fallen wall man steps up, the rank slides one
+         * place toward the gap, the rest stand; several losses at once close one at a time. A new shape (formation or columns) re-forms in slot
+         * order. A Hold given again after another order, with the same members and shape, keeps the cached places.
          */
-        double[] heldPlace(Unit u,List<Unit> group,boolean[] shield,double[][] layout,double[][] grid,String shape){
-            Places kept=u.squad.places.get(u.spec.group());
-            if(kept==null||!kept.members.equals(group)||!kept.shape.equals(shape)||!Arrays.deepEquals(kept.layout,layout)){
-                double[][] prev=new double[group.size()][];
-                for(int i=0;i<prev.length;i++)prev[i]=kept==null||!kept.shape.equals(shape)?null:kept.grid.get(group.get(i));
-                int[] at=BattleMath.keepPlaces(prev,shield,grid);
-                Places next=new Places(List.copyOf(group),shape,layout);for(int i=0;i<at.length;i++){next.grid.put(group.get(i),grid[at[i]]);next.at.put(group.get(i),layout[at[i]]);}
-                u.squad.places.put(u.spec.group(),next);kept=next;
-            }
+        double[] heldPlace(Unit u,List<Unit> group,boolean[] shield,double[][] layout,int columns,boolean wedge,String shape){
+            var kept=BattleMath.held(u.squad.places.get(u.spec.group()),group,shape,layout,shield,columns,wedge);
+            u.squad.places.put(u.spec.group(),kept);
             return kept.at.get(u);
         }
         /** The cell the unit takes under its order: on Hold a shield troop's wall cell (BattleMath.shieldCell), any other its body's room (spacing). The bridge lanes use it (Tactics.route). */
@@ -939,10 +931,13 @@ public final class GravesAndGlory implements ModInitializer {
         /** Where a troop trained now appears, and the anchor it deploys at (null: the barracks). Chosen at spawn time, so a point or banner that was lost, contested or approached since the purchase sends the troop home. */
         record Deploy(Vec3d at,Anchor anchor){}
         Deploy deploy(Squad s,int slot){return deploy(s,slot,null);}
-        /** As deploy(s,slot), for a troop of this kind (null: any): a shield troop's ring place is its wall cell apart, not 2, so trained shield troops stand shoulder to shoulder (animation rework spec decision 7). */
+        /**
+         * As deploy(s,slot), for a troop of this kind (null: the banner's): its place in the ring of the squad's banner (BattleMath.deployRing),
+         * every slot at its own cell as the reinforce rows, so trained shield troops stand shoulder to shoulder at their wall cell (animation rework
+         * spec decision 7) and no troop of a mixed squad stands closer to another than their cells allow.
+         */
         Deploy deploy(Squad s,int slot,Spec.TroopsRow spec){
-            double cell=spec!=null&&ArmyMobs.tags(spec).contains("shield")?BattleMath.shieldCell(ArmyMobs.width(spec),Spec.COMBATDISCIPLINE[0].shieldWallCell()):2;
-            Vec3d home=base(s.team),ring=new Vec3d((slot%5-2)*cell,0,(slot/5-2)*cell),barracks=home.add(ring);
+            Vec3d home=base(s.team),ring=ringPlace(s,slot,spec),barracks=home.add(ring);
             if(!forwardReinforcement)return new Deploy(barracks,null);
             List<Anchor> anchors=reinforcementAnchors(s.team);if(anchors.isEmpty())return new Deploy(barracks,null);
             Vec3d target=storedAssignment(s,"infantry").target;double[] ax=new double[anchors.size()],az=new double[anchors.size()];
@@ -954,6 +949,13 @@ public final class GravesAndGlory implements ModInitializer {
             return new Deploy(new Vec3d(x,Arena.ground(gx,gz)+1,z),anchor);
         }
         Vec3d deployPoint(Squad s,int slot){return deploy(s,slot).at();}
+        /** A slot's offset in its squad's deploy ring (deploy): the banner's troops at their cells (BattleMath.deployCell), the slot's own troop (spec, null: the banner's) at the wider of its cell and the banner's. */
+        static Vec3d ringPlace(Squad s,int slot,Spec.TroopsRow spec){
+            double wall=Spec.COMBATDISCIPLINE[0].shieldWallCell();int size=Math.max(s.banner.size(),slot+1);boolean[] shield=new boolean[size];double[] cell=new double[size];
+            for(int i=0;i<s.banner.size();i++){var t=Campaign.troop(s.banner.get(i));if(t==null)continue;shield[i]=ArmyMobs.tags(t).contains("shield");cell[i]=BattleMath.deployCell(shield[i],ArmyMobs.width(t),wall);}
+            if(spec!=null){boolean own=ArmyMobs.tags(spec).contains("shield");shield[slot]=cell[slot]>0?shield[slot]&&own:own;cell[slot]=Math.max(cell[slot],BattleMath.deployCell(own,ArmyMobs.width(spec),wall));}
+            double[] at=BattleMath.deployRing(shield,cell,2)[slot];return new Vec3d(at[0],0,at[1]);
+        }
         /** The deploy notice after "<troop> trained: " (a null anchor means the barracks). */
         String deployNote(Squad s,Anchor anchor){return anchor==null?"deploying from barracks":"deploying at "+anchor.name();}
         void startRound(){

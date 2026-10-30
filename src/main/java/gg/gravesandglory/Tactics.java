@@ -79,6 +79,7 @@ final class Tactics {
     /** How far a troop picks its targets: the order's engage radius, or for a siege troop (tag siege) at least its weapon's reach (Entrench's bonus included), so artillery shoots what it can reach and not only what the order's leash allows. The sheet's order radii are untouched. */
     static double engageRadius(GravesAndGlory.Battle battle,GravesAndGlory.Unit u,double order){return u.tags.contains("siege")?Math.max(order,Abilities.range(battle,u)):order;}
     static void tick(GravesAndGlory.Battle battle,GravesAndGlory.Unit u,long time){
+        hop(u,time); // a wall troop jumping onto its slot on a rise is carried over the edge every tick of the jump
         if(time%10!=u.slot%10){brace(battle,u);return;} // the shield is decided every tick; everything else on the unit's 10-tick beat
         var mob=u.mob;var s=u.squad;var a=battle.assignment(u);
         Houses.sample(battle,u); // Entrench: has it stood still since its last beat
@@ -149,7 +150,7 @@ final class Tactics {
         }else{
             Vec3d goal=battle.formation(u);
             if(GravesAndGlory.Battle.horizontalDistance(mob.getPos(),goal)>N.arrivalTolerance()*N.arrivalTolerance())walk(battle,u,goal,time,order.moveMultiplier());
-            else{mob.getNavigation().stop();mob.setYaw(a.yaw);mob.setHeadYaw(a.yaw);mob.setBodyYaw(a.yaw);if(GravesAndGlory.Battle.walls(u,a.order))settle(mob,goal);}
+            else{mob.getNavigation().stop();mob.setYaw(a.yaw);mob.setHeadYaw(a.yaw);mob.setBodyYaw(a.yaw);if(GravesAndGlory.Battle.walls(u,a.order))settle(u,goal,time);}
         }
     }
     /**
@@ -157,29 +158,40 @@ final class Tactics {
      * left there would lean on its neighbour, and the walk stops short or overshoots by about that much. On the ground a velocity v carries a mob
      * v / (1 - 0.546) = 2.2 v before friction stops it, so 0.454 of the way is the whole way, and it stops on its slot. A mob in the air is left.
      * A slot on a rise one block high (onRise) is jumped onto instead: the level push would only press the troop against the face of the rise.
+     * The jump is straight up (its jump control), and hop carries it over the edge onto its slot while it is in the air; it keeps facing the
+     * order's way the whole time (the beat set its yaw), so it neither stares sideways nor drifts forward on its own air control.
      */
-    static void settle(MobEntity mob,Vec3d goal){
-        Vec3d delta=goal.subtract(mob.getPos()).multiply(1,0,1);
+    static void settle(GravesAndGlory.Unit u,Vec3d goal,long time){
+        var mob=u.mob;Vec3d delta=goal.subtract(mob.getPos()).multiply(1,0,1);
         if(!mob.isOnGround()||delta.lengthSquared()<=SETTLED*SETTLED)return;
-        if(onRise(mob,goal)){
-            // its move control jumps it (a target above its step height and this near is a jump) and carries it on over the edge while in the air; it faces its slot for the hop, and the next beat turns it back
-            mob.setYaw((float)(MathHelper.atan2(delta.z,delta.x)*MathHelper.DEGREES_PER_RADIAN)-90f);
-            mob.getMoveControl().moveTo(goal.x,Math.floor(mob.getY()+.1)+1,goal.z,1);
-            return;
-        }
+        if(onRise(mob,goal)){mob.getJumpControl().setActive();u.hopTo=goal;u.hopUntil=time+HOP_TICKS;u.hopAirborne=false;hops++;return;}
         mob.setVelocity(delta.x*.454,mob.getVelocity().y,delta.z*.454);
     }
     /**
-     * The troop's slot reaches over the edge of a rise one block high: its body on the slot, at the troop's own level, would stand in the rise
-     * (higher than a step climbs), and one block up it has room, as it has above itself for the jump. A slot 0.7 wide on ground with a step in it
-     * is stood on from the top of the rise; a troop that comes to it along the lower ground stops against the face, as much short of its slot as
-     * its body reaches over the edge (0.15 for a slot 0.15 from it), inside the arrival tolerance, so walk, which jumps, is not called again. Its
-     * neighbour in the rank, pushed off it, stays short of his own slot too (HoldLineChecks: a Squire 0.15 short, the Marshal beside him 0.165).
+     * Every tick of a wall troop's jump onto its slot (settle): its level velocity is HOP_PULL of the way to the slot, so once its feet clear the
+     * edge it comes down on the slot (the next beat's settle finishes the last of it). The jump ends when it lands after being in the air, after
+     * HOP_TICKS, or when it walks off (to fight, or on a new order).
+     */
+    static void hop(GravesAndGlory.Unit u,long time){
+        if(u.hopTo==null)return;var mob=u.mob;
+        if(!mob.isAlive()||time>u.hopUntil||!mob.getNavigation().isIdle()||u.hopAirborne&&mob.isOnGround()){u.hopTo=null;return;}
+        if(!mob.isOnGround())u.hopAirborne=true;
+        Vec3d delta=u.hopTo.subtract(mob.getPos()).multiply(1,0,1);
+        mob.setVelocity(delta.x*HOP_PULL,mob.getVelocity().y,delta.z*HOP_PULL);
+    }
+    /** The share of the way to its slot a jumping wall troop is carried each tick, how long a jump may last, and how many jumps settle started (HoldLineChecks reads it). */
+    static final double HOP_PULL=.5;static final int HOP_TICKS=20;static int hops;
+    /**
+     * The troop's slot reaches over the edge of a rise one block high (StepHop.onRise): its body on the slot, at the troop's own level, would
+     * stand in the rise (higher than a step climbs), and one block up it has room, as it has above itself for the jump. The level is the troop's
+     * own Y, not the block it is in, so soul sand or mud underfoot is not a rise. A slot 0.7 wide on ground with a step in it is stood on from the
+     * top of the rise; a troop that comes to it along the lower ground stops against the face, as much short of its slot as its body reaches over
+     * the edge (0.15 for a slot 0.15 from it), inside the arrival tolerance, so walk, which jumps, is not called again. Its neighbour in the rank,
+     * pushed off it, stays short of his own slot too (HoldLineChecks: a Squire 0.15 short, the Marshal beside him 0.165).
      */
     static boolean onRise(MobEntity mob,Vec3d goal){
-        var w=mob.getWorld();Box body=mob.getBoundingBox();double floor=Math.floor(mob.getY()+.1);
-        Box there=body.offset(goal.x-mob.getX(),floor-mob.getY(),goal.z-mob.getZ());
-        return !w.isSpaceEmpty(mob,there.offset(0,mob.getStepHeight(),0))&&w.isSpaceEmpty(mob,there.offset(0,1,0))&&w.isSpaceEmpty(mob,body.offset(0,floor+1-mob.getY(),0));
+        var w=mob.getWorld();
+        return StepHop.onRise(mob.getX(),mob.getY(),mob.getZ(),mob.getWidth()/2,mob.getHeight(),goal.x,goal.z,mob.getStepHeight(),(x0,y0,z0,x1,y1,z1)->w.isSpaceEmpty(mob,new Box(x0,y0,z0,x1,y1,z1)));
     }
     /** How near its slot a wall troop must stand to be left alone by settle. */
     static final double SETTLED=.03;
@@ -244,11 +256,11 @@ final class Tactics {
         });
         if(c==null)return false;
         if(TRACE_HOPS)System.out.println("[Graves and Glory] step hop of slot "+u.slot+" from ("+String.format("%.1f,%.1f,%.1f",mob.getX(),mob.getY(),mob.getZ())+") to ("+c[0]+","+c[1]+","+c[2]+") on its way to ("+String.format("%.1f,%.1f",goal.x,goal.z)+")");
-        // on the point of the step nearest the waypoint, not its middle, so two wall neighbours that hop onto one block land up to 1 - width apart
-        // (0.4 for a 0.6-wide troop, their boxes still overlapping by 0.2 until settle walks them back to their places); a body a block wide or wider
-        // has no room to slide on the block and takes its middle
-        double half=mob.getWidth()/2;double x=half>=0.5?c[0]+0.5:net.minecraft.util.math.MathHelper.clamp(goal.x,c[0]+half,c[0]+1-half),z=half>=0.5?c[2]+0.5:net.minecraft.util.math.MathHelper.clamp(goal.z,c[2]+half,c[2]+1-half);
-        mob.refreshPositionAndAngles(x,c[1],z,mob.getYaw(),mob.getPitch());mob.setVelocity(Vec3d.ZERO);stepHops++;
+        // on the point of the step nearest the waypoint, not its middle (StepHop.landing), so two wall neighbours that hop onto one block land up to
+        // 1 - width apart (0.4 for a 0.6-wide troop, their boxes still overlapping by 0.2 until settle walks them back to their places); a body a
+        // block wide or wider has no room to slide on the block and takes its middle
+        double[] land=StepHop.landing(mob.getWidth(),c[0],c[2],goal.x,goal.z);
+        mob.refreshPositionAndAngles(land[0],c[1],land[1],mob.getYaw(),mob.getPitch());mob.setVelocity(Vec3d.ZERO);stepHops++;
         PINS.remove(u);
         return true;
     }

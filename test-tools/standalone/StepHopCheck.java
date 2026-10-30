@@ -18,6 +18,20 @@ public final class StepHopCheck {
   /** the step: every cell at x <= 9 is one block higher (a block at y 70) over z 5..15 */
   static World step(){World w=new World();for(int x=0;x<=9;x++)for(int z=5;z<=15;z++)w.add(x,70,z);return w;}
  }
+ /** Columns of ground: each block column solid up to its top (the height a unit on it stands at) (default `ground`), and optionally a ceiling from some height up; a box is empty when it is above every top under it and under every ceiling over it. */
+ static final class Heights implements StepHop.Room{
+  final double ground;final java.util.Map<String,Double> top=new java.util.HashMap<>(),roof=new java.util.HashMap<>();
+  Heights(double ground){this.ground=ground;}
+  Heights set(int x,int z,double y){top.put(x+","+z,y);return this;}
+  Heights ceiling(int x,int z,double y){roof.put(x+","+z,y);return this;}
+  public boolean empty(double x0,double y0,double z0,double x1,double y1,double z1){
+   for(int x=(int)Math.floor(x0);x<=(int)Math.floor(x1-1e-9);x++)for(int z=(int)Math.floor(z0);z<=(int)Math.floor(z1-1e-9);z++){
+    if(y0<top.getOrDefault(x+","+z,ground)-1e-7)return false;
+    Double r=roof.get(x+","+z);if(r!=null&&y1>r+1e-7)return false;
+   }
+   return true;
+  }
+ }
  public static void main(String[] args){
   // the units found stuck: at the foot of a step one block up to the west, going west
   var w=World.step();
@@ -52,6 +66,30 @@ public final class StepHopCheck {
   }
   check(wrong==0,"Every hop of the grid of goals is to a cell of the step that is nearer the goal: "+wrong+" are not");
   check(taken>5&&refused>5,"The control can fail: of "+(taken+refused)+" goals "+taken+" are taken and "+refused+" refused");
+  // where on the step cell a hopping unit lands (Tactics.stepHop): a narrow body at the point nearest its waypoint, a body a block wide or wider in the middle (M3)
+  double[] l=StepHop.landing(0.6,9,10,0.5,10.5);
+  check(Math.abs(l[0]-9.3)<1e-9&&Math.abs(l[1]-10.5)<1e-9,"A 0.6-wide unit lands at the edge of the cell nearest its waypoint, its body inside the cell: "+l[0]+","+l[1]);
+  l=StepHop.landing(1.4,9,10,0.5,10.5);
+  check(l[0]==9.5&&l[1]==10.5,"A golem (1.4 wide) lands in the middle of the cell, never off it toward the waypoint: "+l[0]+","+l[1]);
+  l=StepHop.landing(1.0,9,10,0.5,30.5);
+  check(l[0]==9.5&&l[1]==10.5,"A body a block wide has no room to slide on the block and takes its middle");
+  l=StepHop.landing(0.6,9,10,9.45,10.6);
+  check(Math.abs(l[0]-9.45)<1e-9&&Math.abs(l[1]-10.6)<1e-9,"A waypoint on the cell is landed on as it is");
+  // a wall troop's slot on a rise one block high (Tactics.onRise), read from the troop's own level, not the block it is in (Minor 1)
+  var flat=new Heights(70.0);
+  check(!StepHop.onRise(10.5,70.0,10.5,0.3,1.95,9.85,10.5,0.6,flat),"On flat ground a slot is not on a rise");
+  var sand=new Heights(69.875);
+  check(!StepHop.onRise(10.5,69.875,10.5,0.3,1.95,9.85,10.5,0.6,sand),"On flat soul sand or mud (the floor 0.125 under a block top) a slot is not on a rise");
+  var rise=new Heights(70.0).set(9,10,71.0);
+  check(StepHop.onRise(10.5,70.0,10.5,0.3,1.95,9.85,10.5,0.6,rise),"A slot reaching over the edge of a rise one block high is on it");
+  var slab=new Heights(70.0).set(9,10,70.5);
+  check(!StepHop.onRise(10.5,70.0,10.5,0.3,1.95,9.85,10.5,0.6,slab),"A slab is a step the walk climbs, not a rise");
+  var two=new Heights(70.0).set(9,10,72.0);
+  check(!StepHop.onRise(10.5,70.0,10.5,0.3,1.95,9.85,10.5,0.6,two),"A rise of two blocks is not jumped");
+  var sandRise=new Heights(69.875).set(9,10,70.875);
+  check(StepHop.onRise(10.5,69.875,10.5,0.3,1.95,9.85,10.5,0.6,sandRise),"Soul sand a block higher, from soul sand, is a rise");
+  var roof=new Heights(70.0).set(9,10,71.0).ceiling(10,10,72.5);
+  check(!StepHop.onRise(10.5,70.0,10.5,0.3,1.95,9.85,10.5,0.6,roof),"With no room to jump above the troop it does not jump");
   System.out.println("PASS "+count+" step hop scenarios");
  }
 }

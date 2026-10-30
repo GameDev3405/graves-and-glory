@@ -16,14 +16,62 @@ public final class BattleMathCheck {
         return n;
     }
     /** Whether every unit that moved went at most one cell sideways and one rank (grid places), and no two of a rank passed each other. */
-    static boolean slides(double[][] prev, double[][] grid, int[] at) {
+    static boolean slides(double[][] prev, double[][] grid, int[] at) { return slides(prev, grid, at, 1); }
+    /** As slides, for `most` places emptied at once: each man at most `most` cells sideways and `most` ranks (one per loss), and still nobody passes anybody. */
+    static boolean slides(double[][] prev, double[][] grid, int[] at, int most) {
         for (int i = 0; i < at.length; i++) {
             if (prev[i] == null) continue;
-            if (Math.abs(grid[at[i]][0] - prev[i][0]) > 1 + 1e-9 || Math.abs(grid[at[i]][1] - prev[i][1]) > 1 + 1e-9) return false;
+            if (Math.abs(grid[at[i]][0] - prev[i][0]) > most + 1e-9 || Math.abs(grid[at[i]][1] - prev[i][1]) > most + 1e-9) return false;
             for (int j = 0; j < at.length; j++)
                 if (prev[j] != null && Math.abs(grid[at[i]][1] - grid[at[j]][1]) < 1e-9 && (grid[at[i]][0] - grid[at[j]][0]) * (prev[i][0] - prev[j][0]) < -1e-12) return false;
         }
         return true;
+    }
+    /**
+     * `total` shield men in `columns` columns (holdGrid's places, in its order), the men at `dead` fall in one refresh: keepPlaces over the
+     * survivors. The original indices of the men who took another place, in order, or a note of what broke (not a permutation, or a man who
+     * went further than one place per loss, or passed another).
+     */
+    static String movers(int total, int columns, int... dead) {
+        boolean[] all = new boolean[total]; java.util.Arrays.fill(all, true);
+        double[][] g = BattleMath.holdGrid(all, columns, false);
+        java.util.Set<Integer> gone = new java.util.HashSet<>(); for (int d : dead) gone.add(d);
+        int n = total - gone.size(); double[][] prev = new double[n][]; int[] who = new int[n];
+        for (int i = 0, j = 0; i < total; i++) if (!gone.contains(i)) {prev[j] = g[i]; who[j++] = i;}
+        boolean[] s = new boolean[n]; java.util.Arrays.fill(s, true);
+        double[][] gn = BattleMath.holdGrid(s, columns, false); int[] at = BattleMath.keepPlaces(prev, s, columns, false);
+        if (!permutation(at)) return "not a permutation";
+        if (!slides(prev, gn, at, gone.size())) return "a long step or a crossing";
+        java.util.List<Integer> m = new java.util.ArrayList<>();
+        for (int j = 0; j < n; j++) if (Math.hypot(gn[at[j]][0] - prev[j][0], gn[at[j]][1] - prev[j][1]) > 1e-9) m.add(who[j]);
+        return m.toString();
+    }
+    /** The grid place of each man after the losses one refresh apart (keepPlaces with one loss, then the next against its result), by original index; null for the fallen. */
+    static double[][] oneByOne(int total, int columns, int... dead) {
+        boolean[] all = new boolean[total]; java.util.Arrays.fill(all, true);
+        double[][] place = BattleMath.holdGrid(all, columns, false).clone(); java.util.Set<Integer> gone = new java.util.HashSet<>();
+        for (int d : dead) {
+            gone.add(d); java.util.List<Integer> alive = new java.util.ArrayList<>();
+            for (int i = 0; i < total; i++) if (!gone.contains(i)) alive.add(i);
+            double[][] prev = new double[alive.size()][]; for (int j = 0; j < prev.length; j++) prev[j] = place[alive.get(j)];
+            boolean[] s = new boolean[prev.length]; java.util.Arrays.fill(s, true);
+            double[][] gn = BattleMath.holdGrid(s, columns, false); int[] at = BattleMath.keepPlaces(prev, s, columns, false);
+            if (!slides(prev, gn, at, 1)) throw new AssertionError("a single loss of " + d + " slides more than one place");
+            java.util.Arrays.fill(place, null); for (int j = 0; j < prev.length; j++) place[alive.get(j)] = gn[at[j]];
+        }
+        return place;
+    }
+    /** The grid place of each man (by original index; null for the fallen) after the losses in one refresh. */
+    static double[][] atOnce(int total, int columns, int... dead) {
+        boolean[] all = new boolean[total]; java.util.Arrays.fill(all, true);
+        double[][] g = BattleMath.holdGrid(all, columns, false), place = new double[total][];
+        java.util.Set<Integer> gone = new java.util.HashSet<>(); for (int d : dead) gone.add(d);
+        java.util.List<Integer> alive = new java.util.ArrayList<>(); for (int i = 0; i < total; i++) if (!gone.contains(i)) alive.add(i);
+        double[][] prev = new double[alive.size()][]; for (int j = 0; j < prev.length; j++) prev[j] = g[alive.get(j)];
+        boolean[] s = new boolean[prev.length]; java.util.Arrays.fill(s, true);
+        double[][] gn = BattleMath.holdGrid(s, columns, false); int[] at = BattleMath.keepPlaces(prev, s, columns, false);
+        for (int j = 0; j < prev.length; j++) place[alive.get(j)] = gn[at[j]];
+        return place;
     }
     static boolean permutation(int[] at) {
         boolean[] seen = new boolean[at.length];
@@ -88,38 +136,77 @@ public final class BattleMathCheck {
         check(scaled, "holdGrid is holdLayout in cells: side in cells, rank from 0");
         double[][] lost = new double[12][];
         for (int i = 0, j = 0; i < 13; i++) if (i != 5) lost[j++] = g13[i];
-        int[] after = BattleMath.keepPlaces(lost, s12, g12);
+        int[] after = BattleMath.keepPlaces(lost, s12, 10, false);
         check(permutation(after) && moved(lost, g12, after) == 2 && slides(lost, g12, after) && Math.abs(g12[after[9]][0] - g13[5][0]) < 1e-9 && Math.abs(g12[after[9]][1]) < 1e-9, "a front man falls before a rear man: the man behind him steps up, the next of the rank closes behind; nobody else moves");
         double[][] lost4 = new double[12][];
         for (int i = 0, j = 0; i < 13; i++) if (i != 4) lost4[j++] = g13[i];
-        int[] after4 = BattleMath.keepPlaces(lost4, s12, g12);
+        int[] after4 = BattleMath.keepPlaces(lost4, s12, 10, false);
         check(permutation(after4) && moved(lost4, g12, after4) == 3 && slides(lost4, g12, after4) && Math.abs(g12[after4[11]][0] - g13[5][0]) < 1e-9 && Math.abs(g12[after4[9]][0] - g13[4][0]) < 1e-9 && Math.abs(g12[after4[10]][1]) < 1e-9,
             "a front man falls before the flank of the rear rank: the man behind steps up, the rank slides one place toward the gap (three short moves, nobody passes anybody)");
         double[][] g5 = BattleMath.holdGrid(s5, 5, false), g4 = BattleMath.holdGrid(s4, 5, false);
         double[][] lostOne = {g5[0], g5[1], g5[3], g5[4]};
-        int[] one4 = BattleMath.keepPlaces(lostOne, s4, g4);
+        int[] one4 = BattleMath.keepPlaces(lostOne, s4, 5, false);
         check(permutation(one4) && moved(lostOne, g4, one4) == 2 && slides(lostOne, g4, one4) && Math.abs(g4[one4[1]][0] - g5[2][0]) < 1e-9 && Math.abs(g4[one4[0]][0] - g5[1][0]) < 1e-9, "one rank, its middle man falls: the rank slides one place in from the side whose flank place is gone, the rest stand");
         double[][] grown = java.util.Arrays.copyOf(g12, 13);
-        int[] arrival = BattleMath.keepPlaces(grown, s13, g13);
+        int[] arrival = BattleMath.keepPlaces(grown, s13, 10, false);
         check(permutation(arrival) && moved(grown, g13, arrival) == 0, "a man joins: everyone keeps his place, he takes the new one");
         double[][] fresh = new double[12][];
         for (int i = 0; i < 12; i++) fresh[i] = new double[]{100 + i, 100};
-        int[] reformed = BattleMath.keepPlaces(fresh, s12, g12);
+        int[] reformed = BattleMath.keepPlaces(fresh, s12, 10, false);
         boolean identity = true;
         for (int i = 0; i < 12; i++) identity &= reformed[i] == i;
         check(identity, "a new order or shape (no place kept): the units take the places in slot order");
-        // the widest wall man falls and the wall's cell narrows (1.0 to 0.7): every man keeps his file and rank, only the spacing changes
-        double[] wide = w13.clone(); wide[12] = 0.9;
-        double[][] wideLayout = BattleMath.holdLayout(s13, wide, 1.8, 0.7, 10, false);
-        int[] narrowed = BattleMath.keepPlaces(java.util.Arrays.copyOf(g13, 12), s12, g12);
-        boolean kept = permutation(narrowed) && Math.abs(wideLayout[0][1] - 1.0) < 1e-9;
-        for (int i = 0; i < 12; i++) kept &= Math.abs(l12[narrowed[i]][0] - wideLayout[i][0] * 0.7) < 1e-9 && Math.abs(l12[narrowed[i]][1] - wideLayout[i][1] * 0.7) < 1e-9;
-        check(kept, "the widest wall man (at the rear) falls and the cell narrows: nobody changes file or rank, the wall closes in place");
+        // several places empty in one refresh (an AoE, or deaths while the group fought): the holes are filled one at a time, each a single-loss slide against the last (R17)
+        check(movers(13, 10, 1, 2).equals("[3, 4, 10, 11, 12]"), "two adjacent front men fall, no one behind them: the rank slides two places in from the rear rank's side, the rear men step up and close, nobody passes anybody: " + movers(13, 10, 1, 2));
+        check(movers(13, 10, 1, 8).equals("[2, 3, 4, 6, 7, 11, 12]"), "two front men fall at either flank: each side of the rank slides one place out and a rear man steps up behind each slide; the rear middle man stands: " + movers(13, 10, 1, 8));
+        check(movers(13, 10, 4, 10).equals("[11, 12]"), "a front man and the rear man beside his file fall: the man behind steps up, the rear flank closes one place; nobody else moves: " + movers(13, 10, 4, 10));
+        check(movers(13, 10, 1, 2, 3).equals("[4, 5, 10, 11, 12]"), "three adjacent front men fall: the rank slides three places in, the three rear men step into it, nobody passes anybody: " + movers(13, 10, 1, 2, 3));
+        check(movers(13, 10, 5).equals("[10, 12]") && movers(13, 10, 4).equals("[10, 11, 12]"), "one loss through the same call: two and three short moves, as before");
+        boolean composed = true;
+        for (int[] d : new int[][]{{2, 1}, {8, 1}, {10, 4}, {3, 2, 1}}) {
+            double[][] once = atOnce(13, 10, d), step = oneByOne(13, 10, d);
+            for (int i = 0; i < 13; i++) composed &= once[i] == null ? step[i] == null : step[i] != null && Math.abs(once[i][0] - step[i][0]) < 1e-9 && Math.abs(once[i][1] - step[i][1]) < 1e-9;
+        }
+        check(composed, "the losses in one refresh end where the same losses one refresh apart end (the hole nearest the flank place that goes first): successive single-loss slides");
+        // heldPlace's rebuild (BattleMath.held, which Battle.heldPlace calls): the cache, a cell change, a death and a new shape
+        java.util.List<String> men13 = new java.util.ArrayList<>(); for (int i = 0; i < 13; i++) men13.add("m" + i);
         double[] wideFront = w13.clone(); wideFront[4] = 0.9;
+        BattleMath.Held<String> h13 = BattleMath.held(null, men13, "line/10/false", BattleMath.holdLayout(s13, wideFront, 1.8, 0.7, 10, false), s13, 10, false);
+        check(h13 == BattleMath.held(h13, new java.util.ArrayList<>(men13), "line/10/false", BattleMath.holdLayout(s13, wideFront, 1.8, 0.7, 10, false), s13, 10, false) && Math.abs(h13.at.get("m0")[0] + 4.5) < 1e-9, "the same members, shape and layout keep the cached places; a 0.9-wide man makes the wall's cell 1.0");
+        java.util.List<String> men12 = new java.util.ArrayList<>(men13); men12.remove("m4");
         double[] narrow = new double[12]; java.util.Arrays.fill(narrow, .6);
-        double[][] narrowLayout = BattleMath.holdLayout(s12, narrow, 1.8, 0.7, 10, false);
-        check(Math.abs(BattleMath.holdLayout(s13, wideFront, 1.8, 0.7, 10, false)[0][1] - 1.0) < 1e-9 && java.util.Arrays.deepEquals(narrowLayout, l12) && moved(lost4, g12, after4) == 3,
-            "the widest wall man (in the front) falls and the cell narrows: the same three short moves as at one cell, by file and rank");
+        BattleMath.Held<String> h12 = BattleMath.held(h13, men12, "line/10/false", BattleMath.holdLayout(s12, narrow, 1.8, 0.7, 10, false), s12, 10, false);
+        java.util.List<String> filed = new java.util.ArrayList<>();
+        for (String m : men12) if (!java.util.Arrays.equals(h12.grid.get(m), h13.grid.get(m))) filed.add(m);
+        check(h12 != h13 && filed.equals(java.util.List.of("m10", "m11", "m12")) && Math.abs(h12.at.get("m0")[0] + 4.5 * 0.7) < 1e-9 && Math.abs(h12.at.get("m11")[0] + 0.35) < 1e-9 && Math.abs(h12.at.get("m11")[1] - 0.7) < 1e-9,
+            "the widest wall man (in the front) falls and the cell narrows from 1.0 to 0.7: the places are rebuilt from the kept files and ranks (not the blocks), the same three short moves, the rest keep file and rank at the new spacing: " + filed);
+        BattleMath.Held<String> wider = BattleMath.held(h12, men12, "line/10/false", BattleMath.holdLayout(s12, narrow, 1.8, 0.8, 10, false), s12, 10, false);
+        boolean sameFiles = wider != h12;
+        for (String m : men12) sameFiles &= java.util.Arrays.equals(wider.grid.get(m), h12.grid.get(m)) && Math.abs(wider.at.get(m)[0] - h12.grid.get(m)[0] * 0.8) < 1e-9;
+        check(sameFiles, "only the layout changes (the wall cell 0.7 to 0.8): rebuilt, every man keeps his file and rank, the spacing follows");
+        BattleMath.Held<String> block = BattleMath.held(h12, men12, "block/5/false", BattleMath.holdLayout(s12, narrow, 1.8, 0.7, 5, false), s12, 5, false);
+        double[][] g5x12 = BattleMath.holdGrid(s12, 5, false); boolean slotOrder = true;
+        for (int i = 0; i < 12; i++) slotOrder &= java.util.Arrays.equals(block.grid.get(men12.get(i)), g5x12[i]);
+        check(slotOrder, "a new shape re-forms in slot order");
+        // the deploy ring (Battle.deploy) from every slot's cell, as the reinforce rows: Hearthguard (0.6 wide, shield: 0.7) and Brassjaw (1.4: 2) never overlap
+        String ringBanner = "HHBHH" + "HHHHH" + "BH.BH";
+        int ringSize = ringBanner.length(); boolean[] ringShield = new boolean[ringSize]; double[] ringCell = new double[ringSize], ringWidth = new double[ringSize];
+        for (int i = 0; i < ringSize; i++) {char k = ringBanner.charAt(i); if (k == '.') continue; ringShield[i] = k == 'H'; ringWidth[i] = k == 'H' ? .6 : 1.4; ringCell[i] = BattleMath.deployCell(ringShield[i], ringWidth[i], 0.7);}
+        double[][] ring = BattleMath.deployRing(ringShield, ringCell, 2);
+        double worstRing = 9; String worstPair = "none";
+        for (int i = 0; i < ringSize; i++) for (int j = i + 1; j < ringSize; j++) {
+            if (ringCell[i] <= 0 || ringCell[j] <= 0) continue;
+            double slack = Math.hypot(ring[i][0] - ring[j][0], ring[i][1] - ring[j][1]) - (ringWidth[i] / 2 + ringWidth[j] / 2 + 0.1);
+            if (slack < worstRing) {worstRing = slack; worstPair = i + " and " + j;}
+        }
+        check(ringCell[0] == 0.7 && ringCell[2] == 2 && worstRing >= -1e-9, "a mixed Hearthguard and Brassjaw banner: every two deploy points stand at least their half widths and 0.1 apart (least slack " + worstRing + ", slots " + worstPair + ")");
+        double[] twos = new double[12]; java.util.Arrays.fill(twos, 2);
+        double[][] oldRing = BattleMath.deployRing(new boolean[12], twos, 2); boolean asBefore = oldRing.length >= 12;
+        for (int i = 0; i < 12; i++) asBefore &= Math.abs(oldRing[i][0] - (i % 5 - 2) * 2) < 1e-9 && Math.abs(oldRing[i][1] - (i / 5 - 2) * 2) < 1e-9;
+        check(asBefore, "no shield troop: the old ring, 2 apart, centred on slot 12");
+        double[] sevens = new double[10]; java.util.Arrays.fill(sevens, .7); boolean[] tens = new boolean[10]; java.util.Arrays.fill(tens, true);
+        double[][] wallRing = BattleMath.deployRing(tens, sevens, 2);
+        check(Math.abs(wallRing[1][0] - wallRing[0][0] - 0.7) < 1e-9 && Math.abs(wallRing[5][1] - wallRing[0][1] - 0.7) < 1e-9 && Math.abs(wallRing[5][0] - wallRing[0][0]) < 1e-9, "two rows of shield troops: shoulder to shoulder, their cell apart, one deep wall");
         double[] depths = BattleMath.deployDepths(new boolean[]{true,true,false,true,true}, new double[]{.7,.7,0,.7,1.0}, 3);
         check(depths[0] == 0 && Math.abs(depths[1] - 0.7) < 1e-9 && Math.abs(depths[2] - 3.7) < 1e-9 && Math.abs(depths[3] - 6.7) < 1e-9 && Math.abs(depths[4] - 7.7) < 1e-9, "deploy rows: shield rows a cell apart (the wider of the two), any other row 3 back");
         double[] row = BattleMath.deployRow(new double[]{2.5,2.5,2.5,2.5,2.5}), wall = BattleMath.deployRow(new double[]{.7,.7,.7,2.5,2.5});

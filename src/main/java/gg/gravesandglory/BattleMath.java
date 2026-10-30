@@ -1,6 +1,10 @@
 package gg.gravesandglory;
 
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 /** Pure battle arithmetic shared by the server, the HUD and standalone checks. No Minecraft types. */
 public final class BattleMath {
@@ -90,15 +94,20 @@ public final class BattleMath {
     public static double[][] holdGrid(boolean[] shield, int columns, boolean wedge) {
         int shields = 0;
         for (boolean wall : shield) if (wall) shields++;
-        double[][] grid = new double[shield.length][];
-        int s = 0, o = 0, others = shield.length - shields; boolean centre = shields > 0 && !wedge; int[] order = centreOrder(columns);
-        for (int i = 0; i < shield.length; i++) {
-            boolean wall = shield[i]; int index = wall ? s++ : o++;
-            int count = wall ? shields : others, inRank = Math.min(columns, count - index / columns * columns);
+        boolean centre = shields > 0 && !wedge;
+        double[][] walls = kindGrid(shields, columns, wedge, centre), rest = kindGrid(shield.length - shields, columns, wedge, centre), grid = new double[shield.length][];
+        for (int i = 0, s = 0, o = 0; i < shield.length; i++) grid[i] = shield[i] ? walls[s++] : rest[o++];
+        return grid;
+    }
+    /** The places of one kind (the wall's, or the rest's) of holdGrid, for this many units of it: rows of `columns` from rank 0, the partial rank centred when `centre` (a wall, not the wedge), or the wedge's ranks. */
+    static double[][] kindGrid(int count, int columns, boolean wedge, boolean centre) {
+        double[][] grid = new double[Math.max(count, 0)][]; int[] order = centreOrder(columns);
+        for (int index = 0; index < grid.length; index++) {
+            int inRank = Math.min(columns, count - index / columns * columns);
             int column = centre && inRank < columns ? order[index % columns] : index % columns;
             double side = column - (columns - 1) / 2.0; int rank = index / columns;
             if (wedge) { rank = (int) Math.floor(Math.sqrt(index)); side = index - rank * rank - rank; }
-            grid[i] = new double[]{side, rank};
+            grid[index] = new double[]{side, rank};
         }
         return grid;
     }
@@ -112,16 +121,83 @@ public final class BattleMath {
         return out;
     }
     /**
-     * Which of a held group's places each unit takes (Battle.formation): an index into `places` (one place per unit, place j of the kind of unit
-     * j; Battle.heldPlace passes holdGrid's, so a change of cell keeps every file and rank). prev[i] is unit i's place the last time (null: none,
-     * a new unit). A wall that loses a man closes the gap as a wall closes ranks: every unit whose place is still in the layout keeps it; a place
-     * left empty, front first, takes the unit directly behind it in its file (of its kind), whose own place is then empty in turn; with none
-     * behind it, the rank slides one place toward the man who has to come in (a unit left without a place, the nearest: the one whose outermost
-     * place of the last rank is gone, or a newcomer; with none of those, the nearest of the rearmost rank): the neighbour on that side steps into
-     * the gap, and so on until that man steps into the last. So every man moves at most one place sideways or one rank up, nobody passes
-     * anybody, and the men beyond the sliding stretch stand. When no unit keeps a place (a new order, a new shape) the units take the places in order.
+     * Which of a held group's places each unit takes (Battle.heldPlace): an index into holdGrid(shield, columns, wedge), one place per unit, place
+     * j of the kind of unit j. prev[i] is unit i's holdGrid place the last time (null: none, a new unit); a change of cell keeps every file and rank.
+     * A wall that loses a man closes the gap as a wall closes ranks: every unit whose place is still in the layout keeps it; a place left empty,
+     * front first, takes the unit directly behind it in its file (of its kind), whose own place is then empty in turn; with none behind it, the
+     * rank slides one place toward the man who has to come in (the unit whose place is the one the smaller layout drops; with none, the nearest
+     * of the rearmost rank): the neighbour on that side steps into the gap, and so on until that man steps into the last. So every man moves at
+     * most one place sideways or one rank up, nobody passes anybody, and the men beyond the sliding stretch stand (ruling R17).
+     * Several places left empty at once (an area blow, or losses while the group was on another order and kept its cached places) are filled one
+     * at a time, each a single loss against the result of the last: the layout the men stood in is found (the smallest that holds every kept
+     * place), and while it is larger than the group, the empty place nearest the place the next smaller layout drops is the one that goes, and
+     * the rest close up as for one loss. A man moves at most one place per loss. New units then take the places left, as for one loss.
+     * When no unit stands on a place of the new layout (a new shape: Battle.heldPlace hands no last places) the units take the places in order.
      */
-    public static int[] keepPlaces(double[][] prev, boolean[] shield, double[][] places) {
+    public static int[] keepPlaces(double[][] prev, boolean[] shield, int columns, boolean wedge) {
+        int n = shield.length, shields = 0; double[][] places = holdGrid(shield, columns, wedge); int[] at = new int[n]; boolean any = false;
+        for (boolean wall : shield) if (wall) shields++;
+        for (int i = 0; i < n && !any; i++) if (prev[i] != null) for (int j = 0; j < n; j++) if (shield[j] == shield[i] && same(places[j], prev[i])) { any = true; break; }
+        if (!any) { for (int i = 0; i < n; i++) at[i] = i; return at; }
+        for (boolean kind : new boolean[]{true, false}) {
+            List<Integer> mine = new ArrayList<>();
+            for (int i = 0; i < n; i++) if (shield[i] == kind) mine.add(i);
+            double[][] last = new double[mine.size()][];
+            for (int k = 0; k < last.length; k++) last[k] = prev[mine.get(k)];
+            int[] got = closeUp(last, columns, wedge, shields > 0 && !wedge);
+            for (int k = 0; k < got.length; k++) at[mine.get(k)] = mine.get(got[k]);
+        }
+        return at;
+    }
+    /** keepPlaces for the units of one kind: last[k] is unit k's place the last time (null: new); an index into kindGrid(last.length) for each. */
+    private static int[] closeUp(double[][] last, int columns, boolean wedge, boolean centre) {
+        int m = last.length, known = 0;
+        for (double[] p : last) if (p != null) known++;
+        double[][] now = kindGrid(m, columns, wedge, centre);
+        int old = -1;
+        for (int c = Math.max(known, 1); known > 0 && c <= known + 64 && old < 0; c++) if (holds(kindGrid(c, columns, wedge, centre), last)) old = c;
+        if (old <= m) return slide(last, now);
+        // the layout they stood in: its places nobody stands on are the places left empty
+        double[][] stood = kindGrid(old, columns, wedge, centre); List<double[]> empty = new ArrayList<>();
+        for (double[] place : stood) { boolean held = false; for (double[] p : last) held |= p != null && same(p, place); if (!held) empty.add(place); }
+        double[][] here = last.clone();
+        for (int c = old; c > m; c--) {
+            double[][] smaller = kindGrid(c - 1, columns, wedge, centre); double[] dropped = null;
+            for (double[] place : kindGrid(c, columns, wedge, centre)) { boolean kept = false; for (double[] q : smaller) kept |= same(q, place); if (!kept) dropped = place; }
+            // the empty place nearest the dropped one goes (front first, then the left, on a tie); the rest close up as for one loss
+            int gone = 0;
+            for (int e = 1; e < empty.size(); e++) {
+                double[] a = empty.get(e), b = empty.get(gone); double da = Math.hypot(a[0] - dropped[0], a[1] - dropped[1]), db = Math.hypot(b[0] - dropped[0], b[1] - dropped[1]);
+                if (da < db - EPS || Math.abs(da - db) <= EPS && (a[1] < b[1] - EPS || Math.abs(a[1] - b[1]) <= EPS && a[0] < b[0])) gone = e;
+            }
+            empty.remove(gone);
+            // the men and the places still empty, as one loss: the empty places close up with the men, so they stay where the slide leaves a gap
+            List<Integer> men = new ArrayList<>();
+            for (int k = 0; k < m; k++) if (here[k] != null) men.add(k);
+            double[][] before = new double[men.size() + empty.size()][];
+            for (int k = 0; k < men.size(); k++) before[k] = here[men.get(k)];
+            for (int e = 0; e < empty.size(); e++) before[men.size() + e] = empty.get(e);
+            int[] after = slide(before, smaller);
+            for (int k = 0; k < men.size(); k++) here[men.get(k)] = smaller[after[k]];
+            for (int e = 0; e < empty.size(); e++) empty.set(e, smaller[after[men.size() + e]]);
+        }
+        return slide(here, now);
+    }
+    /** Whether these places hold every kept place (null: none), each on its own. */
+    private static boolean holds(double[][] places, double[][] last) {
+        boolean[] used = new boolean[places.length];
+        for (double[] p : last) {
+            if (p == null) continue;
+            int found = -1;
+            for (int j = 0; j < places.length && found < 0; j++) if (!used[j] && same(places[j], p)) found = j;
+            if (found < 0) return false;
+            used[found] = true;
+        }
+        return true;
+    }
+    /** The single-loss slide over the places of one kind (keepPlaces): last[i] is unit i's place before (null: new), an index into places for each. */
+    private static int[] slide(double[][] prev, double[][] places) {
+        boolean[] shield = new boolean[places.length]; Arrays.fill(shield, true);
         int n = places.length; int[] at = new int[n]; boolean[] taken = new boolean[n]; boolean any = false;
         Arrays.fill(at, -1);
         for (int i = 0; i < n; i++) {
@@ -162,7 +238,10 @@ public final class BattleMath {
                 // the rank slides toward him: its man nearest the gap on his side, between the gap and him, steps in; with none, he does
                 pick = donor; double[] from = at[donor] >= 0 ? places[at[donor]] : prev[donor];
                 if (from != null) {
-                    double lo = Math.min(hole[0], from[0]) + EPS, hi = Math.max(hole[0], from[0]) - EPS, nearest = Double.MAX_VALUE;
+                    // a donor in another rank (the rear man who comes up) brings in the man of the gap's rank in his own file too: that man
+                    // slides sideways and the donor steps up behind him, rather than the donor stepping across him on the diagonal
+                    double reach = Math.abs(from[1] - hole[1]) > EPS ? -EPS : EPS, nearest = Double.MAX_VALUE;
+                    double lo = hole[0] < from[0] ? hole[0] + EPS : from[0] + reach, hi = hole[0] < from[0] ? from[0] - reach : hole[0] - EPS;
                     for (int i = 0; i < n; i++) {
                         if (i == donor || shield[i] != kind || at[i] < 0) continue;
                         double[] q = places[at[i]];
@@ -188,6 +267,60 @@ public final class BattleMath {
         double[] depth = new double[wall.length];
         for (int r = 1; r < wall.length; r++) depth[r] = depth[r - 1] + (wall[r - 1] && wall[r] ? Math.max(cell[r - 1], cell[r]) : rowGap);
         return depth;
+    }
+    /**
+     * A held group's places (Battle.heldPlace): its members (slot order), the shape (formation, columns, wedge) and layout they stood in, and
+     * the place each took, in cells (holdGrid) and in blocks (the layout).
+     */
+    public static final class Held<T> {
+        public final List<T> members; public final String shape; public final double[][] layout;
+        public final Map<T, double[]> grid = new HashMap<>(), at = new HashMap<>();
+        Held(List<T> members, String shape, double[][] layout) { this.members = members; this.shape = shape; this.layout = layout; }
+    }
+    /**
+     * The places of a group on Hold, kept through losses (Battle.heldPlace): the same members, shape and layout keep `kept`. Any change (a man
+     * falls or joins, the wall's cell changes when its widest man fell, the layout changes) rebuilds them: on the same shape each member's last
+     * place in cells goes to keepPlaces, so the wall closes as a wall closes ranks and a new cell only changes the spacing; a new shape takes the
+     * places in slot order. A Hold given again after another order, with the same members and shape, keeps the cached places; losses during the
+     * other order arrive as several empty places at once, which keepPlaces fills one at a time.
+     */
+    public static <T> Held<T> held(Held<T> kept, List<T> members, String shape, double[][] layout, boolean[] shield, int columns, boolean wedge) {
+        if (kept != null && kept.members.equals(members) && kept.shape.equals(shape) && Arrays.deepEquals(kept.layout, layout)) return kept;
+        double[][] prev = new double[members.size()][];
+        if (kept != null && kept.shape.equals(shape)) for (int i = 0; i < prev.length; i++) prev[i] = kept.grid.get(members.get(i));
+        int[] at = keepPlaces(prev, shield, columns, wedge); double[][] grid = holdGrid(shield, columns, wedge);
+        Held<T> next = new Held<>(List.copyOf(members), shape, layout);
+        for (int i = 0; i < at.length; i++) { next.grid.put(members.get(i), grid[at[i]]); next.at.put(members.get(i), layout[at[i]]); }
+        return next;
+    }
+    /** A troop's cell in the deploy ring (Battle.deploy): a shield troop's wall cell (shieldCell), any other 2, the old ring's, or its width and 0.1 when that is more. */
+    public static double deployCell(boolean shield, double width, double wallCell) { return shield ? shieldCell(width, wallCell) : Math.max(2, width + 0.1); }
+    /**
+     * Where each slot of a squad stands in its deploy ring (Battle.deploy: trained troops at the barracks or a forward anchor), {x, z} from the
+     * ring's centre: rows of five, as the reinforce rows (deployRow, deployDepths). cell[i] is slot i's cell (deployCell; 0 or less: an empty
+     * slot), shield[i] whether it carries a shield. In a row neighbours stand half of each one's cell apart; two rows of nothing but shield troops
+     * stand their wall cell apart, one deep wall (a wall row's empty places take its cell); any other two rows stand `gap` apart, or half of
+     * the two rows' widest cells when that is more. So no two troops of any mix stand closer than their cells allow. At least three rows, centred
+     * on the middle of the third (slot 12): with every cell `gap` this is the old ring, (slot % 5 - 2, slot / 5 - 2) x gap.
+     */
+    public static double[][] deployRing(boolean[] shield, double[] cell, double gap) {
+        int size = Math.max(15, (shield.length + 4) / 5 * 5), rows = size / 5;
+        boolean[] wall = new boolean[rows], troops = new boolean[rows]; double[] rowCell = new double[rows], widest = new double[rows], cells = new double[size], depth = new double[rows];
+        Arrays.fill(wall, true);
+        for (int i = 0; i < shield.length; i++) {
+            if (cell[i] <= 0) continue;
+            troops[i / 5] = true;
+            if (shield[i]) rowCell[i / 5] = Math.max(rowCell[i / 5], cell[i]); else wall[i / 5] = false;
+        }
+        for (int r = 0; r < rows; r++) wall[r] &= troops[r];
+        for (int i = 0; i < size; i++) { cells[i] = i < cell.length && cell[i] > 0 ? cell[i] : wall[i / 5] ? rowCell[i / 5] : gap; widest[i / 5] = Math.max(widest[i / 5], cells[i]); }
+        for (int r = 1; r < rows; r++) depth[r] = depth[r - 1] + (wall[r - 1] && wall[r] ? Math.max(rowCell[r - 1], rowCell[r]) : Math.max(gap, (widest[r - 1] + widest[r]) / 2));
+        double[][] ring = new double[size][];
+        for (int r = 0; r < rows; r++) {
+            double[] row = deployRow(Arrays.copyOfRange(cells, r * 5, r * 5 + 5));
+            for (int i = 0; i < 5; i++) ring[r * 5 + i] = new double[]{row[i], depth[r] - depth[2]};
+        }
+        return ring;
     }
     /** How far behind its order's point a group forms (Battle.formation and CommandMode): support 9, siege 7 (a mortar cannot fire within its minimum range), ranged 5, the rest 0. */
     public static double roleDepth(String group) {
