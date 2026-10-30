@@ -33,8 +33,11 @@ public final class MotionMath {
     /**
      * Semi-implicit Euler spring, sub-stepped at no more than 1/120 s so it stays stable at low frame rates. At step h it is
      * stable while stiffness*h^2 + 2*damping*h < 4: with h = 1/120, stiffness under about 57,600 and damping under 240.
+     * A negative or NaN stiffness or damping counts as 0.
      */
     public static Spring spring(Spring s, double target, double stiffness, double damping, double dt) {
+        if (!(stiffness > 0)) stiffness = 0;
+        if (!(damping > 0)) damping = 0;
         dt = clampDt(dt);
         int n = Math.max(1, (int) Math.ceil(dt / SPRING_STEP - 1e-9));
         double h = dt / n, pos = s.pos(), vel = s.vel();

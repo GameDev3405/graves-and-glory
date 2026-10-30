@@ -7,9 +7,10 @@ added to the rest rotation in ZYX order. Markers are lines in the Effects animat
 sit on a tick. Sampling replicates Blockbench 5.2.2's BoneAnimator.interpolate (js/animations/timeline_animators.js) and
 Keyframe.getBezierLerp / getCatmullromLerp (js/animations/keyframe.js); Clip.java samples the same way.
 
-Checks: every animated bone is in art/rigs/<rig>.json; a melee clip (named as its family's stab, slash or blunt
-attackVariants row) has its impact on the row's impactTicks; a death clip's last frame keeps every bone pivot and box
-corner within 0.1 px of the ground; a looping clip ends where it starts, within 0.01.
+Checks: every animated bone is in art/rigs/<rig>.json; key and marker times lie within the clip, one key per time per
+channel; each stab, slash or blunt attackVariants row of a family with a project has a clip of its id, its impact on the
+row's impactTicks; a death clip does not loop, and its last frame keeps every bone pivot and box corner within 0.1 px of
+the ground; a looping clip ends where it starts, within 0.01.
 
   python tools/clips.py            write the clip JSON (and remove clips no project holds)
   python tools/clips.py --verify   rebuild in memory and compare with the committed JSON"""
@@ -37,6 +38,7 @@ CHANNELS = ('rotation', 'position')
 HANDLES = {'lt': (-0.1,) * 3, 'lv': (0,) * 3, 'rt': (0.1,) * 3, 'rv': (0,) * 3}   # Blockbench's defaults for a key's bezier handles
 GROUND_SLACK = 0.1
 LOOP_SLACK = 0.01
+TIME_SLACK = 1e-6          # float noise in a saved time
 
 
 class ClipError(Exception):
@@ -171,6 +173,9 @@ def parse(clip, where=None):
         if abs(ticks - round(ticks)) > 1e-3:
             raise ClipError(f"{where}: impact marker at {markers['impact']} s is not on a tick; snap the timeline to {TICKS}")
         impact = round(ticks)
+    for m, t in markers.items():
+        if not -TIME_SLACK <= t <= length + TIME_SLACK:
+            raise ClipError(f"{where}: marker {m!r} at {t} s is outside the clip's 0 to {length} s")
     bones = {}
     for bone, chans in (clip.get('bones') or {}).items():
         bones[bone] = {}
@@ -187,6 +192,12 @@ def parse(clip, where=None):
                     f[h] = triple(k[h], where) if h in k else list(d)
                 filled.append(f)
             filled.sort(key=lambda k: k['t'])
+            for a, b in zip(filled, filled[1:]):
+                if a['t'] == b['t']:
+                    raise ClipError(f"{where}: {bone} {ch} has two keys at {a['t']} s")
+            for k in filled:
+                if not -TIME_SLACK <= k['t'] <= length + TIME_SLACK:
+                    raise ClipError(f"{where}: {bone} {ch} key at {k['t']} s is outside the clip's 0 to {length} s")
             bones[bone][ch] = filled
     return {'clip': clip.get('clip'), 'length': length, 'loop': bool(clip.get('loop')), 'markers': markers, 'impact': impact, 'bones': bones}
 
@@ -321,8 +332,10 @@ def check(clip, parsed, rig, family, variants, at):
         if parsed['impact'] != want:
             raise ClipError(f"{at}: impact {parsed['impact']} ticks, but attackVariants {name} has impactTicks {want}")
     if name.startswith('death'):
+        if parsed['loop']:
+            raise ClipError(f'{at}: a death clip cannot loop; set its loop mode to play once or hold')
         ground = max(y for _, y in points(rig, {}))
-        bone, y = max(points(rig, sample(parsed, parsed['length'])), key=lambda p: p[1])
+        bone, y = max(points(rig, sample(parsed, parsed['length'], wrap=False)), key=lambda p: p[1])
         if y > ground + GROUND_SLACK:
             raise ClipError(f'{at}: the last frame puts {bone} {y - ground:.2f} px below the ground')
     if parsed['loop']:
@@ -358,7 +371,11 @@ def build(root):
         if not rig_path.is_file():
             raise ClipError(f'{where}: no rig {RIGS}/{rig_name}.json')
         rig = json.loads(rig_path.read_text(encoding='utf-8'))
-        for name, clip in convert(json.loads(path.read_text(encoding='utf-8')), rig, where).items():
+        made = convert(json.loads(path.read_text(encoding='utf-8')), rig, where)
+        for (fam, row), r in sorted((rows or {}).items()):
+            if fam == family and r.get('kind') in MELEE and row not in made:
+                raise ClipError(f"{where}: attackVariants {row!r} ({r['kind']}) of family {family} has no clip; name an animation {row}")
+        for name, clip in made.items():
             check(clip, parse(clip), rig, family, rows, f'{where} {name}')
             out[f'{rig_name}/{family}/{name}.json'] = clip
     return out

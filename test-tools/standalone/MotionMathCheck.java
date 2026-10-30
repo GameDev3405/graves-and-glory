@@ -68,6 +68,10 @@ public final class MotionMathCheck {
         for (int i = 0; i < 120; i++) b = MotionMath.spring(b, 1, 200, 20, 1 / 120.0);
         check(near(a.pos(), b.pos(), 1e-6), "spring sub-stepping should match 120 Hz stepping: " + a.pos() + " vs " + b.pos());
         check(MotionMath.spring(new MotionMath.Spring(0.3, 0.2), 1, 200, 20, 3).equals(MotionMath.spring(new MotionMath.Spring(0.3, 0.2), 1, 200, 20, 0.1)), "spring should clamp dt to 0.1");
+        var from = new MotionMath.Spring(0.3, 0.2);
+        MotionMath.Spring slack = MotionMath.spring(from, 1, 0, 20, 0.1), loose = MotionMath.spring(from, 1, 200, 0, 0.1);
+        check(MotionMath.spring(from, 1, -200, 20, 0.1).equals(slack) && MotionMath.spring(from, 1, Double.NaN, 20, 0.1).equals(slack), "spring should treat a negative or NaN stiffness as 0");
+        check(MotionMath.spring(from, 1, 200, -20, 0.1).equals(loose) && MotionMath.spring(from, 1, 200, Double.NaN, 0.1).equals(loose), "spring should treat a negative or NaN damping as 0");
 
         var s1 = MotionMath.seed(0x123456789abcdefL, -42L);
         check(s1.equals(MotionMath.seed(0x123456789abcdefL, -42L)), "seed should be deterministic");
@@ -97,27 +101,31 @@ public final class MotionMathCheck {
         System.out.println("MotionMathCheck: " + checks + " checks passed");
     }
 
-    /** fixtures/clip_bezier.json holds values computed by Blockbench 5.2.2's own Keyframe.getBezierLerp and getCatmullromLerp (its "source" says how). */
+    /** fixtures/clip_bezier.json holds clips sampled by Blockbench 5.2.2's own BoneAnimator.interpolate and Keyframe lerps (its "source" says how). */
     static void clips() {
         JsonObject fixture;
         try { fixture = JsonParser.parseString(Files.readString(Path.of("test-tools/standalone/fixtures/clip_bezier.json"))).getAsJsonObject(); }
         catch (java.io.IOException e) { throw new AssertionError("clip_bezier.json: " + e); }
-        Clip clip = Clip.parse(fixture.getAsJsonObject("clip"));
         Map<String, double[]> out = new HashMap<>();
-        int bezier = 0;
-        for (var e : fixture.getAsJsonArray("samples")) {
-            JsonObject s = e.getAsJsonObject();
-            double t = s.get("t").getAsDouble();
-            int at = s.get("channel").getAsString().equals("rotation") ? 0 : 3;
-            clip.sample(t, out);
-            double[] got = out.get(s.get("bone").getAsString());
-            for (int i = 0; i < 3; i++) {
-                double want = s.getAsJsonArray("value").get(i).getAsDouble();
-                check(near(got[at + i], want, 1e-3), s.get("bone").getAsString() + " " + s.get("channel").getAsString() + " axis " + i + " at " + t + ": " + got[at + i] + ", Blockbench " + want);
+        Clip clip = null;
+        for (var c : fixture.getAsJsonArray("clips")) {
+            Clip each = Clip.parse(c.getAsJsonObject().getAsJsonObject("clip"));
+            if (each.name().equals("reference")) clip = each;
+            var samples = c.getAsJsonObject().getAsJsonArray("samples");
+            check(samples.size() > 0, each.name() + " should hold samples");
+            for (var e : samples) {
+                JsonObject s = e.getAsJsonObject();
+                double t = s.get("t").getAsDouble();
+                int at = s.get("channel").getAsString().equals("rotation") ? 0 : 3;
+                each.sample(t, out);
+                double[] got = out.get(s.get("bone").getAsString());
+                for (int i = 0; i < 3; i++) {
+                    double want = s.getAsJsonArray("value").get(i).getAsDouble();
+                    check(near(got[at + i], want, 1e-3), each.name() + " " + s.get("bone").getAsString() + " " + s.get("channel").getAsString() + " axis " + i + " at " + t + ": " + got[at + i] + ", Blockbench " + want);
+                }
             }
-            if (at == 0) bezier++;
         }
-        check(bezier == 5, "the fixture should hold 5 bezier samples, held " + bezier);
+        check(clip != null, "the fixture should hold the reference clip");
         clip.sample(0.2, out);
         check(near(out.get("right_arm")[0], 10, 1e-12), "on a key, sampling reads its pre value: " + out.get("right_arm")[0]);
         clip.sample(0.2 + 0.0005, out);
