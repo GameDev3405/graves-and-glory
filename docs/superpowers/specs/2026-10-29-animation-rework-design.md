@@ -118,6 +118,20 @@ He pointed at Fresh Animations (FA) as the standard to reach. The quality bar is
 - **Corpse timing:** the body lies about 3 s, then fades over about 2 s, replacing vanilla's 1 s removal. While it lies there it cannot be targeted, has no collision and gives no loot or XP twice.
 - **Novelty idles** in the FA style: look around, roll a shoulder, adjust grip, shift weight, a big breath. They are suppressed in combat and while moving.
 - **Secondary motion:** cape, tabard and crest lag behind the body like a spring. They are driven by body velocity and turn rate.
+- **The crawl follows archer fire, not the raised shield.** The modifier is on only while the squad is under archer fire (above) and moving. A shield troop on Hold that walks or StepHops to its slot moves at normal speed, with its shield up and the braced shuffle gait.
+- **Hold keeps the formation's shape.** Shield troops keep the chosen shape (line, wedge, loose, block). Only their cell shrinks to the shield-wall cell. Cells are per unit, so other units in the same group keep their own cell. A large shield troop (gl_marshal) gets its width plus a margin. "Linked" comes from the shield pose: shields angle edge-over-edge, authored per cell, rather than from the shield's flat width.
+- **Arc travel time is unchanged by default.** The arc is shaped to fit the current `travelTicks`, so damage timing and archer lethality do not change. A sheet value allows longer lobs later, but it starts at "no change".
+- **Hits from other sources** (player attacks, abilities, blight, slam, fire, fall) send `hit_v1` too:
+  - The kind maps from the damage type: player weapon → slash or stab by item, slam → blunt, blight/fire/magic → magic, fall → blunt to the legs.
+  - The direction comes from the damage source's position, or "front" when there is none.
+  - The weight class is light unless the damage tops a sheet threshold.
+- **Freebuff sequencing.** The engine and clips are built against a stub jointed rig: the current biped plus forearm and shin bones at the §8 pivots. The bone names, pivots, hierarchy and hand placement under the forearm are the contract, which I send Freebuff before work starts. Freebuff's real knight and sword models drop in on that contract. Any stub geometry is throwaway, but no clip is. Archer, longbow, mage, sentinel and gl_marshal get the same split, by whichever session owns those models when the engine lands. I coordinate this through Freebuff.
+- **Saves.** Formation ids are not persisted. They live only in the running battle's squad state (Campaign.java:575-577; GravesAndGlory.java:804), so removing Shieldwall needs no save migration.
+- **Grading.**
+  - The reviewer is a fresh Sonnet subagent at high effort, per WORKFLOW.
+  - It grades one weapon family per pass: idle, guard, walk, attack variants, hits and deaths together, with contact sheets and a 20-unit crowd clip.
+  - Two correction rounds per family, then escalate.
+- **Corpse load test.** The 100-v-100 death wave passes if server tick time stays within 10 % of the same battle with vanilla removal, and client frame time within 15 %. If it fails, the lie time drops before anything else changes.
 - **Authoring tool:** Blockbench, which is installed and has an MCP bridge. Hand-keyed action curves (§6.3) are authored on the jointed rig and exported to a JSON clip format the mod loads. Blender is not required. The builder may use it for reference passes if it raises quality.
 
 ## 6. How it works
