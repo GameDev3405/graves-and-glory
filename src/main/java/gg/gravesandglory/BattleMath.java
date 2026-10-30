@@ -75,17 +75,32 @@ public final class BattleMath {
         int shields = 0; double front = 0, rear = formationCell;
         for (int i = 0; i < cells.length; i++) if (shield[i]) { shields++; front = Math.max(front, cells[i]); } else rear = Math.max(rear, cells[i]);
         double depth = ranks(shields, columns, wedge) * front;
-        double[][] places = new double[cells.length][];
-        int s = 0, o = 0, others = cells.length - shields; boolean centre = shields > 0 && !wedge; int[] order = centreOrder(columns);
+        double[][] grid = holdGrid(shield, columns, wedge), places = new double[cells.length][];
         for (int i = 0; i < cells.length; i++) {
-            boolean wall = shield[i]; int index = wall ? s++ : o++; double cell = wall ? front : rear;
-            int count = wall ? shields : others, inRank = Math.min(columns, count - index / columns * columns);
-            int column = centre && inRank < columns ? order[index % columns] : index % columns;
-            double side = (column - (columns - 1) / 2.0) * cell, back = (index / columns + 1) * cell;
-            if (wedge) { int rank = (int) Math.floor(Math.sqrt(index)); side = (index - rank * rank - rank) * cell; back = (rank + 1) * cell; }
-            places[i] = new double[]{side, wall ? back : depth + back};
+            double cell = shield[i] ? front : rear, back = (grid[i][1] + 1) * cell;
+            places[i] = new double[]{grid[i][0] * cell, shield[i] ? back : depth + back};
         }
         return places;
+    }
+    /**
+     * holdLayout's places in cells, not blocks: {side, rank} for each unit, side in cells from the middle of the formation, rank from 0 at the
+     * front of its kind's ranks (the wall's, or the rest's behind it). They do not depend on the cells, so a wall whose cell changes (its widest
+     * man fell) keeps every man's file and rank (Battle.heldPlace hands keepPlaces these).
+     */
+    public static double[][] holdGrid(boolean[] shield, int columns, boolean wedge) {
+        int shields = 0;
+        for (boolean wall : shield) if (wall) shields++;
+        double[][] grid = new double[shield.length][];
+        int s = 0, o = 0, others = shield.length - shields; boolean centre = shields > 0 && !wedge; int[] order = centreOrder(columns);
+        for (int i = 0; i < shield.length; i++) {
+            boolean wall = shield[i]; int index = wall ? s++ : o++;
+            int count = wall ? shields : others, inRank = Math.min(columns, count - index / columns * columns);
+            int column = centre && inRank < columns ? order[index % columns] : index % columns;
+            double side = column - (columns - 1) / 2.0; int rank = index / columns;
+            if (wedge) { rank = (int) Math.floor(Math.sqrt(index)); side = index - rank * rank - rank; }
+            grid[i] = new double[]{side, rank};
+        }
+        return grid;
     }
     /** The columns of a rank in the order a partial rank fills them: the middle first, then out to either side alternately (the right of a tie first). */
     public static int[] centreOrder(int columns) {
@@ -97,12 +112,14 @@ public final class BattleMath {
         return out;
     }
     /**
-     * Which of a held group's places each unit takes (Battle.formation): an index into `places` (holdLayout's, one place per unit, place j of the
-     * kind of unit j). prev[i] is unit i's place the last time (null: none, a new unit). A wall that loses a man closes the gap with as few men moving
-     * as can be: every unit whose place is still in the layout keeps it; a place left empty, front first, takes the unit directly behind it in its
-     * file (of its kind), whose own place is then empty in turn; with none behind it, a unit left without a place (the one whose place is gone, the
-     * outermost of the last rank, or a newcomer), the nearest; with none of those, the nearest unit of the rearmost rank. So a rank-2 man steps up
-     * behind his file and nobody crosses the line. When no unit keeps a place (a new order, a new shape) the units take the places in order.
+     * Which of a held group's places each unit takes (Battle.formation): an index into `places` (one place per unit, place j of the kind of unit
+     * j; Battle.heldPlace passes holdGrid's, so a change of cell keeps every file and rank). prev[i] is unit i's place the last time (null: none,
+     * a new unit). A wall that loses a man closes the gap as a wall closes ranks: every unit whose place is still in the layout keeps it; a place
+     * left empty, front first, takes the unit directly behind it in its file (of its kind), whose own place is then empty in turn; with none
+     * behind it, the rank slides one place toward the man who has to come in (a unit left without a place, the nearest: the one whose outermost
+     * place of the last rank is gone, or a newcomer; with none of those, the nearest of the rearmost rank): the neighbour on that side steps into
+     * the gap, and so on until that man steps into the last. So every man moves at most one place sideways or one rank up, nobody passes
+     * anybody, and the men beyond the sliding stretch stand. When no unit keeps a place (a new order, a new shape) the units take the places in order.
      */
     public static int[] keepPlaces(double[][] prev, boolean[] shield, double[][] places) {
         int n = places.length; int[] at = new int[n]; boolean[] taken = new boolean[n]; boolean any = false;
@@ -112,34 +129,47 @@ public final class BattleMath {
             for (int j = 0; j < n; j++) if (!taken[j] && shield[j] == shield[i] && same(places[j], prev[i])) { at[i] = j; taken[j] = true; any = true; break; }
         }
         if (!any) { for (int i = 0; i < n; i++) at[i] = i; return at; }
-        for (int guard = 0; guard < n * n + n; guard++) {
+        for (int guard = 0; guard < 4 * n * n + n; guard++) {
             int h = -1;
             for (int j = 0; j < n; j++) if (!taken[j] && (h < 0 || places[j][1] < places[h][1] - EPS || Math.abs(places[j][1] - places[h][1]) < EPS && places[j][0] < places[h][0])) h = j;
             if (h < 0) break;
-            boolean kind = shield[h]; int pick = -1; double best = Double.MAX_VALUE;
+            boolean kind = shield[h]; double[] hole = places[h]; int pick = -1; double best = Double.MAX_VALUE;
             // directly behind it in its file: the nearest of its kind standing (or, without a place now, last standing) further back at its side
             for (int i = 0; i < n; i++) {
                 if (shield[i] != kind) continue;
                 double[] p = at[i] >= 0 ? places[at[i]] : prev[i];
-                if (p != null && Math.abs(p[0] - places[h][0]) < EPS && p[1] > places[h][1] + EPS && p[1] < best) { best = p[1]; pick = i; }
+                if (p != null && Math.abs(p[0] - hole[0]) < EPS && p[1] > hole[1] + EPS && p[1] < best) { best = p[1]; pick = i; }
             }
-            // a unit without a place: the nearest by where it was (a newcomer, with none, after them)
-            if (pick < 0) for (int i = 0; i < n; i++) {
-                if (shield[i] != kind || at[i] >= 0) continue;
-                double d = prev[i] == null ? Double.MAX_VALUE / 2 : Math.hypot(prev[i][0] - places[h][0], prev[i][1] - places[h][1]);
-                if (d < best) { best = d; pick = i; }
-            }
-            // the nearest of the rearmost rank of its kind, unless the empty place is in that rank
             if (pick < 0) {
-                double rearmost = -Double.MAX_VALUE;
-                for (int j = 0; j < n; j++) if (shield[j] == kind) rearmost = Math.max(rearmost, places[j][1]);
-                if (places[h][1] < rearmost - EPS) for (int i = 0; i < n; i++) {
-                    if (shield[i] != kind || at[i] < 0 || Math.abs(places[at[i]][1] - rearmost) > EPS) continue;
-                    double d = Math.abs(places[at[i]][0] - places[h][0]);
-                    if (d < best) { best = d; pick = i; }
+                // the man who has to come in: a unit without a place, the nearest by where it was (a newcomer, with none, after them)
+                int donor = -1;
+                for (int i = 0; i < n; i++) {
+                    if (shield[i] != kind || at[i] >= 0) continue;
+                    double d = prev[i] == null ? Double.MAX_VALUE / 2 : Math.hypot(prev[i][0] - hole[0], prev[i][1] - hole[1]);
+                    if (d < best) { best = d; donor = i; }
+                }
+                // with none, the nearest of the rearmost rank of its kind, unless the empty place is in that rank
+                if (donor < 0) {
+                    double rearmost = -Double.MAX_VALUE;
+                    for (int j = 0; j < n; j++) if (shield[j] == kind) rearmost = Math.max(rearmost, places[j][1]);
+                    if (hole[1] < rearmost - EPS) for (int i = 0; i < n; i++) {
+                        if (shield[i] != kind || at[i] < 0 || Math.abs(places[at[i]][1] - rearmost) > EPS) continue;
+                        double d = Math.abs(places[at[i]][0] - hole[0]);
+                        if (d < best) { best = d; donor = i; }
+                    }
+                }
+                if (donor < 0) break; // cannot happen: each kind has a place for each of its units
+                // the rank slides toward him: its man nearest the gap on his side, between the gap and him, steps in; with none, he does
+                pick = donor; double[] from = at[donor] >= 0 ? places[at[donor]] : prev[donor];
+                if (from != null) {
+                    double lo = Math.min(hole[0], from[0]) + EPS, hi = Math.max(hole[0], from[0]) - EPS, nearest = Double.MAX_VALUE;
+                    for (int i = 0; i < n; i++) {
+                        if (i == donor || shield[i] != kind || at[i] < 0) continue;
+                        double[] q = places[at[i]];
+                        if (Math.abs(q[1] - hole[1]) < EPS && q[0] > lo && q[0] < hi && Math.abs(q[0] - hole[0]) < nearest) { nearest = Math.abs(q[0] - hole[0]); pick = i; }
+                    }
                 }
             }
-            if (pick < 0) break; // cannot happen: each kind has a place for each of its units
             if (at[pick] >= 0) taken[at[pick]] = false;
             at[pick] = h; taken[h] = true;
         }

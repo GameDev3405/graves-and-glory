@@ -207,10 +207,10 @@ public final class GravesAndGlory implements ModInitializer {
         Squad hitBy;long hitAt;
         Squad(UUID owner,int team,Vec3d pos) {this.owner=owner;this.team=team;target=pos;}
     }
-    /** A held group's members (slot order) and the layout they stood in, with the place each took (BattleMath.keepPlaces). */
+    /** A held group's members (slot order), the shape (formation, columns, wedge) and layout they stood in, and the place each took in cells (BattleMath.holdGrid, keepPlaces) and in blocks. */
     static final class Places {
-        final List<Unit> members;final double[][] layout;final Map<Unit,double[]> at=new IdentityHashMap<>();
-        Places(List<Unit> members,double[][] layout){this.members=members;this.layout=layout;}
+        final List<Unit> members;final String shape;final double[][] layout;final Map<Unit,double[]> grid=new IdentityHashMap<>(),at=new IdentityHashMap<>();
+        Places(List<Unit> members,String shape,double[][] layout){this.members=members;this.shape=shape;this.layout=layout;}
     }
     public static final class Assignment {
         String order,formation;Vec3d target;float yaw;int enemy=-1;long issued;
@@ -841,22 +841,25 @@ public final class GravesAndGlory implements ModInitializer {
             group.sort(Comparator.<Unit>comparingInt(m->m.slot).thenComparingInt(m->m.mob.getId()));
             boolean[] shield=new boolean[group.size()];double[] width=new double[group.size()];int at=0;
             for(int i=0;i<shield.length;i++){Unit m=group.get(i);shield[i]=walls(m,a.order);width[i]=m.mob.getWidth();if(m==u)at=i;}
-            double[][] layout=BattleMath.holdLayout(shield,width,f.spacing(),Spec.COMBATDISCIPLINE[0].shieldWallCell(),BattleMath.groupColumns(u.spec.group(),f.columns()),f.wedge());
-            double[] place=a.order.equals("hold")&&u.mob.isAlive()?heldPlace(u,group,shield,layout):layout[at];
+            int columns=BattleMath.groupColumns(u.spec.group(),f.columns());
+            double[][] layout=BattleMath.holdLayout(shield,width,f.spacing(),Spec.COMBATDISCIPLINE[0].shieldWallCell(),columns,f.wedge());
+            double[] place=a.order.equals("hold")&&u.mob.isAlive()?heldPlace(u,group,shield,layout,BattleMath.holdGrid(shield,columns,f.wedge()),f.id()+"/"+columns+"/"+f.wedge()):layout[at];
             double side=place[0],back=BattleMath.roleDepth(u.spec.group())+place[1];
             double angle=Math.toRadians(a.yaw);return a.target.add(Math.cos(angle)*side+Math.sin(angle)*back,0,Math.sin(angle)*side-Math.cos(angle)*back);
         }
         /**
-         * A held unit's place (animation rework §7.1): while its group's members and layout stand, the place it took; when one falls or joins,
-         * BattleMath.keepPlaces hands out the new layout keeping every place it can, so the man behind a fallen wall man steps up and the rest stand.
+         * A held unit's place (animation rework §7.1): while its group's members, shape and layout stand, the place it took; when one falls or
+         * joins, or the wall's cell changes (its widest man fell), BattleMath.keepPlaces hands out the new places by file and rank (holdGrid, so a
+         * new cell keeps every man's file and rank and only the spacing changes): the man behind a fallen wall man steps up, the rank slides one
+         * place toward the gap, the rest stand. A new shape (formation or columns) re-forms in slot order.
          */
-        double[] heldPlace(Unit u,List<Unit> group,boolean[] shield,double[][] layout){
+        double[] heldPlace(Unit u,List<Unit> group,boolean[] shield,double[][] layout,double[][] grid,String shape){
             Places kept=u.squad.places.get(u.spec.group());
-            if(kept==null||!kept.members.equals(group)||!Arrays.deepEquals(kept.layout,layout)){
+            if(kept==null||!kept.members.equals(group)||!kept.shape.equals(shape)||!Arrays.deepEquals(kept.layout,layout)){
                 double[][] prev=new double[group.size()][];
-                for(int i=0;i<prev.length;i++)prev[i]=kept==null?null:kept.at.get(group.get(i));
-                int[] at=BattleMath.keepPlaces(prev,shield,layout);
-                Places next=new Places(List.copyOf(group),layout);for(int i=0;i<at.length;i++)next.at.put(group.get(i),layout[at[i]]);
+                for(int i=0;i<prev.length;i++)prev[i]=kept==null||!kept.shape.equals(shape)?null:kept.grid.get(group.get(i));
+                int[] at=BattleMath.keepPlaces(prev,shield,grid);
+                Places next=new Places(List.copyOf(group),shape,layout);for(int i=0;i<at.length;i++){next.grid.put(group.get(i),grid[at[i]]);next.at.put(group.get(i),layout[at[i]]);}
                 u.squad.places.put(u.spec.group(),next);kept=next;
             }
             return kept.at.get(u);

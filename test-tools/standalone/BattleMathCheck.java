@@ -15,6 +15,16 @@ public final class BattleMathCheck {
         for (int i = 0; i < at.length; i++) if (prev[i] != null && Math.hypot(places[at[i]][0] - prev[i][0], places[at[i]][1] - prev[i][1]) > 1e-9) n++;
         return n;
     }
+    /** Whether every unit that moved went at most one cell sideways and one rank (grid places), and no two of a rank passed each other. */
+    static boolean slides(double[][] prev, double[][] grid, int[] at) {
+        for (int i = 0; i < at.length; i++) {
+            if (prev[i] == null) continue;
+            if (Math.abs(grid[at[i]][0] - prev[i][0]) > 1 + 1e-9 || Math.abs(grid[at[i]][1] - prev[i][1]) > 1 + 1e-9) return false;
+            for (int j = 0; j < at.length; j++)
+                if (prev[j] != null && Math.abs(grid[at[i]][1] - grid[at[j]][1]) < 1e-9 && (grid[at[i]][0] - grid[at[j]][0]) * (prev[i][0] - prev[j][0]) < -1e-12) return false;
+        }
+        return true;
+    }
     static boolean permutation(int[] at) {
         boolean[] seen = new boolean[at.length];
         for (int a : at) { if (a < 0 || a >= at.length || seen[a]) return false; seen[a] = true; }
@@ -67,28 +77,49 @@ public final class BattleMathCheck {
         java.util.Set<String> setA = new java.util.TreeSet<>(), setB = new java.util.TreeSet<>();
         for (int i = 0; i < 8; i++) { setA.add(String.format(java.util.Locale.ROOT, "%.4f,%.4f", hold[i][0], hold[i][1])); setB.add(String.format(java.util.Locale.ROOT, "%.4f,%.4f", other[i][0], other[i][1])); }
         check(setA.equals(setB) && setA.size() == 8, "the places depend on the counts and cells, not on the order the units come in");
-        // the wall keeps its places through a loss (Battle.formation): the man behind steps up, the flank man of the last rank closes behind him
+        // the wall keeps its places through a loss (Battle.heldPlace hands keepPlaces holdGrid's places): the man behind steps up, the rank slides toward the gap
         boolean[] s13 = new boolean[13], s12 = new boolean[12], s4 = new boolean[4], s5 = new boolean[5]; double[] w13 = new double[13];
         java.util.Arrays.fill(s13, true); java.util.Arrays.fill(s12, true); java.util.Arrays.fill(s4, true); java.util.Arrays.fill(s5, true); java.util.Arrays.fill(w13, .6);
         double[][] l13 = BattleMath.holdLayout(s13, w13, 1.8, 0.7, 10, false), l12 = BattleMath.holdLayout(s12, java.util.Arrays.copyOf(w13, 12), 1.8, 0.7, 10, false);
+        double[][] g13 = BattleMath.holdGrid(s13, 10, false), g12 = BattleMath.holdGrid(s12, 10, false);
         check(Math.abs(l13[10][0] - l13[5][0]) < 1e-9 && Math.abs(l13[10][1] - 1.4) < 1e-9 && Math.abs(l13[11][0] - l13[4][0]) < 1e-9 && Math.abs(l13[12][0] - l13[6][0]) < 1e-9, "thirteen in ten columns: three behind the middle files");
+        boolean scaled = true;
+        for (int i = 0; i < 13; i++) scaled &= Math.abs(g13[i][0] * 0.7 - l13[i][0]) < 1e-9 && Math.abs((g13[i][1] + 1) * 0.7 - l13[i][1]) < 1e-9;
+        check(scaled, "holdGrid is holdLayout in cells: side in cells, rank from 0");
         double[][] lost = new double[12][];
-        for (int i = 0, j = 0; i < 13; i++) if (i != 5) lost[j++] = l13[i];
-        int[] after = BattleMath.keepPlaces(lost, s12, l12);
-        check(permutation(after) && moved(lost, l12, after) == 2 && Math.abs(l12[after[9]][0] - l13[5][0]) < 1e-9 && Math.abs(l12[after[9]][1] - 0.7) < 1e-9, "a front man falls: the man behind him steps up, one other closes the rank behind; nobody else moves");
-        double[][] l5 = BattleMath.holdLayout(s5, new double[]{.6,.6,.6,.6,.6}, 1.8, 0.7, 5, false), l4 = BattleMath.holdLayout(s4, new double[]{.6,.6,.6,.6}, 1.8, 0.7, 5, false);
-        double[][] lostOne = {l5[0], l5[1], l5[3], l5[4]};
-        int[] one4 = BattleMath.keepPlaces(lostOne, s4, l4);
-        check(permutation(one4) && moved(lostOne, l4, one4) == 1 && Math.abs(l4[one4[0]][0] - l5[2][0]) < 1e-9, "one rank, its middle man falls: the man whose flank place is gone takes his place, the rest stand");
-        double[][] grown = java.util.Arrays.copyOf(l12, 13);
-        int[] arrival = BattleMath.keepPlaces(grown, s13, l13);
-        check(permutation(arrival) && moved(grown, l13, arrival) == 0, "a man joins: everyone keeps his place, he takes the new one");
+        for (int i = 0, j = 0; i < 13; i++) if (i != 5) lost[j++] = g13[i];
+        int[] after = BattleMath.keepPlaces(lost, s12, g12);
+        check(permutation(after) && moved(lost, g12, after) == 2 && slides(lost, g12, after) && Math.abs(g12[after[9]][0] - g13[5][0]) < 1e-9 && Math.abs(g12[after[9]][1]) < 1e-9, "a front man falls before a rear man: the man behind him steps up, the next of the rank closes behind; nobody else moves");
+        double[][] lost4 = new double[12][];
+        for (int i = 0, j = 0; i < 13; i++) if (i != 4) lost4[j++] = g13[i];
+        int[] after4 = BattleMath.keepPlaces(lost4, s12, g12);
+        check(permutation(after4) && moved(lost4, g12, after4) == 3 && slides(lost4, g12, after4) && Math.abs(g12[after4[11]][0] - g13[5][0]) < 1e-9 && Math.abs(g12[after4[9]][0] - g13[4][0]) < 1e-9 && Math.abs(g12[after4[10]][1]) < 1e-9,
+            "a front man falls before the flank of the rear rank: the man behind steps up, the rank slides one place toward the gap (three short moves, nobody passes anybody)");
+        double[][] g5 = BattleMath.holdGrid(s5, 5, false), g4 = BattleMath.holdGrid(s4, 5, false);
+        double[][] lostOne = {g5[0], g5[1], g5[3], g5[4]};
+        int[] one4 = BattleMath.keepPlaces(lostOne, s4, g4);
+        check(permutation(one4) && moved(lostOne, g4, one4) == 2 && slides(lostOne, g4, one4) && Math.abs(g4[one4[1]][0] - g5[2][0]) < 1e-9 && Math.abs(g4[one4[0]][0] - g5[1][0]) < 1e-9, "one rank, its middle man falls: the rank slides one place in from the side whose flank place is gone, the rest stand");
+        double[][] grown = java.util.Arrays.copyOf(g12, 13);
+        int[] arrival = BattleMath.keepPlaces(grown, s13, g13);
+        check(permutation(arrival) && moved(grown, g13, arrival) == 0, "a man joins: everyone keeps his place, he takes the new one");
         double[][] fresh = new double[12][];
         for (int i = 0; i < 12; i++) fresh[i] = new double[]{100 + i, 100};
-        int[] reformed = BattleMath.keepPlaces(fresh, s12, l12);
+        int[] reformed = BattleMath.keepPlaces(fresh, s12, g12);
         boolean identity = true;
         for (int i = 0; i < 12; i++) identity &= reformed[i] == i;
-        check(identity, "a new order (no place kept): the units take the places in slot order");
+        check(identity, "a new order or shape (no place kept): the units take the places in slot order");
+        // the widest wall man falls and the wall's cell narrows (1.0 to 0.7): every man keeps his file and rank, only the spacing changes
+        double[] wide = w13.clone(); wide[12] = 0.9;
+        double[][] wideLayout = BattleMath.holdLayout(s13, wide, 1.8, 0.7, 10, false);
+        int[] narrowed = BattleMath.keepPlaces(java.util.Arrays.copyOf(g13, 12), s12, g12);
+        boolean kept = permutation(narrowed) && Math.abs(wideLayout[0][1] - 1.0) < 1e-9;
+        for (int i = 0; i < 12; i++) kept &= Math.abs(l12[narrowed[i]][0] - wideLayout[i][0] * 0.7) < 1e-9 && Math.abs(l12[narrowed[i]][1] - wideLayout[i][1] * 0.7) < 1e-9;
+        check(kept, "the widest wall man (at the rear) falls and the cell narrows: nobody changes file or rank, the wall closes in place");
+        double[] wideFront = w13.clone(); wideFront[4] = 0.9;
+        double[] narrow = new double[12]; java.util.Arrays.fill(narrow, .6);
+        double[][] narrowLayout = BattleMath.holdLayout(s12, narrow, 1.8, 0.7, 10, false);
+        check(Math.abs(BattleMath.holdLayout(s13, wideFront, 1.8, 0.7, 10, false)[0][1] - 1.0) < 1e-9 && java.util.Arrays.deepEquals(narrowLayout, l12) && moved(lost4, g12, after4) == 3,
+            "the widest wall man (in the front) falls and the cell narrows: the same three short moves as at one cell, by file and rank");
         double[] depths = BattleMath.deployDepths(new boolean[]{true,true,false,true,true}, new double[]{.7,.7,0,.7,1.0}, 3);
         check(depths[0] == 0 && Math.abs(depths[1] - 0.7) < 1e-9 && Math.abs(depths[2] - 3.7) < 1e-9 && Math.abs(depths[3] - 6.7) < 1e-9 && Math.abs(depths[4] - 7.7) < 1e-9, "deploy rows: shield rows a cell apart (the wider of the two), any other row 3 back");
         double[] row = BattleMath.deployRow(new double[]{2.5,2.5,2.5,2.5,2.5}), wall = BattleMath.deployRow(new double[]{.7,.7,.7,2.5,2.5});

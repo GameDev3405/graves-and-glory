@@ -152,7 +152,7 @@ final class HoldLineChecks {
                     if (since(b) == 190) requestShot("hl-wall", 4);
                     if (since(b) < 200) return;
                     wall(b);
-                    // hl-wall-loss: a front-rank man with a man directly behind him falls
+                    // hl-wall-loss: a front-rank man with a man directly behind him falls (the first such Squire, beside the rear rank's flank: its rank slides)
                     List<GravesAndGlory.Unit> line = wallLine();
                     for (var u : line) placeBefore.put(u, sideBack(b, u));
                     double front = 99;
@@ -255,15 +255,47 @@ final class HoldLineChecks {
             report("hl-wall", pass, String.join("; ", why));
         }
 
-        /** hl-wall-loss, on the server 240 ticks after the front-rank man fell. */
+        /**
+         * hl-wall-loss, on the server 240 ticks after the front-rank man fell: the gap closes by short moves (the man behind steps up, the rank
+         * slides one place toward the gap), nobody passes anybody, the men beyond the sliding stretch stand, and everyone is on his place.
+         */
         void wallLoss(GravesAndGlory.Battle b) {
             List<String> why = new ArrayList<>(); boolean pass = true;
             List<GravesAndGlory.Unit> line = wallLine();
-            // at most 2 survivors took another place
-            List<String> movers = new ArrayList<>();
-            for (var u : line) {double[] was = placeBefore.get(u), now = sideBack(b, u); if (was == null || Math.hypot(now[0] - was[0], now[1] - was[1]) > 0.05) movers.add(u.spec.id() + " " + u.slot);}
-            boolean few = movers.size() <= 2; pass &= few;
-            why.add(fallen.spec.id() + " " + fallen.slot + " fell from the front rank; " + movers.size() + " of the " + line.size() + " survivors took another place " + movers + " (want at most 2)=" + few);
+            // who took another place, and how far: at most one cell sideways and one rank
+            List<String> movers = new ArrayList<>(); Map<GravesAndGlory.Unit, double[]> now = new HashMap<>(); double far = 0; String farthest = "none";
+            for (var u : line) {
+                double[] was = placeBefore.get(u), p = sideBack(b, u); now.put(u, p);
+                if (was == null) {movers.add(u.spec.id() + " " + u.slot + " (no place before)"); far = 9; farthest = u.spec.id() + " " + u.slot; continue;}
+                if (Math.hypot(p[0] - was[0], p[1] - was[1]) <= 0.05) continue;
+                movers.add(u.spec.id() + " " + u.slot + " " + fmt(was[0]) + "," + fmt(was[1]) + "->" + fmt(p[0]) + "," + fmt(p[1]));
+                double d = Math.max(Math.abs(p[0] - was[0]), Math.abs(p[1] - was[1])); if (d > far) {far = d; farthest = u.spec.id() + " " + u.slot;}
+            }
+            boolean shortMoves = far <= WALL + 0.01; pass &= shortMoves;
+            why.add(fallen.spec.id() + " " + fallen.slot + " fell from the front rank; " + movers.size() + " of the " + line.size() + " survivors took another place " + movers + ", the longest step " + fmt(far) + " sideways or back (" + farthest + "; want at most one cell, " + fmt(WALL) + ")=" + shortMoves);
+            // nobody passed anybody: along each rank (as it stands now) the men keep the order they stood in before
+            Map<Long, List<GravesAndGlory.Unit>> newRanks = new HashMap<>(), oldRanks = new HashMap<>();
+            for (var u : line) if (placeBefore.get(u) != null) {
+                newRanks.computeIfAbsent(Math.round(now.get(u)[1] * 1000), k -> new ArrayList<>()).add(u);
+                oldRanks.computeIfAbsent(Math.round(placeBefore.get(u)[1] * 1000), k -> new ArrayList<>()).add(u);
+            }
+            boolean order = true; String crossed = "none";
+            for (var rank : newRanks.values()) {
+                rank.sort(Comparator.comparingDouble(u -> now.get(u)[0]));
+                for (int i = 1; i < rank.size(); i++) if (placeBefore.get(rank.get(i))[0] <= placeBefore.get(rank.get(i - 1))[0] + 1e-6) {order = false; crossed = rank.get(i - 1).spec.id() + " " + rank.get(i - 1).slot + " and " + rank.get(i).spec.id() + " " + rank.get(i).slot;}
+            }
+            pass &= order;
+            why.add("along every rank the men keep their order (passed: " + crossed + ")=" + order);
+            // the men beyond the sliding stretch stand: in each rank as it stood, the movers are side by side
+            boolean segment = true; String beyond = "none";
+            for (var rank : oldRanks.values()) {
+                rank.sort(Comparator.comparingDouble(u -> placeBefore.get(u)[0]));
+                int first = -1, last = -1;
+                for (int i = 0; i < rank.size(); i++) {double[] was = placeBefore.get(rank.get(i)), p = now.get(rank.get(i)); if (Math.hypot(p[0] - was[0], p[1] - was[1]) > 0.05) {if (first < 0) first = i; last = i;}}
+                for (int i = Math.max(first, 0); i <= last; i++) {double[] was = placeBefore.get(rank.get(i)), p = now.get(rank.get(i)); if (Math.hypot(p[0] - was[0], p[1] - was[1]) <= 0.05) {segment = false; beyond = rank.get(i).spec.id() + " " + rank.get(i).slot;}}
+            }
+            pass &= segment;
+            why.add("in every rank the movers are one stretch, the men beyond it stand (a stander inside a stretch: " + beyond + ")=" + segment);
             // the gap is closed: the front rank has its places, each held
             double front = 99; int columns = BattleMath.groupColumns("infantry", 10);
             for (var u : line) front = Math.min(front, sideBack(b, u)[1]);
