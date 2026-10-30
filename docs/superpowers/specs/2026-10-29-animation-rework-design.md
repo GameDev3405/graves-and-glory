@@ -86,7 +86,7 @@ He pointed at Fresh Animations (FA) as the standard to reach. The quality bar is
    - swing size and posture
    - breathing rate
    - idle stance
-5. **Elbows and knees on the biped rig.** Every biped model is split at the elbow and knee. The Freebuff session rebuilds the knight (§8).
+5. **Elbows and knees on the biped rig.** Every biped model is split at the elbow and knee. The knight is split from Freebuff's builder (§8, §14).
 6. **Hold, units without shields:** a low, ready stance with knees bent and the weapon raised toward the enemy. Kort's reference shows swordsmen in a tight line, crouched, blades levelled forward. Each weapon family has its own guard (§6).
 7. **Hold, shield units:** they always stand shoulder to shoulder with shields up, whatever the formation. Shields overlap edge to edge and "link" into a shield wall. Kort's reference shows hoplites with spears overhand above overlapping round shields.
 
@@ -125,10 +125,10 @@ He pointed at Fresh Animations (FA) as the standard to reach. The quality bar is
   - The kind maps from the damage type: player weapon → slash or stab by item, slam → blunt, blight/fire/magic → magic, fall → blunt to the legs.
   - The direction comes from the damage source's position, or "front" when there is none.
   - The weight class is light unless the damage tops a sheet threshold.
-- **Freebuff sequencing.** The engine and clips are built against a stub jointed rig: the current biped plus forearm and shin bones at the §8 pivots. The bone names, pivots, hierarchy and hand placement under the forearm are the contract, which I send Freebuff before work starts. Freebuff's real knight and sword models drop in on that contract. Any stub geometry is throwaway, but no clip is. Archer, longbow, mage, sentinel and gl_marshal get the same split, by whichever session owns those models when the engine lands. I coordinate this through Freebuff.
+- **Freebuff sequencing.** The engine and clips are built against a stub jointed rig: the current biped plus forearm and shin bones at the §8 pivots. The bone names, pivots, hierarchy and hand placement under the forearm are the contract, which Freebuff reviews before work starts. The Gilded models from Freebuff's builders drop in on that contract. Any stub geometry is throwaway, but no clip is. This effort splits all six Gilded models (§14).
 - **Saves.** Formation ids are not persisted. They live only in the running battle's squad state (Campaign.java:575-577; GravesAndGlory.java:804), so removing Shieldwall needs no save migration.
 - **Grading.**
-  - The reviewer is a fresh Sonnet subagent at high effort, per WORKFLOW.
+  - The reviewer is a fresh Opus 5.5 subagent at high effort (Kort, 2026-10-29). Freebuff adds a consultant review on models.
   - It grades one weapon family per pass: idle, guard, walk, attack variants, hits and deaths together, with contact sheets and a 20-unit crowd clip.
   - Two correction rounds per family, then escalate.
 - **Corpse load test.** The 100-v-100 death wave passes if server tick time stays within 10 % of the same battle with vanilla removal, and client frame time within 15 %. If it fails, the lie time drops before anything else changes.
@@ -360,16 +360,16 @@ Blocking is not vanilla blocking. `Combat.java:70` counts a shield as raised whe
 
 ## 8. Rig changes (elbows and knees)
 
-Proposed and agreed in principle with the Freebuff session (2026-10-29). Final numbers go in the spec sent to it.
+Proposed and agreed in principle with the Freebuff session (2026-10-29), which reviews the final numbers.
 
 - **New bones:**
   - `right_forearm` / `left_forearm`: children of the arms, pivot at the elbow, arm-frame y 4.
   - `right_shin` / `left_shin`: children of the legs, pivot at the knee, leg-frame y 6.
 - **Hands:** `right_hand` / `left_hand` move under the forearms, keeping their offsets relative to them. Weapons and the shield follow the forearm.
 - **Seams:** a lower-part cop or cuff about 0.5 px proud covers each seam when bent. The knight's couter moves onto the forearm and grows about 0.5 px up. The knee cop already sits on the shin.
-- **Shield:** the knight's shield bone is re-derived against the new guard and wall poses. Its rotation no longer assumes the 45° carry. I send Freebuff the exact carry angles.
+- **Shield:** the knight's shield bone is re-derived against the new guard and wall poses. Its rotation no longer assumes the 45° carry. This effort sets the carry angles.
 - **Folded arms:** `TroopModel`'s arms-folded swap must include the forearms.
-- **Other modelled troops:** the other modelled biped troops (archer, longbow, mage, sentinel, gl_marshal) also need the split. Freebuff owns the builders, so this is coordinated with it.
+- **Other modelled troops:** the other modelled biped troops (archer, longbow, mage, sentinel, gl_marshal) also need the split. This effort does it in their builders once Freebuff's work is committed.
 
 ## 9. Code the new engine replaces or must serve
 
@@ -413,18 +413,27 @@ Proposed and agreed in principle with the Freebuff session (2026-10-29). Final n
 
   The animation harness checks are rewritten for the new engine. `tools/verify.py fast` and `game` must pass.
 
-## 11. Open questions for Kort
+## 11. Kort's answers to the builder check (2026-10-29)
 
-1. **Troops without models.** 24 of the 30 troops still draw as vanilla Minecraft mobs, with vanilla animation. The new system can only drive troops with a mod model. Options:
-   - (a) they stay vanilla until their models arrive;
-   - (b) give every humanoid troop a temporary jointed placeholder model wearing its vanilla skin, so they all get the new animations now.
+1. **Every troop gets a real model.** "I want you to model all the troops in Graves and Glory so we can get unit art out of the way."
+   - All 30 troops get final art models on the jointed rig. These are real models, not placeholders.
+   - New rigs are built where none exist: polar bear (wm_oldhorn) and ravager (tc_brute). The hound (wm_hound), spider (wm_stalker) and colossus (ic_colossus) rigs are rebuilt with joints too.
+   - The 25 humanoids share the one jointed biped rig. Their base mobs set the proportions:
+     - husk (6)
+     - zombie (1)
+     - skeleton or stray (2) and wither skeleton (3): thin limbs, tall
+     - zombified piglin (3)
+     - vindicator, pillager or evoker (6)
+     - drowned (4)
 
-   Beasts and the golem have rigs (hound, spider, colossus), but polar bear and ravager have none.
-2. **Melee damage timing.** Today damage lands the instant a swing starts. A whole-body swing has a visible wind-up of about 0.25–0.45 s, so to make the hit land on the impact frame:
-   - (a) damage is delayed to the impact frame. A target that steps out of reach, or an attacker that dies, makes the blow miss. This is a gameplay timing change.
-   - (b) the swing is started early while the cooldown finishes, so damage keeps its current timing.
-
-   (b) preserves balance but can show swings at targets that walk away.
+     Proportions are per-model geometry, not separate rigs.
+   - Unit art is part of this effort, so "done" means all 30 troops modelled and animated to the bar.
+   - This effort builds all 30. Freebuff's finished Gilded work is the starting point for that house (§14).
+2. **Melee damage lands on the impact frame** (option a).
+   - The server schedules damage for the clip's impact frame, so it no longer lands on the tick the swing starts.
+   - The blow misses if the attacker dies or is stunned first, or if the target is out of reach or dead by then. "Out of reach" uses the reach check plus a small grace margin, so near-misses still connect when they look like they should.
+   - The swing cooldown runs from the swing's start, so the attack rate doesn't change.
+   - This is a gameplay timing change, so the melee balance tests are updated and re-baselined. The Phase-2 balance numbers are rechecked.
 
 ## 12. Animation tests today
 
@@ -452,6 +461,8 @@ They test the old engine's internals, so they are replaced, not patched. Keep th
   - at most four harness clients
   - no compiling in a checkout with a running client
 - Don't hand-edit `Spec.java`. Change `sheets/design.json` and regenerate with `tools/preflight.py`.
-- The Freebuff session owns `TroopModel`, `TroopRenderer`, `TroopFeatures`, `TroopModelLoader`, `TroopModels` and the knight and sword builders until its work lands. Coordinate before touching them.
-- Freebuff's knight and sword work is uncommitted on `art/knight-1x` in the main checkout. This branch starts from `main` and is rebased onto that work once it lands.
+- **Who does the work (Kort, 2026-10-29).** Opus 5.5 at high effort does all the work, in this session and its subagents. The Freebuff session is a reviewer and consultant only. Its finished Gilded work (builders in the hand-authored 1-texel pipeline, `art/hand/<tid>/build_<tid>.py` on `art/hand/common/handlib.py`, the sword tiers and the shield) is the starting point and quality reference. This effort finishes the Gilded house (joint split, order_bow, longbow, sun_staff) and models the other 24 troops in the same pipeline.
+- Until Freebuff's work is committed, its uncommitted files (`TroopModel`, `TroopRenderer`, `TroopFeatures`, `TroopModelLoader`, `TroopModels`, the Gilded art) are not edited independently, and nothing is merged into its branch.
+- Freebuff's work is uncommitted on `art/knight-1x` in the main checkout. Kort must approve committing it. This branch starts from `main`, and the server-only gameplay work proceeds there. Rig and engine work starts after that commit lands and this branch is rebased onto it; from then on all of those files are edited only on this branch.
+- Art rules from Freebuff's brief apply to every troop: no flags, pennants or standards on backs (a quiver is fine); Souls-like; each tier visibly grander; veteran trim alpha 0 or 255, only on texels every tier paints, at most 20 % of stage-1 opaque texels; whole-texel faces with no coplanar overlaps; loader `faces` 2–8 or omitted.
 - No Fable models.
