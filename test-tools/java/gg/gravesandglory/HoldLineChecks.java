@@ -69,7 +69,13 @@ import static gg.gravesandglory.Phase2Checks.server;
  * and the Squire's next swing comes at its first 10-tick beat after the cooldown. A Squire killed on its swing's tick deals nothing. A dummy on
  * 1 health killed by a fresh Squire's blow on its impact frame credits that Squire the bounty once, and his army one kill and the dummy's
  * army one loss; a dummy killed by a generic kill on the Squire's swing tick is nobody's kill (a miss, no credit). A round ended on a swing's
- * tick leaves no blow pending, and none lands in the next round.</li>
+ * tick leaves no blow pending, and none lands in the next round. Task 5 fix round 1: a swing on tick 59 of a fresh Charge's 60-tick window,
+ * its order turned to Hold during the wind-up, still crashes in when its blow lands past the window (counters row C5, Ruling R29). A second
+ * swing tried while a blow is pending queues nothing. A Squire stunned a tick after its swing deals nothing (a miss). A blow landing inside
+ * the dummy's vanilla hurt cooldown (a hit 3 ticks before the impact frame, the cooldown left intact) is judged by vanilla's rule then, as
+ * an instant blow on that tick was at BASE: nothing after a larger hit, only its excess (through the dummy's armour) after a smaller one.
+ * Abilities.attack on a melee troop deals nothing and queues nothing (its blow is Tactics.swing's). After the next round has begun, a map
+ * switch with a blow pending clears it and none lands once the battle runs again; the round then restarts on map 0.</li>
  * </ul>
  */
 final class HoldLineChecks {
@@ -171,6 +177,8 @@ final class HoldLineChecks {
         GravesAndGlory.Battle.PendingStrike impStrike;
         float impHealth;
         int impSwings, impHurts, impLastVariant = -1, impMissed, impLanded, impCredits, impKills, impLost, impBounty;
+        /** Fix round 1: the Charge stamp the watched swing fell under, the hit put on the dummy before an impact frame and its hurt cooldown then, the hit log's last entry before a step. */
+        long impCharged; float impHit; int impRegen; Combat.HitLog impLog;
         boolean impPass = true;
         final List<String> impWhy = new ArrayList<>();
 
@@ -1035,11 +1043,52 @@ final class HoldLineChecks {
         }
         /** The impact frame of a blow's swing, from the sheet: its family's attackVariants row's impactTicks. */
         static int impactTicks(GravesAndGlory.Battle.PendingStrike s) {return Tactics.variants(s.attacker().spec.family()).get(s.variant()).impactTicks();}
+        /** The hit log's newest entry (Combat.LAST) of hl-impact's Squire on its dummy logged after the entry `after`; null if none. */
+        Combat.HitLog impHitLog(Combat.HitLog after) {
+            for (var it = Combat.LAST.descendingIterator(); it.hasNext(); ) {
+                var h = it.next(); if (h == after) return null;
+                if (h.attacker() == impKnight.mob.getId() && h.target() == impTarget.mob.getId()) return h;
+            }
+            return null;
+        }
+        /** The blows of hl-impact's Squire still pending. */
+        long impPending(GravesAndGlory.Battle b) {return b.strikes.stream().filter(x -> x.attacker() == impKnight).count();}
+        /**
+         * hl-impact's hurt-cooldown case (Task 5 fix round 1, M5): a generic hit of `pre` on the dummy 3 ticks before a blow's impact frame, the dummy's
+         * vanilla hurt cooldown (timeUntilRegen) left as that hit set it. The blow is judged by vanilla's rule on its landing tick, as an instant blow on
+         * that tick was at BASE: nothing if it is no larger than the hit, else only its excess (through the dummy's armour); the cooldown is not reset.
+         */
+        void impIframes(GravesAndGlory.Battle b, float pre, int then) {
+            var m = impTarget.mob;
+            if (impStrike == null) {
+                var s = impSwung(b);
+                if (s == null) {if (since(b) > 200) {impPass = false; impWhy.add("the Squire never swung for the " + fmt(pre) + " hurt-cooldown hit=false"); next(b, then);} return;}
+                impStrike = s; impSwingAt = b.time; impLanded = Tactics.strikesLanded; impRegen = -1; impHit = pre; m.timeUntilRegen = 0;
+            }
+            if (impRegen < 0) {
+                if (b.time < impStrike.landsAt() - 3) return;
+                if (b.time >= impStrike.landsAt()) {impPass = false; impWhy.add("the blow landed before the hurt-cooldown hit could go in=false"); impStrike = null; next(b, then); return;}
+                impLog = Combat.LAST.peekLast(); m.timeUntilRegen = 0; m.setHealth(m.getMaxHealth()); // a full dummy (its 4000 is clamped to 1024, vanilla's cap), so neither hit can kill it
+                m.damage(b.world.getDamageSources().generic(), pre);
+                impRegen = m.timeUntilRegen; impHealth = m.getHealth(); impNext = b.time;
+                return;
+            }
+            if (b.time < impStrike.landsAt()) return;
+            var hit = impHitLog(impLog); float h = m.getHealth(); int regen = m.timeUntilRegen; long gap = impStrike.landsAt() - impNext;
+            float blow = hit == null ? 0 : (float) (hit.base() * hit.veteran() * hit.total());
+            float armour = m.getArmor(), toughness = (float) m.getAttributeValue(net.minecraft.entity.attribute.EntityAttributes.GENERIC_ARMOR_TOUGHNESS);
+            float full = net.minecraft.entity.DamageUtil.getDamageLeft(blow, armour, toughness);
+            float want = blow <= pre ? 0 : net.minecraft.entity.DamageUtil.getDamageLeft(blow - pre, armour, toughness);
+            boolean vanilla = hit != null && Math.abs((impHealth - h) - want) < 0.01f && Tactics.strikesLanded == impLanded + 1 && impRegen == 20 && regen == 20 - gap && regen > 10;
+            impPass &= vanilla;
+            impWhy.add("a " + fmt(pre) + " hit " + gap + " ticks before the Squire's blow of " + fmt(blow) + " (" + fmt(full) + " through armour " + fmt(armour) + " when fresh) landed on " + impStrike.landsAt() + ": the dummy lost " + fmt(impHealth - h) + " (want " + fmt(want) + ", vanilla's hurt-cooldown rule), its hurt cooldown " + impRegen + " after the hit and " + regen + " after the blow (want 20 and " + (20 - gap) + ", not reset), blows landed " + (Tactics.strikesLanded - impLanded) + " (want 1)=" + vanilla);
+            impStrike = null; next(b, then);
+        }
         /** The next hl-impact stage, and how the check stands so far once the last one is done. */
         void impFinish(GravesAndGlory.Battle b) {report("hl-impact", impPass, String.join("; ", impWhy)); next(b, 99);}
 
         /**
-         * hl-impact (stages 80-89, Task 5): see the class comment. Every wait is bounded (200 ticks for a swing that never comes, 400 for the first three).
+         * hl-impact (stages 80-97, Task 5 and its fix round 1): see the class comment. Every wait is bounded (200 ticks for a swing that never comes, 400 for the first three).
          */
         void impactStages(GravesAndGlory.Battle b) {
             var row = Campaign.troop("knight"); int cd = row.cooldown(), beat = (cd + 9) / 10 * 10; // Tactics acts on a 10-tick beat
@@ -1156,7 +1205,7 @@ final class HoldLineChecks {
                     impWhy.add("a dummy killed by a generic kill on the Squire's swing tick (" + impSwingAt + "; its blow due on " + impStrike.landsAt() + "): blows missed " + (Tactics.strikesMissed - impMissed) + " and landed " + (Tactics.strikesLanded - impLanded) + " (want 1 and 0), the Squire's credits up " + (impKnight.credits - impCredits) + " and his army's kills up " + (dusk.stats.kills - impKills) + " (want 0 each), the dummy's army's losses up " + (own.stats.lost - impLost) + " (want 1)=" + nobody);
                     unpin(b, List.of(impTarget));
                     impTarget = dummy(b, 25, impHome); impStrike = null;
-                    next(b, 89);
+                    next(b, 90);
                 }
                 case 89 -> { // the round ends on a swing's tick with its blow pending: the lobby clears it, and none lands in the next round
                     if (impStrike == null) {
@@ -1177,7 +1226,110 @@ final class HoldLineChecks {
                     boolean none = Tactics.strikesLanded == impLanded && Tactics.strikesMissed == impMissed;
                     impPass &= none;
                     impWhy.add("the next round ran from tick " + impNext + " (play from " + b.campaign.introUntil + ") to " + b.time + ", past the old blow's frame " + impStrike.landsAt() + ": blows landed " + (Tactics.strikesLanded - impLanded) + " and missed " + (Tactics.strikesMissed - impMissed) + " (want 0 each)=" + none);
-                    impFinish(b);
+                    impStrike = null; next(b, 96);
+                }
+                case 90 -> { // Ruling R29: a swing on tick 59 of a fresh Charge's 60-tick window, the order turned to Hold in its wind-up, still crashes in (C5) when its blow lands past the window
+                    String g = impKnight.spec.group(); int window = Spec.COMBATDISCIPLINE[0].chargeImpactTicks();
+                    if (impStrike == null) {
+                        var s = impSwung(b);
+                        if (s != null) {
+                            impStrike = s; impSwingAt = b.time; Long at = dusk.chargedAt.get(g); impCharged = at == null ? Long.MIN_VALUE / 2 : at;
+                            dusk.order = "hold"; // the order changes during the wind-up: the blow keeps the Charge its swing was judged under
+                            impLanded = Tactics.strikesLanded; impHealth = impTarget.mob.getHealth(); impLog = Combat.LAST.peekLast();
+                            return;
+                        }
+                        if (since(b) > 200) {impPass = false; impWhy.add("the charging Squire never swung=false"); dusk.order = "attack"; dusk.chargedAt.clear(); next(b, 91); return;}
+                        // a fresh Charge stamped so that a swing on the next tick falls on its window's tick 59
+                        dusk.assignments.clear(); dusk.order = "charge"; dusk.chargedAt.put(g, b.time + 1 - (window - 1)); impTarget.mob.timeUntilRegen = 0;
+                        return;
+                    }
+                    if (b.time < impStrike.landsAt()) return;
+                    var hit = impHitLog(impLog); float h = impTarget.mob.getHealth();
+                    boolean c5 = hit != null && hit.rows().contains("C5");
+                    boolean on = impSwingAt - impCharged == window - 1 && impStrike.landsAt() - impCharged > window && c5 && impKnight.chargeHitAt == impStrike.landsAt() && Tactics.strikesLanded == impLanded + 1 && h < impHealth;
+                    impPass &= on;
+                    impWhy.add("a swing on tick " + (impSwingAt - impCharged) + " of a fresh Charge's " + window + "-tick window (the order turned to Hold in its wind-up) landed on tick " + (impStrike.landsAt() - impCharged) + " of it, past the window: its hit's rows " + (hit == null ? "none (no hit logged)" : hit.rows()) + " (want C5, the impact), the Squire's last impact on " + impKnight.chargeHitAt + " (want the landing tick " + impStrike.landsAt() + "), blows landed " + (Tactics.strikesLanded - impLanded) + " (want 1), the dummy lost " + fmt(impHealth - h) + "=" + on);
+                    dusk.order = "attack"; dusk.chargedAt.clear(); impStrike = null;
+                    next(b, 91);
+                }
+                case 91 -> { // M1: a second swing tried while a blow is pending queues nothing
+                    var s = impSwung(b);
+                    if (s != null) {
+                        long mine = impPending(b); int swings = Tactics.swings, variant = impKnight.lastVariant; long swung = impKnight.swungAt;
+                        Tactics.swing(b, impKnight, impTarget.mob, b.time);
+                        long after = impPending(b);
+                        boolean refused = mine == 1 && after == 1 && Tactics.swings == swings && impKnight.lastVariant == variant && impKnight.swungAt == swung && b.strikes.contains(s);
+                        impPass &= refused;
+                        impWhy.add("a second Tactics.swing on the Squire's swing tick (" + b.time + ", " + mine + " blow pending, due on " + s.landsAt() + ") left " + after + " pending (want 1, the first still queued: " + b.strikes.contains(s) + "), swings begun up " + (Tactics.swings - swings) + " (want 0), his variant " + variant + " now " + impKnight.lastVariant + "=" + refused);
+                        impStrike = null; next(b, 92); return;
+                    }
+                    if (since(b) > 200) {impPass = false; impWhy.add("the Squire never swung for the second-swing check=false"); next(b, 92);}
+                }
+                case 92 -> { // M6: a Squire stunned a tick after his swing deals nothing: the blow misses on its frame
+                    if (impStrike == null) {
+                        var s = impSwung(b);
+                        if (s != null) {impStrike = s; impSwingAt = b.time; impHealth = impTarget.mob.getHealth(); impMissed = Tactics.strikesMissed; impLanded = Tactics.strikesLanded; impTarget.mob.timeUntilRegen = 0; return;}
+                        if (since(b) > 200) {impPass = false; impWhy.add("the Squire never swung for the stun check=false"); next(b, 93);}
+                        return;
+                    }
+                    if (b.time == impSwingAt + 1) {impKnight.stunnedUntil = b.time + 20; return;}
+                    if (b.time <= impStrike.landsAt()) return;
+                    float h = impTarget.mob.getHealth();
+                    boolean none = h == impHealth && Tactics.strikesMissed == impMissed + 1 && Tactics.strikesLanded == impLanded;
+                    impPass &= none;
+                    impWhy.add("the Squire stunned on tick " + (impSwingAt + 1) + ", a tick after his swing (its blow due on " + impStrike.landsAt() + "): the dummy lost " + fmt(impHealth - h) + ", blows missed " + (Tactics.strikesMissed - impMissed) + " and landed " + (Tactics.strikesLanded - impLanded) + " (want 0, 1 and 0)=" + none);
+                    impStrike = null; next(b, 93);
+                }
+                case 93 -> impIframes(b, 20f, 94); // M5: a larger hit 3 ticks before the impact frame: the blow does nothing, as vanilla rules
+                case 94 -> impIframes(b, 1f, 95); // M5: a smaller hit then: the blow deals only its excess, through the dummy's armour
+                case 95 -> { // M8: Abilities.attack on a melee troop deals nothing and queues nothing (Tactics.swing owns its blow)
+                    if (impPending(b) > 0) {if (since(b) > 200) {impPass = false; impWhy.add("the Squire's blow never cleared for the misroute check=false"); next(b, 89);} return;}
+                    var m = impTarget.mob; m.timeUntilRegen = 0; m.hurtTime = 0; m.setHealth(m.getMaxHealth()); boolean alive = m.isAlive(); // a live, full dummy: on a dead one any call would deal nothing
+                    float h = m.getHealth(); int queued = b.strikes.size(), swings = Tactics.swings; var log = Combat.LAST.peekLast();
+                    Abilities.attack(b, impKnight, m, b.time);
+                    float h2 = m.getHealth(); var hit = impHitLog(log);
+                    boolean nothing = alive && m.isAlive() && h2 == h && b.strikes.size() == queued && Tactics.swings == swings && hit == null;
+                    impPass &= nothing;
+                    impWhy.add("Abilities.attack called for the Squire (a melee troop) on tick " + b.time + ": the dummy lost " + fmt(h - h2) + ", blows queued " + (b.strikes.size() - queued) + ", swings begun " + (Tactics.swings - swings) + ", hits logged " + (hit == null ? 0 : 1) + " (want 0 each; the dummy alive before: " + alive + ")=" + nothing);
+                    impStrike = null; next(b, 89);
+                }
+                case 96 -> { // M6: after the next round has begun, a map switch with a blow pending clears it, and none lands once the battle runs again
+                    if (impKnight == null) {
+                        if (!b.ready) return;
+                        var p = sp(b); if (p != null) b.relocate(p, impHome.x + 1, Phase1Checks.top(b, impHome.x + 1, impHome.z - 24) + 6, impHome.z - 24, 0f, 15f);
+                        impTarget = dummy(b, 26, impHome);
+                        impKnight = pinned(b, "knight", 27, ground(b, impHome.x + 1.8, impHome.z), false);
+                        impSeen = -1; impStrike = null; impNext = -1;
+                        return;
+                    }
+                    if (impStrike == null) {
+                        var s = impSwung(b);
+                        if (s != null) {
+                            impStrike = s; impSwingAt = b.time;
+                            int from = b.campaign.map, to = from == 1 ? 2 : 1;
+                            int before = b.strikes.size(); b.campaign.switchMap(to); int left = b.strikes.size();
+                            impLanded = Tactics.strikesLanded; impMissed = Tactics.strikesMissed;
+                            boolean cleared = before >= 1 && left == 0; impPass &= cleared;
+                            impWhy.add("the map switched (" + from + " to " + to + ") on the Squire's swing tick (" + impSwingAt + ") with " + before + " blow(s) pending (his due on " + impStrike.landsAt() + "): " + left + " left (want 0)=" + cleared);
+                            unpin(b, List.of(impKnight, impTarget)); // were a blow left behind, it would now count as a miss (its Squire gone)
+                            return;
+                        }
+                        if (since(b) > 200) {impPass = false; impWhy.add("the Squire never swung for the map-switch check=false"); unpin(b, List.of(impKnight, impTarget)); impKnight = null; impTarget = null; next(b, 97);}
+                        return;
+                    }
+                    if (!b.ready) {if (since(b) > 6000) {impPass = false; impWhy.add("the switched-to map never finished building=false"); impKnight = null; impTarget = null; next(b, 97);} return;}
+                    if (impNext < 0) impNext = b.time; // the first tick the battle runs again
+                    if (b.time < Math.max(impNext, impStrike.landsAt()) + 10) return;
+                    boolean none = Tactics.strikesLanded == impLanded && Tactics.strikesMissed == impMissed && !b.strikes.contains(impStrike);
+                    impPass &= none;
+                    impWhy.add("the battle ran again from tick " + impNext + " to " + b.time + ", past the old blow's frame " + impStrike.landsAt() + ": blows landed " + (Tactics.strikesLanded - impLanded) + " and missed " + (Tactics.strikesMissed - impMissed) + " (want 0 each), the old blow queued: " + b.strikes.contains(impStrike) + "=" + none);
+                    fixture.clear(); pins.clear(); impKnight = null; impTarget = null; impStrike = null;
+                    next(b, 97);
+                }
+                case 97 -> { // back to a round on map 0
+                    var p = sp(b);
+                    if (p != null && Phase1Checks.skirmish(b, p, 0, 1, "normal")) {impFinish(b); return;}
+                    if (since(b) > 8000) {impPass = false; impWhy.add("the round never restarted on map 0=false"); impFinish(b);}
                 }
                 default -> {}
             }

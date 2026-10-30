@@ -223,6 +223,8 @@ public final class GravesAndGlory implements ModInitializer {
         long nextAttack;long abilityAt,windupUntil;Vec3d spellCenter;
         /** The battle tick of the troop's last melee swing whose blow is pending or landed (Tactics.swing; -1 none), and the swing it played: an index into its family's attackVariants rows (Tactics.variants), so the next never repeats it (BattleMath.pickVariant; -1 none yet). */
         long swungAt=-1;int lastVariant=-1;
+        /** The Charge a blow of his carries while it lands (Tactics.land sets it from its swing, Ruling R29, and clears it after): every hit of that blow (its cleave or splash too, and a trample) reads it through Combat.charge; null otherwise. */
+        Combat.Charge blow;
         long nextPath;
         Vec3d lastPosition,lastGoal,deployed;
         /** A wall troop's jump onto its slot on a rise (Tactics.settle, Tactics.hop): the slot (null: none), the tick it ends by, and whether it has left the ground. */
@@ -526,11 +528,15 @@ public final class GravesAndGlory implements ModInitializer {
         public final List<Projectiles.Shot> shots=new ArrayList<>();
         /**
          * A melee swing whose blow is still to come (Task 5): the attacker, its target, the swing it plays (an index into its family's attackVariants rows,
-         * Tactics.variants) and the battle tick of its impact frame. Tactics.land lands it then, if BattleMath.strikeLands; startRound, Campaign.returnLobby
-         * (round end and battle stop) and switchMap clear the list, so no blow crosses a round.
+         * Tactics.variants), the battle tick of the swing and of its impact frame, and the Charge it was judged under on its swing tick (Combat.charge,
+         * Ruling R29: a wind-up never costs a Charge its impact). Tactics.land lands it then, if BattleMath.strikeLands (a stun after swungAt cancels it);
+         * an attacker has one at most (Tactics.swing). startRound, Campaign.returnLobby (round end and battle stop) and switchMap clear the list, so no
+         * blow crosses a round or a map.
          */
-        public record PendingStrike(Unit attacker,LivingEntity target,int variant,long landsAt){}
+        public record PendingStrike(Unit attacker,LivingEntity target,int variant,long swungAt,long landsAt,Combat.Charge charge){}
         public final List<PendingStrike> strikes=new ArrayList<>();
+        /** The battle's own draws for what only shows (the swing a melee troop plays, Tactics.swing), seeded from the world's seed: they leave the world's random stream, which the fights draw on, as it was before the swings had variants. */
+        public final java.util.Random rolls;
         /** Landed shots' arrows held where they landed for a tick or two (Projectiles.LINGER_TICKS) before they go. */
         public final List<Projectiles.Landed> landed=new ArrayList<>();
         /** The standing banners (the Oath Banner); Abilities.bannerTick takes them down on time, and startRound, the lobby and a map switch clear them. */
@@ -623,7 +629,7 @@ public final class GravesAndGlory implements ModInitializer {
         int testBridgeIndex,hillClimbY;
         boolean bridgesPassed=true;
         public Battle(MinecraftServer server){
-            this.server=server;world=server.getOverworld();campaign=new Campaign(this);
+            this.server=server;world=server.getOverworld();rolls=new java.util.Random(world.getSeed());campaign=new Campaign(this);
             for(var p:Spec.POINTS)points.add(new Capture(p));
             world.getGameRules().get(GameRules.DO_DAYLIGHT_CYCLE).set(false,server);
             world.getGameRules().get(GameRules.DO_WEATHER_CYCLE).set(false,server);

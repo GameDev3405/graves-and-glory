@@ -233,7 +233,7 @@ final class Tactics {
             if(nearest<=reach*reach&&visible){
                 if(ranged&&close!=null&&closest<flee*flee&&!hold)backOff(battle,u,close,time);
                 else mob.getNavigation().stop();
-                if(time>=u.nextAttack&&time>=u.stunnedUntil&&!Abilities.tooClose(u,nearest)){
+                if(time>=u.nextAttack&&time>=u.stunnedUntil&&!pending(battle,u)&&!Abilities.tooClose(u,nearest)){
                     int cooldown=u.spec.cooldown();u.nextAttack=u.nextAttack<time-10?time+cooldown:u.nextAttack+cooldown;mob.swingHand(Hand.MAIN_HAND);
                     // A melee blow lands on its swing's impact frame (swing, land); a shot or a spell goes now.
                     if(!swing(battle,u,enemy,time)){BattleEffects.strike(battle,u,enemy);Abilities.attack(battle,u,enemy,time);}
@@ -486,19 +486,26 @@ final class Tactics {
     }
     /** Melee swings begun, blows landed on their impact frame and blows that missed there (strikeLands false), since the server started: the live checks read them. */
     static int swings,strikesLanded,strikesMissed;
+    /** Swings refused because the troop's last blow is still pending (Tactics.swing; the attack gate already waits for it, so any is a caller's slip). */
+    static int swingsRefused;
+    /** Whether this troop has a blow pending (Battle.strikes): one at most, so its next swing waits for it. */
+    static boolean pending(GravesAndGlory.Battle b,GravesAndGlory.Unit u){for(var s:b.strikes)if(s.attacker()==u)return true;return false;}
     /**
      * A melee troop's swing (its cooldown already taken and its arm swung): the swing it plays (never the one before, BattleMath.pickVariant), its golem or ravager
      * swing shown now, and its blow queued for the impact frame, that swing's impactTicks on (clamped to land before the next swing can start,
-     * BattleMath.impactDelay). False for a troop whose attack is not a melee blow (Abilities.melee) or whose family has no swings: its attack goes now.
+     * BattleMath.impactDelay). Its swing is drawn from the battle's own rolls (Battle.rolls), and its Charge is judged now (Combat.charge, Ruling R29)
+     * and carried by the blow. A troop with a blow still pending swings no second one (the call does nothing: swingsRefused). False for a troop whose
+     * attack is not a melee blow (Abilities.melee) or whose family has no swings: its attack goes now.
      */
     static boolean swing(GravesAndGlory.Battle b,GravesAndGlory.Unit u,LivingEntity enemy,long time){
         if(!Abilities.melee(u))return false;
         var rows=variants(u.spec.family());if(rows.isEmpty())return false;
-        int variant=BattleMath.pickVariant(rows.size(),u.lastVariant,b.world.random.nextLong());
+        if(pending(b,u)){swingsRefused++;return true;}
+        int variant=BattleMath.pickVariant(rows.size(),u.lastVariant,b.rolls.nextLong());
         int delay=BattleMath.impactDelay(rows.get(variant).impactTicks(),u.nextAttack-time);
         u.lastVariant=variant;u.swungAt=time;swings++;
         Abilities.animate(b,u);
-        var strike=new GravesAndGlory.Battle.PendingStrike(u,enemy,variant,time+delay);
+        var strike=new GravesAndGlory.Battle.PendingStrike(u,enemy,variant,time,time+delay,Combat.charge(b,u,true));
         if(delay>0)b.strikes.add(strike);else land(b,strike);
         return true;
     }
@@ -510,17 +517,18 @@ final class Tactics {
         for(var s:due)land(b,s);
     }
     /**
-     * One blow on its impact frame: its flash and cue and its hit (Combat.resolve, with the on-hit abilities) if BattleMath.strikeLands: the attacker alive
-     * and not stunned since it swung, the target alive (a commander struck down, a spectator awaiting his respawn, is not) and within the attacker's reach
+     * One blow on its impact frame: its flash and cue and its hit (Combat.resolve, with the on-hit abilities, under its swing's Charge) if
+     * BattleMath.strikeLands: the attacker alive and not stunned since this blow's swing (PendingStrike.swungAt), the target alive (a commander struck down, a spectator awaiting his respawn, is not) and within the attacker's reach
      * plus meleeReachGrace. Otherwise the blow misses; the swing's cooldown stands either way.
      */
     static void land(GravesAndGlory.Battle b,GravesAndGlory.Battle.PendingStrike s){
         var u=s.attacker();LivingEntity target=s.target();
         boolean attackerAlive=u.mob.isAlive()&&!u.mob.isRemoved();
         boolean targetAlive=target.isAlive()&&!target.isRemoved()&&!(target instanceof ServerPlayerEntity p&&(p.isSpectator()||b.respawns.containsKey(p.getUuid())));
-        if(!BattleMath.strikeLands(attackerAlive,u.stunnedUntil>u.swungAt,targetAlive,u.mob.squaredDistanceTo(target),Abilities.range(b,u),Spec.COMBATDISCIPLINE[0].meleeReachGrace())){strikesMissed++;return;}
+        if(!BattleMath.strikeLands(attackerAlive,u.stunnedUntil>s.swungAt(),targetAlive,u.mob.squaredDistanceTo(target),Abilities.range(b,u),Spec.COMBATDISCIPLINE[0].meleeReachGrace())){strikesMissed++;return;}
         strikesLanded++;
         BattleEffects.strike(b,u,target);
-        Abilities.land(b,u,target);
+        u.blow=s.charge();
+        try{Abilities.land(b,u,target);}finally{u.blow=null;}
     }
 }

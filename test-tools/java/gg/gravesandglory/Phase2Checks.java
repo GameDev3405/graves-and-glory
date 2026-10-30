@@ -2667,7 +2667,7 @@ public final class Phase2Checks implements ClientModInitializer {
                     boolean settled=Houses.still(u1)&&Houses.still(u2);
                     for(int i:new int[]{1,2,4,5})unpin(line[i]); // the line is struck at its middle knight; the four within 2.5 of it are free to be thrown
                     float[] hp=new float[7];Vec3d[] was=new Vec3d[7];for(int i=0;i<7;i++){hp[i]=line[i].mob.getHealth();was[i]=line[i].mob.getPos();}
-                    int sent0=BattleEffects.attackStatuses;mark=Combat.LAST.peekLast();Abilities.attack(b,u3,line[3].mob,b.time);int sent=BattleEffects.attackStatuses-sent0;
+                    int sent0=BattleEffects.attackStatuses;mark=Combat.LAST.peekLast();Abilities.animate(b,u3);Abilities.land(b,u3,line[3].mob);int sent=BattleEffects.attackStatuses-sent0;
                     int hurt=0;for(int i:new int[]{1,2,4,5})if(line[i].mob.getHealth()<hp[i])hurt++;
                     boolean outer=line[0].mob.getHealth()==hp[0]&&line[6].mob.getHealth()==hp[6];
                     double r1=Abilities.range(b,u1),r2=Abilities.range(b,u2);
@@ -3339,7 +3339,7 @@ public final class Phase2Checks implements ClientModInitializer {
                     var inside=Commanders.hit(b,line[1],u2.mob,"arrow");boolean c17=Gilded.is(inside,0.5,"C17"); // an archer in the cloud, shooting out
                     for(int i:new int[]{1,2,4,5})unpin(knights[i]);
                     for(int i=0;i<7;i++)hp[i]=knights[i].mob.getHealth();
-                    mark=Combat.LAST.peekLast();Abilities.attack(b,u2,knights[3].mob,b.time);
+                    mark=Combat.LAST.peekLast();Abilities.animate(b,u2);Abilities.land(b,u2,knights[3].mob);
                     swept=0;for(int i:new int[]{1,2,4,5})if(knights[i].mob.getHealth()<hp[i])swept++;
                     boolean outer=knights[0].mob.getHealth()==hp[0]&&knights[6].mob.getHealth()==hp[6];
                     ok=cloudUp&&slowed==7&&c17&&swept==4&&outer&&knights[3].mob.getHealth()<hp[3];

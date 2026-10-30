@@ -314,6 +314,13 @@ public final class BattleMathCheck {
         // M10: the blow lands before the attacker's next swing can start, even under a shortened cooldown
         check(BattleMath.impactDelay(12, 25) == 12 && BattleMath.impactDelay(7, 20) == 7 && BattleMath.impactDelay(12, 12) == 11 && BattleMath.impactDelay(12, 5) == 4 && BattleMath.impactDelay(8, 1) == 0 && BattleMath.impactDelay(8, 0) == 0 && BattleMath.impactDelay(-3, 20) == 0, "impact delay: the sheet's impactTicks, clamped to land a tick before the next swing");
         for (int cd = 1; cd <= 40; cd++) for (int imp = 0; imp <= 14; imp++) check(BattleMath.impactDelay(imp, cd) < Math.max(1, cd) && BattleMath.impactDelay(imp, cd) <= imp, "impact delay " + imp + " under a cooldown of " + cd + " lands before the next swing");
+        // Ruling R29 (Task 5 fix round 1): a swing earns its Charge's impact on its swing tick; the wind-up never shortens the 60-tick window
+        Long stamp = BattleMath.chargeStamp(true, 0L, 59, 60);
+        check(stamp != null && stamp == 0L && BattleMath.chargeImpact(stamp, -1), "a swing on tick 59 of a fresh Charge's 60-tick window earns the impact, and its blow carries it however late it lands");
+        check(BattleMath.chargeStamp(true, 0L, 59 + 10, 60) == null, "judged on the landing tick instead (69, a 10-tick wind-up on) the same blow would have lost it: the reason the stamp is taken at the swing");
+        check(BattleMath.chargeStamp(true, 100L, 160, 60) == 100L && BattleMath.chargeStamp(true, 100L, 161, 60) == null && BattleMath.chargeStamp(true, 100L, 100, 60) == 100L, "the window holds ticks 0 to 60 from the stamp, as Combat judged it before");
+        check(BattleMath.chargeStamp(false, 100L, 110, 60) == null && BattleMath.chargeStamp(true, null, 110, 60) == null, "no Charge order at the swing, or no stamp: no impact window");
+        check(!BattleMath.chargeImpact(100L, 100) && !BattleMath.chargeImpact(100L, 130) && BattleMath.chargeImpact(100L, 99) && !BattleMath.chargeImpact(null, -1), "one impact per stamp: an attacker that crashed in under it already does not again");
         System.out.println("BattleMathCheck: " + checks + " checks passed");
     }
 }

@@ -524,10 +524,23 @@ public final class BattleMath {
     }
     /**
      * Ticks from a melee swing to its blow: the swing's impactTicks, but always at least a tick before the attacker's next swing can
-     * start (untilNextSwing ticks off, after the swing's cooldown, however a haste shortens it), so no blow is ever still pending when
-     * the next swing comes.
+     * start (untilNextSwing ticks off: the cooldown as the swing set it), so no blow is ever still pending when the next swing comes.
+     * No attack haste exists; one that shortened a cooldown already running would have to re-clamp the blows then pending
+     * (Battle.strikes), since this clamp is taken once, at the swing.
      */
     public static int impactDelay(int impactTicks, long untilNextSwing) {
         return (int) Math.max(0, Math.min(impactTicks, untilNextSwing - 1));
+    }
+    /**
+     * The Charge stamp (Squad.chargedAt of the attacker's group) whose impact window holds tick now, for a blow whose attacker is charging: the
+     * stamp when now is at most window ticks after it; null when he is not charging, has no stamp, or the window has passed. A melee blow takes
+     * this on its swing tick (Ruling R29): its wind-up never shortens the window.
+     */
+    public static Long chargeStamp(boolean charging, Long charged, long now, int window) {
+        return charging && charged != null && now - charged <= window ? charged : null;
+    }
+    /** Whether a blow crashes in on its Charge's impact (the counters condition charge_impact): it fell inside a stamp's window, and its attacker has not landed an impact under that stamp already (chargeHitAt, the tick he last did). */
+    public static boolean chargeImpact(Long stamp, long chargeHitAt) {
+        return stamp != null && chargeHitAt < stamp;
     }
 }
