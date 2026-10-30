@@ -50,15 +50,21 @@ public final class BattleMath {
     /**
      * A volley's peak under overhead cover (M2): clears[i] is how far the first solid block above the straight line stands over it at ts[i] of the
      * flight (infinite in open sky). The arc keeps margin under every one of them: at t it stands arcHeight(t, 1) of its peak, so each caps the
-     * peak at (clear - margin) / (4 t (1 - t)). A peak that cover lowers under minPeak flies flat (0); cover a small arc never reaches leaves it be.
+     * peak at its headroom, clear - margin, over 4 t (1 - t). A shot flies flat (0) if a column that lowers its peak leaves it less than minRoom of
+     * headroom there (R-M2), so a lowered arc that still flies has at least minRoom of room under every roof that lowers it; cover a small arc never
+     * reaches leaves it be.
      */
-    public static double arcCoverPeak(double peak, double[] ts, double[] clears, double margin, double minPeak) {
-        double capped = peak;
+    public static double arcCoverPeak(double peak, double[] ts, double[] clears, double margin, double minRoom) {
+        double capped = peak, room = Double.POSITIVE_INFINITY;
         for (int i = 0; i < ts.length; i++) {
             double shape = arcHeight(ts[i], 1);
-            if (shape > 0) capped = Math.min(capped, Math.max(0, clears[i] - margin) / shape);
+            if (shape <= 0) continue;
+            double headroom = Math.max(0, clears[i] - margin);
+            if (headroom / shape >= peak) continue;
+            room = Math.min(room, headroom);
+            capped = Math.min(capped, headroom / shape);
         }
-        return capped < peak && capped < minPeak ? 0 : capped;
+        return capped < peak && room < minRoom ? 0 : capped;
     }
     /** The yaw, in degrees, of an arrow flying (vx, vz) nose first, in the convention vanilla gives a flying arrow: atan2(vx, vz); +z is 0, +x 90 (R25). */
     public static double arrowYaw(double vx, double vz) { return Math.toDegrees(Math.atan2(vx, vz)); }

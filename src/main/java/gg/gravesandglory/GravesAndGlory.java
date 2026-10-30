@@ -522,6 +522,8 @@ public final class GravesAndGlory implements ModInitializer {
         void clearProgression(){Veterans.clear(this);Statuses.clear(this);RankSync.clear(this);fallen.clear();}
         public final List<Capture> points=new ArrayList<>();
         public final List<Projectiles.Shot> shots=new ArrayList<>();
+        /** Landed shots' arrows held where they landed for a tick or two (Projectiles.LINGER_TICKS) before they go. */
+        public final List<Projectiles.Landed> landed=new ArrayList<>();
         /** The standing banners (the Oath Banner); Abilities.bannerTick takes them down on time, and startRound, the lobby and a map switch clear them. */
         public final List<Abilities.Banner> banners=new ArrayList<>();
         /** The standing structures (the Quartermaster's Forward Supply banners): troops of the other side target them, and Abilities.clearBanners takes them down with the Oath Banners. ArmySupplyBanner.remove drops a banner from it however it goes. */
