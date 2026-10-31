@@ -1,6 +1,12 @@
-# Ironhold master layout: draft for Kort (2026-10-30)
+# Ironhold master layout (2026-10-30)
 
-Status: proposal only. No game code, spawn or capture point has changed (plan 7.3). Kort corrects this draft, then signs it off before any section pass starts.
+Status: **SIGNED by Kort, 2026-10-30, as drawn.** This is the master layout for Ironhold; section passes may start. The section grid and locks live in `manifest.json` (`gg-mapforge-map/1`). The file name keeps "draft" so older links still resolve.
+
+Kort's picks (section 12): **D1a** keep today's coordinates, add the east gorge, Dusk spawn moves to (128,0). **D2a** new Great Keep tower piece to about y 114. **D3a** keep Domination A/B/C. **D4a** a defenders-only keep postern, built by the modes lane. **D5a** the Mire with a causeway. **D6a** north low and wet, south high.
+
+Also decided 2026-10-30: sections about 64x64; each goes blockout, structure, natural, detail; agents review the passes; Kort signs only this layout and the whole finished map. Review images per section are top-down plus isometric; in-game shots come later through the harness. The protect locks belong to the map lane (in the manifest). Grass and leaves biome tint waits for the palette work.
+
+No game code, spawn or capture point has changed yet (plan 7.3): the Dusk spawn move and the postern are for the modes lane.
 
 Files in this folder:
 - `layout-blockout.json`: a gg-mapforge-plan/1 blockout with 1281 ops. It validates and applies to a flat 700x500 world.
@@ -141,7 +147,7 @@ Rims and backdrop (light pass): row 0, row 7 and column A are the North Mountain
 | H5 | South-east corner | Curtain corner, postern road |
 
 ## 11. Build order
-1. Kort corrects and signs off this layout (decisions below).
+1. Kort signed this layout on 2026-10-30 (decisions below, all option a).
 2. Whole-map blockout pass from `layout-blockout.json`, kept only as a plan until signed off. Then route-time and sight-line checks, and the p4-world-wards flood gate re-run.
 3. Structure passes, fortress first: E3, F3, F4, E2, E4, G3, H3, then the remaining fortress and curtain sections (F2, F5, E5, G2, G4, H2, H4, H5).
 4. Field: D3, D4, C3, C4, E1, D6, C5, F1, F6, G5, G6, then the rest of B..D.
@@ -152,7 +158,7 @@ Rims and backdrop (light pass): row 0, row 7 and column A are the North Mountain
 
 Regenerate: `python -m tools.mapforge` flat, then apply this plan, then `render --view top --scale 2 --no-grid` (plus grid overlay) or `render --view iso`.
 
-## 12. Decisions for Kort (recommended option first)
+## 12. Decisions (Kort picked a for all six, 2026-10-30)
 - **D1. Fortress frame:** (a) today's coordinates + east gorge, Dusk spawn to (128,0); (b) shift the fortress ~100 east (every modeSites row moves, flood re-run); (c) all-new coordinates.
 - **D2. Keep height:** (a) new Great Keep tower piece on today's footprint, top ~y 114; (b) today's 22-high keep with a dark crag backdrop; (c) raise the keep ground (Siege station heights change).
 - **D3. Domination on Ironhold:** (a) keep A/B/C, balance with spawn timing and route checks; (b) move B to the Outer Yard (-55,0); (c) Ironhold becomes Siege-only.
