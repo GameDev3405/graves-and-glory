@@ -23,6 +23,8 @@ final class CampScreen extends ArmyScreen {
     WarTableRecruit recruit;
     /** The War Table troop sheet (page troop), kept while the page is open; leaving the page drops it. */
     WarTableTroop troopSheet;
+    /** The War Table lobby (page lobby), kept while the page is open; leaving the page drops it. */
+    WarTableLobby lobby;
     /** The War Table's other pages (UI plan Task 7), kept while the page is open, so the armed troop, the track's place and a room code being written survive a rebuild; leaving the page drops it. */
     WarTablePages pages;
     /** The keys whose press a War Table page took, not released since, and the watched keys already down when the screen opened (the key that opened it, say). Minecraft hands a screen each repeat of a held key as another keyPressed: those go no further, on whatever page the press left the table at (a held Esc that went home must not then close it, a held Enter must not ride again, the menu key that opened the table must not close it), until keyReleased lets the key through again. */
@@ -54,7 +56,7 @@ final class CampScreen extends ArmyScreen {
     /** Sends cmd to the server unless a command went less than 300 ms ago; returns whether it went. */
     boolean action(String cmd){if(System.currentTimeMillis()-requestAt<300)return false;requestAt=System.currentTimeMillis();CampaignClient.notice="";CampaignClient.dismissed="";send(cmd);return true;} // what the player does next speaks anew: a notice he left behind by changing page shows again if the server answers with the same words (review fix round 2)
     /** Turns the table to another page (an old name goes through alias); the keyboard's focus starts afresh there. */
-    void page(String next){if(CampaignClient.rollShowing())CampaignClient.revealUntil=0;CampaignClient.dismissed=CampaignClient.notice;page=alias(next);offset=0;if(!page.equals("recruit"))recruit=null;if(!page.equals("troop"))troopSheet=null;if(pages!=null&&!pages.page.equals(page))pages=null;super.clearAndInit();}
+    void page(String next){if(CampaignClient.rollShowing())CampaignClient.revealUntil=0;CampaignClient.dismissed=CampaignClient.notice;page=alias(next);offset=0;if(!page.equals("recruit"))recruit=null;if(!page.equals("troop"))troopSheet=null;if(!page.equals("lobby"))lobby=null;if(pages!=null&&!pages.page.equals(page))pages=null;super.clearAndInit();}
     void rebuild(){clearAndInit();}
     UiButton add(UiButton b){return addDrawableChild(b);}
     String state(){return CampaignClient.social.toString()+CampaignClient.progression.toString()+CampaignClient.profile.gold+CampaignClient.profile.owned.keySet()+CampaignClient.profile.pity+CampaignClient.profile.campaignCleared+CampaignClient.difficulty+running+ready+RecruitPages.stateKey(CampaignClient.profile);}
@@ -63,6 +65,7 @@ final class CampScreen extends ArmyScreen {
         if(page.equals("home")&&home!=null)return home.buttons;
         if(page.equals("recruit")&&recruit!=null)return recruit.buttons;
         if(page.equals("troop")&&troopSheet!=null)return troopSheet.buttons;
+        if(page.equals("lobby")&&lobby!=null)return lobby.buttons;
         if(pages!=null&&pages.page.equals(page))return pages.buttons;
         return Map.of();
     }
@@ -78,6 +81,7 @@ final class CampScreen extends ArmyScreen {
         if(page.equals("home")){scale=1;key=state();if(home==null)home=new WarTableHome(this);home.init();return;} // the War Table draws in canvas pixels
         if(page.equals("recruit")){scale=1;key=state();if(recruit==null)recruit=new WarTableRecruit(this);recruit.init();return;}
         if(page.equals("troop")){scale=1;key=state();if(troopSheet==null)troopSheet=new WarTableTroop(this);troopSheet.init();return;}
+        if(page.equals("lobby")){scale=1;key=state();if(lobby==null)lobby=new WarTableLobby(this);lobby.init();return;}
         if(WarTablePages.NAMES.contains(page)){scale=1;key=state();if(pages==null||!pages.page.equals(page))pages=new WarTablePages(this,page);pages.init();return;}
         scale=Math.min(1,Math.min(client.getWindow().getScaledWidth()/760f,client.getWindow().getScaledHeight()/460f));width=(int)(client.getWindow().getScaledWidth()/scale);height=(int)(client.getWindow().getScaledHeight()/scale);key=state();
         String[] names={"Camp guide","Recruitment","Friends","Contracts","Chapter rewards"};String[] ids={"home","recruit","friends","contracts","chapter"};
@@ -98,7 +102,7 @@ final class CampScreen extends ArmyScreen {
             var practice=button("PRACTICE",x+w/2+7,203,w/2-7,b->action("camp:practice"));practice.active=!running; // a button is 20 high and a primary 26: 3 lower, so both labels sit on one line
         }
     }
-    @Override public void tick(){if(home!=null&&page.equals("home"))home.tick();if(recruit!=null&&page.equals("recruit"))recruit.tick();if(troopSheet!=null&&page.equals("troop"))troopSheet.tick();if(pages!=null&&pages.page.equals(page))pages.tick();if(!key.equals(state()))clearAndInit();if(running&&!CampaignClient.waiting)close();}
+    @Override public void tick(){if(home!=null&&page.equals("home"))home.tick();if(recruit!=null&&page.equals("recruit"))recruit.tick();if(troopSheet!=null&&page.equals("troop"))troopSheet.tick();if(lobby!=null&&page.equals("lobby"))lobby.tick();if(pages!=null&&pages.page.equals(page))pages.tick();if(!key.equals(state()))clearAndInit();if(running&&!CampaignClient.waiting)close();}
     /** The troops one recruitment roll in this House can give: its Commons, Rares and Epic in sheet order (Legendaries come from Pacts). */
     static List<Spec.TroopsRow> pool(String house){return Arrays.stream(Spec.TROOPS).filter(t->t.house().equals(house)&&!t.rarity().equals("legendary")).toList();}
     static int weight(Spec.TroopsRow t){var r=RosterMath.rarityRow(t.rarity());return r==null?0:r.rollWeight();}
@@ -233,6 +237,7 @@ final class CampScreen extends ArmyScreen {
         if(page.equals("home")&&home!=null){home.render(g);super.render(g,mx,my,delta);return;}
         if(page.equals("recruit")&&recruit!=null){recruit.render(g);super.render(g,mx,my,delta);recruit.overlay(g);return;} // the Odds note lies over the widgets
         if(page.equals("troop")&&troopSheet!=null){troopSheet.render(g);super.render(g,mx,my,delta);return;}
+        if(page.equals("lobby")&&lobby!=null){lobby.render(g);super.render(g,mx,my,delta);return;}
         if(pages!=null&&pages.page.equals(page)){pages.render(g);super.render(g,mx,my,delta);return;}
         g.getMatrices().push();g.getMatrices().scale(scale,scale,1);DarkUi.background(g,width,height);DarkUi.crest(g,20,16,26,false);DarkUi.title(g,"BANNER CAMP",58,19,DarkUi.GOLD);
         line(g,header(),width-280,24,DarkUi.PAPER,260);
@@ -277,7 +282,7 @@ final class CampScreen extends ArmyScreen {
     @Override public boolean mouseReleased(double x,double y,int button){return super.mouseReleased(x/scale,y/scale,button);}
     @Override public boolean mouseDragged(double x,double y,int button,double dx,double dy){return super.mouseDragged(x/scale,y/scale,button,dx/scale,dy/scale);}
     /** A key's press: the room code being written takes its keys first (so Backspace repeats as it is held); then a held key's repeats stop here (see held); then the page shown, whose keys count as held until released. */
-    @Override public boolean keyPressed(int key,int scan,int mods){boolean onPages=pages!=null&&pages.page.equals(page);if(onPages&&pages.typing(key))return true;if(held.contains(key))return true;if(page.equals("home")&&home!=null&&home.keyPressed(key)){held.add(key);return true;}if(page.equals("recruit")&&recruit!=null&&recruit.keyPressed(key)){held.add(key);return true;}if(page.equals("troop")&&troopSheet!=null&&troopSheet.keyPressed(key)){held.add(key);return true;}if(onPages&&pages.keyPressed(key)){held.add(key);return true;}if(key==77)return true;return super.keyPressed(key,scan,mods);}
+    @Override public boolean keyPressed(int key,int scan,int mods){boolean onPages=pages!=null&&pages.page.equals(page);if(onPages&&pages.typing(key))return true;if(held.contains(key))return true;if(page.equals("home")&&home!=null&&home.keyPressed(key)){held.add(key);return true;}if(page.equals("recruit")&&recruit!=null&&recruit.keyPressed(key)){held.add(key);return true;}if(page.equals("troop")&&troopSheet!=null&&troopSheet.keyPressed(key)){held.add(key);return true;}if(page.equals("lobby")&&lobby!=null&&lobby.keyPressed(key)){held.add(key);return true;}if(onPages&&pages.keyPressed(key)){held.add(key);return true;}if(key==77)return true;return super.keyPressed(key,scan,mods);}
     @Override public boolean charTyped(char ch,int mods){if(pages!=null&&pages.page.equals(page)&&pages.charTyped(ch))return true;return super.charTyped(ch,mods);}
     /** A held key's release lets its presses through again (see held). */
     @Override public boolean keyReleased(int key,int scan,int mods){if(held.remove(key))return true;return super.keyReleased(key,scan,mods);}
