@@ -11,15 +11,17 @@ import static gg.gravesandglory.Phase1Checks.*;
  *  commander opens the council from camp; a stand-in second commander (a FakePlayer the server lists as online, named Aldric)
  *  joins the room so the page can be seen as a guest. Checks: the seats with bot fill on and off, the host's map pick, the
  *  ten-second countdown started and stopped, the guest's locked orders, and a round started by the countdown with bots in the
- *  empty seats. Shots (run/screenshots/p1-lobby-*.png): 1920x1080 and 2560x1440, borderless, GUI Auto, host and guest, with bots
+ *  empty seats; the House pick (Kort, 2026-10-31): the House chips' names whole, Ready refused for a House the banner lacks, and the
+ *  round fielding only the picked House (the banner carries one Graveborn revenant that a Gilded pick leaves home); the host-only
+ *  Pass host handing the seat to the guest; the lobby and the troop sheet at canvas scale 3 at 2560x1440 and 2 at 1080p. Shots (run/screenshots/p1-lobby-*.png): 1920x1080 and 2560x1440, borderless, GUI Auto, host and guest, with bots
  *  and with the countdown running. */
 final class LobbyChecks implements Phase1Checks.Suite, Phase1Checks.ServerWatch {
-    volatile int stage;volatile UUID player,guest;volatile boolean serverRunning;volatile int botsDawn=-1,botsDusk=-1,seatedHumans=-1;
+    volatile int stage;volatile UUID player,guest;volatile boolean serverRunning;volatile int botsDawn=-1,botsDusk=-1,seatedHumans=-1;volatile List<String> fielded;List<String> savedBanner;
     int mark=-1,waitFrom,oldW,oldH,oldGui,map0=-1;boolean finished;ServerPlayerEntity stand;
 
     public void serverTick(GravesAndGlory.Battle b){
         serverRunning=b.running;
-        if(b.running&&botsDawn<0){int d=0,k=0,h=0;for(var s:b.squads.values()){if(s.bot){if(s.team==0)d++;else k++;}else if(s.seated)h++;}botsDawn=d;botsDusk=k;seatedHumans=h;}
+        if(b.running&&botsDawn<0){int d=0,k=0,h=0;for(var s:b.squads.values()){if(s.bot){if(s.team==0)d++;else k++;}else if(s.seated)h++;}botsDawn=d;botsDusk=k;seatedHumans=h;for(var s:b.squads.values())if(!s.bot&&s.owner!=null&&s.owner.equals(player))fielded=new ArrayList<>(s.banner);}
     }
     int since(int tick){if(mark!=stage){mark=stage;waitFrom=tick;}return tick-waitFrom;}
     static WarTableLobby lobby(MinecraftClient c){return c.currentScreen instanceof CampScreen s&&s.page.equals("lobby")?s.lobby:null;}
@@ -31,6 +33,15 @@ final class LobbyChecks implements Phase1Checks.Suite, Phase1Checks.ServerWatch 
     static boolean active(MinecraftClient c,String name){var l=lobby(c);var b=l==null?null:l.button(name);return b!=null&&b.active;}
     static String kinds(int team){StringBuilder s=new StringBuilder();for(var seat:WarTableLobby.seats(team))s.append(s.length()==0?"":",").append(seat.kind());return s.toString();}
     void next(){stage++;}
+    /** Every House chip draws its House's whole first word, and the row stays inside the sheet's text width; the canvas scale is want. */
+    String chips(MinecraftClient c,int want,boolean[] ok){
+        var l=lobby(c);var t=WarTableLobby.texts();StringBuilder sb=new StringBuilder();boolean pass=l!=null&&UiCanvas.k()==want;int left=Integer.MAX_VALUE,right=0;var sheet=WarTableLobby.rects().get("sheet");
+        for(String id:RosterMath.fieldableHouses()){String name=t.getOrDefault("house-"+id+"-name","");var b=l==null?null:l.button("house-"+id);
+            var r=WarTableLobby.rects().get("house-"+id+"-name");pass&=name.equals(WarTableLobby.chipName(id))&&!name.contains("...")&&b!=null&&r!=null;if(r!=null){left=Math.min(left,r[0]);right=Math.max(right,r[0]+r[2]);}
+            sb.append(name).append(t.getOrDefault("house-"+id+"-seal","").equals("true")?"(seal) ":" ");}
+        pass&=right-left<=WarTableLobby.TEXT_W&&sheet!=null&&left>=sheet[0]&&right<=sheet[0]+sheet[2];ok[0]=pass;
+        return "chips "+sb.toString().trim()+", names span "+(right-left)+" canvas px of "+WarTableLobby.TEXT_W+", inside the sheet "+(sheet!=null&&left>=sheet[0]&&right<=sheet[0]+sheet[2])+", canvas k "+UiCanvas.k()+" (want "+want+")";
+    }
     void fail(MinecraftClient c,String id,String why){report(id,false,why);end(c);}
 
     public void step(MinecraftClient c,int tick){
@@ -41,7 +52,9 @@ final class LobbyChecks implements Phase1Checks.Suite, Phase1Checks.ServerWatch 
             case 0->{ // at camp, no round, no room; the window 1920x1080 borderless at GUI Auto
                 if(tick<20)return;var w=c.getWindow();oldW=w.getWidth();oldH=w.getHeight();oldGui=c.options.getGuiScale().getValue();player=c.player.getUuid();
                 c.setScreen(null);window(c,1920,1080,0,true);stage=-1;
-                server(c,b->{if(b.running)b.campaign.returnLobby();var s=b.campaign.social;if(s.room(player)!=null)s.leaveRoom(player);s.revision++;stage=1;});
+                server(c,b->{if(b.running)b.campaign.returnLobby();var s=b.campaign.social;if(s.room(player)!=null)s.leaveRoom(player);
+                    var pr=b.campaign.profile(player);savedBanner=new ArrayList<>(pr.banner);pr.owned.computeIfAbsent("revenant",x->new Profile.Owned());
+                    var bn=new ArrayList<>(RosterMath.starterBanner());bn.set(bn.size()-1,"revenant");pr.banner=bn;s.revision++;stage=1;});
             }
             case 1->{if(GravesAndGloryClient.running||!str("room").isEmpty()){if(k>300)fail(c,"p1-lobby-camp","still in a round or a room 300 ticks after the return to camp");return;}CampScreen.open("lobby");next();}
             case 2->{ // the page asks for a room; the server opens one three a side with bots on
@@ -50,6 +63,9 @@ final class LobbyChecks implements Phase1Checks.Suite, Phase1Checks.ServerWatch 
                 String dawn=kinds(0),dusk=kinds(1);var t=WarTableLobby.texts();
                 boolean ok=dawn.equals("human,bot,bot,closed")&&dusk.equals("bot,bot,bot,closed")&&flag("host")&&flag("fill")&&"BOT".equals(t.get("seat-1-0"))&&active(c,"fill")&&active(c,"map-next")&&active(c,"mode-domination");
                 report("p1-lobby-seats",ok,"Dawn "+dawn+", Dusk "+dusk+", seat-1-0 reads "+t.get("seat-1-0")+", host="+flag("host")+", fill="+flag("fill")+" (want human,bot,bot,closed / bot,bot,bot,closed, BOT, the host's orders live)");
+                boolean[] chipOk={false};String ch=chips(c,2,chipOk);
+                report("p1-lobby-chips-1080",chipOk[0],ch);
+                report("p1-lobby-pass-host-alone",lobby(c).button("pass-host")!=null&&!active(c,"pass-host"),"alone the host's Pass host is "+(lobby(c).button("pass-host")==null?"missing":active(c,"pass-host")?"live":"dull")+" (want dull: no one to pass it to)");
                 shot(c,"lobby-1080-host-bots");press(c,"fill");next();
             }
             case 3->{ // bot fill off: the empty seats are open and one ready commander does not count down
@@ -66,7 +82,19 @@ final class LobbyChecks implements Phase1Checks.Suite, Phase1Checks.ServerWatch 
                 press(c,"ready");next();
             }
             case 5->{if(WarTableLobby.myReady()||k<10){if(k>100)fail(c,"p1-lobby-stand-down","still ready 100 ticks after Stand down");return;}press(c,"fill");next();}
-            case 6->{if(!flag("fill")||k<10){if(k>100)fail(c,"p1-lobby-fill-on","fill still off");return;}map0=num("map");press(c,"map-next");next();}
+            case 6->{if(!flag("fill")||k<10){if(k>100)fail(c,"p1-lobby-fill-on","fill still off");return;}press(c,"house-tidecallers");stage=20;}
+            case 20->{ // a House the banner lacks: Ready is dull, the sheet says why, and the server refuses it too
+                if(!WarTableLobby.myHouse().equals("tidecallers")||WarTableLobby.myTroops()!=0){if(k>100)fail(c,"p1-lobby-house-refused","house "+WarTableLobby.myHouse()+", troops "+WarTableLobby.myTroops()+" 100 ticks after picking Tidecallers");return;}
+                if(k<10)return;
+                String status=WarTableLobby.texts().getOrDefault("status","");boolean dull=!active(c,"ready");stage=-1;
+                server(c,b->{var so=b.campaign.social;String said=so.ready(player,b.campaign.houseRefusal(so.room(player),player));boolean r=so.room(player).ready.contains(player);
+                    report("p1-lobby-house-refused",dull&&status.contains("no Tidecallers troops")&&CampaignClient.notice.contains("no Tidecallers troops")&&!r&&said.contains("no Tidecallers troops"),"Ready "+(dull?"dull":"live")+", notice \""+CampaignClient.notice+"\", the sheet reads \""+status+"\", the server answers \""+said+"\", ready="+r);
+                    stage=21;});
+            }
+            case 21->{if(k<2)return;shot(c,"lobby-1080-host-no-house");press(c,"house-gilded");next();}
+            case 22->{if(!WarTableLobby.myHouse().equals("gilded")||WarTableLobby.myTroops()<=0||k<10){if(k>100)fail(c,"p1-lobby-house-gilded","house "+WarTableLobby.myHouse()+", troops "+WarTableLobby.myTroops());return;}
+                report("p1-lobby-house-gilded",active(c,"ready")&&WarTableLobby.myTroops()==RosterMath.bannerSize()-1,"Gilded fields "+WarTableLobby.myTroops()+" troops (want "+(RosterMath.bannerSize()-1)+"), Ready "+(active(c,"ready")?"live":"dull"));
+                map0=num("map");press(c,"map-next");stage=7;}
             case 7->{ // the host's map pick reaches the snapshot
                 if(num("map")==map0){if(k>100)fail(c,"p1-lobby-host-map","map still "+map0+" 100 ticks after Next map");return;}
                 if(k<10)return;
@@ -76,7 +104,7 @@ final class LobbyChecks implements Phase1Checks.Suite, Phase1Checks.ServerWatch 
             case 8->{if(num("map")!=map0||k<10){if(k>100)fail(c,"p1-lobby-host-map-back","map not back");return;}press(c,"ready");next();}
             case 9->{ // everyone ready: the countdown runs and the sheet says so
                 if(num("countdown")<=0){if(k>100)fail(c,"p1-lobby-countdown-start","no countdown 100 ticks after Ready (waiting=\""+str("waiting")+"\")");return;}
-                if(k<4)return;
+                if(k<8)return; // CampScreen.action drops a second press within 300 ms
                 String cd=WarTableLobby.texts().getOrDefault("status","");
                 report("p1-lobby-countdown-start",num("countdown")>=8&&num("countdown")<=10&&cd.startsWith("Battle begins in")&&WarTableLobby.texts().containsKey("countdown"),"countdown "+num("countdown")+" s, the sheet reads \""+cd+"\"");
                 shot(c,"lobby-1080-host-countdown");press(c,"ready");next();
@@ -96,21 +124,43 @@ final class LobbyChecks implements Phase1Checks.Suite, Phase1Checks.ServerWatch 
                 if(k<20)return;
                 boolean locked=!active(c,"mode-domination")&&!active(c,"map-next")&&!active(c,"map-prev")&&!active(c,"fill")&&!active(c,"size-up")&&!active(c,"size-down");
                 String orders=WarTableLobby.texts().getOrDefault("orders","");
+                report("p1-lobby-pass-host-guest",lobby(c).button("pass-host")==null,"a guest's note has "+(lobby(c).button("pass-host")==null?"no":"a")+" Pass host");
                 report("p1-lobby-guest",locked&&active(c,"ready")&&kinds(1).startsWith("human,bot,bot")&&orders.contains("Aldric"),"orders locked="+locked+", Ready live="+active(c,"ready")+", Dusk "+kinds(1)+", the note says \""+orders+"\"");
                 shot(c,"lobby-1080-guest");window(c,2560,1440,0,true);next();
             }
             case 12->{
                 if(k<20)return;var w=c.getWindow();
-                report("p1-lobby-1440",w.getFramebufferWidth()==2560&&w.getFramebufferHeight()==1440,"framebuffer "+w.getFramebufferWidth()+"x"+w.getFramebufferHeight()+", canvas k "+UiCanvas.k());
+                boolean[] ok={false};String ch=chips(c,3,ok);
+                report("p1-lobby-1440",w.getFramebufferWidth()==2560&&w.getFramebufferHeight()==1440&&ok[0]&&UiCanvas.width()*3<=2560&&UiCanvas.height()*3<=1440,"framebuffer "+w.getFramebufferWidth()+"x"+w.getFramebufferHeight()+", canvas "+UiCanvas.width()+"x"+UiCanvas.height()+", "+ch);
                 shot(c,"lobby-1440-guest");press(c,"ready");next();
             }
             case 13->{
                 if(num("countdown")<=0){if(k>100)fail(c,"p1-lobby-guest-countdown","no countdown with both ready");return;}
-                if(k<4)return;shot(c,"lobby-1440-guest-countdown");press(c,"ready");stage=-1;
+                if(k<8)return;shot(c,"lobby-1440-guest-countdown");press(c,"ready");stage=-1;
                 server(c,b->{b.campaign.social.handHost(guest,player);stage=14;});
             }
             case 14->{
                 if(!flag("host")||num("countdown")!=0){if(k>100)fail(c,"p1-lobby-host-back","host not back");return;}
+                if(k<20)return;
+                if(!press(c,"pass-host")){fail(c,"p1-lobby-pass-host","the host's Pass host is not live with Aldric in the room");return;}
+                stage=30;
+            }
+            case 30->{ // choosing: Aldric's seat offers the host's seat
+                if(k<10)return;var l=lobby(c);var t=WarTableLobby.texts();
+                boolean ok=l!=null&&l.choosingHost&&active(c,"seat-1-0")&&"Make host".equals(t.get("seat-1-0-hint"))&&!active(c,"ready");
+                report("p1-lobby-pass-host-choose",ok,"choosing="+(l!=null&&l.choosingHost)+", Aldric's seat "+(active(c,"seat-1-0")?"live":"dull")+" reads \""+t.get("seat-1-0-hint")+"\", Ready "+(active(c,"ready")?"live":"dull"));
+                shot(c,"lobby-1440-host-pass");
+                if(!press(c,"seat-1-0")){fail(c,"p1-lobby-pass-host","Aldric's seat is not live while passing the host");return;}
+                stage=31;
+            }
+            case 31->{ // social:host:Aldric moved the seat
+                if(flag("host")){if(k>100)fail(c,"p1-lobby-pass-host","still host 100 ticks after choosing Aldric's seat (notice \""+CampaignClient.notice+"\")");return;}
+                if(k<10)return;
+                report("p1-lobby-pass-host",!flag("host")&&lobby(c).button("pass-host")==null&&!lobby(c).choosingHost&&!WarTableLobby.texts().getOrDefault("orders","").isEmpty(),"after Pass host and Aldric's seat: host="+flag("host")+", the note reads \""+WarTableLobby.texts().getOrDefault("orders","")+"\", Pass host "+(lobby(c).button("pass-host")==null?"gone":"still shown"));
+                stage=-1;server(c,b->{b.campaign.social.handHost(guest,player);stage=32;});
+            }
+            case 32->{
+                if(!flag("host")){if(k>100)fail(c,"p1-lobby-host-back","host not back after the pass test");return;}
                 if(k<20)return;shot(c,"lobby-1440-host-bots");press(c,"ready");stage=-1;server(c,b->{b.campaign.social.ready(guest);stage=15;});
             }
             case 15->{
@@ -118,9 +168,17 @@ final class LobbyChecks implements Phase1Checks.Suite, Phase1Checks.ServerWatch 
                 if(k<4)return;shot(c,"lobby-1440-host-countdown");stage=-1;
                 server(c,b->{dropGuest(b);stage=16;}); // the guest leaves; the room stands down
             }
-            case 16->{if(WarTableLobby.commanders().size()!=1||WarTableLobby.myReady()||k<10){if(k>100)fail(c,"p1-lobby-guest-leaves","guest still seated");return;}press(c,"ready");next();}
+            case 16->{if(WarTableLobby.commanders().size()!=1||WarTableLobby.myReady()||k<10){if(k>100)fail(c,"p1-lobby-guest-leaves","guest still seated");return;}
+                if(c.currentScreen instanceof CampScreen s)s.openTroop("knight");stage=40;}
+            case 40->{ // the troop sheet fills the window at 1440p too
+                if(!(c.currentScreen instanceof CampScreen s)||!s.page.equals("troop")||k<20){if(k>100)fail(c,"p1-lobby-troop-1440","no troop sheet");return;}
+                report("p1-lobby-troop-1440",UiCanvas.k()==3&&UiCanvas.width()*3<=2560&&UiCanvas.height()*3<=1440,"troop sheet at 2560x1440: canvas k "+UiCanvas.k()+", canvas "+UiCanvas.width()+"x"+UiCanvas.height()+" (want 3)");
+                shot(c,"troop-1440");CampScreen.open("lobby");stage=41;}
+            case 41->{if(lobby(c)==null||k<20){if(k>100)fail(c,"p1-lobby-back","lobby not back after the troop sheet");return;}press(c,"ready");stage=17;}
             case 17->{ // the countdown runs out and the round starts with bots in the five empty seats
                 if(!serverRunning||botsDawn<0){if(k>900)fail(c,"p1-lobby-bot-fill-on","no round 900 ticks after the last Ready (countdown "+num("countdown")+", notice \""+CampaignClient.notice+"\")");return;}
+                var f=fielded;int units=f==null?-1:RosterMath.units(f,RosterMath.Catalog.fromSpec());
+                report("p1-lobby-house-fielded",f!=null&&!f.contains("revenant")&&f.contains("knight")&&units==RosterMath.bannerSize()-1,"the Gilded pick fields "+units+" units, revenant "+(f!=null&&f.contains("revenant")?"fielded":"left home")+" (want "+(RosterMath.bannerSize()-1)+" Gilded, no revenant)");
                 report("p1-lobby-bot-fill-on",botsDawn==2&&botsDusk==3&&seatedHumans==1,"the round the countdown started fields "+seatedHumans+" commander and bots Dawn "+botsDawn+", Dusk "+botsDusk+" (want 1, 2, 3), "+k+" ticks after Ready");
                 end(c);
             }
@@ -133,7 +191,7 @@ final class LobbyChecks implements Phase1Checks.Suite, Phase1Checks.ServerWatch 
     }
     void end(MinecraftClient c){
         if(finished)return;finished=true;
-        server(c,b->{dropGuest(b);if(b.running)b.campaign.returnLobby();var s=b.campaign.social;if(player!=null&&s.room(player)!=null){var r=s.room(player);r.playing=false;s.leaveRoom(player);}s.revision++;});
+        server(c,b->{dropGuest(b);if(b.running)b.campaign.returnLobby();if(savedBanner!=null&&player!=null)b.campaign.profile(player).banner=savedBanner;var s=b.campaign.social;if(player!=null&&s.room(player)!=null){var r=s.room(player);r.playing=false;s.leaveRoom(player);}s.revision++;});
         c.setScreen(null);if(oldW>0)window(c,oldW,oldH,oldGui);
         finish(c,"ui-lobby");
     }
