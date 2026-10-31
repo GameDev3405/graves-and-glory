@@ -2,8 +2,9 @@
 """The Sunweaver's staff, tiers I to III, hand-authored at one texel per model pixel to match the 1x Gilded Order troops.
 
 The staff of an old white-robed sun priest: a warm shaft, a foot that bites the ground, a leather grip and a gilt sun on
-cream rays. Each tier is grander than the last. The head is drawn as pixel art in a small character grid (see HEAD) and cut
-into cubes by `plate`: a rim and field at two px deep, the rays one px deep, so the sun stands proud of its own rays, and the
+cream rays. Each tier is grander than the last. Tier I's head is drawn as pixel art in a small character grid (HEAD_I) and
+cut into cubes by `plate`: a rim and field at two px deep, the rays one px deep, so the sun stands proud of its own rays;
+tiers II and III build a larger sun from a few slabs and bars (`head`), to stay under the 128-quad frame cap. Each has a
 core, a single 1 px cube three px deep with its north and south faces lit. That core is the only glow of a tier: 2 texels, 8
 against the weapon glow cap (a 1x texel counts 4), the rest of the budget being the wearer's brooch.
 
@@ -11,8 +12,8 @@ against the weapon glow cap (a 1x texel counts 4), the rest of the budget being 
                      3 x 3 on four cream rays.
   II   sun_staff_t2  pale wood bound in steel, a steel foot, steel rings and binders, a steel collar and cup, a 5 x 5 gilt
                      sun on eight cream rays.
-  III  sun_staff_t3  a gilt-sheathed upper shaft, a steel spike in a gilt shoe, a gilt-wired grip, a cross-bar finial with
-                     two hanging gilt chains, a gilt cup and a 7 x 7 gilt sun inside a crown of long and short gilt rays.
+  III  sun_staff_t3  a dark stained shaft in gilt fittings, a steel spike in a gilt shoe, a gilt-wired grip, a cross-bar
+                     finial with two hanging gilt chains, a gilt cup and a 7 x 7 gilt sun on eight long gilt rays.
 
 Frame: Blockbench, y up, the grip's centre at the origin (the fist covers y -2..+2), the head up +y, the staff's broad faces
 across z (north is the front). The grip entry of sun_staff.json is kept: a staff is held upright.
@@ -146,6 +147,67 @@ def plate(tag, grid, ytop, leg):
     return cubes
 
 
+# ---- the larger heads, built from a few cubes ----
+#
+# Cut cell by cell (`plate`), a 5 x 5 or 7 x 7 sun costs 160 to 220 quads, over the 128 a weapon frame may draw. Tiers II
+# and III build the head instead from a disc of two or three overlapping 2 px slabs (each shifted 0.05 px along z, so no two
+# faces share a plane) painted from a character grid, one ray bar along x and one up, both running through the disc, two
+# diagonal bars turned 45 degrees about the core (one 0.05 px behind the straight bars, one 0.05 px before; the x bar sits 0.05 px low, off the core's top), and the core. The bars' middles are hidden.
+
+def sprite(grid, left, top, leg):
+    """A painter maker for a disc slab: the south texel at model (x, y) takes the grid cell at column floor(x - left), row
+    floor(top - y); the north face is mirrored back; the rim faces take the edge cells as `plate` paints them."""
+    def make(lo, hi):
+        w, h = int(round(hi[0] - lo[0])), int(round(hi[1] - lo[1]))
+        r0, c0 = int(round(top - hi[1])), int(round(lo[0] - left))
+        def cell(i, j, step=0):
+            R, s = leg[grid[r0 + j][c0 + i]][:2]
+            return R[max(0, min(len(R) - 1, s + step))]
+        def paint(face, pw, ph):
+            if face in ("south", "north"):
+                return [[cell((w - 1 - i) if face == "north" else i, j) for i in range(w)] for j in range(h)]
+            if face == "up": return [[cell(i, 0, 1) for i in range(w)] for _ in range(ph)]
+            if face == "down": return [[cell(i, h - 1, -2) for i in range(w)] for _ in range(ph)]
+            col = 0 if face == "west" else w - 1
+            return [[cell(col, j, -1 if face == "west" else 0) for _ in range(pw)] for j in range(h)]
+        return paint
+    return make
+
+
+def ray(R, body, tip, along="y"):
+    """A ray bar: `body` along its length and `tip` on its outermost texel at each end; a bar along y has its east and west
+    sides a step down and its ends at the tip shade; a bar along x is lit on top and shaded under."""
+    def paint(face, w, h):
+        if along == "x":
+            if face in ("east", "west"): return [[R[tip]] * w for _ in range(h)]
+            sh = 1 if face == "up" else -2 if face == "down" else 0
+            return [[R[max(0, min(len(R) - 1, (tip if x in (0, w - 1) else body) + sh))] for x in range(w)] for _ in range(h)]
+        if face in ("up", "down"): return [[R[tip if face == "up" else max(0, tip - 2)]] * w for _ in range(h)]
+        step = -1 if face in ("east", "west") else 0
+        return [[R[max(0, (tip if y in (0, h - 1) else body) + step)]] * w for y in range(h)]
+    return paint
+
+
+def head(R, mat, body, tip, cy, cross, up, diag, discs, grid, left, top, leg):
+    """The cubes of a sun head centred at (0, cy): the disc slabs [(half-width, half-height)], a ray bar along x `cross` px
+    long, one from the core up to cy + up, two diagonals `diag` px long turned 45 degrees, and the core."""
+    make = sprite(grid, left, top, leg)
+    out = []
+    for i, (hw, hh) in enumerate(discs):
+        dz = (0, -0.05, 0.05)[i]   # every slab 2 px deep (no stretched face), shifted so no two faces share a plane
+        lo, hi = [-hw, cy - hh, -1 + dz], [hw, cy + hh, 1 + dz]
+        out.append(Cube("disc_%d" % i, lo, hi, "gilt", make(lo, hi)))
+    out.append(Cube("ray_x", [-cross / 2, cy - 0.55, -0.5], [cross / 2, cy + 0.45, 0.5], mat, ray(R, body, tip, "x")))
+    out.append(Cube("ray_up", [-0.5, cy + 0.5, -0.5], [0.5, cy + up, 0.5], mat, ray(R, body, tip), skip=("down",)))
+    for tag, t, dz in (("l", 45, -0.05), ("r", -45, 0.05)):   # one a hair behind the straight bars, one a hair before
+        out.append(Cube("ray_" + tag, [-0.5, cy - diag / 2, -0.5 + dz], [0.5, cy + diag / 2, 0.5 + dz], mat, ray(R, body, tip),
+                        turn=t, pivot=[0, cy, 0]))
+    CR, cs = leg["c"][:2]
+    out.append(Cube("core", [-0.5, cy - 0.5, -1.5], [0.5, cy + 0.5, 1.5], "gilt",
+                    by_face(up=flat(CR[min(len(CR) - 1, cs)]), down=flat(CR[cs - 2]), rest=flat(CR[cs])), lit=("north", "south")))
+    return out
+
+
 # ---- the three staves ----
 
 # Each grid is the head seen from the south, row 0 on top. D, d, e are the rim (lit, side, shaded), m and k the field, c the
@@ -158,30 +220,23 @@ HEAD_I = [
     "..eee..",
 ]
 
-HEAD_II = [
-    ".....R.....",
-    ".....r.....",
-    "..R..r..R..",
-    "...rDDDr...",
-    "...dhhhd...",
-    "RrrdmcmdrrR",
-    "...dmmmd...",
-    "...reeer...",
-    "..R.....R..",
+# Tiers II and III paint only their discs from a grid (cells outside every slab are never read); their rays are bars.
+DISC_II = [            # x -2.5..2.5, y 21..16: slabs of 3 x 5 and 5 x 3, a rounded sun
+    ".DDD.",
+    "dhhhd",
+    "dmcmd",
+    "dmmmd",
+    ".eee.",
 ]
 
-HEAD_III = [
-    ".......R.......",
-    "...R...r...R...",
-    "....r..r..r....",
-    ".....rDDDr.....",
-    "...RrDmmmDrR...",
-    "....dmkkkmd....",
-    ".RrrdmkckmdrrR.",
-    "....dmkkkmd....",
-    "...RremmmerR...",
-    ".....reeer.....",
-    "....R.....R....",
+DISC_III = [           # x -3.5..3.5, y 21..14: slabs of 3 x 7, 5 x 5 and 7 x 3, a round sun
+    "..DDD..",
+    ".DmmmD.",
+    "dmkkkmd",
+    "dmkckmd",
+    "dmkkkmd",
+    ".emmme.",
+    "..eee..",
 ]
 
 
@@ -203,36 +258,24 @@ def tier1():
 
 
 def tier2():
-    """The Sunweaver's pale staff, bound in steel: a steel foot and spike, a pale shaft with two steel binders, steel rings
-    about the grip, a steel collar and cup and a 5 x 5 gilt sun on eight cream rays."""
+    """The Sunweaver's pale staff, bound in steel: a steel foot and spike, one pale shaft run through steel rings about the
+    grip and two hatched binders, a steel collar and cup and a 5 x 5 gilt sun on eight cream rays."""
     return [
-        post("spike", -12, -10, 0.5, 0.5, "steel", metal(S, 4)),
-        post("shoe", -10, -7, 1, 1, "steel", metal(S, 3)),
+        post("spike", -12, -10, 0.5, 0.5, "steel", metal(S, 4), skip=("up",)),
+        post("shoe", -10, -7, 1, 1, "steel", metal(S, 3), skip=("up",)),
         post("shoe_ring", -7, -6, 1.5, 1.5, "steel", metal(S, 4)),
-        post("shaft_lo", -6, -3, 0.5, 0.5, "wood", grain(PALE, 3, 3), skip=("down",)),
+        post("shaft", -6, 15, 0.5, 0.5, "wood", grain(PALE, 3, 3), skip=("down", "up")),
         post("ring_lo", -3, -2, 1, 1, "steel", metal(S, 4), skip=("up",)),
         Cube("grip", [-1, -2, -1], [1, 2, 1], "leather", wrap(L[3], L[2]), skip=("up", "down")),
         post("ring_hi", 2, 3, 1, 1, "steel", metal(S, 4), skip=("down",)),
-        post("shaft_a", 3, 5, 0.5, 0.5, "wood", grain(PALE, 3, 1), skip=("down",)),
-        post("binder_a", 5, 7, 1, 1, "steel", binder(S), skip=("down",)),
-        post("shaft_b", 7, 11, 0.5, 0.5, "wood", grain(PALE, 3, 6), skip=("down",)),
-        post("binder_b", 11, 13, 1, 1, "steel", binder(S), skip=("down",)),
-        post("shaft_c", 13, 14, 0.5, 0.5, "wood", grain(PALE, 3, 4), skip=("down",)),
-        post("collar", 14, 15, 1.5, 1.5, "steel", metal(S, 4), skip=("down",)),
-        post("cup", 15, 16, 2.5, 1.5, "steel", metal(S, 5), skip=("down",)),
-    ] + plate("head", HEAD_II, 24, legend(C, "bone", 5, 4))
+        post("binder_a", 5, 7, 1, 1, "steel", binder(S)),
+        post("binder_b", 11, 13, 1, 1, "steel", binder(S)),
+        post("collar", 14, 15, 1.5, 1.5, "steel", metal(S, 4)),
+        post("cup", 15, 16, 2.5, 1.5, "steel", metal(S, 5)),
+    ] + head(C, "bone", 4, 5, 18.5, 11, 5.5, 11, [(1.5, 2.5), (2.5, 1.5)], DISC_II, -2.5, 21, legend(C, "bone", 5, 4))
 
 
-def sheath():
-    """The gilt sleeve over the upper shaft: bright edges, a darker spiral seam."""
-    def fn(face, u, y, w):
-        if face == "up": return G[5]
-        if face == "down": return G[1]
-        i = 5 if face in ("south", "east") else 4
-        if (u + y) % 4 == 0: i -= 1
-        if face in ("north", "south") and u == 0: i = min(6, i + 1)
-        return G[i]
-    return fn
+STAIN = ramp("1f150f", "2b1f16", "4b392a", "6e5640", "8e7156", "ad9272")   # the ash a step darker, for gilt to sit on
 
 
 def barface(R):
@@ -243,31 +286,30 @@ def barface(R):
 
 
 def tier3():
-    """The Sunweaver's gilded staff: a steel spike in a gilt shoe, a gilt-sheathed upper shaft, a gilt-wired grip, a
-    cross-bar finial hung with two gilt chains, a gilt collar and cup and a 7 x 7 gilt sun inside a crown of long and short
-    gilt rays."""
+    """The Sunweaver's gilded staff: a steel spike in a gilt shoe, a stained shaft in gilt fittings, a gilt-wired grip, a
+    gilt band, a cross-bar finial hung with two gilt chains ending in cream beads, a gilt collar and cup and a 7 x 7 gilt
+    sun inside a crown of long gilt rays."""
+    def chain(face, w, h):   # two gilt links over a cream bead, top down
+        rows = [G[5], G[3], G[4], G[2], C[4], C[3]]
+        if face == "down": return [[C[2]] * w for _ in range(h)]
+        return [[rows[min(y, 5)] if face != "west" else (rows[min(y, 5)] if y >= 4 else G[2 + (y % 2)])] * w for y in range(h)]
     cubes = [
-        post("spike", -10, -8, 0.5, 0.5, "steel", metal(S, 4)),
-        post("shoe", -8, -5, 1, 1, "gilt", metal(G, 3)),
+        post("spike", -10, -8, 0.5, 0.5, "steel", metal(S, 4), skip=("up",)),
+        post("shoe", -8, -5, 1, 1, "gilt", metal(G, 3), skip=("up",)),
         post("shoe_ring", -5, -4, 1.5, 1.5, "gilt", metal(G, 4)),
-        post("shaft_lo", -4, -3, 0.5, 0.5, "wood", grain(PALE, 4, 3), skip=("down",)),
+        post("shaft", -4, 13, 0.5, 0.5, "wood", grain(STAIN, 2, 3), skip=("down", "up")),
         post("ring_lo", -3, -2, 1, 1, "gilt", metal(G, 4), skip=("up",)),
         Cube("grip", [-1, -2, -1], [1, 2, 1], "leather", wrap(L[3], L[2], G[5]), skip=("up", "down")),
         post("ring_hi", 2, 3, 1, 1, "gilt", metal(G, 4), skip=("down",)),
-        post("sheath", 3, 10, 1, 1, "gilt", sheath(), skip=("down",)),
+        post("band", 6, 7, 1, 1, "gilt", metal(G, 4)),
         Cube("crossbar", [-3.5, 10, -1], [3.5, 11, 1], "gilt", by_face(up=flat(G[5]), down=flat(G[1]), rest=barface(G))),
-        post("sheath_hi", 11, 12, 1, 1, "gilt", sheath(), skip=("down",)),
-        post("collar", 12, 13, 1.5, 1.5, "gilt", metal(G, 4), skip=("down",)),
-        post("cup", 13, 14, 2.5, 1.5, "gilt", metal(G, 5), skip=("down",)),
+        post("collar", 12, 13, 1.5, 1.5, "gilt", metal(G, 4)),
+        post("cup", 13, 14, 2.5, 1.5, "gilt", metal(G, 5)),
     ]
-    for tag, x0 in (("l", -3.5), ("r", 2.5)):   # chains hang from the cross-bar's ends: two links and a cream bead
-        for i, y in enumerate((9, 8)):
-            cubes.append(Cube("chain_%s%d" % (tag, i), [x0, y, -0.5], [x0 + 1, y + 1, 0.5], "gilt",
-                              by_face(up=flat(G[5]), down=flat(G[2]), rest=flat(G[4] if i % 2 == 0 else G[3])),
-                              skip=("up",) if i else ()))
-        cubes.append(Cube("bead_" + tag, [x0, 6, -0.5], [x0 + 1, 8, 0.5], "bone",
-                          by_face(up=flat(C[5]), down=flat(C[2]), rest=flat(C[4])), skip=("up",)))
-    return cubes + plate("head", HEAD_III, 24, legend(G, "gilt", 6, 5, m=(G, 4, "gilt", "disc"), k=(G, 3, "gilt", "disc")))
+    for tag, x0 in (("l", -3.5), ("r", 2.5)):   # chains hang from the cross-bar's ends
+        cubes.append(Cube("chain_" + tag, [x0, 4, -0.5], [x0 + 1, 10, 0.5], "gilt", chain, skip=("up",)))
+    return cubes + head(G, "gilt", 5, 6, 17.5, 13, 6.5, 13, [(1.5, 3.5), (2.5, 2.5), (3.5, 1.5)], DISC_III, -3.5, 21,
+                        legend(G, "gilt", 6, 5, m=(G, 4, "gilt", "disc"), k=(G, 3, "gilt", "disc")))
 
 
 TIERS = {
@@ -276,11 +318,11 @@ TIERS = {
                   "rays; the sun's heart is one 1 px cube, lit on its north and south faces (2 glow texels); 32 px long."),
     "sun_staff_t2": (tier2, "The Sunweaver's staff, tier II (upgraded), hand-authored at 1 texel a px: a pale wood shaft bound in "
                      "steel (two hatched binders and rings about the grip) on a steel foot and spike, a steel collar and cup, and a "
-                     "5 px gilt sunburst on eight cream rays; the heart is one 1 px cube, lit on its north and south faces "
+                     "5 px gilt sun on eight cream rays; the heart is one 1 px cube, lit on its north and south faces "
                      "(2 glow texels); 36 px long."),
-    "sun_staff_t3": (tier3, "The Sunweaver's staff, tier III (elite), hand-authored at 1 texel a px: a gilt-sheathed upper shaft on a "
-                     "steel spike in a gilt shoe, a gilt-wired grip, a cross-bar finial hung with two gilt chains ending in cream "
-                     "beads, a gilt collar and cup, and a 7 px gilt sun inside a crown of long and short gilt rays; the heart is "
+    "sun_staff_t3": (tier3, "The Sunweaver's staff, tier III (elite), hand-authored at 1 texel a px: a dark stained shaft in gilt "
+                     "fittings on a steel spike in a gilt shoe, a gilt-wired grip, a gilt band, a cross-bar finial hung with two gilt "
+                     "chains ending in cream beads, a gilt collar and cup, and a 7 px gilt sun on eight long gilt rays; the heart is "
                      "one 1 px cube, lit on its north and south faces (2 glow texels); 34 px long."),
 }
 
