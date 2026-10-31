@@ -23,10 +23,12 @@ final class WarTableLobby {
     static final int[] COMPACT = {-53, -32};
     /** On the sheet (sheet-relative): text edge and width, the seat columns, the seats' rows, the picks and the Ready plate. */
     static final int PAD = 22, TEXT_W = 360, COL_W = 174, COL_GAP = 12, SEATS = 4, TEAM_Y = 40, SEAT_Y = 56, SEAT_H = 24, SEAT_STEP = 27,
-            HOST_Y = 166, HOUSE_HEAD_Y = 184, HOUSE_Y = 202, CHIP_W = 68, CHIP_GAP = 5, CLASS_HEAD_Y = 236, CLASS_Y = 254, TILE_W = 36, TILE_GAP = 4,
+            HOST_Y = 166, HOUSE_HEAD_Y = 184, HOUSE_Y = 202, CHIP_PAD = 6, CHIP_SEAL = 16, CHIP_SEAL_GAP = 4, CHIP_GAP = 4, CLASS_HEAD_Y = 236, CLASS_Y = 254, TILE_W = 36, TILE_GAP = 4,
             READY_Y = 288, STATUS_Y = 334, NOTICE_Y = 350, STEP = 12;
     /** On the note (note-relative): its text edge and width, and the rows of the orders. */
     static final int NPAD = 18, NOTE_TEXT_W = 196, MODE_Y = 44, MAP_Y = 92, CARD_Y = 108, SIZE_Y = 230, FILL_Y = 278, LEAVE_Y = 330;
+    /** The host's two tags on the last row of the note, Pass host and Leave, each this wide. */
+    static final int HOST_TAG_W = 96;
 
     private static final Map<String, int[]> rectsDrawn = new LinkedHashMap<>();
     private static final Map<String, String> textsDrawn = new LinkedHashMap<>();
@@ -52,6 +54,10 @@ final class WarTableLobby {
     final Map<String, UiButton> buttons = new LinkedHashMap<>();
     long ticks;
     boolean asked;
+    /** The host pressed Pass host: the other online commanders' seats now hand him the host's seat (social:host:<name>). */
+    boolean choosingHost;
+    /** Whether each House chip carries its seal this build (UiMath.chipRow), by House id. */
+    final Map<String, Boolean> chipSeals = new HashMap<>();
     int noticeSerialSeen;
     String noticeText = "";
     long noticeAt = -1000;
@@ -90,6 +96,15 @@ final class WarTableLobby {
     static boolean myReady() { var m = me(); return m != null && flag(m, "ready"); }
     static String myHouse() { var m = me(); String h = m == null ? "" : str(m, "house"); return h.isEmpty() ? RosterMath.rollHouse(CampaignClient.profile.banner) : h; }
     static String myClass() { return CampaignClient.profile.commander; }
+    /** Units my banner fields under my House pick (the server's count; -1 before it says). */
+    static int myTroops() { var m = me(); return m == null || !m.has("troops") ? -1 : m.get("troops").getAsInt(); }
+    /** Why I cannot ready ("" when I can): my banner holds no troop of the House I picked. The server refuses the same. */
+    static String houseRefusal() {
+        if (myTroops() != 0 || myReady()) return "";
+        return "Your banner holds no " + RosterMath.houseName(myHouse()) + " troops. Pick another House.";
+    }
+    /** A House chip's word: the House's first word (Gilded, Graveborn, Wildmoot, Ironclad, Tidecallers), always whole. */
+    static String chipName(String id) { String n = RosterMath.houseName(id); int sp = n.indexOf(' '); return sp < 0 ? n : n.substring(0, sp); }
     static String hostName() { for (var r : commanders()) if (flag(r, "host")) return str(r, "name"); return ""; }
     static List<String> modes() {
         List<String> out = new ArrayList<>();
@@ -124,21 +139,27 @@ final class WarTableLobby {
             return;
         }
         boolean idle = idle(), host = host() && idle;
+        if (!host || !heirs()) choosingHost = false;
+        boolean choosing = choosingHost;
         int mine = myTeam();
         for (int t = 0; t < 2; t++) {
             var seats = seats(t);
             for (int i = 0; i < SEATS; i++) {
                 final int team = t, index = i;
                 var seat = seats.get(i);
-                var b = add("seat-" + t + "-" + i, new UiButton(sx + PAD + (COL_W + COL_GAP) * t, sy + SEAT_Y + SEAT_STEP * i, COL_W, SEAT_H, Text.literal(seat.name()), x -> send("social:team:" + team), (g, x, y, w, h, hot) -> paintSeat(g, team, index, x, y, w, h)));
-                b.active = idle && team != mine && (seat.kind().equals("bot") || seat.kind().equals("open"));
+                boolean heir = choosing && heir(seat);
+                var b = add("seat-" + t + "-" + i, new UiButton(sx + PAD + (COL_W + COL_GAP) * t, sy + SEAT_Y + SEAT_STEP * i, COL_W, SEAT_H, Text.literal(heir ? "Make " + seat.name() + " host" : seat.name()), x -> pressSeat(team, index), (g, x, y, w, h, hot) -> paintSeat(g, team, index, x, y, w, h)));
+                b.active = choosing ? heir : idle && team != mine && (seat.kind().equals("bot") || seat.kind().equals("open"));
             }
         }
         var houses = new ArrayList<>(RosterMath.fieldableHouses());
-        for (int i = 0; i < houses.size(); i++) {
+        var row = chipRow(houses);
+        chipSeals.clear();
+        for (int i = 0, cx = sx + PAD; i < houses.size(); cx += row.widths()[i] + CHIP_GAP, i++) {
             String id = houses.get(i);
-            var b = add("house-" + id, new UiButton(sx + PAD + (CHIP_W + CHIP_GAP) * i, sy + HOUSE_Y, CHIP_W, WarTablePages.CHIP_H, Text.literal(RosterMath.houseName(id)), x -> send("social:house:" + id), (g, x, y, w, h, hot) -> paintHouse(g, id, x, y, w, h)));
-            b.active = idle;
+            chipSeals.put(id, row.seals()[i]);
+            var b = add("house-" + id, new UiButton(cx, sy + HOUSE_Y, row.widths()[i], WarTablePages.CHIP_H, Text.literal(RosterMath.houseName(id)), x -> send("social:house:" + id), (g, x, y, w, h, hot) -> paintHouse(g, id, x, y, w, h)));
+            b.active = idle && !choosing;
         }
         for (int i = 0; i < Spec.CLASSES.length; i++) {
             var c = Spec.CLASSES[i];
@@ -147,7 +168,7 @@ final class WarTableLobby {
         }
         String label = readyLabel();
         var ready = add("ready", new UiButton(sx + (SHEET_W - 240) / 2, sy + READY_Y, 240, 40, Text.literal(label), b -> send("social:ready"), (g, x, y, w, h, hot) -> plate(g, "ready", readyLabel(), !myReady(), x, y)));
-        ready.active = idle;
+        ready.active = idle && !choosing && houseRefusal().isEmpty();
         var modes = modes();
         for (int i = 0; i < modes.size(); i++) {
             String id = modes.get(i);
@@ -161,7 +182,34 @@ final class WarTableLobby {
         add("size-down", new UiButton(nx + NPAD, ny + SIZE_Y + 14, 24, 24, Text.literal("Fewer seats"), b -> send("social:size:" + (size - 1)), (g, x, y, w, h, hot) -> tag(g, "size-down", "-", false, x, y, w, h))).active = host && size > 1;
         add("size-up", new UiButton(nx + NPAD + NOTE_TEXT_W - 24, ny + SIZE_Y + 14, 24, 24, Text.literal("More seats"), b -> send("social:size:" + (size + 1)), (g, x, y, w, h, hot) -> tag(g, "size-up", "+", false, x, y, w, h))).active = host && size < SEATS;
         add("fill", new UiButton(nx + NPAD, ny + FILL_Y + 14, NOTE_TEXT_W, 24, Text.literal(fillLabel()), b -> send("social:fill"), (g, x, y, w, h, hot) -> tag(g, "fill", fillLabel(), flag("fill"), x, y, w, h))).active = host;
-        add("leave", new UiButton(nx + NPAD + (NOTE_TEXT_W - 120) / 2, ny + LEAVE_Y, 120, 24, Text.literal("Leave the room"), b -> send("social:exit"), (g, x, y, w, h, hot) -> tag(g, "leave", "Leave the room", false, x, y, w, h))).active = idle;
+        if (host) { // only the host has Pass host; it stands beside Leave, and Leave narrows to share the row
+            add("pass-host", new UiButton(nx + NPAD, ny + LEAVE_Y, HOST_TAG_W, 24, Text.literal(passLabel()), b -> { choosingHost = !choosingHost; screen.rebuild(); }, (g, x, y, w, h, hot) -> tag(g, "pass-host", passLabel(), choosingHost, x, y, w, h))).active = heirs();
+            add("leave", new UiButton(nx + NPAD + NOTE_TEXT_W - HOST_TAG_W, ny + LEAVE_Y, HOST_TAG_W, 24, Text.literal("Leave room"), b -> send("social:exit"), (g, x, y, w, h, hot) -> tag(g, "leave", "Leave room", false, x, y, w, h))).active = idle && !choosingHost;
+        } else
+            add("leave", new UiButton(nx + NPAD + (NOTE_TEXT_W - 120) / 2, ny + LEAVE_Y, 120, 24, Text.literal("Leave the room"), b -> send("social:exit"), (g, x, y, w, h, hot) -> tag(g, "leave", "Leave the room", false, x, y, w, h))).active = idle;
+    }
+
+    /** The House chip row for this frame's pick: every name whole, seals where they fit (UiMath.chipRow within the sheet's text width). */
+    UiMath.ChipRow chipRow(List<String> houses) {
+        var font = font();
+        int[] w = new int[houses.size()];
+        for (int i = 0; i < w.length; i++) w[i] = font.getWidth(DarkUi.body(chipName(houses.get(i))));
+        return UiMath.chipRow(w, houses.indexOf(myHouse()), TEXT_W, CHIP_PAD, CHIP_SEAL, CHIP_SEAL_GAP, CHIP_GAP);
+    }
+
+    static String passLabel() { return "Pass host"; }
+
+    /** A seat the host can hand his seat to: another commander, online. */
+    static boolean heir(Seat seat) { return seat.kind().equals("human") && !seat.me() && seat.online(); }
+
+    /** Whether any seat could take the host's seat. */
+    static boolean heirs() { for (int t = 0; t < 2; t++) for (var s : seats(t)) if (heir(s)) return true; return false; }
+
+    /** A seat pressed: while passing the host, hands it on (social:host:<name>); else takes the seat (social:team). */
+    void pressSeat(int team, int index) {
+        var seat = seats(team).get(index);
+        if (choosingHost) { if (heir(seat)) { send("social:host:" + seat.name()); choosingHost = false; } screen.rebuild(); return; }
+        send("social:team:" + team);
     }
 
     static String fillLabel() { return flag("fill") ? "Bots fill empty seats" : "Empty seats stay empty"; }
@@ -271,11 +319,12 @@ final class WarTableLobby {
             line(g, "count-" + t, DarkUi.body(count), count, tx + COL_W - cw, y + TEAM_Y + 1, DarkUi.SEPIA);
         }
         String host = hostName();
-        String hostLine = host() ? "You host this council: you set the orders." : "Host: " + host + ". The host sets the orders.";
+        String hostLine = choosingHost ? "Choose a commander's seat to make them host." : host() ? "You host this council: you set the orders." : "Host: " + host + ". The host sets the orders.";
         line(g, "host", DarkUi.body(hostLine), hostLine, lx, y + HOST_Y, DarkUi.SEPIA);
         String house = myHouse();
         var hr = houseRow(house);
-        head(g, "house", "Your House", hr == null ? "" : hr.name(), lx, y + HOUSE_HEAD_Y, TEXT_W);
+        int troops = myTroops();
+        head(g, "house", "Your House", hr == null ? "" : hr.name() + (troops > 0 ? ", " + troops + (troops == 1 ? " troop" : " troops") : troops == 0 ? ", no troops" : ""), lx, y + HOUSE_HEAD_Y, TEXT_W);
         var cr = classRow(myClass());
         head(g, "class", "Your class", cr == null ? "" : cr.name(), lx, y + CLASS_HEAD_Y, TEXT_W);
         status(g, x, y);
@@ -304,6 +353,14 @@ final class WarTableLobby {
                 case "human" -> {
                     seal(g, seat.house(), x + 5, y + 4, 16);
                     int right = x + w - 6;
+                    if (b != null && b.active && choosingHost) { // passing the host: the seat says so
+                        String hint = "Make host";
+                        int hw = font.getWidth(DarkUi.body(hint));
+                        g.drawText(font, DarkUi.body(hint), right - hw, y + 7, DarkUi.INK_TEXT, false);
+                        underline(g, right - hw, y + 18, hw, WarTableRecruit.hot(b) ? DarkUi.INK_TEXT : DarkUi.SEPIA_LINE);
+                        textsDrawn.put(key + "-hint", hint);
+                        right -= hw + 6;
+                    }
                     if (seat.ready()) { UiTex.draw(g, "table/ready-check", right - 9, y + 8); right -= 13; }
                     var c = classRow(seat.cls());
                     if (c != null) { String icon = "table/icon-class-" + c.id(); UiTex.draw(g, icon, right - 14, y + 5); right -= 18; }
@@ -348,12 +405,21 @@ final class WarTableLobby {
         int dy = on ? 1 : 0;
         String tex = on ? "table/chip-house-on" : "table/chip-house";
         UiTex.nine(g, tex, x, y, w + 1, on ? h + WarTablePages.CHIP_RULE : h + 2);
-        seal(g, id, x + 5, y + 4 + dy, 16);
-        if (on) UiTex.draw(g, "table/ready-check", x + 13, y + 13 + dy);
-        String name = UiMath.trim(RosterMath.houseName(id), w - 30, s -> font.getWidth(DarkUi.body(s)));
+        boolean withSeal = chipSeals.getOrDefault(id, false);
+        int tx = x + CHIP_PAD;
+        if (withSeal) {
+            seal(g, id, x + CHIP_PAD, y + 4 + dy, CHIP_SEAL);
+            if (on) UiTex.draw(g, "table/ready-check", x + CHIP_PAD + 8, y + 13 + dy);
+            tx += CHIP_SEAL + CHIP_SEAL_GAP;
+        }
+        String name = chipName(id); // whole: the row was laid out to fit every name (chipRow)
         int ink = buttons.get("house-" + id) != null && buttons.get("house-" + id).active ? DarkUi.INK_TEXT : DarkUi.SEPIA;
-        g.drawText(font, DarkUi.body(name), x + 25, y + 6 + dy, ink, false);
-        if (WarTableRecruit.hot(buttons.get("house-" + id))) underline(g, x + 25, y + 18 + dy, font.getWidth(DarkUi.body(name)), ink);
+        int nw = font.getWidth(DarkUi.body(name));
+        g.drawText(font, DarkUi.body(name), tx, y + 6 + dy, ink, false);
+        if (WarTableRecruit.hot(buttons.get("house-" + id))) underline(g, tx, y + 18 + dy, nw, ink);
+        rectsDrawn.put("house-" + id + "-name", new int[]{tx, y + 6 + dy, nw, 11});
+        textsDrawn.put("house-" + id + "-name", name);
+        textsDrawn.put("house-" + id + "-seal", String.valueOf(withSeal));
         rectsDrawn.put("house-" + id, new int[]{x, y, w, h});
         texturesDrawn.put("house-" + id, tex);
         if (on) textsDrawn.put("house", id);
@@ -416,6 +482,7 @@ final class WarTableLobby {
         if (flag("playing")) { s = "Your room is in battle."; ink = DarkUi.SEPIA; t = DarkUi.body(s); }
         else if (flag("preparing")) { s = "Preparing the battlefield. Stand down to stop."; ink = DarkUi.INK_TEXT; t = DarkUi.body(s); }
         else if (seconds > 0) { s = "Battle begins in " + seconds; ink = DarkUi.INK_TEXT; t = DarkUi.focal(s); textsDrawn.put("countdown", String.valueOf(seconds)); }
+        else if (!houseRefusal().isEmpty()) { s = houseRefusal(); ink = DarkUi.INK_TEXT; t = DarkUi.body(s); }
         else {
             String waiting = str("waiting", "");
             s = waiting.isEmpty() ? "Everyone is ready." : waiting.equals("Every commander must ready up.") ? readyCount() : waiting;
