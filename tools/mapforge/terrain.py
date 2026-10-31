@@ -104,7 +104,7 @@ def validate_helper(where, op, errors):
                 'width', 'thickness', 'edgeDensity', 'wobble', 'wobbleScale', 'bank', 'depth'):
         if key in op and not _num(op[key]):
             errors.append(f'{where}: {key} must be a number')
-        elif key in op and (op[key] <= 0 if key in positive else op[key] < 0):
+        elif key in op and key != 'offset' and (op[key] <= 0 if key in positive else op[key] < 0):
             errors.append(f'{where}: {key} must be {"positive" if key in positive else "zero or more"}')
     for key in ('rate', 'density', 'edgeDensity', 'jitter', 'persistence'):
         if _num(op.get(key)) and op[key] > 1:

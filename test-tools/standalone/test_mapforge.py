@@ -281,6 +281,8 @@ class TerrainHelperTest(unittest.TestCase):
         good = {'op': 'river', 'points': [[0, 0, 4], [5, 0.5, 6]], 'width': 3, 'water': 60, 'floor': 55,
                 'bankSurface': [['mud', 2], ['coarse_dirt', 1]], 'seed': 'x'}
         self.assertEqual(validate(plan([good])), [])
+        sunk = {'op': 'noise', 'min': [0, 0], 'max': [3, 3], 'amplitude': 1, 'scale': 4, 'offset': -0.25}
+        self.assertEqual(validate(plan([sunk])), [], 'a negative noise offset is a valid bias')
 
     def test_noise_is_seeded_clipped_clamped_and_fades_at_its_edge(self):
         w = ground()
