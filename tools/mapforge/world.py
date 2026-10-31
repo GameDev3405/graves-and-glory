@@ -77,6 +77,11 @@ class World:
             h.update(b'\n')
         return h.hexdigest()
 
+    def region_digest(self, lo, hi):
+        """sha256 over the non-air cells inside the inclusive box lo..hi, encoded as digest() encodes them: a section
+        digest, so an edit elsewhere in the world leaves it unchanged."""
+        return region_digests(self, {'box': (lo, hi)})['box']
+
     def bounds(self):
         if not self.blocks:
             return None
@@ -133,6 +138,28 @@ class World:
                         palette.append(cell.state)
                     blocks.append(((x - lo[0], y - lo[1], z - lo[2]), index[cell.state], cell.be_tag()))
         return Structure(size, palette, blocks)
+
+
+def _line(pos, cell):
+    return ('%d,%d,%d|%s|' % (*pos, cell.state)).encode() + (cell.be or b'-') + b'\n'
+
+
+def region_digests(world, boxes):
+    """{key: sha256} for {key: (lo, hi)} inclusive boxes, in one pass over the world (boxes may overlap). Each value
+    equals hashing the box's cells alone, sorted by position."""
+    hashes = {k: hashlib.sha256() for k in boxes}
+    by_column = {}
+    items = list(boxes.items())
+    for pos in sorted(world.blocks):
+        col = (pos[0], pos[2])
+        hits = by_column.get(col)
+        if hits is None:
+            hits = by_column[col] = [(k, lo[1], hi[1]) for k, (lo, hi) in items
+                                     if lo[0] <= pos[0] <= hi[0] and lo[2] <= pos[2] <= hi[2]]
+        for k, ylo, yhi in hits:
+            if ylo <= pos[1] <= yhi:
+                hashes[k].update(_line(pos, world.blocks[pos]))
+    return {k: h.hexdigest() for k, h in hashes.items()}
 
 
 def write_json_atomic(path, data):

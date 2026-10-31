@@ -1,7 +1,0 @@
-{
- "format": "gg-mapforge-protect/1",
- "locks": [
-  {"id": "war-table", "min": [20, 60, 50], "max": [26, 96, 56], "reason": "station: war table"},
-  {"id": "spawn", "min": [60, 60, 0], "max": [63, 96, 3], "reason": "spawn point (plan 7.3)"}
- ]
-}

@@ -16,6 +16,7 @@ from mapforge.plan import PLAN_FORMAT, PlanError, apply, compile_plan, dry_run, 
 from mapforge.structure import DATA_VERSION, PIECES, Structure, footprint, normalize, rotate_state, to_world  # noqa: E402
 from mapforge.world import AIR_CELL, Cell, World  # noqa: E402
 from mapforge import render  # noqa: E402
+from mapforge import manifest as mf  # noqa: E402
 from mapforge.colours import UNKNOWN, Palette  # noqa: E402
 
 try:
@@ -36,9 +37,13 @@ def flat(size=16, y=64, block='minecraft:grass_block'):
     return w
 
 
+def sample_map():
+    return json.loads((SAMPLES / 'camp-map.json').read_text())
+
+
 def plan(ops, locks=None, **extra):
     p = {'format': PLAN_FORMAT, 'id': 'test', 'world': 'test', 'author': 'unit', 'purpose': 'unit test',
-         'locks': locks or [{'id': 'all', 'mode': 'allow', 'min': [-100, -64, -100], 'max': [100, 319, 100]}],
+         'locks': locks if locks is not None else [{'id': 'all', 'mode': 'allow', 'min': [-100, -64, -100], 'max': [100, 319, 100]}],
          'operations': ops}
     p.update(extra)
     return p
@@ -172,11 +177,13 @@ class LockApplyRollbackTest(unittest.TestCase):
         p = plan([{'op': 'set', 'pos': [3, 65, 3], 'block': 'stone'}], locks)
         self.assertIn('deny region hearth (station)', dry_run(p, w)['violations'][0])
         p = plan([{'op': 'set', 'pos': [1, 65, 1], 'block': 'stone'}], locks)
-        self.assertIn('protect-spawn', dry_run(p, w, protect=[{'id': 'protect-spawn', 'min': [1, 0, 1], 'max': [1, 100, 1]}])['violations'][0])
+        m = sample_map()
+        m['id'] = 'test'
+        m['protect'] = [{'id': 'protect-spawn', 'kind': 'spawn', 'min': [1, 0, 1], 'max': [1, 100, 1], 'reason': 'spawn'}]
+        self.assertIn('protect-spawn', dry_run(p, w, manifest=m)['violations'][0])
         p = plan([{'op': 'fill', 'min': [0, 65, 0], 'max': [3, 65, 0], 'block': 'stone'}], locks, limits={'maxChangedBlocks': 3})
         self.assertIn('over limits.maxChangedBlocks 3', dry_run(p, w)['violations'][0])
-        with self.assertRaises(PlanError):
-            apply(plan([{'op': 'set', 'pos': [1, 65, 1], 'block': 'stone'}], expectWorld='0' * 64), w)
+        self.assertIn('expectWorld is gone', validate(plan([{'op': 'set', 'pos': [1, 65, 1], 'block': 'stone'}], expectWorld='0' * 64))[0])
         self.assertEqual(w.digest(), before)
 
     def test_dry_run_does_not_modify_and_apply_matches_prediction(self):
@@ -232,16 +239,20 @@ class LockApplyRollbackTest(unittest.TestCase):
 class SampleTest(unittest.TestCase):
     def test_sample_batch_is_valid_deterministic_and_reversible(self):
         p = json.loads((SAMPLES / 'camp-watchpost.json').read_text())
-        protect = json.loads((SAMPLES / 'camp-protect.json').read_text())['locks']
+        m = sample_map()
         self.assertEqual(validate(p, SAMPLES), [])
+        self.assertEqual(mf.validate_manifest(m), [])
         w = flat(64)
         before = w.digest()
-        s = dry_run(p, w, SAMPLES, protect)
+        s = dry_run(p, w, SAMPLES, m)
         self.assertTrue(s['ok'], s['violations'])
         self.assertTrue(all(op['changed'] > 0 for op in s['operations']))
-        _, u1 = apply(p, w, SAMPLES, protect, now=NOW)
-        _, u2 = apply(p, flat(64), SAMPLES, protect, now=NOW)
+        _, u1 = apply(p, w, SAMPLES, m, now=NOW)
+        _, u2 = apply(p, flat(64), SAMPLES, m, now=NOW)
         self.assertEqual(u1, u2)
+        self.assertEqual((u1['section'], u1['pass']), ('s0', 'blockout'))
+        self.assertEqual(u1['sectionAfter'], mf.section_digests(m, w, {'s0'})['s0'])
+        self.assertNotEqual(u1['sectionBefore'], u1['sectionAfter'])
         rollback(u1, w)
         self.assertEqual(w.digest(), before)
 
@@ -252,10 +263,13 @@ class SampleTest(unittest.TestCase):
             self.assertEqual(run('flat', '--out', world, '--min', 0, 0, '--max', 63, 63, '--y', 64).returncode, 0)
             digest = World.load(world).digest()
             r = run('dry-run', SAMPLES / 'camp-watchpost.json', '--world', world)
+            self.assertEqual(r.returncode, 2)
+            self.assertIn('--map', r.stdout)
+            r = run('dry-run', SAMPLES / 'camp-watchpost.json', '--world', world, '--map', SAMPLES / 'camp-map.json')
             self.assertEqual(r.returncode, 0, r.stderr)
             self.assertIn('locks ok', r.stdout)
             self.assertEqual(World.load(world).digest(), digest)
-            r = run('apply', SAMPLES / 'camp-watchpost.json', '--world', world)
+            r = run('apply', SAMPLES / 'camp-watchpost.json', '--world', world, '--map', SAMPLES / 'camp-map.json')
             self.assertEqual(r.returncode, 0, r.stderr)
             self.assertNotEqual(World.load(world).digest(), digest)
             self.assertEqual(run('rollback', pathlib.Path(d, 'camp.camp-watchpost-sample.undo.json'), '--world', world).returncode, 0)
@@ -266,6 +280,137 @@ class SampleTest(unittest.TestCase):
             r = run('dry-run', SAMPLES / 'camp-watchpost.json', '--world', save / 'w.json')
             self.assertNotEqual(r.returncode, 0)
             self.assertIn('offline only', r.stderr + r.stdout)
+
+
+class ManifestTest(unittest.TestCase):
+    def sectioned(self, ops, **extra):
+        p = plan(ops, locks=[], section='s0', world='camp', **{'pass': 'blockout'})
+        p.update(extra)
+        return p
+
+    def test_manifest_validation(self):
+        m = sample_map()
+        self.assertEqual(mf.validate_manifest(m), [])
+        bad = sample_map()
+        bad['sections'][1]['bounds']['min'][0] = 60
+        self.assertTrue(any('overlap' in e for e in mf.validate_manifest(bad)))
+        bad = sample_map()
+        bad['sections'][1]['bounds']['max'][0] = 200
+        self.assertTrue(any('outside the map bounds' in e for e in mf.validate_manifest(bad)))
+        bad = sample_map()
+        bad['sections'][0]['status'] = 'painted'
+        bad['protect'][2]['radius'] = 0
+        bad['protect'][0]['kind'] = 'tree'
+        errors = mf.validate_manifest(bad)
+        self.assertTrue(any('status must be' in e for e in errors))
+        self.assertTrue(any('cylinder' in e for e in errors))
+        self.assertTrue(any('kind must be' in e for e in errors))
+        self.assertTrue(mf.validate_manifest({'format': 'x'}))
+
+    def test_section_bounds_are_the_allow_region_and_cut_plan_locks(self):
+        m, w = sample_map(), flat(64)
+        ok = self.sectioned([{'op': 'set', 'pos': [5, 65, 5], 'block': 'stone'}])
+        self.assertEqual(validate(ok), [])
+        self.assertTrue(dry_run(ok, w, manifest=m)['ok'])
+        out = self.sectioned([{'op': 'set', 'pos': [70, 65, 5], 'block': 'stone'}])
+        self.assertIn('outside every allow region', dry_run(out, w, manifest=m)['violations'][0])
+        # the plan's own allow lock reaches past the section: only the overlap counts
+        wide = self.sectioned([{'op': 'set', 'pos': [70, 65, 5], 'block': 'stone'}],
+                              locks=[{'id': 'wide', 'mode': 'allow', 'min': [0, 0, 0], 'max': [127, 100, 63]}])
+        self.assertIn('outside every allow region', dry_run(wide, w, manifest=m)['violations'][0])
+        narrow = self.sectioned([{'op': 'set', 'pos': [40, 65, 5], 'block': 'stone'}],
+                                locks=[{'id': 'n', 'mode': 'allow', 'min': [0, 0, 0], 'max': [10, 100, 10]}])
+        self.assertIn('outside every allow region', dry_run(narrow, w, manifest=m)['violations'][0])
+        away = self.sectioned([{'op': 'set', 'pos': [5, 65, 5], 'block': 'stone'}],
+                              locks=[{'id': 'e', 'mode': 'allow', 'min': [70, 0, 0], 'max': [80, 100, 10]}])
+        self.assertTrue(any('none of the plan' in v for v in dry_run(away, w, manifest=m)['violations']))
+        self.assertIn('--map', dry_run(ok, w)['violations'][0])
+        other = dict(ok, world='ironhold')
+        self.assertTrue(any('is map' in v for v in dry_run(other, w, manifest=m)['violations']))
+        unknown = dict(ok, section='zz')
+        self.assertTrue(any('no section' in v for v in dry_run(unknown, w, manifest=m)['violations']))
+
+    def test_protect_boxes_and_cylinders(self):
+        m, w = sample_map(), flat(128)
+        m['sections'][1]['status'] = 'todo'
+        hit = plan([{'op': 'set', 'pos': [99, 65, 34], 'block': 'stone'}], locks=[], section='s1', world='camp',
+                   **{'pass': 'blockout'})
+        self.assertIn('deny region flag', dry_run(hit, w, manifest=m)['violations'][0])
+        corner = dict(hit, operations=[{'op': 'set', 'pos': [101, 65, 37], 'block': 'stone'}])  # 5,5 from centre > r6
+        self.assertTrue(dry_run(corner, w, manifest=m)['ok'])
+        above = dict(hit, operations=[{'op': 'set', 'pos': [96, 68, 32], 'block': 'stone'}])
+        self.assertTrue(dry_run(above, w, manifest=m)['ok'])
+        station = self.sectioned([{'op': 'set', 'pos': [22, 65, 52], 'block': 'stone'}])
+        self.assertIn('war-table', dry_run(station, w, manifest=m)['violations'][0])
+        # sectionless plans still get the manifest's protect locks
+        legacy = plan([{'op': 'set', 'pos': [22, 65, 52], 'block': 'stone'}], world='camp')
+        self.assertIn('war-table', dry_run(legacy, w, manifest=m)['violations'][0])
+
+    def test_pass_order_reopen_and_expect_section(self):
+        m, w = sample_map(), flat(64)
+        p = self.sectioned([{'op': 'set', 'pos': [5, 65, 5], 'block': 'stone'}], **{'pass': 'natural'})
+        self.assertTrue(any('next pass (blockout)' in v for v in dry_run(p, w, manifest=m)['violations']))
+        p['reopen'] = 'redo the ridge'
+        self.assertTrue(dry_run(p, w, manifest=m)['ok'])
+        self.assertIn('pass and reopen belong', validate(plan([{'op': 'set', 'pos': [0, 65, 0], 'block': 'stone'}], reopen='x'))[0])
+        digest = mf.section_digests(m, w, {'s0'})['s0']
+        p = self.sectioned([{'op': 'set', 'pos': [5, 65, 5], 'block': 'stone'}], expectSection=digest)
+        self.assertTrue(dry_run(p, w, manifest=m)['ok'])
+        w2 = w.copy()
+        w2.set((80, 64, 5), Cell('minecraft:dirt'))  # another section changes: still fine
+        self.assertTrue(dry_run(p, w2, manifest=m)['ok'])
+        w2.set((6, 64, 6), Cell('minecraft:dirt'))  # this section changes: refused
+        with self.assertRaises(PlanError) as e:
+            apply(p, w2, manifest=m)
+        self.assertIn('section s0 digest', e.exception.errors[0])
+        self.assertEqual(w2.get((5, 65, 5)), AIR_CELL)
+
+    def test_sign_status_and_drift(self):
+        m, w = sample_map(), flat(64)
+        with self.assertRaises(mf.ManifestError):
+            mf.sign(m, 's0', 'structure', w, 'agent')  # blockout comes first
+        r = mf.sign(m, 's0', 'blockout', w, 'agent', 'changes', 'walls too boxy', now=NOW)
+        self.assertEqual((r['verdict'], m['sections'][0]['status']), ('changes', 'todo'))
+        r = mf.sign(m, 's0', 'blockout', w, 'agent', images=['a.png'], plans=['p.json'], now=NOW)
+        self.assertEqual((m['sections'][0]['status'], r['at'], r['images']), ('blockout', '2026-10-30T00:00:00Z', ['a.png']))
+        self.assertEqual(mf.validate_manifest(m), [])
+        rows = {r['id']: r for r in mf.status_rows(m, w)}
+        self.assertFalse(rows['s0']['drift'])
+        self.assertIsNone(rows['s1']['drift'])
+        w.set((3, 70, 3), Cell('minecraft:stone'))
+        self.assertTrue({r['id']: r for r in mf.status_rows(m, w)}['s0']['drift'])
+        self.assertIn('DRIFT', mf.format_status(m, mf.status_rows(m, w)))
+        with self.assertRaises(mf.ManifestError):
+            mf.sign_map(m, w, 'Kort')
+        for s in m['sections']:
+            s['status'] = 'done'
+        self.assertEqual(mf.sign_map(m, w, 'Kort', now=NOW)['world'], w.digest())
+
+    def test_cli_status_sign_and_render_section(self):
+        with tempfile.TemporaryDirectory() as d:
+            d = pathlib.Path(d)
+            run = lambda *a: subprocess.run([sys.executable, str(ROOT / 'tools/mapforge'), *map(str, a)], capture_output=True, text=True)
+            world, man = d / 'camp.json', d / 'camp-map.json'
+            man.write_text((SAMPLES / 'camp-map.json').read_text())
+            self.assertEqual(run('flat', '--out', world, '--min', 0, 0, '--max', 127, 63, '--y', 64).returncode, 0)
+            r = run('apply', SAMPLES / 'camp-watchpost.json', '--world', world, '--map', man)
+            self.assertEqual(r.returncode, 0, r.stderr)
+            r = run('sign', man, 's0', '--pass', 'blockout', '--world', world, '--by', 'unit', '--notes', 'ok')
+            self.assertEqual(r.returncode, 0, r.stderr)
+            self.assertIn('status blockout', r.stdout)
+            r = run('sign', man, 's0', '--pass', 'blockout', '--world', world, '--by', 'unit')
+            self.assertEqual(r.returncode, 2)
+            r = run('status', man, '--world', world, '--digests')
+            self.assertEqual(r.returncode, 0, r.stderr)
+            self.assertIn('s0     blockout', r.stdout)
+            self.assertIn('digest s1 ', r.stdout)
+            self.assertNotIn('DRIFT', r.stdout)
+            r = run('sign', man, '--whole', '--world', world, '--by', 'Kort')
+            self.assertEqual(r.returncode, 2)
+            if HAVE_PIL:
+                r = run('render-section', man, 's0', '--world', world, '--out-dir', d / 'img')
+                self.assertEqual(r.returncode, 0, r.stderr)
+                self.assertTrue((d / 'img/camp-s0-top.png').exists() and (d / 'img/camp-s0-iso.png').exists())
 
 
 class ColourTableTest(unittest.TestCase):
@@ -355,7 +500,7 @@ class RenderTest(unittest.TestCase):
             run = lambda *a: subprocess.run([sys.executable, str(ROOT / 'tools/mapforge'), *map(str, a)], capture_output=True, text=True)
             world = d / 'camp.json'
             self.assertEqual(run('flat', '--out', world, '--min', 0, 0, '--max', 63, 63, '--y', 64).returncode, 0)
-            r = run('apply', SAMPLES / 'camp-watchpost.json', '--world', world, '--render')
+            r = run('apply', SAMPLES / 'camp-watchpost.json', '--world', world, '--render', '--map', SAMPLES / 'camp-map.json')
             self.assertEqual(r.returncode, 0, r.stderr)
             stem = 'camp.camp-watchpost-sample.undo'
             for suffix in ('before-top', 'after-top', 'diff-top', 'before-iso', 'after-iso', 'diff-iso'):

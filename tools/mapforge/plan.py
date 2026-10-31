@@ -73,14 +73,32 @@ def validate(plan, plan_dir=None):
             errors.append(f'{key} must be a non-empty string')
     if isinstance(plan.get('id'), str) and not all(c.isalnum() or c in '-_' for c in plan['id']):
         errors.append('id may hold only letters, digits, - and _')
-    if 'expectWorld' in plan and not (isinstance(plan['expectWorld'], str) and len(plan['expectWorld']) == 64):
-        errors.append('expectWorld must be a sha256 hex digest of the world')
+    if 'expectWorld' in plan:
+        errors.append('expectWorld is gone; name a section and give expectSection, the digest of that section '
+                      '(mapforge status MAP --world WORLD --digests prints them)')
+    sectioned = 'section' in plan
+    if sectioned:
+        from .manifest import PASSES
+        if not isinstance(plan['section'], str) or not plan['section'].strip():
+            errors.append('section must name a section of the map manifest')
+        if plan.get('pass') not in PASSES:
+            errors.append(f'pass must be one of {", ".join(PASSES)} when the plan names a section')
+        if 'reopen' in plan and (not isinstance(plan['reopen'], str) or not plan['reopen'].strip()):
+            errors.append('reopen must give the reason for redoing an earlier pass')
+    elif 'pass' in plan or 'reopen' in plan:
+        errors.append('pass and reopen belong to plans that name a section')
+    if 'expectSection' in plan and not (sectioned and isinstance(plan['expectSection'], str)
+                                        and len(plan['expectSection']) == 64):
+        errors.append("expectSection must be the sha256 digest of the plan's section (and needs section)")
     limits = plan.get('limits', {})
     if not isinstance(limits, dict) or not isinstance(limits.get('maxChangedBlocks', 1), int) or limits.get('maxChangedBlocks', 1) <= 0:
         errors.append('limits.maxChangedBlocks must be a positive integer')
     locks = plan.get('locks')
-    if not isinstance(locks, list) or not any(isinstance(l, dict) and l.get('mode') == 'allow' for l in locks):
-        errors.append('locks must list at least one allow region (every change has to fall inside one)')
+    if locks is None and sectioned:
+        locks = plan['locks'] = []
+    if not isinstance(locks, list) or not (sectioned or any(isinstance(l, dict) and l.get('mode') == 'allow' for l in locks)):
+        errors.append('locks must list at least one allow region (every change has to fall inside one), '
+                      'or the plan must name a section, whose bounds are then the allow region')
         locks = locks if isinstance(locks, list) else []
     lock_ids = set()
     for i, lock in enumerate(locks):
@@ -261,15 +279,39 @@ def compile_plan(plan, world, plan_dir=None):
 # ---------------------------------------------------------------- locks
 
 def _inside(pos, lock):
+    if 'center' in lock:
+        (cx, cz), r, (y0, y1) = lock['center'], lock['radius'], lock['y']
+        return y0 <= pos[1] <= y1 and (pos[0] - cx) ** 2 + (pos[2] - cz) ** 2 <= r * r
     return all(lock['min'][i] <= pos[i] <= lock['max'][i] for i in range(3))
 
 
-def lock_violations(plan, changes, protect=()):
-    """Changes outside every allow region of the plan, or inside any deny region of the plan or of protect (extra
-    world-owned deny regions such as stations, spawns and capture points). Returns a list of messages, at most one
-    per lock plus one for the allow check."""
-    allows = [l for l in plan['locks'] if l['mode'] == 'allow']
-    denies = [l for l in plan['locks'] if l['mode'] == 'deny'] + [dict(l, mode='deny') for l in protect]
+def scope(plan, world, manifest=None):
+    """(locks, protect, problems) that govern a plan. A plan naming a section needs the map manifest: its allow
+    region is the section's bounds cut down by the plan's own allow locks, the manifest's protect locks are added as
+    denies, the pass must be the section's next one, and expectSection must match the section's digest in world.
+    A plan without a section keeps its own locks, plus the manifest's protect locks when one is given."""
+    from .manifest import plan_scope, protect_locks, section_digests
+    if 'section' not in plan:
+        return plan['locks'], (protect_locks(manifest) if manifest else ()), []
+    if manifest is None:
+        return plan['locks'], (), [f'plan names section {plan["section"]}; give the map manifest (--map) so its '
+                                   'bounds and protect locks apply']
+    locks, protect, problems = plan_scope(plan, manifest)
+    if 'expectSection' in plan and not problems:
+        now = section_digests(manifest, world, {plan['section']})[plan['section']]
+        if now != plan['expectSection']:
+            problems.append(f'section {plan["section"]} digest {now[:12]} is not the expected '
+                            f'{plan["expectSection"][:12]}; the section changed since the plan was made, re-plan it')
+    return locks, protect, problems
+
+
+def lock_violations(plan, changes, protect=(), locks=None):
+    """Changes outside every allow region, or inside any deny region of the plan or of protect (map-owned deny
+    regions such as stations, spawns and capture points; boxes or cylinders). locks overrides plan['locks'] (see
+    scope). Returns a list of messages, at most one per lock plus one for the allow check."""
+    locks = plan['locks'] if locks is None else locks
+    allows = [l for l in locks if l['mode'] == 'allow']
+    denies = [l for l in locks if l['mode'] == 'deny'] + [dict(l, mode='deny') for l in protect]
     out = []
     outside = [p for p in changes if not any(_inside(p, l) for l in allows)]
     if outside:
@@ -333,29 +375,43 @@ def format_summary(s):
 
 # ---------------------------------------------------------------- dry-run, apply, rollback
 
-def dry_run(plan, world, plan_dir=None, protect=()):
-    """Summary of what the plan would change; the world is not modified."""
+def _checked(plan, world, plan_dir, manifest):
+    locks, protect, problems = scope(plan, world, manifest)
     changes = compile_plan(plan, world, plan_dir)
-    return summarize(plan, world, changes, lock_violations(plan, changes, protect))
+    summary = summarize(plan, world, changes, problems + lock_violations(plan, changes, protect, locks))
+    if 'section' in plan:
+        summary['section'], summary['pass'] = plan['section'], plan['pass']
+    return changes, summary
 
 
-def apply(plan, world, plan_dir=None, protect=(), now=None):
+def dry_run(plan, world, plan_dir=None, manifest=None):
+    """Summary of what the plan would change; the world is not modified. manifest is the map manifest: needed when
+    the plan names a section, and its protect locks apply to every plan."""
+    return _checked(plan, world, plan_dir, manifest)[1]
+
+
+def apply(plan, world, plan_dir=None, manifest=None, now=None):
     """Applies the plan to world in place and returns (summary, undo record). Raises PlanError and leaves the world
-    untouched on a lock violation, a limit, or a world that does not match plan.expectWorld."""
-    if 'expectWorld' in plan and plan['expectWorld'] != world.digest():
-        raise PlanError([f'world digest {world.digest()[:12]} is not the expected {plan["expectWorld"][:12]}; '
-                         'export again and re-plan instead of applying to a changed world'])
-    changes = compile_plan(plan, world, plan_dir)
-    summary = summarize(plan, world, changes, lock_violations(plan, changes, protect))
+    untouched on a lock violation, a limit, a pass out of order, or a section that no longer matches expectSection."""
+    changes, summary = _checked(plan, world, plan_dir, manifest)
     if not summary['ok']:
         raise PlanError(summary['violations'])
+    if 'section' in plan:
+        from .manifest import section_digests
+        section_before = section_digests(manifest, world, {plan['section']})[plan['section']]
     for pos, (_, after, _) in changes.items():
         world.set(pos, after)
     assert world.digest() == summary['worldAfter']
+    if 'section' in plan:
+        extra = {'section': plan['section'], 'pass': plan['pass'], 'sectionBefore': section_before,
+                 'sectionAfter': section_digests(manifest, world, {plan['section']})[plan['section']]}
+    else:
+        extra = {}
     undo = {
         'format': UNDO_FORMAT, 'plan': plan['id'], 'planSha256': summary['planSha256'], 'author': plan['author'],
         'world': world.name, 'worldBefore': summary['worldBefore'], 'worldAfter': summary['worldAfter'],
         'appliedAt': (now or datetime.datetime.now(datetime.timezone.utc)).strftime('%Y-%m-%dT%H:%M:%SZ'),
+        **extra,
         'changes': [[*pos, before.to_json(), after.to_json()] for pos, (before, after, _) in sorted(changes.items())],
     }
     return summary, undo
