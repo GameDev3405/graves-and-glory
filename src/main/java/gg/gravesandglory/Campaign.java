@@ -192,7 +192,7 @@ public final class Campaign {
         if(cmd.startsWith("star:")){star(p,pr,cmd.substring(5));return true;}
         if(cmd.startsWith("legendary:")){legendary(p,pr,cmd.substring(10));return true;}
         if(cmd.startsWith("unlock:")||cmd.startsWith("army:")){notice(p.getUuid(),"Troops now join by recruitment rolls at the camp shrine.");return true;}
-        if(cmd.startsWith("class:")){String id=cmd.substring(6);if(Arrays.stream(Spec.CLASSES).anyMatch(c->c.id().equals(id))){pr.commander=id;squad.commander=id;Commander.applyPlayer(p,squad);save(p.getUuid());}return true;}
+        if(cmd.startsWith("class:")){String id=cmd.substring(6);if(Arrays.stream(Spec.CLASSES).anyMatch(c->c.id().equals(id))){pr.commander=id;squad.commander=id;Commander.applyPlayer(p,squad);save(p.getUuid());var room=social.room(p.getUuid());if(room!=null&&!room.playing&&room.ready.remove(p.getUuid()))social.revision++;}return true;}
         if(cmd.startsWith("slot:")){ // slot:<i>:<troop id or empty>: the banner is rebuilt with repack, so markers follow their Epic or Legendary
             String[] parts=cmd.split(":");if(parts.length!=3)return true;int slot;try{slot=Integer.parseInt(parts[1]);}catch(Exception e){return true;}
             var catalog=RosterMath.Catalog.fromSpec();String id=parts[2];var type=troop(id);
@@ -509,7 +509,7 @@ public final class Campaign {
                 else for(UUID member:pending.members)notice(member,"Map prepared. Match cancelled because readiness or room membership changed.");}
         }
         if(b.time%20==0)social.presence(new HashSet<>(b.server.getPlayerManager().getPlayerList().stream().map(ServerPlayerEntity::getUuid).toList()),System.currentTimeMillis());
-        if(!b.running){for(var p:b.server.getPlayerManager().getPlayerList())if(leash&&!CampWorld.inCamp(p.getX(),p.getY(),p.getZ()))toLobby(p);if(b.time%20==0)expireInvites();if(b.time%10==0)padTick();return;}
+        if(!b.running){for(var p:b.server.getPlayerManager().getPlayerList())if(leash&&!CampWorld.inCamp(p.getX(),p.getY(),p.getZ()))toLobby(p);if(b.time%20==0)expireInvites();if(b.time%10==0){padTick();roomCountdown();}return;}
         // Unseated lobby players wait in the hall while a match runs.
         if(b.time%20==0)for(var p:b.server.getPlayerManager().getPlayerList()){var s=b.squads.get(p.getUuid());if(leash&&(s==null||!s.seated)&&!CampWorld.inCamp(p.getX(),p.getY(),p.getZ()))toLobby(p);}
         if(b.time<introUntil){for(var p:b.server.getPlayerManager().getPlayerList()){var s=b.squads.get(p.getUuid());if(s!=null&&s.seated&&p.squaredDistanceTo(GravesAndGlory.Battle.base(s.team))>2)b.toBase(p,s.team);}return;}
@@ -768,7 +768,9 @@ public final class Campaign {
             case "invite","kick","transfer"->{var target=b.server.getPlayerManager().getPlayer(arg);UUID targetId=target==null?social.group(id).stream().filter(m->name(m).equals(arg)).findFirst().orElse(null):target.getUuid();
                 if(targetId==null)yield "Commander not found.";
                 yield action.equals("invite")?social.invite(id,targetId,System.currentTimeMillis()):action.equals("kick")?social.kick(id,targetId):social.transfer(id,targetId);}
-            case "room"->social.createRoom(id);case "join"->social.joinRoom(id,arg);case "exit"->social.leaveRoom(id);case "ready"->social.ready(id);
+            case "room"->social.createRoom(id);case "lobby"->social.lobby(id);
+            case "mode"->social.mode(id,arg);case "house"->social.house(id,arg,RosterMath.fieldableHouses());
+            case "host"->{UUID targetId=social.room(id)==null?null:social.room(id).members.stream().filter(m->name(m).equals(arg)).findFirst().orElse(null);yield social.handHost(id,targetId);}case "join"->social.joinRoom(id,arg);case "exit"->social.leaveRoom(id);case "ready"->social.ready(id);
             case "team"->social.team(id,Integer.parseInt(arg));
             case "size","map","fill"->{var room=social.room(id);if(room==null)yield "Create or join a room first.";
                 yield social.configure(id,action.equals("size")?Integer.parseInt(arg):room.size,action.equals("map")?Integer.parseInt(arg):room.map,action.equals("fill")?!room.fill:room.fill,Spec.MAPS.length);}
@@ -784,13 +786,27 @@ public final class Campaign {
         if(!before.equals(JSON.toJson(social))&&!saveSocial()){social.parties=JSON.fromJson(before,SocialHub.class).parties;result="Party change could not be saved. It was not applied; check disk space.";}
         notice(id,result);return true;
     }
+    /** The War Table lobby's ready countdown, every 10 ticks between battles: a room whose every commander is ready counts down
+     *  SocialHub.COUNTDOWN_TICKS and then starts as the host's start would; an un-ready (or anything that stops the start) stops it. */
+    void roomCountdown(){
+        var step=social.countdown(10,b.running,preparingRoom);
+        for(var r:step.started())for(UUID m:r.members)notice(m,"All commanders ready. The battle begins in 10 seconds; un-ready to stop it.");
+        for(var r:step.cancelled()){String why=social.startFailure(r.leader,b.running);for(UUID m:r.members)notice(m,"Countdown stopped."+(why.isEmpty()?"":" "+why));}
+        for(var r:step.due()){var host=b.server.getPlayerManager().getPlayer(r.leader);if(host!=null)socialCommand(host,"social:start");
+            if(!r.playing&&!r.code.equals(preparingRoom)){r.ready.clear();social.revision++;for(UUID m:r.members)if(!m.equals(r.leader))notice(m,"The battle could not start. Ready up again.");}}
+    }
+    /** A member's House as the lobby shows it: the pick, else the House the banner leans to. */
+    String lobbyHouse(SocialHub.Room r,UUID m){String h=r.houses.get(m);return h!=null?h:RosterMath.rollHouse(profile(m).banner);}
     JsonObject socialSnapshot(UUID id){
         JsonObject j=new JsonObject();var party=social.party(id);var room=social.room(id);j.addProperty("party",party!=null);j.addProperty("partyLead",party!=null&&party.leader.equals(id));j.addProperty("leader",party==null?"":name(party.leader));
         JsonArray members=new JsonArray();if(party!=null)for(UUID m:party.members){JsonObject row=new JsonObject();row.addProperty("name",name(m));row.addProperty("online",social.online.contains(m));row.addProperty("me",m.equals(id));members.add(row);}j.add("members",members);
         var invite=social.invites.get(id);j.addProperty("inviter",invite==null?"":name(invite.sender()));j.addProperty("inviteSeconds",invite==null?0:Math.max(0,(invite.expires()-System.currentTimeMillis()+999)/1000));
         JsonArray available=new JsonArray();for(var p:b.server.getPlayerManager().getPlayerList())if(!p.getUuid().equals(id)&&social.party(p.getUuid())==null)available.add(p.getGameProfile().getName());j.add("available",available);
         j.addProperty("room",room==null?"":room.code);j.addProperty("host",room!=null&&room.leader.equals(id));j.addProperty("playing",room!=null&&room.playing);j.addProperty("preparing",room!=null&&room.code.equals(preparingRoom));j.addProperty("size",room==null?2:room.size);j.addProperty("map",room==null?0:room.map);j.addProperty("fill",room==null||room.fill);
-        JsonArray commanders=new JsonArray();if(room!=null)for(UUID m:room.members){JsonObject row=new JsonObject();row.addProperty("name",name(m));row.addProperty("team",room.teams.get(m));row.addProperty("ready",room.ready.contains(m));row.addProperty("online",social.online.contains(m));commanders.add(row);}j.add("commanders",commanders);return j;
+        j.addProperty("mode",room==null?SocialHub.MODES.get(0):room.mode);JsonArray modes=new JsonArray();SocialHub.MODES.forEach(modes::add);j.add("modes",modes);
+        j.addProperty("countdown",room==null||room.countdown<0?0:(room.countdown+19)/20);j.addProperty("waiting",room==null||room.playing?"":social.startFailure(room.leader,b.running));
+        JsonArray commanders=new JsonArray();if(room!=null)for(UUID m:room.members){JsonObject row=new JsonObject();row.addProperty("name",name(m));row.addProperty("team",room.teams.get(m));row.addProperty("ready",room.ready.contains(m));row.addProperty("online",social.online.contains(m));
+            row.addProperty("house",lobbyHouse(room,m));row.addProperty("class",profile(m).commander);row.addProperty("host",m.equals(room.leader));row.addProperty("me",m.equals(id));commanders.add(row);}j.add("commanders",commanders);return j;
     }
 
     boolean progressCommand(ServerPlayerEntity player,String cmd){
