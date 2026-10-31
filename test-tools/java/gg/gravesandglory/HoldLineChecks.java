@@ -257,7 +257,17 @@ final class HoldLineChecks {
         volatile boolean cpShotDone, cpShotPass;
         volatile String cpShotWhy = "";
         int cpShotPhase, cpShotWait; long cpShotDraws; boolean cpShotEngaged, cpShotNormal, cpShotPaused;
-        net.minecraft.client.texture.NativeImage cpShotA, cpShotB;
+        net.minecraft.client.texture.NativeImage cpShotA, cpShotB, cpShotB2;
+        /** R44: the player's place before the camera was nudged (x, y, z, then prev and last render x, y, z). */
+        final double[] cpNudged = new double[9];
+        /** hl-corpse (Task 8 fix 2, R42): the body the client samples as it fades (at the fade's first tick, its middle and its last), and what it found. */
+        volatile int cpFadeId = -1;
+        volatile boolean cpFadeDone, cpFadePass;
+        volatile String cpFadeWhy = "";
+        int cpFadeK, cpFadePhase, cpFadeWait; long cpFadeDraws; boolean cpFadeCached, cpFadePaused;
+        net.minecraft.client.texture.NativeImage cpFadeF, cpFadeN, cpFadeO;
+        /** Each sample: {alpha as drawn from its buffers, alpha drawn the normal way, the alpha its death ticks and the frame's tick delta give, death ticks, O's difference from H}. */
+        final double[][] cpFadeV = new double[3][5];
         boolean cpAt79, cpAt119, cpHitless, cpOutOfUnits, cpNoSide;
         long cpFielded0, cpFielded1, cpGoneAt = -1;
         int cpDeath79 = -1, cpLastDeath = -1, cpItems, cpOrbs;
@@ -273,8 +283,10 @@ final class HoldLineChecks {
          * server samples, client frame ms (wall clock / frames), arm (0 warm-up, 1 A, 2 B), peak-window server ms, peak-window frame ms}.
          */
         final List<double[]> cpRuns = new ArrayList<>();
-        /** The runs by arm (0 a warm-up with the sheet's corpse rows, 1 A with no lie and no fade, 2 B with the sheet's rows): a warm-up, then A B B A four times. */
-        static final int[] CP_PLAN = {0, 1, 2, 2, 1, 1, 2, 2, 1, 1, 2, 2, 1, 1, 2, 2, 1};
+        /** The runs by arm (0 a warm-up with the sheet's corpse rows, 1 A with no lie and no fade, 2 B with the sheet's rows): a warm-up, then A B B A eight times (Task 8 fix 2, R43). */
+        static final int[] CP_PLAN = {0, 1, 2, 2, 1, 1, 2, 2, 1, 1, 2, 2, 1, 1, 2, 2, 1, 1, 2, 2, 1, 1, 2, 2, 1, 1, 2, 2, 1, 1, 2, 2, 1};
+        /** GRAVES_CORPSE_LOAD=0 leaves hl-corpse-load out (a quick hl-corpse run while developing; never for a reported run). */
+        static final boolean CP_LOAD = !"0".equals(System.getenv("GRAVES_CORPSE_LOAD"));
         /** The peak window (Task 7 fix 1): the 40 ticks of stage 131 after this tick, when the most bodies lie. Reported, not gated. */
         static final int CP_PEAK_FROM = 150, CP_PEAK_TICKS = 40;
         final Map<Integer, List<MotionInput.Attack>> evSeenAttacks = new java.util.concurrent.ConcurrentHashMap<>();
@@ -404,6 +416,7 @@ final class HoldLineChecks {
                 if (f.deathTime >= 35 && f.isOnFire()) cpClientFireLate = true;
             }
             if (cpShotPhase > 0 || cpShotId >= 0 && !cpShotDone) cacheShots(c, cpShotId); // R39: the cached body against the normal draw
+            else if (cpFadePhase > 0 || cpFadeId >= 0 && !cpFadeDone) fadeShots(c, cpFadeId); // R42: the body as it fades
             int baitId = cpBaitId; // N2: a living troop stays hittable on the client
             if (baitId >= 0 && c.world != null && c.world.getEntityById(baitId) instanceof net.minecraft.entity.LivingEntity l && l.isAlive() && l.canHit()) cpClientBaitHit = true;
             if (tick > 16000 && !finished) {finished = true; report("hl-timeout", false, "stuck in stage " + stage); Phase2Checks.finish(c, "holdline");}
@@ -1951,14 +1964,16 @@ final class HoldLineChecks {
                 }
                 case 128 -> { // Task 8 fix 1 (R39): a settled body the client draws from the buffers it recorded looks as the normal draw does
                     long n = since(b);
-                    if (n == 1) {cpShotDone = false; cpCacheBody = cpOwn(b, 65, cpHome); fall(b, cpCacheBody); var at = ground(b, cpHome.x, cpHome.z - 3); b.relocate(sp(b), at.x, at.y, at.z, 0f, 28f); return;}
+                    if (n == 1) {cpShotDone = false; cpFadeDone = false; cpFadeK = 0; cpFadeId = -1; cpCacheBody = cpOwn(b, 65, cpHome); fall(b, cpCacheBody); var at = ground(b, cpHome.x, cpHome.z - 3); b.relocate(sp(b), at.x, at.y, at.z, 0f, 28f); return;}
                     if (n == 45) cpShotId = cpCacheBody.mob.getId(); // lying since death tick 21; the camera 3 blocks north of it, looking down at it
-                    if (!cpShotDone && n < 110) return; // removed on death tick 120 (the client pauses the game while it shoots, so the body waits)
-                    cpShotId = -1;
-                    cpCheck(cpShotDone && cpShotPass, cpShotDone ? cpShotWhy : "the client never shot the cached body (by +110; BodyCache: " + BodyCache.diag() + ")");
+                    if (cpShotDone && cpShotId >= 0) {cpShotId = -1; cpFadeId = cpCacheBody.mob.getId();} // R42: then the client samples it as it fades
+                    if (!(cpShotDone && cpFadeDone) && n < 220) return; // removed on death tick 120 (the client pauses the game while it shoots, so the body waits)
+                    cpShotId = -1; cpFadeId = -1;
+                    cpCheck(cpShotDone && cpShotPass, cpShotDone ? cpShotWhy : "the client never shot the cached body (by +220; BodyCache: " + BodyCache.diag() + ")");
+                    cpCheck(cpFadeDone && cpFadePass, cpFadeDone ? cpFadeWhy : "the client never sampled the body's fade (by +220; BodyCache: " + BodyCache.diag() + ")");
                     var p = sp(b); b.relocate(p, patch[0] + 12, Phase1Checks.top(b, patch[0] + 12, patch[2] - 24) + 6, patch[2] - 24, 0f, 15f); // the camera back where hl-corpse-load measures from
                     clearFixture(b, "hl-corpse"); b.clearCorpses();
-                    next(b, 129);
+                    next(b, CP_LOAD ? 129 : 140);
                 }
                 case 129 -> {if (since(b) >= 40) cpBegin(b);} // the client has the chunks round the camera again
                 case 130 -> { // hl-corpse-load: the corpse rows of this run, then 200 troops, 20 a tick, both armies on Attack toward the middle; the wave begins as they meet
@@ -2058,14 +2073,19 @@ final class HoldLineChecks {
             var u = tough(b.spawn(own, Campaign.troop("knight"), slot, at)); Phase1Checks.freeze(u);
             fixture.add(u); pins.add(new Pin(u, at, -90f)); u.deployed = at; Phase2Checks.Engine.apply(u, at, -90f); return u;
         }
-        /** R39, on the client: with the game paused (no menu drawn), the body drawn from its buffers (A), drawn the normal way (B) and not drawn (C, its shadow still drawn); the body is every pixel where B or A differs from C, and A must match B on all but 0.5% of them. */
+        /**
+         * R39, on the client: with the game paused (no menu drawn), the body drawn from its buffers (A), drawn the normal way (B), drawn the normal
+         * way with the camera nudged 0.001 blocks along its look (B2) and not drawn (C, its shadow still drawn); the body is every pixel where B or A
+         * differs from C. R44: the pixels where B and B2 differ by more than 2 of 255 are z-fight-unstable (coplanar faces whose winner moves with
+         * the camera) and are left out, at most 2% of the body; A must match B on all but 0.5% of the rest.
+         */
         void cacheShots(MinecraftClient c, int id) {
             if (id < 0) {cacheShotsEnd(c); return;} // the server gave up
             var e = c.world == null ? null : c.world.getEntityById(id);
             switch (cpShotPhase) {
                 case 0 -> {
                     if (!(e instanceof net.minecraft.entity.LivingEntity l) || !l.isDead() || !BodyCache.cached(e)) return;
-                    c.options.hudHidden = true; c.getToastManager().clear(); c.setScreen(new net.minecraft.client.gui.screen.GameMenuScreen(false)); cpShotPhase = 1; cpShotWait = 0; cpShotDraws = BodyCache.cachedDraws;
+                    c.options.hudHidden = true; c.getToastManager().clear(); EventFeed.clear(); c.setScreen(new net.minecraft.client.gui.screen.GameMenuScreen(false)); cpShotPhase = 1; cpShotWait = 0; cpShotDraws = BodyCache.cachedDraws;
                 }
                 case 1 -> {
                     if (++cpShotWait < 6) return;
@@ -2076,36 +2096,128 @@ final class HoldLineChecks {
                     if (cpShotWait++ == 1) cpShotDraws = BodyCache.cachedDraws; // a frame on, every draw since is the normal one
                     if (cpShotWait < 6) return;
                     cpShotB = ScreenshotRecorder.takeScreenshot(c.getFramebuffer()); cpShotNormal = BodyCache.cachedDraws == cpShotDraws;
-                    BodyCache.hide = id; cpShotPhase = 3; cpShotWait = 0;
+                    cpNudge(c, true); cpShotPhase = 3; cpShotWait = 0;
+                }
+                case 3 -> {
+                    if (++cpShotWait < 6) return;
+                    cpShotB2 = ScreenshotRecorder.takeScreenshot(c.getFramebuffer()); cpShotNormal &= BodyCache.cachedDraws == cpShotDraws;
+                    cpNudge(c, false); BodyCache.hide = id; cpShotPhase = 4; cpShotWait = 0;
                 }
                 default -> {
                     if (++cpShotWait < 6) return;
-                    var a = cpShotA; var bb = cpShotB; var cc = ScreenshotRecorder.takeScreenshot(c.getFramebuffer()); cpShotPaused &= c.isPaused();
-                    int w = a.getWidth(), h = a.getHeight(), body = 0, any = 0, diff = 0, loose = 0, worst = 0;
-                    boolean sized = bb.getWidth() == w && cc.getWidth() == w && bb.getHeight() == h && cc.getHeight() == h;
+                    var a = cpShotA; var bb = cpShotB; var b2 = cpShotB2; var cc = ScreenshotRecorder.takeScreenshot(c.getFramebuffer()); cpShotPaused &= c.isPaused();
+                    int w = a.getWidth(), h = a.getHeight(), body = 0, unstable = 0, kept = 0, any = 0, diff = 0, loose = 0, worst = 0, diffUnstable = 0;
+                    boolean sized = bb.getWidth() == w && cc.getWidth() == w && b2.getWidth() == w && bb.getHeight() == h && cc.getHeight() == h && b2.getHeight() == h;
                     if (sized) for (int y = 0; y < h; y++) for (int x = 0; x < w; x++) {
                         int pa = a.getColor(x, y), pb = bb.getColor(x, y), pc = cc.getColor(x, y);
                         if (pa == pc && pb == pc) continue;
-                        body++; int d = 0;
-                        for (int k = 0; k < 24; k += 8) d = Math.max(d, Math.abs((pa >> k & 255) - (pb >> k & 255)));
+                        body++; int d = cpChannel(pa, pb);
+                        if (cpChannel(pb, b2.getColor(x, y)) > 2) {unstable++; if (d > 2) diffUnstable++; continue;}
+                        kept++;
                         if (d > 0) any++; if (d > 2) diff++; if (d > 8) loose++; worst = Math.max(worst, d);
                     }
                     var dir = new java.io.File(c.runDirectory, "screenshots"); dir.mkdirs();
-                    try {a.writeTo(new java.io.File(dir, "hl-corpse-cache-a.png")); bb.writeTo(new java.io.File(dir, "hl-corpse-cache-b.png")); cc.writeTo(new java.io.File(dir, "hl-corpse-cache-c.png"));} catch (java.io.IOException ex) {ex.printStackTrace();}
-                    a.close(); bb.close(); cc.close(); cpShotA = null; cpShotB = null;
-                    double share = body == 0 ? 1 : diff / (double) body;
-                    cpShotPass = sized && cpShotPaused && cpShotEngaged && cpShotNormal && body >= 1000 && share <= 0.005;
-                    cpShotWhy = String.format(Locale.ROOT, "a settled Squire's body 3 blocks from the camera, the game paused %b: drawn from its recorded buffers %b (BodyCache drew it), then the normal way %b (no cached draw); of its %d pixels (where either draw differs from the frame without it, so its shadow is left out) %d differ by more than 2 of 255, %.3f%% (want 0.5%% or less; the cached body lights its byte-packed normals in world space, not view space, which moves shading by 1 or 2: %d differ at all, %d by more than 8, the worst by %d); screenshots hl-corpse-cache-a/b/c.png",
-                        cpShotPaused, cpShotEngaged, cpShotNormal, body, diff, share * 100, any, loose, worst);
+                    try {a.writeTo(new java.io.File(dir, "hl-corpse-cache-a.png")); bb.writeTo(new java.io.File(dir, "hl-corpse-cache-b.png")); b2.writeTo(new java.io.File(dir, "hl-corpse-cache-b2.png")); cc.writeTo(new java.io.File(dir, "hl-corpse-cache-c.png"));} catch (java.io.IOException ex) {ex.printStackTrace();}
+                    a.close(); bb.close(); b2.close(); cc.close(); cpShotA = null; cpShotB = null; cpShotB2 = null;
+                    double share = kept == 0 ? 1 : diff / (double) kept, out = body == 0 ? 1 : unstable / (double) body;
+                    cpShotPass = sized && cpShotPaused && cpShotEngaged && cpShotNormal && body >= 1000 && out <= 0.02 && share <= 0.005;
+                    cpShotWhy = String.format(Locale.ROOT, "a settled Squire's body 3 blocks from the camera, the game paused %b: drawn from its recorded buffers %b (BodyCache drew it), then the normal way %b (no cached draw, twice: the second with the camera nudged 0.001 blocks along its look); of its %d pixels (where either draw differs from the frame without it, so its shadow is left out) %d are z-fight-unstable (the two normal draws differ by more than 2 of 255), %.3f%% (want 2%% or less; %d of them differ cached against normal); of the other %d, %d differ by more than 2 of 255, %.3f%% (want 0.5%% or less; the cached body lights its byte-packed normals in world space, not view space, which moves shading by 1 or 2: %d differ at all, %d by more than 8, the worst by %d); screenshots hl-corpse-cache-a/b/b2/c.png",
+                        cpShotPaused, cpShotEngaged, cpShotNormal, body, unstable, out * 100, diffUnstable, kept, diff, share * 100, any, loose, worst);
                     System.out.println("[p2] hl-corpse cache: " + cpShotWhy + " (BodyCache: " + BodyCache.diag() + ")");
                     cacheShotsEnd(c); cpShotDone = true;
                 }
             }
         }
         void cacheShotsEnd(MinecraftClient c) {
+            if (cpShotPhase == 3) cpNudge(c, false);
             if (cpShotPhase > 0) {c.setScreen(null); c.options.hudHidden = false;}
             BodyCache.off = false; BodyCache.hide = -1; cpShotPhase = 0;
-            if (cpShotA != null) {cpShotA.close(); cpShotA = null;} if (cpShotB != null) {cpShotB.close(); cpShotB = null;}
+            if (cpShotA != null) {cpShotA.close(); cpShotA = null;} if (cpShotB != null) {cpShotB.close(); cpShotB = null;} if (cpShotB2 != null) {cpShotB2.close(); cpShotB2 = null;}
+        }
+        /** The largest channel difference of two ABGR pixels. */
+        static int cpChannel(int p, int q) {int d = 0; for (int k = 0; k < 24; k += 8) d = Math.max(d, Math.abs((p >> k & 255) - (q >> k & 255))); return d;}
+        /** The sum of every channel's difference of two frames of one size. */
+        static long cpSum(net.minecraft.client.texture.NativeImage p, net.minecraft.client.texture.NativeImage q) {
+            long s = 0; int w = Math.min(p.getWidth(), q.getWidth()), h = Math.min(p.getHeight(), q.getHeight());
+            for (int y = 0; y < h; y++) for (int x = 0; x < w; x++) {int a = p.getColor(x, y), b = q.getColor(x, y); if (a != b) for (int k = 0; k < 24; k += 8) s += Math.abs((a >> k & 255) - (b >> k & 255));}
+            return s;
+        }
+        /** R44: moves the camera (the paused player, so where the camera lerps it from too) 0.001 blocks along its look, or back where it was. */
+        void cpNudge(MinecraftClient c, boolean out) {
+            var p = c.player; if (p == null) return; double[] s = cpNudged;
+            if (out) {
+                s[0] = p.getX(); s[1] = p.getY(); s[2] = p.getZ(); s[3] = p.prevX; s[4] = p.prevY; s[5] = p.prevZ; s[6] = p.lastRenderX; s[7] = p.lastRenderY; s[8] = p.lastRenderZ;
+                Vec3d d = p.getRotationVec(1f).multiply(0.001);
+                p.setPos(s[0] + d.x, s[1] + d.y, s[2] + d.z); p.prevX = s[3] + d.x; p.prevY = s[4] + d.y; p.prevZ = s[5] + d.z; p.lastRenderX = s[6] + d.x; p.lastRenderY = s[7] + d.y; p.lastRenderZ = s[8] + d.z;
+            } else {p.setPos(s[0], s[1], s[2]); p.prevX = s[3]; p.prevY = s[4]; p.prevZ = s[5]; p.lastRenderX = s[6]; p.lastRenderY = s[7]; p.lastRenderZ = s[8];}
+        }
+        /**
+         * R42, on the client: the body as it fades, sampled on its fade's first death tick, its middle and its last (20 + lie, + fade / 2, + fade - 1:
+         * 80, 100 and 119 on the sheet), the game paused each time: drawn as it is (F, from its recorded buffers), drawn the normal way (N), drawn
+         * opaque (O, BodyCache.opaque) and not drawn (H). Over a fixed background a body drawn at alpha a differs from H by a times what it
+         * differs opaque, so a = the summed colour difference of F (or N) from H over O's. They must fall monotonically, about 1, 0.5 and 0
+         * (each within 0.08 of what the death ticks and the frame's tick delta give), and F and N within 0.05 of each other (no pop between
+         * the cached draw and the normal one).
+         */
+        void fadeShots(MinecraftClient c, int id) {
+            if (id < 0) {fadeShotsEnd(c); return;} // the server gave up
+            var e = c.world == null ? null : c.world.getEntityById(id);
+            var row = Spec.COMBATDISCIPLINE[0]; int start = BattleMath.DEATH_FALL_TICKS + row.corpseLieTicks(), fade = Math.max(1, row.corpseFadeTicks());
+            int[] at = {start, start + fade / 2, start + fade - 1};
+            if (!(e instanceof net.minecraft.entity.LivingEntity l) || !l.isDead()) {
+                cpFadeWhy = "the client lost the fading body before its sample on death tick " + at[cpFadeK] + " (" + cpFadeK + " of 3 taken)"; cpFadePass = false; fadeShotsEnd(c); cpFadeDone = true; return;
+            }
+            switch (cpFadePhase) {
+                case 0 -> {
+                    if (l.deathTime < at[cpFadeK]) return;
+                    if (cpFadeK == 0) {cpFadeCached = true; cpFadePaused = true;}
+                    cpFadeV[cpFadeK][3] = l.deathTime;
+                    c.options.hudHidden = true; c.getToastManager().clear(); EventFeed.clear(); c.setScreen(new net.minecraft.client.gui.screen.GameMenuScreen(false)); cpFadePhase = 1; cpFadeWait = 0; cpFadeDraws = BodyCache.cachedDraws;
+                }
+                case 1 -> {
+                    if (++cpFadeWait < 6) return;
+                    cpFadePaused &= c.isPaused(); cpFadeCached &= BodyCache.cachedDraws > cpFadeDraws;
+                    cpFadeV[cpFadeK][2] = Math.max(0, Math.min(1, 1 - (l.deathTime + c.getTickDelta() - start) / (double) fade));
+                    cpFadeF = ScreenshotRecorder.takeScreenshot(c.getFramebuffer());
+                    BodyCache.off = true; cpFadePhase = 2; cpFadeWait = 0;
+                }
+                case 2 -> {
+                    if (++cpFadeWait < 6) return;
+                    cpFadeN = ScreenshotRecorder.takeScreenshot(c.getFramebuffer());
+                    BodyCache.off = false; BodyCache.opaque = true; cpFadePhase = 3; cpFadeWait = 0;
+                }
+                case 3 -> {
+                    if (++cpFadeWait < 6) return;
+                    cpFadeO = ScreenshotRecorder.takeScreenshot(c.getFramebuffer());
+                    BodyCache.opaque = false; BodyCache.hide = id; cpFadePhase = 4; cpFadeWait = 0;
+                }
+                default -> {
+                    if (++cpFadeWait < 6) return;
+                    var hh = ScreenshotRecorder.takeScreenshot(c.getFramebuffer()); cpFadePaused &= c.isPaused();
+                    double o = cpSum(cpFadeO, hh); var v = cpFadeV[cpFadeK];
+                    v[0] = o <= 0 ? -1 : cpSum(cpFadeF, hh) / o; v[1] = o <= 0 ? -1 : cpSum(cpFadeN, hh) / o; v[4] = o;
+                    var dir = new java.io.File(c.runDirectory, "screenshots"); dir.mkdirs(); String n = "hl-corpse-fade-" + (int) v[3];
+                    try {cpFadeF.writeTo(new java.io.File(dir, n + "-f.png")); cpFadeN.writeTo(new java.io.File(dir, n + "-n.png")); cpFadeO.writeTo(new java.io.File(dir, n + "-o.png")); hh.writeTo(new java.io.File(dir, n + "-h.png"));} catch (java.io.IOException ex) {ex.printStackTrace();}
+                    hh.close(); fadeShotsEnd(c);
+                    if (++cpFadeK < 3) return;
+                    double[] f = {cpFadeV[0][0], cpFadeV[1][0], cpFadeV[2][0]}, nn = {cpFadeV[0][1], cpFadeV[1][1], cpFadeV[2][1]}, x = {cpFadeV[0][2], cpFadeV[1][2], cpFadeV[2][2]};
+                    boolean mono = f[0] > f[1] && f[1] > f[2] && nn[0] > nn[1] && nn[1] > nn[2];
+                    boolean ends = f[0] >= 0.9 && nn[0] >= 0.9 && f[1] >= 0.35 && f[1] <= 0.65 && nn[1] >= 0.35 && nn[1] <= 0.65 && f[2] <= 0.1 && nn[2] <= 0.1;
+                    boolean near = true, seen = true; for (int k = 0; k < 3; k++) {near &= Math.abs(f[k] - x[k]) <= 0.08 && Math.abs(nn[k] - x[k]) <= 0.08 && Math.abs(f[k] - nn[k]) <= 0.05; seen &= cpFadeV[k][4] > 1000;}
+                    cpFadePass = cpFadePaused && cpFadeCached && seen && mono && ends && near;
+                    StringBuilder s = new StringBuilder();
+                    for (int k = 0; k < 3; k++) s.append(String.format(Locale.ROOT, "%sdeath tick %d: from its buffers %.3f, the normal way %.3f, want %.3f (opaque differs by %.0f)", k == 0 ? "" : "; ", (int) cpFadeV[k][3], f[k], nn[k], x[k], cpFadeV[k][4]));
+                    cpFadeWhy = String.format(Locale.ROOT, "the settled Squire's body fades over its corpse fade (lie %d, fade %d ticks), the game paused for each sample %b, drawn from its buffers at every sample %b; its alpha as drawn (its summed colour difference from the frame without it over the opaque one's): %s (want falling, at least 0.9, 0.35 to 0.65 and at most 0.1, each within 0.08 of the want and the two draws within 0.05 of each other)=%b/%b/%b; screenshots hl-corpse-fade-<death tick>-f/n/o/h.png",
+                        row.corpseLieTicks(), row.corpseFadeTicks(), cpFadePaused, cpFadeCached, s, mono, ends, near);
+                    System.out.println("[p2] hl-corpse fade: " + cpFadeWhy + " (BodyCache: " + BodyCache.diag() + ")");
+                    cpFadeDone = true;
+                }
+            }
+        }
+        void fadeShotsEnd(MinecraftClient c) {
+            if (cpFadePhase > 0) {c.setScreen(null); c.options.hudHidden = false;}
+            BodyCache.off = false; BodyCache.opaque = false; BodyCache.hide = -1; cpFadePhase = 0;
+            if (cpFadeF != null) {cpFadeF.close(); cpFadeF = null;} if (cpFadeN != null) {cpFadeN.close(); cpFadeN = null;} if (cpFadeO != null) {cpFadeO.close(); cpFadeO = null;}
         }
         /** A fall with no attacker, past the hurt cooldown. */
         static void fall(GravesAndGlory.Battle b, GravesAndGlory.Unit u) {u.mob.timeUntilRegen = 0; u.mob.hurtTime = 0; u.mob.damage(b.world.getDamageSources().generic(), 10000f);}

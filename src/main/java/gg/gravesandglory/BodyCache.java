@@ -50,6 +50,8 @@ public final class BodyCache {
     static final boolean ENABLED=!"false".equals(System.getProperty("gravesandglory.bodyCache"))&&!FabricLoader.getInstance().isModLoaded("iris");
     /** Harness switches (HoldLineChecks, hl-corpse): draw every body the normal way; leave the entity with this id undrawn. */
     static volatile boolean off;static volatile int hide=-1;
+    /** Harness switch (hl-corpse, R42): draw a fading body opaque, its fade ignored (the reference frame its alpha is measured against). */
+    static volatile boolean opaque;
     /** Whether settled bodies draw from their buffers now. */
     static boolean on(){return ENABLED&&!off;}
     /** Records past which a body that keeps changing is drawn the normal way for good. */
