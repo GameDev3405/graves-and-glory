@@ -152,7 +152,7 @@ public final class GravesAndGloryClient implements ClientModInitializer {
         // Troop depth: the frame's cutoff from the game camera, once, before any pass draws (Iris's shadow pass among them).
         net.fabricmc.fabric.api.client.rendering.v1.WorldRenderEvents.START.register(ctx->TroopDepth.beginFrame(ctx.camera().getPos(),ctx.world().getEntities()));
         // Settled bodies (BodyCache): queue from the frame's start, drawn from their buffers after the entities.
-        net.fabricmc.fabric.api.client.rendering.v1.WorldRenderEvents.START.register(ctx->BodyCache.begin());
+        net.fabricmc.fabric.api.client.rendering.v1.WorldRenderEvents.START.register(ctx->BodyCache.begin(ctx.tickDelta()));
         net.fabricmc.fabric.api.client.rendering.v1.WorldRenderEvents.AFTER_ENTITIES.register(BodyCache::flush);
         // Bodies part way through their corpse fade (R42): translucent, once every entity layer of the frame is drawn.
         net.fabricmc.fabric.api.client.rendering.v1.WorldRenderEvents.BEFORE_DEBUG_RENDER.register(BodyCache::fadePass);

@@ -93,7 +93,7 @@ public final class TroopRenderer<T extends MobEntity> extends LivingEntityRender
         if(BodyCache.hidden(e.getId()))return;
         float alpha=BodyCache.opaque?1f:fade;if(alpha<=0f)return;
         TroopModels.Look l=TroopModels.resolve(e);TroopModel<T> m=l==null?null:TroopModels.modelOf(l.troop().id());
-        if(m==null){faded(e,alpha,consumers,v->{vanilla.render(e,yaw,tickDelta,matrices,v,light);TroopChevrons.draw(e,l,null,matrices,v,dispatcher);});return;}
+        if(m==null){faded(e,alpha,tickDelta,consumers,v->{vanilla.render(e,yaw,tickDelta,matrices,v,light);TroopChevrons.draw(e,l,null,matrices,v,dispatcher);});return;}
         if(TroopModels.held(e,l))return;
         int parts=BodyCache.parts;
         if(BodyCache.heldOpaque&&alpha<1f&&(parts&BodyCache.HELD)!=0){
@@ -117,14 +117,14 @@ public final class TroopRenderer<T extends MobEntity> extends LivingEntityRender
                 TroopChevrons.draw(e,l,m,matrices,consumers,dispatcher);return;
             }
         }
-        faded(e,alpha,consumers,v->{drawModel(e,yaw,tickDelta,matrices,v,light);TroopChevrons.draw(e,l,m,matrices,v,dispatcher);});
+        faded(e,alpha,tickDelta,consumers,v->{drawModel(e,yaw,tickDelta,matrices,v,light);TroopChevrons.draw(e,l,m,matrices,v,dispatcher);});
     }
     /** Draws whole, or part way through the fade caught for BodyCache.fadePass (whole outside the world pass). */
-    private static void faded(Entity e,float alpha,VertexConsumerProvider consumers,java.util.function.Consumer<VertexConsumerProvider> draw){
+    private static void faded(Entity e,float alpha,float tickDelta,VertexConsumerProvider consumers,java.util.function.Consumer<VertexConsumerProvider> draw){
         VertexConsumerProvider v=alpha<1f?BodyCache.fading(consumers):null;
         if(v==null){draw.accept(consumers);return;}
         boolean ok=false;
-        try{draw.accept(v);ok=true;}finally{if(ok)BodyCache.faded(e,alpha);else BodyCache.abandonFading();}
+        try{draw.accept(v);ok=true;}finally{if(ok)BodyCache.faded(e,alpha,tickDelta);else BodyCache.abandonFading();}
     }
     /** The troop's own draw (the Look and model resolved, not held): its model, layers and relief, through the matrices given. */
     void drawModel(T e,float yaw,float tickDelta,MatrixStack matrices,VertexConsumerProvider consumers,int light){
@@ -173,7 +173,7 @@ public final class TroopRenderer<T extends MobEntity> extends LivingEntityRender
             if(b!=null){
                 if(!e.shouldRender(x,y,z)||!e.ignoreCameraFrustum&&!frustum.isVisible(b.cull))return false;
                 if(e!=dispatcher.targetedEntity&&!e.isCustomNameVisible()&&BodyCache.plain(e)){
-                    float td=net.minecraft.client.MinecraftClient.getInstance().getTickDelta();Vec3d off=getPositionOffset(e,td);
+                    float td=BodyCache.frameDelta;Vec3d off=getPositionOffset(e,td);
                     if(BodyCache.drawFresh(b,MathHelper.lerp(td,e.prevX,e.getX())+off.x,MathHelper.lerp(td,e.prevY,e.getY())+off.y,MathHelper.lerp(td,e.prevZ,e.getZ())+off.z,MathHelper.lerpAngleDegrees(td,e.prevBodyYaw,e.bodyYaw),getLight(e,td),td)){
                         troopDraws++;if(DIAGNOSTICS){Drawn d=DRAWN.get(e);if(d!=null)d.count++;}
                         return false;

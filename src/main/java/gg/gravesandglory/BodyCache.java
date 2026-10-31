@@ -95,16 +95,34 @@ public final class BodyCache {
      * A body drawn this frame part way through its corpse fade (R42): a cached body's own buffers, or the buffers one normal
      * draw was caught into (body null), drawn translucent at alpha by fadePass.
      */
-    static final class Fade { final Body body;final List<Part> parts;final float alpha;double d2,x,y,z,reach;int group;Fade(Body body,List<Part> parts,float alpha){this.body=body;this.parts=parts;this.alpha=alpha;} }
+    static final class Fade { final Body body;final List<Part> parts;final float alpha;double d2,x,y,z,reach;int group;
+        /** What the harness traces (R61): the entity, the path that drew it (TRACE_PATHS), its death tick and the partial tick its alpha was taken at. */
+        Entity entity;int path,death;float tickDelta;
+        Fade(Body body,List<Part> parts,float alpha){this.body=body;this.parts=parts;this.alpha=alpha;} }
+    /** A Fade's path: its buffers on a full check (draw), its buffers on the short check (drawFresh), a normal draw caught (faded). */
+    static final String[] TRACE_PATHS={"buffers (full check)","buffers (short check)","normal draw"};
+    private static void tag(Fade f,Entity e,int path,float tickDelta){f.entity=e;f.path=path;f.tickDelta=tickDelta;f.death=e instanceof net.minecraft.entity.LivingEntity l?l.deathTime:-1;}
+    /** Harness (R61): each fading draw of the entity in the last frame drawn, as path, death tick, partial tick and alpha; "none" when it drew no fade. */
+    static String traced(Entity e){
+        StringBuilder s=new StringBuilder();
+        for(Fade f:LAST)if(f.entity==e)s.append(s.length()==0?"":", ").append(String.format(java.util.Locale.ROOT,"%s death tick %d + %.3f alpha %.4f",TRACE_PATHS[f.path],f.death,f.tickDelta,f.alpha));
+        return s.length()==0?"none":s.toString();
+    }
+    /** Harness (R61): the entity's first fading draw in the last frame drawn, or null. */
+    static Fade tracedFade(Entity e){for(Fade f:LAST)if(f.entity==e)return f;return null;}
     private static final Map<Entity,Body> BODIES=new IdentityHashMap<>();
     private static final List<Body> QUEUE=new ArrayList<>(),SHADOWS=new ArrayList<>();
     private static final Map<RenderLayer,List<Body>> BY_LAYER=new LinkedHashMap<>();
     private static final Map<RenderLayer,List<VertexBuffer>> BUFFERS=new LinkedHashMap<>();
     private static final List<Fade> FADES=new ArrayList<>();
+    /** The last fade pass's Fades, kept past its recycle for the harness's trace (R61): read for their trace fields only. */
+    private static final List<Fade> LAST=new ArrayList<>();
     private static final Map<RenderLayer,Integer> KINDS=new IdentityHashMap<>();private static final ArrayDeque<VertexBuffer> SPARE=new ArrayDeque<>();
     private static boolean inWorld;private static int frame;
     /** Fade passes, the fading bodies and draws they drew, and their time (the harness reads them). */
     static long fadePasses,fadeBodies,fadeDraws,fadeNanos,fadeGroups,fadeGroupsMax,fadeLayered,fadeTranslucentMax,fadeOpens;
+    /** The most fading bodies one pass drew since the harness last set it to 0 (R58: hl-corpse-load's peak). */
+    static long fadeBodiesMax;
     /** Draws from cached buffers and records since the client started (the harness reads them). */
     static long cachedDraws,records;
     /** Diagnostics for the harness: cached draws on the short check, draws refused outside the world pass, key changes, give-ups, failed records, and the last key change or refusal. */
@@ -124,10 +142,17 @@ public final class BodyCache {
     /** The opacity the body draws at: its fade, or whole while the harness takes its opaque reference frame. */
     static float alpha(Entity e,float tickDelta){return opaque?1f:fade(e,tickDelta);}
 
-    /** WorldRenderEvents.START: the world pass begins; bodies may queue. */
-    static void begin(){inWorld=ENABLED;frame++;QUEUE.clear();SHADOWS.clear();recycle();}
+    /**
+     * The world pass's partial tick (WorldRenderEvents.START's, what the dispatcher hands every renderer this frame). The short
+     * check reads it rather than MinecraftClient.getTickDelta(), which is the tick counter's own and, while the game is paused,
+     * runs on from the frozen tickDelta the world draws at (R61: the short check's body and shadow faded on another time base
+     * than the full check's and the normal draw's, up to a tick ahead).
+     */
+    static float frameDelta;
+    /** WorldRenderEvents.START: the world pass begins at its partial tick; bodies may queue. */
+    static void begin(float tickDelta){frameDelta=tickDelta;inWorld=ENABLED;frame++;QUEUE.clear();SHADOWS.clear();recycle();}
     /** Queues a cached body at its opacity: whole with the rest, part way to the fade pass, gone at 0. */
-    private static void queue(Body b,float a){if(a>=1f)QUEUE.add(b);else if(a>0f){Fade f=new Fade(b,b.parts,a);f.reach=reach(b.entity);FADES.add(f);}}
+    private static void queue(Body b,float tickDelta,int path){float a=alpha(b.entity,tickDelta);if(a>=1f)QUEUE.add(b);else if(a>0f){Fade f=new Fade(b,b.parts,a);f.reach=reach(b.entity);tag(f,b.entity,path,tickDelta);FADES.add(f);}}
     /** How far a body can reach from its feet, lying any way: its height laid flat plus its width (the fade pass's overlap test, conservative). */
     private static double reach(Entity e){return e==null?3:e.getHeight()+e.getWidth();}
 
@@ -137,14 +162,14 @@ public final class BodyCache {
         LOOSE.outline=consumers instanceof OutlineVertexConsumerProvider o?o:null;LOOSE.rec.open.clear();return LOOSE;
     }
     /** Ends a caught draw: each layer's vertices into a buffer (kept between frames), drawn by fadePass at the alpha. */
-    static void faded(Entity e,float alpha){
+    static void faded(Entity e,float alpha,float tickDelta){
         Fade f=new Fade(null,new ArrayList<>(),alpha);
         for(var en:LOOSE.rec.open.entrySet()){
             BufferBuilder.BuiltBuffer built=en.getValue().endNullable();if(built==null)continue;
             VertexBuffer vb=SPARE.isEmpty()?new VertexBuffer(VertexBuffer.Usage.DYNAMIC):SPARE.pop();vb.bind();vb.upload(built);f.parts.add(new Part(en.getKey(),vb));
         }
         VertexBuffer.unbind();LOOSE.rec.release();LOOSE.outline=null;BufferRenderer.reset();
-        if(!f.parts.isEmpty()){f.d2=e.squaredDistanceTo(MinecraftClient.getInstance().gameRenderer.getCamera().getPos());f.x=e.getX();f.y=e.getY();f.z=e.getZ();f.reach=reach(e);FADES.add(f);}
+        if(!f.parts.isEmpty()){tag(f,e,2,tickDelta);f.d2=e.squaredDistanceTo(MinecraftClient.getInstance().gameRenderer.getCamera().getPos());f.x=e.getX();f.y=e.getY();f.z=e.getZ();f.reach=reach(e);FADES.add(f);}
     }
     static void abandonFading(){LOOSE.rec.abandon();LOOSE.outline=null;}
     /** The caught draws' buffers back to the spare pool. */
@@ -176,7 +201,7 @@ public final class BodyCache {
             if(!record(r,e,key,yaw,tickDelta,b)){b.free();b.normal=true;failed++;return false;}
             b.key=key;records++;
         }
-        b.x=key.x;b.y=key.y;b.z=key.z;b.yaw=body;b.lastFrame=frame;queue(b,alpha(e,tickDelta));cachedDraws++;
+        b.x=key.x;b.y=key.y;b.z=key.z;b.yaw=body;b.lastFrame=frame;queue(b,tickDelta,0);cachedDraws++;
         return true;
     }
 
@@ -196,7 +221,7 @@ public final class BodyCache {
      */
     static boolean drawFresh(Body b,double x,double y,double z,float body,int light,float tickDelta){
         Key k=b.key;if(light!=k.light()||Math.abs(k.x()-x)>=1e-5||Math.abs(k.y()-y)>=1e-5||Math.abs(k.z()-z)>=1e-5)return false;
-        b.yaw=body;b.lastFrame=frame;queue(b,alpha(b.entity,tickDelta));b.shade=fade(b.entity,tickDelta);SHADOWS.add(b);cachedDraws++;quick++;return true;
+        b.yaw=body;b.lastFrame=frame;queue(b,tickDelta,1);b.shade=fade(b.entity,tickDelta);SHADOWS.add(b);cachedDraws++;quick++;return true;
     }
     /** After a full check drew the entity's body from its buffers: its cull box (it does not move) and the frame of the check. */
     static void verified(Entity e,net.minecraft.util.math.Box cull){Body b=BODIES.get(e);if(b!=null){b.cull=cull;b.verified=frame;}}
@@ -339,8 +364,9 @@ public final class BodyCache {
      * once. A program keeps the frame's uniforms between opens, so they are set once a pass.
      */
     static void fadePass(WorldRenderContext ctx){
+        LAST.clear();LAST.addAll(FADES);
         if(FADES.isEmpty())return;
-        long t0=System.nanoTime();fadePasses++;fadeBodies+=FADES.size();
+        long t0=System.nanoTime();fadePasses++;fadeBodies+=FADES.size();fadeBodiesMax=Math.max(fadeBodiesMax,FADES.size());
         for(Fade f:FADES)if(f.body!=null){Body b=f.body;f.x=b.x;f.y=b.y;f.z=b.z;double dx=b.x-cam.x,dy=b.y-cam.y,dz=b.z-cam.z;f.d2=dx*dx+dy*dy+dz*dz;}
         FADES.sort((p,q)->Double.compare(q.d2,p.d2));
         int groups=group(FADES);fadeGroups+=groups;fadeGroupsMax=Math.max(fadeGroupsMax,groups);
@@ -492,7 +518,7 @@ public final class BodyCache {
         }
     }
     /** Frees every buffer (a world left, resources reloaded). */
-    static void clear(){for(Body b:BODIES.values())b.free();BODIES.clear();QUEUE.clear();recycle();for(VertexBuffer vb:SPARE)vb.close();SPARE.clear();}
+    static void clear(){for(Body b:BODIES.values())b.free();BODIES.clear();QUEUE.clear();recycle();LAST.clear();for(VertexBuffer vb:SPARE)vb.close();SPARE.clear();}
     /** Harness (mo-fade): forgets the entity's body, its buffers freed, so its next draw records it afresh (after BodyCache.parts changed). */
     static void forget(Entity e){Body b=BODIES.remove(e);if(b!=null)b.free();}
     /** Whether this client keeps buffers for the entity's body and draws it from them. */
