@@ -405,9 +405,9 @@ public final class BattleMathCheck {
           check(falls, "corpseAlpha: strictly falling from 80 to 120"); }
         check(Math.abs(BattleMath.corpseAlpha(100, 60, 40) - 0.5f) < 1e-6, "corpseAlpha: half way through the fade is one half (0.5 + 0.5cos)");
         check(BattleMath.corpseAlpha(20, 0, 0) == 1 && BattleMath.corpseAlpha(21, 0, 0) == 0, "corpseAlpha: no lie and no fade is vanilla's 20-tick fall, then gone");
-        { boolean same = true; for (int d = 0; d <= 130; d++) same &= BattleMath.corpseAlpha((float) d, 60, 40) == BattleMath.corpseAlpha(d, 60, 40);
+        { boolean onWhole = true; for (int d = 0; d <= 130; d++) onWhole &= BattleMath.corpseAlpha((float) d, 60, 40) == BattleMath.corpseAlpha(d, 60, 40);
           float h = BattleMath.corpseAlpha(100.5f, 60, 40);
-          check(same && h < BattleMath.corpseAlpha(100, 60, 40) && h > BattleMath.corpseAlpha(101, 60, 40), "corpseAlpha on a partial tick: equal on whole ticks, between them on a half tick"); }
+          check(onWhole && h < BattleMath.corpseAlpha(100, 60, 40) && h > BattleMath.corpseAlpha(101, 60, 40), "corpseAlpha on a partial tick: equal on whole ticks, between them on a half tick"); }
         // Task 7 fix 1 (I2): a body lying past its fall ranks after every living troop for relief and whole weapons
         { double[] living = new double[60], bodies = new double[30];
           for (int i = 0; i < 60; i++) living[i] = Math.pow(10 + i / 6.0, 2); // 60 living from 10 to ~20 blocks
