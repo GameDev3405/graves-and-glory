@@ -99,6 +99,20 @@ class PreflightRules(unittest.TestCase):
             with self.subTest(impactTicks=bad):
                 self.refuses(lambda d, bad=bad: d['attackVariants'][0].__setitem__('impactTicks', bad), 'attackVariants', 'impactTicks')
 
+    def test_variant_impact_lands_before_a_late_swings_next_beat(self):
+        # Phase 1 review M3: a swing 10 ticks late on its beat has cooldown - 10 ticks to the next, and impactDelay clamps the blow one tick
+        # before that, so the cooldown must be at least impactTicks + 11 for the blow to land on the client's impact frame.
+        cooldown = self.troop(self.sheet, 'gl_marshal')['cooldown']
+        def impact(ticks):
+            return lambda d: self.variant(d, 'sword_shield_overhead').__setitem__('impactTicks', ticks)
+        self.refuses(impact(cooldown - 10), 'sword_shield_overhead', 'gl_marshal', 'impactTicks + 11')
+        def review_case(d):  # the review's scenario: cooldown 15 against impactTicks 10 passed the old cooldown > impactTicks bound
+            self.troop(d, 'gl_marshal')['cooldown'] = 15
+            self.variant(d, 'sword_shield_overhead')['impactTicks'] = 10
+        self.refuses(review_case, 'sword_shield_overhead', 'gl_marshal')
+        code, out = self.run_preflight(impact(cooldown - 11))
+        self.assertEqual(code, 0, out)
+
     def test_variant_family_must_be_used_by_a_troop(self):
         # Vacate a known family: the harpooner joins the bows, so the thrower rows belong to no troop.
         self.refuses(lambda d: self.troop(d, 'tc_harpooner').__setitem__('family', 'bow'), 'thrower_throw', 'used by no troop')

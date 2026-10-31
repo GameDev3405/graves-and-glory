@@ -278,6 +278,7 @@ for t in data['troops']:
     fam=t.get('family')
     if fam not in FAMILIES: errors.append(f'troops/{t["id"]}: family {fam!r} must be one of {", ".join(FAMILIES)}')
     else: familyTroops.setdefault(fam,[]).append(t)
+LATE_SWING_TICKS=10 # Tactics.tick keeps a swing's beat when it comes up to this many ticks after nextAttack
 variantRows=data.get('attackVariants',[])
 if 'attackVariants' not in data: errors.append('attackVariants: the sheet is missing (spec 6.2)')
 variantFamilies={}
@@ -292,8 +293,11 @@ for v in variantRows:
     tk=v.get('impactTicks')
     if isinstance(tk,bool) or not isinstance(tk,int) or tk<1: errors.append(f'attackVariants/{vid}: impactTicks {tk!r} must be a whole number of ticks, at least 1')
     elif fam in familyTroops:
-        short=[t['id'] for t in familyTroops[fam] if t['cooldown']<=tk]
-        if short: errors.append(f'attackVariants/{vid}: impactTicks {tk} must land inside the swing, below the cooldown of {", ".join(short)}')
+        # A swing up to LATE_SWING_TICKS late keeps its beat (Tactics.tick: nextAttack + cooldown), leaving cooldown - late ticks to the next swing, and
+        # BattleMath.impactDelay clamps the blow one tick before that. Cooldown at least impactTicks + LATE_SWING_TICKS + 1 means the clamp never bites,
+        # so the blow never lands before the client's impact frame (Phase 1 review M3).
+        short=[t['id'] for t in familyTroops[fam] if t['cooldown']<tk+LATE_SWING_TICKS+1]
+        if short: errors.append(f'attackVariants/{vid}: impactTicks {tk} must land before the next beat of a late swing: the cooldown of {", ".join(short)} must be at least impactTicks + {LATE_SWING_TICKS + 1} ({tk+LATE_SWING_TICKS+1})')
     if fam in familyTroops and v.get('kind') in VARIANT_KINDS:
         melee=any(not t['ranged'] for t in familyTroops[fam])
         # A shell (the Mortar's crew: every troop of the family fires a shell) lands as a blunt blow (Task 6, M5); any other ranged family flies arrows, bolts or magic.
