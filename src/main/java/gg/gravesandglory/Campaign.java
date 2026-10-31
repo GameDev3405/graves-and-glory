@@ -784,7 +784,7 @@ public final class Campaign {
                 if(targetId==null)yield "Commander not found.";
                 yield action.equals("invite")?social.invite(id,targetId,System.currentTimeMillis()):action.equals("kick")?social.kick(id,targetId):social.transfer(id,targetId);}
             case "room"->social.createRoom(id);case "lobby"->social.lobby(id);
-            case "mode"->social.mode(id,arg);case "house"->social.house(id,arg,RosterMath.fieldableHouses());
+            case "mode"->social.mode(id,arg);case "house"->{String said=social.house(id,arg,RosterMath.fieldableHouses());String no=said.startsWith("House chosen")?houseRefusal(social.room(id),id):"";yield no.isEmpty()?said:no;}
             case "host"->{UUID targetId=social.room(id)==null?null:social.room(id).members.stream().filter(m->name(m).equals(arg)).findFirst().orElse(null);yield social.handHost(id,targetId);}case "join"->social.joinRoom(id,arg);case "exit"->social.leaveRoom(id);case "ready"->social.ready(id,houseRefusal(social.room(id),id));
             case "team"->social.team(id,Integer.parseInt(arg));
             case "size","map","fill"->{var room=social.room(id);if(room==null)yield "Create or join a room first.";
