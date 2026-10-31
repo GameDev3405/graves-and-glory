@@ -89,8 +89,9 @@ import static gg.gravesandglory.Phase2Checks.server;
  * tracked again (START_TRACKING), then the client's tables are emptied and the channel registration replayed (S2CPlayChannelEvents.REGISTER); both
  * times every tracked troop's stance reaches the client within 2 ticks, the Squire's newest swing with it, and a troop with no stance shows none.</li>
  * <li>hl-corpse (Task 7): on the same patch, a pinned Dusk Order Squire (AI on, on Attack) strikes down a tough frozen Squire of the commander's army
- * (a second one stands 6 blocks west as the Dusk Squire's other foe). The body lies: in the world and dead at its 79th death tick (and its 119th),
- * removed on its 120th (BattleMath.corpseGoneTick of the corpse rows, 20 + 60 + 40), and the client holds it lying past its 79th; nothing (no item,
+ * (a second one stands 6 blocks west as the Dusk Squire's other foe). The body lies: in the world and dead on its last death tick before its fade
+ * (20 + corpseLieTicks - 1) and on the tick before its removal, removed on BattleMath.corpseGoneTick of the corpse rows (20 + lie + fade), and the
+ * client holds it lying past the first of those; nothing (no item,
  * no experience orb) lies within 4 blocks of it, AFTER_DEATH fired for it once; from the tick after its death no unit's lockedTarget nor mob target
  * is the body, it cannot be hit (canHit) nor pushed (isPushable), it is out of Battle.units, out of its side team, and the army's fielded count is one
  * less; an own Squire set 0.15 from the body (AI on, out of the battle's orders) moves under 0.02 over 20 ticks, and the body under 0.02 too. Rise
@@ -256,7 +257,7 @@ final class HoldLineChecks {
         volatile int cpShotId = -1;
         volatile boolean cpShotDone, cpShotPass;
         volatile String cpShotWhy = "";
-        int cpShotPhase, cpShotWait; long cpShotDraws; boolean cpShotEngaged, cpShotNormal, cpShotPaused;
+        int cpShotPhase, cpShotWait, cpShotAsked = -1, cpShotAt = -1; long cpShotDraws; boolean cpShotEngaged, cpShotNormal, cpShotPaused;
         net.minecraft.client.texture.NativeImage cpShotA, cpShotB, cpShotB2;
         /** R44: the player's place before the camera was nudged (x, y, z, then prev and last render x, y, z). */
         final double[] cpNudged = new double[9];
@@ -1871,8 +1872,8 @@ final class HoldLineChecks {
                 case 123 -> { // it lies; then it goes
                     long n = since(b); var v = cpVictim.mob;
                     if (!v.isRemoved()) cpLastDeath = v.deathTime; else if (cpGoneAt < 0) cpGoneAt = n;
-                    if (n == 79) {cpAt79 = !v.isRemoved() && v.isDead(); cpDeath79 = v.deathTime;}
-                    if (n == 119) cpAt119 = !v.isRemoved() && v.isDead();
+                    if (n == cpLieEnd()) {cpAt79 = !v.isRemoved() && v.isDead(); cpDeath79 = v.deathTime;} // R43: from the sheet's rows, which may lower the lie
+                    if (n == cpGone() - 1) cpAt119 = !v.isRemoved() && v.isDead();
                     var box = new net.minecraft.util.math.Box(cpBody0, cpBody0).expand(4);
                     cpItems = Math.max(cpItems, b.world.getEntitiesByClass(net.minecraft.entity.ItemEntity.class, box, e -> true).size());
                     cpOrbs = Math.max(cpOrbs, b.world.getEntitiesByClass(net.minecraft.entity.ExperienceOrbEntity.class, box, e -> true).size());
@@ -1881,7 +1882,7 @@ final class HoldLineChecks {
                         if (dead != null && cpTargeted.size() < 6) cpTargeted.add(u.spec.id() + " -> " + dead.getId() + " at +" + n);
                     }
                     if (n == 1) cpGlow1 = "glowing " + v.isGlowing() + ", effects " + v.getStatusEffects().size();
-                    if (n == 60) requestShot("hl-corpse-lying", 4); // Task 7 fix 1 (I4): a body forty ticks past its fall, lying with no red tint
+                    if (n == Math.min(60, cpLieEnd())) requestShot("hl-corpse-lying", 4); // Task 7 fix 1 (I4): a body up to forty ticks past its fall (before its fade), lying with no red tint
                     if (n == 1) {cpHitless = !v.canHit() && !v.isPushable(); cpOutOfUnits = !b.units.contains(cpVictim); cpNoSide = v.getScoreboardTeam() == null; cpFielded1 = b.fielded(own).count();}
                     if (n == 5) { // an own Squire, AI on but out of the battle's orders and its side (so nothing but a push moves it), 0.15 from the body
                         var l = tough(b.spawn(own, Campaign.troop("knight"), 63, ground(b, v.getX(), v.getZ() + 0.15))); Phase1Checks.freeze(l);
@@ -1897,10 +1898,11 @@ final class HoldLineChecks {
                     cpCheck(cpKnock > 0.1, "the killing blow left the body moving " + fmt3(cpKnock) + " blocks a tick across the ground on its death tick (want over 0.1: it is thrown back)");
                     cpCheck(cpClientGlowBefore && !cpClientGlowFall, "the client saw the marked Squire glowing before the blow " + cpClientGlowBefore + " (want true), and glowing from its death tick 5 to 15 " + cpClientGlowFall + " (want false)");
                     cpCheck(cpClientLyingSeen && !cpClientHitLying && cpClientBaitHit, "on the client the lying body (death ticks 21-100, seen " + cpClientLyingSeen + ") could be hit (canHit) " + cpClientHitLying + " (want false: the crosshair passes through it, so no nameplate); the living Squire beside it could " + cpClientBaitHit + " (want true)");
-                    cpCheck(cpAt79 && cpDeath79 == 79, "the body is in the world and dead on its 79th death tick (death ticks " + cpDeath79 + ")");
-                    cpCheck(cpAt119, "it still lies on its 119th");
-                    cpCheck(cpGoneAt == 120 && cpLastDeath == 119, "removed on tick +" + cpGoneAt + ", last seen lying on death tick " + cpLastDeath + " (want +120, 20 + lie 60 + fade 40; gone by +121)");
-                    cpCheck(cpClientDeath >= 79, "the client held it lying to death tick " + cpClientDeath + " (want 79 or more)");
+                    int lieEnd = cpLieEnd(), gone = cpGone(); var cr = Spec.COMBATDISCIPLINE[0];
+                    cpCheck(cpAt79 && cpDeath79 == lieEnd, "the body is in the world and dead on its " + lieEnd + "th death tick, its last before its fade (death ticks " + cpDeath79 + ")");
+                    cpCheck(cpAt119, "it still lies on its " + (gone - 1) + "th");
+                    cpCheck(cpGoneAt == gone && cpLastDeath == gone - 1, "removed on tick +" + cpGoneAt + ", last seen lying on death tick " + cpLastDeath + " (want +" + gone + ", 20 + lie " + cr.corpseLieTicks() + " + fade " + cr.corpseFadeTicks() + "; gone by +" + (gone + 1) + ")");
+                    cpCheck(cpClientDeath >= lieEnd, "the client held it lying to death tick " + cpClientDeath + " (want " + lieEnd + " or more)");
                     cpCheck(cpTintFall == 3 && cpTintLie == 10, "the client's overlay V for the body (getOverlay: 3 the red hurt tint, 10 none) as it fell " + cpTintFall + " (want 3), on every client tick it lay from death tick 40 to 100 " + (cpTintLie >= 1000 ? "once " + (cpTintLie - 1000) : String.valueOf(cpTintLie)) + " (want 10)");
                     cpCheck(cpItems == 0 && cpOrbs == 0, "within 4 blocks of it lay " + cpItems + " items and " + cpOrbs + " experience orbs (want none)");
                     int deaths = CP_DEATHS.getOrDefault(v.getId(), 0);
@@ -1964,13 +1966,16 @@ final class HoldLineChecks {
                 }
                 case 128 -> { // Task 8 fix 1 (R39): a settled body the client draws from the buffers it recorded looks as the normal draw does
                     long n = since(b);
-                    if (n == 1) {cpShotDone = false; cpFadeDone = false; cpFadeK = 0; cpFadeId = -1; cpCacheBody = cpOwn(b, 65, cpHome); fall(b, cpCacheBody); var at = ground(b, cpHome.x, cpHome.z - 3); b.relocate(sp(b), at.x, at.y, at.z, 0f, 28f); return;}
-                    if (n == 45) cpShotId = cpCacheBody.mob.getId(); // lying since death tick 21; the camera 3 blocks north of it, looking down at it
+                    if (n == 1) {cpShotDone = false; cpFadeDone = false; cpFadeK = 0; cpFadeId = -1; cpCacheBody = cpOwn(b, 65, cpHome); var at = ground(b, cpHome.x, cpHome.z - 3); b.relocate(sp(b), at.x, at.y, at.z, 0f, 28f); return;}
+                    // R43: it stands 60 ticks first, as a troop in a battle has: one struck down on the tick it spawned settles (TroopAnimator.settled,
+                    // so draws from buffers) only near its 60th tick of age (r2-lie20b), past the fade start of a lie under 40
+                    if (n == CP_STAND) {fall(b, cpCacheBody); return;}
+                    if (n == CP_STAND + Math.min(45, cpLieEnd() - 4)) cpShotId = cpCacheBody.mob.getId(); // lying since death tick 21, before its fade; the camera 3 blocks north of it, looking down at it
                     if (cpShotDone && cpShotId >= 0) {cpShotId = -1; cpFadeId = cpCacheBody.mob.getId();} // R42: then the client samples it as it fades
-                    if (!(cpShotDone && cpFadeDone) && n < 220) return; // removed on death tick 120 (the client pauses the game while it shoots, so the body waits)
+                    if (!(cpShotDone && cpFadeDone) && n < CP_STAND + 220) return; // removed on its gone tick (120 at most here) (the client pauses the game while it shoots, so the body waits)
                     cpShotId = -1; cpFadeId = -1;
-                    cpCheck(cpShotDone && cpShotPass, cpShotDone ? cpShotWhy : "the client never shot the cached body (by +220; BodyCache: " + BodyCache.diag() + ")");
-                    cpCheck(cpFadeDone && cpFadePass, cpFadeDone ? cpFadeWhy : "the client never sampled the body's fade (by +220; BodyCache: " + BodyCache.diag() + ")");
+                    cpCheck(cpShotDone && cpShotPass, cpShotDone ? cpShotWhy : "the client never shot the cached body (by +" + (CP_STAND + 220) + "; BodyCache: " + BodyCache.diag() + ")");
+                    cpCheck(cpFadeDone && cpFadePass, cpFadeDone ? cpFadeWhy : "the client never sampled the body's fade (by +" + (CP_STAND + 220) + "; BodyCache: " + BodyCache.diag() + ")");
                     var p = sp(b); b.relocate(p, patch[0] + 12, Phase1Checks.top(b, patch[0] + 12, patch[2] - 24) + 6, patch[2] - 24, 0f, 15f); // the camera back where hl-corpse-load measures from
                     clearFixture(b, "hl-corpse"); b.clearCorpses();
                     next(b, CP_LOAD ? 129 : 140);
@@ -2058,6 +2063,10 @@ final class HoldLineChecks {
         /** hl-corpse-load: this run's corpse rows, then its troops (stage 130). */
         void cpBegin(GravesAndGlory.Battle b) {int[] run = cpArm(CP_PLAN[cpRun]); Spec.COMBATDISCIPLINE[0] = corpseRow(cpRow, run[0], run[1]); cpLoad.clear(); System.gc(); next(b, 130);}
         /** An arm's {corpseLieTicks, corpseFadeTicks}: A none, the warm-up and B the sheet's rows. */
+        /** R43: the corpse rows' last lying death tick before the fade (20 + lie - 1) and the removal tick (20 + lie + fade). */
+        static final int CP_STAND = 61;
+        static int cpLieEnd() {return BattleMath.DEATH_FALL_TICKS + Spec.COMBATDISCIPLINE[0].corpseLieTicks() - 1;}
+        static int cpGone() {return BattleMath.corpseGoneTick(Spec.COMBATDISCIPLINE[0].corpseLieTicks(), Spec.COMBATDISCIPLINE[0].corpseFadeTicks());}
         int[] cpArm(int arm) {return arm == 1 ? new int[]{0, 0} : new int[]{cpRow.corpseLieTicks(), cpRow.corpseFadeTicks()};}
         /** The median of column c of the blocks (the mean of the middle two for an even count), 0 for none. */
         static double cpMedian(List<double[]> blocks, int c) {
@@ -2084,7 +2093,9 @@ final class HoldLineChecks {
             var e = c.world == null ? null : c.world.getEntityById(id);
             switch (cpShotPhase) {
                 case 0 -> {
+                    if (e instanceof net.minecraft.entity.LivingEntity l0 && cpShotAsked < 0) cpShotAsked = l0.deathTime;
                     if (!(e instanceof net.minecraft.entity.LivingEntity l) || !l.isDead() || !BodyCache.cached(e)) return;
+                    cpShotAt = l.deathTime;
                     c.options.hudHidden = true; c.getToastManager().clear(); EventFeed.clear(); c.setScreen(new net.minecraft.client.gui.screen.GameMenuScreen(false)); cpShotPhase = 1; cpShotWait = 0; cpShotDraws = BodyCache.cachedDraws;
                 }
                 case 1 -> {
@@ -2121,8 +2132,8 @@ final class HoldLineChecks {
                     a.close(); bb.close(); b2.close(); cc.close(); cpShotA = null; cpShotB = null; cpShotB2 = null;
                     double share = kept == 0 ? 1 : diff / (double) kept, out = body == 0 ? 1 : unstable / (double) body;
                     cpShotPass = sized && cpShotPaused && cpShotEngaged && cpShotNormal && body >= 1000 && out <= 0.02 && share <= 0.005;
-                    cpShotWhy = String.format(Locale.ROOT, "a settled Squire's body 3 blocks from the camera, the game paused %b: drawn from its recorded buffers %b (BodyCache drew it), then the normal way %b (no cached draw, twice: the second with the camera nudged 0.001 blocks along its look); of its %d pixels (where either draw differs from the frame without it, so its shadow is left out) %d are z-fight-unstable (the two normal draws differ by more than 2 of 255), %.3f%% (want 2%% or less; %d of them differ cached against normal); of the other %d, %d differ by more than 2 of 255, %.3f%% (want 0.5%% or less; the cached body lights its byte-packed normals in world space, not view space, which moves shading by 1 or 2: %d differ at all, %d by more than 8, the worst by %d); screenshots hl-corpse-cache-a/b/b2/c.png",
-                        cpShotPaused, cpShotEngaged, cpShotNormal, body, unstable, out * 100, diffUnstable, kept, diff, share * 100, any, loose, worst);
+                    cpShotWhy = String.format(Locale.ROOT, "a settled Squire's body 3 blocks from the camera (asked for on its death tick %d, drawn from its buffers and shot from %d), the game paused %b: drawn from its recorded buffers %b (BodyCache drew it), then the normal way %b (no cached draw, twice: the second with the camera nudged 0.001 blocks along its look); of its %d pixels (where either draw differs from the frame without it, so its shadow is left out) %d are z-fight-unstable (the two normal draws differ by more than 2 of 255), %.3f%% (want 2%% or less; %d of them differ cached against normal); of the other %d, %d differ by more than 2 of 255, %.3f%% (want 0.5%% or less; the cached body lights its byte-packed normals in world space, not view space, which moves shading by 1 or 2: %d differ at all, %d by more than 8, the worst by %d); screenshots hl-corpse-cache-a/b/b2/c.png",
+                        cpShotAsked, cpShotAt, cpShotPaused, cpShotEngaged, cpShotNormal, body, unstable, out * 100, diffUnstable, kept, diff, share * 100, any, loose, worst);
                     System.out.println("[p2] hl-corpse cache: " + cpShotWhy + " (BodyCache: " + BodyCache.diag() + ")");
                     cacheShotsEnd(c); cpShotDone = true;
                 }
