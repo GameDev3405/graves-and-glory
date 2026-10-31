@@ -191,17 +191,17 @@ final class CampScreen extends ArmyScreen {
         for(var e:report.getAsJsonArray("points")){var p=e.getAsJsonObject();line(g,p.get("name").getAsString()+"  Dawn "+p.get("dawn").getAsInt()+"s / Dusk "+p.get("dusk").getAsInt()+"s",x,y,DarkUi.MUTED,w);y+=11;}
         return y;
     }
-    /** One House row of the battle report: the House's name in its accent, then the banner's trait tier in it with the seconds the trait held, and the shards and Renown the match paid it. */
+    /** One House row of the battle report: the House's name in its accent's text ink (UiMath.accentText), then the banner's trait tier in it with the seconds the trait held, and the shards and Renown the match paid it. */
     void houseRow(DrawContext g,JsonObject h,int x,int y,int w){
         Spec.HousesRow row=null;for(var r:Spec.HOUSES)if(r.id().equals(h.get("house").getAsString()))row=r;if(row==null)return;
         int tier=h.get("tier").getAsInt();String name=row.name().toUpperCase(java.util.Locale.ROOT);
-        line(g,name,x,y,DarkUi.OPAQUE|row.accent(),w);int at=x+textRenderer.getWidth(name)+8;
+        line(g,name,x,y,UiMath.accentText(row.accent()),w);int at=x+textRenderer.getWidth(name)+8;
         line(g,(tier>0?"Trait "+MatchStats.roman(tier)+" held "+h.get("traitSeconds").getAsInt()+"s":"No trait tier")+"   +"+h.get("shards").getAsInt()+" shards   +"+h.get("renown").getAsInt()+" Renown",at,y,DarkUi.PAPER,x+w-at);
     }
-    /** One troop type's levels row of the battle report (in-match progression design 7): the troop's name in its House's accent, then what it reached, its level-3 count and the gear its army bought (MatchStats.levelText; in the two-column form levelShort, right-aligned in its cell). */
+    /** One troop type's levels row of the battle report (in-match progression design 7): the troop's name in its House accent's text ink (UiMath.accentText), then what it reached, its level-3 count and the gear its army bought (MatchStats.levelText; in the two-column form levelShort, right-aligned in its cell). */
     void levelRow(DrawContext g,JsonObject r,int x,int y,int cell,boolean compact){
         var t=ArmyCards.spec(r.get("troop").getAsString());var d=levelDrawn(textRenderer,r,cell,compact);if(t==null||d==null)return;
-        int accent=DarkUi.PAPER;for(var h:Spec.HOUSES)if(h.id().equals(t.house()))accent=DarkUi.OPAQUE|h.accent();
+        int accent=DarkUi.PAPER;for(var h:Spec.HOUSES)if(h.id().equals(t.house()))accent=UiMath.accentText(h.accent());
         int nameWidth=textRenderer.getWidth(d[0]),statsWidth=textRenderer.getWidth(d[1]);
         line(g,d[0],x,y,accent,cell);
         if(compact)line(g,d[1],x+cell-statsWidth,y,DarkUi.PAPER,statsWidth);else line(g,d[1],x+nameWidth+8,y,DarkUi.PAPER,cell-nameWidth-8);

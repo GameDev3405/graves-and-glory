@@ -73,6 +73,52 @@ public final class UiMath {
         return v <= 0.04045 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
     }
 
+    /** The dark panels' fill (DarkUi.frame): iron at 93%, over the world or the camp's scrim. */
+    public static final int PANEL_FILL = 0xee1a2125;
+    /** The lightest ground text on a panel can have: the panel's fill over a white world (the Command mode HUD against snow or sky). */
+    public static final int PANEL_LIGHTEST = over(PANEL_FILL, 0xffffffff);
+
+    /** The opaque colour seen when argb is drawn, at its own alpha, over the opaque colour under. */
+    public static int over(int argb, int under) {
+        double a = (argb >>> 24) / 255.0;
+        int out = 0xff000000;
+        for (int shift = 16; shift >= 0; shift -= 8)
+            out |= (int) Math.round((argb >> shift & 0xff) * a + (under >> shift & 0xff) * (1 - a)) << shift;
+        return out;
+    }
+
+    /** A text ink in the colour rgb that holds min:1 on a dark ground: rgb itself (opaque) when it already does, else the same HSL hue and
+     *  saturation with the lightness raised in steps of 1/200 until it does; white if nothing short of it does. */
+    public static int textTint(int rgb, int ground, double min) {
+        int opaque = 0xff000000 | rgb;
+        if (contrast(opaque, ground) >= min) return opaque;
+        double r = (rgb >> 16 & 0xff) / 255.0, g = (rgb >> 8 & 0xff) / 255.0, b = (rgb & 0xff) / 255.0;
+        double max = Math.max(r, Math.max(g, b)), lo = Math.min(r, Math.min(g, b)), l = (max + lo) / 2, d = max - lo;
+        double s = d == 0 ? 0 : d / (1 - Math.abs(2 * l - 1));
+        double h = d == 0 ? 0 : max == r ? ((g - b) / d + 6) % 6 : max == g ? (b - r) / d + 2 : (r - g) / d + 4;
+        for (int step = (int) Math.ceil(l * 200); step <= 200; step++) {
+            int tint = hsl(h, s, step / 200.0);
+            if (contrast(tint, ground) >= min) return tint;
+        }
+        return 0xffffffff;
+    }
+
+    /** Opaque RGB of an HSL colour: h in sixths of a turn (0 to 6), s and l in 0 to 1. */
+    static int hsl(double h, double s, double l) {
+        double c = (1 - Math.abs(2 * l - 1)) * s, x = c * (1 - Math.abs(h % 2 - 1)), m = l - c / 2;
+        double[] rgb = h < 1 ? new double[]{c, x, 0} : h < 2 ? new double[]{x, c, 0} : h < 3 ? new double[]{0, c, x}
+                : h < 4 ? new double[]{0, x, c} : h < 5 ? new double[]{x, 0, c} : new double[]{c, 0, x};
+        int out = 0xff000000;
+        for (int i = 0; i < 3; i++) out |= (int) Math.round(Math.min(1, Math.max(0, rgb[i] + m)) * 255) << (16 - 8 * i);
+        return out;
+    }
+
+    /** A House accent as text (controller ruling R37): the accent's own hue, lightened until it holds 4.5:1 on the lightest panel ground.
+     *  Fills, swatches and glyphs keep the true accent; only words drawn in it take this ink. */
+    public static int accentText(int accent) {
+        return textTint(accent, PANEL_LIGHTEST, 4.5);
+    }
+
     /** Width of a brass key cap round its label: 13 for one character, else the label plus 9, at most 48 (key-brass-13 to key-brass-48). */
     public static int brassKeyWidth(int textW, int chars) {
         return chars == 1 ? 13 : Math.min(48, textW + 9);

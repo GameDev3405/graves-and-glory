@@ -11,6 +11,8 @@ public final class UiMathCheck {
         if (!pass) { failed++; System.out.println("FAILED: " + message); return; }
         checks++;
     }
+    /** HSL hue in degrees of an RGB colour (0 for a grey). */
+    static double hueDeg(int rgb){double r=(rgb>>16&0xff)/255.0,g=(rgb>>8&0xff)/255.0,b=(rgb&0xff)/255.0,max=Math.max(r,Math.max(g,b)),d=max-Math.min(r,Math.min(g,b));return d==0?0:60*(max==r?((g-b)/d+6)%6:max==g?(b-r)/d+2:(r-g)/d+4);}
     public static void main(String[] args) {
         check(UiMath.pixelScale(1920,1080,4)==2 && UiMath.pixelScale(1920,1080,1)==1, "1080p is 2, or the player's smaller GUI Scale");
         check(UiMath.pixelScale(2560,1440,6)==2 && UiMath.pixelScale(3840,2160,9)==4, "1440p and 4K");
@@ -42,6 +44,11 @@ public final class UiMathCheck {
         check(UiMath.contrast(0xffeee9df,0xff1f2427)>=4.5 && UiMath.contrast(0xffe47a64,0xff1f2427)>=4.5, "ivory and alarm text on the iron plate");
         check(UiMath.contrast(0xff3a2a12,0xffbda97c)>=4.5 && UiMath.contrast(0xff5c4a32,0xffbda97c)<4.5, "KEY_INK, the key strip's labels and the lesson tag (UI Task 8c fix round 1), holds 4.5:1 on the darkest vellum behind them, #bda97c, where sepia does not");
         check(Math.abs(UiMath.contrast(0xff000000,0xffffffff)-21.0)<0.01, "WCAG ratio");
+        check(UiMath.over(0xee1a2125,0xffffffff)==0xff293034 && UiMath.over(0xff123456,0xffffffff)==0xff123456 && UiMath.over(0x00123456,0xff0b0d0f)==0xff0b0d0f, "alpha over a ground: the panel over white is #293034");
+        check(UiMath.textTint(0xeee9df,0xff1f2427,4.5)==0xffeee9df, "an ink that already reads is left alone");
+        for(var h:Spec.HOUSES){int ink=UiMath.accentText(h.accent());
+            check(UiMath.contrast(ink,UiMath.PANEL_LIGHTEST)>=4.5 && UiMath.contrast(ink,0xff1f2427)>=4.5 && UiMath.contrast(ink,0xff0b0d0f)>=4.5, "House "+h.id()+": its accent's text ink #"+Integer.toHexString(ink&0xffffff)+" holds 4.5:1 on the lightest panel ground, the iron plate and the floor (controller ruling R37)");
+            check(UiMath.contrast(0xff000000|h.accent(),UiMath.PANEL_LIGHTEST)>=4.5 ? ink==(0xff000000|h.accent()) : Math.abs(((hueDeg(ink)-hueDeg(h.accent()))%360+540)%360-180)<=3, "House "+h.id()+": the text ink keeps the accent itself when it reads, else its hue");}
         check(UiMath.sealCentre(0,3,960)==452 && UiMath.sealCentre(2,3,960)==508 && UiMath.sealCentre(0,5,960)==424 && UiMath.sealCentre(4,5,960)==536, "seals on a 28 px pitch, centred");
         check(java.util.Arrays.equals(UiMath.cardTops(522,new int[]{18,62,18},4),new int[]{416,438,504}) && java.util.Arrays.equals(UiMath.cardTops(502,new int[]{18,18,18},4),new int[]{440,462,484}) && UiMath.cardTops(522,new int[0],4).length==0, "the column's plates stack up from its foot, 4 px apart (UI Task 8c: a chip each, the selected group's card)");
         check(UiMath.countText(9,12).equals("9/12") && UiMath.countText(0,2).equals("0/2") && UiMath.clock(462).equals("7:42") && UiMath.clock(5).equals("0:05"), "count and clock");

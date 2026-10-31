@@ -16,7 +16,7 @@ Columns: **BASE** is f10d4bf, before the impact frame (t5-before-135102). **0.5*
 
 ### Verdict
 
-- **Houses.** Tidecallers stays the one House the impact frame moves: -8.0 points against BASE (62.1 to 54.0). At grace 0.5 the drop was -12.5; grace 1.0 wins back 4.5 of those points. Tidecallers is the only House inside the 40 to 60% band in all three runs. Gilded, Graveborn and Ironclad sit outside the band in every run, BASE included, and each is within 4 points of BASE.
+- **Houses.** Tidecallers stays the one House the impact frame moves: -8.0 points against BASE (62.1 to 54.0). At grace 0.5 the drop was -12.5; grace 1.0 wins back 4.5 of those points. Tidecallers is outside the 40 to 60% band at BASE (62.1) and inside it at grace 0.5 and 1.0, the only House inside it in any run. Gilded, Graveborn and Ironclad sit outside the band in every run, BASE included, and each is within 4 points of BASE.
 - **Troops against BASE.** 6 of 18 moved more than 5 points; the grace 0.5 run moved 11. Three are Tidecallers melee troops: tc_raider -11.8, tc_brute -8.8 and tc_tideguard -5.9. Three are ranged or caster troops: hexer +8.8, ic_arbalist +8.8 and ic_ballista +7.4.
 - **Troops against grace 0.5.** 6 of 18 moved more than 5 points: tc_tideguard +11.8, tc_raider +7.4 and reaper +5.9 recover, while hexer -8.8, longbow -7.4 and tc_harpooner -5.9 give back some of their gain.
 - **Band.** 13 of 18 troops are outside 40 to 60% at grace 1.0, and 13 were at BASE too. ic_arbalist is new outside it (54.4 to 63.2). tc_raider came inside it (63.2 to 51.5). hexer is still outside it (38.2), though it was inside it at grace 0.5.

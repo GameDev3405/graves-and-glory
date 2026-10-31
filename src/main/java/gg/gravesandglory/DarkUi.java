@@ -70,11 +70,11 @@ final class DarkUi {
     }
     /** The width houseMark draws for a tier: the 16 px glyph, a gap and the numeral. */
     static int houseMarkWidth(int tier){return 19+MinecraftClient.getInstance().textRenderer.getWidth(MatchStats.roman(tier));}
-    /** A House's 16x16 glyph (houses.glyph) with its trait tier in Roman numerals beside it, in the House's accent. Nothing is drawn for a House the sheet lacks. */
+    /** A House's 16x16 glyph (houses.glyph) with its trait tier in Roman numerals beside it, in the accent's text ink (UiMath.accentText). Nothing is drawn for a House the sheet lacks. */
     static void houseMark(DrawContext g,String house,int tier,int x,int y){
         Spec.HousesRow row=null;for(var h:Spec.HOUSES)if(h.id().equals(house))row=h;if(row==null)return;
         g.drawTexture(new Identifier(row.glyph()),x,y,0f,0f,16,16,16,16);
-        g.drawTextWithShadow(MinecraftClient.getInstance().textRenderer,MatchStats.roman(tier),x+19,y+4,0xff000000|row.accent());
+        g.drawTextWithShadow(MinecraftClient.getInstance().textRenderer,MatchStats.roman(tier),x+19,y+4,UiMath.accentText(row.accent()));
     }
     private static final String[] DOT={".xxx.","xxxxx","xxxxx","xxxxx",".xxx."};
     private static final String[] RING={".xxx.","x...x","x...x","x...x",".xxx."};
@@ -94,7 +94,7 @@ final class DarkUi {
         g.fill(0,67,w,68,0xff394246);
     }
     static void frame(DrawContext g,int x,int y,int w,int h){
-        g.fill(x,y,x+w,y+h,0xee1a2125);
+        g.fill(x,y,x+w,y+h,UiMath.PANEL_FILL);
         g.drawBorder(x,y,w,h,0xff394246);
     }
     static Text body(String text){return Text.literal(text).setStyle(BODY_STYLE);}
