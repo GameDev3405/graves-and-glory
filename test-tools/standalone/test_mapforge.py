@@ -15,6 +15,14 @@ from mapforge import nbt  # noqa: E402
 from mapforge.plan import PLAN_FORMAT, PlanError, apply, compile_plan, dry_run, rollback, validate, write_undo  # noqa: E402
 from mapforge.structure import DATA_VERSION, PIECES, Structure, footprint, normalize, rotate_state, to_world  # noqa: E402
 from mapforge.world import AIR_CELL, Cell, World  # noqa: E402
+from mapforge import render  # noqa: E402
+from mapforge.colours import UNKNOWN, Palette  # noqa: E402
+
+try:
+    import PIL  # noqa: F401
+    HAVE_PIL = True
+except ImportError:
+    HAVE_PIL = False
 
 SAMPLES = ROOT / 'tools/mapforge/samples'
 NOW = datetime.datetime(2026, 10, 30, tzinfo=datetime.timezone.utc)
@@ -258,6 +266,126 @@ class SampleTest(unittest.TestCase):
             r = run('dry-run', SAMPLES / 'camp-watchpost.json', '--world', save / 'w.json')
             self.assertNotEqual(r.returncode, 0)
             self.assertIn('offline only', r.stderr + r.stdout)
+
+
+class ColourTableTest(unittest.TestCase):
+    def test_table_covers_every_block_in_the_shipped_structures(self):
+        palette = Palette()
+        names = {normalize(st).split('[')[0] for path in PIECES.rglob('*.nbt') for st in Structure.load(path).palette}
+        missing = sorted(n for n in names if n not in palette and n not in render.INVISIBLE)
+        self.assertEqual(missing, [])
+        self.assertGreater(len(palette.blocks), 900)
+        self.assertEqual(palette.get('gravesandglory:nonsense')[0], UNKNOWN)
+        self.assertEqual(palette.unknown, {'gravesandglory:nonsense': 1})
+
+    def test_state_properties_shape_the_look(self):
+        looks = render.Looks()
+        log_y, log_x = looks.get('minecraft:oak_log[axis=y]'), looks.get('minecraft:oak_log[axis=x]')
+        self.assertEqual((log_y[0], log_y[1]), (log_x[1], log_x[0]))  # on its side the bark is on top
+        self.assertEqual(looks.get('minecraft:stone_slab[type=bottom]')[2][1:5:3], (0, 8))
+        self.assertEqual(looks.get('minecraft:stone_slab[type=top]')[2][1:5:3], (8, 16))
+        self.assertTrue(looks.get('minecraft:stone_slab[type=double]')[3])
+        self.assertEqual(looks.get('minecraft:snow[layers=3]')[2][4], 6)
+        self.assertIsNone(looks.get('minecraft:barrier'))
+
+
+@unittest.skipUnless(HAVE_PIL, 'render needs Pillow')
+class RenderTest(unittest.TestCase):
+    CAPTION = 8 + 18 * 2
+
+    def test_topdown_colour_grid_crop_and_height_shading(self):
+        w = flat(32)
+        w.set((20, 65, 20), Cell('minecraft:grass_block'))
+        grass = Palette().get('minecraft:grass_block')[0]
+        img = render.render(w, 'top', scale=4)
+        margin = 30
+        self.assertEqual(img.height, 32 * 4 + margin + self.CAPTION)  # the caption may widen a small image
+        px = lambda x, z: img.getpixel((margin + x * 4 + 2, self.CAPTION + margin + z * 4 + 2))
+        self.assertEqual(px(5, 5), grass)
+        self.assertGreater(sum(px(20, 20)), sum(px(5, 5)))  # higher and lit from the north-west
+        self.assertNotEqual(img.getpixel((margin + 16 * 4, self.CAPTION + margin + 5 * 4 + 1)), grass)  # grid line x=16
+        crop = render.render(w, 'top', lo=(8, 8), hi=(15, 11), scale=2, grid=False)
+        self.assertEqual(crop.size[1] - self.CAPTION, 4 * 2)
+
+    def test_unknown_blocks_are_magenta_and_reported(self):
+        w = flat(4)
+        w.set((1, 64, 1), Cell('gravesandglory:mystery_block'))
+        palette = Palette()
+        img = render.render(w, 'top', scale=8, grid=False, palette=palette)
+        self.assertEqual(img.getpixel((1 * 8 + 4, self.CAPTION + 1 * 8 + 4)), UNKNOWN)
+        lo, hi = render.crop_box([w])
+        self.assertEqual(render.unknown_blocks(w, lo, hi, palette), {'gravesandglory:mystery_block': 1})
+
+    def test_isometric_top_face_and_size(self):
+        w = World('one')
+        w.set((0, 64, 0), Cell('minecraft:stone'))
+        img = render.render(w, 'iso', scale=8)
+        self.assertEqual(img.getpixel((20, 16 + self.CAPTION)), Palette().get('minecraft:stone')[0])
+        tower = flat(8)
+        for y in range(65, 75):
+            tower.set((3, y, 3), Cell('minecraft:stone_bricks'))
+        self.assertGreater(render.render(tower, 'iso', scale=4).height, render.render(flat(8), 'iso', scale=4).height)
+
+    def test_diff_kinds_and_undo_rebuild(self):
+        before = flat(8)
+        after = before.copy()
+        after.set((1, 65, 1), Cell('minecraft:stone'))       # added, surface rose
+        after.set((2, 64, 2), AIR_CELL)                      # removed, surface fell
+        after.set((3, 64, 3), Cell('minecraft:gravel'))      # changed, same height
+        lo, hi = render.crop_box([before, after])
+        cells = render.diff_cells(before, after, lo, hi)
+        self.assertEqual(cells, {(1, 65, 1): 'added', (2, 64, 2): 'removed', (3, 64, 3): 'changed'})
+        cols = render.column_kinds(before, after, cells, render.Looks(), lo, hi)
+        self.assertEqual(cols, {(1, 1): 'added', (2, 2): 'removed', (3, 3): 'changed'})
+        img = render.render(after, 'top', scale=8, grid=False, before=before)
+        self.assertEqual(img.getpixel((2 * 8 + 4, self.CAPTION + 18 + 2 * 8 + 4)),
+                         render._mix(render.BACKGROUND, render.KINDS['removed'], 0.62))
+        render.render(after, 'iso', scale=4, before=before)
+        w = flat(8)
+        _, undo = apply(plan([{'op': 'fill', 'min': [0, 64, 0], 'max': [2, 64, 2], 'block': 'stone'}]), w, now=NOW)
+        b, a = render.worlds_from_undo(w, undo)
+        self.assertEqual((b.digest(), a.digest()), (undo['worldBefore'], undo['worldAfter']))
+        rollback(undo, w)
+        b2, a2 = render.worlds_from_undo(w, undo)  # works from either side of the change
+        self.assertEqual((b2.digest(), a2.digest()), (undo['worldBefore'], undo['worldAfter']))
+
+    def test_cli_render_apply_render_and_refusals(self):
+        with tempfile.TemporaryDirectory() as d:
+            d = pathlib.Path(d)
+            run = lambda *a: subprocess.run([sys.executable, str(ROOT / 'tools/mapforge'), *map(str, a)], capture_output=True, text=True)
+            world = d / 'camp.json'
+            self.assertEqual(run('flat', '--out', world, '--min', 0, 0, '--max', 63, 63, '--y', 64).returncode, 0)
+            r = run('apply', SAMPLES / 'camp-watchpost.json', '--world', world, '--render')
+            self.assertEqual(r.returncode, 0, r.stderr)
+            stem = 'camp.camp-watchpost-sample.undo'
+            for suffix in ('before-top', 'after-top', 'diff-top', 'before-iso', 'after-iso', 'diff-iso'):
+                self.assertTrue((d / f'{stem}.{suffix}.png').exists(), suffix)
+            for extra in ((), ('--view', 'iso'), ('--undo', d / f'{stem}.json'), ('--min', 0, 60, 0, '--max', 20, 70, 20)):
+                r = run('render', world, '--out', d / 'r.png', '--report-unknown', *extra)
+                self.assertEqual(r.returncode, 0, r.stderr)
+                self.assertIn('unknown blocks (magenta): none', r.stdout)
+            self.assertNotEqual(run('render', world, '--out', d / 'r.jpg').returncode, 0)
+            save = d / 'save'
+            save.mkdir()
+            (save / 'level.dat').write_bytes(b'')
+            r = run('render', world, '--out', save / 'r.png')
+            self.assertNotEqual(r.returncode, 0)
+            self.assertIn('offline only', r.stderr + r.stdout)
+            self.assertNotEqual(run('render', world, '--out', d / 'r.png', '--min', 1, '--max', 2).returncode, 0)
+
+
+class PillowMissingTest(unittest.TestCase):
+    def test_clear_error_without_pillow(self):
+        saved = {k: v for k, v in sys.modules.items() if k == 'PIL' or k.startswith('PIL.')}
+        try:
+            for k in saved:
+                del sys.modules[k]
+            sys.modules['PIL'] = None
+            with self.assertRaisesRegex(render.RenderError, 'needs Pillow'):
+                render.require_pillow()
+        finally:
+            del sys.modules['PIL']
+            sys.modules.update(saved)
 
 
 if __name__ == '__main__':

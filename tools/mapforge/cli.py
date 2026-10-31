@@ -5,7 +5,8 @@ import json
 import pathlib
 import sys
 
-from . import nbt
+from . import colours, nbt, render
+from .colours import Palette
 from .plan import PlanError, apply, dry_run, format_summary, load_plan, rollback, validate, write_undo
 from .structure import Structure, normalize
 from .world import Cell, World
@@ -13,14 +14,14 @@ from .world import Cell, World
 PROTECT_FORMAT = 'gg-mapforge-protect/1'
 
 
-def _refuse_live(path):
+def _refuse_live(path, suffix='.json'):
     """Refuses a path that looks like a Minecraft save or the builder server folder."""
     p = pathlib.Path(path).resolve()
     for d in (p.parent, *p.parents):
         if (d / 'level.dat').exists() or d.name in ('builder-server', 'GGBuild'):
             raise SystemExit(f'refused: {path} is inside a Minecraft save or the builder server ({d}); mapforge is offline only')
-    if p.suffix != '.json':
-        raise SystemExit(f'refused: {path} is not a mapforge world .json file')
+    if p.suffix != suffix:
+        raise SystemExit(f'refused: {path} is not a mapforge {"world .json" if suffix == ".json" else suffix} file')
 
 
 def _protect(path):
@@ -49,6 +50,7 @@ def main(argv=None):
         p.add_argument('--json', action='store_true')
         if name == 'apply':
             p.add_argument('--undo', help='undo record path (default <world stem>.<plan id>.undo.json)')
+            p.add_argument('--render', action='store_true', help='also write before, after and diff PNGs beside the undo record (Pillow)')
     p = sub.add_parser('rollback', help='undo an applied plan')
     p.add_argument('undo')
     p.add_argument('--world', required=True)
@@ -71,6 +73,21 @@ def main(argv=None):
     p.add_argument('--max', type=int, nargs=3, required=True)
     p.add_argument('--out', required=True)
     p.add_argument('--skip-air', action='store_true')
+    p = sub.add_parser('render', help='review PNG of a world: top-down, isometric or a diff (Pillow)')
+    p.add_argument('world')
+    p.add_argument('--out', required=True, help='output .png')
+    p.add_argument('--view', choices=('top', 'iso'), default='top')
+    p.add_argument('--min', type=int, nargs='+', metavar='N', help='crop box corner: X Z or X Y Z')
+    p.add_argument('--max', type=int, nargs='+', metavar='N', help='crop box corner: X Z or X Y Z')
+    p.add_argument('--scale', type=int, help='pixels per block (top) or per half tile (iso); default fits about 800-1400 px')
+    p.add_argument('--no-grid', action='store_true', help='top-down without the 16-block grid and coordinate labels')
+    g = p.add_mutually_exclusive_group()
+    g.add_argument('--diff', metavar='BEFORE', help='diff against this earlier world (WORLD is the after side)')
+    g.add_argument('--undo', metavar='UNDO', help='diff of the before and after of this undo record, rebuilt on WORLD')
+    p.add_argument('--title', help='caption title (default the world name)')
+    p.add_argument('--report-unknown', action='store_true', help='list blocks drawn in the magenta fallback')
+    p = sub.add_parser('colours', help='regenerate colours.json from a Minecraft client jar (Pillow)')
+    p.add_argument('--jar', required=True)
     p = sub.add_parser('info', help='print a structure .nbt')
     p.add_argument('nbt')
     p.add_argument('--raw', action='store_true', help='dump every tag')
@@ -84,6 +101,8 @@ def main(argv=None):
         if a.cmd in ('dry-run', 'apply'):
             _refuse_live(a.world)
             plan, world = load_plan(a.plan), World.load(a.world)
+            if a.cmd == 'apply' and a.render:
+                render.require_pillow()  # refuse before changing anything
             if a.cmd == 'dry-run':
                 s = dry_run(plan, world, pathlib.Path(a.plan).parent, _protect(a.protect))
                 _report(s, a.json)
@@ -94,6 +113,9 @@ def main(argv=None):
             world.save(a.world)
             _report(summary, a.json)
             print(f'applied; undo record {undo_path}')
+            if a.render:
+                for path in render.undo_renders(undo_path, undo, world):
+                    print(f'render {path}')
             return 0
         if a.cmd == 'rollback':
             _refuse_live(a.world)
@@ -124,6 +146,31 @@ def main(argv=None):
             s.save(a.out)
             print(f'{a.out}: size {s.size}, {len(s.blocks)} blocks, {len(s.palette)} states')
             return 0
+        if a.cmd == 'render':
+            _refuse_live(a.world)
+            _refuse_live(a.out, '.png')
+            world, before = World.load(a.world), None
+            if a.diff:
+                _refuse_live(a.diff)
+                before = World.load(a.diff)
+            elif a.undo:
+                before, world = render.worlds_from_undo(world, json.loads(pathlib.Path(a.undo).read_text(encoding='utf-8')))
+            palette = Palette()
+            img = render.render(world, a.view, a.min, a.max, a.scale, not a.no_grid, before, palette, a.title)
+            img.save(a.out)
+            print(f'{a.out}: {img.width}x{img.height}')
+            if a.report_unknown:
+                lo, hi = render.crop_box([world] + ([before] if before else []), a.min, a.max)
+                unknown = render.unknown_blocks(world, lo, hi, palette)
+                if before:
+                    for k, v in render.unknown_blocks(before, lo, hi, palette).items():
+                        unknown[k] = max(unknown.get(k, 0), v)
+                print('unknown blocks (magenta): ' + (', '.join(f'{k} x{v}' for k, v in sorted(unknown.items())) or 'none'))
+            return 0
+        if a.cmd == 'colours':
+            n, missing = colours.generate(a.jar)
+            print(f'{colours.TABLE}: {n} blocks' + (f'; no texture for {", ".join(missing)}' if missing else ''))
+            return 0
         if a.cmd == 'info':
             if a.raw:
                 print(json.dumps(nbt.to_plain(nbt.read_file(a.nbt)[1]), indent=1))
@@ -132,6 +179,9 @@ def main(argv=None):
             print(f'size {s.size}, DataVersion {s.data_version}, {len(s.blocks)} blocks, {len(s.palette)} states, '
                   f'{len(s.entities.value)} entities, {sum(1 for b in s.blocks if b[2] is not None)} block entities')
             return 0
+    except render.RenderError as e:
+        print(f'render: {e}', file=sys.stderr)
+        return 1
     except PlanError as e:
         print('REFUSED:\n  ' + '\n  '.join(e.errors), file=sys.stderr)
         return 2
