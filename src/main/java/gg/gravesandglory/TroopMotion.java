@@ -39,7 +39,7 @@ public final class TroopMotion {
     public static final float BOW_FULL=.65f,BOW_LOOSE=.8f;
     /** The margin a cull reach keeps round a pose's extent. */
     static final double CULL_MARGIN=.25;
-    /** What the procedural layers may move a bone other than a root (pixels): the arms' shrug and the planted legs. */
+    /** What the procedural layers may move an arm's pivot (pixels): the shrug and the novelty settle, at most 1.66 together. */
     static final double LIMB_PX=3;
     /** The clip folder every family of a rig falls back to. */
     static final String COMMON="common";
@@ -64,15 +64,26 @@ public final class TroopMotion {
         final UUID uuid;final MotionMath.Seed seed;final MotionEngine.State state=new MotionEngine.State();final Pose pose=new Pose(),scene=new Pose();
         /** Whether a clip held an arm in the last frame (folded arms open). */
         boolean armHeld;
+        /** Scratch for the tracks' shares of the fold, worked out once a frame (shares). */
+        private double[] shares=new double[MotionEngine.MAX_TRACKS+1];
         /** The pose of a body lying still past its fall (a TroopModel snapshot), the model it was taken on and its cull reach; null until then. */
         float[] lying;TroopModel<?> lyingModel;double[] lyingReach;
         /** The scene pose's clip, when it began (render seconds) and its blend (0 to 1). */
         String sceneClip;double sceneStart,sceneW,sceneLast=Double.NaN;
         Body(UUID uuid){this.uuid=uuid;seed=MotionMath.seed(uuid.getMostSignificantBits(),uuid.getLeastSignificantBits());}
+        /** The tracks' shares of the fold this frame (MotionStack.shares) in the body's scratch, one per track. */
+        double[] shares(){
+            List<MotionStack.Track> t=state.tracks;if(shares.length<t.size())shares=new double[t.size()];
+            MotionStack.shares(t,t.size(),shares);return shares;
+        }
     }
 
     /** A rig and family's clips as the engine takes them, and for each server attack variant index the engine's index (-1: no clip). */
-    record Fam(MotionEngine.Family family,int[] attackIndex,int generation,Map<String,Clip> all,double[] reach){}
+    /**
+     * A rig and family's clips as the engine takes them, for each server attack variant index the engine's index (-1: no clip), the
+     * each bone's own translation reach in pixels (bonePx: every bone a clip keys, the root and the arms).
+     */
+    record Fam(MotionEngine.Family family,int[] attackIndex,int generation,Map<String,Clip> all,Map<String,double[]> bonePx){}
 
     // ---- families ----
     /** The Family of a troop's model, or null for a bare rig. Rebuilt when the clips reload. */
@@ -97,8 +108,15 @@ public final class TroopMotion {
             else{String d=deathKey(n);if(d!=null)deaths.put(d,e.getValue());}
         }
         MotionEngine.Family fam=new MotionEngine.Family(family,stances,attacks,hits,deaths);
-        double[] reach=MotionEngine.reach(fam);for(Clip c:all.values()){double[] r=c.reach();for(int i=0;i<6;i++)reach[i]=Math.max(reach[i],(i<3?MotionEngine.PROC_ROT:MotionEngine.PROC_PX)+r[i]*MotionEngine.HIT_GAIN);}
-        return new Fam(fam,index,gen,Collections.unmodifiableMap(all),reach);
+        // each bone's own: the engine's per-bone reach, and any clip of the folders at the hit gain over the procedural bound (a scene or forced clip)
+        Set<String> bones=new TreeSet<>(List.of("root","right_arm","left_arm"));for(Clip c:all.values())bones.addAll(c.bones());
+        Map<String,double[]> px=new HashMap<>();
+        for(String bone:bones){
+            double proc=procPx(bone);double[] r=MotionEngine.reachPx(fam,bone,proc);
+            for(Clip c:all.values()){double[] k=c.reach(bone);for(int i=0;i<3;i++)r[i]=Math.max(r[i],proc+k[3+i]*MotionEngine.HIT_GAIN);}
+            px.put(bone,r);
+        }
+        return new Fam(fam,index,gen,Collections.unmodifiableMap(all),Collections.unmodifiableMap(px));
     }
     /** A death clip's key in Family.deaths: death is "any", death_<dir> "any/<dir>", death_<kind> "<kind>", death_<kind>_<dir> "<kind>/<dir>"; null for any other clip. */
     static String deathKey(String name){
@@ -110,12 +128,18 @@ public final class TroopMotion {
         return null;
     }
     /**
-     * The largest |value| any bone's channel can take on this model (MotionEngine.reach, every clip of its folders included), or the
-     * procedural layers' bounds alone for a bare rig or a family with no clips. Degrees, then pixels.
+     * What the procedural layers may move a bone's pivot, per axis (pixels): a root PROC_PX (gait, crouch, weight shift, the feet's
+     * roll and dip, the novelty step, the hit pulse's lunge), the arms LIMB_PX (the shrug and the novelty settle) and nothing on any
+     * other bone (the planted shins' translation only eases toward zero).
      */
-    static double[] reach(TroopModel<?> m){
-        Fam f=family(m);if(f!=null)return f.reach().clone();
-        double[] r=new double[6];for(int i=0;i<6;i++)r[i]=i<3?MotionEngine.PROC_ROT:MotionEngine.PROC_PX;return r;
+    static double procPx(String bone){return bone.equals("root")?MotionEngine.PROC_PX:bone.equals("right_arm")||bone.equals("left_arm")?LIMB_PX:0;}
+    /**
+     * The largest |tx|, |ty| and |tz| (pixels) the motion engine can give one bone of this model (Fam.bonePx; procPx alone for a bone no
+     * clip keys, or for a bare rig). Shared: read only.
+     */
+    static double[] bonePx(TroopModel<?> m,String bone){
+        Fam f=family(m);double[] r=f==null?null:f.bonePx().get(bone);
+        if(r!=null)return r;double p=procPx(bone);return new double[]{p,p,p};
     }
 
     static Spec.TroopsRow row(TroopModel<?> m){
@@ -139,9 +163,12 @@ public final class TroopMotion {
         apply(m,b.pose);
         limits(m);
         boolean shield=!e.getOffHandStack().isEmpty();
-        carries(m,bow(row),shield,draw(b.state,in.time(),bow(row)),bone->held(b.state,in.time(),bone)+(b.sceneClip==null?0:b.sceneW*keys(fam.all().get(b.sceneClip),bone)));
+        // the action tracks' shares once a frame, read by the bow's draw, the carries and the fold
+        double[] shares=b.shares();Clip sc=b.sceneClip==null?null:fam.all().get(b.sceneClip);double sw=sc==null?0:b.sceneW;
+        carries(m,bow(row),shield,draw(b.state,in.time(),bow(row),shares),bone->Math.min(1,stanceHeld(b.state,bone)+actionHeld(b.state,bone,shares))+sw*keys(sc,bone));
         rootScale(m);
-        b.armHeld=false;for(String arm:ARMS)if(actionHeld(b.state,in.time(),arm)>0||b.sceneClip!=null&&b.sceneW>0&&keys(fam.all().get(b.sceneClip),arm)>0)b.armHeld=true;
+        b.armHeld=false;for(String arm:ARMS)if(actionHeld(b.state,arm,shares)>0||sw>0&&keys(sc,arm)>0)b.armHeld=true;
+        m.refold(folds(m.idleArms,e.isAttacking(),b.armHeld)); // M1: the fold this frame's pose reads, not the last frame's
         if(lies&&still(b.state,in.time())){
             b.lying=m.snapshot(null);b.lyingModel=m;double[] x=m.extent();
             b.lyingReach=new double[]{x[0]+CULL_MARGIN,x[1]-CULL_MARGIN,x[2]+CULL_MARGIN};
@@ -161,7 +188,7 @@ public final class TroopMotion {
     static MotionInput input(MobEntity e,Fam fam,Body b,float limbAngle,float limbDistance,float age,float headYaw,float headPitch){
         int id=e.getId();boolean dead=!e.isAlive()||e.deathTime>0;
         // carry B12: a dying troop's stance no longer counts (the engine fades the stance to rest on death)
-        MotionEvents.Stance s=e.deathTime>0?MotionEvents.Stance.NONE:MotionEvents.Client.stance(id);
+        MotionEvents.Stance s=dead?MotionEvents.Stance.NONE:MotionEvents.Client.stance(id);
         float partial=age-e.age;
         double yawRate=MathHelper.wrapDegrees(e.bodyYaw-e.prevBodyYaw)*20.0;
         MotionInput.Attack a=MotionEvents.Client.attacks(id).peekLast();
@@ -221,17 +248,24 @@ public final class TroopMotion {
         }
         return Math.min(1,w);
     }
-    /** How much the action tracks playing hold a bone (each clip's share of the fold times its gain), 0 to 1. A merged track holds what it held. */
-    static double actionHeld(MotionEngine.State st,double now,String bone){
-        double w=0;for(MotionEngine.Playing p:MotionEngine.playing(st,now))if(p.clip()!=null&&p.clip().bones().contains(bone))w+=p.gain();
+    /**
+     * How much the action tracks playing hold a bone (each clip's share of the fold times its gain, as MotionEngine.playing gives it),
+     * 0 to 1, from the tracks' shares worked out once for the frame (MotionStack.shares). A merged track holds nothing.
+     */
+    static double actionHeld(MotionEngine.State st,String bone,double[] shares){
+        double w=0;
+        for(int i=0,n=st.tracks.size();i<n;i++){
+            MotionStack.Track t=st.tracks.get(i);if(t.kind==MotionEngine.MERGED)continue;
+            if(t.a.bones().contains(bone))w+=t.gain*(1-t.mix)*shares[i];
+            if(t.b!=null&&t.b.bones().contains(bone))w+=t.gain*t.mix*shares[i];
+        }
         return Math.min(1,w);
     }
-    static double held(MotionEngine.State st,double now,String bone){return Math.min(1,stanceHeld(st,bone)+actionHeld(st,now,bone));}
     /** How far a bow is drawn, 0 to 1: the attacks playing (a shot draws, looses and recovers), else how much the aim stance shows. */
-    static double draw(MotionEngine.State st,double now,boolean bow){
+    static double draw(MotionEngine.State st,double now,boolean bow,double[] shares){
         if(!bow)return 0;
-        double[] shares=new double[st.tracks.size()];MotionStack.shares(st.tracks,shares.length,shares);double w=0;
-        for(int i=0;i<shares.length;i++){MotionStack.Track t=st.tracks.get(i);if(t.kind==MotionEngine.ATTACK&&t.time(now)<t.length())w+=shares[i];}
+        double w=0;
+        for(int i=0,n=st.tracks.size();i<n;i++){MotionStack.Track t=st.tracks.get(i);if(t.kind==MotionEngine.ATTACK&&t.time(now)<t.length())w+=shares[i];}
         return Math.min(1,Math.max(w,st.frame.aim));
     }
 
@@ -283,7 +317,7 @@ public final class TroopMotion {
         switch(name){
             case "attack","cast","bow_draw":return fam.attacks().isEmpty()?null:fam.attacks().get(0);
             case "hit":{List<Clip> l=fam.hits().get("body");return l==null||l.isEmpty()?null:l.get(0);}
-            case "death":return fam.deaths().isEmpty()?null:MotionEngine.deathClip(fam,"any","front")!=null?MotionEngine.deathClip(fam,"any","front"):fam.deaths().values().iterator().next();
+            case "death":{if(fam.deaths().isEmpty())return null;Clip d=MotionEngine.deathClip(fam,"any","front");return d!=null?d:fam.deaths().values().iterator().next();}
             default:return null;
         }
     }
@@ -363,7 +397,8 @@ public final class TroopMotion {
         m.getPart().traverse().forEach(ModelPart::resetTransform);
         Fam f=family(m);if(f==null)return null;
         Pose p=new Pose();MotionEngine.pose(in,st,f.family(),p);apply(m,p);limits(m);
-        carries(m,bow(row(m)),shield,draw(st,in.time(),bow(row(m))),bone->held(st,in.time(),bone));rootScale(m);
+        double[] shares=new double[st.tracks.size()];MotionStack.shares(st.tracks,shares.length,shares);
+        carries(m,bow(row(m)),shield,draw(st,in.time(),bow(row(m)),shares),bone->Math.min(1,stanceHeld(st,bone)+actionHeld(st,bone,shares)));rootScale(m);
         return f.family();
     }
     /** The server's attack variant index mapped to the engine's on this model's family, -1 when it has no clip. */

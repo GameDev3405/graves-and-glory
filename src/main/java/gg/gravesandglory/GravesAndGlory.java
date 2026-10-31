@@ -228,6 +228,11 @@ public final class GravesAndGlory implements ModInitializer {
         long swungAt=-1;int lastVariant=-1;
         /** The world tick (getTime) that swing began on, -1 none: attack_v1's startTick, and what a late joiner's catch-up reads (MotionEvents.catchUp). */
         long swingTick=-1;
+        /**
+         * The variant of the troop's newest attack_v1, a melee swing (Tactics.swing) or a shot (Projectiles.loose), -1 none: what a late joiner's
+         * catch-up sends with swingTick. Kept apart from lastVariant so a shot never steers the next melee pick (Task 13 fix round 1, M5).
+         */
+        int catchVariant=-1;
         /** The orders (Charge and Hold) a blow of his carries while it lands (Tactics.land sets them from its swing, Ruling R29, and clears them after): every hit of that blow (its cleave or splash too, and a trample) reads it through Combat.charge; null otherwise. */
         Combat.Charge blow;
         /** The swing (an index into Tactics.variants of its family) of the blow that is landing, set and cleared with blow: hit_v1 reads its kind, zone and weight. -1 otherwise. */

@@ -33,12 +33,15 @@ public final class Clip {
     private final int impact;
     private final Map<String, Double> markers;
     private final String[] bones;
+    private final Set<String> boneSet;
     private final Key[][] rotation, position;
     private final double[] reach;
+    /** Each keyed bone's own envelope (envelope), in bones' order. */
+    private final double[][] boneReach;
 
     private Clip(String name, double length, boolean loop, Map<String, Double> markers, String[] bones, Key[][] rotation, Key[][] position) {
         this.name = name; this.length = length; this.loop = loop; this.markers = Collections.unmodifiableMap(markers);
-        this.bones = bones; this.rotation = rotation; this.position = position;
+        this.bones = bones; this.rotation = rotation; this.position = position; this.boneSet = Set.of(bones);
         Double at = markers.get("impact");
         if (at == null) impact = -1;
         else {
@@ -46,7 +49,12 @@ public final class Clip {
             if (Math.abs(ticks - Math.rint(ticks)) > 1e-3) throw new IllegalArgumentException(name + ": impact marker at " + at + " s is not on a tick");
             impact = (int) Math.rint(ticks);
         }
-        reach = envelope();
+        boneReach = new double[bones.length][];
+        reach = new double[6];
+        for (int b = 0; b < bones.length; b++) {
+            boneReach[b] = envelope(rotation[b], position[b]);
+            for (int c = 0; c < 6; c++) reach[c] = Math.max(reach[c], boneReach[b][c]);
+        }
     }
 
     public static Clip parse(String json) { return parse(JsonParser.parseString(json).getAsJsonObject()); }
@@ -99,7 +107,7 @@ public final class Clip {
     /** The impact marker in ticks from the clip's start, or -1 when the clip has none. */
     public int impact() { return impact; }
     public Map<String, Double> markers() { return markers; }
-    public Set<String> bones() { return Set.of(bones); }
+    public Set<String> bones() { return boneSet; }
 
     /** Writes [rx, ry, rz, tx, ty, tz] for every bone the clip keys (others are left alone). A looping clip wraps the time; any other holds its ends. */
     public void sample(double seconds, Map<String, double[]> out) {
@@ -137,15 +145,21 @@ public final class Clip {
      */
     public double[] reach() { return reach.clone(); }
 
+    /** As {@link #reach()}, for one bone: its own six channels' envelope, all zero for a bone the clip does not key. */
+    public double[] reach(String bone) {
+        for (int b = 0; b < bones.length; b++) if (bones[b].equals(bone)) return boneReach[b].clone();
+        return new double[6];
+    }
+
     /**
      * Every sampled value is a key's v or post (held, stepped or past either end) or lies on one segment between two
      * consecutive key times, chosen exactly as {@link #channel} chooses it. A linear segment stays between its ends; a bezier
      * segment is a lerp between two of its 201 curve points, so its bound is the largest point; a catmullrom segment is one
      * Hermite cubic in alpha, bounded by its ends and the real roots of its derivative in [0, 1].
      */
-    private double[] envelope() {
+    private double[] envelope(Key[] rot, Key[] pos) {
         double[] r = new double[6];
-        for (int at : new int[]{0, 3}) for (Key[] keys : at == 0 ? rotation : position) {
+        for (int at : new int[]{0, 3}) { Key[] keys = at == 0 ? rot : pos;
             for (Key k : keys) for (int a = 0; a < 3; a++) r[at + a] = Math.max(r[at + a], Math.max(Math.abs(k.v()[a]), Math.abs(k.post()[a])));
             for (int bi = 0; bi < keys.length; bi++) {
                 if (bi > 0 && keys[bi - 1].t() == keys[bi].t()) continue;   // channel() takes the first key of an equal-time group

@@ -88,22 +88,21 @@ public final class BodyCache {
      * draw was caught into (body null), drawn translucent at alpha by fadePass.
      */
     static final class Fade { final Body body;final List<Part> parts;final float alpha;double d2,x,y,z,reach;int group;Fade(Body body,List<Part> parts,float alpha){this.body=body;this.parts=parts;this.alpha=alpha;} }
-    record FadeDraw(Fade fade,VertexBuffer buffer){}
     private static final Map<Entity,Body> BODIES=new IdentityHashMap<>();
     private static final List<Body> QUEUE=new ArrayList<>(),SHADOWS=new ArrayList<>();
     private static final Map<RenderLayer,List<Body>> BY_LAYER=new LinkedHashMap<>();
     private static final Map<RenderLayer,List<VertexBuffer>> BUFFERS=new LinkedHashMap<>();
-    private static final List<Fade> FADES=new ArrayList<>();private static final Map<RenderLayer,List<FadeDraw>> FADE_BY_LAYER=new LinkedHashMap<>();
+    private static final List<Fade> FADES=new ArrayList<>();
     private static final Map<RenderLayer,Integer> KINDS=new IdentityHashMap<>();private static final ArrayDeque<VertexBuffer> SPARE=new ArrayDeque<>();
     private static boolean inWorld;private static int frame;
     /** Fade passes, the fading bodies and draws they drew, and their time (the harness reads them). */
-    static long fadePasses,fadeBodies,fadeDraws,fadeNanos,fadeGroups,fadeGroupsMax,fadeLayered,fadeTranslucentMax;
+    static long fadePasses,fadeBodies,fadeDraws,fadeNanos,fadeGroups,fadeGroupsMax,fadeLayered,fadeTranslucentMax,fadeOpens;
     /** Draws from cached buffers and records since the client started (the harness reads them). */
     static long cachedDraws,records;
     /** Diagnostics for the harness: cached draws on the short check, draws refused outside the world pass, key changes, give-ups, failed records, and the last key change or refusal. */
     static long quick,outside,changes,giveUps,failed,flushNanos,flushes,flushDraws,flushBodies;static String lastChange="";
     static String diag(){return "cached draws "+cachedDraws+" ("+quick+" on the short check), records "+records+", outside the world pass "+outside+", key changes "+changes+", give-ups "+giveUps+", failed records "+failed+", kept "+kept()+", flush "+String.format(java.util.Locale.ROOT,"%.1f us for %.1f bodies and %.1f draws a frame",flushNanos/1e3/Math.max(1,flushes),flushBodies/(double)Math.max(1,flushes),flushDraws/(double)Math.max(1,flushes))
-        +String.format(java.util.Locale.ROOT,", fade %d passes, %.1f us for %.1f bodies and %.1f draws a pass, %.2f overlap groups a pass (most %d), %d fading bodies with 2 or more blended layers (most blended layers in one body %d)",fadePasses,fadeNanos/1e3/Math.max(1,fadePasses),fadeBodies/(double)Math.max(1,fadePasses),fadeDraws/(double)Math.max(1,fadePasses),fadeGroups/(double)Math.max(1,fadePasses),fadeGroupsMax,fadeLayered,fadeTranslucentMax)+"; last: "+lastChange;}
+        +String.format(java.util.Locale.ROOT,", fade %d passes, %.1f us for %.1f bodies and %.1f draws a pass, %.2f overlap groups a pass (most %d), %.1f layer opens a pass, %d fading bodies with 2 or more blended layers (most blended layers in one body %d)",fadePasses,fadeNanos/1e3/Math.max(1,fadePasses),fadeBodies/(double)Math.max(1,fadePasses),fadeDraws/(double)Math.max(1,fadePasses),fadeGroups/(double)Math.max(1,fadePasses),fadeGroupsMax,fadeOpens/(double)Math.max(1,fadePasses),fadeLayered,fadeTranslucentMax)+"; last: "+lastChange;}
 
     /**
      * How opaque the entity's body draws now (R42): whole until its corpse fade begins (death tick 20 + the sheet's
@@ -276,7 +275,16 @@ public final class BodyCache {
     private static ShaderProgram open(RenderLayer layer,float[] color){
         layer.startDrawing();
         ShaderProgram sh=RenderSystem.getShader();if(sh==null)return null;
-        for(int i=0;i<12;i++)sh.addSampler("Sampler"+i,RenderSystem.getShaderTexture(i));
+        samplers(sh);frameUniforms(sh,color);
+        set(sh.modelViewMat,VIEW);
+        sh.bind();
+        return sh;
+    }
+    private static final String[] SAMPLERS={"Sampler0","Sampler1","Sampler2","Sampler3","Sampler4","Sampler5","Sampler6","Sampler7","Sampler8","Sampler9","Sampler10","Sampler11"};
+    /** The layer's textures, as the layer's state set them, into the program's samplers. */
+    private static void samplers(ShaderProgram sh){for(int i=0;i<12;i++)sh.addSampler(SAMPLERS[i],RenderSystem.getShaderTexture(i));}
+    /** The uniforms that hold for the whole frame (the projection, fog, time, screen, lights), and the colour modulator. */
+    private static void frameUniforms(ShaderProgram sh,float[] color){
         set(sh.projectionMat,PROJ);
         if(sh.viewRotationMat!=null)sh.viewRotationMat.set(IDENTITY3);
         if(sh.colorModulator!=null)sh.colorModulator.set(color);
@@ -291,9 +299,6 @@ public final class BodyCache {
         RenderSystem.setupShaderLights(sh);
         if(sh.light0Direction!=null)sh.light0Direction.set(L0);
         if(sh.light1Direction!=null)sh.light1Direction.set(L1);
-        set(sh.modelViewMat,VIEW);
-        sh.bind();
-        return sh;
     }
     /** Uploads the model-view matrix that places a cached body and the lights turned into its recorded axes. */
     private static void place(ShaderProgram sh,Body b){
@@ -318,6 +323,12 @@ public final class BodyCache {
      * (eyes, glint) with its whole modulator scaled. Bodies whose screen discs overlap go in successive groups, farthest first
      * (carry D14): each group's depth and colour passes finish before the next group's depth pass, so a nearer fading body blends
      * over a farther one instead of its depth hiding it; bodies that overlap none share group 0 and draw batched by layer.
+     * <p>
+     * Batched (R51): the bodies are put in their groups once a pass, and a layer's state stays open from one group to the next
+     * and from its depth pass to its colour pass, only the colour and depth masks and the blend changing between them. A group
+     * draws its opaque layers' depth in one order and their colour in the reverse, beginning with the layer the last group left
+     * open, so a group whose bodies share n opaque layers opens 2(n-1) of them, and a pass whose bodies share one layer opens it
+     * once. A program keeps the frame's uniforms between opens, so they are set once a pass.
      */
     static void fadePass(WorldRenderContext ctx){
         if(FADES.isEmpty())return;
@@ -326,17 +337,74 @@ public final class BodyCache {
         FADES.sort((p,q)->Double.compare(q.d2,p.d2));
         int groups=group(FADES);fadeGroups+=groups;fadeGroupsMax=Math.max(fadeGroupsMax,groups);
         for(Fade f:FADES){int n=0;for(Part p:f.parts)if(kind(p.layer())==1)n++;if(n>=2)fadeLayered++;fadeTranslucentMax=Math.max(fadeTranslucentMax,n);}
+        int n=FADES.size();
         try{
+            System.arraycopy(RenderSystem.getShaderColor(),0,BASE,0,4);
+            // the bodies by group, farthest first within each (a stable counting sort of the distance order)
+            if(ORDER.length<n)ORDER=new Fade[Math.max(n,ORDER.length*2)];
+            if(GSTART.length<groups+1){GSTART=new int[Math.max(groups+1,GSTART.length*2)];GPOS=new int[GSTART.length];}
+            java.util.Arrays.fill(GSTART,0,groups+1,0);
+            for(Fade f:FADES)GSTART[f.group+1]++;
+            for(int g=0;g<groups;g++)GSTART[g+1]+=GSTART[g];
+            System.arraycopy(GSTART,0,GPOS,0,groups+1);
+            for(Fade f:FADES)ORDER[GPOS[f.group]++]=f;
             for(int g=0;g<groups;g++){
-                for(List<FadeDraw> l:FADE_BY_LAYER.values())l.clear();
-                for(Fade f:FADES)if(f.group==g)for(Part p:f.parts)FADE_BY_LAYER.computeIfAbsent(p.layer(),k->new ArrayList<>()).add(new FadeDraw(f,p.buffer()));
-                for(var en:FADE_BY_LAYER.entrySet())if(!en.getValue().isEmpty()&&kind(en.getKey())==0)drawFades(en.getKey(),en.getValue(),-1);
-                for(int k=0;k<3;k++)for(var en:FADE_BY_LAYER.entrySet())if(!en.getValue().isEmpty()&&kind(en.getKey())==k)drawFades(en.getKey(),en.getValue(),k);
+                int from=GSTART[g],to=GSTART[g+1];
+                GLAYERS.clear();
+                if(pipeLayer!=null&&has(from,to,pipeLayer))GLAYERS.add(pipeLayer); // the layer left open goes first: its depth needs no open
+                for(int i=from;i<to;i++)for(Part p:ORDER[i].parts)if(!GLAYERS.contains(p.layer()))GLAYERS.add(p.layer());
+                int m=GLAYERS.size();
+                for(int i=0;i<m;i++)if(kind(GLAYERS.get(i))==0)drawFades(GLAYERS.get(i),from,to,-1);
+                for(int i=m-1;i>=0;i--)if(kind(GLAYERS.get(i))==0)drawFades(GLAYERS.get(i),from,to,0); // reversed: the last depth layer is still open
+                for(int k=1;k<3;k++)for(int i=0;i<m;i++)if(kind(GLAYERS.get(i))==k)drawFades(GLAYERS.get(i),from,to,k);
             }
         }finally{
-            RenderSystem.colorMask(true,true,true,true);RenderSystem.depthMask(true);RenderSystem.disableBlend();RenderSystem.defaultBlendFunc();GL14.glBlendColor(0f,0f,0f,0f);
-            BufferRenderer.reset();recycle();fadeNanos+=System.nanoTime()-t0;
+            try{closePipe();}
+            finally{
+                RenderSystem.colorMask(true,true,true,true);RenderSystem.depthMask(true);RenderSystem.disableBlend();RenderSystem.defaultBlendFunc();GL14.glBlendColor(0f,0f,0f,0f);
+                java.util.Arrays.fill(ORDER,0,Math.min(n,ORDER.length),null);GLAYERS.clear();PREPARED.clear();
+                BufferRenderer.reset();recycle();fadeNanos+=System.nanoTime()-t0;
+            }
         }
+    }
+    private static Fade[] ORDER=new Fade[64];private static int[] GSTART=new int[65],GPOS=new int[65];
+    private static final List<RenderLayer> GLAYERS=new ArrayList<>();private static final List<ShaderProgram> PREPARED=new ArrayList<>();
+    private static final float[] BASE=new float[4];
+    /** The fade pass's open layer, its program (null when the layer has none), the program last bound, and the mode its masks are set for (MIN_VALUE: none since the open). */
+    private static RenderLayer pipeLayer;private static ShaderProgram pipeSh,boundSh;private static int pipeMode=Integer.MIN_VALUE;
+    private static boolean has(int from,int to,RenderLayer layer){for(int i=from;i<to;i++)for(Part p:ORDER[i].parts)if(p.layer()==layer)return true;return false;}
+    /**
+     * The fade pass's layer, opened unless it is the one open: the last layer's state ended (its program stays bound until the
+     * next binds), this one's started, its textures and colour modulator set, and the frame's uniforms when its program has not
+     * had them this pass; then the masks and blend for the mode (-1 depth only, else the colour pass for a layer of that kind),
+     * set again after every open since a layer's state sets its own. Null when the layer has no program.
+     */
+    private static ShaderProgram pipe(RenderLayer layer,int mode){
+        if(layer!=pipeLayer){
+            if(pipeLayer!=null)pipeLayer.endDrawing();
+            pipeLayer=layer;pipeMode=Integer.MIN_VALUE;fadeOpens++;
+            layer.startDrawing();
+            ShaderProgram sh=RenderSystem.getShader();pipeSh=sh;
+            if(sh!=null){
+                samplers(sh);
+                if(!PREPARED.contains(sh)){PREPARED.add(sh);frameUniforms(sh,BASE);}
+                else if(sh.colorModulator!=null)sh.colorModulator.set(BASE);
+                set(sh.textureMat,RenderSystem.getTextureMatrix());
+                sh.bind();boundSh=sh;
+            }
+        }
+        if(pipeSh!=null&&mode!=pipeMode){
+            pipeMode=mode;
+            if(mode<0){RenderSystem.colorMask(false,false,false,false);RenderSystem.depthMask(true);}
+            else{RenderSystem.colorMask(true,true,true,true);RenderSystem.depthMask(false);
+                if(mode==0){RenderSystem.enableBlend();RenderSystem.blendFuncSeparate(GlStateManager.SrcFactor.CONSTANT_ALPHA,GlStateManager.DstFactor.ONE_MINUS_CONSTANT_ALPHA,GlStateManager.SrcFactor.ZERO,GlStateManager.DstFactor.ONE);}}
+        }
+        return pipeSh;
+    }
+    /** Ends the fade pass's open layer and unbinds the program last bound. */
+    private static void closePipe(){
+        try{if(boundSh!=null)boundSh.unbind();VertexBuffer.unbind();if(pipeLayer!=null)pipeLayer.endDrawing();}
+        finally{pipeLayer=null;pipeSh=null;boundSh=null;pipeMode=Integer.MIN_VALUE;}
     }
     /**
      * Puts the fading bodies (sorted farthest first) in groups for the fade pass (carry D14): a body goes one group past the
@@ -360,16 +428,14 @@ public final class BodyCache {
         return groups;
     }
     private static final float[] COLOR=new float[4];
-    /** One layer of the fading bodies: kind -1 the depth pass, else the colour pass for a layer of that kind. */
-    private static void drawFades(RenderLayer layer,List<FadeDraw> draws,int kind){
-        float[] base=RenderSystem.getShaderColor();
-        ShaderProgram sh=open(layer,base);
-        if(sh!=null){
-            if(kind<0){RenderSystem.colorMask(false,false,false,false);RenderSystem.depthMask(true);}
-            else{RenderSystem.colorMask(true,true,true,true);RenderSystem.depthMask(false);
-                if(kind==0){RenderSystem.enableBlend();RenderSystem.blendFuncSeparate(GlStateManager.SrcFactor.CONSTANT_ALPHA,GlStateManager.DstFactor.ONE_MINUS_CONSTANT_ALPHA,GlStateManager.SrcFactor.ZERO,GlStateManager.DstFactor.ONE);}}
-            for(FadeDraw d:draws){
-                Fade f=d.fade();
+    /** One layer of a group's fading bodies (ORDER from to): mode -1 the depth pass, else the colour pass for a layer of that kind. */
+    private static void drawFades(RenderLayer layer,int from,int to,int mode){
+        ShaderProgram sh=pipe(layer,mode);if(sh==null)return;
+        float[] base=BASE;
+        for(int i=from;i<to;i++){
+            Fade f=ORDER[i];
+            for(Part p:f.parts){
+                if(p.layer()!=layer)continue;
                 if(f.body!=null){place(sh,f.body);if(sh.viewRotationMat!=null){sh.viewRotationMat.set(IDENTITY3);sh.viewRotationMat.upload();}}
                 else{ // caught from a normal draw: its vertices are in the camera's axes, as the frame's entity draws
                     if(sh.modelViewMat!=null){sh.modelViewMat.set(ENTITY_MV);sh.modelViewMat.upload();}
@@ -377,17 +443,14 @@ public final class BodyCache {
                     if(sh.light0Direction!=null){sh.light0Direction.set(V0);sh.light0Direction.upload();}
                     if(sh.light1Direction!=null){sh.light1Direction.set(V1);sh.light1Direction.upload();}
                 }
-                if(kind==0)GL14.glBlendColor(0f,0f,0f,f.alpha);
-                else if(kind>0&&sh.colorModulator!=null){
-                    float a=f.alpha;if(kind==2){COLOR[0]=base[0]*a;COLOR[1]=base[1]*a;COLOR[2]=base[2]*a;}else{COLOR[0]=base[0];COLOR[1]=base[1];COLOR[2]=base[2];}COLOR[3]=base[3]*a;
+                if(mode==0)GL14.glBlendColor(0f,0f,0f,f.alpha);
+                else if(mode>0&&sh.colorModulator!=null){
+                    float a=f.alpha;if(mode==2){COLOR[0]=base[0]*a;COLOR[1]=base[1]*a;COLOR[2]=base[2]*a;}else{COLOR[0]=base[0];COLOR[1]=base[1];COLOR[2]=base[2];}COLOR[3]=base[3]*a;
                     sh.colorModulator.set(COLOR);sh.colorModulator.upload();
                 }
-                d.buffer().bind();d.buffer().draw();fadeDraws++;
+                p.buffer().bind();p.buffer().draw();fadeDraws++;
             }
-            sh.unbind();
         }
-        VertexBuffer.unbind();
-        layer.endDrawing();
     }
 
     /**

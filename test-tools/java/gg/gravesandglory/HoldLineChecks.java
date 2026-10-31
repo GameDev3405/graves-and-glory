@@ -389,6 +389,7 @@ final class HoldLineChecks {
 
         @Override public void cleanup(MinecraftClient c) {
             c.options.hudHidden = false;
+            BodyCache.noGroups = false; // Task 13 fix round 1, M8: an hl-corpse-load that stops before its report leaves the fade's groups on for what runs next
             server(c, b -> {if (cpRow != null) Spec.COMBATDISCIPLINE[0] = cpRow; Houses.forceRise = null; clearFixture(b, "cleanup"); if (site != null) platform(b, site, 12, Blocks.AIR.getDefaultState()); unforce(b); if (b.running) b.campaign.returnLobby();});
         }
 
@@ -1816,7 +1817,7 @@ final class HoldLineChecks {
                     evCheck(gone, "out of the player's tracking, the client forgot the stances, swings and hits of " + evRetrack.size() + " troops");
                     // fix round 1, M6: the Squire swung a tick ago, so the catch-up owes it, and it must reach the client after the spawn packet (the client drops unknown ids)
                     long now = b.world.getTime(); evKnight.swungAt = b.time - 1; evKnight.swingTick = now - 1;
-                    evWantAttack = List.of(new MotionInput.Attack(evKnight.lastVariant, now - 1));
+                    evWantAttack = List.of(new MotionInput.Attack(evKnight.catchVariant, now - 1));
                     for (var u : evRetrack) evTrack(b, u, true);
                     var p = sp(b);
                     evCheck(p != null && evRetrack.stream().allMatch(u -> net.fabricmc.fabric.api.networking.v1.PlayerLookup.tracking(u.mob).contains(p)), "the player tracks the " + evRetrack.size() + " troops again");

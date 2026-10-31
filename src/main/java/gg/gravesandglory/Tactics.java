@@ -506,7 +506,7 @@ final class Tactics {
         if(pending(b,u)){swingsRefused++;return true;}
         int variant=BattleMath.pickVariant(rows.size(),u.lastVariant,b.rolls.nextLong());
         int delay=BattleMath.impactDelay(rows.get(variant).impactTicks(),u.nextAttack-time);
-        u.lastVariant=variant;u.swungAt=time;u.swingTick=u.mob.getWorld().getTime();swings++;
+        u.lastVariant=variant;u.catchVariant=variant;u.swungAt=time;u.swingTick=u.mob.getWorld().getTime();swings++;
         MotionEvents.sendAttack(u,variant,u.swingTick); // attack_v1: the swing Battle picked, from the world tick it begins on (time is swungAt)
         Abilities.animate(b,u);
         var strike=new GravesAndGlory.Battle.PendingStrike(u,enemy,variant,time,time+delay,Combat.charge(b,u,true));

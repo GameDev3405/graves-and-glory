@@ -334,6 +334,21 @@ public final class MotionEngine {
         return r;
     }
 
+    /**
+     * As {@link #reach(Family)} for one bone's translation channels (pixels: tx, ty, tz): {@code proc}, what the procedural layers
+     * may move that bone, plus its largest stance plus its largest action at its largest gain, each clip read at that bone alone
+     * (Clip.reach(bone)). Task 13 fix round 1 (I1) builds the cull reach bone by bone from it.
+     */
+    public static double[] reachPx(Family fam, String bone, double proc) {
+        double[] stance = new double[6], action = new double[6], r = new double[3];
+        for (Clip c : fam.stances().values()) max(stance, c.reach(bone), 1);
+        for (Clip c : fam.attacks()) max(action, c.reach(bone), ATTACK_GAIN);
+        for (List<Clip> l : fam.hits().values()) for (Clip c : l) max(action, c.reach(bone), HIT_GAIN);
+        for (Clip c : fam.deaths().values()) max(action, c.reach(bone), 1);
+        for (int c = 0; c < 3; c++) r[c] = proc + stance[3 + c] + action[3 + c];
+        return r;
+    }
+
     private static void max(double[] into, double[] reach, double gain) { for (int c = 0; c < 6; c++) into[c] = Math.max(into[c], reach[c] * gain); }
 
     /**

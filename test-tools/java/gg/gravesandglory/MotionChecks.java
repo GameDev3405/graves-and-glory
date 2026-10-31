@@ -502,11 +502,14 @@ public final class MotionChecks {
     /** The worst margin found so far: how far a pose reached outside the cull reach (blocks, negative inside), where, and how many poses. */
     static final class Worst {
         double out = Double.NEGATIVE_INFINITY; String at = ""; int poses;
+        /** The farthest any pose reached on each side of the box (blocks over the feet): radius, lowest bottom, highest top (fix round 1, I1: the slack). */
+        double radius = Double.NEGATIVE_INFINITY, bottom = Double.POSITIVE_INFINITY, top = Double.NEGATIVE_INFINITY;
         /** Carry C13: the most a jointed bone went past its limit (degrees, negative inside) and where; the deepest shin bend (degrees past the file pose). */
         double over = Double.NEGATIVE_INFINITY, shin = Double.NEGATIVE_INFINITY; String overAt = "";
         void see(TroopModel<?> m, double[] reach, String label) {
-            double o = Phase2Checks.Anim.outside(m.extent(), reach); poses++;
+            double[] x = m.extent(); double o = Phase2Checks.Anim.outside(x, reach); poses++;
             if (o > out) { out = o; at = label; }
+            radius = Math.max(radius, x[0]); bottom = Math.min(bottom, x[1]); top = Math.max(top, x[2]);
             for (var e : m.limits().entrySet()) {
                 ModelPart p = m.bone(e.getKey()); if (p == null) continue;
                 double d = (p.pitch - p.getDefaultTransform().pitch) / TroopModel.RAD, v = Math.max(d - e.getValue()[1], e.getValue()[0] - d);
@@ -572,6 +575,7 @@ public final class MotionChecks {
     static void cull() {
         Map<String, Clip> before = ClipLibrary.all(); List<String> bad = new ArrayList<>(); StringBuilder sb = new StringBuilder(); int poses = 0, models = 0;
         StringBuilder lim = new StringBuilder(); List<String> limBad = new ArrayList<>(); int limModels = 0; double shinFree = Double.NEGATIVE_INFINITY; String shinFreeAt = "";
+        double slackMin = Double.POSITIVE_INFINITY, slackMax = Double.NEGATIVE_INFINITY, sideMax = Double.NEGATIVE_INFINITY; String slackMinAt = "", slackMaxAt = "", sideMaxAt = "";
         try {
             Map<String, Clip> synth = new TreeMap<>(before);
             for (String t : TroopModels.ids()) { var m = TroopModels.model(t); var row = m == null ? null : TroopMotion.row(m); if (row != null) synthetic(m.rig, row.family(), synth); }
@@ -592,7 +596,13 @@ public final class MotionChecks {
                     limModels++;
                 } else if (w.shin > shinFree) { shinFree = w.shin; shinFreeAt = t; }
                 poses += w.poses;
-                sb.append(String.format(Locale.ROOT, "%s %d poses, reach r%.2f %.2f..%.2f, worst %.3f blocks %s (%s); ", t, w.poses, reach[0], reach[1], reach[2], w.out, w.out <= 0 ? "inside" : "OUTSIDE", w.at));
+                // the slack: how far inside the box the pose that came closest stays (-out), and each side's own (the box less the farthest pose on that side)
+                double sr = reach[0] - w.radius, sbot = w.bottom - reach[1], stop = reach[2] - w.top, side = Math.max(sr, Math.max(sbot, stop));
+                if (-w.out < slackMin) { slackMin = -w.out; slackMinAt = t; }
+                if (-w.out > slackMax) { slackMax = -w.out; slackMaxAt = t; }
+                if (side > sideMax) { sideMax = side; sideMaxAt = t; }
+                sb.append(String.format(Locale.ROOT, "%s %d poses, reach r%.2f %.2f..%.2f, posed r%.2f %.2f..%.2f, worst %.3f blocks %s (%s), slack %.3f (radius %.3f, bottom %.3f, top %.3f); ",
+                    t, w.poses, reach[0], reach[1], reach[2], w.radius, w.bottom, w.top, w.out, w.out <= 0 ? "inside" : "OUTSIDE", w.at, -w.out, sr, sbot, stop));
                 if (!(w.out <= 0)) bad.add(t + " reaches " + String.format(Locale.ROOT, "%.3f", w.out) + " blocks outside at " + w.at);
             }
         } catch (RuntimeException x) { bad.add("threw " + x); x.printStackTrace(); }
@@ -602,7 +612,9 @@ public final class MotionChecks {
         }
         report("mo-limits", limBad.isEmpty() && limModels > 0, limModels + " troop models with joint limits (carry C13, R13): " + lim + "deepest shin bend on a model without limits "
             + String.format(Locale.ROOT, "%.2f", shinFree) + " deg (" + shinFreeAt + ")" + (limBad.isEmpty() ? "" : "; failing: " + limBad));
-        report("mo-cull", bad.isEmpty() && models > 0 && poses > 0, models + " troop models, " + poses + " posed bounds against cullBox (synthetic clips; the real clips put back): " + sb + (bad.isEmpty() ? "every pose inside" : "outside: " + bad));
+        report("mo-cull", bad.isEmpty() && models > 0 && poses > 0, models + " troop models, " + poses + " posed bounds against cullBox (synthetic clips; the real clips put back): " + sb + (bad.isEmpty() ? "every pose inside" : "outside: " + bad)
+            + String.format(Locale.ROOT, "; slack (blocks between the pose that came closest and the box, the margin %.2f included): least %.3f (%s), most %.3f (%s); the loosest single side %.3f (%s)",
+                TroopMotion.CULL_MARGIN, slackMin, slackMinAt, slackMax, slackMaxAt, sideMax, sideMaxAt));
     }
 
     /**
@@ -612,10 +624,13 @@ public final class MotionChecks {
      * in which every knight drew a new pose; for each pair of knights the RMS of the angle between their poses over every bone
      * rotation the engine moves (channels that never move on any knight are left out, and the RMS over every channel is logged
      * too) must be over 1 degree; mo-crowd.png is the view. mo-late-join: a synthetic swing (the knight family's first variant, 1.6
-     * s) is sent to the front knight; 10 ticks in this client forgets the knight as an unload would (MotionEvents.Client.forget and
-     * TroopMotion.forget) and the server sends what a player who starts tracking it is owed (MotionEvents.startTracking). The swing
-     * must come back within 5 ticks and play, every tick until it ends, within 2 ticks of the clip time the first client's track
-     * shows; a second catch-up of the same swing 3 ticks later must not be kept twice (carry B6).
+     * s) is sent to the front knight; once its clip time is past impactTicks + 12 ticks (where the old impactTicks + 10 catch-up window
+     * had closed: carry B8, fix round 1 I2) and at least 4 ticks before the clip ends, this client forgets the knight as an unload would
+     * (MotionEvents.Client.forget and TroopMotion.forget) and the server sends what a player who starts tracking it is owed
+     * (MotionEvents.startTracking). The swing must come back within 5 ticks and play, every tick until it ends, within 2 ticks of the
+     * clip time the first client's track shows; a second catch-up of the same swing 3 ticks later must not be kept twice (carry B6).
+     * Then, 2 ticks past the clip's end (inside the server's ATTACK_CLIP_MAX_TICKS), the client forgets the knight again: for 10 ticks
+     * no track of the swing may play (the client skips a swing whose clip has ended).
      */
     static final class Live extends Phase2Checks.Stage {
         static final int COLS = 5, ROWS = 4; static final double GAP = 1.5, CAM_DZ = -30, CAM_EYE = 6; static final float YAW = 180;
@@ -623,6 +638,8 @@ public final class MotionChecks {
         CloudRenderMode cloudsBefore; Map<String, Clip> clipsBefore;
         int[] lastCount; final List<float[][]> samples = new ArrayList<>(); int steady;
         int ls; Clip synth; MotionStack.Track orig; int forgetWait, backAt = -1, compared, maxTracks, maxQueue; boolean dupSent; double maxDiff;
+        /** Fix round 1, I2: the variant's impactTicks, the clip time (s) of the forget, and the probe past the clip's end (its ticks, the tracks and queued swings it saw). */
+        int impactTicks, probeWait, probeTracks = -1, probeQueued; double forgetAt = -1, probeAt = -1; String lateWhy = "";
         Live(boolean chained) { this.chained = chained; }
         String name() { return chained ? "motion" : "motion-live"; }
         static float pitch() { return (float) Math.toDegrees(Math.atan2(CAM_EYE - 1.5, -CAM_DZ + (ROWS - 1) * GAP / 2)); }
@@ -739,10 +756,10 @@ public final class MotionChecks {
                     var m = TroopModels.model("knight"); var row = m == null ? null : TroopMotion.row(m);
                     var rows = row == null ? List.<Spec.AttackVariantsRow>of() : Tactics.variants(row.family());
                     if (rows.isEmpty()) { report("mo-late-join", false, "the knight has no attack variants"); afterLate(); return; }
-                    var v = rows.get(0); double impact = v.impactTicks() / (double) Clip.TICKS;
+                    var v = rows.get(0); double impact = v.impactTicks() / (double) Clip.TICKS; impactTicks = v.impactTicks();
                     synth = attack(v.id(), impact, 1.6, ATTACK_PEAKS);
                     clipsBefore = ClipLibrary.all(); Map<String, Clip> map = new TreeMap<>(clipsBefore); map.put(m.rig + "/" + row.family() + "/" + v.id(), synth); ClipLibrary.install(map);
-                    server(c, b -> { u.lastVariant = 0; u.swingTick = b.world.getTime(); MotionEvents.sendAttack(u, 0, u.swingTick); });
+                    server(c, b -> { u.lastVariant = 0; u.catchVariant = 0; u.swingTick = b.world.getTime(); MotionEvents.sendAttack(u, 0, u.swingTick); });
                     ls = 1; wait = 0;
                 }
                 case 1 -> {
@@ -752,8 +769,12 @@ public final class MotionChecks {
                     if (wait > 60) { report("mo-late-join", false, "the swing never played on the first client (60 ticks)"); afterLate(); }
                 }
                 case 2 -> {
-                    var st = TroopMotion.state(id);
-                    if (st == null || orig.time(st.frame.now) < .5) { if (wait > 60) { report("mo-late-join", false, "the swing never reached 10 ticks"); afterLate(); } return; }
+                    // forget once the old impactTicks + 10 window would have closed (12 ticks past the impact), with 4 ticks of the clip left
+                    var st = TroopMotion.state(id); double after = (impactTicks + 12) / (double) Clip.TICKS, latest = synth.length() - 4.0 / Clip.TICKS;
+                    double t = st == null ? -1 : orig.time(st.frame.now);
+                    if (t > latest) { report("mo-late-join", false, String.format(Locale.ROOT, "the forget came too late: clip time %.3f s, past the clip's end less 4 ticks (%.3f s)", t, latest)); afterLate(); return; }
+                    if (!(t > after)) { if (wait > 60) { report("mo-late-join", false, "the swing never passed impactTicks + 12 ticks"); afterLate(); } return; }
+                    forgetAt = t;
                     MotionEvents.Client.forget(id); TroopMotion.forget(id);
                     server(c, b -> { var p = sp(b); if (p != null) MotionEvents.startTracking(u, p); });
                     ls = 3; wait = 0; forgetWait = 0;
@@ -770,16 +791,35 @@ public final class MotionChecks {
                             maxDiff = Math.max(maxDiff, Math.abs(p.time() - orig.time(now))); compared++; break;
                         }
                         if (backAt >= 0 && !dupSent && forgetWait >= backAt + 3) { dupSent = true; server(c, b -> { var p = sp(b); if (p != null) MotionEvents.catchUpAttack(u, p); }); }
-                        if (orig.time(now) >= synth.length() - .05 || forgetWait > 60) judgeLate(c);
-                    } else if (forgetWait > 60) judgeLate(c);
+                        if (orig.time(now) >= synth.length() - .05 || forgetWait > 60) { ls = 4; wait = 0; }
+                    } else if (forgetWait > 60) { ls = 4; wait = 0; }
+                }
+                case 4 -> {
+                    // the probe past the clip's end: 2 ticks after it, while the server still holds the swing current (ATTACK_CLIP_MAX_TICKS)
+                    double now = c.world.getTime() / (double) Clip.TICKS;
+                    if (orig.time(now) < synth.length() + 2.0 / Clip.TICKS) { if (wait > 60) { lateWhy = "the clip's end never came"; judgeLate(c); } return; }
+                    probeAt = orig.time(now);
+                    MotionEvents.Client.forget(id); TroopMotion.forget(id);
+                    server(c, b -> { var p = sp(b); if (p != null) MotionEvents.startTracking(u, p); });
+                    ls = 5; probeWait = 0; probeTracks = 0;
+                }
+                case 5 -> {
+                    probeWait++;
+                    var st = TroopMotion.state(id);
+                    if (st != null) for (var tr : st.tracks) if (tr.kind == MotionEngine.ATTACK && tr.a == synth) probeTracks++;
+                    probeQueued = Math.max(probeQueued, MotionEvents.Client.attacks(id).size());
+                    if (probeWait >= 10) judgeLate(c);
                 }
                 default -> {}
             }
         }
         void judgeLate(MinecraftClient c) {
-            boolean pass = backAt >= 0 && backAt <= 5 && maxDiff <= 2.0 / Clip.TICKS && maxTracks == 1 && maxQueue == 1 && compared >= 5 && dupSent;
-            report("mo-late-join", pass, String.format(Locale.ROOT, "a %.2f s swing forgotten and caught up 10 ticks in: back %s, compared on %d ticks, largest gap to the first client's clip time %.3f s (%.1f ticks; want 2 or less); swing tracks at most %d, queued swings at most %d after a repeated catch-up (want 1 and 1)",
-                synth.length(), backAt < 0 ? "never" : "after " + backAt + " ticks (want 5 or less)", compared, maxDiff, maxDiff * Clip.TICKS, maxTracks, maxQueue));
+            int at = (int) Math.round(forgetAt * Clip.TICKS), probe = (int) Math.round(probeAt * Clip.TICKS);
+            boolean pass = lateWhy.isEmpty() && forgetAt > (impactTicks + 10) / (double) Clip.TICKS && backAt >= 0 && backAt <= 5 && maxDiff <= 2.0 / Clip.TICKS && maxTracks == 1 && maxQueue == 1 && compared >= 5 && dupSent
+                && probeTracks == 0 && probeWait >= 10;
+            report("mo-late-join", pass, String.format(Locale.ROOT, "a %.2f s swing (impact at %d ticks) forgotten and caught up %.3f s (%d ticks) in, where the old impactTicks + 10 window had closed at tick %d: back %s, compared on %d ticks, largest gap to the first client's clip time %.3f s (%.1f ticks; want 2 or less); swing tracks at most %d, queued swings at most %d after a repeated catch-up (want 1 and 1); forgotten again %s: %d ticks of tracks of the ended swing over %d ticks (want 0 over 10), %d swings queued%s",
+                synth.length(), impactTicks, forgetAt, at, impactTicks + 10, backAt < 0 ? "never" : "after " + backAt + " ticks (want 5 or less)", compared, maxDiff, maxDiff * Clip.TICKS, maxTracks, maxQueue,
+                probeAt < 0 ? "never" : String.format(Locale.ROOT, "%.3f s (%d ticks) in, past the clip's end", probeAt, probe), probeTracks, probeWait, probeQueued, lateWhy.isEmpty() ? "" : "; " + lateWhy));
             afterLate();
         }
         // ---- mo-settle (carry D20) and mo-light (carry D21, R45) ----

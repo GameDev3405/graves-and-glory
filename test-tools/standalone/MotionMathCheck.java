@@ -174,5 +174,27 @@ public final class MotionMathCheck {
             }
         }
         check(spike.reach()[0] > 20 && over.reach()[4] > 10.5, "the fixtures should overshoot: " + spike.reach()[0] + ", " + over.reach()[4]);
+
+        // Task 13 fix round 1 (I1): reach(bone) bounds that bone alone; reach() is their largest, a bone not keyed reaches nothing.
+        Clip two = Clip.parse("{\"format\":1,\"clip\":\"two\",\"length\":1,\"bones\":{"
+            + "\"root\":{\"position\":[{\"t\":0,\"i\":\"catmullrom\",\"v\":[0,0,0]},{\"t\":0.4,\"i\":\"catmullrom\",\"v\":[0,0,12]},{\"t\":0.6,\"i\":\"catmullrom\",\"v\":[0,0,12]},{\"t\":1,\"i\":\"catmullrom\",\"v\":[0,0,0]}]},"
+            + "\"right_arm\":{\"rotation\":[{\"t\":0,\"i\":\"linear\",\"v\":[0,0,0]},{\"t\":0.5,\"i\":\"linear\",\"v\":[-90,0,0]},{\"t\":1,\"i\":\"linear\",\"v\":[0,0,0]}],"
+            + "\"position\":[{\"t\":0,\"i\":\"linear\",\"v\":[0,0,0]},{\"t\":0.5,\"i\":\"linear\",\"v\":[0,-1,0]},{\"t\":1,\"i\":\"linear\",\"v\":[0,0,0]}]}}}");
+        Map<String, double[]> dense = new HashMap<>();
+        for (int i = 0; i <= 20000; i++) {
+            two.sample(i / 20000.0, out);
+            for (var e : out.entrySet()) { double[] d = dense.computeIfAbsent(e.getKey(), k -> new double[6]); for (int ch = 0; ch < 6; ch++) d[ch] = Math.max(d[ch], Math.abs(e.getValue()[ch])); }
+        }
+        double[] all = new double[6];
+        for (String bone : new String[]{"root", "right_arm"}) {
+            double[] r = two.reach(bone), d = dense.get(bone);
+            for (int ch = 0; ch < 6; ch++) {
+                check(r[ch] >= d[ch] - 1e-9 && r[ch] <= d[ch] + 1e-3 * Math.max(1, d[ch]), "two " + bone + " reach channel " + ch + " " + r[ch] + " should be tight to its own " + d[ch]);
+                all[ch] = Math.max(all[ch], r[ch]);
+            }
+        }
+        check(java.util.Arrays.equals(all, two.reach()), "reach() should be the largest bone's: " + java.util.Arrays.toString(all) + " vs " + java.util.Arrays.toString(two.reach()));
+        check(two.reach("right_arm")[5] == 0 && two.reach()[5] >= 12 && two.reach("root")[0] == 0, "one bone's reach should leave out another's: " + java.util.Arrays.toString(two.reach("right_arm")));
+        check(java.util.Arrays.equals(two.reach("body"), new double[6]), "a bone the clip does not key reaches nothing");
     }
 }

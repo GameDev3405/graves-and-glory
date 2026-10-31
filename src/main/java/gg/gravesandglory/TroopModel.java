@@ -245,34 +245,39 @@ public final class TroopModel<T extends MobEntity> extends SinglePartEntityModel
     public Box cullBox(Entity e){double[] c=TroopMotion.lyingReach(e,this);if(c==null)c=cullReach();return new Box(e.getX()-c[0],e.getY()+c[1],e.getZ()-c[0],e.getX()+c[0],e.getY()+c[2],e.getZ()+c[0]);}
     /**
      * The cull reach (radius, bottom and top over the feet, in blocks): the rest reach (every box, the head and arms swung any way
-     * with what the hands hold), grown by what the motion engine can do to this model (MotionEngine.reach over its clips,
-     * TroopMotion.reach). Every bone may turn any way about its pivot; a root's pivot may move by the whole translation reach
-     * (scaled by rootScale), any other bone's by the clips' share of it plus what the procedural layers move a limb
-     * (TroopMotion.LIMB_PX). Analytic, so no clip is sampled; worked out again when the clips reload.
+     * with what the hands hold), grown by what the motion engine can do to this model. Every bone may turn any way about its pivot,
+     * and each bone's pivot may move by its own translation reach (TroopMotion.bonePx: the procedural bound for that bone plus its
+     * clips' envelope at that bone, the root's scaled by rootScale), added once down each chain (Task 13 fix round 1, I1); a
+     * top-level bone's sideways reach counts toward the radius only and its vertical reach toward the top and bottom only.
+     * Analytic, so no clip is sampled; worked out again when the clips reload. Shared: callers only read it.
      */
     public double[] cullReach(){
         int gen=ClipLibrary.generation();
         if(motionCull==null||motionGen!=gen){
-            double[] t=TroopMotion.reach(this),c=new double[3];
-            for(int i=0;i<3;i++)c[i]=Math.max(0,t[3+i]-MotionEngine.PROC_PX);
-            double limb=Math.sqrt(c[0]*c[0]+c[1]*c[1]+c[2]*c[2])+TroopMotion.LIMB_PX;
-            double rootMove=Math.sqrt(t[3]*t[3]+t[4]*t[4]+t[5]*t[5])*Math.max(1,rootK);
             double radius=cullRadius,bottom=cullBottom,up=cullTop;Map<String,Double> memo=new HashMap<>();
             for(String r:kids.getOrDefault("",List.of())){
-                double[] p=pivots.get(r);if(p==null)continue;double s=rootMove+reachFrom(r,limb,memo);
-                radius=Math.max(radius,(Math.hypot(p[0],p[2])+s)/16+TroopMotion.CULL_MARGIN);
-                up=Math.max(up,1.501-(p[1]-s)/16+TroopMotion.CULL_MARGIN);
-                bottom=Math.min(bottom,1.501-(p[1]+s)/16-TroopMotion.CULL_MARGIN);
+                // a top-level bone moves in the model's own axes, which setupTransforms turns about the vertical only: its sideways
+                // reach widens the radius alone and its vertical reach the top and bottom alone
+                double[] p=pivots.get(r);if(p==null)continue;double[] t=TroopMotion.bonePx(this,r);double k=r.equals("root")?Math.max(1,rootK):1,s=reachFrom(r,memo);
+                double side=Math.hypot(t[0],t[2])*k,lift=Math.abs(t[1])*k;
+                radius=Math.max(radius,(Math.hypot(p[0],p[2])+side+s)/16+TroopMotion.CULL_MARGIN);
+                up=Math.max(up,1.501-(p[1]-lift-s)/16+TroopMotion.CULL_MARGIN);
+                bottom=Math.min(bottom,1.501-(p[1]+lift+s)/16-TroopMotion.CULL_MARGIN);
             }
             motionCull=new double[]{radius,bottom,up};motionGen=gen;
         }
-        return motionCull.clone();
+        return motionCull;
     }
-    /** How far a bone's subtree can reach from its pivot, every bone turned any way and each child's pivot moved by up to limb pixels. */
-    private double reachFrom(String bone,double limb,Map<String,Double> memo){
+    /** How far the motion engine can move a bone's pivot (pixels): the length of its translation reach, a root's times rootScale (when it grows). */
+    private double move(String bone){
+        double[] t=TroopMotion.bonePx(this,bone);double d=Math.sqrt(t[0]*t[0]+t[1]*t[1]+t[2]*t[2]);
+        return bone.equals("root")?d*Math.max(1,rootK):d;
+    }
+    /** How far a bone's subtree can reach from its pivot, every bone turned any way and each child's pivot moved by its own reach (move). */
+    private double reachFrom(String bone,Map<String,Double> memo){
         Double m=memo.get(bone);if(m!=null)return m;
         double r=Math.max(ownReach.getOrDefault(bone,0.0),itemReach.getOrDefault(bone,0.0));double[] at=pivots.get(bone);
-        for(String k:kids.getOrDefault(bone,List.of())){double[] ka=pivots.get(k);if(at!=null&&ka!=null)r=Math.max(r,dist(at,ka)+limb+reachFrom(k,limb,memo));}
+        for(String k:kids.getOrDefault(bone,List.of())){double[] ka=pivots.get(k);if(at!=null&&ka!=null)r=Math.max(r,dist(at,ka)+move(k)+reachFrom(k,memo));}
         memo.put(bone,r);return r;
     }
     /**
@@ -390,10 +395,26 @@ public final class TroopModel<T extends MobEntity> extends SinglePartEntityModel
             on&=TroopFaces.shows(b.variants(),variant,faceCount);
             parts.get(b.name()).visible=on&&!b.team();
         }
-        ModelPart right=parts.get("right_arm"),left=parts.get("left_arm"),fold=parts.get("arms_folded");
-        if(fold!=null){fold.visible=this.folded;if(right!=null)right.visible=!this.folded;if(left!=null)left.visible=!this.folded;}
+        showFold();
         boolean flies=l!=null&&l.side()!=null&&l.troop().pennant();
         for(int i=0;i<teamBones.size();i++){Bone b=teamBones.get(i);teamOn[i]=(b.stages().isEmpty()||b.stages().contains(stage))&&(b.weaponTiers().isEmpty()||b.weaponTiers().contains(arms))&&(!FLAGS.contains(b.part())||flies)&&(!helmOff||!"helm".equals(b.tag()))&&(!shieldOff||!"shield".equals(b.tag()));}
+        mask();
+    }
+    /**
+     * Shows the folded arms or the arms as the fold reads after this frame's pose (TroopMotion.pose; Task 13 fix round 1, M1): prepare
+     * took the fold from the last frame, so the first frame of a swing or a scene clip on a folded-arms troop would otherwise draw
+     * both. Changes only the fold's three bones, as prepare sets them, and the shown bones.
+     */
+    void refold(boolean folded){
+        boolean f=folded&&parts.containsKey("arms_folded");if(f==this.folded)return;
+        this.folded=f;showFold();mask();
+    }
+    private void showFold(){
+        ModelPart right=parts.get("right_arm"),left=parts.get("left_arm"),fold=parts.get("arms_folded");
+        if(fold!=null){fold.visible=folded;if(right!=null)right.visible=!folded;if(left!=null)left.visible=!folded;}
+    }
+    /** Works out the shown bones (shownMask) from the bones' visibility and the team bones prepare left on. */
+    private void mask(){
         long mask=0;int i=0,t=0;
         for(Bone b:info.values()){
             List<ModelPart> path=paths.get(b.name());boolean on=b.team()?teamOn[t++]:path.get(path.size()-1).visible;

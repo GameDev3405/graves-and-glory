@@ -118,13 +118,13 @@ public final class Projectiles {
     /**
      * attack_v1 for a shot (Task 13 carry B9): the shooter's family's variant (for a bow, bow_volley for a lofted arc and bow_direct for a flat one; any other
      * family its first row), begun its impactTicks before now, so the clip's impact, the loose, lands on the tick the shot leaves. Kept as the troop's
-     * newest swing (lastVariant, swingTick) for a late joiner's catch-up. Its rolls and swungAt are left alone. Nothing for a family with no rows.
+     * newest swing (catchVariant, swingTick) for a late joiner's catch-up. Its rolls, lastVariant and swungAt are left alone. Nothing for a family with no rows.
      */
     static void loose(GravesAndGlory.Unit u,double peak){
         var rows=Tactics.variants(u.spec.family());if(rows.isEmpty())return;
         int variant=0;String want=u.spec.family()+(peak>0?"_volley":"_direct");
         for(int i=0;i<rows.size();i++)if(rows.get(i).id().equals(want))variant=i;
-        u.lastVariant=variant;u.swingTick=Math.max(0,u.mob.getWorld().getTime()-rows.get(variant).impactTicks());
+        u.catchVariant=variant;u.swingTick=Math.max(0,u.mob.getWorld().getTime()-rows.get(variant).impactTicks());
         MotionEvents.sendAttack(u,variant,u.swingTick);
     }
     public static void fire(GravesAndGlory.Battle b,GravesAndGlory.Unit u,LivingEntity target,String kind,float amount){

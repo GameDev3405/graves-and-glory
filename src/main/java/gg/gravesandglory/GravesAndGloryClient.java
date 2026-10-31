@@ -91,7 +91,7 @@ public final class GravesAndGloryClient implements ClientModInitializer {
         // A swing or a blow for an id this world does not have is dropped (no queue for an unloaded troop); a swing is checked against its family's rows.
         ClientPlayNetworking.registerGlobalReceiver(MotionEvents.ATTACK,(client,handler,buf,responder)->{int id=buf.readVarInt(),variant=buf.readVarInt();long start=buf.readVarLong();client.execute(()->{
             net.minecraft.entity.Entity e=client.world==null?null:client.world.getEntityById(id);Spec.TroopsRow t=e==null?null:TroopModels.troopOf(e);
-            MotionEvents.Client.attack(id,variant,start,e==null?-1:t==null?0:Tactics.variants(t.family()).size());});});
+            MotionEvents.Client.attack(id,variant,start,e==null?MotionEvents.Client.NO_ENTITY:t==null?MotionEvents.Client.UNKNOWN_TROOP:Tactics.variants(t.family()).size());});});
         ClientPlayNetworking.registerGlobalReceiver(MotionEvents.HIT,(client,handler,buf,responder)->{int id=buf.readVarInt(),kind=buf.readByte(),zone=buf.readByte();float bearing=buf.readFloat();int weight=buf.readByte(),flags=buf.readByte();long tick=buf.readVarLong();
             client.execute(()->MotionEvents.Client.hit(client.world!=null&&client.world.getEntityById(id)!=null,id,kind,zone,bearing,weight,flags,tick));});
         ClientEntityEvents.ENTITY_UNLOAD.register((entity,world)->{TroopMotion.forget(entity.getId());MotionEvents.Client.forget(entity.getId());});
