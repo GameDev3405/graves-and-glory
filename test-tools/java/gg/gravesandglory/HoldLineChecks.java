@@ -87,12 +87,28 @@ import static gg.gravesandglory.Phase2Checks.server;
  * formed), the Breaker and a Reaper hold, on the server and the client. Late join, emulated twice: each troop leaves the player's tracking and is
  * tracked again (START_TRACKING), then the client's tables are emptied and the channel registration replayed (S2CPlayChannelEvents.REGISTER); both
  * times every tracked troop's stance reaches the client within 2 ticks, the Squire's newest swing with it, and a troop with no stance shows none.</li>
+ * <li>hl-corpse (Task 7): on the same patch, a pinned Dusk Order Squire (AI on, on Attack) strikes down a tough frozen Squire of the commander's army
+ * (a second one stands 6 blocks west as the Dusk Squire's other foe). The body lies: in the world and dead at its 79th death tick (and its 119th),
+ * removed on its 120th (BattleMath.corpseGoneTick of the corpse rows, 20 + 60 + 40), and the client holds it lying past its 79th; nothing (no item,
+ * no experience orb) lies within 4 blocks of it, AFTER_DEATH fired for it once; from the tick after its death no unit's lockedTarget nor mob target
+ * is the body, it cannot be hit (canHit) nor pushed (isPushable), it is out of Battle.units, out of its side team, and the army's fielded count is one
+ * less; an own Squire set 0.15 from the body (AI on, out of the battle's orders) moves under 0.02 over 20 ticks, and the body under 0.02 too. Rise
+ * Again still works: a Revenant of a Graveborn Dusk army (six fielded, Houses.recompute), the roll forced, rises (alive, rose, death ticks 0, no
+ * AFTER_DEATH); struck down again it lies as a body. Last, after hl-corpse-load, a Squire's body 30 ticks dead goes the moment the round ends
+ * (Campaign.returnLobby, Battle.clearCorpses) and no dead troop is left in the world.</li>
+ * <li>hl-corpse-load (Task 7): 100 Order Squires of the commander's army and 100 of Dusk's (AI on, 4000 health) spawn in two 10 by 10 blocks 20
+ * apart on the patch, both armies on Attack toward the middle; as they meet, one falls each tick, the armies in turn, so all 200 die within 10 s.
+ * Over the 340 ticks from the first death the mean server tick (MinecraftServer.lastTickLengths, the tick before each sample) and the client's
+ * mean frame time (wall clock over the frames drawn; the run's fps is uncapped) are measured with the corpse rows at 0 and 0 (A: vanilla's
+ * 20-tick fall) and at 60 and 40 (B), in the order warm-up B (not counted), A, B, B, A: B's mean is within +10% of A's on the server and +15% on
+ * the client, every troop died, and in B 100 or more bodies lay at once. The world render alone (Phase2Checks.RenderCost) and every run's raw
+ * figures are logged.</li>
  * </ul>
  */
 final class HoldLineChecks {
     private HoldLineChecks() {}
 
-    static void register(Map<String, Supplier<Phase2Checks.Suite>> suites) { suites.put("holdline", Wall::new); }
+    static void register(Map<String, Supplier<Phase2Checks.Suite>> suites) { suites.put("holdline", () -> new Wall(false)); suites.put("holdline-corpse", () -> new Wall(true)); }
 
     static final class Wall extends Phase2Checks.Staged {
         final List<GravesAndGlory.Unit> knights = new ArrayList<>(), hearthguard = new ArrayList<>(), breakers = new ArrayList<>();
@@ -206,6 +222,33 @@ final class HoldLineChecks {
         final Map<Integer, List<MotionInput.Hit>> evHits = new HashMap<>();
         /** The client's tables for the watched ids, copied after each client tick while evSnap is on (the newest non-empty copy kept). */
         final Set<Integer> evWatch = java.util.concurrent.ConcurrentHashMap.newKeySet();
+        // hl-corpse and hl-corpse-load (Task 7)
+        /** Only hl-corpse and hl-corpse-load after the round and its patch (GRAVES_PHASE2_CHECKS=holdline-corpse). */
+        final boolean corpseOnly;
+        Wall(boolean corpseOnly) {this.corpseOnly = corpseOnly;}
+        /** The Squire struck down, its foe the Dusk Squire, the other own Squire, the one set against the body, the Revenant that rises. */
+        GravesAndGlory.Unit cpVictim, cpHunter, cpBait, cpLeaner, cpRevenant;
+        Vec3d cpHome, cpBody0, cpBody10, cpLean0;
+        boolean cpPass = true;
+        final List<String> cpWhy = new ArrayList<>();
+        /** AFTER_DEATH calls by entity id (one listener, registered once). */
+        static final Map<Integer, Integer> CP_DEATHS = new java.util.concurrent.ConcurrentHashMap<>();
+        static boolean cpHooked;
+        /** The body's id the client watches, and the most death ticks the client saw it lying. */
+        volatile int cpClientId = -1, cpClientDeath = -1;
+        boolean cpAt79, cpAt119, cpHitless, cpOutOfUnits, cpNoSide;
+        long cpFielded0, cpFielded1, cpGoneAt = -1;
+        int cpDeath79 = -1, cpLastDeath = -1, cpItems, cpOrbs;
+        final List<String> cpTargeted = new ArrayList<>();
+        /** hl-corpse-load: the original corpse row, the 200 troops in kill order, the run, the kills, the server samples, the most bodies lying, each run's figures. */
+        Spec.CombatDisciplineRow cpRow;
+        final List<GravesAndGlory.Unit> cpLoad = new ArrayList<>();
+        int cpRun, cpKilled, cpSamples, cpLying;
+        double cpServerSum; long cpWall0;
+        /** Each run: {lie, fade, server ms mean, client world-render ms mean, frames, client worst ms, most bodies lying, measured 1/0}. */
+        final List<double[]> cpRuns = new ArrayList<>();
+        /** The runs: {corpseLieTicks, corpseFadeTicks, measured}: a warm-up, then A B B A. */
+        static final int[][] CP_PLAN = {{60, 40, 0}, {0, 0, 1}, {60, 40, 1}, {60, 40, 1}, {0, 0, 1}};
         final Map<Integer, List<MotionInput.Attack>> evSeenAttacks = new java.util.concurrent.ConcurrentHashMap<>();
         final Map<Integer, List<MotionInput.Hit>> evSeenHits = new java.util.concurrent.ConcurrentHashMap<>();
         volatile boolean evSnap;
@@ -303,7 +346,7 @@ final class HoldLineChecks {
 
         @Override public void cleanup(MinecraftClient c) {
             c.options.hudHidden = false;
-            server(c, b -> {clearFixture(b, "cleanup"); if (site != null) platform(b, site, 12, Blocks.AIR.getDefaultState()); unforce(b); if (b.running) b.campaign.returnLobby();});
+            server(c, b -> {if (cpRow != null) Spec.COMBATDISCIPLINE[0] = cpRow; Houses.forceRise = null; clearFixture(b, "cleanup"); if (site != null) platform(b, site, 12, Blocks.AIR.getDefaultState()); unforce(b); if (b.running) b.campaign.returnLobby();});
         }
 
         @Override public void step(MinecraftClient c, int tick) {
@@ -314,7 +357,9 @@ final class HoldLineChecks {
             if (arcId >= 0 && c.world != null) {var e = c.world.getEntityById(arcId); if (e != null) arcClient.add(new double[]{e.getYaw(), e.getPitch(), e.prevYaw, e.prevPitch, e.getX(), e.getY(), e.getZ(), e.prevX, e.prevY, e.prevZ});}
             if (stage == 99 && !finished) {finished = true; c.setScreen(null); Phase2Checks.finish(c, "holdline");}
             if (evSnap) evSnapshot(); // hl-events: what the client holds, after its own tick (a dead dummy's tables go when its entity unloads)
-            if (tick > 12000 && !finished) {finished = true; report("hl-timeout", false, "stuck in stage " + stage); Phase2Checks.finish(c, "holdline");}
+            int cpId = cpClientId; // hl-corpse: the body as the client holds it
+            if (cpId >= 0 && c.world != null && c.world.getEntityById(cpId) instanceof net.minecraft.entity.LivingEntity body && body.isDead()) cpClientDeath = Math.max(cpClientDeath, body.deathTime);
+            if (tick > 16000 && !finished) {finished = true; report("hl-timeout", false, "stuck in stage " + stage); Phase2Checks.finish(c, "holdline");}
         }
 
         /** hl-mirror, on the client: the preview's places from the markers and the group card, against the server's. Waits (up to 200 client ticks) for the state packet to show the whole group. */
@@ -336,7 +381,7 @@ final class HoldLineChecks {
             if (player == null || stage == 99) return;
             if (stage == 73 && arcTarget != null) arcAim = Projectiles.aim(arcTarget.mob); // where the battle aimed this tick, before the pins move the dummy on
             hold(); // the pinned enemies of hl-raise and hl-crawl stand where they were put
-            try {stages(b); if (stage >= 40) shieldStages(b); if (stage >= 70) arcStages(b); if (stage >= 80) impactStages(b); if (stage >= 100) eventStages(b);} catch (RuntimeException e) {report("hl-exception", false, "stage " + stage + ": " + e); e.printStackTrace(); next(b, 99);}
+            try {stages(b); if (stage >= 40) shieldStages(b); if (stage >= 70) arcStages(b); if (stage >= 80) impactStages(b); if (stage >= 100 && stage < 120) eventStages(b); if (stage >= 120) corpseStages(b);} catch (RuntimeException e) {report("hl-exception", false, "stage " + stage + ": " + e); e.printStackTrace(); next(b, 99);}
         }
 
         void stages(GravesAndGlory.Battle b) {
@@ -352,7 +397,7 @@ final class HoldLineChecks {
                     lineAt = ground(b, g[0] + 20.5, g[2] - 3.5); blockAt = ground(b, g[0] + 20.5, g[2] + 5.5);
                     cameraAt = new Vec3d(g[0] + 28, lineAt.y + 2.2, g[2] + 1);
                     var p = sp(b); p.changeGameMode(net.minecraft.world.GameMode.ADVENTURE); b.relocate(p, cameraAt.x, cameraAt.y, cameraAt.z, 90f, 16f);
-                    next(b, 4);
+                    next(b, corpseOnly ? 120 : 4);
                 }
                 case 4 -> {
                     if (since(b) < 40) return; // the client has the chunks round the camera
@@ -1434,7 +1479,7 @@ final class HoldLineChecks {
             }
         }
         void evCheck(boolean ok, String why) {evPass &= ok; evWhy.add(why + "=" + ok);}
-        void evFinish(GravesAndGlory.Battle b) {evSnap = false; report("hl-events", evPass, String.join("; ", evWhy)); next(b, 99);}
+        void evFinish(GravesAndGlory.Battle b) {evSnap = false; report("hl-events", evPass, String.join("; ", evWhy)); next(b, 120);}
         /** A hit as the server meant it and as the client holds it: the same kind, zone, weight (want -1: not judged), flags and tick, the bearing within 10 degrees. */
         static boolean same(MotionInput.Hit want, MotionInput.Hit got) {
             return got != null && want.kind().equals(got.kind()) && want.zone().equals(got.zone()) && Math.abs(net.minecraft.util.math.MathHelper.wrapDegrees(want.bearing() - got.bearing())) <= 10
@@ -1703,6 +1748,181 @@ final class HoldLineChecks {
                 default -> {}
             }
         }
+        /** hl-corpse and hl-corpse-load (Task 7): a fallen troop lies, out of the fight, and goes on BattleMath.corpseGoneTick; what lying bodies cost. */
+        void corpseStages(GravesAndGlory.Battle b) {
+            switch (stage) {
+                case 120 -> { // a fresh fixture on the same patch, the camera 24 blocks north of it
+                    if (!b.running || since(b) < 20) {if (since(b) > 2000) {cpCheck(false, "the round never ran for hl-corpse"); cpFinish(b);} return;}
+                    if (patch == null) {cpCheck(false, "no level patch for hl-corpse"); cpFinish(b); return;}
+                    clearFixture(b, "hl-corpse"); crawlers.clear(); archers.clear(); Projectiles.clear(b); b.strikes.clear(); b.clearCorpses();
+                    if (!cpHooked) {cpHooked = true; net.fabricmc.fabric.api.entity.event.v1.ServerLivingEntityEvents.AFTER_DEATH.register((e, src) -> CP_DEATHS.merge(e.getId(), 1, Integer::sum));}
+                    Houses.forceRise = Boolean.FALSE;
+                    cpHome = ground(b, patch[0] + 6, patch[2]);
+                    own.order = "hold"; own.target = cpHome; own.yaw = -90; own.assignments.clear(); own.arrived.clear(); own.shotAt.clear();
+                    dusk.order = "attack"; dusk.assignments.clear(); dusk.shotAt.clear();
+                    var p = sp(b); b.relocate(p, patch[0] + 12, Phase1Checks.top(b, patch[0] + 12, patch[2] - 24) + 6, patch[2] - 24, 0f, 15f);
+                    next(b, 121);
+                }
+                case 121 -> { // the Squire to fall, the other own Squire 6 west, the Dusk Squire 1.8 east of the first
+                    if (since(b) < 40) return; // the client has the chunks round the camera
+                    cpVictim = cpOwn(b, 60, cpHome);
+                    cpBait = cpOwn(b, 61, ground(b, cpHome.x - 6, cpHome.z));
+                    cpHunter = pinned(b, "knight", 62, ground(b, cpHome.x + 1.8, cpHome.z), false);
+                    next(b, 122);
+                }
+                case 122 -> { // the Dusk Squire strikes it down
+                    if (since(b) < 30) return;
+                    cpFielded0 = b.fielded(own).count();
+                    var v = cpVictim.mob; v.setHealth(1f); strike(b, cpHunter, cpVictim, 50f);
+                    cpCheck(v.isDead(), "the Dusk Squire's blow killed the Squire on 1 health");
+                    cpBody0 = v.getPos(); cpClientId = v.getId();
+                    next(b, 123);
+                }
+                case 123 -> { // it lies; then it goes
+                    long n = since(b); var v = cpVictim.mob;
+                    if (!v.isRemoved()) cpLastDeath = v.deathTime; else if (cpGoneAt < 0) cpGoneAt = n;
+                    if (n == 79) {cpAt79 = !v.isRemoved() && v.isDead(); cpDeath79 = v.deathTime;}
+                    if (n == 119) cpAt119 = !v.isRemoved() && v.isDead();
+                    var box = new net.minecraft.util.math.Box(cpBody0, cpBody0).expand(4);
+                    cpItems = Math.max(cpItems, b.world.getEntitiesByClass(net.minecraft.entity.ItemEntity.class, box, e -> true).size());
+                    cpOrbs = Math.max(cpOrbs, b.world.getEntitiesByClass(net.minecraft.entity.ExperienceOrbEntity.class, box, e -> true).size());
+                    if (n >= 1) for (var u : b.units) if ((u.lockedTarget == v || u.mob.getTarget() == v) && cpTargeted.size() < 6) cpTargeted.add(u.spec.id() + " at +" + n);
+                    if (n == 1) {cpHitless = !v.canHit() && !v.isPushable(); cpOutOfUnits = !b.units.contains(cpVictim); cpNoSide = v.getScoreboardTeam() == null; cpFielded1 = b.fielded(own).count();}
+                    if (n == 5) { // an own Squire, AI on but out of the battle's orders and its side (so nothing but a push moves it), 0.15 from the body
+                        var l = tough(b.spawn(own, Campaign.troop("knight"), 63, ground(b, v.getX(), v.getZ() + 0.15))); Phase1Checks.freeze(l);
+                        b.units.remove(l); GravesAndGlory.Battle.leaveSide(l.mob); fixture.add(l); cpLeaner = l;
+                    }
+                    if (n == 10) {cpLean0 = cpLeaner.mob.getPos(); cpBody10 = v.getPos();} // from tick 10: the killing blow's knockback has settled
+                    if (n == 30) {
+                        double lean = distance(cpLeaner.mob.getPos(), cpLean0), body = distance(v.getPos(), cpBody10);
+                        cpCheck(lean < 0.02 && body < 0.02, "a Squire 0.15 from the body moved " + fmt3(lean) + " over 20 ticks and the body " + fmt3(body) + " (want both under 0.02: it blocks and pushes nothing)");
+                    }
+                    if (n < 125) return;
+                    cpClientId = -1;
+                    cpCheck(cpAt79 && cpDeath79 == 79, "the body is in the world and dead on its 79th death tick (death ticks " + cpDeath79 + ")");
+                    cpCheck(cpAt119, "it still lies on its 119th");
+                    cpCheck(cpGoneAt == 120 && cpLastDeath == 119, "removed on tick +" + cpGoneAt + ", last seen lying on death tick " + cpLastDeath + " (want +120, 20 + lie 60 + fade 40; gone by +121)");
+                    cpCheck(cpClientDeath >= 79, "the client held it lying to death tick " + cpClientDeath + " (want 79 or more)");
+                    cpCheck(cpItems == 0 && cpOrbs == 0, "within 4 blocks of it lay " + cpItems + " items and " + cpOrbs + " experience orbs (want none)");
+                    int deaths = CP_DEATHS.getOrDefault(v.getId(), 0);
+                    cpCheck(deaths == 1, "AFTER_DEATH fired " + deaths + " times for it (want 1)");
+                    cpCheck(cpTargeted.isEmpty(), "units that targeted the body after it fell: " + cpTargeted + " (want none)");
+                    cpCheck(cpHitless, "the body cannot be hit (canHit) nor pushed (isPushable)");
+                    cpCheck(cpOutOfUnits && cpNoSide && cpFielded1 == cpFielded0 - 1, "a tick after it fell it is out of Battle.units=" + cpOutOfUnits + ", out of its side team=" + cpNoSide + ", the army fields " + cpFielded1 + " (was " + cpFielded0 + ", want one less)");
+                    next(b, 124);
+                }
+                case 124 -> { // Rise Again: a Revenant of a Graveborn army rises with the roll forced; struck down again it lies
+                    for (int i = 0; i < 6; i++) {var r = pinned(b, "revenant", 70 + i, ground(b, cpHome.x + 4, cpHome.z - 4 + i * 1.5), true); if (i == 0) cpRevenant = r;}
+                    Houses.recompute(dusk);
+                    var r = cpRevenant; int tier = dusk.traits.getOrDefault("graveborn", 0);
+                    Houses.forceRise = Boolean.TRUE; try {fall(b, r);} finally {Houses.forceRise = Boolean.FALSE;}
+                    boolean rose = r.mob.isAlive() && !r.mob.isDead() && r.rose && r.mob.deathTime == 0 && CP_DEATHS.getOrDefault(r.mob.getId(), 0) == 0;
+                    cpCheck(tier >= 1 && rose, "a Revenant of a Graveborn army (tier " + tier + ") struck down with the roll forced rose: alive " + r.mob.isAlive() + ", rose " + r.rose + ", death ticks " + r.mob.deathTime);
+                    fall(b, r);
+                    next(b, 125);
+                }
+                case 125 -> {
+                    if (since(b) < 30) return;
+                    var r = cpRevenant.mob;
+                    cpCheck(!r.isRemoved() && r.isDead() && r.deathTime == 30 && CP_DEATHS.getOrDefault(r.getId(), 0) == 1, "struck down again it lies: in the world " + !r.isRemoved() + ", death ticks " + r.deathTime + " (want 30), AFTER_DEATH " + CP_DEATHS.getOrDefault(r.getId(), 0) + " (want 1)");
+                    clearFixture(b, "hl-corpse"); b.clearCorpses(); cpRow = Spec.COMBATDISCIPLINE[0]; cpRun = 0;
+                    own.order = "hold"; dusk.order = "hold";
+                    cpBegin(b);
+                }
+                case 130 -> { // hl-corpse-load: the corpse rows of this run, then 200 troops, 20 a tick, both armies on Attack toward the middle; the wave begins as they meet
+                    long n = since(b); // the first tick of a stage is since 1
+                    if (n == 1) {
+                        var mid = new Vec3d(patch[0] + 16, patch[1], patch[2]);
+                        own.order = "attack"; own.target = mid; dusk.order = "attack"; dusk.target = mid;
+                        for (var s : new GravesAndGlory.Squad[]{own, dusk}) {s.assignments.clear(); s.arrived.clear(); s.shotAt.clear(); s.chargedAt.clear();}
+                    }
+                    if (n >= 1 && n <= 10) {
+                        for (int j = (int) (n - 1) * 20; j < n * 20; j++) {
+                            int k = j / 2; boolean mine = j % 2 == 0;
+                            double x = patch[0] + (mine ? 1 : 21) + (k / 10) * 1.2, z = patch[2] + (k % 10 - 4.5) * 1.2;
+                            var u = tough(b.spawn(mine ? own : dusk, Campaign.troop("knight"), k, ground(b, x, z))); // AI on; 4000 health, so the scripted falls set the pace, not the blows
+                            fixture.add(u); cpLoad.add(u);
+                        }
+                        return;
+                    }
+                    if (n < 71) return;
+                    cpKilled = 0; cpSamples = 0; cpServerSum = 0; cpLying = 0; Phase2Checks.RenderCost.start(); cpWall0 = System.nanoTime();
+                    next(b, 131); corpseStages(b); // the first death on this tick
+                }
+                case 131 -> { // one death a tick for 200 ticks; measure for 340
+                    long n = since(b);
+                    if (n > 0) {long[] t = b.server.lastTickLengths; cpServerSum += t[(b.server.getTicks() + 99) % 100] / 1e6; cpSamples++;}
+                    if (cpKilled < cpLoad.size()) fall(b, cpLoad.get(cpKilled++));
+                    if (n % 10 == 0) {int lying = 0; for (var u : cpLoad) if (u.mob.isDead() && !u.mob.isRemoved()) lying++; cpLying = Math.max(cpLying, lying);}
+                    if (n < 340) return;
+                    Phase2Checks.RenderCost.on = false;
+                    long frames = Phase2Checks.RenderCost.frames; int[] run = CP_PLAN[cpRun];
+                    double server = cpServerSum / Math.max(1, cpSamples), client = Phase2Checks.RenderCost.sumNs / 1e6 / Math.max(1, frames), worst = Phase2Checks.RenderCost.worstNs / 1e6;
+                    double frame = (System.nanoTime() - cpWall0) / 1e6 / Math.max(1, frames); // the whole frame, wall clock over the frames drawn (the run's fps is uncapped, vsync off)
+                    boolean allDead = cpLoad.stream().noneMatch(u -> u.mob.isAlive());
+                    cpRuns.add(new double[]{run[0], run[1], server, client, frames, worst, cpLying, run[2], allDead ? 1 : 0, cpSamples, frame});
+                    System.out.println(String.format(Locale.ROOT, "[p2] hl-corpse-load run %d (%s, lie %d fade %d): %d troops, %d fell, all dead %b; server tick %.3f ms mean over %d ticks; client frame %.3f ms mean (wall clock / frames); client world render %.3f ms mean, %.3f ms worst over %d frames; at most %d bodies lying",
+                        cpRun, run[2] == 0 ? "warm-up" : run[0] == 0 ? "A" : "B", run[0], run[1], cpLoad.size(), cpKilled, allDead, server, cpSamples, frame, client, worst, frames, cpLying));
+                    b.clearCorpses(); clearFixture(b, "hl-corpse-load"); cpLoad.clear();
+                    next(b, 132);
+                }
+                case 132 -> {
+                    if (since(b) < 40) return;
+                    if (++cpRun < CP_PLAN.length) {cpBegin(b); return;}
+                    Spec.COMBATDISCIPLINE[0] = cpRow; own.order = "hold"; dusk.order = "hold";
+                    double[] a = cpMean(0), bb = cpMean(60);
+                    double rs = bb[0] / a[0], rc = bb[1] / a[1], rf = bb[2] / a[2];
+                    boolean dead = cpRuns.stream().allMatch(r -> r[8] == 1), lay = cpRuns.stream().filter(r -> r[0] == 60 && r[7] == 1).allMatch(r -> r[6] >= 100);
+                    StringBuilder raw = new StringBuilder();
+                    for (int i = 0; i < cpRuns.size(); i++) {var r = cpRuns.get(i); raw.append(String.format(Locale.ROOT, "%s%s(lie %d fade %d): server %.3f ms, frame %.3f ms, world render %.3f ms (worst %.3f) over %d frames, %d lying at most", i == 0 ? "" : "; ", r[7] == 0 ? "warm-up " : r[0] == 0 ? "A " : "B ", (int) r[0], (int) r[1], r[2], r[10], r[3], r[5], (int) r[4], (int) r[6]));}
+                    boolean measured = a[2] > 0 && bb[2] > 0;
+                    report("hl-corpse-load", dead && lay && measured && rs <= 1.10 && rf <= 1.15, String.format(Locale.ROOT,
+                        "200 Squires (100 a side, AI on, both on Attack into each other, 4000 health) on the patch, one falling a tick, all dead within 10 s=%b; the bodies lay (B: 100 or more at once)=%b; mean server tick A %.3f ms, B %.3f ms: B/A %.3f (want 1.10 or less); mean client frame A %.3f ms, B %.3f ms: B/A %.3f (want 1.15 or less); for reference the world render alone A %.3f ms, B %.3f ms: B/A %.3f; runs: %s",
+                        dead, lay, a[0], bb[0], rs, a[2], bb[2], rf, a[1], bb[1], rc, raw));
+                    next(b, 140);
+                }
+                case 140 -> { // a round's end takes a lying body at once
+                    if (since(b) == 1) {cpVictim = cpOwn(b, 60, cpHome); return;}
+                    if (since(b) == 6) {fall(b, cpVictim); return;}
+                    if (since(b) < 36) return;
+                    var v = cpVictim.mob; boolean lying = !v.isRemoved() && v.isDead();
+                    b.campaign.returnLobby(); fixture.clear(); pins.clear();
+                    int left = 0; for (var e : b.world.iterateEntities()) if (ArmyMobs.isTroop(e) && e instanceof net.minecraft.entity.mob.MobEntity m && m.isDead() && !e.isRemoved()) left++;
+                    cpCheck(lying && v.isRemoved() && left == 0, "a Squire's body 30 ticks dead (lying " + lying + ") is gone the moment the round ends (returnLobby): removed " + v.isRemoved() + ", " + left + " dead troops left in the world (want none)");
+                    cpFinish(b);
+                }
+                default -> {}
+            }
+        }
+        /** hl-corpse-load: this run's corpse rows, then its troops (stage 130). */
+        void cpBegin(GravesAndGlory.Battle b) {int[] run = CP_PLAN[cpRun]; Spec.COMBATDISCIPLINE[0] = corpseRow(cpRow, run[0], run[1]); cpLoad.clear(); next(b, 130);}
+        /** A frozen Squire of the commander's army at 4000 health pinned at this point, facing east. */
+        GravesAndGlory.Unit cpOwn(GravesAndGlory.Battle b, int slot, Vec3d at) {
+            var u = tough(b.spawn(own, Campaign.troop("knight"), slot, at)); Phase1Checks.freeze(u);
+            fixture.add(u); pins.add(new Pin(u, at, -90f)); u.deployed = at; Phase2Checks.Engine.apply(u, at, -90f); return u;
+        }
+        /** A fall with no attacker, past the hurt cooldown. */
+        static void fall(GravesAndGlory.Battle b, GravesAndGlory.Unit u) {u.mob.timeUntilRegen = 0; u.mob.hurtTime = 0; u.mob.damage(b.world.getDamageSources().generic(), 10000f);}
+        /** The mean {server ms, client world render ms, client frame ms} of the counted runs with this corpseLieTicks. */
+        double[] cpMean(int lie) {
+            double s = 0, c = 0, f = 0; int n = 0;
+            for (var r : cpRuns) if (r[7] == 1 && r[0] == lie) {s += r[2]; c += r[3]; f += r[10]; n++;}
+            return n == 0 ? new double[]{0, 0, 0} : new double[]{s / n, c / n, f / n};
+        }
+        /** The corpse row with these lie and fade ticks, the rest as it was. */
+        static Spec.CombatDisciplineRow corpseRow(Spec.CombatDisciplineRow row, int lie, int fade) {
+            try {
+                var parts = Spec.CombatDisciplineRow.class.getRecordComponents(); Object[] args = new Object[parts.length]; Class<?>[] types = new Class<?>[parts.length];
+                for (int i = 0; i < parts.length; i++) {
+                    types[i] = parts[i].getType(); String name = parts[i].getName();
+                    args[i] = name.equals("corpseLieTicks") ? Integer.valueOf(lie) : name.equals("corpseFadeTicks") ? Integer.valueOf(fade) : parts[i].getAccessor().invoke(row);
+                }
+                return Spec.CombatDisciplineRow.class.getDeclaredConstructor(types).newInstance(args);
+            } catch (ReflectiveOperationException e) {throw new IllegalStateException(e);}
+        }
+        static String fmt3(double v) {return String.format(Locale.ROOT, "%.3f", v);}
+        void cpCheck(boolean ok, String why) {cpPass &= ok; cpWhy.add(why + "=" + ok);}
+        void cpFinish(GravesAndGlory.Battle b) {Houses.forceRise = null; if (cpRow != null) Spec.COMBATDISCIPLINE[0] = cpRow; cpClientId = -1; report("hl-corpse", cpPass, String.join("; ", cpWhy)); next(b, 99);}
         /** The hl-arc dummy stands here from now on (its pin moves with it). */
         void walk(Vec3d at) {
             if (arcTarget == null) return;

@@ -395,6 +395,14 @@ public final class BattleMathCheck {
         check(!CounterMath.blocked(new CounterMath.Hit(arrowFrom, Set.of("shield", "infantry"), 10, false, false, false, true, false, false), Spec.COUNTERS), "blocked: not with the shield lowered");
         check(!CounterMath.blocked(new CounterMath.Hit(arrowFrom, Set.of("shield", "infantry"), 150, true, false, false, true, false, false), Spec.COUNTERS), "blocked: not from behind");
         check(!CounterMath.blocked(new CounterMath.Hit(arrowFrom, Set.of("infantry"), 10, true, false, false, true, false, false), Spec.COUNTERS), "blocked: not on a troop with no shield");
+        // Task 7: a fallen troop lies whole for 20 + lie ticks, then fades on an eased cosine to nothing at 20 + lie + fade
+        check(BattleMath.corpseAlpha(10, 60, 40) == 1 && BattleMath.corpseAlpha(0, 60, 40) == 1, "corpseAlpha: whole while it falls");
+        check(BattleMath.corpseAlpha(80, 60, 40) == 1, "corpseAlpha: still whole at 20 + lie");
+        check(BattleMath.corpseAlpha(120, 60, 40) == 0 && BattleMath.corpseAlpha(500, 60, 40) == 0, "corpseAlpha: gone at 20 + lie + fade and after");
+        { boolean falls = true; float last = BattleMath.corpseAlpha(80, 60, 40); for (int d = 81; d <= 120; d++) { float fa = BattleMath.corpseAlpha(d, 60, 40); falls &= fa < last && fa >= 0; last = fa; }
+          check(falls, "corpseAlpha: strictly falling from 80 to 120"); }
+        check(Math.abs(BattleMath.corpseAlpha(100, 60, 40) - 0.5f) < 1e-6, "corpseAlpha: half way through the fade is one half (0.5 + 0.5cos)");
+        check(BattleMath.corpseAlpha(20, 0, 0) == 1 && BattleMath.corpseAlpha(21, 0, 0) == 0, "corpseAlpha: no lie and no fade is vanilla's 20-tick fall, then gone");
         System.out.println("BattleMathCheck: " + checks + " checks passed");
     }
 }

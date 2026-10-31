@@ -136,6 +136,21 @@ public final class BattleMath {
     public static final int SWING_RECOVERY_TICKS = 10;
     /** Whether a swing begun on world tick swingTick (-1: none) still plays at world tick now: from that tick through its impactTicks plus SWING_RECOVERY_TICKS. */
     public static boolean swingCurrent(long now, long swingTick, int impactTicks) { return swingTick >= 0 && now >= swingTick && now - swingTick <= (long) impactTicks + SWING_RECOVERY_TICKS; }
+    /** The death tick vanilla removes a mob on, and the length of the fall a troop's corpse plays before it lies (LivingEntity.updatePostDeath). */
+    public static final int DEATH_FALL_TICKS = 20;
+    /** The death tick a troop's corpse is removed on: the vanilla fall, then lie ticks lying whole, then fade ticks fading (CorpseMixin). */
+    public static int corpseGoneTick(int lie, int fade) { return DEATH_FALL_TICKS + Math.max(0, lie) + Math.max(0, fade); }
+    /**
+     * How opaque a troop's corpse is deathTicks after it fell: 1 through DEATH_FALL_TICKS + lie, then an eased fade (0.5 + 0.5cos) to 0 at
+     * DEATH_FALL_TICKS + lie + fade, and 0 after. With no fade it is 1 up to the removal tick and 0 past it. The client fade consumes it.
+     */
+    public static float corpseAlpha(int deathTicks, int lie, int fade) {
+        int start = DEATH_FALL_TICKS + Math.max(0, lie);
+        if (deathTicks <= start) return 1f;
+        if (fade <= 0 || deathTicks >= start + fade) return 0f;
+        double t = (deathTicks - start) / (double) fade;
+        return (float) (0.5 + 0.5 * Math.cos(Math.PI * t));
+    }
     /**
      * The stances a troop shows its clients, in stance_v2's wire order (the byte is the index): none, hold-ready, brace, the formed shield wall,
      * shield-up moving, fall back, run, ranged lowered and ranged aiming (spec 6.4).

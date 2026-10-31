@@ -58,8 +58,8 @@ public final class GravesAndGlory implements ModInitializer {
         for(String cue:new String[]{"battle_intro","unit_reveal","victory","horn_charge","horn_rout","horn_rally"}){var id=new Identifier("gravesandglory",cue);net.minecraft.registry.Registry.register(Registries.SOUND_EVENT,id,SoundEvent.of(id));}
         // The commander actives, once. (The horn cues above are command feedback for the commanding player alone: no horn sounds in the field.)
         Commander.register();
-        // A planted banner block must not outlive the battle in the save.
-        ServerLifecycleEvents.SERVER_STOPPING.register(server -> {if(battle!=null)Abilities.serverStopping(battle);});
+        // A planted banner block must not outlive the battle in the save, and no corpse outlives the server.
+        ServerLifecycleEvents.SERVER_STOPPING.register(server -> {if(battle!=null){Abilities.serverStopping(battle);battle.clearCorpses();}});
         if (BuildMode.active()) BuildMode.init();
         ServerLifecycleEvents.SERVER_STARTED.register(server -> {
             // Only the dedicated Graves and Glory save belongs to this mod.
@@ -751,6 +751,9 @@ public final class GravesAndGlory implements ModInitializer {
             else if(running)campaign.participants.remove(s.owner);
 
         }
+        /** Discards every troop corpse still lying in the battle world (CorpseMixin keeps a dead troop until its corpse rows run out): a round start, the lobby,
+         *  a map switch and server stop leave none behind. Returns how many it took. */
+        int clearCorpses(){List<Entity> dead=new ArrayList<>();for(Entity e:world.iterateEntities())if(ArmyMobs.isTroop(e)&&e instanceof net.minecraft.entity.mob.MobEntity m&&m.isDead()&&!e.isRemoved())dead.add(e);for(Entity e:dead){leaveSide(e);e.discard();}return dead.size();}
         void clearOldUnits(){List<Entity> stale=new ArrayList<>();for(Entity e:world.iterateEntities())if(e.getCommandTags().contains("gravesandglory")||e.getCommandTags().contains("bannerbound")||e.getCommandTags().contains(Projectiles.TAG))stale.add(e);for(Entity e:stale){leaveSide(e);e.discard();}}
         void leave(UUID owner){
             campaign.left(owner);

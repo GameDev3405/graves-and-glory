@@ -177,6 +177,8 @@ final class Tactics {
     static double engageRadius(GravesAndGlory.Battle battle,GravesAndGlory.Unit u,double order){return u.tags.contains("siege")?Math.max(order,Abilities.range(battle,u)):order;}
     static void tick(GravesAndGlory.Battle battle,GravesAndGlory.Unit u,long time){
         hop(u,time); // a wall troop jumping onto its slot on a rise is carried over the edge every tick of the jump
+        if(u.lockedTarget!=null&&!u.lockedTarget.isAlive())u.lockedTarget=null; // a fallen enemy lies a while (Task 7): drop it at once, not on the next beat
+        if(u.mob.getTarget()!=null&&!u.mob.getTarget().isAlive()){u.mob.setTarget(null);u.mob.setAttacking(false);}
         if(time%10!=u.slot%10){brace(battle,u);shieldStance(u);stretch(battle,u,battle.assignment(u),time);return;} // the shield and a wall troop's last stretch every tick; everything else on the unit's 10-tick beat
         u.place=null; // the beat reads the slot again
         var mob=u.mob;var s=u.squad;var a=battle.assignment(u);
