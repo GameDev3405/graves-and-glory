@@ -61,8 +61,8 @@ YARD = ('minecraft:coarse_dirt', 'minecraft:dirt', 3, 'minecraft:stone')
 
 KX0, KX1, KZ0, KZ1 = 9, 23, 24, 44  # Great Keep tower footprint, east of the river leg (bank at x 24)
 COURT = (-23, 21, 23, 47)  # today's ironhold/keep court and walls (x0, z0, x1, z1)
-RIVER_PTS = [[0, -250, 11], [0, -120, 11], [0, 12, 11], [6, 16, 7], [27.5, 16, 7], [27.5, 52, 6], [6, 52, 7], [0, 56, 11],
-             [0, 200, 11]]  # centre line and width: the bend around the keep court (2026-10-31)
+RIVER_PTS = [[0, -250, 11], [0, -120, 11], [0, 12, 11], [6, 16, 7], [27.5, 16, 7], [27.5, 52, 6], [6, 52, 7], [0, 56, 11], [0, 100, 11],
+             [-4, 148, 11], [-1, 175, 12], [4, 212, 11], [1, 250, 11]]  # centre line and width: the bend around the keep court (2026-10-31)
 INNER = 71  # inner curtain closures: walk at 72 like the outer curtain
 MIRE = (-185, -125, -110, 110)  # x0, x1, z0, z1 (layout zone table)
 SUPPLY_YARDS = ((-155, -125, -90, -54), (-140, -110, 54, 90))  # west supply yards (x0, x1, z0, z1), dry pads
@@ -97,7 +97,7 @@ def fortress(x, z):
         return t
     if -78 <= x <= -66 and 92 <= az <= 100:  # west corner towers of the north and south curtains, cracked tops
         return (76 - int(_hash('corner', x, z) * 3) if (x in (-78, -66) or az in (92, 100)) else 76, WALL, None)
-    if az > 98:
+    if az > 98 or (z >= 80 and x < -78):  # rows 5 and 6 west of the corner tower belong to the south flank
         return flank(x, z, (GROUND, GRASS, None))
     if -69 <= x <= 102 and 94 <= az <= 98:
         return (71, WALL, None)  # north and south curtains; the river cuts the water-gate arch, a lintel spans it
@@ -168,7 +168,7 @@ def field(x, z):
         return (61 if d >= 2.5 else 62, MUD, None)
     if d > -2.2:
         return (min(top, 62 if d > -0.8 else 63), GRASS, None)
-    if abs(z) > 98:
+    if abs(z) > 98 or z >= 80:
         return flank(x, z, (top, GRASS, None))
     return (top, GRASS, None)
 
@@ -245,8 +245,66 @@ def flank(x, z, base):
     return (top, mat, clear)
 
 
+
+POINT_C = (29, 130)
+GALLOWS_RIDGE = (-215, -108, 112, 200)  # top about 72 (x0, x1, z0, z1)
+WATCH_HILL = (45, 100, 140, 200)  # Watch Hill shoulder, rising SE to about 72
+CHAPEL = (-165, -145, 140, 156)
+GALLOWS = ((-190, 130), (-120, 175))
+CHAPEL_FLOOR = ('minecraft:cobblestone', 'minecraft:stone', 2, 'minecraft:stone')
+CPAD = ('minecraft:coarse_dirt', 'minecraft:gravel', 2, 'minecraft:stone')
+LOG = ('minecraft:dark_oak_log', 'minecraft:dark_oak_log', 0, 'minecraft:dark_oak_log')
+
+
+def landform(x, z, box, rise, tag):
+    """A hill on a box: the edge warped by 10 blocks, a long slope (12) where the ground is soft and a short one (6)
+    with bare rock where it is not, a crest that rolls by a block or two. (height, crag) or None away from it."""
+    b = _box_dist(x, z, box) + 10 * terrain.fbm(terrain.seed_of(tag + '-edge'), x, z, 18, 3)
+    if b <= -12:
+        return None
+    rock = terrain.fbm(terrain.seed_of(tag + '-rock'), x, z, 7, 2)
+    span = 6 if rock > 0.18 else 12
+    h = GROUND + round(rise * _smooth((b + span) / span)) + round(1.6 * terrain.fbm(terrain.seed_of(tag + '-top'), x, z, 11, 2))
+    return h, (rock > 0.18 and -span + 2 < b < 1)
+
+
+def _south_ground(x, z, top):
+    for box, rise, tag in ((GALLOWS_RIDGE, 9, 'gallows'), (WATCH_HILL, 9, 'watch-hill')):
+        lf = landform(x, z, box, rise, tag)
+        if lf and lf[0] > top:
+            return lf
+    return top, False
+
+
 def south_flank(x, z, base):
-    return base
+    """South flank (layout D6a: high): dry ground at 63..64 rising to Gallows Ridge (72, the chapel shell and two
+    gallows on it) and the Watch Hill shoulder (72); point C on a level, trodden pad at 63 under its ring; the river
+    in its cut channel, the banks rising toward the South Ridge rim."""
+    top, mat, clear = base
+    for gx, gz in GALLOWS:
+        if (x, z) == (gx, gz):
+            return (_south_ground(x, z, top)[0] + 5, LOG, None)  # gallows post, the beam is a fill op
+    if CHAPEL[0] - 1 <= x <= CHAPEL[1] + 1 and CHAPEL[2] - 1 <= z <= CHAPEL[3] + 1:
+        return (72, CHAPEL_FLOOR, None)  # the chapel's floor, levelled into the ridge
+    dC = math.hypot(x - POINT_C[0], z - POINT_C[1])
+    if dC <= 14 + 4 * terrain.fbm(terrain.seed_of('yard-c'), x, z, 7, 2) + 2 * terrain.fbm(terrain.seed_of('yard-c2'), x, z, 3, 1):
+        return (GROUND, CPAD, None)
+    d, wd = terrain.nearest(RIVER_PTS, x, z)
+    if z > 170 and d > wd / 2 + 1:
+        rise = _smooth((z - 170) / 36) * _smooth(1 - (d - wd / 2) / 70)
+        top = max(top, GROUND + round(7 * rise + 1.5 * terrain.fbm(terrain.seed_of('gorge-s'), x, z, 7, 2)))
+    if d <= wd / 2 + 2.5 + 1.5 * terrain.fbm(terrain.seed_of('bank'), x, z, 8, 2):
+        return (max(top, GROUND), BANK, None)
+    h, crag = _south_ground(x, z, top)
+    if x <= -98 and h > top:  # the ridge foot grades down into the Mire instead of standing on its edge
+        cap = 63 + max(0.0, -mire_depth(x, z) - 2.2) * 0.7
+        if h > cap:
+            h, crag = max(top, round(cap)), False
+    if dC <= 19.5:
+        return (min(h, GROUND), mat, clear)  # nothing stands into the C capture ring (y 64..67 within 17)
+    return (h, CRAG if crag else mat, clear)
+
+
 
 def column(x, z):
     t = _tower(x, z, WATCHTOWERS, 77, 'watch')
@@ -478,6 +536,120 @@ def _north_surface():
     ]
 
 
+C_BOX = {'min': [8, 109], 'max': [50, 151]}
+SOUTH_REGIONS = ((-350, 80, -82, 250), (-81, 99, 94, 250))
+
+
+def _stubs(center, arcs, r0, tag, block):
+    ops = []
+    for a0, a1 in arcs:
+        pts = []
+        for k in range(4):
+            ang = math.radians(a0 + (a1 - a0) * k / 3)
+            r = r0 + _hash(tag, a0, k) * 1.5
+            pts.append([round(center[0] + r * math.cos(ang), 1), round(center[1] + r * math.sin(ang), 1),
+                        64 + round(_hash(tag + '-top', a0, k) * 2)])
+        ops.append(({'op': 'wall', 'note': f'{tag} wall stub ({a0}..{a1} deg), broken', 'points': pts,
+                     'thickness': 1.4, 'floor': 57, 'block': block, 'seed': f'{tag}{a0}'}, None))
+    return ops
+
+
+def _south_shape():
+    ops = []
+    for region in SOUTH_REGIONS:
+        ops.append(({'op': 'noise', 'note': 'south flank swells: dry high ground, the ridge and the shoulder',
+                     'amplitude': 1.3, 'scale': 18, 'octaves': 3, 'offset': 0.2, 'clamp': [63, 75],
+                     'only': [W + 'grass_block'], 'exclude': [C_BOX], 'seed': 'field-s'}, region))
+        ops.append(({'op': 'erode', 'note': 'south flank: settle the ridge and shoulder slopes', 'mode': 'thermal',
+                     'iterations': 4, 'talus': 1.1, 'rate': 0.5, 'jitter': 0.35, 'clamp': [62, 76],
+                     'only': [W + n for n in ('grass_block', 'stone')], 'exclude': [C_BOX], 'seed': 'settle-s'},
+                    region))
+    return ops
+
+
+def _south_water():
+    return [({'op': 'river', 'note': 'south ford: gravel shoal 1 deep across the river at z 130, banks eased',
+              'points': [[-10, 129.5], [-5, 130.5], [0, 129], [6, 130.5]], 'width': 8, 'water': 59, 'depth': 1,
+              'floor': 55, 'bank': 7, 'bed': _mix(('gravel', 4), ('cobblestone', 1), ('clay', 1)),
+              'bankSurface': _mix(('gravel', 3), ('coarse_dirt', 2), ('andesite', 1)), 'wobble': 1.2,
+              'wobbleScale': 4, 'seed': 'ford-s'}, None)]
+
+
+def _south_paths():
+    lane = {'op': 'path', 'width': 5, 'falloff': 2, 'surface': _mix(('dirt_path', 3), ('coarse_dirt', 2), ('gravel', 1)),
+            'edge': _mix(('coarse_dirt', 2), ('gravel', 1)), 'edgeDensity': 0.5, 'wobble': 2.0, 'wobbleScale': 6}
+    track = {'op': 'path', 'width': 3, 'falloff': 1.5, 'surface': _mix(('dirt_path', 2), ('coarse_dirt', 2),
+             ('grass_block', 1)), 'wobble': 1.2, 'wobbleScale': 5}
+    return [
+        (dict(lane, note='south lane: camp, over Gallows Ridge past the chapel, down to the south ford and C',
+              seed='lane-s', points=[[-300, 38], [-277, 60], [-247, 82], [-228, 95], [-219, 101], [-205, 109],
+                                     [-192, 117], [-178, 125], [-160, 134], [-138, 138], [-112, 142], [-92, 140],
+                                     [-75, 137], [-59, 134], [-20, 130]]), None),
+        (dict(track, note='ridge foot to the south sally gap, round the fosse end (outside the curtain)',
+              seed='sally-s', points=[[-60, 136], [-66, 113], [-84, 105], [-88, 92], [-87, 76], [-84, 62]]), None),
+        ({'op': 'path', 'note': 'south sally causeway over the fosse at 63', 'points': [[-85, 62], [-74, 62]],
+          'width': 3, 'y': 63, 'surface': _mix(('cobblestone', 2), ('coarse_dirt', 1)),
+          'under': _mix(('cobblestone', 2), ('dirt', 1)), 'seed': 'sallyc-s'}, None),
+        (dict(track, note='C to the south postern', seed='postern-s',
+              points=[[44, 99], [46, 108], [40, 118], [33, 126]]), None),
+    ]
+
+
+def _chapel():
+    """The ridge chapel: a roofless stone shell, walls broken between 75 and 82, the west gable standing tallest,
+    a west door, a chancel gap in the east wall."""
+    x0, x1, z0, z1 = CHAPEL
+    corners = ((x0, z0), (x1, z0), (x1, z1), (x0, z1))
+    pts = []
+    for i, ((ax, az), (bx, bz)) in enumerate(zip(corners, corners[1:] + corners[:1])):
+        n = 4 if ax != bx else 3
+        for k in range(n):
+            px, pz = ax + (bx - ax) * k / n, az + (bz - az) * k / n
+            top = 75 + round(_hash('chapel', i, k) * 5)
+            if px == x0:
+                top = 82 if k in (1, 2) or n == 3 and k == 0 else 79  # west gable
+            pts.append([round(px, 1), round(pz, 1), top])
+    mid = (z0 + z1) // 2
+    return [({'op': 'wall', 'note': 'Gallows Ridge chapel, roofless shell', 'points': pts, 'closed': True,
+              'thickness': 1, 'floor': 57,
+              'block': _mix(('stone_bricks', 3), ('mossy_stone_bricks', 2), ('cracked_stone_bricks', 2),
+                            ('cobblestone', 1)),
+              'exclude': [{'min': [x0, mid - 1], 'max': [x0, mid + 1]}, {'min': [x1, mid - 2], 'max': [x1, mid + 3]}],
+              'seed': 'chapel'}, None)]
+
+
+def _south_built():
+    ops = _chapel()
+    for gx, gz in GALLOWS:
+        gy = _south_ground(gx, gz, GROUND)[0] + 5
+        ops.append(({'op': 'fill', 'note': f'gallows beam ({gx},{gz})', 'min': [gx + 1, gy, gz],
+                     'max': [gx + 2, gy, gz], 'block': W + 'dark_oak_log[axis=x]'}, (gx + 1, gz, gx + 2, gz)))
+    ops += _stubs(POINT_C, ((95, 135), (205, 245), (320, 350)), 21, 'cyard',
+                  _mix(('cobblestone', 3), ('mossy_cobblestone', 1), ('andesite', 1)))
+    ops.append(({'op': 'fill', 'note': 'south water gate: arch lintel over the river, y 68..71', 'min': [-6, 68, 94],
+                 'max': [6, 71, 98], 'block': W + 'stone_bricks'}, (-6, 94, 6, 98)))
+    ops.append(({'op': 'clear', 'note': 'south postern through the curtain, clear y 64..70', 'min': [40, 64, 94],
+                 'max': [48, 70, 98]}, (40, 94, 48, 98)))
+    return ops
+
+
+def _south_surface():
+    return [
+        ({'op': 'breakup', 'note': 'ridge and shoulder: rock broken with andesite, cobble and gravel',
+          'replace': [W + 'stone'], 'mix': _mix(('andesite', 2), ('cobblestone', 1), ('gravel', 1), ('tuff', 1)),
+          'density': 0.5, 'scale': 2, 'seed': 'crag-s'}, (-350, 80, 94, 250)),
+        ({'op': 'breakup', 'note': 'dry high ground: thin grass, coarse dirt and stone showing',
+          'replace': [W + 'grass_block'], 'mix': _mix(('coarse_dirt', 3), ('rooted_dirt', 1), ('stone', 1)),
+          'density': 0.12, 'scale': 4, 'seed': 'dry-s'}, (-81, 99, 94, 250)),
+        ({'op': 'breakup', 'note': 'chapel floor: broken flags', 'replace': [W + 'cobblestone'],
+          'mix': _mix(('mossy_cobblestone', 2), ('gravel', 1), ('stone_bricks', 1), ('grass_block', 1)),
+          'density': 0.4, 'scale': 2, 'seed': 'chapelfloor'}, (CHAPEL[0], CHAPEL[2], CHAPEL[1], CHAPEL[3])),
+        ({'op': 'breakup', 'note': 'C pad: trodden ground', 'replace': [W + 'coarse_dirt'],
+          'mix': _mix(('gravel', 2), ('dirt_path', 1), ('grass_block', 1)), 'density': 0.3, 'scale': 2,
+          'seed': 'cpad'}, (10, 111, 48, 149)),
+    ]
+
+
 def features():
     """Every helper op on the map, in apply order. Each is clipped to the section it is planned for; noise, erode
     and breakup carry a region (x0, z0, x1, z1) that is intersected with the section."""
@@ -491,6 +663,7 @@ def features():
                'talus': 1.0, 'rate': 0.5, 'jitter': 0.3, 'only': [W + 'grass_block', W + 'mud'], 'seed': 'settle'},
               (-350, -250, -98, 280)))
     f += _north_shape()
+    f += _south_shape()
     # -- water: bog pools, the flooded trench in the Mire, the fosse, the river
     f += [(op, None) for op in _pools()]
     f += _trench150()
@@ -513,6 +686,7 @@ def features():
     f.append(({'op': 'fill', 'note': 'B deck: spruce planks at 63 over the channel', 'min': [-5, 63, -12],
                'max': [5, 63, 12], 'block': W + 'spruce_planks'}, (-5, -12, 5, 12)))
     f += _north_water()
+    f += _south_water()
     # -- roads: the King's Road on the ground, across the Mire on a causeway at 63, on to the front door
     road = {'width': 7, 'surface': W + 'dirt_path', 'edge': _mix(('coarse_dirt', 2), ('gravel', 1)), 'falloff': 2,
             'edgeDensity': 0.5, 'wobble': 3.0, 'wobbleScale': 5}
@@ -523,6 +697,7 @@ def features():
     f.append((dict(road, op='path', note="King's Road, killing field to the fosse causeway",
                    points=[[-120, 0], [-83, 0]], seed='road-e'), None))
     f += _north_paths()
+    f += _south_paths()
     spur = {'op': 'path', 'width': 4, 'falloff': 1.5, 'surface': _mix(('dirt_path', 3), ('coarse_dirt', 1)),
             'under': W + 'dirt', 'wobble': 0.5}
     f.append((dict(spur, note='supply spur SW, raised track over the Mire', seed='spur-sw',
@@ -563,6 +738,7 @@ def features():
                'points': [[-38, 29], [-24, 29]], 'thickness': 3, 'floor': 57, 'top': INNER,
                'block': W + 'stone_bricks', 'exclude': [gate, court]}, None))
     f += _north_built()
+    f += _south_built()
     # -- surfaces: blend the boundaries so no material ends on a ruler line
     f.append(({'op': 'breakup', 'note': 'river banks: mud, gravel and moss near the water',
                'replace': [W + n for n in ('mud', 'packed_mud', 'andesite', 'coarse_dirt', 'grass_block')],
@@ -593,13 +769,14 @@ def features():
                'mix': _mix(('gravel', 2), ('dirt_path', 1), ('dirt', 1)), 'density': 0.3, 'scale': 2,
                'seed': 'yards'}, (-160, -95, -105, 95)))
     f += _north_surface()
+    f += _south_surface()
     return f
 
 
 def _clip(op, region, box):
     """The op clipped to the section box (x0, z0, x1, z1), or None when it cannot touch the section."""
     x0, z0, x1, z1 = box
-    if op['op'] == 'fill':
+    if op['op'] in ('fill', 'clear'):
         (a, _, b), (c, _, d) = op['min'], op['max']
         lo, hi = (max(a, x0), max(b, z0)), (min(c, x1), min(d, z1))
         if lo[0] > hi[0] or lo[1] > hi[1]:
@@ -625,7 +802,8 @@ def _clip(op, region, box):
 
 CORE = ('E3', 'E4', 'F3', 'F4')
 GROUPS = {'core': CORE, 'mire': ('C3', 'C4', 'D3', 'D4'),
-          'north': ('C1', 'D1', 'E1', 'F1', 'G1', 'C2', 'D2', 'E2', 'F2')}
+          'north': ('C1', 'D1', 'E1', 'F1', 'G1', 'C2', 'D2', 'E2', 'F2'),
+          'south': ('C5', 'D5', 'E5', 'F5', 'G5', 'C6', 'D6', 'E6', 'F6', 'G6')}
 REOPEN = ("Kort's rulings of 2026-10-30: east curtain to x 98 (x 72 pieces dropped), inner ward closed to the river "
           'cliffs, Great Keep tower out of the river, stations awaiting the modes lane; 2026-10-31: the river bends '
           'around the keep court; 2026-10-31 milestone 2A.3: river, banks and walls rebuilt with the terrain helpers')
@@ -634,6 +812,10 @@ REOPEN = ("Kort's rulings of 2026-10-30: east curtain to x 98 (x 72 pieces dropp
 REOPEN_MIRE = ('2026-10-31 milestone 2A.3 flank pass: the trenches at x -150 and -105 redug by hand (wandering line, '
                'uneven width and depth, slumped lips, run ends short of the crossings) and the Mire west edge '
                'roughened into lobes and bays; positions unchanged')
+
+
+REOPEN_SOUTH = ('2026-10-31 milestone 2A.3 south flank pass: the ridge-foot track to the south sally gap and its '
+                'causeway over the fosse at z 62 (the mirror of the north one), routed outside the curtain')
 
 
 def section_plan(m, sid, world):
@@ -676,7 +858,7 @@ def section_plan(m, sid, world):
         'operations': ops,
     }
     if done:
-        p['reopen'] = REOPEN_MIRE if sid in GROUPS['mire'] else REOPEN
+        p['reopen'] = REOPEN_MIRE if sid in GROUPS['mire'] else REOPEN_SOUTH if sid == 'E4' else REOPEN
     return p
 
 

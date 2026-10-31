@@ -1373,6 +1373,21 @@
       "docs/maps/ironhold/sections/ironhold-E4-iso.png"
      ],
      "notes": "Rebuilt with helpers: fosse river op with the ragged outer lip; front-door curtain stretch z 18..27 and the south inner closure (gate end to z 30) as wall ops; field swells; Outer Yard breakup. Positions unchanged; locks ok."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-10-31T12:24:31Z",
+     "digest": "a5b2a17a5c70c7f5241f41c67f270d10d6db942f8557381457a810c70de1e5c9",
+     "plans": [
+      "docs/maps/ironhold/sections/E4-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-E4-top.png",
+      "docs/maps/ironhold/sections/ironhold-E4-iso.png"
+     ],
+     "notes": "Reopened: south ridge-foot track and the fosse causeway at z 62, mirror of the north sally gap; nothing else changed. Locks ok."
     }
    ]
   },
@@ -1596,8 +1611,24 @@
      143
     ]
    },
-   "status": "todo",
-   "reviews": []
+   "status": "blockout",
+   "reviews": [
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-10-31T12:23:50Z",
+     "digest": "5b6645510376bd851da4aa374d0bc9496b89e5f91723f163b85f8b0ff4c89204",
+     "plans": [
+      "docs/maps/ironhold/sections/C5-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-C5-top.png",
+      "docs/maps/ironhold/sections/ironhold-C5-iso.png"
+     ],
+     "notes": "Mire south lobe grades up into the Gallows Ridge foot (no cliff at the mud edge); west watchtower shell; south lane climbs the ridge; first gallows on the slope; chapel corner at the SE. Locks ok."
+    }
+   ]
   },
   {
    "id": "D5",
@@ -1614,8 +1645,24 @@
      143
     ]
    },
-   "status": "todo",
-   "reviews": []
+   "status": "blockout",
+   "reviews": [
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-10-31T12:23:54Z",
+     "digest": "f2d43332a9c3aa350d97e84c8d9df7d3419d0bcd08b61f1ab099a6e20e59a611",
+     "plans": [
+      "docs/maps/ironhold/sections/D5-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-D5-top.png",
+      "docs/maps/ironhold/sections/ironhold-D5-iso.png"
+     ],
+     "notes": "Killing field south: Mire tail and pools, ridge foot rising SE, lane past the chapel's north side, corner tower and curtain at the north edge. Locks ok."
+    }
+   ]
   },
   {
    "id": "E5",
@@ -1632,8 +1679,24 @@
      143
     ]
    },
-   "status": "todo",
-   "reviews": []
+   "status": "blockout",
+   "reviews": [
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-10-31T12:23:58Z",
+     "digest": "ce459093d13e1c53e5f00e73e8531f1cc589c40c5d1453c3fc96721df7eda312",
+     "plans": [
+      "docs/maps/ironhold/sections/E5-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-E5-top.png",
+      "docs/maps/ironhold/sections/ironhold-E5-iso.png"
+     ],
+     "notes": "South sally: ridge-foot track round the fosse end outside the curtain, lane to the ford, corner tower and today's curtain piece kept. Locks ok."
+    }
+   ]
   },
   {
    "id": "F5",
@@ -1650,8 +1713,24 @@
      143
     ]
    },
-   "status": "todo",
-   "reviews": []
+   "status": "blockout",
+   "reviews": [
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-10-31T12:24:02Z",
+     "digest": "0ce4023accb7446de68f4a59cb1e58249369ffa042c0b7028baab60016ba2984",
+     "plans": [
+      "docs/maps/ironhold/sections/F5-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-F5-top.png",
+      "docs/maps/ironhold/sections/ironhold-F5-iso.png"
+     ],
+     "notes": "South water gate: lintel over the river, river leaving the curtain in a gentle meander, south ford a gravel shoal with eased banks; C pad edge broken by noise. Ford still reads a little round; detail pass to break it. Locks ok."
+    }
+   ]
   },
   {
    "id": "G5",
@@ -1668,8 +1747,24 @@
      143
     ]
    },
-   "status": "todo",
-   "reviews": []
+   "status": "blockout",
+   "reviews": [
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-10-31T12:24:07Z",
+     "digest": "ee1ff127ce5bc1d6e5a25ffdfd288e42093bcd3cfc7b666466265d8feea72dcb",
+     "plans": [
+      "docs/maps/ironhold/sections/G5-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-G5-top.png",
+      "docs/maps/ironhold/sections/ironhold-G5-iso.png"
+     ],
+     "notes": "Point C on a ragged trodden pad at 63 under its ring, three broken yard-wall stubs at r 21, postern cut through the curtain at x 40..48 with its track. Locks ok."
+    }
+   ]
   },
   {
    "id": "H5",
@@ -1794,8 +1889,24 @@
      207
     ]
    },
-   "status": "todo",
-   "reviews": []
+   "status": "blockout",
+   "reviews": [
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-10-31T12:24:11Z",
+     "digest": "1a438b317c4d520e5eea2416613df7f80e0d612de8344eec6c9330cc00bf015a",
+     "plans": [
+      "docs/maps/ironhold/sections/C6-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-C6-top.png",
+      "docs/maps/ironhold/sections/ironhold-C6-iso.png"
+     ],
+     "notes": "Gallows Ridge west: rolling high ground at 70..73, crag breaks on the west face, chapel shell corner. Locks ok."
+    }
+   ]
   },
   {
    "id": "D6",
@@ -1812,8 +1923,24 @@
      207
     ]
    },
-   "status": "todo",
-   "reviews": []
+   "status": "blockout",
+   "reviews": [
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-10-31T12:24:15Z",
+     "digest": "fad909b733e1e385b38abe835a90be5703b3708f19ccb4f0fdfa789eb765e6c6",
+     "plans": [
+      "docs/maps/ironhold/sections/D6-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-D6-top.png",
+      "docs/maps/ironhold/sections/ironhold-D6-iso.png"
+     ],
+     "notes": "Gallows Ridge: roofless chapel on a levelled floor at 72 (west gable to 82, west door, chancel gap), second gallows, crag faces on the north and south slopes. Locks ok."
+    }
+   ]
   },
   {
    "id": "E6",
@@ -1830,8 +1957,24 @@
      207
     ]
    },
-   "status": "todo",
-   "reviews": []
+   "status": "blockout",
+   "reviews": [
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-10-31T12:24:19Z",
+     "digest": "69c09451993b4ec1070c7ca4e0af93d1f247ee595c1c3c6782c98069ae88380a",
+     "plans": [
+      "docs/maps/ironhold/sections/E6-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-E6-top.png",
+      "docs/maps/ironhold/sections/ironhold-E6-iso.png"
+     ],
+     "notes": "South ford road: ridge's east fall to the river flats, banks rising toward the south rim. Plain for now; detail pass adds cover. Locks ok."
+    }
+   ]
   },
   {
    "id": "F6",
@@ -1848,8 +1991,24 @@
      207
     ]
    },
-   "status": "todo",
-   "reviews": []
+   "status": "blockout",
+   "reviews": [
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-10-31T12:24:23Z",
+     "digest": "e962ff7ceb846e74a8b0a5b2f31b0aadf5700c01a3408ff69f3096b8034eabc6",
+     "plans": [
+      "docs/maps/ironhold/sections/F6-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-F6-top.png",
+      "docs/maps/ironhold/sections/ironhold-F6-iso.png"
+     ],
+     "notes": "South ford reach: river meanders in its cut channel (x -4..4), banks rise toward the rim. Locks ok."
+    }
+   ]
   },
   {
    "id": "G6",
@@ -1866,8 +2025,24 @@
      207
     ]
    },
-   "status": "todo",
-   "reviews": []
+   "status": "blockout",
+   "reviews": [
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-10-31T12:24:27Z",
+     "digest": "04bedff5b2989e7e6a1c9e195c1e8c0bda1a9d395bc0a33274b8b0ae918814d2",
+     "plans": [
+      "docs/maps/ironhold/sections/G6-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-G6-top.png",
+      "docs/maps/ironhold/sections/ironhold-G6-iso.png"
+     ],
+     "notes": "Watch Hill shoulder rising to about 72, rock showing on its west face; the shoulder runs on toward G7. Locks ok."
+    }
+   ]
   },
   {
    "id": "H6",
