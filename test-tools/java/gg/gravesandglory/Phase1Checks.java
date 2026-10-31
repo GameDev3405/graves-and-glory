@@ -1108,11 +1108,12 @@ public final class Phase1Checks implements ClientModInitializer {
                 if(afterAt<0){if(c.currentScreen instanceof CampScreen s&&s.page.equals("results")||++waited>=60){afterAt=tick;CampScreen.open("home");}}
                 else if(tick==afterAt+20)raiseCampaign(c);
                 else if(tick==afterAt+25){String ride=march(c);
-                    report("p1-tutorial-clear",clearOk&&CampaignClient.profile.campaignCleared==1&&"Ride to The Training Field".equals(beforeRide)&&"Ride to The Training Field".equals(ride),clearWhy+"; client campaignCleared "+CampaignClient.profile.campaignCleared+"; camp home before the battle: "+beforeWhy+"; after the victory: "+describe(ride));
+                    report("p1-tutorial-clear",clearOk&&CampaignClient.profile.campaignCleared==1&&"Ride to The Training Field".equals(beforeRide)&&("Ride to "+Spec.CAMPAIGNBATTLES[1].name()).equals(ride),clearWhy+"; client campaignCleared "+CampaignClient.profile.campaignCleared+"; camp home before the battle: "+beforeWhy+"; after the victory: "+describe(ride));
                     shot(c,"tutorial-camp-after");
                 }
                 else if(tick==afterAt+30){var ride=c.currentScreen instanceof CampScreen s&&s.home!=null?s.home.button("ride"):null;
-                    if(ride!=null&&march(c)!=null){ride.onPress();server(c,b->next(b,9));}
+                    // plan 2C.3: once battle 1 is won the Ride plate leads on to battle 2, so the replay asks for battle 1 by id, as the march page will (2C.5)
+                    if(ride!=null&&march(c)!=null&&c.currentScreen instanceof CampScreen s&&s.action("campaign:"+Spec.CAMPAIGNBATTLES[0].id()))server(c,b->next(b,9));
                     else{replay.commands="no Ride plate to replay from";replay.over=true;c.setScreen(null);server(c,b->next(b,12));}
                     CampaignClient.homeMode="skirmish";
                 }

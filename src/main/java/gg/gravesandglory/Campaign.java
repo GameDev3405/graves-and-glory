@@ -64,6 +64,8 @@ public final class Campaign {
     String difficulty="normal";
     /** The Long March battle being fought (a Spec.CAMPAIGNBATTLES row), or null in practice, pad matches and rooms. Cleared in returnLobby. */
     Spec.CampaignBattlesRow activeBattle;
+    /** The bonus objective of activeBattle (plan 2C.3), or null. Set in soloStart, cleared in returnLobby; the round's events feed it from plan 2C.4. */
+    MarchMath.Tracker bonusTracker;
     /** A battle asked for before its map was built, and the commander who asked; it starts on the first ready tick. */
     Spec.CampaignBattlesRow pendingBattle;UUID pendingCommander;
     /** The winner of the last finished round: 0 Dawn, 1 Dusk, -1 a draw (and before any round has finished). The bot simulation sets -2 before each of its rounds. */
@@ -86,9 +88,9 @@ public final class Campaign {
         } catch(java.io.IOException migration) { throw new IllegalStateException("Could not upgrade legacy commander data; original files were kept",migration); }
         try{JsonObject marker=JsonParser.parseString(Files.readString(layoutFile())).getAsJsonObject();if(marker.get("layout").getAsString().equals(LayoutMarker.LAYOUT))map=marker.get("map").getAsInt();}catch(Exception ignored){}CampaignMaps.select(map);
     }
-    /** A commander's collection, read once: a schema-1 file is upgraded in place first (spec 6.3; its original bytes stay as <uuid>.v1.json), then the profile is sanitized. A new commander owns the 10 Commons and flies the starter banner. */
+    /** A commander's collection, read once: a schema-1 or schema-2 file is upgraded in place to schema 3 first (spec 6.3, plan 2C.3; its original bytes stay as <uuid>.v1.json or <uuid>.v2.json), then the profile is sanitized. A new commander owns the 10 Commons and flies the starter banner. */
     Profile profile(UUID id){return profiles.computeIfAbsent(id,key->{Path file=directory.resolve(key+".json");if(!Files.exists(file)){Profile fresh=new Profile();fresh.sanitize();return fresh;}
-        try{Profile p=ProfileMigration.upgradeFile(file,text->JSON.fromJson(text,ProfileMigration.V1.class),JSON::toJson,RosterMath.Catalog.fromSpec());
+        try{Profile p=ProfileMigration.upgradeFile(file,text->JSON.fromJson(text,ProfileMigration.V1.class),text->JSON.fromJson(text,Profile.class),JSON::toJson,RosterMath.Catalog.fromSpec());
             if(p==null)p=JSON.fromJson(Files.readString(file),Profile.class);if(p==null)throw new IllegalStateException("Empty profile");p.sanitize();return p;}
         catch(Exception e){throw new IllegalStateException("Commander profile could not be read. Original and .bak preserved: "+key,e);}});}
     /** The marker (see LayoutMarker) names this layout, this map, this revision of the arena margin and the hash of the map's landmarks (Structures.hash); a save made before the margin was tapered, or before these landmarks, builds its arena once more. */
@@ -142,7 +144,7 @@ public final class Campaign {
     void toLobby(ServerPlayerEntity p){var at=CampWorld.spawn(profile(p.getUuid()));b.relocate(p,at.x(),at.y(),at.z(),at.yaw(),at.pitch());p.changeGameMode(GameMode.ADVENTURE);p.getInventory().clear();Commander.applyPlayer(p,null);p.setHealth(p.getMaxHealth());p.getHungerManager().setFoodLevel(20);}
     void returnLobby(){
         for(var s:b.squads.values())Commander.reset(b,s); // every running commander ability ends before its units go
-        b.running=false;introUntil=0;social.finish();activeRoom="";activeBattle=null;Projectiles.clear(b);Abilities.clearBanners(b);
+        b.running=false;introUntil=0;social.finish();activeRoom="";activeBattle=null;bonusTracker=null;Projectiles.clear(b);Abilities.clearBanners(b);
         Houses.reset(b);for(var u:b.units)u.mob.discard();b.units.clear();b.clearSides();b.clearProgression();
         b.squads.values().removeIf(s->s.bot);botRespawns.clear();botRetreating.clear();b.respawns.clear();vacated.clear();
         for(var s:b.squads.values()){s.training.clear();s.seated=false;}onPad.clear();padCountdown=-1;closeParty();
@@ -168,6 +170,8 @@ public final class Campaign {
             var row=Arrays.stream(Spec.CAMPAIGNBATTLES).filter(r->r.id().equals(cmd.substring(9))).findFirst().orElse(null);
             if(row==null)return true;
             if(row.map()<0||row.map()>=Spec.MAPS.length){notice(p.getUuid(),row.name()+" cannot start: its map is missing.");return true;}
+            var lock=MarchMath.lockedBy(row,profile(p.getUuid()).battlesWon,Spec.CAMPAIGNBATTLES);if(lock!=null){notice(p.getUuid(),"Win "+lock.name()+" first.");return true;} // plan 2C.3: the March is won in order
+            if(!row.mode().equals("domination")){notice(p.getUuid(),row.name()+" cannot start yet: its mode arrives with the mode frame.");return true;} // siege, survival and banner come with plan 2C.1 and 2C.4
             String refused=soloRefusal(p.getUuid(),MARCH_SOLO);if(!refused.isEmpty()){notice(p.getUuid(),refused);return true;}
             pendingBattle=row;pendingCommander=p.getUuid();
             if(row.map()!=map){switchMap(row.map());notice(p.getUuid(),"Preparing "+Spec.MAPS[map].name()+" for "+row.name()+".");}
@@ -244,7 +248,7 @@ public final class Campaign {
     void soloStart(ServerPlayerEntity p,Spec.CampaignBattlesRow row){
         closeParty();partyLeader=p.getUuid();party.add(p.getUuid());practice=true;size=1;fill=true;
         for(var squad:b.squads.values())if(!squad.bot){squad.seated=squad.owner.equals(p.getUuid());if(squad.seated)squad.team=0;}
-        activeBattle=row;b.startRound();
+        activeBattle=row;var bonus=MarchMath.bonus(row,Spec.BONUSOBJECTIVES);bonusTracker=bonus==null?null:new MarchMath.Tracker(bonus);b.startRound();
     }
     void balance(){for(var seat:balanced(seats(s->s.seated),practice,size))b.squads.get(seat.owner()).team=seat.team();}
     /** A commander's seat as balance and the side pick read it: who, on which team. */
@@ -417,7 +421,10 @@ public final class Campaign {
         long seconds=(b.time-b.roundStarted)/20;
         for(UUID id:participants){var s=b.squads.get(id);if(s==null||!s.seated)continue;Profile p=profile(id);String before=JSON.toJson(p);
             int earned=Math.min(seconds,(b.time-joinedAt.getOrDefault(id,b.roundStarted))/20)>=Spec.CAMPAIGN[0].minimumRewardSeconds()?(practice?Spec.CAMPAIGN[0].practiceGold():Spec.CAMPAIGN[0].completionGold()+(s.team==winner?Spec.CAMPAIGN[0].victoryGold():0)):0;
-            int priorXp=p.progression.xp;Progression.reset(p.progression,Progression.today());Progression.match(p.progression,matchId,s.team==winner,earned>0);p.gold+=earned;p.matches++;if(s.team==winner)p.wins++;if(s.team==winner&&activeBattle!=null)p.campaignCleared=Math.max(p.campaignCleared,activeBattle.order());
+            int priorXp=p.progression.xp;Progression.reset(p.progression,Progression.today());Progression.match(p.progression,matchId,s.team==winner,earned>0);p.gold+=earned;p.matches++;if(s.team==winner)p.wins++;MarchMath.Settled march=null;
+            if(activeBattle!=null){boolean won=s.team==winner; // plan 2C.3: the battle won, the cleared count and the bonus, in the same save as the gold
+                march=MarchMath.settle(activeBattle,MarchMath.bonus(activeBattle,Spec.BONUSOBJECTIVES),won,bonusTracker!=null&&bonusTracker.kept(won,(int)seconds),p.battlesWon,p.bonusClaimed,Profile.houseOrder(),Spec.CAMPAIGNBATTLES);
+                p.campaignCleared=march.cleared();if(march.bonusPaid()){p.gold+=march.bonusGold();p.shards.merge(march.bonusHouse(),march.bonusShards(),Integer::sum);}}
             // The chase (spec 4.3 to 4.6), in the same save as the gold: an eligible match pays shards and Renown by the fielded banner's Houses and adds to the mastery ledger; a chapter cleared pays its Pact.
             var slots=RosterMath.houseSlots(s.banner,RosterMath.Catalog.fromSpec());
             var paid=earned>0?RosterMath.matchRewards(slots,Houses.thresholds(Spec.HOUSES[0].id()),Profile.houseOrder(),s.team==winner):NO_REWARDS; // every House has the same slot thresholds (HousesCheck)
@@ -425,7 +432,7 @@ public final class Campaign {
             List<String> titles=earned>0?ledger(p,s):List.of();int pacts=pacts(p);
             boolean saved=save(id);JsonObject report=new JsonObject();report.addProperty("id",matchId);report.addProperty("outcome",winner<0?"DRAW":s.team==winner?"VICTORY":"BATTLE COMPLETE");report.addProperty("map",Spec.MAPS[map].name());report.addProperty("seconds",seconds);report.addProperty("saved",saved);report.addProperty("eligible",earned>0);report.addProperty("gold",saved?earned:0);report.addProperty("xp",saved?p.progression.xp-priorXp:0);report.addProperty("beforeXp",priorXp);report.add("squads",reportSquads(s));report.add("points",reportPoints());report.add("houses",reportHouses(s,slots,saved?paid:NO_REWARDS));report.add("levels",reportLevels(s));results.put(id,report);
             if(!saved){profiles.put(id,JSON.fromJson(before,Profile.class));standing(id,"Match reward could not be saved. Progress was not changed; check disk space.");continue;}
-            String extra=(pacts>0?" / "+(pacts==1?"a Pact":pacts+" Pacts")+" earned":"")+(titles.isEmpty()?"":" / new title"+(titles.size()==1?" ":"s ")+String.join(", ",titles));
+            String extra=(march!=null&&march.bonusPaid()?" / bonus objective: +"+march.bonusShards()+" "+RosterMath.houseName(march.bonusHouse())+" shards, +"+march.bonusGold()+" gold":"")+(pacts>0?" / "+(pacts==1?"a Pact":pacts+" Pacts")+" earned":"")+(titles.isEmpty()?"":" / new title"+(titles.size()==1?" ":"s ")+String.join(", ",titles));
             standing(id,(winner<0?"Draw":s.team==winner?"Victory":"Battle complete")+" / +"+earned+" collection gold"+(earned==0?" (reward requires 3 minutes of play)":"")+extra);
         }
         b.message=(winner<0?"Draw":b.side(winner).name()+" wins")+"! Back to the war council.";headline=b.message;
