@@ -189,15 +189,15 @@ final class RankChecks {
                         markDraws(c, tiers); wait = 0; cs = 8;
                     }
                 }
-                case 8 -> { wait++; // p2-veteran-over-tier: a Mastery II Squire at armour III draws the trim over _s3
+                case 8 -> { wait++; // p2-veteran-over-tier: a Mastery II Squire at armour III draws _s3 as a Veteran (the hand-authored knight has no trim since 25ecd79: none drawn)
                     var vx = e(c, tiers.get(2));
                     if (!vetSet || vx == null || vx.getCustomName() == null || !vx.getCustomName().getString().endsWith(ArmyMobs.VETERAN)) { wait = 0; return; }
                     if (wait == 2) markDraws(c, tiers);
                     if (wait >= 10 && drewSince(c, tiers, 3)) {
                         var x = e(c, tiers.get(2)); var l = last(x);
-                        boolean ok = l != null && l.look().veteran() && l.look().armourTier() == 3 && file(l.skin()).equals("knight_s3.png") && String.valueOf(l.trim()).equals(TEX + "knight_veteran.png");
-                        report("p2-veteran-over-tier", ok, "\"" + (x == null || x.getCustomName() == null ? "" : x.getCustomName().getString()) + "\" at rank " + rank(RankSync.client(x)) + " drew skin " + (l == null ? "none" : file(l.skin())) + " with trim " + (l == null ? "none" : file(l.trim())) + " (want knight_s3 under knight_veteran)");
-                        server(c, b -> { mage = post(b, gold, "mage", -4.5, Phase2Checks.GildedArt.STUDIO, 180 + 20); stage(mage, 3, 3, 3); mageUp = true; });
+                        boolean ok = l != null && l.look().veteran() && l.look().armourTier() == 3 && file(l.skin()).equals("knight_s3.png") && l.trim() == null;
+                        report("p2-veteran-over-tier", ok, "\"" + (x == null || x.getCustomName() == null ? "" : x.getCustomName().getString()) + "\" at rank " + rank(RankSync.client(x)) + " drew skin " + (l == null ? "none" : file(l.skin())) + " with trim " + (l == null ? "none" : file(l.trim())) + " (want knight_s3 as a Veteran with no trim: the hand-authored knight has none since 25ecd79; p2-veteran-trim-tier draws a trim over tier III)");
+                        server(c, b -> { mage = post(b, gold, "mage", -4.5, Phase2Checks.GildedArt.STUDIO, 180 + 20); mage.mob.setCustomName(net.minecraft.text.Text.literal(ArmyMobs.levelName(mage.spec, 3) + ArmyMobs.VETERAN)); stage(mage, 3, 3, 3); mageUp = true; });
                         wait = 0; cs = 9;
                     }
                 }
@@ -208,6 +208,8 @@ final class RankChecks {
                         var x = e(c, mage); var l = last(x); var m = TroopModels.model("mage"); var ch = TroopChevrons.drawn(x);
                         boolean ok = l != null && l.look().armourTier() == 3 && file(l.skin()).equals("mage_s1.png") && m != null && m.armourArt(3) == 1 && !m.ownSkins().contains(3)
                             && (l.relief() == null || l.relief().equals("1")) && ch != null && ch.chevrons() == 2 && c.world.getTime() - ch.time() < 5 && "sun_staff_t3".equals(l.weaponId());
+                        boolean trim = l != null && l.look().veteran() && l.look().armourTier() == 3 && file(l.skin()).equals("mage_s1.png") && String.valueOf(l.trim()).replace("_far.png", ".png").equals(TEX + "mage/mage_veteran.png");
+                        report("p2-veteran-trim-tier", trim, "the Sunweaver, a Mastery II Veteran at armour III, drew skin " + (l == null ? "none" : file(l.skin())) + " with trim " + (l == null ? "none" : String.valueOf(l.trim())) + " (want mage_s1 under " + TEX + "mage/mage_veteran.png: a troop's trim draws over whichever armour tier it wears)");
                         report("p2-tier-stopgap", ok, "the Sunweaver at rank " + rank(RankSync.client(x)) + " (own skins " + (m == null ? "-" : m.ownSkins()) + ") drew skin " + (l == null ? "none" : file(l.skin())) + ", relief key " + (l == null ? "-" : l.relief()) + ", weapon " + (l == null ? "none" : l.weaponId())
                             + " (want mage_s1, relief 1 or flat, sun_staff_t3: the staff's tier III art is painted, the Sunweaver's armour tier III skin is not) and " + mark(ch) + " (want 2)");
                         wait = 0; cs = 10;
@@ -297,25 +299,25 @@ final class RankChecks {
 
         /**
          * p2-weapon-parts-tier: weaponTiers part sets on the Squire's model (no weaponless troop has a model yet). A whole set
-         * (head: iron_cap at tier I, crest_plume at III) switches with the weapon tier, tier II drawing I; a partial one (the same
-         * plus surcoat_skirt at tier I on the body, which has no tier III part) draws tier I at III (Task 9 review M7).
+         * (head: helm_squire at tier I, helm_crown at III; the hand-authored knight's own bones, Task 8) switches with the weapon tier, tier II drawing I; a partial one (the same
+         * plus belt at tier I on the body, which has no tier III part) draws tier I at III (Task 9 review M7).
          */
         void weaponParts(MinecraftClient c) {
             try {
                 var row = ArmyCards.spec("knight"); StringBuilder why = new StringBuilder();
-                var whole = partsFixture(c, Map.of("iron_cap", new int[] {1}, "crest_plume", new int[] {3}));
-                boolean ok = whole.weaponPart("crest_plume") && whole.weaponPart("iron_cap") && !whole.weaponPart("surcoat_skirt");
+                var whole = partsFixture(c, Map.of("helm_squire", new int[] {1}, "helm_crown", new int[] {3}));
+                boolean ok = whole.weaponPart("helm_crown") && whole.weaponPart("helm_squire") && !whole.weaponPart("belt");
                 boolean[][] want = {{true, false}, {true, false}, {false, true}}; // cap, crest at weapon tiers 1, 2 (no tier II parts: draws I) and 3
                 for (int t = 1; t <= 3; t++) {
                     whole.prepare(new TroopModels.Look(row, 1, t, 1, false, "gold"), false, false); var shown = whole.shownBones(whole.shownMask());
-                    boolean cap = shown.contains("iron_cap"), crest = shown.contains("crest_plume"), skirt = shown.contains("surcoat_skirt");
+                    boolean cap = shown.contains("helm_squire"), crest = shown.contains("helm_crown"), skirt = shown.contains("belt");
                     boolean good = cap == want[t - 1][0] && crest == want[t - 1][1] && skirt && whole.weaponPartTier(t) == (t == 3 ? 3 : 1); ok &= good;
                     why.append("whole set, weapon tier ").append(t).append(" (parts draw as ").append(whole.weaponPartTier(t)).append("): cap ").append(cap ? "shown" : "hidden").append(", crest ").append(crest ? "shown" : "hidden").append(good ? "" : " (BAD)").append("; ");
                 }
-                var partial = partsFixture(c, Map.of("iron_cap", new int[] {1}, "crest_plume", new int[] {3}, "surcoat_skirt", new int[] {1}));
+                var partial = partsFixture(c, Map.of("helm_squire", new int[] {1}, "helm_crown", new int[] {3}, "belt", new int[] {1}));
                 partial.prepare(new TroopModels.Look(row, 1, 3, 1, false, "gold"), false, false); var shown = partial.shownBones(partial.shownMask());
-                boolean good = partial.weaponPartTier(3) == 1 && shown.contains("iron_cap") && shown.contains("surcoat_skirt") && !shown.contains("crest_plume"); ok &= good;
-                why.append("partial set (surcoat_skirt [1] on the body, no tier III body part), weapon tier 3: parts draw as ").append(partial.weaponPartTier(3)).append(", crest ").append(shown.contains("crest_plume") ? "shown" : "hidden").append(good ? "" : " (BAD)").append(";");
+                boolean good = partial.weaponPartTier(3) == 1 && shown.contains("helm_squire") && shown.contains("belt") && !shown.contains("helm_crown"); ok &= good;
+                why.append("partial set (belt [1] on the body, no tier III body part), weapon tier 3: parts draw as ").append(partial.weaponPartTier(3)).append(", crest ").append(shown.contains("helm_crown") ? "shown" : "hidden").append(good ? "" : " (BAD)").append(";");
                 report("p2-weapon-parts-tier", ok, "the Squire's model as a weaponTiers fixture (the Old Horn and the other weaponless troops have no model yet): " + why.toString().trim());
             } catch (Exception ex) { report("p2-weapon-parts-tier", false, ex.toString()); ex.printStackTrace(); }
         }

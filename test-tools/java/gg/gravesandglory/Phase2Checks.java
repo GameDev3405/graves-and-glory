@@ -2861,7 +2861,7 @@ public final class Phase2Checks implements ClientModInitializer {
         // the live mobs
         int fangs,vexes,wild,visuals,clouds,roars;float foeHp,foeHp2;
         // the harpoon, the undertow and the sweep
-        Vec3d[] was=new Vec3d[10];double d0,d1,d2,d3;long cooldownEnd;float[] hp=new float[10];String pullWhy="",tideWhy="",sweepWhy="";boolean pullOk,tideOk,sweepOk,pullChecked;
+        Vec3d[] was=new Vec3d[10];double d0,d1,d2,d3;long cooldownEnd;float[] hp=new float[10];String pullWhy="",tideWhy="",sweepWhy="";boolean pullOk,tideOk,sweepOk,pullChecked;long settledAt=-1;
         // the mist
         long castAt,cloudAt;String mistWhy="";boolean mistOk;
         // the speed lanes
@@ -3058,15 +3058,25 @@ public final class Phase2Checks implements ClientModInitializer {
                 }
                 case 15->{ // the first volley has landed: 1 block closer on the line, Slowness I for the harpoon's 30; not closer than 1.5; none for a target that resists all knockback
                     if(!b.shots.isEmpty()){if(since(b)>200){report("p2-harpoon-pull",false,"the harpoon shots never landed");next(b,99);}return;}
-                    double m0=d0-distance(u1.mob.getPos(),us[0].mob.getPos()),m1=d1-distance(u2.mob.getPos(),us[1].mob.getPos()),m2=d2-distance(u3.mob.getPos(),us[2].mob.getPos());
-                    double side=Math.abs(us[0].mob.getZ()-was[0].z);int slow=slowAt(us[0].mob,0);
-                    boolean ent=b.world.getEntitiesByType(EntityType.TRIDENT,new net.minecraft.util.math.Box(site).expand(40),e->true).isEmpty();
-                    boolean one=m0>=0.8&&m0<=1.1&&side<0.1&&slow>=26&&slow<=30;
-                    boolean two=m1>0.3&&m1<=0.75&&distance(u2.mob.getPos(),us[1].mob.getPos())>=1.49;
-                    boolean three=Math.abs(m2)<0.05;
-                    boolean cd=u1.abilityAt>b.time&&u1.abilityAt<=b.time+60;
-                    pullOk&=one&&two&&three&&ent&&cd;
-                    pullWhy+="; after the first volley the target 8 off moved "+fmt(m0)+" toward its Harpooner along the line (want 0.8 to 1.1; sideways "+fmt(side)+") with "+slowText(us[0].mob)+" (want about 30 of Slowness I)="+one+"; the target 2.2 off moved "+fmt(m1)+" and stands "+fmt(distance(u2.mob.getPos(),us[1].mob.getPos()))+" off (want not nearer than 1.5)="+two+"; the target with knockback resistance 1 moved "+fmt(m2)+" (want 0)="+three+"; the trident entities are gone after landing="+ent+" and the Harpooner's cooldown runs to +"+(u1.abilityAt-b.time)+" (want up to 60)="+cd;
+                    var box=new net.minecraft.util.math.Box(site).expand(40);
+                    if(settledAt<0){ // the landing tick: the pull, the slow and the cooldown are read here, as before
+                        settledAt=b.time;
+                        double m0=d0-distance(u1.mob.getPos(),us[0].mob.getPos()),m1=d1-distance(u2.mob.getPos(),us[1].mob.getPos()),m2=d2-distance(u3.mob.getPos(),us[2].mob.getPos());
+                        double side=Math.abs(us[0].mob.getZ()-was[0].z);int slow=slowAt(us[0].mob,0);
+                        boolean one=m0>=0.8&&m0<=1.1&&side<0.1&&slow>=26&&slow<=30;
+                        boolean two=m1>0.3&&m1<=0.75&&distance(u2.mob.getPos(),us[1].mob.getPos())>=1.49;
+                        boolean three=Math.abs(m2)<0.05;
+                        boolean cd=u1.abilityAt>b.time&&u1.abilityAt<=b.time+60;
+                        int lingering=b.world.getEntitiesByType(EntityType.TRIDENT,box,e->true).size();
+                        pullOk&=one&&two&&three&&cd;
+                        pullWhy+="; after the first volley the target 8 off moved "+fmt(m0)+" toward its Harpooner along the line (want 0.8 to 1.1; sideways "+fmt(side)+") with "+slowText(us[0].mob)+" (want about 30 of Slowness I)="+one+"; the target 2.2 off moved "+fmt(m1)+" and stands "+fmt(distance(u2.mob.getPos(),us[1].mob.getPos()))+" off (want not nearer than 1.5)="+two+"; the target with knockback resistance 1 moved "+fmt(m2)+" (want 0)="+three+"; the Harpooner's cooldown runs to +"+(u1.abilityAt-b.time)+" (want up to 60)="+cd+"; "+lingering+" landed tridents stand where they landed on the landing tick";
+                    }
+                    // A landed shot's trident is held still where it landed for Projectiles.LINGER_TICKS (N7), so the tridents go within LINGER_TICKS+1 ticks of the landing, not on it.
+                    if(b.time<settledAt+Projectiles.LINGER_TICKS+1)return;
+                    boolean ent=b.world.getEntitiesByType(EntityType.TRIDENT,box,e->true).isEmpty()&&b.landed.isEmpty();
+                    pullOk&=ent;
+                    pullWhy+="; "+(b.time-settledAt)+" ticks after landing (LINGER_TICKS "+Projectiles.LINGER_TICKS+" + 1) every trident entity is gone and none is held="+ent;
+                    settledAt=-1;
                     cooldownEnd=u1.abilityAt;d3=distance(u1.mob.getPos(),us[0].mob.getPos());pullChecked=false;
                     loose(b,u1,us[0]); // inside the cooldown: no pull, no new slow
                     next(b,16);
@@ -3488,7 +3498,10 @@ public final class Phase2Checks implements ClientModInitializer {
             fixture.add(u);pins.add(new Pin(u,at,yaw));u.deployed=at;Engine.apply(u,at,yaw);return u;
         }
         void unpin(GravesAndGlory.Unit u){pins.removeIf(p->p.u()==u);}
-        @Override void hold(){super.hold();if(shieldUp!=null&&shieldUp.mob.isAlive()&&!shieldUp.mob.isUsingItem())shieldUp.mob.setCurrentHand(net.minecraft.util.Hand.OFF_HAND);}
+        /** p2-reaver-bloodrush (Task 8): how many ticks the harness found the shield knight's shield down and raised it again, and on how many ticks it held it after Tactics' own tick (whatever Tactics decided). */
+        int shieldRaises,shieldTicks;
+        /** Keeps p2-reaver-bloodrush's shield knight's shield up after every server tick: a fixture, as the archers' health is. The check is of Bloodrush (no lifesteal off a blocked blow), not of Tactics; shieldRaises shows whether Tactics alone would have kept it up. */
+        @Override void hold(){super.hold();if(shieldUp!=null&&shieldUp.mob.isAlive()){shieldTicks++;if(!shieldUp.mob.isUsingItem()){shieldUp.mob.setCurrentHand(net.minecraft.util.Hand.OFF_HAND);shieldRaises++;}}}
         /** One troop of the fixture out of the battle now. */
         void drop(GravesAndGlory.Battle b,GravesAndGlory.Unit u){unpin(u);fixture.remove(u);Houses.discard(b,u);audit(b,"drop",false);}
         Vec3d pos(double dx,double dy,double dz){return new Vec3d(site.getX()+.5+dx,site.getY()+dy,site.getZ()+.5+dz);}
@@ -3894,7 +3907,7 @@ public final class Phase2Checks implements ClientModInitializer {
                     for(int i=0;i<4;i++)us[i]=post(b,own,"wm_hound",-6,-6+i*2,-90,true);us[4]=post(b,own,"wm_hunter",-8,-3,-90,true);us[5]=post(b,own,"wm_hunter",-8,3,-90,true);us[6]=post(b,own,"wm_tusk",-5,-8,-90,true);us[7]=post(b,own,"wm_tusk",-5,8,-90,true);
                     us[8]=post(b,dawn,"knight",-2,-4,-90,true); // an ally's troop (Dawn's)
                     for(int i=0;i<12;i++)line[i]=bare(post(b,dusk,"archer",2+(i%6)*1.2,i<6?3:6,90,true));
-                    formationWas=dusk.formation;dusk.formation="block";shieldUp=bare(post(b,dusk,"knight",0,0,90,true)); // facing the Reaver 4 west of it, its shield kept and raised from now (hold, and Tactics agrees: Compact raises it with the Reaver outside sword reach)
+                    formationWas=dusk.formation;dusk.formation="block";shieldUp=bare(post(b,dusk,"knight",0,0,90,true));shieldRaises=0;shieldTicks=0; // facing the Reaver 4 west of it, its shield raised and kept up from now by the harness (hold(): a fixture; Tactics on Hold picks no enemy here, as its leash is drawn round Dusk's base 40 blocks off, so the harness, not Tactics, keeps it up; shieldRaises counts it)
                     int lostBefore=own.stats.lost;
                     for(var u:List.of(us[0],us[1],us[4]))u.mob.damage(b.world.getDamageSources().generic(),1000f);
                     boolean fell=own.stats.lost==lostBefore+3;
@@ -3915,7 +3928,7 @@ public final class Phase2Checks implements ClientModInitializer {
                     float a2=line[1].mob.getHealth();playerBlow(b,p,line[1].mob,10f);float lost2=a2-line[1].mob.getHealth(),fed2=p.getHealth();
                     boolean cooled=lost2==0&&fed2==fed;
                     rushOk&=shielded&&healed&&cooled;
-                    rushWhy+="; a frontal blow of 10 on a knight's raised shield (blocking="+blocking+"): the knight lost "+fmt(kLost)+" and he stayed at "+fmt(afterShield)+" (want 0 and 10)="+shielded+"; a blow of 10 on an archer took "+fmt(lost1)+" (want "+fmt(10*scale)+", x"+scale+" on a troop) and fed him to "+fmt(fed)+" (want "+fmt(10+lost1*c.value1())+": "+c.value1()+" of what it lost)="+healed+"; a second blow at once, inside its hurt cooldown, took "+fmt(lost2)+" and fed him to "+fmt(fed2)+" (want 0 and no more)="+cooled;
+                    rushWhy+="; a frontal blow of 10 on a knight's raised shield (blocking="+blocking+"; the shield a fixture: the harness raised it "+shieldRaises+" times over "+shieldTicks+" ticks, 1 being the first raise and any more Tactics lowering it between): the knight lost "+fmt(kLost)+" and he stayed at "+fmt(afterShield)+" (want 0 and 10)="+shielded+"; a blow of 10 on an archer took "+fmt(lost1)+" (want "+fmt(10*scale)+", x"+scale+" on a troop) and fed him to "+fmt(fed)+" (want "+fmt(10+lost1*c.value1())+": "+c.value1()+" of what it lost)="+healed+"; a second blow at once, inside its hurt cooldown, took "+fmt(lost2)+" and fed him to "+fmt(fed2)+" (want 0 and no more)="+cooled;
                     var hound=Campaign.troop("wm_hound");var hunter=Campaign.troop("wm_hunter");int killsBefore=own.stats.kills;
                     line[2].mob.setHealth(1f);var arrow=EntityType.ARROW.create(b.world);arrow.setOwner(p);line[2].mob.damage(b.world.getDamageSources().arrow(arrow,p),10f);
                     boolean bow=!line[2].mob.isAlive()&&own.training.isEmpty()&&own.stats.kills==killsBefore+1;
@@ -4561,6 +4574,19 @@ public final class Phase2Checks implements ClientModInitializer {
             return Math.abs(Math.log((b/g)/(sb/sg)))<Math.log(1.35)&&r/g>=0.9*sr/sg;
         }
         static int colour(String side){for(var f:Spec.FACTIONS)if(f.id().equals(side))return f.color();return 0;}
+        /**
+         * A model's own cloth tone for a side: the commonest opaque colour of its cloth sheet for that side (TroopModels.cloth(prefix, side)),
+         * as 0xRRGGBB; the side's faction colour when the model has no sheet of its own. The hand-authored models (121baca) paint each
+         * troop's cloth in its own shades (the knight's gold is a deeper gold than the faction colour), so a cloth face is told by them.
+         */
+        static int clothTone(MinecraftClient c,TroopModel m,String side){
+            if(m==null||m.cloth.isEmpty())return colour(side);
+            try(var in=c.getResourceManager().getResource(TroopModels.cloth(m.cloth,side)).orElseThrow().getInputStream();var img=NativeImage.read(in)){
+                Map<Integer,Integer> n=new HashMap<>();
+                for(int y=0;y<img.getHeight();y++)for(int x=0;x<img.getWidth();x++){int p=img.getColor(x,y);if((p>>>24)<128)continue;int rgb=(p&255)<<16|(p>>8&255)<<8|(p>>16&255);n.merge(rgb,1,Integer::sum);}
+                return n.entrySet().stream().max(Map.Entry.comparingByValue()).map(Map.Entry::getKey).orElse(colour(side));
+            }catch(Exception e){System.out.println("[p2-wait] cloth sheet of "+side+" not read: "+e);return colour(side);}
+        }
         void save(MinecraftClient c,String name){
             if(image==null)return;
             try{Path dir=c.runDirectory.toPath().resolve("screenshots");Files.createDirectories(dir);image.writeTo(dir.resolve("p2-"+name+".png"));}
@@ -4579,6 +4605,77 @@ public final class Phase2Checks implements ClientModInitializer {
         void close(){if(image!=null){image.close();image=null;}}
     }
     static JsonObject json(String s){return JsonParser.parseString(s).getAsJsonObject();}
+
+    // ---- Kort's no-flags rule (2026-10-30): no troop draws a flag, a pennant or a standard ----
+    /** The parts TroopModel.prepare treats as a flag (its FLAGS: a team bone of one shows only for a troop whose row flies one). */
+    static final Set<String> FLAG_PARTS=Set.of("pennant","standard");
+    static final java.util.regex.Pattern FLAG_NAME=java.util.regex.Pattern.compile("(?i).*(flag|pennant|standard).*");
+    /** The bones of a troop file that are a flag: by their part, as the game gates them, or by a name that says so. */
+    static Set<String> flagBones(JsonObject j){
+        Set<String> out=new TreeSet<>();
+        for(var el:j.getAsJsonArray("bones")){var b=el.getAsJsonObject();String name=b.get("name").getAsString(),part=b.has("part")?b.get("part").getAsString():"";
+            if(FLAG_PARTS.contains(part)||FLAG_NAME.matcher(name).matches())out.add(name);}
+        return out;
+    }
+    static final Map<String,Set<String>> FLAG_BONES=new java.util.concurrent.ConcurrentHashMap<>();
+    /** flagBones of a loaded troop's own file, read once. */
+    static Set<String> flagBones(MinecraftClient c,String id){
+        return FLAG_BONES.computeIfAbsent(id,k->{try{return flagBones(Depth.modelJson(c,k));}catch(IOException e){throw new java.io.UncheckedIOException(e);}});
+    }
+    /** Of the bones a draw showed (the mask TroopRenderer reports, the one ModelPart.render followed), the flags. */
+    static List<String> flagsShown(TroopModel<?> m,Set<String> flags,long mask){List<String> out=new ArrayList<>();for(String b:m.shownBones(mask))if(flags.contains(b))out.add(b);return out;}
+    static List<String> flagsShown(MinecraftClient c,String id,TroopModel<?> m,long mask){return flagsShown(m,flagBones(c,id),mask);}
+    /** A troop row as it is, but flying a pennant (the probe's: no real row flies one). */
+    static Spec.TroopsRow flying(Spec.TroopsRow r){
+        return new Spec.TroopsRow(r.id(),r.house(),r.rarity(),r.name(),r.entity(),r.group(),r.health(),r.damage(),r.range(),r.ranged(),r.speed(),r.cooldown(),r.cost(),r.trainingSeconds(),r.magic(),r.weapon(),r.helmet(),r.chest(),r.tags(),r.ability(),r.evolveLine(),r.slotWeight(),true,r.shield(),r.texture(),r.family());
+    }
+    /**
+     * The no-flags sweep (Kort's rule, 2026-10-30), through the path the game draws by: every loaded troop model, at each armour
+     * and weapon tier, on no side, gold and violet, set up by TroopModel.prepare as a draw is; none of the bones it shows is a flag
+     * by part or name, and no troop row flies a pennant. Its control proves it can fail: the knight's file with two flag bones
+     * added (a team pennant and a skin standard) is built as the loader builds a troop, and the sweep's own test finds the skin
+     * standard on every side and the team pennant exactly when the row flies one on a side (prepare's gate). Appends what is
+     * wrong to bad and returns what it saw.
+     */
+    static String noFlagSweep(MinecraftClient c,List<String> bad){
+        int looks=0;Set<String> models=new TreeSet<>();List<String> rows=new ArrayList<>();
+        for(var row:Spec.TROOPS)if(row.pennant())rows.add(row.id());
+        if(!rows.isEmpty())bad.add("rows flying a pennant: "+rows);
+        for(String id:TroopModels.ids()){
+            var m=TroopModels.model(id);var row=ArmyCards.spec(id);if(m==null||row==null){bad.add(id+": no model or row");continue;}
+            Set<String> flags;try{flags=flagBones(c,id);}catch(RuntimeException e){bad.add(id+": "+e);continue;}
+            if(!flags.isEmpty())bad.add(id+" carries flag bones "+flags);
+            models.add(id);
+            for(String side:Arrays.asList(null,"gold","violet"))for(int armour=1;armour<=3;armour++)for(int weapon=1;weapon<=3;weapon++){
+                m.prepare(new TroopModels.Look(row,1,weapon,armour,false,side),false,false);looks++;
+                var shown=flagsShown(m,flags,m.shownMask());if(!shown.isEmpty())bad.add(id+" armour "+armour+" weapon "+weapon+" side "+side+" shows "+shown);}
+        }
+        String control;
+        try{
+            var j=Depth.modelJson(c,"knight");var bones=j.getAsJsonArray("bones");JsonObject tabard=null;
+            for(var el:bones)if(el.getAsJsonObject().get("name").getAsString().equals("tabard"))tabard=el.getAsJsonObject();
+            if(tabard==null)throw new IllegalStateException("the knight has no tabard to copy");
+            var pennant=tabard.deepCopy();pennant.addProperty("name","probe_cloth");pennant.addProperty("part","pennant");pennant.addProperty("team",true);pennant.add("stages",new com.google.gson.JsonArray());pennant.remove("relief");
+            var standard=tabard.deepCopy();standard.addProperty("name","probe_pole");standard.addProperty("part","standard");standard.addProperty("team",false);standard.add("stages",new com.google.gson.JsonArray());standard.remove("relief");
+            bones.add(pennant);bones.add(standard);
+            var rig=TroopModels.rig("biped");
+            var probe=new TroopModel<>(j,TroopModelLoader.parse(j).createModel(),Map.of("right",rig==null?"right_hand":rig.handBone("right"),"left",rig==null?"left_hand":rig.handBone("left")),null,List.of());
+            Set<String> pf=flagBones(j);var row=ArmyCards.spec("knight");
+            probe.prepare(new TroopModels.Look(row,1,false,"gold"),false,false);var still=flagsShown(probe,pf,probe.shownMask());
+            probe.prepare(new TroopModels.Look(flying(row),1,false,"gold"),false,false);var flies=flagsShown(probe,pf,probe.shownMask());
+            probe.prepare(new TroopModels.Look(flying(row),1,false,null),false,false);var unsided=flagsShown(probe,pf,probe.shownMask());
+            boolean ok=pf.equals(Set.of("probe_cloth","probe_pole"))&&still.equals(List.of("probe_pole"))&&flies.containsAll(List.of("probe_cloth","probe_pole"))&&flies.size()==2&&unsided.equals(List.of("probe_pole"));
+            if(!ok)bad.add("the control was not caught as it should be");
+            control="the control (the knight with a team pennant and a skin standard added) has flag bones "+pf+"; on gold its row flying none shows "+still+" (want [probe_pole]), flying one "+flies+" (want both), on no side "+unsided+" (want [probe_pole])";
+        }catch(Exception e){bad.add("the control: "+e);control="the control failed to build: "+e;}
+        return looks+" looks of "+models.size()+" troop models "+models+" prepared as a draw is (no side, gold, violet x armour 1-3 x weapon 1-3) show no flag bone (by part pennant or standard, or by name); "+Spec.TROOPS.length+" troop rows, flying a pennant: "+rows+"; "+control;
+    }
+    /** The hand-authored knight's helm bones (tag helm: TroopModel.prepare hides them for helm_off) and the one it wears at an armour tier. */
+    static final List<String> KNIGHT_HELMS=List.of("helm_squire","helm_great","helm_crown","crest");
+    static String knightHelm(int armourTier){return armourTier<=1?"helm_squire":"helm_great";}
+    /** The body cloth a Gilded draw shows its side by (the hand-authored models' tabard or surcoat, per armour tier), or null. */
+    static final List<String> BODY_CLOTH=List.of("tabard","surcoat_t2","surcoat_t3","tabard_t1","tabard_t3","surcoat");
+    static String bodyCloth(List<String> shown){for(String b:BODY_CLOTH)if(shown.contains(b))return b;return null;}
 
     /**
      * Task 5 Step 7: the troop model spike. Two Order Squires and two Templars, one of each per team (gold against violet), 3
@@ -4671,13 +4768,20 @@ public final class Phase2Checks implements ClientModInitializer {
                 var ht=board.getPlayerTeam(husk.getEntityName());ok&=ht==null;
                 report("p2-spike-teams",ok,why+"the husk on "+(ht==null?"no team":ht.getName()));});
             var km=TroopModels.model("knight");var sm=TroopModels.model("sentinel");
-            // Kort's rule (2026-10-30): no flag, pennant or standard on any troop, so neither model may carry one
-            List<String> common=List.of("head","body","right_arm","left_arm","right_hand","left_hand","right_leg","left_leg"),flags=List.of("pennant","standard");
-            boolean bones=km!=null&&sm!=null&&km.bones().containsAll(common)&&sm.bones().containsAll(common)&&flags.stream().noneMatch(km.bones()::contains)&&flags.stream().noneMatch(sm.bones()::contains)&&km.bones().contains("iron_cap")&&sm.bones().containsAll(List.of("great_helm","long_tabard"));
-            report("p2-spike-bones",bones,"knight bones "+(km==null?"none":km.bones())+"; sentinel bones "+(sm==null?"none":sm.bones()));
+            // the rig's bones on both, and each troop's own helm and body cloth (the hand-authored models of 121baca: the Squire's
+            // helm per armour tier and tabard, the Templar's helm and tabards); and Kort's rule (2026-10-30): no flag, pennant or
+            // standard on any troop, swept over every model's draws by part and name, with a control that proves the sweep can fail
+            List<String> common=List.of("head","body","right_arm","left_arm","right_hand","left_hand","right_leg","left_leg"),
+                kOwn=List.of("helm_squire","helm_great","helm_crown","tabard","surcoat_t2","surcoat_t3"),sOwn=List.of("helm","tabard_t1","tabard_t3");
+            List<String> flagBad=new ArrayList<>();String sweep=noFlagSweep(c,flagBad);
+            boolean bones=km!=null&&sm!=null&&km.bones().containsAll(common)&&sm.bones().containsAll(common)&&km.bones().containsAll(kOwn)&&sm.bones().containsAll(sOwn)&&flagBad.isEmpty();
+            report("p2-spike-bones",bones,"knight has the rig's "+common+" and its own "+kOwn+"="+(km!=null&&km.bones().containsAll(common)&&km.bones().containsAll(kOwn))+"; sentinel the rig's and its own "+sOwn+"="+(sm!=null&&sm.bones().containsAll(common)&&sm.bones().containsAll(sOwn))
+                +"; no flags: "+sweep+(flagBad.isEmpty()?"":"; wrong: "+flagBad)+"; knight bones "+(km==null?"none":km.bones())+"; sentinel bones "+(sm==null?"none":sm.bones()));
             if(km!=null&&sm!=null){var kb=km.restBounds();var sb=sm.restBounds();
-                boolean feet=Math.abs(kb.maxY-24)<1e-3&&Math.abs(sb.maxY-24)<1e-3&&sb.minY<=kb.minY-2;
-                report("p2-spike-feet",feet,String.format(Locale.ROOT,"rest bounds y (model px, ground 24): knight %.2f..%.2f, Templar %.2f..%.2f; the Templar's top is %.2f px above the knight's (want 2 or more)",kb.minY,kb.maxY,sb.minY,sb.maxY,kb.minY-sb.minY));}
+                // both stand on the ground; the hand-authored pair (121baca) stand within 2 px of one height (the procedural spike's
+                // "Templar 2 px taller" rule went with the procedural models: at rest the hand Templar is 1 px under the knight)
+                boolean feet=Math.abs(kb.maxY-24)<1e-3&&Math.abs(sb.maxY-24)<1e-3&&Math.abs(kb.minY-sb.minY)<=2;
+                report("p2-spike-feet",feet,String.format(Locale.ROOT,"rest bounds y (model px, ground 24): knight %.2f..%.2f, Templar %.2f..%.2f (want both feet at 24); the Templar's top is %.2f px above the knight's (want within 2 px either way)",kb.minY,kb.maxY,sb.minY,sb.maxY,kb.minY-sb.minY));}
             else report("p2-spike-feet",false,"no knight or sentinel model");
             List<String> bad=new ArrayList<>();int lines=0;
             try{for(String line:Files.readAllLines(c.runDirectory.toPath().resolve("logs/latest.log"),java.nio.charset.StandardCharsets.ISO_8859_1)){lines++;if(line.contains("[p2] "))continue; /* the harness's own report lines quote the marker */if(line.contains("[troop-models]")||line.contains("Failed to load model")&&line.contains("gravesandglory:troop/"))bad.add(line.trim());}}catch(IOException e){bad.add(e.toString());}
@@ -4697,40 +4801,44 @@ public final class Phase2Checks implements ClientModInitializer {
                 +"; index.json lists "+listed+", "+(missing.isEmpty()?"all loaded":"not loaded: "+missing)+"; models loaded: "+TroopModels.ids());
             loaderCheck(c);
         }
-        /** p2-spike-death: the frame caught in the death second shows the Squire in gold by its chest panel, and no flag (Kort's no-flags rule), though this client has it on no team. */
+        /** p2-spike-death: the frame caught in the death second shows the Squire in gold by its body cloth (the tabard at tier I), and no flag (Kort's no-flags rule), though this client has it on no team. */
         void deathCheck(MinecraftClient c){
-            var f=deathFrame;var m=TroopModels.model("knight");int gold=Frame.colour("gold");
+            var f=deathFrame;var m=TroopModels.model("knight");int gold=Frame.clothTone(c,m,"gold"); // the knight's own gold cloth (121baca), not the faction colour
             if(f==null){var e=dying==null?null:client(c,dying.mob);report("p2-spike-death",false,"the Squire was never drawn through its own model on its side in 300 ticks, so it was not killed: on this client="+(e!=null)+", drawn="+(e!=null&&TroopRenderer.drawn(e)!=null)+", look "+(e==null?"-":TroopModels.resolve(e))+(m==null?" (no knight model)":""));return;}
             if(!f.done||m==null){report("p2-spike-death",false,"no frame of the Squire's death second, off its team on this client, was drawn within 60 ticks of the kill"+(m==null?" (no knight model)":""));return;}
-            var d=f.draw;List<String> bones=d==null?List.of():m.shownBones(d.bones());
-            int[] panel=f.face(m,"chest_panel",0);double ps=f.sideShare(panel,gold);boolean noFlag=!bones.contains("pennant")&&!bones.contains("standard");
-            boolean ok=d!=null&&f.deathTime>=6&&"gold".equals(d.look().side())&&"gold".equals(d.cloth())&&bones.contains("chest_panel")&&noFlag&&ps>=0.5;
+            var d=f.draw;List<String> bones=d==null?List.of():m.shownBones(d.bones());String cloth=bodyCloth(bones);List<String> flags=d==null?List.of():flagsShown(c,"knight",m,d.bones());
+            int[] panel=cloth==null?null:f.face(m,cloth,0);double ps=f.sideShare(panel,gold);boolean noFlag=flags.isEmpty();
+            boolean ok=d!=null&&f.deathTime>=6&&"gold".equals(d.look().side())&&"gold".equals(d.cloth())&&cloth!=null&&noFlag&&ps>=0.5;
             f.save(c,"spike-death");f.saveProbe(c,"spike-death-probe",panel);
-            report("p2-spike-death",ok,String.format(Locale.ROOT,"a frame at deathTime %d, the Squire on no team on this client: drawn with side %s, cloth %s (null is linen), chest panel shown=%s, no pennant or standard shown=%s (Kort's no-flags rule); the chest panel %s is %.0f%% gold (want 50 or more)",
-                f.deathTime,d==null?"-":d.look().side(),d==null?"-":d.cloth(),bones.contains("chest_panel"),noFlag,Arrays.toString(panel),ps*100));
+            report("p2-spike-death",ok,String.format(Locale.ROOT,"a frame at deathTime %d, the Squire on no team on this client: drawn with side %s, cloth %s (null is linen), body cloth shown %s, no flag shown (by part or name)=%s %s (Kort's no-flags rule); the %s's camera-facing face %s is %.0f%% gold (the knight's gold cloth tone; want 50 or more)",
+                f.deathTime,d==null?"-":d.look().side(),d==null?"-":d.cloth(),cloth,noFlag,flags,cloth,Arrays.toString(panel),ps*100));
             f.close();
         }
         /** p2-spike-spawn: the first frame that draws a Squire spawned off its team (the team comes TEAM_LATE ticks later) is not linen. */
         void spawnCheck(MinecraftClient c){
-            var f=spawnFrame;var m=TroopModels.model("knight");int gold=Frame.colour("gold");
+            var f=spawnFrame;var m=TroopModels.model("knight");int gold=Frame.clothTone(c,m,"gold");
             var e=born==null?null:client(c,born.mob);var d=e==null?null:TroopRenderer.drawn(e);
             if(f==null||!f.done||m==null||d==null||d.first==null){report("p2-spike-spawn",false,"the spawned Squire was "+(e==null?"never on this client":d==null?"never drawn":"drawn, but its first frame was not caught")+" in "+(TEAM_LATE+70)+" ticks");return;}
-            var first=d.first;List<String> bones=m.shownBones(first.bones());
-            int[] panel=f.face(m,"chest_panel",0);double ps=f.sideShare(panel,gold);boolean noFlag=!bones.contains("pennant")&&!bones.contains("standard");
+            var first=d.first;List<String> bones=m.shownBones(first.bones());String cloth=bodyCloth(bones);List<String> flags=flagsShown(c,"knight",m,first.bones());
+            int[] panel=cloth==null?null:f.face(m,cloth,0);double ps=f.sideShare(panel,gold);boolean noFlag=flags.isEmpty();
             double turn=Math.abs(net.minecraft.util.math.MathHelper.wrapDegrees(f.bodyYaw-180));
-            boolean ok=f.entity==e&&bornDrawn>=TEAM_LATE&&"gold".equals(first.look().side())&&"gold".equals(first.cloth())&&noFlag&&turn<=20&&ps>=0.5;
+            boolean ok=f.entity==e&&bornDrawn>=TEAM_LATE&&"gold".equals(first.look().side())&&"gold".equals(first.cloth())&&cloth!=null&&noFlag&&turn<=20&&ps>=0.5;
             f.save(c,"spike-spawn");f.saveProbe(c,"spike-spawn-probe",panel);
-            report("p2-spike-spawn",ok,String.format(Locale.ROOT,"spawned off its team once the dead Squire had gone, the team sent %d ticks later: on this client %d ticks after the spawn, first drawn at %d (want %d or later: held until its side came), with side %s, cloth %s (null is linen), no pennant or standard shown=%s (Kort's no-flags rule); in that first frame its back to the camera (body yaw %.0f, want 180 within 20), the chest panel %.0f%% gold (want 50 or more)",
-                TEAM_LATE,bornSeen,bornDrawn,TEAM_LATE,first.look().side(),first.cloth(),noFlag,f.bodyYaw,ps*100));
+            report("p2-spike-spawn",ok,String.format(Locale.ROOT,"spawned off its team once the dead Squire had gone, the team sent %d ticks later: on this client %d ticks after the spawn, first drawn at %d (want %d or later: held until its side came), with side %s, cloth %s (null is linen), no flag shown (by part or name)=%s %s (Kort's no-flags rule); in that first frame its back to the camera (body yaw %.0f, want 180 within 20), the %s's camera-facing face %s %.0f%% gold (want 50 or more)",
+                TEAM_LATE,bornSeen,bornDrawn,TEAM_LATE,first.look().side(),first.cloth(),noFlag,flags,f.bodyYaw,cloth,Arrays.toString(panel),ps*100));
             f.close();
         }
-        /** p2-spike-linen: a Squire whose team never reaches this client waits undrawn HOLD_TICKS (40), within a few, then draws in linen. */
+        /**
+         * p2-spike-linen: a Squire whose team never reaches this client waits undrawn HOLD_TICKS (40), within a few, then draws in linen:
+         * its own linen sheet (the hand-authored knight of 121baca carries its own cloth sheets, textures/entity/troop/knight/team_cloth_*).
+         */
         void linenCheck(MinecraftClient c){
             var e=linen==null?null:client(c,linen.mob);var d=e==null?null:TroopRenderer.drawn(e);var first=d==null?null:d.first;int held=linenSeen<0||linenDrawn<0?-1:linenDrawn-linenSeen;
-            boolean sheet=first!=null&&first.clothSheet()!=null&&first.clothSheet().equals(TroopModels.cloth(null));
+            var linenSheet=new Identifier("gravesandglory","textures/entity/troop/knight/team_cloth_linen.png");
+            boolean sheet=first!=null&&first.clothSheet()!=null&&first.clothSheet().equals(linenSheet)&&c.getResourceManager().getResource(linenSheet).isPresent();
             boolean ok=first!=null&&first.look().side()==null&&first.cloth()==null&&sheet&&e.getScoreboardTeam()==null&&held>=TroopModels.HOLD_TICKS-3&&held<=TroopModels.HOLD_TICKS+5;
             report("p2-spike-linen",ok,String.format(Locale.ROOT,"spawned off its team and never given one: on this client at tick %d of the step, first drawn at %d, so held %d ticks (want %d, from %d to %d); the first draw with side %s, cloth sheet %s (want %s), on no team=%s",
-                linenSeen,linenDrawn,held,TroopModels.HOLD_TICKS,TroopModels.HOLD_TICKS-3,TroopModels.HOLD_TICKS+5,first==null?"-":first.look().side(),first==null?"-":first.clothSheet(),TroopModels.cloth(null),e!=null&&e.getScoreboardTeam()==null));
+                linenSeen,linenDrawn,held,TroopModels.HOLD_TICKS,TroopModels.HOLD_TICKS-3,TroopModels.HOLD_TICKS+5,first==null?"-":first.look().side(),first==null?"-":first.clothSheet(),linenSheet,e!=null&&e.getScoreboardTeam()==null));
         }
         /** p2-spike-loader: TroopModelLoader refuses broken files with a reason (each would leave its troop vanilla, or every troop for index.json), and takes a box without dilation. */
         void loaderCheck(MinecraftClient c){
@@ -4762,19 +4870,19 @@ public final class Phase2Checks implements ClientModInitializer {
             var e=ArmyCards.portrait(ArmyCards.spec("sentinel"),1,1);portraitMob=e;var d=e==null?null:TroopRenderer.drawn(e);portraitDraws=d==null?0:d.count;
             c.setScreen(new PortraitProbe(List.of(ArmyCards.portrait(ArmyCards.spec("knight"),1,1),e)));
         }
-        /** p2-spike-portrait, once the probe has drawn for 29 ticks: what the renderer drew for the Templar's portrait (no side, the company's cloth, the tabard and no pennant), and its shield. */
+        /** p2-spike-portrait, once the probe has drawn for 29 ticks: what the renderer drew for the Templar's portrait (no side, the company's cloth, the tier I tabard and no flag), and its shield. */
         void portraitCheck(MinecraftClient c){
             var spec=ArmyCards.spec("sentinel");var e=portraitMob;var l=e==null?null:TroopModels.resolve(e);
             boolean look=l!=null&&l.troop()==spec&&l.armourTier()==1&&l.side()==null&&e.getCustomName().getString().equals("Templar")&&e.getScoreboardTeam()==null;
             var d=e==null?null:TroopRenderer.drawn(e);int n=d==null?0:d.count-portraitDraws;var last=d==null?null:d.last;var m=TroopModels.model("sentinel");
             List<String> shown=last==null||m==null?List.of():m.shownBones(last.bones());var tex=TroopModels.cloth("company");
             boolean company=last!=null&&last.look().side()==null&&"company".equals(last.cloth())&&c.getResourceManager().getResource(tex).isPresent();
-            boolean noPennant=n>=5&&shown.contains("long_tabard")&&!shown.contains("pennant");
+            List<String> flags=last==null||m==null?List.of():flagsShown(c,"sentinel",m,last.bones());boolean noPennant=n>=5&&shown.contains("tabard_t1")&&flags.isEmpty();
             var tag=e==null?null:net.minecraft.item.BlockItem.getBlockEntityNbt(e.getOffHandStack());
             boolean shield=tag!=null&&tag.getInt("Base")==net.minecraft.util.DyeColor.GRAY.getId()&&tag.getList("Patterns",10).size()==1&&tag.getList("Patterns",10).getCompound(0).getString("Pattern").equals("sc");
             report("p2-spike-portrait",look&&company&&noPennant&&shield,"ArmyCards.portrait(sentinel, 1, 1): named \""+(e==null?"":e.getCustomName().getString())+"\", resolves "+(l==null?"null":l.troop().id()+" stage "+l.armourTier()+" side "+l.side())+", no scoreboard team="+look
                 +"; drawn "+n+" times by the probe (want 5 or more), the last in cloth "+(last==null?"-":last.cloth())+" ("+tex+"; Kort's portrait ruling replaced linen with the company's navy)="+company
-                +"; the last draw showed the tabard and no pennant="+noPennant+" "+shown+"; shield "+(tag==null?"none":tag)+" (grey field, white straight cross)="+shield);
+                +"; the last draw showed the tier I tabard (tabard_t1) and no flag by part or name="+noPennant+" "+flags+" "+shown+"; shield "+(tag==null?"none":tag)+" (grey field, white straight cross)="+shield);
         }
         void clean(GravesAndGlory.Battle b){
             var board=b.server.getScoreboard();boolean ok=true;StringBuilder why=new StringBuilder("killed: ");
@@ -4800,20 +4908,23 @@ public final class Phase2Checks implements ClientModInitializer {
         static final List<Map.Entry<String,Integer>> LATER=List.of(Map.entry("knight",3),Map.entry("knight",2),Map.entry("archer",3),Map.entry("sentinel",3),Map.entry("longbow",3));
         /** The evolution lines shot side by side, and the parts each shows at stage 3 only (the houses spec's 2.7 extras). */
         static final List<String> LINES=List.of("knight","archer","sentinel","longbow");
-        static final Map<String,List<String>> STAGE3=Map.of("knight",List.of("crest_plume"),"archer",List.of("signal_horn"),"sentinel",List.of("cape","cape_skirt_right","cape_skirt_left"),"longbow",List.of("long_feather"));
+        static final Map<String,List<String>> STAGE3=Map.of("knight",List.of("helm_crown","crest","cape"),"archer",List.of("signal_horn"),"sentinel",List.of("helm_cross","mantling","cape_t3"),"longbow",List.of("long_feather"));
         final Map<String,List<GravesAndGlory.Unit>> lines=new java.util.concurrent.ConcurrentHashMap<>();final Set<GravesAndGlory.Unit> staged=java.util.concurrent.ConcurrentHashMap.newKeySet();
         int li;boolean stagesOk=true;final StringBuilder stagesWhy=new StringBuilder();
         int ci;boolean closeOk=true;final StringBuilder closeWhy=new StringBuilder();Frame cullFrame;float cullPitch;
+        /** The cull shot's pose (the clip and second of Aldric's that reaches highest), when Aldric was moved off for the empty frame, the clouds put back after, and that empty frame. */
+        String cullClip;float cullAt;double cullTop=Double.NaN;int cullMoved=-1;Object cullClouds;NativeImage cullEmpty;
         /** The sides shot's four knights (gold, violet, crimson, teal) and the cards' portraits' draw counts before the Gilded tab drew. */
-        final List<GravesAndGlory.Unit> sided=new ArrayList<>();final Map<String,Integer> cardDraws=new HashMap<>();
+        final List<GravesAndGlory.Unit> sided=new ArrayList<>(),gbPair=new ArrayList<>();int gbTries;final Map<String,Integer> cardDraws=new HashMap<>();
         /** The side change (Task 5 review minor 4): the suite tick the crimson Squire was first drawn (on gold) and the tick it moved to crimson. */
         int firstGold=-1,movedAt=-1;
         static final List<String> FOUR=List.of("gold","violet","crimson","teal");
         /**
-         * The cull shot's camera: 1.1 blocks in front of Aldric, the eye 2.6 blocks up, between the top of his vanilla box (the
-         * husk's 1.95 grown by half a block: 2.45) and the top of his standard's cloth (2.79); it looks up until the view's
-         * bottom edge lies CULL_DIP degrees under the eye line, so every corner of the vanilla box is under the view and the
-         * cloth's top rows are in it.
+         * The cull shot's camera: 1.1 blocks in front of Aldric, the eye 2.6 blocks up, over the top of his vanilla box (the
+         * husk's 1.95 grown by half a block: 2.45) and of his model at rest (2.13, the helm); it looks up until the view's bottom
+         * edge lies CULL_DIP degrees under the eye line, so every corner of the vanilla box is under the view. Aldric is held in
+         * the pose of his own clips that reaches highest (cullPose: his sword raised), so what of him is in the view is the
+         * raised blade and arm.
          */
         static final double CULL_EYE=2.6,CULL_DIP=2;
         String name(){return "gilded-art";}
@@ -4843,12 +4954,16 @@ public final class Phase2Checks implements ClientModInitializer {
                     if(wait==50){String n=line.equals("knight")?"gilded-stages":"gilded-stages-"+line;if(lines.containsKey(line)&&shotReady(c,n)){stagesCheck(c,line);shot(c,n);}else wait--;}
                     if(wait==55){var us=lines.get(line);server(c,b->{for(var u:us){GravesAndGlory.Battle.leaveSide(u.mob);u.mob.discard();pins.removeIf(p->p.mob()==u.mob);b.units.remove(u);posted.remove(u);}});
                         li++;wait=0;if(li==LINES.size()){report("p2-gilded-armour-tiers",stagesOk,stagesWhy.toString().trim());kit(c);cs=5;}}}
-                case 5->{wait++; // the culling box: the camera 1.1 blocks in front of Aldric looks up over his vanilla box (once at his retired standard), his body and that box below the view
-                    if(wait==1){fovScale(c,0.0);cullPitch=-(float)(c.options.getFov().getValue()/2.0-CULL_DIP);final float pitch=cullPitch;
+                case 5->{wait++; // the culling box: the camera 1.1 blocks in front of Aldric looks up over his vanilla box, his body and that box below the view, his raised sword in it
+                    if(wait==1){fovScale(c,0.0);cullPitch=-(float)(c.options.getFov().getValue()/2.0-CULL_DIP);final float pitch=cullPitch;cullPose();
+                        cullClouds=c.options.getCloudRenderMode().getValue();c.options.getCloudRenderMode().setValue(net.minecraft.client.option.CloudRenderMode.OFF); // the empty frame is told from the shot by Aldric alone
                         server(c,b->{move(golds.get("gl_marshal").mob,0,STUDIO,180);camera(b,0,CULL_EYE,STUDIO-1.1,0,pitch);});}
                     if(wait==40){var e=client(c,golds.get("gl_marshal").mob);Vec3d at=at(0,STUDIO);
-                        if(e==null||e.squaredDistanceTo(at)>0.01||!lit(c))wait--;else cullFrame=Frame.watch(e.getId(),x->x.squaredDistanceTo(at)<0.01);}
-                    if(wait>40&&(cullFrame.done||wait>=80)){cullCheck(c);fovScale(c,-1);server(c,b->move(golds.get("gl_marshal").mob,-6.25+SIX.indexOf("gl_marshal")*2.5,0,0));cs=6;wait=0;}}
+                        if(e==null||e.squaredDistanceTo(at)>0.01||!lit(c))wait--;else{if(cullClip!=null)TroopAnimator.forced.put(e.getId(),new TroopAnimator.Forced(cullClip,cullAt));cullFrame=Frame.watch(e.getId(),x->x.squaredDistanceTo(at)<0.01);}}
+                    if(wait>40&&cullMoved<0&&(cullFrame.done||wait>=80)){cullMoved=wait;var e=client(c,golds.get("gl_marshal").mob);if(e!=null)TroopAnimator.forced.remove(e.getId());
+                        server(c,b->move(golds.get("gl_marshal").mob,-6.25+SIX.indexOf("gl_marshal")*2.5,0,0));}
+                    if(cullMoved>0&&wait==cullMoved+20){cullEmpty=ScreenshotRecorder.takeScreenshot(c.getFramebuffer()); // the same view with Aldric gone
+                        cullCheck(c);fovScale(c,-1);c.options.getCloudRenderMode().setValue((net.minecraft.client.option.CloudRenderMode)cullClouds);cs=6;wait=0;}}
                 case 6->{wait++; // one troop on all four sides (finding 11): four Squires in the studio, gold, violet, crimson and teal from the left, 4 blocks off;
                     // the crimson one is posted on gold and moved to crimson 20 ticks after this client first drew it (a side change on a troop already drawn)
                     if(wait==1)server(c,b->{
@@ -4857,7 +4972,12 @@ public final class Phase2Checks implements ClientModInitializer {
                     if(wait>1&&firstGold<0&&sided.size()==4){var e=client(c,sided.get(2).mob);var d=e==null?null:TroopRenderer.drawn(e);if(d!=null&&d.count>0)firstGold=tick;}
                     if(firstGold>=0&&movedAt<0&&tick-firstGold>=20){movedAt=tick;server(c,b->toSide(b,sided.get(2),FOUR.get(2)));}
                     if(wait==50){if(sided.size()==4&&movedAt>=0&&tick-movedAt>=20&&shotReady(c,"gilded-sides")){sidesCheck(c);shot(c,"gilded-sides");}else wait--;}
-                    if(wait==55){server(c,b->{for(var u:sided){GravesAndGlory.Battle.leaveSide(u.mob);u.mob.discard();pins.removeIf(p->p.mob()==u.mob);b.units.remove(u);posted.remove(u);}});cs=4;wait=0;}}
+                    if(wait==55){server(c,b->{for(var u:sided){GravesAndGlory.Battle.leaveSide(u.mob);u.mob.discard();pins.removeIf(p->p.mob()==u.mob);b.units.remove(u);posted.remove(u);}});cs=7;wait=0;}}
+                case 7->{wait++; // a picture only (Task 8 carry 8, no check): a Graveborn Risen on the violet side beside one on gold, for the House accent against the side tint
+                    if(wait==1)server(c,b->{gbPair.add(post(b,violet,"revenant",0.8,STUDIO,180+15));gbPair.add(post(b,gold,"revenant",-0.8,STUDIO,180-15));camera(b,0,1.5,STUDIO-3,0,8);});
+                    if(wait==50){if(gbPair.size()==2&&gbPair.stream().allMatch(u->client(c,u.mob)!=null)&&shotReady(c,"t8-graveborn-sides")){shot(c,"t8-graveborn-sides");
+                        System.out.println("[p2-look] t8-graveborn-sides: a Risen on violet (left) and on gold (right), 3 blocks off; picture p2-t8-graveborn-sides.png");}else if(++gbTries<150)wait--;else System.out.println("[p2-look] t8-graveborn-sides: no picture (the pair was not on this client or the light was not ready)");}
+                    if(wait>=55){server(c,b->{for(var u:gbPair){GravesAndGlory.Battle.leaveSide(u.mob);u.mob.discard();pins.removeIf(p->p.mob()==u.mob);b.units.remove(u);posted.remove(u);}});cs=4;wait=0;}}
                 case 4->{wait++; // the recruit page's Gilded tab, every Gilded troop owned so no card is dimmed
                     if(wait==1)server(c,b->{b.campaign.returnLobby();var pr=b.campaign.profile(player);for(String id:SIX)pr.owned.putIfAbsent(id,new Profile.Owned());pins.clear();posted.clear();});
                     if(wait==40){CampaignClient.revealUntil=0;CampaignClient.notice="";c.setScreen(new CampScreen("recruit"));}
@@ -4867,7 +4987,7 @@ public final class Phase2Checks implements ClientModInitializer {
                         boolean models=true;StringBuilder why=new StringBuilder();
                         for(String id:SIX){var e=ArmyCards.portrait(ArmyCards.spec(id));var d=e==null?null:TroopRenderer.drawn(e);var last=d==null?null:d.last;var m=TroopModels.model(id);
                             int n=d==null?0:d.count-cardDraws.getOrDefault(id,0);List<String> shown=last==null||m==null?List.of():m.shownBones(last.bones());
-                            boolean good=n>=5&&last!=null&&last.look().troop().id().equals(id)&&last.look().side()==null&&"company".equals(last.cloth())&&!shown.contains("pennant")&&!shown.contains("standard");models&=good;
+                            boolean good=n>=5&&last!=null&&last.look().troop().id().equals(id)&&last.look().side()==null&&"company".equals(last.cloth())&&flagsShown(c,id,m,last.bones()).isEmpty();models&=good;
                             why.append(id).append(" drawn ").append(n).append(" times").append(last==null?"":" in "+last.cloth()).append(good?"":" (BAD)").append("; ");}
                         report("p2-gilded-cards",six&&models,"the recruit page on the Gilded tab with all six owned="+six+"; in the 35 ticks after the tab opened, each card's portrait was drawn through its own model, no side, in the company's cloth and with no flag (want 5 draws or more): "+why.toString().trim());shot(c,"gilded-cards");}
                     if(wait==90){c.setScreen(null);serverDone=true;end(c);}}
@@ -4891,37 +5011,57 @@ public final class Phase2Checks implements ClientModInitializer {
             closeWhy.append(troop).append(" stage ").append(l==null?"-":String.valueOf(l.armourTier())).append(" side ").append(l==null?"-":l.side()).append(String.format(Locale.ROOT," at %.2f blocks",d))
                 .append(parts.isEmpty()?"":", "+String.join("+",parts)+" "+(on==parts.size()?"drawn":on==0?"not drawn":on+" of "+parts.size()+" drawn")).append(good?"":" (BAD)").append("; ");
         }
+        /** The clip and second, of Aldric's own clips that are not whole-body ones, forced as the game forces one, whose pose reaches highest (TroopModel.extent, the weapon at its hand). */
+        void cullPose(){
+            var m=TroopModels.model("gl_marshal");if(m==null)return;var row=TroopAnimator.row(m);Set<String> whole=Set.of("death","kneel","point","sit","fall","stand");
+            var clips=TroopClips.of("biped");
+            try{for(String n:TroopClips.NAMES){var a=clips.get(n);if(a==null||whole.contains(n))continue;
+                for(float t=0;t<=a.lengthInSeconds()+1e-4f;t+=.05f){m.getPart().traverse().forEach(ModelPart::resetTransform);TroopAnimator.applyForced(m,new TroopAnimator.Forced(n,t),row,true);
+                    double top=m.extent()[2];if(Double.isNaN(cullTop)||top>cullTop){cullTop=top;cullClip=n;cullAt=t;}}}}
+            finally{m.getPart().traverse().forEach(ModelPart::resetTransform);}
+        }
         /**
-         * p2-gilded-cull: with the camera looking up over Aldric's vanilla box, he is drawn (the vanilla box test would drop him), in
-         * gold, and with no standard (Kort's no-flags rule, 2026-10-30). The standard's cloth used to be the part above the box this
-         * shot looked at; with it retired, this still proves the model's own culling box, but a part that reaches over the vanilla
-         * box (if any) should replace the cloth probe when the Gilded art settles.
+         * p2-gilded-cull: with the camera looking up over Aldric's vanilla box and his model at rest, and Aldric held in the pose
+         * of his own clips that reaches highest (his sword raised), he is drawn (the vanilla box test would drop him), in gold,
+         * with no flag (Kort's no-flags rule, 2026-10-30), and on the frame: the shot and the same view 20 ticks after he moved
+         * off (clouds off, so nothing else moves) differ in 150 pixels or more, all of them his and all above the vanilla box.
+         * The standard's cloth was the part above the box this shot looked at once; with it retired, the raised sword is.
          */
         void cullCheck(MinecraftClient c){
-            var f=cullFrame;var m=TroopModels.model("gl_marshal");
-            if(f==null||!f.done||m==null){report("p2-gilded-cull",false,"Aldric was not drawn in the 40 ticks the camera looked up over his vanilla box"+(m==null?" (no model)":"")+": the frustum test dropped him");return;}
-            List<String> bones=f.draw==null?List.of():m.shownBones(f.draw.bones());double half=Math.toDegrees(Math.atan(1/f.proj.m11()));
-            boolean noFlag=!bones.contains("standard")&&!bones.contains("pennant");
-            boolean ok=!f.vanillaSees&&f.draw!=null&&"gold".equals(f.draw.cloth())&&noFlag;
-            f.save(c,"gilded-cull");
-            report("p2-gilded-cull",ok,String.format(Locale.ROOT,"the camera at %.2f, %.2f, %.2f, pitch %.1f (the view %.1f degrees each way up and down), Aldric at %.2f, %.2f, %.2f: the vanilla box test would draw him=%s (want false); drawn with cloth %s, no standard or pennant shown=%s (Kort's no-flags rule)",
-                f.cam.x,f.cam.y,f.cam.z,cullPitch,half,f.pos.x,f.pos.y,f.pos.z,f.vanillaSees,f.draw==null?"-":f.draw.cloth(),noFlag));
-            f.close();
+            var f=cullFrame;var m=TroopModels.model("gl_marshal");var empty=cullEmpty;cullEmpty=null;
+            try{
+                if(f==null||!f.done||m==null){report("p2-gilded-cull",false,"Aldric was not drawn in the 40 ticks the camera looked up over his vanilla box"+(m==null?" (no model)":"")+" in the pose "+cullClip+" at "+cullAt+"s: the frustum test dropped him");return;}
+                List<String> flags=f.draw==null?List.of():flagsShown(c,"gl_marshal",m,f.draw.bones());double half=Math.toDegrees(Math.atan(1/f.proj.m11()));
+                // the pose drawn, measured: its top over the feet
+                double drawnTop=Double.NaN;if(f.pose!=null){m.applyPose(f.pose);drawnTop=m.extent()[2];m.getPart().traverse().forEach(ModelPart::resetTransform);}
+                double box=f.entity==null?Double.NaN:f.entity.getBoundingBox().maxY-f.entity.getY()+0.5;
+                int n=0;int[] r={Integer.MAX_VALUE,Integer.MAX_VALUE,-1,-1};
+                if(empty!=null&&f.image!=null&&empty.getWidth()==f.image.getWidth()&&empty.getHeight()==f.image.getHeight())
+                    for(int y=0;y<empty.getHeight();y++)for(int x=0;x<empty.getWidth();x++){int a=f.image.getColor(x,y),b=empty.getColor(x,y);
+                        int d=Math.max(Math.abs((a&0xFF)-(b&0xFF)),Math.max(Math.abs((a>>8&0xFF)-(b>>8&0xFF)),Math.abs((a>>16&0xFF)-(b>>16&0xFF))));
+                        if(d>40){n++;r[0]=Math.min(r[0],x);r[1]=Math.min(r[1],y);r[2]=Math.max(r[2],x+1);r[3]=Math.max(r[3],y+1);}}
+                boolean noFlag=flags.isEmpty(),onFrame=n>=150,tall=drawnTop>box;
+                boolean ok=!f.vanillaSees&&f.draw!=null&&"gold".equals(f.draw.cloth())&&noFlag&&onFrame&&tall;
+                f.save(c,"gilded-cull");if(n>0)f.saveProbe(c,"gilded-cull-probe",r);
+                try{if(empty!=null){Path dir=c.runDirectory.toPath().resolve("screenshots");Files.createDirectories(dir);empty.writeTo(dir.resolve("p2-gilded-cull-empty.png"));}}catch(IOException e){System.out.println("[p2-wait] gilded-cull-empty not saved: "+e);}
+                report("p2-gilded-cull",ok,String.format(Locale.ROOT,"the camera at %.2f, %.2f, %.2f, pitch %.1f (the view %.1f degrees each way up and down), Aldric at %.2f, %.2f, %.2f held in %s at %.2fs (his highest pose: top %.2f blocks over his feet, drawn %.2f; the vanilla box top %.2f): the vanilla box test would draw him=%s (want false); drawn with cloth %s, no flag shown (by part or name)=%s %s (Kort's no-flags rule); %d pixels differ from the same view with him gone (want 150 or more), in %s",
+                    f.cam.x,f.cam.y,f.cam.z,cullPitch,half,f.pos.x,f.pos.y,f.pos.z,cullClip,cullAt,cullTop,drawnTop,box,f.vanillaSees,f.draw==null?"-":f.draw.cloth(),noFlag,flags,n,n>0?Arrays.toString(r):"-"));
+            }finally{if(f!=null)f.close();if(empty!=null)empty.close();}
         }
         /** Moves a posted troop to a side's gg_ team, with that side's painted shield. */
         static void toSide(GravesAndGlory.Battle b,GravesAndGlory.Unit u,String side){
             var board=b.server.getScoreboard();String team="gg_"+side;var t=board.getTeam(team);if(t==null)t=board.addTeam(team);board.addPlayerToTeam(u.mob.getEntityName(),t);
             for(var f:Spec.FACTIONS)if(f.id().equals(side))u.mob.equipStack(EquipmentSlot.OFFHAND,GravesAndGlory.Battle.shield(u.spec,f.dye()));
         }
-        /** p2-gilded-sides: the four Squires were last drawn each in its own side's cloth, with its chest panel and no flag; the crimson one was first drawn in gold, before its move. */
+        /** p2-gilded-sides: the four Squires were last drawn each in its own side's cloth, with its body cloth (the tier I tabard) and no flag; the crimson one was first drawn in gold, before its move. */
         void sidesCheck(MinecraftClient c){
             var m=TroopModels.model("knight");boolean ok=m!=null;StringBuilder why=new StringBuilder();
             for(int i=0;i<4;i++){var e=client(c,sided.get(i).mob);var d=e==null?null:TroopRenderer.drawn(e);var last=d==null?null:d.last;var first=d==null?null:d.first;
                 List<String> shown=last==null||m==null?List.of():m.shownBones(last.bones());
-                boolean flag=shown.contains("pennant")||shown.contains("standard"); // Kort's rule (2026-10-30): no flag on any troop; the chest panel carries the side
-                boolean good=last!=null&&FOUR.get(i).equals(last.look().side())&&FOUR.get(i).equals(last.cloth())&&!flag&&shown.contains("chest_panel");
+                List<String> flags=last==null||m==null?List.of():flagsShown(c,"knight",m,last.bones());boolean flag=!flags.isEmpty(); // Kort's rule (2026-10-30): no flag on any troop; the body cloth carries the side
+                String cloth=bodyCloth(shown);boolean good=last!=null&&FOUR.get(i).equals(last.look().side())&&FOUR.get(i).equals(last.cloth())&&!flag&&"tabard".equals(cloth);
                 if(i==2)good&=first!=null&&"gold".equals(first.look().side())&&"gold".equals(first.cloth())&&movedAt>=0;ok&=good;
-                why.append(FOUR.get(i)).append(": ").append(last==null?"not drawn":"drawn in "+last.cloth()+", flag "+(flag?"shown (want hidden)":"hidden"))
+                why.append(FOUR.get(i)).append(": ").append(last==null?"not drawn":"drawn in "+last.cloth()+", body cloth "+cloth+" (want tabard), flag "+(flag?"shown "+flags+" (want hidden)":"hidden"))
                     .append(i==2?" (first drawn in "+(first==null?"-":first.cloth())+" at suite tick "+firstGold+", moved to crimson at "+movedAt+")":"").append(good?"":" (BAD)").append("; ");}
             report("p2-gilded-sides",ok,"one Squire on each side, left to right on the frame: "+why.toString().trim());
         }
@@ -4934,7 +5074,7 @@ public final class Phase2Checks implements ClientModInitializer {
                 var rank=RankSync.client(e);
                 List<String> shown=m.shownBones(d.last.bones());long on=parts.stream().filter(shown::contains).count();
                 // the skin the draw bound (TroopRenderer.getTexture, observed), against the file the line and the stage name (Task 5 review minor 2)
-                var skin=d.last.skin();var want=new Identifier("gravesandglory","textures/entity/troop/"+u.spec.id()+"_s"+u.armourTier+".png");
+                var skin=d.last.skin();var want=new Identifier("gravesandglory","textures/entity/troop/"+u.spec.id()+"/"+u.spec.id()+"_s"+u.armourTier+".png"); // the hand-authored models' own folder (121baca)
                 boolean skinOk=want.equals(skin)&&c.getResourceManager().getResource(skin).isPresent();
                 boolean good=rank!=null&&rank.armourTier()==u.armourTier&&l.armourTier()==u.armourTier&&(l.armourTier()==3?on==parts.size():on==0)&&skinOk;ok&=good;
                 stagesWhy.append("\"").append(e.getCustomName().getString()).append("\" rank_v1 ").append(rank==null?"none":rank.level()+"/"+rank.weaponTier()+"/"+rank.armourTier()).append(", drawn at armour tier ").append(l.armourTier()).append(" in ").append(skin==null?"no skin":skin.getPath().substring(skin.getPath().lastIndexOf('/')+1))
@@ -4969,7 +5109,7 @@ public final class Phase2Checks implements ClientModInitializer {
     static final class Anim extends Stage {
         static final List<String> RIGS=List.of("biped","hound","spider","colossus");
         String name(){return "anim";}
-        /** The shot knight (in the studio), the scene knight and the one killed (in the lineup), and the stance drill: its own squad (gold), three knights and the one spawned into it. */
+        /** The shot knight (in the studio), the scene knight and the one killed (in the lineup), and the stance drill: its own squad (gold), three knights, the late knight spawned into it (the register phase) and the plain-hold revenant (plainHold, removed once p2-anim-stance reports). */
         volatile GravesAndGlory.Unit shotKnight,sceneKnight,victim,late;volatile GravesAndGlory.Squad drill;final List<GravesAndGlory.Unit> group=new java.util.concurrent.CopyOnWriteArrayList<>();
         int si,since,clip,frame;
         void cast(GravesAndGlory.Battle b){
@@ -5384,7 +5524,9 @@ public final class Phase2Checks implements ClientModInitializer {
                 boolean good="hold".equals(read)&&tick-plainSince<=20;stanceOk&=good;
                 stanceWhy.append("; a revenant (no shield, no spear) joining the group on hold in line reads \"").append(read).append("\" ").append(tick-plainSince).append(" ticks after the spawn (want hold: Hold braces only shield and spear troops, within 20 ticks)").append(good?"":" (BAD)");
                 report("p2-anim-stance",stanceOk,stanceWhy.toString().trim());
-                server(c,b->{var d=drill;d.order="follow";if(drillTarget!=null)d.target=drillTarget;camera(b,0,1.6,-6,0,8);});cs=3;wait=0;si=0;regPhase=0;}
+                var ph=plainHold;plainHold=null; // the revenant leaves the drill and the world, so it is in none of the later anim shots
+                server(c,b->{if(ph!=null){ph.mob.discard();b.units.remove(ph);posted.remove(ph);pins.removeIf(p->p.mob()==ph.mob);System.out.println("[p2-wait] p2-anim-stance: the plain-hold revenant removed="+ph.mob.isRemoved()+", still a battle unit="+b.units.contains(ph));}
+                    var d=drill;d.order="follow";if(drillTarget!=null)d.target=drillTarget;camera(b,0,1.6,-6,0,8);});cs=3;wait=0;si=0;regPhase=0;}
         }
         String reads(MinecraftClient c){StringBuilder sb=new StringBuilder();for(var u:group){var e=client(c,u.mob);sb.append(e==null?"absent":"\""+stanceOf(e.getId())+"\"").append(" ");}return sb.toString().trim();}
 
@@ -5403,12 +5545,12 @@ public final class Phase2Checks implements ClientModInitializer {
             int t=tick-sceneAt;
             if(t==13){double off=maxRot(d.pose,clipEnd(m,"kneel")),pos=maxPos(d.pose,clipEnd(m,"kneel"));kneelOk=off<=1;
                 kneelWhy=String.format(Locale.ROOT,"kneel, 0.65 s after setScenePose: %.2f deg and %.2f px from kneel's last frame (want 1 deg or less)",off,pos);shot(c,"anim-scene-kneel");TroopAnimator.setScenePose(id,"helm_off");}
-            if(t==19){double off=maxRot(d.pose,clipEnd(m,"kneel"));List<String> shown=m.shownBones(d.last.bones());helmOk=off<=1&&m.bones().contains("iron_cap")&&!shown.contains("iron_cap");
-                helmWhy=String.format(Locale.ROOT,"then helm_off: still %.2f deg from kneel's last frame, iron_cap %s",off,shown.contains("iron_cap")?"drawn (BAD)":"hidden")+(m.bones().contains("iron_cap")?"":" (the knight has no iron_cap: BAD)");
+            if(t==19){double off=maxRot(d.pose,clipEnd(m,"kneel"));List<String> shown=m.shownBones(d.last.bones());String helm=knightHelm(d.last.look().armourTier());List<String> helms=shown.stream().filter(KNIGHT_HELMS::contains).toList();helmOk=off<=1&&m.bones().contains(helm)&&helms.isEmpty();
+                helmWhy=String.format(Locale.ROOT,"then helm_off: still %.2f deg from kneel's last frame, the helm (%s at armour tier %d) %s",off,helm,d.last.look().armourTier(),helms.isEmpty()?"hidden":helms+" drawn (BAD)")+(m.bones().contains(helm)?"":" (the knight has no "+helm+": BAD)");
                 shot(c,"anim-scene-helm");TroopAnimator.setScenePose(id,null);}
             if(t==19+TroopAnimator.BLEND_TICKS+2){float[] in=d.inputs.clone(),drawn=d.pose.clone();float[] want=TroopAnimator.reference(m,(MobEntity)e,in[1],in[2],in[0],in[3],in[4]);
-                double off=maxRot(drawn,want);List<String> shown=m.shownBones(d.last.bones());backOk=off<=1&&shown.contains("iron_cap");
-                backWhy=String.format(Locale.ROOT,"then null: %d ticks later %.2f deg from the idle pose a fresh State gives at the same age and look (want 1 or less), iron_cap %s",TroopAnimator.BLEND_TICKS+2,off,shown.contains("iron_cap")?"back":"still hidden (BAD)");
+                double off=maxRot(drawn,want);List<String> shown=m.shownBones(d.last.bones());String helm=knightHelm(d.last.look().armourTier());backOk=off<=1&&shown.contains(helm);
+                backWhy=String.format(Locale.ROOT,"then null: %d ticks later %.2f deg from the idle pose a fresh State gives at the same age and look (want 1 or less), %s %s",TroopAnimator.BLEND_TICKS+2,off,helm,shown.contains(helm)?"back":"still hidden (BAD)");
                 report("p2-anim-scene",kneelOk&&helmOk&&backOk,kneelWhy+"; "+helmWhy+"; "+backWhy);cs=4;wait=0;}
         }
 
@@ -6641,14 +6783,14 @@ public final class Phase2Checks implements ClientModInitializer {
                     var d1=e1==null?null:TroopRenderer.drawn(e1);var d3=e3==null?null:TroopRenderer.drawn(e3);var d0=e0==null?null:TroopRenderer.drawn(e0);
                     String n1=e1==null||e1.getCustomName()==null?"":e1.getCustomName().getString(),n3=e3==null||e3.getCustomName()==null?"":e3.getCustomName().getString(),n0=e0==null||e0.getCustomName()==null?"":e0.getCustomName().getString();
                     var l1=d1==null?null:d1.last;var l3=d3==null?null:d3.last;var l0=d0==null?null:d0.last;
-                    String trim="gravesandglory:textures/entity/troop/knight_veteran.png";
+                    // the hand-authored knight has no veteran trim since 25ecd79 (its model's "veteran" is empty): a Veteran knight is told by its name and look; RankChecks' p2-veteran-trim-tier draws a trim
                     boolean names=n1.equals("Order Squire (Veteran)")&&n3.equals("Knight-Captain (Veteran)")&&n0.equals("Order Squire");
-                    boolean one=l1!=null&&l1.look().veteran()&&unfar(l1.skin()).endsWith("knight_s1.png")&&unfar(l1.trim()).equals(trim);
-                    boolean three=l3!=null&&l3.look().veteran()&&l3.look().armourTier()==3&&unfar(l3.skin()).endsWith("knight_s3.png")&&unfar(l3.trim()).equals(trim);
+                    boolean one=l1!=null&&l1.look().veteran()&&unfar(l1.skin()).endsWith("knight_s1.png")&&l1.trim()==null;
+                    boolean three=l3!=null&&l3.look().veteran()&&l3.look().armourTier()==3&&unfar(l3.skin()).endsWith("knight_s3.png")&&l3.trim()==null;
                     boolean bare=l0!=null&&!l0.look().veteran()&&l0.trim()==null&&unfar(l0.skin()).endsWith("knight_s1.png");
                     boolean named=serverWhy.contains("(Order Squire (Veteran)) is knight")&&serverWhy.contains("(Knight-Captain (Veteran)) is knight");
                     shot(c,"chase-veteran");
-                    report("p2-veteran-skin",names&&one&&three&&bare&&named,"names on the client: \""+n1+"\", \""+n3+"\", \""+n0+"\" (want Order Squire (Veteran), Knight-Captain (Veteran), Order Squire)="+names+"; the Mastery II knight at tier I drew skin "+(l1==null?"none":l1.skin())+" with trim "+(l1==null?"none":l1.trim())+"="+one+"; at tier III skin "+(l3==null?"none":l3.skin())+" with trim "+(l3==null?"none":l3.trim())+"="+three+"; the bot's plain knight trim "+(l0==null?"none":l0.trim())+"="+bare+"; "+serverWhy+"="+named+"; picture p2-chase-veteran.png");
+                    report("p2-veteran-skin",names&&one&&three&&bare&&named,"names on the client: \""+n1+"\", \""+n3+"\", \""+n0+"\" (want Order Squire (Veteran), Knight-Captain (Veteran), Order Squire)="+names+"; the Mastery II knight at tier I drew skin "+(l1==null?"none":l1.skin())+" with trim "+(l1==null?"none":l1.trim())+" (want knight_s1, a Veteran, no trim: the knight has none)="+one+"; at tier III skin "+(l3==null?"none":l3.skin())+" with trim "+(l3==null?"none":l3.trim())+"="+three+"; the bot's plain knight trim "+(l0==null?"none":l0.trim())+"="+bare+"; "+serverWhy+"="+named+"; picture p2-chase-veteran.png");
                     lineupCast=false;server(c,b->lineup(b,true));cs=8;wait=0;}
                 case 8,9,10->{if(!lineupCast||!(posted.size()==6&&posted.stream().allMatch(u->{var e=client(c,u.mob);return e!=null&&e.getCustomName()!=null;})))return; // the six at Mastery II, then the six plain (for the trim's grading)
                     if(++wait<40)return;if(!shotReady(c,"screens-lineup")){wait--;return;}
@@ -7416,7 +7558,7 @@ public final class Phase2Checks implements ClientModInitializer {
                 if(m==null){ok=false;why.append(id).append(": no model (BAD); ");continue;}
                 try{
                     var j=modelJson(c,id);Map<String,Integer> want=fileQuads(j);Set<String> skins=new TreeSet<>();for(var e:j.getAsJsonObject("skins").entrySet())skins.add(e.getKey());
-                    Set<String> got=new TreeSet<>(m.reliefKeys());boolean good=got.equals(want.keySet())&&got.equals(skins)&&!got.isEmpty();
+                    Set<String> got=new TreeSet<>(m.reliefKeys());boolean good=got.equals(want.keySet())&&(want.isEmpty()||got.equals(skins)); // a file with relief has it for every own skin; the hand-authored models (121baca) hold none, and load none
                     StringBuilder per=new StringBuilder();
                     for(String k:got){int q=m.reliefQuads(k);good&=q==want.getOrDefault(k,-1)&&q>0&&q<=256;per.append(k).append('=').append(q).append(' ');}
                     ok&=good;why.append(id).append(": relief keys ").append(got).append(" (skins ").append(skins).append(") quads ").append(per).append("(the file holds ").append(want).append(")").append(good?"":" (BAD)").append("; ");
@@ -7434,7 +7576,7 @@ public final class Phase2Checks implements ClientModInitializer {
             int lines=0;List<String> bad=new ArrayList<>();
             try{for(String line:Files.readAllLines(c.runDirectory.toPath().resolve("logs/latest.log"),java.nio.charset.StandardCharsets.ISO_8859_1)){lines++;if(line.contains("[p2] "))continue; /* an earlier suite's report line (p2-spike-load) quotes the marker: seen in the Task 13 regression */if(line.contains("[troop-models]"))bad.add(line.trim());}}catch(IOException e){bad.add(e.toString());}
             ok&=bad.isEmpty()&&lines>0;why.append(lines).append(" lines of latest.log read, ").append(bad.isEmpty()?"no [troop-models] line":bad.size()+" [troop-models] lines, first: "+bad.get(0));
-            report("p2-depth-load",ok,"every Gilded model loads one relief mesh set per own skin with the quad counts its generated file holds, the six weapons are cube weapons, the bows have 4 frames and the other weapons 1, each cube weapon has a far version of 2 to 32 quads: "+why);
+            report("p2-depth-load",ok,"every Gilded model loads the relief its file holds (one mesh set per own skin with its quad counts when the file has relief; none when it has none, as the hand-authored models of 121baca), the six weapons are cube weapons, the bows have 4 frames and the other weapons 1, each cube weapon has a far version of 2 to 32 quads: "+why);
         }
 
         // ---- p2-depth-uv ----
@@ -7496,10 +7638,10 @@ public final class Phase2Checks implements ClientModInitializer {
             }
         }
         void uvCheck(MinecraftClient c){
-            List<String> bad=new ArrayList<>();int[] n={0,0};int meshes=0;
+            List<String> bad=new ArrayList<>();int[] n={0,0};int meshes=0,fileRelief=0;
             for(String id:SIX){
                 var m=TroopModels.model(id);if(m==null){bad.add(id+": no model");continue;}
-                int w,h,density;try{var j=modelJson(c,id);var size=j.getAsJsonArray("size");w=size.get(0).getAsInt();h=size.get(1).getAsInt();density=j.has("density")?j.get("density").getAsInt():1;}catch(Exception e){bad.add(id+": "+e);continue;}
+                int w,h,density;try{var j=modelJson(c,id);var size=j.getAsJsonArray("size");w=size.get(0).getAsInt();h=size.get(1).getAsInt();density=j.has("density")?j.get("density").getAsInt():1;for(int q:fileQuads(j).values())fileRelief+=q;}catch(Exception e){bad.add(id+": "+e);continue;}
                 for(String key:m.reliefKeys())for(String bone:m.boneOrder()){
                     var mesh=m.relief(bone,key);if(mesh.quads()==0)continue;meshes++;
                     quadRules(id+" "+bone+" "+key,mesh,cuboidFaces(m.bone(bone)),w,h,density,bad,n);
@@ -7510,7 +7652,8 @@ public final class Phase2Checks implements ClientModInitializer {
                 var m=TroopModels.model(id);var wp=m==null?null:TroopModels.weapon(m.weaponId());if(wp==null||!seen.add(wp.id()))continue;
                 for(int f=0;f<wp.frames().size();f++){frames++;quadRules("weapon "+wp.id()+" frame "+f,wp.frames().get(f),null,0,0,bad,n);}
             }
-            report("p2-depth-uv",bad.isEmpty()&&n[0]>0&&n[1]>0,n[0]+" quads in "+meshes+" relief meshes of the six and "+frames+" weapon frames: every one flat on its axis normal with its corners counter-clockwise from outside and a UV area above zero; "+n[1]+" top quads' UV centres within 0.001 texel of the UV their bone's own cuboid face gives"+(bad.isEmpty()?"":"; wrong: "+bad)+(n[0]>0&&n[1]>0?"":" (no relief quads to check: BAD)"));
+            // the top-quad UV rule needs relief: when the six's files hold none (the hand-authored models, 121baca) the weapon frames alone are checked, and a loaded relief mesh would be wrong
+            report("p2-depth-uv",bad.isEmpty()&&n[0]>0&&(fileRelief>0?n[1]>0:meshes==0),"the six's files hold "+fileRelief+" relief quads; "+n[0]+" quads in "+meshes+" relief meshes of the six and "+frames+" weapon frames: every one flat on its axis normal with its corners counter-clockwise from outside and a UV area above zero; "+n[1]+" top quads' UV centres within 0.001 texel of the UV their bone's own cuboid face gives"+(bad.isEmpty()?"":"; wrong: "+bad)+(n[0]>0&&n[1]>0?"":" (no relief quads to check: BAD)"));
         }
 
         // ---- p2-depth-follow ----
@@ -7532,9 +7675,10 @@ public final class Phase2Checks implements ClientModInitializer {
             var m=TroopModels.model("knight");var row=ArmyCards.spec("knight");List<String> bad=new ArrayList<>();StringBuilder why=new StringBuilder();int poses=0;
             if(m==null||row==null){report("p2-depth-follow",false,"no knight model");return;}
             var look=new TroopModels.Look(row,1,false,"gold");
+            boolean none=m.reliefKeys().isEmpty(); // the hand-authored knight (121baca) holds no relief: then no bone may draw a relief vertex, and there is nothing to follow
             try{
             for(Object[] pose:new Object[][]{{"attack","attack",TroopClips.PEAKS.get("attack")},{"walk","walk",TroopClips.LENGTHS.get("walk")/4}})
-                for(String bone:List.of("right_arm","left_arm","iron_cap","right_leg")){
+                for(String bone:List.of("right_arm","left_arm","helm_squire","right_leg")){
                     m.getPart().traverse().forEach(ModelPart::resetTransform);TroopAnimator.applyForced(m,new TroopAnimator.Forced((String)pose[1],(Float)pose[2]),TroopAnimator.row(m),false);
                     m.prepare(look,false,false);
                     List<ModelPart> keep=m.path(bone);
@@ -7552,11 +7696,12 @@ public final class Phase2Checks implements ClientModInitializer {
                         worst=Math.max(worst,near);
                     }
                     poses++;why.append(String.format(Locale.ROOT,"%s %s: %d quads, %d vertices, the farthest %.2f px; ",pose[0],bone,quads,cap.vertices.size(),worst));
-                    if(cap.vertices.isEmpty())bad.add(pose[0]+" "+bone+": no relief vertex drawn");
+                    if(none){if(!cap.vertices.isEmpty())bad.add(pose[0]+" "+bone+": "+cap.vertices.size()+" relief vertices drawn from a model with no relief");}
+                    else if(cap.vertices.isEmpty())bad.add(pose[0]+" "+bone+": no relief vertex drawn");
                     else if(worst>1.5)bad.add(String.format(Locale.ROOT,"%s %s: a relief vertex %.2f px from its bone's cuboids",pose[0],bone,worst));
                 }
             }finally{m.getPart().traverse().forEach(p->{p.resetTransform();p.hidden=false;});}   // the shared knight model is left as found, whatever threw
-            report("p2-depth-follow",bad.isEmpty()&&poses==8,"the knight forced to attack at its peak and to walk at a quarter, each relief vertex of right_arm, left_arm, iron_cap (the head's child) and right_leg (drawn through a capturing consumer, taken back into the bone's frame) within 1.5 px of the bone's cuboids: "+why+(bad.isEmpty()?"":"wrong: "+bad));
+            report("p2-depth-follow",bad.isEmpty()&&poses==8,(none?"the knight's file holds no relief (hand-authored, 121baca), so no bone may draw any and there is nothing to follow; ":"")+"the knight forced to attack at its peak and to walk at a quarter, each relief vertex of right_arm, left_arm, helm_squire (the head's child) and right_leg (drawn through a capturing consumer, taken back into the bone's frame) within 1.5 px of the bone's cuboids: "+why+(bad.isEmpty()?"":"wrong: "+bad));
         }
 
         // ---- p2-depth-near: a knight at 8 and 30 blocks ----
