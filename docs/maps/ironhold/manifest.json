@@ -292,8 +292,24 @@
      -113
     ]
    },
-   "status": "todo",
-   "reviews": []
+   "status": "blockout",
+   "reviews": [
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-10-31T12:12:35Z",
+     "digest": "c2b544ff82353b2ff1427c90b88f4481e86f7f54d3b469df0ad8e27bd576b5f5",
+     "plans": [
+      "docs/maps/ironhold/sections/C1-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-C1-top.png",
+      "docs/maps/ironhold/sections/ironhold-C1-iso.png"
+     ],
+     "notes": "West upland falls to the wet north meadow; north lane bends round the bluff's west foot; meadow puddles flush with the mud. Upland contours still read as soft terraces (natural pass)."
+    }
+   ]
   },
   {
    "id": "D1",
@@ -310,8 +326,24 @@
      -113
     ]
    },
-   "status": "todo",
-   "reviews": []
+   "status": "blockout",
+   "reviews": [
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-10-31T12:12:38Z",
+     "digest": "dc1337f071ec240137066ff6d90083dbfa8155f1b7cd1f29a8b9c690cee099b4",
+     "plans": [
+      "docs/maps/ironhold/sections/D1-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-D1-top.png",
+      "docs/maps/ironhold/sections/ironhold-D1-iso.png"
+     ],
+     "notes": "North bluff rises to about 70 on a warped, uneven foot with bare rock where it steepens; lane runs along its foot, hidden from the gate towers. Wet patches could be fewer near the lane."
+    }
+   ]
   },
   {
    "id": "E1",
@@ -328,8 +360,24 @@
      -113
     ]
    },
-   "status": "todo",
-   "reviews": []
+   "status": "blockout",
+   "reviews": [
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-10-31T12:12:40Z",
+     "digest": "f980f8f5788654f6d3383c8aa67695ef4ac4cbcdfcbf51a98d65c336cf534ec4",
+     "plans": [
+      "docs/maps/ironhold/sections/E1-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-E1-top.png",
+      "docs/maps/ironhold/sections/ironhold-E1-iso.png"
+     ],
+     "notes": "Burned village: five roofless blackstone shells with broken tops 64..68 and one doorway each, on ash and gravel; bluff behind; north lane into A. The corner nearest A is broken to the ground for the capture ring."
+    }
+   ]
   },
   {
    "id": "F1",
@@ -346,8 +394,24 @@
      -113
     ]
    },
-   "status": "todo",
-   "reviews": []
+   "status": "blockout",
+   "reviews": [
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-10-31T12:12:42Z",
+     "digest": "e2cb4685d0a2fc8254102b64bd01da39fca74e2be2014080ef60cbb2fb743afe",
+     "plans": [
+      "docs/maps/ironhold/sections/F1-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-F1-top.png",
+      "docs/maps/ironhold/sections/ironhold-F1-iso.png"
+     ],
+     "notes": "A supply yard: level pad at 63 under the ring, broken wall stubs at r 21 clear of the lanes; north ford eased to a 1-deep gravel shoal; river rises into its gorge mouth toward the rim."
+    }
+   ]
   },
   {
    "id": "G1",
@@ -364,8 +428,24 @@
      -113
     ]
    },
-   "status": "todo",
-   "reviews": []
+   "status": "blockout",
+   "reviews": [
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-10-31T12:12:44Z",
+     "digest": "f49ac13bd701c4fdbdd4b28cd31d571d5f5eff57fde87a18b8fd82d04c4d83aa",
+     "plans": [
+      "docs/maps/ironhold/sections/G1-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-G1-top.png",
+      "docs/maps/ironhold/sections/ironhold-G1-iso.png"
+     ],
+     "notes": "North reach: open wet bank east of the river, worn track to the ford, banks rising toward the rim. Quiet by design."
+    }
+   ]
   },
   {
    "id": "H1",
@@ -490,8 +570,24 @@
      -49
     ]
    },
-   "status": "todo",
-   "reviews": []
+   "status": "blockout",
+   "reviews": [
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-10-31T12:12:47Z",
+     "digest": "3679932befcb2ccb5d130ccd42e9bab36a7bb361333c79bcdf5f6b7afe2b5ee8",
+     "plans": [
+      "docs/maps/ironhold/sections/C2-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-C2-top.png",
+      "docs/maps/ironhold/sections/ironhold-C2-iso.png"
+     ],
+     "notes": "Mire north edge with pools, watchtower (-180,-85) cracked to 75..77, north lane on dry ground above the Mire."
+    }
+   ]
   },
   {
    "id": "D2",
@@ -508,8 +604,24 @@
      -49
     ]
    },
-   "status": "todo",
-   "reviews": []
+   "status": "blockout",
+   "reviews": [
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-10-31T12:12:49Z",
+     "digest": "88549adddd50ea1f83d6c6977e6210595708097af66cc79b4fd11598f72c896b",
+     "plans": [
+      "docs/maps/ironhold/sections/D2-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-D2-top.png",
+      "docs/maps/ironhold/sections/ironhold-D2-iso.png"
+     ],
+     "notes": "Supply yard and house unchanged in form; trench runs end short of the z -41 crossing; meadow puddles north of the yard."
+    }
+   ]
   },
   {
    "id": "E2",
@@ -526,8 +638,24 @@
      -49
     ]
    },
-   "status": "todo",
-   "reviews": []
+   "status": "blockout",
+   "reviews": [
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-10-31T12:12:52Z",
+     "digest": "7dcefb1972f311364b7d0072cec13d1b76b0e87046910c52f0ab8bf3772f93ec",
+     "plans": [
+      "docs/maps/ironhold/sections/E2-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-E2-top.png",
+      "docs/maps/ironhold/sections/ironhold-E2-iso.png"
+     ],
+     "notes": "NW corner tower (cracked to 74..76) and north curtain at 71; A-to-sally-gap track goes round the fosse end outside the curtain, then a cobble causeway over the fosse at z -62. Village houses 3 and 4 on the ash ground."
+    }
+   ]
   },
   {
    "id": "F2",
@@ -544,8 +672,24 @@
      -49
     ]
    },
-   "status": "todo",
-   "reviews": []
+   "status": "blockout",
+   "reviews": [
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-10-31T12:12:55Z",
+     "digest": "7db05cd1bb69425163e68245f80d3fdddcf70bbb77e3b5f34f4e4e56876eab40",
+     "plans": [
+      "docs/maps/ironhold/sections/F2-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-F2-top.png",
+      "docs/maps/ironhold/sections/ironhold-F2-iso.png"
+     ],
+     "notes": "North curtain with the water-gate arch: the river cuts it, a lintel spans y 68..71; inner yard and bailey ground carried to z -93."
+    }
+   ]
   },
   {
    "id": "G2",
