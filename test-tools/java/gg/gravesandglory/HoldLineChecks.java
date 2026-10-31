@@ -280,13 +280,22 @@ final class HoldLineChecks {
         final List<GravesAndGlory.Unit> cpLoad = new ArrayList<>();
         int cpRun, cpKilled, cpSamples, cpLying; boolean cpSwept;
         double cpServerSum, cpPeakSum; long cpWall0, cpPeakWall0, cpPeakFrames0; double cpPeakFrame;
+        /** R58: the fade pass's bodies when the run's measure began, and the bodies lying summed over the 10-tick samples (their mean, M3). */
+        long cpFade0, cpLyingSum, cpLyingN;
         /**
          * Each run: {lie, fade, server ms mean, client world-render ms mean, frames, client worst ms, most bodies lying, measured 1/0, all dead 1/0,
-         * server samples, client frame ms (wall clock / frames), arm (0 warm-up, 1 A, 2 B), peak-window server ms, peak-window frame ms}.
+         * server samples, client frame ms (wall clock / frames), arm (0 warm-up, 1 A, 2 B), peak-window server ms, peak-window frame ms,
+         * block instance (-1 the warm-up), fading bodies drawn per frame (mean), most fading bodies in one fade pass, bodies lying (mean of the
+         * 10-tick samples), valid (1; 0 its block instance holds a stall; -1 a stall itself, R58)}.
          */
         final List<double[]> cpRuns = new ArrayList<>();
         /** The runs by arm (0 a warm-up with the sheet's corpse rows, 1 A with no lie and no fade, 2 B with the sheet's rows): a warm-up, then A B B A eight times (Task 8 fix 2, R43). */
         static final int[] CP_PLAN = {0, 1, 2, 2, 1, 1, 2, 2, 1, 1, 2, 2, 1, 1, 2, 2, 1, 1, 2, 2, 1, 1, 2, 2, 1, 1, 2, 2, 1, 1, 2, 2, 1};
+        /** R58: the runs to do (CP_PLAN, then any block re-run for a stall), each run's block instance (-1 the warm-up), each instance's block (0 to 7). */
+        final List<Integer> cpPlan = new ArrayList<>(), cpBlock = new ArrayList<>(), cpBlockOf = new ArrayList<>();
+        /** R58: a run whose mean frame is over this times its kind's median frame is a stall; at most this many block re-runs. */
+        static final double CP_STALL = 1.5; static final int CP_RERUNS = 2;
+        int cpReruns; final java.util.Set<Integer> cpDeadInst = new java.util.HashSet<>(); final List<String> cpStallLog = new ArrayList<>();
         /** GRAVES_CORPSE_LOAD=0 leaves hl-corpse-load out (a quick hl-corpse run while developing; never for a reported run). */
         static final boolean CP_LOAD = !"0".equals(System.getenv("GRAVES_CORPSE_LOAD"));
         /** GRAVES_FADE_NOGROUPS=1 runs hl-corpse-load with the fade pass's overlap groups off (BodyCache.noGroups, carry D14's red side): what the groups cost, measured. */
@@ -1966,6 +1975,9 @@ final class HoldLineChecks {
                     for (var u : risen) {u.mob.discard(); b.units.remove(u);}
                     Houses.recompute(own);
                     clearFixture(b, "hl-corpse"); b.clearCorpses(); cpRow = Spec.COMBATDISCIPLINE[0]; cpRun = 0;
+                    cpPlan.clear(); cpBlock.clear(); cpBlockOf.clear(); cpReruns = 0; cpDeadInst.clear(); cpStallLog.clear();
+                    for (int i = 0; i < CP_PLAN.length; i++) {cpPlan.add(CP_PLAN[i]); cpBlock.add(i == 0 ? -1 : (i - 1) / 4);}
+                    for (int i = 0; i < (CP_PLAN.length - 1) / 4; i++) cpBlockOf.add(i);
                     own.order = "hold"; dusk.order = "hold";
                     next(b, 128);
                 }
@@ -2003,7 +2015,8 @@ final class HoldLineChecks {
                         return;
                     }
                     if (n < 71) return;
-                    cpKilled = 0; cpSamples = 0; cpServerSum = 0; cpPeakSum = 0; cpPeakFrame = 0; cpLying = 0; Phase2Checks.RenderCost.start(); cpWall0 = System.nanoTime();
+                    cpKilled = 0; cpSamples = 0; cpServerSum = 0; cpPeakSum = 0; cpPeakFrame = 0; cpLying = 0; cpLyingSum = 0; cpLyingN = 0;
+                    cpFade0 = BodyCache.fadeBodies; BodyCache.fadeBodiesMax = 0; Phase2Checks.RenderCost.start(); cpWall0 = System.nanoTime();
                     next(b, 131); corpseStages(b); // the first death on this tick
                 }
                 case 131 -> { // one death a tick for 200 ticks; measure for 340
@@ -2012,48 +2025,60 @@ final class HoldLineChecks {
                     if (n == CP_PEAK_FROM) {cpPeakWall0 = System.nanoTime(); cpPeakFrames0 = Phase2Checks.RenderCost.frames;}
                     if (n == CP_PEAK_FROM + CP_PEAK_TICKS) cpPeakFrame = (System.nanoTime() - cpPeakWall0) / 1e6 / Math.max(1, Phase2Checks.RenderCost.frames - cpPeakFrames0);
                     if (cpKilled < cpLoad.size()) fall(b, cpLoad.get(cpKilled++));
-                    if (n % 10 == 0) {int lying = 0; for (var u : cpLoad) if (u.mob.isDead() && !u.mob.isRemoved()) lying++; cpLying = Math.max(cpLying, lying);}
+                    if (n % 10 == 0) {int lying = 0; for (var u : cpLoad) if (u.mob.isDead() && !u.mob.isRemoved()) lying++; cpLying = Math.max(cpLying, lying); cpLyingSum += lying; cpLyingN++;}
                     if (n < 340) return;
                     Phase2Checks.RenderCost.on = false;
-                    long frames = Phase2Checks.RenderCost.frames; int arm = CP_PLAN[cpRun]; int[] run = cpArm(arm);
+                    long frames = Phase2Checks.RenderCost.frames; int arm = cpPlan.get(cpRun), inst = cpBlock.get(cpRun); int[] run = cpArm(arm);
+                    double fading = (BodyCache.fadeBodies - cpFade0) / (double) Math.max(1, frames), lyingMean = cpLyingSum / (double) Math.max(1, cpLyingN); long fadingPeak = BodyCache.fadeBodiesMax;
                     double server = cpServerSum / Math.max(1, cpSamples), client = Phase2Checks.RenderCost.sumNs / 1e6 / Math.max(1, frames), worst = Phase2Checks.RenderCost.worstNs / 1e6;
                     double frame = (System.nanoTime() - cpWall0) / 1e6 / Math.max(1, frames); // the whole frame, wall clock over the frames drawn (the frame rate is capped by the run's options.txt, logged with the report: vsync off, maxFps 260 when measuring)
                     boolean allDead = cpLoad.stream().noneMatch(u -> u.mob.isAlive());
                     double peakServer = cpPeakSum / CP_PEAK_TICKS;
-                    cpRuns.add(new double[]{run[0], run[1], server, client, frames, worst, cpLying, arm == 0 ? 0 : 1, allDead ? 1 : 0, cpSamples, frame, arm, peakServer, cpPeakFrame});
-                    System.out.println(String.format(Locale.ROOT, "[p2] hl-corpse-load run %d (%s, lie %d fade %d): %d troops, %d fell, all dead %b; server tick %.3f ms mean over %d ticks; client frame %.3f ms mean (wall clock / frames); client world render %.3f ms mean, %.3f ms worst over %d frames; at most %d bodies lying; peak window (ticks %d-%d) server %.3f ms, frame %.3f ms",
-                        cpRun, arm == 0 ? "warm-up" : arm == 1 ? "A" : "B", run[0], run[1], cpLoad.size(), cpKilled, allDead, server, cpSamples, frame, client, worst, frames, cpLying, CP_PEAK_FROM + 1, CP_PEAK_FROM + CP_PEAK_TICKS, peakServer, cpPeakFrame));
+                    cpRuns.add(new double[]{run[0], run[1], server, client, frames, worst, cpLying, arm == 0 ? 0 : 1, allDead ? 1 : 0, cpSamples, frame, arm, peakServer, cpPeakFrame, inst, fading, fadingPeak, lyingMean, 1});
+                    System.out.println(String.format(Locale.ROOT, "[p2] hl-corpse-load run %d (%s, block %s, lie %d fade %d): %d troops, %d fell, all dead %b; server tick %.3f ms mean over %d ticks; client frame %.3f ms mean (wall clock / frames); client world render %.3f ms mean, %.3f ms worst over %d frames; bodies lying mean %.1f, peak %d; fading bodies drawn per frame mean %.1f, most in one pass %d; peak window (ticks %d-%d) server %.3f ms, frame %.3f ms",
+                        cpRun, arm == 0 ? "warm-up" : arm == 1 ? "A" : "B", inst < 0 ? "none" : String.valueOf(cpBlockOf.get(inst) + 1), run[0], run[1], cpLoad.size(), cpKilled, allDead, server, cpSamples, frame, client, worst, frames, lyingMean, cpLying, fading, fadingPeak, CP_PEAK_FROM + 1, CP_PEAK_FROM + CP_PEAK_TICKS, peakServer, cpPeakFrame));
                     b.clearCorpses(); clearFixture(b, "hl-corpse-load"); cpLoad.clear();
                     next(b, 132);
                 }
                 case 132 -> {
                     if (since(b) < 40) return;
-                    if (++cpRun < CP_PLAN.length) {cpBegin(b); return;}
+                    if (++cpRun < cpPlan.size()) {cpBegin(b); return;}
+                    if (cpStalls()) {cpBegin(b); return;} // R58: a stalled block re-run
                     Spec.COMBATDISCIPLINE[0] = cpRow; own.order = "hold"; dusk.order = "hold";
                     int[] sheet = cpArm(2); int gone = BattleMath.corpseGoneTick(sheet[0], sheet[1]), want = Math.min(100, gone - 10);
-                    // each A B B A block's ratio is its two B runs over its two A runs; the gate is the median of the blocks' ratios, the spread their largest less their smallest
-                    List<double[]> blocks = new ArrayList<>(); // {server, frame, world render, peak server, peak frame}, each B/A
-                    for (int k = 1; k + 3 < cpRuns.size(); k += 4) {
-                        double[] r0 = cpRuns.get(k), r1 = cpRuns.get(k + 1), r2 = cpRuns.get(k + 2), r3 = cpRuns.get(k + 3);
-                        blocks.add(new double[]{(r1[2] + r2[2]) / (r0[2] + r3[2]), (r1[10] + r2[10]) / (r0[10] + r3[10]), (r1[3] + r2[3]) / (r0[3] + r3[3]), (r1[12] + r2[12]) / (r0[12] + r3[12]), (r1[13] + r2[13]) / (r0[13] + r3[13])});
+                    // R58: each valid A B B A block instance (no stall in it): its B/A ratios and its client frame difference, the mean of its two B runs less the mean of its two A runs;
+                    // the gates are the blocks' medians, the spread their largest less their smallest
+                    List<double[]> blocks = new ArrayList<>(); List<Integer> blockOf = new ArrayList<>(); // {server, frame, world render, peak server, peak frame} each B/A, then frame B-A (ms)
+                    for (int inst = 0; inst < cpBlockOf.size(); inst++) {
+                        List<double[]> four = new ArrayList<>(); for (var r : cpRuns) if ((int) r[14] == inst) four.add(r);
+                        if (four.size() != 4 || four.stream().anyMatch(r -> r[18] != 1)) continue;
+                        double[] r0 = four.get(0), r1 = four.get(1), r2 = four.get(2), r3 = four.get(3);
+                        blocks.add(new double[]{(r1[2] + r2[2]) / (r0[2] + r3[2]), (r1[10] + r2[10]) / (r0[10] + r3[10]), (r1[3] + r2[3]) / (r0[3] + r3[3]), (r1[12] + r2[12]) / (r0[12] + r3[12]), (r1[13] + r2[13]) / (r0[13] + r3[13]), (r1[10] + r2[10]) / 2 - (r0[10] + r3[10]) / 2});
+                        blockOf.add(cpBlockOf.get(inst));
                     }
-                    double rs = cpMedian(blocks, 0), rf = cpMedian(blocks, 1), rc = cpMedian(blocks, 2), ps = cpMedian(blocks, 3), pf = cpMedian(blocks, 4);
+                    double rs = cpMedian(blocks, 0), rf = cpMedian(blocks, 1), rc = cpMedian(blocks, 2), ps = cpMedian(blocks, 3), pf = cpMedian(blocks, 4), diff = cpMedian(blocks, 5);
                     boolean dead = cpRuns.stream().allMatch(r -> r[8] == 1), lay = cpRuns.stream().filter(r -> r[11] == 2).allMatch(r -> r[6] >= want);
                     StringBuilder raw = new StringBuilder();
-                    for (int i = 0; i < cpRuns.size(); i++) {var r = cpRuns.get(i); raw.append(String.format(Locale.ROOT, "%s%d %s(lie %d fade %d): server %.3f ms, frame %.3f ms, world render %.3f ms (worst %.3f) over %d frames, %d lying at most, peak server %.3f frame %.3f", i == 0 ? "" : "; ", i, r[11] == 0 ? "warm-up " : r[11] == 1 ? "A " : "B ", (int) r[0], (int) r[1], r[2], r[10], r[3], r[5], (int) r[4], (int) r[6], r[12], r[13]));}
+                    for (int i = 0; i < cpRuns.size(); i++) {var r = cpRuns.get(i); raw.append(String.format(Locale.ROOT, "%s%d %s(block %s, lie %d fade %d%s): server %.3f ms, frame %.3f ms, world render %.3f ms (worst %.3f) over %d frames, lying mean %.1f peak %d, fading per frame %.1f peak %d, peak server %.3f frame %.3f", i == 0 ? "" : "; ", i, r[11] == 0 ? "warm-up " : r[11] == 1 ? "A " : "B ", r[14] < 0 ? "none" : String.valueOf(cpBlockOf.get((int) r[14]) + 1), (int) r[0], (int) r[1], r[18] == -1 ? ", STALL" : r[18] == 0 ? ", block invalid" : "", r[2], r[10], r[3], r[5], (int) r[4], r[17], (int) r[6], r[15], (int) r[16], r[12], r[13]));}
                     StringBuilder per = new StringBuilder();
-                    for (int i = 0; i < blocks.size(); i++) {var k = blocks.get(i); per.append(String.format(Locale.ROOT, "%sblock %d server %.3f frame %.3f world render %.3f peak server %.3f peak frame %.3f", i == 0 ? "" : "; ", i + 1, k[0], k[1], k[2], k[3], k[4]));}
-                    boolean measured = blocks.size() >= 3 && blocks.stream().allMatch(k -> k[0] > 0 && k[1] > 0);
-                    // R55 (Kort, 2026-10-31): the client gate is an absolute budget, what the fading bodies add to a frame (the B arm's mean frame less the A arm's, over all their runs), 0.75 ms or less; the frame ratio is for information
-                    double meanA = cpRuns.stream().filter(r -> r[11] == 1).mapToDouble(r -> r[10]).average().orElse(-1), meanB = cpRuns.stream().filter(r -> r[11] == 2).mapToDouble(r -> r[10]).average().orElse(-1), cost = meanB - meanA;
-                    int mostB = (int) cpRuns.stream().filter(r -> r[11] == 2).mapToDouble(r -> r[6]).max().orElse(0);
+                    for (int i = 0; i < blocks.size(); i++) {var k = blocks.get(i); per.append(String.format(Locale.ROOT, "%sblock %d frame B-A %.3f ms, server B/A %.3f, frame B/A %.3f, world render B/A %.3f, peak server %.3f, peak frame %.3f", i == 0 ? "" : "; ", blockOf.get(i) + 1, k[5], k[0], k[1], k[2], k[3], k[4]));}
+                    boolean measured = blocks.size() >= 8 && blocks.stream().allMatch(k -> k[0] > 0 && k[1] > 0);
+                    // R55 (Kort, 2026-10-31) and R58: the client gate is an absolute budget, what the fading bodies add to a frame: the median over the valid blocks of each
+                    // block's B-A, 0.75 ms or less, with 8 blocks or more; the arms' means and the frame ratio are for information
+                    List<double[]> valid = cpRuns.stream().filter(r -> r[18] == 1).toList();
+                    double meanA = valid.stream().filter(r -> r[11] == 1).mapToDouble(r -> r[10]).average().orElse(-1), meanB = valid.stream().filter(r -> r[11] == 2).mapToDouble(r -> r[10]).average().orElse(-1), cost = meanB - meanA;
+                    int mostB = (int) valid.stream().filter(r -> r[11] == 2).mapToDouble(r -> r[6]).max().orElse(0), fadePeakB = (int) valid.stream().filter(r -> r[11] == 2).mapToDouble(r -> r[16]).max().orElse(0);
+                    double lyingB = valid.stream().filter(r -> r[11] == 2).mapToDouble(r -> r[17]).average().orElse(-1), fadingB = valid.stream().filter(r -> r[11] == 2).mapToDouble(r -> r[15]).average().orElse(-1);
                     BodyCache.noGroups = false;
-                    report("hl-corpse-load", dead && lay && measured && meanA > 0 && meanB > 0 && cost <= 0.75 && rs <= 1.10, String.format(Locale.ROOT,
+                    report("hl-corpse-load", dead && lay && measured && diff <= 0.75 && rs <= 1.10, String.format(Locale.ROOT,
                         "dry ground only (the patch: no water, no fire, so every body settles; a body in water or burning keeps ticking and is not measured here); the client's vsync %b, maxFps %d (the run's options.txt); "
                         + "200 Squires (100 a side, AI on, both on Attack into each other, 4000 health) on the patch, one falling a tick, all dead within 10 s=%b; the bodies lay (B, lie %d fade %d: %d or more at once)=%b; "
-                        + "%d A B B A blocks after a warm-up, System.gc() before every run: median server tick B/A %.3f, spread %.3f (want median 1.10 or less); client frame mean A %.3f ms, B %.3f ms, B-A %.3f ms at up to %d bodies lying (want 0.75 ms or less, R55); median client frame B/A %.3f, spread %.3f (for information); "
-                        + "for reference the world render alone median B/A %.3f (spread %.3f), and over the peak window (ticks %d-%d of the wave) server %.3f, frame %.3f; blocks: %s; runs: %s; body cache: %s",
-                        MinecraftClient.getInstance().options.getEnableVsync().getValue(), MinecraftClient.getInstance().options.getMaxFps().getValue(), dead, sheet[0], sheet[1], want, lay, blocks.size(), rs, cpSpread(blocks, 0), meanA, meanB, cost, mostB, rf, cpSpread(blocks, 1), rc, cpSpread(blocks, 2), CP_PEAK_FROM + 1, CP_PEAK_FROM + CP_PEAK_TICKS, ps, pf, per, raw, BodyCache.diag()));
+                        + "%d valid A B B A blocks (want 8 or more, R58) after a warm-up, System.gc() before every run; stalls (a run's mean frame over %.1f times its kind's median; its block re-run, at most %d): %s; "
+                        + "median server tick B/A %.3f, spread %.3f (want median 1.10 or less); client frame B-A per block (its B runs' mean less its A runs' mean) median %.3f ms, spread %.3f (want median 0.75 ms or less, R55/R58); "
+                        + "in the B runs bodies lying mean %.1f (10-tick samples), peak %d; fading bodies drawn per frame mean %.1f, most in one fade pass %d; "
+                        + "for information: client frame mean A %.3f ms, B %.3f ms, B-A of the means %.3f ms; median client frame B/A %.3f, spread %.3f; the world render alone median B/A %.3f (spread %.3f), and over the peak window (ticks %d-%d of the wave) server %.3f, frame %.3f; blocks: %s; runs: %s; body cache: %s",
+                        MinecraftClient.getInstance().options.getEnableVsync().getValue(), MinecraftClient.getInstance().options.getMaxFps().getValue(), dead, sheet[0], sheet[1], want, lay, blocks.size(), CP_STALL, CP_RERUNS, cpStallLog.isEmpty() ? "none" : String.join("; ", cpStallLog),
+                        rs, cpSpread(blocks, 0), diff, cpSpread(blocks, 5), lyingB, mostB, fadingB, fadePeakB, meanA, meanB, cost, rf, cpSpread(blocks, 1), rc, cpSpread(blocks, 2), CP_PEAK_FROM + 1, CP_PEAK_FROM + CP_PEAK_TICKS, ps, pf, per, raw, BodyCache.diag()));
                     next(b, 140);
                 }
                 case 140 -> { // a round's end takes a lying body at once
@@ -2070,7 +2095,31 @@ final class HoldLineChecks {
             }
         }
         /** hl-corpse-load: this run's corpse rows, then its troops (stage 130). */
-        void cpBegin(GravesAndGlory.Battle b) {int[] run = cpArm(CP_PLAN[cpRun]); Spec.COMBATDISCIPLINE[0] = corpseRow(cpRow, run[0], run[1]); cpLoad.clear(); System.gc(); next(b, 130);}
+        /**
+         * R58: marks every run whose mean frame is over CP_STALL times the median mean frame of its kind's (A or B) runs not yet marked a stall, its block
+         * instance invalid, and queues that block again (A B B A) while re-runs are left; true when it queued one. Every stall is logged.
+         */
+        boolean cpStalls() {
+            boolean again = false;
+            for (int i = 0; i < cpRuns.size(); i++) {
+                var r = cpRuns.get(i); int arm = (int) r[11]; if (arm == 0 || r[18] == -1) continue;
+                double med = cpMedian(cpRuns.stream().filter(q -> q[11] == arm && q[18] != -1).toList(), 10);
+                if (!(r[10] > CP_STALL * med)) continue;
+                int inst = (int) r[14]; r[18] = -1;
+                for (var q : cpRuns) if ((int) q[14] == inst && q[18] == 1) q[18] = 0;
+                String what;
+                if (!cpDeadInst.add(inst)) what = "its block already invalid";
+                else if (cpReruns < CP_RERUNS) {
+                    cpReruns++; int ni = cpBlockOf.size(); cpBlockOf.add(cpBlockOf.get(inst));
+                    for (int a : new int[]{1, 2, 2, 1}) {cpPlan.add(a); cpBlock.add(ni);}
+                    what = "its block re-run (re-run " + cpReruns + " of " + CP_RERUNS + ")"; again = true;
+                } else what = "its block invalid, no re-run left";
+                String log = String.format(Locale.ROOT, "run %d (%s, block %d) mean frame %.3f ms, %.2f times its kind's median %.3f ms: a stall, %s", i, arm == 1 ? "A" : "B", cpBlockOf.get(inst) + 1, r[10], r[10] / med, med, what);
+                cpStallLog.add(log); System.out.println("[p2] hl-corpse-load stall: " + log);
+            }
+            return again;
+        }
+        void cpBegin(GravesAndGlory.Battle b) {int[] run = cpArm(cpPlan.get(cpRun)); Spec.COMBATDISCIPLINE[0] = corpseRow(cpRow, run[0], run[1]); cpLoad.clear(); System.gc(); next(b, 130);}
         /** An arm's {corpseLieTicks, corpseFadeTicks}: A none, the warm-up and B the sheet's rows. */
         /** R43: the corpse rows' last lying death tick before the fade (20 + lie - 1) and the removal tick (20 + lie + fade). */
         static final int CP_STAND = 5;
@@ -2105,7 +2154,7 @@ final class HoldLineChecks {
                     if (e instanceof net.minecraft.entity.LivingEntity l0 && cpShotAsked < 0) cpShotAsked = l0.deathTime;
                     if (!(e instanceof net.minecraft.entity.LivingEntity l) || !l.isDead() || !BodyCache.cached(e)) return;
                     cpShotAt = l.deathTime;
-                    c.options.hudHidden = true; c.getToastManager().clear(); EventFeed.clear(); c.setScreen(new net.minecraft.client.gui.screen.GameMenuScreen(false)); cpShotPhase = 1; cpShotWait = 0; cpShotDraws = BodyCache.cachedDraws;
+                    EventFeed.clear(); MotionChecks.still(c); cpShotPhase = 1; cpShotWait = 0; cpShotDraws = BodyCache.cachedDraws; // R60: paused with no menu and no HUD
                 }
                 case 1 -> {
                     if (++cpShotWait < 6) return;
@@ -2150,7 +2199,7 @@ final class HoldLineChecks {
         }
         void cacheShotsEnd(MinecraftClient c) {
             if (cpShotPhase == 3) cpNudge(c, false);
-            if (cpShotPhase > 0) {c.setScreen(null); c.options.hudHidden = false;}
+            if (cpShotPhase > 0) MotionChecks.unstill(c);
             BodyCache.off = false; BodyCache.hide = -1; cpShotPhase = 0;
             if (cpShotA != null) {cpShotA.close(); cpShotA = null;} if (cpShotB != null) {cpShotB.close(); cpShotB = null;} if (cpShotB2 != null) {cpShotB2.close(); cpShotB2 = null;}
         }
@@ -2192,12 +2241,13 @@ final class HoldLineChecks {
                     if (l.deathTime < at[cpFadeK]) return;
                     if (cpFadeK == 0) {cpFadeCached = true; cpFadePaused = true;}
                     cpFadeV[cpFadeK][3] = l.deathTime;
-                    c.options.hudHidden = true; c.getToastManager().clear(); EventFeed.clear(); c.setScreen(new net.minecraft.client.gui.screen.GameMenuScreen(false)); cpFadePhase = 1; cpFadeWait = 0; cpFadeDraws = BodyCache.cachedDraws;
+                    EventFeed.clear(); MotionChecks.still(c); cpFadePhase = 1; cpFadeWait = 0; cpFadeDraws = BodyCache.cachedDraws; // R60: paused with no menu and no HUD
                 }
                 case 1 -> {
                     if (++cpFadeWait < 6) return;
                     cpFadePaused &= c.isPaused(); cpFadeCached &= BodyCache.cachedDraws > cpFadeDraws;
-                    cpFadeV[cpFadeK][2] = BattleMath.corpseAlpha(l.deathTime + c.getTickDelta(), row.corpseLieTicks(), row.corpseFadeTicks());
+                    // R61: the want at the paused frame's own partial tick (what the renderer draws at), the death tick as the pause holds it
+                    cpFadeV[cpFadeK][3] = l.deathTime; cpFadeV[cpFadeK][2] = BattleMath.corpseAlpha(l.deathTime + MotionChecks.frameDelta, row.corpseLieTicks(), row.corpseFadeTicks());
                     cpFadeF = ScreenshotRecorder.takeScreenshot(c.getFramebuffer());
                     BodyCache.off = true; cpFadePhase = 2; cpFadeWait = 0;
                 }
@@ -2235,7 +2285,7 @@ final class HoldLineChecks {
             }
         }
         void fadeShotsEnd(MinecraftClient c) {
-            if (cpFadePhase > 0) {c.setScreen(null); c.options.hudHidden = false;}
+            if (cpFadePhase > 0) MotionChecks.unstill(c);
             BodyCache.off = false; BodyCache.opaque = false; BodyCache.hide = -1; cpFadePhase = 0;
             if (cpFadeF != null) {cpFadeF.close(); cpFadeF = null;} if (cpFadeN != null) {cpFadeN.close(); cpFadeN = null;} if (cpFadeO != null) {cpFadeO.close(); cpFadeO = null;}
         }

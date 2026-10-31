@@ -123,7 +123,7 @@ public final class Phase2Checks implements ClientModInitializer {
         ServerTickEvents.END_SERVER_TICK.register(s->{if(current instanceof ServerWatch w&&GravesAndGlory.battle!=null)try{w.serverTick(GravesAndGlory.battle);}catch(Exception e){report("p2-"+currentName+"-exception",false,e.toString());e.printStackTrace();}});
         ClientTickEvents.END_CLIENT_TICK.register(c->{
             c.options.pauseOnLostFocus=false; // an unfocused test window must not pause the integrated server
-            if(c.getOverlay()!=null)return;
+            if(c.getOverlay()!=null&&!(c.getOverlay() instanceof MotionChecks.Still))return; // a loading overlay, not the harness's own pause (R60)
             if(c.currentScreen instanceof net.minecraft.client.gui.screen.AccessibilityOnboardingScreen s){s.close();return;} // a fresh test root has no options.txt: press Continue as a player would
             if(!started){if(c.currentScreen instanceof FrontMenuScreen&&++front==40){started=true;GravesAndGloryClient.startCamp(c,false);}return;}
             if(c.player==null||c.getServer()==null||!GravesAndGloryClient.ready)return;

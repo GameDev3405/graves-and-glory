@@ -108,6 +108,27 @@ public final class MotionChecks {
         if (b == null || !(model instanceof TroopModel<?> m)) return;
         add(m, b);
     }
+    /**
+     * R60: the game paused with nothing over the world for a shot. A screen (the pause menu the shots used before) makes the game
+     * draw its HUD whatever options.hudHidden says (and its "Game Paused" title), so the pause is a harness overlay that pauses the
+     * game (Overlay.pausesGame) and draws nothing, with the HUD hidden; unstill restores hudHidden as it was. mo-fade, mo-fade-smoke,
+     * mo-fade-overlap and hl-corpse's cache and fade shots pause this way.
+     */
+    static final class Still extends net.minecraft.client.gui.screen.Overlay {
+        @Override public void render(net.minecraft.client.gui.DrawContext ctx, int mouseX, int mouseY, float delta) {}
+    }
+    static Boolean hudBefore;
+    static void still(MinecraftClient c) {
+        track(); if (c.getOverlay() instanceof Still) return;
+        hudBefore = c.options.hudHidden; c.options.hudHidden = true; c.getToastManager().clear(); c.setOverlay(new Still());
+    }
+    static void unstill(MinecraftClient c) {
+        if (!(c.getOverlay() instanceof Still)) return;
+        c.setOverlay(null); if (hudBefore != null) c.options.hudHidden = hudBefore; hudBefore = null;
+    }
+    /** R61: the partial tick the last frame was drawn at (WorldRenderContext.tickDelta, the renderer's own; paused, the client's pausedTickDelta), from the harness's own listener; NaN before the first frame. */
+    static volatile float frameDelta = Float.NaN; static boolean tracking;
+    static void track() { if (tracking) return; tracking = true; net.fabricmc.fabric.api.client.rendering.v1.WorldRenderEvents.END.register(ctx -> frameDelta = ctx.tickDelta()); }
     /** mo-fade-smoke (R57): the body watched for poofs (its middle), whether the count is on, and the poofs within 2 blocks of it (and anywhere) counted. */
     static volatile net.minecraft.util.math.Vec3d SMOKE_AT; static volatile boolean smokeCounting; static int smokePoofs, smokeAll;
     /** ParticleCountMixin: each particle the client asks to spawn; a poof within 2 blocks of the watched body counts while counting is on. */
@@ -920,7 +941,7 @@ public final class MotionChecks {
                     var row = Spec.COMBATDISCIPLINE[0]; int mid = BattleMath.DEATH_FALL_TICKS + row.corpseLieTicks() + Math.max(1, row.corpseFadeTicks()) / 2;
                     if (lh.deathTime < mid || ll.deathTime < mid) { if (wait > 400) { report("mo-fade-overlap", false, "the bodies never reached their mid-fade"); ss = 99; } return; }
                     oDeath = lh.deathTime; oDeathLow = ll.deathTime; oCached = BodyCache.cached(lh) && BodyCache.cached(ll); oGroupsBefore = BodyCache.fadeGroupsMax;
-                    c.getToastManager().clear(); c.setScreen(new net.minecraft.client.gui.screen.GameMenuScreen(false)); oPaused = true; ss = 13; wait = 0;
+                    still(c); oPaused = true; ss = 13; wait = 0;
                 }
                 case 13 -> overlapShots(c);
                 case 99 -> { ss = 20; wait = 0; }
@@ -930,54 +951,87 @@ public final class MotionChecks {
         // ---- mo-fade-overlap (carry D14) ----
         /** Where the two stacked knights stand (off the crowd's grid) and how far above the low one the high one lies, on a barrier. */
         static final double OX = 10, OZ = 2; static final int OLIFT = 3;
-        GravesAndGlory.Unit low, high; net.minecraft.util.math.BlockPos barrier; int oDeath, oDeathLow; long oGroupsBefore; boolean oPaused, oCached = true; float oAlpha;
-        /** Frames: both drawn (F), both drawn in one fade group as before the fix (F0), the low one hidden (HA), the high one hidden (HB), both hidden (HAB). */
-        final net.minecraft.client.texture.NativeImage[] oShots = new net.minecraft.client.texture.NativeImage[5];
-        static final String[] O_NAMES = {"f", "f0", "ha", "hb", "hab"};
+        /** R62: how far the low body's share through the high one may be from 1 - alpha (0.1 until fix round 1 put four runs within 0.003 of it). */
+        static final double OTOL = 0.05;
+        GravesAndGlory.Unit low, high; net.minecraft.util.math.BlockPos barrier; int oDeath, oDeathLow; long oGroupsBefore; boolean oPaused, oCached = true; float oAlpha, oAlphaLow, oTd;
+        /** Frames: both drawn (F), both in one fade group as before the fix (F0), the low one hidden (HA), the high one hidden (HB), both hidden (HAB), both opaque (O), the low one opaque alone (OL), the high one opaque alone (OH). */
+        final net.minecraft.client.texture.NativeImage[] oShots = new net.minecraft.client.texture.NativeImage[8];
+        static final String[] O_NAMES = {"f", "f0", "ha", "hb", "hab", "o", "ol", "oh"};
+        /** R61/R62: each shot's partial tick and the two bodies' fading draws (BodyCache.traced). */
+        final String[] oTrace = new String[8];
         /**
          * mo-fade-overlap (carry D14): a knight lying on a barrier 3 blocks over another, the camera straight above, both struck down on the
-         * same tick, the game paused at their mid-fade (alpha a). Over the pixels both bodies cover (each one's footprint: where hiding it
-         * changes the frame), the low body's share in the frame is |F - HA| summed, against its share alone |HB - HAB|: a nearer body at
-         * alpha a passes 1 - a of what lies behind it, so the ratio must be within 0.1 of 1 - a. Drawn in one group as before the fix (F0),
-         * the high body's depth pass hides the low body, so that ratio must be under 0.1 (the check sees the fault it guards).
+         * same tick, the game paused (R60: no menu, no HUD) at their mid-fade (alpha a, BattleMath.corpseAlpha at their death tick and the
+         * frame's partial tick). Over the pixels both bodies cover (each one's footprint: where hiding it changes the frame), the low body's
+         * share in the frame is |F - HA| summed, against its share alone |HB - HAB|: a nearer body at alpha a passes 1 - a of what lies
+         * behind it, so the ratio must be within OTOL of 1 - a. Drawn in one group as before the fix (F0), the high body's depth pass hides
+         * the low body, so that ratio must be under 0.1 (the check sees the fault it guards). R62, reported: the regions by each body's
+         * opaque frame alone (OL, OH: low only, high only, shared; not by O against OL, which calls a pixel the high body covers low
+         * only wherever the two identical knights' colours there agree), each body's alpha where it lies alone (its hidden-other frame
+         * and F over its opaque one), the shared ratio there, and how far F is from a over (1 - a) composited from the opaque frames.
          */
         void overlapShots(MinecraftClient c) {
-            int k = wait / 6; if (wait % 6 != 5 || k > 4) return;
+            int k = wait / 6; if (wait % 6 != 5 || k >= oShots.length) return;
             var eh = client(c, high.mob); var el = client(c, low.mob);
-            if (eh == null || el == null) { report("mo-fade-overlap", false, "the client lost a body while paused"); overlapEnd(c); ss = 99; return; }
-            if (k == 0) oAlpha = BodyCache.fade(eh, c.getTickDelta());
+            if (!(eh instanceof net.minecraft.entity.LivingEntity lh) || !(el instanceof net.minecraft.entity.LivingEntity ll)) { report("mo-fade-overlap", false, "the client lost a body while paused"); overlapEnd(c); ss = 99; return; }
             oPaused &= c.isPaused();
+            if (k == 0) {
+                var row = Spec.COMBATDISCIPLINE[0]; oDeath = lh.deathTime; oDeathLow = ll.deathTime; oTd = frameDelta;
+                oAlpha = BattleMath.corpseAlpha(oDeath + oTd, row.corpseLieTicks(), row.corpseFadeTicks()); oAlphaLow = BattleMath.corpseAlpha(oDeathLow + oTd, row.corpseLieTicks(), row.corpseFadeTicks());
+            }
+            oTrace[k] = String.format(Locale.ROOT, "%s (partial tick %.3f): low %s; high %s", O_NAMES[k], frameDelta, BodyCache.traced(el), BodyCache.traced(eh));
             oShots[k] = ScreenshotRecorder.takeScreenshot(c.getFramebuffer());
             switch (k) {
                 case 0 -> BodyCache.noGroups = true;
                 case 1 -> { BodyCache.noGroups = false; BodyCache.hide = el.getId(); }
                 case 2 -> BodyCache.hide = eh.getId();
                 case 3 -> { BodyCache.hide = el.getId(); BodyCache.hide2 = eh.getId(); }
+                case 4 -> { BodyCache.hide = -1; BodyCache.hide2 = -1; BodyCache.opaque = true; }
+                case 5 -> BodyCache.hide = eh.getId();
+                case 6 -> BodyCache.hide = el.getId();
                 default -> {}
             }
-            if (k < 4) return;
-            var f = oShots[0]; var f0 = oShots[1]; var ha = oShots[2]; var hb = oShots[3]; var hab = oShots[4];
-            int w = Math.min(f.getWidth(), hab.getWidth()), h = Math.min(f.getHeight(), hab.getHeight()); long both = 0, footLow = 0, footHigh = 0; double through = 0, through0 = 0, alone = 0;
+            if (k < oShots.length - 1) return;
+            var f = oShots[0]; var f0 = oShots[1]; var ha = oShots[2]; var hb = oShots[3]; var hab = oShots[4]; var o = oShots[5]; var ol = oShots[6]; var oh = oShots[7];
+            int w = Integer.MAX_VALUE, h = Integer.MAX_VALUE; for (var s : oShots) { w = Math.min(w, s.getWidth()); h = Math.min(h, s.getHeight()); }
+            long both = 0, footLow = 0, footHigh = 0; double through = 0, through0 = 0, alone = 0;
+            long[] rn = new long[3]; double[] rOwn = new double[3], rF = new double[3], rDen = new double[3]; double sThrough = 0, sAlone = 0, resid = 0, mag = 0;
             for (int y = 0; y < h; y++) for (int x = 0; x < w; x++) {
-                int bg = hab.getColor(x, y); boolean inLow = channel(hb.getColor(x, y), bg) > 2, inHigh = channel(ha.getColor(x, y), bg) > 2;
+                int bg = hab.getColor(x, y), pf = f.getColor(x, y), pa = ha.getColor(x, y), pb = hb.getColor(x, y), po = o.getColor(x, y), pl = ol.getColor(x, y);
+                boolean inLow = channel(pb, bg) > 2, inHigh = channel(pa, bg) > 2;
                 if (inLow) footLow++; if (inHigh) footHigh++;
-                if (!inLow || !inHigh) continue;
-                both++; through += sum(f.getColor(x, y), ha.getColor(x, y)); through0 += sum(f0.getColor(x, y), ha.getColor(x, y)); alone += sum(hb.getColor(x, y), bg);
+                if (inLow && inHigh) { both++; through += sum(pf, pa); through0 += sum(f0.getColor(x, y), pa); alone += sum(pb, bg); }
+                // R62: low only (the low body opaque alone off the background, the high one opaque alone not), high only, shared (both)
+                boolean lowO = channel(pl, bg) > 2, highO = channel(oh.getColor(x, y), bg) > 2;
+                int r = lowO ? (highO ? 2 : 0) : (highO ? 1 : -1); if (r < 0) continue; rn[r]++;
+                if (r == 0) { rOwn[0] += sum(pb, bg); rF[0] += sum(pf, bg); rDen[0] += sum(pl, bg); }
+                else if (r == 1) { rOwn[1] += sum(pa, bg); rF[1] += sum(pf, bg); rDen[1] += sum(po, bg); }
+                else {
+                    sThrough += sum(pf, pa); sAlone += sum(pb, bg);
+                    for (int q = 0; q < 24; q += 8) {
+                        double g = bg >> q & 255, lo = pl >> q & 255, hi = po >> q & 255, pred = oAlpha * hi + (1 - oAlpha) * (oAlphaLow * lo + (1 - oAlphaLow) * g);
+                        resid += Math.abs((pf >> q & 255) - pred); mag += Math.abs((pf >> q & 255) - g);
+                    }
+                }
             }
             double r = alone <= 0 ? -1 : through / alone, r0 = alone <= 0 ? -1 : through0 / alone, want = 1 - oAlpha;
-            boolean pass = oPaused && both >= 1000 && Math.abs(r - want) <= 0.1 && r0 >= 0 && r0 < 0.1 && BodyCache.fadeGroupsMax >= 2;
+            boolean pass = oPaused && both >= 1000 && Math.abs(r - want) <= OTOL && r0 >= 0 && r0 < 0.1 && BodyCache.fadeGroupsMax >= 2;
             var dir = new File(c.runDirectory, "screenshots"); dir.mkdirs();
-            for (int i = 0; i < 5; i++) try { oShots[i].writeTo(new File(dir, "mo-fade-overlap-" + O_NAMES[i] + ".png")); } catch (java.io.IOException ex) { ex.printStackTrace(); }
-            report("mo-fade-overlap", pass, String.format(Locale.ROOT, "a knight lying 3 blocks over another, both fading (death ticks %d and %d, alpha %.3f), the game paused %b, both drawn from their buffers %b; footprints %d (low) and %d (high) pixels, %d shared; over the shared pixels the low body's share through the high one is %.3f of its share alone (want %.3f = 1 - alpha, within 0.1); drawn in one group as before the fix %.3f (want under 0.1); most fade groups in a pass %d (want 2 or more); screenshots mo-fade-overlap-f/f0/ha/hb/hab.png; BodyCache: %s",
-                oDeath, oDeathLow, oAlpha, oPaused, oCached, footLow, footHigh, both, r, want, r0, BodyCache.fadeGroupsMax, BodyCache.diag()));
+            for (int i = 0; i < oShots.length; i++) try { oShots[i].writeTo(new File(dir, "mo-fade-overlap-" + O_NAMES[i] + ".png")); } catch (java.io.IOException ex) { ex.printStackTrace(); }
+            String regions = String.format(Locale.ROOT, "regions by each body's opaque frame alone: low only %d px, its alpha alone (HB) %.3f and in F %.3f (want %.3f); high only %d px, its alpha alone (HA) %.3f and in F %.3f (want %.3f); shared %d px, the low body's share through the high one %.3f (want %.3f), F off a over (1 - a) composited from O and OL by %.3f of F's difference from the background",
+                rn[0], div(rOwn[0], rDen[0]), div(rF[0], rDen[0]), oAlphaLow, rn[1], div(rOwn[1], rDen[1]), div(rF[1], rDen[1]), oAlpha, rn[2], div(sThrough, sAlone), want, div(resid, mag));
+            report("mo-fade-overlap", pass, String.format(Locale.ROOT, "a knight lying 3 blocks over another, both fading (death ticks %d and %d at partial tick %.3f, alpha %.3f and %.3f), the game paused with no HUD %b, both drawn from their buffers %b; footprints %d (low) and %d (high) pixels, %d shared; over the shared pixels the low body's share through the high one is %.3f of its share alone (want %.3f = 1 - alpha, within %.2f); drawn in one group as before the fix %.3f (want under 0.1); most fade groups in a pass %d (want 2 or more); R62 %s; screenshots mo-fade-overlap-f/f0/ha/hb/hab/o/ol/oh.png; BodyCache: %s",
+                oDeath, oDeathLow, oTd, oAlpha, oAlphaLow, oPaused, oCached, footLow, footHigh, both, r, want, OTOL, r0, BodyCache.fadeGroupsMax, regions, BodyCache.diag()));
+            System.out.println("[p2] mo-fade-overlap trace: " + String.join(" | ", oTrace));
             overlapEnd(c); ss = 99;
         }
+        static double div(double n, double d) { return d <= 0 ? -1 : n / d; }
         static int channel(int p, int q) { int d = 0; for (int k = 0; k < 24; k += 8) d = Math.max(d, Math.abs((p >> k & 255) - (q >> k & 255))); return d; }
         static int sum(int p, int q) { int d = 0; for (int k = 0; k < 24; k += 8) d += Math.abs((p >> k & 255) - (q >> k & 255)); return d; }
         void overlapEnd(MinecraftClient c) {
-            BodyCache.noGroups = false; BodyCache.hide = -1; BodyCache.hide2 = -1;
+            BodyCache.noGroups = false; BodyCache.hide = -1; BodyCache.hide2 = -1; BodyCache.opaque = false;
             for (int i = 0; i < oShots.length; i++) if (oShots[i] != null) { oShots[i].close(); oShots[i] = null; }
-            if (oPaused || c.currentScreen instanceof net.minecraft.client.gui.screen.GameMenuScreen) c.setScreen(null);
+            unstill(c);
             var at = barrier; if (at != null) { barrier = null; server(c, b -> b.world.setBlockState(at, net.minecraft.block.Blocks.AIR.getDefaultState())); }
         }
         // ---- mo-fade (R56) and mo-fade-smoke (R57) ----
@@ -989,6 +1043,14 @@ public final class MotionChecks {
         static final int FSHOTS = 19;
         GravesAndGlory.Unit fUnit, sUnit; int fs, fRemovedAfter = -1, fAfterPixels = -1, smokeEnd = -1, smokeArmedAt = -1, sClearWait = -1, sTaken = -1; boolean fRed, fPaused = true, fCachedOk = true, fNormalOk = true; Boolean shadowsBefore;
         final int[] fDeath = new int[3]; final float[] fAlpha = new float[3];
+        /** R59/R61: each sample's partial tick (the paused frame's) and the traced fading draws of the whole body (shot 0), the cached path's body (3) and the normal path's (12). */
+        final float[] fTd = new float[3]; final String[][] fTrace = new String[3][3]; static final int[] F_TRACED = {0, 3, 12};
+        /** R59: the body's alpha may be this far from BattleMath.corpseAlpha on either path, and the two paths this far apart. */
+        static final double FWANT = 0.03, FPATHS = 0.02;
+        /** M2: the shots whose fading draw came on the wrong path (the cached path's from a normal draw, or the normal path's from buffers). */
+        final List<String> fWrongPath = new ArrayList<>();
+        /** R60: the body's footprint (any opaque part shot of the last sample off its hidden frame), where the frame after removal is compared; and that frame's whole-frame count, for information. */
+        boolean[] fMask; int fMaskW, fMaskH; long fMaskPixels, fAfterWhole = -1;
         /** Each sample's measured alpha and opaque footprint (pixels), by path and part. */
         final double[][][] fPart = new double[3][2][4]; final long[][][] fFoot = new long[3][2][4];
         final net.minecraft.client.texture.NativeImage[] fShots = new net.minecraft.client.texture.NativeImage[FSHOTS];
@@ -1027,26 +1089,28 @@ public final class MotionChecks {
                     if (!(e instanceof net.minecraft.entity.LivingEntity le)) { if (wait > 200) { report("mo-fade", false, "the client lost the body before death tick " + FTICKS[fs]); smokeReport(); fadeEnd(c); ss = 30; wait = 0; } return; }
                     arm(le);
                     if (le.deathTime < FTICKS[fs]) { if (wait > 400) { report("mo-fade", false, "the body never reached death tick " + FTICKS[fs]); smokeReport(); fadeEnd(c); ss = 30; wait = 0; } return; }
-                    fDeath[fs] = le.deathTime; shotState(0, le);
-                    c.getToastManager().clear(); c.setScreen(new net.minecraft.client.gui.screen.GameMenuScreen(false)); ss = 23; wait = 0;
+                    shotState(0, le); still(c); ss = 23; wait = 0;
                 }
                 case 23 -> fadeShots(c);
                 case 24 -> {
                     var e = client(c, fUnit.mob);
                     if (e instanceof net.minecraft.entity.LivingEntity le) { arm(le); if (wait > 200) { report("mo-fade", false, "the body was still on the client 200 ticks after death tick 88 (death tick " + le.deathTime + ")"); smokeReport(); fadeEnd(c); ss = 30; wait = 0; } return; }
                     // removed: clear the particles (mo-fade-smoke counted them as they spawned) so the next frame shows only what is drawn, and
-                    // pause as the hidden frame was taken (the pause overlay and its HUD the same), so that frame is the first drawn after the removal
+                    // pause as the hidden frame was taken (no menu, no HUD: R60), so that frame is the first drawn after the removal. M6: this
+                    // frame says nothing about particles (they were just cleared); mo-fade-smoke is the particle check.
                     fRemovedAfter = wait; c.particleManager.setWorld(c.world); /* clears every particle, the same world kept */
-                    c.getToastManager().clear(); c.setScreen(new net.minecraft.client.gui.screen.GameMenuScreen(false)); smokeEnd = 7; ss = 25; wait = 0;
+                    still(c); smokeEnd = 7; ss = 25; wait = 0;
                 }
                 case 25 -> {
                     if (wait == 1) {
                         var x = ScreenshotRecorder.takeScreenshot(c.getFramebuffer()); fSheet[3] = x;
-                        long n = 0; int w = Math.min(x.getWidth(), fHidden.getWidth()), h = Math.min(x.getHeight(), fHidden.getHeight());
-                        for (int y = 0; y < h; y++) for (int i = 0; i < w; i++) if (channel(x.getColor(i, y), fHidden.getColor(i, y)) > 2) n++;
-                        fAfterPixels = (int) n;
+                        long n = 0, whole = 0; int w = Math.min(x.getWidth(), fHidden.getWidth()), h = Math.min(x.getHeight(), fHidden.getHeight());
+                        for (int y = 0; y < h; y++) for (int i = 0; i < w; i++) if (channel(x.getColor(i, y), fHidden.getColor(i, y)) > 2) {
+                            whole++; if (fMask != null && i < fMaskW && y < fMaskH && fMask[y * fMaskW + i]) n++;
+                        }
+                        fAfterPixels = fMask == null || fMaskPixels == 0 ? -1 : (int) n; fAfterWhole = whole;
                     }
-                    if (wait == 2) c.setScreen(null); // on for the poof count's last 5 ticks
+                    if (wait == 2) unstill(c); // on for the poof count's last 5 ticks
                     if (wait < smokeEnd) return;
                     smokeCounting = false; fadeReport(c); smokeReport(); fadeEnd(c); ss = 30; wait = 0;
                 }
@@ -1098,11 +1162,20 @@ public final class MotionChecks {
             int k = wait / 6; if (wait % 6 != 5 || k >= FSHOTS) return;
             var e = client(c, fUnit.mob);
             if (e == null) { report("mo-fade", false, "the client lost the body while paused at death tick " + FTICKS[fs]); smokeReport(); fadeEnd(c); ss = 30; wait = 0; return; }
-            if (k == 0) fAlpha[fs] = BodyCache.fade(e, c.getTickDelta());
+            if (k == 0) {
+                // R59/R61: the want is the body's alpha at its death tick and the paused frame's partial tick (the time base every path must draw at)
+                var row = Spec.COMBATDISCIPLINE[0]; fDeath[fs] = e instanceof net.minecraft.entity.LivingEntity le ? le.deathTime : -1; fTd[fs] = frameDelta;
+                fAlpha[fs] = BattleMath.corpseAlpha(fDeath[fs] + fTd[fs], row.corpseLieTicks(), row.corpseFadeTicks());
+            }
             fPaused &= c.isPaused();
             boolean cached = BodyCache.cached(e);
-            if (k == 0 || k == 2 || k == 3) fCachedOk &= cached;
-            if (k == 11 || k == 12) fNormalOk &= !cached;
+            if (k == 0 || (k >= 2 && k <= 9)) fCachedOk &= cached;
+            if (k >= 11) fNormalOk &= !cached;
+            for (int t = 0; t < F_TRACED.length; t++) if (k == F_TRACED[t]) fTrace[fs][t] = String.format(Locale.ROOT, "shot %d (partial tick %.3f): %s", k, frameDelta, BodyCache.traced(e));
+            if (k == 0 || (k <= 9 && k % 2 == 1 && k > 1) || (k >= 12 && k % 2 == 0)) {
+                var tf = BodyCache.tracedFade(e); boolean normal = k >= 12;
+                if (tf == null || (normal ? tf.path != 2 : tf.path == 2)) fWrongPath.add("death tick " + FTICKS[fs] + " shot " + k + ": " + (tf == null ? "no fading draw" : BodyCache.TRACE_PATHS[tf.path]));
+            }
             fShots[k] = ScreenshotRecorder.takeScreenshot(c.getFramebuffer());
             if (k + 1 < FSHOTS) { shotState(k + 1, e); return; }
             for (int path = 0; path < 2; path++) {
@@ -1117,10 +1190,21 @@ public final class MotionChecks {
                     fPart[fs][path][q] = den <= 0 ? -1 : num / den; fFoot[fs][path][q] = foot;
                 }
             }
+            if (fs == 2) {
+                // R60: the body's footprint, where any opaque part shot (either path) differs from its hidden frame
+                var h0 = fShots[1]; fMaskW = h0.getWidth(); fMaskH = h0.getHeight(); fMask = new boolean[fMaskW * fMaskH]; fMaskPixels = 0;
+                for (int path = 0; path < 2; path++) {
+                    var h = fShots[path == 0 ? 1 : 10];
+                    for (int q = 0; q < 4; q++) {
+                        var o = fShots[(path == 0 ? 2 : 11) + 2 * q]; int w = Math.min(Math.min(o.getWidth(), h.getWidth()), fMaskW), ht = Math.min(Math.min(o.getHeight(), h.getHeight()), fMaskH);
+                        for (int y = 0; y < ht; y++) for (int x = 0; x < w; x++) if (!fMask[y * fMaskW + x] && channel(o.getColor(x, y), h.getColor(x, y)) > 2) { fMask[y * fMaskW + x] = true; fMaskPixels++; }
+                    }
+                }
+            }
             fSheet[fs] = fShots[0]; fShots[0] = null;
             if (fs == 2) { fHidden = fShots[1]; fShots[1] = null; }
             for (int i = 0; i < FSHOTS; i++) if (fShots[i] != null) { fShots[i].close(); fShots[i] = null; }
-            playState(); BodyCache.forget(e); c.setScreen(null);
+            playState(); BodyCache.forget(e); unstill(c);
             if (++fs < 3) { ss = 22; wait = 0; } else { ss = 24; wait = 0; }
         }
         void fadeReport(MinecraftClient c) {
@@ -1149,13 +1233,23 @@ public final class MotionChecks {
                     }
                 }
             }
+            StringBuilder want = new StringBuilder();
+            for (int s2 = 0; s2 < 3; s2++) {
+                double cachedA = fPart[s2][0][0], normalA = fPart[s2][1][0];
+                want.append(String.format(Locale.ROOT, "%s death tick %d + %.3f: want %.4f, cached %.4f (off %.4f), normal %.4f (off %.4f), apart %.4f", s2 == 0 ? "" : "; ", fDeath[s2], fTd[s2], fAlpha[s2], cachedA, cachedA - fAlpha[s2], normalA, normalA - fAlpha[s2], cachedA - normalA));
+                if (Math.abs(cachedA - fAlpha[s2]) > FWANT) bad.add(String.format(Locale.ROOT, "R59: the cached path's body %.4f at death tick %d + %.3f, %.4f off its alpha %.4f (want within %.2f)", cachedA, fDeath[s2], fTd[s2], Math.abs(cachedA - fAlpha[s2]), fAlpha[s2], FWANT));
+                if (Math.abs(normalA - fAlpha[s2]) > FWANT) bad.add(String.format(Locale.ROOT, "R59: the normal path's body %.4f at death tick %d + %.3f, %.4f off its alpha %.4f (want within %.2f)", normalA, fDeath[s2], fTd[s2], Math.abs(normalA - fAlpha[s2]), fAlpha[s2], FWANT));
+                if (Math.abs(cachedA - normalA) > FPATHS) bad.add(String.format(Locale.ROOT, "R59: the two paths' bodies %.4f apart at death tick %d (want within %.2f)", Math.abs(cachedA - normalA), fDeath[s2], FPATHS));
+                for (int tr = 0; tr < F_TRACED.length; tr++) System.out.println("[p2] mo-fade trace: death tick " + FTICKS[s2] + " " + fTrace[s2][tr]);
+            }
             if (!fPaused) bad.add("the game did not stay paused for the shots");
             if (!fCachedOk) bad.add("the cached path's body did not draw from its buffers");
             if (!fNormalOk) bad.add("the normal path's body drew from its buffers");
-            if (fAfterPixels != 0) bad.add("the frame after removal is " + fAfterPixels + " px off the body-hidden frame");
+            if (!fWrongPath.isEmpty()) bad.add("fading draws on the wrong path: " + fWrongPath);
+            if (fAfterPixels != 0) bad.add(fAfterPixels < 0 ? "no body footprint for the frame after removal" : "the frame after removal is " + fAfterPixels + " px off the body-hidden frame over the body's footprint");
             if (!sheet) bad.add("no contact sheet");
-            report("mo-fade", bad.isEmpty(), String.format(Locale.ROOT, "a knight fading alone (lie %d, fade %d), paused at death ticks %d/%d/%d (alpha %.3f/%.3f/%.3f)%s; per part alpha (|F - H| over |O - H|) and opaque footprint at the three samples%s; the frame after its removal (seen %d ticks after the last shots) %d px off the body-hidden frame (want 0); contact sheet mo-fade-contact.png (52, 70, 88, after) %b%s",
-                Spec.COMBATDISCIPLINE[0].corpseLieTicks(), Spec.COMBATDISCIPLINE[0].corpseFadeTicks(), fDeath[0], fDeath[1], fDeath[2], fAlpha[0], fAlpha[1], fAlpha[2], fRed ? " [red switch: held items opaque]" : "", t, fRemovedAfter, fAfterPixels, sheet,
+            report("mo-fade", bad.isEmpty(), String.format(Locale.ROOT, "a knight fading alone (lie %d, fade %d), paused with no menu or HUD at death ticks %d/%d/%d (alpha %.3f/%.3f/%.3f)%s; R59 the body's alpha against BattleMath.corpseAlpha (within %.2f each path, %.2f apart): %s; per part alpha (|F - H| over |O - H|) and opaque footprint at the three samples%s; the frame after its removal (seen %d ticks after the last shots) %d px off the body-hidden frame over the body's footprint of %d px (want 0; whole frame %d px, for information); contact sheet mo-fade-contact.png (52, 70, 88, after) %b%s",
+                Spec.COMBATDISCIPLINE[0].corpseLieTicks(), Spec.COMBATDISCIPLINE[0].corpseFadeTicks(), fDeath[0], fDeath[1], fDeath[2], fAlpha[0], fAlpha[1], fAlpha[2], fRed ? " [red switch: held items opaque]" : "", FWANT, FPATHS, want, t, fRemovedAfter, fAfterPixels, fMaskPixels, fAfterWhole, sheet,
                 bad.isEmpty() ? "" : "; off: " + bad));
         }
         void fadeEnd(MinecraftClient c) {
@@ -1164,7 +1258,7 @@ public final class MotionChecks {
             for (int i = 0; i < fSheet.length; i++) if (fSheet[i] != null) { fSheet[i].close(); fSheet[i] = null; }
             if (fHidden != null) { fHidden.close(); fHidden = null; }
             if (shadowsBefore != null) { c.options.getEntityShadows().setValue(shadowsBefore); shadowsBefore = null; }
-            if (c.currentScreen instanceof net.minecraft.client.gui.screen.GameMenuScreen) c.setScreen(null);
+            unstill(c);
         }
         static String hex(int light) { return "block " + (light >> 4 & 0xF) + " sky " + (light >> 20 & 0xF); }
         /** The late join done (or given up): the real clips back, on to the settle and light checks. */
