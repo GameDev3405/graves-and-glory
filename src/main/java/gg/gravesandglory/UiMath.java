@@ -13,6 +13,41 @@ public final class UiMath {
         return Math.min(guiScale, Math.max(1, (int) Math.floor(Math.min(fbW / 960.0, fbH / 540.0))));
     }
 
+    /** The canvas a page that fills the window must still hold: the compact page (854x480) less its 12 px outer margin on the right,
+     *  where no box stands, so a 2560x1440 window (853x480 at 3) takes it. */
+    public static final int FILL_W = 842, FILL_H = 480;
+
+    /** Screen pixels per design pixel for the War Table pages that fill the window (the lobby and the troop sheet; Kort, 2026-10-31):
+     *  the largest whole step at which the compact page still fits, never below pixelScale and never past the player's GUI Scale.
+     *  It equals pixelScale at 1080p, 4K and every small window; at 2560x1440 it is 3, not 2, so the page is not left small in a
+     *  wide margin (its 853x480 canvas takes the compact layout). */
+    public static int pageScale(int fbW, int fbH, int guiScale) {
+        int fit = (int) Math.floor(Math.min(fbW / (double) FILL_W, fbH / (double) FILL_H));
+        return Math.max(pixelScale(fbW, fbH, guiScale), Math.min(Math.max(1, guiScale), fit));
+    }
+
+    /** A row of name chips laid out whole (no name is ever cut): each chip's width and whether it carries its seal. Every chip is
+     *  pad, the name and pad; seals (seal plus sealGap) go on every chip if the row then fits maxW, else on the picked chip only,
+     *  else on none. */
+    public record ChipRow(int[] widths, boolean[] seals) {
+        public int total(int gap) { int t = -gap; for (int w : widths) t += w + gap; return widths.length == 0 ? 0 : t; }
+    }
+
+    public static ChipRow chipRow(int[] nameW, int picked, int maxW, int pad, int seal, int sealGap, int gap) {
+        ChipRow row = null;
+        for (int mode = 0; mode < 3; mode++) {
+            int[] w = new int[nameW.length];
+            boolean[] s = new boolean[nameW.length];
+            for (int i = 0; i < nameW.length; i++) {
+                s[i] = mode == 0 || mode == 1 && i == picked;
+                w[i] = 2 * pad + nameW[i] + (s[i] ? seal + sealGap : 0);
+            }
+            row = new ChipRow(w, s);
+            if (row.total(gap) <= maxW) return row;
+        }
+        return row;
+    }
+
     /** The text unchanged if it fits in maxW, else its longest prefix plus "..." that fits ("" when not even "..." fits). */
     public static String trim(String s, int maxW, ToIntFunction<String> width) {
         if (width.applyAsInt(s) <= maxW) return s;
