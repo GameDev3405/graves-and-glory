@@ -251,6 +251,13 @@ final class HoldLineChecks {
         double cpKnock = -1, cpRiseKnock = -1;
         /** N7: the body Grave Bloom raises a Risen from, and where it lay. */
         GravesAndGlory.Unit cpBloomBody; Vec3d cpBloomAt;
+        /** hl-corpse (Task 8 fix 1, R39): the settled body the client shoots drawn from its recorded buffers, drawn the normal way and not drawn; and what it found. */
+        GravesAndGlory.Unit cpCacheBody;
+        volatile int cpShotId = -1;
+        volatile boolean cpShotDone, cpShotPass;
+        volatile String cpShotWhy = "";
+        int cpShotPhase, cpShotWait; long cpShotDraws; boolean cpShotEngaged, cpShotNormal, cpShotPaused;
+        net.minecraft.client.texture.NativeImage cpShotA, cpShotB;
         boolean cpAt79, cpAt119, cpHitless, cpOutOfUnits, cpNoSide;
         long cpFielded0, cpFielded1, cpGoneAt = -1;
         int cpDeath79 = -1, cpLastDeath = -1, cpItems, cpOrbs;
@@ -396,6 +403,7 @@ final class HoldLineChecks {
                 if (f.deathTime >= 1 && f.deathTime <= 15 && f.isOnFire()) cpClientFireFall = true;
                 if (f.deathTime >= 35 && f.isOnFire()) cpClientFireLate = true;
             }
+            if (cpShotPhase > 0 || cpShotId >= 0 && !cpShotDone) cacheShots(c, cpShotId); // R39: the cached body against the normal draw
             int baitId = cpBaitId; // N2: a living troop stays hittable on the client
             if (baitId >= 0 && c.world != null && c.world.getEntityById(baitId) instanceof net.minecraft.entity.LivingEntity l && l.isAlive() && l.canHit()) cpClientBaitHit = true;
             if (tick > 16000 && !finished) {finished = true; report("hl-timeout", false, "stuck in stage " + stage); Phase2Checks.finish(c, "holdline");}
@@ -1939,8 +1947,20 @@ final class HoldLineChecks {
                     Houses.recompute(own);
                     clearFixture(b, "hl-corpse"); b.clearCorpses(); cpRow = Spec.COMBATDISCIPLINE[0]; cpRun = 0;
                     own.order = "hold"; dusk.order = "hold";
-                    cpBegin(b);
+                    next(b, 128);
                 }
+                case 128 -> { // Task 8 fix 1 (R39): a settled body the client draws from the buffers it recorded looks as the normal draw does
+                    long n = since(b);
+                    if (n == 1) {cpShotDone = false; cpCacheBody = cpOwn(b, 65, cpHome); fall(b, cpCacheBody); var at = ground(b, cpHome.x, cpHome.z - 3); b.relocate(sp(b), at.x, at.y, at.z, 0f, 28f); return;}
+                    if (n == 45) cpShotId = cpCacheBody.mob.getId(); // lying since death tick 21; the camera 3 blocks north of it, looking down at it
+                    if (!cpShotDone && n < 110) return; // removed on death tick 120 (the client pauses the game while it shoots, so the body waits)
+                    cpShotId = -1;
+                    cpCheck(cpShotDone && cpShotPass, cpShotDone ? cpShotWhy : "the client never shot the cached body (by +110; BodyCache: " + BodyCache.diag() + ")");
+                    var p = sp(b); b.relocate(p, patch[0] + 12, Phase1Checks.top(b, patch[0] + 12, patch[2] - 24) + 6, patch[2] - 24, 0f, 15f); // the camera back where hl-corpse-load measures from
+                    clearFixture(b, "hl-corpse"); b.clearCorpses();
+                    next(b, 129);
+                }
+                case 129 -> {if (since(b) >= 40) cpBegin(b);} // the client has the chunks round the camera again
                 case 130 -> { // hl-corpse-load: the corpse rows of this run, then 200 troops, 20 a tick, both armies on Attack toward the middle; the wave begins as they meet
                     long n = since(b); // the first tick of a stage is since 1
                     if (n == 1) {
@@ -2003,8 +2023,8 @@ final class HoldLineChecks {
                         "dry ground only (the patch: no water, no fire, so every body settles; a body in water or burning keeps ticking and is not measured here); the client's vsync %b, maxFps %d (the run's options.txt); "
                         + "200 Squires (100 a side, AI on, both on Attack into each other, 4000 health) on the patch, one falling a tick, all dead within 10 s=%b; the bodies lay (B, lie %d fade %d: %d or more at once)=%b; "
                         + "%d A B B A blocks after a warm-up, System.gc() before every run: median server tick B/A %.3f, spread %.3f (want median 1.10 or less); median client frame B/A %.3f, spread %.3f (want median 1.15 or less); "
-                        + "for reference the world render alone median B/A %.3f (spread %.3f), and over the peak window (ticks %d-%d of the wave) server %.3f, frame %.3f; blocks: %s; runs: %s",
-                        MinecraftClient.getInstance().options.getEnableVsync().getValue(), MinecraftClient.getInstance().options.getMaxFps().getValue(), dead, sheet[0], sheet[1], want, lay, blocks.size(), rs, cpSpread(blocks, 0), rf, cpSpread(blocks, 1), rc, cpSpread(blocks, 2), CP_PEAK_FROM + 1, CP_PEAK_FROM + CP_PEAK_TICKS, ps, pf, per, raw));
+                        + "for reference the world render alone median B/A %.3f (spread %.3f), and over the peak window (ticks %d-%d of the wave) server %.3f, frame %.3f; blocks: %s; runs: %s; body cache: %s",
+                        MinecraftClient.getInstance().options.getEnableVsync().getValue(), MinecraftClient.getInstance().options.getMaxFps().getValue(), dead, sheet[0], sheet[1], want, lay, blocks.size(), rs, cpSpread(blocks, 0), rf, cpSpread(blocks, 1), rc, cpSpread(blocks, 2), CP_PEAK_FROM + 1, CP_PEAK_FROM + CP_PEAK_TICKS, ps, pf, per, raw, BodyCache.diag()));
                     next(b, 140);
                 }
                 case 140 -> { // a round's end takes a lying body at once
@@ -2037,6 +2057,55 @@ final class HoldLineChecks {
         GravesAndGlory.Unit cpOwn(GravesAndGlory.Battle b, int slot, Vec3d at) {
             var u = tough(b.spawn(own, Campaign.troop("knight"), slot, at)); Phase1Checks.freeze(u);
             fixture.add(u); pins.add(new Pin(u, at, -90f)); u.deployed = at; Phase2Checks.Engine.apply(u, at, -90f); return u;
+        }
+        /** R39, on the client: with the game paused (no menu drawn), the body drawn from its buffers (A), drawn the normal way (B) and not drawn (C, its shadow still drawn); the body is every pixel where B or A differs from C, and A must match B on all but 0.5% of them. */
+        void cacheShots(MinecraftClient c, int id) {
+            if (id < 0) {cacheShotsEnd(c); return;} // the server gave up
+            var e = c.world == null ? null : c.world.getEntityById(id);
+            switch (cpShotPhase) {
+                case 0 -> {
+                    if (!(e instanceof net.minecraft.entity.LivingEntity l) || !l.isDead() || !BodyCache.cached(e)) return;
+                    c.options.hudHidden = true; c.getToastManager().clear(); c.setScreen(new net.minecraft.client.gui.screen.GameMenuScreen(false)); cpShotPhase = 1; cpShotWait = 0; cpShotDraws = BodyCache.cachedDraws;
+                }
+                case 1 -> {
+                    if (++cpShotWait < 6) return;
+                    cpShotPaused = c.isPaused(); cpShotA = ScreenshotRecorder.takeScreenshot(c.getFramebuffer()); cpShotEngaged = BodyCache.cachedDraws > cpShotDraws;
+                    BodyCache.off = true; cpShotPhase = 2; cpShotWait = 0;
+                }
+                case 2 -> {
+                    if (cpShotWait++ == 1) cpShotDraws = BodyCache.cachedDraws; // a frame on, every draw since is the normal one
+                    if (cpShotWait < 6) return;
+                    cpShotB = ScreenshotRecorder.takeScreenshot(c.getFramebuffer()); cpShotNormal = BodyCache.cachedDraws == cpShotDraws;
+                    BodyCache.hide = id; cpShotPhase = 3; cpShotWait = 0;
+                }
+                default -> {
+                    if (++cpShotWait < 6) return;
+                    var a = cpShotA; var bb = cpShotB; var cc = ScreenshotRecorder.takeScreenshot(c.getFramebuffer()); cpShotPaused &= c.isPaused();
+                    int w = a.getWidth(), h = a.getHeight(), body = 0, any = 0, diff = 0, loose = 0, worst = 0;
+                    boolean sized = bb.getWidth() == w && cc.getWidth() == w && bb.getHeight() == h && cc.getHeight() == h;
+                    if (sized) for (int y = 0; y < h; y++) for (int x = 0; x < w; x++) {
+                        int pa = a.getColor(x, y), pb = bb.getColor(x, y), pc = cc.getColor(x, y);
+                        if (pa == pc && pb == pc) continue;
+                        body++; int d = 0;
+                        for (int k = 0; k < 24; k += 8) d = Math.max(d, Math.abs((pa >> k & 255) - (pb >> k & 255)));
+                        if (d > 0) any++; if (d > 2) diff++; if (d > 8) loose++; worst = Math.max(worst, d);
+                    }
+                    var dir = new java.io.File(c.runDirectory, "screenshots"); dir.mkdirs();
+                    try {a.writeTo(new java.io.File(dir, "hl-corpse-cache-a.png")); bb.writeTo(new java.io.File(dir, "hl-corpse-cache-b.png")); cc.writeTo(new java.io.File(dir, "hl-corpse-cache-c.png"));} catch (java.io.IOException ex) {ex.printStackTrace();}
+                    a.close(); bb.close(); cc.close(); cpShotA = null; cpShotB = null;
+                    double share = body == 0 ? 1 : diff / (double) body;
+                    cpShotPass = sized && cpShotPaused && cpShotEngaged && cpShotNormal && body >= 1000 && share <= 0.005;
+                    cpShotWhy = String.format(Locale.ROOT, "a settled Squire's body 3 blocks from the camera, the game paused %b: drawn from its recorded buffers %b (BodyCache drew it), then the normal way %b (no cached draw); of its %d pixels (where either draw differs from the frame without it, so its shadow is left out) %d differ by more than 2 of 255, %.3f%% (want 0.5%% or less; the cached body lights its byte-packed normals in world space, not view space, which moves shading by 1 or 2: %d differ at all, %d by more than 8, the worst by %d); screenshots hl-corpse-cache-a/b/c.png",
+                        cpShotPaused, cpShotEngaged, cpShotNormal, body, diff, share * 100, any, loose, worst);
+                    System.out.println("[p2] hl-corpse cache: " + cpShotWhy + " (BodyCache: " + BodyCache.diag() + ")");
+                    cacheShotsEnd(c); cpShotDone = true;
+                }
+            }
+        }
+        void cacheShotsEnd(MinecraftClient c) {
+            if (cpShotPhase > 0) {c.setScreen(null); c.options.hudHidden = false;}
+            BodyCache.off = false; BodyCache.hide = -1; cpShotPhase = 0;
+            if (cpShotA != null) {cpShotA.close(); cpShotA = null;} if (cpShotB != null) {cpShotB.close(); cpShotB = null;}
         }
         /** A fall with no attacker, past the hurt cooldown. */
         static void fall(GravesAndGlory.Battle b, GravesAndGlory.Unit u) {u.mob.timeUntilRegen = 0; u.mob.hurtTime = 0; u.mob.damage(b.world.getDamageSources().generic(), 10000f);}
