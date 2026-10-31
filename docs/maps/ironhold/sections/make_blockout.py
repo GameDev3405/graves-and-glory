@@ -140,6 +140,10 @@ def mire_depth(x, z):
     """How far (x, z) lies inside the Mire, in blocks, with a ragged edge; negative outside. The Mire keeps 3 blocks
     off the supply yards so they stand on dry ground."""
     d = _box_dist(x, z, MIRE) + 10 * terrain.fbm(terrain.seed_of('mire-edge'), x, z, 22, 3)
+    west = max(0.0, min(1.0, 1 - (x - MIRE[0]) / 36))  # the west edge: broad lobes and small bays, not a ruled line
+    if west:
+        d += west * (26 * terrain.fbm(terrain.seed_of('mire-west-lobe'), x, z, 34, 2)
+                     + 7 * terrain.fbm(terrain.seed_of('mire-west-bay'), x, z, 7, 2))
     for y in SUPPLY_YARDS:
         d = min(d, -_box_dist(x, z, y) - 3 + 1.5 * terrain.fbm(terrain.seed_of('yard-edge'), x, z, 6, 2))
     return d
@@ -202,6 +206,68 @@ ROAD_GAP = {'min': [-400, -6], 'max': [-60, 6]}
 TRENCH_GAPS = [ROAD_GAP, {'min': [-400, 39], 'max': [-60, 43]}, {'min': [-400, -43], 'max': [-60, -39]}]
 
 
+TRENCH_RUNS = ((-60, -46), (-36, -9), (9, 36), (46, 60))  # each trench is dug in four runs between the crossings
+
+
+def _trench_line(x0, z0, z1, tag):
+    """A hand-dug line near x0: a point every 4..6 blocks, each off the line by up to a block, so the trench keeps
+    its position but never runs on a ruler. Third value: a per-point hash in 0..1 for width and depth."""
+    pts, z, k = [], float(z0), 0
+    while True:
+        dx = 0 if k == 0 and z0 in (-60, 60) else round((_hash(tag, 'dx', z0, k) - 0.5) * 2.0, 1)
+        pts.append([x0 + dx, round(z, 1), _hash(tag, 'w', z0, k)])
+        if z >= z1:
+            break
+        z = min(z1, z + 4 + _hash(tag, 'step', z0, k) * 2)
+        k += 1
+    return pts
+
+
+def _trench150():
+    """Mire trench x -150, flooded: four runs with rounded ends short of the crossings, the line wandering by a
+    block, 3..4 wide and 2..3 deep run by run; the east berm follows the line, uneven at 62..63, and the lips are
+    slumped by a thermal erode afterwards (only earth, so the bed and the water stay)."""
+    ops = []
+    for z0, z1 in TRENCH_RUNS:
+        line = _trench_line(-150, z0, z1, 't150')
+        depth = 2 + (_hash('t150', 'depth', z0) > 0.45)
+        ops.append(({'op': 'river', 'note': f'Mire trench x -150, run z {z0}..{z1}, flooded, {depth} deep',
+                     'points': [[x, z, 3 + (h > 0.6)] for x, z, h in line], 'width': 3, 'water': 61,
+                     'depth': depth, 'floor': 57, 'bank': 1, 'bed': _mix(('mud', 3), ('clay', 1), ('gravel', 1)),
+                     'wobble': 0.7, 'wobbleScale': 4, 'exclude': TRENCH_GAPS, 'seed': f'trench150:{z0}'}, None))
+        ops.append(({'op': 'path', 'note': f'Mire trench berm (east lip), run z {z0}..{z1}',
+                     'points': [[x + 3.5, z, 62 + (h > 0.35)] for x, z, h in line], 'width': 2, 'falloff': 1.5,
+                     'surface': _mix(('coarse_dirt', 3), ('dirt', 1), ('rooted_dirt', 1)), 'under': W + 'dirt',
+                     'wobble': 0.8, 'wobbleScale': 4, 'exclude': TRENCH_GAPS, 'seed': f'berm150:{z0}'}, None))
+    ops.append(({'op': 'erode', 'note': 'trench x -150: slump the lips and the berm', 'mode': 'thermal',
+                 'iterations': 3, 'talus': 0.8, 'rate': 0.5, 'jitter': 0.4, 'clamp': [61, 66],
+                 'only': [W + n for n in ('coarse_dirt', 'dirt', 'rooted_dirt', 'grass_block')],
+                 'seed': 'slump150'}, (-155, -62, -143, 62)))
+    return ops
+
+
+def _trench105():
+    """Field trench x -105, dry: four runs, floor 60..61 along the run with sloped sides (falloff), a floor of
+    trodden mud and gravel; the east berm at 64..65 follows the line; the lips are slumped afterwards."""
+    ops = []
+    for z0, z1 in TRENCH_RUNS:
+        line = _trench_line(-105, z0, z1, 't105')
+        ops.append(({'op': 'path', 'note': f'field trench x -105, run z {z0}..{z1}, dry',
+                     'points': [[x, z, 60 + (h > 0.4)] for x, z, h in line], 'width': 3, 'falloff': 1.2,
+                     'surface': _mix(('coarse_dirt', 3), ('packed_mud', 2), ('mud', 1), ('gravel', 1)),
+                     'wobble': 0.7, 'wobbleScale': 4, 'exclude': TRENCH_GAPS, 'seed': f't105:{z0}'}, None))
+        ops.append(({'op': 'path', 'note': f'field trench berm (east lip), run z {z0}..{z1}',
+                     'points': [[x + 3.5, z, 64 + (h > 0.5)] for x, z, h in line], 'width': 2, 'falloff': 1.5,
+                     'surface': _mix(('coarse_dirt', 3), ('dirt', 1), ('rooted_dirt', 1)), 'under': W + 'dirt',
+                     'wobble': 0.8, 'wobbleScale': 4, 'exclude': TRENCH_GAPS, 'seed': f'berm105:{z0}'}, None))
+    ops.append(({'op': 'erode', 'note': 'trench x -105: slump the lips and the berm', 'mode': 'thermal',
+                 'iterations': 3, 'talus': 0.8, 'rate': 0.5, 'jitter': 0.4, 'clamp': [60, 67],
+                 'only': [W + n for n in ('coarse_dirt', 'dirt', 'rooted_dirt', 'grass_block')],
+                 'seed': 'slump105'}, (-110, -62, -98, 62)))
+    return ops
+
+
+
 def features():
     """Every helper op on the map, in apply order. Each is clipped to the section it is planned for; noise, erode
     and breakup carry a region (x0, z0, x1, z1) that is intersected with the section."""
@@ -216,9 +282,7 @@ def features():
               (-350, -250, -98, 280)))
     # -- water: bog pools, the flooded trench in the Mire, the fosse, the river
     f += [(op, None) for op in _pools()]
-    f.append(({'op': 'river', 'note': 'Mire trench x -150, flooded', 'points': [[-150, -60], [-150, 60]], 'width': 3,
-               'water': 61, 'depth': 2, 'floor': 57, 'bed': W + 'mud', 'wobble': 0.6, 'exclude': TRENCH_GAPS,
-               'seed': 'trench150'}, None))
+    f += _trench150()
     face = _mix(('stone', 3), ('cobblestone', 2), ('coarse_dirt', 2), ('dirt', 1))
     fosse = []  # inner edge on the curtain foot (x -75); the outer lip wanders between x -80 and -83
     for z in range(-100, 101, 9):
@@ -254,15 +318,7 @@ def features():
     f.append((dict(spur, note='supply spur NW, raised track over the Mire', seed='spur-nw',
                    points=[[-199, -2, 63], [-190, -10, 63], [-183, -17, 62], [-170, -30, 62], [-161, -44, 62],
                            [-158, -52, 62], [-155, -60, 63], [-149, -66, 63], [-147, -72, 63]]), None))
-    berm = {'op': 'path', 'width': 2, 'falloff': 1.5, 'surface': _mix(('coarse_dirt', 3), ('dirt', 1)),
-            'under': W + 'dirt', 'exclude': TRENCH_GAPS}
-    f.append((dict(berm, note='Mire trench berm (east lip)', points=[[-146.5, -60], [-146.5, 60]], y=63,
-                   seed='berm150'), None))
-    f.append(({'op': 'path', 'note': 'field trench x -105 (dry, 2 deep)', 'points': [[-105, -60], [-105, 60]],
-               'width': 3, 'y': 61, 'surface': W + 'coarse_dirt', 'exclude': TRENCH_GAPS, 'wobble': 0.4,
-               'seed': 't105'}, None))
-    f.append((dict(berm, note='field trench berm (east lip)', points=[[-101.5, -60], [-101.5, 60]], y=64,
-                   seed='berm105'), None))
+    f += _trench105()
     # -- built massing: supply houses and yard walls, the curtain stretch, the inner curtain closures
     for i, (x0, x1, z0, z1) in enumerate(SUPPLY_HOUSES):
         f.append(({'op': 'fill', 'note': 'supply house volume', 'min': [x0, 57, z0], 'max': [x1, 70, z1],
@@ -359,6 +415,11 @@ REOPEN = ("Kort's rulings of 2026-10-30: east curtain to x 98 (x 72 pieces dropp
           'around the keep court; 2026-10-31 milestone 2A.3: river, banks and walls rebuilt with the terrain helpers')
 
 
+REOPEN_MIRE = ('2026-10-31 milestone 2A.3 flank pass: the trenches at x -150 and -105 redug by hand (wandering line, '
+               'uneven width and depth, slumped lips, run ends short of the crossings) and the Mire west edge '
+               'roughened into lobes and bays; positions unchanged')
+
+
 def section_plan(m, sid, world):
     s = mf.section(m, sid)
     (x0, _, z0), (x1, _, z1) = mf.section_box(s)
@@ -399,7 +460,7 @@ def section_plan(m, sid, world):
         'operations': ops,
     }
     if done:
-        p['reopen'] = REOPEN
+        p['reopen'] = REOPEN_MIRE if sid in GROUPS['mire'] else REOPEN
     return p
 
 

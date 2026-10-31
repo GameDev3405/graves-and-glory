@@ -704,6 +704,21 @@
       "docs/maps/ironhold/sections/ironhold-C3-iso.png"
      ],
      "notes": "Mire north-west: mud at 61-62 with a ragged graded edge (fbm-wobbled distance field), noise hummocks, bog pools as river ops; King's Road path forks onto the raised cobble-edged causeway (y 63) with ragged verges; upland rises west with noise-warped contours. West Mire edge still fairly even; soften in the natural pass. Locks ok."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-10-31T12:03:19Z",
+     "digest": "d69ba87df36c9d84f3a71a1591ce0c66d1277fa158f9f52462d7451a561185a5",
+     "plans": [
+      "docs/maps/ironhold/sections/C3-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-C3-top.png",
+      "docs/maps/ironhold/sections/ironhold-C3-iso.png"
+     ],
+     "notes": "Redo 2026-10-31: Mire west edge now runs in lobes and bays (x -179..-198) instead of a near-straight line; causeway and spurs unchanged; upland contours still read as soft terraces, left for the natural pass."
     }
    ]
   },
@@ -738,6 +753,21 @@
       "docs/maps/ironhold/sections/ironhold-D3-iso.png"
      ],
      "notes": "Mire east and the killing field: flooded trench x -150 (river op), causeway on y 63 across the bog, dry trench x -105 with berms, field swells and wear breakup. Trenches are deliberately straight earthworks. Locks ok."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-10-31T12:03:23Z",
+     "digest": "7814360bd94611c93883518889056087f8f837f887364a3b4b6d808480c4ab19",
+     "plans": [
+      "docs/maps/ironhold/sections/D3-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-D3-top.png",
+      "docs/maps/ironhold/sections/ironhold-D3-iso.png"
+     ],
+     "notes": "Redo 2026-10-31: both trenches redug by hand: lines wander by a block, runs end rounded short of the road and the z -41 crossing, -150 is 3..4 wide and 2..3 deep with a slumped mud lip, -105 floor 60..61 with sloped sides and an uneven berm 64..65. Positions unchanged."
     }
    ]
   },
@@ -1056,6 +1086,21 @@
       "docs/maps/ironhold/sections/ironhold-C4-iso.png"
      ],
      "notes": "Mire south-west: bog pools, hummocks, ragged edge; south supply spur path crosses to the yard; upland contours warped. West Mire edge still fairly even; natural pass. Locks ok."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-10-31T12:03:21Z",
+     "digest": "9a6996ea50af235bf2a2e48c483618f8c01fc80ae4bf7e045b3e356df4488c98",
+     "plans": [
+      "docs/maps/ironhold/sections/C4-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-C4-top.png",
+      "docs/maps/ironhold/sections/ironhold-C4-iso.png"
+     ],
+     "notes": "Redo 2026-10-31: west edge pushed into broad lobes with small bays, the upland meets it at different heights; pools unchanged in character."
     }
    ]
   },
@@ -1090,6 +1135,21 @@
       "docs/maps/ironhold/sections/ironhold-D4-iso.png"
      ],
      "notes": "Mire south-east, flooded trench, south supply yard on a dry coarse-dirt pad with a walled pen and house mass, berms and the dry trench. Locks ok."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-10-31T12:03:25Z",
+     "digest": "2eda164764b521411fe7cedad475eafe31320a456502bd1cc9ecbfa6208ebdad",
+     "plans": [
+      "docs/maps/ironhold/sections/D4-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-D4-top.png",
+      "docs/maps/ironhold/sections/ironhold-D4-iso.png"
+     ],
+     "notes": "Redo 2026-10-31: trench runs as in D3, ending short of the z 41 crossing; supply yard untouched; berm lips slumped by erode."
     }
    ]
   },
