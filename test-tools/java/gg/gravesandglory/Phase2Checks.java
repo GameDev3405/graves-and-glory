@@ -6356,8 +6356,10 @@ public final class Phase2Checks implements ClientModInitializer {
         String name(){return "screens";}
         /** The player's profile as the suite found it (stage 100), put back whole at the end (Task 12 review minor 7), and what the put-back read. */
         volatile String before;volatile boolean restoreDone,restoreOk;volatile String restoreWhy="";
-        /** p2-roll-card-troop: the roll serial before the troop page's buy, its phase, the frame its card showed, and what was drawn. */
+        /** p2-roll-card-troop: the roll serial before the troop sheet's buy, its phase, the frame its letter showed, and what was drawn. */
         int buyN=-1,buyPhase,buySeenAt;boolean onTroop;String buyWhy="";
+        /** p2-troop-card: 0 while the Troop face is read, 1 while the Matchups face is; the Troop face's verdict and what it drew. */
+        int cardPhase;boolean cardFaceOk;String cardWhy="";
         /** Task 4 (the War Table port): the recruit page's checks read the page's own words, boxes and colours as the last frame drew them (WarTableRecruit.texts, rects, colors), never a value worked out here.
          *  goldWas and rollN are the purse and the roll serial before a press of Enlist, pressedAt the clock then, seenIn the ms from the press to the letter; a roll's server side (gold after, the knight's stars and copies) is
          *  read at the server stages 110, 112 and 102; dupA is the first duplicate check's verdict (a star gained) held for the second (a copy counted). */
@@ -6370,6 +6372,10 @@ public final class Phase2Checks implements ClientModInitializer {
         static int[] wbox(MinecraftClient c,String name){return Phase1Checks.UiRecruitChecks.box(c,name);}
         static void wclick(MinecraftClient c,int[] b){Phase1Checks.UiRecruitChecks.click(c,b);}
         static String wtext(String key){return WarTableRecruit.texts().get(key);}
+        /** The troop sheet's words and boxes as its last frame drew them, and words flattened to one line for comparison with the sheet's cells. */
+        static String ttext(String key){return WarTableTroop.texts().get(key);}
+        static int[] trect(String key){return WarTableTroop.rects().get(key);}
+        static String flat(String s){return s==null?null:s.replaceAll("\\s+"," ").trim();}
         static int rowIndex(String troop){for(var r:WarTableRecruit.rows())if(r.troop().equals(troop))return r.index();return -1;}
         /** The troop of the first House a roll lands on past its Commons' weights plus one Rare's: its second Rare (new to the player: the fixture takes it away). */
         static int newDraw(){return Phase1Checks.UiRecruitChecks.rareDraw(Spec.HOUSES[0].id())+RosterMath.rarityRow("rare").rollWeight();}
@@ -6568,35 +6574,50 @@ public final class Phase2Checks implements ClientModInitializer {
                         case 9->{if(wait==2){noticeStates0=CampaignClient.noticeSerial;s.action("unlock:x");}
                             if(wait>2&&CampaignClient.noticeSerial!=noticeStates0&&wtext("notice")!=null){shownC2=noticeC.equals(CampaignClient.notice)&&noticeC.equals(wtext("notice"));
                                 report("p2-notice-repeats",shownC&&hiddenC&&shownC2,"the server's answer to unlock:x \""+noticeC+"\" showed="+shownC+", was gone after the page went home and came back and two state packets="+hiddenC+", and the same words after the player acted again showed again: \""+wtext("notice")+"\"="+shownC2);np=10;wait=0;}
-                            else if(wait>200){report("p2-notice-repeats",false,"the same words never showed again (serial "+noticeStates0+" to "+CampaignClient.noticeSerial+"): the first showed="+shownC+", gone="+hiddenC);np=10;wait=0;}}
-                        default->{ // on to the troop page (the old one, until the troop sheet replaces it)
-                            RecruitPages.seenTroop=null;s.openTroop("sentinel");cs=31;wait=0;}
-                    }}
-                case 31->{if(!(c.currentScreen instanceof CampScreen s))return; // p2-troop-card: the Templar's troop page
-                    if(++wait==5)shoot("chase-troop-card");
-                    if(wait>5&&shotDone(c)){var seen=RecruitPages.seenTroop;var t=Campaign.troop("sentinel");var n=ArmyCards.notes(t);
-                        boolean page=s.page.equals("troop")&&seen!=null&&seen.troop().equals("sentinel");
-                        boolean notes=page&&n!=null&&!n.beats().isEmpty()&&seen.beats().equals(n.beats())&&seen.beatenBy().equals(n.beatenBy());
-                        boolean glyphs=page&&seen.glyphs().contains("C1")&&seen.glyphs().contains("C3");
-                        boolean stars=page&&seen.stars()==2,bars=page&&seen.masteryBars()==2*Spec.MASTERY.length;
-                        boolean levels=page&&seen.levels().equals(List.of("Templar","Templar Knight","Templar Commander"));
-                        boolean lines=page&&n!=null&&seen.abilities().size()==3&&seen.abilities().stream().noneMatch(String::isEmpty)&&seen.abilities().get(1).equals(sheetAbilityText("sentinel_l2"))&&seen.abilities().get(2).equals(sheetAbilityText("sentinel_l3"));
-                        boolean noEvolve=button(s,"Evolve",0)==null&&button(s,"EVOLVE",0)==null;
-                        boolean shape=!sameShape(ArmyCards.glyph(true),ArmyCards.glyph(false));
-                        boolean counts=page&&seen.counts().size()==Spec.MASTERY.length&&seen.counts().stream().allMatch(x->x.endsWith(" survived"));
-                        report("p2-troop-card",page&&notes&&glyphs&&stars&&bars&&levels&&lines&&noEvolve&&shape&&counts,"the against glyph differs from the favour glyph by shape, not by a flip, a turn or colour alone="+shape+"; the Mastery counts "+(seen==null?"none":seen.counts())+" read matches survived="+counts+"; the Templar's troop page drew "+seen+": beats and beaten by from troopNotes="+notes+", glyphs for C1 and C3="+glyphs+", star 2="+stars+", "+(2*Spec.MASTERY.length)+" Mastery bars="+bars+", the level names="+levels+", the three ability lines (level 2 and 3 from troopNotes)="+lines+", no evolve button="+noEvolve+"; picture p2-chase-troop-card.png");
-                        cs=11;wait=0;buyPhase=0;}}
-                case 11->{if(!(c.currentScreen instanceof CampScreen s))return;wait++; // a chosen buy from the troop page shows its roll card there, and leaving the page ends it (review minor 4)
-                    if(buyPhase==0){if(wait<2)return;var buy=button(s,"BUY 300",0);buyN=CampaignClient.lastRoll==null?-1:CampaignClient.lastRoll.n();RecruitPages.rollOn=null;RecruitPages.seenRoll=null;
-                        if(buy==null||!buy.active){report("p2-roll-card-troop",false,"no active BUY 300 on the Templar's troop page");layout(c);server(c,b->stage=104);cs=4;wait=0;return;}
+                            else if(wait>200){report("p2-notice-repeats",false,"the same words never showed again (serial "+noticeStates0+" to "+CampaignClient.noticeSerial+"): the first showed="+shownC+", gone="+hiddenC);np=10;wait=0;}}                        default->{ // on to the troop sheet
+                            RecruitPages.seenTroop=null;s.openTroop("sentinel");cardPhase=0;cs=31;wait=0;}}}
+                case 31->{if(!(c.currentScreen instanceof CampScreen s))return; // p2-troop-card: the Templar's troop sheet, both faces
+                    if(cardPhase==0){
+                        if(++wait==5)shoot("chase-troop-card");
+                        if(wait>5&&shotDone(c)){var t=Campaign.troop("sentinel");var w=WarTableTroop.texts();var o=p.owned.get("sentinel");var next=Spec.MASTERY[1];
+                            boolean page=s.page.equals("troop")&&"sentinel".equals(ttext("letter-troop"))&&"Templar".equals(ttext("letter-name"));
+                            boolean stars=page&&"2".equals(ttext("letter-stars"))&&ttext("letter-line1").startsWith("Gilded Order");
+                            boolean title=page&&"Title: Veteran".equals(ttext("mastery-title"))&&"Next, level 2: Veteran trim".equals(ttext("mastery-next"));
+                            boolean bars=page&&trect("mastery-kills-bar")!=null&&trect("mastery-fights-bar")!=null
+                                &&("Kills "+Math.min(o==null?0:o.kills,next.kills())+" of "+next.kills()).equals(ttext("mastery-kills"))
+                                &&("Fights survived "+Math.min(o==null?0:o.survived,next.matches())+" of "+next.matches()).equals(ttext("mastery-fights"));
+                            boolean levels=page&&List.of("Templar","Templar Knight","Templar Commander").equals(Arrays.asList(ttext("level-0-name"),ttext("level-1-name"),ttext("level-2-name")));
+                            boolean lines=page&&flat(sheetAbilityText("shield")).equals(flat(ttext("level-0")))&&flat(sheetAbilityText("sentinel_l2")).equals(flat(ttext("level-1")))&&flat(sheetAbilityText("sentinel_l3")).equals(flat(ttext("level-2")));
+                            boolean noEvolve=button(s,"Evolve",0)==null&&button(s,"EVOLVE",0)==null;
+                            boolean shape=!sameShape(ArmyCards.glyph(true),ArmyCards.glyph(false));
+                            cardFaceOk=page&&stars&&title&&bars&&levels&&lines&&noEvolve&&shape;
+                            cardWhy="the Templar's troop sheet: page "+s.page+", letter "+ttext("letter-troop")+" \""+ttext("letter-name")+"\" ("+ttext("letter-line1")+"), stars \""+ttext("letter-stars")+"\"="+stars+"; title \""+ttext("mastery-title")+"\", next \""+ttext("mastery-next")+"\"="+title+"; bars \""+ttext("mastery-kills")+"\" / \""+ttext("mastery-fights")+"\"="+bars+"; levels "+Arrays.asList(ttext("level-0-name"),ttext("level-1-name"),ttext("level-2-name"))+"="+levels+"; ability lines from the sheet="+lines+"; no evolve button="+noEvolve+"; glyphs differ by shape, not a flip, a turn or colour alone="+shape;
+                            var tab=button(s,"Matchups",0);
+                            if(tab==null||!tab.active){report("p2-troop-card",false,cardWhy+"; no active Matchups tab");cardPhase=0;cs=11;wait=0;buyPhase=0;return;}
+                            tab.onPress();cardPhase=1;wait=0;}
+                        return;}
+                    if(++wait==5)shoot("chase-troop-matchups");
+                    if(wait>5&&shotDone(c)){var t=Campaign.troop("sentinel");var n=ArmyCards.notes(t);var rows=ArmyCards.counterRows(t);var drawn=WarTableTroop.counters();
+                        boolean page=s.page.equals("troop")&&"matchups".equals(ttext("tab"));
+                        boolean notes=page&&n!=null&&!n.beats().isEmpty()&&flat(n.beats()).equals(flat(ttext("beats")))&&flat(n.beatenBy()).equals(flat(ttext("beaten-by")));
+                        boolean counters=page&&!rows.isEmpty()&&drawn.size()==rows.size();
+                        for(int i=0;counters&&i<rows.size();i++){var r=rows.get(i);var d=drawn.get(i);counters=r.id().equals(d.id())&&ArmyCards.favours(r)==d.favour()&&flat(ArmyCards.counterText(r)).equals(flat(d.text()));}
+                        report("p2-troop-card",cardFaceOk&&page&&notes&&counters,cardWhy+"; the Matchups face: page="+page+", beats \""+ttext("beats")+"\" (want \""+(n==null?"":n.beats())+"\"), beaten by \""+ttext("beaten-by")+"\" (want \""+(n==null?"":n.beatenBy())+"\")="+notes+"; glyphs and counter lines drawn "+drawn+" (want "+rows.stream().map(r->new WarTableTroop.CounterDraw(r.id(),ArmyCards.favours(r),ArmyCards.counterText(r))).toList()+" from troopNotes)="+counters+"; picture p2-chase-troop-matchups.png");
+                        cardPhase=0;cs=11;wait=0;buyPhase=0;}}
+                case 11->{if(!(c.currentScreen instanceof CampScreen s))return;wait++; // a chosen buy from the troop sheet shows its result on the letter, and leaving the page ends it
+                    if(buyPhase==0){if(wait<2)return;var buy=button(s,"Buy 300",0);buyN=CampaignClient.lastRoll==null?-1:CampaignClient.lastRoll.n();CampaignClient.revealUntil=0;CampaignClient.revealHeldAt=-1;RecruitPages.rollOn=null;RecruitPages.seenRoll=null;
+                        if(buy==null||!buy.active){report("p2-roll-card-troop",false,"no active Buy 300 on the Templar's troop sheet");layout(c);server(c,b->stage=104);cs=4;wait=0;return;}
                         buy.onPress();buyPhase=1;return;}
                     var r=CampaignClient.lastRoll;
-                    if(buyPhase==1){if(r!=null&&r.n()!=buyN&&r.troop().equals("sentinel")&&CampaignClient.rollShowing()){buyPhase=2;buySeenAt=wait;}
-                        else if(wait>400){report("p2-roll-card-troop",false,"the buy's card never showed: lastRoll "+r+", showing "+CampaignClient.rollShowing());layout(c);server(c,b->stage=104);cs=4;wait=0;}return;}
-                    if(buyPhase==2){if(wait-buySeenAt<5)return;var seen=RecruitPages.seenRoll;onTroop="troop".equals(RecruitPages.rollOn)&&seen!=null&&seen.troop().equals("sentinel");
-                        buyWhy="BUY 300 on the Templar's page: lastRoll "+r+"; the card drawn over page "+RecruitPages.rollOn+" (want troop): "+seen+"="+onTroop;s.page("recruit");buyPhase=3;return;}
-                    boolean stale=CampaignClient.rollShowing();
-                    report("p2-roll-card-troop",onTroop&&!stale,buyWhy+"; after the page went back to recruitment the card still shows="+stale+" (want false: leaving the page ends the reveal)");
+                    if(buyPhase==1){if(r!=null&&r.n()!=buyN&&r.troop().equals("sentinel")&&CampaignClient.rollShowing()){CampaignClient.revealHeldAt=600;buyPhase=2;buySeenAt=wait;}
+                        else if(wait>400){report("p2-roll-card-troop",false,"the buy's result never showed: lastRoll "+r+", showing "+CampaignClient.rollShowing());layout(c);server(c,b->stage=104);cs=4;wait=0;}return;}
+                    if(buyPhase==2){if(wait-buySeenAt<5)return;String want=r==null?"":RecruitPages.outcome(r,p);
+                        boolean lit=r!=null&&r.duplicate()&&"2".equals(ttext("letter-stars"))&&flat(want).equals(flat(ttext("letter-outcome")))&&!WarTableTroop.rects().containsKey("broken");
+                        boolean noCard=!"troop".equals(RecruitPages.rollOn)&&RecruitPages.seenRoll==null;
+                        onTroop=lit&&noCard;buyWhy="Buy 300 on the Templar's sheet: lastRoll "+r+"; the letter shows stars \""+ttext("letter-stars")+"\" and \""+ttext("letter-outcome")+"\" (RecruitPages.outcome says \""+want+"\"), no broken seal="+lit+"; no roll card over the sheet (rollOn "+RecruitPages.rollOn+", seenRoll "+RecruitPages.seenRoll+")="+noCard;
+                        s.page("recruit");buyPhase=3;return;}
+                    boolean stale=CampaignClient.rollShowing();CampaignClient.revealHeldAt=-1;
+                    report("p2-roll-card-troop",onTroop&&!stale,buyWhy+"; after the page went back to recruitment the reveal still shows="+stale+" (want false: leaving the page ends it)");
                     CampaignClient.revealUntil=0;layout(c);server(c,b->stage=104);cs=4;wait=0;}
                 case 4->{if(!claimReady)return; // the claims of the War Table's Contracts and Chapter pages, pressed on the pages (ClaimChecks: p2-claim-house, -weekly, -founders-shards, -founders-rare, -sends, -fits, -default)
                     if(claims.step(c,player)){c.setScreen(null);server(c,b->stage=108);cs=5;wait=0;}}
