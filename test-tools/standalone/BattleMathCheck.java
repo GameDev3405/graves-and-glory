@@ -322,7 +322,9 @@ public final class BattleMathCheck {
         check(BattleMath.chargeStamp(false, 100L, 110, 60) == null && BattleMath.chargeStamp(true, null, 110, 60) == null, "no Charge order at the swing, or no stamp: no impact window");
         check(!BattleMath.chargeImpact(100L, 100) && !BattleMath.chargeImpact(100L, 130) && BattleMath.chargeImpact(100L, 99) && !BattleMath.chargeImpact(null, -1), "one impact per stamp: an attacker that crashed in under it already does not again");
         // Task 5 fix round 2: each round reseeds its variant rolls from the world's seed and its number alone
-        check(BattleMath.roundSeed(4242, 3) == BattleMath.roundSeed(4242, 3), "a round's variant seed is fixed by the world's seed and the round");
+        // Golden values (Phase 1 review M2): a change to the mixing changes every round's swing sequence, so it must show here first
+        check(BattleMath.roundSeed(4242, 3) == -5561024584431303819L && BattleMath.roundSeed(4242, 0) == -2932002319331483421L,
+            "a round's variant seed is fixed by the world's seed and the round: roundSeed(4242, 3) is " + BattleMath.roundSeed(4242, 3) + " (want -5561024584431303819)");
         Set<Long> seeds = new HashSet<>(); for (int r = 0; r < 200; r++) seeds.add(BattleMath.roundSeed(4242, r));
         check(seeds.size() == 200 && BattleMath.roundSeed(4242, 1) != BattleMath.roundSeed(4243, 1), "every round, and every world, rolls its own seed");
         int[] firstPick = new int[3]; for (int r = 1; r <= 300; r++) firstPick[BattleMath.pickVariant(3, -1, new java.util.Random(BattleMath.roundSeed(4242, r)).nextLong())]++;
