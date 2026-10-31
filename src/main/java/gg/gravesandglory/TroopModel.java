@@ -233,7 +233,7 @@ public final class TroopModel<T extends MobEntity> extends SinglePartEntityModel
      * weapon, and every base and overlay clip; a dead or posed troop (TroopAnimator.posed) also every whole-body clip. A body lying past its
      * fall, once drawn lying, takes only its own pose's reach (TroopAnimator.lyingReach, Task 7).
      */
-    public Box cullBox(Entity e){double[] c=TroopAnimator.lyingReach(e);if(c==null)c=cullReach(TroopAnimator.posed(e));return new Box(e.getX()-c[0],e.getY()+c[1],e.getZ()-c[0],e.getX()+c[0],e.getY()+c[2],e.getZ()+c[0]);}
+    public Box cullBox(Entity e){double[] c=TroopAnimator.lyingReach(e,this);if(c==null)c=cullReach(TroopAnimator.posed(e));return new Box(e.getX()-c[0],e.getY()+c[1],e.getZ()-c[0],e.getX()+c[0],e.getY()+c[2],e.getZ()+c[0]);}
     /** The cull reach (radius, bottom and top over the feet, in blocks), the whole-body clips in it for posed. */
     public double[] cullReach(boolean posed){
         if(normalCull==null){

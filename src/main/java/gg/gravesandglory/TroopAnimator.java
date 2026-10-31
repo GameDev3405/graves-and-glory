@@ -393,10 +393,11 @@ public final class TroopAnimator {
     }
     /**
      * The cull reach of a body lying past its fall whose final pose this client has kept (State.lying): its own pose's extent, much less
-     * than every whole-body clip's. Null for any other entity, or a body not yet drawn lying, which keeps the posed reach.
+     * than every whole-body clip's. Null for any other entity, a body not yet drawn lying, or one whose kept pose is another model's (as pose
+     * checks), which keeps the posed reach.
      */
-    public static double[] lyingReach(Entity e){
-        if(!lies(e))return null;State s=STATES.get(e);return s==null||s.lying==null?null:s.lyingReach;
+    public static double[] lyingReach(Entity e,TroopModel<?> m){
+        if(!lies(e))return null;State s=STATES.get(e);return s==null||s.lying==null||s.lyingModel!=m?null:s.lyingReach;
     }
     /** What the entity shows this frame, against what its State saw last frame (swing and hurt starts, the scene pose before this one). */
     static View view(TroopModel<?> m,MobEntity e,State s,float limbDistance,Spec.TroopsRow row){

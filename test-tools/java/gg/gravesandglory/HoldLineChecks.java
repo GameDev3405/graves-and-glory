@@ -238,6 +238,13 @@ final class HoldLineChecks {
         volatile int cpClientId = -1, cpClientDeath = -1;
         /** hl-corpse (Task 7 fix 1, I4): the overlay V the client's renderer gives the body while it falls and once it lies (-1 unseen; 3 red, 10 none). */
         volatile int cpTintFall = -1, cpTintLie = -1;
+        /** hl-corpse (Task 7 fix 2): the client entities of the marked Squire (watched from before its blow) and of the living Squire beside it, and what the client saw of them. */
+        volatile int cpGlowId = -1, cpBaitId = -1;
+        volatile boolean cpClientGlowBefore, cpClientGlowFall, cpClientHitLying, cpClientLyingSeen, cpClientBaitHit;
+        /** N1: the horizontal speed the killing blow left the body, and the blow a Revenant rose from (Rise Again); -1 unmeasured. */
+        double cpKnock = -1, cpRiseKnock = -1;
+        /** N7: the body Grave Bloom raises a Risen from, and where it lay. */
+        GravesAndGlory.Unit cpBloomBody; Vec3d cpBloomAt;
         boolean cpAt79, cpAt119, cpHitless, cpOutOfUnits, cpNoSide;
         long cpFielded0, cpFielded1, cpGoneAt = -1;
         int cpDeath79 = -1, cpLastDeath = -1, cpItems, cpOrbs;
@@ -372,6 +379,14 @@ final class HoldLineChecks {
                 if (body.deathTime >= 2 && body.deathTime <= 15 && cpTintFall < 0) cpTintFall = v;
                 if (body.deathTime >= 40 && body.deathTime <= 100) cpTintLie = Math.max(cpTintLie, v == 10 ? Math.max(cpTintLie, 10) : 1000 + v);
             }
+            int glowId = cpGlowId; // hl-corpse (Task 7 fix 2): the marked Squire as the client holds it, from before its blow
+            if (glowId >= 0 && c.world != null && c.world.getEntityById(glowId) instanceof net.minecraft.entity.LivingEntity g) {
+                if (!g.isDead() && g.isGlowing()) cpClientGlowBefore = true; // N5: the synced glow flag (6) the client draws
+                if (g.isDead() && g.deathTime >= 5 && g.deathTime <= 15 && g.isGlowing()) cpClientGlowFall = true;
+                if (g.isDead() && g.deathTime > BattleMath.DEATH_FALL_TICKS && g.deathTime <= 100) {cpClientLyingSeen = true; if (g.canHit()) cpClientHitLying = true;} // N2: the crosshair (GameRenderer.updateTargetedEntity) takes only canHit entities
+            }
+            int baitId = cpBaitId; // N2: a living troop stays hittable on the client
+            if (baitId >= 0 && c.world != null && c.world.getEntityById(baitId) instanceof net.minecraft.entity.LivingEntity l && l.isAlive() && l.canHit()) cpClientBaitHit = true;
             if (tick > 16000 && !finished) {finished = true; report("hl-timeout", false, "stuck in stage " + stage); Phase2Checks.finish(c, "holdline");}
         }
 
@@ -1781,17 +1796,20 @@ final class HoldLineChecks {
                     cpVictim = cpOwn(b, 60, cpHome);
                     cpBait = cpOwn(b, 61, ground(b, cpHome.x - 6, cpHome.z));
                     cpHunter = pinned(b, "knight", 62, ground(b, cpHome.x + 1.8, cpHome.z), false);
+                    var v = cpVictim.mob; // marked well before the blow, so the client holds its glow (Task 7 fix 2, N5)
+                    v.addStatusEffect(new net.minecraft.entity.effect.StatusEffectInstance(net.minecraft.entity.effect.StatusEffects.GLOWING, 400, 0, false, false)); // as Mark Prey marks it (Commander.MarkPrey)
+                    v.addStatusEffect(new net.minecraft.entity.effect.StatusEffectInstance(net.minecraft.entity.effect.StatusEffects.SLOWNESS, 400));
+                    cpGlowId = v.getId(); cpBaitId = cpBait.mob.getId();
                     next(b, 122);
                 }
                 case 122 -> { // the Dusk Squire strikes it down
                     if (since(b) < 30) return;
                     cpFielded0 = b.fielded(own).count();
                     var v = cpVictim.mob; v.setHealth(1f);
-                    v.addStatusEffect(new net.minecraft.entity.effect.StatusEffectInstance(net.minecraft.entity.effect.StatusEffects.GLOWING, 400, 0, false, false)); // as Mark Prey marks it (Commander.MarkPrey)
-                    v.addStatusEffect(new net.minecraft.entity.effect.StatusEffectInstance(net.minecraft.entity.effect.StatusEffects.SLOWNESS, 400));
                     cpGlowBefore = v.hasStatusEffect(net.minecraft.entity.effect.StatusEffects.GLOWING) && v.hasStatusEffect(net.minecraft.entity.effect.StatusEffects.SLOWNESS);
                     strike(b, cpHunter, cpVictim, 50f);
                     cpCheck(v.isDead(), "the Dusk Squire's blow killed the Squire on 1 health");
+                    cpKnock = v.getVelocity().horizontalLength(); // Task 7 fix 2 (N1): the killing blow throws it back (design 5)
                     cpBody0 = v.getPos(); cpClientId = v.getId();
                     next(b, 123);
                 }
@@ -1820,7 +1838,10 @@ final class HoldLineChecks {
                         cpCheck(lean < 0.02 && body < 0.02, "a Squire 0.15 from the body moved " + fmt3(lean) + " over 20 ticks and the body " + fmt3(body) + " (want both under 0.02: it blocks and pushes nothing)");
                     }
                     if (n < 125) return;
-                    cpClientId = -1;
+                    cpClientId = -1; cpGlowId = -1; cpBaitId = -1;
+                    cpCheck(cpKnock > 0.1, "the killing blow left the body moving " + fmt3(cpKnock) + " blocks a tick across the ground on its death tick (want over 0.1: it is thrown back)");
+                    cpCheck(cpClientGlowBefore && !cpClientGlowFall, "the client saw the marked Squire glowing before the blow " + cpClientGlowBefore + " (want true), and glowing from its death tick 5 to 15 " + cpClientGlowFall + " (want false)");
+                    cpCheck(cpClientLyingSeen && !cpClientHitLying && cpClientBaitHit, "on the client the lying body (death ticks 21-100, seen " + cpClientLyingSeen + ") could be hit (canHit) " + cpClientHitLying + " (want false: the crosshair passes through it, so no nameplate); the living Squire beside it could " + cpClientBaitHit + " (want true)");
                     cpCheck(cpAt79 && cpDeath79 == 79, "the body is in the world and dead on its 79th death tick (death ticks " + cpDeath79 + ")");
                     cpCheck(cpAt119, "it still lies on its 119th");
                     cpCheck(cpGoneAt == 120 && cpLastDeath == 119, "removed on tick +" + cpGoneAt + ", last seen lying on death tick " + cpLastDeath + " (want +120, 20 + lie 60 + fade 40; gone by +121)");
@@ -1839,16 +1860,19 @@ final class HoldLineChecks {
                     for (int i = 0; i < 6; i++) {var r = pinned(b, "revenant", 70 + i, ground(b, cpHome.x + 4, cpHome.z - 4 + i * 1.5), true); if (i == 0) cpRevenant = r;}
                     Houses.recompute(dusk);
                     var r = cpRevenant; int tier = dusk.traits.getOrDefault("graveborn", 0);
-                    Houses.forceRise = Boolean.TRUE; try {fall(b, r);} finally {Houses.forceRise = Boolean.FALSE;}
+                    r.mob.setHealth(1f); // struck by the own Squire, so the blow has an attacker and its knockback (Task 7 fix 2, N1)
+                    Houses.forceRise = Boolean.TRUE; try {strike(b, cpBait, r, 50f); cpRiseKnock = r.mob.getVelocity().horizontalLength();} finally {Houses.forceRise = Boolean.FALSE;}
                     boolean rose = r.mob.isAlive() && !r.mob.isDead() && r.rose && r.mob.deathTime == 0 && CP_DEATHS.getOrDefault(r.mob.getId(), 0) == 0;
                     cpCheck(tier >= 1 && rose, "a Revenant of a Graveborn army (tier " + tier + ") struck down with the roll forced rose: alive " + r.mob.isAlive() + ", rose " + r.rose + ", death ticks " + r.mob.deathTime);
-                    fall(b, r);
+                    cpCheck(cpRiseKnock > 0.1, "the blow it rose from threw it back " + fmt3(cpRiseKnock) + " blocks a tick (want over 0.1)");
+                    fall(b, r); r.mob.setFireTicks(25); // Task 7 fix 2 (N3): it falls burning, its fire to end 25 ticks on
                     next(b, 125);
                 }
                 case 125 -> {
                     if (since(b) < 30) return;
                     var r = cpRevenant.mob;
                     cpCheck(!r.isRemoved() && r.isDead() && r.deathTime == 30 && CP_DEATHS.getOrDefault(r.getId(), 0) == 1, "struck down again it lies: in the world " + !r.isRemoved() + ", death ticks " + r.deathTime + " (want 30), AFTER_DEATH " + CP_DEATHS.getOrDefault(r.getId(), 0) + " (want 1)");
+                    cpCheck(r.getFireTicks() <= 0 && !r.isOnFire(), "it fell burning with 25 fire ticks; on death tick 30 fire ticks " + r.getFireTicks() + ", on fire " + r.isOnFire() + " (want out: the fire ends as it would, not frozen while it lies)");
                     // Task 7 fix 1 (M3): a body the battle has held past its removal tick (its own clock stalled) is swept by the battle tick
                     cpSwept = b.corpses.containsKey(r);
                     b.corpses.put(r, b.time - BattleMath.corpseGoneTick(Spec.COMBATDISCIPLINE[0].corpseLieTicks(), Spec.COMBATDISCIPLINE[0].corpseFadeTicks()) - 30);
@@ -1858,6 +1882,24 @@ final class HoldLineChecks {
                     if (since(b) < 21) return;
                     var r = cpRevenant.mob;
                     cpCheck(cpSwept && r.isRemoved(), "the battle holds the body (Battle.corpses)=" + cpSwept + "; stamped past its removal tick it is swept within 20 ticks: removed " + r.isRemoved());
+                    // Task 7 fix 2 (N7, R33): a Squire falls where the commander looks; once it lies, Grave Bloom cast there raises a Risen and takes the body
+                    var p = sp(b); Vec3d aim = Commander.GraveBloom.aim(p, Commander.byActive("grave_bloom").range());
+                    b.deaths.clear(); cpBloomBody = cpOwn(b, 64, ground(b, aim.x, aim.z)); fall(b, cpBloomBody); cpBloomAt = cpBloomBody.mob.getPos();
+                    next(b, 127);
+                }
+                case 127 -> {
+                    if (since(b) < 30) return;
+                    var body = cpBloomBody.mob; var p = sp(b);
+                    boolean lay = body.isDead() && !body.isRemoved() && body.deathTime > BattleMath.DEATH_FALL_TICKS;
+                    long risen0 = b.units.stream().filter(u -> u.temporary && u.squad == own).count();
+                    boolean cast = new Commander.GraveBloom().start(b, p, own, Commander.byActive("grave_bloom"));
+                    var risen = b.units.stream().filter(u -> u.temporary && u.squad == own).toList();
+                    boolean there = risen.stream().anyMatch(u -> u.mob.isAlive() && u.mob.getPos().distanceTo(cpBloomAt) < 1.5);
+                    var team = body.getScoreboardTeam();
+                    cpCheck(lay && cast && body.isRemoved() && (team == null || !team.getName().startsWith("gg_")) && risen.size() == risen0 + 1 && there,
+                        "Grave Bloom on a body lying (death tick " + body.deathTime + ", lying " + lay + "): cast " + cast + ", the body removed " + body.isRemoved() + ", off its side " + (team == null || !team.getName().startsWith("gg_")) + ", Risen " + risen0 + " -> " + risen.size() + " (want one more), one standing where it lay " + there);
+                    for (var u : risen) {u.mob.discard(); b.units.remove(u);}
+                    Houses.recompute(own);
                     clearFixture(b, "hl-corpse"); b.clearCorpses(); cpRow = Spec.COMBATDISCIPLINE[0]; cpRun = 0;
                     own.order = "hold"; dusk.order = "hold";
                     cpBegin(b);
@@ -1973,7 +2015,7 @@ final class HoldLineChecks {
         }
         static String fmt3(double v) {return String.format(Locale.ROOT, "%.3f", v);}
         void cpCheck(boolean ok, String why) {cpPass &= ok; cpWhy.add(why + "=" + ok);}
-        void cpFinish(GravesAndGlory.Battle b) {Houses.forceRise = null; if (cpRow != null) Spec.COMBATDISCIPLINE[0] = cpRow; cpClientId = -1; report("hl-corpse", cpPass, String.join("; ", cpWhy)); next(b, 99);}
+        void cpFinish(GravesAndGlory.Battle b) {Houses.forceRise = null; if (cpRow != null) Spec.COMBATDISCIPLINE[0] = cpRow; cpClientId = -1; cpGlowId = -1; cpBaitId = -1; report("hl-corpse", cpPass, String.join("; ", cpWhy)); next(b, 99);}
         /** The hl-arc dummy stands here from now on (its pin moves with it). */
         void walk(Vec3d at) {
             if (arcTarget == null) return;
