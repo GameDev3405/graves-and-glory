@@ -301,7 +301,7 @@ for a weapon) and the checklist line for any "no".
 
 ## 10. House art bible (PLAN-TO-1.0 task 2B.2)
 
-Draft for Kort's review, 2026-10-30. Not approved. Everything here is either **found** (taken from a named file,
+Draft for Kort's review, 2026-10-30; revised the same day with Kort's answers to questions 1, 2, 5 and 6 (10.8). Not approved as a whole. Everything here is either **found** (taken from a named file,
 decision or commit) or marked **PROPOSED** (invented for this draft). Open decisions are collected in 10.8. Where this
 section and sections 1 to 9 disagree, 10.0 says which is newer; nothing in sections 1 to 9 has been rewritten yet.
 
@@ -316,7 +316,8 @@ flags and texels.
 
 1. **No flags on any troop's back.** No pennant, no standard, no back banner, on any troop (Kort, 2026-10-28 and again
    2026-10-29). The `pennant` and `standard` parts stay deleted. Every "pennant" in the spec's Build lines, the `pennant`
-   column in `sheets/design.json` (still `True` for all 30 troops) and spec rule 2's "back pennant" are superseded.
+   column in `sheets/design.json` (still `True` for all 30 troops; the animation lane will turn it off later, Kort
+   2026-10-30) and spec rule 2's "back pennant" are superseded.
 2. **House identity comes only through accents** on shield, weapon, clothing, tabard, trim and plume. No glyph-on-a-pole,
    no back banner, no aura colour does the House's job.
 3. **Side cloth carries the player colour; fixed paint carries the House colour** (PLAN 2B.2). Team parts (tabard, kilt,
@@ -326,22 +327,21 @@ flags and texels.
    38 of 42 weapon references from fantasy game art (mostly Elden Ring and Dark Souls) and none from mods; for armour,
    game art first with "a little more historical plate where the House is knightly (Gilded, Graveborn)". Each tier is
    visibly grander than the last (memory `kort-weapon-taste`).
-5. **Texel density.** New art is 3 texels per model px (Kort, 2026-10-24, `DECISIONS.md`); existing art stays as built;
-   faces are simple Minecraft-style faces at 2 texels per px with four variants. Sections 6, 7.1 and 9 above still say 1
-   texel on skins and 2 on weapons: that is the older rule for existing art, not the rule for new work.
+5. **Texel density (Kort, 2026-10-30).** All new art, skins and weapons, is 1 texel per model px in the hand-authored
+   style of commit 121baca on `art/knight-1x` (`art/hand/<troop>/build_<troop>.py`, `art/hand/common/handlib.py`). This
+   replaces the 3-texels-per-px rule of 2026-10-24 (`DECISIONS.md`, memory `art-sonnet-xhigh`), which is withdrawn.
+   Sections 1 to 9 above still carry older density and ramp rules (2 texels on weapons, 5-tone ramps); where they
+   disagree with the hand set, the hand set is the newer standard and those sections need a follow-up rewrite.
 
-**Conflict, not resolved here.** Commit 121baca on `art/knight-1x` ("Hand-author the Gilded troops and their weapons at
-one texel per pixel", 29 Oct) rebuilds all six Gilded troops and five weapon families (plus the sun staff in 7bfe24e)
-by hand at **1 texel per model px**, from `art/hand/<troop>/build_<troop>.py` and `art/hand/common/handlib.py`. On
-`main` the knight is a generated 256 x 128 sheet at density 3 with faces at density 2, count 4
-(`art/troops/knight.json`); the three House troops on `work/troop-models-house` are also density 3 with four faces at 2.
-The 1x set departs from the approved rules in three ways:
-- density 1 for skins and weapons, against 3 for new art and 2 for the accepted weapons;
+**Resolved conflict (Kort, 2026-10-30).** Commit 121baca ("Hand-author the Gilded troops and their weapons at one
+texel per pixel", 29 Oct) rebuilt all six Gilded troops and five weapon families (plus the sun staff in 7bfe24e) by hand
+at 1 texel per px. On `main` the knight is still a generated 256 x 128 sheet at density 3 with faces at density 2, count
+4 (`art/troops/knight.json`); the three House troops on `work/troop-models-house` are also density 3. Those are now
+stopgap art to be rebuilt in the hand style. Two departures of the hand set from sections 1 to 9 follow it as the new
+standard:
 - ramps of 6 and 7 tones (`STEEL`, `GOLD` in handlib), against section 1's limit of 5;
-- one face per troop (`faces: {"count": 1}` by default in handlib), against four variants at 2 texels.
-It may set a newer standard (it is the later work and is Kort's own branch), or it may be a Gilded-only exception.
-Question 1 in 10.8 asks which. Until Kort answers, every House below is written for 3 texels per px, and the Gilded
-section describes both the generated (`main`) and the hand (`art/knight-1x`) sets.
+- one face per troop (`faces: {"count": 1}` by default in handlib), painted at 1 texel, against four variants at 2.
+  Whether new troops keep one face or four variants is not yet answered (PROPOSED: follow the hand set, one face).
 
 ### 10.1 What every House section covers
 
@@ -356,7 +356,7 @@ heraldic cloth, fur and leather trim, ornate crests and plumes, four to five ton
 read. Kort's verdict on the stage-1 House troops: the general design is right, but they look cheap next to high-detail
 CurseForge knight sets.
 
-**House accents (found, with a conflict).** PLAN 2B.2 names the House accent colours: ember (Ironclad), ochre
+**House accents (found; ruled 2026-10-30, below).** PLAN 2B.2 names the House accent colours: ember (Ironclad), ochre
 (Wildmoot), sea blue (Tidecallers), gold (Gilded), pale violet (Graveborn). The `accent` values in `sheets/design.json`
 are:
 
@@ -368,7 +368,17 @@ are:
 | Ironclad | `#E0703A` | ember | `EMBER #2E0E08 #52190E #7A2814 #9A3C20 #B85E40` |
 | Tidecallers | `#4FA89A` (teal) | sea blue | `SEA #0B1528 #122848 #1A3F6A #2A5E8A #5888AA` |
 
-The Graveborn and Tidecallers rows disagree (Question 2). The painter keeps the House accents dark ("dark enough to
+**Accents ruled (Kort, 2026-10-30):** Kort's rule wins. Graveborn is pale violet and Tidecallers sea blue;
+`design.json`'s `#9DBF9E` and `#4FA89A` are out of date (a sheet change through `tools/preflight.py`, not made here).
+PROPOSED House ramps, six tones in the hand set's style, darkest first, checked against the tint rule:
+- Graveborn violet: `#1E1528 #362645 #54406A #7A6494 #A28FBA #D2C6D8` (hue 267 to 271 until the top tone; no tone has
+  saturation over 0.45 at value over 0.60). It sits on the violet side's hue, so it stays pale and greyed and never
+  fills a team surface.
+- Tidecallers sea blue: `#0A1426 #11264A #1A3F6A #2A5E8A #5E88A6 #9DB8C4`. The painter's own `SEA` tone 4, `#5888AA`
+  (saturation 0.48, value 0.67, hue 205, within 45 degrees of teal 177), breaks the tint rule; the proposed tone
+  `#5E88A6` (0.43) does not.
+
+The painter keeps the House accents dark ("dark enough to
 keep its hue") so they pass the tint rule against the side hues (gold 42, crimson 3, teal 177, violet 264). The hand
 Gilded set's side list is gold, violet, crimson, teal, company and linen (`handlib.SIDES`).
 
@@ -406,7 +416,7 @@ House (two of his only Minecraft-mod picks, `gilded-armour-07` and `-12`, are Gi
 **Signature parts (found, spec marks).** Squire: team shield with a white pale. Archer: hood point and fletching over the
 shoulder. Templar: flat-topped great helm over the long tabard. Longbow: the bow rising past the head. Sunweaver: a 6 x
 6 sun disc on the staff, 4 px above the head. Marshal: his standard, which is now **deleted** under rule 1; his mark
-becomes the gilt laurel helm and the sun shield (PROPOSED; Question 4).
+becomes the gilt laurel helm and the sun shield (PROPOSED; open question 2).
 
 **Tier language (found, hand set docstrings, `art/knight-1x`).**
 - Squire (`main` json): I kettle helm over a mail coif, short split surcoat; II pauldrons, breastplate, short tassets;
@@ -439,8 +449,8 @@ approved 2x constructions; the hand set rebuilt them at 1x.
 - 121baca: "The new bows, longbowman and sunweaver have not been checked in game." 7bfe24e then installed the sun
   staff's three tiers (quads cut from 159 and 224 to 99 and 115 against the 128 cap).
 - The troop notes on `main` still mention the pennant (MODELS-HANDOFF).
-- The Marshal's design hinged on a back standard that rule 1 removes (Question 4).
-- Density, ramp and face conflicts listed in 10.0.
+- The Marshal's design hinged on a back standard that rule 1 removes (open question 2).
+- The generated `main` set is now stopgap art; the hand set is the standard (10.0).
 
 ---
 
@@ -549,7 +559,7 @@ Admiral a tricorne and calf-length coat tails. Coral belongs to the Trident Guar
 
 **Palette (found).** Spec: verdigris `#4E7A6A`, barnacle `#CFCBBE`, navy `#1E2C44`, sea-foam glow `#CFF3E4`, gilt
 `#96783A` (Admiral). Painter ramps: `VERD #16292A #24433F #3A6458 #5E8A7A #8EB2A2`, `BRONZE #2E200E #4E3818 #74562A
-#98764A #BCA070`, `SEA` (House accent, 10.1), `CORAL #857A6A #A99F8E #C7BFAD #DCD6C6 #EEEAE0`, `NAVY #0E1320 #18202F
+#98764A #BCA070`, `SEA` (House accent; PROPOSED six-tone ramp in 10.1), `CORAL #857A6A #A99F8E #C7BFAD #DCD6C6 #EEEAE0`, `NAVY #0E1320 #18202F
 #232E42 #33425A #4E6078`, drowned skin `SKIN_TIDE #3A4A44 #50645C #6A8278 #84A094 #A2BAAE`; barnacle `#CFCBBE`.
 
 **Materials (found).** Verdigris bronze scale, barnacled mail, bleached coral, shell, driftwood, kelp, oilskin, navy
@@ -580,7 +590,7 @@ driftwood, verdigris collars as the tier cue.
 **Baseline and known flaws (found).** Trident Guard stage 1, self-scored 8/10, not accepted. Its bronze cuirass blends
 into its mail (both mid-value green-grey: `VERD` against `MAIL` mixed 45% toward `VERD`). Only the gold side and stage 1
 rendered. The scallop shell sits on the back; it is armour, not a flag, but it is the one back part in a House that also
-plans an anchor on the Admiral's back (Question 5).
+plans an anchor on the Admiral's back (back gear is allowed, 10.7).
 
 ---
 
@@ -597,7 +607,7 @@ hooded; Barrow Stalker a blue-grey wedge; Gravecaller a robe to the ground; Holl
 **Palette (found, spec Look lines; no ramps exist yet).** Grave-moss `#4F5A3C`, rust `#6B4A33`, bone `#C9C1A8`,
 grave-iron `#2B2826`, frost grey `#93A7AE`, rime `#DCE3E2`, soul-light glow `#CFEFFF`, gilt `#96783A` (Gravecaller's
 death mask, Hollow King's jaw wire). Ramps are to be derived from these bases by section 1 at build time (PROPOSED);
-none is invented here. House accent: pale violet (PLAN) or `#9DBF9E` (`design.json`), Question 2.
+none is invented here. House accent: pale violet (Kort, 2026-10-30); PROPOSED ramp in 10.1.
 
 **Materials (found).** Rusted mail and coif, rotted cloth in strips, bare bone, black grave-iron plate, fur cowl and rime
 (Stalker), burial robe and candle stubs, gilt only as funeral metal. Kort's armour picks lean historical for this House
@@ -614,7 +624,7 @@ soul-light point (eye, socket or lantern) within the glow cap.
 
 **Faces (found, spec; PROPOSED variants).** Risen grey-green, slack jaw; Bone Archer bare skull; Reaper skull deep in the
 hood with two lit eyes; Stalker rimed skull; Gravecaller gilt death mask; Hollow King jaw bound in gilt wire. Four
-variants per Common and Rare at 2 texels (rule 5); PROPOSED: skull variants differ by a missing tooth, a crack or a jaw
+variants per Common and Rare, if variants are kept, painted at 1 texel (rule 5); PROPOSED: skull variants differ by a missing tooth, a crack or a jaw
 set, not by colour.
 
 **Portraits (found, spec).** Risen: standard, head dipped. Bone Archer, Stalker, Gravecaller: standard. Reaper, Hollow
@@ -637,27 +647,24 @@ Gilded (PLAN section 1), which is not an art flaw but sets how menacing the Hous
   hunched beast-kin (Wildmoot), upright with growths (Tidecallers), stooped bone (Graveborn).
 - Every troop's front team panel is visible in its rest pose (the Hearthguard flaw, generalised).
 - Every House shield (Gilded, Ironclad) carries the House accent on its rim or boss.
-- No back part of any troop is cloth on a pole. Quivers, engines, shells and anchors are allowed; check each against
-  rule 1 in the troop brief.
+- No back part of any troop is a flag, pennant or standard. Back gear is allowed (Kort, 2026-10-30): quivers, bolt
+  cases, engines, smokestacks, totem staffs, shells and anchors.
 - Plate and the layer under it differ by at least one full tone step (the Tideguard flaw, generalised).
 - Cloth parts sit no more than 0.5 px proud of what they hang on, in every view (the Tusk kilt flaw, generalised).
 
 ### 10.8 Questions for Kort
 
-1. **Texel density.** Does the 1-texel hand-authored Gilded set (121baca, 7bfe24e on `art/knight-1x`, with 6 and 7 tone
-   ramps and one face per troop) replace the 3-texel rule for new art, or is it a Gilded-only exception? It decides the
-   density, the ramp length and the face count for the other 24 troops.
-2. **Accent colours.** Graveborn's accent in `design.json` is grey-green `#9DBF9E`, but your rule says pale violet;
-   Tidecallers' is teal `#4FA89A`, but your rule and the painter use deep sea blue. Which wins, and should the sheet
-   change? Pale violet also sits near the violet player side; is a dark, desaturated violet acceptable?
-3. **Banners that are not on the back.** The spec gives Old Horn a team war-banner strung between his antlers and
+Answered 2026-10-30 (folded in above):
+- *Texel density:* 1 texel per px, the 121baca hand style, for all new art; the 3-texel rule is removed (10.0 rule 5).
+- *Accent colours:* Graveborn pale violet, Tidecallers sea blue; `design.json` is out of date; ramps PROPOSED in 10.1.
+- *Back equipment:* back gear is fine; only flags, pennants and standards are banned (10.7).
+- *Pennant column:* the animation lane turns it off later; no sheet change here (10.0 rule 1).
+
+Still open:
+1. **Banners that are not on the back.** The spec gives Old Horn a team war-banner strung between his antlers and
    Brassjaw a team banner from belt to knee. Are these allowed under the no-flag rule, or should they become clothing
    (a hide mantle, an apron)?
-4. **Lord Marshal Aldric's mark.** His mark was the standard, which is now gone. Is the gilt laurel helm with the sun
+2. **Lord Marshal Aldric's mark.** His mark was the standard, which is now gone. Is the gilt laurel helm with the sun
    shield enough, or does he need a new signature part?
-5. **Back equipment.** Quiver, bolt case, mortar barrel, smokestacks, the Seer's totem staff, the Trident Guard's
-   scallop shell and the Admiral's anchor all ride the back. Confirm they are allowed as equipment, not flags.
-6. **Spec pennant column.** The `pennant` column in `sheets/design.json` is still `True` for every troop. May an agent
-   set it false (a sheet change through `tools/preflight.py`), or does it stay for code that has not been removed?
-7. **Wildmoot metal.** The spec says "no metal"; the built Tusk Spear has an iron cap bar and iron bracers at II and III.
+3. **Wildmoot metal.** The spec says "no metal"; the built Tusk Spear has an iron cap bar and iron bracers at II and III.
    Keep that small allowance or strip it?
