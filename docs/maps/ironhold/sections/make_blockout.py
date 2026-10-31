@@ -163,6 +163,11 @@ def field(x, z):
             return (GROUND, YARD, None)
     warp = 14 * terrain.fbm(terrain.seed_of('upland-warp'), x, z, 40, 2)  # contours wander, not N-S rulings
     top = GROUND + int(round(4 * _smooth((-186 - x + warp) / 50)))
+    if x < -226:
+        w = west(x, z, top)
+        if w:
+            return w
+        top += upland_rise(x, z)
     d = mire_depth(x, z)
     if d > 0.8:
         return (61 if d >= 2.5 else 62, MUD, None)
@@ -171,6 +176,73 @@ def field(x, z):
     if abs(z) > 98 or z >= 80:
         return flank(x, z, (top, GRASS, None))
     return (top, GRASS, None)
+
+
+# ---------------------------------------------------------------- west column B (camp edge, west upland)
+
+CAMP = (-331, -276, -72, 72)  # siege camp palisade line (x0, x1, z0, z1); the shelf inside stands at 72
+CAMP_TOP, UPLAND = 72, 67
+CAMP_FLOOR = ('minecraft:coarse_dirt', 'minecraft:dirt', 3, 'minecraft:stone')  # the trodden shelf
+RAMPART = ('minecraft:rooted_dirt', 'minecraft:dirt', 3, 'minecraft:stone')  # the shelf's earth slope
+CAMP_GATES = ((0, 8), (-64, 4), (64, 4))  # east palisade openings (z centre, half width): King's Road, both lanes
+LANE_N_PTS = [[-300, -38], [-294, -46], [-293, -58], [-288, -64], [-276, -64], [-267, -69], [-248, -85], [-232, -99],
+              [-223, -104], [-209, -112], [-195, -120], [-161, -142], [-151, -142], [-76, -136], [-43, -132], [-31, -128]]
+LANE_S_PTS = [[-300, 38], [-294, 46], [-293, 58], [-288, 64], [-276, 64], [-247, 82], [-228, 95], [-219, 101],
+              [-205, 109], [-192, 117], [-178, 125], [-160, 134], [-138, 138], [-112, 142], [-92, 140], [-75, 137],
+              [-59, 134], [-20, 130]]
+# The lanes leave the camp between the tent rows and through their own palisade gates at z +-64: the layout's straight
+# run from (-300,+-38) to (-277,+-62) went through the NE and SE tents.
+ROAD_PTS = [[-290, 0], [-188, 0]]
+MANTLET_X = -235
+MANTLET_Z = (-150, -128, -106, -84, -62, -40, -18, 26, 48, 70, 92, 114, 136)  # layout rows, each 6 long
+
+
+def camp_height(x, z):
+    """The siege camp shelf and its earth slope: (height, material) or None away from it. The shelf (72) reaches 2..7
+    blocks past the palisade, its lip warped by noise; the slope falls to the upland (67) over 6 blocks where rock
+    shows (a short crag) and 9 where it is earth, and over 16 at the three gates, so the road and the lanes ramp
+    down instead of stepping."""
+    if x < -300 or abs(z) > 100:
+        return None
+    lip = 2 + 2.5 * (1 + terrain.fbm(terrain.seed_of('camp-lip'), x, z, 12, 3))
+    b = _box_dist(x, z, (-400, CAMP[1] + 2, CAMP[2] - 2, CAMP[3] + 2)) + lip
+    ramp = max(_smooth(1 - (abs(z - gz) - hw) / 10) for gz, hw in CAMP_GATES) if x > CAMP[1] - 2 else 0.0
+    rock = terrain.fbm(terrain.seed_of('camp-rock'), x, z, 7, 2)
+    span = (6 if rock > 0.15 else 9) * (1 - ramp) + 16 * ramp
+    if b <= -span:
+        return None
+    if b >= 0:
+        return CAMP_TOP, CAMP_FLOOR
+    h = UPLAND + int(round((CAMP_TOP - UPLAND) * _smooth((b + span) / span)))
+    return h, (CRAG if rock > 0.15 and ramp < 0.3 and b > -span + 2 else RAMPART)
+
+
+def _lane_dist(x, z):
+    return min(terrain.nearest(p, x, z)[0] for p in (LANE_N_PTS, LANE_S_PTS, ROAD_PTS))
+
+
+def upland_rise(x, z):
+    """The west upland is not a table: it lifts a block or two toward the North Mountains and the South Ridge
+    (rows 1 and 6), fading out before the C seam so the field sections keep their edge."""
+    fade = _smooth((-226 - x) / 24)
+    north = 2.4 * _smooth((-146 - z) / 30)
+    south = 2.4 * _smooth((z - 172) / 30)
+    roll = 0.8 * terrain.fbm(terrain.seed_of('upland-roll'), x, z, 26, 2)
+    return int(round(fade * (north + south + roll * (north + south > 0.3))))
+
+
+def west(x, z, top):
+    """West column B over the field: the camp shelf and slope, then outcrops of grey rock on the upland, kept off
+    the road, the lanes and the mantlet row. None leaves the column to the field."""
+    c = camp_height(x, z)
+    if c and c[0] > top:
+        return (c[0], c[1], None)
+    if x > -232 or abs(x - MANTLET_X) < 6:
+        return None
+    o = terrain.fbm(terrain.seed_of('outcrop'), x, z, 9, 2) + 0.25 * terrain.fbm(terrain.seed_of('outcrop2'), x, z, 3, 1)
+    if o > 0.42 and _lane_dist(x, z) > 9:
+        return (top + upland_rise(x, z) + 1 + (o > 0.56), CRAG, None)
+    return None
 
 
 
@@ -463,8 +535,7 @@ def _north_paths():
     lane = {'op': 'path', 'width': 5, 'falloff': 2, 'surface': _mix(('dirt_path', 3), ('coarse_dirt', 2)),
             'edge': _mix(('coarse_dirt', 2), ('gravel', 1)), 'edgeDensity': 0.5, 'wobble': 2.0, 'wobbleScale': 6}
     ops = [(dict(lane, note='north lane: camp, bluff foot, burned village, A', seed='lane-n',
-                 points=[[-300, -38], [-277, -62], [-267, -69], [-248, -85], [-232, -99], [-223, -104], [-209, -112],
-                         [-195, -120], [-161, -142], [-151, -142], [-76, -136], [-43, -132], [-31, -128]]), None)]
+                 points=LANE_N_PTS), None)]
     track = {'op': 'path', 'width': 3, 'falloff': 1.5, 'surface': _mix(('dirt_path', 2), ('coarse_dirt', 2),
              ('grass_block', 1)), 'wobble': 1.2, 'wobbleScale': 5}
     ops.append((dict(track, note='A to the north sally gap, round the fosse end (outside the curtain)',
@@ -582,9 +653,7 @@ def _south_paths():
              ('grass_block', 1)), 'wobble': 1.2, 'wobbleScale': 5}
     return [
         (dict(lane, note='south lane: camp, over Gallows Ridge past the chapel, down to the south ford and C',
-              seed='lane-s', points=[[-300, 38], [-277, 60], [-247, 82], [-228, 95], [-219, 101], [-205, 109],
-                                     [-192, 117], [-178, 125], [-160, 134], [-138, 138], [-112, 142], [-92, 140],
-                                     [-75, 137], [-59, 134], [-20, 130]]), None),
+              seed='lane-s', points=LANE_S_PTS), None),
         (dict(track, note='ridge foot to the south sally gap, round the fosse end (outside the curtain)',
               seed='sally-s', points=[[-60, 136], [-66, 113], [-84, 105], [-88, 92], [-87, 76], [-84, 62]]), None),
         ({'op': 'path', 'note': 'south sally causeway over the fosse at 63', 'points': [[-85, 62], [-74, 62]],
@@ -650,6 +719,148 @@ def _south_surface():
     ]
 
 
+# ---------------------------------------------------------------- west column B helper ops
+
+WEST = (-289, -176, -226, 207)  # column B, rows 1..6 (x0, z0, x1, z1)
+CAMP_SLOPE = (-300, -100, -250, 100)
+
+
+def _west_shape():
+    """The camp slope settles (thermal, earth and rock only, the shelf and palisade line held)."""
+    shelf = {'min': [-400, CAMP[2] - 1], 'max': [CAMP[1] + 1, CAMP[3] + 1]}
+    return [({'op': 'erode', 'note': 'camp slope: settle the earth and break the crag', 'mode': 'thermal',
+              'iterations': 3, 'talus': 1.2, 'rate': 0.5, 'jitter': 0.4, 'clamp': [UPLAND - 1, CAMP_TOP],
+              'only': [W + n for n in ('rooted_dirt', 'stone', 'grass_block')], 'exclude': [shelf],
+              'seed': 'settle-camp'}, CAMP_SLOPE)]
+
+
+def _mantlets():
+    """Mantlet row x -235 (layout rows of 6), each moved along z until it stands 7 clear of the road and the lanes.
+    (x0, z0, x1, z1, ground y) with a lean of up to a block either way so the row is not ruled."""
+    out = []
+    for z0 in MANTLET_Z:
+        z = z0
+        for _ in range(12):
+            if min(terrain.nearest(p, MANTLET_X, z + k)[0] for p in (LANE_N_PTS, LANE_S_PTS, ROAD_PTS)
+                   for k in (0, 5)) >= 7:
+                break
+            z += 2 if z0 > 0 else -2
+        lean = round((_hash('mantlet', z0) - 0.5) * 2)
+        y = column(MANTLET_X, z + 2)[0]
+        out.append((MANTLET_X - lean, z, MANTLET_X + lean, z + 5, y))
+    return out
+
+
+def _west_paths():
+    """Each mantlet stands on a graded earth pad with a low bank thrown up in front of it (east, toward the
+    fortress); the bank is a raised path, so it eases back to the ground."""
+    ops = []
+    for x0, z0, x1, z1, y in _mantlets():
+        ops.append(({'op': 'path', 'note': f'mantlet pad ({MANTLET_X},{z0}..{z1}) at {y}',
+                     'points': [[x0, z0 - 1.5], [x1, z1 + 1.5]], 'width': 4, 'falloff': 2, 'y': y,
+                     'surface': _mix(('coarse_dirt', 3), ('dirt', 1), ('grass_block', 1)), 'under': W + 'dirt',
+                     'wobble': 0.6, 'wobbleScale': 3, 'seed': f'mpad{z0}'}, None))
+        ops.append(({'op': 'path', 'note': f'mantlet bank ({MANTLET_X + 2},{z0}..{z1})',
+                     'points': [[x0 + 2, z0], [x1 + 2, z1]], 'width': 1.5, 'falloff': 1.5, 'y': y + 1,
+                     'surface': _mix(('coarse_dirt', 2), ('rooted_dirt', 1), ('dirt', 1)), 'under': W + 'dirt',
+                     'wobble': 0.4, 'wobbleScale': 3, 'seed': f'mbank{z0}'}, None))
+    return ops
+
+
+def _tent(x0, x1, z0, z1, block):
+    """A ridge tent, ridge along x: four courses stepping in a block a side from the shelf (73) to the ridge (76)."""
+    return [({'op': 'fill', 'note': f'tent ({x0}..{x1}, {z0}..{z1}), course {k}', 'min': [x0, 73 + k, z0 + k],
+              'max': [x1, 73 + k, z1 - k], 'block': W + block}, (x0, z0 + k, x1, z1 - k)) for k in range(4)]
+
+
+def _trebuchet(x0, z0, sign):
+    """Trebuchet massing on a 7x7 footprint (x0.., z0 and 6 more toward sign): log base frame, two uprights to an
+    axle at 80, the arm cocked low to the west and the counterweight hung under its short east end (82)."""
+    zs = [z0 + k * sign for k in range(7)]
+    zlo, zhi = min(zs), max(zs)
+    za, zb, zm = z0 + sign, z0 + 5 * sign, z0 + 3 * sign
+    log = W + 'dark_oak_log'
+    ops = [({'op': 'fill', 'note': 'trebuchet base rail', 'min': [x0, 73, zlo], 'max': [x0 + 6, 73, zlo],
+             'block': log + '[axis=x]'}, (x0, zlo, x0 + 6, zlo)),
+           ({'op': 'fill', 'note': 'trebuchet base rail', 'min': [x0, 73, zhi], 'max': [x0 + 6, 73, zhi],
+             'block': log + '[axis=x]'}, (x0, zhi, x0 + 6, zhi)),
+           ({'op': 'fill', 'note': 'trebuchet cross beam', 'min': [x0, 73, zlo + 1], 'max': [x0, 73, zhi - 1],
+             'block': log + '[axis=z]'}, (x0, zlo + 1, x0, zhi - 1)),
+           ({'op': 'fill', 'note': 'trebuchet cross beam', 'min': [x0 + 6, 73, zlo + 1],
+             'max': [x0 + 6, 73, zhi - 1], 'block': log + '[axis=z]'}, (x0 + 6, zlo + 1, x0 + 6, zhi - 1))]
+    for zu in (za, zb):
+        ops.append(({'op': 'fill', 'note': 'trebuchet upright', 'min': [x0 + 3, 74, zu], 'max': [x0 + 3, 79, zu],
+                     'block': log}, (x0 + 3, zu, x0 + 3, zu)))
+        for dx, y in ((1, 74), (2, 76), (5, 74), (4, 76)):  # A-frame braces
+            ops.append(({'op': 'fill', 'note': 'trebuchet brace', 'min': [x0 + dx, y, zu], 'max': [x0 + dx, y, zu],
+                         'block': W + 'spruce_planks'}, (x0 + dx, zu, x0 + dx, zu)))
+    zlo2, zhi2 = min(za, zb), max(za, zb)
+    ops.append(({'op': 'fill', 'note': 'trebuchet axle', 'min': [x0 + 3, 80, zlo2], 'max': [x0 + 3, 80, zhi2],
+                 'block': log + '[axis=z]'}, (x0 + 3, zlo2, x0 + 3, zhi2)))
+    for dx, y in ((-1, 75), (0, 76), (1, 78), (2, 79), (4, 81), (5, 82)):  # the arm
+        ops.append(({'op': 'fill', 'note': 'trebuchet arm', 'min': [x0 + dx, y, zm], 'max': [x0 + dx, y, zm],
+                     'block': log + '[axis=x]'},
+                    (x0 + dx, zm, x0 + dx, zm)))
+    ops.append(({'op': 'fill', 'note': 'trebuchet counterweight', 'min': [x0 + 5, 78, zm - 1],
+                 'max': [x0 + 6, 80, zm + 1], 'block': W + 'cobblestone'}, (x0 + 5, zm - 1, x0 + 6, zm + 1)))
+    return ops
+
+
+TENTS = (((-290, -282, -60, -53), 'white_wool'), ((-290, -282, -30, -23), 'light_gray_wool'),
+         ((-290, -282, 22, 29), 'white_wool'), ((-290, -282, 53, 60), 'brown_wool'))
+
+
+def _west_built():
+    """Camp palisade (east run and the east ends of the north and south runs), its gates, the tents and trebuchets
+    on the shelf edge, and the mantlet row."""
+    ops = []
+    stakes = _mix(('dark_oak_log', 3), ('spruce_log', 2), ('stripped_dark_oak_log', 1))
+    gates = [{'min': [CAMP[1] - 1, gz - hw], 'max': [CAMP[1] + 1, gz + hw]} for gz, hw in CAMP_GATES]
+    east = [[CAMP[1], z, 74 + round(_hash('stake', z))] for z in range(CAMP[2], CAMP[3] + 1, 6)]
+    ops.append(({'op': 'wall', 'note': 'camp palisade, east run, three gates', 'points': east, 'thickness': 1,
+                 'floor': 69, 'block': stakes, 'merlons': True, 'exclude': gates, 'seed': 'palisade-e'}, None))
+    for zc in (CAMP[2], CAMP[3]):
+        run = [[x, zc, 74 + round(_hash('stake', x, zc))] for x in range(CAMP[1], CAMP[0] - 1, -5)]
+        ops.append(({'op': 'wall', 'note': f'camp palisade, run z {zc}', 'points': run, 'thickness': 1,
+                     'floor': 69, 'block': stakes, 'merlons': True, 'seed': f'palisade{zc}'}, None))
+    for gz, hw in CAMP_GATES:
+        tall, w = (79, 1) if gz == 0 else (77, 0)
+        for pz in (gz - hw - 1 - w, gz + hw + 1 + w):
+            ops.append(({'op': 'fill', 'note': f'camp gate post z {pz}', 'min': [CAMP[1] - w, 69, pz - w],
+                         'max': [CAMP[1] + w, tall, pz + w], 'block': W + 'dark_oak_log'},
+                        (CAMP[1] - w, pz - w, CAMP[1] + w, pz + w)))
+    ops.append(({'op': 'fill', 'note': "King's Road gate lintel", 'min': [CAMP[1], 78, -9], 'max': [CAMP[1], 78, 9],
+                 'block': W + 'dark_oak_log[axis=z]'}, (CAMP[1], -9, CAMP[1], 9)))
+    for (x0, x1, z0, z1), block in TENTS:
+        ops += _tent(x0, x1, z0, z1, block)
+    ops += _trebuchet(-286, -50, 1)
+    ops += _trebuchet(-286, 50, -1)
+    for x0, z0, x1, z1, y in _mantlets():
+        ops.append(({'op': 'wall', 'note': f'siege mantlet ({MANTLET_X},{z0}..{z1})', 'points': [[x0, z0], [x1, z1]],
+                     'thickness': 1.2, 'floor': y + 1, 'top': y + 2,
+                     'block': _mix(('spruce_planks', 3), ('spruce_log', 1), ('stripped_spruce_log', 1)),
+                     'seed': f'mantlet{z0}'}, None))
+    return ops
+
+
+def _west_surface():
+    return [
+        ({'op': 'breakup', 'note': 'camp shelf: trodden earth, gravel, paths and tufts',
+          'replace': [W + 'coarse_dirt'],
+          'mix': _mix(('dirt_path', 2), ('gravel', 1), ('dirt', 2), ('grass_block', 2), ('packed_mud', 1)),
+          'density': 0.4, 'scale': 2, 'seed': 'campfloor'}, (-350, CAMP[2] - 7, CAMP[1] + 7, CAMP[3] + 7)),
+        ({'op': 'breakup', 'note': 'camp slope: grass over the thrown earth', 'replace': [W + 'rooted_dirt'],
+          'mix': _mix(('grass_block', 5), ('coarse_dirt', 2), ('dirt', 1)), 'density': 0.7, 'scale': 2,
+          'seed': 'rampart'}, CAMP_SLOPE),
+        ({'op': 'breakup', 'note': 'west upland rock: andesite, cobble, gravel and moss', 'replace': [W + 'stone'],
+          'mix': _mix(('andesite', 3), ('cobblestone', 1), ('gravel', 1), ('tuff', 1), ('mossy_cobblestone', 1)),
+          'density': 0.5, 'scale': 2, 'seed': 'crag-w'}, WEST),
+        ({'op': 'breakup', 'note': 'west upland: grass worn round the rock', 'replace': [W + 'grass_block'],
+          'mix': _mix(('coarse_dirt', 2), ('rooted_dirt', 1), ('gravel', 1)), 'near': [W + 'stone', W + 'andesite'],
+          'width': 1.5, 'density': 0.5, 'scale': 1, 'seed': 'rockfoot-w'}, WEST),
+    ]
+
+
 def features():
     """Every helper op on the map, in apply order. Each is clipped to the section it is planned for; noise, erode
     and breakup carry a region (x0, z0, x1, z1) that is intersected with the section."""
@@ -664,6 +875,7 @@ def features():
               (-350, -250, -98, 280)))
     f += _north_shape()
     f += _south_shape()
+    f += _west_shape()
     # -- water: bog pools, the flooded trench in the Mire, the fosse, the river
     f += [(op, None) for op in _pools()]
     f += _trench150()
@@ -690,7 +902,7 @@ def features():
     # -- roads: the King's Road on the ground, across the Mire on a causeway at 63, on to the front door
     road = {'width': 7, 'surface': W + 'dirt_path', 'edge': _mix(('coarse_dirt', 2), ('gravel', 1)), 'falloff': 2,
             'edgeDensity': 0.5, 'wobble': 3.0, 'wobbleScale': 5}
-    f.append((dict(road, op='path', note="King's Road, upland to the Mire", points=[[-290, 0], [-188, 0]],
+    f.append((dict(road, op='path', note="King's Road, upland to the Mire", points=ROAD_PTS,
                    seed='road-w'), None))
     f.append((dict(road, op='path', note="King's Road causeway over the Mire at 63", points=[[-194, 0], [-116, 0]],
                    y=63, falloff=4, under=_mix(('cobblestone', 1), ('dirt', 2)), seed='causeway'), None))
@@ -698,6 +910,7 @@ def features():
                    points=[[-120, 0], [-83, 0]], seed='road-e'), None))
     f += _north_paths()
     f += _south_paths()
+    f += _west_paths()
     spur = {'op': 'path', 'width': 4, 'falloff': 1.5, 'surface': _mix(('dirt_path', 3), ('coarse_dirt', 1)),
             'under': W + 'dirt', 'wobble': 0.5}
     f.append((dict(spur, note='supply spur SW, raised track over the Mire', seed='spur-sw',
@@ -739,6 +952,7 @@ def features():
                'block': W + 'stone_bricks', 'exclude': [gate, court]}, None))
     f += _north_built()
     f += _south_built()
+    f += _west_built()
     # -- surfaces: blend the boundaries so no material ends on a ruler line
     f.append(({'op': 'breakup', 'note': 'river banks: mud, gravel and moss near the water',
                'replace': [W + n for n in ('mud', 'packed_mud', 'andesite', 'coarse_dirt', 'grass_block')],
@@ -770,6 +984,7 @@ def features():
                'seed': 'yards'}, (-160, -95, -105, 95)))
     f += _north_surface()
     f += _south_surface()
+    f += _west_surface()
     return f
 
 
@@ -803,7 +1018,8 @@ def _clip(op, region, box):
 CORE = ('E3', 'E4', 'F3', 'F4')
 GROUPS = {'core': CORE, 'mire': ('C3', 'C4', 'D3', 'D4'),
           'north': ('C1', 'D1', 'E1', 'F1', 'G1', 'C2', 'D2', 'E2', 'F2'),
-          'south': ('C5', 'D5', 'E5', 'F5', 'G5', 'C6', 'D6', 'E6', 'F6', 'G6')}
+          'south': ('C5', 'D5', 'E5', 'F5', 'G5', 'C6', 'D6', 'E6', 'F6', 'G6'),
+          'west': ('B1', 'B2', 'B3', 'B4', 'B5', 'B6')}
 REOPEN = ("Kort's rulings of 2026-10-30: east curtain to x 98 (x 72 pieces dropped), inner ward closed to the river "
           'cliffs, Great Keep tower out of the river, stations awaiting the modes lane; 2026-10-31: the river bends '
           'around the keep court; 2026-10-31 milestone 2A.3: river, banks and walls rebuilt with the terrain helpers')

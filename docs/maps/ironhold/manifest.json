@@ -274,8 +274,24 @@
      -113
     ]
    },
-   "status": "todo",
-   "reviews": []
+   "status": "blockout",
+   "reviews": [
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-10-31T15:43:30Z",
+     "digest": "e7025825a876f63cf8546383c82cc230e5b4e584a6f9984550d57435dde83419",
+     "plans": [
+      "docs/maps/ironhold/sections/B1-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-B1-top.png",
+      "docs/maps/ironhold/sections/ironhold-B1-iso.png"
+     ],
+     "notes": "North upland: field massing rising 0..2 toward the north edge, crag outcrops (andesite, tuff, cobble, moss breakup) kept 9 clear of the lanes, mantlets at z -150/-128 on graded pads with low banks. Locks ok."
+    }
+   ]
   },
   {
    "id": "C1",
@@ -552,8 +568,24 @@
      -49
     ]
    },
-   "status": "todo",
-   "reviews": []
+   "status": "blockout",
+   "reviews": [
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-10-31T15:43:34Z",
+     "digest": "5f6e4cb717610b07b938cf16de70cbd349619cbf04077f4d9b2b048240302dd7",
+     "plans": [
+      "docs/maps/ironhold/sections/B2-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-B2-top.png",
+      "docs/maps/ironhold/sections/ironhold-B2-iso.png"
+     ],
+     "notes": "Camp north: shelf y 72 with warped lip and earth/crag slope settled by thermal erosion; palisade east run and north run z -72, lane gate z -64 with the rerouted north lane leaving between tents; white tent, mantlet row x -235. Locks ok."
+    }
+   ]
   },
   {
    "id": "C2",
@@ -814,8 +846,24 @@
      15
     ]
    },
-   "status": "todo",
-   "reviews": []
+   "status": "blockout",
+   "reviews": [
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-10-31T15:43:38Z",
+     "digest": "a34fe1f83f91eaf18c9abada3beb2e2bce941fad221f5f811a7a15c4b4693c34",
+     "plans": [
+      "docs/maps/ironhold/sections/B3-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-B3-top.png",
+      "docs/maps/ironhold/sections/ironhold-B3-iso.png"
+     ],
+     "notes": "Siege camp gate: King's Road gate z -8..8 with 3x3 posts and lintel, gate ramp eased over 16; trodden shelf floor (paths, gravel, packed mud), grey tent, north trebuchet massing on the shelf edge, mantlets shifted clear of road and lanes. Locks ok."
+    }
+   ]
   },
   {
    "id": "C3",
@@ -1196,8 +1244,24 @@
      79
     ]
    },
-   "status": "todo",
-   "reviews": []
+   "status": "blockout",
+   "reviews": [
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-10-31T15:43:43Z",
+     "digest": "d4a8edde11b23b85c4d802a30d12581299cf89e277232882d92b413a9619a3a1",
+     "plans": [
+      "docs/maps/ironhold/sections/B4-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-B4-top.png",
+      "docs/maps/ironhold/sections/ironhold-B4-iso.png"
+     ],
+     "notes": "Siege camp south: mirror of B3; white and brown tents (brown moved to z 53..60 so it clears the south trebuchet), trebuchet massing, lane gate z 64, south lane rerouted out between tents, mantlet row. Locks ok."
+    }
+   ]
   },
   {
    "id": "C4",
@@ -1593,8 +1657,24 @@
      143
     ]
    },
-   "status": "todo",
-   "reviews": []
+   "status": "blockout",
+   "reviews": [
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-10-31T15:43:47Z",
+     "digest": "ffcf89b8d20ad890c66fc57d18795065e1e43cc368cc09cad9a4e0126430bf2d",
+     "plans": [
+      "docs/maps/ironhold/sections/B5-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-B5-top.png",
+      "docs/maps/ironhold/sections/ironhold-B5-iso.png"
+     ],
+     "notes": "Camp south: palisade south run z 72 with lane gate z 64, slope settled to the upland y 67, crag outcrops, mantlets z 92..136 on pads with banks. Locks ok."
+    }
+   ]
   },
   {
    "id": "C5",
@@ -1871,8 +1951,24 @@
      207
     ]
    },
-   "status": "todo",
-   "reviews": []
+   "status": "blockout",
+   "reviews": [
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-10-31T15:43:51Z",
+     "digest": "85a3e371b539a40e29d63d00db81b68e100950de8909e05d5b8a0de493df5376",
+     "plans": [
+      "docs/maps/ironhold/sections/B6-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-B6-top.png",
+      "docs/maps/ironhold/sections/ironhold-B6-iso.png"
+     ],
+     "notes": "South upland: ground rising 0..2 toward the south edge, outcrop clusters with worn grass round the rock; no built features. Locks ok."
+    }
+   ]
   },
   {
    "id": "C6",
