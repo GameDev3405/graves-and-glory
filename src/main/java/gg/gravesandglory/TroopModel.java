@@ -343,9 +343,41 @@ public final class TroopModel<T extends MobEntity> extends SinglePartEntityModel
     }
     /** The skin pass, then the relief of the key the draw armed: the same consumer, light, overlay and tint, so the relief is one more layer of the skin. */
     @Override public void render(MatrixStack m,VertexConsumer vc,int light,int overlay,float r,float g,float b,float a){
+        if(BodyCache.parts!=BodyCache.ALL){masked(m,vc,light,overlay,r,g,b,a);return;}
+        skin(m,vc,light,overlay,r,g,b,a);
+    }
+    private void skin(MatrixStack m,VertexConsumer vc,int light,int overlay,float r,float g,float b,float a){
         super.render(m,vc,light,overlay,r,g,b,a);
         String key=armed;armed=null;
         if(key!=null){reliefDrawn=renderRelief(key,m,vc,light,overlay,r,g,b,a);reliefSpent=true;}
+    }
+    /** The part a whole-model pass draws (BodyCache.BODY for the skin; the Trim and Glow layers set BodyCache.ARMOUR for theirs): the harness's part switches read it. */
+    int pass=BodyCache.BODY;
+    private Set<String> shieldBones;
+    /** The bones of the model's own shield: each bone tagged shield and every bone under it (file order puts a parent first). */
+    Set<String> shieldBones(){
+        if(shieldBones==null){Set<String> out=new HashSet<>();for(Bone b:info.values())if("shield".equals(b.tag())||out.contains(b.parent()))out.add(b.name());shieldBones=out;}
+        return shieldBones;
+    }
+    /**
+     * Harness only (mo-fade, R56; BodyCache.parts not ALL): this pass with only the parts the switches name. The model's own
+     * shield counts as the shield, the rest of the pass as its part (pass): without the shield its bones are not visible for
+     * the pass; the shield alone, every other part's own boxes are skipped (ModelPart.hidden; its children still walk), so the
+     * shield draws where it hangs.
+     */
+    private void masked(MatrixStack m,VertexConsumer vc,int light,int overlay,float r,float g,float b,float a){
+        Set<String> sh=shieldBones();boolean rest=BodyCache.drawn(pass),shield=!sh.isEmpty()&&BodyCache.drawn(BodyCache.SHIELD);
+        if(rest&&(shield||sh.isEmpty())){skin(m,vc,light,overlay,r,g,b,a);return;}
+        if(!rest&&!shield){armed=null;return;}
+        List<ModelPart> touched=new ArrayList<>();
+        if(rest){
+            for(String n:sh){ModelPart p=parts.get(n);if(p.visible){p.visible=false;touched.add(p);}}
+            try{skin(m,vc,light,overlay,r,g,b,a);}finally{for(ModelPart p:touched)p.visible=true;}
+        }else{
+            if(!top.hidden){top.hidden=true;touched.add(top);}
+            for(var en:parts.entrySet())if(!sh.contains(en.getKey())&&!en.getValue().hidden){en.getValue().hidden=true;touched.add(en.getValue());}
+            try{skin(m,vc,light,overlay,r,g,b,a);}finally{for(ModelPart p:touched)p.hidden=false;}
+        }
     }
     /** Every bone's pose (pivot x, y and z, pitch, yaw and roll) in file order, 6 floats a bone; into reuse when it fits. */
     public float[] snapshot(float[] reuse){
@@ -440,7 +472,7 @@ public final class TroopModel<T extends MobEntity> extends SinglePartEntityModel
             if(b.team()&&teamOn[i++]){
                 List<ModelPart> path=teamPaths.get(i-1);boolean shown=true;
                 for(int k=0;k<path.size()-1;k++)shown&=path.get(k).visible;
-                if(shown){
+                if(shown&&(BodyCache.parts==BodyCache.ALL||BodyCache.drawn(shieldBones().contains(b.name())?BodyCache.SHIELD:BodyCache.ARMOUR))){ // the harness's part switches (mo-fade)
                     m.push();for(int k=0;k<path.size()-1;k++)path.get(k).rotate(m);
                     ModelPart bone=path.get(path.size()-1);bone.visible=true;bone.render(m,vc,light,overlay);bone.visible=false;
                     m.pop();drawn|=1L<<bit;

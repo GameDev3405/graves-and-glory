@@ -10,7 +10,8 @@
     "TitleDemoCameraMixin",
     "TitleDemoPoseMixin",
     "StoryStillsPoseMixin",
-    "MotionRigPoseMixin"
+    "MotionRigPoseMixin",
+    "ParticleCountMixin"
   ],
   "injectors": {
     "defaultRequire": 0

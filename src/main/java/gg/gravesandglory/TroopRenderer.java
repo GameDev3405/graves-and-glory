@@ -95,11 +95,22 @@ public final class TroopRenderer<T extends MobEntity> extends LivingEntityRender
         TroopModels.Look l=TroopModels.resolve(e);TroopModel<T> m=l==null?null:TroopModels.modelOf(l.troop().id());
         if(m==null){faded(e,alpha,consumers,v->{vanilla.render(e,yaw,tickDelta,matrices,v,light);TroopChevrons.draw(e,l,null,matrices,v,dispatcher);});return;}
         if(TroopModels.held(e,l))return;
+        int parts=BodyCache.parts;
+        if(BodyCache.heldOpaque&&alpha<1f&&(parts&BodyCache.HELD)!=0){
+            // harness only, the red side of mo-fade (R56): the body fades without its weapon and shield, which then draw whole
+            BodyCache.parts=parts&~BodyCache.HELD;try{draw(e,l,m,yaw,tickDelta,matrices,consumers,light,alpha);}finally{BodyCache.parts=parts;}
+            BodyCache.parts=parts&BodyCache.HELD;try{drawModel(e,yaw,tickDelta,matrices,consumers,light);}finally{BodyCache.parts=parts;}
+            return;
+        }
+        draw(e,l,m,yaw,tickDelta,matrices,consumers,light,alpha);
+    }
+    /** A troop with its own model, not held: from BodyCache's buffers when it lies settled, else the normal way, at its alpha. */
+    private void draw(T e,TroopModels.Look l,TroopModel<T> m,float yaw,float tickDelta,MatrixStack matrices,VertexConsumerProvider consumers,int light,float alpha){
         // A body lying settled draws from the buffers BodyCache recorded of it, while what its draw depends on stays the same.
         if(BodyCache.on()&&TroopMotion.settled(e,m)&&!net.minecraft.client.MinecraftClient.getInstance().hasOutline(e)&&!e.isInvisible()&&!hasLabel(e)){
             Vec3d at=e.getLerpedPos(tickDelta).add(getPositionOffset(e,tickDelta));
             var key=new BodyCache.Key(m,l,TroopModels.far(e,l),TroopDepth.near(e)?m.reliefKey(l):null,TroopModels.face(e,m),light,getOverlay(e,getAnimationCounter(e,tickDelta)),
-                e.getOffHandStack().isEmpty(),TroopMotion.helmOff(e),TroopMotion.folds(m,e),TroopMotion.drawSeconds(e,m,e.age+tickDelta),at.x,at.y,at.z);
+                e.getOffHandStack().isEmpty(),TroopMotion.helmOff(e),TroopMotion.folds(m,e),TroopMotion.drawSeconds(e,m,e.age+tickDelta),at.x,at.y,at.z,BodyCache.parts);
             if(BodyCache.draw(this,e,key,yaw,net.minecraft.util.math.MathHelper.lerpAngleDegrees(tickDelta,e.prevBodyYaw,e.bodyYaw),tickDelta)){
                 troopDraws++;if(DIAGNOSTICS){Drawn d=DRAWN.get(e);if(d!=null)d.count++;}
                 BodyCache.verified(e,m.cullBox(e));

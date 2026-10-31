@@ -58,6 +58,14 @@ public final class BodyCache {
     static boolean hidden(int id){return id==hide||id==hide2;}static volatile boolean noGroups;
     /** Harness switch (hl-corpse, R42): draw a fading body opaque, its fade ignored (the reference frame its alpha is measured against). */
     static volatile boolean opaque;
+    /**
+     * Harness switches (mo-fade, R56): the parts of a troop drawn, as bits (BODY its skin and relief off its shield, ARMOUR the
+     * layers over it: outer, trim, cloth and glow, WEAPON the weapon model and its glow, SHIELD the shield, its own bones or the
+     * item), ALL in play; and heldOpaque, which draws a fading troop's weapon and shield whole (the red side of mo-fade).
+     */
+    static final int BODY=1,ARMOUR=2,WEAPON=4,SHIELD=8,HELD=WEAPON|SHIELD,ALL=15;static volatile int parts=ALL;static volatile boolean heldOpaque;
+    /** Whether a part draws now (every part in play). */
+    static boolean drawn(int part){return (parts&part)!=0;}
     /** Whether settled bodies draw from their buffers now. */
     static boolean on(){return ENABLED&&!off;}
     /** Records past which a body that keeps changing is drawn the normal way for good. */
@@ -72,9 +80,9 @@ public final class BodyCache {
     static final int VERIFY_FRAMES=24;
 
     /** What the draw depends on: a recorded body is drawn from its buffers while this stays equal. */
-    record Key(Object model,TroopModels.Look look,boolean far,String relief,int variant,int light,int overlay,boolean shieldOff,boolean helmOff,boolean folds,float bow,double x,double y,double z){
+    record Key(Object model,TroopModels.Look look,boolean far,String relief,int variant,int light,int overlay,boolean shieldOff,boolean helmOff,boolean folds,float bow,double x,double y,double z,int parts){
         boolean same(Key k){
-            return k.model==model&&Objects.equals(k.look,look)&&k.far==far&&Objects.equals(k.relief,relief)&&k.variant==variant&&k.light==light&&k.overlay==overlay
+            return k.parts==parts&&k.model==model&&Objects.equals(k.look,look)&&k.far==far&&Objects.equals(k.relief,relief)&&k.variant==variant&&k.light==light&&k.overlay==overlay
                 &&k.shieldOff==shieldOff&&k.helmOff==helmOff&&k.folds==folds&&Float.compare(k.bow,bow)==0&&Math.abs(k.x-x)<1e-5&&Math.abs(k.y-y)<1e-5&&Math.abs(k.z-z)<1e-5;
         }
     }
@@ -485,6 +493,8 @@ public final class BodyCache {
     }
     /** Frees every buffer (a world left, resources reloaded). */
     static void clear(){for(Body b:BODIES.values())b.free();BODIES.clear();QUEUE.clear();recycle();for(VertexBuffer vb:SPARE)vb.close();SPARE.clear();}
+    /** Harness (mo-fade): forgets the entity's body, its buffers freed, so its next draw records it afresh (after BodyCache.parts changed). */
+    static void forget(Entity e){Body b=BODIES.remove(e);if(b!=null)b.free();}
     /** Whether this client keeps buffers for the entity's body and draws it from them. */
     static boolean cached(Entity e){Body b=BODIES.get(e);return b!=null&&!b.normal&&!b.parts.isEmpty();}
     /** Harness (Task 13 carry D21, R45): the light the entity's body drew from its buffers with this frame, -1 when it did not draw from them this frame. */

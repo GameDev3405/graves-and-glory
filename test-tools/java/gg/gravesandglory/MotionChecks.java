@@ -108,6 +108,13 @@ public final class MotionChecks {
         if (b == null || !(model instanceof TroopModel<?> m)) return;
         add(m, b);
     }
+    /** mo-fade-smoke (R57): the body watched for poofs (its middle), whether the count is on, and the poofs within 2 blocks of it (and anywhere) counted. */
+    static volatile net.minecraft.util.math.Vec3d SMOKE_AT; static volatile boolean smokeCounting; static int smokePoofs, smokeAll;
+    /** ParticleCountMixin: each particle the client asks to spawn; a poof within 2 blocks of the watched body counts while counting is on. */
+    public static void particle(net.minecraft.particle.ParticleEffect p, double x, double y, double z) {
+        var at = SMOKE_AT; if (!smokeCounting || at == null || p.getType() != net.minecraft.particle.ParticleTypes.POOF) return;
+        smokeAll++; if (at.squaredDistanceTo(x, y, z) <= 4) smokePoofs++;
+    }
     static void add(TroopModel<?> m, Map<String, Float> b) {
         for (var x : b.entrySet()) { ModelPart p = m.bone(x.getKey()); if (p != null) p.pitch += x.getValue(); }
     }
@@ -916,7 +923,8 @@ public final class MotionChecks {
                     c.getToastManager().clear(); c.setScreen(new net.minecraft.client.gui.screen.GameMenuScreen(false)); oPaused = true; ss = 13; wait = 0;
                 }
                 case 13 -> overlapShots(c);
-                default -> finishLive(c);
+                case 99 -> { ss = 20; wait = 0; }
+                default -> { if (ss >= 20 && ss < 100) fadeParts(c); else finishLive(c); }
             }
         }
         // ---- mo-fade-overlap (carry D14) ----
@@ -972,6 +980,192 @@ public final class MotionChecks {
             if (oPaused || c.currentScreen instanceof net.minecraft.client.gui.screen.GameMenuScreen) c.setScreen(null);
             var at = barrier; if (at != null) { barrier = null; server(c, b -> b.world.setBlockState(at, net.minecraft.block.Blocks.AIR.getDefaultState())); }
         }
+        // ---- mo-fade (R56) and mo-fade-smoke (R57) ----
+        /** Where the faded knight lies (off the crowd's grid and the overlap pair), the camera's eye over it, and the death ticks sampled (lie 30: the fade runs 50 to 90). */
+        static final double FX = -12, FZ = 2, FEYE = 4.5; static final int[] FTICKS = {52, 70, 88};
+        /** The parts measured (BodyCache's harness bits) and their names. */
+        static final int[] FPARTS = {BodyCache.BODY, BodyCache.ARMOUR, BodyCache.WEAPON, BodyCache.SHIELD}; static final String[] FNAMES = {"body", "armour", "weapon", "shield"};
+        /** Shots per sample: the whole body fading (0), then on each path (the cached, then the normal one) the body hidden and each part opaque then fading. */
+        static final int FSHOTS = 19;
+        GravesAndGlory.Unit fUnit, sUnit; int fs, fRemovedAfter = -1, fAfterPixels = -1, smokeEnd = -1, smokeArmedAt = -1, sClearWait = -1, sTaken = -1; boolean fRed, fPaused = true, fCachedOk = true, fNormalOk = true; Boolean shadowsBefore;
+        final int[] fDeath = new int[3]; final float[] fAlpha = new float[3];
+        /** Each sample's measured alpha and opaque footprint (pixels), by path and part. */
+        final double[][][] fPart = new double[3][2][4]; final long[][][] fFoot = new long[3][2][4];
+        final net.minecraft.client.texture.NativeImage[] fShots = new net.minecraft.client.texture.NativeImage[FSHOTS];
+        /** The contact sheet's frames: the whole body at each sample, then the frame after its removal; and the last sample's body-hidden frame. */
+        final net.minecraft.client.texture.NativeImage[] fSheet = new net.minecraft.client.texture.NativeImage[4]; net.minecraft.client.texture.NativeImage fHidden;
+        /**
+         * mo-fade (R56): a knight struck down alone, the camera straight above it, shadows off; at death ticks 52, 70 and 88 the game
+         * pauses and each part of it (body, armour layers, weapon, shield; BodyCache.parts) is shot opaque (O) and fading (F) against
+         * the body hidden (H), on the cached path and on the normal one (BodyCache.off). A part's alpha is the sum of |F - H| over the
+         * sum of |O - H|. Each part's alpha must fall strictly over the samples and keep within 0.08 of the body's; the frame after the
+         * body's removal must equal the hidden frame (0 pixels apart; particles cleared first, mo-fade-smoke counts them). With
+         * -Dgravesandglory.fadeRed (GRAVES_FADE_RED) the weapon and shield draw whole while the rest fades: mo-fade must fail.
+         * mo-fade-smoke (R57): the poofs the client spawns within 2 blocks of the body from death tick 85 to 5 unpaused ticks past its removal
+         * (95): want 0. mo-fade-smoke-clear: a body lying (death tick 30) taken by Battle.clearCorpses (the round end's and lobby's
+         * sweep, the discard that Grave Bloom's raise and the corpse sweep use too): want 0 poofs within 2 blocks over 10 ticks.
+         */
+        void fadeParts(MinecraftClient c) { // settle counts wait
+            switch (ss) {
+                case 20 -> {
+                    String red = System.getProperty("gravesandglory.fadeRed", "");
+                    fRed = "1".equals(red) || "true".equalsIgnoreCase(red);
+                    shadowsBefore = c.options.getEntityShadows().getValue(); c.options.getEntityShadows().setValue(false);
+                    server(c, b -> { fUnit = post(b, gold, "knight", FX, FZ, YAW); camera(b, FX, FEYE, FZ, 0, 90); });
+                    ss = 21; wait = 0;
+                }
+                case 21 -> {
+                    if (fUnit == null || client(c, fUnit.mob) == null || wait < 40) {
+                        if (wait > 300) { report("mo-fade", false, "the knight never reached the client"); report("mo-fade-smoke", false, "not run: mo-fade could not start"); fadeEnd(c); ss = 30; wait = 0; }
+                        return;
+                    }
+                    server(c, b -> { fUnit.mob.timeUntilRegen = 0; fUnit.mob.hurtTime = 0; fUnit.mob.damage(b.world.getDamageSources().generic(), 10000f); });
+                    fs = 0; ss = 22; wait = 0;
+                }
+                case 22 -> {
+                    var e = client(c, fUnit.mob);
+                    if (!(e instanceof net.minecraft.entity.LivingEntity le)) { if (wait > 200) { report("mo-fade", false, "the client lost the body before death tick " + FTICKS[fs]); smokeReport(); fadeEnd(c); ss = 30; wait = 0; } return; }
+                    arm(le);
+                    if (le.deathTime < FTICKS[fs]) { if (wait > 400) { report("mo-fade", false, "the body never reached death tick " + FTICKS[fs]); smokeReport(); fadeEnd(c); ss = 30; wait = 0; } return; }
+                    fDeath[fs] = le.deathTime; shotState(0, le);
+                    c.getToastManager().clear(); c.setScreen(new net.minecraft.client.gui.screen.GameMenuScreen(false)); ss = 23; wait = 0;
+                }
+                case 23 -> fadeShots(c);
+                case 24 -> {
+                    var e = client(c, fUnit.mob);
+                    if (e instanceof net.minecraft.entity.LivingEntity le) { arm(le); if (wait > 200) { report("mo-fade", false, "the body was still on the client 200 ticks after death tick 88 (death tick " + le.deathTime + ")"); smokeReport(); fadeEnd(c); ss = 30; wait = 0; } return; }
+                    // removed: clear the particles (mo-fade-smoke counted them as they spawned) so the next frame shows only what is drawn, and
+                    // pause as the hidden frame was taken (the pause overlay and its HUD the same), so that frame is the first drawn after the removal
+                    fRemovedAfter = wait; c.particleManager.setWorld(c.world); /* clears every particle, the same world kept */
+                    c.getToastManager().clear(); c.setScreen(new net.minecraft.client.gui.screen.GameMenuScreen(false)); smokeEnd = 7; ss = 25; wait = 0;
+                }
+                case 25 -> {
+                    if (wait == 1) {
+                        var x = ScreenshotRecorder.takeScreenshot(c.getFramebuffer()); fSheet[3] = x;
+                        long n = 0; int w = Math.min(x.getWidth(), fHidden.getWidth()), h = Math.min(x.getHeight(), fHidden.getHeight());
+                        for (int y = 0; y < h; y++) for (int i = 0; i < w; i++) if (channel(x.getColor(i, y), fHidden.getColor(i, y)) > 2) n++;
+                        fAfterPixels = (int) n;
+                    }
+                    if (wait == 2) c.setScreen(null); // on for the poof count's last 5 ticks
+                    if (wait < smokeEnd) return;
+                    smokeCounting = false; fadeReport(c); smokeReport(); fadeEnd(c); ss = 30; wait = 0;
+                }
+                case 30 -> { server(c, b -> { sUnit = post(b, gold, "knight", FX, FZ, YAW); camera(b, FX, FEYE, FZ, 0, 90); }); ss = 31; wait = 0; }
+                case 31 -> {
+                    if (sUnit == null || client(c, sUnit.mob) == null || wait < 20) { if (wait > 300) { report("mo-fade-smoke-clear", false, "the knight never reached the client"); ss = 100; } return; }
+                    server(c, b -> { sUnit.mob.timeUntilRegen = 0; sUnit.mob.hurtTime = 0; sUnit.mob.damage(b.world.getDamageSources().generic(), 10000f); });
+                    ss = 32; wait = 0;
+                }
+                case 32 -> {
+                    var e = client(c, sUnit.mob);
+                    if (!(e instanceof net.minecraft.entity.LivingEntity le) || le.deathTime < 30) { if (wait > 200) { report("mo-fade-smoke-clear", false, "the body never lay to death tick 30 on the client"); ss = 100; } return; }
+                    sTaken = le.deathTime; SMOKE_AT = le.getPos().add(0, le.getHeight() / 2, 0); smokePoofs = 0; smokeAll = 0; smokeCounting = true;
+                    server(c, b -> b.clearCorpses()); ss = 33; wait = 0;
+                }
+                case 33 -> {
+                    if (sClearWait < 0 && client(c, sUnit.mob) == null) sClearWait = wait;
+                    if (wait < 10) return;
+                    smokeCounting = false;
+                    report("mo-fade-smoke-clear", sClearWait >= 0 && smokePoofs == 0, String.format(Locale.ROOT, "a knight's body lying (client death tick %d) taken by Battle.clearCorpses (the discard the round end, lobby, corpse sweep and Grave Bloom's raise use): it left the client %s; poofs within 2 blocks over the next 10 ticks %d (want 0), anywhere %d",
+                        sTaken, sClearWait < 0 ? "never, in 10 ticks" : "after " + sClearWait + " ticks", smokePoofs, smokeAll));
+                    SMOKE_AT = null; ss = 100;
+                }
+                default -> ss = 100;
+            }
+        }
+        /** Starts the poof count once the body reaches death tick 85. */
+        void arm(net.minecraft.entity.LivingEntity le) {
+            if (smokeArmedAt >= 0 || le.deathTime < 85) return;
+            smokeArmedAt = le.deathTime; SMOKE_AT = le.getPos().add(0, le.getHeight() / 2, 0); smokePoofs = 0; smokeAll = 0; smokeCounting = true;
+        }
+        void smokeReport() {
+            smokeCounting = false;
+            report("mo-fade-smoke", smokeArmedAt >= 0 && fRemovedAfter >= 0 && smokePoofs == 0, String.format(Locale.ROOT, "a knight's body faded and removed (client death tick %s to %s past its removal): poofs the client spawned within 2 blocks of it %d (want 0), anywhere %d",
+                smokeArmedAt < 0 ? "never 85" : String.valueOf(smokeArmedAt), fRemovedAfter < 0 ? "never removed" : "5 unpaused ticks", smokePoofs, smokeAll));
+            SMOKE_AT = null;
+        }
+        /** Sets BodyCache's harness switches for shot k of a sample (see FSHOTS) and drops the body's buffers so it records them afresh. */
+        void shotState(int k, Entity e) {
+            int path = k <= 9 ? 0 : 1, j = k == 0 ? -1 : path == 0 ? k - 1 : k - 10;
+            BodyCache.off = path == 1; BodyCache.heldOpaque = fRed;
+            if (j < 0) { BodyCache.hide = -1; BodyCache.opaque = false; BodyCache.parts = BodyCache.ALL; }
+            else if (j == 0) { BodyCache.hide = e.getId(); BodyCache.opaque = false; BodyCache.parts = BodyCache.ALL; }
+            else { BodyCache.hide = -1; BodyCache.opaque = (j - 1) % 2 == 0; BodyCache.parts = FPARTS[(j - 1) / 2]; }
+            BodyCache.forget(e);
+        }
+        void playState() { BodyCache.off = false; BodyCache.heldOpaque = false; BodyCache.hide = -1; BodyCache.opaque = false; BodyCache.parts = BodyCache.ALL; }
+        void fadeShots(MinecraftClient c) {
+            int k = wait / 6; if (wait % 6 != 5 || k >= FSHOTS) return;
+            var e = client(c, fUnit.mob);
+            if (e == null) { report("mo-fade", false, "the client lost the body while paused at death tick " + FTICKS[fs]); smokeReport(); fadeEnd(c); ss = 30; wait = 0; return; }
+            if (k == 0) fAlpha[fs] = BodyCache.fade(e, c.getTickDelta());
+            fPaused &= c.isPaused();
+            boolean cached = BodyCache.cached(e);
+            if (k == 0 || k == 2 || k == 3) fCachedOk &= cached;
+            if (k == 11 || k == 12) fNormalOk &= !cached;
+            fShots[k] = ScreenshotRecorder.takeScreenshot(c.getFramebuffer());
+            if (k + 1 < FSHOTS) { shotState(k + 1, e); return; }
+            for (int path = 0; path < 2; path++) {
+                var h = fShots[path == 0 ? 1 : 10];
+                for (int q = 0; q < 4; q++) {
+                    var o = fShots[(path == 0 ? 2 : 11) + 2 * q]; var f = fShots[(path == 0 ? 3 : 12) + 2 * q];
+                    int w = Math.min(o.getWidth(), h.getWidth()), ht = Math.min(o.getHeight(), h.getHeight()); long foot = 0; double num = 0, den = 0;
+                    for (int y = 0; y < ht; y++) for (int x = 0; x < w; x++) {
+                        int bg = h.getColor(x, y); if (channel(o.getColor(x, y), bg) > 2) foot++;
+                        num += sum(f.getColor(x, y), bg); den += sum(o.getColor(x, y), bg);
+                    }
+                    fPart[fs][path][q] = den <= 0 ? -1 : num / den; fFoot[fs][path][q] = foot;
+                }
+            }
+            fSheet[fs] = fShots[0]; fShots[0] = null;
+            if (fs == 2) { fHidden = fShots[1]; fShots[1] = null; }
+            for (int i = 0; i < FSHOTS; i++) if (fShots[i] != null) { fShots[i].close(); fShots[i] = null; }
+            playState(); BodyCache.forget(e); c.setScreen(null);
+            if (++fs < 3) { ss = 22; wait = 0; } else { ss = 24; wait = 0; }
+        }
+        void fadeReport(MinecraftClient c) {
+            var dir = new File(c.runDirectory, "screenshots"); dir.mkdirs();
+            String[] tags = {"52", "70", "88", "after"};
+            for (int i = 0; i < 4; i++) if (fSheet[i] != null) try { fSheet[i].writeTo(new File(dir, "mo-fade-" + tags[i] + ".png")); } catch (java.io.IOException ex) { ex.printStackTrace(); }
+            if (fHidden != null) try { fHidden.writeTo(new File(dir, "mo-fade-hidden.png")); } catch (java.io.IOException ex) { ex.printStackTrace(); }
+            boolean sheet = false;
+            if (fSheet[0] != null && fSheet[1] != null && fSheet[2] != null && fSheet[3] != null) {
+                int w = fSheet[0].getWidth() / 2, h = fSheet[0].getHeight() / 2;
+                try (var cs = new net.minecraft.client.texture.NativeImage(w * 4, h, false)) {
+                    for (int i = 0; i < 4; i++) { var src = fSheet[i]; for (int y = 0; y < h; y++) for (int x = 0; x < w; x++) cs.setColor(i * w + x, y, src.getColor(Math.min(2 * x, src.getWidth() - 1), Math.min(2 * y, src.getHeight() - 1))); }
+                    cs.writeTo(new File(dir, "mo-fade-contact.png")); sheet = true;
+                } catch (java.io.IOException ex) { ex.printStackTrace(); }
+            }
+            List<String> bad = new ArrayList<>(); StringBuilder t = new StringBuilder();
+            for (int path = 0; path < 2; path++) {
+                t.append(path == 0 ? "; cached path" : "; normal path");
+                for (int q = 0; q < 4; q++) {
+                    t.append(String.format(Locale.ROOT, " %s %.3f/%.3f/%.3f (%d/%d/%d px)", FNAMES[q], fPart[0][path][q], fPart[1][path][q], fPart[2][path][q], fFoot[0][path][q], fFoot[1][path][q], fFoot[2][path][q]));
+                    for (int s2 = 0; s2 < 3; s2++) {
+                        String where = FNAMES[q] + " (" + (path == 0 ? "cached" : "normal") + ")";
+                        if (fFoot[s2][path][q] < 30) bad.add(where + " barely seen at death tick " + fDeath[s2] + ": " + fFoot[s2][path][q] + " px");
+                        if (s2 > 0 && !(fPart[s2][path][q] < fPart[s2 - 1][path][q])) bad.add(where + " does not fall from death tick " + fDeath[s2 - 1] + " to " + fDeath[s2]);
+                        if (q > 0 && Math.abs(fPart[s2][path][q] - fPart[s2][path][0]) > 0.08) bad.add(String.format(Locale.ROOT, "%s %.3f at death tick %d, %.3f off the body's %.3f", where, fPart[s2][path][q], fDeath[s2], Math.abs(fPart[s2][path][q] - fPart[s2][path][0]), fPart[s2][path][0]));
+                    }
+                }
+            }
+            if (!fPaused) bad.add("the game did not stay paused for the shots");
+            if (!fCachedOk) bad.add("the cached path's body did not draw from its buffers");
+            if (!fNormalOk) bad.add("the normal path's body drew from its buffers");
+            if (fAfterPixels != 0) bad.add("the frame after removal is " + fAfterPixels + " px off the body-hidden frame");
+            if (!sheet) bad.add("no contact sheet");
+            report("mo-fade", bad.isEmpty(), String.format(Locale.ROOT, "a knight fading alone (lie %d, fade %d), paused at death ticks %d/%d/%d (alpha %.3f/%.3f/%.3f)%s; per part alpha (|F - H| over |O - H|) and opaque footprint at the three samples%s; the frame after its removal (seen %d ticks after the last shots) %d px off the body-hidden frame (want 0); contact sheet mo-fade-contact.png (52, 70, 88, after) %b%s",
+                Spec.COMBATDISCIPLINE[0].corpseLieTicks(), Spec.COMBATDISCIPLINE[0].corpseFadeTicks(), fDeath[0], fDeath[1], fDeath[2], fAlpha[0], fAlpha[1], fAlpha[2], fRed ? " [red switch: held items opaque]" : "", t, fRemovedAfter, fAfterPixels, sheet,
+                bad.isEmpty() ? "" : "; off: " + bad));
+        }
+        void fadeEnd(MinecraftClient c) {
+            playState(); smokeCounting = false;
+            for (int i = 0; i < fShots.length; i++) if (fShots[i] != null) { fShots[i].close(); fShots[i] = null; }
+            for (int i = 0; i < fSheet.length; i++) if (fSheet[i] != null) { fSheet[i].close(); fSheet[i] = null; }
+            if (fHidden != null) { fHidden.close(); fHidden = null; }
+            if (shadowsBefore != null) { c.options.getEntityShadows().setValue(shadowsBefore); shadowsBefore = null; }
+            if (c.currentScreen instanceof net.minecraft.client.gui.screen.GameMenuScreen) c.setScreen(null);
+        }
         static String hex(int light) { return "block " + (light >> 4 & 0xF) + " sky " + (light >> 20 & 0xF); }
         /** The late join done (or given up): the real clips back, on to the settle and light checks. */
         void afterLate() { restoreClips(); ls = 99; cs = 5; wait = 0; }
@@ -979,7 +1173,7 @@ public final class MotionChecks {
         void restoreClips() { if (clipsBefore != null) { ClipLibrary.install(clipsBefore); clipsBefore = null; } }
 
         public void cleanup(MinecraftClient c) {
-            restoreClips(); TroopMotion.clearForced(); PROBE = null; overlapEnd(c);
+            restoreClips(); TroopMotion.clearForced(); PROBE = null; overlapEnd(c); fadeEnd(c); SMOKE_AT = null;
             var at = lamp; if (at != null) { lamp = null; server(c, b -> b.world.setBlockState(at, net.minecraft.block.Blocks.AIR.getDefaultState())); }
             if (cloudsBefore != null) { c.options.getCloudRenderMode().setValue(cloudsBefore); cloudsBefore = null; }
             super.cleanup(c);
