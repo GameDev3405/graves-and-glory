@@ -82,16 +82,19 @@ public final class GravesAndGloryClient implements ClientModInitializer {
         ClientPlayNetworking.registerGlobalReceiver(GravesAndGlory.OPEN_BARRACKS,(client,handler,buf,responder)->client.execute(()->client.setScreen(running?new BarracksScreen():new LobbyScreen())));
         ClientPlayNetworking.registerGlobalReceiver(GravesAndGlory.PARTY,(client,handler,buf,responder)->client.execute(()->client.setScreen(new LobbyScreen(3))));
         // The motion events (Task 6): a troop's stance (stance_v2), its swings (attack_v1) and the blows on it (hit_v1), kept in MotionEvents.Client for the
-        // motion engine. A packet a player gets on START_TRACKING comes before the entity's spawn packet (Fabric calls the event first), so entries are
-        // kept for an id the world does not have yet; an unloaded entity's entries go. Until the motion engine (Task 13) takes over, TroopAnimator still
+        // motion engine. A stance a player gets on START_TRACKING comes before the entity's spawn packet (Fabric calls the event first), so a stance is
+        // kept for an id the world does not have yet (the server sends the catch-up swing after the spawn); an unloaded entity's entries go. Until the motion engine (Task 13) takes over, TroopAnimator still
         // picks its still and move clips by the stance it knows: a formed wall reads brace, and the stances it has no clips for (aiming, resting, shield up) none.
         ClientPlayNetworking.registerGlobalReceiver(MotionEvents.STANCE,(client,handler,buf,responder)->{int id=buf.readVarInt(),i=buf.readByte();float pitch=buf.readFloat();client.execute(()->{
             MotionEvents.Client.stance(id,i,pitch);
             String stance=MotionEvents.Client.stance(id).name();stance=switch(stance){case "wall"->"brace";case "ranged_aim","ranged_rest","shield_move"->"";default->stance;};
             if(stance.isEmpty())TroopAnimator.STANCES.remove(id);else TroopAnimator.STANCES.put(id,stance);});});
-        ClientPlayNetworking.registerGlobalReceiver(MotionEvents.ATTACK,(client,handler,buf,responder)->{int id=buf.readVarInt(),variant=buf.readVarInt();long start=buf.readVarLong();client.execute(()->MotionEvents.Client.attack(id,variant,start));});
+        // A swing or a blow for an id this world does not have is dropped (no queue for an unloaded troop); a swing is checked against its family's rows.
+        ClientPlayNetworking.registerGlobalReceiver(MotionEvents.ATTACK,(client,handler,buf,responder)->{int id=buf.readVarInt(),variant=buf.readVarInt();long start=buf.readVarLong();client.execute(()->{
+            net.minecraft.entity.Entity e=client.world==null?null:client.world.getEntityById(id);Spec.TroopsRow t=e==null?null:TroopModels.troopOf(e);
+            MotionEvents.Client.attack(id,variant,start,e==null?-1:t==null?0:Tactics.variants(t.family()).size());});});
         ClientPlayNetworking.registerGlobalReceiver(MotionEvents.HIT,(client,handler,buf,responder)->{int id=buf.readVarInt(),kind=buf.readByte(),zone=buf.readByte();float bearing=buf.readFloat();int weight=buf.readByte(),flags=buf.readByte();long tick=buf.readVarLong();
-            client.execute(()->MotionEvents.Client.hit(id,kind,zone,bearing,weight,flags,tick));});
+            client.execute(()->MotionEvents.Client.hit(client.world!=null&&client.world.getEntityById(id)!=null,id,kind,zone,bearing,weight,flags,tick));});
         ClientEntityEvents.ENTITY_UNLOAD.register((entity,world)->{TroopAnimator.forget(entity.getId());MotionEvents.Client.forget(entity.getId());});
         // A soldier's rank (rank_v1): level, weapon tier and armour tier by entity id, for the troop renderer, the chevrons and the portraits (Task 9).
         RankSync.registerClient();

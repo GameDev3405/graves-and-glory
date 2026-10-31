@@ -91,28 +91,36 @@ public final class Projectiles {
         return Double.POSITIVE_INFINITY;
     }
 
+    /** A shot's flight: its peak over the straight line (0: straight) and its ticks in the air. */
+    record Arc(double peak,int travel){}
     /**
-     * The angle (degrees above the horizontal, BattleMath.launchPitch) a ranged troop would loose its shot at target now, as fire would: from its eyes to
-     * the target's body, on the arc its weapon gives (an arrow or a trident's volley arc under any roof, a bolt or a shell straight). stance_v2's
-     * aimPitch while it aims (Tactics.show).
+     * A volley's arc (animation rework section 5), the one fire flies and aimPitch aims along: an arrow or a trident rises volleyPeakPerBlock a block of
+     * range over its straight line, up to volleyPeakMax, scaled by the weapon, and kept under any roof over the line (M2). Bolts, mends and the Mortar's
+     * shell fly straight by design (no arc, as arcScale 0 would give): the Mortar's straight line is its real flight, not a stand-in for a lob. Flight
+     * time is the straight shot's times arcTravelScale (1: unchanged).
      */
-    static float launchPitch(GravesAndGlory.Battle b,GravesAndGlory.Unit u,LivingEntity target){
-        Vec3d from=u.mob.getEyePos(),to=aim(target);String kind=Abilities.visual(u);boolean arrow=kind.equals("arrow")||kind.equals("trident");
+    static Arc arc(GravesAndGlory.Battle b,GravesAndGlory.Unit u,Vec3d from,Vec3d to,boolean arrow){
         double dist=from.distanceTo(to);
         double peak=arrow?coverPeak(b.world,from,to,BattleMath.arcPeak(dist,C.volleyPeakPerBlock(),C.volleyPeakMax(),arcScale(u))):0;
         int travel=BattleMath.arcTravelTicks(BattleMath.travelTicks(dist,arrow?C.arrowSpeed():C.boltSpeed(),C.projectileMinTicks(),C.projectileMaxTicks()),peak,C.arcTravelScale());
-        return (float)BattleMath.launchPitch(Math.hypot(to.x-from.x,to.z-from.z),to.y-from.y,peak,travel);
+        return new Arc(peak,travel);
+    }
+    /**
+     * The pitch (BattleMath.aimPitch: degrees, positive down as MotionInput's and Minecraft's, so a lofted volley is negative) a ranged troop would loose
+     * its shot at target along now, as fire would: from its eyes to the target's body, on arc's flight for its weapon. For a straight shot (a bolt, a mend,
+     * the Mortar's shell) that is the line itself, which is its real flight. stance_v2's aimPitch while it aims (Tactics.show).
+     */
+    static float aimPitch(GravesAndGlory.Battle b,GravesAndGlory.Unit u,LivingEntity target){
+        Vec3d from=u.mob.getEyePos(),to=aim(target);String kind=Abilities.visual(u);
+        Arc a=arc(b,u,from,to,kind.equals("arrow")||kind.equals("trident"));
+        return (float)BattleMath.aimPitch(Math.hypot(to.x-from.x,to.z-from.z),to.y-from.y,a.peak(),a.travel());
     }
     public static void fire(GravesAndGlory.Battle b,GravesAndGlory.Unit u,LivingEntity target,String kind,float amount){
         Vec3d from=u.mob.getEyePos(),to=aim(target);
         Tactics.stamp(b,u,target); // archer fire: the target's group is under fire (Squad.shotAt)
         boolean arrow=kind.equals("arrow")||kind.equals("trident");
-        double dist=from.distanceTo(to);
-        // A volley's arc (animation rework section 5): an arrow or a trident rises volleyPeakPerBlock a block of range over its straight line, up to
-        // volleyPeakMax, scaled by the weapon, and kept under any roof over the line (M2); bolts, mends and the Mortar's shot fly straight. Flight time
-        // is the straight shot's times arcTravelScale (1: unchanged).
-        double peak=arrow?coverPeak(b.world,from,to,BattleMath.arcPeak(dist,C.volleyPeakPerBlock(),C.volleyPeakMax(),arcScale(u))):0;
-        int travel=BattleMath.arcTravelTicks(BattleMath.travelTicks(dist,arrow?C.arrowSpeed():C.boltSpeed(),C.projectileMinTicks(),C.projectileMaxTicks()),peak,C.arcTravelScale());
+        Arc arc=arc(b,u,from,to,arrow); // the volley's arc, or a straight line for a bolt, a mend or the Mortar's shell
+        double peak=arc.peak();int travel=arc.travel();
         long lands=b.time+travel;
         Entity visual=null;Vec3d step=null;
         if(arrow){

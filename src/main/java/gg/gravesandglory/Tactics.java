@@ -49,7 +49,7 @@ final class Tactics {
     /**
      * The stance a troop shows on its beat (stance_v2, BattleMath.stance): by the order it fights under (a, held when it has arrived), formed when it is a wall
      * troop (Battle.walls) within the arrival tolerance of its slot, aiming when it is ranged with an enemy in sight and in reach (its aimPitch then
-     * BattleMath.launchPitch at that enemy, pitch, else 0), and a shield troop's shield up. Sent to every player tracking it when the stance changes, or
+     * Projectiles.aimPitch at that enemy, positive down, else 0), and a shield troop's shield up. Sent to every player tracking it when the stance changes, or
      * its aim moves more than AIM_STEP degrees.
      */
     static void show(GravesAndGlory.Battle b,GravesAndGlory.Unit u,GravesAndGlory.Assignment a,boolean aiming,float pitch){
@@ -225,7 +225,7 @@ final class Tactics {
             crawl(battle,u,shieldOrder);
         }
         boolean aiming=ranged&&enemy!=null&&nearest<=reach*reach&&mob.canSee(enemy); // stance_v2: a ranged troop with its target in reach and sight aims at it
-        show(battle,u,arrived?held(a):a,aiming,aiming?Projectiles.launchPitch(battle,u,enemy):0);
+        show(battle,u,arrived?held(a):a,aiming,aiming?Projectiles.aimPitch(battle,u,enemy):0);
         Abilities.tick(battle,u,enemy,time); // mend heals and a caster's spell bursts on the beat
         double flee=Math.max(N.rangedRetreatDistance(),Abilities.minRange(u)); // a ranged troop backs off from an enemy this near; one with a minimum range (the Mortar) from anything inside it
         if(enemy!=null){
@@ -504,8 +504,8 @@ final class Tactics {
         if(pending(b,u)){swingsRefused++;return true;}
         int variant=BattleMath.pickVariant(rows.size(),u.lastVariant,b.rolls.nextLong());
         int delay=BattleMath.impactDelay(rows.get(variant).impactTicks(),u.nextAttack-time);
-        u.lastVariant=variant;u.swungAt=time;swings++;
-        MotionEvents.sendAttack(u,variant,u.mob.getWorld().getTime()); // attack_v1: the swing Battle picked, from the world tick it begins on (time is swungAt)
+        u.lastVariant=variant;u.swungAt=time;u.swingTick=u.mob.getWorld().getTime();swings++;
+        MotionEvents.sendAttack(u,variant,u.swingTick); // attack_v1: the swing Battle picked, from the world tick it begins on (time is swungAt)
         Abilities.animate(b,u);
         var strike=new GravesAndGlory.Battle.PendingStrike(u,enemy,variant,time,time+delay,Combat.charge(b,u,true));
         if(delay>0)b.strikes.add(strike);else land(b,strike);

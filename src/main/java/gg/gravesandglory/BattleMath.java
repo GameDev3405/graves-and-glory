@@ -112,6 +112,30 @@ public final class BattleMath {
     }
     /** The weight class index of an attackVariants weight cell (light, medium, heavy); an unknown cell reads light. */
     public static int weightIndex(String weight) { return switch (weight) {case "heavy" -> 2; case "medium" -> 1; default -> 0;}; }
+    /** A weight off the wire clamped to the ordinals: 0 light, 1 medium, 2 heavy (MotionEvents.Client). */
+    public static int weightOrdinal(int weight) { return Math.max(0, Math.min(2, weight)); }
+    /** The health a blow really took: health and absorption before it less after it, never below 0 (a troop that rose again ends with more) and 0 for NaN. */
+    public static double lostHealth(double before, double after) { double lost = before - after; return lost > 0 ? lost : 0; }
+    /**
+     * A blow's hit_v1 weight (fix round 1, M3) from the health it really took (lostHealth) as a share of the victim's maximum (weight): outside the
+     * hurt cooldown the larger of that and its swing's weight (swingWeight, an ordinal: 0 for a blow with no swing); inside it (vanilla deals only the
+     * excess over the last blow) the health taken alone, so a heavy swing that took little reads light.
+     */
+    public static int hitWeight(int swingWeight, boolean cooldown, double lost, double maxHealth, double medium, double heavy) {
+        int taken = weight(lost, maxHealth, medium, heavy);
+        return cooldown ? taken : Math.max(weightOrdinal(swingWeight), taken);
+    }
+    /** Whether a swing's index lies inside its family's attackVariants rows (count of them): the client drops any other (MotionEvents.Client). */
+    public static boolean validVariant(int variant, int count) { return variant >= 0 && variant < count; }
+    /**
+     * stance_v2's aimPitch, in MotionInput's sign (positive aims down, as Minecraft's own pitch): launchPitch's negative, 0 for a flat shot (never -0).
+     * The wire, the Unit and the client all carry this one sign, so the motion engine (Task 13) reads it as it comes.
+     */
+    public static double aimPitch(double dist, double dy, double peak, int ticks) { double up = launchPitch(dist, dy, peak, ticks); return up == 0 ? 0 : -up; }
+    /** How long a swing still plays after its impact frame, in ticks: the server has no clip lengths, so a late joiner is sent a swing until impactTicks plus this (swingCurrent). */
+    public static final int SWING_RECOVERY_TICKS = 10;
+    /** Whether a swing begun on world tick swingTick (-1: none) still plays at world tick now: from that tick through its impactTicks plus SWING_RECOVERY_TICKS. */
+    public static boolean swingCurrent(long now, long swingTick, int impactTicks) { return swingTick >= 0 && now >= swingTick && now - swingTick <= (long) impactTicks + SWING_RECOVERY_TICKS; }
     /**
      * The stances a troop shows its clients, in stance_v2's wire order (the byte is the index): none, hold-ready, brace, the formed shield wall,
      * shield-up moving, fall back, run, ranged lowered and ranged aiming (spec 6.4).
@@ -155,7 +179,10 @@ public final class BattleMath {
             default -> swingKind != null && (swingKind.equals("stab") || swingKind.equals("slash") || swingKind.equals("blunt")) ? swingKind : "slash";
         };
     }
-    /** A player's weapon's hit_v1 kind from its item id: a sword or axe slashes, a trident or spear stabs, anything else (a fist, a stick) is blunt. */
+    /**
+     * A player's weapon's hit_v1 kind from its item id: a sword or axe slashes, a trident or spear stabs, anything else (a fist, a stick) is blunt.
+     * A fist or a stick reading blunt is accepted as is (Task 6 review ruling): no finer kind for an improvised weapon.
+     */
     public static String weaponKind(String itemId) {
         String path = itemId.substring(itemId.indexOf(':') + 1);
         if (path.endsWith("sword") || path.endsWith("_axe") || path.equals("axe")) return "slash";

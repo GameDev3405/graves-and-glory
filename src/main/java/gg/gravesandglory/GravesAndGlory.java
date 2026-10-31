@@ -83,14 +83,14 @@ public final class GravesAndGlory implements ModInitializer {
             // No hunger in Graves and Glory: food stays full (sprinting and slow natural healing still work) and saturation empty (so healing stays slow).
             for(ServerPlayerEntity p:server.getPlayerManager().getPlayerList()){var hunger=p.getHungerManager();if(hunger.getFoodLevel()!=20)hunger.setFoodLevel(20);hunger.setSaturationLevel(0);hunger.setExhaustion(0);}
         });
-        // A player who starts tracking a troop learns its stance (stance_v2) and its newest swing (attack_v1), ahead of the entity's spawn packet (Fabric fires the event first;
-        // the client keeps the stance for an id it does not have yet). START_TRACKING fires inside spawnEntity, so a troop Battle.spawn is
+        // A player who starts tracking a troop learns its stance (stance_v2) ahead of the entity's spawn packet (Fabric fires the event first; the client keeps the
+        // stance for an id it does not have yet) and its current swing (attack_v1) on a server task after it (the client drops a swing for an unknown id). START_TRACKING fires inside spawnEntity, so a troop Battle.spawn is
         // placing is found through Battle.spawning (it joins units after).
         EntityTrackingEvents.START_TRACKING.register((entity,player)->{
             if(battle==null||!ArmyMobs.isTroop(entity))return;
             Unit u=battle.spawning!=null&&battle.spawning.mob==entity?battle.spawning:null;
             if(u==null)for(Unit x:battle.units)if(x.mob==entity){u=x;break;}
-            if(u!=null){int sent=MotionEvents.catchUp(battle,u,player);MotionEvents.trackingSends+=sent;Tactics.trackingSends+=sent;}
+            if(u!=null){int sent=MotionEvents.startTracking(u,player);MotionEvents.trackingSends+=sent;Tactics.trackingSends+=sent;}
         });
         // A player whose client registers stance_v2 only after the troops around it began to be tracked (a guest joining a battle in progress: its trackers
         // start when it enters the world, before its client says which channels it takes, so canSend was false for those sends) gets the stance of every troop it tracks.
@@ -223,6 +223,8 @@ public final class GravesAndGlory implements ModInitializer {
         long nextAttack;long abilityAt,windupUntil;Vec3d spellCenter;
         /** The battle tick of the troop's last melee swing whose blow is pending or landed (Tactics.swing; -1 none), and the swing it played: an index into its family's attackVariants rows (Tactics.variants), so the next never repeats it (BattleMath.pickVariant; -1 none yet). */
         long swungAt=-1;int lastVariant=-1;
+        /** The world tick (getTime) that swing began on, -1 none: attack_v1's startTick, and what a late joiner's catch-up reads (MotionEvents.catchUp). */
+        long swingTick=-1;
         /** The orders (Charge and Hold) a blow of his carries while it lands (Tactics.land sets them from its swing, Ruling R29, and clears them after): every hit of that blow (its cleave or splash too, and a trample) reads it through Combat.charge; null otherwise. */
         Combat.Charge blow;
         /** The swing (an index into Tactics.variants of its family) of the blow that is landing, set and cleared with blow: hit_v1 reads its kind, zone and weight. -1 otherwise. */
@@ -267,7 +269,7 @@ public final class GravesAndGlory implements ModInitializer {
         String seenOrder;
         /** Where the troop stood when it last moved more than the Entrench radius, and the battle time (ticks) it has stood there since (Houses.sample, on each Tactics beat). Null before its first beat. */
         Vec3d stillAt;long stillSince;
-        /** The stance its clients show (BattleMath.STANCES, Tactics.show on its beat; stance_v2 carries it with aimPitch, BattleMath.launchPitch at its target while ranged_aim, else 0); "" for none. */
+        /** The stance its clients show (BattleMath.STANCES, Tactics.show on its beat; stance_v2 carries it with aimPitch, Projectiles.aimPitch at its target while ranged_aim, positive down, else 0); "" for none. */
         String stance="";float aimPitch;
         Unit(MobEntity m,Squad s,Spec.TroopsRow t,int slot){mob=m;squad=s;spec=t;this.slot=slot;lastPosition=m.getPos();deployed=m.getPos();tags=new HashSet<>(ArmyMobs.tags(t));}
     }

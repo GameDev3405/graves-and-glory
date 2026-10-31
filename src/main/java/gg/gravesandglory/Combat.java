@@ -111,12 +111,12 @@ public final class Combat {
         boolean anchored = victim != null && Abilities.anchored(b, victim);
         Vec3d stood = target.getVelocity();
         var watchers = victim == null ? List.<net.minecraft.server.network.ServerPlayerEntity>of() : List.copyOf(MotionEvents.watchers(target)); // read before a killing blow can take the troop from its trackers
+        float before = target.getHealth() + target.getAbsorptionAmount(); boolean cooldown = target.timeUntilRegen > 10; // vanilla's hurt cooldown deals only a blow's excess
         boolean hurt;
-        MotionEvents.resolving++; // HitEventMixin leaves this damage call to the hit_v1 below
-        try { hurt = target.damage(source(b, attacker.mob), amount); } finally { MotionEvents.resolving--; }
+        hurt = MotionEvents.resolving(target, () -> target.damage(source(b, attacker.mob), amount)); // HitEventMixin leaves the target's damage to the hit_v1 below
         if (anchored) target.setVelocity(stood); // an anchored troop (the Oath Banner's) is not knocked back by the blow itself either
         if (!hurt) return 0;
-        if (victim != null) sendHit(attacker, target, kind, melee, area, structure(target), hit, amount, impactY, watchers);
+        if (victim != null) sendHit(attacker, target, kind, melee, area, structure(target), hit, cooldown, BattleMath.lostHealth(before, target.getHealth() + target.getAbsorptionAmount()), impactY, watchers);
         // Ruling (Task 6 review M1): a killing blow levels its striker inside target.damage (AFTER_DEATH, lane A), so onHit below reads his new rows: the level
         // up lands at the kill and its first benefit is that same blow (a pierce, a cleave or a slam at the new share, Reap at level 3).
         if (!secondary) Abilities.onHit(b, attacker, target, amount, kind);
@@ -126,17 +126,18 @@ public final class Combat {
     /**
      * The hit_v1 a troop's blow sends after it struck (carry 6 of Task 6): its kind (BattleMath.hitKind) and, for a melee blow, its zone and weight from the
      * swing that landed it (Unit.blowVariant, else the family's first swing); a shot's zone from the height it struck at; a blow with no direction (area)
-     * in the body. Its weight is the larger of its swing's and its share of the victim's maximum health (BattleMath.weight). Its signed bearing is from
+     * in the body. Its weight (BattleMath.hitWeight) is the larger of its swing's and the share of the victim's maximum health it really lost (lost: health
+     * and absorption before less after); inside the victim's hurt cooldown (cooldown) the lost share alone, so a blow that took little reads light. Its signed bearing is from
      * the attacker (0 on a structure); it is blocked when a raised-shield counters row applied (CounterMath.blocked), and lethal when the victim died of it.
      */
-    static void sendHit(GravesAndGlory.Unit attacker, LivingEntity target, String kind, boolean melee, boolean area, boolean structure, CounterMath.Hit hit, float amount, double impactY, List<net.minecraft.server.network.ServerPlayerEntity> watchers) {
+    static void sendHit(GravesAndGlory.Unit attacker, LivingEntity target, String kind, boolean melee, boolean area, boolean structure, CounterMath.Hit hit, boolean cooldown, double lost, double impactY, List<net.minecraft.server.network.ServerPlayerEntity> watchers) {
         var D = Spec.COMBATDISCIPLINE[0];
         var rows = Tactics.variants(attacker.spec.family());
         Spec.AttackVariantsRow swing = rows.isEmpty() ? null : melee && attacker.blowVariant >= 0 && attacker.blowVariant < rows.size() ? rows.get(attacker.blowVariant) : rows.get(0);
         String hitKind = BattleMath.hitKind(kind, attacker.spec.family(), swing == null ? "" : swing.kind());
         String zone = area ? "body" : melee ? (swing == null ? "body" : swing.zone()) : Double.isNaN(impactY) ? "body" : BattleMath.zone(impactY, target.getY(), target.getHeight());
         float bearing = structure ? 0 : (float) BattleMath.signedBearing(target.getYaw(), attacker.mob.getX() - target.getX(), attacker.mob.getZ() - target.getZ());
-        int weight = Math.max(swing == null ? 0 : BattleMath.weightIndex(swing.weight()), BattleMath.weight(amount, target.getMaxHealth(), D.mediumHitShare(), D.heavyHitShare()));
+        int weight = BattleMath.hitWeight(swing == null ? 0 : BattleMath.weightIndex(swing.weight()), cooldown, lost, target.getMaxHealth(), D.mediumHitShare(), D.heavyHitShare());
         MotionEvents.sendHit(target, hitKind, zone, bearing, weight, CounterMath.blocked(hit, Spec.COUNTERS), !target.isAlive(), watchers);
     }
 

@@ -196,8 +196,8 @@ final class HoldLineChecks {
         boolean impPass = true;
         final List<String> impWhy = new ArrayList<>();
         // hl-events (Task 6)
-        /** hl-events' Squire, its two dummies (the second on 1 health), the holders on Hold (shield, spear and two others), the frozen Dusk archer. */
-        GravesAndGlory.Unit evKnight, evTarget, evLethal, evHg, evTusk, evBreaker, evReaper, evArcher;
+        /** hl-events' Squire, its two dummies (the second on 1 health), the holders on Hold (shield, spear and two others), the frozen Dusk archer, the Dusk shield guard the player strikes. */
+        GravesAndGlory.Unit evKnight, evTarget, evLethal, evHg, evTusk, evBreaker, evReaper, evArcher, evGuard;
         Vec3d evHome;
         boolean evPass = true;
         final List<String> evWhy = new ArrayList<>();
@@ -218,6 +218,10 @@ final class HoldLineChecks {
         long evSeen = -1, evLoadAt;
         float evHealth;
         int evSwings, evStep;
+        /** The landing ticks of the Squire's blows dealt inside the dummy's hurt cooldown (fix round 1, M3: want light). */
+        final Set<Long> evCooled = new HashSet<>();
+        /** The Squire's swings the client should hold after a catch-up (evArrival): its fresh swing on START_TRACKING, none once the swing is stale (fix round 1, M6). */
+        List<MotionInput.Attack> evWantAttack = List.of();
 
         static final double WALL = 0.7;
 
@@ -1459,8 +1463,33 @@ final class HoldLineChecks {
             evCheck(s.variant() == k.lastVariant, "swing " + (evSwings + 1) + ": its pending blow's variant " + s.variant() + ", the unit's lastVariant " + k.lastVariant + " (want the same)");
             evLands.put(s.landsAt(), s.variant());
             evAttacks.computeIfAbsent(k.mob.getId(), x -> new ArrayList<>()).add(new MotionInput.Attack(k.lastVariant, b.world.getTime()));
+            boolean dummy = stage == 102 && evTarget != null && evTarget.mob.isAlive();
+            if (dummy) { // fix round 1, M11: the dummy faces the Squire for the first blow, turns its left side to it for the second and its back for the third
+                float yaw = evSwings == 0 ? -90f : evSwings == 1 ? 0f : 90f;
+                pins.removeIf(p -> p.u() == evTarget); pins.add(new Pin(evTarget, evHome, yaw)); Phase2Checks.Engine.apply(evTarget, evHome, yaw);
+            }
             evSwings++;
             for (var t : Arrays.asList(evTarget, evLethal)) if (t != null && t.mob.isAlive()) t.mob.timeUntilRegen = 0; // no blow is lost to the hurt cooldown
+            if (dummy && evCooled.isEmpty() && BattleMath.weightIndex(Tactics.variants(k.spec.family()).get(s.variant()).weight()) > 0) {
+                // fix round 1, M3: the first heavier blow lands inside the dummy's hurt cooldown, which takes all but half a point off it: light, from what it lost
+                evTarget.mob.timeUntilRegen = 40; evLastDamage(evTarget.mob, 0.5f); evCooled.add(s.landsAt());
+            }
+        }
+        /** Sets the protected LivingEntity.lastDamageTaken (the hurt cooldown deals only what a blow has over it). */
+        static void evLastDamage(net.minecraft.entity.LivingEntity e, float v) {
+            try {var f = net.minecraft.entity.LivingEntity.class.getDeclaredField("lastDamageTaken"); f.setAccessible(true); f.setFloat(e, v);}
+            catch (ReflectiveOperationException x) {throw new RuntimeException(x);}
+        }
+        /** A hit_v1 packet straight to the player, as MotionEvents.sendHit builds it but with this weight byte (fix round 1, M4: the client clamps it). */
+        static void evRawHit(net.minecraft.server.network.ServerPlayerEntity p, int id, int weight, long tick) {
+            var buf = net.fabricmc.fabric.api.networking.v1.PacketByteBufs.create();
+            buf.writeVarInt(id); buf.writeByte(MotionEvents.KINDS.indexOf("blunt")); buf.writeByte(MotionEvents.ZONES.indexOf("body")); buf.writeFloat(0f); buf.writeByte(weight); buf.writeByte(0); buf.writeVarLong(tick);
+            net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking.send(p, MotionEvents.HIT, buf);
+        }
+        /** The Dusk guard keeps its shield up: its group under fire (so Tactics leaves it raised off Hold) and Tactics.shield. */
+        void evGuardUp(GravesAndGlory.Battle b) {
+            if (evGuard == null || !evGuard.mob.isAlive()) return;
+            dusk.shotAt.put(evGuard.spec.group(), b.time); Tactics.shield(evGuard.mob, true);
         }
         /** The troop leaves every player's tracking (unloadEntity: its clients unload it) or is tracked again (loadEntity: START_TRACKING, then its spawn packet). */
         static void evTrack(GravesAndGlory.Battle b, GravesAndGlory.Unit u, boolean load) {
@@ -1471,12 +1500,13 @@ final class HoldLineChecks {
         }
         /**
          * Whether the stances owed since evLoadAt have reached the client (or 20 ticks have passed), judging them once they have: each troop with a
-         * stance has it on the client within 2 ticks, a troop with none shows none, and the Squire's swings on the client are its newest alone.
+         * stance has it on the client within 2 ticks, a troop with none shows none, and the Squire's swings on the client are evWantAttack.
          */
         boolean evArrival(GravesAndGlory.Battle b, String how) {
             for (var u : evRetrack) {int id = u.mob.getId(); if (!u.stance.isEmpty() && !evArrived.containsKey(id) && MotionEvents.Client.STANCES.containsKey(id)) evArrived.put(id, b.time);}
             long owed = evRetrack.stream().filter(u -> !u.stance.isEmpty()).count();
-            if (evArrived.size() < owed && since(b) <= 20) return false;
+            List<MotionInput.Attack> want = evWantAttack, got = List.copyOf(MotionEvents.Client.attacks(evKnight.mob.getId()));
+            if ((evArrived.size() < owed || !got.equals(want)) && since(b) <= 20) return false;
             List<String> seen = new ArrayList<>(); boolean ok = owed > 0;
             for (var u : evRetrack) {
                 int id = u.mob.getId(); var c = MotionEvents.Client.stance(id); Long at = evArrived.get(id);
@@ -1484,10 +1514,8 @@ final class HoldLineChecks {
                 ok &= on;
                 seen.add(name(u) + " " + (c.name().isEmpty() ? "none" : c.name() + " " + fmt(c.aimPitch())) + (at == null ? "" : " after " + (at - evLoadAt)) + " (server " + (u.stance.isEmpty() ? "none" : u.stance + " " + fmt(u.aimPitch)) + ")");
             }
-            var all = evAttacks.getOrDefault(evKnight.mob.getId(), List.of());
-            List<MotionInput.Attack> want = all.isEmpty() ? List.of() : List.of(all.get(all.size() - 1)), got = List.copyOf(MotionEvents.Client.attacks(evKnight.mob.getId()));
-            ok &= !want.isEmpty() && got.equals(want);
-            evCheck(ok, how + ": " + seen + " (want each troop's stance within 2 ticks, none for a troop with none); the Squire's swings on the client " + got + " (want its newest, " + want + ")");
+            ok &= got.equals(want);
+            evCheck(ok, how + ": " + seen + " (want each troop's stance within 2 ticks, none for a troop with none); the Squire's swings on the client " + got + " (want " + (want.isEmpty() ? "none, its swing stale" : "its current swing after the spawn, " + want) + ")");
             return true;
         }
 
@@ -1514,6 +1542,8 @@ final class HoldLineChecks {
                     evBreaker = holder(b, "ic_breaker", 44, ground(b, patch[0] + 20, patch[2] - 2));
                     evReaper = holder(b, "reaper", 45, ground(b, patch[0] + 20, patch[2] - 5));
                     evArcher = pinned(b, "archer", 46, ground(b, patch[0] + 28, patch[2] + 4), true); evWatch.add(evArcher.mob.getId());
+                    evGuard = pinned(b, "ic_hearthguard", 48, ground(b, patch[0] + 12, patch[2] + 6), true); evWatch.add(evGuard.mob.getId());
+                    pins.removeIf(p -> p.u() == evGuard); pins.add(new Pin(evGuard, evGuard.deployed, 180f)); Phase2Checks.Engine.apply(evGuard, evGuard.deployed, 180f);
                     evHealth = evTarget.mob.getHealth(); evSnap = true;
                     next(b, 102);
                 }
@@ -1526,7 +1556,11 @@ final class HoldLineChecks {
                     if (h < evHealth) {
                         Integer v = evLands.remove(b.time);
                         if (v == null) evCheck(false, "the dummy was hurt on tick " + b.time + " with no blow of the Squire due");
-                        else evHits.computeIfAbsent(evTarget.mob.getId(), x -> new ArrayList<>()).add(evBlow(b, evTarget, v, false));
+                        else {
+                            var w = evBlow(b, evTarget, v, false);
+                            if (evCooled.contains(b.time)) w = new MotionInput.Hit(w.kind(), w.zone(), w.bearing(), 0, w.blocked(), w.lethal(), w.tick());
+                            evHits.computeIfAbsent(evTarget.mob.getId(), x -> new ArrayList<>()).add(w);
+                        }
                         evHealth = h;
                     }
                     for (var it = evLands.keySet().iterator(); it.hasNext(); ) {long t = it.next(); if (t < b.time) {it.remove(); evCheck(false, "the blow due on tick " + t + " never hurt the dummy");}}
@@ -1535,7 +1569,8 @@ final class HoldLineChecks {
                     if (since(b) > 600) {evCheck(false, "the Squire swung " + evSwings + " times in 600 ticks (want 3, every blow landed)"); evKnight.nextAttack = Long.MAX_VALUE; evLands.clear(); next(b, 103);}
                 }
                 case 103 -> { // the lethal blow: a dummy on 1 health, the Squire free to swing again
-                    unpin(b, List.of(evTarget));
+                    evCheck(evCooled.size() == 1, "one of the Squire's heavier blows fell inside the dummy's hurt cooldown");
+                    unpin(b, List.of(evTarget)); // its id stays watched until the client has had its last blow (the probes in 106 take it off)
                     evLethal = holder(b, "archer", 47, evHome); evLethal.mob.setHealth(1f);
                     evKnight.nextAttack = b.time;
                     next(b, 104);
@@ -1550,7 +1585,7 @@ final class HoldLineChecks {
                     if (since(b) > 300) {evCheck(false, "the Squire never killed the 1-health dummy"); evKnight.nextAttack = Long.MAX_VALUE; evLands.clear(); next(b, 105);}
                 }
                 case 105 -> { // an arrow at the Hearthguard, its shield up, and one at the Breaker
-                    Tactics.shield(evHg.mob, true);
+                    Tactics.shield(evHg.mob, true); evGuardUp(b);
                     if (evShots.isEmpty()) {
                         boolean raised = evHg.mob.isUsingItem() && evHg.mob.getActiveItem().isOf(net.minecraft.item.Items.SHIELD);
                         if (since(b) < 5 || !raised) {if (since(b) > 100) {evCheck(false, "the Hearthguard never raised its shield"); evStep = 0; next(b, 106);} return;}
@@ -1567,17 +1602,50 @@ final class HoldLineChecks {
                     long last = evShots.stream().mapToLong(Projectiles.Shot::lands).max().orElse(b.time);
                     if (b.time > last) {evCheck(b.shots.stream().noneMatch(evShots::contains), "both arrows left the queue by tick " + last); evStep = 0; next(b, 106);}
                 }
-                case 106 -> { // a fall on the Breaker, then magic damage, a tick apart
-                    Tactics.shield(evHg.mob, true);
-                    var m = evBreaker.mob; m.timeUntilRegen = 0; m.hurtTime = 0;
-                    boolean fall = evStep == 0;
-                    boolean hurt = m.damage(fall ? b.world.getDamageSources().fall() : b.world.getDamageSources().magic(), 1f);
-                    evCheck(hurt, "the Breaker took " + (fall ? "a fall" : "magic damage") + " on tick " + b.time);
-                    if (hurt) evHits.computeIfAbsent(m.getId(), x -> new ArrayList<>()).add(new MotionInput.Hit(fall ? "blunt" : "magic", fall ? "legs" : "body", 0f, 0, false, false, b.world.getTime()));
-                    if (++evStep >= 2) next(b, 107);
+                case 106 -> { // a fall on the Breaker, then magic damage, a tick apart; the player's blow on the guard's shield; the per-target guard and the client's drops
+                    Tactics.shield(evHg.mob, true); evGuardUp(b);
+                    var m = evBreaker.mob; var magic = b.world.getDamageSources().magic(); long now = b.world.getTime();
+                    if (evStep < 2) {
+                        m.timeUntilRegen = 0; m.hurtTime = 0;
+                        boolean fall = evStep == 0;
+                        boolean hurt = m.damage(fall ? b.world.getDamageSources().fall() : magic, 1f);
+                        evCheck(hurt, "the Breaker took " + (fall ? "a fall" : "magic damage") + " on tick " + b.time);
+                        if (hurt) evHits.computeIfAbsent(m.getId(), x -> new ArrayList<>()).add(new MotionInput.Hit(fall ? "blunt" : "magic", fall ? "legs" : "body", 0f, 0, false, false, now));
+                        evStep++; return;
+                    }
+                    var p = sp(b);
+                    if (evStep == 2) { // fix round 1, M1: a player's blow the guard's raised shield stops whole is a hit, blocked, of no weight
+                        var g = evGuard.mob;
+                        if (!g.isBlocking()) {if (since(b) > 100) {evCheck(false, "the Dusk guard never blocked with its shield"); evStep = 3;} return;}
+                        g.timeUntilRegen = 0; g.hurtTime = 0; float before = g.getHealth(); int sends = MotionEvents.hitSends;
+                        boolean hurt = g.damage(b.world.getDamageSources().playerAttack(p), 4f);
+                        evCheck(!hurt && g.getHealth() == before && MotionEvents.hitSends > sends, "the player's blow on the guard's raised shield: damage returned " + hurt + ", health " + fmt(before) + " to " + fmt(g.getHealth()) + ", hit_v1 sent " + (MotionEvents.hitSends - sends) + " (want false, unchanged, one or more)");
+                        String kind = BattleMath.weaponKind(net.minecraft.registry.Registries.ITEM.getId(p.getMainHandStack().getItem()).toString());
+                        float bearing = (float) BattleMath.signedBearing(g.getYaw(), p.getX() - g.getX(), p.getZ() - g.getZ());
+                        evHits.computeIfAbsent(g.getId(), x -> new ArrayList<>()).add(new MotionInput.Hit(kind, "body", bearing, 0, true, false, now));
+                        evStep = 3; return;
+                    }
+                    // fix round 1, M2: Combat's guard covers only its own target, so another troop struck inside it still sends its hit; its own target sends none
+                    m.timeUntilRegen = 0; m.hurtTime = 0; int sends = MotionEvents.hitSends;
+                    boolean other = MotionEvents.resolving(evHg.mob, () -> m.damage(magic, 1f));
+                    evCheck(other && MotionEvents.hitSends > sends, "magic damage on the Breaker while the Hearthguard's blow resolves: damage returned " + other + ", hit_v1 sent " + (MotionEvents.hitSends - sends) + " (want true, one or more)");
+                    if (other) evHits.computeIfAbsent(m.getId(), x -> new ArrayList<>()).add(new MotionInput.Hit("magic", "body", 0f, 0, false, false, now));
+                    m.timeUntilRegen = 0; m.hurtTime = 0; sends = MotionEvents.hitSends;
+                    boolean own = MotionEvents.resolving(m, () -> m.damage(magic, 1f));
+                    evCheck(own && MotionEvents.hitSends == sends, "magic damage on the Breaker while its own blow resolves: damage returned " + own + ", hit_v1 sent " + (MotionEvents.hitSends - sends) + " (want true, none)");
+                    // fix round 1, M4 and M5: what the client must drop or clamp
+                    var to = List.of(p); evWatch.remove(evTarget.mob.getId()); // its hits as the client held them stay in evSeenHits
+                    MotionEvents.sendAttack(evTarget, 0, now, to); // the discarded dummy: an id the client world no longer has
+                    MotionEvents.sendHit(evTarget.mob, "slash", "body", 0f, 1, false, false, to);
+                    MotionEvents.sendAttack(evKnight, Tactics.variants(evKnight.spec.family()).size(), now, to); // past the family's rows
+                    MotionEvents.sendAttack(evKnight, -1, now, to);
+                    evRawHit(p, m.getId(), 7, now); evRawHit(p, m.getId(), -3, now); // weights out of 0..2
+                    evHits.get(m.getId()).add(new MotionInput.Hit("blunt", "body", 0f, 2, false, false, now));
+                    evHits.get(m.getId()).add(new MotionInput.Hit("blunt", "body", 0f, 0, false, false, now));
+                    next(b, 107);
                 }
                 case 107 -> { // what the client holds against what the server sent; the plain-hold rule; then every troop out of the player's tracking
-                    Tactics.shield(evHg.mob, true);
+                    Tactics.shield(evHg.mob, true); evGuardUp(b);
                     if (since(b) < 8) return;
                     evSnap = false;
                     int kid = evKnight.mob.getId(); var want = evAttacks.getOrDefault(kid, List.of()); var got = evSeenAttacks.getOrDefault(kid, List.of());
@@ -1585,7 +1653,22 @@ final class HoldLineChecks {
                     evCompareHits("the first dummy (three blows)", evTarget);
                     evCompareHits("the 1-health dummy (a killing blow)", evLethal);
                     evCompareHits("the Hearthguard (an arrow on its raised shield)", evHg);
-                    evCompareHits("the Breaker (an arrow, a fall, magic)", evBreaker);
+                    evCompareHits("the Breaker (an arrow, a fall, magic, magic inside another's resolve, two clamped weights)", evBreaker);
+                    evCompareHits("the Dusk guard (a player's blow stopped by its shield)", evGuard);
+                    // fix round 1, M11: the dummy's three blows from its front, its left side and its back
+                    var dh = evSeenHits.getOrDefault(evTarget.mob.getId(), List.of());
+                    boolean sides = dh.size() == 3 && Math.abs(net.minecraft.util.math.MathHelper.wrapDegrees(dh.get(0).bearing())) <= 10
+                        && dh.get(1).bearing() < 0 && Math.abs(dh.get(1).bearing() + 90) <= 10 && Math.abs(net.minecraft.util.math.MathHelper.wrapDegrees(dh.get(2).bearing() - 180)) <= 10;
+                    evCheck(sides, "the dummy's blows on the client from bearings " + dh.stream().map(h -> fmt(h.bearing())).toList() + " (want near 0, near -90 from its left, near 180 from behind)");
+                    // fix round 1, M4 and M5: nothing kept for an id the client world lacks, no swing outside the family's rows
+                    int tid = evTarget.mob.getId(), rows = Tactics.variants(evKnight.spec.family()).size();
+                    evCheck(!MotionEvents.Client.ATTACKS.containsKey(tid) && !MotionEvents.Client.HITS.containsKey(tid), "the client kept no swing or hit for the discarded dummy's id");
+                    var sw = MotionEvents.Client.attacks(kid);
+                    evCheck(sw.stream().allMatch(a -> BattleMath.validVariant(a.variant(), rows)), "the client's Squire swings " + sw + " all index its family's " + rows + " rows");
+                    // fix round 1, M7: aimPitch positive down on the wire as in MotionInput, so a lofted shot reads negative on both sides
+                    var ac = MotionEvents.Client.stance(evArcher.mob.getId());
+                    evCheck(evArcher.stance.equals("ranged_aim") && evArcher.aimPitch < 0 && ac.name().equals("ranged_aim") && Math.abs(ac.aimPitch() - evArcher.aimPitch) <= Tactics.AIM_STEP + 0.01,
+                        "the Dusk archer aims " + evArcher.stance + " " + fmt(evArcher.aimPitch) + " on the server, " + ac.name() + " " + fmt(ac.aimPitch()) + " on the client (want ranged_aim, below 0 for its lofted volley, the same on both)");
                     for (var u : List.of(evHg, evTusk, evBreaker, evReaper)) {
                         boolean wall = u == evHg || u == evTusk; String c = MotionEvents.Client.stance(u.mob.getId()).name();
                         boolean on = (wall ? u.stance.equals("brace") || u.stance.equals("wall") : u.stance.equals("hold")) && c.equals(u.stance);
@@ -1599,6 +1682,9 @@ final class HoldLineChecks {
                     boolean gone = evRetrack.stream().allMatch(u -> {int id = u.mob.getId(); return !MotionEvents.Client.STANCES.containsKey(id) && !MotionEvents.Client.ATTACKS.containsKey(id) && !MotionEvents.Client.HITS.containsKey(id);});
                     if (!gone && since(b) <= 40) return;
                     evCheck(gone, "out of the player's tracking, the client forgot the stances, swings and hits of " + evRetrack.size() + " troops");
+                    // fix round 1, M6: the Squire swung a tick ago, so the catch-up owes it, and it must reach the client after the spawn packet (the client drops unknown ids)
+                    long now = b.world.getTime(); evKnight.swungAt = b.time - 1; evKnight.swingTick = now - 1;
+                    evWantAttack = List.of(new MotionInput.Attack(evKnight.lastVariant, now - 1));
                     for (var u : evRetrack) evTrack(b, u, true);
                     var p = sp(b);
                     evCheck(p != null && evRetrack.stream().allMatch(u -> net.fabricmc.fabric.api.networking.v1.PlayerLookup.tracking(u.mob).contains(p)), "the player tracks the " + evRetrack.size() + " troops again");
@@ -1607,6 +1693,8 @@ final class HoldLineChecks {
                 case 109 -> { // late join through START_TRACKING; then the channel registration replayed, the client's tables emptied first
                     if (!evArrival(b, "tracked again (START_TRACKING)")) return;
                     MotionEvents.Client.clear();
+                    // fix round 1, M6: a swing older than its impact and recovery is not resent
+                    evKnight.swungAt = b.time - 100; evKnight.swingTick = b.world.getTime() - 100; evWantAttack = List.of();
                     var p = sp(b);
                     net.fabricmc.fabric.api.networking.v1.S2CPlayChannelEvents.REGISTER.invoker().onChannelRegister(p.networkHandler, net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking.getSender(p), b.server, List.of(MotionEvents.STANCE));
                     evLoadAt = b.time; evArrived.clear(); next(b, 110);
