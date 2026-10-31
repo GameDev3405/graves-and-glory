@@ -1,5 +1,6 @@
 package gg.gravesandglory;
 
+import com.mojang.blaze3d.platform.GlStateManager;
 import com.mojang.blaze3d.systems.RenderSystem;
 import gg.gravesandglory.mixin.EntityFlagsAccessor;
 import gg.gravesandglory.mixin.EntityRenderDispatcherAccessor;
@@ -12,9 +13,11 @@ import net.minecraft.client.gl.ShaderProgram;
 import net.minecraft.client.gl.VertexBuffer;
 import net.minecraft.client.render.BufferBuilder;
 import net.minecraft.client.render.BufferRenderer;
+import net.minecraft.client.render.OutlineVertexConsumerProvider;
 import net.minecraft.client.render.RenderLayer;
 import net.minecraft.client.render.VertexConsumer;
 import net.minecraft.client.render.VertexConsumerProvider;
+import net.minecraft.client.render.VertexConsumers;
 import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.entity.Entity;
 import net.minecraft.util.math.MathHelper;
@@ -22,6 +25,7 @@ import net.minecraft.util.math.Vec3d;
 import org.joml.Matrix3f;
 import org.joml.Matrix4f;
 import org.joml.Vector3f;
+import org.lwjgl.opengl.GL14;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.IdentityHashMap;
@@ -74,22 +78,76 @@ public final class BodyCache {
     }
     record Part(RenderLayer layer,VertexBuffer buffer){}
     static final class Body {
-        Key key;final List<Part> parts=new ArrayList<>();int records;boolean normal;int lastFrame,verified=Integer.MIN_VALUE/2;double x,y,z;float yaw;Entity entity;TroopRenderer<?> renderer;net.minecraft.util.math.Box cull;
+        Key key;final List<Part> parts=new ArrayList<>();int records;boolean normal;int lastFrame,verified=Integer.MIN_VALUE/2;double x,y,z;float yaw,shade=1f;Entity entity;TroopRenderer<?> renderer;net.minecraft.util.math.Box cull;
         void free(){for(Part p:parts)p.buffer.close();parts.clear();}
     }
+    /**
+     * A body drawn this frame part way through its corpse fade (R42): a cached body's own buffers, or the buffers one normal
+     * draw was caught into (body null), drawn translucent at alpha by fadePass.
+     */
+    static final class Fade { final Body body;final List<Part> parts;final float alpha;double d2;Fade(Body body,List<Part> parts,float alpha){this.body=body;this.parts=parts;this.alpha=alpha;} }
+    record FadeDraw(Fade fade,VertexBuffer buffer){}
     private static final Map<Entity,Body> BODIES=new IdentityHashMap<>();
     private static final List<Body> QUEUE=new ArrayList<>(),SHADOWS=new ArrayList<>();
     private static final Map<RenderLayer,List<Body>> BY_LAYER=new LinkedHashMap<>();
     private static final Map<RenderLayer,List<VertexBuffer>> BUFFERS=new LinkedHashMap<>();
+    private static final List<Fade> FADES=new ArrayList<>();private static final Map<RenderLayer,List<FadeDraw>> FADE_BY_LAYER=new LinkedHashMap<>();
+    private static final Map<RenderLayer,Integer> KINDS=new IdentityHashMap<>();private static final ArrayDeque<VertexBuffer> SPARE=new ArrayDeque<>();
     private static boolean inWorld;private static int frame;
+    /** Fade passes, the fading bodies and draws they drew, and their time (the harness reads them). */
+    static long fadePasses,fadeBodies,fadeDraws,fadeNanos;
     /** Draws from cached buffers and records since the client started (the harness reads them). */
     static long cachedDraws,records;
     /** Diagnostics for the harness: cached draws on the short check, draws refused outside the world pass, key changes, give-ups, failed records, and the last key change or refusal. */
     static long quick,outside,changes,giveUps,failed,flushNanos,flushes,flushDraws,flushBodies;static String lastChange="";
-    static String diag(){return "cached draws "+cachedDraws+" ("+quick+" on the short check), records "+records+", outside the world pass "+outside+", key changes "+changes+", give-ups "+giveUps+", failed records "+failed+", kept "+kept()+", flush "+String.format(java.util.Locale.ROOT,"%.1f us for %.1f bodies and %.1f draws a frame",flushNanos/1e3/Math.max(1,flushes),flushBodies/(double)Math.max(1,flushes),flushDraws/(double)Math.max(1,flushes))+"; last: "+lastChange;}
+    static String diag(){return "cached draws "+cachedDraws+" ("+quick+" on the short check), records "+records+", outside the world pass "+outside+", key changes "+changes+", give-ups "+giveUps+", failed records "+failed+", kept "+kept()+", flush "+String.format(java.util.Locale.ROOT,"%.1f us for %.1f bodies and %.1f draws a frame",flushNanos/1e3/Math.max(1,flushes),flushBodies/(double)Math.max(1,flushes),flushDraws/(double)Math.max(1,flushes))
+        +String.format(java.util.Locale.ROOT,", fade %d passes, %.1f us for %.1f bodies and %.1f draws a pass",fadePasses,fadeNanos/1e3/Math.max(1,fadePasses),fadeBodies/(double)Math.max(1,fadePasses),fadeDraws/(double)Math.max(1,fadePasses))+"; last: "+lastChange;}
+
+    /**
+     * How opaque the entity's body draws now (R42): whole until its corpse fade begins (death tick 20 + the sheet's
+     * corpseLieTicks), then BattleMath.corpseAlpha's eased fall to 0 on its removal tick, smooth on the partial tick. Its shadow
+     * fades with it.
+     */
+    static float fade(Entity e,float tickDelta){
+        if(!(e instanceof net.minecraft.entity.LivingEntity l)||l.deathTime<=0)return 1f;
+        var row=Spec.COMBATDISCIPLINE[0];return BattleMath.corpseAlpha(l.deathTime+tickDelta,row.corpseLieTicks(),row.corpseFadeTicks());
+    }
+    /** The opacity the body draws at: its fade, or whole while the harness takes its opaque reference frame. */
+    static float alpha(Entity e,float tickDelta){return opaque?1f:fade(e,tickDelta);}
 
     /** WorldRenderEvents.START: the world pass begins; bodies may queue. */
-    static void begin(){inWorld=ENABLED;frame++;QUEUE.clear();SHADOWS.clear();}
+    static void begin(){inWorld=ENABLED;frame++;QUEUE.clear();SHADOWS.clear();recycle();}
+    /** Queues a cached body at its opacity: whole with the rest, part way to the fade pass, gone at 0. */
+    private static void queue(Body b,float a){if(a>=1f)QUEUE.add(b);else if(a>0f)FADES.add(new Fade(b,b.parts,a));}
+
+    /** A normal draw part way through its fade is caught here (null outside the world pass: it draws whole); faded or abandonFading ends it. */
+    static VertexConsumerProvider fading(VertexConsumerProvider consumers){
+        if(!inWorld)return null;
+        LOOSE.outline=consumers instanceof OutlineVertexConsumerProvider o?o:null;LOOSE.rec.open.clear();return LOOSE;
+    }
+    /** Ends a caught draw: each layer's vertices into a buffer (kept between frames), drawn by fadePass at the alpha. */
+    static void faded(Entity e,float alpha){
+        Fade f=new Fade(null,new ArrayList<>(),alpha);
+        for(var en:LOOSE.rec.open.entrySet()){
+            BufferBuilder.BuiltBuffer built=en.getValue().endNullable();if(built==null)continue;
+            VertexBuffer vb=SPARE.isEmpty()?new VertexBuffer(VertexBuffer.Usage.DYNAMIC):SPARE.pop();vb.bind();vb.upload(built);f.parts.add(new Part(en.getKey(),vb));
+        }
+        VertexBuffer.unbind();LOOSE.rec.release();LOOSE.outline=null;BufferRenderer.reset();
+        if(!f.parts.isEmpty()){f.d2=e.squaredDistanceTo(MinecraftClient.getInstance().gameRenderer.getCamera().getPos());FADES.add(f);}
+    }
+    static void abandonFading(){LOOSE.rec.abandon();LOOSE.outline=null;}
+    /** The caught draws' buffers back to the spare pool. */
+    private static void recycle(){for(Fade f:FADES)if(f.body==null)for(Part p:f.parts)SPARE.push(p.buffer());FADES.clear();}
+    /** Catches a normal draw; a layer with an outline also feeds the frame's outline, as OutlineVertexConsumerProvider does. */
+    private static final class Loose implements VertexConsumerProvider {
+        final Recorder rec=new Recorder();OutlineVertexConsumerProvider outline;
+        @Override public VertexConsumer getBuffer(RenderLayer layer){
+            VertexConsumer vc=rec.getBuffer(layer);
+            if(outline!=null&&layer.getAffectedOutline().isPresent())return VertexConsumers.union(outline.getBuffer(layer.getAffectedOutline().get()),vc);
+            return vc;
+        }
+    }
+    private static final Loose LOOSE=new Loose();
 
     /**
      * Draws a settled body from its buffers (queued for this frame's flush), recording it first when its key changed; false
@@ -107,7 +165,7 @@ public final class BodyCache {
             if(!record(r,e,key,yaw,tickDelta,b)){b.free();b.normal=true;failed++;return false;}
             b.key=key;records++;
         }
-        b.x=key.x;b.y=key.y;b.z=key.z;b.yaw=body;b.lastFrame=frame;QUEUE.add(b);cachedDraws++;
+        b.x=key.x;b.y=key.y;b.z=key.z;b.yaw=body;b.lastFrame=frame;queue(b,alpha(e,tickDelta));cachedDraws++;
         return true;
     }
 
@@ -121,12 +179,13 @@ public final class BodyCache {
     /** Not on fire, invisible or glowing (the shared flags, one tracker read): the dispatcher would draw nothing more, nor an outline. */
     static boolean plain(Entity e){return (e.getDataTracker().get(EntityFlagsAccessor.gravesandglory$flags())&(1|1<<5|1<<6))==0;}
     /**
-     * The short check's draw, past the dispatcher: queued, with the shadow the dispatcher would have drawn, when it lies where it
-     * was recorded (turned to its body yaw now); false sends it to the full check.
+     * The short check's draw, past the dispatcher: queued at its opacity, with the shadow the dispatcher would have drawn, when it
+     * lies where it was recorded (turned to its body yaw now) in the light it was recorded in (R45: the light is read every
+     * frame, so a torch or a lightning flash reaches the body on the next frame); false sends it to the full check.
      */
-    static boolean drawFresh(Body b,double x,double y,double z,float body){
-        Key k=b.key;if(Math.abs(k.x()-x)>=1e-5||Math.abs(k.y()-y)>=1e-5||Math.abs(k.z()-z)>=1e-5)return false;
-        b.yaw=body;b.lastFrame=frame;QUEUE.add(b);SHADOWS.add(b);cachedDraws++;quick++;return true;
+    static boolean drawFresh(Body b,double x,double y,double z,float body,int light,float tickDelta){
+        Key k=b.key;if(light!=k.light()||Math.abs(k.x()-x)>=1e-5||Math.abs(k.y()-y)>=1e-5||Math.abs(k.z()-z)>=1e-5)return false;
+        b.yaw=body;b.lastFrame=frame;queue(b,alpha(b.entity,tickDelta));b.shade=fade(b.entity,tickDelta);SHADOWS.add(b);cachedDraws++;quick++;return true;
     }
     /** After a full check drew the entity's body from its buffers: its cull box (it does not move) and the frame of the check. */
     static void verified(Entity e,net.minecraft.util.math.Box cull){Body b=BODIES.get(e);if(b!=null){b.cull=cull;b.verified=frame;}}
@@ -172,58 +231,35 @@ public final class BodyCache {
     }
     private static final Recorder RECORDER=new Recorder();
 
-    private static final Matrix4f VIEW=new Matrix4f(),MV=new Matrix4f();private static final Matrix3f IDENTITY3=new Matrix3f();
-    private static final Vector3f L0=new Vector3f(),L1=new Vector3f(),B0=new Vector3f(),B1=new Vector3f();private static final Matrix3f TURN=new Matrix3f();
+    private static final Matrix4f VIEW=new Matrix4f(),MV=new Matrix4f(),ENTITY_MV=new Matrix4f(),PROJ=new Matrix4f();private static final Matrix3f IDENTITY3=new Matrix3f(),INV_VIEW=new Matrix3f();
+    private static final Vector3f L0=new Vector3f(),L1=new Vector3f(),V0=new Vector3f(),V1=new Vector3f(),B0=new Vector3f(),B1=new Vector3f();private static final Matrix3f TURN=new Matrix3f();
+    private static Vec3d cam=Vec3d.ZERO;
 
     /**
      * WorldRenderEvents.AFTER_ENTITIES: draws the queued bodies, one layer at a time: the layer's state and program once, then
      * per body its buffer with the model-view matrix that places it (the camera's rotation, then where it lies from the
      * camera, then its body yaw). Its vertices' normals are in its recorded axes, so the lights are put into those axes.
+     * It keeps the frame's entity matrices and lights for fadePass.
      */
     static void flush(WorldRenderContext ctx){
         inWorld=false;
-        if(QUEUE.isEmpty()){sweep();return;}
-        long t0=System.nanoTime();flushes++;flushBodies+=QUEUE.size();
-        Vec3d cam=ctx.camera().getPos();
-        shadows(ctx,cam);
+        cam=ctx.camera().getPos();
         VIEW.set(RenderSystem.getModelViewMatrix()).mul(ctx.matrixStack().peek().getPositionMatrix());
-        Matrix3f inv=RenderSystem.getInverseViewRotationMatrix();Vector3f[] lights=RenderSystemAccessor.gravesandglory$lights();
-        inv.transform(lights[0],L0);inv.transform(lights[1],L1);
+        ENTITY_MV.set(RenderSystem.getModelViewMatrix());PROJ.set(RenderSystem.getProjectionMatrix());INV_VIEW.set(RenderSystem.getInverseViewRotationMatrix());
+        Vector3f[] lights=RenderSystemAccessor.gravesandglory$lights();V0.set(lights[0]);V1.set(lights[1]);
+        INV_VIEW.transform(V0,L0);INV_VIEW.transform(V1,L1);
+        if(QUEUE.isEmpty()&&SHADOWS.isEmpty()){sweep();return;}
+        long t0=System.nanoTime();flushes++;flushBodies+=QUEUE.size();
+        shadows(ctx,cam);
         for(List<Body> l:BY_LAYER.values())l.clear();
         for(List<VertexBuffer> l:BUFFERS.values())l.clear();
         for(Body b:QUEUE)for(Part p:b.parts){BY_LAYER.computeIfAbsent(p.layer(),k->new ArrayList<>()).add(b);BUFFERS.computeIfAbsent(p.layer(),k->new ArrayList<>()).add(p.buffer());}
         for(var en:BY_LAYER.entrySet()){
             List<Body> bodies=en.getValue();if(bodies.isEmpty())continue;
             RenderLayer layer=en.getKey();List<VertexBuffer> bufs=BUFFERS.get(layer);
-            layer.startDrawing();
-            ShaderProgram sh=RenderSystem.getShader();
+            ShaderProgram sh=open(layer,RenderSystem.getShaderColor());
             if(sh!=null){
-                for(int i=0;i<12;i++)sh.addSampler("Sampler"+i,RenderSystem.getShaderTexture(i));
-                set(sh.projectionMat,RenderSystem.getProjectionMatrix());
-                if(sh.viewRotationMat!=null)sh.viewRotationMat.set(IDENTITY3);
-                if(sh.colorModulator!=null)sh.colorModulator.set(RenderSystem.getShaderColor());
-                if(sh.glintAlpha!=null)sh.glintAlpha.set(RenderSystem.getShaderGlintAlpha());
-                if(sh.fogStart!=null)sh.fogStart.set(RenderSystem.getShaderFogStart());
-                if(sh.fogEnd!=null)sh.fogEnd.set(RenderSystem.getShaderFogEnd());
-                if(sh.fogColor!=null)sh.fogColor.set(RenderSystem.getShaderFogColor());
-                if(sh.fogShape!=null)sh.fogShape.set(RenderSystem.getShaderFogShape().getId());
-                set(sh.textureMat,RenderSystem.getTextureMatrix());
-                if(sh.gameTime!=null)sh.gameTime.set(RenderSystem.getShaderGameTime());
-                var w=MinecraftClient.getInstance().getWindow();if(sh.screenSize!=null)sh.screenSize.set((float)w.getFramebufferWidth(),(float)w.getFramebufferHeight());
-                RenderSystem.setupShaderLights(sh);
-                if(sh.light0Direction!=null)sh.light0Direction.set(L0);
-                if(sh.light1Direction!=null)sh.light1Direction.set(L1);
-                set(sh.modelViewMat,VIEW);
-                sh.bind();
-                for(int i=0;i<bodies.size();i++){
-                    Body b=bodies.get(i);VertexBuffer vb=bufs.get(i);
-                    float turn=(float)Math.toRadians(180f-b.yaw);
-                    if(sh.modelViewMat!=null){MV.set(VIEW).translate((float)(b.x-cam.x),(float)(b.y-cam.y),(float)(b.z-cam.z)).rotateY(turn);sh.modelViewMat.set(MV);sh.modelViewMat.upload();}
-                    TURN.rotationY(-turn); // the lights into the body's recorded axes
-                    if(sh.light0Direction!=null){sh.light0Direction.set(TURN.transform(L0,B0));sh.light0Direction.upload();}
-                    if(sh.light1Direction!=null){sh.light1Direction.set(TURN.transform(L1,B1));sh.light1Direction.upload();}
-                    vb.bind();vb.draw();flushDraws++;
-                }
+                for(int i=0;i<bodies.size();i++){place(sh,bodies.get(i));VertexBuffer vb=bufs.get(i);vb.bind();vb.draw();flushDraws++;}
                 sh.unbind();
             }
             VertexBuffer.unbind();
@@ -232,7 +268,96 @@ public final class BodyCache {
         BufferRenderer.reset();
         QUEUE.clear();sweep();flushNanos+=System.nanoTime()-t0;
     }
+    /** Starts the layer's state and binds its program with the frame's uniforms, the colour modulator given (null when the layer has no program). */
+    private static ShaderProgram open(RenderLayer layer,float[] color){
+        layer.startDrawing();
+        ShaderProgram sh=RenderSystem.getShader();if(sh==null)return null;
+        for(int i=0;i<12;i++)sh.addSampler("Sampler"+i,RenderSystem.getShaderTexture(i));
+        set(sh.projectionMat,PROJ);
+        if(sh.viewRotationMat!=null)sh.viewRotationMat.set(IDENTITY3);
+        if(sh.colorModulator!=null)sh.colorModulator.set(color);
+        if(sh.glintAlpha!=null)sh.glintAlpha.set(RenderSystem.getShaderGlintAlpha());
+        if(sh.fogStart!=null)sh.fogStart.set(RenderSystem.getShaderFogStart());
+        if(sh.fogEnd!=null)sh.fogEnd.set(RenderSystem.getShaderFogEnd());
+        if(sh.fogColor!=null)sh.fogColor.set(RenderSystem.getShaderFogColor());
+        if(sh.fogShape!=null)sh.fogShape.set(RenderSystem.getShaderFogShape().getId());
+        set(sh.textureMat,RenderSystem.getTextureMatrix());
+        if(sh.gameTime!=null)sh.gameTime.set(RenderSystem.getShaderGameTime());
+        var w=MinecraftClient.getInstance().getWindow();if(sh.screenSize!=null)sh.screenSize.set((float)w.getFramebufferWidth(),(float)w.getFramebufferHeight());
+        RenderSystem.setupShaderLights(sh);
+        if(sh.light0Direction!=null)sh.light0Direction.set(L0);
+        if(sh.light1Direction!=null)sh.light1Direction.set(L1);
+        set(sh.modelViewMat,VIEW);
+        sh.bind();
+        return sh;
+    }
+    /** Uploads the model-view matrix that places a cached body and the lights turned into its recorded axes. */
+    private static void place(ShaderProgram sh,Body b){
+        float turn=(float)Math.toRadians(180f-b.yaw);
+        if(sh.modelViewMat!=null){MV.set(VIEW).translate((float)(b.x-cam.x),(float)(b.y-cam.y),(float)(b.z-cam.z)).rotateY(turn);sh.modelViewMat.set(MV);sh.modelViewMat.upload();}
+        TURN.rotationY(-turn); // the lights into the body's recorded axes
+        if(sh.light0Direction!=null){sh.light0Direction.set(TURN.transform(L0,B0));sh.light0Direction.upload();}
+        if(sh.light1Direction!=null){sh.light1Direction.set(TURN.transform(L1,B1));sh.light1Direction.upload();}
+    }
     private static void set(GlUniform u,Matrix4f m){if(u!=null)u.set(m);}
+
+    /** How a layer blends, from its transparency phase: 0 opaque (no blend), 2 adding light (eyes, glint), 1 any other blend. */
+    private static int kind(RenderLayer layer){
+        return KINDS.computeIfAbsent(layer,k->{String s=k.toString();
+            return s.contains("no_transparency")?0:s.contains("additive_transparency")||s.contains("glint_transparency")||s.contains("lightning_transparency")?2:1;});
+    }
+    /**
+     * WorldRenderEvents.BEFORE_DEBUG_RENDER, after every entity layer of the frame is drawn: the bodies part way through their
+     * fade (R42), cached and caught alike, translucent. First their opaque layers write only depth, so each body shows its front
+     * surface only; then every layer draws in colour against that depth, farthest body first: an opaque layer blended at the
+     * body's alpha by a constant blend colour, a blending layer with its colour modulator's alpha scaled, an adding one
+     * (eyes, glint) with its whole modulator scaled. Fading bodies overlapping one another hide the farther behind the nearer.
+     */
+    static void fadePass(WorldRenderContext ctx){
+        if(FADES.isEmpty())return;
+        long t0=System.nanoTime();fadePasses++;fadeBodies+=FADES.size();
+        for(Fade f:FADES)if(f.body!=null){Body b=f.body;double dx=b.x-cam.x,dy=b.y-cam.y,dz=b.z-cam.z;f.d2=dx*dx+dy*dy+dz*dz;}
+        FADES.sort((p,q)->Double.compare(q.d2,p.d2));
+        for(List<FadeDraw> l:FADE_BY_LAYER.values())l.clear();
+        for(Fade f:FADES)for(Part p:f.parts)FADE_BY_LAYER.computeIfAbsent(p.layer(),k->new ArrayList<>()).add(new FadeDraw(f,p.buffer()));
+        try{
+            for(var en:FADE_BY_LAYER.entrySet())if(!en.getValue().isEmpty()&&kind(en.getKey())==0)drawFades(en.getKey(),en.getValue(),-1);
+            for(int k=0;k<3;k++)for(var en:FADE_BY_LAYER.entrySet())if(!en.getValue().isEmpty()&&kind(en.getKey())==k)drawFades(en.getKey(),en.getValue(),k);
+        }finally{
+            RenderSystem.colorMask(true,true,true,true);RenderSystem.depthMask(true);RenderSystem.disableBlend();RenderSystem.defaultBlendFunc();GL14.glBlendColor(0f,0f,0f,0f);
+            BufferRenderer.reset();recycle();fadeNanos+=System.nanoTime()-t0;
+        }
+    }
+    private static final float[] COLOR=new float[4];
+    /** One layer of the fading bodies: kind -1 the depth pass, else the colour pass for a layer of that kind. */
+    private static void drawFades(RenderLayer layer,List<FadeDraw> draws,int kind){
+        float[] base=RenderSystem.getShaderColor();
+        ShaderProgram sh=open(layer,base);
+        if(sh!=null){
+            if(kind<0){RenderSystem.colorMask(false,false,false,false);RenderSystem.depthMask(true);}
+            else{RenderSystem.colorMask(true,true,true,true);RenderSystem.depthMask(false);
+                if(kind==0){RenderSystem.enableBlend();RenderSystem.blendFuncSeparate(GlStateManager.SrcFactor.CONSTANT_ALPHA,GlStateManager.DstFactor.ONE_MINUS_CONSTANT_ALPHA,GlStateManager.SrcFactor.ZERO,GlStateManager.DstFactor.ONE);}}
+            for(FadeDraw d:draws){
+                Fade f=d.fade();
+                if(f.body!=null){place(sh,f.body);if(sh.viewRotationMat!=null){sh.viewRotationMat.set(IDENTITY3);sh.viewRotationMat.upload();}}
+                else{ // caught from a normal draw: its vertices are in the camera's axes, as the frame's entity draws
+                    if(sh.modelViewMat!=null){sh.modelViewMat.set(ENTITY_MV);sh.modelViewMat.upload();}
+                    if(sh.viewRotationMat!=null){sh.viewRotationMat.set(INV_VIEW);sh.viewRotationMat.upload();}
+                    if(sh.light0Direction!=null){sh.light0Direction.set(V0);sh.light0Direction.upload();}
+                    if(sh.light1Direction!=null){sh.light1Direction.set(V1);sh.light1Direction.upload();}
+                }
+                if(kind==0)GL14.glBlendColor(0f,0f,0f,f.alpha);
+                else if(kind>0&&sh.colorModulator!=null){
+                    float a=f.alpha;if(kind==2){COLOR[0]=base[0]*a;COLOR[1]=base[1]*a;COLOR[2]=base[2]*a;}else{COLOR[0]=base[0];COLOR[1]=base[1];COLOR[2]=base[2];}COLOR[3]=base[3]*a;
+                    sh.colorModulator.set(COLOR);sh.colorModulator.upload();
+                }
+                d.buffer().bind();d.buffer().draw();fadeDraws++;
+            }
+            sh.unbind();
+        }
+        VertexBuffer.unbind();
+        layer.endDrawing();
+    }
 
     /**
      * The shadows of the bodies drawn on the short check, as EntityRenderDispatcher.render draws them (its switch and the
@@ -244,7 +369,7 @@ public final class BodyCache {
         if(SHADOWS.isEmpty()||mc.world==null||!mc.options.getEntityShadows().getValue()||!((EntityRenderDispatcherAccessor)d).gravesandglory$renderShadows())return;
         float td=ctx.tickDelta();MatrixStack ms=ctx.matrixStack();VertexConsumerProvider vc=mc.getBufferBuilders().getEntityVertexConsumers();
         for(Body b:SHADOWS){
-            Entity e=b.entity;float radius=b.renderer.shadowRadius(),opacity=b.renderer.shadowOpacity();if(radius<=0)continue;
+            Entity e=b.entity;float radius=b.renderer.shadowRadius(),opacity=b.renderer.shadowOpacity()*b.shade;if(radius<=0)continue;
             float o=(float)((1.0-cam.squaredDistanceTo(e.getX(),e.getY(),e.getZ())/256.0)*opacity);if(o<=0)continue;
             ms.push();
             ms.translate(MathHelper.lerp(td,e.lastRenderX,e.getX())-cam.x,MathHelper.lerp(td,e.lastRenderY,e.getY())-cam.y,MathHelper.lerp(td,e.lastRenderZ,e.getZ())-cam.z);
@@ -262,7 +387,7 @@ public final class BodyCache {
         }
     }
     /** Frees every buffer (a world left, resources reloaded). */
-    static void clear(){for(Body b:BODIES.values())b.free();BODIES.clear();QUEUE.clear();}
+    static void clear(){for(Body b:BODIES.values())b.free();BODIES.clear();QUEUE.clear();recycle();for(VertexBuffer vb:SPARE)vb.close();SPARE.clear();}
     /** Whether this client keeps buffers for the entity's body and draws it from them. */
     static boolean cached(Entity e){Body b=BODIES.get(e);return b!=null&&!b.normal&&!b.parts.isEmpty();}
     /** The bodies this client keeps buffers for (the harness reads it). */

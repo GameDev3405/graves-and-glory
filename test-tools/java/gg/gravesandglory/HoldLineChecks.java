@@ -2177,7 +2177,7 @@ final class HoldLineChecks {
                 case 1 -> {
                     if (++cpFadeWait < 6) return;
                     cpFadePaused &= c.isPaused(); cpFadeCached &= BodyCache.cachedDraws > cpFadeDraws;
-                    cpFadeV[cpFadeK][2] = Math.max(0, Math.min(1, 1 - (l.deathTime + c.getTickDelta() - start) / (double) fade));
+                    cpFadeV[cpFadeK][2] = BattleMath.corpseAlpha(l.deathTime + c.getTickDelta(), row.corpseLieTicks(), row.corpseFadeTicks());
                     cpFadeF = ScreenshotRecorder.takeScreenshot(c.getFramebuffer());
                     BodyCache.off = true; cpFadePhase = 2; cpFadeWait = 0;
                 }

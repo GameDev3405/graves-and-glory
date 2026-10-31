@@ -151,6 +151,14 @@ public final class BattleMath {
         double t = (deathTicks - start) / (double) fade;
         return (float) (0.5 + 0.5 * Math.cos(Math.PI * t));
     }
+    /** corpseAlpha on a partial death tick (the death tick plus the frame's tick delta), so the client fade is smooth between ticks; equal to it on whole ticks. */
+    public static float corpseAlpha(float deathTicks, int lie, int fade) {
+        int start = DEATH_FALL_TICKS + Math.max(0, lie);
+        if (deathTicks <= start) return 1f;
+        if (fade <= 0 || deathTicks >= start + fade) return 0f;
+        double t = (deathTicks - start) / (double) fade;
+        return (float) (0.5 + 0.5 * Math.cos(Math.PI * t));
+    }
     /** Whether a troop shows vanilla's red hurt tint: while hurt or through its fall (deathTime 1..DEATH_FALL_TICKS), never once the body lies. */
     public static boolean corpseHurtTint(int deathTime, int hurtTime) { return deathTime <= DEATH_FALL_TICKS && (hurtTime > 0 || deathTime > 0); }
     /**
