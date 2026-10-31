@@ -3389,9 +3389,15 @@ public final class Phase1Checks implements ClientModInitializer {
                     if(k==0){window(c,1920,1080,2,true);return;}
                     if(k==20){UiRecruitChecks.park(c);return;}
                     if(k==22){if(pages(c)!=null){why+="; 1920x1080 GUI 2, "+layout(c,name);shot(c,"ui-page-"+name+"-1080");}return;}
-                    if(k==24){window(c,960,540,1);return;}
-                    if(k==40){UiRecruitChecks.park(c);click(c,box(c,"back"));return;}
-                    if(k==44){var s=screen(c);boolean home=s!=null&&s.page.equals("home")&&s.home!=null;ok&=home;why+="; the back plaque went "+(home?"home":"WRONG: "+(s==null?"the table closed":s.page));
+                    if(k==24){window(c,2560,1440,0,true);return;} // and at 2560x1440, the automatic GUI Scale: the War Table's 3x (Kort, 2026-10-31)
+                    if(k==42){UiRecruitChecks.park(c);return;}
+                    if(k==44){if(pages(c)!=null){ // the compact page at k 3 (853x480): every widget inside and fitting, the War Table's 3x
+                        var bx=boxes(c);int w=UiCanvas.width(),h=UiCanvas.height();List<String> out=new ArrayList<>();for(var e:bx.entrySet())if(!UiHomeChecks.inside(e.getValue(),w,h))out.add(e.getKey());
+                        var unfit=UiHomeChecks.fits(WarTablePages.rects(),bx);boolean pass=UiCanvas.k()==3&&WarTable.compact()&&out.isEmpty()&&unfit.isEmpty();ok&=pass;
+                        why+="; 2560x1440 auto: canvas "+w+"x"+h+" (k "+UiCanvas.k()+", compact "+WarTable.compact()+"), outside "+out+", not fitting "+unfit+(pass?"":" WRONG");shot(c,"ui-page-"+name+"-1440");}return;}
+                    if(k==46){window(c,960,540,1);return;}
+                    if(k==62){UiRecruitChecks.park(c);click(c,box(c,"back"));return;}
+                    if(k==66){var s=screen(c);boolean home=s!=null&&s.page.equals("home")&&s.home!=null;ok&=home;why+="; the back plaque went "+(home?"home":"WRONG: "+(s==null?"the table closed":s.page));
                         report("p1-ui-page-"+name,ok,why);index++;stage=index<PAGES.length?2:5;}
                 }
                 case 5->{ // p1-ui-page-scales: each page at 1280x720 GUI 3 (canvas 1280x720), 854x480 GUI 2 (the compact page, UI Task 8b-2)

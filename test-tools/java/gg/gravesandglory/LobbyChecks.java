@@ -173,7 +173,11 @@ final class LobbyChecks implements Phase1Checks.Suite, Phase1Checks.ServerWatch 
             case 40->{ // the troop sheet fills the window at 1440p too
                 if(!(c.currentScreen instanceof CampScreen s)||!s.page.equals("troop")||k<20){if(k>100)fail(c,"p1-lobby-troop-1440","no troop sheet");return;}
                 report("p1-lobby-troop-1440",UiCanvas.k()==3&&UiCanvas.width()*3<=2560&&UiCanvas.height()*3<=1440,"troop sheet at 2560x1440: canvas k "+UiCanvas.k()+", canvas "+UiCanvas.width()+"x"+UiCanvas.height()+" (want 3)");
-                shot(c,"troop-1440");CampScreen.open("lobby");stage=41;}
+                shot(c,"troop-1440");window(c,1920,1080,0,true);stage=42;}
+            case 42->{ // and at 1080p, the War Table's 2x (Kort, 2026-10-31); then back to 1440p and the lobby
+                if(k<20)return;
+                report("p1-lobby-troop-1080",UiCanvas.k()==2&&c.currentScreen instanceof CampScreen s&&s.page.equals("troop"),"troop sheet at 1920x1080: canvas k "+UiCanvas.k()+", canvas "+UiCanvas.width()+"x"+UiCanvas.height()+" (want 2)");
+                shot(c,"troop-1080");window(c,2560,1440,0,true);CampScreen.open("lobby");stage=41;}
             case 41->{if(lobby(c)==null||k<20){if(k>100)fail(c,"p1-lobby-back","lobby not back after the troop sheet");return;}press(c,"ready");stage=17;}
             case 17->{ // the countdown runs out and the round starts with bots in the five empty seats
                 if(!serverRunning||botsDawn<0){if(k>900)fail(c,"p1-lobby-bot-fill-on","no round 900 ticks after the last Ready (countdown "+num("countdown")+", notice \""+CampaignClient.notice+"\")");return;}
