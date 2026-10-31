@@ -152,6 +152,9 @@ public final class GravesAndGloryClient implements ClientModInitializer {
         net.fabricmc.fabric.api.client.rendering.v1.WorldRenderEvents.AFTER_ENTITIES.register(CommandMode::renderWorld);
         // Troop depth: the frame's cutoff from the game camera, once, before any pass draws (Iris's shadow pass among them).
         net.fabricmc.fabric.api.client.rendering.v1.WorldRenderEvents.START.register(ctx->TroopDepth.beginFrame(ctx.camera().getPos(),ctx.world().getEntities()));
+        // Settled bodies (BodyCache): queue from the frame's start, drawn from their buffers after the entities.
+        net.fabricmc.fabric.api.client.rendering.v1.WorldRenderEvents.START.register(ctx->BodyCache.begin());
+        net.fabricmc.fabric.api.client.rendering.v1.WorldRenderEvents.AFTER_ENTITIES.register(BodyCache::flush);
     }
     /** A packet buffer as LevelMath's pure reader: readBoolean, readByte and readString (64 characters at most, a troop id). */
     static LevelMath.In wire(PacketByteBuf b){return new LevelMath.In(){public boolean bool(){return b.readBoolean();}public int b(){return b.readByte();}public String str(){return b.readString(64);}};}

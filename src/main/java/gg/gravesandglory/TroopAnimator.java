@@ -387,6 +387,8 @@ public final class TroopAnimator {
     }
     /** The margin a cull reach keeps round a pose's extent (TroopModel.sample uses the same). */
     static final double CULL_MARGIN=.25;
+    /** A body that lies with its final pose kept for this model, so pose only puts it back and nothing about its draw moves (BodyCache). */
+    static boolean settled(MobEntity e,TroopModel<?> m){if(!lies(e))return false;State s=STATES.get(e);return s!=null&&s.lying!=null&&s.lyingModel==m;}
     /** A troop's body past its fall, with no scene pose or forced clip on it (Task 7: it lies in its death clip's last frame). */
     static boolean lies(Entity e){
         return e instanceof LivingEntity le&&le.isDead()&&le.deathTime>BattleMath.DEATH_FALL_TICKS&&!SCENE.containsKey(e.getId())&&!forced.containsKey(e.getId());

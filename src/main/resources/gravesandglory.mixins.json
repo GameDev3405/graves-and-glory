@@ -11,6 +11,9 @@
     "ChatHudMixin",
     "ChatHudAccessor",
     "LivingEntityRendererAccessor",
+    "RenderSystemAccessor",
+    "EntityFlagsAccessor",
+    "EntityRenderDispatcherAccessor",
     "CorpseOverlayMixin",
     "KeybindTextMixin"
   ],

@@ -47,7 +47,13 @@ public final class TroopDepth {
         nearDraws=drawsNow;reliefQuads=reliefNow;weaponQuads=weaponNow;drawsNow=0;reliefNow=weaponNow=0;frame++;
         camera=cam;int n=0,nb=0;
         if(enabled)for(Entity e:entities){
-            if(!(e instanceof MobEntity)||e.getCustomName()==null)continue;
+            if(!(e instanceof MobEntity))continue;
+            if(BodyCache.recent(e)){ // a body BodyCache drew a few frames ago: a lying troop with a model
+                double d=distSq(e,cam);if(d>=NEAR_SQ)continue;
+                if(nb==bodiesInRange.length)bodiesInRange=Arrays.copyOf(bodiesInRange,nb*2);
+                bodiesInRange[nb++]=d;continue;
+            }
+            if(e.getCustomName()==null)continue;
             double d=distSq(e,cam);if(d>=NEAR_SQ||TroopModels.resolve(e)==null)continue;
             if(lying(e)){
                 if(nb==bodiesInRange.length)bodiesInRange=Arrays.copyOf(bodiesInRange,nb*2);

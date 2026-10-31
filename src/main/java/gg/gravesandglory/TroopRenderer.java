@@ -11,6 +11,7 @@ import net.minecraft.entity.Entity;
 import net.minecraft.entity.mob.MobEntity;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.math.RotationAxis;
+import net.minecraft.util.math.MathHelper;
 import net.minecraft.util.math.Vec3d;
 import org.joml.Matrix4f;
 import org.joml.Vector3f;
@@ -81,9 +82,27 @@ public final class TroopRenderer<T extends MobEntity> extends LivingEntityRender
     public EntityRenderer<? super T> vanilla(){return vanilla;}
 
     @Override public void render(T e,float yaw,float tickDelta,MatrixStack matrices,VertexConsumerProvider consumers,int light){
+        if(e.getId()==BodyCache.hide)return;
         TroopModels.Look l=TroopModels.resolve(e);TroopModel<T> m=l==null?null:TroopModels.modelOf(l.troop().id());
         if(m==null){vanilla.render(e,yaw,tickDelta,matrices,consumers,light);TroopChevrons.draw(e,l,null,matrices,consumers,dispatcher);return;}
         if(TroopModels.held(e,l))return;
+        // A body lying settled draws from the buffers BodyCache recorded of it, while what its draw depends on stays the same.
+        if(BodyCache.on()&&TroopAnimator.settled(e,m)&&!net.minecraft.client.MinecraftClient.getInstance().hasOutline(e)&&!e.isInvisible()&&!hasLabel(e)){
+            Vec3d at=e.getLerpedPos(tickDelta).add(getPositionOffset(e,tickDelta));
+            var key=new BodyCache.Key(m,l,TroopModels.far(e,l),TroopDepth.near(e)?m.reliefKey(l):null,TroopModels.face(e,m),light,getOverlay(e,getAnimationCounter(e,tickDelta)),
+                e.getOffHandStack().isEmpty(),TroopAnimator.helmOff(e),TroopAnimator.folds(m,e),TroopAnimator.drawSeconds(e,m,e.age+tickDelta),at.x,at.y,at.z);
+            if(BodyCache.draw(this,e,key,yaw,net.minecraft.util.math.MathHelper.lerpAngleDegrees(tickDelta,e.prevBodyYaw,e.bodyYaw),tickDelta)){
+                troopDraws++;if(DIAGNOSTICS){Drawn d=DRAWN.get(e);if(d!=null)d.count++;}
+                BodyCache.verified(e,m.cullBox(e));
+                TroopChevrons.draw(e,l,m,matrices,consumers,dispatcher);return;
+            }
+        }
+        drawModel(e,yaw,tickDelta,matrices,consumers,light);
+        TroopChevrons.draw(e,l,m,matrices,consumers,dispatcher);
+    }
+    /** The troop's own draw (the Look and model resolved, not held): its model, layers and relief, through the matrices given. */
+    void drawModel(T e,float yaw,float tickDelta,MatrixStack matrices,VertexConsumerProvider consumers,int light){
+        TroopModels.Look l=TroopModels.resolve(e);TroopModel<T> m=TroopModels.modelOf(l.troop().id());
         model=m;look=l;far=TroopModels.far(e,l);
         // Folded arms (idleArms folded) open while the troop attacks or a clip holds an arm (unit identity rule 3); a helm_off scene pose hides the helm.
         variant=TroopModels.face(e,m);
@@ -93,7 +112,6 @@ public final class TroopRenderer<T extends MobEntity> extends LivingEntityRender
         // Within reach of the camera (TroopDepth.near) the skin pass draws the relief of the skin it binds after the skin; the model spends the arm in that one pass.
         String relief=TroopDepth.near(e)?m.reliefKey(l):null;m.armRelief(relief);
         try{super.render(e,yaw,tickDelta,matrices,consumers,light);reliefKey=m.reliefSpent?relief:null;troopDraws++;if(DIAGNOSTICS)record(e,l,m);}finally{m.armRelief(null);look=null;far=false;}
-        TroopChevrons.draw(e,l,m,matrices,consumers,dispatcher);
     }
     private void record(Entity e,TroopModels.Look l,TroopModel<?> m){
         Drawn d=DRAWN.computeIfAbsent(e,k->new Drawn());Draw last=d.last;long bones=m.skinMask()|clothMask;
@@ -122,10 +140,27 @@ public final class TroopRenderer<T extends MobEntity> extends LivingEntityRender
      * vanilla box, so a troop whose standard or blade is in view is drawn; a held troop is not drawn at all.
      */
     @Override public boolean shouldRender(T e,Frustum frustum,double x,double y,double z){
+        if(BodyCache.on()&&e.getId()!=BodyCache.hide){
+            // BodyCache's short check: a body it drew from its buffers on a full check a few frames ago is queued here, with its
+            // shadow, and the dispatcher is told not to draw it (a lying body draws no chevrons and cannot be targeted)
+            var b=BodyCache.fresh(e);
+            if(b!=null){
+                if(!e.shouldRender(x,y,z)||!e.ignoreCameraFrustum&&!frustum.isVisible(b.cull))return false;
+                if(e!=dispatcher.targetedEntity&&!e.isCustomNameVisible()&&BodyCache.plain(e)){
+                    float td=net.minecraft.client.MinecraftClient.getInstance().getTickDelta();Vec3d off=getPositionOffset(e,td);
+                    if(BodyCache.drawFresh(b,MathHelper.lerp(td,e.prevX,e.getX())+off.x,MathHelper.lerp(td,e.prevY,e.getY())+off.y,MathHelper.lerp(td,e.prevZ,e.getZ())+off.z,MathHelper.lerpAngleDegrees(td,e.prevBodyYaw,e.bodyYaw))){
+                        troopDraws++;if(DIAGNOSTICS){Drawn d=DRAWN.get(e);if(d!=null)d.count++;}
+                        return false;
+                    }
+                }
+            }
+        }
         TroopModels.Look l=TroopModels.resolve(e);TroopModel<T> m=l==null?null:TroopModels.modelOf(l.troop().id());
         if(m==null)return vanilla.shouldRender(e,frustum,x,y,z);
         if(TroopModels.held(e,l)||!e.shouldRender(x,y,z))return false;
         return e.ignoreCameraFrustum||frustum.isVisible(m.cullBox(e));
     }
     @Override public Vec3d getPositionOffset(T e,float tickDelta){return vanilla.getPositionOffset(e,tickDelta);}
+    float shadowRadius(){return shadowRadius;}
+    float shadowOpacity(){return shadowOpacity;}
 }
