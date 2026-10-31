@@ -50,7 +50,7 @@ abstract class CorpseMixin implements TroopBody {
         return gravesandgloryTroop == 1;
     }
 
-    /** A server body whose fall is over and that rests on the ground, still (set once; it then no longer moves). */
+    /** A server body whose fall is over and that rests on the ground, out of water, not burning and still (set once; it then no longer moves). */
     @Unique private boolean gravesandglorySettled;
 
     @Inject(method = "updatePostDeath", at = @At("HEAD"), cancellable = true)
@@ -73,8 +73,9 @@ abstract class CorpseMixin implements TroopBody {
 
     /**
      * A settled body on the server skips the rest of its LivingEntity.tick (base tick, effects, movement, body turn): it only ages and goes on
-     * time (gravesandgloryAge, as updatePostDeath would). It settles once past its fall, on the ground and still; its effects were cleared at
-     * death (GravesAndGlory's AFTER_DEATH) and the fall's full ticks have already put out the glow flag.
+     * time (gravesandgloryAge, as updatePostDeath would). It settles once past its fall, on the ground, out of water, not burning and still: a
+     * body in water keeps ticking so it floats and drifts as vanilla's would, and a burning one so its fire burns out. Its effects were cleared
+     * at death (GravesAndGlory's AFTER_DEATH) and the fall's full ticks have already put out the glow flag.
      */
     @Inject(method = "tick", at = @At("HEAD"), cancellable = true)
     void gravesandgloryLieStill(CallbackInfo ci) {
@@ -109,7 +110,11 @@ abstract class CorpseMixin implements TroopBody {
         if (gravesandgloryCorpse(this)) ci.cancel();
     }
 
-    /** A body settled on the ground (its killing blow's slide spent) stops moving on the server: no travel, no collision tests, while it lies. */
+    /**
+     * A body on the ground, out of water and still (its killing blow's slide spent) stops moving on the server: no travel, no collision tests,
+     * while it lies. A body in water keeps moving so it floats. Fire does not keep it moving: a burning body on the ground still stops here,
+     * and its fire burns out through its base tick (gravesandgloryLieStill does not settle it until then).
+     */
     @Inject(method = "tickMovement", at = @At("HEAD"), cancellable = true)
     void gravesandglorySettled(CallbackInfo ci) {
         if (!gravesandgloryCorpse(this)) return;

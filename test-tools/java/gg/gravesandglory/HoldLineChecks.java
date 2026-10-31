@@ -44,7 +44,8 @@ import static gg.gravesandglory.Phase2Checks.server;
  * they Move 30 blocks east: their mean speed over ticks 30-70 is v0. Back at the start, six Dusk Order Archers (AI on, pinned 11 blocks to the
  * side, on Attack) shoot them while they Move again: their mean speed over ticks 30-130 is within 15% of crawlShare times v0, with their
  * shields up and the crawl modifier (Tactics.CRAWL_ID) on. The archers removed, the 10-tick mean speed is back to 0.85 v0 with no crawl
- * modifier within fireMemoryTicks + 20. With the archers back, on Hold, the knights walking 27 blocks back to their slots under fire with
+ * modifier within fireMemoryTicks + 20. On a crawling Squire (tick 80 under fire) Muster's hasten multiplies with the crawl on the attribute
+ * (crawlMuster, Task 8), and its end leaves the crawl alone. With the archers back, on Hold, the knights walking 27 blocks back to their slots under fire with
  * their shields up keep 0.85 v0 over ticks 10-30, and none carries the crawl modifier.</li>
  * <li>hl-arc (Task 4, fix rounds 1 and 2): on the same patch, a frozen dummy of the commander's army; east of it, in turn (ARC_CASES), a frozen Dusk
  * troop fires one shot of its own kind (Abilities.visual) at it through Projectiles.fire, and the arrow's place and attitude are read after each
@@ -96,10 +97,12 @@ import static gg.gravesandglory.Phase2Checks.server;
  * Again still works: a Revenant of a Graveborn Dusk army (six fielded, Houses.recompute), the roll forced, rises (alive, rose, death ticks 0, no
  * AFTER_DEATH); struck down again it lies as a body. Last, after hl-corpse-load, a Squire's body 30 ticks dead goes the moment the round ends
  * (Campaign.returnLobby, Battle.clearCorpses) and no dead troop is left in the world.</li>
- * <li>hl-corpse-load (Task 7): 100 Order Squires of the commander's army and 100 of Dusk's (AI on, 4000 health) spawn in two 10 by 10 blocks 20
+ * <li>hl-corpse-load (Task 7): on dry ground only (the patch has no water and no fire, so every body settles; bodies in water or burning keep
+ * ticking and are not measured). 100 Order Squires of the commander's army and 100 of Dusk's (AI on, 4000 health) spawn in two 10 by 10 blocks 20
  * apart on the patch, both armies on Attack toward the middle; as they meet, one falls each tick, the armies in turn, so all 200 die within 10 s.
  * Over the 340 ticks from the first death the mean server tick (MinecraftServer.lastTickLengths, the tick before each sample) and the client's
- * mean frame time (wall clock over the frames drawn; the run's fps is uncapped) are measured with the corpse rows at 0 and 0 (A: vanilla's
+ * mean frame time (wall clock over the frames drawn; the frame rate is the run's options.txt: vsync off and maxFps 260 for the Task 8
+ * measurement, logged in the report) are measured with the corpse rows at 0 and 0 (A: vanilla's
  * 20-tick fall) and at 60 and 40 (B), in the order warm-up B (not counted), A, B, B, A: B's mean is within +10% of A's on the server and +15% on
  * the client, every troop died, and in B 100 or more bodies lay at once. The world render alone (Phase2Checks.RenderCost) and every run's raw
  * figures are logged.</li>
@@ -241,6 +244,9 @@ final class HoldLineChecks {
         /** hl-corpse (Task 7 fix 2): the client entities of the marked Squire (watched from before its blow) and of the living Squire beside it, and what the client saw of them. */
         volatile int cpGlowId = -1, cpBaitId = -1;
         volatile boolean cpClientGlowBefore, cpClientGlowFall, cpClientHitLying, cpClientLyingSeen, cpClientBaitHit;
+        /** hl-corpse (Task 8 m4): the burning Revenant's body as the client holds it, and whether the client drew it on fire as it fell (death ticks 1-15) and once its fire should be out (death ticks 35 on): the synced on-fire flag the renderer draws flames from. */
+        volatile int cpFireId = -1;
+        volatile boolean cpClientFireFall, cpClientFireLate;
         /** N1: the horizontal speed the killing blow left the body, and the blow a Revenant rose from (Rise Again); -1 unmeasured. */
         double cpKnock = -1, cpRiseKnock = -1;
         /** N7: the body Grave Bloom raises a Risen from, and where it lay. */
@@ -384,6 +390,11 @@ final class HoldLineChecks {
                 if (!g.isDead() && g.isGlowing()) cpClientGlowBefore = true; // N5: the synced glow flag (6) the client draws
                 if (g.isDead() && g.deathTime >= 5 && g.deathTime <= 15 && g.isGlowing()) cpClientGlowFall = true;
                 if (g.isDead() && g.deathTime > BattleMath.DEATH_FALL_TICKS && g.deathTime <= 100) {cpClientLyingSeen = true; if (g.canHit()) cpClientHitLying = true;} // N2: the crosshair (GameRenderer.updateTargetedEntity) takes only canHit entities
+            }
+            int fireId = cpFireId; // m4: the burning body's fire as the client draws it (Entity.isOnFire: the synced flag 0, set from the server's fire ticks)
+            if (fireId >= 0 && c.world != null && c.world.getEntityById(fireId) instanceof net.minecraft.entity.LivingEntity f && f.isDead()) {
+                if (f.deathTime >= 1 && f.deathTime <= 15 && f.isOnFire()) cpClientFireFall = true;
+                if (f.deathTime >= 35 && f.isOnFire()) cpClientFireLate = true;
             }
             int baitId = cpBaitId; // N2: a living troop stays hittable on the client
             if (baitId >= 0 && c.world != null && c.world.getEntityById(baitId) instanceof net.minecraft.entity.LivingEntity l && l.isAlive() && l.canHit()) cpClientBaitHit = true;
@@ -753,6 +764,28 @@ final class HoldLineChecks {
             for (var u : fixture) if (u.mob.isAlive() && u.squad.team == 0 && u.tags.contains("shield")) out.add(u);
             return out;
         }
+        /**
+         * hl-crawl (Task 8, crawl x Muster): on a crawling Squire, Muster's hasten (Commander.Muster.hasten, the Marshal's rally_horn row) and the
+         * crawl multiply: both being MULTIPLY_TOTAL modifiers, the movement speed with both is the crawl's alone times (1 + Muster's value), not
+         * the crawl's plus Muster's share of the base (as a MULTIPLY_BASE or ADDITION one would give), and Muster's end (Commander.Muster.end)
+         * puts it back to the crawl's alone. Measured on the attribute, the same tick: the travel it gives is hl-crawl's speed checks' and the
+         * Muster checks' own, and a few per cent between a product and a sum is below what a walk's travel can tell apart.
+         */
+        void crawlMuster(GravesAndGlory.Battle b) {
+            var u = crawlers.get(0); var spd = u.mob.getAttributeInstance(net.minecraft.entity.attribute.EntityAttributes.GENERIC_MOVEMENT_SPEED);
+            var marshal = Arrays.stream(Spec.CLASSES).filter(r -> r.active().equals("rally_horn")).findFirst().orElse(null);
+            if (spd == null || marshal == null) {crawlPass = false; crawlWhy.add("crawl x Muster: no movement speed attribute or no rally_horn row (want both)=false"); return;}
+            var crawl = spd.getModifier(Tactics.CRAWL_ID); double base = spd.getBaseValue(), alone = spd.getValue();
+            Commander.Muster.hasten(b, own, marshal);
+            var rally = spd.getModifier(Commander.RALLY); double both = spd.getValue();
+            new Commander.Muster().end(b, own);
+            double after = spd.getValue(), m = rally == null ? Double.NaN : rally.getValue(), product = alone * (1 + m), sum = alone + base * m;
+            boolean ops = crawl != null && rally != null && crawl.getOperation() == net.minecraft.entity.attribute.EntityAttributeModifier.Operation.MULTIPLY_TOTAL && rally.getOperation() == net.minecraft.entity.attribute.EntityAttributeModifier.Operation.MULTIPLY_TOTAL;
+            boolean ok = ops && Math.abs(both - product) < 1e-9 && Math.abs(both - sum) > 1e-6 && Math.abs(after - alone) < 1e-12 && spd.getModifier(Commander.RALLY) == null && spd.getModifier(Tactics.CRAWL_ID) != null;
+            crawlPass &= ok;
+            crawlWhy.add(String.format(Locale.ROOT, "crawl x Muster on a crawling Squire: base %.5f, crawl alone %.5f (modifier %s); Muster's hasten (rally_horn +%.2f: modifier %s) on it gives %.5f (want the product %.5f = crawl alone x (1 + %.5f), not the sum %.5f); Muster's end leaves %.5f (want the crawl alone again, the crawl still on)=%b",
+                base, alone, crawl == null ? "none" : String.format(Locale.ROOT, "%.5f %s", crawl.getValue(), crawl.getOperation()), marshal.value1(), rally == null ? "none" : String.format(Locale.ROOT, "%.5f %s", m, rally.getOperation()), both, product, m, sum, after, ok));
+        }
         /** Whether the troop carries the crawl's movement-speed modifier. */
         static boolean crawling(GravesAndGlory.Unit u) {
             var speed = u.mob.getAttributeInstance(net.minecraft.entity.attribute.EntityAttributes.GENERIC_MOVEMENT_SPEED);
@@ -923,6 +956,7 @@ final class HoldLineChecks {
                         long up = crawlers.stream().filter(u -> u.mob.isUsingItem()).count(), crawled = crawlers.stream().filter(Wall::crawling).count();
                         boolean fire = Tactics.underFire(b, crawlers.get(0)), on = up == crawlers.size() && crawled == crawlers.size() && fire; crawlPass &= on;
                         crawlWhy.add("80 ticks into the Move under the archers' fire " + up + " of 6 hold their shields up and " + crawled + " carry the crawl modifier (group under fire " + fire + "; want all)=" + on);
+                        crawlMuster(b); // Task 8: the crawl and Muster's hasten multiply
                     }
                     if (since(b) < 130) return;
                     v1 = speed(snap, 100);
@@ -1865,6 +1899,7 @@ final class HoldLineChecks {
                     boolean rose = r.mob.isAlive() && !r.mob.isDead() && r.rose && r.mob.deathTime == 0 && CP_DEATHS.getOrDefault(r.mob.getId(), 0) == 0;
                     cpCheck(tier >= 1 && rose, "a Revenant of a Graveborn army (tier " + tier + ") struck down with the roll forced rose: alive " + r.mob.isAlive() + ", rose " + r.rose + ", death ticks " + r.mob.deathTime);
                     cpCheck(cpRiseKnock > 0.1, "the blow it rose from threw it back " + fmt3(cpRiseKnock) + " blocks a tick (want over 0.1)");
+                    cpClientFireFall = false; cpClientFireLate = false; cpFireId = r.mob.getId(); // m4: the client watches its fire too
                     fall(b, r); r.mob.setFireTicks(25); // Task 7 fix 2 (N3): it falls burning, its fire to end 25 ticks on
                     next(b, 125);
                 }
@@ -1881,6 +1916,8 @@ final class HoldLineChecks {
                 case 126 -> {
                     if (since(b) < 21) return;
                     var r = cpRevenant.mob;
+                    cpFireId = -1; // m4: the client saw it burning as it fell (the flag reaches the client) and not burning once its fire was out (death tick 35 to its sweep, past 50)
+                    cpCheck(cpClientFireFall && !cpClientFireLate, "on the client the burning body was drawn on fire as it fell (death ticks 1-15) " + cpClientFireFall + " (want true), and still on fire from death tick 35 " + cpClientFireLate + " (want false: its fire burned out, the flag cleared, not frozen on as it lies)");
                     cpCheck(cpSwept && r.isRemoved(), "the battle holds the body (Battle.corpses)=" + cpSwept + "; stamped past its removal tick it is swept within 20 ticks: removed " + r.isRemoved());
                     // Task 7 fix 2 (N7, R33): a Squire falls where the commander looks; once it lies, Grave Bloom cast there raises a Risen and takes the body
                     var p = sp(b); Vec3d aim = Commander.GraveBloom.aim(p, Commander.byActive("grave_bloom").range());
@@ -1935,7 +1972,7 @@ final class HoldLineChecks {
                     Phase2Checks.RenderCost.on = false;
                     long frames = Phase2Checks.RenderCost.frames; int arm = CP_PLAN[cpRun]; int[] run = cpArm(arm);
                     double server = cpServerSum / Math.max(1, cpSamples), client = Phase2Checks.RenderCost.sumNs / 1e6 / Math.max(1, frames), worst = Phase2Checks.RenderCost.worstNs / 1e6;
-                    double frame = (System.nanoTime() - cpWall0) / 1e6 / Math.max(1, frames); // the whole frame, wall clock over the frames drawn (the run's fps is uncapped, vsync off)
+                    double frame = (System.nanoTime() - cpWall0) / 1e6 / Math.max(1, frames); // the whole frame, wall clock over the frames drawn (the frame rate is capped by the run's options.txt, logged with the report: vsync off, maxFps 260 when measuring)
                     boolean allDead = cpLoad.stream().noneMatch(u -> u.mob.isAlive());
                     double peakServer = cpPeakSum / CP_PEAK_TICKS;
                     cpRuns.add(new double[]{run[0], run[1], server, client, frames, worst, cpLying, arm == 0 ? 0 : 1, allDead ? 1 : 0, cpSamples, frame, arm, peakServer, cpPeakFrame});
@@ -1963,10 +2000,11 @@ final class HoldLineChecks {
                     for (int i = 0; i < blocks.size(); i++) {var k = blocks.get(i); per.append(String.format(Locale.ROOT, "%sblock %d server %.3f frame %.3f world render %.3f peak server %.3f peak frame %.3f", i == 0 ? "" : "; ", i + 1, k[0], k[1], k[2], k[3], k[4]));}
                     boolean measured = blocks.size() >= 3 && blocks.stream().allMatch(k -> k[0] > 0 && k[1] > 0);
                     report("hl-corpse-load", dead && lay && measured && rs <= 1.10 && rf <= 1.15, String.format(Locale.ROOT,
-                        "200 Squires (100 a side, AI on, both on Attack into each other, 4000 health) on the patch, one falling a tick, all dead within 10 s=%b; the bodies lay (B, lie %d fade %d: %d or more at once)=%b; "
+                        "dry ground only (the patch: no water, no fire, so every body settles; a body in water or burning keeps ticking and is not measured here); the client's vsync %b, maxFps %d (the run's options.txt); "
+                        + "200 Squires (100 a side, AI on, both on Attack into each other, 4000 health) on the patch, one falling a tick, all dead within 10 s=%b; the bodies lay (B, lie %d fade %d: %d or more at once)=%b; "
                         + "%d A B B A blocks after a warm-up, System.gc() before every run: median server tick B/A %.3f, spread %.3f (want median 1.10 or less); median client frame B/A %.3f, spread %.3f (want median 1.15 or less); "
                         + "for reference the world render alone median B/A %.3f (spread %.3f), and over the peak window (ticks %d-%d of the wave) server %.3f, frame %.3f; blocks: %s; runs: %s",
-                        dead, sheet[0], sheet[1], want, lay, blocks.size(), rs, cpSpread(blocks, 0), rf, cpSpread(blocks, 1), rc, cpSpread(blocks, 2), CP_PEAK_FROM + 1, CP_PEAK_FROM + CP_PEAK_TICKS, ps, pf, per, raw));
+                        MinecraftClient.getInstance().options.getEnableVsync().getValue(), MinecraftClient.getInstance().options.getMaxFps().getValue(), dead, sheet[0], sheet[1], want, lay, blocks.size(), rs, cpSpread(blocks, 0), rf, cpSpread(blocks, 1), rc, cpSpread(blocks, 2), CP_PEAK_FROM + 1, CP_PEAK_FROM + CP_PEAK_TICKS, ps, pf, per, raw));
                     next(b, 140);
                 }
                 case 140 -> { // a round's end takes a lying body at once
