@@ -139,7 +139,7 @@ def _box_dist(x, z, box):
 def mire_depth(x, z):
     """How far (x, z) lies inside the Mire, in blocks, with a ragged edge; negative outside. The Mire keeps 3 blocks
     off the supply yards so they stand on dry ground."""
-    d = _box_dist(x, z, MIRE) + 4.5 * terrain.fbm(terrain.seed_of('mire-edge'), x, z, 15, 3)
+    d = _box_dist(x, z, MIRE) + 10 * terrain.fbm(terrain.seed_of('mire-edge'), x, z, 22, 3)
     for y in SUPPLY_YARDS:
         d = min(d, -_box_dist(x, z, y) - 3 + 1.5 * terrain.fbm(terrain.seed_of('yard-edge'), x, z, 6, 2))
     return d
@@ -151,7 +151,8 @@ def field(x, z):
     for y in SUPPLY_YARDS:
         if _box_dist(x, z, y) >= 0:
             return (GROUND, YARD, None)
-    top = GROUND + int(round(4 * _smooth((-186 - x) / 50)))
+    warp = 14 * terrain.fbm(terrain.seed_of('upland-warp'), x, z, 40, 2)  # contours wander, not N-S rulings
+    top = GROUND + int(round(4 * _smooth((-186 - x + warp) / 50)))
     d = mire_depth(x, z)
     if d > 0.8:
         return (61 if d >= 2.5 else 62, MUD, None)
