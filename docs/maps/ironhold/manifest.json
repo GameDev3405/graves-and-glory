@@ -34,8 +34,12 @@
    "eastCurtain": "the layout wins: east curtain at x 98..102; today's x 72 pieces (ih-curtain-en*/es*) are dropped",
    "innerWard": "closed: inner curtain runs from the gate ends to the river cliffs; the gate and the D4a postern are the only ways in",
    "keepTower": "out of the river: x 9..23, z 24..44 on the east bank; the river line at x 4..5 stays clean",
-   "stations": "left as placed, awaiting the modes lane"
-  }
+   "stations": "left as placed, awaiting the modes lane",
+   "river": "2026-10-31: the river bends east around the keep court (elbows z 13..19 and z 49..55, leg x 25..30); the court and the stage C ring stay on solid ground, ring lock unchanged"
+  },
+  "adoption": [
+   "Remove Spec/LANDMARKS rows ih-curtain-en1, ih-curtain-en2, ih-curtain-es1 and ih-curtain-es2 (today's x 72 east curtain) in the same change that adopts the rebuilt Ironhold (Kort 2026-10-31); leave them until then"
+  ]
  },
  "base": "Until the 2A.2 export of the live map exists, the stand-in base world is built by docs/maps/ironhold/sections/make_blockout.py base (flat ground top y 63 plus today's gate, keep and west curtain pieces). Replace it with the export before the structure pass.",
  "sections": [
@@ -751,6 +755,21 @@
       "docs/maps/ironhold/sections/ironhold-E3-iso.png"
      ],
      "notes": "Re-review after Kort's rulings of 2026-10-30 (reopen plan). Inner curtain closure north of the gate: x -40..-36 from z -24 to -30, top 71, joining the F3 run. East curtain x 72 pieces are not in this section or the base (dropped by ruling). Fosse, causeway, front-door towers and Outer Yard unchanged. Gate-sight station untouched, awaiting modes lane."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5), self-review of top and iso renders",
+     "at": "2026-10-31T05:01:55Z",
+     "digest": "ba78b673ed58475c2ab523349ba75d7a802ce35c5952b51e309318035ddff150",
+     "plans": [
+      "docs/maps/ironhold/sections/E3-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-E3-top.png",
+      "docs/maps/ironhold/sections/ironhold-E3-iso.png"
+     ],
+     "notes": "Re-review r3 after Kort's ruling of 2026-10-31 (river bends around the keep court). No change to this section's blocks (plan differs only in its reopen text); closure, fosse, towers and Outer Yard as in r2. Gate-sight station awaiting modes lane."
     }
    ]
   },
@@ -800,6 +819,21 @@
       "docs/maps/ironhold/sections/ironhold-F3-iso.png"
      ],
      "notes": "Re-review after Kort's rulings of 2026-10-30 (reopen plan). North inner curtain run z -30..-28 from x -35 to the west river cliff, clear of siege ward-n (z -27..-23). River now in a cut channel (water y 59, banks 63) so it cannot be climbed out of; B deck spans it over open air. Inner yard packed mud unchanged. Ward-b and B ring untouched."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5), self-review of top and iso renders",
+     "at": "2026-10-31T05:01:58Z",
+     "digest": "c25b24f9792ce43c7b1b87d59787a9dfdd2d0f05023d907db0144b266ca78e1c",
+     "plans": [
+      "docs/maps/ironhold/sections/F3-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-F3-top.png",
+      "docs/maps/ironhold/sections/ironhold-F3-iso.png"
+     ],
+     "notes": "Re-review r3 after Kort's ruling of 2026-10-31 (river bends around the keep court). River's north elbow starts at the section's south edge (z 13..15) heading east toward the keep leg; B deck, inner yard and north closure as in r2. Ward-b and B ring untouched."
     }
    ]
   },
@@ -1011,6 +1045,21 @@
       "docs/maps/ironhold/sections/ironhold-E4-iso.png"
      ],
      "notes": "Re-review after Kort's rulings of 2026-10-30 (reopen plan). Inner curtain closure south of the gate: x -40..-36 from z 24 to 30, top 71, joining the F4 run. Rest unchanged from r1; stage A ring clear."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5), self-review of top and iso renders",
+     "at": "2026-10-31T05:01:56Z",
+     "digest": "79efcc32f13a3c7f0680f3dd02d1ad5fde4963849428da94383e993cacf89dd2",
+     "plans": [
+      "docs/maps/ironhold/sections/E4-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-E4-top.png",
+      "docs/maps/ironhold/sections/ironhold-E4-iso.png"
+     ],
+     "notes": "Re-review r3 after Kort's ruling of 2026-10-31 (river bends around the keep court). No change to this section's blocks (plan differs only in its reopen text); south closure as in r2. Stage A ring clear."
     }
    ]
   },
@@ -1060,6 +1109,21 @@
       "docs/maps/ironhold/sections/ironhold-F4-iso.png"
      ],
      "notes": "Re-review after Kort's rulings of 2026-10-30 (reopen plan). Great Keep tower moved out of the river to x 9..23, z 24..44; river line at x 4..5 is clean (the river runs under today's keep court floor, which the structure pass replaces). South inner curtain run z 28..30 from x -35 to the keep court wall at x -23, clear of siege ward-s. Keep-sight station untouched, awaiting modes lane. Tower replaces today's keep east wall in its footprint."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5), self-review of top and iso renders",
+     "at": "2026-10-31T05:01:59Z",
+     "digest": "e66b3eb3a9c91c1833edc57c320b21d745df21fe9c4a465fbef1fc47ccbac7ad",
+     "plans": [
+      "docs/maps/ironhold/sections/F4-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-F4-top.png",
+      "docs/maps/ironhold/sections/ironhold-F4-iso.png"
+     ],
+     "notes": "Re-review r3 after Kort's ruling of 2026-10-31 (river bends around the keep court). River now skirts the keep court: elbow z 13..19 north of the court, leg x 25..30 with a one-block bank at x 24 past the tower's foot, elbow z 49..55 back to x 0. Court and stage C ring stand on solid ground, lock intact (locks ok). Leg stays inside column F, G untouched. Keep-sight station awaiting modes lane. A small grey block at x 31..32, z 34..37 in the margin is base content in G4, not this plan."
     }
    ]
   },

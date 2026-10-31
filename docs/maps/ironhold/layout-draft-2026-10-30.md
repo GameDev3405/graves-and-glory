@@ -12,6 +12,10 @@ Kort's rulings on the first blockout (2026-10-30), which amend this layout:
 - **Great Keep tower** moves out of the river to x 9..23, z 24..44 on the east bank; the river line at x 4..5 stays clean.
 - **Defender stations** stay as placed, awaiting the modes lane's confirmation.
 
+Kort's rulings of 2026-10-31:
+- **River bends around the keep court** instead of running under it: an elbow along z 13..19 north of the court, a leg at x 25..30 past the tower's foot, and an elbow along z 49..55 back to x 0. The court and the stage C ring stay on solid ground; the ring's lock is unchanged.
+- **Adoption step:** Spec/LANDMARKS keeps today's x 72 east curtain rows (`ih-curtain-en1`, `en2`, `es1`, `es2`) until the rebuilt Ironhold is adopted; the change that adopts it removes them.
+
 No game code, spawn or capture point has changed yet (plan 7.3): the Dusk spawn move and the postern are for the modes lane.
 
 Files in this folder:
@@ -81,7 +85,7 @@ Camp low; field and Mire medium (mantlet rows at x -235, -200, -160, -130, -110,
 `[Choice]` Cover thins toward the gate so the final push is costly, which matches the "open-field approach" vision.
 
 ## 7. Height bands (top of ground or structure)
-- Ground: rim 82-88; camp shelf, Gallows Ridge, Watch Hill shoulder 72; north bluff 70; west upland 67; field and fortress floor 63-64; Mire and fosse water 61; river water 59 in its cut channel; gorge floor 44.
+- Ground: rim 82-88; camp shelf, Gallows Ridge, Watch Hill shoulder 72; north bluff 70; west upland 67; field and fortress floor 63-64; Mire and fosse water 61; river water 59 in its cut channel, which bends east around the keep court; gorge floor 44.
 - Walls: curtain walk 72; gate towers 81; keep walls 85; Great Keep tower 114, crown 118.
 
 `[Choice]` The points keep elevation 64. The ridges sit beside A and C, not under them, so today's point rows stay valid.
