@@ -198,12 +198,13 @@ def last_pass_review(s):
 
 def sign(m, sid, pass_, world, by, verdict='pass', notes='', images=(), plans=(), now=None):
     """Records an agent review of one pass of a section: the section digest of world, the images and plans reviewed,
-    and notes. A passing review moves the status to that pass; 'changes' records the review only. Returns the review."""
+    and notes. A passing review moves the status to that pass; 'changes' records the review only. The current pass can
+    be reviewed again (after a plan reopened it); that keeps the status. Returns the review."""
     s = section(m, sid)
     if verdict not in VERDICTS:
         raise ManifestError([f'verdict must be one of {", ".join(VERDICTS)}'])
     want = next_pass(s['status'])
-    if pass_ != want and not (pass_ == s['status'] and verdict == 'changes'):
+    if pass_ != want and pass_ != s['status']:  # the next pass, or a re-review of the current one after rework
         raise ManifestError([f'section {sid} is at {s["status"]}; the next review is {want or "none (done)"}, not {pass_}'])
     if not by.strip():
         raise ManifestError(['by must name the reviewer'])

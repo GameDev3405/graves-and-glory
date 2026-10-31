@@ -374,6 +374,10 @@ class ManifestTest(unittest.TestCase):
         r = mf.sign(m, 's0', 'blockout', w, 'agent', images=['a.png'], plans=['p.json'], now=NOW)
         self.assertEqual((m['sections'][0]['status'], r['at'], r['images']), ('blockout', '2026-10-30T00:00:00Z', ['a.png']))
         self.assertEqual(mf.validate_manifest(m), [])
+        r = mf.sign(m, 's0', 'blockout', w, 'agent', notes='re-review after a reopen plan', now=NOW)
+        self.assertEqual((r['verdict'], m['sections'][0]['status'], len(m['sections'][0]['reviews'])), ('pass', 'blockout', 3))
+        with self.assertRaises(mf.ManifestError):
+            mf.sign(m, 's0', 'natural', w, 'agent')  # structure comes first
         rows = {r['id']: r for r in mf.status_rows(m, w)}
         self.assertFalse(rows['s0']['drift'])
         self.assertIsNone(rows['s1']['drift'])
@@ -398,8 +402,8 @@ class ManifestTest(unittest.TestCase):
             r = run('sign', man, 's0', '--pass', 'blockout', '--world', world, '--by', 'unit', '--notes', 'ok')
             self.assertEqual(r.returncode, 0, r.stderr)
             self.assertIn('status blockout', r.stdout)
-            r = run('sign', man, 's0', '--pass', 'blockout', '--world', world, '--by', 'unit')
-            self.assertEqual(r.returncode, 2)
+            r = run('sign', man, 's0', '--pass', 'natural', '--world', world, '--by', 'unit')
+            self.assertEqual(r.returncode, 2)  # structure comes first
             r = run('status', man, '--world', world, '--digests')
             self.assertEqual(r.returncode, 0, r.stderr)
             self.assertIn('s0     blockout', r.stdout)

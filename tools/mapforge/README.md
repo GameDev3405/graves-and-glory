@@ -83,7 +83,7 @@ Sections lie inside the map bounds and must not overlap. Protect locks replace t
 
 `sign` records one agent review of a section pass: the section digest of the world, the plans and images reviewed and
 notes. `--verdict pass` (default) moves the status to that pass; `changes` records the review and keeps the status. A
-pass can only be reviewed once the previous one passed. `status` lists every touched section with its last review and,
+pass can only be reviewed once the previous one passed; the current pass can be reviewed again after a `reopen` plan reworked it. `status` lists every touched section with its last review and,
 with `--world`, flags **drift**: the section changed since its last passing review. `sign --whole` is Kort's sign-off
 of the finished map and needs every section `done`. Agents review the passes; Kort signs only the layout and the whole
 map. `render-section` writes `<map>-<section>-top.png` and `-iso.png` of the section plus a margin (default 4 blocks),
