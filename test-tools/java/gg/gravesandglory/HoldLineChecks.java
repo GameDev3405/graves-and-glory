@@ -288,6 +288,8 @@ final class HoldLineChecks {
         static final int[] CP_PLAN = {0, 1, 2, 2, 1, 1, 2, 2, 1, 1, 2, 2, 1, 1, 2, 2, 1, 1, 2, 2, 1, 1, 2, 2, 1, 1, 2, 2, 1, 1, 2, 2, 1};
         /** GRAVES_CORPSE_LOAD=0 leaves hl-corpse-load out (a quick hl-corpse run while developing; never for a reported run). */
         static final boolean CP_LOAD = !"0".equals(System.getenv("GRAVES_CORPSE_LOAD"));
+        /** GRAVES_FADE_NOGROUPS=1 runs hl-corpse-load with the fade pass's overlap groups off (BodyCache.noGroups, carry D14's red side): what the groups cost, measured. */
+        static final boolean CP_NOGROUPS = "1".equals(System.getenv("GRAVES_FADE_NOGROUPS"));
         /** The peak window (Task 7 fix 1): the 40 ticks of stage 131 after this tick, when the most bodies lie. Reported, not gated. */
         static final int CP_PEAK_FROM = 150, CP_PEAK_TICKS = 40;
         final Map<Integer, List<MotionInput.Attack>> evSeenAttacks = new java.util.concurrent.ConcurrentHashMap<>();
@@ -1981,7 +1983,7 @@ final class HoldLineChecks {
                     clearFixture(b, "hl-corpse"); b.clearCorpses();
                     next(b, CP_LOAD ? 129 : 140);
                 }
-                case 129 -> {if (since(b) >= 40) cpBegin(b);} // the client has the chunks round the camera again
+                case 129 -> {if (since(b) >= 40) {BodyCache.noGroups = CP_NOGROUPS; System.out.println("[p2] hl-corpse-load fade overlap groups " + (CP_NOGROUPS ? "off (GRAVES_FADE_NOGROUPS=1)" : "on")); cpBegin(b);}} // the client has the chunks round the camera again
                 case 130 -> { // hl-corpse-load: the corpse rows of this run, then 200 troops, 20 a tick, both armies on Attack toward the middle; the wave begins as they meet
                     long n = since(b); // the first tick of a stage is since 1
                     if (n == 1) {
@@ -2040,6 +2042,7 @@ final class HoldLineChecks {
                     StringBuilder per = new StringBuilder();
                     for (int i = 0; i < blocks.size(); i++) {var k = blocks.get(i); per.append(String.format(Locale.ROOT, "%sblock %d server %.3f frame %.3f world render %.3f peak server %.3f peak frame %.3f", i == 0 ? "" : "; ", i + 1, k[0], k[1], k[2], k[3], k[4]));}
                     boolean measured = blocks.size() >= 3 && blocks.stream().allMatch(k -> k[0] > 0 && k[1] > 0);
+                    BodyCache.noGroups = false;
                     report("hl-corpse-load", dead && lay && measured && rs <= 1.10 && rf <= 1.15, String.format(Locale.ROOT,
                         "dry ground only (the patch: no water, no fire, so every body settles; a body in water or burning keeps ticking and is not measured here); the client's vsync %b, maxFps %d (the run's options.txt); "
                         + "200 Squires (100 a side, AI on, both on Attack into each other, 4000 health) on the patch, one falling a tick, all dead within 10 s=%b; the bodies lay (B, lie %d fade %d: %d or more at once)=%b; "

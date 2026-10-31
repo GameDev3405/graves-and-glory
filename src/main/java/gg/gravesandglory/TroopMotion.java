@@ -178,8 +178,10 @@ public final class TroopMotion {
             p.pitch+=(float)(r[0]*RAD);p.yaw+=(float)(r[1]*RAD);p.roll+=(float)(r[2]*RAD);p.pivotX+=(float)r[3];p.pivotY+=(float)r[4];p.pivotZ+=(float)r[5];
         }
     }
-    /** Carry C13: a bone with a joint limit keeps its pitch within [min, max] degrees of its file pose. */
+    /** Carry C13: a bone with a joint limit keeps its pitch within [min, max] degrees of its file pose. noLimits (harness) skips it: mo-limits' red side. */
+    static volatile boolean noLimits;
     static void limits(TroopModel<?> m){
+        if(noLimits)return;
         for(var e:m.limits().entrySet()){
             ModelPart p=m.bone(e.getKey());if(p==null)continue;float d=p.getDefaultTransform().pitch;float[] l=e.getValue();
             p.pitch=MathHelper.clamp(p.pitch,d+l[0]*RAD,d+l[1]*RAD);

@@ -4230,7 +4230,7 @@ public final class Phase2Checks implements ClientModInitializer {
     }
 
     static final class TickCost {
-        final GravesAndGlory.Battle b;final List<String> banners;GravesAndGlory.Squad own;boolean begun;long start;double sum,avg;int samples,troops;float last;String note="";
+        final GravesAndGlory.Battle b;final List<String> banners;GravesAndGlory.Squad own;List<GravesAndGlory.Squad> armies;long fielded=-1;boolean begun;long start;double sum,avg;int samples,troops;float last;String note="";
         /** RenderCost's figures for the window, once step has returned true. */
         long frames,troopDraws;String render="";
         TickCost(GravesAndGlory.Battle b,List<String> banners){this.b=b;this.banners=banners;}
@@ -4238,15 +4238,23 @@ public final class Phase2Checks implements ClientModInitializer {
         void handBack(){if(own!=null)own.bot=false;}
         boolean step(ServerPlayerEntity p){
             if(!begun){
-                if(!Phase1Checks.skirmish(b,p,0,4,"normal"))return false;
-                own=b.squads.get(p.getUuid());own.bot=true;
-                var armies=new ArrayList<>(b.squads.values().stream().filter(s->s.seated).toList());armies.sort(Comparator.comparingInt(s->s.team));
-                for(int i=0;i<armies.size();i++)field(b,armies.get(i),banner(banners.get(i%banners.size())));
                 var centre=b.points.stream().min(Comparator.comparingDouble(c->Math.hypot(c.spec.x(),c.spec.z()))).orElseThrow().spec;
+                if(fielded<0){
+                    if(!Phase1Checks.skirmish(b,p,0,4,"normal"))return false;
+                    own=b.squads.get(p.getUuid());own.bot=true;
+                    armies=new ArrayList<>(b.squads.values().stream().filter(s->s.seated).toList());armies.sort(Comparator.comparingInt(s->s.team));
+                    for(int i=0;i<armies.size();i++)field(b,armies.get(i),banner(banners.get(i%banners.size())));
+                    // R41: the commander's own troops spawn beside him at his base and his client starts tracking them there. Moved to the centre on the
+                    // same tick as he is, they stayed tracked; the client's copies sat in its base chunks, which it unloads as he lands, so they never
+                    // ticked to the new position (the client drew 80 troops 263 blocks off and p2-render-cost read 0 draws after the banners suite).
+                    // He goes first; once his move has landed the server has dropped them from his view, and the move below spawns them afresh.
+                    p.changeGameMode(net.minecraft.world.GameMode.SPECTATOR);b.relocate(p,centre.x(),Math.max(63,Arena.ground(centre.x(),centre.z()))+15,centre.z()+24,180,30);
+                    fielded=b.time;return false;
+                }
+                if(b.time-fielded<20)return false;
                 int[] n={0,0};
                 for(var u:b.units){int t=u.squad.team,i=n[t]++;double x=centre.x()+(t==0?-12:12)+(t==0?-1:1)*(i/10)*1.5,z=centre.z()+(i%10-4.5)*1.5;u.mob.refreshPositionAndAngles(x,Phase1Checks.top(b,x,z),z,t==0?-90:90,0);}
                 for(var s:armies){s.order="attack";s.target=new Vec3d(centre.x(),65,centre.z());s.reinforceAt=Long.MAX_VALUE;}
-                p.changeGameMode(net.minecraft.world.GameMode.SPECTATOR);b.relocate(p,centre.x(),Math.max(63,Arena.ground(centre.x(),centre.z()))+15,centre.z()+24,180,30);
                 troops=b.units.size();begun=true;start=b.time;note=armies.size()+" armies around "+centre.id()+" under "+banners;RenderCost.start();
                 System.out.println("[p2] tick-cost fixture: "+armies.size()+" armies, "+troops+" troops around "+centre.id()+" under "+banners);
                 return false;
@@ -4268,7 +4276,7 @@ public final class Phase2Checks implements ClientModInitializer {
             WorldRenderEvents.START.register(ctx->{if(on){begin=System.nanoTime();drawsAt=TroopRenderer.troopDraws;}});
             WorldRenderEvents.END.register(ctx->{if(!on||begin==0)return;long ns=System.nanoTime()-begin;begin=0;
                 frames++;sumNs+=ns;worstNs=Math.max(worstNs,ns);draws+=TroopRenderer.troopDraws-drawsAt;entities+=rendered(MinecraftClient.getInstance());
-                if(frames==300)animator=animatorCost(MinecraftClient.getInstance());});
+                if(frames==300)animator=animatorCost(MinecraftClient.getInstance())+"; "+stale(MinecraftClient.getInstance());});
         }
         /** The entities the last frame drew ("E: drawn/loaded" of the F3 screen). */
         static int rendered(MinecraftClient c){try{String t=c.worldRenderer.getEntitiesDebugString();int a=t.indexOf("E: ")+3;return Integer.parseInt(t.substring(a,t.indexOf('/',a)).trim());}catch(RuntimeException e){return 0;}}
@@ -4292,6 +4300,12 @@ public final class Phase2Checks implements ClientModInitializer {
             if(n==0)return "animator: no troop on this client";
             double us=full/1e3/n,reset=bare/1e3/n;
             return String.format(Locale.ROOT,"animator: setAngles %.1f us a troop (a bare reset of every bone %.1f us), %d troops, so %.2f ms a frame for all of them",us,reset,troops.size(),us*troops.size()/1e3);
+        }
+        /** R41: this client's troops more than 2 blocks from their server copies, of all it has (a stale copy is drawn where the server's troop no longer is). */
+        static String stale(MinecraftClient c){
+            var srv=c.getServer();if(c.world==null||srv==null)return "stale troops: no world";int n=0,stale=0;
+            for(Entity e:c.world.getEntities())if(e instanceof MobEntity&&TroopModels.troopOf(e)!=null){n++;var so=srv.getOverworld().getEntity(e.getUuid());if(so==null||so.getPos().distanceTo(e.getPos())>2)stale++;}
+            return "troops on this client "+n+", more than 2 blocks from the server's (or gone there) "+stale;
         }
         static void start(){frames=sumNs=worstNs=draws=entities=0;begin=0;animator="";on=true;}
         static String summary(){

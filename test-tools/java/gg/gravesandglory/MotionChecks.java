@@ -385,7 +385,7 @@ public final class MotionChecks {
     // ---- Task 13: the motion engine drives troops ----
 
     /**
-     * The motion suite: the live checks (Live: mo-stance, mo-cull, mo-stance-live, mo-crowd, mo-late-join) on a platform of their
+     * The motion suite: the live checks (Live: mo-stance, mo-cull with mo-limits, mo-stance-live, mo-crowd, mo-late-join) on a platform of their
      * own, then the rig shots (Rig) on a fresh one. Each stage's client tick counts from its own start.
      */
     static final class Motion implements Phase2Checks.Suite, Phase2Checks.ServerWatch {
@@ -502,9 +502,17 @@ public final class MotionChecks {
     /** The worst margin found so far: how far a pose reached outside the cull reach (blocks, negative inside), where, and how many poses. */
     static final class Worst {
         double out = Double.NEGATIVE_INFINITY; String at = ""; int poses;
+        /** Carry C13: the most a jointed bone went past its limit (degrees, negative inside) and where; the deepest shin bend (degrees past the file pose). */
+        double over = Double.NEGATIVE_INFINITY, shin = Double.NEGATIVE_INFINITY; String overAt = "";
         void see(TroopModel<?> m, double[] reach, String label) {
             double o = Phase2Checks.Anim.outside(m.extent(), reach); poses++;
             if (o > out) { out = o; at = label; }
+            for (var e : m.limits().entrySet()) {
+                ModelPart p = m.bone(e.getKey()); if (p == null) continue;
+                double d = (p.pitch - p.getDefaultTransform().pitch) / TroopModel.RAD, v = Math.max(d - e.getValue()[1], e.getValue()[0] - d);
+                if (v > over) { over = v; overAt = e.getKey() + " " + String.format(Locale.ROOT, "%.2f", d) + " deg, " + label; }
+            }
+            for (String b : List.of("right_shin", "left_shin")) { ModelPart p = m.bone(b); if (p != null) shin = Math.max(shin, (p.pitch - p.getDefaultTransform().pitch) / TroopModel.RAD); }
         }
     }
     static MotionInput in(double now, double limbAngle, double speed, double headYaw, double headPitch, double yawRate, String stance, float aim,
@@ -516,6 +524,41 @@ public final class MotionChecks {
         for (int i = 0; i < frames; i++) { TroopMotion.simulate(m, st, f.at(i, T0 + i * .05), shield); w.see(m, reach, label + " at frame " + i); }
     }
 
+    /** Every pose mo-cull measures of one model (the method comment of cull), each seen by w. */
+    static void sweep(TroopModel<?> m, TroopMotion.Fam fam, double[] reach, Worst w) {
+        for (var e : fam.all().entrySet()) for (boolean sh : new boolean[]{false, true}) {
+            double len = e.getValue().length();
+            for (int i = 0; i * .05 <= len + 1e-9; i++) {
+                m.getPart().traverse().forEach(ModelPart::resetTransform);
+                TroopMotion.applyForced(m, e.getKey(), i * .05, sh); w.see(m, reach, "forced " + e.getKey() + " at " + String.format(Locale.ROOT, "%.2f", i * .05) + " s" + (sh ? " with a shield" : ""));
+            }
+        }
+        long tick0 = Math.round(T0 * Clip.TICKS) + 2;
+        int attacks = fam.family().attacks().size();
+        double[][] ctx = {{0, 0}, {1, 0}, {1.5, 0}, {0, 720}}; String[] ctxName = {"standing", "walking", "running", "turning"};
+        for (int a = 0; a < attacks; a++) for (int k = 0; k < ctx.length; k++) for (boolean sh : new boolean[]{false, true}) {
+            final int ai = a; final double sp = ctx[k][0], yr = ctx[k][1];
+            run(m, reach, w, "attack " + fam.family().attacks().get(a).name() + " " + ctxName[k] + (sh ? " with a shield" : ""), 50, sh,
+                (i, now) -> in(now, i * sp, sp, 85, 60, yr, "hold", 0, false, true, false, 0, new MotionInput.Attack(ai, tick0), null));
+        }
+        for (String zone : List.of("head", "body", "legs")) for (boolean blocked : new boolean[]{false, true}) for (boolean sh : new boolean[]{false, true}) {
+            var hit = new MotionInput.Hit("slash", zone, 0f, 2, blocked, false, tick0);
+            run(m, reach, w, "hit " + zone + (blocked ? " blocked" : "") + (sh ? " with a shield" : ""), 30, sh,
+                (i, now) -> in(now, 0, 0, 85, 60, 0, "hold", 0, blocked, true, false, 0, null, hit));
+        }
+        for (float bearing : new float[]{0, 90, 180, -90}) for (boolean sh : new boolean[]{false, true}) {
+            var hit = new MotionInput.Hit("slash", "body", bearing, 2, false, true, tick0);
+            run(m, reach, w, "death from " + bearing + (sh ? " with a shield" : ""), 80, sh,
+                (i, now) -> in(now, 0, 0, 0, 0, 0, "hold", 0, false, i < 4, i >= 4, i >= 4 ? (i - 4) * .05 : 0, null, hit));
+        }
+        for (String s : BattleMath.STANCES) for (float aim : new float[]{-60, 60}) for (boolean up : new boolean[]{false, true}) {
+            double sp = s.equals("run") || s.equals("fall_back") || s.equals("shield_move") ? 1 : 0;
+            run(m, reach, w, "stance '" + s + "' aim " + aim + (up ? " shield up" : ""), 30, up,
+                (i, now) -> in(now, i * sp, sp, -85, -60, 0, s, aim, up, up, false, 0, null, null));
+        }
+        m.getPart().traverse().forEach(ModelPart::resetTransform);
+    }
+
     /**
      * mo-cull (Task 13 step 1): every clip's posed bounds lie inside the cull box. No clip assets ship yet, so synthetic clips with
      * large moves (every attack variant of each family, the common stances, hits, block, deaths and scene clips) are installed in
@@ -523,10 +566,12 @@ public final class MotionChecks {
      * its cull reach: every clip forced whole-body at full weight every 0.05 s, shield down and up; then engine sequences on the
      * largest seed (attacks standing, walking, running and turning at 720 degrees a second, with the head at its limits; every
      * hit zone at weight 2, blocked and not; deaths from the front, back and both sides; every server stance with the aim at
-     * +-60 and the shield both ways). The real clips go back after.
+     * +-60 and the shield both ways). The real clips go back after. mo-limits (carry C13, R13): over the same poses no bone with a joint
+     * limit (the mage's shins, [0, 10] degrees) goes past it, and with TroopMotion.noLimits on the same poses do (the red side).
      */
     static void cull() {
         Map<String, Clip> before = ClipLibrary.all(); List<String> bad = new ArrayList<>(); StringBuilder sb = new StringBuilder(); int poses = 0, models = 0;
+        StringBuilder lim = new StringBuilder(); List<String> limBad = new ArrayList<>(); int limModels = 0; double shinFree = Double.NEGATIVE_INFINITY; String shinFreeAt = "";
         try {
             Map<String, Clip> synth = new TreeMap<>(before);
             for (String t : TroopModels.ids()) { var m = TroopModels.model(t); var row = m == null ? null : TroopMotion.row(m); if (row != null) synthetic(m.rig, row.family(), synth); }
@@ -536,37 +581,16 @@ public final class MotionChecks {
                 if (row == null || fam == null) continue;
                 models++;
                 double[] reach = m.cullReach(); Worst w = new Worst();
-                for (var e : fam.all().entrySet()) for (boolean sh : new boolean[]{false, true}) {
-                    double len = e.getValue().length();
-                    for (int i = 0; i * .05 <= len + 1e-9; i++) {
-                        m.getPart().traverse().forEach(ModelPart::resetTransform);
-                        TroopMotion.applyForced(m, e.getKey(), i * .05, sh); w.see(m, reach, "forced " + e.getKey() + " at " + String.format(Locale.ROOT, "%.2f", i * .05) + " s" + (sh ? " with a shield" : ""));
-                    }
-                }
-                long tick0 = Math.round(T0 * Clip.TICKS) + 2;
-                int attacks = fam.family().attacks().size();
-                double[][] ctx = {{0, 0}, {1, 0}, {1.5, 0}, {0, 720}}; String[] ctxName = {"standing", "walking", "running", "turning"};
-                for (int a = 0; a < attacks; a++) for (int k = 0; k < ctx.length; k++) for (boolean sh : new boolean[]{false, true}) {
-                    final int ai = a; final double sp = ctx[k][0], yr = ctx[k][1];
-                    run(m, reach, w, "attack " + fam.family().attacks().get(a).name() + " " + ctxName[k] + (sh ? " with a shield" : ""), 50, sh,
-                        (i, now) -> in(now, i * sp, sp, 85, 60, yr, "hold", 0, false, true, false, 0, new MotionInput.Attack(ai, tick0), null));
-                }
-                for (String zone : List.of("head", "body", "legs")) for (boolean blocked : new boolean[]{false, true}) for (boolean sh : new boolean[]{false, true}) {
-                    var hit = new MotionInput.Hit("slash", zone, 0f, 2, blocked, false, tick0);
-                    run(m, reach, w, "hit " + zone + (blocked ? " blocked" : "") + (sh ? " with a shield" : ""), 30, sh,
-                        (i, now) -> in(now, 0, 0, 85, 60, 0, "hold", 0, blocked, true, false, 0, null, hit));
-                }
-                for (float bearing : new float[]{0, 90, 180, -90}) for (boolean sh : new boolean[]{false, true}) {
-                    var hit = new MotionInput.Hit("slash", "body", bearing, 2, false, true, tick0);
-                    run(m, reach, w, "death from " + bearing + (sh ? " with a shield" : ""), 80, sh,
-                        (i, now) -> in(now, 0, 0, 0, 0, 0, "hold", 0, false, i < 4, i >= 4, i >= 4 ? (i - 4) * .05 : 0, null, hit));
-                }
-                for (String s : BattleMath.STANCES) for (float aim : new float[]{-60, 60}) for (boolean up : new boolean[]{false, true}) {
-                    double sp = s.equals("run") || s.equals("fall_back") || s.equals("shield_move") ? 1 : 0;
-                    run(m, reach, w, "stance '" + s + "' aim " + aim + (up ? " shield up" : ""), 30, up,
-                        (i, now) -> in(now, i * sp, sp, -85, -60, 0, s, aim, up, up, false, 0, null, null));
-                }
-                m.getPart().traverse().forEach(ModelPart::resetTransform);
+                sweep(m, fam, reach, w);
+                if (!m.limits().isEmpty()) {
+                    // carry C13's red side: the same poses with the joint limits off must go past them, or the check proves nothing
+                    Worst raw = new Worst(); TroopMotion.noLimits = true;
+                    try { sweep(m, fam, reach, raw); } finally { TroopMotion.noLimits = false; }
+                    lim.append(String.format(Locale.ROOT, "%s: %d poses, worst %.3f deg past a limit (%s), deepest shin %.2f; with the limits off %.3f deg past (%s); ",
+                        t, w.poses, w.over, w.overAt, w.shin, raw.over, raw.overAt));
+                    if (!(w.over <= 1e-3) || !(raw.over > 1)) limBad.add(t + (w.over > 1e-3 ? " goes " + String.format(Locale.ROOT, "%.3f", w.over) + " deg past at " + w.overAt : " never needs its limit (red side " + String.format(Locale.ROOT, "%.3f", raw.over) + ")"));
+                    limModels++;
+                } else if (w.shin > shinFree) { shinFree = w.shin; shinFreeAt = t; }
                 poses += w.poses;
                 sb.append(String.format(Locale.ROOT, "%s %d poses, reach r%.2f %.2f..%.2f, worst %.3f blocks %s (%s); ", t, w.poses, reach[0], reach[1], reach[2], w.out, w.out <= 0 ? "inside" : "OUTSIDE", w.at));
                 if (!(w.out <= 0)) bad.add(t + " reaches " + String.format(Locale.ROOT, "%.3f", w.out) + " blocks outside at " + w.at);
@@ -576,6 +600,8 @@ public final class MotionChecks {
             ClipLibrary.install(before);
             for (String t : TroopModels.ids()) { var m = TroopModels.model(t); if (m != null) m.getPart().traverse().forEach(ModelPart::resetTransform); }
         }
+        report("mo-limits", limBad.isEmpty() && limModels > 0, limModels + " troop models with joint limits (carry C13, R13): " + lim + "deepest shin bend on a model without limits "
+            + String.format(Locale.ROOT, "%.2f", shinFree) + " deg (" + shinFreeAt + ")" + (limBad.isEmpty() ? "" : "; failing: " + limBad));
         report("mo-cull", bad.isEmpty() && models > 0 && poses > 0, models + " troop models, " + poses + " posed bounds against cullBox (synthetic clips; the real clips put back): " + sb + (bad.isEmpty() ? "every pose inside" : "outside: " + bad));
     }
 
