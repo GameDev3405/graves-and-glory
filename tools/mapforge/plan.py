@@ -7,11 +7,12 @@ import json
 import pathlib
 
 from .structure import AIR, Structure, block_name, normalize, resolve_piece, rotate_state, to_world
+from . import terrain
 from .world import AIR_CELL, Cell, write_json_atomic
 
 PLAN_FORMAT = 'gg-mapforge-plan/1'
 UNDO_FORMAT = 'gg-mapforge-undo/1'
-OPS = ('set', 'fill', 'clear', 'structure', 'terrain')
+OPS = ('set', 'fill', 'clear', 'structure', 'terrain') + terrain.HELPERS
 DEFAULT_MAX_CHANGED = 65536
 MAX_OP_VOLUME = 2_000_000
 Y_RANGE = (-64, 319)  # 1.20.1 overworld build height
@@ -126,6 +127,9 @@ def _validate_op(where, op, plan_dir, errors):
         errors.append(f'{where}: op must be one of {", ".join(OPS)}')
         return
     kind = op['op']
+    if kind in terrain.HELPERS:
+        terrain.validate_helper(where, op, errors)
+        return
     known = {'op', 'note'} | {
         'set': {'pos', 'block'},
         'fill': {'min', 'max', 'block', 'replace', 'shape'},
@@ -253,6 +257,8 @@ def compile_plan(plan, world, plan_dir=None):
                 if not include_air and block_name(state) == AIR:
                     continue
                 put(i, to_world(struct.size, at, rot, local), Cell.from_tag(rotate_state(state, rot), be))
+        elif kind in terrain.HELPERS:
+            terrain.RUN[kind](op, get, lambda pos, cell, i=i: put(i, pos, cell))
         elif kind == 'terrain':
             surface = Cell(normalize(op['surface']))
             under = Cell(normalize(op.get('under', op['surface'])))
@@ -331,6 +337,9 @@ def lock_violations(plan, changes, protect=(), locks=None):
 
 def summarize(plan, world, changes, violations):
     per_op = collections.Counter(i for _, _, i in changes.values())
+    per_cols = collections.defaultdict(set)
+    for pos, (_, _, i) in changes.items():
+        per_cols[i].add((pos[0], pos[2]))
     placed, removed = collections.Counter(), collections.Counter()
     for before, after, _ in changes.values():
         if after != AIR_CELL:
@@ -348,7 +357,8 @@ def summarize(plan, world, changes, violations):
         'plan': plan['id'], 'planSha256': plan_sha(plan), 'world': world.name,
         'worldBefore': world.digest(), 'worldAfter': predicted.digest(),
         'changed': len(changes), 'box': box,
-        'operations': [{'index': i, 'op': op['op'], 'note': op.get('note', ''), 'changed': per_op.get(i, 0)}
+        'operations': [{'index': i, 'op': op['op'], 'note': op.get('note', ''), 'changed': per_op.get(i, 0),
+                        'columns': len(per_cols.get(i, ()))}
                        for i, op in enumerate(plan['operations'])],
         'placed': dict(sorted(placed.items(), key=lambda kv: (-kv[1], kv[0]))),
         'removed': dict(sorted(removed.items(), key=lambda kv: (-kv[1], kv[0]))),
@@ -361,7 +371,7 @@ def format_summary(s):
              f'world {s["worldBefore"][:12]} -> {s["worldAfter"][:12]}; {s["changed"]} block(s) change'
              + (f' in box {s["box"][0]}..{s["box"][1]}' if s['box'] else '')]
     for op in s['operations']:
-        lines.append(f'  [{op["index"]}] {op["op"]:<9} {op["changed"]:>7} changed  {op["note"]}')
+        lines.append(f'  [{op["index"]}] {op["op"]:<9} {op["changed"]:>7} changed in {op.get("columns", 0):>5} columns  {op["note"]}')
     for title, key, sign in (('placed', 'placed', '+'), ('removed', 'removed', '-')):
         if s[key]:
             lines.append(f'  {title}: ' + ', '.join(f'{sign}{n} {name}' for name, n in s[key].items()))

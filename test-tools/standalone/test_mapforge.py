@@ -12,7 +12,7 @@ import unittest
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / 'tools'))
 from mapforge import nbt  # noqa: E402
-from mapforge.plan import PLAN_FORMAT, PlanError, apply, compile_plan, dry_run, rollback, validate, write_undo  # noqa: E402
+from mapforge.plan import PLAN_FORMAT, PlanError, apply, compile_plan, dry_run, format_summary, rollback, validate, write_undo  # noqa: E402
 from mapforge.structure import DATA_VERSION, PIECES, Structure, footprint, normalize, rotate_state, to_world  # noqa: E402
 from mapforge.world import AIR_CELL, Cell, World  # noqa: E402
 from mapforge import render  # noqa: E402
@@ -234,6 +234,205 @@ class LockApplyRollbackTest(unittest.TestCase):
             s.save(pathlib.Path(d, 'e.nbt'))
             again = World.from_structure(Structure.load(pathlib.Path(d, 'e.nbt')), lo, 'camp')
             self.assertEqual(again.digest(), w.digest())
+
+
+def ground(size=24, top=64, depth=5):
+    w = World('test')
+    for x in range(size):
+        for z in range(size):
+            for y in range(top - depth, top + 1):
+                w.set((x, y, z), Cell('minecraft:grass_block' if y == top else 'minecraft:dirt'))
+    return w
+
+
+def tops(world, changes=None, scan=(40, 120)):
+    """Ground top per column (air and water are not ground) of world with changes applied."""
+    def get(pos):
+        return changes[pos][1] if changes and pos in changes else world.get(pos)
+    out = {}
+    for x, _, z in list(world.blocks) + list(changes or {}):
+        if (x, z) not in out:
+            out[(x, z)] = next((y for y in range(scan[1], scan[0] - 1, -1)
+                                if get((x, y, z)).state not in ('minecraft:air', 'minecraft:water')), None)
+    return out
+
+
+class TerrainHelperTest(unittest.TestCase):
+    """noise, erode, breakup, wall, path and river (tools/mapforge/terrain.py)."""
+
+    def test_helper_validation(self):
+        bad = [({'op': 'noise', 'min': [0, 0], 'max': [3, 3], 'scale': 4}, 'noise needs amplitude'),
+               ({'op': 'noise', 'min': [0, 0], 'max': [3, 3], 'amplitude': 1, 'scale': 0}, 'scale must be positive'),
+               ({'op': 'erode', 'min': [5, 0], 'max': [3, 3]}, 'is above max'),
+               ({'op': 'erode', 'min': [0, 0], 'max': [3, 3], 'mode': 'wind'}, 'mode must be thermal or smooth'),
+               ({'op': 'breakup', 'min': [0, 0], 'max': [3, 3], 'replace': ['grass_block'], 'mix': [['gravel', 0]]}, 'mix'),
+               ({'op': 'breakup', 'min': [0, 0], 'max': [3, 3], 'replace': ['grass_block'], 'mix': 'gravel',
+                 'near': ['water']}, 'near needs width'),
+               ({'op': 'wall', 'points': [[0, 0], [5, 0]], 'floor': 60, 'block': 'stone'}, 'give top'),
+               ({'op': 'wall', 'points': [[0, 0]], 'top': 70, 'floor': 60, 'block': 'stone'}, 'at least two'),
+               ({'op': 'path', 'points': [[0, 0], [5, 0]], 'width': 3, 'surface': 'dirt_path', 'colour': 1},
+                "unknown key 'colour'"),
+               ({'op': 'river', 'points': [[0, 0], [5, 0]], 'width': 3, 'water': 60, 'floor': 61}, 'floor is above water'),
+               ({'op': 'river', 'points': [[0, 0], [5, 0]], 'width': 3, 'water': 60, 'floor': 55, 'exclude': [[0, 0]]},
+                'exclude must be')]
+        for op, needle in bad:
+            errors = validate(plan([op]))
+            self.assertTrue(any(needle in e for e in errors), (op, errors))
+        good = {'op': 'river', 'points': [[0, 0, 4], [5, 0.5, 6]], 'width': 3, 'water': 60, 'floor': 55,
+                'bankSurface': [['mud', 2], ['coarse_dirt', 1]], 'seed': 'x'}
+        self.assertEqual(validate(plan([good])), [])
+
+    def test_noise_is_seeded_clipped_clamped_and_fades_at_its_edge(self):
+        w = ground()
+        op = {'op': 'noise', 'min': [2, 2], 'max': [21, 21], 'amplitude': 4, 'scale': 8, 'octaves': 3, 'seed': 7,
+              'falloff': 4, 'clamp': [62, 66]}
+        a = compile_plan(plan([op]), w)
+        self.assertEqual(a, compile_plan(plan([op]), w))
+        self.assertNotEqual(a, compile_plan(plan([dict(op, seed=8)]), w))
+        self.assertTrue(a)
+        self.assertTrue(all(2 <= x <= 21 and 2 <= z <= 21 for x, _, z in a))
+        t = tops(w, a)
+        self.assertTrue(all(62 <= t[(x, z)] <= 66 for x in range(2, 22) for z in range(2, 22)))
+        self.assertGreaterEqual(len({t[c] for c in t}), 3)  # not one flat level
+        self.assertLessEqual(max(abs(t[(x, 2)] - 64) for x in range(2, 22)), 1)  # faded at the clip edge
+        col = [y for y in range(50, 75) if (a[(10, y, 10)][1] if (10, y, 10) in a else w.get((10, y, 10))) != AIR_CELL]
+        self.assertEqual(col, list(range(59, t[(10, 10)] + 1)))  # a raise or dig keeps the column solid
+
+    def test_noise_only_and_exclude_skip_columns(self):
+        w = ground()
+        for z in range(24):
+            w.set((5, 64, z), Cell('minecraft:stone_bricks'))
+        op = {'op': 'noise', 'min': [0, 0], 'max': [23, 23], 'amplitude': 5, 'scale': 6, 'seed': 3,
+              'only': ['grass_block'], 'exclude': [{'min': [10, 10], 'max': [23, 23]}]}
+        ch = compile_plan(plan([op]), w)
+        self.assertTrue(ch)
+        self.assertFalse(any(x == 5 for x, _, _ in ch))
+        self.assertFalse(any(x >= 10 and z >= 10 for x, _, z in ch))
+
+    def test_erode_thermal_limits_slope_and_smooth_relaxes(self):
+        w = ground()
+        for y in range(65, 75):
+            w.set((12, y, 12), Cell('minecraft:stone'))
+        op = {'op': 'erode', 'min': [4, 4], 'max': [20, 20], 'iterations': 30, 'talus': 1.0, 'rate': 0.5,
+              'jitter': 0.3, 'seed': 1}
+        ch = compile_plan(plan([op]), w)
+        t = tops(w, ch)
+        self.assertLess(t[(12, 12)], 74)
+        self.assertGreater(t[(13, 12)], 64)  # material slid onto the neighbours
+        self.assertTrue(all(4 <= x <= 20 and 4 <= z <= 20 for x, _, z in ch))
+        self.assertLessEqual(max(abs(t[(x, 12)] - t[(x + 1, 12)]) for x in range(4, 20)), 3)
+        self.assertEqual(ch, compile_plan(plan([op]), w))
+        sm = compile_plan(plan([dict(op, mode='smooth', iterations=3)]), w)
+        self.assertLess(tops(w, sm)[(12, 12)], 74)
+        self.assertEqual(compile_plan(plan([dict(op, only=['dirt'])]), w), {})
+
+    def test_breakup_mixes_surfaces_near_a_boundary_and_on_faces(self):
+        w = ground()
+        for z in range(24):
+            for y in (63, 64):
+                w.set((12, y, z), Cell('minecraft:water'))
+        op = {'op': 'breakup', 'min': [0, 0], 'max': [23, 23], 'replace': ['grass_block'],
+              'mix': [['coarse_dirt', 1], ['gravel', 1], ['mud', 1]], 'density': 1.0, 'scale': 1,
+              'near': ['water'], 'width': 3, 'seed': 4}
+        ch = compile_plan(plan([op]), w)
+        self.assertTrue(ch)
+        self.assertTrue(all(abs(x - 12) <= 3 and y == 64 for x, y, _ in ch))
+        self.assertGreater(len({after.state for _, after, _ in ch.values()}), 1)
+        patches = compile_plan(plan([{'op': 'breakup', 'min': [0, 0], 'max': [23, 23], 'replace': ['grass_block'],
+                                      'mix': 'coarse_dirt', 'density': 0.4, 'scale': 3, 'seed': 9}]), w)
+        self.assertTrue(0 < len(patches) < 23 * 24)
+        faces = compile_plan(plan([{'op': 'breakup', 'min': [0, 0], 'max': [23, 23], 'replace': ['dirt'],
+                                    'mix': 'stone', 'density': 1.0, 'scale': 1, 'depth': 4, 'exposed': True}]), w)
+        self.assertTrue(faces)
+        inner = {(x, y) for x, y, z in faces if 0 < x < 23 and 0 < z < 23}  # the world's own edges are faces too
+        self.assertEqual(inner, {(11, 63), (13, 63), (12, 62)})
+        self.assertNotIn((5, 63, 5), faces)  # a buried block, not a face
+
+    def test_wall_follows_points_with_thickness_top_and_merlons(self):
+        w = ground()
+        op = {'op': 'wall', 'points': [[2, 4, 70], [20, 4, 74]], 'thickness': 3, 'floor': 60, 'block': 'stone_bricks',
+              'merlons': True}
+        ch = compile_plan(plan([op]), w)
+        self.assertEqual({z for _, _, z in ch}, {3, 4, 5})
+        self.assertEqual(ch[(2, 70, 4)][1], Cell('minecraft:stone_bricks'))
+        self.assertNotIn((2, 71, 4), ch)
+        self.assertIn((20, 74, 4), ch)
+        self.assertIn((3, 71, 3), ch)  # merlon on the edge
+        self.assertNotIn((3, 71, 4), ch)
+        bent = compile_plan(plan([{'op': 'wall', 'points': [[2, 2], [12, 2], [12, 12]], 'thickness': 1, 'top': 66,
+                                   'floor': 65, 'block': 'stone'}]), w)
+        self.assertEqual({(x, z) for x, _, z in bent}, {(x, 2) for x in range(2, 13)} | {(12, z) for z in range(2, 13)})
+
+    def test_path_grades_a_causeway_and_blends_its_edges(self):
+        w = ground()
+        op = {'op': 'path', 'points': [[0, 12], [23, 12]], 'width': 3, 'falloff': 3, 'y': 68, 'surface': 'dirt_path',
+              'under': 'cobblestone', 'edge': [['coarse_dirt', 1], ['gravel', 1]], 'edgeDensity': 1.0}
+        ch = compile_plan(plan([op]), w)
+        t = tops(w, ch)
+        row = [t[(10, z)] for z in range(7, 18)]
+        self.assertEqual((row[0], row[4], row[5], row[6], row[10]), (64, 68, 68, 68, 64))
+        self.assertTrue(all(a <= b for a, b in zip(row[:5], row[1:6])))  # eases up to the core
+        self.assertTrue(any(64 < h < 68 for h in row))
+        self.assertEqual(ch[(10, 68, 12)][1], Cell('minecraft:dirt_path'))
+        self.assertEqual(ch[(10, 66, 12)][1], Cell('minecraft:cobblestone'))
+        road = compile_plan(plan([{k: v for k, v in op.items() if k not in ('y', 'falloff')}]), w)
+        self.assertTrue(all(y == 64 for _, y, _ in road))
+        self.assertEqual({z for _, _, z in road}, {11, 12, 13})
+
+    def test_river_cuts_a_channel_with_cliff_or_sloped_banks(self):
+        w = ground(depth=8)
+        op = {'op': 'river', 'points': [[0, 12], [23, 12]], 'width': 7, 'depth': 3, 'water': 61, 'floor': 56,
+              'bed': 'gravel'}
+        ch = compile_plan(plan([op]), w)
+
+        def get(pos):
+            return ch[pos][1] if pos in ch else w.get(pos)
+        self.assertEqual(get((5, 61, 12)), Cell('minecraft:water'))
+        self.assertEqual(get((5, 64, 12)), AIR_CELL)
+        self.assertEqual(get((5, 58, 12)), Cell('minecraft:gravel'))  # bed 3 below the water at the centre
+        self.assertEqual(get((5, 59, 12)), Cell('minecraft:water'))
+        self.assertEqual((get((5, 59, 9)), get((5, 60, 9))), (Cell('minecraft:gravel'), Cell('minecraft:water')))  # shallower at the edge
+        self.assertEqual({z for _, _, z in ch}, set(range(9, 16)))  # a cut cliff: no bank outside the channel
+        sloped = compile_plan(plan([dict(op, bank=3, bankSurface='mud', faces=True)]), w)
+        t = tops(w, sloped)
+        self.assertEqual([t[(5, z)] for z in (16, 17, 18, 19)], [62, 63, 64, 64])
+        self.assertEqual(sloped[(5, 62, 16)][1], Cell('minecraft:mud'))
+        clipped = compile_plan(plan([dict(op, min=[0, 0], max=[9, 23])]), w)
+        self.assertTrue(clipped and all(x <= 9 for x, _, _ in clipped))
+        wide = compile_plan(plan([dict(op, points=[[0, 12, 3], [23, 12, 11]])]), w)
+        self.assertEqual({z for x, _, z in wide if x == 0}, set(range(11, 14)))
+
+    def test_helpers_obey_locks_protect_dry_run_and_rollback(self):
+        w = ground()
+        before = w.digest()
+        ops = [{'op': 'noise', 'min': [0, 0], 'max': [23, 23], 'amplitude': 3, 'scale': 6, 'seed': 2},
+               {'op': 'river', 'points': [[0, 12], [23, 12]], 'width': 5, 'water': 62, 'floor': 58, 'bank': 2},
+               {'op': 'path', 'points': [[12, 0], [12, 23]], 'width': 3, 'falloff': 2, 'y': 65, 'surface': 'dirt_path'},
+               {'op': 'wall', 'points': [[2, 2], [2, 20]], 'thickness': 2, 'top': 70, 'floor': 60, 'block': 'stone_bricks'},
+               {'op': 'erode', 'min': [0, 0], 'max': [23, 23], 'iterations': 2, 'talus': 0.5},
+               {'op': 'breakup', 'min': [0, 0], 'max': [23, 23], 'replace': ['grass_block'], 'mix': 'coarse_dirt',
+                'density': 0.3}]
+        locks = [{'id': 'zone', 'mode': 'allow', 'min': [0, 40, 0], 'max': [23, 100, 23]},
+                 {'id': 'post', 'mode': 'deny', 'min': [12, 40, 12], 'max': [12, 100, 12], 'reason': 'station'}]
+        s = dry_run(plan(ops, locks), w)
+        self.assertFalse(s['ok'])
+        self.assertTrue(any('deny region post (station)' in v for v in s['violations']))
+        with self.assertRaises(PlanError):
+            apply(plan(ops, locks), w)
+        self.assertEqual(w.digest(), before)
+        m = sample_map()
+        m['protect'] = [{'id': 'ring', 'kind': 'capture', 'center': [5, 12], 'radius': 2, 'y': [55, 64], 'reason': 'ring'}]
+        self.assertTrue(any('ring' in v for v in dry_run(plan(ops), w, manifest=m)['violations']))
+        s = dry_run(plan(ops), w)
+        self.assertTrue(s['ok'], s['violations'])
+        self.assertEqual([o['op'] for o in s['operations']], ['noise', 'river', 'path', 'wall', 'erode', 'breakup'])
+        self.assertTrue(all(o['changed'] > 0 and o['columns'] > 0 for o in s['operations']), s['operations'])
+        self.assertIn('columns', format_summary(s))
+        self.assertEqual(w.digest(), before)
+        _, undo = apply(plan(ops), w, now=NOW)
+        self.assertEqual(w.digest(), s['worldAfter'])
+        self.assertEqual(rollback(undo, w), s['changed'])
+        self.assertEqual(w.digest(), before)
 
 
 class SampleTest(unittest.TestCase):

@@ -99,6 +99,25 @@ or a diff with `--diff`/`--undo`.
 | `structure` | `piece` (`camp/archive`, from `src/main/resources/data/gravesandglory/structures`) or `file` (relative to the plan), `at`, `rotation` (0/90/180/270), `includeAir` (default true) | places a structure file the way `Structures.place` does: the centre block (middle column of the footprint, ground layer) lands on `at`, the piece turns clockwise about it, air clears, structure void and missing cells keep the world; block entities are copied, entities are not placed |
 | `terrain` | `origin` [x,z], `base`, `floor`, `heights`, `surface`, `under`, `underDepth` (3), `core`, `clearTo` | heightmap stamp: `heights[row z][col x]` is an offset from `base` (null skips the column). Each column is filled from `floor` to `base+h`: `surface` on top, `under` for the next `underDepth` blocks, `core` below; air from the top up to `clearTo` |
 
+**Terrain helpers** (`terrain.py`) are operations too, so locks, protect locks, limits, dry-run counts, apply and
+rollback treat them exactly like `fill`: a helper that would touch a denied or protected cell refuses the whole plan.
+They read the overlay, so they see earlier operations. All are deterministic for a given `seed` (int or string,
+default 0). A column's ground top is its highest block in `scan` (default [-64, 160]) that is not air or water;
+raising a column repeats the block under its old top and keeps its surface block on top, digging keeps the surface.
+Common keys: `min`/`max` [x, z] clip box (required for noise, erode, breakup), `exclude` [{min, max}] boxes left
+alone, `only` surface names the op may change. A block spec is a state or a weighted mix `[[state, weight], ...]`.
+
+| op | keys | effect |
+|---|---|---|
+| `noise` | `amplitude`, `scale`, `octaves` (3), `persistence` (0.5), `offset`, `falloff`, `clamp` [y0,y1] | layered value noise in [-1, 1] times amplitude added to each column top; `falloff` fades it to 0 over that many blocks from the clip edge; tops clamped |
+| `erode` | `mode` (`thermal` / `smooth`), `iterations` (4), `talus` (1.0), `rate` (0.5), `jitter`, `clamp` | thermal: material slides to lower neighbours (8-way) where the drop is steeper than talus blocks per block, talus jittered per column so slopes do not stair-step evenly; smooth: relax toward the neighbour mean. Columns outside the clip are fixed neighbours |
+| `breakup` | `replace`, `mix`, `density` (0.5), `scale` (3, clump size; 1 = per block), `near` + `width`, `depth` (1), `exposed` | swaps surface blocks named in `replace` for the mix in clumps; with `near`, only within `width` of those blocks (water counts under its surface), fading with distance; `depth` reaches down the column, `exposed` keeps to blocks with air or water beside them (cliff faces) |
+| `wall` | `points` [[x,z(,top)]...], `thickness` (3), `top`, `floor`, `block`, `closed`, `merlons` | columns within thickness/2 of the polyline filled from floor to top (or each point's top, interpolated); `merlons` adds every other block on the edges |
+| `path` | `points` [[x,z(,y)]...], `width`, `falloff`, `y`, `surface`, `under`, `edge`, `edgeDensity` (0.6), `wobble`, `wobbleScale` (8) | road or causeway: core within width/2 surfaced and, with `y`, graded to it; the falloff band eases back to the ground (an embankment above it, a cutting below) and is speckled with `edge`; `wobble` makes the edges ragged |
+| `river` | `points` [[x,z(,width)]...], `width`, `depth` (2), `water`, `floor`, `bank` (0), `bankSurface`, `bed` (gravel), `faces`, `wobble`, `wobbleScale` | channel: bed `depth` below `water` at the centre line and 1 at the edge, water to `water`, air above; the next `bank` blocks slope down to the water (0 = a cut cliff, banks are only lowered); `faces` lines the exposed cliff and bank cells with `bankSurface` |
+
+Dry-run prints, per operation, the changed blocks and the columns they lie in.
+
 Block states: `name[prop=value,...]`; a missing namespace means `minecraft:`; properties are sorted on read.
 Rotation turns `facing`, `axis`, `rotation` (signs, banners), rail `shape` and the north/east/south/west side
 properties; other properties are kept.
@@ -154,7 +173,7 @@ structure files.
 - `nbt.py` NBT reader/writer (byte-identical round-trip of every shipped structure file; gzip with mtime 0).
 - `structure.py` structure template files, block states, rotation and the `Structures.java` placement maths.
 - `world.py` offline world (sparse cells, sha256 digest, JSON file, import from and export to structure files).
-- `plan.py` validation, compilation, locks, summary, apply, rollback. `manifest.py` map manifests: sections, pass
+- `plan.py` validation, compilation, locks, summary, apply, rollback. `terrain.py` the terrain helper operations. `manifest.py` map manifests: sections, pass
   order, protect locks, reviews, status. `cli.py` commands.
 - `render.py` top-down, isometric, diff and contact-sheet images (Pillow). `colours.py` and `colours.json` the block
   colour table and its generator.
