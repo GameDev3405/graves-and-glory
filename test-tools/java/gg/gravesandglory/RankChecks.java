@@ -72,6 +72,10 @@ final class RankChecks {
         boolean drewSince(MinecraftClient c, List<GravesAndGlory.Unit> us, int n) { for (var u : us) { var x = e(c, u); if (x == null || drawCount(x) - counts.getOrDefault(x, 0) < n) return false; } return true; }
         /** A copy of a weapon model under another id: a tier model the art steps have not drawn yet. */
         static TroopModels.Weapon renamed(TroopModels.Weapon w, String id) { return new TroopModels.Weapon(id, w.frames(), w.far(), w.pull(), w.grip(), w.nocks(), w.texture(), w.glow(), w.rot()); }
+        /** The shipped arming_sword_t2 (121baca paints it), held while the stopgap check takes it away, and put back after: a later suite in the same client draws the real weapon, not none. */
+        static TroopModels.Weapon shippedT2; static boolean tookT2;
+        /** Puts arming_sword_t2 back as it shipped (none when it did not ship). */
+        static void restoreT2() { TroopModels.addWeapon(SWORD_T2, shippedT2); }
 
         public void step(MinecraftClient c, int tick) {
             if (tick == 20) { c.setScreen(null); UUID id = c.player.getUuid(); server(c, b -> { player = id; stage = 1; }); }
@@ -179,13 +183,13 @@ final class RankChecks {
                         var three = TroopModels.weapon(SWORD, 3); int art3 = TroopModels.weaponArt(SWORD, 3);
                         boolean with = SWORD.equals(got[0]) && SWORD_T2.equals(got[1]) && SWORD_T3.equals(got[2]) && three != null && SWORD_T3.equals(three.id()) && art3 == 3;
                         report("p2-weapon-tier-model", with, "with the tier art painted the Squires at weapon tiers 1, 2 and 3 draw " + Arrays.toString(got) + " (want arming_sword, arming_sword_t2, arming_sword_t3); TroopModels.weapon(arming_sword, 3) is " + (three == null ? "none" : three.id()) + ", weaponArt 3 -> " + art3);
-                        TroopModels.addWeapon(SWORD_T2, null); markDraws(c, tiers); marks = 1;
+                        shippedT2 = TroopModels.weapon(SWORD_T2); tookT2 = true; TroopModels.addWeapon(SWORD_T2, null); markDraws(c, tiers); marks = 1;
                     }
                     if (marks == 1 && drewSince(c, tiers, 3)) {
                         var l = last(e(c, tiers.get(1)));
                         boolean back = l != null && SWORD.equals(l.weaponId()) && TroopModels.weaponArt(SWORD, 2) == 1;
                         report("p2-weapon-tier-stopgap", back, "without arming_sword_t2 the tier 2 Squire draws " + (l == null ? "none" : l.weaponId()) + " (want arming_sword: a missing tier draws the highest tier below it)");
-                        marks = 0; server(c, b -> { var u = tiers.get(2); u.mob.setCustomName(net.minecraft.text.Text.literal(ArmyMobs.levelName(u.spec, 3) + ArmyMobs.VETERAN)); stage(u, 3, 3, 3); vetSet = true; });
+                        restoreT2(); marks = 0; server(c, b -> { var u = tiers.get(2); u.mob.setCustomName(net.minecraft.text.Text.literal(ArmyMobs.levelName(u.spec, 3) + ArmyMobs.VETERAN)); stage(u, 3, 3, 3); vetSet = true; });
                         markDraws(c, tiers); wait = 0; cs = 8;
                     }
                 }
@@ -219,7 +223,7 @@ final class RankChecks {
                     weaponParts(c); wait = 0; cs = 11;
                 }
                 case 11 -> { wait++; // p2-portrait-tiers: ArmyCards.portrait(knight, 2, 3) draws the tier-3 skin and the tier-2 weapon
-                    if (wait == 1) { var w = TroopModels.weapon(SWORD); if (w != null) TroopModels.addWeapon(SWORD_T2, renamed(w, SWORD_T2));
+                    if (wait == 1) { var w = TroopModels.weapon(SWORD); if (w != null && TroopModels.weapon(SWORD_T2) == null) TroopModels.addWeapon(SWORD_T2, renamed(w, SWORD_T2)); // the shipped one when it is there, else a fixture
                         portrait = ArmyCards.portrait(ArmyCards.spec("knight"), 2, 3); probe = new Phase2Checks.PortraitProbe(List.of(portrait)); c.setScreen(probe); marks = drawCount(portrait); }
                     if (wait >= 20 && drawCount(portrait) - marks >= 5) {
                         var l = last(portrait); var plain = ArmyCards.portrait(ArmyCards.spec("knight"), 1, 1);
@@ -227,7 +231,7 @@ final class RankChecks {
                             && new RankSync.Rank(1, 2, 3).equals(RankSync.client(portrait)) && plain != portrait && TroopChevrons.drawn(portrait) == null;
                         report("p2-portrait-tiers", ok, "the portrait at weapon 2, armour 3 (RankSync.client " + rank(RankSync.client(portrait)) + ") drew skin " + (l == null ? "none" : file(l.skin())) + " and weapon " + (l == null ? "none" : l.weaponId())
                             + " (want knight_s3 and arming_sword_t2), no chevron=" + (TroopChevrons.drawn(portrait) == null) + ", cached apart from the 1/1 portrait=" + (plain != portrait));
-                        TroopModels.addWeapon(SWORD_T2, null); c.setScreen(null); marks = 0; wait = 0; cs = 12;
+                        restoreT2(); c.setScreen(null); marks = 0; wait = 0; cs = 12;
                         server(c, b -> { for (int i = 0; i < 24; i++) { var u = post(b, i % 2 == 0 ? gold : violet, "knight", (i % 8 - 3.5) * 1.4, Phase2Checks.GildedArt.STUDIO + 3 + (i / 8) * 1.6, 180); stage(u, 3); crowd.add(u); } crowdUp = true; });
                     }
                 }
@@ -322,6 +326,6 @@ final class RankChecks {
             } catch (Exception ex) { report("p2-weapon-parts-tier", false, ex.toString()); ex.printStackTrace(); }
         }
 
-        @Override public void cleanup(MinecraftClient c) { TroopDepth.enabled = true; TroopModels.addWeapon(SWORD_T2, null); super.cleanup(c); }
+        @Override public void cleanup(MinecraftClient c) { TroopDepth.enabled = true; if (tookT2) restoreT2(); super.cleanup(c); }
     }
 }
