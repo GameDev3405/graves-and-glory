@@ -19,7 +19,7 @@ import java.util.function.Supplier;
 /**
  * The layered MotionEngine (animation rework design section 6.1) through its frame API: pops at rest, planted feet, hit
  * zones, stance easing, the gait, life, look and secondary, and actions; plus the shared fixtures (rig, clips, family, seeds,
- * the test drive and the pop tracker). MotionRulingsCheck covers the review's rulings through the same API and
+ * the test drive and the pop tracker). MotionStanceCheck, MotionReactCheck, MotionFrameCheck, MotionLifeCheck and MotionClothCheck cover the review's rulings through the same API and
  * MotionLayersCheck the layer functions directly. Never shipped.
  */
 public final class MotionEngineCheck {

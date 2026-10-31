@@ -4653,8 +4653,8 @@ public final class Phase2Checks implements ClientModInitializer {
         String control;
         try{
             var j=Depth.modelJson(c,"knight");var bones=j.getAsJsonArray("bones");JsonObject tabard=null;
-            for(var el:bones)if(el.getAsJsonObject().get("name").getAsString().equals("tabard"))tabard=el.getAsJsonObject();
-            if(tabard==null)throw new IllegalStateException("the knight has no tabard to copy");
+            for(var el:bones)if(el.getAsJsonObject().get("name").getAsString().equals("surcoat_t1"))tabard=el.getAsJsonObject();
+            if(tabard==null)throw new IllegalStateException("the knight has no tier I surcoat to copy");
             var pennant=tabard.deepCopy();pennant.addProperty("name","probe_cloth");pennant.addProperty("part","pennant");pennant.addProperty("team",true);pennant.add("stages",new com.google.gson.JsonArray());pennant.remove("relief");
             var standard=tabard.deepCopy();standard.addProperty("name","probe_pole");standard.addProperty("part","standard");standard.addProperty("team",false);standard.add("stages",new com.google.gson.JsonArray());standard.remove("relief");
             bones.add(pennant);bones.add(standard);
@@ -4674,7 +4674,7 @@ public final class Phase2Checks implements ClientModInitializer {
     static final List<String> KNIGHT_HELMS=List.of("helm_squire","helm_great","helm_crown","crest");
     static String knightHelm(int armourTier){return armourTier<=1?"helm_squire":"helm_great";}
     /** The body cloth a Gilded draw shows its side by (the hand-authored models' tabard or surcoat, per armour tier), or null. */
-    static final List<String> BODY_CLOTH=List.of("tabard","surcoat_t2","surcoat_t3","tabard_t1","tabard_t3","surcoat");
+    static final List<String> BODY_CLOTH=List.of("surcoat_t1","surcoat_t2","surcoat_t3","tabard_t1","tabard_t3","surcoat");
     static String bodyCloth(List<String> shown){for(String b:BODY_CLOTH)if(shown.contains(b))return b;return null;}
 
     /**
@@ -4772,7 +4772,7 @@ public final class Phase2Checks implements ClientModInitializer {
             // helm per armour tier and tabard, the Templar's helm and tabards); and Kort's rule (2026-10-30): no flag, pennant or
             // standard on any troop, swept over every model's draws by part and name, with a control that proves the sweep can fail
             List<String> common=List.of("head","body","right_arm","left_arm","right_hand","left_hand","right_leg","left_leg"),
-                kOwn=List.of("helm_squire","helm_great","helm_crown","tabard","surcoat_t2","surcoat_t3"),sOwn=List.of("helm","tabard_t1","tabard_t3");
+                kOwn=List.of("helm_squire","helm_great","helm_crown","surcoat_t1","surcoat_t2","surcoat_t3"),sOwn=List.of("helm","tabard_t1","tabard_t3");
             List<String> flagBad=new ArrayList<>();String sweep=noFlagSweep(c,flagBad);
             boolean bones=km!=null&&sm!=null&&km.bones().containsAll(common)&&sm.bones().containsAll(common)&&km.bones().containsAll(kOwn)&&sm.bones().containsAll(sOwn)&&flagBad.isEmpty();
             report("p2-spike-bones",bones,"knight has the rig's "+common+" and its own "+kOwn+"="+(km!=null&&km.bones().containsAll(common)&&km.bones().containsAll(kOwn))+"; sentinel the rig's and its own "+sOwn+"="+(sm!=null&&sm.bones().containsAll(common)&&sm.bones().containsAll(sOwn))
@@ -4801,7 +4801,7 @@ public final class Phase2Checks implements ClientModInitializer {
                 +"; index.json lists "+listed+", "+(missing.isEmpty()?"all loaded":"not loaded: "+missing)+"; models loaded: "+TroopModels.ids());
             loaderCheck(c);
         }
-        /** p2-spike-death: the frame caught in the death second shows the Squire in gold by its body cloth (the tabard at tier I), and no flag (Kort's no-flags rule), though this client has it on no team. */
+        /** p2-spike-death: the frame caught in the death second shows the Squire in gold by its body cloth (the tier I surcoat), and no flag (Kort's no-flags rule), though this client has it on no team. */
         void deathCheck(MinecraftClient c){
             var f=deathFrame;var m=TroopModels.model("knight");int gold=Frame.clothTone(c,m,"gold"); // the knight's own gold cloth (121baca), not the faction colour
             if(f==null){var e=dying==null?null:client(c,dying.mob);report("p2-spike-death",false,"the Squire was never drawn through its own model on its side in 300 ticks, so it was not killed: on this client="+(e!=null)+", drawn="+(e!=null&&TroopRenderer.drawn(e)!=null)+", look "+(e==null?"-":TroopModels.resolve(e))+(m==null?" (no knight model)":""));return;}
@@ -5053,15 +5053,15 @@ public final class Phase2Checks implements ClientModInitializer {
             var board=b.server.getScoreboard();String team="gg_"+side;var t=board.getTeam(team);if(t==null)t=board.addTeam(team);board.addPlayerToTeam(u.mob.getEntityName(),t);
             for(var f:Spec.FACTIONS)if(f.id().equals(side))u.mob.equipStack(EquipmentSlot.OFFHAND,GravesAndGlory.Battle.shield(u.spec,f.dye()));
         }
-        /** p2-gilded-sides: the four Squires were last drawn each in its own side's cloth, with its body cloth (the tier I tabard) and no flag; the crimson one was first drawn in gold, before its move. */
+        /** p2-gilded-sides: the four Squires were last drawn each in its own side's cloth, with its body cloth (the tier I surcoat) and no flag; the crimson one was first drawn in gold, before its move. */
         void sidesCheck(MinecraftClient c){
             var m=TroopModels.model("knight");boolean ok=m!=null;StringBuilder why=new StringBuilder();
             for(int i=0;i<4;i++){var e=client(c,sided.get(i).mob);var d=e==null?null:TroopRenderer.drawn(e);var last=d==null?null:d.last;var first=d==null?null:d.first;
                 List<String> shown=last==null||m==null?List.of():m.shownBones(last.bones());
                 List<String> flags=last==null||m==null?List.of():flagsShown(c,"knight",m,last.bones());boolean flag=!flags.isEmpty(); // Kort's rule (2026-10-30): no flag on any troop; the body cloth carries the side
-                String cloth=bodyCloth(shown);boolean good=last!=null&&FOUR.get(i).equals(last.look().side())&&FOUR.get(i).equals(last.cloth())&&!flag&&"tabard".equals(cloth);
+                String cloth=bodyCloth(shown);boolean good=last!=null&&FOUR.get(i).equals(last.look().side())&&FOUR.get(i).equals(last.cloth())&&!flag&&"surcoat_t1".equals(cloth);
                 if(i==2)good&=first!=null&&"gold".equals(first.look().side())&&"gold".equals(first.cloth())&&movedAt>=0;ok&=good;
-                why.append(FOUR.get(i)).append(": ").append(last==null?"not drawn":"drawn in "+last.cloth()+", body cloth "+cloth+" (want tabard), flag "+(flag?"shown "+flags+" (want hidden)":"hidden"))
+                why.append(FOUR.get(i)).append(": ").append(last==null?"not drawn":"drawn in "+last.cloth()+", body cloth "+cloth+" (want surcoat_t1), flag "+(flag?"shown "+flags+" (want hidden)":"hidden"))
                     .append(i==2?" (first drawn in "+(first==null?"-":first.cloth())+" at suite tick "+firstGold+", moved to crimson at "+movedAt+")":"").append(good?"":" (BAD)").append("; ");}
             report("p2-gilded-sides",ok,"one Squire on each side, left to right on the frame: "+why.toString().trim());
         }

@@ -25,6 +25,10 @@ public final class MotionEngine {
     /** Seconds each state weight takes to ramp fully on or off. */
     static final double STANCE_BLEND = 0.45, MOVE_BLEND = 0.3, RUN_BLEND = 0.5, COMBAT_BLEND = 0.6, GAIT_BLEND = 0.4,
             TURN_BLEND = 0.3, LIFE_BLEND = 0.5, LOOK_BLEND = 0.4, CALM_BLEND = 0.35, SETTLE_BLEND = 0.5, PLANT_BLEND = 0.6;
+    /** The limb speed above which a unit starts moving and below which it stops (hysteresis). */
+    static final double MOVE_ON = 0.1, MOVE_OFF = 0.04;
+    /** The limb speed a run starts at, and how much faster it is all run. */
+    static final double RUN_FROM = 0.35, RUN_SPAN = 0.6;
     /**
      * An engine-made fade may move a channel at most this far in one 60 fps frame (degrees, pixels). This leaves room under
      * the 12 degree / 1.5 px pop limit for the procedural layers moving in the same frame.
@@ -72,7 +76,8 @@ public final class MotionEngine {
      */
     public static final class State {
         boolean started, moving, dead;
-        double last;
+        /** Last frame's render time and limb speed (the speed lets a moving flip find where in the frame it crossed). */
+        double last, lastSpeed;
         /** Linear ramps in [0, 1] (the engine uses their eased values) and the target each had last frame. */
         final double[] w = new double[WEIGHTS], wTarget = new double[WEIGHTS];
         double turnPhase, turnRate, breathPhase, breathRate, flutter, flutterRate, yawRate, yawRateTarget;
@@ -86,7 +91,7 @@ public final class MotionEngine {
                 reactPrev = new double[MotionBody.REACT], reactTarget = new double[MotionBody.REACT];
         final double[] look = new double[2], lookVel = new double[2], lookPrev = new double[2];
         final double[] lag = new double[MotionBody.LAGS], lagVel = new double[MotionBody.LAGS], lagPrev = new double[MotionBody.LAGS],
-                lagTarget = new double[MotionBody.LAGS];
+                lagTarget = new double[MotionBody.LAGS], legsPrev = new double[2];
         double noveltyNext;
         long noveltyRng;
         /** Novelty idles started so far. */
@@ -151,15 +156,22 @@ public final class MotionEngine {
         String stance = in.stance();
         if (st.dead && !f.dead) st.lethal = null;
 
-        if (f.speed > 0.1) st.moving = true;
-        else if (f.speed < 0.04) st.moving = false;
+        boolean wasMoving = st.moving;
+        if (f.speed > MOVE_ON) st.moving = true;
+        else if (f.speed < MOVE_OFF) st.moving = false;
+        // The limb speed is continuous, so a flip happened inside the frame: the share of the frame after the speed crossed
+        // its edge (taking the speed as linear across the frame) is spent moving toward the new target, as at any frame rate.
+        double s0 = st.lastSpeed, after = st.moving != wasMoving && !f.first && f.speed != s0
+            ? MotionMath.clamp01((f.speed - (st.moving ? MOVE_ON : MOVE_OFF)) / (f.speed - s0)) : 0;
+        st.lastSpeed = f.speed;
         boolean moving = st.moving && !f.dead;
-        ramp(st, W_MOVE, moving ? 1 : 0, MOVE_BLEND, f);
-        ramp(st, W_RUN, moving ? MotionMath.clamp01((f.speed - 0.35) / 0.6) : 0, RUN_BLEND, f);
+        if (f.dead) after = 0;
+        ramp(st, W_MOVE, moving ? 1 : 0, MOVE_BLEND, f, after);
+        runWeight(st, moving, s0, f);
         ramp(st, W_COMBAT, f.enemy ? 1 : 0, COMBAT_BLEND, f);
         ramp(st, W_SHUFFLE, !f.dead && (in.shieldUp() || stance.equals("shield_move")) ? 1 : 0, GAIT_BLEND, f);
         ramp(st, W_BACK, !f.dead && stance.equals("fall_back") ? 1 : 0, GAIT_BLEND, f);
-        ramp(st, W_TURN, !moving && !f.dead ? MotionMath.clamp01((Math.abs(f.yawRate) - 30) / 60) : 0, TURN_BLEND, f);
+        ramp(st, W_TURN, !moving && !f.dead ? MotionMath.clamp01((Math.abs(f.yawRate) - 30) / 60) : 0, TURN_BLEND, f, after);
         ramp(st, W_LIFE, f.dead ? 0 : 1, LIFE_BLEND, f);
         ramp(st, W_LOOK, f.dead ? 0 : 1, LOOK_BLEND, f);
         ramp(st, W_PLANT, f.dead ? 0 : 1, PLANT_BLEND, f);
@@ -172,7 +184,9 @@ public final class MotionEngine {
         boolean acting = !st.tracks.isEmpty() || !st.pulses.isEmpty();
         ramp(st, W_CALM, !moving && !f.enemy && !acting && !f.dead && w[W_TURN] == 0 ? 1 : 0, CALM_BLEND, f);
         f.calm = w[W_CALM];
-        ramp(st, W_SETTLE, f.dead && MotionStack.deathPlayed(st, f.now) ? 0 : 1, SETTLE_BLEND, f);
+        double settles = MotionStack.deathSettles(st);
+        boolean played = f.dead && f.now >= settles;
+        ramp(st, W_SETTLE, played ? 0 : 1, SETTLE_BLEND, f, played && !f.first ? MotionMath.clamp01((f.now - settles) / f.dt) : 0);
         f.settle = MotionMath.ease(w[W_SETTLE]);
 
         MotionBody.locomotion(f, st, out);
@@ -326,12 +340,59 @@ public final class MotionEngine {
      * Moves ramp i toward the target it had last frame by dt / seconds, then records this frame's target, so a target that
      * changes at a sample time starts moving from that time at any frame rate. The first frame snaps to the target.
      */
-    static void ramp(State st, int i, double target, double seconds, Frame f) {
+    static void ramp(State st, int i, double target, double seconds, Frame f) { ramp(st, i, target, seconds, f, 0); }
+
+    /**
+     * As {@link #ramp(State, int, double, double, Frame)}, for a target that changed inside the frame: the last {@code after}
+     * share of the frame already moves toward the new target.
+     */
+    static void ramp(State st, int i, double target, double seconds, Frame f, double after) {
         if (f.first) { st.w[i] = target; st.wTarget[i] = target; return; }
-        double goal = st.wTarget[i], raw = st.w[i], step = f.dt / seconds;
-        st.w[i] = raw < goal ? Math.min(goal, raw + step) : Math.max(goal, raw - step);
+        st.w[i] = toward(toward(st.w[i], st.wTarget[i], f.dt * (1 - after) / seconds), target, f.dt * after / seconds);
         st.wTarget[i] = target;
     }
+
+    /** The run weight's target at a limb speed: none at a walk (0.35 and under), all of it at 0.95 and over. */
+    static double runTarget(double speed) { return MotionMath.clamp01((speed - RUN_FROM) / RUN_SPAN); }
+
+    /**
+     * Moves the run weight, at no more than 1 / RUN_BLEND a second, after its target. The limb speed is continuous, so it is
+     * taken as linear from last frame's speed {@code s0} across the frame, and the target as piecewise linear between the
+     * points where the speed crosses RUN_FROM and RUN_FROM + RUN_SPAN; each piece is chased exactly, so the weight is the same
+     * at any frame rate. A unit that is not moving targets none.
+     */
+    static void runWeight(State st, boolean moving, double s0, Frame f) {
+        double s1 = f.speed, rate = 1 / RUN_BLEND;
+        if (f.first || !moving) { ramp(st, W_RUN, moving ? runTarget(s1) : 0, RUN_BLEND, f); return; }
+        if (st.wTarget[W_RUN] == 0 && s0 > RUN_FROM) s0 = RUN_FROM;   // it was not moving last frame: its target was none
+        double w = st.w[W_RUN], u = 0, g = runTarget(s0);
+        double a = s1 != s0 ? (RUN_FROM - s0) / (s1 - s0) : -1, b = s1 != s0 ? (RUN_FROM + RUN_SPAN - s0) / (s1 - s0) : -1;
+        for (int k = 0; k < 3; k++) {
+            double next = k == 0 ? Math.min(a > 0 && a < 1 ? a : 1, b > 0 && b < 1 ? b : 1) : k == 1 ? Math.max(a > 0 && a < 1 ? a : 0, b > 0 && b < 1 ? b : 0) : 1;
+            if (next <= u) continue;
+            double gn = runTarget(s0 + (s1 - s0) * next);
+            w = chase(w, g, gn, rate, f.dt * (next - u));
+            u = next;
+            g = gn;
+        }
+        st.w[W_RUN] = w;
+        st.wTarget[W_RUN] = runTarget(s1);
+    }
+
+    /** Where w ends after dt chasing a target moving linearly from g0 to g1 at no more than rate a second. */
+    static double chase(double w, double g0, double g1, double rate, double dt) {
+        if (!(dt > 0)) return w;
+        double s = (g1 - g0) / dt, gap = g0 - w;
+        if (gap == 0 && Math.abs(s) <= rate) return g1;
+        double dir = gap > 0 ? 1 : gap < 0 ? -1 : Math.signum(s), close = rate - dir * s;
+        if (close <= 0) return w + dir * rate * dt;              // the target runs away at least as fast
+        double caught = Math.abs(gap) / close;
+        if (caught >= dt) return w + dir * rate * dt;
+        if (Math.abs(s) <= rate) return g1;                      // caught, then tracks it
+        return w + dir * rate * caught + Math.signum(s) * rate * (dt - caught);
+    }
+
+    private static double toward(double raw, double goal, double step) { return raw < goal ? Math.min(goal, raw + step) : Math.max(goal, raw - step); }
 
     static double finite(double v) { return Double.isFinite(v) ? v : 0; }
 

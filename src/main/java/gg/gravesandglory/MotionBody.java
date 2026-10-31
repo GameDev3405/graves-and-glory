@@ -359,17 +359,20 @@ final class MotionBody {
         t[CAPE_X] = bodyX; t[CAPE_Y] = bodyY; t[CREST_X] = headX; t[CREST_Y] = headY;
         t[RSTRAP_Z] = t[LSTRAP_Z] = hipZ;
         t[RSTRAP_X] = t[LSTRAP_X] = hipX;
-        double legs = softMin(softMin(out.get("right_leg", RX), out.get("left_leg", RX)), 0);
+        double rLeg = out.get("right_leg", RX), lLeg = out.get("left_leg", RX), legs = softMin(softMin(rLeg, lLeg), 0);
         t[TABARD] = legs;
         double rate = 7 + 5 * f.run;
         if (f.first) {
             System.arraycopy(t, 0, lag, 0, LAGS);
             System.arraycopy(t, 0, prev, 0, LAGS);
+            st.legsPrev[0] = rLeg;
+            st.legsPrev[1] = lLeg;
             st.yawRate = st.yawRateTarget = f.yawRate;
             st.flutterRate = rate;
         }
         for (int i = 0; i < LAGS; i++) {
-            MotionMath.step(lag, st.lagVel, i, prev[i], t[i], LAG_K[i], LAG_D[i], f.dt);
+            if (i == TABARD) tabardSteps(f, st, rLeg, lLeg);
+            else MotionMath.step(lag, st.lagVel, i, prev[i], t[i], LAG_K[i], LAG_D[i], f.dt);
             lag[i] = MotionEngine.clamp(lag[i], -720, 720);
             st.lagVel[i] = MotionEngine.clamp(st.lagVel[i], -5000, 5000);
             prev[i] = t[i];
@@ -394,12 +397,34 @@ final class MotionBody {
     }
 
     /**
-     * The smaller of a and b, rounded over SOFT_MIN degrees where they cross: its slope changes smoothly from one to the
-     * other, so a bone following the forward leg has no velocity cusp where the legs pass. Never above min(a, b).
+     * Steps the tabard's spring across the frame in steps of at most 1 / MotionBody.REACT_HZ s. The thighs are taken as
+     * moving linearly across the frame and the smooth min is taken of them at each step, so the target follows the smooth
+     * min's rounding where the legs cross instead of a chord across it, and the tabard is the same at any frame rate.
+     */
+    static void tabardSteps(MotionEngine.Frame f, MotionEngine.State st, double rLeg, double lLeg) {
+        int n = Math.max(1, (int) Math.ceil(f.dt * REACT_HZ - 1e-9));
+        double h = f.dt / n, r0 = st.legsPrev[0], l0 = st.legsPrev[1], from = st.lagPrev[TABARD];
+        for (int j = 1; j <= n; j++) {
+            double u = j / (double) n, to = j == n ? st.lagTarget[TABARD] : softMin(softMin(lerp(r0, rLeg, u), lerp(l0, lLeg, u)), 0);
+            MotionMath.step(st.lag, st.lagVel, TABARD, from, to, LAG_K[TABARD], LAG_D[TABARD], h);
+            from = to;
+        }
+        st.legsPrev[0] = rLeg;
+        st.legsPrev[1] = lLeg;
+    }
+
+    /**
+     * The smaller of a and b, rounded where they are within SOFT_MIN degrees: its slope changes smoothly (C2) from one to
+     * the other, so a bone following the forward leg has no velocity cusp where the legs pass. It is exactly min(a, b) where
+     * a == b and where they are SOFT_MIN or more apart, so it has no bias at rest; in between it is never below min(a, b)
+     * and at most 0.633 deg above it (27/512 of SOFT_MIN, where they are SOFT_MIN / 4 apart). Being exact both at a crossing
+     * and far from it, it cannot be monotone in each argument: it dips back by that 0.633 deg as they part.
      */
     static double softMin(double a, double b) {
-        double h = a - b;
-        return 0.5 * (a + b - Math.sqrt(h * h + SOFT_MIN * SOFT_MIN));
+        double h = Math.abs(a - b);
+        if (h >= SOFT_MIN) return Math.min(a, b);
+        double c = 1 - h / SOFT_MIN;
+        return 0.5 * (a + b - h * (1 - c * c * c));
     }
 
     static double lerp(double a, double b, double t) { return a + (b - a) * t; }

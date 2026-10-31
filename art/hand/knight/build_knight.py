@@ -522,8 +522,9 @@ def bones():
     ]))
     B.append(Bone("crest", "head", team=True, tag="helm", stages=[3], boxes=[
         Box((-1, -12, -4), (2, 3, 9), "crest", sheet="cloth"), Box((-1, -11, 5), (2, 9, 2), "tail", sheet="cloth")]))
-    # torso
-    B.append(Bone("tabard", "body", team=True, stages=[1], boxes=[Box((-4, -12, -2), (8, 12, 4), "tabard1", dil=0.3, sheet="cloth")]))
+    # torso. The tier I team cloth is a shell over the whole torso, so it is a surcoat that moves with the body: the
+    # engine swings a bone named "tabard" after the forward leg, which would tear a torso shell off the chest.
+    B.append(Bone("surcoat_t1", "body", team=True, stages=[1], boxes=[Box((-4, -12, -2), (8, 12, 4), "tabard1", dil=0.3, sheet="cloth")]))
     for t in (2, 3):
         B.append(Bone(f"surcoat_t{t}", "body", team=True, stages=[t], boxes=[
             Box((-3, -10, -2.3), (6, 10, 0), ("surcoat", t, False), sheet="cloth"),

@@ -290,13 +290,18 @@ final class MotionStack {
         f.bodyAction = fold(st, tracks.size(), f.now, out);
     }
 
-    /** Whether the corpse's death clip has (nearly) played out, so the secondary springs may settle: true with no death track. */
-    static boolean deathPlayed(MotionEngine.State st, double now) {
+    /**
+     * When the newest death clip is 0.55 s from its end (render time), so the corpse's secondary springs start to settle;
+     * minus infinity if no death clip is playing. It is exact rather than the first frame after, so the settle is the same at any frame rate.
+     */
+    static double deathSettles(MotionEngine.State st) {
         for (int i = st.tracks.size() - 1; i >= 0; i--) {
             Track tr = st.tracks.get(i);
-            if (tr.kind == MotionEngine.DEATH) return tr.time(now) >= tr.length() - 0.55;
+            if (tr.kind != MotionEngine.DEATH) continue;
+            double x = Math.max(0, tr.length() - 0.55);
+            return tr.start + (tr.impact < 0 ? x / tr.tempo : x <= tr.impact ? x : tr.impact + (x - tr.impact) / tr.tempo);
         }
-        return true;
+        return Double.NEGATIVE_INFINITY;
     }
 
     /** The clips the tracks are playing at {@code now}, bottom first, each with its effective share of the fold times its gain. */
