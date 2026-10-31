@@ -136,7 +136,8 @@ public final class Commander {
      * value2 of the troops of either side that fell within radius of it in the last value3 ticks (Battle.deaths), the ones nearest that point
      * first, as Risen of his own army. Each is a temporary troop (it never counts toward the slot check, a House tier, morale, mastery or the
      * report's losses) in a slot past the army's own, at value1 of its health where the fallen one lay, and is discarded after the row's
-     * durationTicks (Houses.expire, and Houses.reset at a round's end). A fallen troop rises only once: it leaves the log. With none in reach the
+     * durationTicks (Houses.expire, and Houses.reset at a round's end). A fallen troop rises only once: it leaves the log, and its body, if it still
+     * lies, is discarded as it rises (Task 7, R33). With none in reach the
      * cast is refused with a notice and no cooldown.
      */
     static final class GraveBloom implements Active {
@@ -153,6 +154,8 @@ public final class Commander {
                 var u = temporary(b, s, spec, d.at(), b.time + c.durationTicks());
                 u.mob.setHealth((float) (c.value1() * u.mob.getMaxHealth()));
                 b.deaths.remove(d);
+                // its body, if it still lies there, goes as it rises (Task 7, R33): no Risen stands over its own corpse
+                if (d.body() != null && !d.body().isRemoved() && d.body() instanceof LivingEntity dead && dead.isDead()) {GravesAndGlory.Battle.leaveSide(dead); dead.discard();}
             }
             Houses.recompute(s);
             return true;
@@ -221,9 +224,9 @@ public final class Commander {
             return true;
         }
         @Override public void tick(GravesAndGlory.Battle b, GravesAndGlory.Squad s, Spec.ClassesRow c) {}
-        /** The glow goes with the mark, at expiry, at a round start, in the lobby, and when its commander leaves or his seat changes hands. */
+        /** The glow goes with the mark, at expiry, at a round start, in the lobby, and when its commander leaves or his seat changes hands; from a body that still lies too (Task 7). */
         @Override public void end(GravesAndGlory.Battle b, GravesAndGlory.Squad s) {
-            if (s.abilityData instanceof LivingEntity prey && prey.isAlive()) prey.removeStatusEffect(StatusEffects.GLOWING);
+            if (s.abilityData instanceof LivingEntity prey && !prey.isRemoved()) prey.removeStatusEffect(StatusEffects.GLOWING);
         }
         /**
          * The nearest enemy troop or seated enemy commander on the commander's view ray within range blocks, a hand's breadth of margin round its box, that no block

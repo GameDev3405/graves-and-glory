@@ -114,6 +114,8 @@ public final class TroopModels {
         RankSync.Rank rank=rank(e);
         return new Look(t,rank.level(),rank.weaponTier(),rank.armourTier(),veteran,side(e));
     }
+    /** Whether a client entity is a troop (troopOf): the client holds troops as vanilla mobs, so ArmyMob does not tell it (Task 7 fix 1). */
+    public static boolean troop(Entity e){return troopOf(e)!=null;}
     /** The troop a mob is by its custom name (any of its level names, with or without the veteran suffix), whether or not it has a model; null for no troop. */
     static Spec.TroopsRow troopOf(Entity e){
         if(!(e instanceof MobEntity)||e.getCustomName()==null)return null;

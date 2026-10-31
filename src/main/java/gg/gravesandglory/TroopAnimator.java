@@ -176,6 +176,11 @@ public final class TroopAnimator {
         final Channel still=new Channel(),move=new Channel(),pose=new Channel(),tell=new Channel();final Map<String,Channel> overlays=new HashMap<>();
         final Fade look=new Fade(1);final float phase;final int id;boolean fresh=true;
         boolean swinging;int swingTicks,hurt;String scene,lastPose;boolean armHeld;
+        /**
+         * A body lying past its fall (Task 7): the final pose of its death clip, kept once the clip has ended and nothing else shows, the model it
+         * was taken on, and how far that pose reaches about the feet (the cull box's radius, bottom and top, margin included). Null until then.
+         */
+        float[] lying;TroopModel<?> lyingModel;double[] lyingReach;
         /** The tick of the frame before: a tell starts when a period boundary lies between it and this frame's tick, so a hitch that skips the boundary's own tick does not skip the tell (across TroopTells.CATCH_UP_TICKS or fewer). */
         int lastTick=Integer.MIN_VALUE;
         /** The idle phase is offset by the entity id, so a line of troops does not breathe in step; so is the tell (TroopTells.STAGGER_TICKS). */
@@ -233,6 +238,13 @@ public final class TroopAnimator {
             for(Track t:pose.tracks){Animation a=clip(m,t.clip,bow);if(a!=null&&a.boneAnimations().containsKey(bone))w+=t.weight(age);}
             for(var e:overlays.entrySet()){Animation a=clip(m,e.getKey(),bow);if(a!=null&&a.boneAnimations().containsKey(bone))w+=e.getValue().weight(age);}
             return Math.min(1f,w);
+        }
+        /** Whether only the death clip shows, whole and past its end: one live play in the pose role at full weight and no overlay showing. */
+        boolean ended(TroopModel<?> m,boolean bow,float age){
+            if(pose.tracks.size()!=1)return false;Track t=pose.tracks.get(0);Animation a=clip(m,t.clip,bow);
+            if(!t.live()||!"death".equals(t.clip)||a==null||t.weight(age)<1f||t.seconds(age)<a.lengthInSeconds())return false;
+            for(Channel o:overlays.values())if(o.weight(age)>0)return false;
+            return true;
         }
         /** Harness: what the State plays at an age, the clips of each role that are live (not fading out): "still walk, overlays [attack, hit]". */
         public String playing(float age){
@@ -363,8 +375,28 @@ public final class TroopAnimator {
         if(f!=null){applyForced(m,f,row,shield);return;}
         if(row==null)return;
         State s=STATES.computeIfAbsent(e,k->new State(k.getId()));
+        boolean lies=lies(e);
+        if(!lies)s.lying=null;
+        else if(s.lying!=null&&s.lyingModel==m){m.applyPose(s.lying);return;} // a lying body's pose no longer changes: put it back, nothing to play
         View v=view(m,e,s,limbDistance,row);s.update(plan(v),age);
         apply(m,s,row,shield,limbAngle,limbDistance,age,headYaw,headPitch);
+        if(lies&&s.ended(m,bow(row),age)){
+            s.lying=m.snapshot(null);s.lyingModel=m;double[] x=m.extent();
+            s.lyingReach=new double[]{x[0]+CULL_MARGIN,x[1]-CULL_MARGIN,x[2]+CULL_MARGIN};
+        }
+    }
+    /** The margin a cull reach keeps round a pose's extent (TroopModel.sample uses the same). */
+    static final double CULL_MARGIN=.25;
+    /** A troop's body past its fall, with no scene pose or forced clip on it (Task 7: it lies in its death clip's last frame). */
+    static boolean lies(Entity e){
+        return e instanceof LivingEntity le&&le.isDead()&&le.deathTime>BattleMath.DEATH_FALL_TICKS&&!SCENE.containsKey(e.getId())&&!forced.containsKey(e.getId());
+    }
+    /**
+     * The cull reach of a body lying past its fall whose final pose this client has kept (State.lying): its own pose's extent, much less
+     * than every whole-body clip's. Null for any other entity, or a body not yet drawn lying, which keeps the posed reach.
+     */
+    public static double[] lyingReach(Entity e){
+        if(!lies(e))return null;State s=STATES.get(e);return s==null||s.lying==null?null:s.lyingReach;
     }
     /** What the entity shows this frame, against what its State saw last frame (swing and hurt starts, the scene pose before this one). */
     static View view(TroopModel<?> m,MobEntity e,State s,float limbDistance,Spec.TroopsRow row){

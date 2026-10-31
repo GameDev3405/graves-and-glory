@@ -59,6 +59,8 @@ public final class TroopRenderer<T extends MobEntity> extends LivingEntityRender
         /** The TroopDepth frame this troop's relief and weapon quads were last counted in (one count a frame, whatever passes drew it). */
         int countedFrame; }
     private static final Map<Entity,Drawn> DRAWN=new MapMaker().weakKeys().makeMap();
+    /** Whether draws are recorded (DRAWN, the pose snapshot, TroopDepth's counts): only in a harness run (-Dgravesandglory.localIntegration), so normal play pays nothing for them. */
+    static final boolean DIAGNOSTICS=Boolean.getBoolean("gravesandglory.localIntegration");
     /** The draws of an entity through its own model, or null for one never drawn so. */
     public static Drawn drawn(Entity e){return DRAWN.get(e);}
     /** Whether this draw binds the one-texel-a-px twins of a density above 1 troop's PNGs (TroopModels.far; set for the draw, read by getTexture and the layers). */
@@ -90,7 +92,7 @@ public final class TroopRenderer<T extends MobEntity> extends LivingEntityRender
         boundSkin=clothSheet=trimSheet=null;clothMask=0;weaponDrawn=shieldDrawn=weaponFar=false;reliefKey=weaponId=null;weaponFrame=-1;weaponQuads=0;tilt=0;start.set(matrices.peek().getPositionMatrix());
         // Within reach of the camera (TroopDepth.near) the skin pass draws the relief of the skin it binds after the skin; the model spends the arm in that one pass.
         String relief=TroopDepth.near(e)?m.reliefKey(l):null;m.armRelief(relief);
-        try{super.render(e,yaw,tickDelta,matrices,consumers,light);reliefKey=m.reliefSpent?relief:null;troopDraws++;record(e,l,m);}finally{m.armRelief(null);look=null;far=false;}
+        try{super.render(e,yaw,tickDelta,matrices,consumers,light);reliefKey=m.reliefSpent?relief:null;troopDraws++;if(DIAGNOSTICS)record(e,l,m);}finally{m.armRelief(null);look=null;far=false;}
         TroopChevrons.draw(e,l,m,matrices,consumers,dispatcher);
     }
     private void record(Entity e,TroopModels.Look l,TroopModel<?> m){

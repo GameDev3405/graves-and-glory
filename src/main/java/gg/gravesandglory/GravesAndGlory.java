@@ -123,7 +123,10 @@ public final class GravesAndGlory implements ModInitializer {
         ServerLivingEntityEvents.ALLOW_DEATH.register((entity,source,amount)->Houses.allowDeath(entity,source));
         ServerLivingEntityEvents.AFTER_DEATH.register((entity,source)->{
             Battle.leaveSide(entity);
+            // Task 7: a troop's body lies a while; it keeps no effect (a Mark Prey glow, a slow), and its next full tick clears the glow flag
+            if(entity instanceof ArmyMob&&entity instanceof MobEntity)entity.clearStatusEffects();
             if(battle==null)return;
+            if(entity instanceof ArmyMob&&entity instanceof MobEntity body&&ArmyMobs.isTroop(entity))battle.corpses.put(body,battle.time);
             Entity attacker=source.getAttacker();
             for(Unit victim:new ArrayList<>(battle.units))if(victim.mob==entity){ // a copy: a level up's ability seams (Abilities.rowsChanged, onKill) may change the list
                 battle.fell(victim); // a shot of his that lands after this is still his army's (Battle.fallenSquad: a commander it strikes down is credited to that army)
@@ -486,8 +489,10 @@ public final class GravesAndGlory implements ModInitializer {
         public void rear(){setWarning(true);warningUntil=age+WARNING_TICKS;}
         @Override public void tick(){super.tick();if(isWarning()&&age>=warningUntil)setWarning(false);}
     }
-    /** A troop that fell: where, when (battle ticks), which troop (its sheet id) and for which team. Grave Bloom raises from Battle.deaths. */
-    public record Death(Vec3d at,long time,String troop,int team) {}
+    /** A troop that fell: where, when (battle ticks), which troop (its sheet id) and for which team, and its body, which may still lie (Task 7), or null. Grave Bloom raises from Battle.deaths. */
+    public record Death(Vec3d at,long time,String troop,int team,Entity body) {
+        public Death(Vec3d at,long time,String troop,int team){this(at,time,troop,team,null);}
+    }
     public static final class ArmyZombie extends ZombieEntity implements ArmyMob {
         public ArmyZombie(World world){super(EntityType.ZOMBIE,world);}
         @Override public boolean shouldSave(){return false;}
@@ -693,6 +698,7 @@ public final class GravesAndGlory implements ModInitializer {
                 } else if(running&&(Math.abs(p.getX())>R.arenaHalfX()-2||Math.abs(p.getZ())>R.arenaHalfZ()-2||p.getY()<56))toBase(p,squads.get(p.getUuid()).team);
             }
             units.removeIf(u->!u.mob.isAlive()||u.mob.isRemoved());
+            sweepCorpses();
             if(running)trainingTick();
             campaign.tick();
             updateUnitChunks();
@@ -753,7 +759,19 @@ public final class GravesAndGlory implements ModInitializer {
         }
         /** Discards every troop corpse still lying in the battle world (CorpseMixin keeps a dead troop until its corpse rows run out): a round start, the lobby,
          *  a map switch and server stop leave none behind. Returns how many it took. */
-        int clearCorpses(){List<Entity> dead=new ArrayList<>();for(Entity e:world.iterateEntities())if(ArmyMobs.isTroop(e)&&e instanceof net.minecraft.entity.mob.MobEntity m&&m.isDead()&&!e.isRemoved())dead.add(e);for(Entity e:dead){leaveSide(e);e.discard();}return dead.size();}
+        int clearCorpses(){corpses.clear();List<Entity> dead=new ArrayList<>();for(Entity e:world.iterateEntities())if(ArmyMobs.isTroop(e)&&e instanceof net.minecraft.entity.mob.MobEntity m&&m.isDead()&&!e.isRemoved())dead.add(e);for(Entity e:dead){leaveSide(e);e.discard();}return dead.size();}
+        /** Troop bodies lying in the battle world and the battle tick each fell on (Task 7): sweepCorpses takes any its own death ticks failed to remove. */
+        final Map<MobEntity,Long> corpses=new LinkedHashMap<>();
+        /** Every 20 ticks, drops the bodies already gone and discards any still lying past the corpse rows' gone tick (one in a chunk that stopped ticking keeps its death ticks frozen). */
+        void sweepCorpses(){
+            if(time%20!=0||corpses.isEmpty())return;
+            var row=Spec.COMBATDISCIPLINE[0];int gone=BattleMath.corpseGoneTick(row.corpseLieTicks(),row.corpseFadeTicks());
+            for(var it=corpses.entrySet().iterator();it.hasNext();){
+                var c=it.next();MobEntity m=c.getKey();
+                if(m.isRemoved()){it.remove();continue;}
+                if(time-c.getValue()>gone+1){it.remove();leaveSide(m);m.discard();}
+            }
+        }
         void clearOldUnits(){List<Entity> stale=new ArrayList<>();for(Entity e:world.iterateEntities())if(e.getCommandTags().contains("gravesandglory")||e.getCommandTags().contains("bannerbound")||e.getCommandTags().contains(Projectiles.TAG))stale.add(e);for(Entity e:stale){leaveSide(e);e.discard();}}
         void leave(UUID owner){
             campaign.left(owner);
@@ -1284,7 +1302,7 @@ public final class GravesAndGlory implements ModInitializer {
         }
         void prepareBridgeTest(){var b=Arrays.stream(Spec.STRUCTURES).filter(s->s.kind().equals("bridge")).toList().get(testBridgeIndex);prepareNavigation(b.x()-b.width()/2.0-14,b.z(),new Vec3d(b.x()+b.width()/2.0+16,65,b.z()),-90);}
         void prepareVisualSquads(boolean fight){
-            for(Unit u:units){leaveSide(u.mob);u.mob.discard();}units.clear();
+            for(Unit u:units){leaveSide(u.mob);u.mob.discard();}units.clear();clearCorpses();
             testSquad.training.clear();testSquad.order=fight?"attack":"hold";testSquad.target=fight?new Vec3d(15,65,3):new Vec3d(-74,65,0);testSquad.yaw=-90;
             spawnVisualSquad(testSquad,fight?-22:-74,3);
             if(fight){Squad enemy=new Squad(UUID.randomUUID(),1-testSquad.team,new Vec3d(-20,65,3));enemy.order="attack";enemy.yaw=90;spawnVisualSquad(enemy,22,3);}

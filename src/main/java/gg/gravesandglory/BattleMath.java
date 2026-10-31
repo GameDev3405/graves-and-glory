@@ -151,6 +151,31 @@ public final class BattleMath {
         double t = (deathTicks - start) / (double) fade;
         return (float) (0.5 + 0.5 * Math.cos(Math.PI * t));
     }
+    /** Whether a troop shows vanilla's red hurt tint: while hurt or through its fall (deathTime 1..DEATH_FALL_TICKS), never once the body lies. */
+    public static boolean corpseHurtTint(int deathTime, int hurtTime) { return deathTime <= DEATH_FALL_TICKS && (hurtTime > 0 || deathTime > 0); }
+    /**
+     * The squared distance a troop must not pass to draw relief (TroopDepth): of the first n values of a, those strictly below nearSq are in
+     * range; with fewer than cap of them (or cap below 1) the answer is nearSq, else the cap-th smallest. It may reorder a.
+     */
+    public static double reliefCutoffSq(double[] a, int n, int cap, double nearSq) {
+        int k = 0;
+        for (int i = 0; i < n; i++) if (a[i] < nearSq) a[k++] = a[i];
+        if (k < cap || cap < 1) return nearSq;
+        Arrays.sort(a, 0, k);
+        return a[cap - 1];
+    }
+    /**
+     * The relief cutoff for bodies lying past their fall, which rank after every living troop: the living in range (first nl of living,
+     * below nearSq) take their slots first, and the bodies share what is left of cap, nearest first. -1 when nothing is left, so no body
+     * is near. It may reorder bodies; living is only read.
+     */
+    public static double bodyCutoffSq(double[] living, int nl, double[] bodies, int nb, int cap, double nearSq) {
+        if (cap < 1) return nearSq;
+        int k = 0;
+        for (int i = 0; i < nl; i++) if (living[i] < nearSq) k++;
+        int slots = cap - Math.min(cap, k);
+        return slots <= 0 ? -1 : reliefCutoffSq(bodies, nb, slots, nearSq);
+    }
     /**
      * The stances a troop shows its clients, in stance_v2's wire order (the byte is the index): none, hold-ready, brace, the formed shield wall,
      * shield-up moving, fall back, run, ranged lowered and ranged aiming (spec 6.4).

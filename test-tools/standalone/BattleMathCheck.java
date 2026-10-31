@@ -403,6 +403,24 @@ public final class BattleMathCheck {
           check(falls, "corpseAlpha: strictly falling from 80 to 120"); }
         check(Math.abs(BattleMath.corpseAlpha(100, 60, 40) - 0.5f) < 1e-6, "corpseAlpha: half way through the fade is one half (0.5 + 0.5cos)");
         check(BattleMath.corpseAlpha(20, 0, 0) == 1 && BattleMath.corpseAlpha(21, 0, 0) == 0, "corpseAlpha: no lie and no fade is vanilla's 20-tick fall, then gone");
+        // Task 7 fix 1 (I2): a body lying past its fall ranks after every living troop for relief and whole weapons
+        { double[] living = new double[60], bodies = new double[30];
+          for (int i = 0; i < 60; i++) living[i] = Math.pow(10 + i / 6.0, 2); // 60 living from 10 to ~20 blocks
+          for (int i = 0; i < 30; i++) bodies[i] = Math.pow(1 + i / 8.0, 2);  // 30 bodies from 1 to ~5 blocks
+          double lc = BattleMath.reliefCutoffSq(living.clone(), 60, 48, 576), bc = BattleMath.bodyCutoffSq(living.clone(), 60, bodies.clone(), 30, 48, 576);
+          int livingNear = 0, bodiesNear = 0; for (double d : living) if (d < 576 && d <= lc) livingNear++; for (double d : bodies) if (d < 576 && d <= bc) bodiesNear++;
+          check(livingNear == 48 && bodiesNear == 0, "bodyCutoffSq: 60 living at 10-20 blocks keep all 48 relief slots while 30 bodies lie at 1-5 blocks (living " + livingNear + ", bodies " + bodiesNear + ")"); }
+        { double[] living = {100, 200, 300}, bodies = {1, 4, 9, 16, 25};
+          double bc = BattleMath.bodyCutoffSq(living.clone(), 3, bodies.clone(), 5, 6, 576);
+          int bodiesNear = 0; for (double d : bodies) if (d < 576 && d <= bc) bodiesNear++;
+          check(bodiesNear == 3, "bodyCutoffSq: bodies take only the slots the living leave (3 of 6), nearest first: " + bodiesNear); }
+        check(BattleMath.bodyCutoffSq(new double[]{1, 2}, 2, new double[]{1, 2, 3}, 3, 48, 576) == 576, "bodyCutoffSq: with slots to spare every body in range is near");
+        check(BattleMath.bodyCutoffSq(new double[]{1, 2, 700}, 3, new double[]{1}, 1, 2, 576) < 0, "bodyCutoffSq: no slot left means no body is near");
+        check(BattleMath.reliefCutoffSq(new double[]{9, 1, 4, 700}, 4, 2, 576) == 4 && BattleMath.reliefCutoffSq(new double[]{9, 1}, 2, 48, 576) == 576, "reliefCutoffSq: the cap-th nearest in range, or nearSq under the cap");
+        // Task 7 fix 1 (I4): the hurt tint is vanilla's while hurt or falling, and gone once the body lies
+        check(BattleMath.corpseHurtTint(0, 5) && !BattleMath.corpseHurtTint(0, 0), "corpseHurtTint: a living troop tints only while hurt");
+        check(BattleMath.corpseHurtTint(1, 10) && BattleMath.corpseHurtTint(20, 0), "corpseHurtTint: red through the 20-tick fall, as vanilla");
+        check(!BattleMath.corpseHurtTint(21, 0) && !BattleMath.corpseHurtTint(60, 3) && !BattleMath.corpseHurtTint(119, 0), "corpseHurtTint: no red once the body lies");
         System.out.println("BattleMathCheck: " + checks + " checks passed");
     }
 }

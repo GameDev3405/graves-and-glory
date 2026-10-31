@@ -220,7 +220,7 @@ final class Houses {
 
     /** Logs a troop that really died (AFTER_DEATH), where it fell, and drops what is older than the window. Grave Bloom raises from this log. */
     static void logDeath(GravesAndGlory.Battle b, GravesAndGlory.Unit u) {
-        b.deaths.add(new GravesAndGlory.Death(u.mob.getPos(), b.time, u.spec.id(), u.squad.team));
+        b.deaths.add(new GravesAndGlory.Death(u.mob.getPos(), b.time, u.spec.id(), u.squad.team, u.mob));
         prune(b);
     }
 

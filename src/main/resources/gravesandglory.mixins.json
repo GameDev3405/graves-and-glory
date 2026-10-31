@@ -11,6 +11,7 @@
     "ChatHudMixin",
     "ChatHudAccessor",
     "LivingEntityRendererAccessor",
+    "CorpseOverlayMixin",
     "KeybindTextMixin"
   ],
   "injectors": {
