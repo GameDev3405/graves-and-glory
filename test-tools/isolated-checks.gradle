@@ -32,6 +32,9 @@ allprojects {
    systemProperty 'gravesandglory.faceTroops', System.getenv('GRAVES_PHASE2_FACES') ?: ''
    systemProperty 'gravesandglory.faceForce', System.getenv('GRAVES_PHASE2_FACE') ?: '-1'
    systemProperty 'gravesandglory.motionBaseline', System.getenv('GRAVES_MOTION_BASELINE') ?: ''
+   systemProperty 'gravesandglory.motionFamily', System.getenv('GRAVES_MOTION_FAMILY') ?: 'stub'
+   systemProperty 'gravesandglory.repoRoot', project.rootDir.absolutePath
+   systemProperty 'gravesandglory.gradeOut', System.getenv('GRAVES_GRADE_OUT') ?: (project.rootDir.absolutePath + '/test-tools/work/grade')
   }
  }
 }
