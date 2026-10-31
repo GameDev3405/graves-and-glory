@@ -15,7 +15,7 @@ WAL = ['#1b100c', '#2d1a12', '#432619', '#5a3420', '#73442a', '#8f5733', '#ad6d4
 HOUSES = {
     # cloth ramp dark..light; thread (lit, mid, shade) for the device and the trim
     'gilded':      (['#3d2a0e', '#5e4318', '#86642a', '#b08a3c', '#d1ab52', '#e8c97e'], ('#6e4f1c', '#4a3412', '#2e1f0c')),
-    'graveborn':   (['#111a14', '#1b291e', '#273a2b', '#34493a', '#4a634f', '#6d8a6f'], (BRASS[7], BRASS[5], BRASS[3])),
+    'graveborn':   (['#130a1a', '#211331', '#322047', '#422d56', '#5b4378', '#7f66aa'], (BRASS[7], BRASS[5], BRASS[3])),
     'wildmoot':    (['#24110a', '#391c0e', '#4f2714', '#65351d', '#844a29', '#a8623a'], (BRASS[7], BRASS[5], BRASS[3])),
     'ironclad':    (['#16191c', '#21262a', '#2e3439', '#3e464c', '#566066', '#77828a'], (BRASS[7], BRASS[5], BRASS[3])),
     'tidecallers': (['#0d1926', '#14263a', '#1c3550', '#264869', '#356189', '#4b80b0'], (BRASS[7], BRASS[5], BRASS[3])),
