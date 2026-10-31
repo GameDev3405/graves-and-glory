@@ -8,7 +8,7 @@ Sun staff I–III are hand-authored and installed. Each tier has 2 lit texels an
 Round 1 found a defect: every sun clipped the cowl and face. It is fixed, and round 2 confirmed it clean. The bows had no concrete defects.
 
 ## Commits
-7bfe24e (staff installed), 8e1eacc (suns raised), plus this report.
+7bfe24e (staff installed), 8e1eacc (suns raised), 595cd16 (report).
 
 ## Changed files
 - art/hand/weapons/build_sun_staff.py
@@ -30,10 +30,9 @@ work/art-units/gf-1 and gf-2: run/screenshots and log.txt (gitignored).
 - In the cast pose (hands-mage-t3-cast-0) the staff hangs upside down, with the sun at the belly.
 - At idle the shaft passes inside the right_bell sleeve.
 - The cowl reads boxy from the side.
-- At front card size a bow hanging at idle is nearly invisible, because it is edge-on.
+- At front card size a bow hanging at idle is nearly invisible, edge-on.
 
 ## Assumptions
-- Tier III is heavily gilt.
 - I lengthened the staves to 35/40/39 px to clear the cowl.
 - I dropped tier III's cross-bar and hang one chain on the outer side, which keeps the staff 2 px deep.
 - Card size comes from downscaled shots.
@@ -42,4 +41,4 @@ work/art-units/gf-1 and gf-2: run/screenshots and log.txt (gitignored).
 ## Status
 - Implemented: yes.
 - Tested: yes, except verify fast, which is deferred.
-- Visually inspected: yes, in game.
+- Visually inspected: yes.
