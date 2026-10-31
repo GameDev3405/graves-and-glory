@@ -712,8 +712,24 @@
      15
     ]
    },
-   "status": "todo",
-   "reviews": []
+   "status": "blockout",
+   "reviews": [
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5), self-review of top and iso renders",
+     "at": "2026-10-31T04:23:01Z",
+     "digest": "496bbccffa5b999bf6ef8fd02345a293a57418c0cfae69f899e495d34edefad1",
+     "plans": [
+      "docs/maps/ironhold/sections/E3-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-E3-top.png",
+      "docs/maps/ironhold/sections/ironhold-E3-iso.png"
+     ],
+     "notes": "Fosse x -80..-75 with a ragged outer lip, water to 61; cobble causeway z -8..8; cracked front-door towers x -80..-70 z -17..-9 to 73-76; new curtain stretch z -27..-18 to 71 joins today's piece; Outer Yard gravel; King's Road dirt path; field swells 63-64. Stage A ring and gate-sight station untouched. Open: inner ward has no north closure past the gate wall end (z -23); layout does not draw one."
+    }
+   ]
   },
   {
    "id": "F3",
@@ -730,8 +746,24 @@
      15
     ]
    },
-   "status": "todo",
-   "reviews": []
+   "status": "blockout",
+   "reviews": [
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5), self-review of top and iso renders",
+     "at": "2026-10-31T04:23:03Z",
+     "digest": "6f3c2c1446dfdcaa82e58d8a15ee5ad64d964bbe88b75982a0f67229fd3e9157",
+     "plans": [
+      "docs/maps/ironhold/sections/F3-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-F3-top.png",
+      "docs/maps/ironhold/sections/ironhold-F3-iso.png"
+     ],
+     "notes": "Inner yard packed mud x -33..-6 z -24..20 (flood contract), river x 0 with ragged banks and mud bank strips x -7..7, B deck spruce at y 63 x -5..5 z -12..12, east bailey andesite. Capture B ring and ward-n/ward-b at y>=64 untouched. Bank strips read straight on the dry side; natural pass should break them."
+    }
+   ]
   },
   {
    "id": "G3",
@@ -910,8 +942,24 @@
      79
     ]
    },
-   "status": "todo",
-   "reviews": []
+   "status": "blockout",
+   "reviews": [
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5), self-review of top and iso renders",
+     "at": "2026-10-31T04:23:02Z",
+     "digest": "a071c2ac4875849cb36c69d8d50fd492624373b58da9e6a6b56fb06d9917bfa2",
+     "plans": [
+      "docs/maps/ironhold/sections/E4-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-E4-top.png",
+      "docs/maps/ironhold/sections/ironhold-E4-iso.png"
+     ],
+     "notes": "Mirror of E3 south: south front-door tower z 9..17, curtain stretch z 18..27, fosse and lip to z 79, Outer Yard gravel, coarse bailey ground east of x -41 beyond the gate. Sally gap z 59..65 keeps grass. Stage A ring clear (towers trimmed to x <= -70 outside r15)."
+    }
+   ]
   },
   {
    "id": "F4",
@@ -928,8 +976,24 @@
      79
     ]
    },
-   "status": "todo",
-   "reviews": []
+   "status": "blockout",
+   "reviews": [
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5), self-review of top and iso renders",
+     "at": "2026-10-31T04:23:04Z",
+     "digest": "65bdd6de1b9d9abbd249fa034aaa4f57b87fc7e2e150989df85804f4df793f00",
+     "plans": [
+      "docs/maps/ironhold/sections/F4-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-F4-top.png",
+      "docs/maps/ironhold/sections/ironhold-F4-iso.png"
+     ],
+     "notes": "Great Keep tower x 4..20 z 24..44: chamfered shaft to 99, setback to 114, crown 115..118; stands in the river at x 4..5 and replaces today's keep blocks in its footprint (expected, pick D2a). River continues south of the keep. Stage C ring, gate-ne/gate-e/ward-s and keep-sight untouched. Tower is a solid block-out volume; structure pass hollows it and adds the keep postern (modes lane)."
+    }
+   ]
   },
   {
    "id": "G4",
