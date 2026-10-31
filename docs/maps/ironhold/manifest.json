@@ -426,6 +426,20 @@
       "docs/maps/ironhold/sections/ironhold-F1-iso.png"
      ],
      "notes": "A supply yard: level pad at 63 under the ring, broken wall stubs at r 21 clear of the lanes; north ford eased to a 1-deep gravel shoal; river rises into its gorge mouth toward the rim."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-10-31T18:05:48Z",
+     "digest": "225ab97e6d5737d72091a85479ec97c87c2e5198f78781ff4caec35f2c397b23",
+     "plans": [
+      "docs/maps/ironhold/sections/F1-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-F1-iso.png"
+     ],
+     "notes": "North ford tidied like F5 (Kort 2026-10-31): the wide pool is gone; a slanting gravel bar 1 under the water crosses the kept channel from z -127 (A side) to z -134, gravel ramps down the west cliff from the A yard and up the east cliff to the reach track's end. A ring untouched at y 64..67. Locks ok."
     }
    ]
   },
@@ -478,8 +492,23 @@
      -113
     ]
    },
-   "status": "todo",
-   "reviews": []
+   "status": "blockout",
+   "reviews": [
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-10-31T18:05:58Z",
+     "digest": "af65ac78ea60f8f681b8e92fcfb7b48894e71bc61ba32ab7a9ee7d401e74867a",
+     "plans": [
+      "docs/maps/ironhold/sections/H1-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-H1-iso.png"
+     ],
+     "notes": "East watch north: wet meadow at 62..63 with pools and moss, continuing the north flank's swells and breakup from G1; east watchtower x 145..155, z -155..-145, top 79 with cracked crown. Locks ok."
+    }
+   ]
   },
   {
    "id": "I1",
@@ -771,8 +800,23 @@
      -49
     ]
    },
-   "status": "todo",
-   "reviews": []
+   "status": "blockout",
+   "reviews": [
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-10-31T18:06:03Z",
+     "digest": "c10039a81324130354221ece4cfa68a972ed38d934bde4784f106aa887d92aec",
+     "plans": [
+      "docs/maps/ironhold/sections/H2-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-H2-iso.png"
+     ],
+     "notes": "Supply east north: NE corner tower (x 96..106, z -100..-92, top 76) closing the north curtain onto the east curtain at x 98..102 (top 71); NE supply yard (cobble wall top 66, gate on the court side at x 124..128) with its house volume 57..70; NE spur in from the court; wet meadow beyond z -98. Locks ok."
+    }
+   ]
   },
   {
    "id": "I2",
@@ -1133,6 +1177,20 @@
       "docs/maps/ironhold/sections/ironhold-F3-iso.png"
      ],
      "notes": "River is one river op (water 59, cut cliffs to 63, stone/andesite/mud cliff faces), elbow along z 13..19; mud bank band 1-4 blocks following the river; B deck spruce planks re-stamped at 63; north inner closure z -30..-28 runs to the west cliff and stops there; inner yard and bailey breakup. Positions unchanged; locks ok."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-10-31T18:05:53Z",
+     "digest": "414048131b6d56a3e7baace9e5707889f2713b4604b3058dc70245a6fb4319f2",
+     "plans": [
+      "docs/maps/ironhold/sections/F3-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-F3-iso.png"
+     ],
+     "notes": "Defenders' road joined from the B deck (x 6) to the bailey (x 30), Kort 2026-10-31. The B deck is now laid after the roads, so its planks stay planks; the road's end embanks the east bank to the deck. Stations and stage C untouched. Locks ok."
     }
    ]
   },
@@ -1184,8 +1242,23 @@
      15
     ]
    },
-   "status": "todo",
-   "reviews": []
+   "status": "blockout",
+   "reviews": [
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-10-31T18:06:08Z",
+     "digest": "992ecc91f50ee516417da96399e04d896029777789c126c6df40b3067b3c7bad",
+     "plans": [
+      "docs/maps/ironhold/sections/H3-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-H3-iso.png"
+     ],
+     "notes": "Donjon Court north: east curtain x 98..102 at 71 with the east postern cleared y 64..70 at z -6..6 under a lintel at 71; defenders' road on from the postern to the Dusk spawn; barracks hall x 110..150, z -40..-20, walls to 74, deepslate roof stepping to a ridge at 79; polished blackstone court with worn flags and road wear. The spawn-dusk box x 126..130, z -2..2 is left empty (its lock refuses any block y 56..90). Locks ok."
+    }
+   ]
   },
   {
    "id": "I3",
@@ -1612,8 +1685,23 @@
      79
     ]
    },
-   "status": "todo",
-   "reviews": []
+   "status": "blockout",
+   "reviews": [
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-10-31T18:06:14Z",
+     "digest": "892552daa2eab10c0c9442090f8dde409338c83f62bb947fd554f816b9b07bd4",
+     "plans": [
+      "docs/maps/ironhold/sections/H4-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-H4-iso.png"
+     ],
+     "notes": "Donjon Court south: court floor to z 48, SE spur across it to the SE yard gate (x 136..140 on z 54), SE supply yard wall top 66 and house volume x 134..146, z 64..76; east curtain on at x 98..102. Locks ok."
+    }
+   ]
   },
   {
    "id": "I4",
@@ -1935,8 +2023,23 @@
      143
     ]
    },
-   "status": "todo",
-   "reviews": []
+   "status": "blockout",
+   "reviews": [
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-10-31T18:06:19Z",
+     "digest": "b236d086351097c3e4d8acda7f1d36b996bc7ae9568c64e8198fd78cbd9e8a5e",
+     "plans": [
+      "docs/maps/ironhold/sections/H5-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-H5-iso.png"
+     ],
+     "notes": "South-east corner: SE corner tower (x 96..106, z 92..100, top 76) joining the south curtain to the east curtain; the SE yard's south end; dry south flank beyond z 98 with the Watch Hill shoulder's east foot. Locks ok."
+    }
+   ]
   },
   {
    "id": "I5",
@@ -2229,8 +2332,23 @@
      207
     ]
    },
-   "status": "todo",
-   "reviews": []
+   "status": "blockout",
+   "reviews": [
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-10-31T18:06:25Z",
+     "digest": "56495b11b86c9bd0835db0ece7ca7161f1e29c65b4ae9fcbc945e85fb8e14dc8",
+     "plans": [
+      "docs/maps/ironhold/sections/H6-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-H6-iso.png"
+     ],
+     "notes": "East watch south: dry high ground and the Watch Hill shoulder's crest from G6 carried east, rock showing on the steep side; east watchtower x 145..155, z 145..155, top 79. Locks ok."
+    }
+   ]
   },
   {
    "id": "I6",

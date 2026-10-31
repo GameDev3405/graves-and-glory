@@ -378,7 +378,48 @@ def south_flank(x, z, base):
 
 
 
+EAST_CORNERS = ((96, 106, -100, -92), (96, 106, 92, 100))  # NE and SE corner towers of the curtain (x0, x1, z0, z1)
+EAST_WATCH = ((145, 155, -155, -145), (145, 155, 145, 155))  # east watchtowers, top 79
+DONJON = (103, 158, -48, 48)  # Donjon Court floor, polished blackstone at 63
+NE_YARD, SE_YARD = (110, 140, -90, -54), (125, 155, 54, 90)  # east supply yards (x0, x1, z0, z1)
+EAST_HOUSES = ((119, 131, -80, -68), (134, 146, 64, 76))
+HALL = (110, 150, -40, -20)  # barracks hall in the court
+DUSK = (126, 130, -2, 2)  # spawn-dusk protect lock (y 56..90): no op places a block in this column box
+DUSK_EX = {'min': [125, -3], 'max': [131, 3]}
+FLAGS = ('minecraft:polished_blackstone', 'minecraft:cobbled_deepslate', 2, 'minecraft:stone')
+
+
+def east(x, z):
+    """Column H (x 95..158): the east curtain at x 98..102 with its corner towers, Donjon Court behind it, the two
+    east supply yards, the flanks beyond the curtain lines and the east watchtowers. The Dusk spawn box is left
+    empty: its protect lock refuses any block from y 56 up."""
+    az = abs(z)
+    if DUSK[0] <= x <= DUSK[1] and DUSK[2] <= z <= DUSK[3]:
+        return None
+    t = _tower(x, z, EAST_WATCH, 79, 'ewatch')
+    if t:
+        return t
+    for x0, x1, z0, z1 in EAST_CORNERS:
+        if x0 <= x <= x1 and z0 <= z <= z1:
+            edge = x in (x0, x1) or z in (z0, z1)
+            return (76 - int(_hash('ecorner', x, z) * 3) if edge else 76, WALL, None)
+    if az > 98:
+        return flank(x, z, (GROUND, GRASS, None))
+    if 98 <= x <= 102 or (x <= 102 and az >= 94):
+        return (71, WALL, None)  # east curtain, and the north and south curtains' last blocks
+    if x <= 97:
+        return (GROUND, ('minecraft:andesite', 'minecraft:gravel', 2, 'minecraft:stone'), None)  # east bailey
+    if DONJON[0] <= x <= DONJON[1] and DONJON[2] <= z <= DONJON[3]:
+        return (GROUND, FLAGS, None)
+    for x0, x1, z0, z1 in (NE_YARD, SE_YARD):
+        if x0 <= x <= x1 and z0 <= z <= z1:
+            return (GROUND, YARD, None)
+    return (GROUND, GRASS, None)
+
+
 def column(x, z):
+    if x >= 95:
+        return east(x, z)
     t = _tower(x, z, WATCHTOWERS, 77, 'watch')
     if t:
         return t
@@ -485,20 +526,20 @@ def _trench105():
 
 
 A_BOX = {'min': [-48, -149], 'max': [-10, -111]}  # round the A capture ring: no raising ops
-NORTH = (-350, -250, 94, -101)  # the north flank outside the curtain line
+NORTH = (-350, -250, 158, -101)  # the north flank outside the curtain line (column H since 2026-10-31)
 NORTH_FIELD = (-350, -250, -82, -49)
 
 
 def _north_shape():
     ops = []
-    for region in (NORTH_FIELD, (-81, -250, 94, -101)):
+    for region in (NORTH_FIELD, (-81, -250, 158, -101)):
         ops.append(({'op': 'noise', 'note': 'north flank swells: low ground, the bluff and the gorge banks',
                      'amplitude': 1.1, 'scale': 20, 'octaves': 3, 'offset': 0.15, 'clamp': [62, 72],
                      'only': [W + 'grass_block'], 'exclude': [A_BOX], 'seed': 'field'}, region))
     ops.append(({'op': 'erode', 'note': 'north flank: settle the bluff, the gorge banks and the meadow',
                  'mode': 'thermal', 'iterations': 4, 'talus': 1.0, 'rate': 0.5, 'jitter': 0.35, 'clamp': [61, 72],
                  'only': [W + n for n in ('grass_block', 'mud', 'stone')], 'exclude': [A_BOX], 'seed': 'settle-n'},
-                (-350, -250, 94, -101)))
+                (-350, -250, 158, -101)))
     return ops
 
 
@@ -507,7 +548,7 @@ def _north_water():
     shoaled to a gravel bed 1 under the water across z -136..-124, banks eased down on both sides."""
     ops = []
     for cz in range(-250 // 14, -100 // 14):
-        for cx in range(-230 // 14, 94 // 14 + 1):
+        for cx in range(-230 // 14, 158 // 14 + 1):
             if _hash('npool', cx, cz) > 0.55:
                 continue
             x, z = cx * 14 + 3 + int(_hash('npx', cx, cz) * 8), cz * 14 + 3 + int(_hash('npz', cx, cz) * 8)
@@ -523,11 +564,14 @@ def _north_water():
                          'width': 3, 'water': 62, 'depth': 1 + (_hash('npd', cx, cz) > 0.6), 'floor': 57,
                          'bed': _mix(('mud', 3), ('clay', 1)), 'wobble': 0.7, 'wobbleScale': 3, 'only': [W + 'mud'],
                          'seed': f'npool{cx},{cz}'}, None))
-    ops.append(({'op': 'river', 'note': 'north ford: gravel shoal 1 deep across the river, banks eased',
-                 'points': [[-8, -130.5], [-2, -131], [3, -129.5], [8, -130]], 'width': 8, 'water': 59,
-                 'depth': 1, 'floor': 55, 'bank': 7, 'bed': _mix(('gravel', 4), ('cobblestone', 1), ('clay', 1)),
-                 'bankSurface': _mix(('gravel', 3), ('coarse_dirt', 2), ('mud', 1)), 'wobble': 1.2,
-                 'wobbleScale': 4, 'seed': 'ford-n'}, None))
+    # the north ford (tidied 2026-10-31 like the south one): a gravel bar on a slant from the A side (west, z -127)
+    # to the reach track (east, z -134), 1 under the water; the channel keeps its width; ramps in _north_paths
+    ops.append(({'op': 'river', 'note': 'north ford: slanting gravel bar 1 under the water, channel kept its width',
+                 'points': [[-7, -126.5, 5], [-2, -128.5, 6], [3, -131, 6], [7, -133.5, 5]], 'width': 6,
+                 'water': 59, 'depth': 1, 'floor': 55, 'bank': 2,
+                 'bed': _mix(('gravel', 4), ('cobblestone', 1), ('clay', 1)),
+                 'bankSurface': _mix(('gravel', 3), ('coarse_dirt', 2), ('mud', 1)), 'wobble': 1.4,
+                 'wobbleScale': 3, 'seed': 'ford-n2'}, None))
     return ops
 
 
@@ -546,6 +590,13 @@ def _north_paths():
                  'under': _mix(('cobblestone', 2), ('dirt', 1)), 'seed': 'sallyc-n'}, None))
     ops.append((dict(track, note='north reach: worn track along the river bank to the ford', seed='reach-n',
                      points=[[92, -106], [64, -110], [36, -118], [18, -127]]), None))
+    ramp = {'op': 'path', 'width': 4, 'falloff': 2.5, 'surface': _mix(('gravel', 3), ('coarse_dirt', 2), ('dirt_path', 1)),
+            'under': W + 'gravel', 'edge': _mix(('gravel', 2), ('coarse_dirt', 1), ('andesite', 1)), 'edgeDensity': 0.6,
+            'wobble': 1.3, 'wobbleScale': 3}
+    ops.append((dict(ramp, note='north ford: west ramp, A side down the cliff to the bar', seed='fordramp-nw',
+                     points=[[-21, -130, 63], [-14, -128.5, 63], [-9, -127, 61], [-6, -126.5, 59]]), None))
+    ops.append((dict(ramp, note='north ford: east ramp, bar up the cliff to the reach track', seed='fordramp-ne',
+                     points=[[6, -133.5, 59], [9, -134.5, 61], [13, -132, 63], [18, -128, 63]]), None))
     return ops
 
 
@@ -608,7 +659,7 @@ def _north_surface():
 
 
 C_BOX = {'min': [8, 109], 'max': [50, 151]}
-SOUTH_REGIONS = ((-350, 80, -82, 250), (-81, 99, 94, 250))
+SOUTH_REGIONS = ((-350, 80, -82, 250), (-81, 99, 158, 250))
 
 
 def _stubs(center, arcs, r0, tag, block):
@@ -720,10 +771,10 @@ def _south_surface():
     return [
         ({'op': 'breakup', 'note': 'ridge and shoulder: rock broken with andesite, cobble and gravel',
           'replace': [W + 'stone'], 'mix': _mix(('andesite', 2), ('cobblestone', 1), ('gravel', 1), ('tuff', 1)),
-          'density': 0.5, 'scale': 2, 'seed': 'crag-s'}, (-350, 80, 94, 250)),
+          'density': 0.5, 'scale': 2, 'seed': 'crag-s'}, (-350, 80, 158, 250)),
         ({'op': 'breakup', 'note': 'dry high ground: thin grass, coarse dirt and stone showing',
           'replace': [W + 'grass_block'], 'mix': _mix(('coarse_dirt', 3), ('rooted_dirt', 1), ('stone', 1)),
-          'density': 0.12, 'scale': 4, 'seed': 'dry-s'}, (-81, 99, 94, 250)),
+          'density': 0.12, 'scale': 4, 'seed': 'dry-s'}, (-81, 99, 158, 250)),
         ({'op': 'breakup', 'note': 'chapel floor: broken flags', 'replace': [W + 'cobblestone'],
           'mix': _mix(('mossy_cobblestone', 2), ('gravel', 1), ('stone_bricks', 1), ('grass_block', 1)),
           'density': 0.4, 'scale': 2, 'seed': 'chapelfloor'}, (CHAPEL[0], CHAPEL[2], CHAPEL[1], CHAPEL[3])),
@@ -991,6 +1042,93 @@ def _bailey_surface():
     ]
 
 
+# ---------------------------------------------------------------- east column H (H1..H6)
+
+EAST = (95, -98, 158, 98)  # between the curtain lines (x0, z0, x1, z1); the flanks beyond use the north/south ops
+EAST_ROAD = [[103, 0], [110, 0.5], [118, -0.5], [124, 0]]  # defenders' road on from the postern to the Dusk spawn (starts
+# at x 103 so the op stays clear of column G; the bailey road's end runs through the postern itself)
+NE_SPUR = [[105, -1], [106, -24], [107, -44], [116, -50], [126, -54], [125, -66]]  # west of the hall to the NE yard
+SE_SPUR = [[118, 2], [124, 14], [132, 34], [138, 52], [140, 62]]  # across the court to the SE yard gate
+YARD_GATES = ((NE_YARD, (126, -54)), (SE_YARD, (138, 54)))  # gate centre on each yard's court-side wall
+
+
+def _east_shape():
+    return [({'op': 'noise', 'note': 'east ground: low swells between the court and the curtain lines',
+              'amplitude': 1.1, 'scale': 16, 'octaves': 2, 'offset': -0.05, 'clamp': [63, 64],
+              'only': [W + 'grass_block'], 'exclude': [DUSK_EX], 'seed': 'east-swell'}, (103, -98, 158, 98))]
+
+
+def _east_paths():
+    road = {'op': 'path', 'width': 5, 'falloff': 2, 'y': 63, 'surface': _mix(('dirt_path', 3), ('gravel', 2),
+            ('coarse_dirt', 1)), 'under': W + 'gravel', 'edge': _mix(('gravel', 2), ('coarse_dirt', 1)),
+            'edgeDensity': 0.5, 'wobble': 1.5, 'wobbleScale': 6, 'exclude': [DUSK_EX]}
+    spur = {'op': 'path', 'width': 4, 'falloff': 1.5, 'surface': _mix(('dirt_path', 3), ('coarse_dirt', 1)),
+            'under': W + 'dirt', 'wobble': 0.5, 'exclude': [DUSK_EX]}
+    return [
+        (dict(road, note="defenders' road: east postern across Donjon Court to the Dusk spawn", seed='east-road',
+              points=EAST_ROAD), None),
+        (dict(spur, note='supply spur NE: west of the barracks hall to the NE yard gate and house', seed='spur-ne',
+              points=NE_SPUR), None),
+        (dict(spur, note='supply spur SE: across the court to the SE yard gate and house', seed='spur-se',
+              points=SE_SPUR), None),
+    ]
+
+
+def _east_built():
+    """Rough massing: the east postern through the curtain (the roads cut the wall near z 0, so the curtain is made
+    good either side and a lintel spans the gate), the barracks hall with a stepped roof, the two supply houses and
+    their yard walls."""
+    ops = [
+        ({'op': 'fill', 'note': 'east curtain made good north of the postern, y 57..71', 'min': [98, 57, -14],
+          'max': [102, 71, -7], 'block': W + 'stone_bricks'}, (98, -14, 102, -7)),
+        ({'op': 'fill', 'note': 'east curtain made good south of the postern, y 57..71', 'min': [98, 57, 7],
+          'max': [102, 71, 14], 'block': W + 'stone_bricks'}, (98, 7, 102, 14)),
+        ({'op': 'clear', 'note': 'east postern through the curtain, clear y 64..70', 'min': [98, 64, -6],
+          'max': [102, 70, 6]}, (98, -6, 102, 6)),
+        ({'op': 'fill', 'note': 'east postern lintel, y 71', 'min': [98, 71, -6], 'max': [102, 71, 6],
+          'block': W + 'stone_bricks'}, (98, -6, 102, 6)),
+    ]
+    x0, x1, z0, z1 = HALL
+    ops.append(({'op': 'fill', 'note': 'barracks hall volume, y 57..74', 'min': [x0, 57, z0], 'max': [x1, 74, z1],
+                 'block': W + 'stone_bricks'}, (x0, z0, x1, z1)))
+    for k, y in enumerate(range(75, 80)):  # roof courses step in from both long sides to the ridge at z -30
+        a, b = z0 + 1 + 2 * k, z1 - 1 - 2 * k
+        ops.append(({'op': 'fill', 'note': f'barracks hall roof course {k}, y {y}', 'min': [x0, y, a],
+                     'max': [x1, y, b], 'block': W + 'deepslate_tiles'}, (x0, a, x1, b)))
+    for x0, x1, z0, z1 in EAST_HOUSES:
+        ops.append(({'op': 'fill', 'note': 'east supply house volume', 'min': [x0, 57, z0], 'max': [x1, 70, z1],
+                     'block': W + 'stone_bricks'}, (x0, z0, x1, z1)))
+    for (x0, x1, z0, z1), (gx, gz) in YARD_GATES:
+        ops.append(({'op': 'wall', 'note': 'east supply yard wall, gate on the court side',
+                     'points': [[x0, z0], [x1, z0], [x1, z1], [x0, z1]], 'closed': True, 'thickness': 1,
+                     'floor': 57, 'top': 66, 'block': W + 'cobblestone',
+                     'exclude': [{'min': [gx - 2, gz - 1], 'max': [gx + 2, gz + 1]}]}, None))
+    return ops
+
+
+def _east_surface():
+    court = (DONJON[0], DONJON[2], DONJON[1], DONJON[3])
+    return [
+        ({'op': 'breakup', 'note': 'Donjon Court: worn flags, deepslate and gravel',
+          'replace': [W + 'polished_blackstone'],
+          'mix': _mix(('polished_blackstone_bricks', 2), ('cobbled_deepslate', 2), ('blackstone', 1), ('gravel', 1)),
+          'density': 0.35, 'scale': 2, 'exclude': [DUSK_EX], 'seed': 'donjon'}, court),
+        ({'op': 'breakup', 'note': 'Donjon Court: wear along the road and spurs',
+          'replace': [W + 'polished_blackstone'],
+          'mix': _mix(('gravel', 2), ('coarse_dirt', 1), ('cobbled_deepslate', 1)), 'near': [W + 'dirt_path'],
+          'width': 3, 'density': 0.55, 'scale': 2, 'exclude': [DUSK_EX], 'seed': 'donjon-wear'}, court),
+        ({'op': 'breakup', 'note': 'east yards: cart ruts', 'replace': [W + 'coarse_dirt'],
+          'mix': _mix(('gravel', 2), ('dirt_path', 1), ('dirt', 1)), 'density': 0.3, 'scale': 2, 'seed': 'eyards'},
+         EAST),
+        ({'op': 'breakup', 'note': 'east ground: worn grass by the walls and yards', 'replace': [W + 'grass_block'],
+          'mix': _mix(('coarse_dirt', 2), ('rooted_dirt', 1), ('gravel', 1)),
+          'near': [W + 'stone_bricks', W + 'cobblestone', W + 'polished_blackstone'], 'width': 2.5,
+          'density': 0.5, 'scale': 2, 'seed': 'eastfoot'}, EAST),
+        ({'op': 'breakup', 'note': 'east ground: worn patches', 'replace': [W + 'grass_block'],
+          'mix': _mix(('coarse_dirt', 2), ('rooted_dirt', 1)), 'density': 0.1, 'scale': 4, 'seed': 'eastwear'}, EAST),
+    ]
+
+
 def features():
     """Every helper op on the map, in apply order. Each is clipped to the section it is planned for; noise, erode
     and breakup carry a region (x0, z0, x1, z1) that is intersected with the section."""
@@ -1007,6 +1145,7 @@ def features():
     f += _south_shape()
     f += _west_shape()
     f += _bailey_shape()
+    f += _east_shape()
     # -- water: bog pools, the flooded trench in the Mire, the fosse, the river
     f += [(op, None) for op in _pools()]
     f += _trench150()
@@ -1026,8 +1165,6 @@ def features():
                'width': 11, 'water': 59, 'depth': 3, 'floor': 55, 'wobble': 1.8, 'wobbleScale': 7,
                'bankSurface': cliff, 'faces': True, 'seed': 'river',
                'exclude': [{'min': [COURT[0], 20], 'max': [24, 48]}]}, None))
-    f.append(({'op': 'fill', 'note': 'B deck: spruce planks at 63 over the channel', 'min': [-5, 63, -12],
-               'max': [5, 63, 12], 'block': W + 'spruce_planks'}, (-5, -12, 5, 12)))
     f += _north_water()
     f += _south_water()
     # -- roads: the King's Road on the ground, across the Mire on a causeway at 63, on to the front door
@@ -1052,6 +1189,10 @@ def features():
                    points=[[-199, -2, 63], [-190, -10, 63], [-183, -17, 62], [-170, -30, 62], [-161, -44, 62],
                            [-158, -52, 62], [-155, -60, 63], [-149, -66, 63], [-147, -72, 63]]), None))
     f += _trench105()
+    f += _east_paths()
+    # the B deck goes down after the roads so the defenders' road meets its planks instead of paving them
+    f.append(({'op': 'fill', 'note': 'B deck: spruce planks at 63 over the channel', 'min': [-5, 63, -12],
+               'max': [5, 63, 12], 'block': W + 'spruce_planks'}, (-5, -12, 5, 12)))
     # -- built massing: supply houses and yard walls, the curtain stretch, the inner curtain closures
     for i, (x0, x1, z0, z1) in enumerate(SUPPLY_HOUSES):
         f.append(({'op': 'fill', 'note': 'supply house volume', 'min': [x0, 57, z0], 'max': [x1, 70, z1],
@@ -1086,6 +1227,7 @@ def features():
     f += _south_built()
     f += _west_built()
     f += _bailey_built()
+    f += _east_built()
     # -- surfaces: blend the boundaries so no material ends on a ruler line
     f.append(({'op': 'breakup', 'note': 'river banks: mud, gravel and moss near the water',
                'replace': [W + n for n in ('mud', 'packed_mud', 'andesite', 'coarse_dirt', 'grass_block')],
@@ -1119,6 +1261,7 @@ def features():
     f += _south_surface()
     f += _west_surface()
     f += _bailey_surface()
+    f += _east_surface()
     return f
 
 
@@ -1154,7 +1297,8 @@ GROUPS = {'core': CORE, 'mire': ('C3', 'C4', 'D3', 'D4'),
           'north': ('C1', 'D1', 'E1', 'F1', 'G1', 'C2', 'D2', 'E2', 'F2'),
           'south': ('C5', 'D5', 'E5', 'F5', 'G5', 'C6', 'D6', 'E6', 'F6', 'G6'),
           'west': ('B1', 'B2', 'B3', 'B4', 'B5', 'B6'),
-          'bailey': ('G2', 'G3', 'G4')}
+          'bailey': ('G2', 'G3', 'G4'),
+          'east': ('H1', 'H2', 'H3', 'H4', 'H5', 'H6')}
 REOPEN = ("Kort's rulings of 2026-10-30: east curtain to x 98 (x 72 pieces dropped), inner ward closed to the river "
           'cliffs, Great Keep tower out of the river, stations awaiting the modes lane; 2026-10-31: the river bends '
           'around the keep court; 2026-10-31 milestone 2A.3: river, banks and walls rebuilt with the terrain helpers')
@@ -1175,6 +1319,14 @@ REOPEN_FORD = ('2026-10-31 F5 tidy: the south ford no longer widens the river in
 
 REOPEN_G5 = ('2026-10-31 east bailey pass: the inside of the south postern gets the end of the bailey track from '
              "the defenders' road; the rest of the section is unchanged")
+
+
+REOPEN_FORD_N = ('2026-10-31 F1 tidy (Kort): the north ford made like the south one, a slanting gravel bar across '
+                 'the kept channel with gravel ramps down each cliff from the A side and up to the reach track')
+
+
+REOPEN_F3 = ("2026-10-31 (Kort): the defenders' road joined from the B deck (x 6) to the bailey (x 30); the deck is "
+             'laid after the roads so its planks stay planks')
 
 
 def section_plan(m, sid, world):
@@ -1218,7 +1370,8 @@ def section_plan(m, sid, world):
     }
     if done:
         p['reopen'] = (REOPEN_MIRE if sid in GROUPS['mire'] else REOPEN_SOUTH if sid == 'E4' else
-                       REOPEN_FORD if sid == 'F5' else REOPEN_G5 if sid == 'G5' else REOPEN)
+                       REOPEN_FORD if sid == 'F5' else REOPEN_G5 if sid == 'G5' else
+                       REOPEN_FORD_N if sid == 'F1' else REOPEN_F3 if sid == 'F3' else REOPEN)
     return p
 
 
