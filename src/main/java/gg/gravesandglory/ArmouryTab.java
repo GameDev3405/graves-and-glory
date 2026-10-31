@@ -26,9 +26,9 @@ final class ArmouryTab {
     static final int NOTE_X = 94, NOTE_W = 232, SHEET_X = 342, TOP = 124, NOTE_PAD = 16, PAD = 22, TEXT_W = 480;
     static final int[] COMPACT = {-53, -32};
     /** The rows' band on both papers (from the paper's top), a row's least height (the 40 px portrait and its frame), the most it grows to, the body line. */
-    static final int ROW_Y = 52, ROWS_H = 224, MIN_ROW = 44, MAX_ROW = 48, LINE = 11, GAP = 4, GUTTER = 12, PORTRAIT = 40, ARROW = 24;
-    /** The sheet's notice line and the note's key line (from the paper's top). */
-    static final int NOTICE_Y = 284, HINT_Y = 296;
+    static final int ROW_Y = 52, ROWS_H = 220, MIN_ROW = 44, MAX_ROW = 48, LINE = 11, GAP = 4, GUTTER = 12, PORTRAIT = 40, ARROW = 24;
+    /** The sheet's notice line (up to two lines) and, under it, the key line (from the sheet's top). */
+    static final int NOTICE_Y = 278, HINT_Y = 302;
     /** The fills a buy is drawn on: the vellum tag of an open buy (the same whether hovered or not: the hover is an underline), the flat greyed box, the paper itself (bought, locked). */
     static final int OPEN_FILL = 0xfff1e7cb, OPEN_FOCUS = OPEN_FILL, OFF_FILL = DarkUi.VELLUM, PAPER_FILL = 0xffdccb9f;
     private static final String[] UP = {"...x...", "..xxx..", ".xxxxx.", "xxxxxxx"}, DOWN = {"xxxxxxx", ".xxxxx.", "..xxx..", "...x..."};
@@ -226,7 +226,7 @@ final class ArmouryTab {
     void render(DrawContext g) {
         var w = width(); var font = font();
         WarTable.drawChrome(g, "recruit");
-        UiTex.draw(g, "table/note-room", nx, ny);
+        UiTex.draw(g, "table/note-armoury", nx, ny); // as tall as the sheet
         UiTex.draw(g, "table/sheet-field", sx, sy);
         List<String> head = new ArrayList<>();
         // the note's head: the title and a rule, the purse at the right, the subtitle (or which rows show) under it
@@ -283,9 +283,9 @@ final class ArmouryTab {
     /** The sheet's notice line: a reason a greyed button gave, else a fresh notice of the server's (a buy's outcome), else why nothing can be bought here; the key line on the note. */
     void footer(DrawContext g) {
         var w = width();
-        String keys = keyLine(); int hx = nx + NOTE_PAD, hroom = NOTE_W - 2 * NOTE_PAD;
-        var hl = UiMath.lines(keys, hroom, 2, w);
-        for (int i = 0; i < hl.size(); i++) text(g, hl.get(i), hx, ny + HINT_Y + LINE * i, DarkUi.SEPIA);
+        String keys = keyLine(); int hx = sx + PAD;
+        var hl = UiMath.lines(keys, TEXT_W, 1, w);
+        for (int i = 0; i < hl.size(); i++) text(g, hl.get(i), hx, sy + HINT_Y + LINE * i, DarkUi.SEPIA);
         hintDrawn = keys; hintLines = hl; hintX = hx;
         String line; int colour;
         if (!note.isEmpty() && System.currentTimeMillis() < noteUntil && CampaignClient.noticeSerial == noteSerial) { line = note; colour = DarkUi.INK_TEXT; }
@@ -399,7 +399,7 @@ final class ArmouryTab {
     /** Every way the page fails to fit its canvas, in words (an empty list for none): a tag outside the canvas or off its sheet, under 20 x 20, overlapping another, a line wider than its box or cut with an ellipsis, a name cut or off the note, the notice line past its room, the key line past the note. */
     List<String> fitFailures() {
         List<String> bad = new ArrayList<>(); var w = width(); int W = UiCanvas.width(), H = UiCanvas.height();
-        Rect sheet = new Rect(sx, sy, UiTex.entry("table/sheet-field").w(), UiTex.entry("table/sheet-field").h()), paper = new Rect(nx, ny, NOTE_W, UiTex.entry("table/note-room").h());
+        Rect sheet = new Rect(sx, sy, UiTex.entry("table/sheet-field").w(), UiTex.entry("table/sheet-field").h()), paper = new Rect(nx, ny, NOTE_W, UiTex.entry("table/note-armoury").h());
         if (!sheet.inside(W, H) || !paper.inside(W, H)) bad.add("a paper outside the canvas " + W + "x" + H);
         var all = new ArrayList<Rect>();
         for (var b : buttons) {
@@ -426,8 +426,9 @@ final class ArmouryTab {
         if (widest > footerRoom) bad.add("the notice line is " + widest + " px in " + footerRoom);
         if (footerDrawn.stream().anyMatch(s -> s.endsWith("..."))) bad.add("the notice line is cut " + footerDrawn);
         int hw = 0; for (var s : hintLines) hw = Math.max(hw, w.applyAsInt(s));
-        if (hw > NOTE_W - 2 * NOTE_PAD || hintLines.stream().anyMatch(s -> s.endsWith("..."))) bad.add("the key line does not fit the note " + hintLines);
-        if (ny + HINT_Y + LINE * hintLines.size() > paper.y() + paper.h() - 8) bad.add("the key line runs off the note");
+        if (hw > TEXT_W || hintLines.stream().anyMatch(s -> s.endsWith("..."))) bad.add("the key line does not fit the sheet " + hintLines);
+        if (sy + HINT_Y + LINE * hintLines.size() > sheet.y() + sheet.h() - 8) bad.add("the key line runs off the sheet");
+        if (paper.h() != sheet.h()) bad.add("the note is " + paper.h() + " px tall and the sheet " + sheet.h());
         return bad;
     }
 }
