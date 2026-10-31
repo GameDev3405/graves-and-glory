@@ -20,6 +20,7 @@ In progress:
 - **Animation pass 1:** rebased onto `main` at `d0c8d7f` on `work/anim-rebase` (`b023fe1`). All 12 animation checks pass and 196 turn shots render, including the reverted bow carry. The clearance measurement stays 0.6 to 3.7 px (recorded for Blender pass 2), which is why `p2-turn-suite` reads false. Original `work/anim-pass-1` tip preserved; not merged or pushed.
 - **House troop models:** rebased onto `main` at `18522ba` on `work/models-rebase` (`bf86e26`); fast 22/22, Gilded art 7/7 and the turn suite pass, and the cull check is re-aimed. Three troops (Hearthguard, Tusk, Tideguard) in stage-1 plate, still 8/10 against the 9 gate; Kort's look, tiers II/III, other sides and face close-ups remain. Original `work/troop-models-house` tip preserved; not merged or pushed.
 - **Armoury restyle:** waits on Kort's War Table Task 10 look; the tab is currently a plain dark panel.
+- **Animation rework (2026-10-31):** on `work/anim-rework` (built on Freebuff's `art/knight-1x` at `121baca`; local, not merged or pushed). Spec `superpowers/specs/2026-10-29-animation-rework-design.md`, plan `superpowers/plans/2026-10-29-animation-rework.md`, ledger `.superpowers/sdd/2026-10-29-animation-rework/progress.md` (local to the `bannerbound-anim-rework` worktree, not in git). Phase 1 (gameplay and network, Tasks 1 to 8) is done and passed its review; its decisions are in [DECISIONS.md](DECISIONS.md) under 2026-10-31. Phase 2 Tasks 9 to 12 (the jointed rig, `MotionMath`, the clip format and `MotionEngine`) are done. **Task 13 is next:** wire the engine into the renderer and remove the old animator, starting with the carries the ledger lists for it. Two things for Kort: dead bodies lie 1.5 s instead of the spec's 3 s (the load test's remedy), and `hl-corpse` stays red on purpose until Task 16b fixes the shield-rim z-fight.
 
 Not done:
 
@@ -39,6 +40,7 @@ Not done:
 | `work/models-rebase` | Rebased House models, checks green at `bf86e26`; awaits Kort's visual review and merge decision. |
 | `work/war-table-troop` | Original War Table troop sheet WIP tip (`30b447b`), preserved untouched. |
 | `work/war-table-rebase` | Rebased troop sheet, checks green at `a423cc8`; awaits Kort's visual review and merge decision. |
+| `work/anim-rework` | Animation rework: Phase 1 and Phase 2 Tasks 9 to 12 done, Task 13 next; local only. |
 | `heraldic-units` | External heraldic-unit reference sheets; worktree in `Documents/gg-hx`. |
 
 Tags: `v0.4.0` marks the old `main`; `v0.5.0-dev.20261028` marks the earlier `c4f8771` record commit, not the `f1f6047` baseline tip. `archive/2026-10/*` tags preserve the tips of removed historical branches (preview, codex experiments, snapshots, art bake-offs, builder docs). All five project branches and all 19 tags are on GitHub; a separate `claude/eloquent-fermat-lw270a` branch also exists, and removed remote branches are listed in the cleanup report.
