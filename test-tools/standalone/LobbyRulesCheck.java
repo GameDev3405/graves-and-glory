@@ -67,6 +67,43 @@ public final class LobbyRulesCheck {
   check(solo.configure(t,3,0,true,5).startsWith("Only an idle room host"),"Only the host turns bot fill back on");
   solo.configure(s,1,0,false,5);solo.joinRoom(t,one.code);solo.ready(s);solo.ready(t);
   check(solo.startFailure(s,false).isEmpty()&&solo.countdown(10,false,"").started().contains(one),"Without bots a full room (1v1 here) counts down");
+  // the House pick fields only that House (Kort, 2026-10-31)
+  var cat=RosterMath.Catalog.fromSpec();Set<String> open=RosterMath.fieldableHouses();
+  List<String> mixed=List.of("knight","revenant","mage",RosterMath.MARKER,"hexer",RosterMath.MARKER,"archer",RosterMath.EMPTY);
+  var gb=RosterMath.houseBanner(mixed,cat,"graveborn",open);
+  check(gb.equals(List.of(RosterMath.EMPTY,"revenant",RosterMath.EMPTY,RosterMath.EMPTY,"hexer",RosterMath.MARKER,RosterMath.EMPTY,RosterMath.EMPTY)),"A Graveborn pick fields only the Graveborn units, an Epic's marker with it, every other slot empty: "+gb);
+  check(gb.size()==mixed.size()&&RosterMath.units(gb,cat)==2,"The House banner keeps its slots and counts only the picked House");
+  var gl=RosterMath.houseBanner(mixed,cat,"gilded",open);check(RosterMath.units(gl,cat)==3&&!gl.contains("revenant")&&!gl.contains("hexer"),"A Gilded pick fields knight, mage and archer");
+  check(RosterMath.units(RosterMath.houseBanner(mixed,cat,"tidecallers",open),cat)==0,"A House the banner lacks fields nothing");
+  check(RosterMath.units(RosterMath.houseBanner(mixed,cat,"nosuch",open),cat)==0&&RosterMath.units(RosterMath.houseBanner(mixed,cat,null,open),cat)==0,"An unknown or missing House fields nothing");
+  check(RosterMath.units(RosterMath.houseBanner(mixed,cat,"graveborn",Set.of("gilded")),cat)==0,"A House this build cannot field fields nothing");
+  check(mixed.get(1).equals("revenant")&&mixed.get(0).equals("knight"),"The saved banner itself is never changed");
+  SocialHub fh=new SocialHub();UUID p=id(),q=id();fh.presence(Set.of(p,q),now);fh.lobby(p);var fr=fh.room(p);fh.joinRoom(q,fr.code);
+  String no="Your banner holds no Tidecallers troops.";
+  check(fh.ready(q,no).equals(no)&&!fr.ready.contains(q),"A commander whose House fields no troop cannot ready, and hears why");
+  fh.ready(q);check(fr.ready.contains(q),"With troops to field he readies");
+  check(fh.ready(q,no).startsWith("Not ready")&&!fr.ready.contains(q),"The refusal never stops a stand-down");
+  // passing the host
+  check(fh.handHost(p,p).startsWith("Choose another")&&fr.leader.equals(p),"The host cannot pass the seat to himself");
+  check(fh.handHost(p,id()).startsWith("Choose another")&&fr.leader.equals(p),"Nor to someone outside the room");
+  fh.presence(Set.of(p),now+5);check(fh.handHost(p,q).startsWith("Choose an online")&&fr.leader.equals(p),"Nor to an offline commander");
+  fh.presence(Set.of(p,q),now+6);fh.ready(p);check(fh.handHost(p,q).startsWith("Host passed")&&fr.leader.equals(q)&&fr.ready.isEmpty(),"Passed to an online member, the seat moves and everyone readies again");
+  check(fh.handHost(p,q).startsWith("Only an idle room host"),"The old host can pass it no more");
+  // the House chips: every name whole within the sheet's 360 px (Lato 13 widths of Gilded, Graveborn, Wildmoot, Ironclad, Tidecallers)
+  int[] names={37,61,56,45,61};
+  for(int pick=0;pick<names.length;pick++){var row=UiMath.chipRow(names,pick,360,6,16,4,4);
+   check(row.total(4)<=360,"The chip row fits the sheet, pick "+pick+": "+row.total(4));
+   for(int i=0;i<names.length;i++)check(row.widths()[i]>=names[i]+12,"Chip "+i+" holds its whole name");
+   check(row.seals()[pick],"The picked chip carries its seal");}
+  var tight=UiMath.chipRow(names,0,300,6,16,4,4);check(!tight.seals()[0]&&tight.widths()[1]==names[1]+12,"With no room for seals the names stay whole and the seals go");
+  var wide=UiMath.chipRow(names,0,500,6,16,4,4);for(boolean sl:wide.seals())check(sl,"With room every chip carries its seal");
+  // the War Table pages that fill the window scale up at 1440p (Kort, 2026-10-31)
+  check(UiMath.pageScale(2560,1440,6)==3,"2560x1440 draws the lobby at 3");
+  check(UiMath.pageScale(1920,1080,4)==2,"1920x1080 stays at 2");
+  check(UiMath.pageScale(3840,2160,8)==4,"4K stays at 4");
+  check(UiMath.pageScale(1366,768,3)==1&&UiMath.pageScale(854,480,2)==1,"Small windows stay at 1");
+  check(UiMath.pageScale(2560,1440,2)==2,"Never past the player's GUI Scale");
+  check(UiMath.pageScale(2560,1440,6)*UiMath.FILL_W<=2560&&UiMath.pageScale(2560,1440,6)*UiMath.FILL_H<=1440,"The page at 3 still fits 1440p");
   // the lobby's state is never saved
   String saved=new com.google.gson.Gson().toJson(solo);check(!saved.contains(one.code)&&!saved.contains("countdown"),"Rooms, picks and countdowns are not saved");
   System.out.println("LobbyRulesCheck: "+count+" checks passed");
