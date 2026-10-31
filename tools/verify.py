@@ -17,7 +17,10 @@ def java_home():
     raise RuntimeError('Java 17 JDK required; set JAVA_HOME')
 def game_guard():
     if os.name!='nt': raise RuntimeError('Game process guard currently supports Windows only')
-    data=subprocess.check_output(['pwsh','-NoProfile','-Command',"@(Get-CimInstance Win32_Process | Where-Object { $_.Name -match '^java(w)?\\.exe$' } | Select-Object ProcessId,CommandLine) | ConvertTo-Json -Compress"])
+    # Windows PowerShell 5.1 ships with Windows; pwsh is an optional install. Both run the same CIM query.
+    shell=shutil.which('pwsh') or shutil.which('powershell')
+    if not shell: raise RuntimeError('The game process guard needs PowerShell (pwsh or Windows PowerShell)')
+    data=subprocess.check_output([shell,'-NoProfile','-Command',"@(Get-CimInstance Win32_Process | Where-Object { $_.Name -match '^java(w)?\\.exe$' } | Select-Object ProcessId,CommandLine) | ConvertTo-Json -Compress"])
     rows=json.loads(data or b'[]'); rows=rows if isinstance(rows,list) else [rows]
     clients=[p for p in rows if any(s in (p.get('CommandLine') or '') for s in ['devlaunchinjector','net.minecraft.client','--gameDir'])]
     if clients: raise RuntimeError('Minecraft client already running: defer compilation/game work; do not terminate it')
