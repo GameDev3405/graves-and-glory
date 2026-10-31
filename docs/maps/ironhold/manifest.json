@@ -738,8 +738,23 @@
      -49
     ]
    },
-   "status": "todo",
-   "reviews": []
+   "status": "blockout",
+   "reviews": [
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-10-31T16:01:55Z",
+     "digest": "1b2f94f2ae9fca5fbcff8d5bba0ca355e7144b69fc9360aeca0163aa30815e5b",
+     "plans": [
+      "docs/maps/ironhold/sections/G2-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-G2-iso.png"
+     ],
+     "notes": "East bailey north: andesite yard with low swells, north-wall track to the NE tower stair, two lean-to sheds on the north curtain, north store, carts and crate stacks as low cover off the tracks. Rough massing for the structure pass."
+    }
+   ]
   },
   {
    "id": "H2",
@@ -1136,8 +1151,23 @@
      15
     ]
    },
-   "status": "todo",
-   "reviews": []
+   "status": "blockout",
+   "reviews": [
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-10-31T16:02:00Z",
+     "digest": "e47178fd085267230d9e8c21c763b832e8fa5ee62ed732e29b03f37a0ad0bb7a",
+     "plans": [
+      "docs/maps/ironhold/sections/G3-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-G3-iso.png"
+     ],
+     "notes": "East bailey middle: defenders' road B deck to east postern (x 31..97, z 0), north-wall and south-postern tracks branch off it, yard store, scattered carts and crates. Road west of x 31 (F3) not yet regraded."
+    }
+   ]
   },
   {
    "id": "H3",
@@ -1549,8 +1579,23 @@
      79
     ]
    },
-   "status": "todo",
-   "reviews": []
+   "status": "blockout",
+   "reviews": [
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-10-31T16:02:04Z",
+     "digest": "d6a62ffb84e5cc9984209bc776b63ca0c69ff26acbf297e853b8d581d1ea04db",
+     "plans": [
+      "docs/maps/ironhold/sections/G4-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-G4-iso.png"
+     ],
+     "notes": "East bailey south: south-postern track, lean-to shed s1 on the south curtain, cover scattered clear of the tracks; completes the river bend's east bank x 31..34 with the same deterministic river op (bend design unchanged)."
+    }
+   ]
   },
   {
    "id": "H4",
@@ -1809,6 +1854,21 @@
       "docs/maps/ironhold/sections/ironhold-F5-iso.png"
      ],
      "notes": "South water gate: lintel over the river, river leaving the curtain in a gentle meander, south ford a gravel shoal with eased banks; C pad edge broken by noise. Ford still reads a little round; detail pass to break it. Locks ok."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-10-31T15:55:55Z",
+     "digest": "ed9eb0ffcbbc29c5340c119bb83d726f5bd8dbb3fe70218e8c512c20bdc3c3d7",
+     "plans": [
+      "docs/maps/ironhold/sections/F5-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-F5-top.png",
+      "docs/maps/ironhold/sections/ironhold-F5-iso.png"
+     ],
+     "notes": "South ford tidied: the round pool is gone; a slanting gravel bar crosses the river at its kept width, gravel ramps cut down each cliff from the lane end (west, z 127) and toward C (east, z 134), edges ragged. Rest of the section unchanged. Locks ok."
     }
    ]
   },
@@ -1843,6 +1903,20 @@
       "docs/maps/ironhold/sections/ironhold-G5-iso.png"
      ],
      "notes": "Point C on a ragged trodden pad at 63 under its ring, three broken yard-wall stubs at r 21, postern cut through the curtain at x 40..48 with its track. Locks ok."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-10-31T16:02:09Z",
+     "digest": "28183c4761bf7fefb3d2ff4dc637f05b1df5790826b0d8c7299321f36618e870",
+     "plans": [
+      "docs/maps/ironhold/sections/G5-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-G5-iso.png"
+     ],
+     "notes": "Reopened: inside of the south postern gets the end of the bailey track; rest unchanged, stage C untouched."
     }
    ]
   },

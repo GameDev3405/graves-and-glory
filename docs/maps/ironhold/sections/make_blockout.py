@@ -639,11 +639,15 @@ def _south_shape():
 
 
 def _south_water():
-    return [({'op': 'river', 'note': 'south ford: gravel shoal 1 deep across the river at z 130, banks eased',
-              'points': [[-10, 129.5], [-5, 130.5], [0, 129], [6, 130.5]], 'width': 8, 'water': 59, 'depth': 1,
-              'floor': 55, 'bank': 7, 'bed': _mix(('gravel', 4), ('cobblestone', 1), ('clay', 1)),
-              'bankSurface': _mix(('gravel', 3), ('coarse_dirt', 2), ('andesite', 1)), 'wobble': 1.2,
-              'wobbleScale': 4, 'seed': 'ford-s'}, None)]
+    """The south ford (tidied 2026-10-31: the old one widened the river into a round pool). A gravel bar crosses
+    the channel on a slant from the lane's end (west, z 127) to the C side (east, z 134), 1 under the water, its
+    edges ragged; the channel keeps its width, with only a slight easing of the cliff where the bar meets it.
+    The ramps down the banks are paths (see _south_paths)."""
+    return [({'op': 'river', 'note': 'south ford: slanting gravel bar 1 under the water, channel kept its width',
+              'points': [[-7, 126.5, 5], [-2, 128.5, 6], [3, 131, 6], [7, 133.5, 5]], 'width': 6, 'water': 59,
+              'depth': 1, 'floor': 55, 'bank': 2, 'bed': _mix(('gravel', 4), ('cobblestone', 1), ('clay', 1)),
+              'bankSurface': _mix(('gravel', 3), ('coarse_dirt', 2), ('andesite', 1)), 'wobble': 1.4,
+              'wobbleScale': 3, 'seed': 'ford-s2'}, None)]
 
 
 def _south_paths():
@@ -659,6 +663,16 @@ def _south_paths():
         ({'op': 'path', 'note': 'south sally causeway over the fosse at 63', 'points': [[-85, 62], [-74, 62]],
           'width': 3, 'y': 63, 'surface': _mix(('cobblestone', 2), ('coarse_dirt', 1)),
           'under': _mix(('cobblestone', 2), ('dirt', 1)), 'seed': 'sallyc-s'}, None),
+        ({'op': 'path', 'note': 'south ford: west ramp, lane end down the cliff to the bar',
+          'points': [[-21, 130, 63], [-14, 128.5, 63], [-9, 127, 61], [-6, 126.5, 59]], 'width': 4, 'falloff': 2.5,
+          'surface': _mix(('gravel', 3), ('coarse_dirt', 2), ('dirt_path', 1)), 'under': W + 'gravel',
+          'edge': _mix(('gravel', 2), ('coarse_dirt', 1), ('andesite', 1)), 'edgeDensity': 0.6, 'wobble': 1.3,
+          'wobbleScale': 3, 'seed': 'fordramp-w'}, None),
+        ({'op': 'path', 'note': 'south ford: east ramp, bar up the cliff toward C',
+          'points': [[6, 133.5, 59], [9, 134.5, 61], [13, 133, 63], [18, 131, 63]], 'width': 4, 'falloff': 2.5,
+          'surface': _mix(('gravel', 3), ('coarse_dirt', 2), ('dirt_path', 1)), 'under': W + 'gravel',
+          'edge': _mix(('gravel', 2), ('coarse_dirt', 1), ('andesite', 1)), 'edgeDensity': 0.6, 'wobble': 1.3,
+          'wobbleScale': 3, 'seed': 'fordramp-e'}, None),
         (dict(track, note='C to the south postern', seed='postern-s',
               points=[[44, 99], [46, 108], [40, 118], [33, 126]]), None),
     ]
@@ -861,6 +875,122 @@ def _west_surface():
     ]
 
 
+# ---------------------------------------------------------------- east bailey, column G (G2..G4)
+
+BAILEY = (31, -93, 97, 93)  # inside the curtains, east of the river's bend (x0, z0, x1, z1); the yard is andesite at 63
+BAILEY_ROAD = [[6, 0], [24, 1], [44, -1], [62, 1], [80, -1], [97, 0]]  # defenders' road: B deck to the east postern
+POSTERN_S_TRACK = [[60, 1], [57, 18], [55, 40], [50, 62], [46, 80], [44, 93]]  # road to the south postern (40..48)
+NORTH_WALL_TRACK = [[70, -1], [72, -30], [76, -60], [80, -84], [90, -90]]  # road to the NE corner tower stair
+SHEDS = ((38, 50, -93, -87, 'n1'), (58, 70, -93, -88, 'n2'), (64, 76, 87, 93, 's1'))  # lean-tos on the curtain
+STORES = ((80, 88, 30, 36, 'yard store'), (36, 44, -70, -64, 'north store'))  # stacked stores, low cover
+BAILEY_KEEP_OFF = 6  # cart and crate cover keeps this far off the road and tracks
+
+
+def _bailey_track_dist(x, z):
+    return min(terrain.nearest(p, x, z)[0] for p in (BAILEY_ROAD, POSTERN_S_TRACK, NORTH_WALL_TRACK))
+
+
+def _bailey_cover():
+    """Scattered carts and crate stacks across the yard, one at most per 12-block cell where the hash allows,
+    each kept off the road, the tracks, the river bank, the sheds and stores. (x0, z0, x1, z1, top, kind)."""
+    out = []
+    for cz in range(BAILEY[1] // 12, BAILEY[3] // 12 + 1):
+        for cx in range(BAILEY[0] // 12, BAILEY[2] // 12 + 1):
+            if _hash('bcover', cx, cz) > 0.62:
+                continue
+            x = cx * 12 + 2 + int(_hash('bcx', cx, cz) * 7)
+            z = cz * 12 + 2 + int(_hash('bcz', cx, cz) * 7)
+            along = _hash('bcdir', cx, cz) > 0.5
+            big = _hash('bcbig', cx, cz) > 0.7
+            w, d = ((4, 3) if big else (3, 2)) if along else ((3, 4) if big else (2, 3))
+            if not (BAILEY[0] + 6 <= x and x + w <= BAILEY[2] - 4 and BAILEY[1] + 3 <= z and z + d <= BAILEY[3] - 3):
+                continue
+            if min(_bailey_track_dist(x + i, z + k) for i in (0, w) for k in (0, d)) < BAILEY_KEEP_OFF:
+                continue
+            if terrain.nearest(RIVER_PTS, x, z)[0] < 14:
+                continue
+            if any(_box_dist(x, z, (a - 3 - w, b + 3, c - 3 - d, e + 3)) >= 0 for a, b, c, e, _ in SHEDS + STORES):
+                continue
+            if any(_box_dist(x, z, (o[0] - 3 - w, o[2] + 3, o[1] - 3 - d, o[3] + 3)) >= 0 for o in out):
+                continue
+            cart = _hash('bckind', cx, cz) > 0.45
+            out.append((x, z, x + w - 1, z + d - 1, 64 if cart else 64 + (_hash('bch', cx, cz) > 0.5),
+                        'cart' if cart else 'crates'))
+    return out
+
+
+def _bailey_shape():
+    """The bailey yard is not a table: a low swell of a block where carts have not packed it flat."""
+    cover = [{'min': [o[0] - 1, o[1] - 1], 'max': [o[2] + 1, o[3] + 1]} for o in _bailey_cover()]
+    cover += [{'min': [a - 1, c - 1], 'max': [b + 1, e + 1]} for a, b, c, e, _ in SHEDS + STORES]
+    return [({'op': 'noise', 'note': 'east bailey: low swells in the andesite yard', 'amplitude': 1.3, 'scale': 14,
+              'octaves': 2, 'offset': -0.1, 'clamp': [63, 64], 'only': [W + 'andesite'], 'exclude': cover,
+              'seed': 'bailey-swell'}, BAILEY)]
+
+
+def _bailey_paths():
+    road = {'op': 'path', 'width': 5, 'falloff': 2, 'y': 63, 'surface': _mix(('dirt_path', 3), ('gravel', 2),
+            ('coarse_dirt', 1)), 'under': W + 'gravel', 'edge': _mix(('gravel', 2), ('coarse_dirt', 1)),
+            'edgeDensity': 0.5, 'wobble': 1.5, 'wobbleScale': 6}
+    track = {'op': 'path', 'width': 3, 'falloff': 1.5, 'y': 63, 'surface': _mix(('gravel', 2), ('coarse_dirt', 2),
+             ('dirt_path', 1)), 'under': W + 'gravel', 'wobble': 1.0, 'wobbleScale': 5}
+    return [
+        (dict(road, note="defenders' road: B deck through the east bailey to the east postern", seed='bailey-road',
+              points=BAILEY_ROAD), None),
+        (dict(track, note='bailey track: road to the south postern', seed='postern-in-s', points=POSTERN_S_TRACK),
+         None),
+        (dict(track, note='bailey track: road to the north-east corner tower', seed='nwall-track',
+              points=NORTH_WALL_TRACK), None),
+    ]
+
+
+def _bailey_built():
+    """Rough massing only (the structure pass makes them sheds, carts and stores): lean-to sheds against the north
+    and south curtains, two stacked stores and scattered carts and crates for low cover."""
+    ops = []
+    for x0, x1, z0, z1, tag in SHEDS:
+        wall_z, inner, step = (z0, z1, 1) if z0 < 0 else (z1, z0, -1)  # roof falls from the curtain into the yard
+        for k, y in enumerate((68, 67, 66, 66, 65, 65)):
+            z = wall_z + k * step
+            if (z - inner) * step > 0:
+                break
+            ops.append(({'op': 'fill', 'note': f'lean-to shed {tag}, course {k}', 'min': [x0, 64, z],
+                         'max': [x1, y, z], 'block': W + ('spruce_planks' if k else 'stripped_spruce_log[axis=x]')},
+                        (x0, z, x1, z)))
+        ops.append(({'op': 'clear', 'note': f'lean-to shed {tag}: open front', 'min': [x0 + 1, 64, inner],
+                     'max': [x1 - 1, 65, inner]}, (x0 + 1, inner, x1 - 1, inner)))
+    for x0, x1, z0, z1, tag in STORES:
+        ops.append(({'op': 'fill', 'note': f'{tag}: stacked barrels and crates, low cover', 'min': [x0, 64, z0],
+                     'max': [x1, 65, z1], 'block': W + 'barrel[facing=up]'}, (x0, z0, x1, z1)))
+        ops.append(({'op': 'fill', 'note': f'{tag}: upper stack', 'min': [x0 + 2, 66, z0 + 1],
+                     'max': [x1 - 3, 66, z1 - 2], 'block': W + 'spruce_planks'}, (x0 + 2, z0 + 1, x1 - 3, z1 - 2)))
+    for x0, z0, x1, z1, top, kind in _bailey_cover():
+        if kind == 'cart':
+            ops.append(({'op': 'fill', 'note': f'cart ({x0},{z0})', 'min': [x0, 64, z0], 'max': [x1, 64, z1],
+                         'block': W + 'spruce_planks'}, (x0, z0, x1, z1)))
+            ops.append(({'op': 'fill', 'note': f'cart ({x0},{z0}) load', 'min': [x0, 65, z0], 'max': [x0, 65, z0],
+                         'block': W + 'hay_block'}, (x0, z0, x0, z0)))
+        else:
+            ops.append(({'op': 'fill', 'note': f'crate stack ({x0},{z0})', 'min': [x0, 64, z0], 'max': [x1, top, z1],
+                         'block': W + 'barrel[facing=up]'}, (x0, z0, x1, z1)))
+    return ops
+
+
+def _bailey_surface():
+    return [
+        ({'op': 'breakup', 'note': 'bailey: wall foot, gravel and moss where carts do not reach',
+          'replace': [W + 'andesite'],
+          'mix': _mix(('gravel', 2), ('mossy_cobblestone', 1), ('coarse_dirt', 2), ('grass_block', 1)),
+          'near': [W + 'stone_bricks'], 'width': 2.5, 'density': 0.55, 'scale': 2, 'seed': 'bailey-foot'}, BAILEY),
+        ({'op': 'breakup', 'note': 'bailey: churned ground along the road and tracks', 'replace': [W + 'andesite'],
+          'mix': _mix(('coarse_dirt', 3), ('packed_mud', 2), ('gravel', 2), ('mud', 1)), 'near': [W + 'dirt_path'],
+          'width': 4, 'density': 0.6, 'scale': 2, 'seed': 'bailey-churn'}, BAILEY),
+        ({'op': 'breakup', 'note': 'bailey: old flagging and mud in broad patches', 'replace': [W + 'andesite'],
+          'mix': _mix(('stone', 2), ('cobblestone', 2), ('packed_mud', 2), ('coarse_dirt', 1), ('polished_andesite', 1)),
+          'density': 0.3, 'scale': 7, 'seed': 'bailey-patch'}, BAILEY),
+    ]
+
+
 def features():
     """Every helper op on the map, in apply order. Each is clipped to the section it is planned for; noise, erode
     and breakup carry a region (x0, z0, x1, z1) that is intersected with the section."""
@@ -876,6 +1006,7 @@ def features():
     f += _north_shape()
     f += _south_shape()
     f += _west_shape()
+    f += _bailey_shape()
     # -- water: bog pools, the flooded trench in the Mire, the fosse, the river
     f += [(op, None) for op in _pools()]
     f += _trench150()
@@ -911,6 +1042,7 @@ def features():
     f += _north_paths()
     f += _south_paths()
     f += _west_paths()
+    f += _bailey_paths()
     spur = {'op': 'path', 'width': 4, 'falloff': 1.5, 'surface': _mix(('dirt_path', 3), ('coarse_dirt', 1)),
             'under': W + 'dirt', 'wobble': 0.5}
     f.append((dict(spur, note='supply spur SW, raised track over the Mire', seed='spur-sw',
@@ -953,6 +1085,7 @@ def features():
     f += _north_built()
     f += _south_built()
     f += _west_built()
+    f += _bailey_built()
     # -- surfaces: blend the boundaries so no material ends on a ruler line
     f.append(({'op': 'breakup', 'note': 'river banks: mud, gravel and moss near the water',
                'replace': [W + n for n in ('mud', 'packed_mud', 'andesite', 'coarse_dirt', 'grass_block')],
@@ -985,6 +1118,7 @@ def features():
     f += _north_surface()
     f += _south_surface()
     f += _west_surface()
+    f += _bailey_surface()
     return f
 
 
@@ -1019,7 +1153,8 @@ CORE = ('E3', 'E4', 'F3', 'F4')
 GROUPS = {'core': CORE, 'mire': ('C3', 'C4', 'D3', 'D4'),
           'north': ('C1', 'D1', 'E1', 'F1', 'G1', 'C2', 'D2', 'E2', 'F2'),
           'south': ('C5', 'D5', 'E5', 'F5', 'G5', 'C6', 'D6', 'E6', 'F6', 'G6'),
-          'west': ('B1', 'B2', 'B3', 'B4', 'B5', 'B6')}
+          'west': ('B1', 'B2', 'B3', 'B4', 'B5', 'B6'),
+          'bailey': ('G2', 'G3', 'G4')}
 REOPEN = ("Kort's rulings of 2026-10-30: east curtain to x 98 (x 72 pieces dropped), inner ward closed to the river "
           'cliffs, Great Keep tower out of the river, stations awaiting the modes lane; 2026-10-31: the river bends '
           'around the keep court; 2026-10-31 milestone 2A.3: river, banks and walls rebuilt with the terrain helpers')
@@ -1032,6 +1167,14 @@ REOPEN_MIRE = ('2026-10-31 milestone 2A.3 flank pass: the trenches at x -150 and
 
 REOPEN_SOUTH = ('2026-10-31 milestone 2A.3 south flank pass: the ridge-foot track to the south sally gap and its '
                 'causeway over the fosse at z 62 (the mirror of the north one), routed outside the curtain')
+
+
+REOPEN_FORD = ('2026-10-31 F5 tidy: the south ford no longer widens the river into a round pool; a slanting gravel '
+               'bar crosses the kept channel, with gravel ramps down each cliff from the lane end and toward C')
+
+
+REOPEN_G5 = ('2026-10-31 east bailey pass: the inside of the south postern gets the end of the bailey track from '
+             "the defenders' road; the rest of the section is unchanged")
 
 
 def section_plan(m, sid, world):
@@ -1074,7 +1217,8 @@ def section_plan(m, sid, world):
         'operations': ops,
     }
     if done:
-        p['reopen'] = REOPEN_MIRE if sid in GROUPS['mire'] else REOPEN_SOUTH if sid == 'E4' else REOPEN
+        p['reopen'] = (REOPEN_MIRE if sid in GROUPS['mire'] else REOPEN_SOUTH if sid == 'E4' else
+                       REOPEN_FORD if sid == 'F5' else REOPEN_G5 if sid == 'G5' else REOPEN)
     return p
 
 
