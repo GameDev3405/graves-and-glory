@@ -6,6 +6,12 @@ Kort's picks (section 12): **D1a** keep today's coordinates, add the east gorge,
 
 Also decided 2026-10-30: sections about 64x64; each goes blockout, structure, natural, detail; agents review the passes; Kort signs only this layout and the whole finished map. Review images per section are top-down plus isometric; in-game shots come later through the harness. The protect locks belong to the map lane (in the manifest). Grass and leaves biome tint waits for the palette work.
 
+Kort's rulings on the first blockout (2026-10-30), which amend this layout:
+- **East curtain** stands at x 98..102, as drawn here; today's east curtain pieces at x 72 (`ih-curtain-en*`/`es*`) are dropped.
+- **Inner ward closed:** inner curtain runs go north and south from the gate's ends to the river cliffs (north: x -40..-36 to z -30, then z -30..-28 east to the west cliff; south: to z 30, then z 28..30 east to the keep court wall at x -23). The gate and the D4a postern are the only ways in. The river runs in a cut channel, water y 59 under cliff banks at 63, so it cannot be climbed out of; the B deck spans it.
+- **Great Keep tower** moves out of the river to x 9..23, z 24..44 on the east bank; the river line at x 4..5 stays clean.
+- **Defender stations** stay as placed, awaiting the modes lane's confirmation.
+
 No game code, spawn or capture point has changed yet (plan 7.3): the Dusk spawn move and the postern are for the modes lane.
 
 Files in this folder:
@@ -31,7 +37,7 @@ Files in this folder:
 | Fosse + outer curtain | x -80..-70 | Wet ditch (water y 61), causeway at z ±9; curtain top 71 |
 | Outer Yard | x -69..-41, z ±93 | Close-quarters gravel yard; Siege stage A ring (-55,0) |
 | Gate wall | x -40..-34, z ±23 | Deepslate gate, towers to 81; Siege stage B target |
-| Inner yard + keep | x -33..23, z -24..47 | Domination B deck, keep court ring (-8,34), Great Keep tower |
+| Inner yard + keep | x -33..23, z -24..47 | Domination B deck, keep court ring (-8,34), Great Keep tower; closed by inner curtain runs from the gate to the river cliffs |
 | East bailey | x 6..97 | Andesite yard, defenders' road to the B deck |
 | Donjon Court | x 103..160, z ±48 | Proposed east (Dusk) spawn at (128,0), barracks hall |
 | Flanks | north z < -100, south z > 100 | Burned village + A (north), Gallows Ridge + C + Watch Hill (south) |
@@ -75,7 +81,7 @@ Camp low; field and Mire medium (mantlet rows at x -235, -200, -160, -130, -110,
 `[Choice]` Cover thins toward the gate so the final push is costly, which matches the "open-field approach" vision.
 
 ## 7. Height bands (top of ground or structure)
-- Ground: rim 82-88; camp shelf, Gallows Ridge, Watch Hill shoulder 72; north bluff 70; west upland 67; field and fortress floor 63-64; Mire and fosse water 61; gorge floor 44.
+- Ground: rim 82-88; camp shelf, Gallows Ridge, Watch Hill shoulder 72; north bluff 70; west upland 67; field and fortress floor 63-64; Mire and fosse water 61; river water 59 in its cut channel; gorge floor 44.
 - Walls: curtain walk 72; gate towers 81; keep walls 85; Great Keep tower 114, crown 118.
 
 `[Choice]` The points keep elevation 64. The ridges sit beside A and C, not under them, so today's point rows stay valid.
@@ -83,12 +89,12 @@ Camp low; field and Mire medium (mantlet rows at x -235, -200, -160, -130, -110,
 ## 8. Landmarks
 | Landmark | Description |
 |---|---|
-| Great Keep tower | x 4..20, z 24..44, to y 114-118. Tall, dark, intact. The skyline anchor seen from the camp (D2) |
+| Great Keep tower | x 9..23, z 24..44 on the east bank (ruling 2026-10-30), to y 114-118. Tall, dark, intact. The skyline anchor seen from the camp (D2) |
 | Keep court and walls | x -23..23, z 21..47, walls to 85, four land gates (NW gate = defenders' way in, per the flood contract) |
 | Iron Gate | Today's ironhold/gate at (-37,0): passage x -40..-34, z -5..5, portcullis, towers at 81 |
 | Outer curtain | x -74..-70, z ±96: cracked front-door towers, two sally gaps |
 | North and south curtains | z ±96 from x -74 to 102, with water-gate arches over the river |
-| East curtain | Has the east postern and a south postern |
+| East curtain | x 98..102, z ±96 (ruling 2026-10-30; today's x 72 pieces are dropped). Has the east postern and a south postern |
 | Approaches | King's Road, the burned village (5 roofless houses), the Gallows Ridge chapel and gallows, the Mire causeway, the fosse causeway |
 | Supply houses and watchtowers | Supply houses kept at today's spots; watchtowers at (-180,±85) and (150,±150) |
 | Siege camp | Tents, two trebuchets, a palisade |
@@ -97,7 +103,7 @@ Camp low; field and Mire medium (mantlet rows at x -235, -200, -160, -130, -110,
 ## 9. Siege fit
 - **Unchanged:** all six modeSites wards, both Siege rings, the gate target and gate_intact.
 - **The blockout keeps the flood contract:** inner yard x -33..-6, z -24..20, with the keep NW land gate open.
-- **Defender stations kept:** gate tower tops (feet 13) and the keep north wall-walk (feet 7).
+- **Defender stations kept:** gate tower tops (feet 13) and the keep north wall-walk (feet 7). Placed from the sight lines; awaiting the modes lane's confirmation.
 - **New walls that need checks:**
   - The outer curtain and fosse add a pre-yard choke. Stage A's 600 s clock must still be reachable, so check it in the whole-map blockout pass.
   - Web Stalkers can climb the curtain. Tidecallers can use the water gates. Both are intended counterplay; confirm with the modes lane.

@@ -86,9 +86,9 @@ PROTECT = [
     ring('siege-stage-a', 'siege', -55, 0, 15, 'Siege stage A ring in the Outer Yard: no blocks y 64..67', LAYOUT),
     ring('siege-stage-c', 'siege', -8, 34, 10, 'Siege stage C ring in the keep court: no blocks y 64..67', LAYOUT),
     box('station-gate-sight', 'station', (-40, 77, -10), (-38, 78, -8),
-        'Defender station: gate tower top, gate-sight stand (feet about -39,77,-9)', SIGHT),
+        'Defender station: gate tower top, gate-sight stand (feet about -39,77,-9); awaiting modes lane', SIGHT),
     box('station-keep-sight', 'station', (-10, 71, 20), (-8, 72, 22),
-        'Defender station: keep north wall-walk, keep-sight stand (feet about -9,71,21)', SIGHT),
+        'Defender station: keep north wall-walk, keep-sight stand (feet about -9,71,21); awaiting modes lane', SIGHT),
 ]
 
 

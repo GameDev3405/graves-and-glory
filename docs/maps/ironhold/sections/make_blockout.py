@@ -4,14 +4,20 @@
   python docs/maps/ironhold/sections/make_blockout.py plans   # E3/E4/F3/F4 blockout plans beside this file
 
 Blockout is massing only: ground heights and surfaces, the fosse and its causeway, the river and the B deck, the new
-front-door curtain stretch and its two cracked towers, the yards, and the Great Keep tower volume. Every column is
+front-door curtain stretch and its two cracked towers, the inner curtain closures, the yards, and the Great Keep
+tower volume. Every column is
 described once by `column(x, z)`; each section's plan is that description clipped to the section's bounds and
 grouped into terrain ops by material. Edges that the layout draws straight (fosse lip, river banks, road) are made
 ragged with a deterministic value noise, because Map Forge has no noise or erode op yet (terrain-helper item).
 
 The base world stands in for today's live map until the 2A.2 export exists: flat grass with its top at y 63 over the
 four sections plus a margin, with today's ironhold/gate, ironhold/keep and the four west curtain pieces placed at their
-Spec.java LANDMARKS rows (ih-gate, ih-keep, ih-curtain-w*)."""
+Spec.java LANDMARKS rows (ih-gate, ih-keep, ih-curtain-w*). Today's east curtain pieces (ih-curtain-e*, x 72) are
+left out on purpose: Kort ruled 2026-10-30 that the layout's east curtain at x 98 wins and the x 72 pieces go.
+
+Kort's rulings of 2026-10-30 on the first blockout: the inner ward is closed by inner curtain runs from the gate's ends
+to the river cliffs (the gate and the D4a postern are the only ways in); the river runs in a cut channel (water y 59,
+banks y 63) so it cannot be climbed out of; the Great Keep tower stands on the east bank, clear of the river."""
 import hashlib
 import json
 import pathlib
@@ -70,12 +76,18 @@ TOWER = ('minecraft:deepslate_tiles', 'minecraft:deepslate_tiles', 0, 'minecraft
 CROWN = ('minecraft:deepslate_bricks', 'minecraft:deepslate_bricks', 0, 'minecraft:deepslate_tiles')
 
 
+KX0, KX1, KZ0, KZ1 = 9, 23, 24, 44  # Great Keep tower footprint, east of the river's ragged east bank (x <= 7)
+RIVER = (59, ('minecraft:water', 'minecraft:water', 1, 'minecraft:gravel'), GROUND)  # cut channel: 4 below the banks
+INNER = 71  # inner curtain closures: walk at 72 like the outer curtain
+
+
 def keep_tower(x, z):
-    """Great Keep tower (pick D2a): x 4..20, z 24..44, chamfered corners, shaft to y 99, setback (2 in) to 114,
-    crown 115..118 with merlons on the setback edge. Stands in the river at x 4..5 on the gravel bed."""
-    if not (4 <= x <= 20 and 24 <= z <= 44):
+    """Great Keep tower (pick D2a): x 9..23, z 24..44 on the east bank (Kort 2026-10-30: out of the river, the
+    river line at x 4..5 stays clean), chamfered corners, shaft to y 99, setback (2 in) to 114, crown 115..118 with
+    merlons on the setback edge. It replaces today's keep blocks in its footprint, including the court's east wall."""
+    if not (KX0 <= x <= KX1 and KZ0 <= z <= KZ1):
         return None
-    dx, dz = min(x - 4, 20 - x), min(z - 24, 44 - z)
+    dx, dz = min(x - KX0, KX1 - x), min(z - KZ0, KZ1 - z)
     if dx + dz < 3:
         return None  # chamfer
     top = 99
@@ -94,6 +106,15 @@ def column(x, z):
     t = keep_tower(x, z)
     if t:
         return t
+    west = -5 + edge('bank-w', z, 1.5, 7)
+    # inner curtain closures (Kort 2026-10-30): north from the gate's end (z -23) to z -30, then east to the west
+    # river cliff; south from z 23 to z 30, then east to today's keep court wall (x -23). Clear of the siege wards.
+    if -40 <= x <= -36 and 24 <= az <= 30:
+        return (INNER, WALL, None)
+    if -35 <= x < west and -30 <= z <= -28:
+        return (INNER, WALL, None)
+    if -35 <= x <= -24 and 28 <= z <= 30:
+        return (INNER, WALL, None)
     # front-door towers: x -80..-70, z +-(9..17), from the fosse floor; cracked tops 73..76
     if -80 <= x <= -70 and 9 <= az <= 17:
         crack = 76 - int(_hash('crack', x, z) * 4) if (x in (-80, -70) or az in (9, 17)) else 76
@@ -121,12 +142,13 @@ def column(x, z):
         return (GROUND, ('minecraft:gravel', 'minecraft:gravel', 2, 'minecraft:stone'), None)  # Outer Yard
     if -40 <= x <= -34 and az <= 23:
         return None  # today's ironhold/gate stands here
-    # river at x 0, banks ragged by a block; B deck x -5..5, z -12..12 (spruce planks at y 63)
-    west, east = -5 + edge('bank-w', z, 1.5, 7), 5 + edge('bank-e', z, 1.5, 7)
+    # river at x 0 in a cut channel (water y 59, cliff banks y 63), banks ragged by a block; B deck x -5..5,
+    # z -12..12 (spruce planks at y 63 over open air to the water at 59, so swimmers cannot climb out under it)
+    east = 5 + edge('bank-e', z, 1.5, 7)
     if az <= 12 and -5 <= x <= 5:
-        return (GROUND, ('minecraft:spruce_planks', 'minecraft:water', 3, 'minecraft:gravel'), None)
+        return (GROUND, ('minecraft:spruce_planks', 'minecraft:air', 3, 'minecraft:water'), None)
     if west <= x <= east and az > 12:
-        return (62, ('minecraft:water', 'minecraft:water', 2, 'minecraft:gravel'), GROUND)
+        return RIVER
     if -7 <= x <= 7 and not (-23 <= x <= 23 and 21 <= z <= 47):
         return (GROUND, ('minecraft:mud', 'minecraft:mud', 2, 'minecraft:stone'), None)  # river bank where it narrows
     if -33 <= x <= -6 and -24 <= z <= 20:
@@ -169,9 +191,11 @@ def section_plan(m, sid, world):
         'format': PLAN_FORMAT, 'id': f'ironhold-{sid.lower()}-blockout', 'world': 'ironhold',
         'author': 'map lane agent (Opus 5.5), 2026-10-30',
         'purpose': f'Blockout pass of section {sid} ({s["name"]}) from the signed master layout: ground heights and '
-                   'surfaces, fosse, causeway, river and B deck, front-door curtain and towers, yards, Great Keep '
-                   'tower volume. Generated by docs/maps/ironhold/sections/make_blockout.py.',
+                   'surfaces, fosse, causeway, river channel and B deck, front-door curtain and towers, inner curtain '
+                   'closures, yards, Great Keep tower volume. Generated by docs/maps/ironhold/sections/make_blockout.py.',
         'section': sid, 'pass': 'blockout',
+        'reopen': "Kort's rulings of 2026-10-30: east curtain to x 98 (x 72 pieces dropped), inner ward closed to the "
+                  'river cliffs, Great Keep tower out of the river, stations awaiting the modes lane',
         'expectSection': mf.section_digests(m, world, {sid})[sid],
         'limits': {'maxChangedBlocks': 120000},
         'operations': ops,

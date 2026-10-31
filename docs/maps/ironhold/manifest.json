@@ -27,7 +27,15 @@
    "D5": "a: the Mire with a causeway",
    "D6": "a: north low and wet, south high"
   },
-  "workflow": "Sections about 64x64; passes blockout, structure, natural, detail; agents review each pass from top-down and isometric renders; Kort signs only the layout and the finished map."
+  "workflow": "Sections about 64x64; passes blockout, structure, natural, detail; agents review each pass from top-down and isometric renders; Kort signs only the layout and the finished map.",
+  "rulings": {
+   "at": "2026-10-30",
+   "by": "Kort",
+   "eastCurtain": "the layout wins: east curtain at x 98..102; today's x 72 pieces (ih-curtain-en*/es*) are dropped",
+   "innerWard": "closed: inner curtain runs from the gate ends to the river cliffs; the gate and the D4a postern are the only ways in",
+   "keepTower": "out of the river: x 9..23, z 24..44 on the east bank; the river line at x 4..5 stays clean",
+   "stations": "left as placed, awaiting the modes lane"
+  }
  },
  "base": "Until the 2A.2 export of the live map exists, the stand-in base world is built by docs/maps/ironhold/sections/make_blockout.py base (flat ground top y 63 plus today's gate, keep and west curtain pieces). Replace it with the export before the structure pass.",
  "sections": [
@@ -728,6 +736,21 @@
       "docs/maps/ironhold/sections/ironhold-E3-iso.png"
      ],
      "notes": "Fosse x -80..-75 with a ragged outer lip, water to 61; cobble causeway z -8..8; cracked front-door towers x -80..-70 z -17..-9 to 73-76; new curtain stretch z -27..-18 to 71 joins today's piece; Outer Yard gravel; King's Road dirt path; field swells 63-64. Stage A ring and gate-sight station untouched. Open: inner ward has no north closure past the gate wall end (z -23); layout does not draw one."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5), self-review of top and iso renders",
+     "at": "2026-10-31T04:57:06Z",
+     "digest": "ba78b673ed58475c2ab523349ba75d7a802ce35c5952b51e309318035ddff150",
+     "plans": [
+      "docs/maps/ironhold/sections/E3-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-E3-top.png",
+      "docs/maps/ironhold/sections/ironhold-E3-iso.png"
+     ],
+     "notes": "Re-review after Kort's rulings of 2026-10-30 (reopen plan). Inner curtain closure north of the gate: x -40..-36 from z -24 to -30, top 71, joining the F3 run. East curtain x 72 pieces are not in this section or the base (dropped by ruling). Fosse, causeway, front-door towers and Outer Yard unchanged. Gate-sight station untouched, awaiting modes lane."
     }
    ]
   },
@@ -762,6 +785,21 @@
       "docs/maps/ironhold/sections/ironhold-F3-iso.png"
      ],
      "notes": "Inner yard packed mud x -33..-6 z -24..20 (flood contract), river x 0 with ragged banks and mud bank strips x -7..7, B deck spruce at y 63 x -5..5 z -12..12, east bailey andesite. Capture B ring and ward-n/ward-b at y>=64 untouched. Bank strips read straight on the dry side; natural pass should break them."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5), self-review of top and iso renders",
+     "at": "2026-10-31T04:57:08Z",
+     "digest": "6cc457fa5032b73b542f5fd68c9118a0fc990ecaa47ce96d52f95d7f6452c53d",
+     "plans": [
+      "docs/maps/ironhold/sections/F3-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-F3-top.png",
+      "docs/maps/ironhold/sections/ironhold-F3-iso.png"
+     ],
+     "notes": "Re-review after Kort's rulings of 2026-10-30 (reopen plan). North inner curtain run z -30..-28 from x -35 to the west river cliff, clear of siege ward-n (z -27..-23). River now in a cut channel (water y 59, banks 63) so it cannot be climbed out of; B deck spans it over open air. Inner yard packed mud unchanged. Ward-b and B ring untouched."
     }
    ]
   },
@@ -958,6 +996,21 @@
       "docs/maps/ironhold/sections/ironhold-E4-iso.png"
      ],
      "notes": "Mirror of E3 south: south front-door tower z 9..17, curtain stretch z 18..27, fosse and lip to z 79, Outer Yard gravel, coarse bailey ground east of x -41 beyond the gate. Sally gap z 59..65 keeps grass. Stage A ring clear (towers trimmed to x <= -70 outside r15)."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5), self-review of top and iso renders",
+     "at": "2026-10-31T04:57:07Z",
+     "digest": "79efcc32f13a3c7f0680f3dd02d1ad5fde4963849428da94383e993cacf89dd2",
+     "plans": [
+      "docs/maps/ironhold/sections/E4-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-E4-top.png",
+      "docs/maps/ironhold/sections/ironhold-E4-iso.png"
+     ],
+     "notes": "Re-review after Kort's rulings of 2026-10-30 (reopen plan). Inner curtain closure south of the gate: x -40..-36 from z 24 to 30, top 71, joining the F4 run. Rest unchanged from r1; stage A ring clear."
     }
    ]
   },
@@ -992,6 +1045,21 @@
       "docs/maps/ironhold/sections/ironhold-F4-iso.png"
      ],
      "notes": "Great Keep tower x 4..20 z 24..44: chamfered shaft to 99, setback to 114, crown 115..118; stands in the river at x 4..5 and replaces today's keep blocks in its footprint (expected, pick D2a). River continues south of the keep. Stage C ring, gate-ne/gate-e/ward-s and keep-sight untouched. Tower is a solid block-out volume; structure pass hollows it and adds the keep postern (modes lane)."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5), self-review of top and iso renders",
+     "at": "2026-10-31T04:57:09Z",
+     "digest": "d44a8758f625afb107659ecadcfc6f589960f9ffec33eeddaabe089e9a574eb4",
+     "plans": [
+      "docs/maps/ironhold/sections/F4-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-F4-top.png",
+      "docs/maps/ironhold/sections/ironhold-F4-iso.png"
+     ],
+     "notes": "Re-review after Kort's rulings of 2026-10-30 (reopen plan). Great Keep tower moved out of the river to x 9..23, z 24..44; river line at x 4..5 is clean (the river runs under today's keep court floor, which the structure pass replaces). South inner curtain run z 28..30 from x -35 to the keep court wall at x -23, clear of siege ward-s. Keep-sight station untouched, awaiting modes lane. Tower replaces today's keep east wall in its footprint."
     }
    ]
   },
@@ -1897,7 +1965,7 @@
     78,
     -8
    ],
-   "reason": "Defender station: gate tower top, gate-sight stand (feet about -39,77,-9)",
+   "reason": "Defender station: gate tower top, gate-sight stand (feet about -39,77,-9); awaiting modes lane",
    "source": "bannerbound-modes sheets/design.json landmarkLines sight entries (feet = eye y - 1.6); modes lane to confirm"
   },
   {
@@ -1913,7 +1981,7 @@
     72,
     22
    ],
-   "reason": "Defender station: keep north wall-walk, keep-sight stand (feet about -9,71,21)",
+   "reason": "Defender station: keep north wall-walk, keep-sight stand (feet about -9,71,21); awaiting modes lane",
    "source": "bannerbound-modes sheets/design.json landmarkLines sight entries (feet = eye y - 1.6); modes lane to confirm"
   }
  ]
