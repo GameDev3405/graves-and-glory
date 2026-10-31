@@ -770,6 +770,21 @@
       "docs/maps/ironhold/sections/ironhold-E3-iso.png"
      ],
      "notes": "Re-review r3 after Kort's ruling of 2026-10-31 (river bends around the keep court). No change to this section's blocks (plan differs only in its reopen text); closure, fosse, towers and Outer Yard as in r2. Gate-sight station awaiting modes lane."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5), self-review of top and iso renders",
+     "at": "2026-10-31T05:28:04Z",
+     "digest": "ef055f265ba5c34c158f114b066257cb083369211458ded90da75308bf7f07e5",
+     "plans": [
+      "docs/maps/ironhold/sections/E3-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-E3-top.png",
+      "docs/maps/ironhold/sections/ironhold-E3-iso.png"
+     ],
+     "notes": "Rebuilt with helpers: fosse is a river op (water 61, inner edge on the curtain foot x -75, outer lip wandering -80..-83), cobble causeway z -8..8 kept; King's Road a path op with ragged edges and coarse-dirt verges; field swells by noise to the fosse lip; front-door curtain stretch and north inner closure as wall ops; Outer Yard and fosse-lip breakup. Positions unchanged; locks ok."
     }
    ]
   },
@@ -834,6 +849,21 @@
       "docs/maps/ironhold/sections/ironhold-F3-iso.png"
      ],
      "notes": "Re-review r3 after Kort's ruling of 2026-10-31 (river bends around the keep court). River's north elbow starts at the section's south edge (z 13..15) heading east toward the keep leg; B deck, inner yard and north closure as in r2. Ward-b and B ring untouched."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5), self-review of top and iso renders",
+     "at": "2026-10-31T05:28:06Z",
+     "digest": "7b4df56543e5c9916a7a45feea9a66e85213ce94944c6d500e54d6c2d4969894",
+     "plans": [
+      "docs/maps/ironhold/sections/F3-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-F3-top.png",
+      "docs/maps/ironhold/sections/ironhold-F3-iso.png"
+     ],
+     "notes": "River is one river op (water 59, cut cliffs to 63, stone/andesite/mud cliff faces), elbow along z 13..19; mud bank band 1-4 blocks following the river; B deck spruce planks re-stamped at 63; north inner closure z -30..-28 runs to the west cliff and stops there; inner yard and bailey breakup. Positions unchanged; locks ok."
     }
    ]
   },
@@ -1060,6 +1090,21 @@
       "docs/maps/ironhold/sections/ironhold-E4-iso.png"
      ],
      "notes": "Re-review r3 after Kort's ruling of 2026-10-31 (river bends around the keep court). No change to this section's blocks (plan differs only in its reopen text); south closure as in r2. Stage A ring clear."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5), self-review of top and iso renders",
+     "at": "2026-10-31T05:28:05Z",
+     "digest": "55ed7d95459ac51af4080c27aeab43d1e28d1a6269f8ad2786b7063fc8dcfa74",
+     "plans": [
+      "docs/maps/ironhold/sections/E4-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-E4-top.png",
+      "docs/maps/ironhold/sections/ironhold-E4-iso.png"
+     ],
+     "notes": "Rebuilt with helpers: fosse river op with the ragged outer lip; front-door curtain stretch z 18..27 and the south inner closure (gate end to z 30) as wall ops; field swells; Outer Yard breakup. Positions unchanged; locks ok."
     }
    ]
   },
@@ -1124,6 +1169,21 @@
       "docs/maps/ironhold/sections/ironhold-F4-iso.png"
      ],
      "notes": "Re-review r3 after Kort's ruling of 2026-10-31 (river bends around the keep court). River now skirts the keep court: elbow z 13..19 north of the court, leg x 25..30 with a one-block bank at x 24 past the tower's foot, elbow z 49..55 back to x 0. Court and stage C ring stand on solid ground, lock intact (locks ok). Leg stays inside column F, G untouched. Keep-sight station awaiting modes lane. A small grey block at x 31..32, z 34..37 in the margin is base content in G4, not this plan."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5), self-review of top and iso renders",
+     "at": "2026-10-31T05:28:07Z",
+     "digest": "961f5d0906e030ed0602213521a5e55c395f434e7ffb2e3d2eaf0098dbc09b8a",
+     "plans": [
+      "docs/maps/ironhold/sections/F4-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-F4-top.png",
+      "docs/maps/ironhold/sections/ironhold-F4-iso.png"
+     ],
+     "notes": "River op bends around the keep court: leg x 25..30 with a bank at x 24 (court excluded), elbow along z 49..55 back to x 0; keep tower x 9..23 untouched; the grey andesite at x 30 is gone (mud bank meets G4); stage C ring untouched. Locks ok."
     }
    ]
   },
