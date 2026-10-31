@@ -420,7 +420,8 @@ final class HoldLineChecks {
             else if (cpFadePhase > 0 || cpFadeId >= 0 && !cpFadeDone) fadeShots(c, cpFadeId); // R42: the body as it fades
             int baitId = cpBaitId; // N2: a living troop stays hittable on the client
             if (baitId >= 0 && c.world != null && c.world.getEntityById(baitId) instanceof net.minecraft.entity.LivingEntity l && l.isAlive() && l.canHit()) cpClientBaitHit = true;
-            if (tick > 16000 && !finished) {finished = true; report("hl-timeout", false, "stuck in stage " + stage); Phase2Checks.finish(c, "holdline");}
+            if (tick > (CP_LOAD ? 34000 : 16000) && !finished) // R43: the corpse load runs 33 waves of about 22 s (ABBA x8), some 16000 ticks alone
+                {finished = true; report("hl-timeout", false, "stuck in stage " + stage); Phase2Checks.finish(c, "holdline");}
         }
 
         /** hl-mirror, on the client: the preview's places from the markers and the group card, against the server's. Waits (up to 200 client ticks) for the state packet to show the whole group. */
