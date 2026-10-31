@@ -387,10 +387,11 @@ public final class BattleMathCheck {
         // M7: stance_v2's aimPitch is MotionInput's (positive aims down): the launch angle's negative
         check(BattleMath.aimPitch(20, 0, 5, 10) < -44.9 && BattleMath.aimPitch(20, 0, 5, 10) > -45.1 && Math.abs(BattleMath.aimPitch(10, -10, 0, 4) - 45) < 1e-9, "aimPitch: a lofted shot aims up (negative), a shot down a slope aims down (positive)");
         check(Double.compare(BattleMath.aimPitch(20, 0, 0, 10), 0.0) == 0, "aimPitch: a flat shot is 0, not -0");
-        // M6: a late joiner is sent a troop's swing only while it still plays: until its impact frame plus SWING_RECOVERY_TICKS (no clip lengths on the server)
-        check(BattleMath.SWING_RECOVERY_TICKS == 10, "the swing's recovery margin is 10 ticks");
-        check(BattleMath.swingCurrent(1000, 1000, 8) && BattleMath.swingCurrent(1018, 1000, 8) && !BattleMath.swingCurrent(1019, 1000, 8), "swingCurrent: from its tick through impactTicks + 10, not a tick after");
-        check(!BattleMath.swingCurrent(1000, -1, 8) && !BattleMath.swingCurrent(999, 1000, 8), "swingCurrent: no swing (-1) or one stamped after now is not current");
+        // M6 and carry B8: a late joiner is sent a troop's swing while its clip may still play: ATTACK_CLIP_MAX_TICKS (no clip lengths on the server;
+        // the client skips a swing whose clip has ended, and tools/clips.py holds every attack clip to the cap)
+        check(BattleMath.ATTACK_CLIP_MAX_TICKS == 40, "the attack clip cap is 40 ticks");
+        check(BattleMath.swingCurrent(1000, 1000) && BattleMath.swingCurrent(1040, 1000) && !BattleMath.swingCurrent(1041, 1000), "swingCurrent: from its tick through ATTACK_CLIP_MAX_TICKS, not a tick after");
+        check(!BattleMath.swingCurrent(1000, -1) && !BattleMath.swingCurrent(999, 1000), "swingCurrent: no swing (-1) or one stamped after now is not current");
         // the hit's blocked flag: a counters row of the raised-shield kind (raised_front) applies
         Set<String> arrowFrom = new HashSet<>(Set.of("ranged", "nonsiege")); arrowFrom.addAll(CounterMath.kindTags("arrow"));
         check(CounterMath.blocked(new CounterMath.Hit(arrowFrom, Set.of("shield", "infantry"), 10, true, false, false, true, false, false), Spec.COUNTERS), "blocked: an arrow from the front on a raised shield");

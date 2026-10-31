@@ -132,10 +132,14 @@ public final class BattleMath {
      * The wire, the Unit and the client all carry this one sign, so the motion engine (Task 13) reads it as it comes.
      */
     public static double aimPitch(double dist, double dy, double peak, int ticks) { double up = launchPitch(dist, dy, peak, ticks); return up == 0 ? 0 : -up; }
-    /** How long a swing still plays after its impact frame, in ticks: the server has no clip lengths, so a late joiner is sent a swing until impactTicks plus this (swingCurrent). */
-    public static final int SWING_RECOVERY_TICKS = 10;
-    /** Whether a swing begun on world tick swingTick (-1: none) still plays at world tick now: from that tick through its impactTicks plus SWING_RECOVERY_TICKS. */
-    public static boolean swingCurrent(long now, long swingTick, int impactTicks) { return swingTick >= 0 && now >= swingTick && now - swingTick <= (long) impactTicks + SWING_RECOVERY_TICKS; }
+    /**
+     * The longest an attack clip may run, in ticks (Task 13 carry B8). The server holds no clip lengths (they live in the client's motion assets), so a
+     * late joiner is sent a swing for this long and its client, which knows the clip, skips one whose clip has already ended. tools/clips.py fails any
+     * attackVariants clip longer than this, so no swing that still shows is withheld.
+     */
+    public static final int ATTACK_CLIP_MAX_TICKS = 40;
+    /** Whether a swing begun on world tick swingTick (-1: none) may still show at world tick now: from that tick through ATTACK_CLIP_MAX_TICKS. */
+    public static boolean swingCurrent(long now, long swingTick) { return swingTick >= 0 && now >= swingTick && now - swingTick <= ATTACK_CLIP_MAX_TICKS; }
     /** The death tick vanilla removes a mob on, and the length of the fall a troop's corpse plays before it lies (LivingEntity.updatePostDeath). */
     public static final int DEATH_FALL_TICKS = 20;
     /** The death tick a troop's corpse is removed on: the vanilla fall, then lie ticks lying whole, then fade ticks fading (CorpseMixin). */

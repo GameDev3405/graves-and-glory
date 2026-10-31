@@ -9,7 +9,8 @@ Keyframe.getBezierLerp / getCatmullromLerp (js/animations/keyframe.js); Clip.jav
 
 Checks: every animated bone is in art/rigs/<rig>.json; key and marker times lie within the clip, one key per time per
 channel; each stab, slash or blunt attackVariants row of a family with a project has a clip of its id, its impact on the
-row's impactTicks; a death clip does not loop, and its last frame keeps every bone pivot and box corner within 0.1 px of
+row's impactTicks, and every attackVariants clip at most BattleMath.ATTACK_CLIP_MAX_TICKS long (the server sends a late joiner
+a swing that long, Task 13 carry B8); a death clip does not loop, and its last frame keeps every bone pivot and box corner within 0.1 px of
 the ground; a looping clip ends where it starts, within 0.01.
 
   python tools/clips.py            write the clip JSON (and remove clips no project holds)
@@ -39,6 +40,15 @@ HANDLES = {'lt': (-0.1,) * 3, 'lv': (0,) * 3, 'rt': (0.1,) * 3, 'rv': (0,) * 3} 
 GROUND_SLACK = 0.1
 LOOP_SLACK = 0.01
 TIME_SLACK = 1e-6          # float noise in a saved time
+BATTLE_MATH = 'src/main/java/gg/gravesandglory/BattleMath.java'
+
+
+def attack_cap():
+    """BattleMath.ATTACK_CLIP_MAX_TICKS: the server sends a late joiner a swing for that long, so no attack clip may run longer."""
+    m = re.search(r'ATTACK_CLIP_MAX_TICKS\s*=\s*(\d+)\s*;', (ROOT / BATTLE_MATH).read_text(encoding='utf-8'))
+    if not m:
+        raise ClipError(f'{BATTLE_MATH} has no ATTACK_CLIP_MAX_TICKS')
+    return int(m.group(1))
 
 
 class ClipError(Exception):
@@ -325,6 +335,10 @@ def points(rig, pose):
 def check(clip, parsed, rig, family, variants, at):
     name = clip['clip']
     row = variants.get((family, name)) if variants is not None else None
+    if row:
+        cap = attack_cap()
+        if parsed['length'] * TICKS > cap + TIME_SLACK:
+            raise ClipError(f"{at}: an attack clip of {parsed['length'] * TICKS:g} ticks, longer than BattleMath.ATTACK_CLIP_MAX_TICKS {cap}")
     if row and row.get('kind') in MELEE:
         want = row.get('impactTicks')
         if parsed['impact'] < 0:

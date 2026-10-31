@@ -23,7 +23,7 @@ import java.util.Objects;
  * entity type through the vanilla renderer it was registered over. It never draws vanilla armour, held items or the elytra
  * (unit identity rule 3, Needs Kort 10): only the troop's skin, its outer layer, its team cloth, glow, weapon model and the
  * painted off-hand shield (TroopFeatures). No vanilla pose code reaches a troop: TroopModel.setAngles poses it through
- * TroopAnimator (Task 5b), and setupTransforms turns it by its body yaw only.
+ * TroopMotion and the motion engine (animation rework Task 13), and setupTransforms turns it by its body yaw only.
  * A troop whose side has not reached this client yet is not drawn at all (TroopModels.held), so no frame shows it in linen.
  * After either draw (its own model or the vanilla one of a troop whose House has no model yet) a veteran gets its rank
  * chevrons (TroopChevrons, in-match progression design 7).
@@ -90,16 +90,16 @@ public final class TroopRenderer<T extends MobEntity> extends LivingEntityRender
      */
     @Override public void render(T e,float yaw,float tickDelta,MatrixStack matrices,VertexConsumerProvider consumers,int light){
         float fade=BodyCache.fade(e,tickDelta);shadowOpacity=baseShadow*fade;
-        if(e.getId()==BodyCache.hide)return;
+        if(BodyCache.hidden(e.getId()))return;
         float alpha=BodyCache.opaque?1f:fade;if(alpha<=0f)return;
         TroopModels.Look l=TroopModels.resolve(e);TroopModel<T> m=l==null?null:TroopModels.modelOf(l.troop().id());
         if(m==null){faded(e,alpha,consumers,v->{vanilla.render(e,yaw,tickDelta,matrices,v,light);TroopChevrons.draw(e,l,null,matrices,v,dispatcher);});return;}
         if(TroopModels.held(e,l))return;
         // A body lying settled draws from the buffers BodyCache recorded of it, while what its draw depends on stays the same.
-        if(BodyCache.on()&&TroopAnimator.settled(e,m)&&!net.minecraft.client.MinecraftClient.getInstance().hasOutline(e)&&!e.isInvisible()&&!hasLabel(e)){
+        if(BodyCache.on()&&TroopMotion.settled(e,m)&&!net.minecraft.client.MinecraftClient.getInstance().hasOutline(e)&&!e.isInvisible()&&!hasLabel(e)){
             Vec3d at=e.getLerpedPos(tickDelta).add(getPositionOffset(e,tickDelta));
             var key=new BodyCache.Key(m,l,TroopModels.far(e,l),TroopDepth.near(e)?m.reliefKey(l):null,TroopModels.face(e,m),light,getOverlay(e,getAnimationCounter(e,tickDelta)),
-                e.getOffHandStack().isEmpty(),TroopAnimator.helmOff(e),TroopAnimator.folds(m,e),TroopAnimator.drawSeconds(e,m,e.age+tickDelta),at.x,at.y,at.z);
+                e.getOffHandStack().isEmpty(),TroopMotion.helmOff(e),TroopMotion.folds(m,e),TroopMotion.drawSeconds(e,m,e.age+tickDelta),at.x,at.y,at.z);
             if(BodyCache.draw(this,e,key,yaw,net.minecraft.util.math.MathHelper.lerpAngleDegrees(tickDelta,e.prevBodyYaw,e.bodyYaw),tickDelta)){
                 troopDraws++;if(DIAGNOSTICS){Drawn d=DRAWN.get(e);if(d!=null)d.count++;}
                 BodyCache.verified(e,m.cullBox(e));
@@ -122,7 +122,7 @@ public final class TroopRenderer<T extends MobEntity> extends LivingEntityRender
         // Folded arms (idleArms folded) open while the troop attacks or a clip holds an arm (unit identity rule 3); a helm_off scene pose hides the helm.
         variant=TroopModels.face(e,m);
         m.shieldOff=e.getOffHandStack().isEmpty();
-        m.prepare(l,TroopAnimator.folds(m,e),TroopAnimator.helmOff(e),variant);
+        m.prepare(l,TroopMotion.folds(m,e),TroopMotion.helmOff(e),variant);
         boundSkin=clothSheet=trimSheet=null;clothMask=0;weaponDrawn=shieldDrawn=weaponFar=false;reliefKey=weaponId=null;weaponFrame=-1;weaponQuads=0;tilt=0;start.set(matrices.peek().getPositionMatrix());
         // Within reach of the camera (TroopDepth.near) the skin pass draws the relief of the skin it binds after the skin; the model spends the arm in that one pass.
         String relief=TroopDepth.near(e)?m.reliefKey(l):null;m.armRelief(relief);
@@ -155,7 +155,7 @@ public final class TroopRenderer<T extends MobEntity> extends LivingEntityRender
      * vanilla box, so a troop whose standard or blade is in view is drawn; a held troop is not drawn at all.
      */
     @Override public boolean shouldRender(T e,Frustum frustum,double x,double y,double z){
-        if(BodyCache.on()&&e.getId()!=BodyCache.hide){
+        if(BodyCache.on()&&!BodyCache.hidden(e.getId())){
             // BodyCache's short check: a body it drew from its buffers on a full check a few frames ago is queued here, with its
             // shadow, and the dispatcher is told not to draw it (a lying body draws no chevrons and cannot be targeted)
             var b=BodyCache.fresh(e);

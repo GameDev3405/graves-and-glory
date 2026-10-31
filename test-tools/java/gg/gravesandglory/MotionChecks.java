@@ -45,7 +45,9 @@ import static gg.gravesandglory.Phase2Checks.server;
 public final class MotionChecks {
     private MotionChecks() {}
     static void register(Map<String, Supplier<Phase2Checks.Suite>> suites) {
-        suites.put("motion", Rig::new);
+        suites.put("motion", Motion::new);
+        suites.put("motion-live", () -> new Live(false));
+        suites.put("motion-rig", () -> new Rig("motion-rig"));
         suites.put("motion-loader", () -> (c, tick) -> { loaderFaceUv(); Phase2Checks.finish(c, "motion-loader"); });
     }
 
@@ -128,9 +130,12 @@ public final class MotionChecks {
         final List<String> bad = new ArrayList<>();
         int si, held, steady, lastCount, settle; String on = ""; double[] cam;
         CloudRenderMode cloudsBefore;
-        String name() { return "motion"; }
+        final String suite;
+        String name() { return suite; }
 
-        Rig() {
+        Rig() { this("motion"); }
+        Rig(String suite) {
+            this.suite = suite;
             loaderFaceUv();
             Phase2Checks.Turn.hook();
             for (String t : TroopModels.ids()) {
@@ -214,7 +219,7 @@ public final class MotionChecks {
         }
 
         public void cleanup(MinecraftClient c) {
-            Phase2Checks.Turn.noTarget = false; TroopAnimator.forced.clear(); BENDS.clear();
+            Phase2Checks.Turn.noTarget = false; TroopMotion.clearForced(); BENDS.clear();
             if (cloudsBefore != null) c.options.getCloudRenderMode().setValue(cloudsBefore);
             super.cleanup(c);
         }
@@ -223,7 +228,7 @@ public final class MotionChecks {
 
         void shoot(MinecraftClient c) {
             if (si >= shots.size()) {
-                TroopAnimator.forced.clear(); BENDS.clear();
+                TroopMotion.clearForced(); BENDS.clear();
                 report("mo-rig-shots", bad.isEmpty(), shots.size() + " shots of " + cast.size() + " troops and stages" + (bad.isEmpty() ? ", each taken lit, in gold, with the camera where it was set and the pose drawn as asked (1 degree)" : ", not as asked: " + bad));
                 cs = 2; wait = 0; return;
             }
@@ -232,7 +237,7 @@ public final class MotionChecks {
             wait++;
             if (s.who() == null) { // an empty frame: the camera of the angle, every troop parked
                 if (wait == 1) {
-                    on = ""; TroopAnimator.forced.clear(); BENDS.clear(); cam = view(s, null); final double[] v = cam;
+                    on = ""; TroopMotion.clearForced(); BENDS.clear(); cam = view(s, null); final double[] v = cam;
                     server(c, b -> { placeAll(b, ""); camera(b, v[0], v[1], v[2], (float) v[3], (float) v[4]); });
                     settle = 20; held = 0; return;
                 }
@@ -252,15 +257,15 @@ public final class MotionChecks {
             if (wait == 1) {
                 boolean change = !s.who().key().equals(on);
                 if (change) { on = s.who().key(); final String k = on; server(c, b -> placeAll(b, k)); }
-                TroopAnimator.forced.clear(); BENDS.clear();
-                TroopAnimator.forced.put(e.getId(), new TroopAnimator.Forced("idle", 0f));
+                TroopMotion.clearForced(); BENDS.clear();
+                TroopMotion.force(e.getId(), "idle", 0);
                 var bends = bends(m, s); if (!bends.isEmpty()) BENDS.put(e.getId(), bends);
                 cam = view(s, m); final double[] v = cam; server(c, b -> camera(b, v[0], v[1], v[2], (float) v[3], (float) v[4]));
                 settle = change ? 15 : 0; steady = 0; held = 0; return;
             }
             if (wait < 6 + settle) return;
             if (steady == 0) { // a stage rename replaces the client entity: re-assert the forced pose and the bends on its id
-                TroopAnimator.forced.put(e.getId(), new TroopAnimator.Forced("idle", 0f));
+                TroopMotion.force(e.getId(), "idle", 0);
                 var bends = bends(m, s); if (!bends.isEmpty()) BENDS.put(e.getId(), bends);
             }
             var d = TroopRenderer.drawn(e); boolean drawn = d != null && d.pose != null && d.last != null && d.count > lastCount; lastCount = d == null ? 0 : d.count;
@@ -288,7 +293,7 @@ public final class MotionChecks {
         /** The pose a shot asks for: the idle clip at 0 s, then the shot's bends. */
         static float[] want(TroopModel<?> m, Shot s, boolean shield) {
             m.getPart().traverse().forEach(ModelPart::resetTransform);
-            TroopAnimator.applyForced(m, new TroopAnimator.Forced("idle", 0f), TroopAnimator.row(m), shield);
+            TroopMotion.applyForced(m,"idle",0f,shield);
             add(m, bends(m, s));
             float[] out = m.snapshot(null); m.getPart().traverse().forEach(ModelPart::resetTransform); return out;
         }
@@ -312,7 +317,7 @@ public final class MotionChecks {
         /** The hand's rest point (arm frame (x, 8, 0)) at the idle pose: world axes, blocks from the feet. */
         static double[] handRest(TroopModel<?> m, String arm, float x, boolean shield) {
             m.getPart().traverse().forEach(ModelPart::resetTransform);
-            TroopAnimator.applyForced(m, new TroopAnimator.Forced("idle", 0f), TroopAnimator.row(m), shield);
+            TroopMotion.applyForced(m,"idle",0f,shield);
             MatrixStack ms = Phase2Checks.Turn.base(); for (ModelPart p : m.path(arm)) p.rotate(ms);
             Vector4f v = new Vector4f(x / 16f, 8 / 16f, 0, 1f); ms.peek().getPositionMatrix().transform(v);
             m.getPart().traverse().forEach(ModelPart::resetTransform);
@@ -374,6 +379,544 @@ public final class MotionChecks {
         static boolean differs(int p, int q, int tol) {
             for (int sh = 0; sh <= 16; sh += 8) if (Math.abs(((p >> sh) & 255) - ((q >> sh) & 255)) > tol) return true;
             return false;
+        }
+    }
+
+    // ---- Task 13: the motion engine drives troops ----
+
+    /**
+     * The motion suite: the live checks (Live: mo-stance, mo-cull, mo-stance-live, mo-crowd, mo-late-join) on a platform of their
+     * own, then the rig shots (Rig) on a fresh one. Each stage's client tick counts from its own start.
+     */
+    static final class Motion implements Phase2Checks.Suite, Phase2Checks.ServerWatch {
+        final Live live = new Live(true);
+        volatile Phase2Checks.Stage cur = live;
+        int base;
+        public void step(MinecraftClient c, int tick) {
+            if (cur == live) {
+                live.step(c, tick);
+                if (live.done) { live.cleanup(c); base = tick; cur = new Rig(); }
+                return;
+            }
+            cur.step(c, tick - base);
+        }
+        public void serverTick(GravesAndGlory.Battle b) { cur.serverTick(b); }
+        public void cleanup(MinecraftClient c) { cur.cleanup(c); }
+    }
+
+    /** The largest seed the engine can draw (MotionMath.seed's ranges at their top): the widest swing and hit gains. */
+    static final MotionMath.Seed MAX_SEED = new MotionMath.Seed(0, 1.1, 1.1, 1.15, 0, 0, 0);
+    /** Where the simulated sequences start (render seconds): any time well past 0. */
+    static final double T0 = 100;
+
+    /**
+     * mo-stance (carry B11, replacing p2-anim-stance): the plain-hold rule for every troop of the sheet. On Hold a shield or spear troop
+     * braces (a shield troop formed in its wall shows the wall) and every other troop holds; the engine plays the brace stance for a
+     * brace and the guard for a hold.
+     */
+    static void stanceRule() {
+        List<String> bad = new ArrayList<>(); int brace = 0, hold = 0, walls = 0;
+        for (var row : Spec.TROOPS) {
+            var tags = ArmyMobs.tags(row); boolean sh = tags.contains("shield"), sp = tags.contains("spear");
+            String s = BattleMath.stance("hold", sh, sp, row.ranged(), false, false, false), want = sh || sp ? "brace" : "hold";
+            String key = MotionEngine.stanceKey(s, false, false, false, false), wantKey = sh || sp ? "brace" : "guard";
+            if (!s.equals(want) || !key.equals(wantKey)) bad.add(row.id() + ": " + s + " playing " + key + ", want " + want + " playing " + wantKey);
+            if (sh) { String f = BattleMath.stance("hold", true, sp, row.ranged(), true, false, false); if (!f.equals("wall")) bad.add(row.id() + ": formed " + f + ", want wall"); else walls++; }
+            if (want.equals("brace")) brace++; else hold++;
+        }
+        report("mo-stance", bad.isEmpty() && brace > 0 && hold > 0, Spec.TROOPS.length + " troops on Hold: " + brace + " shield or spear troops brace (the engine's brace stance; " + walls + " shield troops show the wall when formed), " + hold + " others hold (the engine's guard)" + (bad.isEmpty() ? "" : "; wrong: " + bad));
+    }
+
+    // ---- synthetic clips (no clip assets ship yet: mo-cull and mo-late-join install these and put the real ones back) ----
+    /** Peaks per bone: rotation x, y, z (degrees) then position x, y, z (pixels). */
+    static Map<String, double[]> peaks(Object... kv) {
+        Map<String, double[]> m = new LinkedHashMap<>();
+        for (int i = 0; i < kv.length; i += 2) m.put((String) kv[i], (double[]) kv[i + 1]);
+        return m;
+    }
+    static double[] p(double... v) { double[] o = new double[6]; System.arraycopy(v, 0, o, 0, v.length); return o; }
+    static final Map<String, double[]> ATTACK_PEAKS = peaks("root", p(15, 30, 0, 0, -3, 6), "body", p(30, 45, 10), "head", p(20, -30, 0),
+        "right_arm", p(-170, 20, 30), "right_forearm", p(-110, 0, 0), "left_arm", p(-60, -20, -30), "left_forearm", p(-80, 0, 0),
+        "right_leg", p(-40, 0, 0), "left_leg", p(30, 0, 0), "right_shin", p(60, 0, 0), "left_shin", p(40, 0, 0));
+    static final Map<String, Map<String, double[]>> COMMON_PEAKS = new LinkedHashMap<>();
+    static {
+        COMMON_PEAKS.put("idle", peaks("body", p(3, 0, 0), "head", p(-5, 0, 0)));
+        COMMON_PEAKS.put("carry", peaks("right_arm", p(-30, 0, 0), "right_forearm", p(-40, 0, 0)));
+        COMMON_PEAKS.put("guard", peaks("right_arm", p(-60, 0, 10), "right_forearm", p(-50, 0, 0), "left_arm", p(-40, 0, -10), "root", p(0, 0, 0, 0, 1, 0)));
+        COMMON_PEAKS.put("brace", peaks("root", p(0, 0, 0, 0, 3, 0), "right_leg", p(-25, 0, 0), "left_leg", p(25, 0, 0), "right_shin", p(40, 0, 0), "left_shin", p(40, 0, 0), "left_arm", p(-70, 0, -10)));
+        COMMON_PEAKS.put("wall", peaks("left_arm", p(-90, 0, -10), "left_forearm", p(-30, 0, 0), "root", p(0, 0, 0, 0, 2, 1)));
+        COMMON_PEAKS.put("shield", peaks("left_arm", p(-80, 10, -10)));
+        COMMON_PEAKS.put("aim", peaks("right_arm", p(-90, 0, 0), "left_arm", p(-90, 30, 0), "body", p(0, -30, 0)));
+        COMMON_PEAKS.put("rest", peaks("right_arm", p(-15, 0, 0)));
+        COMMON_PEAKS.put("hit_head", peaks("head", p(-35, 25, 0), "body", p(-15, 0, 0), "root", p(0, 0, 0, 0, 0, -3)));
+        COMMON_PEAKS.put("hit_body", peaks("body", p(-30, 15, 0), "root", p(-10, 0, 0, 0, 0, -3), "right_arm", p(-30, 0, 20), "left_arm", p(-30, 0, -20)));
+        COMMON_PEAKS.put("hit_legs", peaks("right_leg", p(30, 0, 0), "left_leg", p(-20, 0, 0), "right_shin", p(50, 0, 0), "root", p(0, 0, 0, 0, 2, -2)));
+        COMMON_PEAKS.put("block", peaks("left_arm", p(-100, 0, -20), "left_forearm", p(-60, 0, 0), "right_arm", p(-60, 0, 0), "body", p(-10, -20, 0), "root", p(0, 0, 0, 0, 0, -2)));
+        COMMON_PEAKS.put("death", peaks("root", p(-90, 0, 0, 0, 10, -6), "right_arm", p(-150, 0, 0), "left_arm", p(-150, 0, 0), "head", p(30, 0, 0)));
+        COMMON_PEAKS.put("death_back", peaks("root", p(90, 0, 0, 0, 10, 6), "right_arm", p(-150, 0, 0), "head", p(-30, 0, 0)));
+        COMMON_PEAKS.put("death_left", peaks("root", p(0, 0, -90, 0, 10, 0), "left_arm", p(-150, 0, 0)));
+        COMMON_PEAKS.put("death_right", peaks("root", p(0, 0, 90, 0, 10, 0), "right_arm", p(-150, 0, 0)));
+        COMMON_PEAKS.put("fall", peaks("root", p(-90, 0, 0, 0, 10, -6)));
+        COMMON_PEAKS.put("raise", peaks("right_arm", p(-170, 0, 0), "right_forearm", p(-30, 0, 0)));
+    }
+    /** A synthetic clip: each bone's rotation and position keyed linear at the times, at the scales of its peak. */
+    static Clip clip(String name, double length, boolean loop, double impact, Map<String, double[]> peaks, double[] times, double[] scales) {
+        StringBuilder sb = new StringBuilder("{\"format\":1,\"clip\":\"").append(name).append("\",\"length\":").append(length).append(",\"loop\":").append(loop);
+        if (impact >= 0) sb.append(",\"markers\":{\"impact\":").append(impact).append('}');
+        sb.append(",\"bones\":{"); boolean first = true;
+        for (var e : peaks.entrySet()) {
+            if (!first) sb.append(','); first = false;
+            sb.append('"').append(e.getKey()).append("\":{\"rotation\":").append(keys(times, scales, e.getValue(), 0)).append(",\"position\":").append(keys(times, scales, e.getValue(), 3)).append('}');
+        }
+        return Clip.parse(sb.append("}}").toString());
+    }
+    static String keys(double[] times, double[] scales, double[] v, int o) {
+        StringBuilder sb = new StringBuilder("[");
+        for (int i = 0; i < times.length; i++) {
+            if (i > 0) sb.append(',');
+            sb.append(String.format(Locale.ROOT, "{\"t\":%.4f,\"i\":\"linear\",\"v\":[%.3f,%.3f,%.3f]}", times[i], v[o] * scales[i], v[o + 1] * scales[i], v[o + 2] * scales[i]));
+        }
+        return sb.append(']').toString();
+    }
+    /** A synthetic attack: a wind-up to -0.6 of its peaks half way to the impact, the peaks at the impact, rest at the end. */
+    static Clip attack(String name, double impact, double length, Map<String, double[]> peaks) {
+        return clip(name, length, false, impact, peaks, new double[]{0, impact / 2, impact, length}, new double[]{0, -.6, 1, 0});
+    }
+    /** The synthetic clips of one rig and family into out: every attack variant of the family, and the common stances, hits, deaths and scene clips. */
+    static void synthetic(String rig, String family, Map<String, Clip> out) {
+        for (var row : Tactics.variants(family)) {
+            double impact = row.impactTicks() / (double) Clip.TICKS;
+            out.put(rig + "/" + family + "/" + row.id(), attack(row.id(), impact, Math.max(.8, impact + .6), ATTACK_PEAKS));
+        }
+        for (var e : COMMON_PEAKS.entrySet()) {
+            String n = e.getKey(); Clip c;
+            if (TroopMotion.STANCES.contains(n)) c = clip(n, 2, true, -1, e.getValue(), new double[]{0, 1, 2}, new double[]{1, .5, 1});
+            else if (n.startsWith("hit_") || n.equals("block")) c = clip(n, .5, false, -1, e.getValue(), new double[]{0, .1, .5}, new double[]{0, 1, 0});
+            else c = clip(n, 1.5, false, -1, e.getValue(), new double[]{0, .9, 1.5}, new double[]{0, 1, 1});
+            out.put(rig + "/" + TroopMotion.COMMON + "/" + n, c);
+        }
+    }
+
+    // ---- mo-cull ----
+    interface Frames { MotionInput at(int frame, double now); }
+    /** The worst margin found so far: how far a pose reached outside the cull reach (blocks, negative inside), where, and how many poses. */
+    static final class Worst {
+        double out = Double.NEGATIVE_INFINITY; String at = ""; int poses;
+        void see(TroopModel<?> m, double[] reach, String label) {
+            double o = Phase2Checks.Anim.outside(m.extent(), reach); poses++;
+            if (o > out) { out = o; at = label; }
+        }
+    }
+    static MotionInput in(double now, double limbAngle, double speed, double headYaw, double headPitch, double yawRate, String stance, float aim,
+                          boolean shieldUp, boolean enemy, boolean dead, double deathS, MotionInput.Attack a, MotionInput.Hit h) {
+        return new MotionInput(now, limbAngle, speed, headYaw, headPitch, yawRate, stance, aim, shieldUp, enemy, dead, deathS, a, h, MAX_SEED);
+    }
+    static void run(TroopModel<?> m, double[] reach, Worst w, String label, int frames, boolean shield, Frames f) {
+        MotionEngine.State st = new MotionEngine.State();
+        for (int i = 0; i < frames; i++) { TroopMotion.simulate(m, st, f.at(i, T0 + i * .05), shield); w.see(m, reach, label + " at frame " + i); }
+    }
+
+    /**
+     * mo-cull (Task 13 step 1): every clip's posed bounds lie inside the cull box. No clip assets ship yet, so synthetic clips with
+     * large moves (every attack variant of each family, the common stances, hits, block, deaths and scene clips) are installed in
+     * ClipLibrary and the cull reach worked out again from them. Each troop model's extent (TroopModel.extent) is measured against
+     * its cull reach: every clip forced whole-body at full weight every 0.05 s, shield down and up; then engine sequences on the
+     * largest seed (attacks standing, walking, running and turning at 720 degrees a second, with the head at its limits; every
+     * hit zone at weight 2, blocked and not; deaths from the front, back and both sides; every server stance with the aim at
+     * +-60 and the shield both ways). The real clips go back after.
+     */
+    static void cull() {
+        Map<String, Clip> before = ClipLibrary.all(); List<String> bad = new ArrayList<>(); StringBuilder sb = new StringBuilder(); int poses = 0, models = 0;
+        try {
+            Map<String, Clip> synth = new TreeMap<>(before);
+            for (String t : TroopModels.ids()) { var m = TroopModels.model(t); var row = m == null ? null : TroopMotion.row(m); if (row != null) synthetic(m.rig, row.family(), synth); }
+            ClipLibrary.install(synth);
+            for (String t : new TreeSet<>(TroopModels.ids())) {
+                var m = TroopModels.model(t); var row = m == null ? null : TroopMotion.row(m); var fam = m == null ? null : TroopMotion.family(m);
+                if (row == null || fam == null) continue;
+                models++;
+                double[] reach = m.cullReach(); Worst w = new Worst();
+                for (var e : fam.all().entrySet()) for (boolean sh : new boolean[]{false, true}) {
+                    double len = e.getValue().length();
+                    for (int i = 0; i * .05 <= len + 1e-9; i++) {
+                        m.getPart().traverse().forEach(ModelPart::resetTransform);
+                        TroopMotion.applyForced(m, e.getKey(), i * .05, sh); w.see(m, reach, "forced " + e.getKey() + " at " + String.format(Locale.ROOT, "%.2f", i * .05) + " s" + (sh ? " with a shield" : ""));
+                    }
+                }
+                long tick0 = Math.round(T0 * Clip.TICKS) + 2;
+                int attacks = fam.family().attacks().size();
+                double[][] ctx = {{0, 0}, {1, 0}, {1.5, 0}, {0, 720}}; String[] ctxName = {"standing", "walking", "running", "turning"};
+                for (int a = 0; a < attacks; a++) for (int k = 0; k < ctx.length; k++) for (boolean sh : new boolean[]{false, true}) {
+                    final int ai = a; final double sp = ctx[k][0], yr = ctx[k][1];
+                    run(m, reach, w, "attack " + fam.family().attacks().get(a).name() + " " + ctxName[k] + (sh ? " with a shield" : ""), 50, sh,
+                        (i, now) -> in(now, i * sp, sp, 85, 60, yr, "hold", 0, false, true, false, 0, new MotionInput.Attack(ai, tick0), null));
+                }
+                for (String zone : List.of("head", "body", "legs")) for (boolean blocked : new boolean[]{false, true}) for (boolean sh : new boolean[]{false, true}) {
+                    var hit = new MotionInput.Hit("slash", zone, 0f, 2, blocked, false, tick0);
+                    run(m, reach, w, "hit " + zone + (blocked ? " blocked" : "") + (sh ? " with a shield" : ""), 30, sh,
+                        (i, now) -> in(now, 0, 0, 85, 60, 0, "hold", 0, blocked, true, false, 0, null, hit));
+                }
+                for (float bearing : new float[]{0, 90, 180, -90}) for (boolean sh : new boolean[]{false, true}) {
+                    var hit = new MotionInput.Hit("slash", "body", bearing, 2, false, true, tick0);
+                    run(m, reach, w, "death from " + bearing + (sh ? " with a shield" : ""), 80, sh,
+                        (i, now) -> in(now, 0, 0, 0, 0, 0, "hold", 0, false, i < 4, i >= 4, i >= 4 ? (i - 4) * .05 : 0, null, hit));
+                }
+                for (String s : BattleMath.STANCES) for (float aim : new float[]{-60, 60}) for (boolean up : new boolean[]{false, true}) {
+                    double sp = s.equals("run") || s.equals("fall_back") || s.equals("shield_move") ? 1 : 0;
+                    run(m, reach, w, "stance '" + s + "' aim " + aim + (up ? " shield up" : ""), 30, up,
+                        (i, now) -> in(now, i * sp, sp, -85, -60, 0, s, aim, up, up, false, 0, null, null));
+                }
+                m.getPart().traverse().forEach(ModelPart::resetTransform);
+                poses += w.poses;
+                sb.append(String.format(Locale.ROOT, "%s %d poses, reach r%.2f %.2f..%.2f, worst %.3f blocks %s (%s); ", t, w.poses, reach[0], reach[1], reach[2], w.out, w.out <= 0 ? "inside" : "OUTSIDE", w.at));
+                if (!(w.out <= 0)) bad.add(t + " reaches " + String.format(Locale.ROOT, "%.3f", w.out) + " blocks outside at " + w.at);
+            }
+        } catch (RuntimeException x) { bad.add("threw " + x); x.printStackTrace(); }
+        finally {
+            ClipLibrary.install(before);
+            for (String t : TroopModels.ids()) { var m = TroopModels.model(t); if (m != null) m.getPart().traverse().forEach(ModelPart::resetTransform); }
+        }
+        report("mo-cull", bad.isEmpty() && models > 0 && poses > 0, models + " troop models, " + poses + " posed bounds against cullBox (synthetic clips; the real clips put back): " + sb + (bad.isEmpty() ? "every pose inside" : "outside: " + bad));
+    }
+
+    /**
+     * The live checks (Task 13 step 1), on a platform of their own: 20 knights in a 5 by 4 grid 1.5 blocks apart on Hold, the camera
+     * 30 blocks in front of them. mo-stance-live: each knight's client stance is the one its server keeps, by the plain-hold rule
+     * (a shield troop braces, or shows the wall formed). mo-crowd: with the real clips, after 60 ticks to settle, 80 ticks of frames
+     * in which every knight drew a new pose; for each pair of knights the RMS of the angle between their poses over every bone
+     * rotation the engine moves (channels that never move on any knight are left out, and the RMS over every channel is logged
+     * too) must be over 1 degree; mo-crowd.png is the view. mo-late-join: a synthetic swing (the knight family's first variant, 1.6
+     * s) is sent to the front knight; 10 ticks in this client forgets the knight as an unload would (MotionEvents.Client.forget and
+     * TroopMotion.forget) and the server sends what a player who starts tracking it is owed (MotionEvents.startTracking). The swing
+     * must come back within 5 ticks and play, every tick until it ends, within 2 ticks of the clip time the first client's track
+     * shows; a second catch-up of the same swing 3 ticks later must not be kept twice (carry B6).
+     */
+    static final class Live extends Phase2Checks.Stage {
+        static final int COLS = 5, ROWS = 4; static final double GAP = 1.5, CAM_DZ = -30, CAM_EYE = 6; static final float YAW = 180;
+        final boolean chained; volatile boolean done;
+        CloudRenderMode cloudsBefore; Map<String, Clip> clipsBefore;
+        int[] lastCount; final List<float[][]> samples = new ArrayList<>(); int steady;
+        int ls; Clip synth; MotionStack.Track orig; int forgetWait, backAt = -1, compared, maxTracks, maxQueue; boolean dupSent; double maxDiff;
+        Live(boolean chained) { this.chained = chained; }
+        String name() { return chained ? "motion" : "motion-live"; }
+        static float pitch() { return (float) Math.toDegrees(Math.atan2(CAM_EYE - 1.5, -CAM_DZ + (ROWS - 1) * GAP / 2)); }
+
+        void cast(GravesAndGlory.Battle b) {
+            for (int r = 0; r < ROWS; r++) for (int k = 0; k < COLS; k++) post(b, gold, "knight", (k - (COLS - 1) / 2.0) * GAP, r * GAP, YAW);
+            camera(b, 0, CAM_EYE, CAM_DZ, 0, pitch());
+        }
+        void end(MinecraftClient c) {
+            if (!chained) { super.end(c); return; }
+            c.options.hudHidden = false; finished = true; done = true;
+        }
+        boolean there(MinecraftClient c) {
+            var p = c.player;
+            return Math.abs(p.getX() - (site.getX() + .5)) < .05 && Math.abs(p.getEyeY() - (site.getY() + CAM_EYE)) < .05 && Math.abs(p.getZ() - (site.getZ() + .5 + CAM_DZ)) < .05
+                && Math.abs(net.minecraft.util.math.MathHelper.wrapDegrees(p.getYaw())) < 1 && Math.abs(p.getPitch() - pitch()) < 1;
+        }
+
+        public void step(MinecraftClient c, int tick) {
+            if (tick == 1) { stanceRule(); cull(); }
+            if (tick == 20) { c.setScreen(null); var id = c.player.getUuid(); server(c, b -> { player = id; stage = 1; }); }
+            if (finished) return;
+            if (tick > 12000) { report("p2-motion-live-timeout", false, "stuck at client step " + cs + " (late join step " + ls + "), server stage " + stage); end(c); return; }
+            switch (cs) {
+                case 0 -> {
+                    if (litStart(c) && ready && posted.size() == COLS * ROWS && posted.stream().allMatch(u -> client(c, u.mob) != null)) {
+                        c.options.hudHidden = true; cloudsBefore = c.options.getCloudRenderMode().getValue(); c.options.getCloudRenderMode().setValue(CloudRenderMode.OFF);
+                        wait = 0; cs = 1;
+                    } else if (++wait % 600 == 0) System.out.println("[p2-wait] motion-live step 0 after " + wait + " ticks: ready=" + ready + ", posted " + posted.size() + "; " + litWhy(c));
+                }
+                case 1 -> stances(c);
+                case 2 -> crowd(c);
+                case 3 -> {
+                    if (!there(c) && ++wait % 60 == 0) server(c, b -> camera(b, 0, CAM_EYE, CAM_DZ, 0, pitch()));
+                    if (!there(c) && wait < 300) return;
+                    if (!shotReady(c, "mo-crowd")) return;
+                    Rig.save(c, "mo-crowd"); wait = 0; cs = 4;
+                }
+                case 4 -> lateJoin(c);
+                case 5 -> settle(c);
+                default -> {}
+            }
+        }
+
+        /** mo-stance-live: every knight's client stance equals its server's, which the plain-hold rule gives (brace, or the wall formed). */
+        void stances(MinecraftClient c) {
+            wait++;
+            List<String> off = new ArrayList<>(); Map<String, Integer> seen = new TreeMap<>();
+            for (var u : posted) {
+                var e = client(c, u.mob); String server = u.stance, client = e == null ? "?" : MotionEvents.Client.stance(e.getId()).name();
+                boolean sh = u.tags.contains("shield"), sp = u.tags.contains("spear");
+                boolean rule = server.equals(BattleMath.holdStance(sh, sp, false)) || server.equals(BattleMath.holdStance(sh, sp, true));
+                seen.merge(client, 1, Integer::sum);
+                if (!client.equals(server) || !rule) off.add("#" + u.mob.getId() + " client '" + client + "' server '" + server + "'");
+            }
+            steady = off.isEmpty() ? steady + 1 : 0;
+            if (steady >= 10 || wait > 300) {
+                report("mo-stance-live", steady >= 10, posted.size() + " knights on Hold, client stances " + seen + (off.isEmpty() ? ", each its server's and the plain-hold rule's for 10 ticks" : " after " + wait + " ticks, off: " + off));
+                cs = 2; wait = 0;
+            }
+        }
+
+        /** mo-crowd: 60 ticks to settle, then up to 80 ticks of frames in which every knight drew a new pose. */
+        void crowd(MinecraftClient c) {
+            if (++wait <= 60) return;
+            int n = posted.size(); if (lastCount == null) lastCount = new int[n];
+            float[][] frame = new float[n][]; boolean fresh = true;
+            for (int i = 0; i < n; i++) {
+                var e = client(c, posted.get(i).mob); var d = e == null ? null : TroopRenderer.drawn(e);
+                if (d == null || d.pose == null || d.count <= lastCount[i]) fresh = false; else frame[i] = d.pose.clone();
+                lastCount[i] = d == null ? 0 : d.count;
+            }
+            if (fresh && wait > 61) samples.add(frame);
+            if (samples.size() < 80 && wait < 60 + 400) return;
+            judgeCrowd(wait - 61);
+            cs = 3; wait = 0;
+        }
+        void judgeCrowd(int ticks) {
+            if (samples.size() < 60) { report("mo-crowd", false, "only " + samples.size() + " frames in " + ticks + " ticks had a new pose from all " + posted.size() + " knights (want 60 or more)"); return; }
+            int n = samples.get(0).length, len = samples.get(0)[0].length;
+            boolean[] moves = new boolean[len];
+            for (int k = 0; k < len; k++) {
+                if (k % 6 < 3) continue;
+                float lo = Float.MAX_VALUE, hi = -Float.MAX_VALUE;
+                for (float[][] s : samples) for (float[] pose : s) { lo = Math.min(lo, pose[k]); hi = Math.max(hi, pose[k]); }
+                moves[k] = Math.toDegrees(hi - lo) > 0.01;
+            }
+            int moving = 0; for (boolean b : moves) if (b) moving++;
+            double minMove = Double.MAX_VALUE, minAll = Double.MAX_VALUE, sumMove = 0; int pairs = 0; String closest = "";
+            for (int i = 0; i < n; i++) for (int j = i + 1; j < n; j++) {
+                double all = 0, mv = 0; int na = 0, nm = 0;
+                for (float[][] s : samples) for (int k = 0; k < len; k++) {
+                    if (k % 6 < 3) continue;
+                    double d = net.minecraft.util.math.MathHelper.wrapDegrees(Math.toDegrees(s[i][k] - s[j][k]));
+                    all += d * d; na++;
+                    if (moves[k]) { mv += d * d; nm++; }
+                }
+                double rAll = Math.sqrt(all / Math.max(1, na)), rMove = nm == 0 ? 0 : Math.sqrt(mv / nm);
+                if (rMove < minMove) { minMove = rMove; closest = "knights " + i + " and " + j; }
+                minAll = Math.min(minAll, rAll); sumMove += rMove; pairs++;
+            }
+            boolean pass = minMove > 1;
+            report("mo-crowd", pass, String.format(Locale.ROOT, "%d knights idle on Hold, %d frames over %d ticks (%.1f s) with every knight newly drawn; %d of %d bone rotation channels move; pair RMS over the moving channels: least %.2f degrees (%s), mean %.2f; over every rotation channel: least %.2f; %s",
+                n, samples.size(), ticks, ticks / 20.0, moving, len / 2, minMove, closest, sumMove / pairs, minAll, pass ? "no two within 1 degree" : "two within 1 degree"));
+        }
+
+        /** mo-late-join, in steps: the swing sent; its track on this client; the forget and the catch-up; the comparison each tick. */
+        void lateJoin(MinecraftClient c) {
+            var u = posted.get(0); var e = client(c, u.mob);
+            if (e == null) { report("mo-late-join", false, "the front knight has no client entity"); afterLate(); return; }
+            int id = e.getId(); wait++;
+            switch (ls) {
+                case 0 -> {
+                    var m = TroopModels.model("knight"); var row = m == null ? null : TroopMotion.row(m);
+                    var rows = row == null ? List.<Spec.AttackVariantsRow>of() : Tactics.variants(row.family());
+                    if (rows.isEmpty()) { report("mo-late-join", false, "the knight has no attack variants"); afterLate(); return; }
+                    var v = rows.get(0); double impact = v.impactTicks() / (double) Clip.TICKS;
+                    synth = attack(v.id(), impact, 1.6, ATTACK_PEAKS);
+                    clipsBefore = ClipLibrary.all(); Map<String, Clip> map = new TreeMap<>(clipsBefore); map.put(m.rig + "/" + row.family() + "/" + v.id(), synth); ClipLibrary.install(map);
+                    server(c, b -> { u.lastVariant = 0; u.swingTick = b.world.getTime(); MotionEvents.sendAttack(u, 0, u.swingTick); });
+                    ls = 1; wait = 0;
+                }
+                case 1 -> {
+                    var st = TroopMotion.state(id);
+                    if (st != null) for (var tr : st.tracks) if (tr.kind == MotionEngine.ATTACK && tr.a == synth) orig = tr;
+                    if (orig != null) { ls = 2; wait = 0; return; }
+                    if (wait > 60) { report("mo-late-join", false, "the swing never played on the first client (60 ticks)"); afterLate(); }
+                }
+                case 2 -> {
+                    var st = TroopMotion.state(id);
+                    if (st == null || orig.time(st.frame.now) < .5) { if (wait > 60) { report("mo-late-join", false, "the swing never reached 10 ticks"); afterLate(); } return; }
+                    MotionEvents.Client.forget(id); TroopMotion.forget(id);
+                    server(c, b -> { var p = sp(b); if (p != null) MotionEvents.startTracking(u, p); });
+                    ls = 3; wait = 0; forgetWait = 0;
+                }
+                case 3 -> {
+                    forgetWait++;
+                    var st = TroopMotion.state(id);
+                    if (st != null) {
+                        double now = st.frame.now; int tracks = 0;
+                        for (var tr : st.tracks) if (tr.kind == MotionEngine.ATTACK && tr.a == synth) tracks++;
+                        maxTracks = Math.max(maxTracks, tracks); maxQueue = Math.max(maxQueue, MotionEvents.Client.attacks(id).size());
+                        for (var p : MotionEngine.playing(st, now)) if (p.clip() == synth) {
+                            if (backAt < 0) backAt = forgetWait;
+                            maxDiff = Math.max(maxDiff, Math.abs(p.time() - orig.time(now))); compared++; break;
+                        }
+                        if (backAt >= 0 && !dupSent && forgetWait >= backAt + 3) { dupSent = true; server(c, b -> { var p = sp(b); if (p != null) MotionEvents.catchUpAttack(u, p); }); }
+                        if (orig.time(now) >= synth.length() - .05 || forgetWait > 60) judgeLate(c);
+                    } else if (forgetWait > 60) judgeLate(c);
+                }
+                default -> {}
+            }
+        }
+        void judgeLate(MinecraftClient c) {
+            boolean pass = backAt >= 0 && backAt <= 5 && maxDiff <= 2.0 / Clip.TICKS && maxTracks == 1 && maxQueue == 1 && compared >= 5 && dupSent;
+            report("mo-late-join", pass, String.format(Locale.ROOT, "a %.2f s swing forgotten and caught up 10 ticks in: back %s, compared on %d ticks, largest gap to the first client's clip time %.3f s (%.1f ticks; want 2 or less); swing tracks at most %d, queued swings at most %d after a repeated catch-up (want 1 and 1)",
+                synth.length(), backAt < 0 ? "never" : "after " + backAt + " ticks (want 5 or less)", compared, maxDiff, maxDiff * Clip.TICKS, maxTracks, maxQueue));
+            afterLate();
+        }
+        // ---- mo-settle (carry D20) and mo-light (carry D21, R45) ----
+        GravesAndGlory.Unit young, old; int ss, youngAt = -1, oldAt = -1, youngLies = -1, oldLies = -1; net.minecraft.util.math.BlockPos lamp;
+        /** The frame probe of mo-light: the body, its light before the lamp, and what the first frame with another light drew. */
+        static volatile LightProbe PROBE; static boolean listening;
+        static final class LightProbe {
+            final Entity e; final int before; volatile int frames, changedFrame = -1, now, drew, lastCount = Integer.MIN_VALUE, drewBefore = Integer.MIN_VALUE; volatile boolean counted, cachedBefore;
+            LightProbe(Entity e, int before) { this.e = e; this.before = before; }
+        }
+        @SuppressWarnings({"unchecked", "rawtypes"})
+        static int lightOf(MinecraftClient c, Entity e, float td) { net.minecraft.client.render.entity.EntityRenderer r = c.getEntityRenderDispatcher().getRenderer(e); return r.getLight(e, td); }
+        static void listen() {
+            if (listening) return; listening = true;
+            net.fabricmc.fabric.api.client.rendering.v1.WorldRenderEvents.END.register(ctx -> {
+                LightProbe p = PROBE; if (p == null || p.changedFrame >= 0) return;
+                MinecraftClient c = MinecraftClient.getInstance(); p.frames++;
+                int light = lightOf(c, p.e, ctx.tickDelta()), drew = BodyCache.drewLight(p.e);
+                var d = TroopRenderer.drawn(p.e); int count = d == null ? -1 : d.count; boolean drawn = count != p.lastCount; p.lastCount = count;
+                if (light == p.before) { p.drewBefore = drew; p.cachedBefore = drew == p.before; return; }
+                p.changedFrame = p.frames; p.now = light; p.drew = drew; p.counted = drawn;
+            });
+        }
+        /**
+         * mo-settle (carry D20): the front row's right knight, which has stood since the cast, and a knight posted now are struck down on the
+         * same tick (the new one in its first ticks of age); each is drawn from BodyCache's buffers (it settled) from the client death tick
+         * recorded. The new one must settle within 2 ticks of the old one and both before their fade begins. mo-light (carry D21, R45):
+         * then a light block (level 15) goes in the settled old knight's block; on the first frame its light differs, the body must draw
+         * in the new light: from its buffers recorded in it, or the normal way, which reads it.
+         */
+        void settle(MinecraftClient c) {
+            wait++;
+            int lie = Spec.COMBATDISCIPLINE[0].corpseLieTicks(), lieEnd = BattleMath.DEATH_FALL_TICKS + lie - 1;
+            switch (ss) {
+                case 0 -> { old = posted.get(COLS - 1); server(c, b -> young = post(b, gold, "knight", 0, -5, YAW)); ss = 1; wait = 0; }
+                case 1 -> {
+                    if (young == null || client(c, young.mob) == null) { if (wait > 100) { report("mo-settle", false, "the new knight never reached the client"); report("mo-light", false, "not run: mo-settle could not start"); ss = 10; } return; }
+                    server(c, b -> { for (var u : List.of(young, old)) { u.mob.timeUntilRegen = 0; u.mob.hurtTime = 0; u.mob.damage(b.world.getDamageSources().generic(), 10000f); } });
+                    ss = 2; wait = 0;
+                }
+                case 2 -> {
+                    var ey = client(c, young.mob); var eo = client(c, old.mob);
+                    if (ey instanceof net.minecraft.entity.LivingEntity ly) { if (youngLies < 0 && TroopMotion.lies(ly)) youngLies = ly.deathTime; if (youngAt < 0 && BodyCache.cached(ly)) youngAt = ly.deathTime; }
+                    if (eo instanceof net.minecraft.entity.LivingEntity lo) { if (oldLies < 0 && TroopMotion.lies(lo)) oldLies = lo.deathTime; if (oldAt < 0 && BodyCache.cached(lo)) oldAt = lo.deathTime; }
+                    if ((youngAt >= 0 && oldAt >= 0) || wait > 120) {
+                        boolean pass = youngAt >= 0 && oldAt >= 0 && youngAt <= lieEnd && oldAt <= lieEnd && Math.abs(youngAt - oldAt) <= 2;
+                        report("mo-settle", pass, String.format(Locale.ROOT, "struck down on the same tick: a knight %d ticks old at the blow lies from death tick %d and draws from its buffers from death tick %s; one %d ticks old lies from %d and draws from its buffers from %s; want both by %d (the fade starts after; lie %d) and within 2 ticks of each other; BodyCache: %s",
+                            young.mob.age - wait, youngLies, youngAt < 0 ? "never" : String.valueOf(youngAt), old.mob.age - wait, oldLies, oldAt < 0 ? "never" : String.valueOf(oldAt), lieEnd, lie, BodyCache.diag()));
+                        if (oldAt >= 0) ss = 3; else { report("mo-light", false, "not run: the old knight's body never drew from its buffers"); ss = 10; }
+                        wait = 0;
+                    }
+                }
+                case 3 -> {
+                    var eo = client(c, old.mob); if (eo == null) { report("mo-light", false, "the old knight's body left the client"); ss = 10; return; }
+                    listen(); PROBE = new LightProbe(eo, lightOf(c, eo, 1f));
+                    var at = net.minecraft.util.math.BlockPos.ofFloored(eo.getPos()); lamp = at;
+                    server(c, b -> b.world.setBlockState(at, net.minecraft.block.Blocks.LIGHT.getDefaultState().with(net.minecraft.block.LightBlock.LEVEL_15, 15)));
+                    ss = 4; wait = 0;
+                }
+                case 4 -> {
+                    var p = PROBE;
+                    if (p.changedFrame < 0 && wait < 40) return;
+                    boolean shown = p.changedFrame >= 0 && (p.drew == p.now || p.drew == -1 && p.counted);
+                    report("mo-light", shown && p.cachedBefore, String.format(Locale.ROOT, "a settled knight's body (death tick %d) drew from its buffers in its light (%s) the frame before a level-15 light block went into its block=%b; the first frame its light read another value (%s; frame %d of the probe) it drew %s=%b",
+                        old.mob.deathTime, hex(p.before), p.cachedBefore, p.changedFrame < 0 ? "never, in 40 ticks" : hex(p.now), p.changedFrame,
+                        p.drew == -1 ? (p.counted ? "the normal way, which reads the light of the frame" : "nothing") : "from its buffers in light " + hex(p.drew), shown));
+                    PROBE = null; ss = 10;
+                }
+                case 10 -> {
+                    var at = lamp; if (at != null) { lamp = null; server(c, b -> b.world.setBlockState(at, net.minecraft.block.Blocks.AIR.getDefaultState())); }
+                    server(c, b -> {
+                        var foot = at(OX, OZ); var blk = net.minecraft.util.math.BlockPos.ofFloored(foot.x, foot.y + OLIFT - 1, foot.z); barrier = blk;
+                        b.world.setBlockState(blk, net.minecraft.block.Blocks.BARRIER.getDefaultState());
+                        low = post(b, gold, "knight", OX, OZ, YAW); var h = post(b, gold, "knight", OX, OZ, YAW); var up = foot.add(0, OLIFT, 0);
+                        pins.removeIf(q -> q.mob() == h.mob); pins.add(new Pin(h.mob, up, YAW)); pin(h.mob, up, YAW); high = h;
+                        camera(b, OX, OLIFT + 6, OZ, 0, 90);
+                    });
+                    ss = 11; wait = 0;
+                }
+                case 11 -> {
+                    if (low == null || high == null || client(c, low.mob) == null || client(c, high.mob) == null || wait < 20) {
+                        if (wait > 200) { report("mo-fade-overlap", false, "the two knights never reached the client"); ss = 99; }
+                        return;
+                    }
+                    server(c, b -> { for (var u : List.of(low, high)) { u.mob.timeUntilRegen = 0; u.mob.hurtTime = 0; u.mob.damage(b.world.getDamageSources().generic(), 10000f); } });
+                    ss = 12; wait = 0;
+                }
+                case 12 -> {
+                    var eh = client(c, high.mob); var el = client(c, low.mob);
+                    if (!(eh instanceof net.minecraft.entity.LivingEntity lh) || !(el instanceof net.minecraft.entity.LivingEntity ll)) { if (wait > 200) { report("mo-fade-overlap", false, "the client lost the two bodies before their mid-fade"); ss = 99; } return; }
+                    var row = Spec.COMBATDISCIPLINE[0]; int mid = BattleMath.DEATH_FALL_TICKS + row.corpseLieTicks() + Math.max(1, row.corpseFadeTicks()) / 2;
+                    if (lh.deathTime < mid || ll.deathTime < mid) { if (wait > 400) { report("mo-fade-overlap", false, "the bodies never reached their mid-fade"); ss = 99; } return; }
+                    oDeath = lh.deathTime; oDeathLow = ll.deathTime; oCached = BodyCache.cached(lh) && BodyCache.cached(ll); oGroupsBefore = BodyCache.fadeGroupsMax;
+                    c.getToastManager().clear(); c.setScreen(new net.minecraft.client.gui.screen.GameMenuScreen(false)); oPaused = true; ss = 13; wait = 0;
+                }
+                case 13 -> overlapShots(c);
+                default -> finishLive(c);
+            }
+        }
+        // ---- mo-fade-overlap (carry D14) ----
+        /** Where the two stacked knights stand (off the crowd's grid) and how far above the low one the high one lies, on a barrier. */
+        static final double OX = 10, OZ = 2; static final int OLIFT = 3;
+        GravesAndGlory.Unit low, high; net.minecraft.util.math.BlockPos barrier; int oDeath, oDeathLow; long oGroupsBefore; boolean oPaused, oCached = true; float oAlpha;
+        /** Frames: both drawn (F), both drawn in one fade group as before the fix (F0), the low one hidden (HA), the high one hidden (HB), both hidden (HAB). */
+        final net.minecraft.client.texture.NativeImage[] oShots = new net.minecraft.client.texture.NativeImage[5];
+        static final String[] O_NAMES = {"f", "f0", "ha", "hb", "hab"};
+        /**
+         * mo-fade-overlap (carry D14): a knight lying on a barrier 3 blocks over another, the camera straight above, both struck down on the
+         * same tick, the game paused at their mid-fade (alpha a). Over the pixels both bodies cover (each one's footprint: where hiding it
+         * changes the frame), the low body's share in the frame is |F - HA| summed, against its share alone |HB - HAB|: a nearer body at
+         * alpha a passes 1 - a of what lies behind it, so the ratio must be within 0.1 of 1 - a. Drawn in one group as before the fix (F0),
+         * the high body's depth pass hides the low body, so that ratio must be under 0.1 (the check sees the fault it guards).
+         */
+        void overlapShots(MinecraftClient c) {
+            int k = wait / 6; if (wait % 6 != 5 || k > 4) return;
+            var eh = client(c, high.mob); var el = client(c, low.mob);
+            if (eh == null || el == null) { report("mo-fade-overlap", false, "the client lost a body while paused"); overlapEnd(c); ss = 99; return; }
+            if (k == 0) oAlpha = BodyCache.fade(eh, c.getTickDelta());
+            oPaused &= c.isPaused();
+            oShots[k] = ScreenshotRecorder.takeScreenshot(c.getFramebuffer());
+            switch (k) {
+                case 0 -> BodyCache.noGroups = true;
+                case 1 -> { BodyCache.noGroups = false; BodyCache.hide = el.getId(); }
+                case 2 -> BodyCache.hide = eh.getId();
+                case 3 -> { BodyCache.hide = el.getId(); BodyCache.hide2 = eh.getId(); }
+                default -> {}
+            }
+            if (k < 4) return;
+            var f = oShots[0]; var f0 = oShots[1]; var ha = oShots[2]; var hb = oShots[3]; var hab = oShots[4];
+            int w = Math.min(f.getWidth(), hab.getWidth()), h = Math.min(f.getHeight(), hab.getHeight()); long both = 0, footLow = 0, footHigh = 0; double through = 0, through0 = 0, alone = 0;
+            for (int y = 0; y < h; y++) for (int x = 0; x < w; x++) {
+                int bg = hab.getColor(x, y); boolean inLow = channel(hb.getColor(x, y), bg) > 2, inHigh = channel(ha.getColor(x, y), bg) > 2;
+                if (inLow) footLow++; if (inHigh) footHigh++;
+                if (!inLow || !inHigh) continue;
+                both++; through += sum(f.getColor(x, y), ha.getColor(x, y)); through0 += sum(f0.getColor(x, y), ha.getColor(x, y)); alone += sum(hb.getColor(x, y), bg);
+            }
+            double r = alone <= 0 ? -1 : through / alone, r0 = alone <= 0 ? -1 : through0 / alone, want = 1 - oAlpha;
+            boolean pass = oPaused && both >= 1000 && Math.abs(r - want) <= 0.1 && r0 >= 0 && r0 < 0.1 && BodyCache.fadeGroupsMax >= 2;
+            var dir = new File(c.runDirectory, "screenshots"); dir.mkdirs();
+            for (int i = 0; i < 5; i++) try { oShots[i].writeTo(new File(dir, "mo-fade-overlap-" + O_NAMES[i] + ".png")); } catch (java.io.IOException ex) { ex.printStackTrace(); }
+            report("mo-fade-overlap", pass, String.format(Locale.ROOT, "a knight lying 3 blocks over another, both fading (death ticks %d and %d, alpha %.3f), the game paused %b, both drawn from their buffers %b; footprints %d (low) and %d (high) pixels, %d shared; over the shared pixels the low body's share through the high one is %.3f of its share alone (want %.3f = 1 - alpha, within 0.1); drawn in one group as before the fix %.3f (want under 0.1); most fade groups in a pass %d (want 2 or more); screenshots mo-fade-overlap-f/f0/ha/hb/hab.png; BodyCache: %s",
+                oDeath, oDeathLow, oAlpha, oPaused, oCached, footLow, footHigh, both, r, want, r0, BodyCache.fadeGroupsMax, BodyCache.diag()));
+            overlapEnd(c); ss = 99;
+        }
+        static int channel(int p, int q) { int d = 0; for (int k = 0; k < 24; k += 8) d = Math.max(d, Math.abs((p >> k & 255) - (q >> k & 255))); return d; }
+        static int sum(int p, int q) { int d = 0; for (int k = 0; k < 24; k += 8) d += Math.abs((p >> k & 255) - (q >> k & 255)); return d; }
+        void overlapEnd(MinecraftClient c) {
+            BodyCache.noGroups = false; BodyCache.hide = -1; BodyCache.hide2 = -1;
+            for (int i = 0; i < oShots.length; i++) if (oShots[i] != null) { oShots[i].close(); oShots[i] = null; }
+            if (oPaused || c.currentScreen instanceof net.minecraft.client.gui.screen.GameMenuScreen) c.setScreen(null);
+            var at = barrier; if (at != null) { barrier = null; server(c, b -> b.world.setBlockState(at, net.minecraft.block.Blocks.AIR.getDefaultState())); }
+        }
+        static String hex(int light) { return "block " + (light >> 4 & 0xF) + " sky " + (light >> 20 & 0xF); }
+        /** The late join done (or given up): the real clips back, on to the settle and light checks. */
+        void afterLate() { restoreClips(); ls = 99; cs = 5; wait = 0; }
+        void finishLive(MinecraftClient c) { restoreClips(); serverDone = true; end(c); }
+        void restoreClips() { if (clipsBefore != null) { ClipLibrary.install(clipsBefore); clipsBefore = null; } }
+
+        public void cleanup(MinecraftClient c) {
+            restoreClips(); TroopMotion.clearForced(); PROBE = null; overlapEnd(c);
+            var at = lamp; if (at != null) { lamp = null; server(c, b -> b.world.setBlockState(at, net.minecraft.block.Blocks.AIR.getDefaultState())); }
+            if (cloudsBefore != null) { c.options.getCloudRenderMode().setValue(cloudsBefore); cloudsBefore = null; }
+            super.cleanup(c);
         }
     }
 }

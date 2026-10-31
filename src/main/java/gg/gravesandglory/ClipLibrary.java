@@ -21,6 +21,8 @@ public final class ClipLibrary implements SimpleSynchronousResourceReloadListene
     static final Logger LOG=LoggerFactory.getLogger("gravesandglory");
     private static volatile Map<String,Clip> clips=Map.of();
     private static volatile Map<String,List<Clip>> variants=Map.of();
+    /** Counts reloads, so a cache built from the clips (TroopMotion's families) knows when to rebuild. */
+    private static volatile int generation;
     private final Map<String,List<String>> order;
 
     public ClipLibrary(Map<String,List<String>> variantOrder){order=Map.copyOf(variantOrder);}
@@ -52,12 +54,27 @@ public final class ClipLibrary implements SimpleSynchronousResourceReloadListene
             }
             byFamily.put(family,List.copyOf(list));
         });
-        clips=Collections.unmodifiableMap(loaded);variants=Map.copyOf(byFamily);
+        clips=Collections.unmodifiableMap(loaded);variants=Map.copyOf(byFamily);generation++;
         LOG.info("[clips] loaded {} clips",loaded.size());
     }
 
     /** The clip, or null when no resource pack has it. */
     public static Clip get(String rig,String family,String clip){return clips.get(rig+"/"+family+"/"+clip);}
+
+    /** Every clip in one folder, clips/<rig>/<family>/, by clip name; empty when it has none. */
+    static Map<String,Clip> folder(String rig,String family){
+        String prefix=rig+"/"+family+"/";Map<String,Clip> out=new TreeMap<>();
+        for(var e:clips.entrySet())if(e.getKey().startsWith(prefix))out.put(e.getKey().substring(prefix.length()),e.getValue());
+        return out;
+    }
+
+    /** How many reloads have run; it changes whenever the clips may have. */
+    static int generation(){return generation;}
+
+    /** Harness only (MotionChecks): every loaded clip by "rig/family/clip". */
+    static Map<String,Clip> all(){return clips;}
+    /** Harness only (MotionChecks): replaces the loaded clips as a reload would (variants() keeps its lists) and counts a generation, so families and cull reaches rebuild. */
+    static void install(Map<String,Clip> loaded){clips=Collections.unmodifiableMap(new TreeMap<>(loaded));generation++;}
 
     /** A family's attack clips in the sheet's attackVariants order; empty when it has none. */
     public static List<Clip> variants(String family){return variants.getOrDefault(family,List.of());}

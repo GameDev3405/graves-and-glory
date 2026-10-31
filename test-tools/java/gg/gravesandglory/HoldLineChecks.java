@@ -1968,8 +1968,8 @@ final class HoldLineChecks {
                 case 128 -> { // Task 8 fix 1 (R39): a settled body the client draws from the buffers it recorded looks as the normal draw does
                     long n = since(b);
                     if (n == 1) {cpShotDone = false; cpFadeDone = false; cpFadeK = 0; cpFadeId = -1; cpCacheBody = cpOwn(b, 65, cpHome); var at = ground(b, cpHome.x, cpHome.z - 3); b.relocate(sp(b), at.x, at.y, at.z, 0f, 28f); return;}
-                    // R43: it stands 60 ticks first, as a troop in a battle has: one struck down on the tick it spawned settles (TroopAnimator.settled,
-                    // so draws from buffers) only near its 60th tick of age (r2-lie20b), past the fade start of a lie under 40
+                    // R43 / Task 13 carry 20: it falls once the client has it. The old animator settled a troop struck down within ~3 s of spawning
+                    // only near its 60th tick of age (r2-lie20b), so this stood 60 ticks; TroopMotion.settled has no age in it (mo-settle: 1 and 197 ticks old both settle at death tick 22)
                     if (n == CP_STAND) {fall(b, cpCacheBody); return;}
                     if (n == CP_STAND + Math.min(45, cpLieEnd() - 4)) cpShotId = cpCacheBody.mob.getId(); // lying since death tick 21, before its fade; the camera 3 blocks north of it, looking down at it
                     if (cpShotDone && cpShotId >= 0) {cpShotId = -1; cpFadeId = cpCacheBody.mob.getId();} // R42: then the client samples it as it fades
@@ -2065,7 +2065,7 @@ final class HoldLineChecks {
         void cpBegin(GravesAndGlory.Battle b) {int[] run = cpArm(CP_PLAN[cpRun]); Spec.COMBATDISCIPLINE[0] = corpseRow(cpRow, run[0], run[1]); cpLoad.clear(); System.gc(); next(b, 130);}
         /** An arm's {corpseLieTicks, corpseFadeTicks}: A none, the warm-up and B the sheet's rows. */
         /** R43: the corpse rows' last lying death tick before the fade (20 + lie - 1) and the removal tick (20 + lie + fade). */
-        static final int CP_STAND = 61;
+        static final int CP_STAND = 5;
         static int cpLieEnd() {return BattleMath.DEATH_FALL_TICKS + Spec.COMBATDISCIPLINE[0].corpseLieTicks() - 1;}
         static int cpGone() {return BattleMath.corpseGoneTick(Spec.COMBATDISCIPLINE[0].corpseLieTicks(), Spec.COMBATDISCIPLINE[0].corpseFadeTicks());}
         int[] cpArm(int arm) {return arm == 1 ? new int[]{0, 0} : new int[]{cpRow.corpseLieTicks(), cpRow.corpseFadeTicks()};}

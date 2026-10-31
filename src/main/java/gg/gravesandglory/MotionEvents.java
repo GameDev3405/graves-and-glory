@@ -118,12 +118,12 @@ public final class MotionEvents {
         sendHit(self, kind, zone, bearing, BattleMath.weight(lost, self.getMaxHealth(), D.mediumHitShare(), D.heavyHitShare()), blocked, !self.isAlive());
     }
     /**
-     * Whether the troop's newest swing still shows (BattleMath.swingCurrent): it began no more than its variant's impactTicks plus SWING_RECOVERY_TICKS ago
-     * on the world clock. The server holds no clip lengths (they live in the client's motion assets), so the blow's impact and a fixed recovery stand in.
+     * Whether the troop's newest swing may still show (BattleMath.swingCurrent): a valid variant that began no more than ATTACK_CLIP_MAX_TICKS ago on the
+     * world clock. The server holds no clip lengths; the client plays the swing at its real clip time and skips one whose clip has ended (carry B8).
      */
     static boolean swingCurrent(GravesAndGlory.Unit u) {
         var rows = Tactics.variants(u.spec.family());
-        return BattleMath.validVariant(u.lastVariant, rows.size()) && BattleMath.swingCurrent(u.mob.getWorld().getTime(), u.swingTick, rows.get(u.lastVariant).impactTicks());
+        return BattleMath.validVariant(u.lastVariant, rows.size()) && BattleMath.swingCurrent(u.mob.getWorld().getTime(), u.swingTick);
     }
     /** The troop's stance to a player catching up, when it has one. Returns how many it sent. */
     static int catchUpStance(GravesAndGlory.Unit u, ServerPlayerEntity p) { return u.stance.isEmpty() ? 0 : sendStance(u, u.stance, u.aimPitch, List.of(p)); }
@@ -174,10 +174,19 @@ public final class MotionEvents {
             Deque<T> q = map.computeIfAbsent(id, k -> new ConcurrentLinkedDeque<>()); q.addLast(value);
             while (q.size() > KEEP) q.pollFirst();
         }
-        /** A swing: rows is the attackVariants count of the troop's family, -1 when the client world has no entity of this id. Dropped out of range. */
+        /** The most attack variants a family may have; a swing for a troop whose family this client cannot name is kept inside it (carry B7). */
+        static final int MAX_VARIANTS = 64;
+        /**
+         * A swing: rows is the attackVariants count of the troop's family, 0 when the client cannot name the troop (its custom name is not one it knows:
+         * TroopMotion validates the variant against the model's family when it plays it), -1 when the client world has no entity of this id. Dropped out
+         * of range, and dropped when it repeats one already kept (carry B6: a catch-up and the live send may both bring the same swing).
+         */
         static void attack(int id, int variant, long startTick, int rows) {
-            if (rows < 0 || !BattleMath.validVariant(variant, rows)) return;
-            push(ATTACKS, id, new MotionInput.Attack(variant, startTick));
+            if (rows < 0 || !BattleMath.validVariant(variant, rows == 0 ? MAX_VARIANTS : rows)) return;
+            MotionInput.Attack a = new MotionInput.Attack(variant, startTick);
+            Deque<MotionInput.Attack> q = ATTACKS.get(id);
+            if (q != null && q.contains(a)) return;
+            push(ATTACKS, id, a);
         }
         /** A blow: known when the client world has an entity of this id (else dropped); the weight clamped to 0..2. */
         static void hit(boolean known, int id, int kind, int zone, float bearing, int weight, int flags, long tick) {

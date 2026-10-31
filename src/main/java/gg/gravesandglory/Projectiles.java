@@ -115,12 +115,25 @@ public final class Projectiles {
         Arc a=arc(b,u,from,to,kind.equals("arrow")||kind.equals("trident"));
         return (float)BattleMath.aimPitch(Math.hypot(to.x-from.x,to.z-from.z),to.y-from.y,a.peak(),a.travel());
     }
+    /**
+     * attack_v1 for a shot (Task 13 carry B9): the shooter's family's variant (for a bow, bow_volley for a lofted arc and bow_direct for a flat one; any other
+     * family its first row), begun its impactTicks before now, so the clip's impact, the loose, lands on the tick the shot leaves. Kept as the troop's
+     * newest swing (lastVariant, swingTick) for a late joiner's catch-up. Its rolls and swungAt are left alone. Nothing for a family with no rows.
+     */
+    static void loose(GravesAndGlory.Unit u,double peak){
+        var rows=Tactics.variants(u.spec.family());if(rows.isEmpty())return;
+        int variant=0;String want=u.spec.family()+(peak>0?"_volley":"_direct");
+        for(int i=0;i<rows.size();i++)if(rows.get(i).id().equals(want))variant=i;
+        u.lastVariant=variant;u.swingTick=Math.max(0,u.mob.getWorld().getTime()-rows.get(variant).impactTicks());
+        MotionEvents.sendAttack(u,variant,u.swingTick);
+    }
     public static void fire(GravesAndGlory.Battle b,GravesAndGlory.Unit u,LivingEntity target,String kind,float amount){
         Vec3d from=u.mob.getEyePos(),to=aim(target);
         Tactics.stamp(b,u,target); // archer fire: the target's group is under fire (Squad.shotAt)
         boolean arrow=kind.equals("arrow")||kind.equals("trident");
         Arc arc=arc(b,u,from,to,arrow); // the volley's arc, or a straight line for a bolt, a mend or the Mortar's shell
         double peak=arc.peak();int travel=arc.travel();
+        loose(u,peak);
         long lands=b.time+travel;
         Entity visual=null;Vec3d step=null;
         if(arrow){

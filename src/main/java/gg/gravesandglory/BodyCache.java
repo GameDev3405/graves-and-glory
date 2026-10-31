@@ -37,7 +37,7 @@ import java.util.Objects;
 
 /**
  * The settled-body cache (Task 8 fix round 1, R39). A troop's body that lies past its fall with its pose kept
- * (TroopAnimator.settled) no longer changes, so its draw is recorded once, in its own frame (world axes about its feet, as
+ * (TroopMotion.settled) no longer changes, so its draw is recorded once, in its own frame (world axes about its feet, as
  * the renderer draws it from an identity matrix stack), into one GPU vertex buffer per render layer; every later frame draws
  * those buffers, layer by layer for all the bodies at once, after the entities (WorldRenderEvents.AFTER_ENTITIES), instead of
  * walking the model again. What the draw would have computed per frame is checked as a key (the Look, the model, the far
@@ -53,7 +53,9 @@ public final class BodyCache {
     /** Off with -Dgravesandglory.bodyCache=false, and always under Iris. */
     static final boolean ENABLED=!"false".equals(System.getProperty("gravesandglory.bodyCache"))&&!FabricLoader.getInstance().isModLoaded("iris");
     /** Harness switches (HoldLineChecks, hl-corpse): draw every body the normal way; leave the entity with this id undrawn. */
-    static volatile boolean off;static volatile int hide=-1;
+    static volatile boolean off;static volatile int hide=-1,hide2=-1;
+    /** Harness: whether the renderer skips the entity (BodyCache.hide or hide2); and noGroups puts every fading body in one group, as before carry D14 (the red side of mo-fade-overlap). */
+    static boolean hidden(int id){return id==hide||id==hide2;}static volatile boolean noGroups;
     /** Harness switch (hl-corpse, R42): draw a fading body opaque, its fade ignored (the reference frame its alpha is measured against). */
     static volatile boolean opaque;
     /** Whether settled bodies draw from their buffers now. */
@@ -85,7 +87,7 @@ public final class BodyCache {
      * A body drawn this frame part way through its corpse fade (R42): a cached body's own buffers, or the buffers one normal
      * draw was caught into (body null), drawn translucent at alpha by fadePass.
      */
-    static final class Fade { final Body body;final List<Part> parts;final float alpha;double d2;Fade(Body body,List<Part> parts,float alpha){this.body=body;this.parts=parts;this.alpha=alpha;} }
+    static final class Fade { final Body body;final List<Part> parts;final float alpha;double d2,x,y,z,reach;int group;Fade(Body body,List<Part> parts,float alpha){this.body=body;this.parts=parts;this.alpha=alpha;} }
     record FadeDraw(Fade fade,VertexBuffer buffer){}
     private static final Map<Entity,Body> BODIES=new IdentityHashMap<>();
     private static final List<Body> QUEUE=new ArrayList<>(),SHADOWS=new ArrayList<>();
@@ -95,13 +97,13 @@ public final class BodyCache {
     private static final Map<RenderLayer,Integer> KINDS=new IdentityHashMap<>();private static final ArrayDeque<VertexBuffer> SPARE=new ArrayDeque<>();
     private static boolean inWorld;private static int frame;
     /** Fade passes, the fading bodies and draws they drew, and their time (the harness reads them). */
-    static long fadePasses,fadeBodies,fadeDraws,fadeNanos;
+    static long fadePasses,fadeBodies,fadeDraws,fadeNanos,fadeGroups,fadeGroupsMax,fadeLayered,fadeTranslucentMax;
     /** Draws from cached buffers and records since the client started (the harness reads them). */
     static long cachedDraws,records;
     /** Diagnostics for the harness: cached draws on the short check, draws refused outside the world pass, key changes, give-ups, failed records, and the last key change or refusal. */
     static long quick,outside,changes,giveUps,failed,flushNanos,flushes,flushDraws,flushBodies;static String lastChange="";
     static String diag(){return "cached draws "+cachedDraws+" ("+quick+" on the short check), records "+records+", outside the world pass "+outside+", key changes "+changes+", give-ups "+giveUps+", failed records "+failed+", kept "+kept()+", flush "+String.format(java.util.Locale.ROOT,"%.1f us for %.1f bodies and %.1f draws a frame",flushNanos/1e3/Math.max(1,flushes),flushBodies/(double)Math.max(1,flushes),flushDraws/(double)Math.max(1,flushes))
-        +String.format(java.util.Locale.ROOT,", fade %d passes, %.1f us for %.1f bodies and %.1f draws a pass",fadePasses,fadeNanos/1e3/Math.max(1,fadePasses),fadeBodies/(double)Math.max(1,fadePasses),fadeDraws/(double)Math.max(1,fadePasses))+"; last: "+lastChange;}
+        +String.format(java.util.Locale.ROOT,", fade %d passes, %.1f us for %.1f bodies and %.1f draws a pass, %.2f overlap groups a pass (most %d), %d fading bodies with 2 or more blended layers (most blended layers in one body %d)",fadePasses,fadeNanos/1e3/Math.max(1,fadePasses),fadeBodies/(double)Math.max(1,fadePasses),fadeDraws/(double)Math.max(1,fadePasses),fadeGroups/(double)Math.max(1,fadePasses),fadeGroupsMax,fadeLayered,fadeTranslucentMax)+"; last: "+lastChange;}
 
     /**
      * How opaque the entity's body draws now (R42): whole until its corpse fade begins (death tick 20 + the sheet's
@@ -118,7 +120,9 @@ public final class BodyCache {
     /** WorldRenderEvents.START: the world pass begins; bodies may queue. */
     static void begin(){inWorld=ENABLED;frame++;QUEUE.clear();SHADOWS.clear();recycle();}
     /** Queues a cached body at its opacity: whole with the rest, part way to the fade pass, gone at 0. */
-    private static void queue(Body b,float a){if(a>=1f)QUEUE.add(b);else if(a>0f)FADES.add(new Fade(b,b.parts,a));}
+    private static void queue(Body b,float a){if(a>=1f)QUEUE.add(b);else if(a>0f){Fade f=new Fade(b,b.parts,a);f.reach=reach(b.entity);FADES.add(f);}}
+    /** How far a body can reach from its feet, lying any way: its height laid flat plus its width (the fade pass's overlap test, conservative). */
+    private static double reach(Entity e){return e==null?3:e.getHeight()+e.getWidth();}
 
     /** A normal draw part way through its fade is caught here (null outside the world pass: it draws whole); faded or abandonFading ends it. */
     static VertexConsumerProvider fading(VertexConsumerProvider consumers){
@@ -133,7 +137,7 @@ public final class BodyCache {
             VertexBuffer vb=SPARE.isEmpty()?new VertexBuffer(VertexBuffer.Usage.DYNAMIC):SPARE.pop();vb.bind();vb.upload(built);f.parts.add(new Part(en.getKey(),vb));
         }
         VertexBuffer.unbind();LOOSE.rec.release();LOOSE.outline=null;BufferRenderer.reset();
-        if(!f.parts.isEmpty()){f.d2=e.squaredDistanceTo(MinecraftClient.getInstance().gameRenderer.getCamera().getPos());FADES.add(f);}
+        if(!f.parts.isEmpty()){f.d2=e.squaredDistanceTo(MinecraftClient.getInstance().gameRenderer.getCamera().getPos());f.x=e.getX();f.y=e.getY();f.z=e.getZ();f.reach=reach(e);FADES.add(f);}
     }
     static void abandonFading(){LOOSE.rec.abandon();LOOSE.outline=null;}
     /** The caught draws' buffers back to the spare pool. */
@@ -311,22 +315,49 @@ public final class BodyCache {
      * fade (R42), cached and caught alike, translucent. First their opaque layers write only depth, so each body shows its front
      * surface only; then every layer draws in colour against that depth, farthest body first: an opaque layer blended at the
      * body's alpha by a constant blend colour, a blending layer with its colour modulator's alpha scaled, an adding one
-     * (eyes, glint) with its whole modulator scaled. Fading bodies overlapping one another hide the farther behind the nearer.
+     * (eyes, glint) with its whole modulator scaled. Bodies whose screen discs overlap go in successive groups, farthest first
+     * (carry D14): each group's depth and colour passes finish before the next group's depth pass, so a nearer fading body blends
+     * over a farther one instead of its depth hiding it; bodies that overlap none share group 0 and draw batched by layer.
      */
     static void fadePass(WorldRenderContext ctx){
         if(FADES.isEmpty())return;
         long t0=System.nanoTime();fadePasses++;fadeBodies+=FADES.size();
-        for(Fade f:FADES)if(f.body!=null){Body b=f.body;double dx=b.x-cam.x,dy=b.y-cam.y,dz=b.z-cam.z;f.d2=dx*dx+dy*dy+dz*dz;}
+        for(Fade f:FADES)if(f.body!=null){Body b=f.body;f.x=b.x;f.y=b.y;f.z=b.z;double dx=b.x-cam.x,dy=b.y-cam.y,dz=b.z-cam.z;f.d2=dx*dx+dy*dy+dz*dz;}
         FADES.sort((p,q)->Double.compare(q.d2,p.d2));
-        for(List<FadeDraw> l:FADE_BY_LAYER.values())l.clear();
-        for(Fade f:FADES)for(Part p:f.parts)FADE_BY_LAYER.computeIfAbsent(p.layer(),k->new ArrayList<>()).add(new FadeDraw(f,p.buffer()));
+        int groups=group(FADES);fadeGroups+=groups;fadeGroupsMax=Math.max(fadeGroupsMax,groups);
+        for(Fade f:FADES){int n=0;for(Part p:f.parts)if(kind(p.layer())==1)n++;if(n>=2)fadeLayered++;fadeTranslucentMax=Math.max(fadeTranslucentMax,n);}
         try{
-            for(var en:FADE_BY_LAYER.entrySet())if(!en.getValue().isEmpty()&&kind(en.getKey())==0)drawFades(en.getKey(),en.getValue(),-1);
-            for(int k=0;k<3;k++)for(var en:FADE_BY_LAYER.entrySet())if(!en.getValue().isEmpty()&&kind(en.getKey())==k)drawFades(en.getKey(),en.getValue(),k);
+            for(int g=0;g<groups;g++){
+                for(List<FadeDraw> l:FADE_BY_LAYER.values())l.clear();
+                for(Fade f:FADES)if(f.group==g)for(Part p:f.parts)FADE_BY_LAYER.computeIfAbsent(p.layer(),k->new ArrayList<>()).add(new FadeDraw(f,p.buffer()));
+                for(var en:FADE_BY_LAYER.entrySet())if(!en.getValue().isEmpty()&&kind(en.getKey())==0)drawFades(en.getKey(),en.getValue(),-1);
+                for(int k=0;k<3;k++)for(var en:FADE_BY_LAYER.entrySet())if(!en.getValue().isEmpty()&&kind(en.getKey())==k)drawFades(en.getKey(),en.getValue(),k);
+            }
         }finally{
             RenderSystem.colorMask(true,true,true,true);RenderSystem.depthMask(true);RenderSystem.disableBlend();RenderSystem.defaultBlendFunc();GL14.glBlendColor(0f,0f,0f,0f);
             BufferRenderer.reset();recycle();fadeNanos+=System.nanoTime()-t0;
         }
+    }
+    /**
+     * Puts the fading bodies (sorted farthest first) in groups for the fade pass (carry D14): a body goes one group past the
+     * latest group of any farther body whose screen disc overlaps its own (the angle between their centres from the camera under
+     * the sum of their angular reaches), so overlapping bodies draw farther first; returns the number of groups.
+     */
+    static int group(List<Fade> fades){
+        if(noGroups){for(Fade f:fades)f.group=0;return fades.isEmpty()?0:1;}
+        int n=fades.size(),groups=0;double[] ux=new double[n],uy=new double[n],uz=new double[n],th=new double[n];
+        for(int i=0;i<n;i++){
+            Fade f=fades.get(i);double dx=f.x-cam.x,dy=f.y-cam.y,dz=f.z-cam.z,d=Math.sqrt(dx*dx+dy*dy+dz*dz);
+            if(d<1e-6){ux[i]=0;uy[i]=0;uz[i]=1;th[i]=Math.PI;}else{ux[i]=dx/d;uy[i]=dy/d;uz[i]=dz/d;th[i]=f.reach>=d?Math.PI:Math.asin(f.reach/d);}
+            int g=0;
+            for(int j=0;j<i;j++){
+                Fade o=fades.get(j);if(o.group+1<=g)continue;
+                double dot=Math.max(-1,Math.min(1,ux[i]*ux[j]+uy[i]*uy[j]+uz[i]*uz[j]));
+                if(Math.acos(dot)<th[i]+th[j])g=o.group+1;
+            }
+            f.group=g;groups=Math.max(groups,g+1);
+        }
+        return groups;
     }
     private static final float[] COLOR=new float[4];
     /** One layer of the fading bodies: kind -1 the depth pass, else the colour pass for a layer of that kind. */
@@ -362,12 +393,14 @@ public final class BodyCache {
     /**
      * The shadows of the bodies drawn on the short check, as EntityRenderDispatcher.render draws them (its switch and the
      * option, the renderer's radius and opacity, faded by the squared distance over 256) into the frame's entity consumers,
-     * which draw them with the rest of the frame's shadows.
+     * and drawn there and then. The shadow layer has no buffer of its own, so left queued it would draw only when the world
+     * pass flushes the shared buffer after the debug renderer, after fadePass: a fading body's depth would then hide its own
+     * shadow and those of the bodies behind it, where the dispatcher's shadows show through (mo-fade-overlap's F0 caught it).
      */
     private static void shadows(WorldRenderContext ctx,Vec3d cam){
         MinecraftClient mc=MinecraftClient.getInstance();var d=mc.getEntityRenderDispatcher();
         if(SHADOWS.isEmpty()||mc.world==null||!mc.options.getEntityShadows().getValue()||!((EntityRenderDispatcherAccessor)d).gravesandglory$renderShadows())return;
-        float td=ctx.tickDelta();MatrixStack ms=ctx.matrixStack();VertexConsumerProvider vc=mc.getBufferBuilders().getEntityVertexConsumers();
+        float td=ctx.tickDelta();MatrixStack ms=ctx.matrixStack();var vc=mc.getBufferBuilders().getEntityVertexConsumers();
         for(Body b:SHADOWS){
             Entity e=b.entity;float radius=b.renderer.shadowRadius(),opacity=b.renderer.shadowOpacity()*b.shade;if(radius<=0)continue;
             float o=(float)((1.0-cam.squaredDistanceTo(e.getX(),e.getY(),e.getZ())/256.0)*opacity);if(o<=0)continue;
@@ -376,6 +409,7 @@ public final class BodyCache {
             EntityRenderDispatcherAccessor.gravesandglory$renderShadow(ms,vc,e,o,td,mc.world,Math.min(radius,32f));
             ms.pop();
         }
+        vc.drawCurrentLayer(); // drawn now, as the dispatcher's shadows are: left in the shared buffer they would draw after fadePass, under the fading bodies' depth
     }
 
     /** Frees the buffers of bodies gone from the world, or out of view for IDLE_FRAMES. */
@@ -383,13 +417,15 @@ public final class BodyCache {
         var world=MinecraftClient.getInstance().world;
         for(Iterator<Map.Entry<Entity,Body>> it=BODIES.entrySet().iterator();it.hasNext();){
             var en=it.next();Entity e=en.getKey();Body b=en.getValue();
-            if(e.isRemoved()||e.getWorld()!=world||frame-b.lastFrame>IDLE_FRAMES||!TroopAnimator.lies(e)){b.free();it.remove();}
+            if(e.isRemoved()||e.getWorld()!=world||frame-b.lastFrame>IDLE_FRAMES||!TroopMotion.lies(e)){b.free();it.remove();}
         }
     }
     /** Frees every buffer (a world left, resources reloaded). */
     static void clear(){for(Body b:BODIES.values())b.free();BODIES.clear();QUEUE.clear();recycle();for(VertexBuffer vb:SPARE)vb.close();SPARE.clear();}
     /** Whether this client keeps buffers for the entity's body and draws it from them. */
     static boolean cached(Entity e){Body b=BODIES.get(e);return b!=null&&!b.normal&&!b.parts.isEmpty();}
+    /** Harness (Task 13 carry D21, R45): the light the entity's body drew from its buffers with this frame, -1 when it did not draw from them this frame. */
+    static int drewLight(Entity e){Body b=BODIES.get(e);return b!=null&&!b.normal&&b.key!=null&&b.lastFrame==frame?b.key.light():-1;}
     /** The bodies this client keeps buffers for (the harness reads it). */
     static int kept(){int n=0;for(Body b:BODIES.values())if(!b.parts.isEmpty())n++;return n;}
 }

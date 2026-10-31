@@ -159,6 +159,20 @@ class ClipsTest(unittest.TestCase):
         self.assertIn('impact check skipped', text)
         self.assertEqual(len([l for l in text.splitlines() if 'skipped' in l]), 1)
 
+    def test_attack_clip_is_no_longer_than_the_server_sends_a_swing(self):
+        cap = clips.attack_cap()
+        self.assertEqual(cap, 40)
+        long_swing = [key('rotation', 0, [0, 0, 0]), key('rotation', 0.5, [-120, 0, 0]), key('rotation', 2.05, [0, 0, 0])]
+        self.put('sword_shield', animation('overhead', 2.05, {'right_arm': long_swing}, markers=[(0.5, 'impact')]), self.thrust())
+        code, text = self.run_clips()
+        self.assertEqual(code, 1)
+        self.assertIn('41 ticks', text)
+        self.assertIn('ATTACK_CLIP_MAX_TICKS 40', text)
+        fits = [key('rotation', 0, [0, 0, 0]), key('rotation', 0.5, [-120, 0, 0]), key('rotation', 2.0, [0, 0, 0])]
+        self.put('sword_shield', animation('overhead', 2.0, {'right_arm': fits}, markers=[(0.5, 'impact')]), self.thrust())
+        code, text = self.run_clips()
+        self.assertEqual(code, 0, text)
+
     @staticmethod
     def thrust(name='thrust'):
         return animation(name, 0.6, {'right_arm': [key('rotation', 0, [0, 0, 0]), key('rotation', 0.35, [-90, 0, 0]), key('rotation', 0.6, [0, 0, 0])]},
