@@ -4,6 +4,85 @@
 
 This version replaces the first one. That one listed the Stalker as melee (it is ranged), miscounted the plan, and measured the code before fix round 1. The grace-0.5 results below now measure the fix round 2 code; the grace sweep still uses the fix round 1 runs (see Method).
 
+**Update 2026-10-30: the sheet is now at grace 1.0** (Kort's approval). The next section measures it on current code. Everything after it is the earlier grace-0.5 record, kept as it was.
+
+## 2026-10-30: grace 1.0 on current code
+
+The sheet's combatDiscipline.meleeReachGrace went from 0.5 to 1.0. In the same commit, all 30 troops' `pennant` went to false and the Tidecallers and Graveborn House accents changed. None of those three changes touches combat. The run is the Method's command exactly: DuelSimulation, plan work/method/plans/units-r4.txt, 720 fights, map 0, -PsimFast=true, -PduelSeed=7, SIM_LEVEL_SEED=4242, port 25711, one run at a time with nothing compiled during it. It ran on work/anim-rework at 56f9659 plus this commit's sheet: work/method/t5r2-grace10-230920/duel/duels.csv (720 of 720 fights, 668 wipes, 52 caps, 0 aborted).
+
+Columns: **BASE** is f10d4bf, before the impact frame (t5-before-135102). **0.5** is the fix round 2 code at grace 0.5 (t5r2-after-170256). **1.0** is this run. Win rate is a troop's share of its 68 non-mirror fights, a draw counted as half, as in the Method. A House's win rate counts only its troops' fights against other Houses' troops (its own internal pairings would score exactly 50%). Wildmoot has no troop in units-r4, so it has no row.
+
+**Balance band.** This report never set one, so this section uses the project's band from design 9.2 (docs/PHASE-2-BALANCE.md): a House inside 40 to 60% is balanced. The same band is applied to troops. "(out)" marks a value outside it. A move above 5 points is in bold.
+
+### Verdict
+
+- **Houses.** Tidecallers stays the one House the impact frame moves: -8.0 points against BASE (62.1 to 54.0). At grace 0.5 the drop was -12.5; grace 1.0 wins back 4.5 of those points. Tidecallers is the only House inside the 40 to 60% band in all three runs. Gilded, Graveborn and Ironclad sit outside the band in every run, BASE included, and each is within 4 points of BASE.
+- **Troops against BASE.** 6 of 18 moved more than 5 points; the grace 0.5 run moved 11. Three are Tidecallers melee troops: tc_raider -11.8, tc_brute -8.8 and tc_tideguard -5.9. Three are ranged or caster troops: hexer +8.8, ic_arbalist +8.8 and ic_ballista +7.4.
+- **Troops against grace 0.5.** 6 of 18 moved more than 5 points: tc_tideguard +11.8, tc_raider +7.4 and reaper +5.9 recover, while hexer -8.8, longbow -7.4 and tc_harpooner -5.9 give back some of their gain.
+- **Band.** 13 of 18 troops are outside 40 to 60% at grace 1.0, and 13 were at BASE too. ic_arbalist is new outside it (54.4 to 63.2). tc_raider came inside it (63.2 to 51.5). hexer is still outside it (38.2), though it was inside it at grace 0.5.
+- **Ratings against BASE** (balance_method.py compare). The mean melee rating shift is -0.068 (grace 0.5: -0.111). 1 of 18 types is within +/-1.96 SE, the same count as grace 0.5 (sum z^2 336.6 against 707.1). Pairings that moved more than 5 points: 29 of 153, 7 of them melee against melee (grace 0.5: 35 and 7).
+- **Fight length.** The mean fight is 36.85 s (BASE 34.58, grace 0.5 38.33), and the mean wipe is 30.38 s (BASE 27.65, grace 0.5 31.84).
+- **Against the fix round 1 sweep's 1.0 column.** This run moves 6 troops against BASE, the same as the sweep. It moves more pairings (29 against 17), and its melee shift is about the same (-0.068 against -0.060). The sweep ran on fix round 1 code, and a 4-fight pairing moves in 25-point steps, so the pairing count is noisier than the troop and rating counts.
+
+Grace 1.0 roughly halves the impact frame's shift but does not remove it. The Tidecallers melee line still carries most of the loss.
+
+### Per House (cross-House fights only)
+
+| house | n | BASE | 0.5 | 1.0 | 1.0 vs 0.5 | 1.0 vs BASE |
+|---|---|---|---|---|---|---|
+| gilded | 224 | 24.6 (out) | 29.0 (out) | 26.8 (out) | -2.2 | +2.2 |
+| graveborn | 260 | 80.0 (out) | 81.9 (out) | 81.2 (out) | -0.8 | +1.2 |
+| ironclad | 260 | 31.5 (out) | 36.5 (out) | 35.4 (out) | -1.2 | +3.8 |
+| tidecallers | 224 | 62.1 (out) | 49.6 | 54.0 | +4.5 | **-8.0** |
+
+### Per troop (non-mirror fights, n = 68 each), sorted by the move against BASE
+
+| troop | house | kind | BASE | 0.5 | 1.0 | 1.0 vs 0.5 | 1.0 vs BASE | mean wipe s 0.5 | 1.0 |
+|---|---|---|---|---|---|---|---|---|---|
+| hexer | graveborn | ranged/caster | 29.4 (out) | 47.1 | 38.2 (out) | **-8.8** | **+8.8** | 52.1 | 51.6 |
+| ic_arbalist | ironclad | ranged/caster | 54.4 | 64.7 (out) | 63.2 (out) | -1.5 | **+8.8** | 39.4 | 39.3 |
+| ic_ballista | ironclad | ranged/caster | 44.1 | 48.5 | 51.5 | +2.9 | **+7.4** | 22.7 | 23.5 |
+| longbow | gilded | ranged/caster | 25.0 (out) | 36.8 (out) | 29.4 (out) | **-7.4** | +4.4 | 29.9 | 31.3 |
+| bonebow | graveborn | ranged/caster | 94.1 (out) | 100.0 (out) | 98.5 (out) | -1.5 | +4.4 | 37.6 | 36.7 |
+| archer | gilded | ranged/caster | 52.9 | 60.3 (out) | 55.9 | -4.4 | +2.9 | 35.6 | 31.4 |
+| ic_breaker | ironclad | melee | 23.5 (out) | 26.5 (out) | 26.5 (out) | +0.0 | +2.9 | 24.6 | 25.4 |
+| knight | gilded | melee | 27.9 (out) | 26.5 (out) | 27.9 (out) | +1.5 | +0.0 | 35.3 | 31.6 |
+| sentinel | gilded | melee | 10.3 (out) | 7.4 (out) | 10.3 (out) | +2.9 | +0.0 | 28.4 | 38.1 |
+| stalker | graveborn | ranged/caster | 52.9 | 55.9 | 52.9 | -2.9 | +0.0 | 27.7 | 24.9 |
+| ic_mortar | ironclad | ranged/caster | 25.0 (out) | 26.5 (out) | 25.0 (out) | -1.5 | +0.0 | 18.1 | 19.3 |
+| tc_harpooner | tidecallers | ranged/caster | 80.9 (out) | 86.8 (out) | 80.9 (out) | **-5.9** | +0.0 | 36.3 | 34.7 |
+| revenant | graveborn | melee | 91.2 (out) | 82.4 (out) | 86.8 (out) | +4.4 | -4.4 | 33.0 | 33.0 |
+| ic_hearthguard | ironclad | melee | 32.4 (out) | 32.4 (out) | 27.9 (out) | -4.4 | -4.4 | 31.6 | 30.1 |
+| reaper | graveborn | melee | 97.1 (out) | 86.8 (out) | 92.6 (out) | **+5.9** | -4.4 | 27.2 | 22.4 |
+| tc_tideguard | tidecallers | melee | 39.7 (out) | 22.1 (out) | 33.8 (out) | **+11.8** | **-5.9** | 26.9 | 26.1 |
+| tc_brute | tidecallers | melee | 55.9 | 45.6 | 47.1 | +1.5 | **-8.8** | 25.8 | 26.6 |
+| tc_raider | tidecallers | melee | 63.2 (out) | 44.1 | 51.5 | **+7.4** | **-11.8** | 30.2 | 27.7 |
+
+### Ratings, grace 1.0 (balance_method.py compare)
+
+| type | B-A vs BASE (z) | B-A vs 0.5 (z) |
+|---|---|---|
+| knight | -0.068 (-2.70) | +0.012 (+0.56) |
+| archer | +0.086 (+4.54) | -0.038 (-2.01) |
+| sentinel | +0.039 (+2.96) | +0.044 (+3.65) |
+| longbow | +0.075 (+4.75) | -0.075 (-3.79) |
+| revenant | -0.090 (-9.25) | +0.030 (+2.36) |
+| bonebow | +0.071 (+3.36) | -0.023 (-1.38) |
+| reaper | -0.097 (-4.71) | +0.081 (+3.85) |
+| stalker | +0.066 (+2.13) | -0.031 (-1.28) |
+| hexer | +0.119 (+3.57) | -0.099 (-2.70) |
+| ic_hearthguard | -0.059 (-4.98) | +0.001 (+0.13) |
+| ic_arbalist | +0.079 (+4.87) | -0.032 (-1.97) |
+| ic_breaker | -0.046 (-3.28) | +0.037 (+2.58) |
+| ic_ballista | +0.046 (+2.11) | -0.012 (-0.64) |
+| ic_mortar | +0.021 (+1.18) | -0.025 (-1.43) |
+| tc_raider | -0.111 (-6.73) | +0.060 (+2.50) |
+| tc_harpooner | +0.047 (+2.75) | -0.049 (-2.55) |
+| tc_tideguard | -0.068 (-2.98) | +0.098 (+4.80) |
+| tc_brute | -0.110 (-3.76) | +0.021 (+0.67) |
+| summary | 1 of 18 within +/-1.96; sum z^2 336.6 (p 0.000); 27 of 153 cells with abs(z) > 1.96 | 7 of 18 within +/-1.96; sum z^2 112.5 (p 0.000); 17 of 153 cells with abs(z) > 1.96 |
+
+
 ## Verdict for Kort
 
 Melee got weaker and ranged/caster troops got stronger, well past the 5-point flag.

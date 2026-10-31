@@ -4671,8 +4671,9 @@ public final class Phase2Checks implements ClientModInitializer {
                 var ht=board.getPlayerTeam(husk.getEntityName());ok&=ht==null;
                 report("p2-spike-teams",ok,why+"the husk on "+(ht==null?"no team":ht.getName()));});
             var km=TroopModels.model("knight");var sm=TroopModels.model("sentinel");
-            List<String> common=List.of("head","body","right_arm","left_arm","right_hand","left_hand","right_leg","left_leg","pennant");
-            boolean bones=km!=null&&sm!=null&&km.bones().containsAll(common)&&sm.bones().containsAll(common)&&km.bones().contains("iron_cap")&&sm.bones().containsAll(List.of("great_helm","long_tabard"));
+            // Kort's rule (2026-10-30): no flag, pennant or standard on any troop, so neither model may carry one
+            List<String> common=List.of("head","body","right_arm","left_arm","right_hand","left_hand","right_leg","left_leg"),flags=List.of("pennant","standard");
+            boolean bones=km!=null&&sm!=null&&km.bones().containsAll(common)&&sm.bones().containsAll(common)&&flags.stream().noneMatch(km.bones()::contains)&&flags.stream().noneMatch(sm.bones()::contains)&&km.bones().contains("iron_cap")&&sm.bones().containsAll(List.of("great_helm","long_tabard"));
             report("p2-spike-bones",bones,"knight bones "+(km==null?"none":km.bones())+"; sentinel bones "+(sm==null?"none":sm.bones()));
             if(km!=null&&sm!=null){var kb=km.restBounds();var sb=sm.restBounds();
                 boolean feet=Math.abs(kb.maxY-24)<1e-3&&Math.abs(sb.maxY-24)<1e-3&&sb.minY<=kb.minY-2;
@@ -4696,17 +4697,17 @@ public final class Phase2Checks implements ClientModInitializer {
                 +"; index.json lists "+listed+", "+(missing.isEmpty()?"all loaded":"not loaded: "+missing)+"; models loaded: "+TroopModels.ids());
             loaderCheck(c);
         }
-        /** p2-spike-death: the frame caught in the death second shows the Squire in gold, chest panel and flag, though this client has it on no team. */
+        /** p2-spike-death: the frame caught in the death second shows the Squire in gold by its chest panel, and no flag (Kort's no-flags rule), though this client has it on no team. */
         void deathCheck(MinecraftClient c){
             var f=deathFrame;var m=TroopModels.model("knight");int gold=Frame.colour("gold");
             if(f==null){var e=dying==null?null:client(c,dying.mob);report("p2-spike-death",false,"the Squire was never drawn through its own model on its side in 300 ticks, so it was not killed: on this client="+(e!=null)+", drawn="+(e!=null&&TroopRenderer.drawn(e)!=null)+", look "+(e==null?"-":TroopModels.resolve(e))+(m==null?" (no knight model)":""));return;}
             if(!f.done||m==null){report("p2-spike-death",false,"no frame of the Squire's death second, off its team on this client, was drawn within 60 ticks of the kill"+(m==null?" (no knight model)":""));return;}
             var d=f.draw;List<String> bones=d==null?List.of():m.shownBones(d.bones());
-            int[] panel=f.face(m,"chest_panel",0),flag=f.face(m,"pennant",1,8);double ps=f.sideShare(panel,gold),fs=f.sideShare(flag,gold);
-            boolean ok=d!=null&&f.deathTime>=6&&"gold".equals(d.look().side())&&"gold".equals(d.cloth())&&bones.contains("chest_panel")&&bones.contains("pennant")&&ps>=0.5&&fs>=0.3;
-            f.save(c,"spike-death");f.saveProbe(c,"spike-death-probe",panel,flag);
-            report("p2-spike-death",ok,String.format(Locale.ROOT,"a frame at deathTime %d, the Squire on no team on this client: drawn with side %s, cloth %s (null is linen), chest panel and pennant shown=%s; the chest panel %s is %.0f%% gold, the flag %s %.0f%% (want 50 and 30 or more: the flag's white glyph fills its middle, so on the sheet a gold flag is 44%% gold at this inset and a linen one 0)",
-                f.deathTime,d==null?"-":d.look().side(),d==null?"-":d.cloth(),bones.contains("chest_panel")&&bones.contains("pennant"),Arrays.toString(panel),ps*100,Arrays.toString(flag),fs*100));
+            int[] panel=f.face(m,"chest_panel",0);double ps=f.sideShare(panel,gold);boolean noFlag=!bones.contains("pennant")&&!bones.contains("standard");
+            boolean ok=d!=null&&f.deathTime>=6&&"gold".equals(d.look().side())&&"gold".equals(d.cloth())&&bones.contains("chest_panel")&&noFlag&&ps>=0.5;
+            f.save(c,"spike-death");f.saveProbe(c,"spike-death-probe",panel);
+            report("p2-spike-death",ok,String.format(Locale.ROOT,"a frame at deathTime %d, the Squire on no team on this client: drawn with side %s, cloth %s (null is linen), chest panel shown=%s, no pennant or standard shown=%s (Kort's no-flags rule); the chest panel %s is %.0f%% gold (want 50 or more)",
+                f.deathTime,d==null?"-":d.look().side(),d==null?"-":d.cloth(),bones.contains("chest_panel"),noFlag,Arrays.toString(panel),ps*100));
             f.close();
         }
         /** p2-spike-spawn: the first frame that draws a Squire spawned off its team (the team comes TEAM_LATE ticks later) is not linen. */
@@ -4715,12 +4716,12 @@ public final class Phase2Checks implements ClientModInitializer {
             var e=born==null?null:client(c,born.mob);var d=e==null?null:TroopRenderer.drawn(e);
             if(f==null||!f.done||m==null||d==null||d.first==null){report("p2-spike-spawn",false,"the spawned Squire was "+(e==null?"never on this client":d==null?"never drawn":"drawn, but its first frame was not caught")+" in "+(TEAM_LATE+70)+" ticks");return;}
             var first=d.first;List<String> bones=m.shownBones(first.bones());
-            int[] panel=f.face(m,"chest_panel",0),flag=f.face(m,"pennant",1,8);double ps=f.sideShare(panel,gold),fs=f.sideShare(flag,gold);
+            int[] panel=f.face(m,"chest_panel",0);double ps=f.sideShare(panel,gold);boolean noFlag=!bones.contains("pennant")&&!bones.contains("standard");
             double turn=Math.abs(net.minecraft.util.math.MathHelper.wrapDegrees(f.bodyYaw-180));
-            boolean ok=f.entity==e&&bornDrawn>=TEAM_LATE&&"gold".equals(first.look().side())&&"gold".equals(first.cloth())&&bones.contains("pennant")&&turn<=20&&ps>=0.5&&fs>=0.3;
-            f.save(c,"spike-spawn");f.saveProbe(c,"spike-spawn-probe",panel,flag);
-            report("p2-spike-spawn",ok,String.format(Locale.ROOT,"spawned off its team once the dead Squire had gone, the team sent %d ticks later: on this client %d ticks after the spawn, first drawn at %d (want %d or later: held until its side came), with side %s, cloth %s (null is linen), pennant shown=%s; in that first frame its back to the camera (body yaw %.0f, want 180 within 20), the chest panel %.0f%% gold, the flag %.0f%% (want 50 and 30 or more)",
-                TEAM_LATE,bornSeen,bornDrawn,TEAM_LATE,first.look().side(),first.cloth(),bones.contains("pennant"),f.bodyYaw,ps*100,fs*100));
+            boolean ok=f.entity==e&&bornDrawn>=TEAM_LATE&&"gold".equals(first.look().side())&&"gold".equals(first.cloth())&&noFlag&&turn<=20&&ps>=0.5;
+            f.save(c,"spike-spawn");f.saveProbe(c,"spike-spawn-probe",panel);
+            report("p2-spike-spawn",ok,String.format(Locale.ROOT,"spawned off its team once the dead Squire had gone, the team sent %d ticks later: on this client %d ticks after the spawn, first drawn at %d (want %d or later: held until its side came), with side %s, cloth %s (null is linen), no pennant or standard shown=%s (Kort's no-flags rule); in that first frame its back to the camera (body yaw %.0f, want 180 within 20), the chest panel %.0f%% gold (want 50 or more)",
+                TEAM_LATE,bornSeen,bornDrawn,TEAM_LATE,first.look().side(),first.cloth(),noFlag,f.bodyYaw,ps*100));
             f.close();
         }
         /** p2-spike-linen: a Squire whose team never reaches this client waits undrawn HOLD_TICKS (40), within a few, then draws in linen. */
@@ -4842,7 +4843,7 @@ public final class Phase2Checks implements ClientModInitializer {
                     if(wait==50){String n=line.equals("knight")?"gilded-stages":"gilded-stages-"+line;if(lines.containsKey(line)&&shotReady(c,n)){stagesCheck(c,line);shot(c,n);}else wait--;}
                     if(wait==55){var us=lines.get(line);server(c,b->{for(var u:us){GravesAndGlory.Battle.leaveSide(u.mob);u.mob.discard();pins.removeIf(p->p.mob()==u.mob);b.units.remove(u);posted.remove(u);}});
                         li++;wait=0;if(li==LINES.size()){report("p2-gilded-armour-tiers",stagesOk,stagesWhy.toString().trim());kit(c);cs=5;}}}
-                case 5->{wait++; // the culling box: the camera 1.1 blocks in front of Aldric looks up at his standard, his body and the vanilla box below the view
+                case 5->{wait++; // the culling box: the camera 1.1 blocks in front of Aldric looks up over his vanilla box (once at his retired standard), his body and that box below the view
                     if(wait==1){fovScale(c,0.0);cullPitch=-(float)(c.options.getFov().getValue()/2.0-CULL_DIP);final float pitch=cullPitch;
                         server(c,b->{move(golds.get("gl_marshal").mob,0,STUDIO,180);camera(b,0,CULL_EYE,STUDIO-1.1,0,pitch);});}
                     if(wait==40){var e=client(c,golds.get("gl_marshal").mob);Vec3d at=at(0,STUDIO);
@@ -4890,16 +4891,21 @@ public final class Phase2Checks implements ClientModInitializer {
             closeWhy.append(troop).append(" stage ").append(l==null?"-":String.valueOf(l.armourTier())).append(" side ").append(l==null?"-":l.side()).append(String.format(Locale.ROOT," at %.2f blocks",d))
                 .append(parts.isEmpty()?"":", "+String.join("+",parts)+" "+(on==parts.size()?"drawn":on==0?"not drawn":on+" of "+parts.size()+" drawn")).append(good?"":" (BAD)").append("; ");
         }
-        /** p2-gilded-cull: with only the top of Aldric's standard in view, at the bottom of the frame, he is drawn (the vanilla box test would drop him), the standard's cloth on the frame in gold. */
+        /**
+         * p2-gilded-cull: with the camera looking up over Aldric's vanilla box, he is drawn (the vanilla box test would drop him), in
+         * gold, and with no standard (Kort's no-flags rule, 2026-10-30). The standard's cloth used to be the part above the box this
+         * shot looked at; with it retired, this still proves the model's own culling box, but a part that reaches over the vanilla
+         * box (if any) should replace the cloth probe when the Gilded art settles.
+         */
         void cullCheck(MinecraftClient c){
-            var f=cullFrame;var m=TroopModels.model("gl_marshal");int gold=Frame.colour("gold");
-            if(f==null||!f.done||m==null){report("p2-gilded-cull",false,"Aldric was not drawn in the 40 ticks the camera looked up at his standard"+(m==null?" (no model)":"")+": the frustum test dropped him");return;}
-            List<String> bones=f.draw==null?List.of():m.shownBones(f.draw.bones());int[] cloth=f.face(m,"standard",3,8);
-            int on=f.onScreen(cloth);double share=f.sideShare(cloth,gold),half=Math.toDegrees(Math.atan(1/f.proj.m11()));
-            boolean ok=!f.vanillaSees&&f.draw!=null&&"gold".equals(f.draw.cloth())&&bones.contains("standard")&&on>=300&&share>=0.3;
-            f.save(c,"gilded-cull");f.saveProbe(c,"gilded-cull-probe",cloth);
-            report("p2-gilded-cull",ok,String.format(Locale.ROOT,"the camera at %.2f, %.2f, %.2f, pitch %.1f (the view %.1f degrees each way up and down), Aldric at %.2f, %.2f, %.2f: the vanilla box test would draw him=%s (want false); drawn with cloth %s, standard shown=%s; its cloth at %s, %d pixels of it on the %dx%d frame (want 300 or more), %.0f%% of those gold (want 30 or more)",
-                f.cam.x,f.cam.y,f.cam.z,cullPitch,half,f.pos.x,f.pos.y,f.pos.z,f.vanillaSees,f.draw==null?"-":f.draw.cloth(),bones.contains("standard"),Arrays.toString(cloth),on,f.image.getWidth(),f.image.getHeight(),share*100));
+            var f=cullFrame;var m=TroopModels.model("gl_marshal");
+            if(f==null||!f.done||m==null){report("p2-gilded-cull",false,"Aldric was not drawn in the 40 ticks the camera looked up over his vanilla box"+(m==null?" (no model)":"")+": the frustum test dropped him");return;}
+            List<String> bones=f.draw==null?List.of():m.shownBones(f.draw.bones());double half=Math.toDegrees(Math.atan(1/f.proj.m11()));
+            boolean noFlag=!bones.contains("standard")&&!bones.contains("pennant");
+            boolean ok=!f.vanillaSees&&f.draw!=null&&"gold".equals(f.draw.cloth())&&noFlag;
+            f.save(c,"gilded-cull");
+            report("p2-gilded-cull",ok,String.format(Locale.ROOT,"the camera at %.2f, %.2f, %.2f, pitch %.1f (the view %.1f degrees each way up and down), Aldric at %.2f, %.2f, %.2f: the vanilla box test would draw him=%s (want false); drawn with cloth %s, no standard or pennant shown=%s (Kort's no-flags rule)",
+                f.cam.x,f.cam.y,f.cam.z,cullPitch,half,f.pos.x,f.pos.y,f.pos.z,f.vanillaSees,f.draw==null?"-":f.draw.cloth(),noFlag));
             f.close();
         }
         /** Moves a posted troop to a side's gg_ team, with that side's painted shield. */
@@ -4907,14 +4913,15 @@ public final class Phase2Checks implements ClientModInitializer {
             var board=b.server.getScoreboard();String team="gg_"+side;var t=board.getTeam(team);if(t==null)t=board.addTeam(team);board.addPlayerToTeam(u.mob.getEntityName(),t);
             for(var f:Spec.FACTIONS)if(f.id().equals(side))u.mob.equipStack(EquipmentSlot.OFFHAND,GravesAndGlory.Battle.shield(u.spec,f.dye()));
         }
-        /** p2-gilded-sides: the four Squires were last drawn each in its own side's cloth, with its flag; the crimson one was first drawn in gold, before its move. */
+        /** p2-gilded-sides: the four Squires were last drawn each in its own side's cloth, with its chest panel and no flag; the crimson one was first drawn in gold, before its move. */
         void sidesCheck(MinecraftClient c){
             var m=TroopModels.model("knight");boolean ok=m!=null;StringBuilder why=new StringBuilder();
             for(int i=0;i<4;i++){var e=client(c,sided.get(i).mob);var d=e==null?null:TroopRenderer.drawn(e);var last=d==null?null:d.last;var first=d==null?null:d.first;
                 List<String> shown=last==null||m==null?List.of():m.shownBones(last.bones());
-                boolean good=last!=null&&FOUR.get(i).equals(last.look().side())&&FOUR.get(i).equals(last.cloth())&&shown.contains("pennant")&&shown.contains("chest_panel");
+                boolean flag=shown.contains("pennant")||shown.contains("standard"); // Kort's rule (2026-10-30): no flag on any troop; the chest panel carries the side
+                boolean good=last!=null&&FOUR.get(i).equals(last.look().side())&&FOUR.get(i).equals(last.cloth())&&!flag&&shown.contains("chest_panel");
                 if(i==2)good&=first!=null&&"gold".equals(first.look().side())&&"gold".equals(first.cloth())&&movedAt>=0;ok&=good;
-                why.append(FOUR.get(i)).append(": ").append(last==null?"not drawn":"drawn in "+last.cloth()+", flag "+(shown.contains("pennant")?"shown":"hidden"))
+                why.append(FOUR.get(i)).append(": ").append(last==null?"not drawn":"drawn in "+last.cloth()+", flag "+(flag?"shown (want hidden)":"hidden"))
                     .append(i==2?" (first drawn in "+(first==null?"-":first.cloth())+" at suite tick "+firstGold+", moved to crimson at "+movedAt+")":"").append(good?"":" (BAD)").append("; ");}
             report("p2-gilded-sides",ok,"one Squire on each side, left to right on the frame: "+why.toString().trim());
         }

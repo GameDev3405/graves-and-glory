@@ -69,7 +69,7 @@
       "ability": "shield",
       "evolveLine": "knight",
       "slotWeight": 1,
-      "pennant": true,
+      "pennant": false,
       "shield": "white:cs",
       "texture": "gravesandglory:textures/entity/dawn_guard.png",
       "family": "sword_shield"
@@ -97,7 +97,7 @@
       "ability": "steady",
       "evolveLine": "archer",
       "slotWeight": 1,
-      "pennant": true,
+      "pennant": false,
       "shield": "none",
       "texture": "gravesandglory:textures/entity/dawn_guard.png",
       "family": "bow"
@@ -125,7 +125,7 @@
       "ability": "shield",
       "evolveLine": "sentinel",
       "slotWeight": 1,
-      "pennant": true,
+      "pennant": false,
       "shield": "white:sc",
       "texture": "gravesandglory:textures/entity/dawn_guard.png",
       "family": "sword_shield"
@@ -153,7 +153,7 @@
       "ability": "pierce_longbow",
       "evolveLine": "longbow",
       "slotWeight": 1,
-      "pennant": true,
+      "pennant": false,
       "shield": "none",
       "texture": "gravesandglory:textures/entity/dawn_guard.png",
       "family": "bow"
@@ -181,7 +181,7 @@
       "ability": "mend_sunweaver",
       "evolveLine": "none",
       "slotWeight": 2,
-      "pennant": true,
+      "pennant": false,
       "shield": "none",
       "texture": "gravesandglory:textures/entity/dawn_guard.png",
       "family": "caster"
@@ -209,7 +209,7 @@
       "ability": "oath_banner",
       "evolveLine": "none",
       "slotWeight": 4,
-      "pennant": true,
+      "pennant": false,
       "shield": "white:sc,light_gray:bo",
       "texture": "gravesandglory:textures/entity/dawn_guard.png",
       "family": "sword_shield"
@@ -237,7 +237,7 @@
       "ability": "fearless",
       "evolveLine": "revenant",
       "slotWeight": 1,
-      "pennant": true,
+      "pennant": false,
       "shield": "none",
       "texture": "minecraft:textures/entity/zombie/zombie.png",
       "family": "sword"
@@ -265,7 +265,7 @@
       "ability": "fearless",
       "evolveLine": "bonebow",
       "slotWeight": 1,
-      "pennant": true,
+      "pennant": false,
       "shield": "none",
       "texture": "minecraft:textures/entity/skeleton/skeleton.png",
       "family": "bow"
@@ -293,7 +293,7 @@
       "ability": "cleave_reaper",
       "evolveLine": "reaper",
       "slotWeight": 1,
-      "pennant": true,
+      "pennant": false,
       "shield": "none",
       "texture": "minecraft:textures/entity/skeleton/wither_skeleton.png",
       "family": "scythe"
@@ -321,7 +321,7 @@
       "ability": "frostshot",
       "evolveLine": "stalker",
       "slotWeight": 1,
-      "pennant": true,
+      "pennant": false,
       "shield": "none",
       "texture": "minecraft:textures/entity/skeleton/stray.png",
       "family": "bow"
@@ -349,7 +349,7 @@
       "ability": "blight_gravecaller",
       "evolveLine": "none",
       "slotWeight": 2,
-      "pennant": true,
+      "pennant": false,
       "shield": "none",
       "texture": "minecraft:textures/entity/skeleton/wither_skeleton.png",
       "family": "caster"
@@ -377,7 +377,7 @@
       "ability": "dread",
       "evolveLine": "none",
       "slotWeight": 4,
-      "pennant": true,
+      "pennant": false,
       "shield": "none",
       "texture": "minecraft:textures/entity/skeleton/wither_skeleton.png",
       "family": "greatsword"
@@ -405,7 +405,7 @@
       "ability": "pounce",
       "evolveLine": "wm_hound",
       "slotWeight": 1,
-      "pennant": true,
+      "pennant": false,
       "shield": "none",
       "texture": "minecraft:textures/entity/wolf/wolf.png",
       "family": "hound"
@@ -433,7 +433,7 @@
       "ability": "ambush",
       "evolveLine": "wm_hunter",
       "slotWeight": 1,
-      "pennant": true,
+      "pennant": false,
       "shield": "none",
       "texture": "minecraft:textures/entity/piglin/zombified_piglin.png",
       "family": "bow"
@@ -461,7 +461,7 @@
       "ability": "ensnare",
       "evolveLine": "wm_stalker",
       "slotWeight": 1,
-      "pennant": true,
+      "pennant": false,
       "shield": "none",
       "texture": "minecraft:textures/entity/spider/spider.png",
       "family": "spider"
@@ -489,7 +489,7 @@
       "ability": "brace",
       "evolveLine": "wm_tusk",
       "slotWeight": 1,
-      "pennant": true,
+      "pennant": false,
       "shield": "none",
       "texture": "minecraft:textures/entity/piglin/zombified_piglin.png",
       "family": "spear"
@@ -517,7 +517,7 @@
       "ability": "howl",
       "evolveLine": "none",
       "slotWeight": 2,
-      "pennant": true,
+      "pennant": false,
       "shield": "none",
       "texture": "minecraft:textures/entity/piglin/zombified_piglin.png",
       "family": "caster"
@@ -545,7 +545,7 @@
       "ability": "trample",
       "evolveLine": "none",
       "slotWeight": 4,
-      "pennant": true,
+      "pennant": false,
       "shield": "none",
       "texture": "minecraft:textures/entity/bear/polarbear.png",
       "family": "bear"
@@ -573,7 +573,7 @@
       "ability": "shield",
       "evolveLine": "ic_hearthguard",
       "slotWeight": 1,
-      "pennant": true,
+      "pennant": false,
       "shield": "black:bo,light_gray:mc",
       "texture": "minecraft:textures/entity/illager/vindicator.png",
       "family": "axe_shield"
@@ -601,7 +601,7 @@
       "ability": "armour_bolt",
       "evolveLine": "ic_arbalist",
       "slotWeight": 1,
-      "pennant": true,
+      "pennant": false,
       "shield": "none",
       "texture": "minecraft:textures/entity/illager/pillager.png",
       "family": "crossbow"
@@ -629,7 +629,7 @@
       "ability": "sunder",
       "evolveLine": "ic_breaker",
       "slotWeight": 1,
-      "pennant": true,
+      "pennant": false,
       "shield": "none",
       "texture": "minecraft:textures/entity/illager/vindicator.png",
       "family": "axe"
@@ -657,7 +657,7 @@
       "ability": "pierce_ballista",
       "evolveLine": "ic_ballista",
       "slotWeight": 1,
-      "pennant": true,
+      "pennant": false,
       "shield": "none",
       "texture": "minecraft:textures/entity/illager/pillager.png",
       "family": "crossbow"
@@ -685,7 +685,7 @@
       "ability": "shell",
       "evolveLine": "none",
       "slotWeight": 2,
-      "pennant": true,
+      "pennant": false,
       "shield": "none",
       "texture": "minecraft:textures/entity/illager/pillager.png",
       "family": "crew"
@@ -713,7 +713,7 @@
       "ability": "forge_slam",
       "evolveLine": "none",
       "slotWeight": 4,
-      "pennant": true,
+      "pennant": false,
       "shield": "none",
       "texture": "minecraft:textures/entity/iron_golem/iron_golem.png",
       "family": "colossus"
@@ -741,7 +741,7 @@
       "ability": "brine",
       "evolveLine": "tc_raider",
       "slotWeight": 1,
-      "pennant": true,
+      "pennant": false,
       "shield": "none",
       "texture": "minecraft:textures/entity/zombie/drowned.png",
       "family": "sword"
@@ -769,7 +769,7 @@
       "ability": "harpoon",
       "evolveLine": "tc_harpooner",
       "slotWeight": 1,
-      "pennant": true,
+      "pennant": false,
       "shield": "none",
       "texture": "minecraft:textures/entity/zombie/drowned.png",
       "family": "thrower"
@@ -797,7 +797,7 @@
       "ability": "brace",
       "evolveLine": "tc_tideguard",
       "slotWeight": 1,
-      "pennant": true,
+      "pennant": false,
       "shield": "none",
       "texture": "minecraft:textures/entity/zombie/drowned.png",
       "family": "spear"
@@ -825,7 +825,7 @@
       "ability": "mist",
       "evolveLine": "tc_mist",
       "slotWeight": 1,
-      "pennant": true,
+      "pennant": false,
       "shield": "none",
       "texture": "minecraft:textures/entity/illager/evoker.png",
       "family": "caster"
@@ -853,7 +853,7 @@
       "ability": "tentacle_sweep",
       "evolveLine": "none",
       "slotWeight": 2,
-      "pennant": true,
+      "pennant": false,
       "shield": "none",
       "texture": "minecraft:textures/entity/illager/ravager.png",
       "family": "ravager"
@@ -881,7 +881,7 @@
       "ability": "undertow",
       "evolveLine": "none",
       "slotWeight": 4,
-      "pennant": true,
+      "pennant": false,
       "shield": "none",
       "texture": "minecraft:textures/entity/zombie/drowned.png",
       "family": "spear"
@@ -2097,7 +2097,7 @@
       "volleyPeakMax": 6.0,
       "crossbowArcScale": 0.4,
       "thrownArcScale": 0.6,
-      "meleeReachGrace": 0.5,
+      "meleeReachGrace": 1.0,
       "corpseLieTicks": 60,
       "corpseFadeTicks": 40,
       "arcTravelScale": 1.0,
@@ -4871,7 +4871,7 @@
     {
       "id": "graveborn",
       "name": "Graveborn",
-      "accent": 10338206,
+      "accent": 5981048,
       "glyph": "gravesandglory:textures/gui/house/graveborn.png",
       "troops": "revenant,bonebow,reaper,stalker,hexer,gb_hollowking",
       "title": "Gravebound",
@@ -4898,7 +4898,7 @@
     {
       "id": "tidecallers",
       "name": "Tidecallers",
-      "accent": 5220506,
+      "accent": 3041932,
       "glyph": "gravesandglory:textures/gui/house/tidecallers.png",
       "troops": "tc_raider,tc_harpooner,tc_tideguard,tc_mist,tc_brute,tc_admiral",
       "title": "Tidesworn",
