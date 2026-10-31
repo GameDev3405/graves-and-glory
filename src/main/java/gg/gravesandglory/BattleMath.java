@@ -140,18 +140,13 @@ public final class BattleMath {
     public static final int DEATH_FALL_TICKS = 20;
     /** The death tick a troop's corpse is removed on: the vanilla fall, then lie ticks lying whole, then fade ticks fading (CorpseMixin). */
     public static int corpseGoneTick(int lie, int fade) { return DEATH_FALL_TICKS + Math.max(0, lie) + Math.max(0, fade); }
+    /** corpseAlpha on a whole death tick: the float overload's curve, so the two can never drift apart (the server-side checks use this one). */
+    public static float corpseAlpha(int deathTicks, int lie, int fade) { return corpseAlpha((float) deathTicks, lie, fade); }
     /**
-     * How opaque a troop's corpse is deathTicks after it fell: 1 through DEATH_FALL_TICKS + lie, then an eased fade (0.5 + 0.5cos) to 0 at
-     * DEATH_FALL_TICKS + lie + fade, and 0 after. With no fade it is 1 up to the removal tick and 0 past it. The client fade consumes it.
+     * How opaque a troop's corpse is deathTicks after it fell, on a partial death tick (the death tick plus the frame's tick delta) so the fade is
+     * smooth between ticks: 1 through DEATH_FALL_TICKS + lie, then an eased fade (0.5 + 0.5cos) to 0 at DEATH_FALL_TICKS + lie + fade, and 0 after.
+     * With no fade it is 1 up to the removal tick and 0 past it. The client fade (BodyCache.fade) consumes it.
      */
-    public static float corpseAlpha(int deathTicks, int lie, int fade) {
-        int start = DEATH_FALL_TICKS + Math.max(0, lie);
-        if (deathTicks <= start) return 1f;
-        if (fade <= 0 || deathTicks >= start + fade) return 0f;
-        double t = (deathTicks - start) / (double) fade;
-        return (float) (0.5 + 0.5 * Math.cos(Math.PI * t));
-    }
-    /** corpseAlpha on a partial death tick (the death tick plus the frame's tick delta), so the client fade is smooth between ticks; equal to it on whole ticks. */
     public static float corpseAlpha(float deathTicks, int lie, int fade) {
         int start = DEATH_FALL_TICKS + Math.max(0, lie);
         if (deathTicks <= start) return 1f;
