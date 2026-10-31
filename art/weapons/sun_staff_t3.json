@@ -15,5 +15,5 @@
   ],
   "note": "the grip's centre is the model origin (the fist box covers y -2..+2); the model is y up with its big faces across z, and the converter turns it by a half turn about x into the weapon frame"
  },
- "note": "The Sunweaver's staff, tier III (elite), hand-authored at 1 texel a px: a dark stained shaft in gilt fittings on a steel spike in a gilt shoe, a gilt-wired grip, a gilt band, a cross-bar finial hung with two gilt chains ending in cream beads, a gilt collar and cup, and a 7 px gilt sun on eight long gilt rays; the heart is one 1 px cube, lit on its north and south faces (2 glow texels); 34 px long."
+ "note": "The Sunweaver's staff, tier III (elite), hand-authored at 1 texel a px: a dark stained shaft in gilt fittings on a steel spike in a gilt shoe, a gilt-wired grip, two gilt bands, a gilt collar and cup hung with one gilt chain ending in a cream bead on the side away from the wearer, and a 7 px gilt sun on eight long gilt rays; the heart is one 1 px cube, lit on its north and south faces (2 glow texels); 39 px long, the sun clear above the wearer's cowl."
 }
