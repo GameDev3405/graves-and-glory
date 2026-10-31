@@ -2098,7 +2098,7 @@
       "crossbowArcScale": 0.4,
       "thrownArcScale": 0.6,
       "meleeReachGrace": 1.0,
-      "corpseLieTicks": 60,
+      "corpseLieTicks": 30,
       "corpseFadeTicks": 40,
       "arcTravelScale": 1.0,
       "mediumHitShare": 0.1,
