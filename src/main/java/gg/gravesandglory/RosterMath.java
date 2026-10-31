@@ -207,6 +207,15 @@ public final class RosterMath {
         return out;
     }
 
+    /**
+     * The banner a War Table lobby commander takes into the match (Kort, 2026-10-31: the House pick fields only that House): the
+     * banner with every unit of another House left empty, as fieldable does, and nothing at all when the House picked cannot take
+     * the field in this build. A banner with no unit of the House comes back all empty; the lobby refuses Ready then.
+     */
+    public static List<String> houseBanner(List<String> banner, Catalog c, String house, Set<String> fieldable) {
+        return fieldable(banner, c, house != null && fieldable.contains(house) ? Set.of(house) : Set.of());
+    }
+
     /** One recruitment roll: the troop drawn, and the House's Epic pity counter after it. */
     public record Roll(String troop, int pityAfter) {}
 

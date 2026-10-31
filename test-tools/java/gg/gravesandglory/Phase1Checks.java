@@ -38,7 +38,7 @@ public final class Phase1Checks implements ClientModInitializer {
      *  while the client's ready is false, when step() does not run. clientTick runs every client tick, ready or not. */
     public interface HudWatch { void hudFrame(MinecraftClient c); default void clientTick(MinecraftClient c){} }
     static final Map<String,Supplier<Suite>> SUITES=new LinkedHashMap<>();
-    static{SUITES.put("combat",Combat::new);SUITES.put("morale",MoraleChecks::new);SUITES.put("reinforce",ReinforceChecks::new);SUITES.put("bots",Bots::new);SUITES.put("tutorial",TutorialChecks::new);SUITES.put("report",ReportChecks::new);SUITES.put("ui-art",UiArtChecks::new);SUITES.put("ui-hud",UiHudChecks::new);SUITES.put("ui-feed",UiFeedChecks::new);SUITES.put("ui-home",UiHomeChecks::new);SUITES.put("ui-recruit",UiRecruitChecks::new);SUITES.put("ui-pages",UiPagesChecks::new);SUITES.put("ui-icons",UiIconsChecks::new);SUITES.put("ui-leave",UiLeaveChecks::new);}
+    static{SUITES.put("combat",Combat::new);SUITES.put("ui-lobby",LobbyChecks::new);SUITES.put("morale",MoraleChecks::new);SUITES.put("reinforce",ReinforceChecks::new);SUITES.put("bots",Bots::new);SUITES.put("tutorial",TutorialChecks::new);SUITES.put("report",ReportChecks::new);SUITES.put("ui-art",UiArtChecks::new);SUITES.put("ui-hud",UiHudChecks::new);SUITES.put("ui-feed",UiFeedChecks::new);SUITES.put("ui-home",UiHomeChecks::new);SUITES.put("ui-recruit",UiRecruitChecks::new);SUITES.put("ui-pages",UiPagesChecks::new);SUITES.put("ui-icons",UiIconsChecks::new);SUITES.put("ui-leave",UiLeaveChecks::new);}
     static final ArrayDeque<String> queue=new ArrayDeque<>();
     static volatile Suite current;static volatile String currentName="";static volatile boolean failed;
     static int tick,front,hold;static boolean started; // hold: client ticks the current suite waits (Phase1Checks.window)
@@ -2489,7 +2489,7 @@ public final class Phase1Checks implements ClientModInitializer {
                     int[] drawnTable=WarTable.drawn().get("table"),drawnRail=WarTable.drawn().get("rail");var badges=WarTable.badges();
                     boolean chrome=WarTable.drawnTable().equals("table/oak-table")&&Arrays.equals(drawnTable,new int[]{-480,-270,1920,1080})&&drawnRail!=null&&drawnRail[2]==UiCanvas.width()&&drawnRail[3]==UiTex.entry("table/rail").h()&&!WarTable.drawn().containsKey("floor")&&Arrays.equals(WarTable.drawn().get("maproll"),new int[]{148,48,156,80});
                     boolean badged=Integer.valueOf(WarTableHome.contractsBadge()).equals(badges.get("Contracts"))&&Integer.valueOf(WarTableHome.friendsBadge()).equals(badges.get("Friends"))&&badges.get("Camp")!=null&&badges.get("Camp")==0;
-                    report("p1-ui-home-layout",home(c)!=null&&bad.length()==0&&ride.equals("Ride to the war gates")&&o[0]==0&&o[1]==0&&CampaignClient.homeMode.equals("skirmish")&&chrome&&badged,
+                    report("p1-ui-home-layout",home(c)!=null&&bad.length()==0&&ride.equals("Open the war council")&&o[0]==0&&o[1]==0&&CampaignClient.homeMode.equals("skirmish")&&chrome&&badged,
                         "canvas "+UiCanvas.width()+"x"+UiCanvas.height()+", origin "+o[0]+","+o[1]+"; "+(bad.length()==0?"the 11 widget boxes as pinned":"wrong: "+bad)+"; the plate reads \""+ride+"\"; homeMode "+CampaignClient.homeMode+"; drawChrome drew "+WarTable.drawnTable()+" at "+str(drawnTable)+", the rail "+str(drawnRail)+", badges "+badges+"; field card \""+t.get("field-name")+"\" / \""+t.get("field-rule")+"\" / \""+t.get("field-teams")+"\"");
                     shot(c,"ui-home");stage=3;
                 }
@@ -2541,15 +2541,18 @@ public final class Phase1Checks implements ClientModInitializer {
                         modesWhy+="; campaignCleared "+CampaignClient.profile.campaignCleared+", a click on Campaign: focused "+home(c).focused+", the plate \""+l+"\" from x "+start+" to "+stop+" of the plate; the raised Campaign sheet "+str(sheet)+" ends "+gap+" px left of the field card "+str(card);
                         report("p1-ui-home-modes",modesOk,modesWhy);stage=9;}
                 }
-                case 9->{ // p1-ui-home-gates: Skirmish, then Ride, sets the commander on the ready pad
+                case 9->{ // p1-ui-home-gates: Skirmish, then Ride, opens the War Table lobby with a room three a side
                     int k=since(tick);
                     if(k==0){if(home(c)==null)CampScreen.open("home");return;}
                     if(k==5){click(c,box(c,"skirmish"));return;}
                     if(k==7){gatesWhy="a click on Skirmish, the plate \""+label()+"\"";click(c,box(c,"ride"));padAt=tick;return;}
                     if(k<7)return;
-                    if(serverOnPad){gatesWhy+="; Ride: on the pad "+(tick-padAt)+" ticks later (countdown "+padCountdown+"), the table "+(c.currentScreen==null?"closed":"still open: "+c.currentScreen.getClass().getSimpleName());
-                        stage=-10;server(c,b->{var p=b.server.getPlayerManager().getPlayer(player);if(p!=null)b.campaign.toLobby(p);stage=10;});}
-                    else if(tick-padAt>40){report("p1-ui-home-gates",false,gatesWhy+"; Ride: not on the pad 40 ticks later (notice \""+CampaignClient.notice+"\")");stage=11;}
+                    // Kort, 2026-10-30: the War Table lobby is the skirmish's main path; Ride opens it and asks the server for a room (social:lobby). The pads keep working in camp.
+                    String room=CampaignClient.social.has("room")?CampaignClient.social.get("room").getAsString():"";
+                    if(c.currentScreen instanceof CampScreen s&&s.page.equals("lobby")&&!room.isEmpty()){
+                        gatesWhy+="; Ride: the War Table lobby opened "+(tick-padAt)+" ticks later with room "+room+" ("+CampaignClient.social.get("size").getAsInt()+" a side)";
+                        report("p1-ui-home-gates",CampaignClient.social.get("size").getAsInt()==SocialHub.LOBBY_SIZE,gatesWhy);GravesAndGloryClient.send("social:exit");s.page("home");stage=11;}
+                    else if(tick-padAt>60){report("p1-ui-home-gates",false,gatesWhy+"; Ride: no lobby with a room 60 ticks later (screen "+(c.currentScreen instanceof CampScreen s2?s2.page:String.valueOf(c.currentScreen))+", notice \""+CampaignClient.notice+"\")");stage=11;}
                 }
                 case 10->{ // stepping off the pad cancels it
                     int k=since(tick);

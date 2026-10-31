@@ -11,10 +11,16 @@ final class SocialHub {
         LinkedHashSet<UUID> members=new LinkedHashSet<>();
         Party(UUID leader){this.leader=leader;members.add(leader);}
     }
+    /** The War Table lobby (plan 3.4, 4C.3): a room the lobby opens seats three a side; its ready countdown runs COUNTDOWN_TICKS. */
+    static final int LOBBY_SIZE=3,COUNTDOWN_TICKS=200;
+    /** The modes a host can pick, in order. Domination is the only mode on this base; the mode frame (plan 2C.1) adds Siege and the rest. */
+    static final List<String> MODES=List.of("domination");
     static final class Room {
         String code;UUID leader;int size=2,map;boolean fill=true,playing;
         LinkedHashSet<UUID> members=new LinkedHashSet<>();
         Map<UUID,Integer> teams=new HashMap<>();Set<UUID> ready=new HashSet<>();
+        /** Lobby only, never saved (rooms are transient): the host's mode, the ready countdown in ticks (-1 idle) and each member's House pick. */
+        String mode="domination";int countdown=-1;Map<UUID,String> houses=new HashMap<>();
         Room(String code,UUID leader){this.code=code;this.leader=leader;}
     }
     record Invite(UUID party,UUID sender,long expires) {}
@@ -69,6 +75,9 @@ final class SocialHub {
         String code;do{code=UUID.randomUUID().toString().replace("-","").substring(0,8).toUpperCase(Locale.ROOT);}while(rooms.containsKey(code));
         Room r=new Room(code,id);r.size=Math.max(2,group(id).size());r.members.addAll(group(id));for(UUID m:r.members)r.teams.put(m,0);rooms.put(code,r);revision++;
         return "Private room created. Share code "+code+" with friends.";}
+    /** The War Table lobby's room: the group's room if it has one, else a new one seated LOBBY_SIZE a side (or the group's size). */
+    String lobby(UUID id){if(room(id)!=null)return "War council open.";String made=createRoom(id);Room r=room(id);
+        if(r==null)return made;r.size=Math.max(LOBBY_SIZE,r.size);return "War council open. Share code "+r.code+" with friends.";}
     String joinRoom(UUID id,String code){if(!lead(id))return "Only your party leader can join a room.";
         Room r=rooms.get(code.toUpperCase(Locale.ROOT));if(r==null)return "Room code not found.";if(r.playing)return "That room is playing. Try after the match.";
         Set<UUID> group=group(id);if(group.stream().anyMatch(m->room(m)!=null))return "Your group must leave its current room first.";
@@ -79,7 +88,7 @@ final class SocialHub {
     String leaveRoom(UUID id){Room r=room(id);if(r==null)return "No room to leave.";if(r.playing)return "Finish the match before leaving the room.";
         if(!lead(id))return "Your party leader leaves the room for the whole group.";
         remove(r,group(id));revision++;return party(id)==null?"You left the room.":"Your group left the room; your party is still together.";}
-    void remove(Room r,Set<UUID> ids){r.members.removeAll(ids);r.teams.keySet().removeAll(ids);r.ready.clear();
+    void remove(Room r,Set<UUID> ids){r.members.removeAll(ids);r.teams.keySet().removeAll(ids);r.houses.keySet().removeAll(ids);r.ready.clear();
         if(r.members.isEmpty())rooms.remove(r.code);else if(!r.members.contains(r.leader))r.leader=r.members.stream().filter(online::contains).findFirst().orElse(r.members.iterator().next());}
     String team(UUID id,int team){Room r=room(id);if(r==null||r.playing||team<0||team>1)return "Team selection is unavailable.";
         if(!lead(id))return "Your party leader selects a team for the whole group.";
@@ -90,8 +99,30 @@ final class SocialHub {
         if(size<1||size>4||map<0||map>=mapCount)return "Invalid room settings.";
         for(int team=0;team<2;team++){final int t=team;if(r.teams.values().stream().filter(v->v==t).count()>size)return "Move commanders before shrinking that team.";}
         r.size=size;r.map=map;r.fill=fill;r.ready.clear();revision++;return "Room settings saved. Everyone must ready up again.";}
-    String ready(UUID id){Room r=room(id);if(r==null||r.playing)return "Join an idle room first.";
-        if(!r.ready.remove(id))r.ready.add(id);revision++;return r.ready.contains(id)?"Ready. The host starts when everyone is ready.":"Not ready.";}
+    String mode(UUID id,String mode){Room r=room(id);if(r==null||!id.equals(r.leader)||r.playing)return "Only an idle room host changes settings.";
+        if(!MODES.contains(mode))return "That mode is not ready yet.";r.mode=mode;r.ready.clear();revision++;return "Mode set. Everyone must ready up again.";}
+    /** A member's House for the lobby (shown on the seat); a pick takes the picker's ready back. */
+    String house(UUID id,String house,Set<String> allowed){Room r=room(id);if(r==null||r.playing)return "Join an idle room first.";
+        if(!allowed.contains(house))return "That House cannot take the field yet.";r.houses.put(id,house);r.ready.remove(id);revision++;return "House chosen. Ready up when you are set.";}
+    String handHost(UUID id,UUID target){Room r=room(id);if(r==null||!id.equals(r.leader)||r.playing)return "Only an idle room host passes the host's seat.";
+        if(target==null||target.equals(id)||!r.members.contains(target))return "Choose another commander in this room.";if(!online.contains(target))return "Choose an online commander.";
+        r.leader=target;r.ready.clear();revision++;return "Host passed. Everyone must ready up again.";}
+    /** What one countdown step did: rooms whose countdown began, rooms whose countdown stopped, and rooms whose countdown ran out. */
+    record Countdown(List<Room> started,List<Room> cancelled,List<Room> due) {}
+    /** Advances each idle room's ready countdown by step ticks. A room that can start (startFailure is empty) begins at COUNTDOWN_TICKS
+     *  and counts down; once it can no longer start (an un-ready, a settings change, a member gone) its countdown stops. The room preparing a map is left alone. */
+    Countdown countdown(int step,boolean busy,String preparing){List<Room> started=new ArrayList<>(),cancelled=new ArrayList<>(),due=new ArrayList<>();
+        for(Room r:rooms.values()){if(r.playing||r.code.equals(preparing))continue;
+            if(!startFailure(r.leader,busy).isEmpty()){if(r.countdown>=0){r.countdown=-1;cancelled.add(r);revision++;}continue;}
+            if(r.countdown<0){r.countdown=COUNTDOWN_TICKS;started.add(r);revision++;continue;}
+            r.countdown-=step;revision++;if(r.countdown<=0){r.countdown=-1;due.add(r);}}
+        return new Countdown(started,cancelled,due);}
+    String ready(UUID id){return ready(id,"");}
+    /** Ready or stand down; refusal, when not empty, is why this member cannot ready (the lobby's House pick fields no troop of
+     *  his banner, say): it stops a Ready and never a stand-down. */
+    String ready(UUID id,String refusal){Room r=room(id);if(r==null||r.playing)return "Join an idle room first.";
+        if(!r.ready.contains(id)&&refusal!=null&&!refusal.isEmpty())return refusal;
+        if(!r.ready.remove(id))r.ready.add(id);revision++;return r.ready.contains(id)?"Ready. The battle begins ten seconds after everyone is ready.":"Not ready.";}
     String startFailure(UUID id,boolean battleBusy){Room r=room(id);if(r==null||!id.equals(r.leader))return "Only the room host starts a match.";
         if(r.playing||battleBusy)return "The battlefield is busy. Your room and settings are saved.";
         if(!online.containsAll(r.members))return "Waiting for disconnected members to reconnect.";
@@ -99,7 +130,7 @@ final class SocialHub {
         if(!r.fill&&r.members.size()!=r.size*2)return "Fill both teams or enable bots.";
         for(UUID m:r.members)if(!r.members.containsAll(group(m)))return "Your whole party must be in the room.";
         return "";}
-    void begin(Room r){r.playing=true;revision++;}
+    void begin(Room r){r.playing=true;r.countdown=-1;revision++;}
     void finish(){for(Room r:rooms.values())if(r.playing){r.playing=false;r.ready.clear();}revision++;}
     void presence(Set<UUID> connected,long now){for(Room r:rooms.values())r.ready.removeIf(id->!connected.contains(id));online=new HashSet<>(connected);invites.values().removeIf(i->i.expires<=now);
         Set<UUID> known=new HashSet<>();for(Party p:parties.values())known.addAll(p.members);for(Room r:rooms.values())known.addAll(r.members);
