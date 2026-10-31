@@ -306,7 +306,7 @@ final class WarTableLobby {
                     int right = x + w - 6;
                     if (seat.ready()) { UiTex.draw(g, "table/ready-check", right - 9, y + 8); right -= 13; }
                     var c = classRow(seat.cls());
-                    if (c != null) { UiTex.draw(g, "table/icon-class-" + c.id(), right - 14, y + 5); right -= 18; }
+                    if (c != null) { String icon = "table/icon-class-" + c.id(); UiTex.draw(g, icon, right - 14, y + 5); right -= 18; }
                     String tagWord = seat.host() ? "Host" : !seat.online() ? "Away" : "";
                     if (!tagWord.isEmpty()) { int tw = font.getWidth(DarkUi.body(tagWord)); g.drawText(font, DarkUi.body(tagWord), right - tw, y + 7, DarkUi.SEPIA, false); right -= tw + 5; }
                     String name = UiMath.trim(seat.name(), right - (x + 25), s -> font.getWidth(DarkUi.body(s)));
@@ -363,7 +363,8 @@ final class WarTableLobby {
         boolean on = c.id().equals(myClass());
         String tex = on ? "table/chip-house-on" : "table/chip-house";
         UiTex.nine(g, tex, x, y, w + 1, on ? h + WarTablePages.CHIP_RULE : h + 2);
-        UiTex.draw(g, "table/icon-class-" + c.id(), x + (w - 14) / 2, y + 5 + (on ? 1 : 0));
+        String icon = "table/icon-class-" + c.id();
+        UiTex.draw(g, icon, x + (w - 14) / 2, y + 5 + (on ? 1 : 0));
         if (on) g.fill(x + 8, y + h, x + w - 8, y + h + 2, DarkUi.INK_TEXT);
         else if (WarTableRecruit.hot(buttons.get("class-" + c.id()))) underline(g, x + 8, y + h - 2, w - 16, DarkUi.INK_TEXT);
         rectsDrawn.put("class-" + c.id(), new int[]{x, y, w, h});
