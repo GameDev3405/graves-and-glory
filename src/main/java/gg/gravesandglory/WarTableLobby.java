@@ -446,7 +446,7 @@ final class WarTableLobby {
         String tex = !live ? "table/btn-dull-240x40" : call ? "table/btn-brass-240x40" : "table/btn-iron-240x40";
         UiTex.draw(g, tex, x, y);
         var t = DarkUi.heading(label);
-        int tw = font.getWidth(t), ink = live ? DarkUi.PLATE_INK : DarkUi.SEPIA;
+        int tw = font.getWidth(t), ink = live ? DarkUi.PLATE_INK : DarkUi.MUTED; // muted on the dull plate reads at 5.4:1, where sepia was 1.3:1 (Kort, 2026-10-31)
         if (!call && live) ink = DarkUi.IVORY;
         g.drawText(font, t, x + (240 - tw) / 2, y + 15, ink, false);
         if (WarTableRecruit.hot(b)) underline(g, x + (240 - tw) / 2, y + 27, tw, ink);

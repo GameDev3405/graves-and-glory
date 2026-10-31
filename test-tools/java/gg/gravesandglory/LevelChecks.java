@@ -1087,7 +1087,7 @@ final class LevelChecks {
         /** The gold the fixture holds: enough for a common tier II, short of a common tier III and of an epic tier II (from the sheet's prices; the fixture reports itself bad when that fails). */
         static final int POT = LevelMath.price("common", 3) - 10;
         /** The five sizes of the plan's text-fit rule (the p1-ui-*-scales sizes): window width, height and GUI scale. */
-        static final int[][] SIZES = {{1280, 720, 3}, {854, 480, 2}, {1920, 1080, 2}, {1920, 974, 1}, {1920, 1080, 1}};
+        static final int[][] SIZES = {{1280, 720, 3}, {854, 480, 2}, {1920, 1080, 2}, {1920, 974, 1}, {1920, 1080, 1}, {2560, 1440, 0}}; // the last at the automatic GUI Scale: the War Table's 3x (Kort, 2026-10-31)
         static final String UNBOUND_LINE = "The Armoury key is not bound: set it in Controls";
 
         /** What the server holds after its last tick: the Armoury it sends, the refusal of every buy as it words it for a commander at a buy place, the refusal of an open buy as the commander stands, the Squire's bought tiers and the gold. */
@@ -1312,6 +1312,7 @@ final class LevelChecks {
                     if (pt == 1) { var z = SIZES[sizeAt]; Phase1Checks.window(c, z[0], z[1], z[2], z[0] >= 1920); }
                     if (pt == 40) { park(c); String label = SIZES[sizeAt][0] + "x" + SIZES[sizeAt][1] + " GUI " + SIZES[sizeAt][2]; if (s != null && s.tab == 1) evalFit(c, s, label); else fitFails.add("no Armoury tab at " + label); }
                     if (pt == 44 && sizeAt == 2) Phase2Checks.shot(c, "armoury-tab-1920");
+                    if (pt == 44 && sizeAt == 5) Phase2Checks.shot(c, "armoury-tab-1440");
                     if (pt == 46) { if (++sizeAt < SIZES.length) go(11); else { fitReport(); go(12); } }
                 }
                 case 12 -> { // the two pages as tabs of one screen, and the key as a toggle
@@ -1357,7 +1358,7 @@ final class LevelChecks {
                 if (g.drawnLines == 0) bad2.append(who + " was never drawn; ");
                 if (i < 8) words.append(who).append("=").append(want).append(g.lines).append(" ");
             }
-            double focusContrast = Math.min(UiMath.contrast(DarkUi.BRASS_HI, ArmouryTab.OPEN_FOCUS), UiMath.contrast(DarkUi.IVORY, ArmouryTab.OPEN_FOCUS));
+            double focusContrast = UiMath.contrast(DarkUi.INK_TEXT, ArmouryTab.OPEN_FOCUS); // the hovered tag keeps its ink and gains an underline
             if (focusContrast < 4.5) bad2.append("the hovered buy has contrast " + fmt(focusContrast) + "; ");
             Phase2Checks.report("p2-armoury-tab", bad.length() == 0, "the Armoury tab opened by a click on the barracks' tab: " + a.shown + " rows for the banner " + rows.stream().map(LevelMath.ArmouryRow::troop).toList() + ", " + a.buttons.size() + " buttons each in the state of the server's row, the names drawn " + a.nameDrawn + "; the screen " + s.width + "x" + s.height + (bad.length() == 0 ? " (all as the server reports)" : "; WRONG: " + bad));
             Phase2Checks.report("p2-armoury-states", seen.size() == 4 && bad2.length() == 0, "the fixture shows " + count + " (want all four states); the words as drawn, from the first two rows: " + words.toString().trim() + (bad2.length() == 0 ? "; every label is the sheet's price, \"Bought\", or the server's own refusal, every open buy is pressable and no other, every locked or bought button carries its glyph, text contrast at least 4.5" : "; WRONG: " + bad2));
@@ -1444,18 +1445,23 @@ final class LevelChecks {
             if (s.width != cw || s.height != ch) bad.add("the screen's canvas " + s.width + "x" + s.height + " is not the window's " + cw + "x" + ch);
             if (a.buttons.isEmpty()) bad.add("no buy buttons");
             int small = 999;
-            for (var e : s.children()) if (e instanceof ButtonWidget b && b.visible) {
+            int kw = UiCanvas.width(), kh = UiCanvas.height();
+            for (var e : s.children()) if (e instanceof UiButton u && u.visible) { // the War Table page's widgets: their canvas boxes, the art's own bounds
+                int[] r = u.canvasBox(); small = Math.min(small, Math.min(r[2], r[3]));
+                if (r[2] < 20 || r[3] < 20) bad.add("a hit target of " + r[2] + "x" + r[3] + " canvas px at " + r[0] + "," + r[1]);
+                if (r[0] < 0 || r[1] < 0 || r[0] + r[2] > kw || r[1] + r[3] > kh) bad.add("a button outside the canvas " + kw + "x" + kh + " at " + r[0] + "," + r[1] + " " + r[2] + "x" + r[3]);
+            } else if (e instanceof ButtonWidget b && b.visible) {
                 small = Math.min(small, Math.min(b.getWidth(), b.getHeight()));
                 if (b.getWidth() < 20 || b.getHeight() < 20) bad.add("a hit target of " + b.getWidth() + "x" + b.getHeight() + " at " + b.getX() + "," + b.getY());
                 if (b.getX() < 0 || b.getY() < 0 || b.getX() + b.getWidth() > s.width || b.getY() + b.getHeight() > s.height) bad.add("a button outside the canvas at " + b.getX() + "," + b.getY() + " " + b.getWidth() + "x" + b.getHeight());
             }
             int widest = 0; for (var g : a.buttons) widest = Math.max(widest, g.drawnWidest);
-            fitNotes.add(label + ": canvas " + s.width + "x" + s.height + " (scale " + fmt(s.uiScale) + "), " + a.shown + " of " + a.total + " rows" + (a.scrolling ? " scrolling" : "") + ", buy buttons " + a.bw + " wide, rows " + a.rowH + " high, the widest drawn line " + widest + " px, the smallest hit target " + small + " px, " + (bad.isEmpty() ? "all whole and inside" : "FAILS " + bad));
+            fitNotes.add(label + ": GUI " + s.width + "x" + s.height + ", canvas " + UiCanvas.width() + "x" + UiCanvas.height() + " at k=" + UiCanvas.k() + ", " + a.shown + " of " + a.total + " rows" + (a.scrolling ? " scrolling" : "") + ", buy buttons " + a.bw + " wide, rows " + a.rowH + " high, the widest drawn line " + widest + " px, the smallest hit target " + small + " px, " + (bad.isEmpty() ? "all whole and inside" : "FAILS " + bad));
             if (!bad.isEmpty()) fitFails.add(label + ": " + bad);
         }
         void fitReport() {
             boolean at854 = fitNotes.stream().anyMatch(n -> n.startsWith("854x480"));
-            Phase2Checks.report("p2-armoury-fits", fitFails.isEmpty() && at854 && fitNotes.size() >= 2 + SIZES.length, "the page measured as drawn at 854x480 (barracks and field) and at the five sizes with eight troop types: " + String.join(" | ", fitNotes) + (fitFails.isEmpty() ? "" : " | FAILED: " + fitFails));
+            Phase2Checks.report("p2-armoury-fits", fitFails.isEmpty() && at854 && fitNotes.size() >= 2 + SIZES.length, "the page measured as drawn at 854x480 (barracks and field) and at the six sizes with eight troop types: " + String.join(" | ", fitNotes) + (fitFails.isEmpty() ? "" : " | FAILED: " + fitFails));
         }
 
         /** p2-armoury-off: with levels off the tab says so and offers nothing to buy. */
@@ -1490,7 +1496,7 @@ final class LevelChecks {
         }
         static List<String> ids(ArmouryTab a) { List<String> out = new ArrayList<>(); for (var g : a.buttons) if (!out.contains(g.troop.id())) out.add(g.troop.id()); return out; }
         void scrollReport(RecruitmentScreen s) {
-            var a = s == null ? null : s.page; String count = a == null ? "" : "TROOPS  " + (a.first + 1) + "-" + (a.first + a.shown) + " OF " + a.total;
+            var a = s == null ? null : s.page; String count = a == null ? "" : "Troops " + (a.first + 1) + "-" + (a.first + a.shown) + " of " + a.total;
             boolean counted = a != null && a.headerDrawn.contains(count);
             Phase2Checks.report("p2-armoury-scroll", scrollBad.isEmpty() && counted, "eight troop types at 854x480: " + scrollInfo + "; the header reads \"" + count + "\" as drawn=" + counted + (scrollBad.isEmpty() ? "" : "; WRONG: " + scrollBad));
         }
@@ -1498,6 +1504,7 @@ final class LevelChecks {
         /** The Back button's place on a page: it keeps the barracks' own place on both tabs. */
         static String backAt(RecruitmentScreen s) {
             for (var e : s.children()) if (e instanceof ButtonWidget b && b.getMessage().getString().equals("Esc  Back")) return b.getX() + "," + b.getY() + " " + b.getWidth() + "x" + b.getHeight();
+            for (var e : s.children()) if (e instanceof UiButton u && u.getMessage().getString().equals("Back")) { int[] r = u.canvasBox(); return "rail " + r[0] + "," + r[1] + " " + r[2] + "x" + r[3]; } // the Armoury's rail plaque
             return "none";
         }
         String tabsBad = "", tabsInfo = "";
@@ -1509,7 +1516,7 @@ final class LevelChecks {
             if (s.disband == null || s.disband.getX() != rx || s.disband.getY() != s.height - 79 || s.disband.getWidth() != rw || s.disband.getHeight() != 20) bad.append("the disband button moved; ");
             if (s.cancel == null || s.cancel.getX() != 18 || s.cancel.getY() != s.height - 67 || s.cancel.getWidth() != lw || s.cancel.getHeight() != 20) bad.append("the cancel button moved; ");
             String back = backAt(s), want = "18," + (s.height - 32) + " 90x20"; // 12 px off the bottom edge on both pages
-            if (!back.equals(want) || !back.equals(tabsFirst)) bad.append("Back is at " + back + " here and " + tabsFirst + " on the Armoury tab (want " + want + "); ");
+            if (!back.equals(want) || !tabsFirst.startsWith("rail ")) bad.append("Back is at " + back + " here (want " + want + ") and " + tabsFirst + " on the Armoury tab (want its rail plaque); ");
             if (s.barracksTab.getX() != 200 || s.barracksTab.getY() != 12 || s.armouryTab.getX() != 304 || s.armouryTab.getY() != 12 || !s.barracksTab.getMessage().getString().startsWith("> ") || s.armouryTab.getMessage().getString().startsWith("> ")) bad.append("the tabs are not where and as marked; ");
             if (s.page.buttons.stream().anyMatch(g -> s.children().contains(g))) bad.append("the Armoury's buttons are still on the barracks page; ");
             tabsBad = bad.toString(); tabsInfo = "the barracks page after the tab click: RECRUIT " + rx + "," + (s.height - 112) + " " + rw + "x26, cancel 18," + (s.height - 67) + ", Back " + back;

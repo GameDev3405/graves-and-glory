@@ -17,7 +17,7 @@ public final class UiMath {
      *  where no box stands, so a 2560x1440 window (853x480 at 3) takes it. */
     public static final int FILL_W = 842, FILL_H = 480;
 
-    /** Screen pixels per design pixel for the War Table pages that fill the window (the lobby and the troop sheet; Kort, 2026-10-31):
+    /** Screen pixels per design pixel for the pages that fill the window (every War Table page and the Armoury; Kort, 2026-10-31):
      *  the largest whole step at which the compact page still fits, never below pixelScale and never past the player's GUI Scale.
      *  It equals pixelScale at 1080p, 4K and every small window; at 2560x1440 it is 3, not 2, so the page is not left small in a
      *  wide margin (its 853x480 canvas takes the compact layout). */

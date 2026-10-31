@@ -58,8 +58,10 @@ final class CampScreen extends ArmyScreen {
     /** Turns the table to another page (an old name goes through alias); the keyboard's focus starts afresh there. */
     void page(String next){if(CampaignClient.rollShowing())CampaignClient.revealUntil=0;CampaignClient.dismissed=CampaignClient.notice;page=alias(next);offset=0;if(!page.equals("recruit"))recruit=null;if(!page.equals("troop"))troopSheet=null;if(!page.equals("lobby"))lobby=null;if(pages!=null&&!pages.page.equals(page))pages=null;super.clearAndInit();}
     void rebuild(){clearAndInit();}
-    /** The pages drawn at UiMath.pageScale, so they fill a 1440p window (Kort, 2026-10-31): the lobby and the troop sheet. */
-    boolean fillsWindow(){return "lobby".equals(page)||"troop".equals(page);}
+    /** The pages drawn at UiMath.pageScale, so they fill a 1440p window (Kort, 2026-10-31): every War Table page (home, recruit,
+     *  the troop sheet, the lobby and WarTablePages'), so the rail keeps one size from page to page. The old report pages keep pixelScale. */
+    boolean fillsWindow(){return isWarTable(page);}
+    static boolean isWarTable(String page){return "home".equals(page)||"recruit".equals(page)||"troop".equals(page)||"lobby".equals(page)||WarTablePages.NAMES.contains(page);}
     UiButton add(UiButton b){return addDrawableChild(b);}
     String state(){return CampaignClient.social.toString()+CampaignClient.progression.toString()+CampaignClient.profile.gold+CampaignClient.profile.owned.keySet()+CampaignClient.profile.pity+CampaignClient.profile.campaignCleared+CampaignClient.difficulty+running+ready+RecruitPages.stateKey(CampaignClient.profile);}
     /** The widgets of the War Table page shown, by name: home's, the recruit page's or WarTablePages'; none on the report. */
