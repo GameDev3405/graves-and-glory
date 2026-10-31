@@ -104,8 +104,9 @@ import static gg.gravesandglory.Phase2Checks.server;
  * Over the 340 ticks from the first death the mean server tick (MinecraftServer.lastTickLengths, the tick before each sample) and the client's
  * mean frame time (wall clock over the frames drawn; the frame rate is the run's options.txt: vsync off and maxFps 260 for the Task 8
  * measurement, logged in the report) are measured with the corpse rows at 0 and 0 (A: vanilla's
- * 20-tick fall) and at 60 and 40 (B), in the order warm-up B (not counted), A, B, B, A: B's mean is within +10% of A's on the server and +15% on
- * the client, every troop died, and in B 100 or more bodies lay at once. The world render alone (Phase2Checks.RenderCost) and every run's raw
+ * 20-tick fall) and at the sheet's rows (B), in the order warm-up B (not counted), then A, B, B, A blocks: B's mean server tick is within +10% of
+ * A's (the blocks' median), the client frame's B mean less its A mean is 0.75 ms or less (R55, Kort 2026-10-31; the frame ratio is logged for
+ * information), every troop died, and in B the bodies lay at once up to the gone tick less 10 (at most 100). The world render alone (Phase2Checks.RenderCost) and every run's raw
  * figures are logged.</li>
  * </ul>
  */
@@ -2043,13 +2044,16 @@ final class HoldLineChecks {
                     StringBuilder per = new StringBuilder();
                     for (int i = 0; i < blocks.size(); i++) {var k = blocks.get(i); per.append(String.format(Locale.ROOT, "%sblock %d server %.3f frame %.3f world render %.3f peak server %.3f peak frame %.3f", i == 0 ? "" : "; ", i + 1, k[0], k[1], k[2], k[3], k[4]));}
                     boolean measured = blocks.size() >= 3 && blocks.stream().allMatch(k -> k[0] > 0 && k[1] > 0);
+                    // R55 (Kort, 2026-10-31): the client gate is an absolute budget, what the fading bodies add to a frame (the B arm's mean frame less the A arm's, over all their runs), 0.75 ms or less; the frame ratio is for information
+                    double meanA = cpRuns.stream().filter(r -> r[11] == 1).mapToDouble(r -> r[10]).average().orElse(-1), meanB = cpRuns.stream().filter(r -> r[11] == 2).mapToDouble(r -> r[10]).average().orElse(-1), cost = meanB - meanA;
+                    int mostB = (int) cpRuns.stream().filter(r -> r[11] == 2).mapToDouble(r -> r[6]).max().orElse(0);
                     BodyCache.noGroups = false;
-                    report("hl-corpse-load", dead && lay && measured && rs <= 1.10 && rf <= 1.15, String.format(Locale.ROOT,
+                    report("hl-corpse-load", dead && lay && measured && meanA > 0 && meanB > 0 && cost <= 0.75 && rs <= 1.10, String.format(Locale.ROOT,
                         "dry ground only (the patch: no water, no fire, so every body settles; a body in water or burning keeps ticking and is not measured here); the client's vsync %b, maxFps %d (the run's options.txt); "
                         + "200 Squires (100 a side, AI on, both on Attack into each other, 4000 health) on the patch, one falling a tick, all dead within 10 s=%b; the bodies lay (B, lie %d fade %d: %d or more at once)=%b; "
-                        + "%d A B B A blocks after a warm-up, System.gc() before every run: median server tick B/A %.3f, spread %.3f (want median 1.10 or less); median client frame B/A %.3f, spread %.3f (want median 1.15 or less); "
+                        + "%d A B B A blocks after a warm-up, System.gc() before every run: median server tick B/A %.3f, spread %.3f (want median 1.10 or less); client frame mean A %.3f ms, B %.3f ms, B-A %.3f ms at up to %d bodies lying (want 0.75 ms or less, R55); median client frame B/A %.3f, spread %.3f (for information); "
                         + "for reference the world render alone median B/A %.3f (spread %.3f), and over the peak window (ticks %d-%d of the wave) server %.3f, frame %.3f; blocks: %s; runs: %s; body cache: %s",
-                        MinecraftClient.getInstance().options.getEnableVsync().getValue(), MinecraftClient.getInstance().options.getMaxFps().getValue(), dead, sheet[0], sheet[1], want, lay, blocks.size(), rs, cpSpread(blocks, 0), rf, cpSpread(blocks, 1), rc, cpSpread(blocks, 2), CP_PEAK_FROM + 1, CP_PEAK_FROM + CP_PEAK_TICKS, ps, pf, per, raw, BodyCache.diag()));
+                        MinecraftClient.getInstance().options.getEnableVsync().getValue(), MinecraftClient.getInstance().options.getMaxFps().getValue(), dead, sheet[0], sheet[1], want, lay, blocks.size(), rs, cpSpread(blocks, 0), meanA, meanB, cost, mostB, rf, cpSpread(blocks, 1), rc, cpSpread(blocks, 2), CP_PEAK_FROM + 1, CP_PEAK_FROM + CP_PEAK_TICKS, ps, pf, per, raw, BodyCache.diag()));
                     next(b, 140);
                 }
                 case 140 -> { // a round's end takes a lying body at once
