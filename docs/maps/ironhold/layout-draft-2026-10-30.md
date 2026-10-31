@@ -64,32 +64,13 @@ Files in this folder:
   - The Mire's far edge is hidden from the camp by the upland lip, so no camp-to-gate sniping.
 
 ## 6. Cover density
-| Area | Cover |
-|---|---|
-| Camp | Low |
-| Field and Mire | Medium: mantlet rows at x -235, -200, -160, -130 and -110, plus trenches |
-| Killing field | Sparse and low |
-| Outer Yard | Dense close-quarters |
-| Inner yard | Medium |
-| Keep court | Medium |
-| Bailey | Medium-low: carts and sheds in the structure pass |
+Camp low; field and Mire medium (mantlet rows at x -235, -200, -160, -130, -110, plus trenches); killing field sparse and low; Outer Yard dense close-quarters; inner yard and keep court medium; bailey medium-low (carts and sheds come in the structure pass).
 
 `[Choice]` Cover thins toward the gate so the final push is costly, which matches the "open-field approach" vision.
 
 ## 7. Height bands (top of ground or structure)
-| Band | Height |
-|---|---|
-| Rim | 82-88 |
-| Camp shelf, Gallows Ridge, Watch Hill shoulder | 72 |
-| North bluff | 70 |
-| West upland | 67 |
-| Field and fortress floor | 63-64 |
-| Mire and fosse water | 61 |
-| Gorge floor | 44 |
-| Curtain walk | 72 |
-| Gate towers | 81 |
-| Keep walls | 85 |
-| Great Keep tower | 114, crown 118 |
+- Ground: rim 82-88; camp shelf, Gallows Ridge, Watch Hill shoulder 72; north bluff 70; west upland 67; field and fortress floor 63-64; Mire and fosse water 61; gorge floor 44.
+- Walls: curtain walk 72; gate towers 81; keep walls 85; Great Keep tower 114, crown 118.
 
 `[Choice]` The points keep elevation 64. The ridges sit beside A and C, not under them, so today's point rows stay valid.
 
@@ -119,9 +100,7 @@ Files in this folder:
 Column x starts: A -350, B -289, C -225, D -161, E -97, F -33, G 31, H 95, I 159, J 223, K 287.
 Row z starts: 0 -250, 1 -176, 2 -112, 3 -48, 4 16, 5 80, 6 144, 7 208.
 
-**Rims and backdrop (light pass):**
-- **Row 0, row 7, column A:** North Mountains (river gorge cut), South Ridge, west rim. Backdrop only.
-- **Columns J, K, and I2..I6:** the gorge and far cliffs. Backdrop; I holds the parapet edge.
+Rims and backdrop (light pass): row 0, row 7 and column A are the North Mountains, South Ridge and west rim; columns I..K are the gorge (I holds the parapet edge).
 
 **Core sections:**
 
@@ -171,33 +150,12 @@ Row z starts: 0 -250, 1 -176, 2 -112, 3 -48, 4 16, 5 80, 6 144, 7 208.
 
 `[Choice]` Fortress first, because the gate and keep set every sight line and the Siege timing.
 
-Regenerate the views (from the checkout root):
-- `python -m tools.mapforge flat ...`
-- `apply docs/maps/ironhold/layout-blockout.json`
-- `render --view top --scale 2 --no-grid`, then the grid overlay; or `render --view iso`
+Regenerate: `python -m tools.mapforge` flat, then apply this plan, then `render --view top --scale 2 --no-grid` (plus grid overlay) or `render --view iso`.
 
-## 12. Decisions for Kort
-- **D1. Fortress frame.**
-  - (a) Keep today's coordinates, add the east gorge, and move the Dusk spawn to (128,0). Recommended.
-  - (b) Shift the whole fortress about 100 east. Every modeSites row moves and the flood check re-runs.
-  - (c) All-new coordinates.
-- **D2. Keep height.**
-  - (a) A new Great Keep tower piece on today's footprint, top about y 114. Recommended.
-  - (b) Today's 22-high keep with a dark crag backdrop for the skyline.
-  - (c) Raise the keep ground. Siege station heights change.
-- **D3. Domination on Ironhold.**
-  - (a) Keep A/B/C and balance with spawn timing and route checks. Recommended.
-  - (b) Move B to the Outer Yard (-55,0).
-  - (c) Make Ironhold Siege-only.
-- **D4. Defenders' east-bank route in Siege.**
-  - (a) A defenders-only keep postern, from the modes lane. Recommended.
-  - (b) Defenders respawn west of the river after the yard falls.
-  - (c) The B-deck ward becomes a team door.
-- **D5. Mid-field character.**
-  - (a) The Mire: low mud with a causeway. Recommended.
-  - (b) A dry field with trenches only.
-  - (c) A burned town in the mid-field.
-- **D6. Flanks.**
-  - (a) North low and wet, south high. Recommended.
-  - (b) Mirrored flanks.
-  - (c) One flank only; the other is closed by the rim.
+## 12. Decisions for Kort (recommended option first)
+- **D1. Fortress frame:** (a) today's coordinates + east gorge, Dusk spawn to (128,0); (b) shift the fortress ~100 east (every modeSites row moves, flood re-run); (c) all-new coordinates.
+- **D2. Keep height:** (a) new Great Keep tower piece on today's footprint, top ~y 114; (b) today's 22-high keep with a dark crag backdrop; (c) raise the keep ground (Siege station heights change).
+- **D3. Domination on Ironhold:** (a) keep A/B/C, balance with spawn timing and route checks; (b) move B to the Outer Yard (-55,0); (c) Ironhold becomes Siege-only.
+- **D4. Defenders' east-bank route in Siege:** (a) defenders-only keep postern from the modes lane; (b) defenders respawn west of the river after the yard falls; (c) the B-deck ward becomes a team door.
+- **D5. Mid-field character:** (a) the Mire, low mud with a causeway; (b) dry field with trenches only; (c) a burned town mid-field.
+- **D6. Flanks:** (a) north low and wet, south high; (b) mirrored flanks; (c) one flank only, the other closed by the rim.
