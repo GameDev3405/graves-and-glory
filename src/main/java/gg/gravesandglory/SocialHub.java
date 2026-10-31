@@ -117,7 +117,11 @@ final class SocialHub {
             if(r.countdown<0){r.countdown=COUNTDOWN_TICKS;started.add(r);revision++;continue;}
             r.countdown-=step;revision++;if(r.countdown<=0){r.countdown=-1;due.add(r);}}
         return new Countdown(started,cancelled,due);}
-    String ready(UUID id){Room r=room(id);if(r==null||r.playing)return "Join an idle room first.";
+    String ready(UUID id){return ready(id,"");}
+    /** Ready or stand down; refusal, when not empty, is why this member cannot ready (the lobby's House pick fields no troop of
+     *  his banner, say): it stops a Ready and never a stand-down. */
+    String ready(UUID id,String refusal){Room r=room(id);if(r==null||r.playing)return "Join an idle room first.";
+        if(!r.ready.contains(id)&&refusal!=null&&!refusal.isEmpty())return refusal;
         if(!r.ready.remove(id))r.ready.add(id);revision++;return r.ready.contains(id)?"Ready. The battle begins ten seconds after everyone is ready.":"Not ready.";}
     String startFailure(UUID id,boolean battleBusy){Room r=room(id);if(r==null||!id.equals(r.leader))return "Only the room host starts a match.";
         if(r.playing||battleBusy)return "The battlefield is busy. Your room and settings are saved.";

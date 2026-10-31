@@ -202,7 +202,10 @@ public final class Campaign {
             List<String> entries=new ArrayList<>(pr.banner);entries.set(slot,id);
             List<String> before=pr.banner,next=RosterMath.fieldable(RosterMath.repack(entries,catalog,pr.owned.keySet()),catalog,RosterMath.fieldableHouses());
             if(type!=null&&Collections.frequency(next,id)<Collections.frequency(entries,id))notice(p.getUuid(),"No room for "+type.name()+": a banner holds 2 Epics (2 slots each) and 1 Legendary (4).");
-            pr.banner=next;if(!save(p.getUuid()))pr.banner=before;return true;
+            pr.banner=next;if(!save(p.getUuid())){pr.banner=before;return true;}
+            var room=social.room(p.getUuid()); // a banner change that leaves the lobby's House pick no troop takes back the Ready
+            if(room!=null&&!room.playing&&room.ready.contains(p.getUuid())&&!houseRefusal(room,p.getUuid()).isEmpty()){room.ready.remove(p.getUuid());social.revision++;notice(p.getUuid(),houseRefusal(room,p.getUuid()));}
+            return true;
         }
         if(cmd.startsWith("colour:")){ // the side row this commander asks to fly (spec 1.1); chooseSides settles it as the round is prepared
             String side=cmd.substring(7);var row=Arrays.stream(Spec.FACTIONS).filter(f->f.id().equals(side)).findFirst().orElse(null);if(row==null)return true;
@@ -274,11 +277,23 @@ public final class Campaign {
     static Spec.TroopsRow troop(String id){for(var t:Spec.TROOPS)if(t.id().equals(id))return t;return null;}
     /** A botBanners row as a banner list, or the starter banner when the sheet has no such row. */
     static List<String> bannerRow(String id){for(var row:Spec.BOTBANNERS)if(row.id().equals(id))return new ArrayList<>(Arrays.asList(row.slots().split(",")));return RosterMath.starterBanner();}
-    /** The banner a squad fields this round: a bot's from botBanner, a commander's own banner with the units of Houses that cannot be fielded yet left empty. */
+    /** The banner a squad fields this round: a bot's from botBanner; a War Table room member's own banner with only the units of
+     *  the House he took on the lobby (lobbyHouse; Kort, 2026-10-31); anyone else's own banner with the units of Houses that
+     *  cannot be fielded yet left empty. */
     List<String> banner(GravesAndGlory.Squad s){
         if(s.bot)return botBanner(s);
+        var room=activeRoom.isEmpty()?null:social.rooms.get(activeRoom);
+        if(room!=null&&room.members.contains(s.owner))return houseBanner(room,s.owner);
         return RosterMath.fieldable(profile(s.owner).banner,RosterMath.Catalog.fromSpec(),RosterMath.fieldableHouses());
     }
+    /** A room member's banner as the lobby's House pick fields it: only that House's units. */
+    List<String> houseBanner(SocialHub.Room r,UUID m){return RosterMath.houseBanner(profile(m).banner,RosterMath.Catalog.fromSpec(),lobbyHouse(r,m),RosterMath.fieldableHouses());}
+    /** Units a room member would field under his House pick. */
+    int houseUnits(SocialHub.Room r,UUID m){return RosterMath.units(houseBanner(r,m),RosterMath.Catalog.fromSpec());}
+    /** Why a room member cannot ready under his House pick ("" when he can): his banner holds no unit of that House. The pick
+     *  never borrows troops he has not placed; he picks another House or puts that House's troops in his banner first. */
+    String houseRefusal(SocialHub.Room r,UUID m){if(r==null||houseUnits(r,m)>0)return "";String h=RosterMath.houseName(lobbyHouse(r,m));
+        return "Your banner holds no "+h+" troops. Pick another House, or add "+h+" troops on the Banner page.";}
     /** A bot's banner (the botBanners sheet, spec 6.1): of the botBanners rows for its tier whose troops all belong to fieldable Houses, the one at lane % rows; Normal rows for a tier with none, the starter banner if no row fits. */
     List<String> botBanner(GravesAndGlory.Squad s){
         var rows=fieldableBotBanners(s.tier);if(rows.isEmpty())rows=fieldableBotBanners("normal");
@@ -770,14 +785,14 @@ public final class Campaign {
                 yield action.equals("invite")?social.invite(id,targetId,System.currentTimeMillis()):action.equals("kick")?social.kick(id,targetId):social.transfer(id,targetId);}
             case "room"->social.createRoom(id);case "lobby"->social.lobby(id);
             case "mode"->social.mode(id,arg);case "house"->social.house(id,arg,RosterMath.fieldableHouses());
-            case "host"->{UUID targetId=social.room(id)==null?null:social.room(id).members.stream().filter(m->name(m).equals(arg)).findFirst().orElse(null);yield social.handHost(id,targetId);}case "join"->social.joinRoom(id,arg);case "exit"->social.leaveRoom(id);case "ready"->social.ready(id);
+            case "host"->{UUID targetId=social.room(id)==null?null:social.room(id).members.stream().filter(m->name(m).equals(arg)).findFirst().orElse(null);yield social.handHost(id,targetId);}case "join"->social.joinRoom(id,arg);case "exit"->social.leaveRoom(id);case "ready"->social.ready(id,houseRefusal(social.room(id),id));
             case "team"->social.team(id,Integer.parseInt(arg));
             case "size","map","fill"->{var room=social.room(id);if(room==null)yield "Create or join a room first.";
                 yield social.configure(id,action.equals("size")?Integer.parseInt(arg):room.size,action.equals("map")?Integer.parseInt(arg):room.map,action.equals("fill")?!room.fill:room.fill,Spec.MAPS.length);}
             case "start"->{if(!preparingRoom.isEmpty()&&!preparingRoom.equals(social.room(id)==null?"":social.room(id).code))yield "Another room is preparing a battlefield. Your room is saved.";String failure=social.startFailure(id,b.running);if(!failure.isEmpty())yield failure;
                 var room=social.room(id);if(!b.ready)yield "Preparing the battlefield. Please wait.";
                 if(room.map!=map){preparingRoom=room.code;switchMap(room.map);yield "Preparing your chosen map. Your ready group will enter automatically; unready to cancel.";}
-                boolean empty=room.members.stream().anyMatch(m->bannerUnits(m)==0);if(empty)yield "Every commander needs at least one troop in their banner.";
+                var empty=room.members.stream().filter(m->houseUnits(room,m)==0).findFirst();if(empty.isPresent())yield name(empty.get())+"'s banner holds no "+RosterMath.houseName(lobbyHouse(room,empty.get()))+" troops.";
                 size=room.size;fill=room.fill;practice=false;activeRoom=room.code;activeBattle=null;
                 for(var squad:b.squads.values())if(!squad.bot){squad.seated=room.members.contains(squad.owner);if(squad.seated)squad.team=room.teams.get(squad.owner);}
                 social.begin(room);b.startRound();yield "Your room is entering battle together.";}
@@ -806,7 +821,7 @@ public final class Campaign {
         j.addProperty("mode",room==null?SocialHub.MODES.get(0):room.mode);JsonArray modes=new JsonArray();SocialHub.MODES.forEach(modes::add);j.add("modes",modes);
         j.addProperty("countdown",room==null||room.countdown<0?0:(room.countdown+19)/20);j.addProperty("waiting",room==null||room.playing?"":social.startFailure(room.leader,b.running));
         JsonArray commanders=new JsonArray();if(room!=null)for(UUID m:room.members){JsonObject row=new JsonObject();row.addProperty("name",name(m));row.addProperty("team",room.teams.get(m));row.addProperty("ready",room.ready.contains(m));row.addProperty("online",social.online.contains(m));
-            row.addProperty("house",lobbyHouse(room,m));row.addProperty("class",profile(m).commander);row.addProperty("host",m.equals(room.leader));row.addProperty("me",m.equals(id));commanders.add(row);}j.add("commanders",commanders);return j;
+            row.addProperty("house",lobbyHouse(room,m));row.addProperty("troops",houseUnits(room,m));row.addProperty("class",profile(m).commander);row.addProperty("host",m.equals(room.leader));row.addProperty("me",m.equals(id));commanders.add(row);}j.add("commanders",commanders);return j;
     }
 
     boolean progressCommand(ServerPlayerEntity player,String cmd){
