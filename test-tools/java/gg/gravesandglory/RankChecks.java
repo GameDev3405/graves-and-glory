@@ -51,7 +51,7 @@ final class RankChecks {
         long markTime;
         final Map<Entity, Integer> counts = new HashMap<>();
         Phase2Checks.PortraitProbe probe; MobEntity portrait;
-        long nanosBefore, drawsBefore;
+        long nanosBefore, drawsBefore, flushBefore;
 
         void cast(GravesAndGlory.Battle b) {
             gk2 = post(b, gold, "knight", 3, FAR, 180); stage(gk2, 2);
@@ -237,12 +237,16 @@ final class RankChecks {
                 }
                 case 12 -> { wait++; // p2-chevron-cost: 24 level-3 soldiers (27 veterans in view): what the chevrons add to a frame
                     if (!crowdUp || crowd.stream().anyMatch(u -> e(c, u) == null)) { wait = 0; return; }
-                    if (wait == 40) { nanosBefore = TroopChevrons.nanos; drawsBefore = TroopChevrons.draws; }
+                    if (wait == 40) { nanosBefore = TroopChevrons.nanos; drawsBefore = TroopChevrons.draws; flushBefore = TroopChevrons.flushNanos; }
                     if (wait == 240) {
-                        long draws = TroopChevrons.draws - drawsBefore; double us = draws == 0 ? -1 : (TroopChevrons.nanos - nanosBefore) / 1e3 / draws;
-                        double perTick = (TroopChevrons.nanos - nanosBefore) / 1e6 / 200;
+                        // The chevron's own cost leaves out the draw of the troop's last layer that getBuffer makes (TroopChevrons.flushNanos): the troop's next
+                        // layer switch would make it anyway. Since the hand-authored Gilded (121baca) the knight's shield is its own bone, so its last layer is
+                        // its sword's entity cutout, which has no fixed buffer; the vanilla shield item it held before ended on a fixed layer, drawn later.
+                        long draws = TroopChevrons.draws - drawsBefore, flush = TroopChevrons.flushNanos - flushBefore, own = TroopChevrons.nanos - nanosBefore - flush;
+                        double us = draws == 0 ? -1 : own / 1e3 / draws, flushUs = draws == 0 ? -1 : flush / 1e3 / draws;
+                        double perTick = own / 1e6 / 200;
                         boolean ok = draws >= 1000 && us >= 0 && us <= 25 && perTick <= 0.75;
-                        report("p2-chevron-cost", ok, String.format(Locale.ROOT, "over 200 client ticks with %d veterans in view: %d chevron draws, %.1f us each (want 25 or less), %.3f ms of chevron drawing a tick (want 0.75 or less); %d fps at the end", crowd.size() + 3, draws, us, perTick, c.getCurrentFps()));
+                        report("p2-chevron-cost", ok, String.format(Locale.ROOT, "over 200 client ticks with %d veterans in view: %d chevron draws, %.1f us each of the chevron's own (want 25 or less), %.3f ms of chevron drawing a tick (want 0.75 or less); apart from that, %.1f us each (%.3f ms a tick) drawing the troop's last layer in getBuffer; %d fps at the end", crowd.size() + 3, draws, us, perTick, flushUs, flush / 1e6 / 200, c.getCurrentFps()));
                         clearBefore = RankSync.clearSends; cleared = false;
                         server(c, b -> { b.clearProgression(); cleared = true; });
                         wait = 0; cs = 13;
