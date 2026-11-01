@@ -143,8 +143,9 @@ public final class Campaign {
         else standing(p.getUuid(),WELCOME);}
     void toLobby(ServerPlayerEntity p){var at=CampWorld.spawn(profile(p.getUuid()));b.relocate(p,at.x(),at.y(),at.z(),at.yaw(),at.pitch());p.changeGameMode(GameMode.ADVENTURE);p.getInventory().clear();Commander.applyPlayer(p,null);p.setHealth(p.getMaxHealth());p.getHungerManager().setFoodLevel(20);}
     void returnLobby(){
-        Modes.unmark(b); // a round that ended normally leaves nothing to recover
-        b.mode.teardown(b); // the mode takes down what it placed before the round's armies go (idempotent: finish and a manual return both call it)
+        // The mode takes down what it placed before the round's armies go (idempotent: finish and a manual return both call it).
+        // Only a clean teardown deletes the marker: a piece that could not be put back stays recoverable after a crash.
+        if(b.mode.teardown(b))Modes.unmark(b);else System.err.println("[Graves and Glory] The round's teardown left "+b.saves.size()+" saved piece(s); the mode marker is kept.");
         for(var s:b.squads.values())Commander.reset(b,s); // every running commander ability ends before its units go
         b.running=false;introUntil=0;social.finish();activeRoom="";activeBattle=null;Projectiles.clear(b);Abilities.clearBanners(b);
         Houses.reset(b);for(var u:b.units)u.mob.discard();b.units.clear();b.clearSides();b.clearProgression();
@@ -643,7 +644,8 @@ public final class Campaign {
         return BattleMath.garrison(owners,s.team,at.toArray(double[][]::new),assignable,points,NEAR_RADIUS_FACTOR*tier.chargeDistance())[me];
     }
     /** Switches the battlefield. The arena rebuilds on the next ticks; the lobby stays. */
-    void switchMap(int index){Modes.unmark(b);b.mode.teardown(b);Projectiles.clear(b);Abilities.clearBanners(b);Houses.reset(b);b.clearSides();b.clearProgression();FeedEvents.clear();map=index;if(!Modes.registered(battleMode)||!Modes.hosts(battleMode,map))battleMode=Modes.DOMINATION;CampaignMaps.select(map);b.points.clear();for(var point:Spec.POINTS)b.points.add(new GravesAndGlory.Capture(point));b.ready=false;b.buildColumn=0;Structures.clearQueue();b.placing=false;}
+    void switchMap(int index){if(b.mode.teardown(b))Modes.unmark(b);b.saves.clear(); // the next map's recover drops a kept marker and its files: the arena is rebuilt
+        Projectiles.clear(b);Abilities.clearBanners(b);Houses.reset(b);b.clearSides();b.clearProgression();FeedEvents.clear();map=index;if(!Modes.registered(battleMode)||!Modes.hosts(battleMode,map))battleMode=Modes.DOMINATION;CampaignMaps.select(map);b.points.clear();for(var point:Spec.POINTS)b.points.add(new GravesAndGlory.Capture(point));b.ready=false;b.buildColumn=0;Structures.clearQueue();b.placing=false;}
     /** The lesson a commander is on, or -1: only a campaign battle whose sheet row teaches (lessons) shows them, to its commanders, until all four are done. They repeat on every replay. */
     int tutorialStep(UUID id){
         if(!b.running||activeBattle==null||!activeBattle.lessons()||!participants.contains(id))return -1;
@@ -798,7 +800,7 @@ public final class Campaign {
                 if(targetId==null)yield "Commander not found.";
                 yield action.equals("invite")?social.invite(id,targetId,System.currentTimeMillis()):action.equals("kick")?social.kick(id,targetId):social.transfer(id,targetId);}
             case "room"->social.createRoom(id);case "lobby"->social.lobby(id);
-            case "mode"->social.mode(id,arg);case "house"->{String said=social.house(id,arg,RosterMath.fieldableHouses());String no=said.startsWith("House chosen")?houseRefusal(social.room(id),id):"";yield no.isEmpty()?said:no;}
+            case "mode"->social.mode(id,arg,Modes.ids());case "house"->{String said=social.house(id,arg,RosterMath.fieldableHouses());String no=said.startsWith("House chosen")?houseRefusal(social.room(id),id):"";yield no.isEmpty()?said:no;}
             case "host"->{UUID targetId=social.room(id)==null?null:social.room(id).members.stream().filter(m->name(m).equals(arg)).findFirst().orElse(null);yield social.handHost(id,targetId);}case "join"->social.joinRoom(id,arg);case "exit"->social.leaveRoom(id);case "ready"->social.ready(id,houseRefusal(social.room(id),id));
             case "team"->social.team(id,Integer.parseInt(arg));
             case "size","map","fill"->{var room=social.room(id);if(room==null)yield "Create or join a room first.";
@@ -809,6 +811,7 @@ public final class Campaign {
                 var empty=room.members.stream().filter(m->houseUnits(room,m)==0).findFirst();if(empty.isPresent())yield name(empty.get())+"'s banner holds no "+RosterMath.houseName(lobbyHouse(room,empty.get()))+" troops.";
                 size=room.size;fill=room.fill;practice=false;activeRoom=room.code;activeBattle=null;
                 for(var squad:b.squads.values())if(!squad.bot){squad.seated=room.members.contains(squad.owner);if(squad.seated)squad.team=room.teams.get(squad.owner);}
+                battleMode=room.mode; // the room's mode plays (startRound falls back to Domination on a map the mode does not host)
                 social.begin(room);b.startRound();yield "Your room is entering battle together.";}
             default->"Unknown social action.";
         };}catch(IllegalArgumentException e){result="Invalid selection.";}
@@ -832,7 +835,7 @@ public final class Campaign {
         var invite=social.invites.get(id);j.addProperty("inviter",invite==null?"":name(invite.sender()));j.addProperty("inviteSeconds",invite==null?0:Math.max(0,(invite.expires()-System.currentTimeMillis()+999)/1000));
         JsonArray available=new JsonArray();for(var p:b.server.getPlayerManager().getPlayerList())if(!p.getUuid().equals(id)&&social.party(p.getUuid())==null)available.add(p.getGameProfile().getName());j.add("available",available);
         j.addProperty("room",room==null?"":room.code);j.addProperty("host",room!=null&&room.leader.equals(id));j.addProperty("playing",room!=null&&room.playing);j.addProperty("preparing",room!=null&&room.code.equals(preparingRoom));j.addProperty("size",room==null?2:room.size);j.addProperty("map",room==null?0:room.map);j.addProperty("fill",room==null||room.fill);
-        j.addProperty("mode",room==null?SocialHub.MODES.get(0):room.mode);JsonArray modes=new JsonArray();SocialHub.MODES.forEach(modes::add);j.add("modes",modes);
+        j.addProperty("mode",room==null?Modes.DOMINATION:room.mode);JsonArray modes=new JsonArray();Modes.ids().forEach(modes::add);j.add("modes",modes);
         j.addProperty("countdown",room==null||room.countdown<0?0:(room.countdown+19)/20);j.addProperty("waiting",room==null||room.playing?"":social.startFailure(room.leader,b.running));
         JsonArray commanders=new JsonArray();if(room!=null)for(UUID m:room.members){JsonObject row=new JsonObject();row.addProperty("name",name(m));row.addProperty("team",room.teams.get(m));row.addProperty("ready",room.ready.contains(m));row.addProperty("online",social.online.contains(m));
             row.addProperty("house",lobbyHouse(room,m));row.addProperty("troops",houseUnits(room,m));row.addProperty("class",profile(m).commander);row.addProperty("host",m.equals(room.leader));row.addProperty("me",m.equals(id));commanders.add(row);}j.add("commanders",commanders);return j;

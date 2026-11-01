@@ -28,6 +28,8 @@ public final class Modes {
     private Modes(){}
     public static void register(String id,Function<Spec.ModesRow,BattleMode> factory){BUILDERS.put(id,factory);}
     public static boolean registered(String id){return BUILDERS.containsKey(id);}
+    /** The registered mode ids, Domination first: the lobby room's mode list (SocialHub.MODES). */
+    public static List<String> ids(){return List.copyOf(BUILDERS.keySet());}
     /** A mode's sheet row; an unknown id is a programming error, so the exception names it. */
     public static Spec.ModesRow row(String id){
         for(Spec.ModesRow row:Spec.MODES)if(row.id().equals(id))return row;
@@ -45,6 +47,13 @@ public final class Modes {
     public static boolean hosts(String id,int map){
         for(String part:row(id).maps().split(","))if(!part.isBlank()&&Integer.parseInt(part.trim())==map)return true;
         return false;
+    }
+
+    /** The marker's own mode recovers what it left unsaved (BattleMode.recover); a mode no longer registered has nothing to add. */
+    static void hook(GravesAndGlory.Battle b,JsonObject marker){
+        String id=marker.has("mode")?marker.get("mode").getAsString():"";
+        if(!registered(id))return;
+        try{create(id).recover(b,marker);}catch(Exception e){System.err.println("[Graves and Glory] "+id+" could not recover its round: "+e);}
     }
 
     // ---- crash marker: a round in progress leaves what it changed under the world save, so a restart puts the map back ----
@@ -92,6 +101,7 @@ public final class Modes {
                 }catch(Exception plainFile){ // an older marker named its files, not the boxes they cover
                     try{Files.deleteIfExists(path.getParent().resolve(Path.of(entry.getAsString()).getFileName()));}catch(Exception ignored){}
                 }
+                hook(b,j);
                 Files.deleteIfExists(path);
                 System.err.println("[Graves and Glory] Dropped a mode marker for map "+map+": map "+b.campaign.map+" stands.");
                 return;
@@ -102,6 +112,7 @@ public final class Modes {
                 Structures.restore(world,Structures.Saved.fromJson(JsonParser.parseString(entry.getAsString()).getAsJsonObject()));
             }catch(Exception e){System.err.println("[Graves and Glory] A saved piece could not be recovered: "+e);}
             if(j.has("flagsDown")&&j.get("flagsDown").getAsBoolean())for(var p:b.points)Arena.flag(world,p.spec,-1);
+            hook(b,j);
             Files.deleteIfExists(path);
             System.out.println("[Graves and Glory] Recovered "+Spec.MAPS[b.campaign.map].name()+" from an interrupted round.");
         }catch(Exception e){System.err.println("[Graves and Glory] The mode marker could not be recovered: "+e);}

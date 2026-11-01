@@ -695,7 +695,7 @@ public final class GravesAndGlory implements ModInitializer {
                     s.earn(income(s));
                 }
             }
-            if(running&&time-roundStarted>=roundSeconds*20L)campaign.finish(mode.timeoutWinner(this));
+            if(running&&time-roundStarted>=roundSeconds*20L&&!mode.overtime(this))campaign.finish(mode.timeoutWinner(this));
             // Explicit revision checks are driven by the client test timeline.
             if(time%10==0)sendState();
         }
@@ -901,10 +901,15 @@ public final class GravesAndGlory implements ModInitializer {
          * would appear) and its standing Forward Supply banners (no enemy within the Quartermaster's radius of the banner).
          */
         List<Anchor> reinforcementAnchors(int team){
-            var E=Spec.ECONOMY[0];List<Anchor> anchors=new ArrayList<>();
-            for(Capture p:points)if(p.owner==team&&!p.contested&&time-p.ownedSince>=E.forwardHoldSeconds()*20L&&!Morale.enemyWithin(this,team,deployCentre(team,p),E.forwardSafeRadius()))anchors.add(Anchor.of(p));
+            List<Anchor> anchors=new ArrayList<>(mode.anchors(this,team)); // the mode's places: Domination's held points, none while the flags are down
             var supply=Commander.byActive("forward_supply");
             if(supply!=null)for(var st:structures)if(st.team()==team&&st.isAlive()&&!Morale.enemyWithin(this,team,st.getPos(),supply.radius()))anchors.add(st.anchor());
+            return anchors;
+        }
+        /** Domination's forward places (BattleMode.anchors): this team's held points, held forwardHoldSeconds, uncontested and with no enemy near where the troops would appear. */
+        List<Anchor> pointAnchors(int team){
+            var E=Spec.ECONOMY[0];List<Anchor> anchors=new ArrayList<>();
+            for(Capture p:points)if(p.owner==team&&!p.contested&&time-p.ownedSince>=E.forwardHoldSeconds()*20L&&!Morale.enemyWithin(this,team,deployCentre(team,p),E.forwardSafeRadius()))anchors.add(Anchor.of(p));
             return anchors;
         }
         /** Where troops deployed at a held point appear: its centre moved forwardSpawnOffset toward the team's base; each slot then stands in its ring place around this spot. The safe radius is measured here, not at the point centre. */
@@ -936,6 +941,9 @@ public final class GravesAndGlory implements ModInitializer {
         /** The deploy notice after "<troop> trained: " (a null anchor means the barracks). */
         String deployNote(Squad s,Anchor anchor){return anchor==null?"deploying from barracks":"deploying at "+anchor.name();}
         void startRound(){
+            // The previous mode's pieces go back before a new mode is built: a Siege round re-entered here must not re-save its shut gate over the open one.
+            // A piece that cannot be restored stays in saves, and the new round's marker lists it, so a crash still recovers it.
+            if(!mode.teardown(this))System.err.println("[Graves and Glory] startRound: "+saves.size()+" saved piece(s) of the last "+mode.id()+" round could not be restored; the marker keeps them.");
             if(!Modes.registered(campaign.battleMode)||!Modes.hosts(campaign.battleMode,campaign.map))campaign.battleMode=Modes.DOMINATION;
             mode=Modes.create(campaign.battleMode);
             roundSeconds=mode.row.roundSeconds();
@@ -944,7 +952,6 @@ public final class GravesAndGlory implements ModInitializer {
             clearSides();
             Arrays.fill(scores,0);pointSeconds=new int[2][points.size()];
             for(Capture p:points){p.owner=-1;p.progress=0;p.challenger=-1;Arena.flag(world,p.spec,-1);}
-            saves.clear();
             mode.setup(this); // after the flags, so a mode that takes them down keeps them down
             respawns.clear();BattleEffects.startRound();Morale.startRound();
             for(Squad s:squads.values()){
@@ -1009,6 +1016,7 @@ public final class GravesAndGlory implements ModInitializer {
         }
         void unitTick(Unit u){ Abilities.unitTick(this,u,time);Tactics.tick(this,u,time); }
         void captureTick(){
+            if(!mode.capturesPoints(this)){for(Capture p:points){p.contested=false;p.progress=0;p.challenger=-1;}return;} // flags down: no point is taken, held or scored
             Set<Squad> onPoint=new HashSet<>(); // armies with a troop or their commander inside any point radius this second
             for(Capture p:points){
                 int[] presence={0,0};Vec3d center=new Vec3d(p.spec.x(),65,p.spec.z());

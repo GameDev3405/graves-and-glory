@@ -35,6 +35,8 @@ public final class LobbyRulesCheck {
   for(UUID m:r.members)h.ready(m);check(r.ready.size()==r.members.size(),"Everyone readies");
   h.configure(a,3,2,true,5);check(r.map==2&&r.ready.isEmpty(),"The host's map pick stands and every commander readies again");
   for(UUID m:r.members)h.ready(m);h.mode(a,"domination");check(r.mode.equals("domination")&&r.ready.isEmpty(),"The host's mode pick stands and every commander readies again");
+  check(h.mode(a,"siege",java.util.List.of("domination","siege")).startsWith("Mode set")&&r.mode.equals("siege"),"A mode the server registers (Modes.ids) is accepted");
+  h.mode(a,"domination");
   check(h.handHost(c,a).startsWith("Only an idle room host"),"Only the host hands on the host's seat");
   check(h.handHost(a,c).startsWith("Host passed")&&r.leader.equals(c),"The host hands on the host's seat");
   check(h.mode(a,"domination").startsWith("Only an idle room host"),"The old host no longer sets orders");

@@ -40,14 +40,22 @@ public final class SiegeMode extends BattleMode {
      */
     @Override
     public void setup(GravesAndGlory.Battle b) {
-        b.saves.clear();
+        for (var p : b.points) Arena.unflag(b.world, p.spec);
         var row = gate();
         if (row == null) return;
-        var saved = Structures.placeSaving(b.world, GATE, row.x(), row.elevation(), row.z(), row.rotation(), GATE_TAG);
-        if (saved == null) return; // no snapshot, no shut gate: a closed gate that cannot be recovered is worse than an open one
-        b.saves.add(saved);
+        // A gate snapshot an earlier teardown could not restore still holds the open gate: keep it and shut again, never re-save over it.
+        if (b.saves.stream().noneMatch(s -> s.tag().equals(GATE_TAG))) {
+            var saved = Structures.placeSaving(b.world, GATE, row.x(), row.elevation(), row.z(), row.rotation(), GATE_TAG);
+            if (saved == null) return; // no snapshot, no shut gate: a closed gate that cannot be recovered is worse than an open one
+            b.saves.add(saved);
+        }
         shut(b.world, row);
-        for (var p : b.points) Arena.unflag(b.world, p.spec);
+    }
+
+    /** No Domination points in a siege: the flags are down, so nothing is captured and no point is a forward anchor. */
+    @Override
+    public boolean capturesPoints(GravesAndGlory.Battle b) {
+        return false;
     }
 
     /** The portcullis: every air cell of the passage becomes iron bars, so the arch keeps its stone. */
@@ -61,17 +69,9 @@ public final class SiegeMode extends BattleMode {
                 }
     }
 
-    /** The marker says the flags are down and names the saved box, so a crash puts the gate back. */
+    /** After teardown put the gate back, raises the neutral flags; idempotent, as a round may end twice. */
     @Override
-    public void mark(GravesAndGlory.Battle b) {
-        Modes.mark(b, b.world.getTimeOfDay(), true, b.saves.stream().map(s -> s.toJson().toString()).toList());
-    }
-
-    /** Puts the gate back, drops the saved box and raises the neutral flags; idempotent, as a round may end twice. */
-    @Override
-    public void teardown(GravesAndGlory.Battle b) {
-        for (int i = b.saves.size() - 1; i >= 0; i--) Structures.restore(b.world, b.saves.get(i));
-        b.saves.clear();
+    protected void undo(GravesAndGlory.Battle b) {
         for (var p : b.points) Arena.flag(b.world, p.spec, -1);
     }
 }

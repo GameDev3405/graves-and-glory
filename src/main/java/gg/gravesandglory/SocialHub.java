@@ -14,6 +14,7 @@ final class SocialHub {
     /** The War Table lobby (plan 3.4, 4C.3): a room the lobby opens seats three a side; its ready countdown runs COUNTDOWN_TICKS. */
     static final int LOBBY_SIZE=3,COUNTDOWN_TICKS=200;
     /** The modes a host can pick, in order. Domination is the only mode on this base; the mode frame (plan 2C.1) adds Siege and the rest. */
+    /** The modes this class allows on its own (standalone checks, the client's fallback list). The server passes Modes.ids(), the registered battle modes, so the room's list and the round's cannot drift apart. */
     static final List<String> MODES=List.of("domination");
     static final class Room {
         String code;UUID leader;int size=2,map;boolean fill=true,playing;
@@ -99,8 +100,9 @@ final class SocialHub {
         if(size<1||size>4||map<0||map>=mapCount)return "Invalid room settings.";
         for(int team=0;team<2;team++){final int t=team;if(r.teams.values().stream().filter(v->v==t).count()>size)return "Move commanders before shrinking that team.";}
         r.size=size;r.map=map;r.fill=fill;r.ready.clear();revision++;return "Room settings saved. Everyone must ready up again.";}
-    String mode(UUID id,String mode){Room r=room(id);if(r==null||!id.equals(r.leader)||r.playing)return "Only an idle room host changes settings.";
-        if(!MODES.contains(mode))return "That mode is not ready yet.";r.mode=mode;r.ready.clear();revision++;return "Mode set. Everyone must ready up again.";}
+    String mode(UUID id,String mode){return mode(id,mode,MODES);}
+    String mode(UUID id,String mode,List<String> allowed){Room r=room(id);if(r==null||!id.equals(r.leader)||r.playing)return "Only an idle room host changes settings.";
+        if(!allowed.contains(mode))return "That mode is not ready yet.";r.mode=mode;r.ready.clear();revision++;return "Mode set. Everyone must ready up again.";}
     /** A member's House for the lobby (shown on the seat); a pick takes the picker's ready back. */
     String house(UUID id,String house,Set<String> allowed){Room r=room(id);if(r==null||r.playing)return "Join an idle room first.";
         if(!allowed.contains(house))return "That House cannot take the field yet.";r.houses.put(id,house);r.ready.remove(id);revision++;return "House chosen. Ready up when you are set.";}

@@ -22,10 +22,42 @@ public abstract class BattleMode {
     public int ruleN(){return row.winTarget();}
     /** Called after the round is prepared and before the first reinforce: a mode places what its round needs here. */
     public void setup(GravesAndGlory.Battle b){}
-    /** Writes the round's crash marker; a mode that takes flags down or saves pieces says so here. */
-    public void mark(GravesAndGlory.Battle b){Modes.mark(b,b.world.getTimeOfDay(),false,List.of());}
-    /** Called when a round ends, a map changes or the server stops; must be idempotent and undo setup and the round's changes. */
-    public void teardown(GravesAndGlory.Battle b){}
+    /**
+     * Writes the round's crash marker: whether the flags are down, and every saved piece still standing in b.saves, including
+     * one an earlier teardown could not put back, so a crash can still recover it.
+     */
+    public void mark(GravesAndGlory.Battle b){Modes.mark(b,b.world.getTimeOfDay(),!capturesPoints(b),b.saves.stream().map(s->s.toJson().toString()).toList());}
+    /**
+     * Ends the round's changes: puts every saved piece back (newest first), then the mode's own undo. Called when a round ends,
+     * a map changes or startRound replaces the mode. Idempotent. A piece that cannot be restored stays in b.saves, and the
+     * result is false, so the caller keeps the crash marker and no later round overwrites the piece's snapshot.
+     */
+    public final boolean teardown(GravesAndGlory.Battle b){
+        for(int i=b.saves.size()-1;i>=0;i--)if(Structures.restore(b.world,b.saves.get(i)))b.saves.remove(i);
+        else System.err.println("[Graves and Glory] "+id()+" teardown kept saved piece "+b.saves.get(i).tag()+": it could not be restored.");
+        undo(b);
+        return b.saves.isEmpty();
+    }
+    /** The mode's own part of teardown, after the saved pieces are back: raise flags it took down, remove what it spawned. Idempotent. */
+    protected void undo(GravesAndGlory.Battle b){}
+    /**
+     * Puts back what an interrupted round of this mode left, once Modes.recover has restored the time, the saved pieces and
+     * the flags: a mode that spawned something unsaved (Convoy's wagon, Survival's wave mobs) removes it here. marker is the
+     * crash marker's JSON. Runs on a fresh mode object, as the round that wrote the marker is gone.
+     */
+    public void recover(GravesAndGlory.Battle b,JsonObject marker){}
+    /**
+     * Whether the map's capture points play this round: captureTick runs, points can be taken, and held points become forward
+     * anchors. Siege and Convoy take the flags down and return false, so a point can be neither captured nor deployed at.
+     */
+    public boolean capturesPoints(GravesAndGlory.Battle b){return true;}
+    /**
+     * A team's forward deploy places from the mode, before the standing Forward Supply banners are added: Domination's are
+     * its held points (Battle.pointAnchors). A mode with its own sites (Siege's stage, Convoy's checkpoint) returns those.
+     */
+    public List<GravesAndGlory.Anchor> anchors(GravesAndGlory.Battle b,int team){return capturesPoints(b)?b.pointAnchors(team):List.of();}
+    /** Whether the round plays on when its clock runs out (Convoy's overtime by a moving wagon); the timeout result waits until false. */
+    public boolean overtime(GravesAndGlory.Battle b){return false;}
     /** Each running tick, after captureTick: the mode's scoring and its own timers. */
     public void tick(GravesAndGlory.Battle b){}
     /** Where a team respawns and its troops fall back to. */
