@@ -723,7 +723,7 @@ final class WarTablePages {
         if (sel >= 0) rectsDrawn.put("mark", UiTex.draw(g, "recruit/row-mark", x, oy + ROW_TOP + ROW_H * sel));
         boolean more = RecruitView.roll(shownHouse()).stream().anyMatch(r -> !r.owned());
         int places = more ? ROWS : roll.size(); // the House's troops not yet recruited keep their places on the roll, ruled and empty
-        for (int i = 1; i < places; i++) if (i != sel) UiTex.draw(g, "recruit/rule-208", x + 16, oy + ROW_TOP + ROW_H * i);
+        for (int i = roll.isEmpty() ? 2 : 1; i < places; i++) if (i != sel) UiTex.draw(g, "recruit/rule-208", x + 16, oy + ROW_TOP + ROW_H * i);
         for (int i = 0; i < roll.size(); i++) rollRow(g, roll.get(i), i, x, oy + ROW_TOP + ROW_H * i);
         if (more && roll.size() < ROWS) { // where the rest of the House's troops come from: in the roll's last place, at its foot
             var hint = UiMath.lines(GravesAndGloryClient.running ? ROLL_LOCKED : ROLL_HINT, ROLL_HINT_W, 2, s -> font().getWidth(DarkUi.body(s)));
@@ -762,8 +762,8 @@ final class WarTablePages {
         int n = seats(r.troopId()), w = weight(r.troopId());
         String count = n == 0 ? "No seats" : n == 1 ? "1 seat" : n + " seats";
         g.drawText(font, DarkUi.body(count), x + 60, y + 30, DarkUi.SEPIA, false);
-        if (w > 1) { // a wide troop says so in a word: each copy takes w seats
-            String wide = "Takes " + w + " seats";
+        if (w > 1) { // a wide troop says so in two words (the Add tag's tip says how many seats a copy takes)
+            String wide = "Wide troop";
             g.drawText(font, DarkUi.body(wide), x + 60, y + 42, DarkUi.INK_TEXT, false);
             textsDrawn.put("weight-" + i, wide);
         }
@@ -834,11 +834,16 @@ final class WarTablePages {
         textsDrawn.put(where, troop);
     }
 
-    /** A one-pixel edge in the troop's House colour round its 40-pixel portrait, as the Armoury edges its frames. */
+    /** The troop's House colour as a two-pixel ring just inside its 40-pixel portrait, over a dark line at the portrait's edge: the line
+     *  keeps a House whose colour is the rim's own brass (Gilded) from vanishing into the rim. */
     void accent(DrawContext g, String troop, int x, int y) {
         for (var t : Spec.TROOPS) if (t.id().equals(troop)) {
             var h = ArmyCards.house(t);
-            if (h != null) g.drawBorder(x, y, 40, 40, DarkUi.opaque(h.accent()));
+            if (h != null) {
+                g.drawBorder(x, y, 40, 40, DarkUi.OAK0);
+                g.drawBorder(x + 1, y + 1, 38, 38, DarkUi.opaque(h.accent()));
+                g.drawBorder(x + 2, y + 2, 36, 36, DarkUi.opaque(h.accent()));
+            }
             return;
         }
     }
