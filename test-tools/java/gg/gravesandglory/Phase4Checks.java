@@ -225,7 +225,7 @@ public final class Phase4Checks implements ClientModInitializer {
          */
         void siege(GravesAndGlory.Battle b,ServerPlayerEntity p){
             Path marker=Modes.marker(b);
-            BlockPos passage=new BlockPos(-37,68,0);
+            BlockPos passage=new BlockPos(-39,68,0); // the intact gate outer grille; the open gate is air there
             BlockPos flagBase=new BlockPos(b.points.get(0).spec.x(),b.points.get(0).spec.elevation()+1,b.points.get(0).spec.z());
             if(sub==0){
                 if(b.campaign.map!=1){b.campaign.switchMap(1);stageAt=b.time;sub=1;}
@@ -240,14 +240,14 @@ public final class Phase4Checks implements ClientModInitializer {
             }
             if(sub==2){
                 if(!b.running)return;
-                boolean openAtStart=b.world.getBlockState(passage).isAir();SiegeMode.shut(b.world,SiegeMode.gate()); // the gate is open until the yard falls; drop it as the fall does
+                boolean openAtStart=b.world.getBlockState(passage).isAir();{var gr=SiegeMode.gate();Structures.place(b.world,SiegeMode.GATE_INTACT,gr.x(),gr.elevation(),gr.z(),gr.rotation());} // the gate is open until the yard falls; drop it as the drop does
                 if(!openAtStart)fails.add("Siege round: the gate was shut before the yard fell");
                 boolean markerOk=false,fileOk=false,shut=false,down=true;String bad="";siegeFile=null;
                 try{
                     if(Files.exists(marker)){
                         JsonObject m=JsonParser.parseString(Files.readString(marker)).getAsJsonObject();
                         var saved=m.getAsJsonArray("saved");
-                        markerOk=str(m,"mode").equals(Modes.SIEGE)&&m.get("map").getAsInt()==1&&m.get("flagsDown").getAsBoolean()&&saved.size()==1;
+                        markerOk=str(m,"mode").equals(Modes.SIEGE)&&m.get("map").getAsInt()==1&&m.get("flagsDown").getAsBoolean()&&saved.size()==3; // the gate and the two wards
                         if(markerOk){
                             var s=JsonParser.parseString(saved.get(0).getAsString()).getAsJsonObject();
                             siegeFile=Path.of(s.get("file").getAsString());fileOk=Files.exists(siegeFile);
@@ -260,7 +260,7 @@ public final class Phase4Checks implements ClientModInitializer {
                     if(!shut)bad+="passage is "+b.world.getBlockState(passage).getBlock()+", not iron bars; ";
                     if(!down)bad+="a flag is still up; ";
                 }catch(Exception e){bad="siege: "+e;}
-                siegeDuring=markerOk&&fileOk&&shut&&down&&b.saves.size()==1&&bad.isEmpty();
+                siegeDuring=markerOk&&fileOk&&shut&&down&&b.saves.size()==3&&bad.isEmpty();
                 if(!siegeDuring)fails.add("Siege round: "+bad);
                 // Flags down: the commander stands on point A past its capture time, yet the point stays neutral; a held point is no forward anchor.
                 var a=b.points.get(0);
@@ -311,8 +311,8 @@ public final class Phase4Checks implements ClientModInitializer {
                 boolean fileGone=before!=null&&!Files.exists(before)&&b.saves.isEmpty();
                 boolean domMarker=false;
                 try{var m=JsonParser.parseString(Files.readString(marker)).getAsJsonObject();domMarker=str(m,"mode").equals(Modes.DOMINATION)&&m.getAsJsonArray("saved").isEmpty()&&!m.get("flagsDown").getAsBoolean();}catch(Exception ignored){}
-                b.campaign.battleMode=Modes.SIEGE;b.startRound();b.startRound();SiegeMode.shut(b.world,SiegeMode.gate()); // the yard falls again
-                boolean reshut=b.world.getBlockState(passage).getBlock()==Blocks.IRON_BARS&&b.saves.size()==1&&b.mode.id().equals(Modes.SIEGE);
+                b.campaign.battleMode=Modes.SIEGE;b.startRound();b.startRound();{var gr=SiegeMode.gate();Structures.place(b.world,SiegeMode.GATE_INTACT,gr.x(),gr.elevation(),gr.z(),gr.rotation());} // the yard falls again
+                boolean reshut=b.world.getBlockState(passage).getBlock()==Blocks.IRON_BARS&&b.saves.size()==3&&b.mode.id().equals(Modes.SIEGE);
                 swapSafe=open&&up&&fileGone&&domMarker&&reshut;
                 if(!swapSafe)fails.add("startRound swap: gate open="+open+", flags up="+up+", file gone="+fileGone+", domination marker="+domMarker+", shut again="+reshut);
             }
@@ -320,7 +320,7 @@ public final class Phase4Checks implements ClientModInitializer {
             boolean marked=Files.exists(marker);Path file=null;
             try{
                 if(marked){var m=JsonParser.parseString(Files.readString(marker)).getAsJsonObject();var saved=m.getAsJsonArray("saved");
-                    if(saved.size()==1)file=Path.of(JsonParser.parseString(saved.get(0).getAsString()).getAsJsonObject().get("file").getAsString());}
+                    if(saved.size()==3)file=Path.of(JsonParser.parseString(saved.get(0).getAsString()).getAsJsonObject().get("file").getAsString());}
             }catch(Exception ignored){}
             b.mapReady(); // Modes.recover, the hook a cached start calls
             boolean open=b.world.getBlockState(passage).isAir(),flagsBack=b.world.getBlockState(flagBase).getBlock()==Blocks.OAK_FENCE;
