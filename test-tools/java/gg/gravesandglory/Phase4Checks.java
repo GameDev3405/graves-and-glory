@@ -33,6 +33,7 @@ public final class Phase4Checks implements ClientModInitializer {
     public interface ServerWatch { void serverTick(GravesAndGlory.Battle b); }
     static final Map<String,Supplier<Suite>> SUITES=new LinkedHashMap<>();
     static{SUITES.put("modes",ModesChecks::new);}
+    static{SUITES.put("siege-play",SiegePlayChecks::new);}
     static final ArrayDeque<String> queue=new ArrayDeque<>();
     static volatile Suite current;static volatile String currentName="";static volatile boolean failed,broken;
     static int tick,front;static boolean started;
@@ -239,6 +240,8 @@ public final class Phase4Checks implements ClientModInitializer {
             }
             if(sub==2){
                 if(!b.running)return;
+                boolean openAtStart=b.world.getBlockState(passage).isAir();SiegeMode.shut(b.world,SiegeMode.gate()); // the gate is open until the yard falls; drop it as the fall does
+                if(!openAtStart)fails.add("Siege round: the gate was shut before the yard fell");
                 boolean markerOk=false,fileOk=false,shut=false,down=true;String bad="";siegeFile=null;
                 try{
                     if(Files.exists(marker)){
@@ -308,7 +311,7 @@ public final class Phase4Checks implements ClientModInitializer {
                 boolean fileGone=before!=null&&!Files.exists(before)&&b.saves.isEmpty();
                 boolean domMarker=false;
                 try{var m=JsonParser.parseString(Files.readString(marker)).getAsJsonObject();domMarker=str(m,"mode").equals(Modes.DOMINATION)&&m.getAsJsonArray("saved").isEmpty()&&!m.get("flagsDown").getAsBoolean();}catch(Exception ignored){}
-                b.campaign.battleMode=Modes.SIEGE;b.startRound();b.startRound();
+                b.campaign.battleMode=Modes.SIEGE;b.startRound();b.startRound();SiegeMode.shut(b.world,SiegeMode.gate()); // the yard falls again
                 boolean reshut=b.world.getBlockState(passage).getBlock()==Blocks.IRON_BARS&&b.saves.size()==1&&b.mode.id().equals(Modes.SIEGE);
                 swapSafe=open&&up&&fileGone&&domMarker&&reshut;
                 if(!swapSafe)fails.add("startRound swap: gate open="+open+", flags up="+up+", file gone="+fileGone+", domination marker="+domMarker+", shut again="+reshut);

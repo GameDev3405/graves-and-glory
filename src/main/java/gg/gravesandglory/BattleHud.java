@@ -163,15 +163,16 @@ public final class BattleHud {
     /** The score bar: Dawn's score, its track, the round clock, Dusk's track and score, centred between the Dawn and Dusk bosses. */
     static void ledger(DrawContext g,TextRenderer font,Map<String,int[]> at,Map<String,int[]> r,Map<String,String> tx){
         int[] card=at.get("score"),dawnBoss=at.get("dawn-boss"),duskBoss=at.get("dusk-boss");int cx=card[0]+card[2]/2,y=card[1]+8;
-        String dawn=String.valueOf(GravesAndGloryClient.dawn),clock=UiMath.clock(CommandMode.seconds),dusk=String.valueOf(GravesAndGloryClient.dusk);
-        int win=Modes.row(Modes.DOMINATION).winTarget(),wa=font.getWidth(dawn),wc=font.getWidth(clock),wd=font.getWidth(dusk);
+        int dawnMax=CampaignClient.ledgerMax(0),duskMax=CampaignClient.ledgerMax(1); // the round's own mode: Siege reads 1/3 and 64%
+        String dawn=ModeMath.ledgerText(CampaignClient.ledgerFormat(0),GravesAndGloryClient.dawn,dawnMax),clock=UiMath.clock(CommandMode.seconds),dusk=ModeMath.ledgerText(CampaignClient.ledgerFormat(1),GravesAndGloryClient.dusk,duskMax);
+        int wa=font.getWidth(dawn),wc=font.getWidth(clock),wd=font.getWidth(dusk);
         UiTex.draw(g,"hud/score-card",card[0],card[1]);
         // The row as the mock lays it out: each 8 px text takes its width plus one, with 6 px gaps round the two 56 px tracks.
         int x=(int)Math.round(cx-(wa+1+wc+1+wd+1+2*56+4*6)/2.0);
         g.drawText(font,dawn,x,y,DarkUi.INK_TEXT,false);x+=wa+1+6;
-        UiTex.draw(g,"hud/track-empty",x,y);UiTex.bar(g,"hud/track-dawn-fill",x+1,y+2,UiMath.trackFill(GravesAndGloryClient.dawn,win),false);x+=56+6;
+        UiTex.draw(g,"hud/track-empty",x,y);UiTex.bar(g,"hud/track-dawn-fill",x+1,y+2,UiMath.trackFill(GravesAndGloryClient.dawn,dawnMax),false);x+=56+6;
         g.drawText(font,clock,x,y,DarkUi.INK_TEXT,false);x+=wc+1+6;
-        UiTex.draw(g,"hud/track-empty",x,y);UiTex.bar(g,"hud/track-dusk-fill",x+1,y+2,UiMath.trackFill(GravesAndGloryClient.dusk,win),true);x+=56+6;
+        UiTex.draw(g,"hud/track-empty",x,y);UiTex.bar(g,"hud/track-dusk-fill",x+1,y+2,UiMath.trackFill(GravesAndGloryClient.dusk,duskMax),true);x+=56+6;
         g.drawText(font,dusk,x,y,DarkUi.INK_TEXT,false);
         UiTex.draw(g,"hud/boss-dawn",dawnBoss[0],dawnBoss[1]);UiTex.draw(g,"hud/boss-dusk",duskBoss[0],duskBoss[1]);
         r.put("score",card);r.put("dawn-boss",dawnBoss);r.put("dusk-boss",duskBoss);
@@ -185,6 +186,7 @@ public final class BattleHud {
     /** The points hang from the bar on a 28 px pitch: chain, seal (its owner's, or split while contested) and letter; while an order
      *  is aimed into a point's radius, that point's name hangs below its seal. */
     static void seals(DrawContext g,TextRenderer font,Map<String,int[]> at,Map<String,int[]> r,List<SealDraw> sd,Map<String,String> tx){
+        if(!CampaignClient.showsPoints())return; // Siege: the flags are down, so no seal or letter hangs from the bar
         int n=GravesAndGloryClient.owners.length,aim=CommandMode.aimPoint();var pts=Spec.POINTS;
         for(int i=0;i<n;i++){
             int[] box=at.get("seal-"+i);if(box==null)continue;
