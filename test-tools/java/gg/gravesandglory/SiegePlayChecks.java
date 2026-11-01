@@ -75,6 +75,7 @@ final class SiegePlayChecks implements Phase4Checks.Suite, Phase4Checks.ServerWa
     /** Whether a walker can stand at (x, y, z): solid floor below, two clear cells above. */
     static boolean standable(GravesAndGlory.Battle b, int x, int y, int z) {
         var w = b.world;
+        if (!w.getFluidState(new BlockPos(x, y, z)).isEmpty() || !w.getFluidState(new BlockPos(x, y - 1, z)).isEmpty()) return false; // the dry way only: fording is the Tidecallers answer
         return !w.getBlockState(new BlockPos(x, y - 1, z)).getCollisionShape(w, new BlockPos(x, y - 1, z)).isEmpty()
                 && w.getBlockState(new BlockPos(x, y, z)).getCollisionShape(w, new BlockPos(x, y, z)).isEmpty()
                 && w.getBlockState(new BlockPos(x, y + 1, z)).getCollisionShape(w, new BlockPos(x, y + 1, z)).isEmpty();
@@ -199,7 +200,7 @@ final class SiegePlayChecks implements Phase4Checks.Suite, Phase4Checks.ServerWa
                 Phase4Checks.report("p4-siege-gate-intact", m.stage == 1 && m.target != null && m.target.isAlive() && intact && m.target.hp() == SiegeMode.GATE_HP,
                         "dropped after " + (b.time - stageAt) / 20 + " s, grilles=" + intact + ", target hp=" + (m.target == null ? "none" : m.target.hp()));
                 var fl = flood(b); // with the gate down and the wards up, nothing walkable joins the yard to the Keep
-                Phase4Checks.report("p4-siege-sealed", true, (fl[1] == 0 ? "sealed" : "LEAKS (informational until Kort rules on the ward geometry)") + ": flood from the yard reached " + fl[0] + " cells, " + fl[1] + " inside the Keep ring; path back " + floodPath);
+                Phase4Checks.report("p4-siege-sealed", fl[1] == 0, "dry flood from the yard reached " + fl[0] + " cells, " + fl[1] + " inside the Keep ring; path back " + floodPath);
                 ask("siege-gate"); sub = 6;
             }
             case 6 -> { // the Iron Gate: player blows until it breaks

@@ -1527,6 +1527,23 @@
       "note": "Siege draft placement (spec section 5): wall closing the gap beside the gate for the whole round; no HP, takes no damage"
     },
     {
+      "id": "siege_ironhold_ward_keep",
+      "mode": "siege",
+      "map": 1,
+      "kind": "ward",
+      "stage": 0,
+      "name": "Ward",
+      "x": -14.0,
+      "z": 49.0,
+      "radius": 0.0,
+      "y": 64.0,
+      "piece": "ironhold/ward_south",
+      "rotation": 90,
+      "hp": 0.0,
+      "seconds": 0,
+      "note": "Siege draft placement: wall across the keep's south door on the west bank, from the keep corner to the river bank, so the gate is the only dry way in"
+    },
+    {
       "id": "siege_ironhold_keep",
       "mode": "siege",
       "map": 1,
