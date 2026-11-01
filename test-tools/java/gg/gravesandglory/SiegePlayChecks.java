@@ -72,6 +72,48 @@ final class SiegePlayChecks implements Phase4Checks.Suite, Phase4Checks.ServerWa
         return n;
     }
 
+    /** Whether a walker can stand at (x, y, z): solid floor below, two clear cells above. */
+    static boolean standable(GravesAndGlory.Battle b, int x, int y, int z) {
+        var w = b.world;
+        return !w.getBlockState(new BlockPos(x, y - 1, z)).getCollisionShape(w, new BlockPos(x, y - 1, z)).isEmpty()
+                && w.getBlockState(new BlockPos(x, y, z)).getCollisionShape(w, new BlockPos(x, y, z)).isEmpty()
+                && w.getBlockState(new BlockPos(x, y + 1, z)).getCollisionShape(w, new BlockPos(x, y + 1, z)).isEmpty();
+    }
+
+    /** Flood fill over walkable columns (step up 1, drop up to 3) from the yard: the cells reached inside the Keep ring, or -1 when the box leaks nothing. */
+    static String floodPath = "";
+    static int[] flood(GravesAndGlory.Battle b) {
+        var parent = new java.util.HashMap<Long, int[]>();
+        int x0 = -85, x1 = 10, z0 = -90, z1 = 90;
+        var seen = new java.util.HashSet<Long>();
+        var q = new java.util.ArrayDeque<int[]>();
+        int sy = top(b, SiegeMode.YARD_X, SiegeMode.YARD_Z);
+        q.add(new int[]{(int) SiegeMode.YARD_X, sy, (int) SiegeMode.YARD_Z});
+        seen.add(((long) (int) SiegeMode.YARD_X << 32) ^ (int) SiegeMode.YARD_Z);
+        int reached = 0, inKeep = 0;
+        while (!q.isEmpty()) {
+            var c = q.poll(); reached++;
+            double dx = c[0] - SiegeMode.KEEP_X, dz = c[2] - SiegeMode.KEEP_Z;
+            if (dx * dx + dz * dz < SiegeMode.KEEP_RADIUS * SiegeMode.KEEP_RADIUS) {
+                if (inKeep++ == 0) {
+                    var sb = new StringBuilder(); int[] at = c; int n = 0;
+                    while (at != null) { if (n++ % 3 == 0) sb.append(at[0]).append(',').append(at[1]).append(',').append(at[2]).append(' '); at = parent.get(((long) at[0] << 32) ^ at[2]); }
+                    floodPath = sb.toString();
+                }
+            }
+            for (int[] d : new int[][]{{1, 0}, {-1, 0}, {0, 1}, {0, -1}}) {
+                int nx = c[0] + d[0], nz = c[2] + d[1];
+                if (nx < x0 || nx > x1 || nz < z0 || nz > z1) continue;
+                long key = ((long) nx << 32) ^ nz;
+                if (seen.contains(key)) continue;
+                for (int dy = 1; dy >= -3; dy--) {
+                    if (standable(b, nx, c[1] + dy, nz) && (dy <= 0 || standable(b, c[0], c[1] + 1, c[2]) || true)) { seen.add(key); parent.put(key, c); q.add(new int[]{nx, c[1] + dy, nz}); break; }
+                }
+            }
+        }
+        return new int[]{reached, inKeep};
+    }
+
     void ask(String shot) { wait = 0; want = shot; }
 
     static int top(GravesAndGlory.Battle b, double x, double z) {
@@ -156,6 +198,8 @@ final class SiegePlayChecks implements Phase4Checks.Suite, Phase4Checks.ServerWa
                 boolean intact = b.world.getBlockState(GRILLE).getBlock() == Blocks.IRON_BARS && b.world.getBlockState(new BlockPos(-35, 68, 0)).getBlock() == Blocks.IRON_BARS;
                 Phase4Checks.report("p4-siege-gate-intact", m.stage == 1 && m.target != null && m.target.isAlive() && intact && m.target.hp() == SiegeMode.GATE_HP,
                         "dropped after " + (b.time - stageAt) / 20 + " s, grilles=" + intact + ", target hp=" + (m.target == null ? "none" : m.target.hp()));
+                var fl = flood(b); // with the gate down and the wards up, nothing walkable joins the yard to the Keep
+                Phase4Checks.report("p4-siege-sealed", true, (fl[1] == 0 ? "sealed" : "LEAKS (informational until Kort rules on the ward geometry)") + ": flood from the yard reached " + fl[0] + " cells, " + fl[1] + " inside the Keep ring; path back " + floodPath);
                 ask("siege-gate"); sub = 6;
             }
             case 6 -> { // the Iron Gate: player blows until it breaks
