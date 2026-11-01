@@ -2424,10 +2424,10 @@
       "lessons": false,
       "briefing": "PLACEHOLDER: briefing awaits Kort.",
       "reason": "PLACEHOLDER: reason awaits Kort.",
-      "mode": "domination",
+      "mode": "siege",
       "house": "ironclad",
       "bonus": "b2_lose10",
-      "placeholder": "size,difficulty,briefing,reason,mode (Kort 2026-10-31: runs as Domination until Siege joins the lobby, then goes back to siege as the plan says)"
+      "placeholder": "size,difficulty,briefing,reason"
     },
     {
       "id": "march-3",

@@ -179,7 +179,7 @@ public final class Campaign {
             if(row==null)return true;
             if(row.map()<0||row.map()>=Spec.MAPS.length){notice(p.getUuid(),row.name()+" cannot start: its map is missing.");return true;}
             var lock=MarchMath.lockedBy(row,profile(p.getUuid()).battlesWon,Spec.CAMPAIGNBATTLES);if(lock!=null){notice(p.getUuid(),"Win "+lock.name()+" first.");return true;} // plan 2C.3: the March is won in order
-            if(!row.mode().equals("domination")){notice(p.getUuid(),row.name()+" cannot start yet: its mode arrives with the mode frame.");return true;} // siege, survival and banner come with plan 2C.1 and 2C.4
+            if(!Modes.registered(row.mode())||!Modes.hosts(row.mode(),row.map())){notice(p.getUuid(),row.name()+" cannot start yet: its mode arrives with the mode frame.");return true;} // survival and banner come with plan 2C.4
             String refused=soloRefusal(p.getUuid(),MARCH_SOLO);if(!refused.isEmpty()){notice(p.getUuid(),refused);return true;}
             pendingBattle=row;pendingCommander=p.getUuid();
             if(row.map()!=map){switchMap(row.map());notice(p.getUuid(),"Preparing "+Spec.MAPS[map].name()+" for "+row.name()+".");}
@@ -266,6 +266,7 @@ public final class Campaign {
     void soloStart(ServerPlayerEntity p,Spec.CampaignBattlesRow row){
         closeParty();partyLeader=p.getUuid();party.add(p.getUuid());practice=true;size=1;fill=true;
         for(var squad:b.squads.values())if(!squad.bot){squad.seated=squad.owner.equals(p.getUuid());if(squad.seated)squad.team=0;}
+        if(row!=null){if(battleModeBeforeRoom==null)battleModeBeforeRoom=battleMode;battleMode=row.mode();} // a March battle plays its own mode; returnLobby puts the lobby's back
         activeBattle=row;var bonus=MarchMath.bonus(row,Spec.BONUSOBJECTIVES);bonusTracker=bonus==null?null:new MarchMath.Tracker(bonus);b.startRound();
     }
     void balance(){for(var seat:balanced(seats(s->s.seated),practice,size))b.squads.get(seat.owner()).team=seat.team();}
@@ -621,6 +622,8 @@ public final class Campaign {
                 }else if(enemies>0&&BattleMath.timedCharge(0,living,enemies,tier.chargeRatio(),0))s.order="charge";
             }
         }
+        Vec3d objective=retreating?null:b.mode.botTarget(b,s); // a mode's own objective (Siege's stage) replaces the point plan
+        if(objective!=null){s.target=objective;if(b.mode.howToSide(b,s).equals("defend"))s.order="hold";else if(!s.order.equals("charge"))s.order="attack";}
         s.yaw=s.team==0?-90:90;
         if(!retreating&&tier.shieldwallVsArchers()){
             // Brace the shield troops when remembered archers are in range and nothing has closed to melee. Only troops with a shield can brace.
@@ -810,11 +813,15 @@ public final class Campaign {
                 if(targetId==null)yield "Commander not found.";
                 yield action.equals("invite")?social.invite(id,targetId,System.currentTimeMillis()):action.equals("kick")?social.kick(id,targetId):social.transfer(id,targetId);}
             case "room"->social.createRoom(id);case "lobby"->social.lobby(id);
-            case "mode"->social.mode(id,arg,Modes.ids());case "house"->{String said=social.house(id,arg,RosterMath.fieldableHouses());String no=said.startsWith("House chosen")?houseRefusal(social.room(id),id):"";yield no.isEmpty()?said:no;}
+            case "mode"->{String said=social.mode(id,arg,Modes.ids());var room=social.room(id); // a mode that does not host the room's map takes the room to its first map
+                if(said.startsWith("Mode set")&&room!=null&&!Modes.hosts(room.mode,room.map))for(int m=0;m<Spec.MAPS.length;m++)if(Modes.hosts(room.mode,m)){room.map=m;said=Modes.row(room.mode).name()+" is played on "+Spec.MAPS[m].name()+". "+said;break;}
+                yield said;}case "house"->{String said=social.house(id,arg,RosterMath.fieldableHouses());String no=said.startsWith("House chosen")?houseRefusal(social.room(id),id):"";yield no.isEmpty()?said:no;}
             case "host"->{UUID targetId=social.room(id)==null?null:social.room(id).members.stream().filter(m->name(m).equals(arg)).findFirst().orElse(null);yield social.handHost(id,targetId);}case "join"->social.joinRoom(id,arg);case "exit"->social.leaveRoom(id);case "ready"->social.ready(id,houseRefusal(social.room(id),id));
             case "team"->social.team(id,Integer.parseInt(arg));
             case "size","map","fill"->{var room=social.room(id);if(room==null)yield "Create or join a room first.";
-                yield social.configure(id,action.equals("size")?Integer.parseInt(arg):room.size,action.equals("map")?Integer.parseInt(arg):room.map,action.equals("fill")?!room.fill:room.fill,Spec.MAPS.length);}
+                String said=social.configure(id,action.equals("size")?Integer.parseInt(arg):room.size,action.equals("map")?Integer.parseInt(arg):room.map,action.equals("fill")?!room.fill:room.fill,Spec.MAPS.length);
+                if(said.startsWith("Room settings saved")&&!Modes.hosts(room.mode,room.map)){said=Modes.row(room.mode).name()+" is not played on "+Spec.MAPS[room.map].name()+": the mode is now Domination. "+said;room.mode=Modes.DOMINATION;} // a map the room's mode does not host plays Domination
+                yield said;}
             case "start"->{if(!preparingRoom.isEmpty()&&!preparingRoom.equals(social.room(id)==null?"":social.room(id).code))yield "Another room is preparing a battlefield. Your room is saved.";String failure=social.startFailure(id,b.running);if(!failure.isEmpty())yield failure;
                 var room=social.room(id);if(!b.ready)yield "Preparing the battlefield. Please wait.";
                 if(room.map!=map){preparingRoom=room.code;switchMap(room.map);yield "Preparing your chosen map. Your ready group will enter automatically; unready to cancel.";}

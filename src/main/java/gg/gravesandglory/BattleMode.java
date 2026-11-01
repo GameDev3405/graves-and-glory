@@ -58,6 +58,8 @@ public abstract class BattleMode {
     public List<GravesAndGlory.Anchor> anchors(GravesAndGlory.Battle b,int team){return capturesPoints(b)?b.pointAnchors(team):List.of();}
     /** Whether the round plays on when its clock runs out (Convoy's overtime by a moving wagon); the timeout result waits until false. */
     public boolean overtime(GravesAndGlory.Battle b){return false;}
+    /** Where a bot army goes this beat instead of its Domination point (null keeps the point plan): a mode with its own objectives (Siege's stage) returns it. */
+    public Vec3d botTarget(GravesAndGlory.Battle b,GravesAndGlory.Squad s){return null;}
     /** Each running tick, after captureTick: the mode's scoring and its own timers. */
     public void tick(GravesAndGlory.Battle b){}
     /** Where a team respawns and its troops fall back to. */
