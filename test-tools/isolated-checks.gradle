@@ -35,6 +35,8 @@ allprojects {
    systemProperty 'gravesandglory.motionFamily', System.getenv('GRAVES_MOTION_FAMILY') ?: 'stub'
    systemProperty 'gravesandglory.repoRoot', project.rootDir.absolutePath
    systemProperty 'gravesandglory.gradeOut', System.getenv('GRAVES_GRADE_OUT') ?: (project.rootDir.absolutePath + '/test-tools/work/grade')
+   systemProperty 'gravesandglory.gradeNoPillow', System.getenv('GRAVES_GRADE_NO_PILLOW') ?: 'false'
+   systemProperty 'gravesandglory.gradeParts', System.getenv('GRAVES_GRADE_PARTS') ?: 'solo,loco,states,transitions'
   }
  }
 }
