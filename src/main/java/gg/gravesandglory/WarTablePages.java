@@ -825,7 +825,7 @@ final class WarTablePages {
         if (label != null) { // the wide troop's place in it, in ivory on a dark strip so it reads over any portrait
             var font = font();
             int lw = font.getWidth(DarkUi.body(label));
-            g.fill(x + SEAT - lw - 10, y + SEAT - 16, x + SEAT - 2, y + SEAT - 4, 0xcc140e08);
+            g.fill(x + SEAT - lw - 10, y + SEAT - 16, x + SEAT - 2, y + SEAT - 4, DarkUi.PREVIEW_BAND);
             g.drawText(font, DarkUi.body(label), x + SEAT - lw - 6, y + SEAT - 14, DarkUi.IVORY, false);
             textsDrawn.put("wide-" + where, label);
             rectsDrawn.put("wide-" + where, new int[]{x + SEAT - lw - 10, y + SEAT - 16, lw + 8, 12});
@@ -838,7 +838,7 @@ final class WarTablePages {
     void accent(DrawContext g, String troop, int x, int y) {
         for (var t : Spec.TROOPS) if (t.id().equals(troop)) {
             var h = ArmyCards.house(t);
-            if (h != null) g.drawBorder(x, y, 40, 40, 0xff000000 | h.accent());
+            if (h != null) g.drawBorder(x, y, 40, 40, DarkUi.opaque(h.accent()));
             return;
         }
     }

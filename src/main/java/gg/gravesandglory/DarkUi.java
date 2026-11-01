@@ -53,6 +53,8 @@ final class DarkUi {
         return row!=null?row:Spec.FACTIONS[team];
     }
     /** A team's side colour, opaque; muted for no team. Always paired with its glyph (teamMark), never alone. */
+    /** A House accent (rgb) as an opaque colour. */
+    static int opaque(int rgb){return 0xff000000|rgb;}
     static int teamColor(int team){var f=side(team);return f==null?MUTED:0xff000000|f.color();}
     /** A team's side in one word, the first of its name (Gold, Violet, Crimson, Teal); Neutral for no team. */
     static String teamText(int team){var f=side(team);if(f==null)return "Neutral";int space=f.name().indexOf(' ');return space<0?f.name():f.name().substring(0,space);}
