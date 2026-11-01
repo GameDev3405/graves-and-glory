@@ -55,6 +55,7 @@ public final class MotionEngineCheck {
         run("look and secondary", () -> lookAndSecondary(fam, seeds));
         run("actions", () -> actions(fam));
         run("death keys", MotionEngineCheck::deathKeys);
+        run("death spread", () -> deathSpread(rig));
         if (failed > 0) {
             System.out.println("MotionEngineCheck: " + failed + " checks FAILED");
             System.exit(1);
@@ -222,6 +223,94 @@ public final class MotionEngineCheck {
         check(MotionEngine.deathClip(f, "slash", "front", 0) == one && MotionEngine.deathClip(f, "slash", "front", 1) == two
             && MotionEngine.deathClip(f, "slash", "front", 5) == two, "variants sorted by name, picked modulo");
         return cases.length + " names";
+    }
+
+    /** Every box corner of the rig, posed: how far the lowest one sits above the ground at y = 24 (px; negative is under it). */
+    static double lowest(Map<String, RigBone> rig, Map<String, double[]> pose) {
+        JsonObject json;
+        try { json = JsonParser.parseString(Files.readString(Path.of("test-tools/standalone/fixtures/clip_rig.json"))).getAsJsonObject(); }
+        catch (java.io.IOException e) { throw new AssertionError("clip_rig.json: " + e); }
+        double low = Double.POSITIVE_INFINITY;
+        for (var e : json.getAsJsonArray("bones")) {
+            JsonObject b = e.getAsJsonObject();
+            for (var x : b.getAsJsonArray("boxes")) {
+                JsonObject box = x.getAsJsonObject();
+                double[] o = new double[3], z = new double[3];
+                for (int i = 0; i < 3; i++) { o[i] = box.getAsJsonArray("origin").get(i).getAsDouble(); z[i] = box.getAsJsonArray("size").get(i).getAsDouble(); }
+                for (int c = 0; c < 8; c++) {
+                    double[] q = {o[0] + ((c & 1) != 0 ? z[0] : 0), o[1] + ((c & 2) != 0 ? z[1] : 0), o[2] + ((c & 4) != 0 ? z[2] : 0)};
+                    low = Math.min(low, 24 - world(rig, pose, b.get("name").getAsString(), q)[1]);
+                }
+            }
+        }
+        return low;
+    }
+
+    /**
+     * K1b: twelve seeds dying to the same slash from the front, with the real death_slash_front and a renamed variant
+     * death_slash_front_2 parsed through deathKey. Both variants are picked; the seed tempo spreads the end times (each within
+     * [L / 1.1, L / 0.9]); half a second past the end every pose is the authored end pose and lies on the ground; and the seed
+     * amp changes the fall's peak root pitch rate.
+     */
+    static String deathSpread(Map<String, RigBone> rig) {
+        String json;
+        try { json = Files.readString(Path.of("src/main/resources/assets/gravesandglory/clips/biped/common/death_slash_front.json")); }
+        catch (java.io.IOException e) { throw new AssertionError("death_slash_front.json: " + e); }
+        Clip one = Clip.parse(json), two = Clip.parse(json.replace("\"death_slash_front\"", "\"death_slash_front_2\""));
+        check(two.name().equals("death_slash_front_2"), "renamed variant");
+        Map<String, List<Clip>> d = new HashMap<>();
+        for (Clip c : List.of(one, two)) {
+            String k = MotionEngine.deathKey(c.name());
+            check(k != null, c.name() + " has a death key");
+            d.computeIfAbsent(k, x -> new ArrayList<>()).add(c);
+        }
+        var fam = new MotionEngine.Family("spread", stances(), List.of(), Map.of(), d);
+        MotionMath.Seed[] seeds = seeds(12, 7700);
+        Set<String> picked = new HashSet<>();
+        double minL = 1e9, maxL = 0, sumL = 0, worstEnd = 0, low = 1e9, minAmp = 9, maxAmp = 0, vMinAmp = 0, vMaxAmp = 0;
+        double L = one.length();
+        for (MotionMath.Seed seed : seeds) {
+            Drive dr = new Drive(seed);
+            var st = new MotionEngine.State();
+            Pose out = new Pose();
+            for (int i = 0; i < 60; i++) { MotionEngine.pose(dr.in(), st, fam, out); dr.step(1 / 60.0); }
+            dr.die(0);
+            MotionEngine.pose(dr.in(), st, fam, out);
+            MotionStack.Track tr = null;
+            for (MotionStack.Track t : st.tracks) if (t.kind == MotionEngine.DEATH) tr = t;
+            check(tr != null, "a death track");
+            picked.add(tr.a.name());
+            double len = tr.end() - tr.start;
+            minL = Math.min(minL, len); maxL = Math.max(maxL, len); sumL += len;
+            check(len >= L / 1.1 - 1e-9 && len <= L / 0.9 + 1e-9, "end time " + len + " outside [L/1.1, L/0.9] for L " + L);
+            double end = tr.end(), prev = out.get("root", 0), peak = 0;
+            while (dr.time < end + 0.5) {
+                dr.step(1 / 60.0);
+                MotionEngine.pose(dr.in(), st, fam, out);
+                double rx = out.get("root", 0);
+                if (dr.time <= end + 1e-9) peak = Math.max(peak, Math.abs(rx - prev) * 60);
+                prev = rx;
+            }
+            Map<String, double[]> want = new HashMap<>();
+            tr.a.sample(tr.a.length(), want);
+            Map<String, double[]> got = out.snapshot();
+            for (var e : want.entrySet()) {
+                double[] g = got.getOrDefault(e.getKey(), new double[6]);
+                for (int c = 0; c < 6; c++) worstEnd = Math.max(worstEnd, Math.abs(g[c] - e.getValue()[c]));
+            }
+            low = Math.min(low, lowest(rig, got));
+            if (seed.amp() < minAmp) { minAmp = seed.amp(); vMinAmp = peak; }
+            if (seed.amp() > maxAmp) { maxAmp = seed.amp(); vMaxAmp = peak; }
+        }
+        double spread = (maxL - minL) / (sumL / seeds.length);
+        check(picked.size() == 2, "variants picked " + picked);
+        check(spread >= 0.12, "end-time spread " + spread);
+        check(worstEnd <= 1e-6, "end pose off the authored end by " + worstEnd);
+        check(low >= -0.16, "lowest point " + low + " px");
+        double diff = Math.abs(vMaxAmp - vMinAmp) / Math.min(vMaxAmp, vMinAmp);
+        check(diff >= 0.08, "peak root rx rate differs " + diff + " (amp " + minAmp + ": " + vMinAmp + ", amp " + maxAmp + ": " + vMaxAmp + ")");
+        return String.format("variants %s, spread %.3f, end off %.1e, lowest %.3f px, root rate amp %.3f %.1f vs amp %.3f %.1f (%.1f%%)",
+            picked, spread, worstEnd, low, minAmp, vMinAmp, maxAmp, vMaxAmp, 100 * diff);
     }
 
     static boolean at(double elapsed, double when) { return Math.abs(elapsed - when) < 0.5 / 60; }

@@ -37,6 +37,8 @@ public final class MotionEngine {
     static final double[] FADES = {0.08, 0.12, 0.18, 0.25, 0.35, 0.45};
     /** The largest gains an attack (seed amp) and a hit clip (weight scale times seed amp) can play at. */
     static final double ATTACK_GAIN = 1.1, HIT_GAIN = 1.35 * 1.1;
+    /** A death plays at the seed amp pivoted on its last frame, g c(t) + (1 - g) c(end): at most 1.1 + 0.1 of the clip's reach. */
+    static final double DEATH_GAIN = 1.2;
     /** Bounds on everything the procedural layers can add to one channel (degrees, pixels). */
     static final double PROC_ROT = 180, PROC_PX = 16;
     static final int ATTACK = 0, HIT = 1, DEATH = 2, MERGED = 3, MAX_LAYERS = 6, MAX_TRACKS = 6;
@@ -106,6 +108,8 @@ public final class MotionEngine {
         final List<MotionStack.Layer> stances = new ArrayList<>(MAX_LAYERS + 1);
         final List<MotionStack.Track> tracks = new ArrayList<>(MAX_TRACKS + 1);
         int ids;
+        /** Death edges seen so far: a revived unit's next death picks its variant afresh (K1b). */
+        int deaths;
         MotionInput.Attack attack;
         MotionInput.Hit hit, lethal;
         final List<MotionBody.Pulse> pulses = new ArrayList<>(MotionBody.MAX_PULSES + 1);
@@ -316,16 +320,19 @@ public final class MotionEngine {
         double abs = Math.abs(bearing);
         String from = abs <= 90 ? "front" : side, to = abs <= 90 ? side : "back";
         double mix = abs <= 90 ? abs / 90 : (abs - 90) / 90;
-        Clip a = deathClip(fam, kind, from), b = deathClip(fam, kind, to);
+        // K1b: the variant comes from the seed and the death count, so units struck alike fall differently
+        long h = MotionMath.mix(f.seed.variantBias() ^ 0xD6E8FEB86659FD93L ^ st.deaths++);
+        int idx = (int) Math.floorMod(h, 6L);
+        Clip a = deathClip(fam, kind, from, idx), b = deathClip(fam, kind, to, idx);
         if (a == null && b == null) {
             for (String dir : abs <= 90 ? List.of("front", side, "back") : List.of("back", side, "front"))
-                if ((a = deathClip(fam, kind, dir)) != null) break;
+                if ((a = deathClip(fam, kind, dir, idx)) != null) break;
             if (a == null) a = fam.deaths().values().stream().flatMap(List::stream).min((x, y) -> x.name().compareTo(y.name())).orElse(null);
             if (a == null) return null;
             mix = 0;
         } else if (a == null) { a = b; b = null; mix = 0; }
         else if (b == null || b == a) { b = null; mix = 0; }
-        return new MotionStack.Track(st.ids++, DEATH, a, b, mix, 1, f.now - Math.max(0, seconds), 1);
+        return new MotionStack.Track(st.ids++, DEATH, a, b, mix, f.seed.amp(), f.now - Math.max(0, seconds), f.seed.tempo());
     }
 
     static Clip deathClip(Family fam, String kind, String dir) { return deathClip(fam, kind, dir, 0); }
@@ -354,7 +361,7 @@ public final class MotionEngine {
         for (Clip c : fam.stances().values()) max(stance, c.reach(), 1);
         for (Clip c : fam.attacks()) max(action, c.reach(), ATTACK_GAIN);
         for (List<Clip> l : fam.hits().values()) for (Clip c : l) max(action, c.reach(), HIT_GAIN);
-        for (List<Clip> l : fam.deaths().values()) for (Clip c : l) max(action, c.reach(), 1);
+        for (List<Clip> l : fam.deaths().values()) for (Clip c : l) max(action, c.reach(), DEATH_GAIN);
         for (int c = 0; c < 6; c++) r[c] = (c < 3 ? PROC_ROT : PROC_PX) + stance[c] + action[c];
         return r;
     }
@@ -369,7 +376,7 @@ public final class MotionEngine {
         for (Clip c : fam.stances().values()) max(stance, c.reach(bone), 1);
         for (Clip c : fam.attacks()) max(action, c.reach(bone), ATTACK_GAIN);
         for (List<Clip> l : fam.hits().values()) for (Clip c : l) max(action, c.reach(bone), HIT_GAIN);
-        for (List<Clip> l : fam.deaths().values()) for (Clip c : l) max(action, c.reach(bone), 1);
+        for (List<Clip> l : fam.deaths().values()) for (Clip c : l) max(action, c.reach(bone), DEATH_GAIN);
         for (int c = 0; c < 3; c++) r[c] = proc + stance[3 + c] + action[3 + c];
         return r;
     }

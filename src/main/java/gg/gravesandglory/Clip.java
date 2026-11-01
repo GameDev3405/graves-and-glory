@@ -38,6 +38,8 @@ public final class Clip {
     private final double[] reach;
     /** Each keyed bone's own envelope (envelope), in bones' order. */
     private final double[][] boneReach;
+    /** Each keyed bone's six channels at the clip's last frame, in bones' order (the end-pivoted death gain adds it). */
+    private final double[][] end;
 
     private Clip(String name, double length, boolean loop, Map<String, Double> markers, String[] bones, Key[][] rotation, Key[][] position) {
         this.name = name; this.length = length; this.loop = loop; this.markers = Collections.unmodifiableMap(markers);
@@ -50,6 +52,11 @@ public final class Clip {
             impact = (int) Math.rint(ticks);
         }
         boneReach = new double[bones.length][];
+        end = new double[bones.length][6];
+        for (int b = 0; b < bones.length; b++) {
+            channel(rotation[b], loop, loop ? 0 : length, end[b], 0);
+            channel(position[b], loop, loop ? 0 : length, end[b], 3);
+        }
         reach = new double[6];
         for (int b = 0; b < bones.length; b++) {
             boneReach[b] = envelope(rotation[b], position[b]);
@@ -135,6 +142,15 @@ public final class Clip {
             channel(position[b], loop, t, tmp, 3);
             double[] o = out.get(bones[b]);
             for (int c = 0; c < 6; c++) o[c] += w * tmp[c];
+        }
+    }
+
+    /** Adds {@code w} (may be negative) times the clip's last frame into {@code out}, from the array cached at parse. */
+    public void endPose(Pose out, double w) {
+        if (w == 0) return;
+        for (int b = 0; b < bones.length; b++) {
+            double[] o = out.get(bones[b]), e = end[b];
+            for (int c = 0; c < 6; c++) o[c] += w * e[c];
         }
     }
 

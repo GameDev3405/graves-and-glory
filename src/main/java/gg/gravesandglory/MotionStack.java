@@ -153,6 +153,11 @@ final class MotionStack {
         double t = tr.time(now);
         tr.a.add(t, out, w * tr.gain * (1 - tr.mix), st.tmp);
         if (tr.b != null) tr.b.add(t, out, w * tr.gain * tr.mix, st.tmp);
+        // K1b: a death's gain pivots on its last frame, w [g clip(t) + (1 - g) clip(end)], so the corpse lies exactly as authored
+        if (tr.kind == MotionEngine.DEATH && tr.gain != 1) {
+            tr.a.endPose(out, w * (1 - tr.gain) * (1 - tr.mix));
+            if (tr.b != null) tr.b.endPose(out, w * (1 - tr.gain) * tr.mix);
+        }
     }
 
     /** Effective shares of tracks[0, count) into shares: w_i times (1 - w_j) for each j above i. */
