@@ -1013,6 +1013,9 @@ final class MotionGrade extends Phase2Checks.Stage {
         j.add("restSoleHeight", rest); j.add("plantedThreshold", thr); j.add("lowestSoleHeight", minH); j.add("highestSoleHeight", maxH); j.add("soleCentroidSlideBlocks", centroidSlide); j.add("plants", plants);
         j.addProperty("sides", "right, left"); j.addProperty("note", "sole height = the lowest corners of the shin's boxes as drawn; planted = sole height within 0.04 blocks of its idle rest height (at least 0.04); a plant = a run of consecutive planted frames of one foot; slide (R83) = per step, the smallest horizontal move of a corner touching the ground (within " + SoleSlide.CONTACT + " of the lowest) in both frames, summed over a plant, so a box foot rocking heel to toe reads as no slide; plantedSlideBlocks, plantedSlideAfterIdleBlocks and largestSinglePlantSlideBlocks are the sums and the largest of plants[]; soleCentroidSlideBlocks is the old centroid measure, kept for comparison; enginePlantWeightMean is MotionEngine's planted-feet weight over the plant; a negative lowest height is sinking into the ground");
         double moved = Math.hypot(lrec.get(n - 1)[1] - lrec.get(0)[1], lrec.get(n - 1)[2] - lrec.get(0)[2]); j.addProperty("bodyMovedBlocks", r4(moved));
+        // R109: the stance slip ratio, report only: over moving frames where the same foot is the lower in both (its sole corners'
+        // middle) and within half a pixel of its idle rest, that middle's ground travel over the body's (aim under 0.15)
+        double[] ss = stanceSlip(g); j.addProperty("stanceSlipRatio", r4(ss[0])); j.addProperty("stanceTravelBlocks", r4(ss[1])); j.addProperty("stanceBodyTravelBlocks", r4(ss[2]));
         var tr = new JsonObject(); var fx = new JsonArray(); var bx = new JsonArray(); var tick = new JsonArray();
         for (int k = 0; k < n; k++) { fx.add(k); bx.add(r4(lrec.get(k)[1])); tick.add((int) lrec.get(k)[0]); }
         tr.add("frame", fx); tr.add("serverTick", tick); tr.add("bodyX", bx);
@@ -1030,6 +1033,33 @@ final class MotionGrade extends Phase2Checks.Stage {
         locoJson.add(j);
         System.out.println("[mo-grade] loco " + g.name() + ": " + n + " frames, planted slide " + slide + " blocks (largest single plant " + maxPlant + "), lowest sole " + minH + ", moved " + r4(moved));
     }
+    /** R109: {stance slip ratio, stance foot travel, body travel} over a segment's moving ticks; the ratio is 0 when the body barely moves (a turn). */
+    double[] stanceSlip(Seg g) {
+        int n = lrec.size(); double[][][] mid = new double[n][2][]; double[] rest = new double[2];
+        for (int i = 0; i < 2; i++) {
+            List<Double> idle = new ArrayList<>();
+            for (int k = 0; k < n; k++) {
+                double[][] c = k < lcorn.size() ? lcorn.get(k)[i] : null; if (c == null || c.length == 0) continue;
+                double[] m = new double[3]; for (double[] v : c) for (int a = 0; a < 3; a++) m[a] += v[a] / c.length; mid[k][i] = m;
+                if (lrec.get(k)[0] < 15) idle.add(m[1]);
+            }
+            java.util.Collections.sort(idle); rest[i] = idle.isEmpty() ? 0 : idle.get(idle.size() / 2);
+        }
+        double foot = 0, body = 0; int prev = -1;
+        for (int k = 0; k < n; k++) {
+            double t = lrec.get(k)[0]; int low = -1;
+            if (t >= 15 && t < 15 + g.move() && mid[k][0] != null && mid[k][1] != null) {
+                double h0 = mid[k][0][1] - rest[0], h1 = mid[k][1][1] - rest[1]; low = h0 <= h1 ? 0 : 1;
+                if (Math.min(h0, h1) > 0.5 / 16) low = -1;
+            }
+            if (low >= 0 && low == prev) {
+                double[] a = mid[k - 1][low], b = mid[k][low]; foot += Math.hypot(b[0] - a[0], b[2] - a[2]);
+                body += Math.hypot(lrec.get(k)[1] - lrec.get(k - 1)[1], lrec.get(k)[2] - lrec.get(k - 1)[2]);
+            }
+            prev = low;
+        }
+        return new double[]{body > 0.1 ? foot / body : 0, foot, body};
+    }
     static double nz(double v) { return Double.isNaN(v) ? 0 : v; }
     static double r4(double v) { return Math.round(v * 10000) / 10000.0; }
     void finishLoco() {
@@ -1038,8 +1068,8 @@ final class MotionGrade extends Phase2Checks.Stage {
         catch (AssertionError x) { report("mo-grade-sole", false, "the sole tracker's synthetic check failed: " + x.getMessage()); }
         boolean ok = locoBad.isEmpty() && locoJson.size() == segs.size();
         StringBuilder sb = new StringBuilder();
-        for (var x : locoJson) { var j = x.getAsJsonObject(); if (j.has("plantedSlideBlocks")) sb.append(j.get("name").getAsString()).append(" slide ").append(j.get("plantedSlideBlocks")).append(" over ").append(j.get("plantCount")).append(" plants, largest ").append(j.get("largestSinglePlantSlideBlocks")).append(" lowest ").append(j.get("lowestSoleHeight")).append("; "); }
-        report("mo-grade-loco", ok, segs.size() + " segments (walk, run, shield crawl, backpedal, 90 degree turn), each from idle and back to idle, a side camera tracking at " + String.format(Locale.ROOT, "%.2f", soloD) + " blocks, every frame with the ground line, soles and feet crop; planted slide and sole heights in the manifest: " + sb + (locoBad.isEmpty() ? "" : "off: " + locoBad));
+        for (var x : locoJson) { var j = x.getAsJsonObject(); if (j.has("plantedSlideBlocks")) sb.append(j.get("name").getAsString()).append(" slide ").append(j.get("plantedSlideBlocks")).append(" over ").append(j.get("plantCount")).append(" plants, largest ").append(j.get("largestSinglePlantSlideBlocks")).append(" lowest ").append(j.get("lowestSoleHeight")).append(" stance slip ").append(j.get("stanceSlipRatio")).append("; "); }
+        report("mo-grade-loco", ok, segs.size() + " segments (walk, run, shield crawl, backpedal, 90 degree turn), each from idle and back to idle, a side camera tracking at " + String.format(Locale.ROOT, "%.2f", soloD) + " blocks, every frame with the ground line, soles and feet crop; planted slide, sole heights and the stance slip ratio (R109, report only, aim under 0.15) in the manifest: " + sb + (locoBad.isEmpty() ? "" : "off: " + locoBad));
     }
 
     // ---- delta: the per-tick pose change of one troop ----

@@ -118,15 +118,16 @@ def template(m, run_rel):
         L.append("")
     if m.get("loco"):
         L += ["Planted slide (R83) is measured at the corners each foot stands on, plant by plant: a box foot rocking heel to toe reads as",
-              "no slide; the old sole-centroid measure is kept in the manifest as `soleCentroidSlideBlocks` for comparison.", "",
-              "| Loco segment | Speed (blocks/tick) | Plants R, L | Planted slide R, L (blocks) | Largest single plant R, L | Lowest sole R, L | Body moved |",
-              "|---|---|---|---|---|---|---|"]
+              "no slide; the old sole-centroid measure is kept in the manifest as `soleCentroidSlideBlocks` for comparison. Stance slip (R109) is",
+              "the stance foot's ground travel over the body's while it is down (report only, aim under 0.15; 0 for a turn in place).", "",
+              "| Loco segment | Speed (blocks/tick) | Plants R, L | Planted slide R, L (blocks) | Largest single plant R, L | Lowest sole R, L | Body moved | Stance slip |",
+              "|---|---|---|---|---|---|---|---|"]
         for s in m["loco"]:
             if "plantedSlideBlocks" in s:
                 sp = "%.3f%s" % (s.get("speedBlocksPerTick", 0), " (assumed)" if s["name"] == "backpedal" else "")
-                L.append("| %s | %s | %s | %s | %s | %s | %.2f |" % (s["name"], sp, ", ".join(str(x) for x in s.get("plantCount", [])),
+                L.append("| %s | %s | %s | %s | %s | %s | %.2f | %.3f |" % (s["name"], sp, ", ".join(str(x) for x in s.get("plantCount", [])),
                                                                  fmt_list(s["plantedSlideBlocks"]), fmt_list(s["largestSinglePlantSlideBlocks"]),
-                                                                 fmt_list(s["lowestSoleHeight"]), s.get("bodyMovedBlocks", 0)))
+                                                                 fmt_list(s["lowestSoleHeight"]), s.get("bodyMovedBlocks", 0), s.get("stanceSlipRatio", 0)))
         L.append("")
         L.append("Backpedal speed is assumed: the walk speed x 0.75, as no measured backpedal speed exists yet.")
         L.append("")

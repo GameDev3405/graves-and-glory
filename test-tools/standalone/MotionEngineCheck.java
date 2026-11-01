@@ -798,26 +798,6 @@ public final class MotionEngineCheck {
         return t;
     }
 
-    /** The worst plant slide (blocks) in a trace, its plants counted, from frame from on: MotionGrade's measure (SoleSlide), a plant being a run of frames with the foot within 0.04 block of the floor. */
-    static double[] plantSlides(GroundTrace t, int from, int to) {
-        double worst = 0, n = 0, at = -1;
-        for (int k = 0; k < 2; k++) {
-            int frames = Math.min(to, t.frames()) - from;
-            boolean[] planted = new boolean[frames], after = new boolean[frames];
-            double[][][] corners = new double[frames][][];
-            for (int f = 0; f < frames; f++) {
-                corners[f] = t.world.get(from + f)[k];
-                planted[f] = t.low(from + f, k) <= 0.04;
-                after[f] = true;
-            }
-            for (SoleSlide.Plant p : SoleSlide.plants(k, planted, corners, after)) {
-                n++;
-                if (p.slide() > worst) { worst = p.slide(); at = from + p.startFrame() + 0.1 * k; }
-            }
-        }
-        return new double[]{worst, n, at};
-    }
-
     /** The lowest sole corner in a trace (px above the floor; negative is under it). */
     static double lowestPx(GroundTrace t) {
         double lo = Double.MAX_VALUE;
