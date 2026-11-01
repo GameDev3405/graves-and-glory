@@ -100,20 +100,28 @@ rule_rows={r['id']:r for r in data.get('modeRules',[])}
 for r in data.get('modeRules',[]):
     where=f'modeRules/{r["id"]}'
     if r['id'] not in mode_ids: errors.append(f'{where}: no modes row {r["id"]}')
-    if not 0<r['speedOne']<=r['speedTwo']<=r['speedThree']: errors.append(f'{where}: push speeds must be above 0 and never fall with more pushers')
-    for c in ('pushRadius','pushHeight','rollbackSpeed','idleSeconds','checkpointSeconds','checkpointGold','overtimeRadius','overtimeGraceSeconds','stoppedAfterSeconds','stoppedEverySeconds'):
+    for c in ('pushRadius','pushHeight','rollbackSpeed','idleSeconds','checkpointSeconds','checkpointGold','overtimeRadius','overtimeGraceSeconds','stoppedAfterSeconds','stoppedEverySeconds','siegeStageBonus','portcullisSeconds','keepEdgeAttackers','keepEdgeDefenders'):
         if r[c]<0: errors.append(f'{where}: {c} cannot be negative')
-    if not 0<r['uphill']<=1<=r['downhill']: errors.append(f'{where}: uphill must be in (0,1] and downhill at least 1')
+    if r['id']=='convoy':
+        if not 0<r['speedOne']<=r['speedTwo']<=r['speedThree']: errors.append(f'{where}: push speeds must be above 0 and never fall with more pushers')
+        if not 0<r['uphill']<=1<=r['downhill']: errors.append(f'{where}: uphill must be in (0,1] and downhill at least 1')
+    if r['id']=='siege' and not (r['keepEdgeAttackers']>0 and r['keepEdgeDefenders']>=r['keepEdgeAttackers']): errors.append(f'{where}: the keep edge is attackers of defenders, 0 < keepEdgeAttackers <= keepEdgeDefenders')
 if 'convoy' in mode_ids and 'convoy' not in rule_rows: errors.append('modeRules: the convoy mode needs its row')
+if 'siege' in mode_ids and 'siege' not in rule_rows: errors.append('modeRules: the siege mode needs its row')
 def seg_distance(px,pz,a,b):
     dx,dz=b[0]-a[0],b[1]-a[1];t=max(0,min(1,((px-a[0])*dx+(pz-a[1])*dz)/((dx*dx+dz*dz) or 1)))
     return ((px-a[0]-t*dx)**2+(pz-a[1]-t*dz)**2)**.5
+piece_ids={p['id'] for p in data.get('pieces',[])}
 roads={}
 for s in data.get('modeSites',[]):
     where=f'modeSites/{s["id"]}'
     if s['mode'] not in mode_ids: errors.append(f'{where}: mode {s["mode"]} is not a modes id')
     if s['map'] not in range(len(data['maps'])): errors.append(f'{where}: map {s["map"]} is not a map index')
-    if s['kind'] not in ('road','base'): errors.append(f'{where}: kind {s["kind"]} is not road or base')
+    if s['kind'] not in ('road','base','stage','gate','ward'): errors.append(f'{where}: kind {s["kind"]} is not road, base, stage, gate or ward')
+    if s['piece']!='-' and s['piece'] not in piece_ids: errors.append(f'{where}: piece {s["piece"]} is not a pieces id')
+    if s['kind'] in ('gate','ward') and s['piece']=='-': errors.append(f'{where}: a {s["kind"]} row needs its piece')
+    if s['rotation'] not in (0,90,180,270): errors.append(f'{where}: rotation {s["rotation"]} is not 0, 90, 180 or 270')
+    if s['hp']<0 or s['seconds']<0: errors.append(f'{where}: hp and seconds cannot be negative')
     if s['kind']=='road': roads.setdefault((s['mode'],s['map']),[]).append(s)
 for (mode,m),nodes in roads.items():
     nodes.sort(key=lambda s:s['stage']);where=f'modeSites {mode} map {m}'
@@ -128,6 +136,13 @@ for (mode,m),nodes in roads.items():
         if ((b['x']-end[0])**2+(b['z']-end[1])**2)**.5<=40: errors.append(f'modeSites/{b["id"]}: a base within 40 blocks of the road end its enemy pushes for')
         near=min(seg_distance(b['x'],b['z'],pts[i],pts[i+1]) for i in range(len(pts)-1))
         if near<=b['radius']+8: errors.append(f'modeSites/{b["id"]}: base {near:.1f} blocks from the road, it must stand off it')
+# Siege: the three stages in order (a ring each for the yard and the keep, the gate between them) and the wards' rows.
+for m in {s['map'] for s in data.get('modeSites',[]) if s['mode']=='siege'}:
+    st=sorted((s['stage'],s['kind']) for s in data['modeSites'] if s['mode']=='siege' and s['map']==m and s['kind'] in ('stage','gate'))
+    if st!=[(0,'stage'),(1,'gate'),(2,'stage')]: errors.append(f'modeSites siege map {m}: the stages must be a stage row 0, the gate row 1 and a stage row 2, found {st}')
+    for s in data['modeSites']:
+        if s['mode']=='siege' and s['map']==m and s['kind']=='stage' and (s['radius']<=0 or s['seconds']<=0): errors.append(f'modeSites/{s["id"]}: a stage ring needs a radius and seconds above 0')
+        if s['mode']=='siege' and s['map']==m and s['kind']=='gate' and s['hp']<=0: errors.append(f'modeSites/{s["id"]}: the gate needs hp above 0')
 groups={g['id'] for g in data.get('groups',[])}
 orders={o['id'] for o in data['orders']}
 for t in data['troops']:
