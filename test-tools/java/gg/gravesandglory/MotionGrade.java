@@ -831,6 +831,7 @@ final class MotionGrade extends Phase2Checks.Stage {
                 inject(c, j.pre);
                 if (wait < j.settle || !shotReady(c, j.clip + " a" + j.angle)) return;
                 if (j.cat.equals("hit")) primeHit(e, j.hitIdx, j.hitN);
+                if (j.cat.equals("death")) primeDeath(e, j.c, fam.family());
                 fireSolo(c, j, e); j.ph = 2; wait = 0; lastSnapN = LAST == null ? -1 : LAST.n;
             }
             case 2 -> soloTick(c, j, e);
@@ -844,6 +845,15 @@ final class MotionGrade extends Phase2Checks.Stage {
         java.util.Arrays.fill(st.lastHitVariant, -1);
         int k = st.hitCount + 1; while (MotionEngine.hitVariant(bias, k, -1, n) != idx && k < st.hitCount + 1000) k++;
         st.hitCount = k - 1;
+    }
+    /** K2 picks a seeded death variant from the unit's death count: set the count so the next death plays the variant the solo job grades (its place in its kind/direction list). */
+    static void primeDeath(Entity e, Clip c, MotionEngine.Family f) {
+        var st = e == null ? null : TroopMotion.state(e.getId()); if (st == null || c == null) return;
+        int vi = -1, n = 1; for (var l : f.deaths().values()) if (l.contains(c)) { vi = l.indexOf(c); n = l.size(); break; }
+        if (vi < 0 || n < 2) return;
+        var id = e.getUuid(); long bias = MotionMath.seed(id.getMostSignificantBits(), id.getLeastSignificantBits()).variantBias();
+        int k = st.deaths; while (Math.floorMod(Math.floorMod(MotionMath.mix(bias ^ 0xD6E8FEB86659FD93L ^ k), 6L), (long) n) != vi && k < st.deaths + 1000) k++;
+        st.deaths = k;
     }
     void fireSolo(MinecraftClient c, Job j, Entity e) {
         if (e == null) return; long tick = c.world.getTime(); int id = e.getId();
