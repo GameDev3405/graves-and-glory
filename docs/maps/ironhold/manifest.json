@@ -58,8 +58,24 @@
      -177
     ]
    },
-   "status": "todo",
-   "reviews": []
+   "status": "blockout",
+   "reviews": [
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T02:33:22Z",
+     "digest": "13511190c2b266d3dddb2aaa5ae428500b20594459cdf425ddcb0db4aa119e67",
+     "plans": [
+      "docs/maps/ironhold/sections/A0-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-A0-top.png",
+      "docs/maps/ironhold/sections/ironhold-A0-iso.png"
+     ],
+     "notes": "North Mountains blockout: edge rise from z -182 to peaks 82-88, river keeps its valley through the rim, gorge bed and walls continue in I..K. Locks ok, seams checked against row 1."
+    }
+   ]
   },
   {
    "id": "B0",
@@ -76,8 +92,24 @@
      -177
     ]
    },
-   "status": "todo",
-   "reviews": []
+   "status": "blockout",
+   "reviews": [
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T02:34:24Z",
+     "digest": "7bc89228e8e53c13e58438df66e58b94051765ec2e087fb36318facd9e6f5227",
+     "plans": [
+      "docs/maps/ironhold/sections/B0-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-B0-top.png",
+      "docs/maps/ironhold/sections/ironhold-B0-iso.png"
+     ],
+     "notes": "North Mountains blockout: edge rise from z -182 to peaks 82-88, river keeps its valley through the rim, gorge bed and walls continue in I..K. Locks ok, seams checked against row 1."
+    }
+   ]
   },
   {
    "id": "C0",
@@ -94,8 +126,24 @@
      -177
     ]
    },
-   "status": "todo",
-   "reviews": []
+   "status": "blockout",
+   "reviews": [
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T02:34:39Z",
+     "digest": "cf4950ef612087928e078b4dabdea980e3947ab6ee0ec2f2921bf5384b329d36",
+     "plans": [
+      "docs/maps/ironhold/sections/C0-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-C0-top.png",
+      "docs/maps/ironhold/sections/ironhold-C0-iso.png"
+     ],
+     "notes": "North Mountains blockout: edge rise from z -182 to peaks 82-88, river keeps its valley through the rim, gorge bed and walls continue in I..K. Locks ok, seams checked against row 1."
+    }
+   ]
   },
   {
    "id": "D0",
@@ -112,8 +160,24 @@
      -177
     ]
    },
-   "status": "todo",
-   "reviews": []
+   "status": "blockout",
+   "reviews": [
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T02:34:54Z",
+     "digest": "44a4077fef413616cccfb46d5236c9f70f6970bfc9ed980e61c79c8828c80324",
+     "plans": [
+      "docs/maps/ironhold/sections/D0-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-D0-top.png",
+      "docs/maps/ironhold/sections/ironhold-D0-iso.png"
+     ],
+     "notes": "North Mountains blockout: edge rise from z -182 to peaks 82-88, river keeps its valley through the rim, gorge bed and walls continue in I..K. Locks ok, seams checked against row 1."
+    }
+   ]
   },
   {
    "id": "E0",
@@ -130,8 +194,24 @@
      -177
     ]
    },
-   "status": "todo",
-   "reviews": []
+   "status": "blockout",
+   "reviews": [
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T02:35:10Z",
+     "digest": "e424e1334d9d1ce25ce2fc19c7124b4f749bf7649dc7273781eda1499c5afaac",
+     "plans": [
+      "docs/maps/ironhold/sections/E0-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-E0-top.png",
+      "docs/maps/ironhold/sections/ironhold-E0-iso.png"
+     ],
+     "notes": "North Mountains blockout: edge rise from z -182 to peaks 82-88, river keeps its valley through the rim, gorge bed and walls continue in I..K. Locks ok, seams checked against row 1."
+    }
+   ]
   },
   {
    "id": "F0",
@@ -148,8 +228,24 @@
      -177
     ]
    },
-   "status": "todo",
-   "reviews": []
+   "status": "blockout",
+   "reviews": [
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T02:35:25Z",
+     "digest": "21edad84025dfbbc6cf6f56825cea8e72e3d0a485e5f0642f23c759d3bb04c79",
+     "plans": [
+      "docs/maps/ironhold/sections/F0-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-F0-top.png",
+      "docs/maps/ironhold/sections/ironhold-F0-iso.png"
+     ],
+     "notes": "North Mountains blockout: edge rise from z -182 to peaks 82-88, river keeps its valley through the rim, gorge bed and walls continue in I..K. Locks ok, seams checked against row 1."
+    }
+   ]
   },
   {
    "id": "G0",
@@ -166,8 +262,24 @@
      -177
     ]
    },
-   "status": "todo",
-   "reviews": []
+   "status": "blockout",
+   "reviews": [
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T02:35:40Z",
+     "digest": "a2177182977fff84748b59893ef10ca8f31ff56b46767ae0552934521ff4659e",
+     "plans": [
+      "docs/maps/ironhold/sections/G0-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-G0-top.png",
+      "docs/maps/ironhold/sections/ironhold-G0-iso.png"
+     ],
+     "notes": "North Mountains blockout: edge rise from z -182 to peaks 82-88, river keeps its valley through the rim, gorge bed and walls continue in I..K. Locks ok, seams checked against row 1."
+    }
+   ]
   },
   {
    "id": "H0",
@@ -184,8 +296,24 @@
      -177
     ]
    },
-   "status": "todo",
-   "reviews": []
+   "status": "blockout",
+   "reviews": [
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T02:35:55Z",
+     "digest": "bc0e799366e501c98d3952a6065a631da42061d917ca61bf3d8e02a43e248959",
+     "plans": [
+      "docs/maps/ironhold/sections/H0-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-H0-top.png",
+      "docs/maps/ironhold/sections/ironhold-H0-iso.png"
+     ],
+     "notes": "North Mountains blockout: edge rise from z -182 to peaks 82-88, river keeps its valley through the rim, gorge bed and walls continue in I..K. Locks ok, seams checked against row 1."
+    }
+   ]
   },
   {
    "id": "I0",
@@ -202,8 +330,24 @@
      -177
     ]
    },
-   "status": "todo",
-   "reviews": []
+   "status": "blockout",
+   "reviews": [
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T02:36:10Z",
+     "digest": "eb5468c9d6986eb743d71c923a505c1e7ace2568a24c87e02547b33de95e299a",
+     "plans": [
+      "docs/maps/ironhold/sections/I0-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-I0-top.png",
+      "docs/maps/ironhold/sections/ironhold-I0-iso.png"
+     ],
+     "notes": "North Mountains blockout: edge rise from z -182 to peaks 82-88, river keeps its valley through the rim, gorge bed and walls continue in I..K. Locks ok, seams checked against row 1."
+    }
+   ]
   },
   {
    "id": "J0",
@@ -220,8 +364,24 @@
      -177
     ]
    },
-   "status": "todo",
-   "reviews": []
+   "status": "blockout",
+   "reviews": [
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T02:36:26Z",
+     "digest": "c9277536fc031e12e9fbed7922e498f146ae922b36ffbbcfd1baf086882a71cb",
+     "plans": [
+      "docs/maps/ironhold/sections/J0-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-J0-top.png",
+      "docs/maps/ironhold/sections/ironhold-J0-iso.png"
+     ],
+     "notes": "North Mountains blockout: edge rise from z -182 to peaks 82-88, river keeps its valley through the rim, gorge bed and walls continue in I..K. Locks ok, seams checked against row 1."
+    }
+   ]
   },
   {
    "id": "K0",
@@ -238,8 +398,24 @@
      -177
     ]
    },
-   "status": "todo",
-   "reviews": []
+   "status": "blockout",
+   "reviews": [
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T02:36:41Z",
+     "digest": "c130ab07ba7f4eedb4199811445de47303454ecf0f2d10d94cb4864ea02a362f",
+     "plans": [
+      "docs/maps/ironhold/sections/K0-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-K0-top.png",
+      "docs/maps/ironhold/sections/ironhold-K0-iso.png"
+     ],
+     "notes": "North Mountains blockout: edge rise from z -182 to peaks 82-88, river keeps its valley through the rim, gorge bed and walls continue in I..K. Locks ok, seams checked against row 1."
+    }
+   ]
   },
   {
    "id": "A1",
@@ -256,8 +432,24 @@
      -113
     ]
    },
-   "status": "todo",
-   "reviews": []
+   "status": "blockout",
+   "reviews": [
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T02:33:37Z",
+     "digest": "233d10aa3e474dd91ceb4421fe996c2cf030a750575135492b205f64b51adbd2",
+     "plans": [
+      "docs/maps/ironhold/sections/A1-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-A1-top.png",
+      "docs/maps/ironhold/sections/ironhold-A1-iso.png"
+     ],
+     "notes": "West rim blockout: rim climbs from x -333 to 82-88, ground below matches A2..A5. Locks ok, seams checked."
+    }
+   ]
   },
   {
    "id": "B1",
@@ -575,8 +767,24 @@
      -113
     ]
    },
-   "status": "todo",
-   "reviews": []
+   "status": "blockout",
+   "reviews": [
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T02:39:30Z",
+     "digest": "db981e8e387686ac8dfa6091cd90706b54b643f64b4833297969db1eec0e08c2",
+     "plans": [
+      "docs/maps/ironhold/sections/J1-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-J1-top.png",
+      "docs/maps/ironhold/sections/ironhold-J1-iso.png"
+     ],
+     "notes": "Far gorge blockout: gorge bed at 44 with face and bed breakup continued from I. Locks ok, seams checked against I and K."
+    }
+   ]
   },
   {
    "id": "K1",
@@ -593,8 +801,24 @@
      -113
     ]
    },
-   "status": "todo",
-   "reviews": []
+   "status": "blockout",
+   "reviews": [
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T02:41:23Z",
+     "digest": "691e2b05ea2a19bf5e3983425c507963d7511e7e1844ffc85e4a585f052a5bd7",
+     "plans": [
+      "docs/maps/ironhold/sections/K1-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-K1-top.png",
+      "docs/maps/ironhold/sections/ironhold-K1-iso.png"
+     ],
+     "notes": "Far gorge blockout: bed continues to x 300, then the far east wall climbs to 82-88. Locks ok, seams checked against J."
+    }
+   ]
   },
   {
    "id": "A2",
@@ -627,6 +851,21 @@
       "docs/maps/ironhold/sections/ironhold-A2-iso.png"
      ],
      "notes": "Camp west half NW: shelf at 72, north palisade run and west run, slope down to the upland, west rim to 82-88, upland outcrops."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T02:32:51Z",
+     "digest": "52b72bd5355b0ade98f5f6a5cf1d90a8dd46f82f654f3aa02edc284776cb244b",
+     "plans": [
+      "docs/maps/ironhold/sections/A2-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-A2-top.png",
+      "docs/maps/ironhold/sections/ironhold-A2-iso.png"
+     ],
+     "notes": "Rim fix: rim faces now andesite so the north and south erosion clamps no longer plane them; rim climbs to 82-88 over the camp west half. Locks ok, seams checked against A1/A3/A4/A6."
     }
    ]
   },
@@ -931,8 +1170,24 @@
      -49
     ]
    },
-   "status": "todo",
-   "reviews": []
+   "status": "blockout",
+   "reviews": [
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T02:39:46Z",
+     "digest": "1aeb4c8a81c8d369e843be273022a4e21be4bdddc090b2da1baf526688ababf3",
+     "plans": [
+      "docs/maps/ironhold/sections/J2-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-J2-top.png",
+      "docs/maps/ironhold/sections/ironhold-J2-iso.png"
+     ],
+     "notes": "Far gorge blockout: gorge bed at 44 with face and bed breakup continued from I. Locks ok, seams checked against I and K."
+    }
+   ]
   },
   {
    "id": "K2",
@@ -949,8 +1204,24 @@
      -49
     ]
    },
-   "status": "todo",
-   "reviews": []
+   "status": "blockout",
+   "reviews": [
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T02:41:45Z",
+     "digest": "10dc2b0342e4da0b12a340d5d85c2496b63c7149a5f9993177ed86037ad10f56",
+     "plans": [
+      "docs/maps/ironhold/sections/K2-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-K2-top.png",
+      "docs/maps/ironhold/sections/ironhold-K2-iso.png"
+     ],
+     "notes": "Far gorge blockout: bed continues to x 300, then the far east wall climbs to 82-88. Locks ok, seams checked against J."
+    }
+   ]
   },
   {
    "id": "A3",
@@ -1421,8 +1692,24 @@
      15
     ]
    },
-   "status": "todo",
-   "reviews": []
+   "status": "blockout",
+   "reviews": [
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T02:40:02Z",
+     "digest": "20108db04b29cb8b2ea738b0874891ef05a70298597f6a8756d7a015a5d95c70",
+     "plans": [
+      "docs/maps/ironhold/sections/J3-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-J3-top.png",
+      "docs/maps/ironhold/sections/ironhold-J3-iso.png"
+     ],
+     "notes": "Far gorge blockout: gorge bed at 44 with face and bed breakup continued from I. Locks ok, seams checked against I and K."
+    }
+   ]
   },
   {
    "id": "K3",
@@ -1439,8 +1726,24 @@
      15
     ]
    },
-   "status": "todo",
-   "reviews": []
+   "status": "blockout",
+   "reviews": [
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T02:42:06Z",
+     "digest": "b4203900e0ef9da3b2e448fa9aec3c35436453cd57d9e046854868fcc68d4ac6",
+     "plans": [
+      "docs/maps/ironhold/sections/K3-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-K3-top.png",
+      "docs/maps/ironhold/sections/ironhold-K3-iso.png"
+     ],
+     "notes": "Far gorge blockout: bed continues to x 300, then the far east wall climbs to 82-88. Locks ok, seams checked against J."
+    }
+   ]
   },
   {
    "id": "A4",
@@ -1896,8 +2199,24 @@
      79
     ]
    },
-   "status": "todo",
-   "reviews": []
+   "status": "blockout",
+   "reviews": [
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T02:40:18Z",
+     "digest": "54d96fe4e41d4682121dc3c3538725b180683c01136869868a85de92d3046a09",
+     "plans": [
+      "docs/maps/ironhold/sections/J4-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-J4-top.png",
+      "docs/maps/ironhold/sections/ironhold-J4-iso.png"
+     ],
+     "notes": "Far gorge blockout: gorge bed at 44 with face and bed breakup continued from I. Locks ok, seams checked against I and K."
+    }
+   ]
   },
   {
    "id": "K4",
@@ -1914,8 +2233,24 @@
      79
     ]
    },
-   "status": "todo",
-   "reviews": []
+   "status": "blockout",
+   "reviews": [
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T02:42:30Z",
+     "digest": "f348355c99bfbb3dd6a1f33c2e1f954c588275c9cdf3fba776f4f5e3ff076cfd",
+     "plans": [
+      "docs/maps/ironhold/sections/K4-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-K4-top.png",
+      "docs/maps/ironhold/sections/ironhold-K4-iso.png"
+     ],
+     "notes": "Far gorge blockout: bed continues to x 300, then the far east wall climbs to 82-88. Locks ok, seams checked against J."
+    }
+   ]
   },
   {
    "id": "A5",
@@ -1948,6 +2283,21 @@
       "docs/maps/ironhold/sections/ironhold-A5-iso.png"
      ],
      "notes": "West upland south of the camp: grass at 67 with outcrops, camp slope foot, west rim to 82-88. Blockout only."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T02:33:06Z",
+     "digest": "6ec29535d6af741b25c5d3762cf77a9a1ce2516d9873ab7b8b3661f26eddd4c9",
+     "plans": [
+      "docs/maps/ironhold/sections/A5-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-A5-top.png",
+      "docs/maps/ironhold/sections/ironhold-A5-iso.png"
+     ],
+     "notes": "Rim fix: rim faces now andesite so the north and south erosion clamps no longer plane them; rim climbs to 82-88 over the camp west half. Locks ok, seams checked against A1/A3/A4/A6."
     }
    ]
   },
@@ -2282,8 +2632,24 @@
      143
     ]
    },
-   "status": "todo",
-   "reviews": []
+   "status": "blockout",
+   "reviews": [
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T02:40:38Z",
+     "digest": "32548c85fa9884756589a53c0f68b85d0b772305f0fdbfbab2478dcbdeb510e5",
+     "plans": [
+      "docs/maps/ironhold/sections/J5-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-J5-top.png",
+      "docs/maps/ironhold/sections/ironhold-J5-iso.png"
+     ],
+     "notes": "Far gorge blockout: gorge bed at 44 with face and bed breakup continued from I. Locks ok, seams checked against I and K."
+    }
+   ]
   },
   {
    "id": "K5",
@@ -2300,8 +2666,24 @@
      143
     ]
    },
-   "status": "todo",
-   "reviews": []
+   "status": "blockout",
+   "reviews": [
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T02:42:48Z",
+     "digest": "8883ffb9977073a5dafdaa7c0029b932c4a0bbe91150544b47fbbca23e0328e8",
+     "plans": [
+      "docs/maps/ironhold/sections/K5-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-K5-top.png",
+      "docs/maps/ironhold/sections/ironhold-K5-iso.png"
+     ],
+     "notes": "Far gorge blockout: bed continues to x 300, then the far east wall climbs to 82-88. Locks ok, seams checked against J."
+    }
+   ]
   },
   {
    "id": "A6",
@@ -2318,8 +2700,24 @@
      207
     ]
    },
-   "status": "todo",
-   "reviews": []
+   "status": "blockout",
+   "reviews": [
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T02:33:53Z",
+     "digest": "7daf784079950dcc33cd05267deb38482b297be9440411b6191a80a702fe8a46",
+     "plans": [
+      "docs/maps/ironhold/sections/A6-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-A6-top.png",
+      "docs/maps/ironhold/sections/ironhold-A6-iso.png"
+     ],
+     "notes": "West rim blockout: rim climbs from x -333 to 82-88, ground below matches A2..A5. Locks ok, seams checked."
+    }
+   ]
   },
   {
    "id": "B6",
@@ -2607,8 +3005,24 @@
      207
     ]
    },
-   "status": "todo",
-   "reviews": []
+   "status": "blockout",
+   "reviews": [
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T02:40:59Z",
+     "digest": "7debe9e1b696adb15f6a6988e244e9021d3393f218554656eb5a88d50dcb5097",
+     "plans": [
+      "docs/maps/ironhold/sections/J6-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-J6-top.png",
+      "docs/maps/ironhold/sections/ironhold-J6-iso.png"
+     ],
+     "notes": "Far gorge blockout: gorge bed at 44 with face and bed breakup continued from I. Locks ok, seams checked against I and K."
+    }
+   ]
   },
   {
    "id": "K6",
@@ -2625,8 +3039,24 @@
      207
     ]
    },
-   "status": "todo",
-   "reviews": []
+   "status": "blockout",
+   "reviews": [
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T02:43:07Z",
+     "digest": "03969deeb9917b58f612757aefbb9a549ee46a262f76bfaed96e79fd97cc6b0e",
+     "plans": [
+      "docs/maps/ironhold/sections/K6-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-K6-top.png",
+      "docs/maps/ironhold/sections/ironhold-K6-iso.png"
+     ],
+     "notes": "Far gorge blockout: bed continues to x 300, then the far east wall climbs to 82-88. Locks ok, seams checked against J."
+    }
+   ]
   },
   {
    "id": "A7",
@@ -2643,8 +3073,24 @@
      249
     ]
    },
-   "status": "todo",
-   "reviews": []
+   "status": "blockout",
+   "reviews": [
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T02:34:08Z",
+     "digest": "586e4c6295790f22ac409d0edc90b85589963829af0b5c8a829440d40235391d",
+     "plans": [
+      "docs/maps/ironhold/sections/A7-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-A7-top.png",
+      "docs/maps/ironhold/sections/ironhold-A7-iso.png"
+     ],
+     "notes": "South Ridge blockout: edge rise from z 212 to peaks 82-88, river valley kept at F7, gorge continues in I..K with the far corner closed. Locks ok, seams checked against row 6."
+    }
+   ]
   },
   {
    "id": "B7",
@@ -2661,8 +3107,24 @@
      249
     ]
    },
-   "status": "todo",
-   "reviews": []
+   "status": "blockout",
+   "reviews": [
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T02:36:56Z",
+     "digest": "c8b62e4f8964a423c1d854d7c6ec9f6a9deaae3f38c15e51b42c0d923322cd36",
+     "plans": [
+      "docs/maps/ironhold/sections/B7-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-B7-top.png",
+      "docs/maps/ironhold/sections/ironhold-B7-iso.png"
+     ],
+     "notes": "South Ridge blockout: edge rise from z 212 to peaks 82-88, river valley kept at F7, gorge continues in I..K with the far corner closed. Locks ok, seams checked against row 6."
+    }
+   ]
   },
   {
    "id": "C7",
@@ -2679,8 +3141,24 @@
      249
     ]
    },
-   "status": "todo",
-   "reviews": []
+   "status": "blockout",
+   "reviews": [
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T02:37:12Z",
+     "digest": "488d66337eb570d4c28477e73ebfea731e4401ba35ff68b46f6b1ce71e0c0427",
+     "plans": [
+      "docs/maps/ironhold/sections/C7-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-C7-top.png",
+      "docs/maps/ironhold/sections/ironhold-C7-iso.png"
+     ],
+     "notes": "South Ridge blockout: edge rise from z 212 to peaks 82-88, river valley kept at F7, gorge continues in I..K with the far corner closed. Locks ok, seams checked against row 6."
+    }
+   ]
   },
   {
    "id": "D7",
@@ -2697,8 +3175,24 @@
      249
     ]
    },
-   "status": "todo",
-   "reviews": []
+   "status": "blockout",
+   "reviews": [
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T02:37:27Z",
+     "digest": "1f0543fbd385736a5c9511c94ec21e70870d296f605b7d5b7f5c165441ae8943",
+     "plans": [
+      "docs/maps/ironhold/sections/D7-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-D7-top.png",
+      "docs/maps/ironhold/sections/ironhold-D7-iso.png"
+     ],
+     "notes": "South Ridge blockout: edge rise from z 212 to peaks 82-88, river valley kept at F7, gorge continues in I..K with the far corner closed. Locks ok, seams checked against row 6."
+    }
+   ]
   },
   {
    "id": "E7",
@@ -2715,8 +3209,24 @@
      249
     ]
    },
-   "status": "todo",
-   "reviews": []
+   "status": "blockout",
+   "reviews": [
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T02:37:43Z",
+     "digest": "b02db1b0052a7d5ccdcf9c50bf2ec242e6b99ba22763314a3d7f66af43c3be7e",
+     "plans": [
+      "docs/maps/ironhold/sections/E7-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-E7-top.png",
+      "docs/maps/ironhold/sections/ironhold-E7-iso.png"
+     ],
+     "notes": "South Ridge blockout: edge rise from z 212 to peaks 82-88, river valley kept at F7, gorge continues in I..K with the far corner closed. Locks ok, seams checked against row 6."
+    }
+   ]
   },
   {
    "id": "F7",
@@ -2733,8 +3243,24 @@
      249
     ]
    },
-   "status": "todo",
-   "reviews": []
+   "status": "blockout",
+   "reviews": [
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T02:37:58Z",
+     "digest": "93ed09550100f8682e5fd7f0c9b3be9879d60613c434b1858a2dbc58189d43e5",
+     "plans": [
+      "docs/maps/ironhold/sections/F7-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-F7-top.png",
+      "docs/maps/ironhold/sections/ironhold-F7-iso.png"
+     ],
+     "notes": "South Ridge blockout: edge rise from z 212 to peaks 82-88, river valley kept at F7, gorge continues in I..K with the far corner closed. Locks ok, seams checked against row 6."
+    }
+   ]
   },
   {
    "id": "G7",
@@ -2751,8 +3277,24 @@
      249
     ]
    },
-   "status": "todo",
-   "reviews": []
+   "status": "blockout",
+   "reviews": [
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T02:38:13Z",
+     "digest": "a99a2fa0c5d245b6ae9173856a8e958dbbe6d635f87da66f3123d1e47576bafa",
+     "plans": [
+      "docs/maps/ironhold/sections/G7-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-G7-top.png",
+      "docs/maps/ironhold/sections/ironhold-G7-iso.png"
+     ],
+     "notes": "South Ridge blockout: edge rise from z 212 to peaks 82-88, river valley kept at F7, gorge continues in I..K with the far corner closed. Locks ok, seams checked against row 6."
+    }
+   ]
   },
   {
    "id": "H7",
@@ -2769,8 +3311,24 @@
      249
     ]
    },
-   "status": "todo",
-   "reviews": []
+   "status": "blockout",
+   "reviews": [
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T02:38:29Z",
+     "digest": "1301d41278ef3e90fea1b17772ab240e8141528b0073c80f647c6ec9cf8638cf",
+     "plans": [
+      "docs/maps/ironhold/sections/H7-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-H7-top.png",
+      "docs/maps/ironhold/sections/ironhold-H7-iso.png"
+     ],
+     "notes": "South Ridge blockout: edge rise from z 212 to peaks 82-88, river valley kept at F7, gorge continues in I..K with the far corner closed. Locks ok, seams checked against row 6."
+    }
+   ]
   },
   {
    "id": "I7",
@@ -2787,8 +3345,24 @@
      249
     ]
    },
-   "status": "todo",
-   "reviews": []
+   "status": "blockout",
+   "reviews": [
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T02:38:44Z",
+     "digest": "9b0d2edfda7cc823b48ae57cbf9033958cc0d1b8d9d6c36c631a2bfe8cb05c6c",
+     "plans": [
+      "docs/maps/ironhold/sections/I7-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-I7-top.png",
+      "docs/maps/ironhold/sections/ironhold-I7-iso.png"
+     ],
+     "notes": "South Ridge blockout: edge rise from z 212 to peaks 82-88, river valley kept at F7, gorge continues in I..K with the far corner closed. Locks ok, seams checked against row 6."
+    }
+   ]
   },
   {
    "id": "J7",
@@ -2805,8 +3379,24 @@
      249
     ]
    },
-   "status": "todo",
-   "reviews": []
+   "status": "blockout",
+   "reviews": [
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T02:39:00Z",
+     "digest": "cc351803654870f39b0ee30f59306f5d0ecde81a9019e51210d18f6e196764b0",
+     "plans": [
+      "docs/maps/ironhold/sections/J7-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-J7-top.png",
+      "docs/maps/ironhold/sections/ironhold-J7-iso.png"
+     ],
+     "notes": "South Ridge blockout: edge rise from z 212 to peaks 82-88, river valley kept at F7, gorge continues in I..K with the far corner closed. Locks ok, seams checked against row 6."
+    }
+   ]
   },
   {
    "id": "K7",
@@ -2823,8 +3413,24 @@
      249
     ]
    },
-   "status": "todo",
-   "reviews": []
+   "status": "blockout",
+   "reviews": [
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T02:39:15Z",
+     "digest": "101ddb64c60670ce88c0bc579295e2af790a0e40f3c57abc57974b27a9a7d652",
+     "plans": [
+      "docs/maps/ironhold/sections/K7-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-K7-top.png",
+      "docs/maps/ironhold/sections/ironhold-K7-iso.png"
+     ],
+     "notes": "South Ridge blockout: edge rise from z 212 to peaks 82-88, river valley kept at F7, gorge continues in I..K with the far corner closed. Locks ok, seams checked against row 6."
+    }
+   ]
   }
  ],
  "protect": [

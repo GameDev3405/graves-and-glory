@@ -219,12 +219,14 @@ def camp_height(x, z):
 
 
 RIM_X = -333  # the west rim's foot, just behind the camp's west palisade run (x -331)
-RIM = ('minecraft:stone', 'minecraft:andesite', 2, 'minecraft:stone')  # skinned with grass by a breakup
+RIM = ('minecraft:andesite', 'minecraft:stone', 2, 'minecraft:stone')  # skinned with grass by a breakup
+# (andesite since 2026-10-31: the flank erodes settle grass, mud and stone with clamps at 72 and 76, which had
+# planed a stone rim flat in A2's north strip and A5)
 
 
 def rim_height(x, z):
     """Column A's west rim (layout: rim 82-88): from its wandering foot behind the camp it climbs 15-21 blocks to
-    the map edge. Massed in stone so the field noise and the Mire settle (grass and mud only) leave it alone; a
+    the map edge. Massed in andesite so the field noise and the flank settles (grass, mud and stone) leave it alone; a
     breakup skins it with grass, earth and rock. None east of the foot."""
     warp = 3 * terrain.fbm(terrain.seed_of('rim-warp'), x, z, 14, 2)
     t = _smooth((RIM_X - x + warp) / 14)
@@ -473,7 +475,37 @@ def gorge(x, z):
     return (top, CRAG if top == face and top > scree else GORGE_BED, None, GORGE_BASE)
 
 
+EDGE_N, EDGE_S, EDGE_E = -182, 212, 300  # feet of the North Mountains, the South Ridge and the gorge's far wall
+
+
+def edge_rise(x, z):
+    """Rows 0 and 7 and columns J..K's far side (layout: rims and backdrop, rim 82-88): 0 inside the play rows,
+    climbing to 1 at the map edge, the feet wandering a few blocks. The river keeps a valley through both rims
+    (its gorge mouth), so t is pressed down within about 30 blocks of its line."""
+    warp = 3 * terrain.fbm(terrain.seed_of('edge-warp'), x, z, 16, 2)
+    t = max(_smooth((EDGE_N - z + warp) / 58), _smooth((z - EDGE_S + warp) / 36), _smooth((x - EDGE_E + warp) / 44))
+    if t <= 0:
+        return 0.0
+    rx = 0 if z < 0 else 2
+    return t * (1 - 0.85 * _smooth(1 - (abs(x - rx) - 9) / 24))
+
+
 def column(x, z):
+    """The ground column at (x, z); the edge rims (rows 0 and 7, the gorge's far wall) are laid over it."""
+    c = _column(x, z)
+    t = edge_rise(x, z)
+    if t <= 0.02:
+        return c
+    top = c[0]
+    peak = 85 + 3 * terrain.fbm(terrain.seed_of('edge-peak'), x, z, 18, 2)
+    h = int(round(top + (peak - top) * t))
+    if h <= top:
+        return c
+    mat = c[1] if t < 0.12 else CRAG if x >= GORGE_X0 else RIM
+    return (h, mat, None) + tuple(c[3:])
+
+
+def _column(x, z):
     if x >= GORGE_X0:
         return gorge(x, z)
     if x >= 95:
@@ -975,8 +1007,8 @@ def _west_built():
 def _west_surface():
     return [
         ({'op': 'breakup', 'note': 'west rim: grass and earth over the stone, rock left on the steep',
-          'replace': [W + 'stone'],
-          'mix': _mix(('grass_block', 6), ('coarse_dirt', 2), ('andesite', 2), ('mossy_cobblestone', 1), ('gravel', 1)),
+          'replace': [W + 'stone', W + 'andesite'],
+          'mix': _mix(('grass_block', 6), ('coarse_dirt', 2), ('stone', 2), ('mossy_cobblestone', 1), ('gravel', 1)),
           'density': 0.75, 'scale': 3, 'seed': 'rim-skin'}, (-350, -176, -300, 207)),
         ({'op': 'breakup', 'note': 'camp shelf: trodden earth, gravel, paths and tufts',
           'replace': [W + 'coarse_dirt'],
@@ -1200,6 +1232,23 @@ def _east_surface():
 GORGE = (159, -176, 222, 207)  # column I, rows 1..6 (x0, z0, x1, z1)
 
 
+EDGE_ROWS = ((-350, -250, 158, -177), (-350, 208, 158, 249))  # rows 0 and 7 west of the gorge
+GORGE_FAR = ((159, -250, 349, -177), (159, 208, 349, 249), (223, -176, 349, 207))  # gorge in rows 0, 7 and J..K
+
+
+def _edge_surface():
+    """Rows 0 and 7 (North Mountains, South Ridge): the andesite skinned like the west rim; the gorge's far
+    reaches (rows 0 and 7 east of the parapet line, columns J..K) get the gorge's own face and bed breakups."""
+    ops = [({'op': 'breakup', 'note': 'mountains and ridge: grass and earth over the rock, rock left on the steep',
+             'replace': [W + 'andesite'],
+             'mix': _mix(('grass_block', 6), ('coarse_dirt', 2), ('stone', 2), ('mossy_cobblestone', 1),
+                         ('gravel', 1)),
+             'density': 0.75, 'scale': 3, 'seed': 'edge-skin'}, r) for r in EDGE_ROWS]
+    for r in GORGE_FAR:
+        ops += [(dict(op), r) for op, _ in _gorge_surface()[:2]]
+    return ops
+
+
 def _gorge_surface():
     return [
         ({'op': 'breakup', 'note': 'gorge faces: andesite, tuff and gravel in the crag', 'replace': [W + 'stone'],
@@ -1351,6 +1400,7 @@ def features():
     f += _bailey_surface()
     f += _east_surface()
     f += _gorge_surface()
+    f += _edge_surface()
     return f
 
 
@@ -1419,6 +1469,10 @@ REOPEN_F3 = ("2026-10-31 (Kort): the defenders' road joined from the B deck (x 6
              'laid after the roads so its planks stay planks')
 
 
+REOPEN_RIM = ('2026-10-31 rim fix: the flank erodes (grass, mud and stone, clamped at 72 and 76) had planed the '
+              'stone west rim flat in this section; the rim is now massed in andesite and climbs to 82-88 as signed')
+
+
 def section_plan(m, sid, world):
     s = mf.section(m, sid)
     (x0, _, z0), (x1, _, z1) = mf.section_box(s)
@@ -1456,13 +1510,14 @@ def section_plan(m, sid, world):
                    'breakup) clipped to the section. Generated by docs/maps/ironhold/sections/make_blockout.py.',
         'section': sid, 'pass': 'blockout',
         'expectSection': mf.section_digests(m, world, {sid})[sid],
-        'limits': {'maxChangedBlocks': 150000},
+        'limits': {'maxChangedBlocks': 250000},
         'operations': ops,
     }
     if done:
         p['reopen'] = (REOPEN_MIRE if sid in GROUPS['mire'] else REOPEN_SOUTH if sid == 'E4' else
                        REOPEN_FORD if sid == 'F5' else REOPEN_G5 if sid == 'G5' else
-                       REOPEN_FORD_N if sid == 'F1' else REOPEN_F3 if sid == 'F3' else REOPEN)
+                       REOPEN_FORD_N if sid == 'F1' else REOPEN_F3 if sid == 'F3' else
+                       REOPEN_RIM if sid in ('A2', 'A5') else REOPEN)
     return p
 
 
