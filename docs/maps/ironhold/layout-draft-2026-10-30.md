@@ -16,6 +16,8 @@ Kort's rulings of 2026-10-31:
 - **River bends around the keep court** instead of running under it: an elbow along z 13..19 north of the court, a leg at x 25..30 past the tower's foot, and an elbow along z 49..55 back to x 0. The court and the stage C ring stay on solid ground; the ring's lock is unchanged.
 - **Adoption step:** Spec/LANDMARKS keeps today's x 72 east curtain rows (`ih-curtain-en1`, `en2`, `es1`, `es2`) until the rebuilt Ironhold is adopted; the change that adopts it removes them.
 
+- **Surface-only builds** (Kort, 2026-10-31: "We only need the top layer for maps, blocks aren't breakable so what's underneath doesn't matter, just make sure the top layer looks good and go from there."): new and reopened plans build only the top layer and a shallow fill where a gap or cliff face shows, with a 150000-block cap per plan. The 88 blockout sections already built stay as they are.
+
 No game code, spawn or capture point has changed yet (plan 7.3): the Dusk spawn move and the postern are for the modes lane.
 
 Files in this folder:

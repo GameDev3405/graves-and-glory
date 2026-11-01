@@ -134,6 +134,18 @@ class OperationTest(unittest.TestCase):
         self.assertEqual(ch[(2, 64, 0)][1], AIR_CELL)  # dug one below base; old grass cleared
         self.assertEqual(ch[(2, 63, 0)][1], Cell('minecraft:grass_block'))
 
+    def test_terrain_floors_build_each_column_from_its_own_height(self):
+        op = {'op': 'terrain', 'origin': [0, 0], 'base': 64, 'floor': 60, 'surface': 'grass_block', 'under': 'dirt',
+              'underDepth': 1, 'core': 'stone', 'heights': [[2, 2, 0]], 'floors': [[63, None, 62]]}
+        ch = compile_plan(plan([op]), World('empty'))
+        col = lambda x: sorted(y for (cx, y, _) in ch if cx == x)
+        self.assertEqual(col(0), [63, 64, 65, 66])  # a shell: its own floor, not 60..62
+        self.assertEqual(col(1), list(range(60, 67)))  # null floor: the op's floor
+        self.assertEqual(col(2), [62, 63, 64])
+        self.assertEqual(ch[(0, 66, 0)][1], Cell('minecraft:grass_block'))
+        self.assertTrue(any('floors must have the same rows' in e for e in validate(plan([dict(op, floors=[[63, 62]])]))))
+        self.assertTrue(any('every floor is an integer' in e for e in validate(plan([dict(op, floors=[[63, 'x', 62]])]))))
+
     def test_structure_placement_keeps_void_and_copies_block_entities(self):
         s = Structure((3, 1, 3), ['minecraft:air', 'minecraft:structure_void', 'minecraft:chest[facing=north]'],
                       [((0, 0, 0), 0, None), ((1, 0, 1), 2, nbt.compound({'id': nbt.string('minecraft:chest')})),
@@ -403,6 +415,26 @@ class TerrainHelperTest(unittest.TestCase):
         self.assertTrue(clipped and all(x <= 9 for x, _, _ in clipped))
         wide = compile_plan(plan([dict(op, points=[[0, 12, 3], [23, 12, 11]])]), w)
         self.assertEqual({z for x, _, z in wide if x == 0}, set(range(11, 14)))
+
+    def test_seal_closes_cliff_faces_in_hollow_columns_and_gaps_finds_them(self):
+        from mapforge import gaps
+        w = World('hollow')
+        for x in range(6):
+            top = 66 if x < 3 else 62  # a plateau of shell columns beside a low floor
+            for y in (range(top - 1, top + 1) if x < 3 else [top]):
+                w.set((x, y, 0), Cell('minecraft:grass_block' if y == top else 'minecraft:dirt'))
+        self.assertEqual([p for p in gaps.find_gaps(w) if p[0] == 2], [(2, 63, 0), (2, 64, 0)])
+        op = {'op': 'seal', 'min': [0, 0], 'max': [5, 0]}
+        self.assertEqual(validate(plan([op])), [])
+        self.assertTrue(any('seal needs min' in e for e in validate(plan([{'op': 'seal'}]))))
+        ch = compile_plan(plan([op]), w)
+        self.assertEqual({p for p in ch if p[0] == 2}, {(2, 63, 0), (2, 64, 0)})
+        self.assertEqual(ch[(2, 64, 0)][1], Cell('minecraft:dirt'))  # the block under the column's top
+        self.assertFalse(any(p[0] != 2 for p in ch))  # the low floor and the far columns are untouched
+        after = w.copy()
+        for pos, (_, cell, _) in ch.items():
+            after.set(pos, cell)
+        self.assertEqual(gaps.find_gaps(after), [])
 
     def test_helpers_obey_locks_protect_dry_run_and_rollback(self):
         w = ground()

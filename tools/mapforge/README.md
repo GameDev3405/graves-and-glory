@@ -22,11 +22,29 @@ python tools/mapforge export   --world WORLD.json --min X Y Z --max X Y Z --out 
 python tools/mapforge info     PIECE.nbt [--raw]
 python tools/mapforge render   WORLD.json --out OUT.png [--view top|iso] [--min X [Y] Z] [--max X [Y] Z] [--scale N]
                                [--no-grid] [--diff BEFORE.json | --undo UNDO.json] [--title T] [--report-unknown]
+python tools/mapforge gaps     WORLD.json [--min X Z] [--max X Z] [--limit N]
 python tools/mapforge colours  --jar minecraft-client.jar
 ```
 
 Exit codes: 0 ok, 1 invalid plan, 2 refused (locks, limits, pass order, section mismatch, rollback conflict, bad
 manifest or sign-off).
+
+## Surface-only maps (Kort, 2026-10-31)
+
+Kort's ruling: "We only need the top layer for maps, blocks aren't breakable so what's underneath doesn't matter, just
+make sure the top layer looks good and go from there." A map plan builds only what can be seen: the top layer plus a
+shallow fill wherever a gap, a cliff face or a cut bank would show. No solid interiors.
+
+- A column is its top block and a few blocks under it (Ironhold: 4 in all). Where a lower neighbour shows a cliff
+  face, the column reaches down to that neighbour's top. The `terrain` op takes an optional `floors` grid (same rows
+  and columns as `heights`; an integer y per column, null to use `floor`) so each column can start at its own height.
+- The `seal` helper runs after the water and roads have reshaped the ground and closes the gaps the shaping opened.
+- `gaps WORLD` is the check: it lists every air cell a column shows from outside (exit code 1 if any).
+- Walls, towers and structures are not hollowed by this rule: they are what the player sees. Keep fills tight: start a wall
+  `floor` at the ground it stands on, not at the world floor.
+- Per-plan cap: `limits.maxChangedBlocks` 150000 for a 64 x 64 section plan (surface-only plans run at about 20000;
+  the old solid plans reached 105000 in a section with a tall rim).
+- Sections already built solid are not rebuilt just to hollow them; the rule applies to new and reopened plans.
 
 ## Plan (`gg-mapforge-plan/1`)
 
@@ -97,7 +115,7 @@ or a diff with `--diff`/`--undo`.
 | `fill` | `min`, `max`, `block`, `shape` (`solid` default, `hollow` = shell with air inside, `outline` = shell only), `replace` (list) | box; with `replace`, only cells whose current block matches a name (`minecraft:grass_block`) or an exact state (`oak_log[axis=y]`) |
 | `clear` | `min`, `max` | box to air |
 | `structure` | `piece` (`camp/archive`, from `src/main/resources/data/gravesandglory/structures`) or `file` (relative to the plan), `at`, `rotation` (0/90/180/270), `includeAir` (default true) | places a structure file the way `Structures.place` does: the centre block (middle column of the footprint, ground layer) lands on `at`, the piece turns clockwise about it, air clears, structure void and missing cells keep the world; block entities are copied, entities are not placed |
-| `terrain` | `origin` [x,z], `base`, `floor`, `heights`, `surface`, `under`, `underDepth` (3), `core`, `clearTo` | heightmap stamp: `heights[row z][col x]` is an offset from `base` (null skips the column). Each column is filled from `floor` to `base+h`: `surface` on top, `under` for the next `underDepth` blocks, `core` below; air from the top up to `clearTo` |
+| `terrain` | `origin` [x,z], `base`, `floor`, `floors` (optional per-column grid), `heights`, `surface`, `under`, `underDepth` (3), `core`, `clearTo` | heightmap stamp: `heights[row z][col x]` is an offset from `base` (null skips the column). Each column is filled from `floor` to `base+h`: `surface` on top, `under` for the next `underDepth` blocks, `core` below; air from the top up to `clearTo` |
 
 **Terrain helpers** (`terrain.py`) are operations too, so locks, protect locks, limits, dry-run counts, apply and
 rollback treat them exactly like `fill`: a helper that would touch a denied or protected cell refuses the whole plan.
@@ -115,6 +133,7 @@ alone, `only` surface names the op may change. A block spec is a state or a weig
 | `wall` | `points` [[x,z(,top)]...], `thickness` (3), `top`, `floor`, `block`, `closed`, `merlons` | columns within thickness/2 of the polyline filled from floor to top (or each point's top, interpolated); `merlons` adds every other block on the edges |
 | `path` | `points` [[x,z(,y)]...], `width`, `falloff`, `y`, `surface`, `under`, `edge`, `edgeDensity` (0.6), `wobble`, `wobbleScale` (8) | road or causeway: core within width/2 surfaced and, with `y`, graded to it; the falloff band eases back to the ground (an embankment above it, a cutting below) and is speckled with `edge`; `wobble` makes the edges ragged |
 | `river` | `points` [[x,z(,width)]...], `width`, `depth` (2), `water`, `floor`, `bank` (0), `bankSurface`, `bed` (gravel), `faces`, `wobble`, `wobbleScale` | channel: bed `depth` below `water` at the centre line and 1 at the edge, water to `water`, air above; the next `bank` blocks slope down to the water (0 = a cut cliff, banks are only lowered); `faces` lines the exposed cliff and bank cells with `bankSurface` |
+| `seal` | `min`, `max` [x, z], `under` | surface-only maps: for each column whose ground top is above a neighbour's, fills the air cells between the lowest neighbour top and its own top with `under` (default the block under its top). Neighbours without ground are ignored; water is not ground, so a bank beside a river is sealed down to the bed |
 
 Dry-run prints, per operation, the changed blocks and the columns they lie in.
 
@@ -175,7 +194,7 @@ structure files.
 - `world.py` offline world (sparse cells, sha256 digest, JSON file, import from and export to structure files).
 - `plan.py` validation, compilation, locks, summary, apply, rollback. `terrain.py` the terrain helper operations. `manifest.py` map manifests: sections, pass
   order, protect locks, reviews, status. `cli.py` commands.
-- `render.py` top-down, isometric, diff and contact-sheet images (Pillow). `colours.py` and `colours.json` the block
+- `gaps.py` the surface-only gap check. `render.py` top-down, isometric, diff and contact-sheet images (Pillow). `colours.py` and `colours.json` the block
   colour table and its generator.
 - `samples/camp-map.json` sample manifest (two sections, protect boxes and a cylinder); `samples/camp-watchpost.json`
   a blockout plan for its section s0 on a flat 64x64 world.

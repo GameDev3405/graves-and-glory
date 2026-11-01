@@ -21,7 +21,14 @@ go. Field sections outside the base build their columns whole from y 57.
 Kort's rulings of 2026-10-30 on the first blockout: the inner ward is closed by inner curtain runs from the gate's ends
 to the river cliffs (the gate and the D4a postern are the only ways in); the river runs in a cut channel (water y 59,
 banks y 63) so it cannot be climbed out of; the Great Keep tower stands on the east bank, clear of the river. Ruling of
-2026-10-31: the river bends east around the keep court instead of running under it."""
+2026-10-31: the river bends east around the keep court instead of running under it.
+
+Surface-only rule (Kort, 2026-10-31: "We only need the top layer for maps, blocks aren't breakable so what's underneath
+doesn't matter"): plans build only what can be seen. A column is its top block and SHELL - 1 blocks under it
+(`shell_floor`), reaching down further only where a lower neighbour shows a cliff face; the `seal` helper, run after
+the water and roads have reshaped the ground, closes cut banks and steps the shaping opened. No solid interiors. The
+blockout sections already built were not rebuilt just to hollow them; the first section plans (cap 150000 each, written
+before this rule, solid from y 57) stay as signed history."""
 import hashlib
 import math
 import json
@@ -41,7 +48,9 @@ MAP = HERE.parent / 'manifest.json'
 WORK = ROOT / 'work/mapforge/ironhold'
 WORLD = WORK / 'ironhold.json'
 BASE_LO, BASE_HI = (-101, -52), (34, 83)  # E3..F4 plus a 4-block render margin
-FLOOR, GROUND = 57, 63  # terrain ops rebuild each column from y 57; field and fortress floor top y 63 (stand at 64)
+FLOOR, GROUND = 57, 63  # lowest y a column is built from; field and fortress floor top y 63 (stand at 64)
+SHELL = 4  # surface-only maps (Kort 2026-10-31): a column is its top block and SHELL - 1 blocks under it, no solid interior
+MAX_CHANGED = 150000  # per-plan change cap; surface-only section plans stay far under it
 
 
 # ---------------------------------------------------------------- noise
@@ -1327,6 +1336,9 @@ def features():
                            [-158, -52, 62], [-155, -60, 63], [-149, -66, 63], [-147, -72, 63]]), None))
     f += _trench105()
     f += _east_paths()
+    # -- surface-only: close the cliff faces, cut banks and steps the shaping opened in the hollow columns
+    f.append(({'op': 'seal', 'note': 'fill the gaps a cliff, cut bank or step would show (surface-only maps)'},
+              (-350, -250, 349, 249)))
     # the B deck goes down after the roads so the defenders' road meets its planks instead of paving them
     f.append(({'op': 'fill', 'note': 'B deck: spruce planks at 63 over the channel', 'min': [-5, 63, -12],
                'max': [5, 63, 12], 'block': W + 'spruce_planks'}, (-5, -12, 5, 12)))
@@ -1473,30 +1485,47 @@ REOPEN_RIM = ('2026-10-31 rim fix: the flank erodes (grass, mud and stone, clamp
               'stone west rim flat in this section; the rim is now massed in andesite and climbs to 82-88 as signed')
 
 
-def section_plan(m, sid, world):
-    s = mf.section(m, sid)
-    (x0, _, z0), (x1, _, z1) = mf.section_box(s)
+def shell_floor(x, z, top, low=FLOOR):
+    """Lowest y the column at (x, z) is built from (surface-only maps): SHELL blocks counting the top, deeper where a
+    lower neighbour (by the column description) shows a cliff face, never below low."""
+    nbrs = [c[0] for c in (column(x + 1, z), column(x - 1, z), column(x, z + 1), column(x, z - 1)) if c is not None]
+    return max(low, min(top - SHELL + 1, min(nbrs, default=top) - 1))
+
+
+def massing_ops(cols, what, extra=''):
+    """Terrain ops for columns {(x, z): (top, mat, clear, low)}, grouped by material and clearing, each column built
+    from its shell_floor up (a `floors` grid beside `heights`)."""
     groups = {}
-    for z in range(z0, z1 + 1):
-        for x in range(x0, x1 + 1):
-            c = column(x, z)
-            if c is None:
-                continue
-            top, (surface, under, depth, core), clear = c[:3]
-            floor = c[3] if len(c) > 3 else FLOOR  # the gorge builds from lower down
-            groups.setdefault((surface, under, depth, core, clear, floor), {})[(x, z)] = top
+    for (x, z), (top, mat, clear, low) in cols.items():
+        groups.setdefault((mat, clear), {})[(x, z)] = (top, low)
     ops = []
-    for (surface, under, depth, core, clear, floor), cols in sorted(groups.items(), key=lambda kv: (-len(kv[1]), kv[0][0])):
-        xs, zs = [p[0] for p in cols], [p[1] for p in cols]
+    for (mat, clear), g in sorted(groups.items(), key=lambda kv: (-len(kv[1]), kv[0][0][0])):
+        surface, under, depth, core = mat
+        xs, zs = [p[0] for p in g], [p[1] for p in g]
         gx0, gx1, gz0, gz1 = min(xs), max(xs), min(zs), max(zs)
-        heights = [[(cols[(x, z)] - GROUND) if (x, z) in cols else None for x in range(gx0, gx1 + 1)]
+        heights = [[(g[(x, z)][0] - GROUND) if (x, z) in g else None for x in range(gx0, gx1 + 1)]
                    for z in range(gz0, gz1 + 1)]
-        op = {'op': 'terrain', 'note': f'{surface.split(":")[1]} massing ({len(cols)} columns)',
-              'origin': [gx0, gz0], 'base': GROUND, 'floor': floor, 'surface': surface, 'under': under,
-              'underDepth': depth, 'core': core, 'heights': heights}
+        floors = [[shell_floor(x, z, g[(x, z)][0], g[(x, z)][1]) if (x, z) in g else None
+                   for x in range(gx0, gx1 + 1)] for z in range(gz0, gz1 + 1)]
+        op = {'op': 'terrain', 'note': f'{surface.split(":")[1]} {what} ({len(g)} columns){extra}',
+              'origin': [gx0, gz0], 'base': GROUND, 'floor': FLOOR, 'surface': surface, 'under': under,
+              'underDepth': depth, 'core': core, 'heights': heights, 'floors': floors}
         if clear is not None:
             op['clearTo'] = clear
         ops.append(op)
+    return ops
+
+
+def section_plan(m, sid, world):
+    s = mf.section(m, sid)
+    (x0, _, z0), (x1, _, z1) = mf.section_box(s)
+    cols = {}
+    for z in range(z0, z1 + 1):
+        for x in range(x0, x1 + 1):
+            c = column(x, z)
+            if c is not None:
+                cols[(x, z)] = (c[0], c[1], c[2], c[3] if len(c) > 3 else FLOOR)  # the gorge builds from lower down
+    ops = massing_ops(cols, 'massing')
     for op, region in features():
         c = _clip(op, region, (x0, z0, x1, z1))
         if c is not None:
@@ -1510,7 +1539,7 @@ def section_plan(m, sid, world):
                    'breakup) clipped to the section. Generated by docs/maps/ironhold/sections/make_blockout.py.',
         'section': sid, 'pass': 'blockout',
         'expectSection': mf.section_digests(m, world, {sid})[sid],
-        'limits': {'maxChangedBlocks': 250000},
+        'limits': {'maxChangedBlocks': MAX_CHANGED},
         'operations': ops,
     }
     if done:
@@ -1542,18 +1571,11 @@ def rulings_plan(m, sid, world):
                        if 'water' in world.get((x, y, z)).state})
     else:
         cols = [(x, z) for x in range(EAST_CORNERS[0][1] + 1, x1 + 1) for z in range(z0, z1 + 1) if 94 <= abs(z) <= 98]
-    groups = {}
+    ruled = {}
     for x, z in cols:
-        top, (surface, under, depth, core), _ = (62, GRASS, None) if sid == 'I1' else column(x, z)[:3]
-        groups.setdefault((surface, under, depth, core), {})[(x, z)] = top
-    ops = []
-    for (surface, under, depth, core), g in groups.items():
-        xs, zs = [p[0] for p in g], [p[1] for p in g]
-        ops.append({'op': 'terrain', 'note': f'{surface.split(":")[1]}: {why} ({len(g)} columns)',
-                    'origin': [min(xs), min(zs)], 'base': GROUND, 'floor': FLOOR, 'surface': surface, 'under': under,
-                    'underDepth': depth, 'core': core,
-                    'heights': [[(g[(x, z)] - GROUND) if (x, z) in g else None for x in range(min(xs), max(xs) + 1)]
-                                for z in range(min(zs), max(zs) + 1)]})
+        top, mat, _ = (62, GRASS, None) if sid == 'I1' else column(x, z)[:3]
+        ruled[(x, z)] = (top, mat, None, FLOOR)
+    ops = massing_ops(ruled, 'ruling', f': {why}')
     if sid in ('H2', 'H5'):
         zc = -96 if sid == 'H2' else 96
         ops.append({'op': 'breakup', 'note': 'grass worn along the new curtain foot', 'replace': [W + 'grass_block'],
