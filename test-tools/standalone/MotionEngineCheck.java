@@ -354,7 +354,11 @@ public final class MotionEngineCheck {
             right[3], left[3], front[2], back[2], heavy[0], light[0], heavy[0] / light[0], heavy[1], light[1], heavy[1] / light[1]);
     }
 
-    /** Every box corner of the rig, posed: how far the lowest one sits above the ground at y = 24 (px; negative is under it). */
+    /**
+     * Every box corner of the rig, posed: how far the lowest one sits above the ground at y = 24 (px; negative is under it). Less
+     * arms_folded (the illager fold): the client hides it whenever a clip keys the arms (TroopMotion.folds), which every death does,
+     * and tools/clips.py grounds the death clips without it (HIDDEN_IN_DEATH).
+     */
     static double lowest(Map<String, RigBone> rig, Map<String, double[]> pose) {
         JsonObject json;
         try { json = JsonParser.parseString(Files.readString(Path.of("test-tools/standalone/fixtures/clip_rig.json"))).getAsJsonObject(); }
@@ -362,6 +366,7 @@ public final class MotionEngineCheck {
         double low = Double.POSITIVE_INFINITY;
         for (var e : json.getAsJsonArray("bones")) {
             JsonObject b = e.getAsJsonObject();
+            if (b.get("name").getAsString().equals("arms_folded")) continue;
             for (var x : b.getAsJsonArray("boxes")) {
                 JsonObject box = x.getAsJsonObject();
                 double[] o = new double[3], z = new double[3];

@@ -38,6 +38,7 @@ INTERPOLATIONS = ('linear', 'catmullrom', 'bezier', 'step')
 CHANNELS = ('rotation', 'position')
 HANDLES = {'lt': (-0.1,) * 3, 'lv': (0,) * 3, 'rt': (0.1,) * 3, 'rv': (0,) * 3}   # Blockbench's defaults for a key's bezier handles
 GROUND_SLACK = 0.1
+HIDDEN_IN_DEATH = ('arms_folded',)
 LOOP_SLACK = 0.01
 TIME_SLACK = 1e-6          # float noise in a saved time
 BATTLE_MATH = 'src/main/java/gg/gravesandglory/BattleMath.java'
@@ -349,7 +350,10 @@ def check(clip, parsed, rig, family, variants, at):
         if parsed['loop']:
             raise ClipError(f'{at}: a death clip cannot loop; set its loop mode to play once or hold')
         ground = max(y for _, y in points(rig, {}))
-        bone, y = max(points(rig, sample(parsed, parsed['length'], wrap=False)), key=lambda p: p[1])
+        # arms_folded (the illager fold) is hidden while a clip keys the arms, which every death does (TroopMotion.folds),
+        # so its boxes neither prop the corpse up nor count as sinking
+        bone, y = max(((b, y) for b, y in points(rig, sample(parsed, parsed['length'], wrap=False)) if b not in HIDDEN_IN_DEATH),
+                      key=lambda p: p[1])
         if y > ground + GROUND_SLACK:
             raise ClipError(f'{at}: the last frame puts {bone} {y - ground:.2f} px below the ground')
     if parsed['loop']:
