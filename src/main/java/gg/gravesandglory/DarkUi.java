@@ -29,7 +29,7 @@ final class DarkUi {
     // Screen inks: the map screen's scrim, the entrance letterbox, the band over the battle preview and the chapter bar's track.
     static final int SCRIM=0xee0c1420, LETTERBOX=0xff080c13, PREVIEW_BAND=0xdd172126, TRACK=0xff29383c;
     /** Phase 2's troop page, cards and House tabs in CampScreen, under the UI standard (integration-0.5; the values Phase 2 drew): the rarity inks, the card's accent shade and fade, the dim of a troop not owned, the House tab fills and edge, and the opaque alpha a House accent takes. */
-    static final int RARE_INK=0xff8fb8d8, EPIC_INK=0xffc79be0, CARD_SHADE=0x33000000, CARD_FADE=0x00181820, CARD_DIM=0x99111119, TAB_CHOSEN=0xff30474a, TAB_FOCUS=0xff39464b, TAB_IDLE=0xff252f34, TAB_EDGE=0xff455156, OPAQUE=0xff000000;
+    static final int RARE_INK=0xff8fb8d8, EPIC_INK=0xffc79be0, CARD_SHADE=0x33000000, DROP_VEIL=0x77160c0d, DROP_DIM=0xaa160c0d, DROP_LIFT=0x66000000, CARD_FADE=0x00181820, CARD_DIM=0x99111119, TAB_CHOSEN=0xff30474a, TAB_FOCUS=0xff39464b, TAB_IDLE=0xff252f34, TAB_EDGE=0xff455156, OPAQUE=0xff000000;
     static final Identifier TITLE=new Identifier("gravesandglory","title"), FOCAL=new Identifier("gravesandglory","focal"), BODY=new Identifier("gravesandglory","body"), SMALL=new Identifier("gravesandglory","small");
     /** The Lato body style: body and label draw in it. */
     static final Style BODY_STYLE=Style.EMPTY.withFont(BODY);

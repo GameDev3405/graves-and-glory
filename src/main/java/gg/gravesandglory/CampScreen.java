@@ -242,7 +242,7 @@ final class CampScreen extends ArmyScreen {
         if(page.equals("recruit")&&recruit!=null){recruit.render(g);super.render(g,mx,my,delta);recruit.overlay(g);return;} // the Odds note lies over the widgets
         if(page.equals("troop")&&troopSheet!=null){troopSheet.render(g);super.render(g,mx,my,delta);return;}
         if(page.equals("lobby")&&lobby!=null){lobby.render(g);super.render(g,mx,my,delta);return;}
-        if(pages!=null&&pages.page.equals(page)){pages.render(g);super.render(g,mx,my,delta);return;}
+        if(pages!=null&&pages.page.equals(page)){pages.render(g);super.render(g,mx,my,delta);pages.overlay(g);return;}
         g.getMatrices().push();g.getMatrices().scale(scale,scale,1);DarkUi.background(g,width,height);DarkUi.crest(g,20,16,26,false);DarkUi.title(g,"BANNER CAMP",58,19,DarkUi.GOLD);
         line(g,header(),width-280,24,DarkUi.PAPER,260);
         int x=194,w=width-x-22;DarkUi.frame(g,x-12,79,w+24,height-139);line(g,page.equals("results")?"BATTLE REPORT":page.equals("troop")?"TROOP CARD":page.equals("train")?"TRAINING YARD":"A PLACE TO PREPARE",x,91,DarkUi.GOLD,w);
@@ -281,10 +281,10 @@ final class CampScreen extends ArmyScreen {
         if(card){RecruitPages.rollOn=page;RecruitPages.noticeShown=false;RecruitPages.rollCard(g,textRenderer,0,0,width,height);} // dims the whole screen, nav and header too: one focal point
         g.getMatrices().pop();
     }
-    @Override public boolean mouseClicked(double x,double y,int button){if(page.equals("troop")&&troopSheet==null&&CampaignClient.rollShowing()){CampaignClient.revealUntil=0;return true;}if(page.equals("recruit")&&recruit!=null&&recruit.clickCloses())return true;if(pages!=null&&pages.page.equals(page)){if(button==GLFW.GLFW_MOUSE_BUTTON_RIGHT&&pages.secondaryClick(x,y))return true;pages.clicked(x,y);}return super.mouseClicked(x/scale,y/scale,button);}
+    @Override public boolean mouseClicked(double x,double y,int button){if(page.equals("troop")&&troopSheet==null&&CampaignClient.rollShowing()){CampaignClient.revealUntil=0;return true;}if(page.equals("recruit")&&recruit!=null&&recruit.clickCloses())return true;if(pages!=null&&pages.page.equals(page)){if(button==GLFW.GLFW_MOUSE_BUTTON_RIGHT&&pages.secondaryClick(x,y))return true;pages.clicked(x,y);if(button==GLFW.GLFW_MOUSE_BUTTON_LEFT&&pages.press(x,y))return true;}return super.mouseClicked(x/scale,y/scale,button);}
     @Override public boolean mouseScrolled(double x,double y,double amount){if(page.equals("recruit")&&recruit!=null)return recruit.scrolled(amount);return super.mouseScrolled(x/scale,y/scale,amount);}
-    @Override public boolean mouseReleased(double x,double y,int button){return super.mouseReleased(x/scale,y/scale,button);}
-    @Override public boolean mouseDragged(double x,double y,int button,double dx,double dy){return super.mouseDragged(x/scale,y/scale,button,dx/scale,dy/scale);}
+    @Override public boolean mouseReleased(double x,double y,int button){boolean drop=pages!=null&&pages.page.equals(page)&&pages.released(x,y,button);return super.mouseReleased(x/scale,y/scale,button)||drop;}
+    @Override public boolean mouseDragged(double x,double y,int button,double dx,double dy){if(button==GLFW.GLFW_MOUSE_BUTTON_LEFT&&pages!=null&&pages.page.equals(page)&&pages.dragged(x,y))return true;return super.mouseDragged(x/scale,y/scale,button,dx/scale,dy/scale);}
     /** A key's press: the room code being written takes its keys first (so Backspace repeats as it is held); then a held key's repeats stop here (see held); then the page shown, whose keys count as held until released. */
     @Override public boolean keyPressed(int key,int scan,int mods){boolean onPages=pages!=null&&pages.page.equals(page);if(onPages&&pages.typing(key))return true;if(held.contains(key))return true;if(page.equals("home")&&home!=null&&home.keyPressed(key)){held.add(key);return true;}if(page.equals("recruit")&&recruit!=null&&recruit.keyPressed(key)){held.add(key);return true;}if(page.equals("troop")&&troopSheet!=null&&troopSheet.keyPressed(key)){held.add(key);return true;}if(page.equals("lobby")&&lobby!=null&&lobby.keyPressed(key)){held.add(key);return true;}if(onPages&&pages.keyPressed(key)){held.add(key);return true;}if(key==77)return true;return super.keyPressed(key,scan,mods);}
     @Override public boolean charTyped(char ch,int mods){if(pages!=null&&pages.page.equals(page)&&pages.charTyped(ch))return true;return super.charTyped(ch,mods);}

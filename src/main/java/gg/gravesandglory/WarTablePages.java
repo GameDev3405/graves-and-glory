@@ -222,6 +222,29 @@ final class WarTablePages {
     int builtContracts = -1, builtFriends = -1;
     /** Banner: what a seat click places, a troop id or EMPTY (the Clear tag). */
     String armed;
+    /** Banner drag and drop, all in GUI coordinates (as the mouse events come): the press that may become a drag (on a roll row, or on a
+     *  seat, whose click waits for the release), the troop and the seat it came from, the pointer, and where the card was grabbed (canvas px). */
+    boolean pressed, dragging, moved, dragFromRoll;
+    int pressSeat = -1, dragSeat = -1;
+    String dragTroop = "";
+    double pressX, pressY, curX, curY, grabX, grabY;
+    /** The banner the drag began on, and what every seat would do with a drop of the card (fromRoll or move), and the roll (unseat). */
+    List<String> dragBase = List.of();
+    final BannerDrop.Plan[] seatPlan = new BannerDrop.Plan[SEATS];
+    BannerDrop.Plan unseatPlan;
+    /** A drop in flight: the plan's commands go out one by one, each once the banner shows the step before; the banner it ends on
+     *  stands in for the server's while a plan has several steps, so the seats do not flicker. */
+    BannerDrop.Plan pend;
+    List<String> pendBase = List.of();
+    int pendStep;
+    long pendAt;
+    static List<String> optimistic;
+    /** The card's flight at the end of a drag: from the pointer to the seat it lands on, or back to where it was lifted (canvas px). */
+    long flyAt;
+    double flyFromX, flyFromY, flyToX, flyToY;
+    boolean flyBack;
+    String dropWhy = "";
+    static final int DRAG_START = 6, PEND_TICKS = 100, FLY_MS = 150;
     /** Friends: the first commander of the camp's list shown, the room code being written and whether it is being written. */
     int offset;
     String code = "";
@@ -240,6 +263,7 @@ final class WarTablePages {
         this.screen = screen;
         this.page = page;
         noticeSerialSeen = CampaignClient.noticeSerial;
+        optimistic = null;
         viewed = Math.max(0, Math.min(Spec.MAPS.length - 1, CampaignClient.map));
     }
 
@@ -304,6 +328,7 @@ final class WarTablePages {
             for (int i = 0; i < Spec.MAPS.length; i++) if (noticeText.equals(VOTE_SAVED + Spec.MAPS[i].name())) voted = i;
         }
         if (page.equals("chapter")) slide();
+        if (page.equals("banner")) dragTick();
         refresh();
     }
 
@@ -325,7 +350,8 @@ final class WarTablePages {
      *  track a page, as its arrows do. */
     boolean keyPressed(int key) {
         if (key == GLFW.GLFW_KEY_ESCAPE) {
-            if (typing) typing = false;
+            if (pressed || dragging) cancelDrag();
+            else if (typing) typing = false;
             else back();
             return true;
         }
@@ -374,6 +400,7 @@ final class WarTablePages {
     /** A click with the other mouse button: on a seat of the Banner it empties the seat. */
     boolean secondaryClick(double x, double y) {
         if (!page.equals("banner")) return false;
+        if (pressed || dragging) { cancelDrag(); return true; }
         for (int i = 0; i < SEATS; i++) {
             var b = buttons.get("seat-" + i);
             if (b != null && b.visible && b.active && b.overArt(x, y)) { place(i, EMPTY); return true; }
@@ -599,12 +626,14 @@ final class WarTablePages {
     }
     /** The troop a seat shows: a wide troop's later half shows the troop, an empty seat EMPTY. */
     static String drawnTroop(int i) {
-        var line = CampaignClient.profile.banner;
+        var line = shownLine();
         String id = i < line.size() ? line.get(i) : EMPTY;
         if (!id.equals(RosterMath.MARKER)) return id;
-        String head = line.get(unitSeat(i));
+        String head = line.get(BannerDrop.head(line, i));
         return RosterMath.MARKER.equals(head) ? EMPTY : head;
     }
+    /** The banner the seats show: the one a drop in flight ends on while it has steps to go, else the profile's. */
+    static List<String> shownLine() { return optimistic != null ? optimistic : CampaignClient.profile.banner; }
     /** Integration: the seats the banner fills (not empty, not a marker of a wide troop). */
     static int filled() { int n = 0; for (var id : CampaignClient.profile.banner) if (!id.equals(RosterMath.EMPTY) && !id.equals(RosterMath.MARKER)) n++; return n; }
 
@@ -713,6 +742,265 @@ final class WarTablePages {
     /** A seat click: the troop goes in the seat; emptying a later half of a wide troop empties the troop's own seat (the server repacks). */
     void place(int seat, String troop) { if (troop != null) send("slot:" + (EMPTY.equals(troop) ? unitSeat(seat) : seat) + ":" + troop); }
 
+    // ============================================================================================================ drag and drop
+
+    static BannerDrop.Rules dropRules() { return new BannerDrop.Rules(RosterMath.Catalog.fromSpec(), CampaignClient.profile.owned.keySet(), RosterMath.fieldableHouses()); }
+
+    /** A left press (GUI px) on the Banner page. A press on a seat is taken here: its click (place the armed troop) goes on the release,
+     *  so that a drag from an occupied seat does not first place the armed troop. A press on a roll row goes on to arm the row, and may
+     *  become a drag of that troop. Returns whether the press is taken. */
+    boolean press(double x, double y) {
+        if (!page.equals("banner") || dragging || !battleFree()) return false;
+        pressed = false; moved = false; pressSeat = -1;
+        for (int i = 0; i < SEATS; i++) {
+            var b = buttons.get("seat-" + i);
+            if (b == null || !b.visible || !b.active || !b.overArt(x, y)) continue;
+            pressed = true; pressSeat = i; pressX = x; pressY = y; curX = x; curY = y;
+            int[] box = b.canvasBox();
+            grabX = UiCanvas.toCanvas(x) - box[0]; grabY = UiCanvas.toCanvas(y) - box[1];
+            return true;
+        }
+        var roll = owned();
+        for (int i = 0; i < ROWS && i < roll.size(); i++) {
+            var b = buttons.get("row-" + i);
+            if (b == null || !b.visible || !b.active || !b.overArt(x, y)) continue;
+            pressed = true; pressX = x; pressY = y; curX = x; curY = y; dragFromRoll = true; dragTroop = roll.get(i).troopId(); dragSeat = -1;
+            int[] box = b.canvasBox();
+            grabX = UiCanvas.toCanvas(x) - (box[0] + 4); grabY = UiCanvas.toCanvas(y) - (box[1] + 4);
+            return false;
+        }
+        return false;
+    }
+
+    /** The pointer moved with the left button down (GUI px). Past DRAG_START canvas px the press becomes a drag: the troop's card is
+     *  lifted and every seat is judged for it. Returns whether the move is taken. */
+    boolean dragged(double x, double y) {
+        if (!pressed && !dragging) return false;
+        curX = x; curY = y;
+        if (dragging) return true;
+        if (Math.hypot(UiCanvas.toCanvas(x - pressX), UiCanvas.toCanvas(y - pressY)) < DRAG_START) return pressSeat >= 0;
+        moved = true;
+        if (pressSeat >= 0) { // a seated troop is lifted by any of its seats; an empty seat has nothing to lift
+            var line = CampaignClient.profile.banner;
+            if (pressSeat >= line.size() || line.get(pressSeat).equals(EMPTY) || line.get(pressSeat).equals(RosterMath.MARKER) && line.get(BannerDrop.head(line, pressSeat)).equals(EMPTY)) { pressed = false; pressSeat = -1; return true; }
+            dragFromRoll = false; dragSeat = BannerDrop.head(line, pressSeat); dragTroop = line.get(dragSeat);
+        }
+        flyAt = 0; dropWhy = "";
+        if (!classify()) { cancelDrag(); return true; }
+        dragging = true; pressed = false;
+        return true;
+    }
+
+    /** The button came up (GUI px). A drag drops its card: on a seat or, from a seat, on the roll. A press on a seat that never became
+     *  a drag clicks it now. Returns whether the release is taken. */
+    boolean released(double x, double y, int button) {
+        if (button != GLFW.GLFW_MOUSE_BUTTON_LEFT || !pressed && !dragging) return false;
+        curX = x; curY = y;
+        if (dragging) { dragging = false; pressed = false; pressSeat = -1; drop(x, y); return true; }
+        int seat = pressSeat;
+        pressed = false; pressSeat = -1;
+        if (seat < 0) return false;
+        var b = buttons.get("seat-" + seat);
+        if (!moved && b != null && b.visible && b.active && b.overArt(x, y)) {
+            b.playDownSound(MinecraftClient.getInstance().getSoundManager());
+            b.onPress();
+        }
+        return true;
+    }
+
+    /** Ends a press or a drag with nothing done: the card flies back to where it was lifted. */
+    void cancelDrag() {
+        if (dragging) fly(false, null);
+        dragging = false; pressed = false; pressSeat = -1; moved = false;
+    }
+
+    /** Judges every seat for the dragged troop against the banner as it is now; false when the banner has nothing to judge. */
+    boolean classify() {
+        dragBase = new ArrayList<>(CampaignClient.profile.banner);
+        if (dragBase.size() < SEATS || dragTroop.isEmpty()) return false;
+        var r = dropRules();
+        for (int s = 0; s < SEATS; s++) seatPlan[s] = dragFromRoll ? BannerDrop.fromRoll(dragBase, dragTroop, s, r) : BannerDrop.move(dragBase, dragSeat, s, r);
+        unseatPlan = dragFromRoll ? null : BannerDrop.unseat(dragBase, dragSeat, r);
+        return true;
+    }
+
+    /** The seat under a GUI point, 4 px of canvas slack round each (the seats are 8 apart), or -1. */
+    int seatAt(double x, double y) {
+        double cx = UiCanvas.toCanvas(x), cy = UiCanvas.toCanvas(y);
+        for (int i = 0; i < SEATS; i++) {
+            var b = buttons.get("seat-" + i);
+            if (b == null || !b.visible) continue;
+            int[] bx = b.canvasBox();
+            if (cx >= bx[0] - 4 && cy >= bx[1] - 4 && cx < bx[0] + bx[2] + 4 && cy < bx[1] + bx[3] + 4) return i;
+        }
+        return -1;
+    }
+
+    /** Whether a GUI point is on the roll's paper (the place a seated troop is dropped to take it off). */
+    boolean rollAt(double x, double y) {
+        var r = rectsDrawn.get("roll");
+        if (r == null) return false;
+        double cx = UiCanvas.toCanvas(x), cy = UiCanvas.toCanvas(y);
+        return cx >= r[0] && cy >= r[1] && cx < r[0] + r[2] && cy < r[1] + r[3];
+    }
+
+    /** What dropping the card at a GUI point would do against the banner now: the plan, or null when the point is no target. */
+    BannerDrop.Plan planAt(double x, double y) {
+        var line = new ArrayList<>(CampaignClient.profile.banner);
+        if (line.size() < SEATS) return null;
+        var r = dropRules();
+        int s = seatAt(x, y);
+        if (s >= 0) return dragFromRoll ? BannerDrop.fromRoll(line, dragTroop, s, r) : BannerDrop.move(line, dragSeat, s, r);
+        if (!dragFromRoll && rollAt(x, y)) return BannerDrop.unseat(line, dragSeat, r);
+        return null;
+    }
+
+    /** The card is let go at a GUI point: a legal drop sends its plan's commands, anything else snaps the card back. */
+    void drop(double x, double y) {
+        var plan = battleFree() ? planAt(x, y) : null;
+        if (plan == null || !plan.ok()) {
+            dropWhy = plan == null ? "" : plan.why();
+            if (!dropWhy.isEmpty()) { noticeText = dropWhy; noticeAt = ticks; }
+            fly(false, null);
+            return;
+        }
+        pend = plan; pendBase = new ArrayList<>(CampaignClient.profile.banner); pendStep = 0; pendAt = ticks;
+        optimistic = plan.commands().size() > 1 ? plan.result() : null;
+        int s = seatAt(x, y);
+        fly(true, s >= 0 ? buttons.get("seat-" + s) : null);
+        pump();
+    }
+
+    /** Sends the next command of the drop in flight once the banner shows the step before it; the drop ends when the banner shows
+     *  its result, or when the server has not answered in PEND_TICKS. */
+    void pump() {
+        if (pend == null) return;
+        var line = CampaignClient.profile.banner;
+        if (pendStep >= pend.commands().size() && line.equals(pend.result()) || ticks - pendAt > PEND_TICKS) { pend = null; optimistic = null; return; }
+        if (pendStep >= pend.commands().size()) return;
+        var expect = pendStep == 0 ? pendBase : pend.states().get(pendStep - 1);
+        if (line.equals(expect) && send(pend.commands().get(pendStep))) pendStep++;
+    }
+
+    void dragTick() {
+        pump();
+        if (!dragging) return;
+        var line = CampaignClient.profile.banner;
+        if (!battleFree() || !dragFromRoll && (dragSeat >= line.size() || !line.get(dragSeat).equals(dragTroop))) { cancelDrag(); return; }
+        if (!line.equals(dragBase) && !classify()) cancelDrag();
+    }
+
+    /** Whether a drag or a drop's flight is on screen. */
+    boolean dragShown() { return dragging || flyAt != 0 && System.nanoTime() - flyAt < FLY_MS * 1_000_000L; }
+
+    /** The card's flight: to the seat it lands on (land), or back to where it was lifted. */
+    void fly(boolean land, UiButton seat) {
+        flyFromX = UiCanvas.toCanvas(curX) - grabX; flyFromY = UiCanvas.toCanvas(curY) - grabY;
+        int[] to = null;
+        if (land && seat != null) to = seat.canvasBox();
+        else if (!land) {
+            var from = dragFromRoll ? null : buttons.get("seat-" + dragSeat);
+            if (from != null) to = from.canvasBox();
+            else if (dragFromRoll) {
+                var roll = owned();
+                for (int i = 0; i < roll.size(); i++) if (roll.get(i).troopId().equals(dragTroop)) {
+                    var row = buttons.get("row-" + i);
+                    if (row != null) { int[] bx = row.canvasBox(); to = new int[]{bx[0] + 4, bx[1] + 4}; }
+                }
+            }
+        }
+        if (to == null) { flyAt = 0; return; }
+        flyToX = to[0]; flyToY = to[1]; flyBack = !land; flyAt = System.nanoTime();
+    }
+
+    /** The troop's House colour (its accent), or brass. */
+    static int accentOf(String troop) {
+        for (var t : Spec.TROOPS) if (t.id().equals(troop)) { var h = ArmyCards.house(t); if (h != null) return DarkUi.opaque(h.accent()); }
+        return DarkUi.BRASS_HI;
+    }
+
+    /** A ring of `thick` px in `color` round the box, a dark line outside it so a House as bright as the parchment still reads. */
+    static void ring(DrawContext g, int x, int y, int w, int h, int color, int thick) {
+        for (int t = 0; t < thick; t++) g.drawBorder(x - 1 - t, y - 1 - t, w + 2 + 2 * t, h + 2 + 2 * t, color);
+        g.drawBorder(x - 1 - thick, y - 1 - thick, w + 2 + 2 * thick, h + 2 + 2 * thick, DarkUi.OAK0);
+    }
+
+    /** What the drag shows over the page and its widgets (CampScreen draws it after them): every seat judged for the card (a legal one
+     *  ringed in the troop's House colour, an illegal one dimmed), the seats a drop would fill under the pointer filled in that colour, the
+     *  card itself raised under the pointer with a word on what the drop would do, and the card's flight at the end. */
+    void overlay(DrawContext g) {
+        if (!page.equals("banner") || !dragShown()) return;
+        UiCanvas.begin(g);
+        try {
+            int acc = accentOf(dragTroop);
+            double gx, gy;
+            String word = "";
+            boolean legal = false;
+            if (dragging) {
+                gx = UiCanvas.toCanvas(curX) - grabX; gy = UiCanvas.toCanvas(curY) - grabY;
+                var here = planAt(curX, curY);
+                int hs = seatAt(curX, curY);
+                legal = here != null && here.ok();
+                var lifted = dragFromRoll ? List.<Integer>of() : BannerDrop.seatsOf(dragBase, dragSeat);
+                for (int i = 0; i < SEATS; i++) {
+                    var b = buttons.get("seat-" + i);
+                    if (b == null || !b.visible) continue;
+                    int[] bx = b.canvasBox();
+                    var p = seatPlan[i];
+                    if (lifted.contains(i)) { g.fill(bx[0], bx[1], bx[0] + SEAT, bx[1] + SEAT, DarkUi.DROP_VEIL); continue; }
+                    if (p != null && p.ok()) ring(g, bx[0], bx[1], SEAT, SEAT, (0xb0 << 24) | (acc & 0xffffff), 1);
+                    else g.fill(bx[0], bx[1], bx[0] + SEAT, bx[1] + SEAT, DarkUi.DROP_DIM);
+                }
+                if (legal && hs >= 0) for (int j : here.changed()) { // the seats the drop fills, under the pointer: filled and ringed brighter
+                    var b = buttons.get("seat-" + j);
+                    if (b == null) continue;
+                    int[] bx = b.canvasBox();
+                    g.fill(bx[0], bx[1], bx[0] + SEAT, bx[1] + SEAT, (0x55 << 24) | (acc & 0xffffff));
+                    ring(g, bx[0], bx[1], SEAT, SEAT, acc, 2);
+                }
+                var roll = rectsDrawn.get("roll");
+                if (!dragFromRoll && roll != null && unseatPlan != null && unseatPlan.ok()) { // a seated troop taken off by dropping it back on the roll
+                    boolean over = rollAt(curX, curY);
+                    if (over) g.fill(roll[0], roll[1], roll[0] + roll[2], roll[1] + roll[3], (0x30 << 24) | (acc & 0xffffff));
+                    ring(g, roll[0], roll[1], roll[2], roll[3], over ? acc : (0xb0 << 24) | (acc & 0xffffff), over ? 2 : 1);
+                }
+                if (here != null) word = here.ok() ? dropWord(hs) : here.why();
+            } else {
+                double t = Math.min(1, (System.nanoTime() - flyAt) / (FLY_MS * 1e6));
+                t = 1 - (1 - t) * (1 - t) * (1 - t);
+                gx = flyFromX + (flyToX - flyFromX) * t; gy = flyFromY + (flyToY - flyFromY) * t;
+            }
+            int x = (int) Math.round(gx), y = (int) Math.round(gy);
+            g.fill(x + 4, y + 6, x + SEAT + 4, y + SEAT + 6, DarkUi.DROP_LIFT); // the card lifted off the sheet
+            seat(g, "ghost", dragTroop, dragTroop, x, y, null);
+            ring(g, x, y, SEAT, SEAT, acc, 1);
+            if (dragging && !word.isEmpty()) ghostWord(g, x, y, word, legal);
+        } finally {
+            UiCanvas.end(g);
+        }
+    }
+
+    /** A word on what a legal drop does. */
+    String dropWord(int seat) {
+        if (seat < 0) return "Take off";
+        boolean occupied = !dragBase.get(seat).equals(EMPTY);
+        if (dragFromRoll) return occupied ? "Replace" : "Seat";
+        return occupied ? "Trade places" : "Move to the end";
+    }
+
+    /** A strip with a word beside the card (left of it when the right would leave the canvas). */
+    void ghostWord(DrawContext g, int x, int y, String word, boolean legal) {
+        var font = font();
+        var t = DarkUi.body(word);
+        int w = font.getWidth(t) + 10, tx = x + SEAT + 6;
+        if (tx + w > UiCanvas.width() - 12) tx = x - 6 - w;
+        int ty = y + (SEAT - 13) / 2;
+        g.fill(tx, ty, tx + w, ty + 13, DarkUi.PREVIEW_BAND);
+        g.drawText(font, t, tx + 5, ty + 2, legal ? DarkUi.IVORY : DarkUi.ALARM_TEXT, false);
+        rectsDrawn.put("ghost-word", new int[]{tx, ty, w, 13});
+        textsDrawn.put("ghost-word", word);
+    }
+
     void banner(DrawContext g) {
         int[] ro = col(C_ROLL), sh = col(C_SHEET), cl = col(C_CLASS);
         int ox = ro[0], oy = ro[1];
@@ -798,10 +1086,10 @@ final class WarTablePages {
         rectsDrawn.put("seated", new int[]{x + BANNER_PAPER_X + BANNER_PAPER_W - sw, hy, sw, 9});
         g.drawText(font, DarkUi.body("Front"), x + 16, oy + SEAT_Y + 19, DarkUi.SEPIA, false);
         g.drawText(font, DarkUi.body("Rear"), x + 16, oy + SEAT_Y + 3 * SEAT_STEP + 19, DarkUi.SEPIA, false);
-        var line = CampaignClient.profile.banner;
+        var line = shownLine();
         for (int i = 0; i < SEATS; i++) {
             String id = i < line.size() ? line.get(i) : EMPTY, label = null;
-            if (id.equals(RosterMath.MARKER)) { int u = unitSeat(i); label = (i - u + 1) + " of " + weight(line.get(u)); }
+            if (id.equals(RosterMath.MARKER)) { int u = BannerDrop.head(line, i); label = (i - u + 1) + " of " + weight(line.get(u)); }
             else if (!id.equals(EMPTY) && weight(id) > 1) label = "1 of " + weight(id);
             seat(g, "seat-" + i, id, drawnTroop(i), ox + SEAT_X + SEAT_STEP * (i % 5), oy + SEAT_Y + SEAT_STEP * (i / 5), label); // a wide troop's later half draws the troop and its place in it
         }
