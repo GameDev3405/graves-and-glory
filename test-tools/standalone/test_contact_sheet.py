@@ -28,7 +28,8 @@ def manifest(parts):
                   'plants': [{'foot': 'right', 'startFrame': 3, 'startServerTick': 3, 'frames': 9, 'slideBlocks': 0.01, 'enginePlantWeightMean': 1.0}]}],
         'largestJumpPerTransition': {'stance-idle-to-run': {'event': 'stance run', 'largestStepDegPerTick': 30.0, 'largestStepFrame': 12, 'largestBoneThere': 'armR',
                                                             'worstBone': 'armR', 'worstBoneDegPerTick': 21.5, 'worstBoneFrame': 12, 'largestSecondDiff': 9.0,
-                                                            'ratioToBaseline': 2.0, 'ratioToAuthored': 0.8, 'flagged': False}},
+                                                            'ratioToBaseline': 2.0, 'ratioToAuthored': 0.8, 'flagged': False,
+                                                            'stepRatioToAuthored': 1.07, 'boneRatioToAuthored': 0.93, 'authoredRef': 'overhead x1.05'}},
         'hitSweep': [{'cell': 'hs-head-front-2', 'sumDegPerTick': 40.0, 'worstBone': 'head', 'worstBoneDegPerTick': 33.0, 'worstBoneFrame': 24, 'playedClips': ['hit_head']},
                      {'cell': 'hs-body-back-0', 'sumDegPerTick': 10.0, 'worstBone': 'body', 'worstBoneDegPerTick': 5.0, 'worstBoneFrame': 22, 'playedClips': []}],
         'transitions': [{'name': 'novelty-idle', 'frames': 380, 'noveltyFrames': [{'frame': 120, 'kind': 1}], 'playedClips': ['idle', 'idle_novelty']}],
@@ -81,6 +82,11 @@ class RepoDocGate(unittest.TestCase):
         self.assertIn('Worst cell: hs-head-front-2, head 33.0 deg/tick at f024', run_doc)
         self.assertIn('novelty seen on 1 frames (first at f120)', run_doc)
         self.assertIn('guard shuffle', run_doc)
+
+    def test_transitions_table_reports_steps_over_the_played_clips_authored_peaks(self):
+        # Task 16 P1: the step and the worst bone over the authored peaks of the clips played in the window, never n/a when the grade gave one
+        _, _, _, run_doc, _ = self.run_main(['solo'])
+        self.assertIn('| 1.07 | 0.93 | overhead x1.05 |', run_doc)
 
 
 if __name__ == '__main__':

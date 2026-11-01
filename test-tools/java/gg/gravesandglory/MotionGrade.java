@@ -175,7 +175,7 @@ final class MotionGrade extends Phase2Checks.Stage {
     int seedsChecked, framingChecked; double motionLeast = Double.MAX_VALUE; String motionLeastClip = "";
     Process py; int pyExit = -99; String pyWhy = "";
     // per-pass capture records (unit 2)
-    final List<float[]> trPose = new ArrayList<>(); final List<Double> trNow = new ArrayList<>(); final List<Boolean> trFresh = new ArrayList<>(); final List<Long> trWorld = new ArrayList<>();
+    final List<float[]> trPose = new ArrayList<>(); final List<Map<String, Double>> trRef = new ArrayList<>(); final List<Double> trNow = new ArrayList<>(); final List<Boolean> trFresh = new ArrayList<>(); final List<Long> trWorld = new ArrayList<>();
     final List<String> trBones = new ArrayList<>();
     int levelAt = -1; String levelName;
 
@@ -1046,10 +1046,13 @@ final class MotionGrade extends Phase2Checks.Stage {
     /**
      * R72: per drawn frame, each bone's rotation change (degrees, the three angles' absolute changes summed) normalised to one tick of
      * engine time; the sum over bones, the largest bone and the largest pivot move (px); and the second difference (summed absolute
-     * change of every angle's per-tick change, degrees per tick squared). Each event's window (E-10 to E+10) gives its largest step
-     * and second difference against the p90 of the second difference outside every window; flagged above 3 times that and 10.
+     * change of every angle's per-tick change, degrees per tick squared). Each event's window (StepWindows: E-10 to E+10, cut so no two
+     * windows share a frame) gives its largest step and second difference against the p90 of the second difference outside every
+     * window; flagged above 3 times that and 10. Task 16 P1: each window also gives its steps over the authored peaks of the clips the
+     * engine's tracks played in it, at the gains they played at (refs: per frame, clip key to gain), else of the whole family at its
+     * largest gains, so no transition prints its ratio as n/a.
      */
-    JsonObject delta(List<float[]> poses, List<Double> nows, int[] ev, String[] evName, String refClip) {
+    JsonObject delta(List<float[]> poses, List<Double> nows, int[] ev, String[] evName, List<Map<String, Double>> refs) {
         int n = poses.size(); double[] sum = new double[n], mb = new double[n], tr = new double[n], acc = new double[n]; String[] mbName = new String[n];
         List<String> bones = model.boneOrder(); double[] prevD = null;
         for (int k = 1; k < n; k++) {
@@ -1068,38 +1071,78 @@ final class MotionGrade extends Phase2Checks.Stage {
         List<Double> base = new ArrayList<>(); for (int k = 2; k < n; k++) if (!inWin[k]) base.add(acc[k]);
         if (base.size() < 10) { base.clear(); for (int k = 2; k < n; k++) base.add(acc[k]); }
         java.util.Collections.sort(base); double p90 = base.isEmpty() ? 0 : base.get(Math.min(base.size() - 1, (int) Math.floor(base.size() * 0.9)));
-        // D3: the clip's own authored peaks (its poses sampled every tick), so a fast authored action is not flagged as a pop
-        double refBone = 0, refAcc = 0, refSum = 0;
-        if (refClip != null && fam.all().containsKey(refClip)) {
-            Clip rc = fam.all().get(refClip); double[] pd = null; float[] pp = null;
-            for (double t = 0; t <= rc.length() + 1e-9; t += 0.05) {
-                float[] cur = want(model, refClip, Math.min(t, rc.length()), shieldTroop); double[] d = new double[cur.length / 6 * 3];
-                if (pp != null && pp.length == cur.length) {
-                    double sm = 0; for (int i = 0; i < cur.length / 6; i++) { double a = 0; for (int ch = 0; ch < 3; ch++) { double v = MathHelper.wrapDegrees(Math.toDegrees(cur[i * 6 + 3 + ch] - pp[i * 6 + 3 + ch])); d[i * 3 + ch] = v; a += Math.abs(v); } sm += a; refBone = Math.max(refBone, a); }
-                    refSum = Math.max(refSum, sm);
-                    if (pd != null) { double q = 0; for (int i = 0; i < d.length; i++) q += Math.abs(d[i] - pd[i]); refAcc = Math.max(refAcc, q); }
-                    pd = d;
-                }
-                pp = cur;
-            }
-        }
-        var j = new JsonObject(); j.addProperty("authoredPeakSumDegPerTick", r4(refSum)); j.addProperty("authoredPeakBoneDegPerTick", r4(refBone)); j.addProperty("authoredPeakSecondDiff", r4(refAcc));
+        // D3: the played clips' own authored peaks (their poses sampled every tick), so a fast authored action is not flagged as a pop
+        StringBuilder allName = new StringBuilder(); double[] all = authoredRef(refs, 1, n - 1, allName);
+        var j = new JsonObject(); j.addProperty("authoredRef", allName.toString()); j.addProperty("authoredPeakSumDegPerTick", r4(all[0])); j.addProperty("authoredPeakBoneDegPerTick", r4(all[1])); j.addProperty("authoredPeakSecondDiff", r4(all[2]));
         j.add("sumDegPerTick", nums(sum)); j.add("maxBoneDegPerTick", nums(mb)); j.add("maxPivotPxPerTick", nums(tr)); j.add("secondDiffDegPerTick2", nums(acc));
-        j.addProperty("baselineSecondDiffP90", r4(p90)); j.addProperty("flagRule", "second difference above 3 x the p90 outside the event windows, above 10 degrees per tick squared, and (for a clip) above 1.2 x the clip's own authored peak second difference; largestStepDegPerTick is the SUM over bones, worstBone* is the single worst bone in the window"); j.addProperty("windowRule", "an event owns frames E-10 to E+10, cut where the previous event's frames end and the next event's frames begin (frame k shows events fired after frames below k)");
-        var w = new JsonArray(); JsonObject largest = null; double big = -1;
+        j.addProperty("baselineSecondDiffP90", r4(p90)); j.addProperty("flagRule", "second difference above 3 x the p90 outside the event windows, above 10 degrees per tick squared, and (when clips played in the window) above 1.2 x their authored peak second difference; largestStepDegPerTick is the SUM over bones, worstBone* is the single worst bone in the window; stepRatioToAuthored and boneRatioToAuthored are those over the authored peaks (sum over bones, worst bone) of the clips the engine's tracks played in the window at their gains, else of the whole family at its largest gains (authoredRef names which)");
+        j.addProperty("windowRule", "an event owns frames E-10 to E+10, cut so no two windows share a frame: it starts after the previous event's window ends and ends where the next event's frames begin (frame k shows events fired after frames below k)");
+        var w = new JsonArray(); JsonObject largest = null; double big = -1; int[][] win = StepWindows.windows(ev, n, DENSE);
         for (int q = 0; q < ev.length; q++) {
-            // frame k can show the events fired after frames below k, so a window ends where the next event's frames begin and starts after the previous event's
-            int e = ev[q], lo = Math.max(1, Math.max(e - DENSE, q > 0 ? ev[q - 1] + 1 : 0)), hi = Math.min(n - 1, Math.min(e + DENSE, q + 1 < ev.length ? ev[q + 1] : Integer.MAX_VALUE)), at = lo, aa = lo; double ms = -1, ma = -1;
+            int e = ev[q], lo = win[q][0], hi = win[q][1], at = lo, aa = lo; double ms = -1, ma = -1;
             for (int k = lo; k <= hi; k++) { if (sum[k] > ms) { ms = sum[k]; at = k; } if (acc[k] > ma) { ma = acc[k]; aa = k; } }
             int wb = lo; for (int k = lo; k <= hi; k++) if (mb[k] > mb[wb]) wb = k;
+            StringBuilder rn = new StringBuilder(); double[] ref = authoredRef(refs, lo, hi, rn); boolean played = ref[3] == 0;
             var x = new JsonObject(); x.addProperty("worstBone", mbName[wb] == null ? "" : mbName[wb]); x.addProperty("worstBoneDegPerTick", r4(mb[wb])); x.addProperty("worstBoneFrame", wb); x.addProperty("event", evName[q]); x.addProperty("afterFrame", e); x.addProperty("window", lo + "-" + hi);
             x.addProperty("largestStepDegPerTick", r4(ms)); x.addProperty("largestStepFrame", at); x.addProperty("largestBoneThere", mbName[at] == null ? "" : mbName[at]); x.addProperty("largestBoneDegPerTick", r4(mb[at]));
             x.addProperty("largestSecondDiff", r4(ma)); x.addProperty("largestSecondDiffFrame", aa); x.addProperty("ratioToBaseline", r4(ma / Math.max(p90, 1e-6)));
-            x.addProperty("flagged", ma > 3 * p90 && ma > 10 && ma > 1.2 * refAcc); x.addProperty("ratioToAuthored", refAcc > 0 ? r4(ma / refAcc) : -1); w.add(x);
+            x.addProperty("authoredRef", rn.toString()); x.addProperty("authoredPeakSumDegPerTick", r4(ref[0])); x.addProperty("authoredPeakBoneDegPerTick", r4(ref[1])); x.addProperty("authoredPeakSecondDiff", r4(ref[2]));
+            x.addProperty("stepRatioToAuthored", r4(StepWindows.ratio(ms, ref[0]))); x.addProperty("boneRatioToAuthored", r4(StepWindows.ratio(mb[wb], ref[1])));
+            x.addProperty("flagged", ma > 3 * p90 && ma > 10 && (!played || ma > 1.2 * ref[2])); x.addProperty("ratioToAuthored", r4(StepWindows.ratio(ma, ref[2]))); w.add(x);
             if (ms > big) { big = ms; largest = x; }
         }
         j.add("windows", w); if (largest != null) j.add("largestJump", largest);
         return j;
+    }
+    /** D3: a clip's own authored peaks at gain 1 (its poses as the model draws them, sampled every tick): {sum over bones, worst bone, second difference}. */
+    final Map<String, double[]> authoredPeaks = new HashMap<>();
+    double[] authoredPeaks(String key) {
+        double[] got = authoredPeaks.get(key); if (got != null) return got;
+        Clip rc = fam.all().get(key); double refBone = 0, refAcc = 0, refSum = 0; double[] pd = null; float[] pp = null;
+        for (double t = 0; t <= rc.length() + 1e-9; t += 0.05) {
+            float[] cur = want(model, key, Math.min(t, rc.length()), shieldTroop); double[] d = new double[cur.length / 6 * 3];
+            if (pp != null && pp.length == cur.length) {
+                double sm = 0; for (int i = 0; i < cur.length / 6; i++) { double a = 0; for (int ch = 0; ch < 3; ch++) { double v = MathHelper.wrapDegrees(Math.toDegrees(cur[i * 6 + 3 + ch] - pp[i * 6 + 3 + ch])); d[i * 3 + ch] = v; a += Math.abs(v); } sm += a; refBone = Math.max(refBone, a); }
+                refSum = Math.max(refSum, sm);
+                if (pd != null) { double q = 0; for (int i = 0; i < d.length; i++) q += Math.abs(d[i] - pd[i]); refAcc = Math.max(refAcc, q); }
+                pd = d;
+            }
+            pp = cur;
+        }
+        got = new double[]{refSum, refBone, refAcc}; authoredPeaks.put(key, got); return got;
+    }
+    /**
+     * Task 16 P1: the authored reference of frames lo to hi (and the frame before, whose pose the first step leaves): the largest
+     * authored peaks, each times its gain, of the clips played there; none played, every clip of the family at the largest gain the
+     * engine plays its kind at (MotionEngine's ATTACK_GAIN, HIT_GAIN, DEATH_STEP_GAIN, 1 for a stance). {sum, bone, second diff, 1 if family}.
+     */
+    double[] authoredRef(List<Map<String, Double>> refs, int lo, int hi, StringBuilder name) {
+        Map<String, Double> u = new TreeMap<>();
+        if (refs != null) for (int k = Math.max(0, lo - 1); k <= Math.min(refs.size() - 1, hi); k++) { var r = refs.get(k); if (r != null) for (var e : r.entrySet()) if (fam.all().containsKey(e.getKey())) u.merge(e.getKey(), e.getValue(), Math::max); }
+        boolean family = u.isEmpty(); var f2 = fam.family();
+        if (family) for (var e : fam.all().entrySet()) {
+            Clip c = e.getValue(); double g = 1;
+            if (f2.attacks().contains(c)) g = MotionEngine.ATTACK_GAIN;
+            for (var l : f2.hits().values()) if (l.contains(c)) g = MotionEngine.HIT_GAIN;
+            for (var l : f2.hitsMirror().values()) if (l.contains(c)) g = MotionEngine.HIT_GAIN;
+            for (var l : f2.deaths().values()) if (l.contains(c)) g = MotionEngine.DEATH_STEP_GAIN;
+            u.put(e.getKey(), g);
+        }
+        double[] o = {0, 0, 0, family ? 1 : 0};
+        for (var e : u.entrySet()) { double[] a = authoredPeaks(e.getKey()); for (int i = 0; i < 3; i++) o[i] = Math.max(o[i], a[i] * e.getValue()); }
+        if (family) name.append("family, every clip at its largest gain");
+        else for (var e : u.entrySet()) name.append(name.length() > 0 ? ", " : "").append(e.getKey()).append(" x").append(r4(e.getValue()));
+        return o;
+    }
+    /** Task 16 P1: the clips this troop's engine tracks play this frame, by key (a mirrored hit by its source), at their gains. */
+    Map<String, Double> refsOf(Ent en) {
+        Map<String, Double> o = new LinkedHashMap<>(); if (en == null) return o; var f2 = fam.family();
+        for (var p : en.tracks) {
+            Clip c = p.clip();
+            for (var e : f2.hitsMirror().entrySet()) for (int i = 0; i < e.getValue().size(); i++) if (e.getValue().get(i) == c && f2.hits().get(e.getKey()) != null && i < f2.hits().get(e.getKey()).size()) c = f2.hits().get(e.getKey()).get(i);
+            String k = keyOf(c); if (fam.all().containsKey(k)) o.merge(k, Math.abs(p.gain()), Math::max);
+        }
+        return o;
     }
     static JsonArray nums(double[] v) { var a = new JsonArray(); for (double x : v) a.add(Math.round(x * 100) / 100.0); return a; }
 
@@ -1129,7 +1172,7 @@ final class MotionGrade extends Phase2Checks.Stage {
                 inject(c, s.pre());
                 if (wait < SETTLE || !shotReady(c, s.name())) return;
                 // H1: hit variants are seeded per unit now, so the cast plays a natural spread (no tick to wait for)
-                ps = 2; f = 0; levelAt = -1; capMark = files.size(); trPose.clear(); trNow.clear(); trFresh.clear(); trWorld.clear(); lastSnapN = LAST == null ? -1 : LAST.n;
+                ps = 2; f = 0; levelAt = -1; capMark = files.size(); trPose.clear(); trRef.clear(); trNow.clear(); trFresh.clear(); trWorld.clear(); lastSnapN = LAST == null ? -1 : LAST.n;
             }
             case 2 -> stateFrame(c, s, mode);
             default -> {}
@@ -1146,7 +1189,7 @@ final class MotionGrade extends Phase2Checks.Stage {
             JsonArray m = new JsonArray(); if (snap != null) closeMarks(m, snap, cr[0], 1); j.add("marks", m);
             if (en != null) { j.addProperty("engineNow", en.now); j.addProperty("deathTime", en.deathTime); }
             save(c, String.format(Locale.ROOT, "%scapture/f%03d.png", dir, f), cr[0], 1, j);
-            trPose.add(en == null ? null : en.pose); trNow.add(en == null ? Double.NaN : en.now); trFresh.add(snap != null); trWorld.add(world);
+            trPose.add(en == null ? null : en.pose); trRef.add(refsOf(en)); trNow.add(en == null ? Double.NaN : en.now); trFresh.add(snap != null); trWorld.add(world);
             if (still) { var k = entry("close", s.clip(), s.name(), "close", f, -1, f / 20.0); k.addProperty("worldTime", world); k.add("marks", m.deepCopy()); save(c, String.format(Locale.ROOT, "%sclose_f%03d.png", dir, f), cr[0], 1, k); }
         } else if (still || f == levelAt) {
             boolean level = f == levelAt; String kind = level ? "level" : mode == L_WIDE ? "crowd" : "formed"; int at = level ? f - 1 : f;
@@ -1239,7 +1282,8 @@ final class MotionGrade extends Phase2Checks.Stage {
     void closeDone(St s) {
         int[] ev = closeEvents(s); String[] en = ev.length == 3 ? new String[]{"event 1", "clip ends, back to the stance", "event 2"} : s.twice() ? new String[]{"event 1", "event 2"} : new String[]{"event"};
         var tm = judge(s.name(), CAPTURE, ev); tm.addProperty("retries", capTry); capTry = 0;
-        var d = delta(new ArrayList<>(trPose), new ArrayList<>(trNow), ev, en, s.clip());
+        List<Map<String, Double>> rf = new ArrayList<>(); for (var r : trRef) { Map<String, Double> o = new LinkedHashMap<>(r); o.merge(s.clip(), 1.0, Math::max); rf.add(o); }
+        var d = delta(new ArrayList<>(trPose), new ArrayList<>(trNow), ev, en, rf);
         for (var x : statesJson) { var j = x.getAsJsonObject(); if (j.get("name").getAsString().equals(s.name())) { j.add("delta", d); var a = new JsonArray(); for (int e : ev) a.add(e); j.add("denseWindowsAfter", a); j.add("timing", tm); break; } }
     }
     /** R81: the timing bound of a close capture: every frame newly drawn, at most this many world steps not exactly 1 tick, none in a dense window. */
@@ -1304,7 +1348,7 @@ final class MotionGrade extends Phase2Checks.Stage {
                 boolean ok = placed(c, L_CLOSE, cell, 0) && camOk(); held = ok ? held + 1 : 0;
                 if (held >= 3 || wait > 600) { if (seedGen != castGen) seeds(c, t.name() + "'s fresh cast", false); tph = 1; wait = 0; }
             }
-            case 1 -> { inject(c, curStance); if (wait < SETTLE || !shotReady(c, t.name())) return; tph = 2; f = 0; capMark = files.size(); trNov.clear(); trClip.clear(); trPose.clear(); trNow.clear(); trFresh.clear(); trWorld.clear(); lastSnapN = LAST == null ? -1 : LAST.n; }
+            case 1 -> { inject(c, curStance); if (wait < SETTLE || !shotReady(c, t.name())) return; tph = 2; f = 0; capMark = files.size(); trNov.clear(); trClip.clear(); trPose.clear(); trRef.clear(); trNow.clear(); trFresh.clear(); trWorld.clear(); lastSnapN = LAST == null ? -1 : LAST.n; }
             case 2 -> {
                 inject(c, curStance);
                 Snap snap = fresh(); long world = c.world.getTime(); int[][] cr = closeCrops.get(cell);
@@ -1313,7 +1357,7 @@ final class MotionGrade extends Phase2Checks.Stage {
                 JsonArray m = new JsonArray(); if (snap != null) closeMarks(m, snap, cr[0], 1); j.add("marks", m);
                 if (en != null) { j.addProperty("engineNow", en.now); j.addProperty("deathTime", en.deathTime); j.addProperty("stance", curStance); }
                 save(c, String.format(Locale.ROOT, "transitions/%s/f%03d.png", t.name(), f), cr[0], 1, j);
-                trPose.add(en == null ? null : en.pose); trNow.add(en == null ? Double.NaN : en.now); trFresh.add(snap != null); trWorld.add(world);
+                trPose.add(en == null ? null : en.pose); trRef.add(refsOf(en)); trNow.add(en == null ? Double.NaN : en.now); trFresh.add(snap != null); trWorld.add(world);
                 trNov.add(en == null ? -1 : en.novKind); trClip.add(en == null || en.tracks.isEmpty() ? "" : keyOf(en.tracks.get(0).clip()));
                 for (Object[] ev : t.evs()) if ((int) ev[0] == f) fireTr(c, (String) ev[1], (String) ev[2]);
                 f++;
@@ -1324,7 +1368,7 @@ final class MotionGrade extends Phase2Checks.Stage {
                     var tm = judge(t.name(), tf(t), ev); tm.addProperty("retries", capTry); capTry = 0;
                     var x = new JsonObject(); x.addProperty("name", t.name()); x.addProperty("title", t.title()); x.addProperty("preStance", t.pre()); x.addProperty("cell", cell);
                     var ea = new JsonArray(); for (Object[] e2 : t.evs()) { var o = new JsonObject(); o.addProperty("afterFrame", (int) e2[0]); o.addProperty("what", (String) e2[1]); o.addProperty("arg", (String) e2[2]); ea.add(o); } x.add("events", ea);
-                    x.add("delta", delta(new ArrayList<>(trPose), new ArrayList<>(trNow), ev, en2, null)); x.add("timing", tm); x.addProperty("frames", tf(t));
+                    x.add("delta", delta(new ArrayList<>(trPose), new ArrayList<>(trNow), ev, en2, new ArrayList<>(trRef))); x.add("timing", tm); x.addProperty("frames", tf(t));
                     var pc = new JsonArray(); var seen = new java.util.LinkedHashSet<>(trClip); seen.remove(""); for (String k : seen) pc.add(k); x.add("playedClips", pc);
                     var nv = new JsonArray(); for (int k = 0; k < trNov.size(); k++) if (trNov.get(k) >= 0) { var o = new JsonObject(); o.addProperty("frame", k); o.addProperty("kind", trNov.get(k)); nv.add(o); } x.add("noveltyFrames", nv);
                     transJson.add(x);

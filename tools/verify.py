@@ -69,6 +69,7 @@ def run(args):
         checks=sorted((ROOT/'test-tools/standalone').glob('*Check.java'))
         sources=[ROOT/'src/main/java/gg/gravesandglory'/(n+'.java') for n in names]
         sources+=[ROOT/'test-tools/java/gg/gravesandglory/SoleSlide.java']  # pure geometry the motion grade shares with SoleSlideCheck
+        sources+=[ROOT/'test-tools/java/gg/gravesandglory/StepWindows.java']  # the grade's event windows and authored ratios, pinned by StepWindowsCheck
         game_guard()
         step('java-compile',[jdk/'bin/javac','--release','17','-cp',gson[0],'-d',classes,*sources,*checks])
         for test in checks: step(test.stem,[jdk/'bin/java','-cp',str(classes)+os.pathsep+str(gson[0]),'gg.gravesandglory.'+test.stem])

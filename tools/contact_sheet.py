@@ -139,13 +139,21 @@ def template(m, run_rel):
                         x["startFrame"], x["startServerTick"], x["frames"], x["slideBlocks"], x.get("enginePlantWeightMean", 0)) for x in pl)))
         L.append("")
     if m.get("largestJumpPerTransition"):
-        L += ["Largest step is the SUM over all bones; the worst-bone column is the single bone that moved most in the event window (R93 D3).", "",
-              "| Transition | Event | Largest step, sum over bones (deg/tick) at frame | Worst bone (deg/tick) | Largest 2nd difference | Ratio to baseline p90 | Ratio to authored | Flagged |", "|---|---|---|---|---|---|---|---|"]
+        L += ["Largest step is the SUM over all bones; the worst-bone column is the single bone that moved most in the event window (R93 D3).",
+              "Ratio to authored is the 2nd difference over the authored peak's; step and worst bone over authored are the largest step and the worst bone",
+              "over the authored peaks (sum over bones, single bone) of the clips the engine played in the window at their gains, else of the whole family",
+              "at its largest gains (Task 16 P1). The authored peaks are the clips alone: the live sum also carries the cloth and the feet's IK.", "",
+              "| Transition | Event | Largest step, sum over bones (deg/tick) at frame | Worst bone (deg/tick) | Largest 2nd difference | Ratio to baseline p90 | Ratio to authored | Step / authored | Worst bone / authored | Authored reference | Flagged |",
+              "|---|---|---|---|---|---|---|---|---|---|---|"]
+
+        def ratio(v, key, fmt):
+            return (fmt % v[key]) if v.get(key, -1) >= 0 else "n/a"
         for k, v in m["largestJumpPerTransition"].items():
-            L.append("| %s | %s | %.1f at f%03d (%s) | %s %.1f at f%03d | %.1f | %.1f | %s | %s |" % (
+            L.append("| %s | %s | %.1f at f%03d (%s) | %s %.1f at f%03d | %.1f | %.1f | %s | %s | %s | %s | %s |" % (
                 k, v["event"], v["largestStepDegPerTick"], v["largestStepFrame"], v.get("largestBoneThere", ""),
                 v.get("worstBone", "?"), v.get("worstBoneDegPerTick", 0), v.get("worstBoneFrame", 0), v["largestSecondDiff"], v["ratioToBaseline"],
-                ("%.1f" % v["ratioToAuthored"]) if v.get("ratioToAuthored", -1) >= 0 else "n/a", "yes" if v["flagged"] else "no"))
+                ratio(v, "ratioToAuthored", "%.1f"), ratio(v, "stepRatioToAuthored", "%.2f"), ratio(v, "boneRatioToAuthored", "%.2f"),
+                v.get("authoredRef", "") or "none", "yes" if v["flagged"] else "no"))
         L.append("")
     if m.get("hitSweep"):
         cells = m["hitSweep"]
