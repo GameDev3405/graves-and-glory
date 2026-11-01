@@ -19,6 +19,7 @@ import net.minecraft.util.shape.VoxelShape;
 import net.minecraft.world.World;
 import org.joml.Vector3f;
 import java.util.ArrayList;
+import java.util.List;
 
 /** Delayed, visible ranged hits. Tactics still decides the hit; this queue only lands it after the shot's flight time. */
 public final class Projectiles {
@@ -122,10 +123,30 @@ public final class Projectiles {
      */
     static void loose(GravesAndGlory.Unit u,double peak){
         var rows=Tactics.variants(u.spec.family());if(rows.isEmpty())return;
-        int variant=0;String want=u.spec.family()+(peak>0?"_volley":"_direct");
-        for(int i=0;i<rows.size();i++)if(rows.get(i).id().equals(want))variant=i;
+        int variant=shotVariant(u,rows,peak);
         u.catchVariant=variant;u.swingTick=Math.max(0,u.mob.getWorld().getTime()-rows.get(variant).impactTicks());
         MotionEvents.sendAttack(u,variant,u.swingTick);
+    }
+    /** The row of a shot's family loose sends for an arc of this peak: <family>_volley for a lofted one, <family>_direct for a flat one, else the first. */
+    static int shotVariant(GravesAndGlory.Unit u,List<Spec.AttackVariantsRow> rows,double peak){
+        int variant=0;String want=u.spec.family()+(peak>0?"_volley":"_direct");
+        for(int i=0;i<rows.size();i++)if(rows.get(i).id().equals(want))variant=i;
+        return variant;
+    }
+    /**
+     * Bow-draw fix Plan B (R110), cosmetic only: on the beat before a bow troop's shot (Tactics.tick calls it when the next beat, ahead ticks
+     * from now, reaches nextAttack), the attack_v1 loose will send, sent now. loose stamps its swing impactTicks before the tick the shot
+     * leaves; ahead ticks from now that is now + ahead - impactTicks, the same startTick and, for the same arc, the same variant, so the
+     * client starts the clip now (the draw plays before the loose) and drops loose's copy as the event it already has (MotionEngine.events).
+     * Nothing else changes: no projectile, no cooldown, no catchVariant or swingTick (loose still sets those when the shot leaves). If the
+     * shot never leaves (its target died, the troop was stunned), the draw plays with no arrow. Returns how many players it was sent to.
+     */
+    static int drawAhead(GravesAndGlory.Battle b,GravesAndGlory.Unit u,LivingEntity target,int ahead){
+        var rows=Tactics.variants(u.spec.family());if(rows.isEmpty())return 0;
+        Vec3d from=u.mob.getEyePos(),to=aim(target);String kind=Abilities.visual(u);
+        int variant=shotVariant(u,rows,arc(b,u,from,to,kind.equals("arrow")||kind.equals("trident")).peak());
+        long start=u.mob.getWorld().getTime()+ahead-rows.get(variant).impactTicks();if(start<0)return 0;
+        return MotionEvents.sendAttack(u,variant,start);
     }
     public static void fire(GravesAndGlory.Battle b,GravesAndGlory.Unit u,LivingEntity target,String kind,float amount){
         Vec3d from=u.mob.getEyePos(),to=aim(target);

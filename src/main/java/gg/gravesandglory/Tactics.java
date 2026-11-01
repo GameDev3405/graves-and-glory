@@ -245,7 +245,7 @@ final class Tactics {
                     if(ranged){
                         battle.world.playSound(null,mob.getBlockPos(),u.spec.magic()?SoundEvents.ENTITY_EVOKER_CAST_SPELL:SoundEvents.ENTITY_ARROW_SHOOT,SoundCategory.HOSTILE,.25f,1.1f);
                     }
-                }
+                }else if(drawsAhead(u)&&time+10>=u.nextAttack&&time+10>=u.stunnedUntil&&!pending(battle,u)&&!Abilities.tooClose(u,nearest))Projectiles.drawAhead(battle,u,enemy,10); // the beat before a bow's shot: its draw starts now, the arrow still leaves on the next beat (cosmetic, R110 Plan B)
             }else if(!holdSiege&&(!hold||GravesAndGlory.Battle.horizontalDistance(enemy.getPos(),a.target)<engage*engage)){
                 Vec3d goal=enemy.getPos();
                 if(ranged&&!visible){Vec3d toward=enemy.getPos().subtract(mob.getPos()).multiply(1,0,1).normalize();double sign=u.slot%2==0?1:-1;goal=mob.getPos().add(-toward.z*sign*Spec.COMBATDISCIPLINE[0].rangedObstructionStep(),0,toward.x*sign*Spec.COMBATDISCIPLINE[0].rangedObstructionStep());}
@@ -493,6 +493,8 @@ final class Tactics {
     static int swings,strikesLanded,strikesMissed;
     /** Swings refused because the troop's last blow is still pending (Tactics.swing; the attack gate already waits for it, so any is a caller's slip). */
     static int swingsRefused;
+    /** Whether a troop's shot is announced a beat early (Projectiles.drawAhead): a bow's, whose clip draws for its 10 impact ticks before the loose (R110 Plan B; the crossbow and thrower families have no clips yet). */
+    static boolean drawsAhead(GravesAndGlory.Unit u){return u.spec.ranged()&&!u.spec.magic()&&"bow".equals(u.spec.family());}
     /** Whether this troop has a blow pending (Battle.strikes): one at most, so its next swing waits for it. */
     static boolean pending(GravesAndGlory.Battle b,GravesAndGlory.Unit u){for(var s:b.strikes)if(s.attacker()==u)return true;return false;}
     /**
