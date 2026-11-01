@@ -163,19 +163,49 @@ public final class BattleHud {
     /** The score bar: Dawn's score, its track, the round clock, Dusk's track and score, centred between the Dawn and Dusk bosses. */
     static void ledger(DrawContext g,TextRenderer font,Map<String,int[]> at,Map<String,int[]> r,Map<String,String> tx){
         int[] card=at.get("score"),dawnBoss=at.get("dawn-boss"),duskBoss=at.get("dusk-boss");int cx=card[0]+card[2]/2,y=card[1]+8;
-        String dawn=String.valueOf(GravesAndGloryClient.dawn),clock=UiMath.clock(CommandMode.seconds),dusk=String.valueOf(GravesAndGloryClient.dusk);
-        int win=Modes.row(Modes.DOMINATION).winTarget(),wa=font.getWidth(dawn),wc=font.getWidth(clock),wd=font.getWidth(dusk);
+        String dawn=scoreText(0,GravesAndGloryClient.dawn),clock=UiMath.clock(CommandMode.seconds),dusk=scoreText(1,GravesAndGloryClient.dusk);
+        int winA=trackMax(0),winB=trackMax(1),wa=font.getWidth(dawn),wc=font.getWidth(clock),wd=font.getWidth(dusk);
         UiTex.draw(g,"hud/score-card",card[0],card[1]);
         // The row as the mock lays it out: each 8 px text takes its width plus one, with 6 px gaps round the two 56 px tracks.
         int x=(int)Math.round(cx-(wa+1+wc+1+wd+1+2*56+4*6)/2.0);
         g.drawText(font,dawn,x,y,DarkUi.INK_TEXT,false);x+=wa+1+6;
-        UiTex.draw(g,"hud/track-empty",x,y);UiTex.bar(g,"hud/track-dawn-fill",x+1,y+2,UiMath.trackFill(GravesAndGloryClient.dawn,win),false);x+=56+6;
+        UiTex.draw(g,"hud/track-empty",x,y);UiTex.bar(g,"hud/track-dawn-fill",x+1,y+2,UiMath.trackFill(GravesAndGloryClient.dawn,winA),false);x+=56+6;
         g.drawText(font,clock,x,y,DarkUi.INK_TEXT,false);x+=wc+1+6;
-        UiTex.draw(g,"hud/track-empty",x,y);UiTex.bar(g,"hud/track-dusk-fill",x+1,y+2,UiMath.trackFill(GravesAndGloryClient.dusk,win),true);x+=56+6;
+        UiTex.draw(g,"hud/track-empty",x,y);UiTex.bar(g,"hud/track-dusk-fill",x+1,y+2,UiMath.trackFill(GravesAndGloryClient.dusk,winB),true);x+=56+6;
         g.drawText(font,dusk,x,y,DarkUi.INK_TEXT,false);
         UiTex.draw(g,"hud/boss-dawn",dawnBoss[0],dawnBoss[1]);UiTex.draw(g,"hud/boss-dusk",duskBoss[0],duskBoss[1]);
         r.put("score",card);r.put("dawn-boss",dawnBoss);r.put("dusk-boss",duskBoss);
         tx.put("score-dawn",dawn);tx.put("clock",clock);tx.put("score-dusk",dusk);
+    }
+
+    /** A track's full mark from the round's battleMode block (Convoy: 100 percent, or its stops), Domination's target before one arrives. */
+    static int trackMax(int team){
+        var m=CampaignClient.battleMode;
+        if(m.has("max")&&m.getAsJsonArray("max").size()>team){int v=m.getAsJsonArray("max").get(team).getAsInt();if(v>0)return v;}
+        return Modes.row(Modes.DOMINATION).winTarget();
+    }
+    /** A track's number as the mode formats it: "percent" adds a percent sign, anything else is plain. */
+    static String scoreText(int team,int value){
+        var m=CampaignClient.battleMode;
+        boolean percent=m.has("format")&&m.getAsJsonArray("format").size()>team&&"percent".equals(m.getAsJsonArray("format").get(team).getAsString());
+        return percent?value+"%":String.valueOf(value);
+    }
+
+    /** Convoy's road strip, where the seals hang in Domination: the road as a bar filled to the wagon, a tick at each stop, the
+     *  wagon's marker, and the next stop's name with the wagon's state below it. Placeholder art (plain fills) until the strip's sprites are drawn. */
+    static void road(DrawContext g,TextRenderer font,Map<String,int[]> at,Map<String,int[]> r,Map<String,String> tx){
+        var c=CampaignClient.battleMode.getAsJsonObject("convoy");int[] card=at.get("score");if(card==null)return;
+        int w=150,h=5,x=card[0]+card[2]/2-w/2,y=card[1]+card[3]+4;
+        double prog=Math.max(0,Math.min(1,c.has("progress")?c.get("progress").getAsDouble():0));
+        String state=c.has("state")?c.get("state").getAsString():ModeMath.IDLE;
+        g.fill(x-1,y-1,x+w+1,y+h+1,0xFF14100C);g.fill(x,y,x+w,y+h,0xFF3A3026);
+        g.fill(x,y,x+(int)Math.round(w*prog),y+h,0xFF4FB8C8);
+        if(c.has("stops"))for(var s:c.getAsJsonArray("stops")){int sx=x+(int)Math.round(w*s.getAsDouble());g.fill(sx-1,y-2,sx+1,y+h+2,0xFFE8DCC0);}
+        int mx=x+(int)Math.round(w*prog);int mark=state.equals(ModeMath.CONTESTED)?0xFFE05A3A:state.equals(ModeMath.ROLLBACK)?0xFFB070E0:0xFFFFE9A8;
+        g.fill(mx-2,y-3,mx+3,y+h+3,0xFF14100C);g.fill(mx-1,y-2,mx+2,y+h+2,mark);
+        String next=(c.has("next")?c.get("next").getAsString():"")+" - "+switch(state){case ModeMath.MOVING->"rolling";case ModeMath.CONTESTED->"stopped";case ModeMath.ROLLBACK->"rolling back";default->"waiting";};
+        g.drawText(font,next,centred(font,next,x+w/2),y+h+5,DarkUi.IVORY,true);
+        r.put("road",new int[]{x,y,w,h});tx.put("road",next);
     }
 
     /** The top of the aimed point's name: the seal rects' foot (each seal's box runs from its chain's top at 37 down 31 px), so the
@@ -185,6 +215,7 @@ public final class BattleHud {
     /** The points hang from the bar on a 28 px pitch: chain, seal (its owner's, or split while contested) and letter; while an order
      *  is aimed into a point's radius, that point's name hangs below its seal. */
     static void seals(DrawContext g,TextRenderer font,Map<String,int[]> at,Map<String,int[]> r,List<SealDraw> sd,Map<String,String> tx){
+        if(CampaignClient.battleMode.has("convoy")){road(g,font,at,r,tx);return;} // Convoy plays no points: its road strip hangs there
         int n=GravesAndGloryClient.owners.length,aim=CommandMode.aimPoint();var pts=Spec.POINTS;
         for(int i=0;i<n;i++){
             int[] box=at.get("seal-"+i);if(box==null)continue;
