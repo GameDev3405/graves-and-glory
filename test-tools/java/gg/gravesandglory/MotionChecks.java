@@ -601,13 +601,16 @@ public final class MotionChecks {
      * +-60 and the shield both ways). The real clips go back after. mo-limits (carry C13, R13): over the same poses no bone with a joint
      * limit (the mage's shins, [0, 10] degrees) goes past it, and with TroopMotion.noLimits on the same poses do (the red side).
      */
+    static int synthCount;
     static void cull() {
         Map<String, Clip> before = ClipLibrary.all(); List<String> bad = new ArrayList<>(); StringBuilder sb = new StringBuilder(); int poses = 0, models = 0;
         StringBuilder lim = new StringBuilder(); List<String> limBad = new ArrayList<>(); int limModels = 0; double shinFree = Double.NEGATIVE_INFINITY; String shinFreeAt = "";
         double slackMin = Double.POSITIVE_INFINITY, slackMax = Double.NEGATIVE_INFINITY, sideMax = Double.NEGATIVE_INFINITY; String slackMinAt = "", slackMaxAt = "", sideMaxAt = "";
         try {
-            Map<String, Clip> synth = new TreeMap<>(before);
+            // synthetic clips for whatever has no real one yet; every real clip (Task 16 on: sword_shield and common) wins (R54)
+            Map<String, Clip> synth = new TreeMap<>();
             for (String t : TroopModels.ids()) { var m = TroopModels.model(t); var row = m == null ? null : TroopMotion.row(m); if (row != null) synthetic(m.rig, row.family(), synth); }
+            synth.putAll(before); synthCount = 0; for (String k : synth.keySet()) if (!before.containsKey(k)) synthCount++;
             ClipLibrary.install(synth);
             for (String t : new TreeSet<>(TroopModels.ids())) {
                 var m = TroopModels.model(t); var row = m == null ? null : TroopMotion.row(m); var fam = m == null ? null : TroopMotion.family(m);
@@ -641,7 +644,7 @@ public final class MotionChecks {
         }
         report("mo-limits", limBad.isEmpty() && limModels > 0, limModels + " troop models with joint limits (carry C13, R13): " + lim + "deepest shin bend on a model without limits "
             + String.format(Locale.ROOT, "%.2f", shinFree) + " deg (" + shinFreeAt + ")" + (limBad.isEmpty() ? "" : "; failing: " + limBad));
-        report("mo-cull", bad.isEmpty() && models > 0 && poses > 0, models + " troop models, " + poses + " posed bounds against cullBox (synthetic clips; the real clips put back): " + sb + (bad.isEmpty() ? "every pose inside" : "outside: " + bad)
+        report("mo-cull", bad.isEmpty() && models > 0 && poses > 0, models + " troop models, " + poses + " posed bounds against cullBox (" + before.size() + " real clips, " + synthCount + " synthetic for the rest; the real clips put back): " + sb + (bad.isEmpty() ? "every pose inside" : "outside: " + bad)
             + String.format(Locale.ROOT, "; slack (blocks between the pose that came closest and the box, the margin %.2f included): least %.3f (%s), most %.3f (%s); the loosest single side %.3f (%s)",
                 TroopMotion.CULL_MARGIN, slackMin, slackMinAt, slackMax, slackMaxAt, sideMax, sideMaxAt));
     }
@@ -666,7 +669,7 @@ public final class MotionChecks {
         final boolean chained; volatile boolean done;
         CloudRenderMode cloudsBefore; Map<String, Clip> clipsBefore;
         int[] lastCount; final List<float[][]> samples = new ArrayList<>(); int steady;
-        int ls; Clip synth; MotionStack.Track orig; int forgetWait, backAt = -1, compared, maxTracks, maxQueue; boolean dupSent; double maxDiff;
+        int ls; Clip synth; MotionStack.Track orig; int forgetWait, backAt = -1, compared, maxTracks, maxQueue; boolean dupSent, lateReal; double maxDiff;
         /** Fix round 1, I2: the variant's impactTicks, the clip time (s) of the forget, and the probe past the clip's end (its ticks, the tracks and queued swings it saw). */
         int impactTicks, probeWait, probeTracks = -1, probeQueued; double forgetAt = -1, probeAt = -1; String lateWhy = "";
         Live(boolean chained) { this.chained = chained; }
@@ -786,8 +789,10 @@ public final class MotionChecks {
                     var rows = row == null ? List.<Spec.AttackVariantsRow>of() : Tactics.variants(row.family());
                     if (rows.isEmpty()) { report("mo-late-join", false, "the knight has no attack variants"); afterLate(); return; }
                     var v = rows.get(0); double impact = v.impactTicks() / (double) Clip.TICKS; impactTicks = v.impactTicks();
-                    synth = attack(v.id(), impact, 1.6, ATTACK_PEAKS);
-                    clipsBefore = ClipLibrary.all(); Map<String, Clip> map = new TreeMap<>(clipsBefore); map.put(m.rig + "/" + row.family() + "/" + v.id(), synth); ClipLibrary.install(map);
+                    // the real clip when the family has one (Task 16, R54: the sword_shield thrust), else a synthetic 1.6 s swing
+                    clipsBefore = ClipLibrary.all(); String key = m.rig + "/" + row.family() + "/" + v.id(); Clip real = clipsBefore.get(key);
+                    synth = real != null ? real : attack(v.id(), impact, 1.6, ATTACK_PEAKS); lateReal = real != null;
+                    Map<String, Clip> map = new TreeMap<>(clipsBefore); map.put(key, synth); ClipLibrary.install(map);
                     server(c, b -> { u.lastVariant = 0; u.catchVariant = 0; u.swingTick = b.world.getTime(); MotionEvents.sendAttack(u, 0, u.swingTick); });
                     ls = 1; wait = 0;
                 }
@@ -846,7 +851,7 @@ public final class MotionChecks {
             int at = (int) Math.round(forgetAt * Clip.TICKS), probe = (int) Math.round(probeAt * Clip.TICKS);
             boolean pass = lateWhy.isEmpty() && forgetAt > (impactTicks + 10) / (double) Clip.TICKS && backAt >= 0 && backAt <= 5 && maxDiff <= 2.0 / Clip.TICKS && maxTracks == 1 && maxQueue == 1 && compared >= 5 && dupSent
                 && probeTracks == 0 && probeWait >= 10;
-            report("mo-late-join", pass, String.format(Locale.ROOT, "a %.2f s swing (impact at %d ticks) forgotten and caught up %.3f s (%d ticks) in, where the old impactTicks + 10 window had closed at tick %d: back %s, compared on %d ticks, largest gap to the first client's clip time %.3f s (%.1f ticks; want 2 or less); swing tracks at most %d, queued swings at most %d after a repeated catch-up (want 1 and 1); forgotten again %s: %d ticks of tracks of the ended swing over %d ticks (want 0 over 10), %d swings queued%s",
+            report("mo-late-join", pass, (lateReal ? "the real clip " + synth.name() + ": " : "a synthetic clip: ") + String.format(Locale.ROOT, "a %.2f s swing (impact at %d ticks) forgotten and caught up %.3f s (%d ticks) in, where the old impactTicks + 10 window had closed at tick %d: back %s, compared on %d ticks, largest gap to the first client's clip time %.3f s (%.1f ticks; want 2 or less); swing tracks at most %d, queued swings at most %d after a repeated catch-up (want 1 and 1); forgotten again %s: %d ticks of tracks of the ended swing over %d ticks (want 0 over 10), %d swings queued%s",
                 synth.length(), impactTicks, forgetAt, at, impactTicks + 10, backAt < 0 ? "never" : "after " + backAt + " ticks (want 5 or less)", compared, maxDiff, maxDiff * Clip.TICKS, maxTracks, maxQueue,
                 probeAt < 0 ? "never" : String.format(Locale.ROOT, "%.3f s (%d ticks) in, past the clip's end", probeAt, probe), probeTracks, probeWait, probeQueued, lateWhy.isEmpty() ? "" : "; " + lateWhy));
             afterLate();
