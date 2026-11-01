@@ -280,7 +280,7 @@ public final class GravesAndGlory implements ModInitializer {
      * hurts it. While it stands it is one of Battle.structures and, with no enemy within the class's radius of it, an Anchor that reinforcements
      * deploy at. It is never saved.
      */
-    public static final class ArmySupplyBanner extends ArmorStandEntity implements ArmyMob {
+    public static class ArmySupplyBanner extends ArmorStandEntity implements ArmyMob { // not final: Siege's gate target (SiegeMode.GateTarget) is one
         /** What its name tag says and the notice of a deploy at it names. */
         public static final String NAME="Forward Supply";
         /** What its commander reads when the banner is shot down or killed while his Forward Supply runs. */
@@ -905,7 +905,7 @@ public final class GravesAndGlory implements ModInitializer {
         List<Anchor> reinforcementAnchors(int team){
             List<Anchor> anchors=new ArrayList<>(mode.anchors(this,team)); // the mode's places: Domination's held points, none while the flags are down
             var supply=Commander.byActive("forward_supply");
-            if(supply!=null)for(var st:structures)if(st.team()==team&&st.isAlive()&&!Morale.enemyWithin(this,team,st.getPos(),supply.radius()))anchors.add(st.anchor());
+            if(supply!=null)for(var st:structures)if(st.team()==team&&!(st instanceof SiegeMode.GateTarget)&&st.isAlive()&&!Morale.enemyWithin(this,team,st.getPos(),supply.radius()))anchors.add(st.anchor());
             return anchors;
         }
         /** Domination's forward places (BattleMode.anchors): this team's held points, held forwardHoldSeconds, uncontested and with no enemy near where the troops would appear. */

@@ -1,0 +1,94 @@
+{
+ "format": "gg-mapforge-plan/1",
+ "id": "ironhold-base-today",
+ "world": "ironhold",
+ "author": "map lane agent",
+ "purpose": "Stand-in for today's Ironhold until the 2A.2 export: today's gate, keep and west curtain pieces at their Spec.java LANDMARKS rows. Sectionless; applied without --map because the keep and gate stand on Siege and station protect locks by design.",
+ "limits": {
+  "maxChangedBlocks": 200000
+ },
+ "locks": [
+  {
+   "id": "base",
+   "mode": "allow",
+   "min": [
+    -110,
+    -64,
+    -110
+   ],
+   "max": [
+    40,
+    319,
+    110
+   ]
+  }
+ ],
+ "operations": [
+  {
+   "op": "structure",
+   "note": "today's ironhold/gate (-37,0)",
+   "piece": "ironhold/gate",
+   "at": [
+    -37,
+    64,
+    0
+   ],
+   "rotation": 0
+  },
+  {
+   "op": "structure",
+   "note": "today's ironhold/keep (0,34)",
+   "piece": "ironhold/keep",
+   "at": [
+    0,
+    64,
+    34
+   ],
+   "rotation": 0
+  },
+  {
+   "op": "structure",
+   "note": "today's ironhold/curtain (-72,-81)",
+   "piece": "ironhold/curtain",
+   "at": [
+    -72,
+    64,
+    -81
+   ],
+   "rotation": 0
+  },
+  {
+   "op": "structure",
+   "note": "today's ironhold/curtain (-72,-43)",
+   "piece": "ironhold/curtain",
+   "at": [
+    -72,
+    64,
+    -43
+   ],
+   "rotation": 0
+  },
+  {
+   "op": "structure",
+   "note": "today's ironhold/curtain (-72,43)",
+   "piece": "ironhold/curtain",
+   "at": [
+    -72,
+    64,
+    43
+   ],
+   "rotation": 0
+  },
+  {
+   "op": "structure",
+   "note": "today's ironhold/curtain (-72,81)",
+   "piece": "ironhold/curtain",
+   "at": [
+    -72,
+    64,
+    81
+   ],
+   "rotation": 0
+  }
+ ]
+}

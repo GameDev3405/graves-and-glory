@@ -475,7 +475,7 @@ for o in bonus_rows.values():
     if not o['placeholder'].strip(): errors.append(f'{where}: placeholder is blank; it lists the open cells, or reads none')
 # Troop card text (Task 12): one troopNotes row per troop, in troops order, and nothing else; the economy model row (houses design 4.9, NOT_SHIPPED) has every input.
 if [n['id'] for n in data.get('troopNotes',[])]!=[t['id'] for t in data['troops']]: errors.append('troopNotes: one row per troops row, in the same order, with the same ids')
-ECONOMY_INPUTS={'matchesPerHour','winRate','hoursPerPlayDay','playDaysPerWeek','matchGold','winGold','dailyGold','weeklyGold','chapterGold','chapterRareValue','runs'}
+ECONOMY_INPUTS={'matchesPerHour','winRate','hoursPerPlayDay','playDaysPerWeek','matchGold','winGold','dailyGold','weeklyGold','runs'}
 if len(data.get('economyModel',[]))!=1 or not ECONOMY_INPUTS<=set(data['economyModel'][0]): errors.append('economyModel: one row with '+', '.join(sorted(ECONOMY_INPUTS))+' (tools/economy_model.py reads it)')
 elif not 0<=data['economyModel'][0]['winRate']<=1 or any(data['economyModel'][0][k]<=0 for k in ECONOMY_INPUTS-{'winRate'}): errors.append('economyModel: winRate within 0 to 1 and every other input above 0')
 # Built world (Phase 3): the pieces sheet describes the structure files, campPieces places them, campStations names the people and boards of the camp.

@@ -163,32 +163,20 @@ public final class BattleHud {
     /** The score bar: Dawn's score, its track, the round clock, Dusk's track and score, centred between the Dawn and Dusk bosses. */
     static void ledger(DrawContext g,TextRenderer font,Map<String,int[]> at,Map<String,int[]> r,Map<String,String> tx){
         int[] card=at.get("score"),dawnBoss=at.get("dawn-boss"),duskBoss=at.get("dusk-boss");int cx=card[0]+card[2]/2,y=card[1]+8;
-        String dawn=scoreText(0,GravesAndGloryClient.dawn),clock=UiMath.clock(CommandMode.seconds),dusk=scoreText(1,GravesAndGloryClient.dusk);
-        int winA=trackMax(0),winB=trackMax(1),wa=font.getWidth(dawn),wc=font.getWidth(clock),wd=font.getWidth(dusk);
+        int dawnMax=CampaignClient.ledgerMax(0),duskMax=CampaignClient.ledgerMax(1); // the round's own mode: Siege reads 1/3 and 64%
+        String dawn=ModeMath.ledgerText(CampaignClient.ledgerFormat(0),GravesAndGloryClient.dawn,dawnMax),clock=UiMath.clock(CommandMode.seconds),dusk=ModeMath.ledgerText(CampaignClient.ledgerFormat(1),GravesAndGloryClient.dusk,duskMax);
+        int wa=font.getWidth(dawn),wc=font.getWidth(clock),wd=font.getWidth(dusk);
         UiTex.draw(g,"hud/score-card",card[0],card[1]);
         // The row as the mock lays it out: each 8 px text takes its width plus one, with 6 px gaps round the two 56 px tracks.
         int x=(int)Math.round(cx-(wa+1+wc+1+wd+1+2*56+4*6)/2.0);
         g.drawText(font,dawn,x,y,DarkUi.INK_TEXT,false);x+=wa+1+6;
-        UiTex.draw(g,"hud/track-empty",x,y);UiTex.bar(g,"hud/track-dawn-fill",x+1,y+2,UiMath.trackFill(GravesAndGloryClient.dawn,winA),false);x+=56+6;
+        UiTex.draw(g,"hud/track-empty",x,y);UiTex.bar(g,"hud/track-dawn-fill",x+1,y+2,UiMath.trackFill(GravesAndGloryClient.dawn,dawnMax),false);x+=56+6;
         g.drawText(font,clock,x,y,DarkUi.INK_TEXT,false);x+=wc+1+6;
-        UiTex.draw(g,"hud/track-empty",x,y);UiTex.bar(g,"hud/track-dusk-fill",x+1,y+2,UiMath.trackFill(GravesAndGloryClient.dusk,winB),true);x+=56+6;
+        UiTex.draw(g,"hud/track-empty",x,y);UiTex.bar(g,"hud/track-dusk-fill",x+1,y+2,UiMath.trackFill(GravesAndGloryClient.dusk,duskMax),true);x+=56+6;
         g.drawText(font,dusk,x,y,DarkUi.INK_TEXT,false);
         UiTex.draw(g,"hud/boss-dawn",dawnBoss[0],dawnBoss[1]);UiTex.draw(g,"hud/boss-dusk",duskBoss[0],duskBoss[1]);
         r.put("score",card);r.put("dawn-boss",dawnBoss);r.put("dusk-boss",duskBoss);
         tx.put("score-dawn",dawn);tx.put("clock",clock);tx.put("score-dusk",dusk);
-    }
-
-    /** A track's full mark from the round's battleMode block (Convoy: 100 percent, or its stops), Domination's target before one arrives. */
-    static int trackMax(int team){
-        var m=CampaignClient.battleMode;
-        if(m.has("max")&&m.getAsJsonArray("max").size()>team){int v=m.getAsJsonArray("max").get(team).getAsInt();if(v>0)return v;}
-        return Modes.row(Modes.DOMINATION).winTarget();
-    }
-    /** A track's number as the mode formats it: "percent" adds a percent sign, anything else is plain. */
-    static String scoreText(int team,int value){
-        var m=CampaignClient.battleMode;
-        boolean percent=m.has("format")&&m.getAsJsonArray("format").size()>team&&"percent".equals(m.getAsJsonArray("format").get(team).getAsString());
-        return percent?value+"%":String.valueOf(value);
     }
 
     /** Convoy's road strip, where the seals hang in Domination: the road as a bar filled to the wagon, a tick at each stop, the
@@ -216,6 +204,7 @@ public final class BattleHud {
      *  is aimed into a point's radius, that point's name hangs below its seal. */
     static void seals(DrawContext g,TextRenderer font,Map<String,int[]> at,Map<String,int[]> r,List<SealDraw> sd,Map<String,String> tx){
         if(CampaignClient.battleMode.has("convoy")){road(g,font,at,r,tx);return;} // Convoy plays no points: its road strip hangs there
+        if(!CampaignClient.showsPoints())return; // Siege: the flags are down, so no seal or letter hangs from the bar
         int n=GravesAndGloryClient.owners.length,aim=CommandMode.aimPoint();var pts=Spec.POINTS;
         for(int i=0;i<n;i++){
             int[] box=at.get("seal-"+i);if(box==null)continue;

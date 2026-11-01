@@ -24,9 +24,7 @@ public final class Modes {
     /** The supply-wagon escort on Frostmarch (spec 2026-10-31-convoy-escort-design.md). */
     public static final String CONVOY="convoy";
     private static final Map<String,Function<Spec.ModesRow,BattleMode>> BUILDERS=new LinkedHashMap<>();
-    /** Siege has no stages or gate HP yet, so only the Phase 4 checks register it: a real lobby must not offer a mode that cannot be won. */
-    static final boolean CHECK_SIEGE=!System.getProperty("gravesandglory.phase4Checks","").isBlank();
-    static{register(DOMINATION,DominationMode::new);if(CHECK_SIEGE)register(SIEGE,SiegeMode::new);register(CONVOY,ConvoyMode::new);}
+    static{register(DOMINATION,DominationMode::new);register(SIEGE,SiegeMode::new);register(CONVOY,ConvoyMode::new);} // Siege is winnable since its stages landed (yard, gate HP, keep); Convoy since its spec (Kort 2026-10-31)
     private Modes(){}
     public static void register(String id,Function<Spec.ModesRow,BattleMode> factory){BUILDERS.put(id,factory);}
     public static boolean registered(String id){return BUILDERS.containsKey(id);}
