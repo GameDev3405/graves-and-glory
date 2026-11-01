@@ -644,7 +644,7 @@ final class MotionGrade extends Phase2Checks.Stage {
     // ---- geometry of a drawn pose ----
     static final String[] SHINS = {"right_shin", "left_shin"};
     /** Points of a pose in blocks, relative to the troop's feet: the soles (right, left), the hands (right, left), the weapon tip, the shield rim. */
-    static final class Geo { final double[][] soles = new double[2][], hands = new double[2][]; final double[][][] feet = new double[2][][]; double[] tip, rim; }
+    static final class Geo { final double[][] soles = new double[2][], soleMid = new double[2][], hands = new double[2][]; final double[][][] feet = new double[2][][]; double[] tip, rim; }
     static MatrixStack base(float yaw) { MatrixStack ms = new MatrixStack(); ms.multiply(RotationAxis.POSITIVE_Y.rotationDegrees(180f - yaw)); ms.scale(-1, -1, 1); ms.translate(0, -1.501f, 0); return ms; }
     /** D1: the rendered blade tip: the item mesh's vertex farthest from the grip, through the hand path then the weapon's grip, as TroopFeatures.Weapon draws it. */
     double[] bladeTip(List<ModelPart> path, float yaw) {
@@ -689,6 +689,13 @@ final class MotionGrade extends Phase2Checks.Stage {
                 List<ModelPart> path = model.path(SHINS[i]); if (path.isEmpty()) continue;
                 MatrixStack ms = base(yaw); for (int k = 0; k < path.size() - 1; k++) path.get(k).rotate(ms);
                 List<double[]> pts = new ArrayList<>(); ModelPart shin = path.get(path.size() - 1); shin.forEachCuboid(ms, (entry, p, n, q) -> { if (drawn(shin, p)) corners(entry, q, pts); });
+                // the sole: the middle of the bottom face (model y down: maxY) of the shin's lowest-reaching drawn box, fixed to the boot
+                float[] bot = {-Float.MAX_VALUE}; double[][] sm = {null}; int side = i;
+                shin.forEachCuboid(ms, (entry, p, n, q) -> {
+                    if (!drawn(shin, p) || q.maxY <= bot[0]) return; bot[0] = q.maxY;
+                    Vector4f w = new Vector4f((q.minX + q.maxX) / 32f, q.maxY / 16f, (q.minZ + q.maxZ) / 32f, 1); entry.getPositionMatrix().transform(w); sm[0] = new double[]{w.x, w.y, w.z};
+                });
+                g.soleMid[side] = sm[0];
                 double min = 1e9; for (double[] p : pts) min = Math.min(min, p[1]);
                 double sx = 0, sy = 0, sz = 0; int n = 0; for (double[] p : pts) if (p[1] < min + 0.02) { sx += p[0]; sy += p[1]; sz += p[2]; n++; }
                 if (n > 0) { g.soles[i] = new double[]{sx / n, sy / n, sz / n}; g.feet[i] = pts.toArray(new double[0][]); }
@@ -939,6 +946,8 @@ final class MotionGrade extends Phase2Checks.Stage {
     final List<float[]> lpose = new ArrayList<>(); final List<Double> lnow = new ArrayList<>();
     /** R83: per frame, each foot's drawn shin corners (x, height, z in blocks from the site), or null when not drawn. */
     final List<double[][][]> lcorn = new ArrayList<>();
+    /** Each loco frame's two sole middles (the bottom face's middle of each shin's lowest box; site-relative blocks). */
+    final List<double[][]> lsole = new ArrayList<>();
     void trackCam(Entity e) {
         if (e == null) return; double off = soloD;
         cam = new double[]{e.getX(), site.getY() + soloEye, e.getZ() + off, 180, 0, e.prevX, e.prevZ + off};
@@ -957,7 +966,7 @@ final class MotionGrade extends Phase2Checks.Stage {
                 boolean ok = e != null && e.isAlive() && placed(c, L_LOCO, 1.8, x0); held = ok ? held + 1 : 0;
                 if (held >= 25 && shotReady(c, "loco " + g.name())) {
                     final double[][] p = g.path(); server(c, b -> { locoPath = p; locoI = 0; });
-                    lph = 1; wait = 0; tail = 0; lrec.clear(); lpose.clear(); lnow.clear(); lcorn.clear(); lastSnapN = LAST == null ? -1 : LAST.n;
+                    lph = 1; wait = 0; tail = 0; lrec.clear(); lpose.clear(); lnow.clear(); lcorn.clear(); lsole.clear(); lastSnapN = LAST == null ? -1 : LAST.n;
                 } else if (wait > 900) { locoBad.add(g.name() + ": never placed"); li++; wait = 0; }
             }
             case 1 -> {
@@ -974,6 +983,9 @@ final class MotionGrade extends Phase2Checks.Stage {
                     double[][][] fc = new double[2][][];
                     for (int i = 0; i < 2; i++) if (q.feet[i] != null) { fc[i] = new double[q.feet[i].length][]; for (int v = 0; v < fc[i].length; v++) { double[] p = q.feet[i][v]; fc[i][v] = new double[]{en.pos.x + p[0] - site.getX() - .5, en.pos.y + p[1] - site.getY(), en.pos.z + p[2] - site.getZ() - .5}; } }
                     lcorn.add(fc);
+                    double[][] sm = new double[2][];
+                    for (int i = 0; i < 2; i++) if (q.soleMid[i] != null) { double[] p = q.soleMid[i]; sm[i] = new double[]{en.pos.x + p[0] - site.getX() - .5, en.pos.y + p[1] - site.getY(), en.pos.z + p[2] - site.getZ() - .5}; }
+                    lsole.add(sm);
                     String rel = String.format(Locale.ROOT, "loco/%s/f%03d.png", g.name(), k);
                     var x = entry("loco_frame", null, null, "side-tracking", k, 90, Double.NaN); x.addProperty("segment", g.name()); x.addProperty("serverTick", idx);
                     x.addProperty("phase", idx < 15 ? "idle" : idx < 15 + g.move() ? (g.turn() ? "turn" : "move") : "stop"); x.addProperty("engineNow", en.now);
@@ -1025,7 +1037,9 @@ final class MotionGrade extends Phase2Checks.Stage {
         double moved = Math.hypot(lrec.get(n - 1)[1] - lrec.get(0)[1], lrec.get(n - 1)[2] - lrec.get(0)[2]); j.addProperty("bodyMovedBlocks", r4(moved));
         // R109: the stance slip ratio, report only: over moving frames where the same foot is the lower in both (its sole corners'
         // middle) and within half a pixel of its idle rest, that middle's ground travel over the body's (aim under 0.15)
-        double[] ss = stanceSlip(g); j.addProperty("stanceSlipRatio", r4(ss[0])); j.addProperty("stanceTravelBlocks", r4(ss[1])); j.addProperty("stanceBodyTravelBlocks", r4(ss[2]));
+        double[] ss = stanceSlip(g, true); j.addProperty("stanceSlipRatio", r4(ss[0])); j.addProperty("stanceTravelBlocks", r4(ss[1])); j.addProperty("stanceBodyTravelBlocks", r4(ss[2]));
+        // the measure before Task 16 fix r2a: the middle of every shin box corner, which the shin's own swing over a planted sole carries
+        double[] sc = stanceSlip(g, false); j.addProperty("stanceSlipRatioShinCentroid", r4(sc[0]));
         var tr = new JsonObject(); var fx = new JsonArray(); var bx = new JsonArray(); var tick = new JsonArray();
         for (int k = 0; k < n; k++) { fx.add(k); bx.add(r4(lrec.get(k)[1])); tick.add((int) lrec.get(k)[0]); }
         tr.add("frame", fx); tr.add("serverTick", tick); tr.add("bodyX", bx);
@@ -1043,14 +1057,23 @@ final class MotionGrade extends Phase2Checks.Stage {
         locoJson.add(j);
         System.out.println("[mo-grade] loco " + g.name() + ": " + n + " frames, planted slide " + slide + " blocks (largest single plant " + maxPlant + "), lowest sole " + minH + ", moved " + r4(moved));
     }
-    /** R109: {stance slip ratio, stance foot travel, body travel} over a segment's moving ticks; the ratio is 0 when the body barely moves (a turn). */
-    double[] stanceSlip(Seg g) {
+    /**
+     * R109: {stance slip ratio, stance foot travel, body travel} over a segment's moving ticks; the ratio is 0 when the body barely
+     * moves (a turn). With sole, each foot is its sole's middle (the bottom face of the boot, as MotionEngineCheck measures it);
+     * without, the middle of all its shin box corners (the measure before Task 16 fix r2a, which a planted foot's shin tilt moves).
+     */
+    double[] stanceSlip(Seg g, boolean sole) {
         int n = lrec.size(); double[][][] mid = new double[n][2][]; double[] rest = new double[2];
         for (int i = 0; i < 2; i++) {
             List<Double> idle = new ArrayList<>();
             for (int k = 0; k < n; k++) {
-                double[][] c = k < lcorn.size() ? lcorn.get(k)[i] : null; if (c == null || c.length == 0) continue;
-                double[] m = new double[3]; for (double[] v : c) for (int a = 0; a < 3; a++) m[a] += v[a] / c.length; mid[k][i] = m;
+                double[] m;
+                if (sole) { m = k < lsole.size() ? lsole.get(k)[i] : null; if (m == null) continue; }
+                else {
+                    double[][] c = k < lcorn.size() ? lcorn.get(k)[i] : null; if (c == null || c.length == 0) continue;
+                    m = new double[3]; for (double[] v : c) for (int a = 0; a < 3; a++) m[a] += v[a] / c.length;
+                }
+                mid[k][i] = m;
                 if (lrec.get(k)[0] < 15) idle.add(m[1]);
             }
             java.util.Collections.sort(idle); rest[i] = idle.isEmpty() ? 0 : idle.get(idle.size() / 2);
