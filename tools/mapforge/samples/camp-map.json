@@ -1,0 +1,16 @@
+{
+ "format": "gg-mapforge-map/1",
+ "id": "camp",
+ "name": "Sample camp",
+ "palette": "camp (sample)",
+ "bounds": {"min": [0, -64, 0], "max": [127, 319, 63]},
+ "sections": [
+  {"id": "s0", "name": "West half", "bounds": {"min": [0, -64, 0], "max": [63, 319, 63]}, "status": "todo", "reviews": []},
+  {"id": "s1", "name": "East half", "bounds": {"min": [64, -64, 0], "max": [127, 319, 63]}, "status": "todo", "reviews": []}
+ ],
+ "protect": [
+  {"id": "war-table", "kind": "station", "min": [20, 60, 50], "max": [26, 96, 56], "reason": "station: war table"},
+  {"id": "spawn", "kind": "spawn", "min": [60, 60, 0], "max": [63, 96, 3], "reason": "spawn point (plan 7.3)"},
+  {"id": "flag", "kind": "capture", "center": [96, 32], "radius": 6, "y": [64, 67], "reason": "capture point ring, kept clear"}
+ ]
+}

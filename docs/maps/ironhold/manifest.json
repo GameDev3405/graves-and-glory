@@ -1,0 +1,5818 @@
+{
+ "format": "gg-mapforge-map/1",
+ "id": "ironhold",
+ "name": "Ironhold",
+ "palette": "ironhold (pending the palette work, backlog item 3; grass and leaves tint waits for it)",
+ "bounds": {
+  "min": [
+   -350,
+   -64,
+   -250
+  ],
+  "max": [
+   349,
+   319,
+   249
+  ]
+ },
+ "layout": {
+  "doc": "docs/maps/ironhold/layout-draft-2026-10-30.md",
+  "signedBy": "Kort",
+  "signedAt": "2026-10-30",
+  "picks": {
+   "D1": "a: keep coordinates, add the east gorge, Dusk spawn to (128,0)",
+   "D2": "a: new Great Keep tower to about y 114",
+   "D3": "a: keep points A/B/C",
+   "D4": "a: defenders-only keep postern (built by the modes lane)",
+   "D5": "a: the Mire with a causeway",
+   "D6": "a: north low and wet, south high"
+  },
+  "workflow": "Sections about 64x64; passes blockout, structure, natural, detail; agents review each pass from top-down and isometric renders; Kort signs only the layout and the finished map.",
+  "rulings": {
+   "at": "2026-10-30",
+   "by": "Kort",
+   "eastCurtain": "the layout wins: east curtain at x 98..102; today's x 72 pieces (ih-curtain-en*/es*) are dropped",
+   "innerWard": "closed: inner curtain runs from the gate ends to the river cliffs; the gate and the D4a postern are the only ways in",
+   "keepTower": "out of the river: x 9..23, z 24..44 on the east bank; the river line at x 4..5 stays clean",
+   "stations": "left as placed, awaiting the modes lane",
+   "river": "2026-10-31: the river bends east around the keep court (elbows z 13..19 and z 49..55, leg x 25..30); the court and the stage C ring stay on solid ground, ring lock unchanged"
+  },
+  "adoption": [
+   "Remove Spec/LANDMARKS rows ih-curtain-en1, ih-curtain-en2, ih-curtain-es1 and ih-curtain-es2 (today's x 72 east curtain) in the same change that adopts the rebuilt Ironhold (Kort 2026-10-31); leave them until then"
+  ]
+ },
+ "base": "Until the 2A.2 export of the live map exists, the stand-in base world is built by docs/maps/ironhold/sections/make_blockout.py base (flat ground top y 63 plus today's gate, keep and west curtain pieces). Replace it with the export before the structure pass.",
+ "sections": [
+  {
+   "id": "A0",
+   "name": "North Mountains (rim)",
+   "bounds": {
+    "min": [
+     -350,
+     -64,
+     -250
+    ],
+    "max": [
+     -290,
+     319,
+     -177
+    ]
+   },
+   "status": "blockout",
+   "reviews": [
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T02:33:22Z",
+     "digest": "13511190c2b266d3dddb2aaa5ae428500b20594459cdf425ddcb0db4aa119e67",
+     "plans": [
+      "docs/maps/ironhold/sections/A0-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-A0-top.png",
+      "docs/maps/ironhold/sections/ironhold-A0-iso.png"
+     ],
+     "notes": "North Mountains blockout: edge rise from z -182 to peaks 82-88, river keeps its valley through the rim, gorge bed and walls continue in I..K. Locks ok, seams checked against row 1."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T04:19:23Z",
+     "digest": "65c6826f7e376def59e9b196a376fac39221b4a9a6c7b551947845bdeedf782d",
+     "plans": [
+      "docs/maps/ironhold/sections/A0-surface.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-A0-top.png",
+      "docs/maps/ironhold/sections/ironhold-A0-iso.png"
+     ],
+     "notes": "Surface fix pass (Kort 2026-10-31): floor: one main block, light accent, path cores. Top layer only."
+    }
+   ]
+  },
+  {
+   "id": "B0",
+   "name": "North Mountains (rim)",
+   "bounds": {
+    "min": [
+     -289,
+     -64,
+     -250
+    ],
+    "max": [
+     -226,
+     319,
+     -177
+    ]
+   },
+   "status": "blockout",
+   "reviews": [
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T02:34:24Z",
+     "digest": "7bc89228e8e53c13e58438df66e58b94051765ec2e087fb36318facd9e6f5227",
+     "plans": [
+      "docs/maps/ironhold/sections/B0-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-B0-top.png",
+      "docs/maps/ironhold/sections/ironhold-B0-iso.png"
+     ],
+     "notes": "North Mountains blockout: edge rise from z -182 to peaks 82-88, river keeps its valley through the rim, gorge bed and walls continue in I..K. Locks ok, seams checked against row 1."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T04:25:17Z",
+     "digest": "df2892749e831e30d3866d5bad43c3cebe89dc6925098fe9ccaf089688e3d6e7",
+     "plans": [
+      "docs/maps/ironhold/sections/B0-surface.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-B0-top.png",
+      "docs/maps/ironhold/sections/ironhold-B0-iso.png"
+     ],
+     "notes": "Surface fix pass (Kort 2026-10-31): floor: one main block, light accent, path cores. Top layer only."
+    }
+   ]
+  },
+  {
+   "id": "C0",
+   "name": "North Mountains (rim)",
+   "bounds": {
+    "min": [
+     -225,
+     -64,
+     -250
+    ],
+    "max": [
+     -162,
+     319,
+     -177
+    ]
+   },
+   "status": "blockout",
+   "reviews": [
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T02:34:39Z",
+     "digest": "cf4950ef612087928e078b4dabdea980e3947ab6ee0ec2f2921bf5384b329d36",
+     "plans": [
+      "docs/maps/ironhold/sections/C0-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-C0-top.png",
+      "docs/maps/ironhold/sections/ironhold-C0-iso.png"
+     ],
+     "notes": "North Mountains blockout: edge rise from z -182 to peaks 82-88, river keeps its valley through the rim, gorge bed and walls continue in I..K. Locks ok, seams checked against row 1."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T04:31:17Z",
+     "digest": "e926f19bc3b9209f91fb74602428bb14a752b13beafdbc60392b215e4b544721",
+     "plans": [
+      "docs/maps/ironhold/sections/C0-surface.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-C0-top.png",
+      "docs/maps/ironhold/sections/ironhold-C0-iso.png"
+     ],
+     "notes": "Surface fix pass (Kort 2026-10-31): floor: one main block, light accent, path cores. Top layer only."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T05:45:18Z",
+     "digest": "fcdc96dbcfb6c58de998e5dc071a453d7769eca609c88c0d399f91fa21df7e98",
+     "plans": [
+      "docs/maps/ironhold/sections/C0-cleanup.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-C0-top.png",
+      "docs/maps/ironhold/sections/ironhold-C0-iso.png"
+     ],
+     "notes": "Surface cleanup (Kort 2026-11-01): floor: one main block, light accent, path cores. Top layer only."
+    }
+   ]
+  },
+  {
+   "id": "D0",
+   "name": "North Mountains (rim)",
+   "bounds": {
+    "min": [
+     -161,
+     -64,
+     -250
+    ],
+    "max": [
+     -98,
+     319,
+     -177
+    ]
+   },
+   "status": "blockout",
+   "reviews": [
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T02:34:54Z",
+     "digest": "44a4077fef413616cccfb46d5236c9f70f6970bfc9ed980e61c79c8828c80324",
+     "plans": [
+      "docs/maps/ironhold/sections/D0-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-D0-top.png",
+      "docs/maps/ironhold/sections/ironhold-D0-iso.png"
+     ],
+     "notes": "North Mountains blockout: edge rise from z -182 to peaks 82-88, river keeps its valley through the rim, gorge bed and walls continue in I..K. Locks ok, seams checked against row 1."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T04:38:06Z",
+     "digest": "c170c4ddb68cfcf3526faba76e7a6b2a001c5f13ec0dfe3d284a3de415d384ef",
+     "plans": [
+      "docs/maps/ironhold/sections/D0-surface.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-D0-top.png",
+      "docs/maps/ironhold/sections/ironhold-D0-iso.png"
+     ],
+     "notes": "Surface fix pass (Kort 2026-10-31): floor: one main block, light accent, path cores. Top layer only."
+    }
+   ]
+  },
+  {
+   "id": "E0",
+   "name": "North Mountains (rim)",
+   "bounds": {
+    "min": [
+     -97,
+     -64,
+     -250
+    ],
+    "max": [
+     -34,
+     319,
+     -177
+    ]
+   },
+   "status": "blockout",
+   "reviews": [
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T02:35:10Z",
+     "digest": "e424e1334d9d1ce25ce2fc19c7124b4f749bf7649dc7273781eda1499c5afaac",
+     "plans": [
+      "docs/maps/ironhold/sections/E0-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-E0-top.png",
+      "docs/maps/ironhold/sections/ironhold-E0-iso.png"
+     ],
+     "notes": "North Mountains blockout: edge rise from z -182 to peaks 82-88, river keeps its valley through the rim, gorge bed and walls continue in I..K. Locks ok, seams checked against row 1."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T04:43:45Z",
+     "digest": "0d4f184397899af62dfa32376a2176604c3113e4e32c265f17d6187f926d4f9c",
+     "plans": [
+      "docs/maps/ironhold/sections/E0-surface.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-E0-top.png",
+      "docs/maps/ironhold/sections/ironhold-E0-iso.png"
+     ],
+     "notes": "Surface fix pass (Kort 2026-10-31): floor: one main block, light accent, path cores. Top layer only."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T05:52:19Z",
+     "digest": "ee912642addd35134b48077be796a015afec3dc78bbee1807801de53ae3e3e50",
+     "plans": [
+      "docs/maps/ironhold/sections/E0-cleanup.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-E0-top.png",
+      "docs/maps/ironhold/sections/ironhold-E0-iso.png"
+     ],
+     "notes": "Surface cleanup (Kort 2026-11-01): floor: one main block, light accent, path cores. Top layer only."
+    }
+   ]
+  },
+  {
+   "id": "F0",
+   "name": "North Mountains (rim)",
+   "bounds": {
+    "min": [
+     -33,
+     -64,
+     -250
+    ],
+    "max": [
+     30,
+     319,
+     -177
+    ]
+   },
+   "status": "blockout",
+   "reviews": [
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T02:35:25Z",
+     "digest": "21edad84025dfbbc6cf6f56825cea8e72e3d0a485e5f0642f23c759d3bb04c79",
+     "plans": [
+      "docs/maps/ironhold/sections/F0-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-F0-top.png",
+      "docs/maps/ironhold/sections/ironhold-F0-iso.png"
+     ],
+     "notes": "North Mountains blockout: edge rise from z -182 to peaks 82-88, river keeps its valley through the rim, gorge bed and walls continue in I..K. Locks ok, seams checked against row 1."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T04:49:33Z",
+     "digest": "a06022118ebe18a27e312c2957747fb05ec331666def2f5115f735de708cc7dc",
+     "plans": [
+      "docs/maps/ironhold/sections/F0-surface.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-F0-top.png",
+      "docs/maps/ironhold/sections/ironhold-F0-iso.png"
+     ],
+     "notes": "Surface fix pass (Kort 2026-10-31): floor: one main block, light accent, path cores. Top layer only."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T05:56:30Z",
+     "digest": "2c6fe26aa0a6ad60fcf6979139b0f79167418e8d0fe4928c24ea25b09d0e5d93",
+     "plans": [
+      "docs/maps/ironhold/sections/F0-cleanup.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-F0-top.png",
+      "docs/maps/ironhold/sections/ironhold-F0-iso.png"
+     ],
+     "notes": "Surface cleanup (Kort 2026-11-01): floor: one main block, light accent, path cores. Top layer only."
+    }
+   ]
+  },
+  {
+   "id": "G0",
+   "name": "North Mountains (rim)",
+   "bounds": {
+    "min": [
+     31,
+     -64,
+     -250
+    ],
+    "max": [
+     94,
+     319,
+     -177
+    ]
+   },
+   "status": "blockout",
+   "reviews": [
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T02:35:40Z",
+     "digest": "a2177182977fff84748b59893ef10ca8f31ff56b46767ae0552934521ff4659e",
+     "plans": [
+      "docs/maps/ironhold/sections/G0-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-G0-top.png",
+      "docs/maps/ironhold/sections/ironhold-G0-iso.png"
+     ],
+     "notes": "North Mountains blockout: edge rise from z -182 to peaks 82-88, river keeps its valley through the rim, gorge bed and walls continue in I..K. Locks ok, seams checked against row 1."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T04:55:42Z",
+     "digest": "b553ac831e04e7d86ca0b90100aa65685e97ebe362e26e5fe8a22b7bea10caea",
+     "plans": [
+      "docs/maps/ironhold/sections/G0-surface.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-G0-top.png",
+      "docs/maps/ironhold/sections/ironhold-G0-iso.png"
+     ],
+     "notes": "Surface fix pass (Kort 2026-10-31): floor: one main block, light accent, path cores. Top layer only."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T06:01:37Z",
+     "digest": "90ba5ac980370d3eea86cc79a1d1b6bb90f8977d9fd1229251aa35853c1de7fd",
+     "plans": [
+      "docs/maps/ironhold/sections/G0-cleanup.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-G0-top.png",
+      "docs/maps/ironhold/sections/ironhold-G0-iso.png"
+     ],
+     "notes": "Surface cleanup (Kort 2026-11-01): floor: one main block, light accent, path cores. Top layer only."
+    }
+   ]
+  },
+  {
+   "id": "H0",
+   "name": "North Mountains (rim)",
+   "bounds": {
+    "min": [
+     95,
+     -64,
+     -250
+    ],
+    "max": [
+     158,
+     319,
+     -177
+    ]
+   },
+   "status": "blockout",
+   "reviews": [
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T02:35:55Z",
+     "digest": "bc0e799366e501c98d3952a6065a631da42061d917ca61bf3d8e02a43e248959",
+     "plans": [
+      "docs/maps/ironhold/sections/H0-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-H0-top.png",
+      "docs/maps/ironhold/sections/ironhold-H0-iso.png"
+     ],
+     "notes": "North Mountains blockout: edge rise from z -182 to peaks 82-88, river keeps its valley through the rim, gorge bed and walls continue in I..K. Locks ok, seams checked against row 1."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T05:01:53Z",
+     "digest": "93be912a28de8af8ccfa9a47a49faca1313f349fe8a020ff4af6c7fd5ced60f8",
+     "plans": [
+      "docs/maps/ironhold/sections/H0-surface.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-H0-top.png",
+      "docs/maps/ironhold/sections/ironhold-H0-iso.png"
+     ],
+     "notes": "Surface fix pass (Kort 2026-10-31): floor: one main block, light accent, path cores. Top layer only."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T06:05:01Z",
+     "digest": "b48a044059096ab5865bc46328b015f8716d43cf93183ffb370d364bc84908ef",
+     "plans": [
+      "docs/maps/ironhold/sections/H0-cleanup.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-H0-top.png",
+      "docs/maps/ironhold/sections/ironhold-H0-iso.png"
+     ],
+     "notes": "Surface cleanup (Kort 2026-11-01): floor: one main block, light accent, path cores. Top layer only."
+    }
+   ]
+  },
+  {
+   "id": "I0",
+   "name": "Gorge parapet",
+   "bounds": {
+    "min": [
+     159,
+     -64,
+     -250
+    ],
+    "max": [
+     222,
+     319,
+     -177
+    ]
+   },
+   "status": "blockout",
+   "reviews": [
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T02:36:10Z",
+     "digest": "eb5468c9d6986eb743d71c923a505c1e7ace2568a24c87e02547b33de95e299a",
+     "plans": [
+      "docs/maps/ironhold/sections/I0-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-I0-top.png",
+      "docs/maps/ironhold/sections/ironhold-I0-iso.png"
+     ],
+     "notes": "North Mountains blockout: edge rise from z -182 to peaks 82-88, river keeps its valley through the rim, gorge bed and walls continue in I..K. Locks ok, seams checked against row 1."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T05:07:32Z",
+     "digest": "68cf459e7c6bbf85349686dfe40d1cb64547e63309a8aed32003a02ae4770e7c",
+     "plans": [
+      "docs/maps/ironhold/sections/I0-surface.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-I0-top.png",
+      "docs/maps/ironhold/sections/ironhold-I0-iso.png"
+     ],
+     "notes": "Surface fix pass (Kort 2026-10-31): gorge: banded crag, gravel scree. Top layer only."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T06:07:05Z",
+     "digest": "a823ddf4bcafa0b3680b52dcebdc2ad366e59ea740c0a246fb769bba187a3f65",
+     "plans": [
+      "docs/maps/ironhold/sections/I0-cleanup.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-I0-top.png",
+      "docs/maps/ironhold/sections/ironhold-I0-iso.png"
+     ],
+     "notes": "Surface cleanup (Kort 2026-11-01): gorge: banded crag, gravel scree. Top layer only."
+    }
+   ]
+  },
+  {
+   "id": "J0",
+   "name": "Gorge backdrop",
+   "bounds": {
+    "min": [
+     223,
+     -64,
+     -250
+    ],
+    "max": [
+     286,
+     319,
+     -177
+    ]
+   },
+   "status": "blockout",
+   "reviews": [
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T02:36:26Z",
+     "digest": "c9277536fc031e12e9fbed7922e498f146ae922b36ffbbcfd1baf086882a71cb",
+     "plans": [
+      "docs/maps/ironhold/sections/J0-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-J0-top.png",
+      "docs/maps/ironhold/sections/ironhold-J0-iso.png"
+     ],
+     "notes": "North Mountains blockout: edge rise from z -182 to peaks 82-88, river keeps its valley through the rim, gorge bed and walls continue in I..K. Locks ok, seams checked against row 1."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T05:13:43Z",
+     "digest": "20fea4492790e479e787af025a802d72321773c842b8cda7b8774c95baafd240",
+     "plans": [
+      "docs/maps/ironhold/sections/J0-surface.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-J0-top.png",
+      "docs/maps/ironhold/sections/ironhold-J0-iso.png"
+     ],
+     "notes": "Surface fix pass (Kort 2026-10-31): gorge: banded crag, gravel scree. Top layer only."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T06:12:26Z",
+     "digest": "71e4e156b045f1ee367309ef9e6f9043716b349e0f2d8fd2f0b57671db983a85",
+     "plans": [
+      "docs/maps/ironhold/sections/J0-cleanup.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-J0-top.png",
+      "docs/maps/ironhold/sections/ironhold-J0-iso.png"
+     ],
+     "notes": "Surface cleanup (Kort 2026-11-01): gorge: banded crag, gravel scree. Top layer only."
+    }
+   ]
+  },
+  {
+   "id": "K0",
+   "name": "Gorge backdrop",
+   "bounds": {
+    "min": [
+     287,
+     -64,
+     -250
+    ],
+    "max": [
+     349,
+     319,
+     -177
+    ]
+   },
+   "status": "blockout",
+   "reviews": [
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T02:36:41Z",
+     "digest": "c130ab07ba7f4eedb4199811445de47303454ecf0f2d10d94cb4864ea02a362f",
+     "plans": [
+      "docs/maps/ironhold/sections/K0-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-K0-top.png",
+      "docs/maps/ironhold/sections/ironhold-K0-iso.png"
+     ],
+     "notes": "North Mountains blockout: edge rise from z -182 to peaks 82-88, river keeps its valley through the rim, gorge bed and walls continue in I..K. Locks ok, seams checked against row 1."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T05:19:15Z",
+     "digest": "d00d80c156682dadf3bfdd5a599fe7c2f44df96e766e692c4d54fdf9466ae961",
+     "plans": [
+      "docs/maps/ironhold/sections/K0-surface.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-K0-top.png",
+      "docs/maps/ironhold/sections/ironhold-K0-iso.png"
+     ],
+     "notes": "Surface fix pass (Kort 2026-10-31): gorge: banded crag, gravel scree. Top layer only."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T06:17:29Z",
+     "digest": "f1e3dc4bc66690b54c5a6f7efb1973a502c98bdbb56d8012d16f527345824d5f",
+     "plans": [
+      "docs/maps/ironhold/sections/K0-cleanup.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-K0-top.png",
+      "docs/maps/ironhold/sections/ironhold-K0-iso.png"
+     ],
+     "notes": "Surface cleanup (Kort 2026-11-01): gorge: banded crag, gravel scree. Top layer only."
+    }
+   ]
+  },
+  {
+   "id": "A1",
+   "name": "West rim",
+   "bounds": {
+    "min": [
+     -350,
+     -64,
+     -176
+    ],
+    "max": [
+     -290,
+     319,
+     -113
+    ]
+   },
+   "status": "blockout",
+   "reviews": [
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T02:33:37Z",
+     "digest": "233d10aa3e474dd91ceb4421fe996c2cf030a750575135492b205f64b51adbd2",
+     "plans": [
+      "docs/maps/ironhold/sections/A1-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-A1-top.png",
+      "docs/maps/ironhold/sections/ironhold-A1-iso.png"
+     ],
+     "notes": "West rim blockout: rim climbs from x -333 to 82-88, ground below matches A2..A5. Locks ok, seams checked."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T04:20:02Z",
+     "digest": "fbc49ec14bb34f92c84bdd61c5e6f3f36941d2899f551f4b6596e390e0a283e4",
+     "plans": [
+      "docs/maps/ironhold/sections/A1-surface.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-A1-top.png",
+      "docs/maps/ironhold/sections/ironhold-A1-iso.png"
+     ],
+     "notes": "Surface fix pass (Kort 2026-10-31): floor: one main block, light accent, path cores. Top layer only."
+    }
+   ]
+  },
+  {
+   "id": "B1",
+   "name": "Camp north",
+   "bounds": {
+    "min": [
+     -289,
+     -64,
+     -176
+    ],
+    "max": [
+     -226,
+     319,
+     -113
+    ]
+   },
+   "status": "blockout",
+   "reviews": [
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-10-31T15:43:30Z",
+     "digest": "e7025825a876f63cf8546383c82cc230e5b4e584a6f9984550d57435dde83419",
+     "plans": [
+      "docs/maps/ironhold/sections/B1-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-B1-top.png",
+      "docs/maps/ironhold/sections/ironhold-B1-iso.png"
+     ],
+     "notes": "North upland: field massing rising 0..2 toward the north edge, crag outcrops (andesite, tuff, cobble, moss breakup) kept 9 clear of the lanes, mantlets at z -150/-128 on graded pads with low banks. Locks ok."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T04:25:58Z",
+     "digest": "fa4a41f0ba0d7aaad448be4e909a7b2afbe9aeb63f3cbe6eba0cc8b8f56c8b50",
+     "plans": [
+      "docs/maps/ironhold/sections/B1-surface.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-B1-top.png",
+      "docs/maps/ironhold/sections/ironhold-B1-iso.png"
+     ],
+     "notes": "Surface fix pass (Kort 2026-10-31): floor: one main block, light accent, path cores. Top layer only."
+    }
+   ]
+  },
+  {
+   "id": "C1",
+   "name": "West upland",
+   "bounds": {
+    "min": [
+     -225,
+     -64,
+     -176
+    ],
+    "max": [
+     -162,
+     319,
+     -113
+    ]
+   },
+   "status": "blockout",
+   "reviews": [
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-10-31T12:12:35Z",
+     "digest": "c2b544ff82353b2ff1427c90b88f4481e86f7f54d3b469df0ad8e27bd576b5f5",
+     "plans": [
+      "docs/maps/ironhold/sections/C1-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-C1-top.png",
+      "docs/maps/ironhold/sections/ironhold-C1-iso.png"
+     ],
+     "notes": "West upland falls to the wet north meadow; north lane bends round the bluff's west foot; meadow puddles flush with the mud. Upland contours still read as soft terraces (natural pass)."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T04:32:07Z",
+     "digest": "f6ba583c33da51b587c01fdf965563fec1e9f12f680fe4cde5f63d1a69d1ac56",
+     "plans": [
+      "docs/maps/ironhold/sections/C1-surface.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-C1-top.png",
+      "docs/maps/ironhold/sections/ironhold-C1-iso.png"
+     ],
+     "notes": "Surface fix pass (Kort 2026-10-31): floor: one main block, light accent, path cores. Top layer only."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T05:46:00Z",
+     "digest": "0e55ccbb2f1d735e00fdb8b5d1c92446960906b041a4e51932a5d395ec989a4e",
+     "plans": [
+      "docs/maps/ironhold/sections/C1-cleanup.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-C1-top.png",
+      "docs/maps/ironhold/sections/ironhold-C1-iso.png"
+     ],
+     "notes": "Surface cleanup (Kort 2026-11-01): floor: one main block, light accent, path cores. Top layer only."
+    }
+   ]
+  },
+  {
+   "id": "D1",
+   "name": "North bluff",
+   "bounds": {
+    "min": [
+     -161,
+     -64,
+     -176
+    ],
+    "max": [
+     -98,
+     319,
+     -113
+    ]
+   },
+   "status": "blockout",
+   "reviews": [
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-10-31T12:12:38Z",
+     "digest": "dc1337f071ec240137066ff6d90083dbfa8155f1b7cd1f29a8b9c690cee099b4",
+     "plans": [
+      "docs/maps/ironhold/sections/D1-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-D1-top.png",
+      "docs/maps/ironhold/sections/ironhold-D1-iso.png"
+     ],
+     "notes": "North bluff rises to about 70 on a warped, uneven foot with bare rock where it steepens; lane runs along its foot, hidden from the gate towers. Wet patches could be fewer near the lane."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T04:38:48Z",
+     "digest": "3f5cf4db2967f856dc48d89818116d25507de0c51aafd72137489a8dabbd7dfb",
+     "plans": [
+      "docs/maps/ironhold/sections/D1-surface.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-D1-top.png",
+      "docs/maps/ironhold/sections/ironhold-D1-iso.png"
+     ],
+     "notes": "Surface fix pass (Kort 2026-10-31): floor: one main block, light accent, path cores. Top layer only."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T05:48:48Z",
+     "digest": "34b9407dce2f9b43c8123eff4b2eab5b47a8cf3beb047566cc73dbe7509f7972",
+     "plans": [
+      "docs/maps/ironhold/sections/D1-cleanup.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-D1-top.png",
+      "docs/maps/ironhold/sections/ironhold-D1-iso.png"
+     ],
+     "notes": "Surface cleanup (Kort 2026-11-01): floor: one main block, light accent, path cores. Top layer only."
+    }
+   ]
+  },
+  {
+   "id": "E1",
+   "name": "Village outskirts",
+   "bounds": {
+    "min": [
+     -97,
+     -64,
+     -176
+    ],
+    "max": [
+     -34,
+     319,
+     -113
+    ]
+   },
+   "status": "blockout",
+   "reviews": [
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-10-31T12:12:40Z",
+     "digest": "f980f8f5788654f6d3383c8aa67695ef4ac4cbcdfcbf51a98d65c336cf534ec4",
+     "plans": [
+      "docs/maps/ironhold/sections/E1-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-E1-top.png",
+      "docs/maps/ironhold/sections/ironhold-E1-iso.png"
+     ],
+     "notes": "Burned village: five roofless blackstone shells with broken tops 64..68 and one doorway each, on ash and gravel; bluff behind; north lane into A. The corner nearest A is broken to the ground for the capture ring."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T04:44:27Z",
+     "digest": "3363b86b4650d868a084b4e4f38026a0f45629c47e7c317218fd905700e47fbd",
+     "plans": [
+      "docs/maps/ironhold/sections/E1-surface.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-E1-top.png",
+      "docs/maps/ironhold/sections/ironhold-E1-iso.png"
+     ],
+     "notes": "Surface fix pass (Kort 2026-10-31): floor: one main block, light accent, path cores. Top layer only."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T05:53:02Z",
+     "digest": "c686e67e60a1902083a2a82edecc65e3895d46b9d52a4f69503bdfb38e4e8e3b",
+     "plans": [
+      "docs/maps/ironhold/sections/E1-cleanup.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-E1-top.png",
+      "docs/maps/ironhold/sections/ironhold-E1-iso.png"
+     ],
+     "notes": "Surface cleanup (Kort 2026-11-01): floor: one main block, light accent, path cores. Top layer only."
+    }
+   ]
+  },
+  {
+   "id": "F1",
+   "name": "Point A",
+   "bounds": {
+    "min": [
+     -33,
+     -64,
+     -176
+    ],
+    "max": [
+     30,
+     319,
+     -113
+    ]
+   },
+   "status": "blockout",
+   "reviews": [
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-10-31T12:12:42Z",
+     "digest": "e2cb4685d0a2fc8254102b64bd01da39fca74e2be2014080ef60cbb2fb743afe",
+     "plans": [
+      "docs/maps/ironhold/sections/F1-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-F1-top.png",
+      "docs/maps/ironhold/sections/ironhold-F1-iso.png"
+     ],
+     "notes": "A supply yard: level pad at 63 under the ring, broken wall stubs at r 21 clear of the lanes; north ford eased to a 1-deep gravel shoal; river rises into its gorge mouth toward the rim."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-10-31T18:05:48Z",
+     "digest": "225ab97e6d5737d72091a85479ec97c87c2e5198f78781ff4caec35f2c397b23",
+     "plans": [
+      "docs/maps/ironhold/sections/F1-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-F1-iso.png"
+     ],
+     "notes": "North ford tidied like F5 (Kort 2026-10-31): the wide pool is gone; a slanting gravel bar 1 under the water crosses the kept channel from z -127 (A side) to z -134, gravel ramps down the west cliff from the A yard and up the east cliff to the reach track's end. A ring untouched at y 64..67. Locks ok."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T04:50:12Z",
+     "digest": "320795e3bbac5230e3cf21653e026e9878666f302f47eba97917d046b4955fdc",
+     "plans": [
+      "docs/maps/ironhold/sections/F1-surface.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-F1-top.png",
+      "docs/maps/ironhold/sections/ironhold-F1-iso.png"
+     ],
+     "notes": "Surface fix pass (Kort 2026-10-31): floor: one main block, light accent, path cores. Top layer only."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T05:57:17Z",
+     "digest": "ccb17360beea3b5532a8eb7b6c1c5932b78f5f9bac68612db54dc1bf1a36effb",
+     "plans": [
+      "docs/maps/ironhold/sections/F1-cleanup.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-F1-top.png",
+      "docs/maps/ironhold/sections/ironhold-F1-iso.png"
+     ],
+     "notes": "Surface cleanup (Kort 2026-11-01): floor: one main block, light accent, path cores. Top layer only."
+    }
+   ]
+  },
+  {
+   "id": "G1",
+   "name": "North reach",
+   "bounds": {
+    "min": [
+     31,
+     -64,
+     -176
+    ],
+    "max": [
+     94,
+     319,
+     -113
+    ]
+   },
+   "status": "blockout",
+   "reviews": [
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-10-31T12:12:44Z",
+     "digest": "f49ac13bd701c4fdbdd4b28cd31d571d5f5eff57fde87a18b8fd82d04c4d83aa",
+     "plans": [
+      "docs/maps/ironhold/sections/G1-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-G1-top.png",
+      "docs/maps/ironhold/sections/ironhold-G1-iso.png"
+     ],
+     "notes": "North reach: open wet bank east of the river, worn track to the ford, banks rising toward the rim. Quiet by design."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T04:56:34Z",
+     "digest": "abc054919a14d570b47fd0084ee944148a1cbdcb5eef19cbe57dca7765fbf454",
+     "plans": [
+      "docs/maps/ironhold/sections/G1-surface.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-G1-top.png",
+      "docs/maps/ironhold/sections/ironhold-G1-iso.png"
+     ],
+     "notes": "Surface fix pass (Kort 2026-10-31): floor: one main block, light accent, path cores. Top layer only."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T06:02:19Z",
+     "digest": "d8e45b5ae447da84c970ba13da57cea5501bdefccf0bcbfc2f7d4f0d91acb10a",
+     "plans": [
+      "docs/maps/ironhold/sections/G1-cleanup.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-G1-top.png",
+      "docs/maps/ironhold/sections/ironhold-G1-iso.png"
+     ],
+     "notes": "Surface cleanup (Kort 2026-11-01): floor: one main block, light accent, path cores. Top layer only."
+    }
+   ]
+  },
+  {
+   "id": "H1",
+   "name": "East watch",
+   "bounds": {
+    "min": [
+     95,
+     -64,
+     -176
+    ],
+    "max": [
+     158,
+     319,
+     -113
+    ]
+   },
+   "status": "blockout",
+   "reviews": [
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-10-31T18:05:58Z",
+     "digest": "af65ac78ea60f8f681b8e92fcfb7b48894e71bc61ba32ab7a9ee7d401e74867a",
+     "plans": [
+      "docs/maps/ironhold/sections/H1-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-H1-iso.png"
+     ],
+     "notes": "East watch north: wet meadow at 62..63 with pools and moss, continuing the north flank's swells and breakup from G1; east watchtower x 145..155, z -155..-145, top 79 with cracked crown. Locks ok."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T05:02:33Z",
+     "digest": "06b08f06bd72dc5fd1b41850061a47d777d510f157c12bf9b6dbc2f064cb5ac6",
+     "plans": [
+      "docs/maps/ironhold/sections/H1-surface.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-H1-top.png",
+      "docs/maps/ironhold/sections/ironhold-H1-iso.png"
+     ],
+     "notes": "Surface fix pass (Kort 2026-10-31): floor: one main block, light accent, path cores. Top layer only."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T06:05:42Z",
+     "digest": "b2fb73abbb758c6f9713fcbe66330c7a266d1ae698b0383275df197995661165",
+     "plans": [
+      "docs/maps/ironhold/sections/H1-cleanup.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-H1-top.png",
+      "docs/maps/ironhold/sections/ironhold-H1-iso.png"
+     ],
+     "notes": "Surface cleanup (Kort 2026-11-01): floor: one main block, light accent, path cores. Top layer only."
+    }
+   ]
+  },
+  {
+   "id": "I1",
+   "name": "Gorge parapet",
+   "bounds": {
+    "min": [
+     159,
+     -64,
+     -176
+    ],
+    "max": [
+     222,
+     319,
+     -113
+    ]
+   },
+   "status": "blockout",
+   "reviews": [
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T00:46:22Z",
+     "digest": "7958be907c18f4024680bd8476c83a92c1af7a54be9424a8d8f51ff8251c16f5",
+     "plans": [
+      "docs/maps/ironhold/sections/I1-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-I1-top.png",
+      "docs/maps/ironhold/sections/ironhold-I1-iso.png"
+     ],
+     "notes": "Gorge blockout: Dusk flank grass at 63, curtain y 71 at |z| 94..98, crenellated parapet x 166..168, ragged crag face to scree and a gravel floor at y 44 with boulders; worn rim foot. Blockout only, no detail pass."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T01:20:38Z",
+     "digest": "ece9c9eaa68cea76f9018839557d83a6b4afd37620af88fc09d2492db18abcd2",
+     "plans": [
+      "docs/maps/ironhold/sections/I1-blockout.json",
+      "docs/maps/ironhold/sections/I1-dry-pool.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-I1-top.png",
+      "docs/maps/ironhold/sections/ironhold-I1-iso.png"
+     ],
+     "notes": "North meadow pool on the gorge rim removed and filled to grass at 62 (Kort 2026-10-31); generator no longer places pools at x >= 159."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T05:08:16Z",
+     "digest": "ed6ec310a1c685181f2285d0ddc33b5a8dc015fb49732d14751671423904fb72",
+     "plans": [
+      "docs/maps/ironhold/sections/I1-surface.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-I1-top.png",
+      "docs/maps/ironhold/sections/ironhold-I1-iso.png"
+     ],
+     "notes": "Surface fix pass (Kort 2026-10-31): gorge: banded crag, gravel scree. Top layer only."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T06:07:50Z",
+     "digest": "bbca2f4a54dc0b40f4a1a4e209b3fb5870941f2607f88f2f77ae05b20117c438",
+     "plans": [
+      "docs/maps/ironhold/sections/I1-cleanup.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-I1-top.png",
+      "docs/maps/ironhold/sections/ironhold-I1-iso.png"
+     ],
+     "notes": "Surface cleanup (Kort 2026-11-01): gorge: banded crag, gravel scree. Top layer only."
+    }
+   ]
+  },
+  {
+   "id": "J1",
+   "name": "Gorge backdrop",
+   "bounds": {
+    "min": [
+     223,
+     -64,
+     -176
+    ],
+    "max": [
+     286,
+     319,
+     -113
+    ]
+   },
+   "status": "blockout",
+   "reviews": [
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T02:39:30Z",
+     "digest": "db981e8e387686ac8dfa6091cd90706b54b643f64b4833297969db1eec0e08c2",
+     "plans": [
+      "docs/maps/ironhold/sections/J1-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-J1-top.png",
+      "docs/maps/ironhold/sections/ironhold-J1-iso.png"
+     ],
+     "notes": "Far gorge blockout: gorge bed at 44 with face and bed breakup continued from I. Locks ok, seams checked against I and K."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T05:14:22Z",
+     "digest": "68e5bb2065fb8a64bdb500ba7c8513174f3cdf95ff15c57c53095712f333d760",
+     "plans": [
+      "docs/maps/ironhold/sections/J1-surface.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-J1-top.png",
+      "docs/maps/ironhold/sections/ironhold-J1-iso.png"
+     ],
+     "notes": "Surface fix pass (Kort 2026-10-31): gorge: banded crag, gravel scree. Top layer only."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T06:13:08Z",
+     "digest": "5e76b772cb2f4ceb541d1ff21b97ce4c4379eab4f9ceebe1a5b78e1fd62edc10",
+     "plans": [
+      "docs/maps/ironhold/sections/J1-cleanup.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-J1-top.png",
+      "docs/maps/ironhold/sections/ironhold-J1-iso.png"
+     ],
+     "notes": "Surface cleanup (Kort 2026-11-01): gorge: banded crag, gravel scree. Top layer only."
+    }
+   ]
+  },
+  {
+   "id": "K1",
+   "name": "Gorge backdrop",
+   "bounds": {
+    "min": [
+     287,
+     -64,
+     -176
+    ],
+    "max": [
+     349,
+     319,
+     -113
+    ]
+   },
+   "status": "blockout",
+   "reviews": [
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T02:41:23Z",
+     "digest": "691e2b05ea2a19bf5e3983425c507963d7511e7e1844ffc85e4a585f052a5bd7",
+     "plans": [
+      "docs/maps/ironhold/sections/K1-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-K1-top.png",
+      "docs/maps/ironhold/sections/ironhold-K1-iso.png"
+     ],
+     "notes": "Far gorge blockout: bed continues to x 300, then the far east wall climbs to 82-88. Locks ok, seams checked against J."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T05:20:02Z",
+     "digest": "2dd771a8b362631ac8ea608e9069910608d508bef4e3def29b5bf1dd5dc709f9",
+     "plans": [
+      "docs/maps/ironhold/sections/K1-surface.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-K1-top.png",
+      "docs/maps/ironhold/sections/ironhold-K1-iso.png"
+     ],
+     "notes": "Surface fix pass (Kort 2026-10-31): gorge: banded crag, gravel scree. Top layer only."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T06:18:08Z",
+     "digest": "6439cccff7f560437583fec3a7b3d0b695c417de74e4d489cbebf593d0b9f954",
+     "plans": [
+      "docs/maps/ironhold/sections/K1-cleanup.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-K1-top.png",
+      "docs/maps/ironhold/sections/ironhold-K1-iso.png"
+     ],
+     "notes": "Surface cleanup (Kort 2026-11-01): gorge: banded crag, gravel scree. Top layer only."
+    }
+   ]
+  },
+  {
+   "id": "A2",
+   "name": "West rim",
+   "bounds": {
+    "min": [
+     -350,
+     -64,
+     -112
+    ],
+    "max": [
+     -290,
+     319,
+     -49
+    ]
+   },
+   "status": "blockout",
+   "reviews": [
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T01:21:09Z",
+     "digest": "5090dc483d062f71e1f765faa5401eade92352d701bda2341dfa04ba2d9e9a59",
+     "plans": [
+      "docs/maps/ironhold/sections/A2-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-A2-top.png",
+      "docs/maps/ironhold/sections/ironhold-A2-iso.png"
+     ],
+     "notes": "Camp west half NW: shelf at 72, north palisade run and west run, slope down to the upland, west rim to 82-88, upland outcrops."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T02:32:51Z",
+     "digest": "52b72bd5355b0ade98f5f6a5cf1d90a8dd46f82f654f3aa02edc284776cb244b",
+     "plans": [
+      "docs/maps/ironhold/sections/A2-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-A2-top.png",
+      "docs/maps/ironhold/sections/ironhold-A2-iso.png"
+     ],
+     "notes": "Rim fix: rim faces now andesite so the north and south erosion clamps no longer plane them; rim climbs to 82-88 over the camp west half. Locks ok, seams checked against A1/A3/A4/A6."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T04:20:42Z",
+     "digest": "8fec60a177ad9192df02e8dfad7a8b3b5e29daaf7b3d46ab84978ab67425b65a",
+     "plans": [
+      "docs/maps/ironhold/sections/A2-surface.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-A2-top.png",
+      "docs/maps/ironhold/sections/ironhold-A2-iso.png"
+     ],
+     "notes": "Surface fix pass (Kort 2026-10-31): floor: one main block, light accent, path cores. Top layer only."
+    }
+   ]
+  },
+  {
+   "id": "B2",
+   "name": "Camp north",
+   "bounds": {
+    "min": [
+     -289,
+     -64,
+     -112
+    ],
+    "max": [
+     -226,
+     319,
+     -49
+    ]
+   },
+   "status": "blockout",
+   "reviews": [
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-10-31T15:43:34Z",
+     "digest": "5f6e4cb717610b07b938cf16de70cbd349619cbf04077f4d9b2b048240302dd7",
+     "plans": [
+      "docs/maps/ironhold/sections/B2-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-B2-top.png",
+      "docs/maps/ironhold/sections/ironhold-B2-iso.png"
+     ],
+     "notes": "Camp north: shelf y 72 with warped lip and earth/crag slope settled by thermal erosion; palisade east run and north run z -72, lane gate z -64 with the rerouted north lane leaving between tents; white tent, mantlet row x -235. Locks ok."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T04:26:42Z",
+     "digest": "c1a95d72c53fd5f0e141e6ae2480c0dd2214854b55e266d3c53d15a2f20cdcaf",
+     "plans": [
+      "docs/maps/ironhold/sections/B2-surface.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-B2-top.png",
+      "docs/maps/ironhold/sections/ironhold-B2-iso.png"
+     ],
+     "notes": "Surface fix pass (Kort 2026-10-31): floor: one main block, light accent, path cores. Top layer only."
+    }
+   ]
+  },
+  {
+   "id": "C2",
+   "name": "Mire north",
+   "bounds": {
+    "min": [
+     -225,
+     -64,
+     -112
+    ],
+    "max": [
+     -162,
+     319,
+     -49
+    ]
+   },
+   "status": "blockout",
+   "reviews": [
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-10-31T12:12:47Z",
+     "digest": "3679932befcb2ccb5d130ccd42e9bab36a7bb361333c79bcdf5f6b7afe2b5ee8",
+     "plans": [
+      "docs/maps/ironhold/sections/C2-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-C2-top.png",
+      "docs/maps/ironhold/sections/ironhold-C2-iso.png"
+     ],
+     "notes": "Mire north edge with pools, watchtower (-180,-85) cracked to 75..77, north lane on dry ground above the Mire."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T04:33:04Z",
+     "digest": "5d3da5066f47792c9515351c3b9a96719e71a70128460b2286d024ab460860ce",
+     "plans": [
+      "docs/maps/ironhold/sections/C2-surface.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-C2-top.png",
+      "docs/maps/ironhold/sections/ironhold-C2-iso.png"
+     ],
+     "notes": "Surface fix pass (Kort 2026-10-31): floor: one main block, light accent, path cores. Top layer only."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T05:46:40Z",
+     "digest": "223718f34f0f5fc2f42d5bf3c8e61b2fbeeac250d0675d34fc82bb89036d9ad4",
+     "plans": [
+      "docs/maps/ironhold/sections/C2-cleanup.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-C2-top.png",
+      "docs/maps/ironhold/sections/ironhold-C2-iso.png"
+     ],
+     "notes": "Surface cleanup (Kort 2026-11-01): floor: one main block, light accent, path cores. Top layer only."
+    }
+   ]
+  },
+  {
+   "id": "D2",
+   "name": "Mire edge north",
+   "bounds": {
+    "min": [
+     -161,
+     -64,
+     -112
+    ],
+    "max": [
+     -98,
+     319,
+     -49
+    ]
+   },
+   "status": "blockout",
+   "reviews": [
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-10-31T12:12:49Z",
+     "digest": "88549adddd50ea1f83d6c6977e6210595708097af66cc79b4fd11598f72c896b",
+     "plans": [
+      "docs/maps/ironhold/sections/D2-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-D2-top.png",
+      "docs/maps/ironhold/sections/ironhold-D2-iso.png"
+     ],
+     "notes": "Supply yard and house unchanged in form; trench runs end short of the z -41 crossing; meadow puddles north of the yard."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T04:39:33Z",
+     "digest": "9349a5bca91dd8ae977fc542fab78c35a5ebd1fe87e82ddd81965c0f348fa95e",
+     "plans": [
+      "docs/maps/ironhold/sections/D2-surface.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-D2-top.png",
+      "docs/maps/ironhold/sections/ironhold-D2-iso.png"
+     ],
+     "notes": "Surface fix pass (Kort 2026-10-31): floor: one main block, light accent, path cores. Top layer only."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T05:49:29Z",
+     "digest": "b8bc6d970bce916a8d073bb0f7d8818555979d9934d10a8253e32b76576d7ac6",
+     "plans": [
+      "docs/maps/ironhold/sections/D2-cleanup.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-D2-top.png",
+      "docs/maps/ironhold/sections/ironhold-D2-iso.png"
+     ],
+     "notes": "Surface cleanup (Kort 2026-11-01): floor: one main block, light accent, path cores. Top layer only."
+    }
+   ]
+  },
+  {
+   "id": "E2",
+   "name": "Burned village",
+   "bounds": {
+    "min": [
+     -97,
+     -64,
+     -112
+    ],
+    "max": [
+     -34,
+     319,
+     -49
+    ]
+   },
+   "status": "blockout",
+   "reviews": [
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-10-31T12:12:52Z",
+     "digest": "7dcefb1972f311364b7d0072cec13d1b76b0e87046910c52f0ab8bf3772f93ec",
+     "plans": [
+      "docs/maps/ironhold/sections/E2-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-E2-top.png",
+      "docs/maps/ironhold/sections/ironhold-E2-iso.png"
+     ],
+     "notes": "NW corner tower (cracked to 74..76) and north curtain at 71; A-to-sally-gap track goes round the fosse end outside the curtain, then a cobble causeway over the fosse at z -62. Village houses 3 and 4 on the ash ground."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T04:45:09Z",
+     "digest": "ba2042e04a865f5cf449008444353907d26194c6ff099c7812aa4cab42b7b550",
+     "plans": [
+      "docs/maps/ironhold/sections/E2-surface.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-E2-top.png",
+      "docs/maps/ironhold/sections/ironhold-E2-iso.png"
+     ],
+     "notes": "Surface fix pass (Kort 2026-10-31): floor: one main block, light accent, path cores. Top layer only."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T05:53:44Z",
+     "digest": "34f894421e36d3faa38d55f82eddc7247b1f8c07601d4288e7db9a78e87b28a4",
+     "plans": [
+      "docs/maps/ironhold/sections/E2-cleanup.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-E2-top.png",
+      "docs/maps/ironhold/sections/ironhold-E2-iso.png"
+     ],
+     "notes": "Surface cleanup (Kort 2026-11-01): floor: one main block, light accent, path cores. Top layer only."
+    }
+   ]
+  },
+  {
+   "id": "F2",
+   "name": "North water gate",
+   "bounds": {
+    "min": [
+     -33,
+     -64,
+     -112
+    ],
+    "max": [
+     30,
+     319,
+     -49
+    ]
+   },
+   "status": "blockout",
+   "reviews": [
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-10-31T12:12:55Z",
+     "digest": "7db05cd1bb69425163e68245f80d3fdddcf70bbb77e3b5f34f4e4e56876eab40",
+     "plans": [
+      "docs/maps/ironhold/sections/F2-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-F2-top.png",
+      "docs/maps/ironhold/sections/ironhold-F2-iso.png"
+     ],
+     "notes": "North curtain with the water-gate arch: the river cuts it, a lintel spans y 68..71; inner yard and bailey ground carried to z -93."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T04:50:50Z",
+     "digest": "df401f4c5ac1f907fd3bb9f89316cfcd003f878cb07dfc0940a40b31bd9fec4d",
+     "plans": [
+      "docs/maps/ironhold/sections/F2-surface.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-F2-top.png",
+      "docs/maps/ironhold/sections/ironhold-F2-iso.png"
+     ],
+     "notes": "Surface fix pass (Kort 2026-10-31): floor: one main block, light accent, path cores. Top layer only."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T05:58:08Z",
+     "digest": "23e48be67e871cd9effe686af63c52c5e1baa66b5cf6e16fb2edaae20d3074cd",
+     "plans": [
+      "docs/maps/ironhold/sections/F2-cleanup.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-F2-top.png",
+      "docs/maps/ironhold/sections/ironhold-F2-iso.png"
+     ],
+     "notes": "Surface cleanup (Kort 2026-11-01): floor: one main block, light accent, path cores. Top layer only."
+    }
+   ]
+  },
+  {
+   "id": "G2",
+   "name": "East bailey",
+   "bounds": {
+    "min": [
+     31,
+     -64,
+     -112
+    ],
+    "max": [
+     94,
+     319,
+     -49
+    ]
+   },
+   "status": "blockout",
+   "reviews": [
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-10-31T16:01:55Z",
+     "digest": "1b2f94f2ae9fca5fbcff8d5bba0ca355e7144b69fc9360aeca0163aa30815e5b",
+     "plans": [
+      "docs/maps/ironhold/sections/G2-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-G2-iso.png"
+     ],
+     "notes": "East bailey north: andesite yard with low swells, north-wall track to the NE tower stair, two lean-to sheds on the north curtain, north store, carts and crate stacks as low cover off the tracks. Rough massing for the structure pass."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T04:57:24Z",
+     "digest": "49bd226f80a5026ad4c8296474de119fdccd97957e3e2292e2de8437fed384ca",
+     "plans": [
+      "docs/maps/ironhold/sections/G2-surface.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-G2-top.png",
+      "docs/maps/ironhold/sections/ironhold-G2-iso.png"
+     ],
+     "notes": "Surface fix pass (Kort 2026-10-31): floor: one main block, light accent, path cores. Top layer only."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T06:03:00Z",
+     "digest": "8b24a9b6da21e1f3759ed3c08405de894dbbad5e33499e8cd334f70371e8afd9",
+     "plans": [
+      "docs/maps/ironhold/sections/G2-cleanup.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-G2-top.png",
+      "docs/maps/ironhold/sections/ironhold-G2-iso.png"
+     ],
+     "notes": "Surface cleanup (Kort 2026-11-01): floor: one main block, light accent, path cores. Top layer only."
+    }
+   ]
+  },
+  {
+   "id": "H2",
+   "name": "Supply east north",
+   "bounds": {
+    "min": [
+     95,
+     -64,
+     -112
+    ],
+    "max": [
+     158,
+     319,
+     -49
+    ]
+   },
+   "status": "blockout",
+   "reviews": [
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-10-31T18:06:03Z",
+     "digest": "c10039a81324130354221ece4cfa68a972ed38d934bde4784f106aa887d92aec",
+     "plans": [
+      "docs/maps/ironhold/sections/H2-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-H2-iso.png"
+     ],
+     "notes": "Supply east north: NE corner tower (x 96..106, z -100..-92, top 76) closing the north curtain onto the east curtain at x 98..102 (top 71); NE supply yard (cobble wall top 66, gate on the court side at x 124..128) with its house volume 57..70; NE spur in from the court; wet meadow beyond z -98. Locks ok."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T00:42:40Z",
+     "digest": "76a4627018f99938933e17e320e7bd44016813bfb9a8f8b107bf150c11d77d63",
+     "plans": [
+      "docs/maps/ironhold/sections/H2-blockout.json",
+      "docs/maps/ironhold/sections/H2-ward-north.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-H2-top.png",
+      "docs/maps/ironhold/sections/ironhold-H2-iso.png"
+     ],
+     "notes": "Donjon Court north opening closed: stone_bricks curtain y 71 x 107..158 z -98..-94 past the corner tower, worn foot; tower stays solid (Kort 2026-10-31)."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T05:03:14Z",
+     "digest": "69dff69d0683e5df0a847755ddeda36a7a4105365b10588ddd96cd3ba06eb732",
+     "plans": [
+      "docs/maps/ironhold/sections/H2-surface.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-H2-top.png",
+      "docs/maps/ironhold/sections/ironhold-H2-iso.png"
+     ],
+     "notes": "Surface fix pass (Kort 2026-10-31): floor: one main block, light accent, path cores. Top layer only."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T06:06:23Z",
+     "digest": "9855805823d018f86a6e30ce9f35456e0dda6e72c6f96c4f72d0b745180f3474",
+     "plans": [
+      "docs/maps/ironhold/sections/H2-cleanup.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-H2-top.png",
+      "docs/maps/ironhold/sections/ironhold-H2-iso.png"
+     ],
+     "notes": "Surface cleanup (Kort 2026-11-01): floor: one main block, light accent, path cores. Top layer only."
+    }
+   ]
+  },
+  {
+   "id": "I2",
+   "name": "Gorge parapet",
+   "bounds": {
+    "min": [
+     159,
+     -64,
+     -112
+    ],
+    "max": [
+     222,
+     319,
+     -49
+    ]
+   },
+   "status": "blockout",
+   "reviews": [
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T00:46:36Z",
+     "digest": "6c924dd7045f28db68d928bb95b7b855db89b0a93c1eb31b7dc4ec2058912a8e",
+     "plans": [
+      "docs/maps/ironhold/sections/I2-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-I2-top.png",
+      "docs/maps/ironhold/sections/ironhold-I2-iso.png"
+     ],
+     "notes": "Gorge blockout: Dusk flank grass at 63, curtain y 71 at |z| 94..98, crenellated parapet x 166..168, ragged crag face to scree and a gravel floor at y 44 with boulders; worn rim foot. Blockout only, no detail pass."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T05:09:02Z",
+     "digest": "68a509956a9d90bdc4e87d38a8bc8d2ea96a2369cc9fb95f267cfda1b69b83ef",
+     "plans": [
+      "docs/maps/ironhold/sections/I2-surface.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-I2-top.png",
+      "docs/maps/ironhold/sections/ironhold-I2-iso.png"
+     ],
+     "notes": "Surface fix pass (Kort 2026-10-31): gorge: banded crag, gravel scree. Top layer only."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T06:08:32Z",
+     "digest": "a72d97b1d2de61b3bae944214d551dacca3e5636c37bac643500eccdf3ed57a9",
+     "plans": [
+      "docs/maps/ironhold/sections/I2-cleanup.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-I2-top.png",
+      "docs/maps/ironhold/sections/ironhold-I2-iso.png"
+     ],
+     "notes": "Surface cleanup (Kort 2026-11-01): gorge: banded crag, gravel scree. Top layer only."
+    }
+   ]
+  },
+  {
+   "id": "J2",
+   "name": "Gorge backdrop",
+   "bounds": {
+    "min": [
+     223,
+     -64,
+     -112
+    ],
+    "max": [
+     286,
+     319,
+     -49
+    ]
+   },
+   "status": "blockout",
+   "reviews": [
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T02:39:46Z",
+     "digest": "1aeb4c8a81c8d369e843be273022a4e21be4bdddc090b2da1baf526688ababf3",
+     "plans": [
+      "docs/maps/ironhold/sections/J2-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-J2-top.png",
+      "docs/maps/ironhold/sections/ironhold-J2-iso.png"
+     ],
+     "notes": "Far gorge blockout: gorge bed at 44 with face and bed breakup continued from I. Locks ok, seams checked against I and K."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T05:15:03Z",
+     "digest": "67fec6350c483b60d61ef4152bb0bfaeecbeac6c68dbefe6cffdc7f15f0c5bac",
+     "plans": [
+      "docs/maps/ironhold/sections/J2-surface.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-J2-top.png",
+      "docs/maps/ironhold/sections/ironhold-J2-iso.png"
+     ],
+     "notes": "Surface fix pass (Kort 2026-10-31): gorge: banded crag, gravel scree. Top layer only."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T06:13:47Z",
+     "digest": "46f2cdf9e8a27f60d6f6caaf9a4668de76c4784d314666039ada07c7f7d9b962",
+     "plans": [
+      "docs/maps/ironhold/sections/J2-cleanup.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-J2-top.png",
+      "docs/maps/ironhold/sections/ironhold-J2-iso.png"
+     ],
+     "notes": "Surface cleanup (Kort 2026-11-01): gorge: banded crag, gravel scree. Top layer only."
+    }
+   ]
+  },
+  {
+   "id": "K2",
+   "name": "Gorge backdrop",
+   "bounds": {
+    "min": [
+     287,
+     -64,
+     -112
+    ],
+    "max": [
+     349,
+     319,
+     -49
+    ]
+   },
+   "status": "blockout",
+   "reviews": [
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T02:41:45Z",
+     "digest": "10dc2b0342e4da0b12a340d5d85c2496b63c7149a5f9993177ed86037ad10f56",
+     "plans": [
+      "docs/maps/ironhold/sections/K2-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-K2-top.png",
+      "docs/maps/ironhold/sections/ironhold-K2-iso.png"
+     ],
+     "notes": "Far gorge blockout: bed continues to x 300, then the far east wall climbs to 82-88. Locks ok, seams checked against J."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T05:20:49Z",
+     "digest": "64957fea14440891822ba420a206d311e85e6870ba14243a84a87a3cd2550bc4",
+     "plans": [
+      "docs/maps/ironhold/sections/K2-surface.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-K2-top.png",
+      "docs/maps/ironhold/sections/ironhold-K2-iso.png"
+     ],
+     "notes": "Surface fix pass (Kort 2026-10-31): gorge: banded crag, gravel scree. Top layer only."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T06:18:47Z",
+     "digest": "6adc06d14dd6482bc912fb9c4fe3ddd0a01e5e908a1051f7521887bb44fcfb3b",
+     "plans": [
+      "docs/maps/ironhold/sections/K2-cleanup.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-K2-top.png",
+      "docs/maps/ironhold/sections/ironhold-K2-iso.png"
+     ],
+     "notes": "Surface cleanup (Kort 2026-11-01): gorge: banded crag, gravel scree. Top layer only."
+    }
+   ]
+  },
+  {
+   "id": "A3",
+   "name": "West rim",
+   "bounds": {
+    "min": [
+     -350,
+     -64,
+     -48
+    ],
+    "max": [
+     -290,
+     319,
+     15
+    ]
+   },
+   "status": "blockout",
+   "reviews": [
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T01:20:53Z",
+     "digest": "f95f33177044e772193d21a2a5a7b92981026fefd1d0c333c2f025f706b82586",
+     "plans": [
+      "docs/maps/ironhold/sections/A3-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-A3-top.png",
+      "docs/maps/ironhold/sections/ironhold-A3-iso.png"
+     ],
+     "notes": "Camp west half (Kort 2026-10-31): shelf at 72 to the west palisade run at x -331, Dawn spawn floor at 72 under the y 73..90 lock, camp street to the King's Road gate, a tent at z -44..-37; the west rim climbs to 82-88 behind it."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T04:21:24Z",
+     "digest": "f64c2ddf8c0a978e3a096f35befc2723235d113696614f20f9f35b74fd764f77",
+     "plans": [
+      "docs/maps/ironhold/sections/A3-surface.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-A3-top.png",
+      "docs/maps/ironhold/sections/ironhold-A3-iso.png"
+     ],
+     "notes": "Surface fix pass (Kort 2026-10-31): floor: one main block, light accent, path cores. Top layer only."
+    }
+   ]
+  },
+  {
+   "id": "B3",
+   "name": "Siege camp",
+   "bounds": {
+    "min": [
+     -289,
+     -64,
+     -48
+    ],
+    "max": [
+     -226,
+     319,
+     15
+    ]
+   },
+   "status": "blockout",
+   "reviews": [
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-10-31T15:43:38Z",
+     "digest": "a34fe1f83f91eaf18c9abada3beb2e2bce941fad221f5f811a7a15c4b4693c34",
+     "plans": [
+      "docs/maps/ironhold/sections/B3-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-B3-top.png",
+      "docs/maps/ironhold/sections/ironhold-B3-iso.png"
+     ],
+     "notes": "Siege camp gate: King's Road gate z -8..8 with 3x3 posts and lintel, gate ramp eased over 16; trodden shelf floor (paths, gravel, packed mud), grey tent, north trebuchet massing on the shelf edge, mantlets shifted clear of road and lanes. Locks ok."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T04:27:31Z",
+     "digest": "af9a10d2de151e629813de7aaab5e8f3d41043a1a1c86010c36ccf812ce757b9",
+     "plans": [
+      "docs/maps/ironhold/sections/B3-surface.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-B3-top.png",
+      "docs/maps/ironhold/sections/ironhold-B3-iso.png"
+     ],
+     "notes": "Surface fix pass (Kort 2026-10-31): floor: one main block, light accent, path cores. Top layer only."
+    }
+   ]
+  },
+  {
+   "id": "C3",
+   "name": "The Mire",
+   "bounds": {
+    "min": [
+     -225,
+     -64,
+     -48
+    ],
+    "max": [
+     -162,
+     319,
+     15
+    ]
+   },
+   "status": "blockout",
+   "reviews": [
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5), self-review of top and iso renders",
+     "at": "2026-10-31T05:32:05Z",
+     "digest": "06c4e2fb212fe9fd56e53966121bb83b0b2daa7eb320e4a7cf048d1e0181c2ca",
+     "plans": [
+      "docs/maps/ironhold/sections/C3-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-C3-top.png",
+      "docs/maps/ironhold/sections/ironhold-C3-iso.png"
+     ],
+     "notes": "Mire north-west: mud at 61-62 with a ragged graded edge (fbm-wobbled distance field), noise hummocks, bog pools as river ops; King's Road path forks onto the raised cobble-edged causeway (y 63) with ragged verges; upland rises west with noise-warped contours. West Mire edge still fairly even; soften in the natural pass. Locks ok."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-10-31T12:03:19Z",
+     "digest": "d69ba87df36c9d84f3a71a1591ce0c66d1277fa158f9f52462d7451a561185a5",
+     "plans": [
+      "docs/maps/ironhold/sections/C3-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-C3-top.png",
+      "docs/maps/ironhold/sections/ironhold-C3-iso.png"
+     ],
+     "notes": "Redo 2026-10-31: Mire west edge now runs in lobes and bays (x -179..-198) instead of a near-straight line; causeway and spurs unchanged; upland contours still read as soft terraces, left for the natural pass."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T04:33:52Z",
+     "digest": "bf53da27dcdf00c060d72354bf12a80eb4f98ea6c60a9df0b08e7c07cffd5e92",
+     "plans": [
+      "docs/maps/ironhold/sections/C3-surface.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-C3-top.png",
+      "docs/maps/ironhold/sections/ironhold-C3-iso.png"
+     ],
+     "notes": "Surface fix pass (Kort 2026-10-31): floor: one main block, light accent, path cores. Top layer only."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T05:47:24Z",
+     "digest": "bca3d97930bb3920011e24df9cc6ca24bd602e4cf729c6390ee885fe0203b1ac",
+     "plans": [
+      "docs/maps/ironhold/sections/C3-cleanup.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-C3-top.png",
+      "docs/maps/ironhold/sections/ironhold-C3-iso.png"
+     ],
+     "notes": "Surface cleanup (Kort 2026-11-01): floor: one main block, light accent, path cores. Top layer only."
+    }
+   ]
+  },
+  {
+   "id": "D3",
+   "name": "Killing field west",
+   "bounds": {
+    "min": [
+     -161,
+     -64,
+     -48
+    ],
+    "max": [
+     -98,
+     319,
+     15
+    ]
+   },
+   "status": "blockout",
+   "reviews": [
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5), self-review of top and iso renders",
+     "at": "2026-10-31T05:32:08Z",
+     "digest": "a4d1675cb7cba6c267aebe60b1653e7f120527725ea002a084bbc51f7cf2df50",
+     "plans": [
+      "docs/maps/ironhold/sections/D3-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-D3-top.png",
+      "docs/maps/ironhold/sections/ironhold-D3-iso.png"
+     ],
+     "notes": "Mire east and the killing field: flooded trench x -150 (river op), causeway on y 63 across the bog, dry trench x -105 with berms, field swells and wear breakup. Trenches are deliberately straight earthworks. Locks ok."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-10-31T12:03:23Z",
+     "digest": "7814360bd94611c93883518889056087f8f837f887364a3b4b6d808480c4ab19",
+     "plans": [
+      "docs/maps/ironhold/sections/D3-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-D3-top.png",
+      "docs/maps/ironhold/sections/ironhold-D3-iso.png"
+     ],
+     "notes": "Redo 2026-10-31: both trenches redug by hand: lines wander by a block, runs end rounded short of the road and the z -41 crossing, -150 is 3..4 wide and 2..3 deep with a slumped mud lip, -105 floor 60..61 with sloped sides and an uneven berm 64..65. Positions unchanged."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T04:40:16Z",
+     "digest": "0ed5253d7aa9a415e420d707e6dc9869474535c9d709a72281dc6590c8024b80",
+     "plans": [
+      "docs/maps/ironhold/sections/D3-surface.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-D3-top.png",
+      "docs/maps/ironhold/sections/ironhold-D3-iso.png"
+     ],
+     "notes": "Surface fix pass (Kort 2026-10-31): floor: one main block, light accent, path cores. Top layer only."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T05:50:11Z",
+     "digest": "fd2d522cb0935c0fa184158a0077967576edc0499c4ea3b6938a24140870eb7e",
+     "plans": [
+      "docs/maps/ironhold/sections/D3-cleanup.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-D3-top.png",
+      "docs/maps/ironhold/sections/ironhold-D3-iso.png"
+     ],
+     "notes": "Surface cleanup (Kort 2026-11-01): floor: one main block, light accent, path cores. Top layer only."
+    }
+   ]
+  },
+  {
+   "id": "E3",
+   "name": "Front door",
+   "bounds": {
+    "min": [
+     -97,
+     -64,
+     -48
+    ],
+    "max": [
+     -34,
+     319,
+     15
+    ]
+   },
+   "status": "blockout",
+   "reviews": [
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5), self-review of top and iso renders",
+     "at": "2026-10-31T04:23:01Z",
+     "digest": "496bbccffa5b999bf6ef8fd02345a293a57418c0cfae69f899e495d34edefad1",
+     "plans": [
+      "docs/maps/ironhold/sections/E3-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-E3-top.png",
+      "docs/maps/ironhold/sections/ironhold-E3-iso.png"
+     ],
+     "notes": "Fosse x -80..-75 with a ragged outer lip, water to 61; cobble causeway z -8..8; cracked front-door towers x -80..-70 z -17..-9 to 73-76; new curtain stretch z -27..-18 to 71 joins today's piece; Outer Yard gravel; King's Road dirt path; field swells 63-64. Stage A ring and gate-sight station untouched. Open: inner ward has no north closure past the gate wall end (z -23); layout does not draw one."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5), self-review of top and iso renders",
+     "at": "2026-10-31T04:57:06Z",
+     "digest": "ba78b673ed58475c2ab523349ba75d7a802ce35c5952b51e309318035ddff150",
+     "plans": [
+      "docs/maps/ironhold/sections/E3-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-E3-top.png",
+      "docs/maps/ironhold/sections/ironhold-E3-iso.png"
+     ],
+     "notes": "Re-review after Kort's rulings of 2026-10-30 (reopen plan). Inner curtain closure north of the gate: x -40..-36 from z -24 to -30, top 71, joining the F3 run. East curtain x 72 pieces are not in this section or the base (dropped by ruling). Fosse, causeway, front-door towers and Outer Yard unchanged. Gate-sight station untouched, awaiting modes lane."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5), self-review of top and iso renders",
+     "at": "2026-10-31T05:01:55Z",
+     "digest": "ba78b673ed58475c2ab523349ba75d7a802ce35c5952b51e309318035ddff150",
+     "plans": [
+      "docs/maps/ironhold/sections/E3-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-E3-top.png",
+      "docs/maps/ironhold/sections/ironhold-E3-iso.png"
+     ],
+     "notes": "Re-review r3 after Kort's ruling of 2026-10-31 (river bends around the keep court). No change to this section's blocks (plan differs only in its reopen text); closure, fosse, towers and Outer Yard as in r2. Gate-sight station awaiting modes lane."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5), self-review of top and iso renders",
+     "at": "2026-10-31T05:28:04Z",
+     "digest": "ef055f265ba5c34c158f114b066257cb083369211458ded90da75308bf7f07e5",
+     "plans": [
+      "docs/maps/ironhold/sections/E3-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-E3-top.png",
+      "docs/maps/ironhold/sections/ironhold-E3-iso.png"
+     ],
+     "notes": "Rebuilt with helpers: fosse is a river op (water 61, inner edge on the curtain foot x -75, outer lip wandering -80..-83), cobble causeway z -8..8 kept; King's Road a path op with ragged edges and coarse-dirt verges; field swells by noise to the fosse lip; front-door curtain stretch and north inner closure as wall ops; Outer Yard and fosse-lip breakup. Positions unchanged; locks ok."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T04:45:56Z",
+     "digest": "bf7b641f1d71669801300d5e1109b122be5c88706d65a887eb879ce52d8ab009",
+     "plans": [
+      "docs/maps/ironhold/sections/E3-surface.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-E3-top.png",
+      "docs/maps/ironhold/sections/ironhold-E3-iso.png"
+     ],
+     "notes": "Surface fix pass (Kort 2026-10-31): floor: one main block, light accent, path cores. Top layer only."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T05:54:25Z",
+     "digest": "f3d4327c13741b63933e4b74afa555c01e49ed40b6de83c326e6bc8581283eec",
+     "plans": [
+      "docs/maps/ironhold/sections/E3-cleanup.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-E3-top.png",
+      "docs/maps/ironhold/sections/ironhold-E3-iso.png"
+     ],
+     "notes": "Surface cleanup (Kort 2026-11-01): floor: one main block, light accent, path cores. Top layer only."
+    }
+   ]
+  },
+  {
+   "id": "F3",
+   "name": "Inner yard and B",
+   "bounds": {
+    "min": [
+     -33,
+     -64,
+     -48
+    ],
+    "max": [
+     30,
+     319,
+     15
+    ]
+   },
+   "status": "blockout",
+   "reviews": [
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5), self-review of top and iso renders",
+     "at": "2026-10-31T04:23:03Z",
+     "digest": "6f3c2c1446dfdcaa82e58d8a15ee5ad64d964bbe88b75982a0f67229fd3e9157",
+     "plans": [
+      "docs/maps/ironhold/sections/F3-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-F3-top.png",
+      "docs/maps/ironhold/sections/ironhold-F3-iso.png"
+     ],
+     "notes": "Inner yard packed mud x -33..-6 z -24..20 (flood contract), river x 0 with ragged banks and mud bank strips x -7..7, B deck spruce at y 63 x -5..5 z -12..12, east bailey andesite. Capture B ring and ward-n/ward-b at y>=64 untouched. Bank strips read straight on the dry side; natural pass should break them."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5), self-review of top and iso renders",
+     "at": "2026-10-31T04:57:08Z",
+     "digest": "6cc457fa5032b73b542f5fd68c9118a0fc990ecaa47ce96d52f95d7f6452c53d",
+     "plans": [
+      "docs/maps/ironhold/sections/F3-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-F3-top.png",
+      "docs/maps/ironhold/sections/ironhold-F3-iso.png"
+     ],
+     "notes": "Re-review after Kort's rulings of 2026-10-30 (reopen plan). North inner curtain run z -30..-28 from x -35 to the west river cliff, clear of siege ward-n (z -27..-23). River now in a cut channel (water y 59, banks 63) so it cannot be climbed out of; B deck spans it over open air. Inner yard packed mud unchanged. Ward-b and B ring untouched."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5), self-review of top and iso renders",
+     "at": "2026-10-31T05:01:58Z",
+     "digest": "c25b24f9792ce43c7b1b87d59787a9dfdd2d0f05023d907db0144b266ca78e1c",
+     "plans": [
+      "docs/maps/ironhold/sections/F3-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-F3-top.png",
+      "docs/maps/ironhold/sections/ironhold-F3-iso.png"
+     ],
+     "notes": "Re-review r3 after Kort's ruling of 2026-10-31 (river bends around the keep court). River's north elbow starts at the section's south edge (z 13..15) heading east toward the keep leg; B deck, inner yard and north closure as in r2. Ward-b and B ring untouched."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5), self-review of top and iso renders",
+     "at": "2026-10-31T05:28:06Z",
+     "digest": "7b4df56543e5c9916a7a45feea9a66e85213ce94944c6d500e54d6c2d4969894",
+     "plans": [
+      "docs/maps/ironhold/sections/F3-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-F3-top.png",
+      "docs/maps/ironhold/sections/ironhold-F3-iso.png"
+     ],
+     "notes": "River is one river op (water 59, cut cliffs to 63, stone/andesite/mud cliff faces), elbow along z 13..19; mud bank band 1-4 blocks following the river; B deck spruce planks re-stamped at 63; north inner closure z -30..-28 runs to the west cliff and stops there; inner yard and bailey breakup. Positions unchanged; locks ok."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-10-31T18:05:53Z",
+     "digest": "414048131b6d56a3e7baace9e5707889f2713b4604b3058dc70245a6fb4319f2",
+     "plans": [
+      "docs/maps/ironhold/sections/F3-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-F3-iso.png"
+     ],
+     "notes": "Defenders' road joined from the B deck (x 6) to the bailey (x 30), Kort 2026-10-31. The B deck is now laid after the roads, so its planks stay planks; the road's end embanks the east bank to the deck. Stations and stage C untouched. Locks ok."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T04:51:29Z",
+     "digest": "1fd9c69b7a25a215fe4934498c94de00a8c20ea272226f6ecb0fa0b96f31a77b",
+     "plans": [
+      "docs/maps/ironhold/sections/F3-surface.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-F3-top.png",
+      "docs/maps/ironhold/sections/ironhold-F3-iso.png"
+     ],
+     "notes": "Surface fix pass (Kort 2026-10-31): floor: one main block, light accent, path cores. Top layer only."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T05:58:51Z",
+     "digest": "02b2cd9a975e58f50297fed341a2c0e90267bcda424eac98a6a5c90fdc508020",
+     "plans": [
+      "docs/maps/ironhold/sections/F3-cleanup.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-F3-top.png",
+      "docs/maps/ironhold/sections/ironhold-F3-iso.png"
+     ],
+     "notes": "Surface cleanup (Kort 2026-11-01): floor: one main block, light accent, path cores. Top layer only."
+    }
+   ]
+  },
+  {
+   "id": "G3",
+   "name": "East bailey",
+   "bounds": {
+    "min": [
+     31,
+     -64,
+     -48
+    ],
+    "max": [
+     94,
+     319,
+     15
+    ]
+   },
+   "status": "blockout",
+   "reviews": [
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-10-31T16:02:00Z",
+     "digest": "e47178fd085267230d9e8c21c763b832e8fa5ee62ed732e29b03f37a0ad0bb7a",
+     "plans": [
+      "docs/maps/ironhold/sections/G3-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-G3-iso.png"
+     ],
+     "notes": "East bailey middle: defenders' road B deck to east postern (x 31..97, z 0), north-wall and south-postern tracks branch off it, yard store, scattered carts and crates. Road west of x 31 (F3) not yet regraded."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T04:58:11Z",
+     "digest": "5bfb18aa0a5460a84e6fbe74e63209ec8e28ba82b01f38dd551ec4e20d073b79",
+     "plans": [
+      "docs/maps/ironhold/sections/G3-surface.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-G3-top.png",
+      "docs/maps/ironhold/sections/ironhold-G3-iso.png"
+     ],
+     "notes": "Surface fix pass (Kort 2026-10-31): floor: one main block, light accent, path cores. Top layer only."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T06:03:40Z",
+     "digest": "3ae1745e65fdc5aa78b4e6606ccc9dc0285419b507e027c6ac6abea291486cb1",
+     "plans": [
+      "docs/maps/ironhold/sections/G3-cleanup.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-G3-top.png",
+      "docs/maps/ironhold/sections/ironhold-G3-iso.png"
+     ],
+     "notes": "Surface cleanup (Kort 2026-11-01): floor: one main block, light accent, path cores. Top layer only."
+    }
+   ]
+  },
+  {
+   "id": "H3",
+   "name": "Donjon Court",
+   "bounds": {
+    "min": [
+     95,
+     -64,
+     -48
+    ],
+    "max": [
+     158,
+     319,
+     15
+    ]
+   },
+   "status": "blockout",
+   "reviews": [
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-10-31T18:06:08Z",
+     "digest": "992ecc91f50ee516417da96399e04d896029777789c126c6df40b3067b3c7bad",
+     "plans": [
+      "docs/maps/ironhold/sections/H3-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-H3-iso.png"
+     ],
+     "notes": "Donjon Court north: east curtain x 98..102 at 71 with the east postern cleared y 64..70 at z -6..6 under a lintel at 71; defenders' road on from the postern to the Dusk spawn; barracks hall x 110..150, z -40..-20, walls to 74, deepslate roof stepping to a ridge at 79; polished blackstone court with worn flags and road wear. The spawn-dusk box x 126..130, z -2..2 is left empty (its lock refuses any block y 56..90). Locks ok."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T00:42:33Z",
+     "digest": "b20968b3bc3466c96e01158ac6f72cc2470f1188aa78b2a2f1a58e8d9039a7df",
+     "plans": [
+      "docs/maps/ironhold/sections/H3-blockout.json",
+      "docs/maps/ironhold/sections/H3-dusk-floor.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-H3-top.png",
+      "docs/maps/ironhold/sections/ironhold-H3-iso.png"
+     ],
+     "notes": "Dusk spawn floor: polished blackstone pad y 57..63 under spawn-dusk, lock now y 64..90 (Kort 2026-10-31); rest as built."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T05:04:00Z",
+     "digest": "299d400c1433a164023be2f0540c8b34011b1de5c4e7c28a942d7bef24f59deb",
+     "plans": [
+      "docs/maps/ironhold/sections/H3-surface.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-H3-top.png",
+      "docs/maps/ironhold/sections/ironhold-H3-iso.png"
+     ],
+     "notes": "Surface fix pass (Kort 2026-10-31): floor: one main block, light accent, path cores. Top layer only."
+    }
+   ]
+  },
+  {
+   "id": "I3",
+   "name": "Gorge parapet",
+   "bounds": {
+    "min": [
+     159,
+     -64,
+     -48
+    ],
+    "max": [
+     222,
+     319,
+     15
+    ]
+   },
+   "status": "blockout",
+   "reviews": [
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T00:46:50Z",
+     "digest": "a91dd82ac60460cb3159cebd09d8708e23921198d17dad95f361fa1d4a1b7315",
+     "plans": [
+      "docs/maps/ironhold/sections/I3-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-I3-top.png",
+      "docs/maps/ironhold/sections/ironhold-I3-iso.png"
+     ],
+     "notes": "Gorge blockout: Dusk flank grass at 63, curtain y 71 at |z| 94..98, crenellated parapet x 166..168, ragged crag face to scree and a gravel floor at y 44 with boulders; worn rim foot. Blockout only, no detail pass."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T05:09:45Z",
+     "digest": "e1315add91f85300fbf85394b73eb407bb73c3a4edfb4034c15383e986f5301d",
+     "plans": [
+      "docs/maps/ironhold/sections/I3-surface.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-I3-top.png",
+      "docs/maps/ironhold/sections/ironhold-I3-iso.png"
+     ],
+     "notes": "Surface fix pass (Kort 2026-10-31): gorge: banded crag, gravel scree. Top layer only."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T06:09:15Z",
+     "digest": "3173fae31d9de997b4e0aac8fd1606eb330ab2380fbd30d874aa81a8ecf1cbb8",
+     "plans": [
+      "docs/maps/ironhold/sections/I3-cleanup.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-I3-top.png",
+      "docs/maps/ironhold/sections/ironhold-I3-iso.png"
+     ],
+     "notes": "Surface cleanup (Kort 2026-11-01): gorge: banded crag, gravel scree. Top layer only."
+    }
+   ]
+  },
+  {
+   "id": "J3",
+   "name": "Gorge backdrop",
+   "bounds": {
+    "min": [
+     223,
+     -64,
+     -48
+    ],
+    "max": [
+     286,
+     319,
+     15
+    ]
+   },
+   "status": "blockout",
+   "reviews": [
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T02:40:02Z",
+     "digest": "20108db04b29cb8b2ea738b0874891ef05a70298597f6a8756d7a015a5d95c70",
+     "plans": [
+      "docs/maps/ironhold/sections/J3-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-J3-top.png",
+      "docs/maps/ironhold/sections/ironhold-J3-iso.png"
+     ],
+     "notes": "Far gorge blockout: gorge bed at 44 with face and bed breakup continued from I. Locks ok, seams checked against I and K."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T05:15:41Z",
+     "digest": "60b4953fbd4fc33150ababe2220c183878f8f3cd1a5c6daa55dc322b3cb79458",
+     "plans": [
+      "docs/maps/ironhold/sections/J3-surface.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-J3-top.png",
+      "docs/maps/ironhold/sections/ironhold-J3-iso.png"
+     ],
+     "notes": "Surface fix pass (Kort 2026-10-31): gorge: banded crag, gravel scree. Top layer only."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T06:14:25Z",
+     "digest": "f9f83280186f4e833f8b3a499fa55a9739359043d5a9765f7f9e2267c6a5bfb9",
+     "plans": [
+      "docs/maps/ironhold/sections/J3-cleanup.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-J3-top.png",
+      "docs/maps/ironhold/sections/ironhold-J3-iso.png"
+     ],
+     "notes": "Surface cleanup (Kort 2026-11-01): gorge: banded crag, gravel scree. Top layer only."
+    }
+   ]
+  },
+  {
+   "id": "K3",
+   "name": "Gorge backdrop",
+   "bounds": {
+    "min": [
+     287,
+     -64,
+     -48
+    ],
+    "max": [
+     349,
+     319,
+     15
+    ]
+   },
+   "status": "blockout",
+   "reviews": [
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T02:42:06Z",
+     "digest": "b4203900e0ef9da3b2e448fa9aec3c35436453cd57d9e046854868fcc68d4ac6",
+     "plans": [
+      "docs/maps/ironhold/sections/K3-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-K3-top.png",
+      "docs/maps/ironhold/sections/ironhold-K3-iso.png"
+     ],
+     "notes": "Far gorge blockout: bed continues to x 300, then the far east wall climbs to 82-88. Locks ok, seams checked against J."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T05:21:35Z",
+     "digest": "89428163bd66d25b2a7c67a0edf3baae6d7017be363ead9ca458ea8268a7dc94",
+     "plans": [
+      "docs/maps/ironhold/sections/K3-surface.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-K3-top.png",
+      "docs/maps/ironhold/sections/ironhold-K3-iso.png"
+     ],
+     "notes": "Surface fix pass (Kort 2026-10-31): gorge: banded crag, gravel scree. Top layer only."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T06:19:23Z",
+     "digest": "e9e43eb8571fa82da92500e5cb2a5131c7f97319506ecc065b7bce39ebc14540",
+     "plans": [
+      "docs/maps/ironhold/sections/K3-cleanup.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-K3-top.png",
+      "docs/maps/ironhold/sections/ironhold-K3-iso.png"
+     ],
+     "notes": "Surface cleanup (Kort 2026-11-01): gorge: banded crag, gravel scree. Top layer only."
+    }
+   ]
+  },
+  {
+   "id": "A4",
+   "name": "West rim",
+   "bounds": {
+    "min": [
+     -350,
+     -64,
+     16
+    ],
+    "max": [
+     -290,
+     319,
+     79
+    ]
+   },
+   "status": "blockout",
+   "reviews": [
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T01:21:25Z",
+     "digest": "a98a892baa3f35f95f532b4edd19b25ee4a5130db283e192f35b1b50a1939b56",
+     "plans": [
+      "docs/maps/ironhold/sections/A4-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-A4-top.png",
+      "docs/maps/ironhold/sections/ironhold-A4-iso.png"
+     ],
+     "notes": "Camp west half SW: shelf at 72, west palisade run, tent at z 37..44, south palisade run, west rim to 82-88."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T04:22:09Z",
+     "digest": "d4c452628a6a928271e582f5462b9eac577891b383ab7abd456412e337532d67",
+     "plans": [
+      "docs/maps/ironhold/sections/A4-surface.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-A4-top.png",
+      "docs/maps/ironhold/sections/ironhold-A4-iso.png"
+     ],
+     "notes": "Surface fix pass (Kort 2026-10-31): floor: one main block, light accent, path cores. Top layer only."
+    }
+   ]
+  },
+  {
+   "id": "B4",
+   "name": "Siege camp",
+   "bounds": {
+    "min": [
+     -289,
+     -64,
+     16
+    ],
+    "max": [
+     -226,
+     319,
+     79
+    ]
+   },
+   "status": "blockout",
+   "reviews": [
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-10-31T15:43:43Z",
+     "digest": "d4a8edde11b23b85c4d802a30d12581299cf89e277232882d92b413a9619a3a1",
+     "plans": [
+      "docs/maps/ironhold/sections/B4-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-B4-top.png",
+      "docs/maps/ironhold/sections/ironhold-B4-iso.png"
+     ],
+     "notes": "Siege camp south: mirror of B3; white and brown tents (brown moved to z 53..60 so it clears the south trebuchet), trebuchet massing, lane gate z 64, south lane rerouted out between tents, mantlet row. Locks ok."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T04:28:16Z",
+     "digest": "0b1dfdbb5583b066f778849731dc0e435525f1861ea9b0f56d5b59252e32b839",
+     "plans": [
+      "docs/maps/ironhold/sections/B4-surface.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-B4-top.png",
+      "docs/maps/ironhold/sections/ironhold-B4-iso.png"
+     ],
+     "notes": "Surface fix pass (Kort 2026-10-31): floor: one main block, light accent, path cores. Top layer only."
+    }
+   ]
+  },
+  {
+   "id": "C4",
+   "name": "The Mire",
+   "bounds": {
+    "min": [
+     -225,
+     -64,
+     16
+    ],
+    "max": [
+     -162,
+     319,
+     79
+    ]
+   },
+   "status": "blockout",
+   "reviews": [
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5), self-review of top and iso renders",
+     "at": "2026-10-31T05:32:07Z",
+     "digest": "acd3e81152938adbbfc1bd1af8172f6e6d8238ad9ac78b6b535c4d421ea9c246",
+     "plans": [
+      "docs/maps/ironhold/sections/C4-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-C4-top.png",
+      "docs/maps/ironhold/sections/ironhold-C4-iso.png"
+     ],
+     "notes": "Mire south-west: bog pools, hummocks, ragged edge; south supply spur path crosses to the yard; upland contours warped. West Mire edge still fairly even; natural pass. Locks ok."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-10-31T12:03:21Z",
+     "digest": "9a6996ea50af235bf2a2e48c483618f8c01fc80ae4bf7e045b3e356df4488c98",
+     "plans": [
+      "docs/maps/ironhold/sections/C4-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-C4-top.png",
+      "docs/maps/ironhold/sections/ironhold-C4-iso.png"
+     ],
+     "notes": "Redo 2026-10-31: west edge pushed into broad lobes with small bays, the upland meets it at different heights; pools unchanged in character."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T04:34:36Z",
+     "digest": "9804ff6e15081d9876f1c34cc7648dcc13ce2aceba4e73d0e059dbf913d102e4",
+     "plans": [
+      "docs/maps/ironhold/sections/C4-surface.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-C4-top.png",
+      "docs/maps/ironhold/sections/ironhold-C4-iso.png"
+     ],
+     "notes": "Surface fix pass (Kort 2026-10-31): floor: one main block, light accent, path cores. Top layer only."
+    }
+   ]
+  },
+  {
+   "id": "D4",
+   "name": "Killing field west",
+   "bounds": {
+    "min": [
+     -161,
+     -64,
+     16
+    ],
+    "max": [
+     -98,
+     319,
+     79
+    ]
+   },
+   "status": "blockout",
+   "reviews": [
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5), self-review of top and iso renders",
+     "at": "2026-10-31T05:32:10Z",
+     "digest": "7f5a8233a1e31519a8276a886160af3a62f45132a44ccbfe1961ee45ddd027c7",
+     "plans": [
+      "docs/maps/ironhold/sections/D4-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-D4-top.png",
+      "docs/maps/ironhold/sections/ironhold-D4-iso.png"
+     ],
+     "notes": "Mire south-east, flooded trench, south supply yard on a dry coarse-dirt pad with a walled pen and house mass, berms and the dry trench. Locks ok."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-10-31T12:03:25Z",
+     "digest": "2eda164764b521411fe7cedad475eafe31320a456502bd1cc9ecbfa6208ebdad",
+     "plans": [
+      "docs/maps/ironhold/sections/D4-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-D4-top.png",
+      "docs/maps/ironhold/sections/ironhold-D4-iso.png"
+     ],
+     "notes": "Redo 2026-10-31: trench runs as in D3, ending short of the z 41 crossing; supply yard untouched; berm lips slumped by erode."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T04:40:58Z",
+     "digest": "b0ee213e5ad5f41e06cbb7886dadb914c8167547b7919cc9f31c52e0b11f5127",
+     "plans": [
+      "docs/maps/ironhold/sections/D4-surface.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-D4-top.png",
+      "docs/maps/ironhold/sections/ironhold-D4-iso.png"
+     ],
+     "notes": "Surface fix pass (Kort 2026-10-31): floor: one main block, light accent, path cores. Top layer only."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T05:50:54Z",
+     "digest": "8f015ba0327e5cf14a01f209ad274f719c6a430e64806bdb463b8a376e564c04",
+     "plans": [
+      "docs/maps/ironhold/sections/D4-cleanup.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-D4-top.png",
+      "docs/maps/ironhold/sections/ironhold-D4-iso.png"
+     ],
+     "notes": "Surface cleanup (Kort 2026-11-01): floor: one main block, light accent, path cores. Top layer only."
+    }
+   ]
+  },
+  {
+   "id": "E4",
+   "name": "Outer Yard south",
+   "bounds": {
+    "min": [
+     -97,
+     -64,
+     16
+    ],
+    "max": [
+     -34,
+     319,
+     79
+    ]
+   },
+   "status": "blockout",
+   "reviews": [
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5), self-review of top and iso renders",
+     "at": "2026-10-31T04:23:02Z",
+     "digest": "a071c2ac4875849cb36c69d8d50fd492624373b58da9e6a6b56fb06d9917bfa2",
+     "plans": [
+      "docs/maps/ironhold/sections/E4-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-E4-top.png",
+      "docs/maps/ironhold/sections/ironhold-E4-iso.png"
+     ],
+     "notes": "Mirror of E3 south: south front-door tower z 9..17, curtain stretch z 18..27, fosse and lip to z 79, Outer Yard gravel, coarse bailey ground east of x -41 beyond the gate. Sally gap z 59..65 keeps grass. Stage A ring clear (towers trimmed to x <= -70 outside r15)."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5), self-review of top and iso renders",
+     "at": "2026-10-31T04:57:07Z",
+     "digest": "79efcc32f13a3c7f0680f3dd02d1ad5fde4963849428da94383e993cacf89dd2",
+     "plans": [
+      "docs/maps/ironhold/sections/E4-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-E4-top.png",
+      "docs/maps/ironhold/sections/ironhold-E4-iso.png"
+     ],
+     "notes": "Re-review after Kort's rulings of 2026-10-30 (reopen plan). Inner curtain closure south of the gate: x -40..-36 from z 24 to 30, top 71, joining the F4 run. Rest unchanged from r1; stage A ring clear."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5), self-review of top and iso renders",
+     "at": "2026-10-31T05:01:56Z",
+     "digest": "79efcc32f13a3c7f0680f3dd02d1ad5fde4963849428da94383e993cacf89dd2",
+     "plans": [
+      "docs/maps/ironhold/sections/E4-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-E4-top.png",
+      "docs/maps/ironhold/sections/ironhold-E4-iso.png"
+     ],
+     "notes": "Re-review r3 after Kort's ruling of 2026-10-31 (river bends around the keep court). No change to this section's blocks (plan differs only in its reopen text); south closure as in r2. Stage A ring clear."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5), self-review of top and iso renders",
+     "at": "2026-10-31T05:28:05Z",
+     "digest": "55ed7d95459ac51af4080c27aeab43d1e28d1a6269f8ad2786b7063fc8dcfa74",
+     "plans": [
+      "docs/maps/ironhold/sections/E4-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-E4-top.png",
+      "docs/maps/ironhold/sections/ironhold-E4-iso.png"
+     ],
+     "notes": "Rebuilt with helpers: fosse river op with the ragged outer lip; front-door curtain stretch z 18..27 and the south inner closure (gate end to z 30) as wall ops; field swells; Outer Yard breakup. Positions unchanged; locks ok."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-10-31T12:24:31Z",
+     "digest": "a5b2a17a5c70c7f5241f41c67f270d10d6db942f8557381457a810c70de1e5c9",
+     "plans": [
+      "docs/maps/ironhold/sections/E4-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-E4-top.png",
+      "docs/maps/ironhold/sections/ironhold-E4-iso.png"
+     ],
+     "notes": "Reopened: south ridge-foot track and the fosse causeway at z 62, mirror of the north sally gap; nothing else changed. Locks ok."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T04:46:44Z",
+     "digest": "40412a2c5a45b7e5c68063f85a58213b20b4431d0d592f372f0686b3a388f162",
+     "plans": [
+      "docs/maps/ironhold/sections/E4-surface.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-E4-top.png",
+      "docs/maps/ironhold/sections/ironhold-E4-iso.png"
+     ],
+     "notes": "Surface fix pass (Kort 2026-10-31): floor: one main block, light accent, path cores. Top layer only."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T05:55:05Z",
+     "digest": "345000ab7b0649dc0ac5160adaac64227a463bb9cf9f3a434e839cab4aa3f8d8",
+     "plans": [
+      "docs/maps/ironhold/sections/E4-cleanup.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-E4-top.png",
+      "docs/maps/ironhold/sections/ironhold-E4-iso.png"
+     ],
+     "notes": "Surface cleanup (Kort 2026-11-01): floor: one main block, light accent, path cores. Top layer only."
+    }
+   ]
+  },
+  {
+   "id": "F4",
+   "name": "Keep court",
+   "bounds": {
+    "min": [
+     -33,
+     -64,
+     16
+    ],
+    "max": [
+     30,
+     319,
+     79
+    ]
+   },
+   "status": "blockout",
+   "reviews": [
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5), self-review of top and iso renders",
+     "at": "2026-10-31T04:23:04Z",
+     "digest": "65bdd6de1b9d9abbd249fa034aaa4f57b87fc7e2e150989df85804f4df793f00",
+     "plans": [
+      "docs/maps/ironhold/sections/F4-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-F4-top.png",
+      "docs/maps/ironhold/sections/ironhold-F4-iso.png"
+     ],
+     "notes": "Great Keep tower x 4..20 z 24..44: chamfered shaft to 99, setback to 114, crown 115..118; stands in the river at x 4..5 and replaces today's keep blocks in its footprint (expected, pick D2a). River continues south of the keep. Stage C ring, gate-ne/gate-e/ward-s and keep-sight untouched. Tower is a solid block-out volume; structure pass hollows it and adds the keep postern (modes lane)."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5), self-review of top and iso renders",
+     "at": "2026-10-31T04:57:09Z",
+     "digest": "d44a8758f625afb107659ecadcfc6f589960f9ffec33eeddaabe089e9a574eb4",
+     "plans": [
+      "docs/maps/ironhold/sections/F4-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-F4-top.png",
+      "docs/maps/ironhold/sections/ironhold-F4-iso.png"
+     ],
+     "notes": "Re-review after Kort's rulings of 2026-10-30 (reopen plan). Great Keep tower moved out of the river to x 9..23, z 24..44; river line at x 4..5 is clean (the river runs under today's keep court floor, which the structure pass replaces). South inner curtain run z 28..30 from x -35 to the keep court wall at x -23, clear of siege ward-s. Keep-sight station untouched, awaiting modes lane. Tower replaces today's keep east wall in its footprint."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5), self-review of top and iso renders",
+     "at": "2026-10-31T05:01:59Z",
+     "digest": "e66b3eb3a9c91c1833edc57c320b21d745df21fe9c4a465fbef1fc47ccbac7ad",
+     "plans": [
+      "docs/maps/ironhold/sections/F4-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-F4-top.png",
+      "docs/maps/ironhold/sections/ironhold-F4-iso.png"
+     ],
+     "notes": "Re-review r3 after Kort's ruling of 2026-10-31 (river bends around the keep court). River now skirts the keep court: elbow z 13..19 north of the court, leg x 25..30 with a one-block bank at x 24 past the tower's foot, elbow z 49..55 back to x 0. Court and stage C ring stand on solid ground, lock intact (locks ok). Leg stays inside column F, G untouched. Keep-sight station awaiting modes lane. A small grey block at x 31..32, z 34..37 in the margin is base content in G4, not this plan."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5), self-review of top and iso renders",
+     "at": "2026-10-31T05:28:07Z",
+     "digest": "961f5d0906e030ed0602213521a5e55c395f434e7ffb2e3d2eaf0098dbc09b8a",
+     "plans": [
+      "docs/maps/ironhold/sections/F4-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-F4-top.png",
+      "docs/maps/ironhold/sections/ironhold-F4-iso.png"
+     ],
+     "notes": "River op bends around the keep court: leg x 25..30 with a bank at x 24 (court excluded), elbow along z 49..55 back to x 0; keep tower x 9..23 untouched; the grey andesite at x 30 is gone (mud bank meets G4); stage C ring untouched. Locks ok."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T04:52:17Z",
+     "digest": "912b1610d9cca2dd03b64d143dcca2d2577e69b37334e88de506f673bd53dd78",
+     "plans": [
+      "docs/maps/ironhold/sections/F4-surface.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-F4-top.png",
+      "docs/maps/ironhold/sections/ironhold-F4-iso.png"
+     ],
+     "notes": "Surface fix pass (Kort 2026-10-31): Great Keep tower in stone brick; floor: one main block, light accent, path cores. Top layer only."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T05:59:36Z",
+     "digest": "3e8998f793db24a3fa74e6c46fc24e8454825c69984d6503b4bc2d5c0047eb20",
+     "plans": [
+      "docs/maps/ironhold/sections/F4-cleanup.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-F4-top.png",
+      "docs/maps/ironhold/sections/ironhold-F4-iso.png"
+     ],
+     "notes": "Surface cleanup (Kort 2026-11-01): floor: one main block, light accent, path cores. Top layer only."
+    }
+   ]
+  },
+  {
+   "id": "G4",
+   "name": "East bailey",
+   "bounds": {
+    "min": [
+     31,
+     -64,
+     16
+    ],
+    "max": [
+     94,
+     319,
+     79
+    ]
+   },
+   "status": "blockout",
+   "reviews": [
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-10-31T16:02:04Z",
+     "digest": "d6a62ffb84e5cc9984209bc776b63ca0c69ff26acbf297e853b8d581d1ea04db",
+     "plans": [
+      "docs/maps/ironhold/sections/G4-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-G4-iso.png"
+     ],
+     "notes": "East bailey south: south-postern track, lean-to shed s1 on the south curtain, cover scattered clear of the tracks; completes the river bend's east bank x 31..34 with the same deterministic river op (bend design unchanged)."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T04:58:56Z",
+     "digest": "b06a289637e61010b09448c2b7d06987f862d48bb6fa0ae40bec25ea385984e6",
+     "plans": [
+      "docs/maps/ironhold/sections/G4-surface.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-G4-top.png",
+      "docs/maps/ironhold/sections/ironhold-G4-iso.png"
+     ],
+     "notes": "Surface fix pass (Kort 2026-10-31): floor: one main block, light accent, path cores. Top layer only."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T06:04:20Z",
+     "digest": "cafe533095eff0a7506ca42a177855253da8db0e769d3767bc408990f9e02d00",
+     "plans": [
+      "docs/maps/ironhold/sections/G4-cleanup.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-G4-top.png",
+      "docs/maps/ironhold/sections/ironhold-G4-iso.png"
+     ],
+     "notes": "Surface cleanup (Kort 2026-11-01): floor: one main block, light accent, path cores. Top layer only."
+    }
+   ]
+  },
+  {
+   "id": "H4",
+   "name": "Donjon Court south",
+   "bounds": {
+    "min": [
+     95,
+     -64,
+     16
+    ],
+    "max": [
+     158,
+     319,
+     79
+    ]
+   },
+   "status": "blockout",
+   "reviews": [
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-10-31T18:06:14Z",
+     "digest": "892552daa2eab10c0c9442090f8dde409338c83f62bb947fd554f816b9b07bd4",
+     "plans": [
+      "docs/maps/ironhold/sections/H4-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-H4-iso.png"
+     ],
+     "notes": "Donjon Court south: court floor to z 48, SE spur across it to the SE yard gate (x 136..140 on z 54), SE supply yard wall top 66 and house volume x 134..146, z 64..76; east curtain on at x 98..102. Locks ok."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T05:04:40Z",
+     "digest": "89c6f3b0c69bb34ab407e50fba208cc461888665466365d399ec9e5a3ce1852b",
+     "plans": [
+      "docs/maps/ironhold/sections/H4-surface.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-H4-top.png",
+      "docs/maps/ironhold/sections/ironhold-H4-iso.png"
+     ],
+     "notes": "Surface fix pass (Kort 2026-10-31): floor: one main block, light accent, path cores. Top layer only."
+    }
+   ]
+  },
+  {
+   "id": "I4",
+   "name": "Gorge parapet",
+   "bounds": {
+    "min": [
+     159,
+     -64,
+     16
+    ],
+    "max": [
+     222,
+     319,
+     79
+    ]
+   },
+   "status": "blockout",
+   "reviews": [
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T00:47:04Z",
+     "digest": "3d16ba85ec8bed4030db9e0a80e93b0724bde30c48646c414381877a7ee2c56d",
+     "plans": [
+      "docs/maps/ironhold/sections/I4-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-I4-top.png",
+      "docs/maps/ironhold/sections/ironhold-I4-iso.png"
+     ],
+     "notes": "Gorge blockout: Dusk flank grass at 63, curtain y 71 at |z| 94..98, crenellated parapet x 166..168, ragged crag face to scree and a gravel floor at y 44 with boulders; worn rim foot. Blockout only, no detail pass."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T05:10:30Z",
+     "digest": "3eab4195621ac5a9625f78a9dd81e8547c9f0e75d7b5e98480eb9f9c06bc28a2",
+     "plans": [
+      "docs/maps/ironhold/sections/I4-surface.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-I4-top.png",
+      "docs/maps/ironhold/sections/ironhold-I4-iso.png"
+     ],
+     "notes": "Surface fix pass (Kort 2026-10-31): gorge: banded crag, gravel scree. Top layer only."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T06:09:56Z",
+     "digest": "b5b85606f96f425c435222efd8356355d40a9add20e5573256b454fd0d5a350a",
+     "plans": [
+      "docs/maps/ironhold/sections/I4-cleanup.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-I4-top.png",
+      "docs/maps/ironhold/sections/ironhold-I4-iso.png"
+     ],
+     "notes": "Surface cleanup (Kort 2026-11-01): gorge: banded crag, gravel scree. Top layer only."
+    }
+   ]
+  },
+  {
+   "id": "J4",
+   "name": "Gorge backdrop",
+   "bounds": {
+    "min": [
+     223,
+     -64,
+     16
+    ],
+    "max": [
+     286,
+     319,
+     79
+    ]
+   },
+   "status": "blockout",
+   "reviews": [
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T02:40:18Z",
+     "digest": "54d96fe4e41d4682121dc3c3538725b180683c01136869868a85de92d3046a09",
+     "plans": [
+      "docs/maps/ironhold/sections/J4-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-J4-top.png",
+      "docs/maps/ironhold/sections/ironhold-J4-iso.png"
+     ],
+     "notes": "Far gorge blockout: gorge bed at 44 with face and bed breakup continued from I. Locks ok, seams checked against I and K."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T05:16:20Z",
+     "digest": "f5ad4ba3cc1858e1c85f554c89cfe94bbfc35eb493bee73377f0240359a59fc5",
+     "plans": [
+      "docs/maps/ironhold/sections/J4-surface.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-J4-top.png",
+      "docs/maps/ironhold/sections/ironhold-J4-iso.png"
+     ],
+     "notes": "Surface fix pass (Kort 2026-10-31): gorge: banded crag, gravel scree. Top layer only."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T06:15:02Z",
+     "digest": "c7ba83c25d2150c97f2464b715c54e340133b3883688f363d5bb8fb0057bd38d",
+     "plans": [
+      "docs/maps/ironhold/sections/J4-cleanup.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-J4-top.png",
+      "docs/maps/ironhold/sections/ironhold-J4-iso.png"
+     ],
+     "notes": "Surface cleanup (Kort 2026-11-01): gorge: banded crag, gravel scree. Top layer only."
+    }
+   ]
+  },
+  {
+   "id": "K4",
+   "name": "Gorge backdrop",
+   "bounds": {
+    "min": [
+     287,
+     -64,
+     16
+    ],
+    "max": [
+     349,
+     319,
+     79
+    ]
+   },
+   "status": "blockout",
+   "reviews": [
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T02:42:30Z",
+     "digest": "f348355c99bfbb3dd6a1f33c2e1f954c588275c9cdf3fba776f4f5e3ff076cfd",
+     "plans": [
+      "docs/maps/ironhold/sections/K4-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-K4-top.png",
+      "docs/maps/ironhold/sections/ironhold-K4-iso.png"
+     ],
+     "notes": "Far gorge blockout: bed continues to x 300, then the far east wall climbs to 82-88. Locks ok, seams checked against J."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T05:22:20Z",
+     "digest": "65e024db2be540254149a6fa5f60fc7126ce9a3677a6473a50d40fb887a18f32",
+     "plans": [
+      "docs/maps/ironhold/sections/K4-surface.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-K4-top.png",
+      "docs/maps/ironhold/sections/ironhold-K4-iso.png"
+     ],
+     "notes": "Surface fix pass (Kort 2026-10-31): gorge: banded crag, gravel scree. Top layer only."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T06:20:01Z",
+     "digest": "75a9462006e9226cf3ea0a808b40334f1023046f35a40d413d91e1af4911c204",
+     "plans": [
+      "docs/maps/ironhold/sections/K4-cleanup.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-K4-top.png",
+      "docs/maps/ironhold/sections/ironhold-K4-iso.png"
+     ],
+     "notes": "Surface cleanup (Kort 2026-11-01): gorge: banded crag, gravel scree. Top layer only."
+    }
+   ]
+  },
+  {
+   "id": "A5",
+   "name": "West rim",
+   "bounds": {
+    "min": [
+     -350,
+     -64,
+     80
+    ],
+    "max": [
+     -290,
+     319,
+     143
+    ]
+   },
+   "status": "blockout",
+   "reviews": [
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T01:21:41Z",
+     "digest": "162748452d574da2301c7561b254bbccb04eda960c49f12780b9bf9b6dce8228",
+     "plans": [
+      "docs/maps/ironhold/sections/A5-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-A5-top.png",
+      "docs/maps/ironhold/sections/ironhold-A5-iso.png"
+     ],
+     "notes": "West upland south of the camp: grass at 67 with outcrops, camp slope foot, west rim to 82-88. Blockout only."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T02:33:06Z",
+     "digest": "6ec29535d6af741b25c5d3762cf77a9a1ce2516d9873ab7b8b3661f26eddd4c9",
+     "plans": [
+      "docs/maps/ironhold/sections/A5-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-A5-top.png",
+      "docs/maps/ironhold/sections/ironhold-A5-iso.png"
+     ],
+     "notes": "Rim fix: rim faces now andesite so the north and south erosion clamps no longer plane them; rim climbs to 82-88 over the camp west half. Locks ok, seams checked against A1/A3/A4/A6."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T04:22:59Z",
+     "digest": "a54dfdfd71a213c83136ad02fa05aa30fb8939eda3cc81e38374fdf82eedc8d7",
+     "plans": [
+      "docs/maps/ironhold/sections/A5-surface.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-A5-top.png",
+      "docs/maps/ironhold/sections/ironhold-A5-iso.png"
+     ],
+     "notes": "Surface fix pass (Kort 2026-10-31): floor: one main block, light accent, path cores. Top layer only."
+    }
+   ]
+  },
+  {
+   "id": "B5",
+   "name": "Camp south",
+   "bounds": {
+    "min": [
+     -289,
+     -64,
+     80
+    ],
+    "max": [
+     -226,
+     319,
+     143
+    ]
+   },
+   "status": "blockout",
+   "reviews": [
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-10-31T15:43:47Z",
+     "digest": "ffcf89b8d20ad890c66fc57d18795065e1e43cc368cc09cad9a4e0126430bf2d",
+     "plans": [
+      "docs/maps/ironhold/sections/B5-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-B5-top.png",
+      "docs/maps/ironhold/sections/ironhold-B5-iso.png"
+     ],
+     "notes": "Camp south: palisade south run z 72 with lane gate z 64, slope settled to the upland y 67, crag outcrops, mantlets z 92..136 on pads with banks. Locks ok."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T04:28:59Z",
+     "digest": "a69462426f747fba79a504c7a29b5afc2f7131e4737c3227808102309f147a48",
+     "plans": [
+      "docs/maps/ironhold/sections/B5-surface.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-B5-top.png",
+      "docs/maps/ironhold/sections/ironhold-B5-iso.png"
+     ],
+     "notes": "Surface fix pass (Kort 2026-10-31): floor: one main block, light accent, path cores. Top layer only."
+    }
+   ]
+  },
+  {
+   "id": "C5",
+   "name": "Gallows Ridge west",
+   "bounds": {
+    "min": [
+     -225,
+     -64,
+     80
+    ],
+    "max": [
+     -162,
+     319,
+     143
+    ]
+   },
+   "status": "blockout",
+   "reviews": [
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-10-31T12:23:50Z",
+     "digest": "5b6645510376bd851da4aa374d0bc9496b89e5f91723f163b85f8b0ff4c89204",
+     "plans": [
+      "docs/maps/ironhold/sections/C5-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-C5-top.png",
+      "docs/maps/ironhold/sections/ironhold-C5-iso.png"
+     ],
+     "notes": "Mire south lobe grades up into the Gallows Ridge foot (no cliff at the mud edge); west watchtower shell; south lane climbs the ridge; first gallows on the slope; chapel corner at the SE. Locks ok."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T04:35:36Z",
+     "digest": "644585999e9378dd150912fbd995d1245c50b7bb8219d800a407022c63cf5c4c",
+     "plans": [
+      "docs/maps/ironhold/sections/C5-surface.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-C5-top.png",
+      "docs/maps/ironhold/sections/ironhold-C5-iso.png"
+     ],
+     "notes": "Surface fix pass (Kort 2026-10-31): floor: one main block, light accent, path cores. Top layer only."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T05:48:06Z",
+     "digest": "2212687477db3d02992969d1f20b53ac0d28cf53abcf80cb29167fc31cd3c7c3",
+     "plans": [
+      "docs/maps/ironhold/sections/C5-cleanup.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-C5-top.png",
+      "docs/maps/ironhold/sections/ironhold-C5-iso.png"
+     ],
+     "notes": "Surface cleanup (Kort 2026-11-01): floor: one main block, light accent, path cores. Top layer only."
+    }
+   ]
+  },
+  {
+   "id": "D5",
+   "name": "Killing field south",
+   "bounds": {
+    "min": [
+     -161,
+     -64,
+     80
+    ],
+    "max": [
+     -98,
+     319,
+     143
+    ]
+   },
+   "status": "blockout",
+   "reviews": [
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-10-31T12:23:54Z",
+     "digest": "f2d43332a9c3aa350d97e84c8d9df7d3419d0bcd08b61f1ab099a6e20e59a611",
+     "plans": [
+      "docs/maps/ironhold/sections/D5-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-D5-top.png",
+      "docs/maps/ironhold/sections/ironhold-D5-iso.png"
+     ],
+     "notes": "Killing field south: Mire tail and pools, ridge foot rising SE, lane past the chapel's north side, corner tower and curtain at the north edge. Locks ok."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T04:41:41Z",
+     "digest": "c0155ebedcddda87def22896e1d6fde9c6b917101c4dd1c197185973c5dd0e82",
+     "plans": [
+      "docs/maps/ironhold/sections/D5-surface.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-D5-top.png",
+      "docs/maps/ironhold/sections/ironhold-D5-iso.png"
+     ],
+     "notes": "Surface fix pass (Kort 2026-10-31): floor: one main block, light accent, path cores. Top layer only."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T05:51:37Z",
+     "digest": "f2f317ef677442c60d79a94e41f253a3a4ea78e85d66e2b93197a9340468fb1e",
+     "plans": [
+      "docs/maps/ironhold/sections/D5-cleanup.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-D5-top.png",
+      "docs/maps/ironhold/sections/ironhold-D5-iso.png"
+     ],
+     "notes": "Surface cleanup (Kort 2026-11-01): floor: one main block, light accent, path cores. Top layer only."
+    }
+   ]
+  },
+  {
+   "id": "E5",
+   "name": "South sally",
+   "bounds": {
+    "min": [
+     -97,
+     -64,
+     80
+    ],
+    "max": [
+     -34,
+     319,
+     143
+    ]
+   },
+   "status": "blockout",
+   "reviews": [
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-10-31T12:23:58Z",
+     "digest": "ce459093d13e1c53e5f00e73e8531f1cc589c40c5d1453c3fc96721df7eda312",
+     "plans": [
+      "docs/maps/ironhold/sections/E5-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-E5-top.png",
+      "docs/maps/ironhold/sections/ironhold-E5-iso.png"
+     ],
+     "notes": "South sally: ridge-foot track round the fosse end outside the curtain, lane to the ford, corner tower and today's curtain piece kept. Locks ok."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T04:47:29Z",
+     "digest": "c1b694f70b95ff6bbebc8b6a0c8b73f2e921efc77a25f7bf03a93126ff627a55",
+     "plans": [
+      "docs/maps/ironhold/sections/E5-surface.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-E5-top.png",
+      "docs/maps/ironhold/sections/ironhold-E5-iso.png"
+     ],
+     "notes": "Surface fix pass (Kort 2026-10-31): floor: one main block, light accent, path cores. Top layer only."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T05:55:44Z",
+     "digest": "7f2b5abb82a86a8d3653796c1ec9ef02f3036ea0802dc3708768282ff2c8adab",
+     "plans": [
+      "docs/maps/ironhold/sections/E5-cleanup.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-E5-top.png",
+      "docs/maps/ironhold/sections/ironhold-E5-iso.png"
+     ],
+     "notes": "Surface cleanup (Kort 2026-11-01): floor: one main block, light accent, path cores. Top layer only."
+    }
+   ]
+  },
+  {
+   "id": "F5",
+   "name": "South water gate",
+   "bounds": {
+    "min": [
+     -33,
+     -64,
+     80
+    ],
+    "max": [
+     30,
+     319,
+     143
+    ]
+   },
+   "status": "blockout",
+   "reviews": [
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-10-31T12:24:02Z",
+     "digest": "0ce4023accb7446de68f4a59cb1e58249369ffa042c0b7028baab60016ba2984",
+     "plans": [
+      "docs/maps/ironhold/sections/F5-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-F5-top.png",
+      "docs/maps/ironhold/sections/ironhold-F5-iso.png"
+     ],
+     "notes": "South water gate: lintel over the river, river leaving the curtain in a gentle meander, south ford a gravel shoal with eased banks; C pad edge broken by noise. Ford still reads a little round; detail pass to break it. Locks ok."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-10-31T15:55:55Z",
+     "digest": "ed9eb0ffcbbc29c5340c119bb83d726f5bd8dbb3fe70218e8c512c20bdc3c3d7",
+     "plans": [
+      "docs/maps/ironhold/sections/F5-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-F5-top.png",
+      "docs/maps/ironhold/sections/ironhold-F5-iso.png"
+     ],
+     "notes": "South ford tidied: the round pool is gone; a slanting gravel bar crosses the river at its kept width, gravel ramps cut down each cliff from the lane end (west, z 127) and toward C (east, z 134), edges ragged. Rest of the section unchanged. Locks ok."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T04:53:15Z",
+     "digest": "88d96a77006e51a89b0d1c1a128b01ddc0f515f1517b3fb2831c6dbdc6db2044",
+     "plans": [
+      "docs/maps/ironhold/sections/F5-surface.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-F5-top.png",
+      "docs/maps/ironhold/sections/ironhold-F5-iso.png"
+     ],
+     "notes": "Surface fix pass (Kort 2026-10-31): floor: one main block, light accent, path cores. Top layer only."
+    }
+   ]
+  },
+  {
+   "id": "G5",
+   "name": "Point C",
+   "bounds": {
+    "min": [
+     31,
+     -64,
+     80
+    ],
+    "max": [
+     94,
+     319,
+     143
+    ]
+   },
+   "status": "blockout",
+   "reviews": [
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-10-31T12:24:07Z",
+     "digest": "ee1ff127ce5bc1d6e5a25ffdfd288e42093bcd3cfc7b666466265d8feea72dcb",
+     "plans": [
+      "docs/maps/ironhold/sections/G5-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-G5-top.png",
+      "docs/maps/ironhold/sections/ironhold-G5-iso.png"
+     ],
+     "notes": "Point C on a ragged trodden pad at 63 under its ring, three broken yard-wall stubs at r 21, postern cut through the curtain at x 40..48 with its track. Locks ok."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-10-31T16:02:09Z",
+     "digest": "28183c4761bf7fefb3d2ff4dc637f05b1df5790826b0d8c7299321f36618e870",
+     "plans": [
+      "docs/maps/ironhold/sections/G5-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-G5-iso.png"
+     ],
+     "notes": "Reopened: inside of the south postern gets the end of the bailey track; rest unchanged, stage C untouched."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T04:59:41Z",
+     "digest": "a25feebc5e44344c5796737d9a00e62d19d0ef0fd68c22ecef414f8939636b19",
+     "plans": [
+      "docs/maps/ironhold/sections/G5-surface.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-G5-top.png",
+      "docs/maps/ironhold/sections/ironhold-G5-iso.png"
+     ],
+     "notes": "Surface fix pass (Kort 2026-10-31): floor: one main block, light accent, path cores; south postern lintel made good. Top layer only."
+    }
+   ]
+  },
+  {
+   "id": "H5",
+   "name": "South-east corner",
+   "bounds": {
+    "min": [
+     95,
+     -64,
+     80
+    ],
+    "max": [
+     158,
+     319,
+     143
+    ]
+   },
+   "status": "blockout",
+   "reviews": [
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-10-31T18:06:19Z",
+     "digest": "b236d086351097c3e4d8acda7f1d36b996bc7ae9568c64e8198fd78cbd9e8a5e",
+     "plans": [
+      "docs/maps/ironhold/sections/H5-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-H5-iso.png"
+     ],
+     "notes": "South-east corner: SE corner tower (x 96..106, z 92..100, top 76) joining the south curtain to the east curtain; the SE yard's south end; dry south flank beyond z 98 with the Watch Hill shoulder's east foot. Locks ok."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T00:42:45Z",
+     "digest": "4c3f18f61386bbbf6674456e110a801ef4a7d4d50ac44b9cb0cbcdff7048bf9e",
+     "plans": [
+      "docs/maps/ironhold/sections/H5-blockout.json",
+      "docs/maps/ironhold/sections/H5-ward-south.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-H5-top.png",
+      "docs/maps/ironhold/sections/ironhold-H5-iso.png"
+     ],
+     "notes": "Donjon Court south opening closed: mirror curtain z 94..98 x 107..158, worn foot; tower stays solid (Kort 2026-10-31)."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T05:05:22Z",
+     "digest": "23a97a88bc5017dfea87cddc8bef1348499bd218b1efa3d8da5c53d6d93cfa3f",
+     "plans": [
+      "docs/maps/ironhold/sections/H5-surface.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-H5-top.png",
+      "docs/maps/ironhold/sections/ironhold-H5-iso.png"
+     ],
+     "notes": "Surface fix pass (Kort 2026-10-31): floor: one main block, light accent, path cores. Top layer only."
+    }
+   ]
+  },
+  {
+   "id": "I5",
+   "name": "Gorge parapet",
+   "bounds": {
+    "min": [
+     159,
+     -64,
+     80
+    ],
+    "max": [
+     222,
+     319,
+     143
+    ]
+   },
+   "status": "blockout",
+   "reviews": [
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T00:47:17Z",
+     "digest": "55dd0f762631666d55c97b630b127e1c71d64b2ebdb39db8ce0780e3a50d2bf2",
+     "plans": [
+      "docs/maps/ironhold/sections/I5-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-I5-top.png",
+      "docs/maps/ironhold/sections/ironhold-I5-iso.png"
+     ],
+     "notes": "Gorge blockout: Dusk flank grass at 63, curtain y 71 at |z| 94..98, crenellated parapet x 166..168, ragged crag face to scree and a gravel floor at y 44 with boulders; worn rim foot. Blockout only, no detail pass."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T05:11:15Z",
+     "digest": "49fa363fe43ec83b3cc3313dbe273319de6e3cf955b07d04aabc568498d2d26c",
+     "plans": [
+      "docs/maps/ironhold/sections/I5-surface.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-I5-top.png",
+      "docs/maps/ironhold/sections/ironhold-I5-iso.png"
+     ],
+     "notes": "Surface fix pass (Kort 2026-10-31): gorge: banded crag, gravel scree. Top layer only."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T06:10:33Z",
+     "digest": "b9d59f996f72353211cb0d7fdddad77da80b06a8a38035e123da7207dc30aa64",
+     "plans": [
+      "docs/maps/ironhold/sections/I5-cleanup.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-I5-top.png",
+      "docs/maps/ironhold/sections/ironhold-I5-iso.png"
+     ],
+     "notes": "Surface cleanup (Kort 2026-11-01): gorge: banded crag, gravel scree. Top layer only."
+    }
+   ]
+  },
+  {
+   "id": "J5",
+   "name": "Gorge backdrop",
+   "bounds": {
+    "min": [
+     223,
+     -64,
+     80
+    ],
+    "max": [
+     286,
+     319,
+     143
+    ]
+   },
+   "status": "blockout",
+   "reviews": [
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T02:40:38Z",
+     "digest": "32548c85fa9884756589a53c0f68b85d0b772305f0fdbfbab2478dcbdeb510e5",
+     "plans": [
+      "docs/maps/ironhold/sections/J5-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-J5-top.png",
+      "docs/maps/ironhold/sections/ironhold-J5-iso.png"
+     ],
+     "notes": "Far gorge blockout: gorge bed at 44 with face and bed breakup continued from I. Locks ok, seams checked against I and K."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T05:17:00Z",
+     "digest": "2261285e7ef930158b3e01f4221f20a0ac24430b3fc2cb22d4c2c989bcdb1ca8",
+     "plans": [
+      "docs/maps/ironhold/sections/J5-surface.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-J5-top.png",
+      "docs/maps/ironhold/sections/ironhold-J5-iso.png"
+     ],
+     "notes": "Surface fix pass (Kort 2026-10-31): gorge: banded crag, gravel scree. Top layer only."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T06:15:40Z",
+     "digest": "9bd192b1203266e59251666b5277028d524a88d750672e510453d4e6df42f4d6",
+     "plans": [
+      "docs/maps/ironhold/sections/J5-cleanup.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-J5-top.png",
+      "docs/maps/ironhold/sections/ironhold-J5-iso.png"
+     ],
+     "notes": "Surface cleanup (Kort 2026-11-01): gorge: banded crag, gravel scree. Top layer only."
+    }
+   ]
+  },
+  {
+   "id": "K5",
+   "name": "Gorge backdrop",
+   "bounds": {
+    "min": [
+     287,
+     -64,
+     80
+    ],
+    "max": [
+     349,
+     319,
+     143
+    ]
+   },
+   "status": "blockout",
+   "reviews": [
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T02:42:48Z",
+     "digest": "8883ffb9977073a5dafdaa7c0029b932c4a0bbe91150544b47fbbca23e0328e8",
+     "plans": [
+      "docs/maps/ironhold/sections/K5-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-K5-top.png",
+      "docs/maps/ironhold/sections/ironhold-K5-iso.png"
+     ],
+     "notes": "Far gorge blockout: bed continues to x 300, then the far east wall climbs to 82-88. Locks ok, seams checked against J."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T05:23:10Z",
+     "digest": "5ad9e3de3387cbcf7cb780f2ffc091c2d72b4456fd0533bd92a76265b3b66b1b",
+     "plans": [
+      "docs/maps/ironhold/sections/K5-surface.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-K5-top.png",
+      "docs/maps/ironhold/sections/ironhold-K5-iso.png"
+     ],
+     "notes": "Surface fix pass (Kort 2026-10-31): gorge: banded crag, gravel scree. Top layer only."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T06:20:39Z",
+     "digest": "2d7aa7aca43066d2b63a928a2bdad756177b6db27a7750dd760eae6cb397e03d",
+     "plans": [
+      "docs/maps/ironhold/sections/K5-cleanup.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-K5-top.png",
+      "docs/maps/ironhold/sections/ironhold-K5-iso.png"
+     ],
+     "notes": "Surface cleanup (Kort 2026-11-01): gorge: banded crag, gravel scree. Top layer only."
+    }
+   ]
+  },
+  {
+   "id": "A6",
+   "name": "West rim",
+   "bounds": {
+    "min": [
+     -350,
+     -64,
+     144
+    ],
+    "max": [
+     -290,
+     319,
+     207
+    ]
+   },
+   "status": "blockout",
+   "reviews": [
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T02:33:53Z",
+     "digest": "7daf784079950dcc33cd05267deb38482b297be9440411b6191a80a702fe8a46",
+     "plans": [
+      "docs/maps/ironhold/sections/A6-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-A6-top.png",
+      "docs/maps/ironhold/sections/ironhold-A6-iso.png"
+     ],
+     "notes": "West rim blockout: rim climbs from x -333 to 82-88, ground below matches A2..A5. Locks ok, seams checked."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T04:23:51Z",
+     "digest": "04bae520239dfb354634a211181efdddf28678c80268753482eb6c862ab82fa9",
+     "plans": [
+      "docs/maps/ironhold/sections/A6-surface.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-A6-top.png",
+      "docs/maps/ironhold/sections/ironhold-A6-iso.png"
+     ],
+     "notes": "Surface fix pass (Kort 2026-10-31): floor: one main block, light accent, path cores. Top layer only."
+    }
+   ]
+  },
+  {
+   "id": "B6",
+   "name": "Camp south",
+   "bounds": {
+    "min": [
+     -289,
+     -64,
+     144
+    ],
+    "max": [
+     -226,
+     319,
+     207
+    ]
+   },
+   "status": "blockout",
+   "reviews": [
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-10-31T15:43:51Z",
+     "digest": "85a3e371b539a40e29d63d00db81b68e100950de8909e05d5b8a0de493df5376",
+     "plans": [
+      "docs/maps/ironhold/sections/B6-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-B6-top.png",
+      "docs/maps/ironhold/sections/ironhold-B6-iso.png"
+     ],
+     "notes": "South upland: ground rising 0..2 toward the south edge, outcrop clusters with worn grass round the rock; no built features. Locks ok."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T04:29:47Z",
+     "digest": "ea3e23978489a9e7ec2b9cca4cf82709d5910f04792d912d0fa09ea68d6891e5",
+     "plans": [
+      "docs/maps/ironhold/sections/B6-surface.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-B6-top.png",
+      "docs/maps/ironhold/sections/ironhold-B6-iso.png"
+     ],
+     "notes": "Surface fix pass (Kort 2026-10-31): floor: one main block, light accent, path cores. Top layer only."
+    }
+   ]
+  },
+  {
+   "id": "C6",
+   "name": "Gallows Ridge west",
+   "bounds": {
+    "min": [
+     -225,
+     -64,
+     144
+    ],
+    "max": [
+     -162,
+     319,
+     207
+    ]
+   },
+   "status": "blockout",
+   "reviews": [
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-10-31T12:24:11Z",
+     "digest": "1a438b317c4d520e5eea2416613df7f80e0d612de8344eec6c9330cc00bf015a",
+     "plans": [
+      "docs/maps/ironhold/sections/C6-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-C6-top.png",
+      "docs/maps/ironhold/sections/ironhold-C6-iso.png"
+     ],
+     "notes": "Gallows Ridge west: rolling high ground at 70..73, crag breaks on the west face, chapel shell corner. Locks ok."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T04:36:36Z",
+     "digest": "346909a515320b17ddaf942b1bffbf780a0f1a48f25a57c01f3946cf2038c901",
+     "plans": [
+      "docs/maps/ironhold/sections/C6-surface.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-C6-top.png",
+      "docs/maps/ironhold/sections/ironhold-C6-iso.png"
+     ],
+     "notes": "Surface fix pass (Kort 2026-10-31): floor: one main block, light accent, path cores. Top layer only."
+    }
+   ]
+  },
+  {
+   "id": "D6",
+   "name": "Gallows Ridge",
+   "bounds": {
+    "min": [
+     -161,
+     -64,
+     144
+    ],
+    "max": [
+     -98,
+     319,
+     207
+    ]
+   },
+   "status": "blockout",
+   "reviews": [
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-10-31T12:24:15Z",
+     "digest": "fad909b733e1e385b38abe835a90be5703b3708f19ccb4f0fdfa789eb765e6c6",
+     "plans": [
+      "docs/maps/ironhold/sections/D6-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-D6-top.png",
+      "docs/maps/ironhold/sections/ironhold-D6-iso.png"
+     ],
+     "notes": "Gallows Ridge: roofless chapel on a levelled floor at 72 (west gable to 82, west door, chancel gap), second gallows, crag faces on the north and south slopes. Locks ok."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T04:42:22Z",
+     "digest": "06ea2f55d9d4eba6c9881389405a0c34665a85374864cd8c78e4873f2affdad0",
+     "plans": [
+      "docs/maps/ironhold/sections/D6-surface.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-D6-top.png",
+      "docs/maps/ironhold/sections/ironhold-D6-iso.png"
+     ],
+     "notes": "Surface fix pass (Kort 2026-10-31): floor: one main block, light accent, path cores. Top layer only."
+    }
+   ]
+  },
+  {
+   "id": "E6",
+   "name": "South ford road",
+   "bounds": {
+    "min": [
+     -97,
+     -64,
+     144
+    ],
+    "max": [
+     -34,
+     319,
+     207
+    ]
+   },
+   "status": "blockout",
+   "reviews": [
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-10-31T12:24:19Z",
+     "digest": "69c09451993b4ec1070c7ca4e0af93d1f247ee595c1c3c6782c98069ae88380a",
+     "plans": [
+      "docs/maps/ironhold/sections/E6-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-E6-top.png",
+      "docs/maps/ironhold/sections/ironhold-E6-iso.png"
+     ],
+     "notes": "South ford road: ridge's east fall to the river flats, banks rising toward the south rim. Plain for now; detail pass adds cover. Locks ok."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T04:48:11Z",
+     "digest": "085569e0fcb7de834cba26be7bad9832e7126773d4ee96098b46232bdf627954",
+     "plans": [
+      "docs/maps/ironhold/sections/E6-surface.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-E6-top.png",
+      "docs/maps/ironhold/sections/ironhold-E6-iso.png"
+     ],
+     "notes": "Surface fix pass (Kort 2026-10-31): floor: one main block, light accent, path cores. Top layer only."
+    }
+   ]
+  },
+  {
+   "id": "F6",
+   "name": "South ford",
+   "bounds": {
+    "min": [
+     -33,
+     -64,
+     144
+    ],
+    "max": [
+     30,
+     319,
+     207
+    ]
+   },
+   "status": "blockout",
+   "reviews": [
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-10-31T12:24:23Z",
+     "digest": "e962ff7ceb846e74a8b0a5b2f31b0aadf5700c01a3408ff69f3096b8034eabc6",
+     "plans": [
+      "docs/maps/ironhold/sections/F6-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-F6-top.png",
+      "docs/maps/ironhold/sections/ironhold-F6-iso.png"
+     ],
+     "notes": "South ford reach: river meanders in its cut channel (x -4..4), banks rise toward the rim. Locks ok."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T04:54:13Z",
+     "digest": "26fde718c2c0bd49069370c65a6f7c548f638e10e20b53a3a1995469c7bd82c7",
+     "plans": [
+      "docs/maps/ironhold/sections/F6-surface.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-F6-top.png",
+      "docs/maps/ironhold/sections/ironhold-F6-iso.png"
+     ],
+     "notes": "Surface fix pass (Kort 2026-10-31): floor: one main block, light accent, path cores. Top layer only."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T06:00:16Z",
+     "digest": "ea15c5057c60c9f692368c1e7407acfccfc3f9831044608c7959ebdcbb6c9c42",
+     "plans": [
+      "docs/maps/ironhold/sections/F6-cleanup.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-F6-top.png",
+      "docs/maps/ironhold/sections/ironhold-F6-iso.png"
+     ],
+     "notes": "Surface cleanup (Kort 2026-11-01): floor: one main block, light accent, path cores. Top layer only."
+    }
+   ]
+  },
+  {
+   "id": "G6",
+   "name": "Watch Hill shoulder",
+   "bounds": {
+    "min": [
+     31,
+     -64,
+     144
+    ],
+    "max": [
+     94,
+     319,
+     207
+    ]
+   },
+   "status": "blockout",
+   "reviews": [
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-10-31T12:24:27Z",
+     "digest": "04bedff5b2989e7e6a1c9e195c1e8c0bda1a9d395bc0a33274b8b0ae918814d2",
+     "plans": [
+      "docs/maps/ironhold/sections/G6-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-G6-top.png",
+      "docs/maps/ironhold/sections/ironhold-G6-iso.png"
+     ],
+     "notes": "Watch Hill shoulder rising to about 72, rock showing on its west face; the shoulder runs on toward G7. Locks ok."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T05:00:25Z",
+     "digest": "e50f8783f4dd9fafc1ea18fe4fcb8fdc0d3175a7159dfc4b04a2be95924fef99",
+     "plans": [
+      "docs/maps/ironhold/sections/G6-surface.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-G6-top.png",
+      "docs/maps/ironhold/sections/ironhold-G6-iso.png"
+     ],
+     "notes": "Surface fix pass (Kort 2026-10-31): floor: one main block, light accent, path cores. Top layer only."
+    }
+   ]
+  },
+  {
+   "id": "H6",
+   "name": "East watch",
+   "bounds": {
+    "min": [
+     95,
+     -64,
+     144
+    ],
+    "max": [
+     158,
+     319,
+     207
+    ]
+   },
+   "status": "blockout",
+   "reviews": [
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-10-31T18:06:25Z",
+     "digest": "56495b11b86c9bd0835db0ece7ca7161f1e29c65b4ae9fcbc945e85fb8e14dc8",
+     "plans": [
+      "docs/maps/ironhold/sections/H6-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-H6-iso.png"
+     ],
+     "notes": "East watch south: dry high ground and the Watch Hill shoulder's crest from G6 carried east, rock showing on the steep side; east watchtower x 145..155, z 145..155, top 79. Locks ok."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T05:06:04Z",
+     "digest": "1387ca6e2b13a5fd1dccd3efb072fa34c5d1845bad8bd8d0f5c21d09eb3cf462",
+     "plans": [
+      "docs/maps/ironhold/sections/H6-surface.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-H6-top.png",
+      "docs/maps/ironhold/sections/ironhold-H6-iso.png"
+     ],
+     "notes": "Surface fix pass (Kort 2026-10-31): floor: one main block, light accent, path cores. Top layer only."
+    }
+   ]
+  },
+  {
+   "id": "I6",
+   "name": "Gorge parapet",
+   "bounds": {
+    "min": [
+     159,
+     -64,
+     144
+    ],
+    "max": [
+     222,
+     319,
+     207
+    ]
+   },
+   "status": "blockout",
+   "reviews": [
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T00:47:33Z",
+     "digest": "90fb74bdf5145109e16be9298b77a211362104f38e833950920163f058fb2d98",
+     "plans": [
+      "docs/maps/ironhold/sections/I6-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-I6-top.png",
+      "docs/maps/ironhold/sections/ironhold-I6-iso.png"
+     ],
+     "notes": "Gorge blockout: Dusk flank grass at 63, curtain y 71 at |z| 94..98, crenellated parapet x 166..168, ragged crag face to scree and a gravel floor at y 44 with boulders; worn rim foot. Blockout only, no detail pass."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T05:12:00Z",
+     "digest": "3c15b7a12396ca1610a808d1fe5a49ad46583cfe485cf61457fac734244496f5",
+     "plans": [
+      "docs/maps/ironhold/sections/I6-surface.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-I6-top.png",
+      "docs/maps/ironhold/sections/ironhold-I6-iso.png"
+     ],
+     "notes": "Surface fix pass (Kort 2026-10-31): gorge: banded crag, gravel scree. Top layer only."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T06:11:11Z",
+     "digest": "65d9d5c6dbbd6092c6c43af33ab21214297665558113677f0ebeee70d4a216e6",
+     "plans": [
+      "docs/maps/ironhold/sections/I6-cleanup.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-I6-top.png",
+      "docs/maps/ironhold/sections/ironhold-I6-iso.png"
+     ],
+     "notes": "Surface cleanup (Kort 2026-11-01): gorge: banded crag, gravel scree. Top layer only."
+    }
+   ]
+  },
+  {
+   "id": "J6",
+   "name": "Gorge backdrop",
+   "bounds": {
+    "min": [
+     223,
+     -64,
+     144
+    ],
+    "max": [
+     286,
+     319,
+     207
+    ]
+   },
+   "status": "blockout",
+   "reviews": [
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T02:40:59Z",
+     "digest": "7debe9e1b696adb15f6a6988e244e9021d3393f218554656eb5a88d50dcb5097",
+     "plans": [
+      "docs/maps/ironhold/sections/J6-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-J6-top.png",
+      "docs/maps/ironhold/sections/ironhold-J6-iso.png"
+     ],
+     "notes": "Far gorge blockout: gorge bed at 44 with face and bed breakup continued from I. Locks ok, seams checked against I and K."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T05:17:41Z",
+     "digest": "5f6b0cf292820a91cd3bbba5d4c327cc1385a571fb3ee98d315aa4e9e2e80ae1",
+     "plans": [
+      "docs/maps/ironhold/sections/J6-surface.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-J6-top.png",
+      "docs/maps/ironhold/sections/ironhold-J6-iso.png"
+     ],
+     "notes": "Surface fix pass (Kort 2026-10-31): gorge: banded crag, gravel scree. Top layer only."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T06:16:16Z",
+     "digest": "e2202cb3ebb85c545a3faa269487833c33f764643803b1cbb97c1ac1af27b4c3",
+     "plans": [
+      "docs/maps/ironhold/sections/J6-cleanup.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-J6-top.png",
+      "docs/maps/ironhold/sections/ironhold-J6-iso.png"
+     ],
+     "notes": "Surface cleanup (Kort 2026-11-01): gorge: banded crag, gravel scree. Top layer only."
+    }
+   ]
+  },
+  {
+   "id": "K6",
+   "name": "Gorge backdrop",
+   "bounds": {
+    "min": [
+     287,
+     -64,
+     144
+    ],
+    "max": [
+     349,
+     319,
+     207
+    ]
+   },
+   "status": "blockout",
+   "reviews": [
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T02:43:07Z",
+     "digest": "03969deeb9917b58f612757aefbb9a549ee46a262f76bfaed96e79fd97cc6b0e",
+     "plans": [
+      "docs/maps/ironhold/sections/K6-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-K6-top.png",
+      "docs/maps/ironhold/sections/ironhold-K6-iso.png"
+     ],
+     "notes": "Far gorge blockout: bed continues to x 300, then the far east wall climbs to 82-88. Locks ok, seams checked against J."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T05:23:57Z",
+     "digest": "5ac01a1fa7bcfe3b04651b5cff95b149ed9807dce0ff25b546b62b6466609a43",
+     "plans": [
+      "docs/maps/ironhold/sections/K6-surface.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-K6-top.png",
+      "docs/maps/ironhold/sections/ironhold-K6-iso.png"
+     ],
+     "notes": "Surface fix pass (Kort 2026-10-31): gorge: banded crag, gravel scree. Top layer only."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T06:21:18Z",
+     "digest": "68ad2ed91993bb3f22cd5abfffc7309d31005f17a5acc81c9b99d5b94053ff44",
+     "plans": [
+      "docs/maps/ironhold/sections/K6-cleanup.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-K6-top.png",
+      "docs/maps/ironhold/sections/ironhold-K6-iso.png"
+     ],
+     "notes": "Surface cleanup (Kort 2026-11-01): gorge: banded crag, gravel scree. Top layer only."
+    }
+   ]
+  },
+  {
+   "id": "A7",
+   "name": "South Ridge (rim)",
+   "bounds": {
+    "min": [
+     -350,
+     -64,
+     208
+    ],
+    "max": [
+     -290,
+     319,
+     249
+    ]
+   },
+   "status": "blockout",
+   "reviews": [
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T02:34:08Z",
+     "digest": "586e4c6295790f22ac409d0edc90b85589963829af0b5c8a829440d40235391d",
+     "plans": [
+      "docs/maps/ironhold/sections/A7-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-A7-top.png",
+      "docs/maps/ironhold/sections/ironhold-A7-iso.png"
+     ],
+     "notes": "South Ridge blockout: edge rise from z 212 to peaks 82-88, river valley kept at F7, gorge continues in I..K with the far corner closed. Locks ok, seams checked against row 6."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T04:24:34Z",
+     "digest": "d84a2f7515756bfd15abe1904b5aad516cc51e53932c4c6e74b95829d07a3303",
+     "plans": [
+      "docs/maps/ironhold/sections/A7-surface.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-A7-top.png",
+      "docs/maps/ironhold/sections/ironhold-A7-iso.png"
+     ],
+     "notes": "Surface fix pass (Kort 2026-10-31): floor: one main block, light accent, path cores. Top layer only."
+    }
+   ]
+  },
+  {
+   "id": "B7",
+   "name": "South Ridge (rim)",
+   "bounds": {
+    "min": [
+     -289,
+     -64,
+     208
+    ],
+    "max": [
+     -226,
+     319,
+     249
+    ]
+   },
+   "status": "blockout",
+   "reviews": [
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T02:36:56Z",
+     "digest": "c8b62e4f8964a423c1d854d7c6ec9f6a9deaae3f38c15e51b42c0d923322cd36",
+     "plans": [
+      "docs/maps/ironhold/sections/B7-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-B7-top.png",
+      "docs/maps/ironhold/sections/ironhold-B7-iso.png"
+     ],
+     "notes": "South Ridge blockout: edge rise from z 212 to peaks 82-88, river valley kept at F7, gorge continues in I..K with the far corner closed. Locks ok, seams checked against row 6."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T04:30:33Z",
+     "digest": "c89a9cc935a65cf89f2ca5a0eb7d1f1664037dc3eccdc579b4ea4374a6395e7b",
+     "plans": [
+      "docs/maps/ironhold/sections/B7-surface.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-B7-top.png",
+      "docs/maps/ironhold/sections/ironhold-B7-iso.png"
+     ],
+     "notes": "Surface fix pass (Kort 2026-10-31): floor: one main block, light accent, path cores. Top layer only."
+    }
+   ]
+  },
+  {
+   "id": "C7",
+   "name": "South Ridge (rim)",
+   "bounds": {
+    "min": [
+     -225,
+     -64,
+     208
+    ],
+    "max": [
+     -162,
+     319,
+     249
+    ]
+   },
+   "status": "blockout",
+   "reviews": [
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T02:37:12Z",
+     "digest": "488d66337eb570d4c28477e73ebfea731e4401ba35ff68b46f6b1ce71e0c0427",
+     "plans": [
+      "docs/maps/ironhold/sections/C7-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-C7-top.png",
+      "docs/maps/ironhold/sections/ironhold-C7-iso.png"
+     ],
+     "notes": "South Ridge blockout: edge rise from z 212 to peaks 82-88, river valley kept at F7, gorge continues in I..K with the far corner closed. Locks ok, seams checked against row 6."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T04:37:22Z",
+     "digest": "16b1ad4c4ae392ff10be2ae6a49341a9560fd535772d9368086da4d527d8459b",
+     "plans": [
+      "docs/maps/ironhold/sections/C7-surface.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-C7-top.png",
+      "docs/maps/ironhold/sections/ironhold-C7-iso.png"
+     ],
+     "notes": "Surface fix pass (Kort 2026-10-31): floor: one main block, light accent, path cores. Top layer only."
+    }
+   ]
+  },
+  {
+   "id": "D7",
+   "name": "South Ridge (rim)",
+   "bounds": {
+    "min": [
+     -161,
+     -64,
+     208
+    ],
+    "max": [
+     -98,
+     319,
+     249
+    ]
+   },
+   "status": "blockout",
+   "reviews": [
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T02:37:27Z",
+     "digest": "1f0543fbd385736a5c9511c94ec21e70870d296f605b7d5b7f5c165441ae8943",
+     "plans": [
+      "docs/maps/ironhold/sections/D7-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-D7-top.png",
+      "docs/maps/ironhold/sections/ironhold-D7-iso.png"
+     ],
+     "notes": "South Ridge blockout: edge rise from z 212 to peaks 82-88, river valley kept at F7, gorge continues in I..K with the far corner closed. Locks ok, seams checked against row 6."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T04:43:03Z",
+     "digest": "263e235b160a6f43cb753838898a76937ac86773a0dca93f792cd9f4a2155ac9",
+     "plans": [
+      "docs/maps/ironhold/sections/D7-surface.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-D7-top.png",
+      "docs/maps/ironhold/sections/ironhold-D7-iso.png"
+     ],
+     "notes": "Surface fix pass (Kort 2026-10-31): floor: one main block, light accent, path cores. Top layer only."
+    }
+   ]
+  },
+  {
+   "id": "E7",
+   "name": "South Ridge (rim)",
+   "bounds": {
+    "min": [
+     -97,
+     -64,
+     208
+    ],
+    "max": [
+     -34,
+     319,
+     249
+    ]
+   },
+   "status": "blockout",
+   "reviews": [
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T02:37:43Z",
+     "digest": "b02db1b0052a7d5ccdcf9c50bf2ec242e6b99ba22763314a3d7f66af43c3be7e",
+     "plans": [
+      "docs/maps/ironhold/sections/E7-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-E7-top.png",
+      "docs/maps/ironhold/sections/ironhold-E7-iso.png"
+     ],
+     "notes": "South Ridge blockout: edge rise from z 212 to peaks 82-88, river valley kept at F7, gorge continues in I..K with the far corner closed. Locks ok, seams checked against row 6."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T04:48:53Z",
+     "digest": "dae5e6cec3b4e4d93f5740bb28c90f0cf0a75e6939705d81a3f0a58ec26f277b",
+     "plans": [
+      "docs/maps/ironhold/sections/E7-surface.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-E7-top.png",
+      "docs/maps/ironhold/sections/ironhold-E7-iso.png"
+     ],
+     "notes": "Surface fix pass (Kort 2026-10-31): floor: one main block, light accent, path cores. Top layer only."
+    }
+   ]
+  },
+  {
+   "id": "F7",
+   "name": "South Ridge (rim)",
+   "bounds": {
+    "min": [
+     -33,
+     -64,
+     208
+    ],
+    "max": [
+     30,
+     319,
+     249
+    ]
+   },
+   "status": "blockout",
+   "reviews": [
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T02:37:58Z",
+     "digest": "93ed09550100f8682e5fd7f0c9b3be9879d60613c434b1858a2dbc58189d43e5",
+     "plans": [
+      "docs/maps/ironhold/sections/F7-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-F7-top.png",
+      "docs/maps/ironhold/sections/ironhold-F7-iso.png"
+     ],
+     "notes": "South Ridge blockout: edge rise from z 212 to peaks 82-88, river valley kept at F7, gorge continues in I..K with the far corner closed. Locks ok, seams checked against row 6."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T04:55:00Z",
+     "digest": "0017c545665e706adc743d41e5b961b80389b3bd317a35b08f84ea836635219e",
+     "plans": [
+      "docs/maps/ironhold/sections/F7-surface.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-F7-top.png",
+      "docs/maps/ironhold/sections/ironhold-F7-iso.png"
+     ],
+     "notes": "Surface fix pass (Kort 2026-10-31): floor: one main block, light accent, path cores. Top layer only."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T06:00:56Z",
+     "digest": "57e593d18929dd909d8e15b703880c77ea6d23a08d7ed297cb1ae83fe68a5b20",
+     "plans": [
+      "docs/maps/ironhold/sections/F7-cleanup.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-F7-top.png",
+      "docs/maps/ironhold/sections/ironhold-F7-iso.png"
+     ],
+     "notes": "Surface cleanup (Kort 2026-11-01): floor: one main block, light accent, path cores. Top layer only."
+    }
+   ]
+  },
+  {
+   "id": "G7",
+   "name": "South Ridge (rim)",
+   "bounds": {
+    "min": [
+     31,
+     -64,
+     208
+    ],
+    "max": [
+     94,
+     319,
+     249
+    ]
+   },
+   "status": "blockout",
+   "reviews": [
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T02:38:13Z",
+     "digest": "a99a2fa0c5d245b6ae9173856a8e958dbbe6d635f87da66f3123d1e47576bafa",
+     "plans": [
+      "docs/maps/ironhold/sections/G7-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-G7-top.png",
+      "docs/maps/ironhold/sections/ironhold-G7-iso.png"
+     ],
+     "notes": "South Ridge blockout: edge rise from z 212 to peaks 82-88, river valley kept at F7, gorge continues in I..K with the far corner closed. Locks ok, seams checked against row 6."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T05:01:09Z",
+     "digest": "55f8dc06e0f550bae05298771ea12e704c84d6c85a5700ea4d36770bc931e0e4",
+     "plans": [
+      "docs/maps/ironhold/sections/G7-surface.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-G7-top.png",
+      "docs/maps/ironhold/sections/ironhold-G7-iso.png"
+     ],
+     "notes": "Surface fix pass (Kort 2026-10-31): floor: one main block, light accent, path cores. Top layer only."
+    }
+   ]
+  },
+  {
+   "id": "H7",
+   "name": "South Ridge (rim)",
+   "bounds": {
+    "min": [
+     95,
+     -64,
+     208
+    ],
+    "max": [
+     158,
+     319,
+     249
+    ]
+   },
+   "status": "blockout",
+   "reviews": [
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T02:38:29Z",
+     "digest": "1301d41278ef3e90fea1b17772ab240e8141528b0073c80f647c6ec9cf8638cf",
+     "plans": [
+      "docs/maps/ironhold/sections/H7-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-H7-top.png",
+      "docs/maps/ironhold/sections/ironhold-H7-iso.png"
+     ],
+     "notes": "South Ridge blockout: edge rise from z 212 to peaks 82-88, river valley kept at F7, gorge continues in I..K with the far corner closed. Locks ok, seams checked against row 6."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T05:06:47Z",
+     "digest": "592973ded139fd4b7ca637af0605230c93e6621ebaad183dd65fb7db029a0b59",
+     "plans": [
+      "docs/maps/ironhold/sections/H7-surface.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-H7-top.png",
+      "docs/maps/ironhold/sections/ironhold-H7-iso.png"
+     ],
+     "notes": "Surface fix pass (Kort 2026-10-31): floor: one main block, light accent, path cores. Top layer only."
+    }
+   ]
+  },
+  {
+   "id": "I7",
+   "name": "Gorge parapet",
+   "bounds": {
+    "min": [
+     159,
+     -64,
+     208
+    ],
+    "max": [
+     222,
+     319,
+     249
+    ]
+   },
+   "status": "blockout",
+   "reviews": [
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T02:38:44Z",
+     "digest": "9b0d2edfda7cc823b48ae57cbf9033958cc0d1b8d9d6c36c631a2bfe8cb05c6c",
+     "plans": [
+      "docs/maps/ironhold/sections/I7-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-I7-top.png",
+      "docs/maps/ironhold/sections/ironhold-I7-iso.png"
+     ],
+     "notes": "South Ridge blockout: edge rise from z 212 to peaks 82-88, river valley kept at F7, gorge continues in I..K with the far corner closed. Locks ok, seams checked against row 6."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T05:12:52Z",
+     "digest": "e9bc7ce6379dcf5c1424738e0984474ed0f9eeaf199b94ffffcfeee79dbb8bd7",
+     "plans": [
+      "docs/maps/ironhold/sections/I7-surface.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-I7-top.png",
+      "docs/maps/ironhold/sections/ironhold-I7-iso.png"
+     ],
+     "notes": "Surface fix pass (Kort 2026-10-31): gorge: banded crag, gravel scree. Top layer only."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T06:11:49Z",
+     "digest": "88afb6a36592f27573bd3295d07ae2f61fa596c6648e31a62c948a5a37cdf11f",
+     "plans": [
+      "docs/maps/ironhold/sections/I7-cleanup.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-I7-top.png",
+      "docs/maps/ironhold/sections/ironhold-I7-iso.png"
+     ],
+     "notes": "Surface cleanup (Kort 2026-11-01): gorge: banded crag, gravel scree. Top layer only."
+    }
+   ]
+  },
+  {
+   "id": "J7",
+   "name": "Gorge backdrop",
+   "bounds": {
+    "min": [
+     223,
+     -64,
+     208
+    ],
+    "max": [
+     286,
+     319,
+     249
+    ]
+   },
+   "status": "blockout",
+   "reviews": [
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T02:39:00Z",
+     "digest": "cc351803654870f39b0ee30f59306f5d0ecde81a9019e51210d18f6e196764b0",
+     "plans": [
+      "docs/maps/ironhold/sections/J7-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-J7-top.png",
+      "docs/maps/ironhold/sections/ironhold-J7-iso.png"
+     ],
+     "notes": "South Ridge blockout: edge rise from z 212 to peaks 82-88, river valley kept at F7, gorge continues in I..K with the far corner closed. Locks ok, seams checked against row 6."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T05:18:20Z",
+     "digest": "cfba8f30fd7889970f20d193643827050857ae7f312731b0e83da95edf67975f",
+     "plans": [
+      "docs/maps/ironhold/sections/J7-surface.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-J7-top.png",
+      "docs/maps/ironhold/sections/ironhold-J7-iso.png"
+     ],
+     "notes": "Surface fix pass (Kort 2026-10-31): gorge: banded crag, gravel scree. Top layer only."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T06:16:52Z",
+     "digest": "48774fcdd64f1cb18328f10ceaf3ee5d7f29290141b30dc9bc7a23f679599492",
+     "plans": [
+      "docs/maps/ironhold/sections/J7-cleanup.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-J7-top.png",
+      "docs/maps/ironhold/sections/ironhold-J7-iso.png"
+     ],
+     "notes": "Surface cleanup (Kort 2026-11-01): gorge: banded crag, gravel scree. Top layer only."
+    }
+   ]
+  },
+  {
+   "id": "K7",
+   "name": "Gorge backdrop",
+   "bounds": {
+    "min": [
+     287,
+     -64,
+     208
+    ],
+    "max": [
+     349,
+     319,
+     249
+    ]
+   },
+   "status": "blockout",
+   "reviews": [
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T02:39:15Z",
+     "digest": "101ddb64c60670ce88c0bc579295e2af790a0e40f3c57abc57974b27a9a7d652",
+     "plans": [
+      "docs/maps/ironhold/sections/K7-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-K7-top.png",
+      "docs/maps/ironhold/sections/ironhold-K7-iso.png"
+     ],
+     "notes": "South Ridge blockout: edge rise from z 212 to peaks 82-88, river valley kept at F7, gorge continues in I..K with the far corner closed. Locks ok, seams checked against row 6."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T05:24:37Z",
+     "digest": "2c997c146e26a8126af9c917f54732d9564de929fbc23248909f29733c918187",
+     "plans": [
+      "docs/maps/ironhold/sections/K7-surface.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-K7-top.png",
+      "docs/maps/ironhold/sections/ironhold-K7-iso.png"
+     ],
+     "notes": "Surface fix pass (Kort 2026-10-31): gorge: banded crag, gravel scree. Top layer only."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T06:21:56Z",
+     "digest": "b127f488df065fc04c956ccc7b21b89309520216c6484866ba54aad86f6890f8",
+     "plans": [
+      "docs/maps/ironhold/sections/K7-cleanup.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-K7-top.png",
+      "docs/maps/ironhold/sections/ironhold-K7-iso.png"
+     ],
+     "notes": "Surface cleanup (Kort 2026-11-01): gorge: banded crag, gravel scree. Top layer only."
+    }
+   ]
+  }
+ ],
+ "protect": [
+  {
+   "id": "capture-a",
+   "kind": "capture",
+   "center": [
+    -29,
+    -130
+   ],
+   "radius": 17,
+   "y": [
+    64,
+    67
+   ],
+   "reason": "Domination point A ring: no blocks y 64..67 inside the ring",
+   "source": "src/main/java/gg/gravesandglory/CampaignMaps.java (Domination points, radius 17, elevation 64)"
+  },
+  {
+   "id": "capture-b",
+   "kind": "capture",
+   "center": [
+    0,
+    0
+   ],
+   "radius": 17,
+   "y": [
+    64,
+    67
+   ],
+   "reason": "Domination point B ring (river deck): no blocks y 64..67",
+   "source": "src/main/java/gg/gravesandglory/CampaignMaps.java (Domination points, radius 17, elevation 64)"
+  },
+  {
+   "id": "capture-c",
+   "kind": "capture",
+   "center": [
+    29,
+    130
+   ],
+   "radius": 17,
+   "y": [
+    64,
+    67
+   ],
+   "reason": "Domination point C ring (Watch Hill): no blocks y 64..67",
+   "source": "src/main/java/gg/gravesandglory/CampaignMaps.java (Domination points, radius 17, elevation 64)"
+  },
+  {
+   "id": "spawn-dawn",
+   "kind": "spawn",
+   "min": [
+    -316,
+    73,
+    -2
+   ],
+   "max": [
+    -312,
+    90,
+    2
+   ],
+   "reason": "Dawn (west) spawn column at (-314,0); no blocks y 73..90, it stands on the camp shelf floor at 72 (Kort 2026-10-31)",
+   "source": "docs/maps/ironhold/layout-draft-2026-10-30.md (signed)"
+  },
+  {
+   "id": "spawn-dusk",
+   "kind": "spawn",
+   "min": [
+    126,
+    64,
+    -2
+   ],
+   "max": [
+    130,
+    90,
+    2
+   ],
+   "reason": "Dusk (east) spawn column at (128,0), moved by pick D1a; no blocks y 64..90, floor below allowed (Kort 2026-10-31, like the capture rings)",
+   "source": "docs/maps/ironhold/layout-draft-2026-10-30.md (signed)"
+  },
+  {
+   "id": "siege-ward-n",
+   "kind": "siege",
+   "min": [
+    -33,
+    64,
+    -27
+   ],
+   "max": [
+    -6,
+    70,
+    -23
+   ],
+   "reason": "Siege ward-n (ironhold/ward 35x7x5 at -23,64,-25); trimmed to x -33 where it meets the gate wall",
+   "source": "bannerbound-modes sheets/design.json siege modeSites (read-only), 2026-10-30"
+  },
+  {
+   "id": "siege-ward-s",
+   "kind": "siege",
+   "min": [
+    -33,
+    64,
+    23
+   ],
+   "max": [
+    -24,
+    70,
+    27
+   ],
+   "reason": "Siege ward-s (ironhold/ward_south 19x7x5 at -31,64,25); trimmed to x -33..-24 between the gate and keep walls",
+   "source": "bannerbound-modes sheets/design.json siege modeSites (read-only), 2026-10-30"
+  },
+  {
+   "id": "siege-gate-w",
+   "kind": "siege",
+   "min": [
+    -16,
+    64,
+    45
+   ],
+   "max": [
+    -12,
+    70,
+    47
+   ],
+   "reason": "Siege gate-w (ironhold/ward_gate at -14,64,46)",
+   "source": "bannerbound-modes sheets/design.json siege modeSites (read-only), 2026-10-30"
+  },
+  {
+   "id": "siege-gate-e",
+   "kind": "siege",
+   "min": [
+    12,
+    64,
+    45
+   ],
+   "max": [
+    16,
+    70,
+    47
+   ],
+   "reason": "Siege gate-e (ironhold/ward_gate at 14,64,46)",
+   "source": "bannerbound-modes sheets/design.json siege modeSites (read-only), 2026-10-30"
+  },
+  {
+   "id": "siege-gate-ne",
+   "kind": "siege",
+   "min": [
+    12,
+    64,
+    21
+   ],
+   "max": [
+    16,
+    70,
+    23
+   ],
+   "reason": "Siege gate-ne (ironhold/ward_gate at 14,64,22)",
+   "source": "bannerbound-modes sheets/design.json siege modeSites (read-only), 2026-10-30"
+  },
+  {
+   "id": "siege-ward-b",
+   "kind": "siege",
+   "min": [
+    -8,
+    64,
+    -12
+   ],
+   "max": [
+    -4,
+    70,
+    12
+   ],
+   "reason": "Siege ward-b (ironhold/ward_bridge 25x7x5 at -6,64,0, rot 90)",
+   "source": "bannerbound-modes sheets/design.json siege modeSites (read-only), 2026-10-30"
+  },
+  {
+   "id": "siege-stage-a",
+   "kind": "siege",
+   "center": [
+    -55,
+    0
+   ],
+   "radius": 15,
+   "y": [
+    64,
+    67
+   ],
+   "reason": "Siege stage A ring in the Outer Yard: no blocks y 64..67",
+   "source": "docs/maps/ironhold/layout-draft-2026-10-30.md (signed)"
+  },
+  {
+   "id": "siege-stage-c",
+   "kind": "siege",
+   "center": [
+    -8,
+    34
+   ],
+   "radius": 10,
+   "y": [
+    64,
+    67
+   ],
+   "reason": "Siege stage C ring in the keep court: no blocks y 64..67",
+   "source": "docs/maps/ironhold/layout-draft-2026-10-30.md (signed)"
+  },
+  {
+   "id": "station-gate-sight",
+   "kind": "station",
+   "min": [
+    -40,
+    77,
+    -10
+   ],
+   "max": [
+    -38,
+    78,
+    -8
+   ],
+   "reason": "Defender station: gate tower top, gate-sight stand (feet about -39,77,-9); awaiting modes lane",
+   "source": "bannerbound-modes sheets/design.json landmarkLines sight entries (feet = eye y - 1.6); modes lane to confirm"
+  },
+  {
+   "id": "station-keep-sight",
+   "kind": "station",
+   "min": [
+    -10,
+    71,
+    20
+   ],
+   "max": [
+    -8,
+    72,
+    22
+   ],
+   "reason": "Defender station: keep north wall-walk, keep-sight stand (feet about -9,71,21); awaiting modes lane",
+   "source": "bannerbound-modes sheets/design.json landmarkLines sight entries (feet = eye y - 1.6); modes lane to confirm"
+  }
+ ]
+}
