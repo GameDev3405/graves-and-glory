@@ -52,6 +52,7 @@ final class WarTablePages {
     /** In the roll's last place, at its foot, while the House has troops not yet recruited (their places ruled and empty above
      *  it): where they come from, centred on the rows. */
     static final String ROLL_HINT = "More of your House's troops join the roll at the recruit table.";
+    static final String ROLL_LOCKED = "A battle is on: the banner is locked until it ends.";
     static final int ROLL_HINT_CX = 116, ROLL_HINT_W = 200;
     /** The Banner's House row sits in the sheet's head: the chosen House shows seal, tick and name, the other four their seal only
      *  (five names are 414 px wide and the sheet's paper holds 372); each chip's tooltip names its House. */
@@ -725,7 +726,7 @@ final class WarTablePages {
         for (int i = 1; i < places; i++) if (i != sel) UiTex.draw(g, "recruit/rule-208", x + 16, oy + ROW_TOP + ROW_H * i);
         for (int i = 0; i < roll.size(); i++) rollRow(g, roll.get(i), i, x, oy + ROW_TOP + ROW_H * i);
         if (more && roll.size() < ROWS) { // where the rest of the House's troops come from: in the roll's last place, at its foot
-            var hint = UiMath.lines(ROLL_HINT, ROLL_HINT_W, 2, s -> font().getWidth(DarkUi.body(s)));
+            var hint = UiMath.lines(GravesAndGloryClient.running ? ROLL_LOCKED : ROLL_HINT, ROLL_HINT_W, 2, s -> font().getWidth(DarkUi.body(s)));
             int top = oy + ROW_TOP + ROW_H * (ROWS - 1) + (ROW_H + 4 - 13 * hint.size()) / 2;
             for (int i = 0; i < hint.size(); i++) WarTableHome.centred(g, DarkUi.body(hint.get(i)), x + ROLL_HINT_CX, top + 13 * i, DarkUi.SEPIA);
             textsDrawn.put("roll-hint", String.join(" ", hint));
@@ -733,7 +734,9 @@ final class WarTablePages {
         }
         if (roll.isEmpty()) { // a House none of whose troops is recruited yet: the first place says so
             var say = UiMath.lines("You have recruited no " + RosterMath.houseName(shownHouse()) + " troop yet.", ROLL_HINT_W, 2, s -> font().getWidth(DarkUi.body(s)));
-            int top = oy + ROW_TOP + (ROW_H - 13 * say.size()) / 2;
+            int top = oy + ROW_TOP + ROW_H + 16 - 13 * say.size() / 2;
+            for (var row : Spec.HOUSES) if (row.id().equals(shownHouse()))
+                g.drawTexture(new Identifier(row.glyph()), x + ROLL_HINT_CX - 8, top - 26, 0f, 0f, 16, 16, 16, 16);
             for (int i = 0; i < say.size(); i++) WarTableHome.centred(g, DarkUi.body(say.get(i)), x + ROLL_HINT_CX, top + 13 * i, DarkUi.INK_TEXT);
             textsDrawn.put("roll-empty", String.join(" ", say));
             rectsDrawn.put("roll-empty", new int[]{x + ROLL_HINT_CX - ROLL_HINT_W / 2, top, ROLL_HINT_W, 13 * say.size() - 4});
@@ -752,6 +755,7 @@ final class WarTablePages {
             Portrait.draw(g, e, x + 8, y + 8, 40, 0);
             portraitsDrawn.add(new PortraitDraw("row-" + i, r.troopId(), Portrait.last()));
         }
+        accent(g, r.troopId(), x + 8, y + 8);
         UiTex.draw(g, "table/frame-rim-48", x + 4, y + 4);
         String name = UiMath.trim(r.name(), NAME_W, s -> font.getWidth(DarkUi.heading(s)));
         g.drawText(font, DarkUi.heading(name), x + 60, y + 12, DarkUi.INK_TEXT, false);
@@ -816,17 +820,27 @@ final class WarTablePages {
             Portrait.draw(g, e, x + 4, y + 4, 40, 0);
             portraitsDrawn.add(new PortraitDraw(where, drawn, Portrait.last()));
         }
+        if (!empty) accent(g, drawn, x + 4, y + 4);
         UiTex.draw(g, "table/frame-rim-48", x, y);
-        if (label != null) {
+        if (label != null) { // the wide troop's place in it, in ivory on a dark strip so it reads over any portrait
             var font = font();
             int lw = font.getWidth(DarkUi.body(label));
-            UiTex.nine(g, "table/chip-house-on", x + SEAT - lw - 10, y + SEAT - 16, lw + 8, 12);
-            g.drawText(font, DarkUi.body(label), x + SEAT - lw - 6, y + SEAT - 14, DarkUi.INK_TEXT, false);
+            g.fill(x + SEAT - lw - 10, y + SEAT - 16, x + SEAT - 2, y + SEAT - 4, 0xcc140e08);
+            g.drawText(font, DarkUi.body(label), x + SEAT - lw - 6, y + SEAT - 14, DarkUi.IVORY, false);
             textsDrawn.put("wide-" + where, label);
             rectsDrawn.put("wide-" + where, new int[]{x + SEAT - lw - 10, y + SEAT - 16, lw + 8, 12});
         }
         rectsDrawn.put(where, new int[]{x, y, SEAT, SEAT});
         textsDrawn.put(where, troop);
+    }
+
+    /** A one-pixel edge in the troop's House colour round its 40-pixel portrait, as the Armoury edges its frames. */
+    void accent(DrawContext g, String troop, int x, int y) {
+        for (var t : Spec.TROOPS) if (t.id().equals(troop)) {
+            var h = ArmyCards.house(t);
+            if (h != null) g.drawBorder(x, y, 40, 40, 0xff000000 | h.accent());
+            return;
+        }
     }
 
     /** Seat i's widget: a line under the seat while hot. */
@@ -1915,9 +1929,10 @@ final class WarTablePages {
         textsDrawn.put("card-name", map.name());
         var desc = UiMath.lines(map.description(), CARD_TEXT_W, 3, s -> font.getWidth(DarkUi.body(s)));
         for (int i = 0; i < desc.size(); i++) WarTableHome.centred(g, DarkUi.body(desc.get(i)), ox + CARD_CX, oy + CARD_Y + 110 + 13 * i, DarkUi.SEPIA);
-        boolean gate = CampaignClient.padMine >= 0;
+        boolean gate = CampaignClient.padMine >= 0 && !GravesAndGloryClient.running;
         String status = gate ? "War gates: Dawn " + CampaignClient.padDawn + " / " + CampaignClient.padSize + ", Dusk " + CampaignClient.padDusk + " / " + CampaignClient.padSize
             + (CampaignClient.padCountdown > 0 ? ", " + CampaignClient.padCountdown + " s" : "") : "Stand on the war gates to vote";
+        if (GravesAndGloryClient.running) { gate = false; status = "A battle is on: votes open when it ends"; }
         text(g, "status", DarkUi.body(status), status, ox + MAP_X, oy + STATUS_Y, gate ? DarkUi.INK_TEXT : DarkUi.SEPIA);
         g.drawText(font, DarkUi.body("Most votes wins; a tie goes to the map listed first."), ox + MAP_X, oy + STATUS_Y + 13, DarkUi.SEPIA, false);
         WarTableHome.centred(g, DarkUi.heading("Bots"), ox + CARD_CX, oy + BOTS_HEAD_Y, DarkUi.INK_TEXT);
