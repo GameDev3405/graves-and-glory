@@ -97,6 +97,9 @@ def template(m, run_rel):
         "- Capture: %d frames at %d fps; events right after frame %d (attacks and hits again after %d); strip = every %dth frame;" % (
             tl["captureFrames"], tl["fps"], tl["event1AfterFrame"], tl["event2AfterFrame"], tl["stripEvery"]),
         "  dense sheets show every frame from E-10 to E+10 with the per-tick pose delta under each (R72).",
+        "- Capture timing (R81): %s. Each capture's off-steps (frame and world ticks) are in manifest.json `checks.captureTiming`," % (
+            m.get("checks", {}).get("captureTimingRule") or "every frame newly drawn and one world tick after the last"),
+        "  and a tile whose frame ends one is labelled `STEP n TICKS`.",
         "- Volleys (M1): every troop gets its attack or hit on the same tick, so crowd and formation shots show synchronised",
         "  volleys. Judge variation by stance phase, amplitude, faces and seeds, not by event timing.",
         "- Deaths (R79): crowd stills at f028 (vanilla death tint, as in game), f050 and f080 (death ticks about 40 and 70).",
@@ -106,15 +109,37 @@ def template(m, run_rel):
     if m.get("crowdNearestDist") is not None:
         L.append("Measured: the nearest crowd troop was %.2f blocks from the camera." % m["crowdNearestDist"])
         L.append("")
+    timing = m.get("checks", {}).get("captureTiming") or []
+    if timing:
+        off = [t for t in timing if t.get("offStepCount")]
+        L.append("Measured: %d close captures, %d world steps not 1 tick in all, %d stale frames%s." % (
+            len(timing), sum(t.get("offStepCount", 0) for t in timing), sum(t.get("staleFrames", 0) for t in timing),
+            "" if not off else " (" + "; ".join("%s %s" % (t["capture"], ", ".join("f%03d %d ticks" % (o["frame"], o["worldTicks"]) for o in t["offSteps"])) for t in off) + ")"))
+        L.append("")
     if m.get("loco"):
-        L += ["| Loco segment | Planted slide R, L (blocks) | Largest single plant R, L | Lowest sole R, L | Body moved |", "|---|---|---|---|---|"]
+        L += ["Planted slide (R83) is measured at the corners each foot stands on, plant by plant: a box foot rocking heel to toe reads as",
+              "no slide; the old sole-centroid measure is kept in the manifest as `soleCentroidSlideBlocks` for comparison.", "",
+              "| Loco segment | Speed (blocks/tick) | Plants R, L | Planted slide R, L (blocks) | Largest single plant R, L | Lowest sole R, L | Body moved |",
+              "|---|---|---|---|---|---|---|"]
         for s in m["loco"]:
             if "plantedSlideBlocks" in s:
-                L.append("| %s | %s | %s | %s | %.2f |" % (s["name"], fmt_list(s["plantedSlideBlocks"]), fmt_list(s["largestSinglePlantSlideBlocks"]),
-                                                       fmt_list(s["lowestSoleHeight"]), s.get("bodyMovedBlocks", 0)))
+                sp = "%.3f%s" % (s.get("speedBlocksPerTick", 0), " (assumed)" if s["name"] == "backpedal" else "")
+                L.append("| %s | %s | %s | %s | %s | %s | %.2f |" % (s["name"], sp, ", ".join(str(x) for x in s.get("plantCount", [])),
+                                                                 fmt_list(s["plantedSlideBlocks"]), fmt_list(s["largestSinglePlantSlideBlocks"]),
+                                                                 fmt_list(s["lowestSoleHeight"]), s.get("bodyMovedBlocks", 0)))
+        L.append("")
+        L.append("Backpedal speed is assumed: the walk speed x 0.75, as no measured backpedal speed exists yet.")
+        L.append("")
+        L += ["| Loco segment | Foot | Each plant: start frame (server tick), frames, slide in blocks; engine plant weight mean |", "|---|---|---|"]
+        for s in m["loco"]:
+            for foot in ("right", "left"):
+                pl = [x for x in s.get("plants", []) if x["foot"] == foot]
+                if pl:
+                    L.append("| %s | %s | %s |" % (s["name"], foot, "; ".join("f%03d (t%d) %d fr %.3f w%.2f" % (
+                        x["startFrame"], x["startServerTick"], x["frames"], x["slideBlocks"], x.get("enginePlantWeightMean", 0)) for x in pl)))
         L.append("")
     if m.get("largestJumpPerTransition"):
-        L += ["| Transition | Event | Largest step (deg/tick) at frame | Largest 2nd difference | x baseline p90 | Flagged |", "|---|---|---|---|---|---|"]
+        L += ["| Transition | Event | Largest step (deg/tick) at frame | Largest 2nd difference | Ratio to baseline p90 | Flagged |", "|---|---|---|---|---|---|"]
         for k, v in m["largestJumpPerTransition"].items():
             L.append("| %s | %s | %.1f at f%03d (%s) | %.1f | %.1f | %s |" % (k, v["event"], v["largestStepDegPerTick"], v["largestStepFrame"],
                                                                      v.get("largestBoneThere", ""), v["largestSecondDiff"], v["ratioToBaseline"], "yes" if v["flagged"] else "no"))
@@ -150,6 +175,14 @@ def template(m, run_rel):
             L.append("| %s | __/10 | %s | _to fill: frame or angle, what is seen_ |" % (label, cell))
         L.append("")
     return "\n".join(L)
+
+
+COMPLETE_PARTS = ("solo", "states", "loco", "transitions")
+
+
+def complete_run(m):
+    """R82: only a run with every part may write or update docs/reports/grading/<family>.md."""
+    return set(COMPLETE_PARTS) <= set(m.get("parts") or [])
 
 
 def write_doc(doc, text, force):
@@ -437,7 +470,11 @@ def main():
     (run / "grading.md").write_text(text + "\n", encoding="utf-8", newline="\n")
     files.append({"kind": "template", "file": "grading.md"})
     doc = repo / "docs" / "reports" / "grading" / ("%s.md" % m["family"])
-    how = write_doc(doc, text, a.template)
+    if complete_run(m):
+        how = write_doc(doc, text, a.template)
+    else:
+        how = "skipped: partial run (parts %s); only a run with %s writes the repo doc; this run's grading.md is written" % (
+            ", ".join(m.get("parts") or []) or "none", ", ".join(COMPLETE_PARTS))
     m["repoTemplate"] = {"file": doc.relative_to(repo).as_posix(), "written": how}
     print("template %s: %s" % (how, doc))
     if not pillow:
