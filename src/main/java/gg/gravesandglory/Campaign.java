@@ -611,7 +611,8 @@ public final class Campaign {
         String wasOrder=s.order;Vec3d wasTarget=s.target;s.assignments.clear();
         if(retreating){s.order="retreat";s.formation="loose";s.target=b.fieldBase(s.team);}
         else{
-            s.order=choice.owner==s.team?"hold":"attack";s.formation=living<8?"loose":"block";s.target=new Vec3d(choice.spec.x(),choice.spec.elevation()+1,choice.spec.z());
+            Vec3d goal=b.mode.botGoal(b,s,center,tier); // a mode's own goal (Convoy's wagon), else the chosen point
+            s.order=goal!=null||choice.owner!=s.team?"attack":"hold";s.formation=living<8?"loose":"block";s.target=goal!=null?goal:new Vec3d(choice.spec.x(),choice.spec.elevation()+1,choice.spec.z());
             if(s.order.equals("attack")){
                 if(tier.chargeDistance()>0){
                     // Timed charge: judged on the enemies this team has seen, counted near the army, and only once the nearest is in range.

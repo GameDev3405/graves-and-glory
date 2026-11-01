@@ -91,6 +91,9 @@ public abstract class BattleMode {
     /** The side a commander's how-to lines are written for (attack or defend). Domination asks the same of both sides. */
     public String howToSide(GravesAndGlory.Battle b,GravesAndGlory.Squad s){return "attack";}
     /** The lobby's mode block: id, name, rule, how-to lines, side, the tracks and their formats. */
+    /** A bot army's goal in this mode, asked by Campaign.botDecide after its retreat check: a spot to attack toward, or null to
+     *  play the points as Domination does (the default). Convoy sends its bots to the wagon (spec 3.6). */
+    public Vec3d botGoal(GravesAndGlory.Battle b,GravesAndGlory.Squad s,Vec3d centre,Spec.BotCommandRow tier){return null;}
     public JsonObject snapshot(GravesAndGlory.Battle b,GravesAndGlory.Squad viewer){
         JsonObject j=new JsonObject();
         j.addProperty("id",id());j.addProperty("name",name());j.addProperty("rule",rule());

@@ -281,6 +281,38 @@ public final class ConvoyMode extends BattleMode {
     @Override public int[] max(GravesAndGlory.Battle b) {int[] m = new int[2]; m[ESCORT] = 100; m[1 - ESCORT] = stops.length; return m;}
     @Override public String[] formats() {String[] f = new String[2]; f[ESCORT] = "percent"; f[1 - ESCORT] = "plain"; return f;}
 
+    /** The share of a team's banners on the wagon itself (raiders for the defence; the escort pushes with the rest), by bot tier (draft values, spec 3.6). */
+    static double raidShare(String tier) {return switch (tier) {case "easy" -> 0.34; default -> 0.5;};}
+    /** How far a screen or blocker may stray from the wagon before it regroups on it, by bot tier (draft values). */
+    static double chaseRange(String tier) {return switch (tier) {case "easy" -> 40; case "hard" -> 120; default -> 80;};}
+
+    /**
+     * Bot goals (spec 3.6). Each team's seated banners split by ModeMath.convoyRoles, humans counted first as primary.
+     * Escort: pushers walk just ahead of the wagon, screens 20 blocks further up the road. Defence: raiders go to the wagon,
+     * blockers hold the road up to 30 blocks ahead, no further than the next stop. A screen or blocker farther than chaseRange from the wagon regroups on it.
+     */
+    @Override public Vec3d botGoal(GravesAndGlory.Battle b, GravesAndGlory.Squad s, Vec3d centre, Spec.BotCommandRow tier) {
+        if (finished) return null;
+        boolean escort = s.team == ESCORT;
+        int banners = 0, humans = 0, index = -1, bots = 0;
+        for (var q : b.squads.values()) {
+            if (!q.seated || q.team != s.team) continue;
+            banners++;
+            if (!q.bot) humans++; else {if (q == s) index = bots; bots++;}
+        }
+        if (index < 0) return null;
+        List<String> roles = ModeMath.convoyRoles(banners, humans, raidShare(tier.id()), escort);
+        String role = roles.get(Math.min(roles.size() - 1, humans + index));
+        Vec3d at = position(distance);
+        boolean far = Math.hypot(centre.x - at.x, centre.z - at.z) > chaseRange(tier.id());
+        return switch (role) {
+            case "pusher" -> road(distance + 3);
+            case "raider" -> at;
+            case "screen" -> far ? at : road(distance + 20);
+            default -> far ? at : road(Math.min(distance + 30, stops[nextStop()]));
+        };
+    }
+
     /** Whether the round's wagon ever rolled back behind where it stood: the never_rolled bonus is lost. */
     public boolean rolledBack() {return rolledBack;}
 
