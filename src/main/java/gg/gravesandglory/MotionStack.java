@@ -176,6 +176,8 @@ final class MotionStack {
         /** How much of this track keys the legs (1 if its clip does, a blend once merged). */
         final double legShare;
         double x, fadeIn = MotionEngine.FADES[0], fadeOut = MotionEngine.FADES[0];
+        /** When a leaving track's weight reaches 0 (exact: its weight falls linearly from where it started to leave). */
+        double gone = Double.POSITIVE_INFINITY;
         boolean leaving, fresh;
         /** P1: a FROM track, the merged pose plus State.fromVel coasting to a stop over FROM_TD from start. */
         final boolean inertial;
@@ -217,6 +219,17 @@ final class MotionStack {
             double l = length(), e = impact < 0 ? l / tempo : l <= impact ? l : impact + (l - impact) / tempo;
             return start + e;
         }
+
+        /**
+         * b's share at clip time t. A death's blend starts at the blow's mix and eases (smoothstep over the clip) to the nearer clip
+         * (a below 0.5, else b), so the corpse lies in one authored end pose: each end pose lies on the ground, a blend of two lying
+         * poses props the body up and sinks it (Task 16 item 5: up to 11 px under the ground at 45 degrees). Other tracks keep mix.
+         */
+        double mix(double t) {
+            if (b == null || kind != MotionEngine.DEATH) return mix;
+            double l = length(), u = l <= 0 ? 1 : Math.min(1, Math.max(0, t / l)), rest = mix >= 0.5 ? 1 : 0;
+            return mix + (rest - mix) * u * u * (3 - 2 * u);
+        }
     }
 
     static boolean keysLegs(Clip c) {
@@ -233,13 +246,13 @@ final class MotionStack {
             if (tr.inertial) out.add(st.fromVel, w * MotionEngine.FROM_TD * (1 - Math.exp(-(now - tr.start) / MotionEngine.FROM_TD)));
             return;
         }
-        double t = tr.time(now);
-        tr.a.add(t, out, w * tr.gain * (1 - tr.mix), st.tmp);
-        if (tr.b != null) tr.b.add(t, out, w * tr.gain * tr.mix, st.tmp);
+        double t = tr.time(now), m = tr.mix(t);
+        tr.a.add(t, out, w * tr.gain * (1 - m), st.tmp);
+        if (tr.b != null) tr.b.add(t, out, w * tr.gain * m, st.tmp);
         // K1b: a death's gain pivots on its last frame, w [g clip(t) + (1 - g) clip(end)], so the corpse lies exactly as authored
         if (tr.kind == MotionEngine.DEATH && tr.gain != 1) {
-            tr.a.endPose(out, w * (1 - tr.gain) * (1 - tr.mix));
-            if (tr.b != null) tr.b.endPose(out, w * (1 - tr.gain) * tr.mix);
+            tr.a.endPose(out, w * (1 - tr.gain) * (1 - m));
+            if (tr.b != null) tr.b.endPose(out, w * (1 - tr.gain) * m);
         }
     }
 
@@ -308,7 +321,7 @@ final class MotionStack {
             fold(st, st.tracks.size(), f.now, from);
             add(st, tr, f.now, 1, mine);
             double scale = tr.gain * Math.max(1, tr.tempo);
-            tr.fadeIn = Math.max(pops, velocityFade(fam.peak(), from, mine, tr.a, tr.mix, tr.b, scale, MotionEngine.INTERRUPT_MIN));
+            tr.fadeIn = Math.max(pops, velocityFade(fam.peak(), from, mine, tr.a, tr.mix(tr.time(f.now)), tr.b, scale, MotionEngine.INTERRUPT_MIN));
             tr.fresh = true;
         }
         st.tracks.add(tr);
@@ -410,6 +423,7 @@ final class MotionStack {
                 if (!top.fresh) top.x = Math.min(1, top.x + (tEnd - last) / top.fadeIn);
                 top.leaving = true;
                 top.fadeOut = fadeTime(st, top, tEnd, tracks.size() - 1, false);
+                top.gone = tEnd + top.x * top.fadeOut;
                 top.x = Math.max(0, top.x - (f.now - tEnd) / top.fadeOut);
             } else {
                 if (!top.fresh) top.x = Math.min(1, top.x + f.dt / top.fadeIn);
@@ -417,7 +431,22 @@ final class MotionStack {
             }
         } else top.x = Math.max(0, top.x - f.dt / top.fadeOut);
         top.fresh = false;
-        if (top.leaving && top.x <= 0) tracks.remove(tracks.size() - 1);
+        if (top.leaving && top.x <= 0) {
+            if (top.kind == MotionEngine.DEATH) st.deathGone = top.gone;
+            tracks.remove(tracks.size() - 1);
+        }
+    }
+
+    /**
+     * When the newest death clip's weight reaches 0 once a revived unit's fade-out has begun (infinity while it still holds
+     * the corpse), or, once it has left, when it did (minus infinity if no death clip ever left).
+     */
+    static double deathGone(MotionEngine.State st) {
+        for (int i = st.tracks.size() - 1; i >= 0; i--) {
+            Track tr = st.tracks.get(i);
+            if (tr.kind == MotionEngine.DEATH) return tr.gone;
+        }
+        return st.deathGone;
     }
 
     /**
@@ -442,9 +471,9 @@ final class MotionStack {
         for (int i = 0; i < e.length; i++) {
             Track tr = st.tracks.get(i);
             if (tr.kind == MotionEngine.MERGED) continue;
-            double t = tr.time(now);
-            list.add(new MotionEngine.Playing(tr.id * 2, tr.a, t, tr.gain * (1 - tr.mix) * e[i]));
-            if (tr.b != null) list.add(new MotionEngine.Playing(tr.id * 2 + 1, tr.b, t, tr.gain * tr.mix * e[i]));
+            double t = tr.time(now), m = tr.mix(t);
+            list.add(new MotionEngine.Playing(tr.id * 2, tr.a, t, tr.gain * (1 - m) * e[i]));
+            if (tr.b != null) list.add(new MotionEngine.Playing(tr.id * 2 + 1, tr.b, t, tr.gain * m * e[i]));
         }
         return list;
     }

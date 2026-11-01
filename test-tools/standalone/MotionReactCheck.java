@@ -11,6 +11,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Random;
 import java.util.Set;
@@ -36,11 +37,16 @@ public final class MotionReactCheck {
         System.out.println("MotionReactCheck: " + checks + " checks passed");
     }
 
-    /** A lethal blow from 0, 90, 180 and 270 degrees plays front, right, back and left; 45 degrees blends front and right evenly. */
+    /**
+     * A lethal blow from 0, 90, 180 and 270 degrees plays front, right, back and left. 45 and -135 degrees start the fall as an
+     * even blend of the two nearest clips and come to rest in one authored end pose (the tie goes to the second: right, back),
+     * since a blend of two lying poses props the body up and sinks it (Task 16 item 5).
+     */
     static String deaths(MotionEngine.Family fam, MotionMath.Seed[] seeds) {
         float[] bearings = {0, 90, 180, 270, 45, -135};
-        String[] top = {"death_front", "death_right", "death_back", "death_left", "death_front", "death_left"};
-        double[] rz = {0, -80, 0, 80, -40, 40};
+        String[] top = {"death_front", "death_right", "death_back", "death_left", "death_right", "death_back"};
+        String[] early = {null, null, null, null, "death_front", "death_left"};
+        double[] rz = {0, -80, 0, 80, -80, 0};
         StringBuilder report = new StringBuilder();
         for (int i = 0; i < bearings.length; i++) {
             Drive d = new Drive(seeds[1]);
@@ -49,13 +55,24 @@ public final class MotionReactCheck {
             MotionEngine.pose(d.in(), st, fam, out);
             d.step(1 / 60.0);
             d.die(bearings[i]);
-            for (int f = 0; f < 120; f++) { MotionEngine.pose(d.in(), st, fam, out); d.step(1 / 60.0); }
+            String fall = "";
+            for (int f = 0; f < 120; f++) {
+                MotionEngine.pose(d.in(), st, fam, out);
+                if (f == 6 && early[i] != null) {
+                    Map<String, Double> share = new HashMap<>();
+                    for (var p : MotionEngine.playing(st, d.time)) share.merge(p.clip().name(), p.gain(), Double::sum);
+                    double a = share.getOrDefault(early[i], 0.0), b = share.getOrDefault(top[i], 0.0), half = a + b > 0 ? b / (a + b) : 0;
+                    check(Math.abs(half - 0.5) <= 0.05, "a blow from " + bearings[i] + " should start the fall as an even blend of " + early[i] + " and " + top[i] + ": " + share);
+                    fall = String.format(Locale.ROOT, " (falling %.2f %s)", half, top[i]);
+                }
+                d.step(1 / 60.0);
+            }
             var playing = MotionEngine.playing(st, d.time);
             Map<String, Double> share = new HashMap<>();
             for (var p : playing) share.merge(p.clip().name(), p.gain(), Double::sum);
-            check(share.getOrDefault(top[i], 0.0) >= (i >= 4 ? 0.49 : 0.99), "a blow from " + bearings[i] + " should play " + top[i] + ": " + share);
+            check(share.getOrDefault(top[i], 0.0) >= 0.99, "a blow from " + bearings[i] + " should rest in " + top[i] + ": " + share);
             check(near(out.get("body", 2), rz[i], 2), "a blow from " + bearings[i] + " should roll the body to " + rz[i] + ", got " + out.get("body", 2));
-            report.append(bearings[i]).append(' ').append(share.keySet()).append("; ");
+            report.append(bearings[i]).append(' ').append(share.keySet()).append(fall).append("; ");
         }
         return report.toString().trim();
     }

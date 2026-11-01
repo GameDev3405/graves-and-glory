@@ -60,7 +60,7 @@ public final class MotionEngine {
     static final double LIMB_WRAP = 100000 * MotionMath.TAU / 0.6662;
     /** Ramp slots in {@link State#w}. */
     static final int W_MOVE = 0, W_RUN = 1, W_COMBAT = 2, W_SHUFFLE = 3, W_BACK = 4, W_TURN = 5, W_LIFE = 6, W_LOOK = 7,
-            W_CALM = 8, W_SETTLE = 9, W_PLANT = 10, WEIGHTS = 11;
+            W_CALM = 8, W_SETTLE = 9, W_PLANT = 10, W_STRAPS = 11, WEIGHTS = 12;
 
     /**
      * One weapon family's clips (design section 6.2), resolved from ClipLibrary.
@@ -177,6 +177,12 @@ public final class MotionEngine {
         final int[] lastHitVariant = {-1, -1, -1, -1};
         /** Death edges seen so far: a revived unit's next death picks its variant afresh (K1b). */
         int deaths;
+        /**
+         * Whether the unit revived after its corpse's straps began to settle, so they stay settled until the death clip has
+         * faded out; and when the last death clip to fade out did (MotionStack.deathGone).
+         */
+        boolean clothHeld;
+        double deathGone = Double.NEGATIVE_INFINITY;
         MotionInput.Attack attack;
         MotionInput.Hit hit, lethal;
         final List<MotionBody.Pulse> pulses = new ArrayList<>(MotionBody.MAX_PULSES + 1);
@@ -298,11 +304,11 @@ public final class MotionEngine {
         boolean first, dead, enemy;
         MotionMath.Seed seed;
         /**
-         * Eased weights: moving, running, combat, shield shuffle, backpedal, turning in place, life, look, settle and planted
-         * feet; calm is raw. The planted-feet weight drops on death and eases back in on revive, so the feet are not
+         * Eased weights: moving, running, combat, shield shuffle, backpedal, turning in place, life, look, settle, the straps'
+         * settle and planted feet; calm is raw. The planted-feet weight drops on death and eases back in on revive, so the feet are not
          * re-planted at full strength while the body rises.
          */
-        double m, run, cw, sh, bp, tw, lw, lookW, settle, plant, calm;
+        double m, run, cw, sh, bp, tw, lw, lookW, settle, straps, plant, calm;
         /** How much of the pose leg-keying actions own, and how much the aim stance does. */
         double bodyAction, aim;
         /** The sole in shin space, {xMin, xMax, y, zToe, zHeel} px (G4); the knight's until the troop's model sets it. */
@@ -375,6 +381,18 @@ public final class MotionEngine {
         boolean played = f.dead && f.now >= settles;
         ramp(st, W_SETTLE, played ? 0 : 1, SETTLE_BLEND, f, played && !f.first ? MotionMath.clamp01((f.now - settles) / f.dt) : 0);
         f.settle = MotionMath.ease(w[W_SETTLE]);
+        // A unit revived once its corpse's straps had begun to settle keeps them settled until the death clip has faded out,
+        // then wakes them over SETTLE_BLEND, exactly from when it faded out. The fade-out is a cross-fade from lying to
+        // standing, not motion: the hips swing some 88 degrees in under half a second, and a waking strap whips on its
+        // spring's lag behind them (Task 16). The tabard, cape and crest wake with the settle weight: held, the tabard
+        // would follow the legs' cross-fade unsprung.
+        if (st.dead && !f.dead) st.clothHeld = f.now >= settles;
+        double wakes = !f.dead && st.clothHeld ? MotionStack.deathGone(st) : Double.NEGATIVE_INFINITY;
+        boolean held = f.dead ? played : f.now < wakes;
+        double wake = f.first ? 0 : f.dead ? (played ? MotionMath.clamp01((f.now - settles) / f.dt) : 0)
+                : held || wakes == Double.NEGATIVE_INFINITY ? 0 : MotionMath.clamp01((f.now - wakes) / f.dt);
+        ramp(st, W_STRAPS, held ? 0 : 1, SETTLE_BLEND, f, wake);
+        f.straps = MotionMath.ease(w[W_STRAPS]);
 
         MotionBody.locomotion(f, st, out);
         MotionStack.stance(st, fam, f, stanceKey(stance, in.shieldUp(), f.enemy, moving, f.dead), out);

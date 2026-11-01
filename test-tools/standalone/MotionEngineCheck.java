@@ -82,6 +82,7 @@ public final class MotionEngineCheck {
         held("crowd nudge", () -> crowdNudge(rig));
         held("knock planted", () -> knockPlanted(rig));
         run("dead no plant", MotionEngineCheck::deadNoPlant);
+        run("corpse ground", () -> corpseGround(rig));
         if (failed > 0) {
             System.out.println("MotionEngineCheck: " + failed + " checks FAILED");
             System.exit(1);
@@ -1096,6 +1097,44 @@ public final class MotionEngineCheck {
         check(held == 0, "dead no plant: a foot stayed planted on " + held + " dead frames");
         check(after == 0, "dead no plant: a plant weight was " + after + " past PLANT_BLEND");
         return String.format("planted dead frames %d, plant weight past the blend %.4f", held, after);
+    }
+
+    /**
+     * corpseGround (Task 16 item 5): a body killed by each kind of blow (any, slash, stab, blunt, arrow, magic) from eight bearings,
+     * four seeds each, half a second past its death track's end, lies with its lowest box corner within 0.32 px (0.02 block) of the
+     * ground. A blow between two directions blends two death clips; each clip's end pose lies on the ground, a blend of two lying poses
+     * does not (up to 11 px under it).
+     */
+    static String corpseGround(Map<String, RigBone> rig) {
+        MotionEngine.Family fam = realSwordShield(new HashMap<>());
+        MotionMath.Seed[] seeds = seeds(4, 2400);
+        double lo = Double.MAX_VALUE, hi = -Double.MAX_VALUE;
+        String where = "none";
+        int bodies = 0;
+        for (String kind : List.of("any", "slash", "stab", "blunt", "arrow", "magic"))
+            for (float bearing : new float[]{0, 45, 90, 135, 180, -135, -90, -45})
+                for (MotionMath.Seed seed : seeds) {
+                    Drive d = new Drive(seed);
+                    var st = new MotionEngine.State();
+                    Pose out = new Pose();
+                    for (int i = 0; i < 60; i++) { MotionEngine.pose(d.in(), st, fam, out); d.step(1 / 60.0); }
+                    d.hit = new MotionInput.Hit(kind, "body", bearing, 2, false, true, d.tick());
+                    d.dead = true;
+                    d.deathSeconds = 0;
+                    MotionEngine.pose(d.in(), st, fam, out);
+                    MotionStack.Track tr = null;
+                    for (MotionStack.Track t : st.tracks) if (t.kind == MotionEngine.DEATH) tr = t;
+                    check(tr != null, "corpse ground: a death track for " + kind + " at " + bearing);
+                    double end = tr.end();
+                    while (d.time < end + 0.5) { d.step(1 / 60.0); MotionEngine.pose(d.in(), st, fam, out); }
+                    double l = lowest(rig, out.snapshot());
+                    bodies++;
+                    if (Math.abs(l) > Math.max(-lo, hi)) where = String.format(Locale.ROOT, "%s from %+.0f deg (%s%s)", kind, bearing, tr.a.name(), tr.b == null ? "" : " and " + tr.b.name());
+                    lo = Math.min(lo, l);
+                    hi = Math.max(hi, l);
+                }
+        check(lo >= -0.32 && hi <= 0.32, String.format(Locale.ROOT, "corpse ground: a body's lowest corner lay at %+.3f..%+.3f px, worst %s (want within 0.32 px)", lo, hi, where));
+        return String.format(Locale.ROOT, "%d bodies, lowest corner %+.3f..%+.3f px off the ground", bodies, lo, hi);
     }
 
     /** One shin's four sole corners in entity space: {highest y, lowest y} (y down). */

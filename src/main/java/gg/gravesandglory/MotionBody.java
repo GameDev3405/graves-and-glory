@@ -430,7 +430,7 @@ final class MotionBody {
      * taken through a soft min, so it does not jerk where the legs cross or when a clip swings them. The
      * crest trails the head. Loose straps swing with the hips. Each spring chases a target moving linearly across the frame,
      * and the flutter integrates its rate with the trapezoid rule. Once a corpse's death clip has played, the lag terms fade
-     * out with the settle weight, so a corpse lies still. Bones a model lacks are ignored by the renderer.
+     * out with the settle weight (the straps' own, MotionEngine.pose), so a corpse lies still. Bones a model lacks are ignored by the renderer.
      */
     static void secondary(MotionEngine.Frame f, MotionEngine.State st, Pose out) {
         double[] t = st.lagTarget, lag = st.lag, prev = st.lagPrev;
@@ -471,10 +471,10 @@ final class MotionBody {
         out.add("tabard", RX, MotionEngine.clamp(a * (6 + 10 * f.run) + 0.6 * lagX + TABARD_FOLLOW * follow, -60, 60));
         out.add("crest", RX, MotionEngine.clamp(1.1 * (lag[CREST_X] - headX) * settle + 6 * a, -35, 35));
         out.add("crest", RZ, MotionEngine.clamp(0.5 * (lag[CREST_Y] - headY) * settle, -25, 25));
-        out.add("right_strap", RZ, MotionEngine.clamp(STRAP_GAIN * (lag[RSTRAP_Z] - hipZ), -35, 35) * settle);
-        out.add("right_strap", RX, MotionEngine.clamp(STRAP_GAIN * (lag[RSTRAP_X] - hipX), -35, 35) * settle);
-        out.add("left_strap", RZ, MotionEngine.clamp(STRAP_GAIN * (lag[LSTRAP_Z] - hipZ), -35, 35) * settle);
-        out.add("left_strap", RX, MotionEngine.clamp(STRAP_GAIN * (lag[LSTRAP_X] - hipX), -35, 35) * settle);
+        out.add("right_strap", RZ, MotionEngine.clamp(STRAP_GAIN * (lag[RSTRAP_Z] - hipZ), -35, 35) * f.straps);
+        out.add("right_strap", RX, MotionEngine.clamp(STRAP_GAIN * (lag[RSTRAP_X] - hipX), -35, 35) * f.straps);
+        out.add("left_strap", RZ, MotionEngine.clamp(STRAP_GAIN * (lag[LSTRAP_Z] - hipZ), -35, 35) * f.straps);
+        out.add("left_strap", RX, MotionEngine.clamp(STRAP_GAIN * (lag[LSTRAP_X] - hipX), -35, 35) * f.straps);
     }
 
     /**

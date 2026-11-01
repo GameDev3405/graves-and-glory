@@ -31,6 +31,7 @@ public final class MotionClothCheck {
         run("tabard rest", () -> tabardRest(fam, seeds));
         run("loose straps", () -> straps(fam, seeds));
         run("strap whip", () -> strapWhip(fam, seeds));
+        run("revived straps", () -> revivedStraps(fam, seeds));
         if (failed > 0) {
             System.out.println("MotionClothCheck: " + failed + " checks FAILED");
             System.exit(1);
@@ -242,6 +243,62 @@ public final class MotionClothCheck {
             report.append(String.format("%s swing %.1f, standing %.2f; ", strap, hi - lo, still));
         }
         return report.toString().trim();
+    }
+
+    /**
+     * A corpse revived once its straps had settled keeps them settled while its death clip fades out, and wakes them over
+     * SETTLE_BLEND from the frame the clip has gone (Task 16): the fade-out is a cross-fade from lying to standing whose
+     * hips swing some 88 degrees in under half a second, and a waking strap whips on its spring's lag behind them. At 30, 60
+     * and 144 fps the strap channels stay 0 while the clip plays, move within two frames of its leaving and swing again on
+     * the walk. A unit revived mid-fall, before its straps settled, is not held.
+     */
+    static String revivedStraps(MotionEngine.Family fam, MotionMath.Seed[] seeds) {
+        String[] straps = {"right_strap", "left_strap"};
+        double worstHeld = 0, worstWake = 0, leastSwing = Double.POSITIVE_INFINITY, leastEarly = Double.POSITIVE_INFINITY;
+        for (double fps : new double[]{30, 60, 144}) for (int s = 0; s < 4; s++) for (boolean settled : new boolean[]{true, false}) {
+            Drive d = new Drive(seeds[s]);
+            d.target = d.limbSpeed = 0.6;
+            var st = new MotionEngine.State();
+            Pose out = new Pose();
+            double dt = 1 / fps, gone = Double.NaN, moved = Double.NaN, early = 0, lo = Double.POSITIVE_INFINITY, hi = Double.NEGATIVE_INFINITY;
+            int die = (int) Math.round(fps), revive = (int) Math.round(fps * (settled ? 4 : 1.5)), frames = (int) Math.round(fps * 8);
+            for (int f = 0; f < frames; f++) {
+                if (f == die) d.die(90 * s + 10);
+                if (f == revive) { d.dead = false; d.hit = null; }
+                MotionEngine.pose(d.in(), st, fam, out);
+                if (f >= revive) {
+                    boolean fading = false;
+                    for (var p : MotionEngine.playing(st, d.time)) fading |= p.clip().name().startsWith("death") && p.gain() > 0;
+                    double strap = 0;
+                    for (String b : straps) strap = Math.max(strap, Math.abs(out.get(b, 0)) + Math.abs(out.get(b, 2)));
+                    if (fading && Double.isNaN(gone)) {
+                        if (settled) worstHeld = Math.max(worstHeld, strap);
+                        else early = Math.max(early, strap);
+                    } else if (Double.isNaN(gone)) gone = d.time;
+                    if (!Double.isNaN(gone) && Double.isNaN(moved) && strap > 1e-9) moved = d.time;
+                    if (!Double.isNaN(gone) && d.time > gone + MotionEngine.SETTLE_BLEND + 1) {
+                        double v = out.get(straps[0], 2);
+                        lo = Math.min(lo, v);
+                        hi = Math.max(hi, v);
+                    }
+                }
+                d.step(dt);
+            }
+            String at = String.format(java.util.Locale.ROOT, "%.0f fps seed %d revived %s", fps, s, settled ? "settled" : "mid-fall");
+            check(!Double.isNaN(gone), "the death clip should fade out after a revival: " + at);
+            if (settled) {
+                check(worstHeld <= 1e-12, "a revived corpse's straps should stay settled while its death clip fades out: " + worstHeld + " at " + at);
+                worstWake = Math.max(worstWake, moved - gone);
+                check(moved - gone <= 2 * dt + 1e-9, "the straps should wake within two frames of the death clip leaving: " + (moved - gone) + " s at " + at);
+            } else {
+                leastEarly = Math.min(leastEarly, early);
+                check(early > 0.5, "a unit revived mid-fall should not hold its straps: " + early + " at " + at);
+            }
+            leastSwing = Math.min(leastSwing, hi - lo);
+            check(hi - lo >= 8, "the straps should swing again on the walk after a revival: range " + (hi - lo) + " at " + at);
+        }
+        return String.format(java.util.Locale.ROOT, "held straps worst %.1e deg, woke within %.4f s of the clip leaving; unheld mid-fall straps at least %.2f deg; swing again at least %.1f deg",
+            worstHeld, worstWake, leastEarly, leastSwing);
     }
 
 }
