@@ -677,6 +677,7 @@ public final class GravesAndGlory implements ModInitializer {
                     if(time>=until){respawns.remove(p.getUuid());p.changeGameMode(GameMode.ADVENTURE);equipPlayer(p);FeedEvents.commander(this,p,true);}
                 } else if(running&&(Math.abs(p.getX())>R.arenaHalfX()-2||Math.abs(p.getZ())>R.arenaHalfZ()-2||p.getY()<56))toBase(p,squads.get(p.getUuid()).team);
             }
+            if(running&&campaign.bonusTracker!=null){int fell=0;for(Unit u:units)if(!u.mob.isAlive()&&!u.temporary&&u.squad.team==0&&!u.squad.bot)fell++;if(fell>0)campaign.bonusTracker.lost(fell);} // March bonus: troops of the commander's banner that fell this tick
             units.removeIf(u->!u.mob.isAlive()||u.mob.isRemoved());
             if(running)trainingTick();
             campaign.tick();
@@ -687,6 +688,7 @@ public final class GravesAndGlory implements ModInitializer {
                 if(time%10==0)Houses.countTargeters(this);
                 for(Unit u:new ArrayList<>(units))unitTick(u);
                 if(time%20==0)captureTick();
+                if(time%20==0&&campaign.bonusTracker!=null&&mode.capturesPoints(this)){int own=0;for(Capture c:points)if(c.owner==0)own++;campaign.bonusTracker.held(own,points.size());} // March bonus hold_all: the commander's side (Dawn) holds every point at once
                 mode.tick(this);
                 if(R.automaticReinforcements()&&time%20==0)for(Squad s:new ArrayList<>(squads.values())){if(!s.seated)continue;
                     if(time>=s.reinforceAt && fielded(s).mapToInt(u->u.spec.slotWeight()).sum()<R.squadSize()){

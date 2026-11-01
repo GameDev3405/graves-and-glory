@@ -18,28 +18,57 @@ import net.minecraft.world.World;
  * teardown and the crash marker put it back; the gate stays open while the yard is fought over and shuts when it falls. Three stages fall in order (spec section 5): the Outer
  * Yard (attackers hold its ring uncontested), the Iron Gate (a structure target with HP; at 0 the open gate returns as
  * the breach) and the Keep (a ring; taking it wins for the attackers). The yard and the gate each add time when they
- * fall; the clock running out wins for the defenders. Until Task 4's pieces (gate_intact, ward) exist, a portcullis of
- * iron bars is the shut gate and there are no wards. The Keep is small and the attackers hold the capture edge there
- * (Kort, 2026-10-31: hard but takeable, a good push breaks it in one to two minutes). The stage values are the spec's draft values,
- * kept here until the modeSites and modeRules rows land.
+ * fall; the clock running out wins for the defenders. When the yard falls the gate stays open for portcullisSeconds, then
+ * ironhold/gate_intact replaces it (units in the passage are moved to the nearer side first). Two ward walls close the gaps
+ * beside the gate from setup to teardown and take no damage. The Keep is small and the attackers hold the capture edge there
+ * (Kort, 2026-10-31: hard but takeable, a good push breaks it in one to two minutes). Every number is a sheet row: the
+ * modeRules siege row and the modeSites siege rows (yard, gate, keep, wards).
  */
 public final class SiegeMode extends BattleMode {
     /** The map piece the round shuts: the open west gate of Ironhold. */
     public static final String GATE = "ironhold/gate";
     /** The tag its saved box is filed under. */
     public static final String GATE_TAG = "siege-gate";
+    /** The piece that replaces the open gate once the portcullis drops. */
+    public static final String GATE_INTACT = "ironhold/gate_intact";
     /** The passage the portcullis closes: seven blocks thick (x), eleven wide (z) and twelve high over the gate floor. */
     static final int PASSAGE_X = 3, PASSAGE_Z = 5, PASSAGE_HEIGHT = 12;
-    /** Stage rings and the gate's health: the spec's draft values (section 5). */
-    static final double YARD_X = -55, YARD_Z = 0, YARD_RADIUS = 15, KEEP_X = -8, KEEP_Z = 34, KEEP_RADIUS = 7;
-    static final int YARD_SECONDS = 20, KEEP_SECONDS = 60, STAGE_BONUS = 180;
-    static final float GATE_HP = 1600;
+
+    /** The mode numbers: the modeRules siege row; preflight requires it. */
+    static Spec.ModeRulesRow rules() {
+        for (var r : Spec.MODERULES) if (r.id().equals(Modes.SIEGE)) return r;
+        throw new IllegalStateException("no modeRules siege row");
+    }
+    static final Spec.ModeRulesRow R = rules();
+
+    /** The modeSites siege row of Ironhold of this kind and stage; preflight requires the stage and gate rows. */
+    static Spec.ModeSitesRow site(String kind, int stage) {
+        for (var s : Spec.MODESITES) if (s.mode().equals(Modes.SIEGE) && s.map() == 1 && s.kind().equals(kind) && s.stage() == stage) return s;
+        throw new IllegalStateException("no modeSites siege " + kind + " row for stage " + stage);
+    }
+    /** The ward rows of Ironhold, in sheet order. */
+    static List<Spec.ModeSitesRow> wards() {
+        var rows = new java.util.ArrayList<Spec.ModeSitesRow>();
+        for (var s : Spec.MODESITES) if (s.mode().equals(Modes.SIEGE) && s.map() == 1 && s.kind().equals("ward")) rows.add(s);
+        return rows;
+    }
+    /** The tag a ward saved box is filed under. */
+    static String wardTag(Spec.ModeSitesRow ward) {
+        return "siege-ward-" + ward.id().substring(ward.id().lastIndexOf('_') + 1);
+    }
+    static final Spec.ModeSitesRow YARD = site("stage", 0), GATE_SITE = site("gate", 1), KEEP = site("stage", 2);
+    /** Stage rings and the gate health, from the rows. */
+    static final double YARD_X = YARD.x(), YARD_Z = YARD.z(), YARD_RADIUS = YARD.radius(), KEEP_X = KEEP.x(), KEEP_Z = KEEP.z(), KEEP_RADIUS = KEEP.radius();
+    static final int YARD_SECONDS = YARD.seconds(), KEEP_SECONDS = KEEP.seconds(), STAGE_BONUS = R.siegeStageBonus();
+    static final float GATE_HP = (float) GATE_SITE.hp();
 
     /** The round's stage (0 yard, 1 gate, 2 keep, 3 taken) and the current ring's hold seconds. A mode object lives for one round. */
     int stage;
     int held;
-    /** The gate's target while stage 1 runs. */
+    /** The gate target while stage 1 runs once the portcullis is down. */
     GateTarget target;
+    /** The world time the portcullis drops, or -1 when it is not pending (the gate stays open until then). */
+    long dropAt = -1;
 
     SiegeMode(Spec.ModesRow row) {
         super(row);
@@ -70,7 +99,7 @@ public final class SiegeMode extends BattleMode {
     }
 
     /**
-     * Saves the open gate (the box the portcullis will fill) and takes the flags down. Runs after startRound raised the
+     * Saves the open gate (the box the intact gate will replace), places the wards (each with its own saved box) and takes the flags down. Runs after startRound raised the
      * neutral flags, so the round opens with no flags on the field and the gate open until the yard falls.
      */
     @Override
@@ -84,6 +113,12 @@ public final class SiegeMode extends BattleMode {
             if (saved == null) return; // no snapshot, no shut gate: a closed gate that cannot be recovered is worse than an open one
             b.saves.add(saved);
         }
+        for (var ward : wards()) {
+            String tag = wardTag(ward);
+            if (b.saves.stream().anyMatch(s -> s.tag().equals(tag))) { Structures.place(b.world, ward.piece(), (int) ward.x(), (int) ward.y(), (int) ward.z(), ward.rotation()); continue; }
+            var saved = Structures.placeSaving(b.world, ward.piece(), (int) ward.x(), (int) ward.y(), (int) ward.z(), ward.rotation(), tag);
+            if (saved != null) b.saves.add(saved);
+        }
     }
 
     /** No Domination points in a siege: the flags are down, so nothing is captured and no point is a forward anchor. */
@@ -96,7 +131,7 @@ public final class SiegeMode extends BattleMode {
     @Override
     public int[] ledger(GravesAndGlory.Battle b) {
         double progress = stage == 0 ? held / (double) YARD_SECONDS : stage == 2 ? held / (double) KEEP_SECONDS : 0;
-        float hp = target == null ? 0 : Math.max(0, target.hp());
+        float hp = target == null ? (dropAt >= 0 ? GATE_HP : 0) : Math.max(0, target.hp()); // the gate is whole until the portcullis drops
         return new int[]{stage, ModeMath.siegeStrength(stage, progress, hp, GATE_HP)};
     }
 
@@ -143,7 +178,8 @@ public final class SiegeMode extends BattleMode {
         if (stage == 0) {
             if (hold(b, YARD_X, YARD_Z, YARD_RADIUS, YARD_SECONDS, false)) fall(b);
         } else if (stage == 1) {
-            if (target == null || !target.isAlive() || target.isRemoved()) breach(b);
+            if (dropAt >= 0) { if (b.time >= dropAt) drop(b); }
+            else if (target == null || !target.isAlive() || target.isRemoved()) breach(b);
         } else if (hold(b, KEEP_X, KEEP_Z, KEEP_RADIUS, KEEP_SECONDS, true)) {
             stage = 3;
             b.scores[0] = stage;
@@ -155,7 +191,7 @@ public final class SiegeMode extends BattleMode {
 
     /**
      * One second of a ring: attackers alone add a second, defenders alone take one back, contested holds. With the edge
-     * (the Keep), attackers also add a second while contested if they are at least two thirds of the defenders' number.
+     * (the Keep), attackers also add a second while contested if they are at least keepEdgeAttackers per keepEdgeDefenders (two thirds) of the defenders number.
      * Returns whether it fell.
      */
     boolean hold(GravesAndGlory.Battle b, double x, double z, double r, int seconds, boolean edge) {
@@ -167,7 +203,7 @@ public final class SiegeMode extends BattleMode {
             var s = b.squads.get(p.getUuid());
             if (s != null && s.seated && !p.isSpectator() && GravesAndGlory.Battle.horizontalDistance(p.getPos(), c) < r * r) in[s.team]++;
         }
-        if (in[0] > 0 && (in[1] == 0 || edge && in[0] * 3 >= in[1] * 2)) held++;
+        if (in[0] > 0 && (in[1] == 0 || edge && in[0] * R.keepEdgeDefenders() >= in[1] * R.keepEdgeAttackers())) held++;
         else if (in[1] > 0 && in[0] == 0) held = Math.max(0, held - 1);
         return held >= seconds;
     }
@@ -183,7 +219,19 @@ public final class SiegeMode extends BattleMode {
         GravesAndGlory.Squad defender = null;
         for (var s : b.squads.values()) if (s.seated && s.team == 1) { defender = s; break; }
         if (row == null || defender == null || b.saves.stream().noneMatch(s -> s.tag().equals(GATE_TAG))) { breach(b); return; } // no saved gate to shut and break
-        shut(b.world, row);
+        dropAt = b.time + R.portcullisSeconds() * 20L;
+        feed(b, "The Iron Gate will shut in " + R.portcullisSeconds() + " seconds");
+    }
+
+    /** The portcullis drops: units in the passage go to the nearer side, the intact gate replaces the open one and its target goes up on its west face. */
+    void drop(GravesAndGlory.Battle b) {
+        dropAt = -1;
+        var row = gate();
+        GravesAndGlory.Squad defender = null;
+        for (var s : b.squads.values()) if (s.seated && s.team == 1) { defender = s; break; }
+        if (row == null || defender == null) { breach(b); return; }
+        clearPassage(b, row);
+        Structures.place(b.world, GATE_INTACT, row.x(), row.elevation(), row.z(), row.rotation());
         feed(b, "The Iron Gate is shut");
         var e = new GateTarget(b.world);
         e.squad = defender;
@@ -198,6 +246,16 @@ public final class SiegeMode extends BattleMode {
         b.world.spawnEntity(e);
         b.structures.add(e);
         target = e;
+    }
+
+    /** Moves everything standing in the gate passage to the side of it that is nearer (by x), just clear of the grilles. */
+    static void clearPassage(GravesAndGlory.Battle b, Spec.LandmarksRow row) {
+        double lo = row.x() - PASSAGE_X - 1, hi = row.x() + PASSAGE_X + 2;
+        var box = new net.minecraft.util.math.Box(lo, row.elevation() - 1, row.z() - PASSAGE_Z - 1, hi, row.elevation() + PASSAGE_HEIGHT + 2, row.z() + PASSAGE_Z + 2);
+        for (var e : b.world.getEntitiesByClass(net.minecraft.entity.LivingEntity.class, box, x -> true)) {
+            double side = e.getX() < row.x() ? row.x() - PASSAGE_X - 3 : row.x() + PASSAGE_X + 3;
+            e.requestTeleport(side, row.elevation() + 1, e.getZ());
+        }
     }
 
     /** The gate falls: the open gate returns as the breach, time is added and the keep can be taken. */
@@ -217,17 +275,6 @@ public final class SiegeMode extends BattleMode {
     /** A stage line on every player's feed, in Dawn's colour. */
     static void feed(GravesAndGlory.Battle b, String text) {
         for (ServerPlayerEntity p : b.server.getPlayerManager().getPlayerList()) FeedEvents.send(p, "point", 0, text);
-    }
-
-    /** The portcullis: every air cell of the passage becomes iron bars, so the arch keeps its stone. */
-    static void shut(ServerWorld w, Spec.LandmarksRow row) {
-        for (int x = row.x() - PASSAGE_X; x <= row.x() + PASSAGE_X; x++)
-            for (int z = row.z() - PASSAGE_Z; z <= row.z() + PASSAGE_Z; z++)
-                for (int y = row.elevation() + 1; y <= row.elevation() + PASSAGE_HEIGHT; y++) {
-                    var pos = new BlockPos(x, y, z);
-                    if (w.getBlockState(pos).isAir())
-                        w.setBlockState(pos, Blocks.IRON_BARS.getDefaultState(), Block.NOTIFY_LISTENERS);
-                }
     }
 
     /** After teardown put the gate back: removes the gate target and raises the neutral flags; idempotent, as a round may end twice. */
