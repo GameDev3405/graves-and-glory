@@ -168,10 +168,12 @@ final class Tactics {
      *  of velocity a tick, and ground friction keeps 0.546 of it, so it settles at 0.98 s x s / 0.454. Its speed modifiers (crawl, Howl) count. */
     static double pace(MobEntity mob){double s=mob.getAttributeValue(net.minecraft.entity.attribute.EntityAttributes.GENERIC_MOVEMENT_SPEED);return .98*s*s/.454;}
     /** Whether a cell is a level step or a one-block rise away (walk's precise branch tests its goal's cell so): the cell and the one above are air,
-     *  its ground is within 1.1 of the troop's feet, and it is no river water below the crossings. */
+     *  its ground is within 1.1 of the troop's feet, and it is no river water below the crossings. In the air (mid-hop) the feet are read at the
+     *  block level they are over (floor of y), so a troop jumping onto a one-block rise does not read its own line blocked at the top of the
+     *  jump (Task 16, R89). */
     static boolean open(GravesAndGlory.Battle battle,MobEntity mob,int gx,int gz){
-        int gy=Arena.ground(gx,gz)+1;
-        return Math.abs(mob.getY()-gy)<1.1&&!(Arena.river(gx,gz)&&Arena.ground(gx,gz)<64)&&battle.world.getBlockState(new BlockPos(gx,gy,gz)).isAir()&&battle.world.getBlockState(new BlockPos(gx,gy+1,gz)).isAir();
+        int gy=Arena.ground(gx,gz)+1;double feet=mob.isOnGround()?mob.getY():Math.floor(mob.getY());
+        return Math.abs(feet-gy)<1.1&&!(Arena.river(gx,gz)&&Arena.ground(gx,gz)<64)&&battle.world.getBlockState(new BlockPos(gx,gy,gz)).isAir()&&battle.world.getBlockState(new BlockPos(gx,gy+1,gz)).isAir();
     }
     /** How far a troop picks its targets: the order's engage radius, or for a siege troop (tag siege) at least its weapon's reach (Entrench's bonus included), so artillery shoots what it can reach and not only what the order's leash allows. The sheet's order radii are untouched. */
     static double engageRadius(GravesAndGlory.Battle battle,GravesAndGlory.Unit u,double order){return u.tags.contains("siege")?Math.max(order,Abilities.range(battle,u)):order;}

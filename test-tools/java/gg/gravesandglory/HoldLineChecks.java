@@ -141,7 +141,7 @@ final class HoldLineChecks {
         int fireSamples, fireDown; final List<String> fireDownAt = new ArrayList<>();
         // hl-wall's per-tick facing sample (fix round 2, R2): each wall troop's position a tick ago, and the samples
         final Map<GravesAndGlory.Unit, Vec3d> lastAt = new HashMap<>();
-        int faceSamples, faceBack, faceSide, faceAir, faceRouted; final List<String> faceRoutedWho = new ArrayList<>(); double faceWorst; String faceWho = "none"; final List<String> faceBad = new ArrayList<>();
+        int faceSamples, faceBack, faceSide, faceAir, faceRouted, faceRoutedAir, hopSamples, hopAir; double hopWorst; String hopWho = "none"; final java.util.Set<String> hopMen = new java.util.TreeSet<>(); final List<String> faceRoutedWho = new ArrayList<>(); double faceWorst; String faceWho = "none"; final List<String> faceBad = new ArrayList<>();
         // hl-house (fix round 2, R1)
         GravesAndGlory.Unit houseKnight; Vec3d houseSlot, houseStart; String houseText; long houseAt; double houseBest = 99; int houseStuckBefore;
         // hl-crawl
@@ -381,11 +381,16 @@ final class HoldLineChecks {
         void sampleFacing(GravesAndGlory.Battle b) {
             for (var u : fixture) {
                 if (!u.mob.isAlive() || !GravesAndGlory.Battle.walls(u, b.assignment(u).order)) continue;
+                if (u.hopTo != null) { // hl-hop-yaw (Task 16, R89): a hop onto a rise keeps the Hold yaw on every tick of it, yaw and body yaw
+                    float want = b.assignment(u).yaw; hopSamples++; hopMen.add(name(u)); if (!u.mob.isOnGround()) hopAir++;
+                    double off = Math.max(Math.abs(net.minecraft.util.math.MathHelper.wrapDegrees(u.mob.getYaw() - want)), Math.abs(net.minecraft.util.math.MathHelper.wrapDegrees(u.mob.bodyYaw - want)));
+                    if (off > hopWorst) {hopWorst = off; hopWho = name(u);}
+                }
                 Vec3d now = u.mob.getPos(), then = lastAt.put(u, now); if (then == null) continue;
                 double dx = now.x - then.x, dz = now.z - then.z, moved = Math.sqrt(dx * dx + dz * dz);
                 if (moved <= 0.02 || distance(now, b.formation(u)) > 2) continue;
                 // R1: where walk routes him (a detour round a body, or the straight line to his slot not clear) the stretch yields and he walks without the facing; counted apart, not held to the yaw
-                if (u.detour != null || !Tactics.clear(b, u, b.formation(u))) {faceRouted++; if (faceRoutedWho.size() < 6) faceRoutedWho.add(name(u) + (u.detour != null ? " on a detour" : " with the line blocked") + " at " + fmt(distance(now, b.formation(u)))); continue;}
+                if (u.detour != null || !Tactics.clear(b, u, b.formation(u))) {faceRouted++; if (u.detour == null && !u.mob.isOnGround()) faceRoutedAir++; if (faceRoutedWho.size() < 6) faceRoutedWho.add(name(u) + (u.detour != null ? " on a detour" : " with the line blocked") + " at " + fmt(distance(now, b.formation(u)))); continue;}
                 float want = b.assignment(u).yaw; faceSamples++;
                 double off = Math.max(Math.abs(net.minecraft.util.math.MathHelper.wrapDegrees(u.mob.getYaw() - want)), Math.abs(net.minecraft.util.math.MathHelper.wrapDegrees(u.mob.bodyYaw - want)));
                 double step = Math.abs(net.minecraft.util.math.MathHelper.wrapDegrees((float) Math.toDegrees(Math.atan2(-dx, dz)) - want));
@@ -699,9 +704,10 @@ final class HoldLineChecks {
             boolean still = moved < 0.05 && wallOff < 0.1 && restOff <= tolerance + 0.05; pass &= still;
             why.add("in the last 40 ticks the most any troop moved is " + fmt(moved) + " (" + mover + "; want under 0.05: no jam, no stutter); the farthest wall troop from its slot stands " + fmt(wallOff) + " off it (" + wallWorst + "; want under 0.1), the farthest of the rest " + fmt(restOff) + " (" + restWorst + "; want within the arrival tolerance " + fmt(tolerance) + ")=" + still);
             String[] face = facing(b); boolean faces = face[0].equals("true"); pass &= faces; why.add(face[1] + "=" + faces);
-            long bad = faceBad.size(); boolean walkIn = faceSamples >= 20 && bad == 0 && faceBack > 0 && faceSide > 0 && faceRouted * 4 <= faceSamples; pass &= walkIn;
-            why.add("walking in, every tick: " + faceSamples + " samples of a wall troop within 2 blocks of its slot moving over 0.02 a tick (" + faceBack + " stepping back, " + faceSide + " sideways, " + (faceSamples - faceBack - faceSide) + " ahead, " + faceAir + " in the air), " + bad + " more than 15 degrees off its Hold yaw" + (bad == 0 ? "" : " " + faceBad.stream().filter(x -> !x.isEmpty()).toList()) + ", the worst " + fmt(faceWorst) + " (" + faceWho + "); besides, " + faceRouted + " ticks walk routed him (the stretch yields, no facing)" + (faceRouted == 0 ? "" : " " + faceRoutedWho) + " (want at least 20 samples, some back and some sideways, none off, and routed ticks at most a quarter of the samples)=" + walkIn);
+            long bad = faceBad.size(); boolean walkIn = faceSamples >= 20 && bad == 0 && faceBack > 0 && faceSide > 0 && faceRouted * 4 <= faceSamples && faceRoutedAir == 0; pass &= walkIn;
+            why.add("walking in, every tick: " + faceSamples + " samples of a wall troop within 2 blocks of its slot moving over 0.02 a tick (" + faceBack + " stepping back, " + faceSide + " sideways, " + (faceSamples - faceBack - faceSide) + " ahead, " + faceAir + " in the air), " + bad + " more than 15 degrees off its Hold yaw" + (bad == 0 ? "" : " " + faceBad.stream().filter(x -> !x.isEmpty()).toList()) + ", the worst " + fmt(faceWorst) + " (" + faceWho + "); besides, " + faceRouted + " ticks walk routed him (the stretch yields, no facing)" + (faceRouted == 0 ? "" : " " + faceRoutedWho) + ", " + faceRoutedAir + " of them in the air with the line read blocked (Task 16, R89: a hop reads its line from the level it left)" + " (want at least 20 samples, some back and some sideways, none off, routed ticks at most a quarter of the samples and none read blocked in the air)=" + walkIn);
             report("hl-wall", pass, String.join("; ", why));
+            report("hl-hop-yaw", hopAir > 0 && hopWorst <= 1, "Task 16, R89: " + hopSamples + " ticks of a wall troop hopping onto a rise by its slot (" + hopAir + " of them in the air; " + hopMen + "), the most yaw or body yaw went off the Hold yaw " + fmt(hopWorst) + " degrees (" + hopWho + "; want a hop in the air seen and at most 1 degree off on every tick)");
         }
         /** Every living wall troop of the fixture (Battle.walls) faces its Hold yaw within 10 degrees, yaw and body yaw (ruling R21): whether, and the line. */
         String[] facing(GravesAndGlory.Battle b) {
