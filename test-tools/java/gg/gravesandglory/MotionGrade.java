@@ -182,19 +182,23 @@ final class MotionGrade extends Phase2Checks.Stage {
 
     /** A solo job: one clip from one camera angle; its targets (frames and key poses) and what was seen. */
     final class Job {
-        final String clip, cat, pre; final int angle, variant; final boolean full, blocked; final Clip c; final String zone; final float bearing;
+        final String clip, cat, pre; final int angle, variant; final boolean full, blocked; final Clip c; final String zone, kind; final float bearing; final int hitIdx, hitN;
         final List<String> names = new ArrayList<>(), kinds = new ArrayList<>(), files = new ArrayList<>(); final List<Integer> frameNo = new ArrayList<>();
         double[] times; boolean[] got; int ph, settle, goneFor, maxTicks; boolean seen; double lastT = Double.NaN; final Set<String> played = new TreeSet<>();
         final JsonArray tip = new JsonArray(), rim = new JsonArray(); double stanceW = -1;
         Job(String clip, int angle, int settle) {
             this.clip = clip; this.angle = angle; this.settle = settle; cat = clipCat.get(clip); c = fam.all().get(clip); full = angle == 0 || angle == 90;
             pre = cat.equals("stance") ? SERVER_STANCE.getOrDefault(clip, "hold") : "hold";
-            var f2 = fam.family(); int v = -1; String z = null; boolean blk = false; float br = 0;
+            var f2 = fam.family(); int v = -1; String z = null; boolean blk = false; float br = 0; String kd = "slash"; int hi = 0, hn = 1;
             if (cat.equals("attack")) for (int i = 0; i < fam.attackIndex().length; i++) { int k = fam.attackIndex()[i]; if (k >= 0 && k < f2.attacks().size() && f2.attacks().get(k) == c) { v = i; break; } }
-            if (cat.equals("hit")) for (var e : f2.hits().entrySet()) if (e.getValue().contains(c)) { z = e.getKey(); break; }
+            // Task 16: the engine picks a hit from its zone's set by the hit's tick (MotionEngine: floorMod(tick, size)), so the job fires on a tick that picks this clip
+            if (cat.equals("hit")) for (var e : f2.hits().entrySet()) if (e.getValue().contains(c)) { z = e.getKey(); hi = e.getValue().indexOf(c); hn = e.getValue().size(); break; }
             if ("block".equals(z)) { z = "body"; blk = true; }
-            if (cat.equals("death")) for (int d = 0; d < DIRS.size(); d++) if (MotionEngine.deathClip(f2, "slash", DIRS.get(d)) == c) { br = BEARINGS[d]; break; }
-            variant = v; zone = z == null ? "body" : z; blocked = blk; bearing = br;
+            // Task 16: a death clip is reached by its own blow: its kind (bolt, which has no clip of its own, for the any-kind deaths) and a bearing
+            // that leads with its direction (MotionEngine.death: front 0, a side 91 so the side leads the back, back 180)
+            if (cat.equals("death")) { String dk = TroopMotion.deathKey(clip); if (dk != null) { String[] p = dk.split("/"); kd = p[0].equals("any") ? "bolt" : p[0];
+                String dir = p.length > 1 ? p[1] : p[0].equals("any") || !DIRS.contains(p[0]) ? "front" : p[0]; br = switch (dir) { case "right" -> 91; case "left" -> -91; case "back" -> 180; default -> 0; }; } }
+            variant = v; zone = z == null ? "body" : z; blocked = blk; bearing = br; kind = kd; hitIdx = hi; hitN = hn;
             double L = c.length();
             maxTicks = cat.equals("stance") ? (int) Math.ceil(L * 20 / 0.75) + 30 : cat.equals("attack") || cat.equals("hit") ? 200 : (int) Math.ceil(L * 20) + 80;
             String a = String.format(Locale.ROOT, "a%03d", angle);
@@ -273,7 +277,8 @@ final class MotionGrade extends Phase2Checks.Stage {
         if (arg.equals("stub")) { t = "knight"; stub = true; }
         else for (String id : TroopModels.ids()) {
             var m = TroopModels.model(id); var row = m == null ? null : TroopMotion.row(m);
-            if (row != null && (id.equals(arg) || row.family().equals(arg))) { t = id; break; }
+            String pick = System.getenv("GRAVES_GRADE_TROOP"); // Task 16: which troop of the family to grade (the knight for sword_shield); unset, the first
+            if (row != null && (id.equals(arg) || row.family().equals(arg)) && (pick == null || pick.isBlank() || id.equals(arg) || id.equals(pick))) { t = id; break; }
         }
         if (t == null) { report("mo-grade", false, "no troop model of the family or troop '" + arg + "'"); return; }
         var m = TroopModels.model(t); var row = TroopMotion.row(m); rig = m.rig; famName = row.family();
@@ -341,10 +346,10 @@ final class MotionGrade extends Phase2Checks.Stage {
         }
         return true;
     }
-    void kill(MinecraftClient c, List<GravesAndGlory.Unit> who, float bearing) {
+    void kill(MinecraftClient c, List<GravesAndGlory.Unit> who, float bearing, String kind) {
         final List<GravesAndGlory.Unit> list = new ArrayList<>(who);
         server(c, b -> { for (var u : list) if (u.mob.isAlive()) MotionEvents.resolving(u.mob, () -> {
-            MotionEvents.sendHit(u.mob, "slash", "body", bearing, 1, false, true);
+            MotionEvents.sendHit(u.mob, kind, "body", bearing, 1, false, true);
             u.mob.timeUntilRegen = 0; u.mob.hurtTime = 0; return u.mob.damage(b.world.getDamageSources().generic(), 10000f); }); });
     }
 
@@ -536,7 +541,7 @@ final class MotionGrade extends Phase2Checks.Stage {
             String cat = clipCat.get(n);
             for (int a : ANGLES) {
                 boolean first = a == ANGLES[0];
-                int settle = switch (cat) { case "stance" -> first ? 30 : 3; case "scene" -> 15; case "death" -> 25; default -> first ? 30 : 8; };
+                int settle = switch (cat) { case "stance" -> first ? 30 : 3; case "scene" -> 15; case "death" -> first ? 25 : 12; default -> first ? 30 : 8; };
                 jobs.add(new Job(n, a, settle));
             }
         }
@@ -793,6 +798,7 @@ final class MotionGrade extends Phase2Checks.Stage {
             case 1 -> {
                 inject(c, j.pre);
                 if (wait < j.settle || !shotReady(c, j.clip + " a" + j.angle)) return;
+                if (j.cat.equals("hit") && Math.floorMod(c.world.getTime(), j.hitN) != j.hitIdx) return;
                 fireSolo(c, j, e); j.ph = 2; wait = 0; lastSnapN = LAST == null ? -1 : LAST.n;
             }
             case 2 -> soloTick(c, j, e);
@@ -805,7 +811,7 @@ final class MotionGrade extends Phase2Checks.Stage {
             case "attack" -> { if (j.variant < 0) replayBad.add(j.clip + ": no attack variant plays it"); else MotionEvents.Client.attack(id, j.variant, tick, Tactics.variants(famName).size()); }
             case "hit" -> MotionEvents.Client.hit(true, id, MotionEvents.KINDS.indexOf("slash"), MotionEvents.ZONES.indexOf(j.zone), 0f, 1, j.blocked ? 1 : 0, tick);
             case "scene" -> TroopMotion.setScenePose(id, j.clip);
-            case "death" -> kill(c, List.of(cast.get(SOLO_UNIT)), j.bearing);
+            case "death" -> kill(c, List.of(cast.get(SOLO_UNIT)), j.bearing, j.kind);
             default -> {}
         }
     }
@@ -1065,6 +1071,7 @@ final class MotionGrade extends Phase2Checks.Stage {
             case 1 -> {
                 inject(c, s.pre());
                 if (wait < SETTLE || !shotReady(c, s.name())) return;
+                if (s.cat().equals("hit")) { var hl = fam.family().hits().get(s.blocked() ? "block" : s.zone()); int n = hl == null ? 1 : hl.size(); if (Math.floorMod(c.world.getTime() + EVENT1, n) != 0) return; }
                 ps = 2; f = 0; levelAt = -1; trPose.clear(); trNow.clear(); trFresh.clear(); trWorld.clear(); lastSnapN = LAST == null ? -1 : LAST.n;
             }
             case 2 -> stateFrame(c, s, mode);
@@ -1157,7 +1164,7 @@ final class MotionGrade extends Phase2Checks.Stage {
             case "attack" -> { int rows = Tactics.variants(famName).size(); for (var u : subj) { var e = client(c, u.mob); if (e != null) MotionEvents.Client.attack(e.getId(), s.variant(), tick, rows); } }
             case "hit" -> { for (var u : subj) { var e = client(c, u.mob); if (e != null) MotionEvents.Client.hit(true, e.getId(), MotionEvents.KINDS.indexOf("slash"), MotionEvents.ZONES.indexOf(s.zone()), 0f, 1, s.blocked() ? 1 : 0, tick); } }
             case "scene" -> { for (var u : subj) { var e = client(c, u.mob); if (e != null) TroopMotion.setScenePose(e.getId(), s.clip()); } }
-            case "death" -> kill(c, subj, s.bearing());
+            case "death" -> kill(c, subj, s.bearing(), "slash");
             default -> {}
         }
     }
@@ -1256,7 +1263,7 @@ final class MotionGrade extends Phase2Checks.Stage {
             case "lower" -> { for (var u : subj) raised.remove(u.mob.getId()); }
             case "attack" -> { int rows = Tactics.variants(famName).size(); int v = 0; while (v < fam.attackIndex().length && fam.attackIndex()[v] < 0) v++; for (var u : subj) { var e = client(c, u.mob); if (e != null) MotionEvents.Client.attack(e.getId(), v, tick, rows); } }
             case "hit" -> { for (var u : subj) { var e = client(c, u.mob); if (e != null) MotionEvents.Client.hit(true, e.getId(), MotionEvents.KINDS.indexOf("slash"), MotionEvents.ZONES.indexOf(a), 0f, 1, 0, tick); } }
-            case "kill" -> kill(c, subj, 0);
+            case "kill" -> kill(c, subj, 0, "slash");
             default -> {}
         }
     }
