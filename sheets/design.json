@@ -1255,6 +1255,20 @@
       "ruleLine": "Siege of Ironhold",
       "howTo": "Take the Outer Yard. | Break the gate; siege troops strike it four times harder. | Seize the keep before the clock runs out.",
       "howToDefend": "Hold the yard, then the gate, then the keep. | The gate is where they break. | When the clock runs out, Ironhold is yours."
+    },
+    {
+      "id": "convoy",
+      "name": "Convoy",
+      "maps": "2",
+      "roundSeconds": 420,
+      "winTarget": 0,
+      "scoreInterval": 0,
+      "passiveScale": 1.0,
+      "pointScale": 0.0,
+      "timeout": "team1",
+      "ruleLine": "Convoy: reach {n}",
+      "howTo": "Stay by the wagon to push it. | An enemy beside it stops it. | Reach the refuge before the clock runs out.",
+      "howToDefend": "Stand by the wagon to stop it. | Left alone, it rolls back to its last checkpoint. | Hold it until the clock runs out."
     }
   ],
   "hooks": [
