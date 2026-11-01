@@ -1290,7 +1290,35 @@
       "overtimeGraceSeconds": 3,
       "stoppedAfterSeconds": 5,
       "stoppedEverySeconds": 20,
+      "siegeStageBonus": 0,
+      "portcullisSeconds": 0,
+      "keepEdgeAttackers": 0,
+      "keepEdgeDefenders": 0,
       "note": "draft values (convoy spec 3.1 to 3.3, 8); Kort tunes them after the sim gate"
+    },
+    {
+      "id": "siege",
+      "pushRadius": 0.0,
+      "pushHeight": 0.0,
+      "speedOne": 0.0,
+      "speedTwo": 0.0,
+      "speedThree": 0.0,
+      "rollbackSpeed": 0.0,
+      "idleSeconds": 0,
+      "checkpointSeconds": 0,
+      "checkpointGold": 0,
+      "maxGrade": 0.0,
+      "uphill": 0.0,
+      "downhill": 0.0,
+      "overtimeRadius": 0.0,
+      "overtimeGraceSeconds": 0,
+      "stoppedAfterSeconds": 0,
+      "stoppedEverySeconds": 0,
+      "siegeStageBonus": 180,
+      "portcullisSeconds": 10,
+      "keepEdgeAttackers": 2,
+      "keepEdgeDefenders": 3,
+      "note": "Siege draft values (siege spec section 5; keep edge: attackers add a second while contested at 2 of every 3 defenders); Kort tunes them after the sim gate. The convoy columns are unused here"
     }
   ],
   "modeSites": [
@@ -1304,6 +1332,11 @@
       "x": -230.0,
       "z": 0.0,
       "radius": 3.5,
+      "y": 0.0,
+      "piece": "-",
+      "rotation": 0,
+      "hp": 0.0,
+      "seconds": 0,
       "note": "draft road (convoy spec 5.2), straight draft Frostmarch road accepted by Kort 2026-11-01 for now"
     },
     {
@@ -1316,6 +1349,11 @@
       "x": -28.0,
       "z": 0.0,
       "radius": 3.5,
+      "y": 0.0,
+      "piece": "-",
+      "rotation": 0,
+      "hp": 0.0,
+      "seconds": 0,
       "note": "draft road (convoy spec 5.2), straight draft Frostmarch road accepted by Kort 2026-11-01 for now"
     },
     {
@@ -1328,6 +1366,11 @@
       "x": 32.0,
       "z": 0.0,
       "radius": 3.5,
+      "y": 0.0,
+      "piece": "-",
+      "rotation": 0,
+      "hp": 0.0,
+      "seconds": 0,
       "note": "draft road (convoy spec 5.2), straight draft Frostmarch road accepted by Kort 2026-11-01 for now"
     },
     {
@@ -1340,6 +1383,11 @@
       "x": 100.0,
       "z": 30.0,
       "radius": 3.5,
+      "y": 0.0,
+      "piece": "-",
+      "rotation": 0,
+      "hp": 0.0,
+      "seconds": 0,
       "note": "draft road (convoy spec 5.2), straight draft Frostmarch road accepted by Kort 2026-11-01 for now"
     },
     {
@@ -1352,6 +1400,11 @@
       "x": 150.0,
       "z": 60.0,
       "radius": 3.5,
+      "y": 0.0,
+      "piece": "-",
+      "rotation": 0,
+      "hp": 0.0,
+      "seconds": 0,
       "note": "draft road (convoy spec 5.2), straight draft Frostmarch road accepted by Kort 2026-11-01 for now"
     },
     {
@@ -1364,6 +1417,11 @@
       "x": 220.0,
       "z": 30.0,
       "radius": 3.5,
+      "y": 0.0,
+      "piece": "-",
+      "rotation": 0,
+      "hp": 0.0,
+      "seconds": 0,
       "note": "draft road (convoy spec 5.2), straight draft Frostmarch road accepted by Kort 2026-11-01 for now"
     },
     {
@@ -1376,6 +1434,11 @@
       "x": 280.0,
       "z": 0.0,
       "radius": 3.5,
+      "y": 0.0,
+      "piece": "-",
+      "rotation": 0,
+      "hp": 0.0,
+      "seconds": 0,
       "note": "draft road (convoy spec 5.2), straight draft Frostmarch road accepted by Kort 2026-11-01 for now"
     },
     {
@@ -1388,7 +1451,97 @@
       "x": 255.0,
       "z": -64.0,
       "radius": 3.5,
+      "y": 0.0,
+      "piece": "-",
+      "rotation": 0,
+      "hp": 0.0,
+      "seconds": 0,
       "note": "Dusk's field base in Convoy (stage is the team): moved off the road's end, where the map's Dusk spawn (283, 0) sits 3 blocks from The Refuge; on the Dusk fan road, 69 blocks from The Refuge and clear of the Dusk barracks (draft value, 2026-11-01)"
+    },
+    {
+      "id": "siege_ironhold_yard",
+      "mode": "siege",
+      "map": 1,
+      "kind": "stage",
+      "stage": 0,
+      "name": "Outer Yard",
+      "x": -55.0,
+      "z": 0.0,
+      "radius": 15.0,
+      "y": 0.0,
+      "piece": "-",
+      "rotation": 0,
+      "hp": 0.0,
+      "seconds": 20,
+      "note": "Siege draft value (siege spec section 5); attackers hold the ring uncontested for 20 s"
+    },
+    {
+      "id": "siege_ironhold_gate",
+      "mode": "siege",
+      "map": 1,
+      "kind": "gate",
+      "stage": 1,
+      "name": "Iron Gate",
+      "x": -37.0,
+      "z": 0.0,
+      "radius": 0.0,
+      "y": 64.0,
+      "piece": "ironhold/gate_intact",
+      "rotation": 0,
+      "hp": 1600.0,
+      "seconds": 0,
+      "note": "Siege draft value (siege spec section 5); 1600 HP; the intact piece replaces the open gate portcullisSeconds after the yard falls"
+    },
+    {
+      "id": "siege_ironhold_ward_n",
+      "mode": "siege",
+      "map": 1,
+      "kind": "ward",
+      "stage": 0,
+      "name": "Ward",
+      "x": -23.0,
+      "z": -25.0,
+      "radius": 0.0,
+      "y": 64.0,
+      "piece": "ironhold/ward",
+      "rotation": 90,
+      "hp": 0.0,
+      "seconds": 0,
+      "note": "Siege draft placement (spec section 5): wall closing the gap beside the gate for the whole round; no HP, takes no damage"
+    },
+    {
+      "id": "siege_ironhold_ward_s",
+      "mode": "siege",
+      "map": 1,
+      "kind": "ward",
+      "stage": 0,
+      "name": "Ward",
+      "x": -32.0,
+      "z": 25.0,
+      "radius": 0.0,
+      "y": 64.0,
+      "piece": "ironhold/ward_south",
+      "rotation": 90,
+      "hp": 0.0,
+      "seconds": 0,
+      "note": "Siege draft placement (spec section 5): wall closing the gap beside the gate for the whole round; no HP, takes no damage"
+    },
+    {
+      "id": "siege_ironhold_keep",
+      "mode": "siege",
+      "map": 1,
+      "kind": "stage",
+      "stage": 2,
+      "name": "Keep",
+      "x": -8.0,
+      "z": 34.0,
+      "radius": 7.0,
+      "y": 0.0,
+      "piece": "-",
+      "rotation": 0,
+      "hp": 0.0,
+      "seconds": 60,
+      "note": "Kort 2026-10-31: radius 7 and 60 s, hard but takeable (the spec's 10 and 30 s are replaced)"
     }
   ],
   "hooks": [
@@ -2866,6 +3019,30 @@
       "height": 17,
       "palette": "stone",
       "purpose": "west gate, 11-wide passage"
+    },
+    {
+      "id": "ironhold/gate_intact",
+      "width": 7,
+      "depth": 47,
+      "height": 17,
+      "palette": "stone",
+      "purpose": "west gate once the yard falls: portcullis down, doors shut (Siege)"
+    },
+    {
+      "id": "ironhold/ward",
+      "width": 3,
+      "depth": 35,
+      "height": 8,
+      "palette": "stone",
+      "purpose": "north ward wall closing the gap beside the gate (Siege)"
+    },
+    {
+      "id": "ironhold/ward_south",
+      "width": 3,
+      "depth": 17,
+      "height": 8,
+      "palette": "stone",
+      "purpose": "south ward wall closing the gap beside the gate (Siege)"
     },
     {
       "id": "ironhold/curtain",

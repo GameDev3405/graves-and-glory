@@ -1459,12 +1459,8 @@ setblock ~0 ~7 ~10 minecraft:vine[east=true]
 # close the passage at x 1 (the face, joining the bars that hung in the arch) and x 5 (the inner face), floor to arch, and the two tower doors are shut.
 # the lowered portcullis, outer grille: continuous bars floor to the arch at the face
 fill ~1 ~1 ~18 ~1 ~6 ~28 minecraft:iron_bars[north=true,east=false,south=true,west=false]
-fill ~1 ~1 ~18 ~1 ~6 ~18 minecraft:iron_bars[north=false,east=false,south=true,west=false]
-fill ~1 ~1 ~28 ~1 ~6 ~28 minecraft:iron_bars[north=true,east=false,south=false,west=false]
 # the inner grille, a second line of bars behind the first
 fill ~5 ~1 ~18 ~5 ~6 ~28 minecraft:iron_bars[north=true,east=false,south=true,west=false]
-fill ~5 ~1 ~18 ~5 ~6 ~18 minecraft:iron_bars[north=false,east=false,south=true,west=false]
-fill ~5 ~1 ~28 ~5 ~6 ~28 minecraft:iron_bars[north=true,east=false,south=false,west=false]
 # the doors onto the passage, shut: dark oak, the north tower's door faces the passage (south), the south tower's faces north
 setblock ~3 ~1 ~17 minecraft:dark_oak_door[facing=south,half=lower,hinge=left,open=false]
 setblock ~3 ~2 ~17 minecraft:dark_oak_door[facing=south,half=upper,hinge=left,open=false]
