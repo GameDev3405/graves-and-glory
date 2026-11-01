@@ -2,6 +2,7 @@
 
   python docs/maps/ironhold/sections/make_surface.py plans          # <SID>-surface.json for every section it changes
   python docs/maps/ironhold/sections/make_surface.py apply [SID...] # dry-run (locks), apply, undo, renders, review
+  python docs/maps/ironhold/sections/make_surface.py cleanup-plans | cleanup-apply [SID...]   # the follow-up below
 
 Kort's top-layer rule: "We only need the top layer for maps, blocks aren't breakable so what's underneath doesn't
 matter, just make sure the top layer looks good and go from there." This pass only re-skins what shows:
@@ -16,6 +17,9 @@ matter, just make sure the top layer looks good and go from there." This pass on
 4. South postern (G5): the y 71 span over x 40..48, z 94..98 is the postern lintel, kept as a bridge: its two tops a
    grass-wear breakup had turned to grass and coarse dirt are stone brick again, the walk notch over the passage is
    filled and upside-down stairs at y 70 make arch shoulders.
+6. Cleanup (Kort 2026-11-01, after MapWalk pass2), plans <SID>-cleanup.json: mud tops the pass skipped on zoned floors
+   (the dark squares in the inner yard) take the zone's blocks or the path's, and the gorge scree's boulder steps, which
+   the pass left as a busy mix, get gravel tops with tuff clumps over plain stone sides. No black blocks.
 5. Support: every gravel or sand block left over air (river and fosse beds under water) gets a stone under it, so it
    cannot fall in game.
 """
@@ -220,6 +224,89 @@ def upper_win_back(x, z, dx, dz):
     return (dx == 3 and z in (29, 34, 39)) or (dz == 3 and x == 16)
 
 
+# ---------------------------------------------------------------- cleanup
+
+MUDDY = {W + b for b in ('mud', 'coarse_dirt', 'grass_block', 'rooted_dirt', 'dirt', 'podzol', 'moss_block')}
+CLEANUP_REOPEN = ("Kort's ruling of 2026-11-01 after MapWalk pass2: no dark mud squares on the yards, and calm gorge scree "
+                  'steps in the same stone, tuff and gravel palette')
+
+
+def calm_gorge(x, z):
+    """(top, kind) for a gorge floor column, kind 'scree' or 'boulder'; None for faces, rims and the rim side.
+    The blockout's floor jitter and its scale-3 boulders read as clutter in game; here the scree is a smooth bank
+    and a few larger boulders (coarse noise, 2..4 high) stand on the floor."""
+    if x <= mb.PARAPET[1] or mb.edge_rise(x, z) > 0.02:
+        return None
+    out = x - (mb.PARAPET[1] + 2.5 + 2 * terrain.fbm(terrain.seed_of('gorge-edge'), x, z, 10, 3))
+    if out < 0:
+        return None
+    face = mb.GROUND - 1 - int(round(4.5 * out + 3 * 0.6 * terrain.fbm(terrain.seed_of('gorge-ledge'), x, z, 4, 2)))
+    scree = mb.GORGE_FLOOR + int(round(5 * mb._smooth(1 - (out - 3) / 9)))
+    if face >= scree:
+        return None  # crag step: kept as banded
+    b = terrain.fbm(terrain.seed_of('gorge-boulder-calm'), x, z, 9, 2)
+    if out > 14 and b > 0.5:
+        return mb.GORGE_FLOOR + 2 + int(b > 0.6) + int(b > 0.7), 'boulder'
+    return scree, 'scree'
+
+
+def cleanup_desired(world):
+    blocks = world.blocks
+    cols = {}
+    for (x, y, z), c in blocks.items():
+        if c.state != W + 'air':
+            cols.setdefault((x, z), []).append(y)
+    tops = {k: max(v) for k, v in cols.items()}
+
+    def st(p):
+        c = blocks.get(p)
+        return c.state if c is not None else W + 'air'
+
+    water = {k for k, y in tops.items() if 'water' in st((k[0], y, k[1]))}
+    near_water = {(x + i, z + j) for x, z in water for i in range(-2, 3) for j in range(-2, 3)}
+    paths = path_masks()
+    want = {}
+    for (x, z), y in tops.items():
+        s = st((x, y, z))
+        zone = zone_of(x, z)
+        if zone is None:
+            continue
+        if zone == 'scree':
+            continue  # the gorge floor is rebuilt below
+        elif s == W + 'mud':
+            p = paths.get((x, z))
+            want[(x, y, z)] = p[1] if p and p[0] else zone_block(zone, x, z)
+    calm = {}
+    for (x, z) in tops:
+        if x >= mb.GORGE_X0 and (x, z) not in near_water:
+            c = calm_gorge(x, z)
+            if c:
+                calm[(x, z)] = c
+    for (x, z), (top, kind) in calm.items():
+        old = tops[(x, z)]
+        for yy in range(top + 1, old + 1):
+            want[(x, yy, z)] = W + 'air'
+        lows = [calm[k][0] if k in calm else tops.get(k, top) for k in ((x + 1, z), (x - 1, z), (x, z + 1), (x, z - 1))]
+        low = min(lows)
+        for yy in range(min(low + 1, top), top + 1):
+            if kind == 'boulder':
+                want[(x, yy, z)] = band_block(x, yy, z)
+            elif yy == top:
+                want[(x, yy, z)] = zone_block('scree', x, z)
+            else:
+                want[(x, yy, z)] = W + 'stone'
+        for yy in range(old + 1, min(low + 1, top)):
+            want[(x, yy, z)] = W + 'stone'  # raised fill hidden behind its neighbours
+    final = lambda p: want.get(p, st(p))  # noqa: E731
+    for p, b in list(want.items()):
+        if b in FALLING and final((p[0], p[1] - 1, p[2])) == W + 'air':
+            want[(p[0], p[1] - 1, p[2])] = W + 'stone'
+    return {p: b for p, b in want.items() if normalize(b) != st(p)}
+
+
+DESIRED = None  # set by the CLI: desired or cleanup_desired
+
+
 # ---------------------------------------------------------------- the pass
 
 def postern_cells():
@@ -326,7 +413,7 @@ def _label(x, z):
 
 
 def section_plans(m, world):
-    changes = desired(world)
+    changes = DESIRED(world)
     by = {}
     for s in m['sections']:
         (x0, _, z0), (x1, _, z1) = mf.section_box(s)
@@ -338,7 +425,7 @@ def section_plans(m, world):
     for sid, ch in by.items():
         plans[sid] = {
             'format': PLAN_FORMAT, 'id': f'ironhold-{sid.lower()}-{SUFFIX}', 'world': 'ironhold', 'author': AUTHOR,
-            'purpose': f'Surface fix pass of section {sid}: {REOPEN}. Top layer only. Generated by '
+            'purpose': f'Section {sid}: {REOPEN}. Top layer only. Generated by '
                        'docs/maps/ironhold/sections/make_surface.py.',
             'section': sid, 'pass': 'blockout', 'reopen': REOPEN, 'expectSection': digests[sid],
             'limits': {'maxChangedBlocks': mb.MAX_CHANGED}, 'operations': _ops(ch, _label)}
@@ -358,7 +445,7 @@ def write_plans():
 
 def apply_all(only):
     m, w = mf.load_manifest(mb.MAP), World.load(mb.WORLD)
-    log = mb.WORK / 'surface-pass.log'
+    log = mb.WORK / f'{SUFFIX}-pass.log'
     sids = only or sorted(p.name.split('-')[0] for p in HERE.glob(f'*-{SUFFIX}.json'))
     with open(log, 'a', encoding='utf-8') as f:
         for sid in sids:
@@ -374,7 +461,8 @@ def apply_all(only):
             imgs = _section_renders(m, sid, w, HERE)
             rel = [str(pathlib.Path(i).resolve().relative_to(mb.ROOT)).replace('\\', '/') for i in imgs]
             mf.sign(m, sid, 'blockout', w, 'map lane agent (Opus 5.5)', 'pass',
-                    'Surface fix pass (Kort 2026-10-31): ' + _note(plan), rel,
+                    ('Surface cleanup (Kort 2026-11-01): ' if SUFFIX == 'cleanup' else 'Surface fix pass (Kort 2026-10-31): ')
+                    + _note(plan), rel,
                     [f'docs/maps/ironhold/sections/{path.name}'])
             print(f'{sid}: {summary["changed"]} changed, {text.splitlines()[-1]}', flush=True)
     w.save(mb.WORLD)
@@ -389,6 +477,9 @@ def _note(plan):
 
 if __name__ == '__main__':
     cmd = sys.argv[1] if len(sys.argv) > 1 else ''
+    DESIRED = desired
+    if cmd.startswith('cleanup-'):
+        SUFFIX, REOPEN, DESIRED, cmd = 'cleanup', CLEANUP_REOPEN, cleanup_desired, cmd[len('cleanup-'):]
     if cmd == 'plans':
         write_plans()
     elif cmd == 'apply':
