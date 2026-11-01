@@ -40,6 +40,10 @@ public final class Clip {
     private final double[][] boneReach;
     /** Each keyed bone's six channels at the clip's last frame, in bones' order (the end-pivoted death gain adds it). */
     private final double[][] end;
+    /** P1: the seconds over which peakStep(bone, true) looks at a clip's start (the longest interrupt fade). */
+    static final double PEAK_WINDOW = 0.6;
+    /** P1: each keyed bone's largest 20 Hz step at unit gain {degrees, px} (MotionMath.boneStep), over the whole clip and over its first PEAK_WINDOW. */
+    private final double[][] peak, peakHead;
 
     private Clip(String name, double length, boolean loop, Map<String, Double> markers, String[] bones, Key[][] rotation, Key[][] position) {
         this.name = name; this.length = length; this.loop = loop; this.markers = Collections.unmodifiableMap(markers);
@@ -62,6 +66,30 @@ public final class Clip {
             boneReach[b] = envelope(rotation[b], position[b]);
             for (int c = 0; c < 6; c++) reach[c] = Math.max(reach[c], boneReach[b][c]);
         }
+        peak = new double[bones.length][2];
+        peakHead = new double[bones.length][2];
+        double[] a = new double[6], z = new double[6], s = new double[2];
+        for (int b = 0; b < bones.length; b++) {
+            for (int i = 1; (i - 1) * 0.05 < length - 1e-9; i++) {
+                double t0 = (i - 1) * 0.05, t1 = Math.min(length, i * 0.05);
+                channel(rotation[b], loop, t0, a, 0); channel(position[b], loop, t0, a, 3);
+                channel(rotation[b], loop, t1, z, 0); channel(position[b], loop, t1, z, 3);
+                MotionMath.boneStep(a, z, s);
+                for (int k = 0; k < 2; k++) {
+                    peak[b][k] = Math.max(peak[b][k], s[k]);
+                    if (t1 <= PEAK_WINDOW + 1e-9) peakHead[b][k] = Math.max(peakHead[b][k], s[k]);
+                }
+            }
+        }
+    }
+
+    /**
+     * P1: the bone's largest step per 20 Hz tick at unit gain, {degrees (summed over the three angles), px}, over the whole clip
+     * or (head) over its first PEAK_WINDOW seconds; zeros for a bone the clip does not key. Computed once at parse.
+     */
+    public double[] peakStep(String bone, boolean head) {
+        for (int b = 0; b < bones.length; b++) if (bones[b].equals(bone)) return (head ? peakHead : peak)[b].clone();
+        return new double[2];
     }
 
     public static Clip parse(String json) { return parse(JsonParser.parseString(json).getAsJsonObject()); }

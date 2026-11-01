@@ -43,6 +43,14 @@ public final class MotionEngine {
     static final double HIT_SNAP = 0.1;
     /** A death plays at the seed amp pivoted on its last frame, g c(t) + (1 - g) c(end): at most 1.1 + 0.1 of the clip's reach. */
     static final double DEATH_GAIN = 1.2;
+    /** P1: the largest gain a death clip plays at (the seed's amp; K1b pivots it on the last frame, so its steps scale by it). */
+    static final double DEATH_STEP_GAIN = 1.1;
+    /** P1, R101: no interrupt or stance cross-fade steps a bone past this times the family's peak (Family.peak). */
+    static final double INTERRUPT_HEADROOM = 1.2;
+    /** P1: the interrupt fade's shortest and longest (s), the stance cross-fade's shortest, and the FROM track's inertia time constant (s). */
+    static final double INTERRUPT_MIN = 0.08, INTERRUPT_MAX = 0.6, STANCE_MIN = 0.2, FROM_TD = 0.08;
+    /** P1: the span (s) the FROM track's velocity is measured over, the fold at now against the fold FROM_H before (frame-rate free). */
+    static final double FROM_H = 1 / 120.0;
     /** Bounds on everything the procedural layers can add to one channel (degrees, pixels). */
     static final double PROC_ROT = 180, PROC_PX = 16;
     static final int ATTACK = 0, HIT = 1, DEATH = 2, MERGED = 3, MAX_LAYERS = 6, MAX_TRACKS = 6;
@@ -65,10 +73,26 @@ public final class MotionEngine {
      * </ul>
      */
     public record Family(String name, Map<String, Clip> stances, List<Clip> attacks, Map<String, List<Clip>> hits, Map<String, List<Clip>> deaths,
-                         Map<String, List<Clip>> hitsMirror) {
+                         Map<String, List<Clip>> hitsMirror, Map<String, double[]> vPeak) {
         /** A family whose mirrored hits (R106) are built from its hits. */
         public Family(String name, Map<String, Clip> stances, List<Clip> attacks, Map<String, List<Clip>> hits, Map<String, List<Clip>> deaths) {
-            this(name, stances, attacks, hits, deaths, null);
+            this(name, stances, attacks, hits, deaths, null, null);
+        }
+
+        /** A family with its peak velocities (P1) sampled from its clips. */
+        public Family(String name, Map<String, Clip> stances, List<Clip> attacks, Map<String, List<Clip>> hits, Map<String, List<Clip>> deaths,
+                      Map<String, List<Clip>> hitsMirror) {
+            this(name, stances, attacks, hits, deaths, hitsMirror, null);
+        }
+
+        /**
+         * P1, R101: the fastest any bone moves in any of the family's clips, {degrees per tick, px per tick} (MotionMath.boneStep at
+         * 20 Hz, each clip at its largest gain): the speed no interrupt or stance cross-fade may step past by more than INTERRUPT_HEADROOM.
+         */
+        public double[] peak() {
+            double[] p = new double[2];
+            for (double[] v : vPeak.values()) { p[0] = Math.max(p[0], v[0]); p[1] = Math.max(p[1], v[1]); }
+            return p;
         }
 
         public Family {
@@ -93,6 +117,26 @@ public final class MotionEngine {
                 d.put(e.getKey(), List.copyOf(l));
             }
             deaths = Map.copyOf(d);
+            if (vPeak == null) {
+                Map<String, double[]> vp = new HashMap<>();
+                for (Clip c : stances.values()) peakInto(vp, c, 1);
+                for (Clip c : attacks) peakInto(vp, c, ATTACK_GAIN);
+                for (List<Clip> l : hits.values()) for (Clip c : l) peakInto(vp, c, HIT_GAIN);
+                for (List<Clip> l : hitsMirror.values()) for (Clip c : l) peakInto(vp, c, HIT_GAIN);
+                for (List<Clip> l : deaths.values()) for (Clip c : l) peakInto(vp, c, DEATH_STEP_GAIN);
+                vPeak = vp;
+            }
+            Map<String, double[]> vc = new HashMap<>();
+            for (var e : vPeak.entrySet()) vc.put(e.getKey(), e.getValue().clone());
+            vPeak = java.util.Collections.unmodifiableMap(vc);
+        }
+
+        private static void peakInto(Map<String, double[]> vp, Clip c, double gain) {
+            for (String b : c.bones()) {
+                double[] s = c.peakStep(b, false), o = vp.computeIfAbsent(b, k -> new double[2]);
+                o[0] = Math.max(o[0], s[0] * gain);
+                o[1] = Math.max(o[1], s[1] * gain);
+            }
         }
     }
 
@@ -160,6 +204,10 @@ public final class MotionEngine {
         final double[] shares = new double[MAX_TRACKS + 1];
         final double[] fadeRot = new double[MotionStack.FADE_FRAMES + 1], fadePx = new double[MotionStack.FADE_FRAMES + 1];
         final Pose fadeMine = new Pose(), fadeUnder = new Pose(), merged = new Pose(), mergeTmp = new Pose();
+        /** P1: the FROM track's velocity (per second; State.merged holds its pose). */
+        final Pose fromVel = new Pose();
+        /** P1: scratch for the stance and interrupt cross-fade bounds. */
+        final Pose stanceOld = new Pose(), stanceNew = new Pose();
         final double[][] feet = new double[2][3], sol = new double[2][3];
         final double[] vec = new double[3], rootFull = new double[6], knee = new double[2];
     }
@@ -293,7 +341,7 @@ public final class MotionEngine {
             if (!f.dead && !fam.attacks().isEmpty()) {
                 Clip clip = fam.attacks().get(Math.floorMod(attack.variant(), fam.attacks().size()));
                 var tr = new MotionStack.Track(st.ids++, ATTACK, clip, null, 0, f.seed.amp(), attack.startTick() / (double) Clip.TICKS, f.seed.tempo());
-                if (tr.time(f.now) < clip.length() - 0.05) MotionStack.begin(st, tr, f);
+                if (tr.time(f.now) < clip.length() - 0.05) MotionStack.begin(st, fam, tr, f);
             }
         }
         MotionInput.Hit hit = in.hit();
@@ -321,13 +369,13 @@ public final class MotionEngine {
                     double front = key.equals("block") ? 1 : MotionMath.clamp01(1 + 1.5 * Math.cos(Math.toRadians(finite(hit.bearing()))));
                     var tr = new MotionStack.Track(st.ids++, HIT, clip, null, 0, HIT_W_GAIN[weight] * f.seed.amp() * front, at,
                         f.seed.tempo() * HIT_W_TEMPO[weight], clip.impact() < 0 ? HIT_SNAP : clip.impact() / (double) Clip.TICKS);
-                    if (tr.time(f.now) < clip.length() - 0.05) MotionStack.begin(st, tr, f);
+                    if (tr.time(f.now) < clip.length() - 0.05) MotionStack.begin(st, fam, tr, f);
                 }
             }
         }
         if (f.dead && !st.dead) {
             MotionStack.Track tr = death(st, fam, f, finite(in.deathSeconds()));
-            if (tr != null) MotionStack.begin(st, tr, f);
+            if (tr != null) MotionStack.begin(st, fam, tr, f);
         }
     }
 

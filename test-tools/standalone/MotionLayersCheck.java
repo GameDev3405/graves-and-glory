@@ -236,11 +236,16 @@ public final class MotionLayersCheck {
             if (f == 25) d.attack = new MotionInput.Attack(1, d.tick());
             MotionEngine.pose(d.in(), st, fam, out);
             List<MotionEngine.Playing> playing = MotionEngine.playing(st, d.time);
-            if (playing.size() == 2) {
-                // Expected shares from each track's fade progress alone, with the cosine ease written out here.
+            if (st.tracks.size() == 2) {
+                // P1: the first attack is now the FROM track below (its fold at the interrupt, coasting; MERGED, so not in
+                // playing). Expected shares from each track's fade progress alone, with the cosine ease written out here.
+                check(st.tracks.get(0).kind == MotionEngine.MERGED && st.tracks.get(0).inertial && playing.size() == 1,
+                    "the interrupted attack should be one FROM track under the new one: " + st.tracks.size() + " tracks, " + playing.size() + " playing");
                 double wBottom = cosineEase(st.tracks.get(0).x), wTop = cosineEase(st.tracks.get(1).x);
-                double wantTop = wTop * seeds[5].amp(), wantBottom = wBottom * (1 - wTop) * seeds[5].amp();
-                double top = playing.get(1).gain(), bottom = playing.get(0).gain();
+                double wantTop = wTop * seeds[5].amp(), wantBottom = wBottom * (1 - wTop);
+                double[] e = new double[MotionEngine.MAX_TRACKS + 1];
+                MotionStack.shares(st.tracks, 2, e);
+                double top = playing.get(0).gain(), bottom = e[0];
                 check(Math.abs(top - wantTop) < 1e-9 && Math.abs(bottom - wantBottom) < 1e-9, "effective shares should be w_top and w_bottom (1 - w_top): got "
                     + top + " / " + bottom + ", want " + wantTop + " / " + wantBottom);
                 worst = Math.max(worst, Math.max(Math.abs(top - wantTop), Math.abs(bottom - wantBottom)));

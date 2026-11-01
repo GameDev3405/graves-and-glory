@@ -28,6 +28,8 @@ final class MotionStack {
         final double[] coef = new double[LAYER_CLIPS];
         int n;
         double aim, raw;
+        /** P1: how long this layer takes to ramp in (s): STANCE_BLEND, or longer where the velocity bound (stanceFade) needs it. */
+        double fade = MotionEngine.STANCE_BLEND;
         boolean fresh;
 
         Clip clip() { return n == 0 ? null : clips[0]; }
@@ -51,7 +53,9 @@ final class MotionStack {
         List<Layer> layers = st.stances;
         Layer top = layers.isEmpty() ? null : layers.get(layers.size() - 1);
         if (top == null || top.n > 1 || top.clip() != clip || top.aim != aim) {
+            double fade = f.first ? MotionEngine.STANCE_BLEND : Math.max(MotionEngine.STANCE_BLEND, stanceFade(st, fam, f, clip, aim));
             top = new Layer();
+            top.fade = fade;
             top.put(clip, 1);
             top.aim = aim;
             top.raw = f.first ? 1 : 0;
@@ -59,7 +63,7 @@ final class MotionStack {
             layers.add(top);
             if (layers.size() > MotionEngine.MAX_LAYERS) mergeLayers(layers);
         }
-        if (!top.fresh) top.raw = Math.min(1, top.raw + f.dt / MotionEngine.STANCE_BLEND);
+        if (!top.fresh) top.raw = Math.min(1, top.raw + f.dt / top.fade);
         top.fresh = false;
         if (top.raw >= 1) while (layers.size() > 1) layers.remove(0);
 
@@ -81,12 +85,73 @@ final class MotionStack {
         }
         for (int i = 0; i < n; i++) {
             Clip c = mix[i];
-            c.add(c.loop() ? f.now * f.seed.tempo() + f.seed.phase() / MotionMath.TAU * c.length() : c.length(), out, coef[i], st.tmp);
+            c.add(stanceTime(c, f), out, coef[i], st.tmp);
             mix[i] = null;
         }
         f.aim = aimShare;
         out.add("right_arm", RX, f.aimPitch * aimShare);
         out.add("left_arm", RX, f.aimPitch * aimShare);
+    }
+
+    /** A stance clip's time at {@code now}: looping stances at the unit's tempo and phase, held ones at their last key. */
+    static double stanceTime(Clip c, MotionEngine.Frame f) {
+        return c.loop() ? f.now * f.seed.tempo() + f.seed.phase() / MotionMath.TAU * c.length() : c.length();
+    }
+
+    /**
+     * P1: the cross-fade time of a new stance layer (clip, aim share): the velocity bound (velocityFade) from the stance fold as
+     * it stands (aim raise included) to the new layer, at least STANCE_MIN and at most INTERRUPT_MAX seconds.
+     */
+    static double stanceFade(MotionEngine.State st, MotionEngine.Family fam, MotionEngine.Frame f, Clip clip, double aim) {
+        Pose old = st.stanceOld, neu = st.stanceNew;
+        old.clear(); neu.clear();
+        double carry = 1, aimShare = 0;
+        for (int i = st.stances.size() - 1; i >= 0 && carry > 0; i--) {
+            Layer l = st.stances.get(i);
+            double w = MotionMath.ease(l.raw), e = w * carry;
+            carry *= 1 - w;
+            aimShare += e * l.aim;
+            for (int c = 0; c < l.n; c++) l.clips[c].add(stanceTime(l.clips[c], f), old, e * l.coef[c], st.tmp);
+        }
+        old.add("right_arm", RX, f.aimPitch * aimShare);
+        old.add("left_arm", RX, f.aimPitch * aimShare);
+        if (clip != null) clip.add(stanceTime(clip, f), neu, 1, st.tmp);
+        neu.add("right_arm", RX, f.aimPitch * aim);
+        neu.add("left_arm", RX, f.aimPitch * aim);
+        return velocityFade(fam.peak(), old, neu, clip, 0, null, clip != null && clip.loop() ? f.seed.tempo() : 1, MotionEngine.STANCE_MIN);
+    }
+
+    /**
+     * P1 (Task 16, R101): the fade from pose {@code from} to {@code to} that keeps every bone's step within INTERRUPT_HEADROOM
+     * times the family's peak. The cosine ease's steepest slope is pi / 2, so a fade of T seconds over a gap G adds at most
+     * G (pi / 2) (0.05 / T) a tick on top of the incoming clip's own step Vn (its peak over its first PEAK_WINDOW, times
+     * scale): T = pi G 0.05 / (2 (1.2 peak - Vn)) for each bone, rotation (summed over its angles, as MotionMath.boneStep) and
+     * translation (largest channel) apart; the largest over bones, clamped to [min, INTERRUPT_MAX]. Where 1.2 peak - Vn is at
+     * most 0.1 peak there is no headroom, so INTERRUPT_MAX. The incoming pose plays a (and b by mix, a death's blend).
+     */
+    static double velocityFade(double[] peak, Pose from, Pose to, Clip a, double mix, Clip b, double scale, double min) {
+        double t = min;
+        for (int pass = 0; pass < 2; pass++) {
+            Pose p = pass == 0 ? to : from, q = pass == 0 ? from : to;
+            for (int i = 0, n = p.size(); i < n; i++) {
+                String bone = p.name(i);
+                double[] v = p.row(i);
+                double g = 0, gp = 0;
+                for (int c = 0; c < 3; c++) g += Math.abs(v[c] - q.get(bone, c));
+                for (int c = 3; c < 6; c++) gp = Math.max(gp, Math.abs(v[c] - q.get(bone, c)));
+                double[] vn = {0, 0};
+                if (a != null) { double[] s = a.peakStep(bone, true); vn[0] = s[0] * (1 - mix); vn[1] = s[1] * (1 - mix); }
+                if (b != null) { double[] s = b.peakStep(bone, true); vn[0] = Math.max(vn[0], s[0] * mix); vn[1] = Math.max(vn[1], s[1] * mix); }
+                for (int k = 0; k < 2; k++) {
+                    double gap = k == 0 ? g : gp;
+                    if (gap <= 1e-9) continue;
+                    double head = MotionEngine.INTERRUPT_HEADROOM * peak[k] - vn[k] * scale;
+                    double tb = head <= 0.1 * peak[k] ? MotionEngine.INTERRUPT_MAX : Math.PI * gap * 0.05 / (2 * head);
+                    t = Math.max(t, Math.min(MotionEngine.INTERRUPT_MAX, tb));
+                }
+            }
+        }
+        return t;
     }
 
     /** Folds the bottom two layers into one with the same contribution: L0 w0 (1 - w1) + L1 w1, fully weighted. */
@@ -112,6 +177,8 @@ final class MotionStack {
         final double legShare;
         double x, fadeIn = MotionEngine.FADES[0], fadeOut = MotionEngine.FADES[0];
         boolean leaving, fresh;
+        /** P1: a FROM track, the merged pose plus State.fromVel coasting to a stop over FROM_TD from start. */
+        final boolean inertial;
 
         Track(int id, int kind, Clip a, Clip b, double mix, double gain, double start, double tempo) {
             this(id, kind, a, b, mix, gain, start, tempo, a.impact() < 0 ? -1 : a.impact() / (double) Clip.TICKS);
@@ -122,12 +189,18 @@ final class MotionStack {
             this.id = id; this.kind = kind; this.a = a; this.b = b; this.mix = b == null ? 0 : mix; this.gain = gain;
             this.start = start; this.tempo = tempo; this.impact = impact;
             this.legShare = keysLegs(a) || (b != null && keysLegs(b)) ? 1 : 0;
+            this.inertial = false;
         }
 
         /** A merged track: the frozen fold in State.merged, fully weighted. */
         Track(int id, double legShare) {
+            this(id, legShare, 0, false);
+        }
+
+        /** P1: a FROM track from {@code start}: State.merged (the action fold at the interrupt) coasting on State.fromVel. */
+        Track(int id, double legShare, double start, boolean inertial) {
             this.id = id; this.kind = MotionEngine.MERGED; this.a = null; this.b = null; this.mix = 0; this.gain = 1;
-            this.start = 0; this.impact = -1; this.tempo = 1; this.legShare = legShare; this.x = 1;
+            this.start = start; this.impact = -1; this.tempo = 1; this.legShare = legShare; this.x = 1; this.inertial = inertial;
         }
 
         /** Clip time: real time up to the impact marker, so the impact lands on the server's tick, then the unit's tempo. */
@@ -154,7 +227,12 @@ final class MotionStack {
     /** Adds w times track tr's pose at {@code now} (its gain included) into out. */
     static void add(MotionEngine.State st, Track tr, double now, double w, Pose out) {
         if (w == 0) return;
-        if (tr.kind == MotionEngine.MERGED) { out.add(st.merged, w); return; }
+        if (tr.kind == MotionEngine.MERGED) {
+            out.add(st.merged, w);
+            // before its start (begin's slope sample of a fold that holds it) the coast runs back smoothly along the same curve
+            if (tr.inertial) out.add(st.fromVel, w * MotionEngine.FROM_TD * (1 - Math.exp(-(now - tr.start) / MotionEngine.FROM_TD)));
+            return;
+        }
         double t = tr.time(now);
         tr.a.add(t, out, w * tr.gain * (1 - tr.mix), st.tmp);
         if (tr.b != null) tr.b.add(t, out, w * tr.gain * tr.mix, st.tmp);
@@ -190,13 +268,47 @@ final class MotionStack {
     }
 
     /**
-     * Pushes a track on top. The tracks below hold their weights; the new one fades in from the next frame as fast as the
-     * pop budget allows. Past MAX_TRACKS the bottom two merge, so a weighted track is never dropped.
+     * Pushes a track on top. A late join (first frame) shows it at once. Otherwise (P1, Task 16) the tracks playing are replaced
+     * by one FROM track: the action fold as it stands at {@code now} (the weights advanced to now as action() would, the clips
+     * evaluated at now, so it is the same at any frame rate), each angle wrapped to within 180 degrees of the new clip's start
+     * (an Euler angle 360 off is the same rotation), coasting on its velocity (the fold's slope over FROM_H) to a stop over
+     * FROM_TD, so the blend starts from the evaluated pose with no break in speed. The new track fades in over the longer of
+     * fadeTime (the pop budget) and velocityFade (R101). Past MAX_TRACKS the bottom two merge, so a weighted track is never dropped.
      */
-    static void begin(MotionEngine.State st, Track tr, MotionEngine.Frame f) {
+    static void begin(MotionEngine.State st, MotionEngine.Family fam, Track tr, MotionEngine.Frame f) {
         if (f.first) tr.x = 1;
         else {
-            tr.fadeIn = fadeTime(st, tr, f.now, st.tracks.size(), true);
+            advance(st, f);
+            Pose mine = st.stanceNew;
+            if (!st.tracks.isEmpty()) {
+                Pose p0 = st.mergeTmp, v = st.fromVel;
+                p0.clear(); v.clear();
+                int n = st.tracks.size();
+                double legs = fold(st, n, f.now, p0);
+                fold(st, n, f.now - MotionEngine.FROM_H, v);
+                for (int i = 0, m = p0.size(); i < m; i++) v.get(p0.name(i));
+                for (int i = 0, m = v.size(); i < m; i++) {
+                    double[] r = v.row(i);
+                    for (int c = 0; c < 6; c++) r[c] = (p0.get(v.name(i), c) - r[c]) / MotionEngine.FROM_H;
+                }
+                mine.clear();
+                add(st, tr, f.now, 1, mine);
+                for (int i = 0, m = p0.size(); i < m; i++) {
+                    double[] r = p0.row(i);
+                    for (int c = 0; c < 3; c++) r[c] += 360 * Math.rint((mine.get(p0.name(i), c) - r[c]) / 360);
+                }
+                st.merged.clear();
+                st.merged.add(p0, 1);
+                st.tracks.clear();
+                st.tracks.add(new Track(st.ids++, legs, f.now, true));
+            }
+            double pops = fadeTime(st, tr, f.now, st.tracks.size(), true);
+            Pose from = st.stanceOld;
+            from.clear(); mine.clear();
+            fold(st, st.tracks.size(), f.now, from);
+            add(st, tr, f.now, 1, mine);
+            double scale = tr.gain * Math.max(1, tr.tempo);
+            tr.fadeIn = Math.max(pops, velocityFade(fam.peak(), from, mine, tr.a, tr.mix, tr.b, scale, MotionEngine.INTERRUPT_MIN));
             tr.fresh = true;
         }
         st.tracks.add(tr);
@@ -276,28 +388,36 @@ final class MotionStack {
      * frame rate.
      */
     static void action(MotionEngine.State st, MotionEngine.Frame f, Pose out) {
+        advance(st, f);
+        f.bodyAction = fold(st, st.tracks.size(), f.now, out);
+    }
+
+    /**
+     * Steps the top track's weight to {@code now} (fading in, or out once its clip ends) and drops what it covers or what has
+     * faded out. A track begun this frame (fresh) holds its weight. action() runs it every frame; begin() runs it first, so the
+     * FROM track starts from the fold as it stands at now, and action() then finds the new track on top, fresh.
+     */
+    static void advance(MotionEngine.State st, MotionEngine.Frame f) {
         List<Track> tracks = st.tracks;
-        if (!tracks.isEmpty()) {
-            Track top = tracks.get(tracks.size() - 1);
-            double last = f.now - f.dt;
-            if (!top.leaving) {
-                double end = top.kind == MotionEngine.DEATH ? (f.dead ? Double.POSITIVE_INFINITY : f.now)
-                        : top.kind == MotionEngine.MERGED ? f.now : top.end();
-                if (f.now >= end) {
-                    double tEnd = Math.max(last, Math.min(end, f.now));
-                    if (!top.fresh) top.x = Math.min(1, top.x + (tEnd - last) / top.fadeIn);
-                    top.leaving = true;
-                    top.fadeOut = fadeTime(st, top, tEnd, tracks.size() - 1, false);
-                    top.x = Math.max(0, top.x - (f.now - tEnd) / top.fadeOut);
-                } else {
-                    if (!top.fresh) top.x = Math.min(1, top.x + f.dt / top.fadeIn);
-                    if (top.x >= 1) while (tracks.size() > 1) tracks.remove(0);
-                }
-            } else top.x = Math.max(0, top.x - f.dt / top.fadeOut);
-            top.fresh = false;
-            if (top.leaving && top.x <= 0) tracks.remove(tracks.size() - 1);
-        }
-        f.bodyAction = fold(st, tracks.size(), f.now, out);
+        if (tracks.isEmpty()) return;
+        Track top = tracks.get(tracks.size() - 1);
+        double last = f.now - f.dt;
+        if (!top.leaving) {
+            double end = top.kind == MotionEngine.DEATH ? (f.dead ? Double.POSITIVE_INFINITY : f.now)
+                    : top.kind == MotionEngine.MERGED ? f.now : top.end();
+            if (f.now >= end) {
+                double tEnd = Math.max(last, Math.min(end, f.now));
+                if (!top.fresh) top.x = Math.min(1, top.x + (tEnd - last) / top.fadeIn);
+                top.leaving = true;
+                top.fadeOut = fadeTime(st, top, tEnd, tracks.size() - 1, false);
+                top.x = Math.max(0, top.x - (f.now - tEnd) / top.fadeOut);
+            } else {
+                if (!top.fresh) top.x = Math.min(1, top.x + f.dt / top.fadeIn);
+                if (top.x >= 1) while (tracks.size() > 1) tracks.remove(0);
+            }
+        } else top.x = Math.max(0, top.x - f.dt / top.fadeOut);
+        top.fresh = false;
+        if (top.leaving && top.x <= 0) tracks.remove(tracks.size() - 1);
     }
 
     /**

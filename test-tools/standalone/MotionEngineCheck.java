@@ -11,6 +11,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Random;
 import java.util.Set;
@@ -58,6 +59,7 @@ public final class MotionEngineCheck {
         run("death spread", () -> deathSpread(rig));
         run("hit variants", MotionEngineCheck::hitVariants);
         run("hit direction and weight", () -> hitDirectionWeight(fam));
+        run("interrupt steps", MotionEngineCheck::interruptSteps);
         if (failed > 0) {
             System.out.println("MotionEngineCheck: " + failed + " checks FAILED");
             System.exit(1);
@@ -411,6 +413,130 @@ public final class MotionEngineCheck {
 
     static boolean at(double elapsed, double when) { return Math.abs(elapsed - when) < 0.5 / 60; }
 
+    // ---- P1: interrupts blend from the evaluated pose (Task 16, R96, R101) ----
+
+    static final String CLIPS = "src/main/resources/assets/gravesandglory/clips/biped/";
+
+    /** The real sword_shield family from the clip folders (common, then sword_shield), sorted as TroopMotion.build sorts them. */
+    static MotionEngine.Family realSwordShield(Map<String, Clip> all) {
+        for (String dir : List.of("common", "sword_shield")) {
+            try (var s = Files.list(Path.of(CLIPS + dir))) {
+                for (Path p : (Iterable<Path>) s.sorted()::iterator) {
+                    Clip c = Clip.parse(Files.readString(p));
+                    all.put(c.name(), c);
+                }
+            } catch (java.io.IOException e) { throw new AssertionError(dir + ": " + e); }
+        }
+        Map<String, Clip> stances = new HashMap<>();
+        for (String s : List.of("idle", "carry", "guard", "brace", "wall", "shield", "aim", "rest")) if (all.containsKey(s)) stances.put(s, all.get(s));
+        List<Clip> attacks = new ArrayList<>();
+        for (String a : List.of("sword_shield_thrust", "sword_shield_overhead", "sword_shield_low_cut")) attacks.add(all.get(a));
+        Map<String, List<Clip>> hits = new HashMap<>(), deaths = new HashMap<>();
+        java.util.regex.Pattern hit = java.util.regex.Pattern.compile("hit_(head|body|legs)(?:_[0-9]+)?"), block = java.util.regex.Pattern.compile("block(?:_[0-9]+)?");
+        for (var e : new java.util.TreeMap<>(all).entrySet()) {
+            var m = hit.matcher(e.getKey());
+            if (m.matches()) hits.computeIfAbsent(m.group(1), k -> new ArrayList<>()).add(e.getValue());
+            else if (block.matcher(e.getKey()).matches()) hits.computeIfAbsent("block", k -> new ArrayList<>()).add(e.getValue());
+            else { String d = MotionEngine.deathKey(e.getKey()); if (d != null) deaths.computeIfAbsent(d, k -> new ArrayList<>()).add(e.getValue()); }
+        }
+        return new MotionEngine.Family("sword_shield", stances, attacks, hits, deaths);
+    }
+
+    /** One bone's 20 Hz step between two rows: rotation summed over its angles (wrapped), translation the largest channel. Independent of the engine. */
+    static double[] step(double[] a, double[] b) {
+        double r = 0, p = 0;
+        for (int c = 0; c < 3; c++) { double d = (b[c] - a[c]) % 360; if (d >= 180) d -= 360; else if (d < -180) d += 360; r += Math.abs(d); }
+        for (int c = 3; c < 6; c++) p = Math.max(p, Math.abs(b[c] - a[c]));
+        return new double[]{r, p};
+    }
+
+    /** The family's authored peak: the fastest any bone moves in any clip at 20 Hz at its largest gain {deg/tick, px/tick}, sampled here independently. */
+    static double[] authoredPeak(MotionEngine.Family fam, String[] where) {
+        double[] peak = new double[2];
+        Map<Clip, Double> gains = new LinkedHashMap<>();
+        for (Clip c : fam.stances().values()) gains.put(c, 1.0);
+        for (Clip c : fam.attacks()) gains.put(c, MotionEngine.ATTACK_GAIN);
+        for (List<Clip> l : fam.hits().values()) for (Clip c : l) gains.put(c, MotionEngine.HIT_GAIN);
+        for (List<Clip> l : fam.deaths().values()) for (Clip c : l) gains.put(c, 1.1);
+        for (var e : gains.entrySet()) {
+            Clip c = e.getKey();
+            Map<String, double[]> a = new HashMap<>(), b = new HashMap<>();
+            for (double t = 0.05; t <= c.length() + 0.05 - 1e-9; t += 0.05) {
+                a.clear(); b.clear();
+                c.sample(t - 0.05, a); c.sample(Math.min(t, c.length()), b);
+                for (String bone : b.keySet()) {
+                    double[] s = step(a.get(bone), b.get(bone));
+                    for (int k = 0; k < 2; k++) if (s[k] * e.getValue() > peak[k]) { peak[k] = s[k] * e.getValue(); if (k == 0) where[0] = c.name() + " " + bone; }
+                }
+            }
+        }
+        return peak;
+    }
+
+    /**
+     * P1 (Task 16, R96 and R101): interrupts and stance cross-fades blend from the evaluated pose, so no bone steps past 1.2 times the
+     * family's authored peak. Real sword_shield and common clips; the full pose at 60 fps, read every third frame (20 Hz) from 0.5 s
+     * before the interrupt to 2 s after. (a) thrust, then a body hit 0.05 s before its impact; (b) overhead, then a slash from the
+     * front kills at 0.3 s (death_slash_front); (c) thrust, then a death from the front (death_front) 29 frames in; (d) guard to
+     * carry; (e) carry to guard while an attack plays.
+     */
+    static String interruptSteps() {
+        Map<String, Clip> all = new HashMap<>();
+        MotionEngine.Family fam = realSwordShield(all);
+        String[] peakAt = {""};
+        double[] peak = authoredPeak(fam, peakAt);
+        StringBuilder sb = new StringBuilder(String.format(Locale.ROOT, "peak %.1f deg, %.2f px a tick (%s); ", peak[0], peak[1], peakAt[0]));
+        double worstRatio = 0;
+        String[] names = {"a hit on thrust", "b slash death on overhead", "c death_front on thrust", "d guard to carry", "e carry to guard in a swing"};
+        MotionMath.Seed[] seeds = seeds(4, 9100);
+        for (int sc = 0; sc < names.length; sc++) {
+            double worstR = 0, worstP = 0; String atR = "", atP = "";
+            for (MotionMath.Seed seed : seeds) {
+                Drive d = new Drive(seed);
+                d.stance = "run"; d.enemy = sc != 4;
+                var st = new MotionEngine.State();
+                Pose out = new Pose();
+                double t0 = d.time + 1, tInt;
+                int variant = sc == 1 ? 1 : 0;
+                Clip attack = fam.attacks().get(variant);
+                if (sc == 0) tInt = t0 + attack.impact() / 20.0 - 0.05;
+                else if (sc == 1) tInt = t0 + 0.3;
+                else if (sc == 2) tInt = t0 + 29 / 60.0;
+                else tInt = t0 + 0.3;
+                Map<String, double[]> prev = null;
+                for (int i = 0; d.time < tInt + 2; i++) {
+                    if (sc != 3 && d.attack == null && d.time >= t0) d.attack = new MotionInput.Attack(variant, d.tick());
+                    if (d.time >= tInt) {
+                        if (sc == 0 && d.hit == null) d.hit("body", 0, 1, false, false);
+                        if (sc == 1 && !d.dead) d.die(0);
+                        if (sc == 2 && !d.dead) { d.hit = new MotionInput.Hit("any", "body", 0, 2, false, true, d.tick()); d.dead = true; d.deathSeconds = 0; }
+                        if (sc == 3) d.enemy = false;
+                        if (sc == 4) d.enemy = true;
+                    }
+                    MotionEngine.pose(d.in(), st, fam, out);
+                    if (i % 3 == 0) {
+                        Map<String, double[]> cur = out.snapshot();
+                        if (prev != null && d.time >= tInt - 0.5) {
+                            for (String bone : cur.keySet()) {
+                                double[] s = step(prev.getOrDefault(bone, new double[6]), cur.get(bone));
+                                String at = String.format(Locale.ROOT, "%s %+.2f s", bone, d.time - tInt);
+                                if (s[0] > worstR) { worstR = s[0]; atR = at; }
+                                if (s[1] > worstP) { worstP = s[1]; atP = at; }
+                            }
+                        }
+                        prev = cur;
+                    }
+                    d.step(1 / 60.0);
+                }
+            }
+            double ratio = Math.max(worstR / peak[0], worstP / Math.max(peak[1], 1e-9));
+            worstRatio = Math.max(worstRatio, ratio);
+            sb.append(String.format(Locale.ROOT, "%s %.1f deg (%s) %.2f px (%s) = %.2f x peak; ", names[sc], worstR, atR, worstP, atP, ratio));
+            check(worstR <= 1.2 * peak[0] && worstP <= 1.2 * peak[1], names[sc] + ": " + String.format(Locale.ROOT, "%.1f deg / %.2f px a tick past 1.2 x the peak (%.1f / %.2f)", worstR, worstP, peak[0], peak[1]));
+        }
+        return sb.append(String.format(Locale.ROOT, "worst %.2f x peak (want 1.2 or less)", worstRatio)).toString();
+    }
+
     // ---- pops ----
 
     /** Tracks the worst per-frame move against the 12 degree / 1.5 px bar, less what each playing clip's own keys move. */
@@ -435,6 +561,9 @@ public final class MotionEngineCheck {
                     double[] n = cur.getOrDefault(bone, new double[6]), o = prev.getOrDefault(bone, new double[6]);
                     for (int c = 0; c < 6; c++) {
                         double allow = (c < 3 ? 12 : 1.5) * Math.max(1, dt * 60) + extra(bone, c);
+                        // P1: an interrupt's FROM track carries on the interrupted clips' motion (at most its velocity times dt,
+                        // which those clips' keys were exempt for), slowing to a stop: the same exemption, not a pop
+                        for (var tr : st.tracks) if (tr.inertial) allow += 1.1 * Math.abs(st.fromVel.get(bone, c)) * dt;
                         for (var p : playing) {
                             Double before = prevTimes.get(p.id());
                             if (before == null) continue;

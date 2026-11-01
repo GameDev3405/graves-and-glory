@@ -7,6 +7,21 @@ public final class MotionMath {
     static final double TAU = 2 * Math.PI, MAX_DT = 0.1;
 
     static double clamp01(double x) { return x < 0 ? 0 : x > 1 ? 1 : x; }
+
+    /** Degrees wrapped into [-180, 180). */
+    public static double wrapDegrees(double d) { d %= 360; if (d >= 180) d -= 360; else if (d < -180) d += 360; return d; }
+
+    /**
+     * P1 (Task 16): one bone's step between two six-channel rows [rx, ry, rz (degrees), tx, ty, tz (px)]: the rotation step
+     * is the sum over the three angles of |wrapDegrees(b - a)|, the translation step the largest |b - a|. MotionGrade's
+     * per-bone step (maxBoneDegPerTick, authoredPeakBoneDegPerTick) is the same metric on the model's parts. Writes both into o.
+     */
+    public static void boneStep(double[] a, double[] b, double[] o) {
+        double r = 0, p = 0;
+        for (int c = 0; c < 3; c++) r += Math.abs(wrapDegrees(b[c] - a[c]));
+        for (int c = 3; c < 6; c++) p = Math.max(p, Math.abs(b[c] - a[c]));
+        o[0] = r; o[1] = p;
+    }
     static double clampDt(double dt) { return dt > 0 ? Math.min(dt, MAX_DT) : 0; }
 
     /** Cosine ease, 0 to 1 over 0 to 1. */
