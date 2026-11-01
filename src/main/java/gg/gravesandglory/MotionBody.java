@@ -28,7 +28,11 @@ final class MotionBody {
      * frame's yaw rate, so a rate change at a sample time steps the same at any frame rate.
      */
     static void locomotion(MotionEngine.Frame f, MotionEngine.State st, Pose out) {
-        gaitPose(f, f.limbAngle, out);
+        if (f.ground) stride(f, st, out);
+        else {
+            f.gaitW = 0;
+            gaitPose(f, f.limbAngle, out);
+        }
         double rate = f.first ? f.yawRate : st.turnRate;
         st.turnPhase = (st.turnPhase + Math.abs(rate) / 45 * Math.PI * f.dt) % TAU;
         st.turnRate = f.yawRate;
@@ -89,6 +93,76 @@ final class MotionBody {
             out.add("root", TY, crouch);
         }
     }
+
+    /** G1: duty factor walk to run, the thigh's half-sweep cap (degrees) walk to run, and the leg's reach at a soft knee (px). */
+    static final double DUTY_WALK = 0.62, DUTY_RUN = 0.38, CAP_WALK = 40, CAP_RUN = 50, REACH = 11.9;
+    /** G1: the least and most cadence (cycles per second), the swing knee walk to run (degrees), the side swing's share and cap. */
+    static final double F_MIN = 0.9, F_MAX = 3.2, KNEE_WALK = 35, KNEE_RUN = 70, SIDE_K = 0.6, SIDE_MAX = 20;
+
+    /**
+     * G1: the stride from the ground speed (Task 16). The gait keeps its own phase psi, advanced at a cadence chosen so the
+     * stance foot's sweep matches the ground: the stride is as long as the thigh cap allows at the slowest cadence, and the
+     * cadence rises past that. In stance the thigh angle's sine is linear in time (the foot's travel is linear), in swing it
+     * eases back to the front. The legs swing along the body-frame velocity, so a backpedal sweeps them the other way and a
+     * strafe sideways. The knee bends only in swing; the arms, bob, sway, lean and twist follow the same phase. Writes the
+     * gait's phase per leg, duty and weight into the frame for the moving plant (G3).
+     */
+    static void stride(MotionEngine.Frame f, MotionEngine.State st, Pose out) {
+        double v = Math.hypot(f.vF, f.vL), run = f.run, sh = f.sh, bp = f.bp;
+        double duty = DUTY_WALK + (DUTY_RUN - DUTY_WALK) * run, cap = Math.toRadians(CAP_WALK + (CAP_RUN - CAP_WALK) * run);
+        double cMax = 2 * REACH * Math.sin(cap) / duty / 16;
+        double cad = v > 1e-9 ? Math.min(v / Math.min(v / F_MIN, cMax), F_MAX) * f.seed.tempo() : F_MIN * f.seed.tempo();
+        double c = v / cad, amp = Math.asin(Math.min(1, duty * c * 16 / (2 * REACH)));
+        if (!st.psiInit) {
+            st.psiInit = true;
+            st.psi = frac(f.seed.phase() / TAU);
+        }
+        st.psi = frac(st.psi + cad * f.dt);
+        double a = f.m * MotionMath.clamp01(v / 0.5), dirF = f.vF / Math.max(v, 0.05), dirL = f.vL / Math.max(v, 0.05);
+        f.gaitW = a;
+        f.duty = duty;
+        f.gaitV = v;
+        double ampDeg = Math.toDegrees(amp), thR = 0;
+        for (int i = 0; i < 2; i++) {
+            double q = i == 0 ? st.psi : frac(st.psi + 0.5);
+            f.q[i] = q;
+            double th;
+            if (q < duty) th = Math.toDegrees(Math.asin(Math.sin(amp) * (2 * q / duty - 1)));
+            else th = ampDeg * Math.cos(Math.PI * (q - duty) / (1 - duty));
+            if (i == 0) thR = th;
+            if (a <= 0) continue;
+            out.add(LEGS[i], RX, dirF * th * a);
+            out.add(LEGS[i], RZ, MotionEngine.clamp(SIDE_K * dirL * th * a, -SIDE_MAX, SIDE_MAX));
+            if (q >= duty) out.add(SHINS[i], RX, a * (KNEE_WALK + (KNEE_RUN - KNEE_WALK) * run) * Math.sin(Math.PI * (q - duty) / (1 - duty)));
+        }
+        double crouch = sh * f.m;
+        if (crouch > 0) {
+            for (int i = 0; i < 2; i++) { out.add(SHINS[i], RX, 14 * crouch); out.add(LEGS[i], RX, -7 * crouch); }
+            out.add("root", TY, crouch);
+        }
+        if (a <= 0) return;
+        double p = TAU * st.psi, g = -dirF * thR / Math.max(ampDeg, 1);
+        double s = Math.sin(p), cp = Math.cos(p);
+        out.add("root", TY, a * (0.9 * s * s * (1 - run) + 1.3 * cp * cp * run));
+        out.add("root", TX, 0.35 * a * (1 - run) * s);
+        out.add("body", RZ, 1.5 * a * (1 - run) * s);
+        double lean = a * (3 + 7 * run) * (1 - bp) - 4 * bp * a;
+        out.add("body", RX, lean);
+        out.add("head", RX, -0.6 * lean);
+        double twist = a * (5 + 3 * run) * (1 - sh);
+        out.add("root", RY, -twist * g);
+        out.add("body", RY, 1.8 * twist * g);
+        double arm = a * (26 + 14 * run) * (1 - 0.75 * sh) * (1 - 0.3 * bp);
+        out.add("right_arm", RX, arm * g);
+        out.add("left_arm", RX, -arm * g);
+        out.add("right_arm", RZ, a * (4 + 5 * run));
+        out.add("left_arm", RZ, -a * (4 + 5 * run));
+        double elbow = a * (10 + 45 * run), flick = MotionMath.tri(p - 0.85);
+        out.add("right_forearm", RX, -elbow - 12 * a * Math.max(0, -flick));
+        out.add("left_forearm", RX, -elbow - 12 * a * Math.max(0, flick));
+    }
+
+    static double frac(double x) { return x - Math.floor(x); }
 
     // ---- life ----
 

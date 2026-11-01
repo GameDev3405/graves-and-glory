@@ -27,6 +27,8 @@ public final class MotionEngine {
             TURN_BLEND = 0.3, LIFE_BLEND = 0.5, LOOK_BLEND = 0.4, CALM_BLEND = 0.35, SETTLE_BLEND = 0.5, PLANT_BLEND = 0.6;
     /** The limb speed above which a unit starts moving and below which it stops (hysteresis). */
     static final double MOVE_ON = 0.1, MOVE_OFF = 0.04;
+    /** Ground input: velocity smoothing (Hz), the jump (blocks) and gap (s) that start it afresh, and the time off the ground that counts as airborne (s). */
+    static final double VEL_HZ = 12, GROUND_JUMP = 2, GROUND_GAP = 0.25, AIR_T = 0.06;
     /** The limb speed a run starts at, and how much faster it is all run. */
     static final double RUN_FROM = 0.35, RUN_SPAN = 0.6;
     /**
@@ -210,6 +212,60 @@ public final class MotionEngine {
         final Pose stanceOld = new Pose(), stanceNew = new Pose();
         final double[][] feet = new double[2][3], sol = new double[2][3];
         final double[] vec = new double[3], rootFull = new double[6], knee = new double[2];
+        final double[] orient = new double[9], aim = new double[3];
+        /** Ground input (Task 16): last position (blocks) and yaw (deg), the smoothed body-frame velocity (b/s), time off the ground. */
+        double gx, gy, gz, gyaw, vF, vL, vU, airT;
+        boolean gInit, teleport;
+        /** G1: the gait's own phase (cycles). */
+        double psi;
+        boolean psiInit;
+        /** G3 planting: each foot's target, world-fixed anchor, lift-off point and last target (px), its lift-off time, its phase last frame. */
+        final double[][] tgt = new double[2][3], anchor = new double[2][3], liftFrom = new double[2][3], lastTgt = new double[2][3];
+        final double[] liftT = new double[2], prevQ = {-1, -1}, plantW = new double[2], legRoot = new double[6];
+        final boolean[] anchored = new boolean[2], settling = new boolean[2];
+        boolean plantInit;
+        double groundW;
+    }
+
+    /**
+     * The body-frame ground velocity (Task 16 ground input): blocks per second forward, to the left and up, smoothed at VEL_HZ,
+     * from the change in the entity's position since last frame. A first frame, a move over GROUND_JUMP blocks or a gap over
+     * GROUND_GAP s starts afresh at rest and marks a teleport (planted feet let go). Without a ground the velocity is zero and the
+     * engine strides by limbSpeed. Airborne only after AIR_T s off the ground, so a one-frame packet flicker does not count.
+     */
+    static void ground(MotionInput.Ground g, State st, Frame f, double rawDt) {
+        st.teleport = false;
+        f.dyaw = f.dF = f.dL = 0;
+        f.ground = g != null && Double.isFinite(g.x()) && Double.isFinite(g.y()) && Double.isFinite(g.z()) && Double.isFinite(g.yawDeg());
+        if (!f.ground) {
+            st.gInit = false;
+            st.vF = st.vL = st.vU = st.airT = 0;
+            f.vF = f.vL = 0;
+            f.air = false;
+            return;
+        }
+        double dx = g.x() - st.gx, dy = g.y() - st.gy, dz = g.z() - st.gz;
+        if (!st.gInit || dx * dx + dz * dz > GROUND_JUMP * GROUND_JUMP || rawDt > GROUND_GAP) {
+            st.teleport = st.gInit;
+            st.gInit = true;
+            st.vF = st.vL = st.vU = 0;
+        } else if (f.dt > 0) {
+            double y = Math.toRadians(g.yawDeg()), sy = Math.sin(y), cy = Math.cos(y);
+            double vx = dx / rawDt, vz = dz / rawDt, k = 1 - Math.exp(-VEL_HZ * f.dt);
+            st.vF += (vx * -sy + vz * cy - st.vF) * k;
+            st.vL += (vx * cy + vz * sy - st.vL) * k;
+            st.vU += (dy / rawDt - st.vU) * k;
+            f.dyaw = MotionMath.wrapDegrees(g.yawDeg() - st.gyaw);
+            // this frame's own travel in last frame's body frame, unsmoothed: what carries the planted feet's ground points
+            double oy = Math.toRadians(st.gyaw), so = Math.sin(oy), co = Math.cos(oy);
+            f.dF = dx * -so + dz * co;
+            f.dL = dx * co + dz * so;
+        }
+        st.gx = g.x(); st.gy = g.y(); st.gz = g.z(); st.gyaw = g.yawDeg();
+        st.airT = g.onGround() ? 0 : st.airT + f.dt;
+        f.air = !g.onGround() && st.airT > AIR_T;
+        f.vF = st.vF;
+        f.vL = st.vL;
     }
 
     /** What one frame's layers share: the sanitised input and the eased weights. */
@@ -225,6 +281,14 @@ public final class MotionEngine {
         double m, run, cw, sh, bp, tw, lw, lookW, settle, plant, calm;
         /** How much of the pose leg-keying actions own, and how much the aim stance does. */
         double bodyAction, aim;
+        /** The sole in shin space, {xMin, xMax, y, zToe, zHeel} px (G4); the knight's until the troop's model sets it. */
+        double[] sole = MotionFeet.KNIGHT_SOLE;
+        /** Ground input (Task 16): whether there is one, whether airborne, the body-frame velocity (b/s), this frame's turn (deg) and its travel forward and left (blocks). */
+        boolean ground, air;
+        double vF, vL, dyaw, dF, dL;
+        /** G1 stride (ground only): its weight, duty, horizontal speed (b/s) and each leg's phase (right, left) in [0, 1). */
+        double gaitW, duty, gaitV;
+        final double[] q = new double[2];
     }
 
     /** One clip a track is playing, for tests and culling: its clip time and its effective share of the fold, times the track's gain. */
@@ -236,11 +300,13 @@ public final class MotionEngine {
         Frame f = st.frame;
         f.first = !st.started;
         f.now = Double.isFinite(in.time()) ? in.time() : st.started ? st.last : 0;
-        f.dt = f.first ? 0 : MotionMath.clampDt(f.now - st.last);
+        double rawDt = f.first ? 0 : f.now - st.last;
+        f.dt = MotionMath.clampDt(rawDt);
         st.started = true;
         st.last = f.now;
         f.seed = in.seed();
-        f.speed = clamp(finite(in.limbSpeed()), 0, 1.5);
+        ground(in.ground(), st, f, rawDt);
+        f.speed = f.ground ? clamp(Math.hypot(f.vF, f.vL) / 5, 0, 1.5) : clamp(finite(in.limbSpeed()), 0, 1.5);
         f.limbAngle = finite(in.limbAngle()) % LIMB_WRAP;
         f.headYaw = clamp(finite(in.headYaw()), -85, 85);
         f.headPitch = clamp(finite(in.headPitch()), -60, 60);

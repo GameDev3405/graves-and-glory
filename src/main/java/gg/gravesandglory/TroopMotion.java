@@ -151,6 +151,7 @@ public final class TroopMotion {
         if(!lies)b.lying=null;
         else if(b.lying!=null&&b.lyingModel==m){m.applyPose(b.lying);return;} // a lying body's pose no longer changes: put it back
         MotionInput in=input(e,fam,b,limbAngle,limbDistance,age,headYaw,headPitch);
+        if(m.sole!=null)b.state.frame.sole=m.sole;
         MotionEngine.pose(in,b.state,fam.family(),b.pose);
         scene(b,fam,e.getId(),in.time());
         apply(m,b.pose);
@@ -189,7 +190,12 @@ public final class TroopMotion {
         boolean shieldUp=e.isUsingItem()&&e.getActiveHand()==Hand.OFF_HAND;
         // carry B10: aimPitch arrives positive-down (stance_v2) and the engine takes it so, unchanged
         return new MotionInput(time(e,age),limbAngle,limbDistance,MathHelper.wrapDegrees(headYaw),headPitch,yawRate,s.name(),s.aimPitch(),shieldUp,
-            e.isAttacking(),dead,dead?(e.deathTime+partial)/20.0:0,a,MotionEvents.Client.hits(id).peekLast(),b.seed);
+            e.isAttacking(),dead,dead?(e.deathTime+partial)/20.0:0,a,MotionEvents.Client.hits(id).peekLast(),b.seed,ground(e,partial));
+    }
+    /** Where the entity stands this frame (MotionInput.Ground): its render position and body yaw, lerped as the renderer lerps them. */
+    static MotionInput.Ground ground(MobEntity e,float partial){
+        return new MotionInput.Ground(MathHelper.lerp(partial,e.prevX,e.getX()),MathHelper.lerp(partial,e.prevY,e.getY()),MathHelper.lerp(partial,e.prevZ,e.getZ()),
+            MathHelper.lerpAngleDegrees(partial,e.prevBodyYaw,e.bodyYaw),e.isOnGround());
     }
     /** Adds the pose to the bones: degrees to the rotation, pixels to the pivot. */
     static void apply(TroopModel<?> m,Pose pose){
@@ -393,7 +399,7 @@ public final class TroopMotion {
         return new MotionInput(now,limbAngle,speed,headYaw,headPitch,yawRate,stance,aim,shieldUp,enemy,dead,deathS,a,h,BOUNDS_SEED);
     }
     private static void drive(TroopModel<?> m,double[] r,boolean shield,int frames,BoundsFrames f){
-        MotionEngine.State st=new MotionEngine.State();
+        MotionEngine.State st=new MotionEngine.State();if(m.sole!=null)st.frame.sole=m.sole;
         for(int i=0;i<frames;i++){simulate(m,st,f.at(i,BOUNDS_T0+i*.05),shield);grow(r,m.extent());}
     }
     /** Widens r (radius, lowest bottom, highest top) by one extent (TroopModel.extent: radius, bottom, top). */

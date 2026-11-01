@@ -83,6 +83,8 @@ public final class TroopModel<T extends MobEntity> extends SinglePartEntityModel
     private final Map<String,Set<String>> reliefWalk;
     /** Each bone's children in file order, "" holding the roots. */
     private final Map<String,List<String>> kids=new HashMap<>();
+    /** The sole under the right shin in shin space, {xMin, xMax, y, zToe, zHeel} px (G4: MotionEngine.Frame.sole), or null without a shin. */
+    final double[] sole;
     /** The most relief quads a skin may have; the build fails above it and so does the load. */
     static final int MAX_RELIEF_QUADS=256;
     /** The key the next render draws relief for (armRelief), spent by that one pass; null for none. */
@@ -93,7 +95,7 @@ public final class TroopModel<T extends MobEntity> extends SinglePartEntityModel
     private TroopModel(){
         super(RenderLayer::getEntityCutout);top=new ModelPart(List.of(),Map.of());troop=rig=hand=idleArms=portrait=weapon=cloth="";
         veteran=glow=outer=null;glowFrom=1;density=1;faceCount=0;faceCard=0;faceFixed=-1;teamOn=new boolean[0];hands=Map.of();rest=new Box(0,0,0,0,0,0);outerTop=null;
-        cullRadius=cullBottom=cullTop=0;pivots=Map.of();crown=Double.NaN;teamBits=0;weaponPoints=List.of();relief=Map.of();reliefWalk=Map.of();
+        cullRadius=cullBottom=cullTop=0;pivots=Map.of();crown=Double.NaN;sole=null;teamBits=0;weaponPoints=List.of();relief=Map.of();reliefWalk=Map.of();
     }
     /** An empty placeholder: TroopRenderer is built before TroopModelLoader may have loaded anything. */
     static <T extends MobEntity> TroopModel<T> empty(){return new TroopModel<>();}
@@ -162,6 +164,7 @@ public final class TroopModel<T extends MobEntity> extends SinglePartEntityModel
         long team=0;int bit=0;for(Bone b:info.values()){if(b.team())team|=1L<<bit;bit++;}teamBits=team;
         rest=lo[0]>hi[0]?new Box(0,0,0,0,0,0):new Box(lo[0],lo[1],lo[2],hi[0],hi[1],hi[2]);
         crown=crownY==Double.MAX_VALUE?Double.NaN:crownY;
+        sole=sole(corners,at,restHidden);
         // a weapon tier of parts is whole only when every bone carrying a tier I weapon part carries one of that tier too (Task 9
         // review M7; build_skins.part_tiers is the release gate's twin): a tier II cap without its tier II guard draws tier I
         for(var tiers:armsByBone.values())for(int t:tiers)if(armsByBone.values().stream().allMatch(o->!o.contains(1)||o.contains(t)))partTiers.add(t);
@@ -228,6 +231,19 @@ public final class TroopModel<T extends MobEntity> extends SinglePartEntityModel
     public Set<String> bones(){return Collections.unmodifiableSet(parts.keySet());}
     /** The skin bones shown at armour and weapon tier I, at rest, in model pixels (y down, the ground at y 24). */
     public Box restBounds(){return rest;}
+    /**
+     * The sole the planted feet stand on (G4): the lowest face of the boxes under the right shin that show at rest, as its x and z
+     * extent and its height, relative to the shin's pivot. The shin is taken unrotated at rest, as the rigs author it.
+     */
+    private double[] sole(Map<String,List<double[]>> corners,Map<String,double[]> at,Set<String> hidden){
+        double[] o=at.get("right_shin");if(o==null)return null;
+        List<double[]> pts=new ArrayList<>();Deque<String> q=new ArrayDeque<>(List.of("right_shin"));
+        while(!q.isEmpty()){String n=q.pop();if(hidden.contains(n))continue;pts.addAll(corners.getOrDefault(n,List.of()));for(String k:kids.getOrDefault(n,List.of()))q.push(k);}
+        double y=-Double.MAX_VALUE;for(double[] w:pts)y=Math.max(y,w[1]-o[1]);
+        double x0=Double.MAX_VALUE,x1=-Double.MAX_VALUE,z0=Double.MAX_VALUE,z1=-Double.MAX_VALUE;
+        for(double[] w:pts)if(w[1]-o[1]>y-1e-3){x0=Math.min(x0,w[0]-o[0]);x1=Math.max(x1,w[0]-o[0]);z0=Math.min(z0,w[2]-o[2]);z1=Math.max(z1,w[2]-o[2]);}
+        return x0>x1?null:new double[]{x0,x1,y,z0,z1};
+    }
     /** The highest point at rest over every armour and weapon tier's skin bones (no team cloth), in model pixels (y down, the ground at y 24), or NaN. */
     public double crown(){return crown;}
     /** Every team bone's path from the root part to the bone, in file order. */
