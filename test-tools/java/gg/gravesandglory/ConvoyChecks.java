@@ -11,10 +11,11 @@ import java.util.UUID;
  * One real Convoy round on Frostmarch (GRAVES_PHASE4_CHECKS=convoy). The player escorts (skirmish seats it on Dawn) and is
  * moved by the suite: beside the wagon it pushes; set just short of Pass Crossing and pushed over, the clock gains 3:00 and the
  * squad 50 gold; taken away with every troop kept clear, the wagon waits 10 s and rolls back but never behind the checkpoint;
- * set short of the refuge and pushed home, the escort wins. Screenshots p4-convoy-push and p4-convoy-checkpoint show the HUD.
+ * set short of the refuge and pushed home, the escort wins. Screenshots p4-convoy-push and p4-convoy-checkpoint show the HUD,
+ * p4-convoy-wagon-close the supply wagon itself (WagonEntity), and p4-convoy-wheels checks its client wheels turn as it rolls.
  */
 final class ConvoyChecks implements Phase4Checks.Suite, Phase4Checks.ServerWatch {
-    volatile UUID player;volatile boolean done;volatile String shot;
+    volatile UUID player;volatile boolean done;volatile String shot;volatile int stageSeen;float wheel0=Float.NaN;boolean wheelsReported;
     int stage;long at;double d0;int seconds0,gold0;boolean rolled,floorKept=true;
     final List<String> fails=new ArrayList<>();
 
@@ -23,6 +24,11 @@ final class ConvoyChecks implements Phase4Checks.Suite, Phase4Checks.ServerWatch
 
     public void step(MinecraftClient c,int tick){
         if(tick==20){c.setScreen(null);player=c.player.getUuid();}
+        // The client's wagon: its wheels must turn while the escort pushes (stage 1), checked once the push has run 3 s.
+        if(c.world!=null&&!wheelsReported)for(var e:c.world.getEntities())if(e instanceof WagonEntity w){
+            if(stageSeen==1&&Float.isNaN(wheel0))wheel0=w.wheel;
+            else if(stageSeen>=2&&!Float.isNaN(wheel0)){wheelsReported=true;Phase4Checks.report("p4-convoy-wheels",Math.abs(w.wheel-wheel0)>1f,"wheel turned "+String.format("%.2f",w.wheel-wheel0)+" rad");}
+        }
         String s=shot;
         if(s!=null){c.options.hudHidden=false;if(s.startsWith("!")){Phase4Checks.shot(c,s.substring(1));shot=null;}else shot="!"+s;} // one frame with the HUD drawn, then the picture
         if(done)Phase4Checks.finish(c,"convoy");
@@ -32,6 +38,15 @@ final class ConvoyChecks implements Phase4Checks.Suite, Phase4Checks.ServerWatch
     static void beside(GravesAndGlory.Battle b,ServerPlayerEntity p,ConvoyMode m){
         Vec3d w=m.position(m.distance);p.teleport(p.getServerWorld(),w.x,w.y,w.z+2,p.getYaw(),20);
         for(var u:b.units)if(u.squad.team!=ConvoyMode.ESCORT&&u.mob.isAlive()&&u.mob.getPos().distanceTo(w)<20)u.mob.teleport(w.x,w.y+1,w.z+30);
+    }
+    /** The player a few blocks off the wagon's front quarter, still in push range, looking at it: the close-up. */
+    static void closeUp(GravesAndGlory.Battle b,ServerPlayerEntity p,ConvoyMode m){
+        beside(b,p,m);
+        Vec3d w=m.position(m.distance),ahead=m.position(m.distance+3);
+        double fx=ahead.x-w.x,fz=ahead.z-w.z,len=Math.max(1e-6,Math.hypot(fx,fz));fx/=len;fz/=len;
+        double x=w.x+fx*3.5-fz*4.0,z=w.z+fz*3.5+fx*4.0,y=w.y+1.2;
+        float yaw=(float)(Math.toDegrees(Math.atan2(w.z-z,w.x-x))-90);
+        p.teleport(p.getServerWorld(),x,y,z,yaw,22);
     }
     /** Keeps every troop and the player out of push range, so the wagon is alone. */
     static void clear(GravesAndGlory.Battle b,ServerPlayerEntity p,ConvoyMode m){
@@ -55,7 +70,8 @@ final class ConvoyChecks implements Phase4Checks.Suite, Phase4Checks.ServerWatch
         switch(stage){
             case 1->{ // push: the player beside the wagon for 5 s
                 if(b.time-at<40){d0=m.distance;return;}
-                beside(b,p,m);
+                stageSeen=1;
+                if(b.time-at>=70&&b.time-at<=100){closeUp(b,p,m);if(b.time-at==95)shot="convoy-wagon-close";}else beside(b,p,m);
                 if(b.time-at==120)shot="convoy-push";
                 if(b.time-at<140)return;
                 Phase4Checks.report("p4-convoy-wagon",m.wagon!=null&&!m.wagon.isRemoved()&&!m.wagon.shouldSave()&&m.rule().equals("Convoy: reach The Refuge"),"wagon "+(m.wagon!=null)+", rule "+m.rule());
@@ -63,7 +79,7 @@ final class ConvoyChecks implements Phase4Checks.Suite, Phase4Checks.ServerWatch
                 m.distance=Math.max(m.distance,m.stops[0]-1.5);seconds0=b.roundSeconds;gold0=b.squads.get(player).gold;stage=2;at=b.time;
             }
             case 2->{ // checkpoint: pushed over Pass Crossing
-                beside(b,p,m);
+                stageSeen=2;beside(b,p,m);
                 if(m.checkpoints()<1){if(b.time-at>200)end("never crossed Pass Crossing, at "+m.distance);return;}
                 Phase4Checks.report("p4-convoy-checkpoint",b.roundSeconds==seconds0+ConvoyMode.CHECKPOINT_SECONDS&&b.squads.get(player).gold>=gold0+ConvoyMode.CHECKPOINT_GOLD,
                         "clock "+seconds0+" to "+b.roundSeconds+", gold "+gold0+" to "+b.squads.get(player).gold);

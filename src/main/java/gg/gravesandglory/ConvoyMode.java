@@ -2,22 +2,12 @@ package gg.gravesandglory;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
-import net.minecraft.entity.EntityType;
-import net.minecraft.entity.EquipmentSlot;
-import net.minecraft.entity.damage.DamageSource;
-import net.minecraft.entity.decoration.ArmorStandEntity;
-import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.item.ItemStack;
-import net.minecraft.item.Items;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.sound.SoundCategory;
 import net.minecraft.sound.SoundEvents;
 import net.minecraft.text.Text;
-import net.minecraft.util.ActionResult;
-import net.minecraft.util.Hand;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Vec3d;
-import net.minecraft.world.World;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -27,7 +17,7 @@ import java.util.List;
  * Dusk stops it. The wagon has no health; any single enemy within push range stops it; left alone for 10 s it rolls back,
  * never past the last checkpoint. The flags are down all round.
  *
- * The wagon is kinematic: an invisible vanilla armour stand (no new entity type, never saved) slid along the road
+ * The wagon is kinematic: a WagonEntity (Kort approved the type 2026-11-01; never saved, no NBT) slid along the road
  * polyline each tick, so its progress is exact. The round's own state lives on this object, which startRound makes fresh
  * every round and teardown clears, so nothing outlives the round. Numbers marked "(draft value)" are the spec's.
  */
@@ -94,7 +84,7 @@ public final class ConvoyMode extends BattleMode {
     int idleTicks, pushers, defenders;
     long movingSince = -1, lastStopped = -100000, lastNear = -100000;
     boolean everMoved, rolledBack, wasRolling, finished;
-    Wagon wagon;
+    WagonEntity wagon;
     long forcedChunk = Long.MIN_VALUE;
 
     final int map;
@@ -164,14 +154,16 @@ public final class ConvoyMode extends BattleMode {
     @Override public void recover(GravesAndGlory.Battle b, JsonObject marker) {removeStray(b);}
 
     static void removeStray(GravesAndGlory.Battle b) {
-        for (var e : b.world.getEntitiesByType(EntityType.ARMOR_STAND, e -> e.getCommandTags().contains(TAG))) e.discard();
+        for (var e : b.world.getEntitiesByType(WagonEntity.TYPE, e -> e.getCommandTags().contains(TAG))) e.discard();
     }
 
     void spawn(GravesAndGlory.Battle b) {
         Vec3d at = position(distance);
         Vec3d ahead = road(distance + 2);
-        wagon = new Wagon(b.world);
+        wagon = new WagonEntity(b.world);
         wagon.addCommandTag(TAG);
+        wagon.setCustomName(Text.literal(label()));
+        wagon.setCustomNameVisible(true);
         wagon.refreshPositionAndAngles(at.x, at.y, at.z, yaw(at, ahead), 0);
         force(b, at);
         b.world.spawnEntity(wagon);
@@ -232,8 +224,8 @@ public final class ConvoyMode extends BattleMode {
         distance = ModeMath.advance(distance, state, ModeMath.pushSpeed(pushers, SPEEDS) * grade, ROLLBACK_SPEED, 0.05, floor(), total());
         Vec3d next = position(distance);
         boolean moved = next.squaredDistanceTo(at) > 1e-8;
-        wagon.refreshPositionAndAngles(next.x, next.y, next.z, moved ? yaw(at, next) + (state.equals(ModeMath.ROLLBACK) ? 180 : 0) : wagon.getYaw(), 0);
-        wagon.setHeadYaw(wagon.getYaw());
+        // The wagon faces down the road both ways: rolling back, it runs backwards and its wheels turn back (WagonEntity).
+        wagon.refreshPositionAndAngles(next.x, next.y, next.z, moved ? (state.equals(ModeMath.ROLLBACK) ? yaw(next, at) : yaw(at, next)) : wagon.getYaw(), 0);
         if (b.time % 20 == 0 || moved) force(b, next);
         if (b.time % 10 == 0) wagon.setCustomName(Text.literal(label()));
         feed(b, was);
@@ -370,22 +362,4 @@ public final class ConvoyMode extends BattleMode {
     }
 
     /** The wagon: an invisible armour stand wearing a barrel, never saved, never hurt, never moved but by the round. */
-    public static final class Wagon extends ArmorStandEntity {
-        public Wagon(World world) {
-            super(EntityType.ARMOR_STAND, world);
-            setInvisible(true);
-            setNoGravity(true);
-            setInvulnerable(true);
-            setCustomName(Text.literal("Supply Wagon"));
-            setCustomNameVisible(true);
-            equipStack(EquipmentSlot.HEAD, new ItemStack(Items.BARREL));
-        }
-        @Override public boolean shouldSave() {return false;}
-        /** No health (spec 3.3): arrows, blows, bolts and blasts change nothing. */
-        @Override public boolean damage(DamageSource source, float amount) {return false;}
-        @Override public boolean isImmuneToExplosion() {return true;}
-        @Override public ActionResult interactAt(PlayerEntity player, Vec3d hitPos, Hand hand) {return ActionResult.FAIL;}
-        @Override public boolean isPushable() {return false;}
-        @Override public void pushAwayFrom(net.minecraft.entity.Entity entity) {}
-    }
 }
