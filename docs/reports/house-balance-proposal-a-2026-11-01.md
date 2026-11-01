@@ -33,3 +33,20 @@
 3. Gilded longbow (7.4 win, 18 HP, cost 46): cost 46 to 34.
 
 Raw data: work/method/{base,norise,nobulwark,both}-*/duel/duels.csv (untracked).
+
+## Follow-up: proposals simulated (same setup, in-memory overrides only)
+
+Plan units-r4 for (a); for cost changes the plan was regenerated with equal gold at the new cost (the unchanged plan regenerates identically). Cross-House win %, n = 224 to 260 (about +/-3):
+
+| Run | Graveborn | Tidecallers | Ironclad | Gilded | Reaper | Revenant | Longbow |
+|---|---|---|---|---|---|---|---|
+| Baseline | 71.9 | 58.0 | 33.8 | 35.3 | 94.1 | 92.6 | 7.4 |
+| (a) Reaper damage 7 | 72.3 | 57.6 | 33.1 | 36.2 | 88.2 | 92.6 | 11.8 |
+| (b) Revenant cost 19 | 71.2 | 58.0 | 33.8 | 36.2 | 98.5 | 80.9 | 10.3 |
+| (c) Longbow cost 34 | 71.7 | 55.4 | 33.1 | 39.1 | 95.6 | 94.1 | 25.0 |
+| (d) a+b+c | 68.8 | 58.9 | 32.3 | 39.7 | 94.1 | 80.9 | 25.0 |
+| (e) d + Reaper health 30 | 66.2 | 59.4 | 34.6 | 39.7 | 79.4 | 82.4 | 23.5 |
+
+The combined set (d) still leaves Graveborn at 68.8 and Ironclad at 32.3 outside 40-60; Gilded (39.7) is on the edge. Reaper damage alone barely moves the Reaper (94.1 to 88.2): its HP and speed carry it.
+
+**One more tested tweak (e): Reaper health 39 to 30** on top of (d). Reaper falls to 79.4 and Graveborn to 66.2; Ironclad (34.6) and Gilded (39.7) stay put. It helps but does not finish the job: Graveborn is still 6 above the band, and Ironclad is still 5 below it, so Ironclad needs its own pass (its ranged and breaker troops win 22 to 41). Untested next step: Bonebow (85 win) damage or cost.
