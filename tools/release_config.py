@@ -38,8 +38,8 @@ def validate_player_jar(path, expected):
         forbidden = ('MeltyTest', 'CampaignChecks', 'CampaignDevControl', 'MapRouteChecks',
                      'Phase3Checks', 'StructureStudio', 'Walkability', 'gravesandglory_studio', 'p3_marker',
                      'VisualChecks', 'RevisionChecks', 'LocalProbe', 'LegacyDataMigrationCheck',
-                     'CompatibilityChecks', 'CompatibilityPolicyCheck', 'FrontMenuChecks', 'AdmissionPolicyCheck', 'CampRulesCheck', 'LobbyRulesCheck', 'LobbyChecks', 'CampRedesignChecks', 'CampNetworkChecks', 'MapTour', 'Phase1Checks', 'BattleMathCheck', 'BotSimulation', 'Phase2Checks', 'HousesCheck', 'ProfileMigrationCheck', 'MarchMathCheck', 'UiMathCheck', 'UiKitSheet', 'LevelMathCheck', 'LevelChecks', 'AbilityLevelChecks', 'RankChecks', 'RankNetworkChecks', 'SelfTestHost', 'CommandPlaytest', 'TitleDemo',
-                     'CampTerrainCheck', 'HouseRouteCheck', 'StepHopCheck', 'WedgeCheck', 'LayoutMarkerCheck', 'TroopFacesCheck', 'FacesChecks',
+                     'CompatibilityChecks', 'CompatibilityPolicyCheck', 'FrontMenuChecks', 'AdmissionPolicyCheck', 'CampRulesCheck', 'LobbyRulesCheck', 'LobbyChecks', 'BannerFieldChecks', 'CampRedesignChecks', 'CampNetworkChecks', 'MapTour', 'Phase1Checks', 'BattleMathCheck', 'BotSimulation', 'Phase2Checks', 'HousesCheck', 'ProfileMigrationCheck', 'MarchMathCheck', 'UiMathCheck', 'UiKitSheet', 'LevelMathCheck', 'LevelChecks', 'AbilityLevelChecks', 'RankChecks', 'RankNetworkChecks', 'SelfTestHost', 'CommandPlaytest', 'TitleDemo',
+                     'CampTerrainCheck', 'HouseRouteCheck', 'StepHopCheck', 'WedgeCheck', 'LayoutMarkerCheck', 'TroopFacesCheck', 'BannerDropCheck', 'FacesChecks',
                      'DuelSimulation', 'SheetOverride', 'TypeLedger', 'StoryStills', 'ModeMathCheck', 'Phase4Checks',
                      'gg/gravesandglory/testing/', 'META-INF/services/gg.gravesandglory.Diagnostics$Probe')
         for name in jar.namelist():
