@@ -114,8 +114,13 @@ final class MotionStack {
         boolean leaving, fresh;
 
         Track(int id, int kind, Clip a, Clip b, double mix, double gain, double start, double tempo) {
+            this(id, kind, a, b, mix, gain, start, tempo, a.impact() < 0 ? -1 : a.impact() / (double) Clip.TICKS);
+        }
+
+        /** As above with the time (seconds) the tempo starts to apply: a hit's snap plays in real time and only its recovery takes the weight's tempo. */
+        Track(int id, int kind, Clip a, Clip b, double mix, double gain, double start, double tempo, double impact) {
             this.id = id; this.kind = kind; this.a = a; this.b = b; this.mix = b == null ? 0 : mix; this.gain = gain;
-            this.start = start; this.tempo = tempo; this.impact = a.impact() < 0 ? -1 : a.impact() / (double) Clip.TICKS;
+            this.start = start; this.tempo = tempo; this.impact = impact;
             this.legShare = keysLegs(a) || (b != null && keysLegs(b)) ? 1 : 0;
         }
 

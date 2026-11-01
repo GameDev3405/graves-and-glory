@@ -145,6 +145,37 @@ public final class Clip {
         }
     }
 
+    /**
+     * This clip mirrored across the body's midplane (R106): left_* and right_* bones swap, and the ry, rz and tx channels
+     * negate (with their bezier handles). Same length, loop and markers; named {@code name + "~m"}.
+     */
+    public Clip mirror() {
+        String[] names = new String[bones.length];
+        Key[][] rot = new Key[bones.length][], pos = new Key[bones.length][];
+        for (int b = 0; b < bones.length; b++) {
+            String n = bones[b];
+            names[b] = n.startsWith("left_") ? "right_" + n.substring(5) : n.startsWith("right_") ? "left_" + n.substring(6) : n;
+            rot[b] = flip(rotation[b], new boolean[]{false, true, true});
+            pos[b] = flip(position[b], new boolean[]{true, false, false});
+        }
+        return new Clip(name + "~m", length, loop, new java.util.HashMap<>(markers), names, rot, pos);
+    }
+
+    private static Key[] flip(Key[] keys, boolean[] neg) {
+        Key[] out = new Key[keys.length];
+        for (int n = 0; n < keys.length; n++) {
+            Key k = keys[n];
+            out[n] = new Key(k.t(), k.i(), flip(k.v(), neg), flip(k.post(), neg), k.split(), k.lt(), flip(k.lv(), neg), k.rt(), flip(k.rv(), neg));
+        }
+        return out;
+    }
+
+    private static double[] flip(double[] v, boolean[] neg) {
+        double[] o = v.clone();
+        for (int a = 0; a < 3; a++) if (neg[a]) o[a] = -o[a];
+        return o;
+    }
+
     /** Adds {@code w} (may be negative) times the clip's last frame into {@code out}, from the array cached at parse. */
     public void endPose(Pose out, double w) {
         if (w == 0) return;

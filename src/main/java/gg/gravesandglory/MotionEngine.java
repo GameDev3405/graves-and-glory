@@ -36,7 +36,11 @@ public final class MotionEngine {
     static final double FADE_ROT = 6, FADE_PX = 0.8;
     static final double[] FADES = {0.08, 0.12, 0.18, 0.25, 0.35, 0.45};
     /** The largest gains an attack (seed amp) and a hit clip (weight scale times seed amp) can play at. */
-    static final double ATTACK_GAIN = 1.1, HIT_GAIN = 1.35 * 1.1;
+    static final double ATTACK_GAIN = 1.1, HIT_GAIN = 1.4 * 1.1;
+    /** Per hit weight (light, normal, heavy): the clip gain, the tempo multiplier and the reaction pulse's scale. */
+    static final double[] HIT_W_GAIN = {0.6, 1.0, 1.4}, HIT_W_TEMPO = {1.25, 1.0, 0.8}, HIT_W_PULSE = {0.55, 1.0, 1.5};
+    /** A hit clip without an impact marker plays its first HIT_SNAP seconds (the snap) in real time; the weight's tempo shapes the recovery. */
+    static final double HIT_SNAP = 0.1;
     /** A death plays at the seed amp pivoted on its last frame, g c(t) + (1 - g) c(end): at most 1.1 + 0.1 of the clip's reach. */
     static final double DEATH_GAIN = 1.2;
     /** Bounds on everything the procedural layers can add to one channel (degrees, pixels). */
@@ -60,7 +64,13 @@ public final class MotionEngine {
      * corpse is the death clip's last key and nothing else.</li>
      * </ul>
      */
-    public record Family(String name, Map<String, Clip> stances, List<Clip> attacks, Map<String, List<Clip>> hits, Map<String, List<Clip>> deaths) {
+    public record Family(String name, Map<String, Clip> stances, List<Clip> attacks, Map<String, List<Clip>> hits, Map<String, List<Clip>> deaths,
+                         Map<String, List<Clip>> hitsMirror) {
+        /** A family whose mirrored hits (R106) are built from its hits. */
+        public Family(String name, Map<String, Clip> stances, List<Clip> attacks, Map<String, List<Clip>> hits, Map<String, List<Clip>> deaths) {
+            this(name, stances, attacks, hits, deaths, null);
+        }
+
         public Family {
             Objects.requireNonNull(name, "name");
             stances = Map.copyOf(stances);
@@ -68,6 +78,14 @@ public final class MotionEngine {
             Map<String, List<Clip>> h = new HashMap<>();
             for (var e : hits.entrySet()) h.put(e.getKey(), List.copyOf(e.getValue()));
             hits = Map.copyOf(h);
+            Map<String, List<Clip>> hm = new HashMap<>();
+            for (var e : hits.entrySet()) {
+                List<Clip> given = hitsMirror == null ? null : hitsMirror.get(e.getKey());
+                List<Clip> l = new ArrayList<>();
+                for (int i = 0; i < e.getValue().size(); i++) l.add(given != null && i < given.size() ? given.get(i) : e.getValue().get(i).mirror());
+                hm.put(e.getKey(), List.copyOf(l));
+            }
+            hitsMirror = Map.copyOf(hm);
             Map<String, List<Clip>> d = new HashMap<>();
             for (var e : deaths.entrySet()) {
                 List<Clip> l = new ArrayList<>(e.getValue());
@@ -108,6 +126,9 @@ public final class MotionEngine {
         final List<MotionStack.Layer> stances = new ArrayList<>(MAX_LAYERS + 1);
         final List<MotionStack.Track> tracks = new ArrayList<>(MAX_TRACKS + 1);
         int ids;
+        /** Hits seen so far, and the variant each hit zone (body, head, legs, block) played last (H1). */
+        int hitCount;
+        final int[] lastHitVariant = {-1, -1, -1, -1};
         /** Death edges seen so far: a revived unit's next death picks its variant afresh (K1b). */
         int deaths;
         MotionInput.Attack attack;
@@ -282,13 +303,24 @@ public final class MotionEngine {
             double at = hit.tick() / (double) Clip.TICKS, age = f.now - at;
             if (!f.dead && age >= -0.2 && age <= 0.6) {
                 int weight = Math.max(0, Math.min(2, hit.weight()));
-                double scale = (weight == 0 ? 0.7 : weight == 1 ? 1.0 : 1.35) * f.seed.amp();
-                MotionBody.pulse(st, hit, at, scale);
-                List<Clip> set = fam.hits().get(hit.blocked() ? "block" : zone(hit.zone()));
-                if (set == null || set.isEmpty()) set = fam.hits().get("body");
+                MotionBody.pulse(st, hit, at, HIT_W_PULSE[weight] * f.seed.amp(), weight);
+                String key = hit.blocked() ? "block" : zone(hit.zone());
+                List<Clip> set = fam.hits().get(key);
+                if (set == null || set.isEmpty()) set = fam.hits().get(key = "body");
                 if (set != null && !set.isEmpty()) {
-                    Clip clip = set.get(Math.floorMod((int) hit.tick(), set.size()));
-                    var tr = new MotionStack.Track(st.ids++, HIT, clip, null, 0, scale, at, f.seed.tempo());
+                    // H1: a seeded variant per hit, never the same one twice running in a zone
+                    int n = set.size(), z = key.equals("head") ? 1 : key.equals("legs") ? 2 : key.equals("block") ? 3 : 0;
+                    int idx = hitVariant(f.seed.variantBias(), ++st.hitCount, st.lastHitVariant[z], n);
+                    st.lastHitVariant[z] = idx;
+                    // R106: a blow from the unit's left plays the mirrored clip
+                    double side = Math.sin(Math.toRadians(finite(hit.bearing())));
+                    List<Clip> mirrored = fam.hitsMirror().get(key);
+                    Clip clip = side < -0.33 && mirrored != null && mirrored.size() == n ? mirrored.get(idx) : set.get(idx);
+                    // the hit clips are authored front-on: from behind they fade out (none past ~132 degrees) and the
+                    // procedural pulse, which flips with the bearing, carries the blow, so a back hit pitches forward
+                    double front = key.equals("block") ? 1 : MotionMath.clamp01(1 + 1.5 * Math.cos(Math.toRadians(finite(hit.bearing()))));
+                    var tr = new MotionStack.Track(st.ids++, HIT, clip, null, 0, HIT_W_GAIN[weight] * f.seed.amp() * front, at,
+                        f.seed.tempo() * HIT_W_TEMPO[weight], clip.impact() < 0 ? HIT_SNAP : clip.impact() / (double) Clip.TICKS);
                     if (tr.time(f.now) < clip.length() - 0.05) MotionStack.begin(st, tr, f);
                 }
             }
@@ -297,6 +329,14 @@ public final class MotionEngine {
             MotionStack.Track tr = death(st, fam, f, finite(in.deathSeconds()));
             if (tr != null) MotionStack.begin(st, tr, f);
         }
+    }
+
+    /** H1: the variant of n a unit's count-th hit plays, never {@code last} again when n > 1. */
+    static int hitVariant(long variantBias, int count, int last, int n) {
+        long h = MotionMath.mix(variantBias + 0x9E3779B97F4A7C15L * count);
+        int idx = (int) Math.floorMod(h, (long) n);
+        if (n > 1 && idx == last) idx = (idx + 1 + (int) Math.floorMod(h >>> 32, (long) (n - 1))) % n;
+        return idx;
     }
 
     /** Hit zones as the engine knows them: head, legs or body. */

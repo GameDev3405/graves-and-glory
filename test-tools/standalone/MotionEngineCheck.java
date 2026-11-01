@@ -56,6 +56,8 @@ public final class MotionEngineCheck {
         run("actions", () -> actions(fam));
         run("death keys", MotionEngineCheck::deathKeys);
         run("death spread", () -> deathSpread(rig));
+        run("hit variants", MotionEngineCheck::hitVariants);
+        run("hit direction and weight", () -> hitDirectionWeight(fam));
         if (failed > 0) {
             System.out.println("MotionEngineCheck: " + failed + " checks FAILED");
             System.exit(1);
@@ -223,6 +225,100 @@ public final class MotionEngineCheck {
         check(MotionEngine.deathClip(f, "slash", "front", 0) == one && MotionEngine.deathClip(f, "slash", "front", 1) == two
             && MotionEngine.deathClip(f, "slash", "front", 5) == two, "variants sorted by name, picked modulo");
         return cases.length + " names";
+    }
+
+    /** The body hit clip a state is playing last, or null. */
+    static Clip lastHit(MotionEngine.State st) {
+        Clip c = null;
+        for (MotionStack.Track t : st.tracks) if (t.kind == MotionEngine.HIT) c = t.a;
+        return c;
+    }
+
+    /** H1: the hit variant is seeded (neighbours struck on one tick differ) and never repeats back to back in a zone. */
+    static String hitVariants() {
+        List<Clip> body = List.of(clip("hit_body", 0.5, false, "", "linear", "body:rotation=0,0,0,0;0.12,14,0,0;0.5,0,0,0"),
+            clip("hit_body_2", 0.5, false, "", "linear", "body:rotation=0,0,0,0;0.12,10,0,6;0.5,0,0,0"),
+            clip("hit_body_3", 0.5, false, "", "linear", "body:rotation=0,0,0,0;0.12,12,4,0;0.5,0,0,0"));
+        var fam = new MotionEngine.Family("hv", stances(), List.of(), Map.of("body", body), Map.of());
+        Set<String> same = new HashSet<>();
+        for (MotionMath.Seed seed : seeds(16, 8800)) {
+            Drive d = new Drive(seed);
+            var st = new MotionEngine.State();
+            Pose out = new Pose();
+            MotionEngine.pose(d.in(), st, fam, out);
+            d.step(1 / 60.0);
+            d.time = 1000.5;
+            d.hit("body", 0, 1, false, false);
+            MotionEngine.pose(d.in(), st, fam, out);
+            Clip c = lastHit(st);
+            check(c != null, "a hit track");
+            same.add(c.name());
+        }
+        check(same.size() >= 2, "16 seeds on one tick all played " + same);
+        Drive d = new Drive(seeds(1, 8900)[0]);
+        var st = new MotionEngine.State();
+        Pose out = new Pose();
+        List<String> run = new ArrayList<>();
+        for (int i = 0; i < 6; i++) {
+            d.hit("body", 0, 1, false, false);
+            MotionEngine.pose(d.in(), st, fam, out);
+            run.add(lastHit(st).name());
+            for (int k = 0; k < 40; k++) { d.step(1 / 60.0); MotionEngine.pose(d.in(), st, fam, out); }
+        }
+        for (int i = 1; i < run.size(); i++) check(!run.get(i).equals(run.get(i - 1)), "back-to-back repeat in " + run);
+        check(new HashSet<>(run).size() == 3, "all three variants in " + run);
+        Clip m = clip("hit_x", 0.5, false, "", "bezier", "right_arm:rotation=0,0,0,0;0.2,-30,8,12", "root:position=0,0,0,0;0.2,1,0.5,-1").mirror();
+        Map<String, double[]> mp = new HashMap<>();
+        m.sample(0.2, mp);
+        check(m.name().equals("hit_x~m") && mp.containsKey("left_arm") && !mp.containsKey("right_arm"), "mirror swaps sides: " + mp.keySet());
+        check(near(mp.get("left_arm")[0], -30, 1e-9) && near(mp.get("left_arm")[1], -8, 1e-9) && near(mp.get("left_arm")[2], -12, 1e-9)
+            && near(mp.get("root")[3], -1, 1e-9) && near(mp.get("root")[4], 0.5, 1e-9) && near(mp.get("root")[5], -1, 1e-9), "mirror negates ry, rz and tx");
+        return same.size() + " clips across 16 seeds on one tick; run " + run;
+    }
+
+    /** One seed's pose with and without a body hit, 1.5 s from the blow: the peak and recovery of the difference, and the peaks of body rx and rz. */
+    static double[] hitResponse(MotionEngine.Family fam, MotionMath.Seed seed, float bearing, int weight) {
+        Drive a = new Drive(seed), b = new Drive(seed);
+        var sa = new MotionEngine.State();
+        var sb = new MotionEngine.State();
+        Pose pa = new Pose(), pb = new Pose();
+        for (int i = 0; i < 60; i++) {
+            MotionEngine.pose(a.in(), sa, fam, pa); MotionEngine.pose(b.in(), sb, fam, pb);
+            a.step(1 / 60.0); b.step(1 / 60.0);
+        }
+        a.hit("body", bearing, weight, false, false);
+        double peak = 0, back = 0, rx = 0, rz = 0, t0 = a.time;
+        while (a.time < t0 + 1.5) {
+            MotionEngine.pose(a.in(), sa, fam, pa); MotionEngine.pose(b.in(), sb, fam, pb);
+            Map<String, double[]> x = pa.snapshot(), y = pb.snapshot();
+            double dev = 0;
+            for (var e : x.entrySet()) {
+                double[] o = y.getOrDefault(e.getKey(), new double[6]);
+                for (int c = 0; c < 3; c++) dev = Math.max(dev, Math.abs(e.getValue()[c] - o[c]));
+            }
+            double drx = x.get("body")[0] - y.get("body")[0], drz = x.get("body")[2] - y.get("body")[2];
+            if (Math.abs(drx) > Math.abs(rx)) rx = drx;
+            if (Math.abs(drz) > Math.abs(rz)) rz = drz;
+            peak = Math.max(peak, dev);
+            if (dev > 2) back = a.time - t0;
+            a.step(1 / 60.0); b.step(1 / 60.0);
+        }
+        return new double[]{peak, back, rx, rz};
+    }
+
+    /** R106 and the weight shapes: the side a blow comes from rolls the torso away from it, front and back pitch opposite ways, and a heavy blow is bigger and slower to recover than a light one. */
+    static String hitDirectionWeight(MotionEngine.Family fam) {
+        MotionMath.Seed seed = seeds(1, 9100)[0];
+        double[] right = hitResponse(fam, seed, 90, 1), left = hitResponse(fam, seed, -90, 1);
+        double[] front = hitResponse(fam, seed, 0, 1), back = hitResponse(fam, seed, 180, 1);
+        double[] light = hitResponse(fam, seed, 0, 0), heavy = hitResponse(fam, seed, 0, 2);
+        check(Math.signum(right[3]) == -Math.signum(left[3]) && Math.abs(right[3] - left[3]) >= 16,
+            "body rz +90 " + right[3] + " vs -90 " + left[3]);
+        check(Math.signum(front[2]) == -Math.signum(back[2]), "body rx front " + front[2] + " vs back " + back[2]);
+        check(heavy[0] >= 1.8 * light[0], "heavy peak " + heavy[0] + " vs light " + light[0]);
+        check(heavy[1] >= 1.3 * light[1], "heavy recovery " + heavy[1] + " s vs light " + light[1] + " s");
+        return String.format("body rz +90 %.1f / -90 %.1f; body rx front %.1f / back %.1f; peak heavy %.1f / light %.1f (x%.2f); recovery %.2f / %.2f s (x%.2f)",
+            right[3], left[3], front[2], back[2], heavy[0], light[0], heavy[0] / light[0], heavy[1], light[1], heavy[1] / light[1]);
     }
 
     /** Every box corner of the rig, posed: how far the lowest one sits above the ground at y = 24 (px; negative is under it). */

@@ -214,8 +214,8 @@ final class MotionBody {
 
     static final int MAX_PULSES = 8;
 
-    /** One blow's procedural reaction: its zone (0 head, 1 body, 2 legs, 3 block), direction, side, start and scale. */
-    record Pulse(int zone, double dir, double side, double start, double scale) {
+    /** One blow's procedural reaction: its zone (0 head, 1 body, 2 legs, 3 block), direction, side, start, scale and weight (0 light, 1, 2 heavy). */
+    record Pulse(int zone, double dir, double side, double start, double scale, int weight) {
         double envelope(double now) {
             double rise = zone == 2 ? 0.15 : 0.08, fall = zone == 2 ? 0.5 : 0.38, age = now - start;
             if (age <= 0) return 0;
@@ -228,14 +228,16 @@ final class MotionBody {
 
     /** The springed reaction channels. KNEE_R and KNEE_L go to the planted-feet solve as extra knee bend. */
     static final int HEAD_RX = 0, HEAD_RZ = 1, BODY_RX = 2, BODY_RZ = 3, RARM_RX = 4, LARM_RX = 5, ARMS_RZ = 6, ROOT_TZ = 7,
-            KNEE_R = 8, KNEE_L = 9, REACT = 10;
+            KNEE_R = 8, KNEE_L = 9, ROOT_TX = 10, REACT = 11;
     /** The reaction springs integrate in steps of at most 1 / REACT_HZ s, with the blows' envelopes evaluated at each. */
     static final double REACT_HZ = 120;
 
-    static void pulse(MotionEngine.State st, MotionInput.Hit hit, double at, double scale) {
+    static void pulse(MotionEngine.State st, MotionInput.Hit hit, double at, double scale) { pulse(st, hit, at, scale, 1); }
+
+    static void pulse(MotionEngine.State st, MotionInput.Hit hit, double at, double scale, int weight) {
         int zone = hit.blocked() ? 3 : switch (MotionEngine.zone(hit.zone())) { case "head" -> 0; case "legs" -> 2; default -> 1; };
         double b = Math.toRadians(MotionEngine.finite(hit.bearing()));
-        st.pulses.add(new Pulse(zone, MotionEngine.clamp(2 * Math.cos(b), -1, 1), MotionEngine.clamp(1.5 * Math.sin(b), -1, 1), at, scale));
+        st.pulses.add(new Pulse(zone, MotionEngine.clamp(2 * Math.cos(b), -1, 1), MotionEngine.clamp(1.5 * Math.sin(b), -1, 1), at, scale, weight));
         if (st.pulses.size() > MAX_PULSES) st.pulses.remove(0);
     }
 
@@ -280,6 +282,7 @@ final class MotionBody {
         out.add("right_arm", RZ, lw * r[ARMS_RZ]);
         out.add("left_arm", RZ, -lw * r[ARMS_RZ]);
         out.add("root", TZ, lw * r[ROOT_TZ]);
+        out.add("root", TX, lw * r[ROOT_TX]);
     }
 
     /** The reaction channels' targets at time t: every live blow's push, summed and clamped. */
@@ -291,15 +294,17 @@ final class MotionBody {
             double e = p.envelope(t) * p.scale(), d = p.dir(), s = p.side();
             if (e == 0) continue;
             switch (p.zone()) {
-                case 0 -> { target[HEAD_RX] -= 24 * d * e; target[HEAD_RZ] += 9 * s * e; target[BODY_RX] -= 5 * d * e; target[ARMS_RZ] += 4 * e; }
+                case 0 -> { target[HEAD_RX] -= 24 * d * e; target[HEAD_RZ] += 16 * s * e; target[BODY_RX] -= 5 * d * e; target[ARMS_RZ] += 4 * e;
+                    if (p.weight() >= 2) { target[KNEE_R] += 18 * e; target[KNEE_L] += 18 * e; } }
                 case 1 -> {
                     target[BODY_RX] += 16 * d * e; target[HEAD_RX] += 7 * d * e; target[RARM_RX] -= 9 * e; target[LARM_RX] -= 9 * e;
-                    target[BODY_RZ] += 5 * s * e; target[ROOT_TZ] += 0.6 * d * e;
+                    target[BODY_RZ] += 12 * s * e; target[ROOT_TZ] += 0.6 * d * e; target[ROOT_TX] += 1.2 * s * e;
+                    if (p.weight() >= 2) { target[KNEE_R] += 18 * e; target[KNEE_L] += 18 * e; }
                 }
                 case 2 -> {
-                    double k = Math.abs(s) >= 0.1 ? s : ownSide;
-                    target[KNEE_R] += 44 * e * (0.55 + 0.45 * k);
-                    target[KNEE_L] += 44 * e * (0.55 - 0.45 * k);
+                    double k = Math.abs(s) >= 0.1 ? s : ownSide, ek = Math.min(e, 1.35 * p.envelope(t));
+                    target[KNEE_R] += 44 * ek * (0.55 + 0.45 * k);
+                    target[KNEE_L] += 44 * ek * (0.55 - 0.45 * k);
                     target[BODY_RX] += 7 * e; target[ARMS_RZ] += 10 * e; target[BODY_RZ] += 4 * s * e; target[HEAD_RX] += 4 * e;
                 }
                 default -> { target[LARM_RX] += 14 * e; target[BODY_RX] -= 4 * d * e; target[ROOT_TZ] += 0.5 * d * e; target[HEAD_RX] -= 3 * e; }
@@ -307,7 +312,7 @@ final class MotionBody {
         }
         for (int i = 0; i < REACT; i++) {
             boolean knee = i == KNEE_R || i == KNEE_L;
-            target[i] = knee ? MotionEngine.clamp(target[i], 0, 80) : i == ROOT_TZ ? MotionEngine.clamp(target[i], -2, 2) : MotionEngine.clamp(target[i], -60, 60);
+            target[i] = knee ? MotionEngine.clamp(target[i], 0, 80) : i == ROOT_TZ || i == ROOT_TX ? MotionEngine.clamp(target[i], -2, 2) : MotionEngine.clamp(target[i], -60, 60);
         }
     }
 

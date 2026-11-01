@@ -192,7 +192,7 @@ final class MotionGrade extends Phase2Checks.Stage {
             pre = cat.equals("stance") ? SERVER_STANCE.getOrDefault(clip, "hold") : "hold";
             var f2 = fam.family(); int v = -1; String z = null; boolean blk = false; float br = 0; String kd = "slash"; int hi = 0, hn = 1;
             if (cat.equals("attack")) for (int i = 0; i < fam.attackIndex().length; i++) { int k = fam.attackIndex()[i]; if (k >= 0 && k < f2.attacks().size() && f2.attacks().get(k) == c) { v = i; break; } }
-            // Task 16: the engine picks a hit from its zone's set by the hit's tick (MotionEngine: floorMod(tick, size)), so the job fires on a tick that picks this clip
+            // Task 16 H1: the engine picks a seeded hit variant from the unit's hit count; primeHit sets the count so the job plays this clip
             if (cat.equals("hit")) for (var e : f2.hits().entrySet()) if (e.getValue().contains(c)) { z = e.getKey(); hi = e.getValue().indexOf(c); hn = e.getValue().size(); break; }
             if ("block".equals(z)) { z = "body"; blk = true; }
             // Task 16: a death clip is reached by its own blow: its kind (bolt, which has no clip of its own, for the any-kind deaths) and a bearing
@@ -830,12 +830,20 @@ final class MotionGrade extends Phase2Checks.Stage {
             case 1 -> {
                 inject(c, j.pre);
                 if (wait < j.settle || !shotReady(c, j.clip + " a" + j.angle)) return;
-                if (j.cat.equals("hit") && Math.floorMod(c.world.getTime(), j.hitN) != j.hitIdx) return;
+                if (j.cat.equals("hit")) primeHit(e, j.hitIdx, j.hitN);
                 fireSolo(c, j, e); j.ph = 2; wait = 0; lastSnapN = LAST == null ? -1 : LAST.n;
             }
             case 2 -> soloTick(c, j, e);
             default -> {}
         }
+    }
+    /** H1 picks a seeded hit variant from the unit's hit count: set the count so the next hit plays variant idx of n (the solo job grades one clip). */
+    static void primeHit(Entity e, int idx, int n) {
+        var st = e == null ? null : TroopMotion.state(e.getId()); if (st == null) return;
+        var id = e.getUuid(); long bias = MotionMath.seed(id.getMostSignificantBits(), id.getLeastSignificantBits()).variantBias();
+        java.util.Arrays.fill(st.lastHitVariant, -1);
+        int k = st.hitCount + 1; while (MotionEngine.hitVariant(bias, k, -1, n) != idx && k < st.hitCount + 1000) k++;
+        st.hitCount = k - 1;
     }
     void fireSolo(MinecraftClient c, Job j, Entity e) {
         if (e == null) return; long tick = c.world.getTime(); int id = e.getId();
@@ -1120,7 +1128,7 @@ final class MotionGrade extends Phase2Checks.Stage {
             case 1 -> {
                 inject(c, s.pre());
                 if (wait < SETTLE || !shotReady(c, s.name())) return;
-                if (s.cat().equals("hit")) { var hl = fam.family().hits().get(s.blocked() ? "block" : s.zone()); int n = hl == null ? 1 : hl.size(); if (Math.floorMod(c.world.getTime() + EVENT1, n) != 0) return; }
+                // H1: hit variants are seeded per unit now, so the cast plays a natural spread (no tick to wait for)
                 ps = 2; f = 0; levelAt = -1; capMark = files.size(); trPose.clear(); trNow.clear(); trFresh.clear(); trWorld.clear(); lastSnapN = LAST == null ? -1 : LAST.n;
             }
             case 2 -> stateFrame(c, s, mode);
