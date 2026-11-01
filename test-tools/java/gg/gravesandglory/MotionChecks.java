@@ -186,6 +186,9 @@ public final class MotionChecks {
                 if (!w.vet() && TroopModels.model(w.troop()).bone("right_forearm") != null) {
                     for (int a : new int[]{0, 45, 90, 270}) shots.add(new Shot("mo-rig-" + w.key() + "-elbow-" + a, w, "elbow", a, null));
                     for (int a : new int[]{0, 90, 180, 270}) shots.add(new Shot("mo-rig-" + w.key() + "-knee-" + a, w, "knee", a, null));
+                    // R98: the seams at a half bend too (the guard, wall and brace hold elbows and knees near 30-60 degrees)
+                    for (int a : new int[]{0, 90}) shots.add(new Shot("mo-rig-" + w.key() + "-elbow45-" + a, w, "elbow45", a, null));
+                    for (int a : new int[]{0, 90}) shots.add(new Shot("mo-rig-" + w.key() + "-knee45-" + a, w, "knee45", a, null));
                 }
             }
         }
@@ -217,11 +220,16 @@ public final class MotionChecks {
             for (String shin : List.of("right_shin", "left_shin")) { float[] l = m.jointLimit(shin); if (l != null) k = Math.min(k, l[1]); }
             return k;
         }
-        /** The bends of a shot: both elbows -90 degrees or both knees +90 (capped at the troop's knee limit); empty for the rest of the shots. */
+        /**
+         * The bends of a shot: both elbows -90 degrees or both knees +90 (capped at the troop's knee limit), or half that for the 45
+         * shots; empty for the rest of the shots.
+         */
         static Map<String, Float> bends(TroopModel<?> m, Shot s) {
             Map<String, Float> b = new TreeMap<>();
             if (s.kind().equals("elbow")) { b.put("right_forearm", -90 * TroopModel.RAD); b.put("left_forearm", -90 * TroopModel.RAD); }
             if (s.kind().equals("knee")) { float k = kneeLimit(m) * TroopModel.RAD; b.put("right_shin", k); b.put("left_shin", k); }
+            if (s.kind().equals("elbow45")) { b.put("right_forearm", -45 * TroopModel.RAD); b.put("left_forearm", -45 * TroopModel.RAD); }
+            if (s.kind().equals("knee45")) { float k = Math.min(45f, kneeLimit(m)) * TroopModel.RAD; b.put("right_shin", k); b.put("left_shin", k); }
             return b;
         }
 
