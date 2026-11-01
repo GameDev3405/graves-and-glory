@@ -390,6 +390,34 @@ for b in data['botBanners']:
             if n>rarities.get(r,{}).get('bannerMax',squad): errors.append(f'{name}: {n} {r} units, over bannerMax {rarities[r]["bannerMax"]}')
 for d in sorted(difficulties):
     if not any(b['difficulty']==d and all(houses.get(houseOf.get(s),{}).get('fieldable') for s in b['slots'].split(',') if s!='^') for b in data['botBanners']): errors.append(f'botBanners: no {d} banner fields only fieldable Houses (Campaign.botBanner picks from those)')
+# The Long March (plan 2C.3): six battles in one order, each on a map index, in one of the four 1.0 modes, at a botCommand difficulty, with one
+# bonusObjectives row of its own. A cell the plan leaves open is listed in the row's placeholder column ('none' when the row is settled).
+MARCH_MODES={'domination','siege','survival','banner'}
+BONUS_KINDS={'hold_all','lose_at_most','stage_by','carry_self','win_within','kill_unit'}
+bonus_rows={o['id']:o for o in data.get('bonusObjectives',[])}
+march=data['campaignBattles']
+if sorted(r['order'] for r in march)!=list(range(1,len(march)+1)): errors.append('campaignBattles: orders must run 1, 2, 3 and on, each once (MarchMath reads the order lock from them)')
+used_bonus=[r['bonus'] for r in march]
+for r in march:
+    where=f'campaignBattles/{r["id"]}'
+    if r['chapter']<1: errors.append(f'{where}: chapter {r["chapter"]} is under 1')
+    if r['map'] not in range(len(data['maps'])): errors.append(f'{where}: map {r["map"]} is not a maps index')
+    if r['mode'] not in MARCH_MODES: errors.append(f'{where}: mode {r["mode"]} is not one of {sorted(MARCH_MODES)}')
+    if r['difficulty'] not in difficulties: errors.append(f'{where}: difficulty {r["difficulty"]} is not a botCommand id')
+    if r['size']<1: errors.append(f'{where}: size {r["size"]} is under 1')
+    if r['bonus'] not in bonus_rows: errors.append(f'{where}: bonus {r["bonus"]} is not a bonusObjectives id')
+    elif used_bonus.count(r['bonus'])!=1: errors.append(f'{where}: bonus {r["bonus"]} is named by {used_bonus.count(r["bonus"])} battles; each battle has its own')
+    if r['house'] not in houses and not (r['house']=='all' and 'house' in r['placeholder'] and bonus_rows.get(r['bonus'],{}).get('kind')=='tbd'): errors.append(f'{where}: house {r["house"]} is not a houses id (all is allowed only as a placeholder whose bonus is still tbd, since the shards need one House)')
+    if not r['placeholder'].strip(): errors.append(f'{where}: placeholder is blank; it lists the open cells, or reads none')
+for o in bonus_rows.values():
+    where=f'bonusObjectives/{o["id"]}'
+    if o['id'] not in used_bonus: errors.append(f'{where}: no campaignBattles row names it')
+    if o['kind'] not in BONUS_KINDS and not (o['kind']=='tbd' and 'kind' in o['placeholder']): errors.append(f'{where}: kind {o["kind"]} is not one of {sorted(BONUS_KINDS)} (tbd only as a listed placeholder)')
+    if min(o['value'],o['shards'],o['gold'])<0: errors.append(f'{where}: value, shards and gold must be 0 or more')
+    if o['kind']=='kill_unit' and o['target'] not in houseOf: errors.append(f'{where}: a kill_unit target must be a troop id')
+    if o['kind'] not in ('kill_unit','stage_by') and o['target']!='none': errors.append(f'{where}: target must be none for kind {o["kind"]}')
+    if o['kind'] in ('lose_at_most','stage_by','win_within') and o['value']<1: errors.append(f'{where}: kind {o["kind"]} needs a value of 1 or more')
+    if not o['placeholder'].strip(): errors.append(f'{where}: placeholder is blank; it lists the open cells, or reads none')
 # Troop card text (Task 12): one troopNotes row per troop, in troops order, and nothing else; the economy model row (houses design 4.9, NOT_SHIPPED) has every input.
 if [n['id'] for n in data.get('troopNotes',[])]!=[t['id'] for t in data['troops']]: errors.append('troopNotes: one row per troops row, in the same order, with the same ids')
 ECONOMY_INPUTS={'matchesPerHour','winRate','hoursPerPlayDay','playDaysPerWeek','matchGold','winGold','dailyGold','weeklyGold','chapterGold','chapterRareValue','runs'}

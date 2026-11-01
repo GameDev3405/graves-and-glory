@@ -7,8 +7,9 @@ import java.util.*;
 import java.util.function.Function;
 
 /**
- * The one-time upgrade of a schema-1 commander profile (Dawn and Dusk, 12 troops) to schema 2 (spec 6.3). Pure: JSON goes
- * through the parse and write functions the caller passes, so the standalone ProfileMigrationCheck needs no Gson.
+ * The one-time upgrades of a commander profile: schema 1 (Dawn and Dusk, 12 troops) to schema 2 (spec 6.3), and schema 2 to
+ * schema 3 (plan 2C.3: the Long March battles won and bonuses paid). Pure: JSON goes through the parse and write functions the
+ * caller passes, so the standalone ProfileMigrationCheck needs no Gson.
  */
 public final class ProfileMigration {
     private ProfileMigration() {}
@@ -56,6 +57,7 @@ public final class ProfileMigration {
      */
     static Profile toV2(V1 v1, RosterMath.Catalog c) {
         Profile p = new Profile();
+        p.schema = 2; // the schema-2 image; v2toV3 takes it to 3
         p.gold = v1.gold;
         p.matches = v1.matches;
         p.wins = v1.wins;
@@ -108,26 +110,54 @@ public final class ProfileMigration {
     }
 
     /**
-     * Upgrades one profile file in place when it is schema 1, and returns the new profile; returns null when the file is
-     * already schema 2 or later. The original bytes are kept once as <uuid>.v1.json (an existing copy is never replaced),
-     * then the new file is written to <uuid>.tmp and moved over the original. A parse failure throws
-     * IllegalStateException and touches no file.
+     * Schema 2 to 3 (Phase 4 spec 12), in place, and returns the same profile: battlesWon gains every row whose order is at most
+     * campaignCleared (a schema-2 profile could only clear battles in order); bonusClaimed starts empty, since no bonus existed before.
+     * Every schema-2 field is kept as it is, the Pact count (writs) and writChapters included. Sets schema 3.
      */
-    static Profile upgradeFile(Path file, Function<String, V1> parse, Function<Profile, String> write, RosterMath.Catalog c) throws IOException {
+    static Profile v2toV3(Profile p, Spec.CampaignBattlesRow[] rows) {
+        if (p.battlesWon == null) p.battlesWon = new LinkedHashSet<>();
+        if (p.bonusClaimed == null) p.bonusClaimed = new LinkedHashSet<>();
+        for (var row : MarchMath.byOrder(rows)) if (row.order() <= p.campaignCleared) p.battlesWon.add(row.id());
+        p.schema = 3;
+        return p;
+    }
+
+    /**
+     * Upgrades one profile file in place when it is below schema 3, and returns the new profile; returns null when the file is already
+     * schema 3 or later. The file's schema is read first (parse: a file with no schema field reads 0, meaning 1). Schema 1 runs toV2 and
+     * then v2toV3; schema 2 is read whole (parseV2) and runs v2toV3. The original bytes are kept once as <uuid>.v1.json or <uuid>.v2.json
+     * by the schema they hold, and a schema-1 file also keeps its schema-2 image once as <uuid>.v2.json; an existing copy is never
+     * replaced. The new file is written to <uuid>.tmp and moved over the original. A parse failure throws IllegalStateException and
+     * touches no file. The caller sanitizes the result.
+     */
+    static Profile upgradeFile(Path file, Function<String, V1> parse, Function<String, Profile> parseV2, Function<Profile, String> write, RosterMath.Catalog c) throws IOException {
         byte[] original = Files.readAllBytes(file);
+        String source = new String(original, StandardCharsets.UTF_8);
         V1 v1;
+        Profile p;
         try {
-            v1 = parse.apply(new String(original, StandardCharsets.UTF_8));
+            v1 = parse.apply(source);
+            if (v1 == null) throw new IllegalStateException("Commander profile is empty; it was left unchanged: " + file.getFileName());
+            if (v1.schema >= 3) return null;
+            p = v1.schema >= 2 ? parseV2.apply(source) : null;
+        } catch (IllegalStateException e) {
+            throw e;
         } catch (RuntimeException e) {
             throw new IllegalStateException("Commander profile could not be read; it was left unchanged: " + file.getFileName(), e);
         }
-        if (v1 == null) throw new IllegalStateException("Commander profile is empty; it was left unchanged: " + file.getFileName());
-        if (v1.schema >= 2) return null;
-        Profile p = toV2(v1, c);
-        String text = write.apply(p);
         String name = file.getFileName().toString(), stem = name.endsWith(".json") ? name.substring(0, name.length() - 5) : name;
-        Path backup = file.resolveSibling(stem + ".v1.json"), tmp = file.resolveSibling(stem + ".tmp");
-        if (!Files.exists(backup)) Files.write(backup, original, StandardOpenOption.CREATE_NEW);
+        Path v1Backup = file.resolveSibling(stem + ".v1.json"), v2Backup = file.resolveSibling(stem + ".v2.json"), tmp = file.resolveSibling(stem + ".tmp");
+        byte[] v2Bytes;
+        if (v1.schema < 2) {
+            p = toV2(v1, c);
+            v2Bytes = write.apply(p).getBytes(StandardCharsets.UTF_8);
+        } else {
+            if (p == null) throw new IllegalStateException("Commander profile is empty; it was left unchanged: " + file.getFileName());
+            v2Bytes = original;
+        }
+        String text = write.apply(v2toV3(p, Spec.CAMPAIGNBATTLES));
+        if (v1.schema < 2 && !Files.exists(v1Backup)) Files.write(v1Backup, original, StandardOpenOption.CREATE_NEW);
+        if (!Files.exists(v2Backup)) Files.write(v2Backup, v2Bytes, StandardOpenOption.CREATE_NEW);
         Files.writeString(tmp, text);
         try {
             Files.move(tmp, file, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);

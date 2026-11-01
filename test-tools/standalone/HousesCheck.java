@@ -200,7 +200,7 @@ public final class HousesCheck {
     }
     static List<String> ids(List<CounterMath.CardRow> rows) { return rows.stream().map(r -> r.id() + (r.incoming() ? "<" : ">")).toList();
     }
-    static Spec.CampaignBattlesRow march(String id, int chapter, int order) { return new Spec.CampaignBattlesRow(id, chapter, order, id, 0, 1, "easy", false, "", ""); }
+    static Spec.CampaignBattlesRow march(String id, int chapter, int order) { return new Spec.CampaignBattlesRow(id, chapter, order, id, 0, 1, "easy", false, "", "", "domination", "gilded", "b1_hold_all", "none"); }
     /** The re-authored Founders chapter (spec 4.8) and the House-aware contract claims (spec 4.5), through Progression.claim alone. */
     static void founders() {
         var s = tier30();
