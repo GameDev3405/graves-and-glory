@@ -187,6 +187,21 @@
       "docs/maps/ironhold/sections/ironhold-C0-iso.png"
      ],
      "notes": "Surface fix pass (Kort 2026-10-31): floor: one main block, light accent, path cores. Top layer only."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T05:45:18Z",
+     "digest": "fcdc96dbcfb6c58de998e5dc071a453d7769eca609c88c0d399f91fa21df7e98",
+     "plans": [
+      "docs/maps/ironhold/sections/C0-cleanup.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-C0-top.png",
+      "docs/maps/ironhold/sections/ironhold-C0-iso.png"
+     ],
+     "notes": "Surface cleanup (Kort 2026-11-01): floor: one main block, light accent, path cores. Top layer only."
     }
    ]
   },
@@ -285,6 +300,21 @@
       "docs/maps/ironhold/sections/ironhold-E0-iso.png"
      ],
      "notes": "Surface fix pass (Kort 2026-10-31): floor: one main block, light accent, path cores. Top layer only."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T05:52:19Z",
+     "digest": "ee912642addd35134b48077be796a015afec3dc78bbee1807801de53ae3e3e50",
+     "plans": [
+      "docs/maps/ironhold/sections/E0-cleanup.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-E0-top.png",
+      "docs/maps/ironhold/sections/ironhold-E0-iso.png"
+     ],
+     "notes": "Surface cleanup (Kort 2026-11-01): floor: one main block, light accent, path cores. Top layer only."
     }
    ]
   },
@@ -334,6 +364,21 @@
       "docs/maps/ironhold/sections/ironhold-F0-iso.png"
      ],
      "notes": "Surface fix pass (Kort 2026-10-31): floor: one main block, light accent, path cores. Top layer only."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T05:56:30Z",
+     "digest": "2c6fe26aa0a6ad60fcf6979139b0f79167418e8d0fe4928c24ea25b09d0e5d93",
+     "plans": [
+      "docs/maps/ironhold/sections/F0-cleanup.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-F0-top.png",
+      "docs/maps/ironhold/sections/ironhold-F0-iso.png"
+     ],
+     "notes": "Surface cleanup (Kort 2026-11-01): floor: one main block, light accent, path cores. Top layer only."
     }
    ]
   },
@@ -383,6 +428,21 @@
       "docs/maps/ironhold/sections/ironhold-G0-iso.png"
      ],
      "notes": "Surface fix pass (Kort 2026-10-31): floor: one main block, light accent, path cores. Top layer only."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T06:01:37Z",
+     "digest": "90ba5ac980370d3eea86cc79a1d1b6bb90f8977d9fd1229251aa35853c1de7fd",
+     "plans": [
+      "docs/maps/ironhold/sections/G0-cleanup.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-G0-top.png",
+      "docs/maps/ironhold/sections/ironhold-G0-iso.png"
+     ],
+     "notes": "Surface cleanup (Kort 2026-11-01): floor: one main block, light accent, path cores. Top layer only."
     }
    ]
   },
@@ -432,6 +492,21 @@
       "docs/maps/ironhold/sections/ironhold-H0-iso.png"
      ],
      "notes": "Surface fix pass (Kort 2026-10-31): floor: one main block, light accent, path cores. Top layer only."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T06:05:01Z",
+     "digest": "b48a044059096ab5865bc46328b015f8716d43cf93183ffb370d364bc84908ef",
+     "plans": [
+      "docs/maps/ironhold/sections/H0-cleanup.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-H0-top.png",
+      "docs/maps/ironhold/sections/ironhold-H0-iso.png"
+     ],
+     "notes": "Surface cleanup (Kort 2026-11-01): floor: one main block, light accent, path cores. Top layer only."
     }
    ]
   },
@@ -481,6 +556,21 @@
       "docs/maps/ironhold/sections/ironhold-I0-iso.png"
      ],
      "notes": "Surface fix pass (Kort 2026-10-31): gorge: banded crag, gravel scree. Top layer only."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T06:07:05Z",
+     "digest": "a823ddf4bcafa0b3680b52dcebdc2ad366e59ea740c0a246fb769bba187a3f65",
+     "plans": [
+      "docs/maps/ironhold/sections/I0-cleanup.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-I0-top.png",
+      "docs/maps/ironhold/sections/ironhold-I0-iso.png"
+     ],
+     "notes": "Surface cleanup (Kort 2026-11-01): gorge: banded crag, gravel scree. Top layer only."
     }
    ]
   },
@@ -530,6 +620,21 @@
       "docs/maps/ironhold/sections/ironhold-J0-iso.png"
      ],
      "notes": "Surface fix pass (Kort 2026-10-31): gorge: banded crag, gravel scree. Top layer only."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T06:12:26Z",
+     "digest": "71e4e156b045f1ee367309ef9e6f9043716b349e0f2d8fd2f0b57671db983a85",
+     "plans": [
+      "docs/maps/ironhold/sections/J0-cleanup.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-J0-top.png",
+      "docs/maps/ironhold/sections/ironhold-J0-iso.png"
+     ],
+     "notes": "Surface cleanup (Kort 2026-11-01): gorge: banded crag, gravel scree. Top layer only."
     }
    ]
   },
@@ -579,6 +684,21 @@
       "docs/maps/ironhold/sections/ironhold-K0-iso.png"
      ],
      "notes": "Surface fix pass (Kort 2026-10-31): gorge: banded crag, gravel scree. Top layer only."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T06:17:29Z",
+     "digest": "f1e3dc4bc66690b54c5a6f7efb1973a502c98bdbb56d8012d16f527345824d5f",
+     "plans": [
+      "docs/maps/ironhold/sections/K0-cleanup.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-K0-top.png",
+      "docs/maps/ironhold/sections/ironhold-K0-iso.png"
+     ],
+     "notes": "Surface cleanup (Kort 2026-11-01): gorge: banded crag, gravel scree. Top layer only."
     }
    ]
   },
@@ -726,6 +846,21 @@
       "docs/maps/ironhold/sections/ironhold-C1-iso.png"
      ],
      "notes": "Surface fix pass (Kort 2026-10-31): floor: one main block, light accent, path cores. Top layer only."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T05:46:00Z",
+     "digest": "0e55ccbb2f1d735e00fdb8b5d1c92446960906b041a4e51932a5d395ec989a4e",
+     "plans": [
+      "docs/maps/ironhold/sections/C1-cleanup.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-C1-top.png",
+      "docs/maps/ironhold/sections/ironhold-C1-iso.png"
+     ],
+     "notes": "Surface cleanup (Kort 2026-11-01): floor: one main block, light accent, path cores. Top layer only."
     }
    ]
   },
@@ -775,6 +910,21 @@
       "docs/maps/ironhold/sections/ironhold-D1-iso.png"
      ],
      "notes": "Surface fix pass (Kort 2026-10-31): floor: one main block, light accent, path cores. Top layer only."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T05:48:48Z",
+     "digest": "34b9407dce2f9b43c8123eff4b2eab5b47a8cf3beb047566cc73dbe7509f7972",
+     "plans": [
+      "docs/maps/ironhold/sections/D1-cleanup.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-D1-top.png",
+      "docs/maps/ironhold/sections/ironhold-D1-iso.png"
+     ],
+     "notes": "Surface cleanup (Kort 2026-11-01): floor: one main block, light accent, path cores. Top layer only."
     }
    ]
   },
@@ -824,6 +974,21 @@
       "docs/maps/ironhold/sections/ironhold-E1-iso.png"
      ],
      "notes": "Surface fix pass (Kort 2026-10-31): floor: one main block, light accent, path cores. Top layer only."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T05:53:02Z",
+     "digest": "c686e67e60a1902083a2a82edecc65e3895d46b9d52a4f69503bdfb38e4e8e3b",
+     "plans": [
+      "docs/maps/ironhold/sections/E1-cleanup.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-E1-top.png",
+      "docs/maps/ironhold/sections/ironhold-E1-iso.png"
+     ],
+     "notes": "Surface cleanup (Kort 2026-11-01): floor: one main block, light accent, path cores. Top layer only."
     }
    ]
   },
@@ -887,6 +1052,21 @@
       "docs/maps/ironhold/sections/ironhold-F1-iso.png"
      ],
      "notes": "Surface fix pass (Kort 2026-10-31): floor: one main block, light accent, path cores. Top layer only."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T05:57:17Z",
+     "digest": "ccb17360beea3b5532a8eb7b6c1c5932b78f5f9bac68612db54dc1bf1a36effb",
+     "plans": [
+      "docs/maps/ironhold/sections/F1-cleanup.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-F1-top.png",
+      "docs/maps/ironhold/sections/ironhold-F1-iso.png"
+     ],
+     "notes": "Surface cleanup (Kort 2026-11-01): floor: one main block, light accent, path cores. Top layer only."
     }
    ]
   },
@@ -936,6 +1116,21 @@
       "docs/maps/ironhold/sections/ironhold-G1-iso.png"
      ],
      "notes": "Surface fix pass (Kort 2026-10-31): floor: one main block, light accent, path cores. Top layer only."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T06:02:19Z",
+     "digest": "d8e45b5ae447da84c970ba13da57cea5501bdefccf0bcbfc2f7d4f0d91acb10a",
+     "plans": [
+      "docs/maps/ironhold/sections/G1-cleanup.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-G1-top.png",
+      "docs/maps/ironhold/sections/ironhold-G1-iso.png"
+     ],
+     "notes": "Surface cleanup (Kort 2026-11-01): floor: one main block, light accent, path cores. Top layer only."
     }
    ]
   },
@@ -984,6 +1179,21 @@
       "docs/maps/ironhold/sections/ironhold-H1-iso.png"
      ],
      "notes": "Surface fix pass (Kort 2026-10-31): floor: one main block, light accent, path cores. Top layer only."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T06:05:42Z",
+     "digest": "b2fb73abbb758c6f9713fcbe66330c7a266d1ae698b0383275df197995661165",
+     "plans": [
+      "docs/maps/ironhold/sections/H1-cleanup.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-H1-top.png",
+      "docs/maps/ironhold/sections/ironhold-H1-iso.png"
+     ],
+     "notes": "Surface cleanup (Kort 2026-11-01): floor: one main block, light accent, path cores. Top layer only."
     }
    ]
   },
@@ -1049,6 +1259,21 @@
       "docs/maps/ironhold/sections/ironhold-I1-iso.png"
      ],
      "notes": "Surface fix pass (Kort 2026-10-31): gorge: banded crag, gravel scree. Top layer only."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T06:07:50Z",
+     "digest": "bbca2f4a54dc0b40f4a1a4e209b3fb5870941f2607f88f2f77ae05b20117c438",
+     "plans": [
+      "docs/maps/ironhold/sections/I1-cleanup.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-I1-top.png",
+      "docs/maps/ironhold/sections/ironhold-I1-iso.png"
+     ],
+     "notes": "Surface cleanup (Kort 2026-11-01): gorge: banded crag, gravel scree. Top layer only."
     }
    ]
   },
@@ -1098,6 +1323,21 @@
       "docs/maps/ironhold/sections/ironhold-J1-iso.png"
      ],
      "notes": "Surface fix pass (Kort 2026-10-31): gorge: banded crag, gravel scree. Top layer only."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T06:13:08Z",
+     "digest": "5e76b772cb2f4ceb541d1ff21b97ce4c4379eab4f9ceebe1a5b78e1fd62edc10",
+     "plans": [
+      "docs/maps/ironhold/sections/J1-cleanup.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-J1-top.png",
+      "docs/maps/ironhold/sections/ironhold-J1-iso.png"
+     ],
+     "notes": "Surface cleanup (Kort 2026-11-01): gorge: banded crag, gravel scree. Top layer only."
     }
    ]
   },
@@ -1147,6 +1387,21 @@
       "docs/maps/ironhold/sections/ironhold-K1-iso.png"
      ],
      "notes": "Surface fix pass (Kort 2026-10-31): gorge: banded crag, gravel scree. Top layer only."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T06:18:08Z",
+     "digest": "6439cccff7f560437583fec3a7b3d0b695c417de74e4d489cbebf593d0b9f954",
+     "plans": [
+      "docs/maps/ironhold/sections/K1-cleanup.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-K1-top.png",
+      "docs/maps/ironhold/sections/ironhold-K1-iso.png"
+     ],
+     "notes": "Surface cleanup (Kort 2026-11-01): gorge: banded crag, gravel scree. Top layer only."
     }
    ]
   },
@@ -1309,6 +1564,21 @@
       "docs/maps/ironhold/sections/ironhold-C2-iso.png"
      ],
      "notes": "Surface fix pass (Kort 2026-10-31): floor: one main block, light accent, path cores. Top layer only."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T05:46:40Z",
+     "digest": "223718f34f0f5fc2f42d5bf3c8e61b2fbeeac250d0675d34fc82bb89036d9ad4",
+     "plans": [
+      "docs/maps/ironhold/sections/C2-cleanup.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-C2-top.png",
+      "docs/maps/ironhold/sections/ironhold-C2-iso.png"
+     ],
+     "notes": "Surface cleanup (Kort 2026-11-01): floor: one main block, light accent, path cores. Top layer only."
     }
    ]
   },
@@ -1358,6 +1628,21 @@
       "docs/maps/ironhold/sections/ironhold-D2-iso.png"
      ],
      "notes": "Surface fix pass (Kort 2026-10-31): floor: one main block, light accent, path cores. Top layer only."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T05:49:29Z",
+     "digest": "b8bc6d970bce916a8d073bb0f7d8818555979d9934d10a8253e32b76576d7ac6",
+     "plans": [
+      "docs/maps/ironhold/sections/D2-cleanup.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-D2-top.png",
+      "docs/maps/ironhold/sections/ironhold-D2-iso.png"
+     ],
+     "notes": "Surface cleanup (Kort 2026-11-01): floor: one main block, light accent, path cores. Top layer only."
     }
    ]
   },
@@ -1407,6 +1692,21 @@
       "docs/maps/ironhold/sections/ironhold-E2-iso.png"
      ],
      "notes": "Surface fix pass (Kort 2026-10-31): floor: one main block, light accent, path cores. Top layer only."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T05:53:44Z",
+     "digest": "34f894421e36d3faa38d55f82eddc7247b1f8c07601d4288e7db9a78e87b28a4",
+     "plans": [
+      "docs/maps/ironhold/sections/E2-cleanup.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-E2-top.png",
+      "docs/maps/ironhold/sections/ironhold-E2-iso.png"
+     ],
+     "notes": "Surface cleanup (Kort 2026-11-01): floor: one main block, light accent, path cores. Top layer only."
     }
    ]
   },
@@ -1456,6 +1756,21 @@
       "docs/maps/ironhold/sections/ironhold-F2-iso.png"
      ],
      "notes": "Surface fix pass (Kort 2026-10-31): floor: one main block, light accent, path cores. Top layer only."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T05:58:08Z",
+     "digest": "23e48be67e871cd9effe686af63c52c5e1baa66b5cf6e16fb2edaae20d3074cd",
+     "plans": [
+      "docs/maps/ironhold/sections/F2-cleanup.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-F2-top.png",
+      "docs/maps/ironhold/sections/ironhold-F2-iso.png"
+     ],
+     "notes": "Surface cleanup (Kort 2026-11-01): floor: one main block, light accent, path cores. Top layer only."
     }
    ]
   },
@@ -1504,6 +1819,21 @@
       "docs/maps/ironhold/sections/ironhold-G2-iso.png"
      ],
      "notes": "Surface fix pass (Kort 2026-10-31): floor: one main block, light accent, path cores. Top layer only."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T06:03:00Z",
+     "digest": "8b24a9b6da21e1f3759ed3c08405de894dbbad5e33499e8cd334f70371e8afd9",
+     "plans": [
+      "docs/maps/ironhold/sections/G2-cleanup.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-G2-top.png",
+      "docs/maps/ironhold/sections/ironhold-G2-iso.png"
+     ],
+     "notes": "Surface cleanup (Kort 2026-11-01): floor: one main block, light accent, path cores. Top layer only."
     }
    ]
   },
@@ -1568,6 +1898,21 @@
       "docs/maps/ironhold/sections/ironhold-H2-iso.png"
      ],
      "notes": "Surface fix pass (Kort 2026-10-31): floor: one main block, light accent, path cores. Top layer only."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T06:06:23Z",
+     "digest": "9855805823d018f86a6e30ce9f35456e0dda6e72c6f96c4f72d0b745180f3474",
+     "plans": [
+      "docs/maps/ironhold/sections/H2-cleanup.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-H2-top.png",
+      "docs/maps/ironhold/sections/ironhold-H2-iso.png"
+     ],
+     "notes": "Surface cleanup (Kort 2026-11-01): floor: one main block, light accent, path cores. Top layer only."
     }
    ]
   },
@@ -1617,6 +1962,21 @@
       "docs/maps/ironhold/sections/ironhold-I2-iso.png"
      ],
      "notes": "Surface fix pass (Kort 2026-10-31): gorge: banded crag, gravel scree. Top layer only."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T06:08:32Z",
+     "digest": "a72d97b1d2de61b3bae944214d551dacca3e5636c37bac643500eccdf3ed57a9",
+     "plans": [
+      "docs/maps/ironhold/sections/I2-cleanup.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-I2-top.png",
+      "docs/maps/ironhold/sections/ironhold-I2-iso.png"
+     ],
+     "notes": "Surface cleanup (Kort 2026-11-01): gorge: banded crag, gravel scree. Top layer only."
     }
    ]
   },
@@ -1666,6 +2026,21 @@
       "docs/maps/ironhold/sections/ironhold-J2-iso.png"
      ],
      "notes": "Surface fix pass (Kort 2026-10-31): gorge: banded crag, gravel scree. Top layer only."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T06:13:47Z",
+     "digest": "46f2cdf9e8a27f60d6f6caaf9a4668de76c4784d314666039ada07c7f7d9b962",
+     "plans": [
+      "docs/maps/ironhold/sections/J2-cleanup.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-J2-top.png",
+      "docs/maps/ironhold/sections/ironhold-J2-iso.png"
+     ],
+     "notes": "Surface cleanup (Kort 2026-11-01): gorge: banded crag, gravel scree. Top layer only."
     }
    ]
   },
@@ -1715,6 +2090,21 @@
       "docs/maps/ironhold/sections/ironhold-K2-iso.png"
      ],
      "notes": "Surface fix pass (Kort 2026-10-31): gorge: banded crag, gravel scree. Top layer only."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T06:18:47Z",
+     "digest": "6adc06d14dd6482bc912fb9c4fe3ddd0a01e5e908a1051f7521887bb44fcfb3b",
+     "plans": [
+      "docs/maps/ironhold/sections/K2-cleanup.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-K2-top.png",
+      "docs/maps/ironhold/sections/ironhold-K2-iso.png"
+     ],
+     "notes": "Surface cleanup (Kort 2026-11-01): gorge: banded crag, gravel scree. Top layer only."
     }
    ]
   },
@@ -1877,6 +2267,21 @@
       "docs/maps/ironhold/sections/ironhold-C3-iso.png"
      ],
      "notes": "Surface fix pass (Kort 2026-10-31): floor: one main block, light accent, path cores. Top layer only."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T05:47:24Z",
+     "digest": "bca3d97930bb3920011e24df9cc6ca24bd602e4cf729c6390ee885fe0203b1ac",
+     "plans": [
+      "docs/maps/ironhold/sections/C3-cleanup.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-C3-top.png",
+      "docs/maps/ironhold/sections/ironhold-C3-iso.png"
+     ],
+     "notes": "Surface cleanup (Kort 2026-11-01): floor: one main block, light accent, path cores. Top layer only."
     }
    ]
   },
@@ -1941,6 +2346,21 @@
       "docs/maps/ironhold/sections/ironhold-D3-iso.png"
      ],
      "notes": "Surface fix pass (Kort 2026-10-31): floor: one main block, light accent, path cores. Top layer only."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T05:50:11Z",
+     "digest": "fd2d522cb0935c0fa184158a0077967576edc0499c4ea3b6938a24140870eb7e",
+     "plans": [
+      "docs/maps/ironhold/sections/D3-cleanup.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-D3-top.png",
+      "docs/maps/ironhold/sections/ironhold-D3-iso.png"
+     ],
+     "notes": "Surface cleanup (Kort 2026-11-01): floor: one main block, light accent, path cores. Top layer only."
     }
    ]
   },
@@ -2035,6 +2455,21 @@
       "docs/maps/ironhold/sections/ironhold-E3-iso.png"
      ],
      "notes": "Surface fix pass (Kort 2026-10-31): floor: one main block, light accent, path cores. Top layer only."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T05:54:25Z",
+     "digest": "f3d4327c13741b63933e4b74afa555c01e49ed40b6de83c326e6bc8581283eec",
+     "plans": [
+      "docs/maps/ironhold/sections/E3-cleanup.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-E3-top.png",
+      "docs/maps/ironhold/sections/ironhold-E3-iso.png"
+     ],
+     "notes": "Surface cleanup (Kort 2026-11-01): floor: one main block, light accent, path cores. Top layer only."
     }
    ]
   },
@@ -2143,6 +2578,21 @@
       "docs/maps/ironhold/sections/ironhold-F3-iso.png"
      ],
      "notes": "Surface fix pass (Kort 2026-10-31): floor: one main block, light accent, path cores. Top layer only."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T05:58:51Z",
+     "digest": "02b2cd9a975e58f50297fed341a2c0e90267bcda424eac98a6a5c90fdc508020",
+     "plans": [
+      "docs/maps/ironhold/sections/F3-cleanup.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-F3-top.png",
+      "docs/maps/ironhold/sections/ironhold-F3-iso.png"
+     ],
+     "notes": "Surface cleanup (Kort 2026-11-01): floor: one main block, light accent, path cores. Top layer only."
     }
    ]
   },
@@ -2191,6 +2641,21 @@
       "docs/maps/ironhold/sections/ironhold-G3-iso.png"
      ],
      "notes": "Surface fix pass (Kort 2026-10-31): floor: one main block, light accent, path cores. Top layer only."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T06:03:40Z",
+     "digest": "3ae1745e65fdc5aa78b4e6606ccc9dc0285419b507e027c6ac6abea291486cb1",
+     "plans": [
+      "docs/maps/ironhold/sections/G3-cleanup.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-G3-top.png",
+      "docs/maps/ironhold/sections/ironhold-G3-iso.png"
+     ],
+     "notes": "Surface cleanup (Kort 2026-11-01): floor: one main block, light accent, path cores. Top layer only."
     }
    ]
   },
@@ -2304,6 +2769,21 @@
       "docs/maps/ironhold/sections/ironhold-I3-iso.png"
      ],
      "notes": "Surface fix pass (Kort 2026-10-31): gorge: banded crag, gravel scree. Top layer only."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T06:09:15Z",
+     "digest": "3173fae31d9de997b4e0aac8fd1606eb330ab2380fbd30d874aa81a8ecf1cbb8",
+     "plans": [
+      "docs/maps/ironhold/sections/I3-cleanup.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-I3-top.png",
+      "docs/maps/ironhold/sections/ironhold-I3-iso.png"
+     ],
+     "notes": "Surface cleanup (Kort 2026-11-01): gorge: banded crag, gravel scree. Top layer only."
     }
    ]
   },
@@ -2353,6 +2833,21 @@
       "docs/maps/ironhold/sections/ironhold-J3-iso.png"
      ],
      "notes": "Surface fix pass (Kort 2026-10-31): gorge: banded crag, gravel scree. Top layer only."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T06:14:25Z",
+     "digest": "f9f83280186f4e833f8b3a499fa55a9739359043d5a9765f7f9e2267c6a5bfb9",
+     "plans": [
+      "docs/maps/ironhold/sections/J3-cleanup.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-J3-top.png",
+      "docs/maps/ironhold/sections/ironhold-J3-iso.png"
+     ],
+     "notes": "Surface cleanup (Kort 2026-11-01): gorge: banded crag, gravel scree. Top layer only."
     }
    ]
   },
@@ -2402,6 +2897,21 @@
       "docs/maps/ironhold/sections/ironhold-K3-iso.png"
      ],
      "notes": "Surface fix pass (Kort 2026-10-31): gorge: banded crag, gravel scree. Top layer only."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T06:19:23Z",
+     "digest": "e9e43eb8571fa82da92500e5cb2a5131c7f97319506ecc065b7bce39ebc14540",
+     "plans": [
+      "docs/maps/ironhold/sections/K3-cleanup.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-K3-top.png",
+      "docs/maps/ironhold/sections/ironhold-K3-iso.png"
+     ],
+     "notes": "Surface cleanup (Kort 2026-11-01): gorge: banded crag, gravel scree. Top layer only."
     }
    ]
   },
@@ -2628,6 +3138,21 @@
       "docs/maps/ironhold/sections/ironhold-D4-iso.png"
      ],
      "notes": "Surface fix pass (Kort 2026-10-31): floor: one main block, light accent, path cores. Top layer only."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T05:50:54Z",
+     "digest": "8f015ba0327e5cf14a01f209ad274f719c6a430e64806bdb463b8a376e564c04",
+     "plans": [
+      "docs/maps/ironhold/sections/D4-cleanup.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-D4-top.png",
+      "docs/maps/ironhold/sections/ironhold-D4-iso.png"
+     ],
+     "notes": "Surface cleanup (Kort 2026-11-01): floor: one main block, light accent, path cores. Top layer only."
     }
    ]
   },
@@ -2737,6 +3262,21 @@
       "docs/maps/ironhold/sections/ironhold-E4-iso.png"
      ],
      "notes": "Surface fix pass (Kort 2026-10-31): floor: one main block, light accent, path cores. Top layer only."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T05:55:05Z",
+     "digest": "345000ab7b0649dc0ac5160adaac64227a463bb9cf9f3a434e839cab4aa3f8d8",
+     "plans": [
+      "docs/maps/ironhold/sections/E4-cleanup.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-E4-top.png",
+      "docs/maps/ironhold/sections/ironhold-E4-iso.png"
+     ],
+     "notes": "Surface cleanup (Kort 2026-11-01): floor: one main block, light accent, path cores. Top layer only."
     }
    ]
   },
@@ -2831,6 +3371,21 @@
       "docs/maps/ironhold/sections/ironhold-F4-iso.png"
      ],
      "notes": "Surface fix pass (Kort 2026-10-31): Great Keep tower in stone brick; floor: one main block, light accent, path cores. Top layer only."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T05:59:36Z",
+     "digest": "3e8998f793db24a3fa74e6c46fc24e8454825c69984d6503b4bc2d5c0047eb20",
+     "plans": [
+      "docs/maps/ironhold/sections/F4-cleanup.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-F4-top.png",
+      "docs/maps/ironhold/sections/ironhold-F4-iso.png"
+     ],
+     "notes": "Surface cleanup (Kort 2026-11-01): floor: one main block, light accent, path cores. Top layer only."
     }
    ]
   },
@@ -2879,6 +3434,21 @@
       "docs/maps/ironhold/sections/ironhold-G4-iso.png"
      ],
      "notes": "Surface fix pass (Kort 2026-10-31): floor: one main block, light accent, path cores. Top layer only."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T06:04:20Z",
+     "digest": "cafe533095eff0a7506ca42a177855253da8db0e769d3767bc408990f9e02d00",
+     "plans": [
+      "docs/maps/ironhold/sections/G4-cleanup.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-G4-top.png",
+      "docs/maps/ironhold/sections/ironhold-G4-iso.png"
+     ],
+     "notes": "Surface cleanup (Kort 2026-11-01): floor: one main block, light accent, path cores. Top layer only."
     }
    ]
   },
@@ -2976,6 +3546,21 @@
       "docs/maps/ironhold/sections/ironhold-I4-iso.png"
      ],
      "notes": "Surface fix pass (Kort 2026-10-31): gorge: banded crag, gravel scree. Top layer only."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T06:09:56Z",
+     "digest": "b5b85606f96f425c435222efd8356355d40a9add20e5573256b454fd0d5a350a",
+     "plans": [
+      "docs/maps/ironhold/sections/I4-cleanup.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-I4-top.png",
+      "docs/maps/ironhold/sections/ironhold-I4-iso.png"
+     ],
+     "notes": "Surface cleanup (Kort 2026-11-01): gorge: banded crag, gravel scree. Top layer only."
     }
    ]
   },
@@ -3025,6 +3610,21 @@
       "docs/maps/ironhold/sections/ironhold-J4-iso.png"
      ],
      "notes": "Surface fix pass (Kort 2026-10-31): gorge: banded crag, gravel scree. Top layer only."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T06:15:02Z",
+     "digest": "c7ba83c25d2150c97f2464b715c54e340133b3883688f363d5bb8fb0057bd38d",
+     "plans": [
+      "docs/maps/ironhold/sections/J4-cleanup.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-J4-top.png",
+      "docs/maps/ironhold/sections/ironhold-J4-iso.png"
+     ],
+     "notes": "Surface cleanup (Kort 2026-11-01): gorge: banded crag, gravel scree. Top layer only."
     }
    ]
   },
@@ -3074,6 +3674,21 @@
       "docs/maps/ironhold/sections/ironhold-K4-iso.png"
      ],
      "notes": "Surface fix pass (Kort 2026-10-31): gorge: banded crag, gravel scree. Top layer only."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T06:20:01Z",
+     "digest": "75a9462006e9226cf3ea0a808b40334f1023046f35a40d413d91e1af4911c204",
+     "plans": [
+      "docs/maps/ironhold/sections/K4-cleanup.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-K4-top.png",
+      "docs/maps/ironhold/sections/ironhold-K4-iso.png"
+     ],
+     "notes": "Surface cleanup (Kort 2026-11-01): gorge: banded crag, gravel scree. Top layer only."
     }
    ]
   },
@@ -3236,6 +3851,21 @@
       "docs/maps/ironhold/sections/ironhold-C5-iso.png"
      ],
      "notes": "Surface fix pass (Kort 2026-10-31): floor: one main block, light accent, path cores. Top layer only."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T05:48:06Z",
+     "digest": "2212687477db3d02992969d1f20b53ac0d28cf53abcf80cb29167fc31cd3c7c3",
+     "plans": [
+      "docs/maps/ironhold/sections/C5-cleanup.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-C5-top.png",
+      "docs/maps/ironhold/sections/ironhold-C5-iso.png"
+     ],
+     "notes": "Surface cleanup (Kort 2026-11-01): floor: one main block, light accent, path cores. Top layer only."
     }
    ]
   },
@@ -3285,6 +3915,21 @@
       "docs/maps/ironhold/sections/ironhold-D5-iso.png"
      ],
      "notes": "Surface fix pass (Kort 2026-10-31): floor: one main block, light accent, path cores. Top layer only."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T05:51:37Z",
+     "digest": "f2f317ef677442c60d79a94e41f253a3a4ea78e85d66e2b93197a9340468fb1e",
+     "plans": [
+      "docs/maps/ironhold/sections/D5-cleanup.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-D5-top.png",
+      "docs/maps/ironhold/sections/ironhold-D5-iso.png"
+     ],
+     "notes": "Surface cleanup (Kort 2026-11-01): floor: one main block, light accent, path cores. Top layer only."
     }
    ]
   },
@@ -3334,6 +3979,21 @@
       "docs/maps/ironhold/sections/ironhold-E5-iso.png"
      ],
      "notes": "Surface fix pass (Kort 2026-10-31): floor: one main block, light accent, path cores. Top layer only."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T05:55:44Z",
+     "digest": "7f2b5abb82a86a8d3653796c1ec9ef02f3036ea0802dc3708768282ff2c8adab",
+     "plans": [
+      "docs/maps/ironhold/sections/E5-cleanup.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-E5-top.png",
+      "docs/maps/ironhold/sections/ironhold-E5-iso.png"
+     ],
+     "notes": "Surface cleanup (Kort 2026-11-01): floor: one main block, light accent, path cores. Top layer only."
     }
    ]
   },
@@ -3574,6 +4234,21 @@
       "docs/maps/ironhold/sections/ironhold-I5-iso.png"
      ],
      "notes": "Surface fix pass (Kort 2026-10-31): gorge: banded crag, gravel scree. Top layer only."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T06:10:33Z",
+     "digest": "b9d59f996f72353211cb0d7fdddad77da80b06a8a38035e123da7207dc30aa64",
+     "plans": [
+      "docs/maps/ironhold/sections/I5-cleanup.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-I5-top.png",
+      "docs/maps/ironhold/sections/ironhold-I5-iso.png"
+     ],
+     "notes": "Surface cleanup (Kort 2026-11-01): gorge: banded crag, gravel scree. Top layer only."
     }
    ]
   },
@@ -3623,6 +4298,21 @@
       "docs/maps/ironhold/sections/ironhold-J5-iso.png"
      ],
      "notes": "Surface fix pass (Kort 2026-10-31): gorge: banded crag, gravel scree. Top layer only."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T06:15:40Z",
+     "digest": "9bd192b1203266e59251666b5277028d524a88d750672e510453d4e6df42f4d6",
+     "plans": [
+      "docs/maps/ironhold/sections/J5-cleanup.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-J5-top.png",
+      "docs/maps/ironhold/sections/ironhold-J5-iso.png"
+     ],
+     "notes": "Surface cleanup (Kort 2026-11-01): gorge: banded crag, gravel scree. Top layer only."
     }
    ]
   },
@@ -3672,6 +4362,21 @@
       "docs/maps/ironhold/sections/ironhold-K5-iso.png"
      ],
      "notes": "Surface fix pass (Kort 2026-10-31): gorge: banded crag, gravel scree. Top layer only."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T06:20:39Z",
+     "digest": "2d7aa7aca43066d2b63a928a2bdad756177b6db27a7750dd760eae6cb397e03d",
+     "plans": [
+      "docs/maps/ironhold/sections/K5-cleanup.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-K5-top.png",
+      "docs/maps/ironhold/sections/ironhold-K5-iso.png"
+     ],
+     "notes": "Surface cleanup (Kort 2026-11-01): gorge: banded crag, gravel scree. Top layer only."
     }
    ]
   },
@@ -3966,6 +4671,21 @@
       "docs/maps/ironhold/sections/ironhold-F6-iso.png"
      ],
      "notes": "Surface fix pass (Kort 2026-10-31): floor: one main block, light accent, path cores. Top layer only."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T06:00:16Z",
+     "digest": "ea15c5057c60c9f692368c1e7407acfccfc3f9831044608c7959ebdcbb6c9c42",
+     "plans": [
+      "docs/maps/ironhold/sections/F6-cleanup.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-F6-top.png",
+      "docs/maps/ironhold/sections/ironhold-F6-iso.png"
+     ],
+     "notes": "Surface cleanup (Kort 2026-11-01): floor: one main block, light accent, path cores. Top layer only."
     }
    ]
   },
@@ -4112,6 +4832,21 @@
       "docs/maps/ironhold/sections/ironhold-I6-iso.png"
      ],
      "notes": "Surface fix pass (Kort 2026-10-31): gorge: banded crag, gravel scree. Top layer only."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T06:11:11Z",
+     "digest": "65d9d5c6dbbd6092c6c43af33ab21214297665558113677f0ebeee70d4a216e6",
+     "plans": [
+      "docs/maps/ironhold/sections/I6-cleanup.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-I6-top.png",
+      "docs/maps/ironhold/sections/ironhold-I6-iso.png"
+     ],
+     "notes": "Surface cleanup (Kort 2026-11-01): gorge: banded crag, gravel scree. Top layer only."
     }
    ]
   },
@@ -4161,6 +4896,21 @@
       "docs/maps/ironhold/sections/ironhold-J6-iso.png"
      ],
      "notes": "Surface fix pass (Kort 2026-10-31): gorge: banded crag, gravel scree. Top layer only."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T06:16:16Z",
+     "digest": "e2202cb3ebb85c545a3faa269487833c33f764643803b1cbb97c1ac1af27b4c3",
+     "plans": [
+      "docs/maps/ironhold/sections/J6-cleanup.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-J6-top.png",
+      "docs/maps/ironhold/sections/ironhold-J6-iso.png"
+     ],
+     "notes": "Surface cleanup (Kort 2026-11-01): gorge: banded crag, gravel scree. Top layer only."
     }
    ]
   },
@@ -4210,6 +4960,21 @@
       "docs/maps/ironhold/sections/ironhold-K6-iso.png"
      ],
      "notes": "Surface fix pass (Kort 2026-10-31): gorge: banded crag, gravel scree. Top layer only."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T06:21:18Z",
+     "digest": "68ad2ed91993bb3f22cd5abfffc7309d31005f17a5acc81c9b99d5b94053ff44",
+     "plans": [
+      "docs/maps/ironhold/sections/K6-cleanup.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-K6-top.png",
+      "docs/maps/ironhold/sections/ironhold-K6-iso.png"
+     ],
+     "notes": "Surface cleanup (Kort 2026-11-01): gorge: banded crag, gravel scree. Top layer only."
     }
    ]
   },
@@ -4504,6 +5269,21 @@
       "docs/maps/ironhold/sections/ironhold-F7-iso.png"
      ],
      "notes": "Surface fix pass (Kort 2026-10-31): floor: one main block, light accent, path cores. Top layer only."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T06:00:56Z",
+     "digest": "57e593d18929dd909d8e15b703880c77ea6d23a08d7ed297cb1ae83fe68a5b20",
+     "plans": [
+      "docs/maps/ironhold/sections/F7-cleanup.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-F7-top.png",
+      "docs/maps/ironhold/sections/ironhold-F7-iso.png"
+     ],
+     "notes": "Surface cleanup (Kort 2026-11-01): floor: one main block, light accent, path cores. Top layer only."
     }
    ]
   },
@@ -4651,6 +5431,21 @@
       "docs/maps/ironhold/sections/ironhold-I7-iso.png"
      ],
      "notes": "Surface fix pass (Kort 2026-10-31): gorge: banded crag, gravel scree. Top layer only."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T06:11:49Z",
+     "digest": "88afb6a36592f27573bd3295d07ae2f61fa596c6648e31a62c948a5a37cdf11f",
+     "plans": [
+      "docs/maps/ironhold/sections/I7-cleanup.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-I7-top.png",
+      "docs/maps/ironhold/sections/ironhold-I7-iso.png"
+     ],
+     "notes": "Surface cleanup (Kort 2026-11-01): gorge: banded crag, gravel scree. Top layer only."
     }
    ]
   },
@@ -4700,6 +5495,21 @@
       "docs/maps/ironhold/sections/ironhold-J7-iso.png"
      ],
      "notes": "Surface fix pass (Kort 2026-10-31): gorge: banded crag, gravel scree. Top layer only."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T06:16:52Z",
+     "digest": "48774fcdd64f1cb18328f10ceaf3ee5d7f29290141b30dc9bc7a23f679599492",
+     "plans": [
+      "docs/maps/ironhold/sections/J7-cleanup.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-J7-top.png",
+      "docs/maps/ironhold/sections/ironhold-J7-iso.png"
+     ],
+     "notes": "Surface cleanup (Kort 2026-11-01): gorge: banded crag, gravel scree. Top layer only."
     }
    ]
   },
@@ -4749,6 +5559,21 @@
       "docs/maps/ironhold/sections/ironhold-K7-iso.png"
      ],
      "notes": "Surface fix pass (Kort 2026-10-31): gorge: banded crag, gravel scree. Top layer only."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T06:21:56Z",
+     "digest": "b127f488df065fc04c956ccc7b21b89309520216c6484866ba54aad86f6890f8",
+     "plans": [
+      "docs/maps/ironhold/sections/K7-cleanup.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-K7-top.png",
+      "docs/maps/ironhold/sections/ironhold-K7-iso.png"
+     ],
+     "notes": "Surface cleanup (Kort 2026-11-01): gorge: banded crag, gravel scree. Top layer only."
     }
    ]
   }
