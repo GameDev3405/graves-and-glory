@@ -623,7 +623,7 @@ final class MotionGrade extends Phase2Checks.Stage {
     // ---- geometry of a drawn pose ----
     static final String[] SHINS = {"right_shin", "left_shin"};
     /** Points of a pose in blocks, relative to the troop's feet: the soles (right, left), the hands (right, left), the weapon tip, the shield rim. */
-    static final class Geo { final double[][] soles = new double[2][], hands = new double[2][]; double[] tip, rim; }
+    static final class Geo { final double[][] soles = new double[2][], hands = new double[2][]; final double[][][] feet = new double[2][][]; double[] tip, rim; }
     static MatrixStack base(float yaw) { MatrixStack ms = new MatrixStack(); ms.multiply(RotationAxis.POSITIVE_Y.rotationDegrees(180f - yaw)); ms.scale(-1, -1, 1); ms.translate(0, -1.501f, 0); return ms; }
     static double[] through(List<ModelPart> path, float yaw, double x, double y, double z) {
         MatrixStack ms = base(yaw); for (ModelPart p : path) p.rotate(ms);
@@ -653,7 +653,7 @@ final class MotionGrade extends Phase2Checks.Stage {
                 List<double[]> pts = new ArrayList<>(); ModelPart shin = path.get(path.size() - 1); shin.forEachCuboid(ms, (entry, p, n, q) -> { if (drawn(shin, p)) corners(entry, q, pts); });
                 double min = 1e9; for (double[] p : pts) min = Math.min(min, p[1]);
                 double sx = 0, sy = 0, sz = 0; int n = 0; for (double[] p : pts) if (p[1] < min + 0.02) { sx += p[0]; sy += p[1]; sz += p[2]; n++; }
-                if (n > 0) g.soles[i] = new double[]{sx / n, sy / n, sz / n};
+                if (n > 0) { g.soles[i] = new double[]{sx / n, sy / n, sz / n}; g.feet[i] = pts.toArray(new double[0][]); }
             }
             for (int i = 0; i < 2; i++) { var p = model.handPath(i == 0 ? "right" : "left"); if (!p.isEmpty()) g.hands[i] = through(p, yaw, 0, 0, 0); }
             var hp = model.handPath(model.hand()); if (!hp.isEmpty() && tipPoint != null) g.tip = through(hp, yaw, tipPoint[0], tipPoint[1], tipPoint[2]);
@@ -878,8 +878,10 @@ final class MotionGrade extends Phase2Checks.Stage {
     }
 
     // ---- loco: walk, run, crawl, backpedal and a turn, tracked from the side ----
-    final List<double[]> lrec = new ArrayList<>(); // per frame: serverIdx, x, z, rx, ry, rz, lx, ly, lz, now
+    final List<double[]> lrec = new ArrayList<>(); // per frame: serverIdx, x, z, rx, ry, rz, lx, ly, lz, now, engine plant weight
     final List<float[]> lpose = new ArrayList<>(); final List<Double> lnow = new ArrayList<>();
+    /** R83: per frame, each foot's drawn shin corners (x, height, z in blocks from the site), or null when not drawn. */
+    final List<double[][][]> lcorn = new ArrayList<>();
     void trackCam(Entity e) {
         if (e == null) return; double off = soloD;
         cam = new double[]{e.getX(), site.getY() + soloEye, e.getZ() + off, 180, 0, e.prevX, e.prevZ + off};
@@ -898,7 +900,7 @@ final class MotionGrade extends Phase2Checks.Stage {
                 boolean ok = e != null && e.isAlive() && placed(c, L_LOCO, 1.8, x0); held = ok ? held + 1 : 0;
                 if (held >= 25 && shotReady(c, "loco " + g.name())) {
                     final double[][] p = g.path(); server(c, b -> { locoPath = p; locoI = 0; });
-                    lph = 1; wait = 0; tail = 0; lrec.clear(); lpose.clear(); lnow.clear(); lastSnapN = LAST == null ? -1 : LAST.n;
+                    lph = 1; wait = 0; tail = 0; lrec.clear(); lpose.clear(); lnow.clear(); lcorn.clear(); lastSnapN = LAST == null ? -1 : LAST.n;
                 } else if (wait > 900) { locoBad.add(g.name() + ": never placed"); li++; wait = 0; }
             }
             case 1 -> {
@@ -910,8 +912,11 @@ final class MotionGrade extends Phase2Checks.Stage {
                     double[] r = q.soles[0], l = q.soles[1];
                     lrec.add(new double[]{idx, en.pos.x - site.getX() - .5, en.pos.z - site.getZ() - .5,
                             r == null ? Double.NaN : en.pos.x + r[0] - site.getX() - .5, r == null ? Double.NaN : en.pos.y + r[1] - site.getY(), r == null ? Double.NaN : en.pos.z + r[2] - site.getZ() - .5,
-                            l == null ? Double.NaN : en.pos.x + l[0] - site.getX() - .5, l == null ? Double.NaN : en.pos.y + l[1] - site.getY(), l == null ? Double.NaN : en.pos.z + l[2] - site.getZ() - .5, en.now});
+                            l == null ? Double.NaN : en.pos.x + l[0] - site.getX() - .5, l == null ? Double.NaN : en.pos.y + l[1] - site.getY(), l == null ? Double.NaN : en.pos.z + l[2] - site.getZ() - .5, en.now, en.plant});
                     lpose.add(en.pose); lnow.add(en.now);
+                    double[][][] fc = new double[2][][];
+                    for (int i = 0; i < 2; i++) if (q.feet[i] != null) { fc[i] = new double[q.feet[i].length][]; for (int v = 0; v < fc[i].length; v++) { double[] p = q.feet[i][v]; fc[i][v] = new double[]{en.pos.x + p[0] - site.getX() - .5, en.pos.y + p[1] - site.getY(), en.pos.z + p[2] - site.getZ() - .5}; } }
+                    lcorn.add(fc);
                     String rel = String.format(Locale.ROOT, "loco/%s/f%03d.png", g.name(), k);
                     var x = entry("loco_frame", null, null, "side-tracking", k, 90, Double.NaN); x.addProperty("segment", g.name()); x.addProperty("serverTick", idx);
                     x.addProperty("phase", idx < 15 ? "idle" : idx < 15 + g.move() ? (g.turn() ? "turn" : "move") : "stop"); x.addProperty("engineNow", en.now);
@@ -935,31 +940,40 @@ final class MotionGrade extends Phase2Checks.Stage {
         var ph = new JsonObject(); ph.addProperty("idleTicks", 15); ph.addProperty(g.turn() ? "turnTicks" : "moveTicks", g.move()); ph.addProperty("pathTicks", g.path().length); j.add("serverTicks", ph);
         if (n < 10) { locoBad.add(g.name() + ": " + n + " frames"); locoJson.add(j); return; }
         String[] side = {"right", "left"}; var slide = new JsonArray(); var maxPlant = new JsonArray(); var planted = new JsonArray(); var minH = new JsonArray(); var maxH = new JsonArray(); var rest = new JsonArray(); var thr = new JsonArray();
-        var moveSlide = new JsonArray();
-        double[][] ser = new double[6][n];
+        var moveSlide = new JsonArray(); var centroidSlide = new JsonArray(); var plants = new JsonArray(); var plantCount = new JsonArray();
+        double[][] ser = new double[6][n]; double[][] spans = new double[2][n];
+        boolean[] afterIdle = new boolean[n]; for (int k = 0; k < n; k++) afterIdle[k] = lrec.get(k)[0] >= 15;
         for (int i = 0; i < 2; i++) {
             int o = 3 + 3 * i; List<Double> idle = new ArrayList<>(); for (double[] r : lrec) if (r[0] < 15 && !Double.isNaN(r[o + 1])) idle.add(r[o + 1]);
             java.util.Collections.sort(idle); double rh = idle.isEmpty() ? 0 : idle.get(idle.size() / 2), th = Math.max(PLANT_ABOVE, rh + PLANT_ABOVE);
-            double tot = 0, mv = 0, run = 0, mx = 0, lo = 1e9, hi = -1e9; int pl = 0;
+            double cen = 0, lo = 1e9, hi = -1e9; int pl = 0; boolean[] isPl = new boolean[n]; double[][][] fc = new double[n][][];
             for (int k = 0; k < n; k++) {
-                double[] r = lrec.get(k); double h = r[o + 1]; ser[2 * i][k] = r[o]; ser[2 * i + 1][k] = h; if (Double.isNaN(h)) continue;
-                lo = Math.min(lo, h); hi = Math.max(hi, h); boolean p = h <= th; if (p) pl++;
-                if (k > 0) {
-                    double[] q = lrec.get(k - 1); boolean pp = !Double.isNaN(q[o + 1]) && q[o + 1] <= th;
-                    if (p && pp) { double d = Math.hypot(r[o] - q[o], r[o + 2] - q[o + 2]); tot += d; run += d; mx = Math.max(mx, run); if (r[0] >= 15) mv += d; } else run = 0;
-                }
+                double[] r = lrec.get(k); double h = r[o + 1]; ser[2 * i][k] = r[o]; ser[2 * i + 1][k] = h; fc[k] = k < lcorn.size() ? lcorn.get(k)[i] : null; if (Double.isNaN(h)) continue;
+                lo = Math.min(lo, h); hi = Math.max(hi, h); boolean p = h <= th; isPl[k] = p; if (p) pl++;
+                if (k > 0) { double[] q = lrec.get(k - 1); if (p && !Double.isNaN(q[o + 1]) && q[o + 1] <= th) cen += Math.hypot(r[o] - q[o], r[o + 2] - q[o + 2]); }
             }
-            slide.add(r4(tot)); moveSlide.add(r4(mv)); maxPlant.add(r4(mx)); planted.add(pl); minH.add(r4(lo)); maxH.add(r4(hi)); rest.add(r4(rh)); thr.add(r4(th));
+            // R83: the slide is measured at the corners the foot stands on, per plant; the totals and the largest come from the plant list
+            double tot = 0, mv = 0, mx = 0; int cnt = 0;
+            for (var p : SoleSlide.plants(i, isPl, fc, afterIdle)) {
+                double eng = 0; for (int k = p.startFrame(); k < p.startFrame() + p.frames(); k++) { eng += lrec.get(k).length > 10 ? lrec.get(k)[10] : Double.NaN; spans[i][k] = 1; }
+                var pj = new JsonObject(); pj.addProperty("segment", g.name()); pj.addProperty("foot", i == 0 ? "right" : "left"); pj.addProperty("startFrame", p.startFrame()); pj.addProperty("startServerTick", (int) lrec.get(p.startFrame())[0]);
+                pj.addProperty("frames", p.frames()); pj.addProperty("slideBlocks", r4(p.slide())); pj.addProperty("slideAfterIdleBlocks", r4(p.slideAfterIdle())); pj.addProperty("enginePlantWeightMean", r4(eng / p.frames()));
+                plants.add(pj); tot += p.slide(); mv += p.slideAfterIdle(); mx = Math.max(mx, p.slide()); cnt++;
+            }
+            slide.add(r4(tot)); moveSlide.add(r4(mv)); maxPlant.add(r4(mx)); planted.add(pl); minH.add(r4(lo)); maxH.add(r4(hi)); rest.add(r4(rh)); thr.add(r4(th)); centroidSlide.add(r4(cen)); plantCount.add(cnt);
         }
-        j.add("plantedSlideBlocks", slide); j.add("plantedSlideAfterIdleBlocks", moveSlide); j.add("largestSinglePlantSlideBlocks", maxPlant); j.add("plantedFrames", planted);
-        j.add("restSoleHeight", rest); j.add("plantedThreshold", thr); j.add("lowestSoleHeight", minH); j.add("highestSoleHeight", maxH);
-        j.addProperty("sides", "right, left"); j.addProperty("note", "sole = the lowest corners of the shin's boxes as drawn; planted = sole height within 0.04 blocks of its idle rest height (at least 0.04); slide = horizontal travel of a sole between two planted frames; a negative lowest height is sinking into the ground");
+        j.add("plantedSlideBlocks", slide); j.add("plantedSlideAfterIdleBlocks", moveSlide); j.add("largestSinglePlantSlideBlocks", maxPlant); j.add("plantedFrames", planted); j.add("plantCount", plantCount);
+        j.add("restSoleHeight", rest); j.add("plantedThreshold", thr); j.add("lowestSoleHeight", minH); j.add("highestSoleHeight", maxH); j.add("soleCentroidSlideBlocks", centroidSlide); j.add("plants", plants);
+        j.addProperty("sides", "right, left"); j.addProperty("note", "sole height = the lowest corners of the shin's boxes as drawn; planted = sole height within 0.04 blocks of its idle rest height (at least 0.04); a plant = a run of consecutive planted frames of one foot; slide (R83) = per step, the smallest horizontal move of a corner touching the ground (within " + SoleSlide.CONTACT + " of the lowest) in both frames, summed over a plant, so a box foot rocking heel to toe reads as no slide; plantedSlideBlocks, plantedSlideAfterIdleBlocks and largestSinglePlantSlideBlocks are the sums and the largest of plants[]; soleCentroidSlideBlocks is the old centroid measure, kept for comparison; enginePlantWeightMean is MotionEngine's planted-feet weight over the plant; a negative lowest height is sinking into the ground");
         double moved = Math.hypot(lrec.get(n - 1)[1] - lrec.get(0)[1], lrec.get(n - 1)[2] - lrec.get(0)[2]); j.addProperty("bodyMovedBlocks", r4(moved));
         var tr = new JsonObject(); var fx = new JsonArray(); var bx = new JsonArray(); var tick = new JsonArray();
         for (int k = 0; k < n; k++) { fx.add(k); bx.add(r4(lrec.get(k)[1])); tick.add((int) lrec.get(k)[0]); }
         tr.add("frame", fx); tr.add("serverTick", tick); tr.add("bodyX", bx);
         String[] nm = {"rightX", "rightHeight", "leftX", "leftHeight"}; for (int s = 0; s < 4; s++) { var a = new JsonArray(); for (int k = 0; k < n; k++) a.add(Double.isNaN(ser[s][k]) ? 0 : r4(ser[s][k])); tr.add(nm[s], a); }
         var rz = new JsonArray(); var lz = new JsonArray(); for (int k = 0; k < n; k++) { rz.add(r4(nz(lrec.get(k)[5]))); lz.add(r4(nz(lrec.get(k)[8]))); } tr.add("rightZ", rz); tr.add("leftZ", lz);
+        var rp = new JsonArray(); var lp = new JsonArray(); var ep = new JsonArray();
+        for (int k = 0; k < n; k++) { rp.add(spans[0][k]); lp.add(spans[1][k]); double[] r = lrec.get(k); ep.add(r.length > 10 ? r4(r[10]) : 0); }
+        tr.add("rightPlanted", rp); tr.add("leftPlanted", lp); tr.add("enginePlantWeight", ep);
         j.add("trace", tr);
         int start = -1, stop = -1; for (int k = 0; k < n; k++) { if (start < 0 && lrec.get(k)[0] >= 15) start = k; if (stop < 0 && lrec.get(k)[0] >= 15 + g.move()) stop = k; }
         j.addProperty("startFrame", start); j.addProperty("stopFrame", stop);
@@ -972,9 +986,12 @@ final class MotionGrade extends Phase2Checks.Stage {
     static double nz(double v) { return Double.isNaN(v) ? 0 : v; }
     static double r4(double v) { return Math.round(v * 10000) / 10000.0; }
     void finishLoco() {
+        // R83: the sole tracker's synthetic pin (a rocking foot reads as no slide, a sliding one as its true slide)
+        try { report("mo-grade-sole", true, "slide measured at the corners each foot stands on, per plant: " + SoleSlide.selfCheck()); }
+        catch (AssertionError x) { report("mo-grade-sole", false, "the sole tracker's synthetic check failed: " + x.getMessage()); }
         boolean ok = locoBad.isEmpty() && locoJson.size() == segs.size();
         StringBuilder sb = new StringBuilder();
-        for (var x : locoJson) { var j = x.getAsJsonObject(); if (j.has("plantedSlideBlocks")) sb.append(j.get("name").getAsString()).append(" slide ").append(j.get("plantedSlideBlocks")).append(" lowest ").append(j.get("lowestSoleHeight")).append("; "); }
+        for (var x : locoJson) { var j = x.getAsJsonObject(); if (j.has("plantedSlideBlocks")) sb.append(j.get("name").getAsString()).append(" slide ").append(j.get("plantedSlideBlocks")).append(" over ").append(j.get("plantCount")).append(" plants, largest ").append(j.get("largestSinglePlantSlideBlocks")).append(" lowest ").append(j.get("lowestSoleHeight")).append("; "); }
         report("mo-grade-loco", ok, segs.size() + " segments (walk, run, shield crawl, backpedal, 90 degree turn), each from idle and back to idle, a side camera tracking at " + String.format(Locale.ROOT, "%.2f", soloD) + " blocks, every frame with the ground line, soles and feet crop; planted slide and sole heights in the manifest: " + sb + (locoBad.isEmpty() ? "" : "off: " + locoBad));
     }
 
@@ -1145,19 +1162,46 @@ final class MotionGrade extends Phase2Checks.Stage {
     }
     /** After a close pass: the capture judged (120 frames, each newly drawn, one world tick apart) and its delta. */
     void closeDone(St s) {
-        judge(s.name(), CAPTURE);
         int[] ev = s.twice() ? new int[]{EVENT1, EVENT2} : new int[]{EVENT1}; String[] en = s.twice() ? new String[]{"event 1", "event 2"} : new String[]{"event"};
         if (s.cat().equals("attack") || s.cat().equals("hit")) { int back = Math.min(CAPTURE - 1, EVENT1 + 1 + (int) Math.round(s.len() * 20)); ev = new int[]{EVENT1, back, EVENT2}; en = new String[]{"event 1", "clip ends, back to the stance", "event 2"}; }
+        var tm = judge(s.name(), CAPTURE, ev);
         var d = delta(new ArrayList<>(trPose), new ArrayList<>(trNow), ev, en);
-        for (var x : statesJson) { var j = x.getAsJsonObject(); if (j.get("name").getAsString().equals(s.name())) { j.add("delta", d); var a = new JsonArray(); for (int e : ev) a.add(e); j.add("denseWindowsAfter", a); break; } }
+        for (var x : statesJson) { var j = x.getAsJsonObject(); if (j.get("name").getAsString().equals(s.name())) { j.add("delta", d); var a = new JsonArray(); for (int e : ev) a.add(e); j.add("denseWindowsAfter", a); j.add("timing", tm); break; } }
     }
-    void judge(String name, int want) {
-        int n = trWorld.size(), stale = 0, gaps = 0;
-        for (int i = 0; i < n; i++) { if (i > 0 && !trFresh.get(i)) stale++; if (i > 0 && trWorld.get(i) - trWorld.get(i - 1) != 1) gaps++; }
-        if (n != want || stale > 0 || gaps > 0) capBad.add(String.format(Locale.ROOT, "%s: %d frames, %d not newly drawn, %d steps not 1 tick", name, n, stale, gaps));
+    /** R81: the timing bound of a close capture: every frame newly drawn, at most this many world steps not exactly 1 tick, none in a dense window. */
+    static final int MAX_OFF_STEPS = 2;
+    static final String TIMING_RULE = "every frame newly drawn; at most " + MAX_OFF_STEPS + " world steps per capture not exactly 1 tick, none touching a dense window (event E-" + DENSE + " to E+" + DENSE + ")";
+    /** Per capture: off-step frame -> world ticks of the step that ended there (for the labels and the reports). */
+    final Map<String, Map<Integer, Long>> offSteps = new HashMap<>();
+    final JsonArray timingJson = new JsonArray();
+    /**
+     * R81: judge a close capture's timing. Stale frames fail outright; a world step that is not exactly 1 tick (frame i-1 to i) is
+     * allowed up to {@link #MAX_OFF_STEPS} per capture, as long as neither of its frames lies in a dense window (E-10 to E+10).
+     */
+    JsonObject judge(String name, int want, int[] ev) {
+        int n = trWorld.size(), stale = 0; var offs = new JsonArray(); Map<Integer, Long> at = new TreeMap<>(); List<String> inWin = new ArrayList<>();
+        for (int i = 1; i < n; i++) {
+            if (!trFresh.get(i)) stale++;
+            long st = trWorld.get(i) - trWorld.get(i - 1); if (st == 1) continue;
+            at.put(i, st); var o = new JsonObject(); o.addProperty("frame", i); o.addProperty("worldTicks", st);
+            boolean w = false; for (int e : ev) if (i >= e - DENSE && i - 1 <= e + DENSE) w = true;
+            o.addProperty("inDenseWindow", w); offs.add(o); if (w) inWin.add("f" + i);
+        }
+        offSteps.put(name, at);
+        var t = new JsonObject(); t.addProperty("capture", name); t.addProperty("frames", n); t.addProperty("wantFrames", want); t.addProperty("staleFrames", stale); t.addProperty("offStepCount", at.size()); t.add("offSteps", offs); t.addProperty("rule", TIMING_RULE);
+        boolean ok = n == want && stale == 0 && at.size() <= MAX_OFF_STEPS && inWin.isEmpty(); t.addProperty("ok", ok); timingJson.add(t);
+        if (!ok) capBad.add(String.format(Locale.ROOT, "%s: %d frames of %d, %d not newly drawn, %d world steps not 1 tick %s%s (allowed: %s)", name, n, want, stale, at.size(), at, inWin.isEmpty() ? "" : ", in a dense window at " + inWin, TIMING_RULE));
+        return t;
+    }
+    /** The off-step counts of a part's captures judged so far, for the reports. */
+    String offStepSummary(String part) {
+        Set<String> names = new TreeSet<>(); if (part.equals("states")) for (St s : states) names.add(s.name()); else for (Tr t : trans) names.add(t.name());
+        int caps = 0, off = 0; List<String> where = new ArrayList<>();
+        for (var e : offSteps.entrySet()) if (names.contains(e.getKey())) { caps++; off += e.getValue().size(); if (!e.getValue().isEmpty()) where.add(e.getKey() + " " + e.getValue()); }
+        return String.format(Locale.ROOT, "; %d captures, %d world steps not 1 tick in all%s", caps, off, where.isEmpty() ? "" : " (frame=ticks: " + String.join("; ", where) + ")");
     }
     void finishStates() {
-        report("mo-grade-capture", capBad.isEmpty() && !states.isEmpty(), states.size() + " states, each a 6 s close capture of " + CAPTURE + " native frames at 20 fps" + (capBad.isEmpty() ? ": every frame newly drawn and one world tick after the last" : "; off: " + capBad));
+        report("mo-grade-capture", capBad.isEmpty() && !states.isEmpty(), states.size() + " states, each a 6 s close capture of " + CAPTURE + " native frames at 20 fps" + (capBad.isEmpty() ? ": " + TIMING_RULE + offStepSummary("states") : "; off: " + capBad));
         report("mo-grade-seeds", seedBad.isEmpty() && seedsChecked > 0, seedsChecked + " casts of " + N + " troops" + (seedBad.isEmpty() ? ", each troop its own variant seed in every cast" : "; off: " + seedBad));
         double near = 1e9; for (var x : crowdJson) near = Math.min(near, x.getAsJsonObject().get("nearestFeetDist").getAsDouble());
         report("mo-grade-states", bad.isEmpty() && near >= 30, states.size() + " live states (wide overview, formation at real spacing from high and at eye height, close trio at real spacing), the nearest crowd troop " + String.format(Locale.ROOT, "%.2f", near) + " blocks from the camera (at least 30)" + (bad.isEmpty() ? "" : "; off: " + bad));
@@ -1165,7 +1209,7 @@ final class MotionGrade extends Phase2Checks.Stage {
 
     // ---- transitions ----
     void transitions(MinecraftClient c) {
-        if (ti >= trans.size()) { report("mo-grade-transitions", capBad.isEmpty() && transJson.size() == trans.size(), trans.size() + " transitions, " + TRANS_FRAMES + " close frames each, dense sheets and the pose delta round every event" + (capBad.isEmpty() ? "" : "; capture off: " + capBad)); next(c); return; }
+        if (ti >= trans.size()) { report("mo-grade-transitions", capBad.isEmpty() && transJson.size() == trans.size(), trans.size() + " transitions, " + TRANS_FRAMES + " close frames each, dense sheets and the pose delta round every event" + (capBad.isEmpty() ? "; " + TIMING_RULE + offStepSummary("transitions") : "; capture off: " + capBad)); next(c); return; }
         if (awayFor > 0) { litStart(c); return; }
         Tr t = trans.get(ti); wait++; double cell = cellFor(t.pre());
         switch (tph) {
@@ -1190,12 +1234,12 @@ final class MotionGrade extends Phase2Checks.Stage {
                 for (Object[] ev : t.evs()) if ((int) ev[0] == f) fireTr(c, (String) ev[1], (String) ev[2]);
                 f++;
                 if (f >= TRANS_FRAMES) {
-                    judge(t.name(), TRANS_FRAMES);
                     int[] ev = new int[t.evs().size()]; String[] en2 = new String[ev.length];
                     for (int i = 0; i < ev.length; i++) { ev[i] = (int) t.evs().get(i)[0]; en2[i] = t.evs().get(i)[1] + ((String) t.evs().get(i)[2]).replaceAll("^(.+)$", " $1"); }
+                    var tm = judge(t.name(), TRANS_FRAMES, ev);
                     var x = new JsonObject(); x.addProperty("name", t.name()); x.addProperty("title", t.title()); x.addProperty("preStance", t.pre()); x.addProperty("cell", cell);
                     var ea = new JsonArray(); for (Object[] e2 : t.evs()) { var o = new JsonObject(); o.addProperty("afterFrame", (int) e2[0]); o.addProperty("what", (String) e2[1]); o.addProperty("arg", (String) e2[2]); ea.add(o); } x.add("events", ea);
-                    x.add("delta", delta(new ArrayList<>(trPose), new ArrayList<>(trNow), ev, en2)); transJson.add(x);
+                    x.add("delta", delta(new ArrayList<>(trPose), new ArrayList<>(trNow), ev, en2)); x.add("timing", tm); transJson.add(x);
                     scenes(c, null); raised.clear(); tph = 0; ti++; wait = 0;
                 }
             }
@@ -1263,9 +1307,15 @@ final class MotionGrade extends Phase2Checks.Stage {
         for (int k = e - DENSE; k <= e + DENSE; k++) {
             if (k < 0) continue; String src = String.format(Locale.ROOT, srcFmt, k); if (!byFile.containsKey(src)) continue;
             if (row == null || col == 7) { row = row(g, ""); col = 0; }
-            String l = String.format(Locale.ROOT, "f%03d E%+d", k, k - e) + (sum != null && k < sum.length ? String.format(Locale.ROOT, "  %.1f d/t  dd %.1f", sum[k], acc[k]) : "");
+            String l = String.format(Locale.ROOT, "f%03d E%+d", k, k - e) + (sum != null && k < sum.length ? String.format(Locale.ROOT, "  %.1f d/t  dd %.1f", sum[k], acc[k]) : "") + stepNote(state.startsWith("transition-") ? state.substring(11) : state, k, k);
             tile(row, src, cropArr(crop), 1, false, l, k == at, null); col++;
         }
+    }
+    /** R81: the world steps not exactly 1 tick that end on frames from..to of a capture, for a tile's label ("" when none). */
+    String stepNote(String capture, int from, int to) {
+        var m = offSteps.get(capture); if (m == null) return ""; StringBuilder b = new StringBuilder();
+        for (var e : m.entrySet()) if (e.getKey() >= from && e.getKey() <= to) b.append(String.format(Locale.ROOT, "  STEP %d TICKS at f%03d", e.getValue(), e.getKey()));
+        return b.toString();
     }
     static double[] toArr(JsonArray a) { double[] v = new double[a.size()]; for (int i = 0; i < v.length; i++) v[i] = a.get(i).getAsDouble(); return v; }
     static JsonArray cropArr(int[] r) { if (r == null) return null; var a = new JsonArray(); for (int x : r) a.add(x); return a; }
@@ -1311,13 +1361,19 @@ final class MotionGrade extends Phase2Checks.Stage {
                 String l = String.format(Locale.ROOT, "f%03d %s", k, e.get("phase").getAsString()); boolean hl = k == start || k == stop;
                 tile(fr, src, null, 1, false, l, hl, null); tile(ft, src, e.getAsJsonArray("feet"), 2, true, l + " feet", hl, null); col++;
             }
-            var tr = j.getAsJsonObject("trace"); var p = plot("loco/" + n + "/loco_trace.png", "loco_trace", "loco-" + n, "locomotion " + n + ": foot traces (blocks; frame = one drawn frame, 1/20 s)", 1500, 900);
+            var tr = j.getAsJsonObject("trace"); var p = plot("loco/" + n + "/loco_trace.png", "loco_trace", "loco-" + n, "locomotion " + n + ": foot traces (blocks; frame = one drawn frame, 1/20 s)", 1500, 1150);
             var a = panel(p, "feet and body along x (a planted foot is flat)", "x"); series(a, "right sole", "#ff8040", tr.getAsJsonArray("frame"), tr.getAsJsonArray("rightX")); series(a, "left sole", "#40c0ff", tr.getAsJsonArray("frame"), tr.getAsJsonArray("leftX")); series(a, "body", "#c0c0c0", tr.getAsJsonArray("frame"), tr.getAsJsonArray("bodyX"));
             if (n.equals("turn")) { var z = panel(p, "feet along z (the turn swings them)", "z"); series(z, "right sole", "#ff8040", tr.getAsJsonArray("frame"), tr.getAsJsonArray("rightZ")); series(z, "left sole", "#40c0ff", tr.getAsJsonArray("frame"), tr.getAsJsonArray("leftZ")); }
             var h = panel(p, "sole height over the ground (below 0 = sinking)", "y"); series(h, "right sole", "#ff8040", tr.getAsJsonArray("frame"), tr.getAsJsonArray("rightHeight")); series(h, "left sole", "#40c0ff", tr.getAsJsonArray("frame"), tr.getAsJsonArray("leftHeight"));
             hline(h, 0, "#ffffff", "ground"); var th = j.getAsJsonArray("plantedThreshold"); hline(h, th.get(0).getAsDouble(), "#80ff80", "planted below " + th.get(0).getAsDouble());
+            if (tr.has("rightPlanted")) {
+                // R83: the measured plants as spans (each foot its own band) against MotionEngine's planted-feet weight
+                var pa = panel(p, "measured plants: right band 1.6-2.0, left band 1.1-1.5 (high = planted); the engine's planted-feet weight 0-1", "plant");
+                JsonArray rb = new JsonArray(), lb = new JsonArray(); for (int k = 0; k < frames; k++) { rb.add(1.6 + 0.4 * tr.getAsJsonArray("rightPlanted").get(k).getAsDouble()); lb.add(1.1 + 0.4 * tr.getAsJsonArray("leftPlanted").get(k).getAsDouble()); }
+                series(pa, "right plants", "#ff8040", tr.getAsJsonArray("frame"), rb); series(pa, "left plants", "#40c0ff", tr.getAsJsonArray("frame"), lb); series(pa, "engine plant weight", "#e0e060", tr.getAsJsonArray("frame"), tr.getAsJsonArray("enginePlantWeight"));
+            }
             if (start >= 0) vline(p, start, "#a0ff80", n.equals("turn") ? "turn starts" : "move ordered"); if (stop >= 0) vline(p, stop, "#ffa080", n.equals("turn") ? "turn held" : "stop ordered");
-            if (n.equals("walk") || n.equals("turn")) {
+            if (j.has("delta")) { // R80: every segment its own delta plot and both dense windows
                 var d = j.getAsJsonObject("delta"); List<int[]> evs = new ArrayList<>(); List<String> nm = new ArrayList<>();
                 if (start >= 0) { evs.add(new int[]{start}); nm.add(n.equals("turn") ? "turn starts" : "idle to move"); } if (stop >= 0) { evs.add(new int[]{stop}); nm.add(n.equals("turn") ? "turn held" : "move to stop"); }
                 deltaPlot("loco/" + n + "/delta.png", "delta", "loco-" + n, "locomotion " + n + ": per-tick pose delta", d, evs, nm);
@@ -1334,7 +1390,7 @@ final class MotionGrade extends Phase2Checks.Stage {
             JsonArray r = null; int col = 0;
             for (int k = 0; k < CAPTURE; k += STRIP) {
                 String src = String.format(Locale.ROOT, "states/%s/capture/f%03d.png", n, k); if (r == null || col == 6) { r = row(g, ""); col = 0; }
-                tile(r, src, null, 1, false, String.format(Locale.ROOT, "f%03d t=%.2fs", k, k / 20.0), k == EVENT1 + 2 || k == EVENT2 + 2 && j.getAsJsonArray("eventsAfterFrames").size() > 1, null); col++;
+                tile(r, src, null, 1, false, String.format(Locale.ROOT, "f%03d t=%.2fs", k, k / 20.0) + stepNote(n, k - STRIP + 1, k), k == EVENT1 + 2 || k == EVENT2 + 2 && j.getAsJsonArray("eventsAfterFrames").size() > 1, null); col++;
             }
             if (!j.has("delta")) continue;
             var d = j.getAsJsonObject("delta"); List<int[]> evs = new ArrayList<>(); List<String> nm = new ArrayList<>();
@@ -1352,7 +1408,7 @@ final class MotionGrade extends Phase2Checks.Stage {
             for (int i = 0; i < evs.size(); i++) dense(String.format(Locale.ROOT, "transitions/%s/dense_f%03d.png", n, evs.get(i)[0]), "transition-" + n, null, "transition " + n + ": " + nm.get(i) + " (dense)", "transitions/" + n + "/f%03d.png", evs.get(i)[0], in, d, j.get("title").getAsString());
             var g = grid("transitions/" + n + "/strip.png", "strip", null, "transition-" + n, "transition " + n + ": every 4th close frame (the trio at real spacing " + r4(cell) + ")", j.get("title").getAsString());
             JsonArray r = null; int col = 0;
-            for (int k = 0; k < TRANS_FRAMES; k += STRIP) { String src = String.format(Locale.ROOT, "transitions/%s/f%03d.png", n, k); if (r == null || col == 5) { r = row(g, ""); col = 0; } tile(r, src, null, 1, false, String.format(Locale.ROOT, "f%03d", k), false, null); col++; }
+            for (int k = 0; k < TRANS_FRAMES; k += STRIP) { String src = String.format(Locale.ROOT, "transitions/%s/f%03d.png", n, k); if (r == null || col == 5) { r = row(g, ""); col = 0; } tile(r, src, null, 1, false, String.format(Locale.ROOT, "f%03d", k) + stepNote(n, k - STRIP + 1, k), false, null); col++; }
         }
     }
 
@@ -1397,7 +1453,12 @@ final class MotionGrade extends Phase2Checks.Stage {
         if (state.startsWith("attack-")) { o.add("transitions/hit-while-attacking/dense_f025.png"); o.add("transitions/death-while-attacking/dense_f025.png"); }
         if (state.startsWith("hit-")) o.add("transitions/hit-while-attacking/dense_f025.png");
         if (state.startsWith("death-")) o.add("transitions/death-while-attacking/dense_f025.png");
-        if (state.equals("stance-idle") || state.equals("stance-carry")) { o.add("loco/walk/dense_idle-to-move.png"); o.add("loco/walk/dense_move-to-stop.png"); }
+        // R80: each stance's own gait (idle walks, carry runs, guard and brace shuffle in the crawl and backpedal, the raised shield crawls)
+        java.util.function.Consumer<String> gait = gn -> { o.add("loco/" + gn + "/dense_idle-to-move.png"); o.add("loco/" + gn + "/dense_move-to-stop.png"); };
+        if (state.equals("stance-idle")) gait.accept("walk");
+        if (state.equals("stance-carry")) gait.accept("run");
+        if (state.equals("stance-guard") || state.equals("stance-brace")) { gait.accept("crawl"); gait.accept("backpedal"); }
+        if (state.equals("stance-shield")) gait.accept("crawl");
         o.removeIf(p -> sheetFiles().stream().noneMatch(p::equals));
         return o;
     }
@@ -1446,7 +1507,7 @@ final class MotionGrade extends Phase2Checks.Stage {
         notes.add("Deaths: f028 shows vanilla's red death tint, as in game; f050 and f080 are death ticks about 40 and 70.");
         notes.add("Blend continuity: cite the dense sheets and the delta plots, not the GIF.");
         m.add("notes", notes);
-        var ck = new JsonObject(); ck.addProperty("shotsOff", bad.size()); ck.addProperty("captureOff", capBad.size()); ck.addProperty("seedsOff", seedBad.size()); ck.addProperty("motionOff", motionBad.size()); ck.addProperty("replaysOff", replayBad.size()); ck.addProperty("framingOff", framingBad.size()); ck.addProperty("locoOff", locoBad.size());
+        var ck = new JsonObject(); ck.addProperty("shotsOff", bad.size()); ck.addProperty("captureOff", capBad.size()); ck.addProperty("seedsOff", seedBad.size()); ck.addProperty("motionOff", motionBad.size()); ck.addProperty("replaysOff", replayBad.size()); ck.addProperty("framingOff", framingBad.size()); ck.addProperty("locoOff", locoBad.size()); ck.addProperty("captureTimingRule", TIMING_RULE); ck.add("captureTiming", timingJson);
         var we = new JsonArray(); for (String x : new ArrayList<>(writeErrors)) we.add(x); ck.add("writeErrors", we); var cv = new JsonArray(); for (String x : covered) cv.add(x); ck.add("framesUnderAScreen", cv); var nz = new JsonArray(); for (String x : noZoom) nz.add(x); ck.add("zoomsMissing", nz); m.add("checks", ck);
         try { java.nio.file.Files.writeString(new File(out, "manifest.json").toPath(), new GsonBuilder().setPrettyPrinting().create().toJson(m)); }
         catch (IOException x) { writeErrors.add("manifest.json: " + x); }
@@ -1482,8 +1543,16 @@ final class MotionGrade extends Phase2Checks.Stage {
         if (PARTS.contains("transitions")) want.addAll(List.of("capture", "strip", "dense", "delta"));
         if (pillow && PARTS.contains("states")) want.add("gif");
         List<String> absent = new ArrayList<>(); for (String w : new LinkedHashSet<>(want)) if (!kinds.containsKey(w)) absent.add(w);
-        boolean ok = missing.isEmpty() && absent.isEmpty() && writeErrors.isEmpty() && pyWhy.isEmpty() && covered.isEmpty() && noZoom.isEmpty();
+        // R80: every loco segment its own sheets, trace, delta plot and both dense windows; a missing one fails the files check
+        List<String> locoMissing = new ArrayList<>();
+        if (PARTS.contains("loco")) for (Seg g : segs) {
+            String d = "loco/" + g.name() + "/"; List<String> need = new ArrayList<>(List.of(d + "loco.png", d + "loco_trace.png", d + "delta.png"));
+            for (String e : g.turn() ? new String[]{"turn-starts", "turn-held"} : new String[]{"idle-to-move", "move-to-stop"}) need.add(d + "dense_" + e + ".png");
+            for (String f : need) if (!new File(out, f).isFile()) locoMissing.add(f);
+        }
+        boolean ok = missing.isEmpty() && absent.isEmpty() && locoMissing.isEmpty() && writeErrors.isEmpty() && pyWhy.isEmpty() && covered.isEmpty() && noZoom.isEmpty();
         report("mo-grade-files", ok, n + " files in " + out.getAbsolutePath() + " by kind " + kinds + (pillow ? " (sheets by contact_sheet.py with Pillow)" : pyExit == 3 ? " (sheets by ImageIO: no Pillow" + (NO_PILLOW ? ", GRAVES_GRADE_NO_PILLOW" : "") + ")" : "")
+            + (PARTS.contains("loco") ? "; every loco segment (" + segs.size() + ") has loco, loco_trace, delta and both dense sheets" + (locoMissing.isEmpty() ? "" : " except: " + locoMissing) : "")
             + (missing.isEmpty() ? "" : "; missing: " + missing) + (absent.isEmpty() ? "" : "; no " + absent) + (writeErrors.isEmpty() ? "" : "; write errors: " + writeErrors) + (covered.isEmpty() ? "" : "; frames taken with a screen over the world: " + covered) + (noZoom.isEmpty() ? "" : "; zoom shots not taken: " + noZoom) + (pyWhy.isEmpty() ? "" : "; " + pyWhy));
     }
     /** Without Pillow: the manifest's sheet specs drawn with ImageIO (the same specs contact_sheet.py renders) and added to the manifest. */
