@@ -90,7 +90,7 @@ def template(m, run_rel):
         "  (0 front, 45, 90 its right, 135, 180 back, 225, 270 its left, 315), and its weapon-tip and shield-rim trails front and side.",
         "- Marks on solo and loco shots: white ground line with height ticks every 0.5 block, soles green when planted, red when lifted",
         "  and magenta when sunk more than half a texel (1/32 block) below the ground, each over a grey ground tick; hands yellow, weapon tip orange, shield rim cyan. The marks are computed from the drawn pose, not painted by hand.",
-        "- Locomotion (R71): %s. Segments: walk, run, shield crawl, backpedal and a 90 degree turn in place, each from idle and back to" % cam["loco"],
+        "- Locomotion (R71): %s. Segments: walk and run in the carry stance (the game's marching stance), shield crawl, backpedal, guard shuffle (stance hold) and a 90 degree turn in place, each from idle and back to" % cam["loco"],
         "  idle. Planted slide and sole heights are in manifest.json `loco`, and summarised below.",
         "- Spacing (R73): %s; the wide grid is a clone-check overview only, never evidence of spacing or clipping." % cam["spacing"],
         "- Crowd distance (R78): %s; %s. Cite the level shot for silhouette and the high formation shot for variation." % (cam["high"], cam["level"]),
@@ -139,10 +139,29 @@ def template(m, run_rel):
                         x["startFrame"], x["startServerTick"], x["frames"], x["slideBlocks"], x.get("enginePlantWeightMean", 0)) for x in pl)))
         L.append("")
     if m.get("largestJumpPerTransition"):
-        L += ["| Transition | Event | Largest step (deg/tick) at frame | Largest 2nd difference | Ratio to baseline p90 | Flagged |", "|---|---|---|---|---|---|"]
+        L += ["Largest step is the SUM over all bones; the worst-bone column is the single bone that moved most in the event window (R93 D3).", "",
+              "| Transition | Event | Largest step, sum over bones (deg/tick) at frame | Worst bone (deg/tick) | Largest 2nd difference | Ratio to baseline p90 | Ratio to authored | Flagged |", "|---|---|---|---|---|---|---|---|"]
         for k, v in m["largestJumpPerTransition"].items():
-            L.append("| %s | %s | %.1f at f%03d (%s) | %.1f | %.1f | %s |" % (k, v["event"], v["largestStepDegPerTick"], v["largestStepFrame"],
-                                                                     v.get("largestBoneThere", ""), v["largestSecondDiff"], v["ratioToBaseline"], "yes" if v["flagged"] else "no"))
+            L.append("| %s | %s | %.1f at f%03d (%s) | %s %.1f at f%03d | %.1f | %.1f | %s | %s |" % (
+                k, v["event"], v["largestStepDegPerTick"], v["largestStepFrame"], v.get("largestBoneThere", ""),
+                v.get("worstBone", "?"), v.get("worstBoneDegPerTick", 0), v.get("worstBoneFrame", 0), v["largestSecondDiff"], v["ratioToBaseline"],
+                ("%.1f" % v["ratioToAuthored"]) if v.get("ratioToAuthored", -1) >= 0 else "n/a", "yes" if v["flagged"] else "no"))
+        L.append("")
+    if m.get("hitSweep"):
+        cells = m["hitSweep"]
+        worst = max(cells, key=lambda c: c.get("worstBoneDegPerTick", 0))
+        L += ["Hit sweep (H2): %d cells (3 zones x 4 directions x 3 weights), grids `transitions/hitsweep_<zone>.png`. Worst cell: %s, %s %.1f deg/tick at f%03d; largest sum %.1f deg/tick." % (
+            len(cells), worst["cell"], worst.get("worstBone", "?"), worst.get("worstBoneDegPerTick", 0), worst.get("worstBoneFrame", 0), max(c.get("sumDegPerTick", 0) for c in cells)), "",
+              "| Cell | Sum (deg/tick) | Worst bone (deg/tick) at frame | Clips played |", "|---|---|---|---|"]
+        for c in sorted(cells, key=lambda c: -c.get("worstBoneDegPerTick", 0)):
+            L.append("| %s | %.1f | %s %.1f at f%03d | %s |" % (c["cell"], c.get("sumDegPerTick", 0), c.get("worstBone", "?"), c.get("worstBoneDegPerTick", 0),
+                                                              c.get("worstBoneFrame", 0), ", ".join(c.get("playedClips", [])) or "none"))
+        L.append("")
+    nov = [t for t in m.get("transitions", []) if t.get("name") == "novelty-idle"]
+    if nov:
+        fr = nov[0].get("noveltyFrames", [])
+        L.append("Novelty idle (M5): %d frames captured; novelty seen on %d frames%s; clips played: %s." % (
+            nov[0].get("frames", 0), len(fr), (" (first at f%03d)" % fr[0]["frame"]) if fr else " (NONE fired in the window)", ", ".join(nov[0].get("playedClips", [])) or "none"))
         L.append("")
     L += ["Rubric (R65): " + "; ".join(r[1] for r in RUBRIC) + ".", ""]
     grading = m.get("grading", {})
