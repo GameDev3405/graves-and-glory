@@ -10,9 +10,9 @@ public final class BattleMathCheck {
         checks++;
     }
     public static void main(String[] args) {
-        check(BattleMath.travelTicks(22, 2.2, 2, 14) == 10, "arrow at max range lands in 10 ticks");
-        check(BattleMath.travelTicks(1, 2.2, 2, 14) == 2, "point-blank shots still travel the minimum");
-        check(BattleMath.travelTicks(400, 1.2, 2, 14) == 14, "travel is capped");
+        check(BattleMath.travelTicks(22, 1.0, 2, 32) == 22, "arrow at 22 blocks lands in 22 ticks");
+        check(BattleMath.travelTicks(1, 1.0, 2, 32) == 2, "point-blank shots still travel the minimum");
+        check(BattleMath.travelTicks(400, 1.4, 2, 32) == 32, "travel is capped");
         check(BattleMath.creditWindowOpen(100, 100, 34) && BattleMath.creditWindowOpen(134, 100, 34) && !BattleMath.creditWindowOpen(135, 100, 34), "a death with no attacker credits the last blow on the window's last tick (34 on) but not one tick after");
         check(!BattleMath.creditWindowOpen(5000, 100, 34) && !BattleMath.creditWindowOpen(100, 101, 34) && BattleMath.creditWindowOpen(7, 7, 0), "a blow minutes old credits nothing (a fall, lava or /kill long after), nor does one stamped in the future; a zero window still takes the same tick");
         check(BattleMath.tookLoss(.80f, 12, .78f, 12) && BattleMath.tookLoss(.8f, 12, .9f, 11), "health drop or a death flashes");
