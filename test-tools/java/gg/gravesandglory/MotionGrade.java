@@ -81,7 +81,8 @@ final class MotionGrade extends Phase2Checks.Stage {
     static final List<String> CAT_ORDER = List.of("stance", "attack", "hit", "scene", "death");
     static final String OUT_ROOT = System.getProperty("gravesandglory.gradeOut", "work/grade"), REPO = System.getProperty("gravesandglory.repoRoot", ""),
             PYTHON = System.getProperty("gravesandglory.python", "python");
-    static final boolean NO_PILLOW = Boolean.parseBoolean(System.getProperty("gravesandglory.gradeNoPillow", "false").trim());
+    /** R84: GRAVES_GRADE_NO_PILLOW as contact_sheet.py reads it (1, true or yes). */
+    static final boolean NO_PILLOW = Set.of("1", "true", "yes").contains(System.getProperty("gravesandglory.gradeNoPillow", "false").trim().toLowerCase(Locale.ROOT));
     static final Set<String> PARTS = parts(System.getProperty("gravesandglory.gradeParts", "solo,loco,states,transitions"));
     static final String C_GROUND = "#ffffff", C_PLANT = "#40ff40", C_LIFT = "#ff4040", C_SINK = "#ff40ff", C_GTICK = "#c8c8c8", C_HAND = "#ffe040", C_TIP = "#ff9020", C_RIM = "#40e0ff";
     static final String[] RUBRIC = {"weight", "arcs", "anticipation", "silhouette", "variation", "contact", "clipping", "blend"};
