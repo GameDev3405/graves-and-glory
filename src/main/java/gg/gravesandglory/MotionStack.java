@@ -118,7 +118,29 @@ final class MotionStack {
         if (clip != null) clip.add(stanceTime(clip, f), neu, 1, st.tmp);
         neu.add("right_arm", RX, f.aimPitch * aim);
         neu.add("left_arm", RX, f.aimPitch * aim);
-        return velocityFade(fam.peak(), old, neu, clip, 0, null, clip != null && clip.loop() ? f.seed.tempo() : 1, MotionEngine.STANCE_MIN);
+        double t = velocityFade(fam.peak(), old, neu, clip, 0, null, clip != null && clip.loop() ? f.seed.tempo() : 1, MotionEngine.STANCE_MIN);
+        return Math.max(t, accelFade(old, neu));
+    }
+
+    /**
+     * Fix 2 (Task 16): the fade that keeps a stance cross-fade's second difference within STANCE_ACC. The cosine ease's largest
+     * curvature is pi^2 / 2, so a fade of T seconds over gaps G (rotation, summed over every bone's angles) bends the pose by
+     * G (pi^2 / 2) (0.05 / T)^2 a tick squared: T = 0.05 pi sqrt(G / (2 STANCE_ACC)), at most STANCE_LONG.
+     */
+    static double accelFade(Pose from, Pose to) {
+        double g = 0;
+        // each pose lists its bones (a cleared pose keeps its rows at zero), so the larger pass's sum covers both
+        for (int pass = 0; pass < 2; pass++) {
+            Pose p = pass == 0 ? to : from, q = pass == 0 ? from : to;
+            double sum = 0;
+            for (int i = 0, n = p.size(); i < n; i++) {
+                String bone = p.name(i);
+                double[] v = p.row(i);
+                for (int c = 0; c < 3; c++) sum += Math.abs(v[c] - q.get(bone, c));
+            }
+            g = Math.max(g, sum);
+        }
+        return Math.min(MotionEngine.STANCE_LONG, 0.05 * Math.PI * Math.sqrt(g / (2 * MotionEngine.STANCE_ACC)));
     }
 
     /**

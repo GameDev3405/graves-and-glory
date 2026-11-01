@@ -61,7 +61,7 @@ final class MotionFeet {
             rotate(v, full);
             double dx = t[0] - v[0] - full[TX], dy = t[1] - v[1] - full[TY], dz = t[2] - v[2] - full[TZ];
             double d0 = Math.sqrt(dx * dx + dy * dy + dz * dz);
-            double rest = 2 * Math.toDegrees(Math.acos(Math.min(d0, LEG * soft) / LEG));
+            double rest = 2 * Math.toDegrees(Math.acos(softMin(d0, LEG * soft, REACH_EASE) / LEG));
             double bend = Math.min(rest + k[i], 150), want = LEG * Math.cos(Math.toRadians(bend / 2));
             dip = Math.max(dip, dy - Math.sqrt(Math.max(0, want * want - dx * dx - dz * dz)));
         }
@@ -144,6 +144,18 @@ final class MotionFeet {
             shin[RZ] -= shin[RZ] * gw;
             for (int c = TX; c <= TZ; c++) shin[c] -= shin[c] * gw;
         }
+    }
+
+    /** Fix 2 (Task 16): the width (px) over which a standing leg's reach eases onto its soft-knee limit instead of meeting it with a kink. */
+    static final double REACH_EASE = 0.6;
+
+    /**
+     * min(x, cap) with the corner rounded over cap +- k by a parabola, so a reach running onto the soft-knee limit does not turn
+     * the knee and the hips' dip on a single frame (a second-difference spike at a stance change). Equal to min(x, cap) outside.
+     */
+    static double softMin(double x, double cap, double k) {
+        double u = x - cap + k;
+        return u <= 0 ? x : u >= 2 * k ? cap : x - u * u / (4 * k);
     }
 
     /** Leg i's foot (the shin's tip) in root space from its own channels, written into p. */

@@ -1000,10 +1000,12 @@ public final class MotionEngineCheck {
             check(Math.abs(swap[at - 1] - calm[at - 1]) < 1e-9, "nothing should change before the swap");
             check(Math.abs(guard[at] - calm[at]) > 40, "the guard should lift the sword arm, moved " + (guard[at] - calm[at]));
             double early = (swap[at + 3] - calm[at + 3]) / (guard[at + 3] - calm[at + 3]), mid = (swap[at + 14] - calm[at + 14]) / (guard[at + 14] - calm[at + 14]);
-            double late = (swap[at + 40] - calm[at + 40]) / (guard[at + 40] - calm[at + 40]);
+            // Fix 2 (Task 16 r2a): a big swap's fade is long enough to bend the pose at most STANCE_ACC a tick squared, at most STANCE_LONG
+            int end = at + (int) Math.ceil(MotionEngine.STANCE_LONG * 60) + 1;
+            double late = (swap[end] - calm[end]) / (guard[end] - calm[end]);
             check(early >= 0 && early < 0.08, "a stance swap should start slowly (cosine ease), 0.05 s in: " + early);
-            check(mid > 0.3 && mid < 0.75, "a stance swap should be about halfway by 0.25 s: " + mid);
-            check(late > 0.97 && late < 1.03, "a stance swap should settle within about 0.5 s: " + late);
+            check(mid > 0.2 && mid < 0.75, "a stance swap should be well under way by 0.25 s: " + mid);
+            check(late > 0.97 && late < 1.03, "a stance swap should settle within STANCE_LONG: " + late);
         }
         return "";
     }

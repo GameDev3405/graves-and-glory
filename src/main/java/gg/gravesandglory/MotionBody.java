@@ -98,9 +98,17 @@ final class MotionBody {
     static final double DUTY_WALK = 0.62, DUTY_RUN = 0.38, HALF_WALK = 6.4, HALF_RUN = 7.0, HALF_SIDE = 3.2;
     /** G1: the least and most cadence (cycles per second), the swing knee walk to run (degrees), and the swing foot's lift walk to run (px). */
     static final double F_MIN = 0.9, F_MAX = 3.6, KNEE_WALK = 35, KNEE_RUN = 70, LIFT_MIN = 1.5, LIFT_RUN = 3.5;
+    /** Fix 1 (R109): the speed (b/s) under which the phase stops dividing by the speed, and the most a frame's travel may step the phase, in multiples of the cadence's own step. */
+    static final double V_FLOOR = 0.15, PSI_STEP = 4;
+    /**
+     * Fix 2: the move weight under which a start counts as from standing, the upper body's ease (s), and the first step's lean:
+     * the speed's rise smoothed at ACC_HZ, LEAN_GAIN degrees per b/s^2 up to LEAN_MAX, with DIP_PER_DEG px of hip dip a degree.
+     */
+    static final double START_W = 0.15, UP_BLEND = 0.45, ACC_HZ = 8, LEAN_GAIN = 0.2, LEAN_MAX = 5, DIP_PER_DEG = 0.12;
 
     /**
-     * G1 (R109): the stride matched to the ground speed. The gait keeps its own phase psi at a cadence chosen so the stride is
+     * G1 (R109): the stride matched to the ground speed. The gait keeps its own phase psi, advanced by the distance travelled
+     * each frame over the stride length (the smoothed speed over the cadence), at a cadence chosen so the stride is
      * as long as the half-length cap allows along the direction of travel (an ellipse: long forward and back, short sideways,
      * so a strafe steps quicker) and rises past F_MIN. Each leg's foot sweeps along the body-frame velocity: in stance it
      * travels back at exactly the body's speed (half a stride either side of the hip), in swing it returns on a cubic whose
@@ -120,8 +128,22 @@ final class MotionBody {
             st.psiInit = true;
             st.psi = frac(f.seed.phase() / TAU);
         }
-        st.psi = frac(st.psi + cad * f.dt);
-        double a = f.m, b = f.m * MotionMath.clamp01(v / 0.5), mSw = -2 * h * (1 - duty) / duty;
+        // Fix 2: a start from standing takes its first step from the stance: one foot (the seed's) stands under its hip at the
+        // middle of its stance (sweep 0) while the other is mid-swing (sweep 0 too), so the sweep can start at full weight and
+        // the planted foot moves with the ground from the first frame; only the lift and the knee ease in
+        boolean go = st.wTarget[MotionEngine.W_MOVE] > 0.5;
+        if (!go) st.sweepFull = false;
+        else if (!st.sweepFull && st.w[MotionEngine.W_MOVE] < START_W) {
+            st.sweepFull = true;
+            st.psi = frac(duty / 2 + ((f.seed.variantBias() & 1) == 0 ? 0 : 0.5));
+        }
+        // the phase follows the distance actually travelled this frame along the gait's direction, so a stance foot's sweep
+        // (16 px per block of travel) moves with the ground however unevenly the entity's position arrives
+        double travel = Math.max(0, f.dF * dirF + f.dL * dirL);
+        st.psi = frac(st.psi + Math.min(travel * cad / Math.max(v, V_FLOOR), PSI_STEP * cad * f.dt));
+        // the upper body eases in over UP_BLEND (the arms and lean), slower than the legs, so the sword arm does not pop into the run
+        st.upW = f.first ? (go ? 1 : 0) : MotionEngine.toward(st.upW, go ? 1 : 0, f.dt / UP_BLEND);
+        double a = f.m, sw = st.sweepFull ? 1 : a, b = MotionMath.ease(st.upW) * f.m * MotionMath.clamp01(v / 0.5), mSw = -2 * h * (1 - duty) / duty;
         f.gaitW = a;
         f.duty = duty;
         f.gaitV = v;
@@ -138,17 +160,27 @@ final class MotionBody {
             f.sweep[i] = d;
             f.lift[i] = lift;
             if (i == 0) g = h > 1e-9 ? dirF * d / h : 0;
-            if (a <= 0) continue;
+            if (sw <= 0) continue;
             double rx = Math.asin(MotionEngine.clamp(-dirF * d / MotionFeet.LEG, -1, 1));
             double rz = -Math.asin(MotionEngine.clamp(dirL * d / (MotionFeet.LEG * Math.cos(rx)), -1, 1));
-            out.add(LEGS[i], RX, a * Math.toDegrees(rx));
-            out.add(LEGS[i], RZ, a * Math.toDegrees(rz));
+            out.add(LEGS[i], RX, sw * Math.toDegrees(rx));
+            out.add(LEGS[i], RZ, sw * Math.toDegrees(rz));
             if (lift > 0) out.add(SHINS[i], RX, a * knee * lift);
         }
         double crouch = sh * f.m;
         if (crouch > 0) {
             for (int i = 0; i < 2; i++) { out.add(SHINS[i], RX, 14 * crouch); out.add(LEGS[i], RX, -7 * crouch); }
             out.add("root", TY, crouch);
+        }
+        // Fix 2: the first step's lean into the travel, and a dip under it, from the smoothed speed's rise
+        double acc = f.first || f.dt <= 0 ? 0 : (v - st.vPrev) / f.dt;
+        st.vPrev = v;
+        st.acc += (Math.max(0, acc) - st.acc) * (f.dt > 0 ? 1 - Math.exp(-ACC_HZ * f.dt) : 0);
+        double first = MotionEngine.clamp(LEAN_GAIN * st.acc, 0, LEAN_MAX) * f.plant;
+        if (first > 1e-6) {
+            out.add("body", RX, first * dirF);
+            out.add("head", RX, -0.5 * first * dirF);
+            out.add("root", TY, DIP_PER_DEG * first);
         }
         if (b <= 0) return;
         double p = TAU * st.psi, s = Math.sin(p), cr = Math.cos(TAU * (st.psi - duty / 2));

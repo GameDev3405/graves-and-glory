@@ -51,6 +51,11 @@ public final class MotionEngine {
     static final double INTERRUPT_HEADROOM = 1.2;
     /** P1: the interrupt fade's shortest and longest (s), the stance cross-fade's shortest, and the FROM track's inertia time constant (s). */
     static final double INTERRUPT_MIN = 0.08, INTERRUPT_MAX = 0.6, STANCE_MIN = 0.2, FROM_TD = 0.08;
+    /**
+     * Fix 2: a stance cross-fade's largest second difference (degrees a tick squared, summed over bones' angles) and the longest
+     * fade (s) that bound may ask for.
+     */
+    static final double STANCE_ACC = 6, STANCE_LONG = 0.85;
     /** P1: the span (s) the FROM track's velocity is measured over, the fold at now against the fold FROM_H before (frame-rate free). */
     static final double FROM_H = 1 / 120.0;
     /** Bounds on everything the procedural layers can add to one channel (degrees, pixels). */
@@ -224,6 +229,9 @@ public final class MotionEngine {
         /** G1: the gait's own phase (cycles). */
         double psi;
         boolean psiInit;
+        /** Fix 2: the sweep runs at full weight since a start from standing; the upper body's own ease; last speed and its smoothed rise. */
+        boolean sweepFull;
+        double upW, vPrev, acc;
     }
 
     /**
@@ -602,7 +610,7 @@ public final class MotionEngine {
         return w + dir * rate * caught + Math.signum(s) * rate * (dt - caught);
     }
 
-    private static double toward(double raw, double goal, double step) { return raw < goal ? Math.min(goal, raw + step) : Math.max(goal, raw - step); }
+    static double toward(double raw, double goal, double step) { return raw < goal ? Math.min(goal, raw + step) : Math.max(goal, raw - step); }
 
     static double finite(double v) { return Double.isFinite(v) ? v : 0; }
 
