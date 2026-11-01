@@ -525,8 +525,24 @@
      -113
     ]
    },
-   "status": "todo",
-   "reviews": []
+   "status": "blockout",
+   "reviews": [
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T00:46:22Z",
+     "digest": "7958be907c18f4024680bd8476c83a92c1af7a54be9424a8d8f51ff8251c16f5",
+     "plans": [
+      "docs/maps/ironhold/sections/I1-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-I1-top.png",
+      "docs/maps/ironhold/sections/ironhold-I1-iso.png"
+     ],
+     "notes": "Gorge blockout: Dusk flank grass at 63, curtain y 71 at |z| 94..98, crenellated parapet x 166..168, ragged crag face to scree and a gravel floor at y 44 with boulders; worn rim foot. Blockout only, no detail pass."
+    }
+   ]
   },
   {
    "id": "J1",
@@ -849,8 +865,24 @@
      -49
     ]
    },
-   "status": "todo",
-   "reviews": []
+   "status": "blockout",
+   "reviews": [
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T00:46:36Z",
+     "digest": "6c924dd7045f28db68d928bb95b7b855db89b0a93c1eb31b7dc4ec2058912a8e",
+     "plans": [
+      "docs/maps/ironhold/sections/I2-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-I2-top.png",
+      "docs/maps/ironhold/sections/ironhold-I2-iso.png"
+     ],
+     "notes": "Gorge blockout: Dusk flank grass at 63, curtain y 71 at |z| 94..98, crenellated parapet x 166..168, ragged crag face to scree and a gravel floor at y 44 with boulders; worn rim foot. Blockout only, no detail pass."
+    }
+   ]
   },
   {
    "id": "J2",
@@ -1307,8 +1339,24 @@
      15
     ]
    },
-   "status": "todo",
-   "reviews": []
+   "status": "blockout",
+   "reviews": [
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T00:46:50Z",
+     "digest": "a91dd82ac60460cb3159cebd09d8708e23921198d17dad95f361fa1d4a1b7315",
+     "plans": [
+      "docs/maps/ironhold/sections/I3-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-I3-top.png",
+      "docs/maps/ironhold/sections/ironhold-I3-iso.png"
+     ],
+     "notes": "Gorge blockout: Dusk flank grass at 63, curtain y 71 at |z| 94..98, crenellated parapet x 166..168, ragged crag face to scree and a gravel floor at y 44 with boulders; worn rim foot. Blockout only, no detail pass."
+    }
+   ]
   },
   {
    "id": "J3",
@@ -1750,8 +1798,24 @@
      79
     ]
    },
-   "status": "todo",
-   "reviews": []
+   "status": "blockout",
+   "reviews": [
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T00:47:04Z",
+     "digest": "3d16ba85ec8bed4030db9e0a80e93b0724bde30c48646c414381877a7ee2c56d",
+     "plans": [
+      "docs/maps/ironhold/sections/I4-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-I4-top.png",
+      "docs/maps/ironhold/sections/ironhold-I4-iso.png"
+     ],
+     "notes": "Gorge blockout: Dusk flank grass at 63, curtain y 71 at |z| 94..98, crenellated parapet x 166..168, ragged crag face to scree and a gravel floor at y 44 with boulders; worn rim foot. Blockout only, no detail pass."
+    }
+   ]
   },
   {
    "id": "J4",
@@ -2104,8 +2168,24 @@
      143
     ]
    },
-   "status": "todo",
-   "reviews": []
+   "status": "blockout",
+   "reviews": [
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T00:47:17Z",
+     "digest": "55dd0f762631666d55c97b630b127e1c71d64b2ebdb39db8ce0780e3a50d2bf2",
+     "plans": [
+      "docs/maps/ironhold/sections/I5-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-I5-top.png",
+      "docs/maps/ironhold/sections/ironhold-I5-iso.png"
+     ],
+     "notes": "Gorge blockout: Dusk flank grass at 63, curtain y 71 at |z| 94..98, crenellated parapet x 166..168, ragged crag face to scree and a gravel floor at y 44 with boulders; worn rim foot. Blockout only, no detail pass."
+    }
+   ]
   },
   {
    "id": "J5",
@@ -2413,8 +2493,24 @@
      207
     ]
    },
-   "status": "todo",
-   "reviews": []
+   "status": "blockout",
+   "reviews": [
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T00:47:33Z",
+     "digest": "90fb74bdf5145109e16be9298b77a211362104f38e833950920163f058fb2d98",
+     "plans": [
+      "docs/maps/ironhold/sections/I6-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-I6-top.png",
+      "docs/maps/ironhold/sections/ironhold-I6-iso.png"
+     ],
+     "notes": "Gorge blockout: Dusk flank grass at 63, curtain y 71 at |z| 94..98, crenellated parapet x 166..168, ragged crag face to scree and a gravel floor at y 44 with boulders; worn rim foot. Blockout only, no detail pass."
+    }
+   ]
   },
   {
    "id": "J6",
