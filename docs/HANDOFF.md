@@ -1,10 +1,10 @@
-# Current handoff — 2026-10-29
+# Current handoff — 2026-10-31
 
 ## Where we are
 
 `main` is now the 0.5.0 development integration, promoted from `phase-1-solo-core` plus the M1 UI work, the banner page and the harness Narrator fix. Source identity: `c41a0e1cef708e00a3a6030e1afde5b9a4194e0a83c93937116c050887efd0e4`. `main` and the three `work/*` lanes are pushed to GitHub; the Phase 0 baseline re-verified source identity `c41a0e1` at `f1f6047`, while the `v0.5.0-dev.20261028` tag marks the earlier `c4f8771` record commit. It is not a published release; six-player, dedicated-server, visual and package gates remain open.
 
-Approved plan: [PLAN-TO-1.0.md](PLAN-TO-1.0.md), approved 2026-10-28. Phase 0: 0.1 to 0.5 complete; 0.6 skipped by Kort 2026-10-28; 0.7 board is done (`docs/BOARD.md`). Phase 1.1 is green on `work/war-table-rebase` (`a423cc8`); Kort's visual review and the merge decision remain. Phase 1.4 is done and checked; 1.8 is skipped for now. The baseline passed fast 22/22 and game 23/23 at `f1f6047`; see `reports/phase-0-5-baseline-2026-10-28.md`.
+Approved plan: [PLAN-TO-1.0.md](PLAN-TO-1.0.md), approved 2026-10-28. Phase 0: 0.1 to 0.5 complete; 0.6 skipped by Kort 2026-10-28; 0.7 board is done (`docs/BOARD.md`). Phase 0 is done. Phase 1.1 (troop sheet, `c233dbc`) and 1.2 (Armoury, `711ae89`, `27ddf58`) are merged into `main` and accepted by Kort; 1.4 is done; 1.8 is skipped by Kort. The baseline passed fast 22/22 and game 23/23 at `f1f6047`; see `reports/phase-0-5-baseline-2026-10-28.md`.
 
 Merged and in `main`:
 
@@ -18,8 +18,15 @@ In progress:
 
 - **Animation pass 1:** rebased onto `main` at `d0c8d7f` on `work/anim-rebase` (`b023fe1`). All 12 animation checks pass and 196 turn shots render, including the reverted bow carry. The clearance measurement stays 0.6 to 3.7 px (recorded for Blender pass 2), which is why `p2-turn-suite` reads false. Original `work/anim-pass-1` tip preserved; not merged or pushed.
 - **House troop models:** rebased onto `main` at `18522ba` on `work/models-rebase` (`bf86e26`); fast 22/22, Gilded art 7/7 and the turn suite pass, and the cull check is re-aimed. Three troops (Hearthguard, Tusk, Tideguard) in stage-1 plate, still 8/10 against the 9 gate; Kort's look, tiers II/III, other sides and face close-ups remain. Original `work/troop-models-house` tip preserved; not merged or pushed.
-- **Armoury restyle:** waits on Kort's War Table Task 10 look; the tab is currently a plain dark panel.
-- **Six-player War Table lobby:** merged into `main` locally 2026-10-31 from `work/lobby-six` (`d625a4b`); verify fast passes; not pushed.
+- **Six-player War Table lobby (3.4, 4C.3):** merged into `main` locally at `784249a` (from `work/lobby-six`); host picks map and mode, Domination only. Not pushed.
+- **Animation rework (1.5):** Phase 1 approved; T13 in progress on `work/anim-rework` (`24f18e6`, `bannerbound-anim-rework`). Latest grading runs use stub clips.
+- **House art (1.6, 1.7, 2B):** Gilded sun staff installed in three tiers on `art/knight-1x` (`7bfe24e`, `595cd16`); other Houses not started.
+- **Map Forge (2A.3):** `work/mapforge-2a3` (`bannerbound-mapforge`), Ironhold blockout reported at 42 of 88 sections at `fb579d9`, more since (`d9fb9cf`); toward 3.1.
+- **Mode frame (2C.1):** on Freebuff's `mode/frame` (`9498dcf`), unreviewed.
+- **Campaign (2C.3):** done on `work/campaign-2c3` (`9660a4f`), not merged. Bonus picks are being applied there (partly 4D.2). Iron Gate runs as Domination until Siege joins the lobby.
+- **Convoy escort (4C.2):** unparked by Kort 2026-10-31; spec being drafted on `work/escort-spec`.
+- **War Table scale (4F.1, 4F.6):** pages drawn at 3x at 1440p; partly done.
+- **Balance (5.1):** HOUSE-BALANCE backlogged, vanilla-trait audit first (`ed48af0`). Phase 6 not started.
 
 Not done:
 
@@ -39,6 +46,13 @@ Not done:
 | `work/models-rebase` | Rebased House models, checks green at `bf86e26`; awaits Kort's visual review and merge decision. |
 | `work/war-table-troop` | Original War Table troop sheet WIP tip (`30b447b`), preserved untouched. |
 | `work/war-table-rebase` | Troop sheet, merged into `main` 2026-10-31 after Kort accepted it. |
+| `work/armoury-restyle` | Armoury restyle, merged into `main` 2026-10-31. |
+| `work/lobby-six` | Six-seat lobby, merged into `main` 2026-10-31. |
+| `work/anim-rework` | Animation rework Phase 1, T13 in progress. |
+| `work/mapforge-2a3` | Map Forge and the Ironhold blockout. |
+| `work/campaign-2c3` | Campaign 2C.3, done, not merged. |
+| `mode/frame` | Mode frame, unreviewed. |
+| `work/escort-spec` | Convoy escort spec in progress. |
 | `heraldic-units` | External heraldic-unit reference sheets; worktree in `Documents/gg-hx`. |
 
 Tags: `v0.4.0` marks the old `main`; `v0.5.0-dev.20261028` marks the earlier `c4f8771` record commit, not the `f1f6047` baseline tip. `archive/2026-10/*` tags preserve the tips of removed historical branches (preview, codex experiments, snapshots, art bake-offs, builder docs). All five project branches and all 19 tags are on GitHub; a separate `claude/eloquent-fermat-lw270a` branch also exists, and removed remote branches are listed in the cleanup report.
@@ -49,9 +63,10 @@ Tags: `v0.4.0` marks the old `main`; `v0.5.0-dev.20261028` marks the earlier `c4
 
 ## Next actions
 
-1. Kort: review the three rebased lanes (`work/war-table-rebase` `a423cc8`, `work/models-rebase` `bf86e26`, `work/anim-rebase` `b023fe1`), then merge or park; rerun the game tier on any merged tree.
-2. Keep `docs/BOARD.md` current as each task moves; it is the single board.
-3. Phase 1.3: Banner and Field page polish once 1.1 is decided; 1.7 follows the House models' acceptance.
+1. Kort: decide on `work/campaign-2c3` and review `mode/frame`; rerun the game tier on any merged tree.
+2. Finish T13 of the animation rework, then 1.5; 1.7 follows the House models' acceptance.
+3. Phase 1.3: Banner and Field page polish is unblocked.
+4. Keep `docs/BOARD.md` current as each task moves; it is the single board.
 
 ## Constraints
 
