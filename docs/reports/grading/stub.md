@@ -1,7 +1,7 @@
 # Motion grading: stub
 
 Family `stub` (engine family `sword_shield`, troop `knight`, rig `biped`), synthetic stub clips.
-Evidence run: `test-tools/work/grade/stub/20261031-204518` (manifest.json lists every file by clip, state and kind).
+Evidence run: `test-tools/work/t15f2/grade-full/stub/20261031-220807` (manifest.json lists every file by clip, state and kind).
 
 Grade each rubric line 1 to 10. A state passes only when every line is 10 (R65). Write what you can see in the named
 file: the frame, the angle or the unit, and the fault. A grade with no observable finding does not count.
@@ -22,6 +22,8 @@ in, a re-run replaces only the `Evidence run:` line above and leaves the grades 
 - Crowd distance (R78): the formation and the wide overview from (0, 16.50 over the ground, -26.85) in front, pitched at the grid's middle: the nearest row about 31 blocks away; the formation from (0, eye 1.62, -30.50), level: the nearest row 30.5 blocks away. Cite the level shot for silhouette and the high formation shot for variation.
 - Capture: 120 frames at 20 fps; events right after frame 10 (attacks and hits again after 70); strip = every 4th frame;
   dense sheets show every frame from E-10 to E+10 with the per-tick pose delta under each (R72).
+- Capture timing (R81): every frame newly drawn; at most 2 world steps per capture not exactly 1 tick, none touching a dense window (event E-10 to E+10). Each capture's off-steps (frame and world ticks) are in manifest.json `checks.captureTiming`,
+  and a tile whose frame ends one is labelled `STEP n TICKS`.
 - Volleys (M1): every troop gets its attack or hit on the same tick, so crowd and formation shots show synchronised
   volleys. Judge variation by stance phase, amplitude, faces and seeds, not by event timing.
 - Deaths (R79): crowd stills at f028 (vanilla death tint, as in game), f050 and f080 (death ticks about 40 and 70).
@@ -29,26 +31,46 @@ in, a re-run replaces only the `Evidence run:` line above and leaves the grades 
 
 Measured: the nearest crowd troop was 30.54 blocks from the camera.
 
-| Loco segment | Planted slide R, L (blocks) | Largest single plant R, L | Lowest sole R, L | Body moved |
-|---|---|---|---|---|
-| walk | 5.802, 5.757 | 1.201, 1.506 | -0.067, -0.067 | 8.46 |
-| run | 3.757, 3.517 | 1.226, 1.664 | -0.094, -0.089 | 10.58 |
-| crawl | 2.951, 3.171 | 2.951, 3.171 | -0.108, -0.108 | 2.79 |
-| backpedal | 6.924, 6.878 | 6.924, 6.878 | -0.054, -0.054 | 6.35 |
-| turn | 1.073, 1.728 | 1.073, 1.728 | -0.024, -0.020 | 0.00 |
+Measured: 26 close captures, 0 world steps not 1 tick in all, 0 stale frames.
 
-| Transition | Event | Largest step (deg/tick) at frame | Largest 2nd difference | x baseline p90 | Flagged |
+Planted slide (R83) is measured at the corners each foot stands on, plant by plant: a box foot rocking heel to toe reads as
+no slide; the old sole-centroid measure is kept in the manifest as `soleCentroidSlideBlocks` for comparison.
+
+| Loco segment | Speed (blocks/tick) | Plants R, L | Planted slide R, L (blocks) | Largest single plant R, L | Lowest sole R, L | Body moved |
+|---|---|---|---|---|---|---|
+| walk | 0.169 | 7, 7 | 6.306, 6.374 | 1.443, 1.388 | -0.065, -0.065 | 8.46 |
+| run | 0.264 | 9, 9 | 5.283, 4.240 | 1.688, 1.508 | -0.089, -0.092 | 10.58 |
+| crawl | 0.056 | 1, 1 | 2.823, 2.791 | 2.823, 2.791 | -0.108, -0.108 | 2.79 |
+| backpedal | 0.127 (assumed) | 1, 1 | 6.510, 6.762 | 6.510, 6.762 | -0.054, -0.055 | 6.35 |
+| turn | 0.000 | 1, 1 | 0.574, 0.592 | 0.574, 0.592 | -0.015, -0.032 | 0.00 |
+
+Backpedal speed is assumed: the walk speed x 0.75, as no measured backpedal speed exists yet.
+
+| Loco segment | Foot | Each plant: start frame (server tick), frames, slide in blocks; engine plant weight mean |
+|---|---|---|
+| walk | right | f000 (t1) 27 fr 1.350 w1.00; f030 (t31) 5 fr 0.495 w1.00; f038 (t39) 3 fr 1.036 w1.00; f044 (t45) 5 fr 0.503 w1.00; f052 (t53) 3 fr 0.967 w1.00; f058 (t59) 5 fr 0.513 w1.00; f066 (t67) 46 fr 1.443 w1.00 |
+| walk | left | f000 (t1) 29 fr 1.388 w1.00; f031 (t32) 3 fr 0.967 w1.00; f037 (t38) 5 fr 0.488 w1.00; f045 (t46) 3 fr 0.997 w1.00; f051 (t52) 5 fr 0.516 w1.00; f059 (t60) 3 fr 0.910 w1.00; f065 (t66) 47 fr 1.108 w1.00 |
+| run | right | f000 (t1) 26 fr 1.688 w1.00; f028 (t29) 2 fr 0.295 w1.00; f034 (t35) 1 fr 0.000 w1.00; f037 (t38) 3 fr 0.406 w1.00; f043 (t44) 2 fr 0.684 w1.00; f047 (t48) 2 fr 0.338 w1.00; f052 (t53) 2 fr 0.793 w1.00; f056 (t57) 3 fr 0.460 w1.00; f061 (t62) 41 fr 0.618 w1.00 |
+| run | left | f000 (t1) 26 fr 1.508 w1.00; f029 (t30) 1 fr 0.000 w1.00; f033 (t34) 2 fr 0.286 w1.00; f038 (t39) 2 fr 0.840 w1.00; f042 (t43) 3 fr 0.397 w1.00; f048 (t49) 1 fr 0.000 w1.00; f052 (t53) 2 fr 0.236 w1.00; f057 (t58) 2 fr 0.688 w1.00; f062 (t63) 40 fr 0.285 w1.00 |
+| crawl | right | f000 (t1) 112 fr 2.823 w1.00 |
+| crawl | left | f000 (t1) 112 fr 2.791 w1.00 |
+| backpedal | right | f000 (t1) 112 fr 6.510 w1.00 |
+| backpedal | left | f000 (t1) 112 fr 6.762 w1.00 |
+| turn | right | f000 (t1) 95 fr 0.574 w1.00 |
+| turn | left | f000 (t1) 95 fr 0.592 w1.00 |
+
+| Transition | Event | Largest step (deg/tick) at frame | Largest 2nd difference | Ratio to baseline p90 | Flagged |
 |---|---|---|---|---|---|
-| hold-wall-brace | stance wall | 41.9 at f025 (right_arm) | 16.7 | 27.9 | yes |
-| guard-carry | stance hold | 33.1 at f074 (left_shin) | 22.0 | 12.9 | yes |
-| shield-up-down | raise | 38.6 at f027 (right_arm) | 25.7 | 16.1 | yes |
-| hit-while-attacking | hit body | 232.4 at f026 (right_arm) | 296.1 | 79.4 | yes |
-| death-while-attacking | kill | 244.1 at f026 (right_arm) | 345.3 | 161.5 | yes |
-| loco-walk | move to stop | 108.5 at f068 (right_leg) | 77.8 | 1.5 | no |
-| loco-run | move to stop | 173.5 at f049 (right_leg) | 166.5 | 1.5 | no |
-| loco-crawl | idle to move | 29.3 at f023 (left_shin) | 26.6 | 3.2 | yes |
-| loco-backpedal | move to stop | 47.3 at f055 (right_leg) | 50.7 | 2.7 | no |
-| loco-turn | turn starts | 13.8 at f020 (left_leg) | 24.6 | 1.2 | no |
+| hold-wall-brace | stance wall | 26.2 at f025 (right_arm) | 10.5 | 4.5 | yes |
+| guard-carry | stance run | 28.5 at f027 (right_shin) | 21.3 | 48.9 | yes |
+| shield-up-down | lower | 38.5 at f077 (right_arm) | 24.0 | 6.0 | yes |
+| hit-while-attacking | hit body | 214.6 at f026 (right_arm) | 263.7 | 64.2 | yes |
+| death-while-attacking | kill | 245.9 at f026 (right_arm) | 329.1 | 150.9 | yes |
+| loco-walk | move to stop | 104.2 at f060 (right_leg) | 103.2 | 2.1 | no |
+| loco-run | move to stop | 169.6 at f048 (right_leg) | 168.5 | 1.4 | no |
+| loco-crawl | idle to move | 24.4 at f022 (right_shin) | 24.4 | 2.9 | no |
+| loco-backpedal | move to stop | 56.5 at f069 (right_arm) | 73.9 | 4.0 | yes |
+| loco-turn | turn starts | 14.4 at f019 (left_leg) | 25.1 | 1.3 | no |
 
 Rubric (R65): Weight and timing; Arcs; Anticipation and follow-through; Silhouette at distance; Variation (no clones); Contact (no foot slide, no ground sinking); No clipping (body, weapon, shield, neighbour); Blend continuity (no pops).
 
@@ -80,7 +102,7 @@ Clip `carry` (stance, 2.00 s, loop, key poses extreme_a 0.00s, extreme_b 1.00s).
 | Variation (no clones) | __/10 | `states/stance-carry/formed_zoom_f030.png` (the formation at real spacing, from 30 blocks up high, zoomed)<br>`states/stance-carry/crowd_zoom_f030.png` (the wide overview grid, a clone check only (spacing exaggerated))<br>`states/stance-carry/formed_f030.png` (the whole formation frame) | _to fill: frame or angle, what is seen_ |
 | Contact (no foot slide, no ground sinking) | __/10 | `loco/walk/loco.png` (walk: frames and feet crops)<br>`loco/walk/loco_trace.png` (walk: foot traces; manifest loco[].plantedSlideBlocks)<br>`loco/turn/loco_trace.png` (turn in place)<br>`loco/run/loco.png` (run)<br>`loco/run/loco_trace.png` (run traces)<br>`clips/carry/contact.png` (the feet rows of the clip) | _to fill: frame or angle, what is seen_ |
 | No clipping (body, weapon, shield, neighbour) | __/10 | `clips/carry/turnaround.png` (body, weapon and shield from 8 angles at each key pose)<br>`states/stance-carry/formed_f030.png` (neighbours at real spacing)<br>`states/stance-carry/close_f030.png` (the trio at real spacing, close)<br>`states/stance-carry/dense_f010.png` (every frame round the event) | _to fill: frame or angle, what is seen_ |
-| Blend continuity (no pops) | __/10 | `states/stance-carry/dense_f010.png` (every frame round the event)<br>`states/stance-carry/delta.png` (per-tick pose delta; manifest states[].delta.windows (flag rule there))<br>`transitions/guard-carry/dense_f020.png` (a related transition)<br>`loco/walk/dense_idle-to-move.png` (a related transition)<br>`loco/walk/dense_move-to-stop.png` (a related transition) | _to fill: frame or angle, what is seen_ |
+| Blend continuity (no pops) | __/10 | `states/stance-carry/dense_f010.png` (every frame round the event)<br>`states/stance-carry/delta.png` (per-tick pose delta; manifest states[].delta.windows (flag rule there))<br>`transitions/guard-carry/dense_f020.png` (a related transition)<br>`loco/run/dense_idle-to-move.png` (a related transition)<br>`loco/run/dense_move-to-stop.png` (a related transition) | _to fill: frame or angle, what is seen_ |
 
 ## stance-guard / guard
 
@@ -95,7 +117,7 @@ Clip `guard` (stance, 2.00 s, loop, key poses extreme_a 0.00s, extreme_b 1.00s).
 | Variation (no clones) | __/10 | `states/stance-guard/formed_zoom_f030.png` (the formation at real spacing, from 30 blocks up high, zoomed)<br>`states/stance-guard/crowd_zoom_f030.png` (the wide overview grid, a clone check only (spacing exaggerated))<br>`states/stance-guard/formed_f030.png` (the whole formation frame) | _to fill: frame or angle, what is seen_ |
 | Contact (no foot slide, no ground sinking) | __/10 | `loco/walk/loco.png` (walk: frames and feet crops)<br>`loco/walk/loco_trace.png` (walk: foot traces; manifest loco[].plantedSlideBlocks)<br>`loco/turn/loco_trace.png` (turn in place)<br>`loco/backpedal/loco.png` (backpedal)<br>`loco/backpedal/loco_trace.png` (backpedal traces)<br>`clips/guard/contact.png` (the feet rows of the clip) | _to fill: frame or angle, what is seen_ |
 | No clipping (body, weapon, shield, neighbour) | __/10 | `clips/guard/turnaround.png` (body, weapon and shield from 8 angles at each key pose)<br>`states/stance-guard/formed_f030.png` (neighbours at real spacing)<br>`states/stance-guard/close_f030.png` (the trio at real spacing, close)<br>`states/stance-guard/dense_f010.png` (every frame round the event) | _to fill: frame or angle, what is seen_ |
-| Blend continuity (no pops) | __/10 | `states/stance-guard/dense_f010.png` (every frame round the event)<br>`states/stance-guard/delta.png` (per-tick pose delta; manifest states[].delta.windows (flag rule there))<br>`transitions/guard-carry/dense_f020.png` (a related transition) | _to fill: frame or angle, what is seen_ |
+| Blend continuity (no pops) | __/10 | `states/stance-guard/dense_f010.png` (every frame round the event)<br>`states/stance-guard/delta.png` (per-tick pose delta; manifest states[].delta.windows (flag rule there))<br>`transitions/guard-carry/dense_f020.png` (a related transition)<br>`loco/crawl/dense_idle-to-move.png` (a related transition)<br>`loco/crawl/dense_move-to-stop.png` (a related transition)<br>`loco/backpedal/dense_idle-to-move.png` (a related transition)<br>`loco/backpedal/dense_move-to-stop.png` (a related transition) | _to fill: frame or angle, what is seen_ |
 
 ## stance-brace / brace
 
@@ -110,7 +132,7 @@ Clip `brace` (stance, 2.00 s, loop, key poses extreme_a 0.00s, extreme_b 1.00s).
 | Variation (no clones) | __/10 | `states/stance-brace/formed_zoom_f030.png` (the formation at real spacing, from 30 blocks up high, zoomed)<br>`states/stance-brace/crowd_zoom_f030.png` (the wide overview grid, a clone check only (spacing exaggerated))<br>`states/stance-brace/formed_f030.png` (the whole formation frame) | _to fill: frame or angle, what is seen_ |
 | Contact (no foot slide, no ground sinking) | __/10 | `loco/walk/loco.png` (walk: frames and feet crops)<br>`loco/walk/loco_trace.png` (walk: foot traces; manifest loco[].plantedSlideBlocks)<br>`loco/turn/loco_trace.png` (turn in place)<br>`loco/crawl/loco.png` (shield crawl)<br>`loco/crawl/loco_trace.png` (crawl traces)<br>`clips/brace/contact.png` (the feet rows of the clip) | _to fill: frame or angle, what is seen_ |
 | No clipping (body, weapon, shield, neighbour) | __/10 | `clips/brace/turnaround.png` (body, weapon and shield from 8 angles at each key pose)<br>`states/stance-brace/formed_f030.png` (neighbours at real spacing)<br>`states/stance-brace/close_f030.png` (the trio at real spacing, close)<br>`states/stance-brace/dense_f010.png` (every frame round the event) | _to fill: frame or angle, what is seen_ |
-| Blend continuity (no pops) | __/10 | `states/stance-brace/dense_f010.png` (every frame round the event)<br>`states/stance-brace/delta.png` (per-tick pose delta; manifest states[].delta.windows (flag rule there))<br>`transitions/hold-wall-brace/dense_f020.png` (a related transition) | _to fill: frame or angle, what is seen_ |
+| Blend continuity (no pops) | __/10 | `states/stance-brace/dense_f010.png` (every frame round the event)<br>`states/stance-brace/delta.png` (per-tick pose delta; manifest states[].delta.windows (flag rule there))<br>`transitions/hold-wall-brace/dense_f020.png` (a related transition)<br>`loco/crawl/dense_idle-to-move.png` (a related transition)<br>`loco/crawl/dense_move-to-stop.png` (a related transition)<br>`loco/backpedal/dense_idle-to-move.png` (a related transition)<br>`loco/backpedal/dense_move-to-stop.png` (a related transition) | _to fill: frame or angle, what is seen_ |
 
 ## stance-wall / wall
 
@@ -140,7 +162,7 @@ Clip `shield` (stance, 2.00 s, loop, key poses extreme_a 0.00s, extreme_b 1.00s)
 | Variation (no clones) | __/10 | `states/stance-shield/formed_zoom_f030.png` (the formation at real spacing, from 30 blocks up high, zoomed)<br>`states/stance-shield/crowd_zoom_f030.png` (the wide overview grid, a clone check only (spacing exaggerated))<br>`states/stance-shield/formed_f030.png` (the whole formation frame) | _to fill: frame or angle, what is seen_ |
 | Contact (no foot slide, no ground sinking) | __/10 | `loco/walk/loco.png` (walk: frames and feet crops)<br>`loco/walk/loco_trace.png` (walk: foot traces; manifest loco[].plantedSlideBlocks)<br>`loco/turn/loco_trace.png` (turn in place)<br>`loco/crawl/loco.png` (shield crawl)<br>`loco/crawl/loco_trace.png` (crawl traces)<br>`clips/shield/contact.png` (the feet rows of the clip) | _to fill: frame or angle, what is seen_ |
 | No clipping (body, weapon, shield, neighbour) | __/10 | `clips/shield/turnaround.png` (body, weapon and shield from 8 angles at each key pose)<br>`states/stance-shield/formed_f030.png` (neighbours at real spacing)<br>`states/stance-shield/close_f030.png` (the trio at real spacing, close)<br>`states/stance-shield/dense_f010.png` (every frame round the event) | _to fill: frame or angle, what is seen_ |
-| Blend continuity (no pops) | __/10 | `states/stance-shield/dense_f010.png` (every frame round the event)<br>`states/stance-shield/delta.png` (per-tick pose delta; manifest states[].delta.windows (flag rule there))<br>`transitions/shield-up-down/dense_f020.png` (a related transition) | _to fill: frame or angle, what is seen_ |
+| Blend continuity (no pops) | __/10 | `states/stance-shield/dense_f010.png` (every frame round the event)<br>`states/stance-shield/delta.png` (per-tick pose delta; manifest states[].delta.windows (flag rule there))<br>`transitions/shield-up-down/dense_f020.png` (a related transition)<br>`loco/crawl/dense_idle-to-move.png` (a related transition)<br>`loco/crawl/dense_move-to-stop.png` (a related transition) | _to fill: frame or angle, what is seen_ |
 
 ## stance-aim / aim
 
