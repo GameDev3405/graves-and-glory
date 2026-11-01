@@ -62,7 +62,7 @@ public final class MapWalk implements ClientModInitializer {
                 return;
             }
             var server=c.getServer();if(server==null||c.player==null)return;
-            c.options.pauseOnLostFocus=false;c.options.hudHidden=true;c.options.getViewDistance().setValue(32);c.options.getGamma().setValue(15.0);
+            c.options.pauseOnLostFocus=false;c.options.hudHidden=true;c.options.getViewDistance().setValue(32);c.options.getGamma().setValue(1.0);
             c.options.getCloudRenderMode().setValue(net.minecraft.client.option.CloudRenderMode.OFF);
             if(done)return;
             if(!loaded){
