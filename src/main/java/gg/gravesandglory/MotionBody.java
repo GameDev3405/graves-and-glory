@@ -122,6 +122,8 @@ final class MotionBody {
         f.gaitW = a;
         f.duty = duty;
         f.gaitV = v;
+        f.cad = cad;
+        f.travel = duty * c * 16;
         double ampDeg = Math.toDegrees(amp), thR = 0;
         for (int i = 0; i < 2; i++) {
             double q = i == 0 ? st.psi : frac(st.psi + 0.5);

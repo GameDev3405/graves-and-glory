@@ -1099,15 +1099,22 @@ public final class MotionEngineCheck {
 
     // ---- the section 6.1 behaviours carried over from Task 12 ----
 
-    /** Feet planted: standing with speed 0, through stance changes, hits, a hip-moving attack and look changes, the feet move under 0.05 px. */
+    /**
+     * Feet planted: standing with speed 0, through stance changes, hits, a hip-moving attack and look changes, each foot slides
+     * under 0.05 px in all (MotionGrade's measure, SoleSlide: the corners touching the floor) and its lowest corner stays within
+     * 0.16 px (0.01 block) of the floor. The sole's middle is not the measure: the foot is rigid to the shin, so a leg hit's
+     * buckle lifts the heel about the toe edge, which stays put while the middle rises (about 2 px of heel at most).
+     */
     static String feetPlanted(Map<String, RigBone> rig, MotionEngine.Family fam, MotionMath.Seed[] seeds) {
-        double worst = 0;
-        String where = "none";
+        double worst = 0, off = 0;
+        String where = "none", offAt = "none";
+        double[] so = MotionFeet.KNIGHT_SOLE;
         for (int s = 0; s < 8; s++) {
             Drive d = new Drive(seeds[s]);
             var st = new MotionEngine.State();
             Pose out = new Pose();
-            double[][] first = null;
+            double[][][] prev = null;
+            double[] slid = new double[2];
             for (int f = 0; f < 60 * 25; f++) {
                 double e = f / 60.0;
                 if (at(e, 6)) d.enemy = true;
@@ -1120,17 +1127,27 @@ public final class MotionEngineCheck {
                 if (at(e, 22)) d.stance = "wall";
                 MotionEngine.pose(d.in(), st, fam, out);
                 Map<String, double[]> pose = out.snapshot();
-                double[][] feet = {world(rig, pose, "right_shin", new double[]{0, 6, 0}), world(rig, pose, "left_shin", new double[]{0, 6, 0})};
-                if (first == null) first = feet;
+                double[][][] c = new double[2][4][];
                 for (int k = 0; k < 2; k++) {
-                    double dist = Math.sqrt(Math.pow(feet[k][0] - first[k][0], 2) + Math.pow(feet[k][1] - first[k][1], 2) + Math.pow(feet[k][2] - first[k][2], 2));
-                    if (!(dist <= worst)) { worst = dist; where = "seed " + s + " t " + String.format("%.3f", e) + (k == 0 ? " right" : " left") + " foot"; }
+                    int n = 0;
+                    double lo = Double.MAX_VALUE;
+                    for (int cx = 0; cx < 2; cx++) for (int cz = 3; cz < 5; cz++) {
+                        double[] p = world(rig, pose, MotionFeet.SHINS[k], new double[]{so[cx], so[2], so[cz]});
+                        c[k][n++] = new double[]{p[0] / 16, (24 - p[1]) / 16, p[2] / 16};
+                        lo = Math.min(lo, 24 - p[1]);
+                    }
+                    String at = "seed " + s + " t " + String.format("%.3f", e) + (k == 0 ? " right" : " left") + " foot";
+                    if (prev != null) slid[k] += SoleSlide.step(prev[k], c[k]) * 16;
+                    if (!(slid[k] <= worst)) { worst = slid[k]; where = at; }
+                    if (!(Math.abs(lo) <= off)) { off = Math.abs(lo); offAt = at; }
                 }
+                prev = c;
                 d.step(1 / 60.0);
             }
         }
-        check(worst < 0.05, "feet planted: a standing foot moved " + worst + " px, worst at " + where);
-        return String.format("worst %.5f px", worst);
+        check(worst < 0.05, "feet planted: a standing foot slid " + worst + " px, worst at " + where);
+        check(off <= 0.16, "feet planted: a standing foot's lowest corner was " + off + " px off the floor at " + offAt);
+        return String.format("worst slide %.5f px, floor %.3f px", worst, off);
     }
 
     /** Hit zones: a head hit's peak rotation is largest on the head, a legs hit's on the shins (procedural reactions, no hit clips). */
