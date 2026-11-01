@@ -259,9 +259,10 @@ def attacks():
     out = []
     # Thrust over the shield (impact tick 7): coil the sword shoulder back, the shield turning in to cover; drive off the
     # back foot, the shoulder, elbow and wrist unfolding in turn; the shield dips and draws back to let the point over its
-    # rim; a short overreach, then the arm reels the point back and the shield closes (25 ticks, the cooldown: the long settle is the
-    # weight of the lunge coming back, and mo-late-join's catch-up window, impact + 12 ticks plus 4, fits inside it).
-    a = Anim('sword_shield_thrust', 1.25, impact=0.35)
+    # rim; a short overreach, then the arm reels the point back and the shield closes (28 ticks: the long settle is the weight of
+    # the lunge coming back; a swing every 25-tick cooldown cuts its last 3 ticks of settle, which the engine blends; and
+    # mo-late-join's catch-up at impact + 12 ticks leaves it the 5 ticks or more it compares on, with a tick of jitter to spare).
+    a = Anim('sword_shield_thrust', 1.4, impact=0.35)
     a.k(0.0, root=Z, body=Z, head=Z, right_arm=Z, right_forearm=Z, right_hand=Z, left_arm=Z, left_forearm=Z)
     a.k(0.15, root=(0, 0, 0, 0, 0.3, 1.0), body=(-2, 14, 0), head=(0, -9, 0), right_arm=(24, 0, 6),
         right_forearm=(-12, 0, 0), right_hand=(-10, 0, 0), left_arm=(-5, 9, 0), left_forearm=(-3, 0, 0))
@@ -273,9 +274,9 @@ def attacks():
         right_forearm=(108, 0, 0), right_hand=(40, 0, 0), left_arm=(15, -12, 0))
     a.k(0.72, root=(0, 0, 0, 0, 0.3, -0.7), body=(1, -8, 0), head=(-1, 6, 0), right_arm=(-6, 0, -8),
         right_forearm=(30, 0, 0), right_hand=(10, 0, 0), left_arm=(4, -3, 0), left_forearm=(2, 0, 0))
-    a.k(0.98, root=(0, 0, 0, 0, -0.05, 0.15), body=(-0.6, 2, 0), head=(0, -1, 0), right_arm=(2, 0, 1.5),
+    a.k(1.08, root=(0, 0, 0, 0, -0.05, 0.15), body=(-0.6, 2, 0), head=(0, -1, 0), right_arm=(2, 0, 1.5),
         right_forearm=(-4, 0, 0), right_hand=(-3, 0, 0), left_arm=(-1, 1, 0))
-    a.k(1.25, root=Z, body=Z, head=Z, right_arm=Z, right_forearm=Z, right_hand=Z, left_arm=Z, left_forearm=Z)
+    a.k(1.4, root=Z, body=Z, head=Z, right_arm=Z, right_forearm=Z, right_hand=Z, left_arm=Z, left_forearm=Z)
     a.lag(right_hand=0.03, left_forearm=0.04, head=0.02)
     out.append(a)
 
