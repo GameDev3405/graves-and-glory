@@ -26,7 +26,7 @@ public final class MarchMathCheck {
         }
         // Kort 2026-10-31: The Iron Gate runs as Domination until Siege joins the lobby; its placeholder note says it goes back to siege
         check(row(2).placeholder().contains("siege"), "sheet: battle 2's Domination stand-in is a marked placeholder");
-        check(row(1).placeholder().equals("none") && row(1).lessons() && row(6).placeholder().contains("house"), "sheet: battle 1 is final; battle 6's house is a marked placeholder");
+        check(row(1).placeholder().equals("none") && row(1).lessons() && !row(6).placeholder().contains("house"), "sheet: battle 1 is final; battle 6's house is settled");
         var b1 = MarchMath.bonus(row(1), Spec.BONUSOBJECTIVES);
         check(b1.id().equals("b1_hold_all") && b1.kind().equals("hold_all") && b1.shards() == 5, "sheet: battle 1's bonus holds all three crossings for 5 shards");
         // cleared, lockedBy, nextUnwon, chapterDone
