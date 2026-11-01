@@ -1216,7 +1216,10 @@ final class MotionGrade extends Phase2Checks.Stage {
             case "attack" -> { int rows = Tactics.variants(famName).size(); for (var u : subj) { var e = client(c, u.mob); if (e != null) MotionEvents.Client.attack(e.getId(), s.variant(), tick, rows); } }
             case "hit" -> { for (var u : subj) { var e = client(c, u.mob); if (e != null) MotionEvents.Client.hit(true, e.getId(), MotionEvents.KINDS.indexOf("slash"), MotionEvents.ZONES.indexOf(s.zone()), 0f, 1, s.blocked() ? 1 : 0, tick); } }
             case "scene" -> { for (var u : subj) { var e = client(c, u.mob); if (e != null) TroopMotion.setScenePose(e.getId(), s.clip()); } }
-            case "death" -> kill(c, subj, s.bearing(), "slash");
+            case "death" -> { // H2: the crowd dies of mixed kinds and directions, the centre troop keeps the state's slash and bearing
+                int i = 0; float[] brs = {0, 91, 180, -91};
+                for (var u : subj) { if (u == cast.get(SOLO_UNIT) || subj.size() == 1) kill(c, List.of(u), s.bearing(), "slash"); else { kill(c, List.of(u), brs[i % 4], MotionEvents.KINDS.get(i % MotionEvents.KINDS.size())); i++; } }
+            }
             default -> {}
         }
     }
