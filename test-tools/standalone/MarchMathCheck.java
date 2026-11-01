@@ -17,7 +17,7 @@ public final class MarchMathCheck {
     public static void main(String[] args) {
         // sheet: the plan's six battles, in order, on the plan's maps and modes
         String[][] plan = {{"The Training Field", "rivergate", "domination", "gilded"}, {"The Iron Gate", "ironhold", "domination", "ironclad"}, {"The Long Night", "hollowwood", "survival", "graveborn"},
-            {"The Frozen Standard", "frostmarch", "banner", "wildmoot"}, {"The Five Crossings", "kingsfield", "domination", "tidecallers"}, {"The Last Watch", "ironhold", "siege", "graveborn"}};
+            {"The Frozen Standard", "frostmarch", "convoy", "wildmoot"}, {"The Five Crossings", "kingsfield", "domination", "tidecallers"}, {"The Last Watch", "ironhold", "siege", "graveborn"}};
         check(ROWS.length == 6, "sheet: six campaign battles");
         for (int i = 0; i < 6; i++) {
             var r = row(i + 1);
@@ -53,7 +53,10 @@ public final class MarchMathCheck {
         Set<String> sixClaimed = won();
         var finale = MarchMath.settle(row(6), MarchMath.bonus(row(6), Spec.BONUSOBJECTIVES), true, true, won(), sixClaimed, HOUSES, ROWS);
         check(finale.bonusPaid() && finale.bonusShards() == 5 && finale.bonusGold() == 60 && finale.bonusHouse().equals("graveborn") && sixClaimed.equals(won("b6_kill_hollowking")), "settle: battle 6 pays 5 Graveborn shards and 60 gold once the bonus is kept");
-        check(!new MarchMath.Tracker(MarchMath.bonus(row(4), Spec.BONUSOBJECTIVES)).kept(true, 1), "tracker: a tbd bonus (battle 4, awaiting the escort spec) is never kept");
+        var b4 = new MarchMath.Tracker(MarchMath.bonus(row(4), Spec.BONUSOBJECTIVES));
+        check(b4.kept(true, 1), "tracker: battle 4's never_rolled bonus is kept on a win with no roll back");
+        b4.rolled();
+        check(!b4.kept(true, 1), "tracker: battle 4's never_rolled bonus is lost once the wagon rolls back");
         // trackers
         var hold = new MarchMath.Tracker("hold_all", 0, "none");
         hold.held(2, 3);
