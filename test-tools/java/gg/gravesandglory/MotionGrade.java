@@ -575,7 +575,7 @@ final class MotionGrade extends Phase2Checks.Stage {
         }
         for (String n : clipOrder) if (clipCat.get(n).equals("scene")) states.add(new St("scene-" + n, "scene", n, "hold", "hold", -1, null, false, 0, keyTicks(n), fam.all().get(n).length()));
         if (!f2.deaths().isEmpty()) for (int d = 0; d < DIRS.size(); d++) {
-            Clip dc = MotionEngine.deathClip(f2, "slash", DIRS.get(d)); if (dc == null) dc = f2.deaths().values().iterator().next();
+            Clip dc = MotionEngine.deathClip(f2, "slash", DIRS.get(d)); if (dc == null) dc = f2.deaths().values().iterator().next().get(0);
             String clip = keyOf(dc); states.add(new St("death-" + DIRS.get(d), "death", clip, "hold", "hold", -1, null, false, BEARINGS[d], keyTicks(clip), dc.length()));
         }
         if (!PARTS.contains("states")) states.clear();

@@ -58,7 +58,7 @@ public final class MotionEngine {
      * corpse is the death clip's last key and nothing else.</li>
      * </ul>
      */
-    public record Family(String name, Map<String, Clip> stances, List<Clip> attacks, Map<String, List<Clip>> hits, Map<String, Clip> deaths) {
+    public record Family(String name, Map<String, Clip> stances, List<Clip> attacks, Map<String, List<Clip>> hits, Map<String, List<Clip>> deaths) {
         public Family {
             Objects.requireNonNull(name, "name");
             stances = Map.copyOf(stances);
@@ -66,8 +66,30 @@ public final class MotionEngine {
             Map<String, List<Clip>> h = new HashMap<>();
             for (var e : hits.entrySet()) h.put(e.getKey(), List.copyOf(e.getValue()));
             hits = Map.copyOf(h);
-            deaths = Map.copyOf(deaths);
+            Map<String, List<Clip>> d = new HashMap<>();
+            for (var e : deaths.entrySet()) {
+                List<Clip> l = new ArrayList<>(e.getValue());
+                l.sort(java.util.Comparator.comparing(Clip::name));
+                d.put(e.getKey(), List.copyOf(l));
+            }
+            deaths = Map.copyOf(d);
         }
+    }
+
+    private static final java.util.regex.Pattern DEATH_NAME =
+        java.util.regex.Pattern.compile("death(?:_(slash|stab|blunt|arrow|magic))?(?:_(front|back|left|right))?(?:_([0-9]+))?");
+
+    /**
+     * A death clip's key in Family.deaths (R105: {@code death_<kind>[_<dir>]_<n>}, n a variant number): death is "any",
+     * death_<dir> "any/<dir>", death_<kind> "<kind>", death_<kind>_<dir> "<kind>/<dir>"; a trailing _<n> appends the clip to
+     * the same key's list. Null for any other clip.
+     */
+    public static String deathKey(String name) {
+        java.util.regex.Matcher m = DEATH_NAME.matcher(name);
+        if (!m.matches()) return null;
+        String kind = m.group(1), dir = m.group(2);
+        if (kind == null) return dir == null ? "any" : "any/" + dir;
+        return dir == null ? kind : kind + "/" + dir;
     }
 
     /**
@@ -298,7 +320,7 @@ public final class MotionEngine {
         if (a == null && b == null) {
             for (String dir : abs <= 90 ? List.of("front", side, "back") : List.of("back", side, "front"))
                 if ((a = deathClip(fam, kind, dir)) != null) break;
-            if (a == null) a = fam.deaths().values().stream().min((x, y) -> x.name().compareTo(y.name())).orElse(null);
+            if (a == null) a = fam.deaths().values().stream().flatMap(List::stream).min((x, y) -> x.name().compareTo(y.name())).orElse(null);
             if (a == null) return null;
             mix = 0;
         } else if (a == null) { a = b; b = null; mix = 0; }
@@ -306,11 +328,14 @@ public final class MotionEngine {
         return new MotionStack.Track(st.ids++, DEATH, a, b, mix, 1, f.now - Math.max(0, seconds), 1);
     }
 
-    static Clip deathClip(Family fam, String kind, String dir) {
-        Clip c = fam.deaths().get(kind + "/" + dir);
-        if (c == null) c = fam.deaths().get("any/" + dir);
-        if (c == null && dir.equals("front")) c = fam.deaths().getOrDefault(kind, fam.deaths().get("any"));
-        return c;
+    static Clip deathClip(Family fam, String kind, String dir) { return deathClip(fam, kind, dir, 0); }
+
+    /** The death clip for kind and direction, variant {@code idx} (modulo the variants that key has). */
+    static Clip deathClip(Family fam, String kind, String dir, int idx) {
+        List<Clip> l = fam.deaths().get(kind + "/" + dir);
+        if (l == null) l = fam.deaths().get("any/" + dir);
+        if (l == null && dir.equals("front")) l = fam.deaths().getOrDefault(kind, fam.deaths().get("any"));
+        return l == null || l.isEmpty() ? null : l.get(Math.floorMod(idx, l.size()));
     }
 
     /** The clips the tracks are playing at {@code now}, bottom first, each with its effective share of the fold. */
@@ -329,7 +354,7 @@ public final class MotionEngine {
         for (Clip c : fam.stances().values()) max(stance, c.reach(), 1);
         for (Clip c : fam.attacks()) max(action, c.reach(), ATTACK_GAIN);
         for (List<Clip> l : fam.hits().values()) for (Clip c : l) max(action, c.reach(), HIT_GAIN);
-        for (Clip c : fam.deaths().values()) max(action, c.reach(), 1);
+        for (List<Clip> l : fam.deaths().values()) for (Clip c : l) max(action, c.reach(), 1);
         for (int c = 0; c < 6; c++) r[c] = (c < 3 ? PROC_ROT : PROC_PX) + stance[c] + action[c];
         return r;
     }
@@ -344,7 +369,7 @@ public final class MotionEngine {
         for (Clip c : fam.stances().values()) max(stance, c.reach(bone), 1);
         for (Clip c : fam.attacks()) max(action, c.reach(bone), ATTACK_GAIN);
         for (List<Clip> l : fam.hits().values()) for (Clip c : l) max(action, c.reach(bone), HIT_GAIN);
-        for (Clip c : fam.deaths().values()) max(action, c.reach(bone), 1);
+        for (List<Clip> l : fam.deaths().values()) for (Clip c : l) max(action, c.reach(bone), 1);
         for (int c = 0; c < 3; c++) r[c] = proc + stance[3 + c] + action[3 + c];
         return r;
     }

@@ -100,12 +100,12 @@ public final class TroopMotion {
         Map<String,Clip> own=ClipLibrary.folder(rig,family);
         List<Spec.AttackVariantsRow> rows=Tactics.variants(family);int[] index=new int[rows.size()];List<Clip> attacks=new ArrayList<>();
         for(int i=0;i<rows.size();i++){Clip c=own.get(rows.get(i).id());if(c==null)index[i]=-1;else{index[i]=attacks.size();attacks.add(c);}}
-        Map<String,List<Clip>> hits=new HashMap<>();Map<String,Clip> deaths=new HashMap<>();
+        Map<String,List<Clip>> hits=new HashMap<>();Map<String,List<Clip>> deaths=new HashMap<>();
         for(var e:all.entrySet()){
             String n=e.getKey();Matcher h=HIT.matcher(n);
             if(h.matches())hits.computeIfAbsent(h.group(1),k->new ArrayList<>()).add(e.getValue());
             else if(BLOCK.matcher(n).matches())hits.computeIfAbsent("block",k->new ArrayList<>()).add(e.getValue());
-            else{String d=deathKey(n);if(d!=null)deaths.put(d,e.getValue());}
+            else{String d=deathKey(n);if(d!=null)deaths.computeIfAbsent(d,k->new ArrayList<>()).add(e.getValue());}
         }
         MotionEngine.Family fam=new MotionEngine.Family(family,stances,attacks,hits,deaths);
         // each bone's own: the engine's per-bone reach, and any clip of the folders at the hit gain over the procedural bound (a scene or forced clip)
@@ -119,14 +119,7 @@ public final class TroopMotion {
         return new Fam(fam,index,gen,Collections.unmodifiableMap(all),Collections.unmodifiableMap(px));
     }
     /** A death clip's key in Family.deaths: death is "any", death_<dir> "any/<dir>", death_<kind> "<kind>", death_<kind>_<dir> "<kind>/<dir>"; null for any other clip. */
-    static String deathKey(String name){
-        if(name.equals("death"))return "any";
-        if(!name.startsWith("death_"))return null;
-        String[] p=name.substring(6).split("_");
-        if(p.length==1)return DIRECTIONS.contains(p[0])?"any/"+p[0]:p[0];
-        if(p.length==2&&DIRECTIONS.contains(p[1]))return p[0]+"/"+p[1];
-        return null;
-    }
+    static String deathKey(String name){return MotionEngine.deathKey(name);}
     /**
      * What the procedural layers may move a bone's pivot, per axis (pixels): a root PROC_PX (gait, crouch, weight shift, the feet's
      * roll and dip, the novelty step, the hit pulse's lunge), the arms LIMB_PX (the shrug and the novelty settle) and nothing on any
@@ -317,7 +310,7 @@ public final class TroopMotion {
         switch(name){
             case "attack","cast","bow_draw":return fam.attacks().isEmpty()?null:fam.attacks().get(0);
             case "hit":{List<Clip> l=fam.hits().get("body");return l==null||l.isEmpty()?null:l.get(0);}
-            case "death":{if(fam.deaths().isEmpty())return null;Clip d=MotionEngine.deathClip(fam,"any","front");return d!=null?d:fam.deaths().values().iterator().next();}
+            case "death":{if(fam.deaths().isEmpty())return null;Clip d=MotionEngine.deathClip(fam,"any","front");return d!=null?d:fam.deaths().values().iterator().next().get(0);}
             default:return null;
         }
     }

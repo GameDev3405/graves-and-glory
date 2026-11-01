@@ -54,6 +54,7 @@ public final class MotionEngineCheck {
         run("life", () -> life(rig, fam, seeds));
         run("look and secondary", () -> lookAndSecondary(fam, seeds));
         run("actions", () -> actions(fam));
+        run("death keys", MotionEngineCheck::deathKeys);
         if (failed > 0) {
             System.out.println("MotionEngineCheck: " + failed + " checks FAILED");
             System.exit(1);
@@ -201,7 +202,26 @@ public final class MotionEngineCheck {
             "root:position=0,0,0,0;0.9,0,10,0;1.2,0,10.5,0", legs));
         deaths.put("any/right", clip("death_right", 1.2, false, "", "bezier", "body:rotation=0,0,0,0;0.8,0,0,-76;1.2,0,0,-80",
             "root:position=0,0,0,0;0.9,0,10,0;1.2,0,10.5,0", legs));
-        return new MotionEngine.Family("test", stances(), attacks, hits, deaths);
+        Map<String, List<Clip>> dl = new HashMap<>();
+        deaths.forEach((k, c) -> dl.put(k, List.of(c)));
+        return new MotionEngine.Family("test", stances(), attacks, hits, dl);
+    }
+
+    /** K1a (R105): death_<kind>[_<dir>]_<n> variants join their key's list, sorted by name; other names keep today's keys. */
+    static String deathKeys() {
+        String[][] cases = {{"death", "any"}, {"death_back", "any/back"}, {"death_stab", "stab"}, {"death_stab_3", "stab"},
+            {"death_slash_front", "slash/front"}, {"death_slash_front_2", "slash/front"}, {"death_left_2", "any/left"}, {"death_2", "any"},
+            {"death_foo", null}, {"hit_body", null}, {"death_slash_up", null}};
+        for (String[] c : cases) check(java.util.Objects.equals(MotionEngine.deathKey(c[0]), c[1]), c[0] + " -> " + MotionEngine.deathKey(c[0]));
+        Clip one = clip("death_slash_front", 1, false, "", "linear", "body:rotation=0,0,0,0;1,-80,0,0");
+        Clip two = clip("death_slash_front_2", 1, false, "", "linear", "body:rotation=0,0,0,0;1,-70,0,0");
+        Map<String, List<Clip>> d = new HashMap<>();
+        for (Clip c : List.of(two, one)) d.computeIfAbsent(MotionEngine.deathKey(c.name()), k -> new ArrayList<>()).add(c);
+        var f = new MotionEngine.Family("k", Map.of(), List.of(), Map.of(), d);
+        check(f.deaths().get("slash/front").size() == 2, "both variants kept");
+        check(MotionEngine.deathClip(f, "slash", "front", 0) == one && MotionEngine.deathClip(f, "slash", "front", 1) == two
+            && MotionEngine.deathClip(f, "slash", "front", 5) == two, "variants sorted by name, picked modulo");
+        return cases.length + " names";
     }
 
     static boolean at(double elapsed, double when) { return Math.abs(elapsed - when) < 0.5 / 60; }
