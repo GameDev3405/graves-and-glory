@@ -135,7 +135,7 @@ def _validate_op(where, op, plan_dir, errors):
         'fill': {'min', 'max', 'block', 'replace', 'shape'},
         'clear': {'min', 'max'},
         'structure': {'piece', 'file', 'at', 'rotation', 'includeAir'},
-        'terrain': {'origin', 'base', 'heights', 'floor', 'surface', 'under', 'underDepth', 'core', 'clearTo'},
+        'terrain': {'origin', 'base', 'heights', 'floors', 'floor', 'surface', 'under', 'underDepth', 'core', 'clearTo'},
     }[kind]
     for key in sorted(set(op) - known):
         errors.append(f'{where}: unknown key {key!r} for {kind}')
@@ -182,6 +182,13 @@ def _validate_op(where, op, plan_dir, errors):
             errors.append(f'{where}: heights must be a list of rows (one per z), each a list of offsets (one per x) or null')
         elif not all(v is None or (isinstance(v, int) and not isinstance(v, bool)) for r in h for v in r):
             errors.append(f'{where}: every height is an integer offset from base, or null to skip the column')
+        fl = op.get('floors')
+        if fl is not None:
+            if not isinstance(fl, list) or not isinstance(h, list) or len(fl) != len(h) or not all(
+                    isinstance(r, list) and isinstance(q, list) and len(r) == len(q) for r, q in zip(fl, h)):
+                errors.append(f'{where}: floors must have the same rows and columns as heights')
+            elif not all(v is None or (isinstance(v, int) and not isinstance(v, bool)) for r in fl for v in r):
+                errors.append(f'{where}: every floor is an integer y, or null to use floor')
         for key in ('surface', 'under', 'core'):
             if key in op or key == 'surface':
                 _state(f'{where}.{key}', op.get(key), errors)
@@ -265,14 +272,18 @@ def compile_plan(plan, world, plan_dir=None):
             core = Cell(normalize(op.get('core', op.get('under', op['surface']))))
             depth = op.get('underDepth', 3)
             ox, oz = op['origin']
+            floors = op.get('floors')
             for dz, row in enumerate(op['heights']):
                 for dx, h in enumerate(row):
                     if h is None:
                         continue
                     top = op['base'] + h
-                    for y in range(op['floor'], top + 1):
+                    floor = op['floor']
+                    if floors is not None and floors[dz][dx] is not None:
+                        floor = floors[dz][dx]  # surface-only maps: this column is built from here up
+                    for y in range(floor, top + 1):
                         put(i, (ox + dx, y, oz + dz), surface if y == top else under if y >= top - depth else core)
-                    for y in range(max(top + 1, op['floor']), op.get('clearTo', top) + 1):
+                    for y in range(max(top + 1, floor), op.get('clearTo', top) + 1):
                         put(i, (ox + dx, y, oz + dz), AIR_CELL)
     changes = {}
     for pos, after in overlay.items():

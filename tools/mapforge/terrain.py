@@ -17,7 +17,7 @@ import math
 from .structure import AIR, block_name, normalize
 from .world import AIR_CELL, Cell
 
-HELPERS = ('noise', 'erode', 'breakup', 'wall', 'path', 'river')
+HELPERS = ('noise', 'erode', 'breakup', 'wall', 'path', 'river', 'seal')
 NOT_GROUND = {AIR, 'minecraft:cave_air', 'minecraft:void_air', 'minecraft:water', 'minecraft:lava'}
 WATER = Cell('minecraft:water')
 DEFAULT_SCAN = (-64, 160)
@@ -33,6 +33,7 @@ KEYS = {
                       'wobbleScale'},
     'river': COMMON | {'points', 'width', 'depth', 'water', 'floor', 'bank', 'bankSurface', 'bed', 'wobble',
                        'wobbleScale', 'faces'},
+    'seal': COMMON | {'under'},
 }
 REQUIRED = {
     'noise': ('min', 'max', 'amplitude', 'scale'),
@@ -41,6 +42,7 @@ REQUIRED = {
     'wall': ('points', 'floor', 'block'),
     'path': ('points', 'width', 'surface'),
     'river': ('points', 'width', 'water', 'floor'),
+    'seal': ('min', 'max'),
 }
 
 
@@ -549,5 +551,38 @@ def run_river(op, get, put):
                         put((n[0], y, n[1]), bsurf(n[0], y, n[1]))
 
 
+# ---------------------------------------------------------------- seal
+
+def run_seal(op, get, put):
+    """Surface-only maps: closes the gaps a hollow column leaves where a cliff, cut bank or steep step would show.
+    For each usable column (inside the clip, surface in `only` when given) it looks at its four neighbours' ground
+    tops; every air cell of the column from the lowest neighbour top + 1 up to just under its own top is filled with
+    `under` (default: the block under the column's top, else the top block). Neighbours without ground are ignored,
+    so a column next to an unbuilt section is left alone. Water is not ground: a bank beside a river is sealed
+    down to the river bed."""
+    f = Field(op, get, put)
+    under = picker(op['under'], seed_of(op.get('seed', 0))) if 'under' in op else None
+    tops = {}
+
+    def top(x, z):
+        if (x, z) not in tops:
+            tops[(x, z)] = f.top(x, z)
+        return tops[(x, z)]
+
+    for x, z in _box_cols(op):
+        t = top(x, z)
+        if not f.usable(x, z, t):
+            continue
+        low = min((n for n in (top(x + 1, z), top(x - 1, z), top(x, z + 1), top(x, z - 1)) if n is not None),
+                  default=t)
+        if low >= t - 1:
+            continue
+        below = get((x, t - 1, z))
+        fill = block_name(below.state) not in NOT_GROUND
+        for y in range(low + 1, t):
+            if block_name(get((x, y, z)).state) == AIR:
+                put((x, y, z), under(x, y, z) if under else below if fill else get((x, t, z)))
+
+
 RUN = {'noise': run_noise, 'erode': run_erode, 'breakup': run_breakup, 'wall': run_wall, 'path': run_path,
-       'river': run_river}
+       'river': run_river, 'seal': run_seal}

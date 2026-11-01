@@ -5,7 +5,7 @@ import json
 import pathlib
 import sys
 
-from . import colours, manifest as mf, nbt, render
+from . import colours, gaps, manifest as mf, nbt, render
 from .colours import Palette
 from .plan import PlanError, apply, dry_run, format_summary, load_plan, rollback, validate, write_undo
 from .structure import Structure, normalize
@@ -123,6 +123,12 @@ def main(argv=None):
     g.add_argument('--undo', metavar='UNDO', help='diff of the before and after of this undo record, rebuilt on WORLD')
     p.add_argument('--title', help='caption title (default the world name)')
     p.add_argument('--report-unknown', action='store_true', help='list blocks drawn in the magenta fallback')
+    p = sub.add_parser('gaps', help='list cells where a hollow (surface-only) column would show a hole from outside')
+    p.add_argument('world')
+    p.add_argument('--min', nargs=2, type=int, metavar=('X', 'Z'))
+    p.add_argument('--max', nargs=2, type=int, metavar=('X', 'Z'))
+    p.add_argument('--limit', type=int, default=20, help='gap cells listed (default 20)')
+    p.add_argument('--terrain', action='store_true', help='only columns topped by natural ground (not gate arches, doors, frames)')
     p = sub.add_parser('colours', help='regenerate colours.json from a Minecraft client jar (Pillow)')
     p.add_argument('--jar', required=True)
     p = sub.add_parser('info', help='print a structure .nbt')
@@ -238,6 +244,13 @@ def main(argv=None):
                         unknown[k] = max(unknown.get(k, 0), v)
                 print('unknown blocks (magenta): ' + (', '.join(f'{k} x{v}' for k, v in sorted(unknown.items())) or 'none'))
             return 0
+        if a.cmd == 'gaps':
+            _refuse_live(a.world)
+            found = gaps.find_gaps(World.load(a.world), a.min, a.max, a.terrain)
+            print(f'{len(found)} gap cell(s)')
+            for pos in found[:a.limit]:
+                print('  ', *pos)
+            return 1 if found else 0
         if a.cmd == 'colours':
             n, missing = colours.generate(a.jar)
             print(f'{colours.TABLE}: {n} blocks' + (f'; no texture for {", ".join(missing)}' if missing else ''))
