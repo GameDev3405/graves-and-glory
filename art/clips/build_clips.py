@@ -1,5 +1,6 @@
-"""Hand-keyed clips for the biped rig (animation rework Task 16): writes art/clips/biped/sword_shield.bbmodel and
-art/clips/biped/common.bbmodel, the Blockbench projects tools/clips.py converts to the clip JSON the game loads.
+"""Hand-keyed clips for the biped rig (animation rework Task 16): writes art/clips/biped/sword_shield.bbmodel,
+art/clips/biped/common.bbmodel and art/clips/biped/bow.bbmodel (the interim bow set, R110), the Blockbench projects
+tools/clips.py converts to the clip JSON the game loads.
 
 Every key below is authored by hand: a time, a bone and its channels, in the rig's convention (y down, -z forward,
 degrees added to the rest rotation in ZYX order). Nothing is a wave or a formula of time. The script only does the
@@ -7,7 +8,7 @@ bookkeeping a Blockbench session would: it writes the keys as keyframes, delays 
 (overlap), and for a death sets the root's height so the lowest corner of the posed rig lies on the ground and its
 across-the-ground offset so the body turns about the named contact point (what an animator does by eye with the root).
 
-  python art/clips/build_clips.py            write both projects (then run python tools/clips.py)
+  python art/clips/build_clips.py            write the projects (then run python tools/clips.py)
   python art/clips/build_clips.py --check    rebuild in memory and compare with the committed projects
 
 Stances are absolute offsets from rest and loop; attacks, hits and blocks are offsets on the stance and start and end
@@ -637,6 +638,74 @@ def scenes():
     return out
 
 
+# ---- bow (interim set, R110: the archer's aim, its two shots and the forced bow_draw; the bow sits in the left hand)
+
+# Aim: side on to the target, the bow arm straight out with the bow upright, the string hand anchored under the chin
+# on full draw's nock (frame 3; TroopMotion.twist turns the hand). Shoulders are mostly pitch, so the engine's aimPitch,
+# added to both arms' pitch, swings bow and string hand together toward the sky (within 1.4 px of the nock at 45
+# degrees up or 15 down, every pull frame). Keyed from a solve of the rig's FK, rounded to a tenth of a degree.
+AIM = pose(body=(0, 25.8, 0), head=(-2, -22, 0), left_arm=(-101.1, 22.7, -25.0), left_forearm=(1.2, -12.5, 0),
+           left_hand=(-1.6, -7.8, -50.3), right_arm=(-97.2, -31.9, 37.5), right_forearm=(-77.0, -44.2, -7.3),
+           right_leg=(3, 0, 4), left_leg=(-4, 0, -4), left_shin=(4, 0, 0), root=(0, 0, 0, 0, 0.4, 0))
+# The string hand on each pull frame's nock, as offsets on AIM (right_arm, right_forearm): the arrow nocked with the string
+# at rest (frame 0) and frames 1 and 2 of the pull; frame 3 is AIM itself. LOOSE is the hand flicked 3 px back past the
+# anchor and out, the string gone.
+NOCK_AT = {0: dict(right_arm=(-10.9, -14.9, -1.7), right_forearm=(39.5, -3.8, 26.0)),
+           1: dict(right_arm=(-4.8, -5.6, -0.7), right_forearm=(20.2, 1.4, 14.4)),
+           2: dict(right_arm=(-1.8, -1.7, -0.5), right_forearm=(8.8, 1.7, 6.4))}
+LOOSE = dict(right_arm=(3.8, 5.4, -4.0), right_forearm=(-31.6, -14.1, -24.4))
+
+
+def scaled(d, s):
+    return {b: tuple(x * s for x in v) for b, v in d.items()}
+
+
+def bow_shot(name, lean, recoil):
+    """One shot (impact tick 10, the loose; the bow's pull frames switch at 0.094, 0.2 and 0.3 s on the attack's timeline):
+    a fresh arrow on the string at frame 0's nock, the draw following the frames to the anchor, a held beat, the loose
+    (the string hand flicks back, the bow arm gives forward and down), and back to the anchor. Offsets on AIM.
+    lean is the body's pitch held through the shot (negative leans back), recoil its kick at the loose."""
+    a = Anim(name, 1.2, impact=0.5)
+    a.k(0.0, body=Z, right_arm=Z, right_forearm=Z, left_arm=Z, head=Z)
+    a.k(0.06, i='linear', body=(lean * 0.3, 0, 0), **NOCK_AT[0])
+    a.k(0.1, i='linear', **NOCK_AT[1])
+    a.k(0.2, i='linear', body=(lean * 0.8, 0, 0), **NOCK_AT[2])
+    a.k(0.3, i='linear', body=(lean, 0, 0), right_arm=Z, right_forearm=Z, head=(lean * -0.3, 0, 0))
+    a.k(0.42, i='linear', body=(lean * 1.05, -0.5, 0), right_arm=(0.4, 0.6, 0), right_forearm=(-1.0, 0, 0), left_arm=Z)
+    a.k(0.5, i='linear', body=(lean * 1.05, -0.5, 0), right_arm=Z, right_forearm=Z, left_arm=Z)
+    a.k(0.56, i='linear', body=(lean + recoil, -3, 0), left_arm=(4, -3, 0), **LOOSE)
+    a.k(0.75, body=(lean * 0.6 + recoil * 0.4, -1.5, 0), left_arm=(2, -1.5, 0), head=(lean * -0.15, 0, 0), **scaled(LOOSE, 0.5))
+    a.k(1.0, body=(lean * 0.1, -0.3, 0), left_arm=(0.4, -0.2, 0), head=Z, **scaled(LOOSE, 0.1))
+    a.k(1.2, body=Z, right_arm=Z, right_forearm=Z, left_arm=Z, head=Z)
+    return a
+
+
+def bow_clips():
+    out = []
+    # Aim: held at full draw; the archer settles and breathes, both arms pitching together so the hand keeps the nock.
+    out.append(stance('aim', 3.0, AIM, [
+        (0.8, dict(left_arm=(-1.2, 0, 0), right_arm=(-1.2, 0, 0), body=(0.4, 0.6, 0), root=(0, 0, 0, 0, 0.15, 0))),
+        (1.7, dict(left_arm=(0.6, 0, 0), right_arm=(0.6, 0, 0), body=(-0.3, -0.4, 0), head=(0.8, 0, 0))),
+        (2.4, dict(left_arm=(-0.4, 0, 0), right_arm=(-0.4, 0, 0), body=(0.2, 0.3, 0), root=(0, 0, 0, 0, 0.1, 0))),
+    ]))
+    # Volley: leans back into the arc (the engine's aimPitch lifts the arms toward the sky); direct: flat, a touch forward.
+    out.append(bow_shot('bow_volley', -6, 1.5))
+    out.append(bow_shot('bow_direct', 1.5, -1.5))
+    # Forced bow_draw (the harness's p2-depth-bow, absolute): nocked at rest, the hand following the pull frames
+    # (0.15, 0.32, 0.48 s) to the anchor, held to the loose at 0.8 s, then flicked off the string.
+    a = Anim('bow_draw', 1.2)
+    a.pose(0.0, add(AIM, **NOCK_AT[0]), 'linear')
+    a.pose(0.12, add(AIM, **NOCK_AT[0]), 'linear')
+    a.pose(0.15, add(AIM, **NOCK_AT[1]), 'linear')
+    a.pose(0.32, add(AIM, **NOCK_AT[2]), 'linear')
+    a.pose(0.48, AIM, 'linear')
+    a.pose(0.8, AIM, 'linear')
+    a.pose(0.86, add(AIM, **LOOSE), 'linear')
+    a.pose(1.2, add(AIM, **scaled(LOOSE, 0.3)))
+    out.append(a)
+    return out
+
+
 # ---- project
 
 def project(family, anims):
@@ -673,7 +742,8 @@ def project(family, anims):
 
 
 def projects():
-    return {'sword_shield': stances() + attacks() + blocks(), 'common': hits() + deaths() + scenes()}
+    return {'sword_shield': stances() + attacks() + blocks(), 'common': hits() + deaths() + scenes(),
+            'bow': bow_clips()}
 
 
 def dump(p):
