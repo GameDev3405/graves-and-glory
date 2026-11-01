@@ -541,6 +541,22 @@
       "docs/maps/ironhold/sections/ironhold-I1-iso.png"
      ],
      "notes": "Gorge blockout: Dusk flank grass at 63, curtain y 71 at |z| 94..98, crenellated parapet x 166..168, ragged crag face to scree and a gravel floor at y 44 with boulders; worn rim foot. Blockout only, no detail pass."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T01:20:38Z",
+     "digest": "ece9c9eaa68cea76f9018839557d83a6b4afd37620af88fc09d2492db18abcd2",
+     "plans": [
+      "docs/maps/ironhold/sections/I1-blockout.json",
+      "docs/maps/ironhold/sections/I1-dry-pool.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-I1-top.png",
+      "docs/maps/ironhold/sections/ironhold-I1-iso.png"
+     ],
+     "notes": "North meadow pool on the gorge rim removed and filled to grass at 62 (Kort 2026-10-31); generator no longer places pools at x >= 159."
     }
    ]
   },
@@ -595,8 +611,24 @@
      -49
     ]
    },
-   "status": "todo",
-   "reviews": []
+   "status": "blockout",
+   "reviews": [
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T01:21:09Z",
+     "digest": "5090dc483d062f71e1f765faa5401eade92352d701bda2341dfa04ba2d9e9a59",
+     "plans": [
+      "docs/maps/ironhold/sections/A2-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-A2-top.png",
+      "docs/maps/ironhold/sections/ironhold-A2-iso.png"
+     ],
+     "notes": "Camp west half NW: shelf at 72, north palisade run and west run, slope down to the upland, west rim to 82-88, upland outcrops."
+    }
+   ]
   },
   {
    "id": "B2",
@@ -935,8 +967,24 @@
      15
     ]
    },
-   "status": "todo",
-   "reviews": []
+   "status": "blockout",
+   "reviews": [
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T01:20:53Z",
+     "digest": "f95f33177044e772193d21a2a5a7b92981026fefd1d0c333c2f025f706b82586",
+     "plans": [
+      "docs/maps/ironhold/sections/A3-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-A3-top.png",
+      "docs/maps/ironhold/sections/ironhold-A3-iso.png"
+     ],
+     "notes": "Camp west half (Kort 2026-10-31): shelf at 72 to the west palisade run at x -331, Dawn spawn floor at 72 under the y 73..90 lock, camp street to the King's Road gate, a tent at z -44..-37; the west rim climbs to 82-88 behind it."
+    }
+   ]
   },
   {
    "id": "B3",
@@ -1409,8 +1457,24 @@
      79
     ]
    },
-   "status": "todo",
-   "reviews": []
+   "status": "blockout",
+   "reviews": [
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T01:21:25Z",
+     "digest": "a98a892baa3f35f95f532b4edd19b25ee4a5130db283e192f35b1b50a1939b56",
+     "plans": [
+      "docs/maps/ironhold/sections/A4-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-A4-top.png",
+      "docs/maps/ironhold/sections/ironhold-A4-iso.png"
+     ],
+     "notes": "Camp west half SW: shelf at 72, west palisade run, tent at z 37..44, south palisade run, west rim to 82-88."
+    }
+   ]
   },
   {
    "id": "B4",
@@ -1868,8 +1932,24 @@
      143
     ]
    },
-   "status": "todo",
-   "reviews": []
+   "status": "blockout",
+   "reviews": [
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T01:21:41Z",
+     "digest": "162748452d574da2301c7561b254bbccb04eda960c49f12780b9bf9b6dce8228",
+     "plans": [
+      "docs/maps/ironhold/sections/A5-blockout.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-A5-top.png",
+      "docs/maps/ironhold/sections/ironhold-A5-iso.png"
+     ],
+     "notes": "West upland south of the camp: grass at 67 with outcrops, camp slope foot, west rim to 82-88. Blockout only."
+    }
+   ]
   },
   {
    "id": "B5",
@@ -2798,7 +2878,7 @@
    "kind": "spawn",
    "min": [
     -316,
-    64,
+    73,
     -2
    ],
    "max": [
@@ -2806,7 +2886,7 @@
     90,
     2
    ],
-   "reason": "Dawn (west) spawn column at (-314,0); no blocks y 64..90, floor below allowed (Kort 2026-10-31, like the capture rings)",
+   "reason": "Dawn (west) spawn column at (-314,0); no blocks y 73..90, it stands on the camp shelf floor at 72 (Kort 2026-10-31)",
    "source": "docs/maps/ironhold/layout-draft-2026-10-30.md (signed)"
   },
   {

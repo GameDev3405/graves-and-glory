@@ -203,7 +203,7 @@ def camp_height(x, z):
     blocks past the palisade, its lip warped by noise; the slope falls to the upland (67) over 6 blocks where rock
     shows (a short crag) and 9 where it is earth, and over 16 at the three gates, so the road and the lanes ramp
     down instead of stepping."""
-    if x < -300 or abs(z) > 100:
+    if abs(z) > 100:  # the west half (x -331..-300, column A) since Kort 2026-10-31
         return None
     lip = 2 + 2.5 * (1 + terrain.fbm(terrain.seed_of('camp-lip'), x, z, 12, 3))
     b = _box_dist(x, z, (-400, CAMP[1] + 2, CAMP[2] - 2, CAMP[3] + 2)) + lip
@@ -216,6 +216,22 @@ def camp_height(x, z):
         return CAMP_TOP, CAMP_FLOOR
     h = UPLAND + int(round((CAMP_TOP - UPLAND) * _smooth((b + span) / span)))
     return h, (CRAG if rock > 0.15 and ramp < 0.3 and b > -span + 2 else RAMPART)
+
+
+RIM_X = -333  # the west rim's foot, just behind the camp's west palisade run (x -331)
+RIM = ('minecraft:stone', 'minecraft:andesite', 2, 'minecraft:stone')  # skinned with grass by a breakup
+
+
+def rim_height(x, z):
+    """Column A's west rim (layout: rim 82-88): from its wandering foot behind the camp it climbs 15-21 blocks to
+    the map edge. Massed in stone so the field noise and the Mire settle (grass and mud only) leave it alone; a
+    breakup skins it with grass, earth and rock. None east of the foot."""
+    warp = 3 * terrain.fbm(terrain.seed_of('rim-warp'), x, z, 14, 2)
+    t = _smooth((RIM_X - x + warp) / 14)
+    if t <= 0:
+        return None
+    peak = 85 + 3 * terrain.fbm(terrain.seed_of('rim-peak'), x, z, 18, 2)
+    return UPLAND + int(round((peak - UPLAND) * t))
 
 
 def _lane_dist(x, z):
@@ -236,6 +252,9 @@ def west(x, z, top):
     """West column B over the field: the camp shelf and slope, then outcrops of grey rock on the upland, kept off
     the road, the lanes and the mantlet row. None leaves the column to the field."""
     c = camp_height(x, z)
+    r = rim_height(x, z)
+    if r and r > max(top, c[0] if c else 0):
+        return (r, RIM, None)
     if c and c[0] > top:
         return (c[0], c[1], None)
     if x > -232 or abs(x - MANTLET_X) < 6:
@@ -591,7 +610,7 @@ def _north_water():
             if _hash('npool', cx, cz) > 0.55:
                 continue
             x, z = cx * 14 + 3 + int(_hash('npx', cx, cz) * 8), cz * 14 + 3 + int(_hash('npz', cx, cz) * 8)
-            if z > -101 or north_wet(x, z) < 0.3 or math.hypot(x - POINT_A[0], z - POINT_A[1]) < 21:
+            if z > -101 or north_wet(x, z) < 0.3 or math.hypot(x - POINT_A[0], z - POINT_A[1]) < 21                     or x >= GORGE_X0:  # Kort 2026-10-31: no pool on the gorge rim (I1), dry ground there
                 continue
             pts = [[x, z, 2 + round(_hash('npw', cx, cz) * 3)]]
             for k in range(1 + int(_hash('npn', cx, cz) * 3)):
@@ -912,6 +931,9 @@ def _trebuchet(x0, z0, sign):
 
 TENTS = (((-290, -282, -60, -53), 'white_wool'), ((-290, -282, -30, -23), 'light_gray_wool'),
          ((-290, -282, 22, 29), 'white_wool'), ((-290, -282, 53, 60), 'brown_wool'))
+# the camp's west half (column A, Kort 2026-10-31): two more tents either side of the Dawn spawn's street
+TENTS_W = (((-325, -317, -44, -37), 'brown_wool'), ((-325, -317, 37, 44), 'light_gray_wool'))
+DAWN = (-316, -312, -2, 2)  # spawn-dawn protect lock, y 73..90 (Kort 2026-10-31): stands on the camp shelf at 72
 
 
 def _west_built():
@@ -935,8 +957,11 @@ def _west_built():
                         (CAMP[1] - w, pz - w, CAMP[1] + w, pz + w)))
     ops.append(({'op': 'fill', 'note': "King's Road gate lintel", 'min': [CAMP[1], 78, -9], 'max': [CAMP[1], 78, 9],
                  'block': W + 'dark_oak_log[axis=z]'}, (CAMP[1], -9, CAMP[1], 9)))
-    for (x0, x1, z0, z1), block in TENTS:
+    for (x0, x1, z0, z1), block in TENTS + TENTS_W:
         ops += _tent(x0, x1, z0, z1, block)
+    west_run = [[CAMP[0], z, 74 + round(_hash('stake', CAMP[0], z))] for z in range(CAMP[2], CAMP[3] + 1, 6)]
+    ops.append(({'op': 'wall', 'note': 'camp palisade, west run under the rim', 'points': west_run, 'thickness': 1,
+                 'floor': 69, 'block': stakes, 'merlons': True, 'seed': 'palisade-w'}, None))
     ops += _trebuchet(-286, -50, 1)
     ops += _trebuchet(-286, 50, -1)
     for x0, z0, x1, z1, y in _mantlets():
@@ -949,6 +974,10 @@ def _west_built():
 
 def _west_surface():
     return [
+        ({'op': 'breakup', 'note': 'west rim: grass and earth over the stone, rock left on the steep',
+          'replace': [W + 'stone'],
+          'mix': _mix(('grass_block', 6), ('coarse_dirt', 2), ('andesite', 2), ('mossy_cobblestone', 1), ('gravel', 1)),
+          'density': 0.75, 'scale': 3, 'seed': 'rim-skin'}, (-350, -176, -300, 207)),
         ({'op': 'breakup', 'note': 'camp shelf: trodden earth, gravel, paths and tufts',
           'replace': [W + 'coarse_dirt'],
           'mix': _mix(('dirt_path', 2), ('gravel', 1), ('dirt', 2), ('grass_block', 2), ('packed_mud', 1)),
@@ -1236,6 +1265,8 @@ def features():
     f += _north_paths()
     f += _south_paths()
     f += _west_paths()
+    f.append((dict(road, op='path', note="camp street: the Dawn spawn (x -314) out to the King's Road gate",
+                   points=[[-322, 0], [-290, 0]], width=5, wobble=1.0, seed='camp-street'), (-350, -20, -290, 20)))
     f += _bailey_paths()
     spur = {'op': 'path', 'width': 4, 'falloff': 1.5, 'surface': _mix(('dirt_path', 3), ('coarse_dirt', 1)),
             'under': W + 'dirt', 'wobble': 0.5}
@@ -1439,6 +1470,7 @@ RULINGS_1031 = {  # Kort 2026-10-31: section -> (plan suffix, reason); only the 
     'H3': ('dusk-floor', 'spawn-dusk lock narrowed to y 64..90; a real floor under the Dusk spawn'),
     'H2': ('ward-north', 'Donjon Court enclosed: the north curtain runs on past the NE corner tower to the gorge parapet'),
     'H5': ('ward-south', 'Donjon Court enclosed: the south curtain runs on past the SE corner tower to the gorge parapet'),
+    'I1': ('dry-pool', 'the north meadow pool on the gorge rim removed and filled to dry ground'),
 }
 
 
@@ -1450,11 +1482,14 @@ def rulings_plan(m, sid, world):
     (x0, _, z0), (x1, _, z1) = mf.section_box(s)
     if sid == 'H3':
         cols = [(x, z) for x in range(DUSK[0], DUSK[1] + 1) for z in range(DUSK[2], DUSK[3] + 1)]
+    elif sid == 'I1':  # every column of the section holding water, filled to grass at the meadow's 62
+        cols = sorted({(x, z) for x in range(x0, x1 + 1) for z in range(z0, z1 + 1) for y in range(56, 64)
+                       if 'water' in world.get((x, y, z)).state})
     else:
         cols = [(x, z) for x in range(EAST_CORNERS[0][1] + 1, x1 + 1) for z in range(z0, z1 + 1) if 94 <= abs(z) <= 98]
     groups = {}
     for x, z in cols:
-        top, (surface, under, depth, core), _ = column(x, z)[:3]
+        top, (surface, under, depth, core), _ = (62, GRASS, None) if sid == 'I1' else column(x, z)[:3]
         groups.setdefault((surface, under, depth, core), {})[(x, z)] = top
     ops = []
     for (surface, under, depth, core), g in groups.items():
@@ -1464,7 +1499,7 @@ def rulings_plan(m, sid, world):
                     'underDepth': depth, 'core': core,
                     'heights': [[(g[(x, z)] - GROUND) if (x, z) in g else None for x in range(min(xs), max(xs) + 1)]
                                 for z in range(min(zs), max(zs) + 1)]})
-    if sid != 'H3':
+    if sid in ('H2', 'H5'):
         zc = -96 if sid == 'H2' else 96
         ops.append({'op': 'breakup', 'note': 'grass worn along the new curtain foot', 'replace': [W + 'grass_block'],
                     'mix': _mix(('coarse_dirt', 2), ('rooted_dirt', 1), ('gravel', 1)), 'near': [W + 'stone_bricks'],

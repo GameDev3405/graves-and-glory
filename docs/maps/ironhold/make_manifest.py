@@ -73,7 +73,7 @@ PROTECT = [
     ring('capture-a', 'capture', -29, -130, 17, 'Domination point A ring: no blocks y 64..67 inside the ring', CAMPAIGN),
     ring('capture-b', 'capture', 0, 0, 17, 'Domination point B ring (river deck): no blocks y 64..67', CAMPAIGN),
     ring('capture-c', 'capture', 29, 130, 17, 'Domination point C ring (Watch Hill): no blocks y 64..67', CAMPAIGN),
-    box('spawn-dawn', 'spawn', (-316, 64, -2), (-312, 90, 2), 'Dawn (west) spawn column at (-314,0); no blocks y 64..90, floor below allowed (Kort 2026-10-31, like the capture rings)', LAYOUT),
+    box('spawn-dawn', 'spawn', (-316, 73, -2), (-312, 90, 2), 'Dawn (west) spawn column at (-314,0); no blocks y 73..90, it stands on the camp shelf floor at 72 (Kort 2026-10-31)', LAYOUT),
     box('spawn-dusk', 'spawn', (126, 64, -2), (130, 90, 2), 'Dusk (east) spawn column at (128,0), moved by pick D1a; no blocks y 64..90, floor below allowed (Kort 2026-10-31, like the capture rings)', LAYOUT),
     box('siege-ward-n', 'siege', (-33, 64, -27), (-6, 70, -23),
         'Siege ward-n (ironhold/ward 35x7x5 at -23,64,-25); trimmed to x -33 where it meets the gate wall', SIEGE),

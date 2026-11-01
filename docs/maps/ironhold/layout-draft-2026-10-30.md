@@ -52,7 +52,7 @@ Files in this folder:
   - The King's Road runs straight to the gate.
   - The north lane goes through the burned village to A (-29,-130). The south lane goes over Gallows Ridge to the south ford and C (29,130).
   - B (0,0) is reached through the front door and Outer Yard, or by a sally gap and the water gates.
-- **Dusk (east), Domination:** from the Donjon Court through the east postern and bailey road to the B deck (≈130 blocks). There are short spurs to A along the north wall and to C through the south postern.
+- **Dusk (east), Domination:** from the Donjon Court through the east postern and bailey road to the B deck (≈130 blocks). There is a short spur to C through the south postern. The spur to A along the north wall is cut: since Kort's ruling of 2026-10-31 the Donjon Court is walled on every side, so Dusk reaches A through the bailey and the defenders' road (intended, Kort 2026-10-31).
 - `[Choice]` Spawn-to-B distance is about 315 for Dawn and 130 for Dusk, by design. Dawn gets the faster outer flanks (A and C sit outside the walls). The spawn-wave timing must confirm this balance (D3).
 - **Siege (Dawn attacks):**
   - Camp → field → the outer curtain's front door and sally gaps → Outer Yard (stage A, hold 20 s).
