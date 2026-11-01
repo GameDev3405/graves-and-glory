@@ -74,11 +74,11 @@ public final class MotionEngineCheck {
         run("hit direction and weight", () -> hitDirectionWeight(fam));
         run("interrupt steps", MotionEngineCheck::interruptSteps);
         run("solveAt", MotionEngineCheck::solveAt);
-        held("sole on ground", () -> soleOnGround(rig));
+        run("sole on ground", () -> soleOnGround(rig));
         run("ground velocity", MotionEngineCheck::groundVelocity);
         held("stride slide", () -> strideSlide(rig));
         held("swing lift", () -> swingLift(rig));
-        held("turn in place", () -> turnInPlace(rig));
+        run("turn in place", () -> turnInPlace(rig));
         held("crowd nudge", () -> crowdNudge(rig));
         held("knock planted", () -> knockPlanted(rig));
         run("dead no plant", MotionEngineCheck::deadNoPlant);
@@ -487,9 +487,12 @@ public final class MotionEngineCheck {
         return new double[]{r, p};
     }
 
-    /** The family's authored peak: the fastest any bone moves in any clip at 20 Hz at its largest gain {deg/tick, px/tick}, sampled here independently. */
+    /**
+     * The family's authored peak: the fastest any bone moves in any clip at 20 Hz at its largest gain {deg/tick, px/tick}, and the
+     * largest sum over a clip's bones in one tick (deg/tick), sampled here independently.
+     */
     static double[] authoredPeak(MotionEngine.Family fam, String[] where) {
-        double[] peak = new double[2];
+        double[] peak = new double[3];
         Map<Clip, Double> gains = new LinkedHashMap<>();
         for (Clip c : fam.stances().values()) gains.put(c, 1.0);
         for (Clip c : fam.attacks()) gains.put(c, MotionEngine.ATTACK_GAIN);
@@ -501,10 +504,13 @@ public final class MotionEngineCheck {
             for (double t = 0.05; t <= c.length() + 0.05 - 1e-9; t += 0.05) {
                 a.clear(); b.clear();
                 c.sample(t - 0.05, a); c.sample(Math.min(t, c.length()), b);
+                double sum = 0;
                 for (String bone : b.keySet()) {
                     double[] s = step(a.get(bone), b.get(bone));
+                    sum += s[0];
                     for (int k = 0; k < 2; k++) if (s[k] * e.getValue() > peak[k]) { peak[k] = s[k] * e.getValue(); if (k == 0) where[0] = c.name() + " " + bone; }
                 }
+                peak[2] = Math.max(peak[2], sum * e.getValue());
             }
         }
         return peak;
@@ -513,7 +519,9 @@ public final class MotionEngineCheck {
     /**
      * P1 (Task 16, R96 and R101): interrupts and stance cross-fades blend from the evaluated pose, so no bone steps past 1.2 times the
      * family's authored peak. Real sword_shield and common clips; the full pose at 60 fps, read every third frame (20 Hz) from 0.5 s
-     * before the interrupt to 2 s after. (a) thrust, then a body hit 0.05 s before its impact; (b) overhead, then a slash from the
+     * before the interrupt to 2 s after. Every bone the engine draws counts, the hit layer's pulses and the cloth included; and the
+     * sum over them in one tick (the motion grade's step) stays under 1.2 times the family's largest authored sum (a regression guard:
+     * the live sum carries the cloth and the feet's IK, which no clip authors). (a) thrust, then a body hit 0.05 s before its impact; (b) overhead, then a slash from the
      * front kills at 0.3 s (death_slash_front); (c) thrust, then a death from the front (death_front) 29 frames in; (d) guard to
      * carry; (e) carry to guard while an attack plays.
      */
@@ -522,12 +530,12 @@ public final class MotionEngineCheck {
         MotionEngine.Family fam = realSwordShield(all);
         String[] peakAt = {""};
         double[] peak = authoredPeak(fam, peakAt);
-        StringBuilder sb = new StringBuilder(String.format(Locale.ROOT, "peak %.1f deg, %.2f px a tick (%s); ", peak[0], peak[1], peakAt[0]));
+        StringBuilder sb = new StringBuilder(String.format(Locale.ROOT, "peak %.1f deg, %.2f px a tick (%s), sum %.1f; ", peak[0], peak[1], peakAt[0], peak[2]));
         double worstRatio = 0;
         String[] names = {"a hit on thrust", "b slash death on overhead", "c death_front on thrust", "d guard to carry", "e carry to guard in a swing"};
         MotionMath.Seed[] seeds = seeds(4, 9100);
         for (int sc = 0; sc < names.length; sc++) {
-            double worstR = 0, worstP = 0; String atR = "", atP = "";
+            double worstR = 0, worstP = 0, worstS = 0; String atR = "", atP = "", atS = "";
             for (MotionMath.Seed seed : seeds) {
                 Drive d = new Drive(seed);
                 d.stance = "run"; d.enemy = sc != 4;
@@ -554,12 +562,15 @@ public final class MotionEngineCheck {
                     if (i % 3 == 0) {
                         Map<String, double[]> cur = out.snapshot();
                         if (prev != null && d.time >= tInt - 0.5) {
+                            double sum = 0;
                             for (String bone : cur.keySet()) {
                                 double[] s = step(prev.getOrDefault(bone, new double[6]), cur.get(bone));
                                 String at = String.format(Locale.ROOT, "%s %+.2f s", bone, d.time - tInt);
                                 if (s[0] > worstR) { worstR = s[0]; atR = at; }
                                 if (s[1] > worstP) { worstP = s[1]; atP = at; }
+                                sum += s[0];
                             }
+                            if (sum > worstS) { worstS = sum; atS = String.format(Locale.ROOT, "%+.2f s", d.time - tInt); }
                         }
                         prev = cur;
                     }
@@ -568,8 +579,9 @@ public final class MotionEngineCheck {
             }
             double ratio = Math.max(worstR / peak[0], worstP / Math.max(peak[1], 1e-9));
             worstRatio = Math.max(worstRatio, ratio);
-            sb.append(String.format(Locale.ROOT, "%s %.1f deg (%s) %.2f px (%s) = %.2f x peak; ", names[sc], worstR, atR, worstP, atP, ratio));
+            sb.append(String.format(Locale.ROOT, "%s %.1f deg (%s) %.2f px (%s) = %.2f x peak, sum %.1f (%s) = %.2f x; ", names[sc], worstR, atR, worstP, atP, ratio, worstS, atS, worstS / peak[2]));
             check(worstR <= 1.2 * peak[0] && worstP <= 1.2 * peak[1], names[sc] + ": " + String.format(Locale.ROOT, "%.1f deg / %.2f px a tick past 1.2 x the peak (%.1f / %.2f)", worstR, worstP, peak[0], peak[1]));
+            check(worstS <= 1.2 * peak[2], names[sc] + ": " + String.format(Locale.ROOT, "a %.1f deg sum over bones in one tick (%s) past 1.2 x the authored sum %.1f", worstS, atS, peak[2]));
         }
         return sb.append(String.format(Locale.ROOT, "worst %.2f x peak (want 1.2 or less)", worstRatio)).toString();
     }
