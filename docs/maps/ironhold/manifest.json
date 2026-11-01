@@ -815,6 +815,22 @@
       "docs/maps/ironhold/sections/ironhold-H2-iso.png"
      ],
      "notes": "Supply east north: NE corner tower (x 96..106, z -100..-92, top 76) closing the north curtain onto the east curtain at x 98..102 (top 71); NE supply yard (cobble wall top 66, gate on the court side at x 124..128) with its house volume 57..70; NE spur in from the court; wet meadow beyond z -98. Locks ok."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T00:42:40Z",
+     "digest": "76a4627018f99938933e17e320e7bd44016813bfb9a8f8b107bf150c11d77d63",
+     "plans": [
+      "docs/maps/ironhold/sections/H2-blockout.json",
+      "docs/maps/ironhold/sections/H2-ward-north.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-H2-top.png",
+      "docs/maps/ironhold/sections/ironhold-H2-iso.png"
+     ],
+     "notes": "Donjon Court north opening closed: stone_bricks curtain y 71 x 107..158 z -98..-94 past the corner tower, worn foot; tower stays solid (Kort 2026-10-31)."
     }
    ]
   },
@@ -1257,6 +1273,22 @@
       "docs/maps/ironhold/sections/ironhold-H3-iso.png"
      ],
      "notes": "Donjon Court north: east curtain x 98..102 at 71 with the east postern cleared y 64..70 at z -6..6 under a lintel at 71; defenders' road on from the postern to the Dusk spawn; barracks hall x 110..150, z -40..-20, walls to 74, deepslate roof stepping to a ridge at 79; polished blackstone court with worn flags and road wear. The spawn-dusk box x 126..130, z -2..2 is left empty (its lock refuses any block y 56..90). Locks ok."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T00:42:33Z",
+     "digest": "b20968b3bc3466c96e01158ac6f72cc2470f1188aa78b2a2f1a58e8d9039a7df",
+     "plans": [
+      "docs/maps/ironhold/sections/H3-blockout.json",
+      "docs/maps/ironhold/sections/H3-dusk-floor.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-H3-top.png",
+      "docs/maps/ironhold/sections/ironhold-H3-iso.png"
+     ],
+     "notes": "Dusk spawn floor: polished blackstone pad y 57..63 under spawn-dusk, lock now y 64..90 (Kort 2026-10-31); rest as built."
     }
    ]
   },
@@ -2038,6 +2070,22 @@
       "docs/maps/ironhold/sections/ironhold-H5-iso.png"
      ],
      "notes": "South-east corner: SE corner tower (x 96..106, z 92..100, top 76) joining the south curtain to the east curtain; the SE yard's south end; dry south flank beyond z 98 with the Watch Hill shoulder's east foot. Locks ok."
+    },
+    {
+     "pass": "blockout",
+     "verdict": "pass",
+     "by": "map lane agent (Opus 5.5)",
+     "at": "2026-11-01T00:42:45Z",
+     "digest": "4c3f18f61386bbbf6674456e110a801ef4a7d4d50ac44b9cb0cbcdff7048bf9e",
+     "plans": [
+      "docs/maps/ironhold/sections/H5-blockout.json",
+      "docs/maps/ironhold/sections/H5-ward-south.json"
+     ],
+     "images": [
+      "docs/maps/ironhold/sections/ironhold-H5-top.png",
+      "docs/maps/ironhold/sections/ironhold-H5-iso.png"
+     ],
+     "notes": "Donjon Court south opening closed: mirror curtain z 94..98 x 107..158, worn foot; tower stays solid (Kort 2026-10-31)."
     }
    ]
   },
@@ -2654,7 +2702,7 @@
    "kind": "spawn",
    "min": [
     -316,
-    56,
+    64,
     -2
    ],
    "max": [
@@ -2662,7 +2710,7 @@
     90,
     2
    ],
-   "reason": "Dawn (west) spawn column at (-314,0)",
+   "reason": "Dawn (west) spawn column at (-314,0); no blocks y 64..90, floor below allowed (Kort 2026-10-31, like the capture rings)",
    "source": "docs/maps/ironhold/layout-draft-2026-10-30.md (signed)"
   },
   {
@@ -2670,7 +2718,7 @@
    "kind": "spawn",
    "min": [
     126,
-    56,
+    64,
     -2
    ],
    "max": [
@@ -2678,7 +2726,7 @@
     90,
     2
    ],
-   "reason": "Dusk (east) spawn column at (128,0), moved by pick D1a",
+   "reason": "Dusk (east) spawn column at (128,0), moved by pick D1a; no blocks y 64..90, floor below allowed (Kort 2026-10-31, like the capture rings)",
    "source": "docs/maps/ironhold/layout-draft-2026-10-30.md (signed)"
   },
   {

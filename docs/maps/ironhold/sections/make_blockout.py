@@ -2,6 +2,7 @@
 
   python docs/maps/ironhold/sections/make_blockout.py base             # stand-in base world in work/mapforge/ironhold/
   python docs/maps/ironhold/sections/make_blockout.py plans [GROUP|ID]  # blockout plans beside this file (default core)
+  python docs/maps/ironhold/sections/make_blockout.py rulings [ID]      # Kort's 2026-10-31 changes as small reopen plans
 
 Blockout is massing only. Every column is described once by `column(x, z)` (fortress columns E and F, field columns
 A..D) and each section's plan is that description clipped to the section and grouped into terrain ops by material.
@@ -384,18 +385,19 @@ DONJON = (103, 158, -48, 48)  # Donjon Court floor, polished blackstone at 63
 NE_YARD, SE_YARD = (110, 140, -90, -54), (125, 155, 54, 90)  # east supply yards (x0, x1, z0, z1)
 EAST_HOUSES = ((119, 131, -80, -68), (134, 146, 64, 76))
 HALL = (110, 150, -40, -20)  # barracks hall in the court
-DUSK = (126, 130, -2, 2)  # spawn-dusk protect lock (y 56..90): no op places a block in this column box
+DUSK = (126, 130, -2, 2)  # spawn-dusk protect lock (y 64..90 since Kort 2026-10-31): a plain floor to 63, nothing above
 DUSK_EX = {'min': [125, -3], 'max': [131, 3]}
 FLAGS = ('minecraft:polished_blackstone', 'minecraft:cobbled_deepslate', 2, 'minecraft:stone')
 
 
 def east(x, z):
     """Column H (x 95..158): the east curtain at x 98..102 with its corner towers, Donjon Court behind it, the two
-    east supply yards, the flanks beyond the curtain lines and the east watchtowers. The Dusk spawn box is left
-    empty: its protect lock refuses any block from y 56 up."""
+    east supply yards, the flanks beyond the curtain lines and the east watchtowers. Kort 2026-10-31: the Dusk spawn
+    box gets a real floor (plain polished blackstone to 63; its lock now refuses blocks y 64..90 only), and the north
+    and south curtains run on past the corner towers to the gorge parapet, so the court is walled like an inner ward."""
     az = abs(z)
     if DUSK[0] <= x <= DUSK[1] and DUSK[2] <= z <= DUSK[3]:
-        return None
+        return (GROUND, ('minecraft:polished_blackstone', 'minecraft:polished_blackstone', 2, 'minecraft:stone'), None)
     t = _tower(x, z, EAST_WATCH, 79, 'ewatch')
     if t:
         return t
@@ -405,8 +407,8 @@ def east(x, z):
             return (76 - int(_hash('ecorner', x, z) * 3) if edge else 76, WALL, None)
     if az > 98:
         return flank(x, z, (GROUND, GRASS, None))
-    if 98 <= x <= 102 or (x <= 102 and az >= 94):
-        return (71, WALL, None)  # east curtain, and the north and south curtains' last blocks
+    if 98 <= x <= 102 or az >= 94:
+        return (71, WALL, None)  # east curtain, and the north and south curtains on east to the gorge parapet
     if x <= 97:
         return (GROUND, ('minecraft:andesite', 'minecraft:gravel', 2, 'minecraft:stone'), None)  # east bailey
     if DONJON[0] <= x <= DONJON[1] and DONJON[2] <= z <= DONJON[3]:
@@ -417,7 +419,44 @@ def east(x, z):
     return (GROUND, GRASS, None)
 
 
+GORGE_X0, PARAPET, GORGE_FLOOR = 159, (166, 168), 44  # column I: ground to the parapet, then the drop to the gorge floor
+GORGE_BED = ('minecraft:gravel', 'minecraft:stone', 2, 'minecraft:stone')
+GORGE_BASE = 40  # gorge columns build from here (the rest of the map from FLOOR)
+
+
+def gorge(x, z):
+    """Column I (x 159..222), the gorge parapet (layout zone table): the ward ground and the flanks run on to a low
+    stone parapet at x 166..168 (walk 64, top 65, merlons to 66); the north and south curtains close on it, so the
+    Donjon Court's ward is walled on every side (Kort 2026-10-31). Past it the rim breaks off along a ragged edge
+    2..6 blocks out and drops in steep crag steps to the gorge floor at 44, with scree banked at the foot and a few
+    fallen boulders."""
+    az = abs(z)
+    if x <= PARAPET[1]:
+        if 94 <= az <= 98:
+            return (71, WALL, None)  # north and south curtains run on to the parapet
+        if x >= PARAPET[0]:
+            return (66 if (z + x) % 2 == 0 else 65, WALL, None)
+        if az > 98:
+            return flank(x, z, (GROUND, GRASS, None))
+        return (GROUND, GRASS, None)
+    edge = PARAPET[1] + 2.5 + 2 * terrain.fbm(terrain.seed_of('gorge-edge'), x, z, 10, 3)
+    out = x - edge
+    if out < 0:
+        return (GROUND, CRAG if out > -1.2 else GRASS, None)
+    step = 0.6 * terrain.fbm(terrain.seed_of('gorge-ledge'), x, z, 4, 2)
+    face = GROUND - 1 - int(round(4.5 * out + 3 * step))
+    scree = GORGE_FLOOR + int(round(5 * _smooth(1 - (out - 3) / 9) + 1.5 * terrain.fbm(terrain.seed_of('scree'), x, z, 5, 2)))
+    boulder = terrain.fbm(terrain.seed_of('gorge-boulder'), x, z, 3, 1)
+    top = max(face, scree, GORGE_FLOOR)
+    if out > 12 and boulder > 0.55:
+        top = max(top, GORGE_FLOOR + 2 + (boulder > 0.7))
+        return (top, CRAG, None, GORGE_BASE)
+    return (top, CRAG if top == face and top > scree else GORGE_BED, None, GORGE_BASE)
+
+
 def column(x, z):
+    if x >= GORGE_X0:
+        return gorge(x, z)
     if x >= 95:
         return east(x, z)
     t = _tower(x, z, WATCHTOWERS, 77, 'watch')
@@ -1129,6 +1168,24 @@ def _east_surface():
     ]
 
 
+GORGE = (159, -176, 222, 207)  # column I, rows 1..6 (x0, z0, x1, z1)
+
+
+def _gorge_surface():
+    return [
+        ({'op': 'breakup', 'note': 'gorge faces: andesite, tuff and gravel in the crag', 'replace': [W + 'stone'],
+          'mix': _mix(('andesite', 3), ('tuff', 2), ('cobblestone', 1), ('gravel', 1), ('stone', 2)),
+          'density': 0.6, 'scale': 2, 'depth': 3, 'seed': 'gorge-face'}, GORGE),
+        ({'op': 'breakup', 'note': 'gorge floor: scree, cobble and coarse dirt', 'replace': [W + 'gravel'],
+          'mix': _mix(('cobblestone', 2), ('andesite', 2), ('coarse_dirt', 1), ('tuff', 1)),
+          'density': 0.35, 'scale': 2, 'seed': 'gorge-bed'}, GORGE),
+        ({'op': 'breakup', 'note': 'rim: grass worn along the parapet and curtain foot', 'replace': [W + 'grass_block'],
+          'mix': _mix(('coarse_dirt', 2), ('rooted_dirt', 1), ('gravel', 1)),
+          'near': [W + 'stone_bricks', W + 'stone'], 'width': 2, 'density': 0.5, 'scale': 2, 'seed': 'rimfoot'},
+         GORGE),
+    ]
+
+
 def features():
     """Every helper op on the map, in apply order. Each is clipped to the section it is planned for; noise, erode
     and breakup carry a region (x0, z0, x1, z1) that is intersected with the section."""
@@ -1262,6 +1319,7 @@ def features():
     f += _west_surface()
     f += _bailey_surface()
     f += _east_surface()
+    f += _gorge_surface()
     return f
 
 
@@ -1298,7 +1356,8 @@ GROUPS = {'core': CORE, 'mire': ('C3', 'C4', 'D3', 'D4'),
           'south': ('C5', 'D5', 'E5', 'F5', 'G5', 'C6', 'D6', 'E6', 'F6', 'G6'),
           'west': ('B1', 'B2', 'B3', 'B4', 'B5', 'B6'),
           'bailey': ('G2', 'G3', 'G4'),
-          'east': ('H1', 'H2', 'H3', 'H4', 'H5', 'H6')}
+          'east': ('H1', 'H2', 'H3', 'H4', 'H5', 'H6'),
+          'gorge': ('I1', 'I2', 'I3', 'I4', 'I5', 'I6')}
 REOPEN = ("Kort's rulings of 2026-10-30: east curtain to x 98 (x 72 pieces dropped), inner ward closed to the river "
           'cliffs, Great Keep tower out of the river, stations awaiting the modes lane; 2026-10-31: the river bends '
           'around the keep court; 2026-10-31 milestone 2A.3: river, banks and walls rebuilt with the terrain helpers')
@@ -1338,16 +1397,17 @@ def section_plan(m, sid, world):
             c = column(x, z)
             if c is None:
                 continue
-            top, (surface, under, depth, core), clear = c
-            groups.setdefault((surface, under, depth, core, clear), {})[(x, z)] = top
+            top, (surface, under, depth, core), clear = c[:3]
+            floor = c[3] if len(c) > 3 else FLOOR  # the gorge builds from lower down
+            groups.setdefault((surface, under, depth, core, clear, floor), {})[(x, z)] = top
     ops = []
-    for (surface, under, depth, core, clear), cols in sorted(groups.items(), key=lambda kv: (-len(kv[1]), kv[0][0])):
+    for (surface, under, depth, core, clear, floor), cols in sorted(groups.items(), key=lambda kv: (-len(kv[1]), kv[0][0])):
         xs, zs = [p[0] for p in cols], [p[1] for p in cols]
         gx0, gx1, gz0, gz1 = min(xs), max(xs), min(zs), max(zs)
         heights = [[(cols[(x, z)] - GROUND) if (x, z) in cols else None for x in range(gx0, gx1 + 1)]
                    for z in range(gz0, gz1 + 1)]
         op = {'op': 'terrain', 'note': f'{surface.split(":")[1]} massing ({len(cols)} columns)',
-              'origin': [gx0, gz0], 'base': GROUND, 'floor': FLOOR, 'surface': surface, 'under': under,
+              'origin': [gx0, gz0], 'base': GROUND, 'floor': floor, 'surface': surface, 'under': under,
               'underDepth': depth, 'core': core, 'heights': heights}
         if clear is not None:
             op['clearTo'] = clear
@@ -1373,6 +1433,65 @@ def section_plan(m, sid, world):
                        REOPEN_FORD if sid == 'F5' else REOPEN_G5 if sid == 'G5' else
                        REOPEN_FORD_N if sid == 'F1' else REOPEN_F3 if sid == 'F3' else REOPEN)
     return p
+
+
+RULINGS_1031 = {  # Kort 2026-10-31: section -> (plan suffix, reason); only the ruled change, the rest stays as signed
+    'H3': ('dusk-floor', 'spawn-dusk lock narrowed to y 64..90; a real floor under the Dusk spawn'),
+    'H2': ('ward-north', 'Donjon Court enclosed: the north curtain runs on past the NE corner tower to the gorge parapet'),
+    'H5': ('ward-south', 'Donjon Court enclosed: the south curtain runs on past the SE corner tower to the gorge parapet'),
+}
+
+
+def rulings_plan(m, sid, world):
+    """A reopen plan holding only the 2026-10-31 ruled change in sid. Regenerating the whole section would also
+    redo seam wear that neighbouring passes have since settled, so the signed rest of the section is left alone."""
+    suffix, why = RULINGS_1031[sid]
+    s = mf.section(m, sid)
+    (x0, _, z0), (x1, _, z1) = mf.section_box(s)
+    if sid == 'H3':
+        cols = [(x, z) for x in range(DUSK[0], DUSK[1] + 1) for z in range(DUSK[2], DUSK[3] + 1)]
+    else:
+        cols = [(x, z) for x in range(EAST_CORNERS[0][1] + 1, x1 + 1) for z in range(z0, z1 + 1) if 94 <= abs(z) <= 98]
+    groups = {}
+    for x, z in cols:
+        top, (surface, under, depth, core), _ = column(x, z)[:3]
+        groups.setdefault((surface, under, depth, core), {})[(x, z)] = top
+    ops = []
+    for (surface, under, depth, core), g in groups.items():
+        xs, zs = [p[0] for p in g], [p[1] for p in g]
+        ops.append({'op': 'terrain', 'note': f'{surface.split(":")[1]}: {why} ({len(g)} columns)',
+                    'origin': [min(xs), min(zs)], 'base': GROUND, 'floor': FLOOR, 'surface': surface, 'under': under,
+                    'underDepth': depth, 'core': core,
+                    'heights': [[(g[(x, z)] - GROUND) if (x, z) in g else None for x in range(min(xs), max(xs) + 1)]
+                                for z in range(min(zs), max(zs) + 1)]})
+    if sid != 'H3':
+        zc = -96 if sid == 'H2' else 96
+        ops.append({'op': 'breakup', 'note': 'grass worn along the new curtain foot', 'replace': [W + 'grass_block'],
+                    'mix': _mix(('coarse_dirt', 2), ('rooted_dirt', 1), ('gravel', 1)), 'near': [W + 'stone_bricks'],
+                    'width': 2.5, 'density': 0.5, 'scale': 2, 'seed': f'curtainfoot{zc}',
+                    'min': [EAST_CORNERS[0][1] + 1, max(z0, zc - 6)], 'max': [x1, min(z1, zc + 6)]})
+    return {
+        'format': PLAN_FORMAT, 'id': f'ironhold-{sid.lower()}-{suffix}', 'world': 'ironhold',
+        'author': 'map lane agent (Opus 5.5), 2026-10-31',
+        'purpose': f"Kort's ruling of 2026-10-31 in section {sid}: {why}. Generated by "
+                   'docs/maps/ironhold/sections/make_blockout.py rulings.',
+        'section': sid, 'pass': 'blockout', 'reopen': f"Kort's ruling of 2026-10-31: {why}",
+        'expectSection': mf.section_digests(m, world, {sid})[sid],
+        'limits': {'maxChangedBlocks': 20000},
+        'operations': ops,
+    }
+
+
+def rulings(only):
+    m, w = mf.load_manifest(MAP), World.load(WORLD)
+    for sid in only:
+        p = rulings_plan(m, sid, w)
+        errors = validate(p)
+        if errors:
+            raise SystemExit('\n'.join(errors))
+        path = HERE / f'{sid}-{RULINGS_1031[sid][0]}.json'
+        path.write_text(dump(p), encoding='utf-8')
+        print(f'{path.name}: {len(p["operations"])} ops, expectSection {p["expectSection"][:12]}')
 
 
 def base():
@@ -1435,6 +1554,8 @@ if __name__ == '__main__':
     cmd = sys.argv[1] if len(sys.argv) > 1 else ''
     if cmd == 'base':
         base()
+    elif cmd == 'rulings':
+        rulings(sys.argv[2:] or list(RULINGS_1031))
     elif cmd == 'plans':
         ids = []
         for a in sys.argv[2:] or ['core']:
