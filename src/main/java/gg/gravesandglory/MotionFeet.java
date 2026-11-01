@@ -279,6 +279,17 @@ final class MotionFeet {
                 for (int q = 0; q < m; q++) v -= s[jo + q * n + a] * s[q];
                 s[ao + a * (n + 1) + n] = v;
             }
+            // An unknown held at its limit that the descent pushes past stays there and leaves the step, so the others' step
+            // does not count on a move the limit takes away. Clamping it afterwards instead stalls the solve off the valley
+            // floor (a flat foot's rock sits at its limit 0): the stall point, not the optimum, then moves when the foot's
+            // side of flat flips with the sign of a hundredth of a degree of clip (18 degrees of knee in one frame).
+            for (int a = 0; a < n; a++) {
+                double g = s[ao + a * (n + 1) + n];
+                if (!(x[a] <= lo[a] && g < 0 || x[a] >= hi[a] && g > 0)) continue;
+                for (int b = 0; b <= n; b++) s[ao + a * (n + 1) + b] = 0;
+                for (int b = 0; b < n; b++) s[ao + b * (n + 1) + a] = 0;
+                s[ao + a * (n + 1) + a] = 1;
+            }
             // the damped normal equations are symmetric positive definite, so no pivoting
             for (int a = 0; a < n; a++) {
                 double piv = s[ao + a * (n + 1) + a];
