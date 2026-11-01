@@ -25,6 +25,7 @@
       "gg.gravesandglory.RankNetworkChecks",
       "gg.gravesandglory.Phase1Checks",
       "gg.gravesandglory.Phase2Checks",
+      "gg.gravesandglory.Phase4Checks",
       "gg.gravesandglory.TitleDemos",
       "gg.gravesandglory.StoryStills"
     ]
