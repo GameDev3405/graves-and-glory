@@ -86,14 +86,14 @@ public final class MarchMath {
     /**
      * One round's bonus objective (the closed kinds of Phase 4 spec 11). The round feeds it events; kept reads the result at the finish. The
      * kinds: hold_all, the player's side held every point at one moment; lose_at_most, at most value troops lost; stage_by, the target stage
-     * reached by value seconds; carry_self, the commander carried the enemy banner home himself; win_within, won by value seconds;
+     * reached by value seconds; never_rolled, the Convoy wagon never rolled back; win_within, won by value seconds;
      * kill_unit, a troop of the target id fell to the player's own squad. Any other kind (tbd, a placeholder) is never kept. Every kind needs
      * the win, which settle also requires.
      */
     static final class Tracker {
         final String kind, target;
         final int value;
-        boolean heldAll, carriedSelf, killed;
+        boolean heldAll, rolledBack, killed;
         int lost, stagedAt = -1;
 
         Tracker(Spec.BonusObjectivesRow row) { this(row.kind(), row.value(), row.target()); }
@@ -105,8 +105,8 @@ public final class MarchMath {
         void lost(int troops) { lost += Math.max(0, troops); }
         /** A stage reached, seconds into the round; the first time a stage is reached counts. */
         void staged(String stage, int seconds) { if (stage.equals(target) && stagedAt < 0) stagedAt = seconds; }
-        /** The enemy banner brought home, by the commander himself or by another carrier. */
-        void carried(boolean self) { if (self) carriedSelf = true; }
+        /** The Convoy wagon rolled back this tick (ConvoyMode.feed). */
+        void rolled() { rolledBack = true; }
         /** A troop fell; byOwnSquad when the killing blow came from the player's squad. */
         void killed(String troop, boolean byOwnSquad) { if (byOwnSquad && troop.equals(target)) killed = true; }
 
@@ -116,7 +116,7 @@ public final class MarchMath {
                 case "hold_all" -> heldAll;
                 case "lose_at_most" -> lost <= value;
                 case "stage_by" -> stagedAt >= 0 && stagedAt <= value;
-                case "carry_self" -> carriedSelf;
+                case "never_rolled" -> !rolledBack;
                 case "win_within" -> seconds <= value;
                 case "kill_unit" -> killed;
                 default -> false;

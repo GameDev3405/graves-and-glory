@@ -32,7 +32,7 @@ public final class Phase4Checks implements ClientModInitializer {
     /** Optional for a suite: called on the server thread after every server tick, for checks that need exact tick timing. */
     public interface ServerWatch { void serverTick(GravesAndGlory.Battle b); }
     static final Map<String,Supplier<Suite>> SUITES=new LinkedHashMap<>();
-    static{SUITES.put("modes",ModesChecks::new);}
+    static{SUITES.put("modes",ModesChecks::new);SUITES.put("convoy",ConvoyChecks::new);}
     static{SUITES.put("siege-play",SiegePlayChecks::new);}
     static final ArrayDeque<String> queue=new ArrayDeque<>();
     static volatile Suite current;static volatile String currentName="";static volatile boolean failed,broken;

@@ -17,7 +17,7 @@ public final class MarchMathCheck {
     public static void main(String[] args) {
         // sheet: the plan's six battles, in order, on the plan's maps and modes
         String[][] plan = {{"The Training Field", "rivergate", "domination", "gilded"}, {"The Iron Gate", "ironhold", "siege", "ironclad"}, {"The Long Night", "hollowwood", "survival", "graveborn"},
-            {"The Frozen Standard", "frostmarch", "banner", "wildmoot"}, {"The Five Crossings", "kingsfield", "domination", "tidecallers"}, {"The Last Watch", "ironhold", "siege", "graveborn"}};
+            {"The Frozen Standard", "frostmarch", "convoy", "wildmoot"}, {"The Five Crossings", "kingsfield", "domination", "tidecallers"}, {"The Last Watch", "ironhold", "siege", "graveborn"}};
         check(ROWS.length == 6, "sheet: six campaign battles");
         for (int i = 0; i < 6; i++) {
             var r = row(i + 1);
@@ -53,7 +53,10 @@ public final class MarchMathCheck {
         Set<String> sixClaimed = won();
         var finale = MarchMath.settle(row(6), MarchMath.bonus(row(6), Spec.BONUSOBJECTIVES), true, true, won(), sixClaimed, HOUSES, ROWS);
         check(finale.bonusPaid() && finale.bonusShards() == 5 && finale.bonusGold() == 60 && finale.bonusHouse().equals("graveborn") && sixClaimed.equals(won("b6_kill_hollowking")), "settle: battle 6 pays 5 Graveborn shards and 60 gold once the bonus is kept");
-        check(!new MarchMath.Tracker(MarchMath.bonus(row(4), Spec.BONUSOBJECTIVES)).kept(true, 1), "tracker: a tbd bonus (battle 4, awaiting the escort spec) is never kept");
+        var b4 = new MarchMath.Tracker(MarchMath.bonus(row(4), Spec.BONUSOBJECTIVES));
+        check(b4.kept(true, 1), "tracker: battle 4's never_rolled bonus is kept on a win with no roll back");
+        b4.rolled();
+        check(!b4.kept(true, 1), "tracker: battle 4's never_rolled bonus is lost once the wagon rolls back");
         // trackers
         var hold = new MarchMath.Tracker("hold_all", 0, "none");
         hold.held(2, 3);
@@ -73,11 +76,11 @@ public final class MarchMathCheck {
         var late = new MarchMath.Tracker("stage_by", 120, "gate");
         late.staged("gate", 121);
         check(!late.kept(true, 300), "tracker stage_by: reached after the limit");
-        var carry = new MarchMath.Tracker("carry_self", 0, "none");
-        carry.carried(false);
-        check(!carry.kept(true, 60), "tracker carry_self: another carrier does not count");
-        carry.carried(true);
-        check(carry.kept(true, 60), "tracker carry_self: the commander himself");
+        var rolled = new MarchMath.Tracker("never_rolled", 0, "none");
+        check(rolled.kept(true, 60), "tracker never_rolled: a wagon that never rolled back keeps it");
+        check(!rolled.kept(false, 60), "tracker never_rolled: needs the win");
+        rolled.rolled();
+        check(!rolled.kept(true, 60), "tracker never_rolled: one roll back loses it");
         var fast = new MarchMath.Tracker("win_within", 300, "none");
         check(fast.kept(true, 300) && !fast.kept(true, 301) && !fast.kept(false, 10), "tracker win_within: a win by the limit");
         var kill = new MarchMath.Tracker("kill_unit", 0, "revenant");

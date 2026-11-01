@@ -5,7 +5,7 @@ import java.util.List;
 
 /**
  * Pure battle-mode arithmetic and copy (Phase 4 Task 1): wave counts, rule and size lines, how-to cells, siege strength,
- * Banner roles and ledger text. No Minecraft types, so it is checked by javac alone
+ * Convoy roles, road and push rules, and ledger text. No Minecraft types, so it is checked by javac alone
  * (test-tools/standalone/ModeMathCheck.java) rather than by a client run.
  */
 public final class ModeMath {
@@ -44,15 +44,17 @@ public final class ModeMath {
             default -> 0;
         };
     }
-    /** One Banner role per banner, humans first. Raiders = max(1, round(banners*raidShare)), and every human banner is a raider; the raid slots the humans leave go to bots, then one guard, then holders. A lone banner with no human splits. */
-    public static List<String> roles(int banners,int humans,double raidShare) {
+    /**
+     * The Convoy role of each banner of one side, humans first (spec 6). Escort: pushers = banners less round(banners*raidShare),
+     * at least one, the rest screen. Defence: raiders = round(banners*raidShare), at least one, the rest block. Every human banner
+     * takes a pusher or raider slot first, so the slots the humans leave go to bots.
+     */
+    public static List<String> convoyRoles(int banners,int humans,double raidShare,boolean escort) {
         List<String> out=new ArrayList<>();
-        if(banners==1&&humans==0){out.add("split");return out;}
-        int raiders=Math.min(banners,Math.max(1,(int)Math.round(banners*raidShare)));
-        raiders=Math.min(banners,Math.max(raiders,humans));
-        for(int i=0;i<raiders;i++)out.add("raider");
-        if(out.size()<banners)out.add("guard");
-        while(out.size()<banners)out.add("holder");
+        if(banners<=0)return out;
+        int share=(int)Math.round(banners*raidShare);
+        int primary=Math.min(banners,Math.max(Math.max(1,escort?banners-share:share),humans));
+        for(int i=0;i<banners;i++)out.add(i<primary?(escort?"pusher":"raider"):(escort?"screen":"blocker"));
         return out;
     }
     /** A ledger number in its mode's format: 1/3, 64%, or 12. */
@@ -62,5 +64,69 @@ public final class ModeMath {
             case "percent" -> value+"%";
             default -> Integer.toString(value);
         };
+    }
+
+    // ---- Convoy, the supply-wagon escort (spec 2026-10-31-convoy-escort-design.md, sections 3 and 6) ----
+    /** The wagon's four states: pushed forward, stopped by an enemy, left alone, rolling back. */
+    public static final String MOVING="moving",CONTESTED="contested",IDLE="idle",ROLLBACK="rollback";
+    /** The wagon's state this tick: any defender in push range stops it whatever the pushers; a pusher moves it; left alone it idles, then rolls back once idleTicks reaches idleLimit. */
+    public static String convoyState(int pushers,int defenders,int idleTicks,int idleLimit) {
+        if(defenders>0)return CONTESTED;
+        if(pushers>0)return MOVING;
+        return idleTicks>=idleLimit?ROLLBACK:IDLE;
+    }
+    /** Blocks a second for this many pushers: speeds[n-1], capped at the last entry; no pusher, no speed. */
+    public static double pushSpeed(int pushers,double[] speeds) {
+        if(pushers<=0||speeds.length==0)return 0;
+        return speeds[Math.min(pushers,speeds.length)-1];
+    }
+    /** The distance along the road (horizontal, x and z) at each node: 0 at the start, the road's length at the last. */
+    public static double[] stations(double[][] nodes) {
+        double[] out=new double[nodes.length];
+        for(int i=1;i<nodes.length;i++)out[i]=out[i-1]+Math.hypot(nodes[i][0]-nodes[i-1][0],nodes[i][1]-nodes[i-1][1]);
+        return out;
+    }
+    /** The segment that holds distance d: the i with stations[i] <= d < stations[i+1], clamped to the road's segments. */
+    public static int segment(double[] stations,double d) {
+        int i=0;
+        while(i<stations.length-2&&d>=stations[i+1])i++;
+        return i;
+    }
+    /** The point at distance d along the road, {x, z}, d clamped to the road. */
+    public static double[] along(double[][] nodes,double[] stations,double d) {
+        if(nodes.length==1)return new double[]{nodes[0][0],nodes[0][1]};
+        double c=Math.max(0,Math.min(stations[stations.length-1],d));
+        int i=segment(stations,c);
+        double len=stations[i+1]-stations[i],t=len<=0?0:(c-stations[i])/len;
+        return new double[]{nodes[i][0]+(nodes[i+1][0]-nodes[i][0])*t,nodes[i][1]+(nodes[i+1][1]-nodes[i][1])*t};
+    }
+    /** The forward speed factor on a segment that rises rise over run: up beyond maxGrade, down beyond -maxGrade, 1 between. */
+    public static double gradeFactor(double rise,double run,double maxGrade,double up,double down) {
+        if(run<=0)return 1;
+        double g=rise/run;
+        return g>maxGrade?up:g<-maxGrade?down:1;
+    }
+    /** The wagon's new distance after seconds in a state: forward at speed up to the road's end, back at back down to floor (the last checkpoint passed), else unchanged. */
+    public static double advance(double d,String state,double speed,double back,double seconds,double floor,double total) {
+        return switch(state){
+            case MOVING -> Math.min(total,d+speed*seconds);
+            case ROLLBACK -> Math.max(floor,d-back*seconds);
+            default -> d;
+        };
+    }
+    /** How many of the checkpoints (their road distances, in order) lie at or behind d. */
+    public static int passed(double[] checkpoints,double d) {
+        int n=0;
+        for(double at:checkpoints)if(at<=d+1e-9)n++;
+        return n;
+    }
+    /** Road progress in whole percent, 0 to 100. */
+    public static int percent(double d,double total) {
+        return total<=0?0:(int)Math.max(0,Math.min(100,Math.floor(100*d/total+1e-9)));
+    }
+    /** Whether the clock waits: the wagon is moving or contested within radius of the next stop, or was so less than graceTicks ago. */
+    public static boolean overtime(String state,double d,double next,double radius,long ticksSinceNear,int graceTicks) {
+        boolean near=(state.equals(MOVING)||state.equals(CONTESTED))&&next-d<=radius;
+        return near||ticksSinceNear<graceTicks;
     }
 }

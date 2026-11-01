@@ -62,6 +62,8 @@ public abstract class BattleMode {
     public Vec3d botTarget(GravesAndGlory.Battle b,GravesAndGlory.Squad s){return null;}
     /** Each running tick, after captureTick: the mode's scoring and its own timers. */
     public void tick(GravesAndGlory.Battle b){}
+    /** The objective panel's line as the round starts; a mode without points to capture says its own. */
+    public String startLine(GravesAndGlory.Battle b){return GravesAndGlory.Battle.ROUND_START;}
     /** Where a team respawns and its troops fall back to. */
     public Vec3d fieldBase(GravesAndGlory.Battle b,int team){return GravesAndGlory.Battle.base(team);}
     /** A team's barracks access point. */
@@ -92,6 +94,9 @@ public abstract class BattleMode {
     public String[] formats(){return new String[]{"plain","plain"};}
     /** The side a commander's how-to lines are written for (attack or defend). Domination asks the same of both sides. */
     public String howToSide(GravesAndGlory.Battle b,GravesAndGlory.Squad s){return "attack";}
+    /** A bot army's goal in this mode, asked by Campaign.botDecide after its retreat check: a spot to attack toward, or null to
+     *  play the points as Domination does (the default). Convoy sends its bots to the wagon (spec 3.6). */
+    public Vec3d botGoal(GravesAndGlory.Battle b,GravesAndGlory.Squad s,Vec3d centre,Spec.BotCommandRow tier){return null;}
     /** The lobby's mode block: id, name, rule, how-to lines, side, the tracks and their formats. */
     public JsonObject snapshot(GravesAndGlory.Battle b,GravesAndGlory.Squad viewer){
         JsonObject j=new JsonObject();

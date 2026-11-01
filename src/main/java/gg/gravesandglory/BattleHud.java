@@ -179,6 +179,23 @@ public final class BattleHud {
         tx.put("score-dawn",dawn);tx.put("clock",clock);tx.put("score-dusk",dusk);
     }
 
+    /** Convoy's road strip, where the seals hang in Domination: the road as a bar filled to the wagon, a tick at each stop, the
+     *  wagon's marker, and the next stop's name with the wagon's state below it. Placeholder art (plain fills in DarkUi inks) until the strip's sprites are drawn. */
+    static void road(DrawContext g,TextRenderer font,Map<String,int[]> at,Map<String,int[]> r,Map<String,String> tx){
+        var c=CampaignClient.battleMode.getAsJsonObject("convoy");int[] card=at.get("score");if(card==null)return;
+        int w=150,h=5,x=card[0]+card[2]/2-w/2,y=card[1]+card[3]+4;
+        double prog=Math.max(0,Math.min(1,c.has("progress")?c.get("progress").getAsDouble():0));
+        String state=c.has("state")?c.get("state").getAsString():ModeMath.IDLE;
+        g.fill(x-1,y-1,x+w+1,y+h+1,DarkUi.OAK0);g.fill(x,y,x+w,y+h,DarkUi.TRACK);
+        g.fill(x,y,x+(int)Math.round(w*prog),y+h,DarkUi.DAWN);
+        if(c.has("stops"))for(var s:c.getAsJsonArray("stops")){int sx=x+(int)Math.round(w*s.getAsDouble());g.fill(sx-1,y-2,sx+1,y+h+2,DarkUi.VELLUM);}
+        int mx=x+(int)Math.round(w*prog);int mark=state.equals(ModeMath.CONTESTED)?DarkUi.ALARM_TEXT:state.equals(ModeMath.ROLLBACK)?DarkUi.DUSK_TEXT:DarkUi.BRASS_HI;
+        g.fill(mx-2,y-3,mx+3,y+h+3,DarkUi.OAK0);g.fill(mx-1,y-2,mx+2,y+h+2,mark);
+        String next=(c.has("next")?c.get("next").getAsString():"")+" - "+switch(state){case ModeMath.MOVING->"rolling";case ModeMath.CONTESTED->"stopped";case ModeMath.ROLLBACK->"rolling back";default->"waiting";};
+        g.drawText(font,next,centred(font,next,x+w/2),y+h+5,DarkUi.IVORY,true);
+        r.put("road",new int[]{x,y,w,h});tx.put("road",next);
+    }
+
     /** The top of the aimed point's name: the seal rects' foot (each seal's box runs from its chain's top at 37 down 31 px), so the
      *  name clears every seal. */
     static final int AIM_NAME_Y=68;
@@ -186,6 +203,7 @@ public final class BattleHud {
     /** The points hang from the bar on a 28 px pitch: chain, seal (its owner's, or split while contested) and letter; while an order
      *  is aimed into a point's radius, that point's name hangs below its seal. */
     static void seals(DrawContext g,TextRenderer font,Map<String,int[]> at,Map<String,int[]> r,List<SealDraw> sd,Map<String,String> tx){
+        if(CampaignClient.battleMode.has("convoy")){road(g,font,at,r,tx);return;} // Convoy plays no points: its road strip hangs there
         if(!CampaignClient.showsPoints())return; // Siege: the flags are down, so no seal or letter hangs from the bar
         int n=GravesAndGloryClient.owners.length,aim=CommandMode.aimPoint();var pts=Spec.POINTS;
         for(int i=0;i<n;i++){

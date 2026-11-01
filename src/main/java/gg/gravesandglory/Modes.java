@@ -21,8 +21,10 @@ public final class Modes {
     public static final String DOMINATION="domination";
     /** The second mode, and the first that hosts one map only (Phase 4 Task 5). */
     public static final String SIEGE="siege";
+    /** The supply-wagon escort on Frostmarch (spec 2026-10-31-convoy-escort-design.md). */
+    public static final String CONVOY="convoy";
     private static final Map<String,Function<Spec.ModesRow,BattleMode>> BUILDERS=new LinkedHashMap<>();
-    static{register(DOMINATION,DominationMode::new);register(SIEGE,SiegeMode::new);} // Siege is winnable since its stages landed (yard, gate HP, keep)
+    static{register(DOMINATION,DominationMode::new);register(SIEGE,SiegeMode::new);register(CONVOY,ConvoyMode::new);} // Siege is winnable since its stages landed (yard, gate HP, keep); Convoy since its spec (Kort 2026-10-31)
     private Modes(){}
     public static void register(String id,Function<Spec.ModesRow,BattleMode> factory){BUILDERS.put(id,factory);}
     public static boolean registered(String id){return BUILDERS.containsKey(id);}
