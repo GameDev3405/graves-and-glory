@@ -249,11 +249,20 @@ public final class TroopModel<T extends MobEntity> extends SinglePartEntityModel
      * and each bone's pivot may move by its own translation reach (TroopMotion.bonePx: the procedural bound for that bone plus its
      * clips' envelope at that bone, the root's scaled by rootScale), added once down each chain (Task 13 fix round 1, I1); a
      * top-level bone's sideways reach counts toward the radius only and its vertical reach toward the top and bottom only.
-     * Analytic, so no clip is sampled; worked out again when the clips reload. Shared: callers only read it.
+     * Task 16 M2: a model with a family takes the reach sampled from its clips and the engine instead (TroopMotion.bounds); the
+     * analytic reach below (analyticReach) stays for a bare rig. Worked out again when the clips reload. Shared: callers only read it.
      */
     public double[] cullReach(){
         int gen=ClipLibrary.generation();
         if(motionCull==null||motionGen!=gen){
+            double[] sampled=TroopMotion.bounds(this);
+            motionCull=sampled!=null?sampled:analyticReach();motionGen=gen;
+        }
+        return motionCull;
+    }
+    /** The analytic cull reach (cullReach's fallback for a bare rig; the harness's red side for M2), no clip sampled. */
+    double[] analyticReach(){
+        {
             double radius=cullRadius,bottom=cullBottom,up=cullTop;Map<String,Double> memo=new HashMap<>();
             for(String r:kids.getOrDefault("",List.of())){
                 // a top-level bone moves in the model's own axes, which setupTransforms turns about the vertical only: its sideways
@@ -264,9 +273,8 @@ public final class TroopModel<T extends MobEntity> extends SinglePartEntityModel
                 up=Math.max(up,1.501-(p[1]-lift-s)/16+TroopMotion.CULL_MARGIN);
                 bottom=Math.min(bottom,1.501-(p[1]+lift+s)/16-TroopMotion.CULL_MARGIN);
             }
-            motionCull=new double[]{radius,bottom,up};motionGen=gen;
+            return new double[]{radius,bottom,up};
         }
-        return motionCull;
     }
     /** How far the motion engine can move a bone's pivot (pixels): the length of its translation reach, a root's times rootScale (when it grows). */
     private double move(String bone){

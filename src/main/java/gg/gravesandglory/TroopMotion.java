@@ -325,6 +325,80 @@ public final class TroopMotion {
         rootScale(m);
     }
 
+    // ---- the cull reach (Task 16 M2) ----
+    /** M2: what the cull reach keeps past the sampled bounds and CULL_MARGIN for what the sampling runs do not drive (the crowd's shove, the cloth springs, uneven ground), blocks. */
+    static final double PROC_PAD=.25;
+    /** M2: the largest seed the sampling runs drive the engine with (amp and tempo at the top of their spread). */
+    static final MotionMath.Seed BOUNDS_SEED=new MotionMath.Seed(0,1.1,1.1,1.15,0,0,0);
+    /** M2: the clock the sampling runs start on (seconds). */
+    private static final double BOUNDS_T0=100;
+    /** M2: the longest any bounds took to sample (milliseconds), for the harness. */
+    static volatile double boundsMs;
+    /**
+     * M2 (Task 16): the cull reach of a model's family (radius, bottom and top over the feet, in blocks, the margins in), sampled
+     * from what the engine can pose instead of every bone turned any way. Two passes, each pose measured with TroopModel.extent:
+     * 1. every clip of the folders (the mirrored hits too) forced whole-body at 20 Hz from 0 to its length at its gain extreme
+     *    (attacks ATTACK_GAIN, hits HIT_GAIN, a stance or scene 1, a death end-pivoted at 0.9 and 1.1), shield down and up;
+     * 2. the engine at BOUNDS_SEED for the procedural layers no clip holds: each attack running and turning at 720 degrees a
+     *    second with the head at its limits, each hit zone at weight 2 from the front, back and both sides, a death from each side,
+     *    and every server stance at the aim extremes, shield down and up.
+     * Grown by CULL_MARGIN + PROC_PAD. Null for a bare rig. Leaves every bone reset. Once per (model, clip generation).
+     */
+    static double[] bounds(TroopModel<?> m){
+        Fam f=family(m);if(f==null)return null;
+        long t0=System.nanoTime();
+        double[] r={0,Double.MAX_VALUE,-Double.MAX_VALUE};
+        try{
+            MotionEngine.Family fam=f.family();Spec.TroopsRow row=row(m);boolean bow=bow(row);
+            Pose p=new Pose();double[] tmp=new double[6];
+            List<Clip> clips=new ArrayList<>(f.all().values());
+            for(List<Clip> l:fam.hitsMirror().values())clips.addAll(l);
+            for(Clip c:clips){
+                boolean attack=fam.attacks().contains(c),death=deathKey(c.name())!=null;
+                boolean hit=!attack&&!death&&(HIT.matcher(c.name()).matches()||BLOCK.matcher(c.name()).matches()||c.name().endsWith("~m"));
+                double[] gains=death?new double[]{.9,1.1}:new double[]{attack?MotionEngine.ATTACK_GAIN:hit?MotionEngine.HIT_GAIN:1};
+                for(int i=0;i*.05<=c.length()+1e-9;i++)for(double g:gains)for(boolean sh:new boolean[]{false,true}){
+                    m.getPart().traverse().forEach(ModelPart::resetTransform);
+                    p.clear();c.add(i*.05,p,g,tmp);if(death&&g!=1)c.endPose(p,1-g);
+                    apply(m,p);limits(m);carries(m,bow,sh,attack?1:0,bone->keys(c,bone));rootScale(m);
+                    grow(r,m.extent());
+                }
+            }
+            long tick0=Math.round(BOUNDS_T0*Clip.TICKS)+2;
+            for(int a=0;a<fam.attacks().size();a++)for(int k=0;k<2;k++)for(boolean sh:new boolean[]{false,true}){
+                MotionInput.Attack at=new MotionInput.Attack(a,tick0);double sp=k==0?1.5:0,yr=k==0?0:720;
+                int frames=(int)Math.ceil(fam.attacks().get(a).length()/BOUNDS_SEED.tempo()/.05)+8;
+                drive(m,r,sh,frames,(i,now)->boundsIn(now,i*sp,sp,85,60,yr,"hold",0,false,true,false,0,at,null));
+            }
+            for(String zone:List.of("head","body","legs"))for(float bearing:new float[]{0,90,180,-90}){
+                MotionInput.Hit h=new MotionInput.Hit("slash",zone,bearing,2,false,false,tick0);
+                drive(m,r,true,30,(i,now)->boundsIn(now,0,0,85,60,0,"hold",0,false,true,false,0,null,h));
+            }
+            for(float bearing:new float[]{0,90,180,-90}){
+                MotionInput.Hit h=new MotionInput.Hit("slash","body",bearing,2,false,true,tick0);
+                drive(m,r,false,80,(i,now)->boundsIn(now,0,0,0,0,0,"hold",0,false,i<4,i>=4,i>=4?(i-4)*.05:0,null,h));
+            }
+            for(String s:BattleMath.STANCES)for(float aim:new float[]{-60,60})for(boolean up:new boolean[]{false,true}){
+                double sp=s.equals("run")||s.equals("fall_back")||s.equals("shield_move")?1:0;
+                drive(m,r,up,30,(i,now)->boundsIn(now,i*sp,sp,-85,-60,0,s,aim,up,up,false,0,null,null));
+            }
+        }finally{m.getPart().traverse().forEach(ModelPart::resetTransform);}
+        boundsMs=Math.max(boundsMs,(System.nanoTime()-t0)/1e6);
+        double pad=CULL_MARGIN+PROC_PAD;
+        return new double[]{r[0]+pad,r[1]-pad,r[2]+pad};
+    }
+    private interface BoundsFrames{MotionInput at(int frame,double now);}
+    private static MotionInput boundsIn(double now,double limbAngle,double speed,double headYaw,double headPitch,double yawRate,String stance,float aim,
+                                        boolean shieldUp,boolean enemy,boolean dead,double deathS,MotionInput.Attack a,MotionInput.Hit h){
+        return new MotionInput(now,limbAngle,speed,headYaw,headPitch,yawRate,stance,aim,shieldUp,enemy,dead,deathS,a,h,BOUNDS_SEED);
+    }
+    private static void drive(TroopModel<?> m,double[] r,boolean shield,int frames,BoundsFrames f){
+        MotionEngine.State st=new MotionEngine.State();
+        for(int i=0;i<frames;i++){simulate(m,st,f.at(i,BOUNDS_T0+i*.05),shield);grow(r,m.extent());}
+    }
+    /** Widens r (radius, lowest bottom, highest top) by one extent (TroopModel.extent: radius, bottom, top). */
+    private static void grow(double[] r,double[] x){r[0]=Math.max(r[0],x[0]);r[1]=Math.min(r[1],x[1]);r[2]=Math.max(r[2],x[2]);}
+
     // ---- what the renderer and its features read ----
     /**
      * The time the bow's pull shows, on the BOW_FULL / BOW_LOOSE timeline Weapon.frameAt reads, or -1 when nothing draws: a forced

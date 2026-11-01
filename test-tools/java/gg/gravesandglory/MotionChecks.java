@@ -606,6 +606,7 @@ public final class MotionChecks {
         Map<String, Clip> before = ClipLibrary.all(); List<String> bad = new ArrayList<>(); StringBuilder sb = new StringBuilder(); int poses = 0, models = 0;
         StringBuilder lim = new StringBuilder(); List<String> limBad = new ArrayList<>(); int limModels = 0; double shinFree = Double.NEGATIVE_INFINITY; String shinFreeAt = "";
         double slackMin = Double.POSITIVE_INFINITY, slackMax = Double.NEGATIVE_INFINITY, sideMax = Double.NEGATIVE_INFINITY; String slackMinAt = "", slackMaxAt = "", sideMaxAt = "";
+        double analyticMax = Double.NEGATIVE_INFINITY; String analyticMaxAt = "";
         try {
             // synthetic clips for whatever has no real one yet; every real clip (Task 16 on: sword_shield and common) wins (R54)
             Map<String, Clip> synth = new TreeMap<>();
@@ -633,6 +634,9 @@ public final class MotionChecks {
                 if (-w.out < slackMin) { slackMin = -w.out; slackMinAt = t; }
                 if (-w.out > slackMax) { slackMax = -w.out; slackMaxAt = t; }
                 if (side > sideMax) { sideMax = side; sideMaxAt = t; }
+                // M2's red side: the same poses against the analytic reach (every bone turned any way) the sampled bounds replace
+                double[] ar = m.analyticReach(); double aSlack = Math.min(ar[0] - w.radius, Math.min(w.bottom - ar[1], ar[2] - w.top));
+                if (aSlack > analyticMax) { analyticMax = aSlack; analyticMaxAt = t; }
                 sb.append(String.format(Locale.ROOT, "%s %d poses, reach r%.2f %.2f..%.2f, posed r%.2f %.2f..%.2f, worst %.3f blocks %s (%s), slack %.3f (radius %.3f, bottom %.3f, top %.3f); ",
                     t, w.poses, reach[0], reach[1], reach[2], w.radius, w.bottom, w.top, w.out, w.out <= 0 ? "inside" : "OUTSIDE", w.at, -w.out, sr, sbot, stop));
                 if (!(w.out <= 0)) bad.add(t + " reaches " + String.format(Locale.ROOT, "%.3f", w.out) + " blocks outside at " + w.at);
@@ -644,9 +648,10 @@ public final class MotionChecks {
         }
         report("mo-limits", limBad.isEmpty() && limModels > 0, limModels + " troop models with joint limits (carry C13, R13): " + lim + "deepest shin bend on a model without limits "
             + String.format(Locale.ROOT, "%.2f", shinFree) + " deg (" + shinFreeAt + ")" + (limBad.isEmpty() ? "" : "; failing: " + limBad));
-        report("mo-cull", bad.isEmpty() && models > 0 && poses > 0, models + " troop models, " + poses + " posed bounds against cullBox (" + before.size() + " real clips, " + synthCount + " synthetic for the rest; the real clips put back): " + sb + (bad.isEmpty() ? "every pose inside" : "outside: " + bad)
+        report("mo-cull", bad.isEmpty() && models > 0 && poses > 0 && slackMax <= 1.0, models + " troop models, " + poses + " posed bounds against cullBox (" + before.size() + " real clips, " + synthCount + " synthetic for the rest; the real clips put back): " + sb + (bad.isEmpty() ? "every pose inside" : "outside: " + bad)
             + String.format(Locale.ROOT, "; slack (blocks between the pose that came closest and the box, the margin %.2f included): least %.3f (%s), most %.3f (%s); the loosest single side %.3f (%s)",
-                TroopMotion.CULL_MARGIN, slackMin, slackMinAt, slackMax, slackMaxAt, sideMax, sideMaxAt));
+                TroopMotion.CULL_MARGIN, slackMin, slackMinAt, slackMax, slackMaxAt, sideMax, sideMaxAt)
+            + String.format(Locale.ROOT, " (R107: the most slack at most 1.0); against the analytic reach the sampled bounds replace (M2's red side) the most slack would be %.3f (%s); the sampled bounds (TroopMotion.bounds, M2) took at most %.1f ms a model", analyticMax, analyticMaxAt, TroopMotion.boundsMs));
     }
 
     /**
