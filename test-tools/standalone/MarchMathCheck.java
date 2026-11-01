@@ -16,7 +16,7 @@ public final class MarchMathCheck {
 
     public static void main(String[] args) {
         // sheet: the plan's six battles, in order, on the plan's maps and modes
-        String[][] plan = {{"The Training Field", "rivergate", "domination", "gilded"}, {"The Iron Gate", "ironhold", "domination", "ironclad"}, {"The Long Night", "hollowwood", "survival", "graveborn"},
+        String[][] plan = {{"The Training Field", "rivergate", "domination", "gilded"}, {"The Iron Gate", "ironhold", "siege", "ironclad"}, {"The Long Night", "hollowwood", "survival", "graveborn"},
             {"The Frozen Standard", "frostmarch", "banner", "wildmoot"}, {"The Five Crossings", "kingsfield", "domination", "tidecallers"}, {"The Last Watch", "ironhold", "siege", "graveborn"}};
         check(ROWS.length == 6, "sheet: six campaign battles");
         for (int i = 0; i < 6; i++) {
@@ -24,8 +24,8 @@ public final class MarchMathCheck {
             check(r.id().equals("march-" + (i + 1)) && r.name().equals(plan[i][0]) && Spec.MAPS[r.map()].id().equals(plan[i][1]) && r.mode().equals(plan[i][2]) && r.house().equals(plan[i][3]), "sheet: battle " + (i + 1) + " is " + plan[i][0] + " on " + plan[i][1]);
             check(MarchMath.bonus(r, Spec.BONUSOBJECTIVES) != null && !r.placeholder().isBlank(), "sheet: battle " + (i + 1) + " names a bonus objective and a placeholder note");
         }
-        // Kort 2026-10-31: The Iron Gate runs as Domination until Siege joins the lobby; its placeholder note says it goes back to siege
-        check(row(2).placeholder().contains("siege"), "sheet: battle 2's Domination stand-in is a marked placeholder");
+        // Kort 2026-10-31: Siege joined the lobby, so The Iron Gate is back on siege and its placeholder note no longer names a stand-in
+        check(!row(2).placeholder().contains("siege") && row(2).bonus().equals("b2_lose10"), "sheet: battle 2 runs as siege with its lose-at-most-10 bonus");
         check(row(1).placeholder().equals("none") && row(1).lessons() && !row(6).placeholder().contains("house"), "sheet: battle 1 is final; battle 6's house is settled");
         var b1 = MarchMath.bonus(row(1), Spec.BONUSOBJECTIVES);
         check(b1.id().equals("b1_hold_all") && b1.kind().equals("hold_all") && b1.shards() == 5, "sheet: battle 1's bonus holds all three crossings for 5 shards");
