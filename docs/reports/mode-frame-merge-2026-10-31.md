@@ -22,7 +22,7 @@ New checks: p4 `mode-dead-points`, `mode-teardown-kept`, `mode-room`, `mode-swap
 - The HUD track max is hard-coded (bug 6).
 - No bot-plan hook and no morale-off hook yet; Convoy needs both.
 - The Convoy spec's line that ConvoyMode "needs no new hook" is wrong. It needs `capturesPoints`, `anchors`, `overtime` and `recover` (now present), plus bot and morale hooks. Its road kinds also need a preflight change.
-- A room's mode stays in `battleMode` after the round, so a later skirmish replays it. This is harmless while Siege is test-only.
+- Fixed 2026-10-31 (Kort approved): returnLobby restores the battleMode a room round replaced; check p4-mode-room-clears.
 
 ## Evidence (run folders under the session scratchpad, modemerge/p1 and modemerge/p4)
 - Phase 1 suites combat, morale, reinforce, bots, tutorial, report and ui-lobby: every `p1-*-suite=true`, with no false ids. The snapshot "ran to" lines come only from p1-report-snapshot's deliberate worst case, which passes.

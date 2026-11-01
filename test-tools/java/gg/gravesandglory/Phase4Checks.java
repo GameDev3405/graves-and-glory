@@ -96,7 +96,7 @@ public final class Phase4Checks implements ClientModInitializer {
         int scenario,sub;                 // server thread only
         long armedAt,stageAt,finishedAt;
         int gold0,earned0;
-        boolean siegeDuring,siegeTeardown,siegeRecovered,deadPoints,keptMarker,roomMode,swapSafe;
+        boolean siegeDuring,siegeTeardown,siegeRecovered,deadPoints,keptMarker,roomMode,swapSafe,roomClears;
         Path siegeFile;
         final List<String> notes=new ArrayList<>(),fails=new ArrayList<>();
 
@@ -325,12 +325,14 @@ public final class Phase4Checks implements ClientModInitializer {
             siegeRecovered=shut&&marked&&open&&flagsBack&&gone;
             if(!siegeRecovered)fails.add("Siege recovery: shut="+shut+", marked="+marked+", gate open="+open+", flags back="+flagsBack+", files gone="+gone);
             b.campaign.returnLobby();
+            roomClears=b.campaign.battleMode.equals(Modes.DOMINATION)&&b.campaign.battleModeBeforeRoom==null; // the lobby's own mode (Domination before the room) is back
             b.campaign.handle(p,"social:exit");
             report("p4-mode-siege",siegeDuring&&siegeTeardown&&siegeRecovered,
                 "round: gate shut="+siegeDuring+"; teardown: gate open, flags up, file gone="+siegeTeardown+"; crash recovery through mapReady="+siegeRecovered);
             report("p4-mode-dead-points",deadPoints,"Siege: point A stays neutral under a commander and is no forward anchor="+deadPoints);
             report("p4-mode-teardown-kept",keptMarker,"an unrestorable gate keeps the marker and its saved box="+keptMarker);
             report("p4-mode-room",roomMode,"a room whose host picked Siege starts a Siege round="+roomMode);
+            report("p4-mode-room-clears",roomClears,"after the room's Siege round the lobby's battleMode is "+b.campaign.battleMode+" (want domination)");
             report("p4-mode-swap",swapSafe,"startRound mid-Siege restores the gate before the next mode="+swapSafe);
             if(!fails.isEmpty())System.out.println("[p4] siege fails: "+String.join(" / ",fails));
             done=true;

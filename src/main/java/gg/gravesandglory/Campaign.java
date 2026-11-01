@@ -23,6 +23,8 @@ public final class Campaign {
     int size=2,map=0;boolean practice=false,fill=true;
     /** The mode the next round plays (Phase 4 Task 2): a lobby setting kept across rounds like the map, reset to Domination when a new map does not host it. */
     String battleMode=Modes.DOMINATION;
+    /** The battleMode a room's round replaced (null outside a room's round); returnLobby puts it back, so a later skirmish or practice plays its own mode. */
+    String battleModeBeforeRoom;
     long introUntil;int serial;String matchId=UUID.randomUUID().toString();
     final Map<UUID,Long> botRespawns=new HashMap<>();
     final Set<UUID> participants=new HashSet<>();
@@ -146,6 +148,7 @@ public final class Campaign {
         // The mode takes down what it placed before the round's armies go (idempotent: finish and a manual return both call it).
         // Only a clean teardown deletes the marker: a piece that could not be put back stays recoverable after a crash.
         if(b.mode.teardown(b))Modes.unmark(b);else System.err.println("[Graves and Glory] The round's teardown left "+b.saves.size()+" saved piece(s); the mode marker is kept.");
+        if(battleModeBeforeRoom!=null){battleMode=battleModeBeforeRoom;battleModeBeforeRoom=null;} // the room's mode ends with its round
         for(var s:b.squads.values())Commander.reset(b,s); // every running commander ability ends before its units go
         b.running=false;introUntil=0;social.finish();activeRoom="";activeBattle=null;Projectiles.clear(b);Abilities.clearBanners(b);
         Houses.reset(b);for(var u:b.units)u.mob.discard();b.units.clear();b.clearSides();b.clearProgression();
@@ -811,6 +814,7 @@ public final class Campaign {
                 var empty=room.members.stream().filter(m->houseUnits(room,m)==0).findFirst();if(empty.isPresent())yield name(empty.get())+"'s banner holds no "+RosterMath.houseName(lobbyHouse(room,empty.get()))+" troops.";
                 size=room.size;fill=room.fill;practice=false;activeRoom=room.code;activeBattle=null;
                 for(var squad:b.squads.values())if(!squad.bot){squad.seated=room.members.contains(squad.owner);if(squad.seated)squad.team=room.teams.get(squad.owner);}
+                if(battleModeBeforeRoom==null)battleModeBeforeRoom=battleMode;
                 battleMode=room.mode; // the room's mode plays (startRound falls back to Domination on a map the mode does not host)
                 social.begin(room);b.startRound();yield "Your room is entering battle together.";}
             default->"Unknown social action.";
