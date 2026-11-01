@@ -14,12 +14,13 @@ import net.minecraft.util.math.Vec3d;
 import net.minecraft.world.World;
 
 /**
- * Siege on Ironhold (Phase 4 Task 5). The round shuts the west gate and takes the map's flags down, saving what stood
- * under the gate so teardown and the crash marker put it back. Three stages fall in order (spec section 5): the Outer
+ * Siege on Ironhold (Phase 4 Task 5). The round takes the map's flags down and saves what stood under the west gate, so
+ * teardown and the crash marker put it back; the gate stays open while the yard is fought over and shuts when it falls. Three stages fall in order (spec section 5): the Outer
  * Yard (attackers hold its ring uncontested), the Iron Gate (a structure target with HP; at 0 the open gate returns as
  * the breach) and the Keep (a ring; taking it wins for the attackers). The yard and the gate each add time when they
  * fall; the clock running out wins for the defenders. Until Task 4's pieces (gate_intact, ward) exist, a portcullis of
- * iron bars shuts the gate from the round's start and there are no wards. The stage values are the spec's draft values,
+ * iron bars is the shut gate and there are no wards. The Keep is small and the attackers hold the capture edge there
+ * (Kort, 2026-10-31: hard but takeable, a good push breaks it in one to two minutes). The stage values are the spec's draft values,
  * kept here until the modeSites and modeRules rows land.
  */
 public final class SiegeMode extends BattleMode {
@@ -30,8 +31,8 @@ public final class SiegeMode extends BattleMode {
     /** The passage the portcullis closes: seven blocks thick (x), eleven wide (z) and twelve high over the gate floor. */
     static final int PASSAGE_X = 3, PASSAGE_Z = 5, PASSAGE_HEIGHT = 12;
     /** Stage rings and the gate's health: the spec's draft values (section 5). */
-    static final double YARD_X = -55, YARD_Z = 0, YARD_RADIUS = 15, KEEP_X = -8, KEEP_Z = 34, KEEP_RADIUS = 10;
-    static final int YARD_SECONDS = 20, KEEP_SECONDS = 30, STAGE_BONUS = 180;
+    static final double YARD_X = -55, YARD_Z = 0, YARD_RADIUS = 15, KEEP_X = -8, KEEP_Z = 34, KEEP_RADIUS = 7;
+    static final int YARD_SECONDS = 20, KEEP_SECONDS = 60, STAGE_BONUS = 180;
     static final float GATE_HP = 1600;
 
     /** The round's stage (0 yard, 1 gate, 2 keep, 3 taken) and the current ring's hold seconds. A mode object lives for one round. */
@@ -69,8 +70,8 @@ public final class SiegeMode extends BattleMode {
     }
 
     /**
-     * Saves the open gate, shuts it with a portcullis and takes the flags down. Runs after startRound raised the
-     * neutral flags, so the round opens with no flags on the field.
+     * Saves the open gate (the box the portcullis will fill) and takes the flags down. Runs after startRound raised the
+     * neutral flags, so the round opens with no flags on the field and the gate open until the yard falls.
      */
     @Override
     public void setup(GravesAndGlory.Battle b) {
@@ -83,7 +84,6 @@ public final class SiegeMode extends BattleMode {
             if (saved == null) return; // no snapshot, no shut gate: a closed gate that cannot be recovered is worse than an open one
             b.saves.add(saved);
         }
-        shut(b.world, row);
     }
 
     /** No Domination points in a siege: the flags are down, so nothing is captured and no point is a forward anchor. */
@@ -141,10 +141,10 @@ public final class SiegeMode extends BattleMode {
     public void tick(GravesAndGlory.Battle b) {
         if (b.time % 20 != 0 || stage >= 3) return;
         if (stage == 0) {
-            if (hold(b, YARD_X, YARD_Z, YARD_RADIUS, YARD_SECONDS)) fall(b);
+            if (hold(b, YARD_X, YARD_Z, YARD_RADIUS, YARD_SECONDS, false)) fall(b);
         } else if (stage == 1) {
             if (target == null || !target.isAlive() || target.isRemoved()) breach(b);
-        } else if (hold(b, KEEP_X, KEEP_Z, KEEP_RADIUS, KEEP_SECONDS)) {
+        } else if (hold(b, KEEP_X, KEEP_Z, KEEP_RADIUS, KEEP_SECONDS, true)) {
             stage = 3;
             b.scores[0] = stage;
             feed(b, Spec.FACTIONS[0].name() + " took the Keep");
@@ -153,8 +153,12 @@ public final class SiegeMode extends BattleMode {
         }
     }
 
-    /** One second of a ring: attackers alone add a second, defenders alone take one back, contested holds. Returns whether it fell. */
-    boolean hold(GravesAndGlory.Battle b, double x, double z, double r, int seconds) {
+    /**
+     * One second of a ring: attackers alone add a second, defenders alone take one back, contested holds. With the edge
+     * (the Keep), attackers also add a second while contested if they are at least two thirds of the defenders' number.
+     * Returns whether it fell.
+     */
+    boolean hold(GravesAndGlory.Battle b, double x, double z, double r, int seconds, boolean edge) {
         int[] in = {0, 0};
         Vec3d c = new Vec3d(x, 65, z);
         for (var u : b.units)
@@ -163,12 +167,12 @@ public final class SiegeMode extends BattleMode {
             var s = b.squads.get(p.getUuid());
             if (s != null && s.seated && !p.isSpectator() && GravesAndGlory.Battle.horizontalDistance(p.getPos(), c) < r * r) in[s.team]++;
         }
-        if (in[0] > 0 && in[1] == 0) held++;
+        if (in[0] > 0 && (in[1] == 0 || edge && in[0] * 3 >= in[1] * 2)) held++;
         else if (in[1] > 0 && in[0] == 0) held = Math.max(0, held - 1);
         return held >= seconds;
     }
 
-    /** The yard falls: time is added and the gate's target goes up on the portcullis's west face. */
+    /** The yard falls: time is added, the portcullis drops and the gate's target goes up on its west face. */
     void fall(GravesAndGlory.Battle b) {
         stage = 1;
         held = 0;
@@ -178,7 +182,9 @@ public final class SiegeMode extends BattleMode {
         var row = gate();
         GravesAndGlory.Squad defender = null;
         for (var s : b.squads.values()) if (s.seated && s.team == 1) { defender = s; break; }
-        if (row == null || defender == null || b.saves.stream().noneMatch(s -> s.tag().equals(GATE_TAG))) { breach(b); return; } // no shut gate to break
+        if (row == null || defender == null || b.saves.stream().noneMatch(s -> s.tag().equals(GATE_TAG))) { breach(b); return; } // no saved gate to shut and break
+        shut(b.world, row);
+        feed(b, "The Iron Gate is shut");
         var e = new GateTarget(b.world);
         e.squad = defender;
         e.hp = GATE_HP;

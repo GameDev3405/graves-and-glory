@@ -186,6 +186,7 @@ public final class BattleHud {
     /** The points hang from the bar on a 28 px pitch: chain, seal (its owner's, or split while contested) and letter; while an order
      *  is aimed into a point's radius, that point's name hangs below its seal. */
     static void seals(DrawContext g,TextRenderer font,Map<String,int[]> at,Map<String,int[]> r,List<SealDraw> sd,Map<String,String> tx){
+        if(!CampaignClient.showsPoints())return; // Siege: the flags are down, so no seal or letter hangs from the bar
         int n=GravesAndGloryClient.owners.length,aim=CommandMode.aimPoint();var pts=Spec.POINTS;
         for(int i=0;i<n;i++){
             int[] box=at.get("seal-"+i);if(box==null)continue;

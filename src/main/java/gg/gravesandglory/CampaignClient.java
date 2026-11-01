@@ -88,6 +88,8 @@ public final class CampaignClient {
     static JsonObject battleMode=new JsonObject();
     /** A ledger track's maximum and format from battleMode; Domination's target and plain numbers before the first snapshot. */
     static int ledgerMax(int i){try{return battleMode.getAsJsonArray("max").get(i).getAsInt();}catch(Exception e){return Modes.row(Modes.DOMINATION).winTarget();}}
+    /** Whether the round's mode plays the map's points (Siege takes its flags down): the HUD hangs no seals when it does not. */
+    static boolean showsPoints(){try{return !battleMode.has("points")||battleMode.get("points").getAsBoolean();}catch(Exception e){return true;}}
     static String ledgerFormat(int i){try{return battleMode.getAsJsonArray("format").get(i).getAsString();}catch(Exception e){return "plain";}}
     static void accept(MinecraftClient c,String json,boolean running){
         try{JsonObject j=JsonParser.parseString(json).getAsJsonObject();if(!j.has("profile"))return; /* "{}": the server could not fit this snapshot; keep the last camp state */var nextProfile=Campaign.JSON.fromJson(j.get("profile"),Profile.class);if(received&&nextProfile.owned!=null&&nextProfile.owned.size()>profile.owned.size()){for(var unit:Spec.TROOPS)if(nextProfile.owned.containsKey(unit.id())&&!profile.owned.containsKey(unit.id()))revealUnit=unit.name();revealUntil=System.currentTimeMillis()+2400;}nextProfile.sanitize();profile=nextProfile;acceptRoll(j,!received);received=true;

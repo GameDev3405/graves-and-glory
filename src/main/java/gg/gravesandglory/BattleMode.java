@@ -101,6 +101,7 @@ public abstract class BattleMode {
         j.addProperty("side",howToSide(b,viewer));
         JsonArray max=new JsonArray();for(int n:max(b))max.add(n);j.add("max",max);
         JsonArray formats=new JsonArray();for(String f:formats())formats.add(f);j.add("format",formats);
+        j.addProperty("points",capturesPoints(b)); // the HUD hangs the point seals only in a mode that plays its points
         return j;
     }
 }

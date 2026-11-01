@@ -13,8 +13,9 @@ import net.minecraft.world.Heightmap;
 /**
  * Suite "siege-play": one Siege round picked in the lobby and played to the end on a real client. The host's room picks
  * Siege (the map moves to Ironhold), the round starts from the room, the commander stands in the Outer Yard until it
- * falls, breaks the Iron Gate with player blows until the open gate returns, then holds the Keep until the attackers win.
- * A stage that bots keep contested past its deadline is forced, and the report says so. Shots: p4-siege-lobby, -yard,
+ * falls (the gate stays open until then and shuts at the fall), breaks the Iron Gate with player blows until the open gate
+ * returns, then pushes into the Keep with the commander's own troops and holds it until the attackers win. Only the yard
+ * may be forced, and the report says so; the Keep is never forced (Kort, 2026-10-31: hard but takeable). Shots: p4-siege-lobby, -yard,
  * -gate, -breach and -keep.
  */
 final class SiegePlayChecks implements Phase4Checks.Suite, Phase4Checks.ServerWatch {
@@ -25,7 +26,7 @@ final class SiegePlayChecks implements Phase4Checks.Suite, Phase4Checks.ServerWa
     volatile boolean lobbyScreen;
     int sub, wait;
     long stageAt;
-    boolean forcedYard, forcedKeep;
+    boolean forcedYard;
     final List<String> notes = new ArrayList<>();
 
     @Override public int limit() { return 36000; } // Ironhold builds, then a full round of three stages
@@ -106,8 +107,9 @@ final class SiegePlayChecks implements Phase4Checks.Suite, Phase4Checks.ServerWa
                 if (!b.running) { if (b.time - stageAt > 12000) fail("p4-siege-start", "no round: " + notes); return; }
                 var s = b.squads.get(p.getUuid());
                 boolean ok = b.mode instanceof SiegeMode && c.map == 1 && s != null && s.seated && s.team == 0
-                        && b.world.getBlockState(new BlockPos(-37, 68, 0)).getBlock() == Blocks.IRON_BARS;
-                Phase4Checks.report("p4-siege-start", ok, "mode=" + b.mode.id() + " map=" + c.map + " team=" + (s == null ? "none" : s.team + " seated=" + s.seated));
+                        && b.world.getBlockState(new BlockPos(-37, 68, 0)).isAir() && !b.mode.snapshot(b, s).get("points").getAsBoolean();
+                Phase4Checks.report("p4-siege-start", ok, "mode=" + b.mode.id() + " map=" + c.map + " team=" + (s == null ? "none" : s.team + " seated=" + s.seated)
+                        + " gate open=" + b.world.getBlockState(new BlockPos(-37, 68, 0)).isAir() + " hud points=" + b.mode.snapshot(b, s).get("points"));
                 if (!ok) { done = true; return; }
                 p.getAbilities().invulnerable = true; p.sendAbilitiesUpdate(); // the camera must live through the round
                 go(b, p, SiegeMode.YARD_X, SiegeMode.YARD_Z, -90);
@@ -120,8 +122,9 @@ final class SiegePlayChecks implements Phase4Checks.Suite, Phase4Checks.ServerWa
                 if (m.stage == 0 && b.time - stageAt > 2400) { forcedYard = true; m.fall(b); }
                 if (m.stage < 1) return;
                 long secs = (b.time - stageAt) / 20;
-                Phase4Checks.report("p4-siege-yard", m.stage == 1 && b.scores[0] == 1 && m.target != null && m.target.isAlive(),
-                        (forcedYard ? "forced after 120 s contested" : "fell after " + secs + " s") + ", target hp=" + (m.target == null ? "none" : m.target.hp()));
+                boolean shutNow = b.world.getBlockState(new BlockPos(-37, 68, 0)).getBlock() == Blocks.IRON_BARS;
+                Phase4Checks.report("p4-siege-yard", m.stage == 1 && b.scores[0] == 1 && m.target != null && m.target.isAlive() && shutNow,
+                        (forcedYard ? "forced after 120 s contested" : "fell after " + secs + " s") + ", gate shut=" + shutNow + ", target hp=" + (m.target == null ? "none" : m.target.hp()));
                 var row = SiegeMode.gate();
                 go(b, p, row.x() - SiegeMode.PASSAGE_X - 6 + .5, row.z() + .5, -90);
                 ask("siege-gate"); sub = 5;
@@ -135,21 +138,22 @@ final class SiegePlayChecks implements Phase4Checks.Suite, Phase4Checks.ServerWa
                         "passage open=" + open + " saves=" + b.saves.size());
                 ask("siege-breach"); sub = 6;
             }
-            case 6 -> {
+            case 6 -> { // the push: the commander and the commander's own troops go into the Keep together
                 go(b, p, SiegeMode.KEEP_X, SiegeMode.KEEP_Z, 0);
+                var own = b.squads.get(p.getUuid());
+                int brought = 0;
+                for (var u : b.units) if (u.squad == own && u.mob.isAlive()) { u.mob.teleport(SiegeMode.KEEP_X + (brought % 5) - 2, top(b, SiegeMode.KEEP_X, SiegeMode.KEEP_Z), SiegeMode.KEEP_Z + (brought / 5) - 2); brought++; }
+                notes.add("brought " + brought + " troops");
                 stageAt = b.time; sub = 7;
             }
             case 7 -> { // the Keep: hold it until the attackers win
                 var m = (SiegeMode) b.mode;
                 if (b.time % 100 == 0 && m.stage == 2) go(b, p, SiegeMode.KEEP_X, SiegeMode.KEEP_Z, 0);
                 if (b.time - stageAt == 200) { ask("siege-keep"); return; }
-                if (m.stage == 2 && b.time - stageAt > 3600) { // contested past 3 min: clear defenders from the ring
-                    forcedKeep = true;
-                    for (var u : b.units) if (u.squad.team == 1 && u.mob.isAlive() && u.mob.squaredDistanceTo(SiegeMode.KEEP_X, u.mob.getY(), SiegeMode.KEEP_Z) < 400) u.mob.discard();
-                }
+                if (m.stage == 2 && b.time - stageAt > 4800) { fail("p4-siege-keep", "the Keep held 240 s against the push (" + notes.get(notes.size() - 1) + ", held=" + m.held + ")"); return; }
                 if (m.stage < 3) return;
                 Phase4Checks.report("p4-siege-keep", b.scores[0] == 3 && c.lastWinner == 0,
-                        (forcedKeep ? "forced: defenders cleared from the ring" : "held in " + (b.time - stageAt) / 20 + " s") + ", score=" + b.scores[0] + " winner=" + c.lastWinner);
+                        "taken in " + (b.time - stageAt) / 20 + " s with no forcing (" + notes.get(notes.size() - 1) + "), score=" + b.scores[0] + " winner=" + c.lastWinner);
                 stageAt = b.time; sub = 8;
             }
             case 8 -> { // the round ends and its teardown leaves no marker or saved box
