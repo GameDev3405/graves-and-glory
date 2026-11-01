@@ -61,6 +61,8 @@ public abstract class BattleMode {
     /** Each running tick, after captureTick: the mode's scoring and its own timers. */
     public void tick(GravesAndGlory.Battle b){}
     /** Where a team respawns and its troops fall back to. */
+    /** The objective panel's line as the round starts; a mode without points to capture says its own. */
+    public String startLine(GravesAndGlory.Battle b){return GravesAndGlory.Battle.ROUND_START;}
     public Vec3d fieldBase(GravesAndGlory.Battle b,int team){return GravesAndGlory.Battle.base(team);}
     /** A team's barracks access point. */
     public Vec3d fieldBarracks(GravesAndGlory.Battle b,int team){var f=Spec.FACTIONS[team];return new Vec3d(f.barracksX(),65,f.barracksZ());}

@@ -73,11 +73,11 @@ public final class MarchMathCheck {
         var late = new MarchMath.Tracker("stage_by", 120, "gate");
         late.staged("gate", 121);
         check(!late.kept(true, 300), "tracker stage_by: reached after the limit");
-        var carry = new MarchMath.Tracker("carry_self", 0, "none");
-        carry.carried(false);
-        check(!carry.kept(true, 60), "tracker carry_self: another carrier does not count");
-        carry.carried(true);
-        check(carry.kept(true, 60), "tracker carry_self: the commander himself");
+        var rolled = new MarchMath.Tracker("never_rolled", 0, "none");
+        check(rolled.kept(true, 60), "tracker never_rolled: a wagon that never rolled back keeps it");
+        check(!rolled.kept(false, 60), "tracker never_rolled: needs the win");
+        rolled.rolled();
+        check(!rolled.kept(true, 60), "tracker never_rolled: one roll back loses it");
         var fast = new MarchMath.Tracker("win_within", 300, "none");
         check(fast.kept(true, 300) && !fast.kept(true, 301) && !fast.kept(false, 10), "tracker win_within: a win by the limit");
         var kill = new MarchMath.Tracker("kill_unit", 0, "revenant");

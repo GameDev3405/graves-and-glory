@@ -960,7 +960,7 @@ public final class GravesAndGlory implements ModInitializer {
                 if(player!=null){toBase(player,s.team);player.changeGameMode(GameMode.ADVENTURE);equipPlayer(player);}
                 reinforce(s);
             }
-            rounds++;roundStarted=time;running=true;message=ROUND_START;
+            rounds++;roundStarted=time;running=true;message=mode.startLine(this);
             mode.mark(this); // the mode says what it changed: flags down, saved pieces
         }
         void reinforce(Squad s){

@@ -36,33 +36,53 @@ public final class ConvoyMode extends BattleMode {
     public static final int ESCORT = 0;
     /** The tag the wagon carries, so recover can find one a crash left in a loaded chunk. */
     public static final String TAG = "gg-convoy-wagon";
-    /** Push and contest range, horizontal and vertical (draft values). */
-    static final double PUSH_RADIUS = 6, PUSH_HEIGHT = 3;
-    /** Blocks a second with one, two, three or more pushers, and rolling back (draft values). */
-    static final double[] SPEEDS = {1.2, 1.5, 1.8};
-    static final double ROLLBACK_SPEED = 0.6;
-    /** Ticks alone before the wagon rolls back, 10 s (draft value). */
-    static final int IDLE_TICKS = 200;
-    /** Seconds each checkpoint adds to the clock, and gold it pays each escort squad (draft values). */
-    static final int CHECKPOINT_SECONDS = 180, CHECKPOINT_GOLD = 50;
-    /** Grade over which the wagon slows uphill and speeds downhill (draft values). */
-    static final double MAX_GRADE = 0.25, UPHILL = 0.75, DOWNHILL = 1.25;
-    /** Overtime: within this many blocks of the next stop, for this many ticks after it stops being near (draft values). */
-    static final double OVERTIME_RADIUS = 6;
-    static final int OVERTIME_GRACE = 60;
-    /** "The wagon is stopped" waits this long into a contest after a move, and is sent at most this often (draft values). */
-    static final int STOPPED_AFTER = 100, STOPPED_EVERY = 400;
+    /** The mode's numbers, the modeRules convoy row (draft values, spec 3); preflight requires the row. */
+    static Spec.ModeRulesRow rules() {
+        for (var r : Spec.MODERULES) if (r.id().equals(Modes.CONVOY)) return r;
+        throw new IllegalStateException("no modeRules convoy row");
+    }
+    static final Spec.ModeRulesRow R = rules();
+    /** Push and contest range, horizontal and vertical. */
+    static final double PUSH_RADIUS = R.pushRadius(), PUSH_HEIGHT = R.pushHeight();
+    /** Blocks a second with one, two, three or more pushers, and rolling back. */
+    static final double[] SPEEDS = {R.speedOne(), R.speedTwo(), R.speedThree()};
+    static final double ROLLBACK_SPEED = R.rollbackSpeed();
+    /** Ticks alone before the wagon rolls back. */
+    static final int IDLE_TICKS = R.idleSeconds() * 20;
+    /** Seconds each checkpoint adds to the clock, and gold it pays each escort squad. */
+    static final int CHECKPOINT_SECONDS = R.checkpointSeconds(), CHECKPOINT_GOLD = R.checkpointGold();
+    /** Grade over which the wagon slows uphill and speeds downhill. */
+    static final double MAX_GRADE = R.maxGrade(), UPHILL = R.uphill(), DOWNHILL = R.downhill();
+    /** Overtime: within this many blocks of the next stop, for this many ticks after it stops being near. */
+    static final double OVERTIME_RADIUS = R.overtimeRadius();
+    static final int OVERTIME_GRACE = R.overtimeGraceSeconds() * 20;
+    /** "The wagon is stopped" waits this long into a contest after a move, and is sent at most this often. */
+    static final int STOPPED_AFTER = R.stoppedAfterSeconds() * 20, STOPPED_EVERY = R.stoppedEverySeconds() * 20;
 
     /** A road node on the map: x, z and the checkpoint's name, or null for a plain node. The last node is the destination. */
     record Node(double x, double z, String name) {}
     /**
-     * Frostmarch's draft road (spec 5.2): the caravan lodge yard on the Dawn side, Pass Crossing past the gorge bridge, Signal
-     * Ridge, the refuge short of the Dusk gate. Placeholders until the Frostmarch Map Forge layout is signed; then they move to
-     * modeSites road rows (spec 5.1).
+     * The road of a map, its modeSites road rows in stage order (spec 5.1; Frostmarch's is the draft straight road Kort accepted
+     * 2026-11-01). A name of "-" is a plain node.
      */
-    static final List<Node> FROSTMARCH = List.of(
-            new Node(-230, 0, null), new Node(-28, 0, null), new Node(32, 0, "Pass Crossing"), new Node(100, 30, null),
-            new Node(150, 60, "Signal Ridge"), new Node(220, 30, null), new Node(280, 0, "The Refuge"));
+    static List<Node> roadOf(int map) {
+        List<Spec.ModeSitesRow> rows = new ArrayList<>();
+        for (var s : Spec.MODESITES) if (s.mode().equals(Modes.CONVOY) && s.kind().equals("road") && s.map() == map) rows.add(s);
+        rows.sort(java.util.Comparator.comparingInt(Spec.ModeSitesRow::stage));
+        List<Node> out = new ArrayList<>();
+        for (var s : rows) out.add(new Node(s.x(), s.z(), s.name().equals("-") ? null : s.name()));
+        return out;
+    }
+    /** The map this round's road is on: the map standing, or the convoy row's first map when the standing one has no road. */
+    static int roadMap(Spec.ModesRow row) {
+        int map = CampaignMaps.selected;
+        return roadOf(map).size() >= 2 ? map : Integer.parseInt(row.maps().split(",")[0].trim());
+    }
+    /** A team's own field base on the map from a modeSites base row (stage is the team), or null for the map's usual base. */
+    static Spec.ModeSitesRow base(int map, int team) {
+        for (var s : Spec.MODESITES) if (s.mode().equals(Modes.CONVOY) && s.kind().equals("base") && s.map() == map && s.stage() == team) return s;
+        return null;
+    }
 
     final double[][] nodes;
     final double[] stations;
@@ -77,14 +97,19 @@ public final class ConvoyMode extends BattleMode {
     Wagon wagon;
     long forcedChunk = Long.MIN_VALUE;
 
+    final int map;
+    final List<Node> road;
+
     ConvoyMode(Spec.ModesRow row) {
         super(row);
-        nodes = new double[FROSTMARCH.size()][];
+        map = roadMap(row);
+        road = roadOf(map);
+        nodes = new double[road.size()][];
         List<Double> at = new ArrayList<>();
         List<String> names = new ArrayList<>();
-        for (int i = 0; i < nodes.length; i++) nodes[i] = new double[]{FROSTMARCH.get(i).x(), FROSTMARCH.get(i).z()};
+        for (int i = 0; i < nodes.length; i++) nodes[i] = new double[]{road.get(i).x(), road.get(i).z()};
         stations = ModeMath.stations(nodes);
-        for (int i = 1; i < nodes.length; i++) if (FROSTMARCH.get(i).name() != null) {at.add(stations[i]); names.add(FROSTMARCH.get(i).name());}
+        for (int i = 1; i < nodes.length; i++) if (road.get(i).name() != null) {at.add(stations[i]); names.add(road.get(i).name());}
         stops = at.stream().mapToDouble(Double::doubleValue).toArray();
         stopNames = names.toArray(String[]::new);
     }
@@ -109,6 +134,14 @@ public final class ConvoyMode extends BattleMode {
 
     @Override public String rule() {return row.ruleLine().replace("{n}", stopNames[stopNames.length - 1]);}
     @Override public boolean capturesPoints(GravesAndGlory.Battle b) {return false;}
+    /** The objective panel's first line: the round has no points to capture. */
+    @Override public String startLine(GravesAndGlory.Battle b) {return "The wagon sets out for " + stopNames[stopNames.length - 1] + ".";}
+    /** A team with a modeSites base row fields there (Frostmarch's Dusk spawn sits at The Refuge, the road's end). */
+    @Override public Vec3d fieldBase(GravesAndGlory.Battle b, int team) {
+        var s = base(map, team);
+        if (s == null) return super.fieldBase(b, team);
+        return new Vec3d(s.x(), Arena.height((int) Math.floor(s.x()), (int) Math.floor(s.z())) + 1, s.z());
+    }
     @Override public String howToSide(GravesAndGlory.Battle b, GravesAndGlory.Squad s) {return s != null && s.team == ESCORT ? "attack" : "defend";}
     /** No draws: the clock running out with the wagon short of the destination is the defence's. */
     @Override public int timeoutWinner(GravesAndGlory.Battle b) {return 1 - ESCORT;}
@@ -236,7 +269,7 @@ public final class ConvoyMode extends BattleMode {
         }
         boolean rolling = state.equals(ModeMath.ROLLBACK) && distance > floor() + 1e-6;
         if (rolling && !wasRolling) say(b, "The wagon rolls back");
-        if (rolling) rolledBack = true;
+        if (rolling) {rolledBack = true; if (b.campaign.bonusTracker != null) b.campaign.bonusTracker.rolled();}
         wasRolling = rolling;
     }
 
@@ -265,7 +298,7 @@ public final class ConvoyMode extends BattleMode {
     @Override public List<GravesAndGlory.Anchor> anchors(GravesAndGlory.Battle b, int team) {
         int passed = checkpoints();
         Vec3d at;String name;
-        if (team == ESCORT) {at = passed == 0 ? road(0) : road(stops[passed - 1]); name = passed == 0 ? "the convoy's start" : stopNames[passed - 1];}
+        if (team == ESCORT) {at = passed == 0 ? road(0.0) : road(stops[passed - 1]); name = passed == 0 ? "the convoy's start" : stopNames[passed - 1];}
         else {if (passed >= stops.length - 1) return List.of(); at = road(stops[passed]); name = stopNames[passed];}
         if (Morale.enemyWithin(b, team, at, Spec.ECONOMY[0].forwardSafeRadius())) return List.of();
         return List.of(new GravesAndGlory.Anchor(at.x, at.z, name, team));

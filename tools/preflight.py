@@ -91,6 +91,43 @@ for m in modes:
     for column in ('howTo','howToDefend'):
         parts=[p.strip() for p in m.get(column,'').split('|') if p.strip()]
         if not 1<=len(parts)<=3: errors.append(f'{where}: {column} holds {len(parts)} parts, want 1 to 3')
+# Convoy (spec 2026-10-31-convoy-escort-design.md 5.1): the mode's numbers are a modeRules row and its road and bases modeSites
+# rows, so ConvoyMode holds no map data. A road's nodes have consecutive stages from 0, at least two named checkpoints before
+# the destination (the last node, always named); a base row (stage = team) stands off the road and more than 40 blocks from
+# the end its team does not hold (the defence's from the destination, the escort's from the start).
+mode_ids={m['id'] for m in modes}
+rule_rows={r['id']:r for r in data.get('modeRules',[])}
+for r in data.get('modeRules',[]):
+    where=f'modeRules/{r["id"]}'
+    if r['id'] not in mode_ids: errors.append(f'{where}: no modes row {r["id"]}')
+    if not 0<r['speedOne']<=r['speedTwo']<=r['speedThree']: errors.append(f'{where}: push speeds must be above 0 and never fall with more pushers')
+    for c in ('pushRadius','pushHeight','rollbackSpeed','idleSeconds','checkpointSeconds','checkpointGold','overtimeRadius','overtimeGraceSeconds','stoppedAfterSeconds','stoppedEverySeconds'):
+        if r[c]<0: errors.append(f'{where}: {c} cannot be negative')
+    if not 0<r['uphill']<=1<=r['downhill']: errors.append(f'{where}: uphill must be in (0,1] and downhill at least 1')
+if 'convoy' in mode_ids and 'convoy' not in rule_rows: errors.append('modeRules: the convoy mode needs its row')
+def seg_distance(px,pz,a,b):
+    dx,dz=b[0]-a[0],b[1]-a[1];t=max(0,min(1,((px-a[0])*dx+(pz-a[1])*dz)/((dx*dx+dz*dz) or 1)))
+    return ((px-a[0]-t*dx)**2+(pz-a[1]-t*dz)**2)**.5
+roads={}
+for s in data.get('modeSites',[]):
+    where=f'modeSites/{s["id"]}'
+    if s['mode'] not in mode_ids: errors.append(f'{where}: mode {s["mode"]} is not a modes id')
+    if s['map'] not in range(len(data['maps'])): errors.append(f'{where}: map {s["map"]} is not a map index')
+    if s['kind'] not in ('road','base'): errors.append(f'{where}: kind {s["kind"]} is not road or base')
+    if s['kind']=='road': roads.setdefault((s['mode'],s['map']),[]).append(s)
+for (mode,m),nodes in roads.items():
+    nodes.sort(key=lambda s:s['stage']);where=f'modeSites {mode} map {m}'
+    if [s['stage'] for s in nodes]!=list(range(len(nodes))): errors.append(f'{where}: road stages must run 0..{len(nodes)-1} with no gap')
+    if nodes[-1]['name']=='-': errors.append(f'{where}: the last road node is the destination and needs a name')
+    if sum(1 for s in nodes[1:-1] if s['name']!='-')<2: errors.append(f'{where}: at least two named checkpoints before the destination')
+    pts=[(s['x'],s['z']) for s in nodes]
+    for b in data.get('modeSites',[]):
+        if b['kind']!='base' or b['mode']!=mode or b['map']!=m: continue
+        if b['stage'] not in (0,1): errors.append(f'modeSites/{b["id"]}: a base stage is its team, 0 or 1')
+        end=pts[-1] if b['stage']==1 else pts[0]
+        if ((b['x']-end[0])**2+(b['z']-end[1])**2)**.5<=40: errors.append(f'modeSites/{b["id"]}: a base within 40 blocks of the road end its enemy pushes for')
+        near=min(seg_distance(b['x'],b['z'],pts[i],pts[i+1]) for i in range(len(pts)-1))
+        if near<=b['radius']+8: errors.append(f'modeSites/{b["id"]}: base {near:.1f} blocks from the road, it must stand off it')
 groups={g['id'] for g in data.get('groups',[])}
 orders={o['id'] for o in data['orders']}
 for t in data['troops']:
@@ -410,8 +447,8 @@ for d in sorted(difficulties):
     if not any(b['difficulty']==d and all(houses.get(houseOf.get(s),{}).get('fieldable') for s in b['slots'].split(',') if s!='^') for b in data['botBanners']): errors.append(f'botBanners: no {d} banner fields only fieldable Houses (Campaign.botBanner picks from those)')
 # The Long March (plan 2C.3): six battles in one order, each on a map index, in one of the four 1.0 modes, at a botCommand difficulty, with one
 # bonusObjectives row of its own. A cell the plan leaves open is listed in the row's placeholder column ('none' when the row is settled).
-MARCH_MODES={'domination','siege','survival','banner'}
-BONUS_KINDS={'hold_all','lose_at_most','stage_by','carry_self','win_within','kill_unit'}
+MARCH_MODES={'domination','siege','survival','convoy'}
+BONUS_KINDS={'hold_all','lose_at_most','stage_by','never_rolled','win_within','kill_unit'}
 bonus_rows={o['id']:o for o in data.get('bonusObjectives',[])}
 march=data['campaignBattles']
 if sorted(r['order'] for r in march)!=list(range(1,len(march)+1)): errors.append('campaignBattles: orders must run 1, 2, 3 and on, each once (MarchMath reads the order lock from them)')
