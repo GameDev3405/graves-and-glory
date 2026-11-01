@@ -141,6 +141,8 @@ final class HoldLineChecks {
         int fireSamples, fireDown; final List<String> fireDownAt = new ArrayList<>();
         // hl-wall's per-tick facing sample (fix round 2, R2): each wall troop's position a tick ago, and the samples
         final Map<GravesAndGlory.Unit, Vec3d> lastAt = new HashMap<>();
+        GravesAndGlory.Unit hopper; Vec3d hopRise, hopFrom, hopGoal; int hopBlockedAir, hopsBefore; boolean hopClearAtStart;
+        final List<GravesAndGlory.Unit> knocked = new ArrayList<>(); final Map<GravesAndGlory.Unit, Vec3d> knockAt = new HashMap<>(); double knockPeak;
         int faceSamples, faceBack, faceSide, faceAir, faceRouted, faceRoutedAir, hopSamples, hopAir; double hopWorst; String hopWho = "none"; final java.util.Set<String> hopMen = new java.util.TreeSet<>(); final List<String> faceRoutedWho = new ArrayList<>(); double faceWorst; String faceWho = "none"; final List<String> faceBad = new ArrayList<>();
         // hl-house (fix round 2, R1)
         GravesAndGlory.Unit houseKnight; Vec3d houseSlot, houseStart; String houseText; long houseAt; double houseBest = 99; int houseStuckBefore;
@@ -530,6 +532,72 @@ final class HoldLineChecks {
                     if (since(b) == 210) requestShot("hl-wall-loss2", 4);
                     if (since(b) < 240) return;
                     wallLoss(b, "hl-wall-loss2");
+                    next(b, 27);
+                }
+                case 27 -> { // hl-wall-knock (Task 16, R89 / Task 2 M10): two front-rank Squires take a melee blow and a shield-bash knockback from the front; the wall takes them back
+                    if (since(b) == 1) {
+                        knocked.clear(); knockAt.clear(); knockPeak = 0;
+                        var from = breakers.stream().filter(u -> u.mob.isAlive()).findFirst().orElse(null);
+                        for (var u : wallLine()) {double[] p = gridBefore.get(u); if (u != marshal && from != null && knocked.size() < 2 && (p == null || p[1] == 0)) knocked.add(u);}
+                        for (var u : knocked) {
+                            knockAt.put(u, u.mob.getPos()); u.mob.setHealth(u.mob.getMaxHealth());
+                            Combat.resolve(b, from, u.mob, 1f, "melee", false);
+                            Vec3d front = u.mob.getPos().add(2, 0, 0); // the wall faces east: the bash comes from in front of him
+                            Abilities.knock(b, u.mob, front, front, 0.8);
+                        }
+                        if (knocked.isEmpty()) {report("hl-wall-knock", false, "no front-rank Squire or no live Shieldbreaker to strike him"); serverPlaces = places(b); next(b, 30); return;}
+                    }
+                    if (since(b) == 3) requestShot("hl-wall-knock", 4);
+                    if (since(b) > 1 && since(b) <= 12) for (var u : knocked) knockPeak = Math.max(knockPeak, distance(u.mob.getPos(), knockAt.get(u)));
+                    if (since(b) < 120) return;
+                    boolean pass = knockPeak >= 0.3; List<String> why = new ArrayList<>();
+                    why.add("the blows threw them up to " + fmt(knockPeak) + " blocks (want >= 0.3, a real knock)");
+                    for (var u : knocked) {
+                        float want = b.assignment(u).yaw; double back = distance(u.mob.getPos(), b.formation(u));
+                        double off = Math.max(Math.abs(net.minecraft.util.math.MathHelper.wrapDegrees(u.mob.getYaw() - want)), Math.abs(net.minecraft.util.math.MathHelper.wrapDegrees(u.mob.bodyYaw - want)));
+                        boolean ok = u.mob.isAlive() && GravesAndGlory.Battle.walls(u, b.assignment(u).order) && back <= 0.35 && off <= 5;
+                        pass &= ok; why.add(name(u) + " 6 s on: alive and walling=" + (u.mob.isAlive() && GravesAndGlory.Battle.walls(u, b.assignment(u).order)) + ", " + fmt(back) + " from his slot (want <= 0.35), yaw " + fmt(off) + " off Hold (want <= 5)=" + ok);
+                    }
+                    report("hl-wall-knock", pass, "Task 16, R89 (Task 2 M10): " + String.join("; ", why));
+                    next(b, 28);
+                }
+                case 28 -> { // hl-hop-yaw (Task 16, R89): the Line's Hold moved so one front-rank Squire's slot stands on a real one-block rise with him in front of its face; he hops up keeping the Hold yaw, and never reads his line blocked in the air
+                    if (since(b) == 1) {
+                        hopper = null; hopSamples = 0; hopAir = 0; hopWorst = 0; hopWho = "none"; hopMen.clear(); hopBlockedAir = 0; hopsBefore = Tactics.hops;
+                        for (var u : wallLine()) {double[] p = gridBefore.get(u); if (u != marshal && (p == null || p[1] == 0)) {hopper = u; break;}}
+                        if (hopper == null) {report("hl-hop-yaw", false, "no front-rank Squire"); next(b, 29); return;}
+                        Vec3d slot = b.formation(hopper); double ox = slot.x - lineAt.x, oz = slot.z - lineAt.z; hopRise = null;
+                        for (int x = (int) patch[0] - 40; x <= (int) patch[0] + 60 && hopRise == null; x++) for (int z = (int) patch[2] - 40; z <= (int) patch[2] + 40 && hopRise == null; z++) {
+                            int hi = (int) Phase1Checks.top(b, x + .5, z + .5); boolean ok = true;
+                            for (int dz = -1; dz <= 1 && ok; dz++) {
+                                ok &= Phase1Checks.top(b, x + .5, z + dz + .5) == hi && Phase1Checks.top(b, x - .5, z + dz + .5) == hi; // the rise: its cell, the cell behind and both sides level
+                                for (int dx = 1; dx <= 3 && ok; dx++) ok &= Phase1Checks.top(b, x + dx + .5, z + dz + .5) == hi - 1; // and three cells of lower ground in front of it (east, the Hold yaw)
+                            }
+                            for (int dx = -1; dx <= 3 && ok; dx++) ok &= Arena.ground(x + dx, z) + 1 == (int) Phase1Checks.top(b, x + dx + .5, z + .5) && !Arena.river(x + dx, z) && b.world.getBlockState(new BlockPos(x + dx, (int) Phase1Checks.top(b, x + dx + .5, z + .5), z)).isAir() && b.world.getBlockState(new BlockPos(x + dx, (int) Phase1Checks.top(b, x + dx + .5, z + .5) + 1, z)).isAir(); // the ground Tactics.open reads is the world's, with no plant on it
+                            if (ok) hopRise = new Vec3d(x + .5, hi, z + .5);
+                        }
+                        if (hopRise == null) {report("hl-hop-yaw", false, "no real one-block rise with level ground round it within 40 blocks of the wall's patch"); next(b, 29); return;}
+                        b.issue(own, "infantry", "hold", "line", ground(b, hopRise.x - ox, hopRise.z - oz), -90, -1);
+                        Vec3d goal = b.formation(hopper); Vec3d from = ground(b, goal.x + 1.15, goal.z);
+                        hopper.mob.getNavigation().stop(); hopper.mob.refreshPositionAndAngles(from.x, from.y, from.z, -90, 0); hopper.mob.setVelocity(Vec3d.ZERO); hopper.place = null;
+                        hopFrom = from; hopGoal = goal; hopClearAtStart = Tactics.clear(b, hopper, goal);
+                        var p = sp(b); b.relocate(p, goal.x + 1.2, goal.y + 2.2, goal.z + 6, 180f, 16f);
+                        return;
+                    }
+                    if (hopper == null) return;
+                    sampleFacing(b);
+                    if (!hopper.mob.isOnGround() && hopper.detour == null && GravesAndGlory.Battle.horizontalDistance(hopper.mob.getPos(), hopGoal) <= 4 && !Tactics.clear(b, hopper, hopGoal)) hopBlockedAir++;
+                    if (since(b) == 6) requestShot("hl-hop-yaw", 2);
+                    if (since(b) < 100) return;
+                    double off = Math.sqrt(GravesAndGlory.Battle.horizontalDistance(hopper.mob.getPos(), hopGoal)); boolean up = hopper.mob.getY() >= hopRise.y - 0.01 && hopper.mob.getY() - hopFrom.y >= 0.99;
+                    int hops = Tactics.hops - hopsBefore;
+                    boolean pass = hops >= 1 && hopAir > 0 && hopWorst <= 1 && hopBlockedAir == 0 && up && off <= 0.35;
+                    report("hl-hop-yaw", pass, "Task 16, R89: " + name(hopper) + " set 1.15 in front of his slot on a real one-block rise at " + fmt(hopRise.x) + "," + fmt(hopRise.z) + " (from y " + fmt(hopFrom.y) + " up to " + fmt(hopRise.y) + "): hops started " + hops + " (want 1 or more); " + hopSamples + " hopping ticks of wall troops (" + hopAir + " in the air; " + hopMen + "), the most yaw or body yaw off the Hold yaw " + fmt(hopWorst) + " degrees (" + hopWho + "; want at most 1); airborne ticks within 2 of his slot with his line read blocked " + hopBlockedAir + " (want 0); his slot " + fmt(hopGoal.x) + "," + fmt(hopGoal.z) + ", his line clear at the start=" + hopClearAtStart + "; 5 s on he stands at " + fmt(hopper.mob.getX()) + "," + fmt(hopper.mob.getY()) + "," + fmt(hopper.mob.getZ()) + ", " + fmt(off) + " from his slot (want <= 0.35), up on the rise=" + up);
+                    next(b, 29);
+                }
+                case 29 -> { // the Line back to its Hold for the mirror
+                    if (since(b) == 1) b.issue(own, "infantry", "hold", "line", lineAt, -90, -1);
+                    if (since(b) < 200) return;
                     serverPlaces = places(b);
                     next(b, 30);
                 }
@@ -707,7 +775,6 @@ final class HoldLineChecks {
             long bad = faceBad.size(); boolean walkIn = faceSamples >= 20 && bad == 0 && faceBack > 0 && faceSide > 0 && faceRouted * 4 <= faceSamples && faceRoutedAir == 0; pass &= walkIn;
             why.add("walking in, every tick: " + faceSamples + " samples of a wall troop within 2 blocks of its slot moving over 0.02 a tick (" + faceBack + " stepping back, " + faceSide + " sideways, " + (faceSamples - faceBack - faceSide) + " ahead, " + faceAir + " in the air), " + bad + " more than 15 degrees off its Hold yaw" + (bad == 0 ? "" : " " + faceBad.stream().filter(x -> !x.isEmpty()).toList()) + ", the worst " + fmt(faceWorst) + " (" + faceWho + "); besides, " + faceRouted + " ticks walk routed him (the stretch yields, no facing)" + (faceRouted == 0 ? "" : " " + faceRoutedWho) + ", " + faceRoutedAir + " of them in the air with the line read blocked (Task 16, R89: a hop reads its line from the level it left)" + " (want at least 20 samples, some back and some sideways, none off, routed ticks at most a quarter of the samples and none read blocked in the air)=" + walkIn);
             report("hl-wall", pass, String.join("; ", why));
-            report("hl-hop-yaw", hopAir > 0 && hopWorst <= 1, "Task 16, R89: " + hopSamples + " ticks of a wall troop hopping onto a rise by its slot (" + hopAir + " of them in the air; " + hopMen + "), the most yaw or body yaw went off the Hold yaw " + fmt(hopWorst) + " degrees (" + hopWho + "; want a hop in the air seen and at most 1 degree off on every tick)");
         }
         /** Every living wall troop of the fixture (Battle.walls) faces its Hold yaw within 10 degrees, yaw and body yaw (ruling R21): whether, and the line. */
         String[] facing(GravesAndGlory.Battle b) {
