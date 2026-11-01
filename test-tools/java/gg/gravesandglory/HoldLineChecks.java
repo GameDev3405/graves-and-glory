@@ -141,7 +141,7 @@ final class HoldLineChecks {
         int fireSamples, fireDown; final List<String> fireDownAt = new ArrayList<>();
         // hl-wall's per-tick facing sample (fix round 2, R2): each wall troop's position a tick ago, and the samples
         final Map<GravesAndGlory.Unit, Vec3d> lastAt = new HashMap<>();
-        GravesAndGlory.Unit hopper; Vec3d hopRise, hopFrom, hopGoal; int hopBlockedAir, hopsBefore; boolean hopClearAtStart;
+        GravesAndGlory.Unit hopper; Vec3d hopRise, hopFrom, hopGoal; int hopBlockedAir, hopsBefore; boolean hopClearAtStart, hopProbe;
         final List<GravesAndGlory.Unit> knocked = new ArrayList<>(); final Map<GravesAndGlory.Unit, Vec3d> knockAt = new HashMap<>(); double knockPeak;
         int faceSamples, faceBack, faceSide, faceAir, faceRouted, faceRoutedAir, hopSamples, hopAir; double hopWorst; String hopWho = "none"; final java.util.Set<String> hopMen = new java.util.TreeSet<>(); final List<String> faceRoutedWho = new ArrayList<>(); double faceWorst; String faceWho = "none"; final List<String> faceBad = new ArrayList<>();
         // hl-house (fix round 2, R1)
@@ -581,18 +581,23 @@ final class HoldLineChecks {
                         Vec3d goal = b.formation(hopper); Vec3d from = ground(b, goal.x + 1.15, goal.z);
                         hopper.mob.getNavigation().stop(); hopper.mob.refreshPositionAndAngles(from.x, from.y, from.z, -90, 0); hopper.mob.setVelocity(Vec3d.ZERO); hopper.place = null;
                         hopFrom = from; hopGoal = goal; hopClearAtStart = Tactics.clear(b, hopper, goal);
+                        // I6 (Task 16 fix round 1b): a deterministic mid-hop probe. Set 1.2 over the low ground in the air, Tactics.open reads his feet at the block
+                        // level he is over (floor of y), so his line stays clear; read raw (the pre-fix code), the low cells are 1.2 off his feet and the line blocked
+                        hopper.mob.setPosition(from.x, from.y + 1.2, from.z); hopper.mob.setOnGround(false); hopper.mob.setVelocity(Vec3d.ZERO);
+                        hopProbe = hopClearAtStart && Tactics.clear(b, hopper, goal);
+                        hopper.mob.setPosition(from.x, from.y, from.z); hopper.mob.setOnGround(true); hopper.mob.setVelocity(Vec3d.ZERO);
                         var p = sp(b); b.relocate(p, goal.x + 1.2, goal.y + 2.2, goal.z + 6, 180f, 16f);
                         return;
                     }
                     if (hopper == null) return;
                     sampleFacing(b);
-                    if (!hopper.mob.isOnGround() && hopper.detour == null && GravesAndGlory.Battle.horizontalDistance(hopper.mob.getPos(), hopGoal) <= 4 && !Tactics.clear(b, hopper, hopGoal)) hopBlockedAir++;
+                    if (!hopper.mob.isOnGround() && hopper.detour == null && GravesAndGlory.Battle.horizontalDistance(hopper.mob.getPos(), hopGoal) <= 16 && !Tactics.clear(b, hopper, hopGoal)) hopBlockedAir++; // within 4 blocks (R98)
                     if (since(b) == 6) requestShot("hl-hop-yaw", 2);
                     if (since(b) < 100) return;
                     double off = Math.sqrt(GravesAndGlory.Battle.horizontalDistance(hopper.mob.getPos(), hopGoal)); boolean up = hopper.mob.getY() >= hopRise.y - 0.01 && hopper.mob.getY() - hopFrom.y >= 0.99;
                     int hops = Tactics.hops - hopsBefore;
-                    boolean pass = hops >= 1 && hopAir > 0 && hopWorst <= 1 && hopBlockedAir == 0 && up && off <= 0.35;
-                    report("hl-hop-yaw", pass, "Task 16, R89: " + name(hopper) + " set 1.15 in front of his slot on a real one-block rise at " + fmt(hopRise.x) + "," + fmt(hopRise.z) + " (from y " + fmt(hopFrom.y) + " up to " + fmt(hopRise.y) + "): hops started " + hops + " (want 1 or more); " + hopSamples + " hopping ticks of wall troops (" + hopAir + " in the air; " + hopMen + "), the most yaw or body yaw off the Hold yaw " + fmt(hopWorst) + " degrees (" + hopWho + "; want at most 1); airborne ticks within 2 of his slot with his line read blocked " + hopBlockedAir + " (want 0); his slot " + fmt(hopGoal.x) + "," + fmt(hopGoal.z) + ", his line clear at the start=" + hopClearAtStart + "; 5 s on he stands at " + fmt(hopper.mob.getX()) + "," + fmt(hopper.mob.getY()) + "," + fmt(hopper.mob.getZ()) + ", " + fmt(off) + " from his slot (want <= 0.35), up on the rise=" + up);
+                    boolean pass = hops >= 1 && hopAir > 0 && hopWorst <= 1 && hopBlockedAir == 0 && hopProbe && up && off <= 0.35;
+                    report("hl-hop-yaw", pass, "Task 16, R89: " + name(hopper) + " set 1.15 in front of his slot on a real one-block rise at " + fmt(hopRise.x) + "," + fmt(hopRise.z) + " (from y " + fmt(hopFrom.y) + " up to " + fmt(hopRise.y) + "): hops started " + hops + " (want 1 or more); " + hopSamples + " hopping ticks of wall troops (" + hopAir + " in the air; " + hopMen + "), the most yaw or body yaw off the Hold yaw " + fmt(hopWorst) + " degrees (" + hopWho + "; want at most 1); airborne ticks within 4 of his slot with his line read blocked " + hopBlockedAir + " (want 0); the mid-hop probe (1.15 in front, 1.2 up, in the air) reads his line clear=" + hopProbe + " (want true; I6); his slot " + fmt(hopGoal.x) + "," + fmt(hopGoal.z) + ", his line clear at the start=" + hopClearAtStart + "; 5 s on he stands at " + fmt(hopper.mob.getX()) + "," + fmt(hopper.mob.getY()) + "," + fmt(hopper.mob.getZ()) + ", " + fmt(off) + " from his slot (want <= 0.35), up on the rise=" + up);
                     next(b, 29);
                 }
                 case 29 -> { // the Line back to its Hold for the mirror
