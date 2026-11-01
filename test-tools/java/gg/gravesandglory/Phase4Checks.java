@@ -96,7 +96,7 @@ public final class Phase4Checks implements ClientModInitializer {
         int scenario,sub;                 // server thread only
         long armedAt,stageAt,finishedAt;
         int gold0,earned0;
-        boolean siegeDuring,siegeTeardown,siegeRecovered;
+        boolean siegeDuring,siegeTeardown,siegeRecovered,deadPoints,keptMarker,roomMode,swapSafe;
         Path siegeFile;
         final List<String> notes=new ArrayList<>(),fails=new ArrayList<>();
 
@@ -259,6 +259,25 @@ public final class Phase4Checks implements ClientModInitializer {
                 }catch(Exception e){bad="siege: "+e;}
                 siegeDuring=markerOk&&fileOk&&shut&&down&&b.saves.size()==1&&bad.isEmpty();
                 if(!siegeDuring)fails.add("Siege round: "+bad);
+                // Flags down: the commander stands on point A past its capture time, yet the point stays neutral; a held point is no forward anchor.
+                var a=b.points.get(0);
+                p.teleport(b.world,a.spec.x()+0.5,Arena.ground(a.spec.x(),a.spec.z())+1,a.spec.z()+0.5,0,0);
+                for(int i=0;i<a.spec.captureSeconds()+3;i++)b.captureTick();
+                boolean neutral=a.owner==-1&&a.progress==0&&b.world.getBlockState(flagBase).isAir();
+                a.owner=0;a.ownedSince=b.time-1_000_000L;
+                boolean noAnchor=b.reinforcementAnchors(0).stream().noneMatch(x->x.name().equals(a.spec.name()));
+                a.owner=-1;
+                deadPoints=neutral&&noAnchor&&!b.mode.capturesPoints(b);
+                if(!deadPoints)fails.add("Siege points: neutral after standing on A="+neutral+" (owner "+a.owner+", progress "+a.progress+"), no point anchor="+noAnchor);
+                // A teardown that cannot restore the gate keeps the marker and the saved box; once the file is back, a second return succeeds.
+                Path held=siegeFile==null?null:siegeFile.resolveSibling(siegeFile.getFileName()+".held");
+                try{
+                    if(held!=null)Files.move(siegeFile,held);
+                    b.campaign.returnLobby();
+                    keptMarker=held!=null&&Files.exists(marker)&&b.saves.size()==1&&b.world.getBlockState(passage).getBlock()==Blocks.IRON_BARS;
+                    if(held!=null)Files.move(held,siegeFile);
+                }catch(Exception e){fails.add("teardown failure: "+e);}
+                if(!keptMarker)fails.add("a failed teardown: marker kept="+Files.exists(marker)+", saves="+b.saves.size());
                 b.campaign.returnLobby();
                 sub=3;
                 return;
@@ -268,12 +287,32 @@ public final class Phase4Checks implements ClientModInitializer {
             if(sub==3){
                 siegeTeardown=gateOpen&&flagBack&&filesGone;
                 if(!siegeTeardown)fails.add("Siege teardown: gate open="+gateOpen+", flags back="+flagBack+", files gone="+filesGone);
-                b.campaign.battleMode=Modes.SIEGE;
-                if(Phase1Checks.skirmish(b,p,1,1,"normal")){armedAt=b.time;sub=4;}
+                // The second Siege round starts from a lobby room whose host picked Siege: the room's mode must reach the round.
+                var c=b.campaign;c.battleMode=Modes.DOMINATION;c.closeParty();
+                for(var s:b.squads.values())if(!s.bot)s.seated=false;
+                String said="";
+                for(String cmd:List.of("social:room","social:mode:siege","social:map:1","social:ready","social:start")){c.notices.remove(p.getUuid());c.handle(p,cmd);said+=cmd+" -> "+c.notices.getOrDefault(p.getUuid(),"")+"; ";}
+                roomMode=b.running&&b.mode.id().equals(Modes.SIEGE)&&c.battleMode.equals(Modes.SIEGE);
+                if(!roomMode){fails.add("room start: running="+b.running+", mode="+b.mode.id()+" / "+said);c.battleMode=Modes.SIEGE;if(!Phase1Checks.skirmish(b,p,1,1,"normal"))return;}
+                armedAt=b.time;sub=4;
                 return;
             }
             // sub 4: a running round is abandoned to the cached-ready hook, as a crash would leave it
             if(!b.running)return;
+            // First, startRound re-entered mid-Siege: to Domination puts the gate, flags and file back; Domination to Siege
+            // and Siege to Siege then shut it again from a fresh snapshot of the open gate, which the recovery below proves.
+            {
+                Path before=b.saves.isEmpty()?null:b.saves.get(0).file();
+                b.campaign.battleMode=Modes.DOMINATION;b.startRound();
+                boolean open=b.world.getBlockState(passage).isAir(),up=b.world.getBlockState(flagBase).getBlock()==Blocks.OAK_FENCE;
+                boolean fileGone=before!=null&&!Files.exists(before)&&b.saves.isEmpty();
+                boolean domMarker=false;
+                try{var m=JsonParser.parseString(Files.readString(marker)).getAsJsonObject();domMarker=str(m,"mode").equals(Modes.DOMINATION)&&m.getAsJsonArray("saved").isEmpty()&&!m.get("flagsDown").getAsBoolean();}catch(Exception ignored){}
+                b.campaign.battleMode=Modes.SIEGE;b.startRound();b.startRound();
+                boolean reshut=b.world.getBlockState(passage).getBlock()==Blocks.IRON_BARS&&b.saves.size()==1&&b.mode.id().equals(Modes.SIEGE);
+                swapSafe=open&&up&&fileGone&&domMarker&&reshut;
+                if(!swapSafe)fails.add("startRound swap: gate open="+open+", flags up="+up+", file gone="+fileGone+", domination marker="+domMarker+", shut again="+reshut);
+            }
             boolean shut=b.world.getBlockState(passage).getBlock()==Blocks.IRON_BARS;
             boolean marked=Files.exists(marker);Path file=null;
             try{
@@ -286,8 +325,14 @@ public final class Phase4Checks implements ClientModInitializer {
             siegeRecovered=shut&&marked&&open&&flagsBack&&gone;
             if(!siegeRecovered)fails.add("Siege recovery: shut="+shut+", marked="+marked+", gate open="+open+", flags back="+flagsBack+", files gone="+gone);
             b.campaign.returnLobby();
+            b.campaign.handle(p,"social:exit");
             report("p4-mode-siege",siegeDuring&&siegeTeardown&&siegeRecovered,
                 "round: gate shut="+siegeDuring+"; teardown: gate open, flags up, file gone="+siegeTeardown+"; crash recovery through mapReady="+siegeRecovered);
+            report("p4-mode-dead-points",deadPoints,"Siege: point A stays neutral under a commander and is no forward anchor="+deadPoints);
+            report("p4-mode-teardown-kept",keptMarker,"an unrestorable gate keeps the marker and its saved box="+keptMarker);
+            report("p4-mode-room",roomMode,"a room whose host picked Siege starts a Siege round="+roomMode);
+            report("p4-mode-swap",swapSafe,"startRound mid-Siege restores the gate before the next mode="+swapSafe);
+            if(!fails.isEmpty())System.out.println("[p4] siege fails: "+String.join(" / ",fails));
             done=true;
         }
 
