@@ -1589,6 +1589,7 @@ final class MotionGrade extends Phase2Checks.Stage {
                 }
             }
         }
+        static double niceStep(double raw) { if (!(raw > 0)) return 1; double e = Math.pow(10, Math.floor(Math.log10(raw))); for (double m : new double[]{1, 2, 5, 10}) if (m * e >= raw) return m * e; return 10 * e; }
         static BufferedImage plot(JsonObject p) {
             int W = p.get("w").getAsInt(), H = p.get("h").getAsInt(), left = 80, right = 20, top = 40, gap = 46; var panels = p.getAsJsonArray("panels"); int np = Math.max(1, panels.size());
             int ph = (H - top - 30 - gap * (np - 1)) / np;
@@ -1606,7 +1607,8 @@ final class MotionGrade extends Phase2Checks.Stage {
                 if (y1 - y0 < 1e-9) y1 = y0 + 1; double padY = (y1 - y0) * 0.06; y0 -= padY; y1 += padY;
                 g.setColor(new java.awt.Color(40, 40, 40)); g.fillRect(left, py, pw, ph); g.setColor(DIM); g.drawRect(left, py, pw, ph);
                 g.setFont(new java.awt.Font(java.awt.Font.SANS_SERIF, java.awt.Font.PLAIN, 12)); g.drawString(pa.get("title").getAsString() + "  [" + pa.get("ylabel").getAsString() + "]", left + 4, py - 6);
-                for (int k = 0; k <= 4; k++) { double v = y0 + (y1 - y0) * k / 4; int yy = (int) (py + ph - (v - y0) / (y1 - y0) * ph); g.setColor(new java.awt.Color(70, 70, 70)); g.drawLine(left, yy, left + pw, yy); g.setColor(DIM); g.drawString(String.format(Locale.ROOT, "%.2f", v), 6, yy + 4); }
+                double st = niceStep((y1 - y0) / 4); int dp = Math.max(0, (int) -Math.floor(Math.log10(st) + 1e-9)); // even steps (1, 2 or 5 x 10^n), as contact_sheet.py draws them
+                for (double v = Math.ceil(y0 / st - 1e-9) * st; v <= y1 + 1e-9; v += st) { int yy = (int) (py + ph - (v - y0) / (y1 - y0) * ph); g.setColor(new java.awt.Color(70, 70, 70)); g.drawLine(left, yy, left + pw, yy); g.setColor(DIM); g.drawString(String.format(Locale.ROOT, "%." + dp + "f", Math.abs(v) < st / 1e6 ? 0 : v), 6, yy + 4); }
                 for (var h : pa.getAsJsonArray("hlines")) { var o = h.getAsJsonObject(); int yy = (int) (py + ph - (o.get("y").getAsDouble() - y0) / (y1 - y0) * ph); g.setColor(col(o.get("c").getAsString())); g.setStroke(new java.awt.BasicStroke(1, java.awt.BasicStroke.CAP_BUTT, java.awt.BasicStroke.JOIN_MITER, 1, new float[]{6, 4}, 0)); g.drawLine(left, yy, left + pw, yy); g.setStroke(new java.awt.BasicStroke(1)); g.drawString(o.get("label").getAsString(), left + pw - 260, yy - 3); }
                 int ly = py + 16;
                 for (var s : pa.getAsJsonArray("series")) {
