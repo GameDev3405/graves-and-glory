@@ -177,20 +177,24 @@ def pose(*parts, **bones):
 
 # Sword arm stances. The hand turns 180 degrees in yaw in every stance so the arming sword's 45 degree grip points the
 # blade forward from a raised fist; attacks are offsets in that frame.
+# The guard, shield, wall and brace stances split the shield arm's pitch so the elbow bends 30 degrees or more (R98's
+# 45 degree bends): the pitch moved from shoulder to elbow is pure, so the forearm and the board keep their facing to a
+# hair, and the grip comes about 1 px back and down. The guard's root drop of 0.6 makes the plant bend both knees past
+# 30 degrees (wall and brace already bend them 55 to 65).
 IDLE = pose(L_HOLD, body=(1, 3, 0), right_arm=(-20, 0, 3), right_forearm=(-10, 0, 0), right_hand=(135, 180, 0),
             right_leg=(0, 0, 3), left_leg=(0, 0, -3))
 CARRY = pose(L_HOLD, body=(3, 4, 0), right_arm=(-50, 0, 2), right_forearm=(-128, 0, 0), right_hand=(178, 180, 0))
 GUARD = pose(body=(3, 12, 0), head=(-2, -9, 0), right_arm=(-65, 0, 20), right_forearm=(-110, 0, 0),
-             right_hand=(90, 180, 0), left_arm=(-40, 18, 0), left_forearm=(-14, 0, 0),
-             right_leg=(6, 0, 4), right_shin=Z, left_leg=(-8, 0, -3), left_shin=(8, 0, 0), root=(0, 0, 0, 0, 0.4, 0))
+             right_hand=(90, 180, 0), left_arm=(-22, 18, 0), left_forearm=(-32, 0, 0),
+             right_leg=(6, 0, 4), right_shin=Z, left_leg=(-8, 0, -3), left_shin=(8, 0, 0), root=(0, 0, 0, 0, 0.6, 0))
 SHIELD = pose(body=(4, 18, 0), head=(-2, -14, 0), right_arm=(-55, 0, 40), right_forearm=(-110, 0, 0),
-              right_hand=(90, 180, 0), left_arm=(-48, 34, 0), left_forearm=(-10, 0, 0), root=(0, 0, 0, 0, 0.2, 0))
+              right_hand=(90, 180, 0), left_arm=(-28, 34, 0), left_forearm=(-30, 0, 0), root=(0, 0, 0, 0, 0.2, 0))
 WALL = pose(body=(5, 20, 0), head=(-4, -16, 0), right_arm=(-90, 0, 15), right_forearm=(-100, 0, 0),
-            right_hand=(40, 180, 0), left_arm=(-50, 30, 0), left_forearm=(-10, 0, 0),
+            right_hand=(40, 180, 0), left_arm=(-30, 30, 0), left_forearm=(-30, 0, 0),
             right_leg=(8, 0, 6), right_shin=(2, 0, 0), left_leg=(-12, 0, -5), left_shin=(12, 0, 0),
             root=(0, 0, 0, 0, 1.4, 0))
 BRACE = pose(body=(8, 16, 0), head=(-6, -13, 0), right_arm=(-80, 0, 18), right_forearm=(-105, 0, 0),
-             right_hand=(55, 180, 0), left_arm=(-42, 26, 0), left_forearm=(-14, 0, 0),
+             right_hand=(55, 180, 0), left_arm=(-24, 26, 0), left_forearm=(-32, 0, 0),
              right_leg=(12, 0, 7), right_shin=(2, 0, 0), left_leg=(-14, 0, -6), left_shin=(14, 0, 0),
              root=(0, 0, 0, 0, 1.8, 0))
 
