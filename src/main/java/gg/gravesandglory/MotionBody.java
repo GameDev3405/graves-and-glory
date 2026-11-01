@@ -105,7 +105,7 @@ final class MotionBody {
      * cadence rises past that. In stance the thigh angle's sine is linear in time (the foot's travel is linear), in swing it
      * eases back to the front. The legs swing along the body-frame velocity, so a backpedal sweeps them the other way and a
      * strafe sideways. The knee bends only in swing; the arms, bob, sway, lean and twist follow the same phase. Writes the
-     * gait's phase per leg, duty and weight into the frame for the moving plant (G3).
+     * gait's phase per leg, duty and weight into the frame for the checks and the grade.
      */
     static void stride(MotionEngine.Frame f, MotionEngine.State st, Pose out) {
         double v = Math.hypot(f.vF, f.vL), run = f.run, sh = f.sh, bp = f.bp;
@@ -122,8 +122,6 @@ final class MotionBody {
         f.gaitW = a;
         f.duty = duty;
         f.gaitV = v;
-        f.cad = cad;
-        f.travel = duty * c * 16;
         double ampDeg = Math.toDegrees(amp), thR = 0;
         for (int i = 0; i < 2; i++) {
             double q = i == 0 ? st.psi : frac(st.psi + 0.5);

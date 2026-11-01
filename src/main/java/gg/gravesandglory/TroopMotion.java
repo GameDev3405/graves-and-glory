@@ -151,7 +151,6 @@ public final class TroopMotion {
         if(!lies)b.lying=null;
         else if(b.lying!=null&&b.lyingModel==m){m.applyPose(b.lying);return;} // a lying body's pose no longer changes: put it back
         MotionInput in=input(e,fam,b,limbAngle,limbDistance,age,headYaw,headPitch);
-        if(m.sole!=null)b.state.frame.sole=m.sole;
         MotionEngine.pose(in,b.state,fam.family(),b.pose);
         scene(b,fam,e.getId(),in.time());
         apply(m,b.pose);
@@ -399,7 +398,7 @@ public final class TroopMotion {
         return new MotionInput(now,limbAngle,speed,headYaw,headPitch,yawRate,stance,aim,shieldUp,enemy,dead,deathS,a,h,BOUNDS_SEED);
     }
     private static void drive(TroopModel<?> m,double[] r,boolean shield,int frames,BoundsFrames f){
-        MotionEngine.State st=new MotionEngine.State();if(m.sole!=null)st.frame.sole=m.sole;
+        MotionEngine.State st=new MotionEngine.State();
         for(int i=0;i<frames;i++){simulate(m,st,f.at(i,BOUNDS_T0+i*.05),shield);grow(r,m.extent());}
     }
     /** Widens r (radius, lowest bottom, highest top) by one extent (TroopModel.extent: radius, bottom, top). */

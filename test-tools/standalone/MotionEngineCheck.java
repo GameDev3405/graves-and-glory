@@ -73,15 +73,7 @@ public final class MotionEngineCheck {
         run("hit variants", MotionEngineCheck::hitVariants);
         run("hit direction and weight", () -> hitDirectionWeight(fam));
         run("interrupt steps", MotionEngineCheck::interruptSteps);
-        run("solveAt", MotionEngineCheck::solveAt);
-        run("sole on ground", () -> soleOnGround(rig));
         run("ground velocity", MotionEngineCheck::groundVelocity);
-        held("stride slide", () -> strideSlide(rig));
-        held("swing lift", () -> swingLift(rig));
-        run("turn in place", () -> turnInPlace(rig));
-        held("crowd nudge", () -> crowdNudge(rig));
-        held("knock planted", () -> knockPlanted(rig));
-        run("dead no plant", MotionEngineCheck::deadNoPlant);
         run("corpse ground", () -> corpseGround(rig));
         if (failed > 0) {
             System.out.println("MotionEngineCheck: " + failed + " checks FAILED");
@@ -711,83 +703,6 @@ public final class MotionEngineCheck {
         return e > 23.5 + 0.5 / 60 && e < 23.6 + 0.5 / 60 ? 0.1 : 1 / 60.0;
     }
 
-    // ---- G4: the sole's corners stand on the ground (Task 16, R94, R102) ----
-
-    /** solveAt with the effector at the tip (z0 = 0, y = SHIN) gives what solve gives, to 1e-9, for 1000 random reachable targets. */
-    static String solveAt() {
-        Random r = new Random(1640);
-        double worst = 0;
-        double[] a = new double[3], b = new double[3], v = new double[3], t = new double[3];
-        for (int n = 0; n < 1000; n++) {
-            int i = n & 1;
-            double[] root = {r.nextGaussian() * 10, r.nextGaussian() * 10, r.nextGaussian() * 10, r.nextGaussian(), r.nextGaussian(), r.nextGaussian()};
-            double[] leg = {r.nextGaussian() * 20, r.nextGaussian() * 20, r.nextGaussian() * 10, 0, 0, 0}, shin = {r.nextDouble() * 60, 0, 0, 0, 0, 0};
-            // a reachable target: the hip plus a direction times a length under the leg
-            double[] dir = {r.nextGaussian(), r.nextGaussian() + 3, r.nextGaussian()};
-            double len = 0.5 + r.nextDouble() * (MotionFeet.LEG - 0.6), dn = Math.sqrt(dir[0] * dir[0] + dir[1] * dir[1] + dir[2] * dir[2]);
-            double[] hip = {MotionFeet.HIPS[i][0] + leg[3] + dir[0] / dn * len, MotionFeet.HIPS[i][1] + leg[4] + dir[1] / dn * len, MotionFeet.HIPS[i][2] + leg[5] + dir[2] / dn * len};
-            MotionFeet.rotate(hip, root);
-            for (int c = 0; c < 3; c++) t[c] = hip[c] + root[3 + c];
-            MotionFeet.solve(i, t, root, leg, shin, a, v);
-            MotionFeet.solveAt(i, t, 0, MotionFeet.SHIN, root, leg, b, v);
-            for (int c = 0; c < 3; c++) worst = Math.max(worst, Math.abs(a[c] - b[c]));
-        }
-        check(worst < 1e-9, "solveAt: at the tip it differs from solve by " + worst + " degrees");
-        return String.format("worst %.2e deg", worst);
-    }
-
-    /**
-     * Sole on ground: each stance, 8 seeds, 3 s standing at 60 fps. The lowest of each shin's four sole corners never goes more
-     * than 0.16 px (0.01 block) under the ground (y = 24), and each foot's corners spread (highest above lowest) at most 0.8 px
-     * more than the stance clip's own legs spread them.
-     */
-    static String soleOnGround(Map<String, RigBone> rig) {
-        Map<String, Clip> all = new HashMap<>();
-        MotionEngine.Family fam = realSwordShield(all);
-        MotionMath.Seed[] seeds = seeds(8, 1600);
-        double[] s = MotionFeet.KNIGHT_SOLE;
-        double low = 0, hover = 0;
-        String lowAt = "none", hoverAt = "none";
-        StringBuilder per = new StringBuilder();
-        for (String stance : List.of("idle", "guard", "brace", "wall", "carry", "shield")) {
-            double sLow = 0, sHover = 0;
-            Clip clip = all.get(stance);
-            for (int k = 0; k < seeds.length; k++) {
-                Drive d = new Drive(seeds[k]);
-                switch (stance) {
-                    case "guard" -> d.enemy = true;
-                    case "brace" -> d.stance = "brace";
-                    case "wall" -> d.stance = "wall";
-                    case "carry" -> d.stance = "run";
-                    case "shield" -> d.shield = true;
-                    default -> { }
-                }
-                var st = new MotionEngine.State();
-                Pose out = new Pose();
-                Map<String, double[]> authored = new HashMap<>();
-                for (int f = 0; f < 180; f++) {
-                    MotionEngine.pose(d.in(), st, fam, out);
-                    Map<String, double[]> pose = out.snapshot();
-                    authored.clear();
-                    if (clip != null) clip.sample(f / 60.0 % clip.length(), authored);
-                    for (String shin : MotionFeet.SHINS) {
-                        double[] eng = spread(rig, pose, shin, s), auth = spread(rig, authored, shin, s);
-                        double below = 24 - eng[1], extra = (eng[1] - eng[0]) - (auth[1] - auth[0]);
-                        if (below < sLow) sLow = below;
-                        if (extra > sHover) sHover = extra;
-                        if (below < low) { low = below; lowAt = stance + " seed " + k + " frame " + f + " " + shin; }
-                        if (extra > hover) { hover = extra; hoverAt = stance + " seed " + k + " frame " + f + " " + shin; }
-                    }
-                    d.step(1 / 60.0);
-                }
-            }
-            per.append(String.format(" %s %.3f/%.3f", stance, sLow, sHover));
-        }
-        check(low >= -0.16, "sole on ground: a sole corner went " + (-low) + " px under the ground, worst at " + lowAt + ";" + per);
-        check(hover < 0.8, "sole on ground: a sole spread " + hover + " px more than its stance authors, worst at " + hoverAt + ";" + per);
-        return String.format("lowest %.3f px, extra spread %.3f px (stance lowest/spread:%s)", low, hover, per);
-    }
-
     // ---- G1-G3: the ground input and planting while moving (Task 16 fix round 1b) ----
 
     /** groundVelocity: the body-frame velocity follows a walk, a strafe and a backpedal at a turned yaw; a 3-block jump starts afresh. */
@@ -835,13 +750,15 @@ public final class MotionEngineCheck {
         final List<double[][][]> world = new ArrayList<>();
         /** [frame][foot][corner] = entity-space px (y down, ground 24). */
         final List<double[][][]> rig = new ArrayList<>();
-        final List<boolean[]> anchored = new ArrayList<>(), settling = new ArrayList<>();
-        final List<double[]> plantW = new ArrayList<>(), q = new ArrayList<>(), body = new ArrayList<>();
+        final List<double[]> q = new ArrayList<>(), body = new ArrayList<>();
         final List<Double> duty = new ArrayList<>(), gaitW = new ArrayList<>();
         int frames() { return world.size(); }
         /** Foot k's lowest corner height (blocks) at frame f. */
         double low(int f, int k) { double lo = Double.MAX_VALUE; for (double[] c : world.get(f)[k]) lo = Math.min(lo, c[1]); return lo; }
     }
+
+    /** The knight's sole in the shin's frame: {x0, x1, y, z0, z1} px (the boot's floor face). */
+    static final double[] SOLE = {-2.5, 2.5, 6, -3, 2};
 
     interface Sched { void at(Drive d, double e, int frame); }
 
@@ -852,7 +769,7 @@ public final class MotionEngineCheck {
         var st = new MotionEngine.State();
         Pose out = new Pose();
         GroundTrace t = new GroundTrace();
-        double[] s = MotionFeet.KNIGHT_SOLE;
+        double[] s = SOLE;
         for (int f = 0; f < Math.round(seconds * 60); f++) {
             double e = f / 60.0;
             sched.at(d, e, f);
@@ -871,9 +788,6 @@ public final class MotionEngineCheck {
             }
             t.world.add(w);
             t.rig.add(r);
-            t.anchored.add(st.anchored.clone());
-            t.settling.add(st.settling.clone());
-            t.plantW.add(st.plantW.clone());
             t.q.add(st.frame.q.clone());
             t.body.add(new double[]{d.gx, d.gz, d.dead ? 1 : 0});
             t.duty.add(st.frame.duty);
@@ -924,181 +838,6 @@ public final class MotionEngineCheck {
         }
     }
 
-    /** strideSlide (G1/G3): every plant of a ground-driven stride slides at most 0.8 px (0.05 block), at six gaits and four seeds. */
-    static String strideSlide(Map<String, RigBone> rig) {
-        MotionEngine.Family fam = realSwordShield(new HashMap<>());
-        MotionMath.Seed[] seeds = seeds(4, 1800);
-        double worst = 0, low = Double.MAX_VALUE;
-        String where = "none";
-        StringBuilder per = new StringBuilder();
-        for (String name : STRIDES) {
-            double sw = 0, plants = 0;
-            for (int k = 0; k < seeds.length; k++) {
-                GroundTrace t = groundRun(rig, fam, seeds[k], 10, (d, e, f) -> stride(name, d, e));
-                double[] r = plantSlides(t, 0, t.frames());
-                plants += r[1];
-                sw = Math.max(sw, r[0]);
-                low = Math.min(low, lowestPx(t));
-                if (r[0] > worst) { worst = r[0]; where = name + " seed " + k + " plant at frame " + r[2]; }
-            }
-            per.append(String.format(" %s %.3fpx/%d", name, sw * 16, (int) plants));
-        }
-        check(worst <= 0.05, "stride slide: a plant slid " + worst * 16 + " px, worst at " + where + ";" + per);
-        check(low >= -0.16, "stride slide: a sole corner went " + (-low) + " px under the floor");
-        return String.format("worst plant %.3f px, lowest corner %.3f px (gait worst/plants:%s)", worst * 16, low, per);
-    }
-
-    /** swingLift (G2): crawl and backpedal swings each lift the foot's lowest corner 1.3 px clear; no corner goes under the floor. */
-    static String swingLift(Map<String, RigBone> rig) {
-        MotionEngine.Family fam = realSwordShield(new HashMap<>());
-        MotionMath.Seed[] seeds = seeds(4, 1900);
-        double least = Double.MAX_VALUE, low = Double.MAX_VALUE;
-        int swings = 0;
-        String where = "none";
-        for (String name : List.of("crawl", "backpedal")) {
-            for (int k = 0; k < seeds.length; k++) {
-                GroundTrace t = groundRun(rig, fam, seeds[k], 10, (d, e, f) -> stride(name, d, e));
-                low = Math.min(low, lowestPx(t));
-                for (int foot = 0; foot < 2; foot++) {
-                    int start = -1;
-                    double peak = 0;
-                    for (int f = 0; f < t.frames(); f++) {
-                        boolean sw = t.gaitW.get(f) > 0 && t.q.get(f)[foot] >= t.duty.get(f);
-                        if (sw) {
-                            if (start < 0) { start = f; peak = 0; }
-                            peak = Math.max(peak, t.low(f, foot) * 16);
-                        } else if (start >= 0) {
-                            if (start > 30) {   // a whole swing, past the move blend
-                                swings++;
-                                if (peak < least) { least = peak; where = name + " seed " + k + " foot " + foot + " swing from frame " + start; }
-                            }
-                            start = -1;
-                        }
-                    }
-                }
-            }
-        }
-        check(swings > 20, "swing lift: only " + swings + " swings");
-        check(least >= 1.3, "swing lift: a swing peaked at " + least + " px, at " + where);
-        check(low >= -0.16, "swing lift: a sole corner went " + (-low) + " px under the floor");
-        return String.format("%d swings, lowest peak %.3f px, lowest corner %.3f px", swings, least, low);
-    }
-
-    /** Settle steps started in a trace from frame from on. */
-    static int settles(GroundTrace t, int from) {
-        int n = 0;
-        for (int f = Math.max(1, from); f < t.frames(); f++) for (int k = 0; k < 2; k++) if (t.settling.get(f)[k] && !t.settling.get(f - 1)[k]) n++;
-        return n;
-    }
-
-    /**
-     * turnInPlace (G3): standing, the body turns 90 deg/s for 2 s with the turn-in-place step kept out (body yaw rate input 0, so the
-     * anchors are kept): the planted soles hold their world spot (each plant slides at most 0.8 px) and settle steps catch up.
-     */
-    static String turnInPlace(Map<String, RigBone> rig) {
-        MotionEngine.Family fam = realSwordShield(new HashMap<>());
-        MotionMath.Seed[] seeds = seeds(4, 2000);
-        double worst = 0;
-        int steps = Integer.MAX_VALUE;
-        String where = "none";
-        for (int k = 0; k < seeds.length; k++) {
-            GroundTrace t = groundRun(rig, fam, seeds[k], 5, (d, e, f) -> d.turn = e >= 1.5 && e < 3.5 ? 90 : 0);
-            double[] r = plantSlides(t, 60, t.frames());
-            if (r[0] > worst) { worst = r[0]; where = "seed " + k + " plant at frame " + r[2]; }
-            steps = Math.min(steps, settles(t, 90));
-        }
-        check(worst <= 0.05, "turn in place: a plant slid " + worst * 16 + " px, worst at " + where);
-        check(steps >= 2, "turn in place: only " + steps + " settle steps");
-        return String.format("worst plant %.3f px, fewest settle steps %d", worst * 16, steps);
-    }
-
-    /** crowdNudge (G3): standing, pushed sideways 0.02 block a tick for 1 s: no plant slides past 0.8 px, settle steps follow, no sole corner strays past 5.6 px from the centre line. */
-    static String crowdNudge(Map<String, RigBone> rig) {
-        MotionEngine.Family fam = realSwordShield(new HashMap<>());
-        MotionMath.Seed[] seeds = seeds(4, 2100);
-        double worst = 0, wide = 0;
-        int steps = Integer.MAX_VALUE;
-        String where = "none";
-        for (int k = 0; k < seeds.length; k++) {
-            GroundTrace t = groundRun(rig, fam, seeds[k], 5, (d, e, f) -> { d.vL = e >= 1.5 && e < 2.5 ? 0.4 : 0; d.target = 0; });
-            double[] r = plantSlides(t, 60, t.frames());
-            if (r[0] > worst) { worst = r[0]; where = "seed " + k + " plant at frame " + r[2]; }
-            steps = Math.min(steps, settles(t, 90));
-            for (int f = 60; f < t.frames(); f++) for (double[][] foot : t.rig.get(f)) for (double[] c : foot) wide = Math.max(wide, Math.abs(c[0]));
-        }
-        check(worst <= 0.05, "crowd nudge: a plant slid " + worst * 16 + " px, worst at " + where);
-        check(steps >= 1, "crowd nudge: no settle step");
-        check(wide <= 5.6, "crowd nudge: a sole corner strayed " + wide + " px from the centre line");
-        return String.format("worst plant %.3f px, fewest settle steps %d, widest corner %.3f px", worst * 16, steps, wide);
-    }
-
-    /**
-     * knockPlanted (G3): walking at 3.9, shoved 0.5 block back over 0.1 s. The planted feet let go by 3 frames after the shove,
-     * each foot's entity-space step stays at most 2 px a frame through it, both plant again within a gait cycle of its end, and
-     * no corner goes under the floor.
-     */
-    static String knockPlanted(Map<String, RigBone> rig) {
-        MotionEngine.Family fam = realSwordShield(new HashMap<>());
-        MotionMath.Seed[] seeds = seeds(4, 2200);
-        int shove = 180, len = 6;
-        double step = 0, low = Double.MAX_VALUE, resume = 0, cycle = Double.MAX_VALUE;
-        int late = 0;
-        String where = "none";
-        for (int k = 0; k < seeds.length; k++) {
-            GroundTrace t = groundRun(rig, fam, seeds[k], 6, (d, e, f) -> {
-                d.walk(3.9, 0);
-                if (f >= shove && f < shove + len) d.shove(-0.5 / len, 0);
-            });
-            low = Math.min(low, lowestPx(t));
-            for (int foot = 0; foot < 2; foot++) {
-                // released by shove end + 3 frames, if it was planted when the shove began
-                if (t.anchored.get(shove)[foot]) {
-                    int f = shove;
-                    while (f < t.frames() && t.anchored.get(f)[foot] && f <= shove + len + 3) f++;
-                    if (t.anchored.get(Math.min(f, t.frames() - 1))[foot]) late++;
-                }
-                for (int f = shove - 30; f < shove + 60; f++) {
-                    double[] a = t.rig.get(f - 1)[foot][0], b = t.rig.get(f)[foot][0];
-                    double dd = Math.hypot(b[0] - a[0], b[2] - a[2]);
-                    if (dd > step) { step = dd; where = "seed " + k + " foot " + foot + " frame " + f; }
-                }
-                int f = shove + len;
-                while (f < t.frames() && !t.anchored.get(f)[foot]) f++;
-                resume = Math.max(resume, (f - shove - len) / 60.0);
-                // the gait cycle: frames between this foot's last two touch-downs
-                int w1 = -1, w2 = -1;
-                for (int g = 1; g < t.frames(); g++) if (t.q.get(g)[foot] < t.q.get(g - 1)[foot]) { w1 = w2; w2 = g; }
-                if (w1 >= 0) cycle = Math.min(cycle, (w2 - w1) / 60.0);
-            }
-        }
-        check(late == 0, "knock planted: " + late + " planted feet still held 3 frames after the shove");
-        check(step <= 2, "knock planted: a foot stepped " + step + " px in a frame, at " + where);
-        check(resume <= cycle + 1 / 60.0, "knock planted: planting resumed " + resume + " s after the shove, the cycle is " + cycle + " s");
-        check(low >= -0.16, "knock planted: a sole corner went " + (-low) + " px under the floor");
-        return String.format("largest frame step %.3f px, resumed in %.3f s (cycle %.3f s), lowest corner %.3f px", step, resume, cycle, low);
-    }
-
-    /** deadNoPlant (G3): dying mid-walk, no foot is anchored or settling from the death frame on, and the plant weights fall to 0 within PLANT_BLEND. */
-    static String deadNoPlant() {
-        MotionEngine.Family fam = realSwordShield(new HashMap<>());
-        MotionMath.Seed[] seeds = seeds(4, 2300);
-        int death = 120, held = 0;
-        double after = 0;
-        for (MotionMath.Seed seed : seeds) {
-            GroundTrace t = groundRun(rig(), fam, seed, 4, (d, e, f) -> {
-                if (!d.dead) d.walk(3.9, 0);
-                if (f == death) { d.walk(0, 0); d.die(0); }
-            });
-            for (int f = death; f < t.frames(); f++) for (int k = 0; k < 2; k++) {
-                if (t.anchored.get(f)[k] || t.settling.get(f)[k]) held++;
-                if (f >= death + Math.ceil(MotionEngine.PLANT_BLEND * 60)) after = Math.max(after, t.plantW.get(f)[k]);
-            }
-        }
-        check(held == 0, "dead no plant: a foot stayed planted on " + held + " dead frames");
-        check(after == 0, "dead no plant: a plant weight was " + after + " past PLANT_BLEND");
-        return String.format("planted dead frames %d, plant weight past the blend %.4f", held, after);
-    }
-
     /**
      * corpseGround (Task 16 item 5): a body killed by each kind of blow (any, slash, stab, blunt, arrow, magic) from eight bearings,
      * four seeds each, half a second past its death track's end, lies with its lowest box corner within 0.32 px (0.02 block) of the
@@ -1137,35 +876,17 @@ public final class MotionEngineCheck {
         return String.format(Locale.ROOT, "%d bodies, lowest corner %+.3f..%+.3f px off the ground", bodies, lo, hi);
     }
 
-    /** One shin's four sole corners in entity space: {highest y, lowest y} (y down). */
-    static double[] spread(Map<String, RigBone> rig, Map<String, double[]> pose, String shin, double[] s) {
-        double hi = Double.MAX_VALUE, lo = -Double.MAX_VALUE;
-        for (int cx = 0; cx < 2; cx++) for (int cz = 3; cz < 5; cz++) {
-            double y = world(rig, pose, shin, new double[]{s[cx], s[2], s[cz]})[1];
-            hi = Math.min(hi, y);
-            lo = Math.max(lo, y);
-        }
-        return new double[]{hi, lo};
-    }
-
     // ---- the section 6.1 behaviours carried over from Task 12 ----
 
-    /**
-     * Feet planted: standing with speed 0, through stance changes, hits, a hip-moving attack and look changes, each foot slides
-     * under 0.05 px in all (MotionGrade's measure, SoleSlide: the corners touching the floor) and its lowest corner stays within
-     * 0.16 px (0.01 block) of the floor. The sole's middle is not the measure: the foot is rigid to the shin, so a leg hit's
-     * buckle lifts the heel about the toe edge, which stays put while the middle rises (about 2 px of heel at most).
-     */
+    /** Feet planted: standing with speed 0, through stance changes, hits, a hip-moving attack and look changes, the feet move under 0.05 px. */
     static String feetPlanted(Map<String, RigBone> rig, MotionEngine.Family fam, MotionMath.Seed[] seeds) {
-        double worst = 0, off = 0;
-        String where = "none", offAt = "none";
-        double[] so = MotionFeet.KNIGHT_SOLE;
+        double worst = 0;
+        String where = "none";
         for (int s = 0; s < 8; s++) {
             Drive d = new Drive(seeds[s]);
             var st = new MotionEngine.State();
             Pose out = new Pose();
-            double[][][] prev = null;
-            double[] slid = new double[2];
+            double[][] first = null;
             for (int f = 0; f < 60 * 25; f++) {
                 double e = f / 60.0;
                 if (at(e, 6)) d.enemy = true;
@@ -1178,27 +899,17 @@ public final class MotionEngineCheck {
                 if (at(e, 22)) d.stance = "wall";
                 MotionEngine.pose(d.in(), st, fam, out);
                 Map<String, double[]> pose = out.snapshot();
-                double[][][] c = new double[2][4][];
+                double[][] feet = {world(rig, pose, "right_shin", new double[]{0, 6, 0}), world(rig, pose, "left_shin", new double[]{0, 6, 0})};
+                if (first == null) first = feet;
                 for (int k = 0; k < 2; k++) {
-                    int n = 0;
-                    double lo = Double.MAX_VALUE;
-                    for (int cx = 0; cx < 2; cx++) for (int cz = 3; cz < 5; cz++) {
-                        double[] p = world(rig, pose, MotionFeet.SHINS[k], new double[]{so[cx], so[2], so[cz]});
-                        c[k][n++] = new double[]{p[0] / 16, (24 - p[1]) / 16, p[2] / 16};
-                        lo = Math.min(lo, 24 - p[1]);
-                    }
-                    String at = "seed " + s + " t " + String.format("%.3f", e) + (k == 0 ? " right" : " left") + " foot";
-                    if (prev != null) slid[k] += SoleSlide.step(prev[k], c[k]) * 16;
-                    if (!(slid[k] <= worst)) { worst = slid[k]; where = at; }
-                    if (!(Math.abs(lo) <= off)) { off = Math.abs(lo); offAt = at; }
+                    double dist = Math.sqrt(Math.pow(feet[k][0] - first[k][0], 2) + Math.pow(feet[k][1] - first[k][1], 2) + Math.pow(feet[k][2] - first[k][2], 2));
+                    if (!(dist <= worst)) { worst = dist; where = "seed " + s + " t " + String.format("%.3f", e) + (k == 0 ? " right" : " left") + " foot"; }
                 }
-                prev = c;
                 d.step(1 / 60.0);
             }
         }
-        check(worst < 0.05, "feet planted: a standing foot slid " + worst + " px, worst at " + where);
-        check(off <= 0.16, "feet planted: a standing foot's lowest corner was " + off + " px off the floor at " + offAt);
-        return String.format("worst slide %.5f px, floor %.3f px", worst, off);
+        check(worst < 0.05, "feet planted: a standing foot moved " + worst + " px, worst at " + where);
+        return String.format("worst %.5f px", worst);
     }
 
     /** Hit zones: a head hit's peak rotation is largest on the head, a legs hit's on the shins (procedural reactions, no hit clips). */

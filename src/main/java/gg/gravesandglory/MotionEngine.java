@@ -216,51 +216,20 @@ public final class MotionEngine {
         final Pose fromVel = new Pose();
         /** P1: scratch for the stance and interrupt cross-fade bounds. */
         final Pose stanceOld = new Pose(), stanceNew = new Pose();
-        final double[][] feet = new double[2][3], sol = new double[2][6];
+        final double[][] feet = new double[2][3], sol = new double[2][3];
         final double[] vec = new double[3], rootFull = new double[6], knee = new double[2];
-        final double[] orient = new double[9], aim = new double[3];
         /** Ground input (Task 16): last position (blocks) and yaw (deg), the smoothed body-frame velocity (b/s), time off the ground. */
         double gx, gy, gz, gyaw, vF, vL, vU, airT;
         boolean gInit, teleport;
         /** G1: the gait's own phase (cycles). */
         double psi;
         boolean psiInit;
-        /** G3 planting: each foot's step start time (s) and phase last frame, and its plant weight; whether it is held, settling. */
-        final double[] liftT = new double[2], prevQ = {-1, -1}, plantW = new double[2];
-        final boolean[] anchored = new boolean[2], settling = new boolean[2];
-        /** G3: whether the plant has started; whether the feet were let go last frame (a teleport, the air or death). */
-        boolean plantInit, released;
-        double groundW;
-        /**
-         * G4 rocker: each foot's contact (the flat sole's centre-line point under its knee, px), heading (deg, as a bone's yaw),
-         * lift (px), last solved knee bend and pitch (deg), the edge it rests on (0 heel, 1 toe), and its channels' own heading.
-         */
-        final double[][] con = new double[2][3];
-        final double[] conPsi = new double[2], lift = new double[2], kap = new double[2], phi = new double[2], chPsi = new double[2];
-        final int[] pivot = new int[2];
-        /**
-         * G4 standing: the pitch each foot stands at (deg, heel up positive: its authored pitch, the heel lifted by its knee's
-         * buckle, then rocked by the standing solve) and the edge its authored pitch rests on (0 heel, 1 toe); a leg's stance,
-         * the solve's result, its trial step, scratch and limits, and each knee's least bend (rad); the edge each standing foot
-         * rocks on (+1 toe, -1 heel).
-         */
-        final double[] tphi = new double[2], stand = new double[6], standX = new double[5], standT = new double[5], standS = new double[150];
-        final double[] standLo = new double[5], standHi = new double[5], standK = new double[2];
-        final int[] rpiv = new int[2], standSide = new int[2];
-        /** G3 steps (a swing or a settle): where each started (contact, heading, lift, phase) and where it lands, and whether that is fixed. */
-        final double[][] stepFrom = new double[2][3], stepTo = new double[2][3], slipRef = new double[2][2];
-        final double[] stepPsi0 = new double[2], stepPsi1 = new double[2], stepH0 = new double[2], stepS0 = new double[2];
-        final boolean[] swinging = new boolean[2], stepFrozen = new boolean[2];
-        /** G3: the stance leg setting the hips' height (-1 none), its knee bend aim (deg), and the hips' height it set last (px, NaN none). */
-        int driver = -1;
-        double kapD, hipY = Double.NaN;
-        final MotionFeet.Rock[] rocks = {new MotionFeet.Rock(), new MotionFeet.Rock()};
     }
 
     /**
      * The body-frame ground velocity (Task 16 ground input): blocks per second forward, to the left and up, smoothed at VEL_HZ,
      * from the change in the entity's position since last frame. A first frame, a move over GROUND_JUMP blocks or a gap over
-     * GROUND_GAP s starts afresh at rest and marks a teleport (planted feet let go). Without a ground the velocity is zero and the
+     * GROUND_GAP s starts afresh at rest and marks a teleport. Without a ground the velocity is zero and the
      * engine strides by limbSpeed. Airborne only after AIR_T s off the ground, so a one-frame packet flicker does not count.
      */
     static void ground(MotionInput.Ground g, State st, Frame f, double rawDt) {
@@ -311,15 +280,11 @@ public final class MotionEngine {
         double m, run, cw, sh, bp, tw, lw, lookW, settle, straps, plant, calm;
         /** How much of the pose leg-keying actions own, and how much the aim stance does. */
         double bodyAction, aim;
-        /** The sole in shin space, {xMin, xMax, y, zToe, zHeel} px (G4); the knight's until the troop's model sets it. */
-        double[] sole = MotionFeet.KNIGHT_SOLE;
         /** Ground input (Task 16): whether there is one, whether airborne, the body-frame velocity (b/s), this frame's turn (deg) and its travel forward and left (blocks). */
         boolean ground, air;
         double vF, vL, dyaw, dF, dL;
         /** G1 stride (ground only): its weight, duty, horizontal speed (b/s) and each leg's phase (right, left) in [0, 1). */
         double gaitW, duty, gaitV;
-        /** G1 stride: its cadence (cycles/s) and how far the hips travel over a planted foot (px). */
-        double cad, travel;
         final double[] q = new double[2];
     }
 
