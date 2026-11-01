@@ -68,6 +68,7 @@ def run(args):
         names='Spec BattleMath MatchStats Progression Profile ProfileMigration RosterMath CounterMath LevelMath CreditLog AdmissionPolicy SocialHub CampTerrain CompatibilityPolicy HouseRoute StepHop Wedge LayoutMarker LegacyDataMigration TroopFaces UiMath HintText FeedLines MotionMath Clip MotionInput Pose MotionBody MotionFeet MotionStack MotionEngine'.split()
         checks=sorted((ROOT/'test-tools/standalone').glob('*Check.java'))
         sources=[ROOT/'src/main/java/gg/gravesandglory'/(n+'.java') for n in names]
+        sources+=[ROOT/'test-tools/java/gg/gravesandglory/SoleSlide.java']  # pure geometry the motion grade shares with SoleSlideCheck
         game_guard()
         step('java-compile',[jdk/'bin/javac','--release','17','-cp',gson[0],'-d',classes,*sources,*checks])
         for test in checks: step(test.stem,[jdk/'bin/java','-cp',str(classes)+os.pathsep+str(gson[0]),'gg.gravesandglory.'+test.stem])
