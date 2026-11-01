@@ -74,6 +74,7 @@ public final class MotionEngineCheck {
         run("hit direction and weight", () -> hitDirectionWeight(fam));
         run("interrupt steps", MotionEngineCheck::interruptSteps);
         run("ground velocity", MotionEngineCheck::groundVelocity);
+        run("stance slip", () -> stanceSlip(rig));
         run("corpse ground", () -> corpseGround(rig));
         if (failed > 0) {
             System.out.println("MotionEngineCheck: " + failed + " checks FAILED");
@@ -824,7 +825,7 @@ public final class MotionEngineCheck {
         return lo;
     }
 
-    static final String[] STRIDES = {"walk", "run", "crawl", "backpedal", "strafe", "ramp"};
+    static final String[] STRIDES = {"walk", "run", "crawl", "backpedal", "strafe", "ramp", "shuffle", "stroll", "diagonal"};
 
     static void stride(String name, Drive d, double e) {
         switch (name) {
@@ -834,8 +835,73 @@ public final class MotionEngineCheck {
             case "backpedal" -> { d.stance = "fall_back"; d.walk(-2.9, 0); }
             case "strafe" -> d.walk(0, 1.3);
             case "ramp" -> d.walk(6.1 * Math.min(1, e / 2), 0);
+            case "shuffle" -> { d.enemy = true; d.walk(1.1, 0.4); }
+            case "stroll" -> d.walk(0.7, 0);
+            case "diagonal" -> d.walk(-2.0, -1.5);
             default -> throw new AssertionError(name);
         }
+    }
+
+    /**
+     * The stance slip ratio of a trace (R109, Fresh Animations-style feet) from frame from on: over frames where the same foot
+     * is the lower one in both (by its sole's middle) and within 0.5 px of the ground, that middle's ground travel over the
+     * body's. Also the lowest sole corner (px) and the
+     * swing sole middle's least peak lift per step (px).
+     */
+    static double[] stanceSlip(GroundTrace t, int from) {
+        double foot = 0, body = 0, lo = Double.MAX_VALUE;
+        int prevLow = -1;
+        for (int f = from; f < t.frames(); f++) {
+            double h0 = mid(t.world.get(f)[0])[1], h1 = mid(t.world.get(f)[1])[1];
+            int low = h0 <= h1 ? 0 : 1;
+            if (Math.min(h0, h1) * 16 > 0.5) low = -1;
+            lo = Math.min(lo, Math.min(t.low(f, 0), t.low(f, 1)) * 16);
+            if (low >= 0 && low == prevLow) {
+                double[] a = mid(t.world.get(f - 1)[low]), b = mid(t.world.get(f)[low]);
+                foot += Math.hypot(b[0] - a[0], b[2] - a[2]);
+                body += Math.hypot(t.body.get(f)[0] - t.body.get(f - 1)[0], t.body.get(f)[1] - t.body.get(f - 1)[1]);
+            }
+            prevLow = low;
+        }
+        // each swing's peak lift, a swing being a run of frames with the sole's middle over 0.25 px up, whole runs only
+        double minPeak = Double.MAX_VALUE;
+        for (int k = 0; k < 2; k++) {
+            double peak = -1;
+            boolean whole = false;
+            for (int f = from; f < t.frames(); f++) {
+                double hk = mid(t.world.get(f)[k])[1] * 16;
+                if (hk > 0.25) peak = Math.max(peak, hk);
+                else { if (peak >= 0 && whole) minPeak = Math.min(minPeak, peak); peak = -1; whole = true; }
+            }
+        }
+        return new double[]{body > 0 ? foot / body : 0, lo, minPeak};
+    }
+
+    static double[] mid(double[][] corners) {
+        double[] m = new double[3];
+        for (double[] c : corners) for (int i = 0; i < 3; i++) m[i] += c[i] / corners.length;
+        return m;
+    }
+
+    /** stanceSlip (R109): at nine gaits and four seeds the stance foot's ground travel is under 0.15 of the body's, no sole corner sinks past 2 px, and every swing lifts the foot 1 px clear. */
+    static String stanceSlip(Map<String, RigBone> rig) {
+        MotionEngine.Family fam = realSwordShield(new HashMap<>());
+        MotionMath.Seed[] seeds = seeds(4, 1800);
+        StringBuilder sb = new StringBuilder(), bad = new StringBuilder();
+        for (String name : STRIDES) {
+            double worst = 0, lo = Double.MAX_VALUE, lift = Double.MAX_VALUE;
+            for (MotionMath.Seed seed : seeds) {
+                GroundTrace t = groundRun(rig, fam, seed, 8, (d, e, f) -> stride(name, d, e));
+                double[] r = stanceSlip(t, name.equals("ramp") ? 150 : 90);
+                worst = Math.max(worst, r[0]);
+                lo = Math.min(lo, r[1]);
+                lift = Math.min(lift, r[2]);
+            }
+            if (!(worst < 0.15 && lift >= 1)) bad.append(name).append(' ');
+            sb.append(String.format(Locale.ROOT, "%s %.3f (lowest %+.2f px, least lift %.2f px); ", name, worst, lo, lift));
+        }
+        check(bad.length() == 0, "stance slip: " + bad + "missed (slip under 0.15, lift 1 px; moving corners are reported only): " + sb);
+        return sb.toString();
     }
 
     /**

@@ -34,6 +34,7 @@ final class MotionFeet {
      * changes how much the clips own the legs can count the hand-off in its pop budget.
      */
     static void plant(MotionEngine.Frame f, MotionEngine.State st, Pose out) {
+        stride(f, st, out);
         double base = (1 - f.m) * (1 - f.tw) * f.plant, pw = base * (1 - Math.min(1, f.bodyAction));
         double[] k = st.knee;
         k[0] = Math.max(0, st.react[MotionBody.KNEE_R]) * f.lw;
@@ -100,6 +101,48 @@ final class MotionFeet {
             out.add("left_shin", RX, freeL);
             out.add("left_leg", RX, -freeL / 2);
             out.add("root", TY, LEG * (1 - Math.cos(Math.toRadians((freeR + freeL) / 4))));
+        }
+    }
+
+    /** The ground under a standing rig (px, y down) and the knee bend a striding stance leg keeps at the least (degrees). */
+    static final double GROUND = 24, STRIDE_KNEE = 8;
+
+    /**
+     * G1 (R109): stands a striding unit's stance foot on the ground and lifts its swing foot. Each foot's target is where the
+     * legs' own channels put it with the root at rest, so the root's bob, sway and twist do not carry the feet; MotionBody's
+     * stride makes that sweep travel back at the body's speed in stance. A stance foot's height is the ground; a swing foot
+     * rises on a sine from the ground and back, LIFT_MIN high at a walk and LIFT_RUN at a run. The hips drop as far as the feet need to reach
+     * them with a soft knee (the walk's vault comes from this), then each leg is solved analytically as in plant. Eased by the
+     * gait weight; a death, a turn in place or a clip that keys the legs hands the feet back. No world anchors: a standing unit's
+     * feet are plant's.
+     */
+    static void stride(MotionEngine.Frame f, MotionEngine.State st, Pose out) {
+        double gw = f.gaitW * f.plant * (1 - f.tw) * (1 - Math.min(1, f.bodyAction));
+        if (!(gw > 0)) return;
+        double[] root = out.get("root"), full = st.rootFull, v = st.vec;
+        System.arraycopy(root, 0, full, 0, 6);
+        double soft = LEG * Math.cos(Math.toRadians(STRIDE_KNEE / 2)), dip = 0;
+        for (int i = 0; i < 2; i++) {
+            double[] leg = out.get(LEGS[i]), t = st.feet[i];
+            foot(i, leg, out.get(SHINS[i]), t);
+            t[1] = GROUND - (MotionBody.LIFT_MIN + (MotionBody.LIFT_RUN - MotionBody.LIFT_MIN) * f.run) * f.lift[i];
+            v[0] = HIPS[i][0] + leg[TX]; v[1] = HIPS[i][1] + leg[TY]; v[2] = HIPS[i][2] + leg[TZ];
+            rotate(v, full);
+            double dx = t[0] - v[0] - full[TX], dy = t[1] - v[1] - full[TY], dz = t[2] - v[2] - full[TZ];
+            dip = Math.max(dip, dy - Math.sqrt(Math.max(0, soft * soft - dx * dx - dz * dz)));
+        }
+        dip = MotionEngine.clamp(dip, 0, 6);
+        full[TY] += dip;
+        root[TY] += gw * dip;
+        for (int i = 0; i < 2; i++) {
+            double[] leg = out.get(LEGS[i]), shin = out.get(SHINS[i]), sol = st.sol[i];
+            solve(i, st.feet[i], full, leg, shin, sol, v);
+            leg[RX] += (sol[0] - leg[RX]) * gw;
+            leg[RZ] += (sol[1] - leg[RZ]) * gw;
+            shin[RX] += (sol[2] - shin[RX]) * gw;
+            shin[RY] -= shin[RY] * gw;
+            shin[RZ] -= shin[RZ] * gw;
+            for (int c = TX; c <= TZ; c++) shin[c] -= shin[c] * gw;
         }
     }
 

@@ -94,72 +94,81 @@ final class MotionBody {
         }
     }
 
-    /** G1: duty factor walk to run, the thigh's half-sweep cap (degrees) walk to run, and the leg's reach at a soft knee (px). */
-    static final double DUTY_WALK = 0.62, DUTY_RUN = 0.38, CAP_WALK = 40, CAP_RUN = 50, REACH = 11.9;
-    /** G1: the least and most cadence (cycles per second), the swing knee walk to run (degrees), the side swing's share and cap. */
-    static final double F_MIN = 0.9, F_MAX = 3.2, KNEE_WALK = 35, KNEE_RUN = 70, SIDE_K = 0.6, SIDE_MAX = 20;
+    /** G1: duty factor walk to run, the stride's half-length cap forward walk to run and sideways (px), at the soft knee's reach. */
+    static final double DUTY_WALK = 0.62, DUTY_RUN = 0.38, HALF_WALK = 6.4, HALF_RUN = 7.0, HALF_SIDE = 3.2;
+    /** G1: the least and most cadence (cycles per second), the swing knee walk to run (degrees), and the swing foot's lift walk to run (px). */
+    static final double F_MIN = 0.9, F_MAX = 3.6, KNEE_WALK = 35, KNEE_RUN = 70, LIFT_MIN = 1.5, LIFT_RUN = 3.5;
 
     /**
-     * G1: the stride from the ground speed (Task 16). The gait keeps its own phase psi, advanced at a cadence chosen so the
-     * stance foot's sweep matches the ground: the stride is as long as the thigh cap allows at the slowest cadence, and the
-     * cadence rises past that. In stance the thigh angle's sine is linear in time (the foot's travel is linear), in swing it
-     * eases back to the front. The legs swing along the body-frame velocity, so a backpedal sweeps them the other way and a
-     * strafe sideways. The knee bends only in swing; the arms, bob, sway, lean and twist follow the same phase. Writes the
-     * gait's phase per leg, duty and weight into the frame for the checks and the grade.
+     * G1 (R109): the stride matched to the ground speed. The gait keeps its own phase psi at a cadence chosen so the stride is
+     * as long as the half-length cap allows along the direction of travel (an ellipse: long forward and back, short sideways,
+     * so a strafe steps quicker) and rises past F_MIN. Each leg's foot sweeps along the body-frame velocity: in stance it
+     * travels back at exactly the body's speed (half a stride either side of the hip), in swing it returns on a cubic whose
+     * end speeds match the stance's, so a foot leaving or meeting the ground does not jerk. A backpedal sweeps the other way.
+     * The thigh angles put the straight leg's tip on that sweep; MotionFeet.stride then stands the stance foot on the ground
+     * and lifts the swing foot LIFT_MIN to LIFT_RUN. The knee bends in swing; arms, sway, lean and twist follow the phase. Writes
+     * each leg's phase, the duty, the weight and each foot's sweep and lift into the frame.
      */
     static void stride(MotionEngine.Frame f, MotionEngine.State st, Pose out) {
         double v = Math.hypot(f.vF, f.vL), run = f.run, sh = f.sh, bp = f.bp;
-        double duty = DUTY_WALK + (DUTY_RUN - DUTY_WALK) * run, cap = Math.toRadians(CAP_WALK + (CAP_RUN - CAP_WALK) * run);
-        double cMax = 2 * REACH * Math.sin(cap) / duty / 16;
-        double cad = v > 1e-9 ? Math.min(v / Math.min(v / F_MIN, cMax), F_MAX) * f.seed.tempo() : F_MIN * f.seed.tempo();
-        double c = v / cad, amp = Math.asin(Math.min(1, duty * c * 16 / (2 * REACH)));
+        double dirF = v > 1e-9 ? f.vF / v : 1, dirL = v > 1e-9 ? f.vL / v : 0;
+        double duty = DUTY_WALK + (DUTY_RUN - DUTY_WALK) * run, hF = HALF_WALK + (HALF_RUN - HALF_WALK) * run;
+        double half = 1 / Math.sqrt(dirF * dirF / (hF * hF) + dirL * dirL / (HALF_SIDE * HALF_SIDE));
+        double cad = MotionEngine.clamp(16 * v * duty / (2 * half), F_MIN, F_MAX) * f.seed.tempo();
+        double h = 16 * v * duty / (2 * cad);
         if (!st.psiInit) {
             st.psiInit = true;
             st.psi = frac(f.seed.phase() / TAU);
         }
         st.psi = frac(st.psi + cad * f.dt);
-        double a = f.m * MotionMath.clamp01(v / 0.5), dirF = f.vF / Math.max(v, 0.05), dirL = f.vL / Math.max(v, 0.05);
+        double a = f.m, b = f.m * MotionMath.clamp01(v / 0.5), mSw = -2 * h * (1 - duty) / duty;
         f.gaitW = a;
         f.duty = duty;
         f.gaitV = v;
-        double ampDeg = Math.toDegrees(amp), thR = 0;
+        double knee = KNEE_WALK + (KNEE_RUN - KNEE_WALK) * run, g = 0;
         for (int i = 0; i < 2; i++) {
-            double q = i == 0 ? st.psi : frac(st.psi + 0.5);
+            double q = i == 0 ? st.psi : frac(st.psi + 0.5), d, lift = 0;
             f.q[i] = q;
-            double th;
-            if (q < duty) th = Math.toDegrees(Math.asin(Math.sin(amp) * (2 * q / duty - 1)));
-            else th = ampDeg * Math.cos(Math.PI * (q - duty) / (1 - duty));
-            if (i == 0) thR = th;
+            if (q < duty) d = h * (1 - 2 * q / duty);
+            else {
+                double u = (q - duty) / (1 - duty), u2 = u * u, u3 = u2 * u;
+                d = h * (-1 + 6 * u2 - 4 * u3) + mSw * (2 * u3 - 3 * u2 + u);
+                lift = Math.sin(Math.PI * u);
+            }
+            f.sweep[i] = d;
+            f.lift[i] = lift;
+            if (i == 0) g = h > 1e-9 ? dirF * d / h : 0;
             if (a <= 0) continue;
-            out.add(LEGS[i], RX, dirF * th * a);
-            out.add(LEGS[i], RZ, MotionEngine.clamp(SIDE_K * dirL * th * a, -SIDE_MAX, SIDE_MAX));
-            if (q >= duty) out.add(SHINS[i], RX, a * (KNEE_WALK + (KNEE_RUN - KNEE_WALK) * run) * Math.sin(Math.PI * (q - duty) / (1 - duty)));
+            double rx = Math.asin(MotionEngine.clamp(-dirF * d / MotionFeet.LEG, -1, 1));
+            double rz = -Math.asin(MotionEngine.clamp(dirL * d / (MotionFeet.LEG * Math.cos(rx)), -1, 1));
+            out.add(LEGS[i], RX, a * Math.toDegrees(rx));
+            out.add(LEGS[i], RZ, a * Math.toDegrees(rz));
+            if (lift > 0) out.add(SHINS[i], RX, a * knee * lift);
         }
         double crouch = sh * f.m;
         if (crouch > 0) {
             for (int i = 0; i < 2; i++) { out.add(SHINS[i], RX, 14 * crouch); out.add(LEGS[i], RX, -7 * crouch); }
             out.add("root", TY, crouch);
         }
-        if (a <= 0) return;
-        double p = TAU * st.psi, g = -dirF * thR / Math.max(ampDeg, 1);
-        double s = Math.sin(p), cp = Math.cos(p);
-        out.add("root", TY, a * (0.9 * s * s * (1 - run) + 1.3 * cp * cp * run));
-        out.add("root", TX, 0.35 * a * (1 - run) * s);
-        out.add("body", RZ, 1.5 * a * (1 - run) * s);
-        double lean = a * (3 + 7 * run) * (1 - bp) - 4 * bp * a;
+        if (b <= 0) return;
+        double p = TAU * st.psi, s = Math.sin(p), cr = Math.cos(TAU * (st.psi - duty / 2));
+        out.add("root", TY, 1.3 * b * run * cr * cr);
+        out.add("root", TX, 0.35 * b * (1 - run) * s);
+        out.add("body", RZ, 1.5 * b * (1 - run) * s);
+        double lean = b * (3 + 7 * run) * (1 - bp) - 4 * bp * b;
         out.add("body", RX, lean);
         out.add("head", RX, -0.6 * lean);
-        double twist = a * (5 + 3 * run) * (1 - sh);
+        double twist = b * (5 + 3 * run) * (1 - sh);
         out.add("root", RY, -twist * g);
         out.add("body", RY, 1.8 * twist * g);
-        double arm = a * (26 + 14 * run) * (1 - 0.75 * sh) * (1 - 0.3 * bp);
+        double arm = b * (26 + 14 * run) * (1 - 0.75 * sh) * (1 - 0.3 * bp);
         out.add("right_arm", RX, arm * g);
         out.add("left_arm", RX, -arm * g);
-        out.add("right_arm", RZ, a * (4 + 5 * run));
-        out.add("left_arm", RZ, -a * (4 + 5 * run));
-        double elbow = a * (10 + 45 * run), flick = MotionMath.tri(p - 0.85);
-        out.add("right_forearm", RX, -elbow - 12 * a * Math.max(0, -flick));
-        out.add("left_forearm", RX, -elbow - 12 * a * Math.max(0, flick));
+        out.add("right_arm", RZ, b * (4 + 5 * run));
+        out.add("left_arm", RZ, -b * (4 + 5 * run));
+        double elbow = b * (10 + 45 * run), flick = MotionMath.tri(p - 0.85);
+        out.add("right_forearm", RX, -elbow - 12 * b * Math.max(0, -flick));
+        out.add("left_forearm", RX, -elbow - 12 * b * Math.max(0, flick));
     }
 
     static double frac(double x) { return x - Math.floor(x); }
