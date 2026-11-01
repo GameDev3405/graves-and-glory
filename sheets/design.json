@@ -2399,8 +2399,8 @@
       "reason": "PLACEHOLDER: reason awaits Kort.",
       "mode": "domination",
       "house": "ironclad",
-      "bonus": "b2_tbd",
-      "placeholder": "size,difficulty,briefing,reason,bonus,mode (Kort 2026-10-31: runs as Domination until Siege joins the lobby, then goes back to siege as the plan says)"
+      "bonus": "b2_lose10",
+      "placeholder": "size,difficulty,briefing,reason,mode (Kort 2026-10-31: runs as Domination until Siege joins the lobby, then goes back to siege as the plan says)"
     },
     {
       "id": "march-3",
@@ -2415,8 +2415,8 @@
       "reason": "PLACEHOLDER: reason awaits Kort.",
       "mode": "survival",
       "house": "graveborn",
-      "bonus": "b3_tbd",
-      "placeholder": "size,difficulty,briefing,reason,bonus"
+      "bonus": "b3_lose8",
+      "placeholder": "size,difficulty,briefing,reason"
     },
     {
       "id": "march-4",
@@ -2432,7 +2432,7 @@
       "mode": "banner",
       "house": "wildmoot",
       "bonus": "b4_tbd",
-      "placeholder": "size,difficulty,briefing,reason,bonus"
+      "placeholder": "size,difficulty,briefing,reason,bonus,mode (Kort 2026-10-31: becomes a convoy escort; awaits the escort spec)"
     },
     {
       "id": "march-5",
@@ -2447,8 +2447,8 @@
       "reason": "PLACEHOLDER: reason awaits Kort.",
       "mode": "domination",
       "house": "tidecallers",
-      "bonus": "b5_tbd",
-      "placeholder": "size,difficulty,briefing,reason,bonus"
+      "bonus": "b5_hold_all",
+      "placeholder": "size,difficulty,briefing,reason"
     },
     {
       "id": "march-6",
@@ -2462,9 +2462,9 @@
       "briefing": "PLACEHOLDER: briefing awaits Kort.",
       "reason": "PLACEHOLDER: reason awaits Kort.",
       "mode": "siege",
-      "house": "all",
-      "bonus": "b6_tbd",
-      "placeholder": "size,difficulty,briefing,reason,bonus,mode (the plan says Siege, mixed),house (the plan says All Houses)"
+      "house": "graveborn",
+      "bonus": "b6_kill_hollowking",
+      "placeholder": "size,difficulty,briefing,reason,mode (the plan says Siege, mixed)"
     }
   ],
   "bonusObjectives": [
@@ -2479,24 +2479,24 @@
       "placeholder": "gold (draft value)"
     },
     {
-      "id": "b2_tbd",
-      "kind": "tbd",
-      "value": 0,
+      "id": "b2_lose10",
+      "kind": "lose_at_most",
+      "value": 10,
       "target": "none",
       "shards": 5,
       "gold": 40,
-      "text": "PLACEHOLDER: bonus objective awaits Kort.",
-      "placeholder": "kind,value,target,text,gold (draft value)"
+      "text": "Lose no more than 10 troops.",
+      "placeholder": "none (note: Kort 2026-10-31: becomes 2A (stage_by 360 s, target gate, \"Break the gate inside six minutes.\") when battle 2 goes back to Siege.)"
     },
     {
-      "id": "b3_tbd",
-      "kind": "tbd",
-      "value": 0,
+      "id": "b3_lose8",
+      "kind": "lose_at_most",
+      "value": 8,
       "target": "none",
       "shards": 5,
       "gold": 40,
-      "text": "PLACEHOLDER: bonus objective awaits Kort.",
-      "placeholder": "kind,value,target,text,gold (draft value)"
+      "text": "Lose no more than 8 troops.",
+      "placeholder": "none"
     },
     {
       "id": "b4_tbd",
@@ -2506,27 +2506,27 @@
       "shards": 5,
       "gold": 40,
       "text": "PLACEHOLDER: bonus objective awaits Kort.",
-      "placeholder": "kind,value,target,text,gold (draft value)"
+      "placeholder": "kind,value,target,text,gold (awaits the escort spec: Awaits the supply-wagon escort spec (ESCORT, 4C.2). Kort 2026-10-31: battle 4 becomes a convoy escort instead of carrying the banner. No escort data invented.)"
     },
     {
-      "id": "b5_tbd",
-      "kind": "tbd",
+      "id": "b5_hold_all",
+      "kind": "hold_all",
       "value": 0,
       "target": "none",
       "shards": 5,
-      "gold": 40,
-      "text": "PLACEHOLDER: bonus objective awaits Kort.",
-      "placeholder": "kind,value,target,text,gold (draft value)"
+      "gold": 50,
+      "text": "Hold all five crossings at the same moment.",
+      "placeholder": "none"
     },
     {
-      "id": "b6_tbd",
-      "kind": "tbd",
+      "id": "b6_kill_hollowking",
+      "kind": "kill_unit",
       "value": 0,
-      "target": "none",
+      "target": "gb_hollowking",
       "shards": 5,
-      "gold": 40,
-      "text": "PLACEHOLDER: bonus objective awaits Kort.",
-      "placeholder": "kind,value,target,text,gold (draft value)"
+      "gold": 60,
+      "text": "Strike down the Hollow King with your own banner.",
+      "placeholder": "none"
     }
   ],
   "pieces": [

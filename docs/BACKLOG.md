@@ -19,3 +19,4 @@ Only explicitly approved unblocked items may run unattended. The 2026-10-28 clea
 | MEDIA | Parked by Kort | Resume only after maps, lobby and units are polished and scope is confirmed. |
 
 Report template: outcome; source commit + dirty fingerprint; artifact hash; changed areas; checks and exits; evidence; defects; questions/assumptions; implementation/test/visual/acceptance status. A complete implementation with missing required validation remains incomplete overall.
+- ESCORT: spec the supply-wagon escort Banner variant (moving wagon, road path, bot escort/attack rules) for 4C.2 and battle 4, needs Kort approval of the spec
