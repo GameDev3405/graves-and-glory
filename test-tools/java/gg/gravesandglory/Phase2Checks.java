@@ -5214,6 +5214,8 @@ public final class Phase2Checks implements ClientModInitializer {
         static final Set<Integer> TURN_ANGLES=new HashSet<>();
         static{String v=System.getenv("GRAVES_PHASE2_TURN_ANGLES");if(v==null||v.isBlank())for(int a:ANGLES)TURN_ANGLES.add(a);else for(String a:v.split(","))TURN_ANGLES.add(Integer.parseInt(a.trim()));}
         static final float BOW_RECOVERY=1.0f;
+        static final String TURN_EXTRA=Optional.ofNullable(System.getenv("GRAVES_PHASE2_TURN_EXTRA")).orElse(""),TURN_FAR=Optional.ofNullable(System.getenv("GRAVES_PHASE2_TURN_FAR")).orElse("");
+        static final double FAR_DIST=30,FAR_EYE=1.62;
         /** Task 16 r6: the turn suite's nock pose, an arrow on the string and the cant coming in (bow_draw keys the nock 0.12 to 0.48). */
         static final float BOW_NOCK=0.25f;
         /** The windup second of an attack clip: its "windup" marker, else 45 percent of the way to its impact, on a tick. */
@@ -5290,6 +5292,10 @@ public final class Phase2Checks implements ClientModInitializer {
                         poses.add(new Object[]{pre+"windup",stance+"+"+clip,windup(tm,clip,imp)});
                         poses.add(new Object[]{alias?clip:pre+"impact",stance+"+"+clip,imp});
                         poses.add(new Object[]{pre+"recovery",stance+"+"+clip,recovery(tm,clip,imp)});
+                        // Task 16 r8: extra seconds of a clip (GRAVES_PHASE2_TURN_EXTRA: clip@s1;s2;...|clip@...), shot as PRE+"tNNN"
+                        for(String ex:TURN_EXTRA.split("\\|")){String[] kv=ex.split("@");if(kv.length==2&&kv[0].equals(clip))for(String sx:kv[1].split(";")){float xat=Float.parseFloat(sx);poses.add(new Object[]{pre+"t"+String.format(Locale.ROOT,"%03d",Math.round(xat*100)),stance+"+"+clip,xat});}}
+                        // Task 16 r8: the impact from FAR_DIST blocks at eye height (GRAVES_PHASE2_TURN_FAR: clip list), front and 3/4
+                        if(Arrays.asList(TURN_FAR.split(",")).contains(clip))for(int fa:new int[]{0,45})shots.add(new Shot("turn-"+t+"-far30-"+pre+"impact-"+fa,t,"far30",stance+"+"+clip,imp,fa,null,false,false,1,FAR_DIST,0));
                     }
                 }
                 poses.add(new Object[]{"walk25","walk",Anim.shotTime(TroopModels.model(t),"walk")});
@@ -5300,7 +5306,7 @@ public final class Phase2Checks implements ClientModInitializer {
             }
         }
         void cast(GravesAndGlory.Battle b){
-            if(t3){force(b,site.add(-T3_HALF-2,0,-T3_HALF-2),site.add(T3_HALF+2,0,T3_HALF+2));floor(b,T3_HALF);}
+            if(t3||!TURN_FAR.isBlank()){force(b,site.add(-T3_HALF-2,0,-T3_HALF-2),site.add(T3_HALF+2,0,T3_HALF+2));floor(b,T3_HALF);}
             for(int i=0;i<TROOPS.size();i++){var u=post(b,gold,TROOPS.get(i),0,0,YAW);int tier=t3?3:STAGE;if(tier>1||WEAPON>1)stage(u,tier,t3?1:WEAPON,tier);units.put(TROOPS.get(i),u);place(u,i,false);}
             camera(b,0,EYE,DIST,0,0);
         }
@@ -5391,7 +5397,7 @@ public final class Phase2Checks implements ClientModInitializer {
             boolean gilt=drawn&&"gold".equals(d.last.cloth());
             // the relief is what the shot claims: drawn (the troop is near) unless the shot is the flat one; a troop without relief has none to claim
             // (the t3 mode's shots past TroopDepth.NEAR_BLOCKS are flat by distance, whatever TroopDepth.enabled says; and the troop must be at stage 3, which the server's rename takes a moment to reach the client)
-            boolean wantFlat=s.flat()||t3&&beyond(c,e);
+            boolean wantFlat=s.flat()||(t3||s.pose().equals("far30"))&&beyond(c,e);
             boolean raised=drawn&&(m.reliefKeys().isEmpty()||wantFlat==(d.last.relief()==null));
             if(t3)raised&=drawn&&d.last.look().armourTier()==3;
             // the hands suite also asks for the tier's weapon, whole or (the relief-off shots) as its far version
@@ -5493,7 +5499,7 @@ public final class Phase2Checks implements ClientModInitializer {
             double y=Math.toRadians(YAW),fx=-Math.sin(y),fz=Math.cos(y),rx=-Math.cos(y),rz=-Math.sin(y); // the troop's front and right on the ground
             if(s.hand()==null){
                 double a=Math.toRadians(s.angle()),ux=Math.cos(a)*fx+Math.sin(a)*rx,uz=Math.cos(a)*fz+Math.sin(a)*rz,d=s.dist()>0?s.dist():DIST;
-                return new double[]{d*ux-s.side()*uz,EYE,d*uz+s.side()*ux,yawOf(-ux,-uz),0}; // a sideways step moves the camera across its line of sight, not its aim
+                return new double[]{d*ux-s.side()*uz,s.pose().equals("far30")?FAR_EYE:EYE,d*uz+s.side()*ux,yawOf(-ux,-uz),0}; // a sideways step moves the camera across its line of sight, not its aim
             }
             double[] g=grip(m,new TroopMotion.Forced(s.clip(),s.at()),shield(s.troop())); // the weapon's grip, blocks from the feet in world axes
             return switch(s.hand()){

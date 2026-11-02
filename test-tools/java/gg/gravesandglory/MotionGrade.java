@@ -409,7 +409,9 @@ final class MotionGrade extends Phase2Checks.Stage {
         return new Cam(d * Math.sin(a), eye, -d * Math.cos(a), (float) CLOSE_TURN, (float) Math.toDegrees(Math.atan2(eye - mid, d)));
     }
     Cam highCam(double rowGap) { double mid = (ROWS - 1) * rowGap / 2; return new Cam(0, HIGH_EYE, HIGH_Z, 0, (float) Math.toDegrees(Math.atan2(HIGH_EYE - 1, mid - HIGH_Z))); }
-    Cam levelCam() { return new Cam(0, LEVEL_EYE, LEVEL_Z, 0, 0); }
+    /** Task 16 r8: GRAVES_GRADE_LEVEL_TURN turns the level camera round the front row's centre (degrees, toward the troops' right): 45 is a 3/4 view, the front row still -LEVEL_Z blocks away. */
+    static final double LEVEL_TURN = Double.parseDouble(java.util.Optional.ofNullable(System.getenv("GRAVES_GRADE_LEVEL_TURN")).filter(v -> !v.isBlank()).orElse("0"));
+    Cam levelCam() { double a = Math.toRadians(LEVEL_TURN); return new Cam(-LEVEL_Z * Math.sin(a), LEVEL_EYE, LEVEL_Z * Math.cos(a), (float) LEVEL_TURN, 0); }
     double fitD(java.util.function.DoubleFunction<Cam[]> ks, List<double[]> pts, double lo, double hi) {
         if (!fits(ks.apply(hi), pts)) return hi;
         for (int it = 0; it < 28; it++) { double mid = (lo + hi) / 2; if (fits(ks.apply(mid), pts)) hi = mid; else lo = mid; }
