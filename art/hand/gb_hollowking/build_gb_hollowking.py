@@ -7,7 +7,10 @@ ribcage (the mark: the lit ribs, with the broken crown above them, on the glow s
 chipped and its spikes snapped, a bare skull with its jaw bound shut in gilt wire, two soul-lit eyes, great layered
 pauldrons with broken spikes, a high gorget, a violet-hemmed rag skirt over a belt with a gilt buckle, greaves slit over
 bare bone, and one large tattered team-cloth cloak (three panels) dragging behind him on the ground. His grave sword
-(weapon "grave_sword") is a greatsword. Tier I only. No flag. The glow sheet is kept within the Legendary cap of 16
+(weapon "grave_sword") is a greatsword. Tier II (the Hollow Lord): the crown mended and raised, violet-piped salvaged plate
+on the forearms, thighs and a raised gorget ring, tines on the great pauldrons. Tier III (the Hollow King crowned): a tall
+gilt crown of tines, gilt rails and collar bar round the soul-fire ribs, gilt-chased black plate, long pauldron tines and a
+fan of bone spikes behind the shoulders, one pale stone in the crown. No flag. The glow sheet is kept within the Legendary cap of 16
 texels: 12 ribs, 2 collarbone texels and 2 eyes.
 
   python build_gb_hollowking.py preview <dir> [side] | contact <png> [side] | stub
@@ -18,7 +21,7 @@ sys.path.insert(0, os.path.join(HERE, "..", "common"))
 from handlib import *   # noqa: F401,F403
 from handlib import Troop
 import graveborn as GB
-from graveborn import VIOLET as V, BONE as BN, GIRON as GI, SOUL, GILT as GL, ROT
+from graveborn import VIOLET as V, BONE as BN, GIRON as GI, SOUL, GILT as GL, ROT, gb_plate, gb_spike, gb_gilt, gb_band
 import house_stub
 
 SKIN = (128, 128)
@@ -425,16 +428,37 @@ def bones():
             Box((0, 0, 0), (w, ln, 1), (key, False, True), sheet="cloth")]))
         B.append(Bone(f"train_{key}", f"cloak_{key}", (0, ln, 0), team=True, rot=(-82, 0, 0), boxes=[
             Box((0, 0, 0), (w, tl, 1), (key + "t", True, False), sheet="cloth")]))
+    # tier II, the Hollow Lord: the crown mended and raised, salvaged plate piped in violet, tines on the pauldrons
+    P2 = lambda seed, worn=0.12: per_tier(lambda t: gb_plate(t, seed, worn), (2, 3))
+    TN = per_tier(lambda t: gb_spike(GI, 4, 3), (2, 3))
+    for i, (x, z, hgt) in enumerate([(-3.5, -3.5, 8), (0.0, -4.5, 10), (3.0, -3.5, 8)]):
+        B.append(Bone(f"crown_tall{i}", "head", stages=[2, 3], boxes=[Box((x - 0.5, -9 - hgt, z - 0.5), (1.4, hgt, 1.4), per_tier(lambda t: gb_spike(GL, 3, 3), (2, 3)))]))
+    B.append(Bone("gorget_ring", "body", stages=[2, 3], boxes=[Box((-6, -16, -3.7), (12, 2, 7.4), P2("gr"), dil=0.3)]))
+    for side in ("right", "left"):
+        B.append(Bone(f"{side}_vambrace", f"{side}_arm", stages=[2, 3], boxes=[Box((-2.5, 4.5, -2.5), (5, 4, 5), P2("vb" + side, 0.18), dil=0.3)]))
+        B.append(Bone(f"{side}_cuisse", f"{side}_leg", stages=[2, 3], boxes=[Box((-2.5, 0.5, -2.5), (5, 4, 5), P2("cu" + side), dil=0.35)]))
+    B.append(Bone("tine_r", "right_arm", (0, -2, 0), rot=(0, 0, 14), stages=[2, 3], boxes=[Box((-5, -9, -0.5), (1.4, 7, 1.4), TN), Box((-2.5, -7, 2), (1.4, 5, 1.4), TN)]))
+    B.append(Bone("tine_l", "left_arm", (0, -2, 0), rot=(0, 0, -14), stages=[2, 3], boxes=[Box((3.6, -9, -0.5), (1.4, 7, 1.4), TN), Box((1.1, -7, 2), (1.4, 5, 1.4), TN)]))
+    # tier III, the Hollow King crowned: gilt rails and a collar bar round the ribs, tall gilt tines, a spine fan, a pale stone
+    B.append(Bone("crown_halo", "head", stages=[3], boxes=[Box((-5, -10.5, -5), (10, 1.5, 10), gb_gilt("ch"), dil=0.05)]))
+    for i, (x, z, hgt) in enumerate([(-5.0, -1.5, 9), (4.0, -1.5, 9), (-4.5, 3.0, 11), (3.5, 3.0, 11), (-0.5, 4.5, 13)]):
+        B.append(Bone(f"crown_spire{i}", "head", stages=[3], boxes=[Box((x - 0.5, -10.5 - hgt, z - 0.5), (1.4, hgt, 1.4), gb_spike(GL, 4, 3))]))
+    B.append(Bone("crown_stone", "head", stages=[3], boxes=[Box((-0.5, -8.8, -5.2), (1, 1, 0.7), lambda f, w, h: [[SOUL[2]]])]))
+    B.append(Bone("collar_bar", "body", stages=[3], boxes=[Box((-4.5, -13.3, -3.5), (9, 1.2, 0.8), gb_gilt("cb"), dil=0.1)]))
+    for sx, nm in ((-1, "r"), (1, "l")):
+        B.append(Bone(f"rib_rail_{nm}", "body", stages=[3], boxes=[Box((sx * 5.2 - 0.5, -13, -3.4), (1, 9, 1), gb_gilt("rr" + nm), dil=0.1)]))
+        B.append(Bone(f"spine_fan_{nm}", "body", (sx * 2.5, -13, 3.2), rot=(10, 0, sx * -24), stages=[3], boxes=[Box((-0.7, -11, 0), (1.4, 11, 1.4), gb_spike(BN, 4, 3))]))
+    B.append(Bone("spine_fan_c", "body", (0, -13, 3.2), rot=(10, 0, 0), stages=[3], boxes=[Box((-0.7, -13, 0), (1.4, 13, 1.4), gb_spike(BN, 4, 3))]))
     return B
 
 NOTE = ("Graveborn Hollow King (unit identity, Graveborn Legendary): the grandest of the six, tall and broad (body 10x14x5, arms 4x13x4, legs "
         "5x14x5): black grave-iron plate split open over a lit soul-fire ribcage, a broken funeral-gilt crown with a violet stone, a bare "
         "skull with its jaw bound in gilt wire and soul-lit eyes, layered pauldrons with broken spikes, a high gorget, a violet-hemmed rag "
-        "skirt, slit greaves over bare bone and one large tattered team-cloth cloak dragging behind. Carries the grave sword. Tier I only; "
-        "no flag. Glow sheet 16 texels (ribs and eyes).")
+        "skirt, slit greaves over bare bone and one large tattered team-cloth cloak dragging behind. Carries the grave sword. Tier II mended crown and "
+        "salvaged plate, tier III tall gilt crown, gilt rails and a spine fan; no flag. Glow sheet 16 texels (ribs and eyes).")
 
 HOLLOWKING = Troop("gb_hollowking", SKIN, CLOTH, bones, cloth_painter,
-                   {"weapon": "grave_sword", "hand": "right", "idleArms": "hang", "portrait": "tall 4"}, tiers=(1,), glow=glow)
+                   {"weapon": "grave_sword", "hand": "right", "idleArms": "hang", "portrait": "tall 4"}, glow=glow)
 def build(): return HOLLOWKING.build()
 def outputs(): return HOLLOWKING.outputs()
 
