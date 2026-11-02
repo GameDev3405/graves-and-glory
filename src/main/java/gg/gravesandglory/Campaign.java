@@ -318,7 +318,16 @@ public final class Campaign {
     List<String> botBanner(GravesAndGlory.Squad s){
         var rows=fieldableBotBanners(s.tier);if(rows.isEmpty())rows=fieldableBotBanners("normal");
         if(rows.isEmpty())return RosterMath.starterBanner();
+        var boss=bossBanner(s);if(boss!=null)return boss;
         return new ArrayList<>(Arrays.asList(rows.get(Math.floorMod(s.lane,rows.size())).slots().split(",")));
+    }
+    /** A kill_unit battle's target (Kort, 2026-11-01: the Hollow King stands in march-6): the enemy's first bot army uses the botBanners row that fields the target troop, whatever its tier; null when the battle has no such bonus or no row fits. */
+    List<String> bossBanner(GravesAndGlory.Squad s){
+        if(activeBattle==null||bonusTracker==null||!bonusTracker.kind.equals("kill_unit")||s.team!=1||s.lane!=0)return null;
+        var catalog=RosterMath.Catalog.fromSpec();var fieldable=RosterMath.fieldableHouses();
+        for(var row:Spec.BOTBANNERS){var slots=Arrays.asList(row.slots().split(","));
+            if(slots.contains(bonusTracker.target)&&slots.stream().allMatch(id->id.equals(RosterMath.MARKER)||id.equals(RosterMath.EMPTY)||fieldable.contains(catalog.houseOf(id))))return new ArrayList<>(slots);}
+        return null;
     }
     /** The botBanners rows of a tier, in sheet order, whose every troop belongs to a fieldable House (houses.fieldable). */
     static List<Spec.BotBannersRow> fieldableBotBanners(String tier){
