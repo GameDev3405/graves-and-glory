@@ -45,6 +45,13 @@ public final class MotionEngine {
     static final double[] HIT_W_GAIN = {0.6, 1.0, 1.4}, HIT_W_TEMPO = {1.25, 1.0, 0.8}, HIT_W_PULSE = {0.55, 1.0, 1.5};
     /** A hit clip without an impact marker plays its first HIT_SNAP seconds (the snap) in real time; the weight's tempo shapes the recovery. */
     static final double HIT_SNAP = 0.1;
+    /**
+     * Fix r3 (grade r2 item 3): a hit that lands while an attack plays is an additive overlay on the attack, which keeps playing
+     * (no FROM track, no restart): its weight eases in over HIT_OVER_IN seconds (4 ticks) and out over HIT_OVER_OUT once its clip
+     * ends, at HIT_OVER_GAIN of the hit's gain, and its reaction pulse at HIT_OVER_PULSE of its scale. At most MAX_OVERLAYS play at once; past that the oldest goes.
+     */
+    static final double HIT_OVER_IN = 0.2, HIT_OVER_OUT = 0.15, HIT_OVER_PULSE = 0.3, HIT_OVER_GAIN = 0.5;
+    static final int MAX_OVERLAYS = 3;
     /** A death plays at the seed amp pivoted on its last frame, g c(t) + (1 - g) c(end): at most 1.1 + 0.1 of the clip's reach. */
     static final double DEATH_GAIN = 1.2;
     /** P1: the largest gain a death clip plays at (the seed's amp; K1b pivots it on the last frame, so its steps scale by it). */
@@ -197,6 +204,8 @@ public final class MotionEngine {
         double breathPhase, breathRate, flutter, flutterRate, yawRate, yawRateTarget;
         final List<MotionStack.Layer> stances = new ArrayList<>(MAX_LAYERS + 1);
         final List<MotionStack.Track> tracks = new ArrayList<>(MAX_TRACKS + 1);
+        /** Hits playing as additive overlays on an attack (HIT_OVER_*). */
+        final List<MotionStack.Track> overlays = new ArrayList<>(MAX_OVERLAYS + 1);
         int ids;
         /** Hits seen so far, and the variant each hit zone (body, head, legs, block) played last (H1). */
         int hitCount;
@@ -481,7 +490,8 @@ public final class MotionEngine {
             double at = hit.tick() / (double) Clip.TICKS, age = f.now - at;
             if (!f.dead && age >= -0.2 && age <= 0.6) {
                 int weight = Math.max(0, Math.min(2, hit.weight()));
-                MotionBody.pulse(st, hit, at, HIT_W_PULSE[weight] * f.seed.amp(), weight);
+                boolean over = !f.first && MotionStack.attacking(st);
+                MotionBody.pulse(st, hit, at, HIT_W_PULSE[weight] * f.seed.amp() * (over ? HIT_OVER_PULSE : 1), weight);
                 // Task 16: a blocked blow plays its zone's block (block_head, block for the body, block_legs), else the body's
                 String zk = zone(hit.zone()), key = hit.blocked() ? (zk.equals("body") ? "block" : "block_" + zk) : zk;
                 List<Clip> set = fam.hits().get(key);
@@ -500,9 +510,12 @@ public final class MotionEngine {
                     // the hit clips are authored front-on: from behind they fade out (none past ~132 degrees) and the
                     // procedural pulse, which flips with the bearing, carries the blow, so a back hit pitches forward
                     double front = key.startsWith("block") ? 1 : MotionMath.clamp01(1 + 1.5 * Math.cos(Math.toRadians(finite(hit.bearing()))));
-                    var tr = new MotionStack.Track(st.ids++, HIT, clip, null, 0, HIT_W_GAIN[weight] * f.seed.amp() * front, at,
+                    var tr = new MotionStack.Track(st.ids++, HIT, clip, null, 0, HIT_W_GAIN[weight] * f.seed.amp() * front * (over ? HIT_OVER_GAIN : 1), at,
                         f.seed.tempo() * HIT_W_TEMPO[weight], clip.impact() < 0 ? HIT_SNAP : clip.impact() / (double) Clip.TICKS);
-                    if (tr.time(f.now) < clip.length() - 0.05) MotionStack.begin(st, fam, tr, f);
+                    if (tr.time(f.now) < clip.length() - 0.05) {
+                        if (over) MotionStack.overlay(st, tr);
+                        else MotionStack.begin(st, fam, tr, f);
+                    }
                 }
             }
         }
@@ -570,7 +583,7 @@ public final class MotionEngine {
     static List<Playing> playing(State st, double now) { return MotionStack.playing(st, now); }
 
     /** Active tracks, hit pulses and stance layers: the state that grows with events. */
-    static int load(State st) { return st.tracks.size() + st.pulses.size() + st.stances.size(); }
+    static int load(State st) { return st.tracks.size() + st.overlays.size() + st.pulses.size() + st.stances.size(); }
 
     /**
      * The largest |value| any bone's channel can take for this family, per channel: the procedural layers' bounds, plus the
@@ -584,7 +597,9 @@ public final class MotionEngine {
         for (Clip c : fam.wallAttacks()) max(action, c.reach(), ATTACK_GAIN);
         for (List<Clip> l : fam.hits().values()) for (Clip c : l) max(action, c.reach(), HIT_GAIN);
         for (List<Clip> l : fam.deaths().values()) for (Clip c : l) max(action, c.reach(), DEATH_GAIN);
-        for (int c = 0; c < 6; c++) r[c] = (c < 3 ? PROC_ROT : PROC_PX) + stance[c] + action[c];
+        double[] over = new double[6];
+        for (List<Clip> l : fam.hits().values()) for (Clip c : l) max(over, c.reach(), HIT_GAIN * HIT_OVER_GAIN * MAX_OVERLAYS);
+        for (int c = 0; c < 6; c++) r[c] = (c < 3 ? PROC_ROT : PROC_PX) + stance[c] + action[c] + over[c];
         return r;
     }
 
@@ -600,7 +615,9 @@ public final class MotionEngine {
         for (Clip c : fam.wallAttacks()) max(action, c.reach(bone), ATTACK_GAIN);
         for (List<Clip> l : fam.hits().values()) for (Clip c : l) max(action, c.reach(bone), HIT_GAIN);
         for (List<Clip> l : fam.deaths().values()) for (Clip c : l) max(action, c.reach(bone), DEATH_GAIN);
-        for (int c = 0; c < 3; c++) r[c] = proc + stance[3 + c] + action[3 + c];
+        double[] over = new double[6];
+        for (List<Clip> l : fam.hits().values()) for (Clip c : l) max(over, c.reach(bone), HIT_GAIN * HIT_OVER_GAIN * MAX_OVERLAYS);
+        for (int c = 0; c < 3; c++) r[c] = proc + stance[3 + c] + action[3 + c] + over[3 + c];
         return r;
     }
 

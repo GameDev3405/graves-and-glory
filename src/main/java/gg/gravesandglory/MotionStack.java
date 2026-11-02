@@ -425,6 +425,39 @@ final class MotionStack {
     static void action(MotionEngine.State st, MotionEngine.Frame f, Pose out) {
         advance(st, f);
         f.bodyAction = fold(st, st.tracks.size(), f.now, out);
+        overlays(st, f, out);
+    }
+
+    /** Whether an attack is playing on top of the stack and not yet leaving (a hit now becomes an overlay on it). */
+    static boolean attacking(MotionEngine.State st) {
+        if (st.tracks.isEmpty()) return false;
+        Track top = st.tracks.get(st.tracks.size() - 1);
+        return top.kind == MotionEngine.ATTACK && !top.leaving;
+    }
+
+    /** Fix r3 (item 3): starts a hit as an additive overlay (MotionEngine.HIT_OVER_*); the tracks below keep playing untouched. */
+    static void overlay(MotionEngine.State st, Track tr) {
+        tr.x = 0;
+        tr.fadeIn = MotionEngine.HIT_OVER_IN;
+        tr.fadeOut = MotionEngine.HIT_OVER_OUT;
+        st.overlays.add(tr);
+        if (st.overlays.size() > MotionEngine.MAX_OVERLAYS) st.overlays.remove(0);
+    }
+
+    /**
+     * Steps each overlay's weight (rising over fadeIn from its start, falling over fadeOut from its clip's end; a dead unit's
+     * fall from now) and adds ease(weight) times its pose into out. Time based, so the same at any frame rate.
+     */
+    static void overlays(MotionEngine.State st, MotionEngine.Frame f, Pose out) {
+        for (int i = 0; i < st.overlays.size(); i++) {
+            Track tr = st.overlays.get(i);
+            if (f.dead && !tr.leaving) { tr.leaving = true; tr.gone = f.now; }
+            double up = MotionEngine.clamp((f.now - tr.start) / tr.fadeIn, 0, 1);
+            double down = tr.leaving ? 1 - (f.now - tr.gone) / tr.fadeOut : 1 - (f.now - tr.end()) / tr.fadeOut;
+            tr.x = Math.min(up, MotionEngine.clamp(down, 0, 1));
+            if (down <= 0) { st.overlays.remove(i--); continue; }
+            add(st, tr, f.now, MotionMath.ease(tr.x), out);
+        }
     }
 
     /**
@@ -497,6 +530,7 @@ final class MotionStack {
             list.add(new MotionEngine.Playing(tr.id * 2, tr.a, t, tr.gain * (1 - m) * e[i]));
             if (tr.b != null) list.add(new MotionEngine.Playing(tr.id * 2 + 1, tr.b, t, tr.gain * m * e[i]));
         }
+        for (Track tr : st.overlays) list.add(new MotionEngine.Playing(tr.id * 2, tr.a, tr.time(now), tr.gain * MotionMath.ease(tr.x)));
         return list;
     }
 }

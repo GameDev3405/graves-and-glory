@@ -78,6 +78,8 @@ public final class MotionEngineCheck {
         run("corpse ground", () -> corpseGround(rig));
         run("turn step", () -> turnStep(rig));
         held("run start", MotionEngineCheck::runStart);
+        run("hit over attack", MotionEngineCheck::hitOverAttack);
+        held("hit over attack window", MotionEngineCheck::hitOverWindow);
         run("wall strikes", MotionEngineCheck::wallStrikes);
         run("zone blocks", MotionEngineCheck::zoneBlocks);
         if (failed > 0) {
@@ -1049,6 +1051,90 @@ public final class MotionEngineCheck {
         check(worst <= 137.6 && drop <= 10,
             String.format(Locale.ROOT, "run start: largest tick %.1f deg (want 137.6 or less), largest fall %.1f deg (want 10 or less);%s", worst, drop, seen));
         return String.format(Locale.ROOT, "largest tick %.1f deg, largest fall %.1f deg;%s", worst, drop, seen);
+    }
+
+    /** The grader's hit-while-attacking: hold stance, an attack at tick 20, a body hit from the front at tick 25 (or none); per-tick summed steps, ticks 0 to 59. */
+    static double[] hitWhileAttacking(MotionMath.Seed seed, boolean hit, double[] keep) {
+        MotionEngine.Family fam = realSwordShield(new HashMap<>());
+        Drive d = new Drive(seed);
+        d.stance = "hold"; d.shield = true; d.enemy = true;
+        var st = new MotionEngine.State();
+        Pose out = new Pose();
+        Map<String, double[]> prev = null;
+        double[] sums = new double[60];
+        for (int f = 0; f < 60; f++) {
+            if (f == 20) d.attack = new MotionInput.Attack(0, d.tick());
+            if (f == 25 && hit) d.hit("body", 0, 1, false, false);
+            MotionEngine.pose(d.in(), st, fam, out);
+            var cur = out.snapshot();
+            if (prev != null) for (String b : cur.keySet()) {
+                double[] x = cur.get(b), y = prev.getOrDefault(b, new double[6]);
+                for (int c = 0; c < 3; c++) sums[f] += Math.abs(x[c] - y[c]);
+            }
+            if (keep != null && f == 25) {
+                // at the hit's tick: the tracks, whether the only one is the attack, the overlays, the overlay's ease-in (s)
+                keep[0] = st.tracks.size();
+                keep[1] = st.tracks.size() == 1 && st.tracks.get(0).kind == MotionEngine.ATTACK ? 1 : 0;
+                keep[2] = st.overlays.size();
+                keep[3] = st.overlays.isEmpty() ? 0 : st.overlays.get(0).fadeIn;
+            }
+            prev = cur;
+            d.step(0.05);
+        }
+        return sums;
+    }
+
+    /**
+     * hitOverAttack (fix r3, grade r2 item 3): a hit landing mid-attack is an overlay. The attack keeps playing (it is still the
+     * only track, no FROM track replaces it), the hit's overlay weight is under 0.5 one tick in and reaches 1 no sooner than 3
+     * ticks in, and in the hit's window (ticks 26 to 35) each step stays within 15 deg of the same attack's step without the hit.
+     * Four seeds.
+     */
+    static String hitOverAttack() {
+        double worst = -1e9;
+        for (MotionMath.Seed seed : seeds(4, 4100)) {
+            double[] keep = new double[4];
+            double[] with = hitWhileAttacking(seed, true, keep), without = hitWhileAttacking(seed, false, null);
+            check(keep[1] == 1 && keep[2] == 1, String.format(Locale.ROOT, "hit over attack: after the hit, tracks %.0f (want the attack alone), overlays %.0f (want 1)", keep[0], keep[2]));
+            double w1 = MotionMath.ease(0.05 / keep[3]);
+            check(w1 < 0.5 && keep[3] >= 0.15 - 1e-9, String.format(Locale.ROOT, "hit over attack: overlay weight one tick in %.2f (want under 0.5), ease-in %.2f s (want 0.15 or more)", w1, keep[3]));
+            for (int f = 26; f <= 35; f++) worst = Math.max(worst, with[f] - without[f]);
+        }
+        check(worst <= 15, String.format(Locale.ROOT, "hit over attack: the hit adds up to %.1f deg/tick to the attack's step (want 15 or less)", worst));
+        return String.format(Locale.ROOT, "the attack keeps playing; the hit adds at most %.1f deg/tick", worst);
+    }
+
+    /**
+     * hitOverWindow (grade r2 item 3 gate), held: in the hit's window (ticks 26 to 35) the steps rise to one peak and fall (each
+     * fall after the peak and each rise before it within 5 deg), and the peak is at most the thrust's authored peak step times its gain.
+     */
+    static String hitOverWindow() {
+        MotionEngine.Family fam = realSwordShield(new HashMap<>());
+        Clip th = fam.attacks().get(0);
+        double ref = 0;
+        Pose pa = new Pose(), pb = new Pose();
+        double[] tmp = new double[6];
+        for (int k = 1; k * 0.05 <= th.length(); k++) {
+            pa.clear(); pb.clear();
+            th.add((k - 1) * 0.05, pa, 1, tmp);
+            th.add(k * 0.05, pb, 1, tmp);
+            double s = 0;
+            for (int i = 0; i < pb.size(); i++) for (int c = 0; c < 3; c++) s += Math.abs(pb.row(i)[c] - pa.get(pb.name(i), c));
+            ref = Math.max(ref, s);
+        }
+        double peakRatio = 0, bump = 0;
+        StringBuilder seen = new StringBuilder();
+        for (MotionMath.Seed seed : seeds(4, 4100)) {
+            double[] w = hitWhileAttacking(seed, true, null);
+            int top = 26;
+            for (int f = 26; f <= 35; f++) if (w[f] > w[top]) top = f;
+            for (int f = 27; f <= 35; f++) bump = Math.max(bump, f <= top ? w[f - 1] - w[f] : w[f] - w[f - 1]);
+            peakRatio = Math.max(peakRatio, w[top] / (ref * seed.amp()));
+            seen.append(" |");
+            for (int f = 26; f <= 35; f++) seen.append(String.format(Locale.ROOT, " %.0f", w[f]));
+        }
+        check(peakRatio <= 1.0 && bump <= 5, String.format(Locale.ROOT, "hit over attack window: peak %.2fx the thrust's authored step (want 1.0 or less), largest break from one rise and fall %.1f deg;%s", peakRatio, bump, seen));
+        return String.format(Locale.ROOT, "peak %.2fx, largest break %.1f deg;%s", peakRatio, bump, seen);
     }
 
     /**
