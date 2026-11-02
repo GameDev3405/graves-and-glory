@@ -5,7 +5,10 @@ A drowned priest of the fog: a deep sea-blue robe to the ground in three bell ti
 band (the signature), a barnacle-crusted shoulder mantle, a deep hood framing a grey face with sea-foam glow eyes, wide bell
 sleeves, kelp trailing from the hood, cuffs, belt and hem, a rope cord with a conch charm, and a driftwood rod topped with a
 conch in the right hand (the caster carries no weapon). Sea blue is fixed paint on the robe and trim; the team cloth is a
-diagonal sash with a barry-wavy tail. Rare, so the eyes and three hem runes glow. Tier I only. No back flag.
+diagonal sash with a barry-wavy tail. Rare, so the eyes and three hem runes glow. Tier II (the Fog Speaker): a bronze mantle plate rimmed in sea blue, a
+bronze-studded hood band, bracers over the bell sleeves; the rod grows a sea-blue binding and a pair of conch spurs. Tier III
+(the Tide Oracle): deep sea-blue plate chased in warm bronze, mist strips trailing from mantle and sleeves, a pearl on the hood;
+the rod carries a pearl above a larger conch. The rod is a weaponTiers part, one bone per tier. No back flag.
 
   python build_tc_mist.py preview <dir> [side] | contact <png> [side] | stub | install
 """
@@ -16,6 +19,8 @@ sys.path.insert(0, os.path.join(HERE, "..", "tc_tideguard"))
 from handlib import *   # noqa: F401,F403
 import handlib as H
 import house_stub
+sys.path.insert(0, os.path.join(HERE, "..", "common"))
+import tidecallers as TC
 import build_tc_tideguard as TG
 from build_tc_tideguard import VERD as SEA, BARN, scuff, rng
 
@@ -26,6 +31,7 @@ GREY = ramp("14191c", "2b3538", "4b5b5f", "72868a", "9db0b2")                  #
 KELP = ramp("0e170a", "1d2f12", "2f4a1c", "4a6a2a", "6a8a40", "8fa56d")
 DRIFT = ramp("1a1612", "322a22", "524738", "75664f", "9a8a6c")                 # bleached driftwood
 ROPE = ramp("2a2218", "4a3d2b", "6e5d44", "8f7d5e", "b09d78")
+MIST = ramp("2a3a4a", "4a5e70", "6e8496", "98aebc", "c2d4dc", "e4eef0")              # tier III mist strips, cold sea-fog
 FOAM = hx("cff3e4")                                                             # sea-foam glow
 
 def lit(face, x, w): return LIT[face] + (lightx(face, x, w) if face not in ("top", "bottom") else 0)
@@ -319,8 +325,16 @@ def bones():
     B.append(Bone("hood_peak", "head", (0, -4, 4.5), rot=(18, 0, 0), boxes=[Box((-2, 0, 0), (4, 6, 2), peak())]))
     B.append(Bone("right_arm", "body", (-5, -10, 0), [Box((-3, -2, -2), (4, 12, 4), sleeve())]))
     B.append(Bone("right_hand", "right_arm", (-1, 8, 0)))
-    B.append(Bone("rod", "right_hand", tag="weapon", boxes=[
+    B.append(Bone("rod", "right_hand", tag="weapon", weapon_tiers=[1], boxes=[
         Box((-0.5, -0.5, -7), (1, 1, 7), rod()), Box((-1, -1, -9), (2, 2, 2), conch()), Box((-0.5, -2, -8.5), (1, 1, 1), conch())]))
+    B.append(Bone("rod_t2", "right_hand", tag="weapon", weapon_tiers=[2], boxes=[
+        Box((-0.5, -0.5, -8), (1, 1, 8), rod()), Box((-1, -1, -10), (2, 2, 2), conch()), Box((-0.5, -2, -9.5), (1, 1, 1), conch()),
+        Box((-0.7, -0.7, -4), (1.4, 1.4, 2), TC.tc_band(2, "mrb")), Box((1, -0.5, -10.5), (1, 1, 1), TC.tc_spike(TC.PEARL, 2, 2)),
+        Box((-2, -0.5, -10.5), (1, 1, 1), TC.tc_spike(TC.PEARL, 2, 2))]))
+    B.append(Bone("rod_t3", "right_hand", tag="weapon", weapon_tiers=[3], boxes=[
+        Box((-0.5, -0.5, -9), (1, 1, 9), rod()), Box((-1.5, -1.5, -11), (3, 3, 2), conch()), Box((-0.5, -2.5, -10.5), (1, 1, 1), conch()),
+        Box((-0.7, -0.7, -5), (1.4, 1.4, 2), TC.tc_band(3, "mrb3")), Box((-1, -1, -13), (2, 2, 2), TC.tc_pearl()),
+        Box((1.5, -0.5, -12), (1, 1, 2), TC.tc_spike(TC.WARM, 2, 2)), Box((-2.5, -0.5, -12), (1, 1, 2), TC.tc_spike(TC.WARM, 2, 2))]))
     B.append(Bone("left_arm", "body", (5, -10, 0), [Box((-1, -2, -2), (4, 12, 4), sleeve())]))
     B.append(Bone("left_hand", "left_arm", (1, 8, 0)))
     B.append(Bone("arms_folded", "body", (0, -9, -1), rot=(-43, 0, 0)))
@@ -341,14 +355,29 @@ def bones():
     B.append(Bone("sash", "body", team=True, pivot=(0, -7, 0), rot=(0, 0, 40), boxes=[Box((-4, -1, -2.5), (8, 2, 5), "sash", sheet="cloth")]))
     B.append(Bone("sash_tail", "body", team=True, boxes=[
         Box((-4, -1, -2.95), (3, 8, 0), "tail", sheet="cloth"), Box((-4, -1, 2.95), (3, 8, 0), "tail", sheet="cloth")]))
+    # tier II, the Fog Speaker: a bronze mantle plate, a hood band, bracers over the bells
+    B.append(Bone("mantle_plate", "body", stages=[2, 3], boxes=[Box((-5.5, -14, -3.5), (11, 2, 7), TC.P("mcmp"), dil=0.2)]))
+    B.append(Bone("hood_band", "head", stages=[2, 3], boxes=[Box((-4.9, -7.2, -5.9), (9.8, 1.2, 10.4), TC.band("mchb"), dil=0.05)]))
+    for side in ("right", "left"):
+        c = -1 if side == "right" else 1
+        B.append(Bone(f"{side}_bracer", f"{side}_arm", stages=[2, 3], boxes=[Box((-2.2 + (0 if side == "right" else -1), 0.5, -2.2), (4.4, 2.5, 4.4), TC.P("mcbr" + side, 0.03), dil=0.1)]))
+        B.append(Bone(f"{side}_pauldron", f"{side}_arm", (c, -2.5, 0), rot=(0, 0, 18 * c), stages=[2, 3], boxes=[
+            Box((-3.5 + 0.5 * c, -0.6, -3.2), (7, 3, 6.4), TC.P("mcpd" + side), dil=0.25)]))
+        # tier III, the Tide Oracle: mist strips trailing from the bells
+        B.append(Bone(f"{side}_mist", f"{side}_arm", (c * 1.5, 8, 2), rot=(18, 0, 6 * c), stages=[3], boxes=[
+            Box((-1.5, 0, 0), (1, 7, 1), TC.tc_spike(MIST, 3, 2)), Box((0.5, 0, 0.3), (1, 5, 1), TC.tc_spike(MIST, 3, 2))]))
+    B.append(Bone("mist_back", "body", (0, -11, 3.6), rot=(14, 0, 0), stages=[3], boxes=[
+        Box((-4, 0, 0), (1, 13, 1), TC.tc_spike(MIST, 3, 2)), Box((-1.5, 0, 0.2), (1, 16, 1), TC.tc_spike(MIST, 3, 2)),
+        Box((1, 0, 0), (1, 14, 1), TC.tc_spike(MIST, 3, 2)), Box((3.2, 0, 0.2), (1, 11, 1), TC.tc_spike(MIST, 3, 2))]))
+    B.append(Bone("hood_pearl", "head", stages=[3], boxes=[Box((-1, -8.6, -6.2), (2, 2, 1), TC.tc_pearl())]))
     return B
 
 NOTE = ("Tidecaller Mist Caller (unit identity, Tidecallers): a drowned priest of the fog in a deep sea-blue robe to the ground, a pale barnacle "
         "rune band round the hem (the signature), a barnacle-crusted shoulder mantle, a deep hood over a grey face with sea-foam glow eyes, "
         "wide bell sleeves, kelp trailing from the hood, cuffs, belt and hem, a rope cord with a conch charm, a driftwood rod with a conch in "
-        "the right hand, a team sash with a barry-wavy tail. Tier I only. No back flag.")
+        "the right hand, a team sash with a barry-wavy tail. Tier II bronze mantle plate and bracers; tier III deep sea-blue plate, mist strips and a pearl-topped rod. No back flag.")
 TC_MIST = Troop("tc_mist", SKIN, CLOTH, bones, cloth_painter,
-                {"weapon": "none", "hand": "right", "idleArms": "hang", "portrait": "standard"}, tiers=(1,), glow=glow_fn)
+                {"weapon": "none", "hand": "right", "idleArms": "hang", "portrait": "standard"}, glow=glow_fn)
 def build(): return TC_MIST.build()
 def outputs(): return TC_MIST.outputs()
 
