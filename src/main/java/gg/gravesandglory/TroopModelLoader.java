@@ -68,7 +68,9 @@ public final class TroopModelLoader implements SimpleSynchronousResourceReloadLi
                 for(String key:List.of("veteran","glow","outer"))if(!str(j,key).isEmpty())texture(manager,TroopModels.twin(new Identifier(str(j,key))));
             }
             boolean team=false;for(JsonElement b:j.getAsJsonArray("bones"))team|=b.getAsJsonObject().has("team")&&b.getAsJsonObject().get("team").getAsBoolean();
-            need(!team||missingCloth==null,"the cloth sheet "+missingCloth+" is missing");
+            String own=str(j,"cloth");
+            if(own.isEmpty())need(!team||missingCloth==null,"the cloth sheet "+missingCloth+" is missing");
+            else if(team)for(String c:cloths)texture(manager,TroopModels.cloth(own,"linen".equals(c)?null:c));
             float outer=rig.get("outer").getAsFloat();
             ModelPart twin=str(j,"outer").isEmpty()?null:build(j,outer,true).createModel();
             TroopModel<?> model=new TroopModel<>(j,parse(j).createModel(),hands(rig),twin,weapon.equals("none")?List.of():tierPoints(weapons,weapon));

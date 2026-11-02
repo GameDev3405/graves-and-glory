@@ -85,6 +85,7 @@ public final class TroopRenderer<T extends MobEntity> extends LivingEntityRender
         model=m;look=l;far=TroopModels.far(e,l);
         // Folded arms (idleArms folded) open while the troop attacks or a clip holds an arm (unit identity rule 3); a helm_off scene pose hides the helm.
         variant=TroopModels.face(e,m);
+        m.shieldOff=e.getOffHandStack().isEmpty();
         m.prepare(l,TroopAnimator.folds(m,e),TroopAnimator.helmOff(e),variant);
         boundSkin=clothSheet=trimSheet=null;clothMask=0;weaponDrawn=shieldDrawn=weaponFar=false;reliefKey=weaponId=null;weaponFrame=-1;weaponQuads=0;tilt=0;start.set(matrices.peek().getPositionMatrix());
         // Within reach of the camera (TroopDepth.near) the skin pass draws the relief of the skin it binds after the skin; the model spends the arm in that one pass.

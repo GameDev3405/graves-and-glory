@@ -51,7 +51,7 @@ final class TroopFeatures {
         final TroopRenderer<T> r;Cloth(TroopRenderer<T> r){super(r);this.r=r;}
         @Override public void render(MatrixStack m,VertexConsumerProvider v,int light,T e,float limbAngle,float limbDistance,float tickDelta,float age,float headYaw,float headPitch){
             var l=r.look;if(l==null||e.isInvisible())return;
-            Identifier cloth=TroopModels.cloth(TroopModels.clothOf(e,l));
+            Identifier cloth=TroopModels.cloth(getContextModel().cloth,TroopModels.clothOf(e,l));
             long drawn=getContextModel().renderCloth(m,v.getBuffer(RenderLayer.getEntityCutout(cloth)),light,LivingEntityRenderer.getOverlay(e,0f));
             r.clothSheet=cloth;r.clothMask=drawn;
         }
@@ -100,7 +100,8 @@ final class TroopFeatures {
      * carried face out at all times: from the hand frame vanilla's HeldItemFeatureRenderer uses (2 px down and 2 px forward of
      * the hand bone), the vanilla shield_blocking model's third-person left-hand transform (mirrored for a shield in the right
      * hand), drawn with no display transform of its own. So the face covers the troop's front at rest (the shield arm carries
-     * it 45 degrees forward) and on guard, never edge-on as vanilla's lowered hold reads from the side.
+     * it 45 degrees forward) and on guard, never edge-on as vanilla's lowered hold reads from the side. A model with its own
+     * shield (TroopModel.ownShield) draws that on its own arm bone with its skin and cloth, and the item draws nothing.
      */
     static final class Shield<T extends MobEntity> extends FeatureRenderer<T,TroopModel<T>> {
         final TroopRenderer<T> r;final HeldItemRenderer held;Shield(TroopRenderer<T> r,HeldItemRenderer held){super(r);this.r=r;this.held=held;}
@@ -108,6 +109,7 @@ final class TroopFeatures {
             TroopModel<T> model=getContextModel();if(r.look==null||e.isInvisible()||model.folded)return;
             ItemStack stack=e.getOffHandStack();if(stack.isEmpty())return;
             boolean left=!"left".equals(model.hand());List<ModelPart> path=model.handPath(left?"left":"right");if(!shown(path))return;
+            if(model.ownShield()){r.shieldDrawn=true;return;}
             m.push();for(ModelPart p:path)p.rotate(m);
             m.multiply(RotationAxis.POSITIVE_X.rotationDegrees(-90f));m.multiply(RotationAxis.POSITIVE_Y.rotationDegrees(180f));m.translate(0f,0.125f,-0.125f);
             float side=left?-1:1;m.translate(side*13.51f/16f,3f/16f,5f/16f);
