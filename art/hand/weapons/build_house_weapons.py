@@ -29,6 +29,7 @@ SEA = ramp("0a1426", "11264a", "1a3f6a", "2a5e8a", "386a94", "5e88a6", "9db8c4")
 BRZ = ramp("2a1608", "553014", "7a4c1e", "8f6530", "a38a5e", "c9b184")                      # sea-worn bronze, lights eased under the tint rule
 DRIFT = ramp("201c1a", "3a322c", "564a40", "74675a", "94887a", "b3a99a")                    # bleached, salt-grey driftwood
 ABYSS = ramp("0f0c0b", "201814", "302319", "42332a", "58463a", "70594a")                    # near-black wet driftwood
+WBRZ = ramp("2a1608", "553014", "7a4c1e", "8f6530", "a38a5e", "c9b184", "e0cfa6")           # warm bronze with a lit seventh step (tier III heads)
 ROPE = ramp("2a2218", "4a3d2b", "6e5d44", "8f7d5e", "b09d78", "cdbf9c")
 PEARL = ramp("6a706c", "8e948f", "b4bab4", "d8dcd4", "eef1ec", "ffffff")
 
@@ -65,9 +66,10 @@ def boar_spear():
         post("tip", 31, 33, 0.5, 0.5, "steel", metal(S, 6), skip=("down",)),
     ]
 
-def coral_trident():
-    """An upright trident: a bleached coral shaft, a bronze crossbar and three prongs with barbs."""
-    return [
+def coral_trident(tier=1):
+    """An upright trident: a bleached coral shaft, a bronze crossbar and three prongs with barbs. Tier II adds coral barbs on
+    the shaft and a sea-blue band; tier III a pearl at the fork and barbs on the middle prong."""
+    out = [
         post("foot", -12, -10, 0.5, 0.5, "bone", metal(CORAL, 3), skip=("up",)),
         post("shaft_lo", -10, -2, 0.5, 0.5, "bone", grain(CORAL, 3, 3), skip=("down", "up")),
         Cube("grip", [-1, -2, -1], [1, 2, 1], "leather", wrap(L[2], L[1]), skip=("up", "down")),
@@ -80,17 +82,29 @@ def coral_trident():
         bit("barb_l", -2, -1, 22, 23, "gilt", metal(G, 4)),
         bit("barb_r", 1, 2, 22, 23, "gilt", metal(G, 4)),
     ]
+    if tier >= 2:
+        out += [post("sea_band", 12, 14, 1, 1, "leather", binder(SEA)),
+                bit("coral_l", -2.5, -0.5, 14, 17, "bone", grain(CORAL, 3, 1)),
+                bit("coral_r", 0.5, 2.5, 15, 18, "bone", grain(CORAL, 3, 2))]
+    if tier >= 3:
+        out += [post("pearl", 20, 22, 1, 1, "bone", metal(PEARL, 3)),
+                bit("barb_cl", -1.5, -0.5, 25, 26, "gilt", metal(G, 5)),
+                bit("barb_cr", 0.5, 1.5, 25, 26, "gilt", metal(G, 5))]
+    return out
 
-def cutlass():
+def cutlass(tier=1):
     """A curved cutlass: a notched sea-steel blade swelling toward a clipped point, a bronze basket with a knuckle bow, a sea-blue wrap."""
     st = S
     def seg(name, x0, x1, y0, y1, cols, nick=None, skip=()):
+        if tier >= 3 and len(cols) >= 3: cols = cols[:-2] + [SEA[4]] + cols[-1:]   # tier III: a sea-blue fuller
         return Cube(name, [x0, y0, -0.5], [x1, y1, 0.5], "steel",
                     by_face(north=across(cols, nick), south=across(cols, nick), up=flat(st[5]), rest=flat(st[4])), skip=skip)
     spine = lambda w, ys: (lambda f, y, h: {w - 1: st[1]} if y in ys else {})
-    br = lambda: by_face(up=flat(BRZ[4]), down=flat(BRZ[1]), rest=bar(BRZ[4], BRZ[3], BRZ[2], BRZ[1]))
-    return [
-        Cube("pommel", [-1, -4, -1], [1, -2, 1], "gilt", br()),
+    M = BRZ if tier < 3 else G
+    br = lambda: by_face(up=flat(M[4]), down=flat(M[1]), rest=bar(M[4], M[3], M[2], M[1]))
+    pearl = by_face(up=flat(PEARL[4]), down=flat(PEARL[1]), rest=bar(PEARL[4], PEARL[3], PEARL[2], PEARL[1]))
+    out = [
+        Cube("pommel", [-1, -4, -1], [1, -2, 1], "gilt" if tier < 3 else "bone", br() if tier < 3 else pearl),
         Cube("grip", [-0.5, -2, -0.5], [0.5, 2, 0.5], "leather", wrap(SEA[3], SEA[1]), skip=("up", "down")),
         Cube("guard", [-3.5, 2, -1], [3.5, 3, 1], "gilt", br()),
         Cube("bow", [-3.5, -3, -0.5], [-2.5, 2, 0.5], "gilt", br()),
@@ -104,9 +118,16 @@ def cutlass():
         seg("tip", 3, 5, 17, 18, [st[6], st[3]]),
         seg("point", 4, 5, 18, 19, [st[6]]),
     ]
+    if tier >= 2:   # a sea-blue enamelled shell plate on the guard and a down-curled quillon
+        out += [Cube("shell", [-2.5, 3, -1.5], [2.5, 4, 1.5], "leather", by_face(up=flat(SEA[4]), down=flat(SEA[1]), rest=bar(SEA[5], SEA[3], SEA[2], SEA[1]))),
+                Cube("quillon", [3.5, 1, -0.5], [4.5, 3, 0.5], "gilt", br())]
+    return out
 
-def harpoon():
-    """An upright harpoon: a salt-grey driftwood shaft, a sea-blue grip, a hemp coil with a trailing line, a barbed iron head."""
+def harpoon(tier=1):
+    """An upright harpoon: a salt-grey driftwood shaft, a sea-blue grip, a hemp coil with a trailing line, a barbed iron head.
+    Tier II: a bronze collar, a sea-blue coil and longer steel hooks; tier III a pearl-set bronze head with a sea-blue ring."""
+    HD = IRONW if tier == 1 else (S if tier == 2 else WBRZ)
+    hk = 0 if tier == 1 else 1
     return [
         post("foot", -14, -12, 0.5, 0.5, "iron", metal(IRONW, 3), skip=("up",)),
         post("shaft_lo", -12, -2, 0.5, 0.5, "wood", grain(DRIFT, 3, 2), skip=("down", "up")),
@@ -114,36 +135,39 @@ def harpoon():
         post("shaft", 2, 20, 0.5, 0.5, "wood", grain(DRIFT, 3, 5), skip=("down", "up")),
         post("sea", 5, 7, 1, 1, "leather", binder(SEA)),
         post("coil_a", 13, 14, 1.5, 1.5, "leather", binder(ROPE)),
-        post("coil_b", 14, 15, 1, 1, "leather", binder(ROPE)),
+        post("coil_b", 14, 15, 1, 1, "leather", binder(ROPE if tier == 1 else SEA)),
         post("coil_c", 15, 16, 1.5, 1.5, "leather", binder(ROPE)),
         post("coil_d", 16, 17, 1, 1, "leather", binder(ROPE)),
         bit("line", 1.5, 2.5, 7, 15, "leather", metal(ROPE, 3)),
         bit("line_end", 2.5, 3.5, 7, 10, "leather", metal(ROPE, 2)),
-        post("collar", 20, 22, 1, 1, "iron", metal(IRONW, 3), skip=("up",)),
-        post("head_lo", 22, 26, 1.5, 0.5, "iron", metal(IRONW, 4)),
-        post("head_mid", 26, 30, 1, 0.5, "iron", metal(IRONW, 5)),
-        post("tip", 30, 33, 0.5, 0.5, "iron", metal(IRONW, 6), skip=("down",)),
-        bit("barb_l", -2.5, -1.5, 23, 27, "iron", metal(IRONW, 4)),
-        bit("barb_r", 1.5, 2.5, 23, 27, "iron", metal(IRONW, 4)),
-        bit("hook_l", -3.5, -2.5, 22, 25, "iron", metal(IRONW, 5)),
-        bit("hook_r", 2.5, 3.5, 22, 25, "iron", metal(IRONW, 5)),
+        post("collar", 20, 22, 1, 1, "iron" if tier == 1 else ("gilt" if tier == 2 else "leather"),
+             metal(IRONW, 3) if tier == 1 else (metal(WBRZ, 4) if tier == 2 else binder(SEA)), skip=("up",)),
+        post("head_lo", 22, 26, 1.5, 0.5, "iron" if tier < 3 else "bone", metal(HD, 4) if tier < 3 else metal(PEARL, 3)),
+        post("head_mid", 26, 30 + hk, 1, 0.5, "iron", metal(HD, 5)),
+        post("tip", 30 + hk, 33 + hk, 0.5, 0.5, "iron", metal(HD, 6), skip=("down",)),
+        bit("barb_l", -2.5, -1.5, 23, 27 + hk, "iron", metal(HD, 4)),
+        bit("barb_r", 1.5, 2.5, 23, 27 + hk, "iron", metal(HD, 4)),
+        bit("hook_l", -3.5 - hk, -2.5, 22 - hk, 25, "iron", metal(HD, 5)),
+        bit("hook_r", 2.5, 3.5 + hk, 22 - hk, 25, "iron", metal(HD, 5)),
     ]
 
-def admiral_trident():
-    """The Admiral's trident: dark wet driftwood, gilt rings and crown, a sea-blue band, three barbed prongs, a pearl at the fork."""
-    return [
+def admiral_trident(tier=1):
+    """The Admiral's trident: dark wet driftwood, gilt rings and crown, a sea-blue band, three barbed prongs, a pearl at the fork.
+    Tier II: a sea-blue lower band, a broader crossbar and a longer middle prong; tier III pearl-tipped outer prongs."""
+    k = 1 if tier > 1 else 0
+    out = [
         post("foot", -14, -12, 1, 1, "gilt", metal(G, 3), skip=("up",)),
         post("shaft_lo", -12, -2, 0.5, 0.5, "wood", grain(ABYSS, 3, 3), skip=("down", "up")),
-        post("ring_lo", -7, -6, 1, 1, "gilt", metal(G, 3)),
+        post("ring_lo", -7 - k, -6, 1, 1, "gilt" if tier == 1 else "leather", metal(G, 3) if tier == 1 else binder(SEA)),
         Cube("grip", [-1, -2, -1], [1, 2, 1], "leather", wrap(SEA[3], SEA[1], G[3]), skip=("up", "down")),
         post("shaft", 2, 19, 0.5, 0.5, "wood", grain(ABYSS, 3, 8), skip=("down", "up")),
         post("ring_a", 5, 6, 1, 1, "gilt", metal(G, 3)),
         post("sea", 6, 9, 1, 1, "leather", binder(SEA)),
         post("ring_b", 9, 10, 1, 1, "gilt", metal(G, 3)),
         post("collar", 19, 21, 1.5, 1, "gilt", metal(G, 4), skip=("up",)),
-        post("cross", 21, 22, 3, 0.5, "gilt", metal(G, 4)),
+        post("cross", 21, 22, 3 + k, 0.5, "gilt", metal(G, 4)),
         bit("pearl", -1, 1, 22, 24, "bone", metal(PEARL, 3)),
-        post("prong_c", 24, 33, 0.5, 0.5, "gilt", metal(G, 5), skip=("down",)),
+        post("prong_c", 24, 33 + 2 * k, 0.5, 0.5, "gilt", metal(G, 5), skip=("down",)),
         bit("prong_l", -3, -2, 22, 28, "gilt", metal(G, 5), skip=("down",)),
         bit("prong_r", 2, 3, 22, 28, "gilt", metal(G, 5), skip=("down",)),
         bit("tip_l", -2, -1, 28, 30, "gilt", metal(G, 6), skip=("down",)),
@@ -153,6 +177,10 @@ def admiral_trident():
         bit("barb_ol", -4, -3, 23, 25, "gilt", metal(G, 4)),
         bit("barb_or", 3, 4, 23, 25, "gilt", metal(G, 4)),
     ]
+    if tier >= 3:   # pearl tips on the outer prongs
+        out = [c for c in out if c.name not in ("tip_l", "tip_r")] + [
+            bit("tip_l", -3, -1, 28, 30, "bone", metal(PEARL, 3)), bit("tip_r", 1, 3, 28, 30, "bone", metal(PEARL, 3))]
+    return out
 
 TIERS = {
     "hearth_axe": (hearth_axe, "The Hearthguard's hearth axe (Ironclad), hand-authored at 1 texel a px: a dark ash haft with an ember band, an iron socket and a bearded iron head with a hammered edge and a rear spike; one-handed, held like a sword."),
@@ -162,13 +190,21 @@ TIERS = {
     "harpoon": (harpoon, "The Harpooner's harpoon (Tidecallers), hand-authored at 1 texel a px: a salt-grey driftwood shaft, a sea-blue grip and band, a hemp coil with a trailing line and a barbed iron head; held upright."),
     "admiral_trident": (admiral_trident, "Admiral Vael's trident (Tidecallers), hand-authored at 1 texel a px: a dark wet driftwood shaft with gilt rings and crown, a sea-blue band, three barbed gilt prongs and a pearl at the fork; held upright."),
 }
+_T2 = {"coral_trident": "coral barbs and a sea-blue band on the shaft", "cutlass": "a sea-blue enamelled shell guard and a quillon",
+       "harpoon": "a bronze collar, a sea-blue coil and a longer steel head and hooks", "admiral_trident": "a sea-blue lower band, a broader crossbar and a longer middle prong"}
+_T3 = {"coral_trident": "adds a pearl at the fork and barbs on the middle prong", "cutlass": "a gilt basket, a pearl pommel and a sea-blue fuller",
+       "harpoon": "a bronze head set with pearl and a sea-blue collar", "admiral_trident": "adds pearl tips on the outer prongs"}
+for _wid in _T2:
+    _fn = TIERS[_wid][0]
+    TIERS[_wid + "_t2"] = ((lambda f: lambda: f(2))(_fn), TIERS[_wid][1] + " Tier II: " + _T2[_wid] + ".")
+    TIERS[_wid + "_t3"] = ((lambda f: lambda: f(3))(_fn), TIERS[_wid][1] + " Tier III: " + _T2[_wid] + "; " + _T3[_wid] + ".")
 UPRIGHT = {"offset": [0, 0, 0], "rotation": [0, 0, 0], "note": "held upright like the sun staff"}
 W_outputs = W.outputs
 
 def outputs(tiers=None):
     out = W_outputs(tiers or TIERS)
     for wid in (tiers or TIERS):
-        if wid not in ("hearth_axe", "cutlass"): out[wid + ".json"]["grip"] = UPRIGHT
+        if wid.split("_t")[0] not in ("hearth_axe", "cutlass"): out[wid + ".json"]["grip"] = UPRIGHT
     return out
 
 def main():
