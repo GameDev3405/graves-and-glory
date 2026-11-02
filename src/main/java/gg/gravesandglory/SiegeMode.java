@@ -233,8 +233,8 @@ public final class SiegeMode extends BattleMode {
         return new Vec3d(x, Arena.ground((int) Math.floor(x), (int) Math.floor(z)) + 1, z);
     }
 
-    /** The gate-sight stand on each gate tower, in blocks from the gate piece's centre: TOWER_X west of it, TOWER_Z north or south, feet TOWER_FEET above its elevation. */
-    static final int TOWER_X = 2, TOWER_Z = 9, TOWER_FEET = 13;
+    /** The gate-sight stand on each gate tower, in blocks from the gate piece's centre: TOWER_X west of it, TOWER_Z north or south, feet TOWER_FEET above its elevation. TOWER_Z 8 keeps the perch slots (three across, a block apart) off the stair hole at 9 to 11. */
+    static final int TOWER_X = 2, TOWER_Z = 8, TOWER_FEET = 13;
 
     /**
      * A defenders' ranged post: the top of the north (side 0) or south gate tower. Each tower has an east door and a spiral stair from it to the gate-sight stand
@@ -259,7 +259,7 @@ public final class SiegeMode extends BattleMode {
         }
         if (stage != 1) return;
         if (s.team == 1) {
-            if (stations(tier)) put(s, "ranged", "attack", post(row, Math.floorMod(s.owner.hashCode(), 2)), -1);
+            if (stations(tier)) put(s, "ranged", "attack", post(row, Math.floorMod(s.owner.hashCode(), 2)), -1).perch = true;
             return;
         }
         if (dropAt >= 0 || target == null) {
@@ -282,11 +282,12 @@ public final class SiegeMode extends BattleMode {
     }
 
     /** One group's order, keeping the formation the army already gave it (a shieldwall stays braced). */
-    static void put(GravesAndGlory.Squad s, String group, String order, Vec3d spot, int enemy) {
+    static GravesAndGlory.Assignment put(GravesAndGlory.Squad s, String group, String order, Vec3d spot, int enemy) {
         var was = s.assignments.get(group);
         var a = new GravesAndGlory.Assignment(order, was != null ? was.formation : s.formation, spot, s.yaw);
         a.enemy = enemy;
         s.assignments.put(group, a);
+        return a;
     }
 
     /** Each second: the current stage's hold or the gate's health, and the win when the keep falls. */

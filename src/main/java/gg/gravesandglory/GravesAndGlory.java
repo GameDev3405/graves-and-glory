@@ -210,6 +210,8 @@ public final class GravesAndGlory implements ModInitializer {
     }
     public static final class Assignment {
         String order,formation;Vec3d target;float yaw;int enemy=-1;long issued;
+        /** A raised post (Siege's gate-tower tops): the target's own height counts, the slots pack tight around it (Battle.formation) and a ranged troop there shoots from it rather than walk off after an enemy (Tactics). */
+        boolean perch;
         Assignment(String o,String f,Vec3d t,float y){order=o;formation=f;target=t;yaw=y;}
     }
     /** A troop in a squad's training queue: when it is done, and the gold paid for it (the class cost, Commander.cost), which a cancel or a full army refunds. The short form is a free troop: nothing paid, nothing refunded. */
@@ -857,6 +859,7 @@ public final class GravesAndGlory implements ModInitializer {
             int columns=Math.min(f.columns(),u.spec.group().equals("support")?2:siege||u.spec.group().equals("ranged")?6:12);
             double side=(slot%columns-(columns-1)/2.0)*cell,back=role+(slot/columns+1)*cell;
             if(f.wedge()){int rank=(int)Math.floor(Math.sqrt(slot));side=(slot-rank*rank-rank)*cell;back=role+(rank+1)*cell;}
+            if(a.perch){side=(slot%3-1)*1.0;back=slot/3*1.0;} // a post's floor is a few blocks across: rows of three a block apart, from the post back, at its height
             double angle=Math.toRadians(a.yaw);return a.target.add(Math.cos(angle)*side+Math.sin(angle)*back,0,Math.sin(angle)*side-Math.cos(angle)*back);
         }
         public boolean atBarracks(ServerPlayerEntity p,Squad s){
