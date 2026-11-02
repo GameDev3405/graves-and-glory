@@ -91,7 +91,7 @@ In the final runs, attacker ranged troops are almost never lost. Attacker infant
 - `compileJava` and `localTestToolsJar` compile.
 - `./gradlew build compileLocalTestTools -x test --offline` succeeds.
 - The standalone Python suite (`unittest discover -s test-tools/standalone`, 213 tests, including the 7 mode_gate tests) passes.
-- `verify.py fast` and the Phase 1 game suite were **deferred**: other sessions' Minecraft clients were running the whole time, and verify does not compile or run game work beside a live client. Run both before merging.
+- After merging local main (e4c36d8, the per-checkout verify guard): `verify.py fast --offline` PASS and `verify.py game --offline` (the Phase 1 combat smoke) PASS, 2026-11-01.
 
 ## Open questions (for Kort, via the coordinator)
 
