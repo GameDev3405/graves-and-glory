@@ -240,7 +240,7 @@ def grip_cubes(paint):
 def order_bow(tier):
     t3, t2 = tier == 3, tier >= 2
     wood = (WN, WN) if t2 else (DK, DK)
-    segs = [(2, 5, 1, 2, 0.35), (2, 15, 1, 2, 0.65), (2, 27, 1, 2, 1.0), (2, 40, 1, 1, 1.2), (2, 10, 1, 1, 1.0)]
+    segs = [(2, 5, 2, 2, 0.35), (2, 15, 2, 2, 0.65), (2, 27, 2, 2, 1.0), (2, 40, 1, 2, 1.2), (2, 10, 1, 2, 1.0)]
     if tier == 1:
         nock = {"n": 1, "d": 1, "rel": 0, "wt": 1.0, "mat": "wood", "mk": lambda up: by_face(up=flat(DK[4]), down=flat(DK[1]), rest=flat(DK[3])), "at": 0.5}
         grip = grip_cubes(wrap(L[3], L[1]))
@@ -271,7 +271,7 @@ def order_bow(tier):
 def longbow(tier):
     t3, t2 = tier == 3, tier >= 2
     wood = (SAP, HEART)
-    segs = [(3, 2, 2, 2, 0.5), (3, 6, 2, 2, 0.8), (3, 11, 1, 2, 1.0), (3, 17, 1, 1, 1.0), (2, 25, 1, 1, 1.0)]
+    segs = [(3, 2, 2, 2, 0.5), (3, 6, 2, 2, 0.8), (3, 11, 2, 2, 1.0), (3, 17, 1, 2, 1.0), (2, 25, 1, 2, 1.0)]
     wid = "longbow" + ("" if tier == 1 else "_t%d" % tier)
     steel = by_face(up=flat(S[5]), down=flat(S[1]), rest=bar(S[5], S[4], S[2], S[3]))
     gilt = by_face(up=flat(G[5]), down=flat(G[2]), rest=bar(G[5], G[4], G[2], G[3]))
