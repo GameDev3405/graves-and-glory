@@ -280,7 +280,7 @@ NOTE = ("Ironclad Hearthguard (unit identity, Ironclad): vindicator, biped, broa
         "ember crest over a copper beard braided to the belt, layered slab pauldrons, a breastplate over a soot-iron scale coat, a chequy "
         "team tabard, a brass-buckled belt, knee cops and sabatons; the shield on the left arm. Tier I only in the first pass. No back flag.")
 IC_HEARTHGUARD = Troop("ic_hearthguard", SKIN, CLOTH, bones, cloth_painter,
-                       {"weapon": "hearth_axe", "hand": "right", "idleArms": "folded", "portrait": "standard"}, tiers=(1,),
+                       {"weapon": "hearth_axe", "hand": "right", "idleArms": "hang", "portrait": "standard"}, tiers=(1,),
                        hide=lambda bn: bn.name.startswith("shield"))
 def build(): return IC_HEARTHGUARD.build()
 def outputs(): return IC_HEARTHGUARD.outputs()

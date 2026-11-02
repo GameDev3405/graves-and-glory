@@ -46,7 +46,7 @@ def head_painter():
         g = blank(w, h)
         for y in range(h):
             for x in range(w):
-                v = 4 + LIT[face] + (lightx(face, x, w) if face not in ("top", "bottom") else 0)
+                v = 5 + LIT[face] + (lightx(face, x, w) if face not in ("top", "bottom") else 0)
                 g[y][x] = clamp(S, v)
         if face == "front":
             for x in range(w): g[3][x] = S[2]                                     # the brow ridge
@@ -219,13 +219,13 @@ def bones():
     B = [Bone("root", "")]
     B.append(Bone("body", "root", (0, 12, 0), [Box((-4, -12, -2), (8, 12, 4), jerkin())], rot=(HUNCH, 0, 0)))
     B.append(Bone("head", "body", (0, -12, 0), [Box((-4, -8, -4), (8, 8, 8), head_painter())], rot=(-HUNCH, 0, 0)))
-    B.append(Bone("snout", "head", boxes=[Box((-2, -3.5, -6), (4, 3, 2), snout())]))
+    B.append(Bone("snout", "head", boxes=[Box((-2.5, -3.5, -6), (5, 4, 2), snout())]))
     B.append(Bone("ears", "head", boxes=[Box((-5.5, -8, -1), (1, 3, 2), ear()), Box((4.5, -8, -1), (1, 3, 2), ear())]))
     B.append(Bone("tusks", "head", boxes=[
         Box((-4, -5, -6), (2, 4, 1), tusk()), Box((-4, -7, -6.5), (2, 2, 1), tusk()),
         Box((2, -5, -6), (2, 4, 1), tusk()), Box((2, -7, -6.5), (2, 2, 1), tusk())]))
-    B.append(Bone("cap", "head", tag="helm", boxes=[Box((-4.5, -9.5, -4.5), (9, 4, 9), cap())]))
-    B.append(Bone("headband", "head", team=True, tag="helm", boxes=[Box((-4.5, -5.5, -4.5), (9, 1, 9), "band", sheet="cloth")]))
+    B.append(Bone("cap", "head", tag="helm", boxes=[Box((-4.5, -9.5, -4.5), (9, 3, 9), cap())]))
+    B.append(Bone("headband", "head", team=True, tag="helm", boxes=[Box((-4.5, -6.5, -4.5), (9, 1, 9), "band", sheet="cloth")]))
     B.append(Bone("right_arm", "body", (-5, -10, 0), [Box((-3, -2, -2), (4, 12, 4), arm_bare())], rot=(-HUNCH, 0, 0)))
     B.append(Bone("right_hand", "right_arm", (-1, 8, 0)))
     B.append(Bone("left_arm", "body", (5, -10, 0), [Box((-1, -2, -2), (4, 12, 4), arm_bare())], rot=(-HUNCH, 0, 0)))

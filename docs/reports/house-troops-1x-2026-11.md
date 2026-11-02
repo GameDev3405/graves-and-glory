@@ -24,3 +24,8 @@ Team colour sits only on the cloth sheet (tabards, wraps, fin, headband, kilt, s
 - In-game turn shots obtained on the third attempt (JDK 17, sequential `build -x test` then `runClient`, `GRAVES_PHASE2_CHECKS=turn`): 87 shots, no crash, no model or texture errors. Idle contact sheets (8 angles) are `*-ingame-turn.png` in this folder; raw shots were under `work/art-units/hh-4/run/screenshots`. All three load with the right skins, team cloth and weapons. At game distance the Hearthguard axe is not visible in idle (check the attack shots), the Tusk head reads small, and the Tideguard coral and tabard read well. Earlier failures were a Git Bash path fault, JDK 21, and a `clean` racing the compile (`ContactFeedbackMixin` not found).
 - Art self-score: Hearthguard about 9, Tusk about 8 (head still reads small and dark; tusks thickened once), Tideguard about 8.5 (tabard low contrast against the teal legs, coral branches are small). Weapons about 8.5 for the axe and trident, 8.5 for the spear. Two correction rounds were used; the Tusk head and the Tideguard coral are the open items if Kort wants more.
 - Kort reviews the turn sheets before anything merges. Nothing is pushed or merged.
+
+## 9-pass (Kort 2026-11-01)
+- Hearthguard: the idle used `folded` arms, but the builder's `arms_folded` bone has no boxes, so the idle showed no arms and no axe. Now `hang`: arms, axe and shield all show at rest.
+- Tusk: cap 4 to 3 high and headband raised so the eyes and brow show; snout 5x4; head skin one tone lighter.
+- In-game check (hh-5, 58 shots, no errors): `house-9-pass-ingame.png` (Hearthguard and Tusk, idle, three angles each). Tideguard unchanged.

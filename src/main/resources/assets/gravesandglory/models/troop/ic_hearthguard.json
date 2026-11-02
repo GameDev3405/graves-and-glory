@@ -12,7 +12,7 @@
 "outer":"",
 "weapon":"hearth_axe",
 "hand":"right",
-"idleArms":"folded",
+"idleArms":"hang",
 "portrait":"standard",
 "bones":[
 {"name":"root","parent":"","part":"","team":false,"tag":"","stages":[],"sheet":[128,128],"pivot":[0,0,0],"rotation":[0,0,0],"boxes":[]},
