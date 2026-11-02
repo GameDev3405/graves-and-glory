@@ -4,7 +4,9 @@
 A drowned light skirmisher who leans into the charge: a green turtle-shell helmet (the signature) edged in sea blue, a bloated
 grey-green body with white blind eyes, a short sea-blue oilskin coat hanging open on a swollen belly, tattered navy trousers,
 barnacles crusting shoulder and hip, kelp streaming back from helm, shoulders, arms, belt and shin, a rolled net on the back.
-Team cloth is the neck scarf, a hip sash and the wrist wraps. No coral (the Trident Guard's). Tier I only. No back flag.
+Team cloth is the neck scarf, a hip sash and the wrist wraps. No coral (the Trident Guard's). Tier II (the Reef Reaver): a bronze pauldron rimmed in sea blue on the sword
+shoulder, bracers, greaves and a sea-blue gorget band. Tier III (the Wreck Captain): deep sea-blue plate chased in warm bronze
+on both shoulders, shell barnacles crusting helm and shoulders, a pearl-studded helm rim. No back flag.
 The cutlass rides in the right hand.
 
   python build_tc_raider.py preview <dir> [side] | contact <png> [side] | stub | install
@@ -16,6 +18,8 @@ sys.path.insert(0, os.path.join(HERE, "..", "tc_tideguard"))
 from handlib import *   # noqa: F401,F403
 import handlib as H
 import house_stub
+sys.path.insert(0, os.path.join(HERE, "..", "common"))
+import tidecallers as TC
 import build_tc_tideguard as TG
 from build_tc_tideguard import VERD as SEA, BRONZE, FLESH, BARN, barnacled_mail, scuff, rng
 
@@ -274,14 +278,31 @@ def bones():
         if side == "left": B.append(strand(f"kelp_{side}_shoulder", "body", (5 * c, -10.5, 0.5), (26, 0, 8 * c), [((-1, 0, 0), (2, 7, 1))]))
         B.append(Bone(f"{side}_wrap", f"{side}_arm", team=True, boxes=[Box((-2 + (0 if side == "right" else -1), 7, -2), (4, 2, 4), "wrap", dil=0.3, sheet="cloth")]))
         B.append(Bone(f"{side}_foot", f"{side}_leg", boxes=[Box((-2.5, 9, -3.5), (5, 3, 5.5), foot())]))
+    # tier II, the Reef Reaver: one bronze pauldron on the sword shoulder, bracers, greaves, a gorget band
+    for side in ("right", "left"):
+        c = -1 if side == "right" else 1
+        B.append(Bone(f"{side}_bracer", f"{side}_arm", stages=[2, 3], boxes=[Box((-2.2 + (0 if side == "right" else -1), 3.5, -2.2), (4.4, 3.5, 4.4), TC.P("rdbr" + side, 0.03), dil=0.1)]))
+        B.append(Bone(f"{side}_greave", f"{side}_leg", stages=[2, 3], boxes=[Box((-2.3, 4, -2.3), (4.6, 4.5, 4.6), TC.P("rdgv" + side), dil=0.1)]))
+        B.append(Bone(f"{side}_pauldron", f"{side}_arm", (c, -2.5, 0), rot=(0, 0, 14 * c), stages=[2, 3] if side == "right" else [3], boxes=[
+            Box((-3.5 + 0.5 * c, -0.5, -3), (7, 3, 6), TC.P("rdpd" + side), dil=0.2),
+            Box((-2 + 0.5 * c, -1.5, -2), (4, 1, 4), TC.P("rdpt" + side), dil=0.1)]))
+    B.append(Bone("gorget", "body", stages=[2, 3], boxes=[Box((-4, -12.5, -3), (8, 1.5, 6), TC.band("rdg"), dil=0.1)]))
+    # tier III, the Wreck Captain: shell barnacles on helm and shoulders, a pearl-studded helm rim
+    B.append(Bone("helm_rim", "head", tag="helm", stages=[3], boxes=[Box((-5.2, -5.2, -4.8), (10.4, 1.2, 9.6), TC.band("rdhr"), dil=0.05)]))
+    for i, (x, y, z, w) in enumerate([(-3, -11, -2, 2), (1.5, -11.5, 0, 2), (-1, -11.2, 2.5, 3), (3.2, -10.5, -3, 1)]):
+        B.append(Bone(f"shell_barn{i}", "head", tag="helm", stages=[3], boxes=[Box((x, y, z), (w, 1.5, w), TC.tc_barnacles(("rdh", i)))]))
+    for side, c in (("right", -1), ("left", 1)):
+        B.append(Bone(f"{side}_shell_barn", f"{side}_arm", (c, -2.5, 0), stages=[3], boxes=[
+            Box((-1.5 + c, -2.5, -1.5), (2, 1.5, 2), TC.tc_barnacles((side, "a"))), Box((0.5 + c, -2.2, 0.5), (1, 1, 1), TC.tc_barnacles((side, "b")))]))
     return B
 
 NOTE = ("Tidecaller Drowned Raider (unit identity, Tidecallers): drowned light skirmisher, biped, leaning forward (hunch baked into the bones); "
         "a green turtle-shell helmet with a sea-blue rolled edge (the signature), a bloated grey-green body with white eyes, a sea-blue oilskin "
         "coat open on a swollen belly, tattered navy trousers, barnacles, a rolled net on the back, kelp streaming from helm, shoulders, "
-        "forearms, belt and shin, a team neck scarf, hip sash and wrist wraps. The cutlass is in the right hand. No coral. Tier I only. No back flag.")
+        "forearms, belt and shin, a team neck scarf, hip sash and wrist wraps. The cutlass is in the right hand. No coral. Tier II a bronze sword-shoulder "
+        "pauldron, bracers and greaves; tier III deep sea-blue plate on both shoulders and shell barnacles on helm and shoulders. No back flag.")
 TC_RAIDER = Troop("tc_raider", SKIN, CLOTH, bones, cloth_painter,
-                  {"weapon": "cutlass", "hand": "right", "idleArms": "hang", "portrait": "standard"}, tiers=(1,))
+                  {"weapon": "cutlass", "hand": "right", "idleArms": "hang", "portrait": "standard"})
 def build(): return TC_RAIDER.build()
 def outputs(): return TC_RAIDER.outputs()
 
