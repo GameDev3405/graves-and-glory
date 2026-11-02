@@ -1,17 +1,19 @@
 {
  "troop": "hexer",
- "note": "Graveborn Gravecaller (unit identity, Graveborn): a hunched caster in a three-tiered burial robe to the ground hemmed in violet, a grave-iron mantle with candle stubs, a deep drooping hood over a gilt death mask, a team vestment, bare bone arms in bell sleeves and a lit soul-light lantern held out on a crook. Tier I only; no flag on the back.",
+ "note": "Graveborn Gravecaller (unit identity, Graveborn): a hunched caster in a three-tiered burial robe to the ground hemmed in violet, a grave-iron mantle with candle stubs, a deep drooping hood over a gilt death mask, a team vestment, bare bone arms in bell sleeves and a lit soul-light lantern held out on a crook. Tier II iron plate, tier III black gilt plate and a gilt halo; no flag on the back.",
  "rig": "biped",
  "size": [
   128,
-  64
+  128
  ],
  "density": 1,
  "bones": [],
  "idleArms": "hang",
  "parts": [],
  "skins": {
-  "1": "hexer_s1.png"
+  "1": "hexer_s1.png",
+  "2": "hexer_s2.png",
+  "3": "hexer_s3.png"
  },
  "weapon": "none",
  "hand": "right",
