@@ -35,7 +35,7 @@ Room created by SliceAlpha (size 3, fill on), SliceBravo joined, both ready, 10 
 The reconnected player was eligible for the full reward. Caveat: the round was force-ended, not played to the clock; a natural clock or score finish was not exercised.
 
 ### Counts
-PASS: 4 (Domination round, Domination rewards, Domination return to camp, reconnect within 2 min). PARTIAL: 1 (Siege start). NOT RUN: 4 (hold expiry, crash, server restart, persistence). FAIL: 0. Blockers: none found. Note for 2 (not 8): rewards were read from the live server profiles; no restart was done to prove they were saved to disk.
+PASS: 4 (Domination round, Domination rewards, Domination return to camp, reconnect within 2 min). PARTIAL: 1 (Siege start). NOT RUN: 4 (hold expiry, crash, server restart, persistence). FAIL: 0. Blockers: none found. Note: rewards were read from the live server profiles; no restart was done to prove they were saved to disk.
 
 ## Defects so far
 | Rating | Finding | Reproduce |
