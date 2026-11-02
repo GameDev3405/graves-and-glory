@@ -263,7 +263,7 @@ public final class SurvivalMode extends BattleMode {
             names.add(s.name());
             b.world.playSound(null, s.x(), surface(b, s.x(), s.z()).y, s.z(), SoundEvents.PARTICLE_SOUL_ESCAPE, SoundCategory.HOSTILE, 4f, 0.6f);
         }
-        feed(b, ModeMath.riseLine(names));
+        for (var line : ModeMath.riseLines(names)) feed(b, line);
         Audio.all(b, AudioCues.Cue.WAVE_WARNING, "wave");
     }
 
@@ -299,7 +299,7 @@ public final class SurvivalMode extends BattleMode {
 
     void end(GravesAndGlory.Battle b, int winner) {
         over = true;
-        feed(b, winner == DEFENDERS ? "The shrine stands until dawn" : "The dead hold the shrine");
+        feed(b, winner == DEFENDERS ? ModeMath.STANDS_LINE : ModeMath.HOLD_LINE);
         b.campaign.finish(winner);
         b.world.playSound(null, BlockPos.ORIGIN, winner == DEFENDERS ? SoundEvents.UI_TOAST_CHALLENGE_COMPLETE : SoundEvents.ENTITY_WITHER_SPAWN, SoundCategory.MASTER, 2, 1);
     }

@@ -83,13 +83,14 @@ public final class ModeHudFitCheck {
         // ---- Survival's feed lines: code strings (SurvivalMode, ModeMath), so FeedFitCheck's modeLines rows do not reach them ----
         List<String> sites = new ArrayList<>();
         for (var s : Spec.MODESITES) if (s.mode().equals("survival") && s.kind().equals("rise")) sites.add(s.name());
-        List<String> lines = new ArrayList<>(List.of(ModeMath.SHRINE_LINE, "The shrine stands until dawn", "The dead hold the shrine", ModeMath.riseLine(List.of())));
+        List<String> lines = new ArrayList<>(List.of(ModeMath.SHRINE_LINE, ModeMath.STANDS_LINE, ModeMath.HOLD_LINE));
+        lines.addAll(ModeMath.riseLines(List.of()));
         for (int wave = 1; wave <= Spec.WAVES.length; wave++) { lines.add(ModeMath.restLine(wave, Spec.WAVES[wave - 1].gold())); lines.add(ModeMath.restLine(wave, 0)); }
         for (String s1 : sites) {
-            lines.add(ModeMath.riseLine(List.of(s1)));
+            lines.addAll(ModeMath.riseLines(List.of(s1)));
             for (String s2 : sites) if (!s1.equals(s2)) {
-                lines.add(ModeMath.riseLine(List.of(s1, s2)));
-                for (String s3 : sites) if (!s3.equals(s1) && !s3.equals(s2)) lines.add(ModeMath.riseLine(List.of(s1, s2, s3)));
+                lines.addAll(ModeMath.riseLines(List.of(s1, s2)));
+                for (String s3 : sites) if (!s3.equals(s1) && !s3.equals(s2)) lines.addAll(ModeMath.riseLines(List.of(s1, s2, s3)));
             }
         }
         int widest = 0, over = 0;
