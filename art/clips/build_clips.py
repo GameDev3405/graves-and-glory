@@ -14,6 +14,9 @@ across-the-ground offset so the body turns about the named contact point (what a
 Stances are absolute offsets from rest and loop; attacks, hits and blocks are offsets on the stance and start and end
 at zero; deaths are absolute from rest and end on the ground. The shield arm of every sword_shield stance splits the
 45 degree carry between shoulder and elbow as a pure pitch, so the board keeps the carry's facing (SHIELD_ROT unchanged).
+
+Once Kort edits clips in Blockbench (docs/ANIMATION-EDITING.md) the committed .bbmodel files are the source and this script is
+history: running it without --check overwrites his edits. Edit in Blockbench instead, then run python tools/anim_edit.py apply.
 """
 import json
 import math
@@ -884,6 +887,15 @@ def bow_clips():
 
 # ---- project
 
+def box_faces(size):
+    """The six faces of a box-UV cube at uv_offset 0. Blockbench 5 drops a project whose cubes have no faces, loading one cube and no
+    animations, so empty faces would lose a session's work on save."""
+    w, h, d = (int(round(x)) for x in size)
+    uv = {'up': [d, 0, d + w, d], 'down': [d + w, 0, d + 2 * w, d], 'east': [0, d, d, d + h], 'north': [d, d, d + w, d + h],
+          'west': [d + w, d, 2 * d + w, d + h], 'south': [2 * d + w, d, 2 * d + 2 * w, d + h]}
+    return {f: {'uv': u} for f, u in uv.items()}
+
+
 def project(family, anims):
     groups = [{'name': 'model', 'origin': [0, 0, 0], 'rotation': [180, 0, 0], 'uuid': gid('group', 'model'),
                'color': 0, 'export': True, 'visibility': True}]
@@ -896,7 +908,7 @@ def project(family, anims):
             frm = [o[i] + box['origin'][i] for i in range(3)]
             to = [frm[i] + box['size'][i] for i in range(3)]
             e = {'name': f"{b['name']}_{n}", 'box_uv': True, 'from': frm, 'to': to, 'origin': o,
-                 'rotation': list(b.get('rotation', [0, 0, 0])), 'uv_offset': [0, 0], 'faces': {},
+                 'rotation': list(b.get('rotation', [0, 0, 0])), 'uv_offset': [0, 0], 'faces': box_faces(box['size']),
                  'type': 'cube', 'uuid': gid('cube', b['name'], str(n))}
             elements.append(e)
             children.setdefault(b['name'], []).append(e['uuid'])
