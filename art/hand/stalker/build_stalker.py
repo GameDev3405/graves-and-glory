@@ -381,14 +381,14 @@ def bones():
     # tier II, the Frost Stalker: salvaged grave-iron plate piped in violet, rime tines on the shoulders
     P2 = lambda seed, worn=0.12: per_tier(lambda t: gb_plate(t, seed, worn), (2, 3))
     TN = per_tier(lambda t: gb_spike(F, 4, 3), (2, 3))
-    B.append(Bone("breastplate", "body", stages=[2, 3], boxes=[Box((-3.5, -12, -2.7), (7, 4, 5.4), P2("bpl"), dil=0.2)]))
+    B.append(Bone("breastplate", "body", stages=[2, 3], boxes=[Box((-3.5, -12, -2.7), (7, 4, 5.4), P2("bpl"), dil=0.75)]))
     for side, sx, rz in (("right", -1, 12), ("left", 1, -12)):
-        B.append(Bone(f"{side}_pauldron", f"{side}_arm", (0, -0.3, 0), rot=(0, 0, rz), stages=[2, 3], boxes=[
-            Box((-2.7, -3.4, -3.2), (5.4, 3, 6.4), P2("pd" + side), dil=0.3),
+        B.append(Bone(f"{side}_pauldron", f"{side}_arm", (sx * 1.2, -0.3, 0), rot=(0, 0, rz), stages=[2, 3], boxes=[
+            Box((-2.7, -3.4, -3.2), (5.4, 3, 6.4), P2("pd" + side), dil=0.9),
             Box((-0.5 + sx * 1.5, -7.6, -0.5), (1, 4.4, 1), TN), Box((-0.5 + sx * 0.2, -6.4, 1.6), (1, 3.4, 1), TN)]))
-        B.append(Bone(f"{side}_bracer", f"{side}_arm", stages=[2, 3], boxes=[Box((-1.8, 4.5, -1.8), (3.6, 3.5, 3.6), P2("br" + side, 0.18), dil=0.1)]))
-        B.append(Bone(f"{side}_greave", f"{side}_leg", stages=[2, 3], boxes=[Box((-1.7, 4.2, -1.7), (3.4, 3, 3.4), P2("gv" + side), dil=0.1)]))
-    B.append(Bone("belt_plate", "body", stages=[2, 3], boxes=[Box((-2, -4.4, -2.7), (4, 2.6, 0.8), P2("bt"), dil=0.1)]))
+        B.append(Bone(f"{side}_bracer", f"{side}_arm", stages=[2, 3], boxes=[Box((-1.8, 4.5, -1.8), (3.6, 3.5, 3.6), P2("br" + side, 0.18), dil=0.5)]))
+        B.append(Bone(f"{side}_greave", f"{side}_leg", stages=[2, 3], boxes=[Box((-1.7, 4.2, -1.7), (3.4, 3, 3.4), P2("gv" + side), dil=0.5)]))
+    B.append(Bone("belt_plate", "body", stages=[2, 3], boxes=[Box((-2, -4.4, -2.7), (4, 2.6, 0.8), P2("bt"), dil=0.5)]))
     # tier III, the Wight Stalker: a gilt band round the cowl, a gilt breast clasp with one pale stone, taller rime tines
     B.append(Bone("cowl_band", "head", stages=[3], boxes=[Box((-5.2, -9.4, -5.2), (10.4, 1.3, 10.4), gb_gilt("cwb"), dil=0.05)]))
     B.append(Bone("breast_clasp", "body", stages=[3], boxes=[Box((-1.5, -9.5, -3.2), (3, 3, 0.8), gb_gilt("bcl"), dil=0.05),
