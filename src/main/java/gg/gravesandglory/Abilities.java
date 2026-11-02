@@ -211,6 +211,7 @@ final class Abilities {
         double radius = row.radius() > 0 ? row.radius() : D.spellRadius();
         for (int i = 0; i < 12; i++) { double angle = i * Math.PI / 6; b.world.spawnParticles(ParticleTypes.WITCH, u.spellCenter.x + Math.cos(angle) * radius, u.spellCenter.y + .2, u.spellCenter.z + Math.sin(angle) * radius, 1, 0, 0, 0, 0); }
         if (time < u.windupUntil) return;
+        if (u.spec.magic()) Audio.at(b, AudioCues.Cue.MAGIC_IMPACT, u.spellCenter, "m" + u.mob.getId()); // the burst lands as magic even on empty ground; the hits below share its key, so it sounds once
         float base = (float) ((row.amount() > 0 ? row.amount() : u.spec.damage()) * b.campaign.damage(u));
         var two = second(u);
         var knell = two.mechanic().equals("raise") ? two : null;
@@ -345,7 +346,7 @@ final class Abilities {
         if (!target.isAlive() || Combat.structure(target) || !offCooldown(b, u, row, second)) return;
         Statuses.apply(b, u, target, "knockback", 0, 0, row.knockback());
         Statuses.apply(b, u, target, row.status().equals("none") ? "stun" : row.status(), row.statusTicks(), row.statusLevel(), row.amount());
-        b.world.playSound(null, target.getBlockPos(), SoundEvents.ITEM_SHIELD_BLOCK, SoundCategory.HOSTILE, 1f, .7f);
+        Audio.at(b, AudioCues.Cue.SHIELD_BLOCK, target.getPos(), "bash" + u.mob.getId(), .8f);
     }
 
     /** Slowness I is the amplifier 0 of Riptide's slow (the spec's fixed effect kind); the abilities rows carry their own statusLevel. */
@@ -373,7 +374,7 @@ final class Abilities {
         int swept = splash(b, u, at, primary, (float) (row.amount() * baseHit(b, u)), row.radius(), row.knockback(), u.mob.getPos());
         if (swept > 0 && row.cooldownTicks() > 0) spend(u, second, b.time + row.cooldownTicks()); // a sweep that struck nobody keeps its cooldown for the next hit
         b.world.spawnParticles(ParticleTypes.CLOUD, at.x, at.y + .2, at.z, 16, row.radius() / 2, .1, row.radius() / 2, .06);
-        b.world.playSound(null, primary.getBlockPos(), SoundEvents.BLOCK_ANVIL_LAND, SoundCategory.HOSTILE, .35f, .7f);
+        Audio.at(b, AudioCues.Cue.HEAVY_METAL_HIT, primary.getPos(), "slam" + u.mob.getId(), .8f);
     }
 
     /**
@@ -890,7 +891,7 @@ final class Abilities {
         if (time < u.windupUntil) return;
         long lasts = Math.round(row.durationTicks() * Veterans.outputFactor(u));
         b.mists.add(new Mist(u.squad.team, u.spellCenter, radius, time + lasts, u, row, rider(u, "mist")));
-        b.world.playSound(null, BlockPos.ofFloored(u.spellCenter), SoundEvents.ENTITY_EVOKER_PREPARE_SUMMON, SoundCategory.HOSTILE, .6f, 1.3f);
+        Audio.at(b, AudioCues.Cue.MAGIC_CAST, u.spellCenter, "mist" + u.mob.getId());
         u.spellCenter = null;
     }
 

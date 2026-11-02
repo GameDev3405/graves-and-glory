@@ -135,7 +135,7 @@ final class Tactics {
                     BattleEffects.strike(battle,u,enemy);
                     Abilities.attack(battle,u,enemy,time);
                     if(ranged){
-                        battle.world.playSound(null,mob.getBlockPos(),u.spec.magic()?SoundEvents.ENTITY_EVOKER_CAST_SPELL:SoundEvents.ENTITY_ARROW_SHOOT,SoundCategory.HOSTILE,.25f,1.1f);
+                        Audio.shot(battle,u); // a caster's spell or a bowstring (AudioCues.MAGIC_CAST, BOW_SHOOT)
                     }
                 }
             }else if(a.perch&&ranged){toSlot(battle,u,a,time,order.moveMultiplier()); // a ranged troop on a post shoots what it can reach from there and never walks off after the rest

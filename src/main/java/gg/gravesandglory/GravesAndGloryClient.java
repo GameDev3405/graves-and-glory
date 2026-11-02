@@ -119,7 +119,7 @@ public final class GravesAndGloryClient implements ClientModInitializer {
         // thread, and not through client.execute: Fabric can fire this event on the network thread, and MinecraftClient.disconnect
         // wipes the queued tasks (the Task 3 re-review's race). The flag waits for the first client tick without a world, and the
         // next join clears them as well; no HUD frame runs without a world to clear them before the next one.
-        ClientPlayConnectionEvents.DISCONNECT.register((handler,client)->{if(connectingInvitation&&!joined)say("Melty join failed: connection closed before joining");CampaignClient.end(client);CampaignClient.forget();TroopAnimator.clear();RankSync.clear();hudResetPending=true;ready=false;modServer=false;running=false;team=-1;houses=Map.of();opened=false;worldTicks=0;shareCamp=false;connectingInvitation=false;});
+        ClientPlayConnectionEvents.DISCONNECT.register((handler,client)->{if(connectingInvitation&&!joined)say("Melty join failed: connection closed before joining");CampaignClient.end(client);CampaignClient.forget();MusicDirector.reset(client);TroopAnimator.clear();RankSync.clear();hudResetPending=true;ready=false;modServer=false;running=false;team=-1;houses=Map.of();opened=false;worldTicks=0;shareCamp=false;connectingInvitation=false;});
         ClientTickEvents.END_CLIENT_TICK.register(client->{
             if(hudResetPending&&client.world==null)resetHud();
             if(client.getOverlay()==null&&client.currentScreen instanceof TitleScreen){
@@ -127,7 +127,7 @@ public final class GravesAndGloryClient implements ClientModInitializer {
                 client.setScreen(error.isEmpty()?new FrontMenuScreen():new FailureScreen(error));
             }
             if(client.player!=null){
-                worldTicks++;if(ready&&worldTicks%20==0)client.getToastManager().clear();prepareMap(client);CampaignClient.tick(client);Diagnostics.tick(client);
+                worldTicks++;if(ready&&worldTicks%20==0)client.getToastManager().clear();prepareMap(client);CampaignClient.tick(client);MusicDirector.tick(client);Diagnostics.tick(client);
                 while(menu.wasPressed()){CampaignClient.end(client);CommandMode.cancel();client.setScreen(battleActive()?new CommandScreen():new CampScreen("home"));}
                 while(ability.wasPressed())if(battleActive())send("ability");
                 while(armoury.wasPressed())if(battleActive())client.setScreen(new RecruitmentScreen(1));

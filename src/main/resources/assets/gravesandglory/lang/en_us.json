@@ -34,5 +34,16 @@
   "subtitles.gravesandglory.horn_rally": "Rally horn",
   "death.attack.gravesandglory.troop": "%1$s was cut down by %2$s",
   "death.attack.gravesandglory.troop.player": "%1$s was cut down by a troop",
-  "subtitles.gravesandglory.wave_rise": "A wave rises"
+  "subtitles.gravesandglory.wave_rise": "A wave rises",
+  "subtitles.gravesandglory.combat.shield_block": "A shield blocks",
+  "subtitles.gravesandglory.combat.heavy_metal_hit": "A heavy blow lands",
+  "subtitles.gravesandglory.combat.sword_swing": "A blade swings",
+  "subtitles.gravesandglory.combat.sword_clash": "Swords clash",
+  "subtitles.gravesandglory.combat.armor_hit": "Armour is struck",
+  "subtitles.gravesandglory.combat.bow_shoot": "A bow is loosed",
+  "subtitles.gravesandglory.combat.arrow_hit": "An arrow strikes",
+  "subtitles.gravesandglory.magic.cast": "A spell is cast",
+  "subtitles.gravesandglory.magic.impact": "A spell strikes",
+  "subtitles.gravesandglory.clock.tick": "The clock ticks",
+  "subtitles.gravesandglory.battle.drums": "War drums beat"
 }

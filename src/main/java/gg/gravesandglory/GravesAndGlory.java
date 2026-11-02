@@ -711,6 +711,7 @@ public final class GravesAndGlory implements ModInitializer {
                     s.earn(income(s));
                 }
             }
+            if(running)Audio.clock(this,roundSeconds*20L-(time-roundStarted)); // the last ten seconds tick
             if(running&&time-roundStarted>=roundSeconds*20L&&!mode.overtime(this))campaign.finish(mode.timeoutWinner(this));
             // Explicit revision checks are driven by the client test timeline.
             if(time%10==0)sendState();

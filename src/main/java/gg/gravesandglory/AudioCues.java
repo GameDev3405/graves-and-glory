@@ -48,7 +48,27 @@ public final class AudioCues {
         COUNTDOWN_TICK("countdown_tick", null, .5f, 1f, "master", Scope.OWNER, 0, ""),
         UI_CONFIRM("ui_confirm", null, .5f, 1f, "master", Scope.LOCAL, 4, ""),
         UI_BACK("ui_back", null, .45f, 1f, "master", Scope.LOCAL, 4, ""),
-        UI_DENY("ui_deny", null, .55f, 1f, "master", Scope.LOCAL, 6, "");
+        UI_DENY("ui_deny", null, .55f, 1f, "master", Scope.LOCAL, 6, ""),
+        // Third-party Pixabay recordings (tools/audio/import_pixabay.py, credited in docs/AUDIO.md), each a variant group the game picks from at random.
+        // Combat cues are positional (NEARBY), keyed per soldier and capped per tick so thirty troops fighting stay a murmur, not a wall of noise.
+        SHIELD_BLOCK("combat.shield_block", null, .55f, 1f, "hostile", Scope.NEARBY, 8, "A shield blocks", 3),
+        HEAVY_METAL_HIT("combat.heavy_metal_hit", null, .5f, 1f, "hostile", Scope.NEARBY, 10, "A heavy blow lands", 2),
+        SWORD_SWING("combat.sword_swing", null, .3f, 1f, "hostile", Scope.NEARBY, 10, "A blade swings", 3),
+        SWORD_CLASH("combat.sword_clash", null, .4f, 1f, "hostile", Scope.NEARBY, 8, "Swords clash", 3),
+        ARMOR_HIT("combat.armor_hit", null, .4f, 1f, "hostile", Scope.NEARBY, 8, "Armour is struck", 3),
+        BOW_SHOOT("combat.bow_shoot", null, .3f, 1f, "hostile", Scope.NEARBY, 12, "A bow is loosed", 3),
+        ARROW_HIT("combat.arrow_hit", null, .35f, 1f, "hostile", Scope.NEARBY, 6, "An arrow strikes", 3),
+        MAGIC_CAST("magic.cast", null, .4f, 1f, "hostile", Scope.NEARBY, 15, "A spell is cast", 2),
+        MAGIC_IMPACT("magic.impact", null, .5f, 1f, "hostile", Scope.NEARBY, 10, "A spell strikes", 2),
+        // The last ten seconds of a round's clock: one tick a second to the seated players.
+        CLOCK_TICK("clock.tick", null, .5f, 1f, "players", Scope.ALL, 15, "The clock ticks"),
+        // War drums under the battle entrance camera, beside battle_intro (client only).
+        BATTLE_DRUMS("battle.drums", null, .45f, 1f, "master", Scope.LOCAL, 0, "War drums beat"),
+        // Streamed music (client only, MusicDirector): the category is music, so the player's Music slider governs it and no subtitle shows.
+        MUSIC_CALM("music.calm", null, .8f, 1f, "music", Scope.LOCAL, 0, ""),
+        MUSIC_EPIC("music.epic", null, .8f, 1f, "music", Scope.LOCAL, 0, ""),
+        MUSIC_BATTLE_GRIM("music.battle_grim", null, .8f, 1f, "music", Scope.LOCAL, 0, ""),
+        MUSIC_BATTLE_DRUMS("music.battle_drums", null, .8f, 1f, "music", Scope.LOCAL, 0, "");
 
         /** The registered event's path under gravesandglory. */
         public final String id;
@@ -62,11 +82,19 @@ public final class AudioCues {
         public final int cooldownTicks;
         /** Its subtitle, or empty for none (UI and countdown cues show none, like the vanilla button click). */
         public final String subtitle;
+        /** Most copies of this cue that may start in one tick across all keys (a battle of thirty troops); 0 means no cap. A capped cue also gets a small random pitch spread. */
+        public final int maxPerTick;
 
         Cue(String id, String remap, float volume, float pitch, String category, Scope scope, int cooldownTicks, String subtitle) {
-            this.id = id; this.remap = remap; this.volume = volume; this.pitch = pitch; this.category = category;
-            this.scope = scope; this.cooldownTicks = cooldownTicks; this.subtitle = subtitle;
+            this(id, remap, volume, pitch, category, scope, cooldownTicks, subtitle, 0);
         }
+
+        Cue(String id, String remap, float volume, float pitch, String category, Scope scope, int cooldownTicks, String subtitle, int maxPerTick) {
+            this.id = id; this.remap = remap; this.volume = volume; this.pitch = pitch; this.category = category;
+            this.scope = scope; this.cooldownTicks = cooldownTicks; this.subtitle = subtitle; this.maxPerTick = maxPerTick;
+        }
+
+        public boolean music() { return category.equals("music"); }
     }
 
     /** The command horns: own files, volume from combatDiscipline.hornVolume, throttled by BattleEffects.feedback, to the commanding player only. */
@@ -80,19 +108,30 @@ public final class AudioCues {
         return out;
     }
 
-    /** One sliding limit per (cue, key): allow answers whether the cue may play now and, when it may, records it. A clock that went back (a new round) allows. */
+    /**
+     * One sliding limit per (cue, key) plus a cap on copies per tick for the cues that have one: allow answers whether the cue may play now and, when it
+     * may, records it. A refused call records nothing. A clock that went back (a new round) allows.
+     */
     public static final class Throttle {
         private final Map<String, Long> last = new HashMap<>();
+        private final Map<String, long[]> tick = new HashMap<>();
 
         public boolean allow(Cue cue, String key, long now) {
-            if (cue.cooldownTicks <= 0) return true;
             String k = cue.id + "/" + key;
-            Long before = last.get(k);
-            if (before != null && now >= before && now - before < cue.cooldownTicks) return false;
-            last.put(k, now);
+            if (cue.cooldownTicks > 0) {
+                Long before = last.get(k);
+                if (before != null && now >= before && now - before < cue.cooldownTicks) return false;
+            }
+            if (cue.maxPerTick > 0) {
+                long[] t = tick.computeIfAbsent(cue.id, x -> new long[] {Long.MIN_VALUE, 0});
+                if (t[0] != now) { t[0] = now; t[1] = 0; }
+                if (t[1] >= cue.maxPerTick) return false;
+                t[1]++;
+            }
+            if (cue.cooldownTicks > 0) last.put(k, now);
             return true;
         }
 
-        public void clear() { last.clear(); }
+        public void clear() { last.clear(); tick.clear(); }
     }
 }
