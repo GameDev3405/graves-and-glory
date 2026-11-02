@@ -537,7 +537,7 @@ public final class Campaign {
             var paid=earned>0?RosterMath.matchRewards(slots,Houses.thresholds(Spec.HOUSES[0].id()),Profile.houseOrder(),s.team==winner):NO_REWARDS; // every House has the same slot thresholds (HousesCheck)
             paid.shards().forEach((h,n)->p.shards.merge(h,n,Integer::sum));paid.renown().forEach((h,n)->p.renown.merge(h,n,Integer::sum));
             List<String> titles=earned>0?ledger(p,s):List.of();int pacts=pacts(p);
-            boolean saved=save(id);JsonObject report=new JsonObject();report.addProperty("id",matchId);report.addProperty("outcome",winner<0?"DRAW":s.team==winner?"VICTORY":"BATTLE COMPLETE");report.addProperty("map",Spec.MAPS[map].name());report.addProperty("seconds",seconds);report.addProperty("saved",saved);report.addProperty("eligible",earned>0);report.addProperty("gold",saved?earned:0);report.addProperty("xp",saved?p.progression.xp-priorXp:0);report.addProperty("beforeXp",priorXp);report.add("squads",reportSquads(s));report.add("points",reportPoints());report.add("houses",reportHouses(s,slots,saved?paid:NO_REWARDS));report.add("levels",reportLevels(s));report.add("mode",reportMode());results.put(id,report);
+            boolean saved=save(id);JsonObject report=new JsonObject();report.addProperty("id",matchId);report.addProperty("outcome",winner<0?"DRAW":s.team==winner?"VICTORY":"BATTLE COMPLETE");report.addProperty("map",Spec.MAPS[map].name());report.addProperty("seconds",seconds);report.addProperty("saved",saved);report.addProperty("eligible",earned>0);report.addProperty("gold",saved?earned:0);report.addProperty("xp",saved?p.progression.xp-priorXp:0);report.addProperty("beforeXp",priorXp);report.add("squads",reportSquads(s));report.add("points",reportPoints());report.add("houses",reportHouses(s,slots,saved?paid:NO_REWARDS));report.add("levels",reportLevels(s));report.add("mode",reportMode());if(activeBattle!=null)report.add("march",reportMarch(p,s.team==winner,march,pacts));results.put(id,report);
             if(!saved){profiles.put(id,JSON.fromJson(before,Profile.class));standing(id,"Match reward could not be saved. Progress was not changed; check disk space.");continue;}
             String extra=(march!=null&&march.bonusPaid()?" / bonus objective: +"+march.bonusShards()+" "+RosterMath.houseName(march.bonusHouse())+" shards, +"+march.bonusGold()+" gold":"")+(pacts>0?" / "+(pacts==1?"a Pact":pacts+" Pacts")+" earned":"")+(titles.isEmpty()?"":" / new title"+(titles.size()==1?" ":"s ")+String.join(", ",titles));
             standing(id,(winner<0?"Draw":s.team==winner?"Victory":"Battle complete")+" / +"+earned+" collection gold"+(earned==0?" (reward requires 3 minutes of play)":"")+extra);
@@ -574,6 +574,19 @@ public final class Campaign {
         var chapters=RosterMath.pactChapters(Arrays.asList(Spec.CAMPAIGNBATTLES),p.campaignCleared,p.writChapters);
         for(int chapter:chapters){p.writs++;p.writChapters.add(chapter);}
         return chapters.size();
+    }
+    /**
+     * The report's Long March block (plan 2C.5), read by the War Table report: the battle, whether it was won, how its bonus ended ("paid", "claimed" earlier,
+     * "missed", "lost" with the battle, or "none" without a bonus row), what the bonus pays, the Pacts this battle earned and the Pacts now held. Display only;
+     * every figure was settled before this call.
+     */
+    JsonObject reportMarch(Profile p,boolean won,MarchMath.Settled march,int pacts){
+        JsonObject j=new JsonObject();var bonus=MarchMath.bonus(activeBattle,Spec.BONUSOBJECTIVES);
+        j.addProperty("id",activeBattle.id());j.addProperty("name",activeBattle.name());j.addProperty("order",activeBattle.order());j.addProperty("won",won);
+        String state=bonus==null?"none":!won?"lost":march!=null&&march.bonusPaid()?"paid":p.bonusClaimed.contains(bonus.id())?"claimed":"missed";
+        j.addProperty("bonus",bonus==null?"":bonus.text());j.addProperty("bonusState",state);j.addProperty("bonusShards",bonus==null?0:bonus.shards());j.addProperty("bonusGold",bonus==null?0:bonus.gold());
+        j.addProperty("house",activeBattle.house());j.addProperty("pacts",pacts);j.addProperty("writs",p.writs);
+        return j;
     }
     /** The report's House rows (MatchStats.houseRows): every House the fielded banner has slots in, its banner tier, its trait seconds this round, and what the match paid it (0 when nothing was saved). */
     JsonArray reportHouses(GravesAndGlory.Squad s,Map<String,Integer> slots,RosterMath.Rewards paid){

@@ -320,11 +320,40 @@ final class WarTableReport {
         int wy = y + REWARDS_Y + 18;
         if (saved) {
             line(g, "rewards", "+" + r.get("gold").getAsInt() + " gold   +" + r.get("xp").getAsInt() + " chapter XP", lx, wy, DarkUi.INK_TEXT);
-            block(g, "rewards-note", r.get("eligible").getAsBoolean() ? "Rewards saved. Contract and tier rewards are claimed separately." : "No match rewards: play at least 3 minutes to qualify.", lx, wy + STEP + 2, NOTE_TEXT_W, 3, DarkUi.SEPIA);
+            if (r.has("march")) march(g, r, lx, wy + STEP + 2, r.get("eligible").getAsBoolean());
+            else block(g, "rewards-note", r.get("eligible").getAsBoolean() ? "Rewards saved. Contract and tier rewards are claimed separately." : "No match rewards: play at least 3 minutes to qualify.", lx, wy + STEP + 2, NOTE_TEXT_W, 3, DarkUi.SEPIA);
         } else {
             line(g, "rewards", "Rewards not saved", lx, wy, DarkUi.ROUT_TEXT);
             block(g, "rewards-note", "Progress unchanged. Check disk space before playing again.", lx, wy + STEP + 2, NOTE_TEXT_W, 3, DarkUi.ROUT_TEXT);
         }
+    }
+
+    /** A Long March battle's own rewards under the gold line (plan 2C.5), one row each for the bonus and the Pact, in the report's label
+     *  and value rows: "Bonus kept" with what it paid, "Bonus missed", "Bonus claimed before" or nothing after a loss; "A Pact earned"
+     *  (held N) when the battle cleared a chapter, "Pacts held" when it did not. A battle under the 3-minute floor says so in the room left. */
+    void march(DrawContext g, JsonObject r, int x, int y, boolean eligible) {
+        var m = r.getAsJsonObject("march");
+        String state = m.get("bonusState").getAsString();
+        int pacts = m.get("pacts").getAsInt(), held = m.get("writs").getAsInt();
+        if (!state.equals("none") && !state.equals("lost")) {
+            String house = RosterMath.houseName(m.get("house").getAsString());
+            String label = switch (state) { case "paid" -> "Bonus kept"; case "claimed" -> "Bonus claimed before"; default -> "Bonus missed"; };
+            String value = state.equals("paid") ? "+" + m.get("bonusShards").getAsInt() + " " + house + " shards, +" + m.get("bonusGold").getAsInt() + " gold" : "";
+            y = row(g, "march-bonus", label, value, x, y, state.equals("paid") ? DarkUi.INK_TEXT : DarkUi.SEPIA);
+        }
+        if (pacts > 0) y = row(g, "march-pact", pacts == 1 ? "A Pact earned" : pacts + " Pacts earned", "held " + held, x, y, DarkUi.INK_TEXT);
+        else if (held > 0) y = row(g, "march-pact", "Pacts held", String.valueOf(held), x, y, DarkUi.SEPIA);
+        if (!eligible) line(g, "rewards-note", "No gold: under 3 minutes.", x, y + 1, DarkUi.SEPIA);
+    }
+
+    /** One label and value row of the note (the label trimmed to leave the value its room); returns the y under it. */
+    int row(DrawContext g, String key, String label, String value, int x, int y, int color) {
+        var font = font();
+        int vw = value.isEmpty() ? 0 : font.getWidth(DarkUi.body(value)) + 8;
+        String shown = UiMath.trim(label, NOTE_TEXT_W - vw, s -> font.getWidth(DarkUi.body(s)));
+        line(g, key, shown, x, y, color);
+        if (!value.isEmpty()) lineRight(g, key + "-value", value, x + NOTE_TEXT_W, y, color);
+        return y + ROW_STEP;
     }
 
     // ---- the sheet ----
@@ -470,7 +499,22 @@ final class WarTableReport {
             ry = contract(g, "contract-" + i, Progression.contract(p, i), have + "/" + want, p.claims.contains("daily:" + i) ? "Claimed" : have >= want ? "Ready to claim" : "", x, ry);
         }
         int weekly = Math.min(p.weeklyBattles, Progression.WEEKLY_BATTLES);
-        contract(g, "weekly", "Weekly battles", weekly + "/" + Progression.WEEKLY_BATTLES, p.claims.contains("weekly") ? "Claimed" : Progression.claimable(p, "weekly") ? "Ready to claim" : "", x, ry);
+        ry = contract(g, "weekly", "Weekly battles", weekly + "/" + Progression.WEEKLY_BATTLES, p.claims.contains("weekly") ? "Claimed" : Progression.claimable(p, "weekly") ? "Ready to claim" : "", x, ry);
+        longMarch(g, x, ry + 8);
+    }
+
+    /** The Long March under the contracts (plan 2C.5, the Pact report): battles won of all, the bonuses claimed, the next battle and the
+     *  Pacts held. A Pact comes with every cleared chapter; the words are the camp notice's. */
+    void longMarch(DrawContext g, int x, int y) {
+        var prof = CampaignClient.profile;
+        int total = Spec.CAMPAIGNBATTLES.length, won = Math.min(total, MarchMath.cleared(prof.battlesWon, Spec.CAMPAIGNBATTLES));
+        head(g, "march", "The Long March", won + " of " + total + " won", x, y, TEXT_W);
+        y += 18;
+        var next = MarchMath.nextUnwon(prof.battlesWon, Spec.CAMPAIGNBATTLES);
+        y = block(g, "march-next", next == null ? "Every battle of the Long March is won." : "Next, battle " + next.order() + ": " + next.name() + ".", x, y, TEXT_W, 2, DarkUi.INK_TEXT);
+        y = block(g, "march-bonuses", "Bonuses claimed: " + prof.bonusClaimed.size() + " of " + Spec.BONUSOBJECTIVES.length + ".", x, y, TEXT_W, 1, DarkUi.SEPIA);
+        String pact = prof.writs > 0 ? "Pacts held: " + prof.writs + "." : "You hold no Pact. Clear every battle of a Long March chapter to earn one.";
+        block(g, "march-pacts", pact, x, y, TEXT_W, 2, prof.writs > 0 ? DarkUi.INK_TEXT : DarkUi.SEPIA);
     }
 
     /** One contract: its name on the left, its count and (when it has one) its state on the right; a claimed one in sepia, a ready one in the ink. */

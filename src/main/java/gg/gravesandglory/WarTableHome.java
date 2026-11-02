@@ -140,7 +140,7 @@ final class WarTableHome {
     final Random random = new Random();
     final UiButton[] sheets = new UiButton[3];
     final Map<String, UiButton> buttons = new LinkedHashMap<>();
-    UiButton ride;
+    UiButton ride, change;
 
     WarTableHome(CampScreen screen) {
         this.screen = screen;
@@ -181,9 +181,10 @@ final class WarTableHome {
             sheets[i] = add(MODES[i], new UiButton(0, 0, 1, 1, Text.literal(NAMES[i]), b -> focus(index), (g, x, y, w, h, hot) -> {}));
         }
         placeSheets();
-        add("change", new UiButton(ox + FIELD_X + 44, oy + FIELD_Y + 152, 80, 24, Text.literal("Change"), b -> screen.page("field"), this::paintChange));
+        change = add("change", new UiButton(ox + FIELD_X + 44, oy + FIELD_Y + 152, 80, 24, Text.literal("Change"), b -> screen.page("field"), this::paintChange));
         ride = add("ride", new UiButton(ox + 360, oy + 388, 240, 40, Text.literal(rideLabel()), b -> ride(), this::paintRide));
         ride.active = !GravesAndGloryClient.running;
+        change.active = focused != 2; // the Long March fixes its map: the campaign card has no Change
         if (CampaignClient.result.has("id")) add("last", new UiButton(ox + FIELD_X + 40, oy + 392, 88, 24, Text.literal("Last battle"), b -> screen.page("results"), this::paintLast));
     }
 
@@ -209,6 +210,7 @@ final class WarTableHome {
         focused = i; focusStart = now;
         CampaignClient.homeMode = MODES[i];
         placeSheets();
+        if (change != null) change.active = focused != 2;
         if (ride != null) ride.setMessage(Text.literal(rideLabel()));
     }
 
@@ -409,15 +411,18 @@ final class WarTableHome {
         rectsDrawn.put("invite", new int[]{x, y, w, h});
     }
 
-    /** The field card: the map the Ride plate goes to (the next Long March battle's on the Campaign sheet), the rule and the
-     *  sides, and Change (a widget, paintChange). */
+    /** The field card: the map the Ride plate goes to, the rule and the sides, and Change (a widget, paintChange). On the Campaign
+     *  sheet it is the campaign card (plan 2C.5): the next Long March battle's name over its map, the mode's rule, the battle's
+     *  number and tier, and the bonus objective with what it pays and whether it was claimed. The map is fixed there, so no Change. */
     void field(DrawContext g, int x, int y) {
         UiTex.draw(g, "table/field-card", x, y);
         UiTex.draw(g, "table/tack", x + 6, y + 4);
         UiTex.draw(g, "table/tack", x + 155, y + 4);
-        int index = Math.max(0, Math.min(Spec.MAPS.length - 1, focused == 2 ? next().map() : CampaignClient.map));
+        boolean march = focused == 2;
+        var row = march ? next() : null;
+        int index = Math.max(0, Math.min(Spec.MAPS.length - 1, march ? row.map() : CampaignClient.map));
         var map = Spec.MAPS[index];
-        centred(g, DarkUi.heading(map.name()), x + 84, y + 12, DarkUi.INK_TEXT);
+        centred(g, DarkUi.heading(march ? row.name() : map.name()), x + 84, y + 12, DarkUi.INK_TEXT);
         String card = "table/map-" + map.id(); // every map's painted card (tools/ui_art/kit_maps.py), its points lettered in the wax
         if (UiTex.has(card)) {
             UiTex.draw(g, card, x + 16, y + 30);
@@ -426,15 +431,38 @@ final class WarTableHome {
             seals(g, x + 16, y + 30);
             textsDrawn.put("field-card", "seals");
         } else textsDrawn.put("field-card", "none");
-        int n = switch (focused) { case 0 -> 1; case 2 -> next().size(); default -> CampaignClient.padSize; };
-        String tier = CampaignClient.tierName(focused == 2 ? next().difficulty() : CampaignClient.difficulty);
-        String rule = Modes.ruleLine(Modes.DOMINATION), teams = n + " v " + n + ", " + tier + (n == 1 ? " bot" : " bots");
+        int n = switch (focused) { case 0 -> 1; case 2 -> row.size(); default -> CampaignClient.padSize; };
+        String tier = CampaignClient.tierName(march ? row.difficulty() : CampaignClient.difficulty);
+        String rule = Modes.ruleLine(march ? row.mode() : Modes.DOMINATION);
+        String teams = march ? MarchText.battleLine(row, Spec.CAMPAIGNBATTLES.length, tier) : n + " v " + n + ", " + tier + (n == 1 ? " bot" : " bots");
         centred(g, DarkUi.body(rule), x + 84, y + 120, DarkUi.SEPIA);
         centred(g, DarkUi.body(teams), x + 84, y + 132, DarkUi.SEPIA);
+        if (march) bonus(g, row, x + 16, y + 148, 136);
         rectsDrawn.put("field", new int[]{x, y, 168, 188});
-        textsDrawn.put("field-name", map.name());
+        textsDrawn.put("field-name", march ? row.name() : map.name());
+        textsDrawn.put("field-map", map.name());
         textsDrawn.put("field-rule", rule);
         textsDrawn.put("field-teams", teams);
+    }
+
+    /** The campaign card's bonus (plan 2C.5): "Bonus" and what it pays on one line, the objective under it in at most two lines;
+     *  a bonus already claimed is said so and drawn in the sepia, since it will not pay again. */
+    void bonus(DrawContext g, Spec.CampaignBattlesRow row, int x, int y, int w) {
+        var font = MinecraftClient.getInstance().textRenderer;
+        var b = MarchMath.bonus(row, Spec.BONUSOBJECTIVES);
+        if (b == null) { textsDrawn.put("field-bonus", ""); return; }
+        boolean claimed = CampaignClient.profile.bonusClaimed.contains(b.id());
+        String right = claimed ? "Claimed" : MarchText.rewardShort(b);
+        g.drawText(font, DarkUi.heading("Bonus"), x, y, DarkUi.INK_TEXT, false);
+        int rw = font.getWidth(DarkUi.body(right));
+        g.drawText(font, DarkUi.body(right), x + w - rw, y + 1, DarkUi.SEPIA, false);
+        g.fill(x, y + 12, x + w, y + 13, DarkUi.SEPIA_LINE);
+        var lines = UiMath.lines(b.text(), w, 2, s -> font.getWidth(DarkUi.body(s)));
+        for (int i = 0; i < lines.size(); i++) g.drawText(font, DarkUi.body(lines.get(i)), x, y + 16 + 11 * i, claimed ? DarkUi.SEPIA : DarkUi.INK_TEXT, false);
+        rectsDrawn.put("field-bonus", new int[]{x, y, w, 16 + 11 * lines.size()});
+        textsDrawn.put("field-bonus", b.text());
+        textsDrawn.put("field-bonus-reward", right);
+        textsDrawn.put("field-bonus-state", claimed ? "claimed" : "open");
     }
 
     /** The card of a map with no painted card (a defect), on home's field card and on the Field: a seal on each of the field's
@@ -516,6 +544,7 @@ final class WarTableHome {
     }
 
     void paintChange(DrawContext g, int x, int y, int w, int h, boolean hot) {
+        if (focused == 2) return; // the campaign card's map is fixed
         var font = MinecraftClient.getInstance().textRenderer;
         UiTex.draw(g, "table/btn-vellum-80x24", x, y);
         UiTex.draw(g, "table/quill", x + 8, y + 6);
