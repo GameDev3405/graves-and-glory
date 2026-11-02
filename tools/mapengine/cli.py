@@ -9,6 +9,7 @@ import time
 from mapengine import build as mbuild
 from mapengine import check as mcheck
 from mapengine import design
+from mapengine import handoff
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 
@@ -22,6 +23,10 @@ def main(argv=None, root=None):
     p.add_argument('name')
     for name in ('check', 'build'):
         sub.add_parser(name).add_argument('id')
+    sub.add_parser('export', help='write the AI handoff bundle to work/mapengine/<id>/handoff').add_argument('id')
+    p = sub.add_parser('import', help="merge an AI draft (default: the handoff folder's draft.json) as proposals")
+    p.add_argument('id')
+    p.add_argument('draft', nargs='?')
     p = sub.add_parser('serve')
     p.add_argument('--port', type=int, default=8765)
     p.add_argument('--no-open', action='store_true')
@@ -63,6 +68,29 @@ def main(argv=None, root=None):
         if issues:
             return 1
         print('OK: matches the design')
+        return 0
+    if args.cmd == 'export':
+        d = design.load(root / 'maps' / args.id / 'design.json')
+        out = handoff.export(d, root / 'work' / 'mapengine' / args.id / 'handoff')
+        print(f'wrote the AI handoff to {out}')
+        print(f'ask a Claude session to read {out / "BRIEF.md"} and write {out / "draft.json"}')
+        return 0
+    if args.cmd == 'import':
+        dpath = root / 'maps' / args.id / 'design.json'
+        d = design.load(dpath)
+        src = pathlib.Path(args.draft) if args.draft else root / 'work' / 'mapengine' / args.id / 'handoff' / 'draft.json'
+        try:
+            merged, rep = handoff.merge(d, handoff.load_draft(src))
+        except handoff.DraftError as e:
+            print('draft refused:')
+            for m in e.problems:
+                print('  ' + m)
+            return 1
+        design.save(dpath, merged)
+        print(f"imported {src}: {len(rep['added'])} added, {len(rep['updated'])} updated, "
+              f"{len(rep['withdrawn'])} withdrawn, {len(rep['refused'])} refused")
+        for m in rep['refused']:
+            print('  refused ' + m)
         return 0
     if args.cmd == 'serve':
         from mapengine import server
