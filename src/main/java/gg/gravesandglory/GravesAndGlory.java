@@ -772,7 +772,10 @@ public final class GravesAndGlory implements ModInitializer {
         Vec3d fieldBase(int team){return mode.fieldBase(this,team);}
         /** A team's barracks access point: the round's mode decides (Domination's faction barracks). */
         Vec3d fieldBarracks(int team){return mode.fieldBarracks(this,team);}
-        void relocate(ServerPlayerEntity p,double x,double y,double z,float yaw,float pitch){p.fallDistance=0;p.setVelocity(Vec3d.ZERO);p.teleport(world,x,y,z,yaw,pitch);p.fallDistance=0;p.velocityModified=true;}
+        /** Every teleport of a player goes through here. This runs at END_SERVER_TICK, after the player's network handler has ticked, so the handler's
+         *  last-tick position is still the old one when the client's teleport confirm and first move packet arrive: a long jump (camp to arena) read as
+         *  "moved too quickly". syncWithPlayerPosition() moves that reference to the new spot, which is what the vanilla /tp path gets from the next tick. */
+        void relocate(ServerPlayerEntity p,double x,double y,double z,float yaw,float pitch){p.fallDistance=0;p.setVelocity(Vec3d.ZERO);p.teleport(world,x,y,z,yaw,pitch);TeleportSync.afterTeleport(p);p.fallDistance=0;p.velocityModified=true;}
         void toBase(ServerPlayerEntity p,int team){Vec3d b=fieldBase(team);relocate(p,b.x,b.y+1,b.z,team==0?-90:90,8);}
         void equipPlayer(ServerPlayerEntity p){
             p.getInventory().clear();p.getInventory().insertStack(new ItemStack(Items.IRON_SWORD));

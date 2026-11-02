@@ -172,7 +172,7 @@ final class BuildMode {
         if(w==null){s.sendError(Text.literal("No warp "+name+". /warp lists them."));return 0;}
         var player=s.getPlayer();
         if(player==null){s.sendError(Text.literal("Only a player can warp."));return 0;}
-        var p=at(w);player.teleport(world,p[0],p[1],p[2],(float)p[3],0);
+        var p=at(w);player.teleport(world,p[0],p[1],p[2],(float)p[3],0);TeleportSync.afterTeleport(player);
         s.sendFeedback(()->Text.literal("Warped to "+name),false);return 1;
     }
     static int listWorlds(ServerCommandSource s){s.sendFeedback(()->Text.literal("This is "+id(map)+". Worlds: "+String.join(", ",worlds())+". /map <name> switches (about 30 seconds)."),false);return 1;}
