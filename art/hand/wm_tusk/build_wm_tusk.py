@@ -265,17 +265,32 @@ def bones():
         B.append(Bone(f"{side}_knee", f"{side}_leg", stages=[2, 3], boxes=[Box((-1.5, 5, -2.6), (3, 2, 1), WM.wm_skull("tk" + side))]))
     # tier III, the Warlord: a tusk crown, ochre bands and rings, a grey pelt mantle
     B.append(Bone("tusk_crown", "head", tag="helm", stages=[3], boxes=[
-        Box((-3.5, -10.5, -3.5), (7, 1, 7), WM.lashing(WM.OCHRE, 3), dil=0.2),
-        Box((-0.5, -15.5, -0.5), (1, 5, 1), WM.wm_tusk())]))
+        Box((-3.5, -11, -3.5), (7, 2, 7), WM.lashing(WM.HORN, 3), dil=0.2),
+        Box((-0.5, -18, -0.5), (1, 7, 1), dipped_tusk())]))
     for side, c in (("right", -1), ("left", 1)):
-        B.append(Bone(f"{side}_crown_tusk", "head", (c * 2.5, -10, 0), rot=(0, 0, -c * 20), tag="helm", stages=[3], boxes=[
-            Box((-0.5, -5, -0.5), (1, 5, 1), WM.wm_tusk())]))
+        B.append(Bone(f"{side}_crown_tusk", "head", (c * 2.5, -10.5, 0), rot=(0, 0, -c * 26), tag="helm", stages=[3], boxes=[
+            Box((-0.5, -7, -0.5), (1, 7, 1), dipped_tusk())]))
+        B.append(Bone(f"{side}_crown_horn", "head", (c * 3.5, -10, 0), rot=(0, 0, -c * 55), tag="helm", stages=[3], boxes=[
+            Box((-0.5, -5, -0.5), (1, 5, 1), dipped_tusk())]))
     B.append(Bone("tusk_rings", "head", stages=[3], boxes=[
         Box((-4, -2, -6.3), (2, 1, 1.6), WM.lashing(WM.OCHRE, 3), dil=0.1), Box((2, -2, -6.3), (2, 1, 1.6), WM.lashing(WM.OCHRE, 3), dil=0.1)]))
     B.append(Bone("mantle_grey", "body", stages=[3], boxes=[Box((-5.5, -13.5, -3.5), (11, 2, 7), WM.pelt(WM.GREYFUR, "wm-tmt"), dil=0.2)]))
     B.append(Bone("right_arm_band", "right_arm", stages=[3], boxes=[Box((-3, 1, -2), (4, 1, 4), WM.lashing(WM.OCHRE, 3), dil=0.3)]))
     B.append(Bone("left_arm_band", "left_arm", stages=[3], boxes=[Box((-1, 1, -2), (4, 1, 4), WM.lashing(WM.OCHRE, 3), dil=0.3)]))
     return B
+
+def dipped_tusk():
+    """A crown tusk: a dark horn root, an ochre shaft and a small bone point, so it reads against the pale head and the sky."""
+    def paint(face, w, h):
+        g = blank(w, h)
+        lit = LIT[face] if face not in ("top", "bottom") else 1
+        for y in range(h):
+            for x in range(w):
+                if y == 0: g[y][x] = clamp(BONE, 4 + lit)
+                elif y * 3 < h * 2: g[y][x] = clamp(WM.OCHRE, 3 + lit)
+                else: g[y][x] = clamp(WM.HORN, 2 + lit)
+        return g
+    return paint
 
 def cloth_painter(spec, side):
     T, M = TEAM[side]
