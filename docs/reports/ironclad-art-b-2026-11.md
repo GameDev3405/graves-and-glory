@@ -35,7 +35,7 @@ All three are tier I only. Siege engines and the maul are bones on the 1-texel s
 Ballista 8.5, Mortar 8.5, Brassjaw 8.5. Honest read: all three read clearly as Ironclad siege troops from the five turn views, but none is confirmed at 9 until seen in game.
 
 ## Unresolved defects
-- Mortar bore glow shows only from above; the tube leans over the back, so the ember is rarely visible from the ground. A steeper tube angle would show it.
+- Mortar tube now tilts forward over the shoulder (second pass) so the ember bore shows in side views; still not seen in game.
 - Ballista engine sits close to the crewman; arm and animation clearance (`bow_draw` clip) is unchecked in game.
 - Brassjaw maul stands beside the right arm; its swing with the colossus attack clip is unchecked.
 - Ballista has no glow; its ember lives in the plume and brow band only.
@@ -43,3 +43,6 @@ Ballista 8.5, Mortar 8.5, Brassjaw 8.5. Honest read: all three read clearly as I
 
 ## Comparison with 891904e (the earlier 1-texel attempt)
 Coordinator pointed out 891904e was already 1-texel. Rendered both side by side: the fresh builders here are brighter on Brassjaw (arms and legs were near-black in 891904e) and add the maul; the Ballista engine is bulkier and more detailed. 891904e's Mortar shows its ember bore from the front, which this version does not (listed above). Kept the fresh versions for all three; the mortar bore angle is the one thing worth taking from 891904e. Palette module is `ironclad.py` shared with session A, not 891904e's `ic_style.py`.
+
+## Second pass (rebased on main)
+Mortar tube retilted to (-28, 0, -26). Fast verify green again. In-game turn check NOT run: about nine Minecraft client processes were running machine-wide, over the cap of 5, and the game tier is only a combat smoke that does not spawn these troops. Self-score unchanged at 8.5 until seen in game.

@@ -61,7 +61,7 @@ def bones():
         Box((-3.5, -8.7, -5.2), (7, 2, 1), brass(3, seed="gog")),
         Box((-3, -8.5, -5.5), (2, 1.5, 0.5), lens), Box((1, -8.5, -5.5), (2, 1.5, 0.5), lens)]))
     B.append(Bone("keg", "body", boxes=[Box((-3, -4, 2.2), (6, 6, 4), keg), Box((-2.5, -4.5, 2.6), (5, 1, 3), iron_plain(4, "kegcap", 1))]))
-    B.append(Bone("tube", "body", (-1, -5, 4.2), rot=(0, 0, -34), tag="siege",
+    B.append(Bone("tube", "body", (-1, -5, 4.2), rot=(-28, 0, -26), tag="siege",
                   boxes=[Box((-2.5, -10, -2.5), (5, 18, 5), tube), Box((-3, 8, -3), (6, 2, 6), brass(3, seed="breech"))]))
     B.append(Bone("sling", "body", (0, -5.5, -2.1), rot=(0, 0, 38), boxes=[Box((-0.75, -9.5, -0.25), (1.5, 19, 0.6), leather_ic(1, stitch=True), dil=0.1)]))
     for i, (x, y) in enumerate(((-3.1, -9.5), (-0.6, -6.2), (1.9, -2.9))):
