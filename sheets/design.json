@@ -1246,7 +1246,7 @@
       "id": "siege",
       "name": "Siege",
       "maps": "1",
-      "roundSeconds": 200,
+      "roundSeconds": 185,
       "winTarget": 3,
       "scoreInterval": 0,
       "passiveScale": 1.0,
