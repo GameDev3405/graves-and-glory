@@ -52,7 +52,13 @@ NOTE = ("The Barrow Stalker's frost bow (Graveborn), hand-authored at 1 texel a 
         "bindings, a rime shard hanging from the riser. Drawn through the same four frames as the order bow.")
 TIERS = {"frost_bow": (frost_bow, NOTE)}
 
-def outputs(tiers=None): return BW.outputs(TIERS)
+# the Stalker's mantle and front flaps hang 3.4 px out from the body and hid the bow at rest: hold it out in front of them
+HELD = {"offset": [1, 0, -3], "rotation": [0, 0, 0], "note": "the grip's centre is the model origin; held 3 px forward of the hand, outside the mantle flaps"}
+
+def outputs(tiers=None):
+    out = BW.outputs(TIERS)
+    out["frost_bow.json"]["grip"] = HELD
+    return out
 
 def quads():
     spec = frost_bow(); frames, _ = spec.frames()
