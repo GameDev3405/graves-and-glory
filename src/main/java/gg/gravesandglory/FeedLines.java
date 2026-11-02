@@ -23,7 +23,36 @@ public final class FeedLines {
         return name + "s";
     }
 
-    public static String pointTaken(String team, String point) { return team + " took " + point; }
+    /** The longest text a feed line carries (FeedEvents.send cuts a longer one). */
+    public static final int MAX_TEXT = 120;
+
+    /** A battle mode's feed line (plan 2C.2): the modeLines row of this mode and event, each {name} field filled from `fields`
+     *  (name, value, name, value...). The copy is draft, in the sheet, not in the mode; Survival adds its rows and calls this the same
+     *  way. A row that is missing, or a field the call leaves out, is a programming error and the exception names it. */
+    public static String modeLine(String mode, String event, String... fields) {
+        String text = modeRow(mode, event).text();
+        for (int i = 0; i + 1 < fields.length; i += 2) text = text.replace("{" + fields[i] + "}", fields[i + 1]);
+        if (text.indexOf('{') >= 0) throw new IllegalArgumentException("modeLines " + mode + "/" + event + " has an unfilled field: " + text);
+        return text;
+    }
+
+    /** The kind (point, notice...) the modeLines row of this mode and event sends its line as; it picks the glyph and ink (style). */
+    public static String modeKind(String mode, String event) { return modeRow(mode, event).kind(); }
+
+    /** The modeLines rows of a mode, in sheet order: the events its feed can say. */
+    public static java.util.List<Spec.ModeLinesRow> modeRows(String mode) {
+        var out = new java.util.ArrayList<Spec.ModeLinesRow>();
+        for (var r : Spec.MODELINES) if (r.mode().equals(mode)) out.add(r);
+        return out;
+    }
+
+    static Spec.ModeLinesRow modeRow(String mode, String event) {
+        for (var r : Spec.MODELINES) if (r.mode().equals(mode) && r.event().equals(event)) return r;
+        throw new IllegalArgumentException("No modeLines row for " + mode + "/" + event);
+    }
+
+    /** "Dawn took Mill Hamlet": Domination's point line, the modeLines row domination/point_taken. */
+    public static String pointTaken(String team, String point) { return modeLine("domination", "point_taken", "team", team, "point", point); }
 
     /** "Dawn Knight lost" for one, "3 Dawn Knights lost" for more. */
     public static String lost(int n, String troop) { return n == 1 ? troop + " lost" : n + " " + plural(troop) + " lost"; }

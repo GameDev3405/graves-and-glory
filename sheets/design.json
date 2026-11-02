@@ -8677,5 +8677,216 @@
       "weeklyGold": 150,
       "runs": 20000
     }
+  ],
+  "modeLines": [
+    {
+      "id": "domination_point_taken",
+      "mode": "domination",
+      "event": "point_taken",
+      "kind": "point",
+      "args": "team,point",
+      "text": "{team} took {point}",
+      "status": "draft"
+    },
+    {
+      "id": "siege_start",
+      "mode": "siege",
+      "event": "start",
+      "kind": "notice",
+      "args": "-",
+      "text": "Take the Outer Yard, break the gate, seize the Keep.",
+      "status": "draft"
+    },
+    {
+      "id": "siege_yard_taken",
+      "mode": "siege",
+      "event": "yard_taken",
+      "kind": "point",
+      "args": "team",
+      "text": "{team} took the Outer Yard",
+      "status": "draft"
+    },
+    {
+      "id": "siege_gate_closing",
+      "mode": "siege",
+      "event": "gate_closing",
+      "kind": "point",
+      "args": "n",
+      "text": "The gate shuts in {n} s",
+      "status": "draft"
+    },
+    {
+      "id": "siege_gate_shut",
+      "mode": "siege",
+      "event": "gate_shut",
+      "kind": "point",
+      "args": "-",
+      "text": "The Iron Gate is shut",
+      "status": "draft"
+    },
+    {
+      "id": "siege_gate_breached",
+      "mode": "siege",
+      "event": "gate_breached",
+      "kind": "point",
+      "args": "-",
+      "text": "The Iron Gate is breached",
+      "status": "draft"
+    },
+    {
+      "id": "siege_keep_taken",
+      "mode": "siege",
+      "event": "keep_taken",
+      "kind": "point",
+      "args": "team",
+      "text": "{team} took the Keep",
+      "status": "draft"
+    },
+    {
+      "id": "convoy_start",
+      "mode": "convoy",
+      "event": "start",
+      "kind": "notice",
+      "args": "stop",
+      "text": "The wagon sets out for {stop}.",
+      "status": "draft"
+    },
+    {
+      "id": "convoy_wagon_rolls",
+      "mode": "convoy",
+      "event": "wagon_rolls",
+      "kind": "point",
+      "args": "-",
+      "text": "The wagon rolls",
+      "status": "draft"
+    },
+    {
+      "id": "convoy_wagon_stopped",
+      "mode": "convoy",
+      "event": "wagon_stopped",
+      "kind": "point",
+      "args": "-",
+      "text": "The wagon is stopped",
+      "status": "draft"
+    },
+    {
+      "id": "convoy_wagon_rolls_back",
+      "mode": "convoy",
+      "event": "wagon_rolls_back",
+      "kind": "point",
+      "args": "-",
+      "text": "The wagon rolls back",
+      "status": "draft"
+    },
+    {
+      "id": "convoy_checkpoint",
+      "mode": "convoy",
+      "event": "checkpoint",
+      "kind": "point",
+      "args": "team,stop",
+      "text": "{team} at {stop}",
+      "status": "draft"
+    },
+    {
+      "id": "convoy_through",
+      "mode": "convoy",
+      "event": "through",
+      "kind": "point",
+      "args": "-",
+      "text": "The convoy is through",
+      "status": "draft"
+    }
+  ],
+  "modeLedger": [
+    {
+      "id": "domination_score_0",
+      "mode": "domination",
+      "slot": 0,
+      "label": "Score",
+      "format": "fraction",
+      "team": 0,
+      "status": "draft"
+    },
+    {
+      "id": "domination_score_1",
+      "mode": "domination",
+      "slot": 1,
+      "label": "Score",
+      "format": "fraction",
+      "team": 1,
+      "status": "draft"
+    },
+    {
+      "id": "domination_points_0",
+      "mode": "domination",
+      "slot": 2,
+      "label": "Points held",
+      "format": "fraction",
+      "team": 0,
+      "status": "draft"
+    },
+    {
+      "id": "domination_points_1",
+      "mode": "domination",
+      "slot": 3,
+      "label": "Points held",
+      "format": "fraction",
+      "team": 1,
+      "status": "draft"
+    },
+    {
+      "id": "siege_stage",
+      "mode": "siege",
+      "slot": 0,
+      "label": "Stages taken",
+      "format": "fraction",
+      "team": -1,
+      "status": "draft"
+    },
+    {
+      "id": "siege_strength",
+      "mode": "siege",
+      "slot": 1,
+      "label": "Defence holding",
+      "format": "percent",
+      "team": 1,
+      "status": "draft"
+    },
+    {
+      "id": "siege_time",
+      "mode": "siege",
+      "slot": 2,
+      "label": "Time left",
+      "format": "time",
+      "team": -1,
+      "status": "draft"
+    },
+    {
+      "id": "convoy_progress",
+      "mode": "convoy",
+      "slot": 0,
+      "label": "Road covered",
+      "format": "percent",
+      "team": 0,
+      "status": "draft"
+    },
+    {
+      "id": "convoy_stops",
+      "mode": "convoy",
+      "slot": 1,
+      "label": "Stops held",
+      "format": "plain",
+      "team": 1,
+      "status": "draft"
+    },
+    {
+      "id": "convoy_time",
+      "mode": "convoy",
+      "slot": 2,
+      "label": "Time left",
+      "format": "time",
+      "team": -1,
+      "status": "draft"
+    }
   ]
 }

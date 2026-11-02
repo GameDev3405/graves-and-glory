@@ -91,6 +91,49 @@ for m in modes:
     for column in ('howTo','howToDefend'):
         parts=[p.strip() for p in m.get(column,'').split('|') if p.strip()]
         if not 1<=len(parts)<=3: errors.append(f'{where}: {column} holds {len(parts)} parts, want 1 to 3')
+# Mode copy (plan 2C.2): the feed lines a mode sends, the 2 to 4 numbers of its ledger and its briefing how-to lines are draft copy in
+# the sheets, not in the mode classes. A feed line has a kind FeedLines.style knows, the {name} fields its args column lists, and a text
+# FeedLines.MAX_TEXT can carry; FeedFitCheck measures how wide each one draws on the feed leaf. A how-to part may name a key as {key:<id>}.
+FEED_KINDS=('point','loss','kill','down','up','laststand','deploy','notice')
+FEED_ARGS=('team','point','stop','n')
+HOWTO_KEYS={'menu','attack','follow','formation','map','rotate_left','rotate_right','confirm','cancel','use','hints'}
+copy_modes={m['id'] for m in modes}
+events=set()
+for r in data.get('modeLines',[]):
+    where=f'modeLines/{r["id"]}'
+    if r['mode'] not in copy_modes: errors.append(f'{where}: mode {r["mode"]} is not a modes id')
+    if (r['mode'],r['event']) in events: errors.append(f'{where}: the event {r["event"]} of {r["mode"]} is already a row')
+    events.add((r['mode'],r['event']))
+    if not re.fullmatch(r'[a-z][a-z0-9_]*',r['event']): errors.append(f'{where}: event {r["event"]!r} is not lower-case words joined by _')
+    if r['kind'] not in FEED_KINDS: errors.append(f'{where}: kind {r["kind"]} is not one of '+', '.join(FEED_KINDS))
+    if r['status'] not in ('draft','approved'): errors.append(f'{where}: status {r["status"]} is not draft or approved')
+    declared=[] if r['args']=='-' else r['args'].split(',')
+    for a in declared:
+        if a not in FEED_ARGS: errors.append(f'{where}: arg {a} is not one of '+', '.join(FEED_ARGS))
+    used=re.findall(r'\{([a-z]+)\}',r['text'])
+    if r['text'].count('{')!=len(used) or r['text'].count('}')!=len(used): errors.append(f'{where}: a brace in the text is not a {{name}} field')
+    if sorted(set(used))!=sorted(set(declared)): errors.append(f'{where}: the text uses fields {sorted(set(used))}, its args column lists {sorted(set(declared))}')
+    if len(r['text'])>120: errors.append(f'{where}: the text is {len(r["text"])} characters, a feed line carries 120')
+    if r['text']!=r['text'].strip(): errors.append(f'{where}: the text has spaces at either end')
+ledger_slots={}
+for r in data.get('modeLedger',[]):
+    where=f'modeLedger/{r["id"]}'
+    if r['mode'] not in copy_modes: errors.append(f'{where}: mode {r["mode"]} is not a modes id')
+    if r['format'] not in ('plain','fraction','percent','time'): errors.append(f'{where}: format {r["format"]} is not plain, fraction, percent or time')
+    if r['team'] not in (-1,0,1): errors.append(f'{where}: team {r["team"]} is not -1 (both), 0 or 1')
+    if r['status'] not in ('draft','approved'): errors.append(f'{where}: status {r["status"]} is not draft or approved')
+    if not 0<=r['slot']<=3: errors.append(f'{where}: slot {r["slot"]} is not 0 to 3')
+    if len(r['label'])>16: errors.append(f'{where}: label {r["label"]!r} is over 16 characters')
+    ledger_slots.setdefault(r['mode'],[]).append(r['slot'])
+for mode_id,slots in ledger_slots.items():
+    if not 2<=len(slots)<=4 or sorted(slots)!=list(range(len(slots))): errors.append(f'modeLedger: {mode_id} has slots {sorted(slots)}, it needs 2 to 4 rows in slots 0, 1, 2...')
+for mode_id in ('domination','siege','convoy'):
+    if mode_id in copy_modes and mode_id not in ledger_slots: errors.append(f'modeLedger: the {mode_id} mode needs its ledger rows')
+    if mode_id in copy_modes and not any(r['mode']==mode_id for r in data.get('modeLines',[])): errors.append(f'modeLines: the {mode_id} mode needs its feed lines')
+for m in modes:
+    for column in ('howTo','howToDefend'):
+        for key in re.findall(r'\{key:([a-z_]+)\}',m.get(column,'')):
+            if key not in HOWTO_KEYS: errors.append(f'modes/{m["id"]}: {column} names {{key:{key}}}, not one of '+', '.join(sorted(HOWTO_KEYS)))
 # Convoy (spec 2026-10-31-convoy-escort-design.md 5.1): the mode's numbers are a modeRules row and its road and bases modeSites
 # rows, so ConvoyMode holds no map data. A road's nodes have consecutive stages from 0, at least two named checkpoints before
 # the destination (the last node, always named); a base row (stage = team) stands off the road and more than 40 blocks from
