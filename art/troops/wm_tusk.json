@@ -1,6 +1,6 @@
 {
  "troop": "wm_tusk",
- "note": "Wildmoot Tusk (unit identity, Wildmoot): zombified piglin, biped, hunched; boar-kin with a snout and big white tusks, a riveted leather cap under the team headband, a shaggy hide mantle, a spiked leather pauldron over a strapped jerkin, a barry team kilt, team forearm wraps, shin guards and hooves. The crossbarred boar spear stands over the cap. Tier I only in the first pass. No back flag.",
+ "note": "Wildmoot Tusk (unit identity, Wildmoot): zombified piglin, biped, hunched; boar-kin with a snout and big white tusks, a riveted leather cap under the team headband, a shaggy hide mantle, a spiked leather pauldron over a strapped jerkin, a barry team kilt, team forearm wraps, shin guards and hooves. The crossbarred boar spear stands over the cap. Tier II adds a bone brow plate, cap tusks, a bone left pauldron, a tooth necklace and skulls; tier III an ochre-lashed tusk crown, ochre bands and a grey pelt mantle. No back flag.",
  "rig": "biped",
  "size": [
   128,
@@ -11,7 +11,9 @@
  "idleArms": "hang",
  "parts": [],
  "skins": {
-  "1": "wm_tusk_s1.png"
+  "1": "wm_tusk_s1.png",
+  "2": "wm_tusk_s2.png",
+  "3": "wm_tusk_s3.png"
  },
  "weapon": "boar_spear",
  "hand": "right",
