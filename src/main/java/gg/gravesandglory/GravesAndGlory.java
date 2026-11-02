@@ -979,9 +979,10 @@ public final class GravesAndGlory implements ModInitializer {
             for(Squad other:squads.values())if(other!=s&&other.seated&&other.team==s.team)count++; // this team's armies, this one included (a joining squad is not in squads yet)
             List<String> line=s.banner; // from Campaign.prepareRound: the slot index is the position, and empty and ^ slots stay empty
             Morale.lineup(this,s,line);
+            Vec3d from=mode.lineup(this,s.team);
             for(String id:line){int position=slot++;if(position>=R.squadSize()||occupied.contains(position))continue;
                 var spec=Campaign.troop(id);if(spec==null)continue;
-                double side=s.team==0?1:-1,x=fieldBase(s.team).x+side*(20-position/5*3),z=fieldBase(s.team).z+side*((index-(count-1)/2.0)*22+(position%5-2)*2.5); // rows centred on the base for any army count; Dusk's mirror Dawn's, so army i forms on the side of its lane point (BattleMath.laneTarget)
+                double side=s.team==0?1:-1,x=from.x+side*(20-position/5*3),z=from.z+side*((index-(count-1)/2.0)*22+(position%5-2)*2.5); // rows centred on the base for any army count; Dusk's mirror Dawn's, so army i forms on the side of its lane point (BattleMath.laneTarget)
                 spawn(s,spec,position,new Vec3d(x,Arena.ground((int)x,(int)z)+1,z));
             }
             Houses.recompute(s);

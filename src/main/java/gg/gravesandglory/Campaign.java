@@ -610,7 +610,8 @@ public final class Campaign {
         Map<UUID,GravesAndGlory.Battle.Sight> seen=new HashMap<>();for(var entry:b.sightings.getOrDefault(s.team,Map.of()).entrySet())if(foes.containsKey(entry.getKey()))seen.put(entry.getKey(),entry.getValue());
         int count=b.points.size();GravesAndGlory.Capture choice;
         int full=RosterMath.units(s.banner,RosterMath.Catalog.fromSpec()); // the units its banner lists, an Epic or a Legendary once
-        if(living<=full*tier.retreatShare())botRetreating.add(s.owner);
+        if(!b.mode.botRetreats(b,s))botRetreating.remove(s.owner); // a mode can deny the fall-back (Siege's defenders behind the gate)
+        else if(living<=full*tier.retreatShare())botRetreating.add(s.owner);
         else if(living>=full*tier.rallyShare())botRetreating.remove(s.owner);
         int hold=tier.flankLeastDefended()?garrisonPoint(s,center,tier):-1;
         if(hold>=0)choice=b.points.get(hold);
@@ -654,6 +655,7 @@ public final class Campaign {
                 else if(enemy.spec.group().equals("infantry")&&d<=MELEE_THREAT_RANGE)melee++;}
             if(BattleMath.shieldwallVsArchers(ranged,melee,tier.archerThreatCount(),shields))s.assignments.put("infantry",new GravesAndGlory.Assignment(s.order,"shieldwall",s.target,s.yaw));
         }
+        if(!retreating)b.mode.botPlan(b,s,tier); // a mode's per-group split of the order (Siege's stage plan)
         if(!s.order.equals(wasOrder)||!Objects.equals(s.target,wasTarget))s.arrived.clear(); // a new order or spot ends an arrival (Tactics.arrived); the same decision again keeps it
         if(s.order.equals("charge")&&couldCharge)b.markCharge(s,"all");
     }
