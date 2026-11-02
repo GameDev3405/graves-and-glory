@@ -110,6 +110,11 @@ final class MotionFeet {
         }
     }
 
+    /** Round 4: the time constant (s) over which the stride's hip dip lets go. */
+    static final double DIP_RELEASE = 0.08;
+    /** Round 4: the fastest a lifting foot's solve turns (deg/s) for the first SLEW_START s of a start from standing. */
+    static final double SWING_SLEW = 400, SLEW_START = 1.0;
+
     /** The ground under a standing rig (px, y down) and the knee bend a striding stance leg keeps at the least (degrees). */
     static final double GROUND = 24, STRIDE_KNEE = 8;
 
@@ -124,7 +129,10 @@ final class MotionFeet {
      */
     static void stride(MotionEngine.Frame f, MotionEngine.State st, Pose out) {
         double gwAll = f.gaitW * f.plant * (1 - f.tw) * (1 - Math.min(1, f.bodyAction));
-        if (!(gwAll > 0)) return;
+        if (!(gwAll > 0)) { st.dipHeld = 0; return; }
+        // round 4: the dip may deepen at once (a foot must reach) but lets go over DIP_RELEASE, so a trailing foot that lifts off
+        // does not drop its hip demand in one frame and snap the stance knee straight
+        double held = st.dipHeld * Math.exp(-f.dt / DIP_RELEASE);
         double[] root = out.get("root"), full = st.rootFull, v = st.vec, drop = st.drop;
         double soft = LEG * Math.cos(Math.toRadians(STRIDE_KNEE / 2)), dip = 0, lift = MotionBody.LIFT_MIN + (MotionBody.LIFT_RUN - MotionBody.LIFT_MIN) * f.run;
         drop[0] = drop[1] = 0;
@@ -161,7 +169,7 @@ final class MotionFeet {
                 double dx = t[0] - v[0] - full[TX], dy = t[1] - v[1] - full[TY], dz = t[2] - v[2] - full[TZ];
                 dip = Math.max(dip, st.fw[i] * (dy - Math.sqrt(Math.max(0, soft * soft - dx * dx - dz * dz))));
             }
-            dip = MotionEngine.clamp(dip, 0, 6);
+            dip = Math.max(MotionEngine.clamp(dip, 0, 6), held);
             full[TY] += dip;
             for (int i = 0; i < 2; i++) {
                 double[] leg = out.get(LEGS[i]), shin = out.get(SHINS[i]), sol = st.sol[i];
@@ -197,6 +205,15 @@ final class MotionFeet {
                 st.pp[i][0] = st.pNext[i][0]; st.pp[i][1] = st.pNext[i][1]; st.pIdx[i] = st.pNextIdx[i];
             }
             st.pStance[i] = st.pNow[i];
+        }
+        st.dipHeld = dip;
+        // round 4: through a start's first steps a lifting foot's solve turns at most SWING_SLEW, so a trailing foot that comes
+        // into reach as it lifts eases its knee in rather than folding it in one frame; it is in the air, so nothing slides
+        for (int i = 0; i < 2; i++) {
+            double[] sol = st.sol[i], hs = st.solHeld[i];
+            if (st.startAge < SLEW_START && f.lift[i] > 0 && f.dt > 0)
+                for (int k = 0; k < 3; k++) sol[k] = hs[k] + MotionEngine.clamp(sol[k] - hs[k], -SWING_SLEW * f.dt, SWING_SLEW * f.dt);
+            System.arraycopy(sol, 0, hs, 0, 3);
         }
         root[TY] += gwAll * dip;
         for (int i = 0; i < 2; i++) {

@@ -257,6 +257,10 @@ public final class MotionEngine {
         final double[] vec = new double[3], rootFull = new double[6], knee = new double[2];
         /** Fix r3: the stride solve's scratch: each foot's lowest corner under its sole's middle (px), and a solved leg and shin. */
         final double[] drop = new double[2], legT = new double[6], shinT = new double[6];
+        /** Round 4: the stride's hip dip as last drawn, so a release eases out (MotionFeet.DIP_RELEASE) instead of snapping. */
+        double dipHeld;
+        /** Round 4: each leg's stride solve as last drawn (thigh x, thigh z, knee), for the start's swing slew (MotionFeet.SWING_SLEW). */
+        final double[][] solHeld = new double[2][3];
         /** Ground input (Task 16): last position (blocks) and yaw (deg), the smoothed body-frame velocity (b/s), time off the ground. */
         double gx, gy, gz, gyaw, vF, vL, vU, airT;
         boolean gInit, teleport;
