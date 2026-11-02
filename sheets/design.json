@@ -2885,12 +2885,12 @@
       "size": 1,
       "difficulty": "normal",
       "lessons": false,
-      "briefing": "PLACEHOLDER: briefing awaits Kort.",
-      "reason": "PLACEHOLDER: reason awaits Kort.",
+      "briefing": "The Ironclad hold their gate and will not open it. Break it with the engines, then take the keep behind it.",
+      "reason": "The march cannot go north past a shut iron gate.",
       "mode": "siege",
       "house": "ironclad",
       "bonus": "b2_lose10",
-      "placeholder": "size,difficulty,briefing,reason"
+      "placeholder": "size,difficulty"
     },
     {
       "id": "march-3",
@@ -2901,12 +2901,12 @@
       "size": 1,
       "difficulty": "normal",
       "lessons": false,
-      "briefing": "PLACEHOLDER: briefing awaits Kort.",
-      "reason": "PLACEHOLDER: reason awaits Kort.",
+      "briefing": "The graves of Hollowwood are opening under the moon. Hold the shrine and keep your banner standing until the dead lie still.",
+      "reason": "The march must camp at the shrine tonight, and so must the dead.",
       "mode": "survival",
       "house": "graveborn",
       "bonus": "b3_lose8",
-      "placeholder": "size,difficulty,briefing,reason"
+      "placeholder": "size,difficulty"
     },
     {
       "id": "march-4",
@@ -2917,12 +2917,12 @@
       "size": 1,
       "difficulty": "normal",
       "lessons": false,
-      "briefing": "PLACEHOLDER: briefing awaits Kort.",
-      "reason": "PLACEHOLDER: reason awaits Kort.",
+      "briefing": "The Wildmoot hunt the pass and the wagon with our standard must cross it. Walk beside it and do not let it be stopped.",
+      "reason": "Without its standard the march is only a crowd of armed men.",
       "mode": "convoy",
       "house": "wildmoot",
       "bonus": "b4_never_rolled",
-      "placeholder": "size,difficulty,briefing,reason (Kort 2026-10-31: a convoy escort; mode and bonus set by the approved convoy spec)"
+      "placeholder": "size,difficulty (Kort 2026-10-31: a convoy escort; mode and bonus set by the approved convoy spec)"
     },
     {
       "id": "march-5",
@@ -2933,12 +2933,12 @@
       "size": 1,
       "difficulty": "normal",
       "lessons": false,
-      "briefing": "PLACEHOLDER: briefing awaits Kort.",
-      "reason": "PLACEHOLDER: reason awaits Kort.",
+      "briefing": "Tidecaller raiders have come up out of the water to take Kingsfield. Hold the fords and bridges, and strike where they are thin.",
+      "reason": "Kingsfield is where every road meets, and the march needs them.",
       "mode": "domination",
       "house": "tidecallers",
       "bonus": "b5_hold_all",
-      "placeholder": "size,difficulty,briefing,reason"
+      "placeholder": "size,difficulty"
     },
     {
       "id": "march-6",
@@ -2949,12 +2949,12 @@
       "size": 1,
       "difficulty": "normal",
       "lessons": false,
-      "briefing": "PLACEHOLDER: briefing awaits Kort.",
-      "reason": "PLACEHOLDER: reason awaits Kort.",
+      "briefing": "The Hollow King has taken the keep at Ironhold. The Houses you met stand with you now. Break his gate and strike him down yourself.",
+      "reason": "The king in the keep ends the march, or the march ends.",
       "mode": "siege",
       "house": "graveborn",
       "bonus": "b6_kill_hollowking",
-      "placeholder": "size,difficulty,briefing,reason,mode (the plan says Siege, mixed)"
+      "placeholder": "size,difficulty,mode (the plan says Siege, mixed)"
     }
   ],
   "bonusObjectives": [

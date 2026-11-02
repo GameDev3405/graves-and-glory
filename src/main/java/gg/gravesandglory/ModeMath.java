@@ -68,18 +68,21 @@ public final class ModeMath {
     }
 
     // ---- Survival, the waves at the shrine (Phase 4 spec 6) ----
-    /** The rise warning's feed line: "The dead rise at the chapel", "... at the chapel and the ford", "... at a, b and c". */
-    public static String riseLine(List<String> sites) {
-        if(sites.isEmpty())return "The dead rise";
-        if(sites.size()==1)return "The dead rise at "+sites.get(0);
-        return "The dead rise at "+String.join(", ",sites.subList(0,sites.size()-1))+" and "+sites.get(sites.size()-1);
+    /** The rise warning's feed lines, one per site so each fits the 144 px Compact row: "Dead rise: the chapel"; "The dead rise" with no site. */
+    public static List<String> riseLines(List<String> sites) {
+        if(sites.isEmpty())return List.of("The dead rise");
+        var out=new ArrayList<String>();
+        for(var s:sites)out.add("Dead rise: "+s);
+        return out;
     }
-    /** A cleared wave's feed line: "Wave 3 laid to rest, +80 gold", or without gold "Wave 7 laid to rest". */
+    /** A cleared wave's feed line: "Wave 3 at rest, +80 gold", or without gold "Wave 7 laid to rest". */
     public static String restLine(int wave,int gold) {
-        return "Wave "+wave+" laid to rest"+(gold>0?", +"+gold+" gold":"");
+        return gold>0?"Wave "+wave+" at rest, +"+gold+" gold":"Wave "+wave+" laid to rest";
     }
     /** The feed line as the dead begin to take the shrine. */
-    public static final String SHRINE_LINE="The dead are taking the shrine";
+    public static final String SHRINE_LINE="The dead take the shrine";
+    /** The round's closing feed lines: the defenders hold to dawn, or the dead hold the shrine. */
+    public static final String STANDS_LINE="The shrine stands till dawn", HOLD_LINE="The dead hold the shrine";
     /**
      * The round's result after a second of Survival: 1 (the dead win) once they held the shrine lossSeconds with no defender on
      * it; else 0 (the defenders win) when the last wave (wave = waves, counted from 1) is cleared or its timer is out; else -1, play on.

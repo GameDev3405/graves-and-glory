@@ -3,22 +3,22 @@ package gg.gravesandglory;
 import java.util.ArrayList;
 import java.util.List;
 
-/** Draft copy check: the proposed shorter Survival feed lines (docs/drafts/survival-feed-short-2026-11-02.md) each fit the Compact
+/** Copy check: the approved shorter Survival feed lines (docs/drafts/survival-feed-short-2026-11-02.md) each fit the Compact
  *  feed row, measured with FeedFitCheck.width like ModeHudFitCheck. Every site name is kept. Prints the draft table with -Dshort.table=true.
- *  Copy needs Kort's approval; ModeMath is unchanged. Checked by javac alone, never shipped. */
+ *  Approved by Kort 2026-11-02. Checked by javac alone, never shipped. */
 public final class SurvivalFeedShortCheck {
     static int checks, failed;
     static final int FEED_PX = UiMath.feedTextW(UiMath.HUD_COMPACT);
 
-    static final String SHRINE = "The dead take the shrine";
-    static final String STANDS = "The shrine stands till dawn";
-    static final String HOLD = "The dead hold the shrine";
-    /** One feed line per site, the name kept as the sheet has it. */
-    static List<String> rise(List<String> sites) {
-        if (sites.isEmpty()) return List.of("The dead rise");
-        return sites.stream().map(x -> "Dead rise: " + x).toList();
+    /** The lines before the 2026-11-02 shortening, kept only as the "current" column of the printed table. */
+    static String oldRise(List<String> sites) {
+        if (sites.isEmpty()) return "The dead rise";
+        if (sites.size() == 1) return "The dead rise at " + sites.get(0);
+        return "The dead rise at " + String.join(", ", sites.subList(0, sites.size() - 1)) + " and " + sites.get(sites.size() - 1);
     }
-    static String rest(int wave, int gold) { return gold > 0 ? "Wave " + wave + " at rest, +" + gold + " gold" : "Wave " + wave + " laid to rest"; }
+    static String oldRest(int wave, int gold) { return "Wave " + wave + " laid to rest" + (gold > 0 ? ", +" + gold + " gold" : ""); }
+    static List<String> rise(List<String> sites) { return ModeMath.riseLines(sites); }
+    static String rest(int wave, int gold) { return ModeMath.restLine(wave, gold); }
 
     static void row(List<String[]> rows, String cur, String... prop) { rows.add(new String[]{cur, String.join(" / ", prop), String.valueOf(prop.length)}); }
 
@@ -26,19 +26,19 @@ public final class SurvivalFeedShortCheck {
         List<String> sites = new ArrayList<>();
         for (var s : Spec.MODESITES) if (s.mode().equals("survival") && s.kind().equals("rise")) sites.add(s.name());
         List<String[]> rows = new ArrayList<>();
-        row(rows, ModeMath.SHRINE_LINE, SHRINE);
-        row(rows, "The shrine stands until dawn", STANDS);
-        row(rows, "The dead hold the shrine", HOLD);
-        row(rows, ModeMath.riseLine(List.of()), rise(List.of()).toArray(new String[0]));
+        row(rows, "The dead are taking the shrine", ModeMath.SHRINE_LINE);
+        row(rows, "The shrine stands until dawn", ModeMath.STANDS_LINE);
+        row(rows, "The dead hold the shrine", ModeMath.HOLD_LINE);
+        row(rows, oldRise(List.of()), rise(List.of()).toArray(new String[0]));
         for (int wave = 1; wave <= Spec.WAVES.length; wave++) {
-            row(rows, ModeMath.restLine(wave, Spec.WAVES[wave - 1].gold()), rest(wave, Spec.WAVES[wave - 1].gold()));
-            if (Spec.WAVES[wave - 1].gold() > 0) row(rows, ModeMath.restLine(wave, 0), rest(wave, 0));
+            row(rows, oldRest(wave, Spec.WAVES[wave - 1].gold()), rest(wave, Spec.WAVES[wave - 1].gold()));
+            if (Spec.WAVES[wave - 1].gold() > 0) row(rows, oldRest(wave, 0), rest(wave, 0));
         }
         for (String a : sites) {
-            row(rows, ModeMath.riseLine(List.of(a)), rise(List.of(a)).toArray(new String[0]));
+            row(rows, oldRise(List.of(a)), rise(List.of(a)).toArray(new String[0]));
             for (String b : sites) if (!a.equals(b)) {
-                row(rows, ModeMath.riseLine(List.of(a, b)), rise(List.of(a, b)).toArray(new String[0]));
-                for (String c : sites) if (!c.equals(a) && !c.equals(b)) row(rows, ModeMath.riseLine(List.of(a, b, c)), rise(List.of(a, b, c)).toArray(new String[0]));
+                row(rows, oldRise(List.of(a, b)), rise(List.of(a, b)).toArray(new String[0]));
+                for (String c : sites) if (!c.equals(a) && !c.equals(b)) row(rows, oldRise(List.of(a, b, c)), rise(List.of(a, b, c)).toArray(new String[0]));
             }
         }
         boolean table = Boolean.getBoolean("short.table");
