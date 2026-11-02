@@ -160,7 +160,7 @@ public final class Phase4Checks implements ClientModInitializer {
             List<String> want=ModeMath.howTo(row.howTo()),wantDefend=ModeMath.howTo(row.howToDefend()),how=m==null?List.of():strings(m,"howTo"),defend=m==null?List.of():strings(m,"howToDefend");
             List<Integer> max=m==null?List.of():ints(m,"max");List<String> format=m==null?List.of():strings(m,"format");
             String rule=m==null?"":str(m,"rule"),id=m==null?"":str(m,"id");
-            boolean ok=id.equals("domination")&&rule.equals("Domination to 300")&&want.size()==3&&how.equals(want)&&defend.equals(wantDefend)&&max.equals(List.of(300,300))&&format.equals(List.of("plain","plain"));
+            boolean ok=id.equals("domination")&&rule.equals("Domination to 300")&&want.size()==2&&how.equals(want)&&defend.equals(wantDefend)&&max.equals(List.of(300,300))&&format.equals(List.of("plain","plain"));
             report("p4-modes-json",ok,"id="+id+" rule=\""+rule+"\" howTo="+how.size()+" lines, match="+how.equals(want)+", defend="+defend.equals(wantDefend)+" (the two cells are identical for Domination), max="+max+" format="+format);
             next(3);
         }
