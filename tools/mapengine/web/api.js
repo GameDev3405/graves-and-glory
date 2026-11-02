@@ -27,6 +27,8 @@ export const listVersions = (id) => call('GET', dp(id) + '/versions');
 export const saveVersion = (id, name) => call('POST', dp(id) + '/versions', { name });
 export const restoreVersion = (id, name) => call('POST', dp(id) + '/restore', { name });
 export const build = (id) => call('POST', dp(id) + '/build', {});
+export const exportBundle = (id) => call('POST', dp(id) + '/export', {});
+export const importDraft = (id, draft) => call('POST', dp(id) + '/import', draft === undefined ? {} : { draft });
 
 function b64(s, Type) {
   const bin = atob(s);

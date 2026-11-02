@@ -12,6 +12,7 @@ import numpy as np
 from mapengine import build as mbuild
 from mapengine import check as mcheck
 from mapengine import design
+from mapengine import handoff
 from mapengine.terrain import heightfield
 
 WEB = pathlib.Path(__file__).resolve().parent / 'web'
@@ -180,6 +181,23 @@ def make_server(maps_dir, work_dir, port):
                                        'height': _b64(f.height, '<i2'), 'water': _b64(f.water, '<i2'),
                                        'road': _b64(f.road, 'u1'), 'zone': _b64(f.zone, '<i2'),
                                        'zones': f.zones})
+            if rest == ['export'] and method == 'POST':
+                with write_lock:
+                    d = design.load(dpath)
+                out = handoff.export(d, work_dir / did / 'handoff')
+                return self.send(200, {'path': str(out), 'brief': str(out / 'BRIEF.md'), 'draft': str(out / 'draft.json')})
+            if rest == ['import'] and method == 'POST':
+                body = self.body_json()
+                if not isinstance(body, dict):
+                    return self.err(400, 'body must be {"draft": {...}} or {}')
+                try:
+                    draft = body['draft'] if 'draft' in body else handoff.load_draft(work_dir / did / 'handoff' / 'draft.json')
+                    with write_lock:
+                        merged, rep = handoff.merge(design.load(dpath), draft)
+                        design.save(dpath, merged)
+                except handoff.DraftError as e:
+                    return self.err(422, *e.problems)
+                return self.send(200, rep)
             if rest == ['build'] and method == 'POST':
                 if not build_lock.acquire(blocking=False):
                     return self.err(409, 'a build is already running')

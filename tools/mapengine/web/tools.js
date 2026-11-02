@@ -4,7 +4,7 @@
 // state.pxPerBlock (set by the showing view) converts the 6 px pick distance into blocks.
 import { commit, endDrag, select, notify, newId, findObj, selectedObj } from './app.js';
 
-export const TOOL_ORDER = ['hill', 'river', 'road', 'point', 'spawn', 'select'];
+export const TOOL_ORDER = ['hill', 'river', 'road', 'point', 'spawn', 'select', 'note'];
 const PICK_PX = 6;
 const NEW_BY = 'kort';
 const NEW_STATE = 'accepted';
@@ -90,10 +90,25 @@ const spawnTool = {
   move() {}, up() {}, key() { return false; },
 };
 
+// A note pinned on an area for the AI handoff (export): one click places it, the panel takes the text.
+const noteTool = {
+  down(state, x, z) {
+    let id = null;
+    commit((d) => {
+      const [px, pz] = snapPoint(d, x, z);
+      const o = Object.assign(base(d, 'note'), { x: px, z: pz, radius: 24, text: 'Describe this area for the AI' });
+      id = o.id;
+      d.objects.push(o);
+    });
+    select(id);
+  },
+  move() {}, up() {}, key() { return false; },
+};
+
 // ---------- select: pick, drag, delete ----------
 
 const SHAPE_KEY = { hill: 'outline', zone: 'outline', river: 'path', road: 'path' };
-const PICK_ORDER = ['spawn', 'point', 'road', 'river', 'hill', 'zone']; // top first
+const PICK_ORDER = ['spawn', 'point', 'note', 'road', 'river', 'hill', 'zone']; // top first
 
 function vertices(o) {
   const k = SHAPE_KEY[o.kind];
@@ -120,6 +135,7 @@ function hits(o, x, z, tol) {
   switch (o.kind) {
     case 'spawn': return Math.hypot(x - o.x, z - o.z) <= Math.max(tol, 2);
     case 'point': return Math.hypot(x - o.x, z - o.z) <= Math.max(o.radius, tol);
+    case 'note': return Math.hypot(x - o.x, z - o.z) <= Math.max(Math.min(o.radius, 8), tol);
     case 'road': case 'river': {
       const p = o.path, r = Math.max(o.width / 2, tol);
       for (let i = 0; i + 1 < p.length; i++) if (distSeg(x, z, p[i], p[i + 1]) <= r) return true;
@@ -151,7 +167,7 @@ function applyDrag(d, x, z) {
   const o = findObj(d, drag.id);
   if (!o) return;
   const orig = drag.orig;
-  if (orig.kind === 'point' || orig.kind === 'spawn') {
+  if (orig.kind === 'point' || orig.kind === 'spawn' || orig.kind === 'note') {
     [o.x, o.z] = snapPoint(d, x - drag.x0 + orig.x, z - drag.z0 + orig.z);
     return;
   }
@@ -177,7 +193,7 @@ const selectTool = {
       vertex = o ? vertexAt(o, x, z, tol) : -1;
     }
     if (!o) { drag = null; select(null); return; }
-    const single = o.kind === 'point' || o.kind === 'spawn';
+    const single = o.kind === 'point' || o.kind === 'spawn' || o.kind === 'note';
     drag = { id: o.id, vertex: single ? -1 : vertex, x0: x, z0: z, orig: JSON.parse(JSON.stringify(o)) };
     select(o.id);
   },
@@ -210,4 +226,5 @@ export const TOOLS = {
   point: pointTool,
   spawn: spawnTool,
   select: selectTool,
+  note: noteTool,
 };

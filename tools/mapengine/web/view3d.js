@@ -301,8 +301,9 @@ function rebuildObjects() {
   const sel = state.selectedId;
   for (const o of d.objects) {
     const selected = o.id === sel;
+    const prop = o.state === 'proposed'; // AI proposal: magenta, as in the map view
     if (o.kind === 'point' || o.kind === 'spawn') {
-      const hex = selected ? 0xffffff : o.kind === 'point' ? 0xf5d142 : TEAM_COLOR[o.team] || 0xffffff;
+      const hex = selected ? 0xffffff : prop ? 0xff40c8 : o.kind === 'point' ? 0xf5d142 : TEAM_COLOR[o.team] || 0xffffff;
       const p = pillar(o.x, o.z, hex, o.kind === 'point' ? 3 : 2.4, PILLAR_H);
       objGroup.add(p);
       const text = o.kind === 'point' ? o.name || '?' : o.team;
@@ -317,8 +318,10 @@ function rebuildObjects() {
           const a = (i / 48) * Math.PI * 2, x = o.x + Math.cos(a) * o.radius, z = o.z + Math.sin(a) * o.radius;
           ring.push(new THREE.Vector3(x, topAt(x, z) + 0.2, z));
         }
-        objGroup.add(line(ring, selected ? 0xffffff : 0xf5d142, true));
+        objGroup.add(line(ring, selected ? 0xffffff : prop ? 0xff40c8 : 0xf5d142, true));
       }
+    } else if (prop && !selected && (o.outline || o.path)) {
+      objGroup.add(line(drape(o.outline || o.path, !!o.outline, 0.3), 0xff40c8, false));
     } else if (selected) {
       const vs = o.outline || o.path;
       if (vs) {

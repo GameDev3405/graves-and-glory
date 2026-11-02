@@ -56,8 +56,19 @@ export function blankDesign(id, name) {
 
 // ---------- history ----------
 
-let gesture = false, gestureBefore = null;
+let gesture = false, gestureBefore = null, gestureObjs = null;
 const snap = () => JSON.stringify(state.design);
+
+// An edit to an AI object (anything but its review state) makes it Kort's: by kort, accepted, so locked against
+// later drafts. Accept only flips state and keeps by ai; reject removes the object.
+const sansState = (o) => JSON.stringify(Object.assign({}, o, { state: null }));
+function claimEdits(beforeObjs) {
+  const before = new Map(beforeObjs.map((o) => [o.id, sansState(o)]));
+  for (const o of state.design.objects) {
+    if (o.by === 'ai' && before.has(o.id) && before.get(o.id) !== sansState(o)) { o.by = 'kort'; o.state = 'accepted'; }
+  }
+}
+export const isProposal = (o) => o.state === 'proposed';
 
 function pushUndo(s) {
   undoStack.push(s);
@@ -74,8 +85,9 @@ function fixSelection() {
 export function commit(mutator, opts) {
   const drag = !!(opts && opts.drag);
   if (drag) {
-    if (!gesture) { gesture = true; gestureBefore = snap(); pushUndo(gestureBefore); }
+    if (!gesture) { gesture = true; gestureBefore = snap(); gestureObjs = JSON.parse(gestureBefore).objects; pushUndo(gestureBefore); }
     mutator(state.design);
+    claimEdits(gestureObjs);
     fixSelection();
     notify();
     return;
@@ -83,6 +95,7 @@ export function commit(mutator, opts) {
   endDrag();
   const before = snap();
   mutator(state.design);
+  claimEdits(JSON.parse(before).objects);
   if (snap() === before) return;
   pushUndo(before);
   fixSelection();
@@ -95,6 +108,7 @@ export function endDrag() {
   gesture = false;
   if (snap() === gestureBefore) undoStack.pop(); else afterEdit();
   gestureBefore = null;
+  gestureObjs = null;
   notify();
 }
 
@@ -115,6 +129,31 @@ export function redo() {
   if (gesture || !redoStack.length) return;
   undoStack.push(snap());
   restoreSnap(redoStack.pop());
+}
+
+// ---------- review of an AI draft ----------
+
+export function accept(ids) {
+  const want = new Set(ids);
+  commit((d) => { for (const o of d.objects) if (want.has(o.id) && isProposal(o)) o.state = 'accepted'; });
+}
+
+export function reject(ids) {
+  const want = new Set(ids);
+  commit((d) => { d.objects = d.objects.filter((o) => !(want.has(o.id) && isProposal(o))); });
+}
+
+export async function exportBundle() {
+  await flush();
+  return api.exportBundle(state.design.id);
+}
+
+// Merge an AI draft on the server (locked objects are protected there), then reload. The undo history starts over.
+export async function importDraft(draft) {
+  await flush();
+  const res = await api.importDraft(state.design.id, draft);
+  if (res.ok) await loadDesign(state.design.id);
+  return res;
 }
 
 export const canUndo = () => undoStack.length > 0;
@@ -272,7 +311,7 @@ window.addEventListener('keydown', (ev) => {
     return;
   }
   if (ev.key === 'Tab') { ev.preventDefault(); toggleView(); return; }
-  const digit = '123456'.indexOf(ev.key);
+  const digit = '1234567'.indexOf(ev.key);
   if (digit >= 0 && !ev.altKey) { setTool(TOOL_ORDER[digit]); return; }
   if (TOOLS[state.tool].key(state, ev)) ev.preventDefault();
 });
