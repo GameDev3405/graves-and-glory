@@ -1,0 +1,14 @@
+{
+ "troop": "ic_colossus",
+ "note": "Brassjaw, the Forge Colossus: hand-authored at 1 texel by art/hand/ic_colossus; this stub only registers the troop with build_skins.",
+ "rig": "colossus",
+ "size": [
+  128,
+  128
+ ],
+ "density": 1,
+ "bones": {},
+ "skins": {
+  "1": "ic_colossus_s1.png"
+ }
+}

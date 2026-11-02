@@ -1,0 +1,14 @@
+{
+ "troop": "ic_ballista",
+ "note": "Ironclad Ballista Crew: hand-authored at 1 texel by art/hand/ic_ballista; this stub only registers the troop with build_skins.",
+ "rig": "biped",
+ "size": [
+  128,
+  128
+ ],
+ "density": 1,
+ "bones": {},
+ "skins": {
+  "1": "ic_ballista_s1.png"
+ }
+}
