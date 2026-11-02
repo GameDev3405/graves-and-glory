@@ -4,7 +4,11 @@
 A stooped boar-kin elder: grey-furred muzzle, clay-glow eyes, an antler crown of two branching tines, a hide robe to the
 shins daubed with blood handprints, bone and ochre trinkets, a team sash across the chest and a bone wand in the right
 hand. A totem staff (wood pole, bone skull and antler top, ochre lashing) is strapped diagonally on the back. Epic, so the
-eyes and a few staff runes glow. Tier I only. No back flag.
+eyes and a few staff runes glow. No back flag.
+
+Tier I is the Seer. Tier II adds a third tine to each antler, a necklace of bone plaques, a mantle of dark feathers and
+ochre bands down the wand. Tier III raises a taller crown of tines, hangs two trophy skulls on the staff, sets a bone and
+tooth collar at the throat and an ochre fringe at the robe's hem. The glow texels are unchanged at every tier.
 
   python build_wm_seer.py preview <dir> [side] | contact <png> [side] | stub
 """
@@ -156,6 +160,16 @@ def lash():
 def wand():
     return bone_paint(4, "swd")
 
+def plume():
+    """A hanging black-brown feather of the mantle, a pale bone-white tip (the bottom row)."""
+    def paint(face, w, h):
+        g = blank(w, h)
+        for y in range(h):
+            for x in range(w): g[y][x] = clamp(HORN, 2 + LIT[face] + (1 if y == 0 else 0))
+        if face not in ("top", "bottom"): g[h - 1] = [BONE[4]] * w
+        return g
+    return paint
+
 def sash_tail():
     return None
 
@@ -220,6 +234,32 @@ def bones():
         Box((-1.5, -15, -1.5), (3, 3, 3), skull()),
         Box((-2.5, -17, -0.5), (1, 3, 1), antlerp()), Box((1.5, -17, -0.5), (1, 3, 1), antlerp()),
         Box((-1, -9, -1), (2, 1, 2), lash(), dil=0.1), Box((-1, 1, -1), (2, 1, 2), lash(), dil=0.1)]))
+    # tier II: a third tine on each antler, a necklace of bone plaques, a feather mantle, ochre bands down the wand
+    for name, sg in (("antler_r", -1), ("antler_l", 1)):
+        B.append(Bone(name + "_tine3", name, stages=[2, 3], boxes=[
+            Box((sg * 1 - 0.5, -8, -0.5), (1, 3, 1), antler(4, "st3" + name)), Box((sg * 2 - 0.5, -4, -0.5), (1, 2, 1), antler(4, "st4" + name))]))
+    B.append(Bone("plaques", "body", stages=[2, 3], boxes=[
+        Box((-4.5, -11, -3.8), (2, 2, 1), bone_paint(4, "spq1")), Box((-1, -10.5, -3.8), (2, 3, 1), bone_paint(4, "spq2")),
+        Box((2.5, -11, -3.8), (2, 2, 1), bone_paint(4, "spq3")), Box((-5, -12, -3.6), (10, 1, 1), lash(), dil=0.05)]))
+    B.append(Bone("feather_mantle", "body", stages=[2, 3], boxes=[
+        Box((-5.5, -10, -3.2 + i * 1.5), (1, 3 + i % 2, 1), plume()) for i in range(5)] + [
+        Box((4.5, -10, -3.2 + i * 1.5), (1, 3 + i % 2, 1), plume()) for i in range(5)] + [
+        Box((-4.5 + i * 2, -10, 3.2), (1, 3 + (i + 1) % 2, 1), plume()) for i in range(5)]))
+    B.append(Bone("wand_bands", "right_hand", tag="weapon", stages=[2, 3], boxes=[
+        Box((-0.5, -0.5, -4), (1, 1, 1), lash(), dil=0.15), Box((-0.5, -0.5, -2.5), (1, 1, 1), lash(), dil=0.15)]))
+    # tier III: a taller crown of more tines, two trophy skulls on the staff, a bone and tooth collar, an ochre fringe at the hem
+    for name, sg in (("antler_r", -1), ("antler_l", 1)):
+        B.append(Bone(name + "_crown", name, (0, -6, 0), stages=[3], rot=(0, 0, sg * 10), boxes=[
+            Box((-0.5, -4, -0.5), (1, 4, 1), antler(4, "scr" + name)), Box((sg * 1 - 0.5, -3, -0.5), (1, 2, 1), antler(4, "sct" + name)),
+            Box((-0.5 - sg * 1, -2, -0.5), (1, 1, 1), antler(4, "scu" + name)), Box((-0.5, -4.5, -0.5), (1, 1, 1), lash())]))
+    B.append(Bone("staff_skulls", "body", pivot=(0, -6, 3), rot=(0, 0, 22), stages=[3], boxes=[
+        Box((-1.5, -6, -0.5), (2, 2, 2), wm_skull("ss1")), Box((0.5, -2, -0.5), (2, 2, 2), wm_skull("ss2")),
+        Box((-1, -6.5, -1), (2, 1, 2), lash(), dil=0.1)]))
+    B.append(Bone("bone_collar", "body", stages=[3], boxes=[
+        Box((-4.5, -13, -3.4), (9, 1, 1), bone_paint(4, "sbc")),
+        Box((-3.5, -12, -3.4), (1, 2, 1), wm_tusk()), Box((-1.5, -12, -3.4), (1, 2, 1), wm_tusk()),
+        Box((0.5, -12, -3.4), (1, 2, 1), wm_tusk()), Box((2.5, -12, -3.4), (1, 2, 1), wm_tusk())]))
+    B.append(Bone("hem_fringe", "root", stages=[3], boxes=[Box((-4.5, 19.5, -2.5), (9, 1, 5), lashing(OCHRE, 3), dil=0.35)]))
     return B
 
 def sash_cloth(T, M):
@@ -238,9 +278,10 @@ def cloth_painter(spec, side):
 
 NOTE = ("Wildmoot Bloodhowl Seer (unit identity, Wildmoot): a stooped boar-kin elder with a grey-furred muzzle, clay-glow eyes, an antler "
         "crown of two branching tines, a hide robe to the shins with blood handprints, bone and ochre trinkets, a team sash across the chest "
-        "and a bone wand in the right hand. A totem staff (bone skull and antler top) is strapped diagonally on the back. Tier I only. No back flag.")
+        "and a bone wand in the right hand. A totem staff (bone skull and antler top) is strapped diagonally on the back. Tier II: third tines, "
+        "bone plaques, feather mantle, ochre wand bands; tier III: taller crown, staff skulls, tooth collar, ochre hem. No back flag.")
 WM_SEER = Troop("wm_seer", SKIN, CLOTH, bones, cloth_painter,
-                {"weapon": "none", "hand": "right", "idleArms": "hang", "portrait": "tall 6"}, tiers=(1,), glow=glow_fn)
+                {"weapon": "none", "hand": "right", "idleArms": "hang", "portrait": "tall 6"}, glow=glow_fn)
 def build(): return WM_SEER.build()
 def outputs(): return WM_SEER.outputs()
 
