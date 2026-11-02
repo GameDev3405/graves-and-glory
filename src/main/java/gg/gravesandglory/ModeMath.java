@@ -57,11 +57,12 @@ public final class ModeMath {
         for(int i=0;i<banners;i++)out.add(i<primary?(escort?"pusher":"raider"):(escort?"screen":"blocker"));
         return out;
     }
-    /** A ledger number in its mode's format: 1/3, 64%, or 12. */
+    /** A ledger number in its mode's format: 1/3, 64%, 1:05 (seconds as minutes and seconds), or 12. */
     public static String ledgerText(String format,int value,int max) {
         return switch(format){
             case "fraction" -> value+"/"+max;
             case "percent" -> value+"%";
+            case "time" -> Math.max(0,value)/60+":"+(Math.max(0,value)%60<10?"0":"")+Math.max(0,value)%60;
             default -> Integer.toString(value);
         };
     }

@@ -15,7 +15,7 @@ public final class FeedEvents {
     /** A bucket's age when its line goes out: what one troop lost, killed or deployed within 2 s makes one line. */
     static final int BUCKET_TICKS = 40;
     /** The longest text a feed line carries. */
-    static final int MAX_TEXT = 120;
+    static final int MAX_TEXT = FeedLines.MAX_TEXT;
     /** Feed lines sent since the server started, for checks. */
     public static int sent;
 
@@ -30,6 +30,13 @@ public final class FeedEvents {
     public static void point(GravesAndGlory.Battle b, GravesAndGlory.Capture c, int team) {
         String text = FeedLines.pointTaken(FeedLines.teamShort(Spec.FACTIONS[team].name()), c.spec.name());
         for (ServerPlayerEntity p : b.server.getPlayerManager().getPlayerList()) send(p, "point", team, text);
+    }
+
+    /** A mode's event line (plan 2C.2): the modeLines row of this mode and event, its fields filled, to every player in the row's kind
+     *  (and so its glyph and ink) for the event's team. The mode classes say nothing of their own; Survival adds rows and calls this. */
+    public static void mode(GravesAndGlory.Battle b, int team, String mode, String event, String... fields) {
+        String text = FeedLines.modeLine(mode, event, fields), kind = FeedLines.modeKind(mode, event);
+        for (ServerPlayerEntity p : b.server.getPlayerManager().getPlayerList()) send(p, kind, team, text);
     }
 
     /** A troop died: a loss for its owner, and a kill for the killer's owner when the killer fought for the other side. */

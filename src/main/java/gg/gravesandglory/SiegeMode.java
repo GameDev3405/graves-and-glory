@@ -183,7 +183,7 @@ public final class SiegeMode extends BattleMode {
         } else if (hold(b, KEEP_X, KEEP_Z, KEEP_RADIUS, KEEP_SECONDS, true)) {
             stage = 3;
             b.scores[0] = stage;
-            feed(b, Spec.FACTIONS[0].name() + " took the Keep");
+            feed(b, "keep_taken", "team", attackers());
             b.campaign.finish(0);
             b.world.playSound(null, BlockPos.ORIGIN, SoundEvents.UI_TOAST_CHALLENGE_COMPLETE, SoundCategory.MASTER, 2, 1);
         }
@@ -214,13 +214,13 @@ public final class SiegeMode extends BattleMode {
         held = 0;
         b.scores[0] = stage;
         b.roundSeconds += STAGE_BONUS;
-        feed(b, Spec.FACTIONS[0].name() + " took the Outer Yard");
+        feed(b, "yard_taken", "team", attackers());
         var row = gate();
         GravesAndGlory.Squad defender = null;
         for (var s : b.squads.values()) if (s.seated && s.team == 1) { defender = s; break; }
         if (row == null || defender == null || b.saves.stream().noneMatch(s -> s.tag().equals(GATE_TAG))) { breach(b); return; } // no saved gate to shut and break
         dropAt = b.time + R.portcullisSeconds() * 20L;
-        feed(b, "The Iron Gate will shut in " + R.portcullisSeconds() + " seconds");
+        feed(b, "gate_closing", "n", Integer.toString(R.portcullisSeconds()));
     }
 
     /** The portcullis drops: units in the passage go to the nearer side, the intact gate replaces the open one and its target goes up on its west face. */
@@ -232,7 +232,7 @@ public final class SiegeMode extends BattleMode {
         if (row == null || defender == null) { breach(b); return; }
         clearPassage(b, row);
         Structures.place(b.world, GATE_INTACT, row.x(), row.elevation(), row.z(), row.rotation());
-        feed(b, "The Iron Gate is shut");
+        feed(b, "gate_shut");
         var e = new GateTarget(b.world);
         e.squad = defender;
         e.hp = GATE_HP;
@@ -268,13 +268,31 @@ public final class SiegeMode extends BattleMode {
         held = 0;
         b.scores[0] = stage;
         b.roundSeconds += STAGE_BONUS;
-        feed(b, "The Iron Gate is breached");
+        feed(b, "gate_breached");
         mark(b); // the marker stops listing the gate's snapshot once it is back
     }
 
-    /** A stage line on every player's feed, in Dawn's colour. */
-    static void feed(GravesAndGlory.Battle b, String text) {
-        for (ServerPlayerEntity p : b.server.getPlayerManager().getPlayerList()) FeedEvents.send(p, "point", 0, text);
+    /** A stage line (the modeLines siege row of this event, draft copy) on every player's feed, in the attackers' colour. */
+    static void feed(GravesAndGlory.Battle b, String event, String... fields) {
+        FeedEvents.mode(b, 0, Modes.SIEGE, event, fields);
+    }
+
+    /** The attackers' short name for a feed line: "Gold" for the Gold Banner. */
+    static String attackers() {
+        return FeedLines.teamShort(Spec.FACTIONS[0].name());
+    }
+
+    /** The objective panel's opening line (the modeLines siege start row): the flags are down, so "Capture the objectives." would mislead. */
+    @Override
+    public String startLine(GravesAndGlory.Battle b) {
+        return FeedLines.modeLine(Modes.SIEGE, "start");
+    }
+
+    /** The deciding numbers: stages taken of three, the defence's strength in percent, and the clock. */
+    @Override
+    public List<ModeLines.Entry> ledgerEntries(GravesAndGlory.Battle b) {
+        int[] l = ledger(b), m = max(b);
+        return List.of(ModeLines.entry("siege_stage", l[0], m[0]), ModeLines.entry("siege_strength", l[1], m[1]), ModeLines.entry("siege_time", clock(b), b.roundSeconds));
     }
 
     /** After teardown put the gate back: removes the gate target and raises the neutral flags; idempotent, as a round may end twice. */

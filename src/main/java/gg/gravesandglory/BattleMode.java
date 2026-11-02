@@ -88,6 +88,12 @@ public abstract class BattleMode {
     public int clock(GravesAndGlory.Battle b){return b.running?(int)Math.max(0,b.roundSeconds-(b.time-b.roundStarted)/20):b.roundSeconds;}
     /** The two numbers beside the HUD's tracks. */
     public int[] ledger(GravesAndGlory.Battle b){return b.scores;}
+    /**
+     * The 2 to 4 numbers that decide the round, as plain data for the HUD and the report (plan 2C.2), in the order of the mode's
+     * modeLedger rows (ModeLines.entry builds each from its row, so labels and formats are draft copy in the sheet). A mode
+     * adds its rows and overrides this; the default has none, so a mode that has not yet is simply without a ledger.
+     */
+    public List<ModeLines.Entry> ledgerEntries(GravesAndGlory.Battle b){return List.of();}
     /** The tracks' maxima. */
     public int[] max(GravesAndGlory.Battle b){return new int[]{row.winTarget(),row.winTarget()};}
     /** How each ledger number reads (ModeMath.ledgerText): plain, fraction or percent. */

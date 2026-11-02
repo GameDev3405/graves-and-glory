@@ -125,7 +125,7 @@ public final class ConvoyMode extends BattleMode {
     @Override public String rule() {return row.ruleLine().replace("{n}", stopNames[stopNames.length - 1]);}
     @Override public boolean capturesPoints(GravesAndGlory.Battle b) {return false;}
     /** The objective panel's first line: the round has no points to capture. */
-    @Override public String startLine(GravesAndGlory.Battle b) {return "The wagon sets out for " + stopNames[stopNames.length - 1] + ".";}
+    @Override public String startLine(GravesAndGlory.Battle b) {return FeedLines.modeLine(Modes.CONVOY, "start", "stop", stopNames[stopNames.length - 1]);}
     /** A team with a modeSites base row fields there (Frostmarch's Dusk spawn sits at The Refuge, the road's end). */
     @Override public Vec3d fieldBase(GravesAndGlory.Battle b, int team) {
         var s = base(map, team);
@@ -234,7 +234,7 @@ public final class ConvoyMode extends BattleMode {
         for (int i = passedBefore; i < passed; i++) checkpoint(b, i);
         if (through()) {
             finished = true;
-            say(b, "The convoy is through");
+            say(b, "through");
             b.campaign.finish(ESCORT);
             b.world.playSound(null, BlockPos.ORIGIN, SoundEvents.UI_TOAST_CHALLENGE_COMPLETE, SoundCategory.MASTER, 2, 1);
         }
@@ -253,14 +253,14 @@ public final class ConvoyMode extends BattleMode {
     void feed(GravesAndGlory.Battle b, String was) {
         if (state.equals(ModeMath.MOVING)) {
             if (!was.equals(ModeMath.MOVING)) movingSince = b.time;
-            if (!everMoved) {everMoved = true; say(b, "The wagon rolls");}
+            if (!everMoved) {everMoved = true; say(b, "wagon_rolls");}
         }
         if (state.equals(ModeMath.CONTESTED) && was.equals(ModeMath.MOVING) && movingSince >= 0 && b.time - movingSince >= STOPPED_AFTER && b.time - lastStopped >= STOPPED_EVERY) {
             lastStopped = b.time;
-            say(b, "The wagon is stopped");
+            say(b, "wagon_stopped");
         }
         boolean rolling = state.equals(ModeMath.ROLLBACK) && distance > floor() + 1e-6;
-        if (rolling && !wasRolling) say(b, "The wagon rolls back");
+        if (rolling && !wasRolling) say(b, "wagon_rolls_back");
         if (rolling) {rolledBack = true; if (b.campaign.bonusTracker != null) b.campaign.bonusTracker.rolled();}
         wasRolling = rolling;
     }
@@ -270,12 +270,13 @@ public final class ConvoyMode extends BattleMode {
         if (index >= stops.length - 1) return; // the destination ends the round instead
         b.roundSeconds += CHECKPOINT_SECONDS;
         for (var s : b.squads.values()) if (s.seated && s.team == ESCORT) s.earn(CHECKPOINT_GOLD);
-        say(b, FeedLines.teamShort(Spec.FACTIONS[ESCORT].name()) + " reaches " + stopNames[index]);
+        say(b, "checkpoint", "team", FeedLines.teamShort(Spec.FACTIONS[ESCORT].name()), "stop", stopNames[index]);
         b.world.playSound(null, BlockPos.ORIGIN, SoundEvents.ENTITY_PLAYER_LEVELUP, SoundCategory.MASTER, 1, 1);
     }
 
-    static void say(GravesAndGlory.Battle b, String text) {
-        for (ServerPlayerEntity p : b.server.getPlayerManager().getPlayerList()) FeedEvents.send(p, "point", ESCORT, text);
+    /** A feed line (the modeLines convoy row of this event, draft copy) to every player, in the escort's colour. */
+    static void say(GravesAndGlory.Battle b, String event, String... fields) {
+        FeedEvents.mode(b, ESCORT, Modes.CONVOY, event, fields);
     }
 
     /** The clock waits while the wagon is moving or contested by the next stop, and for 3 s after (spec 3.1). */
@@ -302,6 +303,11 @@ public final class ConvoyMode extends BattleMode {
         out[ESCORT] = ModeMath.percent(distance, total());
         out[1 - ESCORT] = stops.length - checkpoints() - (through() ? 1 : 0);
         return out;
+    }
+    /** The deciding numbers: the road covered in percent, the stops the defence still holds, and the clock (which each checkpoint extends). */
+    @Override public List<ModeLines.Entry> ledgerEntries(GravesAndGlory.Battle b) {
+        int[] l = ledger(b), m = max(b);
+        return List.of(ModeLines.entry("convoy_progress", l[ESCORT], m[ESCORT]), ModeLines.entry("convoy_stops", l[1 - ESCORT], m[1 - ESCORT]), ModeLines.entry("convoy_time", clock(b), b.roundSeconds));
     }
     @Override public int[] max(GravesAndGlory.Battle b) {int[] m = new int[2]; m[ESCORT] = 100; m[1 - ESCORT] = stops.length; return m;}
     @Override public String[] formats() {String[] f = new String[2]; f[ESCORT] = "percent"; f[1 - ESCORT] = "plain"; return f;}
