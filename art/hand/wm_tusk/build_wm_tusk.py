@@ -46,11 +46,13 @@ def head_painter():
         g = blank(w, h)
         for y in range(h):
             for x in range(w):
-                v = 3 + LIT[face] + (lightx(face, x, w) if face not in ("top", "bottom") else 0)
+                v = 4 + LIT[face] + (lightx(face, x, w) if face not in ("top", "bottom") else 0)
                 g[y][x] = clamp(S, v)
         if face == "front":
-            for x in range(w): g[3][x] = S[1]                                     # the brow ridge
+            for x in range(w): g[3][x] = S[2]                                     # the brow ridge
+            for x in (1, 2, 5, 6): g[4][x] = S[1]                                # sunk sockets
             g[4][1] = g[4][6] = BONE[5]; g[4][2] = g[4][5] = INK                 # small eyes, a glint at the outside
+            g[5][3] = g[5][4] = S[2]
             for x in (0, 1, 6, 7): g[6][x] = S[2]
             for x in range(w): g[h - 1][x] = S[1]
         if face in ("left", "right", "back"):
