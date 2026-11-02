@@ -2,6 +2,7 @@
 import argparse
 import pathlib
 
+from mapengine import build as mbuild
 from mapengine import design
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
@@ -27,6 +28,16 @@ def main(argv=None, root=None):
             return 1
         design.save(path, design.new_design(args.id, args.name))
         print(f'wrote {path}')
+        return 0
+    if args.cmd == 'build':
+        d = design.load(root / 'maps' / args.id / 'design.json')
+        out = root / 'work' / 'mapengine' / args.id
+        try:
+            m = mbuild.build(d, out)
+        except mbuild.BuildError as e:
+            print('cannot build: ' + '; '.join(e.problems))
+            return 1
+        print(f"built {len(m['tiles'])} tiles into {out}")
         return 0
     print(f'{args.cmd}: not implemented yet')
     return 2
