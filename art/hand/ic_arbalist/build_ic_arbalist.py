@@ -48,7 +48,8 @@ def mail_soft(base=3):
         g = blank(w, h)
         for y in range(h):
             for x in range(w):
-                v = base + LIT[face] + (0 if (x // 2 + y // 2) % 2 == 0 else -1) + (1 if y == 0 and face not in ("top", "bottom") else 0)
+                chk = (0 if (x // 2 + y // 2) % 2 == 0 else -1) if face in ("front", "right") else (-1 if y % 2 else 0)
+                v = base + max(LIT[face], -0) + (1 if face in ("back", "left") else 0) + chk + (1 if y == 0 and face not in ("top", "bottom") else 0)
                 g[y][x] = clamp(MAIL, v)
         return g
     return paint

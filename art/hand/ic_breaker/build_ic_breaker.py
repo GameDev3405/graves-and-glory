@@ -115,15 +115,12 @@ def cuff():
 
 # ---- the cloth: tabard, side flaps ----
 CLEAVE = """
-........
-...ee...
+..eeee..
+.eLLmLe.
+.eLmdLe.
+.eLdLLe.
 ..eLLe..
-..eLmLe.
-..eLdLe.
-...emde.
-...edLe.
-....ee..
-........"""
+...ee..."""
 
 def cleave_pal(M): return {"e": EMBER[3], "L": IRON[5], "m": IRON[4], "d": IRON[2]}
 
@@ -142,7 +139,7 @@ def tabard(T, M):
                 for x in range(w): g[y][x] = None
             g[7] = [T[1]] * w
         if face in ("front", "back"):
-            over(g, grid(CLEAVE, cleave_pal(M)), 0, 1)
+            over(g, grid(CLEAVE, cleave_pal(M)), 0, 3 if face == "front" else 2)
             for x in range(w): g[h - 1][x] = EMBER[2 if x % 2 else 3]    # the ember bordure at the hem
             for y in range(h): g[y][0] = g[y][w - 1] = EMBER[1 if y % 2 else 2]
         return g
@@ -170,6 +167,7 @@ def cape(T, M):
                 g[y][x] = clamp(T, v)
         if face == "back":
             g[h - 1] = [EMBER[1 if x % 2 else 2] for x in range(w)]
+            over(g, grid(CLEAVE, cleave_pal(M)), 1, 3)
         return g
     return paint
 

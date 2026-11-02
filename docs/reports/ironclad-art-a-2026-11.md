@@ -28,3 +28,8 @@ Cherry-picked 55cbe09 onto `art/ironclad-1x`, then: Shieldbreaker helm face redu
 - Turn sheets: `work/ic/breaker_36.png`, `work/ic/arb_36.png` (git-ignored), weapons `work/ic/weap.png`.
 - `build_skins.py --verify` OK (172 outputs). `verify.py fast --offline` GREEN (after cherry-pick cb3aa9d). In-game harness shots not yet taken.
 - Honest self-score: ~7.5/10, still under the 9 gate (arbalist back/cape reads checkered; breaker chest emblem small). Not accepted.
+
+## Third pass and in-game check (2026-11-01)
+Arbalist mail now face-dependent (2x2 check front/right, row lines elsewhere), so the back and arms no longer read as a checkerboard. Breaker gets the cloven-shield emblem on the front and cape back. Crossbow string is two turned cubes meeting at the nock. `verify.py fast --offline` GREEN.
+- In-game turn shots through the Gradle harness (`work/ic-game/run/screenshots`, contact sheets `work/ic/game_ic_breaker.png`, `work/ic/game_ic_arbalist.png`): no clipping or floating parts; axe and crossbow sit in the hands; cape and quiver read correctly.
+- Honest self-score: ~8/10, below the 9 gate. Remaining: breaker chest emblem small and low contrast under the tabard; arbalist chest bolt on red is the weakest read; arbalist arm mail still busy at distance.
