@@ -1,0 +1,5 @@
+{
+ "default": {"surface": "minecraft:grass_block", "under": "minecraft:dirt", "deep": "minecraft:stone", "bed": "minecraft:gravel", "water": "minecraft:water", "road": "minecraft:dirt_path"},
+ "frostmarch": {"surface": "minecraft:snow_block", "under": "minecraft:packed_ice", "deep": "minecraft:stone", "bed": "minecraft:gravel", "water": "minecraft:water", "road": "minecraft:packed_ice"},
+ "ironhold": {"surface": "minecraft:stone", "under": "minecraft:cobblestone", "deep": "minecraft:deepslate", "bed": "minecraft:gravel", "water": "minecraft:water", "road": "minecraft:cobblestone"}
+}
