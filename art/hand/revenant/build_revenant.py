@@ -385,9 +385,27 @@ def bones():
         Box((-1.6, 0, -2.4), (1, 6, 4.8), per_tier(lambda t: gb_plate(t, "tr"), (2, 3)), dil=0.1)]))
     B.append(Bone("tasset_l", "body", (4.5, -2, 0), rot=(0, 0, -6), stages=[2, 3], boxes=[
         Box((0.6, 0, -2.4), (1, 7, 4.8), per_tier(lambda t: gb_plate(t, "tl"), (2, 3)), dil=0.1)]))
+    # pushed further so each tier reads at game distance: a breastplate round the ribs, a violet belt, cuisses, cheek guards,
+    # a crest fin and a spiked cap on each pauldron; tier III adds gilt collar, buckle and rim bands
+    P2 = lambda seed, worn=0.12: per_tier(lambda t: gb_plate(t, seed, worn), (2, 3))
+    B.append(Bone("breast_l", "body", stages=[2, 3], boxes=[Box((-4, -10.5, -2.4), (3.3, 6, 0.8), P2("bl"), dil=0.25)]))
+    B.append(Bone("breast_r", "body", stages=[2, 3], boxes=[Box((0.7, -10.5, -2.4), (3.3, 6, 0.8), P2("br"), dil=0.25)]))
+    B.append(Bone("plate_belt", "body", stages=[2, 3], boxes=[Box((-4, -4.4, -2.3), (8, 1.4, 4.6), gb_band(VIOLET, 2), dil=0.3)]))
+    B.append(Bone("crest_fin", "head", stages=[2, 3], boxes=[Box((-0.5, -10.6, -3.5), (1, 3, 7), P2("cf"), dil=0.05)]))
+    for side, ox in (("r", -5.2), ("l", 4.2)):
+        B.append(Bone(f"cheek_{side}", "head", stages=[2, 3], boxes=[Box((ox, -5.2, -3.2), (1, 3.4, 5), P2("ck" + side), dil=0.15)]))
+    for side in ("right", "left"):
+        B.append(Bone(f"{side}_cuisse", f"{side}_leg", stages=[2, 3], boxes=[Box((-2, 0.8, -2), (4, 4, 4), P2("cs" + side), dil=0.4)]))
+    B.append(Bone("left_cap2", "left_arm", (1, -2.5, 0), rot=(0, 0, -12), stages=[2], boxes=[
+        Box((-3.5, -3.2, -3.5), (7, 2, 7), P2("lc2"), dil=0.3), Box((0, -7, 0), (1, 4, 1), per_tier(lambda t: gb_spike(GIRON, 3, 3), (2, 3)))]))
+    B.append(Bone("right_spike2", "right_arm", (-1, -2.5, 0), rot=(0, 0, 8), stages=[2, 3], boxes=[
+        Box((-3.2, -4.6, -1), (1, 3, 1), per_tier(lambda t: gb_spike(GIRON, 3, 3), (2, 3))), Box((1.2, -4.6, -1), (1, 3, 1), per_tier(lambda t: gb_spike(GIRON, 3, 3), (2, 3)))]))
+    B.append(Bone("gilt_collar", "body", stages=[3], boxes=[Box((-4.5, -13.5, -2.8), (9, 1, 5.6), gb_gilt("gc"), dil=0.1)]))
+    B.append(Bone("gilt_buckle", "body", stages=[3], boxes=[Box((-1, -4.6, -2.9), (2, 2, 0.8), gb_gilt("gk"), dil=0.1)]))
+    B.append(Bone("gilt_rim_r", "right_arm", (-1, -2.5, 0), rot=(0, 0, 8), stages=[3], boxes=[Box((-3, -1, -3), (6, 1, 6), gb_gilt("grr"), dil=0.5)]))
+    B.append(Bone("gilt_rim_l", "left_arm", (1, -2.5, 0), rot=(0, 0, -12), stages=[3], boxes=[Box((-3, -0.6, -3), (6, 1, 6), gb_gilt("grl"), dil=0.45)]))
     # tier III, the Grave Knight: a slitted rusted visor, a coif ridge, a plate over the left pauldron, a team half-cape
     B.append(Bone("visor", "head", stages=[3], boxes=[Box((-4, -3.9, -4.9), (8, 2, 1), visor(), dil=0.1)]))
-    B.append(Bone("coif_ridge", "head", stages=[3], boxes=[Box((-0.5, -9.2, -3.5), (1, 1.5, 7), gb_plate(3, "cr"), dil=0.05)]))
     B.append(Bone("pauldron_cap", "left_arm", (1, -2.5, 0), rot=(0, 0, -12), stages=[3], boxes=[
         Box((-3, -3.4, -3), (6, 2, 6), gb_plate(3, "pc"), dil=0.3),
         Box((0.5, -7.4, 0), (1, 4, 1), gb_spike(GIRON, 3, 3)), Box((-2.5, -5.4, -1), (1, 2, 1), gb_spike(GIRON, 3, 3))]))
