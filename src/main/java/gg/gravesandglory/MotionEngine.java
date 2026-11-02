@@ -347,8 +347,8 @@ public final class MotionEngine {
         /** Ground input (Task 16): whether there is one, whether airborne, the body-frame velocity (b/s), this frame's turn (deg) and its travel forward and left (blocks). */
         boolean ground, air;
         double vF, vL, dyaw, dF, dL;
-        /** G1 stride (ground only): its weight, duty, horizontal speed (b/s), and per leg (right, left) the phase in [0, 1), the foot's sweep along the travel (px, forward of the hip) and its swing lift (0 in stance, 1 at mid-swing). */
-        double gaitW, duty, gaitV;
+        /** G1 stride (ground only): its weight, duty, horizontal speed (b/s), and per leg (right, left) the phase in [0, 1), the foot's sweep along the travel (px, forward of the hip) and its swing lift (0 in stance, 1 at mid-swing); liftCap (round 4b) scales a swing foot's corner clearance like its lift on a start. */
+        double gaitW, duty, gaitV, liftCap = 1;
         final double[] q = new double[2], sweep = new double[2], lift = new double[2];
     }
 

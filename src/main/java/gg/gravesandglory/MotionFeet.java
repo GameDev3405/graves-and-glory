@@ -160,7 +160,7 @@ final class MotionFeet {
             for (int i = 0; i < 2; i++) {
                 double[] leg = out.get(LEGS[i]), t = st.feet[i];
                 foot(i, leg, out.get(SHINS[i]), t);
-                t[1] = GROUND - lift * f.lift[i] - drop[i] * Math.min(1, DROP_GAIN * f.lift[i]);
+                t[1] = GROUND - lift * f.lift[i] - drop[i] * Math.min(1, DROP_GAIN * f.lift[i]) * f.liftCap;
                 t[0] += pv[i][0]; t[2] += pv[i][1];
                 v[0] = HIPS[i][0] + leg[TX]; v[1] = HIPS[i][1] + leg[TY]; v[2] = HIPS[i][2] + leg[TZ];
                 rotate(v, full);

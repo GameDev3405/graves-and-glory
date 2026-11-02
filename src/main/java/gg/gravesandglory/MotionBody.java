@@ -141,6 +141,19 @@ final class MotionBody {
     /** Fix r3 (grade r2 item 6): a start from standing begins the first swing at its lift-off (phase offset past the stance),
      *  and for START_SWING seconds the swing lift follows sin^START_POW so the first step builds instead of snapping up. */
     static final double START_PSI = 0.500001, START_SWING = 0.4, START_POW = 1.5;
+    /** Round 4b: a start from standing lifts its swing feet (and their corners' clearance) START_LIFT0 of the full lift at first,
+     *  rising to all of it over START_LIFT_T seconds, so the first swings ask less knee while the legs are still far apart. */
+    static final double START_LIFT0 = 0.4, START_LIFT_T = 0.7;
+    /** Round 4b: for START_REACH_T seconds after a start a stance foot ends its stance by the time it is START_REACH half-strides
+     *  behind its hip (the phase runs at least that fast), so the first trailing foot does not lift off from beyond its reach. */
+    static final double START_REACH_T = 1.0, START_REACH = 1.2;
+
+    /** Round 4b: the share of the swing lift a start from standing allows startAge seconds in (1 once past START_LIFT_T). */
+    static double startLift(double startAge) {
+        if (!(startAge < START_LIFT_T)) return 1;
+        double x = MotionEngine.clamp(startAge / START_LIFT_T, 0, 1);
+        return START_LIFT0 + (1 - START_LIFT0) * x * x * (3 - 2 * x);
+    }
 
     /**
      * G1 (R109): the stride matched to the ground speed. The gait keeps its own phase psi, advanced by the distance travelled
@@ -156,8 +169,11 @@ final class MotionBody {
     static void stride(MotionEngine.Frame f, MotionEngine.State st, Pose out) {
         st.startAge += f.dt;
         double v = Math.hypot(f.vF, f.vL), run = f.run, sh = f.sh, bp = f.bp;
+        // round 4b: the duty and stride length follow the run the speed asks for as soon as it rises (the run weight eases in
+        // over RUN_BLEND), so a start's stride takes the run's longer swing from its first steps; once settled gr equals run
+        double gr = Math.max(run, MotionMath.ease(MotionEngine.runTarget(f.speed)));
         double dirF = v > 1e-9 ? f.vF / v : 1, dirL = v > 1e-9 ? f.vL / v : 0;
-        double duty = DUTY_WALK + (DUTY_RUN - DUTY_WALK) * run, hF = HALF_WALK + (HALF_RUN - HALF_WALK) * run;
+        double duty = DUTY_WALK + (DUTY_RUN - DUTY_WALK) * gr, hF = HALF_WALK + (HALF_RUN - HALF_WALK) * gr;
         double half = 1 / Math.sqrt(dirF * dirF / (hF * hF) + dirL * dirL / (HALF_SIDE * HALF_SIDE));
         double cad = MotionEngine.clamp(16 * v * duty / (2 * half), F_MIN, F_MAX) * f.seed.tempo();
         double h = 16 * v * duty / (2 * cad);
@@ -191,6 +207,17 @@ final class MotionBody {
         double dpsi = Math.min(travel * cad / Math.max(v, V_FLOOR), PSI_STEP * cad * f.dt);
         if (settling) dpsi = Math.max(dpsi, SETTLE_HZ * f.dt);
         else if (!go && st.w[MotionEngine.W_MOVE] <= 0) dpsi = 0; // standing (or drifting before the gait engages): no steps
+        if (go && st.startAge < START_REACH_T && travel > 0) {
+            // round 4b: a stance foot with stance share r left and room px before START_REACH half-strides behind the hip moves
+            // 16 travel px this frame, so the phase runs at least r x step / room (no faster than the steady gait once room is ample)
+            double reach = START_REACH * h, step = 16 * travel;
+            for (int i = 0; i < 2; i++) {
+                double q = i == 0 ? st.psi : frac(st.psi + 0.5);
+                if (q >= duty || st.locked[i]) continue;
+                double r = duty - q, room = st.sd[i] + reach;
+                dpsi = Math.max(dpsi, room > step ? r * step / room : r);
+            }
+        }
         st.psi = frac(st.psi + dpsi);
         st.hold = f.first ? (settling ? 1 : 0) : settling ? 1 : MotionEngine.toward(st.hold, 0, f.dt / HOLD_FADE);
         // the upper body eases in over UP_BLEND (the arms and lean), slower than the legs, so the sword arm does not pop into the run
@@ -198,6 +225,9 @@ final class MotionBody {
         double a = Math.max(f.m, st.hold), sw = st.sweepFull ? 1 : a, b = MotionMath.ease(st.upW) * f.m * MotionMath.clamp01(v / 0.5), mSw = -2 * h * (1 - duty) / duty;
         f.gaitW = Math.max(a, sw); // fix r3: a start from standing solves the feet at full weight (its sweeps start at 0), so the mid-swing foot lifts as it travels
         f.duty = duty;
+        // a backpedal keeps its full lift: its short, slow first steps would not clear the ground under the start's envelope
+        double startCap = 1 - (1 - startLift(st.startAge)) * (1 - bp);
+        f.liftCap = startCap;
         f.gaitV = v;
         double knee = KNEE_WALK + (KNEE_RUN - KNEE_WALK) * run, g = 0;
         for (int i = 0; i < 2; i++) {
@@ -230,7 +260,7 @@ final class MotionBody {
                 boolean set = st.settleSwing[i];
                 double hEnd = set ? 0 : h, mEnd = set ? 0 : mSw;
                 d = st.sd0[i] * (2 * t3 - 3 * t2 + 1) + st.sm0[i] * mSw * span * (t3 - 2 * t2 + t) + hEnd * (3 * t2 - 2 * t3) + mEnd * span * (t3 - t2);
-                lift = Math.pow(Math.sin(Math.PI * t), st.startAge < START_SWING ? START_POW : LIFT_POW);
+                lift = Math.pow(Math.sin(Math.PI * t), st.startAge < START_SWING ? START_POW : LIFT_POW) * startCap;
                 st.sd[i] = d;
             }
             st.inSwing[i] = swing;
