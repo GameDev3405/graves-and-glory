@@ -6,7 +6,7 @@ import java.util.*;
  * The mod's sound table (plan 4F.4): every cue's registered event id, what it plays, its volume and pitch, its sound category, who hears it and
  * how often it may repeat. Pure data with no Minecraft types, so the standalone checks read it; Audio plays it, GravesAndGlory.onInitialize
  * registers it. A cue with a vanilla remap plays that vanilla event through sounds.json ("type": "event"), so no audio file is added; a cue without
- * one has its own .ogg under assets/gravesandglory/sounds. Change a volume or pitch here and nowhere else (the horns' volume is the sheet's
+ * one (every cue now) has its own .ogg under assets/gravesandglory/sounds. Change a volume or pitch here and nowhere else (the horns' volume is the sheet's
  * combatDiscipline.hornVolume; BattleEffects reads it).
  */
 public final class AudioCues {
@@ -31,23 +31,24 @@ public final class AudioCues {
         BATTLE_INTRO("battle_intro", null, .8f, 1f, "master", Scope.LOCAL, 0, "Battle horns sound"),
         UNIT_REVEAL("unit_reveal", null, .7f, 1f, "players", Scope.OWNER, 0, "A new unit joins your banner"),
         VICTORY("victory", null, .8f, 1f, "players", Scope.OWNER, 0, "Battle ends"),
-        // Vanilla remaps.
-        DEFEAT("defeat", "minecraft:block.respawn_anchor.deplete", .7f, .75f, "players", Scope.OWNER, 0, "Battle lost"),
-        CAPTURE_START("capture_start", "minecraft:item.armor.equip_chain", .6f, 1f, "players", Scope.ALL, 200, "A point is contested"),
-        CAPTURE_WON("capture_won", "minecraft:block.beacon.activate", .6f, 1.3f, "players", Scope.TEAM, 20, "Your side takes a point"),
-        CAPTURE_LOST("capture_lost", "minecraft:block.beacon.deactivate", .7f, .9f, "players", Scope.TEAM, 20, "Your side loses a point"),
-        GATE_HIT("gate_hit", "minecraft:block.anvil.hit", .5f, .55f, "hostile", Scope.NEARBY, 8, "The gate is struck"),
-        GATE_SHUT("gate_shut", "minecraft:block.iron_trapdoor.close", .9f, .6f, "players", Scope.ALL, 0, "The gate shuts"),
-        GATE_BREACH("gate_breach", "minecraft:entity.generic.explode", .5f, .6f, "players", Scope.ALL, 0, "The gate is breached"),
-        CONVOY_ROLL("convoy_roll", "minecraft:entity.minecart.riding", .4f, .8f, "players", Scope.ALL, 200, "The wagon rolls"),
-        CONVOY_STOP("convoy_stop", "minecraft:block.wooden_trapdoor.close", .6f, .7f, "players", Scope.ALL, 200, "The wagon stops"),
-        CONVOY_ROLLBACK("convoy_rollback", "minecraft:block.piston.contract", .5f, .7f, "players", Scope.ALL, 200, "The wagon rolls back"),
-        CONVOY_CHECKPOINT("convoy_checkpoint", "minecraft:block.bell.use", .6f, 1.2f, "players", Scope.ALL, 0, "The convoy reaches a checkpoint"),
-        WAVE_WARNING("wave_warning", "minecraft:event.raid.horn", .7f, 1f, "players", Scope.ALL, 100, "A wave approaches"),
-        COUNTDOWN_TICK("countdown_tick", "minecraft:block.note_block.bit", .5f, 1f, "master", Scope.OWNER, 0, ""),
-        UI_CONFIRM("ui_confirm", "minecraft:block.note_block.chime", .5f, 1.3f, "master", Scope.LOCAL, 4, ""),
-        UI_BACK("ui_back", "minecraft:ui.button.click", .5f, .8f, "master", Scope.LOCAL, 4, ""),
-        UI_DENY("ui_deny", "minecraft:block.note_block.bass", .6f, .6f, "master", Scope.LOCAL, 6, "");
+        // Own synthesised files (tools/audio/make_cues.py); see docs/AUDIO.md.
+        DEFEAT("defeat", null, .7f, 1f, "players", Scope.OWNER, 0, "Battle lost"),
+        CAPTURE_START("capture_start", null, .6f, 1f, "players", Scope.ALL, 200, "A point is contested"),
+        CAPTURE_WON("capture_won", null, .6f, 1f, "players", Scope.TEAM, 20, "Your side takes a point"),
+        CAPTURE_LOST("capture_lost", null, .7f, 1f, "players", Scope.TEAM, 20, "Your side loses a point"),
+        GATE_HIT("gate_hit", null, .5f, 1f, "hostile", Scope.NEARBY, 8, "The gate is struck"),
+        GATE_SHUT("gate_shut", null, .9f, 1f, "players", Scope.ALL, 0, "The gate shuts"),
+        GATE_BREACH("gate_breach", null, .5f, 1f, "players", Scope.ALL, 0, "The gate is breached"),
+        CONVOY_ROLL("convoy_roll", null, .4f, 1f, "players", Scope.ALL, 200, "The wagon rolls"),
+        CONVOY_STOP("convoy_stop", null, .6f, 1f, "players", Scope.ALL, 200, "The wagon stops"),
+        CONVOY_ROLLBACK("convoy_rollback", null, .5f, 1f, "players", Scope.ALL, 200, "The wagon rolls back"),
+        CONVOY_CHECKPOINT("convoy_checkpoint", null, .6f, 1f, "players", Scope.ALL, 0, "The convoy reaches a checkpoint"),
+        WAVE_WARNING("wave_warning", null, .7f, 1f, "players", Scope.ALL, 100, "A wave approaches"),
+        WAVE_RISE("wave_rise", null, .8f, 1f, "players", Scope.ALL, 100, "A wave rises"),
+        COUNTDOWN_TICK("countdown_tick", null, .5f, 1f, "master", Scope.OWNER, 0, ""),
+        UI_CONFIRM("ui_confirm", null, .5f, 1f, "master", Scope.LOCAL, 4, ""),
+        UI_BACK("ui_back", null, .45f, 1f, "master", Scope.LOCAL, 4, ""),
+        UI_DENY("ui_deny", null, .55f, 1f, "master", Scope.LOCAL, 6, "");
 
         /** The registered event's path under gravesandglory. */
         public final String id;

@@ -30,8 +30,8 @@
     "subtitle": "subtitles.gravesandglory.defeat",
     "sounds": [
       {
-        "name": "minecraft:block.respawn_anchor.deplete",
-        "type": "event"
+        "name": "gravesandglory:defeat",
+        "stream": false
       }
     ]
   },
@@ -39,8 +39,8 @@
     "subtitle": "subtitles.gravesandglory.capture_start",
     "sounds": [
       {
-        "name": "minecraft:item.armor.equip_chain",
-        "type": "event"
+        "name": "gravesandglory:capture_start",
+        "stream": false
       }
     ]
   },
@@ -48,8 +48,8 @@
     "subtitle": "subtitles.gravesandglory.capture_won",
     "sounds": [
       {
-        "name": "minecraft:block.beacon.activate",
-        "type": "event"
+        "name": "gravesandglory:capture_won",
+        "stream": false
       }
     ]
   },
@@ -57,8 +57,8 @@
     "subtitle": "subtitles.gravesandglory.capture_lost",
     "sounds": [
       {
-        "name": "minecraft:block.beacon.deactivate",
-        "type": "event"
+        "name": "gravesandglory:capture_lost",
+        "stream": false
       }
     ]
   },
@@ -66,8 +66,8 @@
     "subtitle": "subtitles.gravesandglory.gate_hit",
     "sounds": [
       {
-        "name": "minecraft:block.anvil.hit",
-        "type": "event"
+        "name": "gravesandglory:gate_hit",
+        "stream": false
       }
     ]
   },
@@ -75,8 +75,8 @@
     "subtitle": "subtitles.gravesandglory.gate_shut",
     "sounds": [
       {
-        "name": "minecraft:block.iron_trapdoor.close",
-        "type": "event"
+        "name": "gravesandglory:gate_shut",
+        "stream": false
       }
     ]
   },
@@ -84,8 +84,8 @@
     "subtitle": "subtitles.gravesandglory.gate_breach",
     "sounds": [
       {
-        "name": "minecraft:entity.generic.explode",
-        "type": "event"
+        "name": "gravesandglory:gate_breach",
+        "stream": false
       }
     ]
   },
@@ -93,8 +93,8 @@
     "subtitle": "subtitles.gravesandglory.convoy_roll",
     "sounds": [
       {
-        "name": "minecraft:entity.minecart.riding",
-        "type": "event"
+        "name": "gravesandglory:convoy_roll",
+        "stream": false
       }
     ]
   },
@@ -102,8 +102,8 @@
     "subtitle": "subtitles.gravesandglory.convoy_stop",
     "sounds": [
       {
-        "name": "minecraft:block.wooden_trapdoor.close",
-        "type": "event"
+        "name": "gravesandglory:convoy_stop",
+        "stream": false
       }
     ]
   },
@@ -111,8 +111,8 @@
     "subtitle": "subtitles.gravesandglory.convoy_rollback",
     "sounds": [
       {
-        "name": "minecraft:block.piston.contract",
-        "type": "event"
+        "name": "gravesandglory:convoy_rollback",
+        "stream": false
       }
     ]
   },
@@ -120,8 +120,8 @@
     "subtitle": "subtitles.gravesandglory.convoy_checkpoint",
     "sounds": [
       {
-        "name": "minecraft:block.bell.use",
-        "type": "event"
+        "name": "gravesandglory:convoy_checkpoint",
+        "stream": false
       }
     ]
   },
@@ -129,40 +129,49 @@
     "subtitle": "subtitles.gravesandglory.wave_warning",
     "sounds": [
       {
-        "name": "minecraft:event.raid.horn",
-        "type": "event"
+        "name": "gravesandglory:wave_warning",
+        "stream": false
       }
     ]
   },
   "countdown_tick": {
     "sounds": [
       {
-        "name": "minecraft:block.note_block.bit",
-        "type": "event"
+        "name": "gravesandglory:countdown_tick",
+        "stream": false
       }
     ]
   },
   "ui_confirm": {
     "sounds": [
       {
-        "name": "minecraft:block.note_block.chime",
-        "type": "event"
+        "name": "gravesandglory:ui_confirm",
+        "stream": false
       }
     ]
   },
   "ui_back": {
     "sounds": [
       {
-        "name": "minecraft:ui.button.click",
-        "type": "event"
+        "name": "gravesandglory:ui_back",
+        "stream": false
       }
     ]
   },
   "ui_deny": {
     "sounds": [
       {
-        "name": "minecraft:block.note_block.bass",
-        "type": "event"
+        "name": "gravesandglory:ui_deny",
+        "stream": false
+      }
+    ]
+  },
+  "wave_rise": {
+    "subtitle": "subtitles.gravesandglory.wave_rise",
+    "sounds": [
+      {
+        "name": "gravesandglory:wave_rise",
+        "stream": false
       }
     ]
   },

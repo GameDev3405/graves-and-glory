@@ -264,12 +264,14 @@ public final class SurvivalMode extends BattleMode {
             b.world.playSound(null, s.x(), surface(b, s.x(), s.z()).y, s.z(), SoundEvents.PARTICLE_SOUL_ESCAPE, SoundCategory.HOSTILE, 4f, 0.6f);
         }
         feed(b, ModeMath.riseLine(names));
+        Audio.all(b, AudioCues.Cue.WAVE_WARNING, "wave");
     }
 
     /** The warned wave rises: its groups' counts scaled for the banners and the tier, up to maxDeadAlive standing, the rest queued. */
     void rise(GravesAndGlory.Battle b) {
         var wave = WAVES.get(current);
         current++; riseAt = 0; waveEnds = b.time + wave.seconds() * 20L; risen = 0; cleared = false;
+        Audio.all(b, AudioCues.Cue.WAVE_RISE, "rise");
         double scale = tier(b).waveScale();
         for (var g : groups(wave)) {
             int n = ModeMath.waveCount(g.count(), banners, R.survivalPerBanner(), scale);

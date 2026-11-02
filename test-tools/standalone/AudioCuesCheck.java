@@ -16,7 +16,7 @@ public final class AudioCuesCheck {
   check(new HashSet<>(ids).size()==ids.size(),"Every event id is registered once");
   check(new HashSet<>(sounds.keySet()).equals(new HashSet<>(ids)),"sounds.json has an entry for every registered event and for nothing else: "+sounds.keySet()+" vs "+ids);
   // The events the plan names are all in the table.
-  for(String must:List.of("capture_start","capture_won","capture_lost","gate_hit","gate_breach","convoy_roll","convoy_stop","convoy_rollback","convoy_checkpoint","wave_warning","victory","defeat","countdown_tick","ui_confirm","ui_back","ui_deny"))
+  for(String must:List.of("capture_start","capture_won","capture_lost","gate_hit","gate_breach","convoy_roll","convoy_stop","convoy_rollback","convoy_checkpoint","wave_warning","wave_rise","victory","defeat","countdown_tick","ui_confirm","ui_back","ui_deny"))
    check(ids.contains(must),"The table has the "+must+" cue");
   for(AudioCues.Cue c:AudioCues.Cue.values()){
    check(c.volume>0&&c.volume<=1f,c.id+": volume in (0, 1], so nothing outshouts a vanilla blow (1.0)");
@@ -51,8 +51,7 @@ public final class AudioCuesCheck {
   try(var walk=Files.walk(Path.of("src/main/java/gg/gravesandglory"))){
    code=walk.filter(p->p.toString().endsWith(".java")&&!p.getFileName().toString().equals("AudioCues.java")).map(p->{try{return Files.readString(p);}catch(Exception e){throw new RuntimeException(e);}}).collect(Collectors.joining("\n"));
   }
-  Set<String> hooks=Set.of("WAVE_WARNING"); // Survival's hook: Audio.all(battle, Cue.WAVE_WARNING, key); nothing plays it yet
-  for(AudioCues.Cue c:AudioCues.Cue.values())if(!hooks.contains(c.name()))check(code.contains("Cue."+c.name()),c.id+": some code plays it");
+  for(AudioCues.Cue c:AudioCues.Cue.values())check(code.contains("Cue."+c.name()),c.id+": some code plays it");
   check(code.contains("Audio.register()"),"The mod registers the table at start");
   // The cooldowns.
   var t=new AudioCues.Throttle();
