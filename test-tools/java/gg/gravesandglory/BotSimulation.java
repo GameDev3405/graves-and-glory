@@ -50,8 +50,11 @@ public final class BotSimulation implements ModInitializer {
     int dawnWins,duskWins,draws,aborted;final long[] earnedAtEnd={0,0};
     /** Soak probe: the columns of botsim/probe.csv, and the state of the round being timed. */
     static final String[] PROBE_COLUMNS={"match","map","startedAt","endedAt","roundTicks","tickMeanMs","tickP50Ms","tickP95Ms","tickP99Ms","tickMaxMs","ticksOver50ms","ticksOver100ms","serverAvgTickMs",
-        "heapMbBeforeGc","heapMbAfterGc","heapMaxMb","gcCount","gcMillis","threads","classes","directMb","nonHeapMb","loadedChunks","entities","units","shots","points","specPoints","squads","respawns","pings","botRespawns","botRetreating","vacated","kinds"};
+        "heapMbBeforeGc","heapMbAfterGc","heapMaxMb","gcCount","gcMillis","threads","classes","directMb","nonHeapMb","loadedChunks","entities","units","shots","points","specPoints","squads","respawns","pings","botRespawns","botRetreating","vacated","committedMb","buildMs","buildTickCount","buildTickMeanMs","buildTickP95Ms","buildTickMaxMs","startRoundMs","fieldMs","unitsPeak","slowTicks","kinds"};
     static final DateTimeFormatter CLOCK=DateTimeFormatter.ofPattern("HH:mm:ss");
+    /** Setup timing (probe only, test tooling): wall time from the map switch (or the first tick that saw an unbuilt arena) to ready, the tick bodies during that build, and startRound() and field() on the match that follows. */
+    boolean building;long buildStartNs,buildNs=-1,startRoundNs,fieldNs;long[] buildTicks=new long[1024];int buildTickCount;
+    int unitsPeak;
     boolean probe;Path probeCsv;long tickStart;long[] tickNanos=new long[8192];int tickCount;String probeStartedAt="";
     /** -PsimBanner0 and -PsimBanner1: the botBanners id each team must field, or null for the kit's banner. fielded holds the id each team fields this run, for the CSV and the summary. */
     final String[] bannerChoice={null,null},fielded={"",""};
@@ -98,7 +101,7 @@ public final class BotSimulation implements ModInitializer {
             try{Files.writeString(probeCsv,String.join(",",PROBE_COLUMNS)+"\n",StandardCharsets.UTF_8);}catch(IOException e){throw new UncheckedIOException(e);}
             // Registered after the harness's own listener, so the tick that ends a round is not timed as part of it.
             ServerTickEvents.START_SERVER_TICK.register(s->tickStart=System.nanoTime());
-            ServerTickEvents.END_SERVER_TICK.register(s->{if(playing){if(tickCount==tickNanos.length)tickNanos=Arrays.copyOf(tickNanos,tickCount*2);tickNanos[tickCount++]=System.nanoTime()-tickStart;}});
+            ServerTickEvents.END_SERVER_TICK.register(s->{if(building){if(buildTickCount==buildTicks.length)buildTicks=Arrays.copyOf(buildTicks,buildTickCount*2);buildTicks[buildTickCount++]=System.nanoTime()-tickStart;}if(playing){if(tickCount==tickNanos.length)tickNanos=Arrays.copyOf(tickNanos,tickCount*2);tickNanos[tickCount++]=System.nanoTime()-tickStart;var bt=GravesAndGlory.battle;if(bt!=null)unitsPeak=Math.max(unitsPeak,bt.units.size());}});
         }
     }
     static String tier(String id){
@@ -120,14 +123,14 @@ public final class BotSimulation implements ModInitializer {
             return;
         }
         // A fresh world or a map switch: wait until the arena is built, but not forever.
-        if(!b.ready){if(++notReady==READY_TICKS){System.out.println("[botsim] arena not ready after "+READY_TICKS+" ticks; stopping");done=true;server.stop(false);}return;}
-        notReady=0;if(b.running)return;
+        if(!b.ready){if(probe&&!building){building=true;buildStartNs=System.nanoTime();buildTickCount=0;}if(++notReady==READY_TICKS){System.out.println("[botsim] arena not ready after "+READY_TICKS+" ticks; stopping");done=true;server.stop(false);}return;}
+        notReady=0;if(probe&&building){building=false;buildNs=System.nanoTime()-buildStartNs;}if(b.running)return;
         int map=maps[match%maps.length];
-        if(b.campaign.map!=map){b.campaign.switchMap(map);return;}
+        if(b.campaign.map!=map){if(probe){building=true;buildStartNs=System.nanoTime();buildTickCount=0;}b.campaign.switchMap(map);return;}
         var c=b.campaign;c.size=size;c.fill=true;c.practice=false;c.difficulty=dawnTier;c.lastWinner=ABORTED;c.battleMode=simMode;
-        b.startRound();if(roundSecondsGiven||simMode.equals(Modes.DOMINATION))b.roundSeconds=roundSeconds; // after startRound, which sets the row's clock
+        long t0=System.nanoTime();b.startRound();startRoundNs=System.nanoTime()-t0;if(roundSecondsGiven||simMode.equals(Modes.DOMINATION))b.roundSeconds=roundSeconds; // after startRound, which sets the row's clock
         armies.clear();for(var s:b.squads.values())if(s.bot){if(s.team==1)s.tier=duskTier;armies.add(s);}
-        field(b);seen.clear();resetStats();ledger.reset(b.time);wallStart=System.currentTimeMillis();
+        t0=System.nanoTime();field(b);fieldNs=System.nanoTime()-t0;seen.clear();resetStats();ledger.reset(b.time);wallStart=System.currentTimeMillis();
         score300[0]=score300[1]=-1;startedAt=b.roundStarted;tallies[0]=tallies[1]=null;shareLevel2[0]=shareLevel2[1]=-1;
         playing=true;if(probe)probeStart();
     }
@@ -236,7 +239,15 @@ public final class BotSimulation implements ModInitializer {
         System.out.println(String.format(Locale.ROOT,"[botsim] matches=%d dawn(%s)=%d dusk(%s)=%d draws=%d dawnWin=%.0f%% meanGoldEarnedAtEnd dawn=%.0f dusk=%.0f",
             matches,dawnTier,dawnWins,duskTier,duskWins,draws,100*MatchStats.winRate(dawnWins,matches),earnedAtEnd[0]/(double)matches,earnedAtEnd[1]/(double)matches)+(aborted>0?" aborted="+aborted:"")+(kit.equals("native")?"":" kit="+kit)+" banner0="+fielded[0]+" banner1="+fielded[1]+" progression="+progression);
     }
-    void probeStart(){tickCount=0;probeStartedAt=LocalTime.now().format(CLOCK);System.out.println("[botsim] probe start match="+(match+1)+" map="+maps[match%maps.length]+" at="+probeStartedAt);}
+    void probeStart(){tickCount=0;unitsPeak=0;probeStartedAt=LocalTime.now().format(CLOCK);System.out.println("[botsim] probe start match="+(match+1)+" map="+maps[match%maps.length]+" at="+probeStartedAt);}
+    /** Committed virtual memory of this server process (Windows: its commit charge), or blank when the JVM cannot say. */
+    static String committedMb(){try{if(ManagementFactory.getOperatingSystemMXBean() instanceof com.sun.management.OperatingSystemMXBean o)return mb(o.getCommittedVirtualMemorySize());}catch(Throwable e){}return "";}
+    /** The tick bodies timed while the arena was building, for the row of the match that follows it: 0 mean, 1 p95, 2 max, in ms; blank when no build was timed. */
+    String buildTickStat(int kind){
+        if(buildNs<0||buildTickCount==0)return "";
+        long[] t=Arrays.copyOf(buildTicks,buildTickCount);Arrays.sort(t);
+        return ms(kind==0?Arrays.stream(t).average().orElse(0)/1e6:kind==1?pct(t,.95):t[t.length-1]/1e6);
+    }
     static double pct(long[] sorted,double p){return sorted.length==0?0:sorted[Math.max(0,(int)Math.ceil(p*sorted.length)-1)]/1e6;}
     static String ms(double v){return String.format(Locale.ROOT,"%.2f",v);}
     static String mb(long bytes){return String.format(Locale.ROOT,"%.1f",bytes/1048576.0);}
@@ -244,7 +255,7 @@ public final class BotSimulation implements ModInitializer {
      *  the entities still alive in the world by class, the battle's own collections, and the heap after a forced GC. A failure is printed, never thrown: the probe must not end the soak it measures. */
     void probeRow(GravesAndGlory.Battle b){
         try{
-            int n=tickCount;long[] t=Arrays.copyOf(tickNanos,n);Arrays.sort(t);tickCount=0;
+            int n=tickCount;long[] t=Arrays.copyOf(tickNanos,n);StringBuilder slow=new StringBuilder();for(int i=0;i<n;i++)if(t[i]>50_000_000L)slow.append(slow.length()==0?"":";").append(i).append('@').append(Math.round(t[i]/1e6));Arrays.sort(t);tickCount=0;
             Map<String,Integer> kinds=new TreeMap<>();int entities=0;
             for(var e:b.world.iterateEntities())if(!e.isRemoved()){entities++;kinds.merge(e.getClass().getSimpleName(),1,Integer::sum);}
             StringBuilder kindText=new StringBuilder();for(var k:kinds.entrySet())kindText.append(kindText.length()==0?"":";").append(k.getKey()).append('=').append(k.getValue());
@@ -261,7 +272,9 @@ public final class BotSimulation implements ModInitializer {
                 String.valueOf(ManagementFactory.getClassLoadingMXBean().getLoadedClassCount()),mb(direct),mb(ManagementFactory.getMemoryMXBean().getNonHeapMemoryUsage().getUsed()),
                 String.valueOf(b.world.getChunkManager().getLoadedChunkCount()),String.valueOf(entities),String.valueOf(b.units.size()),String.valueOf(b.shots.size()),
                 String.valueOf(b.points.size()),String.valueOf(Spec.POINTS.length),String.valueOf(b.squads.size()),String.valueOf(b.respawns.size()),String.valueOf(b.pings.size()),
-                String.valueOf(c.botRespawns.size()),String.valueOf(c.botRetreating.size()),String.valueOf(c.vacated.size()),kindText.toString()));
+                String.valueOf(c.botRespawns.size()),String.valueOf(c.botRetreating.size()),String.valueOf(c.vacated.size()),committedMb(),
+                buildNs<0?"":ms(buildNs/1e6),buildNs<0?"":String.valueOf(buildTickCount),buildTickStat(0),buildTickStat(1),buildTickStat(2),ms(startRoundNs/1e6),ms(fieldNs/1e6),String.valueOf(unitsPeak),slow.toString(),kindText.toString()));
+            buildNs=-1;
             append(probeCsv,String.join(",",v)+"\n");
             StringBuilder line=new StringBuilder("[botsim] probe");for(int i=0;i<PROBE_COLUMNS.length;i++)line.append(' ').append(PROBE_COLUMNS[i]).append('=').append(v.get(i));
             System.out.println(line);
