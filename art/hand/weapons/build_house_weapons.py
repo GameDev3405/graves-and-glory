@@ -23,6 +23,7 @@ W.KEY.update({"wood": (0x8B, 0x45, 0x13), "bone": (0xEE, 0xEE, 0xDD)})
 EMBER = ramp("1f0a06", "4a1608", "7a2a0c", "993f12", "c8966f", "ecc9a6")
 CORAL = ramp("6f5d57", "8f7d72", "b0a094", "cdbcad", "e8dccd", "faf4e8")
 DARK = ramp("120d0a", "2a1a10", "3c2a1c", "56402b", "6f5438", "8a6c4a")
+BRASS7 = ramp("2a1c0a", "3e2b12", "664a20", "85642a", "997530", "c8a870", "e0d0a8")          # Ironclad brass with a lit seventh step
 IRONW = ramp("0d0e14", "1a1c25", "2c303b", "444a58", "62697a", "8a92a2", "bcc3cf")
 
 SEA = ramp("0a1426", "11264a", "1a3f6a", "2a5e8a", "386a94", "5e88a6", "9db8c4")           # the Tidecallers' sea blue (guide 10.1)
@@ -36,19 +37,29 @@ PEARL = ramp("6a706c", "8e948f", "b4bab4", "d8dcd4", "eef1ec", "ffffff")
 def bit(name, x0, x1, y0, y1, mat, fn, skip=()):
     return Cube(name, [x0, y0, -0.5], [x1, y1, 0.5], mat, px(fn, y1), skip=skip)
 
-def hearth_axe():
-    """A bearded axe: dark haft, ember band, riveted iron head with a hammered edge, a spike behind."""
-    return [
+def hearth_axe(tier=1):
+    """A bearded axe: dark haft, ember band, riveted iron head with a hammered edge, a spike behind. Tier II: brass bands on
+    the haft and socket, a longer back spike. Tier III: a brass socket, a gilt rune plate on the beard, crown and butt spikes."""
+    out = [
         post("butt", -6, -4, 1, 1, "iron", metal(IRONW, 3), skip=("up",)),
         post("haft_lo", -4, -2, 0.5, 0.5, "wood", grain(DARK, 3, 1), skip=("down", "up")),
         Cube("grip", [-1, -2, -1], [1, 2, 1], "leather", wrap(L[2], L[1]), skip=("up", "down")),
         post("haft", 2, 14, 0.5, 0.5, "wood", grain(DARK, 3, 4), skip=("down", "up")),
         post("band", 6, 7, 1, 1, "iron", metal(EMBER, 3)),
-        post("socket", 12, 15, 1, 1, "iron", metal(IRONW, 3)),
+        post("socket", 12, 15, 1, 1, "gilt" if tier >= 3 else "iron", metal(BRASS7 if tier >= 3 else IRONW, 3)),
         Cube("beard", [1, 7, -0.5], [4, 15, 0.5], "iron", by_face(rest=lambda f, w, h: [[IRONW[4 if y < h - 2 else 3 if x < w - 1 else 6] for x in range(w)] for y in range(h)])),
         Cube("blade", [4, 8, -0.5], [6, 14, 0.5], "iron", lambda f, w, h: [[IRONW[6 if x == w - 1 else 5 if (f in ("north", "south") and x == w - 2) else 4] for x in range(w)] for y in range(h)]),
-        bit("spike", -3, -1, 11, 13, "iron", metal(IRONW, 3)),
+        bit("spike", -3 - (tier >= 2), -1, 11, 13, "iron", metal(IRONW, 3)),
     ]
+    if tier >= 2:
+        out += [post("ring_hi", 10, 11, 1, 1, "gilt", metal(BRASS7, 3)), post("ring_lo", -4, -3, 1, 1, "gilt", metal(BRASS7, 3)),
+                bit("spike_tip", -5 - (tier >= 3), -4, 11.5, 12.5, "iron", metal(IRONW, 5))]
+    if tier >= 3:
+        rune = lambda f, w, h: [[BRASS7[5 if (x + y) % 3 == 0 else 3] for x in range(w)] for y in range(h)]
+        out += [Cube("rune", [1.5, 9, -1], [3.5, 13, 1], "gilt", by_face(north=rune, south=rune, rest=flat(BRASS7[2]))),
+                post("crown", 15, 18, 0.5, 0.5, "iron", metal(IRONW, 4), skip=("down",)),
+                post("butt_spike", -8, -6, 0.5, 0.5, "iron", metal(IRONW, 4), skip=("up",))]
+    return out
 
 def boar_spear():
     """An upright boar spear: ash shaft, hide grip, bone crossbar under a steel leaf head, a tuft of bristle."""
@@ -190,9 +201,9 @@ TIERS = {
     "harpoon": (harpoon, "The Harpooner's harpoon (Tidecallers), hand-authored at 1 texel a px: a salt-grey driftwood shaft, a sea-blue grip and band, a hemp coil with a trailing line and a barbed iron head; held upright."),
     "admiral_trident": (admiral_trident, "Admiral Vael's trident (Tidecallers), hand-authored at 1 texel a px: a dark wet driftwood shaft with gilt rings and crown, a sea-blue band, three barbed gilt prongs and a pearl at the fork; held upright."),
 }
-_T2 = {"coral_trident": "coral barbs and a sea-blue band on the shaft", "cutlass": "a sea-blue enamelled shell guard and a quillon",
+_T2 = {"hearth_axe": "brass bands on the haft and socket and a longer back spike", "coral_trident": "coral barbs and a sea-blue band on the shaft", "cutlass": "a sea-blue enamelled shell guard and a quillon",
        "harpoon": "a bronze collar, a sea-blue coil and a longer steel head and hooks", "admiral_trident": "a sea-blue lower band, a broader crossbar and a longer middle prong"}
-_T3 = {"coral_trident": "adds a pearl at the fork and barbs on the middle prong", "cutlass": "a gilt basket, a pearl pommel and a sea-blue fuller",
+_T3 = {"hearth_axe": "a brass socket, a gilt rune plate on the beard, a crown spike and a butt spike", "coral_trident": "adds a pearl at the fork and barbs on the middle prong", "cutlass": "a gilt basket, a pearl pommel and a sea-blue fuller",
        "harpoon": "a bronze head set with pearl and a sea-blue collar", "admiral_trident": "adds pearl tips on the outer prongs"}
 for _wid in _T2:
     _fn = TIERS[_wid][0]

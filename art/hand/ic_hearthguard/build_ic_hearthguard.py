@@ -3,7 +3,10 @@
 
 A short, broad vindicator who holds the line: a riveted box helm with cheek plates and an ember horsehair crest over a
 copper beard braided down to his belt, layered slab pauldrons (the mark), a breastplate over a knee-length soot-iron scale
-coat under a chequy team tabard, a brass-buckled belt, knee cops and sabatons, and a shield on the left arm. Tier I only.
+coat under a chequy team tabard, a brass-buckled belt, knee cops and sabatons, and a shield on the left arm. Tier II (the
+Hearth Warden): clean iron with brass rivets, a brass comb, brow and nasal, brass-rimmed pauldrons with a fourth lame and a
+brass boss, a gorget and heavier knee cops. Tier III (the Forge Sworn): brass rims on all plate, brass-edged scales, two short
+bone helm horns, a spike on each boss, ember-seamed tassets over the hips and greaves. No back flag.
 
   python build_ic_hearthguard.py preview <dir> [side] | contact <png> [side] [all] | install
 """
@@ -12,6 +15,8 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(HERE, "..", "ic_breaker"))
 from ironclad import *   # noqa: F401,F403
 from handlib import Troop
+sys.path.insert(0, os.path.join(HERE, "..", "common"))
+import ironclad_tiers as IT
 import house_stub
 
 SKIN = (128, 128)
@@ -143,6 +148,17 @@ def coat():
         return g
     return paint
 
+def brass_scales(p):
+    """Tier III: every other scale row edged in brass."""
+    def paint(face, w, h):
+        g = [list(r) for r in p(face, w, h)]
+        if face in ("top", "bottom"): return g
+        for y in range(0, h - 1, 4):
+            for x in range(w):
+                if (x + (y // 2) % 2) % 2 == 0 and g[y][x] is not None: g[y][x] = IT.BRASS[2 + (x % 4 == 0)]
+        return g
+    return paint
+
 def belt():
     def paint(face, w, h):
         g = leather_ic(base=1, stitch=True)(face, w, h)
@@ -236,9 +252,9 @@ def bones():
     B.append(Bone("body", "root", (0, 12, 0), [Box((-4, -12, -2), (8, 12, 4), body_painter())]))
     B.append(Bone("head", "body", (0, -12, 0), [Box((-4, -8, -4), (8, 8, 8), face_head())]))
     B.append(Bone("helm", "head", tag="helm", boxes=[
-        Box((-4.5, -9.5, -4.5), (9, 5, 9), helm_box()),
-        Box((-5, -5, -3.5), (1, 4, 6), cheek()), Box((4, -5, -3.5), (1, 4, 6), cheek()),
-        Box((-1, -5, -4.9), (2, 3, 1), nasal())]))
+        Box((-4.5, -9.5, -4.5), (9, 5, 9), IT.T(helm_box(), top=False, every=True)),
+        Box((-5, -5, -3.5), (1, 4, 6), IT.T(cheek(), top=False, every=True)), Box((4, -5, -3.5), (1, 4, 6), IT.T(cheek(), top=False, every=True)),
+        Box((-1, -5, -4.9), (2, 3, 1), {1: nasal(), 2: IT.brass(3), 3: IT.brass(3)})]))
     B.append(Bone("crest", "head", tag="helm", boxes=[
         Box((-1, -12.5, -3), (2, 3, 7), crest(), dil=0.1),
         Box((-1, -10.5, 3.5), (2, 6, 1), crest_tail(), dil=0.1)]))
@@ -249,8 +265,8 @@ def bones():
     B.append(Bone("arms_folded", "body", (0, -9, -1), rot=(-43, 0, 0)))
     B.append(Bone("right_leg", "root", (-1.9, 12, 0), [Box((-2, 0, -2), (4, 12, 4), leg())]))
     B.append(Bone("left_leg", "root", (1.9, 12, 0), [Box((-2, 0, -2), (4, 12, 4), leg())]))
-    B.append(Bone("breastplate", "body", boxes=[Box((-4.5, -12, -2.5), (9, 6, 5), breastplate(), dil=0.1)]))
-    B.append(Bone("coat", "body", boxes=[Box((-4.5, -6, -2.5), (9, 8, 5), coat(), dil=0.05)]))
+    B.append(Bone("breastplate", "body", boxes=[Box((-4.5, -12, -2.5), (9, 6, 5), IT.T(breastplate(), top=False, every=True), dil=0.1)]))
+    B.append(Bone("coat", "body", boxes=[Box((-4.5, -6, -2.5), (9, 8, 5), {1: coat(), 2: coat(), 3: brass_scales(coat())}, dil=0.05)]))
     B.append(Bone("belt", "body", boxes=[Box((-4, -5, -2), (8, 2, 4), belt(), dil=0.6)]))
     B.append(Bone("beard_braid", "body", boxes=[Box((-1.5, -9, -3.5), (3, 8, 1), braid())]))
     B.append(Bone("tabard", "body", team=True, boxes=[
@@ -258,11 +274,23 @@ def bones():
     for side in ("right", "left"):
         c = -1 if side == "right" else 1
         B.append(Bone(f"{side}_pauldron", f"{side}_arm", (c, -2.5, 0), rot=(0, 0, 10 * c), boxes=[
-            Box((-4 + 0.5 * c, -2.5, -3.5), (8, 2, 7), pauldron(0, side)),
-            Box((-4 + 1.0 * c, -0.5, -3.5), (8, 2, 7), pauldron(1, side), dil=0.1),
-            Box((-4 + 1.5 * c, 1.5, -3), (8, 2, 6), pauldron(2, side), dil=0.15)]))
-        B.append(Bone(f"{side}_knee", f"{side}_leg", boxes=[Box((-2.5, 5, -3), (5, 2, 2), knee())]))
-        B.append(Bone(f"{side}_boot", f"{side}_leg", boxes=[Box((-2.5, 9, -3), (5, 3, 5), boot())]))
+            Box((-4 + 0.5 * c, -2.5, -3.5), (8, 2, 7), IT.T(pauldron(0, side), top=False, foot=True)),
+            Box((-4 + 1.0 * c, -0.5, -3.5), (8, 2, 7), IT.T(pauldron(1, side), top=False, foot=True), dil=0.1),
+            Box((-4 + 1.5 * c, 1.5, -3), (8, 2, 6), IT.T(pauldron(2, side), top=False, foot=True), dil=0.15)]))
+        # tier II: a fourth lame under the slab and a brass boss on top; tier III a spike on the boss
+        B.append(Bone(f"{side}_lame4", f"{side}_pauldron", stages=[2, 3], boxes=[Box((-4 + 2.0 * c, 3.5, -3), (8, 2, 6), IT.P("hgl4" + side, 3, ember=True), dil=0.2)]))
+        B.append(Bone(f"{side}_boss", f"{side}_pauldron", stages=[2, 3], boxes=[Box((0.5 * c - 1.5, -3.5, -1.5), (3, 1, 3), IT.brass(3))]))
+        B.append(Bone(f"{side}_boss_spike", f"{side}_pauldron", stages=[3], boxes=[Box((0.5 * c - 0.5, -6, -0.5), (1, 2.5, 1), IT.spike(IT.IRON, 3, 3))]))
+        B.append(Bone(f"{side}_knee", f"{side}_leg", boxes=[Box((-2.5, 5, -3), (5, 2, 2), IT.T(knee(), top=False, every=True))]))
+        B.append(Bone(f"{side}_knee_wing", f"{side}_leg", stages=[2, 3], boxes=[Box((-3, 4, -3.4), (6, 4, 1.4), IT.P("hgkw" + side, 4), dil=0.1)]))
+        B.append(Bone(f"{side}_greave", f"{side}_leg", stages=[3], boxes=[Box((-2.4, 7.5, -2.4), (4.8, 2, 4.8), IT.P("hggv" + side, 3), dil=0.1)]))
+        B.append(Bone(f"{side}_boot", f"{side}_leg", boxes=[Box((-2.5, 9, -3), (5, 3, 5), IT.T(boot(), top=False, every=True))]))
+        B.append(Bone(f"{side}_tasset", "body", stages=[3], boxes=[Box((-5.4 if side == "right" else 4.4, -5, -2.6), (1, 5, 5.2), IT.P("hgts" + side, 3, ember=True))]))
+        B.append(Bone(f"{side}_horn", "head", tag="helm", stages=[3], boxes=[
+            Box((-6.5 if side == "right" else 4.5, -9, -1), (2, 1.5, 2), IT.horn()), Box((-7.5 if side == "right" else 5.5, -12.5, -0.75), (2, 3.5, 1.5), IT.horn())]))
+    B.append(Bone("comb", "head", tag="helm", stages=[2, 3], boxes=[Box((-1.5, -10.5, -4.2), (3, 1, 8.4), IT.brass(3))]))
+    B.append(Bone("brow", "head", tag="helm", stages=[2, 3], boxes=[Box((-4.7, -6.5, -4.9), (9.4, 1, 1), IT.brass(3))]))
+    B.append(Bone("gorget", "body", stages=[2, 3], boxes=[Box((-3.5, -12.8, -2.9), (7, 1.6, 5.8), IT.P("hggt", 3), dil=0.1)]))
     # the shield, on the left arm (TroopFeatures.Shield draws none of vanilla's for a model that carries its own)
     B.append(Bone("shield", "left_arm", SHIELD_PIVOT, rot=SHIELD_ROT, tag="shield", boxes=
         [Box((x, y, -1.9), (w, h, 1), wood) for (x, y), (w, h) in SHIELD_BODY]
@@ -278,9 +306,9 @@ def cloth_painter(spec, side):
 
 NOTE = ("Ironclad Hearthguard (unit identity, Ironclad): vindicator, biped, broad and short; a riveted box helm with cheek plates and an "
         "ember crest over a copper beard braided to the belt, layered slab pauldrons, a breastplate over a soot-iron scale coat, a chequy "
-        "team tabard, a brass-buckled belt, knee cops and sabatons; the shield on the left arm. Tier I only in the first pass. No back flag.")
+        "team tabard, a brass-buckled belt, knee cops and sabatons; the shield on the left arm. Tier II brass rivets, comb, brow, nasal, rims, boss and a fourth pauldron lame; tier III brass rims on all plate, brass-edged scales, bone helm horns, boss spikes and ember-seamed tassets. No back flag.")
 IC_HEARTHGUARD = Troop("ic_hearthguard", SKIN, CLOTH, bones, cloth_painter,
-                       {"weapon": "hearth_axe", "hand": "right", "idleArms": "hang", "portrait": "standard"}, tiers=(1,),
+                       {"weapon": "hearth_axe", "hand": "right", "idleArms": "hang", "portrait": "standard"},
                        hide=lambda bn: bn.name.startswith("shield"))
 def build(): return IC_HEARTHGUARD.build()
 def outputs(): return IC_HEARTHGUARD.outputs()
