@@ -233,9 +233,15 @@ public final class SiegeMode extends BattleMode {
         return new Vec3d(x, Arena.ground((int) Math.floor(x), (int) Math.floor(z)) + 1, z);
     }
 
-    /** A defenders' ranged post behind the gate: on the ground POST_IN inside the passage, north (side 0) or south of it. The tower tops were tried first, but bots never climbed to them (the 2026-11 sim runs). */
+    /** The gate-sight stand on each gate tower, in blocks from the gate piece's centre: TOWER_X west of it, TOWER_Z north or south, feet TOWER_FEET above its elevation. */
+    static final int TOWER_X = 2, TOWER_Z = 9, TOWER_FEET = 13;
+
+    /**
+     * A defenders' ranged post: the top of the north (side 0) or south gate tower. Each tower has an east door and a spiral stair from it to the gate-sight stand
+     * (ironhold/gate and gate_intact, 2026-11-01), so the bots walk up; the 2026-11 sims had ladders, which bots never climbed, and posted them on the ground behind the gate.
+     */
     static Vec3d post(Spec.LandmarksRow row, int side) {
-        return at(row.x() + PASSAGE_X + POST_IN, row.z() + .5 + (side == 0 ? -POST_SIDE : POST_SIDE));
+        return new Vec3d(row.x() - TOWER_X + .5, row.elevation() + TOWER_FEET, row.z() + .5 + (side == 0 ? -TOWER_Z : TOWER_Z));
     }
 
     /**
