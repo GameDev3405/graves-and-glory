@@ -26,8 +26,8 @@ public final class Arena {
     static void note(BlockPos pos,Block b){if(building&&connects(b))shaped.add(pos);}
     static void put(ServerWorld w,int x,int y,int z,Block b){var pos=new BlockPos(x,y,z);w.setBlockState(pos,b.getDefaultState(),flags());note(pos,b);}
     static void box(ServerWorld w,int x,int y,int z,int sx,int sy,int sz,Block b){for(int a=0;a<sx;a++)for(int h=0;h<sy;h++)for(int c=0;c<sz;c++)put(w,x+a,y+h,z+c,b);}
-    public static double riverX(double z){return CampaignMaps.riverX(z);}
-    public static boolean river(int x,int z){return CampaignMaps.river(x,z);}
+    public static double riverX(double z){return EngineMaps.active()?EngineMaps.map.riverX((int)Math.floor(z)):CampaignMaps.riverX(z);}
+    public static boolean river(int x,int z){return EngineMaps.active()?EngineMaps.map.wet(x,z):CampaignMaps.river(x,z);}
     /** A bridge rail stands only where water is within a column of it and no building is paved over the river there (the courtyard of Ironhold covers it, and a rail there would stand on a floor). */
     static boolean wet(int px,int row){return (river(px-1,row)||river(px,row)||river(px+1,row))&&!paved(px,row);}
     /** Inside the footprint of a structure that is not a bridge (the test MapDressing.onStructure makes with no margin). */
@@ -54,6 +54,7 @@ public final class Arena {
     /** The ground height of the column. On the shoulder of a landmark (the blend distance between 0 and the shoulder, off the river) the rounded heights are despiked (see smooth): the grade of Task 6 found single columns of dirt standing
      *  as wedges in the grass, where a contour of the blend wandered round a half block; elsewhere it is the rounded height of rawHeight. */
     public static int height(int x,int z){
+        if(EngineMaps.active())return EngineMaps.map.solid(x,z);
         return onShoulder(x,z)?smooth(x,z):rawHeight(x,z);
     }
     /** The column lies on the shoulder of a landmark, at least 16 from the river (its banks have a profile of their own). */
@@ -192,7 +193,7 @@ public final class Arena {
     static double climb(double beyond,int elevation){double t=MathHelper.clamp(1-beyond/CLIMB,0,1);t=t*t*(3-2*t);return Y+(elevation-Y)*t;}
     /** One end of the road is the cell (x, z). */
     static boolean endsAt(CampaignMaps.Road r,int x,int z){return r.ax()==x&&r.az()==z||r.bx()==x&&r.bz()==z;}
-    public static int ground(int x,int z){for(var s:Spec.STRUCTURES)if(s.kind().equals("bridge")&&Math.abs(x-s.x())<=s.width()/2&&Math.abs(z-s.z())<=s.depth()/2)return s.elevation();return river(x,z)?Y-3:height(x,z);}
+    public static int ground(int x,int z){if(EngineMaps.active())return EngineMaps.map.solid(x,z);for(var s:Spec.STRUCTURES)if(s.kind().equals("bridge")&&Math.abs(x-s.x())<=s.width()/2&&Math.abs(z-s.z())<=s.depth()/2)return s.elevation();return river(x,z)?Y-3:height(x,z);}
     public static int mapColor(int x,int z){
         int h=height(x,z),color=river(x,z)?0x416d88:road(x,z)?0xa79b75:h>79?0x687270:h>72?0x68815a:0x507b49;
         for(var s:Spec.STRUCTURES)if(Math.abs(x-s.x())<=s.width()/2&&Math.abs(z-s.z())<=s.depth()/2)color=s.kind().equals("bridge")?0xaab0ab:s.palette().equals("wood")?0x9c7958:0x919692;

@@ -104,10 +104,11 @@ public final class CampaignMaps {
         Spec.POINTS=points;Spec.SCENERY=scenery.toArray(Spec.SceneryRow[]::new);
         // Rows 0 and 1 hold the team positions; each keeps its side identity (id, name, colour, glyph).
         for(int t=0;t<2;t++){var f=Spec.FACTIONS[t];Spec.FACTIONS[t]=new Spec.FactionsRow(f.id(),f.name(),f.color(),f.glyph(),f.dye(),spawnX(selected,t),0,barracksX(selected,t),barracksZ(t));}
+        if(EngineMaps.on(selected))EngineMaps.apply(); // map engine Plan 2: an opt-in engine build replaces this slot
     }
     /** The spawn x of a team (0 Dawn, 1 Dusk) on a map; every spawn is at z 0. The one source for the team rows, the barracks and the client's map check. Ironhold uses Kort's signed
      *  D1a values (docs/maps/ironhold/layout-draft-2026-10-30.md, make_manifest.py): Dawn on the siege camp shelf at -314, Dusk in the Donjon Court at 128. Other maps: the camp muster at ±283. */
-    public static int spawnX(int map,int team){return map==1?(team==0?-314:128):(team==0?-283:283);}
+    public static int spawnX(int map,int team){if(EngineMaps.on(map))return EngineMaps.spawnX(team);return map==1?(team==0?-314:128):(team==0?-283:283);}
     /** The barracks of a team: 3 blocks behind its spawn in the camp (±286), except Ironhold's Dawn barracks, which keep their camp place (-286) because the spawn moved onto the gate shelf.
      *  Ironhold's Dusk barracks hall stands in the Donjon Court, clear of the north supply house. */
     static int barracksX(int map,int team){return team==0?-286:map==1?spawnX(map,1)+3:286;}

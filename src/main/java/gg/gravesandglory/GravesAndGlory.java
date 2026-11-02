@@ -663,6 +663,11 @@ public final class GravesAndGlory implements ModInitializer {
                     if(campaign.leash&&!CampWorld.inCamp(p.getX(),p.getY(),p.getZ()))campaign.toLobby(p);
                 }
                 if(time%20==0)clearOldUnits();
+                if(EngineMaps.active()){ // map engine Plan 2: the slot is placed from the engine build, then checked against its design
+                    if(EngineMaps.step(world)){campaign.built();CampWorld.warTable(world);mapReady();Diagnostics.report("arena-ready",true,null);}
+                    else if(time%20==0){message="Preparing "+Spec.MAPS[campaign.map].name()+" / "+EngineMaps.percent()+"%";sendState();}
+                    return;
+                }
                 int total=(2*R.worldHalfX()+1)*(2*R.worldHalfZ()+1);
                 for(int n=0;n<R.buildColumnsPerTick()&&buildColumn<total;n++,buildColumn++){
                     int x=buildColumn%(2*R.worldHalfX()+1)-R.worldHalfX();
