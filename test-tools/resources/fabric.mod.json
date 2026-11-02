@@ -9,7 +9,8 @@
       "gg.gravesandglory.testing.LocalIntegration",
       "gg.gravesandglory.StructureStudio",
       "gg.gravesandglory.BotSimulation",
-      "gg.gravesandglory.DuelSimulation"
+      "gg.gravesandglory.DuelSimulation",
+      "gg.gravesandglory.MapForge"
     ],
     "client": [
       "gg.gravesandglory.testing.LocalVisualInspection",
@@ -19,6 +20,7 @@
       "gg.gravesandglory.CampaignChecks",
       "gg.gravesandglory.MapTour",
       "gg.gravesandglory.MapWalk",
+      "gg.gravesandglory.MapForgeHarness",
       "gg.gravesandglory.SelfTestHost",
       "gg.gravesandglory.CampRedesignChecks",
       "gg.gravesandglory.CampNetworkChecks",

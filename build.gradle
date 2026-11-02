@@ -33,7 +33,7 @@ tasks.register('localTestToolsJar', Jar) {
  archiveFileName = 'local-integration-DO-NOT-SHIP.jar'
  destinationDirectory = file('build/localTestTools')
 }
-if (project.hasProperty('localIntegration') || project.hasProperty('mapTour') || project.hasProperty('mapWalk') || project.hasProperty('campaignChecks') || project.hasProperty('selfTest')) {
+if (project.hasProperty('localIntegration') || project.hasProperty('mapTour') || project.hasProperty('mapWalk') || project.hasProperty('mapForge') || project.hasProperty('campaignChecks') || project.hasProperty('selfTest')) {
  loom.runs.client.vmArg '-Dgravesandglory.localIntegration=true'
  loom.runs.client.vmArg "-Dfabric.addMods=${file('build/localTestTools/local-integration-DO-NOT-SHIP.jar').absolutePath}"
  tasks.named('runClient') { dependsOn localTestToolsJar }
@@ -111,6 +111,23 @@ if (project.hasProperty('mapWalk')) {
  loom.runs.client.vmArg "-Dgravesandglory.walkTag=${project.findProperty('walkTag') ?: 'now'}"
  loom.runs.client.vmArg "-Dgravesandglory.walkFile=${project.findProperty('walkFile')}"
  loom.runs.client.vmArg "-Dgravesandglory.walkPlan=${project.findProperty('walkPlan')}"
+}
+
+// Map adoption runs (test-tools/MapForgeHarness.java): -PmapForge=<script> hosts a world and drives /mapforge from the script; -PadoptionDev loads the
+// unshipped dev overlays (test-tools/resources/data/gravesandglory/adoption-dev/) after each battlefield is generated. Evidence in <run>/mapforge/.
+if (project.hasProperty('mapForge')) {
+ loom.runs.client.vmArg '-Dgravesandglory.mapforge=true'
+ loom.runs.client.vmArg "-Dgravesandglory.mapForgeScript=${file(project.property('mapForge')).absolutePath}"
+}
+if (project.hasProperty('adoptionDev')) { loom.runs.client.vmArg '-Dgravesandglory.adoptionDev=true' }
+// The builder server's /mapforge commands, never in the player JAR: run the builder with
+// -Dgg.build=<world> -Dfabric.addMods=build/mapforgeBuilder/mapforge-builder-DO-NOT-SHIP.jar
+tasks.register('mapforgeBuilderJar', Jar) {
+ dependsOn compileLocalTestTools
+ from('build/localTestTools/classes') { include 'gg/gravesandglory/MapForge*.class', 'gg/gravesandglory/Walkability*.class' }
+ from('test-tools/mapforge-builder')
+ archiveFileName = 'mapforge-builder-DO-NOT-SHIP.jar'
+ destinationDirectory = file('build/mapforgeBuilder')
 }
 
 // A/B harness: build the battlefields without MapDressing, to compare checks against the bare map.
