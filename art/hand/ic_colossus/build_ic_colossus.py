@@ -152,6 +152,11 @@ def bones():
     B.append(Bone("maul", "right_arm", (0, 25, 0), rot=(-18, 0, 0), tag="weapon", boxes=[
         Box((-1, -24, -1), (2, 30, 2), hooped(grain(OAK, "y", 3, "haft", knots=1), [(6, 2), (22, 2)], along="y", R=IRON, trim=BRASS)),
         Box((-4, -33, -3.5), (8, 9, 7), maul_head)]))
+    B.append(Bone("backplate", "body", boxes=[
+        Box((-6.5, -16, 5), (13, 10, 1.5), banded(hull(5, 3, 1, "bp"), [3, 6], R=BRASS)),
+        Box((-2, -17, 5.5), (4, 3, 1), iron_plain(5, "vent", 1))]))
+    for side, x in (("r", -7), ("l", 5)):
+        B.append(Bone(f"flue_{side}", "body", boxes=[Box((x, -17, 3), (2, 12, 2.5), banded(plate(IRON, 4, spec=False), [1, 4, 7, 10]))]))
     B.append(Bone("belt_banner", "body", team=True, boxes=[Box((-4, -4, -3.4), (8, 14, 0), "banner", sheet="cloth")]))
     return B
 

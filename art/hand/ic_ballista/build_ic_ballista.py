@@ -21,7 +21,7 @@ def wheel_face(flip):
     def paint(face, w, h):
         g = blank(w, h)
         if face in ("front", "back", "top", "bottom"):
-            return iron_plain(3, "tyre", 2)(face, w, h)
+            return iron_plain(4, "tyre", 2)(face, w, h)
         for y in range(h):
             for x in range(w):
                 edge = x in (0, w - 1) or y in (0, h - 1)
@@ -59,16 +59,12 @@ def bones():
     B.append(Bone("carriage", "root", tag="siege", boxes=[
         Box((-9, 15, -15), (18, 4, 5), hooped(grain(OAK, "x", 3, "bed"), [(0, 2), (16, 2)], along="x", R=IRON)),
         Box((-12, 18, -13.5), (24, 2, 2), hooped(iron_plain(3, "axle", 1), [], along="x")),
-        Box((-1.5, 12, -27), (3, 3, 23), hooped(grain(OAK, "z", 3, "stock"), [(0, 2), (9, 2), (20, 3)], along="z", R=IRON, trim=BRASS)),
+        Box((-1.5, 12, -24), (3, 3, 20), hooped(grain(OAK, "z", 3, "stock"), [(0, 2), (8, 2), (17, 3)], along="z", R=IRON, trim=BRASS)),
         Box((-5, 12, -12), (10, 3, 2), hooped(grain(OAK, "x", 4, "rear"), [(0, 1), (9, 1)], along="x", R=IRON)),
         Box((-1.5, 15, -26.5), (3, 9, 2), hooped(grain(OAK, "y", 3, "prop"), [(6, 2)], along="y", R=IRON))]))
     for side, x, flip in (("r", -13, False), ("l", 11, True)):
         B.append(Bone(f"wheel_{side}", "root", tag="siege", boxes=[
-            Box((x, 15.5, -15), (2, 8, 8), wheel_face(flip)),
-            Box((x, 14.5, -13), (2, 1, 4), iron_plain(3, "tyre_t", 1)),
-            Box((x, 23.5, -13), (2, 1, 4), iron_plain(2, "tyre_b", 1)),
-            Box((x, 17.5, -16), (2, 4, 1), iron_plain(3, "tyre_f", 1)),
-            Box((x, 17.5, -8), (2, 4, 1), iron_plain(3, "tyre_r", 1))]))
+            Box((x, 15.5, -15), (2, 8, 8), wheel_face(flip))]))
     # the windlass: a drum on the stock and a crank bar a crewman's hand can reach
     B.append(Bone("windlass", "root", tag="siege", boxes=[
         Box((-2.5, 9.5, -10), (5, 5, 3), hooped(rope("x", 3, "drum"), [(0, 1), (4, 1)], along="x", R=IRON)),
@@ -79,19 +75,22 @@ def bones():
         B.append(Bone(f"skein_{side}", "root", tag="siege", boxes=[
             Box((8 * c - 2.5, 10, -27), (5, 8, 5), hooped(rope("y", 3, "skein" + side), [], along="y")),
             Box((8 * c - 3, 9, -27.5), (6, 1.5, 6), iron_plain(4, "skcapt", 2)),
-            Box((8 * c - 3, 17.5, -27.5), (6, 1.5, 6), iron_plain(3, "skcapb", 2)),
-            Box((8 * c - 1.5, 12, -27.7), (3, 4, 1), brass(4))]))
+            Box((8 * c - 3, 17.5, -27.5), (6, 1.5, 6), iron_plain(3, "skcapb", 2))
+            ]))
         B.append(Bone(f"arm_{side}", "root", (8 * c, 13.5, -24.5), rot=(0, 38 * -c, 0), tag="siege", boxes=[
             Box((-1.25, -1.5, -0.5), (2.5, 3, 8), hooped(grain(OAK, "z", 4, "arm" + side), [(5, 2)], along="z", R=IRON, trim=BRASS))]))
         B.append(Bone(f"cord_{side}", "root", (8 * c - c * 4.7, 13.5, -24.5 + 6.1), rot=(0, -46 * c, 0), tag="siege", boxes=[
             Box((-0.5, -0.5, 0), (1, 1, 6.6), rope("z", 4, "cord"))]))
     B.append(Bone("bolt", "root", tag="siege", boxes=[
-        Box((-0.5, 10.5, -26), (1, 1.5, 15), bolt_shaft()),
+        Box((-0.5, 10.5, -26), (1, 1.5, 13), bolt_shaft()),
         Box((-1.5, 9.75, -29), (3, 3, 3), brass(5)),
         Box((-0.5, 10.5, -30), (1, 1.5, 1), brass(6)),
         Box((-2.5, 10.7, -13), (5, 1, 2.5), fletch), Box((-0.5, 8.7, -13), (1, 5, 2.5), fletch)]))
+    B.append(Bone("quiver", "body", boxes=[
+        Box((-3, -10, 2.2), (6, 9, 3), hooped(grain(OAK, "y", 4, "qv"), [(0, 1), (4, 1), (8, 1)], along="y", R=IRON)),
+        Box((-2.5, -11.5, 2.7), (5, 2, 1.5), brass(5, seed="qa"))]))
     B.append(Bone("mantlet", "root", team=True, boxes=[Box((-8, 15, -15.6), (16, 5, 0), "mantlet", sheet="cloth")]))
-    for b in B[n0:]:   # nudge the engine back toward the crewman
+    for b in [b for b in B[n0:] if b.parent == "root"]:   # nudge the engine back toward the crewman
         if any(b.pivot): b.pivot[2] += 6
         else:
             for bx in b.boxes: bx.origin[2] += 6

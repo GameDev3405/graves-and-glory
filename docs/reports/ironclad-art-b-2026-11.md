@@ -46,3 +46,6 @@ Coordinator pointed out 891904e was already 1-texel. Rendered both side by side:
 
 ## Second pass (rebased on main)
 Mortar tube retilted to (-28, 0, -26). Fast verify green again. In-game turn check NOT run: about nine Minecraft client processes were running machine-wide, over the cap of 5, and the game tier is only a combat smoke that does not spawn these troops. Self-score unchanged at 8.5 until seen in game.
+
+## Third pass (Kort: push every troop to 9)
+Added a bolt quiver to the Ballista crewman (back gear, no flag), brighter wheels, a shorter stock to fit the sheet; Brassjaw gained a brass-banded backplate and two flues so its back is no longer a flat dark slab. Self-grade from the turn sheets: Ballista 8.5, Mortar 8.7, Brassjaw 8.8. Not claimed at 9: none seen in game, and the Ballista wheels and crewman-to-engine relationship are still its weakest read.
