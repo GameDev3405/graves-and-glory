@@ -50,6 +50,10 @@ def _report(summary, as_json):
 
 
 def main(argv=None):
+    argv = sys.argv[1:] if argv is None else argv
+    if argv[:1] == ['adopt']:
+        from . import adopt
+        return adopt.main(argv[1:])
     ap = argparse.ArgumentParser(prog='mapforge', description=__doc__)
     sub = ap.add_subparsers(dest='cmd', required=True)
     p = sub.add_parser('validate', help='check a plan')
@@ -131,6 +135,7 @@ def main(argv=None):
     p.add_argument('--terrain', action='store_true', help='only columns topped by natural ground (not gate arches, doors, frames)')
     p = sub.add_parser('colours', help='regenerate colours.json from a Minecraft client jar (Pillow)')
     p.add_argument('--jar', required=True)
+    sub.add_parser('adopt', help='map adoption files (gg-mapforge-runs/1): batch, validate, info, diff, apply, bake; see adopt.py')
     p = sub.add_parser('info', help='print a structure .nbt')
     p.add_argument('nbt')
     p.add_argument('--raw', action='store_true', help='dump every tag')

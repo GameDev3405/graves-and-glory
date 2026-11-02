@@ -40,7 +40,7 @@ def validate_player_jar(path, expected):
                      'VisualChecks', 'RevisionChecks', 'LocalProbe', 'LegacyDataMigrationCheck',
                      'CompatibilityChecks', 'CompatibilityPolicyCheck', 'FrontMenuChecks', 'AdmissionPolicyCheck', 'CampRulesCheck', 'LobbyRulesCheck', 'LobbyChecks', 'UiReportChecks', 'BannerFieldChecks', 'CampRedesignChecks', 'CampNetworkChecks', 'MapTour', 'Phase1Checks', 'BattleMathCheck', 'BotSimulation', 'Phase2Checks', 'HousesCheck', 'ProfileMigrationCheck', 'PersistedDataCorruptionCheck', 'MarchMathCheck', 'UiMathCheck', 'UiKitSheet', 'LevelMathCheck', 'LevelChecks', 'AbilityLevelChecks', 'RankChecks', 'RankNetworkChecks', 'SelfTestHost', 'CommandPlaytest', 'TitleDemo',
                      'CampTerrainCheck', 'HouseRouteCheck', 'StepHopCheck', 'WedgeCheck', 'LayoutMarkerCheck', 'TroopFacesCheck', 'BannerDropCheck', 'AudioCuesCheck', 'FacesChecks',
-                     'DuelSimulation', 'SheetOverride', 'TypeLedger', 'StoryStills', 'ModeMathCheck', 'FeedFitCheck', 'SiegePlayChecks', 'MapWalk', 'ConvoyCheck', 'ConvoyChecks', 'MarchModesChecks', 'SurvivalChecks', 'MarchBonusChecks', 'Phase4Checks',
+                     'DuelSimulation', 'SheetOverride', 'TypeLedger', 'StoryStills', 'ModeMathCheck', 'FeedFitCheck', 'SiegePlayChecks', 'MapWalk', 'MapForge', 'mapforge-builder', 'adoption-dev/', 'ConvoyCheck', 'ConvoyChecks', 'MarchModesChecks', 'SurvivalChecks', 'MarchBonusChecks', 'Phase4Checks',
                      'gg/gravesandglory/testing/', 'META-INF/services/gg.gravesandglory.Diagnostics$Probe')
         for name in jar.namelist():
             if any(token in name for token in forbidden):

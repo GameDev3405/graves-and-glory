@@ -666,8 +666,9 @@ public final class GravesAndGlory implements ModInitializer {
                 }
                 if(buildColumn>=total){
                     // The columns are built: the landmarks of the map go down one a tick on the finished ground, and the map is ready once the last is placed.
-                    if(!placing){Arena.finish(world);Structures.queueLandmarks(world);placing=true;}
-                    else if(Structures.step(world)){
+                    // Then a baked overlay, when the map has one, goes over the generated blocks (MapAdoption).
+                    if(!placing){Arena.finish(world);Structures.queueLandmarks(world);MapAdoption.reset(campaign.map);placing=true;}
+                    else if(Structures.step(world)&&MapAdoption.step(world)){
                         campaign.built();CampWorld.warTable(world);mapReady();
                         Diagnostics.report("arena-ready",true,null);
                     }
