@@ -265,12 +265,23 @@ NOTE = ("Wildmoot Moot Hound (unit identity, Wildmoot; Common; wolf entity): a l
         "coat over a bark-dark belly, a dark muzzle with small bone teeth, a pale clay stripe from nose to tail tip, an ochre sinew "
         "collar with bone toggles and a ragged team saddle-cloth over the shoulders with hide spikes rising through it. Tier II: bone skull-cap, tooth collar, leg wraps, taller "
         "spikes; tier III: antler tufts, spine plates, ochre flank bars. No back flag.")
+def vet_band(rows_at):
+    """Bold two-tone bands on every side face: a pale bone line over an ochre line, so they read on the russet coat at game distance."""
+    def paint(face, w, h):
+        g = blank(w, h)
+        if face in ("top", "bottom"): return g
+        for i, y in enumerate(rows_at):
+            if 0 <= y < h:
+                for x in range(w): g[y][x] = BONE[5] if (i % 2 == 0) else OCHRE[4]
+        return g
+    return paint
+
 def veteran(bone, box):
-    """The Mastery II trim: ochre cords about the shoulders and each upper leg, and two rings on the tail."""
     n, sz = bone.name, tuple(box.size)
-    if n == "chest" and sz == (8, 8, 7): return vet_rows((5,), every=1, bead=True)
-    if n.endswith("_leg") and sz in ((3, 3, 3), (3, 3, 4)): return vet_rows((1,))
-    if n == "tail": return vet_rows((3, 6))
+    if n == "chest" and sz == (8, 8, 7): return vet_band((2, 3, 5, 6))
+    if n == "body" and sz == (6, 6, 10): return vet_band((2, 3))
+    if n.endswith("_leg") and sz in ((3, 3, 3), (3, 3, 4)): return vet_band((1, 2))
+    if n == "tail": return vet_band((2, 3, 5, 6))
     return None
 
 WM_HOUND = Troop("wm_hound", SKIN, CLOTH, bones, cloth_painter,
