@@ -1,6 +1,7 @@
 {
  "weapon": "longsword",
- "thickness": 1,
+ "density": 1,
+ "thickness": 2,
  "grip": {
   "offset": [
    0,
@@ -14,5 +15,5 @@
   ],
   "note": "the grip's centre is the model origin (the fist box covers y -2..+2); the model is y up with its big faces across z, and the converter turns it by a half turn about x into the weapon frame; the sword is turned flat to the side and tilted 45 degrees forward, as the sprite sword was"
  },
- "note": "The Templar's longsword, tier I (plain): a slim dark-iron blade (8.8 px and a 3.7 px point) with a few edge chips, a short iron bar (7.8 px wide) whose arms drop 12 degrees into flat terminals, a seat block, a long leather grip with an iron ferrule and a 2.6 px iron ring pommel; no gilt; 21.9 px long."
+ "note": "The Templar's longsword, tier I (plain), hand-authored at 1 texel a px in the Templar's ramps: a 3 px dark-iron blade with a dull ridge and three edge chips (13 px and a 2 px point), an iron cross whose arms droop 12 degrees into flat terminals, a 5 px leather grip over an iron ferrule and a 3 px iron ring pommel; no gilt; 25 px long."
 }

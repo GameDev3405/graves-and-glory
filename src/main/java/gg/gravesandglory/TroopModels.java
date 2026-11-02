@@ -203,6 +203,8 @@ public final class TroopModels {
     static final int MAX_TIER=Arrays.stream(Spec.GEARTIERS).mapToInt(Spec.GearTiersRow::tier).max().orElse(3);
     /** The cloth sheet of a side (a factions id), of the company ("company"), or linen for null. */
     public static Identifier cloth(String side){return new Identifier(NAMESPACE,CLOTH+(side==null?"linen":side)+".png");}
+    /** A troop's own cloth sheet of a side: <prefix><side>.png, or the shared sheet when the prefix is empty. */
+    public static Identifier cloth(String prefix,String side){return prefix.isEmpty()?cloth(side):new Identifier(prefix+(side==null?"linen":side)+".png");}
     /** A weapon model by its id (a tier model's id is <id>_t<n>); weapon(id, tier) picks a worn tier's. */
     public static Weapon weapon(String id){return id==null?null:weapons.get(id);}
     /** N for a troop framed "tall N", else 0 (the UI plan's Portrait.draw tall argument). */

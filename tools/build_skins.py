@@ -2692,6 +2692,10 @@ def build(cat):
             {'format': FORMAT, 'rig': rid, 'size': rig['size'], 'outer': num(rig['outer']), 'hands': rig['hands'],
              'bones': [clean_bone(b, rig['size']) for b in bones]})
     for tid in sorted(cat.troops):
+        hand = hand_outputs(cat.root, tid)
+        if hand is not None:
+            files.update(hand)
+            continue
         out, relief = troop_outputs(cat, tid, weapon_lit)
         files.update(out)
         stats['relief'] += relief
@@ -2704,6 +2708,24 @@ def build(cat):
              'outputs': sorted(files)}
     files['%s/index.json' % MODELS] = dumps(index)
     return files, index, len(sides) + 2, stats
+
+
+def hand_outputs(root, tid):
+    """The outputs of a hand-authored troop (art/hand/<troop>/build_<troop>.py, its outputs(): {path: image or JSON object}),
+    or None when the troop has no such script and is generated here."""
+    script = Path(root) / 'art' / 'hand' / tid / ('build_%s.py' % tid)
+    if not script.is_file():
+        return None
+    import importlib.util
+    sys.path.insert(0, str(script.parent))
+    try:
+        spec = importlib.util.spec_from_file_location('hand_' + tid, script)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        made = mod.outputs()
+    finally:
+        sys.path.remove(str(script.parent))
+    return {rel: dumps(v) if isinstance(v, dict) else png_bytes(v) for rel, v in made.items()}
 
 
 def most(rows):

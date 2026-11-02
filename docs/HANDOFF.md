@@ -71,7 +71,7 @@ Tags: `v0.4.0` marks the old `main`; `v0.5.0-dev.20261028` marks the earlier `c4
 ## Constraints
 
 - `docs/WORKFLOW.md` is policy: gameplay, save, protocol and dependency changes need Kort; no publish or release; one writer per checkout; never kill a client; use `tools/verify.py fast|game`; never edit `Spec.java`.
-- Keep the Pact wording and the parchment/dark wood/brass-frame direction; no brass fittings on table wood. New art uses 3 texels per model pixel; simple Minecraft-style faces use 2; no mass remake of accepted art.
+- Keep the Pact wording and the parchment/dark wood/brass-frame direction; no brass fittings on table wood. Troop art uses 1 texel per model pixel (weapons 2), hand-authored with the `art/hand` builders (Kort 2026-10-30; the old 3-texel generator art is retired, and Kort approved rebuilding Hearthguard, Tusk and Tideguard at 1 texel on 2026-11-01); simple Minecraft-style faces use 2.
 - All 30 local worktrees and their evidence are retained. Do not remove a worktree based on ancestry alone; archived branch tips are reachable through `archive/2026-10/*` tags.
 - Excalibur is approved in principle for the friends' pack (M4) and is not in this candidate.
 - Historical handoffs are preserved at `docs/archive/2026-10-28-handoff-for-new-ai.md` and `docs/archive/2026-10-28-modeling-brief.md`.
