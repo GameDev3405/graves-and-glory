@@ -10,7 +10,7 @@ Branch `art/tidecallers-t1` in worktree C:/Users/kortt/Melty/bannerbound-tidecal
 - Brief for workers: `work/TIDECALLERS-BRIEF.md`.
 
 ## Checks (2026-11-02)
-build_skins --verify: 288 outputs verified. art_hue_check: tidecallers PASS (68% in band, peak 212, 6 skins). verify.py fast --offline: see commit message / follow-up.
+build_skins --verify: 288 outputs verified. art_hue_check: tidecallers PASS (68% in band, peak 212, 6 skins). verify.py fast --offline: PASS. CRLF-only preflight.json/Spec.java diffs reverted.
 
 ## Polish left
 Raider kelp dense on back; Harpooner coat dark, brim tail flat; Mist upper body dark, skirt may clip; Brute boxy hind, big flat teal mantle; Admiral tricorne boxy, tails muddy, anchor faint. Weapons not seen in hand.
