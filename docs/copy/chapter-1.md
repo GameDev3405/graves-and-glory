@@ -135,7 +135,7 @@ The `howTo` (attack) lines are the spec's own, verbatim. The `howToDefend` lines
 | # | `howTo` (attack) | `howToDefend` |
 |---|---|---|
 | 1 | Take the Outer Yard. (20) | Hold the yard, then the gate, then the keep. (44) |
-| 2 | Break the gate; siege troops strike it four times harder. (57) | (new copy needed: the walls no longer steady troops, no-routing design 9.2; written in Phase 4's copy pass, through Kort. Was "The walls steady your troops while the gate stands.") |
+| 2 | Break the gate; siege troops strike it four times harder. (57) | Meet their siege troops before they reach the gate. (51) (Kort chose 2026-11-01; replaces "The walls steady your troops while the gate stands.", which the no-routing design 9.2 removed) |
 | 3 | Seize the keep before the clock runs out. (41) | When the clock runs out, Ironhold is yours. (43) |
 
 | Event | Glyph | Line |
