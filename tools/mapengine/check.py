@@ -6,7 +6,6 @@ import json
 import math
 import pathlib
 import struct
-from collections import deque
 from dataclasses import dataclass
 
 import numpy as np
@@ -15,9 +14,9 @@ from mapengine.build import _BLOCK, canonical_bytes
 from mapforge import nbt
 from mapforge.structure import Structure, block_name
 
-MAX_STEP = 1   # largest height change of a walkable step
-MAX_WADE = 1   # deepest water that can be waded
-NONE = -32768
+from mapengine.walk import MAX_STEP, MAX_WADE, NONE, distances  # noqa: F401
+
+DETOUR = 2.0  # a route walking more than this times the straight distance is reported
 
 
 @dataclass
@@ -83,23 +82,19 @@ def _cell(o, width, depth):
 
 def _reach(solid, water, start):
     """Boolean [z, x] of cells reachable from start by 4-neighbour steps over walkable ground."""
-    depth, width = solid.shape
-    wade = np.where(water == NONE, 0, np.maximum(water - solid, 0))
-    ok = (solid != NONE) & (wade <= MAX_WADE)
-    seen = np.zeros(solid.shape, dtype=bool)
-    sx, sz = start
-    if not ok[sz, sx]:
-        return seen
-    seen[sz, sx] = True
-    q = deque([(sx, sz)])
-    while q:
-        x, z = q.popleft()
-        for nx, nz in ((x + 1, z), (x - 1, z), (x, z + 1), (x, z - 1)):
-            if 0 <= nx < width and 0 <= nz < depth and not seen[nz, nx] and ok[nz, nx] \
-                    and abs(int(solid[nz, nx]) - int(solid[z, x])) <= MAX_STEP:
-                seen[nz, nx] = True
-                q.append((nx, nz))
-    return seen
+    return distances(solid, water, start) >= 0
+
+
+def read_columns_bin(out_dir, width, depth):
+    """(solid top, water top) as int32 [z, x] in world y from columns.bin, or None if it is missing."""
+    p = pathlib.Path(out_dir) / 'columns.bin'
+    if not p.exists():
+        return None
+    a = np.frombuffer(p.read_bytes(), dtype='<i2')
+    if a.size != 2 * width * depth:
+        return None
+    a = a.astype(np.int32).reshape(2, depth, width)
+    return a[0], a[1]
 
 
 def check(d, out_dir):
@@ -134,11 +129,28 @@ def check(d, out_dir):
         r = o['radius']
         if o['x'] - r < 0 or o['x'] + r > width or o['z'] - r < 0 or o['z'] + r > depth:
             issues.append(Issue('radius_clipped', o['id'], f"{o['id']}: radius {r} leaves the canvas"))
-    reach = {s['id']: _reach(solid, water, _cell(s, width, depth)) for s in spawns}
+    world = (np.where(solid == NONE, NONE, solid + floor), np.where(water == NONE, NONE, water + floor))
+    cols = read_columns_bin(out_dir, width, depth)
+    if cols is None or not (np.array_equal(cols[0], world[0]) and np.array_equal(cols[1], world[1])):
+        issues.append(Issue('columns', d['id'], 'columns.bin does not match the tiles: rebuild the map'))
+    dist = {s['id']: distances(solid, water, _cell(s, width, depth)) for s in spawns}
+    routes = {(r['spawn'], r['point']): r for r in manifest.get('routes', [])}
     for o in points:
         cx, cz = _cell(o, width, depth)
+        unreachable = None
         for s in spawns:
-            if not reach[s['id']][cz, cx]:
-                issues.append(Issue('unreachable', o['id'], f"{o['id']} cannot be reached from the {s['team']} spawn"))
-                break
+            walk = int(dist[s['id']][cz, cx])
+            if walk < 0:
+                unreachable = unreachable or s['team']
+                continue
+            r = routes.get((s['id'], o['name']))
+            if r is None or r.get('walk') != walk:
+                issues.append(Issue('distance', o['id'], f"{o['id']}: walk from {s['id']} is {walk}, map.json says "
+                                    f"{None if r is None else r.get('walk')}"))
+            straight = math.hypot(o['x'] - s['x'], o['z'] - s['z'])
+            if walk > DETOUR * max(straight, 1.0):
+                issues.append(Issue('detour', o['id'], f"{o['id']}: walk from {s['id']} is {walk}, "
+                                    f"{walk / max(straight, 1.0):.1f} times the straight {straight:.0f}"))
+        if unreachable:
+            issues.append(Issue('unreachable', o['id'], f"{o['id']} cannot be reached from the {unreachable} spawn"))
     return issues
