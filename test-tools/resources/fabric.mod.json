@@ -11,13 +11,15 @@
       "gg.gravesandglory.BotSimulation",
       "gg.gravesandglory.DuelSimulation",
       "gg.gravesandglory.MapForge",
-      "gg.gravesandglory.ZombieReinforcementProbe"
+      "gg.gravesandglory.ZombieReinforcementProbe",
+      "gg.gravesandglory.PerfProbe"
     ],
     "client": [
       "gg.gravesandglory.testing.LocalVisualInspection",
       "gg.gravesandglory.CommandPlaytest",
       "gg.gravesandglory.CompatibilityChecks",
       "gg.gravesandglory.ServerKitSmoke",
+      "gg.gravesandglory.PerfClient",
       "gg.gravesandglory.FrontMenuChecks",
       "gg.gravesandglory.CampaignChecks",
       "gg.gravesandglory.MapTour",
