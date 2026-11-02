@@ -1,0 +1,19 @@
+{
+ "troop": "tc_tideguard",
+ "note": "Tidecaller Tideguard (unit identity, Tidecallers): drowned, biped, upright; bleached coral rising from both shoulders, a bronze scale cuirass over barnacled mail, a scallop shell on the back, a verdigris finned cap with the team fin, a barry-wavy team tabard, team wraps over bronze bracers, bronze greaves. The coral trident is braced in the right hand. Tier I only in the first pass. No back flag.",
+ "rig": "biped",
+ "size": [
+  128,
+  128
+ ],
+ "density": 1,
+ "bones": [],
+ "idleArms": "hang",
+ "parts": [],
+ "skins": {
+  "1": "tc_tideguard_s1.png"
+ },
+ "weapon": "coral_trident",
+ "hand": "right",
+ "portrait": "standard"
+}

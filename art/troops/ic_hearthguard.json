@@ -1,0 +1,19 @@
+{
+ "troop": "ic_hearthguard",
+ "note": "Ironclad Hearthguard (unit identity, Ironclad): vindicator, biped, broad and short; a riveted box helm with cheek plates and an ember crest over a copper beard braided to the belt, layered slab pauldrons, a breastplate over a soot-iron scale coat, a chequy team tabard, a brass-buckled belt, knee cops and sabatons; the shield on the left arm. Tier I only in the first pass. No back flag.",
+ "rig": "biped",
+ "size": [
+  128,
+  128
+ ],
+ "density": 1,
+ "bones": [],
+ "idleArms": "folded",
+ "parts": [],
+ "skins": {
+  "1": "ic_hearthguard_s1.png"
+ },
+ "weapon": "hearth_axe",
+ "hand": "right",
+ "portrait": "standard"
+}
