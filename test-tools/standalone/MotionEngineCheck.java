@@ -1151,8 +1151,9 @@ public final class MotionEngineCheck {
         int bodies = 0;
         for (String kind : List.of("any", "slash", "stab", "blunt", "arrow", "magic"))
             for (float bearing : new float[]{0, 45, 90, 135, 180, -135, -90, -45})
-                for (MotionMath.Seed seed : seeds) {
+                for (MotionMath.Seed seed : seeds) for (boolean grounded : new boolean[]{false, true}) {
                     Drive d = new Drive(seed);
+                    d.grounded = grounded; // fix r3: in game the ground input is on, and the ground pass stays on through the fall
                     var st = new MotionEngine.State();
                     Pose out = new Pose();
                     for (int i = 0; i < 60; i++) { MotionEngine.pose(d.in(), st, fam, out); d.step(1 / 60.0); }
@@ -1167,7 +1168,7 @@ public final class MotionEngineCheck {
                     while (d.time < end + 0.5) { d.step(1 / 60.0); MotionEngine.pose(d.in(), st, fam, out); }
                     double l = lowest(rig, out.snapshot());
                     bodies++;
-                    if (Math.abs(l) > Math.max(-lo, hi)) where = String.format(Locale.ROOT, "%s from %+.0f deg (%s%s)", kind, bearing, tr.a.name(), tr.b == null ? "" : " and " + tr.b.name());
+                    if (Math.abs(l) > Math.max(-lo, hi)) where = String.format(Locale.ROOT, "%s from %+.0f deg%s (%s%s)", kind, bearing, grounded ? " grounded" : "", tr.a.name(), tr.b == null ? "" : " and " + tr.b.name());
                     lo = Math.min(lo, l);
                     hi = Math.max(hi, l);
                 }

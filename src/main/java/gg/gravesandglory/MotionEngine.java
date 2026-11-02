@@ -275,9 +275,11 @@ public final class MotionEngine {
         final double[] fw = {1, 1};
         boolean fresh = true;
         double hold;
-        /** Fix r3: the ground pass's weight and last frame's target, eased out over GROUND_FADE once dead or without the ground input. */
+        /** Fix r3: the ground pass's weight and last frame's target, eased out over GROUND_FADE without the ground input. */
         double groundW = 1;
         double groundT = 1;
+        /** Fix r3: how far a settled corpse's ground lift is held under its torso's clearance, and last frame's target. */
+        double lieW, lieT;
         /** Fix r3 (gate 2): each stance foot's roll shift (px, x and z), the one it held at liftoff, its corner's offset from the middle and that corner, and pass scratch. */
         final double[][] pc = new double[2][2], pcl = new double[2][2], pp = new double[2][2], pNext = new double[2][2], pivotT = new double[2][2];
         final int[] pIdx = new int[2], pNextIdx = new int[2];
@@ -426,13 +428,20 @@ public final class MotionEngine {
         MotionFeet.plant(f, st, out);
         // the ground pass sits on the stride's solve: without the ground input the legs are the unsolved limb-angle gait, whose soles
         // swing through the ground at a run, and lifting the hips off them hops the body (MotionLayersCheck pops), so it fades out.
-        // Like ramp(): this frame chases last frame's target, so the fade starts at the death frame at any frame rate
-        double groundT = f.dead || !f.ground ? 0 : 1;
+        // A death keeps it on through the fall (which sweeps the shins up to 7 px through the ground); once the clip ends the
+        // lift eases under the torso's clearance (MotionFeet.torsoClear), so the corpse lies in its authored end pose rather than
+        // propped on a boot toe. Like ramp(): this frame chases last frame's target, and a target that changed inside the frame
+        // moves only the frame's last share, so both fades are the same at any frame rate.
+        double groundT = f.ground ? 1 : 0;
         st.groundW = f.first ? groundT : toward(st.groundW, st.groundT, f.dt / GROUND_FADE);
         st.groundT = groundT;
+        double ends = MotionStack.deathEnds(st);
+        double lieT = f.dead && f.now >= ends ? 1 : 0, lAfter = f.first ? 0 : lieT > 0 && st.lieT == 0 ? MotionMath.clamp01((f.now - ends) / f.dt) : 0;
+        st.lieW = f.first ? lieT : toward(toward(st.lieW, st.lieT, f.dt * (1 - lAfter) / GROUND_FADE), lieT, f.dt * lAfter / GROUND_FADE);
+        st.lieT = lieT;
         // the secondary springs read the hips before the ground pass: its lift is a whole-body raise, not hip motion for the straps to whip on
         MotionBody.secondary(f, st, out);
-        MotionFeet.ground(out, st.vec, MotionMath.ease(st.groundW));
+        MotionFeet.ground(out, st.vec, MotionMath.ease(st.groundW), MotionMath.ease(st.lieW));
         st.dead = f.dead;
     }
 

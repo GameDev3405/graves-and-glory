@@ -508,11 +508,17 @@ final class MotionStack {
      * When the newest death clip is 0.55 s from its end (render time), so the corpse's secondary springs start to settle;
      * minus infinity if no death clip is playing. It is exact rather than the first frame after, so the settle is the same at any frame rate.
      */
-    static double deathSettles(MotionEngine.State st) {
+    static double deathSettles(MotionEngine.State st) { return deathAt(st, 0.55); }
+
+    /** When the newest death clip ends (render time, exact); minus infinity if no death clip is playing. Fix r3: the corpse lies from here. */
+    static double deathEnds(MotionEngine.State st) { return deathAt(st, 0); }
+
+    /** When the newest death clip is the given time (s, clip time) from its end. */
+    private static double deathAt(MotionEngine.State st, double before) {
         for (int i = st.tracks.size() - 1; i >= 0; i--) {
             Track tr = st.tracks.get(i);
             if (tr.kind != MotionEngine.DEATH) continue;
-            double x = Math.max(0, tr.length() - 0.55);
+            double x = Math.max(0, tr.length() - before);
             return tr.start + (tr.impact < 0 ? x / tr.tempo : x <= tr.impact ? x : tr.impact + (x - tr.impact) / tr.tempo);
         }
         return Double.NEGATIVE_INFINITY;

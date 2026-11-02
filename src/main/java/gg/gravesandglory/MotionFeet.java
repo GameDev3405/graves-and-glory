@@ -282,15 +282,42 @@ final class MotionFeet {
      */
     static void ground(Pose out, double[] v) { ground(out, v, 1); }
 
-    /** ground at weight w (a death hands the body over to its clip's lying pose, which rests on its torso, not its soles). */
-    static void ground(Pose out, double[] v, double w) {
+    /** ground at weight w (none without the ground input: the legs are then the unsolved limb-angle gait). */
+    static void ground(Pose out, double[] v, double w) { ground(out, v, w, 0); }
+
+    /** ground at weight w, its lift held under the torso's clearance at weight lie (a settled corpse: MotionEngine.pose). */
+    static void ground(Pose out, double[] v, double w, double lie) {
         if (!(w > 0)) return;
         double[] root = out.get("root");
         double a = lowest(0, root, out.get(LEGS[0]), out.get(SHINS[0]), v) - GROUND;
         double b = lowest(1, root, out.get(LEGS[1]), out.get(SHINS[1]), v) - GROUND;
         double d = a - b, s = (a + b + Math.sqrt(d * d + SINK_EASE * SINK_EASE)) / 2 - SINK_TOL;
         double k = SINK_EASE, lift = s <= -k ? 0 : s >= k ? s : (s + k) * (s + k) / (4 * k);
+        if (!(lift > 0)) return;
+        // a settled corpse is not lifted off its torso: it lies in its authored pose, its boots wherever the clip put them
+        if (lie > 0) lift += lie * (softMin(lift, Math.max(0, torsoClear(out, v) - SINK_TOL), SINK_EASE) - lift);
         if (lift > 0) root[TY] -= w * lift;
+    }
+
+    /** The torso and head boxes (clip_rig: the body pivots at the hips, the head at the neck), as {x0, y0, z0, x1, y1, z1}. */
+    private static final double[] BODY_BOX = {-4, -12, -2, 4, 0, 2}, HEAD_BOX = {-4, -8, -4, 4, 0, 4};
+
+    /** How high (px) the torso's and head's lowest corner is over the ground (root translation included). */
+    static double torsoClear(Pose out, double[] v) {
+        double[] root = out.get("root"), body = out.get("body"), head = out.get("head");
+        double lo = Double.NEGATIVE_INFINITY;
+        for (int h = 0; h < 2; h++) {
+            double[] b = h == 0 ? BODY_BOX : HEAD_BOX;
+            for (int c = 0; c < 8; c++) {
+                v[0] = b[(c & 1) * 3]; v[1] = b[1 + (c >> 1 & 1) * 3]; v[2] = b[2 + (c >> 2 & 1) * 3];
+                if (h == 1) { rotate(v, head); v[0] += head[TX]; v[1] += head[TY] - 12; v[2] += head[TZ]; }
+                rotate(v, body);
+                v[0] += body[TX]; v[1] += 12 + body[TY]; v[2] += body[TZ];
+                rotate(v, root);
+                lo = Math.max(lo, v[1] + root[TY]);
+            }
+        }
+        return GROUND - lo;
     }
 
     /** Fix 2 (Task 16): the width (px) over which a standing leg's reach eases onto its soft-knee limit instead of meeting it with a kink. */
