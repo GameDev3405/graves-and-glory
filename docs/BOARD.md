@@ -43,17 +43,17 @@ One row per started task or task done in `main`; unlisted tasks in each phase ha
 
 | ID | Task | Owner | State | Evidence |
 |---|---|---|---|---|
-| 2A.1 | Builder server hardening | Agent | In progress (start script only) | `tools/builder-server/start-build-server.ps1`; no auto-restart, backup or health check yet |
-| 2A.2 | `mapforge` command surface in `BuildMode` | Agent | Not started | No `mapforge` code in `BuildMode.java` |
+| 2A.1 | Builder server hardening | Agent | Awaiting merge | `worktree-agent-a67738406dd158482` (`8bad927`: supervisor, backups, health check) |
+| 2A.2 | `mapforge` command surface in `BuildMode` | Agent | Awaiting Kort | `worktree-agent-a24f5641266e57504` (`2439866`, `6e29713`), with 2A.4 and 2A.5 |
 | 2A.3 | Map Forge tools | Agent | Done 2026-11-01 | `698b274` (Ironhold surface, Keep tower, cleanup passes, MapWalk harness); `tools/mapforge/`, `docs/maps/ironhold/` (layout signed 2026-10-30) |
-| 2A.4, 2A.5 | Adoption spike and pipeline | Agent + Kort | Not started | Ironhold surface is in `main`, but there is no export, bake or round-trip test yet |
+| 2A.4, 2A.5 | Adoption spike and pipeline | Agent + Kort | Awaiting Kort | Ironhold round trip works on `worktree-agent-a24f5641266e57504`; `gg-mapforge-runs/1` overlay is 4 KB; format, settle rule and spawn move need Kort |
 | 2A.7 | Map standards | Agent | Awaiting merge | `work/map-standards-2a7` (`b3d414d`, 1 commit, docs) |
 | 2B.1 | Troop `.bbmodel` round-trip | Agent + Kort | Done 2026-10-29 | `c7578cb` on `art/troop-bbmodel`, in `main`; 118 assets byte-identical, 18 tests |
 | 2B.2 | Per-House art bible | Kort + Agent | Awaiting merge | `work/art-bible-2b2` (`1bbebba`, 2 commits, Kort's answers folded in) |
-| 2B.3 | Ironclad tier I batch plus 1x rebuild of Hearthguard, Tusk and Tideguard | Agent | In progress (session lane, 2026-11-01) | `art/ironclad-1x` (tip `0614b88`, 9 commits ahead of `main`) |
+| 2B.3 | Ironclad tier I batch plus 1x rebuild of Hearthguard, Tusk and Tideguard | Agent + Kort | Awaiting Kort's art review | Ironclad A and B on ic-1x-a and ic-1x-b; House troops 1x on `claude/epic-bose-bb1833` (in-game check passed) |
 | 2B.4, 2B.5 | Ironclad tiers II and III; Ironclad visual gate | Agent, Kort | Blocked on 2B.3 | Not started |
 | 2C.1 | Mode frame | Agent | Done 2026-10-31 | `d24592e` (`BattleMode`, `Modes`, `ModeMath`, `DominationMode`; `modes` sheet); `reports/mode-frame-merge-2026-10-31.md`. `mode/frame` is superseded |
-| 2C.2 | Mode feed lines, ledger, briefing how-to | Agent | Not started | Convoy HUD strip and track `70b61e4` only |
+| 2C.2 | Mode feed lines, ledger, briefing how-to | Agent | In progress (subagent, 2026-11-01) | Convoy HUD strip and track `70b61e4`; Domination, Siege and Convoy lines on a worktree branch |
 | 2C.3 | Campaign schema 3, `MarchMath`, order lock, bonus payout | Agent | Done 2026-10-31 | `8e39637` (from `9660a4f`); `reports/campaign-2c3-2026-10-31.md`; Siege and Convoy payout `3fdf85e`, `5e48a8d` |
 | 2C.4 | Campaign battles as real battles | Agent | In progress | `3fdf85e`: battles 1, 2 and 4 play (Domination, Siege, Convoy). Battles 3, 5 and 6 still lack their mode or map; size, difficulty and text for battles 2 to 6 are `placeholder` cells in `sheets/design.json` |
 | 2C.5, 2C.6 | Campaign card and Pact report; retire 1v1 | Agent | Not started | Six-seat lobby `784249a` helps 2C.6; no per-seat reward work yet |
@@ -64,7 +64,7 @@ One row per started task or task done in `main`; unlisted tasks in each phase ha
 |---|---|---|---|---|
 | 3.1 | Adopt camp and Ironhold | Agent | In progress | Ironhold surface in `main` (`698b274`); adoption needs 2A.5. Camp not started |
 | 3.2 | Siege world pieces | Agent | Done 2026-11-01 | `490c298` (three stages, Keep ring, gate rulings); `d1b013b` (sheet-driven rules, wards that seal the yard, `gate_intact`); teardown and `recover` in `d24592e`; checks `ebab3c8`, `66f7e79`; second defend line `6ca063f` |
-| 3.3 | Siege bots | Agent | In progress (session lane, 2026-11-01) | `claude/siege-bots-d7e12b` at `19c7b4d`, no commits yet; `botGoal` hook `5f76385` exists |
+| 3.3 | Siege bots | Agent + Kort | Awaiting Kort's balance knob | `claude/siege-bots-d7e12b` (`f81f641`); attackers win 18/20; `reports/siege-bots-2026-11.md` there |
 | 3.4 | Six-player lobby | Agent | Done 2026-10-31 | `784249a` |
 | 3.5 | Dedicated server kit | Agent + Kort | In progress (session lane, 2026-11-01) | `claude/server-kit-4fed75` (`83538f6`, 2 commits); `tools/export_server.py` in `main` |
 | 3.6 to 3.9 | Performance baseline, slice test, fix round, visual gate | Agent, Kort | Not started | Need the server kit (3.5) and Siege bots (3.3) |
@@ -75,7 +75,7 @@ One row per started task or task done in `main`; unlisted tasks in each phase ha
 |---|---|---|---|---|
 | 4A.1 to 4A.6 | Other maps, dressing, camp detail, map art | Agent + Kort | Not started | Only Ironhold (see 3.1) |
 | 4B.1 to 4B.7 | House art completion and final art gate | Agent + Kort | Not started beyond 1.6, 1.7 and 2B.3 | |
-| 4C.1 | Survival | Agent | Not started | No Survival mode in `Modes.java`; battle 3 has no mode yet |
+| 4C.1 | Survival | Agent + Kort | Awaiting Kort's values | `worktree-agent-a99e20eda71f140df` (`6abb424`, 14 suites green) |
 | 4C.2 | Banner / escort decision | Agent | Done 2026-10-31 | Kort chose Convoy escort in place of carry Banner; Convoy merged at `7838662` (`5b49aba`, `d102c51`, `257cc3d` wagon, `1ad6a02` harness). Straight draft Frostmarch road accepted for now |
 | 4C.3 | Host picks map and mode | Agent | Done 2026-10-31 | `784249a`; modes now Domination, Siege, Convoy |
 | 4C.4, 4C.5 | Mode bot runs and gate; HUD, feed, report lines for every mode | Agent | Not started | `tools/mode_gate.py` does not exist; harness suites `42e727e`, `1ad6a02` only |
@@ -86,7 +86,10 @@ One row per started task or task done in `main`; unlisted tasks in each phase ha
 | 4D.5 | Preflight validation of campaign rows | Agent | Done 2026-10-31 | `tools/preflight.py` validates order, House, bonus and the `placeholder` column |
 | 4E.1 to 4E.3 | Animation passes | Agent + Kort | In progress (1.5 lane) | `work/anim-rework`; pass 2 not started |
 | 4F.1, 4F.6 | War Table pages, 1440p layouts | Agent | In progress | 3x scale `30e3f3f`; troop sheet, Armoury, Banner and Field, lobby merged |
-| 4F.2 to 4F.5 | Report layout, title, audio, accessibility | Agent | Not started | |
+| 4F.2 | Report layout | Agent + Kort | Awaiting Kort | `worktree-agent-aeaa474f0437e717f` (`7e1e0f0`, `d932922`, `7951be8`; ui-report suite passed in game) |
+| 4F.3 | Title screen | Agent + Kort | Not started | Needs Kort's direction |
+| 4F.4 | Audio | Agent + Kort | Awaiting Kort | `worktree-agent-a34e87ec6c939212a` (`1467f91`, `46d5008`); vanilla stand-ins, `reports/audio-checklist-2026-11.md` |
+| 4F.5 | Accessibility | Agent + Kort | Awaiting Kort | `worktree-agent-a3dc6bac1ab4219e7` (`13d1047`) |
 
 ### Phase 5: balance and hardening
 
