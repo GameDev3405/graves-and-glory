@@ -73,7 +73,7 @@ public final class GravesAndGloryClient implements ClientModInitializer {
         ability=key("ability",GLFW.GLFW_KEY_H); // the commander ability (Commander.activate); G is the attack order
         hints=key("hints",GLFW.GLFW_KEY_LEFT_ALT); // held, the battle HUD shows every key hint (BattleHud.altLayer)
         armoury=key("armoury",GLFW.GLFW_KEY_U); // opens the barracks screen on its Armoury tab, anywhere in a battle (ArmouryTab)
-        banner=key("banner",GLFW.GLFW_KEY_B); // the War Table's shortcut to the Banner page (WarTableRecruit.keyPressed), rebindable in Controls like the rest (4F.5)
+        banner=key("banner",GLFW.GLFW_KEY_N); // the War Table's shortcut to the Banner page (WarTableRecruit.keyPressed), rebindable in Controls like the rest (4F.5)
         confirmOrder=KeyBindingHelper.registerKeyBinding(new KeyBinding("key.gravesandglory.confirm",InputUtil.Type.KEYSYM,GLFW.GLFW_KEY_ENTER,"category.gravesandglory"));
         cancelOrder=KeyBindingHelper.registerKeyBinding(new KeyBinding("key.gravesandglory.cancel",InputUtil.Type.KEYSYM,GLFW.GLFW_KEY_BACKSPACE,"category.gravesandglory"));
         String local=System.getenv("LOCALAPPDATA");runtime=Path.of(System.getProperty("gravesandglory.runtime",local==null?"gravesandglory-runtime":local+"/gravesandglory"));

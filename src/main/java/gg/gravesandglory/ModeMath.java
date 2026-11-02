@@ -18,13 +18,13 @@ public final class ModeMath {
     public static String ruleLine(String template,int n) {
         return template.replace("{n}",Integer.toString(n));
     }
-    /** A how-to cell: lines split on |, trimmed, empty parts dropped, at most three. */
+    /** A how-to cell: lines split on |, trimmed, empty parts dropped, at most two. */
     public static List<String> howTo(String cell) {
         List<String> out=new ArrayList<>();
         for(String part:cell.split("\\|")){
             String line=part.trim();
             if(!line.isEmpty())out.add(line);
-            if(out.size()==3)break;
+            if(out.size()==2)break;
         }
         return out;
     }
