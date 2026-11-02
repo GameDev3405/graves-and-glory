@@ -324,16 +324,28 @@ public final class TroopMotion {
             default:return null;
         }
     }
-    /** A forced clip at full weight, whole-body, at seconds; the joint limits; the carries on the bones it does not key; the root scaled. */
+    /**
+     * A forced clip at full weight, whole-body, at seconds; the joint limits; the carries on the bones it does not key; the root scaled.
+     * A name "stance+clip" (Task 16 r5, the harness) lays the clip over the family's stance as the engine sums them in battle (the
+     * stance chain's first clip at its start, the action added on top), so an attack is shot in its in-game pose.
+     */
     static void applyForced(TroopModel<?> m,String name,double seconds,boolean shield){
+        int plus=name.indexOf('+');Clip under=plus<0?null:stanceOf(m,name.substring(0,plus));if(plus>=0)name=name.substring(plus+1);
         Clip c=resolve(m,name);Pose p=new Pose();
+        if(under!=null)under.add(0,p,1,new double[6]);
         if(c!=null)c.add(seconds,p,1,new double[6]);
         MotionFeet.ground(p,new double[3]); // fix r3: a forced clip's soles stay out of the ground as the engine's do
         apply(m,p);limits(m);
         Spec.TroopsRow row=row(m);Fam f=family(m);
         boolean drawn=name.equals("bow_draw")||c!=null&&f!=null&&(f.family().attacks().contains(c)||f.family().wallAttacks().contains(c));
-        carries(m,bow(row),shield,drawn?1:0,bone->keys(c,bone));
+        carries(m,bow(row),shield,drawn?1:0,bone->Math.max(keys(c,bone),keys(under,bone)));
         rootScale(m);
+    }
+    /** The clip a stance key gives a model's family (MotionEngine.stanceChain's first present), or null. */
+    static Clip stanceOf(TroopModel<?> m,String key){
+        Fam f=family(m);if(f==null)return null;
+        for(String k:MotionEngine.stanceChain(key)){Clip c=f.family().stances().get(k);if(c!=null)return c;}
+        return null;
     }
 
     // ---- the cull reach (Task 16 M2) ----
@@ -454,7 +466,7 @@ public final class TroopMotion {
     /** folds for an entity, from its last frame (or the clip forced on it). */
     static boolean folds(TroopModel<?> m,MobEntity e){
         Forced f=FORCED.get(e.getId());boolean armHeld;
-        if(f!=null){Clip c=resolve(m,f.clip());armHeld=false;for(String arm:ARMS)if(keys(c,arm)>0&&!STANCES.contains(f.clip()))armHeld=true;}
+        if(f!=null){String fc=f.clip().substring(f.clip().indexOf('+')+1);Clip c=resolve(m,fc);armHeld=false;for(String arm:ARMS)if(keys(c,arm)>0&&!STANCES.contains(fc))armHeld=true;}
         else{Body b=BODIES.get(e.getId());armHeld=b!=null&&b.uuid.equals(e.getUuid())&&b.armHeld;}
         return folds(m.idleArms,e.isAttacking(),armHeld);
     }

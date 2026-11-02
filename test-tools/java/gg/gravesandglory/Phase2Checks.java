@@ -5209,6 +5209,21 @@ public final class Phase2Checks implements ClientModInitializer {
         /** The face (TroopFaces) forced on every Turn shot, from GRAVES_PHASE2_FACE (the system property gravesandglory.faceForce); -1 for none: the troop wears the face its UUID gives it. */
         static final int FACE=Integer.getInteger("gravesandglory.faceForce",-1);
         static final int[] ANGLES={0,45,90,135,180,225,270,315};
+        /** Task 16 r5: the attacks the turn suite shoots (GRAVES_PHASE2_TURN_ATTACKS, a comma list; "attack" is the family's first attack, a caster's cast), the angles it shoots them at (GRAVES_PHASE2_TURN_ANGLES; every ANGLES unless set) and the bow's recovery second on bow_draw. */
+        static final List<String> TURN_ATTACKS=List.of(Optional.ofNullable(System.getenv("GRAVES_PHASE2_TURN_ATTACKS")).filter(v->!v.isBlank()).orElse("attack").split(","));
+        static final Set<Integer> TURN_ANGLES=new HashSet<>();
+        static{String v=System.getenv("GRAVES_PHASE2_TURN_ANGLES");if(v==null||v.isBlank())for(int a:ANGLES)TURN_ANGLES.add(a);else for(String a:v.split(","))TURN_ANGLES.add(Integer.parseInt(a.trim()));}
+        static final float BOW_RECOVERY=1.0f;
+        /** The windup second of an attack clip: its "windup" marker, else 45 percent of the way to its impact, on a tick. */
+        static float windup(TroopModel<?> m,String clip,float impact){
+            var c=TroopMotion.resolve(m,clip);Double w=c==null?null:c.markers().get("windup");
+            return w!=null?w.floatValue():Math.round(impact*.45f*20)/20f;
+        }
+        /** The recovery second: 0.35 s past the impact (the 0.6 to 0.8 s blade path of the thrust), short of the clip's end. */
+        static float recovery(TroopModel<?> m,String clip,float impact){
+            var c=TroopMotion.resolve(m,clip);double len=c==null?impact+.35:c.length();
+            return (float)Math.min(impact+.35,len-.05);
+        }
         /** One shot: its file name, the troop, the pose's label, the clip and second forced on it, the angle round it, a close view of the weapon hand (front, side or above; null for the body), whether the weapon is hidden and whether the relief is off (TroopDepth.enabled false); the hands and t3 modes also the weapon tier; the t3 mode also the camera's distance from the troop in blocks (0: DIST) and a step of the camera sideways in blocks. */
         record Shot(String name,String troop,String pose,String clip,float at,int angle,String hand,boolean bare,boolean flat,int tier,double dist,double side){
             Shot(String name,String troop,String pose,String clip,float at,int angle,String hand,boolean bare,boolean flat,int tier){this(name,troop,pose,clip,at,angle,hand,bare,flat,tier,0,0);}
@@ -5259,11 +5274,24 @@ public final class Phase2Checks implements ClientModInitializer {
             for(String t:TROOPS){
                 var row=ArmyCards.spec(t);boolean bow=row!=null&&TroopMotion.bow(row),magic=row!=null&&row.magic();List<Object[]> poses=new ArrayList<>();
                 poses.add(new Object[]{"idle","idle",0f});
-                if(bow){poses.add(new Object[]{"draw","bow_draw",TroopMotion.BOW_FULL});poses.add(new Object[]{"loose","bow_draw",TroopMotion.BOW_LOOSE});}
-                else if(magic)poses.add(new Object[]{"cast","cast",Anim.shotTime(TroopModels.model(t),"cast")});
-                else poses.add(new Object[]{"attack","attack",Anim.shotTime(TroopModels.model(t),"attack")});
+                // Task 16 r5: an attack is shot over its stance as the engine sums them in battle (guard; a ranged troop aim), at its windup,
+                // its impact and its recovery (TURN_ATTACKS: the default alias, or named clips); a bow's draw, loose and recovery on bow_draw
+                var tm=TroopModels.model(t);
+                if(bow){poses.add(new Object[]{"draw","bow_draw",TroopMotion.BOW_FULL});poses.add(new Object[]{"loose","bow_draw",TroopMotion.BOW_LOOSE});poses.add(new Object[]{"recovery","bow_draw",BOW_RECOVERY});}
+                else{
+                    String stance=row!=null&&row.ranged()?"aim":"guard";if(!magic)poses.add(new Object[]{"guard",stance,0f});
+                    for(String a:TURN_ATTACKS){
+                        String clip=a.equals("attack")&&magic?"cast":a;boolean alias=clip.equals("attack")||clip.equals("cast");
+                        if(tm==null||TroopMotion.resolve(tm,clip)==null)continue;
+                        String pre=alias?"":(row!=null&&clip.startsWith(row.family()+"_")?clip.substring(row.family().length()+1):clip)+"_";
+                        float imp=Anim.shotTime(tm,clip);
+                        poses.add(new Object[]{pre+"windup",stance+"+"+clip,windup(tm,clip,imp)});
+                        poses.add(new Object[]{alias?clip:pre+"impact",stance+"+"+clip,imp});
+                        poses.add(new Object[]{pre+"recovery",stance+"+"+clip,recovery(tm,clip,imp)});
+                    }
+                }
                 poses.add(new Object[]{"walk25","walk",Anim.shotTime(TroopModels.model(t),"walk")});
-                for(Object[] p:poses)for(int a:ANGLES)shots.add(new Shot("turn-"+t+"-"+p[0]+"-"+a,t,(String)p[0],(String)p[1],(Float)p[2],a,null,false,false));
+                for(Object[] p:poses)for(int a:ANGLES)if(TURN_ANGLES.contains(a))shots.add(new Shot("turn-"+t+"-"+p[0]+"-"+a,t,(String)p[0],(String)p[1],(Float)p[2],a,null,false,false));
                 if(bow)for(String v:List.of("front","side","above"))shots.add(new Shot("turn-"+t+"-hand-"+v,t,"hand-"+v,"idle",0f,0,v,false,false));
                 for(int a:new int[]{0,90})shots.add(new Shot("turn-"+t+"-bare-"+a,t,"bare","idle",0f,a,null,true,false));
                 for(int a:new int[]{0,45,90})shots.add(new Shot("turn-"+t+"-flat-"+a,t,"flat","idle",0f,a,null,false,true));
