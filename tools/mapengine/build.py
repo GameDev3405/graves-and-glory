@@ -164,7 +164,9 @@ def build(d, out_dir):
     roads = [{'id': o['id'], 'path': o['path'], 'width': o['width']} for o in objs if o['kind'] == 'road']
     manifest = {'format': 1, 'id': d['id'], 'width': w, 'depth': dp, 'origin': [-(w // 2), -(dp // 2)],
                 'baseY': base, 'floorY': base + FLOOR, 'columns': 'columns.bin', 'tiles': tiles, 'points': points,
-                'spawns': spawns, 'roads': roads, 'buildings': placed, 'routes': routes,
+                'spawns': spawns, 'roads': roads, 'routes': routes,
                 'design_sha256': hashlib.sha256(canonical_bytes(d)).hexdigest()}
+    if placed:  # only when there are any, so a map without buildings keeps its bytes
+        manifest['buildings'] = placed
     (out_dir / 'map.json').write_bytes(canonical_bytes(manifest))
     return manifest
