@@ -33,29 +33,65 @@ def helm_can():
     def paint(face, w, h):
         if face == "front": return grid(HELM_FRONT, P)
         if face == "bottom": return blank(w, h)
-        g = lames([3, 2, 2, 2], base=3, seed="hc", wear=4, rivets=False)(face, w, h)
+        lift = {"back": 2, "left": 1}.get(face, 0)                # the shaded faces take a step or two up so they never read black
+        g = lames([4, 5], base=3 + lift, seed="hc", wear=2, rivets=False)(face, w, h)
         if face in ("right", "left") and h >= 5:
             near = (w - 2, w - 1) if face == "right" else (0, 1)
             for x in near: g[3][x] = INK
-            for x in range(w):
-                g[2][x] = EMBER[2 if x % 2 else 1]                 # the brow band runs round the can
+            for x in range(w): g[2][x] = EMBER[2]                  # the brow band runs round the can
         if face == "back":
-            for y in range(1, h - 1): g[y][w // 2] = IRON[2]        # the welded seam
-            for x in range(w): g[2][x] = EMBER[2 if x % 2 else 1]
+            for y in range(1, h - 1): g[y][w // 2] = IRON[3]        # the welded seam
+            for x in range(w): g[2][x] = EMBER[2]
         return g
     return paint
 
 def helm_crown():
     def paint(face, w, h):
-        g = plate(R=IRON, base=4, spec=False, seam=False)(face, w, h)
+        g = plate(R=IRON, base=4 + (1 if face in ("back", "left") else 0), spec=False, seam=False)(face, w, h)
         return scuff(g, ("crown", face), 2)
     return paint
 
-def plume():
-    return ember_plume("pl")
+def calm_mail(base=2):
+    """Mail as one quiet mass: a lit top row and an edge shade, no weave, so it never reads as noise."""
+    def paint(face, w, h):
+        g = blank(w, h)
+        for y in range(h):
+            for x in range(w):
+                v = base + LIT[face] + (lightx(face, x, w) if face not in ("top", "bottom") else 0)
+                if y == 0 and face not in ("top", "bottom"): v += 1
+                g[y][x] = clamp(MAIL, v)
+        return g
+    return paint
+
+def plume_calm(tail=False):
+    """Horsehair as clean lit bands, brightest at the crown: no per-texel noise; the tail's hem is ragged on a fixed beat."""
+    def paint(face, w, h):
+        g = blank(w, h)
+        for y in range(h):
+            for x in range(w):
+                v = 3 if face == "top" else (3 if y < max(1, h // 3) else 2) + LIT[face] // 2
+                if y == h - 1 and face not in ("top", "bottom"): v -= 1
+                g[y][x] = clamp(EMBER, v)
+        if tail and face not in ("top", "bottom"):
+            for x in range(1, w, 2): g[h - 1][x] = None
+        return g
+    return paint
+
+def pelt():
+    """The fur collar: three flat tones (lit crown, body, dark hem) with a hem that alternates by fixed beat."""
+    def paint(face, w, h):
+        g = blank(w, h)
+        for y in range(h):
+            for x in range(w):
+                v = 3 + LIT[face] + (1 if y == 0 else 0) - (0 if y == h - 1 and face not in ("top", "bottom") else 0)
+                g[y][x] = clamp(FUR, v)
+        if face not in ("top", "bottom"):
+            g[h - 1] = [clamp(FUR, 2)] * w                          # a solid hem: no teeth against the cloth behind
+        return g
+    return paint
 
 def gorget_fur():
-    return fur(seed="gorget")
+    return pelt()
 
 # ---- body ----
 BREAST = fold("""
@@ -67,14 +103,13 @@ BREAST = fold("""
 .2232""")  # a hammered breast ridge laid over the lames
 
 def body_painter():
-    base = lames([3, 3, 3, 3], base=3, seed="bd", wear=7, rivets=True, ember_rows=())
+    base = lames([3, 3, 3, 3], base=3, seed="bd", wear=2, rivets=False, ember_rows=())
     def paint(face, w, h):
         g = base(face, w, h)
         if face == "front":
             for y in range(1, 7):                                  # the breastplate's ridge and the cleave scar
                 g[y][w // 2 - 1] = IRON[5] if y in (2, 3) else IRON[4]
                 g[y][w // 2] = IRON[2]
-            for x in range(w): g[h - 1][x] = EMBER[1 if x % 2 else 2]
         if face == "back":
             for y in range(h): g[y][w // 2] = IRON[2]              # the spine seam
         return g
@@ -84,46 +119,45 @@ def belt():
     def paint(face, w, h):
         g = leather_ic(base=1)(face, w, h)
         if face == "front":
-            for y, row in enumerate(("..tt", "..rs")):
-                for x, c in enumerate(row):
-                    if c != ".": g[y][2 + x] = P[c]
+            for y, row in enumerate(("56", "43")):                  # an iron buckle, lit top-left
+                for x, c in enumerate(row): g[y][3 + x] = IRON[int(c)]
         return g
     return paint
 
 def arm():
-    return rows([(0, mail_ic(3)), (3, lames([3, 3, 2, 1], base=3, seed="arm", wear=3)), (10, leather_ic(base=2, stitch=True, ember_stitch=True))])
+    """Mail sleeve, ONE long vambrace plate (lit top, dark lip), a plain leather glove: three masses, no stripes."""
+    return rows([(0, calm_mail(2)), (3, lames([6], base=3, seed="arm", wear=1, rivets=False)), (9, leather_ic(base=2))])
 
 def leg():
-    return rows([(0, mail_ic(2)), (4, lames([2, 2, 2, 2], base=2, seed="leg", wear=3, rivets=False)), (8, leather_ic(base=2))])
+    return rows([(0, calm_mail(2)), (5, lames([4], base=3, seed="leg", wear=1, rivets=False)), (9, leather_ic(base=2))])
 
 def pauldron_lame(i):
-    def paint(face, w, h):
-        g = lames([h], base=3 + (1 if i == 0 else 0), seed=("pl", i), wear=3, rivets=(w >= 6))(face, w, h)
-        if i == 0 and face not in ("top", "bottom"):
-            for x in range(w): g[h - 1][x] = EMBER[2 if x % 2 else 3]
-        return g
-    return paint
+    """Three stacked plates in clear steps: bright cap, mid, dark lower lip. No rivets, no trim."""
+    return lames([[2, 2, 2, 1][i]], base=[4, 3, 3, 2][i], seed=("pl", i), wear=0, rivets=False)
 
 def knee():
-    return lames([2], base=4, seed="knee", wear=1, rivets=False)
+    return lames([2], base=4, seed="knee", wear=0, rivets=False)
 
 def boot():
-    return rows([(0, leather_ic(base=2)), (1, leather_ic(base=1, stitch=True)), (2, lames([1], base=2, rivets=False))])
+    return rows([(0, leather_ic(base=2)), (2, lames([1], base=2, rivets=False))])
 
 def cuff():
-    return rows([(0, lames([2], base=4, rivets=False)), (1, lames([1], base=2, rivets=False))])
+    """A plain flared iron cuff, the one clear lip between vambrace and glove. The arm carries no accent colour."""
+    return lames([2], base=3, wear=0, rivets=False)
 
 # ---- the cloth: tabard, side flaps ----
-CLEAVE = """
-.LLLLLL.
-LddddeeL
-LdddeddL
-LddeddmL
-.LdeddL.
-..LedL..
-...LL..."""
+# a clean roundel: bright team-metal ring, dark team field, one bright cleaving slash. f field, c slash, r/R ring, s ring shade
+ROUND6 = """
+.rRRR.
+rfffcR
+RffcfR
+RfcffR
+RcfffR
+.RssR."""
 
-def cleave_pal(M): return {"e": EMBER[3], "L": IRON[5], "m": IRON[3], "d": IRON[1]}
+def round_pal(T, M):
+    # M is the team metal (gold, or silver on the gold side): 5 tones, brightest last
+    return {"r": M[-1], "R": M[-2], "s": M[-4], "c": M[-1], "f": T[1]}
 
 def tabard(T, M):
     def paint(face, w, h):
@@ -131,8 +165,7 @@ def tabard(T, M):
         if face == "bottom": return g
         for y in range(h):
             for x in range(w):
-                v = 3 + LIT[face] + (lightx(face, x, w) if face not in ("top", "bottom") else 0)
-                if face in ("front", "back") and y >= 7 and x in (1, 6): v -= 1
+                v = 3 + LIT[face]
                 if y == 0 and face != "top": v += 1
                 g[y][x] = clamp(T, v)
         if face in ("right", "left"):
@@ -140,9 +173,8 @@ def tabard(T, M):
                 for x in range(w): g[y][x] = None
             g[7] = [T[1]] * w
         if face in ("front", "back"):
-            over(g, grid(CLEAVE, cleave_pal(M)), 0, 3 if face == "front" else 2)
-            for x in range(w): g[h - 1][x] = EMBER[2 if x % 2 else 3]    # the ember bordure at the hem
-            for y in range(h): g[y][0] = g[y][w - 1] = EMBER[1 if y % 2 else 2]
+            over(g, grid(ROUND6, round_pal(T, M)), 1, 3)           # rows 3-8: clear of the collar above and the belt below
+            g[h - 1] = [EMBER[2]] * w                              # one ember hem line
         return g
     return paint
 
@@ -154,21 +186,25 @@ def flap(T, M, inner_x):
             for x in range(w):
                 v = 3 + LIT[face] + (-1 if x == inner_x else 0) + (-1 if y >= h - 3 else 0)
                 g[y][x] = clamp(T, v)
-        g[h - 1] = [EMBER[2 if x % 2 else 3] for x in range(w)]
-        g[h - 2] = [EMBER[1]] * w
+        g[h - 1] = [EMBER[2]] * w
         return g
     return paint
 
 def cape(T, M):
+    """A short cape hung from the fur collar: a fur-dark top edge where it hangs from the shoulders, one cloth tone, a
+    shaded edge column each side, the roundel and an ember hem."""
     def paint(face, w, h):
         g = blank(w, h)
         for y in range(h):
             for x in range(w):
-                v = (2 if face != "back" else 3) + (-1 if face in ("left", "right") else 0) + (-1 if x % 3 == 2 and y > 3 else 0)
+                v = (2 if face != "back" else 3) + (-1 if face in ("left", "right") else 0)
+                if face == "back" and x in (0, w - 1): v -= 1
                 g[y][x] = clamp(T, v)
+        if face != "bottom":
+            g[0] = [clamp(FUR, 2)] * w                              # the cape is gathered into the collar
         if face == "back":
-            g[h - 1] = [EMBER[1 if x % 2 else 2] for x in range(w)]
-            over(g, grid(CLEAVE, cleave_pal(M)), 1, 3)
+            over(g, grid(ROUND6, round_pal(T, M)), (w - 6) // 2, 2)
+            g[h - 1] = [EMBER[2]] * w
         return g
     return paint
 
@@ -180,8 +216,8 @@ def bones():
     B.append(Bone("helm", "head", tag="helm", boxes=[
         Box((-5, -8, -5), (10, 9, 10), helm_can()), Box((-4, -10, -4), (8, 2, 8), helm_crown())]))
     B.append(Bone("helm_plume", "head", tag="helm", boxes=[
-        Box((-1, -14, -4), (2, 4, 8), ember_plume("pl")),
-        Box((-1, -12, 3.5), (2, 9, 2), ember_plume("tail", tail=True), dil=0.1)]))
+        Box((-1, -14, -4), (2, 4, 8), plume_calm()),
+        Box((-1, -12, 3.5), (2, 9, 2), plume_calm(tail=True), dil=0.1)]))
     B.append(Bone("right_arm", "body", (-5, -10, 0), [Box((-3, -2, -2), (4, 12, 4), arm())]))
     B.append(Bone("right_hand", "right_arm", (-1, 8, 0)))
     B.append(Bone("left_arm", "body", (5, -10, 0), [Box((-1, -2, -2), (4, 12, 4), arm())]))
@@ -192,7 +228,7 @@ def bones():
     B.append(Bone("fur_collar", "body", boxes=[Box((-5.5, -12.5, -3), (11, 3, 6), gorget_fur(), dil=0.2)]))
     B.append(Bone("tabard", "body", team=True, boxes=[Box((-4, -12, -2), (8, 12, 4), "tabard", dil=0.3, sheet="cloth")]))
     B.append(Bone("belt", "body", boxes=[Box((-4, -3, -2), (8, 2, 4), belt(), dil=0.45)]))
-    B.append(Bone("cape", "body", (0, -12, 3.6), team=True, rot=(8, 0, 0), boxes=[Box((-5, 0, 0), (10, 14, 1), "cape", sheet="cloth")]))
+    B.append(Bone("cape", "body", (0, -10.5, 2.4), team=True, rot=(0, 0, 0), boxes=[Box((-4, 0, 0), (8, 10, 1), "cape", sheet="cloth")]))
     for side in ("right", "left"):
         c = -1 if side == "right" else 1
         B.append(Bone(f"{side}_pauldron", f"{side}_arm", (c, -2.5, 0), rot=(0, 0, 14 * c), boxes=[
@@ -205,8 +241,8 @@ def bones():
         B.append(Bone(f"{side}_boot", f"{side}_leg", boxes=[Box((-2.5, 9, -3), (5, 3, 5), boot())]))
         inner = 3 if side == "right" else 0
         B.append(Bone(f"{side}_skirt", f"{side}_leg", team=True, boxes=[
-            Box((-2, 0, -2.45), (4, 8, 0), ("flap", inner), sheet="cloth"),
-            Box((-2, 0, 2.45), (4, 8, 0), ("flap", 3 - inner), sheet="cloth")]))
+            Box((-2, 0, -2.45), (4, 6, 0), ("flap", inner), sheet="cloth"),
+            Box((-2, 0, 2.45), (4, 6, 0), ("flap", 3 - inner), sheet="cloth")]))
     return B
 
 def cloth_painter(spec, side):

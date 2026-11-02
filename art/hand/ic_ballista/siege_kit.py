@@ -1,7 +1,8 @@
-"""Ironclad siege kit for the Ballista Crew, the Mortar and Brassjaw, at one texel per model pixel.
+"""Ironclad siege kit for the Ballista Crew and the Mortar (and the shared oak/brass/rope ramps), at one texel per model pixel.
 
 Builds on art/hand/ic_breaker/ironclad.py (the House palette: gunmetal iron, ember, fur, oiled leather) and adds what
-the siege troops need: seasoned oak, scorched brass, tarred rope, long-axis grain, hoops and the crewman's harness.
+the siege troops need: seasoned oak, scorched brass, tarred rope, long-axis grain, hoops and the crewman's harness
+(calm top-lit mail, one long vambrace plate, leather glove).
 Light follows handlib: top front, the wearer's right, a bright top rim, a dark bottom seam.
 """
 import os, sys
@@ -125,11 +126,25 @@ def cap_painter(goggles=False):
         return g
     return paint
 
+def calm_mail(base=3):
+    """Calm mail: flat value steps, top-lit, one faint horizontal course every third row; no checker."""
+    def paint(face, w, h):
+        g = blank(w, h)
+        for y in range(h):
+            for x in range(w):
+                v = base + LIT[face] + (lightx(face, x, w) if face not in ("top", "bottom") else 0)
+                if face not in ("top", "bottom"):
+                    if y == 0: v += 1
+                    elif y % 3 == 2: v -= 1
+                g[y][x] = clamp(IRON, v)
+        return g
+    return paint
+
 def coif():
-    return mail_ic(3)
+    return calm_mail(3)
 
 def crew_body_painter(seed="cb"):
-    return rows([(0, lames([3, 3, 3], base=3, seed=seed, wear=6, rivets=True)), (9, leather_ic(base=2, stitch=True))])
+    return rows([(0, lames([6], base=3, seed=seed, wear=2, rivets=True)), (6, lames([3], base=3, seed=seed + "b", wear=2, rivets=False)), (9, leather_ic(base=2, stitch=True))])
 
 def crew_belt():
     def paint(face, w, h):
@@ -142,10 +157,25 @@ def crew_belt():
     return paint
 
 def crew_arm():
-    return rows([(0, mail_ic(3)), (3, lames([3, 3, 2], base=3, seed="carm", wear=3)), (9, leather_ic(base=2, stitch=True))])
+    return rows([(0, calm_mail(3)), (3, lames([6], base=3, seed="carm", wear=1, rivets=False)), (9, leather_ic(base=2, stitch=False))])
+
+def flat_course(base, rim=True, lip=True):
+    """Flat iron: one value per face (right and front lit, left and back a step down, never black), a bright top row and a dark lip."""
+    def paint(face, w, h):
+        g = blank(w, h)
+        for y in range(h):
+            for x in range(w):
+                v = base + (1 if face == "top" else (-1 if face in ("left", "back") else 0)) + (-1 if face == "bottom" else 0)
+                if face not in ("top", "bottom"):
+                    if rim and y == 0: v += 1
+                    if lip and y == h - 1 and h > 2: v -= 1
+                g[y][x] = clamp(IRON, v)
+        return g
+    return paint
 
 def crew_leg():
-    return rows([(0, mail_ic(2)), (4, lames([2, 2, 2], base=2, seed="cleg", wear=3, rivets=False)), (8, leather_ic(base=1))])
+    """Thigh in flat mail, one long greave plate, a leather garter; no gradients, no speckle."""
+    return rows([(0, flat_course(4, lip=False)), (4, flat_course(4)), (9, leather_ic(base=2))])
 
 def spaulder_lame(i):
     def paint(face, w, h):
