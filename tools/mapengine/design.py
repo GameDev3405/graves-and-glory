@@ -5,10 +5,12 @@ import pathlib
 import tempfile
 
 FORMAT = 1
-KINDS = ('hill', 'river', 'road', 'point', 'spawn', 'zone')
+KINDS = ('hill', 'river', 'road', 'point', 'spawn', 'zone', 'note')
 TEAMS = ('dawn', 'dusk')
 BY = ('kort', 'ai')
 STATES = ('accepted', 'proposed')
+MAX_BRIEF = 8000
+MAX_NOTE = 2000
 PALETTES_PATH = pathlib.Path(__file__).resolve().parent / 'palettes.json'
 
 
@@ -56,6 +58,12 @@ def validate(d):
     if not (_int(w) and w > 0 and _int(dp) and dp > 0):
         out.append('width and depth must be positive integers')
         w = dp = 0
+    brief = d.get('brief', '')
+    if not isinstance(brief, str) or len(brief) > MAX_BRIEF:
+        out.append(f'brief must be text of at most {MAX_BRIEF} characters')
+    review = d.get('review', [])
+    if not isinstance(review, list) or not all(isinstance(r, str) for r in review):
+        out.append('review must be a list of strings')
     seen = set()
     names = set()
     palettes = palette_keys()
@@ -101,20 +109,33 @@ def validate(d):
                 out.append(f'{oid}: duplicate point name {name!r}')
             else:
                 names.add(name)
+        elif kind == 'note':
+            _range(o, 'radius', 4, 200, out)
+            text = o.get('text')
+            if not isinstance(text, str) or not text.strip() or len(text) > MAX_NOTE:
+                out.append(f'{oid}: text must be 1 to {MAX_NOTE} characters')
         elif kind == 'zone' and o.get('palette') not in palettes:
             out.append(f'{oid}: palette must be one of {", ".join(sorted(palettes))}')
         if kind == 'spawn' and o.get('team') not in TEAMS:
             out.append(f'{oid}: team must be dawn or dusk')
-        if kind in ('point', 'spawn'):
+        if kind in ('point', 'spawn', 'note'):
             x, z = o.get('x'), o.get('z')
             if not (_num(x) and _num(z) and 0 <= x < w and 0 <= z < dp):
                 out.append(f'{oid}: x and z must be inside the canvas (0..{w} by 0..{dp})')
     return out
 
 
+def locked(o):
+    """Kort placed, edited or accepted it: an AI draft may not change or delete it."""
+    return o.get('by') == 'kort' or o.get('state') == 'accepted'
+
+
 def build_problems(d):
     out = []
     objs = d.get('objects', [])
+    waiting = sum(1 for o in objs if o.get('state') == 'proposed')
+    if waiting:
+        out.append(f'{waiting} AI proposal{"s" if waiting != 1 else ""} not reviewed: accept or reject them before building')
     for team in TEAMS:
         if not any(o.get('kind') == 'spawn' and o.get('team') == team for o in objs):
             out.append(f'no {team} spawn: add a spawn for {team}')
