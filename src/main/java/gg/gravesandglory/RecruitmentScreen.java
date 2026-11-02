@@ -68,6 +68,7 @@ class RecruitmentScreen extends ArmyScreen {
             int x=getX(),y=getY();var t=Spec.TROOPS[index];boolean chosen=selected==index;
             g.fill(x,y,x+width,y+height,chosen?0xff30474a:isHovered()?0xff354146:0xff222d32);
             if(chosen||isFocused())g.drawBorder(x,y,width,height,DarkUi.GOLD);
+            DarkUi.focus(g,this);
             String fielded=roster[index]+" / "+listed(t);
             if(height>=24){g.drawItem(new net.minecraft.item.ItemStack(net.minecraft.registry.Registries.ITEM.get(new net.minecraft.util.Identifier(t.weapon()))),x+5,y+5);
                 DarkUi.label(g,t.name(),x+28,y+3,DarkUi.IVORY);DarkUi.label(g,price(t)+" gold",x+28,y+15,DarkUi.MUTED);DarkUi.label(g,fielded,x+width-40,y+15,DarkUi.MUTED);}

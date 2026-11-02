@@ -36,8 +36,9 @@ final class CampScreen extends ArmyScreen {
     CampScreen(String page){super("Banner camp");this.page=alias(page);for(int k:watched())if(keyDown.test(k))held.add(k);}
     /** The keys the War Table acts on (its pages' keys, Tab, the arrows) and the menu key, which closes it. */
     static List<Integer> watched(){
-        List<Integer> keys=new ArrayList<>(List.of(GLFW.GLFW_KEY_ESCAPE,GLFW.GLFW_KEY_ENTER,GLFW.GLFW_KEY_KP_ENTER,GLFW.GLFW_KEY_SPACE,GLFW.GLFW_KEY_TAB,GLFW.GLFW_KEY_B,GLFW.GLFW_KEY_LEFT,GLFW.GLFW_KEY_RIGHT,GLFW.GLFW_KEY_UP,GLFW.GLFW_KEY_DOWN));
-        if(menu!=null){var bound=InputUtil.fromTranslationKey(menu.getBoundKeyTranslationKey());if(bound.getCategory()==InputUtil.Type.KEYSYM&&bound.getCode()>=0&&!keys.contains(bound.getCode()))keys.add(bound.getCode());}
+        List<Integer> keys=new ArrayList<>(List.of(GLFW.GLFW_KEY_ESCAPE,GLFW.GLFW_KEY_ENTER,GLFW.GLFW_KEY_KP_ENTER,GLFW.GLFW_KEY_SPACE,GLFW.GLFW_KEY_TAB,GLFW.GLFW_KEY_LEFT,GLFW.GLFW_KEY_RIGHT,GLFW.GLFW_KEY_UP,GLFW.GLFW_KEY_DOWN));
+        for(var binding:new net.minecraft.client.option.KeyBinding[]{menu,banner}){ // the menu key closes the table and the banner key opens that page: both are the player's own
+            if(binding==null)continue;var bound=InputUtil.fromTranslationKey(binding.getBoundKeyTranslationKey());if(bound.getCategory()==InputUtil.Type.KEYSYM&&bound.getCode()>=0&&!keys.contains(bound.getCode()))keys.add(bound.getCode());}
         return keys;
     }
     /** The page a name opens: the old names still sent (the war gates' match is the field, the private room is on Friends, the Quartermaster's army is the Banner), else the name. */
@@ -178,6 +179,7 @@ final class CampScreen extends ArmyScreen {
         @Override public void renderButton(DrawContext g,int mx,int my,float delta){
             int x=getX(),y=getY();boolean chosen=selected(),focus=active&&(isHovered()||isFocused());
             g.fill(x,y,x+width,y+height,chosen?DarkUi.TAB_CHOSEN:focus?DarkUi.TAB_FOCUS:DarkUi.TAB_IDLE);g.drawBorder(x,y,width,height,chosen||focus?DarkUi.GOLD:DarkUi.TAB_EDGE);
+            DarkUi.focus(g,this);
             for(var row:Spec.HOUSES)if(row.id().equals(house))g.drawTexture(new Identifier(row.glyph()),x+6,y+6,0f,0f,16,16,16,16);
             var font=textRenderer;g.drawText(font,font.trimToWidth(getMessage().getString(),width-34),x+28,y+10,chosen?DarkUi.PAPER:DarkUi.MUTED,false);
             if(chosen)g.fill(x,y+height-2,x+width,y+height,DarkUi.GOLD);
