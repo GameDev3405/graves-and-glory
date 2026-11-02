@@ -1,0 +1,19 @@
+{
+ "troop": "wm_oldhorn",
+ "note": "Old Horn, the Antlered Alpha (unit identity, Wildmoot; Legendary; polar bear entity on the hound rig, own bear boxes): a huge low bear with a hump under a 16 px antler rack of branching tines, a shaggy bark coat, a grey scarred muzzle, clay warpaint and clay-glow eyes, a bone-and-feather mantle bound in ochre over the shoulder hump on a team-colour hide mantle. No war-banner (an open question for Kort). Tier I only. No back flag.",
+ "rig": "hound",
+ "size": [
+  128,
+  128
+ ],
+ "density": 1,
+ "bones": [],
+ "idleArms": "hang",
+ "parts": [],
+ "skins": {
+  "1": "wm_oldhorn_s1.png"
+ },
+ "weapon": "none",
+ "hand": "right",
+ "portrait": "beast 24"
+}

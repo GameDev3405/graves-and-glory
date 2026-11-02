@@ -1,0 +1,19 @@
+{
+ "troop": "wm_hunter",
+ "note": "Wildmoot Hide Hunter (unit identity, Wildmoot): lean hunched boar-kin archer with floppy ears, small tusks, clay brow stripes, a leather cap with an ochre-stitched brim and a three-feather fan on the left, a hide cloak and quiver on the back, a team jerkin and the order bow in the left hand. Tier I only. No back flag.",
+ "rig": "biped",
+ "size": [
+  128,
+  128
+ ],
+ "density": 1,
+ "bones": [],
+ "idleArms": "hang",
+ "parts": [],
+ "skins": {
+  "1": "wm_hunter_s1.png"
+ },
+ "weapon": "order_bow",
+ "hand": "left",
+ "portrait": "tall 4"
+}
