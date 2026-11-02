@@ -139,10 +139,24 @@ def world(pose):
     return out
 
 
+# The knight's boots, toe caps and knee plates stand up to 1 px proud of the rig's shins (Task 16 fix r3: ten corpses
+# rested with a boot toe 0.85 to 1.0 px under the ground), so a death lands on them too: their boxes ride the shin.
+_KNIGHT = json.loads((ROOT / 'src/main/resources/assets/gravesandglory/models/troop/knight.json').read_text(encoding='utf-8'))
+ARMOUR = [(b['parent'], box) for b in _KNIGHT['bones'] if b['name'].endswith(('_boot', '_toe', '_knee')) for box in b['boxes']]
+
+
 def lowest(pose):
-    """The lowest y of the posed rig's pivots and corners, less the bones the client hides in a death (C.HIDDEN_IN_DEATH:
-    the illager fold, which otherwise held a face-down corpse 4 px off the ground on a box nobody sees)."""
-    return max(y for b, y in C.points(RIG, pose) if b not in C.HIDDEN_IN_DEATH)
+    """The lowest y of the posed rig's pivots and corners and of the knight's leg armour (ARMOUR), less the bones the
+    client hides in a death (C.HIDDEN_IN_DEATH: the illager fold, which otherwise held a face-down corpse 4 px off the
+    ground on a box nobody sees)."""
+    low = max(y for b, y in C.points(RIG, pose) if b not in C.HIDDEN_IN_DEATH)
+    w = world(pose)
+    for parent, box in ARMOUR:
+        r, o = w[parent]
+        for c in range(8):
+            q = [box['origin'][i] + (box['size'][i] if c >> i & 1 else 0) for i in range(3)]
+            low = max(low, o[1] + mat_vec(r, q)[1])
+    return low
 
 
 def grounded(pose, about=None, lift=0.0):
