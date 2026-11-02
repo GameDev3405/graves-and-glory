@@ -66,6 +66,33 @@ public final class ModeMath {
         };
     }
 
+    // ---- Survival, the waves at the shrine (Phase 4 spec 6) ----
+    /** The rise warning's feed line: "The dead rise at the chapel", "... at the chapel and the ford", "... at a, b and c". */
+    public static String riseLine(List<String> sites) {
+        if(sites.isEmpty())return "The dead rise";
+        if(sites.size()==1)return "The dead rise at "+sites.get(0);
+        return "The dead rise at "+String.join(", ",sites.subList(0,sites.size()-1))+" and "+sites.get(sites.size()-1);
+    }
+    /** A cleared wave's feed line: "Wave 3 laid to rest, +80 gold", or without gold "Wave 7 laid to rest". */
+    public static String restLine(int wave,int gold) {
+        return "Wave "+wave+" laid to rest"+(gold>0?", +"+gold+" gold":"");
+    }
+    /** The feed line as the dead begin to take the shrine. */
+    public static final String SHRINE_LINE="The dead are taking the shrine";
+    /**
+     * The round's result after a second of Survival: 1 (the dead win) once they held the shrine lossSeconds with no defender on
+     * it; else 0 (the defenders win) when the last wave (wave = waves, counted from 1) is cleared or its timer is out; else -1, play on.
+     */
+    public static int survivalResult(int wave,int waves,boolean cleared,boolean timerOut,int lostSeconds,int lossSeconds) {
+        if(lostSeconds>=lossSeconds)return 1;
+        if(wave>=waves&&(cleared||timerOut))return 0;
+        return -1;
+    }
+    /** One second of the shrine: the dead on it with no defender add a second; a defender on it, or no dead, sets it back to 0 (the hold must be unbroken). */
+    public static int shrineLost(int lostSeconds,int dead,int defenders) {
+        return dead>0&&defenders==0?lostSeconds+1:0;
+    }
+
     // ---- Convoy, the supply-wagon escort (spec 2026-10-31-convoy-escort-design.md, sections 3 and 6) ----
     /** The wagon's four states: pushed forward, stopped by an enemy, left alone, rolling back. */
     public static final String MOVING="moving",CONTESTED="contested",IDLE="idle",ROLLBACK="rollback";
