@@ -3,7 +3,7 @@ import base64
 import json
 import pathlib
 import re
-import shutil
+import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import unquote, urlparse
 
@@ -17,6 +17,7 @@ from mapengine.terrain import heightfield
 WEB = pathlib.Path(__file__).resolve().parent / 'web'
 ID_RE = re.compile(r'[a-z0-9_-]{1,40}')
 NAME_RE = re.compile(r'[A-Za-z0-9 _-]{1,40}')
+MAX_BODY = 16 * 1024 * 1024
 TYPES = {'.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8',
          '.css': 'text/css; charset=utf-8', '.json': 'application/json', '.svg': 'image/svg+xml',
          '.png': 'image/png'}
@@ -26,8 +27,13 @@ def _b64(arr, dtype):
     return base64.b64encode(np.ascontiguousarray(arr, dtype=dtype).tobytes()).decode('ascii')
 
 
+class BadLength(Exception):
+    pass
+
+
 def make_server(maps_dir, work_dir, port):
     maps_dir, work_dir = pathlib.Path(maps_dir), pathlib.Path(work_dir)
+    write_lock = threading.Lock()
 
     class Handler(BaseHTTPRequestHandler):
         protocol_version = 'HTTP/1.0'
@@ -49,14 +55,32 @@ def make_server(maps_dir, work_dir, port):
             self.send(status, {'errors': list(msgs)})
 
         def body_json(self):
+            """Parsed JSON body, or None if unparseable. Raises BadLength / OverflowError on a bad size."""
+            raw = self.headers.get('Content-Length')
             try:
-                n = int(self.headers.get('Content-Length') or 0)
+                n = 0 if raw is None else int(raw)
+            except ValueError:
+                raise BadLength()
+            if n < 0:
+                raise BadLength()
+            if n > MAX_BODY:
+                raise OverflowError('too large')
+            try:
                 return json.loads(self.rfile.read(n).decode('utf-8'))
             except (ValueError, UnicodeDecodeError):
                 return None
 
+        def host_ok(self):
+            port = self.server.server_address[1]
+            return self.headers.get('Host') in (f'127.0.0.1:{port}', f'localhost:{port}')
+
         def route(self, method):
             try:
+                if not self.host_ok():
+                    return self.err(403, 'forbidden host')
+                ctype = (self.headers.get('Content-Type') or '').lower()
+                if method != 'GET' and not ctype.startswith('application/json'):
+                    return self.err(415, 'Content-Type must be application/json')
                 path = urlparse(self.path).path
                 if path.startswith('/api/'):
                     self.api(method, [unquote(p) for p in path[5:].split('/')])
@@ -64,8 +88,14 @@ def make_server(maps_dir, work_dir, port):
                     self.static(unquote(path))
                 else:
                     self.err(404, 'not found')
-            except Exception as e:  # never crash the server on a bad request
-                self.err(500, f'server error: {e}')
+            except design.DesignError as e:
+                self.err(422, *e.problems)
+            except OverflowError:
+                self.err(413, 'request body too large')
+            except BadLength:
+                self.err(400, 'bad Content-Length')
+            except Exception:  # never crash the server on a bad request
+                self.err(500, 'server error')
 
         do_GET = lambda self: self.route('GET')  # noqa: E731
         do_PUT = lambda self: self.route('PUT')  # noqa: E731
@@ -105,12 +135,15 @@ def make_server(maps_dir, work_dir, port):
                     problems = [f'id must be {did}']
                 if problems:
                     return self.err(400, *problems)
-                design.save(dpath, d)
+                with write_lock:
+                    design.save(dpath, d)
                 return self.send(200, {'ok': True})
             if not dpath.is_file():
                 return self.err(404, 'no such design')
             if rest == [] and method == 'GET':
-                return self.send(200, dpath.read_bytes())
+                with write_lock:
+                    data = dpath.read_bytes()
+                return self.send(200, data)
             if rest == ['versions'] and method == 'GET':
                 rows = [{'name': p.stem, 'mtime': p.stat().st_mtime} for p in (ddir / 'versions').glob('*.json')
                         if NAME_RE.fullmatch(p.stem)]
@@ -123,25 +156,32 @@ def make_server(maps_dir, work_dir, port):
                     return self.err(400, 'name must be 1-40 letters, digits, spaces, _ or -')
                 vpath = ddir / 'versions' / f'{name}.json'
                 if rest == ['versions']:
-                    vpath.parent.mkdir(exist_ok=True)
-                    shutil.copyfile(dpath, vpath)
+                    with write_lock:
+                        design.write_atomic(vpath, dpath.read_bytes())
                 else:
                     if not vpath.is_file():
                         return self.err(404, 'no such version')
-                    problems = design.validate(json.loads(vpath.read_text(encoding='utf-8')))
-                    if problems:
-                        return self.err(400, *problems)
-                    shutil.copyfile(vpath, dpath)
+                    with write_lock:
+                        data = vpath.read_bytes()
+                        try:
+                            problems = design.validate(json.loads(data.decode('utf-8')))
+                        except (ValueError, UnicodeDecodeError):
+                            problems = ['version is not valid JSON']
+                        if problems:
+                            return self.err(400, *problems)
+                        design.write_atomic(dpath, data)
                 return self.send(200, {'ok': True})
             if rest == ['field'] and method == 'GET':
-                d = design.load(dpath)
+                with write_lock:
+                    d = design.load(dpath)
                 f = heightfield(d)
                 return self.send(200, {'width': d['width'], 'depth': d['depth'],
                                        'height': _b64(f.height, '<i2'), 'water': _b64(f.water, '<i2'),
                                        'road': _b64(f.road, 'u1'), 'zone': _b64(f.zone, '<i2'),
                                        'zones': f.zones})
             if rest == ['build'] and method == 'POST':
-                d = design.load(dpath)
+                with write_lock:
+                    d = design.load(dpath)
                 out = work_dir / did
                 try:
                     manifest = mbuild.build(d, out)

@@ -1,6 +1,8 @@
 """Map engine design file: schema, validation, load/save. Pure data, no Minecraft."""
 import json
+import os
 import pathlib
+import tempfile
 
 FORMAT = 1
 KINDS = ('hill', 'river', 'road', 'point', 'spawn', 'zone')
@@ -121,10 +123,25 @@ def load(path):
     return d
 
 
-def save(path, d):
+def write_atomic(path, data):
+    """Write bytes to path via a temp file in the same directory, so readers never see a partial file."""
     p = pathlib.Path(path)
     p.parent.mkdir(parents=True, exist_ok=True)
-    p.write_bytes((json.dumps(d, sort_keys=True, indent=1) + '\n').encode('utf-8'))
+    fd, tmp = tempfile.mkstemp(dir=p.parent, prefix='.tmp-', suffix=p.suffix)
+    try:
+        with os.fdopen(fd, 'wb') as f:
+            f.write(data)
+        os.replace(tmp, p)
+    except BaseException:
+        try:
+            os.unlink(tmp)
+        except OSError:
+            pass
+        raise
+
+
+def save(path, d):
+    write_atomic(path, (json.dumps(d, sort_keys=True, indent=1) + '\n').encode('utf-8'))
 
 
 def next_id(d, kind):

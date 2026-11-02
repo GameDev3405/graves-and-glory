@@ -41,9 +41,13 @@ class ServerTest(unittest.TestCase):
         self.addCleanup(self.srv.shutdown)
         self.base = f'http://127.0.0.1:{self.srv.server_address[1]}'
 
-    def call(self, method, path, body=None, raw=None):
+    def call(self, method, path, body=None, raw=None, headers=None):
         data = raw if raw is not None else (None if body is None else json.dumps(body).encode())
         req = urllib.request.Request(self.base + path, data=data, method=method)
+        if method != 'GET':
+            req.add_header('Content-Type', 'application/json')
+        for k, v in (headers or {}).items():
+            req.add_header(k, v)
         try:
             with urllib.request.urlopen(req) as r:
                 return r.status, r.read(), r.headers
@@ -125,6 +129,71 @@ class ServerTest(unittest.TestCase):
         self.assertIn('tiles', r['manifest'])
         self.assertIsInstance(r['issues'], list)
         self.assertTrue((self.work / 't' / 'map.json').exists())
+
+    def test_concurrent_puts_leave_a_loadable_design(self):
+        bodies = []
+        for i in range(10):
+            d = tiny()
+            d['name'] = f'N{i}'
+            bodies.append(d)
+        stop = threading.Event()
+        reads = []
+
+        def reader():
+            while not stop.is_set():
+                st, b, _ = self.call('GET', '/api/design/t')
+                reads.append((st, b))
+
+        rt = threading.Thread(target=reader)
+        rt.start()
+        ts = [threading.Thread(target=self.call, args=('PUT', '/api/design/t', d)) for d in bodies]
+        for t in ts:
+            t.start()
+        for t in ts:
+            t.join()
+        stop.set()
+        rt.join()
+        got = design.load(self.maps / 't' / 'design.json')
+        self.assertIn(got, bodies)
+        for st, b in reads:
+            self.assertEqual(st, 200)
+            json.loads(b)
+        self.assertEqual([p.name for p in (self.maps / 't').iterdir()], ['design.json'])
+
+    def test_bad_host_403(self):
+        self.assertEqual(self.call('GET', '/api/designs', headers={'Host': 'evil.example'})[0], 403)
+        port = self.srv.server_address[1]
+        self.assertEqual(self.call('GET', '/api/designs', headers={'Host': f'localhost:{port}'})[0], 200)
+
+    def test_non_json_content_type_415(self):
+        req = urllib.request.Request(self.base + '/api/design/t', data=json.dumps(tiny()).encode(), method='PUT')
+        req.add_header('Content-Type', 'text/plain')
+        with self.assertRaises(urllib.error.HTTPError) as cm:
+            urllib.request.urlopen(req)
+        self.assertEqual(cm.exception.code, 415)
+
+    def test_content_length_limits(self):
+        import socket
+        port = self.srv.server_address[1]
+
+        def raw(cl):
+            s = socket.create_connection(('127.0.0.1', port), timeout=5)
+            s.sendall((f'PUT /api/design/t HTTP/1.0\r\nHost: 127.0.0.1:{port}\r\n'
+                       f'Content-Type: application/json\r\n{cl}\r\n\r\n').encode())
+            data = s.recv(200)
+            s.close()
+            return int(data.split()[1])
+        self.assertEqual(raw('Content-Length: -5'), 400)
+        self.assertEqual(raw('Content-Length: abc'), 400)
+        self.assertEqual(raw('Content-Length: 99999999999'), 413)
+        self.assertEqual(raw('X-Nothing: 1'), 400)
+
+    def test_corrupt_design_on_disk_422(self):
+        (self.maps / 't' / 'design.json').write_text('{"format": 1, "objects": [5]}', encoding='utf-8')
+        for m, p in (('GET', '/field'), ('POST', '/build')):
+            st, r = self.js(m, '/api/design/t' + p)
+            self.assertEqual(st, 422)
+            self.assertTrue(r['errors'])
 
     def test_build_error_400(self):
         d = design.new_design('t', 'T', 128, 64)
