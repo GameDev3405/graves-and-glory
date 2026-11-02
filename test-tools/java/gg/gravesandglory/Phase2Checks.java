@@ -5214,6 +5214,8 @@ public final class Phase2Checks implements ClientModInitializer {
         static final Set<Integer> TURN_ANGLES=new HashSet<>();
         static{String v=System.getenv("GRAVES_PHASE2_TURN_ANGLES");if(v==null||v.isBlank())for(int a:ANGLES)TURN_ANGLES.add(a);else for(String a:v.split(","))TURN_ANGLES.add(Integer.parseInt(a.trim()));}
         static final float BOW_RECOVERY=1.0f;
+        /** Task 16 r6: the turn suite's nock pose, an arrow on the string and the cant coming in (bow_draw keys the nock 0.12 to 0.48). */
+        static final float BOW_NOCK=0.25f;
         /** The windup second of an attack clip: its "windup" marker, else 45 percent of the way to its impact, on a tick. */
         static float windup(TroopModel<?> m,String clip,float impact){
             var c=TroopMotion.resolve(m,clip);Double w=c==null?null:c.markers().get("windup");
@@ -5277,7 +5279,7 @@ public final class Phase2Checks implements ClientModInitializer {
                 // Task 16 r5: an attack is shot over its stance as the engine sums them in battle (guard; a ranged troop aim), at its windup,
                 // its impact and its recovery (TURN_ATTACKS: the default alias, or named clips); a bow's draw, loose and recovery on bow_draw
                 var tm=TroopModels.model(t);
-                if(bow){poses.add(new Object[]{"draw","bow_draw",TroopMotion.BOW_FULL});poses.add(new Object[]{"loose","bow_draw",TroopMotion.BOW_LOOSE});poses.add(new Object[]{"recovery","bow_draw",BOW_RECOVERY});}
+                if(bow){poses.add(new Object[]{"nock","bow_draw",BOW_NOCK});poses.add(new Object[]{"draw","bow_draw",TroopMotion.BOW_FULL});poses.add(new Object[]{"loose","bow_draw",TroopMotion.BOW_LOOSE});poses.add(new Object[]{"recovery","bow_draw",BOW_RECOVERY});}
                 else{
                     String stance=row!=null&&row.ranged()?"aim":"guard";if(!magic)poses.add(new Object[]{"guard",stance,0f});
                     for(String a:TURN_ATTACKS){
