@@ -1522,7 +1522,7 @@
       "piece": "-",
       "rotation": 0,
       "hp": 0.0,
-      "seconds": 20,
+      "seconds": 15,
       "note": "Siege draft value (siege spec section 5); attackers hold the ring uncontested for 20 s"
     },
     {
