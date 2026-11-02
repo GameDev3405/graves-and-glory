@@ -4,6 +4,7 @@ import io
 import json
 import zipfile
 from release_config import ROOT, source_identity, validate_player_jar
+from package_policy import package_policy_errors
 
 manifest = json.loads((ROOT / 'dist/package-manifest.json').read_text())
 path = ROOT / 'dist' / manifest['fileName']
@@ -28,6 +29,15 @@ with zipfile.ZipFile(path) as archive:
         folder = 'mods' if '/mods/' in dep['path'] else 'shaderpacks' if '/shaders/' in dep['path'] else 'resourcepacks'
         if hashlib.sha256(archive.read(folder + '/' + dep['fileName'])).hexdigest() != dep['sha256']:
             raise RuntimeError('Packaged dependency differs from pin: ' + dep['fileName'])
+# Strict package policy (plan 6.1): exact pins, credits and licences for every third-party file, no stopgap mark.
+deps = json.loads((ROOT / 'dependencies/manifest.json').read_text(encoding='utf8'))
+with zipfile.ZipFile(path) as archive:
+    texts = {n: archive.read(n).decode('utf8', errors='replace') for n in names
+             if n == 'docs/THIRD_PARTY.md' or (n.startswith('docs/third-party/') and n.endswith(('.md', '.txt', '.json')) and archive.getinfo(n).file_size < 400000)}
+problems = package_policy_errors(names, texts, deps, identity['version'], manifest['fileName'],
+                                 (ROOT / 'build.gradle').read_text(encoding='utf8'))
+if problems:
+    raise RuntimeError('Strict package policy failed:\n  ' + '\n  '.join(problems))
 print(json.dumps({'result':'PASS', 'file':str(path), 'entriesVerified':len(names),
                   'sha256':manifest['sha256'], 'build':identity,
                   'scope':'Archive integrity only; no Minecraft or launcher session executed.'},indent=2))
