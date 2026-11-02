@@ -1,6 +1,6 @@
 # Audio cues
 
-Every sound the mod owns is an original synthesis; nothing is downloaded or borrowed, so there are no third-party licences or credits to carry. Table: `AudioCues.java` (volume, category, who hears it, cooldown). Files: `src/main/resources/assets/gravesandglory/sounds/`, registered in `sounds.json` with subtitles in `lang/en_us.json`.
+The 23 older cues are original syntheses. The combat, magic, clock, drum and music cues are royalty-free Pixabay recordings (Pixabay Content Licence: use in a game is allowed, no attribution required; credited below anyway), converted by `tools/audio/import_pixabay.py`. Table: `AudioCues.java` (volume, category, who hears it, cooldown). Files: `src/main/resources/assets/gravesandglory/sounds/`, registered in `sounds.json` with subtitles in `lang/en_us.json`.
 
 Rebuild: `python tools/audio/make_cues.py [cue_id ...]` (numpy and ffmpeg on PATH; mono 44.1 kHz Ogg Vorbis, q4, deterministic seeds). The six older files (battle_intro, unit_reveal, victory, three horns) come from `tools/create_battle_audio.py`. Change a level in `AudioCues`, not in the file.
 
@@ -28,4 +28,57 @@ Rebuild: `python tools/audio/make_cues.py [cue_id ...]` (numpy and ffmpeg on PAT
 | wave_warning.ogg | Survival warns of the next wave (soul-fire sites glow) | One long cold horn with a flat second voice and a drum, 3.7 s |
 | wave_rise.ogg | The warned wave rises | Swelling drum roll, then a full horn line and big drum, 4.2 s |
 
-Not yet cued: troop deaths and per-unit combat sounds still use vanilla events in `Abilities`, `BattleEffects` and `Tactics`; they are positional and want a separate pass. The Banner page has no drag sounds.
+## Pixabay cues
+
+Each id is a variant group in `sounds.json`; the game picks one file at random. Combat cues are positional (Audio.at), keyed per soldier, with a cooldown and a per-tick cap in `AudioCues` so thirty troops stay a murmur; pitch varies by about 6 percent. One-shots are mono, 44.1 kHz, Ogg Vorbis q4, trimmed of leading silence and cut under 1.5 s, matched in loudness inside each group.
+
+| Event | Trigger | Files |
+| --- | --- | --- |
+| combat.shield_block | A hit on a raised shield (melee or missile); the Knight's shield bash | shield_block_1 to 3 |
+| combat.heavy_metal_hit | A landed blow by an axe, mace or hammer troop or the Colossus; a slam | heavy_metal_hit_1 |
+| combat.sword_swing | A blade troop's swing (every second slot) | sword_swing_1, 2 |
+| combat.sword_clash | A blade hitting an armed melee troop | sword_clash_1 to 4 |
+| combat.armor_hit | A blade hitting a metal-armoured troop with no weapon | armor_hit_1 |
+| combat.bow_shoot | An archer or crossbow shot leaves (lower for siege bolts) | bow_shoot_1 |
+| combat.arrow_hit | An arrow or bolt lands | arrow_hit_1 |
+| magic.cast | A caster's shot; the Mist Caller's cloud | magic_cast_1 |
+| magic.impact | A caster's missile or blight lands | magic_impact_1, 2 |
+| clock.tick | Each of the last ten seconds of a round's clock | clock_tick_1, 2 |
+| battle.drums | Battle entrance camera, layered under battle_intro (kept) | battle_drums |
+| music.calm | Banner Camp, lobby, War Table; 45 s gap between plays | music_calm_long_day |
+| music.epic | Once, after a round the local side won | music_epic_rebel_moon |
+| music.battle_grim, music.battle_drums | A running battle, alternating; the round's serial picks the first | music_battle_dark_grim, music_battle_drums_stomp |
+
+Music is in the music category, so the Music slider governs it, and `MusicDirector` stops vanilla music while it plays (fades 2 s in, 0.75 s out). It is silent through the entrance camera.
+
+## Credits
+
+Source: pixabay.com, downloaded 2026-11-02 (Pixabay Content Licence). Author is the Pixabay account named in the source filename.
+
+| Author | Source file | Used as |
+| --- | --- | --- |
+| yodguard | yodguard-shield_impact-1-382410.mp3, -4-382413, -5-382415 | shield_block_1 to 3 |
+| yodguard | yodguard-a-massive-axe-impact-hitting-metal-3-450254.mp3 | heavy_metal_hit_1 |
+| dragon-studio | dragon-studio-sword-slice-393847.mp3, sword-slice-2-393845 | sword_swing_1, 2 |
+| dragon-studio | dragon-studio-sword-clashhit-393837.mp3 | sword_clash_1 |
+| freesound_community | freesound_community-sword-against-sword-6341 (2).mp3 | sword_clash_2 to 4 (three hits cut from it) |
+| dragon-studio | dragon-studio-armor-impact-from-sword-393843.mp3 | armor_hit_1 |
+| u_2c8g87fmmx | u_2c8g87fmmx-bow-sound-596323.mp3 | bow_shoot_1 |
+| dennish18 | dennish18-arrow-body-impact-146419.mp3 | arrow_hit_1 |
+| daviddumaisaudio | daviddumaisaudio-magical-spell-cast-190272.mp3 | magic_cast_1 |
+| rescopicsound | rescopicsound-elemental-magic-spell-impact-outgoing-228342.mp3 | magic_impact_1 |
+| dragon-studio | dragon-studio-earth-spell-impact-478381.mp3 | magic_impact_2 |
+| oxidvideos | oxidvideos-clock-ticking-582761.mp3 | clock_tick_1, 2 |
+| dragon-studio | dragon-studio-ancient-war-drums-463214.mp3 | battle_drums |
+| purrplecat | purrplecat-long-day-518602.mp3 | music_calm_long_day |
+| audioatlant | audioatlant-rebel-moon-inspiring-emotional-epic-cinematic-trailer-short-1-628477.mp3 | music_epic_rebel_moon |
+| alex_besss | alex_besss-dark-and-grim-epic-trailer-short-628100.mp3 | music_battle_dark_grim |
+| miromaxmusic | miromaxmusic-epic-drums-stomp-percussion-no-copyright-628251.mp3 | music_battle_drums_stomp |
+
+## Still missing
+
+- Troop deaths and hurt grunts (vanilla mob sounds), beast attacks (hounds, tusk, Brute), Mortar and Ballista firing and shell bursts, the Firepot burn, spear thrusts and harpoon throws.
+- Footsteps and marching, formation changes, banner flapping, capture-point progress.
+- Siege ram swing, gate chains in motion, wagon wheels loop, survival wave ambience beyond the two horns.
+- Victory/defeat music for the losing side (defeat has only its sting), a tense track for overtime, a menu track.
+- Banner page drag sounds; Survival and Veterans still use vanilla sounds (soul escape, level-up chime, wither spawn).
