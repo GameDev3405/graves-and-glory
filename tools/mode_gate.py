@@ -23,9 +23,9 @@ CONVOY_MIN_CHECKPOINTS = 1.5
 CONVOY_MAX_STALL_SECONDS = 60
 # Siege's yard clock (sheets/design.json modes.siege roundSeconds, Kort's 185 s). The bots' mean yard-fall time is 168-184 s, so a
 # match the defence wins on that clock at stage 0 is a close yard fight, not a stuck attack. Such clock losses are allowed up to
-# 1 - WIN_MIN of the matches (the most the win band leaves the defence); a stage-0 ending any other way still fails.
+# half of the matches (Kort tightened it from 70% to 50% on 2026-11-02); a stage-0 ending any other way still fails.
 SIEGE_YARD_CLOCK_SECONDS = 185
-SIEGE_MAX_CLOCK_STAGE0 = 1 - WIN_MIN
+SIEGE_MAX_CLOCK_STAGE0 = 0.5
 
 
 def check_siege(rows):
