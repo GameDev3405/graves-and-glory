@@ -58,6 +58,7 @@ Same launch setup as round 1 (server in `<worktree>/run-server/`, Gradle client 
 |---|---|---|---|
 | 1 | Siege on Ironhold, full round, rewards | PARTIAL | PASS: see below |
 | 2 | Reconnect hold expires after 2 min | not run | PASS (release at exactly 2400 ticks); 1 major, 1 minor defect |
+| 3 | Mid-match client crash, partial gold | not run | FAIL: crashed player got 0 gold (partial pay exists only for server stop or crash) |
 
 ### R2-1 Siege on Ironhold, natural finish
 Room by SliceAlpha (size 3, map 1, mode siege, fill on), SliceBravo joined, both ready, 10 s countdown, battle with 6 seats (2 humans, 4 bots). Not force-finished: the round ran past its 185 s clock (round length later read 545 s) and ended on its own at 371 s of play with score 3 to 0. Gold Banner (Alpha, team 0) won. Both clients landed on `CampScreen` ("Gold Banner wins! Back to the war council."), result saved and eligible. Server and client profiles agree:
@@ -75,3 +76,10 @@ SliceBravo sent a clean `disconnect` about 20 s into the round. Server: a bot to
 Defects found here:
 - major: the post-expiry rejoiner was seated on team 0 (the opposite side) while the lobby roster still lists him on team 1. Server seats before: Alpha 0, bot 0, bot 0, bot 1 x3; after: Alpha 0, bot 0, bot 1 x3, Bravo 0. Within the 2 min hold he gets his own team back (round 1 5a). Reproduce: disconnect past 2 min, reconnect during the same round, read `seats` in `state-server.json` against the social roster.
 - minor: that player was credited the full winner reward (120 gold, 150 XP, 2 shards) although he was away for about 160 of 213 s. Round ended with the probe's `finish 0` at 213 s (past the 180 s minimum), so a natural finish was not exercised in this round.
+
+### R2-3 Mid-match client crash (Domination, Rivergate)
+SliceBravo's own client process was force-killed (`Stop-Process -Force`, no clean disconnect) at 46 s of play. Server: a bot took the seat at once and a 2 min hold was set, same as a clean disconnect. Alpha played on; the round was ended with `finish 0` at 193 s (Bravo never returned; the hold was still open at tick 20798). Result: Alpha VICTORY, 120 gold. **Bravo received nothing**: his server profile stayed at 200 gold, 2 matches, 1 win (no partial gold, no match counted). FAIL against the expectation "partial gold pro-rated by time played".
+
+Reading `Campaign.java` (no change made): `MatchRules.partialGold` pro-rating is only wired to an interrupted match (server stop, or a server crash through the progress checkpoint), not to a player who drops out of a match that finishes normally. That reading explains the result; whether it is intended is a design call.
+
+Defect: major. A player whose client crashes and who does not return in the same round gets no gold, XP, shards or match count for about 46 s played. Reproduce: two humans in a Domination match, force-kill one client at about 45 s, let the other human win or finish the round, read the dropped player's profile in `state-server.json`.
