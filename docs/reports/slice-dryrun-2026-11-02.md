@@ -57,6 +57,7 @@ Same launch setup as round 1 (server in `<worktree>/run-server/`, Gradle client 
 | # | Item | Round 1 | Round 2 |
 |---|---|---|---|
 | 1 | Siege on Ironhold, full round, rewards | PARTIAL | PASS: see below |
+| 2 | Reconnect hold expires after 2 min | not run | PASS (release at exactly 2400 ticks); 1 major, 1 minor defect |
 
 ### R2-1 Siege on Ironhold, natural finish
 Room by SliceAlpha (size 3, map 1, mode siege, fill on), SliceBravo joined, both ready, 10 s countdown, battle with 6 seats (2 humans, 4 bots). Not force-finished: the round ran past its 185 s clock (round length later read 545 s) and ended on its own at 371 s of play with score 3 to 0. Gold Banner (Alpha, team 0) won. Both clients landed on `CampScreen` ("Gold Banner wins! Back to the war council."), result saved and eligible. Server and client profiles agree:
@@ -67,3 +68,10 @@ Room by SliceAlpha (size 3, map 1, mode siege, fill on), SliceBravo joined, both
 | SliceBravo (loser) | BATTLE COMPLETE | 80 | 100 | gilded +1 | gilded +1 | 1 / 0 |
 
 Observation (minor, unclear if intended): the probe's `roundSeconds` read 185 at battle start and 545 by second 329, so the siege round length grows during play (probably an extension when a point is taken); the 185 s figure in round 1 was only the initial value.
+
+### R2-2 Reconnect hold expiring after 2 min (Domination, Rivergate)
+SliceBravo sent a clean `disconnect` about 20 s into the round. Server: a bot took the seat at once and `held` showed Bravo's UUID with release tick 15390; at 120.0 s after the disconnect (2400 ticks) `held` became empty, matching the 2 min rule. PASS. After the release Bravo reconnected (at 183 s of play): he was put back into the battle world and given a seat again, which means a released slot does not lock a player out.
+
+Defects found here:
+- major: the post-expiry rejoiner was seated on team 0 (the opposite side) while the lobby roster still lists him on team 1. Server seats before: Alpha 0, bot 0, bot 0, bot 1 x3; after: Alpha 0, bot 0, bot 1 x3, Bravo 0. Within the 2 min hold he gets his own team back (round 1 5a). Reproduce: disconnect past 2 min, reconnect during the same round, read `seats` in `state-server.json` against the social roster.
+- minor: that player was credited the full winner reward (120 gold, 150 XP, 2 shards) although he was away for about 160 of 213 s. Round ended with the probe's `finish 0` at 213 s (past the 180 s minimum), so a natural finish was not exercised in this round.
