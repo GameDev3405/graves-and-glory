@@ -76,6 +76,7 @@ public final class MotionEngineCheck {
         run("ground velocity", MotionEngineCheck::groundVelocity);
         run("stance slip", () -> stanceSlip(rig));
         run("corpse ground", () -> corpseGround(rig));
+        run("turn step", () -> turnStep(rig));
         run("wall strikes", MotionEngineCheck::wallStrikes);
         run("zone blocks", MotionEngineCheck::zoneBlocks);
         if (failed > 0) {
@@ -949,6 +950,46 @@ public final class MotionEngineCheck {
         }
         check(bad.length() == 0, "stance slip: " + bad + "missed (slip under 0.15, lift 1 px; moving corners are reported only): " + sb);
         return sb.toString();
+    }
+
+    /**
+     * turnStep (fix r3, grade r2 item 2): turning in place at the grader's 200 deg/s for 90 deg, a hold, and back, four seeds. Each
+     * foot steps (its lowest sole corner rises 1.5 px clear at least twice), each plant slides at most 0.15 block (SoleSlide, the
+     * grader's planted slide), and no sole corner sinks past 0.5 px (0.031 block).
+     */
+    static String turnStep(Map<String, RigBone> rig) {
+        MotionEngine.Family fam = realSwordShield(new HashMap<>());
+        double worst = 0, lo = Double.MAX_VALUE, least = Double.MAX_VALUE;
+        int fewest = Integer.MAX_VALUE;
+        for (MotionMath.Seed seed : seeds(4, 3100)) {
+            GroundTrace t = groundRun(rig, fam, seed, 4, (d, e, f) -> {
+                double r = e >= 1 && e < 1.45 ? 200 : e >= 2.5 && e < 2.95 ? -200 : 0;
+                d.turn = r; d.yawRate = r;
+            });
+            int n = t.frames();
+            for (int k = 0; k < 2; k++) {
+                boolean[] pl = new boolean[n], after = new boolean[n];
+                double[][][] fc = new double[n][][];
+                double rest = t.low(50, k), peak = 0;
+                int steps = 0;
+                boolean up = false;
+                for (int f = 0; f < n; f++) {
+                    double h = t.low(f, k);
+                    pl[f] = h <= Math.max(0.04, rest + 0.04);
+                    after[f] = f >= 55;
+                    fc[f] = t.world.get(f)[k];
+                    lo = Math.min(lo, h * 16);
+                    if (f >= 55 && (h - rest) * 16 > 1.5 && !up) { steps++; up = true; }
+                    if (up) peak = Math.max(peak, (h - rest) * 16);
+                    if (up && (h - rest) * 16 < 0.25) { least = Math.min(least, peak); peak = 0; up = false; }
+                }
+                fewest = Math.min(fewest, steps);
+                for (var q : SoleSlide.plants(k, pl, fc, after)) worst = Math.max(worst, q.slide());
+            }
+        }
+        check(fewest >= 2 && worst <= 0.15 && lo >= -0.5,
+            String.format(Locale.ROOT, "turn step: fewest steps a foot %d (want 2+), largest plant slide %.3f block (want 0.15 or less), lowest corner %+.2f px (want -0.5 or above)", fewest, worst, lo));
+        return String.format(Locale.ROOT, "fewest steps a foot %d, least step peak %.2f px, largest plant slide %.3f block, lowest corner %+.2f px", fewest, least, worst, lo);
     }
 
     /**

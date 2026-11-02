@@ -33,20 +33,51 @@ final class MotionBody {
             f.gaitW = 0;
             gaitPose(f, f.limbAngle, out);
         }
-        double rate = f.first ? f.yawRate : st.turnRate;
-        st.turnPhase = (st.turnPhase + Math.abs(rate) / 45 * Math.PI * f.dt) % TAU;
-        st.turnRate = f.yawRate;
-        if (f.tw > 0) {
-            double dir = Math.signum(rate), s = Math.sin(st.turnPhase), tw = f.tw;
-            out.add("right_shin", RX, 24 * tw * Math.max(0, s));
-            out.add("left_shin", RX, 24 * tw * Math.max(0, -s));
-            out.add("right_leg", RX, -10 * tw * Math.max(0, s));
-            out.add("left_leg", RX, -10 * tw * Math.max(0, -s));
-            out.add("right_leg", RY, 9 * dir * tw * s);
-            out.add("left_leg", RY, -9 * dir * tw * s);
-            out.add("root", RY, -dir * 4 * tw);
-        }
+        turnStep(f, st, out);
     }
+
+    /** Turn-in-place step: swing length (s), sole lift and forward reach at mid-swing (px; the reach keeps the ankleless shin near upright so the toe clears), yaw error that starts a step (deg), lead per deg/s and its cap. */
+    static final double STEP_T = 0.16, STEP_LIFT = 4, STEP_FWD = 3, STEP_AT = 10, STEP_LEAD = 0.1, STEP_LEAD_MAX = 16;
+
+    /**
+     * Turning in place steps. Each foot keeps a yaw relative to the body: a planted foot holds its place in the world, so
+     * its yaw runs back as the body turns. When the planted feet lag the turn by STEP_AT, the more twisted one lifts and
+     * swings over STEP_T to a yaw a little ahead of the turn, then plants; when the turn stops the feet step back square.
+     * MotionFeet.plant stands each foot on its turned spot (turnOff), so a planted foot does not slide.
+     */
+    static void turnStep(MotionEngine.Frame f, MotionEngine.State st, Pose out) {
+        double[] th = st.turnYaw, u = st.turnU, from = st.turnFrom;
+        if (!f.ground || f.dead || f.m > 0.5) {
+            for (int i = 0; i < 2; i++) { th[i] = 0; u[i] = -1; st.turnOff[i][0] = st.turnOff[i][1] = st.turnOff[i][2] = 0; }
+            return;
+        }
+        double rate = f.yawRate, dy = rate * f.dt;
+        double want = Math.abs(rate) < 5 ? 0 : MotionEngine.clamp(rate * STEP_LEAD, -STEP_LEAD_MAX, STEP_LEAD_MAX);
+        boolean swinging = false;
+        for (int i = 0; i < 2; i++) {
+            if (u[i] >= 0) {
+                u[i] = Math.min(1, u[i] + f.dt / STEP_T);
+                th[i] = from[i] + (want - from[i]) * MotionMath.ease(u[i]);
+                if (u[i] >= 1) u[i] = -1;
+                else swinging = true;
+            } else th[i] -= dy;
+        }
+        if (!swinging) {
+            double e0 = Math.abs(th[0] - want), e1 = Math.abs(th[1] - want);
+            int i = e0 > e1 + 0.5 ? 0 : e1 > e0 + 0.5 ? 1 : rate > 0 ? 0 : 1;
+            double e = Math.max(e0, e1);
+            if (e > STEP_AT || want == 0 && e > 1.5) { u[i] = 0; from[i] = th[i]; }
+        }
+        for (int i = 0; i < 2; i++) {
+            double r = Math.toRadians(th[i]), hx = MotionFeet.HIPS[i][0], lift = u[i] >= 0 ? STEP_LIFT * Math.sin(Math.PI * u[i]) : 0;
+            double[] o = st.turnOff[i];
+            o[0] = hx * (Math.cos(r) - 1); o[1] = lift; o[2] = TURN_SIGN * hx * Math.sin(r) - (u[i] >= 0 ? STEP_FWD * Math.sin(Math.PI * u[i]) : 0);
+            out.add(LEGS[i], RY, TURN_SIGN_RY * th[i]);
+        }
+        if (f.tw > 0) out.add("root", RY, -Math.signum(rate) * 4 * f.tw);
+    }
+    /** Rig z turns against the body yaw; the thigh yaw turns with it. */
+    static final double TURN_SIGN = -1, TURN_SIGN_RY = 1;
 
     /**
      * The stride at limb angle {@code limbAngle}, from the frame's seed and its moving, running, shuffle and backpedal
@@ -106,7 +137,7 @@ final class MotionBody {
      */
     static final double START_W = 0.15, UP_BLEND = 0.45, ACC_HZ = 8, LEAN_GAIN = 0.2, LEAN_MAX = 5, DIP_PER_DEG = 0.12;
     /** Fix r3 (gate 2): a stop's least stepping rate (cycles per second), the sweep (px) a standing foot may keep without a settling step, and the gait's fade (s) once settled. */
-    static final double GO_V = Double.parseDouble(System.getProperty("gov", "0.25")), SETTLE_HZ = 2.0, HOLD_FADE = 0.25;
+    static final double GO_V = 0.25, SETTLE_HZ = 2.0, HOLD_FADE = 0.25;
 
     /**
      * G1 (R109): the stride matched to the ground speed. The gait keeps its own phase psi, advanced by the distance travelled

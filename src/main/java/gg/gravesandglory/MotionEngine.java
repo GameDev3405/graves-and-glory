@@ -188,7 +188,11 @@ public final class MotionEngine {
         double last, lastSpeed;
         /** Linear ramps in [0, 1] (the engine uses their eased values) and the target each had last frame. */
         final double[] w = new double[WEIGHTS], wTarget = new double[WEIGHTS];
-        double turnPhase, turnRate, breathPhase, breathRate, flutter, flutterRate, yawRate, yawRateTarget;
+        /** Turn-in-place step per foot: yaw relative to the body (deg), swing progress (-1 planted), swing start yaw, and the
+         * foot target offset (x, lift, z in px) MotionFeet.plant applies. */
+        final double[] turnYaw = new double[2], turnU = {-1, -1}, turnFrom = new double[2];
+        final double[][] turnOff = new double[2][3];
+        double breathPhase, breathRate, flutter, flutterRate, yawRate, yawRateTarget;
         final List<MotionStack.Layer> stances = new ArrayList<>(MAX_LAYERS + 1);
         final List<MotionStack.Track> tracks = new ArrayList<>(MAX_TRACKS + 1);
         int ids;

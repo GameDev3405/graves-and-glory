@@ -28,8 +28,8 @@ final class MotionFeet {
      * Plants the feet while standing. Each foot's target is where the legs' own channels put it with the root at rest. A
      * knee buckle from a legs hit bends each knee by its own amount: the hips roll toward the deeper buckle so both feet
      * still reach, then the root dips just enough for both legs to keep a soft knee. Each leg is solved analytically (two
-     * bones, knee hinge on x, thigh yaw kept) so the foot lands on its target. Moving, turning in place or a clip that keys
-     * the legs hands the feet back, eased by the same weights; the buckle then bends the knees directly. Death hands them
+     * bones, knee hinge on x, thigh yaw kept) so the foot lands on its target. Turning in place moves each target by
+     * State.turnOff (MotionBody.turnStep). Moving or a clip that keys the legs hands the feet back, eased by the same weights; the buckle then bends the knees directly. Death hands them
      * back too, and a revive eases them in again over PLANT_BLEND.
      *
      * <p>Records in State how far the corrected channels sit from the uncorrected ones (plantRot, plantPx), so a fade that
@@ -37,12 +37,16 @@ final class MotionFeet {
      */
     static void plant(MotionEngine.Frame f, MotionEngine.State st, Pose out) {
         stride(f, st, out);
-        double base = (1 - f.m) * (1 - f.tw) * f.plant, pw = base * (1 - Math.min(1, f.bodyAction));
+        double base = (1 - f.m) * f.plant, pw = base * (1 - Math.min(1, f.bodyAction));
         double[] k = st.knee;
         k[0] = Math.max(0, st.react[MotionBody.KNEE_R]) * f.lw;
         k[1] = Math.max(0, st.react[MotionBody.KNEE_L]) * f.lw;
         double[] root = out.get("root");
-        for (int i = 0; i < 2; i++) foot(i, out.get(LEGS[i]), out.get(SHINS[i]), st.feet[i]);
+        for (int i = 0; i < 2; i++) {
+            double[] t = st.feet[i], o = st.turnOff[i];
+            foot(i, out.get(LEGS[i]), out.get(SHINS[i]), t);
+            t[0] += o[0]; t[1] -= o[1]; t[2] += o[2];
+        }
 
         double soft = Math.cos(Math.toRadians(SOFT_KNEE / 2));
         double eR = LEG * (soft - Math.cos(Math.toRadians(Math.min(SOFT_KNEE + k[0], 150) / 2)));
