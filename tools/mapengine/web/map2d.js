@@ -142,7 +142,9 @@ function drawGrid(d) {
 }
 
 const COLOR = { hill: '#f0dc8c', zone: '#9ad0e8', river: '#7cc0ff', road: '#f0d090', point: '#ffffff', dawn: '#ffb347', dusk: '#b894ff' };
-const KIND_ORDER = ['zone', 'hill', 'river', 'road', 'point', 'spawn'];
+const KIND_ORDER = ['zone', 'hill', 'river', 'road', 'point', 'spawn', 'note'];
+// Tracked-changes tint: an AI proposal not yet reviewed is drawn magenta, dashed, with a translucent fill.
+const PROPOSAL = '#ff40c8', PROPOSAL_FILL = 'rgba(255,64,200,0.20)', NOTE = '#ffd640';
 
 function strokePath(pts, close) {
   ctx.beginPath();
@@ -151,27 +153,56 @@ function strokePath(pts, close) {
 }
 
 function drawObject(o, selected) {
-  ctx.setLineDash(o.state === 'proposed' ? [6, 4] : []);
-  ctx.lineWidth = selected ? 3 : 1.5;
-  const col = selected ? '#ffffff' : COLOR[o.kind];
+  const prop = o.state === 'proposed';
+  ctx.setLineDash(prop ? [6, 4] : []);
+  ctx.lineWidth = selected ? 3 : prop ? 2.5 : 1.5;
+  const col = selected ? '#ffffff' : prop ? PROPOSAL : COLOR[o.kind];
   ctx.strokeStyle = col;
+  if (o.kind === 'note') {
+    const [sx, sy] = toScreen(o.x, o.z);
+    ctx.setLineDash([3, 3]);
+    ctx.strokeStyle = selected ? '#ffffff' : NOTE;
+    ctx.beginPath();
+    ctx.arc(sx, sy, Math.max(6, o.radius * view.scale), 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle = 'rgba(15,18,22,0.85)';
+    const text = (o.text || '').length > 28 ? o.text.slice(0, 27) + '\u2026' : o.text || '';
+    ctx.font = '12px system-ui, sans-serif';
+    const w = ctx.measureText(text).width + 22;
+    ctx.fillRect(sx - 8, sy - 9, w, 18);
+    ctx.fillStyle = NOTE;
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('\u270e ' + text, sx - 4, sy);
+    return;
+  }
   if (o.outline) {
     strokePath(o.outline, true);
-    ctx.fillStyle = 'rgba(255,255,255,0.05)';
+    ctx.fillStyle = prop ? PROPOSAL_FILL : 'rgba(255,255,255,0.05)';
     ctx.fill();
     ctx.stroke();
   } else if (o.path) {
+    if (prop) { // a wide translucent band under the dashed line, so a proposed path reads as a change
+      strokePath(o.path, false);
+      ctx.save();
+      ctx.setLineDash([]);
+      ctx.strokeStyle = PROPOSAL_FILL;
+      ctx.lineWidth = Math.max(6, (o.width || 4) * view.scale);
+      ctx.stroke();
+      ctx.restore();
+    }
     strokePath(o.path, false);
     ctx.stroke();
   } else if (o.kind === 'point') {
     const [sx, sy] = toScreen(o.x, o.z);
     ctx.beginPath();
     ctx.arc(sx, sy, Math.max(4, o.radius * view.scale), 0, Math.PI * 2);
-    ctx.fillStyle = 'rgba(255,255,255,0.12)';
+    ctx.fillStyle = prop ? PROPOSAL_FILL : 'rgba(255,255,255,0.12)';
     ctx.fill();
     ctx.stroke();
     ctx.setLineDash([]);
-    ctx.fillStyle = '#fff';
+    ctx.fillStyle = prop ? PROPOSAL : '#fff';
     ctx.font = 'bold 14px system-ui, sans-serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
@@ -180,7 +211,7 @@ function drawObject(o, selected) {
     const [sx, sy] = toScreen(o.x, o.z);
     ctx.beginPath();
     ctx.moveTo(sx, sy - 9); ctx.lineTo(sx + 8, sy + 7); ctx.lineTo(sx - 8, sy + 7); ctx.closePath();
-    ctx.fillStyle = COLOR[o.team] || '#fff';
+    ctx.fillStyle = prop ? PROPOSAL : COLOR[o.team] || '#fff';
     ctx.fill();
     ctx.strokeStyle = selected ? '#fff' : '#111';
     ctx.lineWidth = selected ? 2.5 : 1.5;

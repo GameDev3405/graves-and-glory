@@ -74,3 +74,13 @@ input[type=range] { padding: 0; }
 #map[hidden], #readout[hidden] { display: none; }
 #panel { overflow-x: hidden; }
 .row input[type=range] { width: 100%; min-width: 0; }
+/* Plan 3: AI draft review (tracked-changes magenta, matching the map tint) */
+.objlist li.prop { border-left: 3px solid #ff40c8; }
+.objlist li.prop:not(.sel) { background: rgba(255, 64, 200, 0.10); }
+.objlist .grow { flex: 1; }
+.review-buttons { display: flex; gap: 6px; margin: 6px 0; }
+.accept { background: #1f4a2c; border-color: #2f6a3c; }
+.accept:hover { background: #2f6a3c; }
+button.mini { padding: 0 6px; font-size: 11px; line-height: 18px; }
+.issue.refused { border-left-color: #ff40c8; cursor: default; }
+textarea { width: 100%; box-sizing: border-box; resize: vertical; font: inherit; background: #1b1f24; color: inherit; border: 1px solid #3a424b; border-radius: 4px; padding: 4px 6px; margin: 4px 0; }

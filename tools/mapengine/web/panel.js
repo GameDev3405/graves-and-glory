@@ -3,6 +3,7 @@ import * as api from './api.js';
 import {
   state, commit, endDrag, undo, redo, canUndo, canRedo, select, setTool, notify, findObj, selectedObj,
   onChange, onStatus, onLoad, onNotice, flush, loadDesign, createDesign, freshId, listDesigns, say, getStatus,
+  accept, reject, isProposal, exportBundle, importDraft,
 } from './app.js';
 import { TOOL_ORDER } from './tools.js';
 
@@ -15,7 +16,7 @@ function el(tag, cls, text) {
   return e;
 }
 
-const TOOL_LABEL = { hill: 'Hill', river: 'River', road: 'Road', point: 'Point', spawn: 'Spawn', select: 'Select' };
+const TOOL_LABEL = { hill: 'Hill', river: 'River', road: 'Road', point: 'Point', spawn: 'Spawn', select: 'Select', note: 'Note' };
 const FIELDS = {
   hill: [
     { k: 'height', label: 'Height', min: -40, max: 120, step: 1, int: true },
@@ -28,6 +29,7 @@ const FIELDS = {
   road: [{ k: 'width', label: 'Width', min: 1, max: 16, step: 1 }],
   point: [{ k: 'radius', label: 'Radius', min: 2, max: 32, step: 1 }],
   spawn: [],
+  note: [{ k: 'radius', label: 'Radius', min: 4, max: 200, step: 1 }],
 };
 
 // ---------- tool bar ----------
@@ -85,7 +87,50 @@ function buildTopbar() {
     bb.blur();
     try { await runBuild(); } finally { bb.disabled = false; }
   });
-  bar.append(verName, sv, vb, bb);
+  const eb = el('button', '', 'Export for AI');
+  eb.title = 'Write the design, pictures, notes and brief for a Claude session';
+  eb.addEventListener('click', async () => {
+    eb.blur();
+    const r = await exportBundle();
+    showResult(r.ok ? 'Exported for AI' : 'Export failed', r.ok
+      ? ['Ask a Claude session to read ' + r.data.brief + ' and write ' + r.data.draft + ', then press Import draft.']
+      : (r.data && r.data.errors) || ['export failed (' + r.status + ')']);
+  });
+  const file = el('input');
+  file.type = 'file';
+  file.accept = '.json,application/json';
+  file.hidden = true;
+  file.addEventListener('change', async () => {
+    const f = file.files[0];
+    file.value = '';
+    if (f) await runImport(f);
+  });
+  const ib = el('button', '', 'Import draft');
+  ib.title = 'Bring in an AI draft (draft.json) as proposals to review';
+  ib.addEventListener('click', () => { ib.blur(); file.click(); });
+  bar.append(verName, sv, vb, bb, eb, ib, file);
+}
+
+function showResult(title, lines) {
+  const pop = $('issues');
+  $('versions-pop').hidden = true;
+  pop.hidden = false;
+  pop.textContent = '';
+  pop.appendChild(el('h3', '', title));
+  lines.forEach((m) => pop.appendChild(el('div', 'issue', m)));
+  const close = el('button', '', 'Close');
+  close.addEventListener('click', () => { pop.hidden = true; });
+  pop.appendChild(close);
+}
+
+async function runImport(f) {
+  let draft;
+  try { draft = JSON.parse(await f.text()); } catch (e) { showResult('Draft refused', ['not valid JSON: ' + e.message]); return; }
+  const r = await importDraft(draft);
+  if (!r.ok) { showResult('Draft refused, nothing changed', (r.data && r.data.errors) || ['import failed (' + r.status + ')']); return; }
+  const d = r.data;
+  showResult(`Imported: ${d.added.length} added, ${d.updated.length} updated, ${d.withdrawn.length} withdrawn`,
+    d.refused.length ? d.refused.map((m) => 'Refused: ' + m) : ['Review the magenta proposals in the panel.']);
 }
 
 async function fillDesigns() {
@@ -244,10 +289,39 @@ function rebuildFields(o) {
   if (!o) {
     fieldsBox.appendChild(el('h2', '', 'Nothing selected'));
     fieldsBox.appendChild(el('div', 'meta', 'Pick a tool on the left and click the map. Select, then click a shape to edit it. Drag to move it, or drag a vertex. Delete removes it. Space-drag or middle-drag pans, the wheel zooms.'));
+    fieldsBox.appendChild(el('h3', '', 'Brief for the AI'));
+    const b = el('textarea');
+    b.rows = 5;
+    b.maxLength = 8000;
+    b.placeholder = "The map's mood in a few lines: what it is, how it should feel.";
+    b.addEventListener('change', () => { const v = b.value; commit((d) => { if (v.trim()) d.brief = v; else delete d.brief; }); });
+    rows.brief = { text: b };
+    fieldsBox.appendChild(b);
     return;
   }
   fieldsBox.appendChild(el('h2', '', o.kind[0].toUpperCase() + o.kind.slice(1) + ' ' + o.id));
-  fieldsBox.appendChild(el('div', 'meta', `by ${o.by}, ${o.state}`));
+  fieldsBox.appendChild(el('div', 'meta', isProposal(o) ? 'AI proposal: accept, reject, or edit it to make it yours' : `by ${o.by}, ${o.state}`));
+  if (isProposal(o)) {
+    const row = el('div', 'review-buttons');
+    const a = el('button', 'accept', 'Accept');
+    a.addEventListener('click', () => { accept([o.id]); a.blur(); });
+    const r = el('button', 'danger', 'Reject');
+    r.addEventListener('click', () => { reject([o.id]); r.blur(); });
+    row.append(a, r);
+    fieldsBox.appendChild(row);
+  }
+  if (o.kind === 'note') {
+    const t = el('textarea');
+    t.rows = 4;
+    t.maxLength = 2000;
+    t.addEventListener('change', () => {
+      const v = t.value.trim();
+      if (!v) { say('A note needs some text.'); refreshFields(); return; }
+      commit((d) => { findObj(d, o.id).text = v; });
+    });
+    rows.text = { text: t };
+    fieldsBox.appendChild(t);
+  }
   if (o.kind === 'point') {
     const row = el('div', 'row two');
     row.appendChild(el('label', '', 'Name'));
@@ -284,7 +358,9 @@ function refreshFields() {
   const o = selectedObj();
   const key = o ? o.id + ':' + o.kind : '';
   if (key !== shownKey) { rebuildFields(o); shownKey = key; }
+  if (rows.brief && document.activeElement !== rows.brief.text) rows.brief.text.value = state.design.brief || '';
   if (!o) return;
+  if (rows.text && document.activeElement !== rows.text.text) rows.text.text.value = o.text || '';
   for (const f of FIELDS[o.kind] || []) {
     const r = rows[f.k];
     if (!r) continue;
@@ -295,13 +371,52 @@ function refreshFields() {
   if (rows.team) rows.team.select.value = o.team;
 }
 
+function refreshReview() {
+  const props = state.design.objects.filter(isProposal);
+  const refused = state.design.review || [];
+  if (!props.length && !refused.length) return;
+  listBox.appendChild(el('h3', '', `AI draft (${props.length} to review)`));
+  if (props.length) {
+    const all = el('div', 'review-buttons');
+    const a = el('button', 'accept', 'Accept all');
+    a.addEventListener('click', () => { accept(props.map((o) => o.id)); a.blur(); });
+    const r = el('button', 'danger', 'Reject all');
+    r.addEventListener('click', () => { reject(props.map((o) => o.id)); r.blur(); });
+    all.append(a, r);
+    listBox.appendChild(all);
+    const ul = el('ul', 'objlist');
+    for (const o of props) {
+      const li = el('li', 'prop' + (o.id === state.selectedId ? ' sel' : ''));
+      li.append(el('span', 'k', o.kind), el('span', 'grow', o.name ? `${o.id} (${o.name})` : o.id));
+      li.addEventListener('click', () => { setTool('select'); select(o.id); });
+      const ab = el('button', 'mini accept', '\u2713');
+      ab.title = 'Accept';
+      ab.addEventListener('click', (ev) => { ev.stopPropagation(); accept([o.id]); });
+      const rb = el('button', 'mini danger', '\u2715');
+      rb.title = 'Reject';
+      rb.addEventListener('click', (ev) => { ev.stopPropagation(); reject([o.id]); });
+      li.append(ab, rb);
+      ul.appendChild(li);
+    }
+    listBox.appendChild(ul);
+  }
+  if (refused.length) {
+    listBox.appendChild(el('div', 'meta', 'Refused from the last draft (your objects are locked):'));
+    refused.forEach((m) => listBox.appendChild(el('div', 'issue refused', m)));
+    const c = el('button', '', 'Clear refusals');
+    c.addEventListener('click', () => { commit((d) => { delete d.review; }); c.blur(); });
+    listBox.appendChild(c);
+  }
+}
+
 function refreshList() {
   listBox.textContent = '';
   if (!state.design) return;
+  refreshReview();
   listBox.appendChild(el('h3', '', `Objects (${state.design.objects.length})`));
   const ul = el('ul', 'objlist');
   for (const o of state.design.objects) {
-    const li = el('li', o.id === state.selectedId ? 'sel' : '');
+    const li = el('li', (o.id === state.selectedId ? 'sel' : '') + (isProposal(o) ? ' prop' : ''));
     li.append(el('span', 'k', o.kind), el('span', '', o.name ? `${o.id} (${o.name})` : o.id));
     li.addEventListener('click', () => { setTool('select'); select(o.id); });
     ul.appendChild(li);
