@@ -112,8 +112,6 @@ final class MotionFeet {
 
     /** Round 4: the time constant (s) over which the stride's hip dip lets go. */
     static final double DIP_RELEASE = 0.08;
-    /** Round 4: the fastest a lifting foot's solve turns (deg/s) for the first SLEW_START s of a start from standing. */
-    static final double SWING_SLEW = 400, SLEW_START = 1.0;
 
     /** The ground under a standing rig (px, y down) and the knee bend a striding stance leg keeps at the least (degrees). */
     static final double GROUND = 24, STRIDE_KNEE = 8;
@@ -207,14 +205,6 @@ final class MotionFeet {
             st.pStance[i] = st.pNow[i];
         }
         st.dipHeld = dip;
-        // round 4: through a start's first steps a lifting foot's solve turns at most SWING_SLEW, so a trailing foot that comes
-        // into reach as it lifts eases its knee in rather than folding it in one frame; it is in the air, so nothing slides
-        for (int i = 0; i < 2; i++) {
-            double[] sol = st.sol[i], hs = st.solHeld[i];
-            if (st.startAge < SLEW_START && f.lift[i] > 0 && f.dt > 0)
-                for (int k = 0; k < 3; k++) sol[k] = hs[k] + MotionEngine.clamp(sol[k] - hs[k], -SWING_SLEW * f.dt, SWING_SLEW * f.dt);
-            System.arraycopy(sol, 0, hs, 0, 3);
-        }
         root[TY] += gwAll * dip;
         for (int i = 0; i < 2; i++) {
             double[] leg = out.get(LEGS[i]), shin = out.get(SHINS[i]), sol = st.sol[i];
