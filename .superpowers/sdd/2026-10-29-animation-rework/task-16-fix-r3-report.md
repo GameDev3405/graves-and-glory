@@ -1,6 +1,6 @@
 # Task 16 fix r3 report (engine gates 1, 2, 3, 6)
 
-Evidence: live sword_shield grade parts under `test-tools/work/t16r3/`: g_loco and g_transitions at a574205, g_solo2 at d0404cb (the earlier g_solo at a574205 is kept as the before for deaths). Gate numbers come from the manifests via `test-tools/work/t16r3/gates.py`. The "before" numbers come from `test-tools/work/t16r2c`. contact_sheet.py ran on every part with 0 missing tiles.
+Evidence: live sword_shield grade parts under `test-tools/work/t16r3/`: g_loco and g_transitions at a574205, g_solo2 at d0404cb. Gate numbers come from the manifests via `test-tools/work/t16r3/gates.py`. The "before" numbers come from `test-tools/work/t16r2c`. contact_sheet.py ran on every part with 0 missing tiles.
 
 | Gate | Before (r2c) | After (r3) | Result |
 |---|---|---|---|
@@ -14,11 +14,9 @@ Evidence: live sword_shield grade parts under `test-tools/work/t16r3/`: g_loco a
 | 3 hit-while-attacking, f26-35 | 0.94x, not monotone | 1.15x, not monotone | FAIL |
 | 6 run start, s=18 window | 45, 38, 42, 77, 157, 82 | 47, 93, 31, 114, 102, 234 | FAIL |
 
-Gate 3: the hit is now an additive overlay (0.2 s ease-in) that leaves the attack playing; the attack's own double hump still dominates the window.
-
 ## Commits
 
-02b0b0a soles; 66775da turn step; 5f9f292 run start (held check, unmet); cde0479 hit overlay (held check); a574205 straps before ground lift, grade fields; 6a9bfa6 ground pass fades out without the ground input (the layer pops: it lifted the hips off the unsolved gait's soles); d7bbcad death fall stays grounded, and from the clip's end the lift eases under the torso's clearance so the corpse keeps its authored pose; d0404cb LifeCheck turn test drives the ground input (the step needs it since 66775da; thresholds unchanged).
+02b0b0a soles; 66775da turn step; 5f9f292 run start (held check, unmet); cde0479 hit overlay (held check); a574205 straps before ground lift, grade fields; 6a9bfa6 ground pass fades out without the ground input; d7bbcad death fall stays grounded, and from the clip's end the lift eases under the torso's clearance so the corpse keeps its authored pose; d0404cb LifeCheck turn test drives the ground input (the step needs it since 66775da; thresholds unchanged).
 
 ## Verify (fast, offline): PASS at d0404cb
 
