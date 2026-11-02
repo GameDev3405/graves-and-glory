@@ -61,7 +61,8 @@ public final class GravesAndGlory implements ModInitializer {
         // The Convoy supply wagon's entity type (Kort approved 2026-11-01; never saved).
         WagonEntity.register();
         // A planted banner block must not outlive the battle in the save.
-        ServerLifecycleEvents.SERVER_STOPPING.register(server -> {if(battle!=null)Abilities.serverStopping(battle);});
+        // A match the server stops is void: no rewards, no losses, armies to camp (MatchRules). Then the banners come down.
+        ServerLifecycleEvents.SERVER_STOPPING.register(server -> {if(battle!=null){battle.campaign.voidMatch(MatchRules.Ending.STOPPED);Abilities.serverStopping(battle);}});
         if (BuildMode.active()) BuildMode.init();
         ServerLifecycleEvents.SERVER_STARTED.register(server -> {
             // Only the dedicated Graves and Glory save belongs to this mod.
@@ -175,6 +176,8 @@ public final class GravesAndGlory implements ModInitializer {
         int team;
         String order="follow", formation="block", commander="champion";
         boolean bot, seated=true; int lane;
+        /** The tick a dropped owner's bot takes command (MatchRules.takeoverAt); 0 when no one is waited for. */
+        long takeoverAt;
         /** The banner this squad fields this round (rules.squadSize entries: troop ids, ^ for a slot of the unit before it, empty), set by Campaign.prepareRound. */
         List<String> banner=new ArrayList<>();
         /** A bot's difficulty: the id of its Spec.BOTCOMMAND row. Set from Campaign.difficulty when the round is prepared. */
@@ -722,7 +725,7 @@ public final class GravesAndGlory implements ModInitializer {
             Squad s;
             if(replacement!=null){
                 s=replacement;squads.remove(s.owner);campaign.botRespawns.remove(s.owner);campaign.botRetreating.remove(s.owner);
-                campaign.vacated.values().remove(s.owner);s.owner=p.getUuid();s.bot=false;s.seated=true;
+                campaign.vacated.values().remove(s.owner);s.owner=p.getUuid();s.bot=false;s.seated=true;s.takeoverAt=0;
                 // The seat keeps the bot's living army and its queue, but from now on it trains and reinforces from the joiner's own banner, and fights under his class.
                 // The active's cooldown belongs to the squad, not to whoever commands it: it stays with the seat, so taking a seat over (its owner coming back, or
                 // anyone else) never refreshes an active. Only a running active stops here, before the class changes; leave already stopped the owner's.
@@ -743,8 +746,8 @@ public final class GravesAndGlory implements ModInitializer {
         void leave(UUID owner){
             campaign.left(owner);
             Squad s=squads.remove(owner);welcomed.remove(owner);respawns.remove(owner);if(s!=null)Commander.stop(this,s);
-            // Mid-battle, a bot commands the army until its owner rejoins, so the team is not left a commander short.
-            if(s!=null&&running&&s.seated&&!s.bot){UUID stand=UUID.randomUUID();s.owner=stand;s.bot=true;s.tier=campaign.difficulty;s.order="attack";squads.put(stand,s);campaign.vacated.put(owner,stand);return;}
+            // Mid-battle, the army waits on its last orders for disconnectGraceSeconds, then a bot commands it until its owner rejoins (Kort 2026-11-01).
+            if(s!=null&&running&&s.seated&&!s.bot){UUID stand=UUID.randomUUID();s.owner=stand;s.bot=true;s.tier=campaign.difficulty;s.takeoverAt=MatchRules.takeoverAt(time,Spec.CAMPAIGN[0].disconnectGraceSeconds());squads.put(stand,s);campaign.vacated.put(owner,stand);return;}
             units.removeIf(u->{if(u.squad==s){leaveSide(u.mob);u.mob.discard();return true;}return false;});
         }
         static Vec3d base(int t){var f=Spec.FACTIONS[t];return new Vec3d(f.spawnX(),Arena.height(f.spawnX(),f.spawnZ())+1,f.spawnZ());}
