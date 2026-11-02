@@ -4,7 +4,9 @@
 A hunched boar-kin spearman, a zombified piglin of the Wildmoot: a boar snout and big white tusks, a riveted leather cap
 under the team headband, a shaggy hide mantle, a spiked leather pauldron over a strapped jerkin, a barry team kilt, team
 forearm wraps, bone-and-hide shin guards and dark hooves. He stands bent forward over a crossbarred boar spear. Hide, bone
-and wood throughout; the team colour is only the cloth. Tier I only. No back flag.
+and wood throughout; the team colour is only the cloth. Tier I is the boar-kin Tusk. Tier II (Tusk Warden) adds bone and trophies: a bone brow plate, up-curved cap tusks, a bone left pauldron,
+a tooth necklace, hip and knee skulls and a taller spike. Tier III (Tusk Warlord) spends the ochre: a crown of ochre-lashed tusks, ochre arm
+bands and tusk rings, a barred brow plate and a grey pelt mantle. No back flag.
 
   python build_wm_tusk.py preview <dir> [side] | contact <png> [side] | install
 """
@@ -16,6 +18,7 @@ import handlib as H
 import house_stub
 sys.path.insert(0, os.path.join(HERE, "..", "ic_breaker"))
 from ironclad import scuff, rng, fur, shade   # noqa: E402
+import wildmoot as WM   # the tier trims and veteran painters; the tier I painters below stay this file's own
 
 SKIN = (128, 128)
 CLOTH = (128, 64)
@@ -245,6 +248,33 @@ def bones():
     B.append(Bone("pauldron", "right_arm", (-1, -2.5, 0), rot=(0, 0, -12), boxes=[Box((-3.5, -2.5, -3.5), (7, 3, 7), pauldron())]))
     B.append(Bone("pauldron_spikes", "right_arm", (-1, -2.5, 0), rot=(0, 0, -12), boxes=[
         Box((-3, -5.5, -0.5), (1, 3, 1), spike()), Box((0, -5.5, -0.5), (1, 3, 1), spike())]))
+    # tier II, the Warden: bone and trophies
+    B.append(Bone("brow_plate", "head", tag="helm", stages=[2, 3], boxes=[Box((-3.5, -9, -5.2), (7, 2, 1), per_tier(WM.wm_plate, (2, 3)))]))
+    for side, c in (("right", -1), ("left", 1)):
+        B.append(Bone(f"{side}_cap_tusk", "head", (c * 4.5, -9, 0), rot=(0, 0, -c * 24), tag="helm", stages=[2, 3], boxes=[
+            Box((-0.5, -5, -0.5), (1, 5, 1), WM.wm_tusk())]))
+    B.append(Bone("left_pauldron", "left_arm", (1, -2.5, 0), rot=(0, 0, 12), stages=[2, 3], boxes=[
+        Box((-3.5, -2.5, -3.5), (7, 3, 7), per_tier(WM.wm_plate, (2, 3))), Box((-0.5, -6.5, -0.5), (1, 4, 1), WM.wm_tusk())]))
+    B.append(Bone("pauldron_spike_ii", "right_arm", (-1, -2.5, 0), rot=(0, 0, -12), stages=[2, 3], boxes=[
+        Box((-1.5, -7.5, -0.5), (1, 5, 1), spike())]))
+    B.append(Bone("tooth_necklace", "body", stages=[2, 3], boxes=[
+        Box((-3, -11, -2.4), (6, 1, 1), per_tier(lambda t: WM.lashing(WM.OCHRE, 3) if t == 3 else leath(1, seed="nk"), (2, 3)), dil=0.05),
+        Box((-2.5, -10, -2.4), (1, 2, 1), WM.wm_tusk()), Box((-0.5, -10, -2.6), (1, 3, 1), WM.wm_tusk()), Box((1.5, -10, -2.4), (1, 2, 1), WM.wm_tusk())]))
+    B.append(Bone("hip_skull", "body", stages=[2, 3], boxes=[Box((-3.5, -4.5, -3.3), (2, 2, 1), WM.wm_skull("tsk"))]))
+    for side in ("right", "left"):
+        B.append(Bone(f"{side}_knee", f"{side}_leg", stages=[2, 3], boxes=[Box((-1.5, 5, -2.6), (3, 2, 1), WM.wm_skull("tk" + side))]))
+    # tier III, the Warlord: a tusk crown, ochre bands and rings, a grey pelt mantle
+    B.append(Bone("tusk_crown", "head", tag="helm", stages=[3], boxes=[
+        Box((-3.5, -10.5, -3.5), (7, 1, 7), WM.lashing(WM.OCHRE, 3), dil=0.2),
+        Box((-0.5, -15.5, -0.5), (1, 5, 1), WM.wm_tusk())]))
+    for side, c in (("right", -1), ("left", 1)):
+        B.append(Bone(f"{side}_crown_tusk", "head", (c * 2.5, -10, 0), rot=(0, 0, -c * 20), tag="helm", stages=[3], boxes=[
+            Box((-0.5, -5, -0.5), (1, 5, 1), WM.wm_tusk())]))
+    B.append(Bone("tusk_rings", "head", stages=[3], boxes=[
+        Box((-4, -2, -6.3), (2, 1, 1.6), WM.lashing(WM.OCHRE, 3), dil=0.1), Box((2, -2, -6.3), (2, 1, 1.6), WM.lashing(WM.OCHRE, 3), dil=0.1)]))
+    B.append(Bone("mantle_grey", "body", stages=[3], boxes=[Box((-5.5, -13.5, -3.5), (11, 2, 7), WM.pelt(WM.GREYFUR, "wm-tmt"), dil=0.2)]))
+    B.append(Bone("right_arm_band", "right_arm", stages=[3], boxes=[Box((-3, 1, -2), (4, 1, 4), WM.lashing(WM.OCHRE, 3), dil=0.3)]))
+    B.append(Bone("left_arm_band", "left_arm", stages=[3], boxes=[Box((-1, 1, -2), (4, 1, 4), WM.lashing(WM.OCHRE, 3), dil=0.3)]))
     return B
 
 def cloth_painter(spec, side):
@@ -255,9 +285,18 @@ def cloth_painter(spec, side):
 
 NOTE = ("Wildmoot Tusk (unit identity, Wildmoot): zombified piglin, biped, hunched; boar-kin with a snout and big white tusks, a riveted "
         "leather cap under the team headband, a shaggy hide mantle, a spiked leather pauldron over a strapped jerkin, a barry team kilt, "
-        "team forearm wraps, shin guards and hooves. The crossbarred boar spear stands over the cap. Tier I only in the first pass. No back flag.")
+        "team forearm wraps, shin guards and hooves. The crossbarred boar spear stands over the cap. Tier II adds a bone brow plate, cap tusks, a bone left pauldron, a tooth necklace and skulls; tier III an ochre-lashed tusk crown, ochre bands and a grey pelt mantle. No back flag.")
+def veteran(bone, box):
+    """The Mastery II trim: a bone-beaded ochre baldric across the chest, studs on the belt, a cord about each arm and knee."""
+    n = bone.name
+    if n == "body": return WM.vet_baldric()
+    if n == "belt": return WM.vet_rows((0, 1), every=2, bead=True)
+    if n.endswith("_arm"): return WM.vet_rows((4,))
+    if n.endswith("_leg"): return WM.vet_rows((3,))
+    return None
+
 WM_TUSK = Troop("wm_tusk", SKIN, CLOTH, bones, cloth_painter,
-                {"weapon": "boar_spear", "hand": "right", "idleArms": "hang", "portrait": "tall 4"}, tiers=(1,))
+                {"weapon": "boar_spear", "hand": "right", "idleArms": "hang", "portrait": "tall 4"}, veteran=veteran)
 def build(): return WM_TUSK.build()
 def outputs(): return WM_TUSK.outputs()
 

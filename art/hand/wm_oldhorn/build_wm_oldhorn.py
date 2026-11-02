@@ -473,8 +473,17 @@ NOTE = ("Old Horn, the Antlered Alpha (unit identity, Wildmoot; Legendary; polar
         "bear with a high hump and neck ruff under a 30 px antler rack of branching tines, a shaggy bark coat, a grey scarred muzzle, clay warpaint and clay-glow "
         "eyes, a bone-and-feather mantle bound in ochre over the shoulder hump on a team-colour hide mantle. No war-banner (an open question "
         "for Kort). Tier II: bone brow plate, pauldrons, greaves, rack bands; tier III: a tusk crest on the hump, skull trophies, greave tusks, ochre-dipped tines. No back flag.")
+def veteran(bone, box):
+    """The Mastery II trim: ochre cords at the antlers' bases, on each flank and on each upper leg, bone beads in them."""
+    n, sz = bone.name, tuple(box.size)
+    if n.startswith("antler_") and n.endswith("_a"): return vet_rows((1,))
+    if n == "body" and sz == (14, 11, 12): return vet_rows((3,), every=2, bead=True)
+    if n == "chest" and sz == (14, 14, 10): return vet_rows((9,), every=2, bead=True)
+    if n.endswith("_leg") and sz in ((6, 8, 6),): return vet_rows((4,), bead=True)
+    return None
+
 WM_OLDHORN = Troop("wm_oldhorn", SKIN, CLOTH, bones, cloth_painter,
-                   {"rig": "hound", "weapon": "none", "hand": "right", "idleArms": "hang", "portrait": "beast 24"}, glow=glow)
+                   {"rig": "hound", "weapon": "none", "hand": "right", "idleArms": "hang", "portrait": "beast 24"}, glow=glow, veteran=veteran)
 def build(): return WM_OLDHORN.build()
 def outputs(): return WM_OLDHORN.outputs()
 

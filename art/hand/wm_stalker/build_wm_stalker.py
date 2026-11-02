@@ -301,8 +301,16 @@ NOTE = ("Wildmoot Web Stalker (unit identity, Wildmoot): Rare spider beast. A wi
         "bristled legs, a carved white bone mask lashed over the eyes, silk sacs and clay warpaint on the abdomen, a team cloth tied "
         "across the abdomen with ochre cords. Tier II: more sacs, thorax ridge "
         "plates, cord beads; tier III: bone mandibles, mask crest, ochre hourglass. No back flag.")
+def veteran(bone, box):
+    """The Mastery II trim: an ochre cord about the thorax, and an ochre ring on every leg segment."""
+    n, sz = bone.name, tuple(box.size)
+    if n == "thorax" and sz == (10, 6, 6): return vet_rows((2,), bead=True)
+    if "_leg_" in n and sz == (8, 3, 3): return vet_cols((6,))
+    if "_leg_" in n and sz == (8, 2, 2): return vet_cols((5,))
+    return None
+
 WM_STALKER = Troop("wm_stalker", SKIN, CLOTH, bones, cloth_painter,
-                   {"rig": "spider", "weapon": "none", "hand": "right", "idleArms": "hang", "portrait": "beast 18 yaw 20"})
+                   {"rig": "spider", "weapon": "none", "hand": "right", "idleArms": "hang", "portrait": "beast 18 yaw 20"}, veteran=veteran)
 def build(): return WM_STALKER.build()
 def outputs(): return WM_STALKER.outputs()
 

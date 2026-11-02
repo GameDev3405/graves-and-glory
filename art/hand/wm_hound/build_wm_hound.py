@@ -265,8 +265,16 @@ NOTE = ("Wildmoot Moot Hound (unit identity, Wildmoot; Common; wolf entity): a l
         "coat over a bark-dark belly, a dark muzzle with small bone teeth, a pale clay stripe from nose to tail tip, an ochre sinew "
         "collar with bone toggles and a ragged team saddle-cloth over the shoulders with hide spikes rising through it. Tier II: bone skull-cap, tooth collar, leg wraps, taller "
         "spikes; tier III: antler tufts, spine plates, ochre flank bars. No back flag.")
+def veteran(bone, box):
+    """The Mastery II trim: ochre cords about the shoulders and each upper leg, and two rings on the tail."""
+    n, sz = bone.name, tuple(box.size)
+    if n == "chest" and sz == (8, 8, 7): return vet_rows((5,), every=1, bead=True)
+    if n.endswith("_leg") and sz in ((3, 3, 3), (3, 3, 4)): return vet_rows((1,))
+    if n == "tail": return vet_rows((3, 6))
+    return None
+
 WM_HOUND = Troop("wm_hound", SKIN, CLOTH, bones, cloth_painter,
-                 {"rig": "hound", "weapon": "none", "hand": "right", "idleArms": "hang", "portrait": "beast 16"})
+                 {"rig": "hound", "weapon": "none", "hand": "right", "idleArms": "hang", "portrait": "beast 16"}, veteran=veteran)
 def build(): return WM_HOUND.build()
 def outputs(): return WM_HOUND.outputs()
 
