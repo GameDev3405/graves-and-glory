@@ -241,21 +241,22 @@ def stances():
     # Idle: the sword's point rests low ahead; once a loop the wrist rolls the blade over and back and the shield arm
     # resettles a little later (the life layer already breathes and shifts the weight).
     out.append(stance('idle', 4.0, IDLE, [
-        (1.3, dict(right_arm=(-2, 0, 1), right_hand=(6, 0, 5), body=(0.5, 1, 0.4))),
-        (2.1, dict(right_arm=(-1, 0, 0.5), right_hand=(3, 0, 2), left_arm=(-1.5, 0, -1), left_forearm=(1, 0, 0))),
-        (3.0, dict(right_arm=(1, 0, -0.5), right_hand=(-3, 0, -2), left_arm=(0.5, 0, -0.5), body=(-0.3, -1, -0.3))),
+        (1.3, dict(right_arm=(-5, 0, 3), right_hand=(8, 0, 6), left_arm=(-3, 2, 0), body=(0.5, 2, 0.4))),
+        (2.1, dict(right_arm=(-2, 0, 1), right_hand=(3, 0, 2), left_arm=(-4, 0, -2), left_forearm=(2, 0, 0))),
+        (3.0, dict(right_arm=(4, 0, -2), right_hand=(-8, 0, -4), left_arm=(3, -3, 1), body=(-0.3, -2, -0.3))),
     ]).lag(right_hand=0.12, left_forearm=0.1))
     # March carry: blade sloped back over the right shoulder, shield slung; the sword settles twice a loop (a step each).
     out.append(stance('carry', 2.0, CARRY, [
-        (0.5, dict(right_arm=(-3, 0, 0), right_hand=(4, 0, 0), left_arm=(2, 0, 0))),
-        (1.0, dict(right_arm=(0.5, 0, 0), right_hand=(-1, 0, 0))),
-        (1.5, dict(right_arm=(-3, 0, 0), right_hand=(4, 0, 0), left_arm=(-1.5, 0, 0))),
+        (0.5, dict(right_arm=(-5, 0, 1), right_hand=(7, 0, 0), left_arm=(4, 0, 1))),
+        (1.0, dict(right_arm=(2, 0, -1), right_hand=(-3, 0, 0), left_arm=(-1, 0, 0))),
+        (1.5, dict(right_arm=(-4, 0, 0), right_hand=(6, 0, 0), left_arm=(-3, 0, -1))),
     ]).lag(right_hand=0.08, left_forearm=0.06))
-    # Ready guard: point up at the enemy's face over the shield's edge, weight forward; the point stays alive.
+    # Ready guard: point up at the enemy's face over the shield's edge, weight forward; the point stays alive. r3b: the
+    # beats swing the sword and board up to about 8 degrees, so a line of guards at different phases reads as people.
     out.append(stance('guard', 2.4, GUARD, [
-        (0.7, dict(right_arm=(-3, 0, 2), right_hand=(-6, 0, 0), body=(0, 1.5, 0))),
-        (1.4, dict(right_arm=(1, 0, -1), right_hand=(4, 0, 3), left_arm=(-2, 1, 0))),
-        (1.9, dict(right_arm=(-1, 0, 0.5), right_hand=(-2, 0, -1), body=(0.5, -1, 0))),
+        (0.7, dict(right_arm=(-6, 0, 4), right_hand=(-8, 0, 0), left_arm=(-4, 3, 0), body=(0, 3, 0))),
+        (1.4, dict(right_arm=(4, 0, -3), right_hand=(8, 0, 5), left_arm=(4, -4, 0), left_forearm=(2, 0, 0))),
+        (1.9, dict(right_arm=(-2, 0, 1), right_hand=(-3, 0, -2), left_arm=(-1, 2, 0), body=(0.5, -2, 0))),
     ]).lag(right_hand=0.1, left_forearm=0.08))
     # Shield up (hold or shuffle): board square in front, body turned behind it, sword ready over the rim.
     out.append(stance('shield', 2.0, SHIELD, [
@@ -284,18 +285,19 @@ def attacks():
     # back foot, the shoulder, elbow and wrist unfolding in turn. As the body turns away behind the lunge the shield arm
     # swings across the chest against that turn, so the board stays square to the front (never further off it than the
     # guard's own 30 degrees) and low enough for the arm to reach over its rim; a short overreach, then the arm reels the
-    # point back and the shield closes. 25 ticks (R97): the whole clip fits the 25-tick cooldown, so a swing every
+    # point back and the shield closes. The wrist turns the point out past the board's sword-side edge (6 px or more
+    # from the front, r3b) so the thrust reads head-on. 25 ticks (R97): the whole clip fits the 25-tick cooldown, so a swing every
     # cooldown never cuts the settle; mo-late-join's catch-up at impact + 12 ticks still leaves it 6 ticks to compare.
     a = Anim('sword_shield_thrust', 1.25, impact=0.35)
     a.k(0.0, root=Z, body=Z, head=Z, right_arm=Z, right_forearm=Z, right_hand=Z, left_arm=Z, left_forearm=Z)
     a.k(0.15, root=(0, 0, 0, 0, 0.3, 1.0), body=(-2, 14, 0), head=(0, -9, 0), right_arm=(24, 0, 6),
         right_forearm=(-12, 0, 0), right_hand=(-10, 0, 0), left_arm=(-5, 9, 0), left_forearm=(-3, 0, 0))
-    a.k(0.29, i='linear', root=(0, 0, 0, 0, 0.5, -1.0), body=(3, -12, 0), head=(-2, 8, 0), right_arm=(-18, 0, -14),
-        right_forearm=(62, 0, 0), right_hand=(18, 0, 0), left_arm=(2, 30, 0), left_forearm=(-5, 0, 0))
-    a.k(0.35, i='linear', root=(0, 0, 0, 0, 0.7, -2.0), body=(5, -27, 0), head=(-4, 19, 0), right_arm=(-32, 0, -27),
-        right_forearm=(104, 0, 0), right_hand=(34, 0, 0), left_arm=(-1, 30, 0), left_forearm=(-5, 0, 0))
-    a.k(0.45, root=(0, 0, 0, 0, 0.75, -2.3), body=(6, -30, 0), head=(-4, 21, 0), right_arm=(-35, 0, -30),
-        right_forearm=(108, 0, 0), right_hand=(40, 0, 0), left_arm=(5, 34, 0), left_forearm=(-10, 0, 0))
+    a.k(0.29, i='linear', root=(0, 0, 0, 0, 0.5, -1.0), body=(3, -12, 0), head=(-2, 8, 0), right_arm=(-18, 0, -7.5),
+        right_forearm=(62, 0, 0), right_hand=(18, -20, 0), left_arm=(2, 30, 0), left_forearm=(-5, 0, 0))
+    a.k(0.35, i='linear', root=(0, 0, 0, 0, 0.7, -2.0), body=(5, -27, 0), head=(-4, 19, 0), right_arm=(-32, 0, -15),
+        right_forearm=(104, 0, 0), right_hand=(20, -40, 0), left_arm=(-1, 30, 0), left_forearm=(-5, 0, 0))
+    a.k(0.45, root=(0, 0, 0, 0, 0.75, -2.3), body=(6, -30, 0), head=(-4, 21, 0), right_arm=(-35, 0, -18),
+        right_forearm=(108, 0, 0), right_hand=(26, -40, 0), left_arm=(5, 34, 0), left_forearm=(-10, 0, 0))
     a.k(0.68, root=(0, 0, 0, 0, 0.3, -0.7), body=(1, -8, 0), head=(-1, 6, 0), right_arm=(-6, 0, -8),
         right_forearm=(30, 0, 0), right_hand=(10, 0, 0), left_arm=(0, 14, 0), left_forearm=(2, 0, 0))
     a.k(0.98, root=(0, 0, 0, 0, -0.05, 0.15), body=(-0.6, 2, 0), head=(0, -1, 0), right_arm=(2, 0, 1.5),
@@ -307,6 +309,8 @@ def attacks():
     # Overhead cut (impact tick 10): a small sink, then the sword climbs over the head with the shield lifting to cover
     # the opening; a held beat at the top, then the cut falls through the body's turn and drop; the blade follows through
     # low, the body hangs over its front foot and climbs back.
+    # r3b: through the held beat the wrist lets the point drop behind the back, so the tip turns a U at the back of the
+    # windup instead of stopping and reversing along its own path.
     a = Anim('sword_shield_overhead', 1.2, impact=0.5)
     a.k(0.0, root=Z, body=Z, head=Z, right_arm=Z, right_forearm=Z, right_hand=Z, left_arm=Z, left_forearm=Z)
     a.k(0.12, root=(0, 0, 0, 0, 0.6, 0.2), body=(4, 4, 0), head=(2, -2, 0), right_arm=(12, 0, 2), right_forearm=(-6, 0, 0),
@@ -314,7 +318,7 @@ def attacks():
     a.k(0.32, root=(0, 0, 0, 0, -0.2, 0.8), body=(-8, 8, 0), head=(-6, -6, 0), right_arm=(-98, 0, -30),
         right_forearm=(84, 0, 0), right_hand=(88, 0, 0), left_arm=(-8, 7, 0), left_forearm=(-4, 0, 0))
     a.k(0.41, i='linear', root=(0, 0, 0, 0, -0.25, 0.9), body=(-9, 9, 0), head=(-7, -7, 0), right_arm=(-104, 0, -31),
-        right_forearm=(88, 0, 0), right_hand=(94, 0, 0))
+        right_forearm=(88, 0, 0), right_hand=(140, 0, 0))
     a.k(0.5, i='linear', root=(0, 0, 0, 0, 1.2, -1.8), body=(13, -22, 0), head=(6, 15, 0), right_arm=(-8, 0, -12),
         right_forearm=(84, 0, 0), right_hand=(18, 0, 0), left_arm=(10, -8, 0), left_forearm=(6, 0, 0))
     a.k(0.6, root=(0, 0, 0, 0, 1.45, -2.0), body=(16, -26, 0), head=(7, 18, 0), right_arm=(5, 0, -14),
@@ -469,14 +473,14 @@ def blocks():
     a.lag(left_forearm=0.02, head=0.03, right_arm=0.04)
     out.append(a)
     # A blow caught low drops the board over the shins, the body bowing over it, and the strike knocks it back toward the
-    # knee before the arm lifts it to the guard.
+    # knee before the arm lifts it to the guard. r3b: a deeper crouch (2.2 px) and bow so the low block reads at range.
     a = Anim('block_legs', 0.6)
     a.k(0.0, root=Z, body=Z, head=Z, left_arm=Z, left_forearm=Z, right_arm=Z)
-    a.k(0.06, i='linear', root=(0, 0, 0, 0, 1.2, 0.4), body=(9, 4, 0), head=(-6, 0, 0), left_arm=(24, -4, 0),
-        left_forearm=(10, 0, 0), right_arm=(-4, 0, 6))
-    a.k(0.18, root=(0, 0, 0, 0, 1.0, 0.9), body=(5, 6, 0), head=(-4, 0, 0), left_arm=(28, -8, 0), left_forearm=(13, 0, 0),
-        right_arm=(-2, 0, 4))
-    a.k(0.36, root=(0, 0, 0, 0, 0.3, 0.2), body=(1, 1.5, 0), head=(-1, 0, 0), left_arm=(5, -1, 0), left_forearm=(2, 0, 0),
+    a.k(0.06, i='linear', root=(0, 0, 0, 0, 2.2, 0.4), body=(14, 4, 0), head=(-10, 0, 0), left_arm=(34, -4, 0),
+        left_forearm=(14, 0, 0), right_arm=(-6, 0, 8))
+    a.k(0.18, root=(0, 0, 0, 0, 1.9, 0.9), body=(9, 6, 0), head=(-7, 0, 0), left_arm=(38, -8, 0), left_forearm=(17, 0, 0),
+        right_arm=(-3, 0, 5))
+    a.k(0.36, root=(0, 0, 0, 0, 0.6, 0.2), body=(2, 1.5, 0), head=(-1.5, 0, 0), left_arm=(8, -1, 0), left_forearm=(3, 0, 0),
         right_arm=(-0.5, 0, 1))
     a.k(0.6, root=Z, body=Z, head=Z, left_arm=Z, left_forearm=Z, right_arm=Z)
     a.lag(left_forearm=0.02, head=0.03, right_arm=0.04)
@@ -668,9 +672,9 @@ def deaths():
             land=pose(arms((-20, 110, -4), (-40, 30, -40)), body=(4, 0, 2 * s), head=(2, 0, -6 * s)),
             bounce=pose(body=(4, 0, 4 * s), head=(2, 0, 4 * s)),
             lie=pose(arms((-70, -6, -35), (-60, 10, -50)), head=(4, 0, -36 * s), right_hand=Z,
-                     # The board lies flat: across his upper flank when the shield arm is on top, under the arm, face
+                     # The board lies flat on the ground: in front of his chest, face down, when the shield arm is on top; under the arm, face
                      # down, when he falls onto it; the sword arm goes out of the column under the torso so he rests on it.
-                     **(dict(left_arm=(-61, 20, 6), left_forearm=(-95, 0, 0), right_arm=(-91, 0, 78), body=(4, 0, 12))
+                     **(dict(left_arm=(-174, -173, -40), left_forearm=(0, 0, 0), right_arm=(-91, 0, 78), body=(4, 0, 12))
                         if s > 0 else dict(left_arm=(-39, 179, 8), left_forearm=(0, 0, 0), body=(4, 0, -13))),
                      **{near + '_leg': (-12, 0, 0), near + '_shin': (34, 0, 0), far + '_leg': (-26, 0, 0), far + '_shin': (40, 0, 0)}))
 
@@ -751,8 +755,9 @@ def deaths():
                     right_shin=(120, 0, 0), left_leg=(-46, 0, -6), left_shin=(118, 0, 0)), (0, 24, 0), 'linear'),
         (0.6, pose(root=(4, 0, 4), head=(30, 0, 12), body=(20, 0, 6)), (0, 24, 0), 'catmullrom'),
         (0.85, pose(root=(14, 0, 30), head=(24, 0, 16), body=(14, 0, 4), right_arm=(-10, 0, 20)), (2, 24, 0), 'catmullrom'),
+        # The shield arm swings out past the chest so the board lands on the ground beside him, not grazing his flank.
         (1.08, pose(root=(14, 0, 86), head=(6, 0, 30), body=(10, 0, -13), right_arm=(-30, 0, 29), right_forearm=(-30, 0, 0),
-                    left_arm=(-37, 170, -1), left_forearm=(-7, 0, 0), right_leg=(-60, 0, 4), right_shin=(100, 0, 0),
+                    left_arm=(-41, -166, -6), left_forearm=(-35, 0, 0), right_leg=(-60, 0, 4), right_shin=(100, 0, 0),
                     left_leg=(-52, 0, -2), left_shin=(96, 0, 0)), (2, 24, 0), 'linear'),
         (1.2, pose(root=(14, 0, 82), head=(10, 0, 46)), (2, 24, 0), 'catmullrom'),
         (1.6, pose(root=(14, 0, 88), head=(8, 0, 44)), (2, 24, 0), 'catmullrom'),
