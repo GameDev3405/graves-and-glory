@@ -1,5 +1,25 @@
 # Motion grading: sword_shield
 
+## Round 2c evidence (HEAD b23174f, 2026-11-01), aggregated from six part runs (R111)
+
+Every part ran alone at this one HEAD, rc 0, no other client on the machine, vsync off, maxFps 260, knight. Sheets by contact_sheet.py inside each run (missing tiles 0 in all). The grade cells in the sections below are from the earlier run (20261101-005828) and are NOT re-graded by this run; the per-part grading.md files in these folders hold blank templates for the new evidence.
+
+| Part | Run dir (under test-tools/work/t16r2c) | Time | Sheets | Status |
+|---|---|---|---|---|
+| solo | g_solo/grade/sword_shield/20261101-202044 | 28 min | 141 | ok |
+| loco | g_loco/grade/sword_shield/20261101-204841 | 2.5 min | 30 | ok |
+| states | g_states/grade/sword_shield/20261101-205118 | 10.5 min | 120 | FAIL mo-grade-capture: hit-body had 1 of 120 frames not newly drawn (also scene-fall 84, scene-raise 88, death-front 33, death-right 26, death-back 32, death-left 32 identical capture steps); p2-motion-grade-suite false for that reason only |
+| transitions | g_transitions/grade/sword_shield/20261101-210149 | 2 min | 20 | ok |
+| hits | g_hits/grade/sword_shield/20261101-210403 | 4.5 min | 3 | ok: 36 of 36 captures, 0 off-steps (it timed out at 14/36 before only because it ran after solo) |
+| novelty | g_novelty/grade/sword_shield/20261101-210824 | 2 min | 3 | ok: novelty seen on 108 of 380 frames, first at f151 |
+
+Live loco (sole stance slip, R109/R114): walk 0.068, run 0.040, crawl 0.062, backpedal 0.022, guard-shuffle 0.057, turn 0.000. Largest move-to-stop step over authored: walk 0.9, run 1.2, crawl 0.3, backpedal 1.0, shuffle 0.3 (none flagged). Lowest sole -0.13 to -0.16 block (below the ground line).
+
+Transitions: hold-wall-brace, guard-carry, shield-up-down, loco-* and death-while-attacking are not flagged. hit-while-attacking is flagged (135.4 deg/tick at f025 right_forearm, 1.26x the thrust's authored step).
+
+Hit sweep (36 cells): worst cell hs-legs-front-2, right_arm 25.4 deg/tick at f022; largest sum 157.9 (hs-body-front-2).
+
+
 Family `sword_shield` (engine family `sword_shield`, troop `knight`, rig `biped`).
 Evidence run: `test-tools/work/grade/sword_shield/20261101-005828` (manifest.json lists every file by clip, state and kind).
 
