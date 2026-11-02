@@ -115,8 +115,8 @@ final class WarTableReport {
             final String which = FACES[i], label = FACE_LABELS[i];
             add("tab-" + which, new UiButton(sx + PAD + i * (TAB_W + TAB_GAP), sy + TAB_Y, TAB_W, TAB_H, Text.literal(label), b -> face = which, (g, x, y, w, h, hot) -> paintTab(g, which, label, x, y, w, h)));
         }
-        add("contracts", new UiButton(nx + NPAD, ny + TAGS_Y, TAG_W, TAB_H, Text.literal("Contracts"), b -> screen.page("contracts"), (g, x, y, w, h, hot) -> paintTag(g, "contracts", "Contracts", x, y, w, h, DarkUi.INK_TEXT)));
-        add("chapter", new UiButton(nx + NPAD + TAG_W + TAG_GAP, ny + TAGS_Y, TAG_W, TAB_H, Text.literal("Chapter"), b -> screen.page("chapter"), (g, x, y, w, h, hot) -> paintTag(g, "chapter", "Chapter", x, y, w, h, DarkUi.INK_TEXT)));
+        add("note-contracts", new UiButton(nx + NPAD, ny + TAGS_Y, TAG_W, TAB_H, Text.literal("Contracts"), b -> screen.page("contracts"), (g, x, y, w, h, hot) -> paintTag(g, "note-contracts", "Contracts", x, y, w, h, DarkUi.INK_TEXT)));
+        add("note-chapter", new UiButton(nx + NPAD + TAG_W + TAG_GAP, ny + TAGS_Y, TAG_W, TAB_H, Text.literal("Chapter"), b -> screen.page("chapter"), (g, x, y, w, h, hot) -> paintTag(g, "note-chapter", "Chapter", x, y, w, h, DarkUi.INK_TEXT)));
         add("go", new UiButton(nx + NPAD, ny + GO_Y, NOTE_TEXT_W, GO_H, Text.literal(leaveLabel()), b -> go(), (g, x, y, w, h, hot) -> paintTag(g, "go", leaveLabel(), x, y, w, h, DarkUi.INK_TEXT)));
     }
 
