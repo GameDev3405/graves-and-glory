@@ -11,7 +11,9 @@
  "idleArms": "hang",
  "parts": [],
  "skins": {
-  "1": "bonebow_s1.png"
+  "1": "bonebow_s1.png",
+  "2": "bonebow_s2.png",
+  "3": "bonebow_s3.png"
  },
  "weapon": "bone_bow",
  "hand": "left",
