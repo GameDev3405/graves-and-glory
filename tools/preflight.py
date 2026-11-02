@@ -160,7 +160,7 @@ for s in data.get('modeSites',[]):
     where=f'modeSites/{s["id"]}'
     if s['mode'] not in mode_ids: errors.append(f'{where}: mode {s["mode"]} is not a modes id')
     if s['map'] not in range(len(data['maps'])): errors.append(f'{where}: map {s["map"]} is not a map index')
-    if s['kind'] not in ('road','base','stage','gate','ward'): errors.append(f'{where}: kind {s["kind"]} is not road, base, stage, gate or ward')
+    if s['kind'] not in ('road','base','stage','gate','ward','shrine','rise'): errors.append(f'{where}: kind {s["kind"]} is not road, base, stage, gate, ward, shrine or rise')
     if s['piece']!='-' and s['piece'] not in piece_ids: errors.append(f'{where}: piece {s["piece"]} is not a pieces id')
     if s['kind'] in ('gate','ward') and s['piece']=='-': errors.append(f'{where}: a {s["kind"]} row needs its piece')
     if s['rotation'] not in (0,90,180,270): errors.append(f'{where}: rotation {s["rotation"]} is not 0, 90, 180 or 270')
@@ -186,6 +186,39 @@ for m in {s['map'] for s in data.get('modeSites',[]) if s['mode']=='siege'}:
     for s in data['modeSites']:
         if s['mode']=='siege' and s['map']==m and s['kind']=='stage' and (s['radius']<=0 or s['seconds']<=0): errors.append(f'modeSites/{s["id"]}: a stage ring needs a radius and seconds above 0')
         if s['mode']=='siege' and s['map']==m and s['kind']=='gate' and s['hp']<=0: errors.append(f'modeSites/{s["id"]}: the gate needs hp above 0')
+# Survival (Phase 4 spec 6): the modeRules survival row, a waves set of consecutive waves, waveGroups that rise at a rise site
+# (modeSites id <...>_rise_<site>) on every map the mode hosts, one shrine ring and one court (base, team 0) per map, and the
+# botCommand tiers' waveScale and waveTraitTier.
+if 'survival' in mode_ids:
+    sr=rule_rows.get('survival')
+    if sr is None: errors.append('modeRules: the survival mode needs its row')
+    else:
+        if sr['survivalPerBanner']<0 or sr['riseWarning']<0: errors.append('modeRules/survival: survivalPerBanner and riseWarning cannot be negative')
+        if sr['maxDeadAlive']<=0: errors.append('modeRules/survival: maxDeadAlive must be above 0')
+        wave_set=[w for w in data.get('waves',[]) if w['set']==sr['waveSet']]
+        if [w['wave'] for w in sorted(wave_set,key=lambda w:w['wave'])]!=list(range(1,len(wave_set)+1)) or not wave_set: errors.append(f'waves: set {sr["waveSet"]} must hold waves 1..n with no gap')
+        for w in wave_set:
+            if w['seconds']<=0 or w['gold']<0: errors.append(f'waves/{w["id"]}: seconds must be above 0 and gold not negative')
+            if not any(g['wave']==w['id'] for g in data.get('waveGroups',[])): errors.append(f'waves/{w["id"]}: no waveGroups row rises in this wave')
+    surv_maps=[int(p) for p in next(m for m in modes if m['id']=='survival')['maps'].split(',') if p.strip()]
+    troop_ids={t['id'] for t in data['troops']}
+    wave_ids={w['id'] for w in data.get('waves',[])}
+    for m in surv_maps:
+        rows=[s for s in data['modeSites'] if s['mode']=='survival' and s['map']==m]
+        shrines=[s for s in rows if s['kind']=='shrine'];courts=[s for s in rows if s['kind']=='base' and s['stage']==0]
+        if len(shrines)!=1 or shrines[0]['radius']<=0 or shrines[0]['seconds']<=0: errors.append(f'modeSites survival map {m}: one shrine row with a radius and seconds above 0')
+        if len(courts)!=1: errors.append(f'modeSites survival map {m}: one base row for team 0 (the court)')
+        rises={s['id'].rsplit('_rise_',1)[1] for s in rows if s['kind']=='rise' and '_rise_' in s['id']}
+        for s in rows:
+            if s['kind']=='rise' and ('_rise_' not in s['id'] or s['radius']<=0): errors.append(f'modeSites/{s["id"]}: a rise row is named <...>_rise_<site> and needs a radius above 0')
+        for g in data.get('waveGroups',[]):
+            if g['site'] not in rises: errors.append(f'waveGroups/{g["id"]}: site {g["site"]} is no rise row on map {m}')
+    for g in data.get('waveGroups',[]):
+        if g['wave'] not in wave_ids: errors.append(f'waveGroups/{g["id"]}: wave {g["wave"]} is not a waves id')
+        if g['troop'] not in troop_ids: errors.append(f'waveGroups/{g["id"]}: troop {g["troop"]} is not a troops id')
+        if g['count']<=0: errors.append(f'waveGroups/{g["id"]}: count must be above 0')
+    for r in data['botCommand']:
+        if r['waveScale']<=0 or r['waveTraitTier'] not in range(0,4): errors.append(f'botCommand/{r["id"]}: waveScale above 0 and waveTraitTier 0..3')
 groups={g['id'] for g in data.get('groups',[])}
 orders={o['id'] for o in data['orders']}
 for t in data['troops']:

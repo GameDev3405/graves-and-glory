@@ -1269,6 +1269,20 @@
       "ruleLine": "Convoy: reach {n}",
       "howTo": "Stay by the wagon to push it. | An enemy beside it stops it. | Reach the refuge before the clock runs out.",
       "howToDefend": "Stand by the wagon to stop it. | Left alone, it rolls back to its last checkpoint. | Hold it until the clock runs out."
+    },
+    {
+      "id": "survival",
+      "name": "Survival",
+      "maps": "3",
+      "roundSeconds": 0,
+      "winTarget": 0,
+      "scoreInterval": 0,
+      "passiveScale": 0.0,
+      "pointScale": 0.0,
+      "timeout": "team0",
+      "ruleLine": "Survival: {n} waves",
+      "howTo": "Hold the shrine against every wave. | Clear a wave for its gold. | Lose the shrine for 20 seconds and the night is lost.",
+      "howToDefend": "Hold the shrine against every wave. | Clear a wave for its gold. | Lose the shrine for 20 seconds and the night is lost."
     }
   ],
   "modeRules": [
@@ -1294,6 +1308,10 @@
       "portcullisSeconds": 0,
       "keepEdgeAttackers": 0,
       "keepEdgeDefenders": 0,
+      "survivalPerBanner": 0.0,
+      "riseWarning": 0,
+      "maxDeadAlive": 0,
+      "waveSet": "-",
       "note": "draft values (convoy spec 3.1 to 3.3, 8); Kort tunes them after the sim gate"
     },
     {
@@ -1318,7 +1336,39 @@
       "portcullisSeconds": 10,
       "keepEdgeAttackers": 2,
       "keepEdgeDefenders": 3,
+      "survivalPerBanner": 0.0,
+      "riseWarning": 0,
+      "maxDeadAlive": 0,
+      "waveSet": "-",
       "note": "Siege draft values (siege spec section 5; keep edge: attackers add a second while contested at 2 of every 3 defenders); Kort tunes them after the sim gate. The convoy columns are unused here"
+    },
+    {
+      "id": "survival",
+      "pushRadius": 0.0,
+      "pushHeight": 0.0,
+      "speedOne": 0.0,
+      "speedTwo": 0.0,
+      "speedThree": 0.0,
+      "rollbackSpeed": 0.0,
+      "idleSeconds": 0,
+      "checkpointSeconds": 0,
+      "checkpointGold": 0,
+      "maxGrade": 0.0,
+      "uphill": 0.0,
+      "downhill": 0.0,
+      "overtimeRadius": 0.0,
+      "overtimeGraceSeconds": 0,
+      "stoppedAfterSeconds": 0,
+      "stoppedEverySeconds": 0,
+      "siegeStageBonus": 0,
+      "portcullisSeconds": 0,
+      "keepEdgeAttackers": 0,
+      "keepEdgeDefenders": 0,
+      "survivalPerBanner": 0.5,
+      "riseWarning": 5,
+      "maxDeadAlive": 60,
+      "waveSet": "moon",
+      "note": "DRAFT (Phase 4 plan Task 6, question for Kort): +50% dead per extra banner, 5 s rise warning, at most 60 dead alive, the moon wave set"
     }
   ],
   "modeSites": [
@@ -1559,6 +1609,108 @@
       "hp": 0.0,
       "seconds": 60,
       "note": "Kort 2026-10-31: radius 7 and 60 s, hard but takeable (the spec's 10 and 30 s are replaced)"
+    },
+    {
+      "id": "survival_hollowwood_shrine",
+      "mode": "survival",
+      "map": 3,
+      "kind": "shrine",
+      "stage": 0,
+      "name": "the shrine",
+      "x": 76.0,
+      "z": 127.0,
+      "radius": 10.0,
+      "y": 64.0,
+      "piece": "-",
+      "rotation": 0,
+      "hp": 0.0,
+      "seconds": 20,
+      "note": "DRAFT (Phase 4 plan Task 6, question for Kort): the shrine ring; lost once the dead hold it 20 s with no defender on it; placed on the current Hollowwood Reach, replace with the Map Forge Hollowwood rows"
+    },
+    {
+      "id": "survival_hollowwood_court",
+      "mode": "survival",
+      "map": 3,
+      "kind": "base",
+      "stage": 0,
+      "name": "the court",
+      "x": 76.0,
+      "z": 127.0,
+      "radius": 0.0,
+      "y": 65.0,
+      "piece": "-",
+      "rotation": 0,
+      "hp": 0.0,
+      "seconds": 0,
+      "note": "DRAFT (Phase 4 plan Task 6, question for Kort): the defenders' base, respawn and barracks; placed on the current Hollowwood Reach, replace with the Map Forge Hollowwood rows"
+    },
+    {
+      "id": "survival_hollowwood_rise_chapel",
+      "mode": "survival",
+      "map": 3,
+      "kind": "rise",
+      "stage": 1,
+      "name": "the chapel",
+      "x": 70.0,
+      "z": 55.0,
+      "radius": 4.0,
+      "y": 64.0,
+      "piece": "-",
+      "rotation": 0,
+      "hp": 0.0,
+      "seconds": 0,
+      "note": "DRAFT (Phase 4 plan Task 6, question for Kort): a rise site; placed on the current Hollowwood Reach, replace with the Map Forge Hollowwood rows"
+    },
+    {
+      "id": "survival_hollowwood_rise_ford",
+      "mode": "survival",
+      "map": 3,
+      "kind": "rise",
+      "stage": 1,
+      "name": "the ford",
+      "x": 17.0,
+      "z": 145.0,
+      "radius": 4.0,
+      "y": 64.0,
+      "piece": "-",
+      "rotation": 0,
+      "hp": 0.0,
+      "seconds": 0,
+      "note": "DRAFT (Phase 4 plan Task 6, question for Kort): a rise site; placed on the current Hollowwood Reach, replace with the Map Forge Hollowwood rows"
+    },
+    {
+      "id": "survival_hollowwood_rise_wood",
+      "mode": "survival",
+      "map": 3,
+      "kind": "rise",
+      "stage": 1,
+      "name": "the deep wood",
+      "x": 150.0,
+      "z": 120.0,
+      "radius": 4.0,
+      "y": 64.0,
+      "piece": "-",
+      "rotation": 0,
+      "hp": 0.0,
+      "seconds": 0,
+      "note": "DRAFT (Phase 4 plan Task 6, question for Kort): a rise site; placed on the current Hollowwood Reach, replace with the Map Forge Hollowwood rows"
+    },
+    {
+      "id": "survival_hollowwood_rise_track",
+      "mode": "survival",
+      "map": 3,
+      "kind": "rise",
+      "stage": 1,
+      "name": "the track",
+      "x": 80.0,
+      "z": 200.0,
+      "radius": 4.0,
+      "y": 64.0,
+      "piece": "-",
+      "rotation": 0,
+      "hp": 0.0,
+      "seconds": 0,
+      "note": "DRAFT (Phase 4 plan Task 6, question for Kort): a rise site; placed on the current Hollowwood Reach, replace with the Map Forge Hollowwood rows"
     }
   ],
   "hooks": [
@@ -2336,7 +2488,9 @@
       "chargeDistance": 0.0,
       "gearMaxTier": 2,
       "gearReserveTroops": 8,
-      "gearPriority": "banner"
+      "gearPriority": "banner",
+      "waveScale": 0.75,
+      "waveTraitTier": 0
     },
     {
       "id": "normal",
@@ -2352,7 +2506,9 @@
       "chargeDistance": 0.0,
       "gearMaxTier": 3,
       "gearReserveTroops": 5,
-      "gearPriority": "role"
+      "gearPriority": "role",
+      "waveScale": 1.0,
+      "waveTraitTier": 1
     },
     {
       "id": "hard",
@@ -2368,7 +2524,9 @@
       "chargeDistance": 18.0,
       "gearMaxTier": 3,
       "gearReserveTroops": 2,
-      "gearPriority": "open"
+      "gearPriority": "open",
+      "waveScale": 1.25,
+      "waveTraitTier": 2
     }
   ],
   "combatDiscipline": [
@@ -8887,6 +9045,402 @@
       "format": "time",
       "team": -1,
       "status": "draft"
+    }
+  ],
+  "waves": [
+    {
+      "id": "moon-1",
+      "set": "moon",
+      "wave": 1,
+      "seconds": 90,
+      "gold": 60,
+      "note": "DRAFT (Phase 4 plan Task 6, question for Kort)"
+    },
+    {
+      "id": "moon-2",
+      "set": "moon",
+      "wave": 2,
+      "seconds": 90,
+      "gold": 60,
+      "note": "DRAFT (Phase 4 plan Task 6, question for Kort)"
+    },
+    {
+      "id": "moon-3",
+      "set": "moon",
+      "wave": 3,
+      "seconds": 100,
+      "gold": 80,
+      "note": "DRAFT (Phase 4 plan Task 6, question for Kort)"
+    },
+    {
+      "id": "moon-4",
+      "set": "moon",
+      "wave": 4,
+      "seconds": 100,
+      "gold": 80,
+      "note": "DRAFT (Phase 4 plan Task 6, question for Kort)"
+    },
+    {
+      "id": "moon-5",
+      "set": "moon",
+      "wave": 5,
+      "seconds": 110,
+      "gold": 100,
+      "note": "DRAFT (Phase 4 plan Task 6, question for Kort)"
+    },
+    {
+      "id": "moon-6",
+      "set": "moon",
+      "wave": 6,
+      "seconds": 120,
+      "gold": 100,
+      "note": "DRAFT (Phase 4 plan Task 6, question for Kort)"
+    },
+    {
+      "id": "moon-7",
+      "set": "moon",
+      "wave": 7,
+      "seconds": 150,
+      "gold": 0,
+      "note": "DRAFT (Phase 4 plan Task 6, question for Kort)"
+    }
+  ],
+  "waveGroups": [
+    {
+      "id": "moon-1-1",
+      "wave": "moon-1",
+      "troop": "revenant",
+      "count": 4,
+      "site": "chapel",
+      "note": "DRAFT (Phase 4 plan Task 6, question for Kort)"
+    },
+    {
+      "id": "moon-1-2",
+      "wave": "moon-1",
+      "troop": "revenant",
+      "count": 4,
+      "site": "ford",
+      "note": "DRAFT (Phase 4 plan Task 6, question for Kort)"
+    },
+    {
+      "id": "moon-2-1",
+      "wave": "moon-2",
+      "troop": "revenant",
+      "count": 4,
+      "site": "chapel",
+      "note": "DRAFT (Phase 4 plan Task 6, question for Kort)"
+    },
+    {
+      "id": "moon-2-2",
+      "wave": "moon-2",
+      "troop": "revenant",
+      "count": 4,
+      "site": "wood",
+      "note": "DRAFT (Phase 4 plan Task 6, question for Kort)"
+    },
+    {
+      "id": "moon-2-3",
+      "wave": "moon-2",
+      "troop": "bonebow",
+      "count": 2,
+      "site": "chapel",
+      "note": "DRAFT (Phase 4 plan Task 6, question for Kort)"
+    },
+    {
+      "id": "moon-2-4",
+      "wave": "moon-2",
+      "troop": "bonebow",
+      "count": 2,
+      "site": "wood",
+      "note": "DRAFT (Phase 4 plan Task 6, question for Kort)"
+    },
+    {
+      "id": "moon-3-1",
+      "wave": "moon-3",
+      "troop": "revenant",
+      "count": 5,
+      "site": "ford",
+      "note": "DRAFT (Phase 4 plan Task 6, question for Kort)"
+    },
+    {
+      "id": "moon-3-2",
+      "wave": "moon-3",
+      "troop": "revenant",
+      "count": 5,
+      "site": "track",
+      "note": "DRAFT (Phase 4 plan Task 6, question for Kort)"
+    },
+    {
+      "id": "moon-3-3",
+      "wave": "moon-3",
+      "troop": "bonebow",
+      "count": 3,
+      "site": "ford",
+      "note": "DRAFT (Phase 4 plan Task 6, question for Kort)"
+    },
+    {
+      "id": "moon-3-4",
+      "wave": "moon-3",
+      "troop": "bonebow",
+      "count": 3,
+      "site": "track",
+      "note": "DRAFT (Phase 4 plan Task 6, question for Kort)"
+    },
+    {
+      "id": "moon-4-1",
+      "wave": "moon-4",
+      "troop": "revenant",
+      "count": 5,
+      "site": "chapel",
+      "note": "DRAFT (Phase 4 plan Task 6, question for Kort)"
+    },
+    {
+      "id": "moon-4-2",
+      "wave": "moon-4",
+      "troop": "revenant",
+      "count": 5,
+      "site": "wood",
+      "note": "DRAFT (Phase 4 plan Task 6, question for Kort)"
+    },
+    {
+      "id": "moon-4-3",
+      "wave": "moon-4",
+      "troop": "bonebow",
+      "count": 3,
+      "site": "chapel",
+      "note": "DRAFT (Phase 4 plan Task 6, question for Kort)"
+    },
+    {
+      "id": "moon-4-4",
+      "wave": "moon-4",
+      "troop": "bonebow",
+      "count": 3,
+      "site": "wood",
+      "note": "DRAFT (Phase 4 plan Task 6, question for Kort)"
+    },
+    {
+      "id": "moon-4-5",
+      "wave": "moon-4",
+      "troop": "reaper",
+      "count": 3,
+      "site": "ford",
+      "note": "DRAFT (Phase 4 plan Task 6, question for Kort)"
+    },
+    {
+      "id": "moon-5-1",
+      "wave": "moon-5",
+      "troop": "revenant",
+      "count": 6,
+      "site": "ford",
+      "note": "DRAFT (Phase 4 plan Task 6, question for Kort)"
+    },
+    {
+      "id": "moon-5-2",
+      "wave": "moon-5",
+      "troop": "revenant",
+      "count": 6,
+      "site": "track",
+      "note": "DRAFT (Phase 4 plan Task 6, question for Kort)"
+    },
+    {
+      "id": "moon-5-3",
+      "wave": "moon-5",
+      "troop": "bonebow",
+      "count": 3,
+      "site": "chapel",
+      "note": "DRAFT (Phase 4 plan Task 6, question for Kort)"
+    },
+    {
+      "id": "moon-5-4",
+      "wave": "moon-5",
+      "troop": "bonebow",
+      "count": 3,
+      "site": "wood",
+      "note": "DRAFT (Phase 4 plan Task 6, question for Kort)"
+    },
+    {
+      "id": "moon-5-5",
+      "wave": "moon-5",
+      "troop": "stalker",
+      "count": 2,
+      "site": "chapel",
+      "note": "DRAFT (Phase 4 plan Task 6, question for Kort)"
+    },
+    {
+      "id": "moon-5-6",
+      "wave": "moon-5",
+      "troop": "stalker",
+      "count": 2,
+      "site": "wood",
+      "note": "DRAFT (Phase 4 plan Task 6, question for Kort)"
+    },
+    {
+      "id": "moon-6-1",
+      "wave": "moon-6",
+      "troop": "revenant",
+      "count": 6,
+      "site": "chapel",
+      "note": "DRAFT (Phase 4 plan Task 6, question for Kort)"
+    },
+    {
+      "id": "moon-6-2",
+      "wave": "moon-6",
+      "troop": "revenant",
+      "count": 6,
+      "site": "wood",
+      "note": "DRAFT (Phase 4 plan Task 6, question for Kort)"
+    },
+    {
+      "id": "moon-6-3",
+      "wave": "moon-6",
+      "troop": "bonebow",
+      "count": 4,
+      "site": "ford",
+      "note": "DRAFT (Phase 4 plan Task 6, question for Kort)"
+    },
+    {
+      "id": "moon-6-4",
+      "wave": "moon-6",
+      "troop": "bonebow",
+      "count": 4,
+      "site": "track",
+      "note": "DRAFT (Phase 4 plan Task 6, question for Kort)"
+    },
+    {
+      "id": "moon-6-5",
+      "wave": "moon-6",
+      "troop": "reaper",
+      "count": 2,
+      "site": "chapel",
+      "note": "DRAFT (Phase 4 plan Task 6, question for Kort)"
+    },
+    {
+      "id": "moon-6-6",
+      "wave": "moon-6",
+      "troop": "reaper",
+      "count": 2,
+      "site": "wood",
+      "note": "DRAFT (Phase 4 plan Task 6, question for Kort)"
+    },
+    {
+      "id": "moon-6-7",
+      "wave": "moon-6",
+      "troop": "hexer",
+      "count": 1,
+      "site": "track",
+      "note": "DRAFT (Phase 4 plan Task 6, question for Kort)"
+    },
+    {
+      "id": "moon-7-1",
+      "wave": "moon-7",
+      "troop": "revenant",
+      "count": 4,
+      "site": "chapel",
+      "note": "DRAFT (Phase 4 plan Task 6, question for Kort)"
+    },
+    {
+      "id": "moon-7-2",
+      "wave": "moon-7",
+      "troop": "revenant",
+      "count": 4,
+      "site": "ford",
+      "note": "DRAFT (Phase 4 plan Task 6, question for Kort)"
+    },
+    {
+      "id": "moon-7-3",
+      "wave": "moon-7",
+      "troop": "revenant",
+      "count": 4,
+      "site": "wood",
+      "note": "DRAFT (Phase 4 plan Task 6, question for Kort)"
+    },
+    {
+      "id": "moon-7-4",
+      "wave": "moon-7",
+      "troop": "revenant",
+      "count": 4,
+      "site": "track",
+      "note": "DRAFT (Phase 4 plan Task 6, question for Kort)"
+    },
+    {
+      "id": "moon-7-5",
+      "wave": "moon-7",
+      "troop": "bonebow",
+      "count": 2,
+      "site": "chapel",
+      "note": "DRAFT (Phase 4 plan Task 6, question for Kort)"
+    },
+    {
+      "id": "moon-7-6",
+      "wave": "moon-7",
+      "troop": "bonebow",
+      "count": 2,
+      "site": "ford",
+      "note": "DRAFT (Phase 4 plan Task 6, question for Kort)"
+    },
+    {
+      "id": "moon-7-7",
+      "wave": "moon-7",
+      "troop": "bonebow",
+      "count": 2,
+      "site": "wood",
+      "note": "DRAFT (Phase 4 plan Task 6, question for Kort)"
+    },
+    {
+      "id": "moon-7-8",
+      "wave": "moon-7",
+      "troop": "bonebow",
+      "count": 2,
+      "site": "track",
+      "note": "DRAFT (Phase 4 plan Task 6, question for Kort)"
+    },
+    {
+      "id": "moon-7-9",
+      "wave": "moon-7",
+      "troop": "reaper",
+      "count": 2,
+      "site": "chapel",
+      "note": "DRAFT (Phase 4 plan Task 6, question for Kort)"
+    },
+    {
+      "id": "moon-7-10",
+      "wave": "moon-7",
+      "troop": "reaper",
+      "count": 2,
+      "site": "ford",
+      "note": "DRAFT (Phase 4 plan Task 6, question for Kort)"
+    },
+    {
+      "id": "moon-7-11",
+      "wave": "moon-7",
+      "troop": "stalker",
+      "count": 2,
+      "site": "wood",
+      "note": "DRAFT (Phase 4 plan Task 6, question for Kort)"
+    },
+    {
+      "id": "moon-7-12",
+      "wave": "moon-7",
+      "troop": "stalker",
+      "count": 2,
+      "site": "track",
+      "note": "DRAFT (Phase 4 plan Task 6, question for Kort)"
+    },
+    {
+      "id": "moon-7-13",
+      "wave": "moon-7",
+      "troop": "hexer",
+      "count": 1,
+      "site": "chapel",
+      "note": "DRAFT (Phase 4 plan Task 6, question for Kort)"
+    },
+    {
+      "id": "moon-7-14",
+      "wave": "moon-7",
+      "troop": "hexer",
+      "count": 1,
+      "site": "track",
+      "note": "DRAFT (Phase 4 plan Task 6, question for Kort)"
     }
   ]
 }

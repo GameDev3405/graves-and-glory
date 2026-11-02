@@ -60,6 +60,8 @@ public abstract class BattleMode {
     public boolean overtime(GravesAndGlory.Battle b){return false;}
     /** Where a bot army goes this beat instead of its Domination point (null keeps the point plan): a mode with its own objectives (Siege's stage) returns it. */
     public Vec3d botTarget(GravesAndGlory.Battle b,GravesAndGlory.Squad s){return null;}
+    /** Called at the end of Houses.recompute: a mode may replace an army's House trait tiers (Survival's director takes its tier's waveTraitTier). */
+    public void traits(GravesAndGlory.Battle b,GravesAndGlory.Squad s){}
     /** Each running tick, after captureTick: the mode's scoring and its own timers. */
     public void tick(GravesAndGlory.Battle b){}
     /** The objective panel's line as the round starts; a mode without points to capture says its own. */
