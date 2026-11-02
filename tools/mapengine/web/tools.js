@@ -14,7 +14,7 @@ const snapPath = (d, x, z) => [clamp(Math.round(x), 0, d.width), clamp(Math.roun
 const snapPoint = (d, x, z) => [clamp(Math.round(x), 0, d.width - 1), clamp(Math.round(z), 0, d.depth - 1)];
 const base = (d, kind) => ({ id: newId(d, kind), kind, by: NEW_BY, state: NEW_STATE });
 
-// ---------- hill / river / road: click vertices, double-click or Enter to finish ----------
+// ---------- hill / river / road: click vertices, double-click, Enter or Shift (map view) to finish ----------
 
 function pathTool(kind, minPts, field, defaults) {
   function finish(state) {
@@ -43,6 +43,7 @@ function pathTool(kind, minPts, field, defaults) {
     up() {},
     key(state, ev) {
       if (ev.key === 'Enter') return finish(state);
+      if (ev.key === 'Shift' && !ev.repeat && state.view === 'map') return finish(state); // Shift moves down in the walk view
       if (ev.key === 'Escape' && state.draft) { state.draft = null; notify(); return true; }
       if (ev.key === 'Backspace' && state.draft) { state.draft.pts.pop(); if (!state.draft.pts.length) state.draft = null; notify(); return true; }
       return false;

@@ -12,7 +12,7 @@ The editor opens on the design you edited last, or a blank one. Work saves itsel
 
 ## Tools and keys
 
-- 1 Hill, 2 River, 3 Road: click to add points, double-click or Enter to finish, Escape cancels, Backspace removes the last point.
+- 1 Hill, 2 River, 3 Road: click to add points, double-click, Enter or Shift (map view) to finish, Escape cancels, Backspace removes the last point.
 - 4 Point, 5 Spawn: one click places it.
 - 6 Select: click to pick, drag to move, Delete removes.
 - Ctrl+Z undo, Ctrl+Y or Ctrl+Shift+Z redo.
