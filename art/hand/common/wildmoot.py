@@ -136,3 +136,45 @@ def cloth_band(T, base=3, ragged=False, seed="wm-cloth", barry=False):
                 if r.random() < 0.4: g[h - 1][x] = None
         return g
     return paint
+
+# ---- tier trims (II adds bone and trophy, III spends the ochre); shared by the Wildmoot builders ----
+def wm_plate(tier, seed="wmp"):
+    """A lashed bone plate: pale slab, an ochre strap row across the side faces; at III the front's top edge is ochre-dotted."""
+    def paint(face, w, h):
+        g = bone_paint(3, seed)(face, w, h)
+        if face not in ("top", "bottom"):
+            g[0] = [BONE[5]] * w
+            if h >= 3: g[h // 2] = [OCHRE[3] if x % 2 == 0 else OCHRE[1] for x in range(w)]
+            if tier == 3 and h >= 2:
+                for x in range(0, w, 2): g[0][x] = OCHRE[4]
+        return g
+    return paint
+
+def wm_tusk():
+    """A tusk or fang trophy, pale at the root, darker at the tip (the bottom row)."""
+    def paint(face, w, h):
+        g = blank(w, h)
+        for y in range(h):
+            for x in range(w): g[y][x] = clamp(BONE, 4 + (LIT[face] if face not in ("top", "bottom") else 1) - (y * 2 // max(1, h)))
+        if face not in ("top", "bottom") and h > 1: g[h - 1] = [BONE[2]] * w
+        return g
+    return paint
+
+def wm_skull(seed="wsk"):
+    """A small trophy skull: bone, two dark sockets and a nasal notch on the front."""
+    def paint(face, w, h):
+        g = bone_paint(4, seed)(face, w, h)
+        if face == "front" and w >= 3 and h >= 3:
+            g[1][0] = g[1][w - 1] = HORN[0]; g[2][w // 2] = HORN[1]
+        elif face == "front" and w >= 2 and h >= 2:
+            g[1][0] = HORN[0]
+        return g
+    return paint
+
+def wm_band():
+    """An ochre sinew band with a bone bead set in its front."""
+    def paint(face, w, h):
+        g = lashing(OCHRE, 3)(face, w, h)
+        if face == "front": g[h // 2][w // 2] = BONE[5]
+        return g
+    return paint

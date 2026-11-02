@@ -3,8 +3,11 @@
 
 A wide, low, long-legged spider of the Wildmoot hunt: a dark green-black chitin body with a lit edge, jointed legs banded
 pale at the knees and thick with bristles, and a carved white bone mask lashed over the eyes. Silk sacs cluster on the
-abdomen, clay warpaint is smeared across it, and a team cloth is tied across the abdomen with ochre cords. Tier I only.
-No back flag.
+abdomen, clay warpaint is smeared across it, and a team cloth is tied across the abdomen with ochre cords. No back flag.
+
+Tier I is the Web Stalker. Tier II (Broodstalker) carries more silk sacs, bone ridge plates on the thorax and bone
+beads strung on the cords. Tier III (Widowmaker) grows great bone mandibles and a bone crest on the mask, and bears a
+ochre hourglass edged in dried blood on the rear of the abdomen's back.
 
   python build_wm_stalker.py preview <dir> [side] | contact <png> [side] | stub
 """
@@ -58,7 +61,7 @@ def thorax_painter():
         return g
     return paint
 
-def abdomen_painter():
+def abdomen_painter(tier=1):
     """Segment ridges (a dark groove then a lit lip), clay warpaint smeared across the rear, a dark belly."""
     base = chitin(2, "ab")
     def paint(face, w, h):
@@ -73,6 +76,10 @@ def abdomen_painter():
                     for x in range(1, w - 1):
                         if r.random() < 0.8: g[y][x] = CLAY[3 if y == y0 else 2]
             for x, y in ((2, 3), (3, 3), (8, 3), (9, 3)): g[y][x] = CLAY[2]     # a handprint of dots
+            if tier == 3:      # the Widowmaker's mark: an ochre hourglass edged in dried blood across the rear back
+                for y, (a, b) in enumerate(((3, 9), (4, 8), (5, 7), (4, 8), (3, 9))):
+                    for x in range(a, b): g[y][x] = OCHRE[4 if y in (0, 4) else 3]
+                    g[y][a - 1] = BLOOD[1]; g[y][b] = BLOOD[1]
         elif face in ("left", "right"):     # w = 12 deep, h = 7; the rear end is column 0 on the right face, the last on the left
             rear = (lambda x: x) if face == "right" else (lambda x: w - 1 - x)
             for c in (2,):
@@ -250,7 +257,7 @@ def bones():
     B.append(Bone("palps", "head", boxes=[Box((-5, 1, -6), (1, 3, 3), palp()), Box((4, 1, -6), (1, 3, 3), palp())]))
     B.append(Bone("fangs", "head", (0, 2.5, -7), [Box((-2, 0, -1), (4, 1, 1), bone_paint(3, "fb")),
                                                    Box((-2, 1, -1), (1, 3, 1), fang()), Box((1, 1, -1), (1, 3, 1), fang())]))
-    B.append(Bone("abdomen", "thorax", (0, 0.5, 2), [Box((-6, -4, 0), (12, 7, 12), abdomen_painter())], rot=(5, 0, 0)))
+    B.append(Bone("abdomen", "thorax", (0, 0.5, 2), [Box((-6, -4, 0), (12, 7, 12), per_tier(abdomen_painter, (1, 2, 3)))], rot=(5, 0, 0)))
     B.append(Bone("sacs", "abdomen", boxes=[
         Box((-3, 0, 10), (4, 4, 4), sac("a")), Box((1, -1, 9), (4, 4, 4), sac("b")),
         Box((5, 1, 8), (3, 3, 3), sac("c")), Box((-8, 1, 9), (3, 3, 3), sac("d")),
@@ -263,6 +270,27 @@ def bones():
     for side in ("left", "right"):
         for i in (1, 2, 3, 4):
             B.extend(leg_bones(side, i))
+    # tier II, the Broodstalker: more silk sacs, bone ridge plates on the thorax, bone beads strung on the cords
+    B.append(Bone("sacs_ii", "abdomen", stages=[2, 3], boxes=[
+        Box((-7.5, -3, 3), (3, 3, 3), sac("g")), Box((4.5, -3, 2), (3, 3, 3), sac("h")), Box((-4, -6, 8), (3, 3, 3), sac("i")),
+        Box((3, -5, 9), (3, 3, 3), sac("j")), Box((-5, 2, 12), (1, 4, 1), thread()), Box((4, 3, 11), (1, 4, 1), thread())]))
+    B.append(Bone("ridge_plates", "thorax", stages=[2, 3], boxes=[
+        Box((-4, -4, -2.5), (2, 1, 5), wm_plate(2, "srp1")), Box((-1, -4.5, -2.5), (2, 2, 5), wm_plate(2, "srp2")),
+        Box((2, -4, -2.5), (2, 1, 5), wm_plate(2, "srp3"))]))
+    B.append(Bone("cord_beads", "abdomen", stages=[2, 3], boxes=[
+        Box((-5, -5, 0), (1, 1, 1), bone_paint(4, "cb1")), Box((-2.5, -5, 0), (1, 1, 1), bone_paint(4, "cb2")),
+        Box((1.5, -5, 0), (1, 1, 1), bone_paint(4, "cb3")), Box((4, -5, 0), (1, 1, 1), bone_paint(4, "cb4")),
+        Box((-5, -5, 6), (1, 1, 1), bone_paint(4, "cb5")), Box((4, -5, 6), (1, 1, 1), bone_paint(4, "cb6"))]))
+    # tier III, the Widowmaker: great bone mandibles, a bone crest on the mask, the blood hourglass on the rear
+    for side, c in (("right", -1), ("left", 1)):
+        B.append(Bone(f"mandible_{side}", "head", (c * 4.5, 2, -7), stages=[3], rot=(18, 0, 0), boxes=[
+            Box((-1, -1, -1), (2, 3, 2), bone_paint(3, "mdb" + side)),
+            Box((-1, 1, -6), (2, 2, 6), wm_tusk()), Box((-0.5 - c * 1, 1.5, -8), (1, 2, 2), wm_tusk()),
+            Box((-0.5 - c * 2, 2, -9), (1, 2, 1), wm_tusk())]))
+    B.append(Bone("crest", "head", stages=[3], boxes=[
+        Box((-0.5, -9.5, -8.5), (1, 6, 1), wm_tusk()), Box((-2.5, -7.5, -8.3), (1, 4, 1), wm_tusk()), Box((1.5, -7.5, -8.3), (1, 4, 1), wm_tusk()),
+        Box((-4.5, -6, -8.1), (1, 2, 1), wm_tusk()), Box((3.5, -6, -8.1), (1, 2, 1), wm_tusk()),
+        Box((-4, -4.5, -8.6), (8, 1, 1), lashing(OCHRE, 3), dil=0.05)]))
     return B
 
 def cloth_painter(spec, side):
@@ -271,9 +299,10 @@ def cloth_painter(spec, side):
 
 NOTE = ("Wildmoot Web Stalker (unit identity, Wildmoot): Rare spider beast. A wide low dark chitin body with a lit edge, long banded "
         "bristled legs, a carved white bone mask lashed over the eyes, silk sacs and clay warpaint on the abdomen, a team cloth tied "
-        "across the abdomen with ochre cords. Tier I only in the first pass. No back flag.")
+        "across the abdomen with ochre cords. Tier II: more sacs, thorax ridge "
+        "plates, cord beads; tier III: bone mandibles, mask crest, ochre hourglass. No back flag.")
 WM_STALKER = Troop("wm_stalker", SKIN, CLOTH, bones, cloth_painter,
-                   {"rig": "spider", "weapon": "none", "hand": "right", "idleArms": "hang", "portrait": "beast 18 yaw 20"}, tiers=(1,))
+                   {"rig": "spider", "weapon": "none", "hand": "right", "idleArms": "hang", "portrait": "beast 18 yaw 20"})
 def build(): return WM_STALKER.build()
 def outputs(): return WM_STALKER.outputs()
 

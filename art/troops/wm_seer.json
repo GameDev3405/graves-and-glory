@@ -1,6 +1,6 @@
 {
  "troop": "wm_seer",
- "note": "Wildmoot Bloodhowl Seer (unit identity, Wildmoot): a stooped boar-kin elder with a grey-furred muzzle, clay-glow eyes, an antler crown of two branching tines, a hide robe to the shins with blood handprints, bone and ochre trinkets, a team sash across the chest and a bone wand in the right hand. A totem staff (bone skull and antler top) is strapped diagonally on the back. Tier I only. No back flag.",
+ "note": "Wildmoot Bloodhowl Seer (unit identity, Wildmoot): a stooped boar-kin elder with a grey-furred muzzle, clay-glow eyes, an antler crown of two branching tines, a hide robe to the shins with blood handprints, bone and ochre trinkets, a team sash across the chest and a bone wand in the right hand. A totem staff (bone skull and antler top) is strapped diagonally on the back. Tier II: third tines, bone plaques, feather mantle, ochre wand bands; tier III: taller crown, staff skulls, tooth collar, ochre hem. No back flag.",
  "rig": "biped",
  "size": [
   128,
@@ -11,7 +11,9 @@
  "idleArms": "hang",
  "parts": [],
  "skins": {
-  "1": "wm_seer_s1.png"
+  "1": "wm_seer_s1.png",
+  "2": "wm_seer_s2.png",
+  "3": "wm_seer_s3.png"
  },
  "weapon": "none",
  "hand": "right",

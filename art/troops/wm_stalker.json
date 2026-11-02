@@ -1,6 +1,6 @@
 {
  "troop": "wm_stalker",
- "note": "Wildmoot Web Stalker (unit identity, Wildmoot): Rare spider beast. A wide low dark chitin body with a lit edge, long banded bristled legs, a carved white bone mask lashed over the eyes, silk sacs and clay warpaint on the abdomen, a team cloth tied across the abdomen with ochre cords. Tier I only in the first pass. No back flag.",
+ "note": "Wildmoot Web Stalker (unit identity, Wildmoot): Rare spider beast. A wide low dark chitin body with a lit edge, long banded bristled legs, a carved white bone mask lashed over the eyes, silk sacs and clay warpaint on the abdomen, a team cloth tied across the abdomen with ochre cords. Tier II: more sacs, thorax ridge plates, cord beads; tier III: bone mandibles, mask crest, ochre hourglass. No back flag.",
  "rig": "spider",
  "size": [
   128,
@@ -11,7 +11,9 @@
  "idleArms": "hang",
  "parts": [],
  "skins": {
-  "1": "wm_stalker_s1.png"
+  "1": "wm_stalker_s1.png",
+  "2": "wm_stalker_s2.png",
+  "3": "wm_stalker_s3.png"
  },
  "weapon": "none",
  "hand": "right",
