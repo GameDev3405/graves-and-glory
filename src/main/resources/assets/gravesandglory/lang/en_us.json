@@ -33,5 +33,6 @@
   "subtitles.gravesandglory.horn_rout": "Retreat horn",
   "subtitles.gravesandglory.horn_rally": "Rally horn",
   "death.attack.gravesandglory.troop": "%1$s was cut down by %2$s",
-  "death.attack.gravesandglory.troop.player": "%1$s was cut down by a troop"
+  "death.attack.gravesandglory.troop.player": "%1$s was cut down by a troop",
+  "subtitles.gravesandglory.wave_rise": "A wave rises"
 }
