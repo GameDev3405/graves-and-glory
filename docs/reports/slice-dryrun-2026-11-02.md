@@ -1,46 +1,34 @@
 # Six-player slice dry run, 2026-11-02 (plan task 3.7)
 
-Branch `work/slice-dryrun` off main `7ca3221`. Not pushed. **Result: the dry run did not reach any checklist item.** The harness was built and compiled, but both launch attempts failed on a setup problem (below) and the run was stopped at the coordinator's instruction. Every checklist item is therefore "not run". No gameplay defect was observed or recorded.
+Branch `work/slice-dryrun` off main `7ca3221`. Not pushed. Status: IN PROGRESS (interim commit; final results below are updated as items finish).
 
-## What was built (committed, d4f5aa6)
-- `test-tools/java/gg/gravesandglory/SliceProbe.java` (server entrypoint, `-Dgravesandglory.sliceDir=<dir>`): writes `state-server.json` once a second (pid, phase, mode, map, round time, scores, seats with bot and seated flags, held slots, every loaded profile's gold, matches, wins, XP, shards, Renown). Polls `cmd-server.txt` for `finish <team>` (end the round) and `stop` (clean server stop). Read-only otherwise.
-- `test-tools/java/gg/gravesandglory/SliceClient.java` (client entrypoint, `-Dgravesandglory.sliceClient=host:port -Dgravesandglory.sliceDir=<dir>`): a remote-controlled harness client. It takes `connect`, `disconnect`, `send <social or order command>` and `quit` from `cmd-<user>.txt` and writes `state-<user>.json` (connection, camp or battle phase, War Table room, profile summary, last result report).
-- Both are registered in `test-tools/resources/fabric.mod.json` and added to the forbidden list in `tools/release_config.py`. `gradlew localTestToolsJar --offline` builds. No shipped code changed.
-- Uncommitted, gitignored scratch (under `work/`): init scripts, `ctl.py` (state summary and command writer), start scripts. They follow the 3.6 method (Loom `runServer` / `runClient` with `-Dfabric.addMods` pointing at the local-integration jar).
+## Method
+- Harness (committed d4f5aa6): `SliceProbe` (server, writes `state-server.json`, reads `cmd-server.txt` for `finish <team>` and `stop`) and `SliceClient` (client, reads `cmd-<user>.txt` for `connect`, `disconnect`, `send <cmd>`, `quit`; writes `state-<user>.json`). Both are test-tools only and are in the forbidden list in `tools/release_config.py`.
+- Launch (works): the Loom dev server always runs in `<worktree>/run-server/` and the Gradle client in `<worktree>/run/`; an init-script `workingDir` override has no effect. Put `eula.txt` (own scratch folder only), `server.properties` (port 25588, online-mode=false, flat world) in `run-server/` and `options.txt` with `onboardAccessibility:false` in `run/`. Second client: direct `java` with the same command line and `@classpath.args`, different `--username`.
+- Processes started by me: 1 server (Gradle `runServer`), 2 clients (SliceAlpha, SliceBravo). Seats 3 to 6 are bots. Kort's client 29360 was not touched.
 
-## Checklist results
+## Checklist results (interim)
 
 | # | Item | Result |
 |---|---|---|
-| 1 | Domination, 2 humans + 4 bots (3v3), full round to a result | not run |
-| 2 | Siege on Ironhold, full round | not run |
-| 3 | Rewards: gold, win bonus, Renown, shards, XP after a completed match; profile saved | not run |
-| 4 | Return to camp after the match (both modes) | not run |
-| 5 | Reconnect within 2 min gets the army back; slot released after 2 min | not run |
-| 6 | Mid-match crash (kill own client or server): partial gold pro-rated by time played | not run |
-| 7 | Server restart: lobby, parties and profiles intact | not run |
-| 8 | Persistence of rewards across reconnect and restart | not run |
+| 1 | Domination, 2 humans + 4 bots (3v3), round to a result | running |
+| 2 | Siege on Ironhold | not run yet |
+| 3 | Rewards after a completed match | pending |
+| 4 | Return to camp after the match | pending |
+| 5a | Reconnect within 2 min gets a seat back | PASS (see below) |
+| 5b | Slot released after 2 min | pending |
+| 6 | Mid-match crash, partial gold | pending |
+| 7 | Server restart | pending |
+| 8 | Persistence of profiles | pending |
 
-Counts: 0 pass, 0 fail, 8 not run.
+### 5a Reconnect within 2 min
+Bravo sent `disconnect` at match second ~60. Server: Bravo left `online`, a bot took over the seat immediately, and `held` showed a hold on Bravo's UUID until tick 5113 (about 115 s ahead). Bravo sent `connect` about 40 s later: back in the battle world, seated on team 1, `held` cleared, scores kept running. Minor observations: the seat index moved from slot 1 to slot 5 in the list, and Bravo's client showed ready=False in the War Table roster after rejoining (cosmetic).
 
-## What happened
-1. Server launch (`runServer` with an init script setting `workingDir` to `work/slice-srv/run`): Gradle ran the server in the default `run-server` folder instead, found no `server.properties`/EULA there and exited ("You need to agree to the EULA"), so the probe never started. The same init-script approach was recorded as working in the 3.6 report; the cause here was not found (a debug print was queued but the shell guard refused the command before it ran).
-2. Client launch (same init-script method): the client also appears to have run in the default `run/` folder, not `work/slice-cli1`, so my `options.txt` was ignored and it stopped on `AccessibilityOnboardingScreen`. `SliceClient` loaded and wrote its state file, which is the only run evidence (`work/slice-out/client-SliceAlpha.log`). I asked it to quit through the harness; it exited cleanly.
-3. Processes: I started one Gradle client tree (wrapper 65304, daemon 51256, client 49628). All ended on their own after the harness `quit`. A direct `Stop-Process` was refused by the permission system and was not needed. Kort's review client (29360) and the other Java processes already present (4580, 6048) were not touched. No server of mine is running. Nothing was killed, so the crash steps (6) were never attempted.
-
-## Defect list
-No game defects found (nothing was exercised). Tooling findings:
-
+## Defects so far
 | Rating | Finding | Reproduce |
 |---|---|---|
-| minor | Init-script `workingDir` override did not apply for `runServer` and `runClient` in this checkout, so scratch run folders (EULA, options, properties) are ignored | `gradlew runServer --offline -Dslice.root=<root> -I work/slice-init-server.gradle` (script in `work/`, gitignored) and watch the working folder |
-| minor | The agent shell guard refuses compound commands that mention git or another worktree path, which slowed scripted setup | n/a, process note |
-
-## Next steps for whoever reruns this
-- Fix the launch first: run the server and clients with an explicit `java` command line (the 3.6 run kept `cmdline.txt` and `classpath.args` per client and reused them), or set `workingDir` in a small repo-local Gradle property, then confirm the server log shows `Done` and `state-server.json` appears.
-- Drive the lobby with `SliceClient` commands: `send social:lobby`, `social:size:3`, `social:map:1`, `social:mode:siege`, `social:ready`; Domination first (any map, 300 s clock), then Siege (Ironhold only, about 320 to 370 s in bot runs). The 3-minute minimum play for rewards (`minimumRewardSeconds`) means a forced early `finish` pays nothing; let rounds run to the clock.
-- Crash test: kill only the server or client PID that the probe or client state file reports. After restart, the server log should show "interrupted by a crash" and pay `partialGold` from the 30-second checkpoint (`match-progress.json`).
-- Reconnect: `disconnect`, wait under 120 s, `connect`; then repeat past 120 s and expect "slot ... is released" in the server log.
+| minor | Rejoined commander reseated at the last seat index; roster ready flag shows False after rejoin | Disconnect and reconnect a commander mid-Domination, read `state-server.json` seats and the client social roster |
+| minor (tooling) | Init-script `workingDir` override ignored by Loom dev server and client | see Method |
 
 ## Needs real humans (not agent-testable)
 - Six real clients at once, and real latency, jitter, packet loss over Tailscale.
