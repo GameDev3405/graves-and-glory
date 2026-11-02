@@ -275,7 +275,7 @@ public final class MotionEngine {
         final double[] fw = {1, 1};
         boolean fresh = true;
         double hold;
-        /** Fix r3: the ground pass's weight, eased out over GROUND_FADE once dead. */
+        /** Fix r3: the ground pass's weight and last frame's target, eased out over GROUND_FADE once dead or without the ground input. */
         double groundW = 1;
         double groundT = 1;
         /** Fix r3 (gate 2): each stance foot's roll shift (px, x and z), the one it held at liftoff, its corner's offset from the middle and that corner, and pass scratch. */
@@ -424,8 +424,10 @@ public final class MotionEngine {
         MotionBody.react(f, st, out);
         MotionBody.look(f, st, out);
         MotionFeet.plant(f, st, out);
-        double groundT = f.dead ? 0 : 1;
-        // like ramp(): this frame chases last frame's target, so the fade starts at the death frame at any frame rate
+        // the ground pass sits on the stride's solve: without the ground input the legs are the unsolved limb-angle gait, whose soles
+        // swing through the ground at a run, and lifting the hips off them hops the body (MotionLayersCheck pops), so it fades out.
+        // Like ramp(): this frame chases last frame's target, so the fade starts at the death frame at any frame rate
+        double groundT = f.dead || !f.ground ? 0 : 1;
         st.groundW = f.first ? groundT : toward(st.groundW, st.groundT, f.dt / GROUND_FADE);
         st.groundT = groundT;
         // the secondary springs read the hips before the ground pass: its lift is a whole-body raise, not hip motion for the straps to whip on
