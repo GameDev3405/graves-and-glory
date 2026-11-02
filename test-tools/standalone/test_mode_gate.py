@@ -14,8 +14,8 @@ HEADER = ("match,map,dawnTier,duskTier,winner,dawnScore,duskScore,seconds,banner
           "gateSecond,keepSecond,checkpoints,progress,idleMax")
 
 
-def row(i, winner="dawn", stage=3, blows=5, mode="siege", scores=("0", "0"), checkpoints="", idle=""):
-    pre = [str(i), "m", "1", "1", winner, scores[0], scores[1]] + ["0"] * 17
+def row(i, winner="dawn", stage=3, blows=5, mode="siege", scores=("0", "0"), checkpoints="", idle="", seconds="0"):
+    pre = [str(i), "m", "1", "1", winner, scores[0], scores[1], seconds] + ["0"] * 16
     return ",".join(pre + [mode, str(stage), str(blows), "10", "", "", "", checkpoints, "", idle])
 
 
@@ -65,6 +65,22 @@ class ModeGateTest(unittest.TestCase):
         self.assertEqual(code, 1)
         self.assertIn("never got past the yard", out)
         self.assertNotIn("gateBlows=0", out)
+
+    def test_siege_yard_clock_stage0_allowed(self):
+        rows = ten(4)
+        rows[4:10] = [row(i, "dusk", stage=0, blows=0, seconds="185") for i in range(4, 10)]
+        code, out, _ = run(rows)
+        self.assertEqual(code, 0, out)
+        self.assertIn("stage 0 on the yard clock 6", out)
+
+    def test_siege_yard_clock_share_cap(self):
+        rows = ten(3)
+        rows[3:10] = [row(i, "dusk", stage=0, blows=0, seconds="185") for i in range(3, 10)]
+        self.assertEqual(run(rows)[0], 0)
+        rows[2] = row(2, "dusk", stage=0, blows=0, seconds="185")
+        code, out, _ = run(rows)
+        self.assertEqual(code, 1)
+        self.assertIn("ran out the yard clock at stage 0, over 70%", out)
 
     def test_other_mode_rows_skipped(self):
         code, out, _ = run(ten(5) + [row(10, "dusk", mode="duel")])
