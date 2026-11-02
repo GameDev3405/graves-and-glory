@@ -104,8 +104,16 @@ public final class EngineMaps {
    while(column<total&&System.nanoTime()-t0<BUDGET_NS){
     int x=column%worldW()-R.worldHalfX(),z=column/worldW()-R.worldHalfZ();column++;
     int cx=Math.max(0,Math.min(map.width-1,x-map.ox)),cz=Math.max(0,Math.min(map.depth-1,z-map.oz));
-    int top=map.floorY+heights[tileOf[cz*map.width+cx]];
-    for(int y=map.floorY;y<top;y++){pos.set(x,y,z);set(w,pos,at(cx,cz,y));}
+    // The margin north of the playable box copies the edge column, shifted by CampWorld.taper so it meets the rim of the camp with no step (as Arena does for hand-made maps).
+    // A shifted column is laid solid: its water would stand above or below the edge's and spill, so water there takes the edge's ground block.
+    int shift=0,ground=map.solid(cx+map.ox,cz+map.oz);
+    if(z<-R.arenaHalfZ()&&ground!=EngineMap.NONE)shift=(int)Math.round(CampWorld.taper(x,z,ground+1))-1-ground;
+    int top=map.floorY+heights[tileOf[cz*map.width+cx]]+Math.max(0,shift);
+    for(int y=map.floorY;y<top;y++){pos.set(x,y,z);
+     if(shift==0){set(w,pos,at(cx,cz,y));continue;}
+     int sy=y-shift;BlockState s=sy>ground?Blocks.AIR.getDefaultState():at(cx,cz,Math.max(map.floorY,sy));
+     if(s.isOf(Blocks.WATER))s=at(cx,cz,ground);
+     set(w,pos,s);}
     int surface=top(w,x,z);
     for(int y=top;y<surface;y++){pos.set(x,y,z);set(w,pos,Blocks.AIR.getDefaultState());}
     if(Math.abs(x)==R.arenaHalfX()||Math.abs(z)==R.arenaHalfZ()){int g=Math.max(map.solid(x,z),map.water(x,z))+1;for(int y=g;y<g+6;y++){pos.set(x,y,z);set(w,pos,Blocks.BARRIER.getDefaultState());}}
