@@ -1,6 +1,6 @@
 # QA matrix (plan item 5.6)
 
-2026-11-01. Base `main` 5a7cdbb. Docs only: nothing here was run; no client or server was started and no EULA was touched. Rows come from the code and tools as they stand: `tools/package.py`, `tools/verify_package.py`, `tools/export_server.py`, `tools/export_modrinth.py`, `tools/verify.py`, `test-tools/`, `docs/SIX-PLAYER-TEST-PLAN.md`, `Campaign.java`, `GravesAndGlory.java`, `VersionGate.java`, `BuildMode.java`.
+2026-11-01. Base `main` 5a7cdbb. First pass 2026-11-02 (no-client rows) is recorded in `docs/reports/qa-matrix-2026-11-02.md`; check tags below updated for rows it found already covered. The rest was docs only: nothing was run; no client or server was started and no EULA was touched. Rows come from the code and tools as they stand: `tools/package.py`, `tools/verify_package.py`, `tools/export_server.py`, `tools/export_modrinth.py`, `tools/verify.py`, `test-tools/`, `docs/SIX-PLAYER-TEST-PLAN.md`, `Campaign.java`, `GravesAndGlory.java`, `VersionGate.java`, `BuildMode.java`.
 
 ## How to read it
 
@@ -43,10 +43,10 @@ Rules that apply to every row: never write or accept `eula.txt` (Kort supplies i
 | B4 | Rebuild the jar from changed source, then package without rebuilding. | Stale build is rejected by source fingerprint. | AUTO `test_release_integrity.py` (`test_identity_and_stale_build_rejection`) |
 | B5 | Look inside the jar for harness classes or service providers. | None; every harness class is refused. | AUTO `test_release_integrity.py` (`test_harness_and_service_provider_rejection`, `test_every_harness_class_is_refused`) |
 | B6 | `.mrpack` index validation: unsafe paths, duplicates, unapproved downloads, missing or malformed hashes. | Each is rejected. | AUTO `test_modrinth_export.py` |
-| B7 | `python tools/export_server.py` after B1 and a `.mrpack`. | Writes `dist/graves-and-glory-<ver>-server.zip` and `dist/server-manifest.json`; readback of every entry matches; archive set equals the allowlist. | LATER (no test calls `export_server.py`) |
-| B8 | List the server kit. | Contains: the mod jar, the four required server dependencies from `dependencies/platform-lock.json` (sha512 checked), `docs/` notices, `server.properties`, `setup-server.ps1`, `start-server.ps1`, `SERVER-README.txt`. Contains no `eula.txt`, no saves, no profiles, no credentials, no Fabric launcher, no rendering/shader mods. | LATER (assert the allowlist in a Python test with a fixture) |
-| B9 | `server.properties` in the kit. | `level-name=Graves and Glory`, `online-mode=true`, `max-players=16`, `server-ip=127.0.0.1`, `server-port=25565`, `enable-rcon=false`, `gamemode=adventure`, `spawn-protection=0`, flat world with no structures. | LATER (same test as B8) |
-| B10 | Tamper with one server dependency file, then export. | Export fails with "Stale server dependency". | LATER |
+| B7 | `python tools/export_server.py` after B1 and a `.mrpack`. | Writes `dist/graves-and-glory-<ver>-server.zip` and `dist/server-manifest.json`; readback of every entry matches; archive set equals the allowlist. | AUTO `test_export_server.py` |
+| B8 | List the server kit. | Contains: the mod jar, the four required server dependencies from `dependencies/platform-lock.json` (sha512 checked), `docs/` notices, `server.properties`, `setup-server.ps1`, `start-server.ps1`, `SERVER-README.txt`. Contains no `eula.txt`, no saves, no profiles, no credentials, no Fabric launcher, no rendering/shader mods. | AUTO `test_export_server.py` |
+| B9 | `server.properties` in the kit. | `level-name=Graves and Glory`, `online-mode=true`, `max-players=16`, `server-ip=127.0.0.1`, `server-port=25565`, `enable-rcon=false`, `gamemode=adventure`, `spawn-protection=0`, flat world with no structures. | AUTO `test_export_server.py` |
+| B10 | Tamper with one server dependency file, then export. | Export fails with "Stale server dependency". | AUTO `test_export_server.py` (`test_tampered_dependency_stops_the_export`) |
 
 ## C. Server kit on a fresh machine (headless)
 
@@ -89,10 +89,10 @@ Profiles are the server's `<uuid>.json`, read once per commander by `Campaign.pr
 | D10 | `<uuid>.tmp` cannot be written (locked or read-only). | The original `<uuid>.json` is left unchanged. | AUTO `ProfileMigrationCheck` (`mig-tmp-fail`) |
 | D11 | v2 file with `campaignCleared` 1, 3, 6. | Schema 3; `battlesWon` = march-1..N; `bonusClaimed` empty; gold, banner, writs, writChapters kept; `<uuid>.v2.json` is a byte copy. | AUTO `ProfileMigrationCheck` (`mig-v2`, `v2toV3`) |
 | D12 | Load a schema 3 file. | No migration; both files unchanged. | AUTO `ProfileMigrationCheck` (`mig-v2-idempotent`) |
-| D13 | A schema 1 file runs on to schema 3 in one load; the backup keeps schema 1 bytes. | `v1` backup only, no stray `.v2.json`. | AUTO `ProfileMigrationCheck` (`mig-file` schema 1 row) |
+| D13 | A schema 1 file runs on to schema 3 in one load; the backup keeps schema 1 bytes. | `.v1.json` keeps the schema 1 bytes; a `.v2.json` also holds the schema 2 image. | AUTO `ProfileMigrationCheck` (`mig-file` schema 1 row) |
 | D14 | Hand-edited schema 3 file: unknown ids, bad stars, mastery, banner, class, colour, negative gold, missing sets. | `sanitize()` clamps or drops each; invalid banner repacked; missing `battlesWon`/`bonusClaimed` rebuilt empty. | AUTO `ProfileMigrationCheck` (`sanitize` rows) |
 | D15 | Write, read back, write. | Byte-identical JSON round trip. | AUTO `ProfileMigrationCheck` (`round-trip`) |
-| D16 | Fixtures `profile-v1-partial.json` and `profile-v1-cache.json`. | Migrate to a valid schema 3 profile. | GAP: fixtures exist, no named check row found; confirm they are read by a test and add rows if not |
+| D16 | Fixtures `profile-v1-partial.json` and `profile-v1-cache.json`. | Migrate to a valid schema 3 profile. | AUTO `ProfileFixtureCheck` (all five fixtures, real Gson); live path HARN `Phase2Checks` |
 | D17 | Real server restart on a host with a v1 or v2 file in `gravesandglory-profiles/`, then join as that commander. | The collection shows the migrated profile; `.v1.json`/`.v2.json` present beside it; no data lost in the client UI. | LATER (HARN `GRAVES_ROADMAP_MIGRATION=true` covers the legacy-folder path only, not v1/v2 file content end to end). Final eyes: MANUAL |
 | D18 | Two commanders, one with a corrupt file. | Corrupt one fails; the other loads and plays; no cross-contamination. | LATER |
 | D19 | Client sends a portable profile copy (`importProfile`) on first visit to a single-player or LAN world with no record. | Imported once, upgraded the same way as a server file. Over 16000 characters is ignored. | LATER (no standalone check on `importAllowed`) |
