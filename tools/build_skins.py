@@ -1075,6 +1075,37 @@ def far_view(quads, colour, keys, lit_sheet):
     return far_c, far_k, far_l, (-ix0, -iy0)
 
 
+def far_strings(far_c, far_k, grip, quads, colour, keys):
+    """Draws each string of the rest frame into the far sprite as a one px line along its middle, on px the bow leaves
+    clear (task 16 r10: a troop past TroopDepth.NEAR_BLOCKS draws the far version, and Kort asked that the bowstring read at
+    30 blocks). A string's line runs between the middles of the short edges of its broad face seen from the front (-z);
+    its colour and key are the texels at that face's centre."""
+    cpx, kpx = colour.load(), keys.load()
+    for q in quads:
+        if q.face != 'north':
+            continue
+        c = q.corners
+        e01 = math.dist(c[0][:2], c[1][:2]); e03 = math.dist(c[0][:2], c[3][:2])
+        c2 = [c[1][k] + c[3][k] - c[0][k] for k in range(3)]
+        if e01 < e03:
+            a, b = [(c[0][k] + c[1][k]) / 2 for k in (0, 1)], [(c[3][k] + c2[k]) / 2 for k in (0, 1)]
+        else:
+            a, b = [(c[0][k] + c[3][k]) / 2 for k in (0, 1)], [(c[1][k] + c2[k]) / 2 for k in (0, 1)]
+        t = q.texels
+        u = (t[0][0] + t[1][0] + t[2][0] + t[3][0]) / 4 if len(t) == 4 else (t[1][0] + t[2][0]) / 2
+        v = (t[0][1] + t[1][1] + t[2][1] + t[3][1]) / 4 if len(t) == 4 else (t[1][1] + t[2][1]) / 2
+        tx, ty = min(max(int(u), 0), colour.width - 1), min(max(int(v), 0), colour.height - 1)
+        if cpx[tx, ty][3] == 0:
+            continue
+        steps = max(1, int(math.ceil(max(abs(b[0] - a[0]), abs(b[1] - a[1])) * 2)))
+        for i in range(steps + 1):
+            x, y = a[0] + (b[0] - a[0]) * i / steps, a[1] + (b[1] - a[1]) * i / steps
+            col, row = math.floor(x + 0.5) + grip[0], math.floor(y + 0.5) + grip[1]
+            if 0 <= col < far_c.width and 0 <= row < far_c.height and far_c.getpixel((col, row))[3] == 0:
+                far_c.putpixel((col, row), cpx[tx, ty])
+                far_k.putpixel((col, row), kpx[tx, ty])
+
+
 def far_quads(sprite, thickness, grip, v0):
     """The far sprite extruded, cut to FAR_CAP quads: the two big faces, then the longest side runs, in their own order."""
     quads = sprite_mesh(sprite, thickness, grip, 0, v0)
@@ -1296,9 +1327,12 @@ def cube_weapon_outputs(cat, wid):
         nock = None if nocks is None else [num(nocks[i][0]), num(nocks[i][1]), 0]
         frames_out.append({'name': name, 'nock': nock, 'quads': quads_of[name]})
         stats.append((wid, name, len(quads_of[name])))
-    # a string is under a px: at one px to a model px it would vanish or become a plank by the luck of its alignment, so it is left out
-    solid = [q.numbers() for q in bbmodel.frame_quads(model)['rest'] if not bbmodel.is_string(q.cube)]
+    # a string is under a px: at one px to a model px it would vanish or become a plank by the luck of its alignment, so it is
+    # left out of the sampled view and drawn after as a one px line along its middle (far_strings)
+    rest_quads = bbmodel.frame_quads(model)['rest']
+    solid = [q.numbers() for q in rest_quads if not bbmodel.is_string(q.cube)]
     far_c, far_k, far_l, grip = far_view(solid or quads_of['rest'], colour, keys, glow)
+    far_strings(far_c, far_k, grip, [q for q in rest_quads if bbmodel.is_string(q.cube)], colour, keys)
     if far_c.width > sheet_w:
         fail('%s: its far version is %d px wide, over the %d px of the sheet' % (what, far_c.width, sheet_w))
     far = far_quads(far_c, thickness, grip, sheet_h)

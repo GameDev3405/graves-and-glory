@@ -1042,9 +1042,11 @@ class BuildSkinsChecks(unittest.TestCase):
         self.assertEqual((big[2], big[5]), (-10.5, 2.5))    # thirteen rows, the blade's tip at the top
         self.assertEqual(model['frames'][0]['quads'][0][:3], [0.5, 2, 0.5])
 
-    def test_far_version_leaves_the_string_out(self):
-        """A string is under a px. At the far version's one px to a model px it would vanish or, where it fills half a px column,
-        turn into a plank, by the luck of its alignment, so the far version leaves every cube called string out."""
+    def test_far_version_draws_the_string_as_one_px_line(self):
+        """A string is under a px. Sampled at the far version's one px to a model px it would vanish or, where it fills half a px
+        column, turn into a plank, by the luck of its alignment, so the far version leaves every cube called string out of the
+        sampled view and draws it after as a one px line along its middle, on px the rest leaves clear (task 16 r10: the
+        bowstring reads past TroopDepth.NEAR_BLOCKS)."""
         laced = PIKE + [('string', (-2.4, -1, -0.1), (-1.9, 2, 0.1), 'linen', None)]   # a lanyard hanging from the guard, half a px wide
         with tempfile.TemporaryDirectory() as tmp:
             root = cube_fixture(tmp, wid='plain')
@@ -1053,9 +1055,11 @@ class BuildSkinsChecks(unittest.TestCase):
             plain, with_string = model_of(root, 'plain'), model_of(root, 'laced')
             sheets = [texture_of(root, name + '.png') for name in ('plain', 'laced')]
         self.assertEqual(len(with_string['frames'][0]['quads']), len(plain['frames'][0]['quads']) + 6)   # the string is still a cube of the weapon
-        lit = [sum(1 for y in range(128, im.height) for x in range(im.width) if im.getpixel((x, y))[3]) for im in sheets]
-        self.assertEqual(lit[0], lit[1])
-        self.assertEqual(plain['far'], with_string['far'])
+        lit = [{(x, y) for y in range(128, im.height) for x in range(im.width) if im.getpixel((x, y))[3]} for im in sheets]
+        self.assertTrue(lit[0] <= lit[1])
+        added = lit[1] - lit[0]
+        self.assertEqual(len({x for x, _ in added}), 1, added)   # one px column, never a plank
+        self.assertTrue(1 <= len(added) <= 4, added)              # at most the lanyard's 3 px length, end px included
 
     def test_far_version_keeps_the_glow(self):
         """The glow sheet carries the lit texels the front view shows, in the strip under the colour sheet."""

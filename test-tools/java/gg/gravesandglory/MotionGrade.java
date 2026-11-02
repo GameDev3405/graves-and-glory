@@ -1376,11 +1376,15 @@ final class MotionGrade extends Phase2Checks.Stage {
         var x = new JsonObject(); x.addProperty("state", state); x.addProperty("shot", level ? "level" : mode == L_WIDE ? "crowd" : "formed"); x.addProperty("frame", frame);
         x.addProperty("nearestFeetDist", r4(near)); x.addProperty("nearestMiddleDist", r4(nearMid)); x.addProperty("cameraEyeOverGround", r4(s.cam.y - site.getY())); crowdJson.add(x);
     }
+    /** Task 16 r10 (test only): GRAVES_GRADE_VOLLEY_SPREAD ticks staggers the attack event across the crowd, so a volley line is not
+     * lockstep: troop i's attack starts (i * 7) mod (spread + 1) ticks early (wide and formed passes; the close trio stays on the tick). 0, the default, fires every troop on the same tick. */
+    static final int VOLLEY_SPREAD = Integer.parseInt(java.util.Optional.ofNullable(System.getenv("GRAVES_GRADE_VOLLEY_SPREAD")).filter(v -> !v.isBlank()).orElse("0"));
+    static int spread(int i) { return VOLLEY_SPREAD <= 0 ? 0 : (i * 7) % (VOLLEY_SPREAD + 1); }
     void fire(MinecraftClient c, St s, int mode) {
         var subj = subjects(mode); long tick = c.world.getTime();
         switch (s.cat()) {
             case "stance" -> inject(c, s.stance());
-            case "attack" -> { int rows = Tactics.variants(famName).size(); for (var u : subj) { var e = client(c, u.mob); if (e != null) MotionEvents.Client.attack(e.getId(), s.variant(), tick, rows); } }
+            case "attack" -> { int rows = Tactics.variants(famName).size(), i = 0; for (var u : subj) { var e = client(c, u.mob); if (e != null) MotionEvents.Client.attack(e.getId(), s.variant(), tick - (mode == L_CLOSE ? 0 : spread(i)), rows); i++; } }
             case "hit" -> { for (var u : subj) { var e = client(c, u.mob); if (e != null) MotionEvents.Client.hit(true, e.getId(), MotionEvents.KINDS.indexOf("slash"), MotionEvents.ZONES.indexOf(s.zone()), 0f, 1, s.blocked() ? 1 : 0, tick); } }
             case "scene" -> { for (var u : subj) { var e = client(c, u.mob); if (e != null) TroopMotion.setScenePose(e.getId(), s.clip()); } }
             case "death" -> { // H2: the crowd dies of mixed kinds and directions, the centre troop keeps the state's slash and bearing

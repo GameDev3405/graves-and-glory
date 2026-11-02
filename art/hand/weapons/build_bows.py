@@ -50,6 +50,14 @@ STRING_W = 1.0
 STRING_D = 0.8   # a hair under the nocks' 1 px depth, so their faces are never coplanar
 FULL_DRAW = 11.5
 FOLLOW = 0.45
+# r10: a nocked arrow rides every draw frame (pull_0 to pull_2) and is gone at rest, so the loose shows it leave the bow. Its
+# pale fletching, a 3 px long, 2 px square block just ahead of the string hand, is the bright mark that reads the draw at 30
+# blocks up close; the shaft is 1 px of light wood ARROW px from the nock. (Past TroopDepth.NEAR_BLOCKS a troop draws the
+# bow's far version, the rest frame, so the arrow is a near-range read.)
+ARROW = 13
+FLETCH = (2, 5)
+ARROW_Z = 0.3
+NO_ARROW = {"longbow_t3"}   # its draw frames hold 126 quads already (bands, clasp, feather, caps); the arrow's 8 would pass the 128 cap
 ZSTEP = 0.25   # every other limb segment sits a quarter px across z so the flats of neighbours are never coplanar
 FRAMES = ("rest", "pull_0", "pull_1", "pull_2")
 
@@ -224,6 +232,7 @@ class Spec:
                 cubes.append(Thread("string_hi", d, pu, STRING_W, STRING_D / 2))
                 cubes.append(Thread("string_lo", d, (pl[0], -pu[1]), STRING_W, STRING_D / 2 - 0.05))   # a shade shallower than string_hi where they cross
                 nocks.append([r4(d[0]), 0])
+                if self.wid not in NO_ARROW: cubes += arrow(d[0])
             out[name] = [self._named(c, name) for c in cubes]
         return out, nocks
 
@@ -234,6 +243,19 @@ class Spec:
 
     def core(self):
         return [Cube(*a, **k) for a, k in self.grip + self.risers + self.extras]
+
+
+def arrow(x):
+    """The nocked arrow from the string's centre x forward along +x (r10): a light wood shaft and pale fletching, each
+    with its two end caps skipped (8 quads, inside every bow's 128-quad frame cap but longbow III's; see NO_ARROW). It
+    sits ARROW_Z off the stave's mid-plane, as an arrow rides beside the grip, so no face lies flat on a grip, clasp or
+    riser face and z-fights."""
+    z = ARROW_Z
+    shaft = by_face(up=flat(SAP[3]), down=flat(SAP[1]), rest=flat(SAP[2]))
+    fl = by_face(up=flat(FEATHER[3]), down=flat(FEATHER[1]), rest=flat(FEATHER[3]))
+    a, b = FLETCH
+    return [Cube("arrow_shaft", rv([x, -0.5, z - 0.5]), rv([x + ARROW, 0.5, z + 0.5]), "wood", shaft, skip=("east", "west")),
+            Cube("arrow_fletch", rv([x + a, -1, z - 1]), rv([x + b, 1, z + 1]), "bone", fl, skip=("east", "west"))]
 
 
 def make(wid, note, **kw): return Spec(wid, note, **kw)
@@ -317,6 +339,8 @@ def project(spec, frames):
     shared string column."""
     wid = spec.wid
     solid = [c for c in frames["rest"] if not isinstance(c, Thread)]
+    names = {c.name.split("/")[1] for c in solid}
+    solid += [c for c in frames["pull_2"] if not isinstance(c, Thread) and c.name.split("/")[1] not in names]   # r10: the arrow
     longest = max(c.n for cs in frames.values() for c in cs if isinstance(c, Thread))
     col = Cube("stringcol", [0, 0, 0], [1, int(math.ceil(longest)), 1], "linen", flat(STRING), skip=[f for f in FACES if f != "north"])
     colour, key, uv = W.pack([Cube(c.name.split("/")[1], c.lo, c.hi, c.mat, c.paint, c.skip, c.turn, c.pivot) for c in solid] + [col])
