@@ -335,7 +335,7 @@ def cloth_painter(spec, side):
 
 SENTINEL = Troop("sentinel", SKIN, CLOTH, bones, cloth_painter,
                  {"weapon": "longsword", "hand": "right", "idleArms": "hang", "portrait": "tall 4", "faces": {"count": 4, "card": 0}},
-                 hide=lambda bn: bn.name.startswith("shield"))
+                 hide=lambda bn: bn.name.startswith("shield"), veteran=K.veteran)
 def build(): return SENTINEL.build()
 def outputs(): return SENTINEL.outputs()
 

@@ -18,3 +18,9 @@ Branch `art/gilded-tiers` (from `main` a49c9a1), worktree `C:/Users/kortt/Melty/
 3. `python tools/build_skins.py`, then `--verify`, `python tools/art_hue_check.py`, `python tools/verify.py fast --offline`
    (JAVA_HOME Adoptium 17.0.19.10); revert CRLF-only diffs in sheets/preflight.json and Spec.java.
 4. 4x nearest-neighbour contact sheet of every new tier in `work/`; commit with the trailer.
+
+## Finished (same day)
+All of "Left" is done: Marshal tiers II and III, knight and sentinel veteran trims, art/troops mage and gl_marshal
+skins registered for tiers 2 and 3 (the --tiers gate reads them), build_skins --verify 240 outputs, hue check Gilded
+PASS 82%, verify.py fast --offline PASS (log work/gilded/verify-fast.log). Sheet: work/gilded-tiers-II-III-4x.png.
+Open for Kort: sentinel portrait tall 4 vs spec Tall +2 (kept); the Marshal's sun cape as his new mark.

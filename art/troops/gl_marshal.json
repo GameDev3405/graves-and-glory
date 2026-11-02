@@ -11,7 +11,7 @@
 {"part":"chest_panel"},
 {"part":"standard","scale":[0.869565,0.952381,0.909091],"offset":[0,2.2857,-0.0]}
 ],
-"skins":{"1":"gl_marshal_s1.png"},
+"skins":{"1":"gl_marshal_s1.png","2":"gl_marshal_s2.png","3":"gl_marshal_s3.png"},
 "weapon":"marshal_sword",
 "hand":"right",
 "portrait":"tall 4",
