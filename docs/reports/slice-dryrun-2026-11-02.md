@@ -95,3 +95,9 @@ Verdict: PASS for parties and profiles, with the room loss recorded as a minor d
 
 ### R2-5 Rewards persist across reconnect and restart
 Reconnect: Bravo's profile after the 2 min hold reconnect and again after the force-killed client was relaunched matched the server (200 gold). Alpha's rewards (120 gold per win, +2 shards) survived the restart exactly (360 gold, 450 XP, gilded 6 on disk, server and client). Profile files are in `run-server/Graves and Glory/gravesandglory-test-profiles/` with a `.bak` copy of the previous save. PASS.
+
+### R2-extra Domination round to a natural finish
+Alpha, Bravo (party, both seated on team 0 with one bot) against 3 bots on Rivergate. No forced finish: team 1 reached the 300 score limit at 493 s of play (scores 11 to 300), well before the 900 s clock, so the clock end itself was still not exercised. Violet Banner won; both clients got BATTLE COMPLETE, 80 gold, 100 XP, gilded +1 and landed on `CampScreen`. Server and client profiles agree (Alpha 440 gold / 4 matches, Bravo 280 gold / 3 matches). PASS for a natural score finish. Note: two humans in a party were put on the same team, so a party always fights together (expected, not a defect).
+
+### Round 2 counts
+PASS: 1 (Siege), 2 (hold expiry), 4 (parties, profiles), 5 (persistence), plus the natural Domination score finish. FAIL: 3 (client crash pays nothing). Blockers: none. Majors: 2 (crash pays 0; post-expiry rejoin seats the wrong team). Minors: room lost on restart, full reward for a player absent 75 percent of the round, siege round length grows during play. Not run: the server-crash checkpoint path of partial gold (a hard kill of the server mid-match). All processes stopped at the end; PIDs 29360, 4580, 6048 untouched.
