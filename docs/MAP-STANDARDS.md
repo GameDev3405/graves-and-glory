@@ -176,6 +176,7 @@ Current, identical on every map (`CampaignMaps.java:106`, `sheets/design.json` k
 
 Standard:
 - Spawns are half-turn symmetric (x -> -x, z -> -z) on every map, and the distance from a spawn to its nearest lane head (78 blocks along x) is the same on every map. No map is faster or slower on purpose (Kort, 2026-10-22).
+- Ironhold exception (record, 2026-11-02): the signed Ironhold layout (pick D1a, 2026-10-30) puts Dawn at (-314, 0) on the camp shelf at y 72 and Dusk at (128, 0) in the Donjon Court, so Ironhold's spawns are not half-turn symmetric and its spawn-to-lane-head distances are about 315 (Dawn) and 130 (Dusk). The 78-block rule above holds on the other four maps. The shipped game still has Ironhold at (-283, 0) and (283, 0) until the rebuilt map is adopted (plan task 2A.5). `docs/maps/ironhold/scan-2026-11-02.md` has the scanned numbers.
 - Agents do not move spawns or capture points without Kort's approval and a recorded undo (`docs/PLAN-TO-1.0.md` 7.3). An overlay may dress the camp but may not change `FACTIONS` rows.
 - The camp must keep: an open muster lane, a clear exit toward the lane head, and the road open from the muster point to the lane head (the through-road and base counts of the walk scan, section 10.1).
 

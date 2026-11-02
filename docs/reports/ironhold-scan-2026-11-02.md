@@ -21,3 +21,7 @@ Branch `work/ironhold-scan` in `C:/Users/kortt/Melty/bannerbound-ironhold`, cut 
 4. Fix only records (MAP-STANDARDS section 9 Ironhold spawns). Do not move spawns, captures, routes or landmark rows.
 5. Questions for Kort to list: Dusk towers in the gorge at (180,+-85); Dusk spawn-to-B about 130 versus Dawn about 315 (layout D1a, by design, but MAP-STANDARDS says equal lane-head distance); camp fan roads still run to (+-290,0) though the Dusk spawn is at 128.
 6. `verify fast --offline` only if no client runs (2 Minecraft javas seen at last count; this checkout is clean except the new files).
+
+## Update (final)
+
+Done: `tools/mapforge/scan.py` plus the `scan` subcommand and ScanTest; `docs/maps/ironhold/scan-2026-11-02.md` holds the report and the decisions needed; `docs/MAP-STANDARDS.md` section 9 records Ironhold's asymmetric spawns as an exception. `tools/verify.py fast --offline` passes; mapforge tests (43) pass. No client or background job of mine is running (the rebuild python PIDs were stopped). The scan world files are under work/mapforge/ironhold/ (git-ignored).

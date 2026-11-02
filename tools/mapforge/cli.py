@@ -133,6 +133,11 @@ def main(argv=None):
     p.add_argument('--max', nargs=2, type=int, metavar=('X', 'Z'))
     p.add_argument('--limit', type=int, default=20, help='gap cells listed (default 20)')
     p.add_argument('--terrain', action='store_true', help='only columns topped by natural ground (not gate arches, doors, frames)')
+    p = sub.add_parser('scan', help='read-only layout scan: spawns, capture rings, walking routes and landmark rows of a built world')
+    p.add_argument('map')
+    p.add_argument('--world', required=True)
+    p.add_argument('--design', help='sheets/design.json, for the landmark and supply rows')
+    p.add_argument('--json', action='store_true')
     p = sub.add_parser('colours', help='regenerate colours.json from a Minecraft client jar (Pillow)')
     p.add_argument('--jar', required=True)
     sub.add_parser('adopt', help='map adoption files (gg-mapforge-runs/1): batch, validate, info, diff, apply, bake; see adopt.py')
@@ -173,6 +178,12 @@ def main(argv=None):
                 for sid, d in mf.section_digests(m, world).items():
                     print(f'  digest {sid} {d}')
             return 0
+        if a.cmd == 'scan':
+            from . import scan as scan_mod
+            design = json.loads(pathlib.Path(a.design).read_text(encoding='utf-8')) if a.design else None
+            rep = scan_mod.scan(mf.load_manifest(a.map), World.load(a.world), design)
+            print(json.dumps(rep, indent=1) if a.json else scan_mod.format_report(rep))
+            return 1 if rep['problems'] else 0
         if a.cmd == 'sign':
             _refuse_live(a.world)
             m, world = mf.load_manifest(a.map), World.load(a.world)
