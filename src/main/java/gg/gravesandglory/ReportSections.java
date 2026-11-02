@@ -21,6 +21,15 @@ final class ReportSections {
     /** The most rows a section may take: the note's room for them (WarTableReport.SECTION_ROWS); a longer list is cut at this. */
     static final int MAX_ROWS = 8;
 
+    /** The Troops face lists this many troop types a page; a longer list pages (Previous and Next) instead of cutting names short. */
+    static final int TROOPS_PER_PAGE = 10;
+
+    /** How many pages n troop rows take (at least one). */
+    static int troopPages(int n) { return Math.max(1, (n + TROOPS_PER_PAGE - 1) / TROOPS_PER_PAGE); }
+
+    /** The page a turn of `step` from `page` lands on among n rows: it wraps, so neither control is ever dead. */
+    static int turnTroopPage(int page, int step, int n) { int pages = troopPages(n); return ((page + step) % pages + pages) % pages; }
+
     private static final Map<String, Source> sections = new LinkedHashMap<>();
 
     /** Adds (or replaces) the section of the mode with this id. */

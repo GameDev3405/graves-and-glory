@@ -75,6 +75,8 @@ final class WarTableReport {
     String face = "battle";
     final Map<String, UiButton> buttons = new LinkedHashMap<>();
     long ticks;
+    /** The Troops face's page (0-based). */
+    int troopPage;
     int builtContracts, builtFriends;
 
     WarTableReport(CampScreen screen) { this.screen = screen; }
@@ -118,9 +120,22 @@ final class WarTableReport {
         add("note-contracts", new UiButton(nx + NPAD, ny + TAGS_Y, TAG_W, TAB_H, Text.literal("Contracts"), b -> screen.page("contracts"), (g, x, y, w, h, hot) -> paintTag(g, "note-contracts", "Contracts", x, y, w, h, DarkUi.INK_TEXT)));
         add("note-chapter", new UiButton(nx + NPAD + TAG_W + TAG_GAP, ny + TAGS_Y, TAG_W, TAB_H, Text.literal("Chapter"), b -> screen.page("chapter"), (g, x, y, w, h, hot) -> paintTag(g, "note-chapter", "Chapter", x, y, w, h, DarkUi.INK_TEXT)));
         add("go", new UiButton(nx + NPAD, ny + GO_Y, NOTE_TEXT_W, GO_H, Text.literal(leaveLabel()), b -> go(), (g, x, y, w, h, hot) -> paintTag(g, "go", leaveLabel(), x, y, w, h, DarkUi.INK_TEXT)));
+        // the Troops face's paging, shown only when the list is longer than a page (sheet)
+        add("page-prev", new UiButton(sx + PAD, sy + CONTENT_END - TAB_H, TAG_W, TAB_H, Text.literal("Previous"), b -> turnPage(-1), (g, x, y, w, h, hot) -> paintTag(g, "page-prev", "Previous", x, y, w, h, DarkUi.INK_TEXT)));
+        add("page-next", new UiButton(sx + PAD + TEXT_W - TAG_W, sy + CONTENT_END - TAB_H, TAG_W, TAB_H, Text.literal("Next"), b -> turnPage(1), (g, x, y, w, h, hot) -> paintTag(g, "page-next", "Next", x, y, w, h, DarkUi.INK_TEXT)));
+        showPaging(false);
     }
 
-    void back() { screen.page("home"); }
+    /** The troop rows the report holds (its levels array). */
+    static int troopCount() { return report().has("levels") ? report().getAsJsonArray("levels").size() : 0; }
+
+    void turnPage(int step) { troopPage = ReportSections.turnTroopPage(troopPage, step, troopCount()); }
+
+    void showPaging(boolean on) {
+        for (String k : new String[]{"page-prev", "page-next"}) { var b = buttons.get(k); if (b != null) { b.visible = on; b.active = on; } }
+    }
+
+    void back() { UiSounds.back(); screen.page("home"); }
 
     void go() { screen.page(leaveTarget()); }
 
@@ -132,6 +147,7 @@ final class WarTableReport {
     /** A key's press: Esc returns to the War Table; Enter or Space presses the widget the keyboard's focus is on, and Enter with none presses the primary tag. */
     boolean keyPressed(int key) {
         if (key == GLFW.GLFW_KEY_ESCAPE) { back(); return true; }
+        if (face.equals("troops") && ReportSections.troopPages(troopCount()) > 1 && (key == GLFW.GLFW_KEY_LEFT || key == GLFW.GLFW_KEY_RIGHT)) { turnPage(key == GLFW.GLFW_KEY_LEFT ? -1 : 1); return true; }
         if (key == GLFW.GLFW_KEY_ENTER || key == GLFW.GLFW_KEY_KP_ENTER || key == GLFW.GLFW_KEY_SPACE) {
             var target = keyboardFocus();
             if (target == null && key != GLFW.GLFW_KEY_SPACE) target = buttons.get("go");
@@ -316,6 +332,7 @@ final class WarTableReport {
         rectsDrawn.put("sheet", UiTex.draw(g, "table/sheet-banner", x, y));
         texturesDrawn.put("sheet", "table/sheet-banner");
         textsDrawn.put("face", face);
+        showPaging(has() && face.equals("troops") && ReportSections.troopPages(troopCount()) > 1);
         if (!has()) return;
         switch (face) {
             case "troops" -> troops(g, x + PAD, y);
@@ -411,24 +428,22 @@ final class WarTableReport {
         head(g, "troops", "Troops in battle", null, x, ry, TEXT_W);
         ry += 18;
         if (levels.isEmpty()) { line(g, "levels-none", "No troop levels this battle.", x, ry, DarkUi.SEPIA); return; }
-        boolean two = CampScreen.levelCompact(levels.size());
-        int cell = CampScreen.levelCell(levels.size(), TEXT_W), rows = CampScreen.levelLines(levels.size()), gap = TEXT_W - 2 * cell;
-        for (int i = 0; i < levels.size(); i++) {
-            var row = levels.get(i).getAsJsonObject();
-            var words = CampScreen.levelWords(row, two);
-            if (words == null) continue;
-            int cx = x + (two ? i / rows * (cell + gap) : 0), cy = ry + i % rows * STEP;
-            String stats = UiMath.trim(words[1], cell, s -> font.getWidth(DarkUi.body(s)));
-            int sw = font.getWidth(DarkUi.body(stats));
-            int room = two ? cell - sw - 8 : cell;
-            String name = UiMath.trim(words[0], Math.max(0, two ? room : cell - sw - 8), s -> font.getWidth(DarkUi.body(s)));
-            if (two) {
-                line(g, "level-" + i + "-name", name, cx, cy, DarkUi.INK_TEXT);
-                lineRight(g, "level-" + i, stats, cx + cell, cy, DarkUi.SEPIA);
-            } else {
-                int nw = line(g, "level-" + i + "-name", name, cx, cy, DarkUi.INK_TEXT);
-                line(g, "level-" + i, stats, cx + nw + 8, cy, DarkUi.SEPIA);
-            }
+        // every row in the long form, whole: a long list pages rather than trimming a name
+        var rows = new ArrayList<String[]>();
+        for (int i = 0; i < levels.size(); i++) { var words = CampScreen.levelWords(levels.get(i).getAsJsonObject(), false); if (words != null) rows.add(words); }
+        int pages = ReportSections.troopPages(rows.size());
+        troopPage = Math.max(0, Math.min(troopPage, pages - 1));
+        int from = troopPage * ReportSections.TROOPS_PER_PAGE, to = Math.min(rows.size(), from + ReportSections.TROOPS_PER_PAGE);
+        for (int i = from; i < to; i++) {
+            var words = rows.get(i);
+            int cy = ry + (i - from) * STEP;
+            int nw = line(g, "level-" + i + "-name", words[0], x, cy, DarkUi.INK_TEXT);
+            line(g, "level-" + i, words[1], x + nw + 8, cy, DarkUi.SEPIA);
+        }
+        if (pages > 1) {
+            String label = "Page " + (troopPage + 1) + " of " + pages;
+            int lw = font.getWidth(DarkUi.body(label));
+            line(g, "page", label, x + (TEXT_W - lw) / 2, y + CONTENT_END - TAB_H + 7, DarkUi.SEPIA);
         }
     }
 

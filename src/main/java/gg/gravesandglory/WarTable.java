@@ -127,5 +127,5 @@ final class WarTable {
     }
 
     /** "War table", the way back to home from every other page: plaque-120 at 56 with icon-table and Esc. */
-    static UiButton backPlaque(ButtonWidget.PressAction a) { return plaque(56, 120, "icon-table", "War table", "Esc", 85, 0, a); }
+    static UiButton backPlaque(ButtonWidget.PressAction a) { return plaque(56, 120, "icon-table", "War table", "Esc", 85, 0, a).quiet(); } // its back() plays the one back cue
 }
