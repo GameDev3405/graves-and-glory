@@ -5,7 +5,7 @@ to match the 1x troops.
 Both bows are animated: the rest frame and the three draw frames (pull_0 to pull_2) are top-level groups of one
 Blockbench project, the limbs flex a little more in each, and the string runs from nock to nock at rest and from each nock
 to the drawing hand's point once drawn. Cubes are whole pixels (a limb segment is 1 or 2 px thick, 1 or 2 px deep and a
-whole number of px long, turned to its angle); only the string is under a pixel. A frame's limbs are the same cubes turned
+whole number of px long, turned to its angle); the string is one texel square (r9). A frame's limbs are the same cubes turned
 a little further, so every frame reads the rest frame's painted faces and the sheet holds each patch once.
 
 Frame: Blockbench, y up, the grip's centre at the origin (the fist covers y -2..+2), the string to the left (-x), the
@@ -37,13 +37,19 @@ DK = ramp("1f140e", "33221a", "4a3324", "63462f", "7d5b3f", "957354")          #
 WN = ramp("2b1a11", "4a2e1c", "6b4429", "8a5c3a", "a07a5c", "bf9b78")          # walnut: richer and brighter
 SAP = ramp("8f7550", "a98e63", "c4a77a", "d9be92", "e8d3ab", "f3e3c5")         # yew sapwood, the pale back of the stave
 HEART = ramp("2e1a12", "452818", "5e371f", "6a3e22", "7e4a2c", "8c5634")       # yew heartwood, the dark belly
-STRING = (217, 211, 193, 255)
+STRING = (246, 242, 230, 255)   # r9: near white, so the string reads at 30 blocks
 FEATHER = ramp("958262", "bfac86", "ddcfaa", "f5edd8")
 
 GRIP = {"offset": [0, 0, 0], "rotation": [0, 0, 0],
         "note": "the grip's centre is the model origin (the fist box covers y -2..+2); the model is y up with its big faces "
                 "across z, and the converter turns it by a half turn about x into the weapon frame"}
 PULL = [0.15, 0.32, 0.48]
+# r9: the string is a whole texel square (1 px wide and deep) so it reads at 30 blocks without turning into a rod; the full
+# draw reaches FULL_DRAW px behind the grip (the string hand at the cheek, the bow arm straight) and the tips follow FOLLOW of it
+STRING_W = 1.0
+STRING_D = 0.8   # a hair under the nocks' 1 px depth, so their faces are never coplanar
+FULL_DRAW = 11.5
+FOLLOW = 0.45
 ZSTEP = 0.25   # every other limb segment sits a quarter px across z so the flats of neighbours are never coplanar
 FRAMES = ("rest", "pull_0", "pull_1", "pull_2")
 
@@ -55,7 +61,7 @@ def rv(v): return [r4(a) for a in v]
 
 
 class Thread(Cube):
-    """The string: a box under a pixel thick from p0 to p1 in the x-y plane. Its faces read the shared string column of
+    """The string: a box STRING_W thick from p0 to p1 in the x-y plane. Its faces read the shared string column of
     the sheet by hand (see project); the preview paints each face as one texel."""
 
     def __init__(self, name, p0, p1, w, hz):
@@ -145,7 +151,7 @@ def feather(face, w, h):
 # is its mirror. `nock` is the cube at the tip that carries the string; `bands` are cubes set across a joint.
 
 class Spec:
-    def __init__(self, wid, note, root, segs, wood, nock, grip, risers, extras=(), bands=(), draw=(3.2, 5.65)):
+    def __init__(self, wid, note, root, segs, wood, nock, grip, risers, extras=(), bands=(), draw=(3.2, FULL_DRAW)):
         self.wid, self.note, self.root, self.segs, self.wood = wid, note, root, segs, wood
         self.nock, self.grip, self.risers, self.extras, self.bands = nock, grip, risers, extras, bands
         self.draw = draw
@@ -200,23 +206,23 @@ class Spec:
         out, nocks = {}, []
         _, p0 = self.limb(0, "up")
         xs = r4(p0[0] - 0.1)
-        # the drawn string reaches draw[1]; the nocks follow 85 percent of the way
+        # the drawn string reaches draw[1]; the limb tips follow FOLLOW of the way
         full = self.draw[1]
         steps = [xs - (xs + full) * (k + 1) / 3 if False else xs + (-full - xs) * (k + 1) / 3 for k in range(3)]
         for fi, name in enumerate(FRAMES):
             if fi == 0: bend = 0.0
-            else: bend = self.bend_for(p0[0] + 0.85 * (steps[fi - 1] - xs))
+            else: bend = self.bend_for(p0[0] + FOLLOW * (steps[fi - 1] - xs))
             up, pu = self.limb(bend, "up")
             lo, pl = self.limb(bend, "lo")
             cubes = self.core() + up + lo
             if fi == 0:
                 ya = pu[1]
-                cubes.append(Thread("string", (pu[0], -ya), (pu[0], ya), 0.4, 0.15))
+                cubes.append(Thread("string", (pu[0], -ya), (pu[0], ya), STRING_W, STRING_D / 2))
                 nocks.append([r4(pu[0]), 0])
             else:
                 d = (steps[fi - 1], 0.0)
-                cubes.append(Thread("string_hi", d, pu, 0.5, 0.15))
-                cubes.append(Thread("string_lo", d, (pl[0], -pu[1]), 0.5, 0.15))
+                cubes.append(Thread("string_hi", d, pu, STRING_W, STRING_D / 2))
+                cubes.append(Thread("string_lo", d, (pl[0], -pu[1]), STRING_W, STRING_D / 2 - 0.05))   # a shade shallower than string_hi where they cross
                 nocks.append([r4(d[0]), 0])
             out[name] = [self._named(c, name) for c in cubes]
         return out, nocks
@@ -265,7 +271,7 @@ def order_bow(tier):
         extras = []
     names = {1: "I (plain)", 2: "II (upgraded)", 3: "III (elite)"}
     wid = "order_bow" + ("" if tier == 1 else "_t%d" % tier)
-    return make(wid, NOTES[wid], root=3, segs=segs, wood=wood, nock=nock, grip=grip, risers=risers, extras=extras, bands=bands, draw=(3.2, 5.65))
+    return make(wid, NOTES[wid], root=3, segs=segs, wood=wood, nock=nock, grip=grip, risers=risers, extras=extras, bands=bands, draw=(3.2, FULL_DRAW))
 
 
 def longbow(tier):
@@ -293,7 +299,7 @@ def longbow(tier):
             bands = [(1, "gilt", band), (3, "gilt", band)]
             extras = [(("clasp", [1, 0, -0.5], [2, 1, 0.5], "gilt", gilt), {}),
                       (("feather", [1, -5, -0.25], [3, 0, 0.75], "bone", by_face(north=feather, south=feather, up=flat(H[5]), down=flat(H[3]), east=flat(H[4]), west=flat(H[4]))), {"turn": 14, "pivot": [1.5, 0, 0]})]
-    return make(wid, NOTES[wid], root=3, segs=segs, wood=wood, nock=nock, grip=grip, risers=risers, extras=extras, bands=bands, draw=(3.4, 5.65))
+    return make(wid, NOTES[wid], root=3, segs=segs, wood=wood, nock=nock, grip=grip, risers=risers, extras=extras, bands=bands, draw=(3.4, FULL_DRAW))
 
 
 NOTES = {}

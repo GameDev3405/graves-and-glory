@@ -5281,7 +5281,10 @@ public final class Phase2Checks implements ClientModInitializer {
                 // Task 16 r5: an attack is shot over its stance as the engine sums them in battle (guard; a ranged troop aim), at its windup,
                 // its impact and its recovery (TURN_ATTACKS: the default alias, or named clips); a bow's draw, loose and recovery on bow_draw
                 var tm=TroopModels.model(t);
-                if(bow){poses.add(new Object[]{"nock","bow_draw",BOW_NOCK});poses.add(new Object[]{"draw","bow_draw",TroopMotion.BOW_FULL});poses.add(new Object[]{"loose","bow_draw",TroopMotion.BOW_LOOSE});poses.add(new Object[]{"recovery","bow_draw",BOW_RECOVERY});}
+                if(bow){poses.add(new Object[]{"nock","bow_draw",BOW_NOCK});poses.add(new Object[]{"draw","bow_draw",TroopMotion.BOW_FULL});poses.add(new Object[]{"loose","bow_draw",TroopMotion.BOW_LOOSE});poses.add(new Object[]{"recovery","bow_draw",BOW_RECOVERY});
+                    // Task 16 r9: the bow's full draw, loose and recovery from FAR_DIST blocks at eye height (GRAVES_PHASE2_TURN_FAR lists bow_draw), front and 3/4
+                    if(Arrays.asList(TURN_FAR.split(",")).contains("bow_draw"))for(Object[] bp:new Object[][]{{"draw",TroopMotion.BOW_FULL},{"loose",TroopMotion.BOW_LOOSE},{"recovery",BOW_RECOVERY}})for(int fa:new int[]{0,45})
+                        shots.add(new Shot("turn-"+t+"-far30-"+bp[0]+"-"+fa,t,"far30","bow_draw",(Float)bp[1],fa,null,false,false,1,FAR_DIST,0));}
                 else{
                     String stance=row!=null&&row.ranged()?"aim":"guard";if(!magic)poses.add(new Object[]{"guard",stance,0f});
                     for(String a:TURN_ATTACKS){
