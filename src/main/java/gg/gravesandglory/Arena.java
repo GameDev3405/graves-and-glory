@@ -322,4 +322,7 @@ public final class Arena {
     public static void flag(ServerWorld w,int x,int y,int z,int team){flag(w,x,y,z,team,POINT_POLE);}
     /** The flag of a point or a supply house: a pole of pole blocks of fence over the ground at (x, y, z), three by two blocks of cloth (white neutral, cyan Dawn, purple Dusk) on its two top blocks, and a sea lantern on top: for the pole of six the cloth is at y+4..5 and the lantern at y+7, as it always was. */
     public static void flag(ServerWorld w,int x,int y,int z,int team,int pole){Block color=team<0?Blocks.WHITE_WOOL:team==0?Blocks.CYAN_WOOL:Blocks.PURPLE_WOOL;box(w,x,y+1,z,1,pole,1,Blocks.OAK_FENCE);box(w,x+1,y+pole-2,z,3,2,1,color);put(w,x,y+pole+1,z,Blocks.SEA_LANTERN);}
+    /** Takes a point's flag down: the pole, the cloth and the lantern become air (a mode that hides the points). */
+    public static void unflag(ServerWorld w,Spec.PointsRow p){unflag(w,p.x(),p.elevation(),p.z());}
+    public static void unflag(ServerWorld w,int x,int y,int z){box(w,x,y+1,z,1,POINT_POLE,1,Blocks.AIR);box(w,x+1,y+POINT_POLE-2,z,3,2,1,Blocks.AIR);put(w,x,y+POINT_POLE+1,z,Blocks.AIR);}
 }

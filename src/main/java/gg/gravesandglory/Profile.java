@@ -3,9 +3,9 @@ package gg.gravesandglory;
 import java.util.*;
 
 /**
- * A commander's saved collection, schema 2 (spec 6.2): the banner, the owned troops with stars and mastery, and per
- * House shards, Renown and Epic pity. Server-owned JSON, one file per player (Campaign.profile loads it, migrating a
- * schema-1 file first). Pure, so the standalone checks compile it.
+ * A commander's saved collection, schema 3 (spec 6.2, plan 2C.3): the banner, the owned troops with stars and mastery, per
+ * House shards, Renown and Epic pity, and the Long March battles won and bonuses paid. Server-owned JSON, one file per player
+ * (Campaign.profile loads it, migrating a schema-1 or schema-2 file first). Pure, so the standalone checks compile it.
  */
 public final class Profile {
     /** The JSON key of progression. Campaign.forClient finds the nested state by it to strip the match ids; a rename of the field that leaves this behind sends them again, which p1-report-snapshot catches. */
@@ -13,7 +13,9 @@ public final class Profile {
     /** One owned troop type: copies received, stars (1 to 3) and its mastery ledger. A stored "stage" field of an older file is ignored: Gson drops a key the class lacks. */
     static final class Owned { int copies=1, stars=1, kills, survived, mastery; String variant="base"; }
 
-    int schema = 2;
+    /** The current profile schema; ProfileMigration upgrades older files to it. */
+    static final int SCHEMA = 3;
+    int schema = SCHEMA;
     int gold, matches, wins;
     boolean tutorialDone;
     String commander = "champion";
@@ -26,8 +28,12 @@ public final class Profile {
     Map<String, Integer> shards = new LinkedHashMap<>(), renown = new LinkedHashMap<>(), pity = new LinkedHashMap<>();
     int writs;
     Progression.State progression = new Progression.State();
-    /** The Long March: the highest campaignBattles order won (Phase 1). */
+    /** The Long March: the highest campaignBattles order with it and every lower order won. Since schema 3 it is derived from battlesWon (MarchMath.cleared) on sanitize; the War Table and CampWorld.spawn still read it. */
     int campaignCleared;
+    /** Schema 3: campaignBattles ids won at least once. */
+    Set<String> battlesWon = new LinkedHashSet<>();
+    /** Schema 3: bonusObjectives ids already paid; a bonus pays once. */
+    Set<String> bonusClaimed = new LinkedHashSet<>();
     /** Campaign chapters whose Legendary Pact was granted, so each chapter grants one. */
     Set<Integer> writChapters = new LinkedHashSet<>();
     /** Unlocked banner cosmetics (renown rewards such as cosmetic:pennant). */
@@ -36,17 +42,19 @@ public final class Profile {
     /**
      * Repairs a loaded or migrated profile in place. Owned ids the catalog does not know are dropped. Stars clamp to
      * 1..recruitment.maxStars. A banner that fails validBanner is repacked. An unknown class becomes champion and an unknown
-     * side colour gold. Shards, renown and pity hold exactly the given Houses, each at 0 or more.
+     * side colour gold. Shards, renown and pity hold exactly the given Houses, each at 0 or more. A profile still below schema 3 (a
+     * schema-2 object from an import or a client copy) takes ProfileMigration.v2toV3 first. battlesWon and bonusClaimed keep only ids a
+     * campaignBattles or bonusObjectives row knows, and campaignCleared is derived from battlesWon.
      */
     void sanitize(RosterMath.Catalog c, Set<String> classIds, Set<String> sideIds, List<String> houses) {
-        schema = 2;
+        if (schema < SCHEMA) ProfileMigration.v2toV3(this, Spec.CAMPAIGNBATTLES);
+        schema = SCHEMA;
         if (progression == null) progression = new Progression.State();
         progression.sanitize();
         gold = clamp(gold, 0, 1_000_000);
         matches = Math.max(0, matches);
         wins = clamp(wins, 0, matches);
         writs = Math.max(0, writs);
-        campaignCleared = Math.max(0, campaignCleared);
         if (commander == null || !classIds.contains(commander)) commander = "champion";
         if (bannerColour == null || !sideIds.contains(bannerColour)) bannerColour = "gold";
         if (owned == null) owned = new LinkedHashMap<>();
@@ -69,6 +77,11 @@ public final class Profile {
         writChapters.removeIf(chapter -> chapter == null || chapter < 1);
         if (cosmetics == null) cosmetics = new LinkedHashSet<>();
         cosmetics.removeIf(id -> id == null || id.isBlank());
+        if (battlesWon == null) battlesWon = new LinkedHashSet<>();
+        battlesWon.removeIf(id -> MarchMath.row(id, Spec.CAMPAIGNBATTLES) == null);
+        if (bonusClaimed == null) bonusClaimed = new LinkedHashSet<>();
+        bonusClaimed.removeIf(id -> id == null || Arrays.stream(Spec.BONUSOBJECTIVES).noneMatch(b -> b.id().equals(id)));
+        campaignCleared = MarchMath.cleared(battlesWon, Spec.CAMPAIGNBATTLES);
     }
     /** One copy of each Common in the troops sheet, in sheet order. */
     static Map<String, Owned> commons() {

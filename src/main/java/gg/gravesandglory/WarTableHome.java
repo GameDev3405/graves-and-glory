@@ -264,17 +264,17 @@ final class WarTableHome {
 
     String rideLabel() {
         if (GravesAndGloryClient.running) return "A battle is under way";
-        return switch (focused) { case 0 -> "Begin practice"; case 2 -> "Ride to " + next().name(); default -> "Ride to the war gates"; };
+        return switch (focused) { case 0 -> "Begin practice"; case 2 -> "Ride to " + next().name(); default -> "Open the war council"; };
     }
 
-    /** The Ride plate: practice starts at once, the war gates set the commander on the ready pad and close the table, and the
+    /** The Ride plate: practice starts at once, a skirmish opens the War Table lobby, and the
      *  Long March prepares its battle's map first. */
     void ride() {
         if (GravesAndGloryClient.running) return;
         switch (focused) {
             case 0 -> screen.action("camp:practice");
             case 2 -> screen.action("campaign:" + next().id());
-            default -> { screen.action("camp:gates"); screen.close(); }
+            default -> screen.page("lobby"); // the War Table lobby (plan 3.4): seats, Houses, classes and the host's orders; the war gates' pads still work in camp
         }
     }
 
@@ -428,7 +428,7 @@ final class WarTableHome {
         } else textsDrawn.put("field-card", "none");
         int n = switch (focused) { case 0 -> 1; case 2 -> next().size(); default -> CampaignClient.padSize; };
         String tier = CampaignClient.tierName(focused == 2 ? next().difficulty() : CampaignClient.difficulty);
-        String rule = "Domination to " + GravesAndGlory.R.winScore(), teams = n + " v " + n + ", " + tier + (n == 1 ? " bot" : " bots");
+        String rule = Modes.ruleLine(Modes.DOMINATION), teams = n + " v " + n + ", " + tier + (n == 1 ? " bot" : " bots");
         centred(g, DarkUi.body(rule), x + 84, y + 120, DarkUi.SEPIA);
         centred(g, DarkUi.body(teams), x + 84, y + 132, DarkUi.SEPIA);
         rectsDrawn.put("field", new int[]{x, y, 168, 188});

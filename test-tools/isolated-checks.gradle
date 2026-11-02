@@ -26,6 +26,7 @@ allprojects {
    systemProperty 'gravesandglory.phase1Checks', System.getenv('GRAVES_PHASE1_CHECKS') ?: ''
    systemProperty 'gravesandglory.phase2Checks', System.getenv('GRAVES_PHASE2_CHECKS') ?: ''
    systemProperty 'gravesandglory.fadeRed', System.getenv('GRAVES_FADE_RED') ?: 'false'
+   systemProperty 'gravesandglory.phase4Checks', System.getenv('GRAVES_PHASE4_CHECKS') ?: ''
    systemProperty 'gravesandglory.turnTroops', System.getenv('GRAVES_PHASE2_TURN') ?: 'gilded'
    systemProperty 'gravesandglory.turnStage', System.getenv('GRAVES_PHASE2_STAGE') ?: '1'
    systemProperty 'gravesandglory.turnWeapon', System.getenv('GRAVES_PHASE2_WEAPON') ?: '1'

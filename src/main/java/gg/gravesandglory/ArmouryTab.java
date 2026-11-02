@@ -4,33 +4,38 @@ import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.font.TextRenderer;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.tooltip.Tooltip;
-import net.minecraft.client.gui.widget.ButtonWidget;
 import net.minecraft.client.sound.SoundManager;
 import net.minecraft.text.Text;
+import net.minecraft.util.Identifier;
 import java.util.*;
 import java.util.function.ToIntFunction;
 import static gg.gravesandglory.GravesAndGloryClient.*;
 
 /**
- * The Armoury tab of the barracks screen (in-match progression Task 8, War Table port plan Task 8), in today's barracks style: DarkUi tokens, Marcellus
- * headings, Lato body, the barracks' own flat widgets. One row per troop type of the banner: its portrait at the best tiers the army has bought, its name
- * and four buttons, Weapon II, Weapon III, Armour II and Armour III. The page READS the server's buy states (CampaignClient.armoury, state_v9) and never
- * works one out: a button is locked, open, bought or unaffordable as the server says, and a press sends gear:(troop):(weapon|armour):(tier), which the server
- * checks again. Every state carries a word and a glyph, never colour alone: a padlock and what is needed, "Buy" and the price, a check and "Bought",
- * the price and "Not enough gold". Away from a buy place every buy is greyed and says "Not here", the footer gives the reason; with progression off the
- * tab says "Levels are off". The look is the barracks'; the War Table restyle comes after Kort's gate.
+ * The Armoury tab of the barracks screen (in-match progression Task 8, War Table port plan Task 8), in the War Table's dress (Kort, 2026-10-31: it matches
+ * the troop sheet): the oak and the rail, a note listing the banner's troop types (portrait, House seal and name) and a sheet beside it, a ledger with the
+ * four buys of each troop on its row, Weapon II, Weapon III, Armour II and Armour III. Canvas pixels throughout (UiCanvas, at UiMath.pageScale as every
+ * War Table page); the 960x540 page is offset by WarTable.column(COMPACT). The page READS the server's buy states (CampaignClient.armoury, state_v9) and
+ * never works one out: a button is locked, open, bought or unaffordable as the server says, and a press sends gear:(troop):(weapon|armour):(tier), which
+ * the server checks again. Every state carries a word and a glyph or a shape, never colour alone: a padlock and what is needed, a vellum tag with "Buy" and
+ * the price, a check and "Bought", a flat greyed box with the price and "Not enough gold". Away from a buy place every buy is greyed and says "Not here",
+ * the sheet's notice line gives the reason; with progression off the tab says "Levels are off".
  */
 final class ArmouryTab {
-    static final int TOP = 84, LINE = 11, GAP = 4, GUTTER = 10, PORTRAIT = 44, SCROLL = 28, MAX_ROW = 60, MARGIN = 18, ARROW = 24, MAX_CONTENT = 1240;
-    /** The barracks' own fills and edges (DarkUi tokens and FantasyButton's): the row card, an open buy, a greyed button, a locked one. */
-    static final int ROW = 0xff222d32, OPEN_FILL = DarkUi.TAB_CHOSEN, OPEN_FOCUS = DarkUi.TAB_FOCUS, OFF_FILL = 0xff20272b, LOCKED_FILL = 0xff1b2226, LOCKED_EDGE = 0xff39464b, EDGE = DarkUi.TAB_EDGE;
-    private static final String[] LOCK = {"..xxx..", ".x...x.", ".x...x.", "xxxxxxx", "xxxxxxx", "xxx.xxx", "xxx.xxx", "xxxxxxx", "xxxxxxx"};
-    private static final String[] CHECK = {"......x", ".....xx", "x...xx.", "xx.xx..", ".xxx...", "..x...."};
-    private static final String[] UP = {"..x..", ".xxx.", "xxxxx"}, DOWN = {"xxxxx", ".xxx.", "..x.."};
+    /** The page (960x540 coordinates): the note at NOTE_X, the sheet at SHEET_X, both from TOP; on the compact page every box moves by COMPACT. */
+    static final int NOTE_X = 94, NOTE_W = 232, SHEET_X = 342, TOP = 124, NOTE_PAD = 16, PAD = 22, TEXT_W = 480;
+    static final int[] COMPACT = {-53, -32};
+    /** The rows' band on both papers (from the paper's top), a row's least height (the 40 px portrait and its frame), the most it grows to, the body line. */
+    static final int ROW_Y = 52, ROWS_H = 220, MIN_ROW = 44, MAX_ROW = 48, LINE = 11, GAP = 4, GUTTER = 12, PORTRAIT = 40, ARROW = 24;
+    /** The sheet's notice line (up to two lines) and, under it, the key line (from the sheet's top). */
+    static final int NOTICE_Y = 278, HINT_Y = 302;
+    /** The fills a buy is drawn on: the vellum tag of an open buy (the same whether hovered or not: the hover is an underline), the flat greyed box, the paper itself (bought, locked). */
+    static final int OPEN_FILL = 0xfff1e7cb, OPEN_FOCUS = OPEN_FILL, OFF_FILL = DarkUi.VELLUM, PAPER_FILL = 0xffdccb9f;
+    private static final String[] UP = {"...x...", "..xxx..", ".xxxxx.", "xxxxxxx"}, DOWN = {"xxxxxxx", ".xxxxx.", "..xxx..", "...x..."};
     /** The words of the fixed lines. */
-    static final String SUBTITLE = "Weapons and armour for this round, bought once per troop type", HEAD = "YOUR BANNER'S TROOPS", OFF = "Levels are off", OFF_WHY = "Soldiers do not level and no gear is sold this match.",
+    static final String TITLE = "Armoury", SUBTITLE = "Gear for this round, per troop type", OFF = "Levels are off", OFF_WHY = "Soldiers do not level and no gear is sold this match.",
         AWAY = "Buy at your barracks or a held point", NOT_HERE = "Not here", NO_GOLD = "Not enough gold", BOUGHT = "Bought", EMPTY = "Your banner has no troop types to buy gear for.";
-    static final String[] COLUMNS = {"WEAPON II", "WEAPON III", "ARMOUR II", "ARMOUR III"};
+    static final String[] GROUPS = {"Weapons", "Armour"}, COLUMNS = {"II", "III", "II", "III"};
     /** The wire tracks and tiers of the four columns, in order. */
     static final String[] TRACKS = {LevelMath.WEAPON, LevelMath.WEAPON, LevelMath.ARMOUR, LevelMath.ARMOUR};
     static final int[] TIERS = {2, 3, 2, 3};
@@ -38,6 +43,7 @@ final class ArmouryTab {
     record Rect(int x, int y, int w, int h) {
         boolean has(double px, double py) { return px >= x && px < x + w && py >= y && py < y + h; }
         boolean inside(int cw, int ch) { return x >= 0 && y >= 0 && x + w <= cw && y + h <= ch; }
+        boolean within(Rect o) { return x >= o.x && y >= o.y && x + w <= o.x + o.w && y + h <= o.y + o.h; }
         boolean overlaps(Rect o) { return x < o.x + o.w && o.x < x + w && y < o.y + o.h && o.y < y + h; }
         int cx() { return x + w / 2; }
         int cy() { return y + h / 2; }
@@ -48,14 +54,14 @@ final class ArmouryTab {
     List<String> signature = List.of(); boolean builtOn;
     final List<Gear> buttons = new ArrayList<>();
     final List<Arrow> arrows = new ArrayList<>();
-    /** The first visible troop row, how many fit, how many rows the banner has, the row height, the most lines a button holds and whether the scroll gutter is there. */
+    /** The first visible troop row, how many fit, how many rows the banner has, the row height, the most lines a button holds and whether the rows scroll. */
     int first, shown, total, rowH, lineCap = 2; boolean scrolling;
-    /** The content's left edge and width (centred on a canvas wider than MAX_CONTENT), the name block's width, the first button's x and a button's width. */
-    int left = MARGIN, contentW, nameW, bx0, bw;
-    /** What the page drew in its last frame (the checks read them): the footer's left lines and right hint, the name lines of each visible row, the header's lines. */
-    List<String> footerDrawn = List.of(), nameDrawn = List.of(), headerDrawn = List.of(); String hintDrawn = "", message = "";
+    /** The papers' top left corners in canvas px (the note's, the sheet's) and a buy tag's width. */
+    int nx, ny, sx, sy, bw;
+    /** What the page drew in its last frame (the checks read them): the notice line, the key line, the name lines of each visible row, the header's lines. */
+    List<String> footerDrawn = List.of(), nameDrawn = List.of(), headerDrawn = List.of(), hintLines = List.of(); String hintDrawn = "", message = "";
     int footerX, footerRoom, hintX;
-    /** A reason a greyed button gave when it was pressed, shown in the footer for a few seconds, until the server says something newer (noticeSerial moves). */
+    /** A reason a greyed button gave when it was pressed, shown on the notice line for a few seconds, until the server says something newer (noticeSerial moves). */
     String note = ""; long noteUntil; int noteSerial;
     /** The server's notice count when the page opened: a notice newer than that is feedback for a buy. */
     int serialAtOpen = -1;
@@ -67,6 +73,8 @@ final class ArmouryTab {
     static TextRenderer font() { return MinecraftClient.getInstance().textRenderer; }
     static ToIntFunction<String> width() { var f = font(); return s -> f.getWidth(DarkUi.body(s)); }
     static boolean levelsOn() { return Veterans.enabled(); }
+    static int[] columnAt() { return WarTable.column(COMPACT[0], COMPACT[1]); }
+
 
     // ---- the words (one place for the copy; the checks derive their expectations from LevelMath and the sheet, never from these strings) ----
 
@@ -150,54 +158,48 @@ final class ArmouryTab {
         return worst;
     }
 
-    /** The height a row needs for this many text lines in a button: the lines, the button's padding and the gaps between rows. */
-    static int rowFor(int lines) { return Math.max(34, lines * LINE + 12); }
+    /** The height a row needs for this many text lines in a buy tag: the lines and the tag's padding, never less than the portrait's frame. */
+    static int rowFor(int lines) { return Math.max(MIN_ROW, lines * LINE + 10); }
 
-    /** The page's measures on a canvas: the content's left edge and width, the name block, the first button and a button's width, the row height, rows shown, the scroll gutter and the lines a button holds. */
-    record Layout(int left, int contentW, int nameW, int bx0, int bw, int rowH, int shown, boolean scrolling, int lines) {}
+    /** The width of a buy tag: the sheet's text width over the four columns, a gap between the two of a track and a wider gutter between the tracks. */
+    static int tagWidth() { return (TEXT_W - 2 * GAP - GUTTER) / 4; }
 
-    static Layout layout(int W, int H, List<LevelMath.ArmouryRow> rows, ToIntFunction<String> width) {
-        int n = rows.size(), contentW = Math.min(W - 2 * MARGIN, MAX_CONTENT), left = (W - contentW) / 2;
-        int nameW = Math.max(130, Math.min(220, contentW * 20 / 100)), bx0 = left + PORTRAIT + nameW, avail = H - 45 - TOP;
-        boolean scroll = false; int bw = 0, lines = 2, rowMin = 34, capacity = 1;
-        for (int pass = 0; pass < 2; pass++) {
-            int right = left + contentW - (scroll ? SCROLL : 0);
-            bw = (right - 4 - bx0 - 3 * GAP - (GUTTER - GAP)) / 4;
-            lines = worstLines(rows, bw - 8 - 12, width); rowMin = rowFor(lines); capacity = Math.max(1, avail / rowMin);
-            if (n <= capacity || scroll) break;
-            scroll = true;
-        }
-        int shown = Math.min(Math.max(n, 1), capacity), rowH = Math.min(MAX_ROW, avail / Math.max(1, shown));
-        return new Layout(left, contentW, nameW, bx0, bw, Math.max(rowMin, rowH), shown, scroll, lines);
+    /** The page's measures: a buy tag's width, the row height, rows shown, whether the rows scroll and the lines a buy holds. */
+    record Layout(int bw, int rowH, int shown, boolean scrolling, int lines) {}
+
+    static Layout layout(List<LevelMath.ArmouryRow> rows, ToIntFunction<String> width) {
+        int n = rows.size(), bw = tagWidth(), lines = worstLines(rows, bw - 8 - 14, width), rowMin = rowFor(lines), capacity = Math.max(1, ROWS_H / rowMin);
+        int shown = Math.min(Math.max(n, 1), capacity), rowH = Math.max(rowMin, Math.min(MAX_ROW, ROWS_H / Math.max(1, shown)));
+        return new Layout(bw, rowH, shown, n > capacity, lines);
     }
 
-    /** x of a column's button: the two weapon columns, then the two armour columns after a wider gutter. */
-    int columnX(int col) { return bx0 + col * (bw + GAP) + (col >= 2 ? GUTTER - GAP : 0); }
+    /** x of a column's buy tag on the sheet: the two weapon columns, then the two armour columns after the gutter. */
+    int columnX(int col) { return sx + PAD + col * (bw + GAP) + (col >= 2 ? GUTTER - GAP : 0); }
 
-    /** Builds the page: the layout, the button of every visible row and the scroll arrows. Called by the screen's init and when the rows change. */
+    /** Builds the page: the layout, the buy tags of every visible row and the scroll arrows. Called by the screen's init and when the rows change. */
     void init() {
         var rows = CampaignClient.armoury.rows();
         signature = ids(rows); builtOn = levelsOn(); buttons.clear(); arrows.clear(); rowBoxes.clear(); nameBoxes.clear(); portraitBoxes.clear();
         if (serialAtOpen < 0) serialAtOpen = CampaignClient.noticeSerial;
-        total = rows.size(); shown = 0; scrolling = false; list = new Rect(MARGIN, TOP, screen.width - 2 * MARGIN, 0);
+        int[] o = columnAt(); nx = o[0] + NOTE_X; ny = o[1] + TOP; sx = o[0] + SHEET_X; sy = o[1] + TOP; bw = tagWidth();
+        total = rows.size(); shown = 0; scrolling = false; list = new Rect(sx + PAD, sy + ROW_Y, TEXT_W, 0);
         if (!builtOn || rows.isEmpty()) return;
-        var lay = layout(screen.width, screen.height, rows, width());
-        left = lay.left(); contentW = lay.contentW(); nameW = lay.nameW(); bx0 = lay.bx0(); bw = lay.bw(); rowH = lay.rowH(); shown = lay.shown(); scrolling = lay.scrolling(); lineCap = lay.lines();
+        var lay = layout(rows, width());
+        rowH = lay.rowH(); shown = lay.shown(); scrolling = lay.scrolling(); lineCap = lay.lines();
         first = Math.max(0, Math.min(first, total - shown));
-        int right = left + contentW - (scrolling ? SCROLL : 0);
-        list = new Rect(left, TOP, right - left, shown * rowH - 3);
+        list = new Rect(sx + PAD, sy + ROW_Y, TEXT_W, shown * rowH);
         for (int r = 0; r < shown; r++) {
             var row = rows.get(first + r); var t = ArmyCards.spec(row.troop()); if (t == null) continue;
-            int y = TOP + r * rowH, cardH = rowH - 3;
-            rowBoxes.add(new Rect(left, y, right - left, cardH));
-            nameBoxes.add(new Rect(left + PORTRAIT, y, nameW, cardH));
-            portraitBoxes.add(new Rect(left, y, PORTRAIT - 4, cardH));
-            for (int col = 0; col < 4; col++) buttons.add(screen.add(new Gear(this, t, TRACKS[col], TIERS[col], new Rect(columnX(col), y + 2, bw, cardH - 4))));
+            int y = sy + ROW_Y + r * rowH;
+            rowBoxes.add(new Rect(sx + PAD, y, TEXT_W, rowH));
+            nameBoxes.add(new Rect(nx + NOTE_PAD + PORTRAIT + 28, y, NOTE_W - NOTE_PAD * 2 - PORTRAIT - 28, rowH));
+            portraitBoxes.add(new Rect(nx + NOTE_PAD + 1, y + (rowH - PORTRAIT) / 2, PORTRAIT, PORTRAIT));
+            for (int col = 0; col < 4; col++) buttons.add(screen.add(new Gear(this, t, TRACKS[col], TIERS[col], new Rect(columnX(col), y + 3, bw, rowH - 6))));
         }
         if (scrolling) {
-            int ax = left + contentW - ARROW;
-            arrows.add(screen.add(new Arrow(this, true, new Rect(ax, TOP, ARROW, ARROW))));
-            arrows.add(screen.add(new Arrow(this, false, new Rect(ax, TOP + shown * rowH - 3 - ARROW, ARROW, ARROW))));
+            int ax = sx + PAD + TEXT_W - ARROW, ay = sy + NOTICE_Y - 2;
+            arrows.add(screen.add(new Arrow(this, true, new Rect(ax - ARROW - GAP, ay, ARROW, ARROW))));
+            arrows.add(screen.add(new Arrow(this, false, new Rect(ax, ay, ARROW, ARROW))));
         }
     }
 
@@ -214,84 +216,106 @@ final class ArmouryTab {
         return true;
     }
 
-    // ---- drawing ----
+    // ---- drawing (canvas pixels, between UiCanvas.begin and end) ----
 
-    void text(DrawContext g, String s, int x, int y, int colour) { g.drawText(font(), DarkUi.body(s), x, y, colour, false); }
-    void centre(DrawContext g, String s, int cx, int y, int colour) { text(g, s, cx - width().applyAsInt(s) / 2, y, colour); }
+    static int text(DrawContext g, String s, int x, int y, int colour) { g.drawText(font(), DarkUi.body(s), x, y, colour, false); return width().applyAsInt(s); }
+    static void centre(DrawContext g, String s, int cx, int y, int colour) { text(g, s, cx - width().applyAsInt(s) / 2, y, colour); }
+    static void headCentre(DrawContext g, String s, int cx, int y, int colour) { var t = DarkUi.heading(s); g.drawText(font(), t, cx - font().getWidth(t) / 2, y, colour, false); }
 
-    /** The page, behind its buttons: the header, the column heads, each row's card, name and portrait, the footer. The screen draws the buttons after this. */
+    /** The page behind its buttons: the oak and the rail, the note (title, purse, each row's portrait, seal and name, the key line) and the sheet (the column heads, the rows' rules, the notice line). The screen draws the buttons after this. */
     void render(DrawContext g) {
-        int W = screen.width; var w = width();
+        var w = width(); var font = font();
+        WarTable.drawChrome(g, "recruit");
+        UiTex.draw(g, "table/note-armoury", nx, ny); // as tall as the sheet
+        UiTex.draw(g, "table/sheet-field", sx, sy);
         List<String> head = new ArrayList<>();
-        DarkUi.title(g, "ARMOURY", MARGIN, 15, DarkUi.IVORY);
-        text(g, SUBTITLE, MARGIN, 40, DarkUi.MUTED); head.add(SUBTITLE);
-        String gold = "GOLD  " + GravesAndGloryClient.gold; text(g, gold, W - 190, 19, DarkUi.GOLD); head.add(gold);
+        // the note's head: the title and a rule, the purse at the right, the subtitle (or which rows show) under it
+        int tx = nx + NOTE_PAD, tw = NOTE_W - 2 * NOTE_PAD;
+        g.drawText(font, DarkUi.heading(TITLE), tx, ny + 16, DarkUi.INK_TEXT, false); head.add(TITLE);
+        g.fill(tx, ny + 28, tx + tw, ny + 29, DarkUi.SEPIA_LINE);
+        String gold = GravesAndGloryClient.gold + " gold"; int gw = w.applyAsInt(gold);
+        text(g, gold, tx + tw - gw, ny + 17, DarkUi.INK_TEXT); UiTex.draw(g, "recruit/coin-m", tx + tw - gw - 10, ny + 19); head.add(gold);
         var rows = CampaignClient.armoury.rows();
+        String sub = scrolling ? "Troops " + (first + 1) + "-" + (first + shown) + " of " + total : SUBTITLE;
+        text(g, sub, tx, ny + 34, DarkUi.SEPIA); head.add(sub);
+        // the sheet's heads: the two tracks over their columns, each with its rule, the tiers under them
+        for (int t = 0; t < 2; t++) {
+            int x0 = columnX(2 * t), x1 = columnX(2 * t + 1) + bw;
+            headCentre(g, GROUPS[t], (x0 + x1) / 2, sy + 16, DarkUi.INK_TEXT); head.add(GROUPS[t]);
+            g.fill(x0, sy + 28, x1, sy + 29, DarkUi.SEPIA_LINE);
+        }
+        for (int col = 0; col < 4; col++) { headCentre(g, COLUMNS[col], columnX(col) + bw / 2, sy + 35, DarkUi.SEPIA); head.add(COLUMNS[col]); }
         List<String> names = new ArrayList<>();
         message = "";
         if (!builtOn) {
-            centre(g, OFF, W / 2, TOP + 56, DarkUi.IVORY); centre(g, OFF_WHY, W / 2, TOP + 74, DarkUi.MUTED); message = OFF; head.add(OFF); head.add(OFF_WHY);
+            headCentre(g, OFF, sx + PAD + TEXT_W / 2, sy + 110, DarkUi.INK_TEXT); centre(g, OFF_WHY, sx + PAD + TEXT_W / 2, sy + 128, DarkUi.SEPIA); message = OFF; head.add(OFF); head.add(OFF_WHY);
         } else if (rows.isEmpty()) {
-            message = EMPTY; centre(g, message, W / 2, TOP + 56, DarkUi.IVORY); head.add(message);
+            message = EMPTY; centre(g, message, sx + PAD + TEXT_W / 2, sy + 110, DarkUi.INK_TEXT); head.add(message);
         } else {
-            text(g, HEAD, left, 70, DarkUi.MUTED); head.add(HEAD);
-            for (int col = 0; col < 4; col++) { centre(g, COLUMNS[col], columnX(col) + bw / 2, 70, DarkUi.MUTED); head.add(COLUMNS[col]); }
-            if (scrolling) { String count = "TROOPS  " + (first + 1) + "-" + (first + shown) + " OF " + total; text(g, count, W - 190, 39, DarkUi.MUTED); head.add(count); }
             for (int r = 0; r < rowBoxes.size() && first + r < rows.size(); r++) {
-                var card = rowBoxes.get(r); var t = ArmyCards.spec(rows.get(first + r).troop());
-                g.fill(card.x(), card.y(), card.x() + card.w(), card.y() + card.h(), ROW);
-                var nb = nameBoxes.get(r); var lines = UiMath.lines(t.name(), nb.w() - 6, 2, w);
+                var card = rowBoxes.get(r); var t = ArmyCards.spec(rows.get(first + r).troop()); var house = ArmyCards.house(t);
+                if (r > 0) { // a rule between rows, across both papers
+                    g.fill(tx, card.y(), tx + tw, card.y() + 1, DarkUi.SEPIA_LINE);
+                    g.fill(card.x(), card.y(), card.x() + card.w(), card.y() + 1, DarkUi.SEPIA_LINE);
+                }
+                var pb = portraitBoxes.get(r);
+                UiTex.draw(g, "table/frame-back-48", pb.x(), pb.y());
+                int edge = house == null ? DarkUi.SEPIA : 0xff000000 | house.accent(); // the frame in the House's own colour
+                g.drawBorder(pb.x() - 1, pb.y() - 1, pb.w() + 2, pb.h() + 2, edge);
+                if (house != null) g.drawTexture(new Identifier(house.glyph()), pb.x() + pb.w() + 6, card.y() + (card.h() - 16) / 2, 0, 0, 16, 16, 16, 16);
+                var nb = nameBoxes.get(r); var lines = UiMath.lines(t.name(), nb.w(), 2, w);
                 if (lines.size() == 1) lines = List.of(lines.get(0), kind(t));
                 int ty = card.y() + (card.h() - LINE * lines.size()) / 2 + 1;
-                for (int i = 0; i < lines.size(); i++) { text(g, lines.get(i), nb.x(), ty + LINE * i, i == 0 ? DarkUi.IVORY : DarkUi.MUTED); names.add(lines.get(i)); }
+                for (int i = 0; i < lines.size(); i++) { text(g, lines.get(i), nb.x(), ty + LINE * i, i == 0 ? DarkUi.INK_TEXT : DarkUi.SEPIA); names.add(lines.get(i)); }
             }
-            // the models last, over the cards: each at the best tiers its army has bought
+            // the models last, over the papers: each at the best tiers its army has bought
             var c = MinecraftClient.getInstance();
             for (int r = 0; r < portraitBoxes.size() && first + r < rows.size(); r++) {
                 var row = rows.get(first + r); var t = ArmyCards.spec(row.troop()); var pb = portraitBoxes.get(r);
                 var e = ArmyCards.portrait(t, bestTier(row, LevelMath.WEAPON), bestTier(row, LevelMath.ARMOUR));
-                if (e != null) { e.age = c.player == null ? 0 : c.player.age; ArmyCards.draw(g, pb.x() + pb.w() / 2, pb.y() + pb.h() - 4, ArmyCards.size(e, Math.max(8, (pb.h() - 8) / 2)), 22, 0, e); }
+                if (e != null) { e.age = c.player == null ? 0 : c.player.age; Portrait.draw(g, e, pb.x(), pb.y(), PORTRAIT, 0); }
             }
         }
         nameDrawn = names; headerDrawn = head;
         footer(g);
     }
 
-    /** The footer, right of the Back button: a reason a greyed button gave, else a fresh notice of the server's (a buy's outcome), else why nothing can be bought here; the key line at the right. */
+    /** The sheet's notice line: a reason a greyed button gave, else a fresh notice of the server's (a buy's outcome), else why nothing can be bought here; the key line on the note. */
     void footer(DrawContext g) {
-        int W = screen.width, H = screen.height; var w = width();
-        String keys = keyLine(); int hx = W - MARGIN - w.applyAsInt(keys);
-        text(g, keys, hx, H - 26, DarkUi.MUTED); hintDrawn = keys; hintX = hx;
+        var w = width();
+        String keys = keyLine(); int hx = sx + PAD;
+        var hl = UiMath.lines(keys, TEXT_W, 1, w);
+        for (int i = 0; i < hl.size(); i++) text(g, hl.get(i), hx, sy + HINT_Y + LINE * i, DarkUi.SEPIA);
+        hintDrawn = keys; hintLines = hl; hintX = hx;
         String line; int colour;
-        if (!note.isEmpty() && System.currentTimeMillis() < noteUntil && CampaignClient.noticeSerial == noteSerial) { line = note; colour = DarkUi.GOLD; }
-        else if (CampaignClient.noticeSerial > serialAtOpen && !CampaignClient.shownNotice().isEmpty()) { line = CampaignClient.shownNotice(); colour = DarkUi.IVORY; }
-        else if (builtOn && !CampaignClient.armoury.rows().isEmpty() && !CampaignClient.armoury.here()) { line = AWAY; colour = DarkUi.GOLD; }
-        else { line = ""; colour = DarkUi.MUTED; }
-        int x = 130, room = hx - 12 - x;
+        if (!note.isEmpty() && System.currentTimeMillis() < noteUntil && CampaignClient.noticeSerial == noteSerial) { line = note; colour = DarkUi.INK_TEXT; }
+        else if (CampaignClient.noticeSerial > serialAtOpen && !CampaignClient.shownNotice().isEmpty()) { line = CampaignClient.shownNotice(); colour = DarkUi.INK_TEXT; }
+        else if (builtOn && !CampaignClient.armoury.rows().isEmpty() && !CampaignClient.armoury.here()) { line = AWAY; colour = DarkUi.SEPIA; }
+        else { line = ""; colour = DarkUi.SEPIA; }
+        int x = sx + PAD, room = TEXT_W - (scrolling ? 2 * ARROW + GAP + 8 : 0);
         var lines = line.isEmpty() ? List.<String>of() : UiMath.lines(line, room, 2, w);
-        int y = H - 26 - (lines.size() > 1 ? 6 : 0);
-        for (int i = 0; i < lines.size(); i++) text(g, lines.get(i), x, y + LINE * i, colour);
+        for (int i = 0; i < lines.size(); i++) text(g, lines.get(i), x, sy + NOTICE_Y + LINE * i, colour);
         footerDrawn = lines; footerX = x; footerRoom = room;
     }
 
     // ---- the buttons ----
 
-    /** One of the four buy buttons of a troop row. It reads its state from the server's Armoury each frame and sends only when the server has the buy open and the commander stands where he may buy. */
-    static final class Gear extends ButtonWidget {
+    /** One of the four buy tags of a troop row. It reads its state from the server's Armoury each frame and sends only when the server has the buy open and the commander stands where he may buy. */
+    static final class Gear extends UiButton {
         final ArmouryTab tab; final Spec.TroopsRow troop; final String track; final int tier; final Rect box;
         LevelMath.Buy state = LevelMath.Buy.LOCKED; boolean here, pressable; List<String> lines = List.of(); String tip = "";
         /** The widest line, the line count and the colours (fill, first line, other lines) as the last frame drew them. */
         int drawnWidest, drawnLines, fillUsed, mainUsed, secondUsed;
         long sentUntil; int sentAt = -1;
         Gear(ArmouryTab tab, Spec.TroopsRow troop, String track, int tier, Rect box) {
-            super(box.x(), box.y(), box.w(), box.h(), Text.literal(troop.name() + " " + trackWord(track) + " " + MatchStats.roman(tier)), b -> {}, DEFAULT_NARRATION_SUPPLIER);
+            super(box.x(), box.y(), box.w(), box.h(), Text.literal(troop.name() + " " + trackWord(track) + " " + MatchStats.roman(tier)), b -> {}, null);
             this.tab = tab; this.troop = troop; this.track = track; this.tier = tier; this.box = box; refresh();
         }
         LevelMath.ArmouryRow row() { for (var r : CampaignClient.armoury.rows()) if (r.troop().equals(troop.id())) return r; return null; }
         String command() { return "gear:" + troop.id() + ":" + track + ":" + tier; }
         boolean hasGlyph() { return state == LevelMath.Buy.LOCKED || state == LevelMath.Buy.BOUGHT; }
-        /** The width of the box's text area: the box less its padding and the glyph's room (a padlock or a check, 8 px and a gap). */
-        int innerW() { return box.w() - 8 - (hasGlyph() ? 12 : 0); }
+        /** The width of the tag's text area: the tag less its padding and the glyph's room (a padlock or a check, 10 px and a gap). */
+        int innerW() { return box.w() - 8 - (hasGlyph() ? 14 : 0); }
         void refresh() {
             var row = row();
             here = CampaignClient.armoury.here(); state = row == null ? LevelMath.Buy.LOCKED : stateOf(row, track, tier);
@@ -320,28 +344,29 @@ final class ArmouryTab {
             } else { tab.note = reason(); tab.noteUntil = System.currentTimeMillis() + 4000; tab.noteSerial = CampaignClient.noticeSerial; }
         }
         @Override public void playDownSound(SoundManager sounds) { if (pressable) super.playDownSound(sounds); }
-        @Override public void renderButton(DrawContext g, int mx, int my, float delta) {
+        /** An open buy is a vellum tag in ink; a greyed one a flat vellum box with a ruled edge in sepia; a bought one the paper with a check in ink; a locked one the paper with a padlock in sepia. Hovered or focused, an open tag underlines its first line and a greyed box darkens its edge. */
+        @Override protected void paint(DrawContext g, int x, int y, int w, int h, boolean hot) {
             refresh();
-            int x = getX(), y = getY(), w = width, h = height; boolean focus = isHovered() || isFocused();
-            int fill, edge, main, second; boolean lock = false, check = false;
+            int fill, main, second; String glyph = null;
             switch (state) {
                 case OPEN -> {
-                    if (pressable) { fill = focus ? OPEN_FOCUS : OPEN_FILL; edge = DarkUi.GOLD; main = DarkUi.BRASS_HI; second = DarkUi.IVORY; }
-                    else { fill = OFF_FILL; edge = EDGE; main = DarkUi.MUTED; second = DarkUi.MUTED; }
+                    if (pressable) { fill = OPEN_FILL; main = DarkUi.INK_TEXT; second = DarkUi.INK_TEXT; }
+                    else { fill = OFF_FILL; main = DarkUi.SEPIA; second = DarkUi.SEPIA; }
                 }
-                case UNAFFORDABLE -> { fill = OFF_FILL; edge = EDGE; main = DarkUi.MUTED; second = DarkUi.MUTED; }
-                case BOUGHT -> { fill = ROW; edge = EDGE; main = DarkUi.IVORY; second = DarkUi.IVORY; check = true; }
-                default -> { fill = LOCKED_FILL; edge = LOCKED_EDGE; main = DarkUi.MUTED; second = DarkUi.MUTED; lock = true; }
+                case UNAFFORDABLE -> { fill = OFF_FILL; main = DarkUi.SEPIA; second = DarkUi.SEPIA; }
+                case BOUGHT -> { fill = PAPER_FILL; main = DarkUi.INK_TEXT; second = DarkUi.INK_TEXT; glyph = "check"; }
+                default -> { fill = PAPER_FILL; main = DarkUi.SEPIA; second = DarkUi.SEPIA; glyph = "lock"; }
             }
-            if (focus && edge != DarkUi.GOLD) edge = DarkUi.IVORY; // a greyed button under the pointer or the keyboard is lit in ivory, never in the brass an open buy wears
-            g.fill(x, y, x + w, y + h, fill); g.drawBorder(x, y, w, h, edge);
+            if (fill == OPEN_FILL) UiTex.nine(g, "table/btn-vellum-64x24", x, y, w + 1, h + 2);
+            else { g.fill(x, y, x + w, y + h, fill); g.drawBorder(x, y, w, h, hot ? DarkUi.SEPIA : DarkUi.SEPIA_LINE); }
+            if ("lock".equals(glyph)) UiTex.draw(g, "recruit/padlock-brass", x + 5, y + (h - 12) / 2);
+            if ("check".equals(glyph)) UiTex.draw(g, "table/ready-check", x + 5, y + (h - 8) / 2);
             var fw = width(); int n = lines.size(), ty = y + (h - LINE * n) / 2 + 1, widest = 0;
-            if (lock) glyph(g, LOCK, x + 4, y + (h - LOCK.length) / 2, DarkUi.MUTED);
-            if (check) glyph(g, CHECK, x + 4, y + (h - CHECK.length) / 2, DarkUi.IVORY);
             for (int i = 0; i < n; i++) {
                 String s = lines.get(i); int sw = fw.applyAsInt(s); widest = Math.max(widest, sw);
-                int tx = lock || check ? x + 4 + 8 + 4 : x + (w - sw) / 2;
+                int tx = glyph != null ? x + 18 : x + (w - sw) / 2;
                 g.drawText(font(), DarkUi.body(s), tx, ty + LINE * i, i == 0 ? main : second, false);
+                if (i == 0 && hot && pressable) g.fill(tx, ty + 9, tx + sw, ty + 10, DarkUi.INK_TEXT);
             }
             drawnWidest = widest; drawnLines = n; fillUsed = fill; mainUsed = main; secondUsed = second;
         }
@@ -351,49 +376,59 @@ final class ArmouryTab {
         for (int j = 0; j < rows.length; j++) for (int i = 0; i < rows[j].length(); i++) if (rows[j].charAt(i) == 'x') g.fill(x + i, y + j, x + i + 1, y + j + 1, colour);
     }
 
-    /** The two scroll buttons of the gutter: a triangle each (a shape, not a colour), 24 x 24. */
-    static final class Arrow extends ButtonWidget {
+    /** The two scroll buttons on the sheet's notice line: a triangle each (a shape, not a colour), 24 x 24, a vellum tag while there is more to see. */
+    static final class Arrow extends UiButton {
         final ArmouryTab tab; final boolean up; final Rect box;
         Arrow(ArmouryTab tab, boolean up, Rect box) {
-            super(box.x(), box.y(), box.w(), box.h(), Text.literal(up ? "Earlier troops" : "Later troops"), b -> {}, DEFAULT_NARRATION_SUPPLIER);
+            super(box.x(), box.y(), box.w(), box.h(), Text.literal(up ? "Earlier troops" : "Later troops"), b -> {}, null);
             this.tab = tab; this.up = up; this.box = box; setTooltip(Tooltip.of(getMessage()));
         }
         boolean live() { return up ? tab.first > 0 : tab.first < tab.total - tab.shown; }
         @Override public void onPress() { tab.scroll(up ? -1 : 1); }
-        @Override public void renderButton(DrawContext g, int mx, int my, float delta) {
-            int x = getX(), y = getY(); boolean live = live(), focus = isHovered() || isFocused();
-            g.fill(x, y, x + width, y + height, live ? DarkUi.TAB_IDLE : OFF_FILL); g.drawBorder(x, y, width, height, focus ? DarkUi.BRASS_HI : EDGE);
-            glyph(g, up ? UP : DOWN, x + (width - 5) / 2, y + (height - 3) / 2, live ? DarkUi.IVORY : DarkUi.MUTED);
+        @Override protected void paint(DrawContext g, int x, int y, int w, int h, boolean hot) {
+            boolean live = live();
+            if (live) UiTex.nine(g, "table/btn-vellum-64x24", x, y, w + 1, h + 2);
+            else { g.fill(x, y, x + w, y + h, OFF_FILL); g.drawBorder(x, y, w, h, DarkUi.SEPIA_LINE); }
+            if (hot) g.drawBorder(x, y, w, h, DarkUi.SEPIA);
+            glyph(g, up ? UP : DOWN, x + (w - 7) / 2, y + (h - 4) / 2, live ? DarkUi.INK_TEXT : DarkUi.SEPIA_LINE);
         }
     }
 
     // ---- what the checks read ----
 
-    /** Every way the page fails to fit its canvas, in words (an empty list for none): a button outside the canvas, under 20 x 20, overlapping another, a line wider than its box or cut with an ellipsis, a name cut, the footer's lines meeting the key line. */
+    /** Every way the page fails to fit its canvas, in words (an empty list for none): a tag outside the canvas or off its sheet, under 20 x 20, overlapping another, a line wider than its box or cut with an ellipsis, a name cut or off the note, the notice line past its room, the key line past the note. */
     List<String> fitFailures() {
-        List<String> bad = new ArrayList<>(); var w = width(); int W = screen.width, H = screen.height;
+        List<String> bad = new ArrayList<>(); var w = width(); int W = UiCanvas.width(), H = UiCanvas.height();
+        Rect sheet = new Rect(sx, sy, UiTex.entry("table/sheet-field").w(), UiTex.entry("table/sheet-field").h()), paper = new Rect(nx, ny, NOTE_W, UiTex.entry("table/note-armoury").h());
+        if (!sheet.inside(W, H) || !paper.inside(W, H)) bad.add("a paper outside the canvas " + W + "x" + H);
         var all = new ArrayList<Rect>();
         for (var b : buttons) {
             var r = b.box; all.add(r); String who = b.troop.id() + " " + b.track + " " + b.tier;
-            if (!r.inside(W, H - 45)) bad.add(who + " outside the canvas " + W + "x" + H);
+            if (!r.inside(W, H)) bad.add(who + " outside the canvas " + W + "x" + H);
+            if (!r.within(sheet)) bad.add(who + " off the sheet");
             if (r.w() < 20 || r.h() < 20) bad.add(who + " is " + r.w() + "x" + r.h() + ", under 20x20");
             int widest = 0; for (var s : b.lines) widest = Math.max(widest, w.applyAsInt(s));
             if (widest > b.innerW()) bad.add(who + " line of " + widest + " px in " + b.innerW());
             if (b.lines.stream().anyMatch(s -> s.endsWith("..."))) bad.add(who + " has a cut line " + b.lines);
             if (b.lines.size() * LINE > r.h() - 2) bad.add(who + " " + b.lines.size() + " lines in " + r.h() + " px");
+            if (r.y() + r.h() > sy + NOTICE_Y - 2) bad.add(who + " reaches the notice line");
         }
-        for (var a : arrows) { all.add(a.box); if (!a.box.inside(W, H - 45)) bad.add("a scroll button outside the canvas"); if (a.box.w() < 20 || a.box.h() < 20) bad.add("a scroll button under 20x20"); }
+        for (var a : arrows) { all.add(a.box); if (!a.box.inside(W, H) || !a.box.within(sheet)) bad.add("a scroll button off the sheet"); if (a.box.w() < 20 || a.box.h() < 20) bad.add("a scroll button under 20x20"); }
         for (int i = 0; i < all.size(); i++) for (int j = i + 1; j < all.size(); j++) if (all.get(i).overlaps(all.get(j))) bad.add("buttons " + i + " and " + j + " overlap");
         for (int r = 0; r < rowBoxes.size(); r++) {
             if (first + r >= total) break;
             var nb = nameBoxes.get(r);
             var t = ArmyCards.spec(CampaignClient.armoury.rows().get(first + r).troop());
-            for (var s : UiMath.lines(t.name(), nb.w() - 6, 2, w)) if (w.applyAsInt(s) > nb.w() - 6 || s.endsWith("...")) bad.add("the name " + s + " is cut in " + (nb.w() - 6));
-            if (rowBoxes.get(r).y() + rowBoxes.get(r).h() > H - 45) bad.add("a row reaches into the footer");
+            for (var s : UiMath.lines(t.name(), nb.w(), 2, w)) if (w.applyAsInt(s) > nb.w() || s.endsWith("...")) bad.add("the name " + s + " is cut in " + nb.w());
+            if (!nb.within(paper) || !portraitBoxes.get(r).within(paper)) bad.add("row " + r + " off the note");
         }
         int widest = 0; for (var s : footerDrawn) widest = Math.max(widest, w.applyAsInt(s));
-        if (!footerDrawn.isEmpty() && footerX + widest > hintX - 8) bad.add("the footer line meets the key line");
-        if (footerDrawn.stream().anyMatch(s -> s.endsWith("..."))) bad.add("the footer is cut " + footerDrawn);
+        if (widest > footerRoom) bad.add("the notice line is " + widest + " px in " + footerRoom);
+        if (footerDrawn.stream().anyMatch(s -> s.endsWith("..."))) bad.add("the notice line is cut " + footerDrawn);
+        int hw = 0; for (var s : hintLines) hw = Math.max(hw, w.applyAsInt(s));
+        if (hw > TEXT_W || hintLines.stream().anyMatch(s -> s.endsWith("..."))) bad.add("the key line does not fit the sheet " + hintLines);
+        if (sy + HINT_Y + LINE * hintLines.size() > sheet.y() + sheet.h() - 8) bad.add("the key line runs off the sheet");
+        if (paper.h() != sheet.h()) bad.add("the note is " + paper.h() + " px tall and the sheet " + sheet.h());
         return bad;
     }
 }

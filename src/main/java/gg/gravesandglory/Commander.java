@@ -185,7 +185,7 @@ public final class Commander {
             Vec3d at = p.getPos();
             var spot = Abilities.spot(b, at, p.getYaw());
             Vec3d where = spot == null ? at : new Vec3d(spot.getX() + .5, at.y, spot.getZ() + .5); // the banner's own place: its stand is in the middle of its block
-            if (GravesAndGlory.Battle.horizontalDistance(where, GravesAndGlory.Battle.base(s.team)) < c.range() * c.range()) {
+            if (GravesAndGlory.Battle.horizontalDistance(where, b.fieldBase(s.team)) < c.range() * c.range()) {
                 b.campaign.notice(s.owner, "Too near your base. Plant it " + Math.round(c.range()) + " or more blocks away.");
                 return false;
             }

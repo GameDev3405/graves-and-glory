@@ -74,6 +74,75 @@ for f in sides:
 if len({f['glyph'] for f in sides})!=len(sides) or len({f['color'] for f in sides})!=len(sides): errors.append('factions: every side needs its own colour and its own glyph')
 troops={r['id']:r for r in data['troops']}
 if data['rules'][0]['playersPerTeam']*2!=data['rules'][0]['maxPlayers']: errors.append('capacity mismatch: maxPlayers must be playersPerTeam for each of the two teams')
+# Battle modes (Phase 4 Task 2): the mode's own numbers live on a modes row, so the frame reads a row instead of Domination's
+# hard-coded win score, score interval and round length, and a new mode adds a row rather than another branch in Battle.
+modes=data.get('modes',[])
+if not modes: errors.append('modes: at least one row; domination is the mode every map hosts and the round falls back to')
+if 'domination' not in {m['id'] for m in modes}: errors.append('modes: no domination row, the mode a lobby opens on')
+for m in modes:
+    where=f'modes/{m["id"]}'
+    for part in m['maps'].split(','):
+        if not part.strip().isdigit() or int(part) not in range(len(data['maps'])): errors.append(f'{where}: maps entry {part!r} is not a map index 0..{len(data["maps"])-1}')
+    if m['timeout'] not in ('score','team0','team1'): errors.append(f'{where}: timeout {m["timeout"]!r} is not score, team0 or team1')
+    if m['ruleLine'].count('{n}')>1: errors.append(f'{where}: ruleLine holds more than one {{n}}')
+    if m['roundSeconds']<0 or m['winTarget']<0 or m['scoreInterval']<0: errors.append(f'{where}: roundSeconds, winTarget and scoreInterval cannot be negative')
+    if m['scoreInterval']>0 and m['winTarget']<=0: errors.append(f'{where}: a mode that scores needs a winTarget above 0')
+    if m['scoreInterval']==0 and m['timeout']=='score': errors.append(f'{where}: timeout score needs a scoreInterval above 0')
+    for column in ('howTo','howToDefend'):
+        parts=[p.strip() for p in m.get(column,'').split('|') if p.strip()]
+        if not 1<=len(parts)<=3: errors.append(f'{where}: {column} holds {len(parts)} parts, want 1 to 3')
+# Convoy (spec 2026-10-31-convoy-escort-design.md 5.1): the mode's numbers are a modeRules row and its road and bases modeSites
+# rows, so ConvoyMode holds no map data. A road's nodes have consecutive stages from 0, at least two named checkpoints before
+# the destination (the last node, always named); a base row (stage = team) stands off the road and more than 40 blocks from
+# the end its team does not hold (the defence's from the destination, the escort's from the start).
+mode_ids={m['id'] for m in modes}
+rule_rows={r['id']:r for r in data.get('modeRules',[])}
+for r in data.get('modeRules',[]):
+    where=f'modeRules/{r["id"]}'
+    if r['id'] not in mode_ids: errors.append(f'{where}: no modes row {r["id"]}')
+    for c in ('pushRadius','pushHeight','rollbackSpeed','idleSeconds','checkpointSeconds','checkpointGold','overtimeRadius','overtimeGraceSeconds','stoppedAfterSeconds','stoppedEverySeconds','siegeStageBonus','portcullisSeconds','keepEdgeAttackers','keepEdgeDefenders'):
+        if r[c]<0: errors.append(f'{where}: {c} cannot be negative')
+    if r['id']=='convoy':
+        if not 0<r['speedOne']<=r['speedTwo']<=r['speedThree']: errors.append(f'{where}: push speeds must be above 0 and never fall with more pushers')
+        if not 0<r['uphill']<=1<=r['downhill']: errors.append(f'{where}: uphill must be in (0,1] and downhill at least 1')
+    if r['id']=='siege' and not (r['keepEdgeAttackers']>0 and r['keepEdgeDefenders']>=r['keepEdgeAttackers']): errors.append(f'{where}: the keep edge is attackers of defenders, 0 < keepEdgeAttackers <= keepEdgeDefenders')
+if 'convoy' in mode_ids and 'convoy' not in rule_rows: errors.append('modeRules: the convoy mode needs its row')
+if 'siege' in mode_ids and 'siege' not in rule_rows: errors.append('modeRules: the siege mode needs its row')
+def seg_distance(px,pz,a,b):
+    dx,dz=b[0]-a[0],b[1]-a[1];t=max(0,min(1,((px-a[0])*dx+(pz-a[1])*dz)/((dx*dx+dz*dz) or 1)))
+    return ((px-a[0]-t*dx)**2+(pz-a[1]-t*dz)**2)**.5
+piece_ids={p['id'] for p in data.get('pieces',[])}
+roads={}
+for s in data.get('modeSites',[]):
+    where=f'modeSites/{s["id"]}'
+    if s['mode'] not in mode_ids: errors.append(f'{where}: mode {s["mode"]} is not a modes id')
+    if s['map'] not in range(len(data['maps'])): errors.append(f'{where}: map {s["map"]} is not a map index')
+    if s['kind'] not in ('road','base','stage','gate','ward'): errors.append(f'{where}: kind {s["kind"]} is not road, base, stage, gate or ward')
+    if s['piece']!='-' and s['piece'] not in piece_ids: errors.append(f'{where}: piece {s["piece"]} is not a pieces id')
+    if s['kind'] in ('gate','ward') and s['piece']=='-': errors.append(f'{where}: a {s["kind"]} row needs its piece')
+    if s['rotation'] not in (0,90,180,270): errors.append(f'{where}: rotation {s["rotation"]} is not 0, 90, 180 or 270')
+    if s['hp']<0 or s['seconds']<0: errors.append(f'{where}: hp and seconds cannot be negative')
+    if s['kind']=='road': roads.setdefault((s['mode'],s['map']),[]).append(s)
+for (mode,m),nodes in roads.items():
+    nodes.sort(key=lambda s:s['stage']);where=f'modeSites {mode} map {m}'
+    if [s['stage'] for s in nodes]!=list(range(len(nodes))): errors.append(f'{where}: road stages must run 0..{len(nodes)-1} with no gap')
+    if nodes[-1]['name']=='-': errors.append(f'{where}: the last road node is the destination and needs a name')
+    if sum(1 for s in nodes[1:-1] if s['name']!='-')<2: errors.append(f'{where}: at least two named checkpoints before the destination')
+    pts=[(s['x'],s['z']) for s in nodes]
+    for b in data.get('modeSites',[]):
+        if b['kind']!='base' or b['mode']!=mode or b['map']!=m: continue
+        if b['stage'] not in (0,1): errors.append(f'modeSites/{b["id"]}: a base stage is its team, 0 or 1')
+        end=pts[-1] if b['stage']==1 else pts[0]
+        if ((b['x']-end[0])**2+(b['z']-end[1])**2)**.5<=40: errors.append(f'modeSites/{b["id"]}: a base within 40 blocks of the road end its enemy pushes for')
+        near=min(seg_distance(b['x'],b['z'],pts[i],pts[i+1]) for i in range(len(pts)-1))
+        if near<=b['radius']+8: errors.append(f'modeSites/{b["id"]}: base {near:.1f} blocks from the road, it must stand off it')
+# Siege: the three stages in order (a ring each for the yard and the keep, the gate between them) and the wards' rows.
+for m in {s['map'] for s in data.get('modeSites',[]) if s['mode']=='siege'}:
+    st=sorted((s['stage'],s['kind']) for s in data['modeSites'] if s['mode']=='siege' and s['map']==m and s['kind'] in ('stage','gate'))
+    if st!=[(0,'stage'),(1,'gate'),(2,'stage')]: errors.append(f'modeSites siege map {m}: the stages must be a stage row 0, the gate row 1 and a stage row 2, found {st}')
+    for s in data['modeSites']:
+        if s['mode']=='siege' and s['map']==m and s['kind']=='stage' and (s['radius']<=0 or s['seconds']<=0): errors.append(f'modeSites/{s["id"]}: a stage ring needs a radius and seconds above 0')
+        if s['mode']=='siege' and s['map']==m and s['kind']=='gate' and s['hp']<=0: errors.append(f'modeSites/{s["id"]}: the gate needs hp above 0')
 groups={g['id'] for g in data.get('groups',[])}
 orders={o['id'] for o in data['orders']}
 for t in data['troops']:
@@ -153,6 +222,7 @@ for r in data['ui']:
 # Animation rework (spec 7.2): the Shieldwall formation went; Hold builds the wall (shield and spear troops brace on Hold).
 if any(f['id']=='shieldwall' for f in data['formations']): errors.append('formations/shieldwall: the Shieldwall formation was removed; Hold builds the shield wall')
 # Phase 2 Houses (spec 6.1): a troop's House, rarity, ability and evolve line (the levelNames key since the in-match progression design) are its own columns.
+# (modes, above, left the rules row its arena, capacity and reinforcement columns and took the round's own numbers with it.)
 squad=data['rules'][0]['squadSize']
 houses={h['id']:h for h in data['houses']}
 rarities={r['id']:r for r in data['rarities']}
@@ -439,9 +509,37 @@ for b in data['botBanners']:
             if n>rarities.get(r,{}).get('bannerMax',squad): errors.append(f'{name}: {n} {r} units, over bannerMax {rarities[r]["bannerMax"]}')
 for d in sorted(difficulties):
     if not any(b['difficulty']==d and all(houses.get(houseOf.get(s),{}).get('fieldable') for s in b['slots'].split(',') if s!='^') for b in data['botBanners']): errors.append(f'botBanners: no {d} banner fields only fieldable Houses (Campaign.botBanner picks from those)')
+# The Long March (plan 2C.3): six battles in one order, each on a map index, in one of the four 1.0 modes, at a botCommand difficulty, with one
+# bonusObjectives row of its own. A cell the plan leaves open is listed in the row's placeholder column ('none' when the row is settled).
+MARCH_MODES={'domination','siege','survival','convoy'}
+BONUS_KINDS={'hold_all','lose_at_most','stage_by','never_rolled','win_within','kill_unit'}
+bonus_rows={o['id']:o for o in data.get('bonusObjectives',[])}
+march=data['campaignBattles']
+if sorted(r['order'] for r in march)!=list(range(1,len(march)+1)): errors.append('campaignBattles: orders must run 1, 2, 3 and on, each once (MarchMath reads the order lock from them)')
+used_bonus=[r['bonus'] for r in march]
+for r in march:
+    where=f'campaignBattles/{r["id"]}'
+    if r['chapter']<1: errors.append(f'{where}: chapter {r["chapter"]} is under 1')
+    if r['map'] not in range(len(data['maps'])): errors.append(f'{where}: map {r["map"]} is not a maps index')
+    if r['mode'] not in MARCH_MODES: errors.append(f'{where}: mode {r["mode"]} is not one of {sorted(MARCH_MODES)}')
+    if r['difficulty'] not in difficulties: errors.append(f'{where}: difficulty {r["difficulty"]} is not a botCommand id')
+    if r['size']<1: errors.append(f'{where}: size {r["size"]} is under 1')
+    if r['bonus'] not in bonus_rows: errors.append(f'{where}: bonus {r["bonus"]} is not a bonusObjectives id')
+    elif used_bonus.count(r['bonus'])!=1: errors.append(f'{where}: bonus {r["bonus"]} is named by {used_bonus.count(r["bonus"])} battles; each battle has its own')
+    if r['house'] not in houses and not (r['house']=='all' and 'house' in r['placeholder'] and bonus_rows.get(r['bonus'],{}).get('kind')=='tbd'): errors.append(f'{where}: house {r["house"]} is not a houses id (all is allowed only as a placeholder whose bonus is still tbd, since the shards need one House)')
+    if not r['placeholder'].strip(): errors.append(f'{where}: placeholder is blank; it lists the open cells, or reads none')
+for o in bonus_rows.values():
+    where=f'bonusObjectives/{o["id"]}'
+    if o['id'] not in used_bonus: errors.append(f'{where}: no campaignBattles row names it')
+    if o['kind'] not in BONUS_KINDS and not (o['kind']=='tbd' and 'kind' in o['placeholder']): errors.append(f'{where}: kind {o["kind"]} is not one of {sorted(BONUS_KINDS)} (tbd only as a listed placeholder)')
+    if min(o['value'],o['shards'],o['gold'])<0: errors.append(f'{where}: value, shards and gold must be 0 or more')
+    if o['kind']=='kill_unit' and o['target'] not in houseOf: errors.append(f'{where}: a kill_unit target must be a troop id')
+    if o['kind'] not in ('kill_unit','stage_by') and o['target']!='none': errors.append(f'{where}: target must be none for kind {o["kind"]}')
+    if o['kind'] in ('lose_at_most','stage_by','win_within') and o['value']<1: errors.append(f'{where}: kind {o["kind"]} needs a value of 1 or more')
+    if not o['placeholder'].strip(): errors.append(f'{where}: placeholder is blank; it lists the open cells, or reads none')
 # Troop card text (Task 12): one troopNotes row per troop, in troops order, and nothing else; the economy model row (houses design 4.9, NOT_SHIPPED) has every input.
 if [n['id'] for n in data.get('troopNotes',[])]!=[t['id'] for t in data['troops']]: errors.append('troopNotes: one row per troops row, in the same order, with the same ids')
-ECONOMY_INPUTS={'matchesPerHour','winRate','hoursPerPlayDay','playDaysPerWeek','matchGold','winGold','dailyGold','weeklyGold','chapterGold','chapterRareValue','runs'}
+ECONOMY_INPUTS={'matchesPerHour','winRate','hoursPerPlayDay','playDaysPerWeek','matchGold','winGold','dailyGold','weeklyGold','runs'}
 if len(data.get('economyModel',[]))!=1 or not ECONOMY_INPUTS<=set(data['economyModel'][0]): errors.append('economyModel: one row with '+', '.join(sorted(ECONOMY_INPUTS))+' (tools/economy_model.py reads it)')
 elif not 0<=data['economyModel'][0]['winRate']<=1 or any(data['economyModel'][0][k]<=0 for k in ECONOMY_INPUTS-{'winRate'}): errors.append('economyModel: winRate within 0 to 1 and every other input above 0')
 # Built world (Phase 3): the pieces sheet describes the structure files, campPieces places them, campStations names the people and boards of the camp.

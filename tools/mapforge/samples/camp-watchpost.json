@@ -1,0 +1,31 @@
+{
+ "format": "gg-mapforge-plan/1",
+ "id": "camp-watchpost-sample",
+ "world": "camp",
+ "author": "mapforge sample (2A.3)",
+ "purpose": "Sample batch: a raised watch mound, a gravel road, an Ironclad tent turned 90 degrees, a lantern and a one-block drill pit, all inside section s0 of the sample map camp-map.json, keeping out of the hearth court.",
+ "section": "s0",
+ "pass": "blockout",
+ "limits": {"maxChangedBlocks": 20000},
+ "locks": [
+  {"id": "hearth-court", "mode": "deny", "min": [28, 60, 28], "max": [35, 96, 35], "reason": "station: hearth court (plan 7.3)"}
+ ],
+ "operations": [
+  {"op": "terrain", "note": "watch mound", "origin": [4, 4], "base": 64, "floor": 62, "surface": "minecraft:grass_block", "under": "minecraft:dirt", "underDepth": 2, "core": "minecraft:stone", "clearTo": 72,
+   "heights": [
+    [0, 0, 1, 1, 1, 1, 1, 0, 0],
+    [0, 1, 2, 2, 2, 2, 2, 1, 0],
+    [1, 2, 3, 3, 3, 3, 3, 2, 1],
+    [1, 2, 3, 4, 4, 4, 3, 2, 1],
+    [1, 2, 3, 4, 4, 4, 3, 2, 1],
+    [1, 2, 3, 4, 4, 4, 3, 2, 1],
+    [1, 2, 3, 3, 3, 3, 3, 2, 1],
+    [0, 1, 2, 2, 2, 2, 2, 1, 0],
+    [0, 0, 1, 1, 1, 1, 1, 0, 0]]},
+  {"op": "fill", "note": "gravel road, grass only", "min": [13, 64, 7], "max": [42, 64, 9], "block": "minecraft:gravel", "replace": ["minecraft:grass_block"]},
+  {"op": "fill", "note": "road edging", "min": [13, 64, 6], "max": [42, 64, 10], "block": "minecraft:cobblestone", "shape": "outline", "replace": ["minecraft:grass_block"]},
+  {"op": "structure", "note": "Ironclad tent, turned 90 degrees clockwise", "piece": "camp/tent_ironclad", "at": [48, 65, 48], "rotation": 90},
+  {"op": "set", "note": "lantern post on the mound", "pos": [8, 69, 8], "block": "minecraft:lantern[hanging=false]"},
+  {"op": "clear", "note": "drill pit, one block deep", "min": [44, 64, 20], "max": [52, 70, 26]}
+ ]
+}

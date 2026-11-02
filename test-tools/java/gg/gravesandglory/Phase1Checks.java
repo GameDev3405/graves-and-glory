@@ -38,7 +38,7 @@ public final class Phase1Checks implements ClientModInitializer {
      *  while the client's ready is false, when step() does not run. clientTick runs every client tick, ready or not. */
     public interface HudWatch { void hudFrame(MinecraftClient c); default void clientTick(MinecraftClient c){} }
     static final Map<String,Supplier<Suite>> SUITES=new LinkedHashMap<>();
-    static{SUITES.put("combat",Combat::new);SUITES.put("morale",MoraleChecks::new);SUITES.put("reinforce",ReinforceChecks::new);SUITES.put("bots",Bots::new);SUITES.put("tutorial",TutorialChecks::new);SUITES.put("report",ReportChecks::new);SUITES.put("ui-art",UiArtChecks::new);SUITES.put("ui-hud",UiHudChecks::new);SUITES.put("ui-feed",UiFeedChecks::new);SUITES.put("ui-home",UiHomeChecks::new);SUITES.put("ui-recruit",UiRecruitChecks::new);SUITES.put("ui-pages",UiPagesChecks::new);SUITES.put("ui-icons",UiIconsChecks::new);SUITES.put("ui-leave",UiLeaveChecks::new);}
+    static{SUITES.put("combat",Combat::new);SUITES.put("ui-lobby",LobbyChecks::new);SUITES.put("ui-bannerfield",BannerFieldChecks::new);SUITES.put("morale",MoraleChecks::new);SUITES.put("reinforce",ReinforceChecks::new);SUITES.put("bots",Bots::new);SUITES.put("tutorial",TutorialChecks::new);SUITES.put("report",ReportChecks::new);SUITES.put("ui-art",UiArtChecks::new);SUITES.put("ui-hud",UiHudChecks::new);SUITES.put("ui-feed",UiFeedChecks::new);SUITES.put("ui-home",UiHomeChecks::new);SUITES.put("ui-recruit",UiRecruitChecks::new);SUITES.put("ui-pages",UiPagesChecks::new);SUITES.put("ui-icons",UiIconsChecks::new);SUITES.put("ui-leave",UiLeaveChecks::new);}
     static final ArrayDeque<String> queue=new ArrayDeque<>();
     static volatile Suite current;static volatile String currentName="";static volatile boolean failed;
     static int tick,front,hold;static boolean started; // hold: client ticks the current suite waits (Phase1Checks.window)
@@ -1115,11 +1115,12 @@ public final class Phase1Checks implements ClientModInitializer {
                 if(afterAt<0){if(c.currentScreen instanceof CampScreen s&&s.page.equals("results")||++waited>=60){afterAt=tick;CampScreen.open("home");}}
                 else if(tick==afterAt+20)raiseCampaign(c);
                 else if(tick==afterAt+25){String ride=march(c);
-                    report("p1-tutorial-clear",clearOk&&CampaignClient.profile.campaignCleared==1&&"Ride to The Training Field".equals(beforeRide)&&"Ride to The Training Field".equals(ride),clearWhy+"; client campaignCleared "+CampaignClient.profile.campaignCleared+"; camp home before the battle: "+beforeWhy+"; after the victory: "+describe(ride));
+                    report("p1-tutorial-clear",clearOk&&CampaignClient.profile.campaignCleared==1&&"Ride to The Training Field".equals(beforeRide)&&("Ride to "+Spec.CAMPAIGNBATTLES[1].name()).equals(ride),clearWhy+"; client campaignCleared "+CampaignClient.profile.campaignCleared+"; camp home before the battle: "+beforeWhy+"; after the victory: "+describe(ride));
                     shot(c,"tutorial-camp-after");
                 }
                 else if(tick==afterAt+30){var ride=c.currentScreen instanceof CampScreen s&&s.home!=null?s.home.button("ride"):null;
-                    if(ride!=null&&march(c)!=null){ride.onPress();server(c,b->next(b,9));}
+                    // plan 2C.3: once battle 1 is won the Ride plate leads on to battle 2, so the replay asks for battle 1 by id, as the march page will (2C.5)
+                    if(ride!=null&&march(c)!=null&&c.currentScreen instanceof CampScreen s&&s.action("campaign:"+Spec.CAMPAIGNBATTLES[0].id()))server(c,b->next(b,9));
                     else{replay.commands="no Ride plate to replay from";replay.over=true;c.setScreen(null);server(c,b->next(b,12));}
                     CampaignClient.homeMode="skirmish";
                 }
@@ -2496,7 +2497,7 @@ public final class Phase1Checks implements ClientModInitializer {
                     int[] drawnTable=WarTable.drawn().get("table"),drawnRail=WarTable.drawn().get("rail");var badges=WarTable.badges();
                     boolean chrome=WarTable.drawnTable().equals("table/oak-table")&&Arrays.equals(drawnTable,new int[]{-480,-270,1920,1080})&&drawnRail!=null&&drawnRail[2]==UiCanvas.width()&&drawnRail[3]==UiTex.entry("table/rail").h()&&!WarTable.drawn().containsKey("floor")&&Arrays.equals(WarTable.drawn().get("maproll"),new int[]{148,48,156,80});
                     boolean badged=Integer.valueOf(WarTableHome.contractsBadge()).equals(badges.get("Contracts"))&&Integer.valueOf(WarTableHome.friendsBadge()).equals(badges.get("Friends"))&&badges.get("Camp")!=null&&badges.get("Camp")==0;
-                    report("p1-ui-home-layout",home(c)!=null&&bad.length()==0&&ride.equals("Ride to the war gates")&&o[0]==0&&o[1]==0&&CampaignClient.homeMode.equals("skirmish")&&chrome&&badged,
+                    report("p1-ui-home-layout",home(c)!=null&&bad.length()==0&&ride.equals("Open the war council")&&o[0]==0&&o[1]==0&&CampaignClient.homeMode.equals("skirmish")&&chrome&&badged,
                         "canvas "+UiCanvas.width()+"x"+UiCanvas.height()+", origin "+o[0]+","+o[1]+"; "+(bad.length()==0?"the 11 widget boxes as pinned":"wrong: "+bad)+"; the plate reads \""+ride+"\"; homeMode "+CampaignClient.homeMode+"; drawChrome drew "+WarTable.drawnTable()+" at "+str(drawnTable)+", the rail "+str(drawnRail)+", badges "+badges+"; field card \""+t.get("field-name")+"\" / \""+t.get("field-rule")+"\" / \""+t.get("field-teams")+"\"");
                     shot(c,"ui-home");stage=3;
                 }
@@ -2548,15 +2549,18 @@ public final class Phase1Checks implements ClientModInitializer {
                         modesWhy+="; campaignCleared "+CampaignClient.profile.campaignCleared+", a click on Campaign: focused "+home(c).focused+", the plate \""+l+"\" from x "+start+" to "+stop+" of the plate; the raised Campaign sheet "+str(sheet)+" ends "+gap+" px left of the field card "+str(card);
                         report("p1-ui-home-modes",modesOk,modesWhy);stage=9;}
                 }
-                case 9->{ // p1-ui-home-gates: Skirmish, then Ride, sets the commander on the ready pad
+                case 9->{ // p1-ui-home-gates: Skirmish, then Ride, opens the War Table lobby with a room three a side
                     int k=since(tick);
                     if(k==0){if(home(c)==null)CampScreen.open("home");return;}
                     if(k==5){click(c,box(c,"skirmish"));return;}
                     if(k==7){gatesWhy="a click on Skirmish, the plate \""+label()+"\"";click(c,box(c,"ride"));padAt=tick;return;}
                     if(k<7)return;
-                    if(serverOnPad){gatesWhy+="; Ride: on the pad "+(tick-padAt)+" ticks later (countdown "+padCountdown+"), the table "+(c.currentScreen==null?"closed":"still open: "+c.currentScreen.getClass().getSimpleName());
-                        stage=-10;server(c,b->{var p=b.server.getPlayerManager().getPlayer(player);if(p!=null)b.campaign.toLobby(p);stage=10;});}
-                    else if(tick-padAt>40){report("p1-ui-home-gates",false,gatesWhy+"; Ride: not on the pad 40 ticks later (notice \""+CampaignClient.notice+"\")");stage=11;}
+                    // Kort, 2026-10-30: the War Table lobby is the skirmish's main path; Ride opens it and asks the server for a room (social:lobby). The pads keep working in camp.
+                    String room=CampaignClient.social.has("room")?CampaignClient.social.get("room").getAsString():"";
+                    if(c.currentScreen instanceof CampScreen s&&s.page.equals("lobby")&&!room.isEmpty()){
+                        gatesWhy+="; Ride: the War Table lobby opened "+(tick-padAt)+" ticks later with room "+room+" ("+CampaignClient.social.get("size").getAsInt()+" a side)";
+                        report("p1-ui-home-gates",CampaignClient.social.get("size").getAsInt()==SocialHub.LOBBY_SIZE,gatesWhy);GravesAndGloryClient.send("social:exit");s.page("home");stage=11;}
+                    else if(tick-padAt>60){report("p1-ui-home-gates",false,gatesWhy+"; Ride: no lobby with a room 60 ticks later (screen "+(c.currentScreen instanceof CampScreen s2?s2.page:String.valueOf(c.currentScreen))+", notice \""+CampaignClient.notice+"\")");stage=11;}
                 }
                 case 10->{ // stepping off the pad cancels it
                     int k=since(tick);
@@ -3177,13 +3181,16 @@ public final class Phase1Checks implements ClientModInitializer {
                 &&rf!=null&&lf!=null&&of!=null&&rf>=489&&rf<=492&&lf>=489&&lf<=492&&of>=489&&of<=492;
             boolean chrome="table/oak-table-recruit".equals(tx.get("table"))&&Arrays.equals(box(c,"back"),new int[]{56,12,120,28})&&Arrays.equals(box(c,"banner"),new int[]{800,12,104,28})
                 &&!WarTableRecruit.rects().containsKey("maproll")&&hotNone();
-            layoutOk=r!=null&&canvas&&banners&&roll&&portraits&&letter&&ladder&&baseline&&chrome&&boxes(c).size()==2+hs.length+WarTableRecruit.ROWS+3;
+            int[] sb=box(c,"sheet"),nm=rect("name"); // the widget that opens the troop sheet covers the letter's name and little more
+            boolean sheet=sb!=null&&nm!=null&&sb[0]<=nm[0]&&sb[0]+sb[2]>=nm[0]+nm[2]&&sb[1]<=nm[1]&&sb[1]+sb[3]>=nm[1]+11&&sb[2]<=nm[2]+10&&sb[1]+sb[3]<=rect("letter")[1]+240&&!WarTableRecruit.underlined().contains("sheet");
+            layoutOk=r!=null&&canvas&&banners&&roll&&portraits&&letter&&ladder&&baseline&&chrome&&sheet&&boxes(c).size()==2+hs.length+WarTableRecruit.ROWS+4;
             return "canvas "+UiCanvas.width()+"x"+UiCanvas.height()+" k "+UiCanvas.k()+(canvas?"":" WRONG")+"; rod "+str(rect("rod"))+", banners "+bw+(banners?"":"WRONG")
                 +"; roll "+rowTroops()+": "+rowWhy+"mark "+str(rect("mark"))+", rules "+str(rect("rule-1"))+" "+str(rect("rule-2"))+" "+str(rect("rule-3"))+" "+str(rect("rule-4"))+" "+str(rect("rule-5"))+(roll?"":" WRONG")+"; portraits (size@x,feet) "+ptWhy+(portraits?"":"WRONG")
                 +"; letter "+text("letter-troop")+" \""+text("letter-name")+"\" "+hex(color("letter-name"))+" / \""+text("letter-line1")+"\" "+hex(color("letter-line1"))+" / \""+text("letter-line2")+"\" "+hex(color("letter-line2"))+", portrait "+ld+", window "+str(rect("window"))+", tag \""+text("choose")+"\" ("+text("choose-command")+") "+str(box(c,"choose"))+" "+hex(color("choose"))+", under it \""+text("reason")+"\" "+hex(color("reason"))+(letter?"":" WRONG")
                 +"; enlist \""+text("enlist")+"\" "+hex(color("enlist"))+" for "+text("enlist-cost")+" on "+tx.get("enlist")+", purse "+text("purse")+" "+str(rect("purse"))+", rung \""+text("rung")+"\" "+hex(color("rung"))+", bundle "+str(bd)+(ladder?"":" WRONG")
                 +"; columns: roll "+str(rl)+", letter "+str(lt)+", bundle "+str(bd)+" from 124; the paper's foot (framebuffer) roll "+rf+", letter "+lf+", Odds tag "+of+(baseline?" (one foot at 492)":" WRONG")
-                +"; table "+tx.get("table")+", back "+str(box(c,"back"))+", banner "+str(box(c,"banner"))+", "+boxes(c).size()+" widgets, no rolled map, underlined "+WarTableRecruit.underlined()+(chrome?"":" WRONG");
+                +"; table "+tx.get("table")+", back "+str(box(c,"back"))+", banner "+str(box(c,"banner"))+", "+boxes(c).size()+" widgets, no rolled map, underlined "+WarTableRecruit.underlined()+(chrome?"":" WRONG")
+                +"; the sheet widget "+str(sb)+" over the name "+str(nm)+(sheet?"":" WRONG");
         }
         boolean buyOk,epicOk,legOk;String epicId,legId;
         /** 854x480 GUI 2, the first-launch window: the compact page (UI Task 8b-2; Kort, 2026-10-22: everything fits, no crop). The
@@ -3198,7 +3205,7 @@ public final class Phase1Checks implements ClientModInitializer {
             var bad=UiHomeChecks.fits(r,b);String letterBad=letterFits();
             int[] roll=r.get("roll"),enlist=box(c,"enlist"),rung=r.get("rung"),odds=box(c,"odds");
             boolean row=rung!=null&&odds!=null&&rung[0]+rung[2]<=odds[0]&&rung[1]>=odds[1]&&rung[1]+rung[3]<=odds[1]+odds[3]; // the rung's line and Odds on one row, either side of the axis
-            boolean ok=page(c)!=null&&WarTable.compact()&&w==854&&h==480&&UiCanvas.k()==1&&b.size()==2+Spec.HOUSES.length+WarTableRecruit.ROWS+3&&out.isEmpty()&&over.isEmpty()&&bad.isEmpty()&&letterBad.isEmpty()&&row
+            boolean ok=page(c)!=null&&WarTable.compact()&&w==854&&h==480&&UiCanvas.k()==1&&b.size()==2+Spec.HOUSES.length+WarTableRecruit.ROWS+4&&out.isEmpty()&&over.isEmpty()&&bad.isEmpty()&&letterBad.isEmpty()&&row
                 &&Arrays.equals(roll,new int[]{12,92,270,372})&&Arrays.equals(enlist,new int[]{600,322,240,40})&&Arrays.equals(r.get("bundle"),new int[]{600,92,240,218})&&Arrays.equals(r.get("letter"),new int[]{286,92,310,376})&&Arrays.equals(box(c,"choose"),new int[]{378,404,120,24})
                 &&Arrays.equals(box(c,"back"),new int[]{12,12,120,28})&&Arrays.equals(box(c,"banner"),new int[]{738,12,104,28})&&Arrays.equals(odds,new int[]{724,408,64,24})&&hotNone();
             scalesOk&=ok;
@@ -3218,7 +3225,7 @@ public final class Phase1Checks implements ClientModInitializer {
                 &&Arrays.equals(enlist,new int[]{o[0]+664,o[1]+354,240,40})&&Arrays.equals(roll,new int[]{o[0]+41,o[1]+124,270,372})&&Arrays.equals(first,new int[]{o[0]+bx(0),13,104,60})&&!r.containsKey("maproll")
                 &&Arrays.equals(r.get("bundle"),new int[]{o[0]+664,o[1]+124,240,218})&&Arrays.equals(box(c,"choose"),new int[]{o[0]+CHOOSE[0],o[1]+CHOOSE[1],CHOOSE[2],CHOOSE[3]});
             var floor=UiHomeChecks.oakToEdges(c);
-            boolean ok=page(c)!=null&&placed&&out.isEmpty()&&over.isEmpty()&&floor.isEmpty()&&letterBad.isEmpty()&&b.size()==2+Spec.HOUSES.length+WarTableRecruit.ROWS+3&&hotNone();
+            boolean ok=page(c)!=null&&placed&&out.isEmpty()&&over.isEmpty()&&floor.isEmpty()&&letterBad.isEmpty()&&b.size()==2+Spec.HOUSES.length+WarTableRecruit.ROWS+4&&hotNone();
             scalesOk&=ok;
             return "1920x974 GUI 1: canvas "+cw+"x"+ch+" (k "+k+"), origin "+o[0]+","+o[1]+", table "+str(t)+", rail "+str(rail)+", the first banner "+str(first)+", roll "+str(roll)+", bundle "+str(r.get("bundle"))+", enlist "+str(enlist)+", choose "+str(box(c,"choose"))+", "+b.size()+" widgets, outside "+out+", overlapping "+over+", letter lines "+(letterBad.isEmpty()?"inside the paper":letterBad)
                 +"; the edges "+(floor.isEmpty()?"oak all round, no floor":"not oak at "+floor)+(ok?"":" WRONG");
@@ -3390,9 +3397,15 @@ public final class Phase1Checks implements ClientModInitializer {
                     if(k==0){window(c,1920,1080,2,true);return;}
                     if(k==20){UiRecruitChecks.park(c);return;}
                     if(k==22){if(pages(c)!=null){why+="; 1920x1080 GUI 2, "+layout(c,name);shot(c,"ui-page-"+name+"-1080");}return;}
-                    if(k==24){window(c,960,540,1);return;}
-                    if(k==40){UiRecruitChecks.park(c);click(c,box(c,"back"));return;}
-                    if(k==44){var s=screen(c);boolean home=s!=null&&s.page.equals("home")&&s.home!=null;ok&=home;why+="; the back plaque went "+(home?"home":"WRONG: "+(s==null?"the table closed":s.page));
+                    if(k==24){window(c,2560,1440,0,true);return;} // and at 2560x1440, the automatic GUI Scale: the War Table's 3x (Kort, 2026-10-31)
+                    if(k==42){UiRecruitChecks.park(c);return;}
+                    if(k==44){if(pages(c)!=null){ // the compact page at k 3 (853x480): every widget inside and fitting, the War Table's 3x
+                        var bx=boxes(c);int w=UiCanvas.width(),h=UiCanvas.height();List<String> out=new ArrayList<>();for(var e:bx.entrySet())if(!UiHomeChecks.inside(e.getValue(),w,h))out.add(e.getKey());
+                        var unfit=UiHomeChecks.fits(WarTablePages.rects(),bx);boolean pass=UiCanvas.k()==3&&WarTable.compact()&&out.isEmpty()&&unfit.isEmpty();ok&=pass;
+                        why+="; 2560x1440 auto: canvas "+w+"x"+h+" (k "+UiCanvas.k()+", compact "+WarTable.compact()+"), outside "+out+", not fitting "+unfit+(pass?"":" WRONG");shot(c,"ui-page-"+name+"-1440");}return;}
+                    if(k==46){window(c,960,540,1);return;}
+                    if(k==62){UiRecruitChecks.park(c);click(c,box(c,"back"));return;}
+                    if(k==66){var s=screen(c);boolean home=s!=null&&s.page.equals("home")&&s.home!=null;ok&=home;why+="; the back plaque went "+(home?"home":"WRONG: "+(s==null?"the table closed":s.page));
                         report("p1-ui-page-"+name,ok,why);index++;stage=index<PAGES.length?2:5;}
                 }
                 case 5->{ // p1-ui-page-scales: each page at 1280x720 GUI 3 (canvas 1280x720), 854x480 GUI 2 (the compact page, UI Task 8b-2)

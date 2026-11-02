@@ -33,7 +33,7 @@ tasks.register('localTestToolsJar', Jar) {
  archiveFileName = 'local-integration-DO-NOT-SHIP.jar'
  destinationDirectory = file('build/localTestTools')
 }
-if (project.hasProperty('localIntegration') || project.hasProperty('mapTour') || project.hasProperty('campaignChecks') || project.hasProperty('selfTest')) {
+if (project.hasProperty('localIntegration') || project.hasProperty('mapTour') || project.hasProperty('mapWalk') || project.hasProperty('campaignChecks') || project.hasProperty('selfTest')) {
  loom.runs.client.vmArg '-Dgravesandglory.localIntegration=true'
  loom.runs.client.vmArg "-Dfabric.addMods=${file('build/localTestTools/local-integration-DO-NOT-SHIP.jar').absolutePath}"
  tasks.named('runClient') { dependsOn localTestToolsJar }
@@ -103,6 +103,14 @@ if (project.hasProperty('mapTour')) {
  loom.runs.client.vmArg '-Dgravesandglory.mapTour=true'
  loom.runs.client.vmArg "-Dgravesandglory.tourTag=${project.findProperty('tourTag') ?: 'now'}"
  loom.runs.client.vmArg "-Dgravesandglory.tourMaps=${project.findProperty('tourMaps') ?: '0,1,2,3,4'}"
+}
+
+// Map Forge walkthrough: an exported surface in a flat test world, photographed from a plan of cameras (test-tools/MapWalk.java).
+if (project.hasProperty('mapWalk')) {
+ loom.runs.client.vmArg '-Dgravesandglory.mapWalk=true'
+ loom.runs.client.vmArg "-Dgravesandglory.walkTag=${project.findProperty('walkTag') ?: 'now'}"
+ loom.runs.client.vmArg "-Dgravesandglory.walkFile=${project.findProperty('walkFile')}"
+ loom.runs.client.vmArg "-Dgravesandglory.walkPlan=${project.findProperty('walkPlan')}"
 }
 
 // A/B harness: build the battlefields without MapDressing, to compare checks against the bare map.

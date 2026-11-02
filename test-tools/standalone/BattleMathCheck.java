@@ -81,9 +81,9 @@ public final class BattleMathCheck {
         return true;
     }
     public static void main(String[] args) {
-        check(BattleMath.travelTicks(22, 2.2, 2, 14) == 10, "arrow at max range lands in 10 ticks");
-        check(BattleMath.travelTicks(1, 2.2, 2, 14) == 2, "point-blank shots still travel the minimum");
-        check(BattleMath.travelTicks(400, 1.2, 2, 14) == 14, "travel is capped");
+        check(BattleMath.travelTicks(22, 1.0, 2, 32) == 22, "arrow at 22 blocks lands in 22 ticks");
+        check(BattleMath.travelTicks(1, 1.0, 2, 32) == 2, "point-blank shots still travel the minimum");
+        check(BattleMath.travelTicks(400, 1.4, 2, 32) == 32, "travel is capped");
         // volley arcs (animation rework Task 4): a range-scaled parabola over the straight line, flight time unchanged
         check(BattleMath.arcHeight(0, 5) == 0 && BattleMath.arcHeight(1, 5) == 0 && BattleMath.arcHeight(.5, 5) == 5, "arc is a parabola peaking mid-flight");
         check(BattleMath.arcPeak(22, .25, 6, 1) == 5.5 && BattleMath.arcPeak(40, .25, 6, 1) == 6 && Math.abs(BattleMath.arcPeak(22, .25, 6, .4) - 2.2) < 1e-9, "peak grows with range, capped, scaled");

@@ -185,8 +185,8 @@ public final class DuelSimulation implements ModInitializer {
     /** A round with no army in it: no bots (fill off), no clock that runs out, so the troops tick and nothing scores. */
     void startEmptyRound(GravesAndGlory.Battle b) {
         var c = b.campaign; c.fill = false; c.practice = false; c.size = 1; c.lastWinner = -2;
-        b.roundSeconds = Integer.MAX_VALUE / 40;
         b.startRound();
+        b.roundSeconds = Integer.MAX_VALUE / 40; // after startRound, which sets the row's clock
         System.out.println("[duel] empty round started at tick " + b.time + "; units " + b.units.size() + ", squads " + b.squads.size());
     }
     /** Nothing may score in a duel round: the scores stay 0, so the round never ends by points. False when the round is not running. */

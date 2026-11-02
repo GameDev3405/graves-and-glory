@@ -63,7 +63,7 @@ Kort pictures up to a thousand concurrent players a year out and wants the serve
 - campaignBattles.map is not checked by preflight; a bad index only stops the battle in game, with a notice to the player.
 - Three primary buttons on the camp home (THE LONG MARCH / BATTLE 1, OPEN RECRUITMENT, PARTY WITH FRIENDS); whether the other two step down while battle 1 is unwon is left for the UI pass.
 - MVP exact tie on equal non-zero kills and seconds crowns each viewer's own first row (2026-10-18, Phase 1 Task 7); a viewer-independent tiebreak (owner id) if it is ever noticed.
-- Banner mode: supply-wagon escort variant (2026-10-18, Phase 4 spec question 1). Kort: parked for now, to be revisited after the carry variant ships.
+- UNPARKED 2026-10-31 by Kort: Banner mode: supply-wagon escort variant (2026-10-18, Phase 4 spec question 1). Banner variant for 4C.2, used by campaign battle 4, needs its own spec.
 
 ## Media shoot: stills, trailer, gameplay footage (2026-10-18, parked by Kort)
 

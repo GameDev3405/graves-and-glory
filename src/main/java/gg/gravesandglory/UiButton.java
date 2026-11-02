@@ -46,12 +46,15 @@ public class UiButton extends ButtonWidget {
 
     @Override protected boolean clicked(double mouseX, double mouseY) { return active && visible && overArt(mouseX, mouseY); }
 
+    /** Paints the button in canvas pixels: the painter, or a subclass's own drawing (the Armoury's buy tags). */
+    protected void paint(DrawContext g, int x, int y, int w, int h, boolean hot) { painter.paint(g, x, y, w, h, hot); }
+
     @Override protected void renderButton(DrawContext g, int mouseX, int mouseY, float delta) {
         // render rounded the mouse to whole GUI pixels and tested the GUI box; test the art from the exact position
         var c = MinecraftClient.getInstance(); var w = c.getWindow();
         hovered = overArt(c.mouse.getX() * w.getScaledWidth() / w.getWidth(), c.mouse.getY() * w.getScaledHeight() / w.getHeight());
         UiCanvas.begin(g);
-        try { painter.paint(g, cx, cy, cw, ch, isHovered() || isFocused()); }
+        try { paint(g, cx, cy, cw, ch, isHovered() || isFocused()); }
         finally { UiCanvas.end(g); }
     }
 }
