@@ -1,0 +1,19 @@
+{
+ "troop": "tc_raider",
+ "note": "Tidecaller Drowned Raider (unit identity, Tidecallers): drowned light skirmisher, biped, leaning forward (hunch baked into the bones); a green turtle-shell helmet with a sea-blue rolled edge (the signature), a bloated grey-green body with white eyes, a sea-blue oilskin coat open on a swollen belly, tattered navy trousers, barnacles, a rolled net on the back, kelp streaming from helm, shoulders, forearms, belt and shin, a team neck scarf, hip sash and wrist wraps. The cutlass is in the right hand. No coral. Tier I only. No back flag.",
+ "rig": "biped",
+ "size": [
+  128,
+  128
+ ],
+ "density": 1,
+ "bones": [],
+ "idleArms": "hang",
+ "parts": [],
+ "skins": {
+  "1": "tc_raider_s1.png"
+ },
+ "weapon": "cutlass",
+ "hand": "right",
+ "portrait": "standard"
+}
