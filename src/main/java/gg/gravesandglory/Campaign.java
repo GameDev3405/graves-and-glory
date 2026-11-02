@@ -403,7 +403,7 @@ public final class Campaign {
         card.addProperty("shards",pr.shards.getOrDefault(t.house(),0)-card.get("shards").getAsInt());card.addProperty("n",++rollSerial);return card;
     }
     /** The recruitment reveal sound, to the commander alone (the ServerPlayerEntity overload). */
-    static void reveal(ServerPlayerEntity p){p.playSound(net.minecraft.registry.Registries.SOUND_EVENT.get(new net.minecraft.util.Identifier("gravesandglory","unit_reveal")),SoundCategory.PLAYERS,.7f,1f);}
+    static void reveal(ServerPlayerEntity p){Audio.to(p,AudioCues.Cue.UNIT_REVEAL);}
     /** Undoes a command whose save failed: the profile goes back to its JSON from before, and the commander is told nothing changed. */
     void unsaved(UUID id,String before,String what){profiles.put(id,JSON.fromJson(before,Profile.class));notice(id,what+" was not saved, so nothing changed. Check disk space and try again.");}
     /**
@@ -476,7 +476,7 @@ public final class Campaign {
             standing(id,(winner<0?"Draw":s.team==winner?"Victory":"Battle complete")+" / +"+earned+" collection gold"+(earned==0?" (reward requires 3 minutes of play)":"")+extra);
         }
         b.message=(winner<0?"Draw":b.side(winner).name()+" wins")+"! Back to the war council.";headline=b.message;
-        for(var p:b.server.getPlayerManager().getPlayerList())if(participants.contains(p.getUuid()))p.playSound(net.minecraft.registry.Registries.SOUND_EVENT.get(new net.minecraft.util.Identifier("gravesandglory","victory")),SoundCategory.PLAYERS,.8f,1); // each participant, to his own connection
+        for(var p:b.server.getPlayerManager().getPlayerList())if(participants.contains(p.getUuid())){var sq=b.squads.get(p.getUuid());Audio.ending(p,winner,sq==null?-1:sq.team);} // each participant, to his own connection: the victory sting, the defeat sting for the losing side (AudioCues)
         returnLobby();
     }
     static final RosterMath.Rewards NO_REWARDS=new RosterMath.Rewards(Map.of(),Map.of());
@@ -714,7 +714,7 @@ public final class Campaign {
         if(changed){padCountdown=-1;for(UUID id:onPad.keySet())notice(id,"Ready group changed. Countdown reset; step off to cancel.");}
         if(onPad.isEmpty()){padCountdown=-1;return;}
         if(padCountdown<0){padCountdown=200;for(UUID id:onPad.keySet())notice(id,"Starting in 10 seconds. Open the war table and press Change to vote for a map.");return;}
-        padCountdown-=10;if(padCountdown<=0)startQuickMatch();
+        padCountdown-=10;if(padCountdown<=0)startQuickMatch();else Audio.countdown(b,onPad.keySet(),padCountdown);
     }
     void startQuickMatch(){
         int selected=map,best=0;for(int i=0;i<Spec.MAPS.length;i++){final int index=i;int votes=(int)mapVotes.values().stream().filter(v->v==index).count();if(votes>best){best=votes;selected=i;}}
@@ -860,6 +860,7 @@ public final class Campaign {
     void roomCountdown(){
         var step=social.countdown(10,b.running,preparingRoom);
         for(var r:step.started())for(UUID m:r.members)notice(m,"All commanders ready. The battle begins in 10 seconds; un-ready to stop it.");
+        for(var r:social.rooms.values())if(r.countdown>0)Audio.countdown(b,r.members,r.countdown); // a tick for each of the last three seconds
         for(var r:step.cancelled()){String why=social.startFailure(r.leader,b.running);for(UUID m:r.members)notice(m,"Countdown stopped."+(why.isEmpty()?"":" "+why));}
         for(var r:step.due()){var host=b.server.getPlayerManager().getPlayer(r.leader);if(host!=null)socialCommand(host,"social:start");
             if(!r.playing&&!r.code.equals(preparingRoom)){r.ready.clear();social.revision++;for(UUID m:r.members)if(!m.equals(r.leader))notice(m,"The battle could not start. Ready up again.");}}

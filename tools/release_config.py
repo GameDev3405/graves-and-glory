@@ -39,7 +39,7 @@ def validate_player_jar(path, expected):
                      'Phase3Checks', 'StructureStudio', 'Walkability', 'gravesandglory_studio', 'p3_marker',
                      'VisualChecks', 'RevisionChecks', 'LocalProbe', 'LegacyDataMigrationCheck',
                      'CompatibilityChecks', 'CompatibilityPolicyCheck', 'FrontMenuChecks', 'AdmissionPolicyCheck', 'CampRulesCheck', 'LobbyRulesCheck', 'LobbyChecks', 'UiReportChecks', 'BannerFieldChecks', 'CampRedesignChecks', 'CampNetworkChecks', 'MapTour', 'Phase1Checks', 'BattleMathCheck', 'BotSimulation', 'Phase2Checks', 'HousesCheck', 'ProfileMigrationCheck', 'PersistedDataCorruptionCheck', 'MarchMathCheck', 'UiMathCheck', 'UiKitSheet', 'LevelMathCheck', 'LevelChecks', 'AbilityLevelChecks', 'RankChecks', 'RankNetworkChecks', 'SelfTestHost', 'CommandPlaytest', 'TitleDemo',
-                     'CampTerrainCheck', 'HouseRouteCheck', 'StepHopCheck', 'WedgeCheck', 'LayoutMarkerCheck', 'TroopFacesCheck', 'BannerDropCheck', 'FacesChecks',
+                     'CampTerrainCheck', 'HouseRouteCheck', 'StepHopCheck', 'WedgeCheck', 'LayoutMarkerCheck', 'TroopFacesCheck', 'BannerDropCheck', 'AudioCuesCheck', 'FacesChecks',
                      'DuelSimulation', 'SheetOverride', 'TypeLedger', 'StoryStills', 'ModeMathCheck', 'FeedFitCheck', 'SiegePlayChecks', 'MapWalk', 'ConvoyCheck', 'ConvoyChecks', 'MarchModesChecks', 'MarchBonusChecks', 'Phase4Checks',
                      'gg/gravesandglory/testing/', 'META-INF/services/gg.gravesandglory.Diagnostics$Probe')
         for name in jar.namelist():

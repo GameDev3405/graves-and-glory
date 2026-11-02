@@ -26,6 +26,146 @@
       }
     ]
   },
+  "defeat": {
+    "subtitle": "subtitles.gravesandglory.defeat",
+    "sounds": [
+      {
+        "name": "minecraft:block.respawn_anchor.deplete",
+        "type": "event"
+      }
+    ]
+  },
+  "capture_start": {
+    "subtitle": "subtitles.gravesandglory.capture_start",
+    "sounds": [
+      {
+        "name": "minecraft:item.armor.equip_chain",
+        "type": "event"
+      }
+    ]
+  },
+  "capture_won": {
+    "subtitle": "subtitles.gravesandglory.capture_won",
+    "sounds": [
+      {
+        "name": "minecraft:block.beacon.activate",
+        "type": "event"
+      }
+    ]
+  },
+  "capture_lost": {
+    "subtitle": "subtitles.gravesandglory.capture_lost",
+    "sounds": [
+      {
+        "name": "minecraft:block.beacon.deactivate",
+        "type": "event"
+      }
+    ]
+  },
+  "gate_hit": {
+    "subtitle": "subtitles.gravesandglory.gate_hit",
+    "sounds": [
+      {
+        "name": "minecraft:block.anvil.hit",
+        "type": "event"
+      }
+    ]
+  },
+  "gate_shut": {
+    "subtitle": "subtitles.gravesandglory.gate_shut",
+    "sounds": [
+      {
+        "name": "minecraft:block.iron_trapdoor.close",
+        "type": "event"
+      }
+    ]
+  },
+  "gate_breach": {
+    "subtitle": "subtitles.gravesandglory.gate_breach",
+    "sounds": [
+      {
+        "name": "minecraft:entity.generic.explode",
+        "type": "event"
+      }
+    ]
+  },
+  "convoy_roll": {
+    "subtitle": "subtitles.gravesandglory.convoy_roll",
+    "sounds": [
+      {
+        "name": "minecraft:entity.minecart.riding",
+        "type": "event"
+      }
+    ]
+  },
+  "convoy_stop": {
+    "subtitle": "subtitles.gravesandglory.convoy_stop",
+    "sounds": [
+      {
+        "name": "minecraft:block.wooden_trapdoor.close",
+        "type": "event"
+      }
+    ]
+  },
+  "convoy_rollback": {
+    "subtitle": "subtitles.gravesandglory.convoy_rollback",
+    "sounds": [
+      {
+        "name": "minecraft:block.piston.contract",
+        "type": "event"
+      }
+    ]
+  },
+  "convoy_checkpoint": {
+    "subtitle": "subtitles.gravesandglory.convoy_checkpoint",
+    "sounds": [
+      {
+        "name": "minecraft:block.bell.use",
+        "type": "event"
+      }
+    ]
+  },
+  "wave_warning": {
+    "subtitle": "subtitles.gravesandglory.wave_warning",
+    "sounds": [
+      {
+        "name": "minecraft:event.raid.horn",
+        "type": "event"
+      }
+    ]
+  },
+  "countdown_tick": {
+    "sounds": [
+      {
+        "name": "minecraft:block.note_block.bit",
+        "type": "event"
+      }
+    ]
+  },
+  "ui_confirm": {
+    "sounds": [
+      {
+        "name": "minecraft:block.note_block.chime",
+        "type": "event"
+      }
+    ]
+  },
+  "ui_back": {
+    "sounds": [
+      {
+        "name": "minecraft:ui.button.click",
+        "type": "event"
+      }
+    ]
+  },
+  "ui_deny": {
+    "sounds": [
+      {
+        "name": "minecraft:block.note_block.bass",
+        "type": "event"
+      }
+    ]
+  },
   "horn_charge": {
     "subtitle": "subtitles.gravesandglory.horn_charge",
     "sounds": [

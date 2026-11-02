@@ -84,6 +84,12 @@ public final class SiegeMode extends BattleMode {
         Text label() {
             return Text.literal("Iron Gate " + (int) Math.ceil(hp())).formatted(Formatting.LIGHT_PURPLE);
         }
+
+        /** A blow on the gate rings as the gate cue (its last blow too: the breach cue follows from SiegeMode.breach), not as a banner's wool. */
+        @Override
+        void structureCue(net.minecraft.server.world.ServerWorld w, boolean felled) {
+            Audio.at(GravesAndGlory.battle, AudioCues.Cue.GATE_HIT, getPos(), "gate");
+        }
     }
 
     /** Attackers take the yard, the gate and the keep; defenders hold them. */
@@ -184,8 +190,7 @@ public final class SiegeMode extends BattleMode {
             stage = 3;
             b.scores[0] = stage;
             feed(b, "keep_taken", "team", attackers());
-            b.campaign.finish(0);
-            b.world.playSound(null, BlockPos.ORIGIN, SoundEvents.UI_TOAST_CHALLENGE_COMPLETE, SoundCategory.MASTER, 2, 1);
+            b.campaign.finish(0); // the victory and defeat stings play from Campaign.finish
         }
     }
 
@@ -215,6 +220,7 @@ public final class SiegeMode extends BattleMode {
         b.scores[0] = stage;
         b.roundSeconds += STAGE_BONUS;
         feed(b, "yard_taken", "team", attackers());
+        Audio.captured(b, "yard", 0);
         var row = gate();
         GravesAndGlory.Squad defender = null;
         for (var s : b.squads.values()) if (s.seated && s.team == 1) { defender = s; break; }
@@ -233,6 +239,7 @@ public final class SiegeMode extends BattleMode {
         clearPassage(b, row);
         Structures.place(b.world, GATE_INTACT, row.x(), row.elevation(), row.z(), row.rotation());
         feed(b, "gate_shut");
+        Audio.all(b, AudioCues.Cue.GATE_SHUT, "gate");
         var e = new GateTarget(b.world);
         e.squad = defender;
         e.hp = GATE_HP;
@@ -269,6 +276,7 @@ public final class SiegeMode extends BattleMode {
         b.scores[0] = stage;
         b.roundSeconds += STAGE_BONUS;
         feed(b, "gate_breached");
+        Audio.all(b, AudioCues.Cue.GATE_BREACH, "gate");
         mark(b); // the marker stops listing the gate's snapshot once it is back
     }
 

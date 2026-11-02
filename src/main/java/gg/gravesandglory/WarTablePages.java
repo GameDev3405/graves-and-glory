@@ -332,7 +332,7 @@ final class WarTablePages {
         refresh();
     }
 
-    void back() { screen.page("home"); }
+    void back() { UiSounds.back(); screen.page("home"); }
 
     /** Hands a command to the server through the screen's throttle; recorded, and true, when it goes. */
     boolean send(String cmd) {

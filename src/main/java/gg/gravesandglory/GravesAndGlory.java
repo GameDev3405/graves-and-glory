@@ -55,7 +55,7 @@ public final class GravesAndGlory implements ModInitializer {
     @Override public void onInitialize() {
         Diagnostics.start();
         VersionGate.registerServer();
-        for(String cue:new String[]{"battle_intro","unit_reveal","victory","horn_charge","horn_rout","horn_rally"}){var id=new Identifier("gravesandglory",cue);net.minecraft.registry.Registry.register(Registries.SOUND_EVENT,id,SoundEvent.of(id));}
+        Audio.register(); // every sound event of the AudioCues table (plan 4F.4)
         // The commander actives, once. (The horn cues above are command feedback for the commanding player alone: no horn sounds in the field.)
         Commander.register();
         // The Convoy supply wagon's entity type (Kort approved 2026-11-01; never saved).
@@ -301,6 +301,11 @@ public final class GravesAndGlory implements ModInitializer {
          * Takes the blow's amount off hp. Only a troop or a seated commander of the other side hurts it (fire, falling and the void do not); a
          * commander's own blow counts as a non-siege blow on a structure (Combat.structureBlow, the sheet's C11). Returns whether it took the blow.
          */
+        /** The sound of a blow on the structure (felled: its last): the wool of a banner; the Siege gate's target overrides it (SiegeMode.GateTarget). */
+        void structureCue(ServerWorld w,boolean felled){
+            if(felled)w.playSound(null,getBlockPos(),SoundEvents.BLOCK_WOOL_BREAK,SoundCategory.HOSTILE,1f,.8f);
+            else w.playSound(null,getBlockPos(),SoundEvents.BLOCK_WOOL_HIT,SoundCategory.HOSTILE,.8f,1f);
+        }
         @Override public boolean damage(DamageSource source,float amount){
             var b=battle;
             if(b==null||getWorld().isClient||isRemoved()||squad==null||amount<=0||!b.running)return false;
@@ -313,11 +318,11 @@ public final class GravesAndGlory implements ModInitializer {
             if(hp<=0){
                 felled=true;
                 w.spawnParticles(ParticleTypes.POOF,getX(),getY()+1,getZ(),12,.3,.6,.3,.04);
-                w.playSound(null,getBlockPos(),SoundEvents.BLOCK_WOOL_BREAK,SoundCategory.HOSTILE,1f,.8f);
+                structureCue(w,true);
                 discard();
             }else{
                 w.spawnParticles(ParticleTypes.CRIT,getX(),getY()+1,getZ(),5,.25,.5,.25,.08);
-                w.playSound(null,getBlockPos(),SoundEvents.BLOCK_WOOL_HIT,SoundCategory.HOSTILE,.8f,1f);
+                structureCue(w,false);
                 setCustomName(label());
             }
             return true;
@@ -1033,10 +1038,10 @@ public final class GravesAndGlory implements ModInitializer {
                 p.contested=presence[0]>0&&presence[1]>0;
                 int team=presence[0]>0&&presence[1]==0?0:presence[1]>0&&presence[0]==0?1:-1;
                 if(team<0||team==p.owner){if(team==p.owner){p.progress=0;p.challenger=-1;}continue;}
-                if(p.challenger!=team){p.challenger=team;p.progress=0;}
+                if(p.challenger!=team){p.challenger=team;p.progress=0;Audio.all(this,AudioCues.Cue.CAPTURE_START,"round");}
                 p.progress++;
                 if(p.progress>=p.spec.captureSeconds()){
-                    p.owner=team;p.ownedSince=time;p.challenger=-1;p.progress=0;Arena.flag(world,p.spec,team);FeedEvents.point(this,p,team);
+                    p.owner=team;p.ownedSince=time;p.challenger=-1;p.progress=0;Arena.flag(world,p.spec,team);FeedEvents.point(this,p,team);Audio.captured(this,p.spec.name(),team);
                     for(ServerPlayerEntity pl:server.getPlayerManager().getPlayerList()){var squad=squads.get(pl.getUuid());if(squad!=null&&squad.seated&&squad.team==team&&horizontalDistance(pl.getPos(),center)<p.spec.radius()*p.spec.radius())campaign.progressEvent(pl.getUuid(),true);}
                     for(ServerPlayerEntity pl:server.getPlayerManager().getPlayerList())if(squads.containsKey(pl.getUuid())&&squads.get(pl.getUuid()).seated)pl.sendMessage(Text.literal(side(team).name()+" captured "+p.spec.name()).setStyle(net.minecraft.text.Style.EMPTY.withColor(side(team).color())),true);
                 }

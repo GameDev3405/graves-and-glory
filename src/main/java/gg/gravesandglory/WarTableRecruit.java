@@ -236,7 +236,7 @@ final class WarTableRecruit {
         return a.tip();
     }
 
-    void back() { screen.page("home"); }
+    void back() { UiSounds.back(); screen.page("home"); }
 
     /** Hands a command to the server through the screen's throttle; recorded when it goes. Returns whether it went. */
     boolean send(String cmd) {
