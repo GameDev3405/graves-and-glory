@@ -66,6 +66,8 @@ public abstract class BattleMode {
     public String startLine(GravesAndGlory.Battle b){return GravesAndGlory.Battle.ROUND_START;}
     /** Where a team respawns and its troops fall back to. */
     public Vec3d fieldBase(GravesAndGlory.Battle b,int team){return GravesAndGlory.Battle.base(team);}
+    /** The point a team's lineup forms from (reinforce's rows stand 5 to 20 blocks forward of it): the field base unless the mode lines a team up elsewhere (Siege's defenders in the yard). */
+    public Vec3d lineup(GravesAndGlory.Battle b,int team){return fieldBase(b,team);}
     /** A team's barracks access point. */
     public Vec3d fieldBarracks(GravesAndGlory.Battle b,int team){var f=Spec.FACTIONS[team];return new Vec3d(f.barracksX(),65,f.barracksZ());}
     /** Round gold a squad earns per income tick: passive gold and held points, each scaled by the mode (Survival pays neither). */
@@ -97,6 +99,11 @@ public abstract class BattleMode {
     /** A bot army's goal in this mode, asked by Campaign.botDecide after its retreat check: a spot to attack toward, or null to
      *  play the points as Domination does (the default). Convoy sends its bots to the wagon (spec 3.6). */
     public Vec3d botGoal(GravesAndGlory.Battle b,GravesAndGlory.Squad s,Vec3d centre,Spec.BotCommandRow tier){return null;}
+    /** A bot army's per-group orders, asked by Campaign.botDecide at the end of each decision (never while it retreats): a mode puts
+     *  Battle.Assignment rows into s.assignments over the army's order. Siege splits its stage plan by group (spec 5); the default adds none. */
+    public void botPlan(GravesAndGlory.Battle b,GravesAndGlory.Squad s,Spec.BotCommandRow tier){}
+    /** Whether a weakened bot army may fall back to its field base to rally (Campaign.botDecide's retreat share); false keeps it on its plan. */
+    public boolean botRetreats(GravesAndGlory.Battle b,GravesAndGlory.Squad s){return true;}
     /** The lobby's mode block: id, name, rule, how-to lines, side, the tracks and their formats. */
     public JsonObject snapshot(GravesAndGlory.Battle b,GravesAndGlory.Squad viewer){
         JsonObject j=new JsonObject();
