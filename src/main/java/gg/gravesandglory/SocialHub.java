@@ -134,7 +134,8 @@ final class SocialHub {
         return "";}
     void begin(Room r){r.playing=true;r.countdown=-1;revision++;}
     void finish(){for(Room r:rooms.values())if(r.playing){r.playing=false;r.ready.clear();}revision++;}
-    void presence(Set<UUID> connected,long now){for(Room r:rooms.values())r.ready.removeIf(id->!connected.contains(id));online=new HashSet<>(connected);invites.values().removeIf(i->i.expires<=now);
+    void presence(Set<UUID> connected,long now){for(Room r:rooms.values())if(!r.playing)r.ready.removeIf(id->!connected.contains(id)); // a playing room keeps its flags (a commander who drops mid-round is still ready when he returns); finish() clears them
+        online=new HashSet<>(connected);invites.values().removeIf(i->i.expires<=now);
         Set<UUID> known=new HashSet<>();for(Party p:parties.values())known.addAll(p.members);for(Room r:rooms.values())known.addAll(r.members);
         for(UUID id:known){if(online.contains(id))offlineSince.remove(id);else offlineSince.putIfAbsent(id,now);}
         for(Room r:new ArrayList<>(rooms.values())){if(r.playing)continue;Set<UUID> expired=new HashSet<>();

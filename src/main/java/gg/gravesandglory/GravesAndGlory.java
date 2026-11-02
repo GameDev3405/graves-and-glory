@@ -717,8 +717,11 @@ public final class GravesAndGlory implements ModInitializer {
         }
         void join(ServerPlayerEntity p){
             campaign.releaseExpiredHolds();
+            // The team the lobby roster lists him on (a round started from a War Table room): a rejoiner past his hold is seated there, not on the emptier side.
+            int rosterTeam=-1;
+            if(running&&!campaign.activeRoom.isEmpty()){var r0=campaign.social.rooms.get(campaign.activeRoom);if(r0!=null&&r0.members.contains(p.getUuid()))rosterTeam=r0.teams.getOrDefault(p.getUuid(),-1);}
             var decision=AdmissionPolicy.decide(running,campaign.practice,campaign.size,p.getUuid(),
-                squads.values().stream().map(s->new AdmissionPolicy.Seat(s.owner,s.team,s.bot,s.seated)).toList(),campaign.vacated);
+                squads.values().stream().map(s->new AdmissionPolicy.Seat(s.owner,s.team,s.bot,s.seated)).toList(),campaign.vacated,rosterTeam);
             if(running&&!campaign.activeRoom.isEmpty()){
                 var room=campaign.social.rooms.get(campaign.activeRoom);
                 if(room==null||!room.members.contains(p.getUuid()))decision=new AdmissionPolicy.Decision(decision.team(),null,false);
@@ -727,8 +730,8 @@ public final class GravesAndGlory implements ModInitializer {
             Squad replacement=decision.replacement()==null?null:squads.get(decision.replacement());
             Squad s;
             if(replacement!=null){
-                s=replacement;squads.remove(s.owner);campaign.botRespawns.remove(s.owner);campaign.botRetreating.remove(s.owner);
-                campaign.vacated.values().remove(s.owner);campaign.vacatedUntil.remove(p.getUuid());s.owner=p.getUuid();s.bot=false;s.seated=true;s.takeoverAt=0;
+                s=replacement;campaign.botRespawns.remove(s.owner);campaign.botRetreating.remove(s.owner);
+                campaign.vacated.values().remove(s.owner);campaign.vacatedUntil.remove(p.getUuid());rekey(s.owner,p.getUuid());s.owner=p.getUuid();s.bot=false;s.seated=true;s.takeoverAt=0;
                 // The seat keeps the bot's living army and its queue, but from now on it trains and reinforces from the joiner's own banner, and fights under his class.
                 // The active's cooldown belongs to the squad, not to whoever commands it: it stays with the seat, so taking a seat over (its owner coming back, or
                 // anyone else) never refreshes an active. Only a running active stops here, before the class changes; leave already stopped the owner's.
@@ -746,11 +749,17 @@ public final class GravesAndGlory implements ModInitializer {
 
         }
         void clearOldUnits(){List<Entity> stale=new ArrayList<>();for(Entity e:world.iterateEntities())if(e.getCommandTags().contains("gravesandglory")||e.getCommandTags().contains("bannerbound")||e.getCommandTags().contains(Projectiles.TAG))stale.add(e);for(Entity e:stale){leaveSide(e);e.discard();}}
+        /** Gives the seat held under one key another, in the same place in the seat list (squads keeps join order, and a seat's index is its place in it). */
+        void rekey(UUID from,UUID to){
+            var entries=new ArrayList<>(squads.entrySet());squads.clear();
+            for(var e:entries)squads.put(e.getKey().equals(from)?to:e.getKey(),e.getValue());
+        }
         void leave(UUID owner){
             campaign.left(owner);
-            Squad s=squads.remove(owner);welcomed.remove(owner);respawns.remove(owner);if(s!=null)Commander.stop(this,s);
+            Squad s=squads.get(owner);welcomed.remove(owner);respawns.remove(owner);if(s!=null)Commander.stop(this,s);
             // Mid-battle, the army waits on its last orders for disconnectGraceSeconds, then a bot commands it until its owner rejoins (Kort 2026-11-01).
-            if(s!=null&&running&&s.seated&&!s.bot){UUID stand=UUID.randomUUID();s.owner=stand;s.bot=true;s.tier=campaign.difficulty;s.takeoverAt=MatchRules.takeoverAt(time,Spec.CAMPAIGN[0].disconnectGraceSeconds());squads.put(stand,s);campaign.vacated.put(owner,stand);campaign.vacatedUntil.put(owner,MatchRules.releaseAt(time));return;}
+            if(s!=null&&running&&s.seated&&!s.bot){UUID stand=UUID.randomUUID();s.owner=stand;s.bot=true;s.tier=campaign.difficulty;s.takeoverAt=MatchRules.takeoverAt(time,Spec.CAMPAIGN[0].disconnectGraceSeconds());rekey(owner,stand);campaign.vacated.put(owner,stand);campaign.vacatedUntil.put(owner,MatchRules.releaseAt(time));return;}
+            squads.remove(owner);
             units.removeIf(u->{if(u.squad==s){leaveSide(u.mob);u.mob.discard();return true;}return false;});
         }
         static Vec3d base(int t){var f=Spec.FACTIONS[t];return new Vec3d(f.spawnX(),Arena.height(f.spawnX(),f.spawnZ())+1,f.spawnZ());}
