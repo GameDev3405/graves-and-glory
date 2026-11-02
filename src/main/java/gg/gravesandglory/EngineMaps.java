@@ -89,6 +89,8 @@ public final class EngineMaps {
  /** the block of canvas column (cx, cz) at y, or air */
  static BlockState at(int cx,int cz,int y){int t=tileOf[cz*map.width+cx];var tile=map.tiles.get(t);int ly=y-map.floorY;if(ly<0||ly>=heights[t])return Blocks.AIR.getDefaultState();
   short s=stacks[t][((cz-(tile.z()-map.oz))*tile.sx()+cx-(tile.x()-map.ox))*heights[t]+ly];return s<0?Blocks.AIR.getDefaultState():palette[s];}
+ /** the y above the highest block of a column, loading its chunk (World.getTopY answers the bottom of the world for an unloaded chunk) */
+ static int top(ServerWorld w,int x,int z){return w.getChunk(x>>4,z>>4).sampleHeightmap(Heightmap.Type.WORLD_SURFACE,x&15,z&15)+1;}
  static void set(ServerWorld w,BlockPos.Mutable pos,BlockState s){if(w.getBlockState(pos)!=s)w.setBlockState(pos,s,FLAGS);}
 
  /** One tick of building the engine map; true once it is placed and checked (the next call starts a new build). */
@@ -104,7 +106,7 @@ public final class EngineMaps {
     int cx=Math.max(0,Math.min(map.width-1,x-map.ox)),cz=Math.max(0,Math.min(map.depth-1,z-map.oz));
     int top=map.floorY+heights[tileOf[cz*map.width+cx]];
     for(int y=map.floorY;y<top;y++){pos.set(x,y,z);set(w,pos,at(cx,cz,y));}
-    int surface=w.getTopY(Heightmap.Type.WORLD_SURFACE,x,z);
+    int surface=top(w,x,z);
     for(int y=top;y<surface;y++){pos.set(x,y,z);set(w,pos,Blocks.AIR.getDefaultState());}
     if(Math.abs(x)==R.arenaHalfX()||Math.abs(z)==R.arenaHalfZ()){int g=Math.max(map.solid(x,z),map.water(x,z))+1;for(int y=g;y<g+6;y++){pos.set(x,y,z);set(w,pos,Blocks.BARRIER.getDefaultState());}}
    }
@@ -120,7 +122,7 @@ public final class EngineMaps {
   if(phase==4){int total=map.width*map.depth;
    while(column<total&&System.nanoTime()-t0<BUDGET_NS){int cx=column%map.width,cz=column/map.width,x=cx+map.ox,z=cz+map.oz;
     int solid=EngineMap.NONE,water=EngineMap.NONE;
-    for(int y=w.getTopY(Heightmap.Type.WORLD_SURFACE,x,z);y>=map.floorY;y--){pos.set(x,y,z);BlockState s=w.getBlockState(pos);
+    for(int y=top(w,x,z);y>=map.floorY;y--){pos.set(x,y,z);BlockState s=w.getBlockState(pos);
      if(s.isOf(Blocks.WATER)){if(water==EngineMap.NONE)water=y;continue;}
      if(s.isAir()||s.isOf(Blocks.BARRIER)||s.isOf(Blocks.SEA_LANTERN)||s.getBlock() instanceof FenceBlock||s.isIn(BlockTags.WOOL))continue;
      solid=y;break;}
