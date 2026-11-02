@@ -35,9 +35,30 @@ public final class MatchRules {
      * The gold a stopped or crashed match pays one player: the participation gold (base, never the win bonus) times the share of the
      * match he played, rounded down. A match with no length (roundSeconds 0) or no time played pays nothing.
      */
-    public static int partialGold(int base, long playedSeconds, int roundSeconds) {
-        if (base <= 0 || playedSeconds <= 0 || roundSeconds <= 0) return 0;
-        return (int) ((long) base * Math.min(playedSeconds, roundSeconds) / roundSeconds);
+    public static int partialGold(int base, long playedSeconds, int roundSeconds) { return prorate(base, playedSeconds, roundSeconds); }
+
+    /**
+     * An amount scaled by the share of a match a player was seated (Kort 2026-11-02): amount times seated over total, rounded down. A player seated
+     * the whole match (seated at or past total) gets the amount unchanged. No amount, no time seated or no match length gives nothing.
+     */
+    public static int prorate(int amount, long seated, long total) {
+        if (amount <= 0 || seated <= 0 || total <= 0) return 0;
+        return (int) ((long) amount * Math.min(seated, total) / total);
+    }
+
+    /** The share of the match a player was seated, as a whole percent from 0 to 100 (rounded down). */
+    public static int sharePercent(long seated, long total) { return total <= 0 || seated <= 0 ? 0 : (int) (100L * Math.min(seated, total) / total); }
+
+    /** True when a player was seated for at least half of the match. Only then does the match count as his win, a cleared battle or a bonus objective. */
+    public static boolean majority(long seated, long total) { return total > 0 && seated * 2 >= total; }
+
+    /**
+     * The ticks a player was seated, from the later of the round start and his own seating, less the time he was away: awayTicks is the sum of his
+     * finished absences and leftAt the tick of the drop he has not returned from (negative when he is present). Never negative.
+     */
+    public static long seatedTicks(long now, long roundStarted, long joinedAt, long awayTicks, long leftAt) {
+        long span = now - Math.max(roundStarted, joinedAt) - Math.max(0, awayTicks) - (leftAt >= 0 ? Math.max(0, now - leftAt) : 0);
+        return Math.max(0, span);
     }
 
     /** The permission level of ops-only commands such as /warp (vanilla's game-master level, as /backup and /map use). */

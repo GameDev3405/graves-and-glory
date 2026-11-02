@@ -293,6 +293,15 @@ public final class RosterMath {
         if (won && largest != null) earn(shards, largest, amounts.victoryShards());
         return new Rewards(shards, renown);
     }
+    /** A match's rewards for a player seated only part of it: every shard and Renown count pro-rated (MatchRules.prorate, rounded down), a count that falls to 0 dropped. */
+    public static Rewards prorate(Rewards full, long seated, long total) {
+        return new Rewards(prorate(full.shards(), seated, total), prorate(full.renown(), seated, total));
+    }
+    private static Map<String, Integer> prorate(Map<String, Integer> counts, long seated, long total) {
+        Map<String, Integer> out = new LinkedHashMap<>();
+        counts.forEach((house, n) -> { int part = MatchRules.prorate(n, seated, total); if (part > 0) out.put(house, part); });
+        return out;
+    }
     static void earn(Map<String, Integer> counts, String house, int amount) { if (amount > 0) counts.merge(house, amount, Integer::sum); }
 
     /** A troop's mastery level: the mastery rows reached in level order, each needing both its kills and its matches survived. */
