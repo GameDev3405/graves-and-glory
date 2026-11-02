@@ -901,6 +901,8 @@ final class MotionGrade extends Phase2Checks.Stage {
             Geo g = null;
             if (!Double.isNaN(t)) {
                 g = geo(en.pose, en.bodyYaw);
+                // fix r3: the lowest drawn sole corner over every frame the clip plays (blocks over the site's ground; negative sinks)
+                for (int i = 0; i < 2; i++) if (g.feet[i] != null) for (double[] p : g.feet[i]) soleLow.merge(j.clip, en.pos.y + p[1] - site.getY(), Math::min);
                 if (j.full) { double[] tp = screen(s, en.pos, g.tip), rp = screen(s, en.pos, g.rim); if (tp != null) j.tip.add(xy(tp, soloCrop)); if (rp != null) j.rim.add(xy(rp, soloCrop)); }
                 double L = j.c.length();
                 for (int k = 0; k < j.times.length; k++) {
@@ -937,7 +939,15 @@ final class MotionGrade extends Phase2Checks.Stage {
         if (j.full) { var t = new JsonObject(); t.add("tip", j.tip); t.add("rim", j.rim); trails.computeIfAbsent(j.clip, k -> new JsonObject[2])[j.angle == 0 ? 0 : 1] = t; }
         ji++; wait = 0;
     }
+    /** Fix r3: per clip, the lowest drawn sole corner over all its solo jobs (blocks over the ground). */
+    final Map<String, Double> soleLow = new HashMap<>();
     void finishSolo() {
+        double worst = Double.MAX_VALUE; String worstClip = "";
+        for (var x : clipsJson) {
+            var o = x.getAsJsonObject(); Double lo = soleLow.get(o.get("name").getAsString()); if (lo == null) continue;
+            o.addProperty("lowestSoleHeight", r4(lo)); if (lo < worst) { worst = lo; worstClip = o.get("name").getAsString(); }
+        }
+        if (!soleLow.isEmpty()) System.out.println(String.format(Locale.ROOT, "[mo-grade] solo lowest sole %.4f block (%s)", worst, worstClip));
         report("mo-grade-replays", replayBad.isEmpty() && !jobs.isEmpty(), jobs.size() + " solo jobs (" + clipOrder.size() + " clips x 8 angles), each clip asked for at the input level (stance packet, attack or hit event, scene pose, real kill) and caught in the engine's own stance layers, tracks or scene as drawn: 8 frames front and side, the key poses at every angle" + (replayBad.isEmpty() ? "" : "; off: " + replayBad));
         report("mo-grade-motion", motionBad.isEmpty() && !clipOrder.isEmpty(), clipOrder.size() + " clips, each one's 8 frame times: " + (motionBad.isEmpty() ? String.format(Locale.ROOT, "some two differ by more than 1 degree in every clip (least %.2f degrees, %s)", motionLeast, motionLeastClip) : "one pose throughout: " + motionBad));
         report("mo-grade-framing", framingBad.isEmpty() && framingChecked > 0, framingChecked + " solo and loco frames framed from the measured extent of every clip (body, weapon and shield; camera " + String.format(Locale.ROOT, "%.2f", soloD) + " blocks, crop " + soloCrop[2] + "x" + soloCrop[3] + " native, 10 percent margin)" + (framingBad.isEmpty() ? ": every sole, hand, weapon tip and shield rim on its crop" : "; off the crop: " + framingBad));
@@ -1012,7 +1022,7 @@ final class MotionGrade extends Phase2Checks.Stage {
         var ph = new JsonObject(); ph.addProperty("idleTicks", 15); ph.addProperty(g.turn() ? "turnTicks" : "moveTicks", g.move()); ph.addProperty("pathTicks", g.path().length); j.add("serverTicks", ph);
         if (n < 10) { locoBad.add(g.name() + ": " + n + " frames"); locoJson.add(j); return; }
         String[] side = {"right", "left"}; var slide = new JsonArray(); var maxPlant = new JsonArray(); var planted = new JsonArray(); var minH = new JsonArray(); var maxH = new JsonArray(); var rest = new JsonArray(); var thr = new JsonArray();
-        var moveSlide = new JsonArray(); var centroidSlide = new JsonArray(); var plants = new JsonArray(); var plantCount = new JsonArray();
+        var moveSlide = new JsonArray(); var centroidSlide = new JsonArray(); var plants = new JsonArray(); var plantCount = new JsonArray(); var swingLift = new JsonArray(); var swingCount = new JsonArray();
         double[][] ser = new double[6][n]; double[][] spans = new double[2][n];
         boolean[] afterIdle = new boolean[n]; for (int k = 0; k < n; k++) afterIdle[k] = lrec.get(k)[0] >= 15;
         for (int i = 0; i < 2; i++) {
@@ -1032,10 +1042,20 @@ final class MotionGrade extends Phase2Checks.Stage {
                 pj.addProperty("frames", p.frames()); pj.addProperty("slideBlocks", r4(p.slide())); pj.addProperty("slideAfterIdleBlocks", r4(p.slideAfterIdle())); pj.addProperty("enginePlantWeightMean", r4(eng / p.frames()));
                 plants.add(pj); tot += p.slide(); mv += p.slideAfterIdle(); mx = Math.max(mx, p.slide()); cnt++;
             }
+            // fix r3: each whole swing's lift (its peak sole height over the idle rest), from the first frame after idle; a swing
+            // is a run of frames above the planted threshold that ends back under it
+            double peak = -1, least = Double.NaN; int swings = 0;
+            for (int k = 0; k < n; k++) {
+                double h = ser[2 * i + 1][k]; if (Double.isNaN(h) || !afterIdle[k]) continue;
+                if (h > th) peak = Math.max(peak, h - rh);
+                else if (peak >= 0) { least = Double.isNaN(least) ? peak : Math.min(least, peak); swings++; peak = -1; }
+            }
+            swingLift.add(Double.isNaN(least) ? com.google.gson.JsonNull.INSTANCE : new com.google.gson.JsonPrimitive(r4(least))); swingCount.add(swings);
             slide.add(r4(tot)); moveSlide.add(r4(mv)); maxPlant.add(r4(mx)); planted.add(pl); minH.add(r4(lo)); maxH.add(r4(hi)); rest.add(r4(rh)); thr.add(r4(th)); centroidSlide.add(r4(cen)); plantCount.add(cnt);
         }
         j.add("plantedSlideBlocks", slide); j.add("plantedSlideAfterIdleBlocks", moveSlide); j.add("largestSinglePlantSlideBlocks", maxPlant); j.add("plantedFrames", planted); j.add("plantCount", plantCount);
         j.add("restSoleHeight", rest); j.add("plantedThreshold", thr); j.add("lowestSoleHeight", minH); j.add("highestSoleHeight", maxH); j.add("soleCentroidSlideBlocks", centroidSlide); j.add("plants", plants);
+        j.add("leastSwingLiftBlocks", swingLift); j.add("swingCount", swingCount); j.addProperty("swingLiftRule", "per foot, the least peak (sole height over its idle rest) of the whole swings after idle; a swing is a run of frames above plantedThreshold; 1 texel = 0.0625 block");
         j.addProperty("sides", "right, left"); j.addProperty("note", "sole height = the lowest corners of the shin's boxes as drawn; planted = sole height within 0.04 blocks of its idle rest height (at least 0.04); a plant = a run of consecutive planted frames of one foot; slide (R83) = per step, the smallest horizontal move of a corner touching the ground (within " + SoleSlide.CONTACT + " of the lowest) in both frames, summed over a plant, so a box foot rocking heel to toe reads as no slide; plantedSlideBlocks, plantedSlideAfterIdleBlocks and largestSinglePlantSlideBlocks are the sums and the largest of plants[]; soleCentroidSlideBlocks is the old centroid measure, kept for comparison; enginePlantWeightMean is MotionEngine's planted-feet weight over the plant; a negative lowest height is sinking into the ground");
         double moved = Math.hypot(lrec.get(n - 1)[1] - lrec.get(0)[1], lrec.get(n - 1)[2] - lrec.get(0)[2]); j.addProperty("bodyMovedBlocks", r4(moved));
         // R109: the stance slip ratio, report only: over moving frames where the same foot is the lower in both (its sole corners'
