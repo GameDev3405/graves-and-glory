@@ -1,6 +1,6 @@
 # Six-player slice dry run, 2026-11-02 (plan task 3.7)
 
-Branch `work/slice-dryrun` off main `7ca3221`. Not pushed. Status: IN PROGRESS (interim commit; final results below are updated as items finish).
+Branch `work/slice-dryrun` off main `7ca3221`. Not pushed. Status: FINAL, wrapped up early at the coordinator's instruction. Items not listed as PASS were not run to a result.
 
 ## Method
 - Harness (committed d4f5aa6): `SliceProbe` (server, writes `state-server.json`, reads `cmd-server.txt` for `finish <team>` and `stop`) and `SliceClient` (client, reads `cmd-<user>.txt` for `connect`, `disconnect`, `send <cmd>`, `quit`; writes `state-<user>.json`). Both are test-tools only and are in the forbidden list in `tools/release_config.py`.
@@ -12,14 +12,14 @@ Branch `work/slice-dryrun` off main `7ca3221`. Not pushed. Status: IN PROGRESS (
 | # | Item | Result |
 |---|---|---|
 | 1 | Domination, 2 humans + 4 bots (3v3), round to a result | PASS (forced finish at 192 s, see below) |
-| 2 | Siege on Ironhold | running |
+| 2 | Siege on Ironhold | PARTIAL: lobby, map build and battle start with 6 seats pass (map 1, 185 s round); stopped at about 30 s of play, no result, no rewards observed |
 | 3 | Rewards after a completed match | PASS for Domination |
 | 4 | Return to camp after the match | PASS for Domination |
 | 5a | Reconnect within 2 min gets a seat back | PASS (see below) |
-| 5b | Slot released after 2 min | pending |
-| 6 | Mid-match crash, partial gold | pending |
-| 7 | Server restart | pending |
-| 8 | Persistence of profiles | pending |
+| 5b | Slot released after 2 min | not run to a result: Bravo disconnected in the Siege round, hold set (release tick 9353), stopped before expiry |
+| 6 | Mid-match crash, partial gold | not run |
+| 7 | Server restart | not run |
+| 8 | Persistence of profiles | not run |
 
 ### 5a Reconnect within 2 min
 Bravo sent `disconnect` at match second ~60. Server: Bravo left `online`, a bot took over the seat immediately, and `held` showed a hold on Bravo's UUID until tick 5113 (about 115 s ahead). Bravo sent `connect` about 40 s later: back in the battle world, seated on team 1, `held` cleared, scores kept running. Minor observations: the seat index moved from slot 1 to slot 5 in the list, and Bravo's client showed ready=False in the War Table roster after rejoining (cosmetic).
@@ -34,10 +34,14 @@ Room created by SliceAlpha (size 3, fill on), SliceBravo joined, both ready, 10 
 
 The reconnected player was eligible for the full reward. Caveat: the round was force-ended, not played to the clock; a natural clock or score finish was not exercised.
 
+### Counts
+PASS: 4 (Domination round, Domination rewards, Domination return to camp, reconnect within 2 min). PARTIAL: 1 (Siege start). NOT RUN: 4 (hold expiry, crash, server restart, persistence). FAIL: 0. Blockers: none found. Note for 2 (not 8): rewards were read from the live server profiles; no restart was done to prove they were saved to disk.
+
 ## Defects so far
 | Rating | Finding | Reproduce |
 |---|---|---|
 | minor | Rejoined commander reseated at the last seat index; roster ready flag shows False after rejoin | Disconnect and reconnect a commander mid-Domination, read `state-server.json` seats and the client social roster |
+| minor | Server log shows repeated 'moved too quickly' warnings for both humans at battle start on Ironhold and Rivergate (teleport into the map) | Start any room, read the server log at battle start |
 | minor (tooling) | Init-script `workingDir` override ignored by Loom dev server and client | see Method |
 
 ## Needs real humans (not agent-testable)
