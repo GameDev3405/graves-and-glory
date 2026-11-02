@@ -31,3 +31,12 @@ graphify-out/cache/
 *.hprof
 hs_err_pid*
 Thumbs.db
+
+# Builder server runtime files when run in place
+tools/builder-server/backups/
+tools/builder-server/logs/
+tools/builder-server/health.json
+tools/builder-server/version-stamp.json
+tools/builder-server/server.pid
+tools/builder-server/offsite.txt
+tools/builder-server/current-world.txt

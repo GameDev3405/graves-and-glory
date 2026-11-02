@@ -43,7 +43,7 @@ One row per started task or task done in `main`; unlisted tasks in each phase ha
 
 | ID | Task | Owner | State | Evidence |
 |---|---|---|---|---|
-| 2A.1 | Builder server hardening | Agent | In progress (start script only) | `tools/builder-server/start-build-server.ps1`; no auto-restart, backup or health check yet |
+| 2A.1 | Builder server hardening | Agent | Done on branch worktree-agent-a67738406dd158482 (EULA gate not exercised against a real server; no TPS source on 1.20.1) | `tools/builder-server/README.md`; supervisor, backups, offsite, health check, boot task |
 | 2A.2 | `mapforge` command surface in `BuildMode` | Agent | Not started | No `mapforge` code in `BuildMode.java` |
 | 2A.3 | Map Forge tools | Agent | Done 2026-11-01 | `698b274` (Ironhold surface, Keep tower, cleanup passes, MapWalk harness); `tools/mapforge/`, `docs/maps/ironhold/` (layout signed 2026-10-30) |
 | 2A.4, 2A.5 | Adoption spike and pipeline | Agent + Kort | Not started | Ironhold surface is in `main`, but there is no export, bake or round-trip test yet |
