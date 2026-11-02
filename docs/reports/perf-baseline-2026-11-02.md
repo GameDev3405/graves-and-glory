@@ -56,3 +56,18 @@ Memory: live set after a forced GC is stable at 430 to 480 MB across all 28 matc
 ## Reproduce
 
 `GRAVES_BOTSIM_PROBE=1 tools/balance_sim.sh perf 25691 -PbotSim=10 -PsimMaps=1,0 -PsimRoundSeconds=300 -PsimFast=true`, then read `work/method/perf-*/botsim/probe.csv`.
+
+## Follow-up: autosave gated during battle (2026-11-02, branch `work/autosave-battle`)
+
+Kort approved skipping the periodic overworld autosave while a battle runs and saving between matches instead. `AutosaveMixin` redirects the one `saveAll` inside `MinecraftServer.tick` (the 6000-tick autosave) through `ArenaAutosave.allow(battle.running)`; a skipped autosave is owed, and `Campaign.returnLobby` pays it with `saveAll(true,false,false)` after the armies are gone. Shutdown saves, `/save-all`, BuildMode's `saveAll`, chunk unloads and profile files are untouched. `ArenaAutosaveCheck` covers the gate and its wiring.
+
+Re-measured with the same probe (`perfAS`, Ironhold/Rivergate Domination, 300 s, unthrottled, matches 1 to 3 of 4):
+
+| | Before | After |
+|---|---|---|
+| Mid-round ticks over 100 ms | one 480 to 750 ms autosave tick per 6000-tick boundary | none |
+| Round max tick | 606 to 620 ms (pooled mean) | 105 to 291 ms, all on round tick 0 (troop spawn, as before) |
+| Round p95 / p99 | 5.7 / 8.8 ms | 8.9 to 11.1 / 15.3 to 19.0 ms (other worktrees' clients were running on the machine) |
+| Save at lobby return | none | 765 to 908 ms, once per match, players in camp |
+
+The lobby still autosaves on vanilla's schedule, so an unthrottled build can still show one 700 to 880 ms tick; that is outside a battle, as Kort chose. Crash trade-off: the arena world on disk is the pre-round one until the lobby save, which mode recovery (`Modes.recover`) already assumes it may be.

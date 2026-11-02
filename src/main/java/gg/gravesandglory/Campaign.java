@@ -164,6 +164,9 @@ public final class Campaign {
         for(var s:b.squads.values()){s.training.clear();s.seated=false;}onPad.clear();padCountdown=-1;closeParty();
         notices.values().removeIf(WELCOME_WAIT::equals);noticeAt.keySet().retainAll(notices.keySet()); // "Battle in progress" is no longer true
         for(var p:b.server.getPlayerManager().getPlayerList())toLobby(p);
+        // The autosaves skipped during the round (ArenaAutosave) are paid now, with the armies gone and everyone in camp.
+        // A stopping server skips this: its own shutdown save follows.
+        if(ArenaAutosave.settle()&&b.server.isRunning()){long at=System.nanoTime();b.server.saveAll(true,false,false);System.out.println("[Graves and Glory] Saved the world after the battle ("+(System.nanoTime()-at)/1_000_000+" ms).");}
     }
     /** Leaving frees the pad, any seat in a custom lobby, and invitations to it, and forgets which snapshot forms were logged for him. */
     void left(UUID id){onPad.remove(id);padRefused.remove(id);leaveParty(id);snapshotForms.remove(id);notices.remove(id);noticeAt.remove(id);} // his notice entries go with him, a standing line's too (expireNotices never drops those)
