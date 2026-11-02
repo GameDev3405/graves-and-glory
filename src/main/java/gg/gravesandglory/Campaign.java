@@ -552,7 +552,7 @@ public final class Campaign {
             // one seated the whole match is paid in full. The win, the cleared battle and the bonus count only when he was seated for at least half of it.
             long seated=seatedTicks(id)/20;boolean eligible=seated>0&&seconds>=Spec.CAMPAIGN[0].minimumRewardSeconds();int percent=MatchRules.sharePercent(seated,seconds);
             boolean won=s.team==winner,credited=won&&MatchRules.majority(seated,seconds);
-            int earned=eligible?MatchRules.prorate(practice?Spec.CAMPAIGN[0].practiceGold():Spec.CAMPAIGN[0].completionGold()+(won?Spec.CAMPAIGN[0].victoryGold():0),seated,seconds):0;
+            int earned=eligible?MatchRules.prorate(MatchRules.grossGold(practice,activeBattle!=null,won,credited,Spec.CAMPAIGN[0].completionGold(),Spec.CAMPAIGN[0].practiceGold(),Spec.CAMPAIGN[0].victoryGold()),seated,seconds):0;
             int priorXp=p.progression.xp;Progression.reset(p.progression,Progression.today());Progression.match(p.progression,matchId,credited,eligible,percent);p.gold+=earned;if(seated>0)p.matches++;if(credited)p.wins++;MarchMath.Settled march=null;
             if(activeBattle!=null){ // plan 2C.3: the battle won, the cleared count and the bonus, in the same save as the gold
                 march=MarchMath.settle(activeBattle,MarchMath.bonus(activeBattle,Spec.BONUSOBJECTIVES),credited,bonusTracker!=null&&bonusTracker.kept(won,(int)seconds),p.battlesWon,p.bonusClaimed,Profile.houseOrder(),Spec.CAMPAIGNBATTLES);

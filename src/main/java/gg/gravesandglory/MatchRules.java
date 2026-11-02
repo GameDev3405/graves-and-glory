@@ -46,6 +46,16 @@ public final class MatchRules {
         return (int) ((long) amount * Math.min(seated, total) / total);
     }
 
+    /**
+     * The gold a finished match pays before pro-rating. A normal match pays completionGold plus victoryGold for a win; practice pays practiceGold
+     * and no victory gold; a campaign battle (fought as practice against bots) pays practiceGold plus the same victoryGold a normal win pays, but
+     * only when the player counts as the winner (won and seated at least half, see majority), so a win he barely played earns nothing extra.
+     */
+    public static int grossGold(boolean practice, boolean campaignBattle, boolean won, boolean credited, int completionGold, int practiceGold, int victoryGold) {
+        if (!practice) return completionGold + (won ? victoryGold : 0);
+        return practiceGold + (campaignBattle && credited ? victoryGold : 0);
+    }
+
     /** The share of the match a player was seated, as a whole percent from 0 to 100 (rounded down). */
     public static int sharePercent(long seated, long total) { return total <= 0 || seated <= 0 ? 0 : (int) (100L * Math.min(seated, total) / total); }
 

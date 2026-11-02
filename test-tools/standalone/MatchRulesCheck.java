@@ -69,6 +69,16 @@ public final class MatchRulesCheck {
         check(MatchRules.seatedTicks(end, round0, round0, 0, round0) == 0 && MatchRules.seatedTicks(end, round0, round0 + total * 40, 0, -1) == 0, "time seated is never negative");
         check(MatchRules.seatedTicks(end, round0 + 100, round0, 0, -1) == end - round0 - 100, "time seated starts at the round start, not before");
         check(MatchRules.majority(total, total) && MatchRules.majority(total / 2, total) && !MatchRules.majority(total / 2 - 1, total) && !MatchRules.majority(0, 0), "a win counts for a player seated at least half the match");
+        // Campaign battle pay (Kort 2026-11-02): practice gold plus the normal win's victory gold, only for a win seated at least half, pro-rated.
+        int comp = Spec.CAMPAIGN[0].completionGold(), prac = Spec.CAMPAIGN[0].practiceGold(), vic = Spec.CAMPAIGN[0].victoryGold();
+        check(vic > 0 && MatchRules.grossGold(true, true, true, true, comp, prac, vic) == prac + vic, "a won campaign battle pays practice gold plus the normal victory gold");
+        check(MatchRules.grossGold(true, true, false, false, comp, prac, vic) == prac, "a lost campaign battle pays practice gold only");
+        check(MatchRules.grossGold(true, true, true, false, comp, prac, vic) == prac, "a campaign win seated under half pays no victory gold");
+        check(MatchRules.grossGold(true, false, true, true, comp, prac, vic) == prac, "plain practice never pays victory gold");
+        check(MatchRules.grossGold(false, false, true, true, comp, prac, vic) == comp + vic && MatchRules.grossGold(false, false, false, false, comp, prac, vic) == comp, "a normal match is unchanged: completion, plus victory gold for a win");
+        int campaignWin = MatchRules.grossGold(true, true, true, MatchRules.majority(droppedSeated * 3, total), comp, prac, vic);
+        check(MatchRules.prorate(campaignWin, total / 2, total) == (prac + vic) / 2, "a campaign win seated half the match pays half of practice plus victory gold");
+        check(MatchRules.prorate(MatchRules.grossGold(true, true, true, MatchRules.majority(droppedSeated, total), comp, prac, vic), droppedSeated, total) == prac / 4, "a campaign win seated 25% pays only the pro-rated practice gold");
         var shards = new java.util.LinkedHashMap<String, Integer>();
         shards.put("gilded", 2);shards.put("ironclad", 1);
         var scaled = RosterMath.prorate(new RosterMath.Rewards(shards, shards), 300, 400);
