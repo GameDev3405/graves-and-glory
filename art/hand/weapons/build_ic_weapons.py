@@ -97,7 +97,8 @@ def crossbow():
         Cube("prod_r", [3, 13, -0.5], [7, 15, 0.5], "iron", by_face(north=across([I[4], I[4], I[3], I[2]]), south=across([I[4], I[4], I[3], I[2]]), up=flat(I[5]), rest=flat(I[3]))),
         Cube("tip_l", [-8, 15, -0.5], [-7, 16, 0.5], "iron", flat(E[3])),
         Cube("tip_r", [7, 15, -0.5], [8, 16, 0.5], "iron", flat(E[3])),
-        Cube("string", [-7, 9, -0.5], [7, 10, 0.5], "leather", flat(FUR[5]), skip=("up", "down")),
+        Cube("string_l", [-7, 12, 0.5], [0, 13, 1.5], "leather", flat(FUR[3]), skip=("up", "down"), turn=-20, pivot=[0, 12.5, 1]),
+        Cube("string_r", [0, 12, 0.55], [7, 13, 1.55], "leather", flat(FUR[3]), skip=("up", "down"), turn=20, pivot=[0, 12.5, 1]),
         Cube("bolt", [-0.5, 7, -2.5], [0.5, 18, -1.5], "iron", by_face(north=across([I[4]], lambda f, y, h: {0: I[6]} if y == 0 else ({0: O[2]} if y > h - 4 else {})),
                                                                      south=across([I[4]], lambda f, y, h: {0: I[6]} if y == 0 else ({0: O[2]} if y > h - 4 else {})), rest=flat(I[4]))),
     ]

@@ -24,9 +24,9 @@ HELM_FRONT = fold("""
 qrrss
 1kkkk
 33445
-23k45
 23445
-13k44
+23445
+13344
 12233""")
 
 def helm_can():
@@ -115,18 +115,17 @@ def cuff():
 
 # ---- the cloth: tabard, side flaps ----
 CLEAVE = """
-.eeeeee.
-.eLLLLe.
-.eLmLdLe
-.eLdLLme
-.eLdLmLe
-..eLdme.
+........
+...ee...
+..eLLe..
+..eLmLe.
 ..eLdLe.
-...edme.
-....ede.
-.....e.."""
+...emde.
+...edLe.
+....ee..
+........"""
 
-def cleave_pal(M): return {"e": EMBER[3], "L": IRON[5], "m": IRON[4], "d": IRON[0]}
+def cleave_pal(M): return {"e": EMBER[3], "L": IRON[5], "m": IRON[4], "d": IRON[2]}
 
 def tabard(T, M):
     def paint(face, w, h):

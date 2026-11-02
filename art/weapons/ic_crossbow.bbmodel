@@ -915,34 +915,34 @@
    "uuid": "b5e493ab-8a34-512c-aa23-b0b6272e43f9"
   },
   {
-   "name": "string",
+   "name": "string_l",
    "box_uv": false,
    "render_order": "default",
    "locked": false,
    "export": true,
    "from": [
     -7,
-    9,
-    -0.5
+    12,
+    0.5
    ],
    "to": [
-    7,
-    10,
-    0.5
+    0,
+    13,
+    1.5
    ],
    "autouv": 0,
    "color": 0,
    "origin": [
-    0.0,
-    9.5,
-    0.0
+    0,
+    12.5,
+    1
    ],
    "faces": {
     "north": {
      "uv": [
       0,
       19,
-      14,
+      7,
       20
      ],
      "texture": 0
@@ -958,9 +958,9 @@
     },
     "south": {
      "uv": [
-      14,
+      7,
       19,
-      28,
+      14,
       20
      ],
      "texture": 0
@@ -976,7 +976,81 @@
     }
    },
    "type": "cube",
-   "uuid": "012837b6-7fa0-5548-b561-84443f9f24f6"
+   "uuid": "a095dfd7-b325-52a0-ae4d-5f05acf0846e",
+   "rotation": [
+    0,
+    0,
+    -20
+   ]
+  },
+  {
+   "name": "string_r",
+   "box_uv": false,
+   "render_order": "default",
+   "locked": false,
+   "export": true,
+   "from": [
+    0,
+    12,
+    0.55
+   ],
+   "to": [
+    7,
+    13,
+    1.55
+   ],
+   "autouv": 0,
+   "color": 0,
+   "origin": [
+    0,
+    12.5,
+    1
+   ],
+   "faces": {
+    "north": {
+     "uv": [
+      14,
+      19,
+      21,
+      20
+     ],
+     "texture": 0
+    },
+    "east": {
+     "uv": [
+      2,
+      21,
+      3,
+      22
+     ],
+     "texture": 0
+    },
+    "south": {
+     "uv": [
+      21,
+      19,
+      28,
+      20
+     ],
+     "texture": 0
+    },
+    "west": {
+     "uv": [
+      3,
+      21,
+      4,
+      22
+     ],
+     "texture": 0
+    }
+   },
+   "type": "cube",
+   "uuid": "47cd4279-e7a1-5ea8-af72-8aae5f104546",
+   "rotation": [
+    0,
+    0,
+    20
+   ]
   },
   {
    "name": "bolt",
@@ -1040,18 +1114,18 @@
     },
     "up": {
      "uv": [
-      2,
+      4,
       21,
-      3,
+      5,
       22
      ],
      "texture": 0
     },
     "down": {
      "uv": [
-      3,
+      5,
       21,
-      4,
+      6,
       22
      ],
      "texture": 0
@@ -1096,7 +1170,8 @@
     "ee960ab5-18ae-5320-a9d3-b445e8403884",
     "795ab8f4-22ed-5b7f-922d-d2fbe658067c",
     "b5e493ab-8a34-512c-aa23-b0b6272e43f9",
-    "012837b6-7fa0-5548-b561-84443f9f24f6",
+    "a095dfd7-b325-52a0-ae4d-5f05acf0846e",
+    "47cd4279-e7a1-5ea8-af72-8aae5f104546",
     "3ea9ef06-98e9-56fd-9d08-aeca97e39939"
    ]
   }
@@ -1111,7 +1186,7 @@
    "uv_height": 24,
    "internal": true,
    "uuid": "918a467f-e140-5eea-baf8-daf80a20dfd6",
-   "source": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAYCAYAAACbU/80AAABzUlEQVR4nGPcc/j8/2XLVjNERYUygGiOO+sYQEBBSghMP3j2DkK/+gymJaziwTRMHS5wi9UAzpaTV2J49PAeBnvPthWMTCBLQQBGwyyGARhfQYwXw5IDV1/gpYkBTOgCMB+j82EhgGy5g7YETppsBxALYJbgookFLNgEQb4FBT267x+8/sogQWQoXHu2gpFsByhA4xvmCBAf7ChRbriaabtvgC249uwDAzaa/DTwCtP3YP7rr1gTIqWAMSmz6j+ywLzpbUQFHbUA04tjC8EMGE1vwDQgtg4mBzC6eEXA04CbhxdcYkJXM5xtIPwNTMMSIXK2BAEpAw+shiMXu8gAVASTFAIPoDkAPUe8+PwLJWuSA1iIUQSyBGw5yBGgcgHKl+BlAzvm2kXiCh2CDijLi8Nq0LMnDDQDjF2TFqGUA9jSADLw8A0F06C4ffHsMZgtISULjm8QOHX8IAofBmDqQXIwAK6OGQYYsNy4fgOeUpFzQYAmM0rd/oFJFExrfDsAUSDvgGEYyByYD9FTPyzlX7mAqocJl8tgKZ4aKR0fYNy8rAdrGqAVuP5GDHdBhB4NILBrxzYGfIUMemET+nUXA1khsP7wuwGpDRlGPAAAJXD3GGL5RNoAAAAASUVORK5CYII="
+   "source": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAYCAYAAACbU/80AAAB20lEQVR4nGPcc/j8/2XLVjNERYUygGiOO+sYQEBBSghMP3j2DkK/+gymJaziwTRMHS5wi9UAzpaTV2J49PAeBnvPthWMTCBLQQBGwyyGARhfQYwXw5IDV1/gpYkBTOgCMB+j82EhgGy5g7YETppsBxALYJbgookFLNgEQb4FBT267x+8/sogQWQoXHu2gpFsByhA4xvmCBAf7ChRbriaabtvgC249uwDAzaa/DTwCtP3YP7rr1gTIqWAMSmz6j+ywLzpbUQFHbUA04tjC8EMGE1vwDQgtg4mBzC6eEXA04CbhxdcYkJXM5xtIPwNTMMSIXK2BAEpAw+shiMXu8gAVASTFAIPoDkAPUe8+PwLJWuSA1iIUQSyBGw5yBGgcgHKl+BlAzvm2kXiCh2CDijLi8Nq0LMnDDQDjF2TFqGUA9jSADLw8A0F06C4ffHsMZgtISULjm8QOHX8IAofBmDqQXIwAK6OGQYYsNy4fgOeUpFzQYAmM0rd/oFJFExrfDsAUSDvgGEYyByYD9FTPyzlX7mAqocJl8tgKZ4aKR0fYMyO88GaBmgF5E3CUPgsN9/woAggRwMI7NqxDW8hg17YhH7dhd8FD4+hOkBd5AuKAChNUFIr7iFHE8NIBgCIG/XfYo7x9AAAAABJRU5ErkJggg=="
   }
  ]
 }

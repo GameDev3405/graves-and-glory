@@ -42,10 +42,21 @@ def hat_brim():
         return scuff(g, ("brim", face), 3)
     return paint
 
+def mail_soft(base=3):
+    """Mail as a two-texel check one tone apart: a calm weave, not a chessboard."""
+    def paint(face, w, h):
+        g = blank(w, h)
+        for y in range(h):
+            for x in range(w):
+                v = base + LIT[face] + (0 if (x // 2 + y // 2) % 2 == 0 else -1) + (1 if y == 0 and face not in ("top", "bottom") else 0)
+                g[y][x] = clamp(MAIL, v)
+        return g
+    return paint
+
 def aventail():
     """Mail round the lower head with a slit of olive face between the brim and the mail."""
     def paint(face, w, h):
-        g = mail_ic(3)(face, w, h)
+        g = mail_soft(3)(face, w, h)
         if face == "front":
             for x in range(1, w - 1): g[0][x] = FACE[3] if x not in (3, 4) else FACE[2]
             for x in (2, 5): g[0][x] = INK            # the eyes
@@ -65,7 +76,7 @@ def body_painter():
                 g[y][x] = clamp(OILED, v)
         for y in range(1, h - 2, 3):                       # the plates' rivet rows, studs in iron
             for x in range(1, w - 1, 2):
-                g[y][x] = IRON[4 if (x + y) % 4 else 5]
+                g[y][x] = IRON[3 if (x + y) % 4 else 4]
                 if y + 1 < h: g[y + 1][x] = clamp(OILED, 1)
         if face == "front":
             for y in range(h): g[y][w // 2] = clamp(OILED, 0 if y % 2 else 1)    # the laced front
@@ -86,10 +97,10 @@ def belt():
     return paint
 
 def arm():
-    return rows([(0, leather_ic(base=2, stitch=True)), (3, mail_ic(2)), (7, lames([2, 2, 1], base=3, seed="aarm", wear=2, rivets=False)), (10, leather_ic(base=1))])
+    return rows([(0, leather_ic(base=2, stitch=True)), (3, mail_soft(2)), (7, lames([2, 2, 1], base=3, seed="aarm", wear=2, rivets=False)), (10, leather_ic(base=1))])
 
 def leg():
-    return rows([(0, mail_ic(2)), (5, lames([2, 2], base=2, seed="aleg", wear=2, rivets=False)), (8, leather_ic(base=2))])
+    return rows([(0, mail_soft(2)), (5, lames([2, 2], base=2, seed="aleg", wear=2, rivets=False)), (8, leather_ic(base=2))])
 
 def pauldron(i):
     return lames([2], base=3 + (1 if i == 0 else 0), seed=("ap", i), wear=2, rivets=False)
@@ -110,16 +121,16 @@ def fletch(tone):
 
 # ---- cloth ----
 CROSSED = """
-LL....LL
-.LL..LL.
-..LLLL..
 ...LL...
 ..LLLL..
-.LL..LL.
-LL....LL
+...mm...
+...mm...
+...mm...
+..fmmf..
+.ff..ff.
 ........"""
 
-def cross_pal(M): return {"L": IRON[5], "m": IRON[4]}
+def cross_pal(M): return {"L": IRON[5], "m": IRON[4], "e": EMBER[3], "f": EMBER[3]}
 
 def surcoat(T, M):
     def paint(face, w, h):
@@ -173,7 +184,7 @@ def bones():
     B.append(Bone("head", "body", (0, -12, 0)))
     B.append(Bone("helm", "head", tag="helm", boxes=[
         Box((-4.5, -8.5, -4.5), (9, 4, 9), hat_crown()),
-        Box((-6, -5, -6), (12, 1, 12), hat_brim()),
+        Box((-5.5, -5, -5.5), (11, 1, 11), hat_brim()),
         Box((-4, -4, -4), (8, 5, 8), aventail(), dil=0.3)]))
     B.append(Bone("right_arm", "body", (-5, -10, 0), [Box((-3, -2, -2), (4, 12, 4), arm())]))
     B.append(Bone("right_hand", "right_arm", (-1, 8, 0)))
