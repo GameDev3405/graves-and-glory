@@ -58,6 +58,7 @@ function Read-JarEntry([string]$Jar, [string]$Entry) {
 # Check the jar itself (mod id, Minecraft version, build record) and return its identity.
 function Get-JarInfo([string]$Jar) {
     if (!(Test-Path -LiteralPath $Jar -PathType Leaf)) { throw "Mod jar not found: $Jar" }
+    $Jar = (Resolve-Path -LiteralPath $Jar).ProviderPath   # .NET resolves relative paths against the process directory, not the PowerShell location
     try { $metaText = Read-JarEntry $Jar 'fabric.mod.json' } catch { throw "$Jar is not a readable jar file." }
     if (!$metaText) { throw "$Jar has no fabric.mod.json; it is not a Fabric mod jar." }
     $meta = $metaText | ConvertFrom-Json

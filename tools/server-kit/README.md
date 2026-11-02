@@ -68,4 +68,4 @@ Map artifacts live inside the world, so there is no separate map swap. To change
 - No server-side performance mods (Lithium and the rest in the research notes) are included; they need a licence and compatibility check first.
 - Whitelist is on and enforced. Online mode is on; RCON and query are off.
 - All mod state is inside the world folder, so a world backup is a full backup. Whitelist, ops and `mod-lock.json` are small; copy them by hand if you care.
-- Tested here only with dry runs, a real 0.5.0 jar from the main checkout's build, a synthetic 0.5.1 jar, and a stub `java` for the Windows start/stop path. It has not run a real Minecraft server, and nothing was installed on tjepkema-server.
+- Tested on Windows against a real 1.20.1 Fabric server and a harness client (`docs/reports/server-kit-2026-11.md`). The Linux `.sh` twins were only dry-run checked and have not booted a server. Nothing was installed on tjepkema-server.

@@ -15,6 +15,7 @@
       "gg.gravesandglory.testing.LocalVisualInspection",
       "gg.gravesandglory.CommandPlaytest",
       "gg.gravesandglory.CompatibilityChecks",
+      "gg.gravesandglory.ServerKitSmoke",
       "gg.gravesandglory.FrontMenuChecks",
       "gg.gravesandglory.CampaignChecks",
       "gg.gravesandglory.MapTour",
