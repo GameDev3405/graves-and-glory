@@ -43,7 +43,7 @@ One row per started task or task done in `main`; unlisted tasks in each phase ha
 
 | ID | Task | Owner | State | Evidence |
 |---|---|---|---|---|
-| 2A.1 | Builder server hardening | Agent | Awaiting merge | `worktree-agent-a67738406dd158482` (`8bad927`: supervisor, backups, health check) |
+| 2A.1 | Builder server hardening | Agent | Awaiting merge (EULA gate not exercised against a real server; no TPS source on 1.20.1) | `worktree-agent-a67738406dd158482` (`8bad927`); `tools/builder-server/README.md`; supervisor, backups, offsite, health check, boot task |
 | 2A.2 | `mapforge` command surface in `BuildMode` | Agent | Awaiting Kort | `worktree-agent-a24f5641266e57504` (`2439866`, `6e29713`), with 2A.4 and 2A.5 |
 | 2A.3 | Map Forge tools | Agent | Done 2026-11-01 | `698b274` (Ironhold surface, Keep tower, cleanup passes, MapWalk harness); `tools/mapforge/`, `docs/maps/ironhold/` (layout signed 2026-10-30) |
 | 2A.4, 2A.5 | Adoption spike and pipeline | Agent + Kort | Awaiting Kort | Ironhold round trip works on `worktree-agent-a24f5641266e57504`; `gg-mapforge-runs/1` overlay is 4 KB; format, settle rule and spawn move need Kort |

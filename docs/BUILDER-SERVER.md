@@ -11,6 +11,8 @@ Creative server for the map/lobby builder. Hosted on tjepkema-server (`C:\GGBuil
 ## How it works
 `BuildMode` activates only with `-Dgg.build=<world>` (no Battle is created). `start-build-server.ps1` loops: it points `level-name` at `gg-build-<world>`, runs the server, and relaunches on the world named in `next-world.txt` (written by `/map`). `gg-build.json` in each save marks it generated and names its world; a mismatched save stops the server instead of being overwritten.
 
+The hardened supervisor, boot task, backup schedule, offsite copy and health check are in `tools/builder-server/README.md`.
+
 Backups: `C:\GGBuild\backups\<world>\<timestamp>.zip`; keep 48 hours, then one per day for 14 days.
 
 ## Operations
