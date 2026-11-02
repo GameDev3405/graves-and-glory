@@ -6,7 +6,7 @@ import java.util.*;
  * The mod's sound table (plan 4F.4): every cue's registered event id, what it plays, its volume and pitch, its sound category, who hears it and
  * how often it may repeat. Pure data with no Minecraft types, so the standalone checks read it; Audio plays it, GravesAndGlory.onInitialize
  * registers it. A cue with a vanilla remap plays that vanilla event through sounds.json ("type": "event"), so no audio file is added; a cue without
- * one (every cue now) has its own .ogg under assets/gravesandglory/sounds. Change a volume or pitch here and nowhere else (the horns' volume is the sheet's
+ * one (every cue now) has one or more .ogg files under assets/gravesandglory/sounds (several = a random variant group; music is streamed). Change a volume or pitch here and nowhere else (the horns' volume is the sheet's
  * combatDiscipline.hornVolume; BattleEffects reads it).
  */
 public final class AudioCues {
