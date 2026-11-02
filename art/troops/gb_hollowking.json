@@ -1,0 +1,19 @@
+{
+ "troop": "gb_hollowking",
+ "note": "Graveborn Hollow King (unit identity, Graveborn Legendary): the grandest of the six, tall and broad (body 10x14x5, arms 4x13x4, legs 5x14x5): black grave-iron plate split open over a lit soul-fire ribcage, a broken funeral-gilt crown with a violet stone, a bare skull with its jaw bound in gilt wire and soul-lit eyes, layered pauldrons with broken spikes, a high gorget, a violet-hemmed rag skirt, slit greaves over bare bone and one large tattered team-cloth cloak dragging behind. Carries the grave sword. Tier I only; no flag. Glow sheet 16 texels (ribs and eyes).",
+ "rig": "biped",
+ "size": [
+  128,
+  128
+ ],
+ "density": 1,
+ "bones": [],
+ "idleArms": "hang",
+ "parts": [],
+ "skins": {
+  "1": "gb_hollowking_s1.png"
+ },
+ "weapon": "grave_sword",
+ "hand": "right",
+ "portrait": "tall 4"
+}

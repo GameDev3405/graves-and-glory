@@ -10,9 +10,11 @@ Branch `art/graveborn-t1` in worktree C:/Users/kortt/Melty/bannerbound-graveborn
   hexer (weapon none, modelled lantern, 7), gb_hollowking (grave_sword, 7). Weapons in art/hand/weapons/build_gb_*.py.
 - `work/graveborn_turn_sheet.py [side] [ids]` (GB_OUT overrides the path) -> `work/graveborn-t1-turn-4x-crimson.png`.
 
-## In progress
-build_skins fails on weapon geometry (bone_bow spur fixed; frost_bow riser_bind z-fight next). Then --verify,
-art_hue_check (graveborn NO DATA until build_skins writes the skins), verify.py fast --offline, CRLF revert, commit.
+## Checks (2026-11-02)
+build_skins --verify: 308 outputs verified (geometry fixes: bone_bow spur 2 px wide, frost_bow riser_bind faces,
+grave_sword tie and quad cap, scythe collar). art_hue_check: graveborn PASS (26% in band, 6 skins; tidecallers FAIL is
+pre-existing on main). verify.py fast --offline: PASS. CRLF-only preflight.json/Spec.java diffs reverted.
+Sheet: work/graveborn-t1-turn-4x-crimson.png.
 
 ## Polish left
 Risen boxy, stoop subtle; Reaper hood boxy, violet 69% (heavy); Bone Archer pauldron dark; Stalker fur blotchy;

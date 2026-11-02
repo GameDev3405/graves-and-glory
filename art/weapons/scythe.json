@@ -1,0 +1,19 @@
+{
+ "weapon": "scythe",
+ "density": 1,
+ "thickness": 2,
+ "grip": {
+  "offset": [
+   0,
+   0,
+   0
+  ],
+  "rotation": [
+   0,
+   0,
+   0
+  ],
+  "note": "held upright like the sun staff"
+ },
+ "note": "The Grave Reaper's scythe (Graveborn), hand-authored at 1 texel a px: a black grave-wood haft with a butt spike, a leather and violet-cord grip and violet bindings, an iron collar and a grave-iron blade 10 px long that rises over the wearer's hood and hooks down at the point; held upright."
+}
