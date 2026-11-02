@@ -1,0 +1,259 @@
+# QA matrix (plan item 5.6)
+
+2026-11-01. Base `main` 5a7cdbb. Docs only: nothing here was run; no client or server was started and no EULA was touched. Rows come from the code and tools as they stand: `tools/package.py`, `tools/verify_package.py`, `tools/export_server.py`, `tools/export_modrinth.py`, `tools/verify.py`, `test-tools/`, `docs/SIX-PLAYER-TEST-PLAN.md`, `Campaign.java`, `GravesAndGlory.java`, `VersionGate.java`, `BuildMode.java`.
+
+## How to read it
+
+Check column values:
+
+| Tag | Meaning |
+|---|---|
+| AUTO `Name` | Existing standalone Java check or Python unit test. Runs inside `python tools/verify.py fast --offline` (the runner globs `test-tools/standalone/*Check.java`, 20 files today). No Minecraft. |
+| HARN `suite` | Existing real-client harness check under `test-tools/java/gg/gravesandglory/`, run with `gradlew runClient -PlocalIntegration -I test-tools/isolated-checks.gradle` (or `isolated-server.gradle`) and the `GRAVES_*` variable named. Needs a Minecraft client process but no human. Only the Phase 1 combat suite is wired into `verify.py game`; the rest are run by hand. |
+| LATER | Not covered; could be automated without new features. Named in the gap list. |
+| MANUAL | Needs Kort or friends (real machines, Tailscale, human judgment). |
+| GAP | The plan or docs expect a behavior that is missing or unverified in the code. |
+
+Result column to fill in on each pass: Pass / Fail / Blocked, tester, jar SHA-256 first 8, date. A row is green when its check passed on the candidate jar named in `releases/current-candidate.json`.
+
+Rules that apply to every row: never write or accept `eula.txt` (Kort supplies it); never touch ports 25565-25567, 25570 (builder), 25571; never stop Kort's game or the builder; test on a copy of any save; headless bots never count as players.
+
+---
+
+## A. Fresh install, client
+
+| ID | Steps | Expected | Check |
+|---|---|---|---|
+| A1 | Import the player pack (`dist/graves-and-glory-<ver>.zip` or the `.mrpack`) into a clean launcher profile: Minecraft 1.20.1, Fabric Loader 0.16.14, Java 17. Start the game. | Title screen is the Graves and Glory front menu; no crash; `latest.log` has no mod-load error. Pack holds the mod jar, Fabric API 0.92.2+1.20.1 and the pinned shader/resource files only. | MANUAL (friends). Pack contents: AUTO `verify_package.py` |
+| A2 | First launch with an empty game directory. | Built-in armory pack is enabled without the player touching Resource Packs. | HARN `startup-armory-enabled` (`GRAVES_ROADMAP_STARTUP_ONLY=true`) |
+| A3 | Open Play (single-player private world) on the fresh install. | Camp loads, commander is in the camp, no stale husks, a new commander gets a default collection. | HARN `lobby-ready`, `restart-clean-lobby` (`CampaignChecks`) |
+| A4 | New commander with no profile file. | Schema 3; the 10 Commons owned at star 1; starter banner; commander `champion`; banner colour gold; gold 0; no battle won; no bonus claimed. | AUTO `ProfileMigrationCheck` (`profile-default`, `fresh-save`) |
+| A5 | Fresh install: no `bannerbound/` data and no `Bannerbound` world. | No migration side effects, no error. | AUTO `LegacyDataMigrationCheck` (fresh install row) |
+| A6 | Launch with the pack but without Fabric API, or with a wrong Minecraft or Loader version. | Launcher or Fabric refuses with its own dependency message; no half-loaded game. | MANUAL |
+| A7 | Install alongside shaders (Complementary Reimagined/Unbound, MakeUp Ultra Fast) and with them off. | Game starts and plays both ways; Excalibur on and off for the visual pass. | MANUAL (Kort, SIX-PLAYER-TEST-PLAN pass 10) |
+| A8 | Player pack credits: open `docs/THIRD_PARTY.md` and `docs/third-party/` in the pack. | Every bundled mod/shader/resource has its notice; Excalibur credits Maffhew; hash matches the original. | AUTO `verify_package.py` (inventory and pins). Credit wording: MANUAL |
+
+## B. Release package and server kit build
+
+| ID | Steps | Expected | Check |
+|---|---|---|---|
+| B1 | `python tools/package.py` on a build with no stopgap tier art. | Writes `dist/graves-and-glory-<ver>.zip` and `dist/package-manifest.json`. | AUTO `verify.py release` |
+| B2 | Same while any troop still draws a stopgap tier (26 troops today per HANDOFF). | Refuses with the tier gate message. `--allow-stopgap` writes a `-stopgap` named file only; never for public release. | AUTO `test_build_skins.py` for the gate [coverage of the refusal path not re-read]; current refusal is expected, not a bug |
+| B3 | `python tools/verify_package.py` after B1. | PASS: hash matches the manifest, no duplicate entries, inventory equals manifest, every path under `mods/ docs/ shaderpacks/ resourcepacks/`, inner jar identity valid, dependency pins match. | AUTO `verify_package.py` |
+| B4 | Rebuild the jar from changed source, then package without rebuilding. | Stale build is rejected by source fingerprint. | AUTO `test_release_integrity.py` (`test_identity_and_stale_build_rejection`) |
+| B5 | Look inside the jar for harness classes or service providers. | None; every harness class is refused. | AUTO `test_release_integrity.py` (`test_harness_and_service_provider_rejection`, `test_every_harness_class_is_refused`) |
+| B6 | `.mrpack` index validation: unsafe paths, duplicates, unapproved downloads, missing or malformed hashes. | Each is rejected. | AUTO `test_modrinth_export.py` |
+| B7 | `python tools/export_server.py` after B1 and a `.mrpack`. | Writes `dist/graves-and-glory-<ver>-server.zip` and `dist/server-manifest.json`; readback of every entry matches; archive set equals the allowlist. | LATER (no test calls `export_server.py`) |
+| B8 | List the server kit. | Contains: the mod jar, the four required server dependencies from `dependencies/platform-lock.json` (sha512 checked), `docs/` notices, `server.properties`, `setup-server.ps1`, `start-server.ps1`, `SERVER-README.txt`. Contains no `eula.txt`, no saves, no profiles, no credentials, no Fabric launcher, no rendering/shader mods. | LATER (assert the allowlist in a Python test with a fixture) |
+| B9 | `server.properties` in the kit. | `level-name=Graves and Glory`, `online-mode=true`, `max-players=16`, `server-ip=127.0.0.1`, `server-port=25565`, `enable-rcon=false`, `gamemode=adventure`, `spawn-protection=0`, flat world with no structures. | LATER (same test as B8) |
+| B10 | Tamper with one server dependency file, then export. | Export fails with "Stale server dependency". | LATER |
+
+## C. Server kit on a fresh machine (headless)
+
+Use a new empty folder and a free port. Kort supplies `eula.txt` himself; the tester never creates it. Rows that need EULA acceptance are marked.
+
+| ID | Steps | Expected | Check |
+|---|---|---|---|
+| C1 | Extract the kit, run `start-server.ps1` before `setup-server.ps1`. | Throws "Run setup-server.ps1 first."; nothing starts. | MANUAL (LATER as a script check of the `.ps1` text) |
+| C2 | Run `setup-server.ps1`. | Downloads the pinned Fabric 0.16.14 launcher, SHA-256 `856a5f9f...` verified, moved into place. Does not start the server and accepts no terms. | MANUAL (needs network) |
+| C3 | Run `setup-server.ps1` again with the launcher present. | Throws "Launcher already exists"; the existing launcher is untouched. | MANUAL |
+| C4 | Corrupt the downloaded file and re-run setup (or simulate a hash mismatch). | Throws "Fabric download hash mismatch. Do not run it."; the staged file is never promoted. | MANUAL |
+| C5 | Launcher present, no `eula.txt`; run `start-server.ps1`. | Throws "Review the Minecraft server EULA yourself..."; server does not run. | MANUAL |
+| C6 | `-MemoryGB 1` and `-MemoryGB 64`. | Parameter validation rejects values outside 2-32. | MANUAL |
+| C7 | With Kort's `eula.txt`: first start. | Minecraft and Fabric libraries download; world `Graves and Glory` is created; "Done" appears; the first battlefield is built afterward (startup tick-lag warnings are expected); no stack trace. | MANUAL (Kort). Startup path HARN `GRAVES_ROADMAP_SERVER_ROOT` + `isolated-server.gradle` (headless dedicated server run) |
+| C8 | `python test-tools/standalone/server_status_probe.py <port>` against the running server. | Returns the status JSON; version and player count are sane. | MANUAL; the probe exists but is local-only and not wired into any check |
+| C9 | Join from the same machine, 127.0.0.1:25565, with the same pack. | Client reaches the camp; the server log shows the commander profile created under `<world>/gravesandglory-profiles/<uuid>.json`. | MANUAL; networked path HARN `CampNetworkChecks` (`GRAVES_NETWORK_HOST`, `host-suite`, `invite-accept-roundtrip`) |
+| C10 | Type `stop` in the console. | Clean save and exit; no error; battle state cleaned (`Abilities.serverStopping`, banners and clouds removed). | MANUAL; clean stop with a client HARN `host-stop-disconnects-cleanly` |
+| C11 | Start a server whose `level-name` is neither `Graves and Glory` nor `Bannerbound`. | The mod stays inactive (no `Battle` is created); vanilla world, no crash. Confirm there is a log line telling the operator why. | MANUAL; GAP if no log line (README says activation depends on the internal level name) |
+| C12 | Kit as shipped: `max-players=16` versus the 4v4 + visitors rule. | Sixteen connections allowed; at most eight battle commanders; the rest wait in camp. | AUTO `AdmissionPolicyCheck`, `LobbyRulesCheck` (limits); the `server.properties` value by B9 |
+| C13 | Reachability from another PC (Tailscale), non-local `server-ip`. | `Test-NetConnection <ip> -Port <port>` succeeds; builder 25570 untouched. | MANUAL (Kort, SIX-PLAYER-TEST-PLAN section 3) |
+| C14 | Kit docs: `SERVER-README.txt` claims versus real behavior. | Every sentence still true (heap defaults 2G/8G, the EULA sentence, the CURRENT LIMITS text). | MANUAL |
+
+---
+
+## D. Profile migration, v1 and v2 to v3
+
+Profiles are the server's `<uuid>.json`, read once per commander by `Campaign.profile()` through `ProfileMigration.upgradeFile`. Original bytes are kept as `<uuid>.v1.json` or `<uuid>.v2.json`. Fixtures: `test-tools/resources/fixtures/profile-v1-{fresh,full,invalid,partial,cache}.json`.
+
+| ID | Steps | Expected | Check |
+|---|---|---|---|
+| D1 | v1 fresh profile (starter Commons only). | Owned = the 10 Commons at star 1; banner `knight x12, archer x6, empty x2`; commander `champion`; gold = v1 gold + 600 (mage and hexer refunded even if not listed); matches, wins, campaignCleared, tutorialDone copied; five House keys at 0; schema 2 then 3. | AUTO `ProfileMigrationCheck` (`mig-fresh`) |
+| D2 | v1 full profile. | Adds sentinel, longbow, reaper, stalker; no mage/hexer/oracle/wraith; gold + 1200. | AUTO `ProfileMigrationCheck` (`mig-full`) |
+| D3 | v1 with an invalid Dawn line (7 slots); both lines invalid; wrong-side line; no line. | Falls back to the Dusk line repacked, or the starter banner. | AUTO `ProfileMigrationCheck` (`mig-invalid-dawn`, `mig-both-invalid`) |
+| D4 | v1 class and id mapping (marksman, arcanist, vanguard, paladin, null; `ID_MAP`). | Classes map to warden, warlock, champion; unowned mapped ids dropped by repack. | AUTO `ProfileMigrationCheck` (`mig-map`, class map) |
+| D5 | v1 progression (xp, claims, titles, title). | Carried across exactly. | AUTO `ProfileMigrationCheck` (`mig-progression`) |
+| D6 | v1 file on disk, then load. | `<uuid>.v1.json` is a byte copy of the original; `<uuid>.json` is schema 3, written through a temp file, no `.tmp` left. | AUTO `ProfileMigrationCheck` (`mig-file`) |
+| D7 | Load the same profile a second time. | Returns no migration; both files unchanged. | AUTO `ProfileMigrationCheck` (`mig-idempotent`) |
+| D8 | A `<uuid>.v1.json` already exists. | The existing backup is never overwritten. | AUTO `ProfileMigrationCheck` (`mig-backup-once`) |
+| D9 | Corrupt v1 file (unparseable JSON). | Throws IllegalStateException; original untouched; no backup, no `.tmp`. The server surfaces "Commander profile could not be read. Original and .bak preserved". | AUTO `ProfileMigrationCheck` (`mig-corrupt`). Server message text: MANUAL |
+| D10 | `<uuid>.tmp` cannot be written (locked or read-only). | The original `<uuid>.json` is left unchanged. | AUTO `ProfileMigrationCheck` (`mig-tmp-fail`) |
+| D11 | v2 file with `campaignCleared` 1, 3, 6. | Schema 3; `battlesWon` = march-1..N; `bonusClaimed` empty; gold, banner, writs, writChapters kept; `<uuid>.v2.json` is a byte copy. | AUTO `ProfileMigrationCheck` (`mig-v2`, `v2toV3`) |
+| D12 | Load a schema 3 file. | No migration; both files unchanged. | AUTO `ProfileMigrationCheck` (`mig-v2-idempotent`) |
+| D13 | A schema 1 file runs on to schema 3 in one load; the backup keeps schema 1 bytes. | `v1` backup only, no stray `.v2.json`. | AUTO `ProfileMigrationCheck` (`mig-file` schema 1 row) |
+| D14 | Hand-edited schema 3 file: unknown ids, bad stars, mastery, banner, class, colour, negative gold, missing sets. | `sanitize()` clamps or drops each; invalid banner repacked; missing `battlesWon`/`bonusClaimed` rebuilt empty. | AUTO `ProfileMigrationCheck` (`sanitize` rows) |
+| D15 | Write, read back, write. | Byte-identical JSON round trip. | AUTO `ProfileMigrationCheck` (`round-trip`) |
+| D16 | Fixtures `profile-v1-partial.json` and `profile-v1-cache.json`. | Migrate to a valid schema 3 profile. | GAP: fixtures exist, no named check row found; confirm they are read by a test and add rows if not |
+| D17 | Real server restart on a host with a v1 or v2 file in `gravesandglory-profiles/`, then join as that commander. | The collection shows the migrated profile; `.v1.json`/`.v2.json` present beside it; no data lost in the client UI. | LATER (HARN `GRAVES_ROADMAP_MIGRATION=true` covers the legacy-folder path only, not v1/v2 file content end to end). Final eyes: MANUAL |
+| D18 | Two commanders, one with a corrupt file. | Corrupt one fails; the other loads and plays; no cross-contamination. | LATER |
+| D19 | Client sends a portable profile copy (`importProfile`) on first visit to a single-player or LAN world with no record. | Imported once, upgraded the same way as a server file. Over 16000 characters is ignored. | LATER (no standalone check on `importAllowed`) |
+| D20 | Same on a dedicated server. | Never accepted; the server's file is the only source of truth. | LATER (code: `importAllowed.remove(id) && !server.isDedicated()`) |
+| D21 | Save fails (disk full or read-only directory). | Player is told "Collection could not be saved; check disk space."; old file and `.bak` intact. | LATER |
+| D22 | Run a migrated profile through a save, quit, relaunch. | Nothing changes (no repeated migration, no reward grants twice). | HARN `restart-collection` (`CampaignChecks`) |
+
+## E. Legacy Bannerbound data (rename)
+
+| ID | Steps | Expected | Check |
+|---|---|---|---|
+| E1 | Copy `bannerbound/collections`, unlocks and deployment to `gravesandglory/`. | Byte-identical; original kept. | AUTO `LegacyDataMigrationCheck` |
+| E2 | Both directories hold the same commander. | The current copy wins. | AUTO `LegacyDataMigrationCheck` |
+| E3 | Test collections. | Never copied by production migration; development isolation retained. | AUTO `LegacyDataMigrationCheck` |
+| E4 | Repeat the migration after progress. | Progress is not rolled back. | AUTO `LegacyDataMigrationCheck` |
+| E5 | Visual preference file (`presentation.json`). | Preserved. | AUTO `LegacyDataMigrationCheck` |
+| E6 | Legacy `Bannerbound` world next to no current world. | Copied to `Graves and Glory`; regions copied; original retained; `session.lock` not copied. | AUTO `LegacyDataMigrationCheck` |
+| E7 | The legacy world is open (locked) while migrating. | Refused; nothing copied. | AUTO `LegacyDataMigrationCheck` |
+| E8 | Incomplete current world next to a legacy world. | Refused; recovery needed, no overwrite. | AUTO `LegacyDataMigrationCheck` |
+| E9 | Dedicated server with `bannerbound-profiles/` and `bannerbound-layout.json` in the world. | Profiles copied to `gravesandglory-profiles/`; layout marker copied; originals kept; failure keeps originals and stops with a clear message. | HARN `legacy-profile-upgrade`, `legacy-layout-upgrade` (`GRAVES_ROADMAP_MIGRATION`) |
+| E10 | A legacy-named world (`Bannerbound`) still activates the mod. | `Battle` is created for both level names. | HARN `legacy-world-upgrade` |
+| E11 | Migration error at client start (storage or permissions). | Front menu shows "Could not migrate old collection/settings. Your originals are unchanged." | MANUAL |
+
+## F. Version gate and compatibility
+
+| ID | Steps | Expected | Check |
+|---|---|---|---|
+| F1 | Matching release, protocol and build. | Admitted. | AUTO `CompatibilityPolicyCheck` |
+| F2 | Old protocol. | Refused. | AUTO `CompatibilityPolicyCheck`; HARN `GRAVES_ROADMAP_COMPAT_CASE=old` |
+| F3 | Old version string. | Refused. | AUTO `CompatibilityPolicyCheck`; HARN `old` |
+| F4 | Same version, different build hash. | Refused. | AUTO `CompatibilityPolicyCheck`; HARN `build` |
+| F5 | Malformed handshake; no handshake reply. | Disconnect with a message; no server error. | HARN `GRAVES_ROADMAP_COMPAT_CASE=malformed`, `missing` |
+| F6 | Message text on refusal. | Names the required version and the short build id; says "Install the same modpack release". | AUTO `CompatibilityPolicyCheck` |
+| F7 | A vanilla or Fabric-only client joins a Graves and Glory server. | Refused with the required-mod message at login, before play. | MANUAL (GAP: no automated case for a client with no mod) |
+| F8 | A new client joins a server built from a different commit of the same version. | Refused (F4 case end to end). | MANUAL (candidate vs. friend pack mix-up is the most likely real failure) |
+
+---
+
+## G. Lobby, admission and seats
+
+| ID | Steps | Expected | Check |
+|---|---|---|---|
+| G1 | Open the lobby; join by room code; sides stay level; 3v3 fills at six; a seventh is refused; host widens to 4v4; ninth refused. | As listed. | AUTO `LobbyRulesCheck` |
+| G2 | Host-only actions (map, mode, bot fill, hand the host seat); refusal messages. | Non-host is refused; host change clears every ready. | AUTO `LobbyRulesCheck` |
+| G3 | Ten-second countdown: all ready starts it; anyone standing down, a settings change, or a busy battlefield stops or holds it; it fires once. | As listed. | AUTO `LobbyRulesCheck` |
+| G4 | Bot fill on: one human counts down; off with a short room: "Fill both teams or enable bots."; only a host toggles it. | As listed. | AUTO `LobbyRulesCheck` |
+| G5 | House pick that fields no troop; House banner derivation. | Cannot ready; banner is never mutated. | AUTO `LobbyRulesCheck` |
+| G6 | Full human match plus a visitor. | Visitor waits in camp; no extra seat, no extra army. | AUTO `AdmissionPolicyCheck`; HARN `full-match-waits-in-camp`, `full-match-no-extra-seat` |
+| G7 | Open seat plus a visitor. | Camp visitors never consume a vacant team seat. | AUTO `AdmissionPolicyCheck` |
+| G8 | Repeated arrivals up to and past capacity (each team size). | Team capacity never exceeded; arrivals past capacity wait. | AUTO `AdmissionPolicyCheck` |
+| G9 | Visitor results. | No match report, no reward, not a participant. | HARN `visitor-no-match-report`, `visitor-no-reward`, `visitor-not-participant` |
+| G10 | Two waiting rooms at once. | Independent; other rooms unchanged. | HARN `two-live-waiting-rooms`, `other-room-unchanged`, `visitor-room-independent` |
+| G11 | Invite, accept, party stays together, party returns with results. | As listed. | HARN `invite-accept-roundtrip`, `whole-party-active`, `friend-returns-with-party`, `host-party-results` |
+| G12 | Rematch after a match without a restart. | Second match starts; party kept. | HARN `friend-rematch`, `host-rematch`, `party-after-two-matches` |
+
+## H. Reconnect
+
+| ID | Steps | Expected | Check |
+|---|---|---|---|
+| H1 | Commander quits mid-battle. | A bot holds the army (`Battle.leave`, `campaign.vacated`); team is not a commander short. | HARN `disconnect-holds-army` |
+| H2 | The same commander rejoins. | Reclaims the held army: same side, House, class; no second army; no duplicate unit or reward. | AUTO `AdmissionPolicyCheck` (reservation priority); HARN `reconnect-reclaims-army`, `friend-reconnects-to-battle` |
+| H3 | A different visitor arrives while a seat is held for someone else. | Cannot steal the reserved army; stale reservation cannot replace an opponent. | AUTO `AdmissionPolicyCheck` |
+| H4 | Practice battle: visitor, reconnect, stale reservation. | Visitor waits; owner reclaims. | AUTO `AdmissionPolicyCheck` |
+| H5 | Party member drops and returns. | Party kept. | HARN `disconnect-keeps-party` |
+| H6 | Quit by the menu versus hard kill of the client process (Task Manager). | Same outcome as H1/H2; server logs no exception. | MANUAL (SIX-PLAYER-TEST-PLAN section 6); LATER for the hard kill with two harness clients |
+| H7 | Rejoin after the match ended. | Back in camp, collection intact, no reward twice. | LATER |
+| H8 | Rejoin time limit. SIX-PLAYER-TEST-PLAN says "within 60 s". | Code in `Battle.leave` shows no timeout; the held army waits while the match runs. Confirm intended behavior with Kort. | GAP (doc and code disagree) |
+| H9 | Host (LAN/single-player) quits. | Guests are disconnected cleanly; no hang. | HARN `host-stop-disconnects-cleanly` |
+| H10 | Network drop (cable or Tailscale down) rather than a clean quit. | Server times the client out, then H1; rejoin works. | MANUAL |
+| H11 | Same account joins twice. | Second login is refused by vanilla; no duplicate commander. | MANUAL |
+
+## I. Restart, crash and persistence
+
+| ID | Steps | Expected | Check |
+|---|---|---|---|
+| I1 | Clean `stop` in the lobby/camp; start; join. | Collection, loadout, commander, House, rewards, unlocks identical to before. | HARN `restart-collection` (`CampaignChecks`) |
+| I2 | After restart: no leftover hostile mobs from the earlier session. | Zero husks tagged `gravesandglory`. | HARN `restart-clean-lobby` |
+| I3 | After restart: parties and rooms. | Party retained; rooms cleared. | HARN `server-restart-party`, `restart-party-retained`, `restart-room-cleared`, `server-restart-no-rooms` |
+| I4 | Parties written to disk. | Two members survive on disk; file readable. | HARN `two-member-disk-persistence`, `disk-read` |
+| I5 | Map cache marker (`gravesandglory-layout.json`): restart with an unchanged map. | Arena is not rebuilt. | AUTO `LayoutMarkerCheck` |
+| I6 | Change the landmarks or margin revision. | Arena rebuilds once on next start. | AUTO `LayoutMarkerCheck` |
+| I7 | Clean `stop` mid-match. | Server stops without error; planted banners and clouds are gone; no match record is resumed. Whether the match ends or is voided is not specified (SIX-PLAYER-TEST-PLAN: "any other outcome needs Kort's call"). | MANUAL; GAP: no automated mid-match stop and no written rule on rewards for an interrupted match |
+| I8 | Kill only the server java process (crash) in camp; restart. | World loads without regenerating; profile loads. Saves go through a temp file, an atomic move and a `.bak`, so a torn write must not occur. | MANUAL (Kort, never the builder); LATER for the torn-write case |
+| I9 | Crash mid-match; restart. | Camp state sane; no ghost units; rewards not granted for the lost match (confirm rule). | MANUAL; GAP (same as I7) |
+| I10 | Corrupt `gravesandglory-parties.json`; start. | Startup stops with "Party data could not be read; original and .bak are preserved"; originals untouched. | LATER |
+| I11 | Delete `gravesandglory-layout.json`. | Arena rebuilds; no crash. | LATER |
+| I12 | Back up the world, restore on a second folder, start. | Same profiles and maps. | MANUAL (SIX-PLAYER-TEST-PLAN section 3, step 5) |
+| I13 | Disk full during profile save. | See D21. | LATER |
+| I14 | Long soak: three matches, restart, reconnect, restart. | Section 7 fields intact (House, class, rewards, profile, unlocks, map state). | MANUAL (SIX-PLAYER-TEST-PLAN sections 6 and 7) |
+
+## J. Permissions and abuse
+
+The mod registers no player commands outside build mode. In `BuildMode` (only when started with `-Dgg.build=<camp|map id>`): `/warp`, `/backup` and `/map` need op level 2 (`/warp` has no `requires` and is open to everyone; check intent).
+
+| ID | Steps | Expected | Check |
+|---|---|---|---|
+| J1 | Kit `server.properties` and a normal match server. | No `-Dgg.build`; no build commands exist; no player has op unless Kort grants it. | MANUAL (also B9 for the file) |
+| J2 | Build mode: non-op runs `/backup` and `/map`. | Refused. | LATER (needs a build-mode server) |
+| J3 | Build mode: non-op runs `/warp`. | Check whether open access is intended (no `requires`). | GAP: confirm with Kort; builder server only |
+| J4 | Non-whitelisted player on a whitelisted server (`white-list=true`, `enforce-whitelist=true` on the builder). | Refused by vanilla. | MANUAL |
+| J5 | Non-host sends host-only lobby actions (map, mode, bot fill, hand-over). | Refused with the "Only an idle room host" messages. | AUTO `LobbyRulesCheck` |
+| J6 | Packet abuse: oversized or malformed profile (over 16000), tactical packet with bad group/formation strings, order from a commander for another army. | Ignored or clamped; no exception; no state change. | LATER (profile size and import gate by D19/D20; `tactical` handler has no direct check) |
+| J7 | Offline-mode or cracked client. | Kit has `online-mode=true`; offline client refused. | MANUAL |
+| J8 | Operator takes damage rules: an op in creative changes blocks in camp. | Spawn protection 0 and adventure mode make this a vanilla operator concern; no mod behavior to test beyond adventure default. | MANUAL (low priority) |
+| J9 | RCON. | Off (`enable-rcon=false`). | LATER (B9) |
+
+## K. Edge cases
+
+| ID | Steps | Expected | Check |
+|---|---|---|---|
+| K1 | Ten or more players on a 16-slot server during a 4v4. | Eight commanders, the rest in camp, none in battle. | AUTO `AdmissionPolicyCheck`, `LobbyRulesCheck` |
+| K2 | One human with bots filling five seats; headless bots not counted as players. | Match starts; no bot reward or record. | AUTO `LobbyRulesCheck` (bot fill); bot rewards: GAP, no named check |
+| K3 | Leave and join during the ten-second countdown. | Countdown stops or restarts as G3. | AUTO `LobbyRulesCheck` |
+| K4 | Host leaves the room. | Host seat passes or room closes without a stuck lobby. | LATER (only `handHost` rules are checked) |
+| K5 | Shrink the room below its commanders; move a party to a full side. | Refused with a message. | AUTO `LobbyRulesCheck` |
+| K6 | Same House picked by both sides; mixed banners. | Allowed per design; House banner derived per side. | AUTO `LobbyRulesCheck` (`houseBanner`) |
+| K7 | Rewards: win, loss, quit, disconnect, visitor, rematch. | Granted once per participant, saved, none for visitors. | HARN `visitor-no-reward`; the rest LATER |
+| K8 | Campaign: clear a battle twice. | `battlesWon` is a set; no double bonus. | AUTO `ProfileMigrationCheck` (round trip, sanitize) for data; play: HARN `CampaignChecks` |
+| K9 | Pad: step on, countdown, step off. | Ready state clears. | HARN `pad-ready`, `pad-step-off` |
+| K10 | Modes: Domination, Siege, Convoy, Long March battles 2 and 4. | Each mode plays one full round. | HARN `GRAVES_PHASE4_CHECKS=convoy`, `march-modes`, `domination` |
+| K11 | Chunks and entity cleanup after many rounds. | No leftover entities or banners after a round or server stop. | HARN `restart-clean-lobby`; round boundary: LATER |
+| K12 | Window, GUI scale and resolution extremes on the front menu and War Table. | Layout readable at 1440p and at GUI scale 2. | HARN `GRAVES_ROADMAP_FRONT_CHECKS=true`, AUTO `UiMathCheck`; looks: MANUAL (Kort) |
+| K13 | Low-end client (low RAM or integrated GPU) with and without shaders. | Playable; record fps against the 60 fps target. | MANUAL (plan 5.5 owns the numbers) |
+| K14 | Play with the pack on Linux or macOS. | Unverified; setup scripts are PowerShell only. | GAP (server kit is Windows only; clients are untested elsewhere) |
+
+## L. Six-player acceptance (hook to the existing plan)
+
+Full details are in `docs/SIX-PLAYER-TEST-PLAN.md` (Kort skipped the 3v3 baseline on 2026-10-28; item 5.7 reschedules it). This matrix adds only the links.
+
+| ID | Steps | Expected | Check |
+|---|---|---|---|
+| L1 | Six humans, three matches, lobby to rewards to rematch. | Plan section 9 rows 1-2 pass. | MANUAL (Kort + friends) |
+| L2 | Reconnect and restart rows of the plan (section 6) using H and I rows above. | Plan rows 5-7 pass. | MANUAL |
+| L3 | Isolation. | Builder up on 25570; 25565-25567 and 25571 untouched. | MANUAL |
+| L4 | Defect list at the end. | No open blocker or major (plan 5.6 exit: "QA matrix green"). | MANUAL |
+
+---
+
+## Counts
+
+Rows: A 8, B 10, C 14, D 22, E 11, F 8, G 12, H 11, I 14, J 9, K 14, L 4 = 137.
+
+By primary tag: 80 rows are covered by an existing AUTO or HARN check, 17 are LATER, 36 are MANUAL, and 9 rows carry a GAP note (the tags overlap, so these do not sum to 137; four rows are mixed or note-only).
+
+## Gap list: rows with no automated check that should get one
+
+Ordered by value for the 1.0 exit.
+
+1. **Server kit contents (B7 to B10, C1 to C6).** Nothing tests `tools/export_server.py`. A Python test with fixture files should assert: the allowlist, no `eula.txt` anywhere, `start-server.ps1` refuses without `eula=true` and without the launcher, the pinned URL and SHA-256 in `setup-server.ps1`, and the `server.properties` values. This also protects the rule that the kit never supplies an EULA.
+2. **Migration end to end on a real server (D16 to D18).** Standalone checks prove the transforms; no harness run loads a v1 or v2 file from `gravesandglory-profiles/` on a server restart. Add a fixture-driven harness run using the existing `profile-v1-*.json` files and a hand-made v2 file. Also confirm the `partial` and `cache` fixtures are exercised.
+3. **Dedicated import gate and size limit (D19, D20, J6).** `importAllowed` and the 16000-character limit have no check. Extract the decision into a small pure function and add a standalone check.
+4. **Interrupted match rules (I7, I9, H8).** No written rule for rewards when a match is stopped, crashed or abandoned, and no check. Needs a decision from Kort first, then a harness case. Also resolve the "within 60 s" reconnect wording against the code.
+5. **Hard failure and torn writes (H6, I8, I10, I11, D21).** Profile save is atomic with a `.bak`, but no check kills the process mid-save, fills the disk, or corrupts `gravesandglory-parties.json` and asserts the start-up message.
+6. **No-mod client at login (F7)** and **wrong level name warning (C11).** Add a harness case or a log assertion on a headless server whose `level-name` is wrong.
+7. **Reward and bot rules (K2, K7).** Reward granted once per participant across win, loss, quit and rematch; bots never rewarded. Only the visitor side is covered.
+8. **Build-mode commands (J2, J3).** `/warp` has no permission requirement; confirm intent, then add a command-permission check if the builder is part of release.
+9. **Server status probe (C8)** is not part of any check; wire it to `verify.py` against a headless harness server only if that run is made routine.
+10. **Doc drift:** `docs/SETUP.md` says 15 standalone checks; there are 20. `SERVER-README.txt` and `SIX-PLAYER-TEST-PLAN.md` give different max-players (16 versus 6 [A]); decide which the release recommends.
+
+## Questions for Kort
+
+1. What happens to rewards and the match when the server is stopped or crashes mid-match (I7, I9)? The six-player plan leaves it to you.
+2. Should `/warp` in build mode be open to every player (J3)? It is the only build command without an op requirement.
+3. Is there a reconnect time limit, or does the held army wait until the match ends (H8)?
