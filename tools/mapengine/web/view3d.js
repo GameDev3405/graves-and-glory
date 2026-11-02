@@ -206,6 +206,7 @@ function rebuildWater() {
   if (waterGroup) {
     scene.remove(waterGroup);
     waterGroup.traverse((o) => { if (o.geometry) o.geometry.dispose(); });
+    if (waterGroup.children[0]) waterGroup.children[0].material.dispose(); // one shared material
   }
   waterGroup = new THREE.Group();
   const mat = new THREE.MeshLambertMaterial({ color: 0x2f6fd0, transparent: true, opacity: 0.6, side: THREE.DoubleSide, depthWrite: false });
@@ -238,8 +239,9 @@ function material(hex) {
   return matCache.get(hex);
 }
 
-function label(text, color) {
+function label(text, color, used) {
   const key = text + color;
+  used.add(key);
   if (!labelTex.has(key)) {
     const c = document.createElement('canvas');
     c.width = 128; c.height = 64;
@@ -291,7 +293,9 @@ function rebuildObjects() {
   for (const c of [...objGroup.children]) {
     objGroup.remove(c);
     if (c.isLine) { c.geometry.dispose(); c.material.dispose(); }
+    if (c.isSprite) c.material.dispose();
   }
+  const used = new Set();
   const d = design;
   if (!d) return;
   const sel = state.selectedId;
@@ -302,7 +306,7 @@ function rebuildObjects() {
       const p = pillar(o.x, o.z, hex, o.kind === 'point' ? 3 : 2.4, PILLAR_H);
       objGroup.add(p);
       const text = o.kind === 'point' ? o.name || '?' : o.team;
-      const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: label(text, '#ffffff'), depthTest: false, sizeAttenuation: false, transparent: true }));
+      const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: label(text, '#ffffff', used), depthTest: false, sizeAttenuation: false, transparent: true }));
       sp.scale.set(0.16, 0.08, 1);
       sp.position.set(o.x, p.position.y + PILLAR_H + 2, o.z);
       sp.renderOrder = 10;
@@ -330,6 +334,7 @@ function rebuildObjects() {
   }
   objGroup.updateMatrixWorld(true);
   needsRender = true;
+  for (const [k, t] of labelTex) if (!used.has(k)) { t.dispose(); labelTex.delete(k); }
 }
 
 // ---------- picking ----------
@@ -409,7 +414,7 @@ function updateHud(extra) {
   }
   hud.innerHTML = `<b>${parts.join('   ')}</b><br>` +
     (mode === 'walk'
-      ? 'WASD walk, Shift run, Space jump, mouse look (click or right-drag), F fly, Tab map'
+      ? 'WASD walk, Shift run, Space jump, mouse look (right-drag if the pointer is free), F fly, Tab map'
       : 'WASD move, Space up, Shift down, right-drag look, wheel speed, F walk, Tab map') + (extra ? '<br>' + extra : '');
 }
 
@@ -430,7 +435,7 @@ function wire() {
   });
   window.addEventListener('mousemove', (ev) => {
     if (!shown || !state.design) return;
-    if (looking) {
+    if (looking && !controls.isLocked) {
       camera.rotation.y -= ev.movementX * 0.0025;
       camera.rotation.x = clamp(camera.rotation.x - ev.movementY * 0.0025, -1.55, 1.55);
       needsRender = true;
@@ -461,7 +466,7 @@ function wire() {
     if (!shown || typing(ev.target) || ev.ctrlKey || ev.metaKey || ev.altKey) return;
     if (['KeyW', 'KeyA', 'KeyS', 'KeyD', 'Space', 'ShiftLeft', 'ShiftRight'].includes(ev.code)) {
       keys[ev.code] = true;
-      if (ev.code === 'Space') ev.preventDefault();
+      if (ev.code === 'Space' && !(ev.target.closest && ev.target.closest('button'))) ev.preventDefault();
       return;
     }
     if (ev.code === 'KeyF' && !ev.repeat) { toggleWalk(); }
@@ -508,8 +513,9 @@ function update(dt) {
       camera.getWorldDirection(tmpV);
       const fx = tmpV.x, fy = tmpV.y, fz = tmpV.z;
       const sp = flySpeed * dt;
-      camera.position.x += (fx * fwdKey + -fz * sideKey) * sp;
-      camera.position.z += (fz * fwdKey + fx * sideKey) * sp;
+      const h = Math.hypot(fx, fz) || 1; // strafe stays level and full speed at any pitch
+      camera.position.x += (fx * fwdKey + (-fz / h) * sideKey) * sp;
+      camera.position.z += (fz * fwdKey + (fx / h) * sideKey) * sp;
       camera.position.y += (fy * fwdKey + up) * sp;
       moved = true;
     }
@@ -582,7 +588,9 @@ function show() {
 function hide() {
   shown = false;
   looking = false;
+  if (toolDown && hover) TOOLS[state.tool].up(state, hover.x, hover.z, {}); // finish a drag cut short by Tab
   toolDown = false;
+  dragY = null;
   releasePointer();
 }
 
