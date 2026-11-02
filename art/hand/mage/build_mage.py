@@ -4,7 +4,12 @@
 An old sun priest of the Order: a deep white cowl over a grey-bearded face, a white mantle on the shoulders pinned by
 a gilt sunburst brooch that burns (the _e sheet), a white robe falling to the feet in three flared tiers each hemmed in
 gilt, wide bell sleeves, a rope cincture, and over it all a stole in the team colour, the sun worked on its breast and
-on its back. One armour tier; Mastery II gilds the robe's hems.
+on its back. Mastery II gilds the robe's hems.
+
+Tier I is the priest in wool and rope. Tier II (sun cleric) adds steel spaulders edged in gilt, a short white shoulder
+cape worked with the sun, a gilt lip on the cowl, deep gilt cuffs on the bell sleeves and a leather belt set with gilt
+plaques. Tier III (hierophant) spends the gilt: the spaulders gilded, a sunburst crown of rays rising from a circlet
+over the cowl's brow, gilt filigree on every robe tier and a gilt border round the shoulder cape.
 
 No flag rides on his back (Kort, 2026-10-29).
 
@@ -73,19 +78,24 @@ def beard(face, w, h):
     return g
 
 # ---- the cowl and mantle ----
-def cowl(face, w, h):
+def cowl(tier):
+  def paint(face, w, h):
     g = cloth_v(3)(face, w, h)
     if face == "front":                          # the deep opening: shadow round the face, the face set back in it
         for y in range(h):
             for x in range(w):
                 if y >= 2 and 1 <= x <= w - 2: g[y][x] = None
         for x in range(1, w - 1): g[1][x] = WHITE[5] if x % 2 else WHITE[4]   # the turned lip catches the light
+        if tier >= 2:                                                             # the lip edged in gilt
+            for x in range(1, w - 1): g[1][x] = GOLD[4] if x % 2 else GOLD[3]
+            for y in range(2, h): g[y][0] = g[y][w - 1] = GOLD[3] if y % 2 else GOLD[2]
     if face == "bottom":
         for y in range(1, h - 1):
             for x in range(1, w - 1): g[y][x] = None
     if face == "top":
-        for x in range(w): g[h // 2][x] = WHITE[2]   # the seam over the crown
+        for x in range(w): g[h // 2][x] = (GOLD[3] if x % 2 else GOLD[2]) if tier == 3 else WHITE[2]   # the seam over the crown
     return g
+  return paint
 
 def cowl_shadow(face, w, h):
     """A sleeve of shadow inside the cowl's mouth, so the face sits deep."""
@@ -134,7 +144,8 @@ def hand(face, w, h):
     S = SKINS["fair"]
     return [[S[3] if face in ("front", "right") else S[2]] * w for _ in range(h)]
 
-def bell(face, w, h):
+def bell(tier):
+  def paint(face, w, h):
     g = cloth_v(4, fold=2)(face, w, h)
     if face == "top": return blank(w, h)
     if face == "bottom":
@@ -143,14 +154,17 @@ def bell(face, w, h):
             for x in range(1, w - 1): g[y][x] = None
         return g
     g[h - 1] = [GOLD[4] if x % 2 else GOLD[3] for x in range(w)]
-    g[h - 2] = [WHITE[2]] * w
+    g[h - 2] = [WHITE[2]] * w if tier == 1 else [GOLD[2] if x % 2 else GOLD[3] for x in range(w)]   # a deep gilt cuff
+    if tier == 3: g[h - 3] = [GOLD[4] if x % 3 == 1 else clamp(WHITE, 3 + LIT[face]) for x in range(w)]
     return g
+  return paint
 
 def leg(face, w, h):
     return rows([(0, cloth_v(2)), (11, leather(base=1))])(face, w, h)
 
-def robe_tier(face, w, h):
-    """One tier of the robe's skirt: lit wool, darker toward its hem, the hem in gilt."""
+def robe_tier(tier):
+  def paint(face, w, h):
+    """One tier of the robe's skirt: lit wool, darker toward its hem, the hem in gilt; at III a gilt scroll above it."""
     g = cloth_v(3)(face, w, h)
     if face == "top": return blank(w, h)
     if face == "bottom":
@@ -159,13 +173,81 @@ def robe_tier(face, w, h):
             for x in range(1, w - 1): g[y][x] = None
         return g
     if h > 2: g[h - 2] = [clamp(WHITE, 2 + LIT[face])] * w
+    if tier == 3 and h > 2:
+        g[h - 2] = [GOLD[3] if x % 3 == 1 else clamp(WHITE, 2 + LIT[face]) for x in range(w)]
     g[h - 1] = [GOLD[3] if x % 2 else GOLD[2] for x in range(w)]
     return g
+  return paint
 
-def cincture(face, w, h):
+def cincture(tier):
+  def paint(face, w, h):
     g = blank(w, h)
     for y in range(h):
         for x in range(w): g[y][x] = ROPE[2 + ((x + y) % 2)] if face not in ("bottom",) else ROPE[0]
+    if tier >= 2 and face not in ("top", "bottom"):                          # a leather belt set with gilt plaques
+        g = [[(GOLD[4] if tier == 3 else GOLD[3]) if x % 3 == 1 else LEATH[2 + (face == "front")] for x in range(w)] for _ in range(h)]
+    return g
+  return paint
+
+# ---- tiers II and III: the spaulders, the shoulder cape and the sunburst crown ----
+def spaulder(tier, part):
+    """A small domed shoulder plate over the mantle: steel edged in gilt at II, gilt over it all at III."""
+    R = GOLD if tier == 3 else STEEL
+    def paint(face, w, h):
+        if face == "bottom": return blank(w, h)
+        if face == "top":
+            g = blank(w, h)
+            for y in range(h):
+                for x in range(w):
+                    d = abs(x - (w - 1) / 2) + abs(y - (h - 1) / 2)
+                    g[y][x] = R[5] if d < 1.2 else R[4] if d < 3 else R[3]
+            return g
+        base = max(1, min(5, (3 if part == "dome" else 2) + LIT.get(face, 0)))
+        g = [[R[base]] * w for _ in range(h)]
+        g[0] = [R[min(6, base + 2)]] * w
+        g[h - 1] = [GOLD[4] if x % 2 == 0 else GOLD[3] for x in range(w)] if part == "dome" else [R[1]] * w
+        return g
+    return paint
+
+SUN8 = """
+..e..e..
+...ff...
+e.fggf.e
+.fgggf..
+.fgggf..
+e.fggf.e
+...ff...
+..e..e.."""
+
+def shoulder_cape(tier):
+    """A short white cape from the shoulders to the small of the back, the sun worked on it in gilt."""
+    sun = grid(SUN8, {"e": GOLD[3], "f": GOLD[4], "g": GOLD[5]})
+    def paint(face, w, h):
+        if face in ("top", "front"): return blank(w, h)
+        if face == "bottom": return [[WHITE[1]] * w for _ in range(h)]
+        g = cloth_v(3)(face, w, h)
+        if face == "back": over(g, sun, (w - 8) // 2, 1)
+        g[h - 1] = [GOLD[4] if x % 2 else GOLD[3] for x in range(w)]
+        if tier == 3:
+            if face == "back":
+                for y in range(h): g[y][0] = g[y][w - 1] = GOLD[3] if y % 2 else GOLD[4]
+            g[h - 2] = [GOLD[2] if x % 2 else g[h - 2][x] for x in range(w)]
+        return g
+    return paint
+
+def gilt_ray(face, w, h):
+    """One ray of the sunburst crown: bright on its lit faces, a shade down on the shadowed, a pale tip."""
+    v = {"top": 5, "front": 4, "right": 4, "left": 3, "back": 3, "bottom": 2}[face]
+    g = [[GOLD[v]] * w for _ in range(h)]
+    if face in ("front", "right", "left", "back") and h > 1: g[0] = [GOLD[min(6, v + 1)]] * w
+    return g
+
+def circlet(face, w, h):
+    if face in ("top", "bottom"): return blank(w, h)
+    g = [[GOLD[3 + LIT[face]]] * w for _ in range(h)]
+    if face == "front":
+        g[0] = [GOLD[5] if x % 2 else GOLD[4] for x in range(w)]
+        g[0][w // 2 - 1] = g[0][w // 2] = GOLD[6]                             # the sun at the brow
     return g
 
 def cord(face, w, h):
@@ -227,22 +309,36 @@ def bones():
     B.append(Bone("right_leg", "root", (-1.9, 12, 0), [Box((-2, 0, -2), (4, 12, 4), leg)]))
     B.append(Bone("left_leg", "root", (1.9, 12, 0), [Box((-2, 0, -2), (4, 12, 4), leg)]))
     # the bell sleeves
-    B.append(Bone("right_bell", "right_arm", boxes=[Box((-3.5, 4, -2.5), (5, 5, 5), bell)]))
-    B.append(Bone("left_bell", "left_arm", boxes=[Box((-1.5, 4, -2.5), (5, 5, 5), bell)]))
+    B.append(Bone("right_bell", "right_arm", boxes=[Box((-3.5, 4, -2.5), (5, 5, 5), per_tier(bell))]))
+    B.append(Bone("left_bell", "left_arm", boxes=[Box((-1.5, 4, -2.5), (5, 5, 5), per_tier(bell))]))
     # the cowl, deep, a little peak over the brow; the mantle on the shoulders
     B.append(Bone("cowl", "head", tag="helm", boxes=[
-        Box((-5, -9, -5), (10, 10, 10), cowl)]))
+        Box((-5, -9, -5), (10, 10, 10), per_tier(cowl))]))
+    # tier III: the sunburst crown, a gilt circlet round the cowl's crown with five rays rising from its front
+    B.append(Bone("sun_crown", "head", tag="helm", stages=[3], boxes=[
+        Box((-5, -8, -5), (10, 1, 10), circlet, dil=0.3),
+        Box((-0.5, -13, -5.4), (1, 5, 1), gilt_ray), Box((-2.5, -11, -5.4), (1, 3, 1), gilt_ray),
+        Box((1.5, -11, -5.4), (1, 3, 1), gilt_ray), Box((-4.5, -10, -5.2), (1, 2, 1), gilt_ray),
+        Box((3.5, -10, -5.2), (1, 2, 1), gilt_ray)]))
     B.append(Bone("mantle", "body", boxes=[Box((-5, -12, -3), (10, 4, 6), mantle)]))
     B.append(Bone("brooch", "body", boxes=[Box((-2.5, -8, -3.4), (5, 5, 1), brooch)]))
     # the stole over the robe, the cincture and its cord
     B.append(Bone("vestment", "body", team=True, boxes=[Box((-4, -12, -2), (8, 12, 4), "stole", dil=0.3, sheet="cloth")]))
-    B.append(Bone("cincture", "body", boxes=[Box((-4, -4, -2), (8, 1, 4), cincture, dil=0.5)]))
+    B.append(Bone("cincture", "body", boxes=[Box((-4, -4, -2), (8, 1, 4), per_tier(cincture), dil=0.5)]))
+    # tiers II and III: the shoulder cape behind, the spaulders over the mantle
+    B.append(Bone("shoulder_cape", "body", (0, -12, 2.6), stages=[2, 3], rot=(4, 0, 0), boxes=[
+        Box((-5, 0, 0), (10, 10, 1), per_tier(shoulder_cape, (2, 3)))]))
+    for side in ("right", "left"):
+        c = -1 if side == "right" else 1
+        B.append(Bone(f"{side}_spaulder", f"{side}_arm", (c, -2.5, 0), stages=[2, 3], rot=(0, 0, 14 * c), boxes=[
+            Box((-3, -1.5, -3), (6, 2, 6), per_tier(lambda t: spaulder(t, "dome"), (2, 3))),
+            Box((-3 + 0.5 * c, 0.5, -2.5), (6, 1, 5), per_tier(lambda t: spaulder(t, "lame"), (2, 3)), dil=0.12)]))
     B.append(Bone("cord", "body", boxes=[Box((2, -3.5, -2.8), (1, 6, 1), cord)]))
     # the robe in three flared tiers round each leg
     for side in ("right", "left"):
         B.append(Bone(f"{side}_robe", f"{side}_leg", boxes=[
-            Box((-2, 0, -2), (4, 4, 4), robe_tier, dil=0.25), Box((-2, 4, -2), (4, 4, 4), robe_tier, dil=0.55),
-            Box((-2, 8, -2), (4, 3, 4), robe_tier, dil=0.85)]))
+            Box((-2, 0, -2), (4, 4, 4), per_tier(robe_tier), dil=0.25), Box((-2, 4, -2), (4, 4, 4), per_tier(robe_tier), dil=0.55),
+            Box((-2, 8, -2), (4, 3, 4), per_tier(robe_tier), dil=0.85)]))
     return B
 
 def cloth_painter(spec, side):
@@ -251,7 +347,7 @@ def cloth_painter(spec, side):
 
 MAGE = Troop("mage", SKIN, CLOTH, bones, cloth_painter,
              {"weapon": "sun_staff", "hand": "right", "idleArms": "hang", "portrait": "tall 6", "faces": {"count": 4, "card": 0}},
-             tiers=(1,), veteran=veteran, glow=glow)
+             veteran=veteran, glow=glow)
 def build(): return MAGE.build()
 def outputs(): return MAGE.outputs()
 
