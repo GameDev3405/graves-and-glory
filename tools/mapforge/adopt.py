@@ -1,7 +1,7 @@
 """python tools/mapforge adopt <command> ...: the offline half of map adoption (plan task 2A.5), on gg-mapforge-runs/1
 files (runs.py). The game half is /mapforge (test-tools MapForge.java) and the shipped MapAdoption.java.
 
-  batch WORLD.json OUT --map ID [--manifest M] [--top Y] [--keep-protected] [--keep-column X,Z,R ...]
+  batch WORLD.json OUT --map ID [--manifest M] [--protects P] [--top Y] [--area X0,Z0,X1,Z1] [--keep-protected] [--keep-column X,Z,R ...]
         compile an offline world into a batch: each column from its lowest cell up to --top (air between and above
         its cells), allow region = the world's bounds up to --top, deny locks = the manifest's protect locks plus the
         kept columns. --keep-protected leaves out every cell on a deny lock, so the live world keeps them.
@@ -34,18 +34,33 @@ def _inside(x, y, z, lock):
     return all(lock['min'][i] <= (x, y, z)[i] <= lock['max'][i] for i in range(3))
 
 
-def compile_batch(world, map_id, manifest=None, top=None, keep_protected=False, keep_columns=(), purpose='adopt'):
+def _column_locks(deny):
+    """keep(x, y, z) for a list of locks, testing only the locks whose footprint holds the column."""
+    cache = {}
+
+    def keep(x, y, z):
+        here = cache.get((x, z))
+        if here is None:
+            here = cache[(x, z)] = [l for l in deny if _inside(x, l['y'][0] if 'center' in l else l['min'][1], z, l)]
+        return any(_inside(x, y, z, l) for l in here)
+    return keep
+
+
+def compile_batch(world, map_id, manifest=None, top=None, keep_protected=False, keep_columns=(), purpose='adopt', protects=None, area=None):
     lo, hi = world.bounds()
+    if area:
+        lo, hi = (max(lo[0], area[0]), lo[1], max(lo[2], area[1])), (min(hi[0], area[2]), hi[1], min(hi[2], area[3]))
     top = hi[1] if top is None else top
     deny = [{k: v for k, v in lock.items() if k in ('id', 'center', 'radius', 'y', 'min', 'max')}
-            for lock in (manifest or {}).get('protect', [])]
+            for lock in (manifest or {}).get('protect', []) + (protects or {}).get('protect', [])]
     for x, z, r in keep_columns:
         deny.append({'id': f'keep-{x}-{z}', 'min': [x - r, -64, z - r], 'max': [x + r, 319, z + r]})
-    keep = (lambda x, y, z: any(_inside(x, y, z, l) for l in deny)) if keep_protected else None
-    header = {'map': map_id, 'stamp': 'unbound', 'purpose': purpose, 'author': 'tools/mapforge adopt batch',
+    keep = _column_locks(deny) if keep_protected else None
+    header = {'map': map_id, 'stamp': (protects or {}).get('stamp', 'unbound'), 'purpose': purpose, 'author': 'tools/mapforge adopt batch',
               'locks': {'allow': [{'id': 'world', 'min': [lo[0], lo[1], lo[2]], 'max': [hi[0], top, hi[2]]}], 'deny': deny},
               'source': world.name}
-    return from_world(world, 'batch', header, top=top, keep=keep)
+    box = ((lo[0], -64, lo[2]), (hi[0], 319, hi[2])) if area else None
+    return from_world(world, 'batch', header, box=box, top=top, keep=keep)
 
 
 def mod_version():
@@ -79,6 +94,8 @@ def main(argv):
     p.add_argument('--keep-protected', action='store_true')
     p.add_argument('--keep-column', action='append', default=[], help='X,Z,R: a square of columns the batch leaves alone')
     p.add_argument('--purpose', default='adopt')
+    p.add_argument('--area', help='X0,Z0,X1,Z1: only these columns (the allow lock)')
+    p.add_argument('--protects', help="the game's own protects (/mapforge protects OUT): capture rings and spawn columns")
     p = sub.add_parser('validate'); p.add_argument('file'); p.add_argument('--base')
     p = sub.add_parser('info'); p.add_argument('file')
     p = sub.add_parser('diff'); p.add_argument('base'); p.add_argument('final'); p.add_argument('out')
@@ -90,7 +107,9 @@ def main(argv):
         if a.cmd == 'batch':
             keep = [tuple(int(v) for v in s.split(',')) for s in a.keep_column]
             world = World.load(a.world)
-            b = compile_batch(world, a.map, mf.load_manifest(a.manifest) if a.manifest else None, a.top, a.keep_protected, keep, a.purpose)
+            b = compile_batch(world, a.map, mf.load_manifest(a.manifest) if a.manifest else None, a.top, a.keep_protected, keep, a.purpose,
+                              area=tuple(int(v) for v in a.area.split(',')) if a.area else None,
+                              protects=json.loads(pathlib.Path(a.protects).read_text()) if a.protects else None)
             size = b.write(a.out)
             print(f'batch {a.out}: {len(b.columns)} columns, {b.cells()} cells, {size} bytes, digest {b.header["digest"][:12]}')
             return 0

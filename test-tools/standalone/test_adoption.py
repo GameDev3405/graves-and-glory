@@ -66,6 +66,22 @@ class OverlayRoundTrip(unittest.TestCase):
         self.assertEqual(apply(overlay, base).digest(), final.digest())
         self.assertEqual(adopt.check_overlay(Runs.from_bytes(overlay.to_bytes()), base), [])
 
+    def test_ticked_soil_still_matches(self):
+        w = base_world()
+        base = capture(w)
+        w.set((0, 63, 0), Cell('minecraft:oak_planks'))
+        overlay = diff(base, capture(w), dict(HEADER))
+        ticked = base_world()
+        ticked.set((0, 63, 0), Cell('minecraft:dirt'))
+        self.assertEqual(capture(ticked).digest_over(overlay), overlay.header['baseDigest'])
+
+    def test_flowing_fluid_settles_to_air_but_sources_do_not(self):
+        from mapforge.runs import settle
+        self.assertEqual(settle('minecraft:water[level=3]'), AIR)
+        self.assertEqual(settle('minecraft:lava[level=12]'), AIR)
+        self.assertEqual(settle('minecraft:water[level=0]'), 'minecraft:water[level=0]')
+        self.assertEqual(settle('minecraft:oak_planks'), 'minecraft:oak_planks')
+
     def test_overlay_against_another_base_is_refused(self):
         w = base_world()
         base = capture(w)

@@ -36,6 +36,21 @@ AIR = 'minecraft:air'
 Y_MIN, Y_MAX = -64, 319
 
 
+SETTLES = {'minecraft:grass_block', 'minecraft:dirt', 'minecraft:mycelium', 'minecraft:farmland'}
+FLUIDS = {'minecraft:water', 'minecraft:lava'}
+
+
+def settle(state):
+    """World-comparing digests ignore what the game changes on its own (MapRuns.settle): soil that random ticks
+    turn into each other counts as dirt, and flowing (non-source) water or lava counts as air."""
+    base = state.split('[', 1)[0]
+    if base in SETTLES:
+        return 'minecraft:dirt'
+    if base in FLUIDS and 'level=' in state and 'level=0' not in state:
+        return 'minecraft:air'
+    return state
+
+
 class RunsError(ValueError):
     pass
 
@@ -88,14 +103,24 @@ class Runs:
         return h.hexdigest()
 
     def digest_over(self, ranges):
-        """Digest of this file's cells over another file's ranges (the base under an overlay). A range this file
+        """Digest of this file's cells over another file's ranges (the base under an overlay), soil settled
+        (settle) and runs merged within each range, as MapRuns.WorldDigest reads a live world. A range this file
         does not cover counts as air."""
         h = hashlib.sha256()
         for (x, z) in sorted(ranges.columns):
             mine = self.columns.get((x, z), [])
             for y, n, _ in ranges.columns[(x, z)]:
+                run = None
                 for sy, sn, s in split(mine, y, y + n):
-                    h.update(f'{x},{z},{sy},{sn}|{s}\n'.encode())
+                    s = settle(s)
+                    if run and run[2] == s:
+                        run[1] += sn
+                        continue
+                    if run:
+                        h.update(f'{x},{z},{run[0]},{run[1]}|{run[2]}\n'.encode())
+                    run = [sy, sn, s]
+                if run:
+                    h.update(f'{x},{z},{run[0]},{run[1]}|{run[2]}\n'.encode())
         return h.hexdigest()
 
     # ---- text ----

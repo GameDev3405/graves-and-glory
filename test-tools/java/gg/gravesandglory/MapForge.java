@@ -86,6 +86,7 @@ public final class MapForge implements ModInitializer {
                 case "undo"->undo(s,a);
                 case "adopt"->adopt(s,a);
                 case "snapshot"->snapshot(s,a);
+                case "protects"->protects(s,a);
                 case "walk"->{var r=MapForgeRoutes.check(s.getServer().getOverworld(),a.length>1?a[1]:"now");lastOk=r.ok();last="walk "+r.summary();yield r.ok()?say(s,last):no(s,last);}
                 default->no(s,"unknown verb "+a[0]);
             };
@@ -170,13 +171,13 @@ public final class MapForge implements ModInitializer {
                 for(int yy=start;yy<y;yy++){var p=new BlockPos(c[0],lo+yy,c[1]);var e=fin.be.get(p);if(e!=null)out.be.put(p,e);}
             }
         }
-        // baseDigest: the base's maximal runs inside each overlay run.
+        // baseDigest: the base's maximal runs inside each overlay run, settled (MapRuns.settle).
         var baseD=MapRuns.sha();
         for(int[] c:out.columns()){
             int[] b=baseCols.get(key(c[0],c[1]));
             for(int k=2;k<c.length;k+=3){
                 int lo=c[k],hi=c[k]+c[k+1];int[] bv=expand(b,lo,hi);
-                int y=0;while(y<bv.length){int s0=y;String st=bv[y]<0?MapRuns.AIR:base.palette.get(bv[y]);while(y<bv.length&&(bv[y]<0?MapRuns.AIR:base.palette.get(bv[y])).equals(st))y++;MapRuns.run(baseD,c[0],c[1],lo+s0,y-s0,st);}
+                int y=0;while(y<bv.length){int s0=y;String st=MapRuns.settle(bv[y]<0?MapRuns.AIR:base.palette.get(bv[y]));while(y<bv.length&&MapRuns.settle(bv[y]<0?MapRuns.AIR:base.palette.get(bv[y])).equals(st))y++;MapRuns.run(baseD,c[0],c[1],lo+s0,y-s0,st);}
             }
         }
         out.put("baseDigest",MapRuns.hex(baseD.digest()));
@@ -190,11 +191,12 @@ public final class MapForge implements ModInitializer {
         if(a.length<2)return no(s,"verify FILE");
         var r=MapRuns.read(file(a[1]));var states=r.states();var cur=r.new Cursor();
         start("verify "+a[1],new Job(){
-            long n,bad;final List<String> first=new ArrayList<>();final BlockPos.Mutable p=new BlockPos.Mutable();
+            long n,bad,soil;final List<String> first=new ArrayList<>();final BlockPos.Mutable p=new BlockPos.Mutable();
             public boolean step(ServerWorld w){
                 for(int i=0;i<BUDGET;i++){
-                    if(!cur.next()){finish(bad==0,"verify "+a[1]+": "+n+" cells, "+bad+" differ"+(first.isEmpty()?"":" e.g. "+String.join("; ",first)));return true;}
+                    if(!cur.next()){finish(bad==0,"verify "+a[1]+": "+n+" cells, "+bad+" differ, "+soil+" settled by the game (soil ticks, flowing fluid; MapRuns.settle)"+(first.isEmpty()?"":" e.g. "+String.join("; ",first)));return true;}
                     n++;var st=w.getBlockState(p.set(cur.x,cur.y,cur.z));
+                    if(st!=states[cur.p]&&MapRuns.settle(MapRuns.name(st)).equals(MapRuns.settle(r.palette.get(cur.p)))){soil++;continue;}
                     if(st!=states[cur.p]){bad++;if(first.size()<8)first.add(cur.x+","+cur.y+","+cur.z+" is "+MapRuns.name(st)+" not "+r.palette.get(cur.p));}
                 }
                 return false;
@@ -223,8 +225,22 @@ public final class MapForge implements ModInitializer {
     static String protectedBy(boolean camp,int x,int y,int z){
         if(camp){var st=CampWorld.station(new BlockPos(x,y,z));return st==null?null:"camp station "+st;}
         for(var p:Spec.POINTS)if(y>=p.elevation()&&y<=p.elevation()+3&&(x-p.x())*(x-p.x())+(z-p.z())*(z-p.z())<=p.radius()*p.radius())return "capture point "+p.id();
+        // The flag the game redraws on every capture (Arena.flag): pole, cloth and lantern.
+        for(var p:Spec.POINTS)if(z==p.z()&&x>=p.x()&&x<=p.x()+3&&y>=p.elevation()&&y<=p.elevation()+Arena.POINT_POLE+2)return "flag of point "+p.id();
         for(var f:Spec.FACTIONS)if(Math.abs(x-f.spawnX())<=2&&Math.abs(z-f.spawnZ())<=2)return "spawn "+f.id();
         return null;
+    }
+
+    /** protects OUT: what protectedBy guards on the selected map, as deny locks for tools/mapforge adopt batch --protects. */
+    static int protects(ServerCommandSource s,String[] a)throws IOException{
+        if(a.length<2)return no(s,"protects OUT");
+        var locks=new com.google.gson.JsonArray();
+        for(var p:Spec.POINTS){var o=new com.google.gson.JsonObject();o.addProperty("id","point-"+p.id());var c=new com.google.gson.JsonArray();c.add(p.x());c.add(p.z());o.add("center",c);o.addProperty("radius",p.radius());var y=new com.google.gson.JsonArray();y.add(p.elevation());y.add(p.elevation()+3);o.add("y",y);locks.add(o);
+            var fl=new com.google.gson.JsonObject();fl.addProperty("id","flag-"+p.id());var lo=new com.google.gson.JsonArray();lo.add(p.x());lo.add(p.elevation());lo.add(p.z());var hi=new com.google.gson.JsonArray();hi.add(p.x()+3);hi.add(p.elevation()+Arena.POINT_POLE+2);hi.add(p.z());fl.add("min",lo);fl.add("max",hi);locks.add(fl);}
+        for(var f:Spec.FACTIONS){var o=new com.google.gson.JsonObject();o.addProperty("id","spawn-"+f.id());var lo=new com.google.gson.JsonArray();lo.add(f.spawnX()-2);lo.add(-64);lo.add(f.spawnZ()-2);var hi=new com.google.gson.JsonArray();hi.add(f.spawnX()+2);hi.add(319);hi.add(f.spawnZ()+2);o.add("min",lo);o.add("max",hi);locks.add(o);}
+        var root=new com.google.gson.JsonObject();root.addProperty("map",Spec.MAPS[map()].id());root.addProperty("stamp",stamp(false));root.add("protect",locks);
+        Files.writeString(file(a[1]),new com.google.gson.GsonBuilder().setPrettyPrinting().create().toJson(root));
+        return say(s,"protects "+a[1]+": "+locks.size()+" locks");
     }
 
     /** plan BATCH: the dry run. Counts what the batch would change and refuses it on any lock, protect or region
@@ -330,7 +346,12 @@ public final class MapForge implements ModInitializer {
     static int adopt(ServerCommandSource s,String[] a)throws IOException{
         if(a.length<2)return no(s,"adopt OVERLAY");
         MapRuns r;try{r=MapRuns.read(file(a[1]));}catch(IOException e){MapAdoption.status="refused: unreadable: "+e.getMessage();return no(s,"adoption refused: unreadable: "+e.getMessage());}
-        MapAdoption.reset(map());MapAdoption.startedAt=System.nanoTime();MapAdoption.begin(r,s.getServer().getOverworld());
+        MapAdoption.reset(map());MapAdoption.startedAt=System.nanoTime();
+        if("camp".equals(r.h("map"))){
+            // The spike's camp overlay: the same check and apply as a map, against the camp's stamp.
+            if(!"overlay".equals(r.kind())||!stamp(true).equals(r.h("stamp"))){MapAdoption.status="refused: camp overlay kind or stamp";return no(s,"adoption refused: camp overlay kind or stamp");}
+            MapAdoption.runs=r;MapAdoption.check=r.new WorldDigest();MapAdoption.phase=MapAdoption.Phase.CHECK;MapAdoption.status="checking";
+        }else MapAdoption.begin(r,s.getServer().getOverworld());
         if(MapAdoption.phase==MapAdoption.Phase.DONE)return no(s,"adoption "+MapAdoption.status);
         start("adopt "+a[1],w->{if(!MapAdoption.step(w))return false;finish(MapAdoption.status.startsWith("adopted"),"adopt "+a[1]+": "+MapAdoption.status);return true;});
         return say(s,"adopting "+a[1]);

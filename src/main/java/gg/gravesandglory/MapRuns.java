@@ -71,6 +71,17 @@ final class MapRuns {
     // ---- digests ----
     static MessageDigest sha(){try{return MessageDigest.getInstance("SHA-256");}catch(Exception e){throw new IllegalStateException(e);}}
     static String hex(byte[] b){return HexFormat.of().formatHex(b);}
+    /** Soil that random ticks turn into each other (grass spreads onto dirt and dies under a block, farmland dries,
+     * mycelium spreads) counts as dirt in every digest that compares a file with a live world (baseDigest,
+     * WorldDigest, the plan and undo checks), so a few ticks between two builds do not refuse an overlay; the overlay
+     * still writes the exact state. */
+    static final java.util.Set<String> SETTLES=java.util.Set.of("minecraft:grass_block","minecraft:dirt","minecraft:mycelium","minecraft:farmland");
+    /** What the game changes on its own, ignored by world-comparing digests: soil random ticks turn into each other
+     * counts as dirt, and flowing (non-source) water or lava counts as air (tools/mapforge/runs.py settle). */
+    static String settle(String s){int i=s.indexOf('[');String b=i<0?s:s.substring(0,i);
+        if(SETTLES.contains(b))return "minecraft:dirt";
+        if((b.equals("minecraft:water")||b.equals("minecraft:lava"))&&s.contains("level=")&&!s.contains("level=0"))return "minecraft:air";
+        return s;}
     static void run(MessageDigest md,int x,int z,int y,int n,String s){md.update((x+","+z+","+y+","+n+"|"+s+"\n").getBytes(StandardCharsets.UTF_8));}
     String digest(){var md=sha();for(int[] col:columns())for(int k=2;k<col.length;k+=3)run(md,col[0],col[1],col[k],col[k+1],palette.get(col[k+2]));return hex(md.digest());}
 
@@ -200,7 +211,7 @@ final class MapRuns {
             var pos=new BlockPos.Mutable();
             while(budget-->0){
                 if(!cur.next()){result=hex(md.digest());return true;}
-                String now=name(w.getBlockState(pos.set(cur.x,cur.y,cur.z)));
+                String now=settle(name(w.getBlockState(pos.set(cur.x,cur.y,cur.z))));
                 if(cur.first||!now.equals(s)){flush();rx=cur.x;rz=cur.z;ry=cur.y;rn=1;s=now;}else rn++;
                 if(cur.last)flush();
             }

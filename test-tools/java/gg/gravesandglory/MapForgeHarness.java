@@ -14,6 +14,7 @@ import java.util.Deque;
  *   map N           build battlefield N and wait until it is ready (adoption included)
  *   cmd ARGS        /mapforge ARGS must succeed (its job too)
  *   fail ARGS       /mapforge ARGS must be refused (or its job fail)
+ *   mc COMMAND      a vanilla command (a builder's hand edit: fill, setblock)
  *   note TEXT       a line in the evidence
  * Evidence: (run folder)/mapforge/harness.txt; the client stops when the script ends, on the first failure, or after
  * 28 minutes. */
@@ -57,6 +58,8 @@ public final class MapForgeHarness implements ClientModInitializer {
                 case "note"->log("note "+rest);
                 case "map"->{int target=Integer.parseInt(rest.trim());building=true;buildWait=0;log("building map "+target);
                     server.execute(()->{b.campaign.returnLobby();if(b.campaign.map!=target)b.campaign.switchMap(target);else{b.ready=false;b.buildColumn=0;Structures.clearQueue();b.placing=false;}});}
+                case "mc"->{current=line;expectFail=false;waitingJob=false;result=null;MapForge.lastOk=true;MapForge.last="mc "+rest;
+                    server.execute(()->result=server.getCommandManager().executeWithPrefix(server.getCommandSource(),rest));}
                 case "cmd","fail"->{current=line;expectFail=v[0].equals("fail");waitingJob=false;result=null;
                     server.execute(()->result=server.getCommandManager().executeWithPrefix(server.getCommandSource(),"mapforge "+rest));}
                 default->end(c,false,"unknown script line "+line);
