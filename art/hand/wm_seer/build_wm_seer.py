@@ -1,0 +1,248 @@
+#!/usr/bin/env python3
+"""The Wildmoot Bloodhowl Seer (Wildmoot house, troop id wm_seer), hand-authored at one texel per model pixel.
+
+A stooped boar-kin elder: grey-furred muzzle, clay-glow eyes, an antler crown of two branching tines, a hide robe to the
+shins daubed with blood handprints, bone and ochre trinkets, a team sash across the chest and a bone wand in the right
+hand. A totem staff (wood pole, bone skull and antler top, ochre lashing) is strapped diagonally on the back. Epic, so the
+eyes and a few staff runes glow. Tier I only. No back flag.
+
+  python build_wm_seer.py preview <dir> [side] | contact <png> [side] | stub
+"""
+import os, sys
+HERE = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, os.path.join(HERE, "..", "common"))
+from wildmoot import *   # noqa: F401,F403
+import house_stub
+
+SKIN = (128, 128)
+CLOTH = (128, 64)
+HUNCH = 30
+
+PRINT = ["X.X", "XXX", "XXX", ".X."]
+
+def handprint(g, x0, y0):
+    for dy, row in enumerate(PRINT):
+        for dx, c in enumerate(row):
+            y, x = y0 + dy, x0 + dx
+            if c == "X" and 0 <= y < len(g) and 0 <= x < len(g[0]): g[y][x] = BLOOD[2 if (dx + dy) % 3 else 3]
+    return g
+
+def head_painter():
+    """Flesh above, a grey-furred muzzle below, sunk brow, clay eyes (lit by the glow sheet)."""
+    S = PIG
+    def paint(face, w, h):
+        g = blank(w, h)
+        for y in range(h):
+            for x in range(w):
+                v = 4 + LIT[face] + (lightx(face, x, w) if face not in ("top", "bottom") else 0)
+                g[y][x] = clamp(S, v)
+        if face == "front":
+            for x in range(w): g[3][x] = S[1]                                        # a heavy, sunk brow
+            for x in (1, 2, 5, 6): g[4][x] = S[0]
+            g[4][2] = g[4][5] = CLAY[3]                                              # the clay eyes
+            for y in range(5, h):
+                for x in range(w): g[y][x] = clamp(GREYFUR, 3 + (x + y) % 2 + (1 if y == 5 else 0))   # grey muzzle fur
+            for x in (0, 7): g[3][x] = GREYFUR[2]
+        if face in ("left", "right", "back"):
+            for y in range(h):
+                for x in range(w):
+                    if y < 5 or face == "back": g[y][x] = clamp(GREYFUR, 2 + (x + y) % 3)   # a grey mane
+        if face == "top":
+            for y in range(h):
+                for x in range(w): g[y][x] = clamp(GREYFUR, 2 + (x * 3 + y) % 3)
+        return scuff(g, ("shd", face), 4, S)
+    return paint
+
+def snout():
+    def paint(face, w, h):
+        g = flat(GREYFUR, 4)(face, w, h)
+        if face == "front":
+            for x in range(w): g[0][x] = GREYFUR[5]
+            g[1][0] = g[1][w - 1] = PIG[0]                                            # the nostrils
+            if w > 3: g[1][1] = g[1][w - 2] = PIG[1]
+            for x in range(w): g[h - 1][x] = GREYFUR[2]
+        return g
+    return paint
+
+def ear():
+    return flat(GREYFUR, 3, "sear", 2)
+
+def antlerp():
+    return antler(3, "sant")
+
+def robe():
+    """The hide robe over the torso: dark hide, fold lines, a V of bare throat, blood handprints."""
+    def paint(face, w, h):
+        g = flat(HIDE, 2, "srb", 5)(face, w, h)
+        if face in ("top", "bottom"): return g
+        for x in range(1, w, 3):
+            for y in range(h): g[y][x] = clamp(HIDE, 1)
+        if face == "front":
+            g[0][3] = g[0][4] = PIG[2]; g[1][3] = g[1][4] = PIG[1]
+            handprint(g, 0, 7); handprint(g, 5, 9)
+        if face == "back": handprint(g, 1, 6)
+        return g
+    return paint
+
+def skirt():
+    """The robe skirt to the shins: hide with a ragged ochre-stitched hem and handprints."""
+    def paint(face, w, h):
+        g = flat(HIDE, 2, "ssk", 6)(face, w, h)
+        if face in ("top", "bottom"): return g
+        for x in range(1, w, 3):
+            for y in range(h): g[y][x] = clamp(HIDE, 1)
+        for x in range(w): g[h - 1][x] = clamp(HIDE, 1)
+        for x in range(0, w, 2): g[h - 2][x] = OCHRE[3]
+        if face == "front": handprint(g, 1, 2); handprint(g, 5, 3)
+        if face == "back": handprint(g, 3, 2)
+        return g
+    return paint
+
+def arm():
+    """Hide sleeve to the elbow, bare grey-furred forearm below."""
+    return rows([(0, flat(HIDE, 2, "ssl", 4)), (8, flat(PIG, 3, "sab", 3))])
+
+def cuff():
+    def paint(face, w, h):
+        g = flat(BONE, 3)(face, w, h)
+        if face not in ("top", "bottom"):
+            for x in range(0, w, 2): g[0][x] = OCHRE[3]
+        return g
+    return paint
+
+def shaw():
+    return pelt(GREYFUR, "wm-sshawl")
+
+def leg_painter():
+    return rows([(0, flat(HIDE, 2, "slg", 3)), (9, flat(PIG, 3, "slp", 3))])
+
+def hoof():
+    return tone(HORN, 3, "sho", 3)
+
+def belt():
+    def paint(face, w, h):
+        g = lashing(OCHRE, 2)(face, w, h)
+        return g
+    return paint
+
+def tooth():
+    return tone(BONE, 4, "stt", 0)
+
+def bead():
+    return lashing(OCHRE, 4)
+
+def skull():
+    """The staff's bone skull: dark sockets on the back face (lit)."""
+    def paint(face, w, h):
+        g = bone_paint(4, "ssk")(face, w, h)
+        if face == "back":
+            g[1][0] = g[1][w - 1] = CLAY[3]; g[2][w // 2] = HORN[1]
+        return g
+    return paint
+
+def pole():
+    """Wood pole with notches and, near the top, three clay rune texels on the back face."""
+    def paint(face, w, h):
+        g = flat(WOOD, 3, "spl", 2)(face, w, h)
+        for y in range(4, h - 2, 5): g[y][0] = clamp(WOOD, 1)
+        if face == "back":
+            for y in (3, 5, 7): g[y][0] = CLAY[3]
+        return g
+    return paint
+
+def lash():
+    return lashing()
+
+def wand():
+    return bone_paint(4, "swd")
+
+def sash_tail():
+    return None
+
+def glow_fn(bone, box):
+    if bone.name == "head" and box.size == [8, 8, 8]:
+        def p(face, w, h):
+            g = blank(w, h)
+            if face == "front": g[4][2] = g[4][5] = GLOWCLAY[2]
+            return g
+        return p
+    if bone.name == "staff" and box.size == [3, 3, 3]:
+        def p(face, w, h):
+            g = blank(w, h)
+            if face == "back": g[1][0] = g[1][w - 1] = GLOWCLAY[1]
+            return g
+        return p
+    if bone.name == "staff" and box.size[1] > 20:
+        def p(face, w, h):
+            g = blank(w, h)
+            if face == "back":
+                for y in (3, 5, 7): g[y][0] = GLOWCLAY[1]
+            return g
+        return p
+    return None
+
+def bones():
+    B = [Bone("root", "")]
+    B.append(Bone("body", "root", (0, 12, 0), [Box((-4, -12, -2), (8, 12, 4), robe())], rot=(HUNCH, 0, 0)))
+    B.append(Bone("head", "body", (0, -12, 0), [Box((-4, -8, -4), (8, 8, 8), head_painter())], rot=(-HUNCH, 0, 0)))
+    B.append(Bone("snout", "head", boxes=[Box((-2.5, -3.5, -6), (5, 4, 2), snout())]))
+    B.append(Bone("ear_r", "head", pivot=(-4, -6, 0), rot=(0, 0, 18), boxes=[Box((-1, 0, -1.5), (1, 4, 3), ear())]))
+    B.append(Bone("ear_l", "head", pivot=(4, -6, 0), rot=(0, 0, -18), boxes=[Box((0, 0, -1.5), (1, 4, 3), ear())]))
+    for name, s in (("antler_r", -1), ("antler_l", 1)):
+        B.append(Bone(name, "head", pivot=(s * 2.5, -8, 0), rot=(0, 0, s * 14), boxes=[
+            Box((-0.5, -6, -0.5), (1, 6, 1), antlerp()),                                   # the main beam, 6 px
+            Box((s * 1 - 0.5, -5, -0.5), (1, 3, 1), antlerp()),                            # an outer tine
+            Box((-0.5 - s * 1.0, -5, -0.5), (1, 2, 1), antlerp()),                         # an inner tine
+            Box((-1, -1.5, -1), (2, 1, 2), lash(), dil=0.1)]))                            # ochre lashing at the base
+    B.append(Bone("right_arm", "body", (-5, -10, 0), [Box((-3, -2, -2), (4, 12, 4), arm())], rot=(-HUNCH, 0, 0)))
+    B.append(Bone("right_hand", "right_arm", (-1, 8, 0)))
+    B.append(Bone("wand", "right_hand", tag="weapon", boxes=[Box((-0.5, -0.5, -5), (1, 1, 5), wand()), Box((-1, -1, -6), (2, 2, 1), wand()),
+                                                            Box((-1, -1, -1.5), (2, 2, 1), lash(), dil=0.1)]))
+    B.append(Bone("left_arm", "body", (5, -10, 0), [Box((-1, -2, -2), (4, 12, 4), arm())], rot=(-HUNCH, 0, 0)))
+    B.append(Bone("left_hand", "left_arm", (1, 8, 0)))
+    B.append(Bone("arms_folded", "body", (0, -9, -1), rot=(-43, 0, 0)))
+    B.append(Bone("right_leg", "root", (-1.9, 12, 0), [Box((-2, 0, -2), (4, 12, 4), leg_painter())]))
+    B.append(Bone("left_leg", "root", (1.9, 12, 0), [Box((-2, 0, -2), (4, 12, 4), leg_painter())]))
+    B.append(Bone("skirt", "root", boxes=[Box((-4.5, 11.5, -2.5), (9, 9, 5), skirt())]))
+    for side in ("right", "left"):
+        B.append(Bone("%s_hoof" % side, "%s_leg" % side, boxes=[Box((-2.5, 10, -3), (5, 2, 5), hoof())]))
+        B.append(Bone("%s_cuff" % side, "%s_arm" % side, boxes=[Box((-2 + (0 if side == "right" else -1), 7, -2), (4, 1, 4), cuff(), dil=0.3)]))
+    B.append(Bone("shawl", "body", boxes=[Box((-5, -13.5, -3), (10, 4, 6), shaw(), dil=0.2)]))
+    B.append(Bone("belt", "body", boxes=[Box((-4, -3, -2), (8, 1, 4), belt(), dil=0.5)]))
+    B.append(Bone("trinkets", "body", boxes=[
+        Box((-2.5, -2, -2.7), (1, 3, 1), tooth()), Box((0.5, -2, -2.7), (1, 4, 1), tooth()), Box((2.5, -2, -2.7), (1, 2, 1), tooth()),
+        Box((-1, -2, -2.7), (1, 1, 1), bead()), Box((1.5, -2, -2.7), (1, 1, 1), bead())]))
+    B.append(Bone("necklace", "body", boxes=[Box((-2.5, -12, -2.7), (5, 1, 1), tooth()), Box((-0.5, -11, -2.7), (1, 2, 1), bead())]))
+    B.append(Bone("sash", "body", team=True, pivot=(0, -7, 0), rot=(0, 0, 40), boxes=[Box((-4, -1, -2.5), (8, 2, 5), "sash", sheet="cloth")]))
+    B.append(Bone("sash_tail", "body", team=True, boxes=[Box((-4, -1, -2.5), (3, 5, 1), "tail", sheet="cloth")]))
+    B.append(Bone("staff", "body", pivot=(0, -6, 3), rot=(0, 0, 22), boxes=[
+        Box((-0.5, -12, -0.5), (1, 24, 1), pole()),
+        Box((-1.5, -15, -1.5), (3, 3, 3), skull()),
+        Box((-2.5, -17, -0.5), (1, 3, 1), antlerp()), Box((1.5, -17, -0.5), (1, 3, 1), antlerp()),
+        Box((-1, -9, -1), (2, 1, 2), lash(), dil=0.1), Box((-1, 1, -1), (2, 1, 2), lash(), dil=0.1)]))
+    return B
+
+def sash_cloth(T, M):
+    def paint(face, w, h):
+        g = blank(w, h)
+        for y in range(h):
+            for x in range(w):
+                g[y][x] = clamp(T, 3 + LIT[face] + (lightx(face, x, w) if face not in ("top", "bottom") else 0) + (1 if y == 0 else 0))
+        return g
+    return paint
+
+def cloth_painter(spec, side):
+    T, M = TEAM[side]
+    if spec == "tail": return cloth_band(T, base=3, ragged=True, seed="wm-stail")
+    return sash_cloth(T, M)
+
+NOTE = ("Wildmoot Bloodhowl Seer (unit identity, Wildmoot): a stooped boar-kin elder with a grey-furred muzzle, clay-glow eyes, an antler "
+        "crown of two branching tines, a hide robe to the shins with blood handprints, bone and ochre trinkets, a team sash across the chest "
+        "and a bone wand in the right hand. A totem staff (bone skull and antler top) is strapped diagonally on the back. Tier I only. No back flag.")
+WM_SEER = Troop("wm_seer", SKIN, CLOTH, bones, cloth_painter,
+                {"weapon": "none", "hand": "right", "idleArms": "hang", "portrait": "tall 6"}, tiers=(1,), glow=glow_fn)
+def build(): return WM_SEER.build()
+def outputs(): return WM_SEER.outputs()
+
+if __name__ == "__main__":
+    house_stub.main(WM_SEER, NOTE, sys.argv)
