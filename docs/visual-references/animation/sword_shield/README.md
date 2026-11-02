@@ -32,3 +32,18 @@ Use them for timing and silhouette only. Our art rules still win: 1 texel per pi
   30 degrees of forward (the guard's own) through the thrust, instead of turning it 76 degrees edge-on.
 - **Deaths (K2):** the tapestry's dead lie bent and grounded; ours lie on the ground with elbows and knees at 30 degrees or
   more, and each kind has a second variant (a drop to the knees, or a different fall).
+
+## Our own stills (Task 16 r2b, 2026-11-01)
+
+Crops of our own live captures (knight, motion-grade run test-tools/work/t16r2b/grade1), so they are ours to keep. Each is
+set against the link above it should be read with. No third-party image is stored.
+
+| Still | What it shows | Read against |
+|---|---|---|
+| own-wall-hold.png | Wall hold: the sword cocked up and back behind his own board. | Shield wall (Wikipedia); I.33 (board square and forward, covering the sword hand). |
+| own-wall-overhead-impact.png | Overhead wall strike at its impact (tick 10), struck over the board's top edge. | Shield wall; Fresh Animations (follow-through readable at our size). |
+| own-wall-thrust-impact.png | Thrust wall strike at impact (tick 7), the board staying square. | I.33 (board stays in front of the sword hand through the thrust). |
+| own-block-head.png | High block: the board lifted over the helm. | Meyer plates (shield elbow bent, board high). |
+| own-knee-fall-mid.png | Knee fall mid-drop, between the knees and the 1.3 s impact. | Bayeux Tapestry falls. |
+| own-death-back-lie.png | Back lie: body on the ground, board about 25 degrees off flat beside him. | Bayeux Tapestry (bent, grounded dead). |
+| own-death-side-lie-board-on-flank.png | Side lie with the shield arm on top: the board lies across his upper flank (about 13 degrees). | Bayeux Tapestry. |
