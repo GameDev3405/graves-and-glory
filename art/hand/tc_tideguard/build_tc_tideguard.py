@@ -20,7 +20,7 @@ from ironclad import scuff, rng, shade   # noqa: E402
 SKIN = (128, 128)
 CLOTH = (128, 64)
 
-VERD = ramp("0a1a1c", "14343a", "23595a", "3f8579", "6bb09b", "a4d8c0")      # verdigris: the shadows lean to deep teal
+VERD = ramp("0a1426", "11264a", "1a3f6a", "2a5e8a", "5e88a6", "9db8c4")      # sea blue (Tidecallers accent, guide 10.1): the cap, patina and plate trim keep the same six tone steps as the old verdigris
 BRONZE = ramp("2a1608", "553014", "86521e", "b57a30", "d9a455", "f0cf8c")
 CORAL = ramp("3f3230", "6f5d57", "a08d82", "cdbcad", "e8dccd", "faf4e8")      # bleached, cooler in the pits
 FLESH = ramp("16262a", "2f4a4e", "507174", "7a9c9a", "a6c4c0")                # drowned grey-green
