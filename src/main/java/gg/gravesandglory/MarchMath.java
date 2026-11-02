@@ -52,6 +52,14 @@ public final class MarchMath {
         return null;
     }
 
+    /** The most commanders a team seats in a March battle: the six-seat lobby is 3 v 3. */
+    static final int MAX_SEATS = 3;
+
+    /** The commanders per team a March battle seats: its row's size held to 1..MAX_SEATS; 1 for practice (no row). The one human takes a seat on team 0 and bot fill takes the rest. */
+    static int seatSize(Spec.CampaignBattlesRow row) {
+        return row == null ? 1 : Math.max(1, Math.min(MAX_SEATS, row.size()));
+    }
+
     /** The bonusObjectives row a battle names, or null. */
     static Spec.BonusObjectivesRow bonus(Spec.CampaignBattlesRow row, Spec.BonusObjectivesRow[] bonuses) {
         if (row == null) return null;

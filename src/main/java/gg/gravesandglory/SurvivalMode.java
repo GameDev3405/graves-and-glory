@@ -148,7 +148,7 @@ public final class SurvivalMode extends BattleMode {
         b.squads.values().removeIf(s -> s.bot && s.team == DEAD);
         int humans = 0;
         for (var s : b.squads.values()) if (s.seated && !s.bot) { s.team = DEFENDERS; humans++; }
-        int want = Math.min(4, Math.max(Math.max(1, humans), c.practice ? 1 : c.size));
+        int want = Math.min(4, Math.max(Math.max(1, humans), c.size));
         var bots = new ArrayList<GravesAndGlory.Squad>();
         for (var s : b.squads.values()) if (s.seated && s.bot && s.team == DEFENDERS) bots.add(s);
         for (int i = bots.size() - 1; i >= 0 && humans + bots.size() > want; i--) b.squads.remove(bots.remove(i).owner);
