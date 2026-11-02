@@ -49,3 +49,21 @@ PASS: 4 (Domination round, Domination rewards, Domination return to camp, reconn
 - Online-mode accounts, whitelist and the kit's live `start.ps1` on `tjepkema-server`.
 - Feel checks: reward screens, return-to-camp transitions, map-load frame spikes, audio, readability in a real match.
 - Friends reconnecting from a real client crash or lost connection, and a real server crash (power or process loss) rather than a killed dev process.
+
+## Round 2 (branch `work/slice-dryrun-2` off main `65f2bcc`, agent run, not pushed)
+
+Same launch setup as round 1 (server in `<worktree>/run-server/`, Gradle client in `<worktree>/run/`, second client by direct `java` with a copy of the Loom classpath args file). Scratch scripts and probe output are outside the repo. Processes: 1 server, 2 clients (SliceAlpha, SliceBravo).
+
+| # | Item | Round 1 | Round 2 |
+|---|---|---|---|
+| 1 | Siege on Ironhold, full round, rewards | PARTIAL | PASS: see below |
+
+### R2-1 Siege on Ironhold, natural finish
+Room by SliceAlpha (size 3, map 1, mode siege, fill on), SliceBravo joined, both ready, 10 s countdown, battle with 6 seats (2 humans, 4 bots). Not force-finished: the round ran past its 185 s clock (round length later read 545 s) and ended on its own at 371 s of play with score 3 to 0. Gold Banner (Alpha, team 0) won. Both clients landed on `CampScreen` ("Gold Banner wins! Back to the war council."), result saved and eligible. Server and client profiles agree:
+
+| Player | Outcome | Gold | XP | Shards | Renown | Matches / Wins |
+|---|---|---|---|---|---|---|
+| SliceAlpha (winner) | VICTORY | 120 | 150 | gilded +2 | gilded +2 | 1 / 1 |
+| SliceBravo (loser) | BATTLE COMPLETE | 80 | 100 | gilded +1 | gilded +1 | 1 / 0 |
+
+Observation (minor, unclear if intended): the probe's `roundSeconds` read 185 at battle start and 545 by second 329, so the siege round length grows during play (probably an extension when a point is taken); the 185 s figure in round 1 was only the initial value.
