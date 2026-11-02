@@ -35,11 +35,13 @@ final class Progression {
     static String contract(State s,int slot){return switch(slot){case 0->"Complete 1 battle";case 1->"Complete 3 battles";default->s.rerolled?"Issue 10 tactical orders":"Help capture 1 objective";};}
     static int progress(State s,int slot){return slot==0||slot==1?s.dailyBattles:s.rerolled?s.dailyOrders:s.dailyCaptures;}
     static int target(State s,int slot){return slot==0?1:slot==1?3:s.rerolled?10:1;}
-    static Grant match(State s,String id,boolean won,boolean eligible){
+    static Grant match(State s,String id,boolean won,boolean eligible){return match(s,id,won,eligible,100);}
+    /** As match, with the XP pro-rated by the percent of the match the player was seated (MatchRules.sharePercent), rounded down; the battle counts are whole. */
+    static Grant match(State s,String id,boolean won,boolean eligible,int percent){
         if(!eligible||!s.matchGrants.add(id))return new Grant(0,0,"No duplicate or ineligible match XP.");
         while(s.matchGrants.size()>256)s.matchGrants.remove(s.matchGrants.iterator().next());
         s.totalBattles++;s.dailyBattles++;s.weeklyBattles++;if(won)s.totalWins++;
-        int xp=won?150:100;s.xp=Math.min(1_000_000,s.xp+xp);return new Grant(0,xp,"Battle progress saved.");}
+        int xp=(won?150:100)*Math.max(0,Math.min(100,percent))/100;s.xp=Math.min(1_000_000,s.xp+xp);return new Grant(0,xp,"Battle progress saved.");}
     /** Battles in a week for the weekly contract. */
     static final int WEEKLY_BATTLES=6;
     /** Why key cannot be claimed now ("" when it can): the War Table's Contracts badge and the Contracts page read it. It follows claim's rules

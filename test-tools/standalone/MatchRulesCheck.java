@@ -48,6 +48,39 @@ public final class MatchRulesCheck {
         check(MatchRules.partialGold(base, 100, 900) == base * 100 / 900, "the share rounds down");
         check(MatchRules.partialGold(base, 899, 900) < base + Spec.CAMPAIGN[0].victoryGold(), "an interrupted match never reaches the win bonus");
 
+        // Pro-rated pay for a match that finishes (Kort 2026-11-02): paid by the share of the match a player was seated.
+        int full = base + Spec.CAMPAIGN[0].victoryGold();
+        long total = 400, round0 = 1_000, end = round0 + total * 20;
+        long wholeTicks = MatchRules.seatedTicks(end, round0, round0, 0, -1);
+        check(wholeTicks / 20 == total, "a player seated from the start is seated the whole match");
+        check(MatchRules.prorate(full, wholeTicks / 20, total) == full && MatchRules.sharePercent(wholeTicks / 20, total) == 100, "a full-time player is paid in full");
+        check(MatchRules.prorate(full, total + 50, total) == full, "the share never passes the whole");
+        long droppedSeated = MatchRules.seatedTicks(end, round0, round0, 0, round0 + total * 5) / 20; // dropped a quarter in, never returned
+        check(droppedSeated == total / 4 && MatchRules.sharePercent(droppedSeated, total) == 25, "a player who dropped at 25% was seated 25% of the match");
+        check(MatchRules.prorate(full, droppedSeated, total) == full / 4, "a player who dropped at 25% is paid 25%, got " + MatchRules.prorate(full, droppedSeated, total));
+        check(MatchRules.prorate(2, droppedSeated, total) == 0 && MatchRules.prorate(100, droppedSeated, total) == 25, "pro-rated counts round down");
+        check(MatchRules.prorate(0, droppedSeated, total) == 0 && MatchRules.prorate(full, 0, total) == 0 && MatchRules.prorate(full, 50, 0) == 0, "nothing seated, nothing owed or no match length pays nothing");
+        long lateSeated = MatchRules.seatedTicks(end, round0, round0 + total * 10, 0, -1) / 20; // seated for the last half
+        check(lateSeated == total / 2 && MatchRules.prorate(full, lateSeated, total) == full / 2, "a late joiner is paid for the time he was seated");
+        long backSeated = MatchRules.seatedTicks(end, round0, round0, total * 5, -1) / 20; // away for a quarter of the match, back for the rest
+        check(backSeated == total * 3 / 4 && MatchRules.prorate(full, backSeated, total) == full * 3 / 4, "a rejoiner is paid for the time he was seated, not for the time he was away");
+        long outAndBack = MatchRules.seatedTicks(end, round0, round0, total * 5, round0 + total * 15) / 20; // away a quarter, back, away again for the last quarter
+        check(outAndBack == total / 2, "two absences both come off the time seated");
+        check(MatchRules.seatedTicks(end, round0, round0, 0, round0) == 0 && MatchRules.seatedTicks(end, round0, round0 + total * 40, 0, -1) == 0, "time seated is never negative");
+        check(MatchRules.seatedTicks(end, round0 + 100, round0, 0, -1) == end - round0 - 100, "time seated starts at the round start, not before");
+        check(MatchRules.majority(total, total) && MatchRules.majority(total / 2, total) && !MatchRules.majority(total / 2 - 1, total) && !MatchRules.majority(0, 0), "a win counts for a player seated at least half the match");
+        var shards = new java.util.LinkedHashMap<String, Integer>();
+        shards.put("gilded", 2);shards.put("ironclad", 1);
+        var scaled = RosterMath.prorate(new RosterMath.Rewards(shards, shards), 300, 400);
+        check(scaled.shards().equals(java.util.Map.of("gilded", 1)) && scaled.renown().equals(scaled.shards()), "shards and Renown are pro-rated, a count that falls to 0 is dropped");
+        check(RosterMath.prorate(new RosterMath.Rewards(shards, shards), 400, 400).shards().equals(shards), "a full-time player keeps every shard");
+        var xp = new Progression.State();
+        Progression.match(xp, "m1", true, true, 25);
+        check(xp.xp == 37 && xp.totalBattles == 1, "XP is pro-rated by the share and the battle still counts");
+        var xpFull = new Progression.State();
+        Progression.match(xpFull, "m1", true, true);
+        check(xpFull.xp == 150, "a full-time winner keeps 150 XP");
+
         // Slot hold (H8): 120 s from the drop, then released.
         check(MatchRules.HOLD_SECONDS == 120, "a dropped player's slot is held for 2 minutes");
         long dropped = 777, until = MatchRules.releaseAt(dropped);
@@ -89,6 +122,12 @@ public final class MatchRulesCheck {
         check(!leave.contains("s.order=\"attack\""), "the army keeps its last orders while it waits");
         check(campaign.contains("if(MatchRules.waiting(b.time,s.takeoverAt))continue;if(s.takeoverAt>0){s.takeoverAt=0;s.order=\"attack\";}"), "the bot brain waits out the grace period, then takes command");
         check(body(game, "void join(ServerPlayerEntity p)").contains("s.bot=false;s.seated=true;s.takeoverAt=0;"), "rejoining hands command back and ends the wait");
+
+        // Wiring: a drop records the absence, a return closes it, and finish pays a commander who is away from his saved seat, pro-rated.
+        check(leave.contains("campaign.dropped(s)"), "a drop mid-battle records the absence");
+        check(body(campaign, "void joined(ServerPlayerEntity p)").contains("returned(p.getUuid())"), "a seated return closes the absence");
+        check(finish.contains("absentSeat.get(id)") && finish.contains("MatchRules.prorate(") && finish.contains("RosterMath.prorate(") && finish.contains("Progression.match(p.progression,matchId,credited,eligible,percent)"), "finish pays a commander who dropped, pro-rated by the time seated");
+        check(body(campaign, "Map<UUID,Long> playedNow()").contains("seatedTicks(id)"), "an interrupted match pays a player's time seated, less his absences");
 
         // The hold: leave stamps the release tick, rejoin clears it, join and the tick release an expired one.
         check(leave.contains("campaign.vacatedUntil.put(owner,MatchRules.releaseAt(time))"), "a drop mid-battle starts the 2-minute hold");

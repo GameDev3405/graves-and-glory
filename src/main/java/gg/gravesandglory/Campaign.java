@@ -29,6 +29,12 @@ public final class Campaign {
     final Map<UUID,Long> botRespawns=new HashMap<>();
     final Set<UUID> participants=new HashSet<>();
     final Map<UUID,Long> joinedAt=new HashMap<>();
+    /** Ticks each participant has spent away this round in absences that ended (he dropped and came back); his pay is pro-rated by the time he was seated (MatchRules.seatedTicks). */
+    final Map<UUID,Long> awayTicks=new HashMap<>();
+    /** The tick each participant who dropped this round and has not returned left, so a match that ends without him still pays his time seated. */
+    final Map<UUID,Long> leftAt=new HashMap<>();
+    /** What settles a participant who is away at the end: a detached copy of his seat (team, banner, class) taken at the drop. It is in no squads map. */
+    final Map<UUID,GravesAndGlory.Squad> absentSeat=new HashMap<>();
     final Set<UUID> collectionsReady=new HashSet<>();
     /** Players with no server record when they joined; only they may bring a collection from their own computer, once. */
     final Set<UUID> importAllowed=new HashSet<>();
@@ -144,11 +150,26 @@ public final class Campaign {
     }
     /** The first-visit rule: a player with no server file may bring his collection from his own computer, once; one with a file may not (the server copy wins). */
     void grantImport(UUID id){if(!Files.exists(directory.resolve(id+".json")))importAllowed.add(id);}
+    /** A seated commander has just dropped from a running round (before his seat is handed to a bot): his time away starts, and a copy of his seat is kept to settle him if he does not return. */
+    void dropped(GravesAndGlory.Squad s){
+        UUID id=s.owner;if(!b.running||!participants.contains(id))return;
+        var copy=new GravesAndGlory.Squad(id,s.team,b.fieldBase(s.team));copy.banner=new ArrayList<>(s.banner);copy.commander=s.commander;copy.seated=true;
+        leftAt.put(id,b.time);absentSeat.put(id,copy);
+    }
+    /** A dropped participant is seated again: the time he was away is added up, and it comes off his pay. */
+    void returned(UUID id){
+        Long at=leftAt.remove(id);absentSeat.remove(id);
+        if(at!=null)awayTicks.merge(id,Math.max(0,b.time-at),Long::sum);
+    }
+    /** Ticks a participant has been seated in this round so far (MatchRules.seatedTicks): from his own seating, less the time he was away. */
+    long seatedTicks(UUID id){return MatchRules.seatedTicks(b.time,b.roundStarted,joinedAt.getOrDefault(id,b.roundStarted),awayTicks.getOrDefault(id,0L),leftAt.getOrDefault(id,-1L));}
+    /** True while a participant has dropped from this round and is not seated again; the round still owes him his time seated. */
+    boolean away(UUID id){return leftAt.containsKey(id);}
     void joined(ServerPlayerEntity p){
         grantImport(p.getUuid());profile(p.getUuid());
         // Rejoining the same battle keeps the original start time, so a dropped connection does not cost the reward.
         if(!(b.running&&participants.contains(p.getUuid())))joinedAt.put(p.getUuid(),b.time);var squad=b.squads.get(p.getUuid());
-        if(b.running&&squad!=null&&squad.seated)b.toBase(p,squad.team);else toLobby(p);
+        if(b.running&&squad!=null&&squad.seated){returned(p.getUuid());b.toBase(p,squad.team);}else toLobby(p);
         if(b.running&&(squad==null||!squad.seated))notice(p.getUuid(),WELCOME_WAIT); // true for the moments he reads it, and gone with the round (returnLobby) or after NOTICE_TICKS: no standing line, which the round's end would leave false
         else standing(p.getUuid(),WELCOME);}
     void toLobby(ServerPlayerEntity p){var at=CampWorld.spawn(profile(p.getUuid()));b.relocate(p,at.x(),at.y(),at.z(),at.yaw(),at.pitch());p.changeGameMode(GameMode.ADVENTURE);p.getInventory().clear();Commander.applyPlayer(p,null);p.setHealth(p.getMaxHealth());p.getHungerManager().setFoodLevel(20);}
@@ -160,7 +181,7 @@ public final class Campaign {
         for(var s:b.squads.values())Commander.reset(b,s); // every running commander ability ends before its units go
         b.running=false;introUntil=0;social.finish();activeRoom="";activeBattle=null;bonusTracker=null;Projectiles.clear(b);Abilities.clearBanners(b);
         Houses.reset(b);for(var u:b.units)u.mob.discard();b.units.clear();b.clearSides();b.clearProgression();
-        b.squads.values().removeIf(s->s.bot);botRespawns.clear();botRetreating.clear();b.respawns.clear();vacated.clear();vacatedUntil.clear();deleteProgress();
+        b.squads.values().removeIf(s->s.bot);botRespawns.clear();botRetreating.clear();b.respawns.clear();vacated.clear();vacatedUntil.clear();awayTicks.clear();leftAt.clear();absentSeat.clear();deleteProgress();
         for(var s:b.squads.values()){s.training.clear();s.seated=false;}onPad.clear();padCountdown=-1;closeParty();
         notices.values().removeIf(WELCOME_WAIT::equals);noticeAt.keySet().retainAll(notices.keySet()); // "Battle in progress" is no longer true
         for(var p:b.server.getPlayerManager().getPlayerList())toLobby(p);
@@ -292,7 +313,7 @@ public final class Campaign {
     void prepareRound(){
         onPad.clear();padCountdown=-1;padMapRolled=false;tutorial.clear();
         b.squads.values().removeIf(s->s.bot);balance();
-        for(var u:b.units){GravesAndGlory.Battle.leaveSide(u.mob);u.mob.discard();}b.units.clear();botRespawns.clear();botRetreating.clear();vacated.clear();vacatedUntil.clear();
+        for(var u:b.units){GravesAndGlory.Battle.leaveSide(u.mob);u.mob.discard();}b.units.clear();botRespawns.clear();botRetreating.clear();vacated.clear();vacatedUntil.clear();awayTicks.clear();leftAt.clear();absentSeat.clear();
         for(int team=0;team<2;team++){final int t=team;int humans=(int)b.squads.values().stream().filter(s->s.team==t&&s.seated).count();
             int target=size; // practice and a March battle set size in soloStart, so one bot per team stays the practice rule
             if(fill||practice)for(int i=humans;i<target;i++){UUID id=UUID.randomUUID();var s=new GravesAndGlory.Squad(id,team,b.fieldBase(team));s.bot=true;s.tier=activeBattle!=null?activeBattle.difficulty():difficulty;s.commander=Spec.CLASSES[i%Spec.CLASSES.length].id();s.lane=i%3;b.squads.put(id,s);}
@@ -478,10 +499,10 @@ public final class Campaign {
         b.message="The battle was called off. Back to the war council.";headline=b.message;
         returnLobby();
     }
-    /** Seconds each seated human has played of this round (from his own seating, not before the round began). */
+    /** Seconds each human who is or was seated has played of this round: from his own seating, less any time he was away, and a player who dropped keeps what he had played. */
     Map<UUID,Long> playedNow(){
         Map<UUID,Long> played=new LinkedHashMap<>();
-        for(UUID id:participants){var s=b.squads.get(id);if(s==null||!s.seated)continue;played.put(id,Math.max(0,(b.time-Math.max(b.roundStarted,joinedAt.getOrDefault(id,b.roundStarted)))/20));}
+        for(UUID id:participants){var s=b.squads.get(id);if((s==null||!s.seated)&&!away(id))continue;played.put(id,seatedTicks(id)/20);}
         return played;
     }
     /** Pays each player the participation gold of an interrupted match, pro-rated (MatchRules.partialGold); a failed save changes nothing. */
@@ -526,21 +547,25 @@ public final class Campaign {
         if(!b.running)return;
         lastWinner=winner;
         long seconds=(b.time-b.roundStarted)/20;
-        for(UUID id:participants){var s=b.squads.get(id);if(s==null||!s.seated)continue;Profile p=profile(id);String before=JSON.toJson(p);
-            int earned=Math.min(seconds,(b.time-joinedAt.getOrDefault(id,b.roundStarted))/20)>=Spec.CAMPAIGN[0].minimumRewardSeconds()?(practice?Spec.CAMPAIGN[0].practiceGold():Spec.CAMPAIGN[0].completionGold()+(s.team==winner?Spec.CAMPAIGN[0].victoryGold():0)):0;
-            int priorXp=p.progression.xp;Progression.reset(p.progression,Progression.today());Progression.match(p.progression,matchId,s.team==winner,earned>0);p.gold+=earned;p.matches++;if(s.team==winner)p.wins++;MarchMath.Settled march=null;
-            if(activeBattle!=null){boolean won=s.team==winner; // plan 2C.3: the battle won, the cleared count and the bonus, in the same save as the gold
-                march=MarchMath.settle(activeBattle,MarchMath.bonus(activeBattle,Spec.BONUSOBJECTIVES),won,bonusTracker!=null&&bonusTracker.kept(won,(int)seconds),p.battlesWon,p.bonusClaimed,Profile.houseOrder(),Spec.CAMPAIGNBATTLES);
+        for(UUID id:participants){var s=b.squads.get(id);if(s==null||!s.seated)s=absentSeat.get(id);if(s==null)continue;Profile p=profile(id);String before=JSON.toJson(p);
+            // Pay is pro-rated by the share of the match he was seated (Kort 2026-11-02): a commander who dropped and did not return, or came back late, gets that share of the gold, XP, shards and Renown;
+            // one seated the whole match is paid in full. The win, the cleared battle and the bonus count only when he was seated for at least half of it.
+            long seated=seatedTicks(id)/20;boolean eligible=seated>0&&seconds>=Spec.CAMPAIGN[0].minimumRewardSeconds();int percent=MatchRules.sharePercent(seated,seconds);
+            boolean won=s.team==winner,credited=won&&MatchRules.majority(seated,seconds);
+            int earned=eligible?MatchRules.prorate(practice?Spec.CAMPAIGN[0].practiceGold():Spec.CAMPAIGN[0].completionGold()+(won?Spec.CAMPAIGN[0].victoryGold():0),seated,seconds):0;
+            int priorXp=p.progression.xp;Progression.reset(p.progression,Progression.today());Progression.match(p.progression,matchId,credited,eligible,percent);p.gold+=earned;if(seated>0)p.matches++;if(credited)p.wins++;MarchMath.Settled march=null;
+            if(activeBattle!=null){ // plan 2C.3: the battle won, the cleared count and the bonus, in the same save as the gold
+                march=MarchMath.settle(activeBattle,MarchMath.bonus(activeBattle,Spec.BONUSOBJECTIVES),credited,bonusTracker!=null&&bonusTracker.kept(won,(int)seconds),p.battlesWon,p.bonusClaimed,Profile.houseOrder(),Spec.CAMPAIGNBATTLES);
                 p.campaignCleared=march.cleared();if(march.bonusPaid()){p.gold+=march.bonusGold();p.shards.merge(march.bonusHouse(),march.bonusShards(),Integer::sum);}}
             // The chase (spec 4.3 to 4.6), in the same save as the gold: an eligible match pays shards and Renown by the fielded banner's Houses and adds to the mastery ledger; a chapter cleared pays its Pact.
             var slots=RosterMath.houseSlots(s.banner,RosterMath.Catalog.fromSpec());
-            var paid=earned>0?RosterMath.matchRewards(slots,Houses.thresholds(Spec.HOUSES[0].id()),Profile.houseOrder(),s.team==winner):NO_REWARDS; // every House has the same slot thresholds (HousesCheck)
+            var paid=eligible?RosterMath.prorate(RosterMath.matchRewards(slots,Houses.thresholds(Spec.HOUSES[0].id()),Profile.houseOrder(),credited),seated,seconds):NO_REWARDS; // every House has the same slot thresholds (HousesCheck)
             paid.shards().forEach((h,n)->p.shards.merge(h,n,Integer::sum));paid.renown().forEach((h,n)->p.renown.merge(h,n,Integer::sum));
-            List<String> titles=earned>0?ledger(p,s):List.of();int pacts=pacts(p);
-            boolean saved=save(id);JsonObject report=new JsonObject();report.addProperty("id",matchId);report.addProperty("outcome",winner<0?"DRAW":s.team==winner?"VICTORY":"BATTLE COMPLETE");report.addProperty("map",Spec.MAPS[map].name());report.addProperty("seconds",seconds);report.addProperty("saved",saved);report.addProperty("eligible",earned>0);report.addProperty("gold",saved?earned:0);report.addProperty("xp",saved?p.progression.xp-priorXp:0);report.addProperty("beforeXp",priorXp);report.add("squads",reportSquads(s));report.add("points",reportPoints());report.add("houses",reportHouses(s,slots,saved?paid:NO_REWARDS));report.add("levels",reportLevels(s));report.add("mode",reportMode());if(activeBattle!=null)report.add("march",reportMarch(p,s.team==winner,march,pacts));results.put(id,report);
+            List<String> titles=eligible?ledger(p,s):List.of();int pacts=pacts(p);
+            boolean saved=save(id);JsonObject report=new JsonObject();report.addProperty("id",matchId);report.addProperty("outcome",winner<0?"DRAW":s.team==winner?"VICTORY":"BATTLE COMPLETE");report.addProperty("map",Spec.MAPS[map].name());report.addProperty("seconds",seconds);report.addProperty("saved",saved);report.addProperty("eligible",eligible);report.addProperty("gold",saved?earned:0);report.addProperty("xp",saved?p.progression.xp-priorXp:0);report.addProperty("beforeXp",priorXp);report.add("squads",reportSquads(s));report.add("points",reportPoints());report.add("houses",reportHouses(s,slots,saved?paid:NO_REWARDS));report.add("levels",reportLevels(s));report.add("mode",reportMode());if(activeBattle!=null)report.add("march",reportMarch(p,credited,march,pacts));results.put(id,report);
             if(!saved){profiles.put(id,JSON.fromJson(before,Profile.class));standing(id,"Match reward could not be saved. Progress was not changed; check disk space.");continue;}
             String extra=(march!=null&&march.bonusPaid()?" / bonus objective: +"+march.bonusShards()+" "+RosterMath.houseName(march.bonusHouse())+" shards, +"+march.bonusGold()+" gold":"")+(pacts>0?" / "+(pacts==1?"a Pact":pacts+" Pacts")+" earned":"")+(titles.isEmpty()?"":" / new title"+(titles.size()==1?" ":"s ")+String.join(", ",titles));
-            standing(id,(winner<0?"Draw":s.team==winner?"Victory":"Battle complete")+" / +"+earned+" collection gold"+(earned==0?" (reward requires 3 minutes of play)":"")+extra);
+            standing(id,(winner<0?"Draw":s.team==winner?"Victory":"Battle complete")+" / +"+earned+" collection gold"+(!eligible?" (reward requires 3 minutes of play)":percent<100?" (pro-rated: you were seated for "+percent+"% of the match)":"")+extra);
         }
         b.message=(winner<0?"Draw":b.side(winner).name()+" wins")+"! Back to the war council.";headline=b.message;
         for(var p:b.server.getPlayerManager().getPlayerList())if(participants.contains(p.getUuid())){var sq=b.squads.get(p.getUuid());Audio.ending(p,winner,sq==null?-1:sq.team);} // each participant, to his own connection: the victory sting, the defeat sting for the losing side (AudioCues)
