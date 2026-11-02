@@ -38,13 +38,9 @@ def robe(base=2, seed="mr", folds=3):
         r = rng(seed, face, w, h)
         for y in range(h):
             for x in range(w):
-                v = base + lit(face, x, w) + r.choice((0, 0, 0, 0, 0, 0, 1))
-                if face not in ("top", "bottom"):
-                    if x % folds == folds - 1: v -= 1
-                    elif x % folds == 0 and y % 5 == 0: v += 1
+                v = base + lit(face, x, w)
+                if face not in ("top", "bottom") and x % folds == folds - 1: v -= 1   # a long fold
                 g[y][x] = clamp(SEA, v)
-        for _ in range(w * h // 90):
-            g[r.randrange(h)][r.randrange(w)] = BARN[1 + r.randrange(3)]
         return g
     return paint
 
@@ -58,13 +54,9 @@ def torso():
         if face == "front":
             for y in range(1, h):
                 g[y][w // 2 - 1] = SEA[3]; g[y][w // 2] = SEA[4]                      # the placket
-            for y in range(2, h, 3): g[y][w // 2 - 1] = SEA[5]
             for x in range(1, w - 1): g[1][x] = BARN[3 if x % 2 else 4]               # shell-bead necklace
             g[2][w // 2 - 1] = g[2][w // 2] = BARN[4]                                 # its pendant
             for x in range(w): g[h - 2][x] = SEA[4 if x % 2 else 3]                   # sea-blue waist band
-            for x in range(w): g[h - 3][x] = SEA[1]
-        if face == "back":
-            for x in range(w): g[3][x] = SEA[4 if x % 2 else 3]                       # a pale yoke seam
         return g
     return paint
 
@@ -117,7 +109,7 @@ def hem(tier_rows, band_rows, seed="mh", glyph_row=1, ragged=True):
         for x in range(w): g[top - 1][x] = SEA[0] if top > 0 else g[top - 1][x]    # the dark seam above the band
         for y in range(top, h):
             for x in range(w):
-                g[y][x] = clamp(BARN, 3 + (1 if (x + y) % 3 == 0 else 0) - (1 if (x * 2 + y) % 5 == 0 else 0) + r.choice((0, 0, 1)) + (LIT[face] // 2))
+                g[y][x] = clamp(BARN, 3 + (1 if y == top else 0) + (LIT[face] // 2))
         if face in ("front", "back", "left", "right") and band_rows >= 3:
             gy = top + 1
             for k, x0 in enumerate(range(1, w - 1, 4)):
@@ -129,7 +121,7 @@ def hem(tier_rows, band_rows, seed="mh", glyph_row=1, ragged=True):
         if ragged:
             for x in range(w):                                                      # crenulated barnacle edge
                 if r.random() < 0.3: g[h - 1][x] = None
-                elif r.random() < 0.4: g[h - 1][x] = BARN[2]
+                else: g[h - 1][x] = BARN[2]
         return g
     return paint
 
@@ -179,10 +171,8 @@ def hood():
         r = rng("mhd", face, w, h)
         for y in range(h):
             for x in range(w):
-                v = (3 if face in ("back", "left") else 2) + lit(face, x, w) + r.choice((0, 0, 0, 0, 0, 1))
-                if face not in ("top",):
-                    if x % 3 == 2: v -= 1
-                    elif (x * 2 + y) % 7 == 0: v += 1
+                v = 2 + lit(face, x, w)
+                if face != "top" and x % 4 == 3: v -= 1
                 g[y][x] = clamp(SEA, v)
         if face in ("left", "right"):
             for y in range(h): g[y][w - 1] = SEA[4] if y % 2 else SEA[3]            # the pale front edge (w-1 is toward -z or +z by face)
@@ -192,8 +182,6 @@ def hood():
         if face == "back":
             for x in range(w): g[h - 1][x] = SEA[1]
             for y in range(h): g[y][w // 2] = SEA[1]
-        for _ in range(max(1, w * h // 36)):
-            g[r.randrange(h)][r.randrange(w)] = BARN[1 + r.randrange(3)]
         return g
     return paint
 
@@ -223,14 +211,14 @@ def peak():
 def mantle():
     """A shoulder mantle crusted with pale barnacle clusters over deep sea blue."""
     def paint(face, w, h):
-        g = robe(2, "mm", 4)(face, w, h)
+        g = robe(4, "mm", 5)(face, w, h)
         r = rng("mmc", face, w, h)
-        for _ in range(max(3, w * h // 5)):
-            cx, cy = r.randrange(w), r.randrange(h)
-            for dx, dy in ((0, 0), (1, 0), (0, 1)):
-                if 0 <= cx + dx < w and 0 <= cy + dy < h: g[cy + dy][cx + dx] = clamp(BARN, 2 + r.randrange(3) + (1 if face == "top" else 0))
+        if face == "top":
+            for _ in range(4):
+                cx, cy = r.randrange(w - 1), r.randrange(h - 1)
+                for dx, dy in ((0, 0), (1, 0), (0, 1)): g[cy + dy][cx + dx] = BARN[4 if dx + dy == 0 else 3]
         if face not in ("top", "bottom"):
-            for x in range(w): g[h - 1][x] = SEA[4 if x % 2 else 3]
+            for x in range(w): g[h - 1][x] = SEA[2]                                    # the shadowed hem of the mantle
         return g
     return paint
 
@@ -240,7 +228,7 @@ def kelp(seed, hem=2):
         r = rng("mkelp", seed, face, w, h)
         for y in range(h):
             for x in range(w):
-                v = 4 + LIT[face] // 2 + r.choice((-1, 0, 0, 1))
+                v = 4 + LIT[face] // 2
                 if face in ("front", "back") and (x == w // 2 and w > 1): v -= 1
                 if y % 3 == 2 and face in ("front", "back") and x != w // 2: v += 1
                 g[y][x] = clamp(KELP, v)
@@ -348,11 +336,7 @@ def bones():
     for side in ("right", "left"):
         c = -1 if side == "right" else 1
         B.append(Bone(f"{side}_bell", f"{side}_arm", boxes=[Box((-2 + (0 if side == "right" else -1), 3, -2), (4, 5, 4), bell(), dil=0.8)]))
-        B.append(Bone(f"{side}_kelp_cuff", f"{side}_arm", boxes=[Box((-0.5 + (0 if side == "right" else -0.5) + 0.5 * (c > 0) * 0, 8, 1.9), (1, 6, 1), kelp((side, "cuff"), 2))]))
-        B.append(Bone(f"{side}_kelp_hood", "head", boxes=[Box((4.6 * c - 0.5, -2, -2.5), (1, 8, 1), kelp((side, "hood"), 3)),
-                                                         Box((4.6 * c - 0.5, -2, 1.5), (1, 6, 1), kelp((side, "hood2"), 2))]))
-    B.append(Bone("kelp_belt", "body", boxes=[Box((-3.5, -2, -2.7), (1, 9, 1), kelp("belt", 3)), Box((3.2, -2, 2.3), (1, 8, 1), kelp("belt2", 3))]))
-    B.append(Bone("kelp_hem", "root", boxes=[Box((-3.5, 22, -4), (1, 3, 1), kelp("hem", 2)), Box((2.5, 22, -4), (1, 2, 1), kelp("hem2", 1))]))
+        B.append(Bone(f"{side}_kelp_hood", "head", boxes=[Box((4.6 * c - 0.5, -2, -2.5), (1, 8, 1), kelp((side, "hood"), 3))]))
     # team cloth: a diagonal sash over the chest and a barry-wavy tail at the hip
     B.append(Bone("sash", "body", team=True, pivot=(0, -7, 0), rot=(0, 0, 40), boxes=[Box((-4, -1, -2.5), (8, 2, 5), "sash", sheet="cloth")]))
     B.append(Bone("sash_tail", "body", team=True, boxes=[

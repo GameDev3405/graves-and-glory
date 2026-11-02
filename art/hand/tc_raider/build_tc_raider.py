@@ -38,12 +38,11 @@ def oilskin(base=2, seed="os"):
             for x in range(w):
                 v = base + LIT[face] + (lightx(face, x, w) if face not in ("top", "bottom") else 0)
                 if face not in ("top", "bottom"):
-                    if (x * 2 + y) % 7 == 0: v += 1                           # the wet sheen
-                    if x % 4 == 3: v -= 1                                      # a seam
+                    if x % 4 == 3 and y % 5 > 1: v -= 1                        # a long seam, broken
                     if y == 0: v += 1
                 g[y][x] = clamp(SEA, v)
         r = rng(seed, face, w, h)
-        for _ in range(max(1, w * h // 22)):
+        for _ in range(w * h // 70):
             g[r.randrange(h)][r.randrange(w)] = BARN[1 + r.randrange(3)]
         return g
     return paint
@@ -69,9 +68,9 @@ def sleeve():
 
 def arm_painter():
     def paint(face, w, h):
-        g = rows([(0, oilskin(2, "ra")), (5, TG.plate_b(FLESH, 2, "rf"))])(face, w, h)
+        g = rows([(0, oilskin(2, "ra")), (8, TG.plate_b(FLESH, 2, "rf"))])(face, w, h)
         if face not in ("top", "bottom"):
-            for x in range(w): g[4][x] = SEA[4 if x % 2 else 5]                # the sea-blue cuff
+            for x in range(w): g[7][x] = SEA[4]                                  # the sea-blue cuff
         return g
     return paint
 
@@ -97,12 +96,9 @@ def trousers():
         for y in range(h):
             for x in range(w):
                 v = 2 + LIT[face] + (lightx(face, x, w) if face not in ("top", "bottom") else 0)
-                if (x + y) % 4 == 0: v += 1
-                if r.random() < 0.08: v -= 1
                 g[y][x] = clamp(NAVY, v)
         if face not in ("top", "bottom"):
             for x in range(w): g[h - 1][x] = SEA[1 if x % 2 else 2]            # a frayed, stained hem
-            for _ in range(2): g[r.randrange(h - 1)][r.randrange(w)] = BARN[1 + r.randrange(3)]
         return g
     return paint
 
@@ -129,7 +125,7 @@ def belly():
         r = rng("belly", face, w, h)
         for y in range(h):
             for x in range(w):
-                v = 2 + LIT[face] + (lightx(face, x, w) if face not in ("top", "bottom") else 0) + r.choice((-1, 0, 0, 0, 1))
+                v = 3 + LIT[face] + (lightx(face, x, w) if face not in ("top", "bottom") else 0)
                 if face == "front" and x == w // 2 and 0 < y < h - 1: v -= 1   # the line down the belly
                 g[y][x] = clamp(BLOAT, v)
         return g
@@ -194,7 +190,7 @@ def kelp(seed, hem=2):
         r = rng("kelp", seed, face, w, h)
         for y in range(h):
             for x in range(w):
-                v = 3 + LIT[face] // 2 + r.choice((-1, 0, 0, 1))
+                v = 3 + LIT[face] // 2
                 if face in ("front", "back") and (x == w // 2 or w == 1): v -= 1
                 if y % 3 == 2 and face in ("front", "back") and x != w // 2: v += 1
                 g[y][x] = clamp(KELP, v)
@@ -248,7 +244,7 @@ def strand(name, parent, pivot, rot, boxes):
 def bones():
     B = [Bone("root", "")]
     B.append(Bone("body", "root", (0, 12, 0), [Box((-4.5, -12, -2.5), (9, 12, 5), coat())], rot=(HUNCH, 0, 0)))
-    B.append(Bone("belly", "body", boxes=[Box((-3.5, -8, -3.7), (7, 5, 1.2), belly())]))
+    B.append(Bone("belly", "body", boxes=[Box((-2, -8, -3.4), (4, 5, 0.9), belly())]))
     B.append(Bone("head", "body", (0, -12, 0), [Box((-4.5, -8, -4), (9, 8, 8), face_painter_raider())], rot=(-HUNCH * 0.6, 0, 0)))
     # the turtle-shell helmet: a broad dome in three stepped plates and a flared back guard over the nape
     B.append(Bone("helm", "head", tag="helm", boxes=[
@@ -266,7 +262,6 @@ def bones():
     B.append(Bone("skirt", "body", boxes=[Box((-5, -3, -3), (10, 6, 6), skirt(), dil=0.1)]))
     B.append(Bone("belt", "body", boxes=[Box((-4.5, -4, -2.5), (9, 2, 5), belt(), dil=0.5)]))
     B.append(Bone("barnacles", "body", boxes=[
-        Box((1, -9.5, -2.9), (2, 1, 1), barnacle()), Box((2.5, -8.5, -2.9), (1, 1, 1), barnacle()),
         Box((-5.2, -11.5, -1), (1, 2, 2), barnacle()), Box((4.6, -5, 0), (1, 1, 2), barnacle())]))
     B.append(Bone("net", "body", boxes=[Box((-3, -11, 2.6), (6, 4, 2), net())]))
     B.append(Bone("scarf", "body", team=True, boxes=[Box((-4.7, -12.5, -2.7), (9.4, 2, 5.4), "scarf", sheet="cloth")]))
@@ -276,12 +271,9 @@ def bones():
     B.append(strand("kelp_helm", "head", (0, -4, 4.5), (30, 0, 0), [((-2.5, 0, 0), (2, 7, 1)), ((1, 0, 0.4), (2, 9, 1))]))
     for side in ("right", "left"):
         c = -1 if side == "right" else 1
-        B.append(strand(f"kelp_{side}_shoulder", "body", (5 * c, -10.5, 0.5), (26, 0, 8 * c), [((-1, 0, 0), (2, 9, 1))]))
-        B.append(strand(f"kelp_{side}_arm", f"{side}_arm", (-1 if side == "right" else 1, 5, 2), (36, 0, 8 * c), [((-1, 0, 0), (2, 6, 1))]))
+        if side == "left": B.append(strand(f"kelp_{side}_shoulder", "body", (5 * c, -10.5, 0.5), (26, 0, 8 * c), [((-1, 0, 0), (2, 7, 1))]))
         B.append(Bone(f"{side}_wrap", f"{side}_arm", team=True, boxes=[Box((-2 + (0 if side == "right" else -1), 7, -2), (4, 2, 4), "wrap", dil=0.3, sheet="cloth")]))
         B.append(Bone(f"{side}_foot", f"{side}_leg", boxes=[Box((-2.5, 9, -3.5), (5, 3, 5.5), foot())]))
-    B.append(strand("kelp_belt", "body", (-3, -3, 2.5), (24, 0, -4), [((-1, 0, 0), (2, 10, 1))]))
-    B.append(Bone("shin_wrap", "left_leg", boxes=[Box((-2, 6, -2), (4, 3, 4), kelp_wrap(), dil=0.25)]))
     return B
 
 NOTE = ("Tidecaller Drowned Raider (unit identity, Tidecallers): drowned light skirmisher, biped, leaning forward (hunch baked into the bones); "

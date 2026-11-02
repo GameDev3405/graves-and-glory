@@ -24,7 +24,7 @@ from build_tc_tideguard import VERD as SEA, FLESH, BARN, scuff, rng
 SKIN = (128, 128)
 CLOTH = (128, 64)
 
-COAT = ramp("070d1c", "0d1a34", "142a52", "1d3f70", "2b5a92", "4378ad")          # deep sea-navy, wet and salt-faded
+COAT = ramp("0c1830", "16305c", "214c80", "2e6297", "6691b7", "9ab6cc")          # officer's sea blue (Kort 2026-11-02: lighter, toward SEA), lights under the tint rule
 GILT = ramp("241a08", "4a3815", "6f5a26", "96783a", "b89a54", "dcc487")          # tarnished naval gilt, #96783A at the core
 PALE = ramp("2c3a3c", "52666a", "7e9694", "a9bfbb", "cfdcd6", "ecf4ee")          # the drowned face
 HAIR = ramp("1b2531", "37495b", "62788b", "94a8b6", "c4d2db", "eaf1f5")          # silver-blue hair, adrift
@@ -42,15 +42,11 @@ def coat_base(base=3, seed="ac", wear=1):
         r = rng("ac", seed, face, w, h)
         for y in range(h):
             for x in range(w):
-                v = base + lit(face, x, w) + r.choice((-1, 0, 0, 0, 1))
-                if face not in ("top", "bottom"):
-                    if (x * 3 + y) % 8 == 0: v += 1
-                    if x % 4 == 3: v -= 1
+                v = base + lit(face, x, w)                                          # lit faces sit on the light tone 4, shaded sides on vivid tone 3
+                if face not in ("top", "bottom") and x % 4 == 3 and y % 6 > 1: v -= 1   # a few long fold lines
                 g[y][x] = clamp(COAT, v)
-        for _ in range(max(1, w * h * wear // 40)):
-            g[r.randrange(h)][r.randrange(w)] = COAT[1]
-        for _ in range(max(1, w * h // 60)):
-            g[r.randrange(h)][r.randrange(w)] = BARN[1 + r.randrange(2)]
+        for _ in range(w * h * wear // 80):
+            g[r.randrange(h)][r.randrange(w)] = COAT[2]                             # sparse salt-dark stains
         return g
     return paint
 
@@ -70,7 +66,7 @@ def body_coat():
                 wl = 3 if y <= 4 else 2
                 for x in range(wl):
                     for xx in (x, w - 1 - x):
-                        g[y][xx] = SEA[3 if x else 2]
+                        g[y][xx] = SEA[1 if x else 0] if x < wl - 1 or wl == 2 else SEA[1]   # dark sea-blue facings
                 ei = wl                                                             # the gilt edge along the lapel
                 g[y][ei] = GILT[3] if y % 2 else SEA[4]; g[y][w - 1 - ei] = GILT[3] if y % 2 else SEA[4]
             for y in range(2, 5):

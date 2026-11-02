@@ -341,7 +341,7 @@ NOTE = ("Kraken-touched Brute (unit identity, Tidecallers; Epic; ravager entity 
         "with four 8 px kraken tentacles from the jaw (the signature), sea-blue girth strap, breast plate, pauldrons, brow plate and muzzle "
         "strap as fixed accent, a team-colour saddle mantle over the shoulders. Tier I only. No back flag.")
 TC_BRUTE = Troop("tc_brute", SKIN, CLOTH, bones, cloth_painter,
-                 {"rig": "hound", "weapon": "none", "hand": "right", "idleArms": "hang", "portrait": "wide 28"}, tiers=(1,), glow=glow)
+                 {"rig": "hound", "weapon": "none", "hand": "right", "idleArms": "hang", "portrait": "beast 28"}, tiers=(1,), glow=glow)
 def build(): return TC_BRUTE.build()
 def outputs(): return TC_BRUTE.outputs()
 
