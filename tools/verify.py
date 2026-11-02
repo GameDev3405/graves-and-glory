@@ -23,7 +23,16 @@ def game_guard():
     data=subprocess.check_output([shell,'-NoProfile','-Command',"@(Get-CimInstance Win32_Process | Where-Object { $_.Name -match '^java(w)?\\.exe$' } | Select-Object ProcessId,CommandLine) | ConvertTo-Json -Compress"])
     rows=json.loads(data or b'[]'); rows=rows if isinstance(rows,list) else [rows]
     clients=[p for p in rows if any(s in (p.get('CommandLine') or '') for s in ['devlaunchinjector','net.minecraft.client','--gameDir'])]
-    if clients: raise RuntimeError('Minecraft client already running: defer compilation/game work; do not terminate it')
+    # WORKFLOW.md forbids compiling in a checkout with a running client; clients of other checkouts don't block this one.
+    root=str(ROOT).replace(chr(92),'/').lower().rstrip('/')
+    def ours(cmd):
+        cmd=cmd.replace(chr(92),'/').lower(); i=cmd.find(root)
+        while i>=0:
+            if i+len(root)==len(cmd) or cmd[i+len(root)] in '/;" ': return True
+            i=cmd.find(root,i+1)
+        return False
+    clients=[p for p in clients if ours(p.get('CommandLine') or '')]
+    if clients: raise RuntimeError('Minecraft client already running in this checkout: defer compilation/game work; do not terminate it')
 def run(args):
     stamp=datetime.datetime.now().strftime('%Y%m%d-%H%M%S')+'-'+str(os.getpid())
     out=ROOT/'work/verify'/stamp; out.mkdir(parents=True)
