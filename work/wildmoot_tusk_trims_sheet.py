@@ -8,7 +8,7 @@ import render
 IDS = ["wm_tusk", "wm_hound", "wm_hunter", "wm_stalker", "wm_seer", "wm_oldhorn"]
 VIEWS = [(0, 0), (-35, 12), (-90, 0), (180, 0), (145, 12)]
 # self-scores out of 10, set by the artist after reading the sheet
-SCORES = {"wm_tusk tier I": "8 (as built)", "wm_tusk tier II": "8", "wm_tusk tier III": "7.5", "wm_tusk vet (II)": "7", "wm_hound vet (II)": "6.5", "wm_hunter vet (II)": "7", "wm_stalker vet (II)": "7", "wm_seer vet (II)": "7", "wm_oldhorn vet (II)": "7"}
+SCORES = {"wm_tusk tier I": "8 (as built)", "wm_tusk tier II": "8", "wm_tusk tier III": "8 (crown redone)", "wm_tusk vet (II)": "7", "wm_hound vet (II)": "7.5 (bone bands)", "wm_hunter vet (II)": "7", "wm_stalker vet (II)": "7", "wm_seer vet (II)": "7", "wm_oldhorn vet (II)": "7"}
 side = sys.argv[1] if len(sys.argv) > 1 else "crimson"
 dst = sys.argv[2] if len(sys.argv) > 2 else os.path.join(ROOT, "work", "wildmoot-tusk-trims-4x.png")
 rows, labels = [], []
