@@ -138,6 +138,9 @@ final class MotionBody {
     static final double START_W = 0.15, UP_BLEND = 0.45, ACC_HZ = 8, LEAN_GAIN = 0.2, LEAN_MAX = 5, DIP_PER_DEG = 0.12;
     /** Fix r3 (gate 2): a stop's least stepping rate (cycles per second), the sweep (px) a standing foot may keep without a settling step, and the gait's fade (s) once settled. */
     static final double GO_V = 0.25, SETTLE_HZ = 2.0, HOLD_FADE = 0.25;
+    /** Fix r3 (grade r2 item 6): a start from standing begins the first swing at its lift-off (phase offset past the stance),
+     *  and for START_SWING seconds the swing lift follows sin^START_POW so the first step builds instead of snapping up. */
+    static final double START_PSI = 0.500001, START_SWING = 0.4, START_POW = 1.5;
 
     /**
      * G1 (R109): the stride matched to the ground speed. The gait keeps its own phase psi, advanced by the distance travelled
@@ -151,6 +154,7 @@ final class MotionBody {
      * each leg's phase, the duty, the weight and each foot's sweep and lift into the frame.
      */
     static void stride(MotionEngine.Frame f, MotionEngine.State st, Pose out) {
+        st.startAge += f.dt;
         double v = Math.hypot(f.vF, f.vL), run = f.run, sh = f.sh, bp = f.bp;
         double dirF = v > 1e-9 ? f.vF / v : 1, dirL = v > 1e-9 ? f.vL / v : 0;
         double duty = DUTY_WALK + (DUTY_RUN - DUTY_WALK) * run, hF = HALF_WALK + (HALF_RUN - HALF_WALK) * run;
@@ -174,8 +178,9 @@ final class MotionBody {
             st.settleSwing[0] = st.settleSwing[1] = false;
             if (!st.sweepFull && st.w[MotionEngine.W_MOVE] < START_W) {
                 st.sweepFull = true;
-                st.psi = frac(duty / 2 + ((f.seed.variantBias() & 1) == 0 ? 0 : 0.5));
+                st.psi = frac(duty + START_PSI + ((f.seed.variantBias() & 1) == 0 ? 0 : 0.5));
                 st.fresh = true;
+                st.startAge = 0;
             }
         }
         // the phase follows the distance actually travelled this frame along the gait's direction, so a stance foot's sweep
@@ -225,7 +230,7 @@ final class MotionBody {
                 boolean set = st.settleSwing[i];
                 double hEnd = set ? 0 : h, mEnd = set ? 0 : mSw;
                 d = st.sd0[i] * (2 * t3 - 3 * t2 + 1) + st.sm0[i] * mSw * span * (t3 - 2 * t2 + t) + hEnd * (3 * t2 - 2 * t3) + mEnd * span * (t3 - t2);
-                lift = Math.pow(Math.sin(Math.PI * t), LIFT_POW);
+                lift = Math.pow(Math.sin(Math.PI * t), st.startAge < START_SWING ? START_POW : LIFT_POW);
                 st.sd[i] = d;
             }
             st.inSwing[i] = swing;

@@ -77,6 +77,7 @@ public final class MotionEngineCheck {
         run("stance slip", () -> stanceSlip(rig));
         run("corpse ground", () -> corpseGround(rig));
         run("turn step", () -> turnStep(rig));
+        held("run start", MotionEngineCheck::runStart);
         run("wall strikes", MotionEngineCheck::wallStrikes);
         run("zone blocks", MotionEngineCheck::zoneBlocks);
         if (failed > 0) {
@@ -990,6 +991,64 @@ public final class MotionEngineCheck {
         check(fewest >= 2 && worst <= 0.15 && lo >= -0.5,
             String.format(Locale.ROOT, "turn step: fewest steps a foot %d (want 2+), largest plant slide %.3f block (want 0.15 or less), lowest corner %+.2f px (want -0.5 or above)", fewest, worst, lo));
         return String.format(Locale.ROOT, "fewest steps a foot %d, least step peak %.2f px, largest plant slide %.3f block, lowest corner %+.2f px", fewest, least, worst, lo);
+    }
+
+    /**
+     * runStart (fix r3, grade r2 item 6), held: the grader's run segment from standing (MotionGrade's server path: speed eases
+     * v = 0.546 v + 0.454 x 0.2644 block/tick, the client steps a third of the way to each tick). From the first tick at or after
+     * tick 14 whose summed bone rotation change exceeds 10 deg, six ticks each stay at or under 137.6 deg (0.6 of the authored
+     * step) and do not fall by more than 10 deg. Four seeds.
+     */
+    static String runStart() {
+        MotionEngine.Family fam = realSwordShield(new HashMap<>());
+        double worst = 0, drop = 0;
+        StringBuilder seen = new StringBuilder();
+        for (long sn : new long[]{5, 9, 13, 21}) {
+            List<double[]> p = new ArrayList<>();
+            double x = -10, v = 0;
+            for (int i = 0; i < 15; i++) p.add(new double[]{x});
+            for (int i = 0; i < 40; i++) { v = .546 * v + .454 * 0.26442731277533044; x += v; p.add(new double[]{x}); }
+            int n = p.size();
+            double[] cx = new double[n];
+            double ex = p.get(0)[0];
+            for (int t = 0; t < n; t++) { ex += (p.get(t)[0] - ex) / 3; cx[t] = ex; }
+            Drive d = new Drive(MotionMath.seed(sn, sn * 31 + 7));
+            d.grounded = true;
+            d.stance = "run";
+            d.gyaw = -90;
+            var st = new MotionEngine.State();
+            Pose out = new Pose();
+            List<Map<String, double[]>> poses = new ArrayList<>();
+            for (int t = 1; t < n; t++) for (int sub = 1; sub <= 3; sub++) {
+                d.gx = cx[t - 1] + (cx[t] - cx[t - 1]) * sub / 3.0;
+                d.target = Math.min(1, Math.abs(cx[t] - cx[t - 1]) * 20 / 5 * 4);
+                MotionEngine.pose(d.in(), st, fam, out);
+                d.time += 1 / 60.0;
+                d.limbSpeed = MotionMath.approach(d.limbSpeed, d.target, 8, 1 / 60.0);
+                d.limbAngle += d.limbSpeed * 20 / 60.0;
+                if (sub == 3) poses.add(out.snapshot());
+            }
+            int s0 = -1;
+            double[] sums = new double[poses.size()];
+            for (int f = 14; f < poses.size(); f++) {
+                var b = poses.get(f);
+                var c = poses.get(f - 1);
+                for (String bone : b.keySet()) {
+                    double[] q = b.get(bone), r = c.getOrDefault(bone, new double[6]);
+                    for (int ch = 0; ch < 3; ch++) sums[f] += Math.abs(q[ch] - r[ch]);
+                }
+                if (s0 < 0 && sums[f] > 10) s0 = f;
+            }
+            seen.append(" seed ").append(sn).append(':');
+            for (int f = s0; f < s0 + 6; f++) {
+                worst = Math.max(worst, sums[f]);
+                if (f > s0) drop = Math.max(drop, sums[f - 1] - sums[f]);
+                seen.append(String.format(Locale.ROOT, " %.0f", sums[f]));
+            }
+        }
+        check(worst <= 137.6 && drop <= 10,
+            String.format(Locale.ROOT, "run start: largest tick %.1f deg (want 137.6 or less), largest fall %.1f deg (want 10 or less);%s", worst, drop, seen));
+        return String.format(Locale.ROOT, "largest tick %.1f deg, largest fall %.1f deg;%s", worst, drop, seen);
     }
 
     /**

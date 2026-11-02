@@ -192,6 +192,8 @@ public final class MotionEngine {
          * foot target offset (x, lift, z in px) MotionFeet.plant applies. */
         final double[] turnYaw = new double[2], turnU = {-1, -1}, turnFrom = new double[2];
         final double[][] turnOff = new double[2][3];
+        /** Seconds since the last start from standing (MotionBody.stride sets 0 and advances it). */
+        double startAge = Double.POSITIVE_INFINITY;
         double breathPhase, breathRate, flutter, flutterRate, yawRate, yawRateTarget;
         final List<MotionStack.Layer> stances = new ArrayList<>(MAX_LAYERS + 1);
         final List<MotionStack.Track> tracks = new ArrayList<>(MAX_TRACKS + 1);
