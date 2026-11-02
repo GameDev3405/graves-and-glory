@@ -59,6 +59,8 @@ Same launch setup as round 1 (server in `<worktree>/run-server/`, Gradle client 
 | 1 | Siege on Ironhold, full round, rewards | PARTIAL | PASS: see below |
 | 2 | Reconnect hold expires after 2 min | not run | PASS (release at exactly 2400 ticks); 1 major, 1 minor defect |
 | 3 | Mid-match client crash, partial gold | not run | FAIL: crashed player got 0 gold (partial pay exists only for server stop or crash) |
+| 4 | Server restart: lobby, parties, profiles | not run | PASS parties and profiles; open room not kept (minor) |
+| 5 | Rewards persist across reconnect and restart | not run | PASS |
 
 ### R2-1 Siege on Ironhold, natural finish
 Room by SliceAlpha (size 3, map 1, mode siege, fill on), SliceBravo joined, both ready, 10 s countdown, battle with 6 seats (2 humans, 4 bots). Not force-finished: the round ran past its 185 s clock (round length later read 545 s) and ended on its own at 371 s of play with score 3 to 0. Gold Banner (Alpha, team 0) won. Both clients landed on `CampScreen` ("Gold Banner wins! Back to the war council."), result saved and eligible. Server and client profiles agree:
@@ -83,3 +85,13 @@ SliceBravo's own client process was force-killed (`Stop-Process -Force`, no clea
 Reading `Campaign.java` (no change made): `MatchRules.partialGold` pro-rating is only wired to an interrupted match (server stop, or a server crash through the progress checkpoint), not to a player who drops out of a match that finishes normally. That reading explains the result; whether it is intended is a design call.
 
 Defect: major. A player whose client crashes and who does not return in the same round gets no gold, XP, shards or match count for about 46 s played. Reproduce: two humans in a Domination match, force-kill one client at about 45 s, let the other human win or finish the round, read the dropped player's profile in `state-server.json`.
+
+### R2-4 Server restart (clean stop, then start, same world folder)
+Before: Alpha and Bravo in a party (Alpha leader), Alpha's open room (siege, map 1, size 3) with Bravo joined, profiles Alpha 360 gold / 3 matches / 3 wins / 450 XP / gilded 6, Bravo 200 gold / 2 matches / 1 win / 250 XP / gilded 3. The probe `stop` ended the server cleanly; both clients dropped to `DisconnectedScreen`. After a fresh start and `connect` from both clients:
+- Party: intact (same leader, both members). `gravesandglory-parties.json` on disk. PASS.
+- Profiles: identical gold, matches, wins, XP, shards and Renown on server and client. PASS (see item 5).
+- The open room: gone. After the restart both clients have `room=""` and the lobby settings are back to defaults (domination, map 0, size 2). Minor, likely by design since rooms are in memory, but the brief expected the lobby to stay.
+Verdict: PASS for parties and profiles, with the room loss recorded as a minor defect.
+
+### R2-5 Rewards persist across reconnect and restart
+Reconnect: Bravo's profile after the 2 min hold reconnect and again after the force-killed client was relaunched matched the server (200 gold). Alpha's rewards (120 gold per win, +2 shards) survived the restart exactly (360 gold, 450 XP, gilded 6 on disk, server and client). Profile files are in `run-server/Graves and Glory/gravesandglory-test-profiles/` with a `.bak` copy of the previous save. PASS.
