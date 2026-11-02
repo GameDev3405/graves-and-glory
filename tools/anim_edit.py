@@ -18,6 +18,7 @@ import base64
 import json
 import os
 import pathlib
+import shutil
 import subprocess
 import sys
 
@@ -144,7 +145,14 @@ def cmd_open(args):
 
 def launch_it(path, launch):
     if launch:
-        exe = os.environ.get('BLOCKBENCH', 'Blockbench.exe')
+        exe = os.environ.get('BLOCKBENCH') or shutil.which('Blockbench.exe') or shutil.which('blockbench')
+        if not exe:
+            # The Windows installer puts it under the user's Programs folder and leaves it off PATH.
+            default = pathlib.Path(os.environ.get('LOCALAPPDATA', '')) / 'Programs' / 'Blockbench' / 'Blockbench.exe'
+            exe = str(default) if default.is_file() else None
+        if not exe:
+            print('anim_edit: Blockbench not found; set BLOCKBENCH to its .exe, or open the file above by hand')
+            return 1
         subprocess.Popen([exe, str(path)])
     return 0
 
