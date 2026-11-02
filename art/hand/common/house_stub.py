@@ -11,7 +11,7 @@ def write_stub(troop, note):
     """Write art/troops/<tid>.json and <tid>_s1.png from the troop's own build; call before tools/build_skins.py."""
     B, skins, _ = troop.build()
     meta = troop.meta
-    stub = {"troop": troop.tid, "note": note, "rig": "biped", "size": list(troop.skin), "density": 1, "bones": [],
+    stub = {"troop": troop.tid, "note": note, "rig": meta.get("rig", "biped"), "size": list(troop.skin), "density": 1, "bones": [],
             "idleArms": meta.get("idleArms", "hang"), "parts": [],
             "skins": {str(t): "%s_s%d.png" % (troop.tid, t) for t in troop.tiers},
             "weapon": meta["weapon"], "hand": meta.get("hand", "right"), "portrait": meta.get("portrait", "standard")}
@@ -23,5 +23,6 @@ def write_stub(troop, note):
         skins[t].save(os.path.join(folder, "%s_s%d.png" % (troop.tid, t)))
 
 def main(troop, note, argv):
-    if len(argv) > 1 and argv[1] == "install": write_stub(troop, note)
+    if len(argv) > 1 and argv[1] in ("install", "stub"): write_stub(troop, note)
+    if len(argv) > 1 and argv[1] == "stub": print("stub written for", troop.tid); return   # stub only, no build_skins run
     troop.main(argv)

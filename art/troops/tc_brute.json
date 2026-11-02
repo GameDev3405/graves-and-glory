@@ -1,0 +1,19 @@
+{
+ "troop": "tc_brute",
+ "note": "Kraken-touched Brute (unit identity, Tidecallers; Epic; ravager entity on the hound rig, own boxes): a huge drowned beast, low in the quarters and towering at the shoulder, a mottled blue-black hide crusted with barnacle clumps and hung with kelp, a pale tusked maw with four 8 px kraken tentacles from the jaw (the signature), sea-blue girth strap, breast plate, pauldrons, brow plate and muzzle strap as fixed accent, a team-colour saddle mantle over the shoulders. Tier I only. No back flag.",
+ "rig": "hound",
+ "size": [
+  128,
+  128
+ ],
+ "density": 1,
+ "bones": [],
+ "idleArms": "hang",
+ "parts": [],
+ "skins": {
+  "1": "tc_brute_s1.png"
+ },
+ "weapon": "none",
+ "hand": "right",
+ "portrait": "wide 28"
+}
