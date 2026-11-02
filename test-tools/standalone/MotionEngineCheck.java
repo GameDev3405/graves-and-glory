@@ -77,6 +77,7 @@ public final class MotionEngineCheck {
         run("stance slip", () -> stanceSlip(rig));
         run("corpse ground", () -> corpseGround(rig));
         run("wall strikes", MotionEngineCheck::wallStrikes);
+        run("zone blocks", MotionEngineCheck::zoneBlocks);
         if (failed > 0) {
             System.out.println("MotionEngineCheck: " + failed + " checks FAILED");
             System.exit(1);
@@ -469,11 +470,11 @@ public final class MotionEngineCheck {
         List<Clip> attacks = new ArrayList<>();
         for (String a : List.of("sword_shield_thrust", "sword_shield_overhead", "sword_shield_low_cut")) attacks.add(all.get(a));
         Map<String, List<Clip>> hits = new HashMap<>(), deaths = new HashMap<>();
-        java.util.regex.Pattern hit = java.util.regex.Pattern.compile("hit_(head|body|legs)(?:_[0-9]+)?"), block = java.util.regex.Pattern.compile("block(?:_[0-9]+)?");
+        java.util.regex.Pattern hit = java.util.regex.Pattern.compile("hit_(head|body|legs)(?:_[0-9]+)?"), block = java.util.regex.Pattern.compile("block(?:_(head|body|legs))?(?:_[0-9]+)?");
         for (var e : new java.util.TreeMap<>(all).entrySet()) {
             var m = hit.matcher(e.getKey());
             if (m.matches()) hits.computeIfAbsent(m.group(1), k -> new ArrayList<>()).add(e.getValue());
-            else if (block.matcher(e.getKey()).matches()) hits.computeIfAbsent("block", k -> new ArrayList<>()).add(e.getValue());
+            else if ((m = block.matcher(e.getKey())).matches()) hits.computeIfAbsent(m.group(1) == null || m.group(1).equals("body") ? "block" : "block_" + m.group(1), k -> new ArrayList<>()).add(e.getValue());
             else { String d = MotionEngine.deathKey(e.getKey()); if (d != null) deaths.computeIfAbsent(d, k -> new ArrayList<>()).add(e.getValue()); }
         }
         List<Clip> wall = new ArrayList<>();
@@ -486,6 +487,31 @@ public final class MotionEngineCheck {
      * one started in any other stance (or with a raised shield in brace, the shield stance) the plain clip; each wall clip keeps its
      * row's impact tick.
      */
+    /** Task 16: a blocked blow plays its zone's block (block_head, block, block_legs), never mirrored: the board is on the left arm. */
+    static String zoneBlocks() {
+        var fam = realSwordShield(new HashMap<>());
+        String[][] cases = {{"head", "block_head"}, {"neck", "block_head"}, {"body", "block"}, {"legs", "block_legs"}, {"feet", "block_legs"}};
+        int n = 0;
+        for (String[] c : cases) for (float bearing : new float[]{0, 90, -90, 180}) {
+            Drive d = new Drive(MotionMath.seed(3, 5 + n++));
+            d.stance = "hold"; d.shield = true;
+            var st = new MotionEngine.State();
+            Pose out = new Pose();
+            MotionEngine.pose(d.in(), st, fam, out);
+            d.hit = new MotionInput.Hit("slash", c[0], bearing, 1, true, false, d.tick() + 1);
+            String seen = null;
+            for (int f = 0; f < 20 && seen == null; f++) {
+                d.step(1 / 60.0);
+                MotionEngine.pose(d.in(), st, fam, out);
+                var playing = MotionEngine.playing(st, d.time);
+                if (!playing.isEmpty()) seen = playing.get(playing.size() - 1).clip().name();
+            }
+            check(seen != null && (seen.equals(c[1]) || seen.startsWith(c[1] + "_") && seen.substring(c[1].length() + 1).matches("[0-9]+")),
+                "a blocked " + c[0] + " blow from " + bearing + " plays " + seen + ", not " + c[1]);
+        }
+        return n + " blocked blows";
+    }
+
     static String wallStrikes() {
         var fam = realSwordShield(new HashMap<>());
         check(fam.wallAttacks().size() == 3, "three wall strikes: " + fam.wallAttacks().size());

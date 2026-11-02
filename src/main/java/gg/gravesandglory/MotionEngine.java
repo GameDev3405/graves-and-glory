@@ -453,21 +453,24 @@ public final class MotionEngine {
             if (!f.dead && age >= -0.2 && age <= 0.6) {
                 int weight = Math.max(0, Math.min(2, hit.weight()));
                 MotionBody.pulse(st, hit, at, HIT_W_PULSE[weight] * f.seed.amp(), weight);
-                String key = hit.blocked() ? "block" : zone(hit.zone());
+                // Task 16: a blocked blow plays its zone's block (block_head, block for the body, block_legs), else the body's
+                String zk = zone(hit.zone()), key = hit.blocked() ? (zk.equals("body") ? "block" : "block_" + zk) : zk;
                 List<Clip> set = fam.hits().get(key);
+                if (hit.blocked() && (set == null || set.isEmpty())) set = fam.hits().get(key = "block");
                 if (set == null || set.isEmpty()) set = fam.hits().get(key = "body");
                 if (set != null && !set.isEmpty()) {
                     // H1: a seeded variant per hit, never the same one twice running in a zone
-                    int n = set.size(), z = key.equals("head") ? 1 : key.equals("legs") ? 2 : key.equals("block") ? 3 : 0;
+                    int n = set.size(), z = key.equals("head") ? 1 : key.equals("legs") ? 2 : key.startsWith("block") ? 3 : 0;
                     int idx = hitVariant(f.seed.variantBias(), ++st.hitCount, st.lastHitVariant[z], n);
                     st.lastHitVariant[z] = idx;
-                    // R106: a blow from the unit's left plays the mirrored clip
+                    // R106: a blow from the unit's left plays the mirrored clip; never a block, whose board is on the left arm
+                    // (mirrored, the sword arm would take the blow), so a block's side comes from the pulse alone
                     double side = Math.sin(Math.toRadians(finite(hit.bearing())));
-                    List<Clip> mirrored = fam.hitsMirror().get(key);
+                    List<Clip> mirrored = key.startsWith("block") ? null : fam.hitsMirror().get(key);
                     Clip clip = side < -0.33 && mirrored != null && mirrored.size() == n ? mirrored.get(idx) : set.get(idx);
                     // the hit clips are authored front-on: from behind they fade out (none past ~132 degrees) and the
                     // procedural pulse, which flips with the bearing, carries the blow, so a back hit pitches forward
-                    double front = key.equals("block") ? 1 : MotionMath.clamp01(1 + 1.5 * Math.cos(Math.toRadians(finite(hit.bearing()))));
+                    double front = key.startsWith("block") ? 1 : MotionMath.clamp01(1 + 1.5 * Math.cos(Math.toRadians(finite(hit.bearing()))));
                     var tr = new MotionStack.Track(st.ids++, HIT, clip, null, 0, HIT_W_GAIN[weight] * f.seed.amp() * front, at,
                         f.seed.tempo() * HIT_W_TEMPO[weight], clip.impact() < 0 ? HIT_SNAP : clip.impact() / (double) Clip.TICKS);
                     if (tr.time(f.now) < clip.length() - 0.05) MotionStack.begin(st, fam, tr, f);

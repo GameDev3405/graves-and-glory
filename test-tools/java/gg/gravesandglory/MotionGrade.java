@@ -194,7 +194,7 @@ final class MotionGrade extends Phase2Checks.Stage {
             if (cat.equals("attack")) for (int i = 0; i < fam.attackIndex().length; i++) { int k = fam.attackIndex()[i]; if (k >= 0 && k < f2.attacks().size() && (f2.attacks().get(k) == c || k < f2.wallAttacks().size() && f2.wallAttacks().get(k) == c)) { v = i; break; } }
             // Task 16 H1: the engine picks a seeded hit variant from the unit's hit count; primeHit sets the count so the job plays this clip
             if (cat.equals("hit")) for (var e : f2.hits().entrySet()) if (e.getValue().contains(c)) { z = e.getKey(); hi = e.getValue().indexOf(c); hn = e.getValue().size(); break; }
-            if ("block".equals(z)) { z = "body"; blk = true; }
+            if (z != null && z.startsWith("block")) { z = z.equals("block") ? "body" : z.substring(6); blk = true; }
             // Task 16: a death clip is reached by its own blow: its kind (bolt, which has no clip of its own, for the any-kind deaths) and a bearing
             // that leads with its direction (MotionEngine.death: front 0, a side 91 so the side leads the back, back 180)
             if (cat.equals("death")) { String dk = TroopMotion.deathKey(clip); if (dk != null) { String[] p = dk.split("/"); kd = p[0].equals("any") ? "bolt" : p[0];
@@ -441,7 +441,7 @@ final class MotionGrade extends Phase2Checks.Stage {
         if (TroopMotion.STANCES.contains(n)) return "stance";
         if (variants.contains(n)) return "attack";
         if (n.endsWith("_wall") && variants.contains(n.substring(0, n.length() - 5))) return "attack";
-        if (n.matches("hit_(head|body|legs)(_\\d+)?") || n.matches("block(_\\d+)?")) return "hit";
+        if (n.matches("hit_(head|body|legs)(_\\d+)?") || n.matches("block(_(head|body|legs))?(_\\d+)?")) return "hit";
         if (TroopMotion.deathKey(n) != null) return "death";
         return "scene";
     }
@@ -449,7 +449,7 @@ final class MotionGrade extends Phase2Checks.Stage {
         return switch (cat) {
             case "stance" -> "stance-" + n;
             case "attack" -> n.endsWith("_wall") ? "wallstrike-" + n.substring(0, n.length() - 5) : "attack-" + n;
-            case "hit" -> n.startsWith("block") ? "hit-block" : "hit-" + n.split("_")[1];
+            case "hit" -> n.startsWith("block") ? "hit-block" + (n.matches("block_(head|legs).*") ? "-" + n.split("_")[1] : "") : "hit-" + n.split("_")[1];
             case "death" -> { String d = TroopMotion.deathKey(n); int s = d.indexOf('/'); yield "death-" + (s < 0 ? (DIRS.contains(d) ? d : "front") : d.substring(s + 1)); }
             default -> "scene-" + n;
         };
@@ -571,10 +571,10 @@ final class MotionGrade extends Phase2Checks.Stage {
         for (int i = 0; i < variants.size(); i++) if (i < fam.attackIndex().length && fam.attackIndex()[i] >= 0) { String id = keyOf(f2.attacks().get(fam.attackIndex()[i])); states.add(new St("attack-" + variants.get(i).id(), "attack", id, "hold", "hold", i, null, false, 0, keyTicks(id), fam.all().get(id).length())); }
         // Task 16: the wall strikes, each thrown from the wall hold (stance packet wall), over the board
         if (!f2.wallAttacks().isEmpty()) for (int i = 0; i < variants.size(); i++) if (i < fam.attackIndex().length && fam.attackIndex()[i] >= 0) { Clip w = f2.wallAttacks().get(fam.attackIndex()[i]); if (w == f2.attacks().get(fam.attackIndex()[i])) continue; String id = keyOf(w); states.add(new St("wallstrike-" + variants.get(i).id(), "attack", id, "wall", "wall", i, null, false, 0, keyTicks(id), fam.all().get(id).length())); }
-        for (String z : List.of("head", "body", "legs", "block")) {
+        for (String z : List.of("head", "body", "legs", "block", "block_head", "block_legs")) {
             var l = f2.hits().get(z); if (l == null || l.isEmpty()) continue;
-            String clip = keyOf(l.get(0)); boolean blk = z.equals("block");
-            states.add(new St("hit-" + z, "hit", clip, "hold", "hold", -1, blk ? "body" : z, blk, 0, keyTicks(clip), l.get(0).length()));
+            String clip = keyOf(l.get(0)); boolean blk = z.startsWith("block");
+            states.add(new St("hit-" + z.replace('_', '-'), "hit", clip, "hold", "hold", -1, z.equals("block") ? "body" : blk ? z.substring(6) : z, blk, 0, keyTicks(clip), l.get(0).length()));
         }
         for (String n : clipOrder) if (clipCat.get(n).equals("scene")) states.add(new St("scene-" + n, "scene", n, "hold", "hold", -1, null, false, 0, keyTicks(n), fam.all().get(n).length()));
         if (!f2.deaths().isEmpty()) for (int d = 0; d < DIRS.size(); d++) {

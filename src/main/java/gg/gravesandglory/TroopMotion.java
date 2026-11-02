@@ -46,7 +46,7 @@ public final class TroopMotion {
     static final List<String> ARMS=List.of("right_arm","left_arm","right_forearm","left_forearm");
     static final List<String> STANCES=List.of("idle","carry","guard","brace","wall","shield","aim","rest");
     static final Set<String> DIRECTIONS=Set.of("front","back","left","right");
-    private static final Pattern HIT=Pattern.compile("hit_(head|body|legs)(_\\d+)?"),BLOCK=Pattern.compile("block(_\\d+)?");
+    private static final Pattern HIT=Pattern.compile("hit_(head|body|legs)(_\\d+)?"),BLOCK=Pattern.compile("block(?:_(head|body|legs))?(_\\d+)?");
     /** Seconds a scene pose takes to blend in or out. */
     static final double SCENE_BLEND=.25;
 
@@ -108,7 +108,7 @@ public final class TroopMotion {
         for(var e:all.entrySet()){
             String n=e.getKey();Matcher h=HIT.matcher(n);
             if(h.matches())hits.computeIfAbsent(h.group(1),k->new ArrayList<>()).add(e.getValue());
-            else if(BLOCK.matcher(n).matches())hits.computeIfAbsent("block",k->new ArrayList<>()).add(e.getValue());
+            else if((h=BLOCK.matcher(n)).matches())hits.computeIfAbsent(h.group(1)==null||h.group(1).equals("body")?"block":"block_"+h.group(1),k->new ArrayList<>()).add(e.getValue());
             else{String d=deathKey(n);if(d!=null)deaths.computeIfAbsent(d,k->new ArrayList<>()).add(e.getValue());}
         }
         MotionEngine.Family fam=new MotionEngine.Family(family,stances,attacks,wall,hits,deaths);

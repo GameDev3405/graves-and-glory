@@ -441,6 +441,32 @@ def blocks():
     a.k(0.6, root=Z, body=Z, head=Z, left_arm=Z, left_forearm=Z, right_arm=Z, right_forearm=Z)
     a.lag(left_forearm=0.02, right_arm=0.04, right_forearm=0.05)
     out.append(a)
+    # Task 16: a blow caught high snaps the board up over the face, tilted to meet it, and the knees give under its weight
+    # while the head looks up from beneath the rim; then the arm drives it back down to the guard.
+    a = Anim('block_head', 0.55)
+    a.k(0.0, root=Z, body=Z, head=Z, left_arm=Z, left_forearm=Z, right_arm=Z)
+    a.k(0.06, i='linear', root=(0, 0, 0, 0, 0.9, 0.5), body=(1, 5, 0), head=(-3, 0, 0), left_arm=(-32, -6, 0),
+        left_forearm=(-14, 0, 0), right_arm=(3, 0, 3))
+    a.k(0.16, root=(0, 0, 0, 0, 1.3, 0.6), body=(3, 6, 0), head=(2, 0, 0), left_arm=(-22, -4, 0), left_forearm=(-6, 0, 0),
+        right_arm=(4, 0, 4))
+    a.k(0.32, root=(0, 0, 0, 0, 0.4, 0.1), body=(0.5, 1.5, 0), head=(0.5, 0, 0), left_arm=(-4, -1, 0), left_forearm=(-1, 0, 0),
+        right_arm=(1, 0, 1))
+    a.k(0.55, root=Z, body=Z, head=Z, left_arm=Z, left_forearm=Z, right_arm=Z)
+    a.lag(left_forearm=0.02, head=0.03, right_arm=0.04)
+    out.append(a)
+    # A blow caught low drops the board over the shins, the body bowing over it, and the strike knocks it back toward the
+    # knee before the arm lifts it to the guard.
+    a = Anim('block_legs', 0.6)
+    a.k(0.0, root=Z, body=Z, head=Z, left_arm=Z, left_forearm=Z, right_arm=Z)
+    a.k(0.06, i='linear', root=(0, 0, 0, 0, 1.2, 0.4), body=(9, 4, 0), head=(-6, 0, 0), left_arm=(24, -4, 0),
+        left_forearm=(10, 0, 0), right_arm=(-4, 0, 6))
+    a.k(0.18, root=(0, 0, 0, 0, 1.0, 0.9), body=(5, 6, 0), head=(-4, 0, 0), left_arm=(28, -8, 0), left_forearm=(13, 0, 0),
+        right_arm=(-2, 0, 4))
+    a.k(0.36, root=(0, 0, 0, 0, 0.3, 0.2), body=(1, 1.5, 0), head=(-1, 0, 0), left_arm=(5, -1, 0), left_forearm=(2, 0, 0),
+        right_arm=(-0.5, 0, 1))
+    a.k(0.6, root=Z, body=Z, head=Z, left_arm=Z, left_forearm=Z, right_arm=Z)
+    a.lag(left_forearm=0.02, head=0.03, right_arm=0.04)
+    out.append(a)
     return out
 
 
