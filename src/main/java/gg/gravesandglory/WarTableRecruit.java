@@ -156,7 +156,12 @@ final class WarTableRecruit {
         boolean compact = WarTable.compact();
         add("back", WarTable.backPlaque(b -> back()));
         int bannerX = compact ? WarTable.compactOrigin()[0] + COMPACT_BANNER_X : WarTable.railX(800);
-        add("banner", WarTable.plaqueAt(bannerX, 104, "icon-banner", "Banner", "B", 79, 0, b -> screen.page("banner")));
+        // the plaque names the player's own Banner key (Controls), trimmed to the room by the name; an unbound key shows no cap
+        String bannerKey = GravesAndGloryClient.hintShort("banner");
+        bannerKey = UiMath.trimKey(bannerKey, 17, s -> MinecraftClient.getInstance().textRenderer.getWidth(s));
+        boolean capped = !bannerKey.isEmpty() && !HintText.UNBOUND_SHORT.equals(bannerKey);
+        int bannerCap = capped ? UiMath.brassKeyWidth(MinecraftClient.getInstance().textRenderer.getWidth(bannerKey), bannerKey.length()) : 0;
+        add("banner", WarTable.plaqueAt(bannerX, 104, "icon-banner", "Banner", capped ? bannerKey : null, 92 - bannerCap, 0, b -> screen.page("banner")));
         for (var h : RecruitView.houses())
             add("house-" + h.id(), new UiButton(0, BANNER_Y, BANNER_W, BANNER_H, Text.literal(h.name()), b -> chooseHouse(h.id()), (g, x, y, w, bh, hot) -> paintBanner(g, h, x, y, w, bh)));
         for (int i = 0; i < ROWS; i++) {
@@ -336,7 +341,7 @@ final class WarTableRecruit {
             if (target != null && target.visible && target.active) press(target);
             return true;
         }
-        if (key == GLFW.GLFW_KEY_B) { screen.page("banner"); return true; }
+        if (GravesAndGloryClient.banner != null && GravesAndGloryClient.banner.matchesKey(key, -1)) { screen.page("banner"); return true; }
         return false;
     }
 

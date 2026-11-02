@@ -461,6 +461,7 @@ final class WarTablePages {
         else if (w == 80 && h == 24) UiTex.draw(g, "table/btn-vellum-80x24", x, y);
         else if (w == 88 && h == 24) UiTex.draw(g, "table/btn-vellum-88x24", x, y);
         else UiTex.nine(g, "table/btn-vellum-64x24", x, y, w + 1, h + 2);
+        if (b != null && !b.active && !current) DarkUi.disabledVeil(g, x + 1, y + 1, w - 1, h); // a tag that cannot be pressed is veiled as well as sepia (4F.5)
         Text t = figures ? Text.literal(label) : DarkUi.heading(label);
         int line = figures ? 9 : 12, top = y + (h - (figures ? 8 : 12)) / 2, tw = font.getWidth(t), lx;
         if (current) {

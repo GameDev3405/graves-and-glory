@@ -281,6 +281,21 @@ public final class UiMathCheck {
         UiMath.CardRow capsShort = UiMath.cardRow(java.util.List.of("Caps Lock","V","B"),java.util.List.of("Caps","V","B"),orders,ordersShort,mc), threeShort = UiMath.cardRow(java.util.List.of("Right Shift","Left Alt","Page Down"),java.util.List.of("RShift","LAlt","PgDn"),orders,ordersShort,mc);
         check(capsShort.keys().equals(java.util.List.of("Caps","V","B")) && capsShort.words().equals(ordersShort) && capsShort.at().equals(java.util.List.of(10,74,119)) && threeShort.keys().equals(java.util.List.of("R...","L...","P...")) && UiMath.hintRowWidth(threeShort.keys(),ordersShort,UiMath.CARD_ROW_GAP,mc)==145, "a tall card's crowded row: Caps whole; three long keys still give way, ending by x 166");
         check(UiMath.cardRow(java.util.List.of("G","V","B"),java.util.List.of("G","V","B"),orders,ordersShort,mc).at().equals(java.util.List.of(10,58,105)), "the default keys keep the mock's places");
+        // text scale (4F.5): every common window at every GUI Scale 1..6 draws the pages at a whole scale the player's GUI Scale allows, and the
+        // page scale never leaves the compact page (FILL_W x FILL_H) short of room, nor the HUD below the kit scale or above Large's two steps more
+        int[][] windows = {{854,480},{1024,576},{1280,720},{1366,768},{1600,900},{1920,1080},{2560,1440},{3440,1440},{3840,2160}};
+        for (int[] sz : windows) for (int gui = 1; gui <= 6; gui++) {
+            String at = sz[0] + "x" + sz[1] + " at GUI " + gui;
+            int px = UiMath.pixelScale(sz[0], sz[1], gui), pg = UiMath.pageScale(sz[0], sz[1], gui);
+            check(px >= 1 && px <= gui, "pixelScale is 1..GUI Scale at " + at);
+            check(pg >= px && pg <= gui, "pageScale holds between pixelScale and the GUI Scale at " + at);
+            check(-Math.floorDiv(-sz[0], pg) >= UiMath.FILL_W && -Math.floorDiv(-sz[1], pg) >= UiMath.FILL_H, "the page canvas at " + at + " (x" + pg + ") holds the " + UiMath.FILL_W + "x" + UiMath.FILL_H + " compact page");
+            for (int size = UiMath.HUD_COMPACT; size <= UiMath.HUD_LARGE; size++) {
+                int hk = UiMath.hudScale(sz[0], sz[1], gui, size);
+                check(hk >= px && hk <= px + 2, "hudScale of size " + size + " stays within the kit scale and two steps more at " + at);
+            }
+        }
+        check(UiMath.pageScale(2560, 1440, 3) == 3 && UiMath.pageScale(2560, 1440, 2) == 2 && UiMath.pageScale(3840, 2160, 3) == 3, "the 3x War Table scale holds at 1440p and 4K when the GUI Scale is 3");
         if (failed > 0) { System.out.println("UiMathCheck: " + failed + " checks FAILED, " + checks + " passed"); System.exit(1); }
         System.out.println("UiMathCheck: " + checks + " checks passed");
     }

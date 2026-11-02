@@ -105,6 +105,7 @@ final class ArmyCards {
             var c=MinecraftClient.getInstance();selected=c.currentScreen instanceof CampaignLobbyScreen lobby&&lobby.selectedUnit.equals(spec.id());
             int x=getX(),y=getY();DarkUi.frame(g,x,y,width,height);
             if(selected||active&&(isHovered()||isFocused()))g.drawBorder(x+1,y+1,width-2,height-2,DarkUi.GOLD);
+            DarkUi.focus(g,this);
             var h=house(spec);int col=0x33000000|(h==null?0x4c9391:h.accent()&0xffffff);g.fillGradient(x+4,y+4,x+width-4,y+55,col,0x00181820); // the House accent
             var e=portrait(spec);if(e!=null){e.age=c.player==null?0:c.player.age;draw(g,x+width/2,y+52,size(e,22),20,0,e);}
             g.getMatrices().push();g.getMatrices().translate(0,0,100); // as CampScreen.card: the model is drawn at z 50 and writes depth, so an inactive card's dim sits at z 100 and the card's text at z 150
@@ -133,7 +134,7 @@ final class ArmyCards {
         void setUnit(String id){unit=id;var spec=spec(id);setMessage(Text.literal("Slot "+(index+1)+": "+(spec!=null?spec.name():RosterMath.MARKER.equals(id)?"held by the unit before it":"Empty")));setTooltip(Tooltip.of(getMessage()));}
         @Override public void renderButton(DrawContext g,int mx,int my,float delta){
             int x=getX(),y=getY();var c=MinecraftClient.getInstance();var spec=spec(unit);boolean held=RosterMath.MARKER.equals(unit);
-            g.fillGradient(x,y,x+width,y+height,spec!=null?0xff36302b:held?0xff2e2924:0xff19171d,0xff18151b);g.drawBorder(x,y,width,height,isHovered()||isFocused()?DarkUi.GOLD:DarkUi.EDGE);
+            g.fillGradient(x,y,x+width,y+height,spec!=null?0xff36302b:held?0xff2e2924:0xff19171d,0xff18151b);g.drawBorder(x,y,width,height,isHovered()||isFocused()?DarkUi.GOLD:DarkUi.EDGE);DarkUi.focus(g,this);
             g.drawText(c.textRenderer,String.format("%02d",index+1),x+3,y+3,0xff7f735f,false);
             if(spec!=null){g.drawItem(new ItemStack(Registries.ITEM.get(new Identifier(spec.weapon()))),x+width/2-8,y+4);boolean wide=spec.slotWeight()>1;String label=slotLabel(spec,c.textRenderer,width-4);
                 g.drawCenteredTextWithShadow(c.textRenderer,label,x+width/2,y+23,wide?DarkUi.GOLD:DarkUi.PAPER);}
@@ -148,7 +149,7 @@ final class ArmyCards {
         @Override public void renderButton(DrawContext g,int mx,int my,float delta){
             int x=getX(),y=getY();boolean mine=side.id().equals(CampaignClient.profile.bannerColour);
             g.fill(x,y,x+width,y+height,mine?0xff30474a:0xff252f34);g.drawBorder(x,y,width,height,mine||isHovered()||isFocused()?DarkUi.GOLD:0xff455156);
-            DarkUi.sideMark(g,side,x+6,y+7);g.fill(x+17,y+7,x+28,y+14,0xff000000|side.color());
+            DarkUi.focus(g,this);DarkUi.sideMark(g,side,x+6,y+7);g.fill(x+17,y+7,x+28,y+14,0xff000000|side.color());
         }
     }
 }

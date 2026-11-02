@@ -463,6 +463,7 @@ final class WarTableLobby {
         boolean live = b != null && b.active;
         String plate = "table/btn-vellum-88x24";
         UiTex.nine(g, plate, x, y, w + 1, h + 2);
+        if (!live && !on) DarkUi.disabledVeil(g, x + 1, y + 1, w - 1, h); // veiled as well as sepia while it cannot be pressed (4F.5)
         var t = DarkUi.heading(label);
         int tw = font.getWidth(t), lx = x + (w - tw) / 2, ink = live || on ? DarkUi.INK_TEXT : DarkUi.SEPIA;
         g.drawText(font, t, lx, y + 6, ink, false);

@@ -54,7 +54,7 @@ public class UiButton extends ButtonWidget {
         var c = MinecraftClient.getInstance(); var w = c.getWindow();
         hovered = overArt(c.mouse.getX() * w.getScaledWidth() / w.getWidth(), c.mouse.getY() * w.getScaledHeight() / w.getHeight());
         UiCanvas.begin(g);
-        try { paint(g, cx, cy, cw, ch, isHovered() || isFocused()); }
+        try { paint(g, cx, cy, cw, ch, isHovered() || isFocused()); if (DarkUi.keyboardFocus(this)) DarkUi.focusRing(g, cx, cy, cw, ch); } // the ring is the keyboard's alone (4F.5)
         finally { UiCanvas.end(g); }
     }
 }
