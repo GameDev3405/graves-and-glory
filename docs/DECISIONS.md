@@ -47,9 +47,14 @@ SLICE-1 scoping answers (Kort, 2026-10-28; partly superseded by the approval ent
   - Refusals play a deny cue.
   - The doubled back click is dropped.
 - **QA (Q20):**
-  - A stopped or crashed match is void: no rewards, no losses, and armies return to camp.
   - On disconnect, the army waits 60 s, then a bot takes command.
   - `/warp` is ops only.
+  - A stopped or crashed match was void. Superseded 2026-11-02, see below.
+- **QA rulings (Kort, 2026-11-02):**
+  - Stopped or crashed match (I7, I9): players get a partial reward by time played. It is the participation gold (completion gold, or practice gold in Practice) times the share of the round played, rounded down, with no win bonus. No shards, Renown, XP or match record; armies return to camp. A stop pays at once; a crash pays on the next start from a progress file written every 30 s (so up to 30 s of play can be lost).
+  - `/warp` in build mode is ops only, permission level 2 or above (J3). Already true since 2026-11-01.
+  - A disconnected player's slot is held for 2 minutes (H8). After that the reservation is released and the army stays with its bot as an ordinary bot seat that any joiner may take, the owner included. The 60 s bot takeover is unchanged.
+  - The server kit keeps the Iris and Sodium notices and `iris-source.zip`. No change.
 - **Saves (Q21):**
   - All writes are atomic.
   - A bad file falls back to `.bak`, then to defaults, with a warning, and the bad file is kept as `.corrupt`.

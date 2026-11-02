@@ -159,7 +159,7 @@ Profiles are the server's `<uuid>.json`, read once per commander by `Campaign.pr
 | H5 | Party member drops and returns. | Party kept. | HARN `disconnect-keeps-party` |
 | H6 | Quit by the menu versus hard kill of the client process (Task Manager). | Same outcome as H1/H2; server logs no exception. | MANUAL (SIX-PLAYER-TEST-PLAN section 6); LATER for the hard kill with two harness clients |
 | H7 | Rejoin after the match ended. | Back in camp, collection intact, no reward twice. | LATER |
-| H8 | Rejoin time limit. SIX-PLAYER-TEST-PLAN says "within 60 s". | Code in `Battle.leave` shows no timeout; the held army waits while the match runs. Confirm intended behavior with Kort. | GAP (doc and code disagree) |
+| H8 | Rejoin time limit: the slot is held 2 minutes (Kort 2026-11-02). | Rejoin inside 2 minutes reclaims the army (a bot takes command after 60 s). After 2 minutes the reservation is released; the army stays with its bot and any joiner, the owner included, may take the seat. | AUTO `MatchRulesCheck` (rule and wiring); HARN case LATER |
 | H9 | Host (LAN/single-player) quits. | Guests are disconnected cleanly; no hang. | HARN `host-stop-disconnects-cleanly` |
 | H10 | Network drop (cable or Tailscale down) rather than a clean quit. | Server times the client out, then H1; rejoin works. | MANUAL |
 | H11 | Same account joins twice. | Second login is refused by vanilla; no duplicate commander. | MANUAL |
@@ -174,9 +174,9 @@ Profiles are the server's `<uuid>.json`, read once per commander by `Campaign.pr
 | I4 | Parties written to disk. | Two members survive on disk; file readable. | HARN `two-member-disk-persistence`, `disk-read` |
 | I5 | Map cache marker (`gravesandglory-layout.json`): restart with an unchanged map. | Arena is not rebuilt. | AUTO `LayoutMarkerCheck` |
 | I6 | Change the landmarks or margin revision. | Arena rebuilds once on next start. | AUTO `LayoutMarkerCheck` |
-| I7 | Clean `stop` mid-match. | Server stops without error; planted banners and clouds are gone; no match record is resumed. Whether the match ends or is voided is not specified (SIX-PLAYER-TEST-PLAN: "any other outcome needs Kort's call"). | MANUAL; GAP: no automated mid-match stop and no written rule on rewards for an interrupted match |
+| I7 | Clean `stop` mid-match. | Server stops without error; planted banners and clouds are gone; no match record is resumed. Each seated player gets the participation gold pro-rated by the share played, no win bonus (Kort 2026-11-02). | AUTO `MatchRulesCheck` (rule and wiring); MANUAL for the live stop |
 | I8 | Kill only the server java process (crash) in camp; restart. | World loads without regenerating; profile loads. Saves go through a temp file, an atomic move and a `.bak`, so a torn write must not occur. | MANUAL (Kort, never the builder); LATER for the torn-write case |
-| I9 | Crash mid-match; restart. | Camp state sane; no ghost units; rewards not granted for the lost match (confirm rule). | MANUAL; GAP (same as I7) |
+| I9 | Crash mid-match; restart. | Camp state sane; no ghost units; the next start pays the same pro-rated share from the last 30 s checkpoint (`match-progress.json`), no win bonus (Kort 2026-11-02). | AUTO `MatchRulesCheck` (wiring); MANUAL for the live crash |
 | I10 | Corrupt `gravesandglory-parties.json`; start. | Startup stops with "Party data could not be read; original and .bak are preserved"; originals untouched. | LATER |
 | I11 | Delete `gravesandglory-layout.json`. | Arena rebuilds; no crash. | LATER |
 | I12 | Back up the world, restore on a second folder, start. | Same profiles and maps. | MANUAL (SIX-PLAYER-TEST-PLAN section 3, step 5) |
@@ -185,13 +185,13 @@ Profiles are the server's `<uuid>.json`, read once per commander by `Campaign.pr
 
 ## J. Permissions and abuse
 
-The mod registers no player commands outside build mode. In `BuildMode` (only when started with `-Dgg.build=<camp|map id>`): `/warp`, `/backup` and `/map` need op level 2 (`/warp` has no `requires` and is open to everyone; check intent).
+The mod registers no player commands outside build mode. In `BuildMode` (only when started with `-Dgg.build=<camp|map id>`): `/warp`, `/backup` and `/map` need op level 2 (`/warp` also needs level 2 (Kort 2026-11-02)).
 
 | ID | Steps | Expected | Check |
 |---|---|---|---|
 | J1 | Kit `server.properties` and a normal match server. | No `-Dgg.build`; no build commands exist; no player has op unless Kort grants it. | MANUAL (also B9 for the file) |
 | J2 | Build mode: non-op runs `/backup` and `/map`. | Refused. | LATER (needs a build-mode server) |
-| J3 | Build mode: non-op runs `/warp`. | Check whether open access is intended (no `requires`). | GAP: confirm with Kort; builder server only |
+| J3 | Build mode: non-op runs `/warp`. | Refused: `/warp` needs permission level 2 (Kort 2026-11-02; already true). | AUTO `MatchRulesCheck`; builder server only |
 | J4 | Non-whitelisted player on a whitelisted server (`white-list=true`, `enforce-whitelist=true` on the builder). | Refused by vanilla. | MANUAL |
 | J5 | Non-host sends host-only lobby actions (map, mode, bot fill, hand-over). | Refused with the "Only an idle room host" messages. | AUTO `LobbyRulesCheck` |
 | J6 | Packet abuse: oversized or malformed profile (over 16000), tactical packet with bad group/formation strings, order from a commander for another army. | Ignored or clamped; no exception; no state change. | LATER (profile size and import gate by D19/D20; `tactical` handler has no direct check) |
@@ -244,16 +244,19 @@ Ordered by value for the 1.0 exit.
 1. **Server kit contents (B7 to B10, C1 to C6).** Nothing tests `tools/export_server.py`. A Python test with fixture files should assert: the allowlist, no `eula.txt` anywhere, `start-server.ps1` refuses without `eula=true` and without the launcher, the pinned URL and SHA-256 in `setup-server.ps1`, and the `server.properties` values. This also protects the rule that the kit never supplies an EULA.
 2. **Migration end to end on a real server (D16 to D18).** Standalone checks prove the transforms; no harness run loads a v1 or v2 file from `gravesandglory-profiles/` on a server restart. Add a fixture-driven harness run using the existing `profile-v1-*.json` files and a hand-made v2 file. Also confirm the `partial` and `cache` fixtures are exercised.
 3. **Dedicated import gate and size limit (D19, D20, J6).** `importAllowed` and the 16000-character limit have no check. Extract the decision into a small pure function and add a standalone check.
-4. **Interrupted match rules (I7, I9, H8).** No written rule for rewards when a match is stopped, crashed or abandoned, and no check. Needs a decision from Kort first, then a harness case. Also resolve the "within 60 s" reconnect wording against the code.
+4. **Interrupted match rules (I7, I9, H8).** Ruled 2026-11-02 (partial reward by time played; 2-minute slot hold) and covered by `MatchRulesCheck`. A harness case that stops or kills a live match is still open.
 5. **Hard failure and torn writes (H6, I8, I10, I11, D21).** Profile save is atomic with a `.bak`, but no check kills the process mid-save, fills the disk, or corrupts `gravesandglory-parties.json` and asserts the start-up message.
 6. **No-mod client at login (F7)** and **wrong level name warning (C11).** Add a harness case or a log assertion on a headless server whose `level-name` is wrong.
 7. **Reward and bot rules (K2, K7).** Reward granted once per participant across win, loss, quit and rematch; bots never rewarded. Only the visitor side is covered.
-8. **Build-mode commands (J2, J3).** `/warp` has no permission requirement; confirm intent, then add a command-permission check if the builder is part of release.
+8. **Build-mode commands (J2, J3).** `/warp` is ops only (ruled 2026-11-02, `MatchRulesCheck`); J2 still needs a build-mode server run.
 9. **Server status probe (C8)** is not part of any check; wire it to `verify.py` against a headless harness server only if that run is made routine.
 10. **Doc drift:** `docs/SETUP.md` says 15 standalone checks; there are 20. `SERVER-README.txt` and `SIX-PLAYER-TEST-PLAN.md` give different max-players (16 versus 6 [A]); decide which the release recommends.
 
 ## Questions for Kort
 
-1. What happens to rewards and the match when the server is stopped or crashes mid-match (I7, I9)? The six-player plan leaves it to you.
-2. Should `/warp` in build mode be open to every player (J3)? It is the only build command without an op requirement.
-3. Is there a reconnect time limit, or does the held army wait until the match ends (H8)?
+All three answered by Kort on 2026-11-02, plus the Iris and Sodium kit notices (kept):
+
+1. I7, I9: a stopped or crashed match pays a partial reward, the participation gold pro-rated by the share played, no win bonus.
+2. J3: `/warp` is ops only (level 2 or above).
+3. H8: a disconnected player's slot is held 2 minutes, then released.
+4. The server kit keeps the Iris and Sodium notices and `iris-source.zip`.

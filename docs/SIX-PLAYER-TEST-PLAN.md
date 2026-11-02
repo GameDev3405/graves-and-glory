@@ -71,7 +71,7 @@ The builder lives in `C:\GGBuild` (task `GGBuilderServer`, port 25570). Leave it
 Run folder `work/six-player/<date>-<jar-sha8>/`: `run.md` (who, hardware, times), logs named by player, samples. Do not commit bulk logs; summarize in docs only.
 
 ## 6. Reconnect and restart tests
-- **Reconnect:** mid-match one player quits and rejoins within 60 s; another drops hard (kill client). Expect same side, House, class; no duplicate unit or reward; no server error.
+- **Reconnect:** mid-match one player quits and rejoins within 2 minutes (the slot is then released); another drops hard (kill client). Expect same side, House, class; no duplicate unit or reward; no server error.
 - **Seats:** [A] a leaving player's seat goes to a bot; a rejoin reclaims it.
 - **Restart:** clean `stop` in lobby, and mid-match. [A] a mid-match restart may end the match; lobby/profile state must survive. Any other outcome needs Kort's call.
 - **Crash:** kill only the `C:\GGMatch` java process, never the builder's; check world integrity after restart.
