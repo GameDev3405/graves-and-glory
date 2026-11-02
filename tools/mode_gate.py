@@ -3,14 +3,24 @@
 
     python tools/mode_gate.py <results.csv> <mode>
 
-Prints `mode_gate <mode> matches=<N> dawn=<P>% <pass|fail>` (plus ` aborted=<A>` when A>0), a `stages` line,
-then one reason line per failed check. Exit 0 pass, 1 fail, 2 unusable input (message on stderr).
+Modes: siege, domination, convoy. Prints `mode_gate <mode> matches=<N> dawn=<P>% <pass|fail>` (plus ` aborted=<A>` when A>0),
+one or two summary lines, then one reason line per failed check. Exit 0 pass, 1 fail, 2 unusable input (message on stderr).
 Rows with winner=aborted are left out of every count; rows of another mode are skipped.
 """
 import csv
 import sys
 
-STAGE_COLUMNS = ("winner", "mode", "stage", "gateBlows")
+# Columns every mode needs, and the ones each checker reads on top (results.csv of BotSimulation).
+BASE_COLUMNS = ("winner", "mode")
+MODE_COLUMNS = {
+    "siege": ("stage", "gateBlows"),
+    "domination": ("dawnScore", "duskScore"),
+    "convoy": ("checkpoints", "idleMax"),
+}
+# Draft bands (docs/drafts/bot-quality-targets.md and the Convoy spec's sim gate); Kort edits them there.
+WIN_MIN, WIN_MAX = 0.3, 0.7
+CONVOY_MIN_CHECKPOINTS = 1.5
+CONVOY_MAX_STALL_SECONDS = 60
 
 
 def check_siege(rows):
@@ -32,7 +42,44 @@ def check_siege(rows):
     return reasons, summary
 
 
-CHECKERS = {"siege": check_siege}
+def check_domination(rows):
+    """Dawn takes 30%-70% of the matches (a draw counts half), and no match ends with both scores at 0 (the bots never took a point)."""
+    n = len(rows)
+    wins = sum(1 for r in rows if r["winner"] == "dawn")
+    draws = sum(1 for r in rows if r["winner"] == "draw")
+    share = wins + 0.5 * draws
+    reasons = []
+    if not WIN_MIN * n <= share <= WIN_MAX * n:
+        reasons.append("dawn won %g of %d (draws count half), outside 30%%-70%%" % (share, n))
+    dead = sum(1 for r in rows if float(r["dawnScore"] or 0) + float(r["duskScore"] or 0) <= 0)
+    if dead:
+        reasons.append("%d match(es) ended with both scores at 0" % dead)
+    mean = sum(float(r["dawnScore"] or 0) + float(r["duskScore"] or 0) for r in rows) / n
+    return reasons, ["draws %d" % draws, "mean total score %.1f" % mean]
+
+
+def check_convoy(rows):
+    """The escort (dawn) wins 30%-70%, the wagon passes at least 1.5 checkpoints a match on average, and no match stalls it (Idle or
+    Rolling back with two or more escort groups alive) for more than 60 s."""
+    n = len(rows)
+    wins = sum(1 for r in rows if r["winner"] == "dawn")
+    reasons = []
+    if not WIN_MIN * n <= wins <= WIN_MAX * n:
+        reasons.append("the escort won %d of %d, outside 30%%-70%%" % (wins, n))
+    checkpoints = [int(float(r["checkpoints"])) for r in rows]
+    mean = sum(checkpoints) / n
+    if mean < CONVOY_MIN_CHECKPOINTS:
+        reasons.append("mean checkpoints %.2f is under %.1f" % (mean, CONVOY_MIN_CHECKPOINTS))
+    stalls = [int(float(r["idleMax"] or 0)) for r in rows]
+    stalled = sum(1 for v in stalls if v > CONVOY_MAX_STALL_SECONDS)
+    if stalled:
+        reasons.append("%d match(es) stalled the wagon over %d s (longest %d s)" % (stalled, CONVOY_MAX_STALL_SECONDS, max(stalls)))
+    summary = ["checkpoints " + " ".join("%d=%d" % (k, checkpoints.count(k)) for k in sorted(set(checkpoints))),
+               "mean checkpoints %.2f" % mean, "longest stall %d s" % max(stalls)]
+    return reasons, summary
+
+
+CHECKERS = {"siege": check_siege, "domination": check_domination, "convoy": check_convoy}
 
 
 def fail_input(msg):
@@ -49,7 +96,7 @@ def main(argv):
     try:
         with open(path, newline="", encoding="utf-8") as f:
             reader = csv.DictReader(f)
-            missing = [c for c in STAGE_COLUMNS if c not in (reader.fieldnames or [])]
+            missing = [c for c in BASE_COLUMNS + MODE_COLUMNS[mode] if c not in (reader.fieldnames or [])]
             if missing:
                 return fail_input("missing columns: " + ", ".join(missing))
             all_rows = list(reader)
