@@ -19,6 +19,7 @@ from mapengine.terrain import NO_WATER, heightfield
 SCALE = 2        # px a block in top.png
 NOTE_SCALE = 4   # px a block in notes/<id>.png
 NOTE_PAD = 16    # blocks around a note's radius in its crop
+GRID = 50        # blocks between grid lines in the pictures
 TOP_KEYS = ('name', 'width', 'depth', 'baseY', 'brief')
 
 DRAFT_RULES = """\
@@ -152,6 +153,11 @@ def render(d, f, scale, window=None, base=None):
     base = _base_colors(f) if base is None else base
     cv = _Canvas(base[z0:z1, x0:x1], x0, z0, scale)
     numbers = note_numbers(d)
+    img = cv.img  # a faint line every GRID blocks, so positions can be read off the picture
+    for gx in range((x0 + GRID - 1) // GRID * GRID, x1, GRID):
+        img[:, (gx - x0) * scale] = img[:, (gx - x0) * scale].astype(np.uint16) * 3 // 4
+    for gz in range((z0 + GRID - 1) // GRID * GRID, z1, GRID):
+        img[(gz - z0) * scale, :] = img[(gz - z0) * scale, :].astype(np.uint16) * 3 // 4
     order = ('zone', 'hill', 'river', 'road', 'point', 'spawn', 'note')
     for kind in order:
         for o in d['objects']:
@@ -169,13 +175,13 @@ def render(d, f, scale, window=None, base=None):
                 cv.dot(*cv.px(o['x'], o['z']), MAGENTA if prop else WHITE, scale)
             elif kind == 'spawn':
                 px, pz = cv.px(o['x'], o['z'])
-                cv.dot(px, pz, DARK, 3 * scale // 2 + 1)
-                cv.dot(px, pz, MAGENTA if prop else TEAM.get(o['team'], WHITE), 3 * scale // 2)
+                cv.dot(px, pz, DARK, 4 * scale + 1)
+                cv.dot(px, pz, MAGENTA if prop else TEAM.get(o['team'], WHITE), 4 * scale)
             elif kind == 'note':
                 cv.ring(o['x'], o['z'], o['radius'], YELLOW)
                 px, pz = cv.px(o['x'], o['z'])
-                cv.dot(px, pz, DARK, 6 + 2 * len(str(numbers[o['id']])))
-                cv.number(numbers[o['id']], px, pz, YELLOW)
+                cv.dot(px, pz, DARK, 9 + 6 * len(str(numbers[o['id']])))
+                cv.number(numbers[o['id']], px, pz, YELLOW, 4)
     return cv.img
 
 
@@ -196,7 +202,8 @@ def brief_text(d):
     for o in notes:
         lines.append(f"{numbers[o['id']]}. `{o['id']}` at ({o['x']}, {o['z']}), radius {o['radius']}: {o['text'].strip()}")
     lines += ['', '## Pictures', '',
-              f'`top.png` is the whole canvas at {SCALE} px a block, north up, x to the right. Green to grey is '
+              f'`top.png` is the whole canvas at {SCALE} px a block, north up, x to the right, with a faint grid line '
+              f'every {GRID} blocks. Green to grey is '
               'ground from low to high, blue is water, tan is road. White rings are capture points, orange and '
               'violet squares the dawn and dusk spawns. Thin lines are the outlines of hills (yellow), zones '
               '(pale blue), rivers and roads. Magenta dashed shapes are AI proposals not yet reviewed.', '',
