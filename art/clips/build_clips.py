@@ -579,6 +579,8 @@ def death(name, length, keys, settle_lift=0.0):
 
 def deaths():
     out = []
+    # r3b: the face-down lies (fwd, stab, arrow) bend a shin up off the ground so the knight's boot toe and knee plate
+    # stay on the ground line with the bare rig (within 0.3 px either way; the corpse-ground check holds 0.32).
     # Stab: the blade goes in, he folds round it with both hands at the wound; the legs go and he drops to his knees;
     # sways there, then pitches forward onto his face.
     out.append(death('death_stab', 1.7, [
@@ -599,9 +601,9 @@ def deaths():
                     left_arm=(-130, -60, 50), left_forearm=(-40, 0, 0), right_leg=(4, 0, 4), right_shin=(30, 0, 0),
                     left_leg=(0, 0, -4), left_shin=(36, 0, 0)), (0, 24, 2), 'linear'),
         (1.44, pose(root=(84, 0, 4), body=(0, 0, 0), head=(-30, 20, 0), right_forearm=(-30, 0, 0), left_arm=(-117, -73, 68), left_forearm=(-52, 0, 0),
-                    right_shin=(38, 0, 0), left_shin=(42, 0, 0)), (0, 24, 2), 'catmullrom'),
+                    right_shin=(56, 0, 0), left_shin=(74, 0, 0)), (0, 24, 2), 'catmullrom'),
         (1.7, pose(root=(86, 0, 4), body=(-4, 0, 0), head=(-34, 18, 0), right_forearm=(-34, 0, 0), left_arm=(-117, -73, 68),
-                   left_forearm=(-55, 0, 0), right_shin=(34, 0, 0), left_shin=(38, 0, 0)), (0, 24, 2), 'catmullrom'),
+                   left_forearm=(-55, 0, 0), right_shin=(60, 0, 0), left_shin=(80, 0, 0)), (0, 24, 2), 'catmullrom'),
     ]))
 
     def topple(name, length, axis, sign, about, extra, kind_note=''):
@@ -656,7 +658,7 @@ def deaths():
         bounce=pose(body=(-2, 0, 0), head=(-18, 0, 0), right_shin=(34, 0, 0), left_shin=(30, 0, 0)),
         lie=pose(body=(-8, 0, 0), head=(-36, 14, 0), right_arm=(-160, 0, 24), right_forearm=(-34, 0, 0), right_hand=Z,
                  left_arm=(-110, -72, 43), left_forearm=(-46, 0, 0), right_leg=(2, 0, 4), right_shin=(34, 0, 0),
-                 left_leg=(0, 0, -3), left_shin=(40, 0, 0)))
+                 left_leg=(-10, 0, -3), left_shin=(80, 0, 0)))
 
     def side(s):
         """Fall to the troop's right (s=1, the blow from its left) or left (s=-1). The near arm goes out to catch the fall."""
@@ -780,7 +782,7 @@ def deaths():
         (1.25, pose(root=(54, 0, -30), body=(10, 0, 0), head=(10, 0, 10), left_arm=(-110, 0, -40), left_forearm=(-20, 0, 0),
                     right_leg=(-20, 0, 4), right_shin=(60, 0, 0), left_leg=(-10, 0, 0), left_shin=(60, 0, 0)), (0, 24, -2), 'catmullrom'),
         (1.42, pose(root=(86, 0, -40), body=(-4, 0, -26), head=(-24, 12, -14), right_arm=(-148, 0, 90), right_forearm=(-34, 0, 0),
-                    right_hand=Z, left_arm=(-69, 44, -120), left_forearm=(-25, 0, 0), right_leg=(-24, 0, 4), right_shin=(50, 0, 0),
+                    right_hand=Z, left_arm=(-69, 44, -120), left_forearm=(-25, 0, 0), right_leg=(-24, 0, 4), right_shin=(80, 0, 0),
                     left_shin=(36, 0, 0)), (0, 24, -2), 'linear'),
         (1.54, pose(root=(82, 0, -38), body=(-5, 0, -28), head=(-28, 12, -18)), (0, 24, -2), 'catmullrom'),
         (1.8, pose(root=(84, 0, -40), body=(-6, 0, -30), head=(-30, 12, -20), right_arm=(-148, 0, 90)), (0, 24, -2), 'catmullrom'),
