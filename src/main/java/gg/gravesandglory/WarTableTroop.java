@@ -156,7 +156,7 @@ final class WarTableTroop {
     }
 
     /** Back to the recruit page on this troop's House, the troop selected (the recruit page reads CampScreen.troop once); leaving ends a reveal. */
-    void back() { screen.troop = troop; screen.page("recruit"); }
+    void back() { UiSounds.back(); screen.troop = troop; screen.page("recruit"); }
 
     /** Hands a command to the server through the screen's throttle; recorded when it goes. Returns whether it went. */
     boolean send(String cmd) {

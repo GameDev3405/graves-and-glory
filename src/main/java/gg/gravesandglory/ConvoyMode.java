@@ -235,8 +235,7 @@ public final class ConvoyMode extends BattleMode {
         if (through()) {
             finished = true;
             say(b, "The convoy is through");
-            b.campaign.finish(ESCORT);
-            b.world.playSound(null, BlockPos.ORIGIN, SoundEvents.UI_TOAST_CHALLENGE_COMPLETE, SoundCategory.MASTER, 2, 1);
+            b.campaign.finish(ESCORT); // the victory and defeat stings play from Campaign.finish
         }
     }
 
@@ -253,14 +252,15 @@ public final class ConvoyMode extends BattleMode {
     void feed(GravesAndGlory.Battle b, String was) {
         if (state.equals(ModeMath.MOVING)) {
             if (!was.equals(ModeMath.MOVING)) movingSince = b.time;
-            if (!everMoved) {everMoved = true; say(b, "The wagon rolls");}
+            if (!everMoved) {everMoved = true; say(b, "The wagon rolls"); Audio.all(b, AudioCues.Cue.CONVOY_ROLL, "wagon");}
         }
         if (state.equals(ModeMath.CONTESTED) && was.equals(ModeMath.MOVING) && movingSince >= 0 && b.time - movingSince >= STOPPED_AFTER && b.time - lastStopped >= STOPPED_EVERY) {
             lastStopped = b.time;
             say(b, "The wagon is stopped");
+            Audio.all(b, AudioCues.Cue.CONVOY_STOP, "wagon");
         }
         boolean rolling = state.equals(ModeMath.ROLLBACK) && distance > floor() + 1e-6;
-        if (rolling && !wasRolling) say(b, "The wagon rolls back");
+        if (rolling && !wasRolling) {say(b, "The wagon rolls back"); Audio.all(b, AudioCues.Cue.CONVOY_ROLLBACK, "wagon");}
         if (rolling) {rolledBack = true; if (b.campaign.bonusTracker != null) b.campaign.bonusTracker.rolled();}
         wasRolling = rolling;
     }
@@ -271,7 +271,7 @@ public final class ConvoyMode extends BattleMode {
         b.roundSeconds += CHECKPOINT_SECONDS;
         for (var s : b.squads.values()) if (s.seated && s.team == ESCORT) s.earn(CHECKPOINT_GOLD);
         say(b, FeedLines.teamShort(Spec.FACTIONS[ESCORT].name()) + " reaches " + stopNames[index]);
-        b.world.playSound(null, BlockPos.ORIGIN, SoundEvents.ENTITY_PLAYER_LEVELUP, SoundCategory.MASTER, 1, 1);
+        Audio.all(b, AudioCues.Cue.CONVOY_CHECKPOINT, "checkpoint");
     }
 
     static void say(GravesAndGlory.Battle b, String text) {

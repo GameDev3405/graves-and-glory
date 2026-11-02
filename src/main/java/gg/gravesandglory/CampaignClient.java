@@ -111,7 +111,7 @@ public final class CampaignClient {
     static void begin(MinecraftClient c){
         if(c.player==null||c.world==null||camera!=null)return;
         frameMs.clear();lastFrame=0;previous=c.options.getPerspective();previousHud=c.options.hudHidden;c.options.hudHidden=false;c.options.setPerspective(Perspective.THIRD_PERSON_BACK);camera=new ArmorStandEntity(c.world,c.player.getX(),c.player.getY()+2,c.player.getZ());camera.setInvisible(true);c.setScreen(null);
-        sound(c,"battle_intro",.8f);
+        sound(c,"battle_intro",AudioCues.Cue.BATTLE_INTRO.volume);
     }
     static void sound(MinecraftClient c,String id,float volume){if(c.player!=null)c.player.playSound(net.minecraft.registry.Registries.SOUND_EVENT.get(new net.minecraft.util.Identifier("gravesandglory",id)),SoundCategory.MASTER,volume,1);}
     static void tick(MinecraftClient c){

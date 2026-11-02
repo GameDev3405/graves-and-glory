@@ -167,7 +167,7 @@ final class WarTableLobby {
             b.active = idle;
         }
         String label = readyLabel();
-        var ready = add("ready", new UiButton(sx + (SHEET_W - 240) / 2, sy + READY_Y, 240, 40, Text.literal(label), b -> send("social:ready"), (g, x, y, w, h, hot) -> plate(g, "ready", readyLabel(), !myReady(), x, y)));
+        var ready = add("ready", new UiButton(sx + (SHEET_W - 240) / 2, sy + READY_Y, 240, 40, Text.literal(label), b -> { UiSounds.toggled(!myReady()); send("social:ready"); }, (g, x, y, w, h, hot) -> plate(g, "ready", readyLabel(), !myReady(), x, y)));
         ready.active = idle && !choosing && houseRefusal().isEmpty();
         var modes = modes();
         for (int i = 0; i < modes.size(); i++) {
@@ -219,7 +219,7 @@ final class WarTableLobby {
         return myReady() ? "Stand down" : "Ready";
     }
 
-    void back() { screen.page("home"); }
+    void back() { UiSounds.back(); screen.page("home"); }
 
     boolean send(String cmd) {
         if (!screen.action(cmd)) return false;

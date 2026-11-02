@@ -341,7 +341,7 @@ final class ArmouryTab {
             if (pressable) {
                 sentAt = CampaignClient.acceptedStates; sentUntil = System.currentTimeMillis() + 1500; // a second press waits for the next state packet, which shows the buy
                 tab.note = ""; send(command());
-            } else { tab.note = reason(); tab.noteUntil = System.currentTimeMillis() + 4000; tab.noteSerial = CampaignClient.noticeSerial; }
+            } else { UiSounds.deny(); tab.note = reason(); tab.noteUntil = System.currentTimeMillis() + 4000; tab.noteSerial = CampaignClient.noticeSerial; }
         }
         @Override public void playDownSound(SoundManager sounds) { if (pressable) super.playDownSound(sounds); }
         /** An open buy is a vellum tag in ink; a greyed one a flat vellum box with a ruled edge in sepia; a bought one the paper with a check in ink; a locked one the paper with a padlock in sepia. Hovered or focused, an open tag underlines its first line and a greyed box darkens its edge. */
