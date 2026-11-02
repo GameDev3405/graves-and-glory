@@ -26,5 +26,5 @@ Chest/helm simplification, mail pattern softening, crossbow string, in-game shot
 ## Second pass (this branch, 2026-11-01)
 Cherry-picked 55cbe09 onto `art/ironclad-1x`, then: Shieldbreaker helm face reduced to visor, slit and nasal ridge (breath-hole "smile" removed); tabard emblem shrunk to a cloven shield so the team field reads. Arbalist mail softened to a 2-texel check one tone apart, quiver studs dimmed, tabard emblem changed to a single iron bolt with ember fletch, brim narrowed to 11. Crossbow string now a V from the prod tips to the nock (was a flat bar). Axe unchanged.
 - Turn sheets: `work/ic/breaker_36.png`, `work/ic/arb_36.png` (git-ignored), weapons `work/ic/weap.png`.
-- `build_skins.py --verify` OK (172 outputs). `verify.py fast --offline` deferred by a foreign client at the time of writing; in-game harness shots not yet taken.
+- `build_skins.py --verify` OK (172 outputs). `verify.py fast --offline` GREEN (after cherry-pick cb3aa9d). In-game harness shots not yet taken.
 - Honest self-score: ~7.5/10, still under the 9 gate (arbalist back/cape reads checkered; breaker chest emblem small). Not accepted.
