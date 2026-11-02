@@ -544,7 +544,9 @@ public final class Campaign {
         JsonObject j=new JsonObject();var m=b.mode;
         j.addProperty("id",m.id());j.addProperty("name",m.name());j.addProperty("rule",m.rule());j.addProperty("points",m.capturesPoints(b));
         JsonArray ledger=new JsonArray(),max=new JsonArray(),format=new JsonArray();
-        for(int n:m.ledger(b))ledger.add(n);for(int n:m.max(b))max.add(n);for(String f:m.formats())format.add(f);
+        var entries=m.ledgerEntries(b); // the mode's ledger rows (ModeLines.Entry); a mode without them (Survival until its rows land) falls back to its ledger/max/formats arrays
+        if(!entries.isEmpty())for(var e:entries){ledger.add(e.value());max.add(e.max());format.add(e.format());}
+        else{for(int n:m.ledger(b))ledger.add(n);for(int n:m.max(b))max.add(n);for(String f:m.formats())format.add(f);}
         j.add("ledger",ledger);j.add("max",max);j.add("format",format);
         return j;
     }
