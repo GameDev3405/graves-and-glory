@@ -470,7 +470,7 @@ public final class Campaign {
             var paid=earned>0?RosterMath.matchRewards(slots,Houses.thresholds(Spec.HOUSES[0].id()),Profile.houseOrder(),s.team==winner):NO_REWARDS; // every House has the same slot thresholds (HousesCheck)
             paid.shards().forEach((h,n)->p.shards.merge(h,n,Integer::sum));paid.renown().forEach((h,n)->p.renown.merge(h,n,Integer::sum));
             List<String> titles=earned>0?ledger(p,s):List.of();int pacts=pacts(p);
-            boolean saved=save(id);JsonObject report=new JsonObject();report.addProperty("id",matchId);report.addProperty("outcome",winner<0?"DRAW":s.team==winner?"VICTORY":"BATTLE COMPLETE");report.addProperty("map",Spec.MAPS[map].name());report.addProperty("seconds",seconds);report.addProperty("saved",saved);report.addProperty("eligible",earned>0);report.addProperty("gold",saved?earned:0);report.addProperty("xp",saved?p.progression.xp-priorXp:0);report.addProperty("beforeXp",priorXp);report.add("squads",reportSquads(s));report.add("points",reportPoints());report.add("houses",reportHouses(s,slots,saved?paid:NO_REWARDS));report.add("levels",reportLevels(s));results.put(id,report);
+            boolean saved=save(id);JsonObject report=new JsonObject();report.addProperty("id",matchId);report.addProperty("outcome",winner<0?"DRAW":s.team==winner?"VICTORY":"BATTLE COMPLETE");report.addProperty("map",Spec.MAPS[map].name());report.addProperty("seconds",seconds);report.addProperty("saved",saved);report.addProperty("eligible",earned>0);report.addProperty("gold",saved?earned:0);report.addProperty("xp",saved?p.progression.xp-priorXp:0);report.addProperty("beforeXp",priorXp);report.add("squads",reportSquads(s));report.add("points",reportPoints());report.add("houses",reportHouses(s,slots,saved?paid:NO_REWARDS));report.add("levels",reportLevels(s));report.add("mode",reportMode());results.put(id,report);
             if(!saved){profiles.put(id,JSON.fromJson(before,Profile.class));standing(id,"Match reward could not be saved. Progress was not changed; check disk space.");continue;}
             String extra=(march!=null&&march.bonusPaid()?" / bonus objective: +"+march.bonusShards()+" "+RosterMath.houseName(march.bonusHouse())+" shards, +"+march.bonusGold()+" gold":"")+(pacts>0?" / "+(pacts==1?"a Pact":pacts+" Pacts")+" earned":"")+(titles.isEmpty()?"":" / new title"+(titles.size()==1?" ":"s ")+String.join(", ",titles));
             standing(id,(winner<0?"Draw":s.team==winner?"Victory":"Battle complete")+" / +"+earned+" collection gold"+(earned==0?" (reward requires 3 minutes of play)":"")+extra);
@@ -538,6 +538,15 @@ public final class Campaign {
         JsonArray rows=new JsonArray();int[][] held=b.pointSeconds;
         for(int i=0;i<b.points.size();i++){JsonObject row=new JsonObject();row.addProperty("name",b.points.get(i).spec.name());row.addProperty("dawn",i<held[0].length?held[0][i]:0);row.addProperty("dusk",i<held[1].length?held[1][i]:0);rows.add(row);}
         return rows;
+    }
+    /** The report's mode block (the 4F.2 report): the round's mode id, name, rule line, whether it plays the capture points, and its two ledger numbers with their maxima and formats, as the lobby's mode block gives them (BattleMode.snapshot). The report screen reads it to give each mode a section of its own (ReportSections); a client that does not know the field ignores it. */
+    JsonObject reportMode(){
+        JsonObject j=new JsonObject();var m=b.mode;
+        j.addProperty("id",m.id());j.addProperty("name",m.name());j.addProperty("rule",m.rule());j.addProperty("points",m.capturesPoints(b));
+        JsonArray ledger=new JsonArray(),max=new JsonArray(),format=new JsonArray();
+        for(int n:m.ledger(b))ledger.add(n);for(int n:m.max(b))max.add(n);for(String f:m.formats())format.add(f);
+        j.add("ledger",ledger);j.add("max",max);j.add("format",format);
+        return j;
     }
     /** Harness cameras: while false, the lobby leashes here and in the build tick leave every player where he stands. Always true in play. */
     boolean leash=true;
