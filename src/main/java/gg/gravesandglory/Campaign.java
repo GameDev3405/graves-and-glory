@@ -34,6 +34,8 @@ public final class Campaign {
     final Set<UUID> importAllowed=new HashSet<>();
     /** Commanders who left mid-battle, mapped to the bot squad holding their army until they return this round. */
     final Map<UUID,UUID> vacated=new HashMap<>();
+    /** The tick each dropped commander's slot is released (MatchRules.releaseAt); after it he no longer holds the army. */
+    final Map<UUID,Long> vacatedUntil=new HashMap<>();
     /** Lessons reached in the campaign battle being fought, when its sheet row teaches: 0 move, 1 formation, 2 attack, 3 barracks, 4 all done. Cleared as each round starts. */
     final Map<UUID,Integer> tutorial=new HashMap<>();
     /** AI armies that fell back stay there until rallied, so they do not walk back into the fight. */
@@ -158,7 +160,7 @@ public final class Campaign {
         for(var s:b.squads.values())Commander.reset(b,s); // every running commander ability ends before its units go
         b.running=false;introUntil=0;social.finish();activeRoom="";activeBattle=null;bonusTracker=null;Projectiles.clear(b);Abilities.clearBanners(b);
         Houses.reset(b);for(var u:b.units)u.mob.discard();b.units.clear();b.clearSides();b.clearProgression();
-        b.squads.values().removeIf(s->s.bot);botRespawns.clear();botRetreating.clear();b.respawns.clear();vacated.clear();
+        b.squads.values().removeIf(s->s.bot);botRespawns.clear();botRetreating.clear();b.respawns.clear();vacated.clear();vacatedUntil.clear();deleteProgress();
         for(var s:b.squads.values()){s.training.clear();s.seated=false;}onPad.clear();padCountdown=-1;closeParty();
         notices.values().removeIf(WELCOME_WAIT::equals);noticeAt.keySet().retainAll(notices.keySet()); // "Battle in progress" is no longer true
         for(var p:b.server.getPlayerManager().getPlayerList())toLobby(p);
@@ -287,7 +289,7 @@ public final class Campaign {
     void prepareRound(){
         onPad.clear();padCountdown=-1;padMapRolled=false;tutorial.clear();
         b.squads.values().removeIf(s->s.bot);balance();
-        for(var u:b.units){GravesAndGlory.Battle.leaveSide(u.mob);u.mob.discard();}b.units.clear();botRespawns.clear();botRetreating.clear();vacated.clear();
+        for(var u:b.units){GravesAndGlory.Battle.leaveSide(u.mob);u.mob.discard();}b.units.clear();botRespawns.clear();botRetreating.clear();vacated.clear();vacatedUntil.clear();
         for(int team=0;team<2;team++){final int t=team;int humans=(int)b.squads.values().stream().filter(s->s.team==t&&s.seated).count();
             int target=practice?(team==0?1:1):size;
             if(fill||practice)for(int i=humans;i<target;i++){UUID id=UUID.randomUUID();var s=new GravesAndGlory.Squad(id,team,b.fieldBase(team));s.bot=true;s.tier=activeBattle!=null?activeBattle.difficulty():difficulty;s.commander=Spec.CLASSES[i%Spec.CLASSES.length].id();s.lane=i%3;b.squads.put(id,s);}
@@ -460,16 +462,62 @@ public final class Campaign {
         notice(who,t.name()+" joins your collection"+(pact?", sworn by your Pact!":"!"));reveal(p);
     }
     /**
-     * A stopped or crashed match is void (MatchRules, Kort 2026-11-01): no rewards, no losses, nothing saved to any profile, and the
-     * armies go back to camp. A crash never reaches here, and since profiles are only written when a match settles (finish), a restart
-     * after one pays nothing and costs nothing either; Modes.recover puts the map back.
+     * A stopped or crashed match is not settled (MatchRules, Kort 2026-11-02): no win bonus, no shards, Renown, XP or record, and the
+     * armies go back to camp. Each seated player is paid the participation gold pro-rated by the share of the match he played
+     * (MatchRules.partialGold). A stop pays here; a crash never reaches here, so a progress checkpoint (see checkpoint) lets the
+     * next start pay the same share from the last 30 seconds of play (payInterrupted). Modes.recover puts the map back.
      */
     void voidMatch(MatchRules.Ending ending){
         if(!b.running||MatchRules.settles(ending))return;
-        System.err.println("[Graves and Glory] Match "+matchId+" is void ("+ending+"): no rewards and no losses; the armies return to camp.");
+        System.err.println("[Graves and Glory] Match "+matchId+" was interrupted ("+ending+"): partial participation gold only; the armies return to camp.");
+        payPartial(playedNow(),b.roundSeconds,practice);
         for(UUID id:participants)results.remove(id);participants.clear();
         b.message="The battle was called off. Back to the war council.";headline=b.message;
         returnLobby();
+    }
+    /** Seconds each seated human has played of this round (from his own seating, not before the round began). */
+    Map<UUID,Long> playedNow(){
+        Map<UUID,Long> played=new LinkedHashMap<>();
+        for(UUID id:participants){var s=b.squads.get(id);if(s==null||!s.seated)continue;played.put(id,Math.max(0,(b.time-Math.max(b.roundStarted,joinedAt.getOrDefault(id,b.roundStarted)))/20));}
+        return played;
+    }
+    /** Pays each player the participation gold of an interrupted match, pro-rated (MatchRules.partialGold); a failed save changes nothing. */
+    void payPartial(Map<UUID,Long> played,int roundSeconds,boolean wasPractice){
+        int base=wasPractice?Spec.CAMPAIGN[0].practiceGold():Spec.CAMPAIGN[0].completionGold();
+        for(var e:played.entrySet()){
+            int gold=MatchRules.partialGold(base,e.getValue(),roundSeconds);if(gold<=0)continue;
+            UUID id=e.getKey();Profile p=profile(id);String before=JSON.toJson(p);p.gold+=gold;
+            if(!save(id)){profiles.put(id,JSON.fromJson(before,Profile.class));continue;}
+            standing(id,"Battle called off / +"+gold+" collection gold for the time you played");
+        }
+    }
+    static final String PROGRESS="gravesandglory/match-progress.json";
+    Path progressFile(){return b.server.getSavePath(net.minecraft.util.WorldSavePath.ROOT).resolve(PROGRESS);}
+    void deleteProgress(){try{java.nio.file.Files.deleteIfExists(progressFile());}catch(Exception e){System.err.println("[Graves and Glory] The match progress file could not be deleted: "+e);}}
+    /** Every 30 seconds of a running match: what a crash would owe each player, written atomically under the world save. */
+    void checkpoint(){
+        JsonObject j=new JsonObject();j.addProperty("matchId",matchId);j.addProperty("practice",practice);j.addProperty("roundSeconds",b.roundSeconds);
+        JsonObject played=new JsonObject();playedNow().forEach((id,sec)->played.addProperty(id.toString(),sec));j.add("played",played);
+        SafeFiles.tryWrite(progressFile(),JSON.toJson(j),"The match progress");
+    }
+    /** A crash left a progress file (a clean end or stop deletes it): pay each player the pro-rated share it recorded, then delete it. */
+    void payInterrupted(){
+        Path path=progressFile();if(!java.nio.file.Files.exists(path))return;
+        try{
+            JsonObject j=JsonParser.parseString(java.nio.file.Files.readString(path)).getAsJsonObject();
+            Map<UUID,Long> played=new LinkedHashMap<>();
+            for(var e:j.getAsJsonObject("played").entrySet())played.put(UUID.fromString(e.getKey()),e.getValue().getAsLong());
+            System.err.println("[Graves and Glory] Match "+j.get("matchId").getAsString()+" was interrupted by a crash: partial participation gold for "+played.size()+" player(s).");
+            payPartial(played,j.get("roundSeconds").getAsInt(),j.get("practice").getAsBoolean());
+        }catch(Exception e){System.err.println("[Graves and Glory] The match progress file could not be read; no partial reward: "+e);}
+        deleteProgress();
+    }
+    /** Releases the slot of every dropped commander whose hold has run out: the reservation ends and the seat is an ordinary bot seat. */
+    void releaseExpiredHolds(){
+        for(var it=vacatedUntil.entrySet().iterator();it.hasNext();){var e=it.next();
+            if(!MatchRules.holdExpired(b.time,e.getValue()))continue;
+            vacated.remove(e.getKey());it.remove();
+            System.err.println("[Graves and Glory] The slot held for "+e.getKey()+" is released.");}
     }
     void finish(int winner){
         if(!b.running)return;
@@ -570,6 +618,7 @@ public final class Campaign {
     boolean leash=true;
     void tick(){
         if(b.time%20==0)expireNotices();
+        if(b.running){if(b.time%20==0)releaseExpiredHolds();if(b.time%600==0)checkpoint();}
         if(pendingBattle!=null&&b.ready){ // the map of a campaign battle is built: it starts unless something changed meanwhile
             var row=pendingBattle;UUID id=pendingCommander;pendingBattle=null;pendingCommander=null;
             var host=b.server.getPlayerManager().getPlayer(id);String refused=host==null?"":soloRefusal(id,MARCH_SOLO);
