@@ -2392,6 +2392,18 @@ public final class Phase1Checks implements ClientModInitializer {
         long noticeFirst,noticeSecond;Progression.State oldProgression;JsonObject oldResult;
         /** The result the suite pretends the last battle left, held in CampaignClient.result every tick (each camp snapshot puts the server's back), so Last battle is on the home for the stages that follow. */
         JsonObject fakeResult;
+        int[] cardWindow={1280,720};
+        /** The Campaign sheet's field card (plan 2C.5): the battle's name, map, rule and teams line, the bonus block with its reward, no Change button; shot at the window's size. */
+        void campaignCard(MinecraftClient c,String tag){
+            var h=home(c);if(h==null){report("p1-ui-home-campaign-card"+tag,false,"the home closed before the card was read");return;}
+            var t=WarTableHome.texts();var r=WarTableHome.rects();var row=Spec.CAMPAIGNBATTLES[0];var ch=h.button("change");
+            var f=r.get("field");var b=r.get("field-bonus");
+            boolean named=row.name().equals(t.get("field-name"))&&t.get("field-rule")!=null&&t.get("field-teams")!=null&&t.get("field-teams").startsWith("Battle 1 of "+Spec.CAMPAIGNBATTLES.length);
+            boolean has=t.containsKey("field-bonus")&&t.containsKey("field-bonus-reward")&&"open".equals(t.get("field-bonus-state"))&&b!=null&&f!=null&&b[1]+b[3]<=f[1]+f[3]&&b[0]>=f[0]&&b[0]+b[2]<=f[0]+f[2];
+            boolean noChange=ch==null||!ch.active;
+            report("p1-ui-home-campaign-card"+tag,named&&has&&noChange,"Campaign card"+(tag.isEmpty()?"":" at "+tag.substring(1))+": name \""+t.get("field-name")+"\", rule \""+t.get("field-rule")+"\", teams \""+t.get("field-teams")+"\", bonus \""+t.get("field-bonus")+"\" "+t.get("field-bonus-reward")+" ("+t.get("field-bonus-state")+") in "+str(b)+" of card "+str(f)+", Change button "+(noChange?"off":"LIVE"));
+            shot(c,"ui-home-campaign"+tag);
+        }
         static final String PRACTICE_SOLO="Practice is solo. Use a private room to play with your party.";
 
         public void serverTick(GravesAndGlory.Battle b){serverRunning=b.running;var id=player;serverOnPad=id!=null&&b.campaign.onPad.containsKey(id);serverRoom=id!=null&&b.campaign.social.room(id)!=null;padCountdown=b.campaign.padCountdown;}
@@ -2540,7 +2552,13 @@ public final class Phase1Checks implements ClientModInitializer {
                         int[] sheet=WarTableHome.rects().get("campaign"),card=WarTableHome.rects().get("field");int gap=sheet==null||card==null?-99:card[0]-(sheet[0]+sheet[2]); // the raised sheet stays off the field card
                         modesOk&=CampaignClient.profile.campaignCleared==0&&home(c).focused==2&&l.equals("Ride to The Training Field")&&start>=57&&stop<=232&&gap>=8;
                         modesWhy+="; campaignCleared "+CampaignClient.profile.campaignCleared+", a click on Campaign: focused "+home(c).focused+", the plate \""+l+"\" from x "+start+" to "+stop+" of the plate; the raised Campaign sheet "+str(sheet)+" ends "+gap+" px left of the field card "+str(card);
-                        report("p1-ui-home-modes",modesOk,modesWhy);stage=9;}
+                        report("p1-ui-home-modes",modesOk,modesWhy);cardWindow=new int[]{c.getWindow().getWidth(),c.getWindow().getHeight()};}
+                    else if(k==8){campaignCard(c,"");}
+                    else if(k==40)window(c,1920,1080,0,true);
+                    else if(k==70)campaignCard(c,"-1920x1080");
+                    else if(k==80)window(c,2560,1440,0,true);
+                    else if(k==110)campaignCard(c,"-2560x1440");
+                    else if(k==120){window(c,cardWindow[0],cardWindow[1],0);stage=9;}
                 }
                 case 9->{ // p1-ui-home-gates: Skirmish, then Ride, opens the War Table lobby with a room three a side
                     int k=since(tick);
