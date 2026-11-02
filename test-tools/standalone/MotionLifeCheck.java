@@ -145,16 +145,20 @@ public final class MotionLifeCheck {
         return String.format("calm rates %.3f to %.3f Hz", lo, hi);
     }
 
-    /** Turning in place steps: each knee lifts in turn and the thighs yaw with the turn. */
+    /**
+     * Turning in place steps: each knee lifts in turn and the thighs yaw with the turn. The step stands each foot on its spot
+     * in the world, so it runs on the ground input (as in game: TroopMotion always supplies it).
+     */
     static String turnStep(MotionEngine.Family fam, MotionMath.Seed[] seeds) {
         Drive d = new Drive(seeds[4]);
+        d.grounded = true;
         var st = new MotionEngine.State();
         Pose out = new Pose();
         double right = 0, left = 0, ry = 0;
         int alternations = 0;
         double lastLead = 0;
         for (int f = 0; f < 60 * 4; f++) {
-            if (f == 60) d.yawRate = 140;
+            if (f == 60) d.yawRate = d.turn = 140;
             MotionEngine.pose(d.in(), st, fam, out);
             if (f > 90) {
                 double r = out.get("right_shin", 0), l = out.get("left_shin", 0);
