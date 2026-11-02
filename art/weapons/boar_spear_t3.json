@@ -1,0 +1,19 @@
+{
+ "weapon": "boar_spear_t3",
+ "density": 1,
+ "thickness": 2,
+ "grip": {
+  "offset": [
+   0,
+   0,
+   0
+  ],
+  "rotation": [
+   0,
+   0,
+   0
+  ],
+  "note": "held upright like the sun staff"
+ },
+ "note": "The Tusk's boar spear, tier III (elite), hand-authored at 1 texel a px: a dark stained shaft in gilt bands, a hide bristle tuft, a bone crossbar with swept tusk lugs and a long gilt-collared barbed steel head; held upright."
+}
