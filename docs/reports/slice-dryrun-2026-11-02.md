@@ -11,10 +11,10 @@ Branch `work/slice-dryrun` off main `7ca3221`. Not pushed. Status: IN PROGRESS (
 
 | # | Item | Result |
 |---|---|---|
-| 1 | Domination, 2 humans + 4 bots (3v3), round to a result | running |
-| 2 | Siege on Ironhold | not run yet |
-| 3 | Rewards after a completed match | pending |
-| 4 | Return to camp after the match | pending |
+| 1 | Domination, 2 humans + 4 bots (3v3), round to a result | PASS (forced finish at 192 s, see below) |
+| 2 | Siege on Ironhold | running |
+| 3 | Rewards after a completed match | PASS for Domination |
+| 4 | Return to camp after the match | PASS for Domination |
 | 5a | Reconnect within 2 min gets a seat back | PASS (see below) |
 | 5b | Slot released after 2 min | pending |
 | 6 | Mid-match crash, partial gold | pending |
@@ -23,6 +23,16 @@ Branch `work/slice-dryrun` off main `7ca3221`. Not pushed. Status: IN PROGRESS (
 
 ### 5a Reconnect within 2 min
 Bravo sent `disconnect` at match second ~60. Server: Bravo left `online`, a bot took over the seat immediately, and `held` showed a hold on Bravo's UUID until tick 5113 (about 115 s ahead). Bravo sent `connect` about 40 s later: back in the battle world, seated on team 1, `held` cleared, scores kept running. Minor observations: the seat index moved from slot 1 to slot 5 in the list, and Bravo's client showed ready=False in the War Table roster after rejoining (cosmetic).
+
+### 1, 3, 4 Domination on Rivergate, 2 humans + 4 bots
+Room created by SliceAlpha (size 3, fill on), SliceBravo joined, both ready, 10 s countdown, map built, battle started with 6 seats. The round was ended with the probe's `finish 0` at 199 s of play (the 900 s clock was not waited out), which is past the 180 s minimum. Result: Gold Banner wins. Both clients showed the result and landed in `CampScreen` ("Back to the war council"). Rewards (server profile and client profile agree):
+
+| Player | Outcome | Gold | XP | Shards | Renown | Matches / Wins |
+|---|---|---|---|---|---|---|
+| SliceAlpha (winner) | VICTORY | 120 | 150 | gilded +2 | gilded +2 | 1 / 1 |
+| SliceBravo (loser, had reconnected) | BATTLE COMPLETE | 80 | 100 | gilded +1 | gilded +1 | 1 / 0 |
+
+The reconnected player was eligible for the full reward. Caveat: the round was force-ended, not played to the clock; a natural clock or score finish was not exercised.
 
 ## Defects so far
 | Rating | Finding | Reproduce |
