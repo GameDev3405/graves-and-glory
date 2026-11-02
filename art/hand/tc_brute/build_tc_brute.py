@@ -5,7 +5,10 @@ own boxes), hand-authored at one texel per model pixel.
 A huge drowned beast, low in the quarters and towering in the shoulder: a mottled blue-black hide crusted with barnacle
 clumps and hung with kelp, a heavy brow of sea-blue plate, a pale tusked maw and, from the jaw, four 8 px kraken tentacles
 (the signature) ringed with suckers. A sea-blue girth strap, breast plate, pauldrons and muzzle strap are the fixed accent;
-a team-colour saddle mantle drapes the shoulders (clothing, not a flag). Tier I only. No back flag.
+a team-colour saddle mantle drapes the shoulders (clothing, not a flag). Tier II (the Reef-Breaker): bronze plate rimmed in
+sea blue over the pauldrons and brow, a bronze crest and greaves on the forelegs; the tusks are capped in steel. Tier III (the
+Abyssal Brute): deep sea-blue barding chased in warm bronze over chest and back, barnacle clusters, longer tusks capped in warm
+bronze. The tusks are weaponTiers parts (one head bone per tier). No back flag.
 
   python build_tc_brute.py preview <dir> [side] | contact <png> [side] | stub
 """
@@ -16,10 +19,12 @@ sys.path.insert(0, os.path.join(HERE, "..", "tc_tideguard"))
 from handlib import *   # noqa: F401,F403
 import handlib as H
 import house_stub
+sys.path.insert(0, os.path.join(HERE, "..", "common"))
+import tidecallers as TC
 import build_tc_tideguard as TG   # noqa: E402
 from build_tc_tideguard import VERD, BRONZE, BARN, plate_b, scuff, rng   # noqa: E402
 
-SKIN = (128, 128)
+SKIN = (256, 128)   # tier II and III plate and tusks (128 x 128 was full)
 CLOTH = (128, 64)
 PITCH = 9   # degrees the head is carried down (positive x lowers the nose)
 
@@ -276,7 +281,12 @@ def bones():
     B.append(Bone("head", "chest", (0, 3, -10), [Box((-6, -5, -8), (12, 10, 8), head_painter())], rot=(PITCH, 0, 0)))
     B.append(Bone("muzzle", "head", boxes=[Box((-4.5, 0, -13), (9, 5, 5), muzzle_painter())]))
     B.append(Bone("jaw", "head", (0, 5, -3), [Box((-4.5, 0, -10), (9, 3, 10), jaw_painter())]))
-    B.append(Bone("tusks", "head", boxes=[Box((-5, 4.5, -12), (1.5, 3, 1.5), tusk(down=True)), Box((3.5, 4.5, -12), (1.5, 3, 1.5), tusk(down=True))]))
+    B.append(Bone("tusks", "head", weapon_tiers=[1], boxes=[Box((-5, 4.5, -12), (1.5, 3, 1.5), tusk(down=True)), Box((3.5, 4.5, -12), (1.5, 3, 1.5), tusk(down=True))]))
+    B.append(Bone("tusks_t2", "head", weapon_tiers=[2], boxes=[Box((-5, 4.5, -12), (1.5, 4, 1.5), tusk(down=True)), Box((3.5, 4.5, -12), (1.5, 4, 1.5), tusk(down=True)),
+        Box((-5.2, 4.3, -12.2), (1.9, 1.2, 1.9), TC.tc_band(2, "btb")), Box((3.3, 4.3, -12.2), (1.9, 1.2, 1.9), TC.tc_band(2, "btb2"))]))
+    B.append(Bone("tusks_t3", "head", weapon_tiers=[3], boxes=[Box((-5.5, 4.5, -12.5), (2, 5, 2), tusk(down=True)), Box((3.5, 4.5, -12.5), (2, 5, 2), tusk(down=True)),
+        Box((-5.7, 4.3, -12.7), (2.4, 1.4, 2.4), TC.tc_band(3, "btc")), Box((3.3, 4.3, -12.7), (2.4, 1.4, 2.4), TC.tc_band(3, "btc2")),
+        Box((-5, 9.5, -12), (1, 1.5, 1), TC.tc_spike(TC.WARM, 3, 2)), Box((4, 9.5, -12), (1, 1.5, 1), TC.tc_spike(TC.WARM, 3, 2))]))
     B.append(Bone("jaw_tusks", "jaw", boxes=[Box((-4.5, -3, -10), (1.5, 3, 1.5), tusk()), Box((3, -3, -10), (1.5, 3, 1.5), tusk())]))
     # the signature: four 8 px tentacles from the jaw, outer pair splayed wide, inner pair hanging forward
     for i, (x, splay, fwd, curl) in enumerate(((-3.5, 34, -28, -34), (-1.2, 12, -38, -40), (1.2, -12, -38, -40), (3.5, -34, -28, -34))):
@@ -322,6 +332,18 @@ def bones():
     for k, (par, x, y, z, rz) in enumerate((("chest", -11.5, -10, -2, 6), ("chest", 11.5, -10, -2, -6), ("body", -7.6, -2, -9, 4),
                                             ("body", 7.6, -2, -4, -4), ("jaw", -3, 2, -6, 8), ("jaw", 3, 2, -2, -8), ("tail", 0, 3, 3, 0))):
         B.append(Bone(f"kelp_{k}", par, (x, y, z), [Box((-1, 0, -0.5), (2, 9 if par != "jaw" else 7, 1), kelp("kp%d" % k))], rot=(6, 0, rz)))
+    # tier II, the Reef-Breaker: bronze plate over pauldrons and brow, a crest, foreleg greaves
+    for side, c in (("right", -1), ("left", 1)):
+        B.append(Bone(f"{side}_tplate", "chest", (c * 8, -11, -5), rot=(0, 0, c * 22), stages=[2, 3], boxes=[
+            Box((-5, -4.2, -5), (10, 2, 10), TC.P("btpd" + side), dil=0.2), Box((-2 + c, -6, -2), (2, 2, 2), TC.tc_spike(TC.BRONZE, 3, 2))]))
+        B.append(Bone(f"{side}_greave", f"front_{side}_leg", stages=[2, 3], boxes=[Box((-4.3, 2, -4.3), (8.6, 4, 8.6), TC.P("btgv" + side), dil=0.1)]))
+    B.append(Bone("brow_plate", "head", stages=[2, 3], boxes=[Box((-6.8, -7.2, -8.8), (13.6, 1.4, 7.4), TC.P("btbw", 0.03), dil=0.1),
+                                                            Box((-1, -10.5, -7.5), (2, 3, 6), TC.P("btcr", 0.0))]))
+    # tier III, the Abyssal Brute: deep barding over chest and back, barnacle clusters
+    B.append(Bone("barding", "chest", stages=[3], boxes=[Box((-10.5, -11.5, -11.8), (21, 10, 1.2), TC.P("btbd", 0.04), dil=0.15)]))
+    B.append(Bone("back_barding", "body", stages=[3], boxes=[Box((-7.5, -7, -12), (15, 1.2, 11), TC.P("btbb", 0.04), dil=0.2)]))
+    B.append(Bone("barn_iii", "chest", stages=[3], boxes=[Box((-6, -16.5, -6), (2.5, 1.5, 2.5), TC.tc_barnacles("b3a")), Box((3, -16.2, -4), (2, 1.2, 2), TC.tc_barnacles("b3b")),
+                                                       Box((-10.8, -4, -8), (1.5, 2.5, 2.5), TC.tc_barnacles("b3c")), Box((9.3, -3, -6), (1.5, 2.5, 2.5), TC.tc_barnacles("b3d"))]))
     return B
 
 def glow(bone, box):
@@ -339,9 +361,9 @@ def glow(bone, box):
 NOTE = ("Kraken-touched Brute (unit identity, Tidecallers; Epic; ravager entity on the hound rig, own boxes): a huge drowned beast, low in the "
         "quarters and towering at the shoulder, a mottled blue-black hide crusted with barnacle clumps and hung with kelp, a pale tusked maw "
         "with four 8 px kraken tentacles from the jaw (the signature), sea-blue girth strap, breast plate, pauldrons, brow plate and muzzle "
-        "strap as fixed accent, a team-colour saddle mantle over the shoulders. Tier I only. No back flag.")
+        "strap as fixed accent, a team-colour saddle mantle over the shoulders. Tier II bronze plate and capped tusks; tier III deep sea-blue barding and longer bronze-capped tusks. No back flag.")
 TC_BRUTE = Troop("tc_brute", SKIN, CLOTH, bones, cloth_painter,
-                 {"rig": "hound", "weapon": "none", "hand": "right", "idleArms": "hang", "portrait": "beast 28"}, tiers=(1,), glow=glow)
+                 {"rig": "hound", "weapon": "none", "hand": "right", "idleArms": "hang", "portrait": "beast 28"}, glow=glow)
 def build(): return TC_BRUTE.build()
 def outputs(): return TC_BRUTE.outputs()
 
