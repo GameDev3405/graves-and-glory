@@ -33,10 +33,21 @@ export function fillInstances(f, mat, col) {
   const { width: W, depth: D, height: H, water, road, zone, zones } = f;
   const zc = [PAL.default, ...(zones || []).map((n) => PAL[n] || PAL.default)];
   let maxTop = 0;
+  // Hillshade like map2d's relief (light from the north-west, slopes exaggerated), so hills and banks read
+  // from far away even though every column top faces straight up.
+  const LX = -0.6, LY = 0.75, LZ = -0.6;
+  const ln = Math.sqrt(LX * LX + LY * LY + LZ * LZ);
+  const flat = LY / ln;
   for (let z = 0; z < D; z++) {
+    const zu = Math.max(0, z - 1) * W, zd = Math.min(D - 1, z + 1) * W;
     for (let x = 0; x < W; x++) {
       const i = z * W + x;
       const h = H[i];
+      const gx = (H[z * W + Math.min(W - 1, x + 1)] - H[z * W + Math.max(0, x - 1)]) * 1.4;
+      const gz = (H[zd + x] - H[zu + x]) * 1.4;
+      let shade = ((-gx * LX + LY - gz * LZ) / Math.sqrt(gx * gx + 1 + gz * gz) / ln) / flat;
+      shade = Math.max(0.35, Math.min(1.5, shade));
+      const hk = 0.85 + 0.3 * Math.max(0, Math.min(1, (h + 5) / 55)); // mild height tint: low darker, high lighter
       let mn = h - 2; // beyond the canvas edge: drop two blocks so the edge wall shows
       if (x > 0) mn = H[i - 1];
       if (x + 1 < W) mn = Math.min(mn, H[i + 1]); else mn = Math.min(mn, h - 2);
@@ -53,7 +64,7 @@ export function fillInstances(f, mat, col) {
       mat[o + 12] = x; mat[o + 13] = bottom; mat[o + 14] = z; mat[o + 15] = 1;
       const pal = zc[zone[i] + 1] || PAL.default;
       const c = water[i] !== NO_WATER ? pal.bed : road[i] ? pal.road : pal.surface;
-      const v = 0.94 + ((Math.imul(i, 2654435761) >>> 0) / 4294967296) * 0.12; // small per-column variation
+      const v = (0.97 + ((Math.imul(i, 2654435761) >>> 0) / 4294967296) * 0.06) * shade * hk; // small per-column variation
       const k = i * 3;
       col[k] = c[0] * v; col[k + 1] = c[1] * v; col[k + 2] = c[2] * v;
     }
