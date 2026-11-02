@@ -575,12 +575,12 @@ def deaths():
                     left_arm=(-62, 0, 12), left_forearm=(-24, 0, 0), right_leg=(-2, 0, 3), right_shin=(70, 0, 0),
                     left_leg=(-6, 0, -3), left_shin=(74, 0, 0)), (0, 24, 2), 'catmullrom'),
         (1.32, pose(root=(88, 0, 4), body=(-2, 0, 0), head=(-28, 18, 0), right_arm=(-150, 0, -30), right_forearm=(-24, 0, 0),
-                    left_arm=(-150, -40, 34), left_forearm=(-26, 0, 0), right_leg=(4, 0, 4), right_shin=(30, 0, 0),
+                    left_arm=(-130, -60, 50), left_forearm=(-40, 0, 0), right_leg=(4, 0, 4), right_shin=(30, 0, 0),
                     left_leg=(0, 0, -4), left_shin=(36, 0, 0)), (0, 24, 2), 'linear'),
-        (1.44, pose(root=(84, 0, 4), body=(0, 0, 0), head=(-30, 20, 0), right_forearm=(-30, 0, 0), left_forearm=(-32, 0, 0),
+        (1.44, pose(root=(84, 0, 4), body=(0, 0, 0), head=(-30, 20, 0), right_forearm=(-30, 0, 0), left_arm=(-117, -73, 68), left_forearm=(-52, 0, 0),
                     right_shin=(38, 0, 0), left_shin=(42, 0, 0)), (0, 24, 2), 'catmullrom'),
-        (1.7, pose(root=(86, 0, 4), body=(-4, 0, 0), head=(-34, 18, 0), right_forearm=(-34, 0, 0), left_arm=(-150, -60, 34),
-                   left_forearm=(-36, 0, 0), right_shin=(34, 0, 0), left_shin=(38, 0, 0)), (0, 24, 2), 'catmullrom'),
+        (1.7, pose(root=(86, 0, 4), body=(-4, 0, 0), head=(-34, 18, 0), right_forearm=(-34, 0, 0), left_arm=(-117, -73, 68),
+                   left_forearm=(-55, 0, 0), right_shin=(34, 0, 0), left_shin=(38, 0, 0)), (0, 24, 2), 'catmullrom'),
     ]))
 
     def topple(name, length, axis, sign, about, extra, kind_note=''):
@@ -598,7 +598,8 @@ def deaths():
             (0.62, pose(k['tip'], root=rot(42)), about, 'catmullrom'),
             (0.8, pose(k['fall'], root=rot(80)), about, 'linear'),
             (0.88, pose(k['land'], root=rot(90)), about, 'linear'),
-            (0.98, pose(k['bounce'], root=rot(86)), about, 'catmullrom'),
+            (0.98, pose(k['bounce'], {b: k['lie'][b] for b in ('left_arm', 'left_forearm') if b in k['lie']}, root=rot(86)),
+             about, 'catmullrom'),
             (1.12, pose(k['lie'], root=rot(90)), about, 'catmullrom'),
             (length, pose(k['lie'], root=rot(90)), about, 'catmullrom'),
         ])
@@ -618,7 +619,7 @@ def deaths():
         bounce=pose(body=(6, 0, 0), head=(4, 0, 0), right_arm=(-140, 0, 36), left_arm=(-132, 0, -36),
                     right_leg=(-28, 0, 0), right_shin=(30, 0, 0)),
         lie=pose(body=(3, 0, 0), head=(36, -6, 0), right_arm=(-148, 0, 34), right_forearm=(-38, 0, 0), right_hand=Z,
-                 left_arm=(-136, 0, -38), left_forearm=(-34, 0, 0), right_leg=(-22, 0, 4), right_shin=(44, 0, 0),
+                 left_arm=(34, 62, -31), left_forearm=(-30, 0, 0), right_leg=(-22, 0, 4), right_shin=(44, 0, 0),
                  left_leg=(-16, 0, -2), left_shin=(32, 0, 0)))
     fwd = dict(
         jolt=pose(body=(14, 0, 0), head=(16, 0, 0), right_arm=(20, 0, 14), right_forearm=(-10, 0, 0), left_arm=(16, 0, -12),
@@ -633,7 +634,7 @@ def deaths():
                   left_forearm=(-18, 0, 0), right_shin=(20, 0, 0), left_shin=(24, 0, 0)),
         bounce=pose(body=(-2, 0, 0), head=(-18, 0, 0), right_shin=(34, 0, 0), left_shin=(30, 0, 0)),
         lie=pose(body=(-8, 0, 0), head=(-36, 14, 0), right_arm=(-160, 0, 24), right_forearm=(-34, 0, 0), right_hand=Z,
-                 left_arm=(-150, -60, -26), left_forearm=(-36, 0, 0), right_leg=(2, 0, 4), right_shin=(34, 0, 0),
+                 left_arm=(-110, -72, 43), left_forearm=(-46, 0, 0), right_leg=(2, 0, 4), right_shin=(34, 0, 0),
                  left_leg=(0, 0, -3), left_shin=(40, 0, 0)))
 
     def side(s):
@@ -652,7 +653,11 @@ def deaths():
             fall=pose(arms((-30, 100, -6), (-50, 40, -50)), body=(6, 0, 8 * s), head=(4, 0, 18 * s)),
             land=pose(arms((-20, 110, -4), (-40, 30, -40)), body=(4, 0, 2 * s), head=(2, 0, -6 * s)),
             bounce=pose(body=(4, 0, 4 * s), head=(2, 0, 4 * s)),
-            lie=pose(arms((-70, -6, -35), (-60, 10, -50)), body=(4, 0, 8 * s), head=(4, 0, -36 * s), right_hand=Z,
+            lie=pose(arms((-70, -6, -35), (-60, 10, -50)), head=(4, 0, -36 * s), right_hand=Z,
+                     # The board lies flat: across his upper flank when the shield arm is on top, under the arm, face
+                     # down, when he falls onto it; the sword arm goes out of the column under the torso so he rests on it.
+                     **(dict(left_arm=(-61, 20, 6), left_forearm=(-95, 0, 0), right_arm=(-91, 0, 78), body=(4, 0, 12))
+                        if s > 0 else dict(left_arm=(-39, 179, 8), left_forearm=(0, 0, 0), body=(4, 0, -13))),
                      **{near + '_leg': (-12, 0, 0), near + '_shin': (34, 0, 0), far + '_leg': (-26, 0, 0), far + '_shin': (40, 0, 0)}))
 
     # Directions: the blow from the front throws him back (pitch -), from behind forward (pitch +), from his left onto
@@ -686,10 +691,12 @@ def deaths():
             (0.54, pose(root=(4, 0, 0), body=(16, 0, 0), head=(24, 0, 0)), KNEEL, 'catmullrom'),
             (0.8, pose(root=rot(14), body=(10, 0, 0), head=(14, 0, 0), right_arm=(-40, 0, 20), left_arm=(-40, 0, -20)),
              KNEEL, 'catmullrom'),
-            (1.02, pose(lie, root=rot(60), right_shin=(60, 0, 0), left_shin=(64, 0, 0)), about, 'linear'),
-            (1.14, pose(lie, root=rot(90)), about, 'linear'),
-            (1.24, pose(root=rot(86)), about, 'catmullrom'),
-            (1.4, pose(lie, root=rot(90)), about, 'catmullrom'),
+            # The fall gathers speed off the knees (30, then 66) and hits at 1.3 with a frame of impact and a rebound.
+            (1.0, pose(root=rot(30), body=(8, 0, 0), head=(6, 0, 0), right_shin=(80, 0, 0), left_shin=(84, 0, 0)), KNEEL, 'catmullrom'),
+            (1.2, pose(lie, root=rot(66), right_shin=(60, 0, 0), left_shin=(64, 0, 0)), about, 'linear'),
+            (1.3, pose(lie, root=rot(90)), about, 'linear'),
+            (1.4, pose(root=rot(85)), about, 'catmullrom'),
+            (1.6, pose(lie, root=rot(90)), about, 'catmullrom'),
             (length, pose(lie, root=rot(90)), about, 'catmullrom'),
         ])
 
@@ -699,15 +706,15 @@ def deaths():
                 left_forearm=(-20, 0, 0))
     reel = lambda s: pose(body=(4, 0, -8 * s), head=(6, 0, -14 * s), right_arm=(-16, 0, 20), right_forearm=(-30, 0, 0),
                           left_arm=(-16, 0, -20), left_forearm=(-30, 0, 0))
-    out.append(kneel_fall('death_slash_front_2', 1.6, 0, 1, TOES, clutch, fwd['lie']))
-    out.append(kneel_fall('death_slash_back_2', 1.6, 0, 1, TOES, arch, fwd['lie']))
-    out.append(kneel_fall('death_slash_left_2', 1.6, 2, -1, (-2, 24, 0), reel(1), side(1)['lie']))
-    out.append(kneel_fall('death_slash_right_2', 1.6, 2, 1, (2, 24, 0), reel(-1), side(-1)['lie']))
+    out.append(kneel_fall('death_slash_front_2', 1.9, 0, 1, TOES, clutch, fwd['lie']))
+    out.append(kneel_fall('death_slash_back_2', 1.9, 0, 1, TOES, arch, fwd['lie']))
+    out.append(kneel_fall('death_slash_left_2', 1.9, 2, -1, (-2, 24, 0), reel(1), side(1)['lie']))
+    out.append(kneel_fall('death_slash_right_2', 1.9, 2, 1, (2, 24, 0), reel(-1), side(-1)['lie']))
     # Stab 2: the blade goes in and he staggers back off it, both hands at the wound, and goes over backwards.
     out.append(topple('death_stab_2', 1.4, 0, -1, HEELS, dict(back, jolt=clutch, stagger=pose(clutch, body=(14, 0, 0), right_leg=(-16, 0, 0),
                                                                                                right_shin=(14, 0, 0)))))
     # Blunt 2: the blow drops him to his knees, dazed; he sways and pitches forward onto his face.
-    out.append(kneel_fall('death_blunt_2', 1.6, 0, 1, TOES, pose(root=(0, 0, 6), head=(-12, -10, 16), body=(-4, -4, 6),
+    out.append(kneel_fall('death_blunt_2', 1.9, 0, 1, TOES, pose(root=(0, 0, 6), head=(-12, -10, 16), body=(-4, -4, 6),
                                                                  right_arm=(-8, 0, 18), left_arm=(-10, 0, -16)), fwd['lie']))
     # Arrow 2: the shaft punches him straight over backwards, the sword hand going to the wound as he goes.
     out.append(topple('death_arrow_2', 1.4, 0, -1, HEELS, dict(back, jolt=pose(body=(-14, -6, 0), head=(-12, 0, 0), right_arm=(-34, 0, -22),
@@ -730,8 +737,8 @@ def deaths():
                     right_shin=(120, 0, 0), left_leg=(-46, 0, -6), left_shin=(118, 0, 0)), (0, 24, 0), 'linear'),
         (0.6, pose(root=(4, 0, 4), head=(30, 0, 12), body=(20, 0, 6)), (0, 24, 0), 'catmullrom'),
         (0.85, pose(root=(14, 0, 30), head=(24, 0, 16), body=(14, 0, 4), right_arm=(-10, 0, 20)), (2, 24, 0), 'catmullrom'),
-        (1.08, pose(root=(14, 0, 86), head=(6, 0, 30), body=(10, 0, -8), right_arm=(-30, 0, 30), right_forearm=(-30, 0, 0),
-                    left_arm=(-50, 0, 10), left_forearm=(-34, 0, 0), right_leg=(-60, 0, 4), right_shin=(100, 0, 0),
+        (1.08, pose(root=(14, 0, 86), head=(6, 0, 30), body=(10, 0, -13), right_arm=(-30, 0, 29), right_forearm=(-30, 0, 0),
+                    left_arm=(-37, 170, -1), left_forearm=(-7, 0, 0), right_leg=(-60, 0, 4), right_shin=(100, 0, 0),
                     left_leg=(-52, 0, -2), left_shin=(96, 0, 0)), (2, 24, 0), 'linear'),
         (1.2, pose(root=(14, 0, 82), head=(10, 0, 46)), (2, 24, 0), 'catmullrom'),
         (1.6, pose(root=(14, 0, 88), head=(8, 0, 44)), (2, 24, 0), 'catmullrom'),
@@ -750,11 +757,11 @@ def deaths():
          (0, 24, 2), 'catmullrom'),
         (1.25, pose(root=(54, 0, -30), body=(10, 0, 0), head=(10, 0, 10), left_arm=(-110, 0, -40), left_forearm=(-20, 0, 0),
                     right_leg=(-20, 0, 4), right_shin=(60, 0, 0), left_leg=(-10, 0, 0), left_shin=(60, 0, 0)), (0, 24, -2), 'catmullrom'),
-        (1.42, pose(root=(86, 0, -40), body=(-4, 0, -6), head=(-24, 12, -14), right_arm=(-140, 0, 30), right_forearm=(-34, 0, 0),
-                    right_hand=Z, left_arm=(-150, 0, -30), left_forearm=(-34, 0, 0), right_leg=(-24, 0, 4), right_shin=(50, 0, 0),
+        (1.42, pose(root=(86, 0, -40), body=(-4, 0, -26), head=(-24, 12, -14), right_arm=(-148, 0, 90), right_forearm=(-34, 0, 0),
+                    right_hand=Z, left_arm=(-69, 44, -120), left_forearm=(-25, 0, 0), right_leg=(-24, 0, 4), right_shin=(50, 0, 0),
                     left_shin=(36, 0, 0)), (0, 24, -2), 'linear'),
-        (1.54, pose(root=(82, 0, -38), body=(-5, 0, -7), head=(-28, 12, -18)), (0, 24, -2), 'catmullrom'),
-        (1.8, pose(root=(84, 0, -40), body=(-6, 0, -8), head=(-30, 12, -20), right_arm=(-150, 0, 30)), (0, 24, -2), 'catmullrom'),
+        (1.54, pose(root=(82, 0, -38), body=(-5, 0, -28), head=(-28, 12, -18)), (0, 24, -2), 'catmullrom'),
+        (1.8, pose(root=(84, 0, -40), body=(-6, 0, -30), head=(-30, 12, -20), right_arm=(-148, 0, 90)), (0, 24, -2), 'catmullrom'),
     ]))
     # Magic: seized rigid and lifted onto his toes, arched back with the arms flung wide, a shudder, then the force lets
     # go and he collapses where he stood, onto his back.
@@ -774,7 +781,7 @@ def deaths():
         (1.3, pose(root=(-40, 0, 0), body=(6, 0, 0), head=(10, 0, 0), right_arm=(-40, 0, 24), left_arm=(-40, 0, -24),
                    right_leg=(-60, 0, 4), right_shin=(90, 0, 0), left_leg=(-54, 0, -4), left_shin=(84, 0, 0)), (0, 24, 2), 'linear'),
         (1.48, pose(root=(-84, 0, 0), body=(2, 0, 0), head=(-10, 0, 0), right_arm=(-120, 0, 40), right_forearm=(-30, 0, 0),
-                    left_arm=(-120, 0, -40), left_forearm=(-30, 0, 0), right_leg=(-50, 0, 6), right_shin=(70, 0, 0),
+                    left_arm=(24, 60, -24), left_forearm=(-34, 0, 0), right_leg=(-50, 0, 6), right_shin=(70, 0, 0),
                     left_leg=(-40, 0, -6), left_shin=(60, 0, 0)), (0, 24, 2), 'linear'),
         (1.6, pose(root=(-80, 0, 0), body=(4, 0, 0), head=(12, -6, 0), right_leg=(-44, 0, 6), right_shin=(60, 0, 0)), (0, 24, 2), 'catmullrom'),
         (1.9, pose(root=(-82, 0, 0), body=(6, 0, 0), head=(20, -10, 0), right_forearm=(-34, 0, 0), left_forearm=(-34, 0, 0),
