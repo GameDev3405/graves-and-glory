@@ -335,7 +335,8 @@ def points(rig, pose):
 
 def check(clip, parsed, rig, family, variants, at):
     name = clip['clip']
-    row = variants.get((family, name)) if variants is not None else None
+    # <id>_wall, the attack as thrown from a shield wall or brace, keeps its row's impact tick and length cap
+    row = variants.get((family, name[:-5] if name.endswith('_wall') else name)) if variants is not None else None
     if row:
         cap = attack_cap()
         if parsed['length'] * TICKS > cap + TIME_SLACK:

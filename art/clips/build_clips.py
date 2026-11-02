@@ -183,6 +183,8 @@ def pose(*parts, **bones):
 # 45 degree bends): the pitch moved from shoulder to elbow is pure, so the forearm and the board keep their facing to a
 # hair, and the grip comes about 1 px back and down. The guard's root drop of 0.6 makes the plant bend both knees past
 # 30 degrees (wall and brace already bend them 55 to 65).
+# Wall and brace cock the sword up and back at the shoulder (Task 16 fix 3): the blade stands 63 to 72 degrees up and leans
+# back, its point 6 to 8 px right of the spine and behind the neck, so no blade crosses a neighbour's board in a wall.
 IDLE = pose(L_HOLD, body=(1, 3, 0), right_arm=(-20, 0, 3), right_forearm=(-10, 0, 0), right_hand=(135, 180, 0),
             right_leg=(0, 0, 3), left_leg=(0, 0, -3))
 CARRY = pose(L_HOLD, body=(3, 4, 0), right_arm=(-50, 0, 2), right_forearm=(-128, 0, 0), right_hand=(178, 180, 0))
@@ -191,12 +193,12 @@ GUARD = pose(body=(3, 12, 0), head=(-2, -9, 0), right_arm=(-65, 0, 20), right_fo
              right_leg=(6, 0, 4), right_shin=Z, left_leg=(-8, 0, -3), left_shin=(8, 0, 0), root=(0, 0, 0, 0, 0.6, 0))
 SHIELD = pose(body=(4, 18, 0), head=(-2, -14, 0), right_arm=(-55, 0, 40), right_forearm=(-110, 0, 0),
               right_hand=(90, 180, 0), left_arm=(-28, 34, 0), left_forearm=(-30, 0, 0), root=(0, 0, 0, 0, 0.2, 0))
-WALL = pose(body=(5, 20, 0), head=(-4, -16, 0), right_arm=(-90, 0, 15), right_forearm=(-100, 0, 0),
-            right_hand=(40, 180, 0), left_arm=(-30, 30, 0), left_forearm=(-30, 0, 0),
+WALL = pose(body=(5, 20, 0), head=(-4, -16, 0), right_arm=(-110, 0, 0), right_forearm=(-70, 0, 0),
+            right_hand=(160, 200, 0), left_arm=(-30, 30, 0), left_forearm=(-30, 0, 0),
             right_leg=(8, 0, 6), right_shin=(2, 0, 0), left_leg=(-12, 0, -5), left_shin=(12, 0, 0),
             root=(0, 0, 0, 0, 1.4, 0))
-BRACE = pose(body=(8, 16, 0), head=(-6, -13, 0), right_arm=(-80, 0, 18), right_forearm=(-105, 0, 0),
-             right_hand=(55, 180, 0), left_arm=(-24, 26, 0), left_forearm=(-32, 0, 0),
+BRACE = pose(body=(8, 16, 0), head=(-6, -13, 0), right_arm=(-110, 0, 10), right_forearm=(-60, 0, 0),
+             right_hand=(180, 200, 0), left_arm=(-24, 26, 0), left_forearm=(-32, 0, 0),
              right_leg=(12, 0, 7), right_shin=(2, 0, 0), left_leg=(-14, 0, -6), left_shin=(14, 0, 0),
              root=(0, 0, 0, 0, 1.8, 0))
 
@@ -329,6 +331,86 @@ def attacks():
     a.k(0.92, root=(0, 0, 0, 0, -0.06, 0.1), body=(-1, 2, 0), head=(-0.5, -1.5, 0), right_arm=(-1, 0, 1),
         right_forearm=(-3, 0, 0), right_hand=(-2, 0, 0), left_arm=(-1, 1, 0))
     a.k(1.1, root=Z, body=Z, head=Z, right_arm=Z, right_forearm=Z, right_hand=Z, left_arm=Z, left_forearm=Z)
+    a.lag(right_hand=0.03, left_forearm=0.05, head=0.02)
+    out.append(a)
+    return out
+
+
+# ---- wall strikes (offsets on the wall and brace stances; zero at both ends)
+
+def wall_arm(shoulder, elbow, wrist):
+    """The sword arm's absolute shoulder (pitch, roll), elbow pitch and wrist (pitch, yaw[, roll]) as offsets on the wall,
+    so a key can be set where the hand and blade should be and the wall's cocked arm subtracted."""
+    return dict(right_arm=(shoulder[0] - WALL['right_arm'][0], 0, shoulder[1] - WALL['right_arm'][2]),
+                right_forearm=(elbow - WALL['right_forearm'][0], 0, 0),
+                right_hand=(wrist[0] - WALL['right_hand'][0], wrist[1] - WALL['right_hand'][1], wrist[2] if len(wrist) > 2 else 0))
+
+
+WALL_ZERO = dict(root=Z, body=Z, head=Z, right_arm=Z, right_forearm=Z, right_hand=Z, left_arm=Z, left_forearm=Z)
+
+
+def wall_attacks():
+    """<id>_wall: each attack as a troop in a wall or brace throws it from the cocked sword (the engine plays these in those
+    stances), on the same impact tick as the row's open-order clip. No blade or arm crosses the troop's own board."""
+    out = []
+    # Thrust over the rim (impact tick 7): the cocked sword draws back by the ear with its point turned forward, then the
+    # arm drives it out over the board's top edge, the body turning in behind it while the shield arm turns against the
+    # body so the board stays square; a short overreach, and the point climbs back to the cocked guard.
+    a = Anim('sword_shield_thrust_wall', 1.25, impact=0.35)
+    a.k(0.0, **WALL_ZERO)
+    a.k(0.15, root=(0, 0, 0, 0, 0.2, 0.8), body=(-2, 12, 0), head=(0, -8, 0), left_arm=(0, -8, 0), left_forearm=(-2, 0, 0),
+        **wall_arm((-141, -6), -35, (67, 217)))
+    a.k(0.29, i='linear', root=(0, 0, 0, 0, 0.4, -1.0), body=(2, -10, 0), head=(-2, 8, 0), left_arm=(0, 12, 0),
+        **wall_arm((-137, -3), -18, (78, 198)))
+    a.k(0.35, i='linear', root=(0, 0, 0, 0, 0.6, -1.8), body=(4, -20, 0), head=(-3, 16, 0), left_arm=(0, 20, 0),
+        left_forearm=(-3, 0, 0), **wall_arm((-133, 0), -5, (88, 181)))
+    a.k(0.45, root=(0, 0, 0, 0, 0.65, -2.1), body=(5, -23, 0), head=(-3, 18, 0), left_arm=(1, 22, 0), left_forearm=(-4, 0, 0),
+        **wall_arm((-130, 0), -2, (92, 181)))
+    a.k(0.68, root=(0, 0, 0, 0, 0.3, -0.7), body=(1, -8, 0), head=(-1, 6, 0), left_arm=(0, 8, 0), left_forearm=(-1, 0, 0),
+        **wall_arm((-122, 0), -38, (128, 192)))
+    a.k(0.98, root=(0, 0, 0, 0, -0.05, 0.15), body=(-0.5, 2, 0), head=(0, -1, 0), left_arm=(-0.5, -1, 0),
+        **wall_arm((-108, 0), -73, (163, 201)))
+    a.k(1.25, **WALL_ZERO)
+    a.lag(right_hand=0.03, left_forearm=0.04, head=0.02)
+    out.append(a)
+    # Overhead over the rim (impact tick 10): the blade rises from the cock to lie back over the shoulder, a held beat,
+    # then it chops forward and down past the board's edge as the body drops behind it; it climbs back to the cock.
+    a = Anim('sword_shield_overhead_wall', 1.2, impact=0.5)
+    a.k(0.0, **WALL_ZERO)
+    a.k(0.12, root=(0, 0, 0, 0, 0.4, 0.2), body=(2, 3, 0), head=(1, -2, 0), **wall_arm((-116, 0), -60, (172, 203)))
+    a.k(0.32, root=(0, 0, 0, 0, -0.3, 0.8), body=(-6, 8, 0), head=(-5, -5, 0), left_arm=(-3, 4, 0),
+        **wall_arm((-150, 0), -32, (218, 208)))
+    a.k(0.41, i='linear', root=(0, 0, 0, 0, -0.35, 0.9), body=(-7, 9, 0), head=(-6, -6, 0), left_arm=(-3, 4, 0),
+        **wall_arm((-152, 0), -28, (225, 209)))
+    a.k(0.5, i='linear', root=(0, 0, 0, 0, 1.0, -1.6), body=(12, -18, 0), head=(5, 13, 0), left_arm=(-4, 18, 0),
+        left_forearm=(2, 0, 0), **wall_arm((-143, 0), 1, (67, 181)))
+    a.k(0.6, root=(0, 0, 0, 0, 1.2, -1.8), body=(14, -21, 0), head=(6, 15, 0), left_arm=(-4, 20, 0), left_forearm=(3, 0, 0),
+        **wall_arm((-136, 0), 2, (55, 181)))
+    a.k(0.82, root=(0, 0, 0, 0, 0.4, -0.5), body=(4, -6, 0), head=(2, 4, 0), left_arm=(-1, 6, 0), left_forearm=(1, 0, 0),
+        **wall_arm((-124, 0), -40, (122, 194)))
+    a.k(1.02, root=(0, 0, 0, 0, -0.06, 0.1), body=(-1, 1.5, 0), head=(-0.5, -1, 0), **wall_arm((-108, 0), -72, (164, 201)))
+    a.k(1.2, **WALL_ZERO)
+    a.lag(right_hand=0.03, left_forearm=0.05, head=0.025)
+    out.append(a)
+
+    # Low cut beside the board (impact tick 8): the body coils, then sinks deep as the blade falls forward and down
+    # past the board's right edge at the legs; the shield arm rolls the board a little out of the arm's road (it stays
+    # within 28 degrees of the front) and the sword climbs back to the cock.
+    a = Anim('sword_shield_low_cut_wall', 1.1, impact=0.4)
+    a.k(0.0, **WALL_ZERO)
+    a.k(0.16, root=(0, 0, 0, 0, 0.4, 0.5), body=(0, 12, 0), head=(0, -8, 0), left_arm=(-2, -4, 0),
+        **wall_arm((-122, 0), -78, (188, 206)))
+    a.k(0.33, i='linear', root=(0, 0, 0, 0, 1.1, -0.4), body=(8, -3, 0), head=(4, 3, 0), left_arm=(4, -6, -12),
+        left_forearm=(2, 0, 0), **wall_arm((-84, 0), -66, (135, 190)))
+    a.k(0.4, i='linear', root=(0, 0, 0, 0, 1.7, -1.1), body=(14, -10, 0), head=(8, 7, 0), left_arm=(6, -10, -20),
+        left_forearm=(4, 0, 0), **wall_arm((-43, 0), -77, (97, 173)))
+    a.k(0.5, root=(0, 0, 0, 0, 1.8, -1.2), body=(15, -11, 0), head=(8, 8, 0), left_arm=(6, -10, -21), left_forearm=(4, 0, 0),
+        **wall_arm((-40, 0), -70, (88, 173)))
+    a.k(0.72, root=(0, 0, 0, 0, 0.6, -0.4), body=(5, -9, 0), head=(3, 6, 0), left_arm=(2, 12, 0), left_forearm=(1, 0, 0),
+        **wall_arm((-80, 0), -82, (135, 192)))
+    a.k(0.92, root=(0, 0, 0, 0, -0.06, 0.1), body=(-1, 2, 0), head=(-0.5, -1.5, 0), left_arm=(-1, 1, 0),
+        **wall_arm((-107, 0), -72, (162, 201)))
+    a.k(1.1, **WALL_ZERO)
     a.lag(right_hand=0.03, left_forearm=0.05, head=0.02)
     out.append(a)
     return out
@@ -803,7 +885,7 @@ def project(family, anims):
 
 
 def projects():
-    return {'sword_shield': stances() + attacks() + blocks(), 'common': hits() + deaths() + scenes(),
+    return {'sword_shield': stances() + attacks() + wall_attacks() + blocks(), 'common': hits() + deaths() + scenes(),
             'bow': bow_clips()}
 
 
