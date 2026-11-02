@@ -183,7 +183,8 @@ public final class ConvoyMode extends BattleMode {
     void unforce(GravesAndGlory.Battle b) {
         if (forcedChunk == Long.MIN_VALUE) return;
         var c = new net.minecraft.util.math.ChunkPos(forcedChunk);
-        b.world.setChunkForced(c.x, c.z, false);
+        // A chunk Battle.updateUnitChunks holds for troops stays forced: it re-forces only chunks it did not hold, so releasing it here froze every troop in it (they never tick again and never leave).
+        if (!b.unitChunks.contains(forcedChunk)) b.world.setChunkForced(c.x, c.z, false);
         forcedChunk = Long.MIN_VALUE;
     }
 
