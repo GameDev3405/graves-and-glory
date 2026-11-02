@@ -1,0 +1,26 @@
+# Graves and Glory dedicated server defaults. start.ps1 / start.sh copy this to server.properties only if that file is missing.
+# Values for world, gamemode and difficulty follow the project server template (tools/export_modrinth.py).
+level-name=Graves and Glory
+level-type=minecraft\:flat
+generator-settings={"layers":[{"block":"minecraft:bedrock","height":1},{"block":"minecraft:dirt","height":2},{"block":"minecraft:grass_block","height":1}],"biome":"minecraft:plains","structures":{}}
+generate-structures=false
+gamemode=adventure
+difficulty=normal
+spawn-protection=0
+# Network: port 25580, all interfaces. Restrict reach with the host firewall or Tailscale (see README).
+server-ip=
+server-port=25580
+online-mode=true
+enable-rcon=false
+enable-query=false
+# Access: only whitelisted players may join, and removing a name kicks them.
+white-list=true
+enforce-whitelist=true
+max-players=16
+motd=Graves and Glory
+# Performance: unchanged from vanilla until Spark shows a cost (docs/LOBBY-AND-SERVER-RESEARCH.md section 5).
+view-distance=10
+simulation-distance=10
+sync-chunk-writes=true
+entity-broadcast-range-percentage=100
+max-tick-time=-1
