@@ -108,3 +108,38 @@ Recommendation: run A first. If Graveborn falls toward the band with Rise Again 
 - Vanilla 1.20.1 constants (KBR, hitboxes, immunities) are from memory.
 - No duel run was made for this report; the effective-HP table is arithmetic.
 - The Rise Again effect size is an estimate.
+
+## Appendix A. Measured results (2026-11-02, proposals A and F)
+
+Branch work/house-audit. No shipped gameplay value changed; every switch is a test-only `-PsimOverride` sheet override or a test-tools class.
+
+### A. Cross-House duels under four conditions
+
+Method: DuelSimulation, plan = `tools/balance_method.py plan-units --reps 6 --mirror-reps 0 --calib-reps 0` with same-House pairings removed and repetitions raised to 12 (121 pairings, 1452 fights per condition), 18 troop types at equal gold, `traits=banner` (tier III), melee reach grace 1.0 (the sheet value), `-PduelSeed=7`, `-PsimFast=true`, world seed 4242, map 0. A House's win rate is its troops' share of cross-House fights, a draw as half; n is 672 (Gilded, Tidecallers) or 780 (Graveborn, Ironclad) troop-fights, SE about 1.7 to 1.9 points. Band 40-60.
+
+Switches: Rise Again off = `houseTraits.graveborn_1..3.value=0` (a roll can never fall below 0, the same outcome as `Houses.forceRise=false`; the hook has no property, and the override needs no code or build change). Bulwark neutralised = `houseTraits.gilded_1..3.value=0` and `radius=0` (no ranged cut and no covered flank). A third Bulwark run sets `value=0` only.
+
+| condition | Gilded | Graveborn | Ironclad | Tidecallers |
+|---|---|---|---|---|
+| baseline | 35.9 | 71.5 | 35.6 | 55.8 |
+| Rise Again off | 36.9 | 67.1 | 38.7 | 56.4 |
+| Bulwark off (value and radius 0) | 29.8 | 75.2 | 36.4 | 56.7 |
+| Bulwark off (value 0 only) | 30.9 | 72.9 | 37.7 | 56.8 |
+| both off | 31.7 | 69.1 | 40.3 | 57.4 |
+
+Reading:
+- The baseline is not the 10-29 reference (Graveborn 81.2, Gilded 26.8, 4 reps, older code): main has changed since, and this run uses 12 reps. Not investigated.
+- Rise Again is worth about 4 points to Graveborn (71.5 to 67.1). With it off Graveborn is still 7 points above the band; Reaper (100) and Revenant (99-100) still win nearly every fight, so the sheet stats, not the trait, hold Graveborn up.
+- Removing Bulwark makes Gilded worse, not better (35.9 to 30-31): Bulwark is worth about 5 points to Gilded in these duels. Gilded is below the band with it on or off, so its gap is sheet stats (Sentinel 15-30, Longbow 12-17, Archer 31-35, Knight 57-64), not a hidden trait cost. The report's section 5 guess that Gilded would rise with Bulwark neutralised was wrong in direction.
+- Ironclad reaches the band edge (40.3) only with both traits off, because the two Houses it loses to lose strength.
+- Tidecallers is in the band under every condition (55.8-57.4).
+
+### F. Zombie reinforcements on hard
+
+Test-tools probe `ZombieReinforcementProbe` (run with `JAVA_TOOL_OPTIONS=-Dgravesandglory.zombieProbe=1` beside any DuelSimulation run). Server on HARD, `doMobSpawning` true, spawn chunk loaded. For every sheet troop whose mob is a ZombieEntity (husk, zombie, zombified piglin, drowned) it read ZOMBIE_SPAWN_REINFORCEMENTS and hurt a fresh copy 400 times from a mob attacker.
+
+Result: attribute 0.0 on all four, 1600 hits landed, 0 reinforcements spawned. Control: the same zombie with the attribute forced to 1.0 called 1 reinforcement in 5 hits, so the probe can see them. Confirmed: troops call no reinforcements. (The shipped battle sets NORMAL difficulty with mob spawning off, so there is a second guard.)
+
+### Which of B, C, E
+
+B (knockback resistance) and C (hitboxes) are not indicated: neither trait explains the Graveborn gap, and the two Reaper/Revenant rates sit at 100 whatever the traits do. E is needed: the Graveborn sheet (Reaper, Revenant, Bonebow) and the Gilded sheet (Sentinel, Longbow, Archer). Bulwark would need a bigger value, not removal, to lift Gilded. Whether B or C moves Reaper and Revenant is untested here.

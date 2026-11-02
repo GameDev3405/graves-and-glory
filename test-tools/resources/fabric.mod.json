@@ -10,7 +10,8 @@
       "gg.gravesandglory.StructureStudio",
       "gg.gravesandglory.BotSimulation",
       "gg.gravesandglory.DuelSimulation",
-      "gg.gravesandglory.MapForge"
+      "gg.gravesandglory.MapForge",
+      "gg.gravesandglory.ZombieReinforcementProbe"
     ],
     "client": [
       "gg.gravesandglory.testing.LocalVisualInspection",
