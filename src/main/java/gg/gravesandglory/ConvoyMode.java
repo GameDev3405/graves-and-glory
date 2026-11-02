@@ -318,10 +318,17 @@ public final class ConvoyMode extends BattleMode {
     /** How far a screen or blocker may stray from the wagon before it regroups on it, by bot tier (draft values). */
     static double chaseRange(String tier) {return switch (tier) {case "easy" -> 40; case "hard" -> 120; default -> 80;};}
 
+    /** How far up the road a defence blocker holds ahead of the wagon: 30 blocks let the escort's screens hold the blockers off the wagon
+     *  (escort 10 of 10, mode gate 2026-11-02); 10 keeps them in the fight at the wagon. */
+    static final double BLOCK_AHEAD = 10;
+    /** The defence never falls back to The Refuge, the road's far end: retreating there took it off the wagon for about 46% of the round
+     *  (mode gate 2026-11-02). It fights on the road and refills from its buys; the escort keeps the tier's fall-back. */
+    @Override public boolean botRetreats(GravesAndGlory.Battle b, GravesAndGlory.Squad s) {return s.team == ESCORT;}
+
     /**
      * Bot goals (spec 3.6). Each team's seated banners split by ModeMath.convoyRoles, humans counted first as primary.
      * Escort: pushers walk just ahead of the wagon, screens 20 blocks further up the road. Defence: raiders go to the wagon,
-     * blockers hold the road up to 30 blocks ahead, no further than the next stop. A screen or blocker farther than chaseRange from the wagon regroups on it.
+     * blockers hold the road up to BLOCK_AHEAD blocks ahead, no further than the next stop. A screen or blocker farther than chaseRange from the wagon regroups on it.
      */
     @Override public Vec3d botGoal(GravesAndGlory.Battle b, GravesAndGlory.Squad s, Vec3d centre, Spec.BotCommandRow tier) {
         if (finished) return null;
@@ -341,7 +348,7 @@ public final class ConvoyMode extends BattleMode {
             case "pusher" -> road(distance + 3);
             case "raider" -> at;
             case "screen" -> far ? at : road(distance + 20);
-            default -> far ? at : road(Math.min(distance + 30, stops[nextStop()]));
+            default -> far ? at : road(Math.min(distance + BLOCK_AHEAD, stops[nextStop()]));
         };
     }
 

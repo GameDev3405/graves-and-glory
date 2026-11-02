@@ -13,7 +13,7 @@ import sys
 # Columns every mode needs, and the ones each checker reads on top (results.csv of BotSimulation).
 BASE_COLUMNS = ("winner", "mode")
 MODE_COLUMNS = {
-    "siege": ("stage", "gateBlows"),
+    "siege": ("stage", "gateBlows", "seconds"),
     "domination": ("dawnScore", "duskScore"),
     "convoy": ("checkpoints", "idleMax"),
 }
@@ -21,6 +21,11 @@ MODE_COLUMNS = {
 WIN_MIN, WIN_MAX = 0.3, 0.7
 CONVOY_MIN_CHECKPOINTS = 1.5
 CONVOY_MAX_STALL_SECONDS = 60
+# Siege's yard clock (sheets/design.json modes.siege roundSeconds, Kort's 185 s). The bots' mean yard-fall time is 168-184 s, so a
+# match the defence wins on that clock at stage 0 is a close yard fight, not a stuck attack. Such clock losses are allowed up to
+# 1 - WIN_MIN of the matches (the most the win band leaves the defence); a stage-0 ending any other way still fails.
+SIEGE_YARD_CLOCK_SECONDS = 185
+SIEGE_MAX_CLOCK_STAGE0 = 1 - WIN_MIN
 
 
 def check_siege(rows):
@@ -34,11 +39,16 @@ def check_siege(rows):
     untouched = sum(1 for r, s in zip(rows, stages) if s >= 1 and float(r["gateBlows"] or 0) <= 0)
     if untouched:
         reasons.append("%d match(es) reached the gate stage with gateBlows=0" % untouched)
-    stuck = sum(1 for s in stages if s < 1)
+    clock = [r["winner"] == "dusk" and float(r["seconds"] or 0) >= SIEGE_YARD_CLOCK_SECONDS for r in rows]
+    stuck = sum(1 for s, c in zip(stages, clock) if s < 1 and not c)
     if stuck:
-        reasons.append("%d of %d match(es) never got past the yard (stage 0)" % (stuck, n))
+        reasons.append("%d of %d match(es) never got past the yard (stage 0) before the %d s clock" % (stuck, n, SIEGE_YARD_CLOCK_SECONDS))
+    timed = sum(1 for s, c in zip(stages, clock) if s < 1 and c)
+    if timed > SIEGE_MAX_CLOCK_STAGE0 * n + 1e-9:
+        reasons.append("%d of %d match(es) ran out the yard clock at stage 0, over %d%%" % (timed, n, round(100 * SIEGE_MAX_CLOCK_STAGE0)))
     counts = [sum(1 for s in stages if s == k) for k in range(4)]
-    summary = ["stages 0=%d 1=%d 2=%d 3=%d" % tuple(counts), "mean stage %.2f" % (sum(stages) / n)]
+    summary = ["stages 0=%d 1=%d 2=%d 3=%d" % tuple(counts), "mean stage %.2f" % (sum(stages) / n),
+               "stage 0 on the yard clock %d" % timed]
     return reasons, summary
 
 
