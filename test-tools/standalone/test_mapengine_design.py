@@ -103,6 +103,15 @@ class DesignTest(unittest.TestCase):
         self.assertEqual(next_id(d, 'hill'), 'hill-4')
         self.assertEqual(next_id(d, 'river'), 'river-1')
 
+    def test_validate_malformed_shapes(self):
+        self.assertEqual(validate([]), ['design: not an object'])
+        d = new_design('t', 'T')
+        d['objects'] = [5, None]
+        self.assertIn('object #0: not an object', validate(d))
+        self.assertIn('object #1: not an object', validate(d))
+        d['objects'] = 'x'
+        self.assertTrue(validate(d))
+
     def test_cli_new(self):
         with tempfile.TemporaryDirectory() as tmp:
             self.assertEqual(cli.main(['new', 'foo', 'Foo Map'], root=pathlib.Path(tmp)), 0)

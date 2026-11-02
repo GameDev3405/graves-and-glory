@@ -62,5 +62,17 @@ def main(argv=None, root=None):
             return 1
         print('OK: matches the design')
         return 0
-    print(f'{args.cmd}: not implemented yet')
+    if args.cmd == 'serve':
+        from mapengine import server
+        srv = server.make_server(root / 'maps', root / 'work' / 'mapengine', args.port)
+        url = f'http://127.0.0.1:{srv.server_address[1]}/'
+        print(f'map engine at {url} (Ctrl+C to stop)')
+        if not args.no_open:
+            import webbrowser
+            webbrowser.open(url)
+        try:
+            srv.serve_forever()
+        except KeyboardInterrupt:
+            pass
+        return 0
     return 2

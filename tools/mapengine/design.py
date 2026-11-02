@@ -45,6 +45,8 @@ def _range(o, key, lo, hi, out, integer=False):
 
 
 def validate(d):
+    if not isinstance(d, dict):
+        return ['design: not an object']
     out = []
     if d.get('format') != FORMAT:
         out.append(f'format must be {FORMAT}')
@@ -54,7 +56,14 @@ def validate(d):
         w = dp = 0
     seen = set()
     palettes = palette_keys()
-    for i, o in enumerate(d.get('objects', [])):
+    objects = d.get('objects', [])
+    if not isinstance(objects, list):
+        out.append('objects: not a list')
+        objects = []
+    for i, o in enumerate(objects):
+        if not isinstance(o, dict):
+            out.append(f'object #{i}: not an object')
+            continue
         oid = o.get('id') if isinstance(o.get('id'), str) else f'object #{i}'
         o = dict(o, id=oid)
         if oid in seen:
