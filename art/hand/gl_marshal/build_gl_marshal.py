@@ -1,9 +1,13 @@
 #!/usr/bin/env python3
 """Lord Marshal Aldric (Gilded house, troop id gl_marshal), hand-authored at one texel per model pixel.
 
-One man, one stage: the Order's commander in blackened plate edged in gilt, a white surcoat with the team pale down its
-middle, a fur collar, broad three-lame pauldrons, an open helm crowned with a gilt laurel over a grey-bearded, scarred
-face and the heater shield with the Order's sun on the pale. No flag on his back (Kort, 2026-10-29).
+The Order's commander in blackened plate edged in gilt, a white surcoat with the team pale down its middle, broad
+three-lame pauldrons, an open helm crowned with a gilt laurel over a grey-bearded, scarred face and the heater shield
+with the Order's sun on the pale. No flag on his back (Kort, 2026-10-29); a cape is clothing, not a flag.
+
+Tier I is the field harness. Tier II adds a fur collar over the gorget and a long team cape with the Order's sun on it.
+Tier III spends the gilt: a gilt crown over the laurel with a sun disc cresting it, gilded pauldron domes, gilt
+filigree along the plate's edges and a gilt border round the cape.
 
   python build_gl_marshal.py preview <dir> [side] | contact <png> [side] [all] | install
 """
@@ -93,16 +97,78 @@ def neckguard(face_, w, h):
     return g
 
 # ---- the harness: blackened plate edged in gilt ----
-def cuirass(face_, w, h):
-    return rows([(0, plate(R=BLACK, base=2)), (7, plate(R=BLACK, base=2, spec=False)), (10, mail(base=1))])(face_, w, h)
+def gild(painter, at, tier):
+    """Tier III's filigree: gilt along the given rows of a plate's side faces (a running dot-and-bar)."""
+    def paint(face_, w, h):
+        g = painter(face_, w, h)
+        if tier < 3 or face_ in ("top", "bottom"): return g
+        for y in at:
+            if y < h: g[y] = [GOLD[4] if x % 3 == 1 else GOLD[3] if x % 3 == 0 else g[y][x] for x in range(w)]
+        return g
+    return paint
 
-def arm(face_, w, h):
-    return rows([(0, plate(R=BLACK, base=2)), (6, plate(R=BLACK, base=2)), (10, plate(R=BLACK, base=1, spec=False))])(face_, w, h)
+def cuirass(tier):
+    return gild(rows([(0, plate(R=BLACK, base=2)), (7, plate(R=BLACK, base=2, spec=False)), (10, mail(base=1))]), (0, 6), tier)
 
-def leg(face_, w, h):
-    return rows([(0, plate(R=BLACK, base=2)), (6, plate(R=BLACK, base=2)), (9, plate(R=BLACK, base=1))])(face_, w, h)
+def arm(tier):
+    return gild(rows([(0, plate(R=BLACK, base=2)), (6, plate(R=BLACK, base=2)), (10, plate(R=BLACK, base=1, spec=False))]), (0, 9), tier)
 
-def pauldron(part):
+def leg(tier):
+    return gild(rows([(0, plate(R=BLACK, base=2)), (6, plate(R=BLACK, base=2)), (9, plate(R=BLACK, base=1))]), (0,), tier)
+
+# ---- tier III: the crown over the laurel and the sun disc that crests it ----
+def crown(face_, w, h):
+    if face_ == "bottom": return blank(w, h)
+    if face_ == "top":
+        g = blank(w, h)
+        for y in range(h):
+            for x in range(w):
+                if x in (0, w - 1) or y in (0, h - 1): g[y][x] = GOLD[4]
+        return g
+    base = {"front": 4, "right": 4, "left": 3, "back": 3}[face_]
+    g = [[GOLD[base]] * w for _ in range(h)]
+    g[0] = [GOLD[min(6, base + 1)] if x % 4 in (0, 1) else None for x in range(w)]   # the crown's points
+    g[0][0] = g[0][w - 1] = GOLD[base + 1]
+    g[h - 1] = [GOLD[2]] * w
+    if face_ == "front": g[h - 1][w // 2] = GOLD[6]
+    return g
+
+def sun_disc(face_, w, h):
+    if face_ == "front" or face_ == "back":
+        return grid("""
+.d.
+dHd
+.d.""", {"d": GOLD[4] if face_ == "front" else GOLD[3], "H": GOLD[6] if face_ == "front" else GOLD[4]})
+    return [[GOLD[3]] * w for _ in range(h)]
+
+def pauldron(part, tier=1):
+    def paint(face_, w, h):
+        if tier == 3 and part == "dome":
+            g = pauldron_(face_, w, h, GOLD)
+            if face_ not in ("top", "bottom"): g[h - 1] = [BLACK[1]] * w
+            return g
+        g = pauldron_(face_, w, h, BLACK)
+        if tier == 3 and part == "lame" and face_ not in ("top", "bottom"): g[h - 1] = [GOLD[3] if x % 2 else GOLD[2] for x in range(w)]
+        return g
+    def pauldron_(face_, w, h, R):
+        if face_ == "bottom": return plate(R=R, base=1, spec=False, rim=False)(face_, w, h)
+        if face_ == "top":
+            g = blank(w, h)
+            for y in range(h):
+                for x in range(w):
+                    dx, dy = abs(x - (w - 1) / 2), abs(y - (h - 1) / 2)
+                    g[y][x] = R[5] if dx + dy < 1 else R[4] if dx + dy < 2.5 else R[3]
+                    if part != "dome": g[y][x] = R[2]
+            return g
+        base = max(1, min(5, {"dome": 3, "lame": 2}[part] + LIT.get(face_, 0)))
+        g = [[R[base]] * w for _ in range(h)]
+        g[0] = [R[min(6, base + 2)]] * w
+        g[h - 1] = [R[0]] * w
+        if part == "dome": g[h - 1] = [GOLD[4] if x % 2 == 0 else GOLD[3] for x in range(w)]
+        return g
+    return paint
+
+def pauldron_old(part):
     def paint(face_, w, h):
         if face_ == "bottom": return plate(R=BLACK, base=1, spec=False, rim=False)(face_, w, h)
         if face_ == "top":
