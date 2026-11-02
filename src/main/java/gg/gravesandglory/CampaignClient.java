@@ -153,10 +153,21 @@ public final class CampaignClient {
     static void briefing(DrawContext g,net.minecraft.client.font.TextRenderer font,int w,int bottom){
         int cw=Math.min(400,w-40),x=(w-cw)/2;
         var orders=font.wrapLines(DarkUi.body(text(battle,"briefing")),cw-24);var why=font.wrapLines(DarkUi.body(text(battle,"reason")),cw-24);
-        int y=bottom-(36+11*(orders.size()+why.size()));DarkUi.frame(g,x,y,cw,bottom-y);
+        String bonus=bonusLine();var extra=bonus.isEmpty()?java.util.List.<net.minecraft.text.OrderedText>of():font.wrapLines(DarkUi.body(bonus),cw-24);
+        int y=bottom-(36+11*(orders.size()+why.size())+(extra.isEmpty()?0:3+11*extra.size()));DarkUi.frame(g,x,y,cw,bottom-y);
         String name=text(battle,"name").toUpperCase(java.util.Locale.ROOT);int tw=(int)(font.getWidth(Text.literal(name).setStyle(net.minecraft.text.Style.EMPTY.withFont(DarkUi.TITLE)))*1.35f);
         DarkUi.title(g,name,w/2-tw/2,y+9,DarkUi.GOLD);y+=26;
         for(var line:orders){g.drawText(font,line,w/2-font.getWidth(line)/2,y,DarkUi.PAPER,false);y+=11;}y+=3;
         for(var line:why){g.drawText(font,line,w/2-font.getWidth(line)/2,y,DarkUi.MUTED,false);y+=11;}
+        if(!extra.isEmpty()){y+=3;int ink=bonusClaimed()?DarkUi.MUTED:DarkUi.GOLD;for(var line:extra){g.drawText(font,line,w/2-font.getWidth(line)/2,y,ink,false);y+=11;}}
+    }
+    /** The battle being fought as its campaignBattles row, or null (a room, practice). */
+    static Spec.CampaignBattlesRow marchRow(){return MarchMath.row(text(battle,"id"),Spec.CAMPAIGNBATTLES);}
+    /** Whether the bonus of the battle being fought has paid before (plan 2C.5). */
+    static boolean bonusClaimed(){var b=MarchMath.bonus(marchRow(),Spec.BONUSOBJECTIVES);return b!=null&&profile.bonusClaimed.contains(b.id());}
+    /** The briefing's bonus line (plan 2C.5): the objective and what it pays, or that it was claimed; empty for a battle with no bonus. */
+    static String bonusLine(){
+        var row=marchRow();var b=MarchMath.bonus(row,Spec.BONUSOBJECTIVES);if(b==null)return "";
+        return bonusClaimed()?"Bonus claimed: "+b.text():"Bonus: "+b.text()+" "+MarchText.reward(b,row);
     }
 }

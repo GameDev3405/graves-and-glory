@@ -88,6 +88,13 @@ public final class MarchMathCheck {
         check(!kill.kept(true, 60), "tracker kill_unit: another squad's kill or another troop does not count");
         kill.killed("revenant", true);
         check(kill.kept(true, 60), "tracker kill_unit: the target troop by the player's own squad");
+        // seat size (plan 2C.6): a March battle seats its row's size per team, practice seats one, and nothing leaves the six-seat lobby
+        check(MarchMath.seatSize(null) == 1, "seatSize: practice (no row) is one a side");
+        for (var r : ROWS) check(MarchMath.seatSize(r) == Math.max(1, Math.min(3, r.size())), "seatSize: " + r.id() + " follows its row's size within 1 to 3");
+        var big = new Spec.CampaignBattlesRow("x", 1, 1, "x", 0, 9, "easy", false, "", "", "domination", "gilded", "none", "none");
+        var zero = new Spec.CampaignBattlesRow("x", 1, 1, "x", 0, 0, "easy", false, "", "", "domination", "gilded", "none", "none");
+        var two = new Spec.CampaignBattlesRow("x", 1, 1, "x", 0, 2, "easy", false, "", "", "domination", "gilded", "none", "none");
+        check(MarchMath.seatSize(big) == 3 && MarchMath.seatSize(zero) == 1 && MarchMath.seatSize(two) == 2, "seatSize: held to 1..3 (9 -> 3, 0 -> 1, 2 -> 2)");
         System.out.println("MarchMathCheck: " + checks + " checks passed");
     }
 }

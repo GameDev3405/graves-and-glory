@@ -82,11 +82,21 @@ final class UiReportChecks implements Suite {
     }
     static int[] shrink(int[] a){return new int[]{a[0]+1,a[1]+3,Math.max(1,a[2]-2),Math.max(1,a[3]-6)};}
 
+    /** The "march" block Campaign.reportMarch adds to a Long March report: case 0 a bonus kept and a Pact earned, 1 a bonus missed, 2 a loss, 3 and 4 a plain win with the bonus claimed before. */
+    static JsonObject marchBlock(int k){
+        var m=new JsonObject();var row=Spec.CAMPAIGNBATTLES[0];var bo=Spec.BONUSOBJECTIVES[0];
+        m.addProperty("id",row.id());m.addProperty("name",row.name());m.addProperty("order",row.order());m.addProperty("won",k!=2);
+        m.addProperty("bonus",bo.text());m.addProperty("bonusState",switch(k){case 0->"paid";case 1->"missed";case 2->"lost";default->"claimed";});
+        m.addProperty("bonusShards",bo.shards());m.addProperty("bonusGold",bo.gold());m.addProperty("house",row.house());
+        m.addProperty("pacts",k==0?1:0);m.addProperty("writs",k==0?1:0);
+        return m;
+    }
+
     void note(String id,boolean pass,String detail){if(!pass){ok=false;}report(id,pass,detail);}
 
     static final int[][] SIZES={{2560,1440,3},{1920,1080,2},{1280,720,1},{854,480,1}};
 
-    int size,step,rep;String[] shotMode;
+    int size,step,rep,msub;String[] shotMode;
 
     public void step(MinecraftClient c,int tick){
         if(finished)return;
@@ -148,7 +158,7 @@ final class UiReportChecks implements Suite {
             }
             case 7->{
                 var p=page(c);if(p==null)return;
-                if(!WarTableReport.texts().containsKey("outcome")&&tick-subAt<80)return;
+                if(WarTableReport.texts().values().stream().noneMatch(t->t.contains("not saved"))&&tick-subAt<80)return;
                 boolean notSaved=WarTableReport.texts().values().stream().anyMatch(t->t.contains("not saved"));
                 note("p1-ui-report-unsaved",notSaved,"a report with nothing saved says so: "+notSaved);
                 var go=p.button("go");boolean live=go!=null&&go.active&&go.visible;
@@ -159,7 +169,51 @@ final class UiReportChecks implements Suite {
             case 8->{
                 boolean home=c.currentScreen instanceof CampScreen s&&s.page.equals("home");
                 note("p1-ui-report-esc",home,"Esc from the report lands on "+(c.currentScreen instanceof CampScreen s?s.page:String.valueOf(c.currentScreen)));
+                size=1;msub=0;window(c,SIZES[1][0],SIZES[1][1],0,true);stage=9;subAt=tick;
+            }
+            case 9->{ // plan 2C.5: a Long March report: bonus kept and a Pact earned, bonus missed, a loss, under the gold floor
+                var j=synth(Modes.DOMINATION,3,3,false,0,2,3,msub!=4);
+                if(msub==3)j.addProperty("eligible",false);
+                if(msub==2)j.addProperty("outcome","DEFEAT");
+                j.add("march",marchBlock(msub));
+                CampaignClient.result=want=j;CampScreen.open("results");stage=10;subAt=tick;
+            }
+            case 10->{
+                var p=page(c);if(p==null){if(tick-subAt>100){note("p1-ui-report-march",false,"the results page did not open for march case "+msub);finished=true;finish(c,"ui-report");}return;}
+                if(!WarTableReport.texts().containsKey("rewards")&&tick-subAt<80)return;
+                var t=WarTableReport.texts();String tag2=SIZES[size][0]+"x"+SIZES[size][1];String lay=layout(c);
+                String bonus=t.get("march-bonus"),pact=t.get("march-pact"),value=t.get("march-bonus-value");
+                boolean pass=switch(msub){
+                    case 0->"Bonus kept".equals(bonus)&&value!=null&&value.startsWith("+5 ")&&value.contains("+40 gold")&&"A Pact earned".equals(pact);
+                    case 1->"Bonus missed".equals(bonus)&&value==null&&pact==null;
+                    case 2->bonus==null&&pact==null;
+                    case 3->"No gold: under 3 minutes.".equals(t.get("rewards-note"));
+                    default->t.get("rewards").contains("not saved");};
+                note("p1-ui-report-march-"+msub+"-"+tag2,pass&&lay.isEmpty(),"march case "+msub+" at "+tag2+": bonus "+bonus+" / "+value+", pact "+pact+", note "+t.get("rewards-note")+(lay.isEmpty()?", layout clean":", layout: "+lay));
+                if(msub==0){shot(c,"report-pact-"+tag2);}
+                if(++msub<5){stage=9;return;}
+                msub=0;stage=11;subAt=tick;
+            }
+            case 11->{ // the Chapter face carries the Long March block
+                var p=page(c);if(p==null)return;
+                if(msub==0){var b=p.button("tab-chapter");if(b!=null)WarTableRecruit.press(b);msub=1;subAt=tick;return;}
+                var t=WarTableReport.texts();String tag2=SIZES[size][0]+"x"+SIZES[size][1];String lay=layout(c);
+                if(!"chapter".equals(t.get("face"))&&tick-subAt<80)return;
+                var rs=WarTableReport.rects();boolean has=t.containsKey("march")&&t.containsKey("march-next")&&t.containsKey("march-bonuses")&&t.containsKey("march-pacts");
+                note("p1-ui-report-march-chapter-"+tag2,has&&lay.isEmpty(),"chapter face at "+tag2+": march head "+t.get("march")+", next \""+t.get("march-next")+"\", "+t.get("march-bonuses")+", \""+t.get("march-pacts")+"\""+(lay.isEmpty()?", layout clean":", layout: "+lay));
+                shot(c,"report-chapter-march-"+tag2);
+                if(size==1){size=0;msub=0;window(c,SIZES[0][0],SIZES[0][1],0,true);stage=12;subAt=tick;return;}
                 finished=true;finish(c,"ui-report");
+            }
+            case 12->{ // the same Pact report at 2560x1440
+                var j=synth(Modes.DOMINATION,3,3,false,0,2,3,true);j.add("march",marchBlock(0));
+                CampaignClient.result=want=j;CampScreen.open("results");msub=2;stage=13;subAt=tick;
+            }
+            case 13->{
+                if(page(c)==null||!WarTableReport.texts().containsKey("march-pact")&&tick-subAt<80)return;
+                shot(c,"report-pact-2560x1440");
+                var b=page(c).button("tab-chapter");if(b!=null)WarTableRecruit.press(b);
+                size=0;msub=0;stage=11;subAt=tick;
             }
             default->{}
         }
