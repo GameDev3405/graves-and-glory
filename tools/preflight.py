@@ -407,6 +407,7 @@ for col,lo,hi in (('flankArcDegrees',0,180),('lastStandShare',0,1),('lastStandRa
 if 'morale' in data: errors.append('morale: the sheet went with routing (Task 8b); its surviving numbers live in combatDiscipline')
 if len(data['recruitment'])!=1: errors.append('recruitment: exactly one row')
 if any(data['campaign'][0].get(k,-1)<0 for k in ('completionShards','victoryShards','completionRenown','victoryRenown')): errors.append('campaign: completionShards, victoryShards, completionRenown and victoryRenown must be 0 or more')
+if not isinstance(data['campaign'][0].get('disconnectGraceSeconds'),int) or data['campaign'][0]['disconnectGraceSeconds']<0: errors.append('campaign: disconnectGraceSeconds must be a whole number of seconds, 0 or more (MatchRules.takeoverAt)')
 cap=data['recruitment'][0]['capPct']
 for r in rarities.values():
     if not 0<=r['starPct2']<=r['starPct3']<=cap+1e-9: errors.append(f'rarities/{r["id"]}: star bonuses must rise and stay within recruitment.capPct')

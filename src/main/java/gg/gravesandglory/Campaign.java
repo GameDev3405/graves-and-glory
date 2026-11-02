@@ -84,8 +84,8 @@ public final class Campaign {
         b=battle;Path save=b.server.getSavePath(WorldSavePath.ROOT);
         directory=save.resolve(Diagnostics.active()?"gravesandglory-test-profiles":"gravesandglory-profiles");
         Path groups=save.resolve("gravesandglory-parties.json");
-        if(Files.exists(groups))try{social=JSON.fromJson(Files.readString(groups),SocialHub.class);if(social==null)throw new IllegalStateException("Empty party data");social.restore();}
-        catch(Exception e){throw new IllegalStateException("Party data could not be read; original and .bak are preserved",e);}
+        // A damaged parties file falls back to its .bak, then to no parties, with a logged warning (SafeFiles.load); it never stops the server.
+        social=SafeFiles.load(groups,Campaign::readParties,SocialHub::new,"Party data");
         try {
             LegacyDataMigration.profiles(save.resolve(Diagnostics.active()?"bannerbound-test-profiles":"bannerbound-profiles"),directory);
             LegacyDataMigration.copyMissing(save.resolve("bannerbound-layout.json"),layoutFile());
@@ -93,15 +93,19 @@ public final class Campaign {
         try{JsonObject marker=JsonParser.parseString(Files.readString(layoutFile())).getAsJsonObject();if(marker.get("layout").getAsString().equals(LayoutMarker.LAYOUT))map=marker.get("map").getAsInt();}catch(Exception ignored){}CampaignMaps.select(map);
     }
     /** A commander's collection, read once: a schema-1 or schema-2 file is upgraded in place to schema 3 first (spec 6.3, plan 2C.3; its original bytes stay as <uuid>.v1.json or <uuid>.v2.json), then the profile is sanitized. A new commander owns the 10 Commons and flies the starter banner. */
-    Profile profile(UUID id){return profiles.computeIfAbsent(id,key->{Path file=directory.resolve(key+".json");if(!Files.exists(file)){Profile fresh=new Profile();fresh.sanitize();return fresh;}
-        try{Profile p=ProfileMigration.upgradeFile(file,text->JSON.fromJson(text,ProfileMigration.V1.class),text->JSON.fromJson(text,Profile.class),JSON::toJson,RosterMath.Catalog.fromSpec());
-            if(p==null)p=JSON.fromJson(Files.readString(file),Profile.class);if(p==null)throw new IllegalStateException("Empty profile");p.sanitize();return p;}
-        catch(Exception e){throw new IllegalStateException("Commander profile could not be read. Original and .bak preserved: "+key,e);}});}
+    Profile profile(UUID id){return profiles.computeIfAbsent(id,key->SafeFiles.load(directory.resolve(key+".json"),Campaign::readProfile,Campaign::freshProfile,"Commander profile "+key));}
+    /** A new commander: the 10 Commons and the starter banner (sanitize fills them in). Also what a damaged profile with no usable .bak falls back to. */
+    static Profile freshProfile(){Profile fresh=new Profile();fresh.sanitize();return fresh;}
+    /** One profile file, upgraded in place first when it is schema 1 or 2; throws when it cannot be read (SafeFiles.load then tries the .bak). */
+    static Profile readProfile(Path file) throws Exception{
+        Profile p=ProfileMigration.upgradeFile(file,text->JSON.fromJson(text,ProfileMigration.V1.class),text->JSON.fromJson(text,Profile.class),JSON::toJson,RosterMath.Catalog.fromSpec());
+        if(p==null)p=JSON.fromJson(Files.readString(file),Profile.class);if(p==null)throw new IllegalStateException("Empty profile");p.sanitize();return p;}
+    /** The parties file: Gson to SocialHub, then restore; throws when it cannot be read. */
+    static SocialHub readParties(Path file) throws Exception{SocialHub s=JSON.fromJson(Files.readString(file),SocialHub.class);if(s==null)throw new IllegalStateException("Empty party data");s.restore();return s;}
     /** The marker (see LayoutMarker) names this layout, this map, this revision of the arena margin and the hash of the map's landmarks (Structures.hash); a save made before the margin was tapered, or before these landmarks, builds its arena once more. */
     boolean cached(){try{return LayoutMarker.current(Files.readString(layoutFile()),map,Structures.hash(map));}catch(Exception e){return false;}}
-    void built(){try{Files.writeString(b.server.getSavePath(WorldSavePath.ROOT).resolve("gravesandglory-layout.json"),LayoutMarker.text(map,Structures.hash(map)));}catch(Exception e){System.err.println("[Graves and Glory] Map cache marker could not be saved.");}}
-    boolean save(UUID id){try{Files.createDirectories(directory);Path path=directory.resolve(id+".json"),tmp=directory.resolve(id+".tmp");Files.writeString(tmp,JSON.toJson(profile(id)));if(Files.exists(path))Files.copy(path,path.resolveSibling(path.getFileName()+".bak"),StandardCopyOption.REPLACE_EXISTING);
-            try{Files.move(tmp,path,StandardCopyOption.REPLACE_EXISTING,StandardCopyOption.ATOMIC_MOVE);}catch(AtomicMoveNotSupportedException e){Files.move(tmp,path,StandardCopyOption.REPLACE_EXISTING);}return true;
+    void built(){try{SafeFiles.write(layoutFile(),LayoutMarker.text(map,Structures.hash(map)));}catch(Exception e){System.err.println("[Graves and Glory] Map cache marker could not be saved.");}}
+    boolean save(UUID id){try{SafeFiles.writeWithBackup(directory.resolve(id+".json"),JSON.toJson(profile(id)));return true;
         }catch(Exception e){System.err.println("[Graves and Glory] Could not save commander collection: "+e.getClass().getSimpleName());notice(id,"Collection could not be saved; check disk space.");return false;}}
     void importProfile(ServerPlayerEntity p,String json){
         if(json.length()>16000)return;
@@ -455,6 +459,18 @@ public final class Campaign {
         if(!save(who)){unsaved(who,before,"The Legendary");return;}
         notice(who,t.name()+" joins your collection"+(pact?", sworn by your Pact!":"!"));reveal(p);
     }
+    /**
+     * A stopped or crashed match is void (MatchRules, Kort 2026-11-01): no rewards, no losses, nothing saved to any profile, and the
+     * armies go back to camp. A crash never reaches here, and since profiles are only written when a match settles (finish), a restart
+     * after one pays nothing and costs nothing either; Modes.recover puts the map back.
+     */
+    void voidMatch(MatchRules.Ending ending){
+        if(!b.running||MatchRules.settles(ending))return;
+        System.err.println("[Graves and Glory] Match "+matchId+" is void ("+ending+"): no rewards and no losses; the armies return to camp.");
+        for(UUID id:participants)results.remove(id);participants.clear();
+        b.message="The battle was called off. Back to the war council.";headline=b.message;
+        returnLobby();
+    }
     void finish(int winner){
         if(!b.running)return;
         lastWinner=winner;
@@ -573,6 +589,8 @@ public final class Campaign {
         if(b.time<introUntil){for(var p:b.server.getPlayerManager().getPlayerList()){var s=b.squads.get(p.getUuid());if(s!=null&&s.seated&&p.squaredDistanceTo(b.fieldBase(s.team))>2)b.toBase(p,s.team);}return;}
         boolean economy=b.time%100==0;
         for(var s:b.squads.values())if(s.bot){
+            // A dropped commander's army keeps its last orders for disconnectGraceSeconds; then its bot takes command (MatchRules).
+            if(MatchRules.waiting(b.time,s.takeoverAt))continue;if(s.takeoverAt>0){s.takeoverAt=0;s.order="attack";}
             var tier=tier(s);boolean decide=b.time%Math.max(1,tier.decisionTicks())==0;
             if(!economy&&!decide)continue;
             if(economy){
@@ -821,9 +839,8 @@ public final class Campaign {
     }
 
     boolean saveSocial(){
-        Path file=b.server.getSavePath(WorldSavePath.ROOT).resolve("gravesandglory-parties.json"),tmp=file.resolveSibling(file.getFileName()+".tmp");
-        try{Files.writeString(tmp,JSON.toJson(social));if(Files.exists(file))Files.copy(file,file.resolveSibling(file.getFileName()+".bak"),StandardCopyOption.REPLACE_EXISTING);
-            try{Files.move(tmp,file,StandardCopyOption.REPLACE_EXISTING,StandardCopyOption.ATOMIC_MOVE);}catch(AtomicMoveNotSupportedException e){Files.move(tmp,file,StandardCopyOption.REPLACE_EXISTING);}return true;
+        Path file=b.server.getSavePath(WorldSavePath.ROOT).resolve("gravesandglory-parties.json");
+        try{SafeFiles.writeWithBackup(file,JSON.toJson(social));return true;
         }catch(java.io.IOException e){System.err.println("[Graves and Glory] Party save failed: "+e.getClass().getSimpleName());return false;}
     }
     boolean socialCommand(ServerPlayerEntity p,String cmd){

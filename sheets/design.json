@@ -2852,6 +2852,7 @@
       "victoryGold": 40,
       "practiceGold": 40,
       "minimumRewardSeconds": 180,
+      "disconnectGraceSeconds": 60,
       "completionShards": 1,
       "victoryShards": 1,
       "completionRenown": 1,

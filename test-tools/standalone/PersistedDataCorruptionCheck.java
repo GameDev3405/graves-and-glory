@@ -2,7 +2,6 @@ package gg.gravesandglory;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
-import com.google.gson.JsonParseException;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.*;
@@ -11,10 +10,10 @@ import java.util.stream.Stream;
 
 /**
  * Corrupt, empty, truncated (torn write), garbage and wrong-type input for the JSON the server persists. Never shipped.
- * Campaign needs Minecraft, so the check reproduces its two read paths line for line on the pure classes they call:
- * the parties file (Campaign constructor: Gson to SocialHub, then restore) and the commander profile (Campaign.profile:
- * ProfileMigration.upgradeFile with Gson, then sanitize). It also covers LayoutMarker.current and LegacyDataMigration.copyMissing.
- * It documents the CURRENT behaviour; the TODO lines mark findings for Kort (save behaviour is an approval gate, nothing is fixed here).
+ * Campaign needs Minecraft, so the check reproduces its two loaders line for line on the pure classes they call (Campaign.readParties
+ * and Campaign.readProfile) and runs them through SafeFiles.load exactly as Campaign does. Kort approved the behaviour on 2026-11-01
+ * (Q21): a damaged parties file or profile falls back to its .bak, then to defaults, with a logged warning, and never stops the server
+ * start or a player's join; the damaged bytes are kept as name.corrupt. Every persisted write is atomic (SafeFiles.write).
  */
 public final class PersistedDataCorruptionCheck {
     static int checks;
@@ -23,6 +22,7 @@ public final class PersistedDataCorruptionCheck {
         checks++;
     }
     static final Gson JSON = new GsonBuilder().setPrettyPrinting().create(); // same settings as Campaign.JSON
+    static final List<String> warnings = new ArrayList<>();
 
     /** Unusable text, as a file could hold it. */
     static Map<String, String> badTexts(String valid) {
@@ -43,74 +43,101 @@ public final class PersistedDataCorruptionCheck {
         m.put("wrong-type nested", "{\"owned\":[1,2,3],\"banner\":{\"a\":1}}");
         return m;
     }
-    /** True when t is the kind of failure the loader contract allows: a Gson parse failure or the loader's own IllegalStateException. */
-    static boolean contained(Throwable t) {
-        return t instanceof JsonParseException || t instanceof IllegalStateException;
+    static List<String> names(Path dir) throws IOException {
+        try (Stream<Path> s = Files.list(dir)) { return s.map(p -> p.getFileName().toString()).sorted().toList(); }
+    }
+    /** The original bytes survive somewhere in dir: in place, as a migration backup, or moved aside as .corrupt. */
+    static boolean kept(Path dir, Path file, byte[] bytes) throws IOException {
+        for (String n : names(dir)) {
+            Path p = dir.resolve(n);
+            if (!Files.isRegularFile(p)) continue;
+            boolean candidate = p.equals(file) || n.contains(".corrupt") || n.endsWith(".v1.json") || n.endsWith(".v2.json");
+            if (candidate && (Arrays.equals(Files.readAllBytes(p), bytes) || n.endsWith(".v1.json") || n.endsWith(".v2.json"))) return true;
+        }
+        return false;
     }
 
-    // ---- The parties file: Campaign constructor, lines 80 to 82 ----
-    static SocialHub loadParties(String text) {
-        try {
-            SocialHub social = JSON.fromJson(text, SocialHub.class);
-            if (social == null) throw new IllegalStateException("Empty party data");
-            social.restore();
-            return social;
-        } catch (Exception e) {
-            throw new IllegalStateException("Party data could not be read; original and .bak are preserved", e);
-        }
+    // ---- The parties file: Campaign.readParties through SafeFiles.load, as the Campaign constructor calls it ----
+    static SocialHub readParties(Path file) throws Exception {
+        SocialHub s = JSON.fromJson(Files.readString(file), SocialHub.class);
+        if (s == null) throw new IllegalStateException("Empty party data");
+        s.restore();
+        return s;
     }
-    static void parties() {
+    static SocialHub loadParties(Path file) { return SafeFiles.load(file, PersistedDataCorruptionCheck::readParties, SocialHub::new, "Party data"); }
+    static void usable(SocialHub hub, String what) {
+        check(hub != null && hub.parties != null && hub.names != null && hub.rooms != null && hub.invites != null, "parties usable after " + what);
+        hub.createParty(UUID.randomUUID());
+    }
+    static void parties(Path root) throws IOException {
         SocialHub seeded = new SocialHub();
         UUID a = UUID.randomUUID();
         seeded.createParty(a);
         String valid = JSON.toJson(seeded);
-        SocialHub back = loadParties(valid);
-        check(back.party(a) != null, "a valid parties file round-trips");
-        int threw = 0;
+        Path okDir = Files.createDirectories(root.resolve("parties-ok"));
+        Path ok = okDir.resolve("gravesandglory-parties.json");
+        SafeFiles.writeWithBackup(ok, valid);
+        check(loadParties(ok).party(a) != null, "a valid parties file round-trips");
+        check(loadParties(okDir.resolve("missing.json")).parties.isEmpty(), "a missing parties file is no parties, quietly");
+        int index = 0;
         for (var e : badTexts(valid).entrySet()) {
-            try {
-                SocialHub hub = loadParties(e.getValue());
-                // Loaded without throwing (for example a parseable but hollow object): must be fully usable after restore().
-                check(hub.parties != null && hub.names != null && hub.rooms != null && hub.invites != null, "parties usable after " + e.getKey());
-                hub.createParty(UUID.randomUUID());
-            } catch (IllegalStateException refused) {
-                threw++;
-                check(refused.getMessage().contains("original and .bak are preserved"), "parties refusal names the preserved copies: " + e.getKey());
-            } catch (Throwable t) {
-                check(false, "parties: " + e.getKey() + " escaped as " + t);
+            byte[] bytes = e.getValue().getBytes(StandardCharsets.ISO_8859_1);
+            // With a good .bak: the backup is restored.
+            Path d = Files.createDirectories(root.resolve("parties-bak-" + index));
+            Path f = d.resolve("gravesandglory-parties.json");
+            Files.writeString(SafeFiles.backup(f), valid);
+            Files.write(f, bytes);
+            warnings.clear();
+            SocialHub hub;
+            try { hub = loadParties(f); } catch (Throwable t) { check(false, "parties: " + e.getKey() + " escaped as " + t); return; }
+            usable(hub, e.getKey());
+            boolean parsed = warnings.isEmpty(); // a parseable but hollow object reads as it is
+            if (!parsed) {
+                check(hub.party(a) != null, "parties fall back to the .bak for " + e.getKey());
+                check(warnings.size() == 1 && warnings.get(0).contains("restored from"), "the .bak fallback is logged for " + e.getKey() + ": " + warnings);
             }
+            check(kept(d, f, bytes), "the damaged parties bytes are kept for " + e.getKey());
+            // Without a .bak: defaults, logged.
+            Path d2 = Files.createDirectories(root.resolve("parties-none-" + index));
+            Path f2 = d2.resolve("gravesandglory-parties.json");
+            Files.write(f2, bytes);
+            warnings.clear();
+            try { hub = loadParties(f2); } catch (Throwable t) { check(false, "parties (no .bak): " + e.getKey() + " escaped as " + t); return; }
+            if (!parsed) check(hub.parties.isEmpty() && warnings.size() == 1 && warnings.get(0).contains("using defaults"), "no .bak: defaults with a warning for " + e.getKey() + ": " + warnings);
+            usable(hub, e.getKey() + " without a .bak");
+            check(kept(d2, f2, bytes), "the damaged parties bytes are kept without a .bak for " + e.getKey());
+            index++;
         }
-        // TODO(Kort): a corrupt parties file stops the server at start (the Campaign constructor throws). It is never repaired, and the .bak
-        // that save() keeps is never read back. Current behaviour is kept on purpose: refuse rather than silently drop every party.
-        check(threw >= 8, "most corrupt parties files are refused loudly, not read as empty (" + threw + ")");
+        // Both the file and its .bak damaged: defaults, both copies kept.
+        Path d = Files.createDirectories(root.resolve("parties-both"));
+        Path f = d.resolve("gravesandglory-parties.json");
+        Files.writeString(f, "{\"parties\":");
+        Files.writeString(SafeFiles.backup(f), "garbage");
+        warnings.clear();
+        check(loadParties(f).parties.isEmpty(), "file and .bak both damaged: no parties");
+        check(warnings.size() == 1 && warnings.get(0).contains("its backup could not be read"), "the double failure is logged: " + warnings);
+        check(names(d).containsAll(List.of("gravesandglory-parties.json.bak", "gravesandglory-parties.json.corrupt", "gravesandglory-parties.json.corrupt-2")), "both damaged copies are kept: " + names(d));
+        check(!Files.exists(f), "the damaged copy is moved aside, so the next save starts clean");
         // Parseable but hollow objects are accepted and normalised.
-        check(loadParties("{}").parties.isEmpty(), "empty object reads as no parties");
-        check(loadParties("{\"parties\":null,\"names\":null}").parties.isEmpty(), "null maps are replaced by restore()");
+        Files.writeString(f, "{\"parties\":null,\"names\":null}");
+        check(loadParties(f).parties.isEmpty(), "null maps are replaced by restore()");
     }
 
-    // ---- The commander profile: Campaign.profile, lines 91 to 93 ----
-    static Profile loadProfile(Path file) {
-        try {
-            Profile p = ProfileMigration.upgradeFile(file, text -> JSON.fromJson(text, ProfileMigration.V1.class), text -> JSON.fromJson(text, Profile.class), JSON::toJson, RosterMath.Catalog.fromSpec());
-            if (p == null) p = JSON.fromJson(Files.readString(file), Profile.class);
-            if (p == null) throw new IllegalStateException("Empty profile");
-            p.sanitize();
-            return p;
-        } catch (Exception e) {
-            throw new IllegalStateException("Commander profile could not be read. Original and .bak preserved", e);
-        }
+    // ---- The commander profile: Campaign.readProfile through SafeFiles.load, as Campaign.profile calls it ----
+    static Profile readProfile(Path file) throws Exception {
+        Profile p = ProfileMigration.upgradeFile(file, text -> JSON.fromJson(text, ProfileMigration.V1.class), text -> JSON.fromJson(text, Profile.class), JSON::toJson, RosterMath.Catalog.fromSpec());
+        if (p == null) p = JSON.fromJson(Files.readString(file), Profile.class);
+        if (p == null) throw new IllegalStateException("Empty profile");
+        p.sanitize();
+        return p;
     }
-    static List<String> names(Path dir) throws IOException {
-        try (Stream<Path> s = Files.list(dir)) { return s.map(p -> p.getFileName().toString()).sorted().toList(); }
-    }
-    static Path writeProfile(Path root, String text) throws IOException {
-        Path f = Files.createDirectories(root.resolve("probe-" + UUID.randomUUID())).resolve(UUID.randomUUID() + ".json");
-        Files.writeString(f, text);
-        return f;
+    static Profile freshProfile() { Profile fresh = new Profile(); fresh.sanitize(); return fresh; }
+    static Profile loadProfile(Path file) { return SafeFiles.load(file, PersistedDataCorruptionCheck::readProfile, PersistedDataCorruptionCheck::freshProfile, "Commander profile"); }
+    static void sane(Profile p, String what) {
+        check(p != null && p.owned != null && p.banner != null && p.progression != null && p.commander != null, "sanitized profile has no null parts after " + what);
     }
     static void profiles(Path root) throws IOException {
-        Profile fresh = new Profile();
-        fresh.sanitize();
+        Profile fresh = freshProfile();
         fresh.gold = 123;
         String valid = JSON.toJson(fresh);
         Path dir = Files.createDirectories(root.resolve("profiles"));
@@ -119,51 +146,80 @@ public final class PersistedDataCorruptionCheck {
         check(loadProfile(good).gold == 123, "a valid current profile loads untouched");
         check(names(dir).size() == 1, "reading a current profile writes nothing");
 
-        int threw = 0, read = 0, index = 0;
+        int restored = 0, defaults = 0, read = 0, index = 0;
         for (var e : badTexts(valid).entrySet()) {
-            Path d = Files.createDirectories(root.resolve("bad-" + (index++)));
-            Path f = d.resolve(UUID.randomUUID() + ".json");
             byte[] bytes = e.getValue().getBytes(StandardCharsets.ISO_8859_1);
-            Files.write(f, bytes);
-            try {
-                Profile p = loadProfile(f);
-                read++;
-                System.out.println("profile read without refusal: " + e.getKey());
-                // A profile that parsed must be sane after sanitize(): defaults filled in, never null parts.
-                check(p.owned != null && p.banner != null && p.progression != null && p.commander != null, "sanitized profile has no null parts after " + e.getKey());
-            } catch (IllegalStateException refused) {
-                threw++;
-                check(contained(refused.getCause()), "profile failure is contained for " + e.getKey() + ": " + refused.getCause());
-            } catch (Throwable t) {
-                check(false, "profile: " + e.getKey() + " escaped as " + t);
+            for (boolean withBak : new boolean[]{true, false}) {
+                Path d = Files.createDirectories(root.resolve("bad-" + (index++)));
+                Path f = d.resolve(UUID.randomUUID() + ".json");
+                if (withBak) Files.writeString(SafeFiles.backup(f), valid);
+                Files.write(f, bytes);
+                warnings.clear();
+                Profile p;
+                try { p = loadProfile(f); } catch (Throwable t) { check(false, "profile: " + e.getKey() + " escaped as " + t); return; }
+                sane(p, e.getKey());
+                if (warnings.isEmpty()) read++; // parsed (a schema-less object is taken for v1 and migrated; its .v1.json keeps the original)
+                else if (withBak) { restored++; check(p.gold == 123, "profile restored from its .bak for " + e.getKey()); }
+                else { defaults++; check(p.gold == fresh().gold && warnings.get(0).contains("using defaults"), "no .bak: a default profile for " + e.getKey()); }
+                check(warnings.size() <= 1, "one warning per fallback: " + warnings);
+                check(kept(d, f, bytes), "no data loss for " + e.getKey() + (withBak ? " (with .bak)" : ""));
+                check(names(d).stream().noneMatch(n -> n.endsWith(".tmp")), "no stray .tmp left for " + e.getKey());
             }
-            // Failure must never cost the original: either the file is intact, or it was upgraded and its original bytes were kept as a backup.
-            boolean intact = Arrays.equals(Files.readAllBytes(f), bytes);
-            boolean backedUp = names(d).stream().anyMatch(n -> n.endsWith(".v1.json") || n.endsWith(".v2.json"));
-            check(intact || backedUp, "no data loss for " + e.getKey());
-            check(names(d).stream().noneMatch(n -> n.endsWith(".tmp")), "no stray .tmp left for " + e.getKey());
         }
-        check(threw > 0, "some corrupt profiles are refused (" + threw + " refused, " + read + " read)");
-        // TODO(Kort): a corrupt commander file makes profile(id) throw, so that player cannot join until the file is fixed by hand.
-        // There is no automatic fallback to the .bak that save() keeps. Refusing is deliberate (it protects the original), but it is a
-        // hard stop for one player. A schema-less JSON object with unknown or mismatched keys ("wrong-type nested" above) is not refused: it is
-        // taken for a v1 profile and migrated to a default one, and only the .v1.json backup keeps the original (no loss, but silent).
-        System.out.println("profile loader: " + threw + " refused, " + read + " read as defaults");
+        check(restored > 0 && defaults == restored, "every refused profile falls back: " + restored + " from .bak, " + defaults + " to defaults, " + read + " parsed");
+        System.out.println("profile loader: " + restored + " restored from .bak, " + defaults + " to defaults, " + read + " parsed");
 
-        // Unwritable target: the temp path is a directory, so the final write fails. The original must survive.
+        // Unwritable migration temp path: the upgrade fails with an IOException. The join still goes ahead (on defaults, logged) and the
+        // original bytes are kept aside for an admin.
         Path d = Files.createDirectories(root.resolve("unwritable"));
         UUID id = UUID.randomUUID();
         Path f = d.resolve(id + ".json");
         Files.writeString(f, "{\"schema\":1,\"gold\":55,\"commander\":\"vanguard\"}");
         byte[] before = Files.readAllBytes(f);
         Files.createDirectory(d.resolve(id + ".tmp"));
-        try {
-            loadProfile(f);
-            check(false, "an unwritable temp path must not look like success");
-        } catch (IllegalStateException refused) {
-            check(refused.getCause() instanceof IOException, "unwritable profile fails with an IOException: " + refused.getCause());
+        warnings.clear();
+        Profile p = loadProfile(f);
+        sane(p, "an unwritable temp path");
+        check(warnings.size() == 1 && warnings.get(0).contains("could not be read") && warnings.get(0).contains("Exception"), "the unwritable upgrade is logged with its cause: " + warnings);
+        check(kept(d, f, before), "unwritable temp path keeps the original profile bytes");
+    }
+    static Profile fresh() { return freshProfile(); }
+
+    // ---- Atomic writes: SafeFiles.write and writeWithBackup (profiles, parties, layout and terrain markers, Presentation, HudSize, BuildMode) ----
+    static void atomicWrites(Path root) throws IOException {
+        Path d = Files.createDirectories(root.resolve("atomic"));
+        Path f = d.resolve("prefs.json");
+        SafeFiles.write(f, "{\"a\":1}");
+        check(Files.readString(f).equals("{\"a\":1}") && names(d).equals(List.of("prefs.json")), "a write lands whole and leaves no temp file");
+        SafeFiles.writeWithBackup(f, "{\"a\":2}");
+        check(Files.readString(f).equals("{\"a\":2}") && Files.readString(SafeFiles.backup(f)).equals("{\"a\":1}"), "a backed-up write keeps the previous file as .bak");
+        // The temp path is blocked (a directory): the write fails and the target keeps its old bytes.
+        Files.createDirectory(d.resolve("prefs.json.tmp"));
+        boolean failed = false;
+        try { SafeFiles.write(f, "{\"a\":3}"); } catch (IOException expected) { failed = true; }
+        check(failed && Files.readString(f).equals("{\"a\":2}"), "a failed write leaves the old file intact");
+        warnings.clear();
+        check(!SafeFiles.tryWrite(f, "x", "Marker") && warnings.size() == 1 && warnings.get(0).startsWith("Marker could not be written"), "a best-effort write warns instead of throwing");
+        Files.writeString(d.resolve("blocker"), "x");
+        failed = false;
+        try { SafeFiles.write(d.resolve("blocker/inner.json"), "x"); } catch (IOException expected) { failed = true; }
+        check(failed, "an unwritable parent surfaces as IOException");
+        SafeFiles.write(d.resolve("new/deep/file.json"), "y");
+        check(Files.readString(d.resolve("new/deep/file.json")).equals("y"), "write creates missing parent folders");
+        // Every persisted writer goes through SafeFiles: no direct Files.writeString left in them.
+        Path src = source();
+        for (String name : List.of("Campaign.java", "CampWorld.java", "BuildMode.java", "HudSize.java", "Presentation.java")) {
+            String text = Files.readString(src.resolve(name));
+            check(!text.contains("Files.writeString("), name + " writes persisted files through SafeFiles only");
+            check(text.contains("SafeFiles."), name + " uses SafeFiles");
         }
-        check(Arrays.equals(Files.readAllBytes(f), before), "unwritable temp path leaves the original profile untouched");
+    }
+    static Path source() {
+        for (Path at = Paths.get("").toAbsolutePath(); at != null; at = at.getParent()) {
+            Path s = at.resolve("src/main/java/gg/gravesandglory");
+            if (Files.isDirectory(s)) return s;
+        }
+        throw new AssertionError("run from the repository: src/main/java/gg/gravesandglory not found");
     }
 
     // ---- Layout marker (cache only): LayoutMarker.current must never throw ----
@@ -185,7 +241,7 @@ public final class PersistedDataCorruptionCheck {
         Files.writeString(oldFile, "{\"gold\":"); // truncated legacy file
         Path current = root.resolve("current/a.json");
         LegacyDataMigration.copyMissing(oldFile, current);
-        // TODO(Kort): the copy does not validate, so a torn legacy file is carried over as it is; the profile loader then refuses it.
+        // The copy does not validate, so a torn legacy file is carried over as it is; the profile loader then falls back (see profiles).
         check(Files.readString(current).equals("{\"gold\":"), "a damaged legacy file is copied verbatim, not repaired or dropped");
         check(Files.readString(oldFile).equals("{\"gold\":"), "the legacy original is untouched");
         Files.writeString(oldFile, "{\"gold\":9}");
@@ -203,9 +259,11 @@ public final class PersistedDataCorruptionCheck {
 
     public static void main(String[] args) throws Exception {
         Path root = Files.createTempDirectory("gg-corruption-check");
+        SafeFiles.warn = warnings::add;
         try {
-            parties();
+            parties(root);
             profiles(root);
+            atomicWrites(root);
             layoutMarker();
             legacy(root);
         } finally {

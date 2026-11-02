@@ -159,7 +159,7 @@ final class CampWorld {
         try{return com.google.gson.JsonParser.parseString(Files.readString(marker(w))).getAsJsonObject().get("terrain").getAsString().equals(hash);}catch(Exception e){return false;}
     }
     static void mark(ServerWorld w,String hash){
-        try{Files.writeString(marker(w),"{\"terrain\":\""+hash+"\"}");}catch(Exception e){System.err.println("[Graves and Glory] camp terrain marker could not be written: "+e);}
+        try{SafeFiles.write(marker(w),"{\"terrain\":\""+hash+"\"}");}catch(Exception e){System.err.println("[Graves and Glory] camp terrain marker could not be written: "+e);}
     }
 
     /** The last row (dz) the terrain writes: the south edge of the island, or the row before the first column of the arena when that is further south (the arena owns z from -worldHalfZ on, and the rim runs up to it

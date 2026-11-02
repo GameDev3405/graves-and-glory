@@ -19,7 +19,7 @@ public final class Presentation {
     static final String[] FILES={"","ComplementaryReimagined_r5.5.1.zip","ComplementaryUnbound_r5.5.1.zip","MakeUp-UltraFast-9.5g.zip"};
     static Path file(){return MinecraftClient.getInstance().runDirectory.toPath().resolve("gravesandglory/presentation.json");}
     static void load(){if(loaded)return;loaded=true;try{var j=JsonParser.parseString(Files.readString(file())).getAsJsonObject();impact=Math.max(0,Math.min(2,j.get("impact").getAsInt()));troopDepth=!j.has("troopDepth")||j.get("troopDepth").getAsBoolean();}catch(Exception ignored){}}
-    static void save(){try{Files.createDirectories(file().getParent());Files.writeString(file(),"{\"impact\":"+impact+",\"troopDepth\":"+troopDepth+"}");}catch(Exception e){notice="Your visual preference could not be saved.";}}
+    static void save(){try{Files.createDirectories(file().getParent());SafeFiles.write(file(),"{\"impact\":"+impact+",\"troopDepth\":"+troopDepth+"}");}catch(Exception e){notice="Your visual preference could not be saved.";}}
     static int shader(){
         try{Class<?> iris=Class.forName("net.irisshaders.iris.Iris");Object config=iris.getMethod("getIrisConfig").invoke(null);if(!(Boolean)config.getClass().getMethod("areShadersEnabled").invoke(config))return 0;
             Object name=config.getClass().getMethod("getShaderPackName").invoke(config);String s=((java.util.Optional<?>)name).map(Object::toString).orElse("");for(int i=1;i<FILES.length;i++)if(FILES[i].equals(s))return i;

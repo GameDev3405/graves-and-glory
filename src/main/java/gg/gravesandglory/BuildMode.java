@@ -77,7 +77,7 @@ final class BuildMode {
         });
         ServerPlayConnectionEvents.DISCONNECT.register((handler,s)->changed=true);
         CommandRegistrationCallback.EVENT.register((dispatcher,access,environment)->{
-            dispatcher.register(CommandManager.literal("warp")
+            dispatcher.register(CommandManager.literal("warp").requires(s->s.hasPermissionLevel(MatchRules.OPS)) // ops only (Kort 2026-11-01)
                 .executes(c->listWarps(c.getSource()))
                 .then(CommandManager.argument("name",StringArgumentType.word())
                     .suggests((c,b)->CommandSource.suggestMatching(WARPS.keySet(),b))
@@ -138,7 +138,7 @@ final class BuildMode {
     }
 
     static void done(){
-        try{Files.writeString(marker(),"{\"world\":\""+id(map)+"\",\"generated\":\""+LocalDateTime.now()+"\"}");}catch(IOException e){log("marker could not be written: "+e);}
+        try{SafeFiles.write(marker(),"{\"world\":\""+id(map)+"\",\"generated\":\""+LocalDateTime.now()+"\"}");}catch(IOException e){log("marker could not be written: "+e);}
         server.saveAll(true,true,true);
         ready=true;placeSpawn();changed=true;log(id(map)+" generated; builders may join");
     }
@@ -180,7 +180,7 @@ final class BuildMode {
         var s=c.getSource();
         if(indexOf(name)==-2){s.sendError(Text.literal("No world "+name+". Worlds: "+String.join(", ",worlds())));return 0;}
         if(name.equals(id(map))){s.sendError(Text.literal("Already in "+name));return 0;}
-        try{Files.writeString(server.getRunDirectory().toPath().resolve(NEXT),name);}catch(IOException e){s.sendError(Text.literal("Could not queue the switch: "+e));return 0;}
+        try{SafeFiles.write(server.getRunDirectory().toPath().resolve(NEXT),name);}catch(IOException e){s.sendError(Text.literal("Could not queue the switch: "+e));return 0;}
         server.getPlayerManager().broadcast(Text.literal("Saving, then switching to "+name+". Reconnect in about 30 seconds."),false);
         server.stop(false);return 1;
     }
