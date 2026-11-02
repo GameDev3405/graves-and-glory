@@ -7,6 +7,7 @@ import io
 import json
 import pathlib
 import re
+import shutil
 import sys
 import tempfile
 import unittest
@@ -21,10 +22,24 @@ DEP_BYTES=b'stub dependency jar'
 EXPECTED_FIXED={'server.properties','setup-server.ps1','start-server.ps1','SERVER-README.txt'}
 
 class ServerKitChecks(unittest.TestCase):
+    @staticmethod
+    def run_export(root):
+        saved={n:getattr(export_server,n) for n in ('ROOT','version','source_identity','validate_player_jar')}
+        saved_gate=export_server.build_skins.release_gate
+        export_server.ROOT=root;export_server.version=lambda:RELEASE
+        export_server.source_identity=lambda:{'stub':True}
+        export_server.validate_player_jar=lambda path,expected:None
+        export_server.build_skins.release_gate=lambda r,argv,tool='':''
+        try:
+            with redirect_stdout(io.StringIO()):export_server.export([])
+        finally:
+            for n,v in saved.items():setattr(export_server,n,v)
+            export_server.build_skins.release_gate=saved_gate
+
     @classmethod
     def setUpClass(cls):
         cls.tmp=tempfile.TemporaryDirectory()
-        root=pathlib.Path(cls.tmp.name)
+        root=cls.root=pathlib.Path(cls.tmp.name)
         (root/'build/libs').mkdir(parents=True);(root/'dist').mkdir();(root/'dependencies/mods').mkdir(parents=True)
         jar=root/f'build/libs/graves-and-glory-{RELEASE}.jar';jar.write_bytes(b'stub mod jar')
         (root/'dependencies/mods/dep.jar').write_bytes(DEP_BYTES)
@@ -43,17 +58,7 @@ class ServerKitChecks(unittest.TestCase):
         with zipfile.ZipFile(root/'dist'/f'graves-and-glory-{RELEASE}.mrpack','w') as pack:
             pack.writestr('server-overrides/server.properties','online-mode=true\n')
             pack.writestr('overrides/options.txt','client file')
-        saved={n:getattr(export_server,n) for n in ('ROOT','version','source_identity','validate_player_jar')}
-        saved_gate=export_server.build_skins.release_gate
-        export_server.ROOT=root;export_server.version=lambda:RELEASE
-        export_server.source_identity=lambda:{'stub':True}
-        export_server.validate_player_jar=lambda path,expected:None
-        export_server.build_skins.release_gate=lambda r,argv,tool='':''
-        try:
-            with redirect_stdout(io.StringIO()):export_server.export([])
-        finally:
-            for n,v in saved.items():setattr(export_server,n,v)
-            export_server.build_skins.release_gate=saved_gate
+        cls.run_export(root)
         cls.output=root/'dist'/f'graves-and-glory-{RELEASE}-server.zip'
         with zipfile.ZipFile(cls.output) as pack:
             cls.names=sorted(pack.namelist())
@@ -136,5 +141,17 @@ class ServerKitChecks(unittest.TestCase):
         self.assertRegex(readme,r'(?i)supply eula\.txt')
         self.assertRegex(readme,r'(?i)never supplies your agreement')
         self.assertRegex(readme,r'(?i)does not start the server or accept any terms')
+
+    def test_tampered_dependency_stops_the_export(self):
+        # QA matrix B10: a server dependency whose bytes no longer match the lock's sha512 is refused and nothing is written.
+        with tempfile.TemporaryDirectory() as other:
+            root=pathlib.Path(other)/'root'
+            shutil.copytree(self.root,root)
+            (root/f'dist/graves-and-glory-{RELEASE}-server.zip').unlink()
+            (root/'dependencies/mods/dep.jar').write_bytes(DEP_BYTES+b'x')
+            with self.assertRaisesRegex(RuntimeError,'Stale server dependency'):self.run_export(root)
+            self.assertFalse((root/f'dist/graves-and-glory-{RELEASE}-server.zip').exists())
+            self.assertFalse(list((root/'dist').glob('*.tmp')))
+
 
 if __name__=='__main__':unittest.main(verbosity=2)
