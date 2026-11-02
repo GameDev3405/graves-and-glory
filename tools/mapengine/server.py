@@ -34,6 +34,7 @@ class BadLength(Exception):
 def make_server(maps_dir, work_dir, port):
     maps_dir, work_dir = pathlib.Path(maps_dir), pathlib.Path(work_dir)
     write_lock = threading.Lock()
+    build_lock = threading.Lock()
 
     class Handler(BaseHTTPRequestHandler):
         protocol_version = 'HTTP/1.0'
@@ -180,15 +181,20 @@ def make_server(maps_dir, work_dir, port):
                                        'road': _b64(f.road, 'u1'), 'zone': _b64(f.zone, '<i2'),
                                        'zones': f.zones})
             if rest == ['build'] and method == 'POST':
-                with write_lock:
-                    d = design.load(dpath)
-                out = work_dir / did
+                if not build_lock.acquire(blocking=False):
+                    return self.err(409, 'a build is already running')
                 try:
-                    manifest = mbuild.build(d, out)
-                except mbuild.BuildError as e:
-                    return self.err(400, *e.problems)
-                issues = [{'code': i.code, 'object_id': i.object_id, 'message': i.message}
-                          for i in mcheck.check(d, out)]
+                    with write_lock:
+                        d = design.load(dpath)
+                    out = work_dir / did
+                    try:
+                        manifest = mbuild.build(d, out)
+                    except mbuild.BuildError as e:
+                        return self.err(400, *e.problems)
+                    issues = [{'code': i.code, 'object_id': i.object_id, 'message': i.message}
+                              for i in mcheck.check(d, out)]
+                finally:
+                    build_lock.release()
                 return self.send(200, {'manifest': manifest, 'issues': issues})
             return self.err(404, 'not found')
 

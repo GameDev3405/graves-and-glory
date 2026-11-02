@@ -138,6 +138,27 @@ class ServerTest(unittest.TestCase):
         self.assertIsInstance(r['issues'], list)
         self.assertTrue((self.work / 't' / 'map.json').exists())
 
+    def test_concurrent_build_gets_409(self):
+        started, release = threading.Event(), threading.Event()
+        real = server.mbuild.build
+
+        def slow(d, out):
+            started.set()
+            release.wait(10)
+            return real(d, out)
+
+        server.mbuild.build = slow
+        self.addCleanup(setattr, server.mbuild, 'build', real)
+        first = []
+        t = threading.Thread(target=lambda: first.append(self.call('POST', '/api/design/t/build')[0]))
+        t.start()
+        self.assertTrue(started.wait(10))
+        self.assertEqual(self.call('POST', '/api/design/t/build')[0], 409)
+        release.set()
+        t.join(30)
+        self.assertEqual(first, [200])
+
+
     def test_concurrent_puts_leave_a_loadable_design(self):
         bodies = []
         for i in range(10):

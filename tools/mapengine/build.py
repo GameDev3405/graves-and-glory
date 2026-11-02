@@ -121,7 +121,7 @@ def build(d, out_dir):
     objs = d.get('objects', [])
     points = [{'name': o['name'], 'x': o['x'], 'y': stand(o), 'z': o['z'], 'radius': o['radius']}
               for o in objs if o['kind'] == 'point']
-    spawns = [{'team': o['team'], 'x': o['x'], 'y': stand(o), 'z': o['z']} for o in objs if o['kind'] == 'spawn']
+    spawns = [{'id': o['id'], 'team': o['team'], 'x': o['x'], 'y': stand(o), 'z': o['z']} for o in objs if o['kind'] == 'spawn']
     manifest = {'format': 1, 'id': d['id'], 'baseY': base, 'floorY': base + FLOOR, 'tiles': tiles, 'points': points,
                 'spawns': spawns, 'design_sha256': hashlib.sha256(canonical_bytes(d)).hexdigest()}
     (out_dir / 'map.json').write_bytes(canonical_bytes(manifest))

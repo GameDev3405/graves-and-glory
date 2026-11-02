@@ -57,6 +57,7 @@ def validate(d):
         out.append('width and depth must be positive integers')
         w = dp = 0
     seen = set()
+    names = set()
     palettes = palette_keys()
     objects = d.get('objects', [])
     if not isinstance(objects, list):
@@ -93,6 +94,13 @@ def validate(d):
             _range(o, 'width', 1, 16, out)
         elif kind == 'point':
             _range(o, 'radius', 2, 32, out)
+            name = o.get('name')
+            if not isinstance(name, str) or not name.strip():
+                out.append(f'{oid}: name must be a non-empty string')
+            elif name in names:
+                out.append(f'{oid}: duplicate point name {name!r}')
+            else:
+                names.add(name)
         elif kind == 'zone' and o.get('palette') not in palettes:
             out.append(f'{oid}: palette must be one of {", ".join(sorted(palettes))}')
         if kind == 'spawn' and o.get('team') not in TEAMS:

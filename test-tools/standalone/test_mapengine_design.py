@@ -46,6 +46,18 @@ class DesignTest(unittest.TestCase):
         d['objects'].append(base(id='road-1', kind='road', path=[[-50, 10], [100, 10]], width=5))
         self.assertEqual(validate(d), [])
 
+    def test_point_name_required_and_unique(self):
+        for bad in (None, '', '  ', 5):
+            d = new_design('t', 'T')
+            d['objects'].append(base(id='point-1', kind='point', name=bad, x=10, z=10, radius=8))
+            self.assertTrue(any('name' in m for m in validate(d)), bad)
+        d = new_design('t', 'T')
+        for i in (1, 2):
+            d['objects'].append(base(id=f'point-{i}', kind='point', name='A', x=10 * i, z=10, radius=8))
+        self.assertTrue(any('duplicate point name' in m for m in validate(d)))
+        d['objects'][1]['name'] = 'B'
+        self.assertEqual(validate(d), [])
+
     def test_duplicate_ids(self):
         d = new_design('t', 'T')
         for _ in range(2):

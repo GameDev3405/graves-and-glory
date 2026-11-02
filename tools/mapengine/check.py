@@ -115,7 +115,7 @@ def check(d, out_dir):
     spawns = [o for o in objs if o['kind'] == 'spawn']
     floor = manifest['floorY']
     mpoints = {p['name']: p for p in manifest['points']}
-    mspawns = {s['team']: s for s in manifest['spawns']}
+    mspawns = {s.get('id'): s for s in manifest['spawns']}
 
     def moved(o, m):
         cx, cz = _cell(o, width, depth)
@@ -125,7 +125,7 @@ def check(d, out_dir):
     for o in points:
         moved(o, mpoints.get(o['name']))
     for o in spawns:
-        moved(o, mspawns.get(o['team']))
+        moved(o, mspawns.get(o['id']))
     for o in points + spawns:
         cx, cz = _cell(o, width, depth)
         if water[cz, cx] != NONE and water[cz, cx] > solid[cz, cx]:

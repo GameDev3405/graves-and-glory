@@ -79,7 +79,12 @@ function buildTopbar() {
   const vb = el('button', '', 'Versions');
   vb.addEventListener('click', () => { toggle('versions-pop', showVersions); vb.blur(); });
   const bb = el('button', '', 'Build');
-  bb.addEventListener('click', () => { runBuild(); bb.blur(); });
+  bb.addEventListener('click', async () => {
+    if (bb.disabled) return;
+    bb.disabled = true;
+    bb.blur();
+    try { await runBuild(); } finally { bb.disabled = false; }
+  });
   bar.append(verName, sv, vb, bb);
 }
 

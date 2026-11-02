@@ -41,6 +41,12 @@ class CheckTest(unittest.TestCase):
             mb.build(d, tmp)
             self.assertEqual(mc.check(d, tmp), [])
 
+    def test_two_spawns_on_one_team_not_moved(self):
+        d = make({'kind': 'spawn', 'team': 'dawn', 'x': 10, 'z': 40})
+        with built(d) as tmp:
+            self.assertEqual(mc.check(d, tmp), [])
+
+
     def test_flat_is_clean(self):
         d = make()
         with built(d) as tmp:
