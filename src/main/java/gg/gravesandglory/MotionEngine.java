@@ -24,7 +24,9 @@ public final class MotionEngine {
     static final int RX = 0, RY = 1, RZ = 2, TX = 3, TY = 4, TZ = 5;
     /** Seconds each state weight takes to ramp fully on or off. */
     static final double STANCE_BLEND = 0.45, MOVE_BLEND = 0.3, RUN_BLEND = 0.5, COMBAT_BLEND = 0.6, GAIT_BLEND = 0.4,
-            TURN_BLEND = 0.3, LIFE_BLEND = 0.5, LOOK_BLEND = 0.4, CALM_BLEND = 0.35, SETTLE_BLEND = 0.5, PLANT_BLEND = 0.6;
+            TURN_BLEND = 0.3, LIFE_BLEND = 0.5, LOOK_BLEND = 0.4, CALM_BLEND = 0.35, SETTLE_BLEND = 0.5, PLANT_BLEND = 0.6,
+            /** Fix r3: how long a death takes to hand the ground pass over to its clip. */
+            GROUND_FADE = 0.4;
     /** The limb speed above which a unit starts moving and below which it stops (hysteresis). */
     static final double MOVE_ON = 0.1, MOVE_OFF = 0.04;
     /** Ground input: velocity smoothing (Hz), the jump (blocks) and gap (s) that start it afresh, and the time off the ground that counts as airborne (s). */
@@ -236,6 +238,8 @@ public final class MotionEngine {
         final Pose stanceOld = new Pose(), stanceNew = new Pose();
         final double[][] feet = new double[2][3], sol = new double[2][3];
         final double[] vec = new double[3], rootFull = new double[6], knee = new double[2];
+        /** Fix r3: the stride solve's scratch: each foot's lowest corner under its sole's middle (px), and a solved leg and shin. */
+        final double[] drop = new double[2], legT = new double[6], shinT = new double[6];
         /** Ground input (Task 16): last position (blocks) and yaw (deg), the smoothed body-frame velocity (b/s), time off the ground. */
         double gx, gy, gz, gyaw, vF, vL, vU, airT;
         boolean gInit, teleport;
@@ -245,6 +249,23 @@ public final class MotionEngine {
         /** Fix 2: the sweep runs at full weight since a start from standing; the upper body's own ease; last speed and its smoothed rise. */
         boolean sweepFull;
         double upW, vPrev, acc;
+        /**
+         * Fix r3 (gate 2): each foot's sweep (px) carried frame to frame, so a stance foot moves back by exactly the travel however
+         * the speed and stride change; where its swing set off (u, px, start slope px per u); whether it is in swing; whether it has
+         * stopped for good after a stop (locked); the gait's hold through a stop's settling steps.
+         */
+        final double[] sd = new double[2], su0 = new double[2], sd0 = new double[2], sm0 = new double[2];
+        final boolean[] inSwing = new boolean[2], locked = new boolean[2], settleSwing = new boolean[2];
+        /** Fix r3: each foot's own stride weight; a stop's last step lands each foot on its idle pose at weight 0. */
+        final double[] fw = {1, 1};
+        boolean fresh = true;
+        double hold;
+        /** Fix r3: the ground pass's weight, eased out over GROUND_FADE once dead. */
+        double groundW = 1;
+        /** Fix r3 (gate 2): each stance foot's roll shift (px, x and z), the one it held at liftoff, its corner's offset from the middle and that corner, and pass scratch. */
+        final double[][] pc = new double[2][2], pcl = new double[2][2], pp = new double[2][2], pNext = new double[2][2], pivotT = new double[2][2];
+        final int[] pIdx = new int[2], pNextIdx = new int[2];
+        final boolean[] pStance = new boolean[2], pNow = new boolean[2];
     }
 
     /**
@@ -387,6 +408,8 @@ public final class MotionEngine {
         MotionBody.react(f, st, out);
         MotionBody.look(f, st, out);
         MotionFeet.plant(f, st, out);
+        st.groundW = f.first ? (f.dead ? 0 : 1) : toward(st.groundW, f.dead ? 0 : 1, f.dt / GROUND_FADE);
+        MotionFeet.ground(out, st.vec, MotionMath.ease(st.groundW));
         MotionBody.secondary(f, st, out);
         st.dead = f.dead;
     }

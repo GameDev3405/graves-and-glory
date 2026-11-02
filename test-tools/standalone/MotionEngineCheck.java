@@ -991,7 +991,7 @@ public final class MotionEngineCheck {
 
     // ---- the section 6.1 behaviours carried over from Task 12 ----
 
-    /** Feet planted: standing with speed 0, through stance changes, hits, a hip-moving attack and look changes, the feet move under 0.05 px. */
+    /** Feet planted: standing with speed 0, through stance changes, hits, a hip-moving attack and look changes, the feet move under 0.05 px across the ground. */
     static String feetPlanted(Map<String, RigBone> rig, MotionEngine.Family fam, MotionMath.Seed[] seeds) {
         double worst = 0;
         String where = "none";
@@ -1015,7 +1015,8 @@ public final class MotionEngineCheck {
                 double[][] feet = {world(rig, pose, "right_shin", new double[]{0, 6, 0}), world(rig, pose, "left_shin", new double[]{0, 6, 0})};
                 if (first == null) first = feet;
                 for (int k = 0; k < 2; k++) {
-                    double dist = Math.sqrt(Math.pow(feet[k][0] - first[k][0], 2) + Math.pow(feet[k][1] - first[k][1], 2) + Math.pow(feet[k][2] - first[k][2], 2));
+                    // fix r3: horizontal only; the ground pass may raise the body (and both soles) so a pitched boot's corner stays out of the ground
+                    double dist = Math.hypot(feet[k][0] - first[k][0], feet[k][2] - first[k][2]);
                     if (!(dist <= worst)) { worst = dist; where = "seed " + s + " t " + String.format("%.3f", e) + (k == 0 ? " right" : " left") + " foot"; }
                 }
                 d.step(1 / 60.0);

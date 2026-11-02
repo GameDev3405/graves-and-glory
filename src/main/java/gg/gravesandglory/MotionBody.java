@@ -97,7 +97,7 @@ final class MotionBody {
     /** G1: duty factor walk to run, the stride's half-length cap forward walk to run and sideways (px), at the soft knee's reach. */
     static final double DUTY_WALK = 0.62, DUTY_RUN = 0.38, HALF_WALK = 6.4, HALF_RUN = 7.0, HALF_SIDE = 3.2;
     /** G1: the least and most cadence (cycles per second), the swing knee walk to run (degrees), and the swing foot's lift walk to run (px). */
-    static final double F_MIN = 0.9, F_MAX = 3.6, KNEE_WALK = 35, KNEE_RUN = 70, LIFT_MIN = 1.5, LIFT_RUN = 3.5;
+    static final double F_MIN = 0.9, F_MAX = 3.6, KNEE_WALK = 35, KNEE_RUN = 70, LIFT_MIN = 2.4, LIFT_RUN = 2.6, LIFT_POW = 0.6;
     /** Fix 1 (R109): the speed (b/s) under which the phase stops dividing by the speed, and the most a frame's travel may step the phase, in multiples of the cadence's own step. */
     static final double V_FLOOR = 0.15, PSI_STEP = 4;
     /**
@@ -105,6 +105,8 @@ final class MotionBody {
      * the speed's rise smoothed at ACC_HZ, LEAN_GAIN degrees per b/s^2 up to LEAN_MAX, with DIP_PER_DEG px of hip dip a degree.
      */
     static final double START_W = 0.15, UP_BLEND = 0.45, ACC_HZ = 8, LEAN_GAIN = 0.2, LEAN_MAX = 5, DIP_PER_DEG = 0.12;
+    /** Fix r3 (gate 2): a stop's least stepping rate (cycles per second), the sweep (px) a standing foot may keep without a settling step, and the gait's fade (s) once settled. */
+    static final double GO_V = Double.parseDouble(System.getProperty("gov", "0.25")), SETTLE_HZ = 2.0, HOLD_FADE = 0.25;
 
     /**
      * G1 (R109): the stride matched to the ground speed. The gait keeps its own phase psi, advanced by the distance travelled
@@ -131,35 +133,74 @@ final class MotionBody {
         // Fix 2: a start from standing takes its first step from the stance: one foot (the seed's) stands under its hip at the
         // middle of its stance (sweep 0) while the other is mid-swing (sweep 0 too), so the sweep can start at full weight and
         // the planted foot moves with the ground from the first frame; only the lift and the knee ease in
-        boolean go = st.wTarget[MotionEngine.W_MOVE] > 0.5;
+        // fix r3: the feet start stepping as soon as the body moves (GO_V), before the move weight's own threshold, so a slow start
+        // (a crawl) does not drag the standing feet along
+        boolean go = st.wTarget[MotionEngine.W_MOVE] > 0.5 || !f.dead && v > GO_V;
         if (!go) st.sweepFull = false;
-        else if (!st.sweepFull && st.w[MotionEngine.W_MOVE] < START_W) {
-            st.sweepFull = true;
-            st.psi = frac(duty / 2 + ((f.seed.variantBias() & 1) == 0 ? 0 : 0.5));
+        else {
+            st.locked[0] = st.locked[1] = false;
+            st.fw[0] = st.fw[1] = 1;
+            st.settleSwing[0] = st.settleSwing[1] = false;
+            if (!st.sweepFull && st.w[MotionEngine.W_MOVE] < START_W) {
+                st.sweepFull = true;
+                st.psi = frac(duty / 2 + ((f.seed.variantBias() & 1) == 0 ? 0 : 0.5));
+                st.fresh = true;
+            }
         }
         // the phase follows the distance actually travelled this frame along the gait's direction, so a stance foot's sweep
-        // (16 px per block of travel) moves with the ground however unevenly the entity's position arrives
+        // (16 px per block of travel) moves with the ground however unevenly the entity's position arrives; fix r3: through a
+        // stop it keeps stepping at least SETTLE_HZ until each foot has set down for good (see below)
         double travel = Math.max(0, f.dF * dirF + f.dL * dirL);
-        st.psi = frac(st.psi + Math.min(travel * cad / Math.max(v, V_FLOOR), PSI_STEP * cad * f.dt));
+        boolean settling = !go && !(st.locked[0] && st.locked[1]) && (st.w[MotionEngine.W_MOVE] > 0 || st.hold > 0);
+        double dpsi = Math.min(travel * cad / Math.max(v, V_FLOOR), PSI_STEP * cad * f.dt);
+        if (settling) dpsi = Math.max(dpsi, SETTLE_HZ * f.dt);
+        else if (!go && st.w[MotionEngine.W_MOVE] <= 0) dpsi = 0; // standing (or drifting before the gait engages): no steps
+        st.psi = frac(st.psi + dpsi);
+        st.hold = f.first ? (settling ? 1 : 0) : settling ? 1 : MotionEngine.toward(st.hold, 0, f.dt / HOLD_FADE);
         // the upper body eases in over UP_BLEND (the arms and lean), slower than the legs, so the sword arm does not pop into the run
         st.upW = f.first ? (go ? 1 : 0) : MotionEngine.toward(st.upW, go ? 1 : 0, f.dt / UP_BLEND);
-        double a = f.m, sw = st.sweepFull ? 1 : a, b = MotionMath.ease(st.upW) * f.m * MotionMath.clamp01(v / 0.5), mSw = -2 * h * (1 - duty) / duty;
-        f.gaitW = a;
+        double a = Math.max(f.m, st.hold), sw = st.sweepFull ? 1 : a, b = MotionMath.ease(st.upW) * f.m * MotionMath.clamp01(v / 0.5), mSw = -2 * h * (1 - duty) / duty;
+        f.gaitW = Math.max(a, sw); // fix r3: a start from standing solves the feet at full weight (its sweeps start at 0), so the mid-swing foot lifts as it travels
         f.duty = duty;
         f.gaitV = v;
         double knee = KNEE_WALK + (KNEE_RUN - KNEE_WALK) * run, g = 0;
         for (int i = 0; i < 2; i++) {
             double q = i == 0 ? st.psi : frac(st.psi + 0.5), d, lift = 0;
             f.q[i] = q;
-            if (q < duty) d = h * (1 - 2 * q / duty);
-            else {
-                double u = (q - duty) / (1 - duty), u2 = u * u, u3 = u2 * u;
-                d = h * (-1 + 6 * u2 - 4 * u3) + mSw * (2 * u3 - 3 * u2 + u);
-                lift = Math.sin(Math.PI * u);
+            // fix r3 (gate 2): the sweep is carried, not recomputed. A stance foot moves back by the frame's travel (16 px a block)
+            // so it stays put on the ground while the speed and the stride length change (a start, a stop); a swing runs a cubic
+            // from where it set off, leaving at the stance's speed (or from rest, on a start's mid-swing foot) and landing half a
+            // stride ahead at the stance's speed. Its lift rises as the root of the arch, so the sole clears the ground at once.
+            boolean swing = q >= duty && !st.locked[i];
+            if (st.fresh) { st.sd[i] = 0; st.inSwing[i] = false; }
+            if (!swing) {
+                st.sd[i] -= 16 * travel; // a locked foot too stays put on the ground while the body coasts to rest
+                // a stop's own last step sets each foot down under its hip, on its idle pose, and it stays down; a step begun before the
+                // stop lands as usual and the foot steps once more
+                if (st.inSwing[i] && st.settleSwing[i]) st.locked[i] = true;
+                if (st.locked[i]) st.fw[i] = MotionEngine.toward(st.fw[i], 0, f.dt / HOLD_FADE);
+                d = st.sd[i];
+            } else {
+                double u = (q - duty) / (1 - duty);
+                if (!st.inSwing[i]) {
+                    st.settleSwing[i] = !go;
+                    boolean mid = st.fresh || u > 0.5;
+                    st.su0[i] = mid ? Math.min(u, 0.9) : 0;
+                    st.sd0[i] = st.sd[i];
+                    st.sm0[i] = mid ? 0 : 1;
+                }
+                double u0 = st.su0[i], span = 1 - u0, t = MotionEngine.clamp((u - u0) / span, 0, 1), t2 = t * t, t3 = t2 * t;
+                // a stop's last step lands under the hip at rest (its weight then eases to 0 on the ground: the foot stays where it is)
+                boolean set = st.settleSwing[i];
+                double hEnd = set ? 0 : h, mEnd = set ? 0 : mSw;
+                d = st.sd0[i] * (2 * t3 - 3 * t2 + 1) + st.sm0[i] * mSw * span * (t3 - 2 * t2 + t) + hEnd * (3 * t2 - 2 * t3) + mEnd * span * (t3 - t2);
+                lift = Math.pow(Math.sin(Math.PI * t), LIFT_POW);
+                st.sd[i] = d;
             }
+            st.inSwing[i] = swing;
             f.sweep[i] = d;
             f.lift[i] = lift;
-            if (i == 0) g = h > 1e-9 ? dirF * d / h : 0;
+            if (i == 0) g = h > 1e-9 ? MotionEngine.clamp(dirF * d / h, -1.5, 1.5) : 0;
             if (sw <= 0) continue;
             double rx = Math.asin(MotionEngine.clamp(-dirF * d / MotionFeet.LEG, -1, 1));
             double rz = -Math.asin(MotionEngine.clamp(dirL * d / (MotionFeet.LEG * Math.cos(rx)), -1, 1));
@@ -167,6 +208,8 @@ final class MotionBody {
             out.add(LEGS[i], RZ, sw * Math.toDegrees(rz));
             if (lift > 0) out.add(SHINS[i], RX, a * knee * lift);
         }
+        st.fresh = false;
+        // a stop settles once each foot is down: one that was already under its hip when the stop began needs no further step
         double crouch = sh * f.m;
         if (crouch > 0) {
             for (int i = 0; i < 2; i++) { out.add(SHINS[i], RX, 14 * crouch); out.add(LEGS[i], RX, -7 * crouch); }

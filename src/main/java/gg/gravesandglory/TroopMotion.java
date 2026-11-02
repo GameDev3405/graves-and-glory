@@ -157,6 +157,7 @@ public final class TroopMotion {
         MotionInput in=input(e,fam,b,limbAngle,limbDistance,age,headYaw,headPitch);
         MotionEngine.pose(in,b.state,fam.family(),b.pose);
         scene(b,fam,e.getId(),in.time());
+        if(b.sceneClip!=null)MotionFeet.ground(b.pose,b.state.vec); // fix r3: a scene clip's legs keep the soles out of the ground too
         apply(m,b.pose);
         limits(m);
         boolean shield=!e.getOffHandStack().isEmpty();
@@ -327,6 +328,7 @@ public final class TroopMotion {
     static void applyForced(TroopModel<?> m,String name,double seconds,boolean shield){
         Clip c=resolve(m,name);Pose p=new Pose();
         if(c!=null)c.add(seconds,p,1,new double[6]);
+        MotionFeet.ground(p,new double[3]); // fix r3: a forced clip's soles stay out of the ground as the engine's do
         apply(m,p);limits(m);
         Spec.TroopsRow row=row(m);Fam f=family(m);
         boolean drawn=name.equals("bow_draw")||c!=null&&f!=null&&(f.family().attacks().contains(c)||f.family().wallAttacks().contains(c));
