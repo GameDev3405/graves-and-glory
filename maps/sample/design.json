@@ -1,0 +1,199 @@
+{
+ "baseY": 64,
+ "depth": 500,
+ "format": 1,
+ "id": "sample",
+ "name": "Sample battlefield",
+ "objects": [
+  {
+   "by": "kort",
+   "id": "spawn-1",
+   "kind": "spawn",
+   "state": "accepted",
+   "team": "dawn",
+   "x": 60,
+   "z": 250
+  },
+  {
+   "by": "kort",
+   "id": "spawn-2",
+   "kind": "spawn",
+   "state": "accepted",
+   "team": "dusk",
+   "x": 640,
+   "z": 250
+  },
+  {
+   "by": "kort",
+   "id": "point-1",
+   "kind": "point",
+   "name": "A",
+   "radius": 14,
+   "state": "accepted",
+   "x": 190,
+   "z": 250
+  },
+  {
+   "by": "kort",
+   "id": "point-2",
+   "kind": "point",
+   "name": "B",
+   "radius": 16,
+   "state": "accepted",
+   "x": 350,
+   "z": 250
+  },
+  {
+   "by": "kort",
+   "id": "point-3",
+   "kind": "point",
+   "name": "C",
+   "radius": 14,
+   "state": "accepted",
+   "x": 510,
+   "z": 250
+  },
+  {
+   "by": "kort",
+   "depth": 1,
+   "id": "river-1",
+   "kind": "river",
+   "path": [
+    [
+     270,
+     0
+    ],
+    [
+     285,
+     120
+    ],
+    [
+     265,
+     250
+    ],
+    [
+     280,
+     380
+    ],
+    [
+     270,
+     500
+    ]
+   ],
+   "state": "accepted",
+   "width": 10
+  },
+  {
+   "by": "kort",
+   "id": "road-1",
+   "kind": "road",
+   "path": [
+    [
+     60,
+     250
+    ],
+    [
+     190,
+     250
+    ],
+    [
+     350,
+     250
+    ],
+    [
+     510,
+     250
+    ],
+    [
+     640,
+     250
+    ]
+   ],
+   "state": "accepted",
+   "width": 5
+  },
+  {
+   "by": "kort",
+   "height": 8,
+   "id": "hill-1",
+   "kind": "hill",
+   "outline": [
+    [
+     290,
+     170
+    ],
+    [
+     420,
+     160
+    ],
+    [
+     440,
+     260
+    ],
+    [
+     400,
+     340
+    ],
+    [
+     300,
+     330
+    ]
+   ],
+   "state": "accepted",
+   "steepness": 0.3
+  },
+  {
+   "by": "kort",
+   "height": 22,
+   "id": "hill-2",
+   "kind": "hill",
+   "outline": [
+    [
+     120,
+     60
+    ],
+    [
+     220,
+     50
+    ],
+    [
+     240,
+     130
+    ],
+    [
+     150,
+     150
+    ]
+   ],
+   "state": "accepted",
+   "steepness": 0.9
+  },
+  {
+   "by": "kort",
+   "height": 14,
+   "id": "hill-3",
+   "kind": "hill",
+   "outline": [
+    [
+     470,
+     360
+    ],
+    [
+     600,
+     350
+    ],
+    [
+     620,
+     450
+    ],
+    [
+     500,
+     460
+    ]
+   ],
+   "state": "accepted",
+   "steepness": 0.55
+  }
+ ],
+ "width": 700
+}

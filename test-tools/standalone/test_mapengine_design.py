@@ -109,7 +109,7 @@ class DesignTest(unittest.TestCase):
             d = design.load(pathlib.Path(tmp) / 'maps' / 'foo' / 'design.json')
             self.assertEqual(d['name'], 'Foo Map')
             self.assertEqual(cli.main(['new', 'foo', 'Foo'], root=pathlib.Path(tmp)), 1)
-            self.assertEqual(cli.main(['check', 'foo'], root=pathlib.Path(tmp)), 2)
+            self.assertEqual(cli.main(['check', 'foo'], root=pathlib.Path(tmp)), 1)  # no spawns: cannot build
 
 
 if __name__ == '__main__':

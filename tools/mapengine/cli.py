@@ -2,7 +2,11 @@
 import argparse
 import pathlib
 
+import hashlib
+import json
+
 from mapengine import build as mbuild
+from mapengine import check as mcheck
 from mapengine import design
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
@@ -38,6 +42,25 @@ def main(argv=None, root=None):
             print('cannot build: ' + '; '.join(e.problems))
             return 1
         print(f"built {len(m['tiles'])} tiles into {out}")
+        return 0
+    if args.cmd == 'check':
+        d = design.load(root / 'maps' / args.id / 'design.json')
+        out = root / 'work' / 'mapengine' / args.id
+        try:
+            stale = True
+            if (out / 'map.json').exists():
+                stale = json.loads((out / 'map.json').read_text(encoding='utf-8')).get('design_sha256') !=                     hashlib.sha256(mbuild.canonical_bytes(d)).hexdigest()
+            if stale:
+                mbuild.build(d, out)
+        except mbuild.BuildError as e:
+            print('cannot build: ' + '; '.join(e.problems))
+            return 1
+        issues = mcheck.check(d, out)
+        for i in issues:
+            print(f'{i.code} {i.object_id}: {i.message}')
+        if issues:
+            return 1
+        print('OK: matches the design')
         return 0
     print(f'{args.cmd}: not implemented yet')
     return 2
