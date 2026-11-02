@@ -75,10 +75,12 @@ final class LobbyChecks implements Phase1Checks.Suite, Phase1Checks.ServerWatch 
                 press(c,"ready");next();
             }
             case 4->{
-                if(!WarTableLobby.myReady()){if(k>100)fail(c,"p1-lobby-fill-off-holds","not ready 100 ticks after pressing Ready");return;}
+                if(!WarTableLobby.myReady()){if(k>100)fail(c,"p1-lobby-fill-off-holds","not ready 100 ticks after pressing Ready");else if(k>=30&&k%30==0)press(c,"ready");return;} // a press right after the fill toggle can be dropped (CampScreen's 300 ms guard) or land on a dull button: press again while still not ready
                 if(k<40)return;
                 String status=WarTableLobby.texts().getOrDefault("status","");
-                report("p1-lobby-fill-off-holds",num("countdown")==0&&str("waiting").equals("Fill both teams or enable bots.")&&status.contains("Fill both teams"),"ready alone with fill off for 40 ticks: countdown="+num("countdown")+", waiting=\""+str("waiting")+"\", status=\""+status+"\"");
+                boolean holdOk=num("countdown")==0&&str("waiting").equals("Fill both teams or enable bots.")&&status.contains("Fill both teams");
+                if(!holdOk&&k<=140)return; // the drawn status follows the snapshot on the next rendered frame
+                report("p1-lobby-fill-off-holds",holdOk,"ready alone with fill off for 40 ticks: countdown="+num("countdown")+", waiting=\""+str("waiting")+"\", status=\""+status+"\"");
                 press(c,"ready");next();
             }
             case 5->{if(WarTableLobby.myReady()||k<10){if(k>100)fail(c,"p1-lobby-stand-down","still ready 100 ticks after Stand down");return;}press(c,"fill");next();}
@@ -98,7 +100,9 @@ final class LobbyChecks implements Phase1Checks.Suite, Phase1Checks.ServerWatch 
             case 7->{ // the host's map pick reaches the snapshot
                 if(num("map")==map0){if(k>100)fail(c,"p1-lobby-host-map","map still "+map0+" 100 ticks after Next map");return;}
                 if(k<10)return;
-                report("p1-lobby-host-map",num("map")==(map0+1)%Spec.MAPS.length&&WarTableLobby.texts().getOrDefault("map","").equals(Spec.MAPS[num("map")].id()),"map "+map0+" -> "+num("map")+", the note reads "+WarTableLobby.texts().get("map"));
+                boolean mapOk=num("map")==(map0+1)%Spec.MAPS.length&&WarTableLobby.texts().getOrDefault("map","").equals(Spec.MAPS[num("map")].id());
+                if(!mapOk&&k<=100)return; // the drawn note follows the snapshot on the next rendered frame: poll, time out at 100 ticks
+                report("p1-lobby-host-map",mapOk,"map "+map0+" -> "+num("map")+", the note reads "+WarTableLobby.texts().get("map"));
                 press(c,"map-prev");next();
             }
             case 8->{if(num("map")!=map0||k<10){if(k>100)fail(c,"p1-lobby-host-map-back","map not back");return;}press(c,"ready");next();}
@@ -106,11 +110,14 @@ final class LobbyChecks implements Phase1Checks.Suite, Phase1Checks.ServerWatch 
                 if(num("countdown")<=0){if(k>100)fail(c,"p1-lobby-countdown-start","no countdown 100 ticks after Ready (waiting=\""+str("waiting")+"\")");return;}
                 if(k<8)return; // CampScreen.action drops a second press within 300 ms
                 String cd=WarTableLobby.texts().getOrDefault("status","");
-                report("p1-lobby-countdown-start",num("countdown")>=8&&num("countdown")<=10&&cd.startsWith("Battle begins in")&&WarTableLobby.texts().containsKey("countdown"),"countdown "+num("countdown")+" s, the sheet reads \""+cd+"\"");
+                boolean cdOk=num("countdown")>=8&&num("countdown")<=10&&cd.startsWith("Battle begins in")&&WarTableLobby.texts().containsKey("countdown");
+                if(!cdOk&&k<=40&&num("countdown")>=8)return; // the sheet redraws on the next rendered frame: poll while the countdown is still in range
+                report("p1-lobby-countdown-start",cdOk,"countdown "+num("countdown")+" s, the sheet reads \""+cd+"\"");
                 shot(c,"lobby-1080-host-countdown");press(c,"ready");next();
             }
             case 10->{ // standing down stops it
                 if(num("countdown")!=0||WarTableLobby.myReady()||!CampaignClient.notice.startsWith("Countdown stopped")){if(k>100)fail(c,"p1-lobby-countdown-cancel","countdown "+num("countdown")+", ready="+WarTableLobby.myReady()+", notice \""+CampaignClient.notice+"\" 100 ticks after Stand down");return;}
+                if(WarTableLobby.texts().containsKey("countdown")&&k<=100)return; // the countdown line leaves the sheet on the next rendered frame
                 report("p1-lobby-countdown-cancel",!WarTableLobby.texts().containsKey("countdown"),"countdown 0, notice \""+CampaignClient.notice+"\", no countdown line drawn");
                 stage=-1;
                 server(c,b->{ // the stand-in guest joins Dusk, picks Graveborn, and takes the host's seat
