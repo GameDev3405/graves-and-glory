@@ -158,7 +158,7 @@ final class UiReportChecks implements Suite {
             }
             case 7->{
                 var p=page(c);if(p==null)return;
-                if(!WarTableReport.texts().containsKey("outcome")&&tick-subAt<80)return;
+                if(WarTableReport.texts().values().stream().noneMatch(t->t.contains("not saved"))&&tick-subAt<80)return;
                 boolean notSaved=WarTableReport.texts().values().stream().anyMatch(t->t.contains("not saved"));
                 note("p1-ui-report-unsaved",notSaved,"a report with nothing saved says so: "+notSaved);
                 var go=p.button("go");boolean live=go!=null&&go.active&&go.visible;

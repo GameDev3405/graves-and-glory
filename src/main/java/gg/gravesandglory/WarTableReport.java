@@ -336,9 +336,8 @@ final class WarTableReport {
         String state = m.get("bonusState").getAsString();
         int pacts = m.get("pacts").getAsInt(), held = m.get("writs").getAsInt();
         if (!state.equals("none") && !state.equals("lost")) {
-            String house = RosterMath.houseName(m.get("house").getAsString());
             String label = switch (state) { case "paid" -> "Bonus kept"; case "claimed" -> "Bonus claimed before"; default -> "Bonus missed"; };
-            String value = state.equals("paid") ? "+" + m.get("bonusShards").getAsInt() + " " + house + " shards, +" + m.get("bonusGold").getAsInt() + " gold" : "";
+            String value = state.equals("paid") ? "+" + m.get("bonusShards").getAsInt() + " shards, +" + m.get("bonusGold").getAsInt() + " gold" : "";
             y = row(g, "march-bonus", label, value, x, y, state.equals("paid") ? DarkUi.INK_TEXT : DarkUi.SEPIA);
         }
         if (pacts > 0) y = row(g, "march-pact", pacts == 1 ? "A Pact earned" : pacts + " Pacts earned", "held " + held, x, y, DarkUi.INK_TEXT);
