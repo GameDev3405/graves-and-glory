@@ -836,30 +836,59 @@ def scaled(d, s):
     return {b: tuple(x * s for x in v) for b, v in d.items()}
 
 
+# Port arms (Task 16 r3b, Kort: rework the archers): the bow arm raised so the fist sits at the chest, some 6 px ahead of the
+# torso, the bow upright at the rest twist's 45 degrees and canted 15 degrees toward the head (its tips clear of the
+# ground and above the hat); the string arm relaxed a little away from the body. The bow hand's key is a solve of the
+# rig's FK for that world turn under TroopMotion.twist at draw 0. Upper body only: the legs keep the gait.
+PORT = pose(body=(2, -4, 0), head=(0, 4, 0), left_arm=(-40, 0, -20), left_forearm=(-70, 0, 0), left_hand=(98.0, -60.9, 46.2),
+            right_arm=(-6, 0, 8), right_forearm=(-12, 0, 0))
+# Ready (the aim stance): AIM with the string hand on the undrawn string (frame 0's nock), so each shot draws from it.
+READY = add(AIM, **NOCK_AT[0])
+# The string hand at the quiver's mouth behind the right shoulder, as offsets on READY (an IK solve of the rig's FK).
+QUIVER = dict(right_arm=(-164.5 + 108.1, 4.6 + 46.8, 20 - 35.8), right_forearm=(-97.6 + 37.5, 48.0, -18.7))
+
+
 def bow_shot(name, lean, recoil):
-    """One shot (impact tick 10, the loose; the bow's pull frames switch at 0.094, 0.2 and 0.3 s on the attack's timeline):
-    a fresh arrow on the string at frame 0's nock, the draw following the frames to the anchor, a held beat, the loose
-    (the string hand flicks back, the bow arm gives forward and down), and back to the anchor. Offsets on AIM.
+    """One shot, offsets on READY (impact tick 10 is the loose): the string hand reaches over the right shoulder to the
+    quiver (ticks 0-2), holds a tick to take the arrow, brings it to the string (draw marker), draws through the pull
+    frames' nocks to the cheek anchor (full marker; TroopMotion.drawSeconds shows the frames between the two markers), holds
+    with a small tremble, looses (the string hand flicks back past the anchor, the bow arm kicks 4 degrees for a tick),
+    follows through with the elbow high and the bow on the target, and comes back to the string.
     lean is the body's pitch held through the shot (negative leans back), recoil its kick at the loose."""
-    a = Anim(name, 1.2, impact=0.5)
-    a.k(0.0, body=Z, right_arm=Z, right_forearm=Z, left_arm=Z, head=Z)
-    a.k(0.06, i='linear', body=(lean * 0.3, 0, 0), **NOCK_AT[0])
-    a.k(0.1, i='linear', **NOCK_AT[1])
-    a.k(0.2, i='linear', body=(lean * 0.8, 0, 0), **NOCK_AT[2])
-    a.k(0.3, i='linear', body=(lean, 0, 0), right_arm=Z, right_forearm=Z, head=(lean * -0.3, 0, 0))
-    a.k(0.42, i='linear', body=(lean * 1.05, -0.5, 0), right_arm=(0.4, 0.6, 0), right_forearm=(-1.0, 0, 0), left_arm=Z)
-    a.k(0.5, i='linear', body=(lean * 1.05, -0.5, 0), right_arm=Z, right_forearm=Z, left_arm=Z)
-    a.k(0.56, i='linear', body=(lean + recoil, -3, 0), left_arm=(4, -3, 0), **LOOSE)
-    a.k(0.75, body=(lean * 0.6 + recoil * 0.4, -1.5, 0), left_arm=(2, -1.5, 0), head=(lean * -0.15, 0, 0), **scaled(LOOSE, 0.5))
-    a.k(1.0, body=(lean * 0.1, -0.3, 0), left_arm=(0.4, -0.2, 0), head=Z, **scaled(LOOSE, 0.1))
-    a.k(1.2, body=Z, right_arm=Z, right_forearm=Z, left_arm=Z, head=Z)
+    a = Anim(name, 1.2, impact=0.5, draw=0.22, full=0.36)
+    a.k(0.0, body=Z, head=Z, right_arm=Z, right_forearm=Z, left_arm=Z)
+    a.k(0.05, body=(lean * 0.2, 2, 0), **scaled(QUIVER, 0.6))
+    a.k(0.1, i='linear', body=(lean * 0.3, 3, 0), **QUIVER)
+    a.k(0.15, i='linear', body=(lean * 0.3, 3, 0), **scaled(QUIVER, 0.96))
+    a.k(0.22, i='linear', body=(lean * 0.5, 0, 0), right_arm=Z, right_forearm=Z)
+    a.k(0.26, i='linear', **{b: tuple(x - y for x, y in zip(NOCK_AT[1][b], NOCK_AT[0][b])) for b in NOCK_AT[1]})
+    a.k(0.31, i='linear', body=(lean * 0.8, 0, 0), **{b: tuple(x - y for x, y in zip(NOCK_AT[2][b], NOCK_AT[0][b])) for b in NOCK_AT[2]})
+    full = {b: tuple(-x for x in v) for b, v in NOCK_AT[0].items()}
+    a.k(0.36, i='linear', body=(lean, 0, 0), head=(lean * -0.3, 0, 0), **full)
+    a.k(0.43, i='linear', body=(lean * 1.05, -0.5, 0), left_arm=(-1.5, 0.5, 0),
+        **{b: tuple(x + d for x, d in zip(v, (1.5, 1, 0))) for b, v in full.items()})
+    a.k(0.5, i='linear', body=(lean * 1.05, -0.5, 0), left_arm=(0.5, -0.5, 0), **full)
+    loose = {b: tuple(x + y for x, y in zip(full[b], LOOSE[b])) for b in full}
+    a.k(0.55, i='linear', body=(lean + recoil, -3, 0), left_arm=(4, -3, 0), **loose)
+    a.k(0.6, i='linear', left_arm=(0.5, -1, 0))
+    a.k(0.72, body=(lean * 0.8 + recoil * 0.5, -2, 0), left_arm=(0.5, -1, 0), head=(lean * -0.2, 0, 0), **scaled(loose, 0.95))
+    a.k(0.95, body=(lean * 0.3, -0.6, 0), left_arm=(0.2, -0.3, 0), head=Z, **scaled(loose, 0.4))
+    a.k(1.2, body=Z, head=Z, right_arm=Z, right_forearm=Z, left_arm=Z)
     return a
 
 
 def bow_clips():
     out = []
-    # Aim: held at full draw; the archer settles and breathes, both arms pitching together so the hand keeps the nock.
-    out.append(stance('aim', 3.0, AIM, [
+    # Port arms: idle, carry, rest and guard all fall back to it (MotionEngine.stanceChain); a slow breath, the bow hand
+    # easing and resettling, the string hand swinging a little; beats vary by up to 8 degrees so files of archers differ.
+    out.append(stance('idle', 4.0, PORT, [
+        (1.1, dict(left_arm=(-2, 0, 1), left_forearm=(2, 0, 0), right_arm=(3, 0, 2), body=(0.5, 1, 0))),
+        (2.2, dict(left_arm=(1.5, 0, -1), right_arm=(-2, 0, -1), right_forearm=(-6, 0, 0), head=(-2, 6, 0))),
+        (3.2, dict(left_arm=(-1, 0, 0.5), left_forearm=(-1.5, 0, 0), right_arm=(1, 0, 3), body=(-0.4, -1, 0), head=(1, -3, 0))),
+    ]).lag(left_forearm=0.1, right_forearm=0.12))
+    # Aim (ready): side on, the bow up on the target, the string hand on the string; the archer settles and breathes,
+    # both arms pitching together so the hand keeps the nock.
+    out.append(stance('aim', 3.0, READY, [
         (0.8, dict(left_arm=(-1.2, 0, 0), right_arm=(-1.2, 0, 0), body=(0.4, 0.6, 0), root=(0, 0, 0, 0, 0.15, 0))),
         (1.7, dict(left_arm=(0.6, 0, 0), right_arm=(0.6, 0, 0), body=(-0.3, -0.4, 0), head=(0.8, 0, 0))),
         (2.4, dict(left_arm=(-0.4, 0, 0), right_arm=(-0.4, 0, 0), body=(0.2, 0.3, 0), root=(0, 0, 0, 0, 0.1, 0))),
@@ -870,8 +899,8 @@ def bow_clips():
     # Forced bow_draw (the harness's p2-depth-bow, absolute): nocked at rest, the hand following the pull frames
     # (0.15, 0.32, 0.48 s) to the anchor, held to the loose at 0.8 s, then flicked off the string.
     a = Anim('bow_draw', 1.2)
-    a.pose(0.0, add(AIM, **NOCK_AT[0]), 'linear')
-    a.pose(0.12, add(AIM, **NOCK_AT[0]), 'linear')
+    a.pose(0.0, READY, 'linear')
+    a.pose(0.12, READY, 'linear')
     a.pose(0.15, add(AIM, **NOCK_AT[1]), 'linear')
     a.pose(0.32, add(AIM, **NOCK_AT[2]), 'linear')
     a.pose(0.48, AIM, 'linear')

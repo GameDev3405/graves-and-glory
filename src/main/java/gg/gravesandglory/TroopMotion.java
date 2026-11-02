@@ -418,8 +418,9 @@ public final class TroopMotion {
     // ---- what the renderer and its features read ----
     /**
      * The time the bow's pull shows, on the BOW_FULL / BOW_LOOSE timeline Weapon.frameAt reads, or -1 when nothing draws: a forced
-     * bow_draw shows its time; the newest attack playing draws to the full draw at its impact (the loose) and then rests; the aim
-     * stance holds the draw as far as it shows.
+     * bow_draw shows its time; the newest attack playing with draw and full markers (the bow shots,
+     * Task 16 r3b) rests until draw, pulls through the frames to full and holds to its impact (the loose), then rests; one without them
+     * draws to the full draw at its impact. The aim stance holds the string at rest (the shot reaches for a fresh arrow).
      */
     public static float drawSeconds(MobEntity e,TroopModel<?> m,float age){
         Forced f=FORCED.get(e.getId());
@@ -430,11 +431,13 @@ public final class TroopMotion {
         for(int i=st.tracks.size()-1;i>=0;i--){
             MotionStack.Track t=st.tracks.get(i);if(t.kind!=MotionEngine.ATTACK)continue;
             double s=t.time(now);if(s>=t.length())break;
-            if(t.impact>0)return (float)(s<t.impact?s/t.impact*BOW_LOOSE:BOW_LOOSE+(s-t.impact));
+            if(t.impact>0&&s>=t.impact)return (float)(BOW_LOOSE+(s-t.impact));
+            Double d0=t.a.markers().get("draw"),d1=t.a.markers().get("full");
+            if(d0!=null&&d1!=null&&d1>d0)return (float)(s<d0?0:BOW_FULL*Math.min(1,(s-d0)/(d1-d0)));
+            if(t.impact>0)return (float)(s/t.impact*BOW_LOOSE);
             return (float)Math.min(s/Math.max(t.length(),1e-3)*BOW_FULL,BOW_FULL);
         }
-        double aim=st.frame.aim;
-        return aim>0?(float)(BOW_FULL*Math.min(1,aim)):-1f;
+        return -1f;
     }
     /** A troop's body past its fall, with no scene pose or forced clip on it (Task 7: it lies in its death clip's last frame). */
     static boolean lies(Entity e){
