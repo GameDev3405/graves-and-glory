@@ -115,14 +115,15 @@ def cuff():
 
 # ---- the cloth: tabard, side flaps ----
 CLEAVE = """
-..eeee..
-.eLLmLe.
-.eLmdLe.
-.eLdLLe.
-..eLLe..
-...ee..."""
+.LLLLLL.
+LddddeeL
+LdddeddL
+LddeddmL
+.LdeddL.
+..LedL..
+...LL..."""
 
-def cleave_pal(M): return {"e": EMBER[3], "L": IRON[5], "m": IRON[4], "d": IRON[2]}
+def cleave_pal(M): return {"e": EMBER[3], "L": IRON[5], "m": IRON[3], "d": IRON[1]}
 
 def tabard(T, M):
     def paint(face, w, h):

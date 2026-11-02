@@ -98,7 +98,7 @@ def belt():
     return paint
 
 def arm():
-    return rows([(0, leather_ic(base=2, stitch=True)), (3, mail_soft(2)), (7, lames([2, 2, 1], base=3, seed="aarm", wear=2, rivets=False)), (10, leather_ic(base=1))])
+    return rows([(0, leather_ic(base=2, stitch=True)), (3, mail_soft(2)), (5, lames([2, 2, 1], base=3, seed="aarm", wear=2, rivets=False)), (10, leather_ic(base=1))])
 
 def leg():
     return rows([(0, mail_soft(2)), (5, lames([2, 2], base=2, seed="aleg", wear=2, rivets=False)), (8, leather_ic(base=2))])
@@ -122,16 +122,15 @@ def fletch(tone):
 
 # ---- cloth ----
 CROSSED = """
-...LL...
 ..LLLL..
-...mm...
-...mm...
-...mm...
-..fmmf..
-.ff..ff.
-........"""
+.LdhhdL.
+LddhhddL
+LddmmddL
+LddmmddL
+.LfmmfL.
+..LLLL.."""
 
-def cross_pal(M): return {"L": IRON[5], "m": IRON[4], "e": EMBER[3], "f": EMBER[3]}
+def cross_pal(M): return {"L": IRON[5], "d": IRON[1], "h": IRON[6], "m": IRON[4], "f": EMBER[3]}
 
 def surcoat(T, M):
     def paint(face, w, h):
