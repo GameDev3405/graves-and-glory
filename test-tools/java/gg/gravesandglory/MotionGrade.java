@@ -189,7 +189,7 @@ final class MotionGrade extends Phase2Checks.Stage {
         final JsonArray tip = new JsonArray(), rim = new JsonArray(); double stanceW = -1;
         Job(String clip, int angle, int settle) {
             this.clip = clip; this.angle = angle; this.settle = settle; cat = clipCat.get(clip); c = fam.all().get(clip); full = angle == 0 || angle == 90;
-            pre = cat.equals("stance") ? SERVER_STANCE.getOrDefault(clip, "hold") : clip.endsWith("_wall") ? "wall" : "hold";
+            pre = cat.equals("stance") ? SERVER_STANCE.getOrDefault(clip, "hold") : clip.endsWith("_wall") ? "wall" : cat.equals("attack") ? attackStance() : "hold";
             var f2 = fam.family(); int v = -1; String z = null; boolean blk = false; float br = 0; String kd = "slash"; int hi = 0, hn = 1;
             if (cat.equals("attack")) for (int i = 0; i < fam.attackIndex().length; i++) { int k = fam.attackIndex()[i]; if (k >= 0 && k < f2.attacks().size() && (f2.attacks().get(k) == c || k < f2.wallAttacks().size() && f2.wallAttacks().get(k) == c)) { v = i; break; } }
             // Task 16 H1: the engine picks a seeded hit variant from the unit's hit count; primeHit sets the count so the job plays this clip
@@ -465,6 +465,8 @@ final class MotionGrade extends Phase2Checks.Stage {
         return at;
     }
     static double frameTime(Clip clip, int i) { return clip.loop() ? clip.length() * i / FRAMES : clip.length() * i / (FRAMES - 1); }
+    /** Task 16 r3b fix 1: a ranged family shoots only while it aims (Tactics: aiming and the shot share reach and sight), so its shots replay from the aim stance (ranged_aim) as the game sends them; others from hold. */
+    String attackStance() { return fam.family().stances().containsKey("aim") ? "ranged_aim" : "hold"; }
     String keyOf(Clip clip) { for (var e : fam.all().entrySet()) if (e.getValue() == clip) return e.getKey(); return clip == null ? "?" : clip.name(); }
     int keyTicks(String clip) { Double t = clipKey.get(clip); return t == null ? 10 : (int) Math.round(t * Clip.TICKS); }
     static float[] want(TroopModel<?> m, String clip, double t, boolean shield) {
@@ -568,7 +570,7 @@ final class MotionGrade extends Phase2Checks.Stage {
         // states
         var f2 = fam.family();
         for (String s : TroopMotion.STANCES) if (f2.stances().containsKey(s)) { String k = keyOf(f2.stances().get(s)); states.add(new St("stance-" + s, "stance", k, SERVER_STANCE.get(s), s.equals("idle") ? "hold" : "", -1, null, false, 0, 20, fam.all().get(k).length())); }
-        for (int i = 0; i < variants.size(); i++) if (i < fam.attackIndex().length && fam.attackIndex()[i] >= 0) { String id = keyOf(f2.attacks().get(fam.attackIndex()[i])); states.add(new St("attack-" + variants.get(i).id(), "attack", id, "hold", "hold", i, null, false, 0, keyTicks(id), fam.all().get(id).length())); }
+        for (int i = 0; i < variants.size(); i++) if (i < fam.attackIndex().length && fam.attackIndex()[i] >= 0) { String id = keyOf(f2.attacks().get(fam.attackIndex()[i])); states.add(new St("attack-" + variants.get(i).id(), "attack", id, attackStance(), attackStance(), i, null, false, 0, keyTicks(id), fam.all().get(id).length())); }
         // Task 16: the wall strikes, each thrown from the wall hold (stance packet wall), over the board
         if (!f2.wallAttacks().isEmpty()) for (int i = 0; i < variants.size(); i++) if (i < fam.attackIndex().length && fam.attackIndex()[i] >= 0) { Clip w = f2.wallAttacks().get(fam.attackIndex()[i]); if (w == f2.attacks().get(fam.attackIndex()[i])) continue; String id = keyOf(w); states.add(new St("wallstrike-" + variants.get(i).id(), "attack", id, "wall", "wall", i, null, false, 0, keyTicks(id), fam.all().get(id).length())); }
         for (String z : List.of("head", "body", "legs", "block", "block_head", "block_legs")) {

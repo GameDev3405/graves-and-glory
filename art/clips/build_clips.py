@@ -577,6 +577,12 @@ def death(name, length, keys, settle_lift=0.0):
     return a
 
 
+# Task 16 r3b fix 1: a key between land and bounce for the fall onto the left side (death_right, death_slash_right,
+# death_magic_2). The shield arm swings from the catch, out to the side, to its lie under the board, and the straight
+# Euler path took the board through the torso for a tick (1.53 px); this routes it round the front (0.74 px at the tick).
+SIDE_SWING = {-1: pose(left_arm=(-71, 125, 13), left_forearm=(-4, 0, 0))}
+
+
 def deaths():
     out = []
     # r3b: the face-down lies (fwd, stab, arrow) bend a shin up off the ground so the knight's boot toe and knee plate
@@ -621,6 +627,7 @@ def deaths():
             (0.62, pose(k['tip'], root=rot(42)), about, 'catmullrom'),
             (0.8, pose(k['fall'], root=rot(80)), about, 'linear'),
             (0.88, pose(k['land'], root=rot(90)), about, 'linear'),
+            *([(0.93, pose(k['swing'], root=rot(88)), about, 'linear')] if k.get('swing') else []),
             (0.98, pose(k['bounce'], {b: k['lie'][b] for b in ('left_arm', 'left_forearm') if b in k['lie']}, root=rot(86)),
              about, 'catmullrom'),
             (1.12, pose(k['lie'], root=rot(90)), about, 'catmullrom'),
@@ -676,10 +683,11 @@ def deaths():
             fall=pose(arms((-30, 100, -6), (-50, 40, -50)), body=(6, 0, 8 * s), head=(4, 0, 18 * s)),
             land=pose(arms((-20, 110, -4), (-40, 30, -40)), body=(4, 0, 2 * s), head=(2, 0, -6 * s)),
             bounce=pose(body=(4, 0, 4 * s), head=(2, 0, 4 * s)),
+            swing=SIDE_SWING.get(s),
             lie=pose(arms((-70, -6, -35), (-60, 10, -50)), head=(4, 0, -36 * s), right_hand=Z,
                      # The board lies flat on the ground: in front of his chest, face down, when the shield arm is on top; under the arm, face
                      # down, when he falls onto it; the sword arm goes out of the column under the torso so he rests on it.
-                     **(dict(left_arm=(-174, -173, -40), left_forearm=(0, 0, 0), right_arm=(-91, 0, 78), body=(4, 0, 12))
+                     **(dict(left_arm=(-177.5, -173, -40), left_forearm=(0, 0, 0), right_arm=(-91, 0, 78), body=(4, 0, 12))
                         if s > 0 else dict(left_arm=(-39, 179, 8), left_forearm=(0, 0, 0), body=(4, 0, -13))),
                      **{near + '_leg': (-12, 0, 0), near + '_shin': (34, 0, 0), far + '_leg': (-26, 0, 0), far + '_shin': (40, 0, 0)}))
 
@@ -840,64 +848,90 @@ def scenes():
 
 # ---- bow (interim set, R110: the archer's aim, its two shots and the forced bow_draw; the bow sits in the left hand)
 
-# Aim: side on to the target, the bow arm straight out with the bow upright, the string hand anchored under the chin
-# on full draw's nock (frame 3; TroopMotion.twist turns the hand). Shoulders are mostly pitch, so the engine's aimPitch,
-# added to both arms' pitch, swings bow and string hand together toward the sky (within 1.4 px of the nock at 45
-# degrees up or 15 down, every pull frame). Keyed from a solve of the rig's FK, rounded to a tenth of a degree.
-AIM = pose(body=(0, 25.8, 0), head=(-2, -22, 0), left_arm=(-101.1, 22.7, -25.0), left_forearm=(1.2, -12.5, 0),
-           left_hand=(-1.6, -7.8, -50.3), right_arm=(-97.2, -31.9, 37.5), right_forearm=(-77.0, -44.2, -7.3),
+# Aim (Task 16 r3b, fix round 1): side on to the target, the bow arm out toward it at shoulder height with a soft elbow,
+# the bow upright and canted 12 degrees with its top out, away from the head; the arrow runs beside the right cheek
+# (x -4.7, 0.7 px clear of the head box) and the string hand anchors there under the cheekbone on full draw's nock
+# (frame 3; TroopMotion.twist turns the hand). Nothing crosses the face from the front, three-quarter or side views:
+# the bow and both hands stay outside the head's column, the bow arm runs below the chin. Shoulders are mostly pitch,
+# so the engine's aimPitch, added to both arms' pitch, swings bow and string hand together toward the sky (within
+# 1.2 px of the nock at 45 degrees up or 15 down). Keyed from a solve of the rig's FK, rounded to a tenth of a degree.
+AIM = pose(body=(0, 66.6, 0), head=(-2, -64.9, 0), left_arm=(-82.0, -0.8, -4.3), left_forearm=(-20.2, 15.2, 0),
+           left_hand=(15.3, -20.7, -68.1), right_arm=(-127.5, -68.6, 57.1), right_forearm=(-17.5, 42.2, 36.0),
            right_leg=(3, 0, 4), left_leg=(-4, 0, -4), left_shin=(4, 0, 0), root=(0, 0, 0, 0, 0.4, 0))
-# The string hand on each pull frame's nock, as offsets on AIM (right_arm, right_forearm): the arrow nocked with the string
-# at rest (frame 0) and frames 1 and 2 of the pull; frame 3 is AIM itself. LOOSE is the hand flicked 3 px back past the
-# anchor and out, the string gone.
-NOCK_AT = {0: dict(right_arm=(-10.9, -14.9, -1.7), right_forearm=(39.5, -3.8, 26.0)),
-           1: dict(right_arm=(-4.8, -5.6, -0.7), right_forearm=(20.2, 1.4, 14.4)),
-           2: dict(right_arm=(-1.8, -1.7, -0.5), right_forearm=(8.8, 1.7, 6.4))}
-LOOSE = dict(right_arm=(3.8, 5.4, -4.0), right_forearm=(-31.6, -14.1, -24.4))
-
+# Each pull frame's nock (frames 0-2), as offsets on AIM: a push-pull draw. The string hand barely leaves the anchor (the
+# arm cannot reach the undrawn string side on); the bow arm comes in bent with the bow 2.6 px back on the arrow line
+# (frame 0) and pushes out to AIM as the string comes back, the bow's line and cant held (both bows within 0.21 px of
+# the nock). LOOSE is the string hand flicked 3 px back past the anchor and out, the string gone.
+NOCK_AT = {0: dict(left_arm=(8.3, 17.6, 0.0), left_forearm=(-20.1, 0, 0), left_hand=(17.4, 3.2, -23.5),
+                    right_arm=(3.0, 9.4, -2.3), right_forearm=(6.5, 0.1, -3.9)),
+           1: dict(left_arm=(6.6, 10.6, -0.6), left_forearm=(-15.6, 0, 0), left_hand=(12.4, 0.1, -15.5),
+                    right_arm=(2.2, 8.1, -2.2), right_forearm=(6.3, 0.0, -4.3)),
+           2: dict(left_arm=(3.8, 5.1, -0.7), left_forearm=(-8.8, 0, 0), left_hand=(6.5, -1.1, -7.8),
+                    right_arm=(1.2, 5.8, -1.7), right_forearm=(5.0, -0.1, -3.5))}
+LOOSE = dict(right_arm=(11.0, -7.4, 6.6), right_forearm=(-26.1, 19.0, 32.5))
 
 def scaled(d, s):
     return {b: tuple(x * s for x in v) for b, v in d.items()}
 
 
-# Port arms (Task 16 r3b, Kort: rework the archers): the bow arm raised so the fist sits at the chest, some 6 px ahead of the
-# torso, the bow upright at the rest twist's 45 degrees and canted 15 degrees toward the head (its tips clear of the
-# ground and above the hat); the string arm relaxed a little away from the body. The bow hand's key is a solve of the
-# rig's FK for that world turn under TroopMotion.twist at draw 0. Upper body only: the legs keep the gait.
-PORT = pose(body=(2, -4, 0), head=(0, 4, 0), left_arm=(-40, 0, -20), left_forearm=(-70, 0, 0), left_hand=(98.0, -60.9, 46.2),
-            right_arm=(-6, 0, 8), right_forearm=(-12, 0, 0))
+# Port arms (Task 16 r3b, fix round 1: the research's port-arms carry): the bow fist at chest height, some 6 px ahead of
+# and 2.6 px outside the torso, the bow upright (9 degrees off vertical) with its string turned toward the body and a
+# little ahead, so the whole bow shows beside the troop from the front and three-quarter views. The bow arm's keys are a
+# solve of the rig's FK under TroopMotion.twist at draw 0 (the hand's 45 degree rest yaw). The string arm hangs relaxed a
+# little away from the body. Upper body only: the legs keep the gait.
+PORT = pose(body=(2, -4, 0), head=(0, 4, 0), left_arm=(-32.6, -9.5, -54.5), left_forearm=(-74.4, 16.3, 0),
+            left_hand=(30.1, -76.2, 65.6), right_arm=(-6, 0, 8), right_forearm=(-12, 0, 0))
 # Ready (the aim stance): AIM with the string hand on the undrawn string (frame 0's nock), so each shot draws from it.
 READY = add(AIM, **NOCK_AT[0])
-# The string hand at the quiver's mouth behind the right shoulder, as offsets on READY (an IK solve of the rig's FK).
-QUIVER = dict(right_arm=(-164.5 + 108.1, 4.6 + 46.8, 20 - 35.8), right_forearm=(-97.6 + 37.5, 48.0, -18.7))
+# The string hand at the arrows' fletchings over the quiver's mouth, behind the head, as offsets on READY, and QUIVER_WAY
+# the hand's road there: up the right of the head, behind it and across, so the arm goes round the hood instead of through
+# it (IK solves of the rig's FK, each warm-started from the last so the Euler path stays on one branch; the arm touches
+# the hood by up to 1.2 px on the way, the anchor's own touch is 0.9).
+QUIVER = dict(right_arm=(2.7, 156.6, -11.2), right_forearm=(-55.6, 29.2, -17.4))
+QUIVER_WAY = [dict(right_arm=(24.6, 45.6, -14.9), right_forearm=(-39.2, 0.5, 19.8)),
+              dict(right_arm=(34.0, 98.5, -28.0), right_forearm=(-62.5, -19.6, 7.1)),
+              dict(right_arm=(14.3, 109.8, -20.2), right_forearm=(-50.4, 12.1, 22.1))]
 
 
 def bow_shot(name, lean, recoil):
     """One shot, offsets on READY (impact tick 10 is the loose): the string hand reaches over the right shoulder to the
-    quiver (ticks 0-2), holds a tick to take the arrow, brings it to the string (draw marker), draws through the pull
-    frames' nocks to the cheek anchor (full marker; TroopMotion.drawSeconds shows the frames between the two markers), holds
-    with a small tremble, looses (the string hand flicks back past the anchor, the bow arm kicks 4 degrees for a tick),
-    follows through with the elbow high and the bow on the target, and comes back to the string.
-    lean is the body's pitch held through the shot (negative leans back), recoil its kick at the loose."""
+    quiver round the right of the head (ticks 0-2), holds a tick to take the arrow, comes back round the head, brings it to the string (draw marker), draws through the pull
+    frames' nocks to the cheek anchor while the bow arm pushes out to the target (full marker; TroopMotion.drawSeconds
+    shows the frames between the two markers), holds with a small tremble, looses (the string hand flicks back past the
+    anchor; the bow arm stays on the aim line, a 2 degree kick for a tick), follows through with the bow still on the
+    target, and comes back to the string. lean is the body's pitch held through the shot (negative leans back), recoil
+    its kick at the loose."""
+    def on(base, **extra):
+        out = {b: tuple(v) for b, v in base.items()}
+        for b, v in extra.items():
+            out[b] = tuple(x + y for x, y in zip(out.get(b, (0, 0, 0)), v))
+        return out
     a = Anim(name, 1.2, impact=0.5, draw=0.22, full=0.36)
-    a.k(0.0, body=Z, head=Z, right_arm=Z, right_forearm=Z, left_arm=Z)
-    a.k(0.05, body=(lean * 0.2, 2, 0), **scaled(QUIVER, 0.6))
+    rest = dict(right_arm=Z, right_forearm=Z, left_arm=Z, left_forearm=Z, left_hand=Z)
+    a.k(0.0, body=Z, head=Z, **rest)
+    a.k(0.03, body=(lean * 0.2, 2, 0), **QUIVER_WAY[0])
+    a.k(0.06, i='linear', **QUIVER_WAY[1])
+    a.k(0.08, i='linear', **QUIVER_WAY[2])
     a.k(0.1, i='linear', body=(lean * 0.3, 3, 0), **QUIVER)
-    a.k(0.15, i='linear', body=(lean * 0.3, 3, 0), **scaled(QUIVER, 0.96))
-    a.k(0.22, i='linear', body=(lean * 0.5, 0, 0), right_arm=Z, right_forearm=Z)
-    a.k(0.26, i='linear', **{b: tuple(x - y for x, y in zip(NOCK_AT[1][b], NOCK_AT[0][b])) for b in NOCK_AT[1]})
-    a.k(0.31, i='linear', body=(lean * 0.8, 0, 0), **{b: tuple(x - y for x, y in zip(NOCK_AT[2][b], NOCK_AT[0][b])) for b in NOCK_AT[2]})
+    a.k(0.15, i='linear', body=(lean * 0.3, 3, 0), **QUIVER)
+    a.k(0.17, i='linear', **QUIVER_WAY[2])
+    a.k(0.19, i='linear', **QUIVER_WAY[1])
+    a.k(0.205, i='linear', body=(lean * 0.4, 1, 0), **QUIVER_WAY[0])
+    a.k(0.22, i='linear', body=(lean * 0.5, 0, 0), **rest)
+    pull = {f: {b: tuple(x - y for x, y in zip(NOCK_AT[f][b], NOCK_AT[0][b])) for b in NOCK_AT[0]} for f in (1, 2)}
+    a.k(0.26, i='linear', **pull[1])
+    a.k(0.31, i='linear', body=(lean * 0.8, 0, 0), **pull[2])
     full = {b: tuple(-x for x in v) for b, v in NOCK_AT[0].items()}
     a.k(0.36, i='linear', body=(lean, 0, 0), head=(lean * -0.3, 0, 0), **full)
-    a.k(0.43, i='linear', body=(lean * 1.05, -0.5, 0), left_arm=(-1.5, 0.5, 0),
-        **{b: tuple(x + d for x, d in zip(v, (1.5, 1, 0))) for b, v in full.items()})
-    a.k(0.5, i='linear', body=(lean * 1.05, -0.5, 0), left_arm=(0.5, -0.5, 0), **full)
-    loose = {b: tuple(x + y for x, y in zip(full[b], LOOSE[b])) for b in full}
-    a.k(0.55, i='linear', body=(lean + recoil, -3, 0), left_arm=(4, -3, 0), **loose)
-    a.k(0.6, i='linear', left_arm=(0.5, -1, 0))
-    a.k(0.72, body=(lean * 0.8 + recoil * 0.5, -2, 0), left_arm=(0.5, -1, 0), head=(lean * -0.2, 0, 0), **scaled(loose, 0.95))
-    a.k(0.95, body=(lean * 0.3, -0.6, 0), left_arm=(0.2, -0.3, 0), head=Z, **scaled(loose, 0.4))
-    a.k(1.2, body=Z, head=Z, right_arm=Z, right_forearm=Z, left_arm=Z)
+    a.k(0.43, i='linear', body=(lean * 1.05, -0.5, 0), **on(full, left_arm=(-1, 0.3, 0), right_arm=(-1, 0.3, 0)))
+    a.k(0.5, i='linear', body=(lean * 1.05, -0.5, 0), **on(full, left_arm=(0.4, -0.3, 0)))
+    loose = on(full, **LOOSE)
+    a.k(0.55, i='linear', body=(lean + recoil, -2, 0), **on(loose, left_arm=(2, -1.5, 0)))
+    a.k(0.6, i='linear', **on(loose, left_arm=(0.5, -0.5, 0)))
+    a.k(0.72, body=(lean * 0.8 + recoil * 0.5, -1.5, 0), head=(lean * -0.2, 0, 0),
+        **on(on(full, **scaled(LOOSE, 0.95)), left_arm=(0.4, -0.5, 0)))
+    a.k(0.95, body=(lean * 0.3, -0.6, 0), head=Z, **on(scaled(full, 0.4), **scaled(LOOSE, 0.4)))
+    a.k(1.2, body=Z, head=Z, **rest)
     return a
 
 
