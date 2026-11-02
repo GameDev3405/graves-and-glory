@@ -14,28 +14,16 @@ Evidence: live sword_shield grade parts at a574205 under `test-tools/work/t16r3/
 | 3 hit-while-attacking, f26-35 | 0.94x, not monotone | 1.15x, not monotone | FAIL |
 | 6 run start, s=18 window | 45, 38, 42, 77, 157, 82 | 47, 93, 31, 114, 102, 234 | FAIL |
 
-Gate 3: the hit now plays as an additive overlay over 0.2 s and no longer restarts the attack. The window is still dominated by the attack's own double hump.
+Gate 3: the hit is now an additive overlay (0.2 s ease-in) that leaves the attack playing; the attack's own double hump still dominates the window.
 
 ## Commits
 
-- 02b0b0a: ground the soles; carry the stride sweep.
-- 66775da: turn step.
-- 5f9f292: run start, plus a held check (not met).
-- cde0479: hit overlay, plus a held window check.
-- a574205:
-  - straps spring before the ground lift (MotionClothCheck);
-  - the death fade of the ground weight no longer depends on frame rate (MotionFrameCheck);
-  - MotionGrade records swing lift and solo sole height.
+02b0b0a soles; 66775da turn step; 5f9f292 run start (held check, unmet); cde0479 hit overlay (held check); a574205 straps before ground lift, frame-exact death fade of the ground weight, grade fields.
 
-## Verify (`python tools/verify.py fast --offline`)
+## Verify (fast, offline): FAIL
 
-FAIL. Every check passes except MotionLayersCheck "no pops", which fails at speed 1.0 (ratio 0.93 against a 0.85 bar) and at speed 1.5 (ratio 1.29). The pop is root TY, about 2 px in a 1/60 s frame. It comes from a legs hit while running at full speed: the ground lift follows the reaction's knee bend.
-
-This failure is new since 02b0b0a. Exempting the ground lift on the stride's own pose did not clear it, so the edit was reverted. I did not loosen the check.
+Only MotionLayersCheck "no pops" fails: speed 1.0 (0.93 vs bar 0.85) and 1.5 (1.29). Root TY jumps about 2 px in 1/60 s when a legs hit lands at a full run; the ground lift follows the reaction's knee bend. New since 02b0b0a. I did not loosen the check.
 
 ## Remaining risk
 
-- Death clips still sink the soles, because the ground pass fades out on death.
-- The ground lift can pop root TY during a leg-hit at a run. It needs a rate-aware lift, or a reaction that bends the knees without lowering the soles.
-- Gates 3 and 6 need clip or stride retiming, not more blending.
-- Crawl slip and run per-plant slide are still above the gate.
+Death clips sink (ground pass fades out on death); the lift can pop at a run; gates 3 and 6 need clip or stride retiming; crawl slip and run per-plant slide remain above the gate.
