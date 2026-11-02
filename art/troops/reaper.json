@@ -1,17 +1,19 @@
 {
  "troop": "reaper",
- "note": "Graveborn Grave Reaper (unit identity, Graveborn): tall bone wraith, biped, a deep black hood with the skull deep inside and two soul-light eyes, a grave-iron mantle over a cuirass, a team sash, torn shroud and rags hemmed in violet, bare bone limbs, a scythe whose 10 px blade rises over the hood. Tier I only; no flag on the back.",
+ "note": "Graveborn Grave Reaper (unit identity, Graveborn): tall bone wraith, biped, a deep black hood with the skull deep inside and two soul-light eyes, a grave-iron mantle over a cuirass, a team sash, torn shroud and rags hemmed in violet, bare bone limbs, a scythe whose 10 px blade rises over the hood. Tier II iron plate, tier III black gilt plate and a crown of tines. No flag on the back.",
  "rig": "biped",
  "size": [
   128,
-  64
+  128
  ],
  "density": 1,
  "bones": [],
  "idleArms": "hang",
  "parts": [],
  "skins": {
-  "1": "reaper_s1.png"
+  "1": "reaper_s1.png",
+  "2": "reaper_s2.png",
+  "3": "reaper_s3.png"
  },
  "weapon": "scythe",
  "hand": "right",
