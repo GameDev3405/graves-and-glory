@@ -78,8 +78,7 @@ def stack(face, w, h):
     return scuff(g, ("stack", face), 6, IRON)
 
 def arm(face, w, h):
-    bk = 2 if face == "back" else 0      # the back face sits in shade: lift it two steps
-    return rows([(0, hull(4 + bk, 2, 1, "arm")), (14, banded(plate(IRON, 3 + bk, spec=False), [0])), (15, hull(3 + bk, 2, 2, "arm2")),
+    return rows([(0, hull(4, 2, 1, "arm")), (14, banded(plate(IRON, 3, spec=False), [0])), (15, hull(3, 2, 2, "arm2")),
                  (27, banded(plate(IRON, 3, spec=False), [1], R=EMBER))])(face, w, h)
 
 def fist(face, w, h):
@@ -90,44 +89,28 @@ def fist(face, w, h):
     return scuff(g, ("fist", face), 8, IRON)
 
 def leg(face, w, h):
-    """Soot-iron greaves one or two steps brighter than the body plate, a brass knee band and an ember garter."""
-    bk = 2 if face in ("back", "left") else 0      # the shaded faces: lift two steps
-    def knee(face, w, h):
-        g = plate(BRASS, 4 + bk, spec=False, seam=False)(face, w, h)
-        return g
-    def garter(face, w, h):
-        g = blank(w, h)
-        for y in range(h):
-            for x in range(w): g[y][x] = EMBER[3 if (x + y) % 2 == 0 else 2] if face not in ("top", "bottom") else EMBER[2]
-        return g
-    return rows([(0, hull(5 + bk, 2, 1, "leg")), (7, knee), (8, hull(5 + bk, 2, 3, "leg2")), (14, garter)])(face, w, h)
+    return rows([(0, hull(4, 2, 1, "leg")), (8, banded(plate(IRON, 3, spec=False), [0])), (9, hull(3, 2, 3, "leg2"))])(face, w, h)
 
 def boot(face, w, h):
-    g = hull(4 + (2 if face in ("back", "left") else 0), 3, 1, "boot")(face, w, h)
+    g = hull(3, 3, 1, "boot")(face, w, h)
     if face not in ("top", "bottom"):
-        for x in range(w): g[h - 1][x] = EMBER[3 if x % 2 else 2]
-        for x in range(w): g[0][x] = BRASS[4 if x % 2 else 3]
+        for x in range(w): g[h - 1][x] = EMBER[2]
     return g
 
 def maul_head(face, w, h):
-    """A squat slag block: soot iron, a brass band at each end of the striking axis, an ember vein on the faces."""
-    g = hull(4, 4, 1, "maul")(face, w, h)
+    g = hull(3, 3, 1, "maul")(face, w, h)
     if face in ("left", "right", "front", "back"):
         for x in range(w):
-            g[0][x] = BRASS[5 if x % 2 == 0 else 4]
-            g[h - 1][x] = BRASS[3]
-    if face in ("left", "right"):
-        for y in range(2, h - 2):
-            for x in range(w): g[y][x] = clamp(IRON, 4 if (x + y) % 2 == 0 else 3)
-        for y in (h // 2 - 1, h // 2):
-            for x in range(1, w - 1): g[y][x] = EMBER[5 if y == h // 2 - 1 else 4]
+            g[h - 1][x] = BRASS[3 if x % 2 else 4]
+            g[0][x] = BRASS[4]
+    if face == "front":
+        for x in (2, 3): g[h // 2][x] = EMBER[5]            # a vein of slag across the striking face
     return g
 
 def maul_glow(face, w, h):
     g = blank(w, h)
-    if face in ("left", "right"):
-        for y in (h // 2 - 1, h // 2):
-            for x in range(1, w - 1): g[y][x] = EMBER[5 if y == h // 2 - 1 else 4]
+    if face == "front":
+        for x in (2, 3): g[h // 2][x] = EMBER[5]
     return g
 
 def apron(T):
@@ -166,10 +149,9 @@ def bones():
             Box((-6.5 if c < 0 else -2.5, 0.5, -6.5), (9, 3, 13), banded(plate(IRON, 3, spec=False), [1], R=EMBER))]))
         B.append(Bone(f"{side}_fist", f"{side}_arm", (0, 25, 0), boxes=[Box((-4, -4, -4), (8, 9, 8), fist)]))
         B.append(Bone(f"{side}_foot", f"{side}_leg", boxes=[Box((-4, 9, -6), (8, 4, 9), boot)]))
-    # the slag maul: haft held upright through the right fist, leaning out past the pauldron and a touch forward
-    B.append(Bone("maul", "right_arm", (-3, 27, 0), rot=(6, 0, -16), tag="weapon", boxes=[
-        Box((-1, -30, -1), (2, 33, 2), hooped(grain(OAK, "y", 4, "haft", knots=0), [(3, 2), (24, 2)], along="y", R=IRON, trim=BRASS)),
-        Box((-4, -38, -3), (8, 8, 6), maul_head)]))
+    B.append(Bone("maul", "right_arm", (0, 25, 0), rot=(-18, 0, 0), tag="weapon", boxes=[
+        Box((-1, -24, -1), (2, 30, 2), hooped(grain(OAK, "y", 3, "haft", knots=1), [(6, 2), (22, 2)], along="y", R=IRON, trim=BRASS)),
+        Box((-4, -33, -3.5), (8, 9, 7), maul_head)]))
     B.append(Bone("backplate", "body", boxes=[
         Box((-6.5, -16, 5), (13, 10, 1.5), banded(hull(5, 3, 1, "bp"), [3, 6], R=BRASS)),
         Box((-2, -17, 5.5), (4, 3, 1), iron_plain(5, "vent", 1))]))
@@ -196,7 +178,7 @@ def glow(bone, box):
                 for x in (1, 2, 5, 6): g[3][x] = EMBER[5]
             return g
         return paint
-    if bone.name == "maul" and box.size == [8, 8, 6]: return maul_glow
+    if bone.name == "maul" and box.size == [8, 9, 7]: return maul_glow
     return None
 
 IC_COLOSSUS = Troop("ic_colossus", SKIN, CLOTH, bones, cloth_painter,

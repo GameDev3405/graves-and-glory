@@ -17,25 +17,23 @@ import house_stub
 SKIN = (128, 128)
 CLOTH = (128, 64)
 P = pal_ic()
-PREVIEW_PITCH = float(os.environ.get("HG_SHIELD_PREVIEW", 0))   # offline check only: carry the left arm at this pitch (0 in every shipped build)
 FACE = SKINS["fair"]
 BEARD = ramp("2a0f08", "5a2410", "8a3c18", "b8642a", "d98f4e")   # copper, darkest first
 
 # ---- materials ----
 def scales(R=IRON, base=2, seed="sc"):
-    """Soot-iron scale coat: calm rows of overlapping scales, a lit top edge, a mid body and a dark lip, the joints stepped
-    half a scale from row to row (flat value steps, no dither)."""
+    """Soot-iron scale coat: rows of overlapping scales, each catching light on its upper edge."""
     def paint(face, w, h):
         g = blank(w, h)
         for y in range(h):
-            band = y // 3
             for x in range(w):
                 v = base + LIT[face] + (lightx(face, x, w) if face not in ("top", "bottom") else 0)
                 if face not in ("top", "bottom"):
-                    v += (1, 0, -1)[y % 3]
-                    if y % 3 == 1 and (x + 2 * band) % 4 == 0: v -= 1          # the joint between two scales
+                    off = (y // 2) % 2
+                    if y % 2 == 0 and (x + off) % 2 == 0: v += 1
+                    elif y % 2 == 1: v -= 1
                 g[y][x] = clamp(R, v)
-        return scuff(g, (seed, face), max(1, w * h // 40), R)
+        return scuff(g, (seed, face), max(1, w * h // 12), R)
     return paint
 
 def slab(base=3, ember=False, seed="sl", rivets=True):
@@ -87,20 +85,20 @@ def face_head():
         for y in range(h):
             for x in range(w):
                 if face == "top" or face == "bottom": g[y][x] = IRON[1]; continue
-                g[y][x] = BEARD[2] if y >= 5 else (s[3] if face != "back" else IRON[2])
-                if face == "back": g[y][x] = IRON[2]
+                g[y][x] = BEARD[2 if (x + y) % 3 else 1] if y >= 5 else (s[3] if face != "back" else IRON[2])
+                if face == "back": g[y][x] = IRON[2 + (x + y) % 2]
         if face == "front":
             for x in range(w): g[4][x] = s[2]
             g[4][2] = g[4][5] = INK                       # the eyes, hard under the brim
             g[5][3] = g[5][4] = s[2]                      # the nose, then the beard closes in
             for y in range(5, h):
                 for x in range(w):
-                    g[y][x] = BEARD[3 if y == 5 else 2]
+                    g[y][x] = BEARD[3 if (x + y) % 3 == 0 else 2]
             g[5][3] = g[5][4] = s[3]
             g[5][0] = g[5][7] = s[2]
         if face in ("left", "right"):
             for y in range(h):
-                for x in range(w): g[y][x] = IRON[2] if y < 5 else BEARD[2 if y < h - 1 else 1]
+                for x in range(w): g[y][x] = IRON[2] if y < 5 else BEARD[2 if (x + y) % 3 else 1]
         return g
     return paint
 
@@ -116,7 +114,7 @@ def braid():
         g = blank(w, h)
         for y in range(h):
             for x in range(w):
-                g[y][x] = BEARD[2 + ((x + y // 2) % 2 == 0)]
+                g[y][x] = BEARD[1 + ((x + y) % 3 == 0) + (face in ("front",) and (x + y) % 2)]
         if face in ("top", "bottom") or h < 4: return g
         for x in range(w): g[h - 1][x] = IRON[3]
         for x in range(w): g[h - 3][x] = IRON[4] if face == "front" else IRON[3]
@@ -169,38 +167,22 @@ def knee():
 def boot():
     return rows([(0, lames([2], base=3, seed="hsb", wear=1, rivets=False)), (2, leather_ic(base=1, stitch=True))])
 
-# ---- the shield: a small iron-rimmed heater strapped along the outside of the left forearm ----
-# Local to this troop (handlib's board is for a shield held out from the hand). 9 wide, 12 tall, its face in the team colour with
-# a dark bordure and a pale chief; it lies against the forearm turned 40 degrees outward from the front, so the face reads in
-# front and three-quarter views and plainly sits on the arm.
-SW = [9] * 6 + [7, 7, 5, 5, 3, 3]                 # row widths, top to bottom: rows y -6..6 about the shield's centre
-SH = len(SW)
-
-def runs():
-    """The board as runs of equal-width rows: [(first_row, rows, width)]."""
-    out = []
-    for i, w in enumerate(SW):
-        if out and out[-1][2] == w: out[-1][1] += 1
-        else: out.append([i, 1, w])
-    return out
-
-def in_shield(x, y, inset=0):
-    def inside(xx, yy): return 0 <= yy < SH and abs(xx + 0.5 - 4.5) <= SW[yy] / 2
-    if not inset <= y < SH - inset: return False
-    return all(inside(x + dx, y + dy) for dx in range(-inset, inset + 1) for dy in range(-inset, inset + 1))
-
+# ---- the shield: an iron-rimmed board, its face in the team colour with a dark bordure and a pale chief ----
 def shield_rim_ic():
-    """The raised iron rim: lit on its top edge, flat steps below, no rivets but the boss."""
     def paint(face, w, h):
-        g = plate(R=IRON, base=3, spec=False, seam=False)(face, w, h)
-        if face == "front" and h > 1: g[0] = [clamp(IRON, 4)] * w
-        return g
+        g = plate(R=IRON, base=3, spec=False, seam=False, rim=(face == "front" and h == 1))(face, w, h)
+        if face == "front":
+            if h > 1: g[0] = [clamp(IRON, 4)] * w
+            for y in range(h):
+                for x in range(w):
+                    if (h > 1 and y % 3 == 1) or (h == 1 and w > 4 and x % 3 == 1): g[y][x] = IRON[5]    # rivets
+        return scuff(g, ("hsr", face, w, h), max(1, w * h // 20))
     return paint
 
 def shield_boss_ic():
     def paint(face, w, h):
         g = plate(R=IRON, base=4, spec=False, seam=False)(face, w, h)
-        if face == "front": g[0][0] = IRON[5]; g[h - 1][w - 1] = IRON[2]
+        if face == "front": g[0][0] = IRON[6]; g[h - 1][w - 1] = IRON[2]
         return g
     return paint
 
@@ -211,26 +193,30 @@ def shield_face(T, M):
         for y in range(h):
             for x in range(w):
                 if not in_shield(x, y): continue
-                g[y][x] = IRON[1] if not in_shield(x, y, 1) else clamp(T, 3 if y < 7 else 2)     # a dark bordure round a two-step field
-        for y in range(1, 3):
+                v = 4 if y < 5 and x < 5 and x + y < 6 else 2 if y >= 13 else 3
+                if not in_shield(x, y, 2): v = 1
+                g[y][x] = clamp(T, v)
+        for y in range(h):
             for x in range(w):
-                if in_shield(x, y, 1): g[y][x] = clamp(IRON, 5 if y == 1 else 4)                   # a pale chief
+                if in_shield(x, y) and not in_shield(x, y, 1) and in_shield(x, y, 0): g[y][x] = IRON[1]    # the black bordure
+        for y in range(2, 5):
+            for x in range(w):
+                if in_shield(x, y, 2): g[y][x] = clamp(IRON, 5 if y < 4 else 4)                   # a pale chief
         return g
     return paint
 
 # ---- cloth ----
 def tabard(T, M):
-    """A calm team tabard (front and back painted alike, so the two coplanar faces never fight) hanging from the belt: one field, lit from the top, darker below, a dark edge each side and an ember hem."""
+    """A chequy tabard hanging from the belt: team and a darker team, two-by-two, a dark foot."""
     def paint(face, w, h):
         g = blank(w, h)
         if face not in ("front", "back"): return g
         for y in range(h):
             for x in range(w):
-                v = (3 if y < 3 else 2)
-                if x in (0, w - 1): v -= 1
+                chk = ((x // 2) + (y // 2)) % 2 == 0
+                v = (3 if chk else 1) + LIT[face] + (1 if y == 0 else 0)
                 g[y][x] = clamp(T, v)
-        for x in range(w): g[0][x] = clamp(T, 4)
-        for x in range(w): g[h - 1][x] = EMBER[2]
+        for x in range(w): g[h - 1][x] = EMBER[1 if x % 2 else 2]
         return g
     return paint
 
@@ -258,7 +244,7 @@ def bones():
         Box((-1, -10.5, 3.5), (2, 6, 1), crest_tail(), dil=0.1)]))
     B.append(Bone("right_arm", "body", (-5, -10, 0), [Box((-3, -2, -2), (4, 12, 4), sleeve())]))
     B.append(Bone("right_hand", "right_arm", (-1, 8, 0)))
-    B.append(Bone("left_arm", "body", (5, -10, 0), [Box((-1, -2, -2), (4, 12, 4), sleeve())], rot=(PREVIEW_PITCH, 0, 0)))
+    B.append(Bone("left_arm", "body", (5, -10, 0), [Box((-1, -2, -2), (4, 12, 4), sleeve())]))
     B.append(Bone("left_hand", "left_arm", (1, 8, 0)))
     B.append(Bone("arms_folded", "body", (0, -9, -1), rot=(-43, 0, 0)))
     B.append(Bone("right_leg", "root", (-1.9, 12, 0), [Box((-2, 0, -2), (4, 12, 4), leg())]))
@@ -268,7 +254,7 @@ def bones():
     B.append(Bone("belt", "body", boxes=[Box((-4, -5, -2), (8, 2, 4), belt(), dil=0.6)]))
     B.append(Bone("beard_braid", "body", boxes=[Box((-1.5, -9, -3.5), (3, 8, 1), braid())]))
     B.append(Bone("tabard", "body", team=True, boxes=[
-        Box((-3, -6, -3.0), (6, 8, 0), "tabard", sheet="cloth"), Box((-3, -6, 3.0), (6, 8, 0), "tabard", sheet="cloth")]))
+        Box((-3, -6, -2.95), (6, 8, 0), "tabard", sheet="cloth"), Box((-3, -6, 2.95), (6, 8, 0), "tabard", sheet="cloth")]))
     for side in ("right", "left"):
         c = -1 if side == "right" else 1
         B.append(Bone(f"{side}_pauldron", f"{side}_arm", (c, -2.5, 0), rot=(0, 0, 10 * c), boxes=[
@@ -277,16 +263,12 @@ def bones():
             Box((-4 + 1.5 * c, 1.5, -3), (8, 2, 6), pauldron(2, side), dil=0.15)]))
         B.append(Bone(f"{side}_knee", f"{side}_leg", boxes=[Box((-2.5, 5, -3), (5, 2, 2), knee())]))
         B.append(Bone(f"{side}_boot", f"{side}_leg", boxes=[Box((-2.5, 9, -3), (5, 3, 5), boot())]))
-    # the shield, strapped along the outside of the left forearm (TroopFeatures.Shield draws none of vanilla's for a model that carries its own).
-    # Its back plane touches the arm's outer-front corner; it is turned 40 degrees about the arm's long axis. HG_SHIELD_PREVIEW=<pitch> carries the arm
-    # to that pitch in offline renders, to check the mount in the pose the animator gives it (-45 forward) and its swing.
-    B.append(Bone("shield", "left_arm", (3.25, 7.5, -2.68), rot=(0, -40, 0), tag="shield", boxes=
-        [Box((-w / 2, -6 + i, -1.9), (w, n, 1), wood) for i, n, w in runs()]
-        + [Box((-w / 2, -6 + i, -2.5), (1, n, 2), shield_rim_ic()) for i, n, w in runs()]
-        + [Box((w / 2 - 1, -6 + i, -2.5), (1, n, 2), shield_rim_ic()) for i, n, w in runs()]
-        + [Box((-4.5, -6, -2.5), (9, 1, 2), shield_rim_ic()), Box((-1, 5, -2.5), (2, 1, 2), shield_rim_ic()),
-           Box((-1, -3, -2.7), (2, 2, 1), shield_boss_ic()), Box((-1.5, 0, -0.9), (3, 4, 3), leather_ic(base=2))]))
-    B.append(Bone("shield_face", "shield", team=True, boxes=[Box((-4.5, -6, -2.1), (9, 12, 0), "shield", sheet="cloth")]))
+    # the shield, on the left arm (TroopFeatures.Shield draws none of vanilla's for a model that carries its own)
+    B.append(Bone("shield", "left_arm", SHIELD_PIVOT, rot=SHIELD_ROT, tag="shield", boxes=
+        [Box((x, y, -1.9), (w, h, 1), wood) for (x, y), (w, h) in SHIELD_BODY]
+        + [Box((x, y, -2.5), (w, h, 2), shield_rim_ic()) for (x, y), (w, h) in SHIELD_RIM]
+        + [Box((-1, -5, -2.7), (2, 2, 1), shield_boss_ic()), Box((-1, -3, -0.9), (2, 5, 3), leather_ic(base=2))]))
+    B.append(Bone("shield_face", "shield", team=True, boxes=[Box((-6, -10, -2.1), (12, 18, 0), "shield", sheet="cloth")]))
     return B
 
 def cloth_painter(spec, side):

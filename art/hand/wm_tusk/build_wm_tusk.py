@@ -36,7 +36,7 @@ def tone(R, base=3, seed=None, wear=2):
 def leath(base=2, stitch=False, seed="tl"):
     def paint(face, w, h):
         g = leather(base=base, stitch=stitch)(face, w, h)
-        return scuff(g, (seed, face, w, h), max(1, w * h // 40), LEATH)
+        return scuff(g, (seed, face, w, h), max(1, w * h // 14), LEATH)
     return paint
 
 def head_painter():
@@ -58,11 +58,11 @@ def head_painter():
         if face in ("left", "right", "back"):
             for y in range(h):
                 for x in range(w):
-                    if y < 4 or (face == "back" and y < 7): g[y][x] = clamp(HIDE, 2 + (1 if y == 0 else 0))
+                    if y < 4 or (face == "back" and y < 7): g[y][x] = clamp(HIDE, 2 + (x + y) % 3 - 1)
         if face == "top":
             for y in range(h):
-                for x in range(w): g[y][x] = clamp(HIDE, 3 if (x in (0, w - 1) or y in (0, h - 1)) else 2)
-        return scuff(g, ("hd", face), 2, S)
+                for x in range(w): g[y][x] = clamp(HIDE, 2 + (x * 3 + y) % 3)
+        return scuff(g, ("hd", face), 4, S)
     return paint
 
 def snout():
@@ -97,16 +97,6 @@ def tusk():
         return g
     return paint
 
-def horn_tusk():
-    """The shoulder tusk: one solid curved fang, lit on the front and top, its root a shade darker."""
-    def paint(face, w, h):
-        g = blank(w, h)
-        for y in range(h):
-            for x in range(w):
-                g[y][x] = clamp(BONE, 4 + LIT[face] + (1 if y == 0 else 0) - (1 if y >= h - 1 and h > 2 else 0))
-        return g
-    return paint
-
 def cap():
     """A riveted leather cap: panels with a stitched seam and bone rivets, bound at the brim."""
     def paint(face, w, h):
@@ -114,22 +104,13 @@ def cap():
         if face == "top":
             for y in range(h): g[y][w // 2] = clamp(LEATH, 1)
             return scuff(g, ("cap", face), 4, LEATH)
-        for x in (1, w - 2): g[1][x] = BONE[3]                                       # two bone rivets
+        for x in range(1, w, 3): g[1][x] = BONE[3]                                    # bone rivets
         for x in range(w): g[h - 1][x] = clamp(LEATH, 1)
-        return scuff(g, ("cap", face), 2, LEATH)
+        return scuff(g, ("cap", face), 4, LEATH)
     return paint
 
 def mantle():
-    """A hide mantle across the shoulders: three flat tones in rows (lit crown, body, dark roll), a straight hem, no ragged strands."""
-    def paint(face, w, h):
-        g = blank(w, h)
-        for y in range(h):
-            for x in range(w):
-                v = (4, 3, 2)[min(y, 2)] + (LIT[face] if face not in ("top", "bottom") else 0)
-                if face == "top": v = 4
-                g[y][x] = clamp(HIDE, v)
-        return g
-    return paint
+    return fur(R=HIDE, seed="wm-mantle")
 
 def jerkin():
     """A strapped leather jerkin: dark straps crossing the chest, bone toggles, bare flesh at the throat."""
@@ -143,7 +124,7 @@ def jerkin():
         if face == "front":
             for y in range(2, h - 2, 3): g[y][w // 2] = BONE[3]                        # toggles
             g[0][3] = g[0][4] = PIG[2]                                                 # throat flesh
-        return scuff(g, ("jk", face), 2, LEATH)
+        return scuff(g, ("jk", face), 5, LEATH)
     return paint
 
 def arm_bare():
@@ -153,7 +134,7 @@ def arm_bare():
         for y in range(h):
             for x in range(w):
                 g[y][x] = clamp(PIG, 3 + LIT[face] + (lightx(face, x, w) if face not in ("top", "bottom") else 0) + (1 if y == 0 else 0))
-        return scuff(g, ("ab", face, w), 2, PIG)
+        return scuff(g, ("ab", face, w), 4, PIG)
     return paint
 
 def pauldron(spiked=True):
@@ -161,23 +142,28 @@ def pauldron(spiked=True):
         g = leather(base=3)(face, w, h)
         if face in ("front", "back") and w >= 5:
             for x in (1, w - 2): g[0][x] = BONE[3]
-        return scuff(g, ("pd", face, w), 1, LEATH)
+        return scuff(g, ("pd", face, w), 3, LEATH)
     return paint
 
 def spike():
     return tone(BONE, 4)
 
 def leg_painter():
-    return rows([(0, leather(base=2)), (7, tone(PIG, 3))])
+    return rows([(0, leath(base=2, seed="tlg")), (7, tone(PIG, 3, "tlp"))])
 
 def shin():
-    """A plain hide shin guard: one flat leather value with a darker lower lip, no studs or splints."""
+    """A shin guard of hide laced over bone splints."""
     def paint(face, w, h):
-        return leather(base=3)(face, w, h)
+        g = leather(base=3)(face, w, h)
+        if face in ("front", "back"):
+            for y in range(h):
+                if y % 2 == 0: g[y][w // 2] = BONE[3]
+            for x in range(w): g[h - 1][x] = clamp(LEATH, 1)
+        return scuff(g, ("sh", face, w), 3, LEATH)
     return paint
 
 def hoof():
-    return tone(HORN, 3)
+    return tone(HORN, 3, "ho", 3)
 
 def belt():
     def paint(face, w, h):
@@ -197,11 +183,13 @@ def kilt(T, M):
     def paint(face, w, h):
         g = blank(w, h)
         if face in ("top", "bottom"): return g
+        r = rng("wm-kilt", face)
         for y in range(h):
             for x in range(w):
-                v = (3 if y < 3 else 2) + LIT[face] + (lightx(face, x, w) if face not in ("top", "bottom") else 0)
+                v = (3 if (y // 2) % 2 == 0 else 1) + LIT[face] + (lightx(face, x, w) if face not in ("top", "bottom") else 0)
                 g[y][x] = clamp(T, v)
-                for x in range(w): g[h - 1][x] = clamp(T, 1 + LIT[face])                     # a straight hem, nothing frayed
+        for x in range(w):
+            if r.random() < 0.4: g[h - 1][x] = None
         return g
     return paint
 
@@ -221,7 +209,7 @@ def wrap_cloth(T, M):
         g = blank(w, h)
         for y in range(h):
             for x in range(w):
-                v = 3 + LIT[face] + (lightx(face, x, w) if face not in ("top", "bottom") else 0) + (1 if y == 0 else -1 if y == h - 1 else 0)
+                v = 3 + LIT[face] + (1 if y % 2 == 0 else -1) + (lightx(face, x, w) if face not in ("top", "bottom") else 0)
                 g[y][x] = clamp(T, v)
         return g
     return paint
@@ -233,7 +221,9 @@ def bones():
     B.append(Bone("head", "body", (0, -12, 0), [Box((-4, -8, -4), (8, 8, 8), head_painter())], rot=(-HUNCH, 0, 0)))
     B.append(Bone("snout", "head", boxes=[Box((-2.5, -3.5, -6), (5, 4, 2), snout())]))
     B.append(Bone("ears", "head", boxes=[Box((-5.5, -8, -1), (1, 3, 2), ear()), Box((4.5, -8, -1), (1, 3, 2), ear())]))
-    B.append(Bone("tusks", "head", boxes=[Box((-3.5, -4, -6), (1, 4, 1), tusk()), Box((2.5, -4, -6), (1, 4, 1), tusk())]))
+    B.append(Bone("tusks", "head", boxes=[
+        Box((-4, -5, -6), (2, 4, 1), tusk()), Box((-4, -7, -6.5), (2, 2, 1), tusk()),
+        Box((2, -5, -6), (2, 4, 1), tusk()), Box((2, -7, -6.5), (2, 2, 1), tusk())]))
     B.append(Bone("cap", "head", tag="helm", boxes=[Box((-4.5, -9.5, -4.5), (9, 3, 9), cap())]))
     B.append(Bone("headband", "head", team=True, tag="helm", boxes=[Box((-4.5, -6.5, -4.5), (9, 1, 9), "band", sheet="cloth")]))
     B.append(Bone("right_arm", "body", (-5, -10, 0), [Box((-3, -2, -2), (4, 12, 4), arm_bare())], rot=(-HUNCH, 0, 0)))
@@ -245,20 +235,16 @@ def bones():
     B.append(Bone("left_leg", "root", (1.9, 12, 0), [Box((-2, 0, -2), (4, 12, 4), leg_painter())]))
     B.append(Bone("mantle", "body", boxes=[Box((-5, -13.5, -3), (10, 3, 6), mantle(), dil=0.2)]))
     B.append(Bone("belt", "body", boxes=[Box((-4, -4, -2), (8, 2, 4), belt(), dil=0.5)]))
-        # a short kilt on the belt: it hangs from the belt's lower edge and stops two texels under the hip, so it stays inside the leg volume in every view
-    B.append(Bone("kilt", "body", team=True, boxes=[Box((-4.5, -1.5, -2.5), (9, 4, 5), "kilt", sheet="cloth", dil=0.2)]))
+    B.append(Bone("trophy", "body", boxes=[Box((1.5, -3, -3), (1, 3, 1), trophy())]))
+    B.append(Bone("kilt", "body", team=True, boxes=[Box((-4.5, -3, -2.5), (9, 6, 5), "kilt", sheet="cloth")]))
     for side in ("right", "left"):
         c = -1 if side == "right" else 1
         B.append(Bone(f"{side}_wrap", f"{side}_arm", team=True, boxes=[Box((-2 + (0 if side == "right" else -1), 5, -2), (4, 4, 4), "wrap", dil=0.3, sheet="cloth")]))
         B.append(Bone(f"{side}_shin", f"{side}_leg", boxes=[Box((-2, 6, -2), (4, 4, 4), shin(), dil=0.3)]))
         B.append(Bone(f"{side}_hoof", f"{side}_leg", boxes=[Box((-2.5, 10, -3), (5, 2, 5), hoof())]))
-    # one clean solid form per shoulder: a leather pauldron capped by a single bone tusk that leans out, nothing loose
-    for side, c in (("right", -1), ("left", 1)):
-        B.append(Bone(f"{side}_pauldron", f"{side}_arm", (c, -2.5, 0), rot=(0, 0, 12 * c), boxes=[Box((-3, -2.5, -3), (6, 3, 6), pauldron())]))
-        # one short, thick tusk seated flat on the outer top of the pauldron, 3 px proud: a stout base and a tip stepped outward
-        ox = 1 if c > 0 else -3
-        B.append(Bone(f"{side}_shoulder_tusk", f"{side}_pauldron", (0, -2.5, 0), boxes=[
-            Box((ox, -2, -1.5), (2, 2, 3), horn_tusk()), Box((ox + (1 if c > 0 else 0), -3, -1), (1, 1, 2), horn_tusk())]))
+    B.append(Bone("pauldron", "right_arm", (-1, -2.5, 0), rot=(0, 0, -12), boxes=[Box((-3.5, -2.5, -3.5), (7, 3, 7), pauldron())]))
+    B.append(Bone("pauldron_spikes", "right_arm", (-1, -2.5, 0), rot=(0, 0, -12), boxes=[
+        Box((-3, -5.5, -0.5), (1, 3, 1), spike()), Box((0, -5.5, -0.5), (1, 3, 1), spike())]))
     return B
 
 def cloth_painter(spec, side):
