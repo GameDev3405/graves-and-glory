@@ -1,0 +1,19 @@
+{
+ "weapon": "notched_sword",
+ "density": 1,
+ "thickness": 2,
+ "grip": {
+  "offset": [
+   0,
+   0,
+   0
+  ],
+  "rotation": [
+   90,
+   45,
+   90
+  ],
+  "note": "the grip's centre is the model origin (the fist box covers y -2..+2); the model is y up with its big faces across z, and the converter turns it by a half turn about x into the weapon frame; the sword is turned flat to the side and tilted 45 degrees forward, as the sprite sword was"
+ },
+ "note": "The Risen's notched sword (Graveborn), hand-authored at 1 texel a px: a pitted grave-iron blade 4 px wide with notches bitten from both edges and a snapped slanted point, a violet cord on the ricasso, a bent and broken cross-guard, a violet-bound grip and a pitted iron knob; held like the sword grip."
+}
