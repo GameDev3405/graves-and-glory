@@ -1,6 +1,6 @@
 # Map design engine
 
-Status: DRAFT for Kort's approval. Brainstormed with Kort on 2026-11-01.
+Status: APPROVED by Kort on 2026-11-01.
 
 ## Why
 
