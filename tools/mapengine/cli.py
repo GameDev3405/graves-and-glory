@@ -4,6 +4,7 @@ import pathlib
 
 import hashlib
 import json
+import time
 
 from mapengine import build as mbuild
 from mapengine import check as mcheck
@@ -36,12 +37,13 @@ def main(argv=None, root=None):
     if args.cmd == 'build':
         d = design.load(root / 'maps' / args.id / 'design.json')
         out = root / 'work' / 'mapengine' / args.id
+        t0 = time.perf_counter()
         try:
             m = mbuild.build(d, out)
         except mbuild.BuildError as e:
             print('cannot build: ' + '; '.join(e.problems))
             return 1
-        print(f"built {len(m['tiles'])} tiles into {out}")
+        print(f"built {len(m['tiles'])} tiles into {out} in {time.perf_counter() - t0:.1f} s")
         return 0
     if args.cmd == 'check':
         d = design.load(root / 'maps' / args.id / 'design.json')

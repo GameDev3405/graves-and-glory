@@ -11,6 +11,7 @@ import numpy as np
 
 from mapengine import design as dsn
 from mapengine.terrain import NO_WATER, heightfield
+from mapengine.walk import NONE, distances
 from mapforge import nbt
 from mapforge.structure import Structure
 
@@ -122,7 +123,23 @@ def build(d, out_dir):
     points = [{'name': o['name'], 'x': o['x'], 'y': stand(o), 'z': o['z'], 'radius': o['radius']}
               for o in objs if o['kind'] == 'point']
     spawns = [{'id': o['id'], 'team': o['team'], 'x': o['x'], 'y': stand(o), 'z': o['z']} for o in objs if o['kind'] == 'spawn']
-    manifest = {'format': 1, 'id': d['id'], 'baseY': base, 'floorY': base + FLOOR, 'tiles': tiles, 'points': points,
-                'spawns': spawns, 'design_sha256': hashlib.sha256(canonical_bytes(d)).hexdigest()}
+    ground = np.maximum(f.height.astype(np.int32), FLOOR)
+    wet = (f.water != NO_WATER) & (f.water.astype(np.int32) > ground)
+    solid = (base + ground).astype(np.int32)
+    water = np.where(wet, base + f.water.astype(np.int32), NONE).astype(np.int32)
+    (out_dir / 'columns.bin').write_bytes(np.stack([solid, water]).astype('<i2').tobytes())
+    routes = []
+    for s in spawns:
+        dist = distances(solid, water, (min(w - 1, int(math.floor(s['x']))), min(dp - 1, int(math.floor(s['z'])))))
+        for p in points:
+            walk = int(dist[min(dp - 1, int(math.floor(p['z']))), min(w - 1, int(math.floor(p['x'])))])
+            routes.append({'spawn': s['id'], 'point': p['name'],
+                           'straight': round(math.hypot(p['x'] - s['x'], p['z'] - s['z']), 2),
+                           'walk': walk if walk >= 0 else None})
+    roads = [{'id': o['id'], 'path': o['path'], 'width': o['width']} for o in objs if o['kind'] == 'road']
+    manifest = {'format': 1, 'id': d['id'], 'width': w, 'depth': dp, 'origin': [-(w // 2), -(dp // 2)],
+                'baseY': base, 'floorY': base + FLOOR, 'columns': 'columns.bin', 'tiles': tiles, 'points': points,
+                'spawns': spawns, 'roads': roads, 'routes': routes,
+                'design_sha256': hashlib.sha256(canonical_bytes(d)).hexdigest()}
     (out_dir / 'map.json').write_bytes(canonical_bytes(manifest))
     return manifest

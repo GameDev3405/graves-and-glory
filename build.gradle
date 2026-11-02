@@ -134,3 +134,10 @@ tasks.register('mapforgeBuilderJar', Jar) {
 if (project.hasProperty('noDressing')) { loom.runs.client.vmArg '-Dgravesandglory.noDressing=true' }
 // Route checks: host a world by itself so evidence/control.json {"action":"routes"} can run unattended.
 if (project.hasProperty('autoHost')) { loom.runs.client.vmArg '-Dgravesandglory.autoHost=true' }
+// Map engine Plan 2: -PengineMap=<dir with map.json> [-PengineMapSlot=1] plays an engine build in one map slot (this JVM only; default slot 1, Ironhold).
+if (project.hasProperty('engineMap')) {
+ ['server', 'client'].each { r ->
+  loom.runs.getByName(r).vmArg "-Dgravesandglory.engineMap=${file(project.property('engineMap')).absolutePath}"
+  if (project.hasProperty('engineMapSlot')) loom.runs.getByName(r).vmArg "-Dgravesandglory.engineMapSlot=${project.property('engineMapSlot')}"
+ }
+}

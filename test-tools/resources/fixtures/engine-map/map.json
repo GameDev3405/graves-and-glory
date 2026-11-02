@@ -1,0 +1,138 @@
+{
+ "baseY": 64,
+ "columns": "columns.bin",
+ "depth": 72,
+ "design_sha256": "c7f6f2716627b59aec951ee4afc86cd6c6141abd3fe7de927d19b6b5b23f78ca",
+ "floorY": 48,
+ "format": 1,
+ "id": "fixture",
+ "origin": [
+  -64,
+  -36
+ ],
+ "points": [
+  {
+   "name": "A",
+   "radius": 5,
+   "x": 40,
+   "y": 65,
+   "z": 36
+  },
+  {
+   "name": "B",
+   "radius": 5,
+   "x": 88,
+   "y": 65,
+   "z": 30
+  }
+ ],
+ "roads": [
+  {
+   "id": "road-6",
+   "path": [
+    [
+     10,
+     36
+    ],
+    [
+     40,
+     36
+    ],
+    [
+     88,
+     30
+    ],
+    [
+     118,
+     36
+    ]
+   ],
+   "width": 3
+  }
+ ],
+ "routes": [
+  {
+   "point": "A",
+   "spawn": "spawn-1",
+   "straight": 30.0,
+   "walk": 30
+  },
+  {
+   "point": "B",
+   "spawn": "spawn-1",
+   "straight": 78.23,
+   "walk": 84
+  },
+  {
+   "point": "A",
+   "spawn": "spawn-2",
+   "straight": 78.0,
+   "walk": 78
+  },
+  {
+   "point": "B",
+   "spawn": "spawn-2",
+   "straight": 30.59,
+   "walk": 36
+  }
+ ],
+ "spawns": [
+  {
+   "id": "spawn-1",
+   "team": "dawn",
+   "x": 10,
+   "y": 65,
+   "z": 36
+  },
+  {
+   "id": "spawn-2",
+   "team": "dusk",
+   "x": 118,
+   "y": 65,
+   "z": 36
+  }
+ ],
+ "tiles": [
+  {
+   "file": "tiles/t_0_0.nbt",
+   "size": [
+    64,
+    21,
+    64
+   ],
+   "x": 0,
+   "z": 0
+  },
+  {
+   "file": "tiles/t_64_0.nbt",
+   "size": [
+    64,
+    21,
+    64
+   ],
+   "x": 64,
+   "z": 0
+  },
+  {
+   "file": "tiles/t_0_64.nbt",
+   "size": [
+    64,
+    21,
+    8
+   ],
+   "x": 0,
+   "z": 64
+  },
+  {
+   "file": "tiles/t_64_64.nbt",
+   "size": [
+    64,
+    21,
+    8
+   ],
+   "x": 64,
+   "z": 64
+  }
+ ],
+ "width": 128
+}

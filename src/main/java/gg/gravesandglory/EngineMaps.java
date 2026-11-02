@@ -1,0 +1,139 @@
+package gg.gravesandglory;
+
+import net.minecraft.block.Block;
+import net.minecraft.block.BlockState;
+import net.minecraft.block.Blocks;
+import net.minecraft.block.FenceBlock;
+import net.minecraft.nbt.NbtCompound;
+import net.minecraft.nbt.NbtElement;
+import net.minecraft.nbt.NbtHelper;
+import net.minecraft.nbt.NbtIo;
+import net.minecraft.nbt.NbtList;
+import net.minecraft.registry.Registries;
+import net.minecraft.registry.tag.BlockTags;
+import net.minecraft.server.world.ServerWorld;
+import net.minecraft.util.math.BlockPos;
+import net.minecraft.world.Heightmap;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+
+/** A map built by the map engine (map engine Plan 2), played in one map slot. Opt-in only: with -Dgravesandglory.engineMap=<dir with map.json>
+ *  the slot -Dgravesandglory.engineMapSlot (default 1, Ironhold) takes its ground, points, spawns and roads from that build, for this JVM only;
+ *  without the property nothing changes. The slot's landmark and supply-house rows are dropped, Domination only. */
+public final class EngineMaps {
+ public static final EngineMap map;public static final int slot;
+ static final int FLAGS=Block.NOTIFY_LISTENERS|Block.FORCE_STATE;
+ static{
+  EngineMap m=null;String dir=System.getProperty("gravesandglory.engineMap");int s=Integer.getInteger("gravesandglory.engineMapSlot",1);
+  if(dir!=null&&!dir.isBlank()){
+   try{m=EngineMap.read(Path.of(dir));
+    var R=GravesAndGlory.R;
+    if(m.width!=2*R.arenaHalfX()||m.depth!=2*R.arenaHalfZ()){System.out.println("[Graves and Glory] engine map "+dir+" is "+m.width+"x"+m.depth+", the arena needs "+2*R.arenaHalfX()+"x"+2*R.arenaHalfZ()+": not used");m=null;}
+   }catch(Exception e){System.out.println("[Graves and Glory] engine map "+dir+" not read: "+e.getMessage());m=null;}
+  }
+  map=m;slot=s;
+  if(m!=null){
+   Spec.LANDMARKS=Arrays.stream(Spec.LANDMARKS).filter(r->r.map()!=s).toArray(Spec.LandmarksRow[]::new);
+   Spec.SUPPLYHOUSES=Arrays.stream(Spec.SUPPLYHOUSES).filter(r->r.map()!=s).toArray(Spec.SupplyHousesRow[]::new);
+   Tactics.housesAt=-1;
+   System.out.println("[Graves and Glory] engine map "+m.id+" ("+m.sha.substring(0,12)+") plays in map slot "+s);
+  }
+ }
+ public static boolean on(int index){return map!=null&&index==slot;}
+ /** the engine map is the selected map */
+ public static boolean active(){return on(CampaignMaps.selected);}
+ static EngineMap.Spawn spawn(int team){String t=team==0?"dawn":"dusk";for(var s:map.spawns)if(s.team().equals(t))return s;return map.spawns.get(team%map.spawns.size());}
+ public static int spawnX(int team){return (int)Math.floor(spawn(team).x());}
+ public static int spawnZ(int team){return (int)Math.floor(spawn(team).z());}
+
+ /** The end of CampaignMaps.select on the engine slot: the slot's tables from the engine build. */
+ static void apply(){
+  var points=new ArrayList<Spec.PointsRow>();
+  for(var p:map.points){int x=(int)Math.floor(p.x()),z=(int)Math.floor(p.z());points.add(new Spec.PointsRow(p.name(),p.name(),x,z,p.radius(),8,map.solid(x,z)));}
+  var roads=new ArrayList<CampaignMaps.Road>();
+  for(var r:map.roads)for(int i=0;i+1<r.path().size();i++){double[] a=r.path().get(i),b=r.path().get(i+1);roads.add(new CampaignMaps.Road((int)Math.round(a[0]),(int)Math.round(a[1]),(int)Math.round(b[0]),(int)Math.round(b[1]),(int)Math.ceil(r.width()/2)));}
+  Spec.STRUCTURES=new Spec.StructuresRow[0];Spec.TERRAIN=new Spec.TerrainRow[0];Spec.SCENERY=new Spec.SceneryRow[0];
+  CampaignMaps.roads=roads;Spec.POINTS=points.toArray(Spec.PointsRow[]::new);
+  for(int t=0;t<2;t++){var f=Spec.FACTIONS[t];int x=spawnX(t);Spec.FACTIONS[t]=new Spec.FactionsRow(f.id(),f.name(),f.color(),f.glyph(),f.dye(),x,spawnZ(t),x+(x<0?-3:3),spawnZ(t));}
+ }
+
+ // placement: load every tile once, then columns under a time budget per tick, then the point dressing, then the read-back check
+ static final long BUDGET_NS=40_000_000L;
+ static int phase=0,column=0;static long startNs,placeNs;static int[] tileOf;static short[][] stacks;static int[] heights;static BlockState[] palette;
+ static int[] readSolid,readWater;public static List<String> lastIssues=List.of();public static long lastBuildMs=-1;
+
+ static int worldW(){return 2*GravesAndGlory.R.worldHalfX()+1;}
+ static int worldD(){return 2*GravesAndGlory.R.worldHalfZ()+1;}
+ public static int percent(){int total=worldW()*worldD();return phase<=1?0:phase==2?column*90/total:phase==3?90:90+column*10/Math.max(1,map.width*map.depth);}
+
+ static void load()throws Exception{
+  var lookup=Registries.BLOCK.getReadOnlyWrapper();var pal=new ArrayList<BlockState>();var index=new java.util.HashMap<BlockState,Short>();
+  tileOf=new int[map.width*map.depth];stacks=new short[map.tiles.size()][];heights=new int[map.tiles.size()];
+  for(int t=0;t<map.tiles.size();t++){var tile=map.tiles.get(t);NbtCompound tag;
+   try(InputStream in=Files.newInputStream(map.dir.resolve(tile.file()))){tag=NbtIo.readCompressed(in);}
+   NbtList p=tag.getList("palette",NbtElement.COMPOUND_TYPE);short[] local=new short[p.size()];
+   for(int i=0;i<p.size();i++){BlockState s=NbtHelper.toBlockState(lookup,p.getCompound(i));Short k=index.get(s);if(k==null){k=(short)pal.size();pal.add(s);index.put(s,k);}local[i]=k;}
+   int sx=tile.sx(),sy=tile.sy(),sz=tile.sz();short[] st=new short[sx*sz*sy];Arrays.fill(st,(short)-1);
+   NbtList blocks=tag.getList("blocks",NbtElement.COMPOUND_TYPE);
+   for(int i=0;i<blocks.size();i++){NbtCompound b=blocks.getCompound(i);NbtList pos=b.getList("pos",NbtElement.INT_TYPE);st[(pos.getInt(2)*sx+pos.getInt(0))*sy+pos.getInt(1)]=local[b.getInt("state")];}
+   stacks[t]=st;heights[t]=sy;
+   for(int z=0;z<sz;z++)for(int x=0;x<sx;x++)tileOf[(tile.z()-map.oz+z)*map.width+tile.x()-map.ox+x]=t;
+  }
+  palette=pal.toArray(BlockState[]::new);
+ }
+ /** the block of canvas column (cx, cz) at y, or air */
+ static BlockState at(int cx,int cz,int y){int t=tileOf[cz*map.width+cx];var tile=map.tiles.get(t);int ly=y-map.floorY;if(ly<0||ly>=heights[t])return Blocks.AIR.getDefaultState();
+  short s=stacks[t][((cz-(tile.z()-map.oz))*tile.sx()+cx-(tile.x()-map.ox))*heights[t]+ly];return s<0?Blocks.AIR.getDefaultState():palette[s];}
+ /** the y above the highest block of a column, loading its chunk (World.getTopY answers the bottom of the world for an unloaded chunk) */
+ static int top(ServerWorld w,int x,int z){return w.getChunk(x>>4,z>>4).sampleHeightmap(Heightmap.Type.WORLD_SURFACE,x&15,z&15)+1;}
+ static void set(ServerWorld w,BlockPos.Mutable pos,BlockState s){if(w.getBlockState(pos)!=s)w.setBlockState(pos,s,FLAGS);}
+
+ /** One tick of building the engine map; true once it is placed and checked (the next call starts a new build). */
+ public static boolean step(ServerWorld w){
+  long t0=System.nanoTime();
+  if(phase==0){startNs=t0;column=0;
+   try{load();}catch(Exception e){throw new IllegalStateException("engine map tiles not read: "+e.getMessage(),e);}
+   System.out.println("[Graves and Glory] engine map "+map.id+": "+map.tiles.size()+" tiles read in "+(System.nanoTime()-t0)/1_000_000+" ms");phase=2;return false;}
+  var R=GravesAndGlory.R;var pos=new BlockPos.Mutable();
+  if(phase==2){int total=worldW()*worldD();
+   while(column<total&&System.nanoTime()-t0<BUDGET_NS){
+    int x=column%worldW()-R.worldHalfX(),z=column/worldW()-R.worldHalfZ();column++;
+    int cx=Math.max(0,Math.min(map.width-1,x-map.ox)),cz=Math.max(0,Math.min(map.depth-1,z-map.oz));
+    int top=map.floorY+heights[tileOf[cz*map.width+cx]];
+    for(int y=map.floorY;y<top;y++){pos.set(x,y,z);set(w,pos,at(cx,cz,y));}
+    int surface=top(w,x,z);
+    for(int y=top;y<surface;y++){pos.set(x,y,z);set(w,pos,Blocks.AIR.getDefaultState());}
+    if(Math.abs(x)==R.arenaHalfX()||Math.abs(z)==R.arenaHalfZ()){int g=Math.max(map.solid(x,z),map.water(x,z))+1;for(int y=g;y<g+6;y++){pos.set(x,y,z);set(w,pos,Blocks.BARRIER.getDefaultState());}}
+   }
+   if(column>=total){placeNs=System.nanoTime()-startNs;phase=3;}
+   return false;}
+  if(phase==3){w.setTimeOfDay(3000);
+   for(var p:Spec.POINTS){
+    for(int dx=-p.radius();dx<=p.radius();dx++)for(int dz=-p.radius();dz<=p.radius();dz++){double d=Math.hypot(dx,dz);int x=p.x()+dx,z=p.z()+dz;
+     boolean pad=Math.abs(dx)<=1&&Math.abs(dz)<=1,ring=d>=p.radius()-1&&d<=p.radius();
+     if((pad||ring)&&map.inside(x,z)&&!map.wet(x,z)){pos.set(x,map.solid(x,z),z);w.setBlockState(pos,(pad?Blocks.CHISELED_STONE_BRICKS:Blocks.SMOOTH_STONE).getDefaultState(),FLAGS);}}
+    Arena.flag(w,p,-1);}
+   readSolid=new int[map.width*map.depth];readWater=new int[map.width*map.depth];column=0;phase=4;return false;}
+  if(phase==4){int total=map.width*map.depth;
+   while(column<total&&System.nanoTime()-t0<BUDGET_NS){int cx=column%map.width,cz=column/map.width,x=cx+map.ox,z=cz+map.oz;
+    int solid=EngineMap.NONE,water=EngineMap.NONE;
+    for(int y=top(w,x,z);y>=map.floorY;y--){pos.set(x,y,z);BlockState s=w.getBlockState(pos);
+     if(s.isOf(Blocks.WATER)){if(water==EngineMap.NONE)water=y;continue;}
+     if(s.isAir()||s.isOf(Blocks.BARRIER)||s.isOf(Blocks.SEA_LANTERN)||s.getBlock() instanceof FenceBlock||s.isIn(BlockTags.WOOL))continue;
+     solid=y;break;}
+    readSolid[column]=solid;readWater[column]=water;column++;}
+   if(column<total)return false;
+   lastIssues=EngineMap.check(map,readSolid,readWater);lastBuildMs=(System.nanoTime()-startNs)/1_000_000;
+   String head="engine map "+map.id+" sha "+map.sha+": placed in "+placeNs/1_000_000+" ms, built and checked in "+lastBuildMs+" ms, "+(lastIssues.isEmpty()?"PASS":lastIssues.size()+" issues");
+   System.out.println("[Graves and Glory] "+head);for(String s:lastIssues)System.out.println("[Graves and Glory]   "+s);
+   try{Files.writeString(Path.of("engine-map-check.txt"),head+"\n"+String.join("\n",lastIssues)+(lastIssues.isEmpty()?"":"\n"),StandardCharsets.UTF_8);}catch(Exception e){System.out.println("[Graves and Glory] engine-map-check.txt not written: "+e.getMessage());}
+   Diagnostics.report("engine-map-check",lastIssues.isEmpty(),lastIssues.isEmpty()?null:String.join("; ",lastIssues.subList(0,Math.min(5,lastIssues.size()))));
+   stacks=null;tileOf=null;readSolid=null;readWater=null;phase=0;return true;}
+  phase=0;return false;
+ }
+}
