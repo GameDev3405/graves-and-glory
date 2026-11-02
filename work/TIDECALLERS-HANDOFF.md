@@ -16,6 +16,6 @@ build_skins --verify: 288 outputs verified. art_hue_check: tidecallers PASS (68%
 Raider kelp dense on back; Harpooner coat dark, brim tail flat; Mist upper body dark, skirt may clip; Brute boxy hind, big flat teal mantle; Admiral tricorne boxy, tails muddy, anchor faint. Weapons not seen in hand.
 
 ## Kort rulings applied (2026-11-02)
-- Brute portrait "beast 28". Admiral coat lighter sea blue (body tone #6691B7, shaded #2E6297) with dark sea-blue lapels.
+- Brute portrait "beast 28" plus real bulk: 20 px chest, shoulder hump, 8 px forelegs, bigger pauldrons. Admiral back: bronze anchor, sea-silver hair. Admiral coat lighter sea blue (body tone #6691B7, shaded #2E6297) with dark sea-blue lapels.
 - Raider and Mist Caller simplified: noise, specks and most kelp strands removed; Raider sleeves to the wrist and a
   narrow belly; Mist hood dark, mantle pale, hem band flat. Before/after: work/tidecallers-polish-before-after.png.

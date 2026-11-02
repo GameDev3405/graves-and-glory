@@ -27,7 +27,7 @@ CLOTH = (128, 64)
 COAT = ramp("0c1830", "16305c", "214c80", "2e6297", "6691b7", "9ab6cc")          # officer's sea blue (Kort 2026-11-02: lighter, toward SEA), lights under the tint rule
 GILT = ramp("241a08", "4a3815", "6f5a26", "96783a", "b89a54", "dcc487")          # tarnished naval gilt, #96783A at the core
 PALE = ramp("2c3a3c", "52666a", "7e9694", "a9bfbb", "cfdcd6", "ecf4ee")          # the drowned face
-HAIR = ramp("1b2531", "37495b", "62788b", "94a8b6", "c4d2db", "eaf1f5")          # silver-blue hair, adrift
+HAIR = ramp("14223a", "2a4466", "4a6a8e", "7a98b4", "b0c4d4", "e2ecf2")          # sea-silver hair, adrift (bluer, Kort 2026-11-02)
 FELT = ramp("0b0f1a", "171d2c", "242d42", "34405a", "4a5a7a")                    # the tricorne's sodden felt
 IRON = HP.IRON
 TAR, ROPE, KELP = HP.TAR, HP.ROPE, HP.KELP
@@ -354,18 +354,18 @@ def fringe(seed):
         return g
     return paint
 
+ANCHOR = ramp("1e1408", "3a2812", "5a4020", "7a5a30", "967846", "bfa070")        # tarnished bronze, so the back reads warm (Kort 2026-11-02)
+
 def anchor_iron(seed, bar=False):
-    """The anchor: pitted, black iron gone green at the bends, barnacle-crusted, bright wear on the edges."""
+    """The anchor: tarnished bronze, flat with a lit top-left edge, a few sea-blue patina pits."""
     def paint(face, w, h):
         g = blank(w, h)
         r = rng("an", seed, face, w, h)
         for y in range(h):
             for x in range(w):
-                v = 4 + lit(face, x, w) + r.choice((0, 0, 0, 1))
-                g[y][x] = clamp(IRON, v)
+                g[y][x] = clamp(ANCHOR, 3 + lit(face, x, w) + (1 if y == 0 and face not in ("top", "bottom") else 0))
         if face not in ("top", "bottom"):
-            for _ in range(max(1, w * h // 4)): g[r.randrange(h)][r.randrange(w)] = BARN[1 + r.randrange(4)]
-            for _ in range(max(1, w * h // 6)): g[r.randrange(h)][r.randrange(w)] = SEA[2 + r.randrange(2)]
+            for _ in range(w * h // 10): g[r.randrange(h)][r.randrange(w)] = SEA[2]
         return g
     return paint
 

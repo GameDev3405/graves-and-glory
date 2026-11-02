@@ -271,7 +271,8 @@ def tentacle_chain(i, x, splay, curl, fwd):
 def bones():
     B = [Bone("root", "")]
     B.append(Bone("body", "root", (0, 10, 13), [Box((-7, -6, -13), (14, 13, 13), body_painter())]))
-    B.append(Bone("chest", "body", (0, 0, -13), [Box((-8, -11, -11), (16, 18, 11), chest_painter())]))
+    B.append(Bone("chest", "body", (0, 0, -13), [Box((-10, -11, -11), (20, 18, 11), chest_painter())]))
+    B.append(Bone("hump", "chest", boxes=[Box((-7, -15, -9), (14, 4, 8), body_painter("hm"))]))   # the shoulder hump (Kort 2026-11-02: more bulk)
     B.append(Bone("head", "chest", (0, 3, -10), [Box((-6, -5, -8), (12, 10, 8), head_painter())], rot=(PITCH, 0, 0)))
     B.append(Bone("muzzle", "head", boxes=[Box((-4.5, 0, -13), (9, 5, 5), muzzle_painter())]))
     B.append(Bone("jaw", "head", (0, 5, -3), [Box((-4.5, 0, -10), (9, 3, 10), jaw_painter())]))
@@ -287,22 +288,21 @@ def bones():
         B.append(Bone(f"fin_{side}", "head", (c * 6, -2, -2), [Box((-0.5, -6, -1.5), (1, 6, 3), fin())], rot=(0, 0, c * 26)))
     B.append(Bone("tail", "body", (0, -3, 0), [Box((-2, 0, 0), (4, 4, 5), body_painter("tl")), Box((-1.5, 0.5, 5), (3, 3, 4), body_painter("tt"))], rot=(-8, 0, 0)))
     for side, c in (("right", -1), ("left", 1)):
-        B.append(Bone(f"front_{side}_leg", "chest", (c * 5.5, 4, -4), [
-            Box((-3, 0, -3), (6, 8, 6), leg("fl" + side)), Box((-3.5, 8, -3.5), (7, 2, 7), paw("fp" + side))]))
-        B.append(Bone(f"{side}_claws", f"front_{side}_leg", boxes=[Box((-3, 8.5, -4.5), (6, 1.5, 1), claws())]))
+        B.append(Bone(f"front_{side}_leg", "chest", (c * 6.5, 4, -4.5), [
+            Box((-4, 0, -4), (8, 8, 8), leg("fl" + side)), Box((-4.5, 8, -4.5), (9, 2, 9), paw("fp" + side))]))
+        B.append(Bone(f"{side}_claws", f"front_{side}_leg", boxes=[Box((-4, 8.5, -5.5), (8, 1.5, 1), claws())]))
         B.append(Bone(f"back_{side}_leg", "root", (c * 5, 14, 8), [
             Box((-3, 0, -3), (6, 8, 6), leg("bl" + side)), Box((-3.5, 8, -3.5), (7, 2, 7), paw("bp" + side))]))
         B.append(Bone(f"back_{side}_claws", f"back_{side}_leg", boxes=[Box((-3, 8.5, -4.5), (6, 1.5, 1), claws())]))
         # pauldron on the shoulder: sea-blue plate crusted with barnacles
-        B.append(Bone(f"{side}_pauldron", "chest", (c * 6, -11, -5), [
-            Box((-3.5, -2.5, -4), (7, 4, 8), plate_sea("pd" + side, 3))], rot=(0, 0, c * 12)))
+        B.append(Bone(f"{side}_pauldron", "chest", (c * 8, -11, -5), [
+            Box((-4.5, -3, -4.5), (9, 5, 9), plate_sea("pd" + side, 3))], rot=(0, 0, c * 16)))
         B.append(Bone(f"{side}_barn", "chest", boxes=[
-            Box((c * 7 - 0.75, -15, -7), (1.5, 1.5, 1.5), barn_bump("b1" + side)), Box((c * 6 - 1, -14.5, -5.5), (2, 1, 1.5), barn_bump("b5" + side)),
-            Box((c * 4.5 - 0.75, -13.5, -3), (1.5, 1.5, 1.5), barn_bump("b2" + side)),
-            Box((c * 8, -6, -9), (1.5, 2, 2), barn_bump("b3" + side)), Box((c * 8, -2, -5), (1.5, 2, 2), barn_bump("b4" + side))]))
+            Box((c * 9.5 - 0.75, -16, -7), (1.5, 1.5, 1.5), barn_bump("b1" + side)), Box((c * 8 - 1, -15.5, -5.5), (2, 1, 1.5), barn_bump("b5" + side)),
+            Box((c * 10 + (0 if c > 0 else -1.5), -6, -9), (1.5, 2, 2), barn_bump("b3" + side)), Box((c * 10 + (0 if c > 0 else -1.5), -2, -5), (1.5, 2, 2), barn_bump("b4" + side))]))
     # the girth strap round the chest and a breast plate
-    B.append(Bone("girth", "chest", boxes=[Box((-8, -11, -4), (16, 18, 2), strap("gt"), dil=0.45)]))
-    B.append(Bone("breast", "chest", boxes=[Box((-6, -7, -11.5), (12, 8, 1), plate_sea("br", 3), dil=0.1)]))
+    B.append(Bone("girth", "chest", boxes=[Box((-10, -11, -4), (20, 18, 2), strap("gt"), dil=0.45)]))
+    B.append(Bone("breast", "chest", boxes=[Box((-7, -7, -11.5), (14, 8, 1), plate_sea("br", 3), dil=0.1)]))
     B.append(Bone("girth_body", "body", boxes=[Box((-7, -6, -6), (14, 13, 2), strap("gb"), dil=0.45)]))
     # spine spikes
     for i, z in enumerate((-11, -7, -3)):
@@ -311,15 +311,15 @@ def bones():
                                               Box((5, 0, -4), (1.5, 2, 2), barn_bump("bb3"))]))
     # the saddle mantle (team colour) over the shoulders
     B.append(Bone("mantle", "chest", team=True, boxes=[
-        Box((-8, -11.6, -9), (16, 1, 9), "top", dil=0.1, sheet="cloth"),
-        Box((8, -11, -9), (1, 8, 9), "drape", dil=0.15, sheet="cloth"),
-        Box((-9, -11, -9), (1, 8, 9), "drape", dil=0.15, sheet="cloth")]))
+        Box((-7, -15.6, -9), (14, 1, 8), "top", dil=0.1, sheet="cloth"),
+        Box((10, -11, -9), (1, 8, 9), "drape", dil=0.15, sheet="cloth"),
+        Box((-11, -11, -9), (1, 8, 9), "drape", dil=0.15, sheet="cloth")]))
     B.append(Bone("rump", "body", team=True, boxes=[
         Box((-7, -6.6, -11), (14, 1, 10), "top", dil=0.1, sheet="cloth"),
         Box((7, -6, -11), (1, 6, 10), "drape", dil=0.15, sheet="cloth"),
         Box((-8, -6, -11), (1, 6, 10), "drape", dil=0.15, sheet="cloth")]))
     # kelp hanging off the shoulders, flanks, jaw and tail
-    for k, (par, x, y, z, rz) in enumerate((("chest", -9.5, -10, -2, 6), ("chest", 9.5, -10, -2, -6), ("body", -7.6, -2, -9, 4),
+    for k, (par, x, y, z, rz) in enumerate((("chest", -11.5, -10, -2, 6), ("chest", 11.5, -10, -2, -6), ("body", -7.6, -2, -9, 4),
                                             ("body", 7.6, -2, -4, -4), ("jaw", -3, 2, -6, 8), ("jaw", 3, 2, -2, -8), ("tail", 0, 3, 3, 0))):
         B.append(Bone(f"kelp_{k}", par, (x, y, z), [Box((-1, 0, -0.5), (2, 9 if par != "jaw" else 7, 1), kelp("kp%d" % k))], rot=(6, 0, rz)))
     return B
