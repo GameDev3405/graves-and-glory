@@ -16,6 +16,9 @@ html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text);
   padding: 10px; overflow-y: auto; }
 #map { position: absolute; inset: 0; width: 100%; height: 100%; display: block; outline: none; }
 #walk { position: absolute; inset: 0; }
+#walk canvas { display: block; width: 100%; height: 100%; outline: none; }
+.hud3d { position: absolute; left: 8px; bottom: 8px; background: rgba(15,18,22,.8); padding: 4px 8px; border-radius: 4px;
+  font-size: 12px; pointer-events: none; max-width: calc(100% - 16px); }
 #walk[hidden], #errbar[hidden], #issues[hidden], #versions-pop[hidden], #notice[hidden] { display: none; }
 
 button, select, input { font: inherit; color: var(--text); background: #2a3037; border: 1px solid var(--edge);

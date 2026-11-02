@@ -114,6 +114,14 @@ class ServerTest(unittest.TestCase):
             self.assertEqual(self.js('POST', '/api/design/t/versions', {'name': n})[0], 400, n)
             self.assertEqual(self.js('POST', '/api/design/t/restore', {'name': n})[0], 400, n)
 
+    def test_static_serves_vendor_modules_as_javascript(self):
+        for path in ('/view3d.js', '/vendor/three.module.min.js', '/vendor/PointerLockControls.js'):
+            st, body, headers = self.call('GET', path)
+            self.assertEqual(st, 200, path)
+            self.assertTrue(headers['Content-Type'].startswith('text/javascript'), path)
+            self.assertTrue(body, path)
+        self.assertEqual(self.call('GET', '/vendor/../server.py')[0], 404)
+
     def test_static_traversal_404(self):
         self.assertEqual(self.call('GET', '/../design.py')[0], 404)
         self.assertEqual(self.call('GET', '/%2e%2e/design.py')[0], 404)

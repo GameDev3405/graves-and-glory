@@ -228,6 +228,8 @@ function drawDraft() {
 
 function draw() {
   if (!canvas || state.view !== 'map') return;
+  state.mapCenter = toWorld(cw / 2, ch / 2); // the 3D view starts above this spot
+  state.mapSpan = ch / view.scale;
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   ctx.fillStyle = '#101317';
   ctx.fillRect(0, 0, cw, ch);
@@ -348,7 +350,7 @@ export function initMap() {
   wire();
   setCursorStyle();
   registerView('map', {
-    show() { canvas.hidden = false; readout.hidden = false; resize(); queueDraw(); },
+    show() { canvas.hidden = false; readout.hidden = false; state.pxPerBlock = view.scale; resize(); queueDraw(); },
     hide() { canvas.hidden = true; readout.hidden = true; },
   });
   onChange(queueDraw);

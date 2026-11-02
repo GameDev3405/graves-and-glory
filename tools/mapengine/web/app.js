@@ -8,15 +8,18 @@ import * as api from './api.js';
 import { TOOLS, TOOL_ORDER } from './tools.js';
 import { initMap } from './map2d.js';
 import { initPanel } from './panel.js';
+import { initWalk } from './view3d.js';
 
 export const state = {
   design: null,      // the design object being edited
   selectedId: null,
   tool: 'select',    // key of TOOLS
   field: null,       // latest decoded heightfield from the server (see api.getField), or null
-  view: 'map',       // 'map' | 'walk'
+  view: 'map',       // 'map' | 'walk' (the 3D view)
   draft: null,       // in-progress hill/river/road: {kind, pts: [[x, z], ...]}
   pxPerBlock: 1,     // set by whichever view is showing
+  mapCenter: null,   // [x, z] block under the middle of the map view, for the 3D view's start camera
+  mapSpan: 0,        // blocks visible top to bottom in the map view
 };
 
 const UNDO_LIMIT = 200;
@@ -152,24 +155,28 @@ async function doSave() {
   setStatus('saving');
   const id = state.design.id;
   const res = await api.putDesign(id, state.design);
-  if (state.design.id !== id) return; // another design was loaded meanwhile
+  if (state.design.id !== id) return true; // another design was loaded meanwhile
   if (!res.ok) {
     dirty = true; // keep the local state; the next edit tries again
     setStatus('error', (res.data && res.data.errors) || ['save failed (' + res.status + ')']);
-    return;
+    return false;
   }
   setStatus(dirty ? 'unsaved' : 'saved');
   refreshField();
+  return true;
 }
 
-// Save any pending edit now and wait for it.
+// Save any pending edit now and wait for it. Saves are strictly serial: a PUT only starts when none is in
+// flight, and the dirty flag is re-checked before each one, so the last edit always lands last.
 export async function flush() {
   clearTimeout(timer);
   timer = null;
-  if (saving) await saving;
-  if (dirty && state.design) {
-    saving = doSave();
-    try { await saving; } finally { saving = null; }
+  for (;;) {
+    if (saving) { await saving; continue; }
+    if (!dirty || !state.design) return;
+    const mine = doSave().finally(() => { if (saving === mine) saving = null; });
+    saving = mine;
+    if (!(await mine)) return; // a failed save is retried on the next edit, not in a loop
   }
 }
 
@@ -274,6 +281,7 @@ window.addEventListener('keydown', (ev) => {
 
 async function boot() {
   initMap();
+  initWalk();
   initPanel();
   const rows = await listDesigns();
   const want = decodeURIComponent((location.hash || '').slice(1));
