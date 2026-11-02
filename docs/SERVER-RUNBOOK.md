@@ -23,3 +23,11 @@ Kit: `tools/server-kit/` (full detail in its `README.md`). Target for the six-pl
 
 ## Before the 3.7 test
 Run the smoke join from the kit's report once on the real host, then have each friend join with the exact modpack build.
+
+## Live test results (2026-11-02, branch test/server-kit-live)
+Scratch folder outside the repo, port 25580, one server process, no clients; the folder and its downloaded jars are not committed. Setup: kit scripts, `fabric-server-launch.jar` from the pinned meta.fabricmc.net URL (sha256 matched `856a5f9f...cf113`), and in `mods\` the freshly built `graves-and-glory-0.5.0.jar` plus the four server-required jars from `dependencies/platform-lock.json` (fabric-api 0.92.2, lithium, ferritecore, modernfix). Runbook step 2 names only the mod and Fabric API; the other three come from the export zip.
+- `gate.ps1 -Pin` and `start.ps1 -DryRun` passed. A real `start.ps1` without `eula=true` stopped with the EULA message. With `eula=true` (written by hand, scratch folder only), java 21 and `-MemoryGB 4` it booted: all five mods loaded, `Done (1.7s)`, camp terrain and pieces built (26.8 s first boot including library downloads), no errors.
+- `stop.ps1` saved all dimensions and the process exited with code 0; `server.pid` was removed.
+- A second start took the verified `start` backup (`Graves_and_Glory-<UTC>-start.zip`), loaded the saved world (`camp terrain skipped`, reused) and stopped cleanly the same way.
+- Seen, harmless: Lithium/ModernFix mixin overwrite warnings, one "Can't keep up" right after the camp build on first boot.
+- No script changes were needed. Not exercised: typing `stop` in the console window, `restore.ps1`, `update.ps1`, a client join.
