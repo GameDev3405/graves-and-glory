@@ -10,7 +10,9 @@ from dataclasses import dataclass
 
 import numpy as np
 
-from mapengine.build import _BLOCK, canonical_bytes
+from mapengine import buildings
+from mapengine.build import _BLOCK, canonical_bytes, ground_state
+from mapengine.terrain import heightfield
 from mapforge import nbt
 from mapforge.structure import Structure, block_name
 
@@ -60,7 +62,8 @@ def _columns(path, shape):
         fast = (s.palette, arr[:, 0], arr[:, 1], arr[:, 2], arr[:, 3])
     palette, xs, ys, zs, idx = fast
     wet = np.array([block_name(p) == 'minecraft:water' for p in palette] or [False])[idx]
-    for a, m in ((solid, ~wet), (water, wet)):
+    ground = np.array([ground_state(p) for p in palette] or [False])[idx]  # the mod's read-back rule
+    for a, m in ((solid, ground), (water, wet)):
         np.maximum.at(a, (zs[m], xs[m]), ys[m].astype(np.int32))
     return solid, water
 
@@ -100,7 +103,7 @@ def read_columns_bin(out_dir, width, depth):
 def check(d, out_dir):
     out_dir = pathlib.Path(out_dir)
     manifest = json.loads((out_dir / 'map.json').read_text(encoding='utf-8'))
-    issues = []
+    issues = [Issue(c, i, m) for c, i, m in buildings.issues(d, heightfield(d))]
     if manifest.get('design_sha256') != hashlib.sha256(canonical_bytes(d)).hexdigest():
         issues.append(Issue('stale', d['id'], 'the built map is older than the design: rebuild it'))
     width, depth = d['width'], d['depth']

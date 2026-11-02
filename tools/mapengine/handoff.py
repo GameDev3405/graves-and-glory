@@ -52,6 +52,17 @@ Every object has `id` (unique), `kind`, `by` (kort or ai) and `state` (accepted 
 | spawn | `x`, `z`, `team` dawn or dusk |
 | zone | `outline` [[x, z], ...] (3 or more), `palette` one of: {palettes} |
 | note | `x`, `z`, `radius` 4..200, `text` (Kort's notes; do not add any) |
+| building | `piece` a library id below, integer `x`, `z` (the piece's centre block), `rotation` 0, 90, 180 or 270 (clockwise) |
+
+## Building library
+
+Use only these approved pieces; do not invent buildings. Footprint is x by z at rotation 0 (90 and 270 swap
+them). Door is the side the entrance faces at rotation 0, turned clockwise with the piece; keep the cells in
+front of it clear and walkable. Footprints must stay on the canvas and not overlap each other, points or spawns.
+
+| piece | footprint | height | door |
+| --- | --- | --- | --- |
+{library}
 """
 
 
@@ -158,7 +169,7 @@ def render(d, f, scale, window=None, base=None):
         img[:, (gx - x0) * scale] = img[:, (gx - x0) * scale].astype(np.uint16) * 3 // 4
     for gz in range((z0 + GRID - 1) // GRID * GRID, z1, GRID):
         img[(gz - z0) * scale, :] = img[(gz - z0) * scale, :].astype(np.uint16) * 3 // 4
-    order = ('zone', 'hill', 'river', 'road', 'point', 'spawn', 'note')
+    order = ('zone', 'hill', 'river', 'road', 'building', 'point', 'spawn', 'note')
     for kind in order:
         for o in d['objects']:
             if o['kind'] != kind:
@@ -166,7 +177,15 @@ def render(d, f, scale, window=None, base=None):
             prop = o.get('state') == 'proposed'
             col = MAGENTA if prop else KIND_LINE.get(kind, WHITE)
             pts = o.get('outline') or o.get('path')
-            if pts:
+            if kind == 'building':
+                from mapengine import buildings
+                bx0, bz0, bx1, bz1 = buildings.box(o)
+                corners = [[bx0, bz0], [bx1 + 1, bz0], [bx1 + 1, bz1 + 1], [bx0, bz1 + 1]]
+                for a, b in zip(corners, corners[1:] + corners[:1]):
+                    cv.line(a, b, MAGENTA if prop else WHITE, dash=prop)
+                for x, z in buildings.door(o)[1]:
+                    cv.ring(x + 0.5, z + 0.5, 0.5, MAGENTA if prop else YELLOW)
+            elif pts:
                 seq = list(pts) + ([pts[0]] if 'outline' in o else [])
                 for a, b in zip(seq, seq[1:]):
                     cv.line(a, b, col, dash=prop)
@@ -219,9 +238,13 @@ def brief_text(d):
                  'road': lambda: f"width {o['width']}",
                  'point': lambda: f"{o['name']}, radius {o['radius']}",
                  'spawn': lambda: o['team'],
-                 'zone': lambda: o['palette']}[o['kind']]()
+                 'zone': lambda: o['palette'],
+                 'building': lambda: f"{o['piece']}, rotation {o['rotation']}"}[o['kind']]()
         lines.append(f"- `{o['id']}` {o['kind']} {where}, {extra} ({tag})")
-    lines += ['', DRAFT_RULES, SCHEMA.format(palettes=palettes)]
+    from mapengine import library
+    lib = '\n'.join(f"| `{k}` | {e['footprint'][0]} x {e['footprint'][1]} | {e['size'][1]} | {e['door']} |"
+                    for k, e in sorted(library.load().items()))
+    lines += ['', DRAFT_RULES, SCHEMA.format(palettes=palettes, library=lib)]
     return '\n'.join(lines)
 
 

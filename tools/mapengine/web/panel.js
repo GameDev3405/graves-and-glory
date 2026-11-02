@@ -16,7 +16,7 @@ function el(tag, cls, text) {
   return e;
 }
 
-const TOOL_LABEL = { hill: 'Hill', river: 'River', road: 'Road', point: 'Point', spawn: 'Spawn', select: 'Select', note: 'Note' };
+const TOOL_LABEL = { hill: 'Hill', river: 'River', road: 'Road', point: 'Point', spawn: 'Spawn', select: 'Select', note: 'Note', building: 'Building' };
 const FIELDS = {
   hill: [
     { k: 'height', label: 'Height', min: -40, max: 120, step: 1, int: true },
@@ -283,6 +283,25 @@ function numRow(o, f) {
   return row;
 }
 
+// A select of library pieces, grouped by source group; onPick(id) on change.
+function pieceRow(current, onPick) {
+  const row = el('div', 'row two');
+  row.appendChild(el('label', '', 'Piece'));
+  const s = el('select');
+  const groups = {};
+  for (const [id, e] of Object.entries(state.library || {})) (groups[e.group] = groups[e.group] || []).push(id);
+  for (const g of Object.keys(groups).sort()) {
+    const og = document.createElement('optgroup');
+    og.label = g;
+    for (const id of groups[g].sort()) { const op = el('option', '', id.split('/')[1]); op.value = id; og.appendChild(op); }
+    s.appendChild(og);
+  }
+  s.value = current;
+  s.addEventListener('change', () => { onPick(s.value); s.blur(); });
+  row.appendChild(s);
+  return row;
+}
+
 function rebuildFields(o) {
   fieldsBox.textContent = '';
   rows = {};
@@ -297,6 +316,8 @@ function rebuildFields(o) {
     b.addEventListener('change', () => { const v = b.value; commit((d) => { if (v.trim()) d.brief = v; else delete d.brief; }); });
     rows.brief = { text: b };
     fieldsBox.appendChild(b);
+    fieldsBox.appendChild(el('h3', '', 'Building to place (key 8, R turns it)'));
+    fieldsBox.appendChild(pieceRow(state.buildPiece, (v) => { state.buildPiece = v; }));
     return;
   }
   fieldsBox.appendChild(el('h2', '', o.kind[0].toUpperCase() + o.kind.slice(1) + ' ' + o.id));
@@ -348,6 +369,19 @@ function rebuildFields(o) {
     fieldsBox.appendChild(row);
   }
   for (const f of FIELDS[o.kind] || []) fieldsBox.appendChild(numRow(o, f));
+  if (o.kind === 'building') {
+    fieldsBox.appendChild(pieceRow(o.piece, (v) => commit((d) => { findObj(d, o.id).piece = v; })));
+    const row = el('div', 'row two');
+    row.appendChild(el('label', '', 'Rotation'));
+    const s = el('select');
+    [0, 90, 180, 270].forEach((r) => { const op = el('option', '', r + '\u00b0'); op.value = String(r); s.appendChild(op); });
+    s.value = String(o.rotation);
+    s.addEventListener('change', () => { commit((d) => { findObj(d, o.id).rotation = Number(s.value); }); s.blur(); });
+    row.appendChild(s);
+    fieldsBox.appendChild(row);
+    const e = (state.library || {})[o.piece];
+    if (e) fieldsBox.appendChild(el('div', 'meta', `${e.footprint[0]} by ${e.footprint[1]} blocks, ${e.size[1]} high, door ${e.door} at 0\u00b0. The pad under it is levelled to the ground at its centre.`));
+  }
   if (o.kind === 'zone') fieldsBox.appendChild(el('div', 'meta', 'palette ' + o.palette + ' (edit the file to change)'));
   const del = el('button', 'danger', 'Delete');
   del.addEventListener('click', () => { commit((d) => { d.objects = d.objects.filter((p) => p.id !== o.id); }); del.blur(); });

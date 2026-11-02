@@ -21,6 +21,7 @@ async function call(method, url, body, extra) {
 const dp = (id) => '/api/design/' + encodeURIComponent(id);
 
 export const listDesigns = () => call('GET', '/api/designs');
+export const getLibrary = () => call('GET', '/api/library');
 export const getDesign = (id) => call('GET', dp(id));
 export const putDesign = (id, design, extra) => call('PUT', dp(id), design, extra);
 export const listVersions = (id) => call('GET', dp(id) + '/versions');

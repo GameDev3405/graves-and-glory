@@ -1,7 +1,7 @@
 // Top-down map canvas: hillshaded relief, grid, object overlays, cursor read-out, zoom and pan.
 // It turns pointer positions into map block coordinates and hands them to TOOLS[state.tool].
 import { state, onChange, onFieldChange, onLoad, registerView } from './app.js';
-import { TOOLS } from './tools.js';
+import { TOOLS, buildingShape } from './tools.js';
 
 const NO_WATER = -32768;
 const view = { ox: 0, oy: 0, scale: 1 }; // screen = block * scale + offset (CSS px)
@@ -141,8 +141,8 @@ function drawGrid(d) {
   }
 }
 
-const COLOR = { hill: '#f0dc8c', zone: '#9ad0e8', river: '#7cc0ff', road: '#f0d090', point: '#ffffff', dawn: '#ffb347', dusk: '#b894ff' };
-const KIND_ORDER = ['zone', 'hill', 'river', 'road', 'point', 'spawn', 'note'];
+const COLOR = { hill: '#f0dc8c', zone: '#9ad0e8', river: '#7cc0ff', road: '#f0d090', point: '#ffffff', building: '#e8e0d0', dawn: '#ffb347', dusk: '#b894ff' };
+const KIND_ORDER = ['zone', 'hill', 'river', 'road', 'building', 'point', 'spawn', 'note'];
 // Tracked-changes tint: an AI proposal not yet reviewed is drawn magenta, dashed, with a translucent fill.
 const PROPOSAL = '#ff40c8', PROPOSAL_FILL = 'rgba(255,64,200,0.20)', NOTE = '#ffd640';
 
@@ -152,12 +152,39 @@ function strokePath(pts, close) {
   if (close) ctx.closePath();
 }
 
+// A footprint box with its door cells: placed buildings, and the Building tool's preview under the cursor.
+function drawBuilding(s, col, fill, label) {
+  const [ax, ay] = toScreen(s.x0, s.z0), [bx, by] = toScreen(s.x1 + 1, s.z1 + 1);
+  ctx.fillStyle = fill;
+  ctx.fillRect(ax, ay, bx - ax, by - ay);
+  ctx.strokeStyle = col;
+  ctx.strokeRect(ax, ay, bx - ax, by - ay);
+  ctx.fillStyle = NOTE;
+  for (const [x, z] of s.front) {
+    const [px, py] = toScreen(x, z);
+    ctx.fillRect(px, py, Math.max(2, view.scale), Math.max(2, view.scale));
+  }
+  if (label && view.scale >= 1) {
+    ctx.fillStyle = col;
+    ctx.font = '11px system-ui, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(label, (ax + bx) / 2, (ay + by) / 2);
+  }
+}
+
 function drawObject(o, selected) {
   const prop = o.state === 'proposed';
   ctx.setLineDash(prop ? [6, 4] : []);
   ctx.lineWidth = selected ? 3 : prop ? 2.5 : 1.5;
   const col = selected ? '#ffffff' : prop ? PROPOSAL : COLOR[o.kind];
   ctx.strokeStyle = col;
+  if (o.kind === 'building') {
+    const s = buildingShape(state.library || {}, o.piece, o.x, o.z, o.rotation);
+    if (s) drawBuilding(s, col, prop ? PROPOSAL_FILL : 'rgba(40,30,20,0.45)', o.piece.split('/')[1]);
+    ctx.setLineDash([]);
+    return;
+  }
   if (o.kind === 'note') {
     const [sx, sy] = toScreen(o.x, o.z);
     ctx.setLineDash([3, 3]);
@@ -283,6 +310,10 @@ function draw() {
   const so = d.objects.find((o) => o.id === sel);
   if (so) drawObject(so, true);
   drawDraft();
+  if (state.tool === 'building' && cursor) {
+    const s = buildingShape(state.library || {}, state.buildPiece, Math.round(cursor[0]), Math.round(cursor[1]), state.buildRotation);
+    if (s) { ctx.setLineDash([4, 3]); ctx.lineWidth = 1.5; drawBuilding(s, '#ffffff', 'rgba(255,255,255,0.15)', state.buildPiece + ' ' + state.buildRotation + '\u00b0'); ctx.setLineDash([]); }
+  }
   updateReadout();
 }
 

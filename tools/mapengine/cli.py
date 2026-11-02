@@ -1,4 +1,4 @@
-"""Command line for the map engine: new, check, build, serve."""
+"""Command line for the map engine: new, check, build, export, import, library, serve."""
 import argparse
 import pathlib
 
@@ -27,6 +27,8 @@ def main(argv=None, root=None):
     p = sub.add_parser('import', help="merge an AI draft (default: the handoff folder's draft.json) as proposals")
     p.add_argument('id')
     p.add_argument('draft', nargs='?')
+    p = sub.add_parser('library', help='regenerate tools/mapengine/library.json from the structure pieces')
+    p.add_argument('--check', action='store_true', help='fail if library.json is stale instead of writing it')
     p = sub.add_parser('serve')
     p.add_argument('--port', type=int, default=8765)
     p.add_argument('--no-open', action='store_true')
@@ -91,6 +93,16 @@ def main(argv=None, root=None):
               f"{len(rep['withdrawn'])} withdrawn, {len(rep['refused'])} refused")
         for m in rep['refused']:
             print('  refused ' + m)
+        return 0
+    if args.cmd == 'library':
+        from mapengine import library
+        data = library.index_bytes(library.generate())
+        cur = library.INDEX_PATH.read_bytes() if library.INDEX_PATH.exists() else b''
+        if args.check:
+            print('library.json is current' if cur == data else 'library.json is stale: run python tools/mapengine library')
+            return 0 if cur == data else 1
+        design.write_atomic(library.INDEX_PATH, data)
+        print(f'wrote {library.INDEX_PATH} ({len(json.loads(data))} pieces)')
         return 0
     if args.cmd == 'serve':
         from mapengine import server

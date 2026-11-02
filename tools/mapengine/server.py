@@ -113,6 +113,9 @@ def make_server(maps_dir, work_dir, port):
             self.send(200, f.read_bytes(), TYPES.get(f.suffix, 'application/octet-stream'))
 
         def api(self, method, parts):
+            if parts == ['library'] and method == 'GET':
+                from mapengine import library
+                return self.send(200, library.load())
             if parts == ['designs'] and method == 'GET':
                 rows = []
                 for p in maps_dir.glob('*/design.json'):
