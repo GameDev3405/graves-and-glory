@@ -2,9 +2,11 @@
 // x and z are map block coordinates (floats); nothing here knows about screens, so any view that can turn a
 // pointer into ground (x, z) can drive them. key() returns true when it used the key.
 // state.pxPerBlock (set by the showing view) converts the 6 px pick distance into blocks.
-import { commit, endDrag, select, notify, newId, findObj, selectedObj } from './app.js';
+import { commit, endDrag, select, notify, newId, findObj, selectedObj, state as appState } from './app.js';
 
-export const TOOL_ORDER = ['hill', 'river', 'road', 'point', 'spawn', 'select', 'note'];
+const LIB = () => appState.library || {};
+
+export const TOOL_ORDER = ['hill', 'river', 'road', 'point', 'spawn', 'select', 'note', 'building'];
 const PICK_PX = 6;
 const NEW_BY = 'kort';
 const NEW_STATE = 'accepted';
@@ -106,10 +108,54 @@ const noteTool = {
   move() {}, up() {}, key() { return false; },
 };
 
+// ---------- building: footprint maths as mapforge.structure (Structures.pivot / turn in the mod) ----------
+
+const SIDES = ['north', 'east', 'south', 'west'];
+const turn = (r, dx, dz) => (r === 90 ? [-dz, dx] : r === 180 ? [-dx, -dz] : r === 270 ? [dz, -dx] : [dx, dz]);
+function toWorld(size, x, z, r, lx, lz) {
+  const [dx, dz] = turn(r, lx - Math.floor((size[0] - 1) / 2), lz - Math.floor((size[2] - 1) / 2));
+  return [x + dx, z + dz];
+}
+// {x0, z0, x1, z1 (inclusive cells), door (side after rotation), front: [[x, z], ...]} or null for an unknown piece
+export function buildingShape(lib, piece, x, z, r) {
+  const e = lib[piece];
+  if (!e) return null;
+  const a = toWorld(e.size, x, z, r, 0, 0), b = toWorld(e.size, x, z, r, e.size[0] - 1, e.size[2] - 1);
+  const out = { x0: Math.min(a[0], b[0]), z0: Math.min(a[1], b[1]), x1: Math.max(a[0], b[0]), z1: Math.max(a[1], b[1]), door: e.door, front: [] };
+  if (SIDES.includes(e.door) && e.doorSpan) {
+    const [lo, hi] = e.doorSpan, [sx, , sz] = e.size;
+    for (let i = lo; i <= hi; i++) {
+      const l = { north: [i, -1], south: [i, sz], west: [-1, i], east: [sx, i] }[e.door];
+      out.front.push(toWorld(e.size, x, z, r, l[0], l[1]));
+    }
+    out.door = SIDES[(SIDES.indexOf(e.door) + r / 90) % 4];
+  }
+  return out;
+}
+
+const buildingTool = {
+  down(state, x, z) {
+    let id = null;
+    commit((d) => {
+      const [px, pz] = snapPoint(d, x, z);
+      const o = Object.assign(base(d, 'building'), { piece: state.buildPiece, x: px, z: pz, rotation: state.buildRotation });
+      id = o.id;
+      d.objects.push(o);
+    });
+    select(id);
+  },
+  move() { notify(); }, // the map view draws the footprint under the cursor
+  up() {},
+  key(state, ev) {
+    if (ev.key === 'r' || ev.key === 'R') { state.buildRotation = (state.buildRotation + 90) % 360; notify(); return true; }
+    return false;
+  },
+};
+
 // ---------- select: pick, drag, delete ----------
 
 const SHAPE_KEY = { hill: 'outline', zone: 'outline', river: 'path', road: 'path' };
-const PICK_ORDER = ['spawn', 'point', 'note', 'road', 'river', 'hill', 'zone']; // top first
+const PICK_ORDER = ['spawn', 'point', 'note', 'building', 'road', 'river', 'hill', 'zone']; // top first
 
 function vertices(o) {
   const k = SHAPE_KEY[o.kind];
@@ -137,6 +183,10 @@ function hits(o, x, z, tol) {
     case 'spawn': return Math.hypot(x - o.x, z - o.z) <= Math.max(tol, 2);
     case 'point': return Math.hypot(x - o.x, z - o.z) <= Math.max(o.radius, tol);
     case 'note': return Math.hypot(x - o.x, z - o.z) <= Math.max(Math.min(o.radius, 8), tol);
+    case 'building': {
+      const s = buildingShape(LIB(), o.piece, o.x, o.z, o.rotation);
+      return !!s && x >= s.x0 && x < s.x1 + 1 && z >= s.z0 && z < s.z1 + 1;
+    }
     case 'road': case 'river': {
       const p = o.path, r = Math.max(o.width / 2, tol);
       for (let i = 0; i + 1 < p.length; i++) if (distSeg(x, z, p[i], p[i + 1]) <= r) return true;
@@ -168,7 +218,7 @@ function applyDrag(d, x, z) {
   const o = findObj(d, drag.id);
   if (!o) return;
   const orig = drag.orig;
-  if (orig.kind === 'point' || orig.kind === 'spawn' || orig.kind === 'note') {
+  if (orig.kind === 'point' || orig.kind === 'spawn' || orig.kind === 'note' || orig.kind === 'building') {
     [o.x, o.z] = snapPoint(d, x - drag.x0 + orig.x, z - drag.z0 + orig.z);
     return;
   }
@@ -194,7 +244,7 @@ const selectTool = {
       vertex = o ? vertexAt(o, x, z, tol) : -1;
     }
     if (!o) { drag = null; select(null); return; }
-    const single = o.kind === 'point' || o.kind === 'spawn' || o.kind === 'note';
+    const single = o.kind === 'point' || o.kind === 'spawn' || o.kind === 'note' || o.kind === 'building';
     drag = { id: o.id, vertex: single ? -1 : vertex, x0: x, z0: z, orig: JSON.parse(JSON.stringify(o)) };
     select(o.id);
   },
@@ -228,4 +278,5 @@ export const TOOLS = {
   spawn: spawnTool,
   select: selectTool,
   note: noteTool,
+  building: buildingTool,
 };

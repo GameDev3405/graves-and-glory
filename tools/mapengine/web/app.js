@@ -20,6 +20,9 @@ export const state = {
   pxPerBlock: 1,     // set by whichever view is showing
   mapCenter: null,   // [x, z] block under the middle of the map view, for the 3D view's start camera
   mapSpan: 0,        // blocks visible top to bottom in the map view
+  library: {},       // building library: piece id -> {size, footprint, door, doorSpan, group}
+  buildPiece: 'kit/house_a', // the piece the Building tool places
+  buildRotation: 0,  // and its rotation, clockwise; R turns it
 };
 
 const UNDO_LIMIT = 200;
@@ -311,7 +314,7 @@ window.addEventListener('keydown', (ev) => {
     return;
   }
   if (ev.key === 'Tab') { ev.preventDefault(); toggleView(); return; }
-  const digit = '1234567'.indexOf(ev.key);
+  const digit = '12345678'.indexOf(ev.key);
   if (digit >= 0 && !ev.altKey) { setTool(TOOL_ORDER[digit]); return; }
   if (TOOLS[state.tool].key(state, ev)) ev.preventDefault();
 });
@@ -321,6 +324,8 @@ window.addEventListener('keydown', (ev) => {
 async function boot() {
   initMap();
   initWalk();
+  const lib = await api.getLibrary();
+  if (lib.ok && lib.data) { state.library = lib.data; if (!lib.data[state.buildPiece]) state.buildPiece = Object.keys(lib.data)[0]; }
   initPanel();
   const rows = await listDesigns();
   const want = decodeURIComponent((location.hash || '').slice(1));
