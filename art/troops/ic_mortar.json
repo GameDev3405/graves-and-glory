@@ -1,0 +1,14 @@
+{
+ "troop": "ic_mortar",
+ "note": "Ironhold Mortar: hand-authored at 1 texel by art/hand/ic_mortar; this stub only registers the troop with build_skins.",
+ "rig": "biped",
+ "size": [
+  128,
+  128
+ ],
+ "density": 1,
+ "bones": {},
+ "skins": {
+  "1": "ic_mortar_s1.png"
+ }
+}
