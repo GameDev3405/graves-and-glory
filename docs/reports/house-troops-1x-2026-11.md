@@ -16,10 +16,11 @@ Team colour sits only on the cloth sheet (tabards, wraps, fin, headband, kilt, s
 ## Checks run
 - `build_skins` passes: 9 troops, 21 weapons, weapon frames max 126 quads (cap 128), one-piece and tint checks green (a hide tone in the boar spear's grip and a gap in the trident shaft were fixed on the way).
 - `tools/preflight.py`: clean. `Spec.java` untouched; CRLF-only diff to `sheets/preflight.json` reverted.
+- `verify.py fast --offline`: green (a later run overlapping another Gradle build failed `build` on resource files; that is a collision, not a code fault).
 - Turn sheets (5 views each: front, 3/4, side, back, rear 3/4): `hearthguard-turn.png` (violet), `tusk-turn.png` (teal), `tideguard-turn.png` (teal), `house-weapons-turn.png` (front, 3/4, side, back per weapon) in this folder.
 
 ## Not done / for Kort
 - Tier I only for all three (matches the other Ironclad builders). Tiers II and III remain, including Tideguard's stage 3 coral crown.
-- In-game check through the Gradle harness was not done: another Minecraft client was running, and `verify.py` deferred (see the final status in the session report).
+- In-game turn shots NOT obtained. `verify.py fast --offline` was green on my sequential run. The harness client (hh-2, JDK 21) crashed twice: first a path mangling fault from Git Bash, then a resource reload failure (`missing models/entity/supply_wagon.json` in the run copy, which is tracked in the repo) followed by a null `shaderProgram` NPE. Likely a build collision with another Gradle run clearing `build/resources`; not diagnosed further. Treat the art as unverified in game.
 - Art self-score: Hearthguard about 9, Tusk about 8 (head still reads small and dark; tusks thickened once), Tideguard about 8.5 (tabard low contrast against the teal legs, coral branches are small). Weapons about 8.5 for the axe and trident, 8.5 for the spear. Two correction rounds were used; the Tusk head and the Tideguard coral are the open items if Kort wants more.
 - Kort reviews the turn sheets before anything merges. Nothing is pushed or merged.
