@@ -136,12 +136,12 @@ final class WarTablePages {
      *  notice between the XP line and Claim, and the track under both, nine tiers shown, the labels at the page's edge, "no oaths"
      *  in two even lines under The Oath in place of "not sworn"; the letter and the chapter block 4 px under the rail. */
     static final int[] C_ROLL = {-29, -36}, C_SHEET = {-40, -36}, C_CLASS = {-62, -36}, C_CONTRACTS = {-55, -40}, C_FIELD = {-55, -36};
-    static final int[] C_CAMP = {-44, -36}, C_PARTY = {-76, -36}, C_ROOM = {-76, -36}, C_HERO = {-44, -2}, C_BLOCK = {-65, -10}, C_BLOCK_HEAD = {-59, -10};
+    static final int[] C_CAMP = {-44, -36}, C_PARTY = {-76, -36}, C_ROOM = {-76, -36}, C_HERO = {-44, -2}, C_BLOCK = {-65, -10}, C_BLOCK_HEAD = {-60, -10};
     static final int C_CAMP_W = 200, C_BANNER_NOTICE_Y = 396, C_BANNER_NOTICE_LINES = 4, C_CONTRACTS_NOTICE_Y = 436, C_FIELD_NOTICE_Y = 425;
     static final int C_FRIENDS_NOTICE_Y = 400, C_FRIENDS_NOTICE_CX = 406, C_FRIENDS_NOTICE_W = 340, C_CHAPTER_NOTICE_Y = 188;
     /** The compact Chapter's track, in compact page px: nine tiers from x 150, the rod at 276, the Roll at 300 and the Oath at 388
      *  (its foot 12 px above the page's), the labels at x 12; and the hero letter's title seal on the letter's top right. */
-    static final int C_SHOWN = 9, C_X0 = 149, C_ROD_Y = 276, C_TAG_Y = 274, C_ROLL_TOP = 300, C_OATH_TOP = 388, C_LABEL_X = 12, C_SEAL_DX = 350, C_SEAL_DY = 4;
+    static final int C_SHOWN = 9, C_X0 = 148, C_ROD_Y = 276, C_TAG_Y = 274, C_ROLL_TOP = 300, C_OATH_TOP = 388, C_LABEL_X = 12, C_SEAL_DX = 350, C_SEAL_DY = 4;
 
     static int[] col(int[] c) { return WarTable.column(c[0], c[1]); }
 
@@ -1576,7 +1576,7 @@ final class WarTablePages {
         block(g, col(C_BLOCK_HEAD)[0], b0[0], b0[1], tier, progression());
         gives(g, b0[0], b0[1]);
         int lx = tr.labelX();
-        g.drawText(font, "Tier", lx, tr.rodY() + 2, DarkUi.MUTED, false);
+        g.drawText(font, DarkUi.heading("Tier"), lx, tr.rodY() + 2, DarkUi.BRASS, false);
         g.drawText(font, DarkUi.heading("The Roll"), lx, tr.rollTop() + 28, DarkUi.BRASS, false);
         g.drawText(font, "for all", lx, tr.rollTop() + 44, DarkUi.MUTED, false);
         g.drawText(font, DarkUi.heading("The Oath"), lx, tr.oathTop() + 28, DarkUi.SEPIA_L, false);

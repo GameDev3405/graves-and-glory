@@ -130,7 +130,7 @@ final class LobbyChecks implements Phase1Checks.Suite, Phase1Checks.ServerWatch 
             }
             case 12->{
                 if(k<20)return;var w=c.getWindow();
-                boolean[] ok={false};String ch=chips(c,3,ok);
+                boolean[] ok={false};String ch=chips(c,3,ok);var nr=WarTableLobby.rects().get("note");boolean tabsIn=nr!=null;int tabsSeen=0;for(var e:WarTableLobby.rects().entrySet())if(e.getKey().startsWith("mode-")){tabsSeen++;var r=e.getValue();tabsIn&=nr!=null&&r[0]>=nr[0]+WarTableLobby.NPAD&&r[0]+r[2]<=nr[0]+WarTableLobby.NOTE_W-WarTableLobby.NPAD&&r[1]+r[3]<=nr[1]+nr[3];}ch+=", "+tabsSeen+" mode tabs inside the note: "+tabsIn;ok[0]&=tabsIn&&tabsSeen>=4;
                 report("p1-lobby-1440",w.getFramebufferWidth()==2560&&w.getFramebufferHeight()==1440&&ok[0]&&UiCanvas.width()*3<=2560&&UiCanvas.height()*3<=1440,"framebuffer "+w.getFramebufferWidth()+"x"+w.getFramebufferHeight()+", canvas "+UiCanvas.width()+"x"+UiCanvas.height()+", "+ch);
                 shot(c,"lobby-1440-guest");press(c,"ready");next();
             }
