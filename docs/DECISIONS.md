@@ -21,3 +21,51 @@ SLICE-1 scoping answers (Kort, 2026-10-28; partly superseded by the approval ent
 2026-10-28: Kort skipped the six-player baseline (Phase 0.6) with "skip the 6 player game" and directed work to continue on the roadmap. The earlier 2026-11-07 target is withdrawn; no date is held. Phase 0.1 to 0.5 are complete; 0.7 remains open. Phase 1.1 is green on `work/war-table-rebase`; Phase 1.4 (harness Narrator parity) is done and checked.
 
 2026-10-28: Kort approved docs/PLAN-TO-1.0.md and the seven Phase 0 decisions. (1) Slice battle map: Ironhold; Rivergate is the second map in Phase 4. (2) Map adoption: generated base plus edit overlay, with a full-snapshot fallback; the 2A.4 spike validates the mechanics but does not reopen the overlay-first approach. (3) AI build authority: agents may propose and apply plans in a locked region after a dry run; Kort approves the House, map or landmark before export; no region deletion, station change, spawn or capture-point move, or live-world overwrite without a backup and recorded undo. (4) Tier II and III: gear and trim progression on the same silhouette, plus a distinct helmet or weapon where designed; no full new silhouette per tier. (5) Campaign co-op: solo only in 1.0; co-op is post-1.0. (6) 1.0 distribution: Modrinth and Prism download plus the self-hosted server kit; no public matchmaking, accounts, moderation or paid service in 1.0. (7) Performance working targets: 60 fps on each six-player test machine, server MSPT p95 under 50 ms and map build under 60 seconds; confirm after the Phase 3 baseline. Also approved: the full-vision 1.0 scope and exclusions in section 0.2; the six-player network baseline runs before the War Table, House-model and animation merges; versioning is 0.5.x until the slice, 0.6.x for content-complete and 1.0.0 at release.
+
+2026-11-01 answers (Kort, through AskUserQuestion; applied and tested on `integration/candidate-2026-11-01`, then merged into main by Kort's Q12 approval):
+
+- **EULA (Q11):** accepted. Agents may write `eula.txt` (eula=true) in dev server run folders for bot-sim battles only. It is never committed.
+- **Map adoption (Q15):**
+  - `gg-mapforge-runs/1` and a first release bake are approved, and so is the settle rule.
+  - Ironhold spawns move to the signed D1a values, Dawn -314 and Dusk 128, with the barracks moved to match.
+- **Siege (Q13):**
+  - Kort chose a shorter clock as the first knob.
+  - Gate towers get stairs and bots climb them, so defender archers can man the towers.
+  - Sims put the clock at 180 s, giving a 30% attacker win rate (6/20). On 2026-11-01 Kort approved trying 200 s to centre it.
+- **Survival (Q14):**
+  - The draft values are approved.
+  - Allied bot banners count toward wave size.
+  - The next wave rises early after a clear.
+- **UI (Q16, Q18, Q19):**
+  - The mode block and the Battle/Troops/Chapter tabs are approved.
+  - A crowded Troops page pages at 10 rows instead of truncating.
+  - How-to lines are capped at two parts per side.
+  - The focus ring and disabled veil are fine.
+  - The banner key default is N.
+- **Audio (Q17):**
+  - Use synthesised cues first, falling back to permissively licensed and credited free sounds.
+  - Refusals play a deny cue.
+  - The doubled back click is dropped.
+- **QA (Q20):**
+  - A stopped or crashed match is void: no rewards, no losses, and armies return to camp.
+  - On disconnect, the army waits 60 s, then a bot takes command.
+  - `/warp` is ops only.
+- **Saves (Q21):**
+  - All writes are atomic.
+  - A bad file falls back to `.bak`, then to defaults, with a warning, and the bad file is kept as `.corrupt`.
+- **Package (Q22):**
+  - Keep minimum version ranges, plus a Fabric API floor (>=0.92.2).
+  - Excalibur gets this credit: "Excalibur resource pack by Maffhew, used with permission, unmodified", plus its licence.
+- **Animation (Q23):**
+  - There will be a third round including the art fixes.
+  - On 2026-11-01 Kort said "Show me first", so the round-3 merge waits until he has seen it.
+  - Kort wants a frame-by-frame editor so he can edit animations himself.
+- **Art (Q9):**
+  - Agents push every troop to grade 9, then Kort reviews.
+  - After four passes the grades were 8.5–8.7, and on 2026-11-01 Kort chose to review them now.
+- **Other answers:**
+  - Traits (Q2): B–F are decided after measurement A.
+  - Briefings for battles 2–6 are agent-drafted and Kort edits them.
+  - SLICE-02: agents propose 2–3 lobby and map looks.
+  - SLICE-03: agents propose bot quality targets for Kort's sign-off.
+- **Map engine:** Kort approved the design (`docs/superpowers/specs/2026-11-01-map-engine-design.md`, branch `docs/map-engine-design`) and chose subagent-driven building of slice 1.
