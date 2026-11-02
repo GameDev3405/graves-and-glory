@@ -100,6 +100,10 @@ public final class TroopMotion {
         Map<String,Clip> own=ClipLibrary.folder(rig,family);
         List<Spec.AttackVariantsRow> rows=Tactics.variants(family);int[] index=new int[rows.size()];List<Clip> attacks=new ArrayList<>();
         for(int i=0;i<rows.size();i++){Clip c=own.get(rows.get(i).id());if(c==null)index[i]=-1;else{index[i]=attacks.size();attacks.add(c);}}
+        // <id>_wall: the attack thrown from the wall or brace hold (Task 16), parallel to attacks; a row without one keeps its plain clip
+        List<Clip> wall=new ArrayList<>();boolean anyWall=false;
+        for(int i=0;i<rows.size();i++)if(index[i]>=0){Clip w=own.get(rows.get(i).id()+"_wall");anyWall|=w!=null;wall.add(w!=null?w:attacks.get(index[i]));}
+        if(!anyWall)wall.clear();
         Map<String,List<Clip>> hits=new HashMap<>();Map<String,List<Clip>> deaths=new HashMap<>();
         for(var e:all.entrySet()){
             String n=e.getKey();Matcher h=HIT.matcher(n);
@@ -107,7 +111,7 @@ public final class TroopMotion {
             else if(BLOCK.matcher(n).matches())hits.computeIfAbsent("block",k->new ArrayList<>()).add(e.getValue());
             else{String d=deathKey(n);if(d!=null)deaths.computeIfAbsent(d,k->new ArrayList<>()).add(e.getValue());}
         }
-        MotionEngine.Family fam=new MotionEngine.Family(family,stances,attacks,hits,deaths);
+        MotionEngine.Family fam=new MotionEngine.Family(family,stances,attacks,wall,hits,deaths);
         // each bone's own: the engine's per-bone reach, and any clip of the folders at the hit gain over the procedural bound (a scene or forced clip)
         Set<String> bones=new TreeSet<>(List.of("root","right_arm","left_arm"));for(Clip c:all.values())bones.addAll(c.bones());
         Map<String,double[]> px=new HashMap<>();
@@ -325,7 +329,7 @@ public final class TroopMotion {
         if(c!=null)c.add(seconds,p,1,new double[6]);
         apply(m,p);limits(m);
         Spec.TroopsRow row=row(m);Fam f=family(m);
-        boolean drawn=name.equals("bow_draw")||c!=null&&f!=null&&f.family().attacks().contains(c);
+        boolean drawn=name.equals("bow_draw")||c!=null&&f!=null&&(f.family().attacks().contains(c)||f.family().wallAttacks().contains(c));
         carries(m,bow(row),shield,drawn?1:0,bone->keys(c,bone));
         rootScale(m);
     }
@@ -359,7 +363,7 @@ public final class TroopMotion {
             List<Clip> clips=new ArrayList<>(f.all().values());
             for(List<Clip> l:fam.hitsMirror().values())clips.addAll(l);
             for(Clip c:clips){
-                boolean attack=fam.attacks().contains(c),death=deathKey(c.name())!=null;
+                boolean attack=fam.attacks().contains(c)||fam.wallAttacks().contains(c),death=deathKey(c.name())!=null;
                 boolean hit=!attack&&!death&&(HIT.matcher(c.name()).matches()||BLOCK.matcher(c.name()).matches()||c.name().endsWith("~m"));
                 double[] gains=death?new double[]{.9,1.1}:new double[]{attack?MotionEngine.ATTACK_GAIN:hit?MotionEngine.HIT_GAIN:1};
                 for(int i=0;i*.05<=c.length()+1e-9;i++)for(double g:gains)for(boolean sh:new boolean[]{false,true}){
@@ -374,6 +378,11 @@ public final class TroopMotion {
                 MotionInput.Attack at=new MotionInput.Attack(a,tick0);double sp=k==0?1.5:0,yr=k==0?0:720;
                 int frames=(int)Math.ceil(fam.attacks().get(a).length()/BOUNDS_SEED.tempo()/.05)+8;
                 drive(m,r,sh,frames,(i,now)->boundsIn(now,i*sp,sp,85,60,yr,"hold",0,false,true,false,0,at,null));
+            }
+            if(!fam.wallAttacks().isEmpty())for(int a=0;a<fam.wallAttacks().size();a++)for(String s:List.of("wall","brace"))for(boolean sh:new boolean[]{false,true}){
+                MotionInput.Attack at=new MotionInput.Attack(a,tick0);
+                int frames=(int)Math.ceil(fam.wallAttacks().get(a).length()/BOUNDS_SEED.tempo()/.05)+8;
+                drive(m,r,sh,frames,(i,now)->boundsIn(now,0,0,85,60,0,s,0,false,true,false,0,at,null));
             }
             for(String zone:List.of("head","body","legs"))for(float bearing:new float[]{0,90,180,-90}){
                 MotionInput.Hit h=new MotionInput.Hit("slash",zone,bearing,2,false,false,tick0);

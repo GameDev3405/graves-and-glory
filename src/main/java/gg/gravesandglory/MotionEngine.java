@@ -79,17 +79,26 @@ public final class MotionEngine {
      * corpse is the death clip's last key and nothing else.</li>
      * </ul>
      */
-    public record Family(String name, Map<String, Clip> stances, List<Clip> attacks, Map<String, List<Clip>> hits, Map<String, List<Clip>> deaths,
-                         Map<String, List<Clip>> hitsMirror, Map<String, double[]> vPeak) {
+    public record Family(String name, Map<String, Clip> stances, List<Clip> attacks, List<Clip> wallAttacks, Map<String, List<Clip>> hits,
+                         Map<String, List<Clip>> deaths, Map<String, List<Clip>> hitsMirror, Map<String, double[]> vPeak) {
         /** A family whose mirrored hits (R106) are built from its hits. */
         public Family(String name, Map<String, Clip> stances, List<Clip> attacks, Map<String, List<Clip>> hits, Map<String, List<Clip>> deaths) {
-            this(name, stances, attacks, hits, deaths, null, null);
+            this(name, stances, attacks, List.of(), hits, deaths, null, null);
+        }
+
+        /**
+         * A family with wall strikes (Task 16): wallAttacks.get(i) is attacks.get(i) as thrown from the cocked wall or brace
+         * hold, over the board; empty when the family has none.
+         */
+        public Family(String name, Map<String, Clip> stances, List<Clip> attacks, List<Clip> wallAttacks, Map<String, List<Clip>> hits,
+                      Map<String, List<Clip>> deaths) {
+            this(name, stances, attacks, wallAttacks, hits, deaths, null, null);
         }
 
         /** A family with its peak velocities (P1) sampled from its clips. */
         public Family(String name, Map<String, Clip> stances, List<Clip> attacks, Map<String, List<Clip>> hits, Map<String, List<Clip>> deaths,
                       Map<String, List<Clip>> hitsMirror) {
-            this(name, stances, attacks, hits, deaths, hitsMirror, null);
+            this(name, stances, attacks, List.of(), hits, deaths, hitsMirror, null);
         }
 
         /**
@@ -106,6 +115,9 @@ public final class MotionEngine {
             Objects.requireNonNull(name, "name");
             stances = Map.copyOf(stances);
             attacks = List.copyOf(attacks);
+            wallAttacks = wallAttacks == null ? List.of() : List.copyOf(wallAttacks);
+            if (!wallAttacks.isEmpty() && wallAttacks.size() != attacks.size())
+                throw new IllegalArgumentException("wallAttacks must parallel attacks: " + wallAttacks.size() + " vs " + attacks.size());
             Map<String, List<Clip>> h = new HashMap<>();
             for (var e : hits.entrySet()) h.put(e.getKey(), List.copyOf(e.getValue()));
             hits = Map.copyOf(h);
@@ -128,6 +140,7 @@ public final class MotionEngine {
                 Map<String, double[]> vp = new HashMap<>();
                 for (Clip c : stances.values()) peakInto(vp, c, 1);
                 for (Clip c : attacks) peakInto(vp, c, ATTACK_GAIN);
+                for (Clip c : wallAttacks) peakInto(vp, c, ATTACK_GAIN);
                 for (List<Clip> l : hits.values()) for (Clip c : l) peakInto(vp, c, HIT_GAIN);
                 for (List<Clip> l : hitsMirror.values()) for (Clip c : l) peakInto(vp, c, HIT_GAIN);
                 for (List<Clip> l : deaths.values()) for (Clip c : l) peakInto(vp, c, DEATH_STEP_GAIN);
@@ -346,7 +359,7 @@ public final class MotionEngine {
         f.sh = MotionMath.ease(w[W_SHUFFLE]); f.bp = MotionMath.ease(w[W_BACK]); f.tw = MotionMath.ease(w[W_TURN]);
         f.lw = MotionMath.ease(w[W_LIFE]); f.lookW = MotionMath.ease(w[W_LOOK]); f.plant = MotionMath.ease(w[W_PLANT]);
 
-        events(in, st, fam, f);
+        events(in, st, fam, f, stanceKey(stance, in.shieldUp(), f.enemy, moving, f.dead));
         boolean acting = !st.tracks.isEmpty() || !st.pulses.isEmpty();
         ramp(st, W_CALM, !moving && !f.enemy && !acting && !f.dead && w[W_TURN] == 0 ? 1 : 0, CALM_BLEND, f);
         f.calm = w[W_CALM];
@@ -416,13 +429,18 @@ public final class MotionEngine {
         }
     }
 
-    /** Starts attacks, hit reactions and deaths from this frame's input. A new event is one not equal to the last seen. */
-    static void events(MotionInput in, State st, Family fam, Frame f) {
+    /**
+     * Starts attacks, hit reactions and deaths from this frame's input. A new event is one not equal to the last seen. An attack
+     * started in the wall or brace hold (stanceKey, this frame's) plays the family's wall strike, thrown over the board from
+     * the cocked sword.
+     */
+    static void events(MotionInput in, State st, Family fam, Frame f, String stanceKey) {
         MotionInput.Attack attack = in.attack();
         if (attack != null && !attack.equals(st.attack)) {
             st.attack = attack;
             if (!f.dead && !fam.attacks().isEmpty()) {
-                Clip clip = fam.attacks().get(Math.floorMod(attack.variant(), fam.attacks().size()));
+                List<Clip> set = (stanceKey.equals("wall") || stanceKey.equals("brace")) && !fam.wallAttacks().isEmpty() ? fam.wallAttacks() : fam.attacks();
+                Clip clip = set.get(Math.floorMod(attack.variant(), set.size()));
                 var tr = new MotionStack.Track(st.ids++, ATTACK, clip, null, 0, f.seed.amp(), attack.startTick() / (double) Clip.TICKS, f.seed.tempo());
                 if (tr.time(f.now) < clip.length() - 0.05) MotionStack.begin(st, fam, tr, f);
             }
@@ -531,6 +549,7 @@ public final class MotionEngine {
         double[] stance = new double[6], action = new double[6], r = new double[6];
         for (Clip c : fam.stances().values()) max(stance, c.reach(), 1);
         for (Clip c : fam.attacks()) max(action, c.reach(), ATTACK_GAIN);
+        for (Clip c : fam.wallAttacks()) max(action, c.reach(), ATTACK_GAIN);
         for (List<Clip> l : fam.hits().values()) for (Clip c : l) max(action, c.reach(), HIT_GAIN);
         for (List<Clip> l : fam.deaths().values()) for (Clip c : l) max(action, c.reach(), DEATH_GAIN);
         for (int c = 0; c < 6; c++) r[c] = (c < 3 ? PROC_ROT : PROC_PX) + stance[c] + action[c];
@@ -546,6 +565,7 @@ public final class MotionEngine {
         double[] stance = new double[6], action = new double[6], r = new double[3];
         for (Clip c : fam.stances().values()) max(stance, c.reach(bone), 1);
         for (Clip c : fam.attacks()) max(action, c.reach(bone), ATTACK_GAIN);
+        for (Clip c : fam.wallAttacks()) max(action, c.reach(bone), ATTACK_GAIN);
         for (List<Clip> l : fam.hits().values()) for (Clip c : l) max(action, c.reach(bone), HIT_GAIN);
         for (List<Clip> l : fam.deaths().values()) for (Clip c : l) max(action, c.reach(bone), DEATH_GAIN);
         for (int c = 0; c < 3; c++) r[c] = proc + stance[3 + c] + action[3 + c];

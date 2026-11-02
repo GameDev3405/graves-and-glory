@@ -76,6 +76,7 @@ public final class MotionEngineCheck {
         run("ground velocity", MotionEngineCheck::groundVelocity);
         run("stance slip", () -> stanceSlip(rig));
         run("corpse ground", () -> corpseGround(rig));
+        run("wall strikes", MotionEngineCheck::wallStrikes);
         if (failed > 0) {
             System.out.println("MotionEngineCheck: " + failed + " checks FAILED");
             System.exit(1);
@@ -475,7 +476,42 @@ public final class MotionEngineCheck {
             else if (block.matcher(e.getKey()).matches()) hits.computeIfAbsent("block", k -> new ArrayList<>()).add(e.getValue());
             else { String d = MotionEngine.deathKey(e.getKey()); if (d != null) deaths.computeIfAbsent(d, k -> new ArrayList<>()).add(e.getValue()); }
         }
-        return new MotionEngine.Family("sword_shield", stances, attacks, hits, deaths);
+        List<Clip> wall = new ArrayList<>();
+        for (Clip a : attacks) wall.add(all.getOrDefault(a.name() + "_wall", a));
+        return new MotionEngine.Family("sword_shield", stances, attacks, wall, hits, deaths);
+    }
+
+    /**
+     * Task 16: an attack started in the wall or brace hold plays its row's _wall clip (thrown over the board from the cocked sword),
+     * one started in any other stance (or with a raised shield in brace, the shield stance) the plain clip; each wall clip keeps its
+     * row's impact tick.
+     */
+    static String wallStrikes() {
+        var fam = realSwordShield(new HashMap<>());
+        check(fam.wallAttacks().size() == 3, "three wall strikes: " + fam.wallAttacks().size());
+        int[] impacts = {7, 10, 8};
+        String[][] cases = {{"wall", "false", "_wall"}, {"brace", "false", "_wall"}, {"brace", "true", ""}, {"hold", "false", ""}, {"", "false", ""}};
+        for (int v = 0; v < 3; v++) {
+            check(fam.wallAttacks().get(v).name().equals(fam.attacks().get(v).name() + "_wall"), "wall strike " + v + " is " + fam.attacks().get(v).name() + "_wall");
+            check(fam.wallAttacks().get(v).impact() == impacts[v], fam.wallAttacks().get(v).name() + " impact " + fam.wallAttacks().get(v).impact());
+            for (String[] c : cases) {
+                Drive d = new Drive(MotionMath.seed(11, 7 + v));
+                d.stance = c[0]; d.shield = Boolean.parseBoolean(c[1]);
+                var st = new MotionEngine.State();
+                Pose out = new Pose();
+                MotionEngine.pose(d.in(), st, fam, out);
+                d.attack = new MotionInput.Attack(v, d.tick() + 1);
+                String seen = null;
+                for (int f = 0; f < 20 && seen == null; f++) {
+                    d.step(1 / 60.0);
+                    MotionEngine.pose(d.in(), st, fam, out);
+                    var playing = MotionEngine.playing(st, d.time);
+                    if (!playing.isEmpty()) seen = playing.get(playing.size() - 1).clip().name();
+                }
+                check((fam.attacks().get(v).name() + c[2]).equals(seen), "stance '" + c[0] + "' shield " + c[1] + " plays " + seen);
+            }
+        }
+        return "3 variants x " + cases.length + " stances";
     }
 
     /** One bone's 20 Hz step between two rows: rotation summed over its angles (wrapped), translation the largest channel. Independent of the engine. */

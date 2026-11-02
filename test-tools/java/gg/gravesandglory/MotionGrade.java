@@ -189,9 +189,9 @@ final class MotionGrade extends Phase2Checks.Stage {
         final JsonArray tip = new JsonArray(), rim = new JsonArray(); double stanceW = -1;
         Job(String clip, int angle, int settle) {
             this.clip = clip; this.angle = angle; this.settle = settle; cat = clipCat.get(clip); c = fam.all().get(clip); full = angle == 0 || angle == 90;
-            pre = cat.equals("stance") ? SERVER_STANCE.getOrDefault(clip, "hold") : "hold";
+            pre = cat.equals("stance") ? SERVER_STANCE.getOrDefault(clip, "hold") : clip.endsWith("_wall") ? "wall" : "hold";
             var f2 = fam.family(); int v = -1; String z = null; boolean blk = false; float br = 0; String kd = "slash"; int hi = 0, hn = 1;
-            if (cat.equals("attack")) for (int i = 0; i < fam.attackIndex().length; i++) { int k = fam.attackIndex()[i]; if (k >= 0 && k < f2.attacks().size() && f2.attacks().get(k) == c) { v = i; break; } }
+            if (cat.equals("attack")) for (int i = 0; i < fam.attackIndex().length; i++) { int k = fam.attackIndex()[i]; if (k >= 0 && k < f2.attacks().size() && (f2.attacks().get(k) == c || k < f2.wallAttacks().size() && f2.wallAttacks().get(k) == c)) { v = i; break; } }
             // Task 16 H1: the engine picks a seeded hit variant from the unit's hit count; primeHit sets the count so the job plays this clip
             if (cat.equals("hit")) for (var e : f2.hits().entrySet()) if (e.getValue().contains(c)) { z = e.getKey(); hi = e.getValue().indexOf(c); hn = e.getValue().size(); break; }
             if ("block".equals(z)) { z = "body"; blk = true; }
@@ -440,6 +440,7 @@ final class MotionGrade extends Phase2Checks.Stage {
     static String category(String n, Set<String> variants) {
         if (TroopMotion.STANCES.contains(n)) return "stance";
         if (variants.contains(n)) return "attack";
+        if (n.endsWith("_wall") && variants.contains(n.substring(0, n.length() - 5))) return "attack";
         if (n.matches("hit_(head|body|legs)(_\\d+)?") || n.matches("block(_\\d+)?")) return "hit";
         if (TroopMotion.deathKey(n) != null) return "death";
         return "scene";
@@ -447,7 +448,7 @@ final class MotionGrade extends Phase2Checks.Stage {
     static String stateOf(String n, String cat) {
         return switch (cat) {
             case "stance" -> "stance-" + n;
-            case "attack" -> "attack-" + n;
+            case "attack" -> n.endsWith("_wall") ? "wallstrike-" + n.substring(0, n.length() - 5) : "attack-" + n;
             case "hit" -> n.startsWith("block") ? "hit-block" : "hit-" + n.split("_")[1];
             case "death" -> { String d = TroopMotion.deathKey(n); int s = d.indexOf('/'); yield "death-" + (s < 0 ? (DIRS.contains(d) ? d : "front") : d.substring(s + 1)); }
             default -> "scene-" + n;
@@ -568,6 +569,8 @@ final class MotionGrade extends Phase2Checks.Stage {
         var f2 = fam.family();
         for (String s : TroopMotion.STANCES) if (f2.stances().containsKey(s)) { String k = keyOf(f2.stances().get(s)); states.add(new St("stance-" + s, "stance", k, SERVER_STANCE.get(s), s.equals("idle") ? "hold" : "", -1, null, false, 0, 20, fam.all().get(k).length())); }
         for (int i = 0; i < variants.size(); i++) if (i < fam.attackIndex().length && fam.attackIndex()[i] >= 0) { String id = keyOf(f2.attacks().get(fam.attackIndex()[i])); states.add(new St("attack-" + variants.get(i).id(), "attack", id, "hold", "hold", i, null, false, 0, keyTicks(id), fam.all().get(id).length())); }
+        // Task 16: the wall strikes, each thrown from the wall hold (stance packet wall), over the board
+        if (!f2.wallAttacks().isEmpty()) for (int i = 0; i < variants.size(); i++) if (i < fam.attackIndex().length && fam.attackIndex()[i] >= 0) { Clip w = f2.wallAttacks().get(fam.attackIndex()[i]); if (w == f2.attacks().get(fam.attackIndex()[i])) continue; String id = keyOf(w); states.add(new St("wallstrike-" + variants.get(i).id(), "attack", id, "wall", "wall", i, null, false, 0, keyTicks(id), fam.all().get(id).length())); }
         for (String z : List.of("head", "body", "legs", "block")) {
             var l = f2.hits().get(z); if (l == null || l.isEmpty()) continue;
             String clip = keyOf(l.get(0)); boolean blk = z.equals("block");
@@ -1185,7 +1188,7 @@ final class MotionGrade extends Phase2Checks.Stage {
         boolean family = u.isEmpty(); var f2 = fam.family();
         if (family) for (var e : fam.all().entrySet()) {
             Clip c = e.getValue(); double g = 1;
-            if (f2.attacks().contains(c)) g = MotionEngine.ATTACK_GAIN;
+            if (f2.attacks().contains(c) || f2.wallAttacks().contains(c)) g = MotionEngine.ATTACK_GAIN;
             for (var l : f2.hits().values()) if (l.contains(c)) g = MotionEngine.HIT_GAIN;
             for (var l : f2.hitsMirror().values()) if (l.contains(c)) g = MotionEngine.HIT_GAIN;
             for (var l : f2.deaths().values()) if (l.contains(c)) g = MotionEngine.DEATH_STEP_GAIN;
