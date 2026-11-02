@@ -63,7 +63,7 @@ if (project.hasProperty('duelSim')) {
  loom.runs.server.vmArg "-Dfabric.addMods=${file('build/localTestTools/local-integration-DO-NOT-SHIP.jar').absolutePath}"
  loom.runs.server.vmArg '-Dgravesandglory.localChecks=local-checks.txt'
  loom.runs.server.vmArg "-Dgravesandglory.duelSim=${project.property('duelSim')}"
- ['duelMap', 'duelShard', 'duelSeed', 'simFast', 'simOverride'].each { name ->
+ ['duelMap', 'duelShard', 'duelSeed', 'simFast', 'simOverride', 'scratchNoHurtCooldown', 'scratchTroopBypassArmor'].each { name ->
   if (project.hasProperty(name)) loom.runs.server.vmArg "-Dgravesandglory.${name}=${project.property(name)}"
  }
  tasks.named('runServer') { dependsOn localTestToolsJar }
