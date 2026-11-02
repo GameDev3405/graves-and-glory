@@ -1,3 +1,27 @@
 <!doctype html>
-<meta charset="utf-8"><title>Map engine</title>
-<p>Map engine editor placeholder.</p>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Map engine</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="app">
+  <header id="topbar"></header>
+  <div id="errbar" hidden></div>
+  <aside id="tools"></aside>
+  <main id="stage">
+    <canvas id="map"></canvas>
+    <!-- Task 7 mounts the walk view here (shown on Tab). -->
+    <div id="walk" hidden></div>
+    <div id="readout"></div>
+    <div id="notice" hidden></div>
+  </main>
+  <aside id="panel"></aside>
+  <section id="issues" hidden></section>
+  <section id="versions-pop" hidden></section>
+</div>
+<script type="module" src="app.js"></script>
+</body>
+</html>
