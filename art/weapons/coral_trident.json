@@ -1,0 +1,19 @@
+{
+ "weapon": "coral_trident",
+ "density": 1,
+ "thickness": 2,
+ "grip": {
+  "offset": [
+   0,
+   0,
+   0
+  ],
+  "rotation": [
+   0,
+   0,
+   0
+  ],
+  "note": "held upright like the sun staff"
+ },
+ "note": "The Tideguard's coral trident (Tidecallers), hand-authored at 1 texel a px: a bleached coral shaft, a bronze crossbar and three barbed prongs; held upright."
+}
