@@ -201,6 +201,7 @@ final class MotionStack {
         /** When a leaving track's weight reaches 0 (exact: its weight falls linearly from where it started to leave). */
         double gone = Double.POSITIVE_INFINITY;
         boolean leaving, fresh;
+        double anchor = Double.NaN;
         /** P1: a FROM track, the merged pose plus State.fromVel coasting to a stop over FROM_TD from start. */
         final boolean inertial;
 
@@ -297,6 +298,7 @@ final class MotionStack {
         for (int i = 0; i < count; i++) {
             Track tr = tracks.get(i);
             add(st, tr, t, e[i], out);
+            if (i == tracks.size() - 1 && !tr.leaving && !Double.isNaN(tr.anchor) && e[i] < 1 && t > tr.anchor) { double q = Math.min(1 - e[i], 1 - MotionMath.ease(Math.min(1, (t - tr.anchor) / MotionEngine.ATTACK_IN))), h = 1 / 60.0, tau = (tr.time(t) - tr.time(tr.anchor)) / h; add(st, tr, t, q, out); add(st, tr, tr.anchor, -q * (1 + tau), out); add(st, tr, tr.anchor - h, q * tau, out); }
             legs += e[i] * tr.legShare;
         }
         return legs;
@@ -344,6 +346,7 @@ final class MotionStack {
             add(st, tr, f.now, 1, mine);
             double scale = tr.gain * Math.max(1, tr.tempo);
             tr.fadeIn = Math.max(pops, velocityFade(fam.peak(), from, mine, tr.a, tr.mix(tr.time(f.now)), tr.b, scale, MotionEngine.INTERRUPT_MIN));
+            if (tr.kind == MotionEngine.ATTACK) { tr.anchor = f.now; tr.fadeIn = Math.max(tr.fadeIn, MotionEngine.ATTACK_IN); }
             tr.fresh = true;
         }
         st.tracks.add(tr);

@@ -60,6 +60,8 @@ public final class MotionEngine {
     static final double INTERRUPT_HEADROOM = 1.2;
     /** P1: the interrupt fade's shortest and longest (s), the stance cross-fade's shortest, and the FROM track's inertia time constant (s). */
     static final double INTERRUPT_MIN = 0.08, INTERRUPT_MAX = 0.6, STANCE_MIN = 0.2, FROM_TD = 0.08;
+    /** Round 4: an attack fades in over at least this (s), so its weight is still easing in, not at its steepest, when the windup turns. */
+    static final double ATTACK_IN = 0.25;
     /**
      * Fix 2: a stance cross-fade's largest second difference (degrees a tick squared, summed over bones' angles) and the longest
      * fade (s) that bound may ask for.
