@@ -5,7 +5,8 @@ import pathlib
 import tempfile
 
 FORMAT = 1
-KINDS = ('hill', 'river', 'road', 'point', 'spawn', 'zone', 'note')
+KINDS = ('hill', 'river', 'road', 'point', 'spawn', 'zone', 'note', 'building')
+ROTATIONS = (0, 90, 180, 270)  # clockwise, as Structures.place
 TEAMS = ('dawn', 'dusk')
 BY = ('kort', 'ai')
 STATES = ('accepted', 'proposed')
@@ -116,6 +117,15 @@ def validate(d):
                 out.append(f'{oid}: text must be 1 to {MAX_NOTE} characters')
         elif kind == 'zone' and o.get('palette') not in palettes:
             out.append(f'{oid}: palette must be one of {", ".join(sorted(palettes))}')
+        elif kind == 'building':
+            from mapengine import library  # late: library imports mapforge, design stays importable alone
+            if o.get('piece') not in library.load():
+                out.append(f"{oid}: piece must be a library id such as kit/house_a, not {o.get('piece')!r}")
+            if not _int(o.get('rotation')) or o.get('rotation') not in ROTATIONS:
+                out.append(f'{oid}: rotation must be 0, 90, 180 or 270')
+            x, z = o.get('x'), o.get('z')
+            if not (_int(x) and _int(z) and 0 <= x < w and 0 <= z < dp):
+                out.append(f'{oid}: x and z must be integers inside the canvas (0..{w} by 0..{dp})')
         if kind == 'spawn' and o.get('team') not in TEAMS:
             out.append(f'{oid}: team must be dawn or dusk')
         if kind in ('point', 'spawn', 'note'):

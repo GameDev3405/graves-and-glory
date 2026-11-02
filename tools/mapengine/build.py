@@ -9,15 +9,26 @@ import struct
 
 import numpy as np
 
+from mapengine import buildings
 from mapengine import design as dsn
 from mapengine.terrain import NO_WATER, heightfield
 from mapengine.walk import NONE, distances
 from mapforge import nbt
-from mapforge.structure import Structure
+from mapforge.structure import Structure, block_name
 
 TILE = 64
 FLOOR = -16  # lowest built layer, relative to baseY
 ROLES = ('deep', 'under', 'surface', 'bed', 'water', 'road')
+
+
+# Blocks the mod's read-back (EngineMaps phase 4) does not count as ground: air, barrier, sea lantern, fences, wool.
+_NOT_GROUND = {'minecraft:air', 'minecraft:cave_air', 'minecraft:void_air', 'minecraft:barrier', 'minecraft:sea_lantern',
+               'minecraft:water', 'minecraft:structure_void'}
+
+
+def ground_state(state):
+    n = block_name(state)
+    return n not in _NOT_GROUND and not n.endswith('_fence') and not n.endswith('_wool')
 
 
 class BuildError(Exception):
@@ -104,29 +115,43 @@ def build(d, out_dir):
     wet = f.water[f.water != NO_WATER]
     if wet.size:
         top = max(top, int(wet.max()))
+    states, lut = _states(f.zones)
+    stamps = buildings.stamps(d, f, states)
+    for _, _, ys, _ in stamps:
+        if ys.size:
+            top = max(top, int(ys.max()))
     top = max(top, FLOOR)
     H = top - FLOOR + 1
-    states, lut = _states(f.zones)
+    is_ground = np.array([ground_state(s) for s in states] + [False])  # index -1 (no block) is the last entry
+    is_water = np.array([block_name(s) == 'minecraft:water' for s in states] + [False])
+    solid = np.full((dp, w), NONE, dtype=np.int32)
+    water = solid.copy()
     tiles = []
     for z0 in range(0, dp, TILE):
         for x0 in range(0, w, TILE):
             nx, nz = min(TILE, w - x0), min(TILE, dp - z0)
+            arr = _tile(f, lut, x0, z0, nx, nz, H)
+            for xs, zs, ys, ids in stamps:  # design order: a later building overwrites an earlier one
+                m = (xs >= x0) & (xs < x0 + nx) & (zs >= z0) & (zs < z0 + nz) & (ys >= FLOOR)
+                arr[xs[m] - x0, zs[m] - z0, ys[m] - FLOOR] = ids[m]
+            for a, mask in ((solid, is_ground[arr]), (water, is_water[arr])):  # the mod's read-back rule
+                hit = mask.any(axis=2)
+                y = H - 1 - np.argmax(mask[:, :, ::-1], axis=2)
+                a[z0:z0 + nz, x0:x0 + nx] = np.where(hit, base + FLOOR + y, NONE).T
             rel = f'tiles/t_{x0}_{z0}.nbt'
-            _write_tile(out_dir / rel, _tile(f, lut, x0, z0, nx, nz, H), states, H)
+            _write_tile(out_dir / rel, arr, states, H)
             tiles.append({'file': rel, 'x': x0, 'z': z0, 'size': [nx, H, nz]})
 
     def stand(o):
         cx, cz = min(w - 1, int(math.floor(o['x']))), min(dp - 1, int(math.floor(o['z'])))
-        return base + max(int(f.height[cz, cx]), FLOOR) + 1
+        return int(solid[cz, cx]) + 1
 
     objs = d.get('objects', [])
     points = [{'name': o['name'], 'x': o['x'], 'y': stand(o), 'z': o['z'], 'radius': o['radius']}
               for o in objs if o['kind'] == 'point']
     spawns = [{'id': o['id'], 'team': o['team'], 'x': o['x'], 'y': stand(o), 'z': o['z']} for o in objs if o['kind'] == 'spawn']
-    ground = np.maximum(f.height.astype(np.int32), FLOOR)
-    wet = (f.water != NO_WATER) & (f.water.astype(np.int32) > ground)
-    solid = (base + ground).astype(np.int32)
-    water = np.where(wet, base + f.water.astype(np.int32), NONE).astype(np.int32)
+    placed = [{'id': o['id'], 'piece': o['piece'], 'x': o['x'], 'y': base + int(f.height[o['z'], o['x']]), 'z': o['z'],
+               'rotation': o['rotation'], 'box': list(buildings.box(o))} for o in buildings.of(d)]
     (out_dir / 'columns.bin').write_bytes(np.stack([solid, water]).astype('<i2').tobytes())
     routes = []
     for s in spawns:
@@ -139,7 +164,7 @@ def build(d, out_dir):
     roads = [{'id': o['id'], 'path': o['path'], 'width': o['width']} for o in objs if o['kind'] == 'road']
     manifest = {'format': 1, 'id': d['id'], 'width': w, 'depth': dp, 'origin': [-(w // 2), -(dp // 2)],
                 'baseY': base, 'floorY': base + FLOOR, 'columns': 'columns.bin', 'tiles': tiles, 'points': points,
-                'spawns': spawns, 'roads': roads, 'routes': routes,
+                'spawns': spawns, 'roads': roads, 'buildings': placed, 'routes': routes,
                 'design_sha256': hashlib.sha256(canonical_bytes(d)).hexdigest()}
     (out_dir / 'map.json').write_bytes(canonical_bytes(manifest))
     return manifest

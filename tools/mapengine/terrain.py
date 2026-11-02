@@ -179,4 +179,8 @@ def heightfield(d):
             zones.append(o['palette'])
         zone[z0:z0 + nz, x0:x0 + nx][_polygon_mask(o['outline'], x0, z0, nx, nz)] = zones.index(o['palette'])
 
+    if any(o.get('kind') == 'building' for o in objs):
+        from mapengine import buildings  # last: each footprint is levelled to the ground under its centre
+        buildings.pad(d, h, water)
+
     return Field(h, water, road, zone, zones)
