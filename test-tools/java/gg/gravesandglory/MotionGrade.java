@@ -601,6 +601,8 @@ final class MotionGrade extends Phase2Checks.Stage {
             trans.add(new Tr("shield-up-down", "hold", List.of(new Object[]{20, "raise", ""}, new Object[]{70, "lower", ""}), "shield up after f20 and down after f70 (the game's Tactics.shield on the server)"));
             trans.add(new Tr("hit-while-attacking", "hold", List.of(new Object[]{20, "attack", ""}, new Object[]{25, "hit", "body"}), "hit while attacking: attack after f20, a body hit after f25"));
             trans.add(new Tr("death-while-attacking", "hold", List.of(new Object[]{20, "attack", ""}, new Object[]{25, "kill", ""}), "death while attacking: attack after f20, a real kill after f25"));
+            // Task 16 r4 ruling: the same attack with nothing after it, the baseline the two above are measured against frame by frame
+            trans.add(new Tr(UNINTERRUPTED, "hold", java.util.Collections.singletonList(new Object[]{20, "attack", ""}), "the same attack uninterrupted: attack after f20, nothing after it (the baseline of the while-attacking steps)"));
         }
         if (PARTS.contains("hits")) for (String z : List.of("head", "body", "legs")) for (String d : DIRS) for (int w = 0; w < 3; w++)
             trans.add(new Tr("hs-" + z + "-" + d + "-" + w, "hold", java.util.Collections.singletonList(new Object[]{HS_EVENT, "hit", z + ":" + d + ":" + w}), "hit sweep: " + z + " zone, from the " + d + ", weight " + w + " (slash), fired after f" + HS_EVENT));
@@ -1182,6 +1184,30 @@ final class MotionGrade extends Phase2Checks.Stage {
         j.add("windows", w); if (largest != null) j.add("largestJump", largest);
         return j;
     }
+    static final String UNINTERRUPTED = "attack-uninterrupted";
+    /**
+     * Task 16 r4 ruling: a hit or death arriving mid-attack may move no faster than that attack played uninterrupted in game, with the
+     * same cloth, straps and foot IK, on the same troop. Each window of a *-while-attacking transition gets its largest step and second
+     * difference over the uninterrupted run's largest over the very same frames; above 1.0 it is flaggedVsUninterrupted. The authored
+     * ratios and the old flag stay beside it unchanged.
+     */
+    void againstUninterrupted() {
+        JsonObject u = null; for (var x : transJson) if (x.getAsJsonObject().get("name").getAsString().equals(UNINTERRUPTED)) u = x.getAsJsonObject().getAsJsonObject("delta");
+        if (u == null) return; JsonArray us = u.getAsJsonArray("sumDegPerTick"), ua = u.getAsJsonArray("secondDiffDegPerTick2");
+        for (var x : transJson) {
+            var j = x.getAsJsonObject(); if (!j.get("name").getAsString().endsWith("-while-attacking")) continue;
+            var d = j.getAsJsonObject("delta"); JsonArray ds = d.getAsJsonArray("sumDegPerTick"), da = d.getAsJsonArray("secondDiffDegPerTick2");
+            for (var w : d.getAsJsonArray("windows")) {
+                var o = w.getAsJsonObject(); String[] lh = o.get("window").getAsString().split("-"); int lo = Integer.parseInt(lh[0]), hi = Integer.parseInt(lh[1]);
+                double ms = 0, ma = 0, bs = 0, ba = 0;
+                for (int k = lo; k <= hi && k < ds.size() && k < us.size(); k++) { ms = Math.max(ms, ds.get(k).getAsDouble()); ma = Math.max(ma, da.get(k).getAsDouble()); bs = Math.max(bs, us.get(k).getAsDouble()); ba = Math.max(ba, ua.get(k).getAsDouble()); }
+                double sr = StepWindows.ratio(ms, bs), ar = StepWindows.ratio(ma, ba);
+                o.addProperty("uninterruptedPeakSumDegPerTick", r4(bs)); o.addProperty("uninterruptedPeakSecondDiff", r4(ba));
+                o.addProperty("stepRatioToUninterrupted", r4(sr)); o.addProperty("secondDiffRatioToUninterrupted", r4(ar));
+                o.addProperty("flaggedVsUninterrupted", sr > 1.0 || ar > 1.0);
+            }
+        }
+    }
     /** D3: a clip's own authored peaks at gain 1 (its poses as the model draws them, sampled every tick): {sum over bones, worst bone, second difference}. */
     final Map<String, double[]> authoredPeaks = new HashMap<>();
     double[] authoredPeaks(String key) {
@@ -1742,6 +1768,7 @@ final class MotionGrade extends Phase2Checks.Stage {
         m.add("timeline", tl);
         m.add("units", unitsJson); m.add("clips", clipsJson); m.add("states", statesJson); m.add("loco", locoJson); m.add("transitions", transJson); m.add("hitSweep", hitSweepJson); m.add("crowdDistances", crowdJson);
         double near = 1e9; for (var x : crowdJson) near = Math.min(near, x.getAsJsonObject().get("nearestFeetDist").getAsDouble()); if (near < 1e9) m.addProperty("crowdNearestDist", r4(near));
+        againstUninterrupted();
         var lj = new JsonObject(); for (var x : transJson) { var j = x.getAsJsonObject(); if (!sweep(j.get("name").getAsString()) && j.getAsJsonObject("delta").has("largestJump")) lj.add(j.get("name").getAsString(), j.getAsJsonObject("delta").get("largestJump")); }
         for (var x : locoJson) { var j = x.getAsJsonObject(); if (j.has("delta") && j.getAsJsonObject("delta").has("largestJump")) lj.add("loco-" + j.get("name").getAsString(), j.getAsJsonObject("delta").get("largestJump")); }
         m.add("largestJumpPerTransition", lj);

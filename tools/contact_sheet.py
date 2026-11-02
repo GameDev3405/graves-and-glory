@@ -144,17 +144,35 @@ def template(m, run_rel):
               "Ratio to authored is the 2nd difference over the authored peak's; step and worst bone over authored are the largest step and the worst bone",
               "over the authored peaks (sum over bones, single bone) of the clips the engine played in the window at their gains, else of the whole family",
               "at its largest gains (Task 16 P1). The authored peaks are the clips alone: the live sum also carries the cloth and the feet's IK.", "",
-              "| Transition | Event | Largest step, sum over bones (deg/tick) at frame | Worst bone (deg/tick) | Largest 2nd difference | Ratio to baseline p90 | Ratio to authored | Step / authored | Worst bone / authored | Authored reference | Flagged |",
-              "|---|---|---|---|---|---|---|---|---|---|---|"]
+              "| Transition | Event | Largest step, sum over bones (deg/tick) at frame | Worst bone (deg/tick) | Largest 2nd difference | Ratio to baseline p90 | Ratio to authored | Step / authored | Worst bone / authored | Authored reference | Flagged | Step / uninterrupted | 2nd diff / uninterrupted | Over uninterrupted (limit 1.0) |",
+              "|---|---|---|---|---|---|---|---|---|---|---|---|---|---|"]
 
         def ratio(v, key, fmt):
             return (fmt % v[key]) if v.get(key, -1) >= 0 else "n/a"
         for k, v in m["largestJumpPerTransition"].items():
-            L.append("| %s | %s | %.1f at f%03d (%s) | %s %.1f at f%03d | %.1f | %.1f | %s | %s | %s | %s | %s |" % (
+            L.append("| %s | %s | %.1f at f%03d (%s) | %s %.1f at f%03d | %.1f | %.1f | %s | %s | %s | %s | %s | %s | %s | %s |" % (
                 k, v["event"], v["largestStepDegPerTick"], v["largestStepFrame"], v.get("largestBoneThere", ""),
                 v.get("worstBone", "?"), v.get("worstBoneDegPerTick", 0), v.get("worstBoneFrame", 0), v["largestSecondDiff"], v["ratioToBaseline"],
                 ratio(v, "ratioToAuthored", "%.1f"), ratio(v, "stepRatioToAuthored", "%.2f"), ratio(v, "boneRatioToAuthored", "%.2f"),
-                v.get("authoredRef", "") or "none", "yes" if v["flagged"] else "no"))
+                v.get("authoredRef", "") or "none", "yes" if v["flagged"] else "no",
+                ratio(v, "stepRatioToUninterrupted", "%.2f"), ratio(v, "secondDiffRatioToUninterrupted", "%.2f"),
+                ("yes" if v["flaggedVsUninterrupted"] else "no") if "flaggedVsUninterrupted" in v else "n/a"))
+        L.append("")
+        L.append("Task 16 r4 ruling: a hit or death mid-attack is measured against the same attack played uninterrupted (attack-uninterrupted: same troop,"
+                 " same cloth, straps and foot IK), over the very same frames of each window; above 1.0 it is over. Every window of the while-attacking runs:")
+        L.append("")
+        L.append("| Transition | Event | Window | Largest step | Uninterrupted step | Step / uninterrupted | 2nd diff / uninterrupted | Step / authored | Over uninterrupted |")
+        L.append("|---|---|---|---|---|---|---|---|---|")
+        for t in m.get("transitions", []):
+            if not t["name"].endswith("-while-attacking") and t["name"] != "attack-uninterrupted":
+                continue
+            for v in t["delta"]["windows"]:
+                L.append("| %s | %s | %s | %.1f | %s | %s | %s | %s | %s |" % (
+                    t["name"], v["event"], v["window"], v["largestStepDegPerTick"],
+                    ("%.1f" % v["uninterruptedPeakSumDegPerTick"]) if "uninterruptedPeakSumDegPerTick" in v else ("baseline" if t["name"] == "attack-uninterrupted" else "n/a"),
+                    ratio(v, "stepRatioToUninterrupted", "%.2f"), ratio(v, "secondDiffRatioToUninterrupted", "%.2f"),
+                    ratio(v, "stepRatioToAuthored", "%.2f"),
+                    ("yes" if v["flaggedVsUninterrupted"] else "no") if "flaggedVsUninterrupted" in v else "n/a"))
         L.append("")
     if m.get("hitSweep"):
         cells = m["hitSweep"]
