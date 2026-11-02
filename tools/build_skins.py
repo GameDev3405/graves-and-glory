@@ -2951,15 +2951,17 @@ def box_face_rects(uv, size, faceuv=None):
                                        ('west', 'left'), ('south', 'back'))}
 
 
-def troop_project(cat, troop):
+def troop_project(cat, troop, dest=None):
     """Writes art/troops/<troop>.bbmodel from the troop json: one display group turned 180 about x (Blockbench's y is up,
     the rig's is down) around groups named for the rig bones and parts, with the skin cubes box UV on the troop sheet.
-    The rig's own coordinates, rotations and UVs are kept as they are, so the build reads the file back unchanged."""
+    The rig's own coordinates, rotations and UVs are kept as they are, so the build reads the file back unchanged.
+    With dest, writes there instead and does not refuse an existing art/troops file (tools/anim_edit.py's scratch copy)."""
     src = cat.troops.get(troop)
     if src is None:
         fail('%s: no art/troops/%s.json' % (troop, troop))
-    dest = cat.root / 'art/troops' / (troop + '.bbmodel')
-    if dest.is_file():
+    scratch = dest is not None
+    dest = Path(dest) if scratch else cat.root / 'art/troops' / (troop + '.bbmodel')
+    if dest.is_file() and not scratch:
         fail('%s: art/troops/%s.bbmodel already exists; it is the source of the troop\'s skin geometry now. Delete it '
              'first only if the json still holds that geometry, or the boxes move out of the build.' % (troop, troop))
     rig = cat.rigs.get(src.get('rig'))
