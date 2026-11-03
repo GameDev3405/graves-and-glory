@@ -66,6 +66,10 @@ try {
     $info.WorkingDirectory = $script:Root
     $info.UseShellExecute = $false
     $info.RedirectStandardInput = $true   # stdout and stderr stay on this console
+    # Process.Start builds its stdin writer from Console.InputEncoding and flushes that encoding's BOM at once,
+    # so the server read the BOM in front of the first command. Use a BOM-free encoding before starting java;
+    # it also decodes piped console input as UTF-8, so a leading BOM there is one char we strip below.
+    try { [Console]::InputEncoding = New-Object System.Text.UTF8Encoding($false) } catch { }
     $proc = [System.Diagnostics.Process]::Start($info)
     # Write to the raw stream with a BOM-free encoding: the default writer can prepend a BOM, so the server read "?stop".
     $stdin = New-Object System.IO.StreamWriter($proc.StandardInput.BaseStream, (New-Object System.Text.UTF8Encoding($false)))
@@ -73,8 +77,6 @@ try {
     Set-Content -LiteralPath $script:PidFile -Value $proc.Id -Encoding ascii
     Write-Kit "Started on port $port with ${MemoryGB}G heap. java pid $($proc.Id). Type stop here, or run .\stop.ps1, to shut down."
 
-    # Piped stdin can start with a UTF-8 BOM; read it as UTF-8 so a BOM arrives as one char we can strip.
-    try { [Console]::InputEncoding = New-Object System.Text.UTF8Encoding($false) } catch { }
     $reader = $null
     try { $reader = [Console]::In.ReadLineAsync() } catch { $reader = $null }
     $stopSent = $false
