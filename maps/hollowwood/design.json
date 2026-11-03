@@ -1,0 +1,108 @@
+{
+ "baseY": 64,
+ "depth": 500,
+ "format": 1,
+ "id": "hollowwood",
+ "name": "Hollowwood Reach",
+ "objects": [
+  {
+   "by": "kort",
+   "id": "spawn-dawn",
+   "kind": "spawn",
+   "state": "accepted",
+   "team": "dawn",
+   "x": 67,
+   "z": 250
+  },
+  {
+   "by": "kort",
+   "id": "spawn-dusk",
+   "kind": "spawn",
+   "state": "accepted",
+   "team": "dusk",
+   "x": 633,
+   "z": 250
+  },
+  {
+   "by": "kort",
+   "id": "point-logging-camp",
+   "kind": "point",
+   "name": "Logging Camp",
+   "radius": 17,
+   "state": "accepted",
+   "x": 304,
+   "z": 105
+  },
+  {
+   "by": "kort",
+   "id": "point-old-causeway",
+   "kind": "point",
+   "name": "Old Causeway",
+   "radius": 17,
+   "state": "accepted",
+   "x": 350,
+   "z": 250
+  },
+  {
+   "by": "kort",
+   "id": "point-moon-shrine",
+   "kind": "point",
+   "name": "Moon Shrine",
+   "radius": 17,
+   "state": "accepted",
+   "x": 396,
+   "z": 395
+  },
+  {
+   "by": "kort",
+   "id": "mode-survival_hollowwood_shrine",
+   "kind": "note",
+   "radius": 10,
+   "state": "accepted",
+   "text": "Survival: the shrine (shrine, stage 0); Survival: the court (base, stage 0) - starting position, Kort designs the rest",
+   "x": 426,
+   "z": 377
+  },
+  {
+   "by": "kort",
+   "id": "mode-survival_hollowwood_rise_chapel",
+   "kind": "note",
+   "radius": 4,
+   "state": "accepted",
+   "text": "Survival: the chapel (rise, stage 1) - starting position, Kort designs the rest",
+   "x": 420,
+   "z": 305
+  },
+  {
+   "by": "kort",
+   "id": "mode-survival_hollowwood_rise_ford",
+   "kind": "note",
+   "radius": 4,
+   "state": "accepted",
+   "text": "Survival: the ford (rise, stage 1) - starting position, Kort designs the rest",
+   "x": 367,
+   "z": 395
+  },
+  {
+   "by": "kort",
+   "id": "mode-survival_hollowwood_rise_wood",
+   "kind": "note",
+   "radius": 4,
+   "state": "accepted",
+   "text": "Survival: the deep wood (rise, stage 1) - starting position, Kort designs the rest",
+   "x": 500,
+   "z": 370
+  },
+  {
+   "by": "kort",
+   "id": "mode-survival_hollowwood_rise_track",
+   "kind": "note",
+   "radius": 4,
+   "state": "accepted",
+   "text": "Survival: the track (rise, stage 1) - starting position, Kort designs the rest",
+   "x": 430,
+   "z": 450
+  }
+ ],
+ "width": 700
+}

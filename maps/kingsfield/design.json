@@ -1,0 +1,78 @@
+{
+ "baseY": 64,
+ "depth": 500,
+ "format": 1,
+ "id": "kingsfield",
+ "name": "Kingsfield Crossroads",
+ "objects": [
+  {
+   "by": "kort",
+   "id": "spawn-dawn",
+   "kind": "spawn",
+   "state": "accepted",
+   "team": "dawn",
+   "x": 67,
+   "z": 250
+  },
+  {
+   "by": "kort",
+   "id": "spawn-dusk",
+   "kind": "spawn",
+   "state": "accepted",
+   "team": "dusk",
+   "x": 633,
+   "z": 250
+  },
+  {
+   "by": "kort",
+   "id": "point-north-ford",
+   "kind": "point",
+   "name": "North Ford",
+   "radius": 17,
+   "state": "accepted",
+   "x": 341,
+   "z": 90
+  },
+  {
+   "by": "kort",
+   "id": "point-kings-bridge",
+   "kind": "point",
+   "name": "Kings Bridge",
+   "radius": 17,
+   "state": "accepted",
+   "x": 350,
+   "z": 250
+  },
+  {
+   "by": "kort",
+   "id": "point-south-ford",
+   "kind": "point",
+   "name": "South Ford",
+   "radius": 17,
+   "state": "accepted",
+   "x": 359,
+   "z": 410
+  },
+  {
+   "by": "kort",
+   "id": "point-west-outpost",
+   "kind": "point",
+   "name": "West Outpost",
+   "radius": 17,
+   "state": "accepted",
+   "x": 220,
+   "z": 350
+  },
+  {
+   "by": "kort",
+   "id": "point-east-outpost",
+   "kind": "point",
+   "name": "East Outpost",
+   "radius": 17,
+   "state": "accepted",
+   "x": 480,
+   "z": 150
+  }
+ ],
+ "width": 700
+}

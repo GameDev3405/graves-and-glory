@@ -52,3 +52,19 @@ The AI brief lists the library, and the AI may only use those pieces. Buildings 
 
 - Designs: `maps/<id>/design.json`, with saved versions in `maps/<id>/versions/`.
 - Build output: `work/mapengine/<id>/`.
+
+## Your five maps
+
+One starting file per live map, each 700 by 500 (the arena box, |x| <= 350 and |z| <= 250; canvas x = world x + 350, canvas z = world z + 250): `maps/rivergate`, `maps/ironhold`, `maps/frostmarch`, `maps/hollowwood`, `maps/kingsfield`. Each holds only today's spawns (Dawn at world -283, 0 and Dusk at +283, 0) and today's Domination capture points, plus a note at each Siege (Ironhold), Convoy (Frostmarch) and Survival (Hollowwood) site. No terrain, rivers or buildings: you design those. Ironhold's spawns are the shipped ones, not the signed rebuild layout in `docs/MAP-STANDARDS.md` section 9.
+
+Start the editor, then open a map by its name in the address:
+
+    python tools/mapengine serve
+
+- Rivergate: http://127.0.0.1:8765/#rivergate
+- Ironhold: http://127.0.0.1:8765/#ironhold
+- Frostmarch: http://127.0.0.1:8765/#frostmarch
+- Hollowwood: http://127.0.0.1:8765/#hollowwood
+- Kingsfield: http://127.0.0.1:8765/#kingsfield
+
+Without the `#name` the editor opens the design saved last. To check one: `python tools/mapengine check <name>`.
