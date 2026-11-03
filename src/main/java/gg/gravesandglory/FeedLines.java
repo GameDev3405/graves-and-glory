@@ -27,7 +27,7 @@ public final class FeedLines {
     public static final int MAX_TEXT = 120;
 
     /** A battle mode's feed line (plan 2C.2): the modeLines row of this mode and event, each {name} field filled from `fields`
-     *  (name, value, name, value...). The copy is draft, in the sheet, not in the mode; Survival adds its rows and calls this the same
+     *  (name, value, name, value...). The copy is draft, in the sheet, not in the mode; Survival reads its rows through ModeMath the same
      *  way. A row that is missing, or a field the call leaves out, is a programming error and the exception names it. */
     public static String modeLine(String mode, String event, String... fields) {
         String text = modeRow(mode, event).text();

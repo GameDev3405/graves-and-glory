@@ -33,7 +33,7 @@ public final class FeedEvents {
     }
 
     /** A mode's event line (plan 2C.2): the modeLines row of this mode and event, its fields filled, to every player in the row's kind
-     *  (and so its glyph and ink) for the event's team. The mode classes say nothing of their own; Survival adds rows and calls this. */
+     *  (and so its glyph and ink) for the event's team. The mode classes say nothing of their own. */
     public static void mode(GravesAndGlory.Battle b, int team, String mode, String event, String... fields) {
         String text = FeedLines.modeLine(mode, event, fields), kind = FeedLines.modeKind(mode, event);
         for (ServerPlayerEntity p : b.server.getPlayerManager().getPlayerList()) send(p, kind, team, text);

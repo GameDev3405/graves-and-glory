@@ -70,19 +70,19 @@ public final class ModeMath {
     // ---- Survival, the waves at the shrine (Phase 4 spec 6) ----
     /** The rise warning's feed lines, one per site so each fits the 144 px Compact row: "Dead rise: the chapel"; "The dead rise" with no site. */
     public static List<String> riseLines(List<String> sites) {
-        if(sites.isEmpty())return List.of("The dead rise");
+        if(sites.isEmpty())return List.of(FeedLines.modeLine("survival","rise_unknown"));
         var out=new ArrayList<String>();
-        for(var s:sites)out.add("Dead rise: "+s);
+        for(var s:sites)out.add(FeedLines.modeLine("survival","rise","site",s));
         return out;
     }
-    /** A cleared wave's feed line: "Wave 3 at rest, +80 gold", or without gold "Wave 7 laid to rest". */
+    /** A cleared wave's feed line: "Wave 3 at rest, +80 gold", or without gold "Wave 7 laid to rest". The copy is the modeLines survival rows (rest, rest_plain). */
     public static String restLine(int wave,int gold) {
-        return gold>0?"Wave "+wave+" at rest, +"+gold+" gold":"Wave "+wave+" laid to rest";
+        return gold>0?FeedLines.modeLine("survival","rest","n",Integer.toString(wave),"gold",Integer.toString(gold)):FeedLines.modeLine("survival","rest_plain","n",Integer.toString(wave));
     }
-    /** The feed line as the dead begin to take the shrine. */
-    public static final String SHRINE_LINE="The dead take the shrine";
-    /** The round's closing feed lines: the defenders hold to dawn, or the dead hold the shrine. */
-    public static final String STANDS_LINE="The shrine stands till dawn", HOLD_LINE="The dead hold the shrine";
+    /** The feed line as the dead begin to take the shrine (modeLines survival shrine_falling). */
+    public static String shrineLine(){return FeedLines.modeLine("survival","shrine_falling");}
+    /** The round's closing feed line: the defenders hold to dawn, or the dead hold the shrine (modeLines survival stands, dead_hold). */
+    public static String closingLine(boolean defendersWon){return FeedLines.modeLine("survival",defendersWon?"stands":"dead_hold");}
     /**
      * The round's result after a second of Survival: 1 (the dead win) once they held the shrine lossSeconds with no defender on
      * it; else 0 (the defenders win) when the last wave (wave = waves, counted from 1) is cleared or its timer is out; else -1, play on.
