@@ -183,6 +183,8 @@ class Bot:
                         self.texts.append((time.time(), ov, s))
                 elif pid == 0x3C:  # synchronize player position
                     tid, _ = rvi(d, 8 * 3 + 4 * 2 + 1)
+                    if d[32] & 0x07 == 0:
+                        self.pos = struct.unpack(">ddd", d[:24])
                     self.send(0x00, vi(tid))
                 elif pid == 0x40:  # resource pack
                     pass
@@ -205,6 +207,13 @@ class Bot:
 
     def tactical(self, group, action, formation, x, z, yaw=0.0, target=-1):
         self.plugin("gravesandglory:tactical_v1", mstr(group) + mstr(action) + mstr(formation) + struct.pack(">ddfi", x, z, yaw, target))
+
+    def move(self, dx=0.0, dz=0.0):
+        """Reports standing at the last position the server set (plus an offset), as a client does every tick; the server only
+        updates the player's watched chunk section from such move packets."""
+        p = getattr(self, "pos", None)
+        if p is not None:
+            self.send(0x14, struct.pack(">ddd", p[0] + dx, p[1], p[2] + dz) + b"")
 
     def texts_since(self, t):
         with self.lock:

@@ -5,7 +5,7 @@ Backups live in <server>/backups/<world>/<yyyyMMdd-HHmmss>[-reason].zip with ent
 the same layout BuildMode writes, so a restore is the same for both. BuildMode's own prune only touches plain
 <stamp>.zip names, so suffixed files (-prestart, -live) are pruned here with the same rule.
 
-Commands: backup, prune, offsite, rotate-logs, stamp, health, preflight.
+Commands: backup, prune, offsite, rotate-logs, stamp, health, preflight, run-crashed.
 """
 import argparse
 import datetime as dt
@@ -424,6 +424,31 @@ def preflight(server_dir):
     return problems
 
 
+CRASH_MARKERS = ('Exception in server tick loop', 'Encountered an unexpected exception')
+
+
+def run_crashed(server_dir, since_epoch):
+    """Why the run that started at since_epoch counts as a crash, or None. Minecraft can exit 0 after a crash (2026-11-03: a
+    tick-loop NullPointerException, then a normal shutdown), so the supervisor checks this before it treats exit 0 as a deliberate
+    stop: a crash report written during the run, or a crash line in that run's logs/latest.log."""
+    server_dir = pathlib.Path(server_dir)
+    reports = server_dir / 'crash-reports'
+    if reports.is_dir():
+        new = sorted(f.name for f in reports.iterdir() if f.is_file() and f.stat().st_mtime >= since_epoch)
+        if new:
+            return 'new crash report: ' + ', '.join(new)
+    log = server_dir / 'logs' / 'latest.log'
+    try:
+        if log.stat().st_mtime >= since_epoch:
+            text = log.read_bytes().decode('utf-8', errors='replace')
+            for m in CRASH_MARKERS:
+                if m in text:
+                    return 'latest.log: ' + m
+    except OSError:
+        pass
+    return None
+
+
 # ---------- CLI ----------
 
 def main(argv=None):
@@ -444,6 +469,8 @@ def main(argv=None):
     p.add_argument('--world')
     sub.add_parser('health')
     sub.add_parser('preflight')
+    p = sub.add_parser('run-crashed', help='exit 1 if the run started at --since crashed (new crash report or crash line in latest.log), else 0')
+    p.add_argument('--since', type=float, required=True, metavar='UNIX_SECONDS')
     a = ap.parse_args(argv)
     sd = pathlib.Path(a.server_dir)
 
@@ -513,6 +540,10 @@ def main(argv=None):
         for p_ in probs:
             print(p_)
         return 3 if probs else 0
+    if a.cmd == 'run-crashed':
+        why = run_crashed(sd, a.since)
+        print(f'crashed: {why}' if why else 'no crash found')
+        return 1 if why else 0
     return 2
 
 

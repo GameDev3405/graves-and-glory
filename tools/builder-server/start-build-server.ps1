@@ -57,6 +57,7 @@ while ($true) {
 
     Write-Log "starting world: $world"
     $started = Get-Date
+    $startedEpoch = [DateTimeOffset]::UtcNow.ToUnixTimeSeconds() - 2   # run-crashed counts crash reports and a latest.log written from here on
     $p = Start-Process -FilePath $JavaExe -NoNewWindow -PassThru -ArgumentList @('-Xms1G', "-Xmx${MemoryGB}G", "-Dgg.build=all", '-jar', 'fabric-server-launch.jar', 'nogui')
     $null = $p.Handle   # keeps the process handle so ExitCode is readable after exit
     Set-Content -LiteralPath 'server.pid' -Value $p.Id -NoNewline
@@ -76,7 +77,12 @@ while ($true) {
     [void](Invoke-Ops @('offsite'))   # the mod writes a backup on stop; ship it
 
     Remove-Item -LiteralPath 'next-world.txt' -ErrorAction SilentlyContinue   # left by the old world-switching mod; no longer used
-    if ($code -eq 0) { Write-Log 'clean stop; supervisor ending.'; break }
+    # Minecraft can exit 0 after a crash (2026-11-03), so exit 0 is a clean stop only when the run left no crash report and no
+    # crash line in latest.log. run-crashed exits 1 for a crash; anything else (0, or 99 if the helper failed) keeps the old rule.
+    if ($code -eq 0) {
+        if ((Invoke-Ops @('run-crashed', '--since', "$startedEpoch")) -eq 1) { Write-Log 'exit 0, but the run crashed; restarting as after a crash' }
+        else { Write-Log 'clean stop; supervisor ending.'; break }
+    }
 
     if ($ranSeconds -ge $HealthyAfterSeconds) { $failures = 0; $backoff = $BackoffStartSeconds }
     $failures++

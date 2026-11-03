@@ -315,5 +315,55 @@ class Cli(unittest.TestCase):
             self.assertEqual(ops.main(['--server-dir', str(t), 'preflight']), 3)
 
 
+class CrashedRun(unittest.TestCase):
+    """Exit 0 after a crash (builder server, 2026-11-03) must still restart; a deliberate stop must still end the supervisor."""
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.t = pathlib.Path(self.tmp.name)
+        (self.t / 'logs').mkdir()
+        self.since = time.time() - 60
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def log(self, text, age=0):
+        f = self.t / 'logs' / 'latest.log'
+        f.write_text(text)
+        os.utime(f, (time.time() - age, time.time() - age))
+
+    def test_deliberate_stop_is_clean(self):
+        self.log('[12:00:00] [Server thread/INFO]: Stopping the server\n[12:00:01] [Server thread/INFO]: Saving worlds\n')
+        self.assertIsNone(ops.run_crashed(self.t, self.since))
+        self.assertEqual(ops.main(['--server-dir', str(self.t), 'run-crashed', '--since', str(self.since)]), 0)
+
+    def test_tick_loop_lines_count_as_a_crash(self):
+        for line in ('[16:08:12] [Server thread/ERROR]: Encountered an unexpected exception', '[16:08:12] [Server thread/ERROR]: Exception in server tick loop'):
+            self.log('[16:00:00] Done (3.3s)!\n' + line + '\njava.lang.NullPointerException\n[16:08:13] Stopping server\n')
+            self.assertIn('latest.log', ops.run_crashed(self.t, self.since))
+            self.assertEqual(ops.main(['--server-dir', str(self.t), 'run-crashed', '--since', str(self.since)]), 1)
+
+    def test_new_crash_report_counts_and_an_old_one_does_not(self):
+        self.log('clean\n')
+        reports = self.t / 'crash-reports'
+        reports.mkdir()
+        old = reports / 'crash-2026-11-01_10.00.00-server.txt'
+        old.write_text('old')
+        os.utime(old, (self.since - 3600, self.since - 3600))
+        self.assertIsNone(ops.run_crashed(self.t, self.since))
+        (reports / 'crash-2026-11-03_16.08.12-server.txt').write_text('new')
+        self.assertIn('crash-2026-11-03_16.08.12-server.txt', ops.run_crashed(self.t, self.since))
+
+    def test_a_previous_runs_log_is_ignored(self):
+        self.log('Exception in server tick loop' + chr(10), age=3600)   # latest.log not rewritten since the start: not this run's
+        self.assertIsNone(ops.run_crashed(self.t, self.since))
+
+    def test_supervisor_checks_before_ending_on_exit_0(self):
+        ps = (ROOT / 'tools' / 'builder-server' / 'start-build-server.ps1').read_text()
+        stop = ps.index("'clean stop; supervisor ending.'")
+        check = ps.index("Invoke-Ops @('run-crashed', '--since', \"$startedEpoch\")")
+        self.assertLess(check, stop)
+        self.assertLess(ps.index('$startedEpoch = '), ps.index('Start-Process'))
+
+
 if __name__ == '__main__':
     unittest.main()
