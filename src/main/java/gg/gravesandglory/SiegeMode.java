@@ -302,6 +302,7 @@ public final class SiegeMode extends BattleMode {
         } else if (hold(b, KEEP_X, KEEP_Z, KEEP_RADIUS, KEEP_SECONDS, true)) {
             stage = 3;
             keepSecond = second(b);
+            staged(b, "keep", keepSecond);
             b.scores[0] = stage;
             feed(b, "keep_taken", "team", attackers());
             b.campaign.finish(0); // the victory and defeat stings play from Campaign.finish
@@ -331,6 +332,7 @@ public final class SiegeMode extends BattleMode {
     void fall(GravesAndGlory.Battle b) {
         stage = 1;
         yardSecond = second(b);
+        staged(b, "yard", yardSecond);
         held = 0;
         b.scores[0] = stage;
         b.roundSeconds += STAGE_BONUS;
@@ -389,6 +391,7 @@ public final class SiegeMode extends BattleMode {
         target = null;
         stage = 2;
         gateSecond = second(b);
+        staged(b, "gate", gateSecond);
         held = 0;
         b.scores[0] = stage;
         b.roundSeconds += STAGE_BONUS;
@@ -421,6 +424,11 @@ public final class SiegeMode extends BattleMode {
     }
 
     /** The round second now. */
+    /** A stage fell: a March stage_by bonus hears it (the commander's side, Dawn, attacks). */
+    static void staged(GravesAndGlory.Battle b, String stage, int second) {
+        if (b.campaign.bonusTracker != null) b.campaign.bonusTracker.staged(stage, second);
+    }
+
     static int second(GravesAndGlory.Battle b) {
         return (int) ((b.time - b.roundStarted) / 20);
     }

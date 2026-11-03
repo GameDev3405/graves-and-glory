@@ -2874,6 +2874,7 @@
       "mode": "domination",
       "house": "gilded",
       "bonus": "b1_hold_all",
+      "allies": "none",
       "placeholder": "none"
     },
     {
@@ -2889,8 +2890,9 @@
       "reason": "The march cannot go north past a shut iron gate.",
       "mode": "siege",
       "house": "ironclad",
-      "bonus": "b2_lose10",
-      "placeholder": "difficulty,briefing,reason (draft text 2026-11-02 for Kort to edit, Q74)"
+      "bonus": "b2_gate_by",
+      "allies": "none",
+      "placeholder": "briefing,reason (draft text 2026-11-02 for Kort to edit, Q74)"
     },
     {
       "id": "march-3",
@@ -2906,7 +2908,8 @@
       "mode": "survival",
       "house": "graveborn",
       "bonus": "b3_lose8",
-      "placeholder": "difficulty,briefing,reason (draft text 2026-11-02 for Kort to edit, Q74)"
+      "allies": "none",
+      "placeholder": "briefing,reason (draft text 2026-11-02 for Kort to edit, Q74)"
     },
     {
       "id": "march-4",
@@ -2915,14 +2918,15 @@
       "name": "The Frozen Standard",
       "map": 2,
       "size": 3,
-      "difficulty": "normal",
+      "difficulty": "hard",
       "lessons": false,
       "briefing": "The Wildmoot hunt the pass and the wagon with our standard must cross it. Walk beside it and do not let it be stopped.",
       "reason": "Without its standard the march is only a crowd of armed men.",
       "mode": "convoy",
       "house": "wildmoot",
       "bonus": "b4_never_rolled",
-      "placeholder": "difficulty,briefing,reason (draft text 2026-11-02 for Kort to edit, Q74); Kort 2026-10-31: a convoy escort; mode and bonus set by the approved convoy spec"
+      "allies": "none",
+      "placeholder": "briefing,reason (draft text 2026-11-02 for Kort to edit, Q74); Kort 2026-10-31: a convoy escort; mode and bonus set by the approved convoy spec"
     },
     {
       "id": "march-5",
@@ -2931,14 +2935,15 @@
       "name": "The Five Crossings",
       "map": 4,
       "size": 3,
-      "difficulty": "normal",
+      "difficulty": "hard",
       "lessons": false,
       "briefing": "Tidecaller raiders have come up out of the water to take Kingsfield. Hold the fords and bridges, and strike where they are thin.",
       "reason": "Kingsfield is where every road meets, and the march needs them.",
       "mode": "domination",
       "house": "tidecallers",
       "bonus": "b5_hold_all",
-      "placeholder": "difficulty,briefing,reason (draft text 2026-11-02 for Kort to edit, Q74)"
+      "allies": "none",
+      "placeholder": "briefing,reason (draft text 2026-11-02 for Kort to edit, Q74)"
     },
     {
       "id": "march-6",
@@ -2947,14 +2952,15 @@
       "name": "The Last Watch",
       "map": 1,
       "size": 3,
-      "difficulty": "normal",
+      "difficulty": "hard",
       "lessons": false,
       "briefing": "The Hollow King has taken the keep at Ironhold. The Houses you met stand with you now. Break his gate and strike him down yourself.",
       "reason": "The king in the keep ends the march, or the march ends.",
       "mode": "siege",
       "house": "graveborn",
       "bonus": "b6_kill_hollowking",
-      "placeholder": "difficulty,mode,briefing,reason (draft text 2026-11-02 for Kort to edit, Q74); the plan says Siege, mixed; draft mix (Q8): plays plain Siege of Ironhold until Kort picks the mix"
+      "allies": "mix_gilded_ironclad_wildmoot_normal,mix_tidecallers_graveborn_normal",
+      "placeholder": "briefing,reason (draft text 2026-11-02 for Kort to edit, Q74); Kort 2026-11-02 (Q76, Q77): Siege with allied bot banners from all five Houses; hard, the top tier, with the allies one tier below so the enemy outclasses your side"
     }
   ],
   "bonusObjectives": [
@@ -2969,14 +2975,14 @@
       "placeholder": "gold (draft value)"
     },
     {
-      "id": "b2_lose10",
-      "kind": "lose_at_most",
-      "value": 10,
-      "target": "none",
+      "id": "b2_gate_by",
+      "kind": "stage_by",
+      "value": 360,
+      "target": "gate",
       "shards": 5,
       "gold": 40,
-      "text": "Lose no more than 10 troops.",
-      "placeholder": "none (note: Kort 2026-10-31: becomes 2A (stage_by 360 s, target gate, \"Break the gate inside six minutes.\") when battle 2 goes back to Siege.)"
+      "text": "Break the gate inside six minutes.",
+      "placeholder": "none (Kort 2026-11-02, Q78: option 2A now battle 2 is Siege)"
     },
     {
       "id": "b3_lose8",
@@ -8669,6 +8675,18 @@
       "house": "wildmoot",
       "difficulty": "hard",
       "slots": "wm_oldhorn,^,^,^,wm_hound,wm_hound,wm_hunter,wm_hunter,wm_stalker,wm_tusk,mage,^,knight,knight,knight,knight,archer,archer,sentinel,longbow"
+    },
+    {
+      "id": "mix_gilded_ironclad_wildmoot_normal",
+      "house": "gilded",
+      "difficulty": "normal",
+      "slots": "mage,^,knight,knight,knight,archer,sentinel,longbow,ic_mortar,^,ic_hearthguard,ic_hearthguard,ic_arbalist,ic_breaker,wm_hound,wm_hound,wm_hound,wm_hunter,wm_stalker,wm_tusk"
+    },
+    {
+      "id": "mix_tidecallers_graveborn_normal",
+      "house": "tidecallers",
+      "difficulty": "normal",
+      "slots": "tc_brute,^,tc_raider,tc_raider,tc_raider,tc_raider,tc_harpooner,tc_harpooner,tc_tideguard,tc_mist,hexer,^,revenant,revenant,revenant,revenant,bonebow,bonebow,reaper,stalker"
     }
   ],
   "troopNotes": [
