@@ -18,7 +18,8 @@ def verify():
         assert manifest==build_manifest(rows,entries,release)
         assert manifest['manifestType']=='minecraftModpack' and manifest['minecraft']['version']=='1.20.1'
         pairs=[(f['projectID'],f['fileID']) for f in manifest['files']]
-        assert len(pairs)==len(set(pairs))==len(rows) and all(f['required'] is True for f in manifest['files'])
+        listed,bundled_rows=split_rows(rows);bundled=check_bundled(bundled_rows,ROOT)
+        assert len(pairs)==len(set(pairs))==len(listed) and all(f['required'] is True for f in manifest['files'])
         assert pack.read('modlist.html').decode('utf8')==build_modlist(rows,entries)
         jar_name=f'overrides/mods/graves-and-glory-{release}.jar'
         validate_player_jar(io.BytesIO(pack.read(jar_name)),source_identity())
@@ -26,9 +27,10 @@ def verify():
         with zipfile.ZipFile(ROOT/'dist'/player['fileName']) as source:
             expected={'overrides/'+n for n in source.namelist() if n.startswith('docs/')}
             for n in expected:assert pack.read(n)==source.read(n[len('overrides/'):])
-        assert set(names)==expected|{jar_name,'manifest.json','modlist.html'}
+        for n,data in bundled.items():assert pack.read(n)==data
+        assert set(names)==expected|{jar_name,'manifest.json','modlist.html'}|set(bundled)
     result={'fileName':archive.name,'sha256':hashlib.sha256(archive.read_bytes()).hexdigest(),'bytes':archive.stat().st_size,
-            'listedFiles':len(rows),'status':'Archive integrity passed; real CurseForge import still required'}
+            'listedFiles':len(listed),'bundledFiles':len(bundled),'status':'Archive integrity passed; real CurseForge import still required'}
     (ROOT/'dist/curseforge-verification.json').write_text(json.dumps(result,indent=2)+'\n')
     print(json.dumps(result,indent=2))
 

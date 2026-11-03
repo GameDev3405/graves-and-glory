@@ -9,7 +9,8 @@ sys.path.insert(0, str(ROOT / 'tools'))
 from package_policy import excalibur_errors, package_policy_errors, pin_errors
 
 GRADLE = (ROOT / 'build.gradle').read_text(encoding='utf8')
-DEPS = json.loads((ROOT / 'dependencies/manifest.json').read_text(encoding='utf8'))
+# The real Excalibur pin is covered by test_excalibur_pin.py; here DEPS is everything else so the optional/required cases stay synthetic.
+DEPS = [d for d in json.loads((ROOT / 'dependencies/manifest.json').read_text(encoding='utf8')) if d['slug'] != 'excalibur']
 EXCALIBUR = {'slug': 'excalibur', 'title': 'Excalibur', 'version': '1.0', 'fileName': 'Excalibur.zip',
              'path': 'dependencies/resourcepacks/Excalibur.zip', 'licenseMetadata': {'id': 'CC-BY-NC-ND-3.0'}}
 

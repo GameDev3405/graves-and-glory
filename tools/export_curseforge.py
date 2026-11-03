@@ -13,7 +13,24 @@ import build_skins
 
 IDS_PATH='dependencies/curseforge-ids.json'
 
+def split_rows(rows):
+    """(listed, bundled): rows flagged curseforgeOverride have no resolvable CurseForge file ID and ship as overrides
+    (Excalibur, unmodified, by permission); every other row must be listed by ID."""
+    return [r for r in rows if not r.get('curseforgeOverride')],[r for r in rows if r.get('curseforgeOverride')]
+
+def check_bundled(rows,root):
+    """Read each bundled file and refuse unless its size and sha512 match the pin; return {zip path: bytes}."""
+    folder={'mod':'mods','shader':'shaderpacks','resourcepack':'resourcepacks'}
+    out={}
+    for row in rows:
+        data=(root/row['localPath']).read_bytes()
+        if hashlib.sha512(data).hexdigest()!=row['hashes']['sha512'] or len(data)!=row['fileSize']:
+            raise RuntimeError('Bundled file does not match its pin; refusing: '+row['slug'])
+        out['overrides/'+folder[row['kind']]+'/'+row['fileName']]=data
+    return out
+
 def load_ids(rows,ids):
+    rows=split_rows(rows)[0]
     """Return {slug: entry} for every locked dependency, or raise ValueError listing each unresolved or stale one."""
     entries=ids.get('entries',{});problems=[]
     for row in rows:
@@ -28,12 +45,14 @@ def load_ids(rows,ids):
     return {row['slug']:entries[row['slug']] for row in rows}
 
 def build_manifest(rows,entries,release):
+    rows=split_rows(rows)[0]
     return {'minecraft':{'version':MINECRAFT_VERSION,'modLoaders':[{'id':'fabric-'+FABRIC_LOADER,'primary':True}]},
             'manifestType':'minecraftModpack','manifestVersion':1,'name':'Graves and Glory','version':release,'author':'Kort',
             'files':[{'projectID':entries[r['slug']]['projectID'],'fileID':entries[r['slug']]['fileID'],'required':True} for r in rows],
             'overrides':'overrides'}
 
 def build_modlist(rows,entries):
+    bundled=split_rows(rows)[1];rows=split_rows(rows)[0]
     items=''.join('<li><a href="%s">%s</a></li>\n'%(html.escape(entries[r['slug']]['projectUrl'],quote=True),html.escape(entries[r['slug']]['name']))
                   for r in rows)
     return '<ul>\n'+items+'</ul>\n'
@@ -45,8 +64,9 @@ def export(argv=()):
     entries=load_ids(rows,json.loads((ROOT/IDS_PATH).read_text(encoding='utf8')))
     jar=ROOT/f'build/libs/graves-and-glory-{release}.jar'
     validate_player_jar(jar,source_identity())
-    for row in rows:
+    for row in split_rows(rows)[0]:
         if hashlib.sha512((ROOT/row['localPath']).read_bytes()).hexdigest()!=row['hashes']['sha512']:raise RuntimeError('Platform lock is stale: '+row['slug'])
+    bundled=check_bundled(split_rows(rows)[1],ROOT)
     manifest=json.loads((ROOT/'dist/package-manifest.json').read_text())
     archive=ROOT/'dist'/build_skins.release_archive(manifest,release,stopgap,'export_curseforge')
     if hashlib.sha256(archive.read_bytes()).hexdigest()!=manifest['sha256']:raise RuntimeError('Player archive hash mismatch')
@@ -55,12 +75,13 @@ def export(argv=()):
         pack.writestr('manifest.json',json.dumps(build_manifest(rows,entries,release),indent=2))
         pack.writestr('modlist.html',build_modlist(rows,entries))
         pack.write(jar,'overrides/mods/'+jar.name)
+        for name,data in bundled.items():pack.writestr(name,data)
         # Same overrides as the .mrpack: documentation and notices from the verified player archive. No third-party jars.
         with zipfile.ZipFile(archive) as source:
             for name in source.namelist():
                 if name.startswith('docs/'):pack.writestr('overrides/'+name,source.read(name))
     temp.replace(output)
-    print(json.dumps({'fileName':output.name,'sha256':hashlib.sha256(output.read_bytes()).hexdigest(),'listedFiles':len(rows),
+    print(json.dumps({'fileName':output.name,'sha256':hashlib.sha256(output.read_bytes()).hexdigest(),'listedFiles':len(split_rows(rows)[0]),'bundledFiles':len(bundled),
                       'status':'Prepared locally; CurseForge import and moderation remain pending'},indent=2))
 
 if __name__=='__main__':export(sys.argv[1:])

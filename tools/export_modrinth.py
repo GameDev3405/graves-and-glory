@@ -32,6 +32,17 @@ def validate_index(index):
         for side in ('client','server'):
             if file['env'][side] not in ('required','unsupported','optional'):raise ValueError('Invalid environment')
 
+def locked_files(rows,root):
+    """Index entries for every pinned file (mods, shaders, resource packs); refuse when a local file differs from its pin."""
+    files=[]
+    for row in rows:
+        data=(root/row['localPath']).read_bytes()
+        if hashlib.sha512(data).hexdigest()!=row['hashes']['sha512']:raise RuntimeError('Platform lock is stale: '+row['slug'])
+        folder={'mod':'mods','shader':'shaderpacks','resourcepack':'resourcepacks'}[row['kind']]
+        files.append({'path':folder+'/'+row['fileName'],'hashes':row['hashes'],
+                      'downloads':row['downloads'],'fileSize':len(data),'env':row['env']})
+    return files
+
 def export(argv=()):
     # The tier art gate first, as tools/package.py runs it (design 4.4; Task 9 review I2): refuse while a troop draws a stopgap
     # tier unless --allow-stopgap, which marks the .mrpack -stopgap and takes only the -stopgap player archive.
@@ -42,12 +53,7 @@ def export(argv=()):
     index={'formatVersion':1,'game':'minecraft','versionId':release,'name':'Graves and Glory',
            'summary':'Collect an army and command fantasy battles. Local release candidate.',
            'dependencies':{'minecraft':MINECRAFT_VERSION,'fabric-loader':FABRIC_LOADER},'files':[]}
-    for row in rows:
-        path=ROOT/row['localPath'];data=path.read_bytes()
-        if hashlib.sha512(data).hexdigest()!=row['hashes']['sha512']:raise RuntimeError('Platform lock is stale: '+row['slug'])
-        folder={'mod':'mods','shader':'shaderpacks','resourcepack':'resourcepacks'}[row['kind']]
-        index['files'].append({'path':folder+'/'+row['fileName'],'hashes':row['hashes'],
-                               'downloads':row['downloads'],'fileSize':len(data),'env':row['env']})
+    index['files']=locked_files(rows,ROOT)
     validate_index(index)
     manifest=json.loads((ROOT/'dist/package-manifest.json').read_text())
     archive=ROOT/'dist'/build_skins.release_archive(manifest,release,stopgap,'export_modrinth')
