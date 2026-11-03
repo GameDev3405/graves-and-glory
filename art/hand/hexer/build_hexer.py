@@ -6,7 +6,9 @@ grave-iron mantle sits on the shoulders with a lit candle stub on each (a tiny s
 hood with a brim shades a gilt death mask (eye slits, a nose ridge, a violet trim line). A team vestment hangs over the
 robe front and back; a violet cord girds the waist. Bone arms in bell sleeves; the right hand holds out a crook with a
 lit lantern at arm's length: the mark (weapon "none", the lantern is modelled into the hand; soul-light on the glow
-sheet). Tier I only. No flag on the back.
+sheet). Tier II (Gravecaller II): grave-iron plate over the mantle with a gorget, iron bell-sleeve cuffs and a girdle plate,
+piped in violet; the lantern (a weaponTiers part, one bone a tier) gets a bone crook and an iron cap. Tier III (Gravecaller III): black plate chased in funeral gilt, a gilt halo ring behind the hood, gilt cuffs
+and a pale stone on the mask's brow. No flag on the back.
 
   python build_hexer.py preview <dir> [side] | contact <png> [side] | stub
 """
@@ -16,10 +18,10 @@ sys.path.insert(0, os.path.join(HERE, "..", "common"))
 from handlib import *   # noqa: F401,F403
 from handlib import Troop
 import graveborn as GB
-from graveborn import VIOLET as V, BONE as BN, GIRON as GI, SOUL, ROT, GILT
+from graveborn import VIOLET as V, BONE as BN, GIRON as GI, SOUL, ROT, GILT, gb_plate, gb_spike, gb_gilt, gb_band
 import house_stub
 
-SKIN = (128, 64)
+SKIN = (128, 128)
 CLOTH = (128, 64)
 LEAN = 9        # degrees the body stoops forward; the arms stand back up, the head half way
 INK = hx("0a0809")
@@ -356,7 +358,7 @@ def cloth_painter(spec, side):
 def glow(bone, box):
     if bone.name == "death_mask": return mask_lit
     if bone.name in ("candle_r", "candle_l") and box.size == [1, 2, 1]: return flame_lit
-    if bone.name == "lantern" and box.size == [4, 4, 4]: return lantern_glass_lit
+    if bone.name in ("lantern", "lantern_t2", "lantern_t3") and box.size == [4, 4, 4]: return lantern_glass_lit
     return None
 
 # ---- assembling ----
@@ -400,20 +402,65 @@ def bones():
     B.append(Bone("vestment_back", "root", (0, 12, 3.4), rot=(4, 0, 0), team=True,
                   boxes=[Box((-2.5, 0, -0.5), (5, 11, 1), ("lo", True), sheet="cloth")]))
     # the lantern: an iron crook off the right hand, the lantern hung from its end
-    B.append(Bone("lantern", "right_hand", tag="weapon", rot=(-32, 0, 0), boxes=[
+    B.append(Bone("lantern", "right_hand", tag="weapon", weapon_tiers=[1], rot=(-32, 0, 0), boxes=[
         Box((-0.5, -1, -6), (1, 1, 7), iron),                                     # the crook, 7 px forward
         Box((-0.5, 0, -6), (1, 2, 1), iron),                                      # the chain
         Box((-2, 2, -7.5), (4, 1, 4), lantern_cap),                                 # the cap
         Box((-2, 3, -7.5), (4, 4, 4), lantern_glass),                               # the lit glass, 4 px
         Box((-2, 7, -7.5), (4, 1, 4), lantern_base)]))                              # the base: 6 px in all
+    # the lantern's tiers (weaponTiers parts, one bone a tier; the same 6 px lantern): tier II a bone crook, the cap and
+    # base salvaged iron piped in violet, a bone drop under the base; tier III black plate chased in gilt, a violet-bound bone
+    # crook, a gilt chain and a gilt drop under the base
+    B.append(Bone("lantern_t2", "right_hand", tag="weapon", weapon_tiers=[2], rot=(-32, 0, 0), boxes=[
+        Box((-0.5, -1, -6), (1, 1, 7), gb_spike(BN, 3, 4)),
+        Box((-0.5, 0, -6), (1, 2, 1), iron),
+        Box((-2, 2, -7.5), (4, 1, 4), gb_plate(2, "hlc")),
+        Box((-2, 3, -7.5), (4, 4, 4), lantern_glass),
+        Box((-2, 7, -7.5), (4, 1, 4), gb_plate(2, "hlb")),
+        Box((-0.5, 8, -6), (1, 1, 1), gb_spike(BN, 3, 4))]))
+    B.append(Bone("lantern_t3", "right_hand", tag="weapon", weapon_tiers=[3], rot=(-32, 0, 0), boxes=[
+        Box((-0.5, -1, -6), (1, 1, 7), gb_spike(BN, 3, 4)),
+        Box((-0.7, -1.2, -3), (1.4, 1.4, 1.4), gb_band(V, 1, GILT)),
+        Box((-0.5, 0, -6), (1, 2, 1), gb_gilt("hlch")),
+        Box((-2, 2, -7.5), (4, 1, 4), gb_plate(3, "hlc3")),
+        Box((-2, 3, -7.5), (4, 4, 4), lantern_glass),
+        Box((-2, 7, -7.5), (4, 1, 4), gb_plate(3, "hlb3")),
+        Box((-0.5, 8, -6), (1, 1, 1), gb_gilt("hlfn"))]))
+    # tier II: salvaged grave-iron plate over the mantle, piped in violet
+    P2 = lambda seed, worn=0.12: per_tier(lambda t: gb_plate(t, seed, worn), (2, 3))
+    TN = per_tier(lambda t: gb_spike(GI, 3, 3), (2, 3))
+    B.append(Bone("plate_gorget", "body", stages=[2, 3], boxes=[Box((-4.5, -13, -3), (9, 3, 6), P2("gg"), dil=0.55)]))
+    for side, sx in (("right", -1), ("left", 1)):
+        B.append(Bone(f"{side}_pauldron", "body", (sx * 6.8, -11.5, 0), rot=(0, 0, sx * 14), stages=[2, 3], boxes=[
+            Box((-2.5, -1.4, -3), (5, 3, 6), P2("pd" + side), dil=0.5),
+            Box((-0.5, -5.4, -0.5), (1, 4, 1), TN)]))
+        B.append(Bone(f"{side}_cuff", f"{side}_arm", stages=[2, 3], boxes=[Box((-2.5, 4.3, -2.5), (5, 2.4, 5), P2("cf" + side, 0.15), dil=0.35)]))
+    B.append(Bone("girdle_plate", "body", stages=[2, 3], boxes=[Box((-3, -5, -2.7), (6, 3, 0.8), P2("gp"), dil=0.55)]))
+    # tier III: a gilt halo ring behind the hood, a pale stone on the mask's brow
+    def halo(face, w, h):
+        g = gb_gilt("hl")(face, w, h)
+        if face in ("front", "back"):
+            cx, cy = (w - 1) / 2, (h - 1) / 2
+            for y in range(h):
+                for x in range(w):
+                    d = ((x - cx) ** 2 + (y - cy) ** 2) ** 0.5
+                    if d < w / 2 - 2.6 or d > w / 2 - 0.2: g[y][x] = None
+        else:                                   # the rim: only where the ring touches the edge, no square frame
+            for y in range(len(g)):
+                for x in range(len(g[0])):
+                    if not (4 <= (x if face in ("top", "bottom") else y) <= 9): g[y][x] = None
+        return g
+    B.append(Bone("halo", "head", (0, -8, 5.6), rot=(0, 0, 0), stages=[3], boxes=[Box((-7, -7, 0), (14, 14, 1), halo)]))
+    B.append(Bone("mask_stone", "head", stages=[3], boxes=[Box((-0.5, -7.4, -5.7), (1, 1, 0.5), lambda f, w, h: [[SOUL[2]]])]))
+    B.append(Bone("gilt_gorget", "body", stages=[3], boxes=[Box((-3.2, -13.3, -3.4), (6.4, 1.2, 0.6), gb_gilt("gg2"), dil=0.1)]))
     return B
 
 NOTE = ("Graveborn Gravecaller (unit identity, Graveborn): a hunched caster in a three-tiered burial robe to the ground hemmed "
         "in violet, a grave-iron mantle with candle stubs, a deep drooping hood over a gilt death mask, a team vestment, bare "
-        "bone arms in bell sleeves and a lit soul-light lantern held out on a crook. Tier I only; no flag on the back.")
+        "bone arms in bell sleeves and a lit soul-light lantern held out on a crook. Tier II iron plate and a bone-crooked iron lantern, tier III black gilt plate, a gilt halo and a gilt-chased lantern; no flag on the back.")
 
 HEXER = Troop("hexer", SKIN, CLOTH, bones, cloth_painter,
-              {"weapon": "none", "hand": "right", "idleArms": "hang", "portrait": "standard"}, tiers=(1,), glow=glow)
+              {"weapon": "none", "hand": "right", "idleArms": "hang", "portrait": "standard"}, glow=glow)
 def build(): return HEXER.build()
 def outputs(): return HEXER.outputs()
 

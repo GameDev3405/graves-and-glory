@@ -1,0 +1,19 @@
+{
+ "weapon": "scythe_t3",
+ "density": 1,
+ "thickness": 2,
+ "grip": {
+  "offset": [
+   0,
+   0,
+   0
+  ],
+  "rotation": [
+   0,
+   0,
+   0
+  ],
+  "note": "held upright like the sun staff"
+ },
+ "note": "The Grave Reaper's scythe, tier III (Graveborn): tier II with the collar and the blade spine in funeral gilt; same cubes, hand-authored at 1 texel a px, held upright."
+}

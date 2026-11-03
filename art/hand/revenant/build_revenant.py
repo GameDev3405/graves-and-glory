@@ -5,7 +5,12 @@ A shambling dead man in what the grave left him: stooped (the torso leans 15 deg
 grey-green face with sunk soul-lit eyes and a slack jaw hanging open, a rust-eaten hauberk torn open over bare ribs, a ragged
 mail skirt in flaring strips, one great torn pauldron with a snapped bone shard, and over it all a shredded team tabard hanging
 in strips (the mark: the stoop under the shredded tabard). Violet cord binds the brow, waist, wrists and ankles. He carries the
-notched sword (art/hand/weapons/build_gb_notched_sword.py) in the right hand. Tier I only. No back flag.
+notched sword (art/hand/weapons/build_gb_notched_sword.py) in the right hand. No back flag.
+
+Tier I is the Risen. Tier II (Revenant) wears salvaged grave-iron over the rags: a plate gorget, a plate over the right
+epaulet, vambraces, tassets, knee cops and a heavy brow plate, all piped in violet. Tier III (Grave Knight) goes to black
+plate chased in funeral gilt, with a slitted rusted visor over the face, a ridge along the coif, spiked pauldrons and a team
+half-cape hanging from the left shoulder.
 
   python build_revenant.py preview <dir> [side] | contact <png> [side] [all] | stub
 """
@@ -14,7 +19,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(HERE, "..", "common"))
 from handlib import *   # noqa: F401,F403
 import house_stub
-from graveborn import GSKIN, RUST, MOSS, BONE, ROT, GIRON, VIOLET, SOUL
+from graveborn import GSKIN, RUST, MOSS, BONE, ROT, GIRON, VIOLET, SOUL, GILT, gb_plate, gb_spike, gb_band, gb_gilt
 
 SKIN = (128, 128)
 CLOTH = (128, 64)
@@ -144,6 +149,18 @@ def glow_fn(bone, box):
             return g
         return p
     return None
+
+
+def visor():
+    """The rusted visor: a plate over the lower face with vertical breathing slits, rust at its rim, the eyes left open above."""
+    base = gb_plate(3, "vi", 0.2)
+    def paint(face, w, h):
+        g = base(face, w, h)
+        if face == "front":
+            for y in range(1, h):
+                for x in range(1, w - 1, 2): g[y][x] = GIRON[0]
+        return g
+    return paint
 
 # ---- body ----
 def torso():
@@ -353,14 +370,57 @@ def bones():
     for i, (x0, w, ln, rx) in enumerate([(-3, 2, 9, 7), (0, 2, 12, 5), (-1, 1, 6, 8)]):
         B.append(Bone(f"tabard_b{i}", "body", (0, -7, 0), team=True, rot=(rx, 0, 0), boxes=[
             Box((x0, 0, 3.0 + 0.1 * i), (w, ln, 0), ("t", "b%d" % i, i + 2), sheet="cloth")]))
+    # tier II, the Revenant: salvaged grave-iron plate over the rags, piped in violet
+    B.append(Bone("plate_gorget", "body", stages=[2, 3], boxes=[Box((-4.5, -13, -2.7), (9, 3, 5.4), per_tier(gb_plate, (2, 3)), dil=0.1)]))
+    B.append(Bone("brow_plate", "head", stages=[2, 3], boxes=[Box((-4, -6.6, -4.9), (8, 1.4, 1), per_tier(gb_plate, (2, 3)), dil=0.1)]))
+    B.append(Bone("right_plate", "right_arm", (-1, -2.5, 0), rot=(0, 0, 8), stages=[2, 3], boxes=[
+        Box((-2.5, -2.4, -2.5), (5, 2, 5), per_tier(lambda t: gb_plate(t, "rpl"), (2, 3)), dil=0.35),
+        Box((-0.5, -5.4, -0.5), (1, 3, 1), per_tier(lambda t: gb_spike(GIRON, 3, 3), (2, 3)))]))
+    for side, ox in (("right", -2.5), ("left", -0.5)):
+        B.append(Bone(f"{side}_vambrace", f"{side}_arm", stages=[2, 3], boxes=[
+            Box((ox - 0.5, 3, -2), (5, 3, 4), per_tier(lambda t, s=side: gb_plate(t, "vb" + s, 0.18), (2, 3)), dil=0.35)]))
+        B.append(Bone(f"{side}_knee_cop", f"{side}_leg", stages=[2, 3], boxes=[
+            Box((-2, 4.4, -3.4), (4, 3, 1.5), per_tier(lambda t, s=side: gb_plate(t, "kc" + s), (2, 3)), dil=0.1)]))
+    B.append(Bone("tasset_r", "body", (-4.5, -2, 0), rot=(0, 0, 6), stages=[2, 3], boxes=[
+        Box((-1.6, 0, -2.4), (1, 6, 4.8), per_tier(lambda t: gb_plate(t, "tr"), (2, 3)), dil=0.1)]))
+    B.append(Bone("tasset_l", "body", (4.5, -2, 0), rot=(0, 0, -6), stages=[2, 3], boxes=[
+        Box((0.6, 0, -2.4), (1, 7, 4.8), per_tier(lambda t: gb_plate(t, "tl"), (2, 3)), dil=0.1)]))
+    # pushed further so each tier reads at game distance: a breastplate round the ribs, a violet belt, cuisses, cheek guards,
+    # a crest fin and a spiked cap on each pauldron; tier III adds gilt collar, buckle and rim bands
+    P2 = lambda seed, worn=0.12: per_tier(lambda t: gb_plate(t, seed, worn), (2, 3))
+    B.append(Bone("breast_l", "body", stages=[2, 3], boxes=[Box((-4, -10.5, -2.4), (3.3, 6, 0.8), P2("bl"), dil=0.25)]))
+    B.append(Bone("breast_r", "body", stages=[2, 3], boxes=[Box((0.7, -10.5, -2.4), (3.3, 6, 0.8), P2("br"), dil=0.25)]))
+    B.append(Bone("plate_belt", "body", stages=[2, 3], boxes=[Box((-4, -4.4, -2.3), (8, 1.4, 4.6), gb_band(VIOLET, 2), dil=0.3)]))
+    B.append(Bone("crest_fin", "head", stages=[2, 3], boxes=[Box((-0.5, -10.6, -3.5), (1, 3, 7), P2("cf"), dil=0.05)]))
+    for side, ox in (("r", -5.2), ("l", 4.2)):
+        B.append(Bone(f"cheek_{side}", "head", stages=[2, 3], boxes=[Box((ox, -5.2, -3.2), (1, 3.4, 5), P2("ck" + side), dil=0.15)]))
+    for side in ("right", "left"):
+        B.append(Bone(f"{side}_cuisse", f"{side}_leg", stages=[2, 3], boxes=[Box((-2, 0.8, -2), (4, 4, 4), P2("cs" + side), dil=0.4)]))
+    B.append(Bone("left_cap2", "left_arm", (1, -2.5, 0), rot=(0, 0, -12), stages=[2], boxes=[
+        Box((-3.5, -3.2, -3.5), (7, 2, 7), P2("lc2"), dil=0.3), Box((0, -7, 0), (1, 4, 1), per_tier(lambda t: gb_spike(GIRON, 3, 3), (2, 3)))]))
+    B.append(Bone("right_spike2", "right_arm", (-1, -2.5, 0), rot=(0, 0, 8), stages=[2, 3], boxes=[
+        Box((-3.2, -4.6, -1), (1, 3, 1), per_tier(lambda t: gb_spike(GIRON, 3, 3), (2, 3))), Box((1.2, -4.6, -1), (1, 3, 1), per_tier(lambda t: gb_spike(GIRON, 3, 3), (2, 3)))]))
+    B.append(Bone("gilt_collar", "body", stages=[3], boxes=[Box((-4.5, -13.5, -2.8), (9, 1, 5.6), gb_gilt("gc"), dil=0.1)]))
+    B.append(Bone("gilt_buckle", "body", stages=[3], boxes=[Box((-1, -4.6, -2.9), (2, 2, 0.8), gb_gilt("gk"), dil=0.1)]))
+    B.append(Bone("gilt_rim_r", "right_arm", (-1, -2.5, 0), rot=(0, 0, 8), stages=[3], boxes=[Box((-3, -1, -3), (6, 1, 6), gb_gilt("grr"), dil=0.5)]))
+    B.append(Bone("gilt_rim_l", "left_arm", (1, -2.5, 0), rot=(0, 0, -12), stages=[3], boxes=[Box((-3, -0.6, -3), (6, 1, 6), gb_gilt("grl"), dil=0.45)]))
+    # tier III, the Grave Knight: a slitted rusted visor, a coif ridge, a plate over the left pauldron, a team half-cape
+    B.append(Bone("visor", "head", stages=[3], boxes=[Box((-4, -3.9, -4.9), (8, 2, 1), visor(), dil=0.1)]))
+    B.append(Bone("pauldron_cap", "left_arm", (1, -2.5, 0), rot=(0, 0, -12), stages=[3], boxes=[
+        Box((-3, -3.4, -3), (6, 2, 6), gb_plate(3, "pc"), dil=0.3),
+        Box((0.5, -7.4, 0), (1, 4, 1), gb_spike(GIRON, 3, 3)), Box((-2.5, -5.4, -1), (1, 2, 1), gb_spike(GIRON, 3, 3))]))
+    B.append(Bone("half_cape", "body", (3.2, -11.2, 2.3), rot=(6, 0, -3), stages=[3], team=True, boxes=[
+        Box((-3.2, 0, 0.5), (7, 18, 0), ("t", "hc0", 1), sheet="cloth")]))
+    B.append(Bone("cape_clasp", "body", stages=[3], boxes=[Box((2.2, -12.2, 1.7), (2, 2, 1), gb_gilt("cc"))]))
     return B
 
 NOTE = ("Graveborn Risen (unit identity, Graveborn): a stooped, shambling dead man, torso leaning 15 degrees and arms forward: a rusted "
         "coif with a violet brow cord over a grey-green face with soul-lit sunk eyes and a slack jaw, a rust-eaten hauberk torn open over "
         "bare ribs, a ragged mail skirt in strips, a torn plate pauldron with a snapped bone shard, violet-bound wrists and ankles and a "
-        "shredded team tabard hanging in strips. He carries the notched sword in the right hand. Tier I only. No back flag.")
+        "shredded team tabard hanging in strips. He carries the notched sword in the right hand. Tier II: salvaged plate with violet piping; "
+        "tier III: black gilt-chased plate, a slitted visor and a team half-cape. No back flag.")
 REVENANT = Troop("revenant", SKIN, CLOTH, bones, cloth_painter,
-                 {"weapon": "notched_sword", "hand": "right", "idleArms": "forward", "portrait": "standard"}, tiers=(1,), glow=glow_fn)
+                 {"weapon": "notched_sword", "hand": "right", "idleArms": "forward", "portrait": "standard"}, glow=glow_fn)
 def build(): return REVENANT.build()
 def outputs(): return REVENANT.outputs()
 

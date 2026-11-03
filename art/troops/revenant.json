@@ -1,6 +1,6 @@
 {
  "troop": "revenant",
- "note": "Graveborn Risen (unit identity, Graveborn): a stooped, shambling dead man, torso leaning 15 degrees and arms forward: a rusted coif with a violet brow cord over a grey-green face with soul-lit sunk eyes and a slack jaw, a rust-eaten hauberk torn open over bare ribs, a ragged mail skirt in strips, a torn plate pauldron with a snapped bone shard, violet-bound wrists and ankles and a shredded team tabard hanging in strips. He carries the notched sword in the right hand. Tier I only. No back flag.",
+ "note": "Graveborn Risen (unit identity, Graveborn): a stooped, shambling dead man, torso leaning 15 degrees and arms forward: a rusted coif with a violet brow cord over a grey-green face with soul-lit sunk eyes and a slack jaw, a rust-eaten hauberk torn open over bare ribs, a ragged mail skirt in strips, a torn plate pauldron with a snapped bone shard, violet-bound wrists and ankles and a shredded team tabard hanging in strips. He carries the notched sword in the right hand. Tier II: salvaged plate with violet piping; tier III: black gilt-chased plate, a slitted visor and a team half-cape. No back flag.",
  "rig": "biped",
  "size": [
   128,
@@ -11,7 +11,9 @@
  "idleArms": "forward",
  "parts": [],
  "skins": {
-  "1": "revenant_s1.png"
+  "1": "revenant_s1.png",
+  "2": "revenant_s2.png",
+  "3": "revenant_s3.png"
  },
  "weapon": "notched_sword",
  "hand": "right",

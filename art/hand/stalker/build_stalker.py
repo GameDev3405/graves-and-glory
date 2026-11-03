@@ -7,7 +7,9 @@ strips (three down the back, a flap either side of the open front), every hem cu
 The body is built wide (9x12x4, the spec's [1.1,1,1.1]) on bare bone legs 2 px thick, shins bound in violet over fur boot
 cuffs. A grave-iron belt, a pelt tail down the back, a team wrap round the chest with two knotted tails, a team wrap on the
 draw arm, a grave-iron bracer bound in violet on the bow arm. He carries the frost bow (weapon "frost_bow", left hand).
-Tier I only. No flag on the back, no antlers.
+Tier II (the Frost Stalker): salvaged grave-iron plate over the felt: pauldrons with rime tines, a breastplate, bracers and
+greaves, piped in violet. Tier III (the Wight Stalker): black plate chased in funeral gilt, longer rime tines, a gilt cowl
+band and a gilt breast clasp. No flag on the back, no antlers.
 
   python build_stalker.py preview <dir> [side] | contact <png> [side] | stub
 """
@@ -16,7 +18,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(HERE, "..", "common"))
 from handlib import *   # noqa: F401,F403
 from handlib import Troop
-from graveborn import VIOLET as V, BONE as BN, GIRON as GI, FROST as F, SOUL
+from graveborn import VIOLET as V, BONE as BN, GIRON as GI, FROST as F, SOUL, GILT, gb_plate, gb_spike, gb_gilt, gb_band
 import house_stub
 
 SKIN = (128, 64)
@@ -376,14 +378,31 @@ def bones():
         Box((1.5, -4, -2.7), (2, 9, 0), ("tail", 1), sheet="cloth"),
         Box((-0.5, -4, -2.6), (2, 6, 0), ("tail", 2), sheet="cloth")]))
     B.append(Bone("arm_wrap", "right_arm", team=True, boxes=[Box((-1, 2.5, -1), (2, 3, 2), "armwrap", dil=0.3, sheet="cloth")]))
+    # tier II, the Frost Stalker: salvaged grave-iron plate piped in violet, rime tines on the shoulders
+    P2 = lambda seed, worn=0.12: per_tier(lambda t: gb_plate(t, seed, worn), (2, 3))
+    TN = per_tier(lambda t: gb_spike(F, 4, 3), (2, 3))
+    B.append(Bone("breastplate", "body", stages=[2, 3], boxes=[Box((-3.5, -12, -2.7), (7, 4, 5.4), P2("bpl"), dil=0.75)]))
+    for side, sx, rz in (("right", -1, 12), ("left", 1, -12)):
+        B.append(Bone(f"{side}_pauldron", f"{side}_arm", (sx * 1.2, -0.3, 0), rot=(0, 0, rz), stages=[2, 3], boxes=[
+            Box((-2.7, -3.4, -3.2), (5.4, 3, 6.4), P2("pd" + side), dil=0.9),
+            Box((-0.5 + sx * 1.5, -7.6, -0.5), (1, 4.4, 1), TN), Box((-0.5 + sx * 0.2, -6.4, 1.6), (1, 3.4, 1), TN)]))
+        B.append(Bone(f"{side}_bracer", f"{side}_arm", stages=[2, 3], boxes=[Box((-1.8, 4.5, -1.8), (3.6, 3.5, 3.6), P2("br" + side, 0.18), dil=0.5)]))
+        B.append(Bone(f"{side}_greave", f"{side}_leg", stages=[2, 3], boxes=[Box((-1.7, 4.2, -1.7), (3.4, 3, 3.4), P2("gv" + side), dil=0.5)]))
+    B.append(Bone("belt_plate", "body", stages=[2, 3], boxes=[Box((-2, -4.4, -2.7), (4, 2.6, 0.8), P2("bt"), dil=0.5)]))
+    # tier III, the Wight Stalker: a gilt band round the cowl, a gilt breast clasp with one pale stone, taller rime tines
+    B.append(Bone("cowl_band", "head", stages=[3], boxes=[Box((-5.2, -9.4, -5.2), (10.4, 1.3, 10.4), gb_gilt("cwb"), dil=0.05)]))
+    B.append(Bone("breast_clasp", "body", stages=[3], boxes=[Box((-1.5, -9.5, -3.2), (3, 3, 0.8), gb_gilt("bcl"), dil=0.05),
+                                                           Box((-0.5, -8.6, -3.4), (1, 1, 0.4), lambda f, w, h: [[SOUL[2]]])]))
+    for i, (x, z, h) in enumerate([(-3.4, -3.0, 6), (3.4, -3.0, 6), (0, 0.4, 7)]):
+        B.append(Bone(f"crest_tine{i}", "head", stages=[3], boxes=[Box((x - 0.5, -11.2 - h, z - 0.5), (1, h, 1), gb_spike(F, 4, 3))]))
     return B
 
 NOTE = ("Graveborn Barrow Stalker (unit identity, Graveborn): a solid blue-grey wedge, a shaggy fur cowl over a rimed skull "
         "with two soul-light eyes, a fur shoulder-cape over a knee-length frost felt mantle hemmed in violet icicle teeth, "
-        "bare bone legs, a team wrap, the frost bow. Tier I only; no flag on the back, no antlers.")
+        "bare bone legs, a team wrap, the frost bow. Tier II iron plate with rime tines, tier III black gilt plate; no flag on the back, no antlers.")
 
 STALKER = Troop("stalker", SKIN, CLOTH, bones, cloth_painter,
-                {"weapon": "frost_bow", "hand": "left", "idleArms": "hang", "portrait": "standard"}, tiers=(1,), glow=glow)
+                {"weapon": "frost_bow", "hand": "left", "idleArms": "hang", "portrait": "standard"}, glow=glow)
 def build(): return STALKER.build()
 def outputs(): return STALKER.outputs()
 

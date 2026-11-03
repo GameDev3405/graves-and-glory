@@ -17,7 +17,7 @@ import build_swords as W
 from build_swords import Cube, by_face, flat, wrap, REPO
 from build_sun_staff import post, grain, metal, plate
 from handlib import ramp
-from graveborn import GIRON as I, VIOLET as V, BONE as B
+from graveborn import GIRON as I, VIOLET as V, BONE as B, GILT as G
 
 W.KEY.update({"wood": (0x8B, 0x45, 0x13), "bone": (0xEE, 0xEE, 0xDD)})
 def binder(R):
@@ -44,30 +44,33 @@ BLADE = [
     "............",
 ]
 
-def legend():
+def legend(tier=1):
     return {
-        "s": (I, 2, "iron", "disc"),
+        "s": (G, 2, "gilt", "disc") if tier == 3 else (I, 2, "iron", "disc"),
         "m": (I, 3, "iron", "ray"),
         "e": (I, 6, "iron", "ray"),
-        "E": (B, 4, "iron", "ray"),
+        "E": (B, 5 if tier >= 2 else 4, "bone" if tier >= 2 else "iron", "ray"),
     }
 
-def tier1():
-    """Spike, black haft, violet-corded grip, bindings, iron collar, curved blade."""
+def tier1(tier=1):
+    """Spike, black haft, violet-corded grip, bindings, iron collar, curved blade. Tier II (the Barrow Reaper): a bone butt
+    spike and shoe, a bone mid ring and a bone-tipped point. Tier III (the Harvest of Kings): the collar and blade spine in
+    funeral gilt over tier II's bone. Same cubes at every tier: trim, metal and bone escalate, not size."""
+    bone = metal(B, 3) if tier >= 2 else None
     cubes = [
-        post("spike", -16, -14, 0.5, 0.5, "iron", metal(I, 4), skip=("up",)),
-        post("shoe", -14, -11, 1, 1, "iron", metal(I, 3)),
+        post("spike", -16, -14, 0.5, 0.5, *(("bone", bone) if bone else ("iron", metal(I, 4))), skip=("up",)),
+        post("shoe", -14, -11, 1, 1, *(("bone", metal(B, 2)) if bone else ("iron", metal(I, 3)))),
         post("shaft_lo", -11, -4, 0.5, 0.5, "wood", grain(HAFT, 3, 1), skip=("up", "down")),
         post("bind_lo", -4, -2, 1, 1, "leather", binder(V), skip=("up",)),
         Cube("grip", [-1, -2, -1], [1, 2, 1], "leather", wrap(I[3], I[2], V[2]), skip=("up", "down")),
         post("bind_hi", 2, 4, 1, 1, "leather", binder(V), skip=("down",)),
         post("shaft_a", 4, 12, 0.5, 0.5, "wood", grain(HAFT, 3, 4), skip=("up", "down")),
-        post("bind_mid", 12, 14, 1, 1, "leather", binder(V), skip=("up", "down")),
+        post("bind_mid", 12, 14, 1, 1, *(("bone", binder(B)) if bone else ("leather", binder(V))), skip=("up", "down")),
         post("shaft_b", 14, 22, 0.5, 0.5, "wood", grain(HAFT, 3, 7), skip=("up", "down")),
-        post("collar", 22, 26, 1, 1, "iron", metal(I, 3), skip=("down",)),
+        post("collar", 22, 26, 1, 1, *(("gilt", metal(G, 2)) if tier == 3 else ("iron", metal(I, 3))), skip=("down",)),
         post("collar_bind", 22, 23, 1.5, 1.5, "leather", binder(V)),
     ]
-    blade = plate("blade", BLADE, 31, legend())
+    blade = plate("blade", BLADE, 31, legend(tier))
     dx = -1 + len(BLADE[0]) / 2          # plate centres the grid on x = 0; column 0 belongs at x = -1
     for c in blade:
         c.lo[0] += dx; c.hi[0] += dx; c.pivot[0] += dx
@@ -75,13 +78,17 @@ def tier1():
 
 TIERS = {"scythe": (tier1, "The Grave Reaper's scythe (Graveborn), hand-authored at 1 texel a px: a black grave-wood haft with a "
                     "butt spike, a leather and violet-cord grip and violet bindings, an iron collar and a grave-iron blade 10 px "
-                    "long that rises over the wearer's hood and hooks down at the point; held upright.")}
+                    "long that rises over the wearer's hood and hooks down at the point; held upright."),
+         "scythe_t2": (lambda: tier1(2), "The Grave Reaper's scythe, tier II (Graveborn): tier I with a bone butt spike and shoe, a bone "
+                       "mid ring and a bone-tipped point; same cubes, hand-authored at 1 texel a px, held upright."),
+         "scythe_t3": (lambda: tier1(3), "The Grave Reaper's scythe, tier III (Graveborn): tier II with the collar and the blade spine "
+                       "in funeral gilt; same cubes, hand-authored at 1 texel a px, held upright.")}
 _ORIG = W.outputs
 UPRIGHT = {"offset": [0, 0, 0], "rotation": [0, 0, 0], "note": "held upright like the sun staff"}
 
 def outputs():
     out = _ORIG(TIERS)
-    out["scythe.json"]["grip"] = UPRIGHT
+    for wid in TIERS: out[wid + ".json"]["grip"] = UPRIGHT
     return out
 
 def quads():

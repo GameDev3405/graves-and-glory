@@ -6,7 +6,9 @@ high before the hood's peak. A deep black hood with the skull set two px back in
 there (the glow sheet); a grave-iron mantle in two ragged tiers over a grave-iron cuirass whose lower ribs show bare; a
 leather belt with a bone clasp and a violet cord; a team sash across the chest from the right shoulder to the left hip; a
 long torn shroud of three strips down the back and three rag strips over the thighs, every hem bound in violet. His scythe
-(weapon "scythe") raises a 10 px curved blade over the hood: the mark. Tier I only. No flag on the back.
+(weapon "scythe") raises a 10 px curved blade over the hood: the mark. Tier II (the Harvester): grave-iron pauldrons with
+spikes, a breastplate, bracers and an iron-rimmed hood, piped in violet. Tier III (the Lord of Scythes): black plate chased in
+funeral gilt, a gilt-ringed hood crowned with tines, longer pauldron spikes and a gilt collar. No flag on the back.
 
   python build_reaper.py preview <dir> [side] | contact <png> [side] | stub
 """
@@ -16,10 +18,10 @@ sys.path.insert(0, os.path.join(HERE, "..", "common"))
 from handlib import *   # noqa: F401,F403
 from handlib import Troop
 import graveborn as GB
-from graveborn import VIOLET as V, BONE as BN, GIRON as GI, SOUL, ROT
+from graveborn import VIOLET as V, BONE as BN, GIRON as GI, SOUL, ROT, GILT, gb_plate, gb_spike, gb_gilt, gb_band
 import house_stub
 
-SKIN = (128, 64)
+SKIN = (128, 128)
 CLOTH = (128, 64)
 SHROUD = ramp("08070a", "120f13", "1c181d", "272227", "35303a", "484250")   # black cloth with a cold violet-grey cast
 LEAN = 7        # degrees the body leans forward; the arms stand back up, the head half way
@@ -336,14 +338,32 @@ def bones():
         Box((-2, 0, 0.6), (3, 25, 1), rag(7, "sb")),
         Box((1.5, 0, 0.1), (3, 21, 1), rag(5, "sc")),
         Box((4.5, 0, 0.4), (1, 13, 1), rag(3, "sd"))]))
+    # tier II, the Harvester: salvaged grave-iron plate piped in violet
+    P2 = lambda seed, worn=0.12: per_tier(lambda t: gb_plate(t, seed, worn), (2, 3))
+    SP = per_tier(lambda t: gb_spike(GI, 3, 3), (2, 3))
+    B.append(Bone("breastplate", "body", stages=[2, 3], boxes=[Box((-3.5, -12, -2.7), (7, 6, 5.4), P2("bpl"), dil=0.15)]))
+    for side, sx, rz in (("right", -1, 12), ("left", 1, -12)):
+        B.append(Bone(f"{side}_pauldron", f"{side}_arm", (0, -0.3, 0), rot=(0, 0, rz), stages=[2, 3], boxes=[
+            Box((-3, -3.2, -3.2), (6, 3, 6.4), P2("pd" + side), dil=0.3),
+            Box((-0.5 + sx * 1.5, -7.2, -0.5), (1, 4, 1), SP)]))
+        B.append(Bone(f"{side}_bracer", f"{side}_arm", stages=[2, 3], boxes=[Box((-1.8, 4.5, -1.8), (3.6, 3.5, 3.6), P2("br" + side, 0.18), dil=0.1)]))
+        B.append(Bone(f"{side}_greave", f"{side}_leg", stages=[2, 3], boxes=[Box((-1.7, 4.5, -1.7), (3.4, 3, 3.4), P2("gv" + side), dil=0.1)]))
+    B.append(Bone("hood_rim", "head", stages=[2, 3], boxes=[Box((-5.3, -1.0, -5.3), (10.6, 1.2, 1.2), gb_band(V, 1, BN), dil=0.05)]))
+    # tier III, the Lord of Scythes: gilt crown ring and tines, tall spikes, a gilt collar and a gilt-hemmed shroud
+    B.append(Bone("hood_ring", "head", stages=[3], boxes=[Box((-5.3, -9.2, -5.3), (10.6, 1.4, 10.6), gb_gilt("hr"), dil=0.05)]))
+    for i, (x, z, h) in enumerate([(-4.2, -4.0, 6), (-1.4, -4.6, 9), (1.4, -4.6, 9), (4.2, -4.0, 6)]):
+        B.append(Bone(f"crown_tine{i}", "head", stages=[3], boxes=[Box((x - 0.5, -9.2 - h, z - 0.5), (1, h, 1), gb_spike(GILT, 3, 2))]))
+    B.append(Bone("gilt_collar", "body", stages=[3], boxes=[Box((-3.6, -13.4, -2.8), (7.2, 1.6, 5.6), gb_gilt("gc"), dil=0.1)]))
+    B.append(Bone("plate_cape", "body", (0, -12, 2.6), rot=(8, 0, 0), stages=[3], boxes=[
+        Box((-4, 0.5, 1.2), (8, 4, 0.8), gb_plate(3, "pcp"), dil=0.1)]))
     return B
 
 MAGE_NOTE = ("Graveborn Grave Reaper (unit identity, Graveborn): tall bone wraith, biped, a deep black hood with the skull deep inside and "
              "two soul-light eyes, a grave-iron mantle over a cuirass, a team sash, torn shroud and rags hemmed in violet, bare bone limbs, "
-             "a scythe whose 10 px blade rises over the hood. Tier I only; no flag on the back.")
+             "a scythe whose 10 px blade rises over the hood. Tier II iron plate, tier III black gilt plate and a crown of tines. No flag on the back.")
 
 REAPER = Troop("reaper", SKIN, CLOTH, bones, cloth_painter,
-               {"weapon": "scythe", "hand": "right", "idleArms": "hang", "portrait": "tall 4"}, tiers=(1,), glow=glow)
+               {"weapon": "scythe", "hand": "right", "idleArms": "hang", "portrait": "tall 4"}, glow=glow)
 def build(): return REAPER.build()
 def outputs(): return REAPER.outputs()
 

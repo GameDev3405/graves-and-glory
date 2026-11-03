@@ -8,7 +8,9 @@ jerkin torn open at the sides and ragged at the hem, a belt of rotted cloth with
 in team cloth and moss hanging over the hips, and a bone quiver of lashed ribs on the back, its arrows fletched in grey.
 The mark: a grave-iron pauldron on the bow shoulder (the left, the bow is in the left hand) crowned with a skull. Violet
 sinew lashes the wrists, ankles, hems, belt and quiver. The bow (weapon "bone_bow") is art/hand/weapons/build_gb_bone_bow.py.
-Tier I only. No flag on the back.
+Tier II (the Barrow Archer): salvaged grave-iron plate: a gorget, a spiked right pauldron, bracers and iron bands on the quiver,
+all piped in violet. Tier III (the Deadeye): black plate chased in funeral gilt, a gilt-banded bone crown of tines over the
+hood, a bow-arm plate with a skull and a fan of extra gilt-fletched arrows. No flag on the back.
 
   python build_bonebow.py preview <dir> [side] | contact <png> [side] | stub
 """
@@ -18,7 +20,7 @@ sys.path.insert(0, os.path.join(HERE, "..", "common"))
 from handlib import *   # noqa: F401,F403
 from handlib import Troop
 import graveborn as GB
-from graveborn import VIOLET as V, BONE as BN, MOSS, ROT, GIRON as GI, SOUL
+from graveborn import VIOLET as V, BONE as BN, MOSS, ROT, GIRON as GI, SOUL, GILT, gb_plate, gb_spike, gb_gilt, gb_band
 import house_stub
 
 SKIN = (128, 64)
@@ -385,6 +387,27 @@ def bones():
     B.append(Bone("skull_pauldron", "left_arm", boxes=[
         Box((-2, -3.5, -3), (5, 3, 6), pad, dil=0.2),
         Box((-2, -8, -2.5), (5, 5, 4), pskull)]))
+    # tier II, the Barrow Archer: salvaged grave-iron plate piped in violet
+    P2 = lambda seed, worn=0.12: per_tier(lambda t: gb_plate(t, seed, worn), (2, 3))
+    B.append(Bone("plate_gorget", "body", stages=[2, 3], boxes=[Box((-5.5, -13.2, -3.4), (11, 3, 6.8), P2("gg"), dil=0.1)]))
+    B.append(Bone("right_pauldron", "right_arm", (0, -3, 0), rot=(0, 0, 10), stages=[2, 3], boxes=[
+        Box((-3, -2.6, -3), (5, 3, 5.6), P2("rp"), dil=0.3),
+        Box((-1.5, -6.2, -0.5), (1.5, 3.6, 1.5), per_tier(lambda t: gb_spike(GI, 3, 3), (2, 3)))]))
+    for side in ("right", "left"):
+        B.append(Bone(f"{side}_bracer", f"{side}_arm", stages=[2, 3], boxes=[Box((-1.8, 4.5, -1.8), (3.6, 3.5, 3.6), P2("br" + side, 0.18), dil=0.1)]))
+    B.append(Bone("quiver_bands", "body", (0, -6, 2.9), rot=(0, 0, -26), stages=[2, 3], boxes=[
+        Box((-2, -3.2, -0.5), (4, 2, 4), P2("qb1"), dil=0.1), Box((-2, 2.6, -0.5), (4, 2, 4), P2("qb2"), dil=0.1)]))
+    B.append(Bone("rib_guard", "body", stages=[2, 3], boxes=[Box((-3, -7, -2.5), (6, 1.8, 0.6), P2("rg"), dil=0.05)]))
+    # tier III, the Deadeye: a gilt-banded bone crown of tines, a gilt-pinned hood, a fan of fletched arrows
+    B.append(Bone("crown_band", "head", stages=[3], boxes=[Box((-4.6, -8.6, -4.6), (9.2, 1.4, 9.2), gb_gilt("cb"), dil=0.05)]))
+    for i, (x, z, h) in enumerate([(-3.6, -3.6, 5), (-1.2, -4.0, 7), (1.2, -4.0, 7), (3.6, -3.6, 5)]):
+        B.append(Bone(f"crown_tine{i}", "head", stages=[3], boxes=[Box((x - 0.5, -8.6 - h, z - 0.5), (1, h, 1), gb_spike(BN, 4, 3))]))
+    B.append(Bone("bow_plate", "left_arm", (0, -3, 0), rot=(0, 0, -10), stages=[3], boxes=[
+        Box((-2, -2.8, -3), (5, 2, 6), gb_plate(3, "bp"), dil=0.35)]))
+    for i, (rz, ox) in enumerate([(-34, -1), (-30, 1)]):
+        B.append(Bone(f"fan_arrow{i}", "body", (ox, -6, 2.9), rot=(0, 0, rz), stages=[3], boxes=[
+            Box((-0.5, -9, 0.6), (1, 5, 1), arrows), Box((-0.5, -9, 0.6), (1, 1.2, 1), gb_gilt("fa%d" % i))]))
+    B.append(Bone("hood_pin", "body", stages=[3], boxes=[Box((-1.5, -12.6, -3.2), (3, 3, 1), gb_gilt("hp"), dil=0.05)]))
     return B
 
 NOTE = ("Graveborn Bone Archer (unit identity, Graveborn): a gaunt skeleton, biped, bare bone limbs 2 px thick, a bare skull with two "
@@ -393,7 +416,7 @@ NOTE = ("Graveborn Bone Archer (unit identity, Graveborn): a gaunt skeleton, bip
         "mark). Tier I only; no flag on the back.")
 
 BONEBOW = Troop("bonebow", SKIN, CLOTH, bones, cloth_painter,
-                {"weapon": "bone_bow", "hand": "left", "idleArms": "hang", "portrait": "standard"}, tiers=(1,), glow=glow)
+                {"weapon": "bone_bow", "hand": "left", "idleArms": "hang", "portrait": "standard"}, glow=glow)
 def build(): return BONEBOW.build()
 def outputs(): return BONEBOW.outputs()
 
