@@ -71,3 +71,27 @@ Gameplay-visible or tuning changes are only listed; none were implemented.
 - `test-tools/resources/fabric.mod.json` (entrypoint registered for the test tool).
 - `tools/release_config.py` (class added to the forbidden-in-release list).
 - Raw data stays in the gitignored `work/perf-int/` folder of this worktree (probe.csv, client.csv, run.jfr).
+
+## Spawn spike follow-up (branch perf/spawn-spike, 2026-11-02)
+
+Before (main `bd05fa2b`, integrated client, bot-sim 2 x 60 s 3v3, 114 troops, probe + PerfIntegrated, raw data in gitignored `work/perf-spawn/before/`):
+
+| Match | Map | Max tick | Ticks over 50 ms | startRound | field (bot-sim respawn) | Slow ticks (tick@ms) |
+|---|---|---|---|---|---|---|
+| 1 (cold JVM) | Ironhold | 128.4 ms | 10 | 105.3 ms | 16.3 ms | 0@128, 4@72, 5@89, 6@58, 7@58, then 50-55 ms at 63-70 and 159 |
+| 2 (warm) | Rivergate | 33.9 ms | 0 | 14.6 ms | 10.2 ms | none |
+
+Finding: the 51-118 ms spike is a cold-start cost, not steady per-round work. A warm spawn of 114 troops costs about 15 ms (startRound). The first round pays class loading and interpreted code for the troop classes, their goals and their kit. Path requests are already spread over 10 ticks by the slot%10 unit beat, so throttling repaths would not move the spike. Bot-sim's `field()` respawns the army in the same tick, which adds 10-16 ms that real rounds do not pay.
+
+Change (gameplay-invisible): `Battle.prewarmSpawn` runs once per server start from `mapReady` (in the lobby, after the map build). It builds one unspawned troop of each sheet row with its kit and discards it. `reinforce` now recomputes House traits once per line instead of once per troop; the resulting traits are the same.
+
+Lobby-return save (765-908 ms): not changed. `saveAll(true,false,false)` already skips clean chunks and does no flush. The remaining cost is main-thread NBT serialization of the chunks the round dirtied. Moving it off-thread is unsafe (chunk data is not thread-safe), and spreading it over lobby ticks needs chunk-storage mixins and changes save behaviour that Kort approved on 2026-11-02 (ArenaAutosave). Kort accepted the 0.8 s lobby-return save as is on 2026-11-03.
+
+After (same run settings, `work/perf-spawn/after/`; prewarm logged 30 troops in 40 ms in the lobby):
+
+| Match | Map | Max tick | Ticks over 50 ms | startRound | field | Slow ticks (tick@ms) |
+|---|---|---|---|---|---|---|
+| 1 (cold JVM) | Ironhold | 185.7 ms (tick 20) | 6 | 29.0 ms | 13.3 ms | 0@95, 7@57, 9@51, 20@186, 120@52, 130@57 |
+| 2 (warm) | Rivergate | 86.1 ms (tick 0) | 1 | 12.9 ms | 13.0 ms | 0@86 |
+
+Read: the prewarm cuts the cold startRound from 105 to 29 ms, and warm is unchanged (15 to 13 ms). Tick 0 is still over 50 ms. The after run shared the machine with two to three other worktrees' 2-3 GB clients (the baseline shared it with none), so tick times are inflated and the under-50 ms tick target is not shown. Tick 0 also holds the first unit ticks, entity tracking and bot-sim's second spawn, beyond startRound. Next step: re-measure on an idle machine, then attach JFR to tick 0 if it is still over 50 ms. Repath throttling was not done: walk already runs on a slot%10 beat, so path requests do not stack on tick 0.

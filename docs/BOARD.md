@@ -108,7 +108,7 @@ One row per started task or task done in `main`; unlisted tasks in each phase ha
 | 5.1 | Balance design review | Kort + Agent | Done 2026-11-02 | Set A `3b8b58b`, arrow speed `19c7b4d`, vanilla-trait audit and measurement merged `fa7e4975`. Kort: Houses balanced enough; no rule changes or stat retune; further balance comes from playtesting. |
 | 5.2, 5.3 | Bot round robin on adopted maps; tune the sheet | Agent | Not started | Waits on Kort's maps (3.1) and the audit |
 | 5.4 | Economy and progression | Agent | Done 2026-11-02 | Wiring merged `649bcb0`; check report `docs/reports/economy-check-2026-10-30.md` merged from `work/economy-check-5-4` |
-| 5.5 | Performance | Agent + Kort | Baseline done (3.6); target report not started | `docs/reports/perf-baseline-2026-11-02.md`. Autosave no longer runs during a battle (`adef601`, Q37) |
+| 5.5 | Performance | Agent + Kort | Targets report done; spawn prewarm on `perf/spawn-spike` (cold startRound 105 to 29 ms; tick 0 under 50 ms not yet shown, re-measure on an idle machine) | `docs/reports/perf-targets-2026-11-02.md`. Lobby-return save of 0.8 s accepted as is by Kort 2026-11-03. Autosave no longer runs during a battle (`adef601`, Q37) |
 | 5.6 | QA matrix | Agent | Checklist and rules done; runs not done | `docs/QA-MATRIX.md` (`6823bcc`); rules merged `edf8c38` (partial pay for a stopped match, ops-only warp, 2 minute reconnect hold). Fresh install and migration rows have no recorded run |
 | 5.7, 5.8 | Release-candidate test; fix rounds | Kort + friends, Agent | Not started | |
 

@@ -651,6 +651,35 @@ public final class GravesAndGlory implements ModInitializer {
         void mapReady(){
             Modes.recover(this);campaign.payInterrupted();
             ready=true;placing=false;message="Your war council is ready. Press {key:menu}.";
+            prewarmSpawn();
+        }
+        /** Once per server start: whether prewarmSpawn has built its troops. */
+        static boolean spawnWarm;
+        /**
+         * The first round's spawn ran cold (class loading and interpreted code for every troop class, its goals and its kit): 105 ms of
+         * startRound on the first match against 15 ms warm (docs/reports/perf-targets-2026-11-02.md). When the map is ready in the lobby, this
+         * builds one troop of each sheet row with its kit, exactly as spawn does, and never adds it to the world, so the round-start tick
+         * runs warm. Nothing is spawned, tracked, named or sent; a row whose entity or items fail is skipped (spawn reports it in a round).
+         */
+        void prewarmSpawn(){
+            if(spawnWarm)return;spawnWarm=true;long at=System.nanoTime();int built=0;
+            for(var spec:Spec.TROOPS){
+                try{MobEntity mob=ArmyMobs.create(spec.entity(),world);
+                    mob.refreshPositionAndAngles(0,Arena.ground(0,0)+1,0,90,0);
+                    mob.getAttributeInstance(EntityAttributes.GENERIC_MAX_HEALTH).setBaseValue(spec.health());mob.setHealth((float)spec.health());
+                    mob.getAttributeInstance(EntityAttributes.GENERIC_MOVEMENT_SPEED).setBaseValue(spec.speed());
+                    mob.getAttributeInstance(EntityAttributes.GENERIC_FOLLOW_RANGE).setBaseValue(Spec.NAVIGATION[0].searchRange());
+                    mob.setPathfindingPenalty(PathNodeType.WATER,(float)Spec.NAVIGATION[0].waterPenalty());
+                    if(ArmyMobs.tags(spec).contains("shield"))mob.equipStack(EquipmentSlot.OFFHAND,shield(spec,side(0).dye()));
+                    mob.equipStack(EquipmentSlot.MAINHAND,unbreakable(Registries.ITEM.get(new Identifier(spec.weapon()))));
+                    mob.equipStack(EquipmentSlot.HEAD,unbreakable(Registries.ITEM.get(new Identifier(spec.helmet()))));
+                    ItemStack chest=unbreakable(Registries.ITEM.get(new Identifier(spec.chest())));
+                    if(chest.getItem() instanceof DyeableItem dye)dye.setColor(chest,side(0).color());
+                    mob.equipStack(EquipmentSlot.CHEST,chest);
+                    mob.discard();built++;
+                }catch(RuntimeException e){}
+            }
+            System.out.println("[Graves and Glory] Prewarmed the troop spawn ("+built+" troops, "+(System.nanoTime()-at)/1_000_000+" ms).");
         }
         public void tick(){
             time++;
@@ -1011,12 +1040,14 @@ public final class GravesAndGlory implements ModInitializer {
             for(String id:line){int position=slot++;if(position>=R.squadSize()||occupied.contains(position))continue;
                 var spec=Campaign.troop(id);if(spec==null)continue;
                 double side=s.team==0?1:-1,x=from.x+side*(20-position/5*3),z=from.z+side*((index-(count-1)/2.0)*22+(position%5-2)*2.5); // rows centred on the base for any army count; Dusk's mirror Dawn's, so army i forms on the side of its lane point (BattleMath.laneTarget)
-                spawn(s,spec,position,new Vec3d(x,Arena.ground((int)x,(int)z)+1,z));
+                spawn(s,spec,position,new Vec3d(x,Arena.ground((int)x,(int)z)+1,z),false);
             }
-            Houses.recompute(s);
+            Houses.recompute(s); // once for the whole line (spawn(...,false) skips the per-troop pass: same traits, a fraction of the round-start tick)
         }
 
-        Unit spawn(Squad s,Spec.TroopsRow spec,int slot,Vec3d pos){
+        Unit spawn(Squad s,Spec.TroopsRow spec,int slot,Vec3d pos){return spawn(s,spec,slot,pos,true);}
+        /** recompute false: the caller recomputes the squad's House traits itself once its whole batch is in (reinforce). */
+        Unit spawn(Squad s,Spec.TroopsRow spec,int slot,Vec3d pos,boolean recompute){
             MobEntity mob=ArmyMobs.create(spec.entity(),world);
             mob.refreshPositionAndAngles(pos.x,pos.y,pos.z,s.team==0?-90:90,0);
             mob.setPersistent();mob.addCommandTag("gravesandglory");
@@ -1036,7 +1067,7 @@ public final class GravesAndGlory implements ModInitializer {
             Unit u=new Unit(mob,s,spec,slot);u.stance=Tactics.stance(this,u);
             spawning=u;try{world.spawnEntity(mob);}finally{spawning=null;} // the players in range start tracking it here (its stance goes with that)
             joinSide(mob,s.team);
-            units.add(u);Houses.recompute(s);return u;
+            units.add(u);if(recompute)Houses.recompute(s);return u;
         }
         /**
          * A troop's hidden custom name at a level: its level name (ArmyMobs.levelName) and, for a commander's Mastery II troop, the veteran suffix. Battle.spawn names a new troop at
