@@ -46,6 +46,18 @@ final class MotionStack {
      * STANCE_BLEND from the next frame. Looping stances play at the unit's tempo and phase; held stances at their last key.
      * The aim share raises both arms by the aim pitch, whichever clip the aim stance fell back to.
      */
+    /**
+     * The guard's crouch (hips and legs) is a standing pose: while moving the stride owns these bones, so the guard's share of
+     * them fades with the move weight. Stacked on the stride's sweep, the crouched thighs kicked the feet out (Kort 2026-11-02).
+     */
+    static final String[] CROUCH_BONES = {"root", "right_leg", "left_leg", "right_shin", "left_shin"};
+    /**
+     * The share of the crouch kept at full move weight. Pure stride legs at the guarded shuffle's pace wobble at toe-off (the
+     * sole sags under 0.25 px for a frame as the roll hands back), which MotionEngineCheck's stance slip reads as a second,
+     * 0.25 px step; a little knee bend clears it and still keeps the feet under the hips.
+     */
+    static final double CROUCH_MOVING = 0.2;
+
     static void stance(MotionEngine.State st, MotionEngine.Family fam, MotionEngine.Frame f, String key, Pose out) {
         Clip clip = null;
         for (String k : MotionEngine.stanceChain(key)) if ((clip = fam.stances().get(k)) != null) break;
@@ -85,7 +97,13 @@ final class MotionStack {
         }
         for (int i = 0; i < n; i++) {
             Clip c = mix[i];
+            boolean crouch = f.m > 0 && c.name().equals("guard");
+            if (crouch) for (int b = 0; b < CROUCH_BONES.length; b++) System.arraycopy(out.get(CROUCH_BONES[b]), 0, st.stanceLegs[b], 0, 6);
             c.add(stanceTime(c, f), out, coef[i], st.tmp);
+            if (crouch) for (int b = 0; b < CROUCH_BONES.length; b++) {
+                double[] row = out.get(CROUCH_BONES[b]), was = st.stanceLegs[b];
+                for (int k = 0; k < 6; k++) row[k] = was[k] + (row[k] - was[k]) * (1 - (1 - CROUCH_MOVING) * f.m);
+            }
             mix[i] = null;
         }
         f.aim = aimShare;

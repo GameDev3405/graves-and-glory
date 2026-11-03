@@ -246,6 +246,7 @@ public final class MotionEngine {
         final double[] tmp = new double[6];
         final Clip[] mixClips = new Clip[MotionStack.LAYER_CLIPS];
         final double[] mixCoef = new double[MotionStack.LAYER_CLIPS];
+        final double[][] stanceLegs = new double[MotionStack.CROUCH_BONES.length][6];
         final double[] shares = new double[MAX_TRACKS + 1];
         final double[] fadeRot = new double[MotionStack.FADE_FRAMES + 1], fadePx = new double[MotionStack.FADE_FRAMES + 1];
         final Pose fadeMine = new Pose(), fadeUnder = new Pose(), merged = new Pose(), mergeTmp = new Pose();

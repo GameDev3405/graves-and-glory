@@ -84,6 +84,9 @@ final class MotionGrade extends Phase2Checks.Stage {
     /** R84: GRAVES_GRADE_NO_PILLOW as contact_sheet.py reads it (1, true or yes). */
     static final boolean NO_PILLOW = Set.of("1", "true", "yes").contains(System.getProperty("gravesandglory.gradeNoPillow", "false").trim().toLowerCase(Locale.ROOT));
     static final Set<String> PARTS = parts(System.getProperty("gravesandglory.gradeParts", "solo,loco,states,transitions"));
+    // GRAVES_GRADE_CLIPS: comma list of the clips the solo part renders (unset, every clip); a pose round needs only the clips it changed
+    static final Set<String> SOLO_CLIPS = java.util.Optional.ofNullable(System.getenv("GRAVES_GRADE_CLIPS")).filter(v -> !v.isBlank()).map(v -> Set.of(v.split(","))).orElse(null);
+    static boolean soloWanted(String clip) { return SOLO_CLIPS == null || SOLO_CLIPS.contains(clip); }
     static final String C_GROUND = "#ffffff", C_PLANT = "#40ff40", C_LIFT = "#ff4040", C_SINK = "#ff40ff", C_GTICK = "#c8c8c8", C_HAND = "#ffe040", C_TIP = "#ff9020", C_RIM = "#40e0ff";
     static final String[] RUBRIC = {"weight", "arcs", "anticipation", "silhouette", "variation", "contact", "clipping", "blend"};
 
@@ -554,6 +557,7 @@ final class MotionGrade extends Phase2Checks.Stage {
 
         // solo jobs: clip by clip, every angle
         if (PARTS.contains("solo")) for (String n : clipOrder) {
+            if (!soloWanted(n)) continue;
             String cat = clipCat.get(n);
             for (int a : ANGLES) {
                 boolean first = a == ANGLES[0];
@@ -1597,6 +1601,7 @@ final class MotionGrade extends Phase2Checks.Stage {
     void buildSheets() {
         String cams = String.format(Locale.ROOT, "solo camera %.2f blocks from the troop, eye %.2f over the ground, level; crop %dx%d of the %dx%d frame, native; fitted to every clip's extent with a 10 percent margin", soloD, soloEye, soloCrop[2], soloCrop[3], fbW, fbH);
         if (PARTS.contains("solo")) for (String n : clipOrder) {
+            if (!soloWanted(n)) continue;
             String st = clipState.get(n); var kp = keys.get(n); String fr = "full pipeline: the clip asked for at the input level, engine layers and MotionFeet on";
             var g = grid("clips/" + n + "/contact.png", "contact", n, st, "clip " + n + " (" + st + "): 8 frames front and side, feet and hands crops, key poses", fr, cams, LEGEND,
                     st.startsWith("death") || st.startsWith("hit") ? "the red on the troop is vanilla's hurt and death tint, as in game" : "labels: clip time; soles' height over the ground in blocks (R right, L left)");
