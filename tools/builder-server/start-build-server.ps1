@@ -16,7 +16,7 @@ param(
 )
 Set-Location -LiteralPath $PSScriptRoot
 $ErrorActionPreference = 'Stop'
-$worlds = 'camp','rivergate','ironhold','frostmarch','hollowwood','kingsfield'
+$worlds = 'camp','lobby','rivergate','ironhold','frostmarch','hollowwood','kingsfield'
 $ops = Join-Path $PSScriptRoot 'builder_ops.py'
 New-Item -ItemType Directory -Force -Path 'logs' | Out-Null
 

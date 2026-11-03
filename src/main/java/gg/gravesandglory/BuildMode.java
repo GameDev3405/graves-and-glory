@@ -37,7 +37,7 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
 /**
- * The builder server: one saved world per map and one for the camp, started with -Dgg.build=camp or -Dgg.build=(a map id). Each world generates its map exactly once (the marker file gg-build.json says it did)
+ * The builder server: one saved world per map, one for the camp and a blank "lobby" canvas (LobbyCanvas), started with -Dgg.build=camp, -Dgg.build=lobby or -Dgg.build=(a map id). Each world generates its map exactly once (the marker file gg-build.json says it did)
  * and from then on the builders' work is never regenerated, rebuilt or discarded: there is no Battle, no unit, no NPC, no bot and no match. Players are creative, /warp moves them around the world,
  * /map hands the server to another saved world (the start script reads next-world.txt and relaunches), and the world is zipped every 30 minutes while anyone has been on.
  */
@@ -48,8 +48,9 @@ final class BuildMode {
     static final int BACKUP_TICKS=30*60*20;
     static final DateTimeFormatter STAMP=DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss");
 
-    /** The world this server runs: -1 for the camp, else the index into Spec.MAPS. */
-    static int map=-1;
+    /** The world this server runs: CAMP, LOBBY, else the index into Spec.MAPS (indexOf answers -2 for an unknown name). */
+    static final int CAMP=-1,LOBBY=-3;
+    static int map=CAMP;
     static MinecraftServer server;
     static ServerWorld world;
     static boolean ready;
@@ -58,15 +59,15 @@ final class BuildMode {
     static final Map<String,double[]> WARPS=new LinkedHashMap<>();
 
     static boolean active(){return System.getProperty(PROPERTY)!=null;}
-    static String id(int index){return index<0?"camp":Spec.MAPS[index].id();}
-    static List<String> worlds(){var all=new ArrayList<String>();all.add("camp");for(var m:Spec.MAPS)all.add(m.id());return all;}
-    static int indexOf(String id){if(id.equals("camp"))return -1;for(int i=0;i<Spec.MAPS.length;i++)if(Spec.MAPS[i].id().equals(id))return i;return -2;}
+    static String id(int index){return index==LOBBY?"lobby":index<0?"camp":Spec.MAPS[index].id();}
+    static List<String> worlds(){var all=new ArrayList<String>();all.add("camp");all.add("lobby");for(var m:Spec.MAPS)all.add(m.id());return all;}
+    static int indexOf(String id){if(id.equals("camp"))return CAMP;if(id.equals("lobby"))return LOBBY;for(int i=0;i<Spec.MAPS.length;i++)if(Spec.MAPS[i].id().equals(id))return i;return -2;}
     static String safe(String id){return id.toLowerCase().replaceAll("[^a-z0-9_-]","_");}
 
     static void init(){
         String wanted=System.getProperty(PROPERTY).trim().toLowerCase();
         map=indexOf(wanted);
-        if(map==-2)throw new IllegalStateException("gg.build must be camp or one of "+worlds()+", not "+wanted);
+        if(map==-2)throw new IllegalStateException("gg.build must be one of "+worlds()+", not "+wanted);
         ServerLifecycleEvents.SERVER_STARTED.register(BuildMode::start);
         ServerLifecycleEvents.SERVER_STOPPING.register(s->{if(ready&&changed)backup(s,"stop");});
         ServerLifecycleEvents.SERVER_STOPPED.register(s->{server=null;world=null;});
@@ -116,8 +117,8 @@ final class BuildMode {
     static Path root(){return server.getSavePath(WorldSavePath.ROOT);}
     static Path marker(){return root().resolve(MARKER);}
     static void log(String text){System.out.println("[Graves and Glory build] "+text);}
-    static int total(){return (2*GravesAndGlory.R.worldHalfX()+1)*(2*GravesAndGlory.R.worldHalfZ()+1);}
-    static int progress(){return map<0?0:Math.min(99,column*100/Math.max(1,total()));}
+    static int total(){return map==LOBBY?LobbyCanvas.total():(2*GravesAndGlory.R.worldHalfX()+1)*(2*GravesAndGlory.R.worldHalfZ()+1);}
+    static int progress(){return map==CAMP?0:Math.min(99,column*100/Math.max(1,total()));}
 
     static void tick(MinecraftServer s){
         if(!ready){generate();return;}
@@ -125,10 +126,16 @@ final class BuildMode {
         if(++sinceBackup>=BACKUP_TICKS){sinceBackup=0;if(changed)backup(s,"timer");}
     }
 
-    /** The one generation: the camp in a single step, a map as the Battle builds it (columns, the finishing pass, the landmarks), then the marker. Nothing here ever runs again for this world. */
+    /** The one generation: the camp in a single step, the lobby canvas in columns then its outlines and signs, a map as the Battle builds it (columns, the finishing pass, the landmarks), then the marker. Nothing here ever runs again for this world. */
     static void generate(){
         if(server==null)return;
-        if(map<0){CampWorld.buildBare(world);done();return;}
+        if(map==CAMP){CampWorld.buildBare(world);done();return;}
+        if(map==LOBBY){
+            int total=total();for(int n=0;n<1024&&column<total;n++,column++)LobbyCanvas.column(world,column);
+            if(++ticks%40==0)log("generating lobby "+progress()+"%");
+            if(column<total)return;
+            LobbyCanvas.finish(world);done();return;
+        }
         var rules=GravesAndGlory.R;int total=total(),width=2*rules.worldHalfX()+1;
         for(int n=0;n<rules.buildColumnsPerTick()&&column<total;n++,column++)Arena.column(world,column%width-rules.worldHalfX(),column/width-rules.worldHalfZ());
         if(++ticks%200==0)log("generating "+id(map)+" "+progress()+"%");
@@ -146,7 +153,8 @@ final class BuildMode {
     // ---- warps ----
     static void warps(){
         WARPS.clear();
-        if(map<0){
+        if(map==LOBBY){LobbyCanvas.warps(WARPS);return;}
+        if(map==CAMP){
             var c=Spec.CAMP[0];
             WARPS.put("spawn",new double[]{c.originX()+c.spawnDx(),c.spawnY(),c.originZ()+c.spawnDz(),c.spawnYaw()});
             for(var s:Spec.CAMPSTATIONS)WARPS.put("station-"+safe(s.id()),new double[]{c.originX()+s.x(),s.y(),c.originZ()+s.z(),s.yaw()});
