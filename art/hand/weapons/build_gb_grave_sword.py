@@ -16,7 +16,7 @@ sys.path.insert(0, HERE)
 sys.path.insert(0, os.path.join(HERE, "..", "common"))
 import build_swords as W
 from build_swords import Cube, by_face, flat, REPO
-from graveborn import GIRON as I, VIOLET as V, GILT as G, FROST as F, RUST as R
+from graveborn import BONE as B, GIRON as I, VIOLET as V, GILT as G, FROST as F, RUST as R
 
 def pits(base, seed, n, gilt=0.0):
     """A flat `base` field with `n` dark pits (or flecks of worn gilt) per face, so the iron looks old and struck."""
@@ -29,7 +29,7 @@ def pits(base, seed, n, gilt=0.0):
         return g
     return paint
 
-def blade_flat(seed):
+def blade_flat(seed, gild=4):
     """The core's flat, 3 columns as the wearer sees them: a lit bevel, the dark fuller, a shaded bevel; pits grow toward
     the root, and broken flecks of gilt inlay run down the fuller."""
     def paint(face, w, h):
@@ -43,7 +43,7 @@ def blade_flat(seed):
             for x in range(w):
                 if rnd.random() < 0.03 + 0.14 * (1 - y / max(1, h)) ** 2:     # y = 0 is the tip end of the flat
                     row[x] = I[1 + rnd.randrange(2)] if rnd.random() < 0.7 else R[1 + rnd.randrange(2)]
-            if y % 4 == 1 and rnd.random() < 0.8 and w >= 3: row[1] = G[1 + (y // 4) % 2]
+            if y % gild == 1 and rnd.random() < 0.8 and w >= 3: row[1] = G[1 + (y // gild) % 2 + (gild < 4)]
             g.append(row)
         return g
     return paint
@@ -55,8 +55,19 @@ def cord(a, b):
     """A cord wound on the bias: two violet tones in a diagonal hatch."""
     return lambda face, w, h: [[a if (x + y) % 2 == 0 else b for x in range(w)] for y in range(h)]
 
-def tier1():
-    spine = by_face(north=blade_flat("gs"), south=blade_flat("gs"), up=flat(I[6]), down=flat(I[1]), rest=flat(I[4]))
+W.KEY.setdefault("bone", (0xEE, 0xEE, 0xDD))   # the scythe's bone key
+
+def swap(cubes, name, mat, paint):
+    for c in cubes:
+        if c.name == name: c.mat, c.paint = mat, paint
+
+def tier1(tier=1):
+    """Tier II (the Barrow King): a bone grip and pommel skull-knob, the snapped quillon replaced by a grafted bone spur.
+    Tier III (the Hollow Crown): the guard block chased in funeral gilt, a gilt-filled fuller, a gilt-capped pommel and
+    rime-pale honed edges. Same cubes at every tier (trim, metal and bone escalate, not size)."""
+    gild = 4 if tier < 3 else 2
+    spine = by_face(north=blade_flat("gs", gild), south=blade_flat("gs", gild), up=flat(I[6]), down=flat(I[1]), rest=flat(I[4]))
+    hone = F[4] if tier < 3 else F[5]
     cubes = [
         Cube("pommel", [-1.5, -6, -1], [1.5, -3, 1], "iron", by_face(up=flat(I[5]), down=flat(I[1]), rest=pits(I[3], "pm", 4, 0.3))),
         Cube("pomrim", [-1, -3, -0.5], [1, -2, 0.5], "gilt", by_face(up=flat(G[2]), down=flat(G[0]), rest=flat(G[3]))),
@@ -77,9 +88,19 @@ def tier1():
         Cube("core", [-1.5, 12, -0.5], [1.5, 32, 0.5], "iron", spine, skip=("down",)),
     ]
     for n, (y0, y1) in enumerate(((12, 17), (18, 23), (24, 31))):
-        cubes.append(Cube("edge_r%d" % n, [1.5, y0, -0.5], [2.5, y1, 0.5], "iron", edge(F[4], I[3], "er%d" % n)))
+        cubes.append(Cube("edge_r%d" % n, [1.5, y0, -0.5], [2.5, y1, 0.5], "iron", edge(hone, I[3], "er%d" % n)))
     for n, (y0, y1) in enumerate(((12, 15), (16, 22), (24, 31))):
-        cubes.append(Cube("edge_l%d" % n, [-2.5, y0, -0.5], [-1.5, y1, 0.5], "iron", edge(F[4], I[3], "el%d" % n)))
+        cubes.append(Cube("edge_l%d" % n, [-2.5, y0, -0.5], [-1.5, y1, 0.5], "iron", edge(hone, I[3], "el%d" % n)))
+    if tier >= 2:   # bone: a skull-knob pommel, the grafted spur where the right quillon snapped
+        bone = by_face(up=flat(B[5]), down=flat(B[1]), rest=pits(B[3], "bn", 3))
+        swap(cubes, "pommel", "bone", bone if tier == 2 else by_face(up=flat(G[4]), down=flat(B[1]), rest=pits(B[3], "bn", 3, 0.5)))
+        swap(cubes, "quill_r", "bone", by_face(up=flat(B[5]), down=flat(B[2]), rest=flat(B[4])))
+        swap(cubes, "pomrim", "leather", by_face(up=flat(V[3]), down=flat(V[0]), rest=flat(V[2])))
+    if tier >= 3:   # funeral gilt on the guard
+        swap(cubes, "block", "gilt", by_face(up=flat(G[4]), down=flat(I[1]), rest=pits(G[3], "bk", 6)))
+        swap(cubes, "pomrim", "gilt", by_face(up=flat(G[4]), down=flat(G[1]), rest=flat(G[3])))
+        for n in ("bar_l", "bar_r", "quill_l"):
+            swap(cubes, n, "iron", by_face(up=flat(G[3]), down=flat(I[1]), rest=pits(I[4], n, 4, 0.8)))
     # the point, worn to a slant
     cubes.append(Cube("tip0", [-1.0, 32, -0.5], [1.0, 34, 0.5], "iron", by_face(up=flat(F[4]), rest=blade_flat("t0")), skip=("down",)))
     cubes.append(Cube("tip1", [-0.5, 34, -0.5], [0.5, 35, 0.5], "iron", by_face(up=flat(F[5]), rest=flat(I[6])), skip=("down",)))
@@ -88,7 +109,11 @@ def tier1():
 TIERS = {"grave_sword": (tier1, "The Hollow King's grave sword (Graveborn), hand-authored at 1 texel a px: a black grave-iron greatsword "
                          "36 px long, a 5 px blade with a dark fuller, broken gilt flecks and chipped honed edges, the point worn to "
                          "a slant, a violet cord on the ricasso, a heavy cross-guard (one quillon bent down, one snapped), a grip "
-                         "wound in violet cord with gilt-wire collars and a chipped iron pommel; held like the sword grip.")}
+                         "wound in violet cord with gilt-wire collars and a chipped iron pommel; held like the sword grip."),
+         "grave_sword_t2": (lambda: tier1(2), "The Hollow King's grave sword, tier II (Graveborn): tier I with a bone skull-knob pommel on a "
+                            "violet rim and a grafted bone spur where the right quillon snapped; same cubes, hand-authored at 1 texel a px."),
+         "grave_sword_t3": (lambda: tier1(3), "The Hollow King's grave sword, tier III (Graveborn): tier II with the guard chased in funeral "
+                            "gilt, a gilt-filled fuller, a gilt-capped bone pommel and rime-pale honed edges; same cubes, 1 texel a px.")}
 
 def write():
     for name, thing in W.outputs(TIERS).items():
