@@ -341,15 +341,19 @@ def emblem_rally_horn():
     return S
 
 
+# Graveborn violet ramp (ART-STYLE-GUIDE, 713ecbfc): #1E1528 #362645 #54406A #7A6494 #A28FBA #D2C6D8
+GBV = ['#1e1528', '#362645', '#54406a', '#7a6494', '#a28fba', '#d2c6d8']
+
+
 def emblem_grave_bloom():
     """Grave Bloom: a violet bloom opened on its stem out of a mound, a skull laid in the earth beside it"""
     S = Spr(AW, AH)
     mound = {(x, y) for (x, y) in disc(12, 22, 11.5, 6.5) if y >= 15}
     shade(S, mound, (OAK[8], OAK[7], OAK[5]))
     stem = {(x, y) for y in range(8, 17) for x in (14, 15)}
-    shade(S, stem, (TEAL[4], TEAL[3], TEAL[1]))
+    shade(S, stem, (GBV[4], GBV[3], GBV[2]))
     leaf = disc(11.5, 12, 2.4, 1.3) | disc(18, 11, 2.4, 1.3)
-    shade(S, leaf, (TEAL[4], TEAL[3], TEAL[1]))
+    shade(S, leaf, (GBV[4], GBV[3], GBV[2]))
     petals = set()
     for k in range(5):
         a = math.radians(90 + 72 * k)
