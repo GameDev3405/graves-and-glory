@@ -55,6 +55,17 @@ See `anim-refs/spear/SOURCES.md` (frames in `anim-refs/spear/frames/<move>/`, 10
 | 9CG, "Spear Animation Pack for Unreal Engine", youtu.be/4HCB4j9gJS4 | Overhead catalogue of tiny figures. Not used. |
 | Ammar, "Spear animations and combat", youtu.be/zShdlx511mM | Dark Souls-like montage, small and cluttered. Mood only. |
 
+**Kort's picks (2026-11-03), these lead over the timestamps above:**
+
+| Move | Video | Time | Frames |
+|---|---|---|---|
+| walk | youtu.be/Yk4NFoRhw1g | 0:20-0:25 | `frames/kort_walk` (50) |
+| run | youtu.be/Yk4NFoRhw1g | 0:26-0:29 | `frames/kort_run` (30) |
+| normal jab (`thrust`) | youtu.be/Yk4NFoRhw1g | 0:30 | `frames/kort_jab` (29.5-31.0 s, 15) |
+| slice attack | youtu.be/fo6o40nDJzM | 0:04-0:06 | `frames/kort_slice` (20); local `slice-fo6o40nDJzM.mkv` |
+
+f_n = start + 0.1 (n-1) s. The moves table is re-keyed from these when the spear family is built.
+
 The Souls-like look, from the main video: a deep crouch, hands drawn back along the shaft, a hard lunge that holds the level extension about 0.2 s, then a quick settle.
 
 ## Stances

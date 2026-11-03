@@ -46,6 +46,15 @@ Action and hit clips are additive offsets over the stance (MotionStack.action); 
 1. Reaper Animations for Unreal Engine, Wolff's Studio (https://www.youtube.com/watch?v=uT3M0MZxwS0, 5:39), `uT3M0MZxwS0.mkv`. The only clean side-on scythe set found. Two mannequins fight on a plain stage. Frames on disk: `frames/attack_a` (4.0-6.0 s), `frames/attack_c` (9.3-10.5 s), `frames/idle_stand` (118-121 s), `frames/guard_hold` (123-126 s), `frames/pose_carry` (113-117 s).
 2. Elden Ring Weapon Showcase: Scythe, MrIwont4get (https://www.youtube.com/watch?v=CBb-5zS2WBA, 8:23), `CBb-5zS2WBA.webm`. Mood only: heavy wide arcs and long recovery. No timestamp cited (camera and effects hide the poses).
 
+**Kort's picks (2026-11-03) from video 2, these lead over video 1 for the swing:**
+
+| Move | Time | Frames |
+|---|---|---|
+| normal left swing into right swing | 0:16-0:17 | `frames/kort_swing` (16.0-17.9 s, 19) |
+| right swing, second view | 0:34-0:35 | `frames/kort_right_swing` (34.0-35.9 s, 19) |
+
+f_n = start + 0.1 (n-1) s. The moves table is re-keyed from these when the scythe family is built.
+
 Mannequins are slim and quick (about 0.8 s per reap cycle), so timing is retimed to heavy troops. The coordinator list (ANIMATION-REFERENCES.md) names no scythe pack and suggests the Souls greatsword and halberd references for the sweep and slow recovery; use the greatsword family's `side_cut` (GameDevHero / RamsterZ frames, see its spec) as the cross-check for body mechanics.
 
 Not found: a clean overhead hook with a camera that does not pan (9.3-10.5 pans), a march (carry) and any hit reaction on a scythe holder.
