@@ -46,6 +46,14 @@ public final class CampaignChecks implements ClientModInitializer {
         // The battle self-test (-PselfTest) drives its own battle; these suites would fight it for the same world.
         if(!MeltyTest.active()||Boolean.getBoolean("gravesandglory.selfTest")||Boolean.getBoolean("gravesandglory.campChecks")||Boolean.getBoolean("gravesandglory.networkHost")||Boolean.getBoolean("gravesandglory.networkJoin")||!System.getProperty("gravesandglory.rankNet","").isEmpty()||!System.getProperty("gravesandglory.phase1Checks","").isEmpty()||!System.getProperty("gravesandglory.phase2Checks","").isEmpty()||!System.getProperty("gravesandglory.phase4Checks","").isEmpty())return;
         stateProbe();
+        // Nothing else opens the world: without this the client idles on the first-run accessibility screen, then on the front menu (QA run 3 stall).
+        int[] front={0};boolean[] opened={false};
+        ClientTickEvents.END_CLIENT_TICK.register(c->{
+            c.options.pauseOnLostFocus=false; // an unfocused test window must not pause the integrated server
+            if(c.getOverlay()!=null)return;
+            if(c.currentScreen instanceof net.minecraft.client.gui.screen.AccessibilityOnboardingScreen s){s.close();return;} // a fresh root has no options.txt: press Continue as a player would
+            if(!opened[0]&&c.currentScreen instanceof FrontMenuScreen&&++front[0]==40){opened[0]=true;GravesAndGloryClient.startCamp(c,false);}
+        });
         ClientTickEvents.END_CLIENT_TICK.register(c->{
             if(c.player==null||c.getServer()==null||!GravesAndGloryClient.ready)return;
             tick++;
@@ -137,7 +145,7 @@ public final class CampaignChecks implements ClientModInitializer {
                 var p=b.server.getPlayerManager().getPlayer(c.player.getUuid());var s=b.squads.get(p.getUuid());var friendly=b.units.stream().filter(u->u.squad==s).findFirst().orElseThrow();float hp=friendly.mob.getHealth();friendly.mob.damage(b.world.getDamageSources().playerAttack(p),5);report("friendly-fire",friendly.mob.getHealth()==hp,"Allied damage rejected");
                 b.campaign.finish(-1);if(backup!=null){b.campaign.profiles.put(p.getUuid(),Campaign.JSON.fromJson(Campaign.JSON.toJson(backup),Profile.class));b.campaign.save(p.getUuid());}b.campaign.handle(p,"mode:4");});
             if(tick==965)report("impact-friendly-filter",Presentation.receivedImpacts==contactsBefore,"Rejected friendly damage produced no contact accent");
-            if(tick==1110&&devRun())server(c,b->{try{var p=b.server.getPlayerManager().getPlayer(c.player.getUuid());Files.writeString(restartFile(c),Campaign.JSON.toJson(b.campaign.profile(p.getUuid())));
+            if(tick==1110&&devRun())server(c,b->{try{var p=b.server.getPlayerManager().getPlayer(c.player.getUuid());var mark=b.campaign.profile(p.getUuid());if(!Files.exists(restartFile(c).resolveSibling("keep-profile"))){mark.gold=777;b.campaign.save(p.getUuid());} /* a non-default value, so the reopen proves the saved file was read */ Files.writeString(restartFile(c),Campaign.JSON.toJson(mark));
                 var husk=net.minecraft.entity.EntityType.HUSK.create(b.world);husk.addCommandTag("gravesandglory");husk.refreshPositionAndAngles(-20,65,CampaignMaps.LOBBY_Z,0,0);b.world.spawnEntity(husk);
                 report("restart-fixture",true,"Collection saved and one stale hostile husk planted for the reopen test");}catch(Exception e){report("restart-fixture",false,e.toString());}});
             if(tick==1000){c.setScreen(new GravesAndGloryClient.LobbyScreen());report("campaign-suite",!failed,"Mechanical checks finished; local multiplayer joining is a separate run");shot(c,"final-lobby");}
@@ -149,6 +157,7 @@ public final class CampaignChecks implements ClientModInitializer {
                 report("solo-pad-3v3",b.running&&camp.size==3&&b.squads.size()==6&&b.units.size()==fielded(b)&&eachFieldsBanner(b)&&b.squads.values().stream().filter(s->s.bot).count()==5,"One ready commander starts a 3v3 with five AI commanders");
                 camp.finish(-1);if(backup!=null){camp.profiles.put(p.getUuid(),Campaign.JSON.fromJson(Campaign.JSON.toJson(backup),Profile.class));camp.save(p.getUuid());}
             });
+            if(tick==1130)c.scheduleStop(); // a clean quit, so the next launch reopens the saved world and profile
             if(tick==1080)report("roadmap-suite",!failed,"Full regression including solo ready-pad battle completed");
         });
     }
