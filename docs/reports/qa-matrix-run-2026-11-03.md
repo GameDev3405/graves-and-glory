@@ -3,7 +3,7 @@
 Branch `work/qa-matrix-runs`, base `main` bd05fa2b. Tester: Sonnet worker. Per-row states are in the "Run 2026-11-03" column of `docs/QA-MATRIX.md`. Evidence files (copies of the harness `local-checks.txt` and the verify result) are in `docs/reports/qa-matrix-run-2026-11-03-evidence/`; full logs are under the gitignored `work/q3/`.
 
 ## Totals (137 rows)
-Updated after the dedicated-server pass (below): 86 PASS, 2 FAIL (C9, C11), 29 Kort (needs Kort, friends, real network or visual sign-off), 20 not run (no agent-runnable check exists, or a fixture was needed).
+Updated after the dedicated-server pass (below): 86 PASS, 2 FAIL (C9, C10), 29 Kort (needs Kort, friends, real network or visual sign-off), 20 not run (no agent-runnable check exists, or a fixture was needed).
 Before that pass: 78 PASS, 1 FAIL (K10, since resolved to PASS), 34 Kort, 24 not run. The pass moved C7, C8, C10, E9, F5, J2, J9 to PASS, C9 and C11 to FAIL, and completed the live halves of F2-F4 (already PASS).
 A PASS on an AUTO-only row means the standalone or Python check passed in `verify.py fast`; "live" halves of mixed rows were not run (noted in the column).
 
@@ -37,8 +37,8 @@ Kort approved (Q88, 2026-11-03) accepting the EULA only in a throwaway scratch s
 | C7 first start | PASS | libraries downloaded, world created, `Done (2.224s)`, camp built, no stack trace |
 | C8 status probe | PASS (probe fixed) | status JSON sane (1.20.1, protocol 763, 0/16); `server_status_probe.py` exits 1 because it asserts `players.max == 8`, kit default is 16 |
 | C9 join 127.0.0.1 | FAIL (expectation) | join works (`QaClient joined the game`, harness PASS); `gravesandglory-profiles/<uuid>.json` is not created by the join, only on the first collection change (`Campaign.save`) |
-| C10 stop | PASS (fixed) | `stop.ps1` saved all dimensions, exit 0; first attempt sent `?stop` (BOM) under a redirected stdin and the server kept running; fine after setting a BOM-free `[Console]::InputEncoding` |
-| C11 other level-name | FAIL (GAP; fixed in code, re-check live) | mod inactive, no `Battle`, no crash, but no log line says why |
+| C10 stop | FAIL (fix incomplete; live re-check 2026-11-03) | start.ps1 from f4301b1f under redirected stdin (open and closed): `stop.ps1` still sent a BOM-prefixed `stop`, server log `ï»¿stop<--[HERE]` unknown command, java kept running 120 s, ended by Stop-Process (scratch). Earlier PASS only with a BOM-free `[Console]::InputEncoding` set by the host |
+| C11 other level-name | PASS (live re-check 2026-11-03) | level-name `Vanilla Probe`: `Done (2.253s)`, INFO `Graves and Glory is inactive: level-name "Vanilla Probe" is not "Graves and Glory" or "Bannerbound"...`, no crash |
 | E9 legacy profiles and layout | PASS | `bannerbound-profiles/` and `bannerbound-layout.json` copied byte-identical (sha256), originals kept; failure branch not run live (AUTO covers it) |
 | F2 old protocol, F3 old version, F4 build hash | PASS | live clients refused with "requires Graves and Glory 0.5.0 (build 2e255add)"; server logs "Refused incompatible client", no exception. The harness `old` case changes the version string, not the protocol number |
 | F5 malformed / missing handshake | PASS | `malformed=true` ("Invalid modpack compatibility response ..."), `missing=true`; no server error |
@@ -47,7 +47,7 @@ Kort approved (Q88, 2026-11-03) accepting the EULA only in a throwaway scratch s
 
 Findings (not fixed, per scope):
 - C9: matrix wording expects the profile file after a bare join; the code writes it lazily. Either the row text or the join path should change (Kort/owner call).
-- C11 (fixed, re-check live): `GravesAndGlory` now logs one INFO line at server start naming the expected level names. Was: no operator log line when the level name is not `Graves and Glory`/`Bannerbound` (README says activation depends on it).
-- C10 (fixed): `start.ps1` now writes to the child's stdin through a BOM-free UTF-8 writer. Was: `start.ps1` forwards `stop` through `ProcessStartInfo.RedirectStandardInput`; with a UTF-8 console input encoding the server received `?stop`. Likely a BOM; seen only under a redirected (non-interactive) host, not checked in a real console window.
+- C11 (fixed; live re-check PASS 2026-11-03): `GravesAndGlory` now logs one INFO line at server start naming the expected level names. Was: no operator log line when the level name is not `Graves and Glory`/`Bannerbound` (README says activation depends on it).
+- C10 (fix incomplete: live re-check still sends a BOM-prefixed stop; BOM source not found, start.ps1 StreamWriter looks BOM-free): `start.ps1` now writes to the child's stdin through a BOM-free UTF-8 writer. Was: `start.ps1` forwards `stop` through `ProcessStartInfo.RedirectStandardInput`; with a UTF-8 console input encoding the server received `?stop`. Likely a BOM; seen only under a redirected (non-interactive) host, not checked in a real console window.
 - C8 (fixed): the probe reads `max-players` from `tools/server-kit/server.properties.default` (16 if unreadable). Was: `test-tools/standalone/server_status_probe.py` hard-codes `max == 8`.
 - First `Done` came with one "Can't keep up" (73 ticks) during the camp build, as the runbook already notes.
