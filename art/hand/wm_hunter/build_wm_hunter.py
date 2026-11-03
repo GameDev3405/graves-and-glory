@@ -267,8 +267,16 @@ NOTE = ("Wildmoot Hide Hunter (unit identity, Wildmoot): lean hunched boar-kin a
         "a leather cap with an ochre-stitched brim and a three-feather fan on the left, a hide cloak and quiver on the back, a team jerkin "
         "and the order bow in the left hand. Tier II: bone brow plate, spiked pauldron, second bracer, quiver rim; tier III: "
         "five-feather ochre-barred fan, pelt mantle, tusk necklace, ochre quiver bands. No back flag.")
+def veteran(bone, box):
+    """The Mastery II trim: ochre studs on the belt, a bone-beaded cord on each arm above the bracer and on each thigh."""
+    n = bone.name
+    if n == "belt": return vet_rows((0, 1), every=2, bead=True)
+    if n.endswith("_arm"): return vet_rows((4,))
+    if n.endswith("_leg"): return vet_rows((3,))
+    return None
+
 WM_HUNTER = Troop("wm_hunter", SKIN, CLOTH, bones, cloth_painter,
-                  {"weapon": "order_bow", "hand": "left", "idleArms": "hang", "portrait": "tall 4"})
+                  {"weapon": "order_bow", "hand": "left", "idleArms": "hang", "portrait": "tall 4"}, veteran=veteran)
 def build(): return WM_HUNTER.build()
 def outputs(): return WM_HUNTER.outputs()
 

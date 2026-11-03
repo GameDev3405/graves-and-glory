@@ -18,7 +18,7 @@ sys.path.insert(0, os.path.join(HERE, "..", "common"))
 from wildmoot import *   # noqa: F401,F403
 import house_stub
 
-SKIN = (128, 128)
+SKIN = (256, 128)   # tier II and III bone and the wand tiers
 CLOTH = (128, 64)
 HUNCH = 30
 
@@ -210,8 +210,17 @@ def bones():
             Box((-1, -1.5, -1), (2, 1, 2), lash(), dil=0.1)]))                            # ochre lashing at the base
     B.append(Bone("right_arm", "body", (-5, -10, 0), [Box((-3, -2, -2), (4, 12, 4), arm())], rot=(-HUNCH, 0, 0)))
     B.append(Bone("right_hand", "right_arm", (-1, 8, 0)))
-    B.append(Bone("wand", "right_hand", tag="weapon", boxes=[Box((-0.5, -0.5, -5), (1, 1, 5), wand()), Box((-1, -1, -6), (2, 2, 1), wand()),
-                                                            Box((-1, -1, -1.5), (2, 2, 1), lash(), dil=0.1)]))
+    # the weapon, the bone wand (weaponTiers): I a bone rod with an ochre grip; II longer, ochre-banded, a fang at the head;
+    # III a trophy skull on the head between two antler tines, the shaft bound in ochre
+    for t in (1, 2, 3):
+        bx = [Box((-0.5, -0.5, -5), (1, 1, 5), wand()), Box((-1, -1, -6), (2, 2, 1), wand()), Box((-1, -1, -1.5), (2, 2, 1), lash(), dil=0.1)]
+        if t >= 2:
+            bx = [Box((-0.5, -0.5, -7), (1, 1, 7), wand()), Box((-1, -1, -1.5), (2, 2, 1), lash(), dil=0.1),
+                  Box((-0.5, -0.5, -5), (1, 1, 1), lash(), dil=0.15), Box((-0.5, -0.5, -3.5), (1, 1, 1), lash(), dil=0.15)]
+            bx += [Box((-1, -1, -8), (2, 2, 1), wand()), Box((-0.5, 1, -8), (1, 2, 1), wm_tusk())] if t == 2 else [
+                   Box((-1.5, -1.5, -10), (3, 3, 3), wm_skull("swk")), Box((-2.5, -3.5, -9), (1, 3, 1), antler(4, "swa")),
+                   Box((1.5, -3.5, -9), (1, 3, 1), antler(4, "swb")), Box((-1, -1, -7), (2, 2, 1), lash(), dil=0.1)]
+        B.append(Bone("wand" if t == 1 else f"wand_t{t}", "right_hand", tag="weapon", weapon_tiers=[t], boxes=bx))
     B.append(Bone("left_arm", "body", (5, -10, 0), [Box((-1, -2, -2), (4, 12, 4), arm())], rot=(-HUNCH, 0, 0)))
     B.append(Bone("left_hand", "left_arm", (1, 8, 0)))
     B.append(Bone("arms_folded", "body", (0, -9, -1), rot=(-43, 0, 0)))
@@ -245,8 +254,15 @@ def bones():
         Box((-5.5, -10, -3.2 + i * 1.5), (1, 3 + i % 2, 1), plume()) for i in range(5)] + [
         Box((4.5, -10, -3.2 + i * 1.5), (1, 3 + i % 2, 1), plume()) for i in range(5)] + [
         Box((-4.5 + i * 2, -10, 3.2), (1, 3 + (i + 1) % 2, 1), plume()) for i in range(5)]))
-    B.append(Bone("wand_bands", "right_hand", tag="weapon", stages=[2, 3], boxes=[
-        Box((-0.5, -0.5, -4), (1, 1, 1), lash(), dil=0.15), Box((-0.5, -0.5, -2.5), (1, 1, 1), lash(), dil=0.15)]))
+    # and heavy bone shoulder plates lashed over the shawl, a bone breast plate, bone bracers
+    for side, x0 in (("right", -3.5), ("left", -1.5)):
+        B.append(Bone(f"{side}_shoulder", f"{side}_arm", stages=[2, 3], boxes=[
+            Box((x0, -3, -2.6), (5, 2, 5.2), per_tier(lambda t, sd=side: wm_plate(t, "ssh" + sd), (2, 3)), dil=0.1),
+            Box((x0 + 0.5, -1, -2.4), (4, 2, 4.8), per_tier(lambda t, sd=side: wm_plate(t, "ssi" + sd), (2, 3)), dil=0.05)]))
+        B.append(Bone(f"{side}_bracer", f"{side}_arm", stages=[2, 3], boxes=[
+            Box((x0 + 0.5, 4, -2.3), (4, 3, 4.6), per_tier(lambda t, sd=side: wm_plate(t, "sbr" + sd), (2, 3)), dil=0.05)]))
+    B.append(Bone("breastplate", "body", stages=[2, 3], boxes=[
+        Box((-3, -9, -2.9), (6, 5, 1), per_tier(lambda t: wm_plate(t, "sbp"), (2, 3)), dil=0.05)]))
     # tier III: a taller crown of more tines, two trophy skulls on the staff, a bone and tooth collar, an ochre fringe at the hem
     for name, sg in (("antler_r", -1), ("antler_l", 1)):
         B.append(Bone(name + "_crown", name, (0, -6, 0), stages=[3], rot=(0, 0, sg * 10), boxes=[
@@ -260,6 +276,12 @@ def bones():
         Box((-3.5, -12, -3.4), (1, 2, 1), wm_tusk()), Box((-1.5, -12, -3.4), (1, 2, 1), wm_tusk()),
         Box((0.5, -12, -3.4), (1, 2, 1), wm_tusk()), Box((2.5, -12, -3.4), (1, 2, 1), wm_tusk())]))
     B.append(Bone("hem_fringe", "root", stages=[3], boxes=[Box((-4.5, 19.5, -2.5), (9, 1, 5), lashing(OCHRE, 3), dil=0.35)]))
+    B.append(Bone("chest_skull", "body", stages=[3], boxes=[
+        Box((-1.5, -8.5, -4.2), (3, 3, 2), wm_skull("scs")), Box((-3.5, -9, -3.6), (1, 3, 1), wm_tusk()), Box((2.5, -9, -3.6), (1, 3, 1), wm_tusk())]))
+    for side, x0 in (("right", -3.5), ("left", -1.5)):
+        B.append(Bone(f"{side}_shoulder_tusks", f"{side}_shoulder", stages=[3], boxes=[
+            Box((x0 + 0.5, -6, -0.5), (1, 3, 1), wm_tusk()), Box((x0 + 3.5, -5, -0.5), (1, 2, 1), wm_tusk()),
+            Box((x0 + 2, -5, 1.5), (1, 2, 1), wm_tusk())]))
     return B
 
 def sash_cloth(T, M):
@@ -279,9 +301,19 @@ def cloth_painter(spec, side):
 NOTE = ("Wildmoot Bloodhowl Seer (unit identity, Wildmoot): a stooped boar-kin elder with a grey-furred muzzle, clay-glow eyes, an antler "
         "crown of two branching tines, a hide robe to the shins with blood handprints, bone and ochre trinkets, a team sash across the chest "
         "and a bone wand in the right hand. A totem staff (bone skull and antler top) is strapped diagonally on the back. Tier II: third tines, "
-        "bone plaques, feather mantle, ochre wand bands; tier III: taller crown, staff skulls, tooth collar, ochre hem. No back flag.")
+        "bone plaques, feather mantle, shoulder plates, breast plate, bracers, a longer banded wand; tier III: taller crown, staff skulls, tooth collar, ochre hem, a chest skull, shoulder tusks, a skull-headed wand. No back flag.")
+def veteran(bone, box):
+    """The Mastery II trim: a bone-beaded ochre baldric, studs on the belt, a cord above each cuff and a band on the skirt."""
+    n = bone.name
+    if n == "body": return vet_baldric()
+    if n == "belt": return vet_rows((0,), every=2, bead=True)
+    if n.endswith("_arm"): return vet_rows((4,))
+    if n.endswith("_leg"): return vet_rows((3,))
+    if n == "skirt": return vet_rows((6,), bead=True)
+    return None
+
 WM_SEER = Troop("wm_seer", SKIN, CLOTH, bones, cloth_painter,
-                {"weapon": "none", "hand": "right", "idleArms": "hang", "portrait": "tall 6"}, glow=glow_fn)
+                {"weapon": "none", "hand": "right", "idleArms": "hang", "portrait": "tall 6"}, glow=glow_fn, veteran=veteran)
 def build(): return WM_SEER.build()
 def outputs(): return WM_SEER.outputs()
 

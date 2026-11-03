@@ -5,8 +5,9 @@ A wide, low, long-legged spider of the Wildmoot hunt: a dark green-black chitin 
 pale at the knees and thick with bristles, and a carved white bone mask lashed over the eyes. Silk sacs cluster on the
 abdomen, clay warpaint is smeared across it, and a team cloth is tied across the abdomen with ochre cords. No back flag.
 
-Tier I is the Web Stalker. Tier II (Broodstalker) carries more silk sacs, bone ridge plates on the thorax and bone
-beads strung on the cords. Tier III (Widowmaker) grows great bone mandibles and a bone crest on the mask, and bears a
+Tier I is the Web Stalker. Tier II (Broodstalker) carries more silk sacs, a lashed bone carapace over the thorax,
+bone plates on the abdomen's flanks and rear, bone sleeves on every femur, bone beads on the cords and long ochre-rooted
+fangs. Tier III (Widowmaker) grows great bone mandibles and a bone crest on the mask, and bears a
 ochre hourglass edged in dried blood on the rear of the abdomen's back.
 
   python build_wm_stalker.py preview <dir> [side] | contact <png> [side] | stub
@@ -17,7 +18,7 @@ sys.path.insert(0, os.path.join(HERE, "..", "common"))
 from wildmoot import *   # noqa: F401,F403
 import house_stub
 
-SKIN = (128, 128)
+SKIN = (256, 128)   # tier II and III bone and the fang tiers
 CLOTH = (128, 64)
 Y0 = 13.8            # thorax pivot height (the vanilla spider's is 15); the longer legs are tuned to reach y = 24
 
@@ -255,8 +256,14 @@ def bones():
         Box((-4, -3.5, -8.5), (8, 1, 2), bone_paint(4, "brow")),
         Box((-4.5, 0, -8), (1, 3, 1), bone_paint(3, "ck")), Box((3.5, 0, -8), (1, 3, 1), bone_paint(3, "ck2"))]))
     B.append(Bone("palps", "head", boxes=[Box((-5, 1, -6), (1, 3, 3), palp()), Box((4, 1, -6), (1, 3, 3), palp())]))
-    B.append(Bone("fangs", "head", (0, 2.5, -7), [Box((-2, 0, -1), (4, 1, 1), bone_paint(3, "fb")),
-                                                   Box((-2, 1, -1), (1, 3, 1), fang()), Box((1, 1, -1), (1, 3, 1), fang())]))
+    # the weapon, its fangs (weaponTiers): I two bone fangs on a bar; II longer ochre-rooted fangs and side hooks; III adds
+    # the great bone mandibles (below)
+    for t in (1, 2, 3):
+        bx = [Box((-2, 0, -1), (4, 1, 1), bone_paint(3, "fb")), Box((-2, 1, -1), (1, 3, 1), fang()), Box((1, 1, -1), (1, 3, 1), fang())]
+        if t >= 2:
+            bx = [Box((-2.5, 0, -1), (5, 1, 1), lashing(OCHRE, 3)), Box((-2, 1, -1.2), (1, 5, 1), wm_tusk()), Box((1, 1, -1.2), (1, 5, 1), wm_tusk()),
+                  Box((-3, 1, -1), (1, 2, 1), fang()), Box((2, 1, -1), (1, 2, 1), fang())]
+        B.append(Bone("fangs" if t == 1 else f"fangs_t{t}", "head", (0, 2.5, -7), bx, weapon_tiers=[t]))
     B.append(Bone("abdomen", "thorax", (0, 0.5, 2), [Box((-6, -4, 0), (12, 7, 12), per_tier(abdomen_painter, (1, 2, 3)))], rot=(5, 0, 0)))
     B.append(Bone("sacs", "abdomen", boxes=[
         Box((-3, 0, 10), (4, 4, 4), sac("a")), Box((1, -1, 9), (4, 4, 4), sac("b")),
@@ -277,13 +284,30 @@ def bones():
     B.append(Bone("ridge_plates", "thorax", stages=[2, 3], boxes=[
         Box((-4, -4, -2.5), (2, 1, 5), wm_plate(2, "srp1")), Box((-1, -4.5, -2.5), (2, 2, 5), wm_plate(2, "srp2")),
         Box((2, -4, -2.5), (2, 1, 5), wm_plate(2, "srp3"))]))
+    # and a lashed bone carapace over the thorax and the abdomen's shoulders, bone guards on every femur
+    B.append(Bone("carapace", "thorax", stages=[2, 3], boxes=[
+        Box((-5.5, -3.6, -3.4), (11, 1, 6.8), per_tier(lambda t: wm_plate(t, "scp"), (2, 3)), dil=0.05),
+        Box((-6, -1, -3.2), (1, 3, 6.4), per_tier(lambda t: wm_plate(t, "scr"), (2, 3))), Box((5, -1, -3.2), (1, 3, 6.4), per_tier(lambda t: wm_plate(t, "scl"), (2, 3)))]))
+    B.append(Bone("abdomen_plates", "abdomen", stages=[2, 3], boxes=[
+        Box((-5, -5, 7), (10, 1, 4), per_tier(lambda t: wm_plate(t, "sap"), (2, 3)), dil=0.05),
+        Box((-6.6, -3, 1), (1, 4, 6), per_tier(lambda t: wm_plate(t, "sar"), (2, 3))), Box((5.6, -3, 1), (1, 4, 6), per_tier(lambda t: wm_plate(t, "sal"), (2, 3)))]))
+    for side in ("left", "right"):
+        sg = 1 if side == "left" else -1
+        X = lambda x0, w: x0 if sg == 1 else -x0 - w
+        for i in (1, 2, 3, 4):
+            n = f"{side}_leg_{i}"
+            B.append(Bone(n + "_guard", n, stages=[2, 3], boxes=[
+                Box((X(3, 4.5), -2, -2), (4.5, 4, 4), per_tier(lambda t, k=n: wm_plate(t, "slg" + k), (2, 3)), dil=0.05)]))
+            if i in (1, 2):
+                B.append(Bone(n + "_spur", n, stages=[3], boxes=[
+                    Box((X(4, 1), -5, -0.5), (1, 3, 1), wm_tusk()), Box((X(6, 1), -4.5, -0.5), (1, 2, 1), wm_tusk())]))
     B.append(Bone("cord_beads", "abdomen", stages=[2, 3], boxes=[
         Box((-5, -5, 0), (1, 1, 1), bone_paint(4, "cb1")), Box((-2.5, -5, 0), (1, 1, 1), bone_paint(4, "cb2")),
         Box((1.5, -5, 0), (1, 1, 1), bone_paint(4, "cb3")), Box((4, -5, 0), (1, 1, 1), bone_paint(4, "cb4")),
         Box((-5, -5, 6), (1, 1, 1), bone_paint(4, "cb5")), Box((4, -5, 6), (1, 1, 1), bone_paint(4, "cb6"))]))
     # tier III, the Widowmaker: great bone mandibles, a bone crest on the mask, the blood hourglass on the rear
     for side, c in (("right", -1), ("left", 1)):
-        B.append(Bone(f"mandible_{side}", "head", (c * 4.5, 2, -7), stages=[3], rot=(18, 0, 0), boxes=[
+        B.append(Bone(f"mandible_{side}", "head", (c * 4.5, 2, -7), weapon_tiers=[3], rot=(18, 0, 0), boxes=[
             Box((-1, -1, -1), (2, 3, 2), bone_paint(3, "mdb" + side)),
             Box((-1, 1, -6), (2, 2, 6), wm_tusk()), Box((-0.5 - c * 1, 1.5, -8), (1, 2, 2), wm_tusk()),
             Box((-0.5 - c * 2, 2, -9), (1, 2, 1), wm_tusk())]))
@@ -291,6 +315,9 @@ def bones():
         Box((-0.5, -9.5, -8.5), (1, 6, 1), wm_tusk()), Box((-2.5, -7.5, -8.3), (1, 4, 1), wm_tusk()), Box((1.5, -7.5, -8.3), (1, 4, 1), wm_tusk()),
         Box((-4.5, -6, -8.1), (1, 2, 1), wm_tusk()), Box((3.5, -6, -8.1), (1, 2, 1), wm_tusk()),
         Box((-4, -4.5, -8.6), (8, 1, 1), lashing(OCHRE, 3), dil=0.05)]))
+    B.append(Bone("trophy", "abdomen", stages=[3], boxes=[
+        Box((-1.5, -8, 7.5), (3, 3, 3), wm_skull("sts")), Box((-3.5, -7, 8), (1, 2, 1), wm_tusk()), Box((2.5, -7, 8), (1, 2, 1), wm_tusk()),
+        Box((-4.5, -6.5, 10), (1, 2, 1), wm_tusk()), Box((3.5, -6.5, 10), (1, 2, 1), wm_tusk())]))
     return B
 
 def cloth_painter(spec, side):
@@ -299,10 +326,18 @@ def cloth_painter(spec, side):
 
 NOTE = ("Wildmoot Web Stalker (unit identity, Wildmoot): Rare spider beast. A wide low dark chitin body with a lit edge, long banded "
         "bristled legs, a carved white bone mask lashed over the eyes, silk sacs and clay warpaint on the abdomen, a team cloth tied "
-        "across the abdomen with ochre cords. Tier II: more sacs, thorax ridge "
-        "plates, cord beads; tier III: bone mandibles, mask crest, ochre hourglass. No back flag.")
+        "across the abdomen with ochre cords. Tier II: more sacs, a bone carapace, abdomen plates, "
+        "femur sleeves, cord beads, long fangs; tier III: bone mandibles, mask crest, femur spurs, an abdomen skull, ochre hourglass. No back flag.")
+def veteran(bone, box):
+    """The Mastery II trim: an ochre cord about the thorax, and an ochre ring on every leg segment."""
+    n, sz = bone.name, tuple(box.size)
+    if n == "thorax" and sz == (10, 6, 6): return vet_rows((2,), bead=True)
+    if "_leg_" in n and sz == (8, 3, 3): return vet_cols((6,))
+    if "_leg_" in n and sz == (8, 2, 2): return vet_cols((5,))
+    return None
+
 WM_STALKER = Troop("wm_stalker", SKIN, CLOTH, bones, cloth_painter,
-                   {"rig": "spider", "weapon": "none", "hand": "right", "idleArms": "hang", "portrait": "beast 18 yaw 20"})
+                   {"rig": "spider", "weapon": "none", "hand": "right", "idleArms": "hang", "portrait": "beast 18 yaw 20"}, veteran=veteran)
 def build(): return WM_STALKER.build()
 def outputs(): return WM_STALKER.outputs()
 

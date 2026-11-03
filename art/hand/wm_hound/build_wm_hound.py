@@ -7,9 +7,11 @@ sits at the neck; a ragged team saddle-cloth drapes both shoulders and the withe
 stripe stays whole, with hide spikes rising through it. Hide, bone and clay throughout; the team colour is only the
 cloth. No back flag.
 
-Tier I is the moot cur. Tier II (Dire Hound) lashes a bone skull-cap over the brow, hangs a tooth collar under the jaw,
-wraps the forelegs in ochre sinew and raises taller spikes. Tier III (Packleader) grows antler tufts from the head,
-lays bone plates down the spine and paints ochre bars across the flanks.
+Tier I is the moot cur. Tier II (Dire Hound) lashes a bone skull-mask over the brow and bone plates over
+the shoulders, hangs a tooth collar under the jaw, wraps all four legs in ochre sinew and raises a taller spike crest; its
+fangs grow long. Tier III (Packleader) grows a branching antler crown, lays bone plates down the spine and flanks, sets
+tusks on the shoulder plates and a trophy skull at the throat and paints ochre bars across the flanks; its fangs become
+ochre-bound sabres under a bone muzzle ridge.
 
   python build_wm_hound.py preview <dir> [side] | contact <png> [side] | stub
 """
@@ -175,6 +177,14 @@ def warpaint(base, tier):
         return g
     return paint
 
+def sabre():
+    """A long sabre fang: bone, an ochre sinew band at the root, dark at the tip."""
+    def paint(face, w, h):
+        g = wm_tusk()(face, w, h)
+        if face not in ("top", "bottom"): g[0] = [OCHRE[4] if x % 2 == 0 else OCHRE[3] for x in range(w)]
+        return g
+    return paint
+
 def wrap():
     """An ochre sinew leg wrap, a bone toggle on the front."""
     return wm_band()
@@ -208,7 +218,18 @@ def bones():
     B.append(Bone("head", "chest", (0, 1, -6.5), [Box((-3, -3, -5), (6, 5, 5), head_painter())], rot=(PITCH, 0, 0)))
     B.append(Bone("muzzle", "head", boxes=[Box((-2, -1, -9), (4, 2, 4), muzzle_painter())]))
     B.append(Bone("jaw", "head", (0, 1, -5), [Box((-1, 0, -4), (2, 1, 4), jaw_painter())]))
-    B.append(Bone("fangs", "head", boxes=[Box((-2, 1, -8.5), (1, 1, 1), fang()), Box((1, 1, -8.5), (1, 1, 1), fang())]))
+    # the weapon, its fangs (weaponTiers): I small bone teeth; II long bone fangs and lower tusks; III ochre-bound sabre fangs
+    # and a bone muzzle ridge with a tusk spike at the nose
+    for t in (1, 2, 3):
+        bx = [Box((-2, 1, -8.5), (1, 1, 1), fang()), Box((1, 1, -8.5), (1, 1, 1), fang())]
+        if t >= 2:
+            bx = [Box((-2, 1, -8.5), (1, 2, 1), wm_tusk()), Box((1, 1, -8.5), (1, 2, 1), wm_tusk()),
+                  Box((-1.5, 0.5, -7), (1, 1, 1), fang()), Box((0.5, 0.5, -7), (1, 1, 1), fang())]
+        if t >= 3:
+            bx = [Box((-2.4, 1, -8.4), (1, 3, 1), sabre()), Box((1.4, 1, -8.4), (1, 3, 1), sabre()),
+                  Box((-1.5, 0.5, -7), (1, 1, 1), fang()), Box((0.5, 0.5, -7), (1, 1, 1), fang()),
+                  Box((-1, -1.6, -8.6), (2, 1, 4), wm_plate(3, "hmr")), Box((-0.5, -2.6, -8.3), (1, 1, 2), wm_tusk())]
+        B.append(Bone("fangs" if t == 1 else f"fangs_t{t}", "head", weapon_tiers=[t], boxes=bx))
     B.append(Bone("ear_right", "head", (-2, -3, -1.5), [Box((-1, -3, -0.5), (2, 3, 1), ear_painter(False))], rot=(0, 0, -16)))
     B.append(Bone("ear_left", "head", (2, -3, -1.5), [Box((-1, -3, -0.5), (2, 3, 1), ear_painter(True))], rot=(0, 0, 16)))
     B.append(Bone("tail", "body", (0, -2, 2), [Box((-1.5, 0, -1.5), (3, 8, 3), tail_painter())], rot=(38, 0, 0)))
@@ -237,24 +258,39 @@ def bones():
     B.append(Bone("saddle_rump", "body", team=True, boxes=[
         Box((1, -3, 0), (2, 3, 3), "sadr", dil=0.3, sheet="cloth"),
         Box((-3, -3, 0), (2, 3, 3), "sadr", dil=0.3, sheet="cloth")]))
-    # tier II, the Dire Hound: a bone skull-cap lashed over the brow, ochre wraps on the forelegs, a tooth collar, taller spikes
+    # tier II, the Dire Hound: a bone skull-mask over the brow, bone shoulder plates lashed over the saddle-cloth, a tooth
+    # collar, sinew wraps on all four legs and a taller spike crest
     B.append(Bone("skullcap", "head", stages=[2, 3], boxes=[
-        Box((-2.5, -4, -4.5), (5, 1, 4), per_tier(wm_plate, (2, 3))), Box((-0.5, -4.5, -5.2), (1, 1, 2), wm_tusk())]))
+        Box((-3, -4, -5), (6, 1, 5), per_tier(wm_plate, (2, 3)), dil=0.05), Box((-3, -3, -5.4), (6, 1, 1), per_tier(wm_plate, (2, 3))),
+        Box((-0.5, -5, -5.4), (1, 1, 3), wm_tusk())]))
     B.append(Bone("tooth_collar", "head", stages=[2, 3], boxes=[
-        Box((-3, 2, -2.4), (6, 1, 1), lashing(OCHRE, 2), dil=0.05),
-        Box((-2.5, 3, -2.4), (1, 2, 1), wm_tusk()), Box((-0.5, 3, -2.6), (1, 2, 1), wm_tusk()), Box((1.5, 3, -2.4), (1, 2, 1), wm_tusk())]))
+        Box((-3.5, 2, -2.4), (7, 1, 1), lashing(OCHRE, 2), dil=0.05),
+        Box((-3, 3, -2.4), (1, 2, 1), wm_tusk()), Box((-1.5, 3, -2.6), (1, 3, 1), wm_tusk()), Box((0.5, 3, -2.6), (1, 3, 1), wm_tusk()),
+        Box((2, 3, -2.4), (1, 2, 1), wm_tusk())]))
     B.append(Bone("spikes_ii", "chest", stages=[2, 3], boxes=[
-        Box((-0.5, -10.5, -6), (1, 6, 1), spike()), Box((-2, -8.5, -5), (1, 4, 1), spike()), Box((1, -8.5, -5), (1, 4, 1), spike())]))
+        Box((-0.5, -11.5, -6), (1, 7, 1), spike()), Box((-2, -9.5, -5), (1, 5, 1), spike()), Box((1, -9.5, -5), (1, 5, 1), spike()),
+        Box((-0.5, -9.5, -1), (1, 5, 1), spike())]))
     for side, c in (("right", -1), ("left", 1)):
-        B.append(Bone(f"{side}_wrap", f"front_{side}_leg", stages=[2, 3], boxes=[Box((-1, 3.5, -1), (2, 1, 2), wrap(), dil=0.3)]))
-    # tier III, the Packleader: antler tufts on the head, bone plates down the spine, ochre bars on the flanks
+        x0 = 4 if c > 0 else -5.5
+        B.append(Bone(f"{side}_shoulder_plate", "chest", stages=[2, 3], boxes=[
+            Box((x0, -4, -7.5), (1.5, 6, 6), per_tier(lambda t, sd=side: wm_plate(t, "hsh" + sd), (2, 3))),
+            Box((x0 + (0.5 if c > 0 else 0), -5, -7), (1, 1, 5), lashing(OCHRE, 3))]))
+        B.append(Bone(f"{side}_wrap", f"front_{side}_leg", stages=[2, 3], boxes=[Box((-1, 3.5, -1), (2, 2, 2), wrap(), dil=0.3)]))
+        B.append(Bone(f"{side}_back_wrap", f"back_{side}_leg", stages=[2, 3], boxes=[Box((-1, 3.5, -1), (2, 2, 2), wrap(), dil=0.3)]))
+    # tier III, the Packleader: a branching antler crown, a bone-plated spine and flank barding, tusk spikes on the shoulder
+    # plates, a trophy skull at the throat and ochre bars on the flanks
     for side, c in (("right", -1), ("left", 1)):
-        B.append(Bone(f"antler_tuft_{side}", "head", (c * 2, -3.5, -3), stages=[3], rot=(-25, 0, -c * 22), boxes=[
-            Box((-0.5, -6, -0.5), (1, 6, 1), antler(4, "hat" + side)), Box((-0.5 + c * 1, -5, -0.5), (1, 1, 1), antler(4, "hat2" + side)),
-            Box((-0.5, -3, -1.5), (1, 1, 1), antler(4, "hat3" + side)), Box((-0.5 + c * 1, -6, -0.5), (1, 1, 1), antler(4, "hat4" + side))]))
+        B.append(Bone(f"antler_tuft_{side}", "head", (c * 2, -3.5, -3), stages=[3], rot=(-25, 0, -c * 26), boxes=[
+            Box((-0.5, -8, -0.5), (1, 8, 1), antler(4, "hat" + side)), Box((-0.5 + c * 1, -6, -0.5), (2 if c > 0 else 1, 1, 1), antler(4, "hat2" + side)),
+            Box((-0.5 + c * 1.5, -8, -0.5), (1, 2, 1), antler(4, "hat4" + side)), Box((-0.5, -4, -1.5), (1, 1, 1), antler(4, "hat3" + side))]))
+        B.append(Bone(f"{side}_shoulder_tusks", f"{side}_shoulder_plate", stages=[3], boxes=[
+            Box((x + (c * 0.5), -6, z), (1, 2, 1), wm_tusk()) for x, z in (((4.25 if c > 0 else -5.25), -6.5), ((4.25 if c > 0 else -5.25), -3.5))]))
+        B.append(Bone(f"{side}_flank_plate", "body", stages=[3], boxes=[
+            Box((3 if c > 0 else -4, -2.5, -7), (1, 3, 8), wm_plate(3, "hfl" + side))]))
     B.append(Bone("spine_plates", "body", stages=[3], boxes=[
-        Box((-1.5, -4, -7), (3, 1, 3), wm_plate(3, "hsp1")), Box((-1.5, -4, -3), (3, 1, 3), wm_plate(3, "hsp2")),
-        Box((-1, -3.8, 0.5), (2, 1, 2), wm_plate(3, "hsp3"))]))
+        Box((-2.5, -4, -7.5), (5, 1, 3), wm_plate(3, "hsp1")), Box((-2.5, -4, -4), (5, 1, 3), wm_plate(3, "hsp2")),
+        Box((-2, -3.8, -0.5), (4, 1, 2.5), wm_plate(3, "hsp3"))]))
+    B.append(Bone("throat_skull", "head", stages=[3], boxes=[Box((-1.5, 4, -3), (3, 3, 2), wm_skull("hts"))]))
     return B
 
 def cloth_painter(spec, side):
@@ -263,10 +299,29 @@ def cloth_painter(spec, side):
 
 NOTE = ("Wildmoot Moot Hound (unit identity, Wildmoot; Common; wolf entity): a low, long, head-down cur on the hound rig, a russet fur "
         "coat over a bark-dark belly, a dark muzzle with small bone teeth, a pale clay stripe from nose to tail tip, an ochre sinew "
-        "collar with bone toggles and a ragged team saddle-cloth over the shoulders with hide spikes rising through it. Tier II: bone skull-cap, tooth collar, leg wraps, taller "
-        "spikes; tier III: antler tufts, spine plates, ochre flank bars. No back flag.")
+        "collar with bone toggles and a ragged team saddle-cloth over the shoulders with hide spikes rising through it. Tier II: bone skull-mask and shoulder plates, tooth collar, leg wraps, taller "
+        "spikes, long fangs; tier III: antler crown, spine and flank plates, throat skull, ochre flank bars, sabre fangs. No back flag.")
+def vet_band(rows_at):
+    """Bold two-tone bands on every side face: a pale bone line over an ochre line, so they read on the russet coat at game distance."""
+    def paint(face, w, h):
+        g = blank(w, h)
+        if face in ("top", "bottom"): return g
+        for i, y in enumerate(rows_at):
+            if 0 <= y < h:
+                for x in range(w): g[y][x] = BONE[5] if (i % 2 == 0) else OCHRE[4]
+        return g
+    return paint
+
+def veteran(bone, box):
+    n, sz = bone.name, tuple(box.size)
+    if n == "chest" and sz == (8, 8, 7): return vet_band((2, 3, 5, 6))
+    if n == "body" and sz == (6, 6, 10): return vet_band((2, 3))
+    if n.endswith("_leg") and sz in ((3, 3, 3), (3, 3, 4)): return vet_band((1, 2))
+    if n == "tail": return vet_band((2, 3, 5, 6))
+    return None
+
 WM_HOUND = Troop("wm_hound", SKIN, CLOTH, bones, cloth_painter,
-                 {"rig": "hound", "weapon": "none", "hand": "right", "idleArms": "hang", "portrait": "beast 16"})
+                 {"rig": "hound", "weapon": "none", "hand": "right", "idleArms": "hang", "portrait": "beast 16"}, veteran=veteran)
 def build(): return WM_HOUND.build()
 def outputs(): return WM_HOUND.outputs()
 

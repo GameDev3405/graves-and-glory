@@ -3,7 +3,10 @@
 
 A lighter man than the Shieldbreaker, built to stand behind him: an ember-banded kettle hat over a mail aventail with a
 slit of face showing, a riveted brigandine of dark leather and iron studs, a short team surcoat with crossed bolts, a
-fur-lined half cape on the shoulder, fauld and mail legs, and a quiver of ember-fletched bolts on his back. Tier I only.
+fur-lined half cape on the shoulder, fauld and mail legs, and a quiver of ember-fletched bolts on his back. Tier II (the
+Bolt Warden): brass studs and rims, a brass-rimmed brim, a riveted bevor over the aventail, iron bracers and a banded quiver.
+Tier III (the Siege Marksman): a brass-rimmed shoulder plate over the right pauldron, an ember-seamed comb on the hat, brass
+goggles on the brim, greaves, brass rims on all plate and a fuller quiver. No back flag.
 
   python build_ic_arbalist.py preview <dir> [side] | contact <png> [side] | install
 """
@@ -12,6 +15,9 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(HERE, "..", "ic_breaker"))
 from ironclad import *   # noqa: F401,F403
 from handlib import Troop
+import house_stub
+sys.path.insert(0, os.path.join(HERE, "..", "common"))
+import ironclad_tiers as IT
 
 SKIN = (128, 128)
 CLOTH = (128, 64)
@@ -180,11 +186,11 @@ def halfcape(T, M):
 # ---- assembling ----
 def bones():
     B = [Bone("root", "")]
-    B.append(Bone("body", "root", (0, 12, 0), [Box((-4, -12, -2), (8, 12, 4), body_painter())]))
+    B.append(Bone("body", "root", (0, 12, 0), [Box((-4, -12, -2), (8, 12, 4), IT.T(body_painter(), top=False))]))
     B.append(Bone("head", "body", (0, -12, 0)))
     B.append(Bone("helm", "head", tag="helm", boxes=[
-        Box((-4.5, -8.5, -4.5), (9, 4, 9), hat_crown()),
-        Box((-5.5, -5, -5.5), (11, 1, 11), hat_brim()),
+        Box((-4.5, -8.5, -4.5), (9, 4, 9), IT.T(hat_crown(), top=False)),
+        Box((-5.5, -5, -5.5), (11, 1, 11), IT.T(hat_brim(), top=True)),
         Box((-4, -4, -4), (8, 5, 8), aventail(), dil=0.3)]))
     B.append(Bone("right_arm", "body", (-5, -10, 0), [Box((-3, -2, -2), (4, 12, 4), arm())]))
     B.append(Bone("right_hand", "right_arm", (-1, 8, 0)))
@@ -195,24 +201,36 @@ def bones():
     B.append(Bone("left_leg", "root", (1.9, 12, 0), [Box((-2, 0, -2), (4, 12, 4), leg())]))
     B.append(Bone("fur_mantle", "body", boxes=[Box((-4.5, -13, -2.5), (9, 2, 5), fur(seed="am"), dil=0.2)]))
     B.append(Bone("tabard", "body", team=True, boxes=[Box((-4, -12, -2), (8, 12, 4), "tabard", dil=0.3, sheet="cloth")]))
-    B.append(Bone("fauld", "body", boxes=[Box((-4.5, -4, -2.5), (9, 4, 5), fauld(), dil=0.1)]))
+    B.append(Bone("fauld", "body", boxes=[Box((-4.5, -4, -2.5), (9, 4, 5), IT.T(fauld(), top=False, every=True), dil=0.1)]))
     B.append(Bone("belt", "body", boxes=[Box((-4, -4, -2), (8, 2, 4), belt(), dil=0.5)]))
     B.append(Bone("halfcape", "body", (-1, -12, 2.5), team=True, rot=(6, 0, 0), boxes=[Box((-1.5, 0, 0), (6.5, 11, 1), "halfcape", sheet="cloth")]))
     B.append(Bone("quiver", "body", (2.5, -10, 2.6), rot=(0, 0, -14), boxes=[
-        Box((-1.5, 0, 0), (3, 8, 2), quiver()),
+        Box((-1.5, 0, 0), (3, 8, 2), IT.T(quiver(), top=True, foot=True)),
         Box((-1.0, -1.5, 0.4), (1, 2, 1), fletch(0)), Box((0.0, -2.0, 0.6), (1, 2, 1), fletch(1))]))
     for side in ("right", "left"):
         c = -1 if side == "right" else 1
         B.append(Bone(f"{side}_pauldron", f"{side}_arm", (c, -2.5, 0), rot=(0, 0, 12 * c), boxes=[
-            Box((-3.5, -1.5, -3.5), (7, 2, 7), pauldron(0)),
-            Box((-3.5 + 0.5 * c, 0.5, -3), (7, 2, 6), pauldron(1), dil=0.15)]))
-        B.append(Bone(f"{side}_knee", f"{side}_leg", boxes=[Box((-2.5, 5, -3), (5, 2, 2), lames([2], base=4, seed="ak", wear=1, rivets=False))]))
+            Box((-3.5, -1.5, -3.5), (7, 2, 7), IT.T(pauldron(0), top=False, foot=True)),
+            Box((-3.5 + 0.5 * c, 0.5, -3), (7, 2, 6), IT.T(pauldron(1), top=False, foot=True), dil=0.15)]))
+        B.append(Bone(f"{side}_bracer", f"{side}_arm", stages=[2, 3], boxes=[Box((-3.2 + (0 if side == "right" else 2), 5, -2.2), (4.4, 4, 4.4), IT.P("abr" + side, 3, ember=True), dil=0.1)]))
+        B.append(Bone(f"{side}_greave", f"{side}_leg", stages=[3], boxes=[Box((-2.4, 7, -2.4), (4.8, 2, 4.8), IT.P("agv" + side, 3), dil=0.1)]))
+        B.append(Bone(f"{side}_knee", f"{side}_leg", boxes=[Box((-2.5, 5, -3), (5, 2, 2), IT.T(lames([2], base=4, seed="ak", wear=1, rivets=False), top=False, every=True))]))
         B.append(Bone(f"{side}_boot", f"{side}_leg", boxes=[Box((-2.5, 9, -3), (5, 3, 5), rows([(0, leather_ic(base=2)), (2, leather_ic(base=1, stitch=True))]))]))
         inner = 3 if side == "right" else 0
         B.append(Bone(f"{side}_skirt", f"{side}_leg", team=True, boxes=[
             Box((-2, 0, -2.45), (4, 6, 0), ("flap", inner), sheet="cloth"),
             Box((-2, 0, 2.45), (4, 6, 0), ("flap", 3 - inner), sheet="cloth")]))
+    # tier II: a riveted bevor over the aventail; tier III: a brass-rimmed shoulder plate, an ember-seamed comb, brass goggles, more bolts
+    B.append(Bone("bevor", "head", tag="helm", stages=[2, 3], boxes=[Box((-4.4, -2, -4.7), (8.8, 3, 1), IT.P("abv", 3), dil=0.05)]))
+    B.append(Bone("comb", "head", tag="helm", stages=[3], boxes=[Box((-1, -10.5, -4), (2, 2, 8), IT.ember_line(IT.IRON, 3))]))
+    B.append(Bone("goggles", "head", tag="helm", stages=[3], boxes=[Box((-3.5, -6.5, -4.9), (3, 1.5, 0.5), IT.brass(3)), Box((0.5, -6.5, -4.9), (3, 1.5, 0.5), IT.brass(3))]))
+    B.append(Bone("shoulder_plate", "right_pauldron", stages=[3], boxes=[Box((-4.5, -3, -4), (6, 2, 8), IT.P("asp", 3, ember=True), dil=0.2), Box((-3, -4, -1), (2, 1, 2), IT.brass(3))]))
+    B.append(Bone("quiver_t3", "quiver", stages=[3], boxes=[Box((0.6, -2.5, 0.2), (1, 3, 1), fletch(0)), Box((-1.6, -1.8, 0.8), (1, 2, 1), fletch(1))]))
     return B
+
+NOTE = ("Ironclad Arbalist (unit identity, Ironclad): pillager biped, ember-banded kettle hat over a mail aventail, brigandine, crossed-bolt "
+        "surcoat, fur mantle, back quiver, crossbow held level. Tier II brass studs and rims, a bevor, bracers and a banded quiver; tier III a "
+        "brass-rimmed shoulder plate, an ember-seamed hat comb, brass goggles, greaves. No back flag.")
 
 def cloth_painter(spec, side):
     T, M = TEAM[side]
@@ -221,9 +239,9 @@ def cloth_painter(spec, side):
     return flap(T, M, spec[1])
 
 IC_ARBALIST = Troop("ic_arbalist", SKIN, CLOTH, bones, cloth_painter,
-                    {"weapon": "ic_crossbow", "hand": "right", "idleArms": "hang", "portrait": "tall 4"}, tiers=(1,))
+                    {"weapon": "ic_crossbow", "hand": "right", "idleArms": "hang", "portrait": "tall 4"})
 def build(): return IC_ARBALIST.build()
 def outputs(): return IC_ARBALIST.outputs()
 
 if __name__ == "__main__":
-    IC_ARBALIST.main(sys.argv)
+    house_stub.main(IC_ARBALIST, NOTE, sys.argv)

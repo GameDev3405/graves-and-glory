@@ -4,7 +4,10 @@
 A drowned guardian who braces a trident: bleached coral rising from both shoulders (the mark), a bronze scale cuirass over
 barnacled mail, a scallop shell on his back, a verdigris finned cap with the team fin, a barry-wavy team tabard, team wraps
 over bronze bracers and bronze greaves, on grey-green drowned flesh. Sea blue is the Tidecallers' team colour and lives on the
-cloth only; the metal is bronze and verdigris. Tier I only. No back flag.
+cloth only; the metal is bronze and verdigris. Tier II (the Reef Warden): a bronze breastplate rimmed in sea blue, heavier
+pauldron plates, greaves and a sea-blue cap band studded in bronze, more barnacles. Tier III (the Coral Sentinel): deep
+sea-blue plate chased in warm bronze with pearl rivets, a crown of coral sprigs on the cap, taller shoulder coral and a pearl
+at the breast. No back flag.
 
   python build_tc_tideguard.py preview <dir> [side] | contact <png> [side] | install
 """
@@ -16,6 +19,7 @@ import handlib as H
 import house_stub
 sys.path.insert(0, os.path.join(HERE, "..", "ic_breaker"))
 from ironclad import scuff, rng, shade   # noqa: E402
+import tidecallers as TC   # noqa: E402
 
 SKIN = (128, 128)
 CLOTH = (128, 64)
@@ -237,6 +241,23 @@ def bones():
         B.append(Bone(f"{side}_bracer", f"{side}_arm", boxes=[Box((-2 + (0 if side == "right" else -1), 5, -2), (4, 5, 4), bracer(), dil=0.15)]))
         B.append(Bone(f"{side}_wrap", f"{side}_arm", team=True, boxes=[Box((-2 + (0 if side == "right" else -1), 3, -2), (4, 2, 4), "wrap", dil=0.3, sheet="cloth")]))
         B.append(Bone(f"{side}_boot", f"{side}_leg", boxes=[Box((-2.5, 9, -3), (5, 3, 5), boot())]))
+    # tier II, the Reef Warden: bronze plate rimmed in sea blue; tier III deep sea-blue plate chased in warm bronze
+    B.append(Bone("breastplate", "body", stages=[2, 3], boxes=[Box((-4.5, -12.2, -2.7), (9, 6.5, 5.4), TC.P("tgbp"), dil=0.15)]))
+    B.append(Bone("cap_band", "head", tag="helm", stages=[2, 3], boxes=[Box((-4.9, -5.6, -4.9), (9.8, 1.4, 9.8), TC.band("tgcb"), dil=0.05)]))
+    for side in ("right", "left"):
+        c = -1 if side == "right" else 1
+        B.append(Bone(f"{side}_plate", f"{side}_arm", (c, -2.5, 0), rot=(0, 0, 14 * c), stages=[2, 3], boxes=[
+            Box((-4 + 0.5 * c, -0.2, -3.5), (8, 3, 7), TC.P("tgpd" + side), dil=0.2)]))
+        B.append(Bone(f"{side}_greave", f"{side}_leg", stages=[2, 3], boxes=[Box((-2.3, 3.5, -2.3), (4.6, 5.5, 4.6), TC.P("tggv" + side), dil=0.1)]))
+        B.append(Bone(f"{side}_cuff", f"{side}_arm", stages=[2, 3], boxes=[Box((-2.3 + (0 if side == "right" else -1), 9.6, -2.3), (4.6, 1, 4.6), TC.band("tgcf" + side), dil=0.1)]))
+        # tier III: the shoulder coral grows a third branch
+        B.append(Bone(f"{side}_coral3", "body", (4.5 * c, -12, 0), rot=(0, 0, 22 * c), stages=[3], boxes=[
+            Box((-0.5 + 2 * c, -12, -0.5), (1, 6, 1), TC.tc_coral((side, "c3a"))),
+            Box((-1 + 3 * c, -9, 0), (2, 1, 1), TC.tc_coral((side, "c3b")))]))
+    # tier III, the Coral Sentinel: a crown of coral sprigs on the cap and a pearl set in the breastplate
+    for i, (x, z, h) in enumerate([(-3.5, -3.5, 3), (-1.5, -4.2, 5), (0.5, -4.4, 4), (2.5, -4.0, 5), (3.8, -2.0, 3), (-3.9, -1.0, 3)]):
+        B.append(Bone(f"crown_coral{i}", "head", tag="helm", stages=[3], boxes=[Box((x - 0.5, -9.5 - h, z - 0.5), (1, h, 1), TC.tc_coral(("cr", i)))]))
+    B.append(Bone("breast_pearl", "body", stages=[3], boxes=[Box((-1, -10.5, -3.3), (2, 2, 1), TC.tc_pearl())]))
     return B
 
 def cloth_painter(spec, side):
@@ -247,9 +268,10 @@ def cloth_painter(spec, side):
 
 NOTE = ("Tidecaller Tideguard (unit identity, Tidecallers): drowned, biped, upright; bleached coral rising from both shoulders, a bronze scale "
         "cuirass over barnacled mail, a scallop shell on the back, a verdigris finned cap with the team fin, a barry-wavy team tabard, team "
-        "wraps over bronze bracers, bronze greaves. The coral trident is braced in the right hand. Tier I only in the first pass. No back flag.")
+        "wraps over bronze bracers, bronze greaves. The coral trident is braced in the right hand. Tier II bronze plate rimmed in sea blue; "
+        "tier III deep sea-blue plate chased in warm bronze, pearl rivets and a crown of coral sprigs. No back flag.")
 TC_TIDEGUARD = Troop("tc_tideguard", SKIN, CLOTH, bones, cloth_painter,
-                     {"weapon": "coral_trident", "hand": "right", "idleArms": "hang", "portrait": "standard"}, tiers=(1,))
+                     {"weapon": "coral_trident", "hand": "right", "idleArms": "hang", "portrait": "standard"})
 def build(): return TC_TIDEGUARD.build()
 def outputs(): return TC_TIDEGUARD.outputs()
 

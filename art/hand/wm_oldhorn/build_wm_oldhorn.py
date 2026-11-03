@@ -9,9 +9,10 @@ draped under it over the hump and shoulders (clothing, not a flag; the spec's wa
 question for Kort and is NOT built). No back flag.
 
 Tier I is the bear in his coat and mantle. Tier II straps bone to him: a bone plate over the brow, bone greaves on
-the forelegs and ochre bands with bone beads round the rack's beams. Bone pauldrons are lashed over the mantle's drapes. Tier III adds the
-trophies: a crest of boar tusks rising out of the hump, a skull hung from each pauldron, tusks on the greaves, and every
-tine's tip dipped in ochre.
+the forelegs, ochre bands with bone beads round the rack's beams, heavy two-plate bone pauldrons over the mantle's drapes
+and a bone gorget over the ruff; his fangs lengthen and tusks rise from the jaw. Tier III adds the trophies: a crest of
+boar tusks rising out of the hump, a skull hung from each pauldron and one on the gorget, a skull crest on the brow, tusks
+on the greaves and pauldrons, every tine's tip dipped in ochre, and ochre-rooted sabre tusks under a bone nose-guard.
 
   python build_wm_oldhorn.py preview <dir> [side] | contact <png> [side] | stub
 """
@@ -21,7 +22,7 @@ sys.path.insert(0, os.path.join(HERE, "..", "common"))
 from wildmoot import *   # noqa: F401,F403
 import house_stub
 
-SKIN = (128, 128)
+SKIN = (256, 128)   # tier II and III bone and the fang tiers (128 x 128 was full)
 CLOTH = (128, 64)
 PITCH = 10   # the head is carried low, the rack presented
 
@@ -319,6 +320,16 @@ def tusk():
         return g
     return paint
 
+def sabre(up=False):
+    """A long tusk with an ochre sinew band at the root (the bottom row when up=True, as it rises from the jaw)."""
+    def paint(face, w, h):
+        g = tusk()(face, w, h)
+        if face not in ("top", "bottom"):
+            if up: g = g[::-1]
+            g[h - 1 if up else 0] = [OCHRE[4] if x % 2 == 0 else OCHRE[3] for x in range(w)]
+        return g
+    return paint
+
 def skull_t():
     """A small trophy skull: bone, two dark sockets and a nasal notch on the front."""
     def paint(face, w, h):
@@ -400,12 +411,23 @@ def bones():
     B.append(Bone("head", "chest", (0, 3, -9.5), [
         Box((-5, -4, -7), (10, 8, 7), head_painter()),
         Box((-3, -1, -11), (6, 4, 4), muzzle_painter()),
-        Box((-3, 3, -10.5), (1, 2, 1), fang()), Box((2, 3, -10.5), (1, 2, 1), fang()),
         Box((-4, 4, -6), (8, 3, 5), beard(), dil=0.1),
         # cheek ruffs widen the head past the brow: the bear's jowls and mane
         Box((-7, -2, -5), (2, 6, 5), cheek("ckr"), dil=0.1), Box((5, -2, -5), (2, 6, 5), cheek("ckl"), dil=0.1),
         Box((2, -5, -4), (3, 2, 3), burr(), dil=0.2), Box((-5, -5, -4), (3, 2, 3), burr(), dil=0.2)], rot=(PITCH, 0, 0)))
     B.append(Bone("jaw", "head", (0, 3, -7), [Box((-2, 0, -4), (4, 1, 4), jaw_painter())]))
+    # the weapon, his fangs (weaponTiers): I two bone fangs; II longer fangs and tusks rising from the jaw; III ochre-rooted
+    # sabre tusks and a bone nose-guard lashed over the muzzle
+    for t in (1, 2, 3):
+        bx = [Box((-3, 3, -10.5), (1, 2, 1), fang()), Box((2, 3, -10.5), (1, 2, 1), fang())]
+        if t == 2:
+            bx = [Box((-3, 3, -10.5), (1, 3, 1), fang()), Box((2, 3, -10.5), (1, 3, 1), fang()),
+                  Box((-3.6, 0, -9), (1, 3, 1), tusk()), Box((2.6, 0, -9), (1, 3, 1), tusk())]
+        if t == 3:
+            bx = [Box((-3, 3, -10.5), (1, 4, 1), sabre()), Box((2, 3, -10.5), (1, 4, 1), sabre()),
+                  Box((-4, -1, -9), (1, 4, 1), sabre(up=True)), Box((3, -1, -9), (1, 4, 1), sabre(up=True)),
+                  Box((-2, -1.6, -11.2), (4, 1, 5), brow_plate(3)), Box((-0.5, -2.6, -10.8), (1, 1, 3), tusk())]
+        B.append(Bone("fangs" if t == 1 else f"fangs_t{t}", "head", weapon_tiers=[t], boxes=bx))
     B.append(Bone("ear_right", "head", (-5, -3.5, -1), [Box((-1, -2, -0.5), (2, 2, 1), ear_painter())], rot=(0, 0, -20)))
     B.append(Bone("ear_left", "head", (5, -3.5, -1), [Box((-1, -2, -0.5), (2, 2, 1), ear_painter())], rot=(0, 0, 20)))
     for side in ("right", "left"):
@@ -437,16 +459,25 @@ def bones():
             Box((-1, -2, -1), (2, 1, 2), band(), dil=0.3),
             Box((-0.5, -1, -1.6), (1, 1, 1), bead()), Box((-0.5, 0, -1.6), (1, 1, 1), bead())]))
     # tier II: bone pauldrons lashed over the mantle's drapes
+    # and a bone gorget over the ruff, plates on the hump's flanks
     B.append(Bone("pauldrons", "chest", stages=[2, 3], boxes=[
-        Box((7.4, -8.5, -9), (1, 6, 8), per_tier(pauldron, (2, 3)), dil=0.1), Box((-8.4, -8.5, -9), (1, 6, 8), per_tier(pauldron, (2, 3)), dil=0.1)]))
+        Box((7.4, -9.5, -9.5), (2, 8, 9), per_tier(pauldron, (2, 3)), dil=0.1), Box((-9.4, -9.5, -9.5), (2, 8, 9), per_tier(pauldron, (2, 3)), dil=0.1),
+        Box((5.5, -11.5, -9), (3, 2, 8), per_tier(pauldron, (2, 3)), dil=0.05), Box((-8.5, -11.5, -9), (3, 2, 8), per_tier(pauldron, (2, 3)), dil=0.05),
+        Box((-5, -6, -12.2), (10, 5, 1), per_tier(lambda t: wm_plate(t, "ogg"), (2, 3)), dil=0.1),
+        Box((-6, -5, -12.4), (12, 1, 1), lash(), dil=0.05)]))
     # tier III: a crest of boar tusks rising out of the hump, trophy skulls hung from the pauldrons, tusks on the greaves
     B.append(Bone("hump_tusks", "chest", (0, -12.5, -5), rot=(-14, 0, 0), stages=[3], boxes=[
         Box((-0.5, -6, -3), (1, 6, 2), tusk()), Box((-3, -4, -2.5), (1, 4, 1), tusk()), Box((2, -4, -2.5), (1, 4, 1), tusk()),
         Box((-5, -3, -1), (1, 3, 1), tusk()), Box((4, -3, -1), (1, 3, 1), tusk()),
         Box((-0.5, -5, 0.5), (1, 5, 1), tusk()), Box((-3, -1, -3), (6, 1, 4), lash(), dil=0.05)]))
     B.append(Bone("trophies", "chest", stages=[3], boxes=[
-        Box((8, -3, -7), (2, 2, 2), skull_t()), Box((-10, -3, -7), (2, 2, 2), skull_t()),
-        Box((8.5, -4, -6.5), (1, 1, 1), lash()), Box((-9.5, -4, -6.5), (1, 1, 1), lash())]))
+        Box((9, -2, -7.5), (3, 3, 3), skull_t()), Box((-12, -2, -7.5), (3, 3, 3), skull_t()),
+        Box((10, -3, -6.5), (1, 1, 1), lash()), Box((-11, -3, -6.5), (1, 1, 1), lash()),
+        Box((-1.5, -1, -13.4), (3, 3, 2), skull_t()), Box((-4, -1, -12.8), (1, 3, 1), tusk()), Box((3, -1, -12.8), (1, 3, 1), tusk()),
+        Box((9, -10.5, -8), (1, 3, 1), tusk()), Box((9, -10.5, -4), (1, 3, 1), tusk()),
+        Box((-10, -10.5, -8), (1, 3, 1), tusk()), Box((-10, -10.5, -4), (1, 3, 1), tusk())]))
+    B.append(Bone("brow_crest", "head", stages=[3], boxes=[
+        Box((-1.5, -8, -7.2), (3, 3, 2), skull_t()), Box((-2.5, -7, -7.4), (1, 3, 1), tusk()), Box((1.5, -7, -7.4), (1, 3, 1), tusk())]))
     for side, c in (("right", -1), ("left", 1)):
         B.append(Bone(f"{side}_greave_tusks", f"front_{side}_leg", stages=[3], boxes=[
             Box((-2, 0.5, -4.6), (1, 2, 1), tusk()), Box((1, 0.5, -4.6), (1, 2, 1), tusk())]))
@@ -472,9 +503,19 @@ def glow(bone, box):
 NOTE = ("Old Horn, the Antlered Alpha (unit identity, Wildmoot; Legendary; polar bear entity on the hound rig, own bear boxes): a huge low "
         "bear with a high hump and neck ruff under a 30 px antler rack of branching tines, a shaggy bark coat, a grey scarred muzzle, clay warpaint and clay-glow "
         "eyes, a bone-and-feather mantle bound in ochre over the shoulder hump on a team-colour hide mantle. No war-banner (an open question "
-        "for Kort). Tier II: bone brow plate, pauldrons, greaves, rack bands; tier III: a tusk crest on the hump, skull trophies, greave tusks, ochre-dipped tines. No back flag.")
+        "for Kort). Tier II: bone brow plate, heavy pauldrons, gorget, greaves, rack bands, long fangs; tier III: a tusk crest on the hump, "
+        "skull trophies and a brow skull, greave and pauldron tusks, ochre-dipped tines, sabre tusks. No back flag.")
+def veteran(bone, box):
+    """The Mastery II trim: ochre cords at the antlers' bases, on each flank and on each upper leg, bone beads in them."""
+    n, sz = bone.name, tuple(box.size)
+    if n.startswith("antler_") and n.endswith("_a"): return vet_rows((1,))
+    if n == "body" and sz == (14, 11, 12): return vet_rows((3,), every=2, bead=True)
+    if n == "chest" and sz == (14, 14, 10): return vet_rows((9,), every=2, bead=True)
+    if n.endswith("_leg") and sz in ((6, 8, 6),): return vet_rows((4,), bead=True)
+    return None
+
 WM_OLDHORN = Troop("wm_oldhorn", SKIN, CLOTH, bones, cloth_painter,
-                   {"rig": "hound", "weapon": "none", "hand": "right", "idleArms": "hang", "portrait": "beast 24"}, glow=glow)
+                   {"rig": "hound", "weapon": "none", "hand": "right", "idleArms": "hang", "portrait": "beast 24"}, glow=glow, veteran=veteran)
 def build(): return WM_OLDHORN.build()
 def outputs(): return WM_OLDHORN.outputs()
 

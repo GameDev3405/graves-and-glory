@@ -1,14 +1,21 @@
 {
  "troop": "ic_ballista",
- "note": "Ironclad Ballista Crew: hand-authored at 1 texel by art/hand/ic_ballista; this stub only registers the troop with build_skins.",
+ "note": "Ironclad Ballista Crew (unit identity, Ironclad): a crewman in an ember-plumed iron cap behind a wheeled hip ballista. Tier II brass cap band, bevor, spaulder lame and boss, bracers, knee plates, a brass bolt collar; tier III spaulder spikes, greaves, a barbed bolt and spiked hubs. No back flag.",
  "rig": "biped",
  "size": [
-  128,
+  256,
   128
  ],
  "density": 1,
- "bones": {},
+ "bones": [],
+ "idleArms": "hang",
+ "parts": [],
  "skins": {
-  "1": "ic_ballista_s1.png"
- }
+  "1": "ic_ballista_s1.png",
+  "2": "ic_ballista_s2.png",
+  "3": "ic_ballista_s3.png"
+ },
+ "weapon": "none",
+ "hand": "right",
+ "portrait": "tall 4"
 }

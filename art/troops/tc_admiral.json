@@ -1,6 +1,6 @@
 {
  "troop": "tc_admiral",
- "note": "Admiral Vael, the Drowned Tide (unit identity, Tidecallers, Legendary): drowned naval admiral, biped, upright; the 12 px tricorne in sodden felt with gilt lace, a sea-blue plume and cockade (the signature), a bone-pale face with silver hair adrift, a deep sea-navy coat with sea-blue lapels, cuffs and collar, double rows of gilt buttons, a sea-blue sash with a gilt buckle, gilt fringed epaulettes, four calf-length coat tails with ragged hems, tarred boots, kelp and barnacles, a team sash end and cravat. A tarnished anchor is slung on the back (back gear). The admiral trident is in the right hand. No coral. Tier I only. No back flag.",
+ "note": "Admiral Vael, the Drowned Tide (unit identity, Tidecallers, Legendary): drowned naval admiral, biped, upright; the 12 px tricorne in sodden felt with gilt lace, a sea-blue plume and cockade (the signature), a bone-pale face with silver hair adrift, a deep sea-navy coat with sea-blue lapels, cuffs and collar, double rows of gilt buttons, a sea-blue sash with a gilt buckle, gilt fringed epaulettes, four calf-length coat tails with ragged hems, tarred boots, kelp and barnacles, a team sash end and cravat. A tarnished anchor is slung on the back (back gear). The admiral trident is in the right hand. No coral. Tier II a bronze half-cuirass, plate pauldrons, vambraces and greaves; tier III deep sea-blue plate, a ring of pearls round the tricorne and a third plume. No back flag.",
  "rig": "biped",
  "size": [
   128,
@@ -11,7 +11,9 @@
  "idleArms": "hang",
  "parts": [],
  "skins": {
-  "1": "tc_admiral_s1.png"
+  "1": "tc_admiral_s1.png",
+  "2": "tc_admiral_s2.png",
+  "3": "tc_admiral_s3.png"
  },
  "weapon": "admiral_trident",
  "hand": "right",

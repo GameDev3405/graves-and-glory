@@ -5,7 +5,10 @@ A drowned whaler who stands tall and throws: a weathered oilskin sou'wester (the
 tail hanging down the back of the neck, a banded sea-blue hatband, a long navy oilskin coat edged in sea blue over navy trousers
 and tarred wader boots, a coil of rope slung over one shoulder, a quiver of spare harpoon heads on the back on a sea-blue baldric,
 barnacles and kelp, on grey-green drowned flesh with gill slits. Team cloth is the neck scarf, a hip sash and the wrist wraps.
-No coral (the Trident Guard's). Tier I only. No back flag. The harpoon rides in the right hand.
+No coral (the Trident Guard's). Tier II (the Whale-Taker): a bronze pauldron rimmed in sea blue over the shoulder
+pad, bracers, greaves above the waders and a bronze-studded hat band. Tier III (the Leviathan Hunter): deep sea-blue plate
+chased in warm bronze, a necklace of great teeth, barnacles crusting the hat crown. No back flag. The harpoon rides in the
+right hand.
 
   python build_tc_harpooner.py preview <dir> [side] | contact <png> [side] | stub | install
 """
@@ -16,6 +19,8 @@ sys.path.insert(0, os.path.join(HERE, "..", "tc_tideguard"))
 from handlib import *   # noqa: F401,F403
 import handlib as H
 import house_stub
+sys.path.insert(0, os.path.join(HERE, "..", "common"))
+import tidecallers as TC
 import build_tc_tideguard as TG
 from build_tc_tideguard import VERD as SEA, BRONZE, FLESH, BARN, scuff, rng
 
@@ -381,15 +386,29 @@ def bones():
         B.append(Bone(f"{side}_wrap", f"{side}_arm", team=True, boxes=[Box((-2 + (0 if side == "right" else -1), 7, -2), (4, 2, 4), "wrap", dil=0.3, sheet="cloth")]))
         B.append(Bone(f"{side}_foot", f"{side}_leg", boxes=[Box((-2.5, 9, -3.2), (5, 3, 5.2), foot())]))
     B.append(strand("kelp_shin", "left_leg", (1, 6, 2.2), (14, 0, 6), [((-1, 0, 0), (2, 6, 1))]))
+    # tier II, the Whale-Taker: a bronze pauldron over the pad, bracers, greaves, a studded hat band
+    B.append(Bone("pauldron", "body", (-6, -13, 0), rot=(0, 0, -12), stages=[2, 3], boxes=[
+        Box((-3, -1, -3.4), (6.4, 2.6, 6.8), TC.P("hppd"), dil=0.15), Box((-2, -2, -2.4), (4, 1, 4.8), TC.P("hppt"), dil=0.05)]))
+    B.append(Bone("hat_band", "head", tag="helm", stages=[2, 3], boxes=[Box((-4.9, -8, -4.9), (9.8, 1.4, 9.8), TC.band("hphb"), dil=0.05)]))
+    for side in ("right", "left"):
+        B.append(Bone(f"{side}_bracer", f"{side}_arm", stages=[2, 3], boxes=[Box((-2.2 + (0 if side == "right" else -1), 3.5, -2.2), (4.4, 3.5, 4.4), TC.P("hpbr" + side, 0.03), dil=0.1)]))
+        B.append(Bone(f"{side}_greave", f"{side}_leg", stages=[2, 3], boxes=[Box((-2.3, 4, -2.3), (4.6, 5, 4.6), TC.P("hpgv" + side), dil=0.1)]))
+    # tier III, the Leviathan Hunter: a necklace of great teeth under the scarf, barnacles on the hat crown, a bronze-chased gorget
+    teeth = [Box((-3.5 + 1.2 * i, -10.8 + (0 if i in (0, 5) else 0.6 if i in (1, 4) else 1.0), -3.0), (1, 2 + (i in (2, 3)), 1), TC.tc_spike(TC.PEARL, 2, 2)) for i in range(6)]
+    B.append(Bone("tooth_necklace", "body", stages=[3], boxes=[Box((-4, -11.2, -2.8), (8, 0.6, 0.6), TC.band("hptn"))] + teeth))
+    for i, (x, z, w) in enumerate([(-3, -2, 2), (1, -1, 2), (-1, 1.5, 3), (2.2, 2, 1)]):
+        B.append(Bone(f"hat_barn{i}", "head", tag="helm", stages=[3], boxes=[Box((x, -13, z), (w, 1.2, w), TC.tc_barnacles(("hph", i)))]))
+    B.append(Bone("gauntlet", "left_arm", stages=[3], boxes=[Box((-3.3, 1.5, -2.3), (4.6, 2, 4.6), TC.band("hpga"), dil=0.15)]))
     return B
 
 NOTE = ("Tidecaller Harpooner (unit identity, Tidecallers): drowned whaler, biped, upright; an oilskin sou'wester with a banded sea-blue hat "
         "and a long brim tail down the back (the signature), a long navy oilskin coat edged in sea blue, navy trousers, tarred barnacled waders, "
         "a rope coil over the left shoulder, a quiver of spare harpoon heads on a sea-blue baldric on the back, kelp and barnacles, a team "
-        "neck scarf, hip sash and wrist wraps, grey-green drowned flesh with gill slits. The harpoon is in the right hand. No coral. Tier I only. "
+        "neck scarf, hip sash and wrist wraps, grey-green drowned flesh with gill slits. The harpoon is in the right hand. No coral. Tier II bronze pauldron, bracers "
+        "and greaves; tier III deep sea-blue plate, a necklace of great teeth and barnacles on the hat. "
         "No back flag.")
 TC_HARPOONER = Troop("tc_harpooner", SKIN, CLOTH, bones, cloth_painter,
-                     {"weapon": "harpoon", "hand": "right", "idleArms": "hang", "portrait": "tall 2"}, tiers=(1,))
+                     {"weapon": "harpoon", "hand": "right", "idleArms": "hang", "portrait": "tall 2"})
 def build(): return TC_HARPOONER.build()
 def outputs(): return TC_HARPOONER.outputs()
 

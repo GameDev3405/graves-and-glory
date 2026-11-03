@@ -4,7 +4,10 @@
 A scorch-bearded gunner in an iron cap with goggles pushed up on the brow, calm mail and plate under a leather apron
 and a big left spaulder. A squat brass-hooped gunmetal mortar tube (iron lip, ember bore) rides on a pack board on
 his back, tilted so the muzzle rises above the right shoulder; a leather sling runs from shoulder to hip and meets
-the tube, and a powder keg sits against the small of his back. Tier I only.
+the tube, and a powder keg sits against the small of his back. Tier II (the
+Bombardier): a brass cap band, a fourth spaulder lame with a brass boss, bracers, knee plates, and brass hoops on the tube.
+Tier III (the Thunder Master): spaulder spikes, greaves, an ember-seamed comb, brass trunnions and an ember band on the tube.
+No back flag.
 
   python build_ic_mortar.py preview <dir> [side] | contact <png> [side] | install
 """
@@ -12,6 +15,9 @@ import os, sys
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(HERE, "..", "ic_ballista"))
 from siege_kit import *   # noqa: F401,F403
+sys.path.insert(0, os.path.join(HERE, "..", "common"))
+import house_stub
+import ironclad_tiers as IT
 
 SKIN = (128, 128)
 CLOTH = (128, 64)
@@ -99,26 +105,35 @@ def bones():
         Box((-3, -8.5, -5.5), (2, 1.5, 0.5), lens), Box((1, -8.5, -5.5), (2, 1.5, 0.5), lens)]))
     # the carry: a leather pack board on the back, the tube lashed to it on a slant, muzzle up past the right shoulder
     B.append(Bone("board", "body", tag="siege", boxes=[Box((-3.5, -8, 2.55), (7, 8, 3), leather_ic(2, stitch=True))]))
-    B.append(Bone("tube", "body", (-0.5, -7.5, 9.05), rot=(0, 0, -22), tag="siege", boxes=[
-        Box((-3.5, -12, -3.5), (7, 12, 7), tube_body),
-        Box((-3.5, -14, -3.5), (7, 2, 7), lip, dil=0.35),
-        Box((-3.5, 0, -3.5), (7, 2, 7), breech, dil=0.35)]))
+    for t in (1, 2, 3):
+        bx = [Box((-3.5, -12, -3.5), (7, 12, 7), tube_body), Box((-3.5, -14, -3.5), (7, 2, 7), lip, dil=0.35), Box((-3.5, 0, -3.5), (7, 2, 7), breech, dil=0.35)]
+        if t >= 2:   # brass hoops round the barrel
+            bx += [Box((-4, -9, -4), (8, 1, 8), IT.brass(3, "mh1")), Box((-4, -4, -4), (8, 1, 8), IT.brass(3, "mh2"))]
+        if t >= 3:   # brass trunnions and an ember band under the lip
+            bx += [Box((-5, -7, -1), (1.5, 2, 2), IT.brass(4, "mt1")), Box((3.5, -7, -1), (1.5, 2, 2), IT.brass(4, "mt2")),
+                   Box((-4, -11.5, -4), (8, 1, 8), IT.ember_line(IT.IRON, 3))]
+        B.append(Bone("tube" if t == 1 else f"tube_t{t}", "body", (-0.5, -7.5, 9.05), rot=(0, 0, -22), tag="siege", weapon_tiers=[t], boxes=bx))
     B.append(Bone("keg", "body", tag="siege", boxes=[Box((-3, -0.5, 2.55), (6, 6, 3), keg), Box((-2.5, -1, 2.55), (5, 1, 3), iron_plain(4, "kegcap", 1))]))
     B.append(Bone("sling", "body", (0.4, -4.5, 0), rot=(0, 0, -38), tag="strap", boxes=[
         Box((-1, -4.5, -3.5), (2, 9, 1), leather_ic(1, stitch=False))]))
     B.append(Bone("buckle", "body", tag="strap", boxes=[Box((2, -3, -3.6), (2, 2, 1), buckle)]))
+    IT.crew_tiers(B, "mo", bevor=False)
     return B
+
+NOTE = ("Ironhold Mortar (unit identity, Ironclad): a scorch-bearded gunner, iron cap, goggles, leather apron, a brass-hooped mortar "
+        "tube on a back pack board and a powder keg. Tier II brass cap band, spaulder lame and boss, bracers, knee plates, tube hoops; "
+        "tier III spaulder spikes, greaves, an ember comb, brass trunnions. No back flag.")
 
 def cloth_painter(spec, side): return crew_cloth(spec, side)
 
 def glow(bone, box):
-    return bore_glow if bone.name == "tube" and box.size == [7, 2, 7] and box.dil else None
+    return bore_glow if bone.name.startswith("tube") and box.size == [7, 2, 7] and box.dil else None
 
 IC_MORTAR = Troop("ic_mortar", SKIN, CLOTH, bones, cloth_painter,
                   {"weapon": "none", "hand": "right", "idleArms": "hang", "portrait": "tall 4", "faces": {"count": 4, "card": 0}},
-                  tiers=(1,), glow=glow)
+                  glow=glow)
 def build(): return IC_MORTAR.build()
 def outputs(): return IC_MORTAR.outputs()
 
 if __name__ == "__main__":
-    IC_MORTAR.main(sys.argv)
+    house_stub.main(IC_MORTAR, NOTE, sys.argv)

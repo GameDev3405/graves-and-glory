@@ -178,3 +178,54 @@ def wm_band():
         if face == "front": g[h // 2][w // 2] = BONE[5]
         return g
     return paint
+
+# ---- veteran trims (Mastery II): overlays on texels every tier paints; ochre cord with bone beads ----
+def vet_rows(rows_at, every=1, bead=False):
+    """Ochre cord on the given rows of every side face; every=2 studs it on alternate texels; bead=True sets a bone bead on every fourth."""
+    def paint(face, w, h):
+        g = blank(w, h)
+        if face in ("top", "bottom"): return g
+        for y in rows_at:
+            if 0 <= y < h:
+                for x in range(w):
+                    if x % every == 0:
+                        g[y][x] = BONE[4] if (bead and x % 4 == 0) else (OCHRE[4] if x % 2 else OCHRE[3])
+        return g
+    return paint
+
+def vet_cols(cols, bead_row=None):
+    """Ochre cord down the given columns of every side face (a ring about a limb that lies along x), a bone bead at bead_row."""
+    def paint(face, w, h):
+        g = blank(w, h)
+        for x in cols:
+            if 0 <= x < w:
+                for y in range(h): g[y][x] = OCHRE[4] if y % 2 else OCHRE[3]
+                if bead_row is not None and bead_row < h: g[bead_row][x] = BONE[4]
+        return g
+    return paint
+
+def vet_baldric(depth=1):
+    """A two-texel ochre cord across the chest, from the right shoulder to the left hip, a bone bead on every fourth texel."""
+    def paint(face, w, h):
+        g = blank(w, h)
+        if face not in ("front", "back"): return g
+        n = min(h, 10)
+        for y in range(n):
+            x0 = (w - 3) - (y * (w - 3)) // max(1, n - 1) if face == "front" else (y * (w - 3)) // max(1, n - 1)
+            for k in (0, 1):
+                x = x0 + k
+                if 0 <= x < w: g[y][x] = BONE[4] if y % 4 == 2 and k == 0 else (OCHRE[4] if (x + y) % 2 else OCHRE[3])
+        return g
+    return paint
+
+def vet_spine(col=None):
+    """A centre stripe of ochre cord along the top face and down the spine face (back), for a beast's or spider's back."""
+    def paint(face, w, h):
+        g = blank(w, h)
+        if face in ("top", "back"):
+            c = w // 2 if col is None else col
+            for y in range(h):
+                g[y][c] = OCHRE[4] if y % 2 else OCHRE[3]
+                if face == "top" and y % 4 == 2: g[y][c] = BONE[4]
+        return g
+    return paint

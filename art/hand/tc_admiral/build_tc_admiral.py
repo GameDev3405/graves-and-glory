@@ -5,7 +5,10 @@ The grandest Tidecaller: a once-magnificent naval coat gone to the sea. The sign
 sea-blue plume, a cockade), over a pale drowned face with silver hair adrift. A deep sea-navy coat with sea-blue lapels, cuffs and collar,
 double rows of gilt buttons, a sea-blue sash with a gilt buckle, gilt epaulettes with fringe, and four calf-length coat tails flaring from
 the waist, hems ragged and hung with kelp, barnacles crusted on the shoulders. A tarnished anchor is slung on the back (back gear, no flag).
-Gilt #96783A is trim only; the sea blue stays the larger share. Team cloth: the sash end at the hip and the cravat. Tier I only.
+Gilt #96783A is trim only; the sea blue stays the larger share. Team cloth: the sash end at the hip and the cravat. Tier II (the Drowned Commodore): a bronze
+half-cuirass rimmed in sea blue under the lapels, plate pauldrons under the epaulettes, vambraces and greaves, a bronze-studded
+sea-blue hat band. Tier III (the Drowned Tide): deep sea-blue plate chased in warm bronze, a ring of pearls round the tricorne
+crown, a pearl at the gorget and a third plume.
 
   python build_tc_admiral.py preview <dir> [side] | contact <png> [side] | stub | install
 """
@@ -17,6 +20,8 @@ sys.path.insert(0, os.path.join(HERE, "..", "tc_harpooner"))
 from handlib import *   # noqa: F401,F403
 import handlib as H
 import house_stub
+sys.path.insert(0, os.path.join(HERE, "..", "common"))
+import tidecallers as TC
 import build_tc_tideguard as TG
 import build_tc_harpooner as HP
 from build_tc_tideguard import VERD as SEA, FLESH, BARN, scuff, rng
@@ -484,15 +489,30 @@ def bones():
         Box((-3.4, -2.8, 0), (6.8, 1.6, 1.3), anchor_iron("br")),                      # the crown bar of the arms
         Box((-4.4, -4.4, 0.1), (1.6, 2.0, 1.2), anchor_iron("al")), Box((2.8, -4.4, 0.1), (1.6, 2.0, 1.2), anchor_iron("ar")),
         Box((-4.8, -6.2, 0.1), (2.2, 2.0, 1.2), anchor_iron("fl")), Box((2.6, -6.2, 0.1), (2.2, 2.0, 1.2), anchor_iron("fr"))]))
+    # tier II, the Drowned Commodore: a half-cuirass, plate pauldrons under the epaulettes, vambraces, greaves, a hat band
+    B.append(Bone("cuirass", "body", stages=[2, 3], boxes=[Box((-4.3, -10.8, -2.7), (8.6, 5.6, 1.2), TC.P("adcu", 0.02), dil=0.1)]))
+    B.append(Bone("hat_band", "head", tag="helm", stages=[2, 3], boxes=[Box((-4.9, -8.6, -4.9), (9.8, 1.4, 9.8), TC.band("adhb"), dil=0.05)]))
+    for side in ("right", "left"):
+        c = -1 if side == "right" else 1
+        B.append(Bone(f"{side}_pauldron", f"{side}_arm", (c, -1.8, 0), rot=(0, 0, 16 * c), stages=[2, 3], boxes=[
+            Box((-3.6 + 0.5 * c, -0.4, -3.2), (7.2, 3, 6.4), TC.P("adpd" + side, 0.03), dil=0.15)]))
+        B.append(Bone(f"{side}_vambrace", f"{side}_arm", stages=[2, 3], boxes=[Box((-2.2 + (0 if side == "right" else -1), 4, -2.2), (4.4, 3.5, 4.4), TC.P("advb" + side, 0.02), dil=0.1)]))
+        B.append(Bone(f"{side}_greave", f"{side}_leg", stages=[2, 3], boxes=[Box((-2.3, 4.5, -2.3), (4.6, 4.5, 4.6), TC.P("adgv" + side, 0.03), dil=0.1)]))
+    # tier III, the Drowned Tide: a ring of pearls round the tricorne crown, a gorget pearl, a third plume
+    for i, (x, z) in enumerate([(-3.6, -4.8), (-1.2, -5.0), (1.2, -5.0), (3.6, -4.8), (-4.8, -2), (4.8, -2), (-4.8, 1), (4.8, 1)]):
+        B.append(Bone(f"hat_pearl{i}", "head", tag="helm", stages=[3], boxes=[Box((x - 0.5, -12, z - 0.5 + (0.6 if abs(x) > 4 else 0)), (1, 1, 1), TC.tc_pearl())]))
+    B.append(Bone("gorget_pearl", "body", stages=[3], boxes=[Box((-1, -11.2, -3.4), (2, 2, 1), TC.tc_pearl())]))
+    B.append(Bone("plume_c", "head", (5.4, -11, -1.4), rot=(-20, 0, -48), tag="helm", stages=[3], boxes=[Box((-0.6, -1, -1.2), (1, 6, 3), plume("c"))]))
     return B
 
 NOTE = ("Admiral Vael, the Drowned Tide (unit identity, Tidecallers, Legendary): drowned naval admiral, biped, upright; the 12 px tricorne in sodden felt with "
         "gilt lace, a sea-blue plume and cockade (the signature), a bone-pale face with silver hair adrift, a deep sea-navy coat with sea-blue lapels, cuffs "
         "and collar, double rows of gilt buttons, a sea-blue sash with a gilt buckle, gilt fringed epaulettes, four calf-length coat tails with ragged hems, "
         "tarred boots, kelp and barnacles, a team sash end and cravat. A tarnished anchor is slung on the back (back gear). The admiral trident is in the "
-        "right hand. No coral. Tier I only. No back flag.")
+        "right hand. No coral. Tier II a bronze half-cuirass, plate pauldrons, vambraces and greaves; tier III deep sea-blue plate, "
+        "a ring of pearls round the tricorne and a third plume. No back flag.")
 TC_ADMIRAL = Troop("tc_admiral", SKIN, CLOTH, bones, cloth_painter,
-                   {"weapon": "admiral_trident", "hand": "right", "idleArms": "hang", "portrait": "tall 4"}, tiers=(1,))
+                   {"weapon": "admiral_trident", "hand": "right", "idleArms": "hang", "portrait": "tall 4"})
 def build(): return TC_ADMIRAL.build()
 def outputs(): return TC_ADMIRAL.outputs()
 

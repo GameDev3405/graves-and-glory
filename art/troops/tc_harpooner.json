@@ -1,6 +1,6 @@
 {
  "troop": "tc_harpooner",
- "note": "Tidecaller Harpooner (unit identity, Tidecallers): drowned whaler, biped, upright; an oilskin sou'wester with a banded sea-blue hat and a long brim tail down the back (the signature), a long navy oilskin coat edged in sea blue, navy trousers, tarred barnacled waders, a rope coil over the left shoulder, a quiver of spare harpoon heads on a sea-blue baldric on the back, kelp and barnacles, a team neck scarf, hip sash and wrist wraps, grey-green drowned flesh with gill slits. The harpoon is in the right hand. No coral. Tier I only. No back flag.",
+ "note": "Tidecaller Harpooner (unit identity, Tidecallers): drowned whaler, biped, upright; an oilskin sou'wester with a banded sea-blue hat and a long brim tail down the back (the signature), a long navy oilskin coat edged in sea blue, navy trousers, tarred barnacled waders, a rope coil over the left shoulder, a quiver of spare harpoon heads on a sea-blue baldric on the back, kelp and barnacles, a team neck scarf, hip sash and wrist wraps, grey-green drowned flesh with gill slits. The harpoon is in the right hand. No coral. Tier II bronze pauldron, bracers and greaves; tier III deep sea-blue plate, a necklace of great teeth and barnacles on the hat. No back flag.",
  "rig": "biped",
  "size": [
   128,
@@ -11,7 +11,9 @@
  "idleArms": "hang",
  "parts": [],
  "skins": {
-  "1": "tc_harpooner_s1.png"
+  "1": "tc_harpooner_s1.png",
+  "2": "tc_harpooner_s2.png",
+  "3": "tc_harpooner_s3.png"
  },
  "weapon": "harpoon",
  "hand": "right",

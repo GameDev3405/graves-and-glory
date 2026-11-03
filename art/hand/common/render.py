@@ -31,7 +31,7 @@ def faces_of(b):
     if w and d: out.append(("bottom", lambda s, t: (L(x0, x1, s), y1, L(z0, z1, t)), w, d, (u + d + w, v), (0, 1, 0)))
     return out
 
-def render(bones, visible, sheets, yaw=0, pitch=0, px=8, bg=(40, 42, 50, 255)):
+def render(bones, visible, sheets, yaw=0, pitch=0, px=8, bg=(40, 42, 50, 255), extra=()):
     """bones: Bone list; visible(bone)->bool; sheets: {'skin': img, 'cloth': img}. Returns an RGBA image."""
     mats, offs = {}, {}
     for bn in bones:
@@ -62,6 +62,26 @@ def render(bones, visible, sheets, yaw=0, pitch=0, px=8, bg=(40, 42, 50, 255)):
                         depth = sum(p[2] for p in pts) / 4
                         col = tuple(int(c[i] * shade) for i in range(3)) + (255,)
                         quads.append((depth, [(p[0], p[1]) for p in pts], col))
+    # extra: (bone name, grip offset px, grip rotation deg, weapon quads (20 numbers), weapon sheet) drawn in the bone's frame
+    for bname, goff, grot, wq, wimg in extra:
+        M, O = mul(mats[bname], rot(*grot)), [offs[bname][i] + app(mats[bname], goff)[i] for i in range(3)]
+        for q in wq:
+            if len(q) != 20: continue
+            P = [q[3 * k:3 * k + 3] for k in range(4)]; T = [q[12 + 2 * k:14 + 2 * k] for k in range(4)]
+            nu = max(1, int(math.ceil(math.hypot(T[1][0] - T[0][0], T[1][1] - T[0][1]) - 1e-6)))
+            nv = max(1, int(math.ceil(math.hypot(T[3][0] - T[0][0], T[3][1] - T[0][1]) - 1e-6)))
+            for j in range(nv):
+                for i in range(nu):
+                    cs = (i + .5) / nu; ct = (j + .5) / nv
+                    tu = T[0][0] + cs * (T[1][0] - T[0][0]) + ct * (T[3][0] - T[0][0]); tv = T[0][1] + cs * (T[1][1] - T[0][1]) + ct * (T[3][1] - T[0][1])
+                    c = wimg.getpixel((min(wimg.width - 1, int(tu)), min(wimg.height - 1, int(tv))))
+                    if c[3] < 128: continue
+                    pts = []
+                    for s_, t_ in ((i / nu, j / nv), ((i + 1) / nu, j / nv), ((i + 1) / nu, (j + 1) / nv), (i / nu, (j + 1) / nv)):
+                        pp = [P[0][a] + s_ * (P[1][a] - P[0][a]) + t_ * (P[3][a] - P[0][a]) for a in range(3)]
+                        pts.append(app(cam, [O[a] + app(M, pp)[a] for a in range(3)]))
+                    col = tuple(int(c[a] * 0.85) for a in range(3)) + (255,)
+                    quads.append((sum(p[2] for p in pts) / 4 - 0.01, [(p[0], p[1]) for p in pts], col))
     xs = [x for _, ps, _ in quads for x, _ in ps]; ys = [y for _, ps, _ in quads for _, y in ps]
     mx, my = min(xs) - 2, min(ys) - 2
     W, H = int((max(xs) - mx + 2) * px), int((max(ys) - my + 2) * px)
