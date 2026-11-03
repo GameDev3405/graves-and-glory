@@ -18,7 +18,7 @@ Result column to fill in on each pass: Pass / Fail / Blocked, tester, jar SHA-25
 
 Rules that apply to every row: never write or accept `eula.txt` (Kort supplies it); never touch ports 25565-25567, 25570 (builder), 25571; never stop Kort's game or the builder; test on a copy of any save; headless bots never count as players.
 
-Run 2026-11-03 (`work/qa-matrix-runs`, base `main` bd05fa2b), after the dedicated-server pass (`work/qa-server-rows`): 87 PASS, 1 FAIL (C9), 29 Kort, 20 not run (no agent-runnable check). Detail: `docs/reports/qa-matrix-run-2026-11-03.md`.
+Run 2026-11-03 (`work/qa-matrix-runs`, base `main` bd05fa2b), after the dedicated-server pass (`work/qa-server-rows`): 90 PASS, 2 FAIL (C9, I10), 29 Kort, 16 not run (no agent-runnable check or turn budget). Detail: `docs/reports/qa-matrix-run-2026-11-03.md`.
 
 ---
 
@@ -95,11 +95,11 @@ Profiles are the server's `<uuid>.json`, read once per commander by `Campaign.pr
 | D14 | Hand-edited schema 3 file: unknown ids, bad stars, mastery, banner, class, colour, negative gold, missing sets. | `sanitize()` clamps or drops each; invalid banner repacked; missing `battlesWon`/`bonusClaimed` rebuilt empty. | AUTO `ProfileMigrationCheck` (`sanitize` rows) | PASS - AUTO ProfileMigrationCheck / ProfileFixtureCheck |
 | D15 | Write, read back, write. | Byte-identical JSON round trip. | AUTO `ProfileMigrationCheck` (`round-trip`) | PASS - AUTO ProfileMigrationCheck / ProfileFixtureCheck |
 | D16 | Fixtures `profile-v1-partial.json` and `profile-v1-cache.json`. | Migrate to a valid schema 3 profile. | AUTO `ProfileFixtureCheck` (all five fixtures, real Gson); live path HARN `Phase2Checks` | PASS - AUTO ProfileMigrationCheck / ProfileFixtureCheck |
-| D17 | Real server restart on a host with a v1 or v2 file in `gravesandglory-profiles/`, then join as that commander. | The collection shows the migrated profile; `.v1.json`/`.v2.json` present beside it; no data lost in the client UI. | LATER (HARN `GRAVES_ROADMAP_MIGRATION=true` covers the legacy-folder path only, not v1/v2 file content end to end). Final eyes: MANUAL | NOT RUN - no agent-runnable check |
-| D18 | Two commanders, one with a corrupt file. | Corrupt one fails; the other loads and plays; no cross-contamination. | LATER | NOT RUN - no agent-runnable check |
+| D17 | Real server restart on a host with a v1 or v2 file in `gravesandglory-profiles/`, then join as that commander. | The collection shows the migrated profile; `.v1.json`/`.v2.json` present beside it; no data lost in the client UI. | LATER (HARN `GRAVES_ROADMAP_MIGRATION=true` covers the legacy-folder path only, not v1/v2 file content end to end). Final eyes: MANUAL | PASS (robustness pass 2026-11-03): DaveV1 v1 file migrated to schema 3 (gold 1500 + 1200 refund for 4 retired troops, matches 31, wins 17), `.v1.json` byte copy and `.v2.json` beside it; v1 only, no separate v2 start |
+| D18 | Two commanders, one with a corrupt file. | Corrupt one fails; the other loads and plays; no cross-contamination. | LATER | PASS (robustness pass 2026-11-03): the corrupt commander joins with defaults and the file is kept as `.corrupt` (no join failure, by design); the other two load intact |
 | D19 | Client sends a portable profile copy (`importProfile`) on first visit to a single-player or LAN world with no record. | Imported once, upgraded the same way as a server file. Over 16000 characters is ignored. | LATER (no standalone check on `importAllowed`) | NOT RUN - no agent-runnable check |
-| D20 | Same on a dedicated server. | Never accepted; the server's file is the only source of truth. | LATER (code: `importAllowed.remove(id) && !server.isDedicated()`) | NOT RUN - no agent-runnable check |
-| D21 | Save fails (disk full or read-only directory). | Player is told "Collection could not be saved; check disk space."; old file and `.bak` intact. | LATER | NOT RUN - no agent-runnable check |
+| D20 | Same on a dedicated server. | Never accepted; the server's file is the only source of truth. | LATER (code: `importAllowed.remove(id) && !server.isDedicated()`) | SKIP (turn budget): needs a bot to send an oversized profile on `profile_v1` and a check that no file changes |
+| D21 | Save fails (disk full or read-only directory). | Player is told "Collection could not be saved; check disk space."; old file and `.bak` intact. | LATER | SKIP (turn budget): needs a blocked `.tmp` path plus a `roll` order from a bot; the setup was prepared but not run |
 | D22 | Run a migrated profile through a save, quit, relaunch. | Nothing changes (no repeated migration, no reward grants twice). | HARN `restart-collection` (`CampaignChecks`) | PASS - HARN restart-collection (gold 777; no v1 fixture this run) |
 
 ## E. Legacy Bannerbound data (rename)
@@ -115,7 +115,7 @@ Profiles are the server's `<uuid>.json`, read once per commander by `Campaign.pr
 | E7 | The legacy world is open (locked) while migrating. | Refused; nothing copied. | AUTO `LegacyDataMigrationCheck` | PASS - AUTO LegacyDataMigrationCheck |
 | E8 | Incomplete current world next to a legacy world. | Refused; recovery needed, no overwrite. | AUTO `LegacyDataMigrationCheck` | PASS - AUTO LegacyDataMigrationCheck |
 | E9 | Dedicated server with `bannerbound-profiles/` and `bannerbound-layout.json` in the world. | Profiles copied to `gravesandglory-profiles/`; layout marker copied; originals kept; failure keeps originals and stops with a clear message. | HARN `legacy-profile-upgrade`, `legacy-layout-upgrade` (`GRAVES_ROADMAP_MIGRATION`) | PASS - server pass 2026-11-03 |
-| E10 | A legacy-named world (`Bannerbound`) still activates the mod. | `Battle` is created for both level names. | HARN `legacy-world-upgrade` | NOT RUN - no agent-runnable check |
+| E10 | A legacy-named world (`Bannerbound`) still activates the mod. | `Battle` is created for both level names. | HARN `legacy-world-upgrade` | SKIP (turn budget): needs a second start with `level-name=Bannerbound` and a join |
 | E11 | Migration error at client start (storage or permissions). | Front menu shows "Could not migrate old collection/settings. Your originals are unchanged." | MANUAL | Kort |
 
 ## F. Version gate and compatibility
@@ -160,7 +160,7 @@ Profiles are the server's `<uuid>.json`, read once per commander by `Campaign.pr
 | H4 | Practice battle: visitor, reconnect, stale reservation. | Visitor waits; owner reclaims. | AUTO `AdmissionPolicyCheck` | PASS - AUTO AdmissionPolicyCheck / MatchRulesCheck |
 | H5 | Party member drops and returns. | Party kept. | HARN `disconnect-keeps-party` | PASS - HARN two-client CampNetworkChecks |
 | H6 | Quit by the menu versus hard kill of the client process (Task Manager). | Same outcome as H1/H2; server logs no exception. | MANUAL (SIX-PLAYER-TEST-PLAN section 6); LATER for the hard kill with two harness clients | Kort |
-| H7 | Rejoin after the match ended. | Back in camp, collection intact, no reward twice. | LATER | NOT RUN - no agent-runnable check |
+| H7 | Rejoin after the match ended. | Back in camp, collection intact, no reward twice. | LATER | SKIP (turn budget): needs a full round (900 s) to end, then a rejoin |
 | H8 | Rejoin time limit: the slot is held 2 minutes (Kort 2026-11-02). | Rejoin inside 2 minutes reclaims the army (a bot takes command after 60 s). After 2 minutes the reservation is released; the army stays with its bot and any joiner, the owner included, may take the seat. | AUTO `MatchRulesCheck` (rule and wiring); HARN case LATER | PASS - AUTO AdmissionPolicyCheck / MatchRulesCheck |
 | H9 | Host (LAN/single-player) quits. | Guests are disconnected cleanly; no hang. | HARN `host-stop-disconnects-cleanly` | PASS - HARN two-client CampNetworkChecks |
 | H10 | Network drop (cable or Tailscale down) rather than a clean quit. | Server times the client out, then H1; rejoin works. | MANUAL | Kort |
@@ -179,8 +179,8 @@ Profiles are the server's `<uuid>.json`, read once per commander by `Campaign.pr
 | I7 | Clean `stop` mid-match. | Server stops without error; planted banners and clouds are gone; no match record is resumed. Each seated player gets the participation gold pro-rated by the share played, no win bonus (Kort 2026-11-02). | AUTO `MatchRulesCheck` (rule and wiring); MANUAL for the live stop | PASS - AUTO LayoutMarkerCheck / MatchRulesCheck (live stop/crash not run) |
 | I8 | Kill only the server java process (crash) in camp; restart. | World loads without regenerating; profile loads. Saves go through a temp file, an atomic move and a `.bak`, so a torn write must not occur. | MANUAL (Kort, never the builder); LATER for the torn-write case | Kort |
 | I9 | Crash mid-match; restart. | Camp state sane; no ghost units; the next start pays the same pro-rated share from the last 30 s checkpoint (`match-progress.json`), no win bonus (Kort 2026-11-02). | AUTO `MatchRulesCheck` (wiring); MANUAL for the live crash | PASS - AUTO LayoutMarkerCheck / MatchRulesCheck (live stop/crash not run) |
-| I10 | Corrupt `gravesandglory-parties.json`; start. | Startup stops with "Party data could not be read; original and .bak are preserved"; originals untouched. | LATER | NOT RUN - no agent-runnable check |
-| I11 | Delete `gravesandglory-layout.json`. | Arena rebuilds; no crash. | LATER | NOT RUN - no agent-runnable check |
+| I10 | Corrupt `gravesandglory-parties.json`; start. | Startup stops with "Party data could not be read; original and .bak are preserved"; originals untouched. | LATER | FAIL (expectation; robustness pass 2026-11-03): the server starts with default parties and keeps the damaged file as `gravesandglory-parties.json.corrupt`; it does not stop. No data lost; the row text predates the SafeFiles fallback (Kort call: change the row or the behaviour) |
+| I11 | Delete `gravesandglory-layout.json`. | Arena rebuilds; no crash. | LATER | PASS (robustness pass 2026-11-03): marker deleted, restarted; `camp:practice` rebuilt the arena and rewrote the marker 2 s later, no exception |
 | I12 | Back up the world, restore on a second folder, start. | Same profiles and maps. | MANUAL (SIX-PLAYER-TEST-PLAN section 3, step 5) | Kort |
 | I13 | Disk full during profile save. | See D21. | LATER | NOT RUN - no agent-runnable check |
 | I14 | Long soak: three matches, restart, reconnect, restart. | Section 7 fields intact (House, class, rewards, profile, unlocks, map state). | MANUAL (SIX-PLAYER-TEST-PLAN sections 6 and 7) | Kort |
@@ -208,14 +208,14 @@ The mod registers no player commands outside build mode. In `BuildMode` (only wh
 | K1 | Ten or more players on a 16-slot server during a 4v4. | Eight commanders, the rest in camp, none in battle. | AUTO `AdmissionPolicyCheck`, `LobbyRulesCheck` | PASS - AUTO AdmissionPolicyCheck / LobbyRulesCheck |
 | K2 | One human with bots filling five seats; headless bots not counted as players. | Match starts; no bot reward or record. | AUTO `LobbyRulesCheck` (bot fill); bot rewards: GAP, no named check | PASS - AUTO AdmissionPolicyCheck / LobbyRulesCheck |
 | K3 | Leave and join during the ten-second countdown. | Countdown stops or restarts as G3. | AUTO `LobbyRulesCheck` | PASS - AUTO AdmissionPolicyCheck / LobbyRulesCheck |
-| K4 | Host leaves the room. | Host seat passes or room closes without a stuck lobby. | LATER (only `handHost` rules are checked) | NOT RUN - no agent-runnable check |
+| K4 | Host leaves the room. | Host seat passes or room closes without a stuck lobby. | LATER (only `handHost` rules are checked) | SKIP (turn budget): needs two bots in a room, the host leaves, then a check of the host seat |
 | K5 | Shrink the room below its commanders; move a party to a full side. | Refused with a message. | AUTO `LobbyRulesCheck` | PASS - AUTO AdmissionPolicyCheck / LobbyRulesCheck |
 | K6 | Same House picked by both sides; mixed banners. | Allowed per design; House banner derived per side. | AUTO `LobbyRulesCheck` (`houseBanner`) | PASS - AUTO AdmissionPolicyCheck / LobbyRulesCheck |
 | K7 | Rewards: win, loss, quit, disconnect, visitor, rematch. | Granted once per participant, saved, none for visitors. | HARN `visitor-no-reward`; the rest LATER | NOT RUN - no agent-runnable check |
 | K8 | Campaign: clear a battle twice. | `battlesWon` is a set; no double bonus. | AUTO `ProfileMigrationCheck` (round trip, sanitize) for data; play: HARN `CampaignChecks` | PASS - AUTO ProfileMigrationCheck + HARN CampaignChecks |
 | K9 | Pad: step on, countdown, step off. | Ready state clears. | HARN `pad-ready`, `pad-step-off` | PASS - HARN pad-ready, pad-step-off |
 | K10 | Modes: Domination, Siege, Convoy, Long March battles 2 and 4. | Each mode plays one full round. | HARN `GRAVES_PHASE4_CHECKS=convoy`, `march-modes`, `modes` (Domination is the `modes` suite, check `p4-modes-domination`) | PASS - convoy, march-modes and modes (Domination, `p4-modes-domination`) pass; the earlier FAIL was a wrong suite name in the matrix |
-| K11 | Chunks and entity cleanup after many rounds. | No leftover entities or banners after a round or server stop. | HARN `restart-clean-lobby`; round boundary: LATER | NOT RUN - no agent-runnable check |
+| K11 | Chunks and entity cleanup after many rounds. | No leftover entities or banners after a round or server stop. | HARN `restart-clean-lobby`; round boundary: LATER | SKIP (turn budget): needs entity counts (RCON) across a finished round and a server stop |
 | K12 | Window, GUI scale and resolution extremes on the front menu and War Table. | Layout readable at 1440p and at GUI scale 2. | HARN `GRAVES_ROADMAP_FRONT_CHECKS=true`, AUTO `UiMathCheck`; looks: MANUAL (Kort) | NOT RUN - no agent-runnable check |
 | K13 | Low-end client (low RAM or integrated GPU) with and without shaders. | Playable; record fps against the 60 fps target. | MANUAL (plan 5.5 owns the numbers) | Kort |
 | K14 | Play with the pack on Linux or macOS. | Unverified; setup scripts are PowerShell only. | GAP (server kit is Windows only; clients are untested elsewhere) | NOT RUN - no agent-runnable check |

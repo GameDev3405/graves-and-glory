@@ -3,7 +3,8 @@
 Branch `work/qa-matrix-runs`, base `main` bd05fa2b. Tester: Sonnet worker. Per-row states are in the "Run 2026-11-03" column of `docs/QA-MATRIX.md`. Evidence files (copies of the harness `local-checks.txt` and the verify result) are in `docs/reports/qa-matrix-run-2026-11-03-evidence/`; full logs are under the gitignored `work/q3/`.
 
 ## Totals (137 rows)
-Updated after the dedicated-server pass (below): 87 PASS, 1 FAIL (C9), 29 Kort (needs Kort, friends, real network or visual sign-off), 20 not run (no agent-runnable check exists, or a fixture was needed).
+Updated after the robustness pass (last section): 90 PASS, 2 FAIL (C9, I10), 29 Kort (needs Kort, friends, real network or visual sign-off), 16 not run (no agent-runnable check, or turn budget).
+After the dedicated-server pass (below): 87 PASS, 1 FAIL (C9), 29 Kort (needs Kort, friends, real network or visual sign-off), 20 not run (no agent-runnable check exists, or a fixture was needed).
 Before that pass: 78 PASS, 1 FAIL (K10, since resolved to PASS), 34 Kort, 24 not run. The pass moved C7, C8, C10, E9, F5, J2, J9 to PASS, C9 and C11 to FAIL, and completed the live halves of F2-F4 (already PASS).
 A PASS on an AUTO-only row means the standalone or Python check passed in `verify.py fast`; "live" halves of mixed rows were not run (noted in the column).
 
@@ -51,3 +52,18 @@ Findings (not fixed, per scope):
 - C10 (fix incomplete: live re-check still sends a BOM-prefixed stop; BOM source not found, start.ps1 StreamWriter looks BOM-free): `start.ps1` now writes to the child's stdin through a BOM-free UTF-8 writer. Was: `start.ps1` forwards `stop` through `ProcessStartInfo.RedirectStandardInput`; with a UTF-8 console input encoding the server received `?stop`. Likely a BOM; seen only under a redirected (non-interactive) host, not checked in a real console window.
 - C8 (fixed): the probe reads `max-players` from `tools/server-kit/server.properties.default` (16 if unreadable). Was: `test-tools/standalone/server_status_probe.py` hard-codes `max == 8`.
 - First `Done` came with one "Can't keep up" (73 ticks) during the camp build, as the runbook already notes.
+
+## Robustness pass (branch `work/qa-robustness-rows`, base `main` 9ded8364, tester: Sonnet worker)
+Same setup as the dedicated-server pass: a new throwaway scratch server inside the worktree (EULA accepted there only, Kort Q88), the kit scripts, the built jar, protocol-763 offline bot clients driven by script plus RCON, never computer-use. At most one java process ran; it was stopped with `stop.ps1` and the scratch folder was deleted. Evidence: `qa-matrix-run-2026-11-03-evidence/robustness-rows-evidence.txt`. Fixtures: `test-tools/resources/fixtures/profile-v1-*.json`.
+
+| Row | Result | One-line evidence |
+|---|---|---|
+| D17 v1 file, restart, join | PASS | schema 3 profile (gold 1500 + 1200 refund for four retired troops, matches 31, wins 17), `.v1.json` byte copy and `.v2.json` beside it; no separate v2 start was run |
+| D18 one corrupt file | PASS (note) | the corrupt commander joins with defaults and his file is kept as `.corrupt`; the two good commanders load intact. The row says "fails": by design he is not refused |
+| I10 corrupt parties file | FAIL (expectation) | server starts, uses default parties, keeps `gravesandglory-parties.json.corrupt`; row text expects a startup stop |
+| I11 delete layout marker | PASS | restart clean; `camp:practice` rebuilt the arena and rewrote the marker 2 s later; no exception. A join alone does not rewrite it |
+| D20, D21, E10, H7, K4, K11 | SKIP (turn budget) | D20 needs an oversized `profile_v1` bot send; D21 a blocked `.tmp` path plus a `roll` (prepared, not run); E10 a start with `level-name=Bannerbound`; H7 a finished 900 s round and rejoin; K4 two bots in a room with the host leaving; K11 RCON entity counts across a finished round and a stop |
+
+Findings (not fixed, per scope):
+- I10: the row text and the code disagree (the code falls back to defaults and quarantines the file, as D18). Kort/owner call: change the row or make startup stop. The same stale expectation applies to D9.
+- Preflight regenerated `Spec.java` and `sheets/preflight.json` (line endings only); reverted, not committed.

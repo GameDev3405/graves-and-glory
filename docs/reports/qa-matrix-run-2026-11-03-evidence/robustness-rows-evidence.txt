@@ -1,0 +1,27 @@
+Robustness pass evidence, 2026-11-03. Scratch dedicated server (three starts, offline, port 25640) with protocol-763 bot clients.
+The scratch folder (work/qa-robust-srv) was deleted afterwards.
+
+== I10: corrupt gravesandglory-parties.json (garbage), start ==
+[11:47:23] Done (1.389s)! For help, type "help"
+[11:47:23] [STDERR]: [Graves and Glory] Party data could not be read (com.google.gson.JsonSyntaxException: Failed parsing 'not' as UUID; at path $.parties.) and has no backup; using defaults. The damaged copy is kept as gravesandglory-parties.json.corrupt.
+Result: the server starts (it does not stop); the damaged copy is kept as gravesandglory-parties.json.corrupt. The row text expects a stop, which predates the fallback behaviour (SafeFiles.load).
+
+== D17: v1 profile file, restart, join as that commander ==
+DaveV1 (fixture profile-v1-full: gold 1500, matches 31, wins 17) joined; the camp snapshot shows:
+  schema 3, gold 2700, matches 31, wins 17, owned 14, battlesWon [march-1], commander warlock
+  The extra 1200 gold is the migration refund: 4 retired troops (mage, hexer, oracle, wraith) x refundGold 300 (ProfileMigration.REFUNDED).
+Files beside the profile after the join:
+  ad696520-1614-3738-a36f-30b7d8b6a4ee.json      schema 3, gold 2700
+  ad696520-1614-3738-a36f-30b7d8b6a4ee.v1.json   schema 1, gold 1500 (byte copy of the original)
+  ad696520-1614-3738-a36f-30b7d8b6a4ee.v2.json   intermediate image
+
+== D18: one corrupt file beside two good ones ==
+CarlOK (fixture profile-v1-partial): schema 3, gold 1320, matches 3, wins 1, owned 11 (joined and loaded)
+BobCorrupt (garbage file): joined with a default profile (schema 3, gold 0, matches 0, wins 0)
+[11:49:28] [STDERR]: [Graves and Glory] Commander profile 3daf2219-35fd-381a-805d-1d56882d7042 could not be read (java.lang.IllegalStateException: Commander profile could not be read; it was left unchanged: 3daf2219-35fd-381a-805d-1d56882d7042.json) and has no backup; using defaults. The damaged copy is kept as 3daf2219-35fd-381a-805d-1d56882d7042.json.corrupt.
+DaveV1 and CarlOK are unaffected; 3daf2219-...json.corrupt is kept. The corrupt commander does not fail to join: he plays with defaults (by design, row text predates it).
+
+== I11: delete gravesandglory-layout.json, restart ==
+Before: {"layout":"campaign-4","map":0,"margin":"margin-1/terrain-6","landmarks":"11be5373"}; the file was deleted with the server stopped.
+Restart: Done (1.507s), no Exception or ERROR lines. A join alone does not write the marker (the arena is built when a round starts).
+After camp:practice the arena build ran and the marker was rewritten 2 s later with the same content as before. The log has no Exception or ERROR line.
