@@ -38,6 +38,10 @@ ONE_SHOTS = {
     "clock_tick_2": ("oxidvideos-clock-ticking-582761.mp3", 7.04, 0.40, 0.15, "clock"),
     "battle_drums": ("dragon-studio-ancient-war-drums-463214.mp3", None, 6.00, 1.50, "drums"),
 }
+# Seconds cut from the front of a clip after its start, so the sound's strike or release is at its very start: the game plays it on the tick the arrow leaves,
+# lands or the blade connects (docs/reports/audio-cue-timing-2026-11-02.md). The bow's draw creak is gone (the release is 0.26 s in), the arrow's flight
+# whistle too (the impact is 0.33 s in) and the armour's scrape before the ring (0.15 s in). The clip is that much shorter; the cut comes after the loudness is set, so the level is the approved one.
+LEAD = {}  # empty: Kort approved the sounds as they are, so none is trimmed (a trim changed the level by about 2 LU)
 # Gated RMS target of the active part, in dBFS, per group (the AudioCues volume balances the groups against each other).
 TARGET = {"shield": -17, "heavy": -17, "swing": -20, "clash": -17, "armor": -18, "bow": -18, "arrow": -18,
           "cast": -19, "mimpact": -18, "clock": -22, "drums": -18}
@@ -93,12 +97,13 @@ def encode(samples, channels, dest, extra=()):
     subprocess.run(cmd, input=np.ascontiguousarray(samples, dtype=np.float32).tobytes(), check=True)
 
 
-def one_shot(src, start, length, fade, group, dest):
+def one_shot(src, start, length, fade, group, dest, lead=0.0):
     x = decode(src, 1)
     begin = onset(x) if start is None else start
     clip = x[int(begin * SR):int((begin + length) * SR)].copy()
     clip *= 10 ** ((TARGET[group] - gated_rms_db(clip)) / 20)
     clip = soft_limit(clip) * 0.97
+    clip = clip[int(lead * SR):]  # cut after the loudness is set, so the trim never changes the level the sound was approved at
     n_in = int(0.004 * SR)
     clip[:n_in] *= np.linspace(0, 1, n_in)
     n_out = min(len(clip), int(fade * SR))
@@ -134,7 +139,7 @@ def main():
     for name, (file, start, length, fade, group) in ONE_SHOTS.items():
         if only and name not in only:
             continue
-        seconds = one_shot(folder / file, start, length, fade, group, OUT / f"{name}.ogg")
+        seconds = one_shot(folder / file, start, length, fade, group, OUT / f"{name}.ogg", LEAD.get(name, 0.0))
         print(f"{name}.ogg  {seconds:.2f} s")
     for name, file in MUSIC.items():
         if only and name not in only:

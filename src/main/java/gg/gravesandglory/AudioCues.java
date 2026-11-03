@@ -33,7 +33,7 @@ public final class AudioCues {
         VICTORY("victory", null, .8f, 1f, "players", Scope.OWNER, 0, "Battle ends"),
         // Own synthesised files (tools/audio/make_cues.py); see docs/AUDIO.md.
         DEFEAT("defeat", null, .7f, 1f, "players", Scope.OWNER, 0, "Battle lost"),
-        CAPTURE_START("capture_start", null, .6f, 1f, "players", Scope.ALL, 200, "A point is contested"),
+        CAPTURE_START("capture_start", null, .6f, 1f, "players", Scope.ALL, 200, "A point is contested", 1),
         CAPTURE_WON("capture_won", null, .6f, 1f, "players", Scope.TEAM, 20, "Your side takes a point"),
         CAPTURE_LOST("capture_lost", null, .7f, 1f, "players", Scope.TEAM, 20, "Your side loses a point"),
         GATE_HIT("gate_hit", null, .5f, 1f, "hostile", Scope.NEARBY, 8, "The gate is struck"),
@@ -95,6 +95,62 @@ public final class AudioCues {
         }
 
         public boolean music() { return category.equals("music"); }
+    }
+
+
+    // ---- Timing (docs/reports/audio-cue-timing-2026-11-02.md) ----------------------------------------------------------------------------------------
+    // A melee blow resolves on the tick the swing starts, but the blade only meets its target at the contact frame of the attack clip. The hit sound waits
+    // that long. HouseAttacks.STRIKE holds the seconds per House (x20 here); a troop without a House attack (a beast, the colossus) uses the rig's attack
+    // peak, TroopClips.PEAKS "attack" (0.25 s). AudioCuesCheck reads both source files and fails if these drift.
+    /** Ticks from a swing's start to the blade meeting its target, by House id. */
+    public static final Map<String, Integer> CONTACT_TICKS = Map.of("gilded", 4, "graveborn", 6, "wildmoot", 5, "ironclad", 7, "tidecallers", 6);
+    /** The contact tick of a melee troop with no House attack of its own. */
+    public static final int DEFAULT_CONTACT_TICKS = 5;
+
+    /** Ticks between a melee swing starting and its hit sound for a troop of this House (null or unknown: the default). */
+    public static int contactTicks(String house) { return house == null ? DEFAULT_CONTACT_TICKS : CONTACT_TICKS.getOrDefault(house, DEFAULT_CONTACT_TICKS); }
+
+    /** How long the victory and defeat stings run, in ticks (3.2 s and 4.2 s): the music waits them out so the next track never starts over the sting. */
+    public static final int VICTORY_STING_TICKS = 64, DEFEAT_STING_TICKS = 84;
+    /** The portcullis drops this many ticks after the gate_shut cue starts, so the crash lands as the gate meets the ground (the file's thud is 0.35 s in). */
+    public static final int GATE_SHUT_LEAD_TICKS = 7;
+    /** The wave rises this many ticks after the wave_rise cue starts (the file swells for 1.5 s before its hit). */
+    public static final int WAVE_RISE_LEAD_TICKS = 30;
+
+    /** Whether the round clock, with this many ticks left, ticks now: once a second through the last ten seconds (ticks 200, 180 ... 20), never at 0. */
+    public static boolean clockSecond(long ticksLeft) { return ticksLeft > 0 && ticksLeft <= 200 && ticksLeft % 20 == 0; }
+
+    /** Whether a pre-battle countdown with this many ticks left ticks now: once a second through the last three seconds (60, 40, 20). */
+    public static boolean countdownSecond(long ticksLeft) { return ticksLeft > 0 && ticksLeft <= 60 && ticksLeft % 20 == 0; }
+
+    /**
+     * Cues that wait for their moment (a melee blow's contact frame, the gate's crash, a wave's rise): add(now, delay, play) runs play after delay ticks, at once
+     * when the delay is not positive; tick(now) runs what has come due, in the order added. An entry due further ahead than any delay (a clock that went back,
+     * a new round) is dropped; clear() drops all.
+     */
+    public static final class Schedule {
+        public static final int MAX_DELAY = 400;
+        private final List<long[]> due = new ArrayList<>();
+        private final List<Runnable> plays = new ArrayList<>();
+
+        public void add(long now, int delayTicks, Runnable play) {
+            if (delayTicks <= 0) { play.run(); return; }
+            due.add(new long[] {now + delayTicks});
+            plays.add(play);
+        }
+
+        public void tick(long now) {
+            for (int i = 0; i < due.size(); ) {
+                long at = due.get(i)[0];
+                if (at > now + MAX_DELAY) { due.remove(i); plays.remove(i); }
+                else if (at <= now) { due.remove(i); var play = plays.remove(i); play.run(); }
+                else i++;
+            }
+        }
+
+        public int size() { return due.size(); }
+
+        public void clear() { due.clear(); plays.clear(); }
     }
 
     /** The command horns: own files, volume from combatDiscipline.hornVolume, throttled by BattleEffects.feedback, to the commanding player only. */

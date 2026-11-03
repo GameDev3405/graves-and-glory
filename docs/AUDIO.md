@@ -34,14 +34,14 @@ Each id is a variant group in `sounds.json`; the game picks one file at random. 
 
 | Event | Trigger | Files |
 | --- | --- | --- |
-| combat.shield_block | A hit on a raised shield (melee or missile); the Knight's shield bash | shield_block_1 to 3 |
+| combat.shield_block | A hit on a raised shield (melee or missile), at the blow's contact frame; the Knight's shield bash | shield_block_1 to 3 |
 | combat.heavy_metal_hit | A landed blow by an axe, mace or hammer troop or the Colossus; a slam | heavy_metal_hit_1 |
 | combat.sword_swing | A blade troop's swing (every second slot) | sword_swing_1, 2 |
 | combat.sword_clash | A blade hitting an armed melee troop | sword_clash_1 to 4 |
 | combat.armor_hit | A blade hitting a metal-armoured troop with no weapon | armor_hit_1 |
 | combat.bow_shoot | An archer or crossbow shot leaves (lower for siege bolts) | bow_shoot_1 |
 | combat.arrow_hit | An arrow or bolt lands | arrow_hit_1 |
-| magic.cast | A caster's shot; the Mist Caller's cloud | magic_cast_1 |
+| magic.cast | A caster's shot as the spell begins (the Mist Caller's cloud sounds magic.impact when it lands) | magic_cast_1 |
 | magic.impact | A caster's missile or blight lands | magic_impact_1, 2 |
 | clock.tick | Each of the last ten seconds of a round's clock | clock_tick_1, 2 |
 | battle.drums | Battle entrance camera, layered under battle_intro (kept) | battle_drums |
@@ -50,6 +50,15 @@ Each id is a variant group in `sounds.json`; the game picks one file at random. 
 | music.battle_grim, music.battle_drums | A running battle, alternating; the round's serial picks the first | music_battle_dark_grim, music_battle_drums_stomp |
 
 Music is in the music category, so the Music slider governs it, and `MusicDirector` stops vanilla music while it plays (fades 2 s in, 0.75 s out). It is silent through the entrance camera.
+
+## Timing
+
+Each cue plays at its moment (report: docs/reports/audio-cue-timing-2026-11-02.md; the check is AudioCuesCheck).
+
+- Melee damage resolves on the tick a swing starts, but the blade meets its target at the attack clip's contact frame, so the hit sound (clash, armour, heavy, shield) waits `AudioCues.contactTicks` (House strike seconds x 20: gilded 4, graveborn 6, wildmoot 5, ironclad 7, tidecallers 6, other 5). The queue is `AudioCues.Schedule`, run by `Audio.tick` each server tick and cleared by `Audio.reset` at a round's start and end.
+- Missiles and spells sound when they land (the projectile's landing tick), a bow when it is loosed. The strike sits late in three approved samples (bow_shoot_1 release about 0.26 s in, arrow_hit_1 impact about 0.33 s, armor_hit_1 ring about 0.15 s); they are left as approved. Trimming them is available through `LEAD` in `tools/audio/import_pixabay.py` if Kort wants it (it changed the level by about 2 LU).
+- gate_shut starts 7 ticks before the portcullis drops (the crash is 0.35 s in); wave_rise starts 30 ticks before the wave rises (the hit is 1.5 s in); the gate hit and the breach sound with the blow that causes them.
+- The music director waits the length of the victory (64 ticks) or defeat (84 ticks) sting before the next track starts.
 
 ## Credits
 

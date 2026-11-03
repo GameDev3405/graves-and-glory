@@ -88,10 +88,14 @@ public final class Combat {
         float amount = (float) (base * veteran * total);
         boolean anchored = victim != null && Abilities.anchored(b, victim);
         Vec3d stood = target.getVelocity();
-        boolean hurt = target.damage(source(b, attacker.mob), amount);
+        Audio.blowDelay = kind.equals("melee") ? Audio.contact(attacker) : 0; // a structure's own blow cue reads it (SiegeMode.GateTarget.structureCue)
+        boolean hurt;
+        try { hurt = target.damage(source(b, attacker.mob), amount); } finally { Audio.blowDelay = 0; }
         if (anchored) target.setVelocity(stood); // an anchored troop (the Oath Banner's) is not knocked back by the blow itself either
+        // The blow's sound: shield, magic, arrow, heavy weapon, clash or armour (Audio.hit). A raised shield that takes the whole blow makes damage() answer false,
+        // and that is exactly the block the player should hear, so it sounds before the early return.
+        if (!secondary && (hurt || raised)) Audio.hit(b, attacker, target, victim, kind, raised);
         if (!hurt) return 0;
-        if (!secondary) Audio.hit(b, attacker, target, victim, kind, raised); // the blow's sound: shield, magic, arrow, heavy weapon, clash or armour (Audio.hit)
         // Ruling (Task 6 review M1): a killing blow levels its striker inside target.damage (AFTER_DEATH, lane A), so onHit below reads his new rows: the level
         // up lands at the kill and its first benefit is that same blow (a pierce, a cleave or a slam at the new share, Reap at level 3).
         if (!secondary) Abilities.onHit(b, attacker, target, amount, kind);

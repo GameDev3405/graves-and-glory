@@ -76,6 +76,8 @@ public final class SiegeMode extends BattleMode {
     /** What the round did, for the bot sim's report (read-only on the game): blows that hurt the gate and their damage, and the round second each stage fell (-1: never). */
     int gateBlows, yardSecond = -1, gateSecond = -1, keepSecond = -1;
     float gateDamage;
+    /** Whether the felling blow already sounded the breach (GateTarget.structureCue), so breach() does not sound it a second time. */
+    boolean breachCued;
 
     /**
      * The bot plan's draft values (spec 5's table; in code like Convoy's raidShare until the botCommand sheet takes them): defender infantry
@@ -117,10 +119,19 @@ public final class SiegeMode extends BattleMode {
             return Text.literal("Iron Gate " + (int) Math.ceil(hp())).formatted(Formatting.LIGHT_PURPLE);
         }
 
-        /** A blow on the gate rings as the gate cue (its last blow too: the breach cue follows from SiegeMode.breach), not as a banner's wool. */
+        /**
+         * A blow on the gate rings as the gate cue, not as a banner's wool, when the blow lands (a melee swing's contact frame, Audio.blowDelay). The blow that
+         * fells it sounds the breach instead, at that same moment, and SiegeMode.breach (which runs on the next whole second) then stays quiet.
+         */
         @Override
         void structureCue(net.minecraft.server.world.ServerWorld w, boolean felled) {
-            Audio.at(GravesAndGlory.battle, AudioCues.Cue.GATE_HIT, getPos(), "gate");
+            var b = GravesAndGlory.battle;
+            int wait = Audio.blowDelay;
+            Vec3d at = getPos();
+            if (felled) {
+                if (mode != null) mode.breachCued = true;
+                Audio.later(b, wait, () -> Audio.all(b, AudioCues.Cue.GATE_BREACH, "gate"));
+            } else Audio.later(b, wait, () -> Audio.at(b, AudioCues.Cue.GATE_HIT, at, "gate"));
         }
     }
 
@@ -142,6 +153,7 @@ public final class SiegeMode extends BattleMode {
      */
     @Override
     public void setup(GravesAndGlory.Battle b) {
+        breachCued = false;
         for (var p : b.points) Arena.unflag(b.world, p.spec);
         var row = gate();
         if (row == null) return;
@@ -341,6 +353,8 @@ public final class SiegeMode extends BattleMode {
         for (var s : b.squads.values()) if (s.seated && s.team == 1) { defender = s; break; }
         if (row == null || defender == null || b.saves.stream().noneMatch(s -> s.tag().equals(GATE_TAG))) { breach(b); return; } // no saved gate to shut and break
         dropAt = b.time + R.portcullisSeconds() * 20L;
+        // The gate's crash is 0.35 s into its sound, so the cue starts that much ahead of the drop and the two land together.
+        Audio.later(b, (int) (dropAt - b.time) - AudioCues.GATE_SHUT_LEAD_TICKS, () -> Audio.all(b, AudioCues.Cue.GATE_SHUT, "gate"));
         feed(b, "gate_closing", "n", Integer.toString(R.portcullisSeconds()));
     }
 
@@ -353,8 +367,7 @@ public final class SiegeMode extends BattleMode {
         if (row == null || defender == null) { breach(b); return; }
         clearPassage(b, row);
         Structures.place(b.world, GATE_INTACT, row.x(), row.elevation(), row.z(), row.rotation());
-        feed(b, "gate_shut");
-        Audio.all(b, AudioCues.Cue.GATE_SHUT, "gate");
+        feed(b, "gate_shut"); // the shut cue itself started GATE_SHUT_LEAD_TICKS ago (fall)
         var e = new GateTarget(b.world);
         e.squad = defender;
         e.mode = this;
@@ -393,7 +406,8 @@ public final class SiegeMode extends BattleMode {
         b.scores[0] = stage;
         b.roundSeconds += STAGE_BONUS;
         feed(b, "gate_breached");
-        Audio.all(b, AudioCues.Cue.GATE_BREACH, "gate");
+        if (!breachCued) Audio.all(b, AudioCues.Cue.GATE_BREACH, "gate"); // a felled gate sounded it with the blow (GateTarget.structureCue)
+        breachCued = false;
         mark(b); // the marker stops listing the gate's snapshot once it is back
     }
 
