@@ -15,7 +15,7 @@ Moves = clips planned (attacks plus stances, plus walls, hits or death where the
 | bow | archer, longbow, bonebow, stalker, wm_hunter | Essential Bow & Arrow Pack (space.bar) https://www.youtube.com/watch?v=FEWzL31g3Eo ; Horizon Archery Test (mood) https://www.youtube.com/watch?v=6MW9t4hZkik | 3 (bow_direct, bow_volley, aim) +3 hits if you say yes | 6.5 / 7.3 / 7.8 | Only archer and longbow have models; other 3 are vanilla. Arm sign check gates the tables. |
 | caster | mage, hexer, wm_seer, tc_mist | Essential Magic Staff Pack https://www.youtube.com/watch?v=abzQNrqeExk ; DS3 Sorceries https://www.youtube.com/watch?v=0Vyx-WZ8bRQ ; Riko Mage Staff Animset https://www.youtube.com/watch?v=96GEiO0qu7k | 4 (caster_cast, idle, guard, aim) | 6.8 / 7.0 (final) | Only mage has a model; hexer, wm_seer, tc_mist cannot play clips. |
 | spear | wm_tusk, tc_tideguard, tc_admiral | Thunder Cloud Spear Animation Demo https://youtu.be/Yk4NFoRhw1g | 10 (3 thrusts, 3 wall versions, brace, guard, carry, idle) | 6.5 / 6.2 / 6.5 | No models on this branch (they are on origin/work/troop-models-house; Admiral has none). Stub clips. Brace numbers need re-deriving. |
-| sword | revenant, tc_raider | Sharp Accent sword example https://www.youtube.com/watch?v=NwHzWyKyIs4 | 6 (overhead, low cut, thrust, idle, carry, guard) | 6.2 / 7.3 / 7.3 | No troop model for either unit. anim_edit entry. Stub clips. Root y sign table is flipped. |
+| sword | revenant, tc_raider | Sharp Accent sword example https://www.youtube.com/watch?v=NwHzWyKyIs4 | 6 (overhead, low cut, thrust, idle, carry, guard) | 6.2 / 7.3 / 7.3 | Models are on `main` (merge needed). The forward lean (+15 deg) re-sums the key tables. anim_edit entry. Stub clips. Root y sign table is flipped. |
 | crossbow | ic_arbalist, ic_ballista | Elden Ring Bow/Crossbow/Ballista https://www.youtube.com/watch?v=Qvo487abShM ; Ironbelly Arbalest https://www.youtube.com/watch?v=4YlwCnuqFBM | 5 (crossbow_loose, idle, carry, aim, rest) | 6.2 / 6.2 / 6.5 | No troop models. TroopMotion.bow fix (Java). anim_edit entry. Reload and window numbers need fixes. |
 | axe_shield | ic_hearthguard | RBStudio 650+ Axe+Shield https://youtu.be/8jiz-5jf15U ; Hammerhead Axe and Shield https://youtu.be/KB-SWLjRgzs ; Mythforge axe https://www.youtube.com/watch?v=y8Qez-K8VhE ; Graves Shield pack https://www.youtube.com/watch?v=MJkHBwryr7Q | 6 (overhead chop, hook hew, 2 wall versions, 2 stances) | 6.3 / 7.2 / 7.0 | No troop model. anim_edit entry (coordinator). Stub clips. Hew yaw signs inverted. |
 | axe | ic_breaker | Elden Ring Full Greataxe Moveset (Dare To Game) https://www.youtube.com/watch?v=KVRG_kIZlfs | 6 (chop, side hew, haft jab, guard, idle, carry) | 6.3 / 6.3 / 6.5 | No troop model. anim_edit entry and an axe.bbmodel. Stub clips. Haft pitch numbers contradict the "level" claim. Jab has no video. |
@@ -28,6 +28,24 @@ Moves = clips planned (attacks plus stances, plus walls, hits or death where the
 | bear | wm_oldhorn | Elden Ring Runebear https://youtu.be/yE3Nf2XMuNU ; Rageclaw Grizzly https://youtu.be/938Px9NRK5Q | 11 (maul, bite, rear, death, 3 hits, rest, idle, guard, carry) | 6.5 / 6.7 / 7.5 | No bear rig or model (rig change in TroopModels). anim_edit rig change. No quadruped gait. |
 | ravager | tc_brute | gim studio Rhinoceros preview https://www.youtube.com/watch?v=vJAlnB0O3KM (no real Souls-like video found) | 6 (charge, bite, idle, carry, guard, rest) +hits later | 6.0 / 6.5 / 6.5 | No model (hound rig base unconfirmed). anim_edit rig change. No quadruped gait. |
 | colossus | ic_colossus (levels 2, 3 share it) | Giant Golem AnimSet https://www.youtube.com/watch?v=huee6syEzuM ; Riko Giant Monster Animset https://www.youtube.com/watch?v=19wwArriGXI | 7 (slam, backhand, idle, guard, 3 hits) | 7.7 / 7.3 / 7.5 | No model. anim_edit rig change. Stub clips. Backhand has no video. Soles go 1-2.6 px under ground. |
+
+## Correction (2026-11-03, coordinator)
+
+The specs were written on `work/anim-rework`, which is 351 commits behind `main`. On `main`, `models/troop/index.json` lists all 30 troops. So every "no model" blocker in this roadmap and in the family specs is stale: the units have models, skins and weapons on `main`.
+
+| family | model on `main` | weapon | rig on `main` |
+|---|---|---|---|
+| sword | revenant, tc_raider | notched_sword, cutlass | biped |
+| spear | wm_tusk, tc_tideguard, tc_admiral | boar_spear, coral_trident, admiral_trident | biped |
+| crossbow | ic_arbalist, ic_ballista | ic_crossbow, none | biped |
+| axe_shield, axe | ic_hearthguard, ic_breaker | hearth_axe, ic_axe | biped |
+| greatsword, scythe | gb_hollowking, reaper | grave_sword, scythe | biped |
+| thrower, crew | tc_harpooner, ic_mortar | harpoon, none | biped |
+| hound, bear, ravager | wm_hound, wm_oldhorn, tc_brute | none | **hound** (bear and ravager share the hound rig; the bear spec's new bear rig is not needed) |
+| spider | wm_stalker | none | spider |
+| colossus | ic_colossus | none | colossus |
+
+The sword spec and plan are re-checked against the real models; Task 0 is now "merge `main`". The other families still need the same check after the merge: rest lean, idleArms, weapon model, cloth parts. Several models lean forward at rest: tusk +20, raider +16, revenant +15, reaper +7. Their key-table chain sums must include that lean.
 
 ## 3. Questions for Kort
 
