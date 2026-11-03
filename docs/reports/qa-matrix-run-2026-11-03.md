@@ -3,7 +3,7 @@
 Branch `work/qa-matrix-runs`, base `main` bd05fa2b. Tester: Sonnet worker. Per-row states are in the "Run 2026-11-03" column of `docs/QA-MATRIX.md`. Evidence files (copies of the harness `local-checks.txt` and the verify result) are in `docs/reports/qa-matrix-run-2026-11-03-evidence/`; full logs are under the gitignored `work/q3/`.
 
 ## Totals (137 rows)
-Updated after the E10/D21/K4 follow-up (end of the robustness pass): 93 PASS, 2 FAIL (C9, I10), 29 Kort (needs Kort, friends, real network or visual sign-off), 13 not run.
+Updated after the D20/H7/K11 follow-up: 96 PASS, 2 FAIL (C9, I10), 29 Kort, 10 not run. Before it (E10/D21/K4 follow-up): 93 PASS, 2 FAIL (C9, I10), 29 Kort (needs Kort, friends, real network or visual sign-off), 13 not run.
 Before that follow-up (robustness pass): 90 PASS, 2 FAIL, 29 Kort, 16 not run (no agent-runnable check, or turn budget).
 After the dedicated-server pass (below): 87 PASS, 1 FAIL (C9), 29 Kort (needs Kort, friends, real network or visual sign-off), 20 not run (no agent-runnable check exists, or a fixture was needed).
 Before that pass: 78 PASS, 1 FAIL (K10, since resolved to PASS), 34 Kort, 24 not run. The pass moved C7, C8, C10, E9, F5, J2, J9 to PASS, C9 and C11 to FAIL, and completed the live halves of F2-F4 (already PASS).
@@ -66,7 +66,9 @@ Same setup as the dedicated-server pass: a new throwaway scratch server inside t
 | D21 save fails | PASS (follow-up, branch `work/qa-rows-e10-d21-k4`) | `.tmp` blocked by a directory; `roll` -> notice "Collection could not be saved; check disk space.", gold back to 2700, profile sha256 unchanged, `.bak` and `.v1`/`.v2` intact |
 | E10 legacy world name | PASS (follow-up) | `level-name=Bannerbound`: camp built, `gravesandglory-camp.json`, `camp:practice` created a battle |
 | K4 host leaves | PASS (follow-up) | `social:exit` by the host passes the seat to the guest; a disconnected host keeps the seat during the reconnect reservation ("Waiting for disconnected members to reconnect") |
-| D20, H7, K11 | SKIP (turn budget) | D20 needs an oversized `profile_v1` bot send; H7 a finished 900 s round and rejoin; K11 RCON entity counts across a finished round and a stop |
+| D20 oversized profile | PASS (branch `qa/d20-h7-k11`) | oversized `profile_v1` drops only that client, server survives, no profile file changes; valid-size big-gold profiles are ignored |
+| H7 rejoin after the match | PASS (branch `qa/d20-h7-k11`) | full practice round ended at 928 s, reward paid once (gold 40), rejoin leaves the profile byte-identical |
+| K11 entity cleanup | PASS (branch `qa/d20-h7-k11`) | RCON counts: 39 husks in the round, 0 after; 0 after a stop and restart; camp decoration unchanged. Evidence: `qa-matrix-run-2026-11-03-evidence/qa3-d20-h7-k11-evidence.txt` |
 
 Findings (not fixed, per scope):
 - I10: the row text and the code disagree (the code falls back to defaults and quarantines the file, as D18). Kort/owner call: change the row or make startup stop. The same stale expectation applies to D9.
