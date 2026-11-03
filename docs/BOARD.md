@@ -116,7 +116,7 @@ One row per started task or task done in `main`; unlisted tasks in each phase ha
 
 | ID | Task | Owner | State | Evidence |
 |---|---|---|---|---|
-| 6.1 | Strict package | Agent | Passes as of `9c2d5f1` | Release verify of a clean checkout passed, package and readback included, with Excalibur inside. Not re-run at `8aab044` |
+| 6.1 | Strict package | Agent | Passes as of `9c2d5f1` | Release verify of a clean checkout passed, package and readback included, with Excalibur inside. Re-run at `01b0c77` on 2026-11-03: release verify PASS, package and readback included |
 | 6.2 | Modrinth, CurseForge and server kit exports | Agent + Kort | Tooling done; CurseForge import is Kort's step | The `.mrpack` installed and booted in a launcher test (`bannerbound-artint/work/launcher-test/RESULT.md`); the CurseForge zip passes at file level, but the mod fetch needs an API key (Q75). Excalibur 1.20 is pinned by sha512 and bundled unmodified with credit (`6f59300`, Kort approved) |
 | 6.3 to 6.6 | Install test, candidate record, final session, publish | Agent, Kort | Not started | Release notes draft and README refresh are in `main` (`d96923d`) and predate the tier II/III merges. Publish only on Kort's explicit go |
 
