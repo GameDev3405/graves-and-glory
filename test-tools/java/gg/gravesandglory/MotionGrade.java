@@ -622,7 +622,7 @@ final class MotionGrade extends Phase2Checks.Stage {
         if (PARTS.contains("hits")) for (String z : List.of("head", "body", "legs")) for (String d : DIRS) for (int w = 0; w < 3; w++)
             trans.add(new Tr("hs-" + z + "-" + d + "-" + w, "hold", java.util.Collections.singletonList(new Object[]{HS_EVENT, "hit", z + ":" + d + ":" + w}), "hit sweep: " + z + " zone, from the " + d + ", weight " + w + " (slash), fired after f" + HS_EVENT));
         // a real-time look at one attack (GRAVES_GRADE_VIDEO_CLIP names the variant, else the first) fired three times from the attack stance, 1.6 s apart
-        if (PARTS.contains("video")) trans.add(new Tr("attack-video", attackStance(), List.of(new Object[]{10, "attack", VIDEO_CLIP}, new Object[]{42, "attack", VIDEO_CLIP}, new Object[]{74, "attack", VIDEO_CLIP}), "three attacks from the attack stance, after f10, f42 and f74"));
+        if (PARTS.contains("video")) trans.add(new Tr("attack-video", attackStance(), List.of(new Object[]{10, "attack", VIDEO_CLIP}, new Object[]{42, "attack", VIDEO_CLIP}, new Object[]{74, "attack", VIDEO_CLIP}), "three " + (VIDEO_CLIP.isEmpty() ? "first-variant" : VIDEO_CLIP) + " attacks from the attack stance, after f10, f42 and f74"));
         if (PARTS.contains("novelty")) trans.add(new Tr("novelty-idle", "", java.util.Collections.singletonList(new Object[]{10, "stance", ""}), "idle for " + NOV_FRAMES / 20 + " s with no enemy, no move: a novelty idle fires (first one 2 to 14 s in)"));
         seeds(c, "the first cast", true);
         System.out.println("[mo-grade] " + clipOrder.size() + " clips (" + (SOLO_CLIPS == null ? "" : "filter " + SOLO_CLIPS + ", ") + jobs.size() + " solo jobs), " + segs.size() + " loco segments, " + states.size() + " states, " + trans.size() + " transitions");
@@ -1516,6 +1516,12 @@ final class MotionGrade extends Phase2Checks.Stage {
                     var pc = new JsonArray(); var seen = new java.util.LinkedHashSet<>(trClip); seen.remove(""); for (String k : seen) pc.add(k); x.add("playedClips", pc);
                     var nv = new JsonArray(); for (int k = 0; k < trNov.size(); k++) if (trNov.get(k) >= 0) { var o = new JsonObject(); o.addProperty("frame", k); o.addProperty("kind", trNov.get(k)); nv.add(o); } x.add("noveltyFrames", nv);
                     transJson.add(x);
+                    if (t.name().equals("attack-video")) { // the video shows only the attack it names, so a wrong default cannot pass for the clip under review
+                        var ids = new LinkedHashSet<String>(); for (var r : Tactics.variants(famName)) ids.add(r.id());
+                        var other = new ArrayList<String>(); for (String k : seen) if (ids.contains(k) && !firedIds.contains(k)) other.add(k);
+                        boolean vok = videoWrong.isEmpty() && other.isEmpty() && seen.containsAll(firedIds);
+                        report("mo-grade-video-clip", vok, "fired " + firedIds + ", played " + seen + (videoWrong.isEmpty() ? "" : "; " + videoWrong) + (other.isEmpty() ? "" : "; other attacks on screen: " + other));
+                    }
                     scenes(c, null); raised.clear(); tph = 0; ti++; wait = 0;
                 }
             }
@@ -1523,13 +1529,14 @@ final class MotionGrade extends Phase2Checks.Stage {
         }
     }
     String curStance = "hold";
+    String videoWrong = ""; final Set<String> firedIds = new LinkedHashSet<>();
     void fireTr(MinecraftClient c, String what, String a) {
         var subj = subjects(L_CLOSE); long tick = c.world.getTime();
         switch (what) {
             case "stance" -> { curStance = a; inject(c, a); }
             case "raise" -> { for (var u : subj) raised.add(u.mob.getId()); }
             case "lower" -> { for (var u : subj) raised.remove(u.mob.getId()); }
-            case "attack" -> { var vrs = Tactics.variants(famName); int rows = vrs.size(), v = 0; while (v < fam.attackIndex().length && fam.attackIndex()[v] < 0) v++; for (int i = 0; i < rows; i++) if (!a.isEmpty() && vrs.get(i).id().equals(a)) v = i; for (var u : subj) { var e = client(c, u.mob); if (e != null) MotionEvents.Client.attack(e.getId(), v, tick, rows); } }
+            case "attack" -> { var vrs = Tactics.variants(famName); int rows = vrs.size(), v = 0; while (v < fam.attackIndex().length && fam.attackIndex()[v] < 0) v++; for (int i = 0; i < rows; i++) if (!a.isEmpty() && vrs.get(i).id().equals(a)) v = i; if (!a.isEmpty() && vrs.stream().noneMatch(r -> r.id().equals(a))) videoWrong = "no " + famName + " attack named " + a; firedIds.add(v < rows ? vrs.get(v).id() : "#" + v); for (var u : subj) { var e = client(c, u.mob); if (e != null) MotionEvents.Client.attack(e.getId(), v, tick, rows); } }
             case "hit" -> {
                 String[] q = a.split(":"); String zone = q[0]; int dir = q.length > 1 ? Math.max(0, DIRS.indexOf(q[1])) : 0, wt = q.length > 2 ? Integer.parseInt(q[2]) : 1; float br = new float[]{0, 91, 180, -91}[dir];
                 for (var u : subj) { var e = client(c, u.mob); if (e != null) MotionEvents.Client.hit(true, e.getId(), MotionEvents.KINDS.indexOf("slash"), MotionEvents.ZONES.indexOf(zone), br, wt, 0, tick); }
