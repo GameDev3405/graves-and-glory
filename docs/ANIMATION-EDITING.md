@@ -9,6 +9,17 @@ You edit in Blockbench; the game uses exactly what you save, after one command.
 5. **Apply.** `python tools/anim_edit.py apply` copies your clips into `art/clips/biped/`, rebuilds the game's clip files and verifies them. It stops with a message if a check fails (impact off a tick, attack too long, death not on the ground, loop not closing). Then commit.
 6. **Preview.** `python tools/anim_edit.py preview sword_shield sword_slash` prints the command that renders the clip in the real game. It has no single-clip filter, so find your clip in the solo sheet.
 
+## Weapon direction (Kort, 2026-11-03)
+
+The weapon must always face the way the move logically needs. This mistake keeps coming back, so check it on every attack before showing it:
+
+- **Side slash:** the blade lies flat and sweeps sideways at waist or chest height, edge leading. It is drawn back level on the sword side and passes across the front.
+- **Overhead:** the blade starts high behind the head and comes down edge first.
+- **Thrust:** the point leads, straight at the target, with the blade level and in line with the arm.
+- **Blocks and bow draws:** they face the threat.
+
+Check the blade's direction at the wind-up, impact and follow-through keys from the front, 3/4 and side, not only whether it clips. A pose that is clean but has the blade pointing the wrong way is still wrong.
+
 ## Limits
 
 - Blockbench shows the troop's body, but not the weapon, the shield board or the scale and hunch the game adds, so a pose can look different in game.
