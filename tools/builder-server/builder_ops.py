@@ -23,7 +23,7 @@ import zipfile
 
 STAMP_FORMAT = '%Y%m%d-%H%M%S'
 NAME_RE = re.compile(r'^(\d{8}-\d{6})(?:-([a-z]+))?\.zip$')
-WORLDS = ('camp', 'rivergate', 'ironhold', 'frostmarch', 'hollowwood', 'kingsfield')
+WORLDS = ('camp', 'lobby', 'rivergate', 'ironhold', 'frostmarch', 'hollowwood', 'kingsfield')
 KEEP_ALL_HOURS = 48
 KEEP_DAILY_DAYS = 14
 OVERLOAD_RE = re.compile(r"Can't keep up! Is the server overloaded\? Running (\d+)ms or (\d+) ticks behind")
