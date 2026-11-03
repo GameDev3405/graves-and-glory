@@ -85,7 +85,7 @@ final class MotionGrade extends Phase2Checks.Stage {
     static final boolean NO_PILLOW = Set.of("1", "true", "yes").contains(System.getProperty("gravesandglory.gradeNoPillow", "false").trim().toLowerCase(Locale.ROOT));
     static final Set<String> PARTS = parts(System.getProperty("gravesandglory.gradeParts", "solo,loco,states,transitions"));
     // GRAVES_GRADE_CLIPS: comma list of the clips the solo part renders (unset, every clip); a pose round needs only the clips it changed
-    static final Set<String> SOLO_CLIPS = java.util.Optional.ofNullable(System.getenv("GRAVES_GRADE_CLIPS")).filter(v -> !v.isBlank()).map(v -> Set.of(v.split(","))).orElse(null);
+    static final Set<String> SOLO_CLIPS = java.util.Optional.ofNullable(System.getenv("GRAVES_GRADE_CLIPS")).filter(v -> !v.isBlank()).map(MotionGrade::parts).orElse(null);
     static boolean soloWanted(String clip) { return SOLO_CLIPS == null || SOLO_CLIPS.contains(clip); }
     static final String C_GROUND = "#ffffff", C_PLANT = "#40ff40", C_LIFT = "#ff4040", C_SINK = "#ff40ff", C_GTICK = "#c8c8c8", C_HAND = "#ffe040", C_TIP = "#ff9020", C_RIM = "#40e0ff";
     static final String[] RUBRIC = {"weight", "arcs", "anticipation", "silhouette", "variation", "contact", "clipping", "blend"};
@@ -622,7 +622,7 @@ final class MotionGrade extends Phase2Checks.Stage {
             trans.add(new Tr("hs-" + z + "-" + d + "-" + w, "hold", java.util.Collections.singletonList(new Object[]{HS_EVENT, "hit", z + ":" + d + ":" + w}), "hit sweep: " + z + " zone, from the " + d + ", weight " + w + " (slash), fired after f" + HS_EVENT));
         if (PARTS.contains("novelty")) trans.add(new Tr("novelty-idle", "", java.util.Collections.singletonList(new Object[]{10, "stance", ""}), "idle for " + NOV_FRAMES / 20 + " s with no enemy, no move: a novelty idle fires (first one 2 to 14 s in)"));
         seeds(c, "the first cast", true);
-        System.out.println("[mo-grade] " + clipOrder.size() + " clips (" + jobs.size() + " solo jobs), " + segs.size() + " loco segments, " + states.size() + " states, " + trans.size() + " transitions");
+        System.out.println("[mo-grade] " + clipOrder.size() + " clips (" + (SOLO_CLIPS == null ? "" : "filter " + SOLO_CLIPS + ", ") + jobs.size() + " solo jobs), " + segs.size() + " loco segments, " + states.size() + " states, " + trans.size() + " transitions");
         return true;
     }
     Seg seg(String name, String stance, boolean raised, double speed, float yaw, double dir, int move, String title) {
@@ -971,7 +971,7 @@ final class MotionGrade extends Phase2Checks.Stage {
             o.addProperty("lowestSoleHeight", r4(lo)); if (lo < worst) { worst = lo; worstClip = o.get("name").getAsString(); }
         }
         if (!soleLow.isEmpty()) System.out.println(String.format(Locale.ROOT, "[mo-grade] solo lowest sole %.4f block (%s)", worst, worstClip));
-        report("mo-grade-replays", replayBad.isEmpty() && !jobs.isEmpty(), jobs.size() + " solo jobs (" + clipOrder.size() + " clips x 8 angles), each clip asked for at the input level (stance packet, attack or hit event, scene pose, real kill) and caught in the engine's own stance layers, tracks or scene as drawn: 8 frames front and side, the key poses at every angle" + (replayBad.isEmpty() ? "" : "; off: " + replayBad));
+        report("mo-grade-replays", replayBad.isEmpty() && !jobs.isEmpty(), jobs.size() + " solo jobs (" + clipOrder.size() + " clips x 8 angles" + (SOLO_CLIPS == null ? "" : ", filtered to GRAVES_GRADE_CLIPS " + SOLO_CLIPS + ", not a full run") + "), each clip asked for at the input level (stance packet, attack or hit event, scene pose, real kill) and caught in the engine's own stance layers, tracks or scene as drawn: 8 frames front and side, the key poses at every angle" + (replayBad.isEmpty() ? "" : "; off: " + replayBad));
         report("mo-grade-motion", motionBad.isEmpty() && !clipOrder.isEmpty(), clipOrder.size() + " clips, each one's 8 frame times: " + (motionBad.isEmpty() ? String.format(Locale.ROOT, "some two differ by more than 1 degree in every clip (least %.2f degrees, %s)", motionLeast, motionLeastClip) : "one pose throughout: " + motionBad));
         report("mo-grade-framing", framingBad.isEmpty() && framingChecked > 0, framingChecked + " solo and loco frames framed from the measured extent of every clip (body, weapon and shield; camera " + String.format(Locale.ROOT, "%.2f", soloD) + " blocks, crop " + soloCrop[2] + "x" + soloCrop[3] + " native, 10 percent margin)" + (framingBad.isEmpty() ? ": every sole, hand, weapon tip and shield rim on its crop" : "; off the crop: " + framingBad));
         if (!bad.isEmpty()) System.out.println("[mo-grade] solo notes: " + bad);
