@@ -2,7 +2,7 @@
 
 ## Where we are
 
-`main` is the 0.5.0 development integration, at `8aab044` (local only, not pushed). It is not a published release. The Phase 0 baseline passed fast 22/22 and game 23/23 at `f1f6047`; a release verify of a clean checkout at `9c2d5f1` passed, package and readback included. Six-player, live dedicated-server, animation and map gates remain open. The merge log is `work/MERGE-QUEUE.md`, Kort's answers are in `work/ANSWERS-2026-11-0*.md` and open questions in `work/PENDING-QUESTIONS.md` (in the main checkout, `C:/Users/kortt/Melty/bannerbound`).
+`main` is the 0.5.0 development integration, at `dfec25d` on 2026-11-03 (local only, not pushed). It is not a published release. The Phase 0 baseline passed fast 22/22 and game 23/23 at `f1f6047`; a release verify at `01b0c77` (2026-11-03) passed, package and readback included; verify game passed at `3885d32`. Six-player, live dedicated-server, animation and map gates remain open. The merge log is `work/MERGE-QUEUE.md`, Kort's answers are in `work/ANSWERS-2026-11-0*.md` and open questions in `work/PENDING-QUESTIONS.md` (in the main checkout, `C:/Users/kortt/Melty/bannerbound`).
 
 Approved plan: [PLAN-TO-1.0.md](PLAN-TO-1.0.md), approved 2026-10-28. The single board is [BOARD.md](BOARD.md); it is the place to read row by row state. Phase 0 is done, Phase 1 is done except the animation merge (1.5) and the 0.5.1 cut (1.10), and Phases 2 to 6 are in progress.
 
