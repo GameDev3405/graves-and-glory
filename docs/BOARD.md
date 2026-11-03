@@ -55,7 +55,7 @@ One row per started task or task done in `main`; unlisted tasks in each phase ha
 | 2C.1 | Mode frame | Agent | Done 2026-10-31 | `d24592e` (`BattleMode`, `Modes`, `ModeMath`, `DominationMode`; `modes` sheet); `reports/mode-frame-merge-2026-10-31.md`. `mode/frame` is superseded |
 | 2C.2 | Mode feed lines, ledger, briefing how-to | Agent | In progress (subagent, 2026-11-01) | Convoy HUD strip and track `70b61e4`; Domination, Siege and Convoy lines on a worktree branch |
 | 2C.3 | Campaign schema 3, `MarchMath`, order lock, bonus payout | Agent | Done 2026-10-31 | `8e39637` (from `9660a4f`); `reports/campaign-2c3-2026-10-31.md`; Siege and Convoy payout `3fdf85e`, `5e48a8d` |
-| 2C.4 | Campaign battles as real battles | Agent | In progress | `3fdf85e`: battles 1, 2 and 4 play (Domination, Siege, Convoy). Battles 3, 5 and 6 still lack their mode or map; size, difficulty and text for battles 2 to 6 are `placeholder` cells in `sheets/design.json` |
+| 2C.4 | Campaign battles as real battles | Agent | In progress | All six battles start from the campaign command in their row's mode and map, win and pay their bonus (harness `march-modes` march-2 to 4, `march-bonus` march-5 and 6, run 2026-11-02 on `work/campaign-battles-356`). Open: difficulty cells for battles 2 to 6, and battle 6's mixed finale (plays plain Siege until Kort picks the mix) |
 | 2C.5, 2C.6 | Campaign card and Pact report; retire 1v1 | Agent | Done 2026-11-02 | `b693cca4` (2C.5 card and report checks), `5be81366` (campaign seats per row), `5d98429e` (pay by time seated; battles 2-3 2v2, 4-6 3v3), all Kort approved |
 
 ### Phase 3: six-player slice
@@ -80,7 +80,7 @@ One row per started task or task done in `main`; unlisted tasks in each phase ha
 | 4C.3 | Host picks map and mode | Agent | Done 2026-10-31 | `784249a`; lobby offers Domination, Siege and Convoy |
 | 4C.4, 4C.5 | Mode bot runs and gate; HUD, feed, report lines for every mode | Agent | In progress | `tools/mode_gate.py` exists (`4fa1872`); harness suites `42e727e`, `1ad6a02`; feed and report lines for every mode not finished |
 | 4D.1 | Six campaign battles | Agent + Kort | In progress | See 2C.4 |
-| 4D.2 | Briefings, reasons, lessons, bonus per battle | Agent | In progress | Bonus picks applied in `8e39637`; battle 2 to 6 briefings and reasons are still `PLACEHOLDER` |
+| 4D.2 | Briefings, reasons, lessons, bonus per battle | Agent | In progress | Bonus picks applied in `8e39637`; battle 2 to 6 briefings and reasons are in `sheets/design.json` (`df8089d`), marked as drafts in each row's placeholder cell until Kort edits them (Q74) |
 | 4D.3 | Order lock, chapter completion, Pact grant, bonus shards | Agent | Done 2026-10-31 | `8e39637`, `3fdf85e`, `649bcb0` (chapter gold and Rare price from the sheet) |
 | 4D.4 | Campaign playthrough | Agent + Kort | In progress (session lane, 2026-11-01) | In-game check of the campaign bonuses on `claude/ingame-check-557622` at `19c7b4d`; harness suite `42e727e` |
 | 4D.5 | Preflight validation of campaign rows | Agent | Done 2026-10-31 | `tools/preflight.py` validates order, House, bonus and the `placeholder` column |
