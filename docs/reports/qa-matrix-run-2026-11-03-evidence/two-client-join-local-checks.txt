@@ -1,0 +1,15 @@
+pass mod-loads
+pass friends-join-room-same-team
+pass friends-friend-enters-battle
+pass friends-friend-reconnects-to-battle
+pass friends-friend-returns-with-party
+pass friends-friend-rematch
+pass friends-host-stop-disconnects-cleanly
+pass friends-restart-party-retained
+pass friends-restart-room-cleared
+pass friends-full-match-waits-in-camp
+pass friends-waiting-orders-disabled
+pass friends-waiting-camp-menu
+pass friends-waiting-room-created
+pass friends-visitor-no-match-report
+pass friends-extended-friend-suite
