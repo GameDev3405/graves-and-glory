@@ -44,9 +44,9 @@ One row per started task or task done in `main`; unlisted tasks in each phase ha
 | ID | Task | Owner | State | Evidence |
 |---|---|---|---|---|
 | 2A.1 | Builder server hardening | Agent | Awaiting merge (EULA gate not exercised against a real server; no TPS source on 1.20.1) | `worktree-agent-a67738406dd158482` (`8bad927`); `tools/builder-server/README.md`; supervisor, backups, offsite, health check, boot task |
-| 2A.2 | `mapforge` command surface in `BuildMode` | Agent | Awaiting Kort | `worktree-agent-a24f5641266e57504` (`2439866`, `6e29713`), with 2A.4 and 2A.5 |
+| 2A.2 | `mapforge` command surface in `BuildMode` | Agent | Done | Merged into `main` (`24398665`, `6e297138`), with 2A.4 and 2A.5 |
 | 2A.3 | Map Forge tools | Agent | Done 2026-11-01 | `698b274` (Ironhold surface, Keep tower, cleanup passes, MapWalk harness); `tools/mapforge/`, `docs/maps/ironhold/` (layout signed 2026-10-30) |
-| 2A.4, 2A.5 | Adoption spike and pipeline | Agent + Kort | Awaiting Kort | Ironhold round trip works on `worktree-agent-a24f5641266e57504`; `gg-mapforge-runs/1` overlay is 4 KB; format, settle rule and spawn move need Kort |
+| 2A.4, 2A.5 | Adoption spike and pipeline | Agent + Kort | Done; release bake blocked | Kort approved `gg-mapforge-runs/1`, the settle rule and a first release bake (Q15). Merged. The release bake needs a fresh builder round trip: the dev overlay is stale after the D1a spawn move `c6a6d0fc` (Kort question pending) |
 | 2A.7 | Map standards | Agent | Done 2026-11-02 | `docs/MAP-STANDARDS.md`, merged from `work/map-standards-2a7` |
 | 2B.1 | Troop `.bbmodel` round-trip | Agent + Kort | Done 2026-10-29 | `c7578cb` on `art/troop-bbmodel`, in `main`; 118 assets byte-identical, 18 tests |
 | 2B.2 | Per-House art bible | Kort + Agent | Done 2026-11-02 | `docs/ART-STYLE-GUIDE.md`, merged from `work/art-bible-2b2` |
