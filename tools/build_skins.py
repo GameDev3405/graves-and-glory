@@ -1097,13 +1097,20 @@ def far_strings(far_c, far_k, grip, quads, colour, keys):
         tx, ty = min(max(int(u), 0), colour.width - 1), min(max(int(v), 0), colour.height - 1)
         if cpx[tx, ty][3] == 0:
             continue
+        # r11: two px wide, the second line one px further from the grip, so at 30 blocks the string is a 2 px pale line
+        # with the bow's own gap left between it and the stave (a line, not a rod)
+        ln = math.hypot(b[0] - a[0], b[1] - a[1]) or 1.0
+        nx, ny = -(b[1] - a[1]) / ln, (b[0] - a[0]) / ln
+        if nx * (a[0] + b[0]) + ny * (a[1] + b[1]) < 0:
+            nx, ny = -nx, -ny
         steps = max(1, int(math.ceil(max(abs(b[0] - a[0]), abs(b[1] - a[1])) * 2)))
-        for i in range(steps + 1):
-            x, y = a[0] + (b[0] - a[0]) * i / steps, a[1] + (b[1] - a[1]) * i / steps
-            col, row = math.floor(x + 0.5) + grip[0], math.floor(y + 0.5) + grip[1]
-            if 0 <= col < far_c.width and 0 <= row < far_c.height and far_c.getpixel((col, row))[3] == 0:
-                far_c.putpixel((col, row), cpx[tx, ty])
-                far_k.putpixel((col, row), kpx[tx, ty])
+        for off in (0.0, 1.0):
+            for i in range(steps + 1):
+                x, y = a[0] + (b[0] - a[0]) * i / steps + nx * off, a[1] + (b[1] - a[1]) * i / steps + ny * off
+                col, row = math.floor(x + 0.5) + grip[0], math.floor(y + 0.5) + grip[1]
+                if 0 <= col < far_c.width and 0 <= row < far_c.height and far_c.getpixel((col, row))[3] == 0:
+                    far_c.putpixel((col, row), cpx[tx, ty])
+                    far_k.putpixel((col, row), kpx[tx, ty])
 
 
 def far_quads(sprite, thickness, grip, v0):

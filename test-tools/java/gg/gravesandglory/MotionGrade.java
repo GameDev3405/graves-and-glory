@@ -569,6 +569,14 @@ final class MotionGrade extends Phase2Checks.Stage {
         segs.add(seg("backpedal", "fall_back", false, pace * BACKPEDAL, 90, 1, 50, "backpedal: stance fall_back, facing -x and walking +x at pace x " + BACKPEDAL + " (assumed)"));
         segs.add(seg("guard-shuffle", "hold", false, crawl, -90, 1, 50, "guard shuffle: stance hold (the guard), at the crawl pace, shield not raised"));
         segs.add(seg("turn", "", false, 0, -90, 0, 0, "90 degree turn in place: 10 degrees a tick to the left, held 30 ticks, back, held 20"));
+        // Task 16 r11: the ranged blends, walk into the aim stance as the troop stops and out of it as it sets off (stance "a>b@k":
+        // a before server tick k, b from it). GRAVES_GRADE_LOCO, when set, keeps only the named segments.
+        if (fam.family().stances().containsKey("aim")) {
+            segs.add(seg("walk-aim", "run>ranged_aim@65", false, pace, -90, 1, 50, "walk to aim: the march at the troop's pace, the aim stance sent on the tick the walk stops (65)"));
+            segs.add(seg("aim-walk", "ranged_aim>run@15", false, pace, -90, 1, 50, "aim to walk: the aim stance held, then the march (carry) sent on the tick it sets off (15)"));
+        }
+        String only = System.getenv("GRAVES_GRADE_LOCO");
+        if (only != null && !only.isBlank()) { var keep = Set.of(only.split(",")); segs.removeIf(g -> !keep.contains(g.name())); }
         // states
         var f2 = fam.family();
         for (String s : TroopMotion.STANCES) if (f2.stances().containsKey(s)) { String k = keyOf(f2.stances().get(s)); states.add(new St("stance-" + s, "stance", k, SERVER_STANCE.get(s), s.equals("idle") ? "hold" : "", -1, null, false, 0, 20, fam.all().get(k).length())); }
@@ -643,6 +651,11 @@ final class MotionGrade extends Phase2Checks.Stage {
         seedsChecked++; seedGen = castGen;
         if (seen.size() != N || list.size() != N) seedBad.add(which + ": " + seen.size() + " distinct seeds of " + list.size() + " units");
         if (record) for (var x : arr) unitsJson.add(x);
+    }
+    /** Task 16 r11: the stance a loco segment sends at server tick idx ("a>b@k": a before k, b from it). */
+    static String stanceAt(String st, int idx) {
+        int a = st.indexOf('>'), at = st.indexOf('@'); if (a < 0 || at < a) return st;
+        return idx < Integer.parseInt(st.substring(at + 1)) ? st.substring(0, a) : st.substring(a + 1, at);
     }
     void inject(MinecraftClient c, String stance) {
         int idx = Math.max(0, MotionEvents.STANCES.indexOf(stance));
@@ -981,7 +994,7 @@ final class MotionGrade extends Phase2Checks.Stage {
                 if (wait == 1) { int tok = ++req; final boolean up = g.raised(); server(c, b -> { locoPath = null; locoI = -1; respawn(b); layout(b, L_LOCO, 1.8, x0, y0); raised.clear(); if (up) raised.add(cast.get(SOLO_UNIT).mob.getId()); done = tok; }); held = 0; return; }
                 if (done != req) return;
                 if (e != null) TroopModels.forceFace(e, 0);
-                inject(c, g.stance()); trackCam(e);
+                inject(c, stanceAt(g.stance(), 0)); trackCam(e);
                 boolean ok = e != null && e.isAlive() && placed(c, L_LOCO, 1.8, x0); held = ok ? held + 1 : 0;
                 if (held >= 25 && shotReady(c, "loco " + g.name())) {
                     final double[][] p = g.path(); server(c, b -> { locoPath = p; locoI = 0; });
@@ -989,7 +1002,7 @@ final class MotionGrade extends Phase2Checks.Stage {
                 } else if (wait > 900) { locoBad.add(g.name() + ": never placed"); li++; wait = 0; }
             }
             case 1 -> {
-                inject(c, g.stance()); trackCam(e);
+                inject(c, stanceAt(g.stance(), Math.max(0, locoI))); trackCam(e);
                 Snap s = fresh(); Ent en = s == null || e == null ? null : s.ents.get(e.getId());
                 int idx = locoI;
                 if (en != null && en.pose != null && idx >= 0) {

@@ -57,6 +57,9 @@ FOLLOW = 0.45
 ARROW = 13
 FLETCH = (2, 5)
 ARROW_Z = 0.3
+# r11: the nocking point sits NOCK_Y px up the string from the grip's middle, so the drawn arrow rides on the bow fist, not
+# through it, and shows above the bow arm at the 3/4 draw (the string meets the arrow there)
+NOCK_Y = 2.6   # not 2.5: the shaft's faces would lie flat on the risers' at y 2 and 3
 NO_ARROW = {"longbow_t3"}   # its draw frames hold 126 quads already (bands, clasp, feather, caps); the arrow's 8 would pass the 128 cap
 ZSTEP = 0.25   # every other limb segment sits a quarter px across z so the flats of neighbours are never coplanar
 FRAMES = ("rest", "pull_0", "pull_1", "pull_2")
@@ -228,11 +231,11 @@ class Spec:
                 cubes.append(Thread("string", (pu[0], -ya), (pu[0], ya), STRING_W, STRING_D / 2))
                 nocks.append([r4(pu[0]), 0])
             else:
-                d = (steps[fi - 1], 0.0)
+                d = (steps[fi - 1], NOCK_Y)
                 cubes.append(Thread("string_hi", d, pu, STRING_W, STRING_D / 2))
                 cubes.append(Thread("string_lo", d, (pl[0], -pu[1]), STRING_W, STRING_D / 2 - 0.05))   # a shade shallower than string_hi where they cross
-                nocks.append([r4(d[0]), 0])
-                if self.wid not in NO_ARROW: cubes += arrow(d[0])
+                nocks.append([r4(d[0]), -NOCK_Y])
+                if self.wid not in NO_ARROW: cubes += arrow(d[0], d[1])
             out[name] = [self._named(c, name) for c in cubes]
         return out, nocks
 
@@ -245,7 +248,7 @@ class Spec:
         return [Cube(*a, **k) for a, k in self.grip + self.risers + self.extras]
 
 
-def arrow(x):
+def arrow(x, y=0.0):
     """The nocked arrow from the string's centre x forward along +x (r10): a light wood shaft and pale fletching, each
     with its two end caps skipped (8 quads, inside every bow's 128-quad frame cap but longbow III's; see NO_ARROW). It
     sits ARROW_Z off the stave's mid-plane, as an arrow rides beside the grip, so no face lies flat on a grip, clasp or
@@ -254,8 +257,8 @@ def arrow(x):
     shaft = by_face(up=flat(SAP[3]), down=flat(SAP[1]), rest=flat(SAP[2]))
     fl = by_face(up=flat(FEATHER[3]), down=flat(FEATHER[1]), rest=flat(FEATHER[3]))
     a, b = FLETCH
-    return [Cube("arrow_shaft", rv([x, -0.5, z - 0.5]), rv([x + ARROW, 0.5, z + 0.5]), "wood", shaft, skip=("east", "west")),
-            Cube("arrow_fletch", rv([x + a, -1, z - 1]), rv([x + b, 1, z + 1]), "bone", fl, skip=("east", "west"))]
+    return [Cube("arrow_shaft", rv([x, y - 0.5, z - 0.5]), rv([x + ARROW, y + 0.5, z + 0.5]), "wood", shaft, skip=("east", "west")),
+            Cube("arrow_fletch", rv([x + a, y - 1, z - 1]), rv([x + b, y + 1, z + 1]), "bone", fl, skip=("east", "west"))]
 
 
 def make(wid, note, **kw): return Spec(wid, note, **kw)
