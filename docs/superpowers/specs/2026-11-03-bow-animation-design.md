@@ -69,6 +69,27 @@ Not found: a standing idle (the 0:44-0:54 stretch was looked at; 51-54 s is extr
 
 Timing is fixed by the attack rows: impact at tick 10 (0.5 s) for both, clip at most 40 ticks. Today's clips are 1.2 s (24 ticks); the `draw`, `full` and `impact` markers (0.22, 0.36, 0.5) drive the bow sprite's pull frames and must not move. Weapon direction is stated at every key. "Target line" is the line from the archer's eye to the target.
 
+### Kort's picks (2026-11-03): these override the rows, retime map and targets below where they conflict
+
+Kort broke down the Essential Bow pack (FEWzL31g3Eo): normal draw 1:00-1:01, **slight tilt 1:03-1:04**, full tilt (far long shot) 1:05-1:06. Frames: `frames/kort_normal` (60-62 s), `frames/kort_slight` (63-65 s), `frames/kort_full` (65-67 s); f_n = start + 0.1 (n-1) s; sheets `sheets/kort_slight.png`, `sheets/kort_full.png`.
+
+1. **`bow_direct` uses only the slight tilt.** Checked in `kort_slight` f_001-f_010 (63.0-63.9): full draw with the bow canted about 25 degrees off vertical (top limb leaning away from the string hand, toward the target side), string hand at the jaw; loose at about 63.1 (f_002); hand opens and holds by the face 63.2-63.6 (f_003-f_007); right arm rises up and back over the right shoulder 63.7-63.8 (f_008-f_009); arrow drawn out of the back quiver 63.9 (f_010). From 64.0 the video switches to a flat-bow style; not used. The normal and full-tilt windows are reference only, for angles the slight-tilt window hides.
+2. **`bow_volley` uses the full tilt.** `kort_full` f_001-f_012 (65.0-66.1): bow rolled nearly flat (about 70-80 degrees off vertical), arrow level; loose, then the same over-the-shoulder reach at 66.2-66.4 (f_013-f_015). The game volley still needs its lob, so the volley is the full cant plus the 35-45 degree upward arrow angle from the volley target table. The lob on top of the full cant is my design (the video aims level); Kort judges the render.
+3. **Every shot reaches to the back quiver right after release** (Kort's pick). Applies to all bow units for now (archer, longbow, bonebow, stalker, wm_hunter); models are checked per unit as they are built.
+4. **New clip order** (replaces the old reach-first order, which nocked before the draw). The clip starts and ends in `aim` (arrow nocked, string hand at the cheek), so the markers stay put:
+
+| Phase | Clip time (s) | Video (slight tilt, direct) | Pose | Weapon direction |
+|---|---|---|---|---|
+| cant and settle | 0.00-0.22 | 63.0 (f_001) | Bow rolls from upright to the cant (direct about 25, volley about 75 degrees, through left_forearm/left_hand roll); volley also lifts the bow arm and leans the chest back. | Arrow stays on the target line (direct) or climbs to 35-45 up (volley) while the limbs roll; belly toward the target. |
+| final pull, hold | 0.22-0.50 | 63.0-63.1 (f_001-f_002) | String hand settles at the jaw; small tremor. Markers draw 0.22, full 0.36. | Canted bow, arrow along the line of sight. |
+| loose | 0.50 | 63.1 (f_002) | String hand opens and snaps back past the jaw. | Bow holds its cant and line; tip dips at most 8 degrees. |
+| follow-through | 0.50-0.62 | 63.2-63.6 (f_003-f_007), compressed | Open hand by the face, bow arm still. | Bow on the line, cant held. |
+| quiver reach | 0.62-0.78 | 63.7-63.9 (f_008-f_010) | Right arm up and back over the right shoulder, hand behind the head at the quiver mouth, then draws the arrow up and out. Right arm pitch about -160 to -170 absolute at the top (check against helmet and back gear). | Bow stays on the line, cant easing back toward upright. |
+| nock | 0.78-0.98 | `frames/shot_cycle` 31.9-32.1 (f_015-f_017); the slight-tilt window cuts before the nock | Arrow brought forward over the shoulder and laid on the string at the bow hand. | Arrow tip forward along the target line as soon as it clears the shoulder; never pointing at the archer's head. |
+| redraw to aim | 0.98-1.20 | `frames/kort_normal` for the draw path | String hand back to the cheek; bow back upright; all deltas reach 0. | Bow faces the target, upright (aim). |
+
+Open for the render: the bow's pull frames are marker-driven (slack after 0.5) while the hand redraws at 0.98-1.20; if the string looks wrong at the clip end, lengthen the clip toward 40 ticks or ask about a second pull timeline (needs Kort if it touches the sheet or Java).
+
 | Clip | Video | Stance | Key | Time (s) | Pose | Weapon direction |
 |---|---|---|---|---|---|---|
 | `bow_direct` | 0:30.5-0:32.6 (shot cycle, retimed) | aim to aim | nock | 0.00-0.20 | Right arm reaches back over the shoulder to the quiver and brings the arrow to the string (video 31.7-32.1). Body unchanged. | Bow stays up in the left hand, belly to the target, tip up, no pitch change. Arrow points at the target as soon as it is laid on. |

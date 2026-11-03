@@ -60,7 +60,9 @@ Channels that change (spec, aim key table): `root.position` y (about -1 pixel fo
 - [ ] **Step 3:** Render `archer` then `longbow` with `GRAVES_GRADE_CLIPS=aim` (the two units that have models); check 8 angles. Expected: no clipping through the chainmail helmet (archer) or leather helmet (longbow), no pop flag, loop closes.
 - [ ] **Step 4:** Rebuild the compare page ("Aim v<N>"), ask Kort to approve. Commit bbmodel and `aim.json`: "Ground the bow aim hold, video style".
 
-### Task 3: `bow_direct` (video 0:30.5-0:32.6)
+### Task 3: `bow_direct` (Kort: slight tilt, video 1:03.0-1:03.9)
+
+**Kort's picks (2026-11-03) override this task where they conflict:** follow the spec's "Kort's picks" phase table. Order is cant 0-0.22, pull and hold 0.22-0.50, loose 0.50, follow-through to 0.62, quiver reach over the right shoulder 0.62-0.78, nock 0.78-0.98, redraw to aim 0.98-1.20. The bow is canted about 25 degrees through left_forearm/left_hand roll from 0.22 through 0.62 and stays on the target line throughout. The old reach keys at 0.10 move to 0.62-0.78. The 0.55-0.86 rows below keep their bow-arm values (on the line, tip 5-8 low); their right-arm values are replaced by the reach and nock. Extra Step 4 checks: the reach hand reaches behind the head at the quiver mouth, not through the helmet or back gear; the arrow tip is never pointing at the archer during the nock; the string looks right at 0.98-1.20 (see the spec's open item). Compare page reference: `frames/kort_slight` f_001-f_010.
 
 **Files:** `art/clips/biped/bow.bbmodel` (animation `bow_direct` only); generated `bow_direct.json`.
 
@@ -83,7 +85,9 @@ The old follow-through keys (left_arm -1/-15/-50, left_hand 108/-67/-104) swung 
 - [ ] **Step 5:** Rebuild the compare page ("Direct v<N>"), reload, ask Kort to approve or say what to change. Repeat until approved.
 - [ ] **Step 6:** Run `bash SP/mec.sh` (MotionEngineCheck alone). Expected: no FAIL lines. Note this gate tests the sword_shield only (the bow is covered by Task 5). Commit: "Draw and loose the bow direct shot from the aim, video style".
 
-### Task 4: `bow_volley` (no video clip; direct draw with the bow pitched up)
+### Task 4: `bow_volley` (Kort: full tilt, video 1:05.0-1:06.4, plus the lob)
+
+**Kort's picks override:** same phase order as Task 3. The bow cants about 75 degrees (nearly flat, `frames/kort_full` f_001-f_012) on top of the 35-45 degree lob below. The reach is from f_013-f_015. Extra check: the flat bow's lower limb clears the chest and the left forearm at the lean.
 
 Same steps as Task 3 for `bow_volley` (1.2 s, impact 0.5). Target keys (degrees x, y, z; the arrow 35-45 degrees above the target line: left_arm pitched 30 more than the direct's, body leaning back 8). Keys at 0, 0.10 stay; the 0.22 key stays as today:
 
