@@ -3,7 +3,7 @@
 Branch `work/qa-matrix-runs`, base `main` bd05fa2b. Tester: Sonnet worker. Per-row states are in the "Run 2026-11-03" column of `docs/QA-MATRIX.md`. Evidence files (copies of the harness `local-checks.txt` and the verify result) are in `docs/reports/qa-matrix-run-2026-11-03-evidence/`; full logs are under the gitignored `work/q3/`.
 
 ## Totals (137 rows)
-Updated after the D20/H7/K11 follow-up: 96 PASS, 2 FAIL (C9, I10), 29 Kort, 10 not run. Before it (E10/D21/K4 follow-up): 93 PASS, 2 FAIL (C9, I10), 29 Kort (needs Kort, friends, real network or visual sign-off), 13 not run.
+Updated after the rest pass (`qa/rest-2026-11-03`): 103 PASS, 2 FAIL (C9, I10), 30 Kort (K12 relabelled "Kort (visual)"), 1 GAP (K14), 1 not run (K7: needs a `finish()` driver and 3-minute rounds). Before it: 96 PASS, 2 FAIL (C9, I10), 29 Kort, 10 not run. Before it (E10/D21/K4 follow-up): 93 PASS, 2 FAIL (C9, I10), 29 Kort (needs Kort, friends, real network or visual sign-off), 13 not run.
 Before that follow-up (robustness pass): 90 PASS, 2 FAIL, 29 Kort, 16 not run (no agent-runnable check, or turn budget).
 After the dedicated-server pass (below): 87 PASS, 1 FAIL (C9), 29 Kort (needs Kort, friends, real network or visual sign-off), 20 not run (no agent-runnable check exists, or a fixture was needed).
 Before that pass: 78 PASS, 1 FAIL (K10, since resolved to PASS), 34 Kort, 24 not run. The pass moved C7, C8, C10, E9, F5, J2, J9 to PASS, C9 and C11 to FAIL, and completed the live halves of F2-F4 (already PASS).
@@ -74,3 +74,9 @@ Findings (not fixed, per scope):
 - I10: the row text and the code disagree (the code falls back to defaults and quarantines the file, as D18). Kort/owner call: change the row or make startup stop. The same stale expectation applies to D9.
 - Preflight regenerated `Spec.java` and `sheets/preflight.json` (line endings only); reverted, not committed.
 - Follow-up note: a roll sent right after join was processed during server lag and showed nothing; waiting about 8 s after the snapshot made it reproducible. The v1 profile migration at join wrote the profile despite the blocked `.tmp`, so the D21 baseline hash was taken after the join. A scratch world folder must hold a real world (level.dat) before `start.ps1` runs its backup step.
+
+## Rest pass (qa/rest-2026-11-03)
+Scratch dedicated server in the worktree `work/` (deleted afterwards; EULA only there), one client for D19. A8, B1, B3, C12, D19, I13 and J6 PASS; K7 NOT RUN; K12 relabelled Kort (visual); K14 GAP. Details are in the matrix rows and `qa-matrix-run-2026-11-03-evidence/qa4-rest-evidence.txt`.
+- Packaging needed the gitignored `dependencies/` jars and zips, copied from another worktree; `verify.py release` failed twice without them.
+- Bots must not send `minecraft:register` or `minecraft:brand` right after play start (the server drops them with a DecoderException); this is a bot issue, not a mod one.
+- J6: over-length strings are dropped by the netty decoder (logged as an error, sender disconnected); the row's "no exception" holds for every in-range malformed value.
