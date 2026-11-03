@@ -13,10 +13,10 @@ A PASS on an AUTO-only row means the standalone or Python check passed in `verif
 | Single client, 2 launches | `runClient -PcampaignChecks -PlocalIntegration`, fixed user, fresh root | launch 1 and 2: no fail lines; `lobby-ready`, `restart-collection` (gold 777), `restart-clean-lobby`, `restart-armory-enabled`, `pad-ready`, `pad-step-off`, `campaign-suite`, `roadmap-suite` all pass. `camp-launch2-local-checks.txt` |
 | Startup only | `GRAVES_ROADMAP_STARTUP_ONLY=true` | `startup-armory-enabled`, `startup-suite` pass. `startup-local-checks.txt` |
 | Two clients (LAN host + loopback joiner, both harness) | `CampNetworkChecks`, options.txt seeded | host and joiner: 0 fail. invite/party, disconnect-holds-army, reconnect-reclaims-army, rematch x2, restart party/room, two-member disk persistence, full-match waits in camp, visitor no report/reward, two waiting rooms. `two-client-*-local-checks.txt` |
-| Phase 4 | `GRAVES_PHASE4_CHECKS=convoy,march-modes,domination` | convoy suite and march-modes (march 2 to 4) pass; `domination` fails |
+| Phase 4 | `GRAVES_PHASE4_CHECKS=convoy,march-modes,modes` (Domination) | convoy suite and march-modes (march 2 to 4) pass; `modes` (Domination) passes 2026-11-03 |
 
 ## Failures
-- K10: `GRAVES_PHASE4_CHECKS=domination` reports `fail p4-domination-suite: unknown suite`; the matrix names a harness suite that does not exist (repro: `GRAVES_PHASE4_CHECKS=domination gradlew runClient -PlocalIntegration -I test-tools/isolated-checks.gradle`). Convoy and march modes pass, so this is a missing/misnamed harness case, not a gameplay defect.
+- K10: RESOLVED - the suite is named `modes` (no `domination` suite exists); `GRAVES_PHASE4_CHECKS=modes` PASS (`p4-modes-domination`, `p4-modes-suite`). The matrix row was fixed.
 
 ## Not run (reasons)
 - Dedicated server rows (C7-C11, E9, F5, F2-F4 harness cases, J2, J9): need a dedicated server and Kort's `eula.txt`; AUTO halves of F2-F4 pass.
@@ -24,6 +24,6 @@ A PASS on an AUTO-only row means the standalone or Python check passed in `verif
 - B1, B3, A8: release-tier packaging; not part of this run.
 
 ## Notes
-- A fresh root hangs on the accessibility onboarding screen for `CampNetworkChecks` (it waits for the front menu). Seeding `options.txt` with `onboardAccessibility:false` and `pauseOnLostFocus:false` fixes it; `CampaignChecks` and `Phase4Checks` already handle it. Not fixed (test tool left unchanged).
+- A fresh root hangs on the accessibility onboarding screen for `CampNetworkChecks` (it waits for the front menu). Seeding `options.txt` with `onboardAccessibility:false` and `pauseOnLostFocus:false` fixes it; `CampaignChecks` and `Phase4Checks` already handle it. Fixed: tools isolated-checks.gradle now seeds options.txt on a fresh root.
 - The host client does not self-stop after the joiner finishes; it was killed. All clients started here were closed; the other worktree's client was not touched.
 - Preflight regenerated `Spec.java` and `sheets/preflight.json` (line endings only); reverted, not committed.

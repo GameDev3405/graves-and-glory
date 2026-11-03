@@ -7,6 +7,14 @@ allprojects {
    def testRoot = System.getenv('GRAVES_ROADMAP_TEST_ROOT')
    if (!testRoot) throw new GradleException('GRAVES_ROADMAP_TEST_ROOT is required')
    workingDir file(testRoot + '/run')
+   // A fresh root has no options.txt, so Minecraft opens the accessibility onboarding screen and waits for it: seed the same lines the other harnesses use.
+   doFirst {
+    def options = file(testRoot + '/run/options.txt')
+    if (!options.exists()) {
+     options.parentFile.mkdirs()
+     options.text = 'pauseOnLostFocus:false\nonboardAccessibility:false\nrenderDistance:8\nsimulationDistance:6\nguiScale:3\n'
+    }
+   }
    // A relaunch is otherwise a different commander (Minecraft picks Player<random>): a fixed name keeps one profile across launches.
    if (System.getenv('GRAVES_ROADMAP_USER')) args('--username', System.getenv('GRAVES_ROADMAP_USER'))
    jvmArgs = jvmArgs.findAll { !it.startsWith('-Dgravesandglory.localChecks=') && !it.startsWith('-Dgravesandglory.runtime=') }
