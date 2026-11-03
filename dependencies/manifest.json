@@ -895,7 +895,7 @@
     "sha512": "a2080ab27a954a95b9c4b7450bdfa3ecd18c5ceecc88d9dcc981aae1a98394f8e7a617cea6a3254c6a363c192a9dd2ac7602d236655f2afde57b1e4e13dd244e",
     "download": "https://cdn.modrinth.com/data/hJAzl1Bs/versions/yVpdNmnj/Excalibur_V1.20.zip",
     "project": "https://modrinth.com/resourcepack/excal",
-    "source": "https://www.curseforge.com/minecraft/texture-packs/excalibur",
+    "source": "https://modrinth.com/resourcepack/excal",
     "licenseMetadata": {
       "id": "CC-BY-NC-ND-3.0",
       "name": "Creative Commons Attribution-NonCommercial-NoDerivs 3.0 Unported",
