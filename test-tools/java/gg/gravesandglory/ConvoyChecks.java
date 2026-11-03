@@ -75,7 +75,8 @@ final class ConvoyChecks implements Phase4Checks.Suite, Phase4Checks.ServerWatch
                 if(b.time-at==120)shot="convoy-push";
                 if(b.time-at<140)return;
                 Phase4Checks.report("p4-convoy-wagon",m.wagon!=null&&!m.wagon.isRemoved()&&!m.wagon.shouldSave()&&m.rule().equals("Convoy: reach The Refuge"),"wagon "+(m.wagon!=null)+", rule "+m.rule());
-                Phase4Checks.report("p4-convoy-push",m.distance>d0+3,"moved "+String.format("%.1f",m.distance-d0)+" blocks, state "+m.state);
+                double pushed=m.distance-d0,floor=ConvoyMode.SPEEDS[0]*5/2; // one pusher for the 5 s window; half the sheet's pace, so the check follows speedOne
+                Phase4Checks.report("p4-convoy-push",pushed>floor,"moved "+String.format("%.1f",pushed)+" blocks (needs over "+String.format("%.2f",floor)+"), state "+m.state);
                 m.distance=Math.max(m.distance,m.stops[0]-1.5);seconds0=b.roundSeconds;gold0=b.squads.get(player).gold;stage=2;at=b.time;
             }
             case 2->{ // checkpoint: pushed over Pass Crossing
