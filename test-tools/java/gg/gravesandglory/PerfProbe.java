@@ -30,7 +30,8 @@ public final class PerfProbe implements ModInitializer {
 
     @Override public void onInitialize() {
         String d = System.getProperty("gravesandglory.perfProbe", "");
-        if (d.isEmpty() || FabricLoader.getInstance().getEnvironmentType() != EnvType.SERVER) return;
+        // -Dgravesandglory.perfProbeIntegrated=true also runs it on an integrated (client-hosted) server.
+        if (d.isEmpty() || (FabricLoader.getInstance().getEnvironmentType() != EnvType.SERVER && !Boolean.getBoolean("gravesandglory.perfProbeIntegrated"))) return;
         dir = Path.of(d);
         int battleSeconds = Integer.getInteger("gravesandglory.perfBattleSeconds", 0);
         try {
@@ -55,6 +56,8 @@ public final class PerfProbe implements ModInitializer {
                 phaseTicks.clear(); lastMap = map;
             }
             if (now.equals("build")) buildTicks++;
+            // Battle tick 0 is the tick in which startRound ran (the phase flips at its end).
+            if (now.equals("battle") && runTicks < 20) append("server-firstticks.csv", String.format(Locale.ROOT, "%.0f,%d,%d,%.2f%n", (System.currentTimeMillis() - wall0) / 1000.0, map, runTicks, ms));
             window.add(ms); phaseTicks.add(ms); runTicks++;
             if (window.size() >= WINDOW) {
                 List<Double> sorted = new ArrayList<>(window); Collections.sort(sorted);

@@ -95,3 +95,30 @@ After (same run settings, `work/perf-spawn/after/`; prewarm logged 30 troops in 
 | 2 (warm) | Rivergate | 86.1 ms (tick 0) | 1 | 12.9 ms | 13.0 ms | 0@86 |
 
 Read: the prewarm cuts the cold startRound from 105 to 29 ms, and warm is unchanged (15 to 13 ms). Tick 0 is still over 50 ms. The after run shared the machine with two to three other worktrees' 2-3 GB clients (the baseline shared it with none), so tick times are inflated and the under-50 ms tick target is not shown. Tick 0 also holds the first unit ticks, entity tracking and bot-sim's second spawn, beyond startRound. Next step: re-measure on an idle machine, then attach JFR to tick 0 if it is still over 50 ms. Repath throttling was not done: walk already runs on a slot%10 beat, so path requests do not stack on tick 0.
+
+## Tick 0 re-measure attempt (branch perf/tick0, 2026-11-03)
+
+Machine state: no other Minecraft java.exe was running before launch (checked twice), so this was the idle-machine slot the earlier run lacked.
+
+Probe change (test tool only, not shipped): `PerfProbe` now also runs on an integrated server with `-Dgravesandglory.perfProbeIntegrated=true` and writes `server-firstticks.csv` (map, battle tick 0-19, ms) for every battle. Battle tick 0 is the tick in which `startRound` ran (the probe's phase flips at that tick's end), so it includes startRound, bot-sim's `field()` respawn and the first unit ticks.
+
+Run: `runClient -PlocalIntegration -PautoHost` with a gradle init script (own root `work/perf-tick0/before`, seeded options.txt, botSim 2 x 60 s 3v3 on maps 0,1, JFR `settings=profile`, 3 GB heap).
+
+Result: not measured. The client crashed in mod initialization (`work/perf-tick0/before/run/crash-reports/crash-2026-11-03_01.29.33-client.txt`): the main mod was not among the loaded mods, so every main-mod class the test-tools entrypoints touched was missing (`NoClassDefFoundError` for `Veterans$Tally` from BotSimulation and `BuildMode` from MapForge), although `build/classes/java/main` (396 classes) and `build/resources/main/fabric.mod.json` were present. Cause not found; first suspect is the init script overriding the loom client `runDir`/`jvmArgs` in `afterEvaluate` (compare with a known-good `test-tools/isolated-checks.gradle` launch).
+
+Before / after: before = 95 ms (cold) and 86 ms (warm) at tick 0, from the loaded-machine run above; after = none, no fix made. Tick 0 under 50 ms is still not shown. The CampNetworkChecks fresh-root check was gated on the tick-0 fix and was not run. Next: get one integrated bot-sim launch working, read `server-firstticks.csv`, then JFR tick 0 if it is over 50 ms.
+
+### Idle re-measure (second launch, same day)
+
+The first launch's crash came from a stale main-mod build on the classpath. Relaunched exactly as `verify.py game` does (`gradlew --no-daemon build -x test`, then `gradlew --no-daemon runClient -PlocalIntegration -I test-tools/isolated-checks.gradle`), plus a second init script that only drops the `localChecks` property and adds botSim 2 x 60 s 3v3 (maps 0,1), autoHost, probe, PerfIntegrated, 3 GB heap and JFR `settings=profile`. options.txt pre-seeded as in the 2026-11-02 runs (render and simulation distance 12, vsync off). Zero Minecraft processes were running at launch. Raw data: `work/perf-tick0/before2/` (gitignored). Prewarm: 30 troops in 25 ms.
+
+| Match | Map | Battle max tick | Ticks over 50 ms | Tick 0 | Ticks 1-9 (ms) |
+|---|---|---|---|---|---|
+| 1 (cold JVM) | Ironhold | 218.1 ms (tick 0) | 11 | 218.1 ms | 49, 25, 47, 39, 76, 87, 97, 51, 19 |
+| 2 (warm) | Rivergate | 66.1 ms (tick 0) | 1 | 66.1 ms | 5-10 |
+
+Battle means 7.85 / 6.97 ms, p95 17.2 / 9.8 ms. So on an idle machine tick 0 is still over 50 ms: 218 ms cold, 66 ms warm (before = 95 / 86 ms in the loaded run; the loaded run's cold match had a different first-tick mix, and the two runs differ in launch path, so treat the pairs as indicative).
+
+JFR, server thread, ticks around each round start: only 1 execution sample lies under `startRound`/`reinforce`/`spawn`, so the spawn itself is cheap (startRound 13-29 ms by the earlier timing). The samples in the second around tick 0 are vanilla world, chunk and entity ticking plus chunk serialization; `Structures.place` samples belong to the map build's landmark queue just before the round, not tick 0. There was one 12.9 ms young-GC pause inside match 1's tick 0 (the 259 ms `G1Old` event is a concurrent cycle, not a pause). Dozens of JIT compilations over 100 ms ran in the same second (light propagation, chunk ticking, chunk serialization, advancement criteria), and JFR does not sample the time a thread spends in interpreted or just-compiled code paths under a safepoint. Reading: the remaining cold tick 0 is JVM warm-up of vanilla code paths that first run at battle scale on that tick, not a mod-side hotspot that sampling can name. The warm 66 ms tick 0 could not be attributed in the time available.
+
+No code fix was made (none that players could not see could be identified and verified in budget), so there is no "after" row. CampNetworkChecks fresh-root check: not run (budget). Candidates for the next pass: per-tick JFR with `jdk.ExecutionSample#period=1ms` around tick 0 of the warm match, and a check whether the round's first chunk save or entity tracking of 114 new troops falls on tick 0.
