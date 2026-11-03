@@ -61,6 +61,8 @@ public final class BotSimulation implements ModInitializer {
     /** -PsimMode: the battle mode every round plays (default domination; the map list must host it). A mode other than Domination keeps its own clock unless -PsimRoundSeconds is given.
      *  Under siege, botsim/siege.csv gets one row per bot army and group every SIEGE_TICKS: where the group stands and what it was told, for the stage plan's report. */
     String simMode;boolean roundSecondsGiven;Path siegeCsv,convoyCsv;
+    /** Lobby ticks waited since the arena was ready (or the last round ended); a round starts at LOBBY_TICKS, the shipped ready-pad countdown. */
+    int lobbyTicks;static final int LOBBY_TICKS=200;
     static final int SIEGE_TICKS=100;
 
     @Override public void onInitialize(){
@@ -129,7 +131,10 @@ public final class BotSimulation implements ModInitializer {
         if(!b.ready){if(probe&&!building){building=true;buildStartNs=System.nanoTime();buildTickCount=0;}if(++notReady==READY_TICKS){System.out.println("[botsim] arena not ready after "+READY_TICKS+" ticks; stopping");done=true;server.stop(false);}return;}
         notReady=0;if(probe&&building){building=false;buildNs=System.nanoTime()-buildStartNs;}if(b.running)return;
         int map=maps[match%maps.length];
-        if(b.campaign.map!=map){if(probe){building=true;buildStartNs=System.nanoTime();buildTickCount=0;}b.campaign.switchMap(map);return;}
+        if(b.campaign.map!=map){lobbyTicks=0;if(probe){building=true;buildStartNs=System.nanoTime();buildTickCount=0;}b.campaign.switchMap(map);return;}
+        // A real round starts from the camp at least one ready-pad countdown after the arena is ready (Campaign.padTick, 200 ticks); starting in the ready tick put
+        // the build's last step (landmarks, overlay, war table, mapReady) inside the round's tick 0 (docs/reports/perf-targets-2026-11-02.md, tick 0 fix).
+        if(++lobbyTicks<LOBBY_TICKS)return;lobbyTicks=0;
         var c=b.campaign;c.size=size;c.fill=true;c.practice=false;c.difficulty=dawnTier;c.lastWinner=ABORTED;c.battleMode=simMode;
         long t0=System.nanoTime();b.startRound();startRoundNs=System.nanoTime()-t0;if(roundSecondsGiven||simMode.equals(Modes.DOMINATION))b.roundSeconds=roundSeconds; // after startRound, which sets the row's clock
         armies.clear();for(var s:b.squads.values())if(s.bot){if(s.team==1)s.tier=duskTier;armies.add(s);}

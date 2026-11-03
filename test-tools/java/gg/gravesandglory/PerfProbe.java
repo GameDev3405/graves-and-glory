@@ -2,7 +2,9 @@ package gg.gravesandglory;
 
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.ModInitializer;
+import net.fabricmc.fabric.api.event.Event;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
+import net.minecraft.util.Identifier;
 import net.fabricmc.loader.api.FabricLoader;
 import java.io.IOException;
 import java.lang.management.ManagementFactory;
@@ -18,7 +20,9 @@ import java.util.*;
  */
 public final class PerfProbe implements ModInitializer {
     static final int WINDOW = 100;
-    long tickStart;
+    long tickStart, worldStart, worldNs, endStart;
+    /** Runs before every mod's END_SERVER_TICK listener (and this probe's own runs after them), so a first-ticks row splits the tick into world ticks, mod end-of-tick listeners and the rest (network, players, autosave). */
+    static final Identifier EARLY = new Identifier("gravesandglory_local_test_tools", "perf_early"), LATE = new Identifier("gravesandglory_local_test_tools", "perf_late");
     final List<Double> window = new ArrayList<>();
     final List<Double> phaseTicks = new ArrayList<>();
     String phase = "none";
@@ -39,9 +43,16 @@ public final class PerfProbe implements ModInitializer {
             Files.writeString(dir.resolve("server-windows.csv"), "wallS,phase,map,players,meanMs,p95Ms,maxMs,heapMb,heapCommittedMb,chunks,entities\n");
             Files.writeString(dir.resolve("server-battles.csv"), "wallS,phase,map,ticks,wallSecs,meanMs,p50Ms,p95Ms,p99Ms,maxMs,over50\n");
             Files.writeString(dir.resolve("server-builds.csv"), "wallS,map,buildWallS,buildTicks\n");
+            Files.writeString(dir.resolve("server-firstticks.csv"), "wallS,map,tick,ms,worldMs,endListenersMs,restMs\n");
         } catch (IOException e) { throw new RuntimeException(e); }
-        ServerTickEvents.START_SERVER_TICK.register(s -> tickStart = System.nanoTime());
-        ServerTickEvents.END_SERVER_TICK.register(s -> {
+        ServerTickEvents.START_SERVER_TICK.register(s -> { tickStart = System.nanoTime(); worldNs = 0; });
+        ServerTickEvents.START_WORLD_TICK.register(w -> worldStart = System.nanoTime());
+        ServerTickEvents.END_WORLD_TICK.register(w -> worldNs += System.nanoTime() - worldStart);
+        ServerTickEvents.END_SERVER_TICK.addPhaseOrdering(EARLY, Event.DEFAULT_PHASE);
+        ServerTickEvents.END_SERVER_TICK.addPhaseOrdering(Event.DEFAULT_PHASE, LATE);
+        ServerTickEvents.END_SERVER_TICK.register(EARLY, s -> endStart = System.nanoTime());
+        ServerTickEvents.END_SERVER_TICK.register(LATE, s -> {
+            long endNs = System.nanoTime() - endStart;
             double ms = (System.nanoTime() - tickStart) / 1e6;
             var b = GravesAndGlory.battle;
             String now = b == null ? "none" : !b.ready ? "build" : b.running ? "battle" : "camp";
@@ -57,7 +68,7 @@ public final class PerfProbe implements ModInitializer {
             }
             if (now.equals("build")) buildTicks++;
             // Battle tick 0 is the tick in which startRound ran (the phase flips at its end).
-            if (now.equals("battle") && runTicks < 20) append("server-firstticks.csv", String.format(Locale.ROOT, "%.0f,%d,%d,%.2f%n", (System.currentTimeMillis() - wall0) / 1000.0, map, runTicks, ms));
+            if (now.equals("battle") && runTicks < 20) append("server-firstticks.csv", String.format(Locale.ROOT, "%.0f,%d,%d,%.2f,%.2f,%.2f,%.2f%n", (System.currentTimeMillis() - wall0) / 1000.0, map, runTicks, ms, worldNs / 1e6, endNs / 1e6, ms - worldNs / 1e6 - endNs / 1e6));
             window.add(ms); phaseTicks.add(ms); runTicks++;
             if (window.size() >= WINDOW) {
                 List<Double> sorted = new ArrayList<>(window); Collections.sort(sorted);
