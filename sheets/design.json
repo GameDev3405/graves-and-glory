@@ -2890,7 +2890,7 @@
       "mode": "siege",
       "house": "ironclad",
       "bonus": "b2_lose10",
-      "placeholder": "difficulty"
+      "placeholder": "difficulty,briefing,reason (draft text 2026-11-02 for Kort to edit, Q74)"
     },
     {
       "id": "march-3",
@@ -2906,7 +2906,7 @@
       "mode": "survival",
       "house": "graveborn",
       "bonus": "b3_lose8",
-      "placeholder": "difficulty"
+      "placeholder": "difficulty,briefing,reason (draft text 2026-11-02 for Kort to edit, Q74)"
     },
     {
       "id": "march-4",
@@ -2922,7 +2922,7 @@
       "mode": "convoy",
       "house": "wildmoot",
       "bonus": "b4_never_rolled",
-      "placeholder": "difficulty (Kort 2026-10-31: a convoy escort; mode and bonus set by the approved convoy spec)"
+      "placeholder": "difficulty,briefing,reason (draft text 2026-11-02 for Kort to edit, Q74); Kort 2026-10-31: a convoy escort; mode and bonus set by the approved convoy spec"
     },
     {
       "id": "march-5",
@@ -2938,7 +2938,7 @@
       "mode": "domination",
       "house": "tidecallers",
       "bonus": "b5_hold_all",
-      "placeholder": "difficulty"
+      "placeholder": "difficulty,briefing,reason (draft text 2026-11-02 for Kort to edit, Q74)"
     },
     {
       "id": "march-6",
@@ -2954,7 +2954,7 @@
       "mode": "siege",
       "house": "graveborn",
       "bonus": "b6_kill_hollowking",
-      "placeholder": "difficulty,mode (the plan says Siege, mixed)"
+      "placeholder": "difficulty,mode,briefing,reason (draft text 2026-11-02 for Kort to edit, Q74); the plan says Siege, mixed; draft mix (Q8): plays plain Siege of Ironhold until Kort picks the mix"
     }
   ],
   "bonusObjectives": [
