@@ -21,12 +21,7 @@ def brass_up(p, tier, top=True, foot=False, rivets=True, every=False):
     if tier < 2: return p
     def paint(face, w, h):
         g = [list(r) for r in p(face, w, h)]
-        if face in ("top", "bottom"):
-            if tier == 3 and every and h >= 3 and w >= 3:
-                for x in range(w):
-                    if g[0][x] is not None: g[0][x] = BRASS[3]
-                    if g[h - 1][x] is not None: g[h - 1][x] = BRASS[2]
-            return g
+        if face in ("top", "bottom"): return g   # brass only on the side faces: the tops stay blackened iron
         if rivets:
             for y in range(h):
                 for x in range(w):
@@ -56,10 +51,7 @@ def plate_t(tier, seed="ip", base=3, ember=False):
             for x in range(w):
                 v = _lit(face, x, w, base) + (1 if y == 0 else 0) + r.choice((-1, 0, 0, 0, 0, 1))
                 g[y][x] = clamp(IRON, v)
-        if face in ("top", "bottom"):
-            if tier == 3 and h >= 3:
-                for x in range(w): g[0][x] = BRASS[3]; g[h - 1][x] = BRASS[2]
-            return g
+        if face in ("top", "bottom"): return g
         if h >= 2:
             for x in range(w): g[h - 1][x] = BRASS[2 if x % 2 else 1]
         if tier == 3:
