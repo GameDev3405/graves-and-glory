@@ -1,5 +1,5 @@
-# Builder server supervisor for Graves and Glory: one saved world per map (and the camp). /map <name> in game switches worlds:
-# the mod writes next-world.txt and stops; this loop relaunches the server on that world. Run it in a window or as the
+# Builder server supervisor for Graves and Glory: one save, gg-build, holding all seven builder worlds (camp, lobby and the five
+# maps) as dimensions; /map in game moves a player between them with no restart (Kort 2026-11-03). Run it in a window or as the
 # GGBuilderServer scheduled task (install-boot-task.ps1). Windows PowerShell 5.1 compatible.
 #
 # Added for plan task 2A.1: restart after a crash with exponential backoff, a backup before every start, a backup
@@ -16,7 +16,7 @@ param(
 )
 Set-Location -LiteralPath $PSScriptRoot
 $ErrorActionPreference = 'Stop'
-$worlds = 'camp','lobby','rivergate','ironhold','frostmarch','hollowwood','kingsfield'
+$world = 'gg-build'   # the save folder and the backups/<world> folder name
 $ops = Join-Path $PSScriptRoot 'builder_ops.py'
 New-Item -ItemType Directory -Force -Path 'logs' | Out-Null
 
@@ -37,20 +37,17 @@ function Invoke-Ops([string[]]$opsArgs) {
 }
 
 if (!(Test-Path -LiteralPath 'fabric-server-launch.jar')) { Write-Log 'fabric-server-launch.jar is missing.'; exit 3 }
-$world = 'camp'
-if (Test-Path -LiteralPath 'current-world.txt') { $world = (Get-Content -LiteralPath 'current-world.txt' -Raw).Trim() }
 $failures = 0
 $backoff = $BackoffStartSeconds
 
 while ($true) {
-    if ($worlds -notcontains $world) { $world = 'camp' }
     # The EULA is the owner's to accept. This script never writes eula.txt; without it the server cannot start, so stop here
     # instead of crash-looping.
     $pre = Invoke-Ops @('preflight')
     if ($pre -eq 3) { Write-Log 'start blocked by preflight (see lines above); fix it and start again.'; exit 3 }
 
     Set-Content -LiteralPath 'current-world.txt' -Value $world -NoNewline
-    $lines = Get-Content -LiteralPath 'server.properties' | ForEach-Object { if ($_ -like 'level-name=*') { "level-name=gg-build-$world" } else { $_ } }
+    $lines = Get-Content -LiteralPath 'server.properties' | ForEach-Object { if ($_ -like 'level-name=*') { "level-name=$world" } else { $_ } }
     Set-Content -LiteralPath 'server.properties' -Value $lines -Encoding ascii
 
     [void](Invoke-Ops @('rotate-logs'))
@@ -60,7 +57,7 @@ while ($true) {
 
     Write-Log "starting world: $world"
     $started = Get-Date
-    $p = Start-Process -FilePath $JavaExe -NoNewWindow -PassThru -ArgumentList @('-Xms1G', "-Xmx${MemoryGB}G", "-Dgg.build=$world", '-jar', 'fabric-server-launch.jar', 'nogui')
+    $p = Start-Process -FilePath $JavaExe -NoNewWindow -PassThru -ArgumentList @('-Xms1G', "-Xmx${MemoryGB}G", "-Dgg.build=all", '-jar', 'fabric-server-launch.jar', 'nogui')
     $null = $p.Handle   # keeps the process handle so ExitCode is readable after exit
     Set-Content -LiteralPath 'server.pid' -Value $p.Id -NoNewline
     $nextCheck = (Get-Date).AddMinutes($BackupIntervalMinutes)
@@ -78,12 +75,7 @@ while ($true) {
     Write-Log "server exited with $code after $([int]$ranSeconds) s"
     [void](Invoke-Ops @('offsite'))   # the mod writes a backup on stop; ship it
 
-    if (Test-Path -LiteralPath 'next-world.txt') {
-        $world = (Get-Content -LiteralPath 'next-world.txt' -Raw).Trim()
-        Remove-Item -LiteralPath 'next-world.txt'
-        $failures = 0; $backoff = $BackoffStartSeconds
-        continue
-    }
+    Remove-Item -LiteralPath 'next-world.txt' -ErrorAction SilentlyContinue   # left by the old world-switching mod; no longer used
     if ($code -eq 0) { Write-Log 'clean stop; supervisor ending.'; break }
 
     if ($ranSeconds -ge $HealthyAfterSeconds) { $failures = 0; $backoff = $BackoffStartSeconds }
