@@ -18,7 +18,7 @@ Result column to fill in on each pass: Pass / Fail / Blocked, tester, jar SHA-25
 
 Rules that apply to every row: never write or accept `eula.txt` (Kort supplies it); never touch ports 25565-25567, 25570 (builder), 25571; never stop Kort's game or the builder; test on a copy of any save; headless bots never count as players.
 
-Run 2026-11-03 (`work/qa-matrix-runs`, base `main` bd05fa2b): 78 PASS, 1 FAIL, 34 Kort, 24 not run (no agent-runnable check). Detail: `docs/reports/qa-matrix-run-2026-11-03.md`.
+Run 2026-11-03 (`work/qa-matrix-runs`, base `main` bd05fa2b), after the dedicated-server pass (`work/qa-server-rows`): 86 PASS, 2 FAIL (C9, C11), 29 Kort, 20 not run (no agent-runnable check). Detail: `docs/reports/qa-matrix-run-2026-11-03.md`.
 
 ---
 
@@ -62,11 +62,11 @@ Use a new empty folder and a free port. Kort supplies `eula.txt` himself; the te
 | C4 | Corrupt the downloaded file and re-run setup (or simulate a hash mismatch). | Throws "Fabric download hash mismatch. Do not run it."; the staged file is never promoted. | MANUAL | Kort |
 | C5 | Launcher present, no `eula.txt`; run `start-server.ps1`. | Throws "Review the Minecraft server EULA yourself..."; server does not run. | MANUAL | Kort |
 | C6 | `-MemoryGB 1` and `-MemoryGB 64`. | Parameter validation rejects values outside 2-32. | MANUAL | Kort |
-| C7 | With Kort's `eula.txt`: first start. | Minecraft and Fabric libraries download; world `Graves and Glory` is created; "Done" appears; the first battlefield is built afterward (startup tick-lag warnings are expected); no stack trace. | MANUAL (Kort). Startup path HARN `GRAVES_ROADMAP_SERVER_ROOT` + `isolated-server.gradle` (headless dedicated server run) | Kort |
-| C8 | `python test-tools/standalone/server_status_probe.py <port>` against the running server. | Returns the status JSON; version and player count are sane. | MANUAL; the probe exists but is local-only and not wired into any check | Kort |
-| C9 | Join from the same machine, 127.0.0.1:25565, with the same pack. | Client reaches the camp; the server log shows the commander profile created under `<world>/gravesandglory-profiles/<uuid>.json`. | MANUAL; networked path HARN `CampNetworkChecks` (`GRAVES_NETWORK_HOST`, `host-suite`, `invite-accept-roundtrip`) | Kort |
-| C10 | Type `stop` in the console. | Clean save and exit; no error; battle state cleaned (`Abilities.serverStopping`, banners and clouds removed). | MANUAL; clean stop with a client HARN `host-stop-disconnects-cleanly` | Kort |
-| C11 | Start a server whose `level-name` is neither `Graves and Glory` nor `Bannerbound`. | The mod stays inactive (no `Battle` is created); vanilla world, no crash. Confirm there is a log line telling the operator why. | MANUAL; GAP if no log line (README says activation depends on the internal level name) | Kort |
+| C7 | With Kort's `eula.txt`: first start. | Minecraft and Fabric libraries download; world `Graves and Glory` is created; "Done" appears; the first battlefield is built afterward (startup tick-lag warnings are expected); no stack trace. | MANUAL (Kort). Startup path HARN `GRAVES_ROADMAP_SERVER_ROOT` + `isolated-server.gradle` (headless dedicated server run) | PASS - server pass 2026-11-03 |
+| C8 | `python test-tools/standalone/server_status_probe.py <port>` against the running server. | Returns the status JSON; version and player count are sane. | MANUAL; the probe exists but is local-only and not wired into any check | PASS - status JSON sane; probe script asserts max==8 (stale) |
+| C9 | Join from the same machine, 127.0.0.1:25565, with the same pack. | Client reaches the camp; the server log shows the commander profile created under `<world>/gravesandglory-profiles/<uuid>.json`. | MANUAL; networked path HARN `CampNetworkChecks` (`GRAVES_NETWORK_HOST`, `host-suite`, `invite-accept-roundtrip`) | FAIL - join works; profile file not written on bare join |
+| C10 | Type `stop` in the console. | Clean save and exit; no error; battle state cleaned (`Abilities.serverStopping`, banners and clouds removed). | MANUAL; clean stop with a client HARN `host-stop-disconnects-cleanly` | PASS - stop.ps1 clean; first try sent "?stop" (BOM) |
+| C11 | Start a server whose `level-name` is neither `Graves and Glory` nor `Bannerbound`. | The mod stays inactive (no `Battle` is created); vanilla world, no crash. Confirm there is a log line telling the operator why. | MANUAL; GAP if no log line (README says activation depends on the internal level name) | FAIL - inactive, no crash, no log line (GAP) |
 | C12 | Kit as shipped: `max-players=16` versus the 4v4 + visitors rule. | Sixteen connections allowed; at most eight battle commanders; the rest wait in camp. | AUTO `AdmissionPolicyCheck`, `LobbyRulesCheck` (limits); the `server.properties` value by B9 | NOT RUN - no agent-runnable check |
 | C13 | Reachability from another PC (Tailscale), non-local `server-ip`. | `Test-NetConnection <ip> -Port <port>` succeeds; builder 25570 untouched. | MANUAL (Kort, SIX-PLAYER-TEST-PLAN section 3) | Kort |
 | C14 | Kit docs: `SERVER-README.txt` claims versus real behavior. | Every sentence still true (heap defaults 2G/8G, the EULA sentence, the CURRENT LIMITS text). | MANUAL | Kort |
@@ -114,7 +114,7 @@ Profiles are the server's `<uuid>.json`, read once per commander by `Campaign.pr
 | E6 | Legacy `Bannerbound` world next to no current world. | Copied to `Graves and Glory`; regions copied; original retained; `session.lock` not copied. | AUTO `LegacyDataMigrationCheck` | PASS - AUTO LegacyDataMigrationCheck |
 | E7 | The legacy world is open (locked) while migrating. | Refused; nothing copied. | AUTO `LegacyDataMigrationCheck` | PASS - AUTO LegacyDataMigrationCheck |
 | E8 | Incomplete current world next to a legacy world. | Refused; recovery needed, no overwrite. | AUTO `LegacyDataMigrationCheck` | PASS - AUTO LegacyDataMigrationCheck |
-| E9 | Dedicated server with `bannerbound-profiles/` and `bannerbound-layout.json` in the world. | Profiles copied to `gravesandglory-profiles/`; layout marker copied; originals kept; failure keeps originals and stops with a clear message. | HARN `legacy-profile-upgrade`, `legacy-layout-upgrade` (`GRAVES_ROADMAP_MIGRATION`) | NOT RUN - no agent-runnable check |
+| E9 | Dedicated server with `bannerbound-profiles/` and `bannerbound-layout.json` in the world. | Profiles copied to `gravesandglory-profiles/`; layout marker copied; originals kept; failure keeps originals and stops with a clear message. | HARN `legacy-profile-upgrade`, `legacy-layout-upgrade` (`GRAVES_ROADMAP_MIGRATION`) | PASS - server pass 2026-11-03 |
 | E10 | A legacy-named world (`Bannerbound`) still activates the mod. | `Battle` is created for both level names. | HARN `legacy-world-upgrade` | NOT RUN - no agent-runnable check |
 | E11 | Migration error at client start (storage or permissions). | Front menu shows "Could not migrate old collection/settings. Your originals are unchanged." | MANUAL | Kort |
 
@@ -123,10 +123,10 @@ Profiles are the server's `<uuid>.json`, read once per commander by `Campaign.pr
 | ID | Steps | Expected | Check | Run 2026-11-03 |
 |---|---|---|---|---|
 | F1 | Matching release, protocol and build. | Admitted. | AUTO `CompatibilityPolicyCheck` | PASS - AUTO CompatibilityPolicyCheck (harness cases not run) |
-| F2 | Old protocol. | Refused. | AUTO `CompatibilityPolicyCheck`; HARN `GRAVES_ROADMAP_COMPAT_CASE=old` | PASS - AUTO CompatibilityPolicyCheck (harness cases not run) |
-| F3 | Old version string. | Refused. | AUTO `CompatibilityPolicyCheck`; HARN `old` | PASS - AUTO CompatibilityPolicyCheck (harness cases not run) |
-| F4 | Same version, different build hash. | Refused. | AUTO `CompatibilityPolicyCheck`; HARN `build` | PASS - AUTO CompatibilityPolicyCheck (harness cases not run) |
-| F5 | Malformed handshake; no handshake reply. | Disconnect with a message; no server error. | HARN `GRAVES_ROADMAP_COMPAT_CASE=malformed`, `missing` | NOT RUN - no agent-runnable check |
+| F2 | Old protocol. | Refused. | AUTO `CompatibilityPolicyCheck`; HARN `GRAVES_ROADMAP_COMPAT_CASE=old` | PASS - AUTO CompatibilityPolicyCheck (live harness case also PASS, server pass 2026-11-03) |
+| F3 | Old version string. | Refused. | AUTO `CompatibilityPolicyCheck`; HARN `old` | PASS - AUTO CompatibilityPolicyCheck (live harness case also PASS, server pass 2026-11-03) |
+| F4 | Same version, different build hash. | Refused. | AUTO `CompatibilityPolicyCheck`; HARN `build` | PASS - AUTO CompatibilityPolicyCheck (live harness case also PASS, server pass 2026-11-03) |
+| F5 | Malformed handshake; no handshake reply. | Disconnect with a message; no server error. | HARN `GRAVES_ROADMAP_COMPAT_CASE=malformed`, `missing` | PASS - malformed and missing, server pass 2026-11-03 |
 | F6 | Message text on refusal. | Names the required version and the short build id; says "Install the same modpack release". | AUTO `CompatibilityPolicyCheck` | PASS - AUTO CompatibilityPolicyCheck (harness cases not run) |
 | F7 | A vanilla or Fabric-only client joins a Graves and Glory server. | Refused with the required-mod message at login, before play. | MANUAL (GAP: no automated case for a client with no mod) | Kort |
 | F8 | A new client joins a server built from a different commit of the same version. | Refused (F4 case end to end). | MANUAL (candidate vs. friend pack mix-up is the most likely real failure) | Kort |
@@ -192,14 +192,14 @@ The mod registers no player commands outside build mode. In `BuildMode` (only wh
 | ID | Steps | Expected | Check | Run 2026-11-03 |
 |---|---|---|---|---|
 | J1 | Kit `server.properties` and a normal match server. | No `-Dgg.build`; no build commands exist; no player has op unless Kort grants it. | MANUAL (also B9 for the file) | Kort |
-| J2 | Build mode: non-op runs `/backup` and `/map`. | Refused. | LATER (needs a build-mode server) | NOT RUN - no agent-runnable check |
+| J2 | Build mode: non-op runs `/backup` and `/map`. | Refused. | LATER (needs a build-mode server) | PASS - non-op /backup /map /warp refused (protocol bot) |
 | J3 | Build mode: non-op runs `/warp`. | Refused: `/warp` needs permission level 2 (Kort 2026-11-02; already true). | AUTO `MatchRulesCheck`; builder server only | PASS - AUTO MatchRulesCheck / LobbyRulesCheck |
 | J4 | Non-whitelisted player on a whitelisted server (`white-list=true`, `enforce-whitelist=true` on the builder). | Refused by vanilla. | MANUAL | Kort |
 | J5 | Non-host sends host-only lobby actions (map, mode, bot fill, hand-over). | Refused with the "Only an idle room host" messages. | AUTO `LobbyRulesCheck` | PASS - AUTO MatchRulesCheck / LobbyRulesCheck |
 | J6 | Packet abuse: oversized or malformed profile (over 16000), tactical packet with bad group/formation strings, order from a commander for another army. | Ignored or clamped; no exception; no state change. | LATER (profile size and import gate by D19/D20; `tactical` handler has no direct check) | NOT RUN - no agent-runnable check |
 | J7 | Offline-mode or cracked client. | Kit has `online-mode=true`; offline client refused. | MANUAL | Kort |
 | J8 | Operator takes damage rules: an op in creative changes blocks in camp. | Spawn protection 0 and adventure mode make this a vanilla operator concern; no mod behavior to test beyond adventure default. | MANUAL (low priority) | Kort |
-| J9 | RCON. | Off (`enable-rcon=false`). | LATER (B9) | NOT RUN - no agent-runnable check |
+| J9 | RCON. | Off (`enable-rcon=false`). | LATER (B9) | PASS - enable-rcon=false, no RCON listener |
 
 ## K. Edge cases
 
