@@ -1,0 +1,123 @@
+{
+  "_note": "CurseForge projectID/fileID per pinned dependency, read from public CurseForge file pages (no API key). status \"resolved\" means the file page showed the pinned fileName and Project/File ID. Any other status makes tools/export_curseforge.py refuse. Never guess an ID.",
+  "retrieved": "2026-11-02",
+  "entries": {
+    "iris": {
+      "name": "Iris Shaders",
+      "status": "resolved",
+      "projectID": 455508,
+      "fileID": 6258195,
+      "fileName": "iris-1.7.6+mc1.20.1.jar",
+      "projectUrl": "https://www.curseforge.com/minecraft/mc-mods/irisshaders",
+      "sourceUrl": "https://www.curseforge.com/minecraft/mc-mods/irisshaders/files/6258195"
+    },
+    "sodium": {
+      "name": "Sodium",
+      "status": "resolved",
+      "projectID": 394468,
+      "fileID": 6260639,
+      "fileName": "sodium-fabric-0.5.13+mc1.20.1.jar",
+      "projectUrl": "https://www.curseforge.com/minecraft/mc-mods/sodium",
+      "sourceUrl": "https://www.curseforge.com/minecraft/mc-mods/sodium/files/6260639"
+    },
+    "lithium": {
+      "name": "Lithium",
+      "status": "resolved",
+      "projectID": 360438,
+      "fileID": 7268114,
+      "fileName": "lithium-fabric-mc1.20.1-0.11.4.jar",
+      "projectUrl": "https://www.curseforge.com/minecraft/mc-mods/lithium",
+      "sourceUrl": "https://www.curseforge.com/minecraft/mc-mods/lithium/files/7268114"
+    },
+    "ferrite-core": {
+      "name": "FerriteCore (Fabric)",
+      "status": "resolved",
+      "projectID": 459857,
+      "fileID": 4810977,
+      "fileName": "ferritecore-6.0.1-fabric.jar",
+      "projectUrl": "https://www.curseforge.com/minecraft/mc-mods/ferritecore-fabric",
+      "sourceUrl": "https://www.curseforge.com/minecraft/mc-mods/ferritecore-fabric/files/4810977"
+    },
+    "immediatelyfast": {
+      "name": "ImmediatelyFast",
+      "status": "resolved",
+      "projectID": 686911,
+      "fileID": 8348480,
+      "fileName": "ImmediatelyFast-Fabric-1.5.5+1.20.4.jar",
+      "projectUrl": "https://www.curseforge.com/minecraft/mc-mods/immediatelyfast",
+      "sourceUrl": "https://www.curseforge.com/minecraft/mc-mods/immediatelyfast/files/8348480"
+    },
+    "modernfix": {
+      "name": "ModernFix",
+      "status": "resolved",
+      "projectID": 790626,
+      "fileID": 7306748,
+      "fileName": "modernfix-fabric-5.25.2+mc1.20.1.jar",
+      "projectUrl": "https://www.curseforge.com/minecraft/mc-mods/modernfix",
+      "sourceUrl": "https://www.curseforge.com/minecraft/mc-mods/modernfix/files/7306748"
+    },
+    "entity-model-features": {
+      "name": "Entity Model Features",
+      "status": "resolved",
+      "projectID": 844662,
+      "fileID": 9188519,
+      "fileName": "entity_model_features-3.3.12-1.20.1-fabric.jar",
+      "projectUrl": "https://www.curseforge.com/minecraft/mc-mods/entity-model-features",
+      "sourceUrl": "https://www.curseforge.com/minecraft/mc-mods/entity-model-features/files/9188519"
+    },
+    "entitytexturefeatures": {
+      "name": "Entity Texture Features (Fabric)",
+      "status": "resolved",
+      "projectID": 568563,
+      "fileID": 9188404,
+      "fileName": "entity_texture_features-7.2.6-1.20.1-fabric.jar",
+      "projectUrl": "https://www.curseforge.com/minecraft/mc-mods/entity-texture-features-fabric",
+      "sourceUrl": "https://www.curseforge.com/minecraft/mc-mods/entity-texture-features-fabric/files/9188404"
+    },
+    "presence-footsteps": {
+      "name": "Presence Footsteps",
+      "status": "resolved",
+      "projectID": 334259,
+      "fileID": 5956100,
+      "fileName": "PresenceFootsteps-1.10.1+1.20.1.jar",
+      "projectUrl": "https://www.curseforge.com/minecraft/mc-mods/presence-footsteps",
+      "sourceUrl": "https://www.curseforge.com/minecraft/mc-mods/presence-footsteps/files/5956100"
+    },
+    "fabric-api": {
+      "name": "Fabric API",
+      "status": "resolved",
+      "projectID": 306612,
+      "fileID": 5383715,
+      "fileName": "fabric-api-0.92.2+1.20.1.jar",
+      "projectUrl": "https://www.curseforge.com/minecraft/mc-mods/fabric-api",
+      "sourceUrl": "https://www.curseforge.com/minecraft/mc-mods/fabric-api/files/5383715"
+    },
+    "complementary-reimagined": {
+      "name": "Complementary Reimagined",
+      "status": "resolved",
+      "projectID": 627557,
+      "fileID": 6515577,
+      "fileName": "ComplementaryReimagined_r5.5.1.zip",
+      "projectUrl": "https://www.curseforge.com/minecraft/shaders/complementary-reimagined",
+      "sourceUrl": "https://www.curseforge.com/minecraft/shaders/complementary-reimagined/files/6515577"
+    },
+    "complementary-unbound": {
+      "name": "Complementary Unbound",
+      "status": "resolved",
+      "projectID": 385587,
+      "fileID": 6515579,
+      "fileName": "ComplementaryUnbound_r5.5.1.zip",
+      "projectUrl": "https://www.curseforge.com/minecraft/shaders/complementary-unbound",
+      "sourceUrl": "https://www.curseforge.com/minecraft/shaders/complementary-unbound/files/6515579"
+    },
+    "makeup-ultra-fast-shaders": {
+      "name": "MakeUp - Ultra Fast | Shaders",
+      "status": "resolved",
+      "projectID": 431203,
+      "fileID": 9054810,
+      "fileName": "MakeUp-UltraFast-9.5g.zip",
+      "projectUrl": "https://www.curseforge.com/minecraft/shaders/makeup-ultra-fast-shader",
+      "sourceUrl": "https://www.curseforge.com/minecraft/shaders/makeup-ultra-fast-shader/files/9054810"
+    }
+  }
+}
