@@ -1,6 +1,6 @@
 # Builder server
 
-Creative server for the map/lobby builder. Hosted on tjepkema-server (`C:\GGBuild`), Public address `jensen-index.tun.ply.gg` through the playit tunnel (boot task `GGPlayit`, forwarding to `127.0.0.1:25570`); on Tailscale also `100.72.202.38:25570`. The server listens on all interfaces (`server-ip=` blank). Join with the Graves and Glory modpack. Whitelist is off (Kort 2026-11-03): anyone with the address and a real Minecraft account can join (`online-mode=true`), and every player becomes op (level 4) on their first join.
+Creative server for the map/lobby builder. Hosted on tjepkema-server (`C:\GGBuild`). Public address `jensen-index.tun.ply.gg` through the playit tunnel (boot task `GGPlayit`, forwarding to `127.0.0.1:25570`); on Tailscale also `100.72.202.38:25570`. The server listens on all interfaces (`server-ip=` blank). Join with the Graves and Glory modpack. Whitelist is off (Kort 2026-11-03): anyone with the address and a real Minecraft account can join (`online-mode=true`), and every player becomes op (level 4) on their first join.
 
 ## For the builder
 - All seven worlds are loaded at once: `camp`, `lobby`, `rivergate`, `ironhold`, `frostmarch`, `hollowwood`, `kingsfield`. `/map` lists them and says which one you are in; `/map <name>` takes only you to that world's arrival point, instantly. You log back in where you left.
