@@ -5217,7 +5217,7 @@
     {
       "id": "graveborn",
       "name": "Graveborn",
-      "accent": 10338206,
+      "accent": 10653626,
       "glyph": "gravesandglory:textures/gui/house/graveborn.png",
       "troops": "revenant,bonebow,reaper,stalker,hexer,gb_hollowking",
       "title": "Gravebound",
@@ -5244,7 +5244,7 @@
     {
       "id": "tidecallers",
       "name": "Tidecallers",
-      "accent": 5220506,
+      "accent": 6195366,
       "glyph": "gravesandglory:textures/gui/house/tidecallers.png",
       "troops": "tc_raider,tc_harpooner,tc_tideguard,tc_mist,tc_brute,tc_admiral",
       "title": "Tidesworn",

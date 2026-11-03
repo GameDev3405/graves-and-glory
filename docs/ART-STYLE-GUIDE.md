@@ -363,13 +363,13 @@ are:
 | House | design.json `accent` | PLAN 2B.2 accent | painter ramp (tones 0 to 4) |
 |---|---|---|---|
 | Gilded | `#DFCE68` | gold | gilt `#482E16 #6F5026 #96783A #BDAA6A #E4D780` (section 1) |
-| Graveborn | `#9DBF9E` (grey-green) | pale violet | none yet |
+| Graveborn | `#A28FBA` (violet; was grey-green `#9DBF9E`) | pale violet | `VIOLET #1E1528 #362645 #54406A #7A6494 #A28FBA` |
 | Wildmoot | `#C9853A` | ochre | `OCHRE #3E2208 #683E14 #8E5C20 #B07C36 #CC9C5E` |
 | Ironclad | `#E0703A` | ember | `EMBER #2E0E08 #52190E #7A2814 #9A3C20 #B85E40` |
-| Tidecallers | `#4FA89A` (teal) | sea blue | `SEA #0B1528 #122848 #1A3F6A #2A5E8A #5888AA` |
+| Tidecallers | `#5E88A6` (sea blue; was teal `#4FA89A`) | sea blue | `SEA #0B1528 #122848 #1A3F6A #2A5E8A #5888AA` |
 
 **Accents ruled (Kort, 2026-10-30):** Kort's rule wins. Graveborn is pale violet and Tidecallers sea blue;
-`design.json`'s `#9DBF9E` and `#4FA89A` are out of date (a sheet change through `tools/preflight.py`, not made here).
+`design.json` now carries `#A28FBA` and `#5E88A6` (recoloured 2026-11-02, with the recruit banner cloth in `tools/ui_art/v4a_recruit.py`; the old `#9DBF9E` and `#4FA89A` are retired).
 PROPOSED House ramps, six tones in the hand set's style, darkest first, checked against the tint rule:
 - Graveborn violet: `#1E1528 #362645 #54406A #7A6494 #A28FBA #D2C6D8` (hue 267 to 271 until the top tone; no tone has
   saturation over 0.45 at value over 0.60). It sits on the violet side's hue, so it stays pale and greyed and never

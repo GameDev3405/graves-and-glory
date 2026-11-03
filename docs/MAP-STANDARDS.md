@@ -62,7 +62,7 @@ Standard (binding, rule of the code): a prop's block comes from the slot of its 
 
 ### 3.2 Per House
 
-There is no per-House block palette in the arena code. The five Houses (gilded, graveborn, wildmoot, ironclad, tidecallers; `sheets/design.json` key `houses`) have an accent colour (0xDFCE68, 0x9DBF9E, 0xC9853A, 0xE0703A, 0x4FA89A) and a glyph, used by the UI and the camp pieces. On the battlefield a team shows only its side colour: cyan for team 0 and purple for team 1 (`MapDressing.java:71-72`, `Arena.java:324`). The camp has one tent piece per House (`camp/tent_gilded`, `tent_wildmoot`, `tent_ironclad`, `tent_tidecallers`; `sheets/design.json` key `pieces`). Whether the battlefield should carry House blocks is a Question for Kort (Q3).
+There is no per-House block palette in the arena code. The five Houses (gilded, graveborn, wildmoot, ironclad, tidecallers; `sheets/design.json` key `houses`) have an accent colour (0xDFCE68, 0xA28FBA, 0xC9853A, 0xE0703A, 0x5E88A6) and a glyph, used by the UI and the camp pieces. On the battlefield a team shows only its side colour: cyan for team 0 and purple for team 1 (`MapDressing.java:71-72`, `Arena.java:324`). The camp has one tent piece per House (`camp/tent_gilded`, `tent_wildmoot`, `tent_ironclad`, `tent_tidecallers`; `sheets/design.json` key `pieces`). Whether the battlefield should carry House blocks is a Question for Kort (Q3).
 
 ## 4. Road widths
 
