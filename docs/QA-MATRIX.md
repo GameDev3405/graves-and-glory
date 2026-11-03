@@ -18,7 +18,7 @@ Result column to fill in on each pass: Pass / Fail / Blocked, tester, jar SHA-25
 
 Rules that apply to every row: never write or accept `eula.txt` (Kort supplies it); never touch ports 25565-25567, 25570 (builder), 25571; never stop Kort's game or the builder; test on a copy of any save; headless bots never count as players.
 
-Run 2026-11-03 (`work/qa-matrix-runs`, base `main` bd05fa2b), after the dedicated-server pass (`work/qa-server-rows`): 86 PASS, 2 FAIL (C9, C11), 29 Kort, 20 not run (no agent-runnable check). Detail: `docs/reports/qa-matrix-run-2026-11-03.md`.
+Run 2026-11-03 (`work/qa-matrix-runs`, base `main` bd05fa2b), after the dedicated-server pass (`work/qa-server-rows`): 86 PASS, 2 FAIL (C9, C10), 29 Kort, 20 not run (no agent-runnable check). Detail: `docs/reports/qa-matrix-run-2026-11-03.md`.
 
 ---
 
