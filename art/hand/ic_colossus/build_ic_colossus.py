@@ -3,7 +3,10 @@
 
 A hulking soot-iron golem: riveted plate over a furnace chest with a lit grille, twin smokestacks on the shoulders, a
 heavy brow over ember eyes and a hinged brass jaw, piston-banded arms ending in brass-knuckled fists, a team cloth apron
-hung from the belt (front only) and a slag maul of oak and brass-banded iron in the right fist. Tier I only.
+hung from the belt (front only) and a slag maul of oak and brass-banded iron in the right fist. Tier II (the Furnace Titan): a
+riveted brow plate, cheek plates beside the grille, a third pauldron lame, knee plates and a brass-capped maul.
+Tier III (the Brassjaw Unbound): bone horns on the brow, three spikes on each pauldron, ember-seamed greaves and a spiked
+maul with a crown spike. No back flag.
 
   python build_ic_colossus.py preview <dir> [side] | contact <png> [side] | install
 """
@@ -11,8 +14,11 @@ import os, sys
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(HERE, "..", "ic_ballista"))
 from siege_kit import *   # noqa: F401,F403
+sys.path.insert(0, os.path.join(HERE, "..", "common"))
+import house_stub
+import ironclad_tiers as IT
 
-SKIN = (128, 128)
+SKIN = (256, 128)   # tier II and III plate, horns and maul parts (128 x 128 was full)
 CLOTH = (128, 64)
 
 def hull(base=3, step=4, row=1, seed="h"):
@@ -147,11 +153,27 @@ def bones():
         B.append(Bone(f"{side}_pauldron", "body", (11 * c, -16, 0), rot=(0, 0, 8 * c), boxes=[
             Box((-6 if c < 0 else -2, -3, -6), (8, 4, 12), hull(4, 3, 1, "pa")),
             Box((-6.5 if c < 0 else -2.5, 0.5, -6.5), (9, 3, 13), banded(plate(IRON, 3, spec=False), [1], R=EMBER))]))
+        B.append(Bone(f"{side}_lame3", f"{side}_pauldron", stages=[2, 3], boxes=[Box((-6 if c < 0 else -2, 3.5, -6), (8, 2, 12), IT.P("cl" + side, 3), dil=0.05)]))
+        B.append(Bone(f"{side}_spikes", f"{side}_pauldron", stages=[3], boxes=[Box((2 * c - 0.5, -6, dz - 0.5), (1, 3, 1), IT.spike(IT.IRON, 3, 3)) for dz in (-3.5, 0, 3.5)]))
+        B.append(Bone(f"{side}_kneeplate", f"{side}_leg", stages=[2, 3], boxes=[Box((-3.9, 3, -3.6), (6.8, 3, 1), IT.P("ck" + side, 4), dil=0.05)]))
+        B.append(Bone(f"{side}_greave", f"{side}_leg", stages=[3], boxes=[Box((-3.9, 7, -3.4), (6.8, 2, 5.8), IT.P("cg" + side, 3, ember=True), dil=0.05)]))
+        B.append(Bone(f"{side}_cheek", "body", stages=[2, 3], boxes=[Box((-9.4 if c < 0 else 4.4, -16, -6.6), (5, 10, 1), IT.P("cc" + side, 3), dil=0.05)]))
+        B.append(Bone(f"{side}_horn", "head", stages=[3], boxes=[Box((-6 if c < 0 else 4, -10, -2), (2, 2, 2), IT.horn()), Box((-6.5 if c < 0 else 4.5, -13, -1.5), (2, 3, 1), IT.horn())]))
         B.append(Bone(f"{side}_fist", f"{side}_arm", (0, 25, 0), boxes=[Box((-4, -4, -4), (8, 9, 8), fist)]))
         B.append(Bone(f"{side}_foot", f"{side}_leg", boxes=[Box((-4, 9, -6), (8, 4, 9), boot)]))
-    B.append(Bone("maul", "right_arm", (0, 25, 0), rot=(-18, 0, 0), tag="weapon", boxes=[
-        Box((-1, -24, -1), (2, 30, 2), hooped(grain(OAK, "y", 3, "haft", knots=1), [(6, 2), (22, 2)], along="y", R=IRON, trim=BRASS)),
-        Box((-4, -33, -3.5), (8, 9, 7), maul_head)]))
+    def maul_boxes(t):
+        out = [Box((-1, -24, -1), (2, 30, 2), hooped(grain(OAK, "y", 3, "haft", knots=1), [(6, 2), (22, 2)], along="y", R=IRON, trim=BRASS)),
+               Box((-4, -33, -3.5), (8, 9, 7), maul_head)]
+        if t >= 2:   # brass collars round both ends of the head
+            out += [Box((-4.5, -25.5, -4), (9, 1, 8), IT.brass(3, "mc1")), Box((-4.5, -32.5, -4), (9, 1, 8), IT.brass(3, "mc2"))]
+        if t >= 3:   # a crown spike, spikes on the striking face and a butt spike
+            out += [Box((-1, -36, -1), (2, 3, 2), IT.spike(IT.IRON, 3, 3))]
+            out += [Box((x, y, -5), (1, 1, 1.5), IT.spike(IT.IRON, 4, 2)) for x in (-2.5, 1.5) for y in (-31, -27.5)]
+            out += [Box((-0.5, 6, -0.5), (1, 2, 1), IT.spike(IT.IRON, 3, 2))]
+        return out
+    for t in (1, 2, 3):
+        B.append(Bone("maul" if t == 1 else f"maul_t{t}", "right_arm", (0, 25, 0), rot=(-18, 0, 0), tag="weapon", weapon_tiers=[t], boxes=maul_boxes(t)))
+    B.append(Bone("brow", "head", stages=[2, 3], boxes=[Box((-4.5, -10, -6.5), (9, 2, 1), IT.P("cb", 4), dil=0.05)]))
     B.append(Bone("backplate", "body", boxes=[
         Box((-6.5, -16, 5), (13, 10, 1.5), banded(hull(5, 3, 1, "bp"), [3, 6], R=BRASS)),
         Box((-2, -17, 5.5), (4, 3, 1), iron_plain(5, "vent", 1))]))
@@ -159,6 +181,10 @@ def bones():
         B.append(Bone(f"flue_{side}", "body", boxes=[Box((x, -17, 3), (2, 12, 2.5), banded(plate(IRON, 4, spec=False), [1, 4, 7, 10]))]))
     B.append(Bone("belt_banner", "body", team=True, boxes=[Box((-4, -4, -3.4), (8, 14, 0), "banner", sheet="cloth")]))
     return B
+
+NOTE = ("Ironclad Forge Colossus (unit identity, Ironclad): a soot-iron golem with a lit furnace grille, twin smokestacks, ember eyes, "
+        "a brass jaw, brass-knuckled fists, a team apron and a slag maul. Tier II brow, cheek and knee plates, a third pauldron lame and "
+        "brass maul collars; tier III bone horns, pauldron spikes, ember greaves and a spiked maul. No back flag.")
 
 def cloth_painter(spec, side): return apron(TEAM_IC[side][0])
 
@@ -178,14 +204,14 @@ def glow(bone, box):
                 for x in (1, 2, 5, 6): g[3][x] = EMBER[5]
             return g
         return paint
-    if bone.name == "maul" and box.size == [8, 9, 7]: return maul_glow
+    if bone.name.startswith("maul") and box.size == [8, 9, 7]: return maul_glow
     return None
 
 IC_COLOSSUS = Troop("ic_colossus", SKIN, CLOTH, bones, cloth_painter,
                     {"rig": "colossus", "weapon": "none", "hand": "right", "idleArms": "hang", "portrait": "tall 4"},
-                    tiers=(1,), glow=glow)
+                    glow=glow)
 def build(): return IC_COLOSSUS.build()
 def outputs(): return IC_COLOSSUS.outputs()
 
 if __name__ == "__main__":
-    IC_COLOSSUS.main(sys.argv)
+    house_stub.main(IC_COLOSSUS, NOTE, sys.argv)

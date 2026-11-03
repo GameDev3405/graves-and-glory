@@ -1,14 +1,21 @@
 {
  "troop": "ic_colossus",
- "note": "Brassjaw, the Forge Colossus: hand-authored at 1 texel by art/hand/ic_colossus; this stub only registers the troop with build_skins.",
+ "note": "Ironclad Forge Colossus (unit identity, Ironclad): a soot-iron golem with a lit furnace grille, twin smokestacks, ember eyes, a brass jaw, brass-knuckled fists, a team apron and a slag maul. Tier II brow, cheek and knee plates, a third pauldron lame and brass maul collars; tier III bone horns, pauldron spikes, ember greaves and a spiked maul. No back flag.",
  "rig": "colossus",
  "size": [
-  128,
+  256,
   128
  ],
  "density": 1,
- "bones": {},
+ "bones": [],
+ "idleArms": "hang",
+ "parts": [],
  "skins": {
-  "1": "ic_colossus_s1.png"
- }
+  "1": "ic_colossus_s1.png",
+  "2": "ic_colossus_s2.png",
+  "3": "ic_colossus_s3.png"
+ },
+ "weapon": "none",
+ "hand": "right",
+ "portrait": "tall 4"
 }
