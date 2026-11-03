@@ -78,7 +78,7 @@ One row per started task or task done in `main`; unlisted tasks in each phase ha
 | 4C.1 | Survival | Agent + Kort | Awaiting Kort's values | `worktree-agent-a99e20eda71f140df` (`6abb424`, 14 suites green) |
 | 4C.2 | Banner / escort decision | Agent | Done 2026-10-31 | Kort chose Convoy escort in place of carry Banner; Convoy merged at `7838662` (`5b49aba`, `d102c51`, `257cc3d` wagon, `1ad6a02` harness). Straight draft Frostmarch road accepted for now |
 | 4C.3 | Host picks map and mode | Agent | Done 2026-10-31 | `784249a`; lobby offers Domination, Siege and Convoy |
-| 4C.4, 4C.5 | Mode bot runs and gate; HUD, feed, report lines for every mode | Agent | In progress | `tools/mode_gate.py` exists (`4fa1872`); harness suites `42e727e`, `1ad6a02`; feed and report lines for every mode not finished |
+| 4C.4, 4C.5 | Mode bot runs and gate; HUD, feed, report lines for every mode | Agent | In progress | `tools/mode_gate.py` exists (`4fa1872`); harness suites `42e727e`, `1ad6a02`; Survival now has its feed, ledger and report lines from the sheets (branch `work/mode-lines-all`, draft copy); Convoy push check `p4-convoy-push` reads 2.5 blocks, needs a look |
 | 4D.1 | Six campaign battles | Agent + Kort | In progress | See 2C.4 |
 | 4D.2 | Briefings, reasons, lessons, bonus per battle | Agent | In progress | Bonus picks applied in `8e39637`; battle 2 to 6 briefings and reasons are still `PLACEHOLDER` |
 | 4D.3 | Order lock, chapter completion, Pact grant, bonus shards | Agent | Done 2026-10-31 | `8e39637`, `3fdf85e`, `649bcb0` (chapter gold and Rare price from the sheet) |
