@@ -6,13 +6,13 @@ import net.minecraft.util.math.Vec3d;
 import java.util.UUID;
 
 /**
- * The Long March plays the mode its battle row names (GRAVES_PHASE4_CHECKS=march-modes). Starts march-2 (Siege on Ironhold) and march-4
- * (Convoy on Frostmarch) with the campaign command, as the War Table does, on a profile that has won the earlier battles; checks the
+ * The Long March plays the mode its battle row names (GRAVES_PHASE4_CHECKS=march-modes). Starts march-2 (Siege on Ironhold), march-3
+ * (Survival on Hollowwood) and march-4 (Convoy on Frostmarch) with the campaign command (GRAVES_MARCH_MODES=<ids> picks others), as the War Table does, on a profile that has won the earlier battles; checks the
  * round runs that mode on that map, that the march bonus tracker is fed by the real round (a fallen troop counts for lose_at_most),
  * that the battle can be finished and won, and that its bonus pays. The profile is put back afterwards.
  */
 final class MarchModesChecks implements Phase4Checks.Suite, Phase4Checks.ServerWatch {
-    static final String[] IDS = {"march-2", "march-4"};
+    static final String[] IDS = System.getenv("GRAVES_MARCH_MODES") != null ? System.getenv("GRAVES_MARCH_MODES").split(",") : new String[] {"march-2", "march-3", "march-4"};
     volatile UUID player; volatile boolean done; volatile String shot;
     int which, stage; long at; String savedProfile; boolean killed;
 
@@ -61,7 +61,7 @@ final class MarchModesChecks implements Phase4Checks.Suite, Phase4Checks.ServerW
             }
             case 2 -> { // the tracker is fed by the real round: a troop of the commander's banner falls (siege) / the wagon is moved (convoy)
                 if (b.time < c.introUntil) return;
-                if (b.mode instanceof SiegeMode) {
+                if (b.mode instanceof SiegeMode || b.mode instanceof SurvivalMode) {
                     if (!killed) {
                         for (var u : b.units) if (u.squad.team == 0 && !u.squad.bot && !u.temporary && u.mob.isAlive()) { u.mob.kill(); killed = true; break; }
                         if (!killed && b.time - at > 1200) { Phase4Checks.report("p4-march-modes-lost-" + id, false, "no troop of the commander's banner to fell"); end(null); }
@@ -69,23 +69,26 @@ final class MarchModesChecks implements Phase4Checks.Suite, Phase4Checks.ServerW
                     }
                     if (c.bonusTracker.lost < 1 && b.time - at < 1400) return;
                     Phase4Checks.report("p4-march-modes-lost-" + id, c.bonusTracker.lost >= 1, "tracker lost=" + c.bonusTracker.lost);
-                    var m = (SiegeMode) b.mode; shot = "march-siege";
-                    m.fall(b); stage = 3; at = b.time;
+                    if (b.mode instanceof SiegeMode m) { shot = "march-siege"; m.fall(b); } else shot = "march-survival";
+                    stage = 3; at = b.time;
                 } else if (b.mode instanceof ConvoyMode m) {
                     m.distance = m.total() - 1.5; shot = "march-convoy"; stage = 3; at = b.time;
                 } else { end("unexpected mode " + b.mode.id()); }
             }
-            case 3 -> { // finish the battle: Siege takes the gate and the keep, Convoy is pushed home
+            case 3 -> { // finish the battle: Siege takes the gate and the keep, Convoy is pushed home, Survival clears its last wave
                 if (b.mode instanceof SiegeMode m) {
                     if (m.stage == 1 && m.target != null && b.time % 20 == 0) m.target.damage(p.getDamageSources().playerAttack(p), 400);
                     if (m.stage == 2 || m.stage == 3) { if (b.running) c.finish(0); }
                 } else if (b.mode instanceof ConvoyMode m) {
                     FConvoy.beside(b, p, m);
+                } else if (b.mode instanceof SurvivalMode m) { // forced: once the first wave has risen, every wave is cleared
+                    if (m.current >= 1 && m.current < SurvivalMode.WAVES.size()) { m.current = SurvivalMode.WAVES.size(); SurvivalChecks.killDead(b, m); }
                 }
                 if (!b.running) stage = 4;
                 else if (b.time - at > 6000) end(id + " did not finish within 6000 ticks of the push");
             }
             case 4 -> { // won and paid
+                Houses.forceRise = null; // killDead forced it for Survival
                 var pr = c.profile(player);
                 boolean won = c.lastWinner == 0 && pr.battlesWon.contains(id);
                 boolean paid = pr.bonusClaimed.contains(row.bonus());
