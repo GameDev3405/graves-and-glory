@@ -23,7 +23,15 @@ import zipfile
 
 STAMP_FORMAT = '%Y%m%d-%H%M%S'
 NAME_RE = re.compile(r'^(\d{8}-\d{6})(?:-([a-z]+))?\.zip$')
-WORLDS = ('camp', 'lobby', 'rivergate', 'ironhold', 'frostmarch', 'hollowwood', 'kingsfield')
+# Since 2026-11-03 the builder server runs one save, gg-build, holding every canvas as a dimension (BuildMode). The per-map
+# names remain for the legacy gg-build-<world> folders and their backups.
+ALL = 'gg-build'
+WORLDS = (ALL, 'camp', 'lobby', 'rivergate', 'ironhold', 'frostmarch', 'hollowwood', 'kingsfield')
+
+
+def world_folder(world):
+    """The save folder of a world: gg-build for the all-worlds save, gg-build-<world> for a legacy one."""
+    return ALL if world == ALL else f'gg-build-{world}'
 KEEP_ALL_HOURS = 48
 KEEP_DAILY_DAYS = 14
 OVERLOAD_RE = re.compile(r"Can't keep up! Is the server overloaded\? Running (\d+)ms or (\d+) ticks behind")
@@ -116,7 +124,7 @@ def scheduled_due(world_dir, backup_dir, now, interval_minutes):
 def server_running(server_dir, world):
     """True if the world's session.lock is held open for writing by another process (Windows: cannot be opened exclusively).
     Best effort and read-only; on other platforms falls back to the pid file the supervisor writes."""
-    lock = pathlib.Path(server_dir) / f'gg-build-{world}' / 'session.lock'
+    lock = pathlib.Path(server_dir) / world_folder(world) / 'session.lock'
     if not lock.exists():
         return False
     try:
@@ -129,11 +137,11 @@ def server_running(server_dir, world):
 
 
 def make_backup(server_dir, world, reason, now=None, retention=True):
-    """Zip gg-build-<world> into backups/<world>. A temp .part file is moved into place, so a half-written zip never
+    """Zip the world folder (gg-build, or a legacy gg-build-<world>) into backups/<world>. A temp .part file is moved into place, so a half-written zip never
     carries a real name. Returns the path, or None if the world folder does not exist yet."""
     server_dir = pathlib.Path(server_dir)
     now = now or dt.datetime.now()
-    src = server_dir / f'gg-build-{world}'
+    src = server_dir / world_folder(world)
     if not src.is_dir():
         return None
     dest_dir = server_dir / 'backups' / world
@@ -344,10 +352,10 @@ def health(server_dir, now=None):
     server_dir = pathlib.Path(server_dir)
     now = now or dt.datetime.now()
     props = read_properties(server_dir / 'server.properties')
-    world = 'camp'
+    world = ALL
     cw = server_dir / 'current-world.txt'
     if cw.exists():
-        world = cw.read_text().strip() or 'camp'
+        world = cw.read_text().strip() or ALL
     port = int(props.get('server-port', '25565') or 25565)
     host = props.get('server-ip') or '127.0.0.1'
     report = {'world': world, 'port': port, 'checkedAt': now.isoformat(timespec='seconds')}
@@ -443,7 +451,7 @@ def main(argv=None):
         if getattr(a, 'world', None):
             return a.world
         cw = sd / 'current-world.txt'
-        return cw.read_text().strip() if cw.exists() else 'camp'
+        return cw.read_text().strip() if cw.exists() else ALL
 
     if a.cmd == 'backup':
         world = current()
@@ -452,7 +460,7 @@ def main(argv=None):
             return 2
         reason = a.reason
         if a.if_due:
-            due, why = scheduled_due(sd / f'gg-build-{world}', sd / 'backups' / world, dt.datetime.now(), a.if_due)
+            due, why = scheduled_due(sd / world_folder(world), sd / 'backups' / world, dt.datetime.now(), a.if_due)
             if not due:
                 print(f'skip: {why}')
                 return 0
@@ -462,12 +470,12 @@ def main(argv=None):
                 print('refusing prestart backup: the world is in use', file=sys.stderr)
                 return 2
             if a.changed_only:
-                due, why = scheduled_due(sd / f'gg-build-{world}', sd / 'backups' / world, dt.datetime.now(), 0)
+                due, why = scheduled_due(sd / world_folder(world), sd / 'backups' / world, dt.datetime.now(), 0)
                 if not due:
                     print(f'skip: {why}')
                     return 0
         out = make_backup(sd, world, reason)
-        print(f'backup: {out}' if out else f'skip: gg-build-{world} does not exist yet')
+        print(f'backup: {out}' if out else f'skip: {world_folder(world)} does not exist yet')
         return 0
     if a.cmd == 'prune':
         for d in sorted((sd / 'backups').glob('*')):

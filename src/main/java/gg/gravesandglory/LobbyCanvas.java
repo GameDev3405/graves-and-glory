@@ -13,19 +13,24 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * The builder server's "lobby" world (-Dgg.build=lobby): a blank canvas for hand-building the Last Watch camp (PLAN-TO-1.0 2A.6, PARKED.md "The Last Watch").
- * Flat grass ground, no camp structures; each planned area is only a 1-block concrete outline set into the ground, one colour per area, with signs naming the area and its station's job.
- * BuildMode generates it once, like every builder world, and never touches it again. Normal (non-build) play never calls this class.
+ * The builder server's "lobby" and "camp" canvases: a blank canvas for hand-building the Last Watch camp (PLAN-TO-1.0 2A.6, PARKED.md "The Last Watch").
+ * The ground (grass at GROUND, three dirt, stone down to BOTTOM) is laid by the build_* flat dimensions of the gg_build data pack; this class paints only the guides:
+ * each planned area is a 1-block concrete outline set into the ground, one colour per area, with signs naming the area and its station's job. BuildWorlds paints the
+ * map canvases with the same helpers. BuildMode paints each canvas once and never again. Normal (non-build) play never calls this class.
  */
 final class LobbyCanvas {
-    /** The ground: x and z from -HALF to HALF-1. Grass at GROUND, three dirt below it, stone down to BOTTOM. */
+    /** The canvas: x and z from -HALF to HALF-1. Grass at GROUND, three dirt below it, stone down to BOTTOM (the dimension's flat layers). */
     static final int HALF=96,GROUND=64,BOTTOM=32;
     static final int SIGN_CHARS=15,SIGN_LINES=4;
 
-    /** One planned area: its warp name, sign text (a title and what happens there), outline colour and inclusive box. Signs stand just inside the south edge (north edge when north is set). */
-    record Area(String warp,String title,String text,Block colour,int x0,int z0,int x1,int z1,boolean north){
+    /** One planned area: its warp name ("" for none), sign text (a title and what happens there; no title, no sign), outline colour and inclusive box. Signs stand just inside
+     *  the south edge (north edge when north is set). A round area is the circle inscribed in its box (a capture point). */
+    record Area(String warp,String title,String text,Block colour,int x0,int z0,int x1,int z1,boolean north,boolean round){
+        Area(String warp,String title,String text,Block colour,int x0,int z0,int x1,int z1,boolean north){this(warp,title,text,colour,x0,z0,x1,z1,north,false);}
         int cx(){return Math.floorDiv(x0+x1,2);}
     }
+    /** A 1-block concrete line in the ground from (ax,az) to (bx,bz): a lane or road. */
+    record Line(int ax,int az,int bx,int bz,Block colour){}
 
     /** North is -z. The War Gates are at the south edge, the hearth court with the war table at the centre, the House tents in an arc to the north, the graveyard beyond them,
      *  the armoury and training yard together on the west, the team pads and assembly bays between the spawn and the gates. The east side is left free. */
@@ -48,33 +53,35 @@ final class LobbyCanvas {
         new Area("assembly-bay-2","ASSEMBLY BAY 2","A party or team musters here before marching out through the War Gates.",Blocks.LIGHT_GRAY_CONCRETE,14,28,32,42,false),
         new Area("war-gates","WAR GATES","Leave for battle: local matches start here. Bots fill empty seats.",Blocks.PINK_CONCRETE,-12,44,12,51,false));
 
-    static int width(){return 2*HALF;}
-    static int total(){return width()*width();}
+    /** The edge of the lobby and camp canvases (192 by 192, as the lobby canvas has always been). */
+    static Area edge(){return new Area("","CANVAS EDGE","The planned camp fits inside this line.",Blocks.LIGHT_GRAY_CONCRETE,-HALF,-HALF,HALF-1,HALF-1,false);}
+    /** The camp plan with its canvas edge, in painting order. */
+    static List<Area> plan(){var all=new ArrayList<Area>();all.add(edge());all.addAll(AREAS);return all;}
 
-    /** Column n of total(): clears anything above the ground and lays stone, dirt and grass. */
-    static void column(ServerWorld w,int n){
-        int x=n%width()-HALF,z=n/width()-HALF;
-        w.getChunk(x>>4,z>>4);
-        int flags=Block.NOTIFY_LISTENERS|Block.FORCE_STATE;
-        for(int y=BOTTOM;y<=GROUND;y++){
-            Block b=y==GROUND?Blocks.GRASS_BLOCK:y>=GROUND-3?Blocks.DIRT:Blocks.STONE;
-            w.setBlockState(new BlockPos(x,y,z),b.getDefaultState(),flags);
+    /** The one painting of a canvas: lines, then every outline, then every sign. */
+    static void paint(ServerWorld w,List<Area> areas,List<Line> lines){
+        for(var l:lines)line(w,l);
+        for(var a:areas){
+            if(a.round()){circle(w,a);continue;}
+            for(int x=a.x0();x<=a.x1();x++){outline(w,x,a.z0(),a.colour());outline(w,x,a.z1(),a.colour());}
+            for(int z=a.z0();z<=a.z1();z++){outline(w,a.x0(),z,a.colour());outline(w,a.x1(),z,a.colour());}
         }
-        for(int y=GROUND+1;y<=GROUND+8;y++){var p=new BlockPos(x,y,z);if(!w.getBlockState(p).isAir())w.setBlockState(p,Blocks.AIR.getDefaultState(),flags);}
+        for(var a:areas)signs(w,a);
     }
-
-    /** After the ground: every outline, then every sign. */
-    static void finish(ServerWorld w){
-        for(var a:AREAS){
-            for(int x=a.x0();x<=a.x1();x++){outline(w,x,a.z0(),a);outline(w,x,a.z1(),a);}
-            for(int z=a.z0();z<=a.z1();z++){outline(w,a.x0(),z,a);outline(w,a.x1(),z,a);}
-        }
-        for(var a:AREAS)signs(w,a);
+    static void outline(ServerWorld w,int x,int z,Block colour){w.setBlockState(new BlockPos(x,GROUND,z),colour.getDefaultState(),Block.NOTIFY_ALL);}
+    /** The ring of blocks whose centres lie within half a block of the circle inscribed in the area's box. */
+    static void circle(ServerWorld w,Area a){
+        double cx=(a.x0()+a.x1())/2.0,cz=(a.z0()+a.z1())/2.0,r=(a.x1()-a.x0())/2.0;
+        for(int x=a.x0();x<=a.x1();x++)for(int z=a.z0();z<=a.z1();z++)if(Math.abs(Math.hypot(x-cx,z-cz)-r)<0.5)outline(w,x,z,a.colour());
     }
-    static void outline(ServerWorld w,int x,int z,Area a){w.setBlockState(new BlockPos(x,GROUND,z),a.colour().getDefaultState(),Block.NOTIFY_ALL);}
+    static void line(ServerWorld w,Line l){
+        int dx=l.bx()-l.ax(),dz=l.bz()-l.az(),steps=Math.max(Math.abs(dx),Math.abs(dz));
+        for(int i=0;i<=steps;i++){double t=steps==0?0:(double)i/steps;outline(w,(int)Math.round(l.ax()+dx*t),(int)Math.round(l.az()+dz*t),l.colour());}
+    }
 
     /** The title, then the text, wrapped to sign lines; four lines a sign, the signs side by side along x, centred on the area, one block inside its south (or north) edge. Both faces carry the text. */
     static void signs(ServerWorld w,Area a){
+        if(a.title().isEmpty())return;
         var lines=new ArrayList<String>(wrap(a.title()));lines.add("");lines.addAll(wrap(a.text()));
         int count=(lines.size()+SIGN_LINES-1)/SIGN_LINES,z=a.north()?a.z0()+1:a.z1()-1,start=a.cx()-(count-1)/2;
         for(int s=0;s<count;s++){
@@ -99,7 +106,7 @@ final class LobbyCanvas {
         return out;
     }
 
-    /** spawn first (BuildMode.placeSpawn uses the first warp): its centre, facing north. Every other area: two blocks south of its south edge, facing north, its signs in view. */
+    /** spawn first (BuildMode sends /map arrivals to the first warp): its centre, facing north. Every other area: two blocks south of its south edge, facing north, its signs in view. */
     static void warps(Map<String,double[]> warps){
         for(var a:AREAS){
             double z=a.warp().equals("spawn")?Math.floorDiv(a.z0()+a.z1(),2):a.z1()+2;
