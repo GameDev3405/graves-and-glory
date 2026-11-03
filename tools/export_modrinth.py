@@ -9,6 +9,8 @@ import zipfile
 from release_config import ROOT, version, source_identity, validate_player_jar
 import build_skins
 
+MINECRAFT_VERSION='1.20.1'
+FABRIC_LOADER='0.16.14'  # the pin export_curseforge.py reuses
 ALLOWED_HOSTS={'cdn.modrinth.com','github.com','raw.githubusercontent.com','gitlab.com'}
 
 def validate_index(index):
@@ -39,7 +41,7 @@ def export(argv=()):
     rows=json.loads((ROOT/'dependencies/platform-lock.json').read_text(encoding='utf8'))
     index={'formatVersion':1,'game':'minecraft','versionId':release,'name':'Graves and Glory',
            'summary':'Collect an army and command fantasy battles. Local release candidate.',
-           'dependencies':{'minecraft':'1.20.1','fabric-loader':'0.16.14'},'files':[]}
+           'dependencies':{'minecraft':MINECRAFT_VERSION,'fabric-loader':FABRIC_LOADER},'files':[]}
     for row in rows:
         path=ROOT/row['localPath'];data=path.read_bytes()
         if hashlib.sha512(data).hexdigest()!=row['hashes']['sha512']:raise RuntimeError('Platform lock is stale: '+row['slug'])
