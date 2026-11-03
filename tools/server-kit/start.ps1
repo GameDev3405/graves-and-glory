@@ -67,6 +67,9 @@ try {
     $info.UseShellExecute = $false
     $info.RedirectStandardInput = $true   # stdout and stderr stay on this console
     $proc = [System.Diagnostics.Process]::Start($info)
+    # Write to the raw stream with a BOM-free encoding: the default writer can prepend a BOM, so the server read "?stop".
+    $stdin = New-Object System.IO.StreamWriter($proc.StandardInput.BaseStream, (New-Object System.Text.UTF8Encoding($false)))
+    $stdin.AutoFlush = $true
     Set-Content -LiteralPath $script:PidFile -Value $proc.Id -Encoding ascii
     Write-Kit "Started on port $port with ${MemoryGB}G heap. java pid $($proc.Id). Type stop here, or run .\stop.ps1, to shut down."
 
@@ -79,14 +82,14 @@ try {
             try { $line = $reader.Result } catch { $line = $null }
             if ($null -eq $line) { $reader = $null }
             else {
-                try { $proc.StandardInput.WriteLine($line); $proc.StandardInput.Flush() } catch { }
+                try { $stdin.WriteLine($line) } catch { }
                 try { $reader = [Console]::In.ReadLineAsync() } catch { $reader = $null }
             }
         }
         if (!$stopSent -and (Test-Path -LiteralPath $script:StopFile)) {
             Remove-Item -LiteralPath $script:StopFile -Force -ErrorAction SilentlyContinue
             Write-Kit 'Stop requested; sending "stop" to the server.'
-            try { $proc.StandardInput.WriteLine('stop'); $proc.StandardInput.Flush(); $stopSent = $true } catch { }
+            try { $stdin.WriteLine('stop'); $stopSent = $true } catch { }
         }
         Start-Sleep -Milliseconds 300
     }

@@ -1,5 +1,7 @@
 """Read-only local Minecraft status probe; never included in player/server kits."""
 import json
+import os
+import re
 import socket
 import struct
 import sys
@@ -25,6 +27,15 @@ def readint(sock):
         if not b&128:return result
     raise ValueError('Invalid status packet length')
 
+def expected_max_players():
+    """Max players the server kit configures (server.properties.default); 16 if unreadable."""
+    path=os.path.join(os.path.dirname(os.path.abspath(__file__)),'..','..','tools','server-kit','server.properties.default')
+    try:
+        m=re.search(r'^max-players=(\d+)',open(path).read(),re.M)
+        return int(m.group(1)) if m else 16
+    except OSError:
+        return 16
+
 if __name__=='__main__':
     port=int(sys.argv[1])
     with socket.create_connection(('127.0.0.1',port),timeout=10) as sock:
@@ -36,6 +47,6 @@ if __name__=='__main__':
         size=readint(sock)
         if size>packet_length:raise ValueError('Invalid status payload length')
         data=json.loads(exact(sock,size))
-        assert data['version']['protocol']==763 and data['players']['max']==8
+        assert data['version']['protocol']==763 and data['players']['max']==expected_max_players()
         print(json.dumps({'result':'PASS','scope':'Local production server status; no authenticated player joined',
                           'version':data['version'],'players':{'max':data['players']['max'],'online':data['players']['online']}},indent=2))

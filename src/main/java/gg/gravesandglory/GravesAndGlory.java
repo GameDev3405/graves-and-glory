@@ -66,7 +66,9 @@ public final class GravesAndGlory implements ModInitializer {
         if (BuildMode.active()) BuildMode.init();
         ServerLifecycleEvents.SERVER_STARTED.register(server -> {
             // Only the dedicated Graves and Glory save belongs to this mod.
-            if (!BuildMode.active() && java.util.Set.of("Graves and Glory", "Bannerbound").contains(server.getSaveProperties().getLevelName())) battle = new Battle(server);
+            String level = server.getSaveProperties().getLevelName();
+            if (!BuildMode.active() && java.util.Set.of("Graves and Glory", "Bannerbound").contains(level)) battle = new Battle(server);
+            else if (!BuildMode.active()) TroopModelLoader.LOG.info("Graves and Glory is inactive: level-name \"{}\" is not \"Graves and Glory\" or \"Bannerbound\". Set level-name in server.properties to one of those to enable it.", level);
         });
         ServerLifecycleEvents.SERVER_STOPPED.register(server -> battle=null);
         // Old saves decode our vanilla entity types as ordinary hostile mobs.
