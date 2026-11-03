@@ -73,6 +73,8 @@ try {
     Set-Content -LiteralPath $script:PidFile -Value $proc.Id -Encoding ascii
     Write-Kit "Started on port $port with ${MemoryGB}G heap. java pid $($proc.Id). Type stop here, or run .\stop.ps1, to shut down."
 
+    # Piped stdin can start with a UTF-8 BOM; read it as UTF-8 so a BOM arrives as one char we can strip.
+    try { [Console]::InputEncoding = New-Object System.Text.UTF8Encoding($false) } catch { }
     $reader = $null
     try { $reader = [Console]::In.ReadLineAsync() } catch { $reader = $null }
     $stopSent = $false
@@ -82,7 +84,9 @@ try {
             try { $line = $reader.Result } catch { $line = $null }
             if ($null -eq $line) { $reader = $null }
             else {
-                try { $stdin.WriteLine($line) } catch { }
+                $line = $line.TrimStart([char]0xFEFF)
+                if ($line.StartsWith([string][char]0xEF + [char]0xBB + [char]0xBF)) { $line = $line.Substring(3) }
+                if ($line.Length -gt 0) { try { $stdin.WriteLine($line) } catch { } }
                 try { $reader = [Console]::In.ReadLineAsync() } catch { $reader = $null }
             }
         }
