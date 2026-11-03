@@ -56,7 +56,7 @@ One row per started task or task done in `main`; unlisted tasks in each phase ha
 | 2C.2 | Mode feed lines, ledger, briefing how-to | Agent | In progress (subagent, 2026-11-01) | Convoy HUD strip and track `70b61e4`; Domination, Siege and Convoy lines on a worktree branch |
 | 2C.3 | Campaign schema 3, `MarchMath`, order lock, bonus payout | Agent | Done 2026-10-31 | `8e39637` (from `9660a4f`); `reports/campaign-2c3-2026-10-31.md`; Siege and Convoy payout `3fdf85e`, `5e48a8d` |
 | 2C.4 | Campaign battles as real battles | Agent | In progress | `3fdf85e`: battles 1, 2 and 4 play (Domination, Siege, Convoy). Battles 3, 5 and 6 still lack their mode or map; size, difficulty and text for battles 2 to 6 are `placeholder` cells in `sheets/design.json` |
-| 2C.5, 2C.6 | Campaign card and Pact report; retire 1v1 | Agent | Not started | Six-seat lobby `784249a` helps 2C.6; no per-seat reward work yet |
+| 2C.5, 2C.6 | Campaign card and Pact report; retire 1v1 | Agent | Done 2026-11-02 | `b693cca4` (2C.5 card and report checks), `5be81366` (campaign seats per row), `5d98429e` (pay by time seated; battles 2-3 2v2, 4-6 3v3), all Kort approved |
 
 ### Phase 3: six-player slice
 
