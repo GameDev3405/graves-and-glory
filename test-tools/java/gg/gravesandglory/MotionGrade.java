@@ -78,6 +78,7 @@ final class MotionGrade extends Phase2Checks.Stage {
     static final float[] BEARINGS = {0, 90, 180, -90};
     static final Map<String, String> SERVER_STANCE = Map.of("idle", "", "carry", "run", "guard", "hold", "brace", "brace", "wall", "wall", "shield", "shield_move", "aim", "ranged_aim", "rest", "ranged_rest");
     static final Set<String> SHIELD_STANCES = Set.of("wall", "brace", "shield_move", "hold");
+    static final String VIDEO_CLIP = System.getenv().getOrDefault("GRAVES_GRADE_VIDEO_CLIP", "");
     static final List<String> CAT_ORDER = List.of("stance", "attack", "hit", "scene", "death");
     static final String OUT_ROOT = System.getProperty("gravesandglory.gradeOut", "work/grade"), REPO = System.getProperty("gravesandglory.repoRoot", ""),
             PYTHON = System.getProperty("gravesandglory.python", "python");
@@ -277,7 +278,7 @@ final class MotionGrade extends Phase2Checks.Stage {
         wait = 0;
         while (true) {
             cs++;
-            if (cs == 3 && PARTS.contains("loco") || cs == 4 && PARTS.contains("states") || cs == 5 && (PARTS.contains("transitions") || PARTS.contains("hits") || PARTS.contains("novelty")) || cs >= 6) break;
+            if (cs == 3 && PARTS.contains("loco") || cs == 4 && PARTS.contains("states") || cs == 5 && (PARTS.contains("transitions") || PARTS.contains("hits") || PARTS.contains("novelty") || PARTS.contains("video")) || cs >= 6) break;
         }
         if (cs >= 6) { for (var u : cast) { var e = client(c, u.mob); if (e != null) TroopModels.forceFace(e, -1); } raised.clear(); }
     }
@@ -620,6 +621,8 @@ final class MotionGrade extends Phase2Checks.Stage {
         }
         if (PARTS.contains("hits")) for (String z : List.of("head", "body", "legs")) for (String d : DIRS) for (int w = 0; w < 3; w++)
             trans.add(new Tr("hs-" + z + "-" + d + "-" + w, "hold", java.util.Collections.singletonList(new Object[]{HS_EVENT, "hit", z + ":" + d + ":" + w}), "hit sweep: " + z + " zone, from the " + d + ", weight " + w + " (slash), fired after f" + HS_EVENT));
+        // a real-time look at one attack (GRAVES_GRADE_VIDEO_CLIP names the variant, else the first) fired three times from the attack stance, 1.6 s apart
+        if (PARTS.contains("video")) trans.add(new Tr("attack-video", attackStance(), List.of(new Object[]{10, "attack", VIDEO_CLIP}, new Object[]{42, "attack", VIDEO_CLIP}, new Object[]{74, "attack", VIDEO_CLIP}), "three attacks from the attack stance, after f10, f42 and f74"));
         if (PARTS.contains("novelty")) trans.add(new Tr("novelty-idle", "", java.util.Collections.singletonList(new Object[]{10, "stance", ""}), "idle for " + NOV_FRAMES / 20 + " s with no enemy, no move: a novelty idle fires (first one 2 to 14 s in)"));
         seeds(c, "the first cast", true);
         System.out.println("[mo-grade] " + clipOrder.size() + " clips (" + (SOLO_CLIPS == null ? "" : "filter " + SOLO_CLIPS + ", ") + jobs.size() + " solo jobs), " + segs.size() + " loco segments, " + states.size() + " states, " + trans.size() + " transitions");
@@ -1526,7 +1529,7 @@ final class MotionGrade extends Phase2Checks.Stage {
             case "stance" -> { curStance = a; inject(c, a); }
             case "raise" -> { for (var u : subj) raised.add(u.mob.getId()); }
             case "lower" -> { for (var u : subj) raised.remove(u.mob.getId()); }
-            case "attack" -> { int rows = Tactics.variants(famName).size(); int v = 0; while (v < fam.attackIndex().length && fam.attackIndex()[v] < 0) v++; for (var u : subj) { var e = client(c, u.mob); if (e != null) MotionEvents.Client.attack(e.getId(), v, tick, rows); } }
+            case "attack" -> { var vrs = Tactics.variants(famName); int rows = vrs.size(), v = 0; while (v < fam.attackIndex().length && fam.attackIndex()[v] < 0) v++; for (int i = 0; i < rows; i++) if (!a.isEmpty() && vrs.get(i).id().equals(a)) v = i; for (var u : subj) { var e = client(c, u.mob); if (e != null) MotionEvents.Client.attack(e.getId(), v, tick, rows); } }
             case "hit" -> {
                 String[] q = a.split(":"); String zone = q[0]; int dir = q.length > 1 ? Math.max(0, DIRS.indexOf(q[1])) : 0, wt = q.length > 2 ? Integer.parseInt(q[2]) : 1; float br = new float[]{0, 91, 180, -91}[dir];
                 for (var u : subj) { var e = client(c, u.mob); if (e != null) MotionEvents.Client.hit(true, e.getId(), MotionEvents.KINDS.indexOf("slash"), MotionEvents.ZONES.indexOf(zone), br, wt, 0, tick); }
@@ -1841,7 +1844,7 @@ final class MotionGrade extends Phase2Checks.Stage {
         if (PARTS.contains("loco")) want.addAll(List.of("loco_frame", "loco", "loco_trace", "dense", "delta"));
         if (PARTS.contains("states")) want.addAll(List.of("crowd", "crowd_zoom", "formed", "formed_zoom", "level", "level_zoom", "close", "capture", "strip", "dense", "delta"));
         if (PARTS.contains("transitions")) want.addAll(List.of("capture", "strip", "dense", "delta"));
-        if (PARTS.contains("hits") && !PARTS.contains("transitions")) want.addAll(List.of("capture", "strip"));
+        if ((PARTS.contains("hits") || PARTS.contains("video")) && !PARTS.contains("transitions")) want.addAll(List.of("capture", "strip"));
         if (pillow && PARTS.contains("states")) want.add("gif");
         List<String> absent = new ArrayList<>(); for (String w : new LinkedHashSet<>(want)) if (!kinds.containsKey(w)) absent.add(w);
         // R80: every loco segment its own sheets, trace, delta plot and both dense windows; a missing one fails the files check
