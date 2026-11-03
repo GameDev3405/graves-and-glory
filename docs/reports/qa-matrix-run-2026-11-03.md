@@ -3,7 +3,8 @@
 Branch `work/qa-matrix-runs`, base `main` bd05fa2b. Tester: Sonnet worker. Per-row states are in the "Run 2026-11-03" column of `docs/QA-MATRIX.md`. Evidence files (copies of the harness `local-checks.txt` and the verify result) are in `docs/reports/qa-matrix-run-2026-11-03-evidence/`; full logs are under the gitignored `work/q3/`.
 
 ## Totals (137 rows)
-Updated after the robustness pass (last section): 90 PASS, 2 FAIL (C9, I10), 29 Kort (needs Kort, friends, real network or visual sign-off), 16 not run (no agent-runnable check, or turn budget).
+Updated after the E10/D21/K4 follow-up (end of the robustness pass): 93 PASS, 2 FAIL (C9, I10), 29 Kort (needs Kort, friends, real network or visual sign-off), 13 not run.
+Before that follow-up (robustness pass): 90 PASS, 2 FAIL, 29 Kort, 16 not run (no agent-runnable check, or turn budget).
 After the dedicated-server pass (below): 87 PASS, 1 FAIL (C9), 29 Kort (needs Kort, friends, real network or visual sign-off), 20 not run (no agent-runnable check exists, or a fixture was needed).
 Before that pass: 78 PASS, 1 FAIL (K10, since resolved to PASS), 34 Kort, 24 not run. The pass moved C7, C8, C10, E9, F5, J2, J9 to PASS, C9 and C11 to FAIL, and completed the live halves of F2-F4 (already PASS).
 A PASS on an AUTO-only row means the standalone or Python check passed in `verify.py fast`; "live" halves of mixed rows were not run (noted in the column).
@@ -62,8 +63,12 @@ Same setup as the dedicated-server pass: a new throwaway scratch server inside t
 | D18 one corrupt file | PASS (note) | the corrupt commander joins with defaults and his file is kept as `.corrupt`; the two good commanders load intact. The row says "fails": by design he is not refused |
 | I10 corrupt parties file | FAIL (expectation) | server starts, uses default parties, keeps `gravesandglory-parties.json.corrupt`; row text expects a startup stop |
 | I11 delete layout marker | PASS | restart clean; `camp:practice` rebuilt the arena and rewrote the marker 2 s later; no exception. A join alone does not rewrite it |
-| D20, D21, E10, H7, K4, K11 | SKIP (turn budget) | D20 needs an oversized `profile_v1` bot send; D21 a blocked `.tmp` path plus a `roll` (prepared, not run); E10 a start with `level-name=Bannerbound`; H7 a finished 900 s round and rejoin; K4 two bots in a room with the host leaving; K11 RCON entity counts across a finished round and a stop |
+| D21 save fails | PASS (follow-up, branch `work/qa-rows-e10-d21-k4`) | `.tmp` blocked by a directory; `roll` -> notice "Collection could not be saved; check disk space.", gold back to 2700, profile sha256 unchanged, `.bak` and `.v1`/`.v2` intact |
+| E10 legacy world name | PASS (follow-up) | `level-name=Bannerbound`: camp built, `gravesandglory-camp.json`, `camp:practice` created a battle |
+| K4 host leaves | PASS (follow-up) | `social:exit` by the host passes the seat to the guest; a disconnected host keeps the seat during the reconnect reservation ("Waiting for disconnected members to reconnect") |
+| D20, H7, K11 | SKIP (turn budget) | D20 needs an oversized `profile_v1` bot send; H7 a finished 900 s round and rejoin; K11 RCON entity counts across a finished round and a stop |
 
 Findings (not fixed, per scope):
 - I10: the row text and the code disagree (the code falls back to defaults and quarantines the file, as D18). Kort/owner call: change the row or make startup stop. The same stale expectation applies to D9.
 - Preflight regenerated `Spec.java` and `sheets/preflight.json` (line endings only); reverted, not committed.
+- Follow-up note: a roll sent right after join was processed during server lag and showed nothing; waiting about 8 s after the snapshot made it reproducible. The v1 profile migration at join wrote the profile despite the blocked `.tmp`, so the D21 baseline hash was taken after the join. A scratch world folder must hold a real world (level.dat) before `start.ps1` runs its backup step.
