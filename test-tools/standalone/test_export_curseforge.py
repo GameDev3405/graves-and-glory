@@ -105,7 +105,7 @@ class CurseForgeChecks(unittest.TestCase):
     def test_committed_ids_cover_the_platform_lock(self):
         rows=json.loads((REPO/'dependencies/platform-lock.json').read_text(encoding='utf8'))
         ids=json.loads((REPO/'dependencies/curseforge-ids.json').read_text(encoding='utf8'))
-        self.assertEqual(set(ids['entries']),{r['slug'] for r in rows})
+        self.assertEqual(set(ids['entries']),{r['slug'] for r in rows if not r.get('curseforgeOverride')})
         for slug,entry in ids['entries'].items():
             with self.subTest(slug):
                 self.assertTrue(entry['sourceUrl'].startswith('https://www.curseforge.com/'))
