@@ -4,17 +4,22 @@
 A crewman in an iron cap with an ember brow band, calm mail and plate under a team tabard, standing behind a compact
 engine held at his hip: an oak rail carrying a brass-headed bolt, a slim rope skein either side with bright iron caps,
 oak arms swept back to a pale cord, two small iron-tyred wheels with brass hubs on a short axle, a prop foot at the
-muzzle, and a windlass drum flush against his belt with a crank grip at each hand. Tier I only: the other armour tiers
-fall back to it.
+muzzle, and a windlass drum flush against his belt with a crank grip at each hand. Tier II (the
+Siege Engineer): a brass cap band, a riveted bevor, a fourth spaulder lame with a brass boss, bracers, knee plates, and a
+brass collar on the bolt head and bands on the prop. Tier III (the Engine Master): spaulder spikes, greaves, barbs on the
+bolt head and spiked wheel hubs. No back flag.
 
   python build_ic_ballista.py preview <dir> [side] | contact <png> [side] | install
 """
 import os, sys
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
+sys.path.insert(0, os.path.join(HERE, "..", "common"))
+import house_stub
+import ironclad_tiers as IT
 from siege_kit import *   # noqa: F401,F403
 
-SKIN = (128, 128)
+SKIN = (256, 128)   # tier II and III plate and engine parts (128 x 128 was full)
 CLOTH = (128, 64)
 
 def wheel_face(face, w, h):
@@ -123,15 +128,26 @@ def bones():
         tip = (3 * c + 7.5 * 0.7071 * c, -15 + 7.5 * 0.7071)
         B.append(Bone(f"cord_{side}", "root", (tip[0], BY, tip[1]), rot=(0, -68.9 * c, 0), tag="siege", boxes=[
             Box((-0.5, -0.5, -0.4), (1, 1, 9), cord_paint)]))
-    B.append(Bone("bolt", "root", tag="siege", boxes=[
-        Box((-0.5, 11.5, -20.5), (1, 2, 14), bolt_shaft()),
-        Box((-1.5, 11, -23.5), (3, 3, 3), bolt_head),
-        Box((-0.5, 12, -25.5), (1, 1, 2), brass(6, seed="tip")),
-        Box((-2, 12, -9.5), (4, 1, 3), fletch), Box((-0.5, 10.5, -9.5), (1, 4, 3), fletch)]))
+    for t in (1, 2, 3):
+        bx = [Box((-0.5, 11.5, -20.5), (1, 2, 14), bolt_shaft()),
+              Box((-1.5, 11, -23.5), (3, 3, 3), bolt_head),
+              Box((-0.5, 12, -25.5), (1, 1, 2), brass(6, seed="tip")),
+              Box((-2, 12, -9.5), (4, 1, 3), fletch), Box((-0.5, 10.5, -9.5), (1, 4, 3), fletch)]
+        if t >= 2:   # a brass collar behind the bolt head, brass bands on the prop
+            bx += [Box((-2, 10.5, -21), (4, 4, 1), IT.brass(3, "bc")), Box((-1.5, 18, -21), (3, 1, 3), IT.brass(3, "pb"))]
+        if t >= 3:   # barbs on the bolt head, spikes on the wheel hubs
+            bx += [Box((-2.5, 12, -22.5), (1, 1, 1.5), IT.spike(IT.IRON, 4, 2)), Box((1.5, 12, -22.5), (1, 1, 1.5), IT.spike(IT.IRON, 4, 2)),
+                   Box((-12, 19.9, CZ - 0.5), (2, 1, 1), IT.spike(IT.IRON, 3, 2)), Box((10, 19.9, CZ - 0.5), (2, 1, 1), IT.spike(IT.IRON, 3, 2))]
+        B.append(Bone("bolt" if t == 1 else f"bolt_t{t}", "root", tag="siege", weapon_tiers=[t], boxes=bx))
     B.append(Bone("quiver", "body", boxes=[
         Box((-3, -10, 2.2), (6, 9, 3), hooped(grain(OAK, "y", 4, "qv"), [(0, 1), (4, 1), (8, 1)], along="y", R=IRON)),
         Box((-2.5, -11.5, 2.7), (5, 2, 1.5), brass(5, seed="qa"))]))
+    IT.crew_tiers(B, "ba", comb=False)
     return B
+
+NOTE = ("Ironclad Ballista Crew (unit identity, Ironclad): a crewman in an ember-plumed iron cap behind a wheeled hip ballista. Tier II "
+        "brass cap band, bevor, spaulder lame and boss, bracers, knee plates, a brass bolt collar; tier III spaulder spikes, greaves, "
+        "a barbed bolt and spiked hubs. No back flag.")
 
 def mantlet(T):
     pcog = {"L": BRASS[5], "m": BRASS[3], "d": IRON[0]}
@@ -152,9 +168,9 @@ def cloth_painter(spec, side):
 
 IC_BALLISTA = Troop("ic_ballista", SKIN, CLOTH, bones, cloth_painter,
                     {"weapon": "none", "hand": "right", "idleArms": "hang", "portrait": "tall 4", "faces": {"count": 4, "card": 0}},
-                    tiers=(1,))
+                    )
 def build(): return IC_BALLISTA.build()
 def outputs(): return IC_BALLISTA.outputs()
 
 if __name__ == "__main__":
-    IC_BALLISTA.main(sys.argv)
+    house_stub.main(IC_BALLISTA, NOTE, sys.argv)
