@@ -181,6 +181,7 @@ final class Tactics {
         hop(u,time); // a wall troop jumping onto its slot on a rise is carried over the edge every tick of the jump
         if(u.lockedTarget!=null&&!u.lockedTarget.isAlive())u.lockedTarget=null; // a fallen enemy lies a while (Task 7): drop it at once, not on the next beat
         if(u.mob.getTarget()!=null&&!u.mob.getTarget().isAlive())u.mob.setTarget(null);
+        if(u.looseAt>=0&&time>=u.looseAt)looseLate(battle,u,time); // Kort Q70: a bow troop's shot leaves its loose ticks after the beat that took it
         if(time%10!=u.slot%10){brace(battle,u);shieldStance(u);stretch(battle,u,battle.assignment(u),time);return;} // the shield and a wall troop's last stretch every tick; everything else on the unit's 10-tick beat
         u.place=null; // the beat reads the slot again
         var mob=u.mob;var s=u.squad;var a=battle.assignment(u);
@@ -240,11 +241,9 @@ final class Tactics {
                 else mob.getNavigation().stop();
                 if(time>=u.nextAttack&&time>=u.stunnedUntil&&!pending(battle,u)&&!Abilities.tooClose(u,nearest)){
                     int cooldown=u.spec.cooldown();u.nextAttack=u.nextAttack<time-10?time+cooldown:u.nextAttack+cooldown;mob.swingHand(Hand.MAIN_HAND);
-                    // A melee blow lands on its swing's impact frame (swing, land); a shot or a spell goes now.
-                    if(!swing(battle,u,enemy,time)){BattleEffects.strike(battle,u,enemy);Abilities.attack(battle,u,enemy,time);}
-                    if(ranged){
-                        battle.world.playSound(null,mob.getBlockPos(),u.spec.magic()?SoundEvents.ENTITY_EVOKER_CAST_SPELL:SoundEvents.ENTITY_ARROW_SHOOT,SoundCategory.HOSTILE,.25f,1.1f);
-                    }
+                    int late=Projectiles.looseTicks(u);
+                    if(late>0){u.looseAt=time+late;u.looseTarget=enemy;} // Kort Q70: a bow troop's shot leaves late ticks on (looseLate)
+                    else shoot(battle,u,enemy,time,ranged);
                 }else if(drawsAhead(u)&&time+10>=u.nextAttack&&time+10>=u.stunnedUntil&&!pending(battle,u)&&!Abilities.tooClose(u,nearest))Projectiles.drawAhead(battle,u,enemy,10); // the beat before a bow's shot: its draw starts now, the arrow still leaves on the next beat (cosmetic, R110 Plan B)
             }else if(!holdSiege&&(!hold||GravesAndGlory.Battle.horizontalDistance(enemy.getPos(),a.target)<engage*engage)){
                 Vec3d goal=enemy.getPos();
@@ -493,10 +492,27 @@ final class Tactics {
     static int swings,strikesLanded,strikesMissed;
     /** Swings refused because the troop's last blow is still pending (Tactics.swing; the attack gate already waits for it, so any is a caller's slip). */
     static int swingsRefused;
+    /** The attack a troop's beat takes: a melee blow lands on its swing's impact frame (swing, land); a shot or a spell goes now, with its sound. */
+    static void shoot(GravesAndGlory.Battle battle,GravesAndGlory.Unit u,LivingEntity enemy,long time,boolean ranged){
+        if(!swing(battle,u,enemy,time)){BattleEffects.strike(battle,u,enemy);Abilities.attack(battle,u,enemy,time);}
+        if(ranged)battle.world.playSound(null,u.mob.getBlockPos(),u.spec.magic()?SoundEvents.ENTITY_EVOKER_CAST_SPELL:SoundEvents.ENTITY_ARROW_SHOOT,SoundCategory.HOSTILE,.25f,1.1f);
+    }
+    /**
+     * Kort Q70 (2026-11-02): a bow troop's late shot, its loose ticks (Projectiles.looseTicks) after the beat that took its cooldown. It leaves
+     * at the target the beat chose, as that beat would have shot it, unless the troop is stunned now or the target has fallen or left the world:
+     * then the shot is lost (as a melee blow is, BattleMath.strikeLands) and the cooldown stands.
+     */
+    static void looseLate(GravesAndGlory.Battle battle,GravesAndGlory.Unit u,long time){
+        LivingEntity t=u.looseTarget;u.looseAt=-1;u.looseTarget=null;
+        if(t==null||!u.mob.isAlive()||time<u.stunnedUntil||!t.isAlive()||t.isRemoved()||t.getWorld()!=battle.world||t instanceof net.minecraft.entity.player.PlayerEntity p&&p.isSpectator()){looseLost++;return;}
+        shoot(battle,u,t,time,true);
+    }
+    /** Late shots lost (looseLate) since the server started. */
+    static int looseLost;
     /** Whether a troop's shot is announced a beat early (Projectiles.drawAhead): a bow's, whose clip draws for its 10 impact ticks before the loose (R110 Plan B; the crossbow and thrower families have no clips yet). */
     static boolean drawsAhead(GravesAndGlory.Unit u){return u.spec.ranged()&&!u.spec.magic()&&"bow".equals(u.spec.family());}
     /** Whether this troop has a blow pending (Battle.strikes): one at most, so its next swing waits for it. */
-    static boolean pending(GravesAndGlory.Battle b,GravesAndGlory.Unit u){for(var s:b.strikes)if(s.attacker()==u)return true;return false;}
+    static boolean pending(GravesAndGlory.Battle b,GravesAndGlory.Unit u){if(u.looseAt>=0)return true;for(var s:b.strikes)if(s.attacker()==u)return true;return false;}
     /**
      * A melee troop's swing (its cooldown already taken and its arm swung): the swing it plays (never the one before, BattleMath.pickVariant), its golem or ravager
      * swing shown now, and its blow queued for the impact frame, that swing's impactTicks on (clamped to land before the next swing can start,

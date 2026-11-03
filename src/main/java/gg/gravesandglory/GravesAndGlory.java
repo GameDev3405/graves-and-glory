@@ -226,6 +226,8 @@ public final class GravesAndGlory implements ModInitializer {
         Spec.TroopsRow spec;
         int slot;
         long nextAttack;long abilityAt,windupUntil;Vec3d spellCenter;
+        /** Kort Q70: the battle tick a bow troop's late shot leaves (Tactics.looseLate; -1 none) and the target its beat chose. */
+        long looseAt=-1;LivingEntity looseTarget;
         /** The battle tick of the troop's last melee swing whose blow is pending or landed (Tactics.swing; -1 none), and the swing it played: an index into its family's attackVariants rows (Tactics.variants), so the next never repeats it (BattleMath.pickVariant; -1 none yet). */
         long swungAt=-1;int lastVariant=-1;
         /** The world tick (getTime) that swing began on, -1 none: attack_v1's startTick, and what a late joiner's catch-up reads (MotionEvents.catchUp). */

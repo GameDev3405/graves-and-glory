@@ -100,15 +100,22 @@ public final class MotionMath {
      * phase: cyclic-layer offset in [0, 2pi). tempo, amp: scales in [0.9, 1.1].
      * breath: breathing-rate multiplier in [0.85, 1.15]. idleLeg: preferred weight leg, 0 or 1.
      * noveltyOffset: seconds offset for novelty idle timing, in [0, 12). variantBias: raw bits for attack-variant picks.
+     * loose: a bow troop's shot leaves this many ticks after its beat, 0 to LOOSE_MAX (Kort Q70, 2026-11-02), so a volley is not
+     * lockstep; hold, 0 to loose, of those ticks the draw holds at full (the clip's full marker) longer, the rest it starts later.
      */
-    public record Seed(double phase, double tempo, double amp, double breath, int idleLeg, double noveltyOffset, long variantBias) {}
+    public record Seed(double phase, double tempo, double amp, double breath, int idleLeg, double noveltyOffset, long variantBias, int loose, int hold) {}
+
+    /** The most ticks a bow troop's loose trails its beat (Kort Q70: at most 0.15 s). */
+    public static final int LOOSE_MAX = 3;
 
     public static Seed seed(long uuidMost, long uuidLeast) {
         long h = mix(uuidMost ^ mix(uuidLeast + 0x9E3779B97F4A7C15L));
         long a = mix(h + 0x9E3779B97F4A7C15L), b = mix(h + 2 * 0x9E3779B97F4A7C15L), c = mix(h + 3 * 0x9E3779B97F4A7C15L);
         long d = mix(h + 4 * 0x9E3779B97F4A7C15L), e = mix(h + 5 * 0x9E3779B97F4A7C15L), f = mix(h + 6 * 0x9E3779B97F4A7C15L);
+        long g = mix(h + 7 * 0x9E3779B97F4A7C15L), k = mix(h + 8 * 0x9E3779B97F4A7C15L);
+        int loose = (int) Math.floorMod(g, (long) LOOSE_MAX + 1), hold = (int) Math.floorMod(k, (long) loose + 1);
         return new Seed(Math.min(unit(a) * TAU, Math.nextDown(TAU)), 0.9 + 0.2 * unit(b), 0.9 + 0.2 * unit(c),
-                0.85 + 0.3 * unit(d), (int) (e >>> 63), 12 * unit(f), mix(h ^ 0xD1B54A32D192ED03L));
+                0.85 + 0.3 * unit(d), (int) (e >>> 63), 12 * unit(f), mix(h ^ 0xD1B54A32D192ED03L), loose, hold);
     }
 
     /** splitmix64 finaliser. */

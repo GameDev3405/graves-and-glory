@@ -500,6 +500,8 @@ public final class MotionEngine {
                 List<Clip> set = (stanceKey.equals("wall") || stanceKey.equals("brace")) && !fam.wallAttacks().isEmpty() ? fam.wallAttacks() : fam.attacks();
                 Clip clip = set.get(Math.floorMod(attack.variant(), set.size()));
                 var tr = new MotionStack.Track(st.ids++, ATTACK, clip, null, 0, f.seed.amp(), attack.startTick() / (double) Clip.TICKS, f.seed.tempo());
+                Double full = clip.markers().get("full"); // Kort Q70: a bow shot (draw and full markers) holds its full draw the unit's hold ticks longer
+                if (full != null && f.seed.hold() > 0 && (tr.impact < 0 || full <= tr.impact)) { tr.holdAt = full; tr.hold = f.seed.hold() / (double) Clip.TICKS; }
                 if (tr.time(f.now) < clip.length() - 0.05) MotionStack.begin(st, fam, tr, f);
             }
         }

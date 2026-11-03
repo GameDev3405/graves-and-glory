@@ -1397,7 +1397,11 @@ final class MotionGrade extends Phase2Checks.Stage {
         var subj = subjects(mode); long tick = c.world.getTime();
         switch (s.cat()) {
             case "stance" -> inject(c, s.stance());
-            case "attack" -> { int rows = Tactics.variants(famName).size(), i = 0; for (var u : subj) { var e = client(c, u.mob); if (e != null) MotionEvents.Client.attack(e.getId(), s.variant(), tick - (mode == L_CLOSE ? 0 : spread(i)), rows); i++; } }
+            case "attack" -> { var vr = Tactics.variants(famName); int rows = vr.size(), i = 0; boolean q70 = famName.equals("bow") && mode != L_CLOSE && s.variant() < rows;
+                for (var u : subj) { var e = client(c, u.mob); if (e != null) {
+                    // Kort Q70 (r12): a bow crowd shot on this beat starts as the server sends it (Projectiles.shotStart: its UUID's loose and hold), not a harness spread
+                    long at = q70 ? Projectiles.shotStart(u.mob.getUuid(), tick + vr.get(s.variant()).impactTicks(), vr.get(s.variant()).impactTicks()) : tick;
+                    MotionEvents.Client.attack(e.getId(), s.variant(), at - (mode == L_CLOSE ? 0 : spread(i)), rows); } i++; } }
             case "hit" -> { for (var u : subj) { var e = client(c, u.mob); if (e != null) MotionEvents.Client.hit(true, e.getId(), MotionEvents.KINDS.indexOf("slash"), MotionEvents.ZONES.indexOf(s.zone()), 0f, 1, s.blocked() ? 1 : 0, tick); } }
             case "scene" -> { for (var u : subj) { var e = client(c, u.mob); if (e != null) TroopMotion.setScenePose(e.getId(), s.clip()); } }
             case "death" -> { // H2: the crowd dies of mixed kinds and directions, the centre troop keeps the state's slash and bearing

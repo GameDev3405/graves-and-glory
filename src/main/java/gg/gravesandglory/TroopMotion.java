@@ -352,7 +352,7 @@ public final class TroopMotion {
     /** M2: what the cull reach keeps past the sampled bounds and CULL_MARGIN for what the sampling runs do not drive (the crowd's shove, the cloth springs, uneven ground), blocks. */
     static final double PROC_PAD=.25;
     /** M2: the largest seed the sampling runs drive the engine with (amp and tempo at the top of their spread). */
-    static final MotionMath.Seed BOUNDS_SEED=new MotionMath.Seed(0,1.1,1.1,1.15,0,0,0);
+    static final MotionMath.Seed BOUNDS_SEED=new MotionMath.Seed(0,1.1,1.1,1.15,0,0,0,0,0);
     /** M2: the clock the sampling runs start on (seconds). */
     private static final double BOUNDS_T0=100;
     /** M2: the longest any bounds took to sample (milliseconds), for the harness. */

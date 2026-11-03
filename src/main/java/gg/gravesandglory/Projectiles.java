@@ -124,9 +124,24 @@ public final class Projectiles {
     static void loose(GravesAndGlory.Unit u,double peak){
         var rows=Tactics.variants(u.spec.family());if(rows.isEmpty())return;
         int variant=shotVariant(u,rows,peak);
-        u.catchVariant=variant;u.swingTick=Math.max(0,u.mob.getWorld().getTime()-rows.get(variant).impactTicks());
+        u.catchVariant=variant;u.swingTick=Math.max(0,u.mob.getWorld().getTime()-rows.get(variant).impactTicks()-hold(u));
         MotionEvents.sendAttack(u,variant,u.swingTick);
     }
+    /**
+     * Kort Q70 (2026-11-02): a bow troop's shot leaves MotionMath.Seed.loose ticks (0 to 3, from its UUID) after its beat, so a volley line is
+     * not lockstep; of those ticks its draw holds at full Seed.hold longer (MotionStack.Track.hold) and starts the rest later. Damage, speed,
+     * arrow count and the cooldown's cadence are unchanged. Other troops: 0.
+     */
+    static int looseTicks(GravesAndGlory.Unit u){return Tactics.drawsAhead(u)?seed(u.mob.getUuid()).loose():0;}
+    /** The extra ticks a bow troop's shot holds its full draw (Seed.hold), so its clip starts that much before impactTicks ahead of the loose. Others: 0. */
+    static int hold(GravesAndGlory.Unit u){return Tactics.drawsAhead(u)?seed(u.mob.getUuid()).hold():0;}
+    static MotionMath.Seed seed(java.util.UUID id){return MotionMath.seed(id.getMostSignificantBits(),id.getLeastSignificantBits());}
+    /**
+     * The world tick a bow troop's shot on the beat at beat tick starts its clip (attack_v1's startTick): it leaves loose ticks after the beat and
+     * its clip reaches its impact impactTicks plus hold ticks after it starts. drawAhead sends it and loose stamps the same tick (the test harness's
+     * volley line uses it as the server would).
+     */
+    public static long shotStart(java.util.UUID id,long beat,int impactTicks){var s=seed(id);return beat+s.loose()-impactTicks-s.hold();}
     /** The row of a shot's family loose sends for an arc of this peak: <family>_volley for a lofted one, <family>_direct for a flat one, else the first. */
     static int shotVariant(GravesAndGlory.Unit u,List<Spec.AttackVariantsRow> rows,double peak){
         int variant=0;String want=u.spec.family()+(peak>0?"_volley":"_direct");
@@ -145,7 +160,7 @@ public final class Projectiles {
         var rows=Tactics.variants(u.spec.family());if(rows.isEmpty())return 0;
         Vec3d from=u.mob.getEyePos(),to=aim(target);String kind=Abilities.visual(u);
         int variant=shotVariant(u,rows,arc(b,u,from,to,kind.equals("arrow")||kind.equals("trident")).peak());
-        long start=u.mob.getWorld().getTime()+ahead-rows.get(variant).impactTicks();if(start<0)return 0;
+        long start=shotStart(u.mob.getUuid(),u.mob.getWorld().getTime()+ahead,rows.get(variant).impactTicks());if(start<0)return 0;
         return MotionEvents.sendAttack(u,variant,start);
     }
     public static void fire(GravesAndGlory.Battle b,GravesAndGlory.Unit u,LivingEntity target,String kind,float amount){

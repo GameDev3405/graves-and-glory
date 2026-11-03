@@ -228,9 +228,16 @@ final class MotionStack {
             this.start = start; this.impact = -1; this.tempo = 1; this.legShare = legShare; this.x = 1; this.inertial = inertial;
         }
 
-        /** Clip time: real time up to the impact marker, so the impact lands on the server's tick, then the unit's tempo. */
+        /** Kort Q70 (2026-11-02): a bow shot's extra draw hold, seconds, and the clip time it holds at (its full marker); 0 and -1 none. */
+        double hold, holdAt = -1;
+
+        /**
+         * Clip time: real time up to the impact marker, so the impact lands on the server's tick, then the unit's tempo. A held
+         * shot stands at holdAt for hold seconds of real time first (the server starts it that much earlier, Projectiles.drawStart).
+         */
         double time(double now) {
             double e = Math.max(0, now - start);
+            if (hold > 0 && e > holdAt) e = Math.max(holdAt, e - hold);
             if (impact < 0) return e * tempo;
             return e <= impact ? e : impact + (e - impact) * tempo;
         }
@@ -240,7 +247,7 @@ final class MotionStack {
         /** When the clip time reaches the clip's length: time() inverted. */
         double end() {
             double l = length(), e = impact < 0 ? l / tempo : l <= impact ? l : impact + (l - impact) / tempo;
-            return start + e;
+            return start + e + (hold > 0 && holdAt < l ? hold : 0);
         }
 
         /**

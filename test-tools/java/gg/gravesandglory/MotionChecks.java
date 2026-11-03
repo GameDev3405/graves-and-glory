@@ -442,7 +442,7 @@ public final class MotionChecks {
     }
 
     /** The largest seed the engine can draw (MotionMath.seed's ranges at their top): the widest swing and hit gains. */
-    static final MotionMath.Seed MAX_SEED = new MotionMath.Seed(0, 1.1, 1.1, 1.15, 0, 0, 0);
+    static final MotionMath.Seed MAX_SEED = new MotionMath.Seed(0, 1.1, 1.1, 1.15, 0, 0, 0, 0, 0);
     /** Where the simulated sequences start (render seconds): any time well past 0. */
     static final double T0 = 100;
 
