@@ -105,7 +105,7 @@ One row per started task or task done in `main`; unlisted tasks in each phase ha
 
 | ID | Task | Owner | State | Evidence |
 |---|---|---|---|---|
-| 5.1 | Balance design review | Kort + Agent | In progress | Set A (ten troop stat and cost changes) merged `3b8b58b`; arrow speed `19c7b4d`; House audit probe and reports merged on Set A with no stat change (`d348581`, Q33). Kort ruled that bot-match lopsidedness is accepted and matchups get no stat changes (Q50, Q51). The vanilla-trait audit and its measurement (`claude/trait-audit-573141`, `claude/audit-measure-5b5fc8`) are not in `main`; Kort decides traits B to F after measure A (Q2) |
+| 5.1 | Balance design review | Kort + Agent | Done 2026-11-02 | Set A `3b8b58b`, arrow speed `19c7b4d`, vanilla-trait audit and measurement merged `fa7e4975`. Kort: Houses balanced enough; no rule changes or stat retune; further balance comes from playtesting. |
 | 5.2, 5.3 | Bot round robin on adopted maps; tune the sheet | Agent | Not started | Waits on Kort's maps (3.1) and the audit |
 | 5.4 | Economy and progression | Agent | Done 2026-11-02 | Wiring merged `649bcb0`; check report `docs/reports/economy-check-2026-10-30.md` merged from `work/economy-check-5-4` |
 | 5.5 | Performance | Agent + Kort | Baseline done (3.6); target report not started | `docs/reports/perf-baseline-2026-11-02.md`. Autosave no longer runs during a battle (`adef601`, Q37) |
@@ -137,7 +137,6 @@ Every other session branch is merged into `main` or archived.
 | Animation rework | `work/anim-rework` | 1.5, 4E | Its session merging `main` in (10 conflicting files), then the merge Kort approved |
 | Animation editor | `work/anim-edit` | 1.5 | Kort poses the guard himself (Q28) |
 | Audio (Pixabay) | `audio/pixabay` | 4F.4 | Kort listening (Q24) |
-| Vanilla-trait audit and measurement | `claude/trait-audit-573141`, `claude/audit-measure-5b5fc8` | 5.1 | Kort's call on traits B to F |
 | Maps | `maps/` in `main` | 3.1, 4A | Kort's own designs and layout sign-off |
 | Live server tests (teleport sync, server kit smoke test) | none | 3.5, 3.7, 3.8 | Server EULA decision (Q79) |
 
