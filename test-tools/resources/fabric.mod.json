@@ -13,7 +13,8 @@
       "gg.gravesandglory.MapForge",
       "gg.gravesandglory.ZombieReinforcementProbe",
       "gg.gravesandglory.PerfProbe",
-      "gg.gravesandglory.SliceProbe"
+      "gg.gravesandglory.SliceProbe",
+      "gg.gravesandglory.RewardDriver"
     ],
     "client": [
       "gg.gravesandglory.testing.LocalVisualInspection",

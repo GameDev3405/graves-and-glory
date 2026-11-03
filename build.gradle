@@ -68,6 +68,14 @@ if (project.hasProperty('duelSim')) {
  }
  tasks.named('runServer') { dependsOn localTestToolsJar }
 }
+// Reward driver (test-tools/java/gg/gravesandglory/RewardDriver.java, QA row K7): -PrewardDriver=<control dir> lets a script move a dedicated server round's clock back and call the real finish; it changes no rule.
+if (project.hasProperty('rewardDriver')) {
+ loom.runs.server.vmArg '-Dgravesandglory.localIntegration=true'
+ loom.runs.server.vmArg "-Dfabric.addMods=${file('build/localTestTools/local-integration-DO-NOT-SHIP.jar').absolutePath}"
+ loom.runs.server.vmArg '-Dgravesandglory.localChecks=local-checks.txt'
+ loom.runs.server.vmArg "-Dgravesandglory.rewardDriver=${project.property('rewardDriver')}"
+ tasks.named('runServer') { dependsOn localTestToolsJar }
+}
 if (project.hasProperty('visualInspection')) { loom.runs.client.vmArg '-Dgravesandglory.visualInspection=true' }
 tasks.register('preflight', Exec) { commandLine 'python', 'tools/preflight.py' }
 compileJava.dependsOn preflight

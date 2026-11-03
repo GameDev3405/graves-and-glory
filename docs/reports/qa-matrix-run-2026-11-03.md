@@ -3,7 +3,7 @@
 Branch `work/qa-matrix-runs`, base `main` bd05fa2b. Tester: Sonnet worker. Per-row states are in the "Run 2026-11-03" column of `docs/QA-MATRIX.md`. Evidence files (copies of the harness `local-checks.txt` and the verify result) are in `docs/reports/qa-matrix-run-2026-11-03-evidence/`; full logs are under the gitignored `work/q3/`.
 
 ## Totals (137 rows)
-Updated after the rest pass (`qa/rest-2026-11-03`): 103 PASS, 2 FAIL (C9, I10), 30 Kort (K12 relabelled "Kort (visual)"), 1 GAP (K14), 1 not run (K7: needs a `finish()` driver and 3-minute rounds). Before it: 96 PASS, 2 FAIL (C9, I10), 29 Kort, 10 not run. Before it (E10/D21/K4 follow-up): 93 PASS, 2 FAIL (C9, I10), 29 Kort (needs Kort, friends, real network or visual sign-off), 13 not run.
+Updated after the K7 run (`qa/k7`): 104 PASS, 2 FAIL (C9, I10), 30 Kort, 1 GAP (K14), 0 not run. Before it, after the rest pass (`qa/rest-2026-11-03`): 103 PASS, 2 FAIL (C9, I10), 30 Kort (K12 relabelled "Kort (visual)"), 1 GAP (K14), 1 not run (K7: needs a `finish()` driver and 3-minute rounds). Before it: 96 PASS, 2 FAIL (C9, I10), 29 Kort, 10 not run. Before it (E10/D21/K4 follow-up): 93 PASS, 2 FAIL (C9, I10), 29 Kort (needs Kort, friends, real network or visual sign-off), 13 not run.
 Before that follow-up (robustness pass): 90 PASS, 2 FAIL, 29 Kort, 16 not run (no agent-runnable check, or turn budget).
 After the dedicated-server pass (below): 87 PASS, 1 FAIL (C9), 29 Kort (needs Kort, friends, real network or visual sign-off), 20 not run (no agent-runnable check exists, or a fixture was needed).
 Before that pass: 78 PASS, 1 FAIL (K10, since resolved to PASS), 34 Kort, 24 not run. The pass moved C7, C8, C10, E9, F5, J2, J9 to PASS, C9 and C11 to FAIL, and completed the live halves of F2-F4 (already PASS).
@@ -80,3 +80,10 @@ Scratch dedicated server in the worktree `work/` (deleted afterwards; EULA only 
 - Packaging needed the gitignored `dependencies/` jars and zips, copied from another worktree; `verify.py release` failed twice without them.
 - Bots must not send `minecraft:register` or `minecraft:brand` right after play start (the server drops them with a DecoderException); this is a bot issue, not a mod one.
 - J6: over-length strings are dropped by the netty decoder (logged as an error, sender disconnected); the row's "no exception" holds for every in-range malformed value.
+
+## K7 rewards (qa/k7)
+K7 PASS, 48 checks, 0 FAIL (`qa-matrix-run-2026-11-03-evidence/qa5-k7-evidence.txt`). Scratch dev dedicated server under `work/` (deleted afterwards; EULA only there), run with `gradlew runServer -PrewardDriver=<dir>`; the driver `test-tools/java/gg/gravesandglory/RewardDriver.java` is test-only and loads only with that property. Bots in `test-tools/qa/` (`ggbot.py`, `k7_rewards.py`) used real packets: party, room, ready, 10 s countdown, auto-start.
+- Covered: win, loss, rematch (second round from the same room), second finish no-op, quit, disconnect and return, a round under the 180 s minimum, a visitor and a mid-match joiner. Pay is prorated over the real elapsed seconds, not a fixed 200.
+- Not covered: the real-client `visitor-no-reward` harness case was not re-run; bot takeover after the 60 s grace; the stop/crash path (`voidMatch`); the clock was moved back instead of waiting 3 real minutes.
+- Harness note: `finish` was driven by the test-only driver, not by an in-game win, so the win condition itself is covered by other rows.
+- Preflight regenerated `Spec.java` and `sheets/preflight.json`; reverted, not committed.
