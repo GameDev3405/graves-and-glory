@@ -280,8 +280,18 @@ NOTE = ("Wildmoot Bloodhowl Seer (unit identity, Wildmoot): a stooped boar-kin e
         "crown of two branching tines, a hide robe to the shins with blood handprints, bone and ochre trinkets, a team sash across the chest "
         "and a bone wand in the right hand. A totem staff (bone skull and antler top) is strapped diagonally on the back. Tier II: third tines, "
         "bone plaques, feather mantle, ochre wand bands; tier III: taller crown, staff skulls, tooth collar, ochre hem. No back flag.")
+def veteran(bone, box):
+    """The Mastery II trim: a bone-beaded ochre baldric, studs on the belt, a cord above each cuff and a band on the skirt."""
+    n = bone.name
+    if n == "body": return vet_baldric()
+    if n == "belt": return vet_rows((0,), every=2, bead=True)
+    if n.endswith("_arm"): return vet_rows((4,))
+    if n.endswith("_leg"): return vet_rows((3,))
+    if n == "skirt": return vet_rows((6,), bead=True)
+    return None
+
 WM_SEER = Troop("wm_seer", SKIN, CLOTH, bones, cloth_painter,
-                {"weapon": "none", "hand": "right", "idleArms": "hang", "portrait": "tall 6"}, glow=glow_fn)
+                {"weapon": "none", "hand": "right", "idleArms": "hang", "portrait": "tall 6"}, glow=glow_fn, veteran=veteran)
 def build(): return WM_SEER.build()
 def outputs(): return WM_SEER.outputs()
 

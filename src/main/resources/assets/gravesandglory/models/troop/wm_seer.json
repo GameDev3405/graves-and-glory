@@ -6,7 +6,7 @@
 "density":1,
 "cloth":"gravesandglory:textures/entity/troop/wm_seer/team_cloth_",
 "skins":{"1":"gravesandglory:textures/entity/troop/wm_seer/wm_seer_s1.png","2":"gravesandglory:textures/entity/troop/wm_seer/wm_seer_s2.png","3":"gravesandglory:textures/entity/troop/wm_seer/wm_seer_s3.png"},
-"veteran":"",
+"veteran":"gravesandglory:textures/entity/troop/wm_seer/wm_seer_veteran.png",
 "glow":"gravesandglory:textures/entity/troop/wm_seer/wm_seer_e.png",
 "glowFrom":1,
 "outer":"",

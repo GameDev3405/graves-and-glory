@@ -21,6 +21,8 @@ def write_stub(troop, note):
         f.write(json.dumps(stub, indent=1) + "\n")
     for t in troop.tiers:
         skins[t].save(os.path.join(folder, "%s_s%d.png" % (troop.tid, t)))
+    if getattr(troop, "trim", None) is not None:   # the veteran trim overlay, which build_skins finds by its name
+        troop.trim.save(os.path.join(folder, "%s_veteran.png" % troop.tid))
 
 def main(troop, note, argv):
     if len(argv) > 1 and argv[1] in ("install", "stub"): write_stub(troop, note)

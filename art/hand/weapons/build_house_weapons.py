@@ -193,9 +193,59 @@ def admiral_trident(tier=1):
             bit("tip_l", -3, -1, 28, 30, "bone", metal(PEARL, 3)), bit("tip_r", 1, 3, 28, 30, "bone", metal(PEARL, 3))]
     return out
 
+def boar_spear_t2():
+    """Tier II: a steel-bound ash shaft, a wider bone crossbar with short tusk lugs, a broader steel leaf."""
+    return [
+        post("foot", -14, -12, 0.5, 0.5, "steel", metal(S, 4), skip=("up",)),
+        post("shaft_lo", -12, -3, 0.5, 0.5, "wood", grain(PALE, 3, 2), skip=("down", "up")),
+        post("ring_lo", -3, -2, 1, 1, "steel", metal(S, 3), skip=("up",)),
+        Cube("grip", [-1, -2, -1], [1, 2, 1], "leather", wrap(L[2], L[1]), skip=("up", "down")),
+        post("ring_hi", 2, 3, 1, 1, "steel", metal(S, 3)),
+        post("shaft", 3, 21, 0.5, 0.5, "wood", grain(PALE, 3, 6), skip=("down", "up")),
+        post("binder_lo", 7, 9, 1, 1, "leather", binder(DARK)),
+        post("binder", 14, 17, 1, 1, "leather", binder(DARK)),
+        post("cross", 21, 22, 4, 0.5, "bone", metal(CORAL, 3)),
+        bit("lug_l", -4, -3, 22, 24, "bone", metal(CORAL, 3), skip=("down",)),
+        bit("lug_r", 3, 4, 22, 24, "bone", metal(CORAL, 3), skip=("down",)),
+        post("collar", 22, 24, 1, 1, "steel", metal(S, 3), skip=("up",)),
+        post("blade_lo", 24, 29, 2, 0.5, "steel", metal(S, 4)),
+        post("blade_mid", 29, 33, 1.5, 0.5, "steel", metal(S, 5)),
+        post("blade_hi", 33, 35, 1, 0.5, "steel", metal(S, 5)),
+        post("tip", 35, 37, 0.5, 0.5, "steel", metal(S, 6), skip=("down",)),
+    ]
+
+def boar_spear_t3():
+    """Tier III: a dark stained shaft in gilt bands, a bone crossbar with swept tusk lugs, a bristle tuft, a long gilt-collared head with barbs."""
+    return [
+        post("foot", -14, -12, 0.5, 0.5, "gilt", metal(G, 4), skip=("up",)),
+        post("shaft_lo", -12, -3, 0.5, 0.5, "wood", grain(DARK, 3, 2), skip=("down", "up")),
+        post("ring_lo", -3, -2, 1, 1, "gilt", metal(G, 3), skip=("up",)),
+        Cube("grip", [-1, -2, -1], [1, 2, 1], "leather", wrap(L[2], L[1]), skip=("up", "down")),
+        post("ring_hi", 2, 3, 1, 1, "gilt", metal(G, 3)),
+        post("shaft", 3, 21, 0.5, 0.5, "wood", grain(DARK, 3, 6), skip=("down", "up")),
+        post("binder_lo", 7, 9, 1, 1, "gilt", binder(G)),
+        post("binder", 14, 17, 1, 1, "gilt", binder(G)),
+        bit("tuft_l", -1.5, -0.5, 17, 21, "leather", metal(DARK, 3)),
+        bit("tuft_r", 0.5, 1.5, 17, 21, "leather", metal(DARK, 3)),
+        post("cross", 21, 22, 4, 0.5, "bone", metal(CORAL, 3)),
+        bit("lug_l", -4, -3, 22, 24, "bone", metal(CORAL, 3), skip=("down",)),
+        bit("lug_r", 3, 4, 22, 24, "bone", metal(CORAL, 3), skip=("down",)),
+        bit("sweep_l", -5, -4, 23, 26, "bone", metal(CORAL, 3), skip=("down",)),
+        bit("sweep_r", 4, 5, 23, 26, "bone", metal(CORAL, 3), skip=("down",)),
+        post("collar", 22, 25, 1, 1, "gilt", metal(G, 3), skip=("up",)),
+        post("blade_lo", 25, 30, 2, 0.5, "steel", metal(S, 4)),
+        post("blade_mid", 30, 35, 1.5, 0.5, "steel", metal(S, 5)),
+        post("blade_hi", 35, 38, 1, 0.5, "steel", metal(S, 5)),
+        post("tip", 38, 40, 0.5, 0.5, "steel", metal(S, 6), skip=("down",)),
+        bit("barb_l", -3, -2, 25, 27, "steel", metal(S, 4)),
+        bit("barb_r", 2, 3, 25, 27, "steel", metal(S, 4)),
+    ]
+
 TIERS = {
     "hearth_axe": (hearth_axe, "The Hearthguard's hearth axe (Ironclad), hand-authored at 1 texel a px: a dark ash haft with an ember band, an iron socket and a bearded iron head with a hammered edge and a rear spike; one-handed, held like a sword."),
     "boar_spear": (boar_spear, "The Tusk's boar spear (Wildmoot), hand-authored at 1 texel a px: a pale ash shaft with a hide grip and binder, a bone crossbar under a steel leaf head; held upright."),
+    "boar_spear_t2": (boar_spear_t2, "The Tusk's boar spear, tier II (upgraded), hand-authored at 1 texel a px: steel rings and two hide binders on a pale ash shaft, a wider bone crossbar with tusk lugs under a broader steel leaf head; held upright."),
+    "boar_spear_t3": (boar_spear_t3, "The Tusk's boar spear, tier III (elite), hand-authored at 1 texel a px: a dark stained shaft in gilt bands, a hide bristle tuft, a bone crossbar with swept tusk lugs and a long gilt-collared barbed steel head; held upright."),
     "coral_trident": (coral_trident, "The Tideguard's coral trident (Tidecallers), hand-authored at 1 texel a px: a bleached coral shaft, a bronze crossbar and three barbed prongs; held upright."),
     "cutlass": (cutlass, "The Drowned Raider's cutlass (Tidecallers), hand-authored at 1 texel a px: a curved, notched sea-steel blade clipping to a point, a bronze basket guard with a knuckle bow and a sea-blue wrap; one-handed, held like a sword."),
     "harpoon": (harpoon, "The Harpooner's harpoon (Tidecallers), hand-authored at 1 texel a px: a salt-grey driftwood shaft, a sea-blue grip and band, a hemp coil with a trailing line and a barbed iron head; held upright."),
