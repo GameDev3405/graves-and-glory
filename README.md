@@ -1,4 +1,4 @@
-> **Current state (2026-11-02):** `main` is the 0.5.0 development integration heading for 1.0.0 (a draft of the player notes is in [docs/releases/1.0.0-notes-DRAFT.md](docs/releases/1.0.0-notes-DRAFT.md)). It has five Houses, thirty troops, six commander classes, in-match levels and gear, the War Table with a six-seat lobby, the Domination, Siege and Convoy modes, campaign battles, bots, and the dedicated server kit. It is not a published release. Start with [docs/BOARD.md](docs/BOARD.md) for one row per task, then [docs/HANDOFF.md](docs/HANDOFF.md); [docs/BACKLOG.md](docs/BACKLOG.md), [docs/DECISIONS.md](docs/DECISIONS.md) and [docs/SETUP.md](docs/SETUP.md) are the active records. Tier II and III art for some Houses, the animation rework and audio are not yet merged; historical lanes are preserved under `archive/2026-10/*` tags.
+> **Current state (2026-11-02):** `main` is the 0.5.0 development integration heading for 1.0.0 (a draft of the player notes is in [docs/releases/1.0.0-notes-DRAFT.md](docs/releases/1.0.0-notes-DRAFT.md)). It has five Houses, thirty troops, six commander classes, in-match levels and gear, the War Table with a six-seat lobby, the Domination, Siege and Convoy modes, the Survival mode, campaign battles 1 to 6, bots, and the dedicated server kit. Tier II and III art is merged for all five Houses. It is not a published release. Start with [docs/BOARD.md](docs/BOARD.md) for one row per task, then [docs/HANDOFF.md](docs/HANDOFF.md); [docs/BACKLOG.md](docs/BACKLOG.md), [docs/DECISIONS.md](docs/DECISIONS.md) and [docs/SETUP.md](docs/SETUP.md) are the active records. The animation rework, Kort's own map redesigns and the audio pack are pending and not yet merged; historical lanes are preserved under `archive/2026-10/*` tags.
 
 
 
@@ -20,8 +20,7 @@ Clients must match the server's game version and build identity. A missing or
 incompatible pack receives an update instruction before entering the world.
 This compatibility check does not authenticate progression or prevent cheating.
 
-This modpack currently ships no third-party resource packs. Its look is
-its own built-in assets plus the shaders credited below. Excalibur is approved in principle for the friends' pack (M4) but is not in this candidate.
+This modpack's look is its own built-in assets plus the shaders credited below, and one third-party resource pack: Excalibur 1.20, bundled unmodified and pinned by hash. Excalibur resource pack by Maffhew, used with permission, unmodified (CC BY-NC-ND 3.0).
 
 Upgrades copy legacy Bannerbound collections, deployment data and visual
 preferences into the current folders without overwriting current files. When
@@ -77,7 +76,7 @@ The war council, collection, class selection, command controls and battlefield p
 
 Visuals & sound in the lobby lets each player choose one shader: Complementary Reimagined r5.5.1, Complementary Unbound r5.5.1, MakeUp Ultra Fast 9.5g, or shaders off. Shader changes are saved locally. Shaders begin off for reliable battle performance on a range of PCs; selecting one loads it inside the game. Complementary's pinned releases have an explicit modpack distribution grant; the latest shader versions have different distribution terms and are not silently substituted.
 
-The look is the modpack's own. This candidate ships no third-party resource packs, so there is no world texture choice: Minecraft's textures come from each player's own game, and the built-in armory pack adds the weapon and armour overlays. Each player's graphics choices are independent in multiplayer.
+The look is the modpack's own plus the bundled Excalibur 1.20 resource pack. Minecraft's textures come from each player's own game, and the built-in armory pack adds the weapon and armour overlays. Each player's graphics choices are independent in multiplayer.
 
 Confirmed commander hits receive a brief ink-and-gold contact accent and restrained camera recoil. Choose Off, Subtle (default), or Strong. Ambient troop fights never trigger repeated screen flashes; accents do not stop the simulation, change damage or interrupt other players. The camera entrance is sampled every rendered frame instead of stepping its coordinates at the simulation tick rate.
 
@@ -87,7 +86,7 @@ Sodium, Iris, Lithium, FerriteCore, ImmediatelyFast and ModernFix support render
 
 Requires an account owning Minecraft: Java Edition. Built for Minecraft 1.20.1, Fabric Loader 0.16.14 and Fabric API 0.92.2+1.20.1. Install the Modrinth .mrpack in Prism Launcher or another launcher that imports .mrpack files; it sets up Minecraft and Fabric Loader for the instance and downloads the pinned mods, including Fabric API. Java 17 or newer is required. The plain zip bundles the redistributable Fabric API and expects you to install Fabric Loader yourself. Roblox's Command an Army is inspiration only; Roblox is not required. No Minecraft or Roblox content is included.
 
-Three pack formats and a server kit are prepared locally, none published: a Modrinth .mrpack (for Prism Launcher or any launcher that imports .mrpack), a CurseForge modpack zip (`tools/export_curseforge.py`, with `tools/verify_curseforge.py` as its readback check), and a plain zip. The dedicated-server kit (`tools/server-kit/`, see docs/SERVER-RUNBOOK.md) has start, stop, backup, restore and update scripts, a version gate and a localhost-only configuration template; it never writes the EULA for you, so you set `eula=true` yourself. The server kit booted, saved and stopped cleanly in a scratch test on 2026-11-02 with no clients. The title menu works with no launcher-specific runtime files. A Prism Launcher import and start of the 0.3.3 .mrpack was checked on this PC; later versions have not been installed that way. Dedicated-server and real launcher checks are tracked in the work log; they do not establish Internet reachability. It is not yet a published Modrinth or CurseForge release.
+Three pack formats and a server kit are prepared locally, none published: a Modrinth .mrpack (for Prism Launcher or any launcher that imports .mrpack), a CurseForge modpack zip (`tools/export_curseforge.py`, with `tools/verify_curseforge.py` as its readback check), and a plain zip. The dedicated-server kit (`tools/server-kit/`, see docs/SERVER-RUNBOOK.md) has start, stop, backup, restore and update scripts, a version gate and a localhost-only configuration template; it never writes the EULA for you, so you set `eula=true` yourself. The server kit booted, saved and stopped cleanly in a scratch test on 2026-11-02 with no clients. The title menu works with no launcher-specific runtime files. The Modrinth .mrpack install test in a launcher passed. Dedicated-server and real launcher checks are tracked in the work log; they do not establish Internet reachability. It is not yet a published Modrinth or CurseForge release.
 
 Up to eight human commanders, four per faction, each with twenty troops (160 total). A client can host a local-network camp and stay open, or players can join a separately configured dedicated server. Practice stays private. If a launcher supplies an invitation file, it adds an optional action under Play with friends and never starts a connection automatically; an ordinary Prism or Modrinth install has no such file. Remote friends need a reachable server. Direct Internet reachability and an eight-human Internet match have not been independently tested.
 
@@ -98,6 +97,8 @@ Development game runs exercise the physical lobby, paid unlocks, saved profiles,
 ## Credits and permissions
 
 Concept and direction: Kort Tjepkema. Implementation, authored environments, animation adjustments, effects and original synthesized sound cues assisted by OpenAI Codex using Melty's modding kit. Original Graves and Glory code and content: MIT; remixes allowed.
+
+Excalibur resource pack by Maffhew, used with permission, unmodified (CC BY-NC-ND 3.0).
 
 Inspired by Command an Army on Roblox; no Roblox code, assets or branding included. Minecraft belongs to Mojang/Microsoft. Minecraft models, equipment, textures, particles and stock sounds are read from each player's own game and are not redistributed.
 

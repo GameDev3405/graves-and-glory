@@ -1,54 +1,67 @@
 {
   "status": "development-build; release blocked",
   "version": "0.5.0",
-  "commit": "f1f60472517555ed1f6e1faac4ae373b0899ad27",
+  "commit": "f98743f551397a0bebe8667d73291fca0cb326bb",
   "dirty": false,
   "source_identity": {
     "version": "0.5.0",
     "modId": "gravesandglory",
-    "sourceSha256": "c41a0e1cef708e00a3a6030e1afde5b9a4194e0a83c93937116c050887efd0e4"
+    "sourceSha256": "not recomputed for f98743f; run tools/preflight.py and rebuild"
   },
   "artifact": {
     "path": "work/candidates/c41a0e1cef708e00a3a6030e1afde5b9a4194e0a83c93937116c050887efd0e4/graves-and-glory-0.5.0.jar",
     "sha256": "61a1c8845ded9f9c1f66a2af2b337d6c11f13e5c3fb2a146b2033236042435a3",
     "kind": "mod jar; not a playable modpack package",
-    "note": "built from the clean 2026-10-28 integration at source identity c41a0e1; the record, cleanup and plan commits after fa2f31e are docs-only, so the source identity is unchanged. Re-verified at f1f6047.",
-    "source_commit": "fa2f31e19301fbb92496d272d7c793bce75e72f1"
+    "note": "The jar below was built at the 2026-10-28 source identity c41a0e1 and is STALE: it predates the tier II/III art, campaign battles 1 to 6, Survival lines, the Excalibur bundle and the CurseForge export now on main. No jar has been rebuilt for f98743f.",
+    "source_commit": "fa2f31e19301fbb92496d272d7c793bce75e72f1",
+    "stale": true
   },
   "verification": {
-    "fast": "work/verify/20261028-231020-35520/result.json (pass, exit 0; head f1f6047, dirty false, 22 checks)",
-    "game": "work/verify/20261028-231257-41152/result.json (pass, exit 0; head f1f6047, dirty false; Phase 1 combat smoke only)",
-    "strict_package": "not run for this identity; the documented gate still refuses 26 troops with missing complete tier art",
-    "ui_suites": "the M1 extra UI suites were not re-run for this head; fast includes ui-standard and ui-assets"
+    "fast": "work/verify/20261028-231020-35520/result.json (pass at f1f6047, old; not re-run at f98743f)",
+    "game": "work/verify/20261028-231257-41152/result.json (pass at f1f6047, old; Phase 1 combat smoke only)",
+    "release_verify": "clean checkout passed at 9c2d5f1, package and readback included (docs/BOARD.md); not re-run at f98743f",
+    "modrinth_pack_install": "passed: the .mrpack installed and booted in a launcher test (bannerbound-artint/work/launcher-test/RESULT.md)",
+    "curseforge": "zip passes at file level; the mod fetch needs an API key (Q75)",
+    "strict_package": "not run for this head",
+    "known_failing_on_main": "test_sample_builds_clean fails because of Kort's unsaved map edits"
   },
   "acceptance": {
-    "implemented": "partial: Houses, progression, War Table claims/recruit/class cards/Armoury tab/HUD and banner merged; War Table troop sheet (Task 5) WIP; Armoury restyle pending",
-    "fast_tested": true,
-    "combat_smoke_tested": true,
+    "implemented": "partial: five Houses with tier II/III art, progression, War Table, six-seat lobby, Armoury, banner page, campaign battles 1 to 6, Survival lines, CurseForge export and Excalibur 1.20 bundle merged. Pending: animation rework, Kort's own map redesigns, audio pack",
+    "fast_tested": false,
+    "combat_smoke_tested": false,
     "visual_review_of_candidate": false,
     "six_networked_players": false,
     "accepted_release": false
   },
   "known_issues": [
-    "War Table troop sheet (Task 5) is preserved on work/war-table-troop; it is not merged, rebased or verified",
-    "Strict packaging refuses 26 troops with missing or incomplete own tier art",
+    "No jar rebuilt for f98743f; the artifact entry is stale",
+    "Fast and game suites not re-run at f98743f",
     "Six networked players, dedicated server, reconnect/restart and persistence were not tested",
-    "Armoury is not restyled (waits for Kort); animation pass 1 and the House models are WIP",
-    "1440p/4K, hover/focus/disabled states and Kort's visual look are not checked",
-    "The extra M1 UI suites were not re-run for this head; the fast UI checks pass"
+    "Animation rework, Kort's map redesigns and the audio pack are not in main",
+    "CurseForge mod fetch needs an API key (Q75)",
+    "1440p/4K, hover/focus/disabled states and Kort's visual look are not checked"
   ],
-  "historical_preview": {
-    "commit": "552a8c6f77fec31bad06f0f7ac09ac59a729efc4",
-    "status": "historical, not current; known Quartermaster clipping defect"
-  },
   "questions": "../QUESTIONS-FOR-KORT.md",
   "branch": "main",
   "tag": "v0.5.0-dev.20261028",
   "tag_target": "c4f8771",
-  "tag_note": "marks c4f8771; f1f6047 is a docs-only re-verification",
   "previous_candidate": {
-    "commit": "30311614c26d32b7d5dc486c9d56f8dc5f3ae3ef",
-    "sourceSha256": "5e7be7be04a9dc3a6b9a20d2d6dfca9de1efc68ce331e61a30525e25ba23a5a2",
-    "status": "superseded"
-  }
+    "commit": "f1f60472517555ed1f6e1faac4ae373b0899ad27",
+    "sourceSha256": "c41a0e1cef708e00a3a6030e1afde5b9a4194e0a83c93937116c050887efd0e4",
+    "status": "superseded; jar not rebuilt for the new head"
+  },
+  "merged_since_previous_record": [
+    "Tier II/III art for all five Houses",
+    "Campaign battles 1 to 6 (briefings are drafts for Kort)",
+    "Survival feed, ledger and report lines (draft text)",
+    "CurseForge export and verifier",
+    "Excalibur 1.20 resource pack by Maffhew, used with permission, unmodified (CC BY-NC-ND 3.0)",
+    "Modrinth pack install test passed"
+  ],
+  "pending": [
+    "Animation rework (work/anim-rework, merge approved, not in main)",
+    "Kort's own map redesigns",
+    "Audio pack"
+  ],
+  "tag_note": "tag v0.5.0-dev.20261028 still marks c4f8771; it is not moved"
 }
