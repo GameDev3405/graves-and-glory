@@ -21,7 +21,7 @@ A PASS on an AUTO-only row means the standalone or Python check passed in `verif
 ## Not run (reasons)
 - Dedicated server rows (C7-C11, E9, F5, F2-F4 harness cases, J2, J9): need a dedicated server and Kort's `eula.txt`; AUTO halves of F2-F4 pass.
 - E10, D17-D21, H6, H7, I8, I10-I13, K4, K7 (beyond visitor), K11, K12 look checks: no fixture or no automated case (matrix LATER/GAP).
-- B1, B3, A8: release-tier packaging; not part of this run.
+- B1, B3, A8: release-tier packaging; not part of this run. Covered afterwards: `verify.py release --offline` PASS at `01b0c77` (2026-11-03; strict package, package readback, inventory and pins).
 
 ## Notes
 - A fresh root hangs on the accessibility onboarding screen for `CampNetworkChecks` (it waits for the front menu). Seeding `options.txt` with `onboardAccessibility:false` and `pauseOnLostFocus:false` fixes it; `CampaignChecks` and `Phase4Checks` already handle it. Fixed: tools isolated-checks.gradle now seeds options.txt on a fresh root.
