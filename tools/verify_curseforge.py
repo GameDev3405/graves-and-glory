@@ -3,7 +3,7 @@ import hashlib
 import io
 import json
 import zipfile
-from export_curseforge import IDS_PATH, load_ids, build_manifest, build_modlist
+from export_curseforge import IDS_PATH, load_ids, build_manifest, build_modlist, split_rows, check_bundled
 from release_config import ROOT, version, source_identity, validate_player_jar
 
 def verify():
