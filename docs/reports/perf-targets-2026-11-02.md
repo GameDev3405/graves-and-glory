@@ -95,3 +95,15 @@ After (same run settings, `work/perf-spawn/after/`; prewarm logged 30 troops in 
 | 2 (warm) | Rivergate | 86.1 ms (tick 0) | 1 | 12.9 ms | 13.0 ms | 0@86 |
 
 Read: the prewarm cuts the cold startRound from 105 to 29 ms, and warm is unchanged (15 to 13 ms). Tick 0 is still over 50 ms. The after run shared the machine with two to three other worktrees' 2-3 GB clients (the baseline shared it with none), so tick times are inflated and the under-50 ms tick target is not shown. Tick 0 also holds the first unit ticks, entity tracking and bot-sim's second spawn, beyond startRound. Next step: re-measure on an idle machine, then attach JFR to tick 0 if it is still over 50 ms. Repath throttling was not done: walk already runs on a slot%10 beat, so path requests do not stack on tick 0.
+
+## Tick 0 re-measure attempt (branch perf/tick0, 2026-11-03)
+
+Machine state: no other Minecraft java.exe was running before launch (checked twice), so this was the idle-machine slot the earlier run lacked.
+
+Probe change (test tool only, not shipped): `PerfProbe` now also runs on an integrated server with `-Dgravesandglory.perfProbeIntegrated=true` and writes `server-firstticks.csv` (map, battle tick 0-19, ms) for every battle. Battle tick 0 is the tick in which `startRound` ran (the probe's phase flips at that tick's end), so it includes startRound, bot-sim's `field()` respawn and the first unit ticks.
+
+Run: `runClient -PlocalIntegration -PautoHost` with a gradle init script (own root `work/perf-tick0/before`, seeded options.txt, botSim 2 x 60 s 3v3 on maps 0,1, JFR `settings=profile`, 3 GB heap).
+
+Result: not measured. The client crashed in mod initialization (`work/perf-tick0/before/run/crash-reports/crash-2026-11-03_01.29.33-client.txt`): the main mod was not among the loaded mods, so every main-mod class the test-tools entrypoints touched was missing (`NoClassDefFoundError` for `Veterans$Tally` from BotSimulation and `BuildMode` from MapForge), although `build/classes/java/main` (396 classes) and `build/resources/main/fabric.mod.json` were present. Cause not found; first suspect is the init script overriding the loom client `runDir`/`jvmArgs` in `afterEvaluate` (compare with a known-good `test-tools/isolated-checks.gradle` launch).
+
+Before / after: before = 95 ms (cold) and 86 ms (warm) at tick 0, from the loaded-machine run above; after = none, no fix made. Tick 0 under 50 ms is still not shown. The CampNetworkChecks fresh-root check was gated on the tick-0 fix and was not run. Next: get one integrated bot-sim launch working, read `server-firstticks.csv`, then JFR tick 0 if it is over 50 ms.
