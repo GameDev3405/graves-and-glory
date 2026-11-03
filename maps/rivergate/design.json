@@ -1,0 +1,58 @@
+{
+ "baseY": 64,
+ "depth": 500,
+ "format": 1,
+ "id": "rivergate",
+ "name": "Rivergate Valley",
+ "objects": [
+  {
+   "by": "kort",
+   "id": "spawn-dawn",
+   "kind": "spawn",
+   "state": "accepted",
+   "team": "dawn",
+   "x": 67,
+   "z": 250
+  },
+  {
+   "by": "kort",
+   "id": "spawn-dusk",
+   "kind": "spawn",
+   "state": "accepted",
+   "team": "dusk",
+   "x": 633,
+   "z": 250
+  },
+  {
+   "by": "kort",
+   "id": "point-mill-hamlet",
+   "kind": "point",
+   "name": "Mill Hamlet",
+   "radius": 17,
+   "state": "accepted",
+   "x": 311,
+   "z": 105
+  },
+  {
+   "by": "kort",
+   "id": "point-trade-crossing",
+   "kind": "point",
+   "name": "Trade Crossing",
+   "radius": 17,
+   "state": "accepted",
+   "x": 350,
+   "z": 250
+  },
+  {
+   "by": "kort",
+   "id": "point-river-shrine",
+   "kind": "point",
+   "name": "River Shrine",
+   "radius": 17,
+   "state": "accepted",
+   "x": 389,
+   "z": 395
+  }
+ ],
+ "width": 700
+}
