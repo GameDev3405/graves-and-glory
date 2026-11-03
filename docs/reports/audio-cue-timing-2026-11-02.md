@@ -53,3 +53,7 @@ Ticks are server ticks (20 a second). "Contact" is the tick the blade meets its 
 - A melee hit sound now lands a few ticks after the damage; if the target dies in between, the sound plays at its last position.
 - Three approved samples keep a late strike (bow release 0.26 s, arrow impact 0.33 s, armour ring 0.15 s, i.e. 3 to 7 ticks late). Trimming them is a one-line change (`LEAD` in `import_pixabay.py`, then regenerate) but removes sound and shifts the measured level by about 2 LU, so it waits for Kort's yes.
 - Player blows on a structure (vanilla attack) still sound at once.
+
+## Update 2026-11-03
+
+Kort approved the trim. `LEAD` is set for bow_shoot_1 (0.25 s), arrow_hit_1 (0.32 s) and armor_hit_1 (0.14 s); the importer re-levels each to the approved file's integrated loudness (within 0.2 LU). The three Risks/Findings entries above about late strikes are resolved.

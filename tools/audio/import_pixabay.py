@@ -8,7 +8,7 @@ a short fade at both ends, and a common loudness inside each group (gated RMS of
 so the variants of one sound match each other. Music: stereo 44.1 kHz q4, leading silence trimmed, EBU R128 loudnorm
 (two passes), a fade at the end. numpy and ffmpeg on PATH. Output: src/main/resources/assets/gravesandglory/sounds/.
 """
-import json, subprocess, sys
+import json, re, subprocess, sys
 from pathlib import Path
 import numpy as np
 
@@ -40,8 +40,8 @@ ONE_SHOTS = {
 }
 # Seconds cut from the front of a clip after its start, so the sound's strike or release is at its very start: the game plays it on the tick the arrow leaves,
 # lands or the blade connects (docs/reports/audio-cue-timing-2026-11-02.md). The bow's draw creak is gone (the release is 0.26 s in), the arrow's flight
-# whistle too (the impact is 0.33 s in) and the armour's scrape before the ring (0.15 s in). The clip is that much shorter; the cut comes after the loudness is set, so the level is the approved one.
-LEAD = {}  # empty: Kort approved the sounds as they are, so none is trimmed (a trim changed the level by about 2 LU)
+# whistle too (the impact is 0.33 s in) and the armour's scrape before the ring (0.15 s in). The clip is that much shorter; the cut comes after the loudness is set and the clip is then scaled back to the approved integrated loudness (integrated_lufs).
+LEAD = {"bow_shoot_1": 0.25, "arrow_hit_1": 0.32, "armor_hit_1": 0.14}  # Kort approved the trim 2026-11-03; each is 10 ms under the measured strike so the attack stays whole
 # Gated RMS target of the active part, in dBFS, per group (the AudioCues volume balances the groups against each other).
 TARGET = {"shield": -17, "heavy": -17, "swing": -20, "clash": -17, "armor": -18, "bow": -18, "arrow": -18,
           "cast": -19, "mimpact": -18, "clock": -22, "drums": -18}
@@ -97,17 +97,42 @@ def encode(samples, channels, dest, extra=()):
     subprocess.run(cmd, input=np.ascontiguousarray(samples, dtype=np.float32).tobytes(), check=True)
 
 
-def one_shot(src, start, length, fade, group, dest, lead=0.0):
+def integrated_lufs(x):
+    """EBU R128 integrated loudness (ffmpeg ebur128). The clip gets 2 s of silence after it: the filter measures 400 ms blocks, so a clip under 0.4 s reads -70 otherwise."""
+    r = subprocess.run(["ffmpeg", "-hide_banner", "-nostats", "-f", "f32le", "-ar", str(SR), "-ac", "1", "-i", "-", "-af", "apad=pad_dur=2,ebur128", "-f", "null", "-"],
+                       input=np.ascontiguousarray(x, dtype=np.float32).tobytes(), capture_output=True, check=True)
+    return float(re.findall(r"I:\s+(-?[\d.]+) LUFS", r.stderr.decode("utf8", "replace"))[-1])
+
+
+def fade(clip, fade_out):
+    n_in = int(0.004 * SR)
+    clip[:n_in] *= np.linspace(0, 1, n_in)
+    n_out = min(len(clip), int(fade_out * SR))
+    clip[-n_out:] *= np.cos(np.linspace(0, np.pi / 2, n_out)) ** 2
+    return clip
+
+
+def one_shot(src, start, length, fade_out, group, dest, lead=0.0):
     x = decode(src, 1)
     begin = onset(x) if start is None else start
     clip = x[int(begin * SR):int((begin + length) * SR)].copy()
     clip *= 10 ** ((TARGET[group] - gated_rms_db(clip)) / 20)
     clip = soft_limit(clip) * 0.97
-    clip = clip[int(lead * SR):]  # cut after the loudness is set, so the trim never changes the level the sound was approved at
-    n_in = int(0.004 * SR)
-    clip[:n_in] *= np.linspace(0, 1, n_in)
-    n_out = min(len(clip), int(fade * SR))
-    clip[-n_out:] *= np.cos(np.linspace(0, np.pi / 2, n_out)) ** 2
+    approved = fade(clip.copy(), fade_out)
+    if lead:
+        # cut after the loudness is set, then raise the shorter clip back to the approved clip's integrated loudness (integrated_lufs): the quiet lead
+        # dropped, the same sound reads about 2 to 3 LU lower. The soft limit keeps the peaks under full scale, so the gain is found by iteration.
+        ref = integrated_lufs(approved)
+        base = fade(clip[int(lead * SR):].copy(), fade_out)
+        gain = 0.0
+        for _ in range(8):
+            clip = soft_limit(base * 10 ** (gain / 20)) * 0.9
+            err = ref - integrated_lufs(clip)
+            if abs(err) < 0.03:
+                break
+            gain += err
+    else:
+        clip = approved
     encode(clip, 1, dest)
     return len(clip) / SR
 

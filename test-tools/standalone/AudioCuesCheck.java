@@ -150,7 +150,7 @@ public final class AudioCuesCheck {
   check(Math.abs(AudioCues.DEFEAT_STING_TICKS-defeat*20)<=1,"The music waits the defeat sting's length: "+AudioCues.DEFEAT_STING_TICKS+" ticks vs "+defeat+" s");
   check(AudioCues.GATE_SHUT_LEAD_TICKS*.05<oggSeconds(assets.resolve("sounds/gate_shut.ogg"))&&AudioCues.WAVE_RISE_LEAD_TICKS*.05<oggSeconds(assets.resolve("sounds/wave_rise.ogg")),"A lead is inside its sound");
   // The approved samples are untouched (Kort approved the sounds as they are): the bow, arrow and armour files keep their lengths.
-  check(Math.abs(oggSeconds(assets.resolve("sounds/arrow_hit_1.ogg"))-.55)<.02&&Math.abs(oggSeconds(assets.resolve("sounds/bow_shoot_1.ogg"))-.90)<.02&&Math.abs(oggSeconds(assets.resolve("sounds/armor_hit_1.ogg"))-.90)<.02,"The bow, arrow and armour samples are the approved ones");
+  check(Math.abs(oggSeconds(assets.resolve("sounds/arrow_hit_1.ogg"))-.23)<.02&&Math.abs(oggSeconds(assets.resolve("sounds/bow_shoot_1.ogg"))-.65)<.02&&Math.abs(oggSeconds(assets.resolve("sounds/armor_hit_1.ogg"))-.76)<.02,"The bow, arrow and armour samples are the approved ones, trimmed so the strike is at the start");
   // 7. Where the cues are played from (text of the sources): one place each, so none can double.
   check(count(code,"Cue.GATE_SHUT")==1,"The gate shuts from one place");
   check(count(code,"Cue.WAVE_RISE")==1,"The wave rises from one place");
