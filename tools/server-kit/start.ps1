@@ -77,20 +77,25 @@ try {
     Set-Content -LiteralPath $script:PidFile -Value $proc.Id -Encoding ascii
     Write-Kit "Started on port $port with ${MemoryGB}G heap. java pid $($proc.Id). Type stop here, or run .\stop.ps1, to shut down."
 
-    $reader = $null
-    try { $reader = [Console]::In.ReadLineAsync() } catch { $reader = $null }
+    # Windows PowerShell's Console.In.ReadLineAsync blocks while stdin is open, which froze the stop.ps1 check.
+    # Read console lines on a background runspace instead; the loop below drains them.
+    $consoleLines = New-Object 'System.Collections.Concurrent.ConcurrentQueue[string]'
+    $readerShell = $null
+    try {
+        $readerShell = [PowerShell]::Create()
+        [void]$readerShell.AddScript({
+            param($queue)
+            while ($null -ne ($l = [Console]::In.ReadLine())) { $queue.Enqueue($l) }
+        }).AddArgument($consoleLines)
+        [void]$readerShell.BeginInvoke()
+    } catch { $readerShell = $null }
     $stopSent = $false
     while (!$proc.HasExited) {
-        if ($null -ne $reader -and $reader.IsCompleted) {
-            $line = $null
-            try { $line = $reader.Result } catch { $line = $null }
-            if ($null -eq $line) { $reader = $null }
-            else {
-                $line = $line.TrimStart([char]0xFEFF)
-                if ($line.StartsWith([string][char]0xEF + [char]0xBB + [char]0xBF)) { $line = $line.Substring(3) }
-                if ($line.Length -gt 0) { try { $stdin.WriteLine($line) } catch { } }
-                try { $reader = [Console]::In.ReadLineAsync() } catch { $reader = $null }
-            }
+        $line = $null
+        while ($consoleLines.TryDequeue([ref]$line)) {
+            $line = $line.TrimStart([char]0xFEFF)
+            if ($line.StartsWith([string][char]0xEF + [char]0xBB + [char]0xBF)) { $line = $line.Substring(3) }
+            if ($line.Length -gt 0) { try { $stdin.WriteLine($line) } catch { } }
         }
         if (!$stopSent -and (Test-Path -LiteralPath $script:StopFile)) {
             Remove-Item -LiteralPath $script:StopFile -Force -ErrorAction SilentlyContinue
