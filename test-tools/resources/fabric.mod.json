@@ -21,6 +21,7 @@
       "gg.gravesandglory.CompatibilityChecks",
       "gg.gravesandglory.ServerKitSmoke",
       "gg.gravesandglory.PerfClient",
+      "gg.gravesandglory.PerfIntegrated",
       "gg.gravesandglory.SliceClient",
       "gg.gravesandglory.FrontMenuChecks",
       "gg.gravesandglory.CampaignChecks",
