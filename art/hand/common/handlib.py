@@ -170,11 +170,13 @@ class Box:
         s.uv = None
 
 class Bone:
-    def __init__(s, name, parent, pivot=(0, 0, 0), boxes=(), stages=(), tag="", team=False, rot=(0, 0, 0), variants=None, part=""):
+    def __init__(s, name, parent, pivot=(0, 0, 0), boxes=(), stages=(), tag="", team=False, rot=(0, 0, 0), variants=None, part="", weapon_tiers=()):
+        s.weapon_tiers = list(weapon_tiers)   # a weapon part of a troop with no held weapon: the weapon tiers it shows at
         s.name, s.parent, s.pivot, s.boxes, s.stages, s.tag, s.team, s.rot, s.variants = name, parent, list(pivot), list(boxes), list(stages), tag, team, list(rot), variants
         s.part = part   # "pennant" or "standard": a flag bone, drawn only on the squad's bearer
 
 def on(bone, tier): return not bone.stages or tier in bone.stages
+def shown(bone, tier): return on(bone, tier) and (not bone.weapon_tiers or tier in bone.weapon_tiers)   # weapon tier = worn tier on the sheets
 
 # ---- skin and hair ramps ----
 SKINS = {
@@ -415,6 +417,7 @@ class Troop:
         out["bones"] = []
         for bone in B:
             j = {"name": bone.name, "parent": bone.parent, "part": bone.part, "team": bone.team, "tag": bone.tag, "stages": bone.stages}
+            if bone.weapon_tiers: j["weaponTiers"] = bone.weapon_tiers
             if bone.variants is not None: j["variants"] = bone.variants
             j.update({"sheet": list(s.cloth if bone.team else s.skin), "pivot": bone.pivot, "rotation": bone.rot,
                       "boxes": [{"origin": b.origin, "size": b.size, "uv": b.uv, "mirror": False, "dilation": [b.dil] * 3} for b in bone.boxes]})
@@ -428,7 +431,7 @@ class Troop:
             pp = absp.get(bone.parent, [0, 0, 0])
             ap = [pp[i] + bone.pivot[i] for i in range(3)]
             absp[bone.name] = ap
-            if not on(bone, tier) or (bone.variants is not None and face not in bone.variants): continue
+            if not shown(bone, tier) or (bone.variants is not None and face not in bone.variants): continue
             cubes = []
             for b in bone.boxes:
                 o = [ap[i] + b.origin[i] for i in range(3)]
@@ -452,7 +455,7 @@ class Troop:
 
     def visible(s, t, show_hidden=False):
         n = s.faces()
-        return lambda bn: on(bn, t) and (bn.variants is None or ((t - 1) % n) in bn.variants) and (show_hidden or not s.hide(bn))
+        return lambda bn: shown(bn, t) and (bn.variants is None or ((t - 1) % n) in bn.variants) and (show_hidden or not s.hide(bn))
 
     def contact(s, out, side="crimson", show_hidden=False, px=6, vet=False):
         import render
