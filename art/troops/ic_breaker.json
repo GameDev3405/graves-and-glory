@@ -1,6 +1,6 @@
 {
  "troop": "ic_breaker",
- "note": "Ironclad Shieldbreaker (unit identity, Ironclad): vindicator biped, blackened plate with an ember-banded sallet and plume, fur collar, cloven-shield tabard, bearded axe. Tier I only in the first pass.",
+ "note": "Ironclad Shieldbreaker (unit identity, Ironclad): biped, a closed sallet with an ember brow band and plume, fur collar, lamellar-lapped plate, a long team tabard and cape, a bearded axe. Tier II brass rims, bosses, a bevor and tassets; tier III pauldron spikes, a brass comb, greaves and a forge apron. No back flag.",
  "rig": "biped",
  "size": [
   128,
@@ -11,7 +11,9 @@
  "idleArms": "hang",
  "parts": [],
  "skins": {
-  "1": "ic_breaker_s1.png"
+  "1": "ic_breaker_s1.png",
+  "2": "ic_breaker_s2.png",
+  "3": "ic_breaker_s3.png"
  },
  "weapon": "ic_axe",
  "hand": "right",

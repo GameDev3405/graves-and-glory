@@ -52,7 +52,7 @@ def band(ember=False):
     return paint
 
 # ---- the axe ----
-def axe():
+def axe(tier=1):
     I = S
     # the blade's flat, columns left to right along +x from the socket to the edge; the spine inlay is ember
     def flat_blade(w, h, inlay_row=None, chips=()):
@@ -64,7 +64,7 @@ def axe():
             if (y, face) in chips: o[w - 1] = I[2]
             return o
         return across(cols, rows)
-    return [
+    out = [
         Cube("butt", [-1, -5, -1], [1, -3, 1], "iron", metal(I, 3)),
         Cube("ring_lo", [-1, -3, -1], [1, -2, 1], "iron", band(True), skip=("up",)),
         Cube("grip", [-0.5, -2, -0.5], [0.5, 2, 0.5], "leather", wrap(O[3], O[1]), skip=("up", "down")),
@@ -79,8 +79,16 @@ def axe():
              by_face(north=flat_blade(5, 4, 1), south=flat_blade(5, 4, 1), rest=flat(I[4]), down=flat(I[1])), skip=("up",)),
         Cube("hook", [5, 10, -0.5], [6, 12, 0.5], "iron", by_face(north=flat(I[5]), south=flat(I[5]), rest=flat(I[3])), skip=("up",)),
         Cube("spike", [-4, 16, -0.5], [-1, 19, 0.5], "iron", by_face(north=across([I[2], I[3], I[3]]), south=across([I[2], I[3], I[3]]), rest=flat(I[3]))),
-        Cube("spike_tip", [-5, 17, -0.5], [-4, 18, 0.5], "iron", flat(I[5])),
+        Cube("spike_tip", [-5 - (tier >= 2), 17, -0.5], [-4, 18, 0.5], "iron", flat(I[5])),
     ]
+    if tier >= 2:   # brass rings on the haft, a longer spike
+        out += [Cube("ring_b", [-1, 12, -1], [1, 13, 1], "gilt", metal(B, 3), skip=("down",)), Cube("ring_c", [-1, 4, -1], [1, 5, 1], "gilt", metal(B, 3))]
+    if tier >= 3:   # a crown spike, a taller edge, a brass plate on the blade, a butt spike
+        out += [Cube("crown", [-0.5, 19, -0.5], [0.5, 22, 0.5], "iron", metal(I, 5), skip=("down",)),
+                Cube("edge_top", [6, 21, -0.5], [8, 22, 0.5], "iron", by_face(rest=flat(I[5]), up=flat(I[6]))),
+                Cube("plate", [2, 17, -1], [4, 20, 1], "gilt", by_face(north=across([B[4], B[3]]), south=across([B[4], B[3]]), rest=flat(B[2]))),
+                Cube("butt_spike", [-0.5, -7, -0.5], [0.5, -5, 0.5], "iron", metal(I, 4), skip=("up",))]
+    return out
 
 # ---- the crossbow ----
 def crossbow(tier=1):
@@ -122,7 +130,8 @@ TIERS = {
     "ic_crossbow": (crossbow, "The Ironclad Arbalist's crossbow, tier I, hand-authored at 1 texel a px: a dark wood tiller and butt, a leather-wound grip, an iron lock and stirrup, a steel prod with ember limb tips, a waxed string and a loaded bolt."),
 }
 
-_T = {"ic_crossbow": ("brass bands on the tiller, a brass stirrup, lock plate and limb caps",
+_T = {"ic_axe": ("brass rings on the haft and a longer back spike", "a crown spike, a taller edge, a brass plate on the blade and a butt spike"),
+      "ic_crossbow": ("brass bands on the tiller, a brass stirrup, lock plate and limb caps",
                       "a doubled steel prod, a windlass crank with brass knobs, a brass crest plate and a brass-headed bolt")}
 for _wid, (_t2, _t3) in _T.items():
     _fn = TIERS[_wid][0]; _d = TIERS[_wid][1].replace(", tier I,", ",")
