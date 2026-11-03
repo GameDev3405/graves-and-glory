@@ -516,10 +516,10 @@ for b in data['botCommand']:
     if isinstance(b['gearMaxTier'],bool) or not isinstance(b['gearMaxTier'],int) or not 1<=b['gearMaxTier']<=PRICED_GEAR_TIERS: errors.append(f'{name}/gearMaxTier: {b["gearMaxTier"]!r} must be a whole tier from 1 to {PRICED_GEAR_TIERS} (the tiers rarities.gearPrice2 and gearPrice3 price)')
 for b in data['botBanners']:
     name=f'botBanners/{b["id"]}';parts=b['id'].split('_')
-    mixed=parts[0]=='mix' and len(parts)==4
-    allowed={parts[1],parts[2]} if mixed else {b['house']}
+    mixed=parts[0]=='mix' and len(parts)>=4
+    allowed=set(parts[1:-1]) if mixed else {b['house']}
     if b['house'] not in houses or b['difficulty'] not in difficulties: errors.append(f'{name}: house or difficulty does not resolve')
-    if b['id']!=(f'mix_{b["house"]}_{parts[2]}_{b["difficulty"]}' if mixed else f'{b["house"]}_{b["difficulty"]}') or not allowed<=set(houses): errors.append(f'{name}: id must be <house>_<difficulty>, or mix_<house>_<second house>_<difficulty> with house the first House')
+    if b['id']!=(f'mix_{b["house"]}_{"_".join(parts[2:-1])}_{b["difficulty"]}' if mixed else f'{b["house"]}_{b["difficulty"]}') or len(allowed)!=len(parts)-2 and mixed or not allowed<=set(houses): errors.append(f'{name}: id must be <house>_<difficulty>, or mix_<house>_<second house>[_<more Houses>]_<difficulty> with house the first House and each House once')
     slots=b['slots'].split(',')
     if len(slots)!=squad: errors.append(f'{name}: {len(slots)} entries, not {squad}')
     pending,weights,units,last=0,0,{},None
@@ -541,6 +541,7 @@ for d in sorted(difficulties):
 # bonusObjectives row of its own. A cell the plan leaves open is listed in the row's placeholder column ('none' when the row is settled).
 MARCH_MODES={'domination','siege','survival','convoy'}
 BONUS_KINDS={'hold_all','lose_at_most','stage_by','never_rolled','win_within','kill_unit'}
+SIEGE_STAGES=('yard','gate','keep')
 bonus_rows={o['id']:o for o in data.get('bonusObjectives',[])}
 march=data['campaignBattles']
 if sorted(r['order'] for r in march)!=list(range(1,len(march)+1)): errors.append('campaignBattles: orders must run 1, 2, 3 and on, each once (MarchMath reads the order lock from them)')
@@ -556,6 +557,14 @@ for r in march:
     elif used_bonus.count(r['bonus'])!=1: errors.append(f'{where}: bonus {r["bonus"]} is named by {used_bonus.count(r["bonus"])} battles; each battle has its own')
     if r['house'] not in houses and not (r['house']=='all' and 'house' in r['placeholder'] and bonus_rows.get(r['bonus'],{}).get('kind')=='tbd'): errors.append(f'{where}: house {r["house"]} is not a houses id (all is allowed only as a placeholder whose bonus is still tbd, since the shards need one House)')
     if not r['placeholder'].strip(): errors.append(f'{where}: placeholder is blank; it lists the open cells, or reads none')
+    # allies (Kort 2026-11-02, Q76): none, or the botBanners rows the commander's bot allies field, one per allied seat (size - 1); those rows are reserved and never join a tier's pool (Campaign.fieldableBotBanners)
+    if r['allies']!='none':
+        ally=r['allies'].split(',');banner_ids={b['id'] for b in data['botBanners']}
+        if len(ally)!=r['size']-1 or len(set(ally))!=len(ally): errors.append(f'{where}: allies names {len(ally)} rows; it needs {r["size"]-1} distinct rows, one per allied bot seat (size - 1)')
+        for a in ally:
+            if a not in banner_ids: errors.append(f'{where}: allies {a} is not a botBanners id')
+    stage_bonus=bonus_rows.get(r['bonus'],{})
+    if stage_bonus.get('kind')=='stage_by' and (r['mode']!='siege' or stage_bonus['target'] not in SIEGE_STAGES): errors.append(f'{where}: a stage_by bonus needs a siege battle and a target of {", ".join(SIEGE_STAGES)} (SiegeMode feeds those stages)')
 for o in bonus_rows.values():
     where=f'bonusObjectives/{o["id"]}'
     if o['id'] not in used_bonus: errors.append(f'{where}: no campaignBattles row names it')

@@ -91,6 +91,12 @@ public final class MarchMath {
         return new Settled(first, cleared(battlesWon, rows), pay, pay ? bonus.shards() : 0, pay ? bonus.gold() : 0, pay ? row.house() : null);
     }
 
+    /** The botBanners ids a battle row names as its commander's bot allies (campaignBattles.allies, Kort 2026-11-02, Q76); empty for none or no row. */
+    static List<String> allyIds(Spec.CampaignBattlesRow r) { return r == null || r.allies().equals("none") ? List.of() : Arrays.asList(r.allies().split(",")); }
+
+    /** Whether a botBanners row is reserved as some battle's allies, so it never joins a tier's pool (Campaign.fieldableBotBanners). */
+    static boolean reservedAlly(String id, Spec.CampaignBattlesRow[] rows) { for (var r : rows) if (allyIds(r).contains(id)) return true; return false; }
+
     /**
      * One round's bonus objective (the closed kinds of Phase 4 spec 11). The round feeds it events; kept reads the result at the finish. The
      * kinds: hold_all, the player's side held every point at one moment; lose_at_most, at most value troops lost; stage_by, the target stage

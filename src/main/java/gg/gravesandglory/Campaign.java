@@ -316,7 +316,7 @@ public final class Campaign {
         for(var u:b.units){GravesAndGlory.Battle.leaveSide(u.mob);u.mob.discard();}b.units.clear();botRespawns.clear();botRetreating.clear();vacated.clear();vacatedUntil.clear();awayTicks.clear();leftAt.clear();absentSeat.clear();
         for(int team=0;team<2;team++){final int t=team;int humans=(int)b.squads.values().stream().filter(s->s.team==t&&s.seated).count();
             int target=size; // practice and a March battle set size in soloStart, so one bot per team stays the practice rule
-            if(fill||practice)for(int i=humans;i<target;i++){UUID id=UUID.randomUUID();var s=new GravesAndGlory.Squad(id,team,b.fieldBase(team));s.bot=true;s.tier=activeBattle!=null?activeBattle.difficulty():difficulty;s.commander=Spec.CLASSES[i%Spec.CLASSES.length].id();s.lane=i%3;b.squads.put(id,s);}
+            if(fill||practice)for(int i=humans;i<target;i++){UUID id=UUID.randomUUID();var s=new GravesAndGlory.Squad(id,team,b.fieldBase(team));s.bot=true;s.tier=activeBattle!=null?activeBattle.difficulty():difficulty;s.commander=Spec.CLASSES[i%Spec.CLASSES.length].id();s.lane=i%3;var ally=allyRow(s);if(ally!=null)s.tier=ally.difficulty();b.squads.put(id,s);} // a March battle's allies fight at their own row's tier
         }
         participants.clear();for(var s:b.squads.values())if(!s.bot&&s.seated){participants.add(s.owner);results.remove(s.owner);joinedAt.put(s.owner,b.time);s.commander=profile(s.owner).commander;}
         for(var s:b.squads.values())if(s.seated)s.banner=banner(s);
@@ -346,6 +346,7 @@ public final class Campaign {
         return "Your banner holds no "+h+" troops. Pick another House, or add "+h+" troops on the Banner page.";}
     /** A bot's banner (the botBanners sheet, spec 6.1): of the botBanners rows for its tier whose troops all belong to fieldable Houses, the one at lane % rows; Normal rows for a tier with none, the starter banner if no row fits. */
     List<String> botBanner(GravesAndGlory.Squad s){
+        var ally=allyRow(s);if(ally!=null)return new ArrayList<>(Arrays.asList(ally.slots().split(",")));
         var rows=fieldableBotBanners(s.tier);if(rows.isEmpty())rows=fieldableBotBanners("normal");
         if(rows.isEmpty())return RosterMath.starterBanner();
         var boss=bossBanner(s);if(boss!=null)return boss;
@@ -359,10 +360,15 @@ public final class Campaign {
             if(slots.contains(bonusTracker.target)&&slots.stream().allMatch(id->id.equals(RosterMath.MARKER)||id.equals(RosterMath.EMPTY)||fieldable.contains(catalog.houseOf(id))))return new ArrayList<>(slots);}
         return null;
     }
-    /** The botBanners rows of a tier, in sheet order, whose every troop belongs to a fieldable House (houses.fieldable). */
+    /** A March battle's allied banner for a bot on the commander's side (campaignBattles.allies; Kort 2026-11-02, Q76: battle 6 fields all five Houses beside you): the named row at lane % allies, or null when the battle names none. */
+    Spec.BotBannersRow allyRow(GravesAndGlory.Squad s){
+        if(!s.bot||s.team!=0)return null;var ids=MarchMath.allyIds(activeBattle);if(ids.isEmpty())return null;
+        String id=ids.get(Math.floorMod(s.lane,ids.size()));for(var row:Spec.BOTBANNERS)if(row.id().equals(id))return row;return null;
+    }
+    /** The botBanners rows of a tier, in sheet order, whose every troop belongs to a fieldable House (houses.fieldable), less the rows a battle reserves as allies. */
     static List<Spec.BotBannersRow> fieldableBotBanners(String tier){
         var catalog=RosterMath.Catalog.fromSpec();var fieldable=RosterMath.fieldableHouses();List<Spec.BotBannersRow> out=new ArrayList<>();
-        for(var row:Spec.BOTBANNERS)if(row.difficulty().equals(tier)&&Arrays.stream(row.slots().split(",")).allMatch(id->id.equals(RosterMath.MARKER)||id.equals(RosterMath.EMPTY)||fieldable.contains(catalog.houseOf(id))))out.add(row);
+        for(var row:Spec.BOTBANNERS)if(row.difficulty().equals(tier)&&!MarchMath.reservedAlly(row.id(),Spec.CAMPAIGNBATTLES)&&Arrays.stream(row.slots().split(",")).allMatch(id->id.equals(RosterMath.MARKER)||id.equals(RosterMath.EMPTY)||fieldable.contains(catalog.houseOf(id))))out.add(row);
         return out;
     }
     /** Units in the banner a commander would field now; 0 means he has no army to bring. */

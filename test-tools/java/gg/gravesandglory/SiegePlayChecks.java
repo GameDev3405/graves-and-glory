@@ -139,7 +139,7 @@ final class SiegePlayChecks implements Phase4Checks.Suite, Phase4Checks.ServerWa
             case 0 -> { // the campaign row: battle 2 is a siege again, its bonus untouched
                 Spec.CampaignBattlesRow row = null;
                 for (var r : Spec.CAMPAIGNBATTLES) if (r.id().equals("march-2")) row = r;
-                Phase4Checks.report("p4-siege-campaign-row", row != null && row.mode().equals(Modes.SIEGE) && row.bonus().equals("b2_lose10"),
+                Phase4Checks.report("p4-siege-campaign-row", row != null && row.mode().equals(Modes.SIEGE) && row.bonus().equals("b2_gate_by"),
                         row == null ? "no march-2" : "mode=" + row.mode() + " bonus=" + row.bonus());
                 c.battleMode = Modes.DOMINATION; c.closeParty();
                 if (c.map != 1) c.switchMap(1);

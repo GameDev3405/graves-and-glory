@@ -298,7 +298,7 @@ public final class Phase2Checks implements ClientModInitializer {
                 case 9->{if(wantShot==null||shotTaken){wantShot=null;b.campaign.returnLobby();next(b,10);}}
                 case 10->{ // p2-bot-banners: a Normal 3v3 with bot fill
                     var p=sp(b);if(p==null||!Phase1Checks.skirmish(b,p,b.campaign.map,3,"normal"))return;
-                    List<Spec.BotBannersRow> rows=new ArrayList<>();for(var r:Spec.BOTBANNERS)if(r.difficulty().equals("normal")&&fieldable(r))rows.add(r);
+                    List<Spec.BotBannersRow> rows=new ArrayList<>(Campaign.fieldableBotBanners("normal"));
                     boolean ok=!rows.isEmpty();int bots=0;StringBuilder why=new StringBuilder();
                     for(var s:b.squads.values())if(s.bot&&s.seated){bots++;
                         var row=rows.stream().filter(r->Arrays.asList(r.slots().split(",")).equals(s.banner)).findFirst().orElse(null);
