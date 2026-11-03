@@ -23,3 +23,10 @@ Backups: `C:\GGBuild\backups\gg-build\<timestamp>.zip` (the whole save, every di
 - Update the mod: stop, replace the jar in `C:\GGBuild\mods\`, start. World saves are untouched.
 - Firewall rule `Graves and Glory builder 25570 (Tailscale only)`; the playit agent connects out, so it needs no inbound rule; the Kingdom servers (25565-25567, 25571) are not touched.
 - When building is done, the finished canvases become the real maps/lobby (separate task; copy the dimension region folders).
+
+## Deployed 2026-11-03
+
+- Running main `bb81fd86` (jar sha1 `3703bd7d`). The old seven `gg-build-*` worlds are zipped in `C:\GGBuild\backups\pre-wipe-20261103\` and kept in `C:\GGBuild\old-worlds\` (Kort chose a blank start).
+- playit: the official v1.2.0 `playitd.exe` (`C:\GGBuild\playit\v1.2.0`, signed by Developed Methods LLC) runs as the boot task `GGPlayit` with `--secret-path C:\GGBuild\playit\playit-secret.txt`; log `C:\GGBuild\playit\playitd.log`. The old v0.15.26 CLI could not route the anycast tunnel. Tunnels are made on the playit.gg site, not from the CLI.
+- Known gap: the supervisor's `builder_ops.py` steps (pre-start backup, log rotation, offsite copy, version stamp) fail because the server PC has no Python on the SYSTEM path. The mod's own backups (every 30 minutes, on stop, `/backup`) and autosave do not need Python.
+- Player packs matching this jar: `dist/graves-and-glory-0.5.0.mrpack` and `-curseforge.zip` built from the same commit.
