@@ -18,7 +18,7 @@ import build_swords as W
 import build_bows as BW
 from build_swords import by_face, flat, wrap, bar, REPO
 from handlib import ramp
-from graveborn import GIRON as I, VIOLET as V, FROST as F
+from graveborn import GIRON as I, VIOLET as V, FROST as F, BONE as B, GILT as G
 
 PALE = ramp("2a2825", "48443d", "6a6558", "8c8573", "ada592", "cbc4b0")      # weathered pale grave-wood, the belly
 
@@ -31,7 +31,10 @@ def cord(face, w, h):
 def iron(top, mid, low):
     return by_face(up=flat(I[top + 1]), down=flat(I[0]), rest=bar(I[top], I[mid], I[low]))
 
-def frost_bow():
+def frost_bow(tier=1):
+    """Tier II (the Barrow Hunter): bone-capped nocks, a bone lower riser, a bone shard for the rime one, brighter violet grip.
+    Tier III (the Rime Warden): risers, nocks and grip thread in funeral gilt, gilt knee bands, the bone shard. The staves
+    and draw never change: trim, metal and bone escalate, not size."""
     segs = [(2, 5, 1, 2, 0.35), (2, 15, 1, 2, 0.65), (2, 27, 1, 2, 1.0), (2, 40, 1, 1, 1.2), (2, 10, 1, 1, 1.0)]
     nock = {"n": 1, "d": 1, "rel": 0, "wt": 1.0, "mat": "iron",
             "mk": lambda up: by_face(up=flat(I[5]), down=flat(I[1]), rest=flat(I[3])), "at": 0.5,
@@ -44,20 +47,38 @@ def frost_bow():
     bands = [(1, "leather", cord), (3, "leather", cord)]
     shard = by_face(up=flat(F[6]), down=flat(F[3]), east=flat(F[4]), west=flat(F[3]), rest=bar(F[6], F[5], F[3]))
     extras = [(("rime_shard", [1, -6, -0.25], [2, -2, 0.75], "bone", shard), {"turn": 12, "pivot": [1.5, -2, 0]})]
-    return BW.make("frost_bow", NOTE, root=3, segs=segs, wood=(F, PALE), nock=nock, grip=grip, risers=risers,
+    gilt = by_face(up=flat(G[4]), down=flat(G[1]), rest=bar(G[4], G[3], G[1], G[2]))
+    bone = by_face(up=flat(B[5]), down=flat(B[2]), rest=bar(B[5], B[4], B[2]))
+    if tier >= 2:   # the frame cap leaves no room to add cubes: tiers swap materials on the same cubes
+        nock = dict(nock, cap=("bone", bone))
+        grip = BW.grip_cubes(wrap(I[3], I[2], V[3]))
+        extras = [(("bone_shard", [1, -6, -0.25], [2, -2, 0.75], "bone", by_face(up=flat(B[5]), down=flat(B[2]), east=flat(B[4]), west=flat(B[3]),
+                   rest=bar(B[5], B[4], B[2]))), {"turn": 12, "pivot": [1.5, -2, 0]})]
+        risers[1] = (("riser_lo", [-1, -3, -1], [1, -2, 1], "bone", bone), {})
+    if tier == 3:
+        nock = dict(nock, cap=("gilt", gilt))
+        grip = BW.grip_cubes(wrap(I[2], I[1], G[3]))
+        risers[0] = (("riser_hi", [-1.5, 2, -1.5], [1.5, 4, 1.5], "gilt", by_face(up=flat(G[4]), down=flat(I[0]), rest=bar(G[3], I[3], I[1], G[2]))), {})
+        risers[1] = (("riser_lo", [-1, -3, -1], [1, -2, 1], "gilt", gilt), {})
+        bands = [(1, "gilt", gilt), (3, "gilt", gilt)]
+    wid = "frost_bow" + ("" if tier == 1 else "_t%d" % tier)
+    return BW.make(wid, {1: NOTE, 2: NOTE2, 3: NOTE3}[tier], root=3, segs=segs, wood=(F, PALE), nock=nock, grip=grip, risers=risers,
                    extras=extras, bands=bands, draw=(3.2, 5.65))
 
 NOTE = ("The Barrow Stalker's frost bow (Graveborn), hand-authored at 1 texel a px on the order bow's geometry: pale grave-wood "
         "limbs with a frost-grey rimed back, a black grave-iron riser and nocks capped in rime, a violet-wound grip and knee "
         "bindings, a rime shard hanging from the riser. Drawn through the same four frames as the order bow.")
-TIERS = {"frost_bow": (frost_bow, NOTE)}
+NOTE2 = NOTE.replace("bow (Graveborn)", "bow, tier II (Graveborn)") + " Tier II: bone-capped nocks, a bone lower riser and a bone shard."
+NOTE3 = NOTE.replace("bow (Graveborn)", "bow, tier III (Graveborn)") + (" Tier III: risers, nocks and grip thread chased in funeral gilt, gilt "
+         "knee bands and the bone shard.")
+TIERS = {"frost_bow": (frost_bow, NOTE), "frost_bow_t2": (lambda: frost_bow(2), NOTE2), "frost_bow_t3": (lambda: frost_bow(3), NOTE3)}
 
 # the Stalker's mantle and front flaps hang 3.4 px out from the body and hid the bow at rest: hold it out in front of them
 HELD = {"offset": [1, 0, -3], "rotation": [0, 0, 0], "note": "the grip's centre is the model origin; held 3 px forward of the hand, outside the mantle flaps"}
 
 def outputs(tiers=None):
     out = BW.outputs(TIERS)
-    out["frost_bow.json"]["grip"] = HELD
+    for wid in TIERS: out[wid + ".json"]["grip"] = HELD
     return out
 
 def quads():
