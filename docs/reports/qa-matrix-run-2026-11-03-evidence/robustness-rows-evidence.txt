@@ -25,3 +25,13 @@ DaveV1 and CarlOK are unaffected; 3daf2219-...json.corrupt is kept. The corrupt 
 Before: {"layout":"campaign-4","map":0,"margin":"margin-1/terrain-6","landmarks":"11be5373"}; the file was deleted with the server stopped.
 Restart: Done (1.507s), no Exception or ERROR lines. A join alone does not write the marker (the arena is built when a round starts).
 After camp:practice the arena build ran and the marker was rewritten 2 s later with the same content as before. The log has no Exception or ERROR line.
+
+== Follow-up 2026-11-03, branch work/qa-rows-e10-d21-k4 (scratch server work/qa-robust-srv, port 25640, deleted afterwards; one java process at a time) ==
+E10: level-name=Bannerbound. Log: 'Preparing level "Bannerbound"', Done (1.718s), camp terrain 1849 ms, camp pieces 394 ms; Bannerbound/gravesandglory-camp.json written.
+  Bot EBot joined, snapshot present; camp:practice -> snapshot gained 'battle' and mode "2". No Exception/ERROR.
+D21: world 'Graves and Glory' with fixture profile-v1-full as DaveV1 (ad696520-...). Join migrated it (sha a68003bb973f, gold 2700). Created directory ad696520-...json.tmp (with a child) to block SafeFiles.temp.
+  'roll' -> snapshot notice "Collection could not be saved; check disk space." (noticeSerial 4), gold still 2700; server log: [STDERR] Could not save commander collection: AccessDeniedException.
+  After: ad696520-...json sha256 a68003bb973f... unchanged; .json.bak created; .v1.json and .v2.json intact.
+K4: HostC creates a room (social:room, code 3EAC8442), GuestD joins (social:join). HostC social:exit -> HostC "You left the room."; GuestD's snapshot: room kept, host:true.
+  HostC rejoined (host:false); GuestD (host) disconnected -> HostC snapshot: room kept, GuestD online:false host:true, waiting "Waiting for disconnected members to reconnect." (reconnect reservation; seat is not reassigned while he is away).
+Cleanup: stop.ps1 ran ("Stopped."), no java left, scratch folder and logs deleted, Spec.java and sheets/preflight.json reverted.

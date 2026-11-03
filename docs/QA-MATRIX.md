@@ -18,7 +18,7 @@ Result column to fill in on each pass: Pass / Fail / Blocked, tester, jar SHA-25
 
 Rules that apply to every row: never write or accept `eula.txt` (Kort supplies it); never touch ports 25565-25567, 25570 (builder), 25571; never stop Kort's game or the builder; test on a copy of any save; headless bots never count as players.
 
-Run 2026-11-03 (`work/qa-matrix-runs`, base `main` bd05fa2b), after the dedicated-server pass (`work/qa-server-rows`): 90 PASS, 2 FAIL (C9, I10), 29 Kort, 16 not run (no agent-runnable check or turn budget). Detail: `docs/reports/qa-matrix-run-2026-11-03.md`.
+Run 2026-11-03 (`work/qa-matrix-runs`, base `main` bd05fa2b), after the dedicated-server pass (`work/qa-server-rows`): 93 PASS (E10, D21, K4 added 2026-11-03), 2 FAIL (C9, I10), 29 Kort, 13 not run (no agent-runnable check or turn budget). Detail: `docs/reports/qa-matrix-run-2026-11-03.md`.
 
 ---
 
@@ -99,7 +99,7 @@ Profiles are the server's `<uuid>.json`, read once per commander by `Campaign.pr
 | D18 | Two commanders, one with a corrupt file. | Corrupt one fails; the other loads and plays; no cross-contamination. | LATER | PASS (robustness pass 2026-11-03): the corrupt commander joins with defaults and the file is kept as `.corrupt` (no join failure, by design); the other two load intact |
 | D19 | Client sends a portable profile copy (`importProfile`) on first visit to a single-player or LAN world with no record. | Imported once, upgraded the same way as a server file. Over 16000 characters is ignored. | LATER (no standalone check on `importAllowed`) | NOT RUN - no agent-runnable check |
 | D20 | Same on a dedicated server. | Never accepted; the server's file is the only source of truth. | LATER (code: `importAllowed.remove(id) && !server.isDedicated()`) | SKIP (turn budget): needs a bot to send an oversized profile on `profile_v1` and a check that no file changes |
-| D21 | Save fails (disk full or read-only directory). | Player is told "Collection could not be saved; check disk space."; old file and `.bak` intact. | LATER | SKIP (turn budget): needs a blocked `.tmp` path plus a `roll` order from a bot; the setup was prepared but not run |
+| D21 | Save fails (disk full or read-only directory). | Player is told "Collection could not be saved; check disk space."; old file and `.bak` intact. | LATER | PASS (scratch server 2026-11-03, `work/qa-rows-e10-d21-k4`): `.tmp` path blocked by a directory, bot `roll` -> player notice "Collection could not be saved; check disk space.", gold rolled back (2700), profile sha256 unchanged (a68003bb...), `.bak` and `.v1`/`.v2` intact; server logs AccessDeniedException |
 | D22 | Run a migrated profile through a save, quit, relaunch. | Nothing changes (no repeated migration, no reward grants twice). | HARN `restart-collection` (`CampaignChecks`) | PASS - HARN restart-collection (gold 777; no v1 fixture this run) |
 
 ## E. Legacy Bannerbound data (rename)
@@ -115,7 +115,7 @@ Profiles are the server's `<uuid>.json`, read once per commander by `Campaign.pr
 | E7 | The legacy world is open (locked) while migrating. | Refused; nothing copied. | AUTO `LegacyDataMigrationCheck` | PASS - AUTO LegacyDataMigrationCheck |
 | E8 | Incomplete current world next to a legacy world. | Refused; recovery needed, no overwrite. | AUTO `LegacyDataMigrationCheck` | PASS - AUTO LegacyDataMigrationCheck |
 | E9 | Dedicated server with `bannerbound-profiles/` and `bannerbound-layout.json` in the world. | Profiles copied to `gravesandglory-profiles/`; layout marker copied; originals kept; failure keeps originals and stops with a clear message. | HARN `legacy-profile-upgrade`, `legacy-layout-upgrade` (`GRAVES_ROADMAP_MIGRATION`) | PASS - server pass 2026-11-03 |
-| E10 | A legacy-named world (`Bannerbound`) still activates the mod. | `Battle` is created for both level names. | HARN `legacy-world-upgrade` | SKIP (turn budget): needs a second start with `level-name=Bannerbound` and a join |
+| E10 | A legacy-named world (`Bannerbound`) still activates the mod. | `Battle` is created for both level names. | HARN `legacy-world-upgrade` | PASS (scratch server 2026-11-03): `level-name=Bannerbound` start: camp built, `gravesandglory-camp.json` written; bot joined, `camp:practice` created the battle (snapshot has a `battle` entry); no exception |
 | E11 | Migration error at client start (storage or permissions). | Front menu shows "Could not migrate old collection/settings. Your originals are unchanged." | MANUAL | Kort |
 
 ## F. Version gate and compatibility
@@ -208,7 +208,7 @@ The mod registers no player commands outside build mode. In `BuildMode` (only wh
 | K1 | Ten or more players on a 16-slot server during a 4v4. | Eight commanders, the rest in camp, none in battle. | AUTO `AdmissionPolicyCheck`, `LobbyRulesCheck` | PASS - AUTO AdmissionPolicyCheck / LobbyRulesCheck |
 | K2 | One human with bots filling five seats; headless bots not counted as players. | Match starts; no bot reward or record. | AUTO `LobbyRulesCheck` (bot fill); bot rewards: GAP, no named check | PASS - AUTO AdmissionPolicyCheck / LobbyRulesCheck |
 | K3 | Leave and join during the ten-second countdown. | Countdown stops or restarts as G3. | AUTO `LobbyRulesCheck` | PASS - AUTO AdmissionPolicyCheck / LobbyRulesCheck |
-| K4 | Host leaves the room. | Host seat passes or room closes without a stuck lobby. | LATER (only `handHost` rules are checked) | SKIP (turn budget): needs two bots in a room, the host leaves, then a check of the host seat |
+| K4 | Host leaves the room. | Host seat passes or room closes without a stuck lobby. | LATER (only `handHost` rules are checked) | PASS (scratch server 2026-11-03): host `social:exit` -> room stays and the host seat passes to the guest (`host:true`); after the guest (host again) disconnected, the room stays with "Waiting for disconnected members to reconnect" (reconnect reservation, by design), no stuck error |
 | K5 | Shrink the room below its commanders; move a party to a full side. | Refused with a message. | AUTO `LobbyRulesCheck` | PASS - AUTO AdmissionPolicyCheck / LobbyRulesCheck |
 | K6 | Same House picked by both sides; mixed banners. | Allowed per design; House banner derived per side. | AUTO `LobbyRulesCheck` (`houseBanner`) | PASS - AUTO AdmissionPolicyCheck / LobbyRulesCheck |
 | K7 | Rewards: win, loss, quit, disconnect, visitor, rematch. | Granted once per participant, saved, none for visitors. | HARN `visitor-no-reward`; the rest LATER | NOT RUN - no agent-runnable check |
