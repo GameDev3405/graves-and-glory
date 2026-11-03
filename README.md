@@ -96,7 +96,7 @@ Development game runs exercise the physical lobby, paid unlocks, saved profiles,
 
 ## Credits and permissions
 
-Concept and direction: Kort Tjepkema. Implementation, authored environments, animation adjustments, effects and original synthesized sound cues assisted by OpenAI Codex using Melty's modding kit. Original Graves and Glory code and content: MIT; remixes allowed.
+Concept and direction: Kort Tjepkema. Implementation, authored environments, animation adjustments, effects assisted by OpenAI Codex using Melty's modding kit. Sound effects are Pixabay samples (Pixabay Content License). Original Graves and Glory code and content: MIT; remixes allowed.
 
 Excalibur resource pack by Maffhew, used with permission, unmodified (CC BY-NC-ND 3.0).
 
