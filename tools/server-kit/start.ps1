@@ -78,19 +78,34 @@ try {
     Write-Kit "Started on port $port with ${MemoryGB}G heap. java pid $($proc.Id). Type stop here, or run .\stop.ps1, to shut down."
 
     # Windows PowerShell's Console.In.ReadLineAsync blocks while stdin is open, which froze the stop.ps1 check.
-    # Read console lines on a background runspace instead; the loop below drains them.
+    # A real console is polled key by key. Redirected input is read on a background runspace that the loop drains;
+    # that reader can stay blocked after java exits, so the script then ends the process outright.
+    $inputRedirected = $false
+    try { $inputRedirected = [Console]::IsInputRedirected } catch { }
     $consoleLines = New-Object 'System.Collections.Concurrent.ConcurrentQueue[string]'
-    $readerShell = $null
-    try {
-        $readerShell = [PowerShell]::Create()
-        [void]$readerShell.AddScript({
-            param($queue)
-            while ($null -ne ($l = [Console]::In.ReadLine())) { $queue.Enqueue($l) }
-        }).AddArgument($consoleLines)
-        [void]$readerShell.BeginInvoke()
-    } catch { $readerShell = $null }
+    if ($inputRedirected) {
+        try {
+            $readerShell = [PowerShell]::Create()
+            [void]$readerShell.AddScript({
+                param($queue)
+                while ($null -ne ($l = [Console]::In.ReadLine())) { $queue.Enqueue($l) }
+            }).AddArgument($consoleLines)
+            [void]$readerShell.BeginInvoke()
+        } catch { }
+    }
+    $typed = New-Object System.Text.StringBuilder
     $stopSent = $false
     while (!$proc.HasExited) {
+        if (!$inputRedirected) {
+            try {
+                while ([Console]::KeyAvailable) {
+                    $key = [Console]::ReadKey($true)
+                    if ($key.Key -eq 'Enter') { Write-Host ''; $consoleLines.Enqueue($typed.ToString()); [void]$typed.Clear() }
+                    elseif ($key.Key -eq 'Backspace') { if ($typed.Length -gt 0) { [void]$typed.Remove($typed.Length - 1, 1); Write-Host -NoNewline "`b `b" } }
+                    elseif ($key.KeyChar -ne [char]0) { [void]$typed.Append($key.KeyChar); Write-Host -NoNewline $key.KeyChar }
+                }
+            } catch { }
+        }
         $line = $null
         while ($consoleLines.TryDequeue([ref]$line)) {
             $line = $line.TrimStart([char]0xFEFF)
@@ -106,5 +121,6 @@ try {
     }
     Remove-Item -LiteralPath $script:PidFile -Force -ErrorAction SilentlyContinue
     Write-Kit "Server exited with code $($proc.ExitCode)."
+    if ($inputRedirected) { [Environment]::Exit($proc.ExitCode) }
     exit $proc.ExitCode
 } catch { Write-Host "ERROR: $($_.Exception.Message)" -ForegroundColor Red; exit 1 }
