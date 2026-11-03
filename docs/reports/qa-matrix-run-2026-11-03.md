@@ -3,7 +3,7 @@
 Branch `work/qa-matrix-runs`, base `main` bd05fa2b. Tester: Sonnet worker. Per-row states are in the "Run 2026-11-03" column of `docs/QA-MATRIX.md`. Evidence files (copies of the harness `local-checks.txt` and the verify result) are in `docs/reports/qa-matrix-run-2026-11-03-evidence/`; full logs are under the gitignored `work/q3/`.
 
 ## Totals (137 rows)
-Updated after the dedicated-server pass (below): 86 PASS, 2 FAIL (C9, C10), 29 Kort (needs Kort, friends, real network or visual sign-off), 20 not run (no agent-runnable check exists, or a fixture was needed).
+Updated after the dedicated-server pass (below): 87 PASS, 1 FAIL (C9), 29 Kort (needs Kort, friends, real network or visual sign-off), 20 not run (no agent-runnable check exists, or a fixture was needed).
 Before that pass: 78 PASS, 1 FAIL (K10, since resolved to PASS), 34 Kort, 24 not run. The pass moved C7, C8, C10, E9, F5, J2, J9 to PASS, C9 and C11 to FAIL, and completed the live halves of F2-F4 (already PASS).
 A PASS on an AUTO-only row means the standalone or Python check passed in `verify.py fast`; "live" halves of mixed rows were not run (noted in the column).
 
@@ -37,7 +37,7 @@ Kort approved (Q88, 2026-11-03) accepting the EULA only in a throwaway scratch s
 | C7 first start | PASS | libraries downloaded, world created, `Done (2.224s)`, camp built, no stack trace |
 | C8 status probe | PASS (probe fixed) | status JSON sane (1.20.1, protocol 763, 0/16); `server_status_probe.py` exits 1 because it asserts `players.max == 8`, kit default is 16 |
 | C9 join 127.0.0.1 | FAIL (expectation) | join works (`QaClient joined the game`, harness PASS); `gravesandglory-profiles/<uuid>.json` is not created by the join, only on the first collection change (`Campaign.save`) |
-| C10 stop | FAIL (fix incomplete; live re-check 2026-11-03) | start.ps1 from f4301b1f under redirected stdin (open and closed): `stop.ps1` still sent a BOM-prefixed `stop`, server log `ï»¿stop<--[HERE]` unknown command, java kept running 120 s, ended by Stop-Process (scratch). Earlier PASS only with a BOM-free `[Console]::InputEncoding` set by the host |
+| C10 stop | PASS (live re-check 2026-11-03, `fix/c10-stdin-bom` eb8b0ef0) | BOM host: (a) stdin open, `stop.ps1`: "Stop requested", "Stopping the server", "All dimensions are saved", "Server exited with code 0", start.ps1 exit code 0 12 s after the request (save included); (c) stdin closed: exit 0 in 8 s; (b) BOM-prefixed `stop` piped, stdin left open: exit 0 in 5 s, no `Unknown`/`<--[HERE]`. Fix chain: 1358504d (BOM), 005832ee (background reader), eb8b0ef0 (exit after java). Interactive-console typing path (typing `stop` in a real console window) is not covered by a redirected-stdin run: needs a real console window, Kort row. |
 | C11 other level-name | PASS (live re-check 2026-11-03) | level-name `Vanilla Probe`: `Done (2.253s)`, INFO `Graves and Glory is inactive: level-name "Vanilla Probe" is not "Graves and Glory" or "Bannerbound"...`, no crash |
 | E9 legacy profiles and layout | PASS | `bannerbound-profiles/` and `bannerbound-layout.json` copied byte-identical (sha256), originals kept; failure branch not run live (AUTO covers it) |
 | F2 old protocol, F3 old version, F4 build hash | PASS | live clients refused with "requires Graves and Glory 0.5.0 (build 2e255add)"; server logs "Refused incompatible client", no exception. The harness `old` case changes the version string, not the protocol number |

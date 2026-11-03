@@ -66,6 +66,10 @@ try {
     $info.WorkingDirectory = $script:Root
     $info.UseShellExecute = $false
     $info.RedirectStandardInput = $true   # stdout and stderr stay on this console
+    # Process.Start builds its stdin writer from Console.InputEncoding and flushes that encoding's BOM at once,
+    # so the server read the BOM in front of the first command. Use a BOM-free encoding before starting java;
+    # it also decodes piped console input as UTF-8, so a leading BOM there is one char we strip below.
+    try { [Console]::InputEncoding = New-Object System.Text.UTF8Encoding($false) } catch { }
     $proc = [System.Diagnostics.Process]::Start($info)
     # Write to the raw stream with a BOM-free encoding: the default writer can prepend a BOM, so the server read "?stop".
     $stdin = New-Object System.IO.StreamWriter($proc.StandardInput.BaseStream, (New-Object System.Text.UTF8Encoding($false)))
@@ -73,18 +77,40 @@ try {
     Set-Content -LiteralPath $script:PidFile -Value $proc.Id -Encoding ascii
     Write-Kit "Started on port $port with ${MemoryGB}G heap. java pid $($proc.Id). Type stop here, or run .\stop.ps1, to shut down."
 
-    $reader = $null
-    try { $reader = [Console]::In.ReadLineAsync() } catch { $reader = $null }
+    # Windows PowerShell's Console.In.ReadLineAsync blocks while stdin is open, which froze the stop.ps1 check.
+    # A real console is polled key by key. Redirected input is read on a background runspace that the loop drains;
+    # that reader can stay blocked after java exits, so the script then ends the process outright.
+    $inputRedirected = $false
+    try { $inputRedirected = [Console]::IsInputRedirected } catch { }
+    $consoleLines = New-Object 'System.Collections.Concurrent.ConcurrentQueue[string]'
+    if ($inputRedirected) {
+        try {
+            $readerShell = [PowerShell]::Create()
+            [void]$readerShell.AddScript({
+                param($queue)
+                while ($null -ne ($l = [Console]::In.ReadLine())) { $queue.Enqueue($l) }
+            }).AddArgument($consoleLines)
+            [void]$readerShell.BeginInvoke()
+        } catch { }
+    }
+    $typed = New-Object System.Text.StringBuilder
     $stopSent = $false
     while (!$proc.HasExited) {
-        if ($null -ne $reader -and $reader.IsCompleted) {
-            $line = $null
-            try { $line = $reader.Result } catch { $line = $null }
-            if ($null -eq $line) { $reader = $null }
-            else {
-                try { $stdin.WriteLine($line) } catch { }
-                try { $reader = [Console]::In.ReadLineAsync() } catch { $reader = $null }
-            }
+        if (!$inputRedirected) {
+            try {
+                while ([Console]::KeyAvailable) {
+                    $key = [Console]::ReadKey($true)
+                    if ($key.Key -eq 'Enter') { Write-Host ''; $consoleLines.Enqueue($typed.ToString()); [void]$typed.Clear() }
+                    elseif ($key.Key -eq 'Backspace') { if ($typed.Length -gt 0) { [void]$typed.Remove($typed.Length - 1, 1); Write-Host -NoNewline "`b `b" } }
+                    elseif ($key.KeyChar -ne [char]0) { [void]$typed.Append($key.KeyChar); Write-Host -NoNewline $key.KeyChar }
+                }
+            } catch { }
+        }
+        $line = $null
+        while ($consoleLines.TryDequeue([ref]$line)) {
+            $line = $line.TrimStart([char]0xFEFF)
+            if ($line.StartsWith([string][char]0xEF + [char]0xBB + [char]0xBF)) { $line = $line.Substring(3) }
+            if ($line.Length -gt 0) { try { $stdin.WriteLine($line) } catch { } }
         }
         if (!$stopSent -and (Test-Path -LiteralPath $script:StopFile)) {
             Remove-Item -LiteralPath $script:StopFile -Force -ErrorAction SilentlyContinue
@@ -95,5 +121,6 @@ try {
     }
     Remove-Item -LiteralPath $script:PidFile -Force -ErrorAction SilentlyContinue
     Write-Kit "Server exited with code $($proc.ExitCode)."
+    if ($inputRedirected) { [Environment]::Exit($proc.ExitCode) }
     exit $proc.ExitCode
 } catch { Write-Host "ERROR: $($_.Exception.Message)" -ForegroundColor Red; exit 1 }
