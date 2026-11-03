@@ -26,9 +26,9 @@ public final class SurvivalFeedShortCheck {
         List<String> sites = new ArrayList<>();
         for (var s : Spec.MODESITES) if (s.mode().equals("survival") && s.kind().equals("rise")) sites.add(s.name());
         List<String[]> rows = new ArrayList<>();
-        row(rows, "The dead are taking the shrine", ModeMath.SHRINE_LINE);
-        row(rows, "The shrine stands until dawn", ModeMath.STANDS_LINE);
-        row(rows, "The dead hold the shrine", ModeMath.HOLD_LINE);
+        row(rows, "The dead are taking the shrine", ModeMath.shrineLine());
+        row(rows, "The shrine stands until dawn", ModeMath.closingLine(true));
+        row(rows, "The dead hold the shrine", ModeMath.closingLine(false));
         row(rows, oldRise(List.of()), rise(List.of()).toArray(new String[0]));
         for (int wave = 1; wave <= Spec.WAVES.length; wave++) {
             row(rows, oldRest(wave, Spec.WAVES[wave - 1].gold()), rest(wave, Spec.WAVES[wave - 1].gold()));

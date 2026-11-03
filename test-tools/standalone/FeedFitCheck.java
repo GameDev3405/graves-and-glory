@@ -37,11 +37,12 @@ public final class FeedFitCheck {
 
     public static void main(String[] args) {
         check(width("i") == 2 && width("l") == 3 && width("W") == 6 && width(" ") == 4 && width("it") == 6, "font widths: thin letters narrower, space 4");
-        List<String> teams = new ArrayList<>(), points = new ArrayList<>(), stops = new ArrayList<>();
+        List<String> teams = new ArrayList<>(), points = new ArrayList<>(), stops = new ArrayList<>(), sites = new ArrayList<>();
         for (int t = 0; t < 2; t++) teams.add(FeedLines.teamShort(Spec.FACTIONS[t].name())); // a battle has two sides, FACTIONS[0] and [1]
         for (var p : Spec.POINTS) points.add(p.name());
         for (var s : Spec.MODESITES) if (s.kind().equals("road") && !s.name().equals("-")) stops.add(s.name());
-        check(!teams.isEmpty() && !points.isEmpty() && !stops.isEmpty(), "the sheets name teams, points and stops to fill the fields with");
+        for (var s : Spec.MODESITES) if (s.kind().equals("rise") && !s.name().equals("-")) sites.add(s.name());
+        check(!teams.isEmpty() && !points.isEmpty() && !stops.isEmpty() && !sites.isEmpty(), "the sheets name teams, points, stops and rise sites to fill the fields with");
         int tightest = FEED_PX, rows = 0;
         String tightestId = "";
         for (var r : Spec.MODELINES) {
@@ -49,7 +50,7 @@ public final class FeedFitCheck {
             List<String> fills = new ArrayList<>(List.of(r.text()));
             for (String field : r.args().equals("-") ? new String[0] : r.args().split(",")) {
                 List<String> next = new ArrayList<>();
-                List<String> values = switch (field) { case "team" -> teams; case "point" -> points; case "stop" -> stops; default -> List.of("10", "99"); };
+                List<String> values = switch (field) { case "team" -> teams; case "point" -> points; case "stop" -> stops; case "site" -> sites; case "gold" -> List.of("100"); default -> List.of("10", "99"); };
                 for (String text : fills) for (String v : values) next.add(text.replace("{" + field + "}", v));
                 fills = next;
             }
@@ -68,7 +69,7 @@ public final class FeedFitCheck {
         }
         check(rows > 0, "there are mode lines");
 
-        for (String mode : new String[]{"domination", "siege", "convoy"}) {
+        for (String mode : new String[]{"domination", "siege", "convoy", "survival"}) {
             check(!FeedLines.modeRows(mode).isEmpty(), mode + " has feed lines");
             var ledger = ModeLines.rows(mode);
             check(ledger.size() >= 2 && ledger.size() <= 4, mode + " has a 2 to 4 number ledger, not " + ledger.size());
@@ -93,8 +94,10 @@ public final class FeedFitCheck {
         check(ModeLines.entry("convoy_stops", 2, 3).text().equals("2"), "a plain entry");
         check(ModeLines.entry("domination_score_1", 120, 300).text().equals("120/300") && ModeLines.entry("domination_score_1", 120, 300).team() == 1, "Domination's score entry");
 
-        // The extension point Survival uses: its own rows, no change here. Until it has them it has none, and a call for one fails loudly.
-        check(FeedLines.modeRows("survival").isEmpty() && ModeLines.rows("survival").isEmpty(), "a mode without rows has no lines and no ledger");
+        // Survival's own rows are the extension point's first user: its ledger and its lines come from the sheets like every mode's.
+        check(FeedLines.modeRows("survival").size() == 8 && ModeLines.rows("survival").size() == 3, "Survival has its feed lines and a three number ledger");
+        check(ModeLines.entry("survival_wave", 3, 7).text().equals("3/7") && ModeLines.entry("survival_dead", 12, 40).text().equals("12") && ModeLines.entry("survival_time", 95, 0).text().equals("1:35"), "Survival's ledger entries");
+        check(FeedLines.modeLine("survival", "rise", "site", "the ford").equals("Dead rise: the ford") && FeedLines.modeLine("survival", "rest", "n", "5", "gold", "100").equals("Wave 5 at rest, +100 gold") && FeedLines.modeKind("survival", "start").equals("notice"), "Survival's lines fill their fields");
         boolean threw = false;
         try { FeedLines.modeLine("survival", "wave"); } catch (IllegalArgumentException e) { threw = e.getMessage().contains("survival/wave"); }
         check(threw, "an event with no row is a programming error that names it");

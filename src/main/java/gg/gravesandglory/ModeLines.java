@@ -8,7 +8,7 @@ import java.util.function.Function;
  * A battle mode's short ledger and briefing copy as plain data (plan 2C.2). The ledger is the 2 to 4 numbers that decide the round, in
  * the order of the modeLedger rows; the HUD and the report read the same list, so neither keeps its own labels. The briefing is the
  * how-to lines of the modes row. All of it is draft copy in the sheets. Pure (no Minecraft types), so FeedFitCheck runs it.
- * Survival adds its modeLedger rows and overrides BattleMode.ledgerEntries; nothing here names a mode.
+ * Each mode adds its modeLedger rows and overrides BattleMode.ledgerEntries (Survival too); nothing here names a mode.
  */
 public final class ModeLines {
     private ModeLines() {}

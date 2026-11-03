@@ -8954,6 +8954,78 @@
       "args": "-",
       "text": "The convoy is through",
       "status": "draft"
+    },
+    {
+      "id": "survival_start",
+      "mode": "survival",
+      "event": "start",
+      "kind": "notice",
+      "args": "n",
+      "text": "Hold the shrine through {n} waves",
+      "status": "draft"
+    },
+    {
+      "id": "survival_rise",
+      "mode": "survival",
+      "event": "rise",
+      "kind": "point",
+      "args": "site",
+      "text": "Dead rise: {site}",
+      "status": "draft"
+    },
+    {
+      "id": "survival_rise_unknown",
+      "mode": "survival",
+      "event": "rise_unknown",
+      "kind": "point",
+      "args": "-",
+      "text": "The dead rise",
+      "status": "draft"
+    },
+    {
+      "id": "survival_rest",
+      "mode": "survival",
+      "event": "rest",
+      "kind": "point",
+      "args": "n,gold",
+      "text": "Wave {n} at rest, +{gold} gold",
+      "status": "draft"
+    },
+    {
+      "id": "survival_rest_plain",
+      "mode": "survival",
+      "event": "rest_plain",
+      "kind": "point",
+      "args": "n",
+      "text": "Wave {n} laid to rest",
+      "status": "draft"
+    },
+    {
+      "id": "survival_shrine_falling",
+      "mode": "survival",
+      "event": "shrine_falling",
+      "kind": "point",
+      "args": "-",
+      "text": "The dead take the shrine",
+      "status": "draft"
+    },
+    {
+      "id": "survival_stands",
+      "mode": "survival",
+      "event": "stands",
+      "kind": "point",
+      "args": "-",
+      "text": "The shrine stands till dawn",
+      "status": "draft"
+    },
+    {
+      "id": "survival_dead_hold",
+      "mode": "survival",
+      "event": "dead_hold",
+      "kind": "point",
+      "args": "-",
+      "text": "The dead hold the shrine",
+      "status": "draft"
     }
   ],
   "modeLedger": [
@@ -9043,6 +9115,33 @@
       "mode": "convoy",
       "slot": 2,
       "label": "Time left",
+      "format": "time",
+      "team": -1,
+      "status": "draft"
+    },
+    {
+      "id": "survival_wave",
+      "mode": "survival",
+      "slot": 0,
+      "label": "Wave",
+      "format": "fraction",
+      "team": -1,
+      "status": "draft"
+    },
+    {
+      "id": "survival_dead",
+      "mode": "survival",
+      "slot": 1,
+      "label": "Dead standing",
+      "format": "plain",
+      "team": 1,
+      "status": "draft"
+    },
+    {
+      "id": "survival_time",
+      "mode": "survival",
+      "slot": 2,
+      "label": "Next wave in",
       "format": "time",
       "team": -1,
       "status": "draft"

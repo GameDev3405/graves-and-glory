@@ -107,7 +107,7 @@ public final class SurvivalMode extends BattleMode {
     @Override public boolean overtime(GravesAndGlory.Battle b) { return !over; }
     @Override public int timeoutWinner(GravesAndGlory.Battle b) { return DEFENDERS; }
     @Override public String howToSide(GravesAndGlory.Battle b, GravesAndGlory.Squad s) { return "defend"; }
-    @Override public String startLine(GravesAndGlory.Battle b) { return "Hold the shrine through " + WAVES.size() + " waves"; }
+    @Override public String startLine(GravesAndGlory.Battle b) { return FeedLines.modeLine(Modes.SURVIVAL, "start", "n", Integer.toString(WAVES.size())); }
 
     Spec.ModeSitesRow shrine(GravesAndGlory.Battle b) { if (shrine == null) shrine = site(b.campaign.map, "shrine"); return shrine; }
     Spec.ModeSitesRow court(GravesAndGlory.Battle b) {
@@ -227,7 +227,7 @@ public final class SurvivalMode extends BattleMode {
         int[] in = shrineCount(b);
         int was = lost;
         lost = ModeMath.shrineLost(lost, in[DEAD], in[DEFENDERS]);
-        if (was == 0 && lost > 0) feed(b, ModeMath.SHRINE_LINE);
+        if (was == 0 && lost > 0) feed(b, ModeMath.shrineLine());
         int result = ModeMath.survivalResult(current, WAVES.size(), cleared, riseAt == 0 && b.time >= waveEnds, lost, shrine(b).seconds());
         if (result >= 0) end(b, result);
     }
@@ -299,7 +299,7 @@ public final class SurvivalMode extends BattleMode {
 
     void end(GravesAndGlory.Battle b, int winner) {
         over = true;
-        feed(b, winner == DEFENDERS ? ModeMath.STANDS_LINE : ModeMath.HOLD_LINE);
+        feed(b, ModeMath.closingLine(winner == DEFENDERS));
         b.campaign.finish(winner);
         b.world.playSound(null, BlockPos.ORIGIN, winner == DEFENDERS ? SoundEvents.UI_TOAST_CHALLENGE_COMPLETE : SoundEvents.ENTITY_WITHER_SPAWN, SoundCategory.MASTER, 2, 1);
     }
@@ -314,6 +314,11 @@ public final class SurvivalMode extends BattleMode {
     @Override public int[] ledger(GravesAndGlory.Battle b) { return new int[]{current, director == null ? 0 : standing(b) + pending.size()}; }
     @Override public int[] max(GravesAndGlory.Battle b) { return new int[]{WAVES.size(), risen}; }
     @Override public String[] formats() { return new String[]{"fraction", "plain"}; }
+    /** The deciding numbers (modeLedger survival rows): the wave in play of the set, the dead standing, and the seconds to the next wave. */
+    @Override public List<ModeLines.Entry> ledgerEntries(GravesAndGlory.Battle b) {
+        int[] l = ledger(b), m = max(b);
+        return List.of(ModeLines.entry("survival_wave", l[0], m[0]), ModeLines.entry("survival_dead", l[1], m[1]), ModeLines.entry("survival_time", clock(b), b.roundSeconds));
+    }
     @Override public JsonObject snapshot(GravesAndGlory.Battle b, GravesAndGlory.Squad viewer) {
         var j = super.snapshot(b, viewer);
         j.addProperty("wave", current); j.addProperty("waves", WAVES.size()); j.addProperty("nextIn", clock(b));

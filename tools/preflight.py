@@ -95,7 +95,7 @@ for m in modes:
 # the sheets, not in the mode classes. A feed line has a kind FeedLines.style knows, the {name} fields its args column lists, and a text
 # FeedLines.MAX_TEXT can carry; FeedFitCheck measures how wide each one draws on the feed leaf. A how-to part may name a key as {key:<id>}.
 FEED_KINDS=('point','loss','kill','down','up','laststand','deploy','notice')
-FEED_ARGS=('team','point','stop','n')
+FEED_ARGS=('team','point','stop','n','site','gold')
 HOWTO_KEYS={'menu','attack','follow','formation','map','rotate_left','rotate_right','confirm','cancel','use','hints'}
 copy_modes={m['id'] for m in modes}
 events=set()
@@ -127,7 +127,7 @@ for r in data.get('modeLedger',[]):
     ledger_slots.setdefault(r['mode'],[]).append(r['slot'])
 for mode_id,slots in ledger_slots.items():
     if not 2<=len(slots)<=4 or sorted(slots)!=list(range(len(slots))): errors.append(f'modeLedger: {mode_id} has slots {sorted(slots)}, it needs 2 to 4 rows in slots 0, 1, 2...')
-for mode_id in ('domination','siege','convoy'):
+for mode_id in ('domination','siege','convoy','survival'):
     if mode_id in copy_modes and mode_id not in ledger_slots: errors.append(f'modeLedger: the {mode_id} mode needs its ledger rows')
     if mode_id in copy_modes and not any(r['mode']==mode_id for r in data.get('modeLines',[])): errors.append(f'modeLines: the {mode_id} mode needs its feed lines')
 for m in modes:

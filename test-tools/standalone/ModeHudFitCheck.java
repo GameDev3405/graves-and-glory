@@ -4,8 +4,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 /** p4-mode-hud-fit (plan 4C.5): where FeedFitCheck stops. For every battle mode, the worst-case text of the score bar (the 256 px
- *  card), Convoy's road line, the report note's mode section (title, rule lines, rows; 196 px) and Survival's feed lines (code
- *  strings in ModeMath, not modeLines rows) fits where it is drawn. Widths are the default font's (FeedFitCheck.width). The report
+ *  card), Convoy's road line, the report note's mode section (title, rule lines, rows; 196 px) and Survival's feed lines (the modeLines
+ *  survival rows, read through ModeMath, with every rise-site combination) fits where it is drawn. Widths are the default font's (FeedFitCheck.width). The report
  *  rows repeat ReportSections' labels and formats because that class cannot compile without the game; the real layout is checked in
  *  game by the ui-report and mode suites. A Survival line wider than the Compact feed row is listed as a gap and fails only with
  *  -Dmodehud.strict=true. Checked by javac alone, never shipped. */
@@ -53,7 +53,6 @@ public final class ModeHudFitCheck {
             var ledger = ModeLines.rows(m.id());
             String a, d;
             if (ledger.size() >= 2) { a = worst(ledger.get(0).format()); d = worst(ledger.get(1).format()); }
-            else if (m.id().equals("survival")) { a = worst("fraction"); d = worst("plain"); } // SurvivalMode: wave out of waves, the dead standing
             else { check(false, m.id() + " has no two ledger rows and is not Survival"); continue; }
             room("score bar " + m.id(), CARD_W, w(a) + 1 + w("10:00") + 1 + w(d) + 1 + TRACKS);
         }
@@ -77,13 +76,15 @@ public final class ModeHudFitCheck {
         room("report row Stage strength", NOTE_W, w("Stage strength") + VALUE_GAP + w("100%"));
         room("report row Escort progress", NOTE_W, w("Escort progress") + VALUE_GAP + w("100%"));
         room("report row Stops held", NOTE_W, w("Stops held") + VALUE_GAP + w("9 of 9"));
+        room("report row Wave reached", NOTE_W, w("Wave reached") + VALUE_GAP + w("99/99"));
+        room("report row Dead standing", NOTE_W, w("Dead standing") + VALUE_GAP + w("999"));
         room("report row Dawn (generic)", NOTE_W, w("Dawn") + VALUE_GAP + w("99/99"));
         room("report row Dusk (generic)", NOTE_W, w("Dusk") + VALUE_GAP + w("999"));
 
-        // ---- Survival's feed lines: code strings (SurvivalMode, ModeMath), so FeedFitCheck's modeLines rows do not reach them ----
+        // ---- Survival's feed lines: the modeLines survival rows, built per wave and site combination through ModeMath ----
         List<String> sites = new ArrayList<>();
         for (var s : Spec.MODESITES) if (s.mode().equals("survival") && s.kind().equals("rise")) sites.add(s.name());
-        List<String> lines = new ArrayList<>(List.of(ModeMath.SHRINE_LINE, ModeMath.STANDS_LINE, ModeMath.HOLD_LINE));
+        List<String> lines = new ArrayList<>(List.of(ModeMath.shrineLine(), ModeMath.closingLine(true), ModeMath.closingLine(false)));
         lines.addAll(ModeMath.riseLines(List.of()));
         for (int wave = 1; wave <= Spec.WAVES.length; wave++) { lines.add(ModeMath.restLine(wave, Spec.WAVES[wave - 1].gold())); lines.add(ModeMath.restLine(wave, 0)); }
         for (String s1 : sites) {

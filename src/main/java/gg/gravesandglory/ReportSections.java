@@ -7,7 +7,7 @@ import java.util.*;
 /** The battle report's mode sections (plan 4F.2): the result of the mode that was played, as rows of a label and a value on the
  *  report's note (WarTableReport). A mode's section is a function from the report to rows, registered under the mode's id; the
  *  report asks for the section of the id in its mode block (Campaign.reportMode) and falls back to the generic section, which
- *  reads the mode's two ledger numbers whatever they are. A new mode (Survival) adds its section with one register call from its
+ *  reads the mode's two ledger numbers whatever they are. A new mode adds its section with one register call from its
  *  own code and touches nothing in the report's layout. */
 final class ReportSections {
     private ReportSections() {}
@@ -42,6 +42,7 @@ final class ReportSections {
         register(Modes.DOMINATION, ReportSections::domination);
         register(Modes.SIEGE, ReportSections::siege);
         register(Modes.CONVOY, ReportSections::convoy);
+        register(Modes.SURVIVAL, ReportSections::survival);
     }
 
     /** The mode block of a report, or an empty one for a report from a server that did not send it. */
@@ -112,6 +113,11 @@ final class ReportSections {
     static List<Row> convoy(JsonObject report) {
         var m = mode(report);
         return List.of(new Row("Escort progress", ledger(report, 0)), new Row("Stops held", number(m, "ledger", 1, 0) + " of " + number(m, "max", 1, 0)));
+    }
+
+    /** Survival: the wave the night reached of the set, and the dead still standing when it ended. */
+    static List<Row> survival(JsonObject report) {
+        return List.of(new Row("Wave reached", ledger(report, 0)), new Row("Dead standing", ledger(report, 1)));
     }
 
     /** A mode without a section of its own: its two ledger numbers in their formats. */
