@@ -574,6 +574,7 @@ public final class Campaign {
             standing(id,(winner<0?"Draw":s.team==winner?"Victory":"Battle complete")+" / +"+earned+" collection gold"+(!eligible?" (reward requires 3 minutes of play)":percent<100?" (pro-rated: you were seated for "+percent+"% of the match)":"")+extra);
         }
         b.message=(winner<0?"Draw":b.side(winner).name()+" wins")+"! Back to the war council.";headline=b.message;
+        Audio.reset(); // the round is over: cues still waiting for their moment (a blow's contact frame, a queued rise) are dropped so nothing plays over the sting
         for(var p:b.server.getPlayerManager().getPlayerList())if(participants.contains(p.getUuid())){var sq=b.squads.get(p.getUuid());Audio.ending(p,winner,sq==null?-1:sq.team);} // each participant, to his own connection: the victory sting, the defeat sting for the losing side (AudioCues)
         returnLobby();
     }

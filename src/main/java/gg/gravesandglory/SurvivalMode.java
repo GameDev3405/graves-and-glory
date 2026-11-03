@@ -265,13 +265,14 @@ public final class SurvivalMode extends BattleMode {
         }
         for (var line : ModeMath.riseLines(names)) feed(b, line);
         Audio.all(b, AudioCues.Cue.WAVE_WARNING, "wave");
+        // The rise sound swells for 1.5 s before its hit, so it starts that much ahead of the rise and the hit lands as the dead climb out (rise() stays silent).
+        Audio.later(b, (int) (riseAt - b.time) - AudioCues.WAVE_RISE_LEAD_TICKS, () -> Audio.all(b, AudioCues.Cue.WAVE_RISE, "rise"));
     }
 
     /** The warned wave rises: its groups' counts scaled for the banners and the tier, up to maxDeadAlive standing, the rest queued. */
     void rise(GravesAndGlory.Battle b) {
         var wave = WAVES.get(current);
         current++; riseAt = 0; waveEnds = b.time + wave.seconds() * 20L; risen = 0; cleared = false;
-        Audio.all(b, AudioCues.Cue.WAVE_RISE, "rise");
         double scale = tier(b).waveScale();
         for (var g : groups(wave)) {
             int n = ModeMath.waveCount(g.count(), banners, R.survivalPerBanner(), scale);
@@ -300,8 +301,7 @@ public final class SurvivalMode extends BattleMode {
     void end(GravesAndGlory.Battle b, int winner) {
         over = true;
         feed(b, ModeMath.closingLine(winner == DEFENDERS));
-        b.campaign.finish(winner);
-        b.world.playSound(null, BlockPos.ORIGIN, winner == DEFENDERS ? SoundEvents.UI_TOAST_CHALLENGE_COMPLETE : SoundEvents.ENTITY_WITHER_SPAWN, SoundCategory.MASTER, 2, 1);
+        b.campaign.finish(winner); // the victory or defeat sting plays from Campaign.finish, once per participant; a world sound at the origin on top of it was a second ending sound
     }
 
     /** The objective panel's clock: seconds to the next wave (the warning's while one is warned). */

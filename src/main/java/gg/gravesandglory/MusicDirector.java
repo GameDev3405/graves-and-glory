@@ -94,7 +94,10 @@ public final class MusicDirector {
         String id = r != null && r.has("id") ? r.get("id").getAsString() : "";
         if (id.isEmpty() || id.equals(seenResult)) return;
         seenResult = id;
-        if (sawBattle && r.has("outcome") && r.get("outcome").getAsString().equals("VICTORY")) epicPending = true;
+        String outcome = r.has("outcome") ? r.get("outcome").getAsString() : "";
+        if (sawBattle && outcome.equals("VICTORY")) epicPending = true;
+        // The result lands with the ending sting (victory for a win or a draw, defeat otherwise): the next track waits the sting out rather than starting over it.
+        if (sawBattle) gap = Math.max(gap, outcome.equals("BATTLE COMPLETE") ? AudioCues.DEFEAT_STING_TICKS : AudioCues.VICTORY_STING_TICKS);
         sawBattle = false;
     }
 

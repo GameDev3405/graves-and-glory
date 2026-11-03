@@ -49,8 +49,29 @@ public final class Audio {
         return THROTTLE.allow(cue, key, now);
     }
 
-    /** A new round: the cooldowns start empty (a clock that goes back also frees them). */
-    public static void reset() { THROTTLE.clear(); }
+    /** A new round or its end: the cooldowns start empty (a clock that goes back also frees them) and any cue still waiting for its moment is dropped. */
+    public static void reset() { THROTTLE.clear(); PENDING.clear(); }
+
+    // ---- Cues that wait for their moment (docs/reports/audio-cue-timing-2026-11-02.md) --------------------------------------------------------------
+    private static final AudioCues.Schedule PENDING = new AudioCues.Schedule();
+
+    /** Runs the play call after the delay in server ticks (Battle.time); a delay of 0 or less plays now. Cleared by reset. */
+    public static void later(GravesAndGlory.Battle b, int delayTicks, Runnable play) {
+        if (b != null) PENDING.add(b.time, delayTicks, play);
+    }
+
+    /** Plays what has come due; called once a server tick from the battle loop. */
+    public static void tick(GravesAndGlory.Battle b) {
+        if (b != null) PENDING.tick(b.time);
+    }
+
+    /** Set by Combat.resolve around the damage call: the ticks the blow being applied still has to go before it visibly lands (a melee swing's contact frame; 0 for a missile or a spell). */
+    static int blowDelay;
+
+    /** The ticks from a melee swing starting to the blade meeting its target, for this troop (its House's attack clip; AudioCues.contactTicks). */
+    public static int contact(GravesAndGlory.Unit u) {
+        return u == null || u.spec == null ? AudioCues.DEFAULT_CONTACT_TICKS : AudioCues.contactTicks(u.spec.house());
+    }
 
     /** The cue to one player's connection alone. */
     public static void to(ServerPlayerEntity p, AudioCues.Cue cue) {
@@ -132,7 +153,15 @@ public final class Audio {
      */
     public static void hit(GravesAndGlory.Battle b, GravesAndGlory.Unit attacker, net.minecraft.entity.LivingEntity target, GravesAndGlory.Unit victim, String kind, boolean shieldRaised) {
         if (b == null || attacker == null || target == null) return;
-        Vec3d at = target.getPos().add(0, 1, 0);
+        // Melee damage resolves on the tick the swing starts; the blade meets the target at the attack clip's contact frame, so the sound waits for it.
+        // Missiles and spells resolve when they land, which is already their moment.
+        int wait = kind.equals("melee") ? contact(attacker) : 0;
+        Vec3d was = target.getPos().add(0, 1, 0);
+        if (wait <= 0) { playHit(b, attacker, target, victim, kind, shieldRaised, was); return; }
+        later(b, wait, () -> playHit(b, attacker, target, victim, kind, shieldRaised, target.isAlive() ? target.getPos().add(0, 1, 0) : was));
+    }
+
+    private static void playHit(GravesAndGlory.Battle b, GravesAndGlory.Unit attacker, net.minecraft.entity.LivingEntity target, GravesAndGlory.Unit victim, String kind, boolean shieldRaised, Vec3d at) {
         String key = "h" + attacker.mob.getId();
         var arm = arm(attacker);
         boolean melee = kind.equals("melee"), missile = kind.equals("arrow") || kind.equals("bolt");
@@ -149,7 +178,7 @@ public final class Audio {
 
     /** The round's last ten seconds: a tick a second to every seated player (the caller passes the ticks left on the round clock). */
     public static void clock(GravesAndGlory.Battle b, long ticksLeft) {
-        if (b != null && ticksLeft > 0 && ticksLeft <= 200 && ticksLeft % 20 == 0) all(b, AudioCues.Cue.CLOCK_TICK, "clock");
+        if (b != null && AudioCues.clockSecond(ticksLeft)) all(b, AudioCues.Cue.CLOCK_TICK, "clock");
     }
 
     /** The end of a round to one participant: the victory sting for a winner (and for a draw), the defeat sting for the losing side. */
@@ -159,7 +188,7 @@ public final class Audio {
 
     /** A countdown second to each member (the last three seconds; the caller passes the ticks left, stepped by ten). */
     public static void countdown(GravesAndGlory.Battle b, Iterable<UUID> members, int ticksLeft) {
-        if (b == null || b.server == null || ticksLeft <= 0 || ticksLeft > 60 || ticksLeft % 20 != 0) return;
+        if (b == null || b.server == null || !AudioCues.countdownSecond(ticksLeft)) return;
         for (UUID m : members) to(b.server.getPlayerManager().getPlayer(m), AudioCues.Cue.COUNTDOWN_TICK);
     }
 }

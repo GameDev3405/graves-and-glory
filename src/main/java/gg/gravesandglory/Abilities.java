@@ -254,22 +254,24 @@ final class Abilities {
      * The troop's attack when its cooldown is ready and its target is in reach: a caster starts its spell, a mender does not strike, anything
      * else shoots an arrow (a ranged troop) or hits (a melee one) through Combat.resolve.
      */
-    static void attack(GravesAndGlory.Battle b, GravesAndGlory.Unit u, LivingEntity enemy, long time) {
+    static boolean attack(GravesAndGlory.Battle b, GravesAndGlory.Unit u, LivingEntity enemy, long time) {
         var row = row(u);
         switch (row.mechanic()) {
             case "blight", "mist" -> {
-                if (time < u.abilityAt || tooClose(u, u.mob.squaredDistanceTo(enemy))) return; // a shell is never lobbed at an enemy inside the row's minimum range
+                if (time < u.abilityAt || tooClose(u, u.mob.squaredDistanceTo(enemy))) return false; // a shell is never lobbed at an enemy inside the row's minimum range
                 u.spellCenter = enemy.getPos();
                 u.windupUntil = time + (row.windupTicks() > 0 ? row.windupTicks() : D.spellWindupTicks());
                 u.abilityAt = time + (row.cooldownTicks() > 0 ? row.cooldownTicks() : D.abilityCooldownTicks());
                 Projectiles.bolt(b, u, u.spellCenter);
+                return true;
             }
-            case "mend" -> {}
+            case "mend" -> { return false; }
             default -> {
                 float amount = (float) baseHit(b, u);
                 animate(b, u);
                 // The hit is decided now; a ranged hit lands when its visible arrow arrives.
                 if (u.spec.ranged()) Projectiles.fire(b, u, enemy, visual(u), amount); else Combat.resolve(b, u, enemy, amount, "melee", false);
+                return true;
             }
         }
     }
@@ -346,7 +348,8 @@ final class Abilities {
         if (!target.isAlive() || Combat.structure(target) || !offCooldown(b, u, row, second)) return;
         Statuses.apply(b, u, target, "knockback", 0, 0, row.knockback());
         Statuses.apply(b, u, target, row.status().equals("none") ? "stun" : row.status(), row.statusTicks(), row.statusLevel(), row.amount());
-        Audio.at(b, AudioCues.Cue.SHIELD_BLOCK, target.getPos(), "bash" + u.mob.getId(), .8f);
+        Vec3d struck = target.getPos();
+        Audio.later(b, Audio.contact(u), () -> Audio.at(b, AudioCues.Cue.SHIELD_BLOCK, struck, "bash" + u.mob.getId(), .8f)); // the shield meets him at the swing's contact frame, with the blow
     }
 
     /** Slowness I is the amplifier 0 of Riptide's slow (the spec's fixed effect kind); the abilities rows carry their own statusLevel. */
@@ -374,7 +377,9 @@ final class Abilities {
         int swept = splash(b, u, at, primary, (float) (row.amount() * baseHit(b, u)), row.radius(), row.knockback(), u.mob.getPos());
         if (swept > 0 && row.cooldownTicks() > 0) spend(u, second, b.time + row.cooldownTicks()); // a sweep that struck nobody keeps its cooldown for the next hit
         b.world.spawnParticles(ParticleTypes.CLOUD, at.x, at.y + .2, at.z, 16, row.radius() / 2, .1, row.radius() / 2, .06);
-        Audio.at(b, AudioCues.Cue.HEAVY_METAL_HIT, primary.getPos(), "slam" + u.mob.getId(), .8f);
+        // The slam sounds at the swing's contact frame under the blow's own key, so the primary's heavy thud and the slam are one sound, not two.
+        Vec3d slammed = primary.getPos();
+        Audio.later(b, Audio.contact(u), () -> Audio.at(b, AudioCues.Cue.HEAVY_METAL_HIT, slammed, "h" + u.mob.getId(), .8f));
     }
 
     /**
@@ -891,7 +896,7 @@ final class Abilities {
         if (time < u.windupUntil) return;
         long lasts = Math.round(row.durationTicks() * Veterans.outputFactor(u));
         b.mists.add(new Mist(u.squad.team, u.spellCenter, radius, time + lasts, u, row, rider(u, "mist")));
-        Audio.at(b, AudioCues.Cue.MAGIC_CAST, u.spellCenter, "mist" + u.mob.getId());
+        Audio.at(b, AudioCues.Cue.MAGIC_IMPACT, u.spellCenter, "mist" + u.mob.getId()); // the cloud lands: an impact, not a second cast (the cast sounded when the windup began)
         u.spellCenter = null;
     }
 

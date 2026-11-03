@@ -133,8 +133,8 @@ final class Tactics {
                 if(time>=u.nextAttack&&time>=u.stunnedUntil&&!Abilities.tooClose(u,nearest)){
                     int cooldown=u.spec.cooldown();u.nextAttack=u.nextAttack<time-10?time+cooldown:u.nextAttack+cooldown;mob.swingHand(Hand.MAIN_HAND);
                     BattleEffects.strike(battle,u,enemy);
-                    Abilities.attack(battle,u,enemy,time);
-                    if(ranged){
+                    boolean started=Abilities.attack(battle,u,enemy,time);
+                    if(ranged&&started){ // a shot refused (a shell too close, a healer) makes no sound
                         Audio.shot(battle,u); // a caster's spell or a bowstring (AudioCues.MAGIC_CAST, BOW_SHOOT)
                     }
                 }

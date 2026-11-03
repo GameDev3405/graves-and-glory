@@ -716,6 +716,7 @@ public final class GravesAndGlory implements ModInitializer {
                     s.earn(income(s));
                 }
             }
+            Audio.tick(this); // cues that wait for their moment (a blow's contact frame, the gate's crash, the wave's rise)
             if(running)Audio.clock(this,roundSeconds*20L-(time-roundStarted)); // the last ten seconds tick
             if(running&&time-roundStarted>=roundSeconds*20L&&!mode.overtime(this))campaign.finish(mode.timeoutWinner(this));
             // Explicit revision checks are driven by the client test timeline.
@@ -996,6 +997,7 @@ public final class GravesAndGlory implements ModInitializer {
                 if(player!=null){toBase(player,s.team);player.changeGameMode(GameMode.ADVENTURE);equipPlayer(player);}
                 reinforce(s);
             }
+            Audio.reset(); // before the mode's first tick: a new round's cooldowns start empty and nothing queued by the last one plays
             rounds++;roundStarted=time;running=true;message=mode.startLine(this);
             mode.mark(this); // the mode says what it changed: flags down, saved pieces
         }
@@ -1065,7 +1067,7 @@ public final class GravesAndGlory implements ModInitializer {
                 p.contested=presence[0]>0&&presence[1]>0;
                 int team=presence[0]>0&&presence[1]==0?0:presence[1]>0&&presence[0]==0?1:-1;
                 if(team<0||team==p.owner){if(team==p.owner){p.progress=0;p.challenger=-1;}continue;}
-                if(p.challenger!=team){p.challenger=team;p.progress=0;Audio.all(this,AudioCues.Cue.CAPTURE_START,"round");}
+                if(p.challenger!=team){p.challenger=team;p.progress=0;Audio.all(this,AudioCues.Cue.CAPTURE_START,p.spec.name());} // a key per point: a second point contested inside the cooldown still sounds, and two in one tick sound once (the cue's per-tick cap)
                 p.progress++;
                 if(p.progress>=p.spec.captureSeconds()){
                     p.owner=team;p.ownedSince=time;p.challenger=-1;p.progress=0;Arena.flag(world,p.spec,team);FeedEvents.point(this,p,team);Audio.captured(this,p.spec.name(),team);

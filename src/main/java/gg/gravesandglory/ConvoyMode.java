@@ -84,6 +84,8 @@ public final class ConvoyMode extends BattleMode {
     int idleTicks, pushers, defenders;
     long movingSince = -1, lastStopped = -100000, lastNear = -100000;
     boolean everMoved, rolledBack, wasRolling, finished;
+    /** Whether the stop cue sounded and the wagon has not set off since (so its next start sounds the roll cue again). */
+    boolean stopSounded;
     WagonEntity wagon;
     long forcedChunk = Long.MIN_VALUE;
 
@@ -254,11 +256,13 @@ public final class ConvoyMode extends BattleMode {
         if (state.equals(ModeMath.MOVING)) {
             if (!was.equals(ModeMath.MOVING)) movingSince = b.time;
             if (!everMoved) {everMoved = true; say(b, "wagon_rolls"); Audio.all(b, AudioCues.Cue.CONVOY_ROLL, "wagon");}
+            else if (stopSounded && !was.equals(ModeMath.MOVING)) Audio.all(b, AudioCues.Cue.CONVOY_ROLL, "wagon"); // it sounded stopping, so it sounds setting off again
+            if (!was.equals(ModeMath.MOVING)) stopSounded = false;
         }
         if (state.equals(ModeMath.CONTESTED) && was.equals(ModeMath.MOVING) && movingSince >= 0 && b.time - movingSince >= STOPPED_AFTER && b.time - lastStopped >= STOPPED_EVERY) {
             lastStopped = b.time;
             say(b, "wagon_stopped");
-            Audio.all(b, AudioCues.Cue.CONVOY_STOP, "wagon");
+            if (Audio.all(b, AudioCues.Cue.CONVOY_STOP, "wagon")) stopSounded = true;
         }
         boolean rolling = state.equals(ModeMath.ROLLBACK) && distance > floor() + 1e-6;
         if (rolling && !wasRolling) {say(b, "wagon_rolls_back"); Audio.all(b, AudioCues.Cue.CONVOY_ROLLBACK, "wagon");}
