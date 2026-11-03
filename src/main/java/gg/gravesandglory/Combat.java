@@ -91,6 +91,7 @@ public final class Combat {
         boolean hurt = target.damage(source(b, attacker.mob), amount);
         if (anchored) target.setVelocity(stood); // an anchored troop (the Oath Banner's) is not knocked back by the blow itself either
         if (!hurt) return 0;
+        if (!secondary) Audio.hit(b, attacker, target, victim, kind, raised); // the blow's sound: shield, magic, arrow, heavy weapon, clash or armour (Audio.hit)
         // Ruling (Task 6 review M1): a killing blow levels its striker inside target.damage (AFTER_DEATH, lane A), so onHit below reads his new rows: the level
         // up lands at the kill and its first benefit is that same blow (a pierce, a cleave or a slam at the new share, Reap at level 3).
         if (!secondary) Abilities.onHit(b, attacker, target, amount, kind);

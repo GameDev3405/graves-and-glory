@@ -39,6 +39,7 @@ public final class Audio {
             case "hostile" -> SoundCategory.HOSTILE;
             case "neutral" -> SoundCategory.NEUTRAL;
             case "ambient" -> SoundCategory.AMBIENT;
+            case "music" -> SoundCategory.MUSIC;
             default -> SoundCategory.MASTER;
         };
     }
@@ -80,10 +81,75 @@ public final class Audio {
 
     /** The cue at a place for everyone near it (the world's own sound packet), once per key per cooldown. */
     public static boolean at(GravesAndGlory.Battle b, AudioCues.Cue cue, Vec3d at, String key) {
+        return at(b, cue, at, key, 1f);
+    }
+
+    /** As above, the pitch scaled (a siege bolt's twang lower than an archer's). A cue with a per-tick cap also gets a small random pitch spread, so a volley never sounds like one sample. */
+    public static boolean at(GravesAndGlory.Battle b, AudioCues.Cue cue, Vec3d at, String key, float pitchScale) {
         var e = event(cue);
         if (b == null || b.world == null || e == null || !allow(cue, key, b.time)) return false;
-        b.world.playSound(null, BlockPos.ofFloored(at), e, category(cue), cue.volume, cue.pitch);
+        float spread = cue.maxPerTick > 0 ? .94f + b.world.random.nextFloat() * .12f : 1f;
+        b.world.playSound(null, BlockPos.ofFloored(at), e, category(cue), cue.volume, cue.pitch * pitchScale * spread);
         return true;
+    }
+
+    /** What a troop swings or shoots, for choosing its combat sound. */
+    public enum Arm { NONE, BLADE, HEAVY, BOW, MAGIC }
+
+    /** A troop's arm: casters cast, ranged troops with a weapon loose it, melee troops with an axe, mace or hammer (or the Colossus) hit heavy, other armed melee troops are blades; beasts and the Mortar have none. */
+    public static Arm arm(GravesAndGlory.Unit u) {
+        if (u == null || u.spec == null) return Arm.NONE;
+        String weapon = u.spec.weapon();
+        boolean armed = weapon != null && !weapon.endsWith(":air");
+        if (u.spec.magic()) return Arm.MAGIC;
+        if (u.spec.ranged()) return armed ? Arm.BOW : Arm.NONE;
+        if (!armed) return u.spec.id().equals("ic_colossus") ? Arm.HEAVY : Arm.NONE;
+        return weapon.endsWith("axe") || weapon.endsWith("mace") || weapon.endsWith("hammer") ? Arm.HEAVY : Arm.BLADE;
+    }
+
+    /** Whether a troop wears metal armour on the chest (chainmail, iron, gold, diamond or netherite), for the armour-struck sound. */
+    public static boolean armoured(GravesAndGlory.Unit u) {
+        if (u == null || u.spec == null) return false;
+        String chest = u.spec.chest();
+        return chest != null && (chest.contains("chainmail") || chest.contains("iron") || chest.contains("gold") || chest.contains("diamond") || chest.contains("netherite"));
+    }
+
+    /** A soldier's swing of a blade as the blow starts (heavy weapons and beasts stay quiet until they land). */
+    public static void swing(GravesAndGlory.Battle b, GravesAndGlory.Unit u) {
+        if (u != null && u.slot % 2 == 0 && arm(u) == Arm.BLADE) at(b, AudioCues.Cue.SWORD_SWING, u.mob.getPos(), "s" + u.mob.getId());
+    }
+
+    /** A ranged troop's shot as it leaves: a spell for a caster, a bowstring for the rest (lower for a siege crew's bolt). */
+    public static void shot(GravesAndGlory.Battle b, GravesAndGlory.Unit u) {
+        var arm = arm(u);
+        if (arm == Arm.MAGIC) at(b, AudioCues.Cue.MAGIC_CAST, u.mob.getPos(), "c" + u.mob.getId());
+        else if (arm == Arm.BOW) at(b, AudioCues.Cue.BOW_SHOOT, u.mob.getPos(), "b" + u.mob.getId(), u.tags.contains("siege") ? .6f : 1f);
+    }
+
+    /**
+     * A landed blow (Combat.resolve, not a cleave, pierce or splash second hit): a raised shield blocks melee and missiles alike; otherwise a caster's
+     * missile or blight strikes as magic, a missile as an arrow, a heavy weapon thuds, a blade clashes with another weapon or rings off armour.
+     */
+    public static void hit(GravesAndGlory.Battle b, GravesAndGlory.Unit attacker, net.minecraft.entity.LivingEntity target, GravesAndGlory.Unit victim, String kind, boolean shieldRaised) {
+        if (b == null || attacker == null || target == null) return;
+        Vec3d at = target.getPos().add(0, 1, 0);
+        String key = "h" + attacker.mob.getId();
+        var arm = arm(attacker);
+        boolean melee = kind.equals("melee"), missile = kind.equals("arrow") || kind.equals("bolt");
+        if (shieldRaised && (melee || missile)) at(b, AudioCues.Cue.SHIELD_BLOCK, at, "k" + target.getId());
+        else if (arm == Arm.MAGIC && !melee) at(b, AudioCues.Cue.MAGIC_IMPACT, at, "m" + attacker.mob.getId());
+        else if (missile) at(b, AudioCues.Cue.ARROW_HIT, at, key);
+        else if (melee && arm == Arm.HEAVY) at(b, AudioCues.Cue.HEAVY_METAL_HIT, at, key);
+        else if (melee && arm == Arm.BLADE) {
+            var theirs = arm(victim);
+            if (theirs == Arm.BLADE || theirs == Arm.HEAVY) at(b, AudioCues.Cue.SWORD_CLASH, at, key);
+            else if (armoured(victim)) at(b, AudioCues.Cue.ARMOR_HIT, at, key);
+        }
+    }
+
+    /** The round's last ten seconds: a tick a second to every seated player (the caller passes the ticks left on the round clock). */
+    public static void clock(GravesAndGlory.Battle b, long ticksLeft) {
+        if (b != null && ticksLeft > 0 && ticksLeft <= 200 && ticksLeft % 20 == 0) all(b, AudioCues.Cue.CLOCK_TICK, "clock");
     }
 
     /** The end of a round to one participant: the victory sting for a winner (and for a draw), the defeat sting for the losing side. */

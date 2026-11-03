@@ -22,10 +22,22 @@ public final class AudioCuesCheck {
    check(c.volume>0&&c.volume<=1f,c.id+": volume in (0, 1], so nothing outshouts a vanilla blow (1.0)");
    check(c.pitch>=.5f&&c.pitch<=2f,c.id+": pitch in the engine's 0.5 to 2.0");
    check(c.cooldownTicks>=0,c.id+": cooldown is not negative");
-   check(Set.of("master","players","hostile","neutral","ambient").contains(c.category),c.id+": a known sound category");
+   check(Set.of("master","players","hostile","neutral","ambient","music").contains(c.category),c.id+": a known sound category");
    JsonObject entry=sounds.getAsJsonObject(c.id);
    JsonObject sound=entry.getAsJsonArray("sounds").get(0).getAsJsonObject();
-   if(c.remap!=null){
+   if(c.id.contains(".")){
+    // A third-party variant group (docs/AUDIO.md Credits): every variant is a file of its own, the game picks one at random; music streams, one-shots do not.
+    check(c.remap==null&&entry.getAsJsonArray("sounds").size()>=1,c.id+": a variant group plays its own files");
+    for(var v:entry.getAsJsonArray("sounds")){
+     JsonObject o=v.getAsJsonObject();String n=o.get("name").getAsString();
+     check(n.startsWith("gravesandglory:")&&!o.has("type"),c.id+": variant "+n+" is a file of the mod");
+     check(Files.exists(assets.resolve("sounds/"+n.substring("gravesandglory:".length())+".ogg")),c.id+": variant "+n+" is in the repo");
+     check(o.get("stream").getAsBoolean()==c.music(),c.id+": only music streams");
+    }
+    check(c.music()==c.id.startsWith("music."),c.id+": the music category is for the music. cues alone");
+    if(c.music())check(c.scope==AudioCues.Scope.LOCAL&&c.subtitle.isEmpty()&&c.cooldownTicks==0,c.id+": music is client side with no subtitle");
+    if(c.scope==AudioCues.Scope.NEARBY)check(c.maxPerTick>0&&c.cooldownTicks>0,c.id+": a positional combat cue is capped per tick and has a cooldown");
+   }else if(c.remap!=null){
     check(sound.get("name").getAsString().equals(c.remap)&&sound.has("type")&&sound.get("type").getAsString().equals("event"),c.id+": remapped to "+c.remap+" as an event, with no file of its own");
     check(c.remap.startsWith("minecraft:"),c.id+": a remap names a vanilla event");
    }else{
@@ -44,8 +56,10 @@ public final class AudioCuesCheck {
    check(Files.exists(assets.resolve("sounds/"+h+".ogg")),h+": its .ogg is in the repo");
   }
   // Every sound file in the mod is claimed by an event (no orphan audio), and every cue is played from somewhere.
+  Set<String> claimed=new HashSet<>();
+  for(var e:sounds.entrySet())for(var v:e.getValue().getAsJsonObject().getAsJsonArray("sounds"))claimed.add(v.getAsJsonObject().get("name").getAsString().replace("gravesandglory:",""));
   try(var files=Files.list(assets.resolve("sounds"))){
-   for(Path f:files.collect(Collectors.toList())){String n=f.getFileName().toString().replace(".ogg","");check(ids.contains(n),"The file "+f.getFileName()+" belongs to a registered event");}
+   for(Path f:files.collect(Collectors.toList())){String n=f.getFileName().toString().replace(".ogg","");check(claimed.contains(n),"The file "+f.getFileName()+" belongs to a registered event");}
   }
   String code;
   try(var walk=Files.walk(Path.of("src/main/java/gg/gravesandglory"))){
@@ -62,6 +76,15 @@ public final class AudioCuesCheck {
   check(t.allow(AudioCues.Cue.GATE_HIT,"gate",50)&&!t.allow(AudioCues.Cue.GATE_HIT,"gate",51)&&t.allow(AudioCues.Cue.GATE_HIT,"other",51),"A key limits only itself");
   check(t.allow(start,"round",5),"A clock that went back (a new round) frees the cue");
   check(t.allow(AudioCues.Cue.DEFEAT,"x",1)&&t.allow(AudioCues.Cue.DEFEAT,"x",1),"A cue with no cooldown always plays");
+  // The per-tick cap: thirty troops striking in one tick sound at most maxPerTick times, each with its own key; the next tick starts fresh; a refusal records nothing.
+  var cap=AudioCues.Cue.SWORD_CLASH;var u=new AudioCues.Throttle();int played=0;
+  for(int i=0;i<30;i++)if(u.allow(cap,"unit"+i,500))played++;
+  check(played==cap.maxPerTick,"Thirty troops in one tick play the clash "+cap.maxPerTick+" times, not "+played);
+  check(u.allow(cap,"unit0b",501),"The next tick has room again");
+  var v=new AudioCues.Throttle();
+  check(v.allow(cap,"a",10)&&!v.allow(cap,"a",11),"One soldier's clash is spaced by the cooldown even with room in the tick");
+  check(v.allow(cap,"a",10+cap.cooldownTicks),"It plays again after the cooldown");
+  for(AudioCues.Cue c:AudioCues.Cue.values())if(c.id.contains(".")&&!c.music()&&c.scope==AudioCues.Scope.NEARBY)check(c.volume<=.6f,c.id+": a combat cue stays under 0.6 so a melee is a murmur");
   for(AudioCues.Cue c:List.of(AudioCues.Cue.CAPTURE_START,AudioCues.Cue.GATE_HIT,AudioCues.Cue.CONVOY_ROLL,AudioCues.Cue.CONVOY_STOP,AudioCues.Cue.CONVOY_ROLLBACK,AudioCues.Cue.WAVE_WARNING,AudioCues.Cue.UI_CONFIRM,AudioCues.Cue.UI_BACK,AudioCues.Cue.UI_DENY))
    check(c.cooldownTicks>0,c.id+": a cue that can repeat has a cooldown");
   System.out.println("PASS "+count+" audio table scenarios");
