@@ -21,6 +21,12 @@ Read `docs/WORKFLOW.md` and `docs/HANDOFF.md` first; they win over this skill on
 | `references/review-loop.md` | After every pass: the loop, the A–F rubric, the report format and the escalation rule. |
 | `references/reviewer-prompt.md` | When you spawn the reviewer. Copy the template, fill the blanks. |
 
+## Lessons log
+
+Every pass keeps a dated lessons file, `work/anim-lessons-YYYY-MM-DD.md` in the main checkout: what went wrong, how it
+was found, the fix, the commit. Read the newest one before starting (for example `work/anim-lessons-2026-11-04.md`),
+and at the end of a pass fold its durable lessons into `references/lessons.md`.
+
 ## Kort's rules (never trade these away)
 
 1. **The blade points the logical way for the move, on every key.** Side slash: flat, edge leading, at waist or chest.
