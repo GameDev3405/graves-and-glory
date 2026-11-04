@@ -152,6 +152,32 @@ function New-Backup([string]$Label, [int]$Keep = 20, [bool]$AllowRunning = $fals
 }
 
 # Aikar's G1 flags; the large-heap variant from 12 GB up.
+# Major Java version from the output of `java -version 2>&1`. The first line is not always the version line: a
+# JAVA_TOOL_OPTIONS or JDK_JAVA_OPTIONS banner ("Picked up JAVA_TOOL_OPTIONS: ...") comes first. Take the line that
+# has `version "N"` (or `"1.8.0"`) in it. Returns 0 when no line matches.
+function Get-JavaMajor([object[]]$Lines) {
+    foreach ($l in $Lines) {
+        if ("$l" -match 'version\s+"(\d+)[."]') { return [int]$Matches[1] }
+    }
+    return 0
+}
+
+# Extra JVM flags for the server: jvm-args.txt in the server folder (one flag per line, # starts a comment) first,
+# then the -JvmArgs text of start.ps1 (flags separated by spaces). Every flag must start with "-".
+function Get-JvmArgs([string]$Inline) {
+    $found = @()
+    $file = Join-Path $script:Root 'jvm-args.txt'
+    if (Test-Path -LiteralPath $file) {
+        foreach ($l in (Get-Content -LiteralPath $file)) {
+            $t = ($l -replace '#.*$', '').Trim()
+            if ($t -ne '') { $found += $t }
+        }
+    }
+    if ($Inline) { $found += @($Inline -split '\s+' | Where-Object { $_ -ne '' }) }
+    foreach ($f in $found) { if (!$f.StartsWith('-')) { throw "JVM flag '$f' must start with '-' (jvm-args.txt or -JvmArgs)." } }
+    return @($found | ForEach-Object { if ($_ -match '\s') { '"' + $_ + '"' } else { $_ } })
+}
+
 function Get-AikarFlags([int]$MemoryGB) {
     if ($MemoryGB -ge 12) { $new = 40; $max = 50; $region = '16M'; $reserve = 15; $ihop = 20 }
     else { $new = 30; $max = 40; $region = '8M'; $reserve = 20; $ihop = 15 }
