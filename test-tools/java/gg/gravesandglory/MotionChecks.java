@@ -873,7 +873,7 @@ public final class MotionChecks {
             afterLate();
         }
         // ---- mo-settle (carry D20) and mo-light (carry D21, R45) ----
-        GravesAndGlory.Unit young, old; int ss, youngAt = -1, oldAt = -1, youngLies = -1, oldLies = -1; net.minecraft.util.math.BlockPos lamp;
+        GravesAndGlory.Unit young, old; int ss, youngAt = -1, oldAt = -1, youngLies = -1, oldLies = -1; double youngDur = -1, oldDur = -1; net.minecraft.util.math.BlockPos lamp;
         /** The frame probe of mo-light: the body, its light before the lamp, and what the first frame with another light drew. */
         static volatile LightProbe PROBE; static boolean listening;
         static final class LightProbe {
@@ -900,6 +900,17 @@ public final class MotionChecks {
          * then a light block (level 15) goes in the settled old knight's block; on the first frame its light differs, the body must draw
          * in the new light: from its buffers recorded in it, or the normal way, which reads it.
          */
+        /** Which of six death variants a troop's first death picks (the formula of MotionEngine.death). */
+        static int deathPick(net.minecraft.entity.Entity e) {
+            var u = e.getUuid();
+            return (int) Math.floorMod(MotionMath.mix(MotionMath.seed(u.getMostSignificantBits(), u.getLeastSignificantBits()).variantBias() ^ 0xD6E8FEB86659FD93L), 6L);
+        }
+        /** The length in ticks of the death clip playing on the client entity (render time, tempo applied); -1 when none yet. */
+        static double deathTicks(int id) {
+            var st = TroopMotion.state(id);
+            if (st != null) for (var tr : st.tracks) if (tr.kind == MotionEngine.DEATH) return (tr.end() - tr.start) * Clip.TICKS;
+            return -1;
+        }
         void settle(MinecraftClient c) {
             wait++;
             int lie = Spec.COMBATDISCIPLINE[0].corpseLieTicks(), lieEnd = BattleMath.DEATH_FALL_TICKS + lie - 1;
@@ -912,12 +923,15 @@ public final class MotionChecks {
                 }
                 case 2 -> {
                     var ey = client(c, young.mob); var eo = client(c, old.mob);
+                    // each body's death clip length in ticks: the clip is picked by the troop's own seed (1.4 to 1.9 s in the clips), so two knights settle apart by their clips' difference
+                    if (ey != null && youngDur < 0) youngDur = deathTicks(ey.getId());
+                    if (eo != null && oldDur < 0) oldDur = deathTicks(eo.getId());
                     if (ey instanceof net.minecraft.entity.LivingEntity ly) { if (youngLies < 0 && TroopMotion.lies(ly)) youngLies = ly.deathTime; if (youngAt < 0 && BodyCache.cached(ly)) youngAt = ly.deathTime; }
                     if (eo instanceof net.minecraft.entity.LivingEntity lo) { if (oldLies < 0 && TroopMotion.lies(lo)) oldLies = lo.deathTime; if (oldAt < 0 && BodyCache.cached(lo)) oldAt = lo.deathTime; }
                     if ((youngAt >= 0 && oldAt >= 0) || wait > 120) {
-                        boolean pass = youngAt >= 0 && oldAt >= 0 && youngAt <= lieEnd && oldAt <= lieEnd && Math.abs(youngAt - oldAt) <= 2;
-                        report("mo-settle", pass, String.format(Locale.ROOT, "struck down on the same tick: a knight %d ticks old at the blow lies from death tick %d and draws from its buffers from death tick %s; one %d ticks old lies from %d and draws from its buffers from %s; want both by %d (the fade starts after; lie %d) and within 2 ticks of each other; BodyCache: %s",
-                            young.mob.age - wait, youngLies, youngAt < 0 ? "never" : String.valueOf(youngAt), old.mob.age - wait, oldLies, oldAt < 0 ? "never" : String.valueOf(oldAt), lieEnd, lie, BodyCache.diag()));
+                        boolean pass = youngAt >= 0 && oldAt >= 0 && youngAt <= lieEnd && oldAt <= lieEnd && youngDur >= 0 && oldDur >= 0 && Math.abs((youngAt - youngDur) - (oldAt - oldDur)) <= 2;
+                        report("mo-settle", pass, String.format(Locale.ROOT, "struck down on the same tick: a knight %d ticks old at the blow lies from death tick %d and draws from its buffers from death tick %s; one %d ticks old lies from %d and draws from its buffers from %s; want both by %d (the fade starts after; lie %d) and within 2 ticks of each other once each one's death clip length is taken off (%.1f and %.1f ticks); BodyCache: %s",
+                            young.mob.age - wait, youngLies, youngAt < 0 ? "never" : String.valueOf(youngAt), old.mob.age - wait, oldLies, oldAt < 0 ? "never" : String.valueOf(oldAt), lieEnd, lie, youngDur, oldDur, BodyCache.diag()));
                         if (oldAt >= 0) ss = 3; else { report("mo-light", false, "not run: the old knight's body never drew from its buffers"); ss = 10; }
                         wait = 0;
                     }
@@ -943,8 +957,15 @@ public final class MotionChecks {
                     server(c, b -> {
                         var foot = at(OX, OZ); var blk = net.minecraft.util.math.BlockPos.ofFloored(foot.x, foot.y + OLIFT - 1, foot.z); barrier = blk;
                         b.world.setBlockState(blk, net.minecraft.block.Blocks.BARRIER.getDefaultState());
-                        low = post(b, gold, "knight", OX, OZ, YAW); var h = post(b, gold, "knight", OX, OZ, YAW); var up = foot.add(0, OLIFT, 0);
-                        pins.removeIf(q -> q.mob() == h.mob); pins.add(new Pin(h.mob, up, YAW)); pin(h.mob, up, YAW); high = h;
+                        low = post(b, gold, "knight", OX, OZ, YAW); var up = foot.add(0, OLIFT, 0);
+                        // the death clip is picked from the troop's UUID (MotionEngine.death: variantBias ^ const ^ deaths, mod 6) and the variants lie differently, so
+                        // two random knights overlap on screen by anything from nothing to most of the body: post the high one again until it falls as the low one does
+                        GravesAndGlory.Unit h = post(b, gold, "knight", OX, OZ, YAW);
+                        for (int tries = 0; tries < 200 && deathPick(h.mob) != deathPick(low.mob); tries++) {
+                            final var gone = h; gone.mob.discard(); b.units.remove(gone); posted.remove(gone); pins.removeIf(q -> q.mob() == gone.mob);
+                            h = post(b, gold, "knight", OX, OZ, YAW);
+                        }
+                        final var hh = h; pins.removeIf(q -> q.mob() == hh.mob); pins.add(new Pin(hh.mob, up, YAW)); pin(hh.mob, up, YAW); high = hh;
                         camera(b, OX, OLIFT + 6, OZ, 0, 90);
                     });
                     ss = 11; wait = 0;
