@@ -167,6 +167,8 @@ public final class Campaign {
     boolean away(UUID id){return leftAt.containsKey(id);}
     void joined(ServerPlayerEntity p){
         grantImport(p.getUuid());profile(p.getUuid());
+        // A dedicated server writes a new commander's file on the first join, not on the first collection change (QA C9). The first-visit import is never offered there.
+        if(b.server.isDedicated()&&!Files.exists(directory.resolve(p.getUuid()+".json")))save(p.getUuid());
         // Rejoining the same battle keeps the original start time, so a dropped connection does not cost the reward.
         if(!(b.running&&participants.contains(p.getUuid())))joinedAt.put(p.getUuid(),b.time);var squad=b.squads.get(p.getUuid());
         if(b.running&&squad!=null&&squad.seated){returned(p.getUuid());b.toBase(p,squad.team);}else toLobby(p);
