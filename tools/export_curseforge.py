@@ -9,6 +9,7 @@ import sys
 import zipfile
 from release_config import ROOT, version, source_identity, validate_player_jar
 from export_modrinth import MINECRAFT_VERSION, FABRIC_LOADER
+from release_files import resolve_local_path
 import build_skins
 
 IDS_PATH='dependencies/curseforge-ids.json'
@@ -23,7 +24,7 @@ def check_bundled(rows,root):
     folder={'mod':'mods','shader':'shaderpacks','resourcepack':'resourcepacks'}
     out={}
     for row in rows:
-        data=(root/row['localPath']).read_bytes()
+        data=resolve_local_path(root,row['localPath']).read_bytes()
         if hashlib.sha512(data).hexdigest()!=row['hashes']['sha512'] or len(data)!=row['fileSize']:
             raise RuntimeError('Bundled file does not match its pin; refusing: '+row['slug'])
         out['overrides/'+folder[row['kind']]+'/'+row['fileName']]=data
@@ -65,7 +66,7 @@ def export(argv=()):
     jar=ROOT/f'build/libs/graves-and-glory-{release}.jar'
     validate_player_jar(jar,source_identity())
     for row in split_rows(rows)[0]:
-        if hashlib.sha512((ROOT/row['localPath']).read_bytes()).hexdigest()!=row['hashes']['sha512']:raise RuntimeError('Platform lock is stale: '+row['slug'])
+        if hashlib.sha512(resolve_local_path(ROOT,row['localPath']).read_bytes()).hexdigest()!=row['hashes']['sha512']:raise RuntimeError('Platform lock is stale: '+row['slug'])
     bundled=check_bundled(split_rows(rows)[1],ROOT)
     manifest=json.loads((ROOT/'dist/package-manifest.json').read_text())
     archive=ROOT/'dist'/build_skins.release_archive(manifest,release,stopgap,'export_curseforge')
