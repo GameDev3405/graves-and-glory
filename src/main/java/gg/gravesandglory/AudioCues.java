@@ -80,6 +80,19 @@ public final class AudioCues {
         RELIC_USE_EARTH("relic_use_earth", null, .6f, 1f, "hostile", Scope.NEARBY, 20, "An earthen relic stirs", 2),
         RELIC_USE_FIRE("relic_use_fire", null, .6f, 1f, "hostile", Scope.NEARBY, 20, "A fiery relic flares", 2),
         RELIC_USE_ICE("relic_use_ice", null, .6f, 1f, "hostile", Scope.NEARBY, 20, "A frozen relic chills", 2),
+        // Round 2 (Kort's picks, 2026-11-04). The two order shouts play from BattleEffects.feedback beside the horns, as world sounds at the commander's position
+        // (every player in range hears them, enemies included), under the horns' own per-commander hornCooldownSeconds throttle: Charge shouts the charge; Hold, Move
+        // and a formation change shout the hold. The cooldown and cap here are the table's rule for a positional cue; the 8 s throttle in feedback is the tighter one.
+        ORDER_HOLD_SHOUT("order_hold_shout", null, 1f, 1f, "players", Scope.NEARBY, 20, "Troops shout, holding", 2),
+        ORDER_CHARGE_SHOUT("order_charge_shout", null, 1f, 1f, "players", Scope.NEARBY, 20, "Troops shout, charging", 2),
+        // Registered, not yet played (no hook chosen; see docs/AUDIO.md).
+        CAPTURE_RISING("capture_rising", null, .5f, 1f, "players", Scope.ALL, 100, "A point is being taken"),
+        COIN_CLINK("coin_clink", null, .5f, 1f, "master", Scope.LOCAL, 6, "Coins clink"),
+        ACTIVE_RALLY("active_rally", null, .6f, 1f, "players", Scope.TEAM, 20, "The banner rallies"),
+        RELIC_USE_LIGHT("relic_use_light", null, .6f, 1f, "hostile", Scope.NEARBY, 20, "A radiant relic shines", 2),
+        RELIC_USE_LIGHTNING("relic_use_lightning", null, .6f, 1f, "hostile", Scope.NEARBY, 20, "A lightning relic crackles", 2),
+        VETERAN_LEVELUP("veteran_levelup", null, .5f, 1f, "hostile", Scope.NEARBY, 20, "A veteran rises", 2),
+        WAGON_WHEELS("wagon_wheels", null, .4f, 1f, "players", Scope.ALL, 200, "Wagon wheels turn"),
         // Server cue to every seated player: the convoy's overtime beat.
         OVERTIME_DRUM_PULSE("overtime_drum_pulse", null, .6f, 1f, "players", Scope.ALL, 140, "Overtime drums beat"),
         // Client only, from the War Table screens (UiSounds.play): master category, no spatial position.
@@ -110,6 +123,7 @@ public final class AudioCues {
         CAMP_ROOM_TONE("camp_room_tone", null, .4f, 1f, "ambient", Scope.LOCAL, 0, ""),
         SURVIVAL_WIND("survival_wind", null, .5f, 1f, "ambient", Scope.LOCAL, 0, ""),
         CAMPAIGN_BRIEFING_MUSIC("campaign_briefing_music", null, .8f, 1f, "music", Scope.LOCAL, 0, ""),
+        TITLE_MUSIC("title_music", null, .8f, 1f, "music", Scope.LOCAL, 0, ""),
         OVERTIME_MUSIC("overtime_music", null, .8f, 1f, "music", Scope.LOCAL, 0, ""),
         // Streamed music (client only, MusicDirector): the category is music, so the player's Music slider governs it and no subtitle shows.
         MUSIC_CALM("music.calm", null, .8f, 1f, "music", Scope.LOCAL, 0, ""),
@@ -156,10 +170,10 @@ public final class AudioCues {
     /** Ticks between a melee swing starting and its hit sound for a troop of this House (null or unknown: the default). */
     public static int contactTicks(String house) { return house == null ? DEFAULT_CONTACT_TICKS : CONTACT_TICKS.getOrDefault(house, DEFAULT_CONTACT_TICKS); }
 
-    /** How long the victory and defeat stings run, in ticks (3.2 s, inside the three victory takes' range; 5 s): the music waits them out so the next track never starts over the sting. */
-    public static final int VICTORY_STING_TICKS = 64, DEFEAT_STING_TICKS = 100;
-    /** The portcullis drops this many ticks after the gate_shut cue starts, so the crash lands as the gate meets the ground (the file's thud is 0.35 s in). */
-    public static final int GATE_SHUT_LEAD_TICKS = 7;
+    /** How long the victory and defeat stings run, in ticks (3.2 s, inside the three victory takes' range; 35.7 s, the defeat music): the music waits them out so the next track never starts over the sting. */
+    public static final int VICTORY_STING_TICKS = 64, DEFEAT_STING_TICKS = 714;
+    /** The portcullis drops this many ticks after the gate_shut cue starts, so the crash lands as the gate meets the ground (gate_shut_8 peaks 2.3 s in). */
+    public static final int GATE_SHUT_LEAD_TICKS = 46;
     /** The wave rises this many ticks after the wave_rise cue starts (the file swells for 1.5 s before its hit). */
     public static final int WAVE_RISE_LEAD_TICKS = 30;
 
@@ -215,7 +229,7 @@ public final class AudioCues {
         };
     }
 
-    /** The command horns: own files, volume from combatDiscipline.hornVolume, throttled by BattleEffects.feedback, to the commanding player only. */
+    /** The command horns: own files, volume from combatDiscipline.hornVolume, throttled by BattleEffects.feedback, played in the world at the commander so every player in range hears them. */
     public static final List<String> HORNS = List.of("horn_charge", "horn_rout", "horn_rally");
 
     /** Every event id the mod registers, in order. */

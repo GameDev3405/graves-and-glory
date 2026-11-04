@@ -2573,7 +2573,7 @@
       "lastStandShare": 0.25,
       "lastStandRadius": 16.0,
       "hornCooldownSeconds": 8,
-      "hornVolume": 1.6,
+      "hornVolume": 4.0,
       "woundedShare": 0.3,
       "lastStandFeedSeconds": 30,
       "arriveRadius": 4.0,

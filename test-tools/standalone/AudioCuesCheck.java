@@ -45,7 +45,8 @@ public final class AudioCuesCheck {
    String key="subtitles.gravesandglory."+c.id;
    if(c.subtitle.isEmpty())check(!entry.has("subtitle")&&!lang.has(key),c.id+": no subtitle anywhere");
    else check(entry.has("subtitle")&&entry.get("subtitle").getAsString().equals(key)&&lang.has(key)&&lang.get(key).getAsString().equals(c.subtitle),c.id+": its subtitle is in sounds.json and en_us.json");
-   if(c.scope==AudioCues.Scope.ALL||c.scope==AudioCues.Scope.TEAM||c.scope==AudioCues.Scope.NEARBY)
+   // the order shouts are Kort's 2026-11-04 exception: 16 blocks of range needs volume 1.0 (range is about 16 x volume), throttled per commander in BattleEffects.feedback
+   if(!c.id.startsWith("order_")&&(c.scope==AudioCues.Scope.ALL||c.scope==AudioCues.Scope.TEAM||c.scope==AudioCues.Scope.NEARBY))
     check(c.volume<=.9f,c.id+": a cue everyone hears stays at or under 0.9");
    if(c.scope==AudioCues.Scope.LOCAL&&c.category.equals("master")&&c.id.startsWith("ui_"))check(c.volume<=.6f,c.id+": a UI cue stays quiet");
   }
@@ -64,7 +65,7 @@ public final class AudioCuesCheck {
    code=walk.filter(p->p.toString().endsWith(".java")&&!p.getFileName().toString().equals("AudioCues.java")).map(p->{try{return Files.readString(p);}catch(Exception e){throw new RuntimeException(e);}}).collect(Collectors.joining("\n"));
   }
   // Registered with files and a subtitle but no game moment yet (docs/AUDIO.md, "Registered, not played"): the only cues allowed to have no caller.
-  Set<String> unplayed=Set.of("SIEGE_RAM_SWING","GATE_CHAINS","BANNER_FLAP","MARCH_LEATHER","TROOP_VOICES");
+  Set<String> unplayed=Set.of("SIEGE_RAM_SWING","GATE_CHAINS","BANNER_FLAP","MARCH_LEATHER","TROOP_VOICES","TITLE_MUSIC","CAPTURE_RISING","COIN_CLINK","ACTIVE_RALLY","RELIC_USE_LIGHT","RELIC_USE_LIGHTNING","VETERAN_LEVELUP","WAGON_WHEELS");
   // The ambience beds are picked by AudioCues.bed (so the choice is testable without Minecraft) and played by MusicDirector's bed layer.
   Set<AudioCues.Cue> beds=EnumSet.of(AudioCues.Cue.AMBIENCE_WIND,AudioCues.Cue.AMBIENCE_BIRDS,AudioCues.Cue.AMBIENCE_WATER,AudioCues.Cue.AMBIENCE_CROWS,AudioCues.Cue.AMBIENCE_SNOW,AudioCues.Cue.CAMP_ROOM_TONE,AudioCues.Cue.SURVIVAL_WIND);
   for(AudioCues.Cue c:AudioCues.Cue.values()){

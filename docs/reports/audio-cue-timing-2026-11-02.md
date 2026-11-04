@@ -35,7 +35,7 @@ Ticks are server ticks (20 a second). "Contact" is the tick the blade meets its 
 | unit_reveal | `Campaign.reveal` | Card reveal | Once per reveal | None needed |
 | ui_confirm, ui_back, ui_deny | `UiSounds` | Click | Click (4 to 6 tick cooldowns) | None needed |
 | horns | `BattleEffects.feedback`, commanding player only | The order | Once per order | None needed |
-| music transitions | `MusicDirector` | Next track after the ending sting | The epic track could start about 1.5 s into the victory sting | The director waits the sting's length (`VICTORY_STING_TICKS` 64, `DEFEAT_STING_TICKS` 84) before the next track |
+| music transitions | `MusicDirector` | Next track after the ending sting | The epic track could start about 1.5 s into the victory sting | The director waits the sting's length (`VICTORY_STING_TICKS` 64, `DEFEAT_STING_TICKS` 84, now 714 with the defeat music) before the next track |
 | Round start | `Battle.startRound` | Fresh cooldowns, empty queue | Cooldowns kept from the last round | `Audio.reset()` before the first tick |
 
 ## Checks added (`test-tools/standalone/AudioCuesCheck.java`, part of `tools/verify.py fast`)

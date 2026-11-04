@@ -355,7 +355,7 @@ public final class SiegeMode extends BattleMode {
         for (var s : b.squads.values()) if (s.seated && s.team == 1) { defender = s; break; }
         if (row == null || defender == null || b.saves.stream().noneMatch(s -> s.tag().equals(GATE_TAG))) { breach(b); return; } // no saved gate to shut and break
         dropAt = b.time + R.portcullisSeconds() * 20L;
-        // The gate's crash is 0.35 s into its sound, so the cue starts that much ahead of the drop and the two land together.
+        // The gate's crash is 2.3 s into its sound, so the cue starts that much ahead of the drop and the two land together.
         Audio.later(b, (int) (dropAt - b.time) - AudioCues.GATE_SHUT_LEAD_TICKS, () -> Audio.all(b, AudioCues.Cue.GATE_SHUT, "gate"));
         feed(b, "gate_closing", "n", Integer.toString(R.portcullisSeconds()));
     }

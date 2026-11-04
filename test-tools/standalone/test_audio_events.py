@@ -7,7 +7,9 @@ ASSETS = ROOT / "src/main/resources/assets/gravesandglory"
 CUES = ROOT / "src/main/java/gg/gravesandglory/AudioCues.java"
 SOURCES = ROOT / "src/main/java/gg/gravesandglory"
 # Cues Kort kept off (no game moment): the only registered events allowed to have no play site.
-OFF = {"troop_voices", "march_leather", "siege_ram_swing", "gate_chains", "banner_flap"}
+OFF = {"troop_voices", "march_leather", "siege_ram_swing", "gate_chains", "banner_flap",
+       # Round 2 picks registered with no game moment yet (docs/AUDIO.md, Round 2).
+       "title_music", "capture_rising", "coin_clink", "active_rally", "relic_use_light", "relic_use_lightning", "veteran_levelup", "wagon_wheels"}
 
 # Events that show no subtitle by design: UI clicks, the countdown tick, streamed music, and the long ambient beds.
 NO_SUBTITLE = {"countdown_tick", "camp_room_tone", "survival_wind"}

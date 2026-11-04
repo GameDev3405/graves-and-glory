@@ -67,7 +67,7 @@ public final class GravesAndGlory implements ModInitializer {
         Diagnostics.start();
         VersionGate.registerServer();
         Audio.register(); // every sound event of the AudioCues table (plan 4F.4)
-        // The commander actives, once. (The horn cues above are command feedback for the commanding player alone: no horn sounds in the field.)
+        // The commander actives, once. (The horn cues above are command feedback played in the world at the commander, so every player in range hears them; see BattleEffects.feedback.)
         RelicEffects.register();
         // The Convoy supply wagon's entity type (Kort approved 2026-11-01; never saved).
         WagonEntity.register();
@@ -918,12 +918,14 @@ public final class GravesAndGlory implements ModInitializer {
             for(var f:Spec.FORMATIONS)if(cmd.equals("formation:"+f.id())){
                 s.formation=f.id();s.yaw=p.getYaw();for(Assignment a:s.assignments.values())a.formation=f.id();
                 if(Diagnostics.active()&&testedFormations.add(f.id())&&testedFormations.size()==Spec.FORMATIONS.length)Diagnostics.report("formations-commanded",true,null);
+                BattleEffects.feedback(this,p,"hold"); // a formation change shouts like a Hold (the troops' hold shout, a world sound at the commander)
                 campaign.tutorialDid(p,1);return;
             }
             for(var order:Spec.ORDERS)if(cmd.equals(order.id())){
                 boolean charging=order.id().equals("charge")&&startsCharge(s,"all");
                 s.assignments.clear();s.arrived.clear();s.order=order.id();s.yaw=p.getYaw();if(charging)markCharge(s,"all");
-                if(order.id().equals("charge")||order.id().equals("retreat"))BattleEffects.feedback(this,p,order.id()); // the command's feedback, to this player alone
+                if(order.id().equals("charge")||order.id().equals("retreat"))BattleEffects.feedback(this,p,order.id()); // the command's feedback, a world sound at this player
+                else if(order.id().equals("hold")||order.id().equals("move"))BattleEffects.feedback(this,p,"hold");
                 campaign.tutorialDid(p,order.id().equals("attack")||order.id().equals("charge")?2:0);
                 if(Diagnostics.active()&&testedOrders.add(order.id())&&testedOrders.size()==Spec.ORDERS.length)Diagnostics.report("orders-commanded",true,null);
                 if(order.targeted()){
@@ -940,7 +942,7 @@ public final class GravesAndGlory implements ModInitializer {
         /** The order a group is under: its stored one. No group ever leaves it on its own (the no-routing design); only its commander's next order changes it. */
         Assignment assignment(Unit u){return storedAssignment(u.squad,u.spec.group());}
         Assignment storedAssignment(Squad s,String group){return s.assignments.getOrDefault(group,new Assignment(s.order,s.formation,s.target,s.yaw));}
-        /** Stamps the charge of the named group(s) (Squad.chargedAt), which the counters table's charge impact (row C5) reads. Nothing sounds in the field: the commanding player alone hears his feedback (BattleEffects.feedback), on the order paths. */
+        /** Stamps the charge of the named group(s) (Squad.chargedAt), which the counters table's charge impact (row C5) reads. A bot's order sounds nothing; a player's order sounds in the world at him (BattleEffects.feedback), on the order paths. */
         void markCharge(Squad s,String group){for(var g:Spec.GROUPS)if(!g.id().equals("all")&&(group.equals("all")||group.equals(g.id())))s.chargedAt.put(g.id(),time);}
         /** Whether a Charge order on the named group(s) starts a charge: some named group is not charging already. */
         boolean startsCharge(Squad s,String group){return Arrays.stream(Morale.GROUPS).anyMatch(g->(group.equals("all")||group.equals(g))&&!storedAssignment(s,g).order.equals("charge"));}
@@ -967,7 +969,7 @@ public final class GravesAndGlory implements ModInitializer {
             if(Arrays.stream(Spec.GROUPS).noneMatch(g->g.id().equals(group))||Arrays.stream(Spec.FORMATIONS).noneMatch(f->f.id().equals(formation)))return;
             if(action.equals("formation")){
                 for(var g:Spec.GROUPS)if(!g.id().equals("all")&&(group.equals("all")||group.equals(g.id()))){Assignment a=s.assignments.computeIfAbsent(g.id(),k->new Assignment(s.order,s.formation,s.target,s.yaw));a.formation=formation;}
-                s.lastOrder=time;campaign.tutorialDid(p,1);return;
+                s.lastOrder=time;campaign.tutorialDid(p,1);BattleEffects.feedback(this,p,"hold");return;
             }
             var order=Arrays.stream(Spec.ORDERS).filter(o->o.id().equals(action)).findFirst().orElse(null);
             if(order==null||!Float.isFinite(yaw)||!inArena(x,z))return;
@@ -981,8 +983,8 @@ public final class GravesAndGlory implements ModInitializer {
             issue(s,group,action,formation,dest,yaw,enemyId);
             if(charging)markCharge(s,group);
             campaign.tutorialDid(p,action.equals("attack")||action.equals("charge")?2:0);campaign.progressEvent(p.getUuid(),false);
-            // The command's feedback, to this player alone: Retreat's and Charge's own cues (once per kind per hornCooldownSeconds, else nothing), every other order the chime (the ServerPlayerEntity overload: to his connection only).
-            if(action.equals("retreat")||action.equals("charge"))BattleEffects.feedback(this,p,action);else p.playSound(SoundEvents.BLOCK_NOTE_BLOCK_CHIME.value(),SoundCategory.PLAYERS,.6f,1.1f);
+            // The command's feedback, as world sounds at this player (every player in range hears them): Retreat's and Charge's own cues, and Hold's and Move's shout (once per kind per hornCooldownSeconds, else nothing), every other order the chime (the ServerPlayerEntity overload: to his connection only, a UI cue).
+            if(action.equals("retreat")||action.equals("charge"))BattleEffects.feedback(this,p,action);else if(action.equals("hold")||action.equals("move"))BattleEffects.feedback(this,p,"hold");else p.playSound(SoundEvents.BLOCK_NOTE_BLOCK_CHIME.value(),SoundCategory.PLAYERS,.6f,1.1f);
             p.sendMessage(Text.literal(group+" / "+action+" / "+(int)x+", "+(int)z),true);
         }
         /** The room a troop's body takes in a formation and the lane it takes on a bridge: its width and 0.3, at least 1.3 (BattleMath.spacing). */
