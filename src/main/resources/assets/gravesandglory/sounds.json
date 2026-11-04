@@ -54,8 +54,8 @@
     "subtitle": "subtitles.gravesandglory.defeat",
     "sounds": [
       {
-        "name": "gravesandglory:defeat_4",
-        "stream": false
+        "name": "gravesandglory:defeat_music_5",
+        "stream": true
       }
     ]
   },
@@ -123,7 +123,7 @@
     "subtitle": "subtitles.gravesandglory.gate_shut",
     "sounds": [
       {
-        "name": "gravesandglory:gate_shut",
+        "name": "gravesandglory:gate_shut_8",
         "stream": false
       }
     ]
@@ -132,7 +132,7 @@
     "subtitle": "subtitles.gravesandglory.gate_breach",
     "sounds": [
       {
-        "name": "gravesandglory:gate_breach",
+        "name": "gravesandglory:gate_breach_5",
         "stream": false
       }
     ]
@@ -213,7 +213,7 @@
   "ui_back": {
     "sounds": [
       {
-        "name": "gravesandglory:ui_back",
+        "name": "gravesandglory:ui_back_7",
         "stream": false
       }
     ]
@@ -902,6 +902,103 @@
       },
       {
         "name": "gravesandglory:troop_voices_4",
+        "stream": false
+      }
+    ]
+  },
+  "capture_rising": {
+    "subtitle": "subtitles.gravesandglory.capture_rising",
+    "sounds": [
+      {
+        "name": "gravesandglory:capture_rising_6",
+        "stream": false
+      }
+    ]
+  },
+  "coin_clink": {
+    "subtitle": "subtitles.gravesandglory.coin_clink",
+    "sounds": [
+      {
+        "name": "gravesandglory:coin_clink_5",
+        "stream": false
+      }
+    ]
+  },
+  "active_rally": {
+    "subtitle": "subtitles.gravesandglory.active_rally",
+    "sounds": [
+      {
+        "name": "gravesandglory:active_rally_3",
+        "stream": false
+      }
+    ]
+  },
+  "order_hold_shout": {
+    "subtitle": "subtitles.gravesandglory.order_hold_shout",
+    "sounds": [
+      {
+        "name": "gravesandglory:formation_shout_5",
+        "stream": false
+      }
+    ]
+  },
+  "order_charge_shout": {
+    "subtitle": "subtitles.gravesandglory.order_charge_shout",
+    "sounds": [
+      {
+        "name": "gravesandglory:formation_shout_7",
+        "stream": false
+      }
+    ]
+  },
+  "relic_use_light": {
+    "subtitle": "subtitles.gravesandglory.relic_use_light",
+    "sounds": [
+      {
+        "name": "gravesandglory:relic_use_light_5",
+        "stream": false
+      }
+    ]
+  },
+  "relic_use_lightning": {
+    "subtitle": "subtitles.gravesandglory.relic_use_lightning",
+    "sounds": [
+      {
+        "name": "gravesandglory:relic_use_lightning_3",
+        "stream": false
+      },
+      {
+        "name": "gravesandglory:relic_use_lightning_5",
+        "stream": false
+      }
+    ]
+  },
+  "title_music": {
+    "sounds": [
+      {
+        "name": "gravesandglory:title_music_6",
+        "stream": true
+      },
+      {
+        "name": "gravesandglory:title_music_3",
+        "stream": true
+      }
+    ]
+  },
+  "veteran_levelup": {
+    "subtitle": "subtitles.gravesandglory.veteran_levelup",
+    "sounds": [
+      {
+        "name": "gravesandglory:veteran_levelup_5",
+        "stream": false
+      }
+    ]
+  },
+  "wagon_wheels": {
+    "subtitle": "subtitles.gravesandglory.wagon_wheels",
+    "sounds": [
+      {
+        "name": "gravesandglory:wagon_wheels_6",
         "stream": false
       }
     ]

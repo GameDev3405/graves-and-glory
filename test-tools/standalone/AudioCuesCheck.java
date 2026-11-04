@@ -45,7 +45,8 @@ public final class AudioCuesCheck {
    String key="subtitles.gravesandglory."+c.id;
    if(c.subtitle.isEmpty())check(!entry.has("subtitle")&&!lang.has(key),c.id+": no subtitle anywhere");
    else check(entry.has("subtitle")&&entry.get("subtitle").getAsString().equals(key)&&lang.has(key)&&lang.get(key).getAsString().equals(c.subtitle),c.id+": its subtitle is in sounds.json and en_us.json");
-   if(c.scope==AudioCues.Scope.ALL||c.scope==AudioCues.Scope.TEAM||c.scope==AudioCues.Scope.NEARBY)
+   // the order shouts are Kort's 2026-11-04 exception: 16 blocks of range needs volume 1.0 (range is about 16 x volume), throttled per commander in BattleEffects.feedback
+   if(!c.id.startsWith("order_")&&(c.scope==AudioCues.Scope.ALL||c.scope==AudioCues.Scope.TEAM||c.scope==AudioCues.Scope.NEARBY))
     check(c.volume<=.9f,c.id+": a cue everyone hears stays at or under 0.9");
    if(c.scope==AudioCues.Scope.LOCAL&&c.category.equals("master")&&c.id.startsWith("ui_"))check(c.volume<=.6f,c.id+": a UI cue stays quiet");
   }
@@ -64,7 +65,7 @@ public final class AudioCuesCheck {
    code=walk.filter(p->p.toString().endsWith(".java")&&!p.getFileName().toString().equals("AudioCues.java")).map(p->{try{return Files.readString(p);}catch(Exception e){throw new RuntimeException(e);}}).collect(Collectors.joining("\n"));
   }
   // Registered with files and a subtitle but no game moment yet (docs/AUDIO.md, "Registered, not played"): the only cues allowed to have no caller.
-  Set<String> unplayed=Set.of("SIEGE_RAM_SWING","GATE_CHAINS","BANNER_FLAP","MARCH_LEATHER","TROOP_VOICES","AMBIENCE_WIND","AMBIENCE_BIRDS","AMBIENCE_WATER","AMBIENCE_CROWS","AMBIENCE_SNOW","CAMP_ROOM_TONE","SURVIVAL_WIND","CAMPAIGN_BRIEFING_MUSIC","OVERTIME_MUSIC");
+  Set<String> unplayed=Set.of("SIEGE_RAM_SWING","GATE_CHAINS","BANNER_FLAP","MARCH_LEATHER","TROOP_VOICES","AMBIENCE_WIND","AMBIENCE_BIRDS","AMBIENCE_WATER","AMBIENCE_CROWS","AMBIENCE_SNOW","CAMP_ROOM_TONE","SURVIVAL_WIND","CAMPAIGN_BRIEFING_MUSIC","OVERTIME_MUSIC","TITLE_MUSIC","CAPTURE_RISING","COIN_CLINK","ACTIVE_RALLY","RELIC_USE_LIGHT","RELIC_USE_LIGHTNING","VETERAN_LEVELUP","WAGON_WHEELS");
   for(AudioCues.Cue c:AudioCues.Cue.values())check(unplayed.contains(c.name())?!code.contains("Cue."+c.name()):code.contains("Cue."+c.name()),c.id+": "+(unplayed.contains(c.name())?"is listed as not yet played, so no code plays it (remove it from the list when one does)":"some code plays it"));
   check(code.contains("Audio.register()"),"The mod registers the table at start");
   // The cooldowns.
