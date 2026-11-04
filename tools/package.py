@@ -22,6 +22,7 @@ credits=['# Graves and Glory: third-party credits and permissions','',
  'Shader/modpack compatibility support is the responsibility of Graves and Glory, not the shader authors.',
  'Complementary Reimagined and Unbound r5.5.1 are by EminGTR / Complementary Development: https://www.complementary.dev/shaders/ . Their contained License Agreement 1.5 explicitly permits modpack redistribution. Newer versions have different terms; do not replace these files automatically.',
  'MakeUp Ultra Fast: Javier GC (javiergcim), LGPL-3.0-or-later; GLSL source is inside its unchanged shader archive.',
+ 'Combat, magic, clock, drum and music sound cues: royalty-free recordings from pixabay.com under the Pixabay Content Licence (use in a game allowed, no attribution required). Per-file author credits are in docs/AUDIO.md.',
  'Lato body font: Lukasz Dziedzic, SIL Open Font License 1.1; original OFL is inside the Graves and Glory jar. Source: https://github.com/google/fonts/tree/main/ofl/lato',
  'Marcellus heading font: Brian J. Bonislawsky / Astigmatic, SIL Open Font License 1.1; original OFL is inside the Graves and Glory jar.',
  'Excalibur resource pack by Maffhew, used with permission, unmodified. Licence: CC BY-NC-ND 3.0 (http://creativecommons.org/licenses/by-nc-nd/3.0/; the licence text is in docs/third-party/excalibur/README.txt). Official page: https://modrinth.com/resourcepack/excal . Paid features are not covered by the permission and are not used.',
@@ -37,7 +38,7 @@ with zipfile.ZipFile(package.with_suffix('.zip.tmp'),'w',zipfile.ZIP_DEFLATED) a
         if isinstance(data,str):data=data.encode('utf8')
         archive.writestr(dest,data);entries.append({'path':dest,'size':len(data),'sha256':hashlib.sha256(data).hexdigest()})
         if len(data)<40000:files[dest]=data.decode('utf8',errors='replace')
-    for src,dest in [(jar,'mods/'+jar.name),(api,'mods/'+api.name),(root/'README.md','docs/README.md'),(root/'docs/UI_REDESIGN.md','docs/UI_REDESIGN.md'),(root/f'docs/RELEASE-{release_version}.txt',f'docs/RELEASE-{release_version}.txt'),(root/'LICENSE','docs/LICENSE')]:
+    for src,dest in [(jar,'mods/'+jar.name),(api,'mods/'+api.name),(root/'README.md','docs/README.md'),(root/'docs/UI_REDESIGN.md','docs/UI_REDESIGN.md'),(root/'docs/AUDIO.md','docs/AUDIO.md'),(root/f'docs/RELEASE-{release_version}.txt',f'docs/RELEASE-{release_version}.txt'),(root/'LICENSE','docs/LICENSE')]:
         add(src,dest)
     # Preserve the exact upstream license without changing its notices.
     with zipfile.ZipFile(api) as z:
