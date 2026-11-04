@@ -190,6 +190,7 @@ HAND = (0, 4, 0)
 # Default hinge ranges (pitch, degrees from the file pose) for a limb's lower bone: TroopMotion.limits clamps them, so a
 # positive forearm rx (a backwards elbow) or a negative shin rx (a backwards knee) can never reach the screen.
 JOINT_LIMITS = {"_forearm": (-150, 0), "_shin": (0, 150)}
+JOINT_OVERLAP = 2  # px a limb's lower box reaches past its hinge into the upper box (review 2026-11-04 section 1.3)
 
 def limb(name, parent, pivot, origin, paint, lower, joint, size=(4, 12, 4), dil=0.0, sheet="skin", limit=None, upper_h=6):
     """A jointed limb as two bones: `name` at pivot with the upper box at origin, and `lower` at joint (in the upper bone's frame)
@@ -197,9 +198,12 @@ def limb(name, parent, pivot, origin, paint, lower, joint, size=(4, 12, 4), dil=
     w, h, d = size
     if limit is None:  # a hinge bends one way: an elbow flexes (rx <= 0), a knee folds back (rx >= 0); see JOINT_LIMITS
         limit = next((v for k, v in JOINT_LIMITS.items() if lower.endswith(k)), None)
-    lo = [origin[0] - joint[0], origin[1] + upper_h - joint[1], origin[2] - joint[2]]
+    # the lower box starts JOINT_OVERLAP rows above the hinge, painted with the limb's same rows as the upper box there, so a bent
+    # elbow or knee shows the limb's own texels across the outside of the bend instead of a gap
+    o = min(JOINT_OVERLAP, upper_h)
+    lo = [origin[0] - joint[0], origin[1] + upper_h - o - joint[1], origin[2] - joint[2]]
     return [Bone(name, parent, pivot, [Box(origin, (w, upper_h, d), paint, dil, sheet, cut=(h, 0))]),
-            Bone(lower, name, joint, [Box(lo, (w, h - upper_h, d), paint, dil, sheet, cut=(h, upper_h))], limit=limit)]
+            Bone(lower, name, joint, [Box(lo, (w, h - upper_h + o, d), paint, dil, sheet, cut=(h, upper_h - o))], limit=limit)]
 
 def arms(painter, right=None):
     """The biped's two jointed arms with their hands (right painter, then left; one painter serves both when right is None)."""
@@ -356,14 +360,14 @@ def footprint(b):
     w, h, d = (int(round(v)) for v in b.size)
     return 2 * (w + d), h + d
 
-def pack(boxes, size):
+def pack(boxes, size, who=""):
     """Shelf-pack box footprints (tallest first) onto a sheet."""
     order = sorted(boxes, key=lambda b: (-footprint(b)[1], -footprint(b)[0]))
     x = y = shelf = 0
     for b in order:
         fw, fh = footprint(b)
         if x + fw > size[0]: x, y, shelf = 0, y + shelf, 0
-        if y + fh > size[1]: raise SystemExit(f"sheet {size} is full")
+        if y + fh > size[1]: raise SystemExit(f"{who} sheet {size} is full")
         b.uv = [x, y]; x += fw; shelf = max(shelf, fh)
 
 def rects(b):
@@ -427,7 +431,7 @@ class Troop:
         B = s.bones()
         skin_boxes = [b for bone in B for b in bone.boxes if b.sheet == "skin"]
         cloth_boxes = [b for bone in B for b in bone.boxes if b.sheet == "cloth"]
-        pack(skin_boxes, s.skin); pack(cloth_boxes, s.cloth)
+        pack(skin_boxes, s.skin, s.tid + " skin"); pack(cloth_boxes, s.cloth, s.tid + " cloth")
         skins = {}
         for t in s.tiers:
             img = Image.new("RGBA", s.skin, (0, 0, 0, 0))

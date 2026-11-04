@@ -24,7 +24,7 @@ from handlib import Troop
 import build_knight as K
 import build_archer as A
 
-SKIN = (128, 64)
+SKIN = (128, 128)   # joint overlap boxes (review 2026-11-04 1.3) filled 128 x 64
 CLOTH = (128, 64)
 FELT = ramp("1a1510", "2e261c", "463a2a", "5f4f39", "7a6749", "97835e")    # the felt cap, a weathered brown
 WHITE = ramp("6a6458", "9a9484", "c4bfaf", "e2ddcd", "f4f1e6")             # the Order's white
@@ -203,7 +203,7 @@ def bones():
     for side in ("right", "left"):
         inner = 3 if side == "right" else 0
         B.append(Bone(f"{side}_jack", f"{side}_leg", boxes=[
-            Box((-2, 0, -2.3), (4, 7, 0), jack_skirt), Box((-2, 0, 2.3), (4, 7, 0), jack_skirt)]))
+            Box((-2, 0, -2.3), (4, 6, 0), jack_skirt), Box((-2, 0, 2.3), (4, 6, 0), jack_skirt)]))   # to the knee hinge
         for g in (1, 2, 3):
             B.append(Bone(f"{side}_skirt_t{g}", f"{side}_leg", team=True, stages=[g], boxes=[
                 Box((-2, 0, -2.45), (4, 4, 0), ("flap", g, inner, side == "left"), sheet="cloth"),

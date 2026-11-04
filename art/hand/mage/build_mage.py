@@ -334,11 +334,12 @@ def bones():
             Box((-3, -1.5, -3), (6, 2, 6), per_tier(lambda t: spaulder(t, "dome"), (2, 3))),
             Box((-3 + 0.5 * c, 0.5, -2.5), (6, 1, 5), per_tier(lambda t: spaulder(t, "lame"), (2, 3)), dil=0.12)]))
     B.append(Bone("cord", "body", boxes=[Box((2, -3.5, -2.8), (1, 6, 1), cord)]))
-    # the robe in three flared tiers round each leg
+    # the robe in three flared tiers round each leg: two on the thigh (the second 1 px past the knee, like the limb overlap),
+    # the hem tier on the shin so it swings with the knee instead of jutting off the thigh
     for side in ("right", "left"):
         B.append(Bone(f"{side}_robe", f"{side}_leg", boxes=[
-            Box((-2, 0, -2), (4, 4, 4), per_tier(robe_tier), dil=0.25), Box((-2, 4, -2), (4, 4, 4), per_tier(robe_tier), dil=0.55),
-            Box((-2, 8, -2), (4, 3, 4), per_tier(robe_tier), dil=0.85)]))
+            Box((-2, 0, -2), (4, 4, 4), per_tier(robe_tier), dil=0.25), Box((-2, 4, -2), (4, 3, 4), per_tier(robe_tier), dil=0.55)]))
+        B.append(Bone(f"{side}_shin_robe", f"{side}_shin", boxes=[Box((-2, 1, -2), (4, 4, 4), per_tier(robe_tier), dil=0.85)]))
     return B
 
 def cloth_painter(spec, side):

@@ -359,7 +359,7 @@ def bones():
         B.append(Bone(f"{side}_toe", f"{side}_shin", boxes=[Box((-1.5, 5, -4), (3, 1, 1), plain(BLACK, 4))]))
         inner = 3 if side == "right" else 0
         B.append(Bone(f"{side}_skirt", f"{side}_leg", team=True, boxes=[
-            Box((-2, 0, -2.45), (4, 7, 0), ("skirt", inner), sheet="cloth"), Box((-2, 0, 2.45), (4, 7, 0), ("skirt", 3 - inner), sheet="cloth")]))
+            Box((-2, 0, -2.45), (4, 6, 0), ("skirt", inner), sheet="cloth"), Box((-2, 0, 2.45), (4, 6, 0), ("skirt", 3 - inner), sheet="cloth")]))   # to the knee hinge
     return B
 
 def cloth_painter(spec, side):
