@@ -342,6 +342,64 @@ def scythe(P=None):
 SCY = dict(reap_arm=-34, reap_wrist=124, reap_coil=42, reap_lean=12, reap_hit=2,
            hook_twist=0, hook_cock=40, hook_arm=-80, hook_hit=134, hook_coil=65, hook_out=-50, hook_unw=-8)
 
+# ---- biped: crossbow (ic_arbalist; ic_ballista's crewman runs the same clip at his engine), thrower (tc_harpooner) and
+# crew (ic_mortar). Ranged rows: impact marks the loose, release or shot.
+
+STOCK = (0, -5, -5)   # the off hand under the stock, 7 px ahead of the trigger hand (sword grip: the stock runs (0,-.71,-.71))
+
+
+def crossbow():
+    # Loose (impact tick 4): the stock snaps to the shoulder and settles on the aim for 150 ms; the bolt looses, the prod
+    # kicks the arms up and the body rocks back a touch; then the crossbow drops nose-down to the foot to span, and comes
+    # back to rest.
+    return [beats('crossbow_loose', 1.4, 0.2, 0.04, 0.15, (
+        dict(root=(0, 0, 0, 0, 0.3, 0), body=(2, 12, 0), head=(2, -12, 0), right_arm=(-84, 0, 0), right_hand=(125, 0, 0),
+             right_leg=(4, 0, 0), left_leg=(-6, 0, 0)),
+        dict(root=(0, 0, 0, 0, 0.35, 0), body=(2, 12, 0), head=(2, -12, 0), right_arm=(-85, 0, 0), right_hand=(126, 0, 0)),
+        dict(root=(0, 0, 0, 0, 0.2, 0.5), body=(-5, 12, 0), head=(-2, -12, 0), right_arm=(-89, 0, 0), right_hand=(127, 0, 0)),
+        dict(root=(0, 0, 0, 0, 0.3, 0.4), body=(-3, 12, 0), head=(0, -12, 0), right_arm=(-86, 0, 0), right_hand=(126, 0, 0)),
+        dict(root=(0, 0, 0, 0, 1.4, -0.4), body=(18, 4, 0), head=(14, -4, 0), right_arm=(-30, 0, 0), right_hand=(100, 0, 0),
+             right_leg=(-6, 0, 0), right_shin=(8, 0, 0), left_leg=(-14, 0, 0), left_shin=(14, 0, 0)),
+        dict(root=(0, 0, 0, 0, 0.1, 0), body=(1, 1, 0), right_arm=(-4, 0, 0), right_hand=(4, 0, 0))),
+        lag=dict(head=0.02), two=STOCK)]
+
+
+def thrower():
+    # Throw (impact tick 8 = release): the harpoon comes up over the shoulder, point forward, the body coiled back and the
+    # free arm pointing at the target; a held beat, then the hips and shoulders unwind, the weight goes onto the front
+    # foot and the arm whips the harpoon forward and out; the arm follows through low across the body.
+    return [beats('thrower_throw', 1.2, 0.4, 0.12, 0.16, (
+        dict(root=(0, 0, 0, 0, 0.4, 0.8), body=(-8, 14, 0), head=(0, -12, 0), right_arm=(-150, 0, -6), right_hand=(219, 0, 0),
+             left_arm=(-80, 20, 0), right_leg=(10, 0, 0), left_leg=(-14, 0, 0), left_shin=(4, 0, 0)),
+        dict(root=(0, 0, 0, 0, 0.5, 0.9), body=(-9, 16, 0), head=(0, -14, 0), right_arm=(-156, 0, -6), right_hand=(224, 0, 0),
+             left_arm=(-82, 20, 0)),
+        dict(root=(0, 0, 0, 0, 1.2, -1.4), body=(12, -14, 0), head=(4, 10, 0), right_arm=(-100, 0, -4), right_hand=(170, 0, 0),
+             left_arm=(-20, 0, 6), right_leg=(4, 0, 0), left_leg=(-18, 0, 0), left_shin=(10, 0, 0)),
+        dict(root=(0, 0, 0, 0, 1.3, -1.6), body=(16, -22, 0), head=(6, 14, 0), right_arm=(-50, 0, 6), right_hand=(122, 0, 0),
+             left_arm=(6, 0, 8)),
+        dict(root=(0, 0, 0, 0, 0.4, -0.4), body=(4, -6, 0), head=(2, 4, 0), right_arm=(-12, 0, 0), right_hand=(20, 0, 0),
+             left_arm=(0, 0, 2), right_leg=(2, 0, 0), left_leg=(-5, 0, 0), left_shin=(3, 0, 0)),
+        dict(root=(0, 0, 0, 0, 0.05, 0), body=(0.5, -1, 0), right_arm=(-2, 0, 0), right_hand=(2, 0, 0))))]
+
+
+def crew():
+    # Fire (impact tick 8 = the shot): the gunner crouches and reaches the linstock to the touch-hole, eyes on the fuse; a
+    # held beat while it catches, then the mortar fires: he flinches back off it, the free arm comes up across his face and
+    # his head turns away; he recovers to rest.
+    return [beats('crew_fire', 1.3, 0.4, 0.12, 0.2, (
+        dict(root=(0, 0, 0, 0, 1.2, -0.6), body=(16, -10, 0), head=(10, -8, 0), right_arm=(-50, 0, -6), right_hand=(10, 0, 0),
+             left_arm=(14, 0, 8), right_leg=(-14, 0, 0), right_shin=(14, 0, 0), left_leg=(6, 0, 0)),
+        dict(root=(0, 0, 0, 0, 1.3, -0.6), body=(17, -10, 0), head=(11, -8, 0), right_arm=(-54, 0, -6), right_hand=(12, 0, 0),
+             left_arm=(14, 0, 8)),
+        dict(root=(0, 0, 0, 0, 0.6, 0.8), body=(-10, 8, 0), head=(-12, 14, 0), right_arm=(-30, 0, -14), right_hand=(4, 0, 0),
+             left_arm=(-110, 30, 0), right_leg=(-6, 0, 0), right_shin=(6, 0, 0), left_leg=(4, 0, 0)),
+        dict(root=(0, 0, 0, 0, 0.5, 0.9), body=(-12, 10, 0), head=(-14, 16, 0), right_arm=(-26, 0, -16), right_hand=(2, 0, 0),
+             left_arm=(-120, 34, 0)),
+        dict(root=(0, 0, 0, 0, 0.3, 0.3), body=(-3, 3, 0), head=(-4, 5, 0), right_arm=(-8, 0, -4), right_hand=(2, 0, 0),
+             left_arm=(-30, 10, 0), right_leg=(-2, 0, 0), right_shin=(2, 0, 0)),
+        dict(root=(0, 0, 0, 0, 0.05, 0), body=(-0.5, 0.5, 0), left_arm=(-2, 0, 0))))]
+
+
 FAMILIES = {
     ('biped', 'sword'): sword,
     ('biped', 'spear'): spear,
@@ -349,6 +407,9 @@ FAMILIES = {
     ('biped', 'axe_shield'): axe_shield,
     ('biped', 'greatsword'): greatsword,
     ('biped', 'scythe'): scythe,
+    ('biped', 'crossbow'): crossbow,
+    ('biped', 'thrower'): thrower,
+    ('biped', 'crew'): crew,
 }
 
 
