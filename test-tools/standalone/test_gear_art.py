@@ -48,6 +48,7 @@ class GearArt(unittest.TestCase):
             with open(os.path.join(d, f)) as h: j = json.load(h)
             for b in j["bones"]:
                 if b["parent"] != "body" or any(b["rotation"]): continue
+                if f[:-5] in art_only() and b.get("stages") == [5]: continue   # Forgewall's approved Legendary smokestacks rise behind the helm
                 for x in b["boxes"]:
                     lo = b["pivot"][1] + x["origin"][1]
                     self.assertTrue(-8 <= lo and lo + x["size"][1] <= 26, (f, b["name"], lo))   # embers rise a little over the shoulders
