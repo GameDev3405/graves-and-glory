@@ -3,7 +3,8 @@ Gatepost Greaves, Cairn-Treads. Old gate-guard iron, heavy and battered. Common 
 Legendary is blackened iron with ember light in its cracks, a horned crest, and extra stacked plates on the pauldron,
 knees and boots. Every box has whole-texel sizes and no dilation, so one texel is one model pixel.
 
-Rarities 2 to 4 (Task 3) paint as Common until they are drawn."""
+Uncommon dyes the leather straps green; Rare is blued steel; Epic is dark gunmetal with purple inlay lines whose seams
+glow faintly (the glow sheet lights the inlay texels)."""
 import os, sys
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
 from gearlib import GearPiece
@@ -14,15 +15,20 @@ BLACK = ramp("0e0d10", "1c1a1e", "2c292c", "403a3a", "5a514c", "786c62", "9a8c7c
 EMBER = ramp("5a1a08", "9a3510", "d4601a", "f39a3a", "ffd27a")
 MUD   = ramp("1e1812", "2e251b", "413426", "58472f", "6e5a3c")
 INK   = BLACK[0]
-LEGEND = 5
+BLUED = ramp("10141f", "1c2436", "2b3a56", "3f557a", "5c779e", "84a0c4", "b8cce4")
+GUN   = ramp("121218", "1e1e28", "2e2d3c", "434055", "5d5872", "7f7894", "aaa2bc")
+INLAY = ramp("3a0f52", "6a1c9c", "9a38d6", "c470f2")   # gear-rarity purple, kept clear of the Graveborn ramp
+GREEN_LEATH = ramp("0f1a0c", "1c3016", "2c4a20", "3e6a2c", "56903a", "7cb456")
+LEGEND, EPIC = 5, 4
 
-def metal(r): return BLACK if r == LEGEND else IRON
+def metal(r): return {3: BLUED, 4: GUN, 5: BLACK}.get(r, IRON)
+def leath(r): return GREEN_LEATH if r == 2 else LEATH
 
 def P(r):
     """Grid palette: 0-6 the rarity's metal, k ink, A-F leather, m-p mud, e-i ember (Legendary only; iron dark otherwise)."""
     M = metal(r)
     p = {str(i): c for i, c in enumerate(M)}
-    p.update({"k": INK}); p.update({ch: LEATH[i] for i, ch in enumerate("ABCDEF")}); p.update({ch: MUD[i] for i, ch in enumerate("mnopq")})
+    p.update({"k": INK}); p.update({ch: leath(r)[i] for i, ch in enumerate("ABCDEF")}); p.update({ch: MUD[i] for i, ch in enumerate("mnopq")})
     lit = r == LEGEND
     p.update({ch: (EMBER[i] if lit else M[max(0, i - 1)]) for i, ch in enumerate("efghi")})
     return p
@@ -46,6 +52,8 @@ def iron(r, base=3, rim=True, seam=True, spec=True):
                 if spec and face == "front" and w >= 5 and x == 1 and 0 < y < h - 2: v += 1
                 if (x * 5 + y * 3) % 13 == 0 and 0 < y < h - 1: v -= 1   # dents
                 g[y][x] = clamp(M, v)
+                if r == EPIC and h >= 3 and y == 1 and (x + (face == "back")) % 4 != 3:   # an inlay line under the rim
+                    g[y][x] = INLAY[2 + (LIT[face] > 0)]
         return g
     return paint
 
@@ -75,7 +83,17 @@ def box(origin, size, art, glow=None, sheet="skin"):
     b.glow = {r: glow(r) for r in (1, 2, 3, 4, 5)} if glow else {}
     return b
 
-def glow_cb(bone, b, r): return b.glow.get(r) if getattr(b, "glow", None) else None
+def glow_cb(bone, b, r):
+    g = b.glow.get(r) if getattr(b, "glow", None) else None
+    if g or r != EPIC: return g
+    src = b.paint.get(EPIC, b.paint.get(0)); inlay = set(INLAY)
+    def paint(face, w, h):   # the Epic's faint seam glow: its inlay texels, lit
+        out = blank(w, h)
+        for y, line in enumerate(src(face, w, h)):
+            for x, c in enumerate(line):
+                if c in inlay: out[y][x] = c
+        return out
+    return paint
 
 # ---- Watchman's Greathelm: a squat iron bucket, one narrow eye slit, a cracked brow plate ----
 HELM_C = {
@@ -198,7 +216,7 @@ def strap(r, base=2):
             for x in range(w):
                 v = base + LIT[face] + (lightx(face, x, w) if face not in ("top", "bottom") else 0)
                 if face not in ("top", "bottom") and y == 0: v += 1
-                g[y][x] = clamp(LEATH, v)
+                g[y][x] = clamp(leath(r), v)
         if face == "front" and w >= 3 and h >= 2:   # an iron buckle
             M = metal(r); g[0][w // 2] = M[5]; g[h - 1][w // 2] = M[3]
         return g
@@ -231,6 +249,7 @@ def pauldron(r, part):
             g[0][x] = M[min(6, base + (2 if part == "dome" else 1))]
             g[h - 1][x] = M[1]
             if x % 3 == 1 and part != "dome": g[0][x] = M[6]   # rivets
+            if r == EPIC and h >= 3 and x % 4 != 3: g[1][x] = INLAY[2 + (LIT[face] > 0)]
         return g
     return paint
 
@@ -304,7 +323,7 @@ def thigh(r):
         g = iron(r, base=3)(face, w, h)
         if face in ("front", "back", "left", "right"):
             for x in range(w):
-                g[2][x] = LEATH[2 + LIT[face]]; g[4][x] = LEATH[2 + LIT[face]]   # straps
+                g[2][x] = leath(r)[2 + LIT[face]]; g[4][x] = leath(r)[2 + LIT[face]]   # straps
             if face == "front": g[2][w // 2] = metal(r)[5]; g[4][w // 2] = metal(r)[5]
         return g
     return paint

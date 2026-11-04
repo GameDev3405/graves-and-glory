@@ -26,7 +26,9 @@ def main(argv):
     cmd, name = argv[0], argv[1]
     pieces = set_pieces(name)
     rar = tuple(int(x) for x in argv[3].split(",")) if len(argv) > 3 else gearlib.RARITIES
-    if cmd == "contact": gearlib.contact(pieces, argv[2], rar)
+    if cmd == "contact":   # an all-rarity sheet adds one mixed loadout: chest and boots only, over the bare body
+        mixed = [("Mixed: chest + boots / rare", [p for p in pieces if p.slot in ("chest", "boots")], 3)] if len(rar) == 5 else ()
+        gearlib.contact(pieces, argv[2], rar, extra_rows=mixed)
     elif cmd == "close": gearlib.pieces_close(pieces, argv[2], rar)
     elif cmd == "export": export(pieces)
     else: raise SystemExit(__doc__)
