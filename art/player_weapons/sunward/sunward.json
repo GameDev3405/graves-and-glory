@@ -1,0 +1,26 @@
+{
+ "weapon": "sunward",
+ "title": "Sunward",
+ "set": "Oathbound",
+ "house": "Gilded Order",
+ "kind": "heater shield",
+ "density": 2,
+ "frames": [
+  "rest"
+ ],
+ "grip": {
+  "offset": [
+   0,
+   0,
+   0
+  ],
+  "rotation": [
+   0,
+   0,
+   0
+  ],
+  "note": "the grip's centre is the model origin (the fist box covers y -2..+2); y up, big faces across z, Blockbench's south the front"
+ },
+ "thickness": 1,
+ "offhand": true
+}

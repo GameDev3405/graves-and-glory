@@ -88,7 +88,7 @@ class Canvas:
 
     def __init__(self, w, h, face, box, tier):
         self.w, self.h, self.face, self.box, self.tier = w, h, face, box, tier
-        self.sem = SEM[face]
+        self.sem = getattr(box, 'sem_map', SEM)[face]
         self.mat = np.full((h, w), None, dtype=object)
         self.tone = np.zeros((h, w), dtype=np.int8)
         self.rng = random.Random('%s/%s/%s' % (box.name, face, tier))
@@ -143,14 +143,16 @@ class Canvas:
 # ---------------------------------------------------------------- boxes
 
 class Box:
+    DENSITY = 1   # texels a model px; a subclass for weapons paints at 2
+
     def __init__(self, name, slot, bone, frm, size, paint, inflate=0.0, rot=(0, 0, 0), origin=None, tier='all',
                  side=None, hide=(), note=''):
         self.name, self.slot, self.bone = name, slot, bone
         self.frm = [float(c) for c in frm]
         self.size = [float(c) for c in size]
         for s in self.size:
-            if abs(s - round(s)) > 1e-6 or s <= 0:
-                raise ValueError('%s: box sizes are whole px (%s)' % (name, size))
+            if abs(s * self.DENSITY - round(s * self.DENSITY)) > 1e-6 or s <= 0:
+                raise ValueError('%s: box sizes are whole texels at %d a px (%s)' % (name, self.DENSITY, size))
         self.paint = paint if isinstance(paint, (list, tuple)) else [paint]
         self.inflate = inflate
         self.rot = tuple(float(r) for r in rot)
@@ -164,7 +166,7 @@ class Box:
         return self.tier == 'all' or self.tier == tier or (self.tier == 'base' and tier == 'base')
 
     def face_size(self, f):
-        sx, sy, sz = (int(round(s)) for s in self.size)
+        sx, sy, sz = (int(round(s * self.DENSITY)) for s in self.size)
         return {'north': (sx, sy), 'south': (sx, sy), 'east': (sz, sy), 'west': (sz, sy),
                 'up': (sx, sz), 'down': (sx, sz)}[f]
 
@@ -476,8 +478,8 @@ def render(drawables, yaw, pitch, scale, size=None, bg=(0, 0, 0, 0), anchor=None
                 continue
             z = so[2] + s * su[2] + t * sv[2]
             rx, ry, rw, rh = rect
-            tu = np.clip((s * rw).astype(int), 0, rw - 1)
-            tv = np.clip((t * rh).astype(int), 0, rh - 1)
+            tu = np.clip((s * rw).astype(int), 0, int(math.ceil(rw)) - 1)
+            tv = np.clip((t * rh).astype(int), 0, int(math.ceil(rh)) - 1)
             texel = tex[ry + tv, rx + tu]
             gl = glow[ry + tv, rx + tu]
             vis = inside & (texel[..., 3] > 0)
