@@ -24,7 +24,12 @@ W=$(gg_world)
 if gg_alive; then gg_die "Server is running. Stop it first (./stop.sh)."; fi
 tar -tzf "$ARCH" > /dev/null 2>&1 || gg_die "Archive is unreadable: $ARCH"
 tar -tzf "$ARCH" | grep -q "^$W/level.dat\$" || gg_die "Archive does not contain '$W/level.dat'. Wrong world name or wrong archive."
-gg_backup prerestore
+if [ -d "$W" ] && [ ! -f "$W/level.dat" ]; then
+  # A damaged world cannot pass the backup check, and restoring over it is the likely reason. It is kept anyway.
+  gg_warn "Current world '$W' has no level.dat; skipping the prerestore archive. The world itself is kept as $W.replaced-<stamp>."
+else
+  gg_backup prerestore
+fi
 if gg_dry; then gg_say "[dry-run] would extract $ARCH, move '$W' to $W.replaced-<stamp>, install the restored world"; exit 0; fi
 TMP=.restore-tmp-$$
 rm -rf "$TMP"; mkdir "$TMP" && tar -xzf "$ARCH" -C "$TMP" || { rm -rf "$TMP"; gg_die "Extraction failed; the world is untouched."; }

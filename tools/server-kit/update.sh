@@ -58,7 +58,9 @@ gg_say "Updated to $NEWVER. Old jar kept at ${RETIRED:-<none>}."
 if [ "$RESTART" = 1 ]; then
   mkdir -p logs
   nohup "$DIR/start.sh" --root "$GG_ROOT" --memory-gb "$MEM" >> logs/console.log 2>&1 &
-  gg_say "Restart launched in the background (console log: logs/console.log). Now join 25580 as the smoke test."
+  sleep 3
+  if gg_alive; then gg_say "Restart launched in the background (console log: logs/console.log). Now join 25580 as the smoke test."
+  else gg_warn "The restart did not stay up. Read logs/console.log (an unaccepted EULA is the usual cause)."; fi
 else
   gg_say "Start it with ./start.sh, then join 25580 as the smoke test."
 fi
