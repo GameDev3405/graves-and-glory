@@ -18,7 +18,8 @@ Build: `gradlew build -x test` 1 m 4 s; `package.py`, `verify_package.py` (63 en
 - Server kit extracted to a scratch folder: C1 (start before setup), C3 (setup twice), C5 (no EULA), C6 (`-MemoryGB 1`) behave as the matrix expects; C2 downloaded the pinned Fabric launcher, hash verified. EULA written only in that scratch folder; port 25661, online-mode=false for the scratch run. Server reached "Done (2.034s)" (22 s total load), camp built, 4 server dependency jars plus the mod loaded, no stack traces.
 - `profile_on_join.py` against the kit server with the packaged jar: all 8 checks PASS (schema 4, 10 Commons, 6 starter gear worn, relic in slot 0, rejoin unchanged).
 - Real client join: harness client (`ConnectOnStart`, case `match`, same source identity) logged in to the kit server and stayed connected until its harness exit (server log `JoinKit joined the game`). Harness pass lines were not written for this case (expected for `match`).
-- SMOKE_PLACEHOLDER
+- Dev-client harness, same source identity, one client at a time: `GRAVES_PHASE1_CHECKS=ui-gear` (Arsenal opens and closes with the gear key, etc.) 15 pass, 0 fail; default Phase 1 `combat` suite (the `verify.py game` suite: a battle starts and runs) 39 pass, 0 fail. Evidence: `work/prerc1/hc-ui-gear/evidence/local-checks.txt`, `work/prerc1/hc-combat/evidence/local-checks.txt`.
+- VERIFY_PLACEHOLDER
 
 The packaged jar excludes every harness class, so Arsenal and battle checks cannot run against it; they ran in a dev client built from the same source identity.
 
