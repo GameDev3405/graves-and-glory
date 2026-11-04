@@ -60,6 +60,12 @@ final class BuildMode {
     static int ticks,sinceBackup;
     static boolean changed;
     static final Map<String,BuildWorlds.Plan> PLANS=new LinkedHashMap<>();
+    /**
+     * Players who joined this tick, settled at the end of it. Fabric's JOIN fires inside PlayerManager.onPlayerConnect before vanilla adds the player to the
+     * world it loaded them into (the overworld for a first join), so a cross-world teleport there left the player registered in both worlds; the first leave
+     * after moving a chunk then crashed the server in ChunkTicketManager.handleChunkLeave (2026-11-03). By END_SERVER_TICK onPlayerConnect has returned.
+     */
+    static final List<ServerPlayerEntity> JOINED=new ArrayList<>();
 
     static boolean active(){return System.getProperty(PROPERTY)!=null;}
     static List<String> worlds(){return new ArrayList<>(PLANS.isEmpty()?BuildWorlds.ids():PLANS.keySet());}
@@ -70,14 +76,13 @@ final class BuildMode {
             Text.literal("Graves and Glory builder worlds"),ResourcePackActivationType.ALWAYS_ENABLED);
         ServerLifecycleEvents.SERVER_STARTED.register(BuildMode::start);
         ServerLifecycleEvents.SERVER_STOPPING.register(s->{if(ready&&changed)backup(s,"stop");});
-        ServerLifecycleEvents.SERVER_STOPPED.register(s->{server=null;ready=false;});
+        ServerLifecycleEvents.SERVER_STOPPED.register(s->{server=null;ready=false;JOINED.clear();});
         ServerTickEvents.END_SERVER_TICK.register(BuildMode::tick);
         ServerPlayConnectionEvents.JOIN.register((handler,sender,s)->{
             if(!ready){handler.disconnect(Text.literal("The builder worlds are being painted for the first time. Try again in a minute."));return;}
             changed=true;var player=handler.player;
             opOnce(s,player);
-            player.changeGameMode(GameMode.CREATIVE);
-            if(plan(player)==null)arrive(player,PLANS.get("lobby"));
+            JOINED.add(player);
         });
         ServerPlayerEvents.AFTER_RESPAWN.register((old,player,alive)->{if(ready&&plan(player)==null)arrive(player,PLANS.get("lobby"));});
         ServerPlayConnectionEvents.DISCONNECT.register((handler,s)->changed=true);
@@ -129,6 +134,7 @@ final class BuildMode {
     static void tick(MinecraftServer s){
         if(server==null)return;
         if(!ready){paintNext();return;}
+        settleJoined(s);
         if(!s.getPlayerManager().getPlayerList().isEmpty())changed=true;
         if(++sinceBackup>=BACKUP_TICKS){sinceBackup=0;if(changed)backup(s,"timer");}
     }
@@ -157,6 +163,17 @@ final class BuildMode {
             SafeFiles.write(file,seen+uuid+"\n");
             log("made "+player.getGameProfile().getName()+" op on first join");
         }catch(IOException e){log("auto-op of "+player.getGameProfile().getName()+" not recorded: "+e);}
+    }
+
+    /** Creative mode, and the lobby for anyone outside the canvases, once each new player is fully in their world. */
+    static void settleJoined(MinecraftServer s){
+        if(JOINED.isEmpty())return;
+        var list=new ArrayList<>(JOINED);JOINED.clear();
+        for(var player:list){
+            if(player.isDisconnected()||s.getPlayerManager().getPlayer(player.getUuid())!=player)continue;
+            player.changeGameMode(GameMode.CREATIVE);
+            if(plan(player)==null)arrive(player,PLANS.get("lobby"));
+        }
     }
 
     // ---- moving between and within canvases ----
