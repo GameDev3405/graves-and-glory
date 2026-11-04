@@ -192,3 +192,11 @@ Why: families with models and existing tooling give real clips with no coordinat
 ## 6. Not yet approved
 
 The knight hits v2 is uncommitted and waits for your approval: 9 hit clips (`hit_body`, `hit_head`, `hit_legs`, each with `_2` and `_3`) in `clips/biped/sword_shield/`, with the worst step 14.7 degrees per tick against the 15 limit. The sword and axe_shield specs both depend on these files landing.
+
+## 7. Kort's rulings (2026-11-04)
+
+- Bow is built (b711c5f3: slower shot, face clearance, hips settle into the draw).
+- Merge `main` into `work/anim-rework` now, so every troop model is here. This answers every "no model" blocker above.
+- Narrow `TroopMotion.bow(row)` to the bow family, so crossbow, thrower and crew get their own carry. Visual only.
+- `tools/anim_edit.py` takes a rig argument (hound, spider, colossus rigs) and gets entries for the biped families. Tool change only.
+- Beasts walk with one shared Java gait layer (ruled 2026-11-03).
