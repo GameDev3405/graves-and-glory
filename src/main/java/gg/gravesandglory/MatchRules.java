@@ -56,6 +56,15 @@ public final class MatchRules {
         return practiceGold + (campaignBattle && credited ? victoryGold : 0);
     }
 
+    /**
+     * The Forge marks a finished match pays before pro-rating: base for a win, base times lossPct for a loss, times botOnlyPct when no human
+     * played the other side, rounded down. No base pays nothing.
+     */
+    public static int forgeMarks(int base, boolean won, boolean botOnly, double lossPct, double botOnlyPct) {
+        if (base <= 0) return 0;
+        return (int) Math.floor(base * (won ? 1.0 : lossPct) * (botOnly ? botOnlyPct : 1.0) + 1e-9);
+    }
+
     /** The share of the match a player was seated, as a whole percent from 0 to 100 (rounded down). */
     public static int sharePercent(long seated, long total) { return total <= 0 || seated <= 0 ? 0 : (int) (100L * Math.min(seated, total) / total); }
 

@@ -8,7 +8,7 @@ import java.util.stream.Stream;
 
 /**
  * QA matrix D16: every checked-in v1 profile fixture (fresh, full, invalid, partial, cache) goes through the real Gson loaders that
- * Campaign.readProfile uses, on a copy in a temp folder, and must come out as a valid schema 3 profile. The v1 bytes are kept once as
+ * Campaign.readProfile uses, on a copy in a temp folder, and must come out as a valid schema 4 profile. The v1 bytes are kept once as
  * name.v1.json, a second load changes nothing, and the refunded troops (mage, hexer, oracle, wraith) are never owned. Never shipped.
  */
 public final class ProfileFixtureCheck {
@@ -43,7 +43,7 @@ public final class ProfileFixtureCheck {
                 Files.write(file, original);
                 V1Probe v1 = new V1Probe(JSON.fromJson(new String(original, java.nio.charset.StandardCharsets.UTF_8), ProfileMigration.V1.class));
                 Profile p = load(file);
-                check(p.schema == 3, name + ": migrates to schema 3, got " + p.schema);
+                check(p.schema == 4, name + ": migrates to schema 4, got " + p.schema);
                 check(p.owned.keySet().containsAll(commons), name + ": owns all 10 Commons");
                 check(Collections.disjoint(p.owned.keySet(), ProfileMigration.REFUNDED), name + ": mage, hexer, oracle and wraith are refunded, never owned");
                 check(p.owned.values().stream().allMatch(o -> o.copies >= 1 && o.stars >= 1), name + ": every owned troop has a copy and a star");
@@ -52,7 +52,7 @@ public final class ProfileFixtureCheck {
                 check(p.gold >= v1.gold, name + ": gold is at least the v1 gold plus the refunds: " + p.gold + " vs " + v1.gold);
                 check(p.battlesWon != null && p.bonusClaimed != null, name + ": battlesWon and bonusClaimed exist");
                 check(Files.isRegularFile(backup) && Arrays.equals(Files.readAllBytes(backup), original), name + ": .v1.json is a byte copy of the fixture");
-                check(Files.readString(file).contains("\"schema\": 3"), name + ": the file on disk is schema 3");
+                check(Files.readString(file).contains("\"schema\": 4"), name + ": the file on disk is schema 4");
                 byte[] saved = Files.readAllBytes(file);
                 Profile again = load(file);
                 check(again.gold == p.gold && Arrays.equals(Files.readAllBytes(file), saved) && Arrays.equals(Files.readAllBytes(backup), original), name + ": a second load changes nothing");

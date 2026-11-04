@@ -47,6 +47,16 @@ public final class Campaign {
     /** AI armies that fell back stay there until rallied, so they do not walk back into the fight. */
     final Set<UUID> botRetreating=new HashSet<>();
     final Map<UUID,String> notices=new HashMap<>();
+    /** The last gear_v1 string each player was sent, so the packet goes out only when it changes. */
+    final Map<UUID,String> gearSent=new HashMap<>();
+    void syncGear(ServerPlayerEntity p){
+        if(!net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking.canSend(p,GravesAndGlory.GEAR))return;
+        String text=GearWire.encode(profile(p.getUuid()));
+        if(text.equals(gearSent.get(p.getUuid())))return;
+        var packet=net.fabricmc.fabric.api.networking.v1.PacketByteBufs.create();packet.writeString(text,GearWire.LIMIT);
+        net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking.send(p,GravesAndGlory.GEAR,packet);
+        gearSent.put(p.getUuid(),text);
+    }
     /** How many notices each player has been sent; the snapshot carries it so a client can tell a notice sent again from one it has already shown. */
     final Map<UUID,Integer> noticeSerials=new HashMap<>();
     /**
@@ -100,11 +110,20 @@ public final class Campaign {
         } catch(java.io.IOException migration) { throw new IllegalStateException("Could not upgrade legacy commander data; original files were kept",migration); }
         try{JsonObject marker=JsonParser.parseString(Files.readString(layoutFile())).getAsJsonObject();if(marker.get("layout").getAsString().equals(LayoutMarker.LAYOUT))map=marker.get("map").getAsInt();}catch(Exception ignored){}CampaignMaps.select(map);
     }
-    /** A commander's collection, read once: a schema-1 or schema-2 file is upgraded in place to schema 3 first (spec 6.3, plan 2C.3; its original bytes stay as <uuid>.v1.json or <uuid>.v2.json), then the profile is sanitized. A new commander owns the 10 Commons and flies the starter banner. */
-    Profile profile(UUID id){return profiles.computeIfAbsent(id,key->SafeFiles.load(directory.resolve(key+".json"),Campaign::readProfile,Campaign::freshProfile,"Commander profile "+key));}
-    /** A new commander: the 10 Commons and the starter banner (sanitize fills them in). Also what a damaged profile with no usable .bak falls back to. */
-    static Profile freshProfile(){Profile fresh=new Profile();fresh.sanitize();return fresh;}
-    /** One profile file, upgraded in place first when it is schema 1 or 2; throws when it cannot be read (SafeFiles.load then tries the .bak). */
+    /** A commander's collection, read once: a schema-1, 2 or 3 file is upgraded in place to schema 4 first (spec 6.3, plan 2C.3; its original bytes stay as <uuid>.v1.json, .v2.json or .v3.json), then the profile is sanitized. A new commander owns the 10 Commons, flies the starter banner and wears the starter gear. */
+    Profile profile(UUID id){
+        Profile pr=profiles.computeIfAbsent(id,key->SafeFiles.load(directory.resolve(key+".json"),Campaign::readProfile,Campaign::freshProfile,"Commander profile "+key));
+        if(pr.readOnly&&newerSaveTold.add(id)){ // a save from a newer build: kept untouched all session (save writes nothing); the player is told once, the log keeps a warning
+            System.err.println("[Graves and Glory] Commander profile "+id+" is schema "+pr.schema+", newer than this build's schema "+Profile.SCHEMA+"; the file is left untouched and this session's progress will not be saved.");
+            notice(id,"Your commander save is from a newer version of Graves and Glory; progress this session will not be saved.");
+        }
+        return pr;
+    }
+    /** Players already told that their save is from a newer build (Profile.readOnly), so the notice comes once per session. */
+    final Set<UUID> newerSaveTold=new HashSet<>();
+    /** A new commander: the 10 Commons, the starter banner (sanitize fills them in) and the role's starter gear. Also what a damaged profile with no usable .bak falls back to. */
+    static Profile freshProfile(){Profile fresh=new Profile();Gear.grantStarter(fresh);fresh.sanitize();return fresh;}
+    /** One profile file, upgraded in place first when it is schema 1, 2 or 3; throws when it cannot be read (SafeFiles.load then tries the .bak). */
     static Profile readProfile(Path file) throws Exception{
         Profile p=ProfileMigration.upgradeFile(file,text->JSON.fromJson(text,ProfileMigration.V1.class),text->JSON.fromJson(text,Profile.class),JSON::toJson,RosterMath.Catalog.fromSpec());
         if(p==null)p=JSON.fromJson(Files.readString(file),Profile.class);if(p==null)throw new IllegalStateException("Empty profile");p.sanitize();return p;}
@@ -113,7 +132,7 @@ public final class Campaign {
     /** The marker (see LayoutMarker) names this layout, this map, this revision of the arena margin and the hash of the map's landmarks (Structures.hash); a save made before the margin was tapered, or before these landmarks, builds its arena once more. */
     boolean cached(){try{return LayoutMarker.current(Files.readString(layoutFile()),map,Structures.hash(map));}catch(Exception e){return false;}}
     void built(){try{SafeFiles.write(layoutFile(),LayoutMarker.text(map,Structures.hash(map)));}catch(Exception e){System.err.println("[Graves and Glory] Map cache marker could not be saved.");}}
-    boolean save(UUID id){try{SafeFiles.writeWithBackup(directory.resolve(id+".json"),JSON.toJson(profile(id)));return true;
+    boolean save(UUID id){try{var pr=profile(id);ProfileMigration.saveProfile(pr,directory.resolve(id+".json"),JSON.toJson(pr));return true;
         }catch(Exception e){System.err.println("[Graves and Glory] Could not save commander collection: "+e.getClass().getSimpleName());notice(id,"Collection could not be saved; check disk space.");return false;}}
     void importProfile(ServerPlayerEntity p,String json){
         if(json.length()>16000)return;
@@ -122,7 +141,7 @@ public final class Campaign {
         // existing collections carry over; dedicated servers never accept one.
         UUID id=p.getUuid();boolean allowed=importAllowed.remove(id)&&!b.server.isDedicated();
         try{var v1=JSON.fromJson(json,ProfileMigration.V1.class); // a portable copy from before Houses is upgraded the same way as a server file
-            Profile portable=v1!=null&&v1.schema<2?ProfileMigration.toV2(v1,RosterMath.Catalog.fromSpec()):JSON.fromJson(json,Profile.class);portable.sanitize();
+            Profile portable=v1!=null&&v1.schema<2?ProfileMigration.toV2(v1,RosterMath.Catalog.fromSpec()):JSON.fromJson(json,Profile.class);portable.sanitize();Gear.resetForImport(portable);
             if(allowed){profiles.put(id,portable);save(id);}
             else{Profile stored=profile(id);if(portable.gold>stored.gold||!stored.owned.keySet().containsAll(portable.owned.keySet()))System.out.println("[Graves and Glory] Ignored the collection sent by "+p.getName().getString()+"; the server's saved collection is kept.");}
         }catch(Exception ignored){}
@@ -192,7 +211,7 @@ public final class Campaign {
         if(ArenaAutosave.settle()&&b.server.isRunning()){long at=System.nanoTime();b.server.saveAll(true,false,false);System.out.println("[Graves and Glory] Saved the world after the battle ("+(System.nanoTime()-at)/1_000_000+" ms).");}
     }
     /** Leaving frees the pad, any seat in a custom lobby, and invitations to it, and forgets which snapshot forms were logged for him. */
-    void left(UUID id){onPad.remove(id);padRefused.remove(id);leaveParty(id);snapshotForms.remove(id);notices.remove(id);noticeAt.remove(id);} // his notice entries go with him, a standing line's too (expireNotices never drops those)
+    void left(UUID id){newerSaveTold.remove(id);gearSent.remove(id);forgeResults.remove(id);onPad.remove(id);padRefused.remove(id);leaveParty(id);snapshotForms.remove(id);notices.remove(id);noticeAt.remove(id);} // his notice entries go with him, a standing line's too (expireNotices never drops those)
     boolean handle(ServerPlayerEntity p,String cmd){
         if(cmd.startsWith("social:"))return socialCommand(p,cmd);
         if(cmd.startsWith("progress:"))return progressCommand(p,cmd);
@@ -222,7 +241,7 @@ public final class Campaign {
         if(b.running){
             var current=b.squads.get(p.getUuid());
             boolean global=cmd.startsWith("map:")||cmd.startsWith("mode:")||cmd.equals("fill")||cmd.equals("start")||cmd.startsWith("difficulty:");
-            boolean personal=cmd.equals("roll")||cmd.startsWith("roll:")||cmd.startsWith("buy:")||cmd.startsWith("star:")||cmd.startsWith("legendary:")||cmd.startsWith("unlock:")||cmd.startsWith("army:")||cmd.startsWith("slot:")||cmd.startsWith("colour:")||cmd.startsWith("class:");
+            boolean personal=cmd.equals("roll")||cmd.startsWith("roll:")||cmd.startsWith("buy:")||cmd.startsWith("star:")||cmd.startsWith("legendary:")||cmd.startsWith("unlock:")||cmd.startsWith("army:")||cmd.startsWith("slot:")||cmd.startsWith("colour:")||cmd.startsWith("class:")||cmd.startsWith("gear:")||cmd.startsWith("forge:");
             if(global||personal&&current!=null&&current.seated){notice(p.getUuid(),"Active battle choices are locked until the match ends.");return true;}
         }
         if(cmd.startsWith("difficulty:")){
@@ -233,6 +252,7 @@ public final class Campaign {
         Profile pr=profile(p.getUuid());var squad=b.squads.get(p.getUuid());if(squad==null)return false;
         if(cmd.equals("roll")||cmd.startsWith("roll:")){roll(p,pr,cmd.equals("roll")?RosterMath.rollHouse(pr.banner):cmd.substring(5));return true;}
         if(cmd.startsWith("buy:")){buy(p,pr,cmd.substring(4));return true;}
+        if(cmd.startsWith("gear:")||cmd.startsWith("forge:")){gear(p,pr,cmd);return true;}
         if(cmd.startsWith("star:")){star(p,pr,cmd.substring(5));return true;}
         if(cmd.startsWith("legendary:")){legendary(p,pr,cmd.substring(10));return true;}
         if(cmd.startsWith("unlock:")||cmd.startsWith("army:")){notice(p.getUuid(),"Troops now join by recruitment rolls at the camp shrine.");return true;}
@@ -443,6 +463,23 @@ public final class Campaign {
     /** The recruitment reveal sound, to the commander alone (the ServerPlayerEntity overload). */
     static void reveal(ServerPlayerEntity p){Audio.to(p,AudioCues.Cue.UNIT_REVEAL);}
     /** Undoes a command whose save failed: the profile goes back to its JSON from before, and the commander is told nothing changed. */
+    /** Per commander, the last Forge roll (the snapshot's "forge"): {n, item, rarity, relic, duplicate, refund}; n counts up so the client tells a new roll from the same. Not saved. */
+    final Map<UUID,JsonObject> forgeResults=new HashMap<>();
+    /** One gear or forge request (spec 2026-11-03-commander-gear-design): GearCommands validates and applies it, a refusal changes nothing, and a profile that will not save is put back. */
+    void gear(ServerPlayerEntity p,Profile pr,String cmd){
+        UUID id=p.getUuid();String before=JSON.toJson(pr);
+        var outcome=GearCommands.apply(pr,cmd,rollRng);
+        if(!outcome.ok()){notice(id,outcome.refusal());return;}
+        if(!save(id)){unsaved(id,before,"That gear change");return;}
+        var rolled=outcome.rolled();
+        if(rolled!=null){
+            JsonObject card=new JsonObject();var last=forgeResults.get(id);card.addProperty("n",last==null?1:last.get("n").getAsInt()+1);
+            card.addProperty("item",rolled.piece()==null?"":rolled.piece().item);card.addProperty("rarity",rolled.piece()==null?"":rolled.piece().rarity);card.addProperty("relic",rolled.relic()==null?"":rolled.relic());
+            card.addProperty("duplicate",rolled.duplicate());card.addProperty("refund",rolled.refund());forgeResults.put(id,card);
+        }
+        notice(id,outcome.notice());
+        syncGear(p);
+    }
     void unsaved(UUID id,String before,String what){profiles.put(id,JSON.fromJson(before,Profile.class));notice(id,what+" was not saved, so nothing changed. Check disk space and try again.");}
     /**
      * A chosen recruit (buy:<troop>, spec 4.2): a Common or Rare of any House for recruitment.chosenCost gold, as a new troop or a copy toward its
@@ -559,9 +596,9 @@ public final class Campaign {
             // Pay is pro-rated by the share of the match he was seated (Kort 2026-11-02): a commander who dropped and did not return, or came back late, gets that share of the gold, XP, shards and Renown;
             // one seated the whole match is paid in full. The win, the cleared battle and the bonus count only when he was seated for at least half of it.
             long seated=seatedTicks(id)/20;boolean eligible=seated>0&&seconds>=Spec.CAMPAIGN[0].minimumRewardSeconds();int percent=MatchRules.sharePercent(seated,seconds);
-            boolean won=s.team==winner,credited=won&&MatchRules.majority(seated,seconds);
+            boolean won=s.team==winner,credited=won&&MatchRules.majority(seated,seconds);final int team=s.team;boolean botOnly=activeBattle==null&&b.squads.values().stream().filter(o->o.team!=team).allMatch(o->o.bot);
             int earned=eligible?MatchRules.prorate(MatchRules.grossGold(practice,activeBattle!=null,won,credited,Spec.CAMPAIGN[0].completionGold(),Spec.CAMPAIGN[0].practiceGold(),Spec.CAMPAIGN[0].victoryGold()),seated,seconds):0;
-            int priorXp=p.progression.xp;Progression.reset(p.progression,Progression.today());Progression.match(p.progression,matchId,credited,eligible,percent);p.gold+=earned;if(seated>0)p.matches++;if(credited)p.wins++;MarchMath.Settled march=null;
+            int priorXp=p.progression.xp;Progression.reset(p.progression,Progression.today());Progression.match(p.progression,matchId,credited,eligible,percent);p.gold+=earned;int marks=eligible?MatchRules.prorate(MatchRules.forgeMarks(Spec.CAMPAIGN[0].forgeMarks(),credited,botOnly,Spec.CAMPAIGN[0].lossMarksPct(),Spec.CAMPAIGN[0].botOnlyMarksPct()),seated,seconds):0;p.forgeMarks+=marks;if(eligible)Forge.wear(p);if(seated>0)p.matches++;if(credited)p.wins++;MarchMath.Settled march=null;
             if(activeBattle!=null){ // plan 2C.3: the battle won, the cleared count and the bonus, in the same save as the gold
                 march=MarchMath.settle(activeBattle,MarchMath.bonus(activeBattle,Spec.BONUSOBJECTIVES),credited,bonusTracker!=null&&bonusTracker.kept(won,(int)seconds),p.battlesWon,p.bonusClaimed,Profile.houseOrder(),Spec.CAMPAIGNBATTLES);
                 p.campaignCleared=march.cleared();if(march.bonusPaid()){p.gold+=march.bonusGold();p.shards.merge(march.bonusHouse(),march.bonusShards(),Integer::sum);}}
@@ -570,10 +607,10 @@ public final class Campaign {
             var paid=eligible?RosterMath.prorate(RosterMath.matchRewards(slots,Houses.thresholds(Spec.HOUSES[0].id()),Profile.houseOrder(),credited),seated,seconds):NO_REWARDS; // every House has the same slot thresholds (HousesCheck)
             paid.shards().forEach((h,n)->p.shards.merge(h,n,Integer::sum));paid.renown().forEach((h,n)->p.renown.merge(h,n,Integer::sum));
             List<String> titles=eligible?ledger(p,s):List.of();int pacts=pacts(p);
-            boolean saved=save(id);JsonObject report=new JsonObject();report.addProperty("id",matchId);report.addProperty("outcome",winner<0?"DRAW":s.team==winner?"VICTORY":"BATTLE COMPLETE");report.addProperty("map",Spec.MAPS[map].name());report.addProperty("seconds",seconds);report.addProperty("saved",saved);report.addProperty("eligible",eligible);report.addProperty("gold",saved?earned:0);report.addProperty("xp",saved?p.progression.xp-priorXp:0);report.addProperty("beforeXp",priorXp);report.add("squads",reportSquads(s));report.add("points",reportPoints());report.add("houses",reportHouses(s,slots,saved?paid:NO_REWARDS));report.add("levels",reportLevels(s));report.add("mode",reportMode());if(activeBattle!=null)report.add("march",reportMarch(p,credited,march,pacts));results.put(id,report);
+            boolean saved=save(id);JsonObject report=new JsonObject();report.addProperty("id",matchId);report.addProperty("outcome",winner<0?"DRAW":s.team==winner?"VICTORY":"BATTLE COMPLETE");report.addProperty("map",Spec.MAPS[map].name());report.addProperty("seconds",seconds);report.addProperty("saved",saved);report.addProperty("eligible",eligible);report.addProperty("gold",saved?earned:0);report.addProperty("forgeMarks",saved?marks:0);report.addProperty("xp",saved?p.progression.xp-priorXp:0);report.addProperty("beforeXp",priorXp);report.add("squads",reportSquads(s));report.add("points",reportPoints());report.add("houses",reportHouses(s,slots,saved?paid:NO_REWARDS));report.add("levels",reportLevels(s));report.add("mode",reportMode());if(activeBattle!=null)report.add("march",reportMarch(p,credited,march,pacts));results.put(id,report);
             if(!saved){profiles.put(id,JSON.fromJson(before,Profile.class));standing(id,"Match reward could not be saved. Progress was not changed; check disk space.");continue;}
             String extra=(march!=null&&march.bonusPaid()?" / bonus objective: +"+march.bonusShards()+" "+RosterMath.houseName(march.bonusHouse())+" shards, +"+march.bonusGold()+" gold":"")+(pacts>0?" / "+(pacts==1?"a Pact":pacts+" Pacts")+" earned":"")+(titles.isEmpty()?"":" / new title"+(titles.size()==1?" ":"s ")+String.join(", ",titles));
-            standing(id,(winner<0?"Draw":s.team==winner?"Victory":"Battle complete")+" / +"+earned+" collection gold"+(!eligible?" (reward requires 3 minutes of play)":percent<100?" (pro-rated: you were seated for "+percent+"% of the match)":"")+extra);
+            standing(id,(winner<0?"Draw":s.team==winner?"Victory":"Battle complete")+" / +"+earned+" collection gold"+(!eligible?" (reward requires 3 minutes of play)":percent<100?" (pro-rated: you were seated for "+percent+"% of the match)":"")+(marks>0?" / +"+marks+" Forge marks":"")+extra);
         }
         b.message=(winner<0?"Draw":b.side(winner).name()+" wins")+"! Back to the war council.";headline=b.message;
         Audio.reset(); // the round is over: cues still waiting for their moment (a blow's contact frame, a queued rise) are dropped so nothing plays over the sting
@@ -901,7 +938,7 @@ public final class Campaign {
         partyJson.add("online",online);j.add("party",partyJson);j.add("result",results.getOrDefault(p.getUuid(),new JsonObject()));
         // In the lobby a row carries the team the viewer's next round gives that commander (nextSeats), or -1 when he would not enter with the viewer, so the list's marks read like the side preview; in battle, the squad's team.
         Map<UUID,Integer> nextTeams=new HashMap<>();if(!b.running)for(var seat:nextSeats(p.getUuid()))nextTeams.put(seat.owner(),seat.team());
-        JsonArray players=new JsonArray();for(var s:b.squads.values()){JsonObject row=new JsonObject();var player=b.server.getPlayerManager().getPlayer(s.owner);row.addProperty("name",s.bot?"AI Commander":player==null?"Commander":player.getGameProfile().getName());row.addProperty("team",b.running?s.team:nextTeams.getOrDefault(s.owner,-1));row.addProperty("bot",s.bot);players.add(row);}j.add("players",players);j.add("sides",sidesJson(p.getUuid()));j.add("banner",bannerJson(p.getUuid()));j.add("social",socialSnapshot(p.getUuid()));j.add("progression",progressSnapshot(p.getUuid()));j.add("lastRoll",lastRolls.getOrDefault(p.getUuid(),new JsonObject()));
+        JsonArray players=new JsonArray();for(var s:b.squads.values()){JsonObject row=new JsonObject();var player=b.server.getPlayerManager().getPlayer(s.owner);row.addProperty("name",s.bot?"AI Commander":player==null?"Commander":player.getGameProfile().getName());row.addProperty("team",b.running?s.team:nextTeams.getOrDefault(s.owner,-1));row.addProperty("bot",s.bot);players.add(row);}j.add("players",players);j.add("sides",sidesJson(p.getUuid()));j.add("banner",bannerJson(p.getUuid()));j.add("social",socialSnapshot(p.getUuid()));j.add("progression",progressSnapshot(p.getUuid()));j.add("lastRoll",lastRolls.getOrDefault(p.getUuid(),new JsonObject()));j.add("forge",forgeResults.getOrDefault(p.getUuid(),new JsonObject()));
         BattleMode shown=b.running?b.mode:Modes.create(battleMode);
         j.add("battleMode",shown.snapshot(b,b.running?b.squads.get(p.getUuid()):null));
         return fitted(j,p.getUuid());
@@ -926,7 +963,7 @@ public final class Campaign {
     /** The banner a commander fields: his battle banner while he is seated in a running battle, else his profile banner. */
     JsonArray bannerJson(UUID id){var s=b.squads.get(id);List<String> shown=b.running&&s!=null&&s.seated?s.banner:profile(id).banner;JsonArray out=new JsonArray();for(String entry:shown)out.add(entry);return out;}
     /** The client's copy of a profile: match ids stay on the server. They only stop one match paying twice, and 256 of them (94 characters a match across both copies) would outgrow SNAPSHOT_LIMIT. */
-    static JsonObject forClient(Profile p){JsonObject j=JSON.toJsonTree(p).getAsJsonObject();var s=j.getAsJsonObject(Profile.PROGRESSION);if(s!=null)s.remove(Progression.State.MATCH_GRANTS);return j;}
+    static JsonObject forClient(Profile p){JsonObject j=JSON.toJsonTree(p).getAsJsonObject();var s=j.getAsJsonObject(Profile.PROGRESSION);if(s!=null)s.remove(Progression.State.MATCH_GRANTS);j.remove(Profile.GEAR);return j;} // the gear list travels on gear_v1 (GearWire), never in the camp snapshot
     static JsonObject forClient(Progression.State s){JsonObject j=JSON.toJsonTree(s).getAsJsonObject();j.remove(Progression.State.MATCH_GRANTS);return j;}
     /** The snapshot as sent: pretty when it fits SNAPSHOT_LIMIT, else compact, else compact without the battle report, else "{}" (the client then keeps its last camp state). Each shortened form is logged the first time a commander is sent it. */
     String fitted(JsonObject j,UUID id){
