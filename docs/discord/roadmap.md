@@ -7,6 +7,7 @@
 - New troop models and animations for all five Houses
 - Rebuilt battlefields and a polished lobby
 - First campaign run and guided first battle improvements
+- Commander gear: armour, weapons and relics from the camp Blacksmith, worn in the new Arsenal screen
 
 **Next**
 - Balance pass across the five Houses

@@ -88,6 +88,11 @@ class PreflightGear(unittest.TestCase):
 
     def test_forge_slots(self):
         self.refuses(lambda d: self.row(d, 'forge', 'forge').__setitem__('maxSlots', 115), 'maxSlots')
+    def test_blacksmith_lines_required(self):
+        self.refuses(lambda d: d['blacksmithLines'].clear(), 'blacksmithLines')
+
+    def test_blacksmith_line_length(self):
+        self.refuses(lambda d: d['blacksmithLines'][0].__setitem__('text', 'x' * 91), 'blacksmithLines', '90')
 
 if __name__ == '__main__':
     unittest.main()
