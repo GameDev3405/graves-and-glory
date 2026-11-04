@@ -377,7 +377,8 @@ def build(root):
     """{relative output path: clip JSON} for every project under art/clips; raises ClipError on the first problem."""
     root = pathlib.Path(root)
     sheet_path = root / SHEET
-    rows = variants(json.loads(sheet_path.read_text(encoding='utf-8'))) if sheet_path.is_file() else None
+    sheet = json.loads(sheet_path.read_text(encoding='utf-8')) if sheet_path.is_file() else {}
+    rows = variants(sheet) if sheet_path.is_file() else None
     if rows is None:
         print(f'clips: {SHEET} has no attackVariants impactTicks yet; impact check skipped')
     out = {}
@@ -397,7 +398,19 @@ def build(root):
         for name, clip in made.items():
             check(clip, parse(clip), rig, family, rows, f'{where} {name}')
             out[f'{rig_name}/{family}/{name}.json'] = clip
+    missing = unclipped(sheet, rows, out)
+    if missing:
+        raise ClipError(f'{len(missing)} attackVariants rows of troop families have no clip, so those troops never swing '
+                        f"(MotionEngine starts no attack): {', '.join(missing)}; add an animation of that name to art/clips/<rig>/<family>.bbmodel")
     return out
+
+
+def unclipped(sheet, rows, out):
+    """Anim review 2026-11-04 section 0: every attackVariants row (any kind) of a family some troop uses, as family/id, that no
+    rig's clips/<rig>/<family>/<id>.json holds. A troop whose family has such a row deals damage standing still."""
+    used = {t.get('family') for t in sheet.get('troops', []) if isinstance(t, dict)}
+    have = {(rel.split('/')[1], rel.split('/')[2][:-5]) for rel in out}
+    return [f'{fam}/{row}' for (fam, row) in sorted(rows or {}) if fam in used and (fam, row) not in have]
 
 
 def dump(clip):

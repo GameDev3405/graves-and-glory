@@ -5161,7 +5161,8 @@ public final class Phase2Checks implements ClientModInitializer {
                     String stance=row!=null&&row.ranged()?"aim":"guard";if(!magic)poses.add(new Object[]{"guard",stance,0f});
                     for(String a:TURN_ATTACKS){
                         String clip=a.equals("attack")&&magic?"cast":a;boolean alias=clip.equals("attack")||clip.equals("cast");
-                        if(tm==null||TroopMotion.resolve(tm,clip)==null)continue;
+                        // anim review 2026-11-04 section 0: never shoot a stand-in for a missing attack; say NO CLIP and fail the suite
+                        if(tm==null||TroopMotion.resolve(tm,clip)==null){String why="NO CLIP: "+t+" ("+(row==null?"?":row.family())+") has no clip for "+clip;System.out.println("[p2] "+why);bad.add(why);continue;}
                         String pre=alias?"":(row!=null&&clip.startsWith(row.family()+"_")?clip.substring(row.family().length()+1):clip)+"_";
                         float imp=Anim.shotTime(tm,clip);
                         poses.add(new Object[]{pre+"windup",stance+"+"+clip,windup(tm,clip,imp)});
