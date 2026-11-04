@@ -6414,7 +6414,9 @@ public final class Phase2Checks implements ClientModInitializer {
                 case 2->{
                     if(!(c.currentScreen instanceof CampScreen s))return;
                     CampaignClient.revealUntil=0;CampaignClient.notice=""; // the roster's arrival would otherwise light a letter
-                    if(++frames==8){String house=Spec.HOUSES[tabIdx].id();var rows=WarTableRecruit.rows();
+                    // Wait for the real condition, not a tick count: the page has drawn its six rows and six portraits (render frames lag client ticks). Judge once; give up after 200 ticks so a real failure still reports.
+                    boolean ready=WarTableRecruit.rows().size()==6&&WarTableRecruit.rows().stream().allMatch(r->java.util.Arrays.stream(Spec.TROOPS).anyMatch(t->t.id().equals(r.troop())&&t.house().equals(Spec.HOUSES[tabIdx].id())))&&WarTableRecruit.portraits().stream().filter(q->q.where().startsWith("row-")).count()==6;
+                    if(frames<30&&++frames>=8&&(ready||frames>=200)){frames=30;String house=Spec.HOUSES[tabIdx].id();var rows=WarTableRecruit.rows();
                         var want=new ArrayList<String>();for(var t:Spec.TROOPS)if(t.house().equals(house))want.add(t.id());
                         boolean listed=want.size()==6&&rows.size()==6&&rows.stream().map(WarTableRecruit.RowDraw::troop).toList().equals(want);
                         boolean inks=rows.stream().allMatch(r->!r.silhouette()&&r.color()==DarkUi.INK_TEXT);
@@ -6425,7 +6427,7 @@ public final class Phase2Checks implements ClientModInitializer {
                         if(!all){rosterOk=false;rosterWhy+=house+": drew "+rows.stream().map(WarTableRecruit.RowDraw::troop).toList()+" (want these six, all owned: "+want+"), inks "+inks+", portraits drawn flat "+!portraits+", banner chosen "+chosen+"; ";}
                         else rosterWhy+=house+" 6/6 owned; ";
                         shot(c,"migration-full-roster-"+house);}
-                    if(frames>=40){if(++tabIdx<Spec.HOUSES.length)cs=1;else cs=9;}}
+                    if(frames>=30&&++frames>=40){if(++tabIdx<Spec.HOUSES.length)cs=1;else cs=9;}}
                 case 9->{
                     report("p2-full-roster",rosterOk&&rosterWhy.length()>0,"a profile owning all "+Spec.TROOPS.length+" troops at star 1 (the client shows "+CampaignClient.profile.owned.size()+"): "+rosterWhy+"pictures p2-migration-full-roster-<house>.png (five)");
                     cs=10;wait=0;server(c,b->stage=3);}
