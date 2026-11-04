@@ -1,0 +1,292 @@
+{
+ "format": 1,
+ "item": "commander_helm",
+ "slot": "helm",
+ "density": 1,
+ "size": [
+  64,
+  64
+ ],
+ "cloth": "gravesandglory:textures/entity/gear/commander_helm/team_cloth_",
+ "skins": {
+  "1": "gravesandglory:textures/entity/gear/commander_helm/commander_helm_r1.png",
+  "2": "gravesandglory:textures/entity/gear/commander_helm/commander_helm_r2.png",
+  "3": "gravesandglory:textures/entity/gear/commander_helm/commander_helm_r3.png",
+  "4": "gravesandglory:textures/entity/gear/commander_helm/commander_helm_r4.png",
+  "5": "gravesandglory:textures/entity/gear/commander_helm/commander_helm_r5.png"
+ },
+ "glow": {
+  "4": "gravesandglory:textures/entity/gear/commander_helm/commander_helm_e4.png",
+  "5": "gravesandglory:textures/entity/gear/commander_helm/commander_helm_e5.png"
+ },
+ "bones": [
+  {
+   "name": "crown_helm",
+   "parent": "head",
+   "team": false,
+   "tag": "helm",
+   "stages": [],
+   "sheet": [
+    64,
+    64
+   ],
+   "pivot": [
+    0,
+    0,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "boxes": [
+    {
+     "origin": [
+      -4.5,
+      -8.5,
+      -4.5
+     ],
+     "size": [
+      9,
+      9,
+      9
+     ],
+     "uv": [
+      0,
+      0
+     ],
+     "mirror": false,
+     "dilation": [
+      0.0,
+      0.0,
+      0.0
+     ]
+    },
+    {
+     "origin": [
+      -0.5,
+      -9.5,
+      -4
+     ],
+     "size": [
+      1,
+      1,
+      8
+     ],
+     "uv": [
+      0,
+      18
+     ],
+     "mirror": false,
+     "dilation": [
+      0.0,
+      0.0,
+      0.0
+     ]
+    },
+    {
+     "origin": [
+      -3.5,
+      -9.5,
+      -4.75
+     ],
+     "size": [
+      1,
+      1,
+      1
+     ],
+     "uv": [
+      56,
+      18
+     ],
+     "mirror": false,
+     "dilation": [
+      0.0,
+      0.0,
+      0.0
+     ]
+    },
+    {
+     "origin": [
+      2.5,
+      -9.5,
+      -4.75
+     ],
+     "size": [
+      1,
+      1,
+      1
+     ],
+     "uv": [
+      60,
+      18
+     ],
+     "mirror": false,
+     "dilation": [
+      0.0,
+      0.0,
+      0.0
+     ]
+    },
+    {
+     "origin": [
+      -4.75,
+      -9.5,
+      -0.5
+     ],
+     "size": [
+      1,
+      1,
+      1
+     ],
+     "uv": [
+      0,
+      27
+     ],
+     "mirror": false,
+     "dilation": [
+      0.0,
+      0.0,
+      0.0
+     ]
+    },
+    {
+     "origin": [
+      3.75,
+      -9.5,
+      -0.5
+     ],
+     "size": [
+      1,
+      1,
+      1
+     ],
+     "uv": [
+      4,
+      27
+     ],
+     "mirror": false,
+     "dilation": [
+      0.0,
+      0.0,
+      0.0
+     ]
+    },
+    {
+     "origin": [
+      -3.5,
+      -0.5,
+      4.5
+     ],
+     "size": [
+      7,
+      2,
+      1
+     ],
+     "uv": [
+      40,
+      18
+     ],
+     "mirror": false,
+     "dilation": [
+      0.0,
+      0.0,
+      0.0
+     ]
+    }
+   ]
+  },
+  {
+   "name": "great_crest",
+   "parent": "head",
+   "team": false,
+   "tag": "helm",
+   "stages": [
+    5
+   ],
+   "sheet": [
+    64,
+    64
+   ],
+   "pivot": [
+    0,
+    0,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "boxes": [
+    {
+     "origin": [
+      -0.5,
+      -13.5,
+      -3
+     ],
+     "size": [
+      1,
+      4,
+      9
+     ],
+     "uv": [
+      36,
+      0
+     ],
+     "mirror": false,
+     "dilation": [
+      0.0,
+      0.0,
+      0.0
+     ]
+    },
+    {
+     "origin": [
+      -1.5,
+      -12.5,
+      -5
+     ],
+     "size": [
+      3,
+      3,
+      1
+     ],
+     "uv": [
+      32,
+      18
+     ],
+     "mirror": false,
+     "dilation": [
+      0.0,
+      0.0,
+      0.0
+     ]
+    },
+    {
+     "origin": [
+      -0.5,
+      -14.5,
+      -1
+     ],
+     "size": [
+      1,
+      1,
+      6
+     ],
+     "uv": [
+      18,
+      18
+     ],
+     "mirror": false,
+     "dilation": [
+      0.0,
+      0.0,
+      0.0
+     ]
+    }
+   ]
+  }
+ ]
+}

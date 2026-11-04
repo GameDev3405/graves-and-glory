@@ -369,7 +369,7 @@ final class WarTableGear {
 
         UiTex.draw(g, "table/frame-back-160", f[0], f[1]);
         var player = MinecraftClient.getInstance().player;
-        if (player != null) Portrait.draw(g, player, f[0] + 20, f[1] + 20, 120, 0);
+        if (player != null) CommanderGearFeature.preview(v.equipped(), v.pieces(), () -> Portrait.draw(g, player, f[0] + 20, f[1] + 20, 120, 0)); // in the gear he wears
         rectsDrawn.put("frame", f);
 
         g.drawText(font, DarkUi.heading("Worn"), l[0] + 16, l[1] + 198, DarkUi.INK_TEXT, false);

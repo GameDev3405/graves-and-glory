@@ -1,0 +1,293 @@
+{
+ "source": "sheets/design.json on feat/gear-foundation at ef971caf; pinned until that branch merges",
+ "items": [
+  {
+   "id": "bruiser_helm",
+   "name": "Watchman's Greathelm",
+   "slot": "helm",
+   "set": "bruiser",
+   "family": "-",
+   "hands": 1
+  },
+  {
+   "id": "bruiser_chest",
+   "name": "Wallbreaker Cuirass",
+   "slot": "chest",
+   "set": "bruiser",
+   "family": "-",
+   "hands": 1
+  },
+  {
+   "id": "bruiser_legs",
+   "name": "Gatepost Greaves",
+   "slot": "legs",
+   "set": "bruiser",
+   "family": "-",
+   "hands": 1
+  },
+  {
+   "id": "bruiser_boots",
+   "name": "Cairn-Treads",
+   "slot": "boots",
+   "set": "bruiser",
+   "family": "-",
+   "hands": 1
+  },
+  {
+   "id": "healer_helm",
+   "name": "Lanternbearer's Hood",
+   "slot": "helm",
+   "set": "healer",
+   "family": "-",
+   "hands": 1
+  },
+  {
+   "id": "healer_chest",
+   "name": "Vigilant Vestment",
+   "slot": "chest",
+   "set": "healer",
+   "family": "-",
+   "hands": 1
+  },
+  {
+   "id": "healer_legs",
+   "name": "Candlewake Skirt",
+   "slot": "legs",
+   "set": "healer",
+   "family": "-",
+   "hands": 1
+  },
+  {
+   "id": "healer_boots",
+   "name": "Mourner's Sandals",
+   "slot": "boots",
+   "set": "healer",
+   "family": "-",
+   "hands": 1
+  },
+  {
+   "id": "ranged_helm",
+   "name": "Stalker's Maskhood",
+   "slot": "helm",
+   "set": "ranged",
+   "family": "-",
+   "hands": 1
+  },
+  {
+   "id": "ranged_chest",
+   "name": "Pass-Warden Jerkin",
+   "slot": "chest",
+   "set": "ranged",
+   "family": "-",
+   "hands": 1
+  },
+  {
+   "id": "ranged_legs",
+   "name": "Snowshod Leggings",
+   "slot": "legs",
+   "set": "ranged",
+   "family": "-",
+   "hands": 1
+  },
+  {
+   "id": "ranged_boots",
+   "name": "Silent Hunter's Boots",
+   "slot": "boots",
+   "set": "ranged",
+   "family": "-",
+   "hands": 1
+  },
+  {
+   "id": "commander_helm",
+   "name": "Marchwarden's Crown-Helm",
+   "slot": "helm",
+   "set": "commander",
+   "family": "-",
+   "hands": 1
+  },
+  {
+   "id": "commander_chest",
+   "name": "Oathplate",
+   "slot": "chest",
+   "set": "commander",
+   "family": "-",
+   "hands": 1
+  },
+  {
+   "id": "commander_legs",
+   "name": "Kingsfield Cuisses",
+   "slot": "legs",
+   "set": "commander",
+   "family": "-",
+   "hands": 1
+  },
+  {
+   "id": "commander_boots",
+   "name": "Marching Sabatons",
+   "slot": "boots",
+   "set": "commander",
+   "family": "-",
+   "hands": 1
+  },
+  {
+   "id": "arming_sword",
+   "name": "Oathkeeper's Longsword",
+   "slot": "main",
+   "set": "-",
+   "family": "sword",
+   "hands": 1
+  },
+  {
+   "id": "falchion",
+   "name": "Notched Falchion",
+   "slot": "main",
+   "set": "-",
+   "family": "sword",
+   "hands": 1
+  },
+  {
+   "id": "greatsword",
+   "name": "Hollowfell Greatsword",
+   "slot": "main",
+   "set": "-",
+   "family": "greatsword",
+   "hands": 2
+  },
+  {
+   "id": "great_axe",
+   "name": "Ironhold Cleaver",
+   "slot": "main",
+   "set": "-",
+   "family": "greataxe",
+   "hands": 2
+  },
+  {
+   "id": "hunting_bow",
+   "name": "Frostmarch Longbow",
+   "slot": "main",
+   "set": "-",
+   "family": "bow",
+   "hands": 1
+  },
+  {
+   "id": "crossbow",
+   "name": "Rivergate Arbalest",
+   "slot": "main",
+   "set": "-",
+   "family": "crossbow",
+   "hands": 1
+  },
+  {
+   "id": "mending_staff",
+   "name": "Candlewake Staff",
+   "slot": "main",
+   "set": "-",
+   "family": "staff",
+   "hands": 1
+  },
+  {
+   "id": "sunwell_crook",
+   "name": "Sunwell Crook",
+   "slot": "main",
+   "set": "-",
+   "family": "staff",
+   "hands": 1,
+   "pending": "Kort Q-art-1 2026-11-03: added; not yet in sheets/design.json, so the combat or catalogue task must add the row"
+  },
+  {
+   "id": "war_banner",
+   "name": "Marchwarden's Standard",
+   "slot": "main",
+   "set": "-",
+   "family": "banner",
+   "hands": 1
+  },
+  {
+   "id": "long_colours",
+   "name": "The Long Colours",
+   "slot": "main",
+   "set": "-",
+   "family": "banner",
+   "hands": 1,
+   "pending": "Kort Q-art-1 2026-11-03: added; not yet in sheets/design.json, so the combat or catalogue task must add the row"
+  },
+  {
+   "id": "kite_shield",
+   "name": "Last Watch Tower Shield",
+   "slot": "off",
+   "set": "-",
+   "family": "shield",
+   "hands": 1
+  },
+  {
+   "id": "quiver",
+   "name": "Barrowleaf Quiver",
+   "slot": "off",
+   "set": "-",
+   "family": "quiver",
+   "hands": 1
+  }
+ ],
+ "relics": [
+  {
+   "id": "stand_fast",
+   "name": "Ward of the Wall",
+   "role": "bruiser"
+  },
+  {
+   "id": "bloodrush",
+   "name": "Reaver's Fang",
+   "role": "bruiser"
+  },
+  {
+   "id": "mark_prey",
+   "name": "Hunter's Eye",
+   "role": "ranged"
+  },
+  {
+   "id": "rally_horn",
+   "name": "Muster Seal",
+   "role": "commander"
+  },
+  {
+   "id": "grave_bloom",
+   "name": "Gravebloom Censer",
+   "role": "healer"
+  },
+  {
+   "id": "forward_supply",
+   "name": "Forward Cache",
+   "role": "commander"
+  },
+  {
+   "id": "dash",
+   "name": "Charger's Spur",
+   "role": "bruiser"
+  },
+  {
+   "id": "shield_bash",
+   "name": "Gatebreaker's Shove",
+   "role": "bruiser"
+  },
+  {
+   "id": "heal_pulse",
+   "name": "Lantern of Mercy",
+   "role": "healer"
+  },
+  {
+   "id": "volley",
+   "name": "Hunter's Volley",
+   "role": "ranged"
+  },
+  {
+   "id": "war_cry",
+   "name": "Battle Cry",
+   "role": "commander"
+  },
+  {
+   "id": "iron_skin",
+   "name": "Second Wind",
+   "role": "healer"
+  }
+ ]
+}

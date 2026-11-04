@@ -1,0 +1,248 @@
+{
+ "format": 1,
+ "item": "ranged_legs",
+ "slot": "legs",
+ "density": 1,
+ "size": [
+  64,
+  64
+ ],
+ "cloth": "gravesandglory:textures/entity/gear/ranged_legs/team_cloth_",
+ "skins": {
+  "1": "gravesandglory:textures/entity/gear/ranged_legs/ranged_legs_r1.png",
+  "2": "gravesandglory:textures/entity/gear/ranged_legs/ranged_legs_r2.png",
+  "3": "gravesandglory:textures/entity/gear/ranged_legs/ranged_legs_r3.png",
+  "4": "gravesandglory:textures/entity/gear/ranged_legs/ranged_legs_r4.png",
+  "5": "gravesandglory:textures/entity/gear/ranged_legs/ranged_legs_r5.png"
+ },
+ "glow": {
+  "4": "gravesandglory:textures/entity/gear/ranged_legs/ranged_legs_e4.png",
+  "5": "gravesandglory:textures/entity/gear/ranged_legs/ranged_legs_e5.png"
+ },
+ "bones": [
+  {
+   "name": "legging_right",
+   "parent": "right_leg",
+   "team": false,
+   "tag": "legs",
+   "stages": [],
+   "sheet": [
+    64,
+    64
+   ],
+   "pivot": [
+    0,
+    0,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "boxes": [
+    {
+     "origin": [
+      -2.5,
+      -0.5,
+      -2.5
+     ],
+     "size": [
+      5,
+      7,
+      5
+     ],
+     "uv": [
+      0,
+      0
+     ],
+     "mirror": false,
+     "dilation": [
+      0.0,
+      0.0,
+      0.0
+     ]
+    },
+    {
+     "origin": [
+      -1.5,
+      2,
+      -3
+     ],
+     "size": [
+      3,
+      4,
+      1
+     ],
+     "uv": [
+      40,
+      0
+     ],
+     "mirror": false,
+     "dilation": [
+      0.0,
+      0.0,
+      0.0
+     ]
+    }
+   ]
+  },
+  {
+   "name": "band_right",
+   "parent": "right_leg",
+   "team": true,
+   "tag": "legs",
+   "stages": [],
+   "sheet": [
+    32,
+    16
+   ],
+   "pivot": [
+    0,
+    0,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "boxes": [
+    {
+     "origin": [
+      -3,
+      0,
+      -3.25
+     ],
+     "size": [
+      6,
+      2,
+      6
+     ],
+     "uv": [
+      0,
+      0
+     ],
+     "mirror": false,
+     "dilation": [
+      0.0,
+      0.0,
+      0.0
+     ]
+    }
+   ]
+  },
+  {
+   "name": "legging_left",
+   "parent": "left_leg",
+   "team": false,
+   "tag": "legs",
+   "stages": [],
+   "sheet": [
+    64,
+    64
+   ],
+   "pivot": [
+    0,
+    0,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "boxes": [
+    {
+     "origin": [
+      -2.5,
+      -0.5,
+      -2.5
+     ],
+     "size": [
+      5,
+      7,
+      5
+     ],
+     "uv": [
+      20,
+      0
+     ],
+     "mirror": false,
+     "dilation": [
+      0.0,
+      0.0,
+      0.0
+     ]
+    },
+    {
+     "origin": [
+      -1.5,
+      2,
+      -3
+     ],
+     "size": [
+      3,
+      4,
+      1
+     ],
+     "uv": [
+      48,
+      0
+     ],
+     "mirror": false,
+     "dilation": [
+      0.0,
+      0.0,
+      0.0
+     ]
+    }
+   ]
+  },
+  {
+   "name": "band_left",
+   "parent": "left_leg",
+   "team": true,
+   "tag": "legs",
+   "stages": [],
+   "sheet": [
+    32,
+    16
+   ],
+   "pivot": [
+    0,
+    0,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "boxes": [
+    {
+     "origin": [
+      -3,
+      0,
+      -3.25
+     ],
+     "size": [
+      6,
+      2,
+      6
+     ],
+     "uv": [
+      0,
+      8
+     ],
+     "mirror": false,
+     "dilation": [
+      0.0,
+      0.0,
+      0.0
+     ]
+    }
+   ]
+  }
+ ]
+}

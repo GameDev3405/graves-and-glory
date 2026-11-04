@@ -15,7 +15,10 @@
     "EntityFlagsAccessor",
     "EntityRenderDispatcherAccessor",
     "CorpseOverlayMixin",
-    "KeybindTextMixin"
+    "KeybindTextMixin",
+    "ArmorFeatureMixin",
+    "HeldItemFeatureMixin",
+    "PlayerModelMixin"
   ],
   "injectors": {
     "defaultRequire": 1

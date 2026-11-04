@@ -1,0 +1,809 @@
+{
+ "format": 1,
+ "item": "healer_chest",
+ "slot": "chest",
+ "density": 1,
+ "size": [
+  128,
+  64
+ ],
+ "cloth": "gravesandglory:textures/entity/gear/healer_chest/team_cloth_",
+ "skins": {
+  "1": "gravesandglory:textures/entity/gear/healer_chest/healer_chest_r1.png",
+  "2": "gravesandglory:textures/entity/gear/healer_chest/healer_chest_r2.png",
+  "3": "gravesandglory:textures/entity/gear/healer_chest/healer_chest_r3.png",
+  "4": "gravesandglory:textures/entity/gear/healer_chest/healer_chest_r4.png",
+  "5": "gravesandglory:textures/entity/gear/healer_chest/healer_chest_r5.png"
+ },
+ "glow": {
+  "4": "gravesandglory:textures/entity/gear/healer_chest/healer_chest_e4.png",
+  "5": "gravesandglory:textures/entity/gear/healer_chest/healer_chest_e5.png"
+ },
+ "bones": [
+  {
+   "name": "robe",
+   "parent": "body",
+   "team": false,
+   "tag": "chest",
+   "stages": [],
+   "sheet": [
+    128,
+    64
+   ],
+   "pivot": [
+    0,
+    12,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "boxes": [
+    {
+     "origin": [
+      -4.5,
+      -12,
+      -2.5
+     ],
+     "size": [
+      9,
+      12,
+      5
+     ],
+     "uv": [
+      0,
+      0
+     ],
+     "mirror": false,
+     "dilation": [
+      0.0,
+      0.0,
+      0.0
+     ]
+    },
+    {
+     "origin": [
+      -5,
+      -13.25,
+      -3.5
+     ],
+     "size": [
+      10,
+      5,
+      7
+     ],
+     "uv": [
+      28,
+      0
+     ],
+     "mirror": false,
+     "dilation": [
+      0.0,
+      0.0,
+      0.0
+     ]
+    },
+    {
+     "origin": [
+      -5,
+      -5,
+      -3
+     ],
+     "size": [
+      10,
+      2,
+      6
+     ],
+     "uv": [
+      0,
+      27
+     ],
+     "mirror": false,
+     "dilation": [
+      0.0,
+      0.0,
+      0.0
+     ]
+    },
+    {
+     "origin": [
+      -3.75,
+      -3,
+      -3.75
+     ],
+     "size": [
+      1,
+      3,
+      1
+     ],
+     "uv": [
+      46,
+      35
+     ],
+     "mirror": false,
+     "dilation": [
+      0.0,
+      0.0,
+      0.0
+     ]
+    },
+    {
+     "origin": [
+      -2.5,
+      -3,
+      -3.75
+     ],
+     "size": [
+      1,
+      3,
+      1
+     ],
+     "uv": [
+      50,
+      35
+     ],
+     "mirror": false,
+     "dilation": [
+      0.0,
+      0.0,
+      0.0
+     ]
+    },
+    {
+     "origin": [
+      -1.25,
+      -3,
+      -3.75
+     ],
+     "size": [
+      1,
+      3,
+      1
+     ],
+     "uv": [
+      54,
+      35
+     ],
+     "mirror": false,
+     "dilation": [
+      0.0,
+      0.0,
+      0.0
+     ]
+    }
+   ]
+  },
+  {
+   "name": "sash",
+   "parent": "body",
+   "team": false,
+   "tag": "chest",
+   "stages": [
+    3,
+    4,
+    5
+   ],
+   "sheet": [
+    128,
+    64
+   ],
+   "pivot": [
+    0,
+    12,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "boxes": [
+    {
+     "origin": [
+      -5.5,
+      -5.5,
+      -3.5
+     ],
+     "size": [
+      11,
+      3,
+      7
+     ],
+     "uv": [
+      62,
+      0
+     ],
+     "mirror": false,
+     "dilation": [
+      0.0,
+      0.0,
+      0.0
+     ]
+    },
+    {
+     "origin": [
+      1.5,
+      -5,
+      -4.5
+     ],
+     "size": [
+      2,
+      2,
+      1
+     ],
+     "uv": [
+      58,
+      35
+     ],
+     "mirror": false,
+     "dilation": [
+      0.0,
+      0.0,
+      0.0
+     ]
+    },
+    {
+     "origin": [
+      1.5,
+      -3,
+      -4.25
+     ],
+     "size": [
+      2,
+      5,
+      1
+     ],
+     "uv": [
+      40,
+      35
+     ],
+     "mirror": false,
+     "dilation": [
+      0.0,
+      0.0,
+      0.0
+     ]
+    }
+   ]
+  },
+  {
+   "name": "stole",
+   "parent": "body",
+   "team": true,
+   "tag": "chest",
+   "stages": [],
+   "sheet": [
+    64,
+    32
+   ],
+   "pivot": [
+    0,
+    12,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "boxes": [
+    {
+     "origin": [
+      -4,
+      -9.5,
+      -3.25
+     ],
+     "size": [
+      3,
+      11,
+      0
+     ],
+     "uv": [
+      0,
+      0
+     ],
+     "mirror": false,
+     "dilation": [
+      0.0,
+      0.0,
+      0.0
+     ]
+    },
+    {
+     "origin": [
+      1,
+      -9.5,
+      -3.25
+     ],
+     "size": [
+      3,
+      11,
+      0
+     ],
+     "uv": [
+      6,
+      0
+     ],
+     "mirror": false,
+     "dilation": [
+      0.0,
+      0.0,
+      0.0
+     ]
+    },
+    {
+     "origin": [
+      -4,
+      -9.5,
+      3.25
+     ],
+     "size": [
+      8,
+      8,
+      0
+     ],
+     "uv": [
+      12,
+      0
+     ],
+     "mirror": false,
+     "dilation": [
+      0.0,
+      0.0,
+      0.0
+     ]
+    }
+   ]
+  },
+  {
+   "name": "sleeve_right",
+   "parent": "right_arm",
+   "team": false,
+   "tag": "chest",
+   "stages": [],
+   "sheet": [
+    128,
+    64
+   ],
+   "pivot": [
+    0,
+    0,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "boxes": [
+    {
+     "origin": [
+      -3.5,
+      -2.5,
+      -2.5
+     ],
+     "size": [
+      5,
+      3,
+      5
+     ],
+     "uv": [
+      32,
+      27
+     ],
+     "mirror": false,
+     "dilation": [
+      0.0,
+      0.0,
+      0.0
+     ]
+    },
+    {
+     "origin": [
+      -4.5,
+      0.5,
+      -3
+     ],
+     "size": [
+      6,
+      3,
+      6
+     ],
+     "uv": [
+      28,
+      17
+     ],
+     "mirror": false,
+     "dilation": [
+      0.0,
+      0.0,
+      0.0
+     ]
+    },
+    {
+     "origin": [
+      -3.5,
+      3.5,
+      -2.5
+     ],
+     "size": [
+      5,
+      1,
+      5
+     ],
+     "uv": [
+      0,
+      35
+     ],
+     "mirror": false,
+     "dilation": [
+      0.0,
+      0.0,
+      0.0
+     ]
+    },
+    {
+     "origin": [
+      -3.5,
+      4.5,
+      -2.5
+     ],
+     "size": [
+      5,
+      4,
+      5
+     ],
+     "uv": [
+      76,
+      17
+     ],
+     "mirror": false,
+     "dilation": [
+      0.0,
+      0.0,
+      0.0
+     ]
+    }
+   ]
+  },
+  {
+   "name": "sleeve_left",
+   "parent": "left_arm",
+   "team": false,
+   "tag": "chest",
+   "stages": [],
+   "sheet": [
+    128,
+    64
+   ],
+   "pivot": [
+    0,
+    0,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "boxes": [
+    {
+     "origin": [
+      -1.5,
+      -2.5,
+      -2.5
+     ],
+     "size": [
+      5,
+      3,
+      5
+     ],
+     "uv": [
+      52,
+      27
+     ],
+     "mirror": false,
+     "dilation": [
+      0.0,
+      0.0,
+      0.0
+     ]
+    },
+    {
+     "origin": [
+      -1.5,
+      0.5,
+      -3
+     ],
+     "size": [
+      6,
+      3,
+      6
+     ],
+     "uv": [
+      52,
+      17
+     ],
+     "mirror": false,
+     "dilation": [
+      0.0,
+      0.0,
+      0.0
+     ]
+    },
+    {
+     "origin": [
+      -1.5,
+      3.5,
+      -2.5
+     ],
+     "size": [
+      5,
+      1,
+      5
+     ],
+     "uv": [
+      20,
+      35
+     ],
+     "mirror": false,
+     "dilation": [
+      0.0,
+      0.0,
+      0.0
+     ]
+    },
+    {
+     "origin": [
+      -1.5,
+      4.5,
+      -2.5
+     ],
+     "size": [
+      5,
+      4,
+      5
+     ],
+     "uv": [
+      96,
+      17
+     ],
+     "mirror": false,
+     "dilation": [
+      0.0,
+      0.0,
+      0.0
+     ]
+    }
+   ]
+  },
+  {
+   "name": "mantle",
+   "parent": "body",
+   "team": false,
+   "tag": "chest",
+   "stages": [
+    5
+   ],
+   "sheet": [
+    128,
+    64
+   ],
+   "pivot": [
+    0,
+    12,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "boxes": [
+    {
+     "origin": [
+      -10,
+      -13.5,
+      -4
+     ],
+     "size": [
+      6,
+      2,
+      8
+     ],
+     "uv": [
+      98,
+      0
+     ],
+     "mirror": false,
+     "dilation": [
+      0.0,
+      0.0,
+      0.0
+     ]
+    },
+    {
+     "origin": [
+      -9,
+      -14.5,
+      -3
+     ],
+     "size": [
+      5,
+      1,
+      6
+     ],
+     "uv": [
+      72,
+      27
+     ],
+     "mirror": false,
+     "dilation": [
+      0.0,
+      0.0,
+      0.0
+     ]
+    },
+    {
+     "origin": [
+      4,
+      -13.5,
+      -4
+     ],
+     "size": [
+      6,
+      2,
+      8
+     ],
+     "uv": [
+      0,
+      17
+     ],
+     "mirror": false,
+     "dilation": [
+      0.0,
+      0.0,
+      0.0
+     ]
+    },
+    {
+     "origin": [
+      4,
+      -14.5,
+      -3
+     ],
+     "size": [
+      5,
+      1,
+      6
+     ],
+     "uv": [
+      94,
+      27
+     ],
+     "mirror": false,
+     "dilation": [
+      0.0,
+      0.0,
+      0.0
+     ]
+    }
+   ]
+  },
+  {
+   "name": "embers",
+   "parent": "body",
+   "team": false,
+   "tag": "chest",
+   "stages": [
+    5
+   ],
+   "sheet": [
+    128,
+    64
+   ],
+   "pivot": [
+    0,
+    12,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "boxes": [
+    {
+     "origin": [
+      -7.5,
+      -17,
+      -1
+     ],
+     "size": [
+      1,
+      1,
+      1
+     ],
+     "uv": [
+      64,
+      35
+     ],
+     "mirror": false,
+     "dilation": [
+      0.0,
+      0.0,
+      0.0
+     ]
+    },
+    {
+     "origin": [
+      6.5,
+      -16,
+      1.5
+     ],
+     "size": [
+      1,
+      1,
+      1
+     ],
+     "uv": [
+      68,
+      35
+     ],
+     "mirror": false,
+     "dilation": [
+      0.0,
+      0.0,
+      0.0
+     ]
+    },
+    {
+     "origin": [
+      -5.5,
+      -19,
+      2.5
+     ],
+     "size": [
+      1,
+      1,
+      1
+     ],
+     "uv": [
+      72,
+      35
+     ],
+     "mirror": false,
+     "dilation": [
+      0.0,
+      0.0,
+      0.0
+     ]
+    },
+    {
+     "origin": [
+      7.5,
+      -19.5,
+      -2
+     ],
+     "size": [
+      1,
+      1,
+      1
+     ],
+     "uv": [
+      76,
+      35
+     ],
+     "mirror": false,
+     "dilation": [
+      0.0,
+      0.0,
+      0.0
+     ]
+    }
+   ]
+  }
+ ]
+}
