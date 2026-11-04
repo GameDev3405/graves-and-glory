@@ -59,7 +59,15 @@ public final class CampaignClient {
     /** Whether the reveal on screen is the last roll's card: it arrived with this reveal and Skip reveal has not ended it. */
     static boolean rollShowing(){return lastRoll!=null&&revealUntil>System.currentTimeMillis()&&revealUntil==rollAt+REVEAL_MS;}
     /** Forgets the last roll and the first-snapshot mark when the client leaves a server: a restarted server counts n from 1 again, and its first snapshot must not reveal (review minor 5). */
-    static void forget(){lastRoll=null;rollAt=0;received=false;revealUntil=0;armoury=LevelMath.Armoury.EMPTY;}
+    /** The last Forge roll, from the snapshot's forge (gear screen Task 4): the item and rarity, or the relic, whether it was a duplicate and the marks refunded; n tells a new one from the same. Null before the first. */
+    record ForgeRoll(int n,String item,String rarity,String relic,boolean duplicate,int refund){}
+    static ForgeRoll forgeRoll;
+    /** Reads the snapshot's forge block ({} until this commander rolls). */
+    static void acceptForge(JsonObject j){
+        if(!j.has("forge")||!j.get("forge").isJsonObject())return;var f=j.getAsJsonObject("forge");if(!f.has("n"))return;
+        try{forgeRoll=new ForgeRoll(f.get("n").getAsInt(),f.get("item").getAsString(),f.get("rarity").getAsString(),f.get("relic").getAsString(),f.get("duplicate").getAsBoolean(),f.get("refund").getAsInt());}catch(RuntimeException ignored){}
+    }
+    static void forget(){forgeRoll=null;lastRoll=null;rollAt=0;received=false;revealUntil=0;armoury=LevelMath.Armoury.EMPTY;}
     /** This army's Armoury from the last state_v9 (armouryHere and the buy states per banner troop type, LevelMath.decodeArmoury); empty before the first state, after a disconnect and until the server fills it (Task 5). The Armoury tab and the Iron Ledger glint read it. */
     static LevelMath.Armoury armoury=LevelMath.Armoury.EMPTY;
     /** Reads the snapshot's lastRoll; a new one (another n) after the first snapshot starts the reveal. */
@@ -94,7 +102,7 @@ public final class CampaignClient {
     static boolean showsPoints(){try{return !battleMode.has("points")||battleMode.get("points").getAsBoolean();}catch(Exception e){return true;}}
     static String ledgerFormat(int i){try{return battleMode.getAsJsonArray("format").get(i).getAsString();}catch(Exception e){return "plain";}}
     static void accept(MinecraftClient c,String json,boolean running){
-        try{JsonObject j=JsonParser.parseString(json).getAsJsonObject();if(!j.has("profile"))return; /* "{}": the server could not fit this snapshot; keep the last camp state */var nextProfile=Campaign.JSON.fromJson(j.get("profile"),Profile.class);if(received&&nextProfile.owned!=null&&nextProfile.owned.size()>profile.owned.size()){for(var unit:Spec.TROOPS)if(nextProfile.owned.containsKey(unit.id())&&!profile.owned.containsKey(unit.id()))revealUnit=unit.name();revealUntil=System.currentTimeMillis()+2400;}nextProfile.sanitize();profile=nextProfile;acceptRoll(j,!received);received=true;
+        try{JsonObject j=JsonParser.parseString(json).getAsJsonObject();if(!j.has("profile"))return; /* "{}": the server could not fit this snapshot; keep the last camp state */var nextProfile=Campaign.JSON.fromJson(j.get("profile"),Profile.class);if(received&&nextProfile.owned!=null&&nextProfile.owned.size()>profile.owned.size()){for(var unit:Spec.TROOPS)if(nextProfile.owned.containsKey(unit.id())&&!profile.owned.containsKey(unit.id()))revealUnit=unit.name();revealUntil=System.currentTimeMillis()+2400;}nextProfile.sanitize();profile=nextProfile;acceptRoll(j,!received);acceptForge(j);received=true;
             if(j.has("sides")){var s=j.getAsJsonArray("sides");if(s.size()==2)sides=new String[]{s.get(0).getAsString(),s.get(1).getAsString()};}
             if(j.has("banner")){var list=new java.util.ArrayList<String>();for(var e:j.getAsJsonArray("banner"))list.add(e.getAsString());banner=list;}social=j.has("social")?j.getAsJsonObject("social"):new JsonObject();battleMode=j.has("battleMode")?j.getAsJsonObject("battleMode"):new JsonObject();progression=j.has("progression")?j.getAsJsonObject("progression"):new JsonObject();if(j.has("progression"))profile.progression=Campaign.JSON.fromJson(progression,Progression.State.class);players=j.getAsJsonArray("players");party=j.getAsJsonObject("party");lead=party.get("lead").getAsBoolean();
             JsonObject keyed=new JsonObject();for(var entry:party.entrySet())if(!entry.getKey().equals("inviteSeconds"))keyed.add(entry.getKey(),entry.getValue());partyKey=keyed.toString();

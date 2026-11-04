@@ -36,6 +36,24 @@ final class WarTableGear {
     int selectedRelic = -1;
     /** The piece the confirm strip asks about, or -1. */
     int confirmUid = -1;
+    /** The Forge tab's chosen roll slot, and whether "Break down all duplicates" is asking first. */
+    String forgeSlot = "helm";
+    boolean dupesConfirm;
+    /** The reveal: the roll it shows (null: none), when it began, and the last roll number this page has seen. */
+    CampaignClient.ForgeRoll revealing;
+    long revealAt;
+    int seenRoll;
+    /** How long the reveal card stays, and how long its rarity border takes to fade in. */
+    static final long REVEAL_MS = 1500, FADE_MS = 400;
+    /** Times the Forge tab has been opened this session: the blacksmith's line rotates by it. */
+    static int opens;
+    /** Notices older than the screen (the camp welcome) stay on the camp card; the page shows only what its own actions brought. */
+    final int serialAtOpen = CampaignClient.noticeSerial;
+    String notice() { return CampaignClient.noticeSerial > serialAtOpen ? HintText.expand(CampaignClient.shownNotice(), GravesAndGloryClient::hint) : ""; }
+    /** Harness only: when 0 or more, the reveal's elapsed milliseconds are held there (a mid-reveal screenshot). */
+    static long revealHeldAt = -1;
+    /** Harness only: a click counts as a shift-click while set (the suite cannot hold the real key). */
+    static boolean harnessShift;
     // What the hover found this frame: a grid cell index, a worn slot, a relic slot; and the tooltip lines it built.
     private int hoverCell = -1, hoverRelic = -1;
     private String hoverWorn;
@@ -43,6 +61,9 @@ final class WarTableGear {
     WarTableGear(CampScreen screen, String tab) {
         this.screen = screen;
         this.tab = "forge".equals(tab) ? "forge" : "armoury";
+        var last = CampaignClient.forgeRoll;
+        seenRoll = last == null ? 0 : last.n();
+        if (this.tab.equals("forge")) opens++;
     }
 
     UiButton add(String name, UiButton b) { buttons.put(name, b); return screen.add(b); }
@@ -51,10 +72,12 @@ final class WarTableGear {
     static GearWire.View view() { return CampaignClient.gear; }
 
     // ---- layout, in canvas px ------------------------------------------------------------------------------------------------
-    /** The page box {x, y, w, h}: the 960x540 page, or the compact 854x480 one. */
+    /** The page box {x, y, w, h}: the 960x540 page, or the compact 854x480 one clipped to the canvas. */
     static int[] page() {
         int[] o = WarTable.column(0, 0);
-        return WarTable.compact() ? new int[]{o[0], o[1], WarTable.COMPACT_W, WarTable.COMPACT_H} : new int[]{o[0], o[1], 960, 540};
+        // The compact page is 854 wide, but a 2560 window at k 3 gives an 853 canvas, so the page is clipped to the canvas.
+        if (!WarTable.compact()) return new int[]{o[0], o[1], 960, 540};
+        return new int[]{o[0], o[1], Math.min(WarTable.COMPACT_W, UiCanvas.width() - o[0]), Math.min(WarTable.COMPACT_H, UiCanvas.height() - o[1])};
     }
     /** Cards start under the tabs; the rail is 66 px tall at canvas y 0. */
     static int cardTop() { return Math.max(page()[1] + 102, 102); }
@@ -94,8 +117,37 @@ final class WarTableGear {
         int cy = gridY() + gridRows() * PITCH + 2;
         add("confirm-yes", new UiButton(r[0] + r[2] - 16 - 172, cy, 88, 24, Text.literal("Break down"), b -> confirmYes(), (g, bx, by, bw, bh, hot) -> tag(g, "Break down", bx, by, bw, bh, hot)));
         add("confirm-no", new UiButton(r[0] + r[2] - 16 - 80, cy, 80, 24, Text.literal("Keep"), b -> confirmUid = -1, (g, bx, by, bw, bh, hot) -> tag(g, "Keep", bx, by, bw, bh, hot)));
+        forgeWidgets();
         sync();
     }
+
+    static String rollWord(String slot) { return slot.equals("weapon") ? "Weapon" : slot.equals("relic") ? "Relic" : filterWord(slot); }
+
+    /** The Forge tab's widgets: six slot tags, Roll, and the blacksmith's three services with the duplicates' confirm. */
+    void forgeWidgets() {
+        int[] l = left(), r = right();
+        int inner = l[2] - 32, w = (inner - 12) / 3;
+        for (int i = 0; i < Gear.ROLL_SLOTS.size(); i++) {
+            String slot = Gear.ROLL_SLOTS.get(i), key = "forge-slot-" + slot, label = rollWord(slot);
+            add(key, new UiButton(l[0] + 16 + i % 3 * (w + 6), l[1] + 40 + i / 3 * 30, w, 24, Text.literal(label), b -> forgeSlot = slot, (g, x, y, bw, bh, hot) -> slotTag(g, key, label, slot.equals(forgeSlot), x, y, bw, bh, hot)));
+        }
+        add("roll", new UiButton(l[0] + (l[2] - 240) / 2, l[1] + 160, 240, 40, Text.literal("Roll"), b -> roll(), (g, x, y, bw, bh, hot) -> rollPlate(g, x, y, hot)));
+        int bw = Math.min(320, r[2] - 32), bx = r[0] + 16;
+        add("dupes", new UiButton(bx, r[1] + 104, bw, 24, Text.literal("Break down all duplicates"), b -> { dupesConfirm = true; UiSounds.deny(); }, (g, x, y, ww, hh, hot) -> service(g, "dupes", dupesLabel(), x, y, ww, hh, hot)));
+        add("dupes-yes", new UiButton(bx + 6, r[1] + 156, 88, 24, Text.literal("Break down"), b -> { dupesConfirm = false; screen.action("forge:breakdown-duplicates"); }, (g, x, y, ww, hh, hot) -> tag(g, "Break down", x, y, ww, hh, hot)));
+        add("dupes-no", new UiButton(bx + 100, r[1] + 156, 80, 24, Text.literal("Keep"), b -> dupesConfirm = false, (g, x, y, ww, hh, hot) -> tag(g, "Keep", x, y, ww, hh, hot)));
+        add("repair-all", new UiButton(bx, r[1] + 200, bw, 24, Text.literal("Repair all"), b -> screen.action("forge:repair-all"), (g, x, y, ww, hh, hot) -> service(g, "repair-all", "Repair all (" + GearView.repairAllCost(view()) + " gold)", x, y, ww, hh, hot)));
+        add("expand", new UiButton(bx, r[1] + 234, bw, 24, Text.literal("Add a row"), b -> screen.action("forge:expand"), (g, x, y, ww, hh, hot) -> service(g, "expand", expandLabel(), x, y, ww, hh, hot)));
+    }
+
+    String dupesLabel() { return "Break down all duplicates (+" + GearView.duplicatesValue(view()) + " marks)"; }
+    String expandLabel() {
+        GearWire.View v = view();
+        if (v == null) return "Add a row";
+        if (v.inventorySize() >= Gear.forge().maxSlots()) return "Inventory at its largest";
+        return "Add a row (" + Forge.expandCost(GearView.asProfile(v)) + " gold)";
+    }
+    void roll() { if (screen.action("forge:roll:" + forgeSlot)) UiSounds.confirm(); }
 
     /** Shows and greys the widgets for this frame's state: nothing acts until the gear view arrives. */
     void sync() {
@@ -105,6 +157,12 @@ final class WarTableGear {
             UiButton b = e.getValue();
             if (k.startsWith("tab-") || k.equals("sort")) { b.visible = arsenal; b.active = ready; }
             else if (k.startsWith("confirm-")) { b.visible = arsenal && confirmUid >= 0; b.active = ready; }
+            else if (k.startsWith("forge-slot-")) { b.visible = !arsenal; b.active = ready; }
+            else if (k.equals("roll")) { b.visible = !arsenal; b.active = ready && GearView.rollRefusal(view(), forgeSlot).isEmpty(); }
+            else if (k.equals("dupes")) { b.visible = !arsenal && !dupesConfirm; b.active = ready && GearView.duplicatesValue(view()) > 0; }
+            else if (k.startsWith("dupes-")) { b.visible = !arsenal && dupesConfirm; b.active = ready; }
+            else if (k.equals("repair-all")) { b.visible = !arsenal; b.active = ready && GearView.repairAllCost(view()) > 0; }
+            else if (k.equals("expand")) { b.visible = !arsenal; b.active = ready && view().inventorySize() < Gear.forge().maxSlots(); }
         }
     }
 
@@ -112,6 +170,8 @@ final class WarTableGear {
         if (t.equals(tab)) return;
         tab = t;
         confirmUid = -1;
+        dupesConfirm = false;
+        if (t.equals("forge")) opens++;
         UiSounds.confirm();
         screen.gearTab = t;
         screen.rebuild();
@@ -131,6 +191,13 @@ final class WarTableGear {
         GearWire.View v = view();
         if (v != null) scroll = GearView.scrollClamp(scroll, count(v), gridRows());
         if (confirmUid >= 0 && GearView.piece(v, confirmUid) == null) confirmUid = -1;
+        if (dupesConfirm && GearView.duplicatesValue(v) <= 0) dupesConfirm = false;
+        var last = CampaignClient.forgeRoll;
+        if (last != null && last.n() > seenRoll) {
+            seenRoll = last.n();
+            if (tab.equals("forge")) { revealing = last; revealAt = System.currentTimeMillis(); }
+        }
+        if (revealing != null && revealHeldAt < 0 && revealElapsed() >= REVEAL_MS) revealing = null;
         sync();
     }
 
@@ -392,7 +459,7 @@ final class WarTableGear {
             WarTablePages.lines(g, "Break down " + name + "? It cannot be undone.", box[0] + 6, sy + 6, box[2] - 190, 1, DarkUi.ROUT_TEXT);
             rectsDrawn.put("confirm", box);
         } else {
-            String notice = CampaignClient.shownNotice();
+            String notice = notice();
             if (!notice.isEmpty()) {
                 WarTablePages.lines(g, notice, r[0] + 16, sy + 6, r[2] - 32, 1, DarkUi.INK_TEXT);
                 rectsDrawn.put("notice", new int[]{r[0] + 16, sy + 6, r[2] - 32, 12});
@@ -400,12 +467,155 @@ final class WarTableGear {
         }
     }
 
-    /** The Forge tab, drawn in Task 4. */
-    void forge(DrawContext g, GearWire.View v) {}
+    long revealElapsed() { return revealHeldAt >= 0 ? revealHeldAt : System.currentTimeMillis() - revealAt; }
+    boolean revealShowing() { return revealing != null && revealElapsed() < REVEAL_MS; }
+
+    /** A roll slot's vellum tag: the chosen one carries the tick and an ink rule under it. */
+    void slotTag(DrawContext g, String key, String label, boolean on, int x, int y, int w, int h, boolean hot) {
+        UiButton b = buttons.get(key);
+        UiTex.nine(g, "table/btn-vellum-64x24", x, y, w + 1, h + 2);
+        Text t = DarkUi.heading(label);
+        int ink = b != null && b.active ? DarkUi.INK_TEXT : DarkUi.SEPIA, lx;
+        if (on) {
+            int tw = font().getWidth(t) + 12;
+            lx = x + (w - tw) / 2 + 12;
+            UiTex.draw(g, "table/ready-check", lx - 12, y + (h - 8) / 2);
+            g.drawText(font(), t, lx, y + 6, ink, false);
+            g.fill(x + 8, y + h, x + w - 8, y + h + 2, DarkUi.INK_TEXT);
+        } else lx = WarTableHome.centred(g, t, x + w / 2, y + 6, ink);
+        if (hot && !on) g.fill(lx, y + 18, lx + font().getWidth(t), y + 19, ink);
+        rectsDrawn.put(key, new int[]{x, y, w, h});
+    }
+
+    /** Roll: the brass plate, dull while the client sees a reason the server would refuse. */
+    void rollPlate(DrawContext g, int x, int y, boolean hot) {
+        UiButton b = buttons.get("roll");
+        boolean live = b != null && b.active;
+        if (live) UiTex.draw(g, "table/btn-brass-240x40", x, y);
+        else UiTex.draw(g, "table/btn-dull-240x40", x, y);
+        var t = DarkUi.heading("Roll " + rollWord(forgeSlot).toLowerCase(Locale.ROOT));
+        int tw = font().getWidth(t), lx = x + (240 - tw) / 2, ink = live ? DarkUi.PLATE_INK : DarkUi.MUTED;
+        g.drawText(font(), t, lx, y + 14, ink, false);
+        if (hot && live) g.fill(lx, y + 26, lx + tw, y + 27, DarkUi.PLATE_INK);
+        rectsDrawn.put("roll", new int[]{x, y, 240, 40});
+    }
+
+    /** A blacksmith service: a wide vellum tag, veiled while it has nothing to do. */
+    void service(DrawContext g, String key, String label, int x, int y, int w, int h, boolean hot) {
+        UiButton b = buttons.get(key);
+        boolean live = b != null && b.active;
+        UiTex.nine(g, "table/btn-vellum-64x24", x, y, w + 1, h + 2);
+        Text t = DarkUi.heading(label);
+        int ink = live ? DarkUi.INK_TEXT : DarkUi.SEPIA;
+        int lx = WarTableHome.centred(g, t, x + w / 2, y + 6, ink);
+        if (hot && live) g.fill(lx, y + 18, lx + font().getWidth(t), y + 19, ink);
+        if (!live) DarkUi.disabledVeil(g, x + 1, y + 1, w - 1, h);
+        rectsDrawn.put(key, new int[]{x, y, w, h});
+    }
+
+    /** The Forge tab: the slot to roll, its cost and pity, Roll and why it is refused, and the odds on the left; the blacksmith's
+     *  line, gold and services on the right, then the latest notice. */
+    void forge(DrawContext g, GearWire.View v) {
+        var font = font();
+        int[] l = left(), r = right();
+        g.drawText(font, DarkUi.heading("Forge"), l[0] + 16, l[1] + 14, DarkUi.INK_TEXT, false);
+        var marks = DarkUi.body("Forge marks " + v.forgeMarks());
+        int mx = l[0] + l[2] - 16 - font.getWidth(marks);
+        g.drawText(font, marks, mx, l[1] + 16, DarkUi.SEPIA, false);
+        rectsDrawn.put("marks", new int[]{mx, l[1] + 16, font.getWidth(marks), 12});
+        g.fill(l[0] + 16, l[1] + 28, l[0] + l[2] - 16, l[1] + 29, DarkUi.SEPIA_LINE);
+        int cost = Forge.rollCost(forgeSlot);
+        g.drawText(font, DarkUi.heading("A roll costs " + cost + " Forge marks"), l[0] + 16, l[1] + 112, DarkUi.INK_TEXT, false);
+        if (!forgeSlot.equals("relic")) {
+            int left = Math.max(1, Gear.forge().pity() - v.pity());
+            var pity = DarkUi.body("Epic or better within " + left + (left == 1 ? " roll" : " rolls"));
+            g.drawText(font, pity, l[0] + 16, l[1] + 132, DarkUi.SEPIA, false);
+            rectsDrawn.put("pity", new int[]{l[0] + 16, l[1] + 132, font.getWidth(pity), 12});
+        } else WarTablePages.lines(g, "A relic you already own comes back as marks.", l[0] + 16, l[1] + 132, l[2] - 32, 1, DarkUi.SEPIA);
+        String refusal = GearView.rollRefusal(v, forgeSlot);
+        if (!refusal.isEmpty()) {
+            WarTablePages.lines(g, refusal, l[0] + 16, l[1] + 208, l[2] - 32, 2, DarkUi.ROUT_TEXT);
+            rectsDrawn.put("refusal", new int[]{l[0] + 16, l[1] + 208, l[2] - 32, 26});
+        }
+        if (!forgeSlot.equals("relic")) {
+            var odds = new StringBuilder();
+            int total = 0;
+            for (var row : Spec.GEARRARITIES) total += row.rollWeight();
+            for (var row : Spec.GEARRARITIES) odds.append(odds.length() == 0 ? "" : " · ").append(row.name()).append(' ').append(Math.round(100.0 * row.rollWeight() / Math.max(1, total))).append('%');
+            g.drawText(font, DarkUi.heading("Odds"), l[0] + 16, l[1] + 244, DarkUi.INK_TEXT, false);
+            WarTablePages.lines(g, odds.toString(), l[0] + 16, l[1] + 260, l[2] - 32, 3, DarkUi.SEPIA);
+            rectsDrawn.put("odds", new int[]{l[0] + 16, l[1] + 244, l[2] - 32, 52});
+        }
+
+        g.drawText(font, DarkUi.heading("Blacksmith"), r[0] + 16, r[1] + 14, DarkUi.INK_TEXT, false);
+        var gold = DarkUi.body("Gold " + CampaignClient.profile.gold);
+        g.drawText(font, gold, r[0] + r[2] - 16 - font.getWidth(gold), r[1] + 16, DarkUi.SEPIA, false);
+        g.fill(r[0] + 16, r[1] + 28, r[0] + r[2] - 16, r[1] + 29, DarkUi.SEPIA_LINE);
+        if (Spec.BLACKSMITHLINES.length > 0) {
+            String line = "\u201c" + Spec.BLACKSMITHLINES[Math.floorMod(opens, Spec.BLACKSMITHLINES.length)].text() + "\u201d";
+            WarTablePages.lines(g, line, r[0] + 16, r[1] + 42, r[2] - 32, 3, DarkUi.SEPIA);
+            rectsDrawn.put("line", new int[]{r[0] + 16, r[1] + 42, r[2] - 32, 39});
+        }
+        if (dupesConfirm) {
+            int[] box = {r[0] + 16, r[1] + 100, Math.min(320, r[2] - 32), 86};
+            g.fill(box[0], box[1], box[0] + box[2], box[1] + box[3], fade(DarkUi.ALARM_TEXT, 0x30));
+            Profile copy = GearView.asProfile(v);
+            int before = copy.gear.size(), got = Forge.breakdownDuplicates(copy), n = before - copy.gear.size();
+            WarTablePages.lines(g, "Break down " + n + (n == 1 ? " duplicate" : " duplicates") + " for " + got + " Forge marks? Worn pieces and your best copy of each stay.", box[0] + 6, box[1] + 8, box[2] - 12, 3, DarkUi.ROUT_TEXT);
+            rectsDrawn.put("dupes-confirm", box);
+        }
+        int sy = r[1] + r[3] - 40;
+        String notice = notice();
+        if (!notice.isEmpty()) {
+            WarTablePages.lines(g, notice, r[0] + 16, sy, r[2] - 32, 2, DarkUi.INK_TEXT);
+            rectsDrawn.put("notice", new int[]{r[0] + 16, sy, r[2] - 32, 26});
+        }
+    }
+
+    /** The roll's card over the page for REVEAL_MS: the rarity border fading in, then the name, the rarity, and Duplicate or the
+     *  marks refunded. */
+    void reveal(DrawContext g) {
+        var f = revealing;
+        var font = font();
+        long t = revealElapsed();
+        boolean relic = f.relic() != null && !f.relic().isEmpty();
+        var item = relic ? null : Gear.item(f.item());
+        var rel = relic ? Gear.relic(f.relic()) : null;
+        int ink = relic ? DarkUi.EPIC_INK : rarityInk(f.rarity());
+        int w = 260, h = 120, x = (UiCanvas.width() - w) / 2, y = Math.max(cardTop(), (UiCanvas.height() - h) / 2);
+        int alpha = (int) Math.max(0, Math.min(255, 255 * t / FADE_MS));
+        g.getMatrices().push();
+        g.getMatrices().translate(0, 0, 400);
+        g.fill(x + 3, y + 3, x + w + 3, y + h + 3, DarkUi.DROP_LIFT);
+        g.fill(x, y, x + w, y + h, DarkUi.TAB_IDLE);
+        outline(g, x, y, w, h, 3, fade(ink, alpha));
+        if (t >= FADE_MS / 2) {
+            String name = relic ? rel == null ? f.relic() : rel.name() : item == null ? f.item() : item.name();
+            var nt = DarkUi.heading(name);
+            g.drawText(font, nt, x + (w - font.getWidth(nt)) / 2, y + 26, ink, false);
+            var r = Gear.rarity(f.rarity());
+            String kind = relic ? "Relic" : (r == null ? f.rarity() : r.name()) + (item == null ? "" : " " + GearView.SLOT_WORDS.getOrDefault(item.slot(), item.slot()));
+            var kt = DarkUi.body(kind);
+            g.drawText(font, kt, x + (w - font.getWidth(kt)) / 2, y + 50, DarkUi.IVORY, false);
+            String tail = f.refund() > 0 ? "+" + f.refund() + " Forge marks refunded" : f.duplicate() ? "Duplicate" : "New";
+            var tt = DarkUi.body(tail);
+            g.drawText(font, tt, x + (w - font.getWidth(tt)) / 2, y + 74, f.duplicate() || f.refund() > 0 ? DarkUi.BRASS : DarkUi.DAWN, false);
+            var sk = DarkUi.small("Click to skip");
+            g.drawText(font, sk, x + (w - font.getWidth(sk)) / 2, y + h - 16, DarkUi.MUTED, false);
+        }
+        g.getMatrices().pop();
+        rectsDrawn.put("reveal", new int[]{x, y, w, h});
+    }
 
     /** The tooltip, over the widgets: the hovered grid cell's, worn slot's or relic slot's lines. */
     void overlay(DrawContext g) {
         GearWire.View v = view();
+        if (v != null && revealShowing()) {
+            UiCanvas.begin(g);
+            try { reveal(g); } finally { UiCanvas.end(g); }
+            return;
+        }
+        rectsDrawn.remove("reveal");
         if (v == null || !tab.equals("armoury")) return;
         List<String> lines = new ArrayList<>();
         int[] anchor = null;
@@ -489,11 +699,12 @@ final class WarTableGear {
      *  slots; shift-click breaks a piece down (Epic and above ask first) or clears a relic slot; right-click equips a piece and
      *  clears a relic slot. */
     boolean mouseClicked(double gx, double gy, int button) {
+        if (revealShowing()) { revealing = null; revealHeldAt = -1; return true; }
         if (!tab.equals("armoury")) return false;
         double x = UiCanvas.toCanvas(gx), y = UiCanvas.toCanvas(gy);
         GearWire.View v = view();
         if (v == null) return in(left(), x, y) || in(right(), x, y);
-        boolean shift = Screen.hasShiftDown();
+        boolean shift = Screen.hasShiftDown() || harnessShift;
         for (int i = 0; i < Gear.SLOTS.size(); i++) if (in(worn(i), x, y)) {
             String slot = Gear.SLOTS.get(i);
             if (GearView.wornIn(v, slot) != null && button == 0) screen.action("gear:unequip:" + slot);
