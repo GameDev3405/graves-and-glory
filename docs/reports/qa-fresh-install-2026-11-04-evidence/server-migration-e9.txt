@@ -1,0 +1,7 @@
+=== E9: bannerbound-profiles/ and bannerbound-layout.json in the world ===
+E9 server Done: True
+E9 profile copied True identical True
+E9 layout marker copied True identical True
+E9 originals kept unchanged True
+E9 errors in log []
+E9 join True | after join: schema 4 gold 2700 matches 31 owned 14 files ['c133142c-8956-31e8-973f-9cd466598222.json', 'c133142c-8956-31e8-973f-9cd466598222.v1.json', 'c133142c-8956-31e8-973f-9cd466598222.v2.json', 'c133142c-8956-31e8-973f-9cd466598222.v3.json']
