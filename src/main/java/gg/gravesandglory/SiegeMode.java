@@ -61,6 +61,10 @@ public final class SiegeMode extends BattleMode {
     static final double YARD_X = YARD.x(), YARD_Z = YARD.z(), YARD_RADIUS = YARD.radius(), KEEP_X = KEEP.x(), KEEP_Z = KEEP.z(), KEEP_RADIUS = KEEP.radius();
     static final int YARD_SECONDS = YARD.seconds(), KEEP_SECONDS = KEEP.seconds(), STAGE_BONUS = R.siegeStageBonus();
     static final float GATE_HP = (float) GATE_SITE.hp();
+    /** The donjon, the defenders' field base for respawn, barracks and lineup after the yard (spec 5; the phase 4 plan's donjon cell in the keep's east court), and the gate's east mouth, the attackers' base after the breach. In code until a modeSites base row takes them. */
+    static final double DONJON_X = 12, DONJON_Z = 34, MOUTH_X = -31.5, MOUTH_Z = .5;
+    /** How far east of the yard's centre the defenders' lineup point stands, so reinforce's rows (5 to 20 forward of it) form across the yard. */
+    static final double YARD_LINEUP = 12;
 
     /** The round's stage (0 yard, 1 gate, 2 keep, 3 taken) and the current ring's hold seconds. A mode object lives for one round. */
     int stage;
@@ -69,6 +73,22 @@ public final class SiegeMode extends BattleMode {
     GateTarget target;
     /** The world time the portcullis drops, or -1 when it is not pending (the gate stays open until then). */
     long dropAt = -1;
+    /** What the round did, for the bot sim's report (read-only on the game): blows that hurt the gate and their damage, and the round second each stage fell (-1: never). */
+    int gateBlows, yardSecond = -1, gateSecond = -1, keepSecond = -1;
+    float gateDamage;
+    /** Whether the felling blow already sounded the breach (GateTarget.structureCue), so breach() does not sound it a second time. */
+    boolean breachCued;
+
+    /**
+     * The bot plan's draft values (spec 5's table; in code like Convoy's raidShare until the botCommand sheet takes them): defender infantry
+     * move from behind the passage to the breach at this share of the gate's health, attacker siege troops stand this far west of the gate's
+     * face, and attacker ranged troops this far.
+     */
+    static final double BREACH_SHARE = .25, STANDOFF = 25, RANGED_STANDOFF = 12, POST_IN = 8, POST_SIDE = 4;
+    /** Whether a tier mans the stations (the gate towers) and stands its siege troops off: Normal and Hard; Easy sends everything in with the infantry. */
+    static boolean stations(Spec.BotCommandRow tier) {
+        return !tier.id().equals("easy");
+    }
 
     SiegeMode(Spec.ModesRow row) {
         super(row);
@@ -76,13 +96,42 @@ public final class SiegeMode extends BattleMode {
 
     /** The gate's target: a structure of the defenders (a vanilla armour stand like the Forward Supply banner, never saved) that only attackers hurt. */
     public static final class GateTarget extends GravesAndGlory.ArmySupplyBanner {
+        /** The round's mode, which counts its blows. */
+        SiegeMode mode;
+
         public GateTarget(World world) {
             super(world);
         }
 
         @Override
+        public boolean damage(net.minecraft.entity.damage.DamageSource source, float amount) {
+            float was = hp;
+            boolean took = super.damage(source, amount);
+            if (took && mode != null) {
+                mode.gateBlows++;
+                mode.gateDamage += was - Math.max(0, hp);
+            }
+            return took;
+        }
+
+        @Override
         Text label() {
             return Text.literal("Iron Gate " + (int) Math.ceil(hp())).formatted(Formatting.LIGHT_PURPLE);
+        }
+
+        /**
+         * A blow on the gate rings as the gate cue, not as a banner's wool, when the blow lands (a melee swing's contact frame, Audio.blowDelay). The blow that
+         * fells it sounds the breach instead, at that same moment, and SiegeMode.breach (which runs on the next whole second) then stays quiet.
+         */
+        @Override
+        void structureCue(net.minecraft.server.world.ServerWorld w, boolean felled) {
+            var b = GravesAndGlory.battle;
+            int wait = Audio.blowDelay;
+            Vec3d at = getPos();
+            if (felled) {
+                if (mode != null) mode.breachCued = true;
+                Audio.later(b, wait, () -> Audio.all(b, AudioCues.Cue.GATE_BREACH, "gate"));
+            } else Audio.later(b, wait, () -> Audio.at(b, AudioCues.Cue.GATE_HIT, at, "gate"));
         }
     }
 
@@ -104,6 +153,7 @@ public final class SiegeMode extends BattleMode {
      */
     @Override
     public void setup(GravesAndGlory.Battle b) {
+        breachCued = false;
         for (var p : b.points) Arena.unflag(b.world, p.spec);
         var row = gate();
         if (row == null) return;
@@ -153,22 +203,103 @@ public final class SiegeMode extends BattleMode {
         return List.of(new GravesAndGlory.Anchor(YARD_X, YARD_Z, "the Outer Yard", team));
     }
 
-    /** Bots go to the current stage: both sides to the yard, then attackers to the gate's face and defenders behind it, then the keep. */
+    /**
+     * Bots go to the current stage (spec 5): both sides to the yard; then attackers to the gate's face and defenders behind the
+     * passage (to the breach once the gate is down to BREACH_SHARE); then the keep. While the portcullis is pending the defenders
+     * fall back through the gate and the attackers wait clear of the passage, so nobody is shut in on the wrong side.
+     */
     @Override
     public Vec3d botTarget(GravesAndGlory.Battle b, GravesAndGlory.Squad s) {
         var row = gate();
-        double x, z;
-        if (stage == 0) {
-            x = YARD_X;
-            z = YARD_Z;
-        } else if (stage == 1 && row != null) {
-            x = row.x() + (s.team == 0 ? -PASSAGE_X - 4 : PASSAGE_X + 4);
-            z = row.z();
-        } else {
-            x = KEEP_X;
-            z = KEEP_Z;
+        if (stage == 0) return at(YARD_X, YARD_Z);
+        if (stage == 1 && row != null) {
+            if (s.team == 0) return at(row.x() - PASSAGE_X - (dropAt >= 0 ? 10 : 4), row.z());
+            boolean low = target != null && target.hp() <= GATE_HP * BREACH_SHARE;
+            return at(row.x() + PASSAGE_X + (low ? .5 : 2.5), row.z() + .5);
         }
+        return at(KEEP_X, KEEP_Z);
+    }
+
+    /** Spec 5: defenders respawn at the donjon; attackers at their base, then the yard once it falls, then the gate's east mouth once it is breached. */
+    @Override
+    public Vec3d fieldBase(GravesAndGlory.Battle b, int team) {
+        if (team == 1) return at(DONJON_X, DONJON_Z);
+        if (stage == 0) return super.fieldBase(b, team);
+        return stage == 1 ? at(YARD_X, YARD_Z) : at(MOUTH_X, MOUTH_Z);
+    }
+
+    /** The defenders' barracks is the donjon. */
+    @Override
+    public Vec3d fieldBarracks(GravesAndGlory.Battle b, int team) {
+        return team == 1 ? new Vec3d(DONJON_X, 65, DONJON_Z) : super.fieldBarracks(b, team);
+    }
+
+    /** The defenders' lineup forms in the yard while it stands; the attackers' at their base. */
+    @Override
+    public Vec3d lineup(GravesAndGlory.Battle b, int team) {
+        return team == 1 && stage == 0 ? at(YARD_X + YARD_LINEUP, YARD_Z) : super.lineup(b, team);
+    }
+
+    /** A spot on the ground. */
+    static Vec3d at(double x, double z) {
         return new Vec3d(x, Arena.ground((int) Math.floor(x), (int) Math.floor(z)) + 1, z);
+    }
+
+    /** The gate-sight stand on each gate tower, in blocks from the gate piece's centre: TOWER_X west of it, TOWER_Z north or south, feet TOWER_FEET above its elevation. TOWER_Z 8 keeps the perch slots (three across, a block apart) off the stair hole at 9 to 11. */
+    static final int TOWER_X = 2, TOWER_Z = 8, TOWER_FEET = 13;
+
+    /**
+     * A defenders' ranged post: the top of the north (side 0) or south gate tower. Each tower has an east door and a spiral stair from it to the gate-sight stand
+     * (ironhold/gate and gate_intact, 2026-11-01), so the bots walk up; the 2026-11 sims had ladders, which bots never climbed, and posted them on the ground behind the gate.
+     */
+    static Vec3d post(Spec.LandmarksRow row, int side) {
+        return new Vec3d(row.x() - TOWER_X + .5, row.elevation() + TOWER_FEET, row.z() + .5 + (side == 0 ? -TOWER_Z : TOWER_Z));
+    }
+
+    /**
+     * The stage plan by group (spec 5). Yard and keep: the defenders fight for their ring on Attack (Hold's ten-block leash let the attackers' ranged troops shoot them from outside it in the 2026-11 sims); the attackers keep their plain order. Gate, defenders: ranged troops at a post behind the gate, on Attack so they shoot as far as their reach rather than
+     * Hold's ten blocks (Normal and Hard; Easy keeps them with the army). Gate, attackers: infantry and cavalry strike the gate itself, siege troops stand STANDOFF off its face
+     * and shoot it (Easy sends them in with the infantry) and ranged troops shoot from RANGED_STANDOFF off, at what they see.
+     * While the portcullis is pending the attackers hold where they wait.     */
+    @Override
+    public void botPlan(GravesAndGlory.Battle b, GravesAndGlory.Squad s, Spec.BotCommandRow tier) {
+        var row = gate();
+        if (row == null || stage >= 3) return;
+        if (s.team == 1 && stage != 1) {
+            s.order = "attack";
+            return;
+        }
+        if (stage != 1) return;
+        if (s.team == 1) {
+            if (stations(tier)) put(s, "ranged", "attack", post(row, Math.floorMod(s.owner.hashCode(), 2)), -1).perch = true;
+            return;
+        }
+        if (dropAt >= 0 || target == null) {
+            s.order = "hold";
+            return;
+        }
+        int gateId = target.getId();
+        double face = row.x() - PASSAGE_X - 1;
+        put(s, "infantry", "attack", s.target, gateId);
+        put(s, "cavalry", "attack", s.target, gateId);
+        if (stations(tier)) put(s, "siege", "hold", at(face - STANDOFF, row.z() + .5), gateId);
+        else put(s, "siege", "attack", s.target, gateId);
+        put(s, "ranged", "attack", at(face - RANGED_STANDOFF, row.z() + .5), -1);
+    }
+
+    /** Once the yard has fallen the defenders' base is the donjon behind the gate they hold: they fight on there rather than fall back and wait to rally (the 2026-11 sims had them sit out the gate and keep). */
+    @Override
+    public boolean botRetreats(GravesAndGlory.Battle b, GravesAndGlory.Squad s) {
+        return s.team != 1 || stage == 0;
+    }
+
+    /** One group's order, keeping the formation the army already gave it (a shieldwall stays braced). */
+    static GravesAndGlory.Assignment put(GravesAndGlory.Squad s, String group, String order, Vec3d spot, int enemy) {
+        var was = s.assignments.get(group);
+        var a = new GravesAndGlory.Assignment(order, was != null ? was.formation : s.formation, spot, s.yaw);
+        a.enemy = enemy;
+        s.assignments.put(group, a);
+        return a;
     }
 
     /** Each second: the current stage's hold or the gate's health, and the win when the keep falls. */
@@ -182,10 +313,11 @@ public final class SiegeMode extends BattleMode {
             else if (target == null || !target.isAlive() || target.isRemoved()) breach(b);
         } else if (hold(b, KEEP_X, KEEP_Z, KEEP_RADIUS, KEEP_SECONDS, true)) {
             stage = 3;
+            keepSecond = second(b);
+            staged(b, "keep", keepSecond);
             b.scores[0] = stage;
-            feed(b, Spec.FACTIONS[0].name() + " took the Keep");
-            b.campaign.finish(0);
-            b.world.playSound(null, BlockPos.ORIGIN, SoundEvents.UI_TOAST_CHALLENGE_COMPLETE, SoundCategory.MASTER, 2, 1);
+            feed(b, "keep_taken", "team", attackers());
+            b.campaign.finish(0); // the victory and defeat stings play from Campaign.finish
         }
     }
 
@@ -211,16 +343,21 @@ public final class SiegeMode extends BattleMode {
     /** The yard falls: time is added, the portcullis drops and the gate's target goes up on its west face. */
     void fall(GravesAndGlory.Battle b) {
         stage = 1;
+        yardSecond = second(b);
+        staged(b, "yard", yardSecond);
         held = 0;
         b.scores[0] = stage;
         b.roundSeconds += STAGE_BONUS;
-        feed(b, Spec.FACTIONS[0].name() + " took the Outer Yard");
+        feed(b, "yard_taken", "team", attackers());
+        Audio.captured(b, "yard", 0);
         var row = gate();
         GravesAndGlory.Squad defender = null;
         for (var s : b.squads.values()) if (s.seated && s.team == 1) { defender = s; break; }
         if (row == null || defender == null || b.saves.stream().noneMatch(s -> s.tag().equals(GATE_TAG))) { breach(b); return; } // no saved gate to shut and break
         dropAt = b.time + R.portcullisSeconds() * 20L;
-        feed(b, "The Iron Gate will shut in " + R.portcullisSeconds() + " seconds");
+        // The gate's crash is 0.35 s into its sound, so the cue starts that much ahead of the drop and the two land together.
+        Audio.later(b, (int) (dropAt - b.time) - AudioCues.GATE_SHUT_LEAD_TICKS, () -> Audio.all(b, AudioCues.Cue.GATE_SHUT, "gate"));
+        feed(b, "gate_closing", "n", Integer.toString(R.portcullisSeconds()));
     }
 
     /** The portcullis drops: units in the passage go to the nearer side, the intact gate replaces the open one and its target goes up on its west face. */
@@ -232,9 +369,10 @@ public final class SiegeMode extends BattleMode {
         if (row == null || defender == null) { breach(b); return; }
         clearPassage(b, row);
         Structures.place(b.world, GATE_INTACT, row.x(), row.elevation(), row.z(), row.rotation());
-        feed(b, "The Iron Gate is shut");
+        feed(b, "gate_shut"); // the shut cue itself started GATE_SHUT_LEAD_TICKS ago (fall)
         var e = new GateTarget(b.world);
         e.squad = defender;
+        e.mode = this;
         e.hp = GATE_HP;
         e.refreshPositionAndAngles(row.x() - PASSAGE_X - 1 + .5, row.elevation() + 1, row.z() + .5, 90, 0);
         e.setNoGravity(true);
@@ -265,16 +403,48 @@ public final class SiegeMode extends BattleMode {
         if (target != null && !target.isRemoved()) target.discard();
         target = null;
         stage = 2;
+        gateSecond = second(b);
+        staged(b, "gate", gateSecond);
         held = 0;
         b.scores[0] = stage;
         b.roundSeconds += STAGE_BONUS;
-        feed(b, "The Iron Gate is breached");
+        feed(b, "gate_breached");
+        if (!breachCued) Audio.all(b, AudioCues.Cue.GATE_BREACH, "gate"); // a felled gate sounded it with the blow (GateTarget.structureCue)
+        breachCued = false;
         mark(b); // the marker stops listing the gate's snapshot once it is back
     }
 
-    /** A stage line on every player's feed, in Dawn's colour. */
-    static void feed(GravesAndGlory.Battle b, String text) {
-        for (ServerPlayerEntity p : b.server.getPlayerManager().getPlayerList()) FeedEvents.send(p, "point", 0, text);
+    /** A stage line (the modeLines siege row of this event, draft copy) on every player's feed, in the attackers' colour. */
+    static void feed(GravesAndGlory.Battle b, String event, String... fields) {
+        FeedEvents.mode(b, 0, Modes.SIEGE, event, fields);
+    }
+
+    /** The attackers' short name for a feed line: "Gold" for the Gold Banner. */
+    static String attackers() {
+        return FeedLines.teamShort(Spec.FACTIONS[0].name());
+    }
+
+    /** The objective panel's opening line (the modeLines siege start row): the flags are down, so "Capture the objectives." would mislead. */
+    @Override
+    public String startLine(GravesAndGlory.Battle b) {
+        return FeedLines.modeLine(Modes.SIEGE, "start");
+    }
+
+    /** The deciding numbers: stages taken of three, the defence's strength in percent, and the clock. */
+    @Override
+    public List<ModeLines.Entry> ledgerEntries(GravesAndGlory.Battle b) {
+        int[] l = ledger(b), m = max(b);
+        return List.of(ModeLines.entry("siege_stage", l[0], m[0]), ModeLines.entry("siege_strength", l[1], m[1]), ModeLines.entry("siege_time", clock(b), b.roundSeconds));
+    }
+
+    /** The round second now. */
+    /** A stage fell: a March stage_by bonus hears it (the commander's side, Dawn, attacks). */
+    static void staged(GravesAndGlory.Battle b, String stage, int second) {
+        if (b.campaign.bonusTracker != null) b.campaign.bonusTracker.staged(stage, second);
+    }
+
+    static int second(GravesAndGlory.Battle b) {
+        return (int) ((b.time - b.roundStarted) / 20);
     }
 
     /** After teardown put the gate back: removes the gate target and raises the neutral flags; idempotent, as a round may end twice. */

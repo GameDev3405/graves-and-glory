@@ -46,6 +46,14 @@ public final class CampaignChecks implements ClientModInitializer {
         // The battle self-test (-PselfTest) drives its own battle; these suites would fight it for the same world.
         if(!MeltyTest.active()||Boolean.getBoolean("gravesandglory.selfTest")||Boolean.getBoolean("gravesandglory.campChecks")||Boolean.getBoolean("gravesandglory.networkHost")||Boolean.getBoolean("gravesandglory.networkJoin")||!System.getProperty("gravesandglory.rankNet","").isEmpty()||!System.getProperty("gravesandglory.phase1Checks","").isEmpty()||!System.getProperty("gravesandglory.phase2Checks","").isEmpty()||!System.getProperty("gravesandglory.phase4Checks","").isEmpty())return;
         stateProbe();
+        // Nothing else opens the world: without this the client idles on the first-run accessibility screen, then on the front menu (QA run 3 stall).
+        int[] front={0};boolean[] opened={false};
+        ClientTickEvents.END_CLIENT_TICK.register(c->{
+            c.options.pauseOnLostFocus=false; // an unfocused test window must not pause the integrated server
+            if(c.getOverlay()!=null)return;
+            if(c.currentScreen instanceof net.minecraft.client.gui.screen.AccessibilityOnboardingScreen s){s.close();return;} // a fresh root has no options.txt: press Continue as a player would
+            if(!opened[0]&&c.currentScreen instanceof FrontMenuScreen&&++front[0]==40){opened[0]=true;GravesAndGloryClient.startCamp(c,false);}
+        });
         ClientTickEvents.END_CLIENT_TICK.register(c->{
             if(c.player==null||c.getServer()==null||!GravesAndGloryClient.ready)return;
             tick++;
@@ -94,7 +102,7 @@ public final class CampaignChecks implements ClientModInitializer {
                 int before=pr.owned.size(),copies=copies(pr);pr.gold=100;b.campaign.handle(p,"roll");report("unit-unlocks",pr.gold==0&&(pr.owned.size()==before+1||copies(pr)>copies),"One paid House roll adds one troop or one copy: owned "+before+"->"+pr.owned.size()+", copies and shards "+copies+"->"+copies(pr)+"; "+b.campaign.notices.getOrDefault(me,""));
                 var want=java.util.Arrays.stream(Spec.TROOPS).filter(t->!pr.owned.containsKey(t.id())).findFirst().orElse(null);
                 if(want!=null){pr.gold=100;int owned=pr.owned.size();b.campaign.handle(p,"unlock:"+want.id());String note=b.campaign.notices.getOrDefault(me,"");report("chosen-unlock",!pr.owned.containsKey(want.id())&&pr.owned.size()==owned&&pr.gold==100&&note.contains("recruitment rolls"),"Chosen unlocks are retired (spec 6.3): unlock:"+want.id()+" is refused and charges nothing; notice="+note);pr.gold=0;}
-                try{var loaded=Campaign.JSON.fromJson(Files.readString(b.campaign.directory.resolve(p.getUuid()+".json")),Profile.class);report("profile-persistence",Campaign.JSON.toJsonTree(loaded).equals(Campaign.JSON.toJsonTree(pr))&&loaded.schema==2,"Read the v2 collection, banner and gold back from disk");}catch(Exception e){report("profile-persistence",false,e.toString());}
+                try{var loaded=Campaign.JSON.fromJson(Files.readString(b.campaign.directory.resolve(p.getUuid()+".json")),Profile.class);report("profile-persistence",Campaign.JSON.toJsonTree(loaded).equals(Campaign.JSON.toJsonTree(pr))&&loaded.schema==Profile.SCHEMA,"Read the current-schema (v3) collection, banner and gold back from disk");}catch(Exception e){report("profile-persistence",false,e.toString());}
                 // Banner editing (banner rules, spec 4.6): slot:<i>:<id> sets one slot; an index past the banner and an unowned troop are refused.
                 pr.banner=new ArrayList<>(java.util.Collections.nCopies(20,"knight"));b.campaign.handle(p,"slot:0:archer");b.campaign.handle(p,"slot:20:knight");String unowned=pr.owned.containsKey("gl_marshal")?null:"gl_marshal";if(unowned!=null)b.campaign.handle(p,"slot:1:"+unowned);
                 boolean grid=pr.banner.size()==20&&pr.banner.get(0).equals("archer")&&java.util.Collections.frequency(pr.banner,"knight")==19&&RosterMath.validBanner(pr.banner,cat,pr.owned.keySet())==null;
@@ -137,7 +145,7 @@ public final class CampaignChecks implements ClientModInitializer {
                 var p=b.server.getPlayerManager().getPlayer(c.player.getUuid());var s=b.squads.get(p.getUuid());var friendly=b.units.stream().filter(u->u.squad==s).findFirst().orElseThrow();float hp=friendly.mob.getHealth();friendly.mob.damage(b.world.getDamageSources().playerAttack(p),5);report("friendly-fire",friendly.mob.getHealth()==hp,"Allied damage rejected");
                 b.campaign.finish(-1);if(backup!=null){b.campaign.profiles.put(p.getUuid(),Campaign.JSON.fromJson(Campaign.JSON.toJson(backup),Profile.class));b.campaign.save(p.getUuid());}b.campaign.handle(p,"mode:4");});
             if(tick==965)report("impact-friendly-filter",Presentation.receivedImpacts==contactsBefore,"Rejected friendly damage produced no contact accent");
-            if(tick==1110&&devRun())server(c,b->{try{var p=b.server.getPlayerManager().getPlayer(c.player.getUuid());Files.writeString(restartFile(c),Campaign.JSON.toJson(b.campaign.profile(p.getUuid())));
+            if(tick==1110&&devRun())server(c,b->{try{var p=b.server.getPlayerManager().getPlayer(c.player.getUuid());var mark=b.campaign.profile(p.getUuid());if(!Files.exists(restartFile(c).resolveSibling("keep-profile"))){mark.gold=777;b.campaign.save(p.getUuid());} /* a non-default value, so the reopen proves the saved file was read */ Files.writeString(restartFile(c),Campaign.JSON.toJson(mark));
                 var husk=net.minecraft.entity.EntityType.HUSK.create(b.world);husk.addCommandTag("gravesandglory");husk.refreshPositionAndAngles(-20,65,CampaignMaps.LOBBY_Z,0,0);b.world.spawnEntity(husk);
                 report("restart-fixture",true,"Collection saved and one stale hostile husk planted for the reopen test");}catch(Exception e){report("restart-fixture",false,e.toString());}});
             if(tick==1000){c.setScreen(new GravesAndGloryClient.LobbyScreen());report("campaign-suite",!failed,"Mechanical checks finished; local multiplayer joining is a separate run");shot(c,"final-lobby");}
@@ -149,6 +157,7 @@ public final class CampaignChecks implements ClientModInitializer {
                 report("solo-pad-3v3",b.running&&camp.size==3&&b.squads.size()==6&&b.units.size()==fielded(b)&&eachFieldsBanner(b)&&b.squads.values().stream().filter(s->s.bot).count()==5,"One ready commander starts a 3v3 with five AI commanders");
                 camp.finish(-1);if(backup!=null){camp.profiles.put(p.getUuid(),Campaign.JSON.fromJson(Campaign.JSON.toJson(backup),Profile.class));camp.save(p.getUuid());}
             });
+            if(tick==1130)c.scheduleStop(); // a clean quit, so the next launch reopens the saved world and profile
             if(tick==1080)report("roadmap-suite",!failed,"Full regression including solo ready-pad battle completed");
         });
     }

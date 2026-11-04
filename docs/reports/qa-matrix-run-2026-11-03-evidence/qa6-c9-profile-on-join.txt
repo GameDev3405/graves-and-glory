@@ -1,0 +1,8 @@
+PASS no profile file before the first join :: work/qafix-run\Graves and Glory\gravesandglory-profiles\00f3e2d4-05cb-3807-9c33-bb1a513d1393.json
+PASS bot joins :: None
+PASS profile file exists after the first join :: work/qafix-run\Graves and Glory\gravesandglory-profiles\00f3e2d4-05cb-3807-9c33-bb1a513d1393.json
+PASS profile is schema 3 :: 3
+PASS profile holds the 10 starter Commons :: 10
+PASS same bot rejoins :: None
+PASS a rejoin leaves the profile unchanged
+RESULT PASS

@@ -2686,6 +2686,12 @@ def part_tiers(cat, src) -> set:
         if e.get('weaponTiers'):
             part = cat.parts.get(e.get('part'), {})
             by_bone.setdefault(e.get('bone', part.get('bone')), set()).update(e['weaponTiers'])
+    if not by_bone:   # a hand-authored troop: its weaponTiers bones, by parent bone, as TroopModel groups them
+        f = Path(cat.root) / 'src/main/resources/assets' / NAMESPACE / MODELS / ('%s.json' % src.get('troop', ''))
+        model = json.loads(f.read_text(encoding='utf-8')) if (Path(cat.root) / 'art/hand' / src.get('troop', '-')).is_dir() and f.is_file() else {}
+        for b in model.get('bones', []):
+            if b.get('weaponTiers'):
+                by_bone.setdefault(b['parent'], set()).update(b['weaponTiers'])
     if not by_bone:
         return set()
     every = set().union(*by_bone.values())

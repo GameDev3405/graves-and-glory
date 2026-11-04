@@ -11,7 +11,7 @@
 {"part":"vestment"},
 {"part":"pennant","offset":[0,0.0,0.85]}
 ],
-"skins":{"1":"mage_s1.png"},
+"skins":{"1":"mage_s1.png","2":"mage_s2.png","3":"mage_s3.png"},
 "glow":"mage_e.png",
 "weapon":"sun_staff",
 "hand":"right",

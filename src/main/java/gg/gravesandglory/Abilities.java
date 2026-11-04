@@ -213,6 +213,7 @@ final class Abilities {
         double radius = row.radius() > 0 ? row.radius() : D.spellRadius();
         for (int i = 0; i < 12; i++) { double angle = i * Math.PI / 6; b.world.spawnParticles(ParticleTypes.WITCH, u.spellCenter.x + Math.cos(angle) * radius, u.spellCenter.y + .2, u.spellCenter.z + Math.sin(angle) * radius, 1, 0, 0, 0, 0); }
         if (time < u.windupUntil) return;
+        if (u.spec.magic()) Audio.at(b, AudioCues.Cue.MAGIC_IMPACT, u.spellCenter, "m" + u.mob.getId()); // the burst lands as magic even on empty ground; the hits below share its key, so it sounds once
         float base = (float) ((row.amount() > 0 ? row.amount() : u.spec.damage()) * b.campaign.damage(u));
         var two = second(u);
         var knell = two.mechanic().equals("raise") ? two : null;
@@ -256,22 +257,24 @@ final class Abilities {
      * else shoots an arrow (a ranged troop) or hits (a melee one with no swings in the sheet) through Combat.resolve. A melee troop with swings strikes
      * through Tactics.swing, on its swing's impact frame: called for one here, this does nothing but log it (misrouted), so no blow lands twice or early.
      */
-    static void attack(GravesAndGlory.Battle b, GravesAndGlory.Unit u, LivingEntity enemy, long time) {
+    static boolean attack(GravesAndGlory.Battle b, GravesAndGlory.Unit u, LivingEntity enemy, long time) {
         var row = row(u);
         switch (row.mechanic()) {
             case "blight", "mist" -> {
-                if (time < u.abilityAt || tooClose(u, u.mob.squaredDistanceTo(enemy))) return; // a shell is never lobbed at an enemy inside the row's minimum range
+                if (time < u.abilityAt || tooClose(u, u.mob.squaredDistanceTo(enemy))) return false; // a shell is never lobbed at an enemy inside the row's minimum range
                 u.spellCenter = enemy.getPos();
                 u.windupUntil = time + (row.windupTicks() > 0 ? row.windupTicks() : D.spellWindupTicks());
                 u.abilityAt = time + (row.cooldownTicks() > 0 ? row.cooldownTicks() : D.abilityCooldownTicks());
                 Projectiles.bolt(b, u, u.spellCenter);
+                return true;
             }
-            case "mend" -> {}
+            case "mend" -> { return false; }
             default -> {
-                if (melee(u) && !Tactics.variants(u.spec.family()).isEmpty()) {misrouted++; LOG.warn("Abilities.attack called for {} ({}), a melee troop whose blow is Tactics.swing's: no blow", u.spec.id(), u.mob.getId()); return;}
+                if (melee(u) && !Tactics.variants(u.spec.family()).isEmpty()) {misrouted++; LOG.warn("Abilities.attack called for {} ({}), a melee troop whose blow is Tactics.swing's: no blow", u.spec.id(), u.mob.getId()); return false;}
                 animate(b, u);
                 // The hit is decided now; a ranged hit lands when its visible arrow arrives.
                 if (u.spec.ranged()) Projectiles.fire(b, u, enemy, visual(u), (float) baseHit(b, u)); else land(b, u, enemy);
+                return true;
             }
         }
     }
@@ -363,7 +366,8 @@ final class Abilities {
         if (!target.isAlive() || Combat.structure(target) || !offCooldown(b, u, row, second)) return;
         Statuses.apply(b, u, target, "knockback", 0, 0, row.knockback());
         Statuses.apply(b, u, target, row.status().equals("none") ? "stun" : row.status(), row.statusTicks(), row.statusLevel(), row.amount());
-        b.world.playSound(null, target.getBlockPos(), SoundEvents.ITEM_SHIELD_BLOCK, SoundCategory.HOSTILE, 1f, .7f);
+        Vec3d struck = target.getPos();
+        Audio.later(b, Audio.contact(u), () -> Audio.at(b, AudioCues.Cue.SHIELD_BLOCK, struck, "bash" + u.mob.getId(), .8f)); // the shield meets him at the swing's contact frame, with the blow
     }
 
     /** Slowness I is the amplifier 0 of Riptide's slow (the spec's fixed effect kind); the abilities rows carry their own statusLevel. */
@@ -391,7 +395,9 @@ final class Abilities {
         int swept = splash(b, u, at, primary, (float) (row.amount() * baseHit(b, u)), row.radius(), row.knockback(), u.mob.getPos());
         if (swept > 0 && row.cooldownTicks() > 0) spend(u, second, b.time + row.cooldownTicks()); // a sweep that struck nobody keeps its cooldown for the next hit
         b.world.spawnParticles(ParticleTypes.CLOUD, at.x, at.y + .2, at.z, 16, row.radius() / 2, .1, row.radius() / 2, .06);
-        b.world.playSound(null, primary.getBlockPos(), SoundEvents.BLOCK_ANVIL_LAND, SoundCategory.HOSTILE, .35f, .7f);
+        // The slam sounds at the swing's contact frame under the blow's own key, so the primary's heavy thud and the slam are one sound, not two.
+        Vec3d slammed = primary.getPos();
+        Audio.later(b, Audio.contact(u), () -> Audio.at(b, AudioCues.Cue.HEAVY_METAL_HIT, slammed, "h" + u.mob.getId(), .8f));
     }
 
     /**
@@ -908,7 +914,7 @@ final class Abilities {
         if (time < u.windupUntil) return;
         long lasts = Math.round(row.durationTicks() * Veterans.outputFactor(u));
         b.mists.add(new Mist(u.squad.team, u.spellCenter, radius, time + lasts, u, row, rider(u, "mist")));
-        b.world.playSound(null, BlockPos.ofFloored(u.spellCenter), SoundEvents.ENTITY_EVOKER_PREPARE_SUMMON, SoundCategory.HOSTILE, .6f, 1.3f);
+        Audio.at(b, AudioCues.Cue.MAGIC_IMPACT, u.spellCenter, "mist" + u.mob.getId()); // the cloud lands: an impact, not a second cast (the cast sounded when the windup began)
         u.spellCenter = null;
     }
 

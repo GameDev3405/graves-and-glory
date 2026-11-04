@@ -90,7 +90,50 @@ for m in modes:
     if m['scoreInterval']==0 and m['timeout']=='score': errors.append(f'{where}: timeout score needs a scoreInterval above 0')
     for column in ('howTo','howToDefend'):
         parts=[p.strip() for p in m.get(column,'').split('|') if p.strip()]
-        if not 1<=len(parts)<=3: errors.append(f'{where}: {column} holds {len(parts)} parts, want 1 to 3')
+        if not 1<=len(parts)<=2: errors.append(f'{where}: {column} holds {len(parts)} parts, want 1 or 2')
+# Mode copy (plan 2C.2): the feed lines a mode sends, the 2 to 4 numbers of its ledger and its briefing how-to lines are draft copy in
+# the sheets, not in the mode classes. A feed line has a kind FeedLines.style knows, the {name} fields its args column lists, and a text
+# FeedLines.MAX_TEXT can carry; FeedFitCheck measures how wide each one draws on the feed leaf. A how-to part may name a key as {key:<id>}.
+FEED_KINDS=('point','loss','kill','down','up','laststand','deploy','notice')
+FEED_ARGS=('team','point','stop','n','site','gold')
+HOWTO_KEYS={'menu','attack','follow','formation','map','rotate_left','rotate_right','confirm','cancel','use','hints'}
+copy_modes={m['id'] for m in modes}
+events=set()
+for r in data.get('modeLines',[]):
+    where=f'modeLines/{r["id"]}'
+    if r['mode'] not in copy_modes: errors.append(f'{where}: mode {r["mode"]} is not a modes id')
+    if (r['mode'],r['event']) in events: errors.append(f'{where}: the event {r["event"]} of {r["mode"]} is already a row')
+    events.add((r['mode'],r['event']))
+    if not re.fullmatch(r'[a-z][a-z0-9_]*',r['event']): errors.append(f'{where}: event {r["event"]!r} is not lower-case words joined by _')
+    if r['kind'] not in FEED_KINDS: errors.append(f'{where}: kind {r["kind"]} is not one of '+', '.join(FEED_KINDS))
+    if r['status'] not in ('draft','approved'): errors.append(f'{where}: status {r["status"]} is not draft or approved')
+    declared=[] if r['args']=='-' else r['args'].split(',')
+    for a in declared:
+        if a not in FEED_ARGS: errors.append(f'{where}: arg {a} is not one of '+', '.join(FEED_ARGS))
+    used=re.findall(r'\{([a-z]+)\}',r['text'])
+    if r['text'].count('{')!=len(used) or r['text'].count('}')!=len(used): errors.append(f'{where}: a brace in the text is not a {{name}} field')
+    if sorted(set(used))!=sorted(set(declared)): errors.append(f'{where}: the text uses fields {sorted(set(used))}, its args column lists {sorted(set(declared))}')
+    if len(r['text'])>120: errors.append(f'{where}: the text is {len(r["text"])} characters, a feed line carries 120')
+    if r['text']!=r['text'].strip(): errors.append(f'{where}: the text has spaces at either end')
+ledger_slots={}
+for r in data.get('modeLedger',[]):
+    where=f'modeLedger/{r["id"]}'
+    if r['mode'] not in copy_modes: errors.append(f'{where}: mode {r["mode"]} is not a modes id')
+    if r['format'] not in ('plain','fraction','percent','time'): errors.append(f'{where}: format {r["format"]} is not plain, fraction, percent or time')
+    if r['team'] not in (-1,0,1): errors.append(f'{where}: team {r["team"]} is not -1 (both), 0 or 1')
+    if r['status'] not in ('draft','approved'): errors.append(f'{where}: status {r["status"]} is not draft or approved')
+    if not 0<=r['slot']<=3: errors.append(f'{where}: slot {r["slot"]} is not 0 to 3')
+    if len(r['label'])>16: errors.append(f'{where}: label {r["label"]!r} is over 16 characters')
+    ledger_slots.setdefault(r['mode'],[]).append(r['slot'])
+for mode_id,slots in ledger_slots.items():
+    if not 2<=len(slots)<=4 or sorted(slots)!=list(range(len(slots))): errors.append(f'modeLedger: {mode_id} has slots {sorted(slots)}, it needs 2 to 4 rows in slots 0, 1, 2...')
+for mode_id in ('domination','siege','convoy','survival'):
+    if mode_id in copy_modes and mode_id not in ledger_slots: errors.append(f'modeLedger: the {mode_id} mode needs its ledger rows')
+    if mode_id in copy_modes and not any(r['mode']==mode_id for r in data.get('modeLines',[])): errors.append(f'modeLines: the {mode_id} mode needs its feed lines')
+for m in modes:
+    for column in ('howTo','howToDefend'):
+        for key in re.findall(r'\{key:([a-z_]+)\}',m.get(column,'')):
+            if key not in HOWTO_KEYS: errors.append(f'modes/{m["id"]}: {column} names {{key:{key}}}, not one of '+', '.join(sorted(HOWTO_KEYS)))
 # Convoy (spec 2026-10-31-convoy-escort-design.md 5.1): the mode's numbers are a modeRules row and its road and bases modeSites
 # rows, so ConvoyMode holds no map data. A road's nodes have consecutive stages from 0, at least two named checkpoints before
 # the destination (the last node, always named); a base row (stage = team) stands off the road and more than 40 blocks from
@@ -117,7 +160,7 @@ for s in data.get('modeSites',[]):
     where=f'modeSites/{s["id"]}'
     if s['mode'] not in mode_ids: errors.append(f'{where}: mode {s["mode"]} is not a modes id')
     if s['map'] not in range(len(data['maps'])): errors.append(f'{where}: map {s["map"]} is not a map index')
-    if s['kind'] not in ('road','base','stage','gate','ward'): errors.append(f'{where}: kind {s["kind"]} is not road, base, stage, gate or ward')
+    if s['kind'] not in ('road','base','stage','gate','ward','shrine','rise'): errors.append(f'{where}: kind {s["kind"]} is not road, base, stage, gate, ward, shrine or rise')
     if s['piece']!='-' and s['piece'] not in piece_ids: errors.append(f'{where}: piece {s["piece"]} is not a pieces id')
     if s['kind'] in ('gate','ward') and s['piece']=='-': errors.append(f'{where}: a {s["kind"]} row needs its piece')
     if s['rotation'] not in (0,90,180,270): errors.append(f'{where}: rotation {s["rotation"]} is not 0, 90, 180 or 270')
@@ -143,6 +186,39 @@ for m in {s['map'] for s in data.get('modeSites',[]) if s['mode']=='siege'}:
     for s in data['modeSites']:
         if s['mode']=='siege' and s['map']==m and s['kind']=='stage' and (s['radius']<=0 or s['seconds']<=0): errors.append(f'modeSites/{s["id"]}: a stage ring needs a radius and seconds above 0')
         if s['mode']=='siege' and s['map']==m and s['kind']=='gate' and s['hp']<=0: errors.append(f'modeSites/{s["id"]}: the gate needs hp above 0')
+# Survival (Phase 4 spec 6): the modeRules survival row, a waves set of consecutive waves, waveGroups that rise at a rise site
+# (modeSites id <...>_rise_<site>) on every map the mode hosts, one shrine ring and one court (base, team 0) per map, and the
+# botCommand tiers' waveScale and waveTraitTier.
+if 'survival' in mode_ids:
+    sr=rule_rows.get('survival')
+    if sr is None: errors.append('modeRules: the survival mode needs its row')
+    else:
+        if sr['survivalPerBanner']<0 or sr['riseWarning']<0: errors.append('modeRules/survival: survivalPerBanner and riseWarning cannot be negative')
+        if sr['maxDeadAlive']<=0: errors.append('modeRules/survival: maxDeadAlive must be above 0')
+        wave_set=[w for w in data.get('waves',[]) if w['set']==sr['waveSet']]
+        if [w['wave'] for w in sorted(wave_set,key=lambda w:w['wave'])]!=list(range(1,len(wave_set)+1)) or not wave_set: errors.append(f'waves: set {sr["waveSet"]} must hold waves 1..n with no gap')
+        for w in wave_set:
+            if w['seconds']<=0 or w['gold']<0: errors.append(f'waves/{w["id"]}: seconds must be above 0 and gold not negative')
+            if not any(g['wave']==w['id'] for g in data.get('waveGroups',[])): errors.append(f'waves/{w["id"]}: no waveGroups row rises in this wave')
+    surv_maps=[int(p) for p in next(m for m in modes if m['id']=='survival')['maps'].split(',') if p.strip()]
+    troop_ids={t['id'] for t in data['troops']}
+    wave_ids={w['id'] for w in data.get('waves',[])}
+    for m in surv_maps:
+        rows=[s for s in data['modeSites'] if s['mode']=='survival' and s['map']==m]
+        shrines=[s for s in rows if s['kind']=='shrine'];courts=[s for s in rows if s['kind']=='base' and s['stage']==0]
+        if len(shrines)!=1 or shrines[0]['radius']<=0 or shrines[0]['seconds']<=0: errors.append(f'modeSites survival map {m}: one shrine row with a radius and seconds above 0')
+        if len(courts)!=1: errors.append(f'modeSites survival map {m}: one base row for team 0 (the court)')
+        rises={s['id'].rsplit('_rise_',1)[1] for s in rows if s['kind']=='rise' and '_rise_' in s['id']}
+        for s in rows:
+            if s['kind']=='rise' and ('_rise_' not in s['id'] or s['radius']<=0): errors.append(f'modeSites/{s["id"]}: a rise row is named <...>_rise_<site> and needs a radius above 0')
+        for g in data.get('waveGroups',[]):
+            if g['site'] not in rises: errors.append(f'waveGroups/{g["id"]}: site {g["site"]} is no rise row on map {m}')
+    for g in data.get('waveGroups',[]):
+        if g['wave'] not in wave_ids: errors.append(f'waveGroups/{g["id"]}: wave {g["wave"]} is not a waves id')
+        if g['troop'] not in troop_ids: errors.append(f'waveGroups/{g["id"]}: troop {g["troop"]} is not a troops id')
+        if g['count']<=0: errors.append(f'waveGroups/{g["id"]}: count must be above 0')
+    for r in data['botCommand']:
+        if r['waveScale']<=0 or r['waveTraitTier'] not in range(0,4): errors.append(f'botCommand/{r["id"]}: waveScale above 0 and waveTraitTier 0..3')
 groups={g['id'] for g in data.get('groups',[])}
 orders={o['id'] for o in data['orders']}
 for t in data['troops']:
@@ -380,6 +456,7 @@ for fam,famTroops in familyTroops.items():
 if 'morale' in data: errors.append('morale: the sheet went with routing (Task 8b); its surviving numbers live in combatDiscipline')
 if len(data['recruitment'])!=1: errors.append('recruitment: exactly one row')
 if any(data['campaign'][0].get(k,-1)<0 for k in ('completionShards','victoryShards','completionRenown','victoryRenown')): errors.append('campaign: completionShards, victoryShards, completionRenown and victoryRenown must be 0 or more')
+if not isinstance(data['campaign'][0].get('disconnectGraceSeconds'),int) or data['campaign'][0]['disconnectGraceSeconds']<0: errors.append('campaign: disconnectGraceSeconds must be a whole number of seconds, 0 or more (MatchRules.takeoverAt)')
 cap=data['recruitment'][0]['capPct']
 for r in rarities.values():
     if not 0<=r['starPct2']<=r['starPct3']<=cap+1e-9: errors.append(f'rarities/{r["id"]}: star bonuses must rise and stay within recruitment.capPct')
@@ -488,10 +565,10 @@ for b in data['botCommand']:
     if isinstance(b['gearMaxTier'],bool) or not isinstance(b['gearMaxTier'],int) or not 1<=b['gearMaxTier']<=PRICED_GEAR_TIERS: errors.append(f'{name}/gearMaxTier: {b["gearMaxTier"]!r} must be a whole tier from 1 to {PRICED_GEAR_TIERS} (the tiers rarities.gearPrice2 and gearPrice3 price)')
 for b in data['botBanners']:
     name=f'botBanners/{b["id"]}';parts=b['id'].split('_')
-    mixed=parts[0]=='mix' and len(parts)==4
-    allowed={parts[1],parts[2]} if mixed else {b['house']}
+    mixed=parts[0]=='mix' and len(parts)>=4
+    allowed=set(parts[1:-1]) if mixed else {b['house']}
     if b['house'] not in houses or b['difficulty'] not in difficulties: errors.append(f'{name}: house or difficulty does not resolve')
-    if b['id']!=(f'mix_{b["house"]}_{parts[2]}_{b["difficulty"]}' if mixed else f'{b["house"]}_{b["difficulty"]}') or not allowed<=set(houses): errors.append(f'{name}: id must be <house>_<difficulty>, or mix_<house>_<second house>_<difficulty> with house the first House')
+    if b['id']!=(f'mix_{b["house"]}_{"_".join(parts[2:-1])}_{b["difficulty"]}' if mixed else f'{b["house"]}_{b["difficulty"]}') or len(allowed)!=len(parts)-2 and mixed or not allowed<=set(houses): errors.append(f'{name}: id must be <house>_<difficulty>, or mix_<house>_<second house>[_<more Houses>]_<difficulty> with house the first House and each House once')
     slots=b['slots'].split(',')
     if len(slots)!=squad: errors.append(f'{name}: {len(slots)} entries, not {squad}')
     pending,weights,units,last=0,0,{},None
@@ -513,6 +590,7 @@ for d in sorted(difficulties):
 # bonusObjectives row of its own. A cell the plan leaves open is listed in the row's placeholder column ('none' when the row is settled).
 MARCH_MODES={'domination','siege','survival','convoy'}
 BONUS_KINDS={'hold_all','lose_at_most','stage_by','never_rolled','win_within','kill_unit'}
+SIEGE_STAGES=('yard','gate','keep')
 bonus_rows={o['id']:o for o in data.get('bonusObjectives',[])}
 march=data['campaignBattles']
 if sorted(r['order'] for r in march)!=list(range(1,len(march)+1)): errors.append('campaignBattles: orders must run 1, 2, 3 and on, each once (MarchMath reads the order lock from them)')
@@ -528,6 +606,14 @@ for r in march:
     elif used_bonus.count(r['bonus'])!=1: errors.append(f'{where}: bonus {r["bonus"]} is named by {used_bonus.count(r["bonus"])} battles; each battle has its own')
     if r['house'] not in houses and not (r['house']=='all' and 'house' in r['placeholder'] and bonus_rows.get(r['bonus'],{}).get('kind')=='tbd'): errors.append(f'{where}: house {r["house"]} is not a houses id (all is allowed only as a placeholder whose bonus is still tbd, since the shards need one House)')
     if not r['placeholder'].strip(): errors.append(f'{where}: placeholder is blank; it lists the open cells, or reads none')
+    # allies (Kort 2026-11-02, Q76): none, or the botBanners rows the commander's bot allies field, one per allied seat (size - 1); those rows are reserved and never join a tier's pool (Campaign.fieldableBotBanners)
+    if r['allies']!='none':
+        ally=r['allies'].split(',');banner_ids={b['id'] for b in data['botBanners']}
+        if len(ally)!=r['size']-1 or len(set(ally))!=len(ally): errors.append(f'{where}: allies names {len(ally)} rows; it needs {r["size"]-1} distinct rows, one per allied bot seat (size - 1)')
+        for a in ally:
+            if a not in banner_ids: errors.append(f'{where}: allies {a} is not a botBanners id')
+    stage_bonus=bonus_rows.get(r['bonus'],{})
+    if stage_bonus.get('kind')=='stage_by' and (r['mode']!='siege' or stage_bonus['target'] not in SIEGE_STAGES): errors.append(f'{where}: a stage_by bonus needs a siege battle and a target of {", ".join(SIEGE_STAGES)} (SiegeMode feeds those stages)')
 for o in bonus_rows.values():
     where=f'bonusObjectives/{o["id"]}'
     if o['id'] not in used_bonus: errors.append(f'{where}: no campaignBattles row names it')
@@ -563,7 +649,7 @@ for r in data.get('campPieces',[]):
 for r in data.get('campStations',[]):
     where=f'campStations/{r["id"]}'
     if r['npc'] not in ('-','armorer','cleric','librarian','cartographer','weaponsmith'): errors.append(f'{where}: npc {r["npc"]} is not - or a villager profession of the camp')
-    if r['page'] not in ('home','contracts','chapter','match','recruit','friends','army','train'): errors.append(f'{where}: page {r["page"]} is not a camp page')
+    if r['page'] not in ('home','contracts','chapter','match','recruit','friends','army','train','forge'): errors.append(f'{where}: page {r["page"]} is not a camp page')
 # Lesson boards (Phase 3): ids unique (the generic check above), and every {key:<id>} marker of a text names a key the HUD lessons and the camp labels know.
 LESSON_KEYS={'menu','attack','follow','formation','map','rotate_left','rotate_right','confirm','cancel','use'}
 for r in data.get('campLessons',[]):
@@ -664,6 +750,77 @@ for h in house_land:
     if h['replaces']!='-': errors.append(f'landmarks/{h["id"]}: replaces is {h["replaces"]!r}, a house replaces nothing (-)')
     if h['encloses']!='-': errors.append(f'landmarks/{h["id"]}: encloses is {h["encloses"]!r}, a house encloses nothing (-)')
     if used.count(h['id'])!=1: errors.append(f'landmarks/{h["id"]}: {used.count(h["id"])} supplyHouses rows name this house, there must be one')
+# Commander gear (gear foundation plan Task 1): the catalogue is data, so every name, number and link between the gear tables is checked here.
+GEAR_RARITIES=['common','uncommon','rare','epic','legendary']
+GEAR_ARMOUR=['helm','chest','legs','boots']
+GEAR_STATS=['health','damage','armour','speed','ranged','healing','command']
+GEAR_ID=re.compile(r'[a-z0-9_]{1,24}')
+rarity_rows=data.get('gearRarities',[])
+if [r['id'] for r in rarity_rows]!=GEAR_RARITIES: errors.append(f'gearRarities: the ids must be exactly {", ".join(GEAR_RARITIES)}, in that order')
+for i,r in enumerate(rarity_rows):
+    rid=f'gearRarities/{r["id"]}'
+    if not (0<r['statMin']<=r['statMax']): errors.append(f'{rid}/statMin: needs 0 < statMin <= statMax, got {r["statMin"]} and {r["statMax"]}')
+    if not (0<r['breakdownPct']<=1): errors.append(f'{rid}/breakdownPct: {r["breakdownPct"]} is outside (0, 1]')
+    if r['power']<1: errors.append(f'{rid}/power: {r["power"]} is below 1')
+    if r['rollWeight']<=0: errors.append(f'{rid}/rollWeight: {r["rollWeight"]} must be above 0')
+    if not re.fullmatch(r'#[0-9a-f]{6}',str(r['border'])): errors.append(f'{rid}/border: {r["border"]!r} is not #rrggbb in lower case')
+    if i:
+        before=rarity_rows[i-1]
+        for col in ('statMin','statMax','breakdownPct','power'):
+            if r[col]<=before[col]: errors.append(f'{rid}/{col}: {r[col]} does not rise above {before["id"]} ({before[col]})')
+set_rows=data.get('gearSets',[])
+set_ids={s['id'] for s in set_rows}
+item_rows=data.get('gearItems',[])
+items_by_id={i['id']:i for i in item_rows}
+for it in item_rows:
+    iid=f'gearItems/{it["id"]}'
+    if not GEAR_ID.fullmatch(str(it['id'])): errors.append(f'{iid}/id: {it["id"]!r} is not 1 to 24 characters of [a-z0-9_]')
+    if it['slot'] not in GEAR_ARMOUR+['main','off']: errors.append(f'{iid}/slot: {it["slot"]!r} is not one of {", ".join(GEAR_ARMOUR+["main","off"])}')
+    for col in GEAR_STATS:
+        if it[col]<0: errors.append(f'{iid}/{col}: {it[col]} is negative')
+    if it['slot'] in GEAR_ARMOUR:
+        if it['set'] not in set_ids: errors.append(f'{iid}/set: {it["set"]!r} is not a gearSets id')
+        if it['hands']!=1: errors.append(f'{iid}/hands: an armour piece has hands 1, got {it["hands"]}')
+    else:
+        if it['set']!='-': errors.append(f'{iid}/set: a weapon belongs to no set, so set must be -')
+        if it['hands'] not in (1,2): errors.append(f'{iid}/hands: {it["hands"]} is not 1 or 2')
+        elif it['hands']==2 and it['slot']!='main': errors.append(f'{iid}/hands: only a main-hand item can have hands 2')
+for s in set_rows:
+    for slot in GEAR_ARMOUR:
+        n=sum(1 for it in item_rows if it['set']==s['id'] and it['slot']==slot)
+        if n!=1: errors.append(f'gearSets/{s["id"]}: set {s["id"]} has {n} {slot} pieces in gearItems, it needs exactly one')
+    sid=f'gearSets/{s["id"]}'
+    main=items_by_id.get(s['starterMain'])
+    if main is None or main['slot']!='main': errors.append(f'{sid}/starterMain: {s["starterMain"]!r} is not a main-hand gearItems id')
+    if s['starterOff']!='-':
+        off=items_by_id.get(s['starterOff'])
+        if off is None or off['slot']!='off': errors.append(f'{sid}/starterOff: {s["starterOff"]!r} is not - or an off-hand gearItems id')
+    if main is not None and main['hands']==2 and s['starterOff']!='-': errors.append(f'{sid}/starterOff: the starter main {s["starterMain"]} is two-handed, so starterOff must be -')
+relic_rows=data.get('relics',[])
+for r in relic_rows:
+    rid=f'relics/{r["id"]}'
+    if not GEAR_ID.fullmatch(str(r['id'])): errors.append(f'{rid}/id: {r["id"]!r} is not 1 to 24 characters of [a-z0-9_]')
+    if r['cooldownTicks']<=0: errors.append(f'{rid}/cooldownTicks: {r["cooldownTicks"]} must be above 0')
+    if r['role'] not in set_ids: errors.append(f'{rid}/role: {r["role"]!r} is not a gearSets id')
+if 'classes' in data:
+    for c in data['classes']:
+        n=sum(1 for s in set_rows if c['id'] in str(s['classes']).split(','))
+        if n!=1: errors.append(f'gearSets: class {c["id"]} appears in {n} classes lists, it needs exactly one')
+        n=sum(1 for r in relic_rows if r['fromClass']==c['id'])
+        if n!=1: errors.append(f'relics: class {c["id"]} is the fromClass of {n} relics, it needs exactly one')
+for f in data.get('forge',[]):
+    fid=f'forge/{f["id"]}'
+    if f['maxSlots']<f['startSlots'] or f['rowSlots']<1 or (f['maxSlots']-f['startSlots'])%f['rowSlots']!=0: errors.append(f'{fid}/maxSlots: {f["maxSlots"]} is not startSlots {f["startSlots"]} plus a whole number of rows of {f["rowSlots"]}')
+    if f['pity']<1: errors.append(f'{fid}/pity: {f["pity"]} is below 1')
+    if f['relicSlots']!=3: errors.append(f'{fid}/relicSlots: {f["relicSlots"]} must be 3')
+    if not (0<=f['starterQuality']<=100): errors.append(f'{fid}/starterQuality: {f["starterQuality"]} is outside 0 to 100')
+    if not (0<f['brokenStatPct']<=1): errors.append(f'{fid}/brokenStatPct: {f["brokenStatPct"]} is outside (0, 1]')
+# Blacksmith lines (gear screen): the Forge tab shows one, so the sheet needs at least one, each short enough for its line.
+if not data.get('blacksmithLines'): errors.append('blacksmithLines: the Forge tab needs at least one blacksmith line')
+for r in data.get('blacksmithLines',[]):
+    text=str(r.get('text',''))
+    if not text.strip(): errors.append(f'blacksmithLines/{r["id"]}/text: the line is empty')
+    elif len(text)>90: errors.append(f'blacksmithLines/{r["id"]}/text: {len(text)} characters, at most 90 fit the Forge tab')
 if errors:
     print('\n'.join(errors)); sys.exit(1)
 def typ(v): return 'boolean' if isinstance(v,bool) else 'int' if isinstance(v,int) else 'double' if isinstance(v,float) else 'String'

@@ -882,5 +882,28 @@
     "manifest": null,
     "dependencies": [],
     "status": "candidate - requires integration testing and source/notice packaging"
+  },
+  {
+    "slug": "excalibur",
+    "title": "Excalibur",
+    "version": "V1.20",
+    "versionId": "yVpdNmnj",
+    "path": "dependencies/resourcepacks/Excalibur_V1.20.zip",
+    "fileName": "Excalibur_V1.20.zip",
+    "size": 17107369,
+    "sha256": "ccf01766c56ad287071c795452ebdb6a33bf35a74f098d5191475cd479292d49",
+    "sha512": "a2080ab27a954a95b9c4b7450bdfa3ecd18c5ceecc88d9dcc981aae1a98394f8e7a617cea6a3254c6a363c192a9dd2ac7602d236655f2afde57b1e4e13dd244e",
+    "download": "https://cdn.modrinth.com/data/hJAzl1Bs/versions/yVpdNmnj/Excalibur_V1.20.zip",
+    "project": "https://modrinth.com/resourcepack/excal",
+    "source": "https://modrinth.com/resourcepack/excal",
+    "licenseMetadata": {
+      "id": "CC-BY-NC-ND-3.0",
+      "name": "Creative Commons Attribution-NonCommercial-NoDerivs 3.0 Unported",
+      "url": "http://creativecommons.org/licenses/by-nc-nd/3.0/"
+    },
+    "notices": {},
+    "manifest": null,
+    "dependencies": [],
+    "status": "approved by Kort 2026-11-01; Maffhew permission 2026-10-28 (paid features not covered); unmodified"
   }
 ]

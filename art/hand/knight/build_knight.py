@@ -580,9 +580,29 @@ def cloth_painter(spec, side):
     kind, inner = spec
     return flap(T, M, 1 if kind == "flap12" else 3, inner)
 
+# ---- the veteran trim (Mastery II): gilt studs on the belt and gilt bands on the limbs ----
+def vet_band(rows_at, every=1):
+    """Gilt on the given rows of every side face; every=2 studs it on alternate texels."""
+    def paint(face, w, h):
+        g = blank(w, h)
+        if face in ("top", "bottom"): return g
+        for y in rows_at:
+            if y < h:
+                for x in range(w):
+                    if x % every == 0: g[y][x] = GOLD[4] if x % 2 else GOLD[3]
+        return g
+    return paint
+
+def veteran(bone, box):
+    n = bone.name
+    if n == "belt": return vet_band((0, 1), every=2)                      # gilt studs along the belt
+    if n.endswith("_arm"): return vet_band((4,))                          # a band above the elbow
+    if n.endswith("_leg"): return vet_band((5,))                          # and one over the knee
+    return None
+
 KNIGHT = Troop("knight", SKIN, CLOTH, bones, cloth_painter,
                {"weapon": "arming_sword", "hand": "right", "idleArms": "hang", "portrait": "standard", "faces": {"count": 4, "card": 0}},
-               hide=lambda bn: bn.name.startswith("shield"))
+               hide=lambda bn: bn.name.startswith("shield"), veteran=veteran)
 
 def build(): return KNIGHT.build()
 def outputs(): return KNIGHT.outputs()

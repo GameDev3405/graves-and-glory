@@ -64,6 +64,7 @@ public final class CommandMode {
     }
     /** A refused confirmation as a feed notice; clicking again while the same notice still shows adds no second line. */
     static void refuse(String why){
+        UiSounds.deny();
         long now=net.minecraft.util.Util.getMeasuringTimeMs();var lines=EventFeed.lines(now);
         if(lines.isEmpty()||!lines.get(lines.size()-1).text().equals(why))EventFeed.push("notice",GravesAndGloryClient.team,why,now);
     }

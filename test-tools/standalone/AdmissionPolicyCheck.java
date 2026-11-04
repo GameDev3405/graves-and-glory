@@ -36,6 +36,30 @@ public final class AdmissionPolicyCheck {
         check(!AdmissionPolicy.decide(true,true,1,visitor,List.of(own,free),Map.of(other,own.owner())).seated(),"Practice visitor cannot steal disconnected commander's seat");
         check(AdmissionPolicy.decide(true,true,1,visitor,List.of(own,free),Map.of(visitor,own.owner())).replacement().equals(own.owner()),"Practice commander can reconnect");
         check(!AdmissionPolicy.decide(true,true,1,visitor,List.of(free),Map.of(visitor,UUID.randomUUID())).seated(),"Stale reservation cannot replace practice opponent");
+        // R2-2: a rejoiner past the 2 min hold has no reservation left; the roster team decides the seat, not the first bot in the list.
+        for(int size=2;size<=4;size++)for(int roster=0;roster<2;roster++) {
+            var seats=new ArrayList<AdmissionPolicy.Seat>();
+            seats.add(seat(0,false,true)); // the other human
+            for(int i=1;i<size;i++)seats.add(seat(0,true,true));
+            for(int i=0;i<size;i++)seats.add(seat(1,true,true));
+            var d=AdmissionPolicy.decide(true,false,size,visitor,seats,Map.of(),roster);
+            var taken=seats.stream().filter(s->s.owner().equals(d.replacement())).findFirst().orElse(null);
+            check(d.seated()&&taken!=null&&taken.bot()&&taken.team()==roster&&d.team()==roster,"Released rejoiner takes a bot seat on his roster team "+roster+" (size "+size+")");
+            check(AdmissionPolicy.decide(true,false,size,visitor,seats,Map.of()).replacement()!=null,"No roster team keeps the old pick");
+        }
+        {
+            // Roster team has an empty seat and no bot: a new seat there. Roster team full of humans: the other side, as before.
+            var seats=new ArrayList<>(List.of(seat(0,false,true),seat(1,true,true),seat(1,true,true)));
+            var d=AdmissionPolicy.decide(true,false,2,visitor,seats,Map.of(),0);
+            check(d.seated()&&d.team()==0&&d.replacement()==null,"Empty seat on the roster team is used before a bot of the other team");
+            seats=new ArrayList<>(List.of(seat(0,false,true),seat(0,false,true),seat(1,true,true),seat(1,true,true)));
+            d=AdmissionPolicy.decide(true,false,2,visitor,seats,Map.of(),0);
+            check(d.seated()&&d.team()==1,"A roster team of humans only sends him to the other side");
+            // A bot seat held for someone else is the last choice on the roster team, after a free seat.
+            var held=seat(0,true,true);UUID holder=UUID.randomUUID();
+            d=AdmissionPolicy.decide(true,false,2,visitor,List.of(seat(0,false,true),held,seat(1,true,true),seat(1,true,true)),Map.of(holder,held.owner()),0);
+            check(d.seated()&&held.owner().equals(d.replacement()),"Roster team's held seat is used when nothing else is on it");
+        }
         // Repeated arrivals with bots or empty seats must never exceed either team capacity.
         for(int size=1;size<=4;size++)for(boolean fill:new boolean[]{false,true}) {
             var seats=new ArrayList<AdmissionPolicy.Seat>();

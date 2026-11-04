@@ -237,7 +237,8 @@ final class Tactics {
             mob.getLookControl().lookAt(enemy,40,40);
             boolean visible=mob.canSee(enemy);
             if(nearest<=reach*reach&&visible){
-                if(ranged&&close!=null&&closest<flee*flee&&!hold)backOff(battle,u,close,time);
+                if(ranged&&close!=null&&closest<flee*flee&&!hold&&!a.perch)backOff(battle,u,close,time);
+                else if(a.perch&&ranged)toSlot(battle,u,a,time,order.moveMultiplier()); // it shoots on its way up and climbs on
                 else mob.getNavigation().stop();
                 if(time>=u.nextAttack&&time>=u.stunnedUntil&&!pending(battle,u)&&!Abilities.tooClose(u,nearest)){
                     int cooldown=u.spec.cooldown();u.nextAttack=u.nextAttack<time-10?time+cooldown:u.nextAttack+cooldown;mob.swingHand(Hand.MAIN_HAND);
@@ -245,6 +246,7 @@ final class Tactics {
                     if(late>0){u.looseAt=time+late;u.looseTarget=enemy;} // Kort Q70: a bow troop's shot leaves late ticks on (looseLate)
                     else shoot(battle,u,enemy,time,ranged);
                 }else if(drawsAhead(u)&&time+10>=u.nextAttack&&time+10>=u.stunnedUntil&&!pending(battle,u)&&!Abilities.tooClose(u,nearest))Projectiles.drawAhead(battle,u,enemy,10); // the beat before a bow's shot: its draw starts now, the arrow still leaves on the next beat (cosmetic, R110 Plan B)
+            }else if(a.perch&&ranged){toSlot(battle,u,a,time,order.moveMultiplier()); // a ranged troop on a post shoots what it can reach from there and never walks off after the rest
             }else if(!holdSiege&&(!hold||GravesAndGlory.Battle.horizontalDistance(enemy.getPos(),a.target)<engage*engage)){
                 Vec3d goal=enemy.getPos();
                 if(ranged&&!visible){Vec3d toward=enemy.getPos().subtract(mob.getPos()).multiply(1,0,1).normalize();double sign=u.slot%2==0?1:-1;goal=mob.getPos().add(-toward.z*sign*Spec.COMBATDISCIPLINE[0].rangedObstructionStep(),0,toward.x*sign*Spec.COMBATDISCIPLINE[0].rangedObstructionStep());}
@@ -253,13 +255,20 @@ final class Tactics {
                 walk(battle,u,goal,time,order.moveMultiplier());
             }else mob.getNavigation().stop();
         }else if(close!=null&&ranged){ // everything in its leash stands inside its minimum range: nothing to shoot; it backs off (unless it holds) and does not walk off to its formation
-            if(!hold&&closest<flee*flee)backOff(battle,u,close,time);else mob.getNavigation().stop();
+            if(a.perch)toSlot(battle,u,a,time,order.moveMultiplier());else if(!hold&&closest<flee*flee)backOff(battle,u,close,time);else mob.getNavigation().stop();
         }else{
-            Vec3d goal=battle.formation(u);u.place=goal;
-            if(GravesAndGlory.Battle.horizontalDistance(mob.getPos(),goal)>N.arrivalTolerance()*N.arrivalTolerance()){if(!stretch(battle,u,a,time))walk(battle,u,goal,time,order.moveMultiplier());} // a wall troop's last stretch faces its Hold yaw (stretch)
-            else{mob.getNavigation().stop();mob.setYaw(a.yaw);mob.setHeadYaw(a.yaw);mob.setBodyYaw(a.yaw);if(GravesAndGlory.Battle.walls(u,a.order))settle(u,goal,time);}
+            toSlot(battle,u,a,time,order.moveMultiplier());
         }
     }
+    /** To its formation slot, and still there facing the order's way once it stands on it: within arrivalTolerance across and, on a post (Assignment.perch), at its height, so that a troop under a tower top is not taken for one on it. */
+    static void toSlot(GravesAndGlory.Battle battle,GravesAndGlory.Unit u,GravesAndGlory.Assignment a,long time,double speed){
+        MobEntity mob=u.mob;Vec3d goal=battle.formation(u);u.place=goal;
+        boolean there=GravesAndGlory.Battle.horizontalDistance(mob.getPos(),goal)<=N.arrivalTolerance()*N.arrivalTolerance()&&(!a.perch||Math.abs(mob.getY()-goal.y)<1.1);
+        if(!there){if(!stretch(battle,u,a,time))walk(battle,u,goal,time,speed,a.perch);} // a wall troop's last stretch faces its Hold yaw (stretch)
+        else{mob.getNavigation().stop();mob.setYaw(a.yaw);mob.setHeadYaw(a.yaw);mob.setBodyYaw(a.yaw);if(GravesAndGlory.Battle.walls(u,a.order))settle(u,goal,time);}
+    }
+    /** A raised goal (Assignment.perch) is climbed to by a whole vanilla path to its own height once it is this near across (blocks); walk's ground waypoints, which only know the terrain (Arena.ground), lead there until then. */
+    static final double CLIMB_RANGE=24;
     /**
      * A wall troop inside the arrival tolerance of its slot is set going the rest of the way: the tolerance (0.35) is half its 0.7 cell, so one
      * left there would lean on its neighbour, and the walk stops short or overshoots by about that much. On the ground a velocity v carries a mob
@@ -375,7 +384,7 @@ final class Tactics {
     static final boolean TRACE_HOPS=System.getenv("GRAVES_ROUTE_TRACE")!=null;
     /** Counters of Tactics.walk (the route harness and the bot sim print them): units sent round by a detour, units that sidestepped, detour searches started, searches that found no path to look at, and the time the searches took (total and longest, in nanoseconds).
      *  GRAVES_NO_DETOUR=1 leaves the detour out (the control of the chapel nook goals). */
-    static int detours,sidesteps,detourSearches,detourMisses;static long detourNanos,detourMaxNanos,lastSearchNanos;static final boolean DETOUR=System.getenv("GRAVES_NO_DETOUR")==null;
+    static int detours,sidesteps,detourSearches,detourMisses,climbs,climbMisses;static long detourNanos,detourMaxNanos,lastSearchNanos;static final boolean DETOUR=System.getenv("GRAVES_NO_DETOUR")==null;
     /** The searches started in the tick searchTick, over all units: at most Wedge.MAX_SEARCHES a tick. */
     static long searchTick=Long.MIN_VALUE;static int searchesThisTick;
     static int searchesAt(long time){return time==searchTick?searchesThisTick:0;}
@@ -427,8 +436,16 @@ final class Tactics {
         if(time-p.since<100)return false;
         p.since=time;return true;
     }
-    static void walk(GravesAndGlory.Battle battle,GravesAndGlory.Unit u,Vec3d destination,long time,double speed){
+    static void walk(GravesAndGlory.Battle battle,GravesAndGlory.Unit u,Vec3d destination,long time,double speed){walk(battle,u,destination,time,speed,false);}
+    static void walk(GravesAndGlory.Battle battle,GravesAndGlory.Unit u,Vec3d destination,long time,double speed,boolean climb){
         MobEntity mob=u.mob;Vec3d goal=route(u,destination);Vec3d routed=goal;
+        // A raised goal (a tower top): every ground waypoint below would put it at the tower's foot (Arena.ground is the terrain under the tower), so near enough it paths to the goal's own height, up the stair.
+        if(climb&&goal==destination&&destination.y>Arena.ground((int)Math.floor(destination.x),(int)Math.floor(destination.z))+2.5&&GravesAndGlory.Battle.horizontalDistance(mob.getPos(),destination)<CLIMB_RANGE*CLIMB_RANGE){
+            if(GravesAndGlory.Battle.horizontalDistance(mob.getPos(),destination)<N.preciseRange()*N.preciseRange()&&Math.abs(mob.getY()-destination.y)<1.1){mob.getNavigation().stop();mob.getMoveControl().moveTo(destination.x,destination.y,destination.z,speed);return;}
+            if(time<u.nextPath&&u.lastGoal!=null&&u.lastGoal.squaredDistanceTo(destination)<1&&!mob.getNavigation().isIdle())return;
+            if(mob.getNavigation().startMovingTo(destination.x,destination.y,destination.z,speed)){u.lastGoal=destination;u.nextPath=time+N.repathTicks();u.stuckTicks=0;climbs++;return;}
+            climbMisses++; // no path up from here: the ground walk below, toward the tower's foot, until a later search finds one
+        }
         // A unit on a detour (see below) walks to its point first, until it is there (Wedge.over), the time is up, or its goal has moved four blocks (a new order, an enemy that walked on).
         boolean onDetour=false;
         if(u.detour!=null){if(Wedge.over(time,u.detourUntil,mob.getX(),mob.getY(),mob.getZ(),u.detour.x,u.detour.y,u.detour.z,routed.x,routed.z,u.detourFor.x,u.detourFor.z))u.detour=null;else{goal=u.detour;onDetour=true;}}
@@ -494,8 +511,10 @@ final class Tactics {
     static int swingsRefused;
     /** The attack a troop's beat takes: a melee blow lands on its swing's impact frame (swing, land); a shot or a spell goes now, with its sound. */
     static void shoot(GravesAndGlory.Battle battle,GravesAndGlory.Unit u,LivingEntity enemy,long time,boolean ranged){
-        if(!swing(battle,u,enemy,time)){BattleEffects.strike(battle,u,enemy);Abilities.attack(battle,u,enemy,time);}
-        if(ranged)battle.world.playSound(null,u.mob.getBlockPos(),u.spec.magic()?SoundEvents.ENTITY_EVOKER_CAST_SPELL:SoundEvents.ENTITY_ARROW_SHOOT,SoundCategory.HOSTILE,.25f,1.1f);
+        if(swing(battle,u,enemy,time))return;
+        BattleEffects.strike(battle,u,enemy);
+        boolean started=Abilities.attack(battle,u,enemy,time);
+        if(ranged&&started)Audio.shot(battle,u); // a shot refused (a shell too close, a healer) makes no sound; a caster's spell or a bowstring (AudioCues.MAGIC_CAST, BOW_SHOOT)
     }
     /**
      * Kort Q70 (2026-11-02): a bow troop's late shot, its loose ticks (Projectiles.looseTicks) after the beat that took its cooldown. It leaves

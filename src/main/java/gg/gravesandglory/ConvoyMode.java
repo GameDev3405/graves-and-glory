@@ -84,6 +84,8 @@ public final class ConvoyMode extends BattleMode {
     int idleTicks, pushers, defenders;
     long movingSince = -1, lastStopped = -100000, lastNear = -100000;
     boolean everMoved, rolledBack, wasRolling, finished;
+    /** Whether the stop cue sounded and the wagon has not set off since (so its next start sounds the roll cue again). */
+    boolean stopSounded;
     WagonEntity wagon;
     long forcedChunk = Long.MIN_VALUE;
 
@@ -125,7 +127,7 @@ public final class ConvoyMode extends BattleMode {
     @Override public String rule() {return row.ruleLine().replace("{n}", stopNames[stopNames.length - 1]);}
     @Override public boolean capturesPoints(GravesAndGlory.Battle b) {return false;}
     /** The objective panel's first line: the round has no points to capture. */
-    @Override public String startLine(GravesAndGlory.Battle b) {return "The wagon sets out for " + stopNames[stopNames.length - 1] + ".";}
+    @Override public String startLine(GravesAndGlory.Battle b) {return FeedLines.modeLine(Modes.CONVOY, "start", "stop", stopNames[stopNames.length - 1]);}
     /** A team with a modeSites base row fields there (Frostmarch's Dusk spawn sits at The Refuge, the road's end). */
     @Override public Vec3d fieldBase(GravesAndGlory.Battle b, int team) {
         var s = base(map, team);
@@ -183,7 +185,8 @@ public final class ConvoyMode extends BattleMode {
     void unforce(GravesAndGlory.Battle b) {
         if (forcedChunk == Long.MIN_VALUE) return;
         var c = new net.minecraft.util.math.ChunkPos(forcedChunk);
-        b.world.setChunkForced(c.x, c.z, false);
+        // A chunk Battle.updateUnitChunks holds for troops stays forced: it re-forces only chunks it did not hold, so releasing it here froze every troop in it (they never tick again and never leave).
+        if (!b.unitChunks.contains(forcedChunk)) b.world.setChunkForced(c.x, c.z, false);
         forcedChunk = Long.MIN_VALUE;
     }
 
@@ -234,9 +237,8 @@ public final class ConvoyMode extends BattleMode {
         for (int i = passedBefore; i < passed; i++) checkpoint(b, i);
         if (through()) {
             finished = true;
-            say(b, "The convoy is through");
-            b.campaign.finish(ESCORT);
-            b.world.playSound(null, BlockPos.ORIGIN, SoundEvents.UI_TOAST_CHALLENGE_COMPLETE, SoundCategory.MASTER, 2, 1);
+            say(b, "through");
+            b.campaign.finish(ESCORT); // the victory and defeat stings play from Campaign.finish
         }
     }
 
@@ -253,14 +255,17 @@ public final class ConvoyMode extends BattleMode {
     void feed(GravesAndGlory.Battle b, String was) {
         if (state.equals(ModeMath.MOVING)) {
             if (!was.equals(ModeMath.MOVING)) movingSince = b.time;
-            if (!everMoved) {everMoved = true; say(b, "The wagon rolls");}
+            if (!everMoved) {everMoved = true; say(b, "wagon_rolls"); Audio.all(b, AudioCues.Cue.CONVOY_ROLL, "wagon");}
+            else if (stopSounded && !was.equals(ModeMath.MOVING)) Audio.all(b, AudioCues.Cue.CONVOY_ROLL, "wagon"); // it sounded stopping, so it sounds setting off again
+            if (!was.equals(ModeMath.MOVING)) stopSounded = false;
         }
         if (state.equals(ModeMath.CONTESTED) && was.equals(ModeMath.MOVING) && movingSince >= 0 && b.time - movingSince >= STOPPED_AFTER && b.time - lastStopped >= STOPPED_EVERY) {
             lastStopped = b.time;
-            say(b, "The wagon is stopped");
+            say(b, "wagon_stopped");
+            if (Audio.all(b, AudioCues.Cue.CONVOY_STOP, "wagon")) stopSounded = true;
         }
         boolean rolling = state.equals(ModeMath.ROLLBACK) && distance > floor() + 1e-6;
-        if (rolling && !wasRolling) say(b, "The wagon rolls back");
+        if (rolling && !wasRolling) {say(b, "wagon_rolls_back"); Audio.all(b, AudioCues.Cue.CONVOY_ROLLBACK, "wagon");}
         if (rolling) {rolledBack = true; if (b.campaign.bonusTracker != null) b.campaign.bonusTracker.rolled();}
         wasRolling = rolling;
     }
@@ -270,12 +275,13 @@ public final class ConvoyMode extends BattleMode {
         if (index >= stops.length - 1) return; // the destination ends the round instead
         b.roundSeconds += CHECKPOINT_SECONDS;
         for (var s : b.squads.values()) if (s.seated && s.team == ESCORT) s.earn(CHECKPOINT_GOLD);
-        say(b, FeedLines.teamShort(Spec.FACTIONS[ESCORT].name()) + " reaches " + stopNames[index]);
-        b.world.playSound(null, BlockPos.ORIGIN, SoundEvents.ENTITY_PLAYER_LEVELUP, SoundCategory.MASTER, 1, 1);
+        say(b, "checkpoint", "team", FeedLines.teamShort(Spec.FACTIONS[ESCORT].name()), "stop", stopNames[index]);
+        Audio.all(b, AudioCues.Cue.CONVOY_CHECKPOINT, "checkpoint");
     }
 
-    static void say(GravesAndGlory.Battle b, String text) {
-        for (ServerPlayerEntity p : b.server.getPlayerManager().getPlayerList()) FeedEvents.send(p, "point", ESCORT, text);
+    /** A feed line (the modeLines convoy row of this event, draft copy) to every player, in the escort's colour. */
+    static void say(GravesAndGlory.Battle b, String event, String... fields) {
+        FeedEvents.mode(b, ESCORT, Modes.CONVOY, event, fields);
     }
 
     /** The clock waits while the wagon is moving or contested by the next stop, and for 3 s after (spec 3.1). */
@@ -303,6 +309,11 @@ public final class ConvoyMode extends BattleMode {
         out[1 - ESCORT] = stops.length - checkpoints() - (through() ? 1 : 0);
         return out;
     }
+    /** The deciding numbers: the road covered in percent, the stops the defence still holds, and the clock (which each checkpoint extends). */
+    @Override public List<ModeLines.Entry> ledgerEntries(GravesAndGlory.Battle b) {
+        int[] l = ledger(b), m = max(b);
+        return List.of(ModeLines.entry("convoy_progress", l[ESCORT], m[ESCORT]), ModeLines.entry("convoy_stops", l[1 - ESCORT], m[1 - ESCORT]), ModeLines.entry("convoy_time", clock(b), b.roundSeconds));
+    }
     @Override public int[] max(GravesAndGlory.Battle b) {int[] m = new int[2]; m[ESCORT] = 100; m[1 - ESCORT] = stops.length; return m;}
     @Override public String[] formats() {String[] f = new String[2]; f[ESCORT] = "percent"; f[1 - ESCORT] = "plain"; return f;}
 
@@ -311,10 +322,17 @@ public final class ConvoyMode extends BattleMode {
     /** How far a screen or blocker may stray from the wagon before it regroups on it, by bot tier (draft values). */
     static double chaseRange(String tier) {return switch (tier) {case "easy" -> 40; case "hard" -> 120; default -> 80;};}
 
+    /** How far up the road a defence blocker holds ahead of the wagon: 30 blocks let the escort's screens hold the blockers off the wagon
+     *  (escort 10 of 10, mode gate 2026-11-02); 10 keeps them in the fight at the wagon. */
+    static final double BLOCK_AHEAD = 10;
+    /** The defence never falls back to The Refuge, the road's far end: retreating there took it off the wagon for about 46% of the round
+     *  (mode gate 2026-11-02). It fights on the road and refills from its buys; the escort keeps the tier's fall-back. */
+    @Override public boolean botRetreats(GravesAndGlory.Battle b, GravesAndGlory.Squad s) {return s.team == ESCORT;}
+
     /**
      * Bot goals (spec 3.6). Each team's seated banners split by ModeMath.convoyRoles, humans counted first as primary.
      * Escort: pushers walk just ahead of the wagon, screens 20 blocks further up the road. Defence: raiders go to the wagon,
-     * blockers hold the road up to 30 blocks ahead, no further than the next stop. A screen or blocker farther than chaseRange from the wagon regroups on it.
+     * blockers hold the road up to BLOCK_AHEAD blocks ahead, no further than the next stop. A screen or blocker farther than chaseRange from the wagon regroups on it.
      */
     @Override public Vec3d botGoal(GravesAndGlory.Battle b, GravesAndGlory.Squad s, Vec3d centre, Spec.BotCommandRow tier) {
         if (finished) return null;
@@ -334,7 +352,7 @@ public final class ConvoyMode extends BattleMode {
             case "pusher" -> road(distance + 3);
             case "raider" -> at;
             case "screen" -> far ? at : road(distance + 20);
-            default -> far ? at : road(Math.min(distance + 30, stops[nextStop()]));
+            default -> far ? at : road(Math.min(distance + BLOCK_AHEAD, stops[nextStop()]));
         };
     }
 

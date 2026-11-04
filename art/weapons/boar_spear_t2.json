@@ -1,0 +1,19 @@
+{
+ "weapon": "boar_spear_t2",
+ "density": 1,
+ "thickness": 2,
+ "grip": {
+  "offset": [
+   0,
+   0,
+   0
+  ],
+  "rotation": [
+   0,
+   0,
+   0
+  ],
+  "note": "held upright like the sun staff"
+ },
+ "note": "The Tusk's boar spear, tier II (upgraded), hand-authored at 1 texel a px: steel rings and two hide binders on a pale ash shaft, a wider bone crossbar with tusk lugs under a broader steel leaf head; held upright."
+}

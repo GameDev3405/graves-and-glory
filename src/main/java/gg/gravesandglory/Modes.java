@@ -23,8 +23,10 @@ public final class Modes {
     public static final String SIEGE="siege";
     /** The supply-wagon escort on Frostmarch (spec 2026-10-31-convoy-escort-design.md). */
     public static final String CONVOY="convoy";
+    /** The waves at the shrine on Hollowwood (Phase 4 spec 6, plan Task 6). */
+    public static final String SURVIVAL="survival";
     private static final Map<String,Function<Spec.ModesRow,BattleMode>> BUILDERS=new LinkedHashMap<>();
-    static{register(DOMINATION,DominationMode::new);register(SIEGE,SiegeMode::new);register(CONVOY,ConvoyMode::new);} // Siege is winnable since its stages landed (yard, gate HP, keep); Convoy since its spec (Kort 2026-10-31)
+    static{register(DOMINATION,DominationMode::new);register(SIEGE,SiegeMode::new);register(CONVOY,ConvoyMode::new);register(SURVIVAL,SurvivalMode::new);} // Siege is winnable since its stages landed (yard, gate HP, keep); Convoy since its spec (Kort 2026-10-31)
     private Modes(){}
     public static void register(String id,Function<Spec.ModesRow,BattleMode> factory){BUILDERS.put(id,factory);}
     public static boolean registered(String id){return BUILDERS.containsKey(id);}
@@ -45,6 +47,7 @@ public final class Modes {
     public static String ruleLine(String id){Spec.ModesRow row=row(id);return ModeMath.ruleLine(row.ruleLine(),row.winTarget());}
     /** Whether a mode may be played on a map: its maps cell lists the map indexes it hosts. */
     public static boolean hosts(String id,int map){
+        if(EngineMaps.on(map)&&!id.equals(DOMINATION))return false; // an engine map slot plays Domination only
         for(String part:row(id).maps().split(","))if(!part.isBlank()&&Integer.parseInt(part.trim())==map)return true;
         return false;
     }

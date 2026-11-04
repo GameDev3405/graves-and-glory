@@ -68,11 +68,7 @@ public final class BattleEffects {
             Vec3d at=u.mob.getPos().add(0,1,0),dir=enemy.getPos().subtract(u.mob.getPos()).normalize();
             b.world.spawnParticles(ParticleTypes.SWEEP_ATTACK,at.x+dir.x,at.y,at.z+dir.z,1,0,0,0,0);
             flash(b,new Vec3d(enemy.getX(),enemy.getBodyY(.6),enemy.getZ()),u.squad.team);
-            if(u.slot%3==0){
-                // Vanilla cues, rotated and randomly pitched so a line of blows does not sound identical.
-                SoundEvent[] cues={SoundEvents.ENTITY_PLAYER_ATTACK_SWEEP,SoundEvents.ENTITY_PLAYER_ATTACK_KNOCKBACK,SoundEvents.ENTITY_PLAYER_ATTACK_CRIT};
-                b.world.playSound(null,u.mob.getBlockPos(),cues[b.world.random.nextInt(cues.length)],SoundCategory.HOSTILE,.3f,.85f+b.world.random.nextFloat()*.3f);
-            }
+            Audio.swing(b,u); // a blade's swish (AudioCues.SWORD_SWING); the landed blow has its own sound in Combat.resolve
         }else if(u.spec.magic()){
             b.world.spawnParticles(u.squad.team==0?ParticleTypes.ENCHANT:ParticleTypes.SOUL,u.mob.getX(),u.mob.getY()+1.3,u.mob.getZ(),8,.4,.4,.4,.03);
         }

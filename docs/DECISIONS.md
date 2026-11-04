@@ -38,6 +38,59 @@ Open carries: Task 13 (wiring the engine) takes the fps-check rewrite, the tabar
 
 2026-10-31 corpse fade frame budget (ruling R55, Kort's choice through AskUserQuestion; branch `work/anim-rework`). The `hl-corpse-load` client gate is now an absolute budget: the fading bodies may add at most 0.75 ms to the client frame at the 100-v-100 death wave (lying bodies: mean 51.4, peak 90 at once). The gate is the median of the per-block ABBA differences (each block's B arm mean frame less its A arm's, over the ABBA x8 protocol), at most 0.75 ms (Kort's budget). A run whose mean frame is over 1.5 times its arm's median frame is a stall, and its block is re-run, at most 2 re-runs (R58). Result at 4b905ec: median 0.478 ms, a pass. The client frame ratio B/A is still logged, for information only; the server tick ratio gate (median B/A 1.10 or less) is unchanged. Why: after Task 13 the fade costs B 3.321 ms against A 2.605 ms (B-A 0.715 ms, ratio 1.280, over the old 1.15). Before the rework the same test measured A 3.574 ms and B 4.083 ms, so B is now cheaper than before the rework; the ratio failed because A got about 27% cheaper. The fade pass's overlap groups stay on.
 
+2026-11-01 answers (Kort, through AskUserQuestion; applied and tested on `integration/candidate-2026-11-01`, then merged into main by Kort's Q12 approval):
+
+- **EULA (Q11):** accepted. Agents may write `eula.txt` (eula=true) in dev server run folders for bot-sim battles only. It is never committed.
+- **Map adoption (Q15):**
+  - `gg-mapforge-runs/1` and a first release bake are approved, and so is the settle rule.
+  - Ironhold spawns move to the signed D1a values, Dawn -314 and Dusk 128, with the barracks moved to match.
+- **Siege (Q13):**
+  - Kort chose a shorter clock as the first knob.
+  - Gate towers get stairs and bots climb them, so defender archers can man the towers.
+  - Sims put the clock at 180 s, giving a 30% attacker win rate (6/20). On 2026-11-01 Kort approved trying 200 s to centre it.
+- **Survival (Q14):**
+  - The draft values are approved.
+  - Allied bot banners count toward wave size.
+  - The next wave rises early after a clear.
+- **UI (Q16, Q18, Q19):**
+  - The mode block and the Battle/Troops/Chapter tabs are approved.
+  - A crowded Troops page pages at 10 rows instead of truncating.
+  - How-to lines are capped at two parts per side.
+  - The focus ring and disabled veil are fine.
+  - The banner key default is N.
+- **Audio (Q17):**
+  - Use synthesised cues first, falling back to permissively licensed and credited free sounds.
+  - Refusals play a deny cue.
+  - The doubled back click is dropped.
+- **QA (Q20):**
+  - On disconnect, the army waits 60 s, then a bot takes command.
+  - `/warp` is ops only.
+  - A stopped or crashed match was void. Superseded 2026-11-02, see below.
+- **QA rulings (Kort, 2026-11-02):**
+  - Stopped or crashed match (I7, I9): players get a partial reward by time played. It is the participation gold (completion gold, or practice gold in Practice) times the share of the round played, rounded down, with no win bonus. No shards, Renown, XP or match record; armies return to camp. A stop pays at once; a crash pays on the next start from a progress file written every 30 s (so up to 30 s of play can be lost).
+  - `/warp` in build mode is ops only, permission level 2 or above (J3). Already true since 2026-11-01.
+  - A disconnected player's slot is held for 2 minutes (H8). After that the reservation is released and the army stays with its bot as an ordinary bot seat that any joiner may take, the owner included. The 60 s bot takeover is unchanged.
+  - The server kit keeps the Iris and Sodium notices and `iris-source.zip`. No change.
+- **Saves (Q21):**
+  - All writes are atomic.
+  - A bad file falls back to `.bak`, then to defaults, with a warning, and the bad file is kept as `.corrupt`.
+- **Package (Q22):**
+  - Keep minimum version ranges, plus a Fabric API floor (>=0.92.2).
+  - Excalibur gets this credit: "Excalibur resource pack by Maffhew, used with permission, unmodified", plus its licence.
+- **Animation (Q23):**
+  - There will be a third round including the art fixes.
+  - On 2026-11-01 Kort said "Show me first", so the round-3 merge waits until he has seen it.
+  - Kort wants a frame-by-frame editor so he can edit animations himself.
+- **Art (Q9):**
+  - Agents push every troop to grade 9, then Kort reviews.
+  - After four passes the grades were 8.5–8.7, and on 2026-11-01 Kort chose to review them now.
+- **Other answers:**
+  - Traits (Q2): B–F are decided after measurement A.
+  - Briefings for battles 2–6 are agent-drafted and Kort edits them.
+  - SLICE-02: agents propose 2–3 lobby and map looks.
+  - SLICE-03: agents propose bot quality targets for Kort's sign-off.
+- **Map engine:** Kort approved the design (`docs/superpowers/specs/2026-11-01-map-engine-design.md`, branch `docs/map-engine-design`) and chose subagent-driven building of slice 1.
+
 2026-11-02 bow loose jitter (ruling Q70, Kort direct; branch `work/anim-rework`). Bow troops' release timing varies a little per troop, so a volley is not lockstep. Each troop that draws ahead (the bow family) gets a fixed offset from its UUID (`MotionMath.seed`): the loose comes 0 to 3 ticks after its beat (`LOOSE_MAX` 3, mean 1.5), and the full-draw hold is stretched by 0 to that many ticks. The server spawns the arrow on the delayed tick and sends the clip start shifted by the same amount, so the arrow still leaves on the visible loose frame; the client derives the hold from the same seed, so no message changed. The cooldown still runs from the beat, so the fire rate, damage, arrow speed and arrow count are unchanged; only each troop's first shot of a fight is up to 3 ticks later. A delayed shot is dropped if the archer dies or is stunned, or the target dies or leaves, in those ticks. Marker times and clip lengths are unchanged.
 
 2026-11-03 slower bow shot (Kort's choice through AskUserQuestion; branch `work/anim-rework`). The bow shot read as too fast, so both changed: the draw is slower and bow troops fire less often. `bow_direct` and `bow_volley` loose at 0.8 s instead of 0.5 s (`impactTicks` 10 to 16) and both clips run 1.8 s; the draw and full-draw markers stretch with them (0.352 and 0.576 s). Bow cooldowns rise by 25%: archer 40 to 50, longbow 45 to 56, bonebow 35 to 44, stalker 35 to 44, wm_hunter 36 to 45. Each shot fits its cooldown with at least 0.4 s of held aim to spare. This lowers bow damage per second by 20%, a deliberate balance change by Kort.

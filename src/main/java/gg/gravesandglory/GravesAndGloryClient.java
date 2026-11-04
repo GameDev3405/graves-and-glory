@@ -46,7 +46,7 @@ public final class GravesAndGloryClient implements ClientModInitializer {
     static int[] owners={-1,-1,-1},progress={0,0,0},challengers={-1,-1,-1},roster=new int[Spec.TROOPS.length],pending=new int[Spec.TROOPS.length];
     static List<Marker> markers=List.of();
     record Marker(float x,float z,boolean fighting,boolean own,String name){}
-    static KeyBinding menu,attack,follow,cycle,mapKey,rotateLeft,rotateRight,confirmOrder,cancelOrder,ability,hints,armoury;
+    static KeyBinding menu,attack,follow,cycle,mapKey,rotateLeft,rotateRight,confirmOrder,cancelOrder,ability,hints,armoury,banner,gearKey;
     static Path runtime;
     static String join="",error="";
     static boolean attempted,opened,joined,shareCamp,launcherContext,connectingInvitation;
@@ -76,12 +76,15 @@ public final class GravesAndGloryClient implements ClientModInitializer {
         ability=key("ability",GLFW.GLFW_KEY_H); // the commander ability (Commander.activate); G is the attack order
         hints=key("hints",GLFW.GLFW_KEY_LEFT_ALT); // held, the battle HUD shows every key hint (BattleHud.altLayer)
         armoury=key("armoury",GLFW.GLFW_KEY_U); // opens the barracks screen on its Armoury tab, anywhere in a battle (ArmouryTab)
+        gearKey=key("gear",GLFW.GLFW_KEY_I); // the Arsenal (the commander's gear, WarTableGear), in camp only
+        banner=key("banner",GLFW.GLFW_KEY_N); // the War Table's shortcut to the Banner page (WarTableRecruit.keyPressed), rebindable in Controls like the rest (4F.5)
         confirmOrder=KeyBindingHelper.registerKeyBinding(new KeyBinding("key.gravesandglory.confirm",InputUtil.Type.KEYSYM,GLFW.GLFW_KEY_ENTER,"category.gravesandglory"));
         cancelOrder=KeyBindingHelper.registerKeyBinding(new KeyBinding("key.gravesandglory.cancel",InputUtil.Type.KEYSYM,GLFW.GLFW_KEY_BACKSPACE,"category.gravesandglory"));
         String local=System.getenv("LOCALAPPDATA");runtime=Path.of(System.getProperty("gravesandglory.runtime",local==null?"gravesandglory-runtime":local+"/gravesandglory"));
         // Optional launcher integration. Ordinary installs need no runtime directory.
         launcherContext=Files.isRegularFile(runtime.resolve("melty.properties"));
         if(launcherContext)try{Files.writeString(runtime.resolve("melty.log"),"");Properties props=new Properties();try(var in=Files.newInputStream(runtime.resolve("melty.properties"))){props.load(in);}join=props.getProperty("join","").trim();}catch(Exception e){System.err.println("[Graves and Glory] Optional launcher invitation could not be read: "+e.getMessage());}
+        ClientPlayNetworking.registerGlobalReceiver(GravesAndGlory.GEAR,(client,handler,buf,responder)->{String text=buf.readString(GearWire.LIMIT);client.execute(()->CampaignClient.gear=GearWire.decode(text));});
         ClientPlayNetworking.registerGlobalReceiver(GravesAndGlory.CAMP,(client,handler,buf,responder)->{String page=buf.readString(32);client.execute(()->CampScreen.open(page));});
         ClientPlayNetworking.registerGlobalReceiver(GravesAndGlory.OPEN_BARRACKS,(client,handler,buf,responder)->client.execute(()->client.setScreen(running?new BarracksScreen():new LobbyScreen())));
         ClientPlayNetworking.registerGlobalReceiver(GravesAndGlory.PARTY,(client,handler,buf,responder)->client.execute(()->client.setScreen(new LobbyScreen(3))));
@@ -126,7 +129,7 @@ public final class GravesAndGloryClient implements ClientModInitializer {
         // thread, and not through client.execute: Fabric can fire this event on the network thread, and MinecraftClient.disconnect
         // wipes the queued tasks (the Task 3 re-review's race). The flag waits for the first client tick without a world, and the
         // next join clears them as well; no HUD frame runs without a world to clear them before the next one.
-        ClientPlayConnectionEvents.DISCONNECT.register((handler,client)->{if(connectingInvitation&&!joined)say("Melty join failed: connection closed before joining");CampaignClient.end(client);CampaignClient.forget();TroopMotion.clear();MotionEvents.Client.clear();RankSync.clear();hudResetPending=true;ready=false;modServer=false;running=false;team=-1;houses=Map.of();opened=false;worldTicks=0;shareCamp=false;connectingInvitation=false;});
+        ClientPlayConnectionEvents.DISCONNECT.register((handler,client)->{if(connectingInvitation&&!joined)say("Melty join failed: connection closed before joining");CampaignClient.end(client);CampaignClient.forget();MusicDirector.reset(client);TroopMotion.clear();MotionEvents.Client.clear();RankSync.clear();hudResetPending=true;ready=false;modServer=false;running=false;team=-1;houses=Map.of();opened=false;worldTicks=0;shareCamp=false;connectingInvitation=false;});
         ClientTickEvents.END_CLIENT_TICK.register(client->{
             if(hudResetPending&&client.world==null)resetHud();
             if(client.getOverlay()==null&&client.currentScreen instanceof TitleScreen){
@@ -134,10 +137,11 @@ public final class GravesAndGloryClient implements ClientModInitializer {
                 client.setScreen(error.isEmpty()?new FrontMenuScreen():new FailureScreen(error));
             }
             if(client.player!=null){
-                worldTicks++;if(ready&&worldTicks%20==0)client.getToastManager().clear();prepareMap(client);CampaignClient.tick(client);Diagnostics.tick(client);
+                worldTicks++;if(ready&&worldTicks%20==0)client.getToastManager().clear();prepareMap(client);CampaignClient.tick(client);MusicDirector.tick(client);Diagnostics.tick(client);
                 while(menu.wasPressed()){CampaignClient.end(client);CommandMode.cancel();client.setScreen(battleActive()?new CommandScreen():new CampScreen("home"));}
                 while(ability.wasPressed())if(battleActive())send("ability");
                 while(armoury.wasPressed())if(battleActive())client.setScreen(new RecruitmentScreen(1));
+                while(gearKey.wasPressed())if(!battleActive())client.setScreen(new CampScreen("gear"));
                 while(attack.wasPressed())CommandMode.begin("attack");while(follow.wasPressed())CommandMode.issue("all","follow",CommandMode.formation,client.player.getPos(),client.player.getYaw(),-1);
                 while(rotateLeft.wasPressed()){CommandMode.facingSet=true;CommandMode.facing-=Spec.COMMANDINTERFACE[0].facingStep();}
                 while(rotateRight.wasPressed()){CommandMode.facingSet=true;CommandMode.facing+=Spec.COMMANDINTERFACE[0].facingStep();}
@@ -254,6 +258,7 @@ public final class GravesAndGloryClient implements ClientModInitializer {
         for(var group:CommandMode.groups){int gx=x+(int)((group.cx()+350)*w/700),gz=y+(int)((group.cz()+250)*h/500);boolean selected=CommandMode.selected.equals("all")||CommandMode.selected.equals(group.id());
             if(selected){int dx=x+(int)((group.x()+350)*w/700),dz=y+(int)((group.z()+250)*h/500);for(int k=0;k<=20;k++){int lx=gx+(dx-gx)*k/20,lz=gz+(dz-gz)*k/20;g.fill(lx,lz,lx+1,lz+1,DarkUi.GOLD);}g.drawBorder(dx-3,dz-3,7,7,DarkUi.GOLD);}
             g.fill(gx-4,gz-4,gx+5,gz+5,DarkUi.MAP_GROUP);g.drawTextWithShadow(font,group.id().substring(0,1).toUpperCase(),gx-2,gz-3,group.fighting()?DarkUi.WARN:DarkUi.GOLD);
+            if(group.fighting())g.fill(gx-4,gz+5,gx+5,gz+7,DarkUi.WARN); // a bar under the pin: fighting is a shape as well as the orange letter (4F.5)
         }
         for(var sight:sightings){int px=x+(int)((sight.x()+350)*w/700),pz=y+(int)((sight.z()+250)*h/500);if(sight.age()<20)DarkUi.mapMark(g,"enemy",px,pz,DarkUi.MAP_ENEMY);else DarkUi.mapMark(g,"enemy-old",px,pz,DarkUi.MAP_STALE);}
         for(var ping:CommandMode.pings){int px=x+(int)((ping.x()+350)*w/700),pz=y+(int)((ping.z()+250)*h/500);g.drawBorder(px-6,pz-6,13,13,DarkUi.PING);if(labels)g.drawTextWithShadow(font,ping.kind().toUpperCase(),px+8,pz,DarkUi.PING);}
@@ -339,7 +344,9 @@ public final class GravesAndGloryClient implements ClientModInitializer {
             boolean selected=getMessage().getString().startsWith("> "),focus=active&&(isHovered()||isFocused());int x=getX(),y=getY();
             int surface=!active?0xff20272b:primary?(focus?0xffdfbd77:0xffbb9858):focus?0xff39464b:selected?0xff30474a:0xff252f34;
             g.fill(x,y,x+width,y+height,surface);
-            g.drawBorder(x,y,width,height,focus||selected?DarkUi.GOLD:primary?0xffdfbd77:0xff455156);
+            g.drawBorder(x,y,width,height,!active?DarkUi.DISABLED_EDGE:focus||selected?DarkUi.GOLD:primary?0xffdfbd77:0xff455156);
+            if(!active)DarkUi.disabledVeil(g,x,y,width,height);
+            DarkUi.focus(g,this);
             if(selected)g.fill(x,y,x+3,y+height,DarkUi.GOLD);
             var font=MinecraftClient.getInstance().textRenderer;String label=getMessage().getString();if(selected)label=label.substring(2);
             var styled=font.trimToWidth(DarkUi.body(label),Math.max(1,width-14));g.drawText(font,net.minecraft.util.Language.getInstance().reorder(styled),x+(width-font.getWidth(styled))/2,y+(height-9)/2,!active?0xff879297:primary?0xff171d20:DarkUi.PAPER,false);

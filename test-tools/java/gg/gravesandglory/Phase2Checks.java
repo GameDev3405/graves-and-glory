@@ -298,7 +298,7 @@ public final class Phase2Checks implements ClientModInitializer {
                 case 9->{if(wantShot==null||shotTaken){wantShot=null;b.campaign.returnLobby();next(b,10);}}
                 case 10->{ // p2-bot-banners: a Normal 3v3 with bot fill
                     var p=sp(b);if(p==null||!Phase1Checks.skirmish(b,p,b.campaign.map,3,"normal"))return;
-                    List<Spec.BotBannersRow> rows=new ArrayList<>();for(var r:Spec.BOTBANNERS)if(r.difficulty().equals("normal")&&fieldable(r))rows.add(r);
+                    List<Spec.BotBannersRow> rows=new ArrayList<>(Campaign.fieldableBotBanners("normal"));
                     boolean ok=!rows.isEmpty();int bots=0;StringBuilder why=new StringBuilder();
                     for(var s:b.squads.values())if(s.bot&&s.seated){bots++;
                         var row=rows.stream().filter(r->Arrays.asList(r.slots().split(",")).equals(s.banner)).findFirst().orElse(null);
@@ -5521,8 +5521,8 @@ public final class Phase2Checks implements ClientModInitializer {
         /** Where the weapon part's origin (its grip offset) lies in a pose: world axes, blocks from the feet. */
         static double[] grip(TroopModel<?> m,TroopMotion.Forced f,boolean shield){
             m.getPart().traverse().forEach(ModelPart::resetTransform);TroopMotion.applyForced(m,f.clip(),f.seconds(),shield);
-            var gp=TroopModels.weapon(m.weaponId()).grip();MatrixStack ms=base();for(ModelPart p:m.handPath(m.hand()))p.rotate(ms);
-            Vector4f v=new Vector4f(gp.pivotX/16f,gp.pivotY/16f,gp.pivotZ/16f,1f);ms.peek().getPositionMatrix().transform(v);
+            var wp=TroopModels.weapon(m.weaponId());var gp=wp==null?null:wp.grip();MatrixStack ms=base();for(ModelPart p:m.handPath(m.hand()))p.rotate(ms); // a weapon-less troop (weapon "none") is gripped at its hand
+            Vector4f v=gp==null?new Vector4f(0f,0f,0f,1f):new Vector4f(gp.pivotX/16f,gp.pivotY/16f,gp.pivotZ/16f,1f);ms.peek().getPositionMatrix().transform(v);
             m.getPart().traverse().forEach(ModelPart::resetTransform);return new double[]{v.x,v.y,v.z};
         }
 

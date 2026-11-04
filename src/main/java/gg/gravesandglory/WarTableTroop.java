@@ -120,7 +120,7 @@ final class WarTableTroop {
     void init() {
         buttons.clear();
         int[] o = columnAt();
-        add("back", WarTable.plaque(56, 120, "icon-recruit", "Recruits", "Esc", 85, 0, b -> back()));
+        add("back", WarTable.plaque(56, 120, "icon-recruit", "Recruits", "Esc", 85, 0, b -> back()).quiet());
         int sx = o[0] + SHEET_X, sy = o[1] + TOP;
         add("tab-troop", new UiButton(sx + PAD, sy + TAB_Y, TAB_W, TAB_H, Text.literal("Troop"), b -> face("troop"), (g, x, y, w, h, hot) -> paintTab(g, "troop", "Troop", x, y, w, h)));
         add("tab-matchups", new UiButton(sx + PAD + TAB_W + TAB_GAP, sy + TAB_Y, TAB_W, TAB_H, Text.literal("Matchups"), b -> face("matchups"), (g, x, y, w, h, hot) -> paintTab(g, "matchups", "Matchups", x, y, w, h)));
@@ -156,7 +156,7 @@ final class WarTableTroop {
     }
 
     /** Back to the recruit page on this troop's House, the troop selected (the recruit page reads CampScreen.troop once); leaving ends a reveal. */
-    void back() { screen.troop = troop; screen.page("recruit"); }
+    void back() { UiSounds.back(); screen.troop = troop; screen.page("recruit"); }
 
     /** Hands a command to the server through the screen's throttle; recorded when it goes. Returns whether it went. */
     boolean send(String cmd) {

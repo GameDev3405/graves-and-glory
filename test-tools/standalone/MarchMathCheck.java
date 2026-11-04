@@ -25,7 +25,23 @@ public final class MarchMathCheck {
             check(MarchMath.bonus(r, Spec.BONUSOBJECTIVES) != null && !r.placeholder().isBlank(), "sheet: battle " + (i + 1) + " names a bonus objective and a placeholder note");
         }
         // Kort 2026-10-31: Siege joined the lobby, so The Iron Gate is back on siege and its placeholder note no longer names a stand-in
-        check(!row(2).placeholder().contains("siege") && row(2).bonus().equals("b2_lose10"), "sheet: battle 2 runs as siege with its lose-at-most-10 bonus");
+        var b2 = MarchMath.bonus(row(2), Spec.BONUSOBJECTIVES);
+        check(!row(2).placeholder().contains("siege") && b2.id().equals("b2_gate_by") && b2.kind().equals("stage_by") && b2.value() == 360 && b2.target().equals("gate"), "sheet: battle 2 runs as siege with its break-the-gate-by-360-s bonus (Kort 2026-11-02, Q78)");
+        // Kort 2026-11-02 (Q77): the ramp, battles 2 and 3 normal, 4 and 5 hard, 6 hard (the top tier) with its allies a tier below
+        String[] ramp = {"easy", "normal", "normal", "hard", "hard", "hard"};
+        for (int i = 0; i < 6; i++) check(row(i + 1).difficulty().equals(ramp[i]) && !row(i + 1).placeholder().startsWith("difficulty"), "sheet: battle " + (i + 1) + " is " + ramp[i]);
+        check(Spec.BOTCOMMAND[Spec.BOTCOMMAND.length - 1].id().equals(row(6).difficulty()), "sheet: battle 6 plays the last (hardest) botCommand tier");
+        // Kort 2026-11-02 (Q76): battle 6 is Siege with allied bot banners from all five Houses, one per allied seat, a tier below the enemy and reserved from every tier's pool
+        Set<String> allyHouses = new HashSet<>();
+        var allies = MarchMath.allyIds(row(6));
+        for (String a : allies) {
+            var bb = Arrays.stream(Spec.BOTBANNERS).filter(x -> x.id().equals(a)).findFirst().orElse(null);
+            check(bb != null && !bb.difficulty().equals(row(6).difficulty()) && MarchMath.reservedAlly(a, ROWS), "sheet: ally " + a + " exists, sits below battle 6's tier and is reserved");
+            for (String t : bb.slots().split(",")) for (var tr : Spec.TROOPS) if (tr.id().equals(t)) allyHouses.add(tr.house());
+        }
+        check(row(6).mode().equals("siege") && allies.size() == row(6).size() - 1 && allyHouses.size() == Spec.HOUSES.length, "sheet: battle 6's allies field all five Houses (" + allyHouses + ")");
+        for (int i = 1; i <= 5; i++) check(MarchMath.allyIds(row(i)).isEmpty(), "sheet: battle " + i + " names no allies");
+        check(!MarchMath.reservedAlly("gilded_hard", ROWS), "allies: an unnamed row stays in its tier's pool");
         check(row(1).placeholder().equals("none") && row(1).lessons() && !row(6).placeholder().contains("house"), "sheet: battle 1 is final; battle 6's house is settled");
         var b1 = MarchMath.bonus(row(1), Spec.BONUSOBJECTIVES);
         check(b1.id().equals("b1_hold_all") && b1.kind().equals("hold_all") && b1.shards() == 5, "sheet: battle 1's bonus holds all three crossings for 5 shards");
@@ -88,6 +104,13 @@ public final class MarchMathCheck {
         check(!kill.kept(true, 60), "tracker kill_unit: another squad's kill or another troop does not count");
         kill.killed("revenant", true);
         check(kill.kept(true, 60), "tracker kill_unit: the target troop by the player's own squad");
+        // seat size (plan 2C.6): a March battle seats its row's size per team, practice seats one, and nothing leaves the six-seat lobby
+        check(MarchMath.seatSize(null) == 1, "seatSize: practice (no row) is one a side");
+        for (var r : ROWS) check(MarchMath.seatSize(r) == Math.max(1, Math.min(3, r.size())), "seatSize: " + r.id() + " follows its row's size within 1 to 3");
+        var big = new Spec.CampaignBattlesRow("x", 1, 1, "x", 0, 9, "easy", false, "", "", "domination", "gilded", "none", "none", "none");
+        var zero = new Spec.CampaignBattlesRow("x", 1, 1, "x", 0, 0, "easy", false, "", "", "domination", "gilded", "none", "none", "none");
+        var two = new Spec.CampaignBattlesRow("x", 1, 1, "x", 0, 2, "easy", false, "", "", "domination", "gilded", "none", "none", "none");
+        check(MarchMath.seatSize(big) == 3 && MarchMath.seatSize(zero) == 1 && MarchMath.seatSize(two) == 2, "seatSize: held to 1..3 (9 -> 3, 0 -> 1, 2 -> 2)");
         System.out.println("MarchMathCheck: " + checks + " checks passed");
     }
 }

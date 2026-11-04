@@ -33,7 +33,7 @@ tasks.register('localTestToolsJar', Jar) {
  archiveFileName = 'local-integration-DO-NOT-SHIP.jar'
  destinationDirectory = file('build/localTestTools')
 }
-if (project.hasProperty('localIntegration') || project.hasProperty('mapTour') || project.hasProperty('mapWalk') || project.hasProperty('campaignChecks') || project.hasProperty('selfTest')) {
+if (project.hasProperty('localIntegration') || project.hasProperty('mapTour') || project.hasProperty('mapWalk') || project.hasProperty('mapForge') || project.hasProperty('campaignChecks') || project.hasProperty('selfTest')) {
  loom.runs.client.vmArg '-Dgravesandglory.localIntegration=true'
  loom.runs.client.vmArg "-Dfabric.addMods=${file('build/localTestTools/local-integration-DO-NOT-SHIP.jar').absolutePath}"
  tasks.named('runClient') { dependsOn localTestToolsJar }
@@ -44,14 +44,14 @@ if (project.hasProperty('selfTest')) {
  loom.runs.client.vmArg "-Dgravesandglory.localChecks=${file('evidence/self-test.txt').absolutePath}"
 }
 // Bot-vs-bot simulation on the dedicated server (test-tools/java/gg/gravesandglory/BotSimulation.java):
-// -PbotSim=<matches> [-PsimDawn=<tier> -PsimDusk=<tier> -PsimMaps=0,1,2 -PsimSize=3 -PsimRoundSeconds=300 -PsimKit=native|gilded|graveborn -PsimBanner0=<botBanners id> -PsimBanner1=<botBanners id> -PsimProgression=on|off -PsimFast=true -PsimOverride=<sheet.row.column=value;...>]; results in <server root>/botsim/.
+// -PbotSim=<matches> [-PsimDawn=<tier> -PsimDusk=<tier> -PsimMaps=0,1,2 -PsimSize=3 -PsimRoundSeconds=300 -PsimKit=native|gilded|graveborn -PsimBanner0=<botBanners id> -PsimBanner1=<botBanners id> -PsimProgression=on|off -PsimFast=true -PsimOverride=<sheet.row.column=value;...> -PsimMode=domination|siege|convoy]; results in <server root>/botsim/.
 if (project.hasProperty('botSim')) {
  loom.runs.server.vmArg '-Dgravesandglory.localIntegration=true'
  loom.runs.server.vmArg "-Dfabric.addMods=${file('build/localTestTools/local-integration-DO-NOT-SHIP.jar').absolutePath}"
  // The test tools' checks probe would otherwise append to the file a Melty test descriptor names; keep its lines in the server root.
  loom.runs.server.vmArg '-Dgravesandglory.localChecks=local-checks.txt'
  loom.runs.server.vmArg "-Dgravesandglory.botSim=${project.property('botSim')}"
- ['simDawn', 'simDusk', 'simMaps', 'simSize', 'simRoundSeconds', 'simKit', 'simBanner0', 'simBanner1', 'simProgression', 'simFast', 'simOverride'].each { name ->
+ ['simDawn', 'simDusk', 'simMaps', 'simSize', 'simRoundSeconds', 'simKit', 'simBanner0', 'simBanner1', 'simProgression', 'simFast', 'simOverride', 'simMode'].each { name ->
   if (project.hasProperty(name)) loom.runs.server.vmArg "-Dgravesandglory.${name}=${project.property(name)}"
  }
  tasks.named('runServer') { dependsOn localTestToolsJar }
@@ -63,9 +63,17 @@ if (project.hasProperty('duelSim')) {
  loom.runs.server.vmArg "-Dfabric.addMods=${file('build/localTestTools/local-integration-DO-NOT-SHIP.jar').absolutePath}"
  loom.runs.server.vmArg '-Dgravesandglory.localChecks=local-checks.txt'
  loom.runs.server.vmArg "-Dgravesandglory.duelSim=${project.property('duelSim')}"
- ['duelMap', 'duelShard', 'duelSeed', 'simFast', 'simOverride'].each { name ->
+ ['duelMap', 'duelShard', 'duelSeed', 'simFast', 'simOverride', 'scratchNoHurtCooldown', 'scratchTroopBypassArmor'].each { name ->
   if (project.hasProperty(name)) loom.runs.server.vmArg "-Dgravesandglory.${name}=${project.property(name)}"
  }
+ tasks.named('runServer') { dependsOn localTestToolsJar }
+}
+// Reward driver (test-tools/java/gg/gravesandglory/RewardDriver.java, QA row K7): -PrewardDriver=<control dir> lets a script move a dedicated server round's clock back and call the real finish; it changes no rule.
+if (project.hasProperty('rewardDriver')) {
+ loom.runs.server.vmArg '-Dgravesandglory.localIntegration=true'
+ loom.runs.server.vmArg "-Dfabric.addMods=${file('build/localTestTools/local-integration-DO-NOT-SHIP.jar').absolutePath}"
+ loom.runs.server.vmArg '-Dgravesandglory.localChecks=local-checks.txt'
+ loom.runs.server.vmArg "-Dgravesandglory.rewardDriver=${project.property('rewardDriver')}"
  tasks.named('runServer') { dependsOn localTestToolsJar }
 }
 if (project.hasProperty('visualInspection')) { loom.runs.client.vmArg '-Dgravesandglory.visualInspection=true' }
@@ -113,7 +121,31 @@ if (project.hasProperty('mapWalk')) {
  loom.runs.client.vmArg "-Dgravesandglory.walkPlan=${project.findProperty('walkPlan')}"
 }
 
+// Map adoption runs (test-tools/MapForgeHarness.java): -PmapForge=<script> hosts a world and drives /mapforge from the script; -PadoptionDev loads the
+// unshipped dev overlays (test-tools/resources/data/gravesandglory/adoption-dev/) after each battlefield is generated. Evidence in <run>/mapforge/.
+if (project.hasProperty('mapForge')) {
+ loom.runs.client.vmArg '-Dgravesandglory.mapforge=true'
+ loom.runs.client.vmArg "-Dgravesandglory.mapForgeScript=${file(project.property('mapForge')).absolutePath}"
+}
+if (project.hasProperty('adoptionDev')) { loom.runs.client.vmArg '-Dgravesandglory.adoptionDev=true' }
+// The builder server's /mapforge commands, never in the player JAR: run the builder with
+// -Dgg.build=<world> -Dfabric.addMods=build/mapforgeBuilder/mapforge-builder-DO-NOT-SHIP.jar
+tasks.register('mapforgeBuilderJar', Jar) {
+ dependsOn compileLocalTestTools
+ from('build/localTestTools/classes') { include 'gg/gravesandglory/MapForge*.class', 'gg/gravesandglory/Walkability*.class' }
+ from('test-tools/mapforge-builder')
+ archiveFileName = 'mapforge-builder-DO-NOT-SHIP.jar'
+ destinationDirectory = file('build/mapforgeBuilder')
+}
+
 // A/B harness: build the battlefields without MapDressing, to compare checks against the bare map.
 if (project.hasProperty('noDressing')) { loom.runs.client.vmArg '-Dgravesandglory.noDressing=true' }
 // Route checks: host a world by itself so evidence/control.json {"action":"routes"} can run unattended.
 if (project.hasProperty('autoHost')) { loom.runs.client.vmArg '-Dgravesandglory.autoHost=true' }
+// Map engine Plan 2: -PengineMap=<dir with map.json> [-PengineMapSlot=1] plays an engine build in one map slot (this JVM only; default slot 1, Ironhold).
+if (project.hasProperty('engineMap')) {
+ ['server', 'client'].each { r ->
+  loom.runs.getByName(r).vmArg "-Dgravesandglory.engineMap=${file(project.property('engineMap')).absolutePath}"
+  if (project.hasProperty('engineMapSlot')) loom.runs.getByName(r).vmArg "-Dgravesandglory.engineMapSlot=${project.property('engineMapSlot')}"
+ }
+}

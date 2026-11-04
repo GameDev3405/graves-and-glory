@@ -1,0 +1,21 @@
+{
+ "troop": "stalker",
+ "note": "Graveborn Barrow Stalker (unit identity, Graveborn): a solid blue-grey wedge, a shaggy fur cowl over a rimed skull with two soul-light eyes, a fur shoulder-cape over a knee-length frost felt mantle hemmed in violet icicle teeth, bare bone legs, a team wrap, the frost bow. Tier II iron plate with rime tines, tier III black gilt plate; no flag on the back, no antlers.",
+ "rig": "biped",
+ "size": [
+  128,
+  64
+ ],
+ "density": 1,
+ "bones": [],
+ "idleArms": "hang",
+ "parts": [],
+ "skins": {
+  "1": "stalker_s1.png",
+  "2": "stalker_s2.png",
+  "3": "stalker_s3.png"
+ },
+ "weapon": "frost_bow",
+ "hand": "left",
+ "portrait": "standard"
+}

@@ -1,0 +1,501 @@
+{
+  "tier": "fast",
+  "head": "6d619a7c5daba1ef115bc4fd1d0a8f468743fb0a",
+  "dirty": false,
+  "source_before": {
+    "version": "0.5.0",
+    "modId": "gravesandglory",
+    "sourceSha256": "b3c3033db577dbef370edeb7247059f2c14f5adebf631cb4405a5b0ec49df44f"
+  },
+  "checks": [
+    {
+      "name": "preflight",
+      "command": [
+        "C:\\Users\\Kortt\\AppData\\Local\\Programs\\Python\\Python312\\python.exe",
+        "tools/preflight.py"
+      ],
+      "exit_code": 0,
+      "log": "C:\\Users\\kortt\\Melty\\bannerbound\\.claude\\worktrees\\agent-ac7b939d3a3f94657\\work\\verify\\20261103-002430-44304\\preflight.log"
+    },
+    {
+      "name": "python-tests",
+      "command": [
+        "C:\\Users\\Kortt\\AppData\\Local\\Programs\\Python\\Python312\\python.exe",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "test-tools/standalone",
+        "-p",
+        "test_*.py"
+      ],
+      "exit_code": 0,
+      "log": "C:\\Users\\kortt\\Melty\\bannerbound\\.claude\\worktrees\\agent-ac7b939d3a3f94657\\work\\verify\\20261103-002430-44304\\python-tests.log"
+    },
+    {
+      "name": "ui-standard",
+      "command": [
+        "C:\\Users\\Kortt\\AppData\\Local\\Programs\\Python\\Python312\\python.exe",
+        "test-tools/standalone/test_ui_standard.py"
+      ],
+      "exit_code": 0,
+      "log": "C:\\Users\\kortt\\Melty\\bannerbound\\.claude\\worktrees\\agent-ac7b939d3a3f94657\\work\\verify\\20261103-002430-44304\\ui-standard.log"
+    },
+    {
+      "name": "ui-assets",
+      "command": [
+        "C:\\Users\\Kortt\\AppData\\Local\\Programs\\Python\\Python312\\python.exe",
+        "tools/build_ui_art.py",
+        "--verify"
+      ],
+      "exit_code": 0,
+      "log": "C:\\Users\\kortt\\Melty\\bannerbound\\.claude\\worktrees\\agent-ac7b939d3a3f94657\\work\\verify\\20261103-002430-44304\\ui-assets.log"
+    },
+    {
+      "name": "skin-assets",
+      "command": [
+        "C:\\Users\\Kortt\\AppData\\Local\\Programs\\Python\\Python312\\python.exe",
+        "tools/build_skins.py",
+        "--verify"
+      ],
+      "exit_code": 0,
+      "log": "C:\\Users\\kortt\\Melty\\bannerbound\\.claude\\worktrees\\agent-ac7b939d3a3f94657\\work\\verify\\20261103-002430-44304\\skin-assets.log"
+    },
+    {
+      "name": "java-compile",
+      "command": [
+        "C:\\Program Files\\Eclipse Adoptium\\jdk-17.0.19.10-hotspot\\bin\\javac",
+        "--release",
+        "17",
+        "-cp",
+        "C:\\Users\\kortt\\.gradle\\caches\\modules-2\\files-2.1\\com.google.code.gson\\gson\\2.10.1\\b3add478d4382b78ea20b1671390a858002feb6c\\gson-2.10.1.jar",
+        "-d",
+        "C:\\Users\\kortt\\Melty\\bannerbound\\.claude\\worktrees\\agent-ac7b939d3a3f94657\\work\\verify\\20261103-002430-44304\\classes",
+        "C:\\Users\\kortt\\Melty\\bannerbound\\.claude\\worktrees\\agent-ac7b939d3a3f94657\\src\\main\\java\\gg\\gravesandglory\\Spec.java",
+        "C:\\Users\\kortt\\Melty\\bannerbound\\.claude\\worktrees\\agent-ac7b939d3a3f94657\\src\\main\\java\\gg\\gravesandglory\\BattleMath.java",
+        "C:\\Users\\kortt\\Melty\\bannerbound\\.claude\\worktrees\\agent-ac7b939d3a3f94657\\src\\main\\java\\gg\\gravesandglory\\ModeMath.java",
+        "C:\\Users\\kortt\\Melty\\bannerbound\\.claude\\worktrees\\agent-ac7b939d3a3f94657\\src\\main\\java\\gg\\gravesandglory\\MatchStats.java",
+        "C:\\Users\\kortt\\Melty\\bannerbound\\.claude\\worktrees\\agent-ac7b939d3a3f94657\\src\\main\\java\\gg\\gravesandglory\\Progression.java",
+        "C:\\Users\\kortt\\Melty\\bannerbound\\.claude\\worktrees\\agent-ac7b939d3a3f94657\\src\\main\\java\\gg\\gravesandglory\\Profile.java",
+        "C:\\Users\\kortt\\Melty\\bannerbound\\.claude\\worktrees\\agent-ac7b939d3a3f94657\\src\\main\\java\\gg\\gravesandglory\\ProfileMigration.java",
+        "C:\\Users\\kortt\\Melty\\bannerbound\\.claude\\worktrees\\agent-ac7b939d3a3f94657\\src\\main\\java\\gg\\gravesandglory\\MarchMath.java",
+        "C:\\Users\\kortt\\Melty\\bannerbound\\.claude\\worktrees\\agent-ac7b939d3a3f94657\\src\\main\\java\\gg\\gravesandglory\\RosterMath.java",
+        "C:\\Users\\kortt\\Melty\\bannerbound\\.claude\\worktrees\\agent-ac7b939d3a3f94657\\src\\main\\java\\gg\\gravesandglory\\CounterMath.java",
+        "C:\\Users\\kortt\\Melty\\bannerbound\\.claude\\worktrees\\agent-ac7b939d3a3f94657\\src\\main\\java\\gg\\gravesandglory\\LevelMath.java",
+        "C:\\Users\\kortt\\Melty\\bannerbound\\.claude\\worktrees\\agent-ac7b939d3a3f94657\\src\\main\\java\\gg\\gravesandglory\\CreditLog.java",
+        "C:\\Users\\kortt\\Melty\\bannerbound\\.claude\\worktrees\\agent-ac7b939d3a3f94657\\src\\main\\java\\gg\\gravesandglory\\AdmissionPolicy.java",
+        "C:\\Users\\kortt\\Melty\\bannerbound\\.claude\\worktrees\\agent-ac7b939d3a3f94657\\src\\main\\java\\gg\\gravesandglory\\SocialHub.java",
+        "C:\\Users\\kortt\\Melty\\bannerbound\\.claude\\worktrees\\agent-ac7b939d3a3f94657\\src\\main\\java\\gg\\gravesandglory\\CampTerrain.java",
+        "C:\\Users\\kortt\\Melty\\bannerbound\\.claude\\worktrees\\agent-ac7b939d3a3f94657\\src\\main\\java\\gg\\gravesandglory\\CompatibilityPolicy.java",
+        "C:\\Users\\kortt\\Melty\\bannerbound\\.claude\\worktrees\\agent-ac7b939d3a3f94657\\src\\main\\java\\gg\\gravesandglory\\HouseRoute.java",
+        "C:\\Users\\kortt\\Melty\\bannerbound\\.claude\\worktrees\\agent-ac7b939d3a3f94657\\src\\main\\java\\gg\\gravesandglory\\StepHop.java",
+        "C:\\Users\\kortt\\Melty\\bannerbound\\.claude\\worktrees\\agent-ac7b939d3a3f94657\\src\\main\\java\\gg\\gravesandglory\\Wedge.java",
+        "C:\\Users\\kortt\\Melty\\bannerbound\\.claude\\worktrees\\agent-ac7b939d3a3f94657\\src\\main\\java\\gg\\gravesandglory\\LayoutMarker.java",
+        "C:\\Users\\kortt\\Melty\\bannerbound\\.claude\\worktrees\\agent-ac7b939d3a3f94657\\src\\main\\java\\gg\\gravesandglory\\LegacyDataMigration.java",
+        "C:\\Users\\kortt\\Melty\\bannerbound\\.claude\\worktrees\\agent-ac7b939d3a3f94657\\src\\main\\java\\gg\\gravesandglory\\TroopFaces.java",
+        "C:\\Users\\kortt\\Melty\\bannerbound\\.claude\\worktrees\\agent-ac7b939d3a3f94657\\src\\main\\java\\gg\\gravesandglory\\UiMath.java",
+        "C:\\Users\\kortt\\Melty\\bannerbound\\.claude\\worktrees\\agent-ac7b939d3a3f94657\\src\\main\\java\\gg\\gravesandglory\\HintText.java",
+        "C:\\Users\\kortt\\Melty\\bannerbound\\.claude\\worktrees\\agent-ac7b939d3a3f94657\\src\\main\\java\\gg\\gravesandglory\\FeedLines.java",
+        "C:\\Users\\kortt\\Melty\\bannerbound\\.claude\\worktrees\\agent-ac7b939d3a3f94657\\src\\main\\java\\gg\\gravesandglory\\ModeLines.java",
+        "C:\\Users\\kortt\\Melty\\bannerbound\\.claude\\worktrees\\agent-ac7b939d3a3f94657\\src\\main\\java\\gg\\gravesandglory\\BannerDrop.java",
+        "C:\\Users\\kortt\\Melty\\bannerbound\\.claude\\worktrees\\agent-ac7b939d3a3f94657\\src\\main\\java\\gg\\gravesandglory\\AudioCues.java",
+        "C:\\Users\\kortt\\Melty\\bannerbound\\.claude\\worktrees\\agent-ac7b939d3a3f94657\\src\\main\\java\\gg\\gravesandglory\\SafeFiles.java",
+        "C:\\Users\\kortt\\Melty\\bannerbound\\.claude\\worktrees\\agent-ac7b939d3a3f94657\\src\\main\\java\\gg\\gravesandglory\\MatchRules.java",
+        "C:\\Users\\kortt\\Melty\\bannerbound\\.claude\\worktrees\\agent-ac7b939d3a3f94657\\src\\main\\java\\gg\\gravesandglory\\ArenaAutosave.java",
+        "C:\\Users\\kortt\\Melty\\bannerbound\\.claude\\worktrees\\agent-ac7b939d3a3f94657\\src\\main\\java\\gg\\gravesandglory\\EngineMap.java",
+        "C:\\Users\\kortt\\Melty\\bannerbound\\.claude\\worktrees\\agent-ac7b939d3a3f94657\\src\\main\\java\\gg\\gravesandglory\\MovementGuard.java",
+        "C:\\Users\\kortt\\Melty\\bannerbound\\.claude\\worktrees\\agent-ac7b939d3a3f94657\\test-tools\\standalone\\AdmissionPolicyCheck.java",
+        "C:\\Users\\kortt\\Melty\\bannerbound\\.claude\\worktrees\\agent-ac7b939d3a3f94657\\test-tools\\standalone\\ArenaAutosaveCheck.java",
+        "C:\\Users\\kortt\\Melty\\bannerbound\\.claude\\worktrees\\agent-ac7b939d3a3f94657\\test-tools\\standalone\\AudioCuesCheck.java",
+        "C:\\Users\\kortt\\Melty\\bannerbound\\.claude\\worktrees\\agent-ac7b939d3a3f94657\\test-tools\\standalone\\BannerDropCheck.java",
+        "C:\\Users\\kortt\\Melty\\bannerbound\\.claude\\worktrees\\agent-ac7b939d3a3f94657\\test-tools\\standalone\\BattleMathCheck.java",
+        "C:\\Users\\kortt\\Melty\\bannerbound\\.claude\\worktrees\\agent-ac7b939d3a3f94657\\test-tools\\standalone\\CampRulesCheck.java",
+        "C:\\Users\\kortt\\Melty\\bannerbound\\.claude\\worktrees\\agent-ac7b939d3a3f94657\\test-tools\\standalone\\CampTerrainCheck.java",
+        "C:\\Users\\kortt\\Melty\\bannerbound\\.claude\\worktrees\\agent-ac7b939d3a3f94657\\test-tools\\standalone\\CompatibilityPolicyCheck.java",
+        "C:\\Users\\kortt\\Melty\\bannerbound\\.claude\\worktrees\\agent-ac7b939d3a3f94657\\test-tools\\standalone\\ConvoyCheck.java",
+        "C:\\Users\\kortt\\Melty\\bannerbound\\.claude\\worktrees\\agent-ac7b939d3a3f94657\\test-tools\\standalone\\EngineMapCheck.java",
+        "C:\\Users\\kortt\\Melty\\bannerbound\\.claude\\worktrees\\agent-ac7b939d3a3f94657\\test-tools\\standalone\\FeedFitCheck.java",
+        "C:\\Users\\kortt\\Melty\\bannerbound\\.claude\\worktrees\\agent-ac7b939d3a3f94657\\test-tools\\standalone\\HouseRouteCheck.java",
+        "C:\\Users\\kortt\\Melty\\bannerbound\\.claude\\worktrees\\agent-ac7b939d3a3f94657\\test-tools\\standalone\\HousesCheck.java",
+        "C:\\Users\\kortt\\Melty\\bannerbound\\.claude\\worktrees\\agent-ac7b939d3a3f94657\\test-tools\\standalone\\LayoutMarkerCheck.java",
+        "C:\\Users\\kortt\\Melty\\bannerbound\\.claude\\worktrees\\agent-ac7b939d3a3f94657\\test-tools\\standalone\\LegacyDataMigrationCheck.java",
+        "C:\\Users\\kortt\\Melty\\bannerbound\\.claude\\worktrees\\agent-ac7b939d3a3f94657\\test-tools\\standalone\\LevelMathCheck.java",
+        "C:\\Users\\kortt\\Melty\\bannerbound\\.claude\\worktrees\\agent-ac7b939d3a3f94657\\test-tools\\standalone\\LobbyRulesCheck.java",
+        "C:\\Users\\kortt\\Melty\\bannerbound\\.claude\\worktrees\\agent-ac7b939d3a3f94657\\test-tools\\standalone\\MarchMathCheck.java",
+        "C:\\Users\\kortt\\Melty\\bannerbound\\.claude\\worktrees\\agent-ac7b939d3a3f94657\\test-tools\\standalone\\MatchRulesCheck.java",
+        "C:\\Users\\kortt\\Melty\\bannerbound\\.claude\\worktrees\\agent-ac7b939d3a3f94657\\test-tools\\standalone\\ModeHudFitCheck.java",
+        "C:\\Users\\kortt\\Melty\\bannerbound\\.claude\\worktrees\\agent-ac7b939d3a3f94657\\test-tools\\standalone\\ModeMathCheck.java",
+        "C:\\Users\\kortt\\Melty\\bannerbound\\.claude\\worktrees\\agent-ac7b939d3a3f94657\\test-tools\\standalone\\PersistedDataCorruptionCheck.java",
+        "C:\\Users\\kortt\\Melty\\bannerbound\\.claude\\worktrees\\agent-ac7b939d3a3f94657\\test-tools\\standalone\\ProfileFixtureCheck.java",
+        "C:\\Users\\kortt\\Melty\\bannerbound\\.claude\\worktrees\\agent-ac7b939d3a3f94657\\test-tools\\standalone\\ProfileMigrationCheck.java",
+        "C:\\Users\\kortt\\Melty\\bannerbound\\.claude\\worktrees\\agent-ac7b939d3a3f94657\\test-tools\\standalone\\StepHopCheck.java",
+        "C:\\Users\\kortt\\Melty\\bannerbound\\.claude\\worktrees\\agent-ac7b939d3a3f94657\\test-tools\\standalone\\SurvivalFeedShortCheck.java",
+        "C:\\Users\\kortt\\Melty\\bannerbound\\.claude\\worktrees\\agent-ac7b939d3a3f94657\\test-tools\\standalone\\TeleportRelocateCheck.java",
+        "C:\\Users\\kortt\\Melty\\bannerbound\\.claude\\worktrees\\agent-ac7b939d3a3f94657\\test-tools\\standalone\\TroopFacesCheck.java",
+        "C:\\Users\\kortt\\Melty\\bannerbound\\.claude\\worktrees\\agent-ac7b939d3a3f94657\\test-tools\\standalone\\UiMathCheck.java",
+        "C:\\Users\\kortt\\Melty\\bannerbound\\.claude\\worktrees\\agent-ac7b939d3a3f94657\\test-tools\\standalone\\WedgeCheck.java"
+      ],
+      "exit_code": 0,
+      "log": "C:\\Users\\kortt\\Melty\\bannerbound\\.claude\\worktrees\\agent-ac7b939d3a3f94657\\work\\verify\\20261103-002430-44304\\java-compile.log"
+    },
+    {
+      "name": "AdmissionPolicyCheck",
+      "command": [
+        "C:\\Program Files\\Eclipse Adoptium\\jdk-17.0.19.10-hotspot\\bin\\java",
+        "-cp",
+        "C:\\Users\\kortt\\Melty\\bannerbound\\.claude\\worktrees\\agent-ac7b939d3a3f94657\\work\\verify\\20261103-002430-44304\\classes;C:\\Users\\kortt\\.gradle\\caches\\modules-2\\files-2.1\\com.google.code.gson\\gson\\2.10.1\\b3add478d4382b78ea20b1671390a858002feb6c\\gson-2.10.1.jar",
+        "gg.gravesandglory.AdmissionPolicyCheck"
+      ],
+      "exit_code": 0,
+      "log": "C:\\Users\\kortt\\Melty\\bannerbound\\.claude\\worktrees\\agent-ac7b939d3a3f94657\\work\\verify\\20261103-002430-44304\\AdmissionPolicyCheck.log"
+    },
+    {
+      "name": "ArenaAutosaveCheck",
+      "command": [
+        "C:\\Program Files\\Eclipse Adoptium\\jdk-17.0.19.10-hotspot\\bin\\java",
+        "-cp",
+        "C:\\Users\\kortt\\Melty\\bannerbound\\.claude\\worktrees\\agent-ac7b939d3a3f94657\\work\\verify\\20261103-002430-44304\\classes;C:\\Users\\kortt\\.gradle\\caches\\modules-2\\files-2.1\\com.google.code.gson\\gson\\2.10.1\\b3add478d4382b78ea20b1671390a858002feb6c\\gson-2.10.1.jar",
+        "gg.gravesandglory.ArenaAutosaveCheck"
+      ],
+      "exit_code": 0,
+      "log": "C:\\Users\\kortt\\Melty\\bannerbound\\.claude\\worktrees\\agent-ac7b939d3a3f94657\\work\\verify\\20261103-002430-44304\\ArenaAutosaveCheck.log"
+    },
+    {
+      "name": "AudioCuesCheck",
+      "command": [
+        "C:\\Program Files\\Eclipse Adoptium\\jdk-17.0.19.10-hotspot\\bin\\java",
+        "-cp",
+        "C:\\Users\\kortt\\Melty\\bannerbound\\.claude\\worktrees\\agent-ac7b939d3a3f94657\\work\\verify\\20261103-002430-44304\\classes;C:\\Users\\kortt\\.gradle\\caches\\modules-2\\files-2.1\\com.google.code.gson\\gson\\2.10.1\\b3add478d4382b78ea20b1671390a858002feb6c\\gson-2.10.1.jar",
+        "gg.gravesandglory.AudioCuesCheck"
+      ],
+      "exit_code": 0,
+      "log": "C:\\Users\\kortt\\Melty\\bannerbound\\.claude\\worktrees\\agent-ac7b939d3a3f94657\\work\\verify\\20261103-002430-44304\\AudioCuesCheck.log"
+    },
+    {
+      "name": "BannerDropCheck",
+      "command": [
+        "C:\\Program Files\\Eclipse Adoptium\\jdk-17.0.19.10-hotspot\\bin\\java",
+        "-cp",
+        "C:\\Users\\kortt\\Melty\\bannerbound\\.claude\\worktrees\\agent-ac7b939d3a3f94657\\work\\verify\\20261103-002430-44304\\classes;C:\\Users\\kortt\\.gradle\\caches\\modules-2\\files-2.1\\com.google.code.gson\\gson\\2.10.1\\b3add478d4382b78ea20b1671390a858002feb6c\\gson-2.10.1.jar",
+        "gg.gravesandglory.BannerDropCheck"
+      ],
+      "exit_code": 0,
+      "log": "C:\\Users\\kortt\\Melty\\bannerbound\\.claude\\worktrees\\agent-ac7b939d3a3f94657\\work\\verify\\20261103-002430-44304\\BannerDropCheck.log"
+    },
+    {
+      "name": "BattleMathCheck",
+      "command": [
+        "C:\\Program Files\\Eclipse Adoptium\\jdk-17.0.19.10-hotspot\\bin\\java",
+        "-cp",
+        "C:\\Users\\kortt\\Melty\\bannerbound\\.claude\\worktrees\\agent-ac7b939d3a3f94657\\work\\verify\\20261103-002430-44304\\classes;C:\\Users\\kortt\\.gradle\\caches\\modules-2\\files-2.1\\com.google.code.gson\\gson\\2.10.1\\b3add478d4382b78ea20b1671390a858002feb6c\\gson-2.10.1.jar",
+        "gg.gravesandglory.BattleMathCheck"
+      ],
+      "exit_code": 0,
+      "log": "C:\\Users\\kortt\\Melty\\bannerbound\\.claude\\worktrees\\agent-ac7b939d3a3f94657\\work\\verify\\20261103-002430-44304\\BattleMathCheck.log"
+    },
+    {
+      "name": "CampRulesCheck",
+      "command": [
+        "C:\\Program Files\\Eclipse Adoptium\\jdk-17.0.19.10-hotspot\\bin\\java",
+        "-cp",
+        "C:\\Users\\kortt\\Melty\\bannerbound\\.claude\\worktrees\\agent-ac7b939d3a3f94657\\work\\verify\\20261103-002430-44304\\classes;C:\\Users\\kortt\\.gradle\\caches\\modules-2\\files-2.1\\com.google.code.gson\\gson\\2.10.1\\b3add478d4382b78ea20b1671390a858002feb6c\\gson-2.10.1.jar",
+        "gg.gravesandglory.CampRulesCheck"
+      ],
+      "exit_code": 0,
+      "log": "C:\\Users\\kortt\\Melty\\bannerbound\\.claude\\worktrees\\agent-ac7b939d3a3f94657\\work\\verify\\20261103-002430-44304\\CampRulesCheck.log"
+    },
+    {
+      "name": "CampTerrainCheck",
+      "command": [
+        "C:\\Program Files\\Eclipse Adoptium\\jdk-17.0.19.10-hotspot\\bin\\java",
+        "-cp",
+        "C:\\Users\\kortt\\Melty\\bannerbound\\.claude\\worktrees\\agent-ac7b939d3a3f94657\\work\\verify\\20261103-002430-44304\\classes;C:\\Users\\kortt\\.gradle\\caches\\modules-2\\files-2.1\\com.google.code.gson\\gson\\2.10.1\\b3add478d4382b78ea20b1671390a858002feb6c\\gson-2.10.1.jar",
+        "gg.gravesandglory.CampTerrainCheck"
+      ],
+      "exit_code": 0,
+      "log": "C:\\Users\\kortt\\Melty\\bannerbound\\.claude\\worktrees\\agent-ac7b939d3a3f94657\\work\\verify\\20261103-002430-44304\\CampTerrainCheck.log"
+    },
+    {
+      "name": "CompatibilityPolicyCheck",
+      "command": [
+        "C:\\Program Files\\Eclipse Adoptium\\jdk-17.0.19.10-hotspot\\bin\\java",
+        "-cp",
+        "C:\\Users\\kortt\\Melty\\bannerbound\\.claude\\worktrees\\agent-ac7b939d3a3f94657\\work\\verify\\20261103-002430-44304\\classes;C:\\Users\\kortt\\.gradle\\caches\\modules-2\\files-2.1\\com.google.code.gson\\gson\\2.10.1\\b3add478d4382b78ea20b1671390a858002feb6c\\gson-2.10.1.jar",
+        "gg.gravesandglory.CompatibilityPolicyCheck"
+      ],
+      "exit_code": 0,
+      "log": "C:\\Users\\kortt\\Melty\\bannerbound\\.claude\\worktrees\\agent-ac7b939d3a3f94657\\work\\verify\\20261103-002430-44304\\CompatibilityPolicyCheck.log"
+    },
+    {
+      "name": "ConvoyCheck",
+      "command": [
+        "C:\\Program Files\\Eclipse Adoptium\\jdk-17.0.19.10-hotspot\\bin\\java",
+        "-cp",
+        "C:\\Users\\kortt\\Melty\\bannerbound\\.claude\\worktrees\\agent-ac7b939d3a3f94657\\work\\verify\\20261103-002430-44304\\classes;C:\\Users\\kortt\\.gradle\\caches\\modules-2\\files-2.1\\com.google.code.gson\\gson\\2.10.1\\b3add478d4382b78ea20b1671390a858002feb6c\\gson-2.10.1.jar",
+        "gg.gravesandglory.ConvoyCheck"
+      ],
+      "exit_code": 0,
+      "log": "C:\\Users\\kortt\\Melty\\bannerbound\\.claude\\worktrees\\agent-ac7b939d3a3f94657\\work\\verify\\20261103-002430-44304\\ConvoyCheck.log"
+    },
+    {
+      "name": "EngineMapCheck",
+      "command": [
+        "C:\\Program Files\\Eclipse Adoptium\\jdk-17.0.19.10-hotspot\\bin\\java",
+        "-cp",
+        "C:\\Users\\kortt\\Melty\\bannerbound\\.claude\\worktrees\\agent-ac7b939d3a3f94657\\work\\verify\\20261103-002430-44304\\classes;C:\\Users\\kortt\\.gradle\\caches\\modules-2\\files-2.1\\com.google.code.gson\\gson\\2.10.1\\b3add478d4382b78ea20b1671390a858002feb6c\\gson-2.10.1.jar",
+        "gg.gravesandglory.EngineMapCheck"
+      ],
+      "exit_code": 0,
+      "log": "C:\\Users\\kortt\\Melty\\bannerbound\\.claude\\worktrees\\agent-ac7b939d3a3f94657\\work\\verify\\20261103-002430-44304\\EngineMapCheck.log"
+    },
+    {
+      "name": "FeedFitCheck",
+      "command": [
+        "C:\\Program Files\\Eclipse Adoptium\\jdk-17.0.19.10-hotspot\\bin\\java",
+        "-cp",
+        "C:\\Users\\kortt\\Melty\\bannerbound\\.claude\\worktrees\\agent-ac7b939d3a3f94657\\work\\verify\\20261103-002430-44304\\classes;C:\\Users\\kortt\\.gradle\\caches\\modules-2\\files-2.1\\com.google.code.gson\\gson\\2.10.1\\b3add478d4382b78ea20b1671390a858002feb6c\\gson-2.10.1.jar",
+        "gg.gravesandglory.FeedFitCheck"
+      ],
+      "exit_code": 0,
+      "log": "C:\\Users\\kortt\\Melty\\bannerbound\\.claude\\worktrees\\agent-ac7b939d3a3f94657\\work\\verify\\20261103-002430-44304\\FeedFitCheck.log"
+    },
+    {
+      "name": "HouseRouteCheck",
+      "command": [
+        "C:\\Program Files\\Eclipse Adoptium\\jdk-17.0.19.10-hotspot\\bin\\java",
+        "-cp",
+        "C:\\Users\\kortt\\Melty\\bannerbound\\.claude\\worktrees\\agent-ac7b939d3a3f94657\\work\\verify\\20261103-002430-44304\\classes;C:\\Users\\kortt\\.gradle\\caches\\modules-2\\files-2.1\\com.google.code.gson\\gson\\2.10.1\\b3add478d4382b78ea20b1671390a858002feb6c\\gson-2.10.1.jar",
+        "gg.gravesandglory.HouseRouteCheck"
+      ],
+      "exit_code": 0,
+      "log": "C:\\Users\\kortt\\Melty\\bannerbound\\.claude\\worktrees\\agent-ac7b939d3a3f94657\\work\\verify\\20261103-002430-44304\\HouseRouteCheck.log"
+    },
+    {
+      "name": "HousesCheck",
+      "command": [
+        "C:\\Program Files\\Eclipse Adoptium\\jdk-17.0.19.10-hotspot\\bin\\java",
+        "-cp",
+        "C:\\Users\\kortt\\Melty\\bannerbound\\.claude\\worktrees\\agent-ac7b939d3a3f94657\\work\\verify\\20261103-002430-44304\\classes;C:\\Users\\kortt\\.gradle\\caches\\modules-2\\files-2.1\\com.google.code.gson\\gson\\2.10.1\\b3add478d4382b78ea20b1671390a858002feb6c\\gson-2.10.1.jar",
+        "gg.gravesandglory.HousesCheck"
+      ],
+      "exit_code": 0,
+      "log": "C:\\Users\\kortt\\Melty\\bannerbound\\.claude\\worktrees\\agent-ac7b939d3a3f94657\\work\\verify\\20261103-002430-44304\\HousesCheck.log"
+    },
+    {
+      "name": "LayoutMarkerCheck",
+      "command": [
+        "C:\\Program Files\\Eclipse Adoptium\\jdk-17.0.19.10-hotspot\\bin\\java",
+        "-cp",
+        "C:\\Users\\kortt\\Melty\\bannerbound\\.claude\\worktrees\\agent-ac7b939d3a3f94657\\work\\verify\\20261103-002430-44304\\classes;C:\\Users\\kortt\\.gradle\\caches\\modules-2\\files-2.1\\com.google.code.gson\\gson\\2.10.1\\b3add478d4382b78ea20b1671390a858002feb6c\\gson-2.10.1.jar",
+        "gg.gravesandglory.LayoutMarkerCheck"
+      ],
+      "exit_code": 0,
+      "log": "C:\\Users\\kortt\\Melty\\bannerbound\\.claude\\worktrees\\agent-ac7b939d3a3f94657\\work\\verify\\20261103-002430-44304\\LayoutMarkerCheck.log"
+    },
+    {
+      "name": "LegacyDataMigrationCheck",
+      "command": [
+        "C:\\Program Files\\Eclipse Adoptium\\jdk-17.0.19.10-hotspot\\bin\\java",
+        "-cp",
+        "C:\\Users\\kortt\\Melty\\bannerbound\\.claude\\worktrees\\agent-ac7b939d3a3f94657\\work\\verify\\20261103-002430-44304\\classes;C:\\Users\\kortt\\.gradle\\caches\\modules-2\\files-2.1\\com.google.code.gson\\gson\\2.10.1\\b3add478d4382b78ea20b1671390a858002feb6c\\gson-2.10.1.jar",
+        "gg.gravesandglory.LegacyDataMigrationCheck"
+      ],
+      "exit_code": 0,
+      "log": "C:\\Users\\kortt\\Melty\\bannerbound\\.claude\\worktrees\\agent-ac7b939d3a3f94657\\work\\verify\\20261103-002430-44304\\LegacyDataMigrationCheck.log"
+    },
+    {
+      "name": "LevelMathCheck",
+      "command": [
+        "C:\\Program Files\\Eclipse Adoptium\\jdk-17.0.19.10-hotspot\\bin\\java",
+        "-cp",
+        "C:\\Users\\kortt\\Melty\\bannerbound\\.claude\\worktrees\\agent-ac7b939d3a3f94657\\work\\verify\\20261103-002430-44304\\classes;C:\\Users\\kortt\\.gradle\\caches\\modules-2\\files-2.1\\com.google.code.gson\\gson\\2.10.1\\b3add478d4382b78ea20b1671390a858002feb6c\\gson-2.10.1.jar",
+        "gg.gravesandglory.LevelMathCheck"
+      ],
+      "exit_code": 0,
+      "log": "C:\\Users\\kortt\\Melty\\bannerbound\\.claude\\worktrees\\agent-ac7b939d3a3f94657\\work\\verify\\20261103-002430-44304\\LevelMathCheck.log"
+    },
+    {
+      "name": "LobbyRulesCheck",
+      "command": [
+        "C:\\Program Files\\Eclipse Adoptium\\jdk-17.0.19.10-hotspot\\bin\\java",
+        "-cp",
+        "C:\\Users\\kortt\\Melty\\bannerbound\\.claude\\worktrees\\agent-ac7b939d3a3f94657\\work\\verify\\20261103-002430-44304\\classes;C:\\Users\\kortt\\.gradle\\caches\\modules-2\\files-2.1\\com.google.code.gson\\gson\\2.10.1\\b3add478d4382b78ea20b1671390a858002feb6c\\gson-2.10.1.jar",
+        "gg.gravesandglory.LobbyRulesCheck"
+      ],
+      "exit_code": 0,
+      "log": "C:\\Users\\kortt\\Melty\\bannerbound\\.claude\\worktrees\\agent-ac7b939d3a3f94657\\work\\verify\\20261103-002430-44304\\LobbyRulesCheck.log"
+    },
+    {
+      "name": "MarchMathCheck",
+      "command": [
+        "C:\\Program Files\\Eclipse Adoptium\\jdk-17.0.19.10-hotspot\\bin\\java",
+        "-cp",
+        "C:\\Users\\kortt\\Melty\\bannerbound\\.claude\\worktrees\\agent-ac7b939d3a3f94657\\work\\verify\\20261103-002430-44304\\classes;C:\\Users\\kortt\\.gradle\\caches\\modules-2\\files-2.1\\com.google.code.gson\\gson\\2.10.1\\b3add478d4382b78ea20b1671390a858002feb6c\\gson-2.10.1.jar",
+        "gg.gravesandglory.MarchMathCheck"
+      ],
+      "exit_code": 0,
+      "log": "C:\\Users\\kortt\\Melty\\bannerbound\\.claude\\worktrees\\agent-ac7b939d3a3f94657\\work\\verify\\20261103-002430-44304\\MarchMathCheck.log"
+    },
+    {
+      "name": "MatchRulesCheck",
+      "command": [
+        "C:\\Program Files\\Eclipse Adoptium\\jdk-17.0.19.10-hotspot\\bin\\java",
+        "-cp",
+        "C:\\Users\\kortt\\Melty\\bannerbound\\.claude\\worktrees\\agent-ac7b939d3a3f94657\\work\\verify\\20261103-002430-44304\\classes;C:\\Users\\kortt\\.gradle\\caches\\modules-2\\files-2.1\\com.google.code.gson\\gson\\2.10.1\\b3add478d4382b78ea20b1671390a858002feb6c\\gson-2.10.1.jar",
+        "gg.gravesandglory.MatchRulesCheck"
+      ],
+      "exit_code": 0,
+      "log": "C:\\Users\\kortt\\Melty\\bannerbound\\.claude\\worktrees\\agent-ac7b939d3a3f94657\\work\\verify\\20261103-002430-44304\\MatchRulesCheck.log"
+    },
+    {
+      "name": "ModeHudFitCheck",
+      "command": [
+        "C:\\Program Files\\Eclipse Adoptium\\jdk-17.0.19.10-hotspot\\bin\\java",
+        "-cp",
+        "C:\\Users\\kortt\\Melty\\bannerbound\\.claude\\worktrees\\agent-ac7b939d3a3f94657\\work\\verify\\20261103-002430-44304\\classes;C:\\Users\\kortt\\.gradle\\caches\\modules-2\\files-2.1\\com.google.code.gson\\gson\\2.10.1\\b3add478d4382b78ea20b1671390a858002feb6c\\gson-2.10.1.jar",
+        "gg.gravesandglory.ModeHudFitCheck"
+      ],
+      "exit_code": 0,
+      "log": "C:\\Users\\kortt\\Melty\\bannerbound\\.claude\\worktrees\\agent-ac7b939d3a3f94657\\work\\verify\\20261103-002430-44304\\ModeHudFitCheck.log"
+    },
+    {
+      "name": "ModeMathCheck",
+      "command": [
+        "C:\\Program Files\\Eclipse Adoptium\\jdk-17.0.19.10-hotspot\\bin\\java",
+        "-cp",
+        "C:\\Users\\kortt\\Melty\\bannerbound\\.claude\\worktrees\\agent-ac7b939d3a3f94657\\work\\verify\\20261103-002430-44304\\classes;C:\\Users\\kortt\\.gradle\\caches\\modules-2\\files-2.1\\com.google.code.gson\\gson\\2.10.1\\b3add478d4382b78ea20b1671390a858002feb6c\\gson-2.10.1.jar",
+        "gg.gravesandglory.ModeMathCheck"
+      ],
+      "exit_code": 0,
+      "log": "C:\\Users\\kortt\\Melty\\bannerbound\\.claude\\worktrees\\agent-ac7b939d3a3f94657\\work\\verify\\20261103-002430-44304\\ModeMathCheck.log"
+    },
+    {
+      "name": "PersistedDataCorruptionCheck",
+      "command": [
+        "C:\\Program Files\\Eclipse Adoptium\\jdk-17.0.19.10-hotspot\\bin\\java",
+        "-cp",
+        "C:\\Users\\kortt\\Melty\\bannerbound\\.claude\\worktrees\\agent-ac7b939d3a3f94657\\work\\verify\\20261103-002430-44304\\classes;C:\\Users\\kortt\\.gradle\\caches\\modules-2\\files-2.1\\com.google.code.gson\\gson\\2.10.1\\b3add478d4382b78ea20b1671390a858002feb6c\\gson-2.10.1.jar",
+        "gg.gravesandglory.PersistedDataCorruptionCheck"
+      ],
+      "exit_code": 0,
+      "log": "C:\\Users\\kortt\\Melty\\bannerbound\\.claude\\worktrees\\agent-ac7b939d3a3f94657\\work\\verify\\20261103-002430-44304\\PersistedDataCorruptionCheck.log"
+    },
+    {
+      "name": "ProfileFixtureCheck",
+      "command": [
+        "C:\\Program Files\\Eclipse Adoptium\\jdk-17.0.19.10-hotspot\\bin\\java",
+        "-cp",
+        "C:\\Users\\kortt\\Melty\\bannerbound\\.claude\\worktrees\\agent-ac7b939d3a3f94657\\work\\verify\\20261103-002430-44304\\classes;C:\\Users\\kortt\\.gradle\\caches\\modules-2\\files-2.1\\com.google.code.gson\\gson\\2.10.1\\b3add478d4382b78ea20b1671390a858002feb6c\\gson-2.10.1.jar",
+        "gg.gravesandglory.ProfileFixtureCheck"
+      ],
+      "exit_code": 0,
+      "log": "C:\\Users\\kortt\\Melty\\bannerbound\\.claude\\worktrees\\agent-ac7b939d3a3f94657\\work\\verify\\20261103-002430-44304\\ProfileFixtureCheck.log"
+    },
+    {
+      "name": "ProfileMigrationCheck",
+      "command": [
+        "C:\\Program Files\\Eclipse Adoptium\\jdk-17.0.19.10-hotspot\\bin\\java",
+        "-cp",
+        "C:\\Users\\kortt\\Melty\\bannerbound\\.claude\\worktrees\\agent-ac7b939d3a3f94657\\work\\verify\\20261103-002430-44304\\classes;C:\\Users\\kortt\\.gradle\\caches\\modules-2\\files-2.1\\com.google.code.gson\\gson\\2.10.1\\b3add478d4382b78ea20b1671390a858002feb6c\\gson-2.10.1.jar",
+        "gg.gravesandglory.ProfileMigrationCheck"
+      ],
+      "exit_code": 0,
+      "log": "C:\\Users\\kortt\\Melty\\bannerbound\\.claude\\worktrees\\agent-ac7b939d3a3f94657\\work\\verify\\20261103-002430-44304\\ProfileMigrationCheck.log"
+    },
+    {
+      "name": "StepHopCheck",
+      "command": [
+        "C:\\Program Files\\Eclipse Adoptium\\jdk-17.0.19.10-hotspot\\bin\\java",
+        "-cp",
+        "C:\\Users\\kortt\\Melty\\bannerbound\\.claude\\worktrees\\agent-ac7b939d3a3f94657\\work\\verify\\20261103-002430-44304\\classes;C:\\Users\\kortt\\.gradle\\caches\\modules-2\\files-2.1\\com.google.code.gson\\gson\\2.10.1\\b3add478d4382b78ea20b1671390a858002feb6c\\gson-2.10.1.jar",
+        "gg.gravesandglory.StepHopCheck"
+      ],
+      "exit_code": 0,
+      "log": "C:\\Users\\kortt\\Melty\\bannerbound\\.claude\\worktrees\\agent-ac7b939d3a3f94657\\work\\verify\\20261103-002430-44304\\StepHopCheck.log"
+    },
+    {
+      "name": "SurvivalFeedShortCheck",
+      "command": [
+        "C:\\Program Files\\Eclipse Adoptium\\jdk-17.0.19.10-hotspot\\bin\\java",
+        "-cp",
+        "C:\\Users\\kortt\\Melty\\bannerbound\\.claude\\worktrees\\agent-ac7b939d3a3f94657\\work\\verify\\20261103-002430-44304\\classes;C:\\Users\\kortt\\.gradle\\caches\\modules-2\\files-2.1\\com.google.code.gson\\gson\\2.10.1\\b3add478d4382b78ea20b1671390a858002feb6c\\gson-2.10.1.jar",
+        "gg.gravesandglory.SurvivalFeedShortCheck"
+      ],
+      "exit_code": 0,
+      "log": "C:\\Users\\kortt\\Melty\\bannerbound\\.claude\\worktrees\\agent-ac7b939d3a3f94657\\work\\verify\\20261103-002430-44304\\SurvivalFeedShortCheck.log"
+    },
+    {
+      "name": "TeleportRelocateCheck",
+      "command": [
+        "C:\\Program Files\\Eclipse Adoptium\\jdk-17.0.19.10-hotspot\\bin\\java",
+        "-cp",
+        "C:\\Users\\kortt\\Melty\\bannerbound\\.claude\\worktrees\\agent-ac7b939d3a3f94657\\work\\verify\\20261103-002430-44304\\classes;C:\\Users\\kortt\\.gradle\\caches\\modules-2\\files-2.1\\com.google.code.gson\\gson\\2.10.1\\b3add478d4382b78ea20b1671390a858002feb6c\\gson-2.10.1.jar",
+        "gg.gravesandglory.TeleportRelocateCheck"
+      ],
+      "exit_code": 0,
+      "log": "C:\\Users\\kortt\\Melty\\bannerbound\\.claude\\worktrees\\agent-ac7b939d3a3f94657\\work\\verify\\20261103-002430-44304\\TeleportRelocateCheck.log"
+    },
+    {
+      "name": "TroopFacesCheck",
+      "command": [
+        "C:\\Program Files\\Eclipse Adoptium\\jdk-17.0.19.10-hotspot\\bin\\java",
+        "-cp",
+        "C:\\Users\\kortt\\Melty\\bannerbound\\.claude\\worktrees\\agent-ac7b939d3a3f94657\\work\\verify\\20261103-002430-44304\\classes;C:\\Users\\kortt\\.gradle\\caches\\modules-2\\files-2.1\\com.google.code.gson\\gson\\2.10.1\\b3add478d4382b78ea20b1671390a858002feb6c\\gson-2.10.1.jar",
+        "gg.gravesandglory.TroopFacesCheck"
+      ],
+      "exit_code": 0,
+      "log": "C:\\Users\\kortt\\Melty\\bannerbound\\.claude\\worktrees\\agent-ac7b939d3a3f94657\\work\\verify\\20261103-002430-44304\\TroopFacesCheck.log"
+    },
+    {
+      "name": "UiMathCheck",
+      "command": [
+        "C:\\Program Files\\Eclipse Adoptium\\jdk-17.0.19.10-hotspot\\bin\\java",
+        "-cp",
+        "C:\\Users\\kortt\\Melty\\bannerbound\\.claude\\worktrees\\agent-ac7b939d3a3f94657\\work\\verify\\20261103-002430-44304\\classes;C:\\Users\\kortt\\.gradle\\caches\\modules-2\\files-2.1\\com.google.code.gson\\gson\\2.10.1\\b3add478d4382b78ea20b1671390a858002feb6c\\gson-2.10.1.jar",
+        "gg.gravesandglory.UiMathCheck"
+      ],
+      "exit_code": 0,
+      "log": "C:\\Users\\kortt\\Melty\\bannerbound\\.claude\\worktrees\\agent-ac7b939d3a3f94657\\work\\verify\\20261103-002430-44304\\UiMathCheck.log"
+    },
+    {
+      "name": "WedgeCheck",
+      "command": [
+        "C:\\Program Files\\Eclipse Adoptium\\jdk-17.0.19.10-hotspot\\bin\\java",
+        "-cp",
+        "C:\\Users\\kortt\\Melty\\bannerbound\\.claude\\worktrees\\agent-ac7b939d3a3f94657\\work\\verify\\20261103-002430-44304\\classes;C:\\Users\\kortt\\.gradle\\caches\\modules-2\\files-2.1\\com.google.code.gson\\gson\\2.10.1\\b3add478d4382b78ea20b1671390a858002feb6c\\gson-2.10.1.jar",
+        "gg.gravesandglory.WedgeCheck"
+      ],
+      "exit_code": 0,
+      "log": "C:\\Users\\kortt\\Melty\\bannerbound\\.claude\\worktrees\\agent-ac7b939d3a3f94657\\work\\verify\\20261103-002430-44304\\WedgeCheck.log"
+    },
+    {
+      "name": "build",
+      "command": [
+        "C:\\Users\\kortt\\Melty\\bannerbound\\.claude\\worktrees\\agent-ac7b939d3a3f94657\\gradlew.bat",
+        "--no-daemon",
+        "--offline",
+        "build",
+        "compileLocalTestTools",
+        "-x",
+        "test"
+      ],
+      "exit_code": 0,
+      "log": "C:\\Users\\kortt\\Melty\\bannerbound\\.claude\\worktrees\\agent-ac7b939d3a3f94657\\work\\verify\\20261103-002430-44304\\build.log"
+    }
+  ],
+  "status": "pass",
+  "log_root": "C:\\Users\\kortt\\Melty\\bannerbound\\.claude\\worktrees\\agent-ac7b939d3a3f94657\\work\\verify\\20261103-002430-44304",
+  "generated_before": {
+    "src/main/java/gg/gravesandglory/Spec.java": "bce53b6b382ab5228936b65c9d59aca2010f51e419ddc9c5cda1a698c0d800ee",
+    "sheets/preflight.json": "610eb29c64292942f0e12a94834d8deb4d880254ad182a835921f2f272b34742"
+  },
+  "source_after": {
+    "version": "0.5.0",
+    "modId": "gravesandglory",
+    "sourceSha256": "b3c3033db577dbef370edeb7247059f2c14f5adebf631cb4405a5b0ec49df44f"
+  },
+  "generated_after": {
+    "src/main/java/gg/gravesandglory/Spec.java": "d1709b49acbdac3843b82a19a23b007a2de0057d2ef94a2169a0980113a50e00",
+    "sheets/preflight.json": "14950f56b1d81aa53075fe5f40b0b8b1cdf242514f94deb265228b18b7f71da5"
+  }
+}

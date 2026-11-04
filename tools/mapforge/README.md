@@ -187,6 +187,38 @@ follow the state. A block not in the table (a modded block, a newer one) is mage
 every such block in the box with its count. The tests check that the table covers every block in the shipped
 structure files.
 
+## Map adoption (tasks 2A.2, 2A.4 and 2A.5; `gg-mapforge-runs/1`)
+
+Kort, 2026-10-28: a map ships as its generated base plus an edit overlay. The format is `runs.py` (Python) and
+`MapRuns.java` (game): one gzip text file (mtime 0, so the same blocks give the same bytes), a sorted-key JSON header,
+a palette in first-use order, maximal runs per column (`C x z y n p...`, columns sorted by x then z) and base64
+block-entity NBT. `digest` is sha256 over every run, `body` the sha256 of the text after the header; a file whose
+body, cell count or digest does not match is refused. Kinds: `capture` (every cell of a box, air included),
+`overlay` (the cells that differ from a base capture, with `baseDigest` over the base's cells under it), `batch`
+(an agent's proposed change, with `locks.allow` and `locks.deny`) and `undo`.
+
+The game side, in test-tools and the unshipped `mapforge-builder-DO-NOT-SHIP.jar` only (`MapForge.java`, run on the
+builder or with `-PmapForge=SCRIPT`, which hosts the harness world and drives a script, `MapForgeHarness.java`):
+
+```
+/mapforge status | backup | protects OUT | walk [TAG]
+/mapforge export NAME x0 y0 z0 x1 y1 z1 [camp]   capture a box (map or camp stamp)
+/mapforge diff BASE FINAL OUT                    overlay; refuses a changed generator stamp
+/mapforge verify FILE                            count the cells the world holds differently
+/mapforge plan BATCH                             dry run: locks, capture rings, spawn columns, camp stations, deletion
+/mapforge apply BATCH                            only after a passing plan of the same bytes; backup first, writes BATCH.undo.runs.gz
+/mapforge undo FILE                              only when the world still matches what apply left; backup first
+/mapforge adopt OVERLAY | snapshot CAPTURE       timed adoption and full-snapshot writes (the 2A.4 spike)
+```
+
+Offline: `python tools/mapforge adopt batch|validate|info|diff|apply|bake`. `bake --target dev` copies a validated
+overlay (map, stamp and baseDigest checked against its base capture) to
+`test-tools/resources/data/gravesandglory/adoption-dev/`, read only with `-PadoptionDev`; `--target release` writes
+`src/main/resources/data/gravesandglory/adoption/` and refuses without `--approved-by` (Kort's approval). In game,
+`MapAdoption.java` writes a map's overlay after its landmarks, a budget of cells per tick, and keeps the generated
+map when the format, kind, map, generator stamp (`MapAdoption.stamp`: `GENERATOR` plus the Spec tables the
+generator reads) or base digest does not match. Bump `GENERATOR` whenever the generator's blocks change.
+
 ## Files
 
 - `nbt.py` NBT reader/writer (byte-identical round-trip of every shipped structure file; gzip with mtime 0).
@@ -198,4 +230,5 @@ structure files.
   colour table and its generator.
 - `samples/camp-map.json` sample manifest (two sections, protect boxes and a cylinder); `samples/camp-watchpost.json`
   a blockout plan for its section s0 on a flat 64x64 world.
-- Tests: `test-tools/standalone/test_mapforge.py` (run by `tools/verify.py fast`).
+- `runs.py` and `adopt.py` map adoption files and commands.
+- Tests: `test-tools/standalone/test_mapforge.py` and `test_adoption.py` (run by `tools/verify.py fast`).

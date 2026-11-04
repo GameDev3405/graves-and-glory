@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>Gear screen mockups</title>
+<style>
+body{margin:0;background:#2b1a10;font-family:Georgia,'Times New Roman',serif;color:#3a2a1a}
+.intro{color:#f1e7cb;padding:18px 24px 4px}
+.intro h2{margin:0 0 4px;font-weight:normal}
+.intro p{margin:0;color:#dccb9f;font-size:14px}
+.mock{margin:18px 24px 34px;cursor:pointer;border:3px solid transparent;border-radius:6px}
+.mock.selected{border-color:#e0b24a}
+.label{color:#f1e7cb;font-size:16px;margin:0 0 6px}
+.label span{color:#dccb9f;font-size:13px}
+.screen{background:repeating-linear-gradient(0deg,#4a2e1c 0 46px,#3e2617 46px 48px);padding:14px 18px 22px;border-radius:4px}
+.top{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+.badge{border:2px solid #c9a35a;background:#3a2416;color:#f1e7cb;padding:4px 12px;font-size:14px}
+.esc{border:1px solid #c9a35a;padding:0 5px;font-size:11px;margin-left:8px}
+.rope{height:4px;background:repeating-linear-gradient(90deg,#c9a35a 0 6px,#8a6a34 6px 9px);margin:6px 0 14px}
+.row{display:flex;gap:16px;align-items:stretch}
+.paper{background:#f1e7cb;box-shadow:inset 0 0 30px rgba(140,110,60,.35),0 3px 0 #1d110a;padding:14px 16px;position:relative}
+.paper.dark{background:#e6d6ac}
+h4{margin:0 0 6px;font-weight:normal;font-size:15px;border-bottom:1px solid #b9a273;padding-bottom:3px;display:flex;justify-content:space-between}
+h4 small{font-size:12px;color:#6b5a3e}
+.stats{font-size:13px;line-height:1.75;white-space:nowrap;min-width:120px}
+.stats b{float:right;font-weight:normal}
+.up{color:#3c7a2c}.down{color:#9a3a2a}
+.frame{border:4px solid #c9a35a;outline:2px solid #8a6a34;background:#1f2a33;display:flex;align-items:flex-end;justify-content:center;padding:10px 0 6px}
+/* pixel figure */
+.fig{display:flex;flex-direction:column;align-items:center;image-rendering:pixelated}
+.fig div{box-shadow:inset -3px -3px 0 rgba(0,0,0,.25)}
+.hd{width:34px;height:34px;background:#c8956c}
+.hd.helm{background:linear-gradient(#9aa3ab 0 55%,#c8956c 55%);border-top:5px solid #b25ad6}
+.bd{display:flex}.bd .arm{width:14px;height:44px;background:#7c8790}
+.bd .ch{width:34px;height:44px;background:#5b6e85;border-bottom:4px solid #4a8fd6}
+.lg{display:flex;gap:2px}.lg div{width:16px;height:30px;background:#6d6252}
+.bt{display:flex;gap:2px}.bt div{width:16px;height:8px;background:#4a3a2a}
+.nohelm .hd{background:#c8956c;border-top:0}
+.slots{display:flex;gap:6px;flex-wrap:wrap}
+.s{width:44px;height:44px;background:#3a2c1e;border:2px solid #8a6a34;box-shadow:inset 2px 2px 0 #1d140c;display:flex;align-items:center;justify-content:center;color:#b9a273;font-size:10px;text-align:center;position:relative}
+.s.c{border-color:#9a9a9a}.s.u{border-color:#4f9a3c}.s.r{border-color:#3f7fd0}.s.e{border-color:#a052d0}.s.l{border-color:#e09a2a}
+.s .ic{width:22px;height:22px;background:currentColor;opacity:.75}
+.s.c .ic{color:#bdbdbd}.s.u .ic{color:#6fc25a}.s.r .ic{color:#5a9ae6}.s.e .ic{color:#c07ae6}.s.l .ic{color:#f0b040}
+.s.empty .ic{display:none}
+.s.sel{outline:3px solid #f1e7cb}
+.s.eq::after{content:'E';position:absolute;top:1px;left:3px;font-size:9px;color:#f1e7cb}
+.cap{font-size:11px;color:#6b5a3e;margin:3px 0 8px}
+.tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px}
+.tab{border:2px solid #b9a273;background:#f6eed8;padding:3px 10px;font-size:13px}
+.tab.on{border-color:#8a6a34;text-decoration:underline;text-underline-offset:4px}
+.sort{margin-left:auto;font-size:12px;border:1px solid #b9a273;padding:3px 8px;background:#f6eed8}
+.grid{display:grid;grid-template-columns:repeat(8,44px);gap:6px}
+.tip{background:#2a1d12;color:#f1e7cb;border:2px solid #a052d0;padding:8px 10px;font-size:12px;line-height:1.6}
+.tip .n{color:#d39af0;font-size:14px}
+.btn{display:inline-block;border:2px solid #b9a273;background:#f6eed8;padding:3px 12px;font-size:13px;margin-right:6px}
+.gold{color:#8a6a34}
+.vlist div{padding:4px 8px;font-size:13px;border-left:3px solid transparent}
+.vlist div.on{border-left-color:#8a6a34;background:#e6d6ac}
+</style></head><body>
+
+<div class="intro">
+<h2>Gear screen, following your drawing</h2>
+<p>Three takes on the same layout: your character with stats, armour slots, then relics on the left, and the inventory with filters on the right. Each uses the War Table look (wood, rope, parchment). Click the one you like best, then tell me what to change in chat.</p>
+</div>
+
+<!-- A -->
+<div class="mock" data-choice="A" onclick="toggleSelect(this)">
+<p class="label">A. Closest to your drawing <span>(stats beside the character, hover an item for its card)</span></p>
+<div class="screen">
+ <div class="top"><div class="badge">Armoury<span class="esc">Esc</span></div><span style="color:#dccb9f;font-size:13px;margin-left:auto">Forge marks: 140 &nbsp;·&nbsp; Gold: 820</span></div>
+ <div class="rope"></div>
+ <div class="row">
+  <div class="paper" style="width:400px">
+   <div class="row" style="gap:12px">
+    <div class="stats" style="flex:1">
+     <h4>Stats</h4>
+     Health <b>46</b><br>Damage <b>9.5</b><br>Armour <b>14</b><br>Speed <b>100%</b><br>Ranged <b>6</b><br>Healing <b>—</b><br>Command <b>+8%</b>
+    </div>
+    <div style="width:140px">
+     <h4>Armour</h4>
+     <div class="frame" style="height:150px"><div class="fig"><div class="hd helm"></div><div class="bd"><div class="arm"></div><div class="ch"></div><div class="arm"></div></div><div class="lg"><div></div><div></div></div><div class="bt"><div></div><div></div></div></div></div>
+    </div>
+   </div>
+   <h4 style="margin-top:12px">Worn <small>Set: Warden 2 of 4</small></h4>
+   <div class="slots">
+    <div class="s e eq"><div class="ic"></div></div><div class="s r eq"><div class="ic"></div></div><div class="s u eq"><div class="ic"></div></div><div class="s c eq"><div class="ic"></div></div><div class="s l eq"><div class="ic"></div></div><div class="s r eq"><div class="ic"></div></div>
+   </div>
+   <div class="cap">Helm · Chest · Legs · Boots · Main hand · Off hand</div>
+   <h4>Relics <small>keys 1, 2, 3</small></h4>
+   <div class="slots"><div class="s e eq"><div class="ic"></div></div><div class="s u eq"><div class="ic"></div></div><div class="s empty">empty</div></div>
+  </div>
+  <div class="paper" style="flex:1">
+   <h4>Inventory <small>37 of 60</small></h4>
+   <div class="tabs"><span class="tab on">All</span><span class="tab">Helms</span><span class="tab">Chests</span><span class="tab">Legs</span><span class="tab">Boots</span><span class="tab">Weapons</span><span class="tab">Relics</span><span class="sort">Sort: Rarity ▾</span></div>
+   <div class="row" style="gap:14px">
+    <div class="grid">
+     <div class="s l"><div class="ic"></div></div><div class="s e sel"><div class="ic"></div></div><div class="s e"><div class="ic"></div></div><div class="s r"><div class="ic"></div></div><div class="s r"><div class="ic"></div></div><div class="s r"><div class="ic"></div></div><div class="s u"><div class="ic"></div></div><div class="s u"><div class="ic"></div></div>
+     <div class="s u"><div class="ic"></div></div><div class="s u"><div class="ic"></div></div><div class="s u"><div class="ic"></div></div><div class="s c"><div class="ic"></div></div><div class="s c"><div class="ic"></div></div><div class="s c"><div class="ic"></div></div><div class="s c"><div class="ic"></div></div><div class="s c"><div class="ic"></div></div>
+     <div class="s c"><div class="ic"></div></div><div class="s c"><div class="ic"></div></div><div class="s c"><div class="ic"></div></div><div class="s c"><div class="ic"></div></div><div class="s empty"></div><div class="s empty"></div><div class="s empty"></div><div class="s empty"></div>
+    </div>
+    <div class="tip" style="width:200px;align-self:flex-start">
+     <div class="n">Warden's Greathelm</div>Epic helm · Warden set<br>+12 health · +4 armour<br>Rally: troops nearby +8% morale<br><span style="color:#8fd67a">▲ +5 health vs worn</span><br><span style="color:#b9a273">Right-click: equip · Shift: break down</span>
+    </div>
+   </div>
+  </div>
+ </div>
+</div>
+</div>
+
+<!-- B -->
+<div class="mock" data-choice="B" onclick="toggleSelect(this)">
+<p class="label">B. Troop-sheet style <span>(big portrait like the troop card, a compare panel along the bottom)</span></p>
+<div class="screen">
+ <div class="top"><div class="badge">Armoury<span class="esc">Esc</span></div><span style="color:#dccb9f;font-size:13px;margin-left:auto">Forge marks: 140 &nbsp;·&nbsp; Gold: 820</span></div>
+ <div class="rope"></div>
+ <div class="row">
+  <div class="paper" style="width:330px;text-align:center">
+   <div class="frame" style="height:190px;margin:0 30px"><div class="fig" style="transform:scale(1.25);transform-origin:bottom"><div class="hd helm"></div><div class="bd"><div class="arm"></div><div class="ch"></div><div class="arm"></div></div><div class="lg"><div></div><div></div></div><div class="bt"><div></div><div></div></div></div></div>
+   <div style="font-size:17px;margin:8px 0 2px">Kort</div><div style="font-size:13px;color:#6b5a3e;margin-bottom:8px">Bruiser · Warden 2 of 4</div>
+   <div class="slots" style="justify-content:center"><div class="s e eq"><div class="ic"></div></div><div class="s r eq"><div class="ic"></div></div><div class="s u eq"><div class="ic"></div></div><div class="s c eq"><div class="ic"></div></div><div class="s l eq"><div class="ic"></div></div><div class="s r eq"><div class="ic"></div></div></div>
+   <div class="cap">Helm · Chest · Legs · Boots · Main · Off</div>
+   <div class="slots" style="justify-content:center"><div class="s e eq"><div class="ic"></div></div><div class="s u eq"><div class="ic"></div></div><div class="s empty">relic</div></div>
+   <div class="cap">Relics (1, 2, 3)</div>
+  </div>
+  <div class="paper" style="flex:1;display:flex;flex-direction:column">
+   <div class="tabs"><span class="tab on">Inventory</span><span class="tab">Stats</span><span class="tab">Sets</span><span class="sort">Rarity: All ▾</span><span class="sort" style="margin-left:6px">Set: All ▾</span></div>
+   <div class="row" style="gap:12px">
+    <div class="vlist" style="width:90px"><div class="on">All</div><div>Helms</div><div>Chests</div><div>Legs</div><div>Boots</div><div>Weapons</div><div>Relics</div></div>
+    <div class="grid" style="grid-template-columns:repeat(9,44px)">
+     <div class="s l"><div class="ic"></div></div><div class="s e sel"><div class="ic"></div></div><div class="s e"><div class="ic"></div></div><div class="s r"><div class="ic"></div></div><div class="s r"><div class="ic"></div></div><div class="s r"><div class="ic"></div></div><div class="s u"><div class="ic"></div></div><div class="s u"><div class="ic"></div></div><div class="s u"><div class="ic"></div></div>
+     <div class="s u"><div class="ic"></div></div><div class="s c"><div class="ic"></div></div><div class="s c"><div class="ic"></div></div><div class="s c"><div class="ic"></div></div><div class="s c"><div class="ic"></div></div><div class="s c"><div class="ic"></div></div><div class="s c"><div class="ic"></div></div><div class="s empty"></div><div class="s empty"></div>
+    </div>
+   </div>
+   <h4 style="margin-top:12px">Compare <small>Warden's Greathelm vs Iron Helm (worn)</small></h4>
+   <div class="row stats" style="gap:30px">
+    <div style="width:150px">Health <b class="up">+5</b><br>Armour <b class="up">+1</b><br>Speed <b class="down">−3%</b></div>
+    <div style="width:220px">Rally: troops nearby +8% morale<br>Set: Warden 3 of 4 if worn</div>
+    <div style="align-self:flex-end"><span class="btn">Equip</span><span class="btn">Break down <span class="gold">+12</span></span></div>
+   </div>
+  </div>
+ </div>
+</div>
+</div>
+
+<!-- C -->
+<div class="mock" data-choice="C" onclick="toggleSelect(this)">
+<p class="label">C. Character first <span>(the character is large in the middle of the left side, stats as bars under the relics)</span></p>
+<div class="screen">
+ <div class="top"><div class="badge">Armoury<span class="esc">Esc</span></div><span style="color:#dccb9f;font-size:13px;margin-left:auto">Forge marks: 140 &nbsp;·&nbsp; Gold: 820</span></div>
+ <div class="rope"></div>
+ <div class="row">
+  <div class="paper" style="width:340px">
+   <div class="row" style="gap:10px;align-items:center">
+    <div style="display:flex;flex-direction:column;gap:6px"><div class="s e eq"><div class="ic"></div></div><div class="s r eq"><div class="ic"></div></div></div>
+    <div class="frame" style="flex:1;height:200px"><div class="fig" style="transform:scale(1.35);transform-origin:bottom"><div class="hd helm"></div><div class="bd"><div class="arm"></div><div class="ch"></div><div class="arm"></div></div><div class="lg"><div></div><div></div></div><div class="bt"><div></div><div></div></div></div></div>
+    <div style="display:flex;flex-direction:column;gap:6px"><div class="s l eq"><div class="ic"></div></div><div class="s r eq"><div class="ic"></div></div></div>
+   </div>
+   <div class="cap" style="text-align:center">Weapons beside you · toggle: <u>show armour</u> / hide armour</div>
+   <div class="slots" style="justify-content:center"><div class="s e eq"><div class="ic"></div></div><div class="s r eq"><div class="ic"></div></div><div class="s u eq"><div class="ic"></div></div><div class="s c eq"><div class="ic"></div></div></div>
+   <div class="cap" style="text-align:center">Helm · Chest · Legs · Boots</div>
+   <div class="slots" style="justify-content:center"><div class="s e eq"><div class="ic"></div></div><div class="s u eq"><div class="ic"></div></div><div class="s empty">relic</div></div>
+   <div class="stats" style="margin-top:8px">
+    <div>Health <span style="display:inline-block;width:150px;height:8px;background:#d6c595;margin-left:8px"><span style="display:block;width:70%;height:100%;background:#9a3a2a"></span></span> 46</div>
+    <div>Damage <span style="display:inline-block;width:150px;height:8px;background:#d6c595;margin-left:4px"><span style="display:block;width:55%;height:100%;background:#8a6a34"></span></span> 9.5</div>
+    <div>Armour <span style="display:inline-block;width:150px;height:8px;background:#d6c595;margin-left:5px"><span style="display:block;width:60%;height:100%;background:#5b6e85"></span></span> 14</div>
+   </div>
+  </div>
+  <div class="paper" style="flex:1">
+   <h4>Inventory <small>37 of 60 · Forge marks 140</small></h4>
+   <div class="tabs"><span class="tab on">All</span><span class="tab">Armour</span><span class="tab">Weapons</span><span class="tab">Relics</span><span class="tab">New ●</span><span class="sort">Role: Any ▾</span><span class="sort" style="margin-left:6px">Sort: Newest ▾</span></div>
+   <div class="grid" style="grid-template-columns:repeat(9,44px)">
+    <div class="s l"><div class="ic"></div></div><div class="s e sel"><div class="ic"></div></div><div class="s e"><div class="ic"></div></div><div class="s r"><div class="ic"></div></div><div class="s r"><div class="ic"></div></div><div class="s r"><div class="ic"></div></div><div class="s u"><div class="ic"></div></div><div class="s u"><div class="ic"></div></div><div class="s u"><div class="ic"></div></div>
+    <div class="s u"><div class="ic"></div></div><div class="s c"><div class="ic"></div></div><div class="s c"><div class="ic"></div></div><div class="s c"><div class="ic"></div></div><div class="s c"><div class="ic"></div></div><div class="s c"><div class="ic"></div></div><div class="s c"><div class="ic"></div></div><div class="s c"><div class="ic"></div></div><div class="s c"><div class="ic"></div></div>
+    <div class="s c"><div class="ic"></div></div><div class="s c"><div class="ic"></div></div><div class="s empty"></div><div class="s empty"></div><div class="s empty"></div><div class="s empty"></div><div class="s empty"></div><div class="s empty"></div><div class="s empty"></div>
+   </div>
+   <div style="margin-top:10px;font-size:12px;color:#6b5a3e">Rarity border: <span style="color:#7a7a7a">■ Common</span> <span style="color:#4f9a3c">■ Uncommon</span> <span style="color:#3f7fd0">■ Rare</span> <span style="color:#a052d0">■ Epic</span> <span style="color:#e09a2a">■ Legendary</span> &nbsp;·&nbsp; Click: details · Right-click: equip · Shift-click: break down</div>
+  </div>
+ </div>
+</div>
+</div>
+
+</body></html>

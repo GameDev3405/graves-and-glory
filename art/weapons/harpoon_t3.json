@@ -1,0 +1,19 @@
+{
+ "weapon": "harpoon_t3",
+ "density": 1,
+ "thickness": 2,
+ "grip": {
+  "offset": [
+   0,
+   0,
+   0
+  ],
+  "rotation": [
+   0,
+   0,
+   0
+  ],
+  "note": "held upright like the sun staff"
+ },
+ "note": "The Harpooner's harpoon (Tidecallers), hand-authored at 1 texel a px: a salt-grey driftwood shaft, a sea-blue grip and band, a hemp coil with a trailing line and a barbed iron head; held upright. Tier III: a bronze collar, a sea-blue coil and a longer steel head and hooks; a bronze head set with pearl and a sea-blue collar."
+}

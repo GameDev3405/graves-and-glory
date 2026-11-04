@@ -48,6 +48,13 @@ public final class UiMath {
         return row;
     }
 
+    /** Tab i of a tab block that wraps cols to a row inside maxW px: {x, y, w} from the block's top left, each tab (maxW less the gaps) / cols wide,
+     *  rows h tall and gap apart. The block never leaves its width, however many tabs a mode list grows to. */
+    public static int[] tabBox(int i, int cols, int maxW, int gap, int h) {
+        int w = (maxW - gap * (cols - 1)) / cols;
+        return new int[]{i % cols * (w + gap), i / cols * (h + gap), w};
+    }
+
     /** The text unchanged if it fits in maxW, else its longest prefix plus "..." that fits ("" when not even "..." fits). */
     public static String trim(String s, int maxW, ToIntFunction<String> width) {
         if (width.applyAsInt(s) <= maxW) return s;

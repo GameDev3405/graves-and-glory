@@ -18,7 +18,7 @@ public final class LevelMathCheck {
     /** The sheet's bot row for a difficulty, with fixed gear columns so the fixtures survive Task 11 tuning. */
     static Spec.BotCommandRow bot(String id, int maxTier, int reserveTroops, String priority) {
         for (var b : Spec.BOTCOMMAND) if (b.id().equals(id))
-            return new Spec.BotCommandRow(b.id(), b.retreatShare(), b.rallyShare(), b.chargeRatio(), b.decisionTicks(), b.flankLeastDefended(), b.defenderWeight(), b.archerThreatCount(), b.archerThreatRange(), b.chargeDistance(), maxTier, reserveTroops, priority);
+            return new Spec.BotCommandRow(b.id(), b.retreatShare(), b.rallyShare(), b.chargeRatio(), b.decisionTicks(), b.flankLeastDefended(), b.defenderWeight(), b.archerThreatCount(), b.archerThreatRange(), b.chargeDistance(), maxTier, reserveTroops, priority, b.waveScale(), b.waveTraitTier());
         throw new AssertionError("no botCommand row " + id);
     }
     static LevelMath.TypeState type(String troop, int seen, int weapon, int armour, int living2) {

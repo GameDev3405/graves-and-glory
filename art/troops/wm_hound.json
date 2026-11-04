@@ -1,0 +1,21 @@
+{
+ "troop": "wm_hound",
+ "note": "Wildmoot Moot Hound (unit identity, Wildmoot; Common; wolf entity): a low, long, head-down cur on the hound rig, a russet fur coat over a bark-dark belly, a dark muzzle with small bone teeth, a pale clay stripe from nose to tail tip, an ochre sinew collar with bone toggles and a ragged team saddle-cloth over the shoulders with hide spikes rising through it. Tier II: bone skull-mask and shoulder plates, tooth collar, leg wraps, taller spikes, long fangs; tier III: antler crown, spine and flank plates, throat skull, ochre flank bars, sabre fangs. No back flag.",
+ "rig": "hound",
+ "size": [
+  128,
+  64
+ ],
+ "density": 1,
+ "bones": [],
+ "idleArms": "hang",
+ "parts": [],
+ "skins": {
+  "1": "wm_hound_s1.png",
+  "2": "wm_hound_s2.png",
+  "3": "wm_hound_s3.png"
+ },
+ "weapon": "none",
+ "hand": "right",
+ "portrait": "beast 16"
+}

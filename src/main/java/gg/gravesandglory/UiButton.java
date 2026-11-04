@@ -14,11 +14,24 @@ public class UiButton extends ButtonWidget {
 
     int cx, cy, cw, ch;
     final Painter painter;
+    /** A button that makes no press click of its own: its handler plays the cue (the back plaques, whose back() plays UiSounds.back). */
+    boolean quiet;
 
     public UiButton(int x, int y, int w, int h, Text label, PressAction onPress, UiButton.Painter painter) {
         super(0, 0, 0, 0, label, onPress, DEFAULT_NARRATION_SUPPLIER);
         this.cx = x; this.cy = y; this.cw = w; this.ch = h; this.painter = painter;
         relayout();
+    }
+
+    /** Makes the press silent, so a handler that plays its own cue is not doubled by the vanilla click. */
+    public UiButton quiet() { quiet = true; return this; }
+
+    @Override public void playDownSound(net.minecraft.client.sound.SoundManager sounds) { if (!quiet) super.playDownSound(sounds); }
+
+    /** A click on a greyed button is refused: it gives the deny cue (UiSounds.deny) and nothing else. */
+    @Override public boolean mouseClicked(double mouseX, double mouseY, int button) {
+        if (!active && visible && button == 0 && overArt(mouseX, mouseY)) { UiSounds.deny(); return false; }
+        return super.mouseClicked(mouseX, mouseY, button);
     }
 
     /** {x, y, w, h} in canvas pixels. */
@@ -54,7 +67,7 @@ public class UiButton extends ButtonWidget {
         var c = MinecraftClient.getInstance(); var w = c.getWindow();
         hovered = overArt(c.mouse.getX() * w.getScaledWidth() / w.getWidth(), c.mouse.getY() * w.getScaledHeight() / w.getHeight());
         UiCanvas.begin(g);
-        try { paint(g, cx, cy, cw, ch, isHovered() || isFocused()); }
+        try { paint(g, cx, cy, cw, ch, isHovered() || isFocused()); if (DarkUi.keyboardFocus(this)) DarkUi.focusRing(g, cx, cy, cw, ch); } // the ring is the keyboard's alone (4F.5)
         finally { UiCanvas.end(g); }
     }
 }

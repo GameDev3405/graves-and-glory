@@ -1,0 +1,42 @@
+{
+ "weapon": "frost_bow_t3",
+ "density": 1,
+ "thickness": 2,
+ "grip": {
+  "offset": [
+   1,
+   0,
+   -3
+  ],
+  "rotation": [
+   0,
+   0,
+   0
+  ],
+  "note": "the grip's centre is the model origin; held 3 px forward of the hand, outside the mantle flaps"
+ },
+ "pull": [
+  0.15,
+  0.32,
+  0.48
+ ],
+ "nocks": [
+  [
+   -3.3196,
+   0
+  ],
+  [
+   -4.1631,
+   0
+  ],
+  [
+   -4.9065,
+   0
+  ],
+  [
+   -5.65,
+   0
+  ]
+ ],
+ "note": "The Barrow Stalker's frost bow, tier III (Graveborn), hand-authored at 1 texel a px on the order bow's geometry: pale grave-wood limbs with a frost-grey rimed back, a black grave-iron riser and nocks capped in rime, a violet-wound grip and knee bindings, a rime shard hanging from the riser. Drawn through the same four frames as the order bow. Tier III: risers, nocks and grip thread chased in funeral gilt, gilt knee bands and the bone shard."
+}

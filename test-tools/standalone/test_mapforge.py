@@ -18,6 +18,7 @@ from mapforge.world import AIR_CELL, Cell, World  # noqa: E402
 from mapforge import render  # noqa: E402
 from mapforge import manifest as mf  # noqa: E402
 from mapforge.colours import UNKNOWN, Palette  # noqa: E402
+from mapforge import scan as scan_mod  # noqa: E402
 
 try:
     import PIL  # noqa: F401
@@ -754,6 +755,40 @@ class RenderTest(unittest.TestCase):
             self.assertNotEqual(r.returncode, 0)
             self.assertIn('offline only', r.stderr + r.stdout)
             self.assertNotEqual(run('render', world, '--out', d / 'r.png', '--min', 1, '--max', 2).returncode, 0)
+
+
+class ScanTest(unittest.TestCase):
+    """The read-only layout scan on a tiny flat world: routes, a blocked capture band and a walled-off spawn."""
+
+    def _world(self):
+        w = World('scan')
+        for x in range(-12, 13):
+            for z in range(-6, 7):
+                for y in (62, 63, 64):
+                    w.set((x, y, z), Cell(normalize('stone')))
+        return w
+
+    def _manifest(self):
+        return {'id': 'testmap', 'protect': [
+            {'id': 'capture-x', 'kind': 'capture', 'center': [8, 0], 'radius': 2, 'y': [66, 67]},
+            {'id': 'spawn-w', 'kind': 'spawn', 'min': [-9, 65, -1], 'max': [-7, 70, 1]}]}
+
+    def test_clean_world_has_a_route_and_no_problems(self):
+        rep = scan_mod.scan(self._manifest(), self._world(), None, ((-20, -20), (20, 20)))
+        self.assertEqual(rep['problems'], [])
+        self.assertEqual(rep['spawns'][0]['standY'], 65)
+        self.assertAlmostEqual(rep['spawns'][0]['routes']['capture-x'], 16, delta=3)
+
+    def test_block_in_capture_band_and_a_walled_spawn_are_reported(self):
+        w = self._world()
+        w.set((8, 66, 0), Cell(normalize('stone')))
+        for z in range(-6, 7):
+            for y in (65, 66, 67, 68):
+                w.set((-4, y, z), Cell(normalize('stone')))
+        rep = scan_mod.scan(self._manifest(), w, None, ((-20, -20), (20, 20)))
+        text = ' | '.join(rep['problems'])
+        self.assertIn('capture-x: 1 block(s) in the locked band', text)
+        self.assertIn('no walking route to capture-x', text)
 
 
 class PillowMissingTest(unittest.TestCase):

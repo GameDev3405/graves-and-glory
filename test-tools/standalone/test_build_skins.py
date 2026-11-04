@@ -3284,6 +3284,7 @@ class JointedRigChecks(unittest.TestCase):
         self.assertTrue(projects)
         self.assertTrue(set(projects) <= set(cat.troops), projects)
         for troop in sorted(cat.troops):
+            if cat.troops[troop].get('rig') != 'biped': continue   # the elbows and knees are the biped rig's (the colossus, hound and spider rigs have their own limbs)
             with self.subTest(troop=troop, project=troop in projects):
                 bones = {b['name']: b for b in build_skins.bake(cat, troop)['bones']}
                 for upper, lower, _ in self.LIMBS:

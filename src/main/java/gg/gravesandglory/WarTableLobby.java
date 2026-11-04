@@ -26,7 +26,9 @@ final class WarTableLobby {
             HOST_Y = 166, HOUSE_HEAD_Y = 184, HOUSE_Y = 202, CHIP_PAD = 6, CHIP_SEAL = 16, CHIP_SEAL_GAP = 4, CHIP_GAP = 4, CLASS_HEAD_Y = 236, CLASS_Y = 254, TILE_W = 36, TILE_GAP = 4,
             READY_Y = 288, STATUS_Y = 334, NOTICE_Y = 350, STEP = 12;
     /** On the note (note-relative): its text edge and width, and the rows of the orders. */
-    static final int NPAD = 18, NOTE_TEXT_W = 196, MODE_Y = 44, MAP_Y = 92, CARD_Y = 108, SIZE_Y = 230, FILL_Y = 278, LEAVE_Y = 330;
+    static final int NPAD = 18, NOTE_TEXT_W = 196, MODE_Y = 44, MAP_Y = 116, CARD_Y = 132, SIZE_Y = 254, FILL_Y = 302, LEAVE_Y = 344,
+            MODE_COLS = 2, MODE_H = 24, MODE_GAP = 3;
+    // The mode tabs wrap two to a row (four modes since Survival did not fit one row of the note's 196 px); the rows below the tabs sit 24 px lower than the single row had them.
     /** The host's two tags on the last row of the note, Pass host and Leave, each this wide. */
     static final int HOST_TAG_W = 96;
 
@@ -167,12 +169,13 @@ final class WarTableLobby {
             b.active = idle;
         }
         String label = readyLabel();
-        var ready = add("ready", new UiButton(sx + (SHEET_W - 240) / 2, sy + READY_Y, 240, 40, Text.literal(label), b -> send("social:ready"), (g, x, y, w, h, hot) -> plate(g, "ready", readyLabel(), !myReady(), x, y)));
+        var ready = add("ready", new UiButton(sx + (SHEET_W - 240) / 2, sy + READY_Y, 240, 40, Text.literal(label), b -> { UiSounds.toggled(!myReady()); send("social:ready"); }, (g, x, y, w, h, hot) -> plate(g, "ready", readyLabel(), !myReady(), x, y)));
         ready.active = idle && !choosing && houseRefusal().isEmpty();
         var modes = modes();
         for (int i = 0; i < modes.size(); i++) {
             String id = modes.get(i);
-            var b = add("mode-" + id, new UiButton(nx + NPAD + 92 * i, ny + MODE_Y + 14, 88, 24, Text.literal(modeName(id)), x -> send("social:mode:" + id), (g, x, y, w, h, hot) -> tag(g, "mode-" + id, modeName(id), id.equals(str("mode", "")), x, y, w, h)));
+            int[] tab = UiMath.tabBox(i, MODE_COLS, NOTE_TEXT_W, MODE_GAP, MODE_H);
+            var b = add("mode-" + id, new UiButton(nx + NPAD + tab[0], ny + MODE_Y + 14 + tab[1], tab[2], MODE_H, Text.literal(modeName(id)), x -> send("social:mode:" + id), (g, x, y, w, h, hot) -> tag(g, "mode-" + id, modeName(id), id.equals(str("mode", "")), x, y, w, h)));
             b.active = host;
         }
         int cardX = nx + (NOTE_W - 139) / 2, map = num("map", 0), n = Spec.MAPS.length;
@@ -219,7 +222,7 @@ final class WarTableLobby {
         return myReady() ? "Stand down" : "Ready";
     }
 
-    void back() { screen.page("home"); }
+    void back() { UiSounds.back(); screen.page("home"); }
 
     boolean send(String cmd) {
         if (!screen.action(cmd)) return false;
@@ -463,6 +466,7 @@ final class WarTableLobby {
         boolean live = b != null && b.active;
         String plate = "table/btn-vellum-88x24";
         UiTex.nine(g, plate, x, y, w + 1, h + 2);
+        if (!live && !on) DarkUi.disabledVeil(g, x + 1, y + 1, w - 1, h); // veiled as well as sepia while it cannot be pressed (4F.5)
         var t = DarkUi.heading(label);
         int tw = font.getWidth(t), lx = x + (w - tw) / 2, ink = live || on ? DarkUi.INK_TEXT : DarkUi.SEPIA;
         g.drawText(font, t, lx, y + 6, ink, false);

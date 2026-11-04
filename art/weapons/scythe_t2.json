@@ -1,0 +1,19 @@
+{
+ "weapon": "scythe_t2",
+ "density": 1,
+ "thickness": 2,
+ "grip": {
+  "offset": [
+   0,
+   0,
+   0
+  ],
+  "rotation": [
+   0,
+   0,
+   0
+  ],
+  "note": "held upright like the sun staff"
+ },
+ "note": "The Grave Reaper's scythe, tier II (Graveborn): tier I with a bone butt spike and shoe, a bone mid ring and a bone-tipped point; same cubes, hand-authored at 1 texel a px, held upright."
+}

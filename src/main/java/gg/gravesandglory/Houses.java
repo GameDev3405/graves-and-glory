@@ -37,6 +37,7 @@ final class Houses {
         for (var u : battle.units) if (u.squad == s && !u.temporary && u.mob.isAlive()) slots.merge(u.spec.house(), u.spec.slotWeight(), Integer::sum);
         s.traits.clear();
         for (var h : Spec.HOUSES) { int tier = RosterMath.traitTier(slots.getOrDefault(h.id(), 0), thresholds(h.id())); if (tier > 0) s.traits.put(h.id(), tier); }
+        battle.mode.traits(battle, s); // a mode may set an army's tiers itself (Survival's dead take the tier's waveTraitTier)
     }
 
     /** The tiers a squad's banner reaches, House order, tier I or higher only; battle rewards read them. */

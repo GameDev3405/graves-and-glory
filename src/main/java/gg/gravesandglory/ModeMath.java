@@ -18,13 +18,13 @@ public final class ModeMath {
     public static String ruleLine(String template,int n) {
         return template.replace("{n}",Integer.toString(n));
     }
-    /** A how-to cell: lines split on |, trimmed, empty parts dropped, at most three. */
+    /** A how-to cell: lines split on |, trimmed, empty parts dropped, at most two. */
     public static List<String> howTo(String cell) {
         List<String> out=new ArrayList<>();
         for(String part:cell.split("\\|")){
             String line=part.trim();
             if(!line.isEmpty())out.add(line);
-            if(out.size()==3)break;
+            if(out.size()==2)break;
         }
         return out;
     }
@@ -57,13 +57,44 @@ public final class ModeMath {
         for(int i=0;i<banners;i++)out.add(i<primary?(escort?"pusher":"raider"):(escort?"screen":"blocker"));
         return out;
     }
-    /** A ledger number in its mode's format: 1/3, 64%, or 12. */
+    /** A ledger number in its mode's format: 1/3, 64%, 1:05 (seconds as minutes and seconds), or 12. */
     public static String ledgerText(String format,int value,int max) {
         return switch(format){
             case "fraction" -> value+"/"+max;
             case "percent" -> value+"%";
+            case "time" -> Math.max(0,value)/60+":"+(Math.max(0,value)%60<10?"0":"")+Math.max(0,value)%60;
             default -> Integer.toString(value);
         };
+    }
+
+    // ---- Survival, the waves at the shrine (Phase 4 spec 6) ----
+    /** The rise warning's feed lines, one per site so each fits the 144 px Compact row: "Dead rise: the chapel"; "The dead rise" with no site. */
+    public static List<String> riseLines(List<String> sites) {
+        if(sites.isEmpty())return List.of(FeedLines.modeLine("survival","rise_unknown"));
+        var out=new ArrayList<String>();
+        for(var s:sites)out.add(FeedLines.modeLine("survival","rise","site",s));
+        return out;
+    }
+    /** A cleared wave's feed line: "Wave 3 at rest, +80 gold", or without gold "Wave 7 laid to rest". The copy is the modeLines survival rows (rest, rest_plain). */
+    public static String restLine(int wave,int gold) {
+        return gold>0?FeedLines.modeLine("survival","rest","n",Integer.toString(wave),"gold",Integer.toString(gold)):FeedLines.modeLine("survival","rest_plain","n",Integer.toString(wave));
+    }
+    /** The feed line as the dead begin to take the shrine (modeLines survival shrine_falling). */
+    public static String shrineLine(){return FeedLines.modeLine("survival","shrine_falling");}
+    /** The round's closing feed line: the defenders hold to dawn, or the dead hold the shrine (modeLines survival stands, dead_hold). */
+    public static String closingLine(boolean defendersWon){return FeedLines.modeLine("survival",defendersWon?"stands":"dead_hold");}
+    /**
+     * The round's result after a second of Survival: 1 (the dead win) once they held the shrine lossSeconds with no defender on
+     * it; else 0 (the defenders win) when the last wave (wave = waves, counted from 1) is cleared or its timer is out; else -1, play on.
+     */
+    public static int survivalResult(int wave,int waves,boolean cleared,boolean timerOut,int lostSeconds,int lossSeconds) {
+        if(lostSeconds>=lossSeconds)return 1;
+        if(wave>=waves&&(cleared||timerOut))return 0;
+        return -1;
+    }
+    /** One second of the shrine: the dead on it with no defender add a second; a defender on it, or no dead, sets it back to 0 (the hold must be unbroken). */
+    public static int shrineLost(int lostSeconds,int dead,int defenders) {
+        return dead>0&&defenders==0?lostSeconds+1:0;
     }
 
     // ---- Convoy, the supply-wagon escort (spec 2026-10-31-convoy-escort-design.md, sections 3 and 6) ----

@@ -1,0 +1,19 @@
+{
+ "weapon": "notched_sword_t3",
+ "density": 1,
+ "thickness": 2,
+ "grip": {
+  "offset": [
+   0,
+   0,
+   0
+  ],
+  "rotation": [
+   90,
+   45,
+   90
+  ],
+  "note": "the grip's centre is the model origin (the fist box covers y -2..+2); the model is y up with its big faces across z, and the converter turns it by a half turn about x into the weapon frame; the sword is turned flat to the side and tilted 45 degrees forward, as the sprite sword was"
+ },
+ "note": "The Risen's notched sword, tier III (Graveborn): tier II with the guard chased in funeral gilt, a gilt cap under the bone knob and the rust bloom cleaned from the blade; 1 texel a px."
+}

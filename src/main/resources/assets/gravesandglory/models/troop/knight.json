@@ -6,7 +6,7 @@
 "density":1,
 "cloth":"gravesandglory:textures/entity/troop/knight/team_cloth_",
 "skins":{"1":"gravesandglory:textures/entity/troop/knight/knight_s1.png","2":"gravesandglory:textures/entity/troop/knight/knight_s2.png","3":"gravesandglory:textures/entity/troop/knight/knight_s3.png"},
-"veteran":"",
+"veteran":"gravesandglory:textures/entity/troop/knight/knight_veteran.png",
 "glow":"",
 "glowFrom":1,
 "outer":"",

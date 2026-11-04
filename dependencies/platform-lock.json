@@ -629,5 +629,36 @@
     "redistributionReview": "Use upstream Modrinth download; preserve notices and author conditions",
     "curseforgeProjectId": null,
     "curseforgeFileId": null
+  },
+  {
+    "slug": "excalibur",
+    "projectId": "hJAzl1Bs",
+    "versionId": "yVpdNmnj",
+    "version": "V1.20",
+    "fileName": "Excalibur_V1.20.zip",
+    "localPath": "dependencies/resourcepacks/Excalibur_V1.20.zip",
+    "fileSize": 17107369,
+    "hashes": {
+      "sha512": "a2080ab27a954a95b9c4b7450bdfa3ecd18c5ceecc88d9dcc981aae1a98394f8e7a617cea6a3254c6a363c192a9dd2ac7602d236655f2afde57b1e4e13dd244e",
+      "sha1": "5a49050cd16d898a29d329c21a3006b2381a0dcc"
+    },
+    "sha256": "ccf01766c56ad287071c795452ebdb6a33bf35a74f098d5191475cd479292d49",
+    "downloads": [
+      "https://cdn.modrinth.com/data/hJAzl1Bs/versions/yVpdNmnj/Excalibur_V1.20.zip"
+    ],
+    "kind": "resourcepack",
+    "env": {
+      "client": "required",
+      "server": "unsupported"
+    },
+    "license": {
+      "id": "CC-BY-NC-ND-3.0",
+      "name": "Creative Commons Attribution-NonCommercial-NoDerivs 3.0 Unported",
+      "url": "http://creativecommons.org/licenses/by-nc-nd/3.0/"
+    },
+    "projectUrl": "https://modrinth.com/resourcepack/excal",
+    "sourceUrl": "https://modrinth.com/resourcepack/excal",
+    "curseforgeOverride": true,
+    "redistributionReview": "Maffhew permission 2026-10-28, unmodified; paid features not covered. CC BY-NC-ND 3.0."
   }
 ]

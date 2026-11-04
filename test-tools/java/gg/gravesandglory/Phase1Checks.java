@@ -38,7 +38,7 @@ public final class Phase1Checks implements ClientModInitializer {
      *  while the client's ready is false, when step() does not run. clientTick runs every client tick, ready or not. */
     public interface HudWatch { void hudFrame(MinecraftClient c); default void clientTick(MinecraftClient c){} }
     static final Map<String,Supplier<Suite>> SUITES=new LinkedHashMap<>();
-    static{SUITES.put("combat",Combat::new);SUITES.put("ui-lobby",LobbyChecks::new);SUITES.put("ui-bannerfield",BannerFieldChecks::new);SUITES.put("morale",MoraleChecks::new);SUITES.put("reinforce",ReinforceChecks::new);SUITES.put("bots",Bots::new);SUITES.put("tutorial",TutorialChecks::new);SUITES.put("report",ReportChecks::new);SUITES.put("ui-art",UiArtChecks::new);SUITES.put("ui-hud",UiHudChecks::new);SUITES.put("ui-feed",UiFeedChecks::new);SUITES.put("ui-home",UiHomeChecks::new);SUITES.put("ui-recruit",UiRecruitChecks::new);SUITES.put("ui-pages",UiPagesChecks::new);SUITES.put("ui-icons",UiIconsChecks::new);SUITES.put("ui-leave",UiLeaveChecks::new);}
+    static{SUITES.put("combat",Combat::new);SUITES.put("ui-lobby",LobbyChecks::new);SUITES.put("ui-bannerfield",BannerFieldChecks::new);SUITES.put("morale",MoraleChecks::new);SUITES.put("reinforce",ReinforceChecks::new);SUITES.put("bots",Bots::new);SUITES.put("tutorial",TutorialChecks::new);SUITES.put("report",ReportChecks::new);SUITES.put("ui-art",UiArtChecks::new);SUITES.put("ui-hud",UiHudChecks::new);SUITES.put("ui-feed",UiFeedChecks::new);SUITES.put("ui-home",UiHomeChecks::new);SUITES.put("ui-recruit",UiRecruitChecks::new);SUITES.put("ui-pages",UiPagesChecks::new);SUITES.put("ui-icons",UiIconsChecks::new);SUITES.put("ui-leave",UiLeaveChecks::new);SUITES.put("ui-report",UiReportChecks::new);SUITES.put("gear",GearChecks::new);SUITES.put("ui-gear",GearScreenChecks::new);}
     static final ArrayDeque<String> queue=new ArrayDeque<>();
     static volatile Suite current;static volatile String currentName="";static volatile boolean failed;
     static int tick,front,hold;static boolean started; // hold: client ticks the current suite waits (Phase1Checks.window)
@@ -934,7 +934,7 @@ public final class Phase1Checks implements ClientModInitializer {
                 }
                 case 10->{ // p1-bots-least-defended
                     clear(b);hard=army(b,0,"hard",-105,100); // 25 blocks east of West Outpost (index 1)
-                    var shipped=b.campaign.tier(hard);var row=new Spec.BotCommandRow(shipped.id(),shipped.retreatShare(),shipped.rallyShare(),shipped.chargeRatio(),shipped.decisionTicks(),true,shipped.defenderWeight(),shipped.archerThreatCount(),shipped.archerThreatRange(),shipped.chargeDistance(),shipped.gearMaxTier(),shipped.gearReserveTroops(),shipped.gearPriority()); // the flanking rule stays tested; the shipped Hard row has it off (Kort, 2026-10-18)
+                    var shipped=b.campaign.tier(hard);var row=new Spec.BotCommandRow(shipped.id(),shipped.retreatShare(),shipped.rallyShare(),shipped.chargeRatio(),shipped.decisionTicks(),true,shipped.defenderWeight(),shipped.archerThreatCount(),shipped.archerThreatRange(),shipped.chargeDistance(),shipped.gearMaxTier(),shipped.gearReserveTroops(),shipped.gearPriority(),shipped.waveScale(),shipped.waveTraitTier()); // the flanking rule stays tested; the shipped Hard row has it off (Kort, 2026-10-18)
                     b.campaign.botDecide(hard,row);int none=chosen(b,hard);
                     plant(b,1,9);b.campaign.botDecide(hard,row);int defended=chosen(b,hard);
                     for(var u:foes)u.mob.discard(); // the nine fall, but the memory of them stays
@@ -2399,6 +2399,18 @@ public final class Phase1Checks implements ClientModInitializer {
         long noticeFirst,noticeSecond;Progression.State oldProgression;JsonObject oldResult;
         /** The result the suite pretends the last battle left, held in CampaignClient.result every tick (each camp snapshot puts the server's back), so Last battle is on the home for the stages that follow. */
         JsonObject fakeResult;
+        int[] cardWindow={1280,720};
+        /** The Campaign sheet's field card (plan 2C.5): the battle's name, map, rule and teams line, the bonus block with its reward, no Change button; shot at the window's size. */
+        void campaignCard(MinecraftClient c,String tag){
+            var h=home(c);if(h==null){report("p1-ui-home-campaign-card"+tag,false,"the home closed before the card was read");return;}
+            var t=WarTableHome.texts();var r=WarTableHome.rects();var row=Spec.CAMPAIGNBATTLES[0];var ch=h.button("change");
+            var f=r.get("field");var b=r.get("field-bonus");
+            boolean named=row.name().equals(t.get("field-name"))&&t.get("field-rule")!=null&&t.get("field-teams")!=null&&t.get("field-teams").startsWith("Battle 1 of "+Spec.CAMPAIGNBATTLES.length);
+            boolean has=t.containsKey("field-bonus")&&t.containsKey("field-bonus-reward")&&"open".equals(t.get("field-bonus-state"))&&b!=null&&f!=null&&b[1]+b[3]<=f[1]+f[3]&&b[0]>=f[0]&&b[0]+b[2]<=f[0]+f[2];
+            boolean noChange=ch==null||!ch.active;
+            report("p1-ui-home-campaign-card"+tag,named&&has&&noChange,"Campaign card"+(tag.isEmpty()?"":" at "+tag.substring(1))+": name \""+t.get("field-name")+"\", rule \""+t.get("field-rule")+"\", teams \""+t.get("field-teams")+"\", bonus \""+t.get("field-bonus")+"\" "+t.get("field-bonus-reward")+" ("+t.get("field-bonus-state")+") in "+str(b)+" of card "+str(f)+", Change button "+(noChange?"off":"LIVE"));
+            shot(c,"ui-home-campaign"+tag);
+        }
         static final String PRACTICE_SOLO="Practice is solo. Use a private room to play with your party.";
 
         public void serverTick(GravesAndGlory.Battle b){serverRunning=b.running;var id=player;serverOnPad=id!=null&&b.campaign.onPad.containsKey(id);serverRoom=id!=null&&b.campaign.social.room(id)!=null;padCountdown=b.campaign.padCountdown;}
@@ -2547,7 +2559,13 @@ public final class Phase1Checks implements ClientModInitializer {
                         int[] sheet=WarTableHome.rects().get("campaign"),card=WarTableHome.rects().get("field");int gap=sheet==null||card==null?-99:card[0]-(sheet[0]+sheet[2]); // the raised sheet stays off the field card
                         modesOk&=CampaignClient.profile.campaignCleared==0&&home(c).focused==2&&l.equals("Ride to The Training Field")&&start>=57&&stop<=232&&gap>=8;
                         modesWhy+="; campaignCleared "+CampaignClient.profile.campaignCleared+", a click on Campaign: focused "+home(c).focused+", the plate \""+l+"\" from x "+start+" to "+stop+" of the plate; the raised Campaign sheet "+str(sheet)+" ends "+gap+" px left of the field card "+str(card);
-                        report("p1-ui-home-modes",modesOk,modesWhy);stage=9;}
+                        report("p1-ui-home-modes",modesOk,modesWhy);cardWindow=new int[]{c.getWindow().getWidth(),c.getWindow().getHeight()};}
+                    else if(k==8){campaignCard(c,"");}
+                    else if(k==40)window(c,1920,1080,0,true);
+                    else if(k==70)campaignCard(c,"-1920x1080");
+                    else if(k==80)window(c,2560,1440,0,true);
+                    else if(k==110)campaignCard(c,"-2560x1440");
+                    else if(k==120){window(c,cardWindow[0],cardWindow[1],0);stage=9;}
                 }
                 case 9->{ // p1-ui-home-gates: Skirmish, then Ride, opens the War Table lobby with a room three a side
                     int k=since(tick);

@@ -33,7 +33,7 @@ public final class Phase4Checks implements ClientModInitializer {
     public interface ServerWatch { void serverTick(GravesAndGlory.Battle b); }
     static final Map<String,Supplier<Suite>> SUITES=new LinkedHashMap<>();
     static{SUITES.put("modes",ModesChecks::new);SUITES.put("convoy",ConvoyChecks::new);}
-    static{SUITES.put("siege-play",SiegePlayChecks::new);SUITES.put("march-modes",MarchModesChecks::new);}
+    static{SUITES.put("siege-play",SiegePlayChecks::new);SUITES.put("march-modes",MarchModesChecks::new);SUITES.put("march-bonus",MarchBonusChecks::new);SUITES.put("survival",SurvivalChecks::new);}
     static final ArrayDeque<String> queue=new ArrayDeque<>();
     static volatile Suite current;static volatile String currentName="";static volatile boolean failed,broken;
     static int tick,front;static boolean started;
@@ -160,7 +160,7 @@ public final class Phase4Checks implements ClientModInitializer {
             List<String> want=ModeMath.howTo(row.howTo()),wantDefend=ModeMath.howTo(row.howToDefend()),how=m==null?List.of():strings(m,"howTo"),defend=m==null?List.of():strings(m,"howToDefend");
             List<Integer> max=m==null?List.of():ints(m,"max");List<String> format=m==null?List.of():strings(m,"format");
             String rule=m==null?"":str(m,"rule"),id=m==null?"":str(m,"id");
-            boolean ok=id.equals("domination")&&rule.equals("Domination to 300")&&want.size()==3&&how.equals(want)&&defend.equals(wantDefend)&&max.equals(List.of(300,300))&&format.equals(List.of("plain","plain"));
+            boolean ok=id.equals("domination")&&rule.equals("Domination to 300")&&want.size()==2&&how.equals(want)&&defend.equals(wantDefend)&&max.equals(List.of(300,300))&&format.equals(List.of("plain","plain"));
             report("p4-modes-json",ok,"id="+id+" rule=\""+rule+"\" howTo="+how.size()+" lines, match="+how.equals(want)+", defend="+defend.equals(wantDefend)+" (the two cells are identical for Domination), max="+max+" format="+format);
             next(3);
         }

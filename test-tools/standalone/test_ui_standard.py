@@ -18,8 +18,14 @@
 - the back rail's camp plaques (RAIL, RAIL_X, RAIL_LABELS, RAIL_W) are declared once, in WarTableHome, and nowhere else (UI Task
   8b, the Task 7 review's Minor 8), and the lit plaque WarTablePages.here( draws for the open page ("table/plaque-N-here",
   written whole for build_ui_art --verify) names WarTableHome's RAIL_W as its N, so a new rail width cannot leave the lit plaque
-  the old size (8b review Minor 4).
+  the old size (8b review Minor 4);
+- the accessibility pass (plan 4F.5): every mod key is a KeyBinding made inside KeyBindingHelper.registerKeyBinding( (so Controls
+  lists and rebinds it) and has a key.gravesandglory.<name> line in en_us.json, as has the category; no screen file names a
+  letter or digit key (GLFW_KEY_A..Z, 0..9) of its own, only GravesAndGloryClient's registrations do, because the player's keys
+  go through matchesKey( (arrows, Tab, Enter, Space, Esc and the Page keys of navigation stay); every ButtonWidget subclass either
+  extends UiButton or calls DarkUi.focus( so it shows a keyboard focus ring (Tab works on every custom screen).
 Prints 'test_ui_standard: clean', or one 'file: snippet' line per finding and exits 1."""
+import json
 import pathlib
 import re
 import sys
@@ -32,6 +38,15 @@ SCREEN_CANVAS = re.compile(r'\bUiCanvas\s*\.\s*(k|width|height|begin)\s*\(')
 OLD_COLOURS = ['0xff57d9ee', '0xffc58bff', '0xff70a8a4', '0xff9e77ba', '0xff6ddfe9']
 NO_ARGB = {'GravesAndGloryClient', 'CommandMode', 'CampScreen', 'CampaignClient', 'BattleHud', 'EventFeed', 'TitleScene', 'Portrait'}
 ARGB_ALLOWED = {'0x66303c39', '0xff34473b'}
+LANG = SRC.parents[2] / 'resources/assets/gravesandglory/lang/en_us.json'
+KEY_CALL = re.compile(r'\bkey\s*\(\s*"([a-z0-9_]+)"')
+KEY_NAME = re.compile(r'"(key\.gravesandglory\.[a-z0-9_]+)"')
+BARE_KEYBINDING = re.compile(r'\bnew\s+KeyBinding\s*\(')
+REGISTERED_KEYBINDING = re.compile(r'\bregisterKeyBinding\s*\(\s*new\s+KeyBinding\s*\(')
+LETTER_KEY = re.compile(r'\bGLFW_KEY_[A-Z0-9]\b')
+KEY_OWNER = 'GravesAndGloryClient'
+BUTTON_SUBCLASS = re.compile(r'\bclass\s+(\w+)\s+extends\s+(?:[\w.]+\.)?ButtonWidget\b')
+FOCUS_CALL = re.compile(r'(?:\bDarkUi\s*\.\s*|(?<![\w.]))(focus|focusRing|keyboardFocus)\s*\(')  # DarkUi's own MapChoice calls it bare
 ARGB = re.compile(r'\b0[xX][0-9a-fA-F]{8}(?![0-9a-fA-F_])')
 BACKSLASH = chr(92)
 KEY_TOKEN = re.compile(r'\{key:[^{}]*\}')
@@ -264,6 +279,20 @@ def check_file(path):
             if width is None or int(m.group(1)) != width:
                 found.append(f'{path.name}:{line_of(text, offset)}: "table/plaque-{m.group(1)}-here" is not the rail\'s width '
                              f'(WarTableHome.RAIL_W {width})')
+    registered = [r.start() for r in REGISTERED_KEYBINDING.finditer(code)]
+    for m in BARE_KEYBINDING.finditer(code):
+        if not any(a < m.start() <= a + 60 for a in registered):
+            found.append(f'{path.name}:{line_of(text, m.start())}: new KeyBinding( outside KeyBindingHelper.registerKeyBinding(, '
+                         'so Controls would not list it')
+    if name != KEY_OWNER:
+        for m in LETTER_KEY.finditer(code):
+            found.append(f'{path.name}:{line_of(text, m.start())}: {m.group()} hardcodes a letter/digit key; read the bound key '
+                         '(binding.matchesKey) so the player can rebind it')
+    for m in BUTTON_SUBCLASS.finditer(code):
+        body = body_span(code, m.group(1))
+        if body is None or not FOCUS_CALL.search(code, body[0], body[1]):
+            found.append(f'{path.name}:{line_of(text, m.start())}: {m.group(1)} extends ButtonWidget but never calls DarkUi.focus(; '
+                         'it needs a keyboard focus ring (extend UiButton or call DarkUi.focus(g, this))')
     if name != 'DarkUi':
         lines = code.split('\n')
         for k, line in enumerate(lines):
@@ -272,12 +301,27 @@ def check_file(path):
     return found
 
 
+def check_lang():
+    """Every key the mod registers and its category have a line in en_us.json (Controls shows the line, not the id)."""
+    try:
+        lang = json.loads(LANG.read_text(encoding='utf-8'))
+    except (OSError, ValueError) as e:
+        return [f'{LANG.name}: unreadable ({e})']
+    raw = (SRC / (KEY_OWNER + '.java')).read_text(encoding='utf-8')
+    names = {'key.gravesandglory.' + m.group(1) for m in KEY_CALL.finditer(raw)} | {m.group(1) for m in KEY_NAME.finditer(raw)}
+    found = [] if 'category.gravesandglory' in lang else [f'{LANG.name}: no "category.gravesandglory" line for the Controls category']
+    if not names:
+        found.append(f'{KEY_OWNER}.java: registers no key.gravesandglory.* binding to check against {LANG.name}')
+    found += [f'{LANG.name}: no line for {n}' for n in sorted(names) if not str(lang.get(n, '')).strip()]
+    return found
+
+
 def main():
     files = sorted(SRC.glob('*.java'))
     if not files:
         print(f'test_ui_standard: no sources under {SRC}')
         return 1
-    found = list(dict.fromkeys(f for path in files for f in check_file(path)))  # a literal that breaks two rules is listed once
+    found = list(dict.fromkeys([f for path in files for f in check_file(path)] + check_lang()))  # a literal that breaks two rules is listed once
     for f in found:
         print(f)
     if found:

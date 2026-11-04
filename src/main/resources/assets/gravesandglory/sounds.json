@@ -26,6 +26,155 @@
       }
     ]
   },
+  "defeat": {
+    "subtitle": "subtitles.gravesandglory.defeat",
+    "sounds": [
+      {
+        "name": "gravesandglory:defeat",
+        "stream": false
+      }
+    ]
+  },
+  "capture_start": {
+    "subtitle": "subtitles.gravesandglory.capture_start",
+    "sounds": [
+      {
+        "name": "gravesandglory:capture_start",
+        "stream": false
+      }
+    ]
+  },
+  "capture_won": {
+    "subtitle": "subtitles.gravesandglory.capture_won",
+    "sounds": [
+      {
+        "name": "gravesandglory:capture_won",
+        "stream": false
+      }
+    ]
+  },
+  "capture_lost": {
+    "subtitle": "subtitles.gravesandglory.capture_lost",
+    "sounds": [
+      {
+        "name": "gravesandglory:capture_lost",
+        "stream": false
+      }
+    ]
+  },
+  "gate_hit": {
+    "subtitle": "subtitles.gravesandglory.gate_hit",
+    "sounds": [
+      {
+        "name": "gravesandglory:gate_hit",
+        "stream": false
+      }
+    ]
+  },
+  "gate_shut": {
+    "subtitle": "subtitles.gravesandglory.gate_shut",
+    "sounds": [
+      {
+        "name": "gravesandglory:gate_shut",
+        "stream": false
+      }
+    ]
+  },
+  "gate_breach": {
+    "subtitle": "subtitles.gravesandglory.gate_breach",
+    "sounds": [
+      {
+        "name": "gravesandglory:gate_breach",
+        "stream": false
+      }
+    ]
+  },
+  "convoy_roll": {
+    "subtitle": "subtitles.gravesandglory.convoy_roll",
+    "sounds": [
+      {
+        "name": "gravesandglory:convoy_roll",
+        "stream": false
+      }
+    ]
+  },
+  "convoy_stop": {
+    "subtitle": "subtitles.gravesandglory.convoy_stop",
+    "sounds": [
+      {
+        "name": "gravesandglory:convoy_stop",
+        "stream": false
+      }
+    ]
+  },
+  "convoy_rollback": {
+    "subtitle": "subtitles.gravesandglory.convoy_rollback",
+    "sounds": [
+      {
+        "name": "gravesandglory:convoy_rollback",
+        "stream": false
+      }
+    ]
+  },
+  "convoy_checkpoint": {
+    "subtitle": "subtitles.gravesandglory.convoy_checkpoint",
+    "sounds": [
+      {
+        "name": "gravesandglory:convoy_checkpoint",
+        "stream": false
+      }
+    ]
+  },
+  "wave_warning": {
+    "subtitle": "subtitles.gravesandglory.wave_warning",
+    "sounds": [
+      {
+        "name": "gravesandglory:wave_warning",
+        "stream": false
+      }
+    ]
+  },
+  "countdown_tick": {
+    "sounds": [
+      {
+        "name": "gravesandglory:countdown_tick",
+        "stream": false
+      }
+    ]
+  },
+  "ui_confirm": {
+    "sounds": [
+      {
+        "name": "gravesandglory:ui_confirm",
+        "stream": false
+      }
+    ]
+  },
+  "ui_back": {
+    "sounds": [
+      {
+        "name": "gravesandglory:ui_back",
+        "stream": false
+      }
+    ]
+  },
+  "ui_deny": {
+    "sounds": [
+      {
+        "name": "gravesandglory:ui_deny",
+        "stream": false
+      }
+    ]
+  },
+  "wave_rise": {
+    "subtitle": "subtitles.gravesandglory.wave_rise",
+    "sounds": [
+      {
+        "name": "gravesandglory:wave_rise",
+        "stream": false
+      }
+    ]
+  },
   "horn_charge": {
     "subtitle": "subtitles.gravesandglory.horn_charge",
     "sounds": [
@@ -50,6 +199,169 @@
       {
         "name": "gravesandglory:horn_rally",
         "stream": false
+      }
+    ]
+  },
+  "combat.shield_block": {
+    "subtitle": "subtitles.gravesandglory.combat.shield_block",
+    "sounds": [
+      {
+        "name": "gravesandglory:shield_block_1",
+        "stream": false
+      },
+      {
+        "name": "gravesandglory:shield_block_2",
+        "stream": false
+      },
+      {
+        "name": "gravesandglory:shield_block_3",
+        "stream": false
+      }
+    ]
+  },
+  "combat.heavy_metal_hit": {
+    "subtitle": "subtitles.gravesandglory.combat.heavy_metal_hit",
+    "sounds": [
+      {
+        "name": "gravesandglory:heavy_metal_hit_1",
+        "stream": false
+      }
+    ]
+  },
+  "combat.sword_swing": {
+    "subtitle": "subtitles.gravesandglory.combat.sword_swing",
+    "sounds": [
+      {
+        "name": "gravesandglory:sword_swing_1",
+        "stream": false
+      },
+      {
+        "name": "gravesandglory:sword_swing_2",
+        "stream": false
+      }
+    ]
+  },
+  "combat.sword_clash": {
+    "subtitle": "subtitles.gravesandglory.combat.sword_clash",
+    "sounds": [
+      {
+        "name": "gravesandglory:sword_clash_1",
+        "stream": false
+      },
+      {
+        "name": "gravesandglory:sword_clash_2",
+        "stream": false
+      },
+      {
+        "name": "gravesandglory:sword_clash_3",
+        "stream": false
+      },
+      {
+        "name": "gravesandglory:sword_clash_4",
+        "stream": false
+      }
+    ]
+  },
+  "combat.armor_hit": {
+    "subtitle": "subtitles.gravesandglory.combat.armor_hit",
+    "sounds": [
+      {
+        "name": "gravesandglory:armor_hit_1",
+        "stream": false
+      }
+    ]
+  },
+  "combat.bow_shoot": {
+    "subtitle": "subtitles.gravesandglory.combat.bow_shoot",
+    "sounds": [
+      {
+        "name": "gravesandglory:bow_shoot_1",
+        "stream": false
+      }
+    ]
+  },
+  "combat.arrow_hit": {
+    "subtitle": "subtitles.gravesandglory.combat.arrow_hit",
+    "sounds": [
+      {
+        "name": "gravesandglory:arrow_hit_1",
+        "stream": false
+      }
+    ]
+  },
+  "magic.cast": {
+    "subtitle": "subtitles.gravesandglory.magic.cast",
+    "sounds": [
+      {
+        "name": "gravesandglory:magic_cast_1",
+        "stream": false
+      }
+    ]
+  },
+  "magic.impact": {
+    "subtitle": "subtitles.gravesandglory.magic.impact",
+    "sounds": [
+      {
+        "name": "gravesandglory:magic_impact_1",
+        "stream": false
+      },
+      {
+        "name": "gravesandglory:magic_impact_2",
+        "stream": false
+      }
+    ]
+  },
+  "clock.tick": {
+    "subtitle": "subtitles.gravesandglory.clock.tick",
+    "sounds": [
+      {
+        "name": "gravesandglory:clock_tick_1",
+        "stream": false
+      },
+      {
+        "name": "gravesandglory:clock_tick_2",
+        "stream": false
+      }
+    ]
+  },
+  "battle.drums": {
+    "subtitle": "subtitles.gravesandglory.battle.drums",
+    "sounds": [
+      {
+        "name": "gravesandglory:battle_drums",
+        "stream": false
+      }
+    ]
+  },
+  "music.calm": {
+    "sounds": [
+      {
+        "name": "gravesandglory:music_calm_long_day",
+        "stream": true
+      }
+    ]
+  },
+  "music.epic": {
+    "sounds": [
+      {
+        "name": "gravesandglory:music_epic_rebel_moon",
+        "stream": true
+      }
+    ]
+  },
+  "music.battle_grim": {
+    "sounds": [
+      {
+        "name": "gravesandglory:music_battle_dark_grim",
+        "stream": true
+      }
+    ]
+  },
+  "music.battle_drums": {
+    "sounds": [
+      {
+        "name": "gravesandglory:music_battle_drums_stomp",
+        "stream": true
       }
     ]
   }

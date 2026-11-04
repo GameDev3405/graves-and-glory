@@ -1261,22 +1261,22 @@
       "pointScale": 1.0,
       "timeout": "score",
       "ruleLine": "Domination to {n}",
-      "howTo": "Send troops onto a point to take it; hold it to score. | Recruits march out from the held point nearest the fight. | Reach the target score first, or lead when time ends.",
-      "howToDefend": "Send troops onto a point to take it; hold it to score. | Recruits march out from the held point nearest the fight. | Reach the target score first, or lead when time ends."
+      "howTo": "Send troops onto a point to take it; hold it to score. | Reach the target score first, or lead when time ends.",
+      "howToDefend": "Send troops onto a point to take it; hold it to score. | Reach the target score first, or lead when time ends."
     },
     {
       "id": "siege",
       "name": "Siege",
       "maps": "1",
-      "roundSeconds": 600,
+      "roundSeconds": 185,
       "winTarget": 3,
       "scoreInterval": 0,
       "passiveScale": 1.0,
       "pointScale": 0.0,
       "timeout": "team1",
       "ruleLine": "Siege of Ironhold",
-      "howTo": "Take the Outer Yard. | Break the gate; siege troops strike it four times harder. | Seize the keep before the clock runs out.",
-      "howToDefend": "Hold the yard, then the gate, then the keep. | Meet their siege troops before they reach the gate. | When the clock runs out, Ironhold is yours."
+      "howTo": "Break the gate; siege troops strike it four times harder. | Seize the keep before the clock runs out.",
+      "howToDefend": "Hold the yard, then the gate, then the keep. | When the clock runs out, Ironhold is yours."
     },
     {
       "id": "convoy",
@@ -1289,8 +1289,22 @@
       "pointScale": 0.0,
       "timeout": "team1",
       "ruleLine": "Convoy: reach {n}",
-      "howTo": "Stay by the wagon to push it. | An enemy beside it stops it. | Reach the refuge before the clock runs out.",
-      "howToDefend": "Stand by the wagon to stop it. | Left alone, it rolls back to its last checkpoint. | Hold it until the clock runs out."
+      "howTo": "Stay by the wagon to push it; an enemy beside it stops it. | Reach the refuge before the clock runs out.",
+      "howToDefend": "Stand by the wagon to stop it. | Hold it until the clock runs out."
+    },
+    {
+      "id": "survival",
+      "name": "Survival",
+      "maps": "3",
+      "roundSeconds": 0,
+      "winTarget": 0,
+      "scoreInterval": 0,
+      "passiveScale": 0.0,
+      "pointScale": 0.0,
+      "timeout": "team0",
+      "ruleLine": "Survival: {n} waves",
+      "howTo": "Hold the shrine against every wave; clear a wave for its gold. | Lose the shrine for 20 seconds and the night is lost.",
+      "howToDefend": "Hold the shrine against every wave; clear a wave for its gold. | Lose the shrine for 20 seconds and the night is lost."
     }
   ],
   "modeRules": [
@@ -1298,9 +1312,9 @@
       "id": "convoy",
       "pushRadius": 6.0,
       "pushHeight": 3.0,
-      "speedOne": 1.2,
-      "speedTwo": 1.5,
-      "speedThree": 1.8,
+      "speedOne": 0.5,
+      "speedTwo": 0.63,
+      "speedThree": 0.75,
       "rollbackSpeed": 0.6,
       "idleSeconds": 10,
       "checkpointSeconds": 180,
@@ -1316,6 +1330,10 @@
       "portcullisSeconds": 0,
       "keepEdgeAttackers": 0,
       "keepEdgeDefenders": 0,
+      "survivalPerBanner": 0.0,
+      "riseWarning": 0,
+      "maxDeadAlive": 0,
+      "waveSet": "-",
       "note": "draft values (convoy spec 3.1 to 3.3, 8); Kort tunes them after the sim gate"
     },
     {
@@ -1340,7 +1358,39 @@
       "portcullisSeconds": 10,
       "keepEdgeAttackers": 2,
       "keepEdgeDefenders": 3,
+      "survivalPerBanner": 0.0,
+      "riseWarning": 0,
+      "maxDeadAlive": 0,
+      "waveSet": "-",
       "note": "Siege draft values (siege spec section 5; keep edge: attackers add a second while contested at 2 of every 3 defenders); Kort tunes them after the sim gate. The convoy columns are unused here"
+    },
+    {
+      "id": "survival",
+      "pushRadius": 0.0,
+      "pushHeight": 0.0,
+      "speedOne": 0.0,
+      "speedTwo": 0.0,
+      "speedThree": 0.0,
+      "rollbackSpeed": 0.0,
+      "idleSeconds": 0,
+      "checkpointSeconds": 0,
+      "checkpointGold": 0,
+      "maxGrade": 0.0,
+      "uphill": 0.0,
+      "downhill": 0.0,
+      "overtimeRadius": 0.0,
+      "overtimeGraceSeconds": 0,
+      "stoppedAfterSeconds": 0,
+      "stoppedEverySeconds": 0,
+      "siegeStageBonus": 0,
+      "portcullisSeconds": 0,
+      "keepEdgeAttackers": 0,
+      "keepEdgeDefenders": 0,
+      "survivalPerBanner": 0.5,
+      "riseWarning": 5,
+      "maxDeadAlive": 60,
+      "waveSet": "moon",
+      "note": "DRAFT (Phase 4 plan Task 6, question for Kort): +50% dead per extra banner, 5 s rise warning, at most 60 dead alive, the moon wave set"
     }
   ],
   "modeSites": [
@@ -1494,7 +1544,7 @@
       "piece": "-",
       "rotation": 0,
       "hp": 0.0,
-      "seconds": 20,
+      "seconds": 15,
       "note": "Siege draft value (siege spec section 5); attackers hold the ring uncontested for 20 s"
     },
     {
@@ -1581,6 +1631,108 @@
       "hp": 0.0,
       "seconds": 60,
       "note": "Kort 2026-10-31: radius 7 and 60 s, hard but takeable (the spec's 10 and 30 s are replaced)"
+    },
+    {
+      "id": "survival_hollowwood_shrine",
+      "mode": "survival",
+      "map": 3,
+      "kind": "shrine",
+      "stage": 0,
+      "name": "the shrine",
+      "x": 76.0,
+      "z": 127.0,
+      "radius": 10.0,
+      "y": 64.0,
+      "piece": "-",
+      "rotation": 0,
+      "hp": 0.0,
+      "seconds": 20,
+      "note": "DRAFT (Phase 4 plan Task 6, question for Kort): the shrine ring; lost once the dead hold it 20 s with no defender on it; placed on the current Hollowwood Reach, replace with the Map Forge Hollowwood rows"
+    },
+    {
+      "id": "survival_hollowwood_court",
+      "mode": "survival",
+      "map": 3,
+      "kind": "base",
+      "stage": 0,
+      "name": "the court",
+      "x": 76.0,
+      "z": 127.0,
+      "radius": 0.0,
+      "y": 65.0,
+      "piece": "-",
+      "rotation": 0,
+      "hp": 0.0,
+      "seconds": 0,
+      "note": "DRAFT (Phase 4 plan Task 6, question for Kort): the defenders' base, respawn and barracks; placed on the current Hollowwood Reach, replace with the Map Forge Hollowwood rows"
+    },
+    {
+      "id": "survival_hollowwood_rise_chapel",
+      "mode": "survival",
+      "map": 3,
+      "kind": "rise",
+      "stage": 1,
+      "name": "the chapel",
+      "x": 70.0,
+      "z": 55.0,
+      "radius": 4.0,
+      "y": 64.0,
+      "piece": "-",
+      "rotation": 0,
+      "hp": 0.0,
+      "seconds": 0,
+      "note": "DRAFT (Phase 4 plan Task 6, question for Kort): a rise site; placed on the current Hollowwood Reach, replace with the Map Forge Hollowwood rows"
+    },
+    {
+      "id": "survival_hollowwood_rise_ford",
+      "mode": "survival",
+      "map": 3,
+      "kind": "rise",
+      "stage": 1,
+      "name": "the ford",
+      "x": 17.0,
+      "z": 145.0,
+      "radius": 4.0,
+      "y": 64.0,
+      "piece": "-",
+      "rotation": 0,
+      "hp": 0.0,
+      "seconds": 0,
+      "note": "DRAFT (Phase 4 plan Task 6, question for Kort): a rise site; placed on the current Hollowwood Reach, replace with the Map Forge Hollowwood rows"
+    },
+    {
+      "id": "survival_hollowwood_rise_wood",
+      "mode": "survival",
+      "map": 3,
+      "kind": "rise",
+      "stage": 1,
+      "name": "the deep wood",
+      "x": 150.0,
+      "z": 120.0,
+      "radius": 4.0,
+      "y": 64.0,
+      "piece": "-",
+      "rotation": 0,
+      "hp": 0.0,
+      "seconds": 0,
+      "note": "DRAFT (Phase 4 plan Task 6, question for Kort): a rise site; placed on the current Hollowwood Reach, replace with the Map Forge Hollowwood rows"
+    },
+    {
+      "id": "survival_hollowwood_rise_track",
+      "mode": "survival",
+      "map": 3,
+      "kind": "rise",
+      "stage": 1,
+      "name": "the track",
+      "x": 80.0,
+      "z": 200.0,
+      "radius": 4.0,
+      "y": 64.0,
+      "piece": "-",
+      "rotation": 0,
+      "hp": 0.0,
+      "seconds": 0,
+      "note": "DRAFT (Phase 4 plan Task 6, question for Kort): a rise site; placed on the current Hollowwood Reach, replace with the Map Forge Hollowwood rows"
     }
   ],
   "hooks": [
@@ -2357,7 +2509,9 @@
       "chargeDistance": 0.0,
       "gearMaxTier": 2,
       "gearReserveTroops": 8,
-      "gearPriority": "banner"
+      "gearPriority": "banner",
+      "waveScale": 0.75,
+      "waveTraitTier": 0
     },
     {
       "id": "normal",
@@ -2372,7 +2526,9 @@
       "chargeDistance": 0.0,
       "gearMaxTier": 3,
       "gearReserveTroops": 5,
-      "gearPriority": "role"
+      "gearPriority": "role",
+      "waveScale": 1.0,
+      "waveTraitTier": 1
     },
     {
       "id": "hard",
@@ -2387,7 +2543,9 @@
       "chargeDistance": 18.0,
       "gearMaxTier": 3,
       "gearReserveTroops": 2,
-      "gearPriority": "open"
+      "gearPriority": "open",
+      "waveScale": 1.25,
+      "waveTraitTier": 2
     }
   ],
   "combatDiscipline": [
@@ -3001,6 +3159,636 @@
       "passiveText": "Each point you hold pays 2 more gold every income tick: 5 instead of 3."
     }
   ],
+  "gearRarities": [
+    {
+      "id": "common",
+      "name": "Common",
+      "border": "#9d9d9d",
+      "rollWeight": 50,
+      "statMin": 1.0,
+      "statMax": 1.1,
+      "breakdownPct": 0.2,
+      "repairGold": 20,
+      "power": 1
+    },
+    {
+      "id": "uncommon",
+      "name": "Uncommon",
+      "border": "#3fae49",
+      "rollWeight": 28,
+      "statMin": 1.15,
+      "statMax": 1.3,
+      "breakdownPct": 0.35,
+      "repairGold": 30,
+      "power": 2
+    },
+    {
+      "id": "rare",
+      "name": "Rare",
+      "border": "#3d7fd6",
+      "rollWeight": 15,
+      "statMin": 1.35,
+      "statMax": 1.55,
+      "breakdownPct": 0.5,
+      "repairGold": 45,
+      "power": 3
+    },
+    {
+      "id": "epic",
+      "name": "Epic",
+      "border": "#9a4fd6",
+      "rollWeight": 6,
+      "statMin": 1.6,
+      "statMax": 1.85,
+      "breakdownPct": 0.7,
+      "repairGold": 65,
+      "power": 5
+    },
+    {
+      "id": "legendary",
+      "name": "Legendary",
+      "border": "#e8892b",
+      "rollWeight": 1,
+      "statMin": 1.9,
+      "statMax": 2.2,
+      "breakdownPct": 1.0,
+      "repairGold": 90,
+      "power": 8
+    }
+  ],
+  "gearSets": [
+    {
+      "id": "bruiser",
+      "name": "Last Watch",
+      "role": "bruiser",
+      "classes": "champion,reaver",
+      "starterMain": "arming_sword",
+      "starterOff": "kite_shield"
+    },
+    {
+      "id": "healer",
+      "name": "Ashen Vigil",
+      "role": "healer",
+      "classes": "warlock",
+      "starterMain": "mending_staff",
+      "starterOff": "-"
+    },
+    {
+      "id": "ranged",
+      "name": "Frostmarch Hunt",
+      "role": "ranged",
+      "classes": "warden",
+      "starterMain": "hunting_bow",
+      "starterOff": "quiver"
+    },
+    {
+      "id": "commander",
+      "name": "Marchwarden",
+      "role": "commander",
+      "classes": "marshal,quartermaster",
+      "starterMain": "war_banner",
+      "starterOff": "-"
+    }
+  ],
+  "gearItems": [
+    {
+      "id": "bruiser_helm",
+      "name": "Watchman's Greathelm",
+      "slot": "helm",
+      "set": "bruiser",
+      "family": "-",
+      "hands": 1,
+      "health": 3.0,
+      "damage": 0.0,
+      "armour": 2.0,
+      "speed": 0.0,
+      "ranged": 0.0,
+      "healing": 0.0,
+      "command": 0.0
+    },
+    {
+      "id": "bruiser_chest",
+      "name": "Wallbreaker Cuirass",
+      "slot": "chest",
+      "set": "bruiser",
+      "family": "-",
+      "hands": 1,
+      "health": 6.0,
+      "damage": 0.0,
+      "armour": 4.0,
+      "speed": 0.0,
+      "ranged": 0.0,
+      "healing": 0.0,
+      "command": 0.0
+    },
+    {
+      "id": "bruiser_legs",
+      "name": "Gatepost Greaves",
+      "slot": "legs",
+      "set": "bruiser",
+      "family": "-",
+      "hands": 1,
+      "health": 4.0,
+      "damage": 0.0,
+      "armour": 3.0,
+      "speed": 0.0,
+      "ranged": 0.0,
+      "healing": 0.0,
+      "command": 0.0
+    },
+    {
+      "id": "bruiser_boots",
+      "name": "Cairn-Treads",
+      "slot": "boots",
+      "set": "bruiser",
+      "family": "-",
+      "hands": 1,
+      "health": 2.0,
+      "damage": 0.0,
+      "armour": 2.0,
+      "speed": 0.0,
+      "ranged": 0.0,
+      "healing": 0.0,
+      "command": 0.0
+    },
+    {
+      "id": "healer_helm",
+      "name": "Lanternbearer's Hood",
+      "slot": "helm",
+      "set": "healer",
+      "family": "-",
+      "hands": 1,
+      "health": 1.0,
+      "damage": 0.0,
+      "armour": 0.0,
+      "speed": 0.0,
+      "ranged": 0.0,
+      "healing": 2.0,
+      "command": 0.0
+    },
+    {
+      "id": "healer_chest",
+      "name": "Vigilant Vestment",
+      "slot": "chest",
+      "set": "healer",
+      "family": "-",
+      "hands": 1,
+      "health": 2.0,
+      "damage": 0.0,
+      "armour": 0.0,
+      "speed": 0.0,
+      "ranged": 0.0,
+      "healing": 3.0,
+      "command": 0.0
+    },
+    {
+      "id": "healer_legs",
+      "name": "Candlewake Skirt",
+      "slot": "legs",
+      "set": "healer",
+      "family": "-",
+      "hands": 1,
+      "health": 1.0,
+      "damage": 0.0,
+      "armour": 0.0,
+      "speed": 0.0,
+      "ranged": 0.0,
+      "healing": 2.0,
+      "command": 0.0
+    },
+    {
+      "id": "healer_boots",
+      "name": "Mourner's Sandals",
+      "slot": "boots",
+      "set": "healer",
+      "family": "-",
+      "hands": 1,
+      "health": 1.0,
+      "damage": 0.0,
+      "armour": 0.0,
+      "speed": 0.01,
+      "ranged": 0.0,
+      "healing": 1.0,
+      "command": 0.0
+    },
+    {
+      "id": "ranged_helm",
+      "name": "Stalker's Maskhood",
+      "slot": "helm",
+      "set": "ranged",
+      "family": "-",
+      "hands": 1,
+      "health": 1.0,
+      "damage": 0.0,
+      "armour": 0.0,
+      "speed": 0.0,
+      "ranged": 2.0,
+      "healing": 0.0,
+      "command": 0.0
+    },
+    {
+      "id": "ranged_chest",
+      "name": "Pass-Warden Jerkin",
+      "slot": "chest",
+      "set": "ranged",
+      "family": "-",
+      "hands": 1,
+      "health": 2.0,
+      "damage": 0.0,
+      "armour": 0.0,
+      "speed": 0.0,
+      "ranged": 3.0,
+      "healing": 0.0,
+      "command": 0.0
+    },
+    {
+      "id": "ranged_legs",
+      "name": "Snowshod Leggings",
+      "slot": "legs",
+      "set": "ranged",
+      "family": "-",
+      "hands": 1,
+      "health": 1.0,
+      "damage": 0.0,
+      "armour": 0.0,
+      "speed": 0.01,
+      "ranged": 2.0,
+      "healing": 0.0,
+      "command": 0.0
+    },
+    {
+      "id": "ranged_boots",
+      "name": "Silent Hunter's Boots",
+      "slot": "boots",
+      "set": "ranged",
+      "family": "-",
+      "hands": 1,
+      "health": 1.0,
+      "damage": 0.0,
+      "armour": 0.0,
+      "speed": 0.02,
+      "ranged": 1.0,
+      "healing": 0.0,
+      "command": 0.0
+    },
+    {
+      "id": "commander_helm",
+      "name": "Marchwarden's Crown-Helm",
+      "slot": "helm",
+      "set": "commander",
+      "family": "-",
+      "hands": 1,
+      "health": 2.0,
+      "damage": 0.0,
+      "armour": 1.0,
+      "speed": 0.0,
+      "ranged": 0.0,
+      "healing": 0.0,
+      "command": 2.0
+    },
+    {
+      "id": "commander_chest",
+      "name": "Oathplate",
+      "slot": "chest",
+      "set": "commander",
+      "family": "-",
+      "hands": 1,
+      "health": 3.0,
+      "damage": 0.0,
+      "armour": 2.0,
+      "speed": 0.0,
+      "ranged": 0.0,
+      "healing": 0.0,
+      "command": 3.0
+    },
+    {
+      "id": "commander_legs",
+      "name": "Kingsfield Cuisses",
+      "slot": "legs",
+      "set": "commander",
+      "family": "-",
+      "hands": 1,
+      "health": 2.0,
+      "damage": 0.0,
+      "armour": 1.0,
+      "speed": 0.0,
+      "ranged": 0.0,
+      "healing": 0.0,
+      "command": 2.0
+    },
+    {
+      "id": "commander_boots",
+      "name": "Marching Sabatons",
+      "slot": "boots",
+      "set": "commander",
+      "family": "-",
+      "hands": 1,
+      "health": 1.0,
+      "damage": 0.0,
+      "armour": 0.0,
+      "speed": 0.01,
+      "ranged": 0.0,
+      "healing": 0.0,
+      "command": 1.0
+    },
+    {
+      "id": "arming_sword",
+      "name": "Oathkeeper's Longsword",
+      "slot": "main",
+      "set": "-",
+      "family": "sword",
+      "hands": 1,
+      "health": 0.0,
+      "damage": 6.0,
+      "armour": 0.0,
+      "speed": 0.0,
+      "ranged": 0.0,
+      "healing": 0.0,
+      "command": 0.0
+    },
+    {
+      "id": "falchion",
+      "name": "Notched Falchion",
+      "slot": "main",
+      "set": "-",
+      "family": "sword",
+      "hands": 1,
+      "health": 0.0,
+      "damage": 5.0,
+      "armour": 0.0,
+      "speed": 0.01,
+      "ranged": 0.0,
+      "healing": 0.0,
+      "command": 0.0
+    },
+    {
+      "id": "greatsword",
+      "name": "Hollowfell Greatsword",
+      "slot": "main",
+      "set": "-",
+      "family": "greatsword",
+      "hands": 2,
+      "health": 2.0,
+      "damage": 10.0,
+      "armour": 0.0,
+      "speed": 0.0,
+      "ranged": 0.0,
+      "healing": 0.0,
+      "command": 0.0
+    },
+    {
+      "id": "great_axe",
+      "name": "Ironhold Cleaver",
+      "slot": "main",
+      "set": "-",
+      "family": "greataxe",
+      "hands": 2,
+      "health": 2.0,
+      "damage": 11.0,
+      "armour": 0.0,
+      "speed": 0.0,
+      "ranged": 0.0,
+      "healing": 0.0,
+      "command": 0.0
+    },
+    {
+      "id": "hunting_bow",
+      "name": "Frostmarch Longbow",
+      "slot": "main",
+      "set": "-",
+      "family": "bow",
+      "hands": 1,
+      "health": 0.0,
+      "damage": 0.0,
+      "armour": 0.0,
+      "speed": 0.0,
+      "ranged": 7.0,
+      "healing": 0.0,
+      "command": 0.0
+    },
+    {
+      "id": "crossbow",
+      "name": "Rivergate Arbalest",
+      "slot": "main",
+      "set": "-",
+      "family": "crossbow",
+      "hands": 1,
+      "health": 0.0,
+      "damage": 0.0,
+      "armour": 0.0,
+      "speed": 0.0,
+      "ranged": 9.0,
+      "healing": 0.0,
+      "command": 0.0
+    },
+    {
+      "id": "mending_staff",
+      "name": "Candlewake Staff",
+      "slot": "main",
+      "set": "-",
+      "family": "staff",
+      "hands": 1,
+      "health": 0.0,
+      "damage": 1.0,
+      "armour": 0.0,
+      "speed": 0.0,
+      "ranged": 0.0,
+      "healing": 6.0,
+      "command": 0.0
+    },
+    {
+      "id": "sunwell_crook",
+      "name": "Sunwell Crook",
+      "slot": "main",
+      "set": "-",
+      "family": "staff",
+      "hands": 1,
+      "health": 1.0,
+      "damage": 0.0,
+      "armour": 0.0,
+      "speed": 0.0,
+      "ranged": 0.0,
+      "healing": 5.0,
+      "command": 0.0
+    },
+    {
+      "id": "war_banner",
+      "name": "Marchwarden's Standard",
+      "slot": "main",
+      "set": "-",
+      "family": "banner",
+      "hands": 1,
+      "health": 0.0,
+      "damage": 2.0,
+      "armour": 0.0,
+      "speed": 0.0,
+      "ranged": 0.0,
+      "healing": 0.0,
+      "command": 5.0
+    },
+    {
+      "id": "long_colours",
+      "name": "The Long Colours",
+      "slot": "main",
+      "set": "-",
+      "family": "banner",
+      "hands": 1,
+      "health": 0.0,
+      "damage": 3.0,
+      "armour": 0.0,
+      "speed": 0.0,
+      "ranged": 0.0,
+      "healing": 0.0,
+      "command": 4.0
+    },
+    {
+      "id": "kite_shield",
+      "name": "Last Watch Tower Shield",
+      "slot": "off",
+      "set": "-",
+      "family": "shield",
+      "hands": 1,
+      "health": 2.0,
+      "damage": 0.0,
+      "armour": 4.0,
+      "speed": 0.0,
+      "ranged": 0.0,
+      "healing": 0.0,
+      "command": 0.0
+    },
+    {
+      "id": "quiver",
+      "name": "Barrowleaf Quiver",
+      "slot": "off",
+      "set": "-",
+      "family": "quiver",
+      "hands": 1,
+      "health": 0.0,
+      "damage": 0.0,
+      "armour": 0.0,
+      "speed": 0.0,
+      "ranged": 2.0,
+      "healing": 0.0,
+      "command": 0.0
+    }
+  ],
+  "relics": [
+    {
+      "id": "stand_fast",
+      "name": "Ward of the Wall",
+      "role": "bruiser",
+      "fromClass": "champion",
+      "cooldownTicks": 1800,
+      "text": "Your troops within 12 take 25% less damage for 8 s; you gain Resistance I."
+    },
+    {
+      "id": "bloodrush",
+      "name": "Reaver's Fang",
+      "role": "bruiser",
+      "fromClass": "reaver",
+      "cooldownTicks": 1500,
+      "text": "Speed II and 30% lifesteal for 10 s; each troop you kill returns a fallen one, up to 3."
+    },
+    {
+      "id": "mark_prey",
+      "name": "Hunter's Eye",
+      "role": "ranged",
+      "fromClass": "warden",
+      "cooldownTicks": 1200,
+      "text": "Mark a foe within 40 blocks: it glows; your troops and you deal 30% more to it for 12 s."
+    },
+    {
+      "id": "rally_horn",
+      "name": "Muster Seal",
+      "role": "commander",
+      "fromClass": "marshal",
+      "cooldownTicks": 2400,
+      "text": "Every group marches to you, 20% faster for 15 s."
+    },
+    {
+      "id": "grave_bloom",
+      "name": "Gravebloom Censer",
+      "role": "healer",
+      "fromClass": "warlock",
+      "cooldownTicks": 2400,
+      "text": "Up to 6 troops that fell within 8 blocks in the last 20 s rise as your Risen for 30 s."
+    },
+    {
+      "id": "forward_supply",
+      "name": "Forward Cache",
+      "role": "commander",
+      "fromClass": "quartermaster",
+      "cooldownTicks": 3000,
+      "text": "Plant a 40-health supply banner 30+ from base: troops deploy there for 60 s while safe."
+    },
+    {
+      "id": "dash",
+      "name": "Charger's Spur",
+      "role": "bruiser",
+      "fromClass": "-",
+      "cooldownTicks": 200,
+      "text": "Dash a short way forward."
+    },
+    {
+      "id": "shield_bash",
+      "name": "Gatebreaker's Shove",
+      "role": "bruiser",
+      "fromClass": "-",
+      "cooldownTicks": 300,
+      "text": "Slam forward, knocking back and staggering foes in front of you."
+    },
+    {
+      "id": "heal_pulse",
+      "name": "Lantern of Mercy",
+      "role": "healer",
+      "fromClass": "-",
+      "cooldownTicks": 600,
+      "text": "A heal pulse on you and the troops near you."
+    },
+    {
+      "id": "volley",
+      "name": "Hunter's Volley",
+      "role": "ranged",
+      "fromClass": "-",
+      "cooldownTicks": 500,
+      "text": "A fan of arrows from your position, in a cone."
+    },
+    {
+      "id": "war_cry",
+      "name": "Battle Cry",
+      "role": "commander",
+      "fromClass": "-",
+      "cooldownTicks": 800,
+      "text": "Nearby troops hit a little harder for a short time."
+    },
+    {
+      "id": "iron_skin",
+      "name": "Second Wind",
+      "role": "healer",
+      "fromClass": "-",
+      "cooldownTicks": 900,
+      "text": "Heal yourself over a few seconds."
+    }
+  ],
+  "forge": [
+    {
+      "id": "forge",
+      "rollMarks": 75,
+      "relicRollPct": 1.5,
+      "relicDuplicatePct": 0.5,
+      "pity": 10,
+      "startSlots": 60,
+      "rowSlots": 10,
+      "maxSlots": 120,
+      "rowGold": 500,
+      "rowGoldStep": 250,
+      "wearPct": 10,
+      "brokenStatPct": 0.5,
+      "maxDurability": 100,
+      "relicSlots": 3,
+      "starterQuality": 50
+    }
+  ],
   "campaign": [
     {
       "id": "collection",
@@ -3008,10 +3796,14 @@
       "victoryGold": 40,
       "practiceGold": 40,
       "minimumRewardSeconds": 180,
+      "disconnectGraceSeconds": 60,
       "completionShards": 1,
       "victoryShards": 1,
       "completionRenown": 1,
-      "victoryRenown": 1
+      "victoryRenown": 1,
+      "forgeMarks": 100,
+      "lossMarksPct": 0.5,
+      "botOnlyMarksPct": 0.5
     }
   ],
   "campaignBattles": [
@@ -3029,6 +3821,7 @@
       "mode": "domination",
       "house": "gilded",
       "bonus": "b1_hold_all",
+      "allies": "none",
       "placeholder": "none"
     },
     {
@@ -3037,15 +3830,16 @@
       "order": 2,
       "name": "The Iron Gate",
       "map": 1,
-      "size": 1,
+      "size": 2,
       "difficulty": "normal",
       "lessons": false,
-      "briefing": "PLACEHOLDER: briefing awaits Kort.",
-      "reason": "PLACEHOLDER: reason awaits Kort.",
+      "briefing": "The Ironclad hold their gate and will not open it. Break it with the engines, then take the keep behind it.",
+      "reason": "The march cannot go north past a shut iron gate.",
       "mode": "siege",
       "house": "ironclad",
-      "bonus": "b2_lose10",
-      "placeholder": "size,difficulty,briefing,reason"
+      "bonus": "b2_gate_by",
+      "allies": "none",
+      "placeholder": "briefing,reason (draft text 2026-11-02 for Kort to edit, Q74)"
     },
     {
       "id": "march-3",
@@ -3053,15 +3847,16 @@
       "order": 3,
       "name": "The Long Night",
       "map": 3,
-      "size": 1,
+      "size": 2,
       "difficulty": "normal",
       "lessons": false,
-      "briefing": "PLACEHOLDER: briefing awaits Kort.",
-      "reason": "PLACEHOLDER: reason awaits Kort.",
+      "briefing": "The graves of Hollowwood are opening under the moon. Hold the shrine and keep your banner standing until the dead lie still.",
+      "reason": "The march must camp at the shrine tonight, and so must the dead.",
       "mode": "survival",
       "house": "graveborn",
       "bonus": "b3_lose8",
-      "placeholder": "size,difficulty,briefing,reason"
+      "allies": "none",
+      "placeholder": "briefing,reason (draft text 2026-11-02 for Kort to edit, Q74)"
     },
     {
       "id": "march-4",
@@ -3069,15 +3864,16 @@
       "order": 4,
       "name": "The Frozen Standard",
       "map": 2,
-      "size": 1,
-      "difficulty": "normal",
+      "size": 3,
+      "difficulty": "hard",
       "lessons": false,
-      "briefing": "PLACEHOLDER: briefing awaits Kort.",
-      "reason": "PLACEHOLDER: reason awaits Kort.",
+      "briefing": "The Wildmoot hunt the pass and the wagon with our standard must cross it. Walk beside it and do not let it be stopped.",
+      "reason": "Without its standard the march is only a crowd of armed men.",
       "mode": "convoy",
       "house": "wildmoot",
       "bonus": "b4_never_rolled",
-      "placeholder": "size,difficulty,briefing,reason (Kort 2026-10-31: a convoy escort; mode and bonus set by the approved convoy spec)"
+      "allies": "none",
+      "placeholder": "briefing,reason (draft text 2026-11-02 for Kort to edit, Q74); Kort 2026-10-31: a convoy escort; mode and bonus set by the approved convoy spec"
     },
     {
       "id": "march-5",
@@ -3085,15 +3881,16 @@
       "order": 5,
       "name": "The Five Crossings",
       "map": 4,
-      "size": 1,
-      "difficulty": "normal",
+      "size": 3,
+      "difficulty": "hard",
       "lessons": false,
-      "briefing": "PLACEHOLDER: briefing awaits Kort.",
-      "reason": "PLACEHOLDER: reason awaits Kort.",
+      "briefing": "Tidecaller raiders have come up out of the water to take Kingsfield. Hold the fords and bridges, and strike where they are thin.",
+      "reason": "Kingsfield is where every road meets, and the march needs them.",
       "mode": "domination",
       "house": "tidecallers",
       "bonus": "b5_hold_all",
-      "placeholder": "size,difficulty,briefing,reason"
+      "allies": "none",
+      "placeholder": "briefing,reason (draft text 2026-11-02 for Kort to edit, Q74)"
     },
     {
       "id": "march-6",
@@ -3101,15 +3898,16 @@
       "order": 6,
       "name": "The Last Watch",
       "map": 1,
-      "size": 1,
-      "difficulty": "normal",
+      "size": 3,
+      "difficulty": "hard",
       "lessons": false,
-      "briefing": "PLACEHOLDER: briefing awaits Kort.",
-      "reason": "PLACEHOLDER: reason awaits Kort.",
+      "briefing": "The Hollow King has taken the keep at Ironhold. The Houses you met stand with you now. Break his gate and strike him down yourself.",
+      "reason": "The king in the keep ends the march, or the march ends.",
       "mode": "siege",
       "house": "graveborn",
       "bonus": "b6_kill_hollowking",
-      "placeholder": "size,difficulty,briefing,reason,mode (the plan says Siege, mixed)"
+      "allies": "mix_gilded_ironclad_wildmoot_normal,mix_tidecallers_graveborn_normal",
+      "placeholder": "briefing,reason (draft text 2026-11-02 for Kort to edit, Q74); Kort 2026-11-02 (Q76, Q77): Siege with allied bot banners from all five Houses; hard, the top tier, with the allies one tier below so the enemy outclasses your side"
     }
   ],
   "bonusObjectives": [
@@ -3124,14 +3922,14 @@
       "placeholder": "gold (draft value)"
     },
     {
-      "id": "b2_lose10",
-      "kind": "lose_at_most",
-      "value": 10,
-      "target": "none",
+      "id": "b2_gate_by",
+      "kind": "stage_by",
+      "value": 360,
+      "target": "gate",
       "shards": 5,
       "gold": 40,
-      "text": "Lose no more than 10 troops.",
-      "placeholder": "none (note: Kort 2026-10-31: becomes 2A (stage_by 360 s, target gate, \"Break the gate inside six minutes.\") when battle 2 goes back to Siege.)"
+      "text": "Break the gate inside six minutes.",
+      "placeholder": "none (Kort 2026-11-02, Q78: option 2A now battle 2 is Siege)"
     },
     {
       "id": "b3_lose8",
@@ -3803,6 +4601,32 @@
       "halfX": 1,
       "halfZ": 1,
       "label": "DRILLMASTER / Battle 1 and practice"
+    },
+    {
+      "id": "blacksmith",
+      "page": "forge",
+      "npc": "weaponsmith",
+      "x": 10.5,
+      "y": 77.0,
+      "z": -51.5,
+      "yaw": 90.0,
+      "halfX": 1,
+      "halfZ": 1,
+      "label": "Blacksmith / Forge & repairs"
+    }
+  ],
+  "blacksmithLines": [
+    {
+      "id": "steel",
+      "text": "Bring me marks and I'll bring you steel."
+    },
+    {
+      "id": "edges",
+      "text": "Every edge dulls. Mine come back sharper."
+    },
+    {
+      "id": "luck",
+      "text": "The anvil remembers. Keep at it and something fine will turn up."
     }
   ],
   "campLessons": [
@@ -5372,7 +6196,7 @@
     {
       "id": "graveborn",
       "name": "Graveborn",
-      "accent": 5981048,
+      "accent": 10653626,
       "glyph": "gravesandglory:textures/gui/house/graveborn.png",
       "troops": "revenant,bonebow,reaper,stalker,hexer,gb_hollowking",
       "title": "Gravebound",
@@ -5399,7 +6223,7 @@
     {
       "id": "tidecallers",
       "name": "Tidecallers",
-      "accent": 3041932,
+      "accent": 6195366,
       "glyph": "gravesandglory:textures/gui/house/tidecallers.png",
       "troops": "tc_raider,tc_harpooner,tc_tideguard,tc_mist,tc_brute,tc_admiral",
       "title": "Tidesworn",
@@ -8824,6 +9648,18 @@
       "house": "wildmoot",
       "difficulty": "hard",
       "slots": "wm_oldhorn,^,^,^,wm_hound,wm_hound,wm_hunter,wm_hunter,wm_stalker,wm_tusk,mage,^,knight,knight,knight,knight,archer,archer,sentinel,longbow"
+    },
+    {
+      "id": "mix_gilded_ironclad_wildmoot_normal",
+      "house": "gilded",
+      "difficulty": "normal",
+      "slots": "mage,^,knight,knight,knight,archer,sentinel,longbow,ic_mortar,^,ic_hearthguard,ic_hearthguard,ic_arbalist,ic_breaker,wm_hound,wm_hound,wm_hound,wm_hunter,wm_stalker,wm_tusk"
+    },
+    {
+      "id": "mix_tidecallers_graveborn_normal",
+      "house": "tidecallers",
+      "difficulty": "normal",
+      "slots": "tc_brute,^,tc_raider,tc_raider,tc_raider,tc_raider,tc_harpooner,tc_harpooner,tc_tideguard,tc_mist,hexer,^,revenant,revenant,revenant,revenant,bonebow,bonebow,reaper,stalker"
     }
   ],
   "troopNotes": [
@@ -8990,6 +9826,712 @@
       "dailyGold": 100,
       "weeklyGold": 150,
       "runs": 20000
+    }
+  ],
+  "modeLines": [
+    {
+      "id": "domination_point_taken",
+      "mode": "domination",
+      "event": "point_taken",
+      "kind": "point",
+      "args": "team,point",
+      "text": "{team} took {point}",
+      "status": "draft"
+    },
+    {
+      "id": "siege_start",
+      "mode": "siege",
+      "event": "start",
+      "kind": "notice",
+      "args": "-",
+      "text": "Take the Outer Yard, break the gate, seize the Keep.",
+      "status": "draft"
+    },
+    {
+      "id": "siege_yard_taken",
+      "mode": "siege",
+      "event": "yard_taken",
+      "kind": "point",
+      "args": "team",
+      "text": "{team} took the Outer Yard",
+      "status": "draft"
+    },
+    {
+      "id": "siege_gate_closing",
+      "mode": "siege",
+      "event": "gate_closing",
+      "kind": "point",
+      "args": "n",
+      "text": "The gate shuts in {n} s",
+      "status": "draft"
+    },
+    {
+      "id": "siege_gate_shut",
+      "mode": "siege",
+      "event": "gate_shut",
+      "kind": "point",
+      "args": "-",
+      "text": "The Iron Gate is shut",
+      "status": "draft"
+    },
+    {
+      "id": "siege_gate_breached",
+      "mode": "siege",
+      "event": "gate_breached",
+      "kind": "point",
+      "args": "-",
+      "text": "The Iron Gate is breached",
+      "status": "draft"
+    },
+    {
+      "id": "siege_keep_taken",
+      "mode": "siege",
+      "event": "keep_taken",
+      "kind": "point",
+      "args": "team",
+      "text": "{team} took the Keep",
+      "status": "draft"
+    },
+    {
+      "id": "convoy_start",
+      "mode": "convoy",
+      "event": "start",
+      "kind": "notice",
+      "args": "stop",
+      "text": "The wagon sets out for {stop}.",
+      "status": "draft"
+    },
+    {
+      "id": "convoy_wagon_rolls",
+      "mode": "convoy",
+      "event": "wagon_rolls",
+      "kind": "point",
+      "args": "-",
+      "text": "The wagon rolls",
+      "status": "draft"
+    },
+    {
+      "id": "convoy_wagon_stopped",
+      "mode": "convoy",
+      "event": "wagon_stopped",
+      "kind": "point",
+      "args": "-",
+      "text": "The wagon is stopped",
+      "status": "draft"
+    },
+    {
+      "id": "convoy_wagon_rolls_back",
+      "mode": "convoy",
+      "event": "wagon_rolls_back",
+      "kind": "point",
+      "args": "-",
+      "text": "The wagon rolls back",
+      "status": "draft"
+    },
+    {
+      "id": "convoy_checkpoint",
+      "mode": "convoy",
+      "event": "checkpoint",
+      "kind": "point",
+      "args": "team,stop",
+      "text": "{team} at {stop}",
+      "status": "draft"
+    },
+    {
+      "id": "convoy_through",
+      "mode": "convoy",
+      "event": "through",
+      "kind": "point",
+      "args": "-",
+      "text": "The convoy is through",
+      "status": "draft"
+    },
+    {
+      "id": "survival_start",
+      "mode": "survival",
+      "event": "start",
+      "kind": "notice",
+      "args": "n",
+      "text": "Hold the shrine through {n} waves",
+      "status": "draft"
+    },
+    {
+      "id": "survival_rise",
+      "mode": "survival",
+      "event": "rise",
+      "kind": "point",
+      "args": "site",
+      "text": "Dead rise: {site}",
+      "status": "draft"
+    },
+    {
+      "id": "survival_rise_unknown",
+      "mode": "survival",
+      "event": "rise_unknown",
+      "kind": "point",
+      "args": "-",
+      "text": "The dead rise",
+      "status": "draft"
+    },
+    {
+      "id": "survival_rest",
+      "mode": "survival",
+      "event": "rest",
+      "kind": "point",
+      "args": "n,gold",
+      "text": "Wave {n} at rest, +{gold} gold",
+      "status": "draft"
+    },
+    {
+      "id": "survival_rest_plain",
+      "mode": "survival",
+      "event": "rest_plain",
+      "kind": "point",
+      "args": "n",
+      "text": "Wave {n} laid to rest",
+      "status": "draft"
+    },
+    {
+      "id": "survival_shrine_falling",
+      "mode": "survival",
+      "event": "shrine_falling",
+      "kind": "point",
+      "args": "-",
+      "text": "The dead take the shrine",
+      "status": "draft"
+    },
+    {
+      "id": "survival_stands",
+      "mode": "survival",
+      "event": "stands",
+      "kind": "point",
+      "args": "-",
+      "text": "The shrine stands till dawn",
+      "status": "draft"
+    },
+    {
+      "id": "survival_dead_hold",
+      "mode": "survival",
+      "event": "dead_hold",
+      "kind": "point",
+      "args": "-",
+      "text": "The dead hold the shrine",
+      "status": "draft"
+    }
+  ],
+  "modeLedger": [
+    {
+      "id": "domination_score_0",
+      "mode": "domination",
+      "slot": 0,
+      "label": "Score",
+      "format": "fraction",
+      "team": 0,
+      "status": "draft"
+    },
+    {
+      "id": "domination_score_1",
+      "mode": "domination",
+      "slot": 1,
+      "label": "Score",
+      "format": "fraction",
+      "team": 1,
+      "status": "draft"
+    },
+    {
+      "id": "domination_points_0",
+      "mode": "domination",
+      "slot": 2,
+      "label": "Points held",
+      "format": "fraction",
+      "team": 0,
+      "status": "draft"
+    },
+    {
+      "id": "domination_points_1",
+      "mode": "domination",
+      "slot": 3,
+      "label": "Points held",
+      "format": "fraction",
+      "team": 1,
+      "status": "draft"
+    },
+    {
+      "id": "siege_stage",
+      "mode": "siege",
+      "slot": 0,
+      "label": "Stages taken",
+      "format": "fraction",
+      "team": -1,
+      "status": "draft"
+    },
+    {
+      "id": "siege_strength",
+      "mode": "siege",
+      "slot": 1,
+      "label": "Defence holding",
+      "format": "percent",
+      "team": 1,
+      "status": "draft"
+    },
+    {
+      "id": "siege_time",
+      "mode": "siege",
+      "slot": 2,
+      "label": "Time left",
+      "format": "time",
+      "team": -1,
+      "status": "draft"
+    },
+    {
+      "id": "convoy_progress",
+      "mode": "convoy",
+      "slot": 0,
+      "label": "Road covered",
+      "format": "percent",
+      "team": 0,
+      "status": "draft"
+    },
+    {
+      "id": "convoy_stops",
+      "mode": "convoy",
+      "slot": 1,
+      "label": "Stops held",
+      "format": "plain",
+      "team": 1,
+      "status": "draft"
+    },
+    {
+      "id": "convoy_time",
+      "mode": "convoy",
+      "slot": 2,
+      "label": "Time left",
+      "format": "time",
+      "team": -1,
+      "status": "draft"
+    },
+    {
+      "id": "survival_wave",
+      "mode": "survival",
+      "slot": 0,
+      "label": "Wave",
+      "format": "fraction",
+      "team": -1,
+      "status": "draft"
+    },
+    {
+      "id": "survival_dead",
+      "mode": "survival",
+      "slot": 1,
+      "label": "Dead standing",
+      "format": "plain",
+      "team": 1,
+      "status": "draft"
+    },
+    {
+      "id": "survival_time",
+      "mode": "survival",
+      "slot": 2,
+      "label": "Next wave in",
+      "format": "time",
+      "team": -1,
+      "status": "draft"
+    }
+  ],
+  "waves": [
+    {
+      "id": "moon-1",
+      "set": "moon",
+      "wave": 1,
+      "seconds": 90,
+      "gold": 60,
+      "note": "DRAFT (Phase 4 plan Task 6, question for Kort)"
+    },
+    {
+      "id": "moon-2",
+      "set": "moon",
+      "wave": 2,
+      "seconds": 90,
+      "gold": 60,
+      "note": "DRAFT (Phase 4 plan Task 6, question for Kort)"
+    },
+    {
+      "id": "moon-3",
+      "set": "moon",
+      "wave": 3,
+      "seconds": 100,
+      "gold": 80,
+      "note": "DRAFT (Phase 4 plan Task 6, question for Kort)"
+    },
+    {
+      "id": "moon-4",
+      "set": "moon",
+      "wave": 4,
+      "seconds": 100,
+      "gold": 80,
+      "note": "DRAFT (Phase 4 plan Task 6, question for Kort)"
+    },
+    {
+      "id": "moon-5",
+      "set": "moon",
+      "wave": 5,
+      "seconds": 110,
+      "gold": 100,
+      "note": "DRAFT (Phase 4 plan Task 6, question for Kort)"
+    },
+    {
+      "id": "moon-6",
+      "set": "moon",
+      "wave": 6,
+      "seconds": 120,
+      "gold": 100,
+      "note": "DRAFT (Phase 4 plan Task 6, question for Kort)"
+    },
+    {
+      "id": "moon-7",
+      "set": "moon",
+      "wave": 7,
+      "seconds": 150,
+      "gold": 0,
+      "note": "DRAFT (Phase 4 plan Task 6, question for Kort)"
+    }
+  ],
+  "waveGroups": [
+    {
+      "id": "moon-1-1",
+      "wave": "moon-1",
+      "troop": "revenant",
+      "count": 4,
+      "site": "chapel",
+      "note": "DRAFT (Phase 4 plan Task 6, question for Kort)"
+    },
+    {
+      "id": "moon-1-2",
+      "wave": "moon-1",
+      "troop": "revenant",
+      "count": 4,
+      "site": "ford",
+      "note": "DRAFT (Phase 4 plan Task 6, question for Kort)"
+    },
+    {
+      "id": "moon-2-1",
+      "wave": "moon-2",
+      "troop": "revenant",
+      "count": 4,
+      "site": "chapel",
+      "note": "DRAFT (Phase 4 plan Task 6, question for Kort)"
+    },
+    {
+      "id": "moon-2-2",
+      "wave": "moon-2",
+      "troop": "revenant",
+      "count": 4,
+      "site": "wood",
+      "note": "DRAFT (Phase 4 plan Task 6, question for Kort)"
+    },
+    {
+      "id": "moon-2-3",
+      "wave": "moon-2",
+      "troop": "bonebow",
+      "count": 2,
+      "site": "chapel",
+      "note": "DRAFT (Phase 4 plan Task 6, question for Kort)"
+    },
+    {
+      "id": "moon-2-4",
+      "wave": "moon-2",
+      "troop": "bonebow",
+      "count": 2,
+      "site": "wood",
+      "note": "DRAFT (Phase 4 plan Task 6, question for Kort)"
+    },
+    {
+      "id": "moon-3-1",
+      "wave": "moon-3",
+      "troop": "revenant",
+      "count": 5,
+      "site": "ford",
+      "note": "DRAFT (Phase 4 plan Task 6, question for Kort)"
+    },
+    {
+      "id": "moon-3-2",
+      "wave": "moon-3",
+      "troop": "revenant",
+      "count": 5,
+      "site": "track",
+      "note": "DRAFT (Phase 4 plan Task 6, question for Kort)"
+    },
+    {
+      "id": "moon-3-3",
+      "wave": "moon-3",
+      "troop": "bonebow",
+      "count": 3,
+      "site": "ford",
+      "note": "DRAFT (Phase 4 plan Task 6, question for Kort)"
+    },
+    {
+      "id": "moon-3-4",
+      "wave": "moon-3",
+      "troop": "bonebow",
+      "count": 3,
+      "site": "track",
+      "note": "DRAFT (Phase 4 plan Task 6, question for Kort)"
+    },
+    {
+      "id": "moon-4-1",
+      "wave": "moon-4",
+      "troop": "revenant",
+      "count": 5,
+      "site": "chapel",
+      "note": "DRAFT (Phase 4 plan Task 6, question for Kort)"
+    },
+    {
+      "id": "moon-4-2",
+      "wave": "moon-4",
+      "troop": "revenant",
+      "count": 5,
+      "site": "wood",
+      "note": "DRAFT (Phase 4 plan Task 6, question for Kort)"
+    },
+    {
+      "id": "moon-4-3",
+      "wave": "moon-4",
+      "troop": "bonebow",
+      "count": 3,
+      "site": "chapel",
+      "note": "DRAFT (Phase 4 plan Task 6, question for Kort)"
+    },
+    {
+      "id": "moon-4-4",
+      "wave": "moon-4",
+      "troop": "bonebow",
+      "count": 3,
+      "site": "wood",
+      "note": "DRAFT (Phase 4 plan Task 6, question for Kort)"
+    },
+    {
+      "id": "moon-4-5",
+      "wave": "moon-4",
+      "troop": "reaper",
+      "count": 3,
+      "site": "ford",
+      "note": "DRAFT (Phase 4 plan Task 6, question for Kort)"
+    },
+    {
+      "id": "moon-5-1",
+      "wave": "moon-5",
+      "troop": "revenant",
+      "count": 6,
+      "site": "ford",
+      "note": "DRAFT (Phase 4 plan Task 6, question for Kort)"
+    },
+    {
+      "id": "moon-5-2",
+      "wave": "moon-5",
+      "troop": "revenant",
+      "count": 6,
+      "site": "track",
+      "note": "DRAFT (Phase 4 plan Task 6, question for Kort)"
+    },
+    {
+      "id": "moon-5-3",
+      "wave": "moon-5",
+      "troop": "bonebow",
+      "count": 3,
+      "site": "chapel",
+      "note": "DRAFT (Phase 4 plan Task 6, question for Kort)"
+    },
+    {
+      "id": "moon-5-4",
+      "wave": "moon-5",
+      "troop": "bonebow",
+      "count": 3,
+      "site": "wood",
+      "note": "DRAFT (Phase 4 plan Task 6, question for Kort)"
+    },
+    {
+      "id": "moon-5-5",
+      "wave": "moon-5",
+      "troop": "stalker",
+      "count": 2,
+      "site": "chapel",
+      "note": "DRAFT (Phase 4 plan Task 6, question for Kort)"
+    },
+    {
+      "id": "moon-5-6",
+      "wave": "moon-5",
+      "troop": "stalker",
+      "count": 2,
+      "site": "wood",
+      "note": "DRAFT (Phase 4 plan Task 6, question for Kort)"
+    },
+    {
+      "id": "moon-6-1",
+      "wave": "moon-6",
+      "troop": "revenant",
+      "count": 6,
+      "site": "chapel",
+      "note": "DRAFT (Phase 4 plan Task 6, question for Kort)"
+    },
+    {
+      "id": "moon-6-2",
+      "wave": "moon-6",
+      "troop": "revenant",
+      "count": 6,
+      "site": "wood",
+      "note": "DRAFT (Phase 4 plan Task 6, question for Kort)"
+    },
+    {
+      "id": "moon-6-3",
+      "wave": "moon-6",
+      "troop": "bonebow",
+      "count": 4,
+      "site": "ford",
+      "note": "DRAFT (Phase 4 plan Task 6, question for Kort)"
+    },
+    {
+      "id": "moon-6-4",
+      "wave": "moon-6",
+      "troop": "bonebow",
+      "count": 4,
+      "site": "track",
+      "note": "DRAFT (Phase 4 plan Task 6, question for Kort)"
+    },
+    {
+      "id": "moon-6-5",
+      "wave": "moon-6",
+      "troop": "reaper",
+      "count": 2,
+      "site": "chapel",
+      "note": "DRAFT (Phase 4 plan Task 6, question for Kort)"
+    },
+    {
+      "id": "moon-6-6",
+      "wave": "moon-6",
+      "troop": "reaper",
+      "count": 2,
+      "site": "wood",
+      "note": "DRAFT (Phase 4 plan Task 6, question for Kort)"
+    },
+    {
+      "id": "moon-6-7",
+      "wave": "moon-6",
+      "troop": "hexer",
+      "count": 1,
+      "site": "track",
+      "note": "DRAFT (Phase 4 plan Task 6, question for Kort)"
+    },
+    {
+      "id": "moon-7-1",
+      "wave": "moon-7",
+      "troop": "revenant",
+      "count": 4,
+      "site": "chapel",
+      "note": "DRAFT (Phase 4 plan Task 6, question for Kort)"
+    },
+    {
+      "id": "moon-7-2",
+      "wave": "moon-7",
+      "troop": "revenant",
+      "count": 4,
+      "site": "ford",
+      "note": "DRAFT (Phase 4 plan Task 6, question for Kort)"
+    },
+    {
+      "id": "moon-7-3",
+      "wave": "moon-7",
+      "troop": "revenant",
+      "count": 4,
+      "site": "wood",
+      "note": "DRAFT (Phase 4 plan Task 6, question for Kort)"
+    },
+    {
+      "id": "moon-7-4",
+      "wave": "moon-7",
+      "troop": "revenant",
+      "count": 4,
+      "site": "track",
+      "note": "DRAFT (Phase 4 plan Task 6, question for Kort)"
+    },
+    {
+      "id": "moon-7-5",
+      "wave": "moon-7",
+      "troop": "bonebow",
+      "count": 2,
+      "site": "chapel",
+      "note": "DRAFT (Phase 4 plan Task 6, question for Kort)"
+    },
+    {
+      "id": "moon-7-6",
+      "wave": "moon-7",
+      "troop": "bonebow",
+      "count": 2,
+      "site": "ford",
+      "note": "DRAFT (Phase 4 plan Task 6, question for Kort)"
+    },
+    {
+      "id": "moon-7-7",
+      "wave": "moon-7",
+      "troop": "bonebow",
+      "count": 2,
+      "site": "wood",
+      "note": "DRAFT (Phase 4 plan Task 6, question for Kort)"
+    },
+    {
+      "id": "moon-7-8",
+      "wave": "moon-7",
+      "troop": "bonebow",
+      "count": 2,
+      "site": "track",
+      "note": "DRAFT (Phase 4 plan Task 6, question for Kort)"
+    },
+    {
+      "id": "moon-7-9",
+      "wave": "moon-7",
+      "troop": "reaper",
+      "count": 2,
+      "site": "chapel",
+      "note": "DRAFT (Phase 4 plan Task 6, question for Kort)"
+    },
+    {
+      "id": "moon-7-10",
+      "wave": "moon-7",
+      "troop": "reaper",
+      "count": 2,
+      "site": "ford",
+      "note": "DRAFT (Phase 4 plan Task 6, question for Kort)"
+    },
+    {
+      "id": "moon-7-11",
+      "wave": "moon-7",
+      "troop": "stalker",
+      "count": 2,
+      "site": "wood",
+      "note": "DRAFT (Phase 4 plan Task 6, question for Kort)"
+    },
+    {
+      "id": "moon-7-12",
+      "wave": "moon-7",
+      "troop": "stalker",
+      "count": 2,
+      "site": "track",
+      "note": "DRAFT (Phase 4 plan Task 6, question for Kort)"
+    },
+    {
+      "id": "moon-7-13",
+      "wave": "moon-7",
+      "troop": "hexer",
+      "count": 1,
+      "site": "chapel",
+      "note": "DRAFT (Phase 4 plan Task 6, question for Kort)"
+    },
+    {
+      "id": "moon-7-14",
+      "wave": "moon-7",
+      "troop": "hexer",
+      "count": 1,
+      "site": "track",
+      "note": "DRAFT (Phase 4 plan Task 6, question for Kort)"
     }
   ]
 }

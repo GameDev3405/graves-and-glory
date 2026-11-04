@@ -1,0 +1,19 @@
+{
+ "weapon": "boar_spear",
+ "density": 1,
+ "thickness": 2,
+ "grip": {
+  "offset": [
+   0,
+   0,
+   0
+  ],
+  "rotation": [
+   0,
+   0,
+   0
+  ],
+  "note": "held upright like the sun staff"
+ },
+ "note": "The Tusk's boar spear (Wildmoot), hand-authored at 1 texel a px: a pale ash shaft with a hide grip and binder, a bone crossbar under a steel leaf head; held upright."
+}

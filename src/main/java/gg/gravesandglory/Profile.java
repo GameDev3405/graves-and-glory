@@ -3,19 +3,23 @@ package gg.gravesandglory;
 import java.util.*;
 
 /**
- * A commander's saved collection, schema 3 (spec 6.2, plan 2C.3): the banner, the owned troops with stars and mastery, per
- * House shards, Renown and Epic pity, and the Long March battles won and bonuses paid. Server-owned JSON, one file per player
- * (Campaign.profile loads it, migrating a schema-1 or schema-2 file first). Pure, so the standalone checks compile it.
+ * A commander's saved collection, schema 4 (spec 6.2, plan 2C.3, commander gear spec): the banner, the owned troops with stars and mastery, per
+ * House shards, Renown and Epic pity, the Long March battles won and bonuses paid, and the commander's gear, relics and Forge marks. Server-owned JSON, one file per player
+ * (Campaign.profile loads it, migrating an older file first). Pure, so the standalone checks compile it.
  */
 public final class Profile {
     /** The JSON key of progression. Campaign.forClient finds the nested state by it to strip the match ids; a rename of the field that leaves this behind sends them again, which p1-report-snapshot catches. */
     static final String PROGRESSION = "progression";
+    /** The JSON key of the gear list. Campaign.forClient strips it from the snapshot (the client gets the compact gear_v1 string instead). */
+    static final String GEAR = "gear";
     /** One owned troop type: copies received, stars (1 to 3) and its mastery ledger. A stored "stage" field of an older file is ignored: Gson drops a key the class lacks. */
     static final class Owned { int copies=1, stars=1, kills, survived, mastery; String variant="base"; }
 
     /** The current profile schema; ProfileMigration upgrades older files to it. */
-    static final int SCHEMA = 3;
+    static final int SCHEMA = 4;
     int schema = SCHEMA;
+    /** Set when the file was saved by a newer build (schema above SCHEMA). Never saved: Gson skips transient fields. Campaign.save then writes nothing. */
+    transient boolean readOnly;
     int gold, matches, wins;
     boolean tutorialDone;
     String commander = "champion";
@@ -38,6 +42,17 @@ public final class Profile {
     Set<Integer> writChapters = new LinkedHashSet<>();
     /** Unlocked banner cosmetics (renown rewards such as cosmetic:pennant). */
     Set<String> cosmetics = new LinkedHashSet<>();
+    /** Schema 4: the commander's gear. Pieces (any number, kept even above inventorySize), worn uids by slot, unlocked relics and the three relic slots. */
+    List<Gear.Piece> gear = new ArrayList<>();
+    Map<String, Integer> equipped = new LinkedHashMap<>();
+    Set<String> relics = new LinkedHashSet<>();
+    List<String> relicSlots = new ArrayList<>(List.of("", "", ""));
+    int nextGearUid = 1;
+    /** Cached Gear.power of the worn pieces, for matchmaking and bot scaling. */
+    int gearPower = 0;
+    /** Schema 4: Forge marks (the blacksmith's currency), the rolls since the last Epic or better, and the inventory capacity in pieces. */
+    int forgeMarks, gearPity;
+    int inventorySize = Spec.FORGE[0].startSlots();
 
     /**
      * Repairs a loaded or migrated profile in place. Owned ids the catalog does not know are dropped. Stars clamp to
@@ -47,8 +62,10 @@ public final class Profile {
      * campaignBattles or bonusObjectives row knows, and campaignCleared is derived from battlesWon.
      */
     void sanitize(RosterMath.Catalog c, Set<String> classIds, Set<String> sideIds, List<String> houses) {
-        if (schema < SCHEMA) ProfileMigration.v2toV3(this, Spec.CAMPAIGNBATTLES);
-        schema = SCHEMA;
+        if (schema < 3) ProfileMigration.v2toV3(this, Spec.CAMPAIGNBATTLES);
+        if (schema < 4) ProfileMigration.v3toV4(this);
+        if (schema > SCHEMA) readOnly = true; // a save from a newer build: kept as it is, never written by this one
+        else schema = SCHEMA;
         if (progression == null) progression = new Progression.State();
         progression.sanitize();
         gold = clamp(gold, 0, 1_000_000);
@@ -82,6 +99,49 @@ public final class Profile {
         if (bonusClaimed == null) bonusClaimed = new LinkedHashSet<>();
         bonusClaimed.removeIf(id -> id == null || Arrays.stream(Spec.BONUSOBJECTIVES).noneMatch(b -> b.id().equals(id)));
         campaignCleared = MarchMath.cleared(battlesWon, Spec.CAMPAIGNBATTLES);
+        sanitizeGear();
+    }
+    /**
+     * The gear half of sanitize. Null pieces, unknown items or rarities and repeated uids (the first stays) are dropped; quality clamps to
+     * 0..100 and durability to 0..maxDurability; marks and pity clamp; the inventory size is a whole row between the start and the maximum;
+     * nextGearUid passes every uid; equipped keeps only owned pieces in their own slot (a two-handed main frees the off-hand); relics keep
+     * known ids and relicSlots is exactly the sheet's count of empty or owned, non-repeating relics. A piece is never dropped for being over the inventory size.
+     */
+    private void sanitizeGear() {
+        var f = Gear.forge();
+        if (gear == null) gear = new ArrayList<>();
+        Set<Integer> seen = new HashSet<>();
+        gear.removeIf(g -> g == null || g.item == null || Gear.item(g.item) == null || g.rarity == null || Gear.rarity(g.rarity) == null || !seen.add(g.uid));
+        int top = 0;
+        for (Gear.Piece g : gear) {
+            g.quality = clamp(g.quality, 0, 100);
+            g.durability = clamp(g.durability, 0, f.maxDurability());
+            top = Math.max(top, g.uid);
+        }
+        nextGearUid = Math.max(Math.max(1, nextGearUid), top + 1);
+        forgeMarks = clamp(forgeMarks, 0, 1_000_000);
+        gearPity = clamp(gearPity, 0, f.pity());
+        int size = clamp(inventorySize, f.startSlots(), f.maxSlots());
+        inventorySize = Math.max(f.startSlots(), f.startSlots() + (size - f.startSlots()) / f.rowSlots() * f.rowSlots());
+        if (equipped == null) equipped = new LinkedHashMap<>();
+        equipped.entrySet().removeIf(e -> {
+            if (e.getKey() == null || e.getValue() == null) return true;
+            Gear.Piece g = Gear.piece(this, e.getValue());
+            var it = g == null ? null : Gear.item(g.item);
+            return it == null || !it.slot().equals(e.getKey());
+        });
+        Gear.Piece main = Gear.piece(this, equipped.getOrDefault("main", 0));
+        var mainItem = main == null ? null : Gear.item(main.item);
+        if (mainItem != null && mainItem.hands() == 2) equipped.remove("off");
+        if (relics == null) relics = new LinkedHashSet<>();
+        relics.removeIf(id -> id == null || Gear.relic(id) == null);
+        List<String> slots = new ArrayList<>();
+        for (int i = 0; i < f.relicSlots(); i++) {
+            String id = relicSlots != null && i < relicSlots.size() ? relicSlots.get(i) : "";
+            slots.add(id != null && relics.contains(id) && !slots.contains(id) ? id : "");
+        }
+        relicSlots = slots;
+        gearPower = Gear.power(this);
     }
     /** One copy of each Common in the troops sheet, in sheet order. */
     static Map<String, Owned> commons() {

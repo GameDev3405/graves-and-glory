@@ -112,9 +112,13 @@ public final class Combat {
         Vec3d stood = target.getVelocity();
         var watchers = victim == null ? List.<net.minecraft.server.network.ServerPlayerEntity>of() : List.copyOf(MotionEvents.watchers(target)); // read before a killing blow can take the troop from its trackers
         float before = target.getHealth() + target.getAbsorptionAmount(); boolean cooldown = target.timeUntilRegen > 10; // vanilla's hurt cooldown deals only a blow's excess
+        Audio.blowDelay = kind.equals("melee") ? Audio.contact(attacker) : 0; // a structure's own blow cue reads it (SiegeMode.GateTarget.structureCue)
         boolean hurt;
-        hurt = MotionEvents.resolving(target, () -> target.damage(source(b, attacker.mob), amount)); // HitEventMixin leaves the target's damage to the hit_v1 below
+        try { hurt = MotionEvents.resolving(target, () -> target.damage(source(b, attacker.mob), amount)); } finally { Audio.blowDelay = 0; } // HitEventMixin leaves the target's damage to the hit_v1 below
         if (anchored) target.setVelocity(stood); // an anchored troop (the Oath Banner's) is not knocked back by the blow itself either
+        // The blow's sound: shield, magic, arrow, heavy weapon, clash or armour (Audio.hit). A raised shield that takes the whole blow makes damage() answer false,
+        // and that is exactly the block the player should hear, so it sounds before the early return.
+        if (!secondary && (hurt || raised)) Audio.hit(b, attacker, target, victim, kind, raised);
         if (!hurt) return 0;
         if (victim != null) sendHit(attacker, target, kind, melee, area, structure(target), hit, cooldown, BattleMath.lostHealth(before, target.getHealth() + target.getAbsorptionAmount()), impactY, watchers);
         // Ruling (Task 6 review M1): a killing blow levels its striker inside target.damage (AFTER_DEATH, lane A), so onHit below reads his new rows: the level

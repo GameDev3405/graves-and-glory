@@ -60,12 +60,16 @@ public abstract class BattleMode {
     public boolean overtime(GravesAndGlory.Battle b){return false;}
     /** Where a bot army goes this beat instead of its Domination point (null keeps the point plan): a mode with its own objectives (Siege's stage) returns it. */
     public Vec3d botTarget(GravesAndGlory.Battle b,GravesAndGlory.Squad s){return null;}
+    /** Called at the end of Houses.recompute: a mode may replace an army's House trait tiers (Survival's director takes its tier's waveTraitTier). */
+    public void traits(GravesAndGlory.Battle b,GravesAndGlory.Squad s){}
     /** Each running tick, after captureTick: the mode's scoring and its own timers. */
     public void tick(GravesAndGlory.Battle b){}
     /** The objective panel's line as the round starts; a mode without points to capture says its own. */
     public String startLine(GravesAndGlory.Battle b){return GravesAndGlory.Battle.ROUND_START;}
     /** Where a team respawns and its troops fall back to. */
     public Vec3d fieldBase(GravesAndGlory.Battle b,int team){return GravesAndGlory.Battle.base(team);}
+    /** The point a team's lineup forms from (reinforce's rows stand 5 to 20 blocks forward of it): the field base unless the mode lines a team up elsewhere (Siege's defenders in the yard). */
+    public Vec3d lineup(GravesAndGlory.Battle b,int team){return fieldBase(b,team);}
     /** A team's barracks access point. */
     public Vec3d fieldBarracks(GravesAndGlory.Battle b,int team){var f=Spec.FACTIONS[team];return new Vec3d(f.barracksX(),65,f.barracksZ());}
     /** Round gold a squad earns per income tick: passive gold and held points, each scaled by the mode (Survival pays neither). */
@@ -88,6 +92,12 @@ public abstract class BattleMode {
     public int clock(GravesAndGlory.Battle b){return b.running?(int)Math.max(0,b.roundSeconds-(b.time-b.roundStarted)/20):b.roundSeconds;}
     /** The two numbers beside the HUD's tracks. */
     public int[] ledger(GravesAndGlory.Battle b){return b.scores;}
+    /**
+     * The 2 to 4 numbers that decide the round, as plain data for the HUD and the report (plan 2C.2), in the order of the mode's
+     * modeLedger rows (ModeLines.entry builds each from its row, so labels and formats are draft copy in the sheet). A mode
+     * adds its rows and overrides this; the default has none, so a mode that has not yet is simply without a ledger.
+     */
+    public List<ModeLines.Entry> ledgerEntries(GravesAndGlory.Battle b){return List.of();}
     /** The tracks' maxima. */
     public int[] max(GravesAndGlory.Battle b){return new int[]{row.winTarget(),row.winTarget()};}
     /** How each ledger number reads (ModeMath.ledgerText): plain, fraction or percent. */
@@ -97,6 +107,11 @@ public abstract class BattleMode {
     /** A bot army's goal in this mode, asked by Campaign.botDecide after its retreat check: a spot to attack toward, or null to
      *  play the points as Domination does (the default). Convoy sends its bots to the wagon (spec 3.6). */
     public Vec3d botGoal(GravesAndGlory.Battle b,GravesAndGlory.Squad s,Vec3d centre,Spec.BotCommandRow tier){return null;}
+    /** A bot army's per-group orders, asked by Campaign.botDecide at the end of each decision (never while it retreats): a mode puts
+     *  Battle.Assignment rows into s.assignments over the army's order. Siege splits its stage plan by group (spec 5); the default adds none. */
+    public void botPlan(GravesAndGlory.Battle b,GravesAndGlory.Squad s,Spec.BotCommandRow tier){}
+    /** Whether a weakened bot army may fall back to its field base to rally (Campaign.botDecide's retreat share); false keeps it on its plan. */
+    public boolean botRetreats(GravesAndGlory.Battle b,GravesAndGlory.Squad s){return true;}
     /** The lobby's mode block: id, name, rule, how-to lines, side, the tracks and their formats. */
     public JsonObject snapshot(GravesAndGlory.Battle b,GravesAndGlory.Squad viewer){
         JsonObject j=new JsonObject();

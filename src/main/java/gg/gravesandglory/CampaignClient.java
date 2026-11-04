@@ -14,6 +14,8 @@ import java.nio.file.*;
 /** Portable local collection and a temporary, skippable camera introduction. */
 public final class CampaignClient {
     static Profile profile=new Profile();
+    /** The commander's gear from the last gear_v1 packet, or null before the first (GearWire.decode). */
+    static GearWire.View gear=null;
     /** The side row ids the two teams fly (from the snapshot "sides"): team 0 first. */
     static String[] sides={"gold","violet"};
     /** The banner this commander fields (snapshot "banner"): the battle banner while seated in a running battle, else the profile banner. */
@@ -57,7 +59,15 @@ public final class CampaignClient {
     /** Whether the reveal on screen is the last roll's card: it arrived with this reveal and Skip reveal has not ended it. */
     static boolean rollShowing(){return lastRoll!=null&&revealUntil>System.currentTimeMillis()&&revealUntil==rollAt+REVEAL_MS;}
     /** Forgets the last roll and the first-snapshot mark when the client leaves a server: a restarted server counts n from 1 again, and its first snapshot must not reveal (review minor 5). */
-    static void forget(){lastRoll=null;rollAt=0;received=false;revealUntil=0;armoury=LevelMath.Armoury.EMPTY;}
+    /** The last Forge roll, from the snapshot's forge (gear screen Task 4): the item and rarity, or the relic, whether it was a duplicate and the marks refunded; n tells a new one from the same. Null before the first. */
+    record ForgeRoll(int n,String item,String rarity,String relic,boolean duplicate,int refund){}
+    static ForgeRoll forgeRoll;
+    /** Reads the snapshot's forge block ({} until this commander rolls). */
+    static void acceptForge(JsonObject j){
+        if(!j.has("forge")||!j.get("forge").isJsonObject())return;var f=j.getAsJsonObject("forge");if(!f.has("n"))return;
+        try{forgeRoll=new ForgeRoll(f.get("n").getAsInt(),f.get("item").getAsString(),f.get("rarity").getAsString(),f.get("relic").getAsString(),f.get("duplicate").getAsBoolean(),f.get("refund").getAsInt());}catch(RuntimeException ignored){}
+    }
+    static void forget(){forgeRoll=null;lastRoll=null;rollAt=0;received=false;revealUntil=0;armoury=LevelMath.Armoury.EMPTY;}
     /** This army's Armoury from the last state_v9 (armouryHere and the buy states per banner troop type, LevelMath.decodeArmoury); empty before the first state, after a disconnect and until the server fills it (Task 5). The Armoury tab and the Iron Ledger glint read it. */
     static LevelMath.Armoury armoury=LevelMath.Armoury.EMPTY;
     /** Reads the snapshot's lastRoll; a new one (another n) after the first snapshot starts the reveal. */
@@ -92,12 +102,12 @@ public final class CampaignClient {
     static boolean showsPoints(){try{return !battleMode.has("points")||battleMode.get("points").getAsBoolean();}catch(Exception e){return true;}}
     static String ledgerFormat(int i){try{return battleMode.getAsJsonArray("format").get(i).getAsString();}catch(Exception e){return "plain";}}
     static void accept(MinecraftClient c,String json,boolean running){
-        try{JsonObject j=JsonParser.parseString(json).getAsJsonObject();if(!j.has("profile"))return; /* "{}": the server could not fit this snapshot; keep the last camp state */var nextProfile=Campaign.JSON.fromJson(j.get("profile"),Profile.class);if(received&&nextProfile.owned!=null&&nextProfile.owned.size()>profile.owned.size()){for(var unit:Spec.TROOPS)if(nextProfile.owned.containsKey(unit.id())&&!profile.owned.containsKey(unit.id()))revealUnit=unit.name();revealUntil=System.currentTimeMillis()+2400;}nextProfile.sanitize();profile=nextProfile;acceptRoll(j,!received);received=true;
+        try{JsonObject j=JsonParser.parseString(json).getAsJsonObject();if(!j.has("profile"))return; /* "{}": the server could not fit this snapshot; keep the last camp state */var nextProfile=Campaign.JSON.fromJson(j.get("profile"),Profile.class);if(received&&nextProfile.owned!=null&&nextProfile.owned.size()>profile.owned.size()){for(var unit:Spec.TROOPS)if(nextProfile.owned.containsKey(unit.id())&&!profile.owned.containsKey(unit.id()))revealUnit=unit.name();revealUntil=System.currentTimeMillis()+2400;}nextProfile.sanitize();profile=nextProfile;acceptRoll(j,!received);acceptForge(j);received=true;
             if(j.has("sides")){var s=j.getAsJsonArray("sides");if(s.size()==2)sides=new String[]{s.get(0).getAsString(),s.get(1).getAsString()};}
             if(j.has("banner")){var list=new java.util.ArrayList<String>();for(var e:j.getAsJsonArray("banner"))list.add(e.getAsString());banner=list;}social=j.has("social")?j.getAsJsonObject("social"):new JsonObject();battleMode=j.has("battleMode")?j.getAsJsonObject("battleMode"):new JsonObject();progression=j.has("progression")?j.getAsJsonObject("progression"):new JsonObject();if(j.has("progression"))profile.progression=Campaign.JSON.fromJson(progression,Progression.State.class);players=j.getAsJsonArray("players");party=j.getAsJsonObject("party");lead=party.get("lead").getAsBoolean();
             JsonObject keyed=new JsonObject();for(var entry:party.entrySet())if(!entry.getKey().equals("inviteSeconds"))keyed.add(entry.getKey(),entry.getValue());partyKey=keyed.toString();
             JsonObject pads=j.getAsJsonObject("pads");padCountdown=pads.get("countdown").getAsInt();padDawn=pads.get("dawn").getAsInt();padDusk=pads.get("dusk").getAsInt();padSize=pads.has("size")?pads.get("size").getAsInt():2;padMine=pads.has("mine")?pads.get("mine").getAsInt():-1;tutorial=j.has("tutorial")?j.get("tutorial").getAsInt():-1;battle=j.has("battle")?j.getAsJsonObject("battle"):new JsonObject();fill=j.get("fill").getAsBoolean();difficulty=j.has("difficulty")?j.get("difficulty").getAsString():"normal";mode=j.get("mode").getAsString();acceptNotice(j.get("notice").getAsString());acceptedStates++;noticeSerial=j.has("noticeSerial")?j.get("noticeSerial").getAsInt():0;headline=j.has("headline")&&!j.get("headline").isJsonNull()?j.get("headline").getAsString():"";
-            int next=j.get("map").getAsInt();if(next!=map||Spec.FACTIONS[0].spawnX()!=-283){map=next;if(c.getServer()==null)CampaignMaps.select(map);GravesAndGloryClient.invalidateMap(c);}
+            int next=j.get("map").getAsInt();if(next!=map||Spec.FACTIONS[0].spawnX()!=CampaignMaps.spawnX(next,0)){map=next;if(c.getServer()==null)CampaignMaps.select(map);GravesAndGloryClient.invalidateMap(c);}
             waiting=j.has("waiting")&&j.get("waiting").getAsBoolean();
             int round=j.get("serial").getAsInt();intro=j.get("intro").getAsInt();
             if(round!=serial&&running&&intro>0){cameraTicks=120-intro;begin(c);}serial=round;
@@ -111,7 +121,8 @@ public final class CampaignClient {
     static void begin(MinecraftClient c){
         if(c.player==null||c.world==null||camera!=null)return;
         frameMs.clear();lastFrame=0;previous=c.options.getPerspective();previousHud=c.options.hudHidden;c.options.hudHidden=false;c.options.setPerspective(Perspective.THIRD_PERSON_BACK);camera=new ArmorStandEntity(c.world,c.player.getX(),c.player.getY()+2,c.player.getZ());camera.setInvisible(true);c.setScreen(null);
-        sound(c,"battle_intro",.8f);
+        sound(c,"battle_intro",AudioCues.Cue.BATTLE_INTRO.volume);
+        sound(c,AudioCues.Cue.BATTLE_DRUMS.id,AudioCues.Cue.BATTLE_DRUMS.volume); // war drums layered under the horns
     }
     static void sound(MinecraftClient c,String id,float volume){if(c.player!=null)c.player.playSound(net.minecraft.registry.Registries.SOUND_EVENT.get(new net.minecraft.util.Identifier("gravesandglory",id)),SoundCategory.MASTER,volume,1);}
     static void tick(MinecraftClient c){
@@ -153,10 +164,21 @@ public final class CampaignClient {
     static void briefing(DrawContext g,net.minecraft.client.font.TextRenderer font,int w,int bottom){
         int cw=Math.min(400,w-40),x=(w-cw)/2;
         var orders=font.wrapLines(DarkUi.body(text(battle,"briefing")),cw-24);var why=font.wrapLines(DarkUi.body(text(battle,"reason")),cw-24);
-        int y=bottom-(36+11*(orders.size()+why.size()));DarkUi.frame(g,x,y,cw,bottom-y);
+        String bonus=bonusLine();var extra=bonus.isEmpty()?java.util.List.<net.minecraft.text.OrderedText>of():font.wrapLines(DarkUi.body(bonus),cw-24);
+        int y=bottom-(36+11*(orders.size()+why.size())+(extra.isEmpty()?0:3+11*extra.size()));DarkUi.frame(g,x,y,cw,bottom-y);
         String name=text(battle,"name").toUpperCase(java.util.Locale.ROOT);int tw=(int)(font.getWidth(Text.literal(name).setStyle(net.minecraft.text.Style.EMPTY.withFont(DarkUi.TITLE)))*1.35f);
         DarkUi.title(g,name,w/2-tw/2,y+9,DarkUi.GOLD);y+=26;
         for(var line:orders){g.drawText(font,line,w/2-font.getWidth(line)/2,y,DarkUi.PAPER,false);y+=11;}y+=3;
         for(var line:why){g.drawText(font,line,w/2-font.getWidth(line)/2,y,DarkUi.MUTED,false);y+=11;}
+        if(!extra.isEmpty()){y+=3;int ink=bonusClaimed()?DarkUi.MUTED:DarkUi.GOLD;for(var line:extra){g.drawText(font,line,w/2-font.getWidth(line)/2,y,ink,false);y+=11;}}
+    }
+    /** The battle being fought as its campaignBattles row, or null (a room, practice). */
+    static Spec.CampaignBattlesRow marchRow(){return MarchMath.row(text(battle,"id"),Spec.CAMPAIGNBATTLES);}
+    /** Whether the bonus of the battle being fought has paid before (plan 2C.5). */
+    static boolean bonusClaimed(){var b=MarchMath.bonus(marchRow(),Spec.BONUSOBJECTIVES);return b!=null&&profile.bonusClaimed.contains(b.id());}
+    /** The briefing's bonus line (plan 2C.5): the objective and what it pays, or that it was claimed; empty for a battle with no bonus. */
+    static String bonusLine(){
+        var row=marchRow();var b=MarchMath.bonus(row,Spec.BONUSOBJECTIVES);if(b==null)return "";
+        return bonusClaimed()?"Bonus claimed: "+b.text():"Bonus: "+b.text()+" "+MarchText.reward(b,row);
     }
 }
