@@ -146,7 +146,7 @@ final class GearView {
         out.addAll(compare(v, p));
         out.add(p.durability <= 0 ? "Broken: half stats until repaired" : "Durability " + p.durability * 100 / Math.max(1, Gear.forge().maxDurability()) + "%");
         if (v != null && Forge.duplicate(asProfile(v), p)) out.add("Duplicate");
-        out.add(worn(v, p.uid) ? "Worn" : "Click: equip · Shift-click: break down");
+        out.add(worn(v, p.uid) ? "Worn" : "Click to equip · Shift-click to break down");
         return out;
     }
 

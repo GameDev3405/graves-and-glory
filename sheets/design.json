@@ -3283,6 +3283,21 @@
       "command": 0.0
     },
     {
+      "id": "sunwell_crook",
+      "name": "Sunwell Crook",
+      "slot": "main",
+      "set": "-",
+      "family": "staff",
+      "hands": 1,
+      "health": 1.0,
+      "damage": 0.0,
+      "armour": 0.0,
+      "speed": 0.0,
+      "ranged": 0.0,
+      "healing": 5.0,
+      "command": 0.0
+    },
+    {
       "id": "war_banner",
       "name": "Marchwarden's Standard",
       "slot": "main",
@@ -3296,6 +3311,21 @@
       "ranged": 0.0,
       "healing": 0.0,
       "command": 5.0
+    },
+    {
+      "id": "long_colours",
+      "name": "The Long Colours",
+      "slot": "main",
+      "set": "-",
+      "family": "banner",
+      "hands": 1,
+      "health": 0.0,
+      "damage": 3.0,
+      "armour": 0.0,
+      "speed": 0.0,
+      "ranged": 0.0,
+      "healing": 0.0,
+      "command": 4.0
     },
     {
       "id": "kite_shield",
@@ -4257,6 +4287,32 @@
       "halfX": 1,
       "halfZ": 1,
       "label": "DRILLMASTER / Battle 1 and practice"
+    },
+    {
+      "id": "blacksmith",
+      "page": "forge",
+      "npc": "weaponsmith",
+      "x": 10.5,
+      "y": 77.0,
+      "z": -51.5,
+      "yaw": 90.0,
+      "halfX": 1,
+      "halfZ": 1,
+      "label": "Blacksmith / Forge & repairs"
+    }
+  ],
+  "blacksmithLines": [
+    {
+      "id": "steel",
+      "text": "Bring me marks and I'll bring you steel."
+    },
+    {
+      "id": "edges",
+      "text": "Every edge dulls. Mine come back sharper."
+    },
+    {
+      "id": "luck",
+      "text": "The anvil remembers. Keep at it and something fine will turn up."
     }
   ],
   "campLessons": [

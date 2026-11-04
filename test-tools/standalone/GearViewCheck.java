@@ -110,7 +110,7 @@ public final class GearViewCheck {
         check(GearView.tooltip(v2, worse).contains("Duplicate"), "a second common helm is a duplicate");
         check(!GearView.tooltip(v2, better).contains("Duplicate"), "the only legendary helm is no duplicate");
         check(GearView.tooltip(v2, better).get(0).equals(Gear.item(helmId).name()), "tooltip starts with the name");
-        check(GearView.tooltip(v2, better).get(GearView.tooltip(v2, better).size() - 1).startsWith("Click: equip"), "unworn footer");
+        check(GearView.tooltip(v2, better).get(GearView.tooltip(v2, better).size() - 1).startsWith("Click to equip"), "unworn footer");
         check(GearView.tooltip(v2, Gear.piece(p, p.equipped.get("helm"))).contains("Worn"), "worn footer");
         check(GearView.tooltip(v2, new Gear.Piece(99, "not_in_the_sheet", rarity(0), 1, 1)).isEmpty(), "an unknown piece has no tooltip");
 
