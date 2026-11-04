@@ -323,8 +323,8 @@ def bones():
     B.append(Bone("head", "body", (0, -12, 0), [Box((-4, -8, -4), (8, 8, 8), face_painter_mc())]))
     B.append(Bone("hood", "head", boxes=[Box((-4.5, -8.5, -5.5), (9, 9, 10), hood()), Box((-4.5, -9.5, -5.5), (9, 1, 1), brow())]))
     B.append(Bone("hood_peak", "head", (0, -4, 4.5), rot=(18, 0, 0), boxes=[Box((-2, 0, 0), (4, 6, 2), peak())]))
-    B.append(Bone("right_arm", "body", (-5, -10, 0), [Box((-3, -2, -2), (4, 12, 4), sleeve())]))
-    B.append(Bone("right_hand", "right_arm", (-1, 8, 0)))
+    B += limb("right_arm", "body", (-5, -10, 0), (-3, -2, -2), sleeve(), "right_forearm", ELBOW["right"])   # jointed: elbow and hand as handlib.arms()
+    B.append(Bone("right_hand", "right_forearm", HAND))
     B.append(Bone("rod", "right_hand", tag="weapon", weapon_tiers=[1], boxes=[
         Box((-0.5, -0.5, -7), (1, 1, 7), rod()), Box((-1, -1, -9), (2, 2, 2), conch()), Box((-0.5, -2, -8.5), (1, 1, 1), conch())]))
     B.append(Bone("rod_t2", "right_hand", tag="weapon", weapon_tiers=[2], boxes=[
@@ -335,11 +335,11 @@ def bones():
         Box((-0.5, -0.5, -9), (1, 1, 9), rod()), Box((-1.5, -1.5, -11), (3, 3, 2), conch()), Box((-0.5, -2.5, -10.5), (1, 1, 1), conch()),
         Box((-0.7, -0.7, -5), (1.4, 1.4, 2), TC.tc_band(3, "mrb3")), Box((-1, -1, -13), (2, 2, 2), TC.tc_pearl()),
         Box((1.5, -0.5, -12), (1, 1, 2), TC.tc_spike(TC.WARM, 2, 2)), Box((-2.5, -0.5, -12), (1, 1, 2), TC.tc_spike(TC.WARM, 2, 2))]))
-    B.append(Bone("left_arm", "body", (5, -10, 0), [Box((-1, -2, -2), (4, 12, 4), sleeve())]))
-    B.append(Bone("left_hand", "left_arm", (1, 8, 0)))
+    B += limb("left_arm", "body", (5, -10, 0), (-1, -2, -2), sleeve(), "left_forearm", ELBOW["left"])
+    B.append(Bone("left_hand", "left_forearm", HAND))
     B.append(Bone("arms_folded", "body", (0, -9, -1), rot=(-43, 0, 0)))
-    B.append(Bone("right_leg", "root", (-1.9, 12, 0), [Box((-2, 0, -2), (4, 12, 4), robe(1, "ml", 3))]))
-    B.append(Bone("left_leg", "root", (1.9, 12, 0), [Box((-2, 0, -2), (4, 12, 4), robe(1, "ml", 3))]))
+    for side, x in (("right", -1.9), ("left", 1.9)):   # jointed: the knee 6 px down the leg
+        B += limb(f"{side}_leg", "root", (x, 12, 0), (-2, 0, -2), robe(1, "ml", 3), f"{side}_shin", KNEE)
     # the robe to the ground in three bell tiers; the hem tier carries the rune band
     B.append(Bone("skirt", "root", boxes=[Box((-4.5, 11.5, -2.5), (9, 4, 5), panel(robe(3, "m1", 3))),
                                           Box((-5, 15.5, -3), (10, 3, 6), panel(robe(3, "m2", 3)))]))
@@ -349,7 +349,7 @@ def bones():
     B.append(Bone("charm", "body", boxes=[Box((2.2, -2, -2.8), (1, 1, 1), cord()), Box((1.7, -1, -3), (2, 3, 1), conch())]))
     for side in ("right", "left"):
         c = -1 if side == "right" else 1
-        B.append(Bone(f"{side}_bell", f"{side}_arm", boxes=[Box((-2 + (0 if side == "right" else -1), 3, -2), (4, 5, 4), bell(), dil=0.8)]))
+        B.append(Bone(f"{side}_bell", f"{side}_forearm", boxes=[Box((-1 if side == "right" else -4, -1, -2), (4, 5, 4), bell(), dil=0.8)]))
         B.append(Bone(f"{side}_kelp_hood", "head", boxes=[Box((4.6 * c - 0.5, -2, -2.5), (1, 8, 1), kelp((side, "hood"), 3))]))
     # team cloth: a diagonal sash over the chest and a barry-wavy tail at the hip
     B.append(Bone("sash", "body", team=True, pivot=(0, -7, 0), rot=(0, 0, 40), boxes=[Box((-4, -1, -2.5), (8, 2, 5), "sash", sheet="cloth")]))
@@ -360,11 +360,11 @@ def bones():
     B.append(Bone("hood_band", "head", stages=[2, 3], boxes=[Box((-4.9, -7.2, -5.9), (9.8, 1.2, 10.4), TC.band("mchb"), dil=0.05)]))
     for side in ("right", "left"):
         c = -1 if side == "right" else 1
-        B.append(Bone(f"{side}_bracer", f"{side}_arm", stages=[2, 3], boxes=[Box((-2.2 + (0 if side == "right" else -1), 0.5, -2.2), (4.4, 2.5, 4.4), TC.P("mcbr" + side, 0.03), dil=0.1)]))
+        B.append(Bone(f"{side}_bracer", f"{side}_arm", stages=[2, 3], boxes=[Box((-2.2 + (0 if side == "right" else -1), 0.5, -2.2), (4.4, 2.5, 4.4), TC.P("mcbr" + side, 0.03), dil=0.1)]))   # above the elbow (y 0.5-3): stays on the upper arm
         B.append(Bone(f"{side}_pauldron", f"{side}_arm", (c, -2.5, 0), rot=(0, 0, 18 * c), stages=[2, 3], boxes=[
             Box((-3.5 + 0.5 * c, -0.6, -3.2), (7, 3, 6.4), TC.P("mcpd" + side), dil=0.25)]))
         # tier III, the Tide Oracle: mist strips trailing from the bells
-        B.append(Bone(f"{side}_mist", f"{side}_arm", (c * 1.5, 8, 2), rot=(18, 0, 6 * c), stages=[3], boxes=[
+        B.append(Bone(f"{side}_mist", f"{side}_forearm", (c * 0.5, 4, 2), rot=(18, 0, 6 * c), stages=[3], boxes=[
             Box((-1.5, 0, 0), (1, 7, 1), TC.tc_spike(MIST, 3, 2)), Box((0.5, 0, 0.3), (1, 5, 1), TC.tc_spike(MIST, 3, 2))]))
     B.append(Bone("mist_back", "body", (0, -11, 3.6), rot=(14, 0, 0), stages=[3], boxes=[
         Box((-4, 0, 0), (1, 13, 1), TC.tc_spike(MIST, 3, 2)), Box((-1.5, 0, 0.2), (1, 16, 1), TC.tc_spike(MIST, 3, 2)),

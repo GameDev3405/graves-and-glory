@@ -392,13 +392,12 @@ def bones():
     B.append(Bone("collar_back", "body", boxes=[Box((-4, -19, 1.2), (8, 6, 1), collar_back)]))
     B.append(Bone("clasp", "body", boxes=[Box((-3.5, -13, -3.6), (2, 2, 1), clasp), Box((1.5, -13, -3.6), (2, 2, 1), clasp)]))
     # the arms: plate over bare bone, a broken spike at each elbow, great layered pauldrons
-    B.append(Bone("right_arm", "body", (-7, -12, 0), [Box((-2, -2, -2), (4, 13, 4), arm("right"))]))
-    B.append(Bone("right_hand", "right_arm", (0, 9, 0)))
-    B.append(Bone("left_arm", "body", (7, -12, 0), [Box((-2, -2, -2), (4, 13, 4), arm("left"))]))
-    B.append(Bone("left_hand", "left_arm", (0, 9, 0)))
+    for side, x in (("right", -7), ("left", 7)):   # jointed: the elbow at the bare-bone rows, 4 px down; the hand 5 px under it
+        B += limb(f"{side}_arm", "body", (x, -12, 0), (-2, -2, -2), arm(side), f"{side}_forearm", (0, 4, 0), size=(4, 13, 4))
+        B.append(Bone(f"{side}_hand", f"{side}_forearm", (0, 5, 0)))
     B.append(Bone("arms_folded", "body", (0, -11, -1), rot=(-43, 0, 0)))
-    B.append(Bone("right_elbow", "right_arm", boxes=[Box((-1, 4, 1.8), (2, 3, 2), shard)]))
-    B.append(Bone("left_elbow", "left_arm", boxes=[Box((-1, 4, 1.8), (2, 3, 2), shard)]))
+    B.append(Bone("right_elbow", "right_forearm", boxes=[Box((-1, 0, 1.8), (2, 3, 2), shard)]))
+    B.append(Bone("left_elbow", "left_forearm", boxes=[Box((-1, 0, 1.8), (2, 3, 2), shard)]))
     B.append(Bone("right_pauldron", "right_arm", (0, -2, 0), rot=(0, 0, 14), boxes=[
         Box((-5, -2, -3.8), (9, 3, 7.6), lame(4, "g", "rp0"), dil=0.2),
         Box((-4.5, 1, -3.4), (8, 2, 6.8), lame(3, "v", "rp1"), dil=0.2),
@@ -409,11 +408,11 @@ def bones():
         Box((-3.5, 2.5, -3.4), (7, 2, 6.8), lame(3, "v", "lp2"), dil=0.2),
         Box((-1.5, -9, -1.5), (2, 6, 3), shard), Box((-0.5, -12, -0.5), (1, 3, 1), shard), Box((4, -2, -1), (1, 4, 2), shard)]))
     # legs: cuisse, bare knee, slit greave, sabaton; a knee-cop with a spike
-    B.append(Bone("right_leg", "root", (-2.5, 14, 0), [Box((-2.5, 0, -2.5), (5, 14, 5), leg("right"))]))
-    B.append(Bone("left_leg", "root", (2.5, 14, 0), [Box((-2.5, 0, -2.5), (5, 14, 5), leg("left"))]))
+    for side, x in (("right", -2.5), ("left", 2.5)):   # jointed: the knee at mid-height, 7 px down the leg
+        B += limb(f"{side}_leg", "root", (x, 14, 0), (-2.5, 0, -2.5), leg(side), f"{side}_shin", (0, 7, 0), size=(5, 14, 5), upper_h=7)
     for s in ("right", "left"):
-        B.append(Bone(f"{s}_knee", f"{s}_leg", boxes=[Box((-2.5, 4.5, -3.8), (5, 4, 2), knee, dil=0.2), Box((-0.5, 5.5, -5.8), (1, 2, 2), shard)]))
-        B.append(Bone(f"{s}_foot", f"{s}_leg", boxes=[Box((-3, 11.5, -4.5), (6, 3, 8), boot, dil=0.2)]))
+        B.append(Bone(f"{s}_knee", f"{s}_shin", boxes=[Box((-2.5, -2.5, -3.8), (5, 4, 2), knee, dil=0.2), Box((-0.5, -1.5, -5.8), (1, 2, 2), shard)]))
+        B.append(Bone(f"{s}_foot", f"{s}_shin", boxes=[Box((-3, 4.5, -4.5), (6, 3, 8), boot, dil=0.2)]))
     # belt, hip guards and the rag skirt
     B.append(Bone("belt", "body", boxes=[Box((-5, -4, -2.5), (10, 3, 5), belt, dil=0.45)]))
     B.append(Bone("hip_r", "body", (-5.5, -2, 0), rot=(0, 0, 8), boxes=[Box((-1, 0, -3), (2, 7, 6), tasset, dil=0.1)]))
@@ -435,7 +434,7 @@ def bones():
         B.append(Bone(f"crown_tall{i}", "head", stages=[2, 3], boxes=[Box((x - 0.5, -9 - hgt, z - 0.5), (1.4, hgt, 1.4), per_tier(lambda t: gb_spike(GL, 3, 3), (2, 3)))]))
     B.append(Bone("gorget_ring", "body", stages=[2, 3], boxes=[Box((-6, -16, -3.7), (12, 2, 7.4), P2("gr"), dil=0.3)]))
     for side in ("right", "left"):
-        B.append(Bone(f"{side}_vambrace", f"{side}_arm", stages=[2, 3], boxes=[Box((-2.5, 4.5, -2.5), (5, 4, 5), P2("vb" + side, 0.18), dil=0.3)]))
+        B.append(Bone(f"{side}_vambrace", f"{side}_forearm", stages=[2, 3], boxes=[Box((-2.5, 0.5, -2.5), (5, 4, 5), P2("vb" + side, 0.18), dil=0.3)]))
         B.append(Bone(f"{side}_cuisse", f"{side}_leg", stages=[2, 3], boxes=[Box((-2.5, 0.5, -2.5), (5, 4, 5), P2("cu" + side), dil=0.35)]))
     B.append(Bone("tine_r", "right_arm", (0, -2, 0), rot=(0, 0, 14), stages=[2, 3], boxes=[Box((-5, -9, -0.5), (1.4, 7, 1.4), TN), Box((-2.5, -7, 2), (1.4, 5, 1.4), TN)]))
     B.append(Bone("tine_l", "left_arm", (0, -2, 0), rot=(0, 0, -14), stages=[2, 3], boxes=[Box((3.6, -9, -0.5), (1.4, 7, 1.4), TN), Box((1.1, -7, 2), (1.4, 5, 1.4), TN)]))

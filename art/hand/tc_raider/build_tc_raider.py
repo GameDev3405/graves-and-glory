@@ -256,13 +256,12 @@ def bones():
         Box((-4, -12.5, -4), (8, 2.5, 8), scutes("mid")),
         Box((-2.5, -13.5, -2.5), (5, 1, 5), scutes("crown", True))]))
     B.append(Bone("helm_back", "head", (0, -6, 4.5), rot=(-14, 0, 0), tag="helm", boxes=[Box((-4.5, 0, 0), (9, 5, 2), scutes("back", rim=True))]))
-    B.append(Bone("right_arm", "body", (-5, -10, 0), [Box((-3, -2, -2), (4, 12, 4), arm_painter())], rot=(-HUNCH, 0, 0)))
-    B.append(Bone("right_hand", "right_arm", (-1, 8, 0)))
-    B.append(Bone("left_arm", "body", (5, -10, 0), [Box((-1, -2, -2), (4, 12, 4), arm_painter())], rot=(-HUNCH, 0, 0)))
-    B.append(Bone("left_hand", "left_arm", (1, 8, 0)))
+    for side, x, ox in (("right", -5, -3), ("left", 5, -1)):   # jointed: elbow and hand as handlib.arms(), the arm standing back up
+        B += limb(f"{side}_arm", "body", (x, -10, 0), (ox, -2, -2), arm_painter(), f"{side}_forearm", ELBOW[side], rot=(-HUNCH, 0, 0))
+        B.append(Bone(f"{side}_hand", f"{side}_forearm", HAND))
     B.append(Bone("arms_folded", "body", (0, -9, -1), rot=(-43, 0, 0)))
-    B.append(Bone("right_leg", "root", (-1.9, 12, 0), [Box((-2, 0, -2), (4, 12, 4), leg_painter())]))
-    B.append(Bone("left_leg", "root", (1.9, 12, 0), [Box((-2, 0, -2), (4, 12, 4), leg_painter())]))
+    for side, x in (("right", -1.9), ("left", 1.9)):   # jointed: the knee 6 px down the leg
+        B += limb(f"{side}_leg", "root", (x, 12, 0), (-2, 0, -2), leg_painter(), f"{side}_shin", KNEE)
     B.append(Bone("skirt", "body", boxes=[Box((-5, -3, -3), (10, 6, 6), skirt(), dil=0.1)]))
     B.append(Bone("belt", "body", boxes=[Box((-4.5, -4, -2.5), (9, 2, 5), belt(), dil=0.5)]))
     B.append(Bone("barnacles", "body", boxes=[
@@ -276,13 +275,13 @@ def bones():
     for side in ("right", "left"):
         c = -1 if side == "right" else 1
         if side == "left": B.append(strand(f"kelp_{side}_shoulder", "body", (5 * c, -10.5, 0.5), (26, 0, 8 * c), [((-1, 0, 0), (2, 7, 1))]))
-        B.append(Bone(f"{side}_wrap", f"{side}_arm", team=True, boxes=[Box((-2 + (0 if side == "right" else -1), 7, -2), (4, 2, 4), "wrap", dil=0.3, sheet="cloth")]))
-        B.append(Bone(f"{side}_foot", f"{side}_leg", boxes=[Box((-2.5, 9, -3.5), (5, 3, 5.5), foot())]))
+        B.append(Bone(f"{side}_wrap", f"{side}_forearm", team=True, boxes=[Box((-1 if side == "right" else -4, 3, -2), (4, 2, 4), "wrap", dil=0.3, sheet="cloth")]))
+        B.append(Bone(f"{side}_foot", f"{side}_shin", boxes=[Box((-2.5, 3, -3.5), (5, 3, 5.5), foot())]))
     # tier II, the Reef Reaver: one bronze pauldron on the sword shoulder, bracers, greaves, a gorget band
     for side in ("right", "left"):
         c = -1 if side == "right" else 1
-        B.append(Bone(f"{side}_bracer", f"{side}_arm", stages=[2, 3], boxes=[Box((-2.2 + (0 if side == "right" else -1), 3.5, -2.2), (4.4, 3.5, 4.4), TC.P("rdbr" + side, 0.03), dil=0.1)]))
-        B.append(Bone(f"{side}_greave", f"{side}_leg", stages=[2, 3], boxes=[Box((-2.3, 4, -2.3), (4.6, 4.5, 4.6), TC.P("rdgv" + side), dil=0.1)]))
+        B.append(Bone(f"{side}_bracer", f"{side}_forearm", stages=[2, 3], boxes=[Box((-1.2 if side == "right" else -4.2, -0.5, -2.2), (4.4, 3.5, 4.4), TC.P("rdbr" + side, 0.03), dil=0.1)]))
+        B.append(Bone(f"{side}_greave", f"{side}_shin", stages=[2, 3], boxes=[Box((-2.3, -2, -2.3), (4.6, 4.5, 4.6), TC.P("rdgv" + side), dil=0.1)]))
         B.append(Bone(f"{side}_pauldron", f"{side}_arm", (c, -2.5, 0), rot=(0, 0, 14 * c), stages=[2, 3] if side == "right" else [3], boxes=[
             Box((-3.5 + 0.5 * c, -0.5, -3), (7, 3, 6), TC.P("rdpd" + side), dil=0.2),
             Box((-2 + 0.5 * c, -1.5, -2), (4, 1, 4), TC.P("rdpt" + side), dil=0.1)]))

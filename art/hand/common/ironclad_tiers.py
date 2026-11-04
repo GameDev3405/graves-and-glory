@@ -118,7 +118,7 @@ def crew_tiers(B, seed, bevor=True, comb=True):
         B.append(Bone(f"{side}_lame4", sp, stages=[2, 3], boxes=[Box((-3 + 1.5 * c, 4.5, -2.5), (6, 1, 5), P(seed + "l4" + side, 3), dil=0.1)]))
         B.append(Bone(f"{side}_sboss", sp, stages=[2, 3], boxes=[Box((-1.5, -2.5, -1.5), (3, 1, 3), brass(3, seed + "sb" + side))]))
         B.append(Bone(f"{side}_sspikes", sp, stages=[3], boxes=[Box((-0.5, -4.5, dz - 0.5), (1, 2, 1), spike(IRON, 3, 2)) for dz in (-2.5, 2.5)]))
-        B.append(Bone(f"{side}_bracer", f"{side}_arm", stages=[2, 3], boxes=[Box((c - 2.2, 3, -2.2), (4.4, 3, 4.4), P(seed + "br" + side, 3, ember=True), dil=0.05)]))
-        B.append(Bone(f"{side}_kneeplate", f"{side}_leg", stages=[2, 3], boxes=[Box((-2.5, 4, -2.9), (5, 2.5, 1), P(seed + "kn" + side, 4), dil=0.05)]))
-        B.append(Bone(f"{side}_greave", f"{side}_leg", stages=[3], boxes=[Box((-2.4, 6, -2.4), (4.8, 3, 4.8), P(seed + "gv" + side, 3), dil=0.05)]))
+        B.append(Bone(f"{side}_bracer", f"{side}_forearm", stages=[2, 3], boxes=[Box((-2.2, -1, -2.2), (4.4, 3, 4.4), P(seed + "br" + side, 3, ember=True), dil=0.05)]))
+        B.append(Bone(f"{side}_kneeplate", f"{side}_shin", stages=[2, 3], boxes=[Box((-2.5, -2, -2.9), (5, 2.5, 1), P(seed + "kn" + side, 4), dil=0.05)]))
+        B.append(Bone(f"{side}_greave", f"{side}_shin", stages=[3], boxes=[Box((-2.4, 0, -2.4), (4.8, 3, 4.8), P(seed + "gv" + side, 3), dil=0.05)]))
     return B

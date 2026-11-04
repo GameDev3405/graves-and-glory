@@ -40,7 +40,7 @@ Open carries: Task 13 (wiring the engine) takes the fps-check rewrite, the tabar
 
 2026-11-01 answers (Kort, through AskUserQuestion; applied and tested on `integration/candidate-2026-11-01`, then merged into main by Kort's Q12 approval):
 
-- **EULA (Q11):** accepted. Agents may write `eula.txt` (eula=true) in dev server run folders for bot-sim battles only. It is never committed.
+- **EULA (Q11):** accepted. Agents may write `eula.txt` (eula=true) in any run folder a sim, test or server check needs (Kort, 2026-11-04). It is never committed.
 - **Map adoption (Q15):**
   - `gg-mapforge-runs/1` and a first release bake are approved, and so is the settle rule.
   - Ironhold spawns move to the signed D1a values, Dawn -314 and Dusk 128, with the barracks moved to match.

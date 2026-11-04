@@ -217,13 +217,12 @@ def bones():
     B.append(Bone("head", "body", (0, -12, 0), [Box((-4, -8, -4), (8, 8, 8), face_painter_td())]))
     B.append(Bone("cap", "head", tag="helm", boxes=[Box((-4.5, -9.5, -4.5), (9, 5, 9), cap())]))
     B.append(Bone("fin", "head", team=True, tag="helm", boxes=[Box((-0.5, -13, -3), (1, 4, 7), "fin", sheet="cloth")]))
-    B.append(Bone("right_arm", "body", (-5, -10, 0), [Box((-3, -2, -2), (4, 12, 4), arm_painter())]))
-    B.append(Bone("right_hand", "right_arm", (-1, 8, 0)))
-    B.append(Bone("left_arm", "body", (5, -10, 0), [Box((-1, -2, -2), (4, 12, 4), arm_painter())]))
-    B.append(Bone("left_hand", "left_arm", (1, 8, 0)))
+    for side, x, ox in (("right", -5, -3), ("left", 5, -1)):   # jointed: elbow and hand as handlib.arms()
+        B += limb(f"{side}_arm", "body", (x, -10, 0), (ox, -2, -2), arm_painter(), f"{side}_forearm", ELBOW[side])
+        B.append(Bone(f"{side}_hand", f"{side}_forearm", HAND))
     B.append(Bone("arms_folded", "body", (0, -9, -1), rot=(-43, 0, 0)))
-    B.append(Bone("right_leg", "root", (-1.9, 12, 0), [Box((-2, 0, -2), (4, 12, 4), leg_painter())]))
-    B.append(Bone("left_leg", "root", (1.9, 12, 0), [Box((-2, 0, -2), (4, 12, 4), leg_painter())]))
+    for side, x in (("right", -1.9), ("left", 1.9)):   # jointed: the knee 6 px down the leg
+        B += limb(f"{side}_leg", "root", (x, 12, 0), (-2, 0, -2), leg_painter(), f"{side}_shin", KNEE)
     B.append(Bone("belt", "body", boxes=[Box((-4, -4, -2), (8, 2, 4), belt(), dil=0.5)]))
     B.append(Bone("tabard", "body", team=True, boxes=[
         Box((-3.5, -4, -2.95), (7, 9, 0), "tabard", sheet="cloth"), Box((-3.5, -4, 2.95), (7, 9, 0), "tabard", sheet="cloth")]))
@@ -238,9 +237,9 @@ def bones():
             Box((-2.5 + 3 * (c > 0), -9, -1), (2, 4, 2), coral((side, 1))),
             Box((0.5 - 3 * (c > 0), -10, -0.5), (1, 5, 1), coral((side, 2))),
             Box((-1, -8, -1), (1, 3, 1), coral((side, 3)))]))
-        B.append(Bone(f"{side}_bracer", f"{side}_arm", boxes=[Box((-2 + (0 if side == "right" else -1), 5, -2), (4, 5, 4), bracer(), dil=0.15)]))
-        B.append(Bone(f"{side}_wrap", f"{side}_arm", team=True, boxes=[Box((-2 + (0 if side == "right" else -1), 3, -2), (4, 2, 4), "wrap", dil=0.3, sheet="cloth")]))
-        B.append(Bone(f"{side}_boot", f"{side}_leg", boxes=[Box((-2.5, 9, -3), (5, 3, 5), boot())]))
+        B.append(Bone(f"{side}_bracer", f"{side}_forearm", boxes=[Box((-1 if side == "right" else -4, 1, -2), (4, 5, 4), bracer(), dil=0.15)]))
+        B.append(Bone(f"{side}_wrap", f"{side}_arm", team=True, boxes=[Box((-2 + (0 if side == "right" else -1), 3, -2), (4, 2, 4), "wrap", dil=0.3, sheet="cloth")]))   # centred on the elbow: stays on the upper arm
+        B.append(Bone(f"{side}_boot", f"{side}_shin", boxes=[Box((-2.5, 3, -3), (5, 3, 5), boot())]))
     # tier II, the Reef Warden: bronze plate rimmed in sea blue; tier III deep sea-blue plate chased in warm bronze
     B.append(Bone("breastplate", "body", stages=[2, 3], boxes=[Box((-4.5, -12.2, -2.7), (9, 6.5, 5.4), TC.P("tgbp"), dil=0.15)]))
     B.append(Bone("cap_band", "head", tag="helm", stages=[2, 3], boxes=[Box((-4.9, -5.6, -4.9), (9.8, 1.4, 9.8), TC.band("tgcb"), dil=0.05)]))
@@ -248,8 +247,8 @@ def bones():
         c = -1 if side == "right" else 1
         B.append(Bone(f"{side}_plate", f"{side}_arm", (c, -2.5, 0), rot=(0, 0, 14 * c), stages=[2, 3], boxes=[
             Box((-4 + 0.5 * c, -0.2, -3.5), (8, 3, 7), TC.P("tgpd" + side), dil=0.2)]))
-        B.append(Bone(f"{side}_greave", f"{side}_leg", stages=[2, 3], boxes=[Box((-2.3, 3.5, -2.3), (4.6, 5.5, 4.6), TC.P("tggv" + side), dil=0.1)]))
-        B.append(Bone(f"{side}_cuff", f"{side}_arm", stages=[2, 3], boxes=[Box((-2.3 + (0 if side == "right" else -1), 9.6, -2.3), (4.6, 1, 4.6), TC.band("tgcf" + side), dil=0.1)]))
+        B.append(Bone(f"{side}_greave", f"{side}_shin", stages=[2, 3], boxes=[Box((-2.3, -2.5, -2.3), (4.6, 5.5, 4.6), TC.P("tggv" + side), dil=0.1)]))
+        B.append(Bone(f"{side}_cuff", f"{side}_forearm", stages=[2, 3], boxes=[Box((-1.3 if side == "right" else -4.3, 5.6, -2.3), (4.6, 1, 4.6), TC.band("tgcf" + side), dil=0.1)]))
         # tier III: the shoulder coral grows a third branch
         B.append(Bone(f"{side}_coral3", "body", (4.5 * c, -12, 0), rot=(0, 0, 22 * c), stages=[3], boxes=[
             Box((-0.5 + 2 * c, -12, -0.5), (1, 6, 1), TC.tc_coral((side, "c3a"))),
