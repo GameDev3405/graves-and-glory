@@ -1,17 +1,19 @@
 """Edit troop clips in Blockbench and bring the result back into the game's clip JSON.
 
-  python tools/anim_edit.py open <family> [--troop T] [--fresh] [--launch]
+  python tools/anim_edit.py open <family> [--rig R] [--troop T] [--fresh] [--launch]
       Builds work/anim-edit/<family>-<troop>.bbmodel: the troop's real model (skin cubes, textures embedded) with the
       family's animations on the rig bones. Prints the path; --launch hands it to Blockbench. An existing file with
-      unapplied edits is kept (--fresh rebuilds it and drops them).
+      unapplied edits is kept (--fresh rebuilds it and drops them). A family with no source file yet opens with no
+      animations; apply then creates art/clips/<rig>/<family>.bbmodel.
   python tools/anim_edit.py apply [family ...]
-      Copies the animations of each saved working file back into art/clips/biped/<family>.bbmodel, then runs
+      Copies the animations of each saved working file back into art/clips/<rig>/<family>.bbmodel, then runs
       tools/clips.py and tools/clips.py --verify.
   python tools/anim_edit.py preview <family> <clip>
       Prints the harness command that renders the family in the real game (it has no one-clip filter; the clip is
       in the solo sheet). Starts nothing.
 
-Families: sword_shield (troop knight), bow (archer), common (knight); --troop picks another troop of the biped rig."""
+Families and their rig and default troop are in FAMILIES; --troop picks another troop of the same rig, --rig overrides
+the rig (art/rigs/<rig>.json). bear and ravager have no rig file yet, so they are not listed."""
 import base64
 import json
 import os
@@ -23,10 +25,23 @@ ROOT = pathlib.Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'tools'))
 import clips  # noqa: E402
 
-RIG = 'biped'
-SRC = ROOT / 'art/clips' / RIG
 WORK = ROOT / 'work/anim-edit'
-TROOP = {'sword_shield': 'knight', 'bow': 'archer', 'common': 'knight'}
+FAMILIES = {  # family: (rig, default troop)
+    'sword_shield': ('biped', 'knight'), 'bow': ('biped', 'archer'), 'common': ('biped', 'knight'),
+    'caster': ('biped', 'mage'), 'spear': ('biped', 'wm_tusk'), 'sword': ('biped', 'revenant'),
+    'crossbow': ('biped', 'ic_arbalist'), 'axe_shield': ('biped', 'ic_hearthguard'), 'axe': ('biped', 'ic_breaker'),
+    'greatsword': ('biped', 'gb_hollowking'), 'scythe': ('biped', 'reaper'), 'thrower': ('biped', 'tc_harpooner'),
+    'crew': ('biped', 'ic_mortar'),
+    'hound': ('hound', 'wm_hound'), 'spider': ('spider', 'wm_stalker'), 'colossus': ('colossus', 'ic_colossus'),
+}
+
+
+def src(family, rig=None):
+    return ROOT / 'art/clips' / (rig or FAMILIES[family][0]) / (family + '.bbmodel')
+
+
+def option(args, name):
+    return args[args.index(name) + 1] if name in args and args.index(name) + 1 < len(args) else None
 
 
 def load(path):
@@ -86,8 +101,8 @@ def embed(project):
     return project
 
 
-def semantic(project):
-    return clips.convert(project, load(ROOT / 'art/rigs' / (RIG + '.json')), 'project')
+def semantic(project, rig):
+    return clips.convert(project, load(ROOT / 'art/rigs' / (rig + '.json')), 'project')
 
 
 def working(family, troop):
@@ -96,21 +111,22 @@ def working(family, troop):
 
 def cmd_open(args):
     fresh, launch = '--fresh' in args, '--launch' in args
-    troop = None
-    if '--troop' in args:
-        troop = args[args.index('--troop') + 1]
-    rest = [a for a in args if not a.startswith('--') and a != troop]
-    if len(rest) != 1 or rest[0] not in TROOP:
+    troop, rig = option(args, '--troop'), option(args, '--rig')
+    rest = [a for a in args if not a.startswith('--') and a not in (troop, rig)]
+    if len(rest) != 1 or rest[0] not in FAMILIES:
         print(__doc__)
         return 2
     family = rest[0]
-    troop = troop or TROOP[family]
-    src_path = SRC / (family + '.bbmodel')
-    source = load(src_path)
+    rig = rig or FAMILIES[family][0]
+    troop = troop or FAMILIES[family][1]
+    if not (ROOT / 'art/rigs' / (rig + '.json')).is_file():
+        sys.exit(f'anim_edit: no rig art/rigs/{rig}.json')
+    src_path = src(family, rig)
+    source = load(src_path) if src_path.is_file() else None
     path = working(family, troop)
     if path.is_file() and not fresh:
         try:
-            same = semantic(load(path)) == semantic(source)
+            same = source is not None and semantic(load(path), rig) == semantic(source, rig)
         except clips.ClipError:
             same = False
         if not same:
@@ -119,7 +135,7 @@ def cmd_open(args):
             return launch_it(path, launch)
     project = mesh(troop)
     project['name'] = f'{troop} {family}'
-    project['animations'] = remap(source['animations'], source, project)
+    project['animations'] = remap(source['animations'], source, project) if source else []
     save(embed(project), path)
     print(f'anim_edit: wrote {path.relative_to(ROOT).as_posix()} ({len(project["animations"])} clips)')
     print(path)
@@ -134,14 +150,25 @@ def launch_it(path, launch):
 
 
 def cmd_apply(args):
-    families = args or sorted(TROOP)
+    families = args or sorted(FAMILIES)
     done = 0
     for family in families:
+        if family not in FAMILIES:
+            print(f'anim_edit: unknown family {family!r}')
+            return 2
+        rig = FAMILIES[family][0]
         for path in sorted(WORK.glob(family + '-*.bbmodel')) if WORK.is_dir() else []:
-            src_path = SRC / (family + '.bbmodel')
-            source, edited = load(src_path), load(path)
+            src_path = src(family, rig)
+            edited = load(path)
+            if not src_path.is_file():
+                if not edited.get('animations'):
+                    continue
+                source = dict(edited, textures=[])  # a new family: the rig groups, no embedded skin
+                source['animations'] = []
+            else:
+                source = load(src_path)
             try:
-                before, after = semantic(source), semantic(edited)
+                before, after = semantic(source, rig), semantic(edited, rig)
             except clips.ClipError as e:
                 print(f'anim_edit: {path.name}: {e}')
                 return 1
@@ -164,7 +191,7 @@ def cmd_preview(args):
         print(__doc__)
         return 2
     family, clip = args
-    troop = TROOP.get(family, family)
+    troop = FAMILIES[family][1] if family in FAMILIES else family
     print(f"""Renders {family} in the real game through the engine layers (no one-clip filter; find '{clip}' in the solo sheet).
 At most 1 client; check first that few Minecraft javas run; stop after 30 minutes. From a git bash in the repo root:
 
