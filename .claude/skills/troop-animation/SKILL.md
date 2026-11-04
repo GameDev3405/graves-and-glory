@@ -69,7 +69,7 @@ and at the end of a pass fold its durable lessons into `references/lessons.md`.
   current routing is Opus medium for hard work and Opus xhigh when stuck; follow the newest WORKFLOW.md and memory.
 - **Sonnet** (high for simple work) may run mechanical steps: running the harness, building the contact sheet,
   re-running checks, lint scripts, doc updates. It does not author or re-key attacks.
-- **The reviewer** is always a fresh subagent with no stake in the work (Opus for attack and joint reviews).
+- **The reviewer** is always a fresh subagent with no stake in the work (Sonnet 5.5, `claude-sonnet-5-5`, at medium effort, per Kort 2026-11-04).
 - Never use a Fable model. Never use desktop computer-use for Minecraft. Never kill or stop a running client you did not
   start; respect the client ceiling and the "no compile in a checkout with a running client" rule.
 

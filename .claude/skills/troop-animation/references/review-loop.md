@@ -8,7 +8,7 @@ and lists exact fixes. The author fixes, reshoots and asks for a re-review of th
 
 1. **Pass.** The author (Opus) keys or fixes the clips, runs `anim_edit apply`, `clips.py --verify`,
    `verify.py fast`, then shoots the in-game sheet through the harness (pipeline.md section 8).
-2. **Review.** Spawn a fresh reviewer subagent (Opus for attacks, joints and facing; never the author's own context,
+2. **Review.** Spawn a fresh reviewer subagent (Sonnet 5.5, `claude-sonnet-5-5`, medium effort, per Kort 2026-11-04; never the author's own context,
    never a Fable model) with `reviewer-prompt.md`. It reads the sheet images at full size and the clip JSON, and
    writes the report to a file the brief names, for example `work/anim-review-<family>-<date>-r<N>.md`.
 3. **Triage.** The author reads the report. Every finding is fixed, or disputed with evidence (a frame, a key value).

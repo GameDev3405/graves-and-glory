@@ -1,6 +1,6 @@
 # Reviewer prompt template
 
-Spawn a fresh subagent (Opus for attacks, joints and facing; medium effort, high if the previous round escalated).
+Spawn a fresh subagent on Sonnet 5.5 (`model: "sonnet"`, `claude-sonnet-5-5`) at medium effort, per Kort 2026-11-04.
 Never a Fable model. Fill every `<...>` and pass the whole block as the prompt.
 
 ---
