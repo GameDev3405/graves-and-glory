@@ -1,67 +1,70 @@
 {
   "status": "development-build; release blocked",
   "version": "0.5.0",
-  "commit": "f98743f551397a0bebe8667d73291fca0cb326bb",
+  "commit": "bb2d85c4f1fa8c1925f57a8a6da4dff6796de509",
   "dirty": false,
   "source_identity": {
     "version": "0.5.0",
     "modId": "gravesandglory",
-    "sourceSha256": "not recomputed for f98743f; run tools/preflight.py and rebuild"
+    "sourceSha256": "b10623d06fff37668233fa5500ab3d003cde3313525b79fd57ca1120fb2fe9b2"
   },
   "artifact": {
-    "path": "work/candidates/c41a0e1cef708e00a3a6030e1afde5b9a4194e0a83c93937116c050887efd0e4/graves-and-glory-0.5.0.jar",
-    "sha256": "61a1c8845ded9f9c1f66a2af2b337d6c11f13e5c3fb2a146b2033236042435a3",
+    "path": "work/candidates/b10623d06fff37668233fa5500ab3d003cde3313525b79fd57ca1120fb2fe9b2/graves-and-glory-0.5.0.jar",
+    "sha256": "51e3e378f30c820a3974f5ddbdb9ef8396a9cbe1d1728d8cafec8d53152125ae",
     "kind": "mod jar; not a playable modpack package",
-    "note": "The jar below was built at the 2026-10-28 source identity c41a0e1 and is STALE: it predates the tier II/III art, campaign battles 1 to 6, Survival lines, the Excalibur bundle and the CurseForge export now on main. No jar has been rebuilt for f98743f.",
-    "source_commit": "fa2f31e19301fbb92496d272d7c793bce75e72f1",
-    "stale": true
+    "note": "Built from main bb2d85c4 by verify.py release on 2026-11-04 (in the main checkout's work/ folder, which is not tracked). Beside it: the strict plain zip graves-and-glory-0.5.0.zip (sha256 2700e9dd0b0534404618e916ea73dd513318bfb64858dc840bf083f61f09cdf5, 65285969 bytes, 63 entries) and package-manifest.json (sha256 af4e0117748d78886ea4f8e0c00599ab228162662810f52c1d615f9b64bedb64). The jar hash is for this build and was not checked for byte-for-byte reproducibility. The source identity b10623d0 replaces c41a0e1c.",
+    "source_commit": "bb2d85c4f1fa8c1925f57a8a6da4dff6796de509",
+    "stale": false
   },
   "verification": {
-    "fast": "work/verify/20261028-231020-35520/result.json (pass at f1f6047, old; not re-run at f98743f)",
-    "game": "work/verify/20261028-231257-41152/result.json (pass at f1f6047, old; Phase 1 combat smoke only)",
-    "release_verify": "clean checkout passed at 9c2d5f1, package and readback included (docs/BOARD.md); not re-run at f98743f",
-    "modrinth_pack_install": "passed: the .mrpack installed and booted in a launcher test (bannerbound-artint/work/launcher-test/RESULT.md)",
+    "fast": "work/verify/20261104-093314-32388/result.json in the refresh worktree (pass, exit 0; head bb2d85c4, 58 checks incl. python tests, ui-standard, ui-assets, skin-assets, 15+ Java checks, build)",
+    "release_verify": "work/verify/20261104-095009-21416/result.json (pass, exit 0; head bb2d85c4; strict package and readback pass: 63 entries). A first attempt failed because the worktree lacked the ignored dependency files; they were copied from the main checkout and the sibling bannerbound-artint checkout, and package.py's sha256 pin check accepted them (Excalibur_V1.20.zip ccf01766...)",
+    "game": "not run for this head: another checkout's Minecraft client (PID 25792) was running, so the runner defers and the one-client limit applies. Last game pass is old (f1f6047, Phase 1 combat smoke only)",
+    "mode_gate": "FAIL on all three modes, 10 bot matches each (Normal vs Normal, Gilded vs Graveborn, -PsimFast, headless server, scratch roots under work/method/cand-*): siege map 1: attackers 0 of 10, all 10 ended on the 185 s clock at stage 0 (attackers killed 80 to 90 per match and never took the yard); convoy map 2: escort 0 of 10, mean checkpoints 0.00 (gate needs 1.5); domination maps 0-4: Dawn 8 of 10 (80%, band 30-70%). Siege and Convoy are worse than the 2026-11-02 runs (siege 6 of 10 won then; convoy 1.20 checkpoints then); possible bot regression since the gear-combat or animation merges, not investigated",
+    "qa_matrix": "no new rows run: the 2026-11-04 passes (docs/QA-MATRIX.md, 142 PASS, 0 FAIL) already cover the rows that need no server; remaining Not run rows are dedicated-server rows and H8/K2 (AUTO half only)",
+    "modrinth_pack_install": "passed earlier: the .mrpack installed and booted in a launcher test (bannerbound-artint/work/launcher-test/RESULT.md); not repeated for this head",
     "curseforge": "zip passes at file level; the mod fetch needs an API key (Q75)",
-    "strict_package": "not run for this head",
-    "known_failing_on_main": "test_sample_builds_clean fails because of Kort's unsaved map edits"
+    "known_failing_on_main": "healer_helm_r1 icon check did not reproduce in fast or release verify at bb2d85c4; test_sample_builds_clean also passed"
   },
   "acceptance": {
-    "implemented": "partial: five Houses with tier II/III art, progression, War Table, six-seat lobby, Armoury, banner page, campaign battles 1 to 6, Survival lines, CurseForge export and Excalibur 1.20 bundle merged. Pending: animation rework, Kort's own map redesigns, audio pack",
-    "fast_tested": false,
+    "implemented": "partial: five Houses with tier I to III art, gear (Arsenal, Forge, relics, set bonuses; commander classes removed), progression, War Table, six-seat lobby, campaign battles 1 to 6, Siege/Convoy/Survival modes, Pixabay audio, animation rework, title key art, server kit, CurseForge export and Excalibur 1.20 bundle merged. Pending: gear art, Kort's own map redesigns",
+    "fast_tested": true,
+    "release_verify_tested": true,
     "combat_smoke_tested": false,
     "visual_review_of_candidate": false,
     "six_networked_players": false,
     "accepted_release": false
   },
   "known_issues": [
-    "No jar rebuilt for f98743f; the artifact entry is stale",
-    "Fast and game suites not re-run at f98743f",
-    "Six networked players, dedicated server, reconnect/restart and persistence were not tested",
-    "Animation rework, Kort's map redesigns and the audio pack are not in main",
+    "Mode gate fails for Siege (0 of 10 attacker wins, no match past the yard), Convoy (0 checkpoints, escort 0 of 10) and Domination (Dawn 80%); Siege and Convoy look like a bot regression against the 2026-11-02 runs and need a decision on whether to investigate",
+    "Verify game tier not run at bb2d85c4 (a client from another checkout was running)",
+    "Gear art is not in main: worn gear shows as stand-in vanilla items; gear numbers are placeholders",
+    "Six networked players, real-player dedicated-server reconnect and persistence were not tested",
+    "Kort's map redesigns are not in main",
     "CurseForge mod fetch needs an API key (Q75)",
-    "1440p/4K, hover/focus/disabled states and Kort's visual look are not checked"
+    "1440p/4K, hover/focus/disabled states and Kort's visual look are not checked",
+    "verify.py reports dirty=true on the release run because preflight rewrites Spec.java and sheets/preflight.json with different line endings only; git diff shows no content change"
   ],
   "questions": "../QUESTIONS-FOR-KORT.md",
   "branch": "main",
   "tag": "v0.5.0-dev.20261028",
   "tag_target": "c4f8771",
+  "tag_note": "tag v0.5.0-dev.20261028 still marks c4f8771; it is not moved",
   "previous_candidate": {
-    "commit": "f1f60472517555ed1f6e1faac4ae373b0899ad27",
-    "sourceSha256": "c41a0e1cef708e00a3a6030e1afde5b9a4194e0a83c93937116c050887efd0e4",
-    "status": "superseded; jar not rebuilt for the new head"
+    "commit": "f98743f551397a0bebe8667d73291fca0cb326bb",
+    "sourceSha256": "not recomputed",
+    "status": "superseded; no jar was built for it"
   },
   "merged_since_previous_record": [
-    "Tier II/III art for all five Houses",
-    "Campaign battles 1 to 6 (briefings are drafts for Kort)",
-    "Survival feed, ledger and report lines (draft text)",
-    "CurseForge export and verifier",
-    "Excalibur 1.20 resource pack by Maffhew, used with permission, unmodified (CC BY-NC-ND 3.0)",
-    "Modrinth pack install test passed"
+    "Commander gear: foundation, Arsenal screen and Blacksmith forge, gear combat (relics on keys 1 to 3, classes removed); save schema 4",
+    "Animation rework (slower bow shots, bow cooldowns +25%, settling hips) and painted title key art, Kort approved 2026-11-04",
+    "Pixabay audio and music director; Graveborn violet and Tidecallers sea blue recolour",
+    "Server kit in the server download, with Linux fixes tested in WSL Ubuntu",
+    "Player README, audio credits and the 1.0.0 release notes in the package",
+    "Gilded Knight and Templar rebuilt silhouettes"
   ],
   "pending": [
-    "Animation rework (work/anim-rework, merge approved, not in main)",
-    "Kort's own map redesigns",
-    "Audio pack"
-  ],
-  "tag_note": "tag v0.5.0-dev.20261028 still marks c4f8771; it is not moved"
+    "Gear art and House gear sets (drafts for Kort)",
+    "Kort's own map redesigns"
+  ]
 }
