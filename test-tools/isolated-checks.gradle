@@ -28,6 +28,8 @@ allprojects {
    systemProperty 'gravesandglory.migrationFixture', System.getenv('GRAVES_ROADMAP_MIGRATION') ?: 'false'
    systemProperty 'gravesandglory.startupOnly', System.getenv('GRAVES_ROADMAP_STARTUP_ONLY') ?: 'false'
    systemProperty 'gravesandglory.compatibilityCase', System.getenv('GRAVES_ROADMAP_COMPAT_CASE') ?: ''
+   // host:port of a dedicated server to join once the title screen has settled (ConnectOnStart); empty means do not connect.
+   systemProperty 'gravesandglory.connect', System.getenv('GRAVES_ROADMAP_CONNECT') ?: ''
    systemProperty 'gravesandglory.networkHost', System.getenv('GRAVES_NETWORK_HOST') ?: 'false'
    systemProperty 'gravesandglory.networkRoot', System.getenv('GRAVES_NETWORK_ROOT') ?: testRoot
    systemProperty 'gravesandglory.campChecks', System.getenv('GRAVES_CAMP_CHECKS') ?: 'false'
