@@ -805,7 +805,10 @@ public final class MotionChecks {
                     // the real clip when the family has one (Task 16, R54: the sword_shield thrust), else a synthetic 1.6 s swing
                     clipsBefore = ClipLibrary.all(); String key = m.rig + "/" + row.family() + "/" + v.id(); Clip real = clipsBefore.get(key);
                     synth = real != null ? real : attack(v.id(), impact, 1.6, ATTACK_PEAKS); lateReal = real != null;
-                    Map<String, Clip> map = new TreeMap<>(clipsBefore); map.put(key, synth); ClipLibrary.install(map);
+                    Map<String, Clip> map = new TreeMap<>(clipsBefore); map.put(key, synth);
+                    // the knight holds in the wall or brace, where the engine plays the family's <id>_wall strike (Task 16), so that one is the swing the first client shows
+                    if (clipsBefore.containsKey(key + "_wall")) map.put(key + "_wall", synth);
+                    ClipLibrary.install(map);
                     server(c, b -> { u.lastVariant = 0; u.catchVariant = 0; u.swingTick = b.world.getTime(); MotionEvents.sendAttack(u, 0, u.swingTick); });
                     ls = 1; wait = 0;
                 }
