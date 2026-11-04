@@ -1,0 +1,9 @@
+=== rows_d start
+J2 painting done after 12 [': [STDOUT]: [Graves and Glory build] hollowwood painted (18 outlines, 37 lines) in 5387 ms', ': [STDOUT]: [Graves and Glory build] kingsfield painted (18 outlines, 37 lines) in 5572 ms']
+J2 bot alive True
+J2 /backup -> ['{"text":"Backup written to backups/gg-build"}']
+J2 /map -> ['{"text":"You are in lobby. Worlds: camp, lobby, rivergate, ironhold, frostmarch, hollowwood, kingsfield. /map <name> takes you there."}']
+J2 /warp -> ['{"text":"Warps in lobby: spawn, hearth-court, war-table, party-lectern, tent-ironclad, tent-gilded, tent-graveborn, tent-wildmoot, tent-tide']
+J2 server lines []
+[server-kit] Stopping java pid 54200 (saving the world)...
+=== rows_d done 03:04:06

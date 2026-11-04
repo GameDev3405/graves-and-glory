@@ -1,0 +1,30 @@
+=== rows_a start 02:58:33
+E9 start Done after 18s
+E9 PASS layout copy identical True profile copy identical True originals kept True errors []
+[server-kit] Stopping java pid 52320 (saving the world)...
+D start Done after 16s
+I10 log ['[02:59:16] [Server thread/INFO]: [STDERR]: [Graves and Glory] Party data could not be read (com.google.gson.JsonSyntaxException: java.lang.IllegalStateException: Expected BEGIN_OBJECT but was STRING at line 1 column 1 path $) and has no backup; using defaults.']
+joined DaveV1 True
+joined CarlP True
+joined CacheKid True
+joined BobCorrupt True
+files DaveV1 ['ad696520-1614-3738-a36f-30b7d8b6a4ee.json', 'ad696520-1614-3738-a36f-30b7d8b6a4ee.v1.json', 'ad696520-1614-3738-a36f-30b7d8b6a4ee.v2.json', 'ad696520-1614-3738-a36f-30b7d8b6a4ee.v3.json']
+D16/17 DaveV1 schema 4 gold 2700 matches 31 owned 14
+files CarlP ['cf9c7034-6948-3425-bc15-56939054cb9b.json', 'cf9c7034-6948-3425-bc15-56939054cb9b.v1.json', 'cf9c7034-6948-3425-bc15-56939054cb9b.v2.json', 'cf9c7034-6948-3425-bc15-56939054cb9b.v3.json']
+D16/17 CarlP schema 4 gold 1320 matches 3 owned 11
+files CacheKid ['60b8e883-b61c-3684-9b22-97b98e0eba2d.json', '60b8e883-b61c-3684-9b22-97b98e0eba2d.v1.json', '60b8e883-b61c-3684-9b22-97b98e0eba2d.v2.json', '60b8e883-b61c-3684-9b22-97b98e0eba2d.v3.json']
+D16/17 CacheKid schema 4 gold 1800 matches 12 owned 11
+files BobCorrupt ['3daf2219-35fd-381a-805d-1d56882d7042.json', '3daf2219-35fd-381a-805d-1d56882d7042.json.corrupt']
+D9/D18 log ['[02:59:16] [Server thread/INFO]: [STDERR]: [Graves and Glory] Party data could not be read (com.google.gson.JsonSyntaxException: java.lang.IllegalStateException: Expected BEGIN_OBJECT but was STRING at line 1 column 1 path $) and has no backup; using', '[02:59:30] [Server thread/INFO]: [STDERR]: [Graves and Glory] Commander profile 3daf2219-35fd-381a-805d-1d56882d7042 could not be read (java.lang.IllegalStateException: Commander profile could not be read; it was left unchanged: 3daf2219-35fd-381a-80']
+I10 parties.corrupt kept True
+D21 notice seen True profile hash unchanged True 5f35e20ec5dd 5f35e20ec5dd .bak True errors ['[02:59:30] [Server thread/INFO]: [STDERR]: [Graves and Glory] Commander profile 3daf2219-35fd-381a-805d-1d56882d7042 could not be read (java', '[02:59:40] [Server thread/INFO]: [STDERR]: [Graves and Glory] Could not save commander collection: AccessDeniedException']
+Traceback (most recent call last):
+  File "C:\Users\kortt\Melty\bannerbound-qa2-1104\work\qa2\rows_a.py", line 63, in <module>
+    say('D20 oversized: alive',bots[n].alive,'disconnect',(bots[n].disconnect or '')[:160])
+  File "C:\Users/kortt/Melty/bannerbound-qa2-1104/work/qa2\orch.py", line 14, in say
+    s=' '.join(str(x) for x in a); print(s,flush=True); open(Q+'/ev/orch.txt','a',encoding='utf8').write(s+'\n')
+                                   ^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Kortt\AppData\Local\Programs\Python\Python312\Lib\encodings\cp1252.py", line 18, in encode
+    return codecs.charmap_encode(input, self.errors, encoding_table)[0]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'charmap' codec can't encode character '\ufffd' in position 38: character maps to <undefined>
