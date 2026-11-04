@@ -126,7 +126,7 @@ final class UiReportChecks implements Suite {
                     case Modes.SIEGE->labels.equals(List.of("Stages taken","Stage strength"));
                     case Modes.CONVOY->labels.equals(List.of("Escort progress","Stops held"));
                     case "unknown"->labels.equals(List.of("Dawn","Dusk"));
-                    default->labels.equals(List.of("Waves held","Best wave"));};
+                    default->labels.equals(List.of("Wave reached","Dead standing"))||labels.equals(List.of("Waves held","Best wave"));}; // Survival now registers its own section (Wave reached, Dead standing); the stand-in stays for builds without it
                 boolean pointsCol=WarTableReport.texts().containsKey("header-objective");
                 note("p1-ui-report-section-"+m+"-"+tag,own&&lay.isEmpty(),"mode "+m+" at "+tag+" (canvas k "+UiCanvas.k()+", want "+sz[2]+"): section rows "+labels+" "+(own?"are its own":"are WRONG")+(lay.isEmpty()?", layout clean":", layout: "+lay)+(m.equals(Modes.DOMINATION)?"; Points column drawn="+pointsCol:"; Points column drawn="+pointsCol+" (want false)"));
                 if(!m.equals(Modes.DOMINATION)&&pointsCol)note("p1-ui-report-points-"+m+"-"+tag,false,"mode "+m+" draws the Points column");

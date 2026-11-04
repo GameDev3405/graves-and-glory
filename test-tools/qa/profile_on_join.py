@@ -4,7 +4,7 @@ Needs a development dedicated server (offline mode, fresh save):
   (GRAVES_ROADMAP_SERVER_ROOT=<fresh scratch root>, server-port and online-mode=false in <root>/server.properties; EULA only in that scratch root).
 Usage: profile_on_join.py <repo> <port> <server root> <evidence file>
 The world folder is read from level-name in <root>/server.properties (default "world"). The bot name carries the time, so every run is a first join.
-Exit 0 only if <world>/gravesandglory-profiles/<uuid>.json exists after the join, holds schema 3 with the 10 starter Commons, and the same
+Exit 0 only if <world>/gravesandglory-profiles/<uuid>.json exists after the join, holds the current schema (4) with the 10 starter Commons and the starter gear set, and the same
 file is left unchanged by a rejoin."""
 import sys, os, json, time
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -60,8 +60,12 @@ check("profile file exists after the first join", wait_for(file, 150), file)
 if os.path.exists(file):
     try:
         data = json.load(open(file, encoding="utf8"))
-        check("profile is schema 3", data.get("schema") == 3, data.get("schema"))
+        check("profile is schema 4", data.get("schema") == 4, data.get("schema"))
         check("profile holds the 10 starter Commons", len(data.get("owned", {})) == 10, len(data.get("owned", {})))
+        # Gear replaced the classes: a new commander is written with the starter set of the legacy role, all worn, and its relic in slot 0.
+        gear = data.get("gear", [])
+        check("profile holds the starter gear, all worn", len(gear) >= 5 and len(data.get("equipped", {})) == len(gear), "%d pieces, %d worn" % (len(gear), len(data.get("equipped", {}))))
+        check("starter relic is seated in slot 0", bool(data.get("relicSlots", ["", "", ""])[0]) and data.get("relicSlots")[0] in data.get("relics", []), data.get("relicSlots"))
         before = open(file, "rb").read()
     except Exception as e:
         check("profile file reads as JSON", False, e)
