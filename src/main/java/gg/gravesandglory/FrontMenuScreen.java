@@ -17,8 +17,8 @@ public final class FrontMenuScreen extends Screen {
     FrontMenuScreen(String page){super(Text.literal("Graves and Glory / "+page));this.page=page;}
     private ButtonWidget button(String label,int y,boolean primary,Runnable action){
         // Home: a left column clear of the two heroes at the centre of the art; the other pages stay centred over a dimmed picture.
-        int w=page.equals("home")?columnWidth():220,x=page.equals("home")?columnX():width/2-110;
-        var b=new GravesAndGloryClient.FantasyButton(x,y,w,20,Text.literal(label),w->action.run());
+        int bw=page.equals("home")?columnWidth():220,x=page.equals("home")?columnX():width/2-110;
+        var b=new GravesAndGloryClient.FantasyButton(x,y,bw,20,Text.literal(label),w->action.run());
         b.primary=primary;return addDrawableChild(b);
     }
     private int columnWidth(){return Math.max(96,Math.min(150,width*3/10));}
