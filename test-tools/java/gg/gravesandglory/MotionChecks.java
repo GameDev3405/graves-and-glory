@@ -804,6 +804,8 @@ public final class MotionChecks {
                     var v = rows.get(0); double impact = v.impactTicks() / (double) Clip.TICKS; impactTicks = v.impactTicks();
                     // the real clip when the family has one (Task 16, R54: the sword_shield thrust), else a synthetic 1.6 s swing
                     clipsBefore = ClipLibrary.all(); String key = m.rig + "/" + row.family() + "/" + v.id(); Clip real = clipsBefore.get(key);
+                    // the forget comes once the clip time is past impactTicks + 12 ticks and the comparison needs 5 ticks after it with 4 to spare: a real swing shorter than impactTicks + 20 ticks leaves no window (the knight's 1.25 s thrust, impact 7, had 2), so a synthetic one stands in
+                    if (real != null && real.length() * Clip.TICKS < v.impactTicks() + 20) real = null;
                     synth = real != null ? real : attack(v.id(), impact, 1.6, ATTACK_PEAKS); lateReal = real != null;
                     Map<String, Clip> map = new TreeMap<>(clipsBefore); map.put(key, synth);
                     // the knight holds in the wall or brace, where the engine plays the family's <id>_wall strike (Task 16), so that one is the swing the first client shows
