@@ -173,37 +173,42 @@ def spear():
     return out
 
 
-def beats(name, length, impact, cocked_at, hold, poses, lag=None):
+def beats(name, length, impact, cocked_at, hold, poses, lag=None, two=False):
     """The shared beat layout: cocked pose at cocked_at, held (creeping to the second cocked pose) for `hold` seconds, a
     linear strike into the impact pose, follow-through 0.12 s later, a settle at about the clip's two-thirds and a near-rest
     key 0.16 s before the end. poses: (cocked, cocked2, hit, follow, settle, near)."""
+    if two:
+        poses = [both_hands(p) for p in poses]
     cocked, cocked2, hit, follow, settle, near = poses
     keys = [(cocked_at, C, cocked), (cocked_at + hold, L, cocked2), (impact, L, hit), (impact + 0.12, C, follow),
             (impact + (length - impact) * 0.48, C, settle), (length - 0.16, C, near)]
-    return clip(name, length, impact, cocked_at, keys, lag=lag or dict(head=0.02, left_arm=0.04))
+    lag = dict(lag or dict(head=0.02, left_arm=0.04))
+    if two:
+        lag.pop('left_arm', None)   # the off hand stays on the grip
+    return clip(name, length, impact, cocked_at, keys, lag=lag)
 
 
 # ---- biped: axe (ic_breaker) and axe_shield (ic_hearthguard); the bit (+x of the weapon) leads every cut
 
-def axe_cuts(prefix, chop_at, hew_name, hew_at):
+def axe_cuts(prefix, chop_at, hew_name, hew_at, chop_name='overhead_chop', two=False, follow_wrist=108):
     out = []
     # Overhead chop: the axe climbs over the head and lays back, bit up and the haft behind the shoulders; a held beat, then
     # the body drops onto bent knees and the arm brings the bit down through the line, the haft in line with the arm at
     # impact; it follows through low and climbs back.
     cock = 0.1 + (chop_at - 0.2 - 0.1) * 0.5
-    out.append(beats(f'{prefix}_overhead_chop', chop_at + 0.7, chop_at, cock, min(0.22, chop_at - 0.11 - cock), (
+    out.append(beats(f'{prefix}_{chop_name}', chop_at + 0.7, chop_at, cock, min(0.22, chop_at - 0.11 - cock), (
         dict(root=(0, 0, 0, 0, -0.2, 0.8), body=(-9, 10, 0), head=(-6, -6, 0), right_arm=(-162, 0, -10), right_hand=(48, 0, 0),
              left_arm=(-50, 0, -16), right_leg=(6, 0, 0), left_leg=(-8, 0, 0), left_shin=(4, 0, 0), right_shin=(2, 0, 0)),
         dict(root=(0, 0, 0, 0, -0.3, 0.9), body=(-10, 11, 0), head=(-7, -7, 0), right_arm=(-170, 0, -10), right_hand=(42, 0, 0),
              left_arm=(-54, 0, -18)),
         dict(root=(0, 0, 0, 0, 1.6, -1.8), body=(16, -16, 0), head=(6, 12, 0), right_arm=(-82, 0, -8), right_hand=(122, 0, 0),
              left_arm=(4, 0, 8), right_leg=(14, 0, 0), left_leg=(-26, 0, 0), left_shin=(22, 0, 0), right_shin=(12, 0, 0)),
-        dict(root=(0, 0, 0, 0, 1.8, -2.0), body=(18, -20, 0), head=(7, 15, 0), right_arm=(-58, 0, -10), right_hand=(108, 0, 0),
+        dict(root=(0, 0, 0, 0, 1.8, -2.0), body=(18, -20, 0), head=(7, 15, 0), right_arm=(-58, 0, -10), right_hand=(follow_wrist, 0, 0),
              left_arm=(8, 0, 10)),
         dict(root=(0, 0, 0, 0, 0.5, -0.5), body=(4, -5, 0), head=(2, 4, 0), right_arm=(-14, 0, -4), right_hand=(40, 0, 0),
              left_arm=(2, 0, 2), right_leg=(3, 0, 0), left_leg=(-5, 0, 0), left_shin=(4, 0, 0), right_shin=(2, 0, 0)),
         dict(root=(0, 0, 0, 0, 0.05, 0), body=(0.5, -1, 0), right_arm=(-2, 0, 0), right_hand=(4, 0, 0))),
-        lag=dict(head=0.02, left_arm=0.04)))
+        lag=dict(head=0.02, left_arm=0.04), two=two))
     # Side hew (or hook hew): the body coils and the arm swings out and back on the axe side at chest height, the bit
     # turned out; a held beat, then the body unwinds and the arm sweeps the bit across the front, following through to the
     # far side.
@@ -219,8 +224,35 @@ def axe_cuts(prefix, chop_at, hew_name, hew_at):
              left_arm=(10, 0, 16)),
         dict(root=(0, 0, 0, 0, 0.4, -0.4), body=(3, -8, 0), head=(0, 5, 0), right_arm=(-20, 0, 4), right_hand=(40, 0, 0),
              left_arm=(2, 0, 4), right_leg=(3, 0, 0), left_leg=(-5, 0, 0), left_shin=(4, 0, 0), right_shin=(2, 0, 0)),
-        dict(root=(0, 0, 0, 0, 0.05, 0), body=(0.5, -1, 0), right_arm=(-2, 0, 0), right_hand=(4, 0, 0)))))
+        dict(root=(0, 0, 0, 0, 0.05, 0), body=(0.5, -1, 0), right_arm=(-2, 0, 0), right_hand=(4, 0, 0))), two=two))
     return out
+
+
+def both_hands(pose):
+    """A two-handed grip: the free arm's shoulder is solved (a small grid search over the rig's forward kinematics) so its
+    hand closes on the hilt or haft 3 px below the weapon fist, toward the pommel; a slight cost on the side turns keeps it
+    from reaching round the far side. The forearm-less troop models share the rig's 8 px shoulder-to-hand length."""
+    pose = dict(pose)
+    if 'right_arm' not in pose:
+        return pose
+    six = {b: B.six(v) for b, v in pose.items()}
+    w = B.world(six)
+    rm, ro = w['right_hand']
+    target = [ro[i] + B.mat_vec(rm, [0, 2.1, 2.1])[i] for i in range(3)]
+    rx0 = pose['right_arm'][0]
+
+    def cost(a):
+        six['left_arm'] = [a[0], a[1], a[2], 0, 0, 0]
+        lo = B.world(six)['left_hand'][1]
+        return sum((lo[i] - target[i]) ** 2 for i in range(3)) ** 0.5 + 0.01 * (abs(a[1]) + abs(a[2]))
+
+    best = min(((rx, ry, rz) for rx in range(int(rx0) - 60, int(rx0) + 61, 10) for ry in range(-70, 71, 10)
+                for rz in range(-70, 21, 10)), key=cost)
+    for step in (4, 2, 1):
+        best = min(((best[0] + dx, best[1] + dy, best[2] + dz) for dx in (-step, 0, step) for dy in (-step, 0, step)
+                    for dz in (-step, 0, step)), key=cost)
+    pose['left_arm'] = tuple(float(x) for x in best)
+    return pose
 
 
 def axe():
@@ -246,11 +278,30 @@ def axe_shield():
     return axe_cuts('axe_shield', 0.5, 'hook_hew', 0.4)
 
 
+# ---- biped: greatsword (gb_hollowking), two hands on the hilt
+
+def greatsword():
+    out = axe_cuts('greatsword', 0.6, 'side_cut', 0.6, chop_name='overhead_cleave', two=True, follow_wrist=86)
+    # Thrust (impact tick 7): both hands draw the hilt back to the hip with the point level, then drive it straight in.
+    out.append(beats('greatsword_thrust', 1.1, 0.35, 0.1, 0.16, (
+        dict(root=(0, 0, 0, 0, 0.4, 0.8), body=(-2, 18, 0), head=(0, -12, 0), right_arm=(28, 0, 6), right_hand=(18, 0, 0),
+             right_leg=(8, 0, 0), left_leg=(-12, 0, 0), left_shin=(8, 0, 0)),
+        dict(root=(0, 0, 0, 0, 0.5, 1.0), body=(-3, 21, 0), head=(0, -13, 0), right_arm=(32, 0, 7), right_hand=(20, 0, 0)),
+        dict(root=(0, 0, 0, 0, 0.8, -2.2), body=(6, -20, 0), head=(-4, 14, 0), right_arm=(-90, 0, -8), right_hand=(122, 0, 0),
+             right_leg=(14, 0, 0), left_leg=(-26, 0, 0), left_shin=(18, 0, 0)),
+        dict(root=(0, 0, 0, 0, 0.85, -2.5), body=(7, -23, 0), head=(-4, 16, 0), right_arm=(-92, 0, -10), right_hand=(120, 0, 0)),
+        dict(root=(0, 0, 0, 0, 0.3, -0.8), body=(2, -6, 0), head=(-1, 5, 0), right_arm=(-28, 0, -3), right_hand=(50, 0, 0),
+             right_leg=(5, 0, 0), left_leg=(-8, 0, 0), left_shin=(5, 0, 0)),
+        dict(root=(0, 0, 0, 0, 0.05, -0.1), body=(0, -1, 0), right_arm=(-4, 0, 0), right_hand=(6, 0, 0))), two=True))
+    return out
+
+
 FAMILIES = {
     ('biped', 'sword'): sword,
     ('biped', 'spear'): spear,
     ('biped', 'axe'): axe,
     ('biped', 'axe_shield'): axe_shield,
+    ('biped', 'greatsword'): greatsword,
 }
 
 
