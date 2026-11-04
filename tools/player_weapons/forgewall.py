@@ -96,63 +96,118 @@ def hammer(tier, frame):
 
 # ---- the Siegewright ---------------------------------------------------------------------
 
-PROD = ((3.5, 84, 1.5, 1.5), (3.0, 104, 1.0, 1.0))        # length, angle, w, d: out to the left and curving back
+# The prod (the crossbow's bow): three sections a side from the bridle, out and slightly forward, then recurving back
+# to the brass tip caps, so the string at rest stands well behind the prod's middle and the prod and string read as one
+# closed bow shape. length, angle (degrees from +y, positive toward -x), width, depth.
+PROD = ((3.5, 55, 2.0, 1.5), (3.5, 100, 1.5, 1.0), (2.5, 148, 1.0, 1.0))
+PROD_Y = 12.25
 FLEX = {'rest': 0.0, 'pull_0': 3.0, 'pull_1': 6.0, 'pull_2': 9.0}
-NUT_Y = 4.0
-DRAW = {'pull_0': 9.0, 'pull_1': 6.5, 'pull_2': NUT_Y + 0.5}
+NUT_Y = 5.5
+DRAW = {'pull_0': 9.5, 'pull_1': 7.5, 'pull_2': NUT_Y}
+
+
+def tiller_paint(c):
+    W.wood('oak')(c)
+    if c.sem == 'front':
+        # the bolt groove down the tiller's top, from the nut to the prod; the brass nut across it
+        # rows count down from the tiller's top (y 12), two a px: the nut sits at y NUT_Y
+        g = c.w // 2
+        ny = int(round(2 * (12 - NUT_Y)))
+        for y in range(0, ny):
+            c.px(g - 1, y, tone=1); c.px(g, y, tone=1)
+        c.rect(0, ny, c.w, 2, mat='brass', tone=3)
+        c.px(0, ny, mat='brass', tone=4)
+    if c.sem in ('front', 'back', 'lit', 'dark'):
+        c.hline(c.h - 3, mat='brass', tone=W.TONE[c.sem])    # a brass band where the tiller meets the stock
 
 
 def stock_paint(c):
     W.wood('oak')(c)
+    if c.sem in ('lit', 'dark'):
+        # the lock plate on each side of the stock, brass, riveted
+        c.rect(1, 2, c.w - 2, 4, mat='brass', tone=W.TONE[c.sem])
+        c.px(1, 2, mat='brass', tone=4)
     if c.sem in ('front', 'back', 'lit', 'dark'):
-        for y in (4, 5, 22, 23):
-            c.hline(y, mat='brass', tone=W.TONE[c.sem])
+        c.hline(c.h - 1, mat='brass', tone=max(0, W.TONE[c.sem] - 1))   # the butt plate
+        c.hline(c.h - 2, mat='brass', tone=W.TONE[c.sem])
+
+
+def bridle_paint(c):
+    for layer in iron:
+        layer(c)
+    if c.sem in ('front', 'back'):
+        for x in (1, 2, c.w - 3, c.w - 2):
+            c.vline(x, mat='leather', tone=2 if c.sem == 'front' else 1)   # the cord binding the prod on
 
 
 def prod_paint(i):
     def run(c):
         W.metal('plate', marks=0)(c)
-        if i == 1 and c.sem in ('front', 'back', 'lit', 'dark'):
-            c.hline(c.h - 1, mat='accent', tone=W.TONE[c.sem])
-            c.hline(c.h - 2, mat='accent', tone=W.TONE[c.sem])
+        if c.sem in ('front', 'back'):
+            c.vline(0, tone=4 if c.sem == 'front' else 3)
     return [run]
 
 
+def cap_paint(c):
+    W.trim('brass')(c)
+    if c.sem in ('front', 'back', 'lit', 'dark'):
+        c.hline(c.h - 1, mat='accent', tone=W.TONE[c.sem])     # the rarity colour on the tip caps
+        c.hline(c.h - 2, mat='accent', tone=W.TONE[c.sem])
+
+
 def string_paint(c):
-    c.fill('string', 2)
+    c.fill('string', 3)      # a heavy cord, a tone brighter than a bowstring so the bow shape reads at a glance
+
+
+def bolt_paint(c):
+    c.fill('string', max(0, W.TONE[c.sem] - 1))        # a pale ash shaft, so it shows against the oak tiller
+    if c.sem in ('top', 'bottom'):
+        if c.sem == 'top':
+            c.fill('ember' if c.legendary else 'plate', 4 if c.legendary else 3)
+        return
+    head = 'ember' if c.legendary else 'plate'
+    for y in range(0, 3):                                   # the head (top three rows), a point at the top
+        c.hline(y, mat=head, tone=(4 if c.legendary else W.TONE[c.sem]))
+    c.px(0, 0, mat=head, tone=4 if c.legendary else 4)
+    for y in range(c.h - 4, c.h):                           # fletching at the nut end
+        c.hline(y, mat='string', tone=3 if y % 2 else 2)
 
 
 def crossbow(tier, frame):
     leg = tier == 'legendary'
     f = FLEX[frame]
     b = [
-        WBox('stock', (-1, -7, -1), (2, 19, 2), [stock_paint], note='oak tiller, brass bands'),
-        WBox('butt', (-1.5, -9, -1.25), (3, 2.5, 2.5), [W.wood('oak'), riv], note='the butt'),
-        WBox('prod_block', (-1.5, 11, -1.5), (3, 2, 3), iron + [riv], note='iron prod block'),
-        WBox('nut', (-0.75, NUT_Y - 0.5, 1), (1.5, 1, 0.5), [W.flat('brass')], hide={'north'}, note='brass nut'),
-        WBox('lever', (-0.25, -6, -2), (0.5, 4, 1), [W.flat('plate')], hide={'south'}, note='trigger lever'),
-        WBox('stirrup_l', (-1.25, 13, -0.25), (0.5, 2, 0.5), [W.flat('plate')]),
-        WBox('stirrup_r', (0.75, 13, -0.25), (0.5, 2, 0.5), [W.flat('plate')]),
-        WBox('stirrup_bar', (-1.25, 15, -0.25), (2.5, 0.5, 0.5), [W.flat('plate')], note='the stirrup'),
+        WBox('tiller', (-1.25, -1.5, -1), (2.5, 13.5, 2), [tiller_paint], note='oak tiller: bolt groove, brass nut'),
+        WBox('stock', (-2, -7, -1.5), (4, 6, 3), [stock_paint], note='the broad stock, brass lock plates and butt plate'),
+        WBox('lever', (-0.25, -6.5, -2), (0.5, 6, 1), [W.flat('plate')], hide={'south'},
+             note='the long trigger lever under the stock'),
+        WBox('bridle', (-2, 11, -1.5), (4, 2.5, 3), [bridle_paint], note='iron bridle, the prod corded on'),
+        WBox('stirrup_l', (-2, 13.5, -0.25), (0.5, 2.5, 0.5), [W.flat('plate')]),
+        WBox('stirrup_r', (1.5, 13.5, -0.25), (0.5, 2.5, 0.5), [W.flat('plate')]),
+        WBox('stirrup_bar', (-2, 16, -0.25), (4, 0.5, 0.5), [W.flat('plate')], note='the open stirrup loop'),
     ]
-    left, lp = chain('prod_l', (-1.25, 12), [(L, a + f, w, d) for L, a, w, d in PROD], prod_paint)
-    right, rp = chain('prod_r', (1.25, 12), [(L, -(a + f), w, d) for L, a, w, d in PROD], prod_paint)
+    left, lp = chain('prod_l', (-1.75, PROD_Y), [(L, a + f, w, d) for L, a, w, d in PROD], prod_paint)
+    right, rp = chain('prod_r', (1.75, PROD_Y), [(L, -(a + f), w, d) for L, a, w, d in PROD], prod_paint)
     b += left + right
     tl, tr = lp[-1], rp[-1]
+    b += [WBox('cap_l', (tl[0] - 0.5, tl[1] - 0.5, -0.75), (1, 1, 1.5), [cap_paint], note='brass tip cap'),
+          WBox('cap_r', (tr[0] - 0.5, tr[1] - 0.5, -0.75), (1, 1, 1.5), [cap_paint])]
     if frame == 'rest':
         span = round((tr[0] - tl[0]) * 2) / 2
-        b.append(WBox('string', (tl[0], tl[1] - 0.25, -0.25), (span, 0.5, 0.5), [string_paint]))
+        b.append(WBox('string', (tl[0], tl[1] - 0.25, -0.25), (span, 0.5, 0.5), [string_paint],
+                      note='the string, standing behind the prod'))
     else:
         d = (0.0, DRAW[frame])
         b.append(seg('string_a_%s' % frame, tl, d, 0.5, 0.5, [string_paint], ext=0, frames=(frame,)))
         b.append(seg('string_b_%s' % frame, tr, d, 0.5, 0.5, [string_paint], ext=0, z=0.1, frames=(frame,)))
     if frame == 'pull_2':
-        b.append(WBox('bolt', (-0.25, NUT_Y + 0.5, 1.05), (0.5, 8, 0.5), [W.wood('oak', grain=False)], frames=('pull_2',),
-                      note='the bolt, laid on the stock when spanned'))
-        b.append(WBox('bolt_head', (-0.5, NUT_Y + 8.5, 0.75), (1, 1, 1),
-                      [(lambda c: c.fill('ember', 4)) if leg else W.edge_steel], frames=('pull_2',)))
+        b.append(WBox('bolt', (-0.5, NUT_Y, 1.05), (1, 11, 0.5), [bolt_paint], frames=('pull_2',),
+                      note='the bolt in the groove when spanned: fletched at the nut, a steel head past the bridle'))
+    else:
+        b.append(WBox('bolt_clipped', (1.25, -0.5, -0.25), (1, 11, 0.5), [bolt_paint], frames=(frame,),
+                      note='the same bolt clipped along the tiller until the crossbow is spanned'))
     if leg:
-        b.append(WBox('firebox', (-1.25, 6, -2.25), (2.5, 3, 1.5), [W.metal('soot', 0), riv,
+        b.append(WBox('firebox', (-1.25, 5, -2.5), (2.5, 3, 1.5), [W.metal('soot', 0), riv,
                  W.on(('back', 'lit', 'dark'), lambda c: c.hline(c.h // 2, mat='ember', tone=4))],
                  tier='legendary', hide={'south'}, note='Forgeheart firebox under the tiller'))
     return b
@@ -164,5 +219,6 @@ def weapons():
                sidecar={'thickness': 3}),
         Weapon('siegewright', 'Siegewright', 'Forgewall', 'Ironclad', 'crossbow', pal, crossbow,
                frames=('rest', 'pull_0', 'pull_1', 'pull_2'), notes=__doc__, keys=KEYS,
-               sidecar={'thickness': 3, 'pull': [3.0, 6.0, 9.0], 'string_y': [DRAW['pull_0'], DRAW['pull_1'], DRAW['pull_2']]}),
+               sidecar={'thickness': 3, 'pull': [3.0, 6.0, 9.0], 'string_y': [DRAW['pull_0'], DRAW['pull_1'], DRAW['pull_2']],
+                        'nut_y': NUT_Y}),
     ]
