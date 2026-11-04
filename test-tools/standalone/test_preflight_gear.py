@@ -89,5 +89,61 @@ class PreflightGear(unittest.TestCase):
     def test_forge_slots(self):
         self.refuses(lambda d: self.row(d, 'forge', 'forge').__setitem__('maxSlots', 115), 'maxSlots')
 
+    # Gear combat (gear-combat plan Task 1). Rows are found by their links, never by catalogue names.
+    def test_weapon_family_needs_a_row(self):
+        def m(d):
+            weapon = next(i for i in d['gearItems'] if i['slot'] == 'main')
+            weapon['family'] = 'nofamily'
+        self.refuses(m, 'nofamily')
+
+    def test_set_bonus_set_resolves(self):
+        self.refuses(lambda d: d['gearSetBonuses'][0].__setitem__('set', 'noset'), 'noset')
+
+    def test_set_bonus_effect_known(self):
+        self.refuses(lambda d: d['gearSetBonuses'][0].__setitem__('effect', 'noeffect'), 'noeffect')
+
+    def test_set_needs_both_bonus_rows(self):
+        def m(d):
+            first = d['gearSetBonuses'][0]
+            d['gearSetBonuses'] = [b for b in d['gearSetBonuses'] if not (b['set'] == first['set'] and b['pieces'] == 4)]
+        self.refuses(m, '4-piece')
+
+    def test_perk_item_resolves(self):
+        self.refuses(lambda d: d['gearPerks'][0].__setitem__('item', 'noitem'), 'noitem')
+
+    def test_perk_effect_known(self):
+        self.refuses(lambda d: d['gearPerks'][0].__setitem__('effect', 'noeffect'), 'noeffect')
+
+    def test_perk_is_fixed_per_item(self):
+        self.refuses(lambda d: d['gearPerks'][1].__setitem__('item', d['gearPerks'][0]['item']), 'already has a perk')
+
+    def test_relic_tuning_effect_known(self):
+        self.refuses(lambda d: d['relicTuning'][0].__setitem__('effect', 'noeffect'), 'noeffect')
+
+    def test_relic_tuning_id_resolves(self):
+        self.refuses(lambda d: d['relicTuning'][0].__setitem__('id', 'norelic'), 'norelic')
+
+    def test_every_relic_has_tuning(self):
+        def m(d):
+            gone = d['relicTuning'].pop()
+            m.gone = gone['id']
+        self.refuses(m, 'tuning rows')
+
+    def test_gear_combat_one_row(self):
+        self.refuses(lambda d: d['gearCombat'].append(dict(d['gearCombat'][0], id='second')), 'gearCombat')
+
+    def test_ported_relics_copy_the_classes(self):
+        sheet = self.sheet
+        if 'classes' not in sheet:
+            self.skipTest('classes removed (Task 7); the copy was checked when it was made')
+        for r in sheet['relics']:
+            if r['fromClass'] == '-':
+                continue
+            c = next(c for c in sheet['classes'] if c['id'] == r['fromClass'])
+            t = next(t for t in sheet['relicTuning'] if t['id'] == r['id'])
+            self.assertEqual(t['effect'], c['active'])
+            for col in ('durationTicks', 'radius', 'range', 'value1', 'value2', 'value3'):
+                self.assertEqual(t[col], c[col], r['id'] + '/' + col)
+
 if __name__ == '__main__':
     unittest.main()

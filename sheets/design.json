@@ -3283,6 +3283,21 @@
       "command": 0.0
     },
     {
+      "id": "sunwell_crook",
+      "name": "Sunwell Crook",
+      "slot": "main",
+      "set": "-",
+      "family": "staff",
+      "hands": 1,
+      "health": 1.0,
+      "damage": 1.0,
+      "armour": 0.0,
+      "speed": 0.0,
+      "ranged": 0.0,
+      "healing": 5.0,
+      "command": 0.0
+    },
+    {
       "id": "war_banner",
       "name": "Marchwarden's Standard",
       "slot": "main",
@@ -3296,6 +3311,21 @@
       "ranged": 0.0,
       "healing": 0.0,
       "command": 5.0
+    },
+    {
+      "id": "long_colours",
+      "name": "The Long Colours",
+      "slot": "main",
+      "set": "-",
+      "family": "banner",
+      "hands": 1,
+      "health": 0.0,
+      "damage": 3.0,
+      "armour": 0.0,
+      "speed": 0.0,
+      "ranged": 0.0,
+      "healing": 0.0,
+      "command": 4.0
     },
     {
       "id": "kite_shield",
@@ -3326,6 +3356,513 @@
       "ranged": 2.0,
       "healing": 0.0,
       "command": 0.0
+    }
+  ],
+  "gearFamilies": [
+    {
+      "id": "sword",
+      "item": "minecraft:iron_sword",
+      "attackSpeed": 1.6,
+      "damageMult": 1.0,
+      "drawMult": 1.0,
+      "sweepRadius": 0.0,
+      "sweepShare": 0.0,
+      "cooldownTicks": 0,
+      "range": 0.0,
+      "healBase": 0.0,
+      "auraMult": 1.0
+    },
+    {
+      "id": "greatsword",
+      "item": "minecraft:netherite_sword",
+      "attackSpeed": 0.8,
+      "damageMult": 1.0,
+      "drawMult": 1.0,
+      "sweepRadius": 2.5,
+      "sweepShare": 0.5,
+      "cooldownTicks": 0,
+      "range": 0.0,
+      "healBase": 0.0,
+      "auraMult": 1.0
+    },
+    {
+      "id": "greataxe",
+      "item": "minecraft:iron_axe",
+      "attackSpeed": 0.7,
+      "damageMult": 1.0,
+      "drawMult": 1.0,
+      "sweepRadius": 2.5,
+      "sweepShare": 0.5,
+      "cooldownTicks": 0,
+      "range": 0.0,
+      "healBase": 0.0,
+      "auraMult": 1.0
+    },
+    {
+      "id": "bow",
+      "item": "minecraft:bow",
+      "attackSpeed": 4.0,
+      "damageMult": 1.0,
+      "drawMult": 1.2,
+      "sweepRadius": 0.0,
+      "sweepShare": 0.0,
+      "cooldownTicks": 0,
+      "range": 0.0,
+      "healBase": 0.0,
+      "auraMult": 1.0
+    },
+    {
+      "id": "crossbow",
+      "item": "minecraft:crossbow",
+      "attackSpeed": 4.0,
+      "damageMult": 1.0,
+      "drawMult": 1.0,
+      "sweepRadius": 0.0,
+      "sweepShare": 0.0,
+      "cooldownTicks": 0,
+      "range": 0.0,
+      "healBase": 0.0,
+      "auraMult": 1.0
+    },
+    {
+      "id": "staff",
+      "item": "minecraft:blaze_rod",
+      "attackSpeed": 1.2,
+      "damageMult": 1.0,
+      "drawMult": 1.0,
+      "sweepRadius": 0.0,
+      "sweepShare": 0.0,
+      "cooldownTicks": 30,
+      "range": 12.0,
+      "healBase": 4.0,
+      "auraMult": 1.0
+    },
+    {
+      "id": "banner",
+      "item": "minecraft:white_banner",
+      "attackSpeed": 1.2,
+      "damageMult": 1.0,
+      "drawMult": 1.0,
+      "sweepRadius": 0.0,
+      "sweepShare": 0.0,
+      "cooldownTicks": 0,
+      "range": 0.0,
+      "healBase": 0.0,
+      "auraMult": 2.0
+    },
+    {
+      "id": "shield",
+      "item": "minecraft:shield",
+      "attackSpeed": 4.0,
+      "damageMult": 1.0,
+      "drawMult": 1.0,
+      "sweepRadius": 0.0,
+      "sweepShare": 0.0,
+      "cooldownTicks": 40,
+      "range": 0.0,
+      "healBase": 0.0,
+      "auraMult": 1.0
+    },
+    {
+      "id": "quiver",
+      "item": "minecraft:arrow",
+      "attackSpeed": 4.0,
+      "damageMult": 1.0,
+      "drawMult": 1.0,
+      "sweepRadius": 0.0,
+      "sweepShare": 0.0,
+      "cooldownTicks": 0,
+      "range": 0.0,
+      "healBase": 0.0,
+      "auraMult": 1.0
+    },
+    {
+      "id": "helm",
+      "item": "minecraft:iron_helmet",
+      "attackSpeed": 4.0,
+      "damageMult": 1.0,
+      "drawMult": 1.0,
+      "sweepRadius": 0.0,
+      "sweepShare": 0.0,
+      "cooldownTicks": 0,
+      "range": 0.0,
+      "healBase": 0.0,
+      "auraMult": 1.0
+    },
+    {
+      "id": "chest",
+      "item": "minecraft:iron_chestplate",
+      "attackSpeed": 4.0,
+      "damageMult": 1.0,
+      "drawMult": 1.0,
+      "sweepRadius": 0.0,
+      "sweepShare": 0.0,
+      "cooldownTicks": 0,
+      "range": 0.0,
+      "healBase": 0.0,
+      "auraMult": 1.0
+    },
+    {
+      "id": "legs",
+      "item": "minecraft:iron_leggings",
+      "attackSpeed": 4.0,
+      "damageMult": 1.0,
+      "drawMult": 1.0,
+      "sweepRadius": 0.0,
+      "sweepShare": 0.0,
+      "cooldownTicks": 0,
+      "range": 0.0,
+      "healBase": 0.0,
+      "auraMult": 1.0
+    },
+    {
+      "id": "boots",
+      "item": "minecraft:iron_boots",
+      "attackSpeed": 4.0,
+      "damageMult": 1.0,
+      "drawMult": 1.0,
+      "sweepRadius": 0.0,
+      "sweepShare": 0.0,
+      "cooldownTicks": 0,
+      "range": 0.0,
+      "healBase": 0.0,
+      "auraMult": 1.0
+    }
+  ],
+  "gearSetBonuses": [
+    {
+      "id": "bruiser_2",
+      "set": "bruiser",
+      "pieces": 2,
+      "effect": "surrounded_guard",
+      "value1": 0.3,
+      "value2": 0.0,
+      "radius": 0.0,
+      "text": "Take 30% less damage while 3 or more foes are within 4 blocks."
+    },
+    {
+      "id": "bruiser_4",
+      "set": "bruiser",
+      "pieces": 4,
+      "effect": "taunt_aura",
+      "value1": 0.0,
+      "value2": 0.0,
+      "radius": 8.0,
+      "text": "Foes within 8 blocks are drawn to fight you first."
+    },
+    {
+      "id": "healer_2",
+      "set": "healer",
+      "pieces": 2,
+      "effect": "heal_over_time",
+      "value1": 1.0,
+      "value2": 0.0,
+      "radius": 8.0,
+      "text": "Your troops within 8 blocks heal 1 health every second."
+    },
+    {
+      "id": "healer_4",
+      "set": "healer",
+      "pieces": 4,
+      "effect": "cleanse",
+      "value1": 5.0,
+      "value2": 0.0,
+      "radius": 8.0,
+      "text": "Every 5 s, slow, weaken and bleed leave you and your troops within 8 blocks."
+    },
+    {
+      "id": "ranged_2",
+      "set": "ranged",
+      "pieces": 2,
+      "effect": "draw_speed",
+      "value1": 0.25,
+      "value2": 0.0,
+      "radius": 0.0,
+      "text": "Bows draw 25% faster."
+    },
+    {
+      "id": "ranged_4",
+      "set": "ranged",
+      "pieces": 4,
+      "effect": "pierce",
+      "value1": 1.0,
+      "value2": 0.0,
+      "radius": 0.0,
+      "text": "Your arrows pierce through 1 foe."
+    },
+    {
+      "id": "commander_2",
+      "set": "commander",
+      "pieces": 2,
+      "effect": "command_radius",
+      "value1": 4.0,
+      "value2": 0.0,
+      "radius": 0.0,
+      "text": "Your command aura reaches 4 blocks further."
+    },
+    {
+      "id": "commander_4",
+      "set": "commander",
+      "pieces": 4,
+      "effect": "formation_charge",
+      "value1": 0.15,
+      "value2": 0.1,
+      "radius": 0.0,
+      "text": "Troops in your command aura move 15% faster and hit 10% harder on Attack."
+    }
+  ],
+  "gearPerks": [
+    {
+      "id": "bruiser_helm_perk",
+      "name": "Grudge",
+      "item": "bruiser_helm",
+      "effect": "grudge",
+      "value1": 0.2,
+      "value2": 0.0,
+      "text": "You deal 20% more to whoever last hurt a troop of yours."
+    },
+    {
+      "id": "bruiser_chest_perk",
+      "name": "Second Chance",
+      "item": "bruiser_chest",
+      "effect": "second_chance",
+      "value1": 2.0,
+      "value2": 0.0,
+      "text": "Once a match, the blow that would down you leaves you on 2 health."
+    },
+    {
+      "id": "bruiser_legs_perk",
+      "name": "Heavy Hand",
+      "item": "bruiser_legs",
+      "effect": "heavy_hand",
+      "value1": 0.5,
+      "value2": 3.0,
+      "text": "Every third greatweapon swing sweeps 50% wider."
+    },
+    {
+      "id": "bruiser_boots_perk",
+      "name": "Trailblazer",
+      "item": "bruiser_boots",
+      "effect": "trailblazer",
+      "value1": 0.1,
+      "value2": 12.0,
+      "text": "You move 10% faster with no foe within 12 blocks."
+    },
+    {
+      "id": "healer_helm_perk",
+      "name": "Quickened Relic",
+      "item": "healer_helm",
+      "effect": "quickened_relic",
+      "value1": 0.15,
+      "value2": 0.0,
+      "text": "Your relics come back 15% sooner."
+    },
+    {
+      "id": "healer_chest_perk",
+      "name": "Second Chance",
+      "item": "healer_chest",
+      "effect": "second_chance",
+      "value1": 2.0,
+      "value2": 0.0,
+      "text": "Once a match, the blow that would down you leaves you on 2 health."
+    },
+    {
+      "id": "healer_legs_perk",
+      "name": "Last Light",
+      "item": "healer_legs",
+      "effect": "last_light",
+      "value1": 0.25,
+      "value2": 0.3,
+      "text": "Below 30% health you deal 25% more."
+    },
+    {
+      "id": "healer_boots_perk",
+      "name": "Last Light",
+      "item": "healer_boots",
+      "effect": "last_light",
+      "value1": 0.25,
+      "value2": 0.3,
+      "text": "Below 30% health you deal 25% more."
+    },
+    {
+      "id": "ranged_helm_perk",
+      "name": "Quickened Relic",
+      "item": "ranged_helm",
+      "effect": "quickened_relic",
+      "value1": 0.15,
+      "value2": 0.0,
+      "text": "Your relics come back 15% sooner."
+    },
+    {
+      "id": "ranged_chest_perk",
+      "name": "Second Chance",
+      "item": "ranged_chest",
+      "effect": "second_chance",
+      "value1": 2.0,
+      "value2": 0.0,
+      "text": "Once a match, the blow that would down you leaves you on 2 health."
+    },
+    {
+      "id": "ranged_legs_perk",
+      "name": "Hawkeye",
+      "item": "ranged_legs",
+      "effect": "hawkeye",
+      "value1": 0.15,
+      "value2": 20.0,
+      "text": "Your shots deal 15% more at 20 blocks or further."
+    },
+    {
+      "id": "ranged_boots_perk",
+      "name": "Trailblazer",
+      "item": "ranged_boots",
+      "effect": "trailblazer",
+      "value1": 0.1,
+      "value2": 12.0,
+      "text": "You move 10% faster with no foe within 12 blocks."
+    },
+    {
+      "id": "commander_helm_perk",
+      "name": "Quickened Relic",
+      "item": "commander_helm",
+      "effect": "quickened_relic",
+      "value1": 0.15,
+      "value2": 0.0,
+      "text": "Your relics come back 15% sooner."
+    },
+    {
+      "id": "commander_chest_perk",
+      "name": "Second Chance",
+      "item": "commander_chest",
+      "effect": "second_chance",
+      "value1": 2.0,
+      "value2": 0.0,
+      "text": "Once a match, the blow that would down you leaves you on 2 health."
+    },
+    {
+      "id": "commander_legs_perk",
+      "name": "Oathkeeper",
+      "item": "commander_legs",
+      "effect": "oathkeeper",
+      "value1": 0.1,
+      "value2": 0.0,
+      "text": "Your troops in your command aura take 10% less damage."
+    },
+    {
+      "id": "commander_boots_perk",
+      "name": "Trailblazer",
+      "item": "commander_boots",
+      "effect": "trailblazer",
+      "value1": 0.1,
+      "value2": 12.0,
+      "text": "You move 10% faster with no foe within 12 blocks."
+    },
+    {
+      "id": "arming_sword_perk",
+      "name": "Grudge",
+      "item": "arming_sword",
+      "effect": "grudge",
+      "value1": 0.2,
+      "value2": 0.0,
+      "text": "You deal 20% more to whoever last hurt a troop of yours."
+    },
+    {
+      "id": "falchion_perk",
+      "name": "Grudge",
+      "item": "falchion",
+      "effect": "grudge",
+      "value1": 0.2,
+      "value2": 0.0,
+      "text": "You deal 20% more to whoever last hurt a troop of yours."
+    },
+    {
+      "id": "greatsword_perk",
+      "name": "Heavy Hand",
+      "item": "greatsword",
+      "effect": "heavy_hand",
+      "value1": 0.5,
+      "value2": 3.0,
+      "text": "Every third greatweapon swing sweeps 50% wider."
+    },
+    {
+      "id": "great_axe_perk",
+      "name": "Heavy Hand",
+      "item": "great_axe",
+      "effect": "heavy_hand",
+      "value1": 0.5,
+      "value2": 3.0,
+      "text": "Every third greatweapon swing sweeps 50% wider."
+    },
+    {
+      "id": "hunting_bow_perk",
+      "name": "Hawkeye",
+      "item": "hunting_bow",
+      "effect": "hawkeye",
+      "value1": 0.15,
+      "value2": 20.0,
+      "text": "Your shots deal 15% more at 20 blocks or further."
+    },
+    {
+      "id": "crossbow_perk",
+      "name": "Hawkeye",
+      "item": "crossbow",
+      "effect": "hawkeye",
+      "value1": 0.15,
+      "value2": 20.0,
+      "text": "Your shots deal 15% more at 20 blocks or further."
+    },
+    {
+      "id": "mending_staff_perk",
+      "name": "Last Light",
+      "item": "mending_staff",
+      "effect": "last_light",
+      "value1": 0.25,
+      "value2": 0.3,
+      "text": "Below 30% health you deal 25% more."
+    },
+    {
+      "id": "sunwell_crook_perk",
+      "name": "Last Light",
+      "item": "sunwell_crook",
+      "effect": "last_light",
+      "value1": 0.25,
+      "value2": 0.3,
+      "text": "Below 30% health you deal 25% more."
+    },
+    {
+      "id": "war_banner_perk",
+      "name": "Oathkeeper",
+      "item": "war_banner",
+      "effect": "oathkeeper",
+      "value1": 0.1,
+      "value2": 0.0,
+      "text": "Your troops in your command aura take 10% less damage."
+    },
+    {
+      "id": "long_colours_perk",
+      "name": "Oathkeeper",
+      "item": "long_colours",
+      "effect": "oathkeeper",
+      "value1": 0.1,
+      "value2": 0.0,
+      "text": "Your troops in your command aura take 10% less damage."
+    },
+    {
+      "id": "kite_shield_perk",
+      "name": "Grudge",
+      "item": "kite_shield",
+      "effect": "grudge",
+      "value1": 0.2,
+      "value2": 0.0,
+      "text": "You deal 20% more to whoever last hurt a troop of yours."
+    },
+    {
+      "id": "quiver_perk",
+      "name": "Hawkeye",
+      "item": "quiver",
+      "effect": "hawkeye",
+      "value1": 0.15,
+      "value2": 20.0,
+      "text": "Your shots deal 15% more at 20 blocks or further."
     }
   ],
   "relics": [
@@ -3424,6 +3961,144 @@
       "fromClass": "-",
       "cooldownTicks": 900,
       "text": "Heal yourself over a few seconds."
+    }
+  ],
+  "relicTuning": [
+    {
+      "id": "stand_fast",
+      "effect": "stand_fast",
+      "durationTicks": 160,
+      "radius": 12.0,
+      "range": 0.0,
+      "value1": 0.25,
+      "value2": 0.0,
+      "value3": 0.0
+    },
+    {
+      "id": "bloodrush",
+      "effect": "bloodrush",
+      "durationTicks": 200,
+      "radius": 0.0,
+      "range": 0.0,
+      "value1": 0.3,
+      "value2": 3.0,
+      "value3": 0.0
+    },
+    {
+      "id": "mark_prey",
+      "effect": "mark_prey",
+      "durationTicks": 240,
+      "radius": 0.0,
+      "range": 40.0,
+      "value1": 0.3,
+      "value2": 0.0,
+      "value3": 0.0
+    },
+    {
+      "id": "rally_horn",
+      "effect": "rally_horn",
+      "durationTicks": 300,
+      "radius": 0.0,
+      "range": 0.0,
+      "value1": 0.2,
+      "value2": 0.0,
+      "value3": 0.0
+    },
+    {
+      "id": "grave_bloom",
+      "effect": "grave_bloom",
+      "durationTicks": 600,
+      "radius": 8.0,
+      "range": 30.0,
+      "value1": 0.6,
+      "value2": 6.0,
+      "value3": 400.0
+    },
+    {
+      "id": "forward_supply",
+      "effect": "forward_supply",
+      "durationTicks": 1200,
+      "radius": 12.0,
+      "range": 30.0,
+      "value1": 40.0,
+      "value2": 0.0,
+      "value3": 0.0
+    },
+    {
+      "id": "dash",
+      "effect": "dash",
+      "durationTicks": 6,
+      "radius": 0.0,
+      "range": 0.0,
+      "value1": 1.4,
+      "value2": 0.0,
+      "value3": 0.0
+    },
+    {
+      "id": "shield_bash",
+      "effect": "shove",
+      "durationTicks": 1,
+      "radius": 3.5,
+      "range": 0.0,
+      "value1": 1.2,
+      "value2": 40.0,
+      "value3": 4.0
+    },
+    {
+      "id": "heal_pulse",
+      "effect": "heal_pulse",
+      "durationTicks": 1,
+      "radius": 8.0,
+      "range": 0.0,
+      "value1": 6.0,
+      "value2": 0.0,
+      "value3": 0.0
+    },
+    {
+      "id": "volley",
+      "effect": "volley",
+      "durationTicks": 1,
+      "radius": 0.0,
+      "range": 0.0,
+      "value1": 7.0,
+      "value2": 40.0,
+      "value3": 2.5
+    },
+    {
+      "id": "war_cry",
+      "effect": "war_cry",
+      "durationTicks": 160,
+      "radius": 10.0,
+      "range": 0.0,
+      "value1": 0.15,
+      "value2": 0.0,
+      "value3": 0.0
+    },
+    {
+      "id": "iron_skin",
+      "effect": "self_heal",
+      "durationTicks": 100,
+      "radius": 0.0,
+      "range": 0.0,
+      "value1": 10.0,
+      "value2": 0.0,
+      "value3": 0.0
+    }
+  ],
+  "gearCombat": [
+    {
+      "id": "default",
+      "healthPerPoint": 1.0,
+      "damagePerPoint": 1.0,
+      "armourPerPoint": 1.0,
+      "speedPerPoint": 1.0,
+      "rangedPerPoint": 0.05,
+      "healingPerPoint": 0.05,
+      "commandPerPoint": 0.01,
+      "surroundedCount": 3,
+      "surroundedRadius": 4.0,
+      "commandRadius": 10.0,
+      "tauntShare": 0.5
     }
   ],
   "forge": [
