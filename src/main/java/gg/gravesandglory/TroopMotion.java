@@ -143,7 +143,8 @@ public final class TroopMotion {
         if(m.troop.isEmpty())return null;
         return ROWS.computeIfAbsent(m.troop,id->Arrays.stream(Spec.TROOPS).filter(t->t.id().equals(id)).findFirst()).orElse(null);
     }
-    static boolean bow(Spec.TroopsRow row){return row!=null&&row.ranged()&&!row.magic();}
+    /** The bow family: only its troops get the bow carry and draw (crossbow, thrower and crew carry their own way). */
+    static boolean bow(Spec.TroopsRow row){return row!=null&&"bow".equals(row.family());}
 
     // ---- the frame ----
     /** Called by TroopModel.setAngles after it reset every bone: this frame's pose of the entity (the class comment gives the order). */
