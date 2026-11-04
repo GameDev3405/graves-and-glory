@@ -143,6 +143,38 @@ public final class GearMigrationCheck {
             f.sanitize();
             check(f.gear.size() == 6 && f.relics.equals(Set.of("stand_fast")) && f.relicSlots.get(0).equals("stand_fast"), "a fresh champion has the 6 bruiser pieces and stand_fast");
             check(f.schema == 4 && f.gearPower == 6, "fresh is schema 4 with gear power 6");
+
+            // newer-save: a schema-5 file survives a load and a save attempt byte for byte, and the profile is read-only for the session
+            String future = "{\"schema\": 5, \"gold\": 123, \"futureField\": {\"a\": [1, 2, 3]}}";
+            Path newer = root.resolve("future.json");
+            Files.writeString(newer, future);
+            byte[] futureBytes = Files.readAllBytes(newer);
+            Profile fut = load(newer);
+            check(fut.readOnly && fut.schema == 5, "a schema-5 profile loads read-only and keeps schema 5, got " + fut.schema);
+            check(!JSON.toJson(fut).contains("readOnly"), "the read-only flag is never saved");
+            fut.gold = 999;
+            ProfileMigration.saveProfile(fut, newer, JSON.toJson(fut));
+            check(Arrays.equals(Files.readAllBytes(newer), futureBytes), "the save attempt leaves the schema-5 file byte for byte");
+            check(!Files.exists(root.resolve("future.json.bak")) && !Files.exists(root.resolve("future.json.tmp")) && !Files.exists(root.resolve("future.v3.json")), "no backup or temp file appears beside it");
+            Path normal = root.resolve("normal.json");
+            Profile ok = new Profile();
+            ok.sanitize();
+            check(!ok.readOnly && ok.schema == 4, "a current profile is not read-only");
+            ok.gold = 77;
+            ProfileMigration.saveProfile(ok, normal, JSON.toJson(ok));
+            check(JSON.fromJson(Files.readString(normal), Profile.class).gold == 77, "a current profile saves");
+
+            // import: the gear fields reset, the inventory back to the starting size
+            Profile imp = new Profile();
+            imp.sanitize();
+            imp.inventorySize = 120;
+            imp.forgeMarks = 500;
+            imp.gearPity = 9;
+            for (int i = 1; i <= 30; i++) imp.gear.add(piece(i, "bruiser_helm", 50, 100));
+            imp.nextGearUid = 31;
+            Gear.resetForImport(imp);
+            check(imp.inventorySize == Spec.FORGE[0].startSlots() && imp.forgeMarks == 0 && imp.gearPity == 0, "an import resets the inventory size, marks and pity");
+            check(imp.gear.size() == 6 && imp.equipped.size() == 6 && imp.nextGearUid == 7 && imp.relics.size() == 1, "an import gets a fresh starter set only");
         } finally {
             try (Stream<Path> w = Files.walk(root)) { for (Path x : w.sorted(Comparator.reverseOrder()).toList()) Files.deleteIfExists(x); }
         }

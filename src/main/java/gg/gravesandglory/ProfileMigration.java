@@ -192,4 +192,13 @@ public final class ProfileMigration {
         }
         return p;
     }
+
+    /**
+     * Writes a profile through SafeFiles.writeWithBackup unless it came from a newer build (Profile.readOnly): then nothing is written, so the
+     * newer file, its backup and everything beside it stay as they are. The caller's in-memory changes last only for the session.
+     */
+    static void saveProfile(Profile p, java.nio.file.Path file, String json) throws java.io.IOException {
+        if (p.readOnly) return;
+        SafeFiles.writeWithBackup(file, json);
+    }
 }

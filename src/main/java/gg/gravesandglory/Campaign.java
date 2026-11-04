@@ -111,7 +111,16 @@ public final class Campaign {
         try{JsonObject marker=JsonParser.parseString(Files.readString(layoutFile())).getAsJsonObject();if(marker.get("layout").getAsString().equals(LayoutMarker.LAYOUT))map=marker.get("map").getAsInt();}catch(Exception ignored){}CampaignMaps.select(map);
     }
     /** A commander's collection, read once: a schema-1, 2 or 3 file is upgraded in place to schema 4 first (spec 6.3, plan 2C.3; its original bytes stay as <uuid>.v1.json, .v2.json or .v3.json), then the profile is sanitized. A new commander owns the 10 Commons, flies the starter banner and wears the starter gear. */
-    Profile profile(UUID id){return profiles.computeIfAbsent(id,key->SafeFiles.load(directory.resolve(key+".json"),Campaign::readProfile,Campaign::freshProfile,"Commander profile "+key));}
+    Profile profile(UUID id){
+        Profile pr=profiles.computeIfAbsent(id,key->SafeFiles.load(directory.resolve(key+".json"),Campaign::readProfile,Campaign::freshProfile,"Commander profile "+key));
+        if(pr.readOnly&&newerSaveTold.add(id)){ // a save from a newer build: kept untouched all session (save writes nothing); the player is told once, the log keeps a warning
+            System.err.println("[Graves and Glory] Commander profile "+id+" is schema "+pr.schema+", newer than this build's schema "+Profile.SCHEMA+"; the file is left untouched and this session's progress will not be saved.");
+            notice(id,"Your commander save is from a newer version of Graves and Glory; progress this session will not be saved.");
+        }
+        return pr;
+    }
+    /** Players already told that their save is from a newer build (Profile.readOnly), so the notice comes once per session. */
+    final Set<UUID> newerSaveTold=new HashSet<>();
     /** A new commander: the 10 Commons, the starter banner (sanitize fills them in) and the role's starter gear. Also what a damaged profile with no usable .bak falls back to. */
     static Profile freshProfile(){Profile fresh=new Profile();Gear.grantStarter(fresh);fresh.sanitize();return fresh;}
     /** One profile file, upgraded in place first when it is schema 1, 2 or 3; throws when it cannot be read (SafeFiles.load then tries the .bak). */
@@ -123,7 +132,7 @@ public final class Campaign {
     /** The marker (see LayoutMarker) names this layout, this map, this revision of the arena margin and the hash of the map's landmarks (Structures.hash); a save made before the margin was tapered, or before these landmarks, builds its arena once more. */
     boolean cached(){try{return LayoutMarker.current(Files.readString(layoutFile()),map,Structures.hash(map));}catch(Exception e){return false;}}
     void built(){try{SafeFiles.write(layoutFile(),LayoutMarker.text(map,Structures.hash(map)));}catch(Exception e){System.err.println("[Graves and Glory] Map cache marker could not be saved.");}}
-    boolean save(UUID id){try{SafeFiles.writeWithBackup(directory.resolve(id+".json"),JSON.toJson(profile(id)));return true;
+    boolean save(UUID id){try{var pr=profile(id);ProfileMigration.saveProfile(pr,directory.resolve(id+".json"),JSON.toJson(pr));return true;
         }catch(Exception e){System.err.println("[Graves and Glory] Could not save commander collection: "+e.getClass().getSimpleName());notice(id,"Collection could not be saved; check disk space.");return false;}}
     void importProfile(ServerPlayerEntity p,String json){
         if(json.length()>16000)return;
@@ -132,7 +141,7 @@ public final class Campaign {
         // existing collections carry over; dedicated servers never accept one.
         UUID id=p.getUuid();boolean allowed=importAllowed.remove(id)&&!b.server.isDedicated();
         try{var v1=JSON.fromJson(json,ProfileMigration.V1.class); // a portable copy from before Houses is upgraded the same way as a server file
-            Profile portable=v1!=null&&v1.schema<2?ProfileMigration.toV2(v1,RosterMath.Catalog.fromSpec()):JSON.fromJson(json,Profile.class);portable.sanitize();portable.gear.clear();portable.equipped.clear();portable.relics.clear();portable.relicSlots=new java.util.ArrayList<>(java.util.List.of("","",""));portable.forgeMarks=0;portable.gearPity=0;portable.nextGearUid=1;Gear.grantStarter(portable);
+            Profile portable=v1!=null&&v1.schema<2?ProfileMigration.toV2(v1,RosterMath.Catalog.fromSpec()):JSON.fromJson(json,Profile.class);portable.sanitize();Gear.resetForImport(portable);
             if(allowed){profiles.put(id,portable);save(id);}
             else{Profile stored=profile(id);if(portable.gold>stored.gold||!stored.owned.keySet().containsAll(portable.owned.keySet()))System.out.println("[Graves and Glory] Ignored the collection sent by "+p.getName().getString()+"; the server's saved collection is kept.");}
         }catch(Exception ignored){}
@@ -200,7 +209,7 @@ public final class Campaign {
         if(ArenaAutosave.settle()&&b.server.isRunning()){long at=System.nanoTime();b.server.saveAll(true,false,false);System.out.println("[Graves and Glory] Saved the world after the battle ("+(System.nanoTime()-at)/1_000_000+" ms).");}
     }
     /** Leaving frees the pad, any seat in a custom lobby, and invitations to it, and forgets which snapshot forms were logged for him. */
-    void left(UUID id){gearSent.remove(id);forgeResults.remove(id);onPad.remove(id);padRefused.remove(id);leaveParty(id);snapshotForms.remove(id);notices.remove(id);noticeAt.remove(id);} // his notice entries go with him, a standing line's too (expireNotices never drops those)
+    void left(UUID id){newerSaveTold.remove(id);gearSent.remove(id);forgeResults.remove(id);onPad.remove(id);padRefused.remove(id);leaveParty(id);snapshotForms.remove(id);notices.remove(id);noticeAt.remove(id);} // his notice entries go with him, a standing line's too (expireNotices never drops those)
     boolean handle(ServerPlayerEntity p,String cmd){
         if(cmd.startsWith("social:"))return socialCommand(p,cmd);
         if(cmd.startsWith("progress:"))return progressCommand(p,cmd);

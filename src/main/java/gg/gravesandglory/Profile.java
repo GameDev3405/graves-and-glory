@@ -18,6 +18,8 @@ public final class Profile {
     /** The current profile schema; ProfileMigration upgrades older files to it. */
     static final int SCHEMA = 4;
     int schema = SCHEMA;
+    /** Set when the file was saved by a newer build (schema above SCHEMA). Never saved: Gson skips transient fields. Campaign.save then writes nothing. */
+    transient boolean readOnly;
     int gold, matches, wins;
     boolean tutorialDone;
     String commander = "champion";
@@ -62,7 +64,8 @@ public final class Profile {
     void sanitize(RosterMath.Catalog c, Set<String> classIds, Set<String> sideIds, List<String> houses) {
         if (schema < 3) ProfileMigration.v2toV3(this, Spec.CAMPAIGNBATTLES);
         if (schema < 4) ProfileMigration.v3toV4(this);
-        schema = SCHEMA;
+        if (schema > SCHEMA) readOnly = true; // a save from a newer build: kept as it is, never written by this one
+        else schema = SCHEMA;
         if (progression == null) progression = new Progression.State();
         progression.sanitize();
         gold = clamp(gold, 0, 1_000_000);

@@ -91,6 +91,22 @@ final class Gear {
     }
 
     /**
+     * An imported collection brings no gear, marks, pity or extra inventory: all of it resets and the profile gets the fresh starter set.
+     * Used by Campaign.importProfile after the portable copy is sanitized.
+     */
+    static void resetForImport(Profile p) {
+        p.gear.clear();
+        p.equipped.clear();
+        p.relics.clear();
+        p.relicSlots = new ArrayList<>(List.of("", "", ""));
+        p.forgeMarks = 0;
+        p.gearPity = 0;
+        p.nextGearUid = 1;
+        p.inventorySize = forge().startSlots();
+        grantStarter(p);
+    }
+
+    /**
      * The one-time starter set: four Common armour pieces of the class's role set plus the set's starter weapons, all equipped, and
      * the class's relic unlocked in slot 0. It ignores the inventory cap. Used by a fresh profile, the 3-to-4 migration and an import.
      */
