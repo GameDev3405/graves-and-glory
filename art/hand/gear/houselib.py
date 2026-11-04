@@ -11,9 +11,10 @@ one palette. This module turns one into four GearPieces (helm, chest, legs, boot
 - Texels: every face texel is looked up from the source canvas through both frames, so each face reads as the source
   painted it, at one texel per model pixel.
 - One texel per pixel: the source separated layers with `inflate` (a fraction of a pixel that stretches the texels). Here
-  a box inflated by 0.1 or more grows by one whole pixel (two from 0.4) and is painted at that size by its own painters;
-  smaller inflates (seam separators) are dropped. A box grown through the ground sits on it. The left leg's boxes stand
-  0.04 px forward so the two legs' armour never share a plane where it overlaps at the crotch.
+  each box grows by its inflate rounded to whole pixels and is painted at that size by its own painters; a box grown
+  through the ground sits on it. Faces left sharing a plane are parted by the source's own layer order: a box that grew
+  past where the source had it gives the pixel back, else the outer box is lifted 0.02 px at a time (dilation, at most
+  0.1 px), so texels stay one per pixel to within a few hundredths (converted_boxes).
 - Rarity: the source's own ladder (Common, Uncommon green trim, Rare blued, Epic violet-black, Legendary ember with its
   own geometry). A source box of the Common-to-Epic tier shows at rarities 1 to 4, a Legendary one at 5.
 - Side colour: a box with any team texel draws in the side's cloth sheet; it is split by rarity where its other texels
@@ -34,7 +35,6 @@ RAR = dict(zip(RARITIES, C.RARITIES))                      # 1 -> 'common' ... 5
 WORLD = {"head": (0, 0, 0), "body": (0, 12, 0), "right_arm": (-5, 2, 0), "left_arm": (5, 2, 0),
          "right_leg": (-1.9, 12, 0), "left_leg": (1.9, 12, 0)}   # each biped part's frame on the mannequin
 FACE = {"front": "north", "back": "south", "right": "east", "left": "west", "top": "up", "bottom": "down"}
-LEFT_LEG_NUDGE = 0.04
 TEAMS = dict(C.TEAMS)
 for _s in ("company", "linen"): TEAMS[_s] = "#%02X%02X%02X" % HAND_TEAM[_s][0][2][:3]
 
@@ -42,20 +42,50 @@ def tier_of(r): return "legendary" if r == 5 else "base"
 def rarities_of(b): return {"all": (1, 2, 3, 4, 5), "base": (1, 2, 3, 4), "legendary": (5,)}[b.tier]
 
 def grow(g):
-    """Whole pixels a source inflate becomes: 0 for a seam separator, 1 for a layer, 2 for a layer over a layer."""
-    return 0 if g < 0.1 else 1 if g < 0.4 else 2
+    """Whole pixels a source inflate starts as: the nearest whole growth (0.25 and up is one pixel)."""
+    return int(math.floor(2 * g + 0.5)) if g >= 0.1 else 0
+
+EPS, MAX_SEP = 0.02, 0.1
+OUTWARD = {"north": (2, -1), "south": (2, 1), "west": (0, -1), "east": (0, 1), "down": (1, -1), "up": (1, 1)}
+
+def _shape(b, k, e):
+    n = copy.copy(b)
+    n.frm = [v - k / 2 for v in b.frm]; n.size = [v + k for v in b.size]; n.origin = list(b.origin); n.inflate = e
+    n.paint, n.hide = list(b.paint), set(b.hide)
+    if k and n.frm[1] < 0 <= b.frm[1] + 1e-6: n.frm[1] = 0.0         # grown through the ground: stand on it
+    return n
+
+def _face(b, f):
+    ax, sign = OUTWARD[f]; lo, hi = b.lo_hi()
+    return sign * (hi[ax] if sign > 0 else lo[ax])                     # larger is further out
 
 def converted_boxes(source):
-    """The source boxes at whole-pixel geometry (no inflate), as source-space engine Boxes."""
-    out = []
-    for b in source.boxes:
-        n = copy.copy(b); k = grow(b.inflate)
-        n.frm = [v - k / 2 for v in b.frm]; n.size = [v + k for v in b.size]; n.origin = list(b.origin); n.inflate = 0.0
-        n.paint, n.hide = list(b.paint), set(b.hide)
-        if k and n.frm[1] < 0 <= b.frm[1] + 1e-6: n.frm[1] = 0.0     # grown through the ground: stand on it
-        if n.bone == "left_leg": n.frm[2] -= LEFT_LEG_NUDGE; n.origin[2] -= LEFT_LEG_NUDGE
-        out.append(n)
-    return out
+    """The source boxes at whole-pixel geometry, as source-space engine Boxes whose `inflate` is only a separator.
+
+    Each box grows by its source inflate rounded to whole pixels. Where two faces then share a plane (they would
+    z-fight), the one the source drew further out wins: if the inner one grew past where the source had it, it gives the
+    pixel back; otherwise the outer one is lifted by 0.02 px (at most 0.1 px), which keeps the texels one per pixel to
+    within a few hundredths."""
+    src = {b.name: b for b in source.boxes}
+    k = {n: grow(b.inflate) for n, b in src.items()}
+    e = {n: 0.0 for n in src}
+    for _ in range(200):
+        boxes = [_shape(src[n], k[n], e[n]) for n in src]
+        by = {b.name: b for b in boxes}
+        clash = []
+        for tier in ("base", "legendary"):
+            for a, b, f in E.coplanar([x for x in boxes if x.in_tier(tier)] + BODY):
+                if not (a.startswith("p_") and b.startswith("p_")): clash.append((a, b, f))
+        if not clash: return boxes
+        a, b, f = clash[0]
+        sa = _face(src.get(a) or BODY_BY[a], f); sb = _face(src.get(b) or BODY_BY[b], f)
+        if sa == sb: outer, inner = (a, b) if b.startswith("p_") else (b, a)
+        else: outer, inner = (a, b) if sa > sb else (b, a)
+        if outer.startswith("p_"): raise SystemExit("%s sits inside the body at %s's %s face" % (inner, outer, f))
+        if not inner.startswith("p_") and k[inner] and _face(by[inner], f) > _face(src[inner], f) + 1e-6: k[inner] -= 1
+        elif e[outer] + EPS <= MAX_SEP + 1e-9: e[outer] = round(e[outer] + EPS, 4)
+        else: raise SystemExit("cannot separate %s and %s (%s)" % (a, b, f))
+    raise SystemExit("separation did not settle")
 
 @functools.lru_cache(maxsize=None)
 def armour_set(name):
@@ -138,7 +168,7 @@ def gear_box(box, paint, sheet="skin"):
         pivot, rot, origin = [o[i] - w[i] for i in range(3)], [-box.rot[0], -box.rot[1], box.rot[2]], [lo[i] - o[i] for i in range(3)]
     else:
         pivot, rot, origin = [0, 0, 0], [0, 0, 0], [lo[i] - w[i] for i in range(3)]
-    return pivot, rot, Box(origin, list(box.size), paint, sheet=sheet)
+    return pivot, rot, Box(origin, list(box.size), paint, dil=box.inflate, sheet=sheet)
 
 def stages(rs): return [] if tuple(rs) == RARITIES else list(rs)
 
@@ -199,6 +229,7 @@ def pieces(name):
 BODY = [E.Box("p_head", "skin", "head", (-4, 24, -4), (8, 8, 8), []), E.Box("p_body", "skin", "body", (-4, 12, -2), (8, 12, 4), []),
         E.Box("p_arm_r", "skin", "right_arm", (4, 12, -2), (4, 12, 4), []), E.Box("p_arm_l", "skin", "left_arm", (-8, 12, -2), (4, 12, 4), []),
         E.Box("p_leg_r", "skin", "right_leg", (-0.1, 0, -2), (4, 12, 4), []), E.Box("p_leg_l", "skin", "left_leg", (-3.9, 0, -2), (4, 12, 4), [])]
+BODY_BY = {b.name: b for b in BODY}
 
 def coplanar(name):
     """Faces that share a plane and would z-fight, in each tier, the armour against itself and the wearer's body."""
