@@ -1,0 +1,57 @@
+profileDir C:\Users\kortt\Melty\bannerbound-qa3-1104\work\qa3\srv\.\Graves and Glory\.\gravesandglory-test-profiles | completion 80 victory 40 minimum seconds 180
+baseline {"K7Host": [{"gold": 0, "matches": 0, "wins": 0, "xp": 0}, null], "K7Mate": [{"gold": 0, "matches": 0, "wins": 0, "xp": 0}, null], "K7Visitor": [{"gold": 0, "matches": 0, "wins": 0, "xp": 0}, null]}
+PASS players and visitor have profiles before any round
+R1 win started; participants [{"id": "fa9e0cfd-e764-3100-b627-db2c2476e27f", "name": "K7Host", "team": 0, "seated": true, "seatedSeconds": 0.5, "awaySeconds": 0.0, "away": false}, {"id": "d7108316-8ff3-33a5-8001-f7589f0a2e8f", "name": "K7Mate", "team": 0, "seated": true, "seatedSeconds": 0.5, "awaySeconds": 0.0, "away": false}]
+PASS R1 round started with two participants
+PASS R1 both on one team :: {'K7Host': 0, 'K7Mate': 0}
+PASS R1 each seated about 200 s :: [201.0, 201.0]
+PASS R1 finish ran on a live round
+PASS R1 K7Host gold +120 (win), memory :: (0, 120)
+PASS R1 K7Host matches +1 and wins +1
+PASS R1 K7Host saved to disk equal to memory :: ({'gold': 120, 'matches': 1, 'wins': 1, 'xp': 150}, {'gold': 120, 'matches': 1, 'wins': 1, 'xp': 150})
+PASS R1 K7Mate gold +120 (win), memory :: (0, 120)
+PASS R1 K7Mate matches +1 and wins +1
+PASS R1 K7Mate saved to disk equal to memory :: ({'gold': 120, 'matches': 1, 'wins': 1, 'xp': 150}, {'gold': 120, 'matches': 1, 'wins': 1, 'xp': 150})
+FAIL R1 visitor unchanged in memory and on disk :: ({'gold': 0, 'matches': 0, 'wins': 0, 'xp': 0}, {'gold': 0, 'matches': 0, 'wins': 0, 'xp': 0})
+PASS R1 reports saved and eligible for both :: [{'id': 'fa9e0cfd-e764-3100-b627-db2c2476e27f', 'outcome': 'VICTORY', 'gold': 120, 'eligible': True, 'saved': True, 'seconds': 201}, {'id': 'd7108316-8ff3-33a5-8001-f7589f0a2e8f', 'outcome': 'VICTORY', 'gold': 120, 'eligible': True, 'saved': True, 'seconds': 201}]
+PASS R1 second finish is a no-op (no round running)
+PASS R1 gold unchanged after the second finish
+R2 loss/rematch started; participants [{"id": "fa9e0cfd-e764-3100-b627-db2c2476e27f", "name": "K7Host", "team": 0, "seated": true, "seatedSeconds": 1.0, "awaySeconds": 0.0, "away": false}, {"id": "d7108316-8ff3-33a5-8001-f7589f0a2e8f", "name": "K7Mate", "team": 0, "seated": true, "seatedSeconds": 1.0, "awaySeconds": 0.0, "away": false}]
+PASS R2 rematch started from the same room
+PASS R2 starting the rematch paid nothing
+PASS R2 K7Host gold +80 (loss: completion only), once :: (120, 200)
+PASS R2 K7Host matches +1, wins +0
+PASS R2 K7Host saved to disk equal to memory
+PASS R2 K7Mate gold +80 (loss: completion only), once :: (120, 200)
+PASS R2 K7Mate matches +1, wins +0
+PASS R2 K7Mate saved to disk equal to memory
+PASS R2 visitor unchanged
+R3 quit started; participants [{"id": "fa9e0cfd-e764-3100-b627-db2c2476e27f", "name": "K7Host", "team": 0, "seated": true, "seatedSeconds": 1.0, "awaySeconds": 0.0, "away": false}, {"id": "d7108316-8ff3-33a5-8001-f7589f0a2e8f", "name": "K7Mate", "team": 0, "seated": true, "seatedSeconds": 1.0, "awaySeconds": 0.0, "away": false}]
+PASS R3 server sees B as away
+PASS R3 seated about 200 s for A and 60 s for B :: {'K7Host': 202.0, 'K7Mate': 61.35}
+PASS R3 A paid in full (+120)
+PASS R3 quitter B paid pro rata (35..37 gold, about 30 percent), once :: 36
+PASS R3 quitter B matches +1, wins +0 (seated under half)
+PASS R3 quitter saved to disk while offline :: ({'gold': 236, 'matches': 3, 'wins': 1, 'xp': 280}, {'gold': 236, 'matches': 3, 'wins': 1, 'xp': 280})
+PASS R3 visitor unchanged
+R4 disconnect/return started; participants [{"id": "fa9e0cfd-e764-3100-b627-db2c2476e27f", "name": "K7Host", "team": 0, "seated": true, "seatedSeconds": 1.0, "awaySeconds": 0.0, "away": false}, {"id": "d7108316-8ff3-33a5-8001-f7589f0a2e8f", "name": "K7Mate", "team": 0, "seated": true, "seatedSeconds": 1.0, "awaySeconds": 0.0, "away": false}]
+PASS R4 round started after the quitter came back
+PASS R4 B seated again and not away :: {'id': 'd7108316-8ff3-33a5-8001-f7589f0a2e8f', 'name': 'K7Mate', 'team': 0, 'seated': True, 'seatedSeconds': 107.5, 'awaySeconds': 8.25, 'away': False}
+R4 seated {'K7Host': 216.25, 'K7Mate': 208.0} away {'K7Host': 0.0, 'K7Mate': 8.25}
+PASS R4 B was away about 8 to 16 s :: 8.25
+PASS R4 A paid in full
+PASS R4 returning B paid for his seated time (114..117 gold), once :: 115
+PASS R4 B counted as a win (seated over half)
+PASS R4 saved to disk equal to memory
+PASS R4 idle visitor unchanged
+PASS R4 late visitor has no match, no wins and no reward gold in memory or on disk :: ({'gold': 0, 'matches': 0, 'wins': 0, 'xp': 0}, {'gold': 0, 'matches': 0, 'wins': 0, 'xp': 0})
+R5 short started; participants [{"id": "fa9e0cfd-e764-3100-b627-db2c2476e27f", "name": "K7Host", "team": 0, "seated": true, "seatedSeconds": 1.0, "awaySeconds": 0.0, "away": false}, {"id": "d7108316-8ff3-33a5-8001-f7589f0a2e8f", "name": "K7Mate", "team": 0, "seated": true, "seatedSeconds": 1.0, "awaySeconds": 0.0, "away": false}]
+PASS R5 round started
+PASS R5 K7Host short round (6 s < 180 s) pays no gold :: (440, 440)
+PASS R5 K7Host short round state saved equal on disk
+PASS R5 K7Mate short round (6 s < 180 s) pays no gold :: (351, 351)
+PASS R5 K7Mate short round state saved equal on disk
+PASS R5 reports not eligible :: [{'id': 'fa9e0cfd-e764-3100-b627-db2c2476e27f', 'outcome': 'VICTORY', 'gold': 0, 'eligible': False, 'saved': True, 'seconds': 6}, {'id': 'd7108316-8ff3-33a5-8001-f7589f0a2e8f', 'outcome': 'VICTORY', 'gold': 0, 'eligible': False, 'saved': True, 'seconds': 6}]
+PASS R5 visitors unchanged
+FINAL {"K7Host": [{"gold": 440, "matches": 5, "wins": 4, "xp": 550}, {"gold": 440, "matches": 5, "wins": 4, "xp": 550}], "K7Mate": [{"gold": 351, "matches": 5, "wins": 3, "xp": 424}, {"gold": 351, "matches": 5, "wins": 3, "xp": 424}], "K7Visitor": [{"gold": 0, "matches": 0, "wins": 0, "xp": 0}, {"gold": 0, "matches": 0, "wins": 0, "xp": 0}], "K7Late": [{"gold": 0, "matches": 0, "wins": 0, "xp": 0}, {"gold": 0, "matches": 0, "wins": 0, "xp": 0}]}
+RESULT FAILS: R1 visitor unchanged in memory and on disk
