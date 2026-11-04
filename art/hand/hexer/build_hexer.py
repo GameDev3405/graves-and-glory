@@ -372,15 +372,13 @@ def bones():
         Box((-5, -9.5, -6.2), (10, 2, 2), brim, dil=0.1)]))
     B.append(Bone("hood_tail", "head", (0, -6, 4.8), rot=(-5, 0, 0), tag="helm", boxes=[Box((-3.5, 0, 0), (7, 13, 1), tail)]))
     # the arms: bare bone 2x12x2 under a bell sleeve; the right holds the lantern out
-    B.append(Bone("right_arm", "body", (-5, -11, 0), [Box((-1, -2, -1), (2, 12, 2), bone_arm("r"))], rot=(-LEAN + 32, 0, 0)))
-    B.append(Bone("right_sleeve", "right_arm", boxes=[Box((-2, -2.5, -2), (4, 7, 4), sleeve, dil=0.2)]))
-    B.append(Bone("right_hand", "right_arm", (0, 8, 0)))
-    B.append(Bone("left_arm", "body", (5, -11, 0), [Box((-1, -2, -1), (2, 12, 2), bone_arm("l"))], rot=(-LEAN, 0, 0)))
-    B.append(Bone("left_sleeve", "left_arm", boxes=[Box((-2, -2.5, -2), (4, 7, 4), sleeve, dil=0.2)]))
-    B.append(Bone("left_hand", "left_arm", (0, 8, 0)))
+    for side, x, r in (("right", -5, -LEAN + 32), ("left", 5, -LEAN)):   # jointed: the elbow at the arm's mid-height, the hand 4 px under it
+        B += limb(f"{side}_arm", "body", (x, -11, 0), (-1, -2, -1), bone_arm(side[0]), f"{side}_forearm", (0, 4, 0), size=(2, 12, 2), rot=(r, 0, 0))
+        B.append(Bone(f"{side}_sleeve", f"{side}_arm", boxes=[Box((-2, -2.5, -2), (4, 7, 4), sleeve, dil=0.2)]))
+        B.append(Bone(f"{side}_hand", f"{side}_forearm", (0, 4, 0)))
     B.append(Bone("arms_folded", "body", (0, -10, -1), rot=(-43, 0, 0)))
-    B.append(Bone("right_leg", "root", (-2, 12, 0), [Box((-1, 0, -1), (2, 12, 2), leg_paint)]))
-    B.append(Bone("left_leg", "root", (2, 12, 0), [Box((-1, 0, -1), (2, 12, 2), leg_paint)]))
+    for side, x in (("right", -2), ("left", 2)):   # jointed: the knee 6 px down the leg
+        B += limb(f"{side}_leg", "root", (x, 12, 0), (-1, 0, -1), leg_paint, f"{side}_shin", KNEE, size=(2, 12, 2))
     # the burial robe, three flared ragged tiers to the ground
     B.append(Bone("burial_robe", "root", boxes=[
         Box((-5, 10, -3), (10, 7, 6), robe_cloth(4, 3, True, key="t1", sparse=True)),
@@ -434,7 +432,7 @@ def bones():
         B.append(Bone(f"{side}_pauldron", "body", (sx * 6.8, -11.5, 0), rot=(0, 0, sx * 14), stages=[2, 3], boxes=[
             Box((-2.5, -1.4, -3), (5, 3, 6), P2("pd" + side), dil=0.5),
             Box((-0.5, -5.4, -0.5), (1, 4, 1), TN)]))
-        B.append(Bone(f"{side}_cuff", f"{side}_arm", stages=[2, 3], boxes=[Box((-2.5, 4.3, -2.5), (5, 2.4, 5), P2("cf" + side, 0.15), dil=0.35)]))
+        B.append(Bone(f"{side}_cuff", f"{side}_forearm", stages=[2, 3], boxes=[Box((-2.5, 0.3, -2.5), (5, 2.4, 5), P2("cf" + side, 0.15), dil=0.35)]))
     B.append(Bone("girdle_plate", "body", stages=[2, 3], boxes=[Box((-3, -5, -2.7), (6, 3, 0.8), P2("gp"), dil=0.55)]))
     # tier III: a gilt halo ring behind the hood, a pale stone on the mask's brow
     def halo(face, w, h):
