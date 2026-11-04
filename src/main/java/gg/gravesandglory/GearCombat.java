@@ -321,7 +321,7 @@ public final class GearCombat {
 
     /**
      * second_chance (Battle.allowDamage, before the downed branch): the blow that would down a seated commander leaves him on value1 health instead, once a
-     * round (Squad.secondChanceUsed, which round start clears). True when it caught the blow.
+     * match (Squad.secondChanceUsed; each match makes new Squads). True when it caught the blow.
      */
     static boolean secondChance(GravesAndGlory.Squad s, ServerPlayerEntity p) {
         if (s == null || s.bot || !GearEffects.secondChance(s.gear, s.secondChanceUsed)) return false;

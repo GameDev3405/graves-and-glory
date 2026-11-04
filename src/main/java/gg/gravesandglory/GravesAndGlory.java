@@ -224,7 +224,7 @@ public final class GravesAndGlory implements ModInitializer {
         GearStats.Loadout gear=GearStats.empty();String[] relics=gear.relics().toArray(new String[0]);
         /** Whoever last hurt one of this army's troops (the grudge perk); Battle.allowDamage sets it. */
         UUID grudge;
-        /** second_chance spent this round (GearCombat.secondChance); round start clears it. */
+        /** second_chance spent this match (GearCombat.secondChance); a new match makes a new Squad. */
         boolean secondChanceUsed;
         /** The most troops of each group alive at once this round (the HUD card's "of" count), raised with fullHealth and cleared with it. */
         final Map<String,Integer> fullCount=new HashMap<>();
@@ -1041,7 +1041,7 @@ public final class GravesAndGlory implements ModInitializer {
             mode.setup(this); // after the flags, so a mode that takes them down keeps them down
             respawns.clear();BattleEffects.startRound();Morale.startRound();
             for(Squad s:squads.values()){
-                Commander.reset(this,s);if(!s.seated)continue;s.assignments.clear();s.arrived.clear();s.training.clear();s.lastStand.clear();s.lastStandAt.clear();s.fullHealth.clear();s.fullCount.clear();s.chargedAt.clear();s.traits.clear();s.fallen.clear();s.hitBy=null;s.secondChanceUsed=false;s.gold=Spec.ECONOMY[0].startingGold();s.stats=new MatchStats.SquadStats();s.order=s.bot?"attack":"hold";s.target=fieldBase(s.team);s.reinforceAt=time+R.reinforceSeconds()*20L;
+                Commander.reset(this,s);if(!s.seated)continue;s.assignments.clear();s.arrived.clear();s.training.clear();s.lastStand.clear();s.lastStandAt.clear();s.fullHealth.clear();s.fullCount.clear();s.chargedAt.clear();s.traits.clear();s.fallen.clear();s.hitBy=null;s.gold=Spec.ECONOMY[0].startingGold();s.stats=new MatchStats.SquadStats();s.order=s.bot?"attack":"hold";s.target=fieldBase(s.team);s.reinforceAt=time+R.reinforceSeconds()*20L;
                 var player=server.getPlayerManager().getPlayer(s.owner);
                 if(player!=null){toBase(player,s.team);player.changeGameMode(GameMode.ADVENTURE);equipPlayer(player);}
                 reinforce(s);
@@ -1159,7 +1159,7 @@ public final class GravesAndGlory implements ModInitializer {
             }
             Squad hitter=attackerSquad;Unit striker=null;for(Unit u:units)if(u.mob==attacker){hitter=u.squad;striker=u;}
             Squad side=hitter!=null?hitter:fallenSquad(attacker); // a commander's view of the blow: a shot that lands after its troop fell is still his army's (a troop victim has it from Combat.resolve's lastHitBy already)
-            if(entity instanceof ServerPlayerEntity p&&p.getHealth()<=amount&&GearCombat.secondChance(victimSquad,p))return false; // second_chance catches the downing blow once a round
+            if(entity instanceof ServerPlayerEntity p&&p.getHealth()<=amount&&GearCombat.secondChance(victimSquad,p))return false; // second_chance catches the downing blow once a match
             if(entity instanceof ServerPlayerEntity p&&p.getHealth()<=amount){
                 if(Diagnostics.active())System.out.println("[Graves and Glory damage] respawn cause="+source.getType().msgId()+" amount="+amount+" hp="+p.getHealth()+" pos="+p.getPos()+" fall="+p.fallDistance);
                 p.setHealth(p.getMaxHealth());toBase(p,team);p.changeGameMode(GameMode.SPECTATOR);
