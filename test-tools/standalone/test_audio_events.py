@@ -5,6 +5,9 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 ASSETS = ROOT / "src/main/resources/assets/gravesandglory"
 CUES = ROOT / "src/main/java/gg/gravesandglory/AudioCues.java"
+SOURCES = ROOT / "src/main/java/gg/gravesandglory"
+# Cues Kort kept off (no game moment): the only registered events allowed to have no play site.
+OFF = {"troop_voices", "march_leather", "siege_ram_swing", "gate_chains", "banner_flap"}
 
 # Events that show no subtitle by design: UI clicks, the countdown tick, streamed music, and the long ambient beds.
 NO_SUBTITLE = {"countdown_tick", "camp_room_tone", "survival_wind"}
@@ -51,6 +54,31 @@ class AudioEventsTest(unittest.TestCase):
             for s in entry["sounds"]:
                 name = s["name"].split(":", 1)[1]
                 self.assertTrue((ASSETS / "sounds" / f"{name}.ogg").exists(), f"{event}: {name}.ogg is in the repo")
+
+    def test_every_event_has_a_play_site(self):
+        """Each cue's enum name appears as Cue.NAME in some Java source (the ambience beds in AudioCues.bed, which MusicDirector calls), except the five kept off."""
+        src = CUES.read_text(encoding="utf-8")
+        names = re.findall(r'^\s+([A-Z_]+)\("([a-z_.]+)",\s*null,', src, re.M)
+        code = "\n".join(p.read_text(encoding="utf-8") for p in SOURCES.rglob("*.java"))
+        director = (SOURCES / "MusicDirector.java").read_text(encoding="utf-8")
+        for name, event in names:
+            played = f"Cue.{name}" in code
+            if event in OFF:
+                self.assertFalse(played, f"{event} is kept off, so nothing plays it")
+            else:
+                self.assertTrue(played, f"{event}: no play site (Cue.{name})")
+        events = [e for _, e in names]
+        for bed in ("ambience_wind", "ambience_birds", "ambience_water", "ambience_crows", "ambience_snow", "camp_room_tone", "survival_wind"):
+            self.assertIn(bed, events)
+        self.assertIn("AudioCues.bed(", director, "MusicDirector plays the beds AudioCues.bed picks")
+        self.assertIn("CAMPAIGN_BRIEFING_MUSIC", director)
+        self.assertIn("CampaignClient.overtime()", director)
+
+    def test_overtime_flag_is_in_the_snapshot(self):
+        mode = (SOURCES / "BattleMode.java").read_text(encoding="utf-8")
+        client = (SOURCES / "CampaignClient.java").read_text(encoding="utf-8")
+        self.assertIn('addProperty("overtime"', mode)
+        self.assertIn('"overtime"', client)
 
 
 if __name__ == "__main__":

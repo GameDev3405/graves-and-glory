@@ -53,6 +53,26 @@ Each id is a variant group in `sounds.json`; the game picks one file at random. 
 
 Music is in the music category, so the Music slider governs it, and `MusicDirector` stops vanilla music while it plays (fades 2 s in, 0.75 s out). It is silent through the entrance camera.
 
+## Ambience and music layers
+
+`MusicDirector` runs two streams. The music track is as above, with two swaps: while the campaign briefing is open (the War Table's campaign sheet, or the old train page; `CampScreen.briefing()`) it plays `campaign_briefing_music` instead of `music.calm`, and while a Convoy round is in overtime it plays `overtime_music` instead of the battle tracks. Both loop until the moment passes and start at once, ignoring the calm gap.
+
+Under it a separate looping bed plays in the ambient category, so the vanilla Ambient slider governs it. It fades in over 4 s and out over 2.5 s when the moment changes, and `AudioCues.bed(inCamp, mode, theme)` picks it. It keeps playing through the entrance camera.
+
+| Moment | Bed |
+| --- | --- |
+| Banner Camp, lobby, War Table | camp_room_tone |
+| Survival battle (any map) | survival_wind |
+| Battle, river map | ambience_water |
+| Battle, fortress map | ambience_crows |
+| Battle, snow map | ambience_snow |
+| Battle, forest map | ambience_birds |
+| Battle, any other theme | ambience_wind |
+
+The theme is `Spec.MAPS[CampaignClient.map].theme()`.
+
+Protocol: the `battleMode` object in the campaign snapshot (STATE packet) gains a boolean `overtime`, true while a Convoy round's clock is out and the wagon holds it open (`Battle.inOvertime()`, which the overtime drum pulse also uses). It is additive, so PROTOCOL stays 1 and an older client ignores it. AudioCuesCheck and test_audio_events.py prove every event but the five below has a play site.
+
 ## Timing
 
 Each cue plays at its moment (report: docs/reports/audio-cue-timing-2026-11-02.md; the check is AudioCuesCheck).
@@ -111,14 +131,11 @@ Server cues play through `Audio.at` (a small random pitch spread, a per-key cool
 
 ## Registered, not played
 
-These have files, events, subtitles (the long beds have none) and an `AudioCues` entry, but no clear game moment, and the check lists them so a later hook removes the name there. Each hook is one `Audio.at`, `Audio.all` or `UiSounds.play` call.
+These have files, events and an `AudioCues` entry, but no clear game moment, and the check lists them so a later hook removes the name there. Each hook is one `Audio.at`, `Audio.all` or `UiSounds.play` call.
 
 - troop_voices, march_leather: no per-troop voice or footstep system exists; adding one is its own design.
 - siege_ram_swing: no ram unit. gate_chains: the gate's shutting is already gate_shut.
 - banner_flap: no banner idle moment.
-- ambience_wind, ambience_birds, ambience_water, ambience_crows, ambience_snow, camp_room_tone, survival_wind: MusicDirector carries one track and picks it by camp or battle, not by map. A layered ambient bed needs a second stream and a map-to-bed table.
-- campaign_briefing_music: needs the briefing screen to ask MusicDirector for a track.
-- overtime_music: the client has no overtime flag (CampaignClient.mode is the party size, not the mode id), so it needs a protocol addition.
 
 ## Still missing
 
