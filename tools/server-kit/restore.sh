@@ -5,13 +5,16 @@
 # to <world>.replaced-<stamp>. Nothing is deleted or overwritten.
 DIR=$(cd "$(dirname "$0")" && pwd); ROOT=; ARCH=; GG_DRY=0
 while [ $# -gt 0 ]; do
+  case $1 in --root|--jar|--backup|--label|--keep|--memory-gb|--jvm-args|--timeout) [ $# -ge 2 ] || { echo "$1 needs a value." >&2; exit 2; };; esac
   case $1 in
     --backup) ARCH=$2; shift;; --dry-run) GG_DRY=1;; --root) ROOT=$2; shift;;
-    -h|--help) sed -n '2,5p' "$0"; exit 0;;
+    -h|--help) sed -n '2,/^[^#]/{/^#/p;}' "$0"; exit 0;;
     *) echo "Unknown option: $1" >&2; exit 2;;
   esac; shift
 done
 [ -n "$ARCH" ] || { echo "--backup FILE is required." >&2; exit 2; }
+# A relative --backup that exists where you ran this means that file; otherwise it is relative to the server folder.
+case $ARCH in /*) ;; *) [ ! -f "$ARCH" ] || ARCH=$(cd "$(dirname "$ARCH")" && pwd)/$(basename "$ARCH");; esac
 export GG_DRY GG_ALLOW_RUNNING=0
 . "$DIR/lib.sh"; gg_init "$DIR" "$ROOT"
 cd "$GG_ROOT" || exit 1
