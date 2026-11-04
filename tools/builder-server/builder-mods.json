@@ -50,6 +50,17 @@
       "sha512": "1cae905fe4a051a3a1c6c60d292ad7455d4564f1754b362318d7be3807b45673f4933f3a27e6cc4bc9b2fe94708daf54bd70a7c226d39e132dc48aaa356184dc",
       "side": "server",
       "note": "Library for Ledger. Server only. Pinned to the 1.10 line (Kotlin 1.9): newer builds either need Fabric Loader 0.19.5 (1.13.12+) or break Ledger 1.2.8 on shutdown (Kotlin 2.x lacks Duration.minutes)."
+    },
+    {
+      "project": "distanthorizons",
+      "version": "3.3.3-1.20.1",
+      "filename": "DistantHorizons-3.3.3-1.20.1-fabric-forge.jar",
+      "url": "https://cdn.modrinth.com/data/uCdwusMi/versions/6UnEfsRQ/DistantHorizons-3.3.3-1.20.1-fabric-forge.jar",
+      "size": 27700542,
+      "sha1": "5447c4716571bfdba817c85278a9ce0d411573ec",
+      "sha512": "2ac0a2fd34fe17bb3a3764bb53838f00595998a7e0b4bd70c5068aa9244626c6b0e622af548f97a1614dbb0b7c3df29b6d313edfc890d572dc361591c2a176c0",
+      "side": "client",
+      "note": "Distant Horizons, client only (Kort 2026-11-03): far terrain for builders on their own machine, nothing on the server. Modrinth lists 3.3.3-1.20.1 for Minecraft 1.20.1, Fabric and Forge, no declared dependencies; the pack marks it server unsupported. Not launched in game yet."
     }
   ]
 }

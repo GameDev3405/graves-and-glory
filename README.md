@@ -1,4 +1,4 @@
-> **Current state (2026-11-03):** `main` is the 0.5.0 development integration heading for 1.0.0 (a draft of the player notes is in [docs/releases/1.0.0-notes-DRAFT.md](docs/releases/1.0.0-notes-DRAFT.md)). It has five Houses, thirty troops, six commander classes, in-match levels and gear, the War Table with a six-seat lobby, the Domination, Siege and Convoy modes, the Survival mode, campaign battles 1 to 6 (battle 6 is a Siege with allied bots from all five Houses, and difficulty ramps up), bots, and the dedicated server kit. Tier II and III art is merged for all five Houses, with the House identity set and recolour (Graveborn violet, Tidecallers sea blue), the Pixabay audio cues with music and combat sounds timed to the hit, and a prewarmed troop spawn that cuts round start from about 105 ms to 29 ms. It is not a published release. Start with [docs/BOARD.md](docs/BOARD.md) for one row per task, then [docs/HANDOFF.md](docs/HANDOFF.md); [docs/BACKLOG.md](docs/BACKLOG.md), [docs/DECISIONS.md](docs/DECISIONS.md) and [docs/SETUP.md](docs/SETUP.md) are the active records. The animation rework and Kort's own map redesigns are not yet merged; historical lanes are preserved under `archive/2026-10/*` tags.
+> **Current state (2026-11-03):** `main` is the 0.5.0 development integration heading for 1.0.0 (a draft of the player notes is in [docs/releases/1.0.0-notes-DRAFT.md](docs/releases/1.0.0-notes-DRAFT.md)). It has five Houses, thirty troops, commander gear and relics, in-match levels and gear, the War Table with a six-seat lobby, the Domination, Siege and Convoy modes, the Survival mode, campaign battles 1 to 6 (battle 6 is a Siege with allied bots from all five Houses, and difficulty ramps up), bots, and the dedicated server kit. Tier II and III art is merged for all five Houses, with the House identity set and recolour (Graveborn violet, Tidecallers sea blue), the Pixabay audio cues with music and combat sounds timed to the hit, and a prewarmed troop spawn that cuts round start from about 105 ms to 29 ms. It is not a published release. Start with [docs/BOARD.md](docs/BOARD.md) for one row per task, then [docs/HANDOFF.md](docs/HANDOFF.md); [docs/BACKLOG.md](docs/BACKLOG.md), [docs/DECISIONS.md](docs/DECISIONS.md) and [docs/SETUP.md](docs/SETUP.md) are the active records. The animation rework and Kort's own map redesigns are not yet merged; historical lanes are preserved under `archive/2026-10/*` tags.
 
 
 
@@ -11,7 +11,7 @@ work. This candidate reworks the solo game: shots that fly before they land,
 lines that fight on to a last stand (nothing routs in 0.5.0), recruits deploying from held points, Easy, Normal and
 Hard bots, a guided first campaign battle and a report after every match (see
 "0.4.0 solo rework candidate" below). Version 0.5.0 adds five Houses (thirty troops), schema 2 collections that migrate
-from older camps, six commander classes, in-match levels and gear tiers with the Armoury, the War Table pages, the banner page, and the live builder server; it
+from older camps, commander gear and relics, in-match levels and gear tiers with the Armoury, the War Table pages, the banner page, and the live builder server; it
 remains a local candidate for Kort's playtest only
 (docs/PHASE-2-PLAYTEST.md). Nothing in this update has been published
 automatically.
@@ -44,7 +44,7 @@ The ten Commons of the five Houses are yours from the start. The other twenty tr
 
 Earn 80 collection gold for completing a regular match, plus 40 for victory. Practice awards 40. A match must last at least three minutes to award gold; leaving before the result earns none. A roll costs 100 gold and draws from the House you pick, by rarity: a new troop is unlocked, and a duplicate raises its stars (a duplicate of a full-star troop pays shards). A chosen buy costs 300 gold and Epics are guaranteed by pity. Houses also pay shards, Renown and Mastery after matches of three minutes or more. There are no real-money rolls. Collections and army arrangements save automatically with the Minecraft player profile and travel to friends' hosts; the host also keeps a saved copy. This is a local friends-hosted economy, not a centrally secured competitive service.
 
-Pick one of six commander classes in the war council. Heroes lead from the front: the Champion has 4 more health and his infantry within 10 blocks deal 10% more damage; the Reaver deals 2 more attack damage and respawns in 9 seconds instead of 12; the Warden's ranged troops deal 10% more damage and reach 2 blocks further. Generals run the army: the Marshal's troops train in 20% less time; the Warlock's magic troops cost 20% less gold in battle; each point the Quartermaster holds pays 2 more gold every income tick. Each class also has an active ability on the ability key (H). Dawn shield troops guard in close compact combat and support heal wounded allies. Dusk casters mark an area before a damaging slowing spell lands. Ranged attacks require line of sight.
+Your commander fights in his gear. What you wear sets your role, health, attack and armour, set bonuses and perks, and each relic slot gives an active ability on its relic key. The old class bonuses live on as gear and relics: Stand Fast, Bloodrush, Mark Prey, Rally Horn, Grave Bloom and Forward Supply. Dawn shield troops guard in close compact combat and support heal wounded allies. Dusk casters mark an area before a damaging slowing spell lands. Ranged attacks require line of sight.
 
 ## Five purposeful battlefields
 
@@ -72,7 +72,7 @@ Six-second skippable camera entrances feature the commander and army with origin
 
 ## Dark fantasy presentation
 
-The war council, collection, class selection, command controls and battlefield panels share original dark ironwork, muted gold trim and readable faction colors. Collection portraits render the actual equipped troop models. Numbered deployment slots show troop roles and weapons; tooltips identify the full unit.
+The war council, collection, gear role, command controls and battlefield panels share original dark ironwork, muted gold trim and readable faction colors. Collection portraits render the actual equipped troop models. Numbered deployment slots show troop roles and weapons; tooltips identify the full unit.
 
 Visuals & sound in the lobby lets each player choose one shader: Complementary Reimagined r5.5.1, Complementary Unbound r5.5.1, MakeUp Ultra Fast 9.5g, or shaders off. Shader changes are saved locally. Shaders begin off for reliable battle performance on a range of PCs; selecting one loads it inside the game. Complementary's pinned releases have an explicit modpack distribution grant; the latest shader versions have different distribution terms and are not silently substituted.
 
@@ -92,7 +92,7 @@ Up to eight human commanders, four per faction, each with twenty troops (160 tot
 
 ## Verification
 
-Development game runs exercise the physical lobby, paid unlocks, saved profiles, deployment editing, class bonuses, bot objectives, actual combat, client orders, rewards and all team capacities. All twelve map crossings passed with twenty actual pathfinding troops. Two local development clients joined and stayed in a running match with the graphics and animation stack installed. All three shaders ran real 4v4 entrances on this PC. Production installation and final contact-feedback checks are still being verified for this release. Mechanical tests do not establish balance or replace human playtesting. The local development authentication harness is never included in the player package.
+Development game runs exercise the physical lobby, paid unlocks, saved profiles, deployment editing, gear bonuses, bot objectives, actual combat, client orders, rewards and all team capacities. All twelve map crossings passed with twenty actual pathfinding troops. Two local development clients joined and stayed in a running match with the graphics and animation stack installed. All three shaders ran real 4v4 entrances on this PC. Production installation and final contact-feedback checks are still being verified for this release. Mechanical tests do not establish balance or replace human playtesting. The local development authentication harness is never included in the player package.
 
 ## Credits and permissions
 
@@ -110,7 +110,7 @@ Sodium: CaffeineMC, PolyForm Shield 1.0.0. Iris: IrisShaders contributors, LGPL-
 
 ## Interface and troop detail (0.3.0)
 
-Redesigned battle setup, class selection and barracks with live troop previews, readable Lato body type, and restrained brass selection states. Select a class, then confirm it. Recruitment costs and availability remain server-authoritative.
+Redesigned battle setup, gear role and barracks with live troop previews, readable Lato body type, and restrained brass selection states. Recruitment costs and availability remain server-authoritative.
 
 Armour detail uses Entity Model Features overlays from the built-in armory pack: a tabard, buckle, belt and shoulder pauldrons on player, husk, skeleton and wither skeleton models. Limits: one neutral armour set, so faction colours are not applied to these overlays; the overlays apply to every husk, skeleton and wither skeleton in a Graves and Glory world, (named troops no longer use them: in 0.5.0 troops draw their own models).
 

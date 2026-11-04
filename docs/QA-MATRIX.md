@@ -233,9 +233,51 @@ Full details are in `docs/SIX-PLAYER-TEST-PLAN.md` (Kort skipped the 3v3 baselin
 
 ---
 
+## M. Gear combat (gear replaces classes)
+
+Each row is a harness check in `GearCombatChecks` (`GRAVES_PHASE1_CHECKS=gear-combat`, id `p1-gear-combat-<name>`). Run once with the class removal (Task 7, `feat/gear-combat`).
+
+| ID | Steps | Expected | Check | Run 2026-11-04 |
+|---|---|---|---|---|
+| M1 | In battle, check the worn kit of a player with a Loadout. | Main hand, off hand and four armour pieces match the Loadout. | HARN gear-combat `p1-gear-combat-kit` | PASS 2026-11-04 (this branch, not yet a jar) |
+| M2 | Compare max health, attack and armour with the Loadout's stats. | Max health is base plus the gear bonus; attack and armour match; role shown. | HARN gear-combat `p1-gear-combat-stats` | PASS 2026-11-04 (this branch, not yet a jar) |
+| M3 | Enter a battle with nothing worn. | The starter kit of the legacy commander's role is worn instead. | HARN gear-combat `p1-gear-combat-empty` | PASS 2026-11-04 (this branch, not yet a jar) |
+| M4 | Go down twice in a battle. | Each respawn is at once; max health and stats are unchanged. | HARN gear-combat `p1-gear-combat-respawn` | PASS 2026-11-04 (this branch, not yet a jar) |
+| M5 | Wield a sweeping family and strike a troop with others beside it. | Neighbours inside the sweep radius lose the sweep share; those outside lose nothing. | HARN gear-combat `p1-gear-combat-sweep` | PASS 2026-11-04 (this branch, not yet a jar) |
+| M6 | Wield a banner family beside own and foe troops. | The command aura widens by the family's radius; troops inside gain the step, outside do not. | HARN gear-combat `p1-gear-combat-banner` | PASS 2026-11-04 (this branch, not yet a jar) |
+| M7 | Use a staff on a hurt own troop. | It heals by the family's amount and then cools down. | HARN gear-combat `p1-gear-combat-staff` | PASS 2026-11-04 (this branch, not yet a jar) |
+| M8 | Draw a bow family weapon. | It loosed after the family's draw time at the family's arrow speed. | HARN gear-combat `p1-gear-combat-bow` | PASS 2026-11-04 (this branch, not yet a jar) |
+| M9 | Raise a shield while a troop strikes it. | The block holds and the shield cools down for the family's ticks. | HARN gear-combat `p1-gear-combat-shield` | PASS 2026-11-04 (this branch, not yet a jar) |
+| M10 | Press key 2 in battle, then in camp. | Battle fires relic slot 1 and the hotbar stays; camp selects slot 1. | HARN gear-combat `p1-gear-combat-relic-keys` | PASS 2026-11-04 (this branch, not yet a jar) |
+| M11 | Seat each of the six class relics in slot 0. | Cooldown, duration, radius, range and values equal the old class numbers. | HARN gear-combat `p1-gear-combat-ported` | PASS 2026-11-04 (this branch, not yet a jar) |
+| M12 | Fire the volley relic. | The arrow count and spread speeds match the tuning row. | HARN gear-combat `p1-gear-combat-volley` | PASS 2026-11-04 (this branch, not yet a jar) |
+| M13 | Shoot with the pierce perk and without. | Arrows carry the pierce level only with the perk. | HARN gear-combat `p1-gear-combat-pierce` | PASS 2026-11-04 (this branch, not yet a jar) |
+| M14 | Use the dash relic. | Flat speed along the look equals the tuning value. | HARN gear-combat `p1-gear-combat-dash` | PASS 2026-11-04 (this branch, not yet a jar) |
+| M15 | Use the shove relic with a foe in front and one behind. | Front foe loses health, is knocked back and slowed; the one behind is untouched. | HARN gear-combat `p1-gear-combat-shove` | PASS 2026-11-04 (this branch, not yet a jar) |
+| M16 | Use the heal pulse beside a hurt troop inside and outside its radius. | Inside troops and the player heal the tuning amount; outside none. | HARN gear-combat `p1-gear-combat-heal_pulse` | PASS 2026-11-04 (this branch, not yet a jar) |
+| M17 | Use self heal hurt and at full health. | Hurt: heals the tuning amount over its duration. Full: refused. | HARN gear-combat `p1-gear-combat-self_heal` | PASS 2026-11-04 (this branch, not yet a jar) |
+| M18 | Use the war cry with troops inside and outside its radius. | Inside damage rises by the tuning factor; outside is unchanged. | HARN gear-combat `p1-gear-combat-war_cry` | PASS 2026-11-04 (this branch, not yet a jar) |
+| M19 | Ring the player with foes. | Damage taken drops by the tuning factor at the count; fewer foes give no drop. | HARN gear-combat `p1-gear-combat-surrounded_guard` | PASS 2026-11-04 (this branch, not yet a jar) |
+| M20 | Stand near foes with the taunt aura. | The tuning share of foes within the radius pick the wearer; none without it. | HARN gear-combat `p1-gear-combat-taunt_aura` | PASS 2026-11-04 (this branch, not yet a jar) |
+| M21 | Troops inside and outside the oathkeeper aura. | Inside troops get the tuning factor; outside none. | HARN gear-combat `p1-gear-combat-oathkeeper` | PASS 2026-11-04 (this branch, not yet a jar) |
+| M22 | Wear the command radius perk. | The aura is wider by the tuning amount and troops inside get the factor. | HARN gear-combat `p1-gear-combat-command_radius` | PASS 2026-11-04 (this branch, not yet a jar) |
+| M23 | Move a troop group with the formation charge. | Speed modifier is applied while grouped and gone when apart or after; the first blow gets the step. | HARN gear-combat `p1-gear-combat-formation_charge` | PASS 2026-11-04 (this branch, not yet a jar) |
+| M24 | Stand a second inside the heal over time radius. | Heals the tuning amount per second inside; nothing outside. | HARN gear-combat `p1-gear-combat-heal_over_time` | PASS 2026-11-04 (this branch, not yet a jar) |
+| M25 | Slow troops inside and outside the cleanse radius. | Inside slows are cleansed on schedule, the wearer's too; outside slows stay. | HARN gear-combat `p1-gear-combat-cleanse` | PASS 2026-11-04 (this branch, not yet a jar) |
+| M26 | Move with and without a foe near. | Speed rises by the tuning factor only with no foe within the radius. | HARN gear-combat `p1-gear-combat-trailblazer` | PASS 2026-11-04 (this branch, not yet a jar) |
+| M27 | Hit whoever last hurt his troop. | Damage is the tuning factor higher on that foe only. | HARN gear-combat `p1-gear-combat-grudge` | PASS 2026-11-04 (this branch, not yet a jar) |
+| M28 | Fight below and above the health threshold. | Damage is the tuning factor higher below the threshold. | HARN gear-combat `p1-gear-combat-last_light` | PASS 2026-11-04 (this branch, not yet a jar) |
+| M29 | Shoot from far and near. | A far shot does the tuning factor more than a near one. | HARN gear-combat `p1-gear-combat-hawkeye` | PASS 2026-11-04 (this branch, not yet a jar) |
+| M30 | Draw a bow for 20 ticks with and without the perk. | The draw reads the faster value with the perk. | HARN gear-combat `p1-gear-combat-draw_speed` | PASS 2026-11-04 (this branch, not yet a jar) |
+| M31 | Seat a relic with and without the quickened perk. | Cooldown is the tuning factor shorter with it; plain cooldown unchanged. | HARN gear-combat `p1-gear-combat-quickened_relic` | PASS 2026-11-04 (this branch, not yet a jar) |
+| M32 | Take a downing blow with the second chance perk. | The first blow leaves the tuning health and the wearer lives; the second downs him. | HARN gear-combat `p1-gear-combat-second_chance` | PASS 2026-11-04 (this branch, not yet a jar) |
+| M33 | Run `GRAVES_PHASE1_CHECKS=gear-combat` once on the candidate jar. | Every row above reports PASS, no FAIL line. | HARN gear-combat `p1-gear-combat-suite` | PASS 2026-11-04 (this branch, not yet a jar) |
+
+---
+
 ## Counts
 
-Rows: A 8, B 10, C 14, D 22, E 11, F 8, G 12, H 11, I 14, J 9, K 14, L 4 = 137.
+Rows: A 8, B 10, C 14, D 22, E 11, F 8, G 12, H 11, I 14, J 9, K 14, L 4, M 33 = 170.
 
 By primary tag: 80 rows are covered by an existing AUTO or HARN check, 17 are LATER, 36 are MANUAL, and 9 rows carry a GAP note (the tags overlap, so these do not sum to 137; four rows are mixed or note-only).
 

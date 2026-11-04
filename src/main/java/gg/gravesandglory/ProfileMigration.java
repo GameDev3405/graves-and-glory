@@ -123,10 +123,29 @@ public final class ProfileMigration {
     }
 
     /**
-     * Upgrades one profile file in place when it is below schema 3, and returns the new profile; returns null when the file is already
-     * schema 3 or later. The file's schema is read first (parse: a file with no schema field reads 0, meaning 1). Schema 1 runs toV2 and
-     * then v2toV3; schema 2 is read whole (parseV2) and runs v2toV3. The original bytes are kept once as <uuid>.v1.json or <uuid>.v2.json
-     * by the schema they hold, and a schema-1 file also keeps its schema-2 image once as <uuid>.v2.json; an existing copy is never
+     * Schema 3 to 4 (commander gear spec), in place, and returns the same profile: forgeMarks and gearPity start at 0, inventorySize at the
+     * Forge's start size, and the starter set of the commander's role is granted once (only when the profile holds no gear yet, so a
+     * second run adds nothing). Every schema-3 field is kept as it is; the class refund is 0. Sets schema 4.
+     */
+    static Profile v3toV4(Profile p) {
+        p.forgeMarks = 0;
+        p.gearPity = 0;
+        p.inventorySize = Spec.FORGE[0].startSlots();
+        if (p.gear == null) p.gear = new ArrayList<>();
+        if (p.equipped == null) p.equipped = new LinkedHashMap<>();
+        if (p.relics == null) p.relics = new LinkedHashSet<>();
+        if (p.relicSlots == null) p.relicSlots = new ArrayList<>(List.of("", "", ""));
+        if (p.gear.isEmpty()) Gear.grantStarter(p);
+        p.schema = 4;
+        return p;
+    }
+
+    /**
+     * Upgrades one profile file in place when it is below schema 4, and returns the new profile; returns null when the file is already
+     * schema 4 or later. The file's schema is read first (parse: a file with no schema field reads 0, meaning 1). Schema 1 runs toV2,
+     * v2toV3 and then v3toV4; schema 2 is read whole (parseV2) and runs v2toV3 and v3toV4; schema 3 is read whole and runs v3toV4. The
+     * original bytes are kept once as <uuid>.v1.json, .v2.json or .v3.json by the schema they hold, and each intermediate image is kept
+     * once too (a schema-1 file also keeps its schema-2 and schema-3 images, a schema-2 file its schema-3 image); an existing copy is never
      * replaced. The new file is written to <uuid>.tmp and moved over the original. A parse failure throws IllegalStateException and
      * touches no file. The caller sanitizes the result.
      */
@@ -138,7 +157,7 @@ public final class ProfileMigration {
         try {
             v1 = parse.apply(source);
             if (v1 == null) throw new IllegalStateException("Commander profile is empty; it was left unchanged: " + file.getFileName());
-            if (v1.schema >= 3) return null;
+            if (v1.schema >= 4) return null;
             p = v1.schema >= 2 ? parseV2.apply(source) : null;
         } catch (IllegalStateException e) {
             throw e;
@@ -146,18 +165,25 @@ public final class ProfileMigration {
             throw new IllegalStateException("Commander profile could not be read; it was left unchanged: " + file.getFileName(), e);
         }
         String name = file.getFileName().toString(), stem = name.endsWith(".json") ? name.substring(0, name.length() - 5) : name;
-        Path v1Backup = file.resolveSibling(stem + ".v1.json"), v2Backup = file.resolveSibling(stem + ".v2.json"), tmp = file.resolveSibling(stem + ".tmp");
-        byte[] v2Bytes;
-        if (v1.schema < 2) {
+        Path v1Backup = file.resolveSibling(stem + ".v1.json"), v2Backup = file.resolveSibling(stem + ".v2.json"), v3Backup = file.resolveSibling(stem + ".v3.json"), tmp = file.resolveSibling(stem + ".tmp");
+        int schema = Math.max(1, v1.schema);
+        byte[] v2Bytes = null, v3Bytes = null;
+        if (schema < 2) {
             p = toV2(v1, c);
             v2Bytes = write.apply(p).getBytes(StandardCharsets.UTF_8);
         } else {
             if (p == null) throw new IllegalStateException("Commander profile is empty; it was left unchanged: " + file.getFileName());
-            v2Bytes = original;
+            if (schema == 2) v2Bytes = original;
         }
-        String text = write.apply(v2toV3(p, Spec.CAMPAIGNBATTLES));
-        if (v1.schema < 2 && !Files.exists(v1Backup)) Files.write(v1Backup, original, StandardOpenOption.CREATE_NEW);
-        if (!Files.exists(v2Backup)) Files.write(v2Backup, v2Bytes, StandardOpenOption.CREATE_NEW);
+        if (schema < 3) {
+            v3Bytes = write.apply(v2toV3(p, Spec.CAMPAIGNBATTLES)).getBytes(StandardCharsets.UTF_8);
+        } else {
+            v3Bytes = original;
+        }
+        String text = write.apply(v3toV4(p));
+        if (schema < 2 && !Files.exists(v1Backup)) Files.write(v1Backup, original, StandardOpenOption.CREATE_NEW);
+        if (v2Bytes != null && !Files.exists(v2Backup)) Files.write(v2Backup, v2Bytes, StandardOpenOption.CREATE_NEW);
+        if (!Files.exists(v3Backup)) Files.write(v3Backup, v3Bytes, StandardOpenOption.CREATE_NEW);
         Files.writeString(tmp, text);
         try {
             Files.move(tmp, file, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
@@ -165,5 +191,14 @@ public final class ProfileMigration {
             Files.move(tmp, file, StandardCopyOption.REPLACE_EXISTING);
         }
         return p;
+    }
+
+    /**
+     * Writes a profile through SafeFiles.writeWithBackup unless it came from a newer build (Profile.readOnly): then nothing is written, so the
+     * newer file, its backup and everything beside it stay as they are. The caller's in-memory changes last only for the session.
+     */
+    static void saveProfile(Profile p, java.nio.file.Path file, String json) throws java.io.IOException {
+        if (p.readOnly) return;
+        SafeFiles.writeWithBackup(file, json);
     }
 }
