@@ -220,7 +220,8 @@ if 'survival' in mode_ids:
     for r in data['botCommand']:
         if r['waveScale']<=0 or r['waveTraitTier'] not in range(0,4): errors.append(f'botCommand/{r["id"]}: waveScale above 0 and waveTraitTier 0..3')
 groups={g['id'] for g in data.get('groups',[])}
-orders={o['id'] for o in data['orders']}
+orderRows={o['id']:o for o in data['orders']}
+orders=set(orderRows)
 for t in data['troops']:
     if t.get('group') not in groups: errors.append(t['id']+': group does not resolve')
 for row in data.get('commandInterface',[]):
@@ -228,6 +229,15 @@ for row in data.get('commandInterface',[]):
         if group not in groups: errors.append('command selection does not resolve: '+group)
     for order in row['orders'].split(','):
         if order not in orders: errors.append('command order does not resolve: '+order)
+        elif order!='hold' and not orderRows[order]['playerFacing']: errors.append(f'commandInterface/{row["id"]}: order {order} is not playerFacing (only hold may be listed without it)')
+    if not 0<=row['pennantAlpha']<=1: errors.append(f'commandInterface/{row["id"]}: pennantAlpha {row["pennantAlpha"]} must be between 0 and 1')
+    if row['panelSlideTicks']<0: errors.append(f'commandInterface/{row["id"]}: panelSlideTicks cannot be negative')
+for f in data['formations']:
+    if not 0<f['moveMultiplier']<=1.5: errors.append(f'formations/{f["id"]}: moveMultiplier {f["moveMultiplier"]} must be above 0 and at most 1.5')
+    if not 0<=f['arrowBlock']<=1: errors.append(f'formations/{f["id"]}: arrowBlock {f["arrowBlock"]} must be between 0 and 1')
+    if f['shove']<0: errors.append(f'formations/{f["id"]}: shove cannot be negative')
+if sorted(g['pill'] for g in data.get('groups',[]))!=list(range(1,len(data.get('groups',[]))+1)): errors.append('groups: pill must run 1, 2, 3 and on, each once')
+if data['combatDiscipline'][0]['chargeBonusMultiplier']<1: errors.append('combatDiscipline: chargeBonusMultiplier must be at least 1')
 # Troop textures. A gravesandglory: path must exist in the mod's assets. A minecraft: path must be one of VANILLA_TEXTURES, the
 # vanilla paths the sheet may name, each checked by hand against the Minecraft client jar of build.gradle (1.20.1); when Loom has
 # cached that jar (after the first build) the path must also be an entry of it, so a misspelled or renamed vanilla texture fails
