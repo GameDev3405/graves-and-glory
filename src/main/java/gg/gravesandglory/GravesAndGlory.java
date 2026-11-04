@@ -50,6 +50,8 @@ public final class GravesAndGlory implements ModInitializer {
     public static final Identifier STANCE = new Identifier("gravesandglory", "stance_v1");
     /** S2C battle event feed lines (FeedEvents): kind, the event's team, text. */
     public static final Identifier FEED = new Identifier("gravesandglory", "feed_v1");
+    /** Server to client: the commander's gear as one GearWire string, sent when it changes (kept out of the camp snapshot, which has a client size limit). */
+    public static final Identifier GEAR = new Identifier("gravesandglory", "gear_v1");
     public static Battle battle;
     public static final Spec.RulesRow R = Spec.RULES[0];
     @Override public void onInitialize() {
@@ -1204,6 +1206,7 @@ public final class GravesAndGlory implements ModInitializer {
                 b.writeInt(mode.clock(this));
                 var memory=s==null?Map.<UUID,Sight>of():sightings.getOrDefault(s.team,Map.of());b.writeInt(memory.size());for(var sight:memory.values()){b.writeFloat(sight.x);b.writeFloat(sight.z);b.writeInt((int)(time-sight.seen));}
                 b.writeString(campaign.snapshot(p));
+                campaign.syncGear(p); // its own gear_v1 packet, never part of this STATE buffer
                 // Added in state_v8, after the Phase 1 fields: the side id each team flies, this army's House tiers (count, then House and tier), and the commander ability of a seated squad (its class's active id, ticks until ready, ticks left active; ready is -1 while this build has no behaviour for that active, and the fields are "", 0, 0 for anyone unseated).
                 b.writeString(side(0).id());b.writeString(side(1).id());
                 Map<String,Integer> tiers=s==null?Map.of():s.traits;b.writeByte(tiers.size());for(var tier:tiers.entrySet()){b.writeString(tier.getKey());b.writeByte(tier.getValue());}

@@ -14,6 +14,8 @@ import java.nio.file.*;
 /** Portable local collection and a temporary, skippable camera introduction. */
 public final class CampaignClient {
     static Profile profile=new Profile();
+    /** The commander's gear from the last gear_v1 packet, or null before the first (GearWire.decode). */
+    static GearWire.View gear=null;
     /** The side row ids the two teams fly (from the snapshot "sides"): team 0 first. */
     static String[] sides={"gold","violet"};
     /** The banner this commander fields (snapshot "banner"): the battle banner while seated in a running battle, else the profile banner. */

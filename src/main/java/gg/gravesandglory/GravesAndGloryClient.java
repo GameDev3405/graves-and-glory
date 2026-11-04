@@ -80,6 +80,7 @@ public final class GravesAndGloryClient implements ClientModInitializer {
         // Optional launcher integration. Ordinary installs need no runtime directory.
         launcherContext=Files.isRegularFile(runtime.resolve("melty.properties"));
         if(launcherContext)try{Files.writeString(runtime.resolve("melty.log"),"");Properties props=new Properties();try(var in=Files.newInputStream(runtime.resolve("melty.properties"))){props.load(in);}join=props.getProperty("join","").trim();}catch(Exception e){System.err.println("[Graves and Glory] Optional launcher invitation could not be read: "+e.getMessage());}
+        ClientPlayNetworking.registerGlobalReceiver(GravesAndGlory.GEAR,(client,handler,buf,responder)->{String text=buf.readString(GearWire.LIMIT);client.execute(()->CampaignClient.gear=GearWire.decode(text));});
         ClientPlayNetworking.registerGlobalReceiver(GravesAndGlory.CAMP,(client,handler,buf,responder)->{String page=buf.readString(32);client.execute(()->CampScreen.open(page));});
         ClientPlayNetworking.registerGlobalReceiver(GravesAndGlory.OPEN_BARRACKS,(client,handler,buf,responder)->client.execute(()->client.setScreen(running?new BarracksScreen():new LobbyScreen())));
         ClientPlayNetworking.registerGlobalReceiver(GravesAndGlory.PARTY,(client,handler,buf,responder)->client.execute(()->client.setScreen(new LobbyScreen(3))));

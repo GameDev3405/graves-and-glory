@@ -47,6 +47,16 @@ public final class Campaign {
     /** AI armies that fell back stay there until rallied, so they do not walk back into the fight. */
     final Set<UUID> botRetreating=new HashSet<>();
     final Map<UUID,String> notices=new HashMap<>();
+    /** The last gear_v1 string each player was sent, so the packet goes out only when it changes. */
+    final Map<UUID,String> gearSent=new HashMap<>();
+    void syncGear(ServerPlayerEntity p){
+        if(!net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking.canSend(p,GravesAndGlory.GEAR))return;
+        String text=GearWire.encode(profile(p.getUuid()));
+        if(text.equals(gearSent.get(p.getUuid())))return;
+        var packet=net.fabricmc.fabric.api.networking.v1.PacketByteBufs.create();packet.writeString(text,GearWire.LIMIT);
+        net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking.send(p,GravesAndGlory.GEAR,packet);
+        gearSent.put(p.getUuid(),text);
+    }
     /** How many notices each player has been sent; the snapshot carries it so a client can tell a notice sent again from one it has already shown. */
     final Map<UUID,Integer> noticeSerials=new HashMap<>();
     /**
@@ -190,7 +200,7 @@ public final class Campaign {
         if(ArenaAutosave.settle()&&b.server.isRunning()){long at=System.nanoTime();b.server.saveAll(true,false,false);System.out.println("[Graves and Glory] Saved the world after the battle ("+(System.nanoTime()-at)/1_000_000+" ms).");}
     }
     /** Leaving frees the pad, any seat in a custom lobby, and invitations to it, and forgets which snapshot forms were logged for him. */
-    void left(UUID id){onPad.remove(id);padRefused.remove(id);leaveParty(id);snapshotForms.remove(id);notices.remove(id);noticeAt.remove(id);} // his notice entries go with him, a standing line's too (expireNotices never drops those)
+    void left(UUID id){gearSent.remove(id);onPad.remove(id);padRefused.remove(id);leaveParty(id);snapshotForms.remove(id);notices.remove(id);noticeAt.remove(id);} // his notice entries go with him, a standing line's too (expireNotices never drops those)
     boolean handle(ServerPlayerEntity p,String cmd){
         if(cmd.startsWith("social:"))return socialCommand(p,cmd);
         if(cmd.startsWith("progress:"))return progressCommand(p,cmd);
@@ -924,7 +934,7 @@ public final class Campaign {
     /** The banner a commander fields: his battle banner while he is seated in a running battle, else his profile banner. */
     JsonArray bannerJson(UUID id){var s=b.squads.get(id);List<String> shown=b.running&&s!=null&&s.seated?s.banner:profile(id).banner;JsonArray out=new JsonArray();for(String entry:shown)out.add(entry);return out;}
     /** The client's copy of a profile: match ids stay on the server. They only stop one match paying twice, and 256 of them (94 characters a match across both copies) would outgrow SNAPSHOT_LIMIT. */
-    static JsonObject forClient(Profile p){JsonObject j=JSON.toJsonTree(p).getAsJsonObject();var s=j.getAsJsonObject(Profile.PROGRESSION);if(s!=null)s.remove(Progression.State.MATCH_GRANTS);return j;}
+    static JsonObject forClient(Profile p){JsonObject j=JSON.toJsonTree(p).getAsJsonObject();var s=j.getAsJsonObject(Profile.PROGRESSION);if(s!=null)s.remove(Progression.State.MATCH_GRANTS);j.remove(Profile.GEAR);return j;} // the gear list travels on gear_v1 (GearWire), never in the camp snapshot
     static JsonObject forClient(Progression.State s){JsonObject j=JSON.toJsonTree(s).getAsJsonObject();j.remove(Progression.State.MATCH_GRANTS);return j;}
     /** The snapshot as sent: pretty when it fits SNAPSHOT_LIMIT, else compact, else compact without the battle report, else "{}" (the client then keeps its last camp state). Each shortened form is logged the first time a commander is sent it. */
     String fitted(JsonObject j,UUID id){
