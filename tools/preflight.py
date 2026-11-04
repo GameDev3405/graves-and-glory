@@ -701,6 +701,71 @@ for h in house_land:
     if h['replaces']!='-': errors.append(f'landmarks/{h["id"]}: replaces is {h["replaces"]!r}, a house replaces nothing (-)')
     if h['encloses']!='-': errors.append(f'landmarks/{h["id"]}: encloses is {h["encloses"]!r}, a house encloses nothing (-)')
     if used.count(h['id'])!=1: errors.append(f'landmarks/{h["id"]}: {used.count(h["id"])} supplyHouses rows name this house, there must be one')
+# Commander gear (gear foundation plan Task 1): the catalogue is data, so every name, number and link between the gear tables is checked here.
+GEAR_RARITIES=['common','uncommon','rare','epic','legendary']
+GEAR_ARMOUR=['helm','chest','legs','boots']
+GEAR_STATS=['health','damage','armour','speed','ranged','healing','command']
+GEAR_ID=re.compile(r'[a-z0-9_]{1,24}')
+rarity_rows=data.get('gearRarities',[])
+if [r['id'] for r in rarity_rows]!=GEAR_RARITIES: errors.append(f'gearRarities: the ids must be exactly {", ".join(GEAR_RARITIES)}, in that order')
+for i,r in enumerate(rarity_rows):
+    rid=f'gearRarities/{r["id"]}'
+    if not (0<r['statMin']<=r['statMax']): errors.append(f'{rid}/statMin: needs 0 < statMin <= statMax, got {r["statMin"]} and {r["statMax"]}')
+    if not (0<r['breakdownPct']<=1): errors.append(f'{rid}/breakdownPct: {r["breakdownPct"]} is outside (0, 1]')
+    if r['power']<1: errors.append(f'{rid}/power: {r["power"]} is below 1')
+    if r['rollWeight']<=0: errors.append(f'{rid}/rollWeight: {r["rollWeight"]} must be above 0')
+    if not re.fullmatch(r'#[0-9a-f]{6}',str(r['border'])): errors.append(f'{rid}/border: {r["border"]!r} is not #rrggbb in lower case')
+    if i:
+        before=rarity_rows[i-1]
+        for col in ('statMin','statMax','breakdownPct','power'):
+            if r[col]<=before[col]: errors.append(f'{rid}/{col}: {r[col]} does not rise above {before["id"]} ({before[col]})')
+set_rows=data.get('gearSets',[])
+set_ids={s['id'] for s in set_rows}
+item_rows=data.get('gearItems',[])
+items_by_id={i['id']:i for i in item_rows}
+for it in item_rows:
+    iid=f'gearItems/{it["id"]}'
+    if not GEAR_ID.fullmatch(str(it['id'])): errors.append(f'{iid}/id: {it["id"]!r} is not 1 to 24 characters of [a-z0-9_]')
+    if it['slot'] not in GEAR_ARMOUR+['main','off']: errors.append(f'{iid}/slot: {it["slot"]!r} is not one of {", ".join(GEAR_ARMOUR+["main","off"])}')
+    for col in GEAR_STATS:
+        if it[col]<0: errors.append(f'{iid}/{col}: {it[col]} is negative')
+    if it['slot'] in GEAR_ARMOUR:
+        if it['set'] not in set_ids: errors.append(f'{iid}/set: {it["set"]!r} is not a gearSets id')
+        if it['hands']!=1: errors.append(f'{iid}/hands: an armour piece has hands 1, got {it["hands"]}')
+    else:
+        if it['set']!='-': errors.append(f'{iid}/set: a weapon belongs to no set, so set must be -')
+        if it['hands'] not in (1,2): errors.append(f'{iid}/hands: {it["hands"]} is not 1 or 2')
+        elif it['hands']==2 and it['slot']!='main': errors.append(f'{iid}/hands: only a main-hand item can have hands 2')
+for s in set_rows:
+    for slot in GEAR_ARMOUR:
+        n=sum(1 for it in item_rows if it['set']==s['id'] and it['slot']==slot)
+        if n!=1: errors.append(f'gearSets/{s["id"]}: set {s["id"]} has {n} {slot} pieces in gearItems, it needs exactly one')
+    sid=f'gearSets/{s["id"]}'
+    main=items_by_id.get(s['starterMain'])
+    if main is None or main['slot']!='main': errors.append(f'{sid}/starterMain: {s["starterMain"]!r} is not a main-hand gearItems id')
+    if s['starterOff']!='-':
+        off=items_by_id.get(s['starterOff'])
+        if off is None or off['slot']!='off': errors.append(f'{sid}/starterOff: {s["starterOff"]!r} is not - or an off-hand gearItems id')
+    if main is not None and main['hands']==2 and s['starterOff']!='-': errors.append(f'{sid}/starterOff: the starter main {s["starterMain"]} is two-handed, so starterOff must be -')
+relic_rows=data.get('relics',[])
+for r in relic_rows:
+    rid=f'relics/{r["id"]}'
+    if not GEAR_ID.fullmatch(str(r['id'])): errors.append(f'{rid}/id: {r["id"]!r} is not 1 to 24 characters of [a-z0-9_]')
+    if r['cooldownTicks']<=0: errors.append(f'{rid}/cooldownTicks: {r["cooldownTicks"]} must be above 0')
+    if r['role'] not in set_ids: errors.append(f'{rid}/role: {r["role"]!r} is not a gearSets id')
+if 'classes' in data:
+    for c in data['classes']:
+        n=sum(1 for s in set_rows if c['id'] in str(s['classes']).split(','))
+        if n!=1: errors.append(f'gearSets: class {c["id"]} appears in {n} classes lists, it needs exactly one')
+        n=sum(1 for r in relic_rows if r['fromClass']==c['id'])
+        if n!=1: errors.append(f'relics: class {c["id"]} is the fromClass of {n} relics, it needs exactly one')
+for f in data.get('forge',[]):
+    fid=f'forge/{f["id"]}'
+    if f['maxSlots']<f['startSlots'] or f['rowSlots']<1 or (f['maxSlots']-f['startSlots'])%f['rowSlots']!=0: errors.append(f'{fid}/maxSlots: {f["maxSlots"]} is not startSlots {f["startSlots"]} plus a whole number of rows of {f["rowSlots"]}')
+    if f['pity']<1: errors.append(f'{fid}/pity: {f["pity"]} is below 1')
+    if f['relicSlots']!=3: errors.append(f'{fid}/relicSlots: {f["relicSlots"]} must be 3')
+    if not (0<=f['starterQuality']<=100): errors.append(f'{fid}/starterQuality: {f["starterQuality"]} is outside 0 to 100')
+    if not (0<f['brokenStatPct']<=1): errors.append(f'{fid}/brokenStatPct: {f["brokenStatPct"]} is outside (0, 1]')
 if errors:
     print('\n'.join(errors)); sys.exit(1)
 def typ(v): return 'boolean' if isinstance(v,bool) else 'int' if isinstance(v,int) else 'double' if isinstance(v,float) else 'String'
