@@ -5055,7 +5055,8 @@ public final class Phase2Checks implements ClientModInitializer {
         final boolean tiers;
         /** The t3 mode (suite t3): the texel-3 trial's distance and card shots. */
         final boolean t3;
-        static final double DIST=3,EYE=1.2,CLOSE=2.0,PARK=24;
+        /** Review r2: the turn camera distance (GRAVES_PHASE2_TURN_DIST, blocks; 3 unless set), so a tall troop and its weapon stay in frame. */
+        static final double DIST=Double.parseDouble(Optional.ofNullable(System.getenv("GRAVES_PHASE2_TURN_DIST")).filter(v->!v.isBlank()).orElse("3")),EYE=1.2,CLOSE=2.0,PARK=24;
         /** The t3 mode: the LOD shots' distances (blocks), the shimmer set's steps (count, blocks), the floor's half width (a camera 36 blocks out on the diagonal stands over it) and the two card sizes (px a block: 19 and 80 are what DepthCards uses for the 36 px and 160 px portraits). */
         static final int[] T3_LOD={12,16,24,36};
         static final int T3_STEPS=8,T3_HALF=30,T3_SMALL=19,T3_LARGE=80;
@@ -5161,7 +5162,8 @@ public final class Phase2Checks implements ClientModInitializer {
                     String stance=row!=null&&row.ranged()?"aim":"guard";if(!magic)poses.add(new Object[]{"guard",stance,0f});
                     for(String a:TURN_ATTACKS){
                         String clip=a.equals("attack")&&magic?"cast":a;boolean alias=clip.equals("attack")||clip.equals("cast");
-                        if(tm==null||TroopMotion.resolve(tm,clip)==null)continue;
+                        // anim review 2026-11-04 section 0: never shoot a stand-in for a missing attack; say NO CLIP and fail the suite
+                        if(tm==null||TroopMotion.resolve(tm,clip)==null){String why="NO CLIP: "+t+" ("+(row==null?"?":row.family())+") has no clip for "+clip;System.out.println("[p2] "+why);bad.add(why);continue;}
                         String pre=alias?"":(row!=null&&clip.startsWith(row.family()+"_")?clip.substring(row.family().length()+1):clip)+"_";
                         float imp=Anim.shotTime(tm,clip);
                         poses.add(new Object[]{pre+"windup",stance+"+"+clip,windup(tm,clip,imp)});

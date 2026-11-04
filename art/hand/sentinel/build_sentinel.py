@@ -316,8 +316,8 @@ def bones():
         inner = 3 if side == "right" else 0
         for st, g in (([1, 2], 1), ([3], 3)):
             B.append(Bone(f"{side}_skirt_t{g}", f"{side}_leg", team=True, stages=st, boxes=[
-                Box((-2, 0, -2.45), (4, 8, 0), ("flap", g, inner), sheet="cloth"),
-                Box((-2, 0, 2.45), (4, 7, 0), ("flap", g, 3 - inner), sheet="cloth")]))   # the back flap ends at y7, clear of the knee
+                Box((-2, 0, -2.45), (4, 6, 0), ("flap", g, inner), sheet="cloth"),
+                Box((-2, 0, 2.45), (4, 6, 0), ("flap", g, 3 - inner), sheet="cloth")]))   # both flaps end at the knee hinge (y6)
     return B
 
 def cloth_painter(spec, side):
