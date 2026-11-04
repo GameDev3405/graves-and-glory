@@ -177,7 +177,7 @@
    "boxes": [
     {
      "origin": [
-      -5.0,
+      -5.199999999999999,
       -4.0,
       -2.0
      ],
@@ -222,7 +222,7 @@
    "boxes": [
     {
      "origin": [
-      2.0,
+      2.1999999999999993,
       -4.0,
       -2.0
      ],
@@ -737,8 +737,8 @@
       3.0
      ],
      "uv": [
-      48,
-      55
+      0,
+      60
      ],
      "mirror": false,
      "dilation": [
@@ -784,8 +784,8 @@
       3.0
      ],
      "uv": [
-      56,
-      55
+      8,
+      60
      ],
      "mirror": false,
      "dilation": [
@@ -831,14 +831,14 @@
       2.0
      ],
      "uv": [
-      0,
+      16,
       60
      ],
      "mirror": false,
      "dilation": [
-      0.0,
-      0.0,
-      0.0
+      0.04,
+      0.04,
+      0.04
      ]
     }
    ]
@@ -878,14 +878,14 @@
       2.0
      ],
      "uv": [
-      6,
+      22,
       60
      ],
      "mirror": false,
      "dilation": [
-      0.0,
-      0.0,
-      0.0
+      0.04,
+      0.04,
+      0.04
      ]
     }
    ]
@@ -1020,7 +1020,195 @@
       1.0
      ],
      "uv": [
-      12,
+      28,
+      60
+     ],
+     "mirror": false,
+     "dilation": [
+      0.0,
+      0.0,
+      0.0
+     ]
+    }
+   ]
+  },
+  {
+   "name": "wing_out_r",
+   "parent": "right_arm",
+   "team": false,
+   "tag": "chest",
+   "stages": [
+    5
+   ],
+   "sheet": [
+    64,
+    64
+   ],
+   "pivot": [
+    0,
+    0,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "boxes": [
+    {
+     "origin": [
+      -6.0,
+      -6.5,
+      0.5
+     ],
+     "size": [
+      1.0,
+      3.0,
+      2.0
+     ],
+     "uv": [
+      48,
+      55
+     ],
+     "mirror": false,
+     "dilation": [
+      0.0,
+      0.0,
+      0.0
+     ]
+    }
+   ]
+  },
+  {
+   "name": "wing_out_l",
+   "parent": "left_arm",
+   "team": false,
+   "tag": "chest",
+   "stages": [
+    5
+   ],
+   "sheet": [
+    64,
+    64
+   ],
+   "pivot": [
+    0,
+    0,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "boxes": [
+    {
+     "origin": [
+      5.0,
+      -6.5,
+      0.5
+     ],
+     "size": [
+      1.0,
+      3.0,
+      2.0
+     ],
+     "uv": [
+      54,
+      55
+     ],
+     "mirror": false,
+     "dilation": [
+      0.0,
+      0.0,
+      0.0
+     ]
+    }
+   ]
+  },
+  {
+   "name": "wing4_r",
+   "parent": "right_arm",
+   "team": false,
+   "tag": "chest",
+   "stages": [
+    5
+   ],
+   "sheet": [
+    64,
+    64
+   ],
+   "pivot": [
+    0,
+    0,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "boxes": [
+    {
+     "origin": [
+      -5.0,
+      -8.5,
+      1.5
+     ],
+     "size": [
+      1.0,
+      1.0,
+      1.0
+     ],
+     "uv": [
+      44,
+      60
+     ],
+     "mirror": false,
+     "dilation": [
+      0.0,
+      0.0,
+      0.0
+     ]
+    }
+   ]
+  },
+  {
+   "name": "wing4_l",
+   "parent": "left_arm",
+   "team": false,
+   "tag": "chest",
+   "stages": [
+    5
+   ],
+   "sheet": [
+    64,
+    64
+   ],
+   "pivot": [
+    0,
+    0,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "boxes": [
+    {
+     "origin": [
+      4.0,
+      -8.5,
+      1.5
+     ],
+     "size": [
+      1.0,
+      1.0,
+      1.0
+     ],
+     "uv": [
+      48,
       60
      ],
      "mirror": false,

@@ -48,7 +48,6 @@ class GearArt(unittest.TestCase):
             with open(os.path.join(d, f)) as h: j = json.load(h)
             for b in j["bones"]:
                 if b["parent"] != "body" or any(b["rotation"]): continue
-                if f[:-5] in art_only() and b.get("stages") == [5]: continue   # Forgewall's approved Legendary smokestacks rise behind the helm
                 for x in b["boxes"]:
                     lo = b["pivot"][1] + x["origin"][1]
                     self.assertTrue(-8 <= lo and lo + x["size"][1] <= 26, (f, b["name"], lo))   # embers rise a little over the shoulders
@@ -111,12 +110,12 @@ class GearArt(unittest.TestCase):
                                 self.assertFalse(abs(pa_ - pb_) < 1e-6, (pa.item_id, pb.item_id, ax, pa_))
 
     def test_house_sets_clean(self):
-        """House sets (art only): no coplanar faces anywhere, nothing above the shoulder band in the head at rest."""
+        """House sets (art only): no coplanar faces anywhere, and nothing over the shoulder band cuts into the head or helm
+        at rest or with the head turned up to 50 degrees either way (houseclear.YAWS)."""
         import houselib, houseclear
         for name in houselib.ORDER:
             self.assertEqual(houselib.coplanar(name), [], name)
-            rest = houseclear.clashes(name, yaws=(0,))
-            self.assertEqual(rest, [], name)
+            self.assertEqual(houseclear.clashes(name), [], name)
 
     def test_legendary_silhouette_grows(self):
         by_set = {}
@@ -126,7 +125,7 @@ class GearArt(unittest.TestCase):
             img = render.render(bones, vis, sheets, yaw, 0, px=2)
             return sum(1 for px in pixels(img) if px != gearlib.BG)
         for s, ps in by_set.items():
-            grow = 1.0 if ps[0].item_id in art_only() else 1.06   # House sets keep the shapes Kort approved on 11-04
+            grow = 1.06   # the Legendary rule holds for the House sets too
             for yaw in (0, -90):
                 self.assertGreater(area(ps, 5, yaw), grow * area(ps, 1, yaw), (s, yaw))
 

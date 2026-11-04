@@ -68,8 +68,44 @@ LOWER = {
                       "skull_horn_front": 1.0},
 }
 
+# Head clearance with the head turned (houseclear.YAWS, up to 50 degrees): a turned helm sweeps a circle of its corner
+# radius (about 7.1 px, 7.8 under Barrow Warden's hood), so shoulder gear over the band moves out past it by (dx, dz) px
+# in source space; a _r entry mirrors onto its _l box. Forgewall's smokestacks also drop 2 px (LOWER) so their mouths
+# sit under the helm's top, and stand 2 px further back, clear of the turned helm.
+SHIFT = {
+    "barrow_warden": {"skull_horn_back": (1.5, 0), "skull_horn_tip": (1.5, 0), "skull_horn_front": (1.5, 0),
+                      "spaulder_spike_0": (-1.0, 0), "spaulder_spike_1": (-1.0, 0), "spaulder_spike_2": (-1.0, 0)},
+    "thornhide": {"pad_spike_a": (2.0, 0)},
+    "forgewall": {"stack_r": (0, 2.0)},
+    "tidewrought": {"coral_stem_r": (2.0, 0), "coral_out_r": (2.0, 0), "coral_in_r": (2.0, 0), "coral_back_r": (2.0, 0)},
+}
+LOWER["forgewall"].update({"stack_r": 2.0, "stack_l": 2.0})
+
+# Legendary silhouette (the 1.06 rule, test_legendary_silhouette_grows: Legendary covers over 6% more of the front and
+# side views than Common). Legendary-only boxes added to the source, each a copy of a source box (its painters, tier,
+# slot and bone) at a new (from, size); a _r box gets its mirror.
+EXTRA = {
+    "oathbound": [("wing_out_r", "wing1_r", (10, 25.5, 0.5), (1, 3, 2)),      # an outer feather row on each wing
+                  ("wing4_r", "wing3_r", (9, 29.5, 1.5), (1, 1, 1))],         # and one more step at its tip
+    "barrow_warden": [("crown_spike_side_r", "crown_spike_0", (5, 34.2, -2), (1, 3, 1)),   # spikes on the crown's sides
+                      ("drape_flare", "drape_long", (-3.5, 3, 4.1), (7, 8, 1))],             # the torn drape lifts at the hem
+    "thornhide": [("cloak_tail", "cloak_long", (-1.5, 1, 4.1), (3, 12, 1))],                 # a wolf's tail down the cloak
+    "forgewall": [("drop_low_r", "drop_r", (9, 16, -4), (2, 3, 8))],                    # the slab's outer plate hangs lower
+    "tidewrought": [("cloak_billow", "cloak_long", (-3.5, 2, 4.1), (7, 12, 1))],           # the sea-cloak billows out
+}
+
+def _extras(name, boxes):
+    by, out = {b.name: b for b in boxes}, []
+    for new, src, frm, size in EXTRA.get(name, ()):
+        b = copy.copy(by[src]); b.name = new; b.tier = "legendary"
+        b.frm = [float(v) for v in frm]; b.size = [float(v) for v in size]
+        b.origin = [b.frm[i] + b.size[i] / 2 for i in range(3)]; b.paint = list(b.paint); b.hide = set()
+        out.append(b)
+        if new.endswith("_r"): out.append(b.mirrored())
+    return out
+
 # Right-side boxes narrowed to a new outer-x span (x0, x1) so a turned helm clears them; _l boxes mirror it.
-SPAN = {"oathbound": {"pauldron_dome_r": (7.0, 10.0)}}
+SPAN = {"oathbound": {"pauldron_dome_r": (7.2, 10.2)}}
 
 def _lowered(name, boxes):
     out = []
@@ -78,11 +114,17 @@ def _lowered(name, boxes):
         if d:
             b = copy.copy(b); b.frm = list(b.frm); b.origin = list(b.origin)
             b.frm[1] -= d; b.origin[1] -= d
+        sh = SHIFT.get(name, {}).get(b.name)
+        if sh is None and b.name.endswith("_l"):
+            sh = SHIFT.get(name, {}).get(b.name[:-2] + "_r"); sh = None if sh is None else (-sh[0], sh[1])
+        if sh:
+            b = copy.copy(b); b.frm = list(b.frm); b.origin = list(b.origin)
+            b.frm[0] += sh[0]; b.origin[0] += sh[0]; b.frm[2] += sh[1]; b.origin[2] += sh[1]
         sp = SPAN.get(name, {}).get(b.name) or SPAN.get(name, {}).get(b.name[:-2] + "_r" if b.name.endswith("_l") else "")
         if sp:
             x0, x1 = sp if b.name.endswith("_r") else (-sp[1], -sp[0])
             b = copy.copy(b); b.frm = list(b.frm); b.size = list(b.size); b.origin = list(b.origin)
-            b.frm[0], b.size[0], b.origin[0] = x0, x1 - x0, (x0 + x1) / 2
+            b.frm[0], b.size[0], b.origin[0] = x0, round(x1 - x0, 6), (x0 + x1) / 2
         out.append(b)
     return out
 
@@ -103,7 +145,7 @@ def converted_boxes(source, name=None):
     z-fight), the one the source drew further out wins: if the inner one grew past where the source had it, it gives the
     pixel back; otherwise the outer one is lifted by 0.02 px (at most 0.1 px), which keeps the texels one per pixel to
     within a few hundredths."""
-    src = {b.name: b for b in _lowered(name, source.boxes)}
+    src = {b.name: b for b in _lowered(name, list(source.boxes) + _extras(name, source.boxes))}
     k = {n: grow(b.inflate) for n, b in src.items()}
     e = {n: 0.0 for n in src}
     for _ in range(200):

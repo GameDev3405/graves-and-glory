@@ -571,7 +571,7 @@
       1.0
      ],
      "uv": [
-      44,
+      52,
       20
      ],
      "mirror": false,
@@ -712,7 +712,7 @@
       1.0
      ],
      "uv": [
-      48,
+      56,
       20
      ],
      "mirror": false,
@@ -761,6 +761,100 @@
      "uv": [
       48,
       32
+     ],
+     "mirror": false,
+     "dilation": [
+      0.0,
+      0.0,
+      0.0
+     ]
+    }
+   ]
+  },
+  {
+   "name": "crown_spike_side_r",
+   "parent": "head",
+   "team": false,
+   "tag": "helm",
+   "stages": [
+    5
+   ],
+   "sheet": [
+    64,
+    64
+   ],
+   "pivot": [
+    0,
+    0,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "boxes": [
+    {
+     "origin": [
+      -6.0,
+      -13.200000000000003,
+      -2.0
+     ],
+     "size": [
+      1.0,
+      3.0,
+      1.0
+     ],
+     "uv": [
+      44,
+      20
+     ],
+     "mirror": false,
+     "dilation": [
+      0.0,
+      0.0,
+      0.0
+     ]
+    }
+   ]
+  },
+  {
+   "name": "crown_spike_side_l",
+   "parent": "head",
+   "team": false,
+   "tag": "helm",
+   "stages": [
+    5
+   ],
+   "sheet": [
+    64,
+    64
+   ],
+   "pivot": [
+    0,
+    0,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "boxes": [
+    {
+     "origin": [
+      5.0,
+      -13.200000000000003,
+      -2.0
+     ],
+     "size": [
+      1.0,
+      3.0,
+      1.0
+     ],
+     "uv": [
+      48,
+      20
      ],
      "mirror": false,
      "dilation": [
