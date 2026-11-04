@@ -13,15 +13,23 @@ def make(r, side):
     c = [Cube("grip", [-1, -2.5, -1], [1, 2.5, 1], "leather", wound(LEATH, 2))]
     c += chain("up", (0, 2.45), LEN, LEAN, WIDE, 1.2, "wood", paints); tx, ty = chain.end
     c += chain("dn", (0, 2.45), LEN, LEAN, WIDE, 1.2, "wood", paints, mirror=True)
-    c += [Cube("collar_u", [-1.15, 2.4, -0.8], [1.15, 3.2, 0.8], "bone", col),
-          Cube("collar_d", [-1.15, -3.2, -0.8], [1.15, -2.4, 0.8], "bone", col)]
+    if r >= UNCOMMON:
+        c += [Cube("collar_u", [-1.15, 2.4, -0.8], [1.15, 3.2, 0.8], "bone", col),
+              Cube("collar_d", [-1.15, -3.2, -0.8], [1.15, -2.4, 0.8], "bone", col)]
+    if r >= RARE:
+        for seg in (c[2], c[6]):
+            cx, cy = seg.pivot[0], seg.pivot[1]
+            c.append(Cube(seg.name + "_wrap", [cx - 1.15, cy - 0.7, -0.75], [cx + 1.15, cy + 0.7, 0.75], "bone",
+                          bands(BONEM, 2, 2, LEATH, 2), turn=seg.turn, pivot=[cx, cy, 0]))
+    if r >= EPIC:
+        c.append(Cube("plate", [-1.6, -4.5, -0.6], [-0.95, 4.5, 0.6], "gilt" if r == LEGEND else "bone",
+                      tone(GOLD if r == LEGEND else BONEM, 3, lead=False)))
     T, up = (GOLD, 1.6) if r == LEGEND else (BONEM, 0.9)
     c += [Cube("nock_u", [tx - 0.75, ty - 0.6, -0.6], [tx + 0.6, ty + up, 0.6], "bone", tone(T, 3, lead=False), turn=-34, pivot=[tx, ty, 0]),
           Cube("nock_d", [tx - 0.75, -ty - up, -0.6], [tx + 0.6, -ty + 0.6, 0.6], "bone", tone(T, 3, lead=False), turn=34, pivot=[tx, -ty, 0])]
     sx = tx + 0.25
     c.append(Cube("string", [sx - 0.3, -ty, -0.3], [sx + 0.3, ty, 0.3], "cloth", tone(FROST, 1, lead=False)))
-    if r >= EPIC:
-        c += bead("gem_u", [-1.35, 3.6, -0.5], [-0.75, 4.6, 0.5], r) + bead("gem_d", [-1.35, -4.6, -0.5], [-0.75, -3.6, 0.5], r)
+    if r == EPIC: c += bead("gem", [-1.85, -0.6, -0.4], [-1.55, 0.6, 0.4], r)
     if r == LEGEND:
         c += [Cube("horn_u", [tx - 1.5, ty - 2.2, -0.5], [tx - 0.6, ty - 0.4, 0.5], "gilt", tone(GOLD, 3, lead=False), turn=-34, pivot=[tx, ty, 0]),
               Cube("horn_d", [tx - 1.5, -ty + 0.4, -0.5], [tx - 0.6, -ty + 2.2, 0.5], "gilt", tone(GOLD, 3, lead=False), turn=34, pivot=[tx, -ty, 0])]

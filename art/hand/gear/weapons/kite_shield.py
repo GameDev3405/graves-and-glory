@@ -25,9 +25,13 @@ def make(r, side):
          Cube("rim_r", [3.8, -7.25, -1.3], [4.8, 7.25, 0.1], "iron", dented(F, 3)),
          Cube("boss", [-1.5, 0, -1.9], [1.5, 3, -0.95], "iron", W.ring(G[1], G[3], G[5]) if r < LEGEND else stone(SUN), lit=W.FACES if r == LEGEND else ()),
          Cube("strap", [-2.5, -1, -0.05], [2.5, 1, 0.6], "leather", wound(LEATH, 2))]
+    if r >= UNCOMMON: c.append(Cube("plate", [-2.2, -0.7, -1.2], [2.2, 3.7, -0.95], "iron", tone(F, 2, lead=False)))
     if r >= RARE:
         c += [Cube("spine", [-0.5, -7.25, -1.25], [0.5, 7.25, -0.95], "iron", tone(G, 2, lead=False)),
               Cube("bar", [-3.85, 1.0, -1.2], [3.85, 2.0, -0.95], "iron", tone(G, 2, lead=False))]
+    if r >= EPIC:
+        c += [Cube("stud_l", [-3.6, 0.9, -1.6], [-2.6, 2.1, -1.15], "iron", tone(G, 4, lead=False)),
+              Cube("stud_r", [2.6, 0.9, -1.6], [3.6, 2.1, -1.15], "iron", tone(G, 4, lead=False))]
     c += bead("bead", [-0.5, 3.0, -1.6], [0.5, 3.9, -1.2], r)
     if r == LEGEND:
         c += [Cube("crest_c", [-0.6, 8.25, -1.0], [0.6, 11, -0.2], "gilt", tone(GOLD, 4, lead=False)),

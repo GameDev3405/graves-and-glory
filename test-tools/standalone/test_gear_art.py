@@ -160,6 +160,14 @@ class GearWeapons(unittest.TestCase):
                                     self.assertNotIn(tuple(px[:3]), banned, (iid, r, c.name))
                     self.assertLessEqual(g / n, 0.25, (iid, r, side, g / n))
 
+    def test_tiers_change_shape(self):
+        """Every step up the ladder changes the weapon's build, not only its colours: the boxes of its non-gem cubes differ
+        between each pair of adjacent rarities (the weapon review, 2026-11-03)."""
+        for iid, w in self.ws.items():
+            shape = lambda r: {(tuple(round(v, 2) for v in c.lo), tuple(round(v, 2) for v in c.hi), c.turn)
+                               for c in w.cubes(r) if c.mat != "gem"}
+            for r in gearlib.RARITIES[:-1]: self.assertNotEqual(shape(r), shape(r + 1), (iid, r, r + 1))
+
     def test_two_handed_grips(self):
         for iid, w in self.ws.items():
             if w.hands < 2: continue

@@ -12,12 +12,14 @@ def make(r, side):
          Cube("cap", [-1.7, -6.8, -1.7], [1.7, -5.95, 1.7], "hide", tone(HIDE, 1, lead=False)),
          Cube("strap0", [-1.65, 2, -1.65], [1.65, 3, 1.65], "leather", tone(LEATH, 2, lead=False)),
          Cube("strap1", [-1.65, -3, -1.65], [1.65, -2, 1.65], "leather", tone(LEATH, 2, lead=False))]
-    for i, (x, z, top) in enumerate(ARROWS[:4 if r == LEGEND else 3]):
+    for i, (x, z, top) in enumerate(ARROWS[:4 if r >= EPIC else 3]):
         c += [Cube("shaft%d" % i, [x - 0.3, 6.1, z - 0.3], [x + 0.3, top - 1.9, z + 0.3], "wood", tone(ASHW, 2, lead=False)),
               Cube("fletch%d" % i, [x - 0.6, top - 2, z - 0.6], [x + 0.6, top, z + 0.6], "cloth", grain(FEATHER, 2, salt=i))]
+    if r >= UNCOMMON: c.append(Cube("belt", [1.45, -4.5, -0.6], [1.9, 4.5, 0.6], "leather", tone(LEATH, 2, lead=False)))
     if r >= RARE:
         c += [Cube("buckle0", [-0.6, 1.8, -1.95], [0.6, 3.2, -1.6], "iron", tone(F, 3, lead=False)),
               Cube("buckle1", [-0.6, -3.2, -1.95], [0.6, -1.8, -1.6], "iron", tone(F, 3, lead=False))]
+    if r == LEGEND: c.append(Cube("badge", [-0.9, -1.2, -1.85], [0.9, 0.8, -1.45], "gilt", tone(GOLD, 3, lead=False)))
     c += bead("bead", [-0.5, 5.2, -2.05], [0.5, 6.0, -1.75], r)
     return c
 

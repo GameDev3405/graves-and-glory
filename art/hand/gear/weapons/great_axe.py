@@ -15,8 +15,9 @@ def make(r, side):
          Cube("head", [4.95, 8, -0.45], [7.5, 17, 0.45], "steel", blade(M, 3)),
          Cube("edge", [7.45, 8.5, -0.3], [8.1, 16.5, 0.3], "steel", tone(M, 5, lead=False)),
          Cube("poll", [-3.5, 11, -0.8], [-1.55, 14, 0.8], "iron", tone(M, 2)),
-         Cube("top", [-0.5, 15.45, -0.5], [0.5, 17.5, 0.5], "iron", tone(M, 4, lead=False))]
-    if r >= RARE: c.append(Cube("langets", [-1.05, 6.5, -1.05], [1.05, 9.55, 1.05], "iron", tone(F, 2)))
+         Cube("top", [-0.5, 15.45, -0.5], [0.5, 17.5 if r < EPIC else 20, 0.5], "iron", tone(M, 4, lead=False))]
+    if r >= UNCOMMON: c.append(Cube("langets", [-1.05, 6.5, -1.05], [1.05, 9.55, 1.05], "iron", tone(F, 2)))
+    if r >= RARE: c.append(Cube("poll_spike", [-5.6, 11.8, -0.45], [-3.45, 13.2, 0.45], "iron", tone(M, 4, lead=False)))
     c += bead("bead", [-0.5, 12, -1.5], [0.5, 13, 1.5], r)
     if r >= EPIC: c += bead("butt_gem", [-0.5, -14, -1.35], [0.5, -13.2, 1.35], r)
     if r == LEGEND:

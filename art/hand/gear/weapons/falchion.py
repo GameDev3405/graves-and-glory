@@ -14,12 +14,14 @@ def make(r, side):
          Cube("tip", [0.9, 16.55, -0.25], [1.8, 17.4, 0.25], "steel", tone(M, 5, lead=False))]
     for i, (a, b) in enumerate(((10.2, 11.6), (12.4, 13.7), (14.4, 15.1))):
         c.append(Cube("edge%d" % i, [1.75, a, -0.3], [2.35, b, 0.3], "steel", tone(M, 5, lead=False)))
+    if r >= UNCOMMON: c.append(Cube("spine", [-1.6, 4, -0.3], [-0.95, 14.2, 0.3], "steel", tone(M, 4, lead=False)))
     if r >= RARE:
         c += [Cube("quillon_l", [-g - 0.05, 1.0, -0.6], [-g + 0.85, 2.05, 0.6], "steel", tone(F, 2)),
               Cube("quillon_r", [g - 0.85, 1.0, -0.6], [g + 0.05, 2.05, 0.6], "steel", tone(F, 2))]
     c += bead("bead", [-0.5, 2.2, -0.9], [0.5, 2.8, 0.9], r)
-    if r >= EPIC: c += bead("pommel_gem", [-0.5, -3.8, -0.65], [0.5, -2.8, 0.65], r)
-    if r == LEGEND: c.append(Cube("spine", [-1.6, 11, -0.3], [-0.95, 14.2, 0.3], "steel", tone(M, 4, lead=False)))
+    if r >= EPIC:
+        c.append(Cube("hook", [-2.3, 13.2, -0.3], [-0.95, 14.6, 0.3], "steel", tone(M, 5, lead=False)))
+        c += bead("pommel_gem", [-0.5, -3.8, -0.65], [0.5, -2.8, 0.65], r)
     return c
 
 def weapon(): return Weapon("falchion", make, "blade", note="single edge widening to a clipped point, three notched edge lengths")

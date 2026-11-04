@@ -7,6 +7,8 @@ module defines weapon() -> Weapon, whose make(rarity, side) returns the cubes at
 Rarity reads on the parts the fist does not cover (guard, pommel, collars, head, tips), in the gear's ladder:
 Common plain worn metal; Uncommon a green enamel bead; Rare bright steel and blue enamel; Epic a lit purple gem;
 Legendary gold fittings, a lit sun stone and a larger silhouette. Gear is house-neutral; banners take the side cloth.
+Each step up also changes the build (a wrap, guard, plate, spike or fitting), so adjacent tiers part without their
+borders: test_tiers_change_shape holds every weapon to it.
 
 Held on the mannequin: a `blade` hold points the weapon forward from the right fist (edge down), a `pole` hold stands
 it upright (string or flag trailing back), `shield` sits before the left forearm, `hip` hangs at the right hip. A
