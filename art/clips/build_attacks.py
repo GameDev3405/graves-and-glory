@@ -349,11 +349,11 @@ STOCK = (0, -5, -5)   # the off hand under the stock, 7 px ahead of the trigger 
 
 
 def crossbow():
-    # Loose (impact tick 4): the stock comes up to the shoulder over 100 ms, the crossbow rolling level (prod across, as it is
+    # Loose (loose at 0.35 s, tick 7): the stock comes up to the shoulder over 240 ms, the crossbow rolling level (prod across, as it is
     # aimed: the sword grip holds it prod-upright, so the wrist turns it a quarter round, right_hand ry ~90) and settles on
     # the aim to tick 4; the bolt looses, the prod kicks the arms up and the body rocks back and sinks; the crossbow comes
-    # down to chest height, nose low, and back to rest. (Review r1 F1: the prod read vertical and the raise popped in 40 ms.)
-    return [beats('crossbow_loose', 1.4, 0.2, 0.10, 0.09, (
+    # down to chest height, nose low, and back to rest. (Review r1 F1 and r2: the prod read vertical; the raise stays under 60 deg per 100 ms.)
+    return [beats('crossbow_loose', 1.55, 0.35, 0.24, 0.08, (
         dict(root=(0, 0, 0, 0, 0.3, 0), body=(2, 12, 0), head=(2, -12, 0), right_arm=(-84, 0, 0), right_hand=(142, 88, -6),
              right_leg=(4, 0, 0), left_leg=(-6, 0, 0)),
         dict(root=(0, 0, 0, 0, 0.35, 0), body=(2, 12, 0), head=(2, -12, 0), right_arm=(-85, 0, 0), right_hand=(140, 89, -6)),
@@ -393,9 +393,9 @@ def crew():
         dict(root=(0, 0, 0, 0, 1.3, -0.6), body=(17, -10, 0), head=(11, -8, 0), right_arm=(-54, 0, -6), right_hand=(12, 0, 0),
              left_arm=(14, 0, 8)),
         dict(root=(0, 0, 0, 0, 1.5, 0.8), body=(-10, 8, 0), head=(-12, 14, 0), right_arm=(-30, 0, -14), right_hand=(4, 0, 0),
-             left_arm=(-55, 16, 0), right_leg=(-6, 0, 0), right_shin=(6, 0, 0), left_leg=(4, 0, 0)),
+             left_arm=(-34, 10, 0), right_leg=(-6, 0, 0), right_shin=(6, 0, 0), left_leg=(4, 0, 0)),
         dict(root=(0, 0, 0, 0, 1.2, 0.9), body=(-12, 10, 0), head=(-14, 16, 0), right_arm=(-26, 0, -16), right_hand=(2, 0, 0),
-             left_arm=(-115, 32, 0)),
+             left_arm=(-94, 26, 0)),
         dict(root=(0, 0, 0, 0, 0.3, 0.3), body=(-3, 3, 0), head=(-4, 5, 0), right_arm=(-8, 0, -4), right_hand=(2, 0, 0),
              left_arm=(-30, 10, 0), right_leg=(-2, 0, 0), right_shin=(2, 0, 0)),
         dict(root=(0, 0, 0, 0, 0.05, 0), body=(-0.5, 0.5, 0), left_arm=(-2, 0, 0))))]
@@ -535,7 +535,7 @@ def colossus():
     # behind the head, held; then the body folds forward onto bent hips, the arms come down level in front, fists together,
     # and the wrist brings the maul over the top so its head leads and lands on the ground ahead (the maul hangs from
     # right_hand, so the wrist keys turn it; review r1 F3).
-    slam = beats('colossus_slam', 1.5, 0.6, 0.22, 0.22, (
+    slam = beats('colossus_slam', 1.5, 0.6, 0.30, 0.18, (
         dict(root=(0, 0, 0, 0, -0.4, 0.8), body=(-10, 0, 0), head=(-6, 0, 0), right_arm=(-166, 0, 8), left_arm=(-166, 0, -8),
              right_hand=(170, 0, 0), right_leg=(6, 0, 0), left_leg=(-6, 0, 0)),
         dict(root=(0, 0, 0, 0, -0.6, 1.0), body=(-12, 0, 0), head=(-8, 0, 0), right_arm=(-172, 0, 8), left_arm=(-172, 0, -8),

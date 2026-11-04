@@ -9102,27 +9102,13 @@
        "channel": "rotation",
        "data_points": [
         {
-         "x": 4,
-         "y": 10,
-         "z": 0
-        }
-       ],
-       "uuid": "b9536bb6-dd07-4df9-b9b8-32b4b95870ae",
-       "time": 0.28,
-       "color": -1,
-       "interpolation": "linear"
-      },
-      {
-       "channel": "rotation",
-       "data_points": [
-        {
          "x": -10,
          "y": -30,
          "z": -15
         }
        ],
        "uuid": "611a5f6b-6668-4c63-8423-debdfcd00d57",
-       "time": 0.35,
+       "time": 0.28,
        "color": -1,
        "interpolation": "linear"
       },
