@@ -45,7 +45,9 @@ and at the end of a pass fold its durable lessons into `references/lessons.md`.
 1. **Scope.** Name the rig, family, clips and troops. Read the family's spec and plan in `docs/superpowers/specs/` and
    `plans/` (`2026-11-03-<family>-animation-*.md`). Check bone headroom (64 max) before adding bones.
 2. **Edit in Blockbench through anim_edit**, never the committed bbmodel directly, and never run the old
-   `art/clips/build_clips.py` (it overwrites hand edits). `python tools/anim_edit.py open <family> [--troop <id>]`.
+   `art/clips/build_clips.py` in write mode (it overwrites hand edits; `--check` wrongly reports sword_shield and bow
+   stale). anim_edit covers only some families: generated families (`art/clips/build_attacks.py`) and hand-keyed
+   bbmodels (sword_shield, bow) take programmatic bbmodel edits, then `clips.py`. `python tools/anim_edit.py open <family> [--troop <id>]`.
 3. **Key with the conventions in `references/pipeline.md`:** y is down, -z is forward, a negative arm rx swings forward,
    **a forearm rx must be 0 or negative** (positive is a backwards elbow), a shin rx must be 0 or positive.
 4. **Key for weight:** a 150-250 ms hold at the top of the wind-up, a 60-100 ms linear or flat-bezier strike, root drop
@@ -54,8 +56,9 @@ and at the end of a pass fold its durable lessons into `references/lessons.md`.
    attackVariants and are gameplay: clip timing changed Siege results on 2026-11-04. Changing them needs Kort's decision
    and a mode-gate sim. Run `python tools/preflight.py` after any sheet edit; never hand-edit `Spec.java`.
 6. **Apply and verify offline:** `python tools/anim_edit.py apply`, `python tools/clips.py --verify`,
-   `python tools/verify.py fast`. Lint your own keys (forearm > 0, shin < 0, >90 degrees in 100 ms, wrist past ±40
-   through a strike).
+   `python tools/verify.py fast`. Lint your own keys on the net pose (stance plus action, not the action
+   alone): forearm > 0, shin < 0, >90 degrees in 100 ms. Wrist past ±40 through a strike applies only to models with a
+   forearm bone; forearm-less models carry the blade on the wrist.
 7. **Shoot the in-game contact sheet** through the client harness (turn suite or motion-grade), never desktop
    computer-use. Same camera relative to the troop for every key, plus a side view for blade and joints.
 8. **Review loop:** spawn a fresh reviewer with `references/reviewer-prompt.md`. Fix what it lists, reshoot, review the
