@@ -200,8 +200,8 @@ public final class Campaign {
         if(b.mode.teardown(b))Modes.unmark(b);else System.err.println("[Graves and Glory] The round's teardown left "+b.saves.size()+" saved piece(s); the mode marker is kept.");
         if(battleModeBeforeRoom!=null){battleMode=battleModeBeforeRoom;battleModeBeforeRoom=null;} // the room's mode ends with its round
         for(var s:b.squads.values())Commander.reset(b,s); // every running commander ability ends before its units go
-        b.running=false;introUntil=0;social.finish();activeRoom="";activeBattle=null;bonusTracker=null;Projectiles.clear(b);Abilities.clearBanners(b);
-        Houses.reset(b);for(var u:b.units)u.mob.discard();b.units.clear();b.clearSides();b.clearProgression();
+        b.running=false;introUntil=0;social.finish();activeRoom="";activeBattle=null;bonusTracker=null;Projectiles.clear(b);b.strikes.clear();Abilities.clearBanners(b);
+        Houses.reset(b);for(var u:b.units)u.mob.discard();b.units.clear();b.clearCorpses();b.clearSides();b.clearProgression();
         b.squads.values().removeIf(s->s.bot);botRespawns.clear();botRetreating.clear();b.respawns.clear();vacated.clear();vacatedUntil.clear();awayTicks.clear();leftAt.clear();absentSeat.clear();deleteProgress();
         for(var s:b.squads.values()){s.training.clear();s.seated=false;}onPad.clear();padCountdown=-1;closeParty();
         notices.values().removeIf(WELCOME_WAIT::equals);noticeAt.keySet().retainAll(notices.keySet()); // "Battle in progress" is no longer true
@@ -334,7 +334,7 @@ public final class Campaign {
     void prepareRound(){
         onPad.clear();padCountdown=-1;padMapRolled=false;tutorial.clear();
         b.squads.values().removeIf(s->s.bot);balance();
-        for(var u:b.units){GravesAndGlory.Battle.leaveSide(u.mob);u.mob.discard();}b.units.clear();botRespawns.clear();botRetreating.clear();vacated.clear();vacatedUntil.clear();awayTicks.clear();leftAt.clear();absentSeat.clear();
+        for(var u:b.units){GravesAndGlory.Battle.leaveSide(u.mob);u.mob.discard();}b.units.clear();b.clearCorpses();botRespawns.clear();botRetreating.clear();vacated.clear();vacatedUntil.clear();awayTicks.clear();leftAt.clear();absentSeat.clear();
         for(int team=0;team<2;team++){final int t=team;int humans=(int)b.squads.values().stream().filter(s->s.team==t&&s.seated).count();
             int target=size; // practice and a March battle set size in soloStart, so one bot per team stays the practice rule
             if(fill||practice)for(int i=humans;i<target;i++){UUID id=UUID.randomUUID();var s=new GravesAndGlory.Squad(id,team,b.fieldBase(team));s.bot=true;s.tier=activeBattle!=null?activeBattle.difficulty():difficulty;s.lane=i%3;var ally=allyRow(s);if(ally!=null)s.tier=ally.difficulty();b.squads.put(id,s);} // a March battle's allies fight at their own row's tier
@@ -750,8 +750,6 @@ public final class Campaign {
         for(var row:Spec.BOTCOMMAND)if(row.id().equals("normal"))return row;
         return Spec.BOTCOMMAND[0];
     }
-    /** An enemy infantry unit this close to a Hard bot's army counts as melee: no shieldwall. */
-    static final double MELEE_THREAT_RANGE=8;
     /** A remembered enemy counts as near a point, or near an army, within this many times the point's radius or the tier's charge distance. */
     static final double NEAR_RADIUS_FACTOR=2;
     /** One command decision for a bot army, run at its tier's cadence: retreat or rally, pick the point to take, set the order, stamp the charge (Battle.markCharge; a bot's command plays no sound).
@@ -800,16 +798,6 @@ public final class Campaign {
         Vec3d objective=retreating?null:b.mode.botTarget(b,s); // a mode's own objective (Siege's stage) replaces the point plan
         if(objective!=null){s.target=objective;if(b.mode.howToSide(b,s).equals("defend"))s.order="hold";else if(!s.order.equals("charge"))s.order="attack";}
         s.yaw=s.team==0?-90:90;
-        if(!retreating&&tier.shieldwallVsArchers()){
-            // Brace the shield troops when remembered archers are in range and nothing has closed to melee. Only troops with a shield can brace.
-            boolean shields=mine.stream().anyMatch(u->u.spec.group().equals("infantry")&&u.tags.contains("shield"));
-            int ranged=0,melee=0;
-            for(var entry:seen.entrySet()){var enemy=foes.get(entry.getKey());
-                double d=Math.hypot(entry.getValue().x()-center.x,entry.getValue().z()-center.z);
-                if(enemy.spec.group().equals("ranged")&&d<=tier.archerThreatRange())ranged++;
-                else if(enemy.spec.group().equals("infantry")&&d<=MELEE_THREAT_RANGE)melee++;}
-            if(BattleMath.shieldwallVsArchers(ranged,melee,tier.archerThreatCount(),shields))s.assignments.put("infantry",new GravesAndGlory.Assignment(s.order,"shieldwall",s.target,s.yaw));
-        }
         if(!retreating)b.mode.botPlan(b,s,tier); // a mode's per-group split of the order (Siege's stage plan)
         if(!s.order.equals(wasOrder)||!Objects.equals(s.target,wasTarget))s.arrived.clear(); // a new order or spot ends an arrival (Tactics.arrived); the same decision again keeps it
         if(s.order.equals("charge")&&couldCharge)b.markCharge(s,"all");
@@ -834,7 +822,7 @@ public final class Campaign {
     }
     /** Switches the battlefield. The arena rebuilds on the next ticks; the lobby stays. */
     void switchMap(int index){if(b.mode.teardown(b))Modes.unmark(b);b.saves.clear(); // the next map's recover drops a kept marker and its files: the arena is rebuilt
-        Projectiles.clear(b);Abilities.clearBanners(b);Houses.reset(b);b.clearSides();b.clearProgression();FeedEvents.clear();map=index;if(!Modes.registered(battleMode)||!Modes.hosts(battleMode,map))battleMode=Modes.DOMINATION;CampaignMaps.select(map);b.points.clear();for(var point:Spec.POINTS)b.points.add(new GravesAndGlory.Capture(point));b.ready=false;b.buildColumn=0;Structures.clearQueue();b.placing=false;}
+        Projectiles.clear(b);b.strikes.clear();Abilities.clearBanners(b);Houses.reset(b);b.clearCorpses();b.clearSides();b.clearProgression();FeedEvents.clear();map=index;if(!Modes.registered(battleMode)||!Modes.hosts(battleMode,map))battleMode=Modes.DOMINATION;CampaignMaps.select(map);b.points.clear();for(var point:Spec.POINTS)b.points.add(new GravesAndGlory.Capture(point));b.ready=false;b.buildColumn=0;Structures.clearQueue();b.placing=false;}
     /** The lesson a commander is on, or -1: only a campaign battle whose sheet row teaches (lessons) shows them, to its commanders, until all four are done. They repeat on every replay. */
     int tutorialStep(UUID id){
         if(!b.running||activeBattle==null||!activeBattle.lessons()||!participants.contains(id))return -1;

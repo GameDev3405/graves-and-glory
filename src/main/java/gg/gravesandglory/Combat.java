@@ -38,12 +38,35 @@ public final class Combat {
     public static DamageSource source(GravesAndGlory.Battle b, LivingEntity attacker) { return b.world.getDamageSources().create(TROOP, attacker); }
 
     /**
+     * The orders a blow is judged under: whether its attacker was charging (a melee blow under the Charge order), whether he was holding (the Hold order,
+     * which a braced troop's rows C18c, C18c2 and C18d ask for), and the stamp whose impact window held the Charge (BattleMath.chargeStamp; null none).
+     * charging and holding come from one read of one order, so they are never both true.
+     */
+    public record Charge(boolean charging, boolean holding, Long stamp) {}
+
+    /**
+     * The orders of the attacker's blow: for a melee blow landing from its swing (Unit.blow, set by Tactics.land), the ones its swing was judged under on
+     * its swing tick (Ruling R29 for the Charge, and Hold with it, Task 5 fix round 2), so neither its wind-up nor an order given during it costs or grants
+     * a Charge's impact or a brace; otherwise judged now.
+     */
+    static Charge charge(GravesAndGlory.Battle b, GravesAndGlory.Unit attacker, boolean melee) {
+        if (melee && attacker.blow != null) return attacker.blow;
+        String order = b.assignment(attacker).order;
+        boolean charging = melee && order.equals("charge");
+        return new Charge(charging, order.equals("hold"), BattleMath.chargeStamp(charging, attacker.squad.chargedAt.get(attacker.spec.group()), b.time, Spec.COMBATDISCIPLINE[0].chargeImpactTicks()));
+    }
+
+    /**
      * Resolves one troop hit and applies it. kind is melee, arrow, bolt, blight or slam; a secondary hit (a cleave or pierce second target, a
      * slam's splash) does not run the on-hit abilities again. A base of 0 does nothing. Returns the amount handed to the target, 0 when nothing
      * was applied. This is the one place a blow's multiplier is built: the counters table (with the target's covered flanks and whether the blow
      * has a direction), the attacker's fearless stance, the House traits, the auras and the commanders, clamped as one.
      */
     public static float resolve(GravesAndGlory.Battle b, GravesAndGlory.Unit attacker, LivingEntity target, float base, String kind, boolean secondary) {
+        return resolve(b, attacker, target, base, kind, secondary, Double.NaN);
+    }
+    /** resolve, for a shot that struck at height impactY (its landing point, Projectiles.land): hit_v1 reads its zone from it (BattleMath.zone). NaN for a blow with no such point. */
+    public static float resolve(GravesAndGlory.Battle b, GravesAndGlory.Unit attacker, LivingEntity target, float base, String kind, boolean secondary, double impactY) {
         if (base <= 0 || target == null || !target.isAlive()) return 0;
         var D = Spec.COMBATDISCIPLINE[0];
         GravesAndGlory.Unit victim = unitOf(b, target);
@@ -62,10 +85,9 @@ public final class Combat {
             if (theirs.equals("hold")) to.add("holding");
         }
 
-        String order = b.assignment(attacker).order;
-        boolean charging = melee && order.equals("charge"), holding = order.equals("hold");
-        Long charged = attacker.squad.chargedAt.get(attacker.spec.group());
-        boolean impact = charging && charged != null && b.time - charged <= D.chargeImpactTicks() && attacker.chargeHitAt < charged;
+        var charge = charge(b, attacker, melee); // a melee blow's orders are its swing's (Ruling R29; Hold with the Charge, fix round 2)
+        boolean charging = charge.charging(), holding = charge.holding();
+        boolean impact = BattleMath.chargeImpact(charge.stamp(), attacker.chargeHitAt);
         double bearing = structure(target) ? 0 : BattleMath.relativeBearing(target.getYaw(), attacker.mob.getX() - target.getX(), attacker.mob.getZ() - target.getZ()); // a structure has no facing, so no flank (C16, C16s)
         boolean raised = victim != null && victim.tags.contains("shield") && victim.mob.isUsingItem() && victim.mob.getActiveItem().isOf(Items.SHIELD);
         boolean noSky = from.contains("ambush") && Abilities.noSky(attacker);
@@ -88,18 +110,39 @@ public final class Combat {
         float amount = (float) (base * veteran * total);
         boolean anchored = victim != null && Abilities.anchored(b, victim);
         Vec3d stood = target.getVelocity();
+        var watchers = victim == null ? List.<net.minecraft.server.network.ServerPlayerEntity>of() : List.copyOf(MotionEvents.watchers(target)); // read before a killing blow can take the troop from its trackers
+        float before = target.getHealth() + target.getAbsorptionAmount(); boolean cooldown = target.timeUntilRegen > 10; // vanilla's hurt cooldown deals only a blow's excess
         Audio.blowDelay = kind.equals("melee") ? Audio.contact(attacker) : 0; // a structure's own blow cue reads it (SiegeMode.GateTarget.structureCue)
         boolean hurt;
-        try { hurt = target.damage(source(b, attacker.mob), amount); } finally { Audio.blowDelay = 0; }
+        try { hurt = MotionEvents.resolving(target, () -> target.damage(source(b, attacker.mob), amount)); } finally { Audio.blowDelay = 0; } // HitEventMixin leaves the target's damage to the hit_v1 below
         if (anchored) target.setVelocity(stood); // an anchored troop (the Oath Banner's) is not knocked back by the blow itself either
         // The blow's sound: shield, magic, arrow, heavy weapon, clash or armour (Audio.hit). A raised shield that takes the whole blow makes damage() answer false,
         // and that is exactly the block the player should hear, so it sounds before the early return.
         if (!secondary && (hurt || raised)) Audio.hit(b, attacker, target, victim, kind, raised);
         if (!hurt) return 0;
+        if (victim != null) sendHit(attacker, target, kind, melee, area, structure(target), hit, cooldown, BattleMath.lostHealth(before, target.getHealth() + target.getAbsorptionAmount()), impactY, watchers);
         // Ruling (Task 6 review M1): a killing blow levels its striker inside target.damage (AFTER_DEATH, lane A), so onHit below reads his new rows: the level
         // up lands at the kill and its first benefit is that same blow (a pierce, a cleave or a slam at the new share, Reap at level 3).
         if (!secondary) Abilities.onHit(b, attacker, target, amount, kind);
         return amount;
+    }
+
+    /**
+     * The hit_v1 a troop's blow sends after it struck (carry 6 of Task 6): its kind (BattleMath.hitKind) and, for a melee blow, its zone and weight from the
+     * swing that landed it (Unit.blowVariant, else the family's first swing); a shot's zone from the height it struck at; a blow with no direction (area)
+     * in the body. Its weight (BattleMath.hitWeight) is the larger of its swing's and the share of the victim's maximum health it really lost (lost: health
+     * and absorption before less after); inside the victim's hurt cooldown (cooldown) the lost share alone, so a blow that took little reads light. Its signed bearing is from
+     * the attacker (0 on a structure); it is blocked when a raised-shield counters row applied (CounterMath.blocked), and lethal when the victim died of it.
+     */
+    static void sendHit(GravesAndGlory.Unit attacker, LivingEntity target, String kind, boolean melee, boolean area, boolean structure, CounterMath.Hit hit, boolean cooldown, double lost, double impactY, List<net.minecraft.server.network.ServerPlayerEntity> watchers) {
+        var D = Spec.COMBATDISCIPLINE[0];
+        var rows = Tactics.variants(attacker.spec.family());
+        Spec.AttackVariantsRow swing = rows.isEmpty() ? null : melee && attacker.blowVariant >= 0 && attacker.blowVariant < rows.size() ? rows.get(attacker.blowVariant) : rows.get(0);
+        String hitKind = BattleMath.hitKind(kind, attacker.spec.family(), swing == null ? "" : swing.kind());
+        String zone = area ? "body" : melee ? (swing == null ? "body" : swing.zone()) : Double.isNaN(impactY) ? "body" : BattleMath.zone(impactY, target.getY(), target.getHeight());
+        float bearing = structure ? 0 : (float) BattleMath.signedBearing(target.getYaw(), attacker.mob.getX() - target.getX(), attacker.mob.getZ() - target.getZ());
+        int weight = BattleMath.hitWeight(swing == null ? 0 : BattleMath.weightIndex(swing.weight()), cooldown, lost, target.getMaxHealth(), D.mediumHitShare(), D.heavyHitShare());
+        MotionEvents.sendHit(target, hitKind, zone, bearing, weight, CounterMath.blocked(hit, Spec.COUNTERS), !target.isAlive(), watchers);
     }
 
     /** The commander classes' share of the factor: the attacker side's (Champion's infantry aura, Warden's archers, Mark Prey) times the target side's (Stand Fast). */

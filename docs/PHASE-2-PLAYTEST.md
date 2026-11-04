@@ -28,7 +28,7 @@ Branch `phase-2-houses`. Four sessions, about 20 minutes each. Tick `[x] yes` or
 
 ## Session 2: a pure Gilded skirmish on Normal
 
-- [ ] yes / [ ] no: a shieldwall holds, the Bulwark tile shows in the trait strip, and Aldric's banner (Lord Marshal) gives its aura. A migrated camp owns no Legendary and holds no Pact yet: clear every battle of a Long March chapter first (a Pact is earned only for a fully cleared chapter, so the first Pact takes the whole of chapter 1), then spend the Pact on Lord Marshal Aldric in the Gilded tab. Without a Pact, skip the Aldric part of this line and say so.
+- [ ] yes / [ ] no: infantry on Hold brace their shields, the Bulwark tile shows in the trait strip, and Aldric's banner (Lord Marshal) gives its aura. A migrated camp owns no Legendary and holds no Pact yet: clear every battle of a Long March chapter first (a Pact is earned only for a fully cleared chapter, so the first Pact takes the whole of chapter 1), then spend the Pact on Lord Marshal Aldric in the Gilded tab. Without a Pact, skip the Aldric part of this line and say so.
 - [ ] yes / [ ] no: a line of yours holds to its last stand without breaking, and the LAST STAND stamp shows.
 - [ ] yes / [ ] no: you pull a group out with Retreat, and its horn answers to you alone.
 - [ ] yes / [ ] no: the battle report shows a House row with trait seconds, shards and Renown.

@@ -2,7 +2,7 @@
   "required": true,
   "package": "gg.gravesandglory.mixin",
   "compatibilityLevel": "JAVA_17",
-  "mixins": ["ContactFeedbackMixin", "AutosaveMixin", "ShieldCooldownMixin", "BowDrawMixin"],
+  "mixins": ["ContactFeedbackMixin", "AutosaveMixin", "ShieldCooldownMixin", "BowDrawMixin", "CorpseMixin", "HitEventMixin", "ShotAttitudeMixin"],
   "client": [
     "CommandInputMixin",
     "EntranceCameraMixin",
@@ -11,6 +11,10 @@
     "ChatHudMixin",
     "ChatHudAccessor",
     "LivingEntityRendererAccessor",
+    "RenderSystemAccessor",
+    "EntityFlagsAccessor",
+    "EntityRenderDispatcherAccessor",
+    "CorpseOverlayMixin",
     "KeybindTextMixin"
   ],
   "injectors": {

@@ -108,7 +108,7 @@ head (the Templar's great helm hides the face; the other patches of its file are
 
 Proportions are baked here, never scaled at runtime: a bone scale k scales the bone's boxes about its pivot (origin
 k*origin + size*(k-1)/2, dilation size*(k-1)/2, the UV size stays the integer size) and moves its children's pivots by
-k; a part takes its anchor bone's scale times its own; root then shifts so the lowest leg box bottom sits at y 24.
+k (a jointed limb's lower bone takes its upper bone's scale unless it has its own, JOINTS); a part takes its anchor bone's scale times its own; root then shifts so the lowest leg box bottom sits at y 24.
 
 Deterministic: every collection is walked in file or sorted order. Like build_ui_art.py it re-executes itself with
 PYTHONHASHSEED=0 and runs under Python 3.12. Pillow is a dev tool only."""
@@ -142,9 +142,16 @@ RIGS = {'husk': 'biped', 'zombie': 'biped', 'skeleton': 'biped', 'stray': 'biped
         'wolf': 'hound', 'polar_bear': 'hound', 'ravager': 'hound', 'spider': 'spider', 'iron_golem': 'colossus'}
 # Each skeleton's bones as (bone, parent), parents first: the trees of the brief's source formats. The renderer finds
 # the hand and team bones by their paths from the root, and Task 5b's clips turn bones by name, so a rig keeps the tree.
-BIPED_BONES = (('root', ''), ('body', 'root'), ('head', 'body'), ('right_arm', 'body'), ('right_hand', 'right_arm'),
-               ('left_arm', 'body'), ('left_hand', 'left_arm'), ('arms_folded', 'body'), ('right_leg', 'root'),
-               ('left_leg', 'root'))
+# The biped is jointed (animation rework Task 9, the plan's rig contract): a forearm under each arm at the elbow, a shin under
+# each leg at the knee, and the hands on the forearms, where the one-piece arm held them (arm-frame [-1, 8, 0] and [1, 8, 0]).
+BIPED_BONES = (('root', ''), ('body', 'root'), ('head', 'body'), ('right_arm', 'body'), ('right_forearm', 'right_arm'),
+               ('right_hand', 'right_forearm'), ('left_arm', 'body'), ('left_forearm', 'left_arm'), ('left_hand', 'left_forearm'),
+               ('arms_folded', 'body'), ('right_leg', 'root'), ('right_shin', 'right_leg'), ('left_leg', 'root'),
+               ('left_shin', 'left_leg'))
+# The colossus keeps the one-piece biped tree: an iron golem's limbs do not bend.
+COLOSSUS_BONES = (('root', ''), ('body', 'root'), ('head', 'body'), ('right_arm', 'body'), ('right_hand', 'right_arm'),
+                  ('left_arm', 'body'), ('left_hand', 'left_arm'), ('arms_folded', 'body'), ('right_leg', 'root'),
+                  ('left_leg', 'root'))
 RIG_BONES = {
     'biped': BIPED_BONES,
     'hound': (('root', ''), ('body', 'root'), ('chest', 'body'), ('head', 'chest'), ('jaw', 'head'),
@@ -152,10 +159,14 @@ RIG_BONES = {
               ('back_right_leg', 'root')),
     'spider': (('root', ''), ('thorax', 'root'), ('head', 'thorax'), ('fangs', 'head'), ('abdomen', 'thorax'))
               + tuple(('%s_leg_%d' % (s, n), 'thorax') for s in ('left', 'right') for n in (1, 2, 3, 4)),
-    'colossus': BIPED_BONES,
+    'colossus': COLOSSUS_BONES,
 }
-LEGS = {'right_leg', 'left_leg', 'front_left_leg', 'front_right_leg', 'back_left_leg', 'back_right_leg'} | \
+# The bones whose boxes the rig stands on (bake_bones sets their lowest point on the ground): a jointed leg's foot is on its shin.
+LEGS = {'right_leg', 'left_leg', 'right_shin', 'left_shin', 'front_left_leg', 'front_right_leg', 'back_left_leg', 'back_right_leg'} | \
        {'%s_leg_%d' % (s, n) for s in ('left', 'right') for n in (1, 2, 3, 4)}
+# A jointed limb's (upper, lower) bones: a troop's scale for the upper bone also scales the lower one unless it sets its own, so
+# a scaled arm or leg keeps its proportions and its hand or foot where the one-piece limb had it.
+JOINTS = (('right_arm', 'right_forearm'), ('left_arm', 'left_forearm'), ('right_leg', 'right_shin'), ('left_leg', 'left_shin'))
 MODEL_KEYS = ('format', 'troop', 'rig', 'size', 'bones', 'skins', 'veteran', 'glow', 'glowFrom', 'outer', 'weapon',
               'hand', 'idleArms', 'portrait')
 
@@ -366,47 +377,87 @@ def load(root: Path) -> Catalog:
     for name in cat.parts:
         check_part(cat, name)
     team = [(pid, b['uv'], b['size']) for pid in sorted(cat.parts) if cat.parts[pid]['team']
-            for b in check_boxes(cat.parts[pid]['boxes'], 'part ' + pid)]
+            for b in check_boxes(cat.parts[pid]['boxes'], 'part ' + pid, faceuv=False)]
     if team:
         check_layout(team, cat.cloth_layout, 'the cloth sheet (every team part)')
     return cat
 
 
-def check_boxes(boxes, what, sheet=None):
+# The six faces of a box by the side of the model they show (right is the model's right, -x; front is -z), in the order a
+# box's "faceuv" lists them.
+FACEUV = ('top', 'bottom', 'right', 'front', 'left', 'back')
+
+
+def check_boxes(boxes, what, sheet=None, faceuv=True):
+    """A box list as the build keeps it. "faceuv" (a rig or a bone override, not a part: faceuv=False) moves named faces of the
+    box UV layout to another top-left texel, each {face: [u, v]} of FACEUV, so the jointed rig's two 4x6x4 limb boxes read
+    the halves of the vanilla 4x12x4 layout; a box with it is unmirrored."""
     if not isinstance(boxes, list):
         fail(what + ' boxes must be a list')
     out = []
     for i, b in enumerate(boxes):
-        keys(b, {'origin', 'size', 'uv', 'mirror', 'note'}, '%s box %d' % (what, i))
+        keys(b, {'origin', 'size', 'uv', 'faceuv', 'mirror', 'note'} if faceuv else {'origin', 'size', 'uv', 'mirror', 'note'},
+             '%s box %d' % (what, i))
         mirror = b.get('mirror', False)
         if not isinstance(mirror, bool):
             fail('%s box %d mirror must be true or false' % (what, i))
-        out.append({'origin': vec(b.get('origin'), 3, '%s box %d origin' % (what, i)),
-                    'size': vec(b.get('size'), 3, '%s box %d size' % (what, i), ints=True, minimum=0),
-                    'uv': vec(b.get('uv'), 2, '%s box %d uv' % (what, i), ints=True, minimum=0),
-                    'mirror': mirror, 'dilation': [0.0, 0.0, 0.0]})
+        box = {'origin': vec(b.get('origin'), 3, '%s box %d origin' % (what, i)),
+               'size': vec(b.get('size'), 3, '%s box %d size' % (what, i), ints=True, minimum=0),
+               'uv': vec(b.get('uv'), 2, '%s box %d uv' % (what, i), ints=True, minimum=0),
+               'mirror': mirror, 'dilation': [0.0, 0.0, 0.0]}
+        if 'faceuv' in b:
+            moved = b['faceuv']
+            if not isinstance(moved, dict) or not moved or set(moved) - set(FACEUV):
+                fail('%s box %d faceuv must map some of %s to a [u, v]' % (what, i, ', '.join(FACEUV)))
+            if mirror:
+                fail('%s box %d has a faceuv and is mirrored; a box with per-face UVs is unmirrored' % (what, i))
+            box['faceuv'] = {k: vec(moved[k], 2, '%s box %d faceuv %s' % (what, i, k), ints=True, minimum=0)
+                             for k in FACEUV if k in moved}
+        out.append(box)
     return out
 
 
-def footprint(uv, size):
+def face_layout(uv, size, faceuv=None):
+    """Each face's texel rectangle (x0, y0, x1, y1) by FACEUV name: ModelPart.Cuboid's box UV layout at uv, a face that
+    `faceuv` names at its own top-left texel."""
+    (u, v), (w, h, d) = uv, size
+    at = {'top': (u + d, v), 'bottom': (u + d + w, v), 'right': (u, v + d), 'front': (u + d, v + d),
+          'left': (u + d + w, v + d), 'back': (u + 2 * d + w, v + d)}
+    for k, c in (faceuv or {}).items():
+        at[k] = (c[0], c[1])
+    dims = {'top': (w, d), 'bottom': (w, d), 'right': (d, h), 'front': (w, h), 'left': (d, h), 'back': (w, h)}
+    return {k: (at[k][0], at[k][1], at[k][0] + dims[k][0], at[k][1] + dims[k][1]) for k in FACEUV}
+
+
+def footprint(uv, size, faceuv=None):
     """The texture rectangles a box's six faces read, as (x0, y0, x1, y1): the top row holds the top and bottom faces,
-    the second row the four sides (ModelPart.Cuboid's layout)."""
+    the second row the four sides (ModelPart.Cuboid's layout); a box with a faceuv, each face's own rectangle."""
+    if faceuv:
+        return [r for r in face_layout(uv, size, faceuv).values() if r[0] < r[2] and r[1] < r[3]]
     (u, v), (w, h, d) = uv, size
     return [r for r in ((u + d, v, u + d + 2 * w, v + d), (u, v + d, u + 2 * d + 2 * w, v + d + h)) if r[0] < r[2] and r[1] < r[3]]
 
 
 def check_layout(owned, sheet, what):
-    """owned: (owner, uv, size) per box. Every face inside the sheet, no two boxes on one texel."""
+    """owned: (owner, uv, size) or (owner, uv, size, faceuv) per box. Every face inside the sheet, no two boxes on one texel.
+    A faceuv face may lie wholly inside another face of its own box (a joint cap reads the rows of its box's front)."""
     w, h = sheet
     rects = []
-    for owner, uv, size in owned:
-        for r in footprint(uv, size):
+    for n, item in enumerate(owned):
+        owner, uv, size = item[:3]
+        moved = item[3] if len(item) > 3 else None
+        for r in footprint(uv, size, moved):
             if r[0] < 0 or r[1] < 0 or r[2] > w or r[3] > h:
                 fail('%s: %s has a box outside the %dx%d sheet (uv %d, %d)' % (what, owner, w, h, uv[0], uv[1]))
-            rects.append((owner, r))
-    for i, (a, ra) in enumerate(rects):
-        for b, rb in rects[i + 1:]:
+            rects.append((owner, n, bool(moved), r))
+
+    def inside(a, b):
+        return b[0] <= a[0] and b[1] <= a[1] and a[2] <= b[2] and a[3] <= b[3]
+    for i, (a, na, fa, ra) in enumerate(rects):
+        for b, nb, _, rb in rects[i + 1:]:
             if ra[0] < rb[2] and rb[0] < ra[2] and ra[1] < rb[3] and rb[1] < ra[3]:
+                if na == nb and fa and (inside(ra, rb) or inside(rb, ra)):
+                    continue
                 if a == b:
                     fail('%s: two boxes of %s overlap in UV at (%d, %d)' % (what, a, max(ra[0], rb[0]), max(ra[1], rb[1])))
                 fail('%s: %s and %s overlap in UV at (%d, %d)' % (what, a, b, max(ra[0], rb[0]), max(ra[1], rb[1])))
@@ -450,7 +501,7 @@ def check_rig(cat, name):
     hands = rig.get('hands')
     if not isinstance(hands, dict) or set(hands) != {'right', 'left'} or any(hands[k] not in seen for k in hands):
         fail(what + ': hands must name a bone for right and for left')
-    check_layout([(b['name'], x['uv'], x['size']) for b in bones for x in check_boxes(b.get('boxes', []), what)],
+    check_layout([(b['name'], x['uv'], x['size'], x.get('faceuv')) for b in bones for x in check_boxes(b.get('boxes', []), what)],
                  rig['size'], what)
 
 
@@ -464,7 +515,7 @@ def check_part(cat, name):
         if k in p:
             vec(p[k], 3, '%s %s' % (what, k))
     scale3(p.get('scale', 1), what)
-    boxes = check_boxes(p.get('boxes'), what)
+    boxes = check_boxes(p.get('boxes'), what, faceuv=False)
     if p['team']:
         if cat.template is None:
             fail(what + ': a team part needs art/team/team_cloth.png')
@@ -552,6 +603,9 @@ def merge_bones(rig, what, overrides=None, parts=(), folded=True, stages=(1,), s
                 bones[name]['boxes'] = check_boxes(ov['boxes'], '%s bones %s' % (what, name))
             if 'scale' in ov:
                 scale[name] = scale3(ov['scale'], '%s bones %s' % (what, name))
+    for upper, lower in JOINTS:
+        if upper in scale and lower in bones and lower not in scale:
+            scale[lower] = scale[upper]
     if not folded and 'arms_folded' in bones:
         bones['arms_folded']['boxes'] = []
     for entry, part in parts:
@@ -587,7 +641,7 @@ def merge_bones(rig, what, overrides=None, parts=(), folded=True, stages=(1,), s
         pivot = [a + b for a, b in zip(vec(part.get('pivot', [0, 0, 0]), 3, 'pivot'),
                                        vec(entry.get('offset', [0, 0, 0]), 3, '%s part %s offset' % (what, name)))]
         rot = vec(entry.get('rotation', part.get('rotation', [0, 0, 0])), 3, '%s part %s rotation' % (what, name))
-        boxes = check_boxes(part['boxes'], 'part ' + pid)
+        boxes = check_boxes(part['boxes'], 'part ' + pid, faceuv=False)
         for b in boxes:
             b['uv'] = [origin_uv[0] + b['uv'][0], origin_uv[1] + b['uv'][1]]
         bones[name] = {'name': name, 'parent': anchor, 'part': pid, 'team': part['team'], 'tag': part['tag'],
@@ -636,12 +690,19 @@ def clean_bone(b, sheet, density=TROOP_DENSITY):
     if b.get('variants'):   # a face bone of a faces troop: only the bones of a troop with faces say it
         out['variants'] = b['variants']
     df = b.get('face_density')
-    uvs = [[c * density // df for c in x['uv']] for x in b['boxes']] if df else [x['uv'] for x in b['boxes']]
+    def unit(uv):
+        return [c * density // df for c in uv] if df else uv
     if df:
         sheet = [c * density // df for c in sheet]
+
+    def box(x):
+        kept = {'origin': [num(c) for c in x['origin']], 'size': x['size'], 'uv': unit(x['uv'])}
+        if x.get('faceuv'):   # only a jointed limb's box moves faces (check_boxes)
+            kept['faceuv'] = {k: unit(c) for k, c in x['faceuv'].items()}
+        kept.update({'mirror': x['mirror'], 'dilation': [num(c) for c in x['dilation']]})
+        return kept
     out.update({'sheet': list(sheet), 'pivot': [num(c) for c in b['pivot']], 'rotation': [num(c) for c in b['rotation']],
-                'boxes': [{'origin': [num(c) for c in x['origin']], 'size': x['size'], 'uv': uv, 'mirror': x['mirror'],
-                           'dilation': [num(c) for c in x['dilation']]} for x, uv in zip(b['boxes'], uvs)]})
+                'boxes': [box(x) for x in b['boxes']]})
     return out
 
 
@@ -1014,6 +1075,44 @@ def far_view(quads, colour, keys, lit_sheet):
     return far_c, far_k, far_l, (-ix0, -iy0)
 
 
+def far_strings(far_c, far_k, grip, quads, colour, keys):
+    """Draws each string of the rest frame into the far sprite as a one px line along its middle, on px the bow leaves
+    clear (task 16 r10: a troop past TroopDepth.NEAR_BLOCKS draws the far version, and Kort asked that the bowstring read at
+    30 blocks). A string's line runs between the middles of the short edges of its broad face seen from the front (-z);
+    its colour and key are the texels at that face's centre."""
+    cpx, kpx = colour.load(), keys.load()
+    for q in quads:
+        if q.face != 'north':
+            continue
+        c = q.corners
+        e01 = math.dist(c[0][:2], c[1][:2]); e03 = math.dist(c[0][:2], c[3][:2])
+        c2 = [c[1][k] + c[3][k] - c[0][k] for k in range(3)]
+        if e01 < e03:
+            a, b = [(c[0][k] + c[1][k]) / 2 for k in (0, 1)], [(c[3][k] + c2[k]) / 2 for k in (0, 1)]
+        else:
+            a, b = [(c[0][k] + c[3][k]) / 2 for k in (0, 1)], [(c[1][k] + c2[k]) / 2 for k in (0, 1)]
+        t = q.texels
+        u = (t[0][0] + t[1][0] + t[2][0] + t[3][0]) / 4 if len(t) == 4 else (t[1][0] + t[2][0]) / 2
+        v = (t[0][1] + t[1][1] + t[2][1] + t[3][1]) / 4 if len(t) == 4 else (t[1][1] + t[2][1]) / 2
+        tx, ty = min(max(int(u), 0), colour.width - 1), min(max(int(v), 0), colour.height - 1)
+        if cpx[tx, ty][3] == 0:
+            continue
+        # r11: two px wide, the second line one px further from the grip, so at 30 blocks the string is a 2 px pale line
+        # with the bow's own gap left between it and the stave (a line, not a rod)
+        ln = math.hypot(b[0] - a[0], b[1] - a[1]) or 1.0
+        nx, ny = -(b[1] - a[1]) / ln, (b[0] - a[0]) / ln
+        if nx * (a[0] + b[0]) + ny * (a[1] + b[1]) < 0:
+            nx, ny = -nx, -ny
+        steps = max(1, int(math.ceil(max(abs(b[0] - a[0]), abs(b[1] - a[1])) * 2)))
+        for off in (0.0, 1.0):
+            for i in range(steps + 1):
+                x, y = a[0] + (b[0] - a[0]) * i / steps + nx * off, a[1] + (b[1] - a[1]) * i / steps + ny * off
+                col, row = math.floor(x + 0.5) + grip[0], math.floor(y + 0.5) + grip[1]
+                if 0 <= col < far_c.width and 0 <= row < far_c.height and far_c.getpixel((col, row))[3] == 0:
+                    far_c.putpixel((col, row), cpx[tx, ty])
+                    far_k.putpixel((col, row), kpx[tx, ty])
+
+
 def far_quads(sprite, thickness, grip, v0):
     """The far sprite extruded, cut to FAR_CAP quads: the two big faces, then the longest side runs, in their own order."""
     quads = sprite_mesh(sprite, thickness, grip, 0, v0)
@@ -1235,9 +1334,12 @@ def cube_weapon_outputs(cat, wid):
         nock = None if nocks is None else [num(nocks[i][0]), num(nocks[i][1]), 0]
         frames_out.append({'name': name, 'nock': nock, 'quads': quads_of[name]})
         stats.append((wid, name, len(quads_of[name])))
-    # a string is under a px: at one px to a model px it would vanish or become a plank by the luck of its alignment, so it is left out
-    solid = [q.numbers() for q in bbmodel.frame_quads(model)['rest'] if not bbmodel.is_string(q.cube)]
+    # a string is under a px: at one px to a model px it would vanish or become a plank by the luck of its alignment, so it is
+    # left out of the sampled view and drawn after as a one px line along its middle (far_strings)
+    rest_quads = bbmodel.frame_quads(model)['rest']
+    solid = [q.numbers() for q in rest_quads if not bbmodel.is_string(q.cube)]
     far_c, far_k, far_l, grip = far_view(solid or quads_of['rest'], colour, keys, glow)
+    far_strings(far_c, far_k, grip, [q for q in rest_quads if bbmodel.is_string(q.cube)], colour, keys)
     if far_c.width > sheet_w:
         fail('%s: its far version is %d px wide, over the %d px of the sheet' % (what, far_c.width, sheet_w))
     far = far_quads(far_c, thickness, grip, sheet_h)
@@ -1314,6 +1416,9 @@ class Face:
         return [self.p0[i] + a * self.e1[i] + b * self.e3[i] for i in range(3)]
 
 
+CUBOID_FACE = {0: 'top', 1: 'bottom', 2: 'front', 3: 'back', 4: 'right', 5: 'left'}   # Direction id -> FACEUV name
+
+
 def cuboid_faces(box, density=1):
     """The faces of a baked box by geometric normal, transcribed from ModelPart.Cuboid (1.20.1 yarn): the eight vertices, the
     UV rectangles and the quad lists, a mirrored box swapping its x vertices and flipping its normals' x. The rectangles and
@@ -1331,6 +1436,10 @@ def cuboid_faces(box, density=1):
     for d, names, u1, v1, u2, v2 in ((0, (6, 5, 1, 2), n, v, o2, t), (1, (3, 4, 8, 7), o2, t, p, v),
                                      (4, (1, 5, 8, 4), u, t, n, w), (2, (2, 1, 4, 3), n, t, o2, w),
                                      (5, (6, 2, 3, 7), o2, t, q, w), (3, (5, 6, 7, 8), q, t, r, w)):
+        moved = box.get('faceuv', {}).get(CUBOID_FACE[d])
+        if moved:   # a faceuv face: the same rectangle at its own top-left texel (check_boxes: such a box is unmirrored)
+            du, dv = moved[0] - min(u1, u2), moved[1] - min(v1, v2)
+            u1, u2, v1, v2 = u1 + du, u2 + du, v1 + dv, v2 + dv
         if box['mirror'] and d in (4, 5):
             d ^= 1
         k = density
@@ -1789,7 +1898,7 @@ def relief_template(cat: Catalog, troop: str) -> Image.Image:
         for i, box in enumerate(b['boxes']):
             flat = 0 in box['size']
             g = None if flat else Grid(box, bone_density(model, b))
-            for name, (x0, y0, x1, y1) in faces(box['uv'], box['size'], bone_density(model, b)).items():
+            for name, (x0, y0, x1, y1) in faces(box['uv'], box['size'], bone_density(model, b), box.get('faceuv')).items():
                 d = names[name] ^ (1 if box['mirror'] and name in ('west', 'east') else 0)
                 shaded = [max(0, min(255, int(c * FACE_SHADE[name]))) for c in base]
                 colour = tuple(int(c * RELIEF_TINT + 255 * (1 - RELIEF_TINT)) for c in shaded) + (255,)
@@ -2091,7 +2200,7 @@ def split_faces(bones, faces, troop, size, density=TROOP_DENSITY, df=None):
               (box['uv'][0], box['uv'][1], box['uv'][0] + box_rect(box)[0], box['uv'][1] + box_rect(box)[1])) for n, box in enumerate(mine)]
     others = [('the %s box at uv (%d, %d)' % (b['name'], box['uv'][0], box['uv'][1]), rect)
               for b in bones if not b['team'] for i, box in enumerate(b['boxes']) if not (b is head and i < wide)
-              for rect in footprint(box['uv'], box['size'])]
+              for rect in footprint(box['uv'], box['size'], box.get('faceuv'))]
     slot_lists = (faces['slots'], faces['beard']['slots'] if wide == 2 else [])
     if faces['count'] > 1 and df != density:
         if (width * density) % df or (height * density) % df:
@@ -2196,7 +2305,7 @@ def bake(cat: Catalog, troop: str) -> dict:
     if len(bones) > MAX_BONES:
         fail('%s: %d bones, more than %d (the client records the bones a draw shows as the bits of one long and '
              'refuses a bigger model)' % (troop, len(bones), MAX_BONES))
-    skin_boxes = [(b['name'], x['uv'], x['size']) for b in bones if not b['team'] and not (b.get('face_density') and b['variants'][0])
+    skin_boxes = [(b['name'], x['uv'], x['size'], x.get('faceuv')) for b in bones if not b['team'] and not (b.get('face_density') and b['variants'][0])
                   for x in b['boxes']]   # a slot of a dense face bone is not a full rectangle: split_faces checked it at its own size
     check_layout(skin_boxes, size, troop)
     team_boxes = [(b['part'], x['uv'], x['size']) for b in bones if b['team'] for x in b['boxes']]
@@ -2853,16 +2962,13 @@ HUES = [(196, 92, 84), (84, 140, 196), (104, 180, 96), (200, 164, 72), (150, 100
         (120, 120, 200), (180, 90, 150), (110, 160, 60), (90, 110, 130), (200, 200, 110)]
 
 
-def faces(uv, size, density=1):
+def faces(uv, size, density=1, faceuv=None):
     """The six face rectangles of a box on its sheet, by the side they show (north is the front, west the model's right), in
-    the texels of a sheet of this density."""
-    (u, v), (w, h, d) = uv, size
+    the texels of a sheet of this density; a face that faceuv moves at its own texels."""
     k = density
-    return {name: tuple(k * c for c in rect) for name, rect in
-            {'top': (u + d, v, u + d + w, v + d), 'bottom': (u + d + w, v, u + d + 2 * w, v + d),
-             'west': (u, v + d, u + d, v + d + h), 'north': (u + d, v + d, u + d + w, v + d + h),
-             'east': (u + d + w, v + d, u + 2 * d + w, v + d + h),
-             'south': (u + 2 * d + w, v + d, u + 2 * d + 2 * w, v + d + h)}.items()}
+    rect = face_layout(uv, size, faceuv)
+    return {name: tuple(k * c for c in rect[f]) for name, f in
+            (('top', 'top'), ('bottom', 'bottom'), ('west', 'right'), ('north', 'front'), ('east', 'left'), ('south', 'back'))}
 
 
 def template(cat: Catalog, troop: str) -> Image.Image:
@@ -2874,7 +2980,7 @@ def template(cat: Catalog, troop: str) -> Image.Image:
     for i, b in enumerate(x for x in model['bones'] if not x['team'] and x['boxes']):
         base = HUES[i % len(HUES)]
         for box in b['boxes']:
-            for face, (x0, y0, x1, y1) in faces(box['uv'], box['size'], bone_density(model, b)).items():
+            for face, (x0, y0, x1, y1) in faces(box['uv'], box['size'], bone_density(model, b), box.get('faceuv')).items():
                 k = FACE_SHADE[face]
                 colour = tuple(max(0, min(255, int(c * k))) for c in base) + (255,)
                 for y in range(y0, y1):
@@ -2883,25 +2989,26 @@ def template(cat: Catalog, troop: str) -> Image.Image:
     return im
 
 
-def box_face_rects(uv, size):
+def box_face_rects(uv, size, faceuv=None):
     """The six faces of a box's ModelPart layout as (x0, y0, x1, y1) on the sheet, one rect each (footprint's two rows
-    split): up, down, east, north, west, south."""
-    u, v = uv
-    w, h, d = size
-    return {'up': (u + d, v, u + d + w, v + d), 'down': (u + d + w, v, u + d + 2 * w, v + d),
-            'east': (u, v + d, u + d, v + d + h), 'north': (u + d, v + d, u + d + w, v + d + h),
-            'west': (u + d + w, v + d, u + d + 2 * w, v + d + h), 'south': (u + d + 2 * w, v + d, u + d + 2 * w + w, v + d + h)}
+    split), by Blockbench's names (the display group's 180 turn swaps east and west): up, down, east, north, west, south;
+    a face that faceuv moves at its own texels."""
+    rect = face_layout(uv, size, faceuv)
+    return {bb: rect[f] for bb, f in (('up', 'top'), ('down', 'bottom'), ('east', 'right'), ('north', 'front'),
+                                       ('west', 'left'), ('south', 'back'))}
 
 
-def troop_project(cat, troop):
+def troop_project(cat, troop, dest=None):
     """Writes art/troops/<troop>.bbmodel from the troop json: one display group turned 180 about x (Blockbench's y is up,
     the rig's is down) around groups named for the rig bones and parts, with the skin cubes box UV on the troop sheet.
-    The rig's own coordinates, rotations and UVs are kept as they are, so the build reads the file back unchanged."""
+    The rig's own coordinates, rotations and UVs are kept as they are, so the build reads the file back unchanged.
+    With dest, writes there instead and does not refuse an existing art/troops file (tools/anim_edit.py's scratch copy)."""
     src = cat.troops.get(troop)
     if src is None:
         fail('%s: no art/troops/%s.json' % (troop, troop))
-    dest = cat.root / 'art/troops' / (troop + '.bbmodel')
-    if dest.is_file():
+    scratch = dest is not None
+    dest = Path(dest) if scratch else cat.root / 'art/troops' / (troop + '.bbmodel')
+    if dest.is_file() and not scratch:
         fail('%s: art/troops/%s.bbmodel already exists; it is the source of the troop\'s skin geometry now. Delete it '
              'first only if the json still holds that geometry, or the boxes move out of the build.' % (troop, troop))
     rig = cat.rigs.get(src.get('rig'))
@@ -2996,11 +3103,15 @@ def troop_project(cat, troop):
                            'from': [num(c) for c in frm], 'to': [num(c) for c in to], 'autouv': 0, 'color': 0,
                            'origin': [num(c) for c in base], 'faces': faces}
             else:
-                element = {'uuid': eid, 'name': '%s_%d' % (name, i), 'type': 'cube', 'box_uv': True, 'rescale': False,
+                # a jointed limb's box (faceuv) is per-face UV in Blockbench, its uv_offset still the box's uv (bbmodel reads it back)
+                moved = box.get('faceuv')
+                element = {'uuid': eid, 'name': '%s_%d' % (name, i), 'type': 'cube', 'box_uv': not moved, 'rescale': False,
                            'locked': False, 'light_emission': 0, 'render_order': 'default', 'allow_mirror_modeling': True,
                            'from': [num(c) for c in frm], 'to': [num(c) for c in to], 'autouv': 0, 'color': 0,
                            'origin': [num(c) for c in base], 'uv_offset': [int(box['uv'][0]), int(box['uv'][1])],
-                           'faces': {f: {'texture': 0} for f in bbmodel.FACES}}
+                           'faces': ({f: {'uv': [float(c) for c in r], 'texture': 0}
+                                      for f, r in box_face_rects(box['uv'], box['size'], moved).items()} if moved
+                                     else {f: {'texture': 0} for f in bbmodel.FACES})}
             elements.append(element)
             child_cubes[name].append(eid)
 

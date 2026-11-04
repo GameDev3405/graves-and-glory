@@ -24,21 +24,33 @@ GREY = {1.0: (160, 160, 160), 0.8: (128, 128, 128), 0.6: (96, 96, 96)}   # the t
 WHITE, POLE = (243, 239, 228), (90, 70, 50)
 
 
-def box(origin, size, uv, mirror=False):
-    return {'origin': origin, 'size': size, 'uv': uv, 'mirror': mirror}
+def box(origin, size, uv, mirror=False, faceuv=None):
+    out = {'origin': origin, 'size': size, 'uv': uv, 'mirror': mirror}
+    if faceuv:
+        out['faceuv'] = faceuv
+    return out
+
+
+def limb(name, parent, pivot, origin, uv, lower, joint):
+    """A jointed limb as the biped rig has it (Task 9): two 4x6x4 boxes on the halves of the vanilla 4x12x4 layout at uv."""
+    u, v = uv
+    return [{'name': name, 'parent': parent, 'pivot': pivot,
+             'boxes': [box(origin, [4, 6, 4], [u, v], faceuv={'bottom': [u + 4, v + 6]})]},
+            {'name': lower, 'parent': name, 'pivot': joint,
+             'boxes': [box([-2, 0, -2], [4, 6, 4], [u, v + 6], faceuv={'top': [u + 4, v + 10], 'bottom': [u + 8, v]})]}]
 
 
 BIPED = {'rig': 'biped', 'size': [64, 64], 'outer': 0.25, 'hands': {'right': 'right_hand', 'left': 'left_hand'}, 'bones': [
     {'name': 'root', 'parent': '', 'pivot': [0, 0, 0], 'boxes': []},
     {'name': 'body', 'parent': 'root', 'pivot': [0, 12, 0], 'boxes': [box([-4, -12, -2], [8, 12, 4], [16, 16])]},
     {'name': 'head', 'parent': 'body', 'pivot': [0, -12, 0], 'boxes': [box([-4, -8, -4], [8, 8, 8], [0, 0])]},
-    {'name': 'right_arm', 'parent': 'body', 'pivot': [-5, -10, 0], 'boxes': [box([-3, -2, -2], [4, 12, 4], [40, 16])]},
-    {'name': 'right_hand', 'parent': 'right_arm', 'pivot': [-1, 10, 0], 'boxes': []},
-    {'name': 'left_arm', 'parent': 'body', 'pivot': [5, -10, 0], 'boxes': [box([-1, -2, -2], [4, 12, 4], [32, 48])]},
-    {'name': 'left_hand', 'parent': 'left_arm', 'pivot': [1, 10, 0], 'boxes': []},
+    *limb('right_arm', 'body', [-5, -10, 0], [-3, -2, -2], [40, 16], 'right_forearm', [-1, 4, 0]),
+    {'name': 'right_hand', 'parent': 'right_forearm', 'pivot': [0, 6, 0], 'boxes': []},
+    *limb('left_arm', 'body', [5, -10, 0], [-1, -2, -2], [32, 48], 'left_forearm', [1, 4, 0]),
+    {'name': 'left_hand', 'parent': 'left_forearm', 'pivot': [0, 6, 0], 'boxes': []},
     {'name': 'arms_folded', 'parent': 'body', 'pivot': [0, -9, -1], 'rotation': [-43, 0, 0], 'boxes': [box([-4, 2, -2], [8, 4, 4], [40, 40])]},
-    {'name': 'right_leg', 'parent': 'root', 'pivot': [-1.9, 12, 0], 'boxes': [box([-2, 0, -2], [4, 12, 4], [0, 16])]},
-    {'name': 'left_leg', 'parent': 'root', 'pivot': [1.9, 12, 0], 'boxes': [box([-2, 0, -2], [4, 12, 4], [16, 48])]}]}
+    *limb('right_leg', 'root', [-1.9, 12, 0], [-2, 0, -2], [0, 16], 'right_shin', [0, 6, 0]),
+    *limb('left_leg', 'root', [1.9, 12, 0], [-2, 0, -2], [16, 48], 'left_shin', [0, 6, 0])]}
 HOUND = {'rig': 'hound', 'size': [64, 64], 'outer': 0.25, 'hands': {'right': 'jaw', 'left': 'jaw'}, 'bones': [
     {'name': 'root', 'parent': '', 'pivot': [0, 0, 0], 'boxes': []},
     {'name': 'body', 'parent': 'root', 'pivot': [0, 14, 4], 'boxes': [box([-3, -3, -4], [6, 6, 8], [0, 0])]},
@@ -490,11 +502,13 @@ class BuildSkinsChecks(unittest.TestCase):
     def test_feet_on_ground(self):
         legs = {'right_leg': {'scale': [1, 1.15, 1]}, 'left_leg': {'scale': [1, 1.15, 1]}}
         model = self.bake(self.with_knight(bones=legs))['knight']
-        for leg in ('right_leg', 'left_leg'):
-            self.assertAlmostEqual(absolute_bottom(model, leg), 24.0)
+        for foot in ('right_shin', 'left_shin'):   # a jointed leg stands on its shin, which takes the leg's scale
+            self.assertAlmostEqual(absolute_bottom(model, foot), 24.0)
+            self.assertAlmostEqual(find(model, foot)['pivot'][1], 6 * 1.15)
         self.assertAlmostEqual(find(model, 'root')['pivot'][1], -1.8)
         plain = self.bake(TROOPS)['knight']
-        self.assertAlmostEqual(absolute_bottom(plain, 'right_leg'), 24.0)
+        self.assertAlmostEqual(absolute_bottom(plain, 'right_shin'), 24.0)
+        self.assertAlmostEqual(absolute_bottom(plain, 'right_leg'), 18.0)
 
     def test_hunch(self):
         model = self.bake(self.with_knight(hunch=20))['knight']
@@ -678,7 +692,7 @@ class BuildSkinsChecks(unittest.TestCase):
             rig = copy.deepcopy(rig)
             next(b for b in rig['bones'] if b['name'] == bone)['parent'] = parent
             return rig
-        for rig, bone, parent, want in ((BIPED, 'head', 'root', 'body'), (BIPED, 'right_hand', 'body', 'right_arm'),
+        for rig, bone, parent, want in ((BIPED, 'head', 'root', 'body'), (BIPED, 'right_hand', 'right_arm', 'right_forearm'),
                                         (HOUND, 'head', 'body', 'chest')):
             with self.subTest(rig=rig['rig'], bone=bone), tempfile.TemporaryDirectory() as tmp:
                 rigs = [moved(rig, bone, parent) if r is rig else r for r in (BIPED, HOUND)]
@@ -805,10 +819,10 @@ class BuildSkinsChecks(unittest.TestCase):
         def flags(n):
             return self.with_knight(parts=TROOPS['knight']['parts'] + [{'part': 'pennant', 'name': 'pennant_%d' % i} for i in range(n)])
         with tempfile.TemporaryDirectory() as tmp:
-            cat = build_skins.load(fixture(tmp, troops=flags(51)))
+            cat = build_skins.load(fixture(tmp, troops=flags(47)))   # the jointed biped has 14 bones
             self.assertEqual(len(build_skins.bake(cat, 'knight')['bones']), build_skins.MAX_BONES)
         with tempfile.TemporaryDirectory() as tmp:
-            said = self.fails(export_assets, fixture(tmp, troops=flags(52)))
+            said = self.fails(export_assets, fixture(tmp, troops=flags(48)))
         self.assertIn('knight: 65 bones, more than 64', said)
 
     # ---- Task 5d: sprite weapons ----
@@ -1028,9 +1042,11 @@ class BuildSkinsChecks(unittest.TestCase):
         self.assertEqual((big[2], big[5]), (-10.5, 2.5))    # thirteen rows, the blade's tip at the top
         self.assertEqual(model['frames'][0]['quads'][0][:3], [0.5, 2, 0.5])
 
-    def test_far_version_leaves_the_string_out(self):
-        """A string is under a px. At the far version's one px to a model px it would vanish or, where it fills half a px column,
-        turn into a plank, by the luck of its alignment, so the far version leaves every cube called string out."""
+    def test_far_version_draws_the_string_as_one_px_line(self):
+        """A string is under a px. Sampled at the far version's one px to a model px it would vanish or, where it fills half a px
+        column, turn into a plank, by the luck of its alignment, so the far version leaves every cube called string out of the
+        sampled view and draws it after as a one px line along its middle, on px the rest leaves clear (task 16 r10: the
+        bowstring reads past TroopDepth.NEAR_BLOCKS)."""
         laced = PIKE + [('string', (-2.4, -1, -0.1), (-1.9, 2, 0.1), 'linen', None)]   # a lanyard hanging from the guard, half a px wide
         with tempfile.TemporaryDirectory() as tmp:
             root = cube_fixture(tmp, wid='plain')
@@ -1039,9 +1055,11 @@ class BuildSkinsChecks(unittest.TestCase):
             plain, with_string = model_of(root, 'plain'), model_of(root, 'laced')
             sheets = [texture_of(root, name + '.png') for name in ('plain', 'laced')]
         self.assertEqual(len(with_string['frames'][0]['quads']), len(plain['frames'][0]['quads']) + 6)   # the string is still a cube of the weapon
-        lit = [sum(1 for y in range(128, im.height) for x in range(im.width) if im.getpixel((x, y))[3]) for im in sheets]
-        self.assertEqual(lit[0], lit[1])
-        self.assertEqual(plain['far'], with_string['far'])
+        lit = [{(x, y) for y in range(128, im.height) for x in range(im.width) if im.getpixel((x, y))[3]} for im in sheets]
+        self.assertTrue(lit[0] <= lit[1])
+        added = lit[1] - lit[0]
+        self.assertEqual(len({x for x, _ in added}), 1, added)   # one px column, never a plank
+        self.assertTrue(1 <= len(added) <= 4, added)              # at most the lanyard's 3 px length, end px included
 
     def test_far_version_keeps_the_glow(self):
         """The glow sheet carries the lit texels the front view shows, in the strip under the colour sheet."""
@@ -3212,6 +3230,114 @@ class BuildSkinsChecks(unittest.TestCase):
                 said = self.fails(export_assets, self.tiers_root(tmp, chevron=im))
                 self.assertIn('chevron.png', said)
                 self.assertIn(name, said)
+
+
+class JointedRigChecks(unittest.TestCase):
+    """Animation rework Task 9: the biped rig has elbows and knees (the plan's rig contract), every limb split into an upper and a
+    lower 4x6x4 box whose faces read the halves of the vanilla 64x64 limb layout, and the hands where they were."""
+    LIMBS = (('right_arm', 'right_forearm', [40, 16]), ('left_arm', 'left_forearm', [32, 48]),
+             ('right_leg', 'right_shin', [0, 16]), ('left_leg', 'left_shin', [16, 48]))
+    FACE = ('top', 'bottom', 'right', 'front', 'left', 'back')
+
+    @classmethod
+    def setUpClass(cls):
+        cls.rig = json.loads((build_skins.ROOT / 'art/rigs/biped.json').read_text(encoding='utf-8'))
+        cls.bones = {b['name']: b for b in cls.rig['bones']}
+
+    @staticmethod
+    def face_rects(box):
+        """Each face's texel rectangle: the box UV layout at its uv, a face named in faceuv moved to that top-left corner."""
+        (u, v), (w, h, d) = box['uv'], box['size']
+        at = {'top': (u + d, v), 'bottom': (u + d + w, v), 'right': (u, v + d), 'front': (u + d, v + d),
+              'left': (u + d + w, v + d), 'back': (u + 2 * d + w, v + d)}
+        at.update({k: tuple(c) for k, c in box.get('faceuv', {}).items()})
+        dims = {'top': (w, d), 'bottom': (w, d), 'right': (d, h), 'front': (w, h), 'left': (d, h), 'back': (w, h)}
+        return {k: (at[k][0], at[k][1], at[k][0] + dims[k][0], at[k][1] + dims[k][1]) for k in at}
+
+    @staticmethod
+    def cells(rects):
+        return {(x, y) for x0, y0, x1, y1 in rects for y in range(y0, y1) for x in range(x0, x1)}
+
+    def test_biped_has_joints(self):
+        """Names, parents and pivots as the rig contract has them; the skeleton check takes the rig."""
+        names = ['root', 'body', 'head', 'right_arm', 'right_forearm', 'right_hand', 'left_arm', 'left_forearm', 'left_hand',
+                 'arms_folded', 'right_leg', 'right_shin', 'left_leg', 'left_shin']
+        self.assertEqual([b['name'] for b in self.rig['bones']], names)
+        want = {'right_forearm': ('right_arm', [-1, 4, 0]), 'left_forearm': ('left_arm', [1, 4, 0]),
+                'right_hand': ('right_forearm', [0, 4, 0]), 'left_hand': ('left_forearm', [0, 4, 0]),
+                'right_shin': ('right_leg', [0, 6, 0]), 'left_shin': ('left_leg', [0, 6, 0])}
+        for name, (parent, pivot) in want.items():
+            with self.subTest(bone=name):
+                self.assertEqual(self.bones[name]['parent'], parent)
+                self.assertEqual(self.bones[name]['pivot'], pivot)
+                self.assertEqual(self.bones[name].get('rotation', [0, 0, 0]), [0, 0, 0])
+        self.assertEqual([n for n, _ in build_skins.RIG_BONES['biped']], names)
+        self.assertEqual(self.rig['hands'], {'right': 'right_hand', 'left': 'left_hand'})
+        build_skins.check_rig(type('Cat', (), {'rigs': {'biped': self.rig}})(), 'biped')
+
+    def test_every_troop_project_bakes_jointed(self):
+        """Every troop of the real catalog bakes (a .bbmodel's bone groups must carry the rig's elbows and knees: the release
+        build skips bake for hand-authored troops, so only this reaches the projects), with each limb jointed, the hand on the
+        forearm, and --template and the relief template drawn."""
+        cat = build_skins.load(build_skins.ROOT)
+        projects = sorted(p.stem for p in (build_skins.ROOT / 'art/troops').glob('*.bbmodel'))
+        self.assertTrue(projects)
+        self.assertTrue(set(projects) <= set(cat.troops), projects)
+        for troop in sorted(cat.troops):
+            if cat.troops[troop].get('rig') != 'biped': continue   # the elbows and knees are the biped rig's (the colossus, hound and spider rigs have their own limbs)
+            with self.subTest(troop=troop, project=troop in projects):
+                bones = {b['name']: b for b in build_skins.bake(cat, troop)['bones']}
+                for upper, lower, _ in self.LIMBS:
+                    self.assertEqual(bones[lower]['parent'], upper)
+                    self.assertEqual([b['size'] for b in bones[upper]['boxes']][:1], [[4, 6, 4]])
+                    self.assertIn([4, 6, 4], [b['size'] for b in bones[lower]['boxes']])
+                self.assertEqual((bones['right_hand']['parent'], bones['left_hand']['parent']), ('right_forearm', 'left_forearm'))
+                self.assertEqual(build_skins.template(cat, troop).size, build_skins.relief_template(cat, troop).size)
+
+    def test_split_limb_uv_covers_vanilla_layout(self):
+        """Each limb is two 4x6x4 boxes, the joint at the bone's pivot; the union of their faces' texels is the vanilla 4x12x4 box's
+        layout, the top face on the upper box and the bottom face on the lower, and each joint cap reads that box's own front."""
+        for upper, lower, uv in self.LIMBS:
+            with self.subTest(limb=upper):
+                (a,), (b,) = self.bones[upper]['boxes'], self.bones[lower]['boxes']
+                self.assertEqual((a['size'], b['size']), ([4, 6, 4], [4, 6, 4]))
+                self.assertFalse(a.get('mirror', False) or b.get('mirror', False))
+                joint = self.bones[lower]['pivot']
+                self.assertEqual(a['origin'][1] + 6, joint[1])   # the upper box ends at the joint, the lower starts there
+                self.assertEqual([a['origin'][0] - joint[0], a['origin'][2] - joint[2]], [b['origin'][0], b['origin'][2]])
+                self.assertEqual(b['origin'][1], 0)
+                whole = self.face_rects({'uv': uv, 'size': [4, 12, 4]})
+                ra, rb = self.face_rects(a), self.face_rects(b)
+                self.assertEqual(ra['top'], whole['top'])
+                self.assertEqual(rb['bottom'], whole['bottom'])
+                for side in ('right', 'front', 'left', 'back'):
+                    x0, y0, x1, y1 = whole[side]
+                    self.assertEqual(ra[side], (x0, y0, x1, y0 + 6))
+                    self.assertEqual(rb[side], (x0, y0 + 6, x1, y1))
+                caps = (ra['bottom'], rb['top'])
+                for cap, own in zip(caps, (ra['front'], rb['front'])):
+                    self.assertTrue(own[0] <= cap[0] and own[1] <= cap[1] and cap[2] <= own[2] and cap[3] <= own[3], cap)
+                self.assertEqual(ra['bottom'][3], ra['front'][3])   # the upper cap reads the rows at the elbow or knee
+                self.assertEqual(rb['top'][1], rb['front'][1])
+                self.assertEqual(self.cells(list(ra.values()) + list(rb.values())), self.cells(whole.values()))
+                self.assertEqual(self.cells(build_skins.footprint(uv, [4, 12, 4])), self.cells(whole.values()))
+
+    def test_hand_world_position_unchanged_at_rest(self):
+        """The hand rides at arm-frame [-1, 8, 0] (right) and [1, 8, 0] (left), where the one-piece arm held it, in the baked rig too."""
+        baked = build_skins.bake_bones(self.rig, 'rig biped')
+        w = build_skins.world(baked)
+        for hand, arm, at in (('right_hand', 'right_arm', [-1, 8, 0]), ('left_hand', 'left_arm', [1, 8, 0])):
+            with self.subTest(hand=hand):
+                r, t = w[arm]
+                want = [t[i] + sum(r[i][k] * at[k] for k in range(3)) for i in range(3)]
+                for got, exp in zip(w[hand][1], want):
+                    self.assertAlmostEqual(got, exp, places=9)
+                chain = [self.bones[hand]['parent'], hand]
+                self.assertEqual(self.bones[chain[0]]['parent'], arm)
+                self.assertEqual([sum(self.bones[n]['pivot'][i] for n in chain) for i in range(3)], at)
+        feet = build_skins.bounds(baked, lambda b: b['name'] in build_skins.LEGS)
+        self.assertEqual(feet[1][1], 24)   # still standing on the ground: the shins hold the feet
+        self.assertEqual(next(b for b in baked if b['name'] == 'root')['pivot'], [0.0, 0.0, 0.0])
 
 
 if __name__ == '__main__':

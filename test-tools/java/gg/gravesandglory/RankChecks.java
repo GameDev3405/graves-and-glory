@@ -51,7 +51,7 @@ final class RankChecks {
         long markTime;
         final Map<Entity, Integer> counts = new HashMap<>();
         Phase2Checks.PortraitProbe probe; MobEntity portrait;
-        long nanosBefore, drawsBefore;
+        long nanosBefore, drawsBefore, flushBefore;
 
         void cast(GravesAndGlory.Battle b) {
             gk2 = post(b, gold, "knight", 3, FAR, 180); stage(gk2, 2);
@@ -72,6 +72,10 @@ final class RankChecks {
         boolean drewSince(MinecraftClient c, List<GravesAndGlory.Unit> us, int n) { for (var u : us) { var x = e(c, u); if (x == null || drawCount(x) - counts.getOrDefault(x, 0) < n) return false; } return true; }
         /** A copy of a weapon model under another id: a tier model the art steps have not drawn yet. */
         static TroopModels.Weapon renamed(TroopModels.Weapon w, String id) { return new TroopModels.Weapon(id, w.frames(), w.far(), w.pull(), w.grip(), w.nocks(), w.texture(), w.glow(), w.rot()); }
+        /** The shipped arming_sword_t2 (121baca paints it), held while the stopgap check takes it away, and put back after: a later suite in the same client draws the real weapon, not none. */
+        static TroopModels.Weapon shippedT2; static boolean tookT2;
+        /** Puts arming_sword_t2 back as it shipped (none when it did not ship). */
+        static void restoreT2() { TroopModels.addWeapon(SWORD_T2, shippedT2); }
 
         public void step(MinecraftClient c, int tick) {
             if (tick == 20) { c.setScreen(null); UUID id = c.player.getUuid(); server(c, b -> { player = id; stage = 1; }); }
@@ -179,25 +183,25 @@ final class RankChecks {
                         var three = TroopModels.weapon(SWORD, 3); int art3 = TroopModels.weaponArt(SWORD, 3);
                         boolean with = SWORD.equals(got[0]) && SWORD_T2.equals(got[1]) && SWORD_T3.equals(got[2]) && three != null && SWORD_T3.equals(three.id()) && art3 == 3;
                         report("p2-weapon-tier-model", with, "with the tier art painted the Squires at weapon tiers 1, 2 and 3 draw " + Arrays.toString(got) + " (want arming_sword, arming_sword_t2, arming_sword_t3); TroopModels.weapon(arming_sword, 3) is " + (three == null ? "none" : three.id()) + ", weaponArt 3 -> " + art3);
-                        TroopModels.addWeapon(SWORD_T2, null); markDraws(c, tiers); marks = 1;
+                        shippedT2 = TroopModels.weapon(SWORD_T2); tookT2 = true; TroopModels.addWeapon(SWORD_T2, null); markDraws(c, tiers); marks = 1;
                     }
                     if (marks == 1 && drewSince(c, tiers, 3)) {
                         var l = last(e(c, tiers.get(1)));
                         boolean back = l != null && SWORD.equals(l.weaponId()) && TroopModels.weaponArt(SWORD, 2) == 1;
                         report("p2-weapon-tier-stopgap", back, "without arming_sword_t2 the tier 2 Squire draws " + (l == null ? "none" : l.weaponId()) + " (want arming_sword: a missing tier draws the highest tier below it)");
-                        marks = 0; server(c, b -> { var u = tiers.get(2); u.mob.setCustomName(net.minecraft.text.Text.literal(ArmyMobs.levelName(u.spec, 3) + ArmyMobs.VETERAN)); stage(u, 3, 3, 3); vetSet = true; });
+                        restoreT2(); marks = 0; server(c, b -> { var u = tiers.get(2); u.mob.setCustomName(net.minecraft.text.Text.literal(ArmyMobs.levelName(u.spec, 3) + ArmyMobs.VETERAN)); stage(u, 3, 3, 3); vetSet = true; });
                         markDraws(c, tiers); wait = 0; cs = 8;
                     }
                 }
-                case 8 -> { wait++; // p2-veteran-over-tier: a Mastery II Squire at armour III draws the trim over _s3
+                case 8 -> { wait++; // p2-veteran-over-tier: a Mastery II Squire at armour III draws _s3 as a Veteran (the hand-authored knight has no trim since 25ecd79: none drawn)
                     var vx = e(c, tiers.get(2));
                     if (!vetSet || vx == null || vx.getCustomName() == null || !vx.getCustomName().getString().endsWith(ArmyMobs.VETERAN)) { wait = 0; return; }
                     if (wait == 2) markDraws(c, tiers);
                     if (wait >= 10 && drewSince(c, tiers, 3)) {
                         var x = e(c, tiers.get(2)); var l = last(x);
-                        boolean ok = l != null && l.look().veteran() && l.look().armourTier() == 3 && file(l.skin()).equals("knight_s3.png") && String.valueOf(l.trim()).equals(TEX + "knight_veteran.png");
-                        report("p2-veteran-over-tier", ok, "\"" + (x == null || x.getCustomName() == null ? "" : x.getCustomName().getString()) + "\" at rank " + rank(RankSync.client(x)) + " drew skin " + (l == null ? "none" : file(l.skin())) + " with trim " + (l == null ? "none" : file(l.trim())) + " (want knight_s3 under knight_veteran)");
-                        server(c, b -> { mage = post(b, gold, "mage", -4.5, Phase2Checks.GildedArt.STUDIO, 180 + 20); stage(mage, 3, 3, 3); mageUp = true; });
+                        boolean ok = l != null && l.look().veteran() && l.look().armourTier() == 3 && file(l.skin()).equals("knight_s3.png") && l.trim() == null;
+                        report("p2-veteran-over-tier", ok, "\"" + (x == null || x.getCustomName() == null ? "" : x.getCustomName().getString()) + "\" at rank " + rank(RankSync.client(x)) + " drew skin " + (l == null ? "none" : file(l.skin())) + " with trim " + (l == null ? "none" : file(l.trim())) + " (want knight_s3 as a Veteran with no trim: the hand-authored knight has none since 25ecd79; p2-veteran-trim-tier draws a trim over tier III)");
+                        server(c, b -> { mage = post(b, gold, "mage", -4.5, Phase2Checks.GildedArt.STUDIO, 180 + 20); mage.mob.setCustomName(net.minecraft.text.Text.literal(ArmyMobs.levelName(mage.spec, 3) + ArmyMobs.VETERAN)); stage(mage, 3, 3, 3); mageUp = true; });
                         wait = 0; cs = 9;
                     }
                 }
@@ -208,6 +212,8 @@ final class RankChecks {
                         var x = e(c, mage); var l = last(x); var m = TroopModels.model("mage"); var ch = TroopChevrons.drawn(x);
                         boolean ok = l != null && l.look().armourTier() == 3 && file(l.skin()).equals("mage_s1.png") && m != null && m.armourArt(3) == 1 && !m.ownSkins().contains(3)
                             && (l.relief() == null || l.relief().equals("1")) && ch != null && ch.chevrons() == 2 && c.world.getTime() - ch.time() < 5 && "sun_staff_t3".equals(l.weaponId());
+                        boolean trim = l != null && l.look().veteran() && l.look().armourTier() == 3 && file(l.skin()).equals("mage_s1.png") && String.valueOf(l.trim()).replace("_far.png", ".png").equals(TEX + "mage/mage_veteran.png");
+                        report("p2-veteran-trim-tier", trim, "the Sunweaver, a Mastery II Veteran at armour III, drew skin " + (l == null ? "none" : file(l.skin())) + " with trim " + (l == null ? "none" : String.valueOf(l.trim())) + " (want mage_s1 under " + TEX + "mage/mage_veteran.png: a troop's trim draws over whichever armour tier it wears)");
                         report("p2-tier-stopgap", ok, "the Sunweaver at rank " + rank(RankSync.client(x)) + " (own skins " + (m == null ? "-" : m.ownSkins()) + ") drew skin " + (l == null ? "none" : file(l.skin())) + ", relief key " + (l == null ? "-" : l.relief()) + ", weapon " + (l == null ? "none" : l.weaponId())
                             + " (want mage_s1, relief 1 or flat, sun_staff_t3: the staff's tier III art is painted, the Sunweaver's armour tier III skin is not) and " + mark(ch) + " (want 2)");
                         wait = 0; cs = 10;
@@ -217,7 +223,7 @@ final class RankChecks {
                     weaponParts(c); wait = 0; cs = 11;
                 }
                 case 11 -> { wait++; // p2-portrait-tiers: ArmyCards.portrait(knight, 2, 3) draws the tier-3 skin and the tier-2 weapon
-                    if (wait == 1) { var w = TroopModels.weapon(SWORD); if (w != null) TroopModels.addWeapon(SWORD_T2, renamed(w, SWORD_T2));
+                    if (wait == 1) { var w = TroopModels.weapon(SWORD); if (w != null && TroopModels.weapon(SWORD_T2) == null) TroopModels.addWeapon(SWORD_T2, renamed(w, SWORD_T2)); // the shipped one when it is there, else a fixture
                         portrait = ArmyCards.portrait(ArmyCards.spec("knight"), 2, 3); probe = new Phase2Checks.PortraitProbe(List.of(portrait)); c.setScreen(probe); marks = drawCount(portrait); }
                     if (wait >= 20 && drawCount(portrait) - marks >= 5) {
                         var l = last(portrait); var plain = ArmyCards.portrait(ArmyCards.spec("knight"), 1, 1);
@@ -225,18 +231,22 @@ final class RankChecks {
                             && new RankSync.Rank(1, 2, 3).equals(RankSync.client(portrait)) && plain != portrait && TroopChevrons.drawn(portrait) == null;
                         report("p2-portrait-tiers", ok, "the portrait at weapon 2, armour 3 (RankSync.client " + rank(RankSync.client(portrait)) + ") drew skin " + (l == null ? "none" : file(l.skin())) + " and weapon " + (l == null ? "none" : l.weaponId())
                             + " (want knight_s3 and arming_sword_t2), no chevron=" + (TroopChevrons.drawn(portrait) == null) + ", cached apart from the 1/1 portrait=" + (plain != portrait));
-                        TroopModels.addWeapon(SWORD_T2, null); c.setScreen(null); marks = 0; wait = 0; cs = 12;
+                        restoreT2(); c.setScreen(null); marks = 0; wait = 0; cs = 12;
                         server(c, b -> { for (int i = 0; i < 24; i++) { var u = post(b, i % 2 == 0 ? gold : violet, "knight", (i % 8 - 3.5) * 1.4, Phase2Checks.GildedArt.STUDIO + 3 + (i / 8) * 1.6, 180); stage(u, 3); crowd.add(u); } crowdUp = true; });
                     }
                 }
                 case 12 -> { wait++; // p2-chevron-cost: 24 level-3 soldiers (27 veterans in view): what the chevrons add to a frame
                     if (!crowdUp || crowd.stream().anyMatch(u -> e(c, u) == null)) { wait = 0; return; }
-                    if (wait == 40) { nanosBefore = TroopChevrons.nanos; drawsBefore = TroopChevrons.draws; }
+                    if (wait == 40) { nanosBefore = TroopChevrons.nanos; drawsBefore = TroopChevrons.draws; flushBefore = TroopChevrons.flushNanos; }
                     if (wait == 240) {
-                        long draws = TroopChevrons.draws - drawsBefore; double us = draws == 0 ? -1 : (TroopChevrons.nanos - nanosBefore) / 1e3 / draws;
-                        double perTick = (TroopChevrons.nanos - nanosBefore) / 1e6 / 200;
+                        // The chevron's own cost leaves out the draw of the troop's last layer that getBuffer makes (TroopChevrons.flushNanos): the troop's next
+                        // layer switch would make it anyway. Since the hand-authored Gilded (121baca) the knight's shield is its own bone, so its last layer is
+                        // its sword's entity cutout, which has no fixed buffer; the vanilla shield item it held before ended on a fixed layer, drawn later.
+                        long draws = TroopChevrons.draws - drawsBefore, flush = TroopChevrons.flushNanos - flushBefore, own = TroopChevrons.nanos - nanosBefore - flush;
+                        double us = draws == 0 ? -1 : own / 1e3 / draws, flushUs = draws == 0 ? -1 : flush / 1e3 / draws;
+                        double perTick = own / 1e6 / 200;
                         boolean ok = draws >= 1000 && us >= 0 && us <= 25 && perTick <= 0.75;
-                        report("p2-chevron-cost", ok, String.format(Locale.ROOT, "over 200 client ticks with %d veterans in view: %d chevron draws, %.1f us each (want 25 or less), %.3f ms of chevron drawing a tick (want 0.75 or less); %d fps at the end", crowd.size() + 3, draws, us, perTick, c.getCurrentFps()));
+                        report("p2-chevron-cost", ok, String.format(Locale.ROOT, "over 200 client ticks with %d veterans in view: %d chevron draws, %.1f us each of the chevron's own (want 25 or less), %.3f ms of chevron drawing a tick (want 0.75 or less); apart from that, %.1f us each (%.3f ms a tick) drawing the troop's last layer in getBuffer; %d fps at the end", crowd.size() + 3, draws, us, perTick, flushUs, flush / 1e6 / 200, c.getCurrentFps()));
                         clearBefore = RankSync.clearSends; cleared = false;
                         server(c, b -> { b.clearProgression(); cleared = true; });
                         wait = 0; cs = 13;
@@ -297,29 +307,29 @@ final class RankChecks {
 
         /**
          * p2-weapon-parts-tier: weaponTiers part sets on the Squire's model (no weaponless troop has a model yet). A whole set
-         * (head: iron_cap at tier I, crest_plume at III) switches with the weapon tier, tier II drawing I; a partial one (the same
-         * plus surcoat_skirt at tier I on the body, which has no tier III part) draws tier I at III (Task 9 review M7).
+         * (head: helm_squire at tier I, helm_crown at III; the hand-authored knight's own bones, Task 8) switches with the weapon tier, tier II drawing I; a partial one (the same
+         * plus belt at tier I on the body, which has no tier III part) draws tier I at III (Task 9 review M7).
          */
         void weaponParts(MinecraftClient c) {
             try {
                 var row = ArmyCards.spec("knight"); StringBuilder why = new StringBuilder();
-                var whole = partsFixture(c, Map.of("iron_cap", new int[] {1}, "crest_plume", new int[] {3}));
-                boolean ok = whole.weaponPart("crest_plume") && whole.weaponPart("iron_cap") && !whole.weaponPart("surcoat_skirt");
+                var whole = partsFixture(c, Map.of("helm_squire", new int[] {1}, "helm_crown", new int[] {3}));
+                boolean ok = whole.weaponPart("helm_crown") && whole.weaponPart("helm_squire") && !whole.weaponPart("belt");
                 boolean[][] want = {{true, false}, {true, false}, {false, true}}; // cap, crest at weapon tiers 1, 2 (no tier II parts: draws I) and 3
                 for (int t = 1; t <= 3; t++) {
                     whole.prepare(new TroopModels.Look(row, 1, t, 1, false, "gold"), false, false); var shown = whole.shownBones(whole.shownMask());
-                    boolean cap = shown.contains("iron_cap"), crest = shown.contains("crest_plume"), skirt = shown.contains("surcoat_skirt");
+                    boolean cap = shown.contains("helm_squire"), crest = shown.contains("helm_crown"), skirt = shown.contains("belt");
                     boolean good = cap == want[t - 1][0] && crest == want[t - 1][1] && skirt && whole.weaponPartTier(t) == (t == 3 ? 3 : 1); ok &= good;
                     why.append("whole set, weapon tier ").append(t).append(" (parts draw as ").append(whole.weaponPartTier(t)).append("): cap ").append(cap ? "shown" : "hidden").append(", crest ").append(crest ? "shown" : "hidden").append(good ? "" : " (BAD)").append("; ");
                 }
-                var partial = partsFixture(c, Map.of("iron_cap", new int[] {1}, "crest_plume", new int[] {3}, "surcoat_skirt", new int[] {1}));
+                var partial = partsFixture(c, Map.of("helm_squire", new int[] {1}, "helm_crown", new int[] {3}, "belt", new int[] {1}));
                 partial.prepare(new TroopModels.Look(row, 1, 3, 1, false, "gold"), false, false); var shown = partial.shownBones(partial.shownMask());
-                boolean good = partial.weaponPartTier(3) == 1 && shown.contains("iron_cap") && shown.contains("surcoat_skirt") && !shown.contains("crest_plume"); ok &= good;
-                why.append("partial set (surcoat_skirt [1] on the body, no tier III body part), weapon tier 3: parts draw as ").append(partial.weaponPartTier(3)).append(", crest ").append(shown.contains("crest_plume") ? "shown" : "hidden").append(good ? "" : " (BAD)").append(";");
+                boolean good = partial.weaponPartTier(3) == 1 && shown.contains("helm_squire") && shown.contains("belt") && !shown.contains("helm_crown"); ok &= good;
+                why.append("partial set (belt [1] on the body, no tier III body part), weapon tier 3: parts draw as ").append(partial.weaponPartTier(3)).append(", crest ").append(shown.contains("helm_crown") ? "shown" : "hidden").append(good ? "" : " (BAD)").append(";");
                 report("p2-weapon-parts-tier", ok, "the Squire's model as a weaponTiers fixture (the Old Horn and the other weaponless troops have no model yet): " + why.toString().trim());
             } catch (Exception ex) { report("p2-weapon-parts-tier", false, ex.toString()); ex.printStackTrace(); }
         }
 
-        @Override public void cleanup(MinecraftClient c) { TroopDepth.enabled = true; TroopModels.addWeapon(SWORD_T2, null); super.cleanup(c); }
+        @Override public void cleanup(MinecraftClient c) { TroopDepth.enabled = true; if (tookT2) restoreT2(); super.cleanup(c); }
     }
 }

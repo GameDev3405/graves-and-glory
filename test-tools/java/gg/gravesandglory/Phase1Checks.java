@@ -561,9 +561,9 @@ public final class Phase1Checks implements ClientModInitializer {
                     }
                     if(foughtAt<0&&anyTarget(b))foughtAt=since(b)-arrivedAt;
                     if(foughtAt<0&&since(b)-arrivedAt<=100)return;
-                    boolean onWay=strikes>0&&!targetOnWay&&runSeen,after=foughtAt>=0&&foughtAt<=100&&Tactics.stance(b,ks.get(0)).equals("hold")&&b.assignment(ks.get(0)).order.equals("retreat");
+                    boolean onWay=strikes>0&&!targetOnWay&&runSeen,after=foughtAt>=0&&foughtAt<=100&&Tactics.stance(b,ks.get(0)).equals("brace")&&b.assignment(ks.get(0)).order.equals("retreat"); // arrived, they stand as on Hold, and Hold braces a shield troop
                     arriveOk=onWay&&after;
-                    arriveWhy="on the way a Risen struck them "+strikes+" times and no knight ever took a target="+!targetOnWay+" (stance run="+runSeen+")="+onWay+"; they arrived at +"+arrivedAt+" and "+(foughtAt<0?"never":foughtAt+" ticks later")+" a knight took a target (the Risen 5 blocks beyond, within Hold's 10), their stance now "+Tactics.stance(b,ks.get(0))+" (want hold) with the stored order still "+b.assignment(ks.get(0)).order+"="+after;
+                    arriveWhy="on the way a Risen struck them "+strikes+" times and no knight ever took a target="+!targetOnWay+" (stance run="+runSeen+")="+onWay+"; they arrived at +"+arrivedAt+" and "+(foughtAt<0?"never":foughtAt+" ticks later")+" a knight took a target (the Risen 5 blocks beyond, within Hold's 10), their stance now "+Tactics.stance(b,ks.get(0))+" (want brace: Hold braces a shield troop) with the stored order still "+b.assignment(ks.get(0)).order+"="+after;
                     // the same for a Move order: to 10 blocks south of the fixture point, with a Risen waiting 8 blocks beyond it (inside Hold's 10, past arriveRadius)
                     for(var u:new ArrayList<>(flank))u.mob.discard();b.units.removeAll(flank);flank.clear();
                     greeter=risen(b,FX,FZ+18,-90);dest=new Vec3d(FX,top(b,FX,FZ+10),FZ+10);order(b,"infantry","move",FX,FZ+10);
@@ -594,10 +594,10 @@ public final class Phase1Checks implements ClientModInitializer {
                         else if(since(b)>600){report("p1-retreat-arrive",false,arriveWhy+"; the Hold fight never pulled the centre past "+(D.arriveRadius()+1)+" of the spot in 600 ticks ("+String.format("%.1f",off)+" off now)");next(b,99);}
                         return;
                     }
-                    pullMax=Math.max(pullMax,off);pullSamples++;if(arrived(b))pullArrived++;if(Tactics.stance(b,ks.get(0)).equals("hold"))pullHold++;if(anyTarget(b))pullTargets++;
+                    pullMax=Math.max(pullMax,off);pullSamples++;if(arrived(b))pullArrived++;if(Tactics.stance(b,ks.get(0)).equals("brace"))pullHold++;if(anyTarget(b))pullTargets++;
                     if(since(b)-pullAt<60)return;
                     pullOk=pullArrived==pullSamples&&pullHold==pullSamples&&pullTargets*4>=pullSamples*3&&own.arrived.contains("infantry");
-                    arriveWhy+="; the Hold fight pulled the centre "+String.format("%.1f",pullMax)+" from the spot: over "+pullSamples+" ticks past "+(D.arriveRadius()+1)+" arrived="+pullArrived+", stance hold="+pullHold+", a knight had a target in "+pullTargets+" (want all, all, three in four) and the latch holds="+own.arrived.contains("infantry")+"="+pullOk;
+                    arriveWhy+="; the Hold fight pulled the centre "+String.format("%.1f",pullMax)+" from the spot: over "+pullSamples+" ticks past "+(D.arriveRadius()+1)+" arrived="+pullArrived+", stance brace (Hold, a shield troop)="+pullHold+", a knight had a target in "+pullTargets+" (want all, all, three in four) and the latch holds="+own.arrived.contains("infantry")+"="+pullOk;
                     arriveOk&=pullOk;
                     // ranged and support on Retreat, 10 blocks west of where they hold: their slots stand 6.8 and 10.8 or more behind each spot (Battle.formation), so the centre never comes within arriveRadius of the spot itself; arrival is measured at the slots
                     dropFlankers(b);
@@ -801,13 +801,13 @@ public final class Phase1Checks implements ClientModInitializer {
 
     /** Task 4: bot difficulty tiers. The command, the lobby and camp buttons and the Hard cadence first (map 0), then Hard's decisions on Kingsfield Crossroads (map 4, five points). Stages run on the server tick; the UI stages run on the client tick. */
     static final class Bots implements Suite,ServerWatch {
-        volatile int stage;volatile String wantShot;volatile boolean finished,shotAsked;
+        volatile int stage;volatile String wantShot;volatile boolean finished;
         volatile UUID player;long stageAt;int shotDelay,lobbyAt=-1,homeAt=-1;
         boolean lobbyOk,commandOk,homeOk,buttonOk,tiersOk,refusedOk;String lobbyWhy="",homeWhy="",tiersWhy="";
         final Map<UUID,Vec3d> firstTarget=new HashMap<>();final Map<UUID,Long> decidedAt=new HashMap<>();
         GravesAndGlory.Squad hard;List<GravesAndGlory.Unit> foes=new ArrayList<>();
-        String farOrder="";boolean shieldFormation;double gap;
-        GravesAndGlory.Unit hexer,aim;final Map<GravesAndGlory.Unit,Float> hpBefore=new HashMap<>();final Set<GravesAndGlory.Unit> bracedBefore=new HashSet<>();boolean frontalBlocked;String frontalWhy="";
+        String farOrder="";boolean noShieldwall;double gap;
+        GravesAndGlory.Unit hexer,aim;final Map<GravesAndGlory.Unit,Float> hpBefore=new HashMap<>();final Set<GravesAndGlory.Unit> bracedBefore=new HashSet<>();boolean frontalBlocked,facingOk;String frontalWhy="",facingWhy="";
 
         void next(GravesAndGlory.Battle b,int s){stage=s;stageAt=b.time;}
         long since(GravesAndGlory.Battle b){return b.time-stageAt;}
@@ -926,7 +926,7 @@ public final class Phase1Checks implements ClientModInitializer {
                     }
                 }
                 case 8->{if(since(b)>=40)next(b,9);} // the client learns the round is over before the map changes under it
-                case 9->{ // Kingsfield Crossroads, a camera over the shieldwall ground, everything else inert
+                case 9->{ // Kingsfield Crossroads, a camera over the archer-threat ground, everything else inert
                     var p=sp(b);if(p==null||!skirmish(b,p,4,1,"normal"))return;
                     clear(b);camera(b,-92,11,2,180,6);
                     System.out.println("[p1] bots fixture: map "+b.campaign.map+" "+Spec.MAPS[b.campaign.map].name()+", "+b.points.size()+" points: "+b.points.stream().map(c->c.spec.id()+"@"+c.spec.x()+","+c.spec.z()).toList());
@@ -934,7 +934,7 @@ public final class Phase1Checks implements ClientModInitializer {
                 }
                 case 10->{ // p1-bots-least-defended
                     clear(b);hard=army(b,0,"hard",-105,100); // 25 blocks east of West Outpost (index 1)
-                    var shipped=b.campaign.tier(hard);var row=new Spec.BotCommandRow(shipped.id(),shipped.retreatShare(),shipped.rallyShare(),shipped.chargeRatio(),shipped.decisionTicks(),true,shipped.defenderWeight(),shipped.shieldwallVsArchers(),shipped.archerThreatCount(),shipped.archerThreatRange(),shipped.chargeDistance(),shipped.gearMaxTier(),shipped.gearReserveTroops(),shipped.gearPriority(),shipped.waveScale(),shipped.waveTraitTier()); // the flanking rule stays tested; the shipped Hard row has it off (Kort, 2026-10-18)
+                    var shipped=b.campaign.tier(hard);var row=new Spec.BotCommandRow(shipped.id(),shipped.retreatShare(),shipped.rallyShare(),shipped.chargeRatio(),shipped.decisionTicks(),true,shipped.defenderWeight(),shipped.archerThreatCount(),shipped.archerThreatRange(),shipped.chargeDistance(),shipped.gearMaxTier(),shipped.gearReserveTroops(),shipped.gearPriority(),shipped.waveScale(),shipped.waveTraitTier()); // the flanking rule stays tested; the shipped Hard row has it off (Kort, 2026-10-18)
                     b.campaign.botDecide(hard,row);int none=chosen(b,hard);
                     plant(b,1,9);b.campaign.botDecide(hard,row);int defended=chosen(b,hard);
                     for(var u:foes)u.mob.discard(); // the nine fall, but the memory of them stays
@@ -950,37 +950,44 @@ public final class Phase1Checks implements ClientModInitializer {
                     report("p1-bots-least-defended",ok,b.points.size()+" points; Hard near "+name(b,1)+" with no sightings -> "+name(b,none)+", with nine Dusk sightings on it -> "+name(b,defended)+", with those nine dead but still remembered -> "+name(b,stale)+"; Normal on the same state -> "+name(b,normal)+" (expected "+name(b,1)+"); Hard near "+name(b,4)+" -> "+name(b,reach)+" (index above 2 needs the arrays sized from battle.points); Dusk Normal on "+name(b,2)+", lane 1, holding points 0, 2 and 4 -> "+name(b,duskNormal)+" (expected "+name(b,3)+", lane 1 mirrored)");
                     next(b,11);
                 }
-                case 11->{if(since(b)>=40){ // p1-bots-shieldwall: six frozen Dusk archers 20 blocks ahead of a Dawn Hard army
+                case 11->{if(since(b)>=40){ // p1-bots-no-shieldwall: six frozen Dusk archers 20 blocks ahead of a Dawn Hard army; bots never pick a Shieldwall (the formation is gone; Hold builds the wall)
                     clear(b);hard=army(b,0,"hard",-100,0);Vec3d at=centre(b,hard);
                     for(var u:foes)u.mob.discard();foes.clear();
                     var duskSquad=new GravesAndGlory.Squad(UUID.randomUUID(),1,new Vec3d(-80,top(b,-80,0),0));duskSquad.order="hold";duskSquad.yaw=90;
                     for(int i=0;i<6;i++){double z=(i-2.5)*2;foes.add(freezeIt(b.spawn(duskSquad,troop("bonebow"),i,new Vec3d(-80,top(b,-80,z),z))));}
                     b.updateSight();int sighted=b.sightings.get(0).size();gap=-80-b.units.stream().filter(u->u.squad==hard).mapToDouble(u->u.mob.getX()).max().orElse(0);
-                    hard.tier="normal";b.campaign.botDecide(hard,b.campaign.tier(hard));boolean normalPlain=!hard.assignments.containsKey("infantry");
+                    hard.tier="normal";b.campaign.botDecide(hard,b.campaign.tier(hard));boolean normalPlain=!hard.assignments.containsKey("infantry")&&!hard.formation.equals("shieldwall");
                     hard.tier="hard";b.campaign.botDecide(hard,b.campaign.tier(hard));var wall=hard.assignments.get("infantry");
-                    boolean formation=wall!=null&&wall.formation.equals("shieldwall");
-                    System.out.println("[p1] shieldwall fixture: army centre "+at+", "+sighted+" Dusk sightings, Normal on the same state leaves infantry in "+hard.formation+" (no override="+normalPlain+"), Hard infantry assignment "+(wall==null?"none":wall.order+"/"+wall.formation));
-                    shieldFormation=formation&&normalPlain;next(b,12);
+                    boolean hardPlain=wall==null&&!hard.formation.equals("shieldwall"),gone=Arrays.stream(Spec.FORMATIONS).noneMatch(f->f.id().equals("shieldwall"));
+                    System.out.println("[p1] no-shieldwall fixture: army centre "+at+", "+sighted+" Dusk sightings, Normal leaves infantry in "+hard.formation+" (no override="+normalPlain+"), Hard infantry assignment "+(wall==null?"none":wall.order+"/"+wall.formation)+", Shieldwall gone from the sheet="+gone);
+                    noShieldwall=normalPlain&&hardPlain&&gone;
+                    // Hold builds the wall: the Hard army holds where it stands in Compact, so its shield troops brace for p1-bots-blight (BattleMath.raiseShield on Hold)
+                    hard.assignments.clear();hard.order="hold";hard.formation="block";hard.target=at;hard.yaw=-90;next(b,12); // facing +x, at the archers
                 }}
                 case 12->{
-                    if(since(b)>=40&&!shotAsked){shotAsked=true;
+                    if(since(b)>=40){
                         long up=shields(b,hard).stream().filter(u->u.mob.isUsingItem()).count(),knights=shields(b,hard).size();
                         Vec3d at=centre(b,hard);
-                        report("p1-bots-shieldwall",shieldFormation&&up>=6,"Hard infantry formation shieldwall (Normal left it alone)="+shieldFormation+"; "+up+" of "+knights+" shield troops using their shield "+since(b)+" ticks later; six Dusk archers "+String.format("%.0f",gap)+" blocks in front of the front rank when ordered ("+String.format("%.0f",Math.abs(foes.get(0).mob.getX()-at.x))+" from the army centre now), no Dusk melee");
-                        wantShot="bots-shieldwall";
+                        report("p1-bots-no-shieldwall",noShieldwall,"neither Normal nor Hard picks a Shieldwall against six archers (the formation is gone; Hold builds the wall)="+noShieldwall+"; on Hold in Compact "+up+" of "+knights+" shield troops use their shield "+since(b)+" ticks later; six Dusk archers "+String.format("%.0f",gap)+" blocks in front of the front rank when ordered ("+String.format("%.0f",Math.abs(foes.get(0).mob.getX()-at.x))+" from the army centre now), no Dusk melee");
+                        next(b,13); // the archers stay, so the wall keeps bracing on Hold for p1-bots-blight
                     }
-                    if(shotAsked&&wantShot==null)next(b,13); // the archers stay, so the wall keeps bracing for p1-bots-blight
                 }
-                case 13->{ // p1-bots-blight: a frontal blow on a knight braced in shieldwall is blocked; a Gravecaller burst on the same wall is not
+                case 13->{ // p1-bots-blight: a frontal blow on a knight braced on Hold is blocked; a Gravecaller burst on the same wall is not
                     var knights=shields(b,hard);
                     if(hexer==null){
+                        // The wall settles first (bounded): every knight within 1.5 of his place, where Tactics.stretch holds him to Hold's yaw; then every braced knight must face the archers (+x, yaw -90).
+                        double off=knights.stream().mapToDouble(u->Math.sqrt(GravesAndGlory.Battle.horizontalDistance(u.mob.getPos(),b.formation(u)))).max().orElse(0);
+                        if(off>1.5&&since(b)<200)return;
                         var braced=knights.stream().filter(u->u.mob.isBlocking()).toList();
                         if(braced.size()<2){report("p1-bots-blight",false,"only "+braced.size()+" knights braced");for(var u:foes)u.mob.discard();b.units.removeAll(foes);foes.clear();next(b,14);return;}
+                        List<String> askew=new ArrayList<>();
+                        for(var u:braced){double dy=Math.abs(net.minecraft.util.math.MathHelper.wrapDegrees(u.mob.getYaw()+90)),db=Math.abs(net.minecraft.util.math.MathHelper.wrapDegrees(u.mob.bodyYaw+90));if(dy>10||db>10)askew.add(u.slot+": yaw "+String.format(java.util.Locale.ROOT,"%.0f",u.mob.getYaw())+" body "+String.format(java.util.Locale.ROOT,"%.0f",u.mob.bodyYaw));}
+                        facingOk=askew.isEmpty();facingWhy=(braced.size()-askew.size())+" of "+braced.size()+" braced knights face the archers within 10 degrees, yaw and body, "+since(b)+" ticks on (the farthest knight "+String.format(java.util.Locale.ROOT,"%.2f",off)+" from his place)"+(facingOk?"":"; askew "+askew)+"="+facingOk;
                         aim=braced.get(0);var guard=braced.get(1);double hx=aim.mob.getX()+12,hz=aim.mob.getZ(); // 12 blocks ahead of the wall (Dawn faces +x), inside every shield arc
                         var squad=new GravesAndGlory.Squad(UUID.randomUUID(),1,new Vec3d(hx,top(b,hx,hz),hz));squad.order="hold";squad.yaw=90;
                         hexer=freezeIt(b.spawn(squad,troop("hexer"),0,new Vec3d(hx,top(b,hx,hz),hz)));foes.add(hexer);
                         float hp=guard.mob.getHealth();int regen=guard.mob.timeUntilRegen;boolean hit=guard.mob.damage(b.world.getDamageSources().mobAttack(hexer.mob),5);
-                        frontalBlocked=!hit&&regen<=10&&guard.mob.getHealth()==hp;frontalWhy="a frontal blow of 5 from the Gravecaller on a braced knight: health "+hp+" -> "+guard.mob.getHealth()+" (hurt cooldown before it "+regen+")";
+                        frontalBlocked=!hit&&regen<=10&&guard.mob.getHealth()==hp;frontalWhy=facingWhy+"; a frontal blow of 5 from the Gravecaller on a braced knight: health "+hp+" -> "+guard.mob.getHealth()+" (hurt cooldown before it "+regen+(frontalBlocked?"":String.format(java.util.Locale.ROOT,"; its yaw %.0f, at %s, the Gravecaller at %s",guard.mob.getYaw(),guard.mob.getPos(),hexer.mob.getPos()))+")";
                     }
                     if(hexer.spellCenter!=null||hpBefore.isEmpty()){
                         if(since(b)>60){report("p1-bots-blight",false,"the burst never landed; "+frontalWhy);for(var u:foes)u.mob.discard();b.units.removeAll(foes);foes.clear();next(b,14);return;}
@@ -991,7 +998,7 @@ public final class Phase1Checks implements ClientModInitializer {
                     }
                     float before=hpBefore.getOrDefault(aim,0f),after=aim.mob.getHealth();boolean aimBraced=bracedBefore.contains(aim);
                     long hitBraced=bracedBefore.stream().filter(u->u.mob.getHealth()<hpBefore.get(u)).count();
-                    report("p1-bots-blight",frontalBlocked&&aimBraced&&after<before,frontalWhy+", blocked="+frontalBlocked+"; then a Gravecaller burst on a braced knight (braced="+aimBraced+"): health "+before+" -> "+after+"; "+hitBraced+" of "+bracedBefore.size()+" braced knights lost health");
+                    report("p1-bots-blight",facingOk&&frontalBlocked&&aimBraced&&after<before,frontalWhy+", blocked="+frontalBlocked+"; then a Gravecaller burst on a braced knight (braced="+aimBraced+"): health "+before+" -> "+after+"; "+hitBraced+" of "+bracedBefore.size()+" braced knights lost health");
                     for(var u:foes)u.mob.discard();b.units.removeAll(foes);foes.clear();hexer=null;next(b,14);
                 }
                 case 14->{ // p1-bots-charge-timing: eight frozen Dusk revenants 60 blocks away, then 15 blocks away
@@ -1521,7 +1528,7 @@ public final class Phase1Checks implements ClientModInitializer {
             var p=sp(b);if(p==null||!Phase2Checks.skirmishBanners(b,p,0,HUD_BANNER,null))return;
             var own=b.squads.get(player);quiet(b,own);float yaw=-90;
             own.order="hold";own.formation="block";own.target=new Vec3d(AX,top(b,AX,AZ),AZ);own.yaw=yaw;
-            own.assignments.put("infantry",new GravesAndGlory.Assignment("attack","shieldwall",new Vec3d(AX,top(b,AX,AZ),AZ),yaw));
+            own.assignments.put("infantry",new GravesAndGlory.Assignment("attack","wedge",new Vec3d(AX,top(b,AX,AZ),AZ),yaw));
             own.assignments.put("ranged",new GravesAndGlory.Assignment("hold","line",new Vec3d(AX-9,top(b,AX-9,AZ),AZ),yaw));
             own.assignments.put("support",new GravesAndGlory.Assignment("follow","block",new Vec3d(AX-16,top(b,AX-16,AZ+9),AZ+9),yaw));
             for(var u:b.units)if(u.squad==own){Vec3d at=b.formation(u);MoraleChecks.place(b,u,at.x,at.z,yaw);freeze(u);}

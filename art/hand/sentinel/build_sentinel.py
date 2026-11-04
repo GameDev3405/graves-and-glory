@@ -266,13 +266,9 @@ def bones():
     B.append(Bone("head", "body", (0, -12, 0)))
     for k in range(4):
         B.append(Bone(f"face_v{k}", "head", boxes=[Box((-4, -8, -4), (8, 8, 8), face_painter(k))], variants=[k]))
-    B.append(Bone("right_arm", "body", (-5, -10, 0), [Box((-3, -2, -2), (4, 12, 4), per_tier(arm))]))
-    B.append(Bone("right_hand", "right_arm", (-1, 8, 0)))
-    B.append(Bone("left_arm", "body", (5, -10, 0), [Box((-1, -2, -2), (4, 12, 4), per_tier(arm))]))
-    B.append(Bone("left_hand", "left_arm", (1, 8, 0)))
+    B += arms(per_tier(arm))
     B.append(Bone("arms_folded", "body", (0, -9, -1), rot=(-43, 0, 0)))
-    B.append(Bone("right_leg", "root", (-1.9, 12, 0), [Box((-2, 0, -2), (4, 12, 4), per_tier(leg))]))
-    B.append(Bone("left_leg", "root", (1.9, 12, 0), [Box((-2, 0, -2), (4, 12, 4), per_tier(leg))]))
+    B += legs(per_tier(leg))
     # the great helm: a can, a step on its crown, a comb and a visor snout from tier II, the gilt cross and mantling at III
     B.append(Bone("helm", "head", tag="helm", boxes=[
         Box((-5, -8, -5), (10, 9, 10), per_tier(helm_can)), Box((-4, -10, -4), (8, 2, 8), per_tier(helm_step))]))
@@ -292,8 +288,8 @@ def bones():
             Box((-5, 0, 0), (10, 18, 1), ("cape", t), sheet="cloth")]))
     B.append(Bone("collar", "body", (0, -12, 3.6), team=True, stages=[2, 3], rot=(8, 0, 0), boxes=[
         Box((-4.5, -0.5, -1.5), (9, 2, 2), "collar", sheet="cloth")]))
-    # the shield, on the left arm
-    B.append(Bone("shield", "left_arm", SHIELD_PIVOT, rot=SHIELD_ROT, tag="shield", boxes=
+    # the shield, on the left forearm
+    B.append(Bone("shield", "left_forearm", SHIELD_PIVOT, rot=SHIELD_ROT, tag="shield", boxes=
         [Box((x, y, -1.9), (w, h, 1), wood) for (x, y), (w, h) in SHIELD_BODY]
         + [Box((x, y, -2.5), (w, h, 2), per_tier(shield_rim)) for (x, y), (w, h) in SHIELD_RIM]
         + [Box((-1, -5, -2.7), (2, 2, 1), per_tier(shield_boss)), Box((-1, -3, -0.9), (2, 5, 3), leather(base=2))]))
@@ -310,17 +306,18 @@ def bones():
             Box((-4 + 0.5 * c, 0.5, -3.5), (8, 2, 7), per_tier(lambda t: K.pauldron(t, "lame1"), (2, 3)), dil=0.15),
             Box((-3.5 + 1.0 * c, 2.5, -3), (7, 2, 6), per_tier(lambda t: K.pauldron(2, "lame2"), (2, 3)), dil=0.15),
             Box((-3 + 1.5 * c, 4.5, -2.5), (6, 1, 5), per_tier(lambda t: K.pauldron(2, "lame2"), (2, 3)), dil=0.1)]))
-        B.append(Bone(f"{side}_couter", f"{side}_arm", stages=[2, 3], boxes=[
-            Box((-3.6 if c < 0 else 2.6, 3, -1.5), (1, 3, 3), per_tier(K.couter, (2, 3)))]))
-        B.append(Bone(f"{side}_cuff", f"{side}_arm", boxes=[Box((c - 2.5, 5, -2.5), (5, 2, 5), per_tier(lambda t: K.cuff(max(t, 2))))]))
-        B.append(Bone(f"{side}_knee", f"{side}_leg", boxes=[Box((-2.5, 6, -3), (5, 2, 2), per_tier(lambda t: K.knee(max(t, 2))))]))
-        B.append(Bone(f"{side}_boot", f"{side}_leg", boxes=[Box((-2.5, 9, -3), (5, 3, 5), per_tier(lambda t: K.boot(t if t > 1 else 1)))]))
-        B.append(Bone(f"{side}_toe", f"{side}_leg", stages=[2, 3], boxes=[Box((-1.5, 11, -4), (3, 1, 1), per_tier(K.toe, (2, 3)))]))
+        # the forearm's frame is the arm's less the elbow (c, 4, 0); the shin's is the leg's less the knee (0, 6, 0)
+        B.append(Bone(f"{side}_couter", f"{side}_forearm", stages=[2, 3], boxes=[
+            Box((-2.6 if c < 0 else 1.6, -1, -1.5), (1, 3, 3), per_tier(K.couter, (2, 3)))]))
+        B.append(Bone(f"{side}_cuff", f"{side}_forearm", boxes=[Box((-2.5, 1, -2.5), (5, 2, 5), per_tier(lambda t: K.cuff(max(t, 2))))]))
+        B.append(Bone(f"{side}_knee", f"{side}_shin", boxes=[Box((-2.5, -1, -3), (5, 2, 2), per_tier(lambda t: K.knee(max(t, 2))))]))
+        B.append(Bone(f"{side}_boot", f"{side}_shin", boxes=[Box((-2.5, 3, -3), (5, 3, 5), per_tier(lambda t: K.boot(t if t > 1 else 1)))]))
+        B.append(Bone(f"{side}_toe", f"{side}_shin", stages=[2, 3], boxes=[Box((-1.5, 5, -4), (3, 1, 1), per_tier(K.toe, (2, 3)))]))
         inner = 3 if side == "right" else 0
         for st, g in (([1, 2], 1), ([3], 3)):
             B.append(Bone(f"{side}_skirt_t{g}", f"{side}_leg", team=True, stages=st, boxes=[
                 Box((-2, 0, -2.45), (4, 8, 0), ("flap", g, inner), sheet="cloth"),
-                Box((-2, 0, 2.45), (4, 8, 0), ("flap", g, 3 - inner), sheet="cloth")]))
+                Box((-2, 0, 2.45), (4, 7, 0), ("flap", g, 3 - inner), sheet="cloth")]))   # the back flap ends at y7, clear of the knee
     return B
 
 def cloth_painter(spec, side):

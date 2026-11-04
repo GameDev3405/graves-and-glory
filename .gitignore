@@ -5,6 +5,9 @@ dist/
 run*/
 evidence/
 clips/
+# ...but the motion clips are source: their Blockbench projects and the JSON tools/clips.py writes from them
+!art/clips/
+!src/main/resources/assets/gravesandglory/clips/
 dependencies/mods/
 dependencies/resourcepacks/
 dependencies/shaders/

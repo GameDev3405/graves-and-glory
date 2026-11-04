@@ -11,6 +11,8 @@ public final class UiMathCheck {
         if (!pass) { failed++; System.out.println("FAILED: " + message); return; }
         checks++;
     }
+    /** HSL hue in degrees of an RGB colour (0 for a grey). */
+    static double hueDeg(int rgb){double r=(rgb>>16&0xff)/255.0,g=(rgb>>8&0xff)/255.0,b=(rgb&0xff)/255.0,max=Math.max(r,Math.max(g,b)),d=max-Math.min(r,Math.min(g,b));return d==0?0:60*(max==r?((g-b)/d+6)%6:max==g?(b-r)/d+2:(r-g)/d+4);}
     public static void main(String[] args) {
         check(UiMath.pixelScale(1920,1080,4)==2 && UiMath.pixelScale(1920,1080,1)==1, "1080p is 2, or the player's smaller GUI Scale");
         check(UiMath.pixelScale(2560,1440,6)==2 && UiMath.pixelScale(3840,2160,9)==4, "1440p and 4K");
@@ -42,6 +44,11 @@ public final class UiMathCheck {
         check(UiMath.contrast(0xffeee9df,0xff1f2427)>=4.5 && UiMath.contrast(0xffe47a64,0xff1f2427)>=4.5, "ivory and alarm text on the iron plate");
         check(UiMath.contrast(0xff3a2a12,0xffbda97c)>=4.5 && UiMath.contrast(0xff5c4a32,0xffbda97c)<4.5, "KEY_INK, the key strip's labels and the lesson tag (UI Task 8c fix round 1), holds 4.5:1 on the darkest vellum behind them, #bda97c, where sepia does not");
         check(Math.abs(UiMath.contrast(0xff000000,0xffffffff)-21.0)<0.01, "WCAG ratio");
+        check(UiMath.over(0xee1a2125,0xffffffff)==0xff293034 && UiMath.over(0xff123456,0xffffffff)==0xff123456 && UiMath.over(0x00123456,0xff0b0d0f)==0xff0b0d0f, "alpha over a ground: the panel over white is #293034");
+        check(UiMath.textTint(0xeee9df,0xff1f2427,4.5)==0xffeee9df, "an ink that already reads is left alone");
+        for(var h:Spec.HOUSES){int ink=UiMath.accentText(h.accent());
+            check(UiMath.contrast(ink,UiMath.PANEL_LIGHTEST)>=4.5 && UiMath.contrast(ink,0xff1f2427)>=4.5 && UiMath.contrast(ink,0xff0b0d0f)>=4.5, "House "+h.id()+": its accent's text ink #"+Integer.toHexString(ink&0xffffff)+" holds 4.5:1 on the lightest panel ground, the iron plate and the floor (controller ruling R37)");
+            check(UiMath.contrast(0xff000000|h.accent(),UiMath.PANEL_LIGHTEST)>=4.5 ? ink==(0xff000000|h.accent()) : Math.abs(((hueDeg(ink)-hueDeg(h.accent()))%360+540)%360-180)<=3, "House "+h.id()+": the text ink keeps the accent itself when it reads, else its hue");}
         check(UiMath.sealCentre(0,3,960)==452 && UiMath.sealCentre(2,3,960)==508 && UiMath.sealCentre(0,5,960)==424 && UiMath.sealCentre(4,5,960)==536, "seals on a 28 px pitch, centred");
         check(java.util.Arrays.equals(UiMath.cardTops(522,new int[]{18,62,18},4),new int[]{416,438,504}) && java.util.Arrays.equals(UiMath.cardTops(502,new int[]{18,18,18},4),new int[]{440,462,484}) && UiMath.cardTops(522,new int[0],4).length==0, "the column's plates stack up from its foot, 4 px apart (UI Task 8c: a chip each, the selected group's card)");
         check(UiMath.countText(9,12).equals("9/12") && UiMath.countText(0,2).equals("0/2") && UiMath.clock(462).equals("7:42") && UiMath.clock(5).equals("0:05"), "count and clock");
@@ -176,8 +183,8 @@ public final class UiMathCheck {
         check(!none.containsKey("spine") && !none.containsKey("keys") && java.util.Arrays.equals(none.get("hints"),new int[]{24,474,164,40}) && nobody.get("card-ranged")[3]==18 && !nobody.containsKey("keys") && UiMath.hudLayout(0,0,0,0,0,UiMath.DEFAULT_STATE).containsKey("score"), "no group fielded: no spine and no key strip, the hint slip above the column's foot; nothing selected: three chips; a 0 x 0 window divides by nothing");
         // The lesson note: 11 px Lato, 264 px a line after its tag, never cut.
         java.util.function.ToIntFunction<String> four = s -> 4*s.length();
-        var two = UiMath.lessonLines("Press B to change formation. Shieldwall holds a line; Wedge breaks one.",58,264,four);
-        check(two.equals(java.util.List.of("Press B to change formation. Shieldwall holds a","line; Wedge breaks one.")) && String.join(" ",two).equals("Press B to change formation. Shieldwall holds a line; Wedge breaks one."), "the first line is the tag's width narrower; the copy wraps at its spaces and joins back whole");
+        var two = UiMath.lessonLines("Press B to change formation. Line holds a front; Wedge breaks one.",58,264,four);
+        check(two.equals(java.util.List.of("Press B to change formation. Line holds a front;","Wedge breaks one.")) && String.join(" ",two).equals("Press B to change formation. Line holds a front; Wedge breaks one."), "the first line is the tag's width narrower; the copy wraps at its spaces and joins back whole");
         check(UiMath.lessonLines("Unbreakableline here",0,40,four).equals(java.util.List.of("Unbreakableline","here")) && UiMath.lessonLines("  ",58,264,four).isEmpty() && UiMath.lessonLines("a  b",0,264,four).equals(java.util.List.of("a b")), "a word too long for a line stands alone, uncut; spaces collapse");
         check(UiMath.lessonHeight(2)==33 && UiMath.lessonHeight(1)==22 && UiMath.lessonHeight(0)==22 && UiMath.lessonHeight(3)==44, "the note: 11 px a line and 11 more");
         check(UiMath.lessonYields(new int[]{12,72,280,33},new int[]{220,110,200,28}) && UiMath.lessonYields(new int[]{12,72,280,33},new int[]{220,114,200,28}) && !UiMath.lessonYields(new int[]{12,72,280,33},new int[]{220,115,200,28}) && !UiMath.lessonYields(new int[]{12,72,280,33},new int[]{292,90,200,28}) && UiMath.lessonYields(new int[]{12,72,280,33},new int[]{100,60,200,28}), "the note gives way to the respawn card where their columns meet and the card's top edge (a row above its box) comes within 4 rows of the note's shadow, which ends at y 110: at y 114, not 115; or over it");

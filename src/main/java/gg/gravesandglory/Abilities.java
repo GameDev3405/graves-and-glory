@@ -23,6 +23,8 @@ import net.minecraft.util.math.Vec3d;
 import net.minecraft.world.Heightmap;
 import org.joml.Vector3f;
 import java.util.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Troop abilities (spec 2, the abilities sheet). A troop's ability id names a row; the row's mechanic decides what it does. The shield is a tag
@@ -252,7 +254,8 @@ final class Abilities {
 
     /**
      * The troop's attack when its cooldown is ready and its target is in reach: a caster starts its spell, a mender does not strike, anything
-     * else shoots an arrow (a ranged troop) or hits (a melee one) through Combat.resolve.
+     * else shoots an arrow (a ranged troop) or hits (a melee one with no swings in the sheet) through Combat.resolve. A melee troop with swings strikes
+     * through Tactics.swing, on its swing's impact frame: called for one here, this does nothing but log it (misrouted), so no blow lands twice or early.
      */
     static boolean attack(GravesAndGlory.Battle b, GravesAndGlory.Unit u, LivingEntity enemy, long time) {
         var row = row(u);
@@ -267,13 +270,28 @@ final class Abilities {
             }
             case "mend" -> { return false; }
             default -> {
-                float amount = (float) baseHit(b, u);
+                if (melee(u) && !Tactics.variants(u.spec.family()).isEmpty()) {misrouted++; LOG.warn("Abilities.attack called for {} ({}), a melee troop whose blow is Tactics.swing's: no blow", u.spec.id(), u.mob.getId()); return false;}
                 animate(b, u);
                 // The hit is decided now; a ranged hit lands when its visible arrow arrives.
-                if (u.spec.ranged()) Projectiles.fire(b, u, enemy, visual(u), amount); else Combat.resolve(b, u, enemy, amount, "melee", false);
+                if (u.spec.ranged()) Projectiles.fire(b, u, enemy, visual(u), (float) baseHit(b, u)); else land(b, u, enemy);
                 return true;
             }
         }
+    }
+
+    static final Logger LOG = LoggerFactory.getLogger("gravesandglory");
+    /** Calls of attack for a melee troop with swings, refused (its blow is Tactics.swing's), since the server started. */
+    static int misrouted;
+
+    /** Whether the troop's attack is a melee blow (a troop not ranged whose ability row strikes rather than casts or mends): the blow Tactics lands on its swing's impact frame. */
+    static boolean melee(GravesAndGlory.Unit u) {
+        if (u.spec.ranged()) return false;
+        return switch (row(u).mechanic()) {case "blight", "mist", "mend" -> false; default -> true;};
+    }
+
+    /** A melee troop's blow on the enemy: its base hit through Combat.resolve, which runs the on-hit abilities (attack, and Tactics.land on the impact frame). */
+    static void land(GravesAndGlory.Battle b, GravesAndGlory.Unit u, LivingEntity enemy) {
+        Combat.resolve(b, u, enemy, (float) baseHit(b, u), "melee", false);
     }
 
     /** The swing a golem or a ravager shows: the client plays it on entity status 4, which their own attack goal would send and a troop has no such goal. */
@@ -407,12 +425,12 @@ final class Abilities {
      * Charge stamp, Squad.chargedAt of his group, he last trampled under), every enemy within the row's radius of him, the one his blow struck among them, takes
      * the row's amount (times his army's progression) as a secondary slam hit, which their counters and traits shape, and each that lives is thrown from his spot
      * with the row's knockback (a structure is not moved); the cooldown starts and he rears (ArmyBear.rear: the warning pose for its pulse, his attack animation)
-     * in a cloud of dust. On Hold, under a Charge order with no stamp or one he trampled under already, or inside the cooldown, his blow is a bite alone. The
+     * in a cloud of dust. The order read is the one his blow's swing was judged under (Combat.charge). On Hold, under a Charge order with no stamp or one he trampled under already, or inside the cooldown, his blow is a bite alone. The
      * trample lands with the blow that makes contact, not before it: the struck enemy took the bite this tick, so its hurt cooldown is cleared first, or vanilla
      * would swallow the smaller blow.
      */
     static void trample(GravesAndGlory.Battle b, GravesAndGlory.Unit u, LivingEntity primary, Spec.AbilitiesRow row) {
-        if (!b.assignment(u).order.equals("charge") || b.time < u.abilityAt) return;
+        if (!Combat.charge(b, u, true).charging() || b.time < u.abilityAt) return; // the order his blow's swing was judged under (Ruling R29)
         Long charged = u.squad.chargedAt.get(u.spec.group());
         if (charged == null || u.trampledCharge >= charged) return;
         u.trampledCharge = charged;

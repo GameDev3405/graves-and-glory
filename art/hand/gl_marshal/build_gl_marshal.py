@@ -308,8 +308,8 @@ def vet_band(rows_at, cols=None):
 def veteran(bone, box):
     n = bone.name
     if n == "body": return vet_band((7,), cols=(0, 7))                     # the cuirass's waist line and its flanks
-    if n.endswith("_arm"): return vet_band((5,))                           # a band above the elbow
-    if n.endswith("_leg"): return vet_band((5,))                           # a band at the knee
+    if n.endswith(("_arm", "_forearm")): return vet_band((5,))             # a band above the elbow
+    if n.endswith(("_leg", "_shin")): return vet_band((5,))                # a band at the knee
     if n == "helm" and box.size == [1, 5, 6]: return vet_band((1, 3))      # the cheek plates, banded
     return None
 
@@ -319,13 +319,9 @@ def bones():
     B.append(Bone("root", ""))
     B.append(Bone("body", "root", (0, 12, 0), [Box((-4, -12, -2), (8, 12, 4), per_tier(cuirass))]))
     B.append(Bone("head", "body", (0, -12, 0), [Box((-4, -8, -4), (8, 8, 8), face), Box((-3, 0, -4.4), (6, 2, 1), beard)]))
-    B.append(Bone("right_arm", "body", (-5, -10, 0), [Box((-3, -2, -2), (4, 12, 4), per_tier(arm))]))
-    B.append(Bone("right_hand", "right_arm", (-1, 8, 0)))
-    B.append(Bone("left_arm", "body", (5, -10, 0), [Box((-1, -2, -2), (4, 12, 4), per_tier(arm))]))
-    B.append(Bone("left_hand", "left_arm", (1, 8, 0)))
+    B += arms(per_tier(arm))
     B.append(Bone("arms_folded", "body", (0, -9, -1), rot=(-43, 0, 0)))
-    B.append(Bone("right_leg", "root", (-1.9, 12, 0), [Box((-2, 0, -2), (4, 12, 4), per_tier(leg))]))
-    B.append(Bone("left_leg", "root", (1.9, 12, 0), [Box((-2, 0, -2), (4, 12, 4), per_tier(leg))]))
+    B += legs(per_tier(leg))
     # the open helm
     B.append(Bone("helm", "head", tag="helm", boxes=[
         Box((-4.5, -9, -4.5), (9, 4, 9), skull), Box((-5, -5, -4), (1, 5, 6), cheek), Box((4, -5, -4), (1, 5, 6), cheek),
@@ -343,7 +339,7 @@ def bones():
     B.append(Bone("surcoat", "body", team=True, boxes=[
         Box((-3, -10, -2.3), (6, 10, 0), ("surcoat", False), sheet="cloth"), Box((-3, -10, 2.3), (6, 10, 0), ("surcoat", True), sheet="cloth")]))
     # the shield
-    B.append(Bone("shield", "left_arm", SHIELD_PIVOT, rot=SHIELD_ROT, tag="shield", boxes=
+    B.append(Bone("shield", "left_forearm", SHIELD_PIVOT, rot=SHIELD_ROT, tag="shield", boxes=
         [Box((x, y, -1.9), (w, h, 1), wood) for (x, y), (w, h) in SHIELD_BODY]
         + [Box((x, y, -2.5), (w, h, 2), shield_rim(3)) for (x, y), (w, h) in SHIELD_RIM]
         + [Box((-1, -3, -0.9), (2, 5, 3), leather(base=2))]))
@@ -355,11 +351,12 @@ def bones():
             Box((-4, -1.5, -4), (8, 2, 8), per_tier(lambda t: pauldron("dome", t))),
             Box((-4 + 0.5 * c, 0.5, -3.5), (8, 2, 7), per_tier(lambda t: pauldron("lame", t)), dil=0.15),
             Box((-3.5 + 1.0 * c, 2.5, -3), (7, 2, 6), per_tier(lambda t: pauldron("lame", t)), dil=0.15)]))
-        B.append(Bone(f"{side}_couter", f"{side}_arm", boxes=[Box((-3.6 if c < 0 else 2.6, 3, -1.5), (1, 3, 3), stud)]))
-        B.append(Bone(f"{side}_cuff", f"{side}_arm", boxes=[Box((c - 2.5, 5, -2.5), (5, 2, 5), lambda f, w, h: blank(w, h) if f in ("top", "bottom") else trim(a=5, b=4)(f, w, 1) + plain(BLACK, 4)(f, w, h - 1))]))
-        B.append(Bone(f"{side}_knee", f"{side}_leg", boxes=[Box((-2.5, 6, -3), (5, 2, 2), stud)]))
-        B.append(Bone(f"{side}_boot", f"{side}_leg", boxes=[Box((-2.5, 9, -3), (5, 3, 5), gilt_boot)]))
-        B.append(Bone(f"{side}_toe", f"{side}_leg", boxes=[Box((-1.5, 11, -4), (3, 1, 1), plain(BLACK, 4))]))
+        # the forearm's frame is the arm's less the elbow (c, 4, 0); the shin's is the leg's less the knee (0, 6, 0)
+        B.append(Bone(f"{side}_couter", f"{side}_forearm", boxes=[Box((-2.6 if c < 0 else 1.6, -1, -1.5), (1, 3, 3), stud)]))
+        B.append(Bone(f"{side}_cuff", f"{side}_forearm", boxes=[Box((-2.5, 1, -2.5), (5, 2, 5), lambda f, w, h: blank(w, h) if f in ("top", "bottom") else trim(a=5, b=4)(f, w, 1) + plain(BLACK, 4)(f, w, h - 1))]))
+        B.append(Bone(f"{side}_knee", f"{side}_shin", boxes=[Box((-2.5, -1, -3), (5, 2, 2), stud)]))
+        B.append(Bone(f"{side}_boot", f"{side}_shin", boxes=[Box((-2.5, 3, -3), (5, 3, 5), gilt_boot)]))
+        B.append(Bone(f"{side}_toe", f"{side}_shin", boxes=[Box((-1.5, 5, -4), (3, 1, 1), plain(BLACK, 4))]))
         inner = 3 if side == "right" else 0
         B.append(Bone(f"{side}_skirt", f"{side}_leg", team=True, boxes=[
             Box((-2, 0, -2.45), (4, 7, 0), ("skirt", inner), sheet="cloth"), Box((-2, 0, 2.45), (4, 7, 0), ("skirt", 3 - inner), sheet="cloth")]))

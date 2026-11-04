@@ -33,8 +33,13 @@ final class TroopChevrons {
     /** The last draw of each entity, overwritten in place (no allocation a frame after an entity's first chevron). */
     private static final class Last{int chevrons,colour;double distance;long time;}
     private static final Map<Entity,Last> DRAWN=new MapMaker().weakKeys().makeMap();
-    /** Chevron billboards drawn since the client started (one per soldier per draw, whatever its count), and the nanoseconds every call of draw took, drawn or not (the harness reads them: the draw cost). */
-    static volatile long draws,nanos;
+    /**
+     * Chevron billboards drawn since the client started (one per soldier per draw, whatever its count), and the nanoseconds every call of draw took, drawn or not (the harness reads them: the draw cost).
+     * flushNanos is the part of nanos spent in getBuffer for the text layer: an Immediate provider draws the layer the troop drew last (its
+     * weapon's, its cloth's) there when that layer has no fixed buffer, a draw the troop's next layer switch would make anyway, so the harness
+     * counts it apart from the chevron's own cost.
+     */
+    static volatile long draws,nanos,flushNanos;
 
     /** The chevrons a level shows: none at level 1, one at 2, two at 3. */
     static int count(int level){return level>=3?2:level==2?1:0;}
@@ -65,7 +70,7 @@ final class TroopChevrons {
         float red=(c>>16&255)/255f,green=(c>>8&255)/255f,blue=(c&255)/255f;
         m.push();
         m.translate(0,top(e,model)+LIFT,0);m.multiply(d.getRotation());float k=WIDTH/TEX_W*(float)Math.max(1,dist/GROW_FROM);m.scale(-k,-k,k); // as a name tag: facing the camera, x to its right, y down, one unit a texel
-        Matrix4f mat=m.peek().getPositionMatrix();VertexConsumer vc=v.getBuffer(RenderLayer.getText(TEXTURE));
+        Matrix4f mat=m.peek().getPositionMatrix();long f=System.nanoTime();VertexConsumer vc=v.getBuffer(RenderLayer.getText(TEXTURE));flushNanos+=System.nanoTime()-f;
         float x0=-TEX_W/2f,x1=TEX_W/2f;
         for(int i=0;i<n;i++){float y1=-i*STACK,y0=y1-TEX_H; // the first chevron's bottom edge on the lift point, the second STACK rows above it
             vc.vertex(mat,x0,y0,0).color(red,green,blue,1f).texture(0,0).light(FULL_BRIGHT).next();

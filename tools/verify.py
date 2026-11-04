@@ -70,12 +70,15 @@ def run(args):
         # test_build_skins is already included in unittest discovery; do not run it twice.
         step('ui-assets',[sys.executable,'tools/build_ui_art.py','--verify'])
         step('skin-assets',[sys.executable,'tools/build_skins.py','--verify'])
+        step('clips',[sys.executable,'tools/clips.py','--verify'])
         gson=list((pathlib.Path.home()/'.gradle/caches/modules-2/files-2.1/com.google.code.gson/gson/2.10.1').glob('*/*.jar'))
         if not gson: raise RuntimeError('Gson 2.10.1 missing; run documented online setup once')
         classes=out/'classes'; classes.mkdir()
-        names='Spec Gear GearStats GearEffects RelicSlots Forge GearWire GearCommands GearView BattleMath ModeMath MatchStats Progression Profile ProfileMigration MarchMath RosterMath CounterMath LevelMath CreditLog AdmissionPolicy SocialHub CampTerrain CompatibilityPolicy HouseRoute StepHop Wedge LayoutMarker LegacyDataMigration TroopFaces UiMath HintText FeedLines ModeLines BannerDrop AudioCues SafeFiles MatchRules ArenaAutosave EngineMap MovementGuard'.split()
+        names='Spec Gear GearStats GearEffects RelicSlots Forge GearWire GearCommands GearView BattleMath ModeMath MatchStats Progression Profile ProfileMigration MarchMath RosterMath CounterMath LevelMath CreditLog AdmissionPolicy SocialHub CampTerrain CompatibilityPolicy HouseRoute StepHop Wedge LayoutMarker LegacyDataMigration TroopFaces UiMath HintText FeedLines ModeLines BannerDrop AudioCues SafeFiles MatchRules ArenaAutosave EngineMap MovementGuard MotionMath Clip MotionInput Pose MotionBody MotionFeet MotionStack MotionEngine'.split()
         checks=sorted((ROOT/'test-tools/standalone').glob('*Check.java'))
         sources=[ROOT/'src/main/java/gg/gravesandglory'/(n+'.java') for n in names]
+        sources+=[ROOT/'test-tools/java/gg/gravesandglory/SoleSlide.java']  # pure geometry the motion grade shares with SoleSlideCheck
+        sources+=[ROOT/'test-tools/java/gg/gravesandglory/StepWindows.java']  # the grade's event windows and authored ratios, pinned by StepWindowsCheck
         game_guard()
         step('java-compile',[jdk/'bin/javac','--release','17','-cp',gson[0],'-d',classes,*sources,*checks])
         for test in checks: step(test.stem,[jdk/'bin/java','-cp',str(classes)+os.pathsep+str(gson[0]),'gg.gravesandglory.'+test.stem])

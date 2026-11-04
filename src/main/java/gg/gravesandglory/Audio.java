@@ -68,8 +68,12 @@ public final class Audio {
     /** Set by Combat.resolve around the damage call: the ticks the blow being applied still has to go before it visibly lands (a melee swing's contact frame; 0 for a missile or a spell). */
     static int blowDelay;
 
-    /** The ticks from a melee swing starting to the blade meeting its target, for this troop (its House's attack clip; AudioCues.contactTicks). */
+    /**
+     * The ticks from a melee swing starting to the blade meeting its target, for this troop (its House's attack clip; AudioCues.contactTicks).
+     * A blow from Tactics.swing already lands on its clip's impact frame (Tactics.land sets blowVariant around it), so it has no wait left.
+     */
     public static int contact(GravesAndGlory.Unit u) {
+        if (u != null && u.blowVariant >= 0) return 0;
         return u == null || u.spec == null ? AudioCues.DEFAULT_CONTACT_TICKS : AudioCues.contactTicks(u.spec.house());
     }
 

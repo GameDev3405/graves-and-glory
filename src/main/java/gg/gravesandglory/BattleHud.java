@@ -400,14 +400,12 @@ public final class BattleHud {
             case "line"->UiTex.draw(g,"hud/g-line-faded",x,y);
             case "wedge"->UiTex.draw(g,"hud/g-wedge-faded",x,y);
             case "loose"->UiTex.draw(g,"hud/g-loose-faded",x,y);
-            case "shieldwall"->UiTex.draw(g,"hud/g-shieldwall-faded",x,y);
             default->{}
         }else switch(formation){
             case "block"->UiTex.draw(g,"hud/g-compact",x,y);
             case "line"->UiTex.draw(g,"hud/g-line",x,y);
             case "wedge"->UiTex.draw(g,"hud/g-wedge",x,y);
             case "loose"->UiTex.draw(g,"hud/g-loose",x,y);
-            case "shieldwall"->UiTex.draw(g,"hud/g-shieldwall",x,y);
             default->{}
         }
     }

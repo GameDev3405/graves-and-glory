@@ -73,6 +73,8 @@ Some sheet values are display text only (a class's `activeText` and `passiveText
 
 The Phase 2 sheets: `houses` (five, with `fieldable`, all true), `troops` (30), `troopNotes` (card text), `evolutions`, `mastery`, `renown`, `rarities`, `recruitment`, `economy` and `economyModel` (the numbers `tools/economy_model.py` simulates), `abilities`, `counters`, `houseTraits`, `classes`, `combatDiscipline`, `botBanners` and `campaignBattles`. `tools/preflight.py` checks them, and a House must hold exactly its composition (every House has the same rarity shape, since all five are fieldable).
 
+The animation sheets (2026-10-29 animation rework): every `troops` row names its weapon `family`, and `attackVariants` lists each family's attacks (`id`, `family`, `zone`, `kind`, `impactTicks`, `weight`) in the order the engine cycles them. Preflight checks that every family is known and used, that each troop's family has rows, and that each `impactTicks` lands below the cooldown of every troop in the family. A variant's `kind` is the animation's hit kind (`stab`, `slash`, `blunt`, `arrow`, `bolt`, `magic`), not the combat kind: here `bolt` is a crossbow bolt, while in `CounterMath.kindTags` and `attackKind` (and so in counter rules and Combat) `bolt` is a caster's magic bolt and a crossbow counts as `arrow`.
+
 ### Adding a troop
 
 1. Add a row to `troops` (id, House, rarity, entity, stats, ability, tags) and its id to its House's `troops` list in sheet order; add its `troopNotes` row and its `evolutions` rows. Preflight names every missing cell and reference.
@@ -137,7 +139,8 @@ python tools/export_server.py         -> dist/graves-and-glory-<version>-server.
 - Several design sheets are unused by code: `hooks`, `landmarkStyle`, `recruitmentView`, `terrainStyle`, and `CampaignRow` fields `duplicateRefund` and `starterGold`.
 - No third-party resource packs ship (Kort, 2026-10-18). Excalibur's skeleton and wither-skeleton geometry was CC-BY-NC-ND, so do not copy any third-party pack's model files into Graves and Glory.
 - Player 3D depth is an overlay, not a new model. Its in-game look has not been verified.
-- Batches 1-4 (respawn countdown, key strip, result headline and PLAY AGAIN, Shieldwall, bot retreat and charge) compile and package. Their in-game behaviour is not yet verified. Balance of bot retreat and charge needs human playtests.
+- Batches 1-4 (respawn countdown, key strip, result headline and PLAY AGAIN, bot retreat and charge) compile and package. Their in-game behaviour is not yet verified. Balance of bot retreat and charge needs human playtests.
+- `botCommand` columns `archerThreatCount` and `archerThreatRange` are unused by code since the Shieldwall formation was removed (2026-10-29). They are parked, not removed, because another branch edits the same rows; see PARKED.md.
 - `tools/prepare_preview_checks.py` and `tools/implement_experience.py` reference removed hooks. Do not run them.
 - `CommandPlaytest` writes to `evidence/revision-02` (relative to the run folder) and creates that folder itself when it is missing.
 

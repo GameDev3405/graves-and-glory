@@ -69,9 +69,10 @@
       "ability": "shield",
       "evolveLine": "knight",
       "slotWeight": 1,
-      "pennant": true,
+      "pennant": false,
       "shield": "white:cs",
-      "texture": "gravesandglory:textures/entity/dawn_guard.png"
+      "texture": "gravesandglory:textures/entity/dawn_guard.png",
+      "family": "sword_shield"
     },
     {
       "id": "archer",
@@ -85,7 +86,7 @@
       "range": 22.0,
       "ranged": true,
       "speed": 0.3,
-      "cooldown": 40,
+      "cooldown": 50,
       "cost": 24,
       "trainingSeconds": 4.0,
       "magic": false,
@@ -96,9 +97,10 @@
       "ability": "steady",
       "evolveLine": "archer",
       "slotWeight": 1,
-      "pennant": true,
+      "pennant": false,
       "shield": "none",
-      "texture": "gravesandglory:textures/entity/dawn_guard.png"
+      "texture": "gravesandglory:textures/entity/dawn_guard.png",
+      "family": "bow"
     },
     {
       "id": "sentinel",
@@ -123,9 +125,10 @@
       "ability": "shield",
       "evolveLine": "sentinel",
       "slotWeight": 1,
-      "pennant": true,
+      "pennant": false,
       "shield": "white:sc",
-      "texture": "gravesandglory:textures/entity/dawn_guard.png"
+      "texture": "gravesandglory:textures/entity/dawn_guard.png",
+      "family": "sword_shield"
     },
     {
       "id": "longbow",
@@ -139,7 +142,7 @@
       "range": 30.0,
       "ranged": true,
       "speed": 0.28,
-      "cooldown": 45,
+      "cooldown": 56,
       "cost": 35,
       "trainingSeconds": 7.0,
       "magic": false,
@@ -150,9 +153,10 @@
       "ability": "pierce_longbow",
       "evolveLine": "longbow",
       "slotWeight": 1,
-      "pennant": true,
+      "pennant": false,
       "shield": "none",
-      "texture": "gravesandglory:textures/entity/dawn_guard.png"
+      "texture": "gravesandglory:textures/entity/dawn_guard.png",
+      "family": "bow"
     },
     {
       "id": "mage",
@@ -177,9 +181,10 @@
       "ability": "mend_sunweaver",
       "evolveLine": "none",
       "slotWeight": 2,
-      "pennant": true,
+      "pennant": false,
       "shield": "none",
-      "texture": "gravesandglory:textures/entity/dawn_guard.png"
+      "texture": "gravesandglory:textures/entity/dawn_guard.png",
+      "family": "caster"
     },
     {
       "id": "gl_marshal",
@@ -204,9 +209,10 @@
       "ability": "oath_banner",
       "evolveLine": "none",
       "slotWeight": 4,
-      "pennant": true,
+      "pennant": false,
       "shield": "white:sc,light_gray:bo",
-      "texture": "gravesandglory:textures/entity/dawn_guard.png"
+      "texture": "gravesandglory:textures/entity/dawn_guard.png",
+      "family": "sword_shield"
     },
     {
       "id": "revenant",
@@ -231,9 +237,10 @@
       "ability": "fearless",
       "evolveLine": "revenant",
       "slotWeight": 1,
-      "pennant": true,
+      "pennant": false,
       "shield": "none",
-      "texture": "minecraft:textures/entity/zombie/zombie.png"
+      "texture": "minecraft:textures/entity/zombie/zombie.png",
+      "family": "sword"
     },
     {
       "id": "bonebow",
@@ -247,7 +254,7 @@
       "range": 25.0,
       "ranged": true,
       "speed": 0.3,
-      "cooldown": 35,
+      "cooldown": 44,
       "cost": 20,
       "trainingSeconds": 2.6,
       "magic": false,
@@ -258,9 +265,10 @@
       "ability": "fearless",
       "evolveLine": "bonebow",
       "slotWeight": 1,
-      "pennant": true,
+      "pennant": false,
       "shield": "none",
-      "texture": "minecraft:textures/entity/skeleton/skeleton.png"
+      "texture": "minecraft:textures/entity/skeleton/skeleton.png",
+      "family": "bow"
     },
     {
       "id": "reaper",
@@ -285,9 +293,10 @@
       "ability": "cleave_reaper",
       "evolveLine": "reaper",
       "slotWeight": 1,
-      "pennant": true,
+      "pennant": false,
       "shield": "none",
-      "texture": "minecraft:textures/entity/skeleton/wither_skeleton.png"
+      "texture": "minecraft:textures/entity/skeleton/wither_skeleton.png",
+      "family": "scythe"
     },
     {
       "id": "stalker",
@@ -301,7 +310,7 @@
       "range": 29.0,
       "ranged": true,
       "speed": 0.33,
-      "cooldown": 35,
+      "cooldown": 44,
       "cost": 40,
       "trainingSeconds": 5.2,
       "magic": false,
@@ -312,9 +321,10 @@
       "ability": "frostshot",
       "evolveLine": "stalker",
       "slotWeight": 1,
-      "pennant": true,
+      "pennant": false,
       "shield": "none",
-      "texture": "minecraft:textures/entity/skeleton/stray.png"
+      "texture": "minecraft:textures/entity/skeleton/stray.png",
+      "family": "bow"
     },
     {
       "id": "hexer",
@@ -339,9 +349,10 @@
       "ability": "blight_gravecaller",
       "evolveLine": "none",
       "slotWeight": 2,
-      "pennant": true,
+      "pennant": false,
       "shield": "none",
-      "texture": "minecraft:textures/entity/skeleton/wither_skeleton.png"
+      "texture": "minecraft:textures/entity/skeleton/wither_skeleton.png",
+      "family": "caster"
     },
     {
       "id": "gb_hollowking",
@@ -366,9 +377,10 @@
       "ability": "dread",
       "evolveLine": "none",
       "slotWeight": 4,
-      "pennant": true,
+      "pennant": false,
       "shield": "none",
-      "texture": "minecraft:textures/entity/skeleton/wither_skeleton.png"
+      "texture": "minecraft:textures/entity/skeleton/wither_skeleton.png",
+      "family": "greatsword"
     },
     {
       "id": "wm_hound",
@@ -393,9 +405,10 @@
       "ability": "pounce",
       "evolveLine": "wm_hound",
       "slotWeight": 1,
-      "pennant": true,
+      "pennant": false,
       "shield": "none",
-      "texture": "minecraft:textures/entity/wolf/wolf.png"
+      "texture": "minecraft:textures/entity/wolf/wolf.png",
+      "family": "hound"
     },
     {
       "id": "wm_hunter",
@@ -409,7 +422,7 @@
       "range": 20.0,
       "ranged": true,
       "speed": 0.31,
-      "cooldown": 36,
+      "cooldown": 45,
       "cost": 20,
       "trainingSeconds": 3.5,
       "magic": false,
@@ -420,9 +433,10 @@
       "ability": "ambush",
       "evolveLine": "wm_hunter",
       "slotWeight": 1,
-      "pennant": true,
+      "pennant": false,
       "shield": "none",
-      "texture": "minecraft:textures/entity/piglin/zombified_piglin.png"
+      "texture": "minecraft:textures/entity/piglin/zombified_piglin.png",
+      "family": "bow"
     },
     {
       "id": "wm_stalker",
@@ -447,9 +461,10 @@
       "ability": "ensnare",
       "evolveLine": "wm_stalker",
       "slotWeight": 1,
-      "pennant": true,
+      "pennant": false,
       "shield": "none",
-      "texture": "minecraft:textures/entity/spider/spider.png"
+      "texture": "minecraft:textures/entity/spider/spider.png",
+      "family": "spider"
     },
     {
       "id": "wm_tusk",
@@ -474,9 +489,10 @@
       "ability": "brace",
       "evolveLine": "wm_tusk",
       "slotWeight": 1,
-      "pennant": true,
+      "pennant": false,
       "shield": "none",
-      "texture": "minecraft:textures/entity/piglin/zombified_piglin.png"
+      "texture": "minecraft:textures/entity/piglin/zombified_piglin.png",
+      "family": "spear"
     },
     {
       "id": "wm_seer",
@@ -501,9 +517,10 @@
       "ability": "howl",
       "evolveLine": "none",
       "slotWeight": 2,
-      "pennant": true,
+      "pennant": false,
       "shield": "none",
-      "texture": "minecraft:textures/entity/piglin/zombified_piglin.png"
+      "texture": "minecraft:textures/entity/piglin/zombified_piglin.png",
+      "family": "caster"
     },
     {
       "id": "wm_oldhorn",
@@ -528,9 +545,10 @@
       "ability": "trample",
       "evolveLine": "none",
       "slotWeight": 4,
-      "pennant": true,
+      "pennant": false,
       "shield": "none",
-      "texture": "minecraft:textures/entity/bear/polarbear.png"
+      "texture": "minecraft:textures/entity/bear/polarbear.png",
+      "family": "bear"
     },
     {
       "id": "ic_hearthguard",
@@ -555,9 +573,10 @@
       "ability": "shield",
       "evolveLine": "ic_hearthguard",
       "slotWeight": 1,
-      "pennant": true,
+      "pennant": false,
       "shield": "black:bo,light_gray:mc",
-      "texture": "minecraft:textures/entity/illager/vindicator.png"
+      "texture": "minecraft:textures/entity/illager/vindicator.png",
+      "family": "axe_shield"
     },
     {
       "id": "ic_arbalist",
@@ -582,9 +601,10 @@
       "ability": "armour_bolt",
       "evolveLine": "ic_arbalist",
       "slotWeight": 1,
-      "pennant": true,
+      "pennant": false,
       "shield": "none",
-      "texture": "minecraft:textures/entity/illager/pillager.png"
+      "texture": "minecraft:textures/entity/illager/pillager.png",
+      "family": "crossbow"
     },
     {
       "id": "ic_breaker",
@@ -609,9 +629,10 @@
       "ability": "sunder",
       "evolveLine": "ic_breaker",
       "slotWeight": 1,
-      "pennant": true,
+      "pennant": false,
       "shield": "none",
-      "texture": "minecraft:textures/entity/illager/vindicator.png"
+      "texture": "minecraft:textures/entity/illager/vindicator.png",
+      "family": "axe"
     },
     {
       "id": "ic_ballista",
@@ -636,9 +657,10 @@
       "ability": "pierce_ballista",
       "evolveLine": "ic_ballista",
       "slotWeight": 1,
-      "pennant": true,
+      "pennant": false,
       "shield": "none",
-      "texture": "minecraft:textures/entity/illager/pillager.png"
+      "texture": "minecraft:textures/entity/illager/pillager.png",
+      "family": "crossbow"
     },
     {
       "id": "ic_mortar",
@@ -663,9 +685,10 @@
       "ability": "shell",
       "evolveLine": "none",
       "slotWeight": 2,
-      "pennant": true,
+      "pennant": false,
       "shield": "none",
-      "texture": "minecraft:textures/entity/illager/pillager.png"
+      "texture": "minecraft:textures/entity/illager/pillager.png",
+      "family": "crew"
     },
     {
       "id": "ic_colossus",
@@ -690,9 +713,10 @@
       "ability": "forge_slam",
       "evolveLine": "none",
       "slotWeight": 4,
-      "pennant": true,
+      "pennant": false,
       "shield": "none",
-      "texture": "minecraft:textures/entity/iron_golem/iron_golem.png"
+      "texture": "minecraft:textures/entity/iron_golem/iron_golem.png",
+      "family": "colossus"
     },
     {
       "id": "tc_raider",
@@ -717,9 +741,10 @@
       "ability": "brine",
       "evolveLine": "tc_raider",
       "slotWeight": 1,
-      "pennant": true,
+      "pennant": false,
       "shield": "none",
-      "texture": "minecraft:textures/entity/zombie/drowned.png"
+      "texture": "minecraft:textures/entity/zombie/drowned.png",
+      "family": "sword"
     },
     {
       "id": "tc_harpooner",
@@ -744,9 +769,10 @@
       "ability": "harpoon",
       "evolveLine": "tc_harpooner",
       "slotWeight": 1,
-      "pennant": true,
+      "pennant": false,
       "shield": "none",
-      "texture": "minecraft:textures/entity/zombie/drowned.png"
+      "texture": "minecraft:textures/entity/zombie/drowned.png",
+      "family": "thrower"
     },
     {
       "id": "tc_tideguard",
@@ -771,9 +797,10 @@
       "ability": "brace",
       "evolveLine": "tc_tideguard",
       "slotWeight": 1,
-      "pennant": true,
+      "pennant": false,
       "shield": "none",
-      "texture": "minecraft:textures/entity/zombie/drowned.png"
+      "texture": "minecraft:textures/entity/zombie/drowned.png",
+      "family": "spear"
     },
     {
       "id": "tc_mist",
@@ -798,9 +825,10 @@
       "ability": "mist",
       "evolveLine": "tc_mist",
       "slotWeight": 1,
-      "pennant": true,
+      "pennant": false,
       "shield": "none",
-      "texture": "minecraft:textures/entity/illager/evoker.png"
+      "texture": "minecraft:textures/entity/illager/evoker.png",
+      "family": "caster"
     },
     {
       "id": "tc_brute",
@@ -825,9 +853,10 @@
       "ability": "tentacle_sweep",
       "evolveLine": "none",
       "slotWeight": 2,
-      "pennant": true,
+      "pennant": false,
       "shield": "none",
-      "texture": "minecraft:textures/entity/illager/ravager.png"
+      "texture": "minecraft:textures/entity/illager/ravager.png",
+      "family": "ravager"
     },
     {
       "id": "tc_admiral",
@@ -852,9 +881,10 @@
       "ability": "undertow",
       "evolveLine": "none",
       "slotWeight": 4,
-      "pennant": true,
+      "pennant": false,
       "shield": "none",
-      "texture": "minecraft:textures/entity/zombie/drowned.png"
+      "texture": "minecraft:textures/entity/zombie/drowned.png",
+      "family": "spear"
     }
   ],
   "orders": [
@@ -945,14 +975,6 @@
       "spacing": 3.2,
       "wedge": false,
       "purpose": "Spread out; less concentrated protection."
-    },
-    {
-      "id": "shieldwall",
-      "label": "Shieldwall",
-      "columns": 12,
-      "spacing": 1.5,
-      "wedge": false,
-      "purpose": "Wide shield front; shield troops brace when enemies close."
     }
   ],
   "points": [
@@ -2314,7 +2336,7 @@
       "trigger": "R",
       "screen": "CommandScreen",
       "content": "attack,rush,move,follow,hold",
-      "bottom": "block,line,wedge,loose,shieldwall"
+      "bottom": "block,line,wedge,loose"
     },
     {
       "id": "barracks",
@@ -2482,7 +2504,6 @@
       "decisionTicks": 160,
       "flankLeastDefended": false,
       "defenderWeight": 0.0,
-      "shieldwallVsArchers": false,
       "archerThreatCount": 3,
       "archerThreatRange": 30.0,
       "chargeDistance": 0.0,
@@ -2500,7 +2521,6 @@
       "decisionTicks": 100,
       "flankLeastDefended": false,
       "defenderWeight": 0.0,
-      "shieldwallVsArchers": false,
       "archerThreatCount": 3,
       "archerThreatRange": 30.0,
       "chargeDistance": 0.0,
@@ -2518,7 +2538,6 @@
       "decisionTicks": 60,
       "flankLeastDefended": false,
       "defenderWeight": 25.0,
-      "shieldwallVsArchers": true,
       "archerThreatCount": 3,
       "archerThreatRange": 30.0,
       "chargeDistance": 18.0,
@@ -2559,7 +2578,302 @@
       "lastStandFeedSeconds": 30,
       "arriveRadius": 4.0,
       "bleedDamage": 1.0,
-      "bleedEveryTicks": 20
+      "bleedEveryTicks": 20,
+      "shieldWallCell": 0.7,
+      "crawlShare": 0.33,
+      "fireMemoryTicks": 60,
+      "volleyPeakPerBlock": 0.25,
+      "volleyPeakMax": 6.0,
+      "crossbowArcScale": 0.4,
+      "thrownArcScale": 0.6,
+      "meleeReachGrace": 1.0,
+      "corpseLieTicks": 30,
+      "corpseFadeTicks": 40,
+      "arcTravelScale": 1.0,
+      "mediumHitShare": 0.1,
+      "heavyHitShare": 0.25
+    }
+  ],
+  "attackVariants": [
+    {
+      "id": "sword_shield_thrust",
+      "family": "sword_shield",
+      "zone": "body",
+      "kind": "stab",
+      "impactTicks": 7,
+      "weight": "light"
+    },
+    {
+      "id": "sword_shield_overhead",
+      "family": "sword_shield",
+      "zone": "head",
+      "kind": "slash",
+      "impactTicks": 10,
+      "weight": "medium"
+    },
+    {
+      "id": "sword_shield_low_cut",
+      "family": "sword_shield",
+      "zone": "legs",
+      "kind": "slash",
+      "impactTicks": 8,
+      "weight": "medium"
+    },
+    {
+      "id": "axe_shield_overhead_chop",
+      "family": "axe_shield",
+      "zone": "head",
+      "kind": "slash",
+      "impactTicks": 10,
+      "weight": "medium"
+    },
+    {
+      "id": "axe_shield_hook_hew",
+      "family": "axe_shield",
+      "zone": "body",
+      "kind": "slash",
+      "impactTicks": 8,
+      "weight": "medium"
+    },
+    {
+      "id": "sword_thrust",
+      "family": "sword",
+      "zone": "body",
+      "kind": "stab",
+      "impactTicks": 7,
+      "weight": "light"
+    },
+    {
+      "id": "sword_overhead",
+      "family": "sword",
+      "zone": "head",
+      "kind": "slash",
+      "impactTicks": 10,
+      "weight": "medium"
+    },
+    {
+      "id": "sword_low_cut",
+      "family": "sword",
+      "zone": "legs",
+      "kind": "slash",
+      "impactTicks": 8,
+      "weight": "medium"
+    },
+    {
+      "id": "axe_overhead_chop",
+      "family": "axe",
+      "zone": "head",
+      "kind": "slash",
+      "impactTicks": 12,
+      "weight": "heavy"
+    },
+    {
+      "id": "axe_side_hew",
+      "family": "axe",
+      "zone": "body",
+      "kind": "slash",
+      "impactTicks": 12,
+      "weight": "heavy"
+    },
+    {
+      "id": "axe_haft_jab",
+      "family": "axe",
+      "zone": "body",
+      "kind": "blunt",
+      "impactTicks": 7,
+      "weight": "light"
+    },
+    {
+      "id": "greatsword_overhead_cleave",
+      "family": "greatsword",
+      "zone": "head",
+      "kind": "slash",
+      "impactTicks": 12,
+      "weight": "heavy"
+    },
+    {
+      "id": "greatsword_side_cut",
+      "family": "greatsword",
+      "zone": "body",
+      "kind": "slash",
+      "impactTicks": 12,
+      "weight": "heavy"
+    },
+    {
+      "id": "greatsword_thrust",
+      "family": "greatsword",
+      "zone": "body",
+      "kind": "stab",
+      "impactTicks": 7,
+      "weight": "medium"
+    },
+    {
+      "id": "spear_thrust",
+      "family": "spear",
+      "zone": "body",
+      "kind": "stab",
+      "impactTicks": 7,
+      "weight": "light"
+    },
+    {
+      "id": "spear_high_thrust",
+      "family": "spear",
+      "zone": "head",
+      "kind": "stab",
+      "impactTicks": 7,
+      "weight": "light"
+    },
+    {
+      "id": "spear_low_sweep",
+      "family": "spear",
+      "zone": "legs",
+      "kind": "blunt",
+      "impactTicks": 8,
+      "weight": "medium"
+    },
+    {
+      "id": "scythe_reap",
+      "family": "scythe",
+      "zone": "legs",
+      "kind": "slash",
+      "impactTicks": 12,
+      "weight": "heavy"
+    },
+    {
+      "id": "scythe_overhead_hook",
+      "family": "scythe",
+      "zone": "head",
+      "kind": "slash",
+      "impactTicks": 12,
+      "weight": "heavy"
+    },
+    {
+      "id": "bow_volley",
+      "family": "bow",
+      "zone": "body",
+      "kind": "arrow",
+      "impactTicks": 16,
+      "weight": "light"
+    },
+    {
+      "id": "bow_direct",
+      "family": "bow",
+      "zone": "body",
+      "kind": "arrow",
+      "impactTicks": 16,
+      "weight": "light"
+    },
+    {
+      "id": "crossbow_loose",
+      "family": "crossbow",
+      "zone": "body",
+      "kind": "bolt",
+      "impactTicks": 4,
+      "weight": "medium"
+    },
+    {
+      "id": "thrower_throw",
+      "family": "thrower",
+      "zone": "body",
+      "kind": "arrow",
+      "impactTicks": 8,
+      "weight": "medium"
+    },
+    {
+      "id": "caster_cast",
+      "family": "caster",
+      "zone": "body",
+      "kind": "magic",
+      "impactTicks": 10,
+      "weight": "medium"
+    },
+    {
+      "id": "crew_fire",
+      "family": "crew",
+      "zone": "body",
+      "kind": "blunt",
+      "impactTicks": 8,
+      "weight": "heavy"
+    },
+    {
+      "id": "hound_bite",
+      "family": "hound",
+      "zone": "legs",
+      "kind": "stab",
+      "impactTicks": 8,
+      "weight": "light"
+    },
+    {
+      "id": "hound_lunge",
+      "family": "hound",
+      "zone": "body",
+      "kind": "blunt",
+      "impactTicks": 8,
+      "weight": "medium"
+    },
+    {
+      "id": "spider_bite",
+      "family": "spider",
+      "zone": "body",
+      "kind": "stab",
+      "impactTicks": 8,
+      "weight": "light"
+    },
+    {
+      "id": "spider_lunge",
+      "family": "spider",
+      "zone": "body",
+      "kind": "blunt",
+      "impactTicks": 8,
+      "weight": "medium"
+    },
+    {
+      "id": "bear_maul",
+      "family": "bear",
+      "zone": "head",
+      "kind": "slash",
+      "impactTicks": 10,
+      "weight": "heavy"
+    },
+    {
+      "id": "bear_bite",
+      "family": "bear",
+      "zone": "body",
+      "kind": "stab",
+      "impactTicks": 8,
+      "weight": "medium"
+    },
+    {
+      "id": "ravager_charge",
+      "family": "ravager",
+      "zone": "body",
+      "kind": "blunt",
+      "impactTicks": 10,
+      "weight": "heavy"
+    },
+    {
+      "id": "ravager_bite",
+      "family": "ravager",
+      "zone": "head",
+      "kind": "stab",
+      "impactTicks": 8,
+      "weight": "medium"
+    },
+    {
+      "id": "colossus_slam",
+      "family": "colossus",
+      "zone": "head",
+      "kind": "blunt",
+      "impactTicks": 12,
+      "weight": "heavy"
+    },
+    {
+      "id": "colossus_backhand",
+      "family": "colossus",
+      "zone": "body",
+      "kind": "blunt",
+      "impactTicks": 8,
+      "weight": "heavy"
     }
   ],
   "recruitmentView": [
@@ -4845,7 +5159,7 @@
       "dx": -55.9,
       "y": 66.55,
       "dz": 2.5,
-      "text": "LESSON 2 OF 4 / Press {key:formation} to change formation. Shieldwall holds a line; Wedge breaks one."
+      "text": "LESSON 2 OF 4 / Press {key:formation} to change formation. Line holds a front; Wedge breaks one."
     },
     {
       "id": "lesson-3",
@@ -9918,7 +10232,7 @@
     },
     {
       "id": "hexer",
-      "beats": "shieldwalls, clumped Commons",
+      "beats": "braced shields, clumped Commons",
       "beatenBy": "Hounds, Harpooners, pierce"
     },
     {
@@ -9978,7 +10292,7 @@
     },
     {
       "id": "ic_mortar",
-      "beats": "shieldwalls, entrenched lines, clumps",
+      "beats": "braced shields, entrenched lines, clumps",
       "beatenBy": "anything that gets closer than 10"
     },
     {

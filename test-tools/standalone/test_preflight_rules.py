@@ -82,5 +82,92 @@ class PreflightRules(unittest.TestCase):
             with self.subTest(tier=tier):
                 self.refuses(lambda d, tier=tier: self.bot(d, tier).__setitem__('gearPriority', 'x'), 'botCommand/' + tier)
 
+    # ---- the animation rework: troop families, attack variants, Hold's wall (Shieldwall is gone) ----
+    def troop(self, data, tid):
+        return next(t for t in data['troops'] if t['id'] == tid)
+
+    def test_family_must_be_known(self):
+        self.refuses(lambda d: self.troop(d, 'knight').__setitem__('family', 'lance'), 'knight', 'family', 'lance')
+
+    def test_melee_family_needs_variants(self):
+        def drop(d):
+            d['attackVariants'] = [r for r in d['attackVariants'] if r['family'] != 'sword_shield']
+        self.refuses(drop, 'sword_shield', 'attackVariants')
+
+    def test_variant_impact_ticks_positive(self):
+        for bad in (0, -1, 2.5):
+            with self.subTest(impactTicks=bad):
+                self.refuses(lambda d, bad=bad: d['attackVariants'][0].__setitem__('impactTicks', bad), 'attackVariants', 'impactTicks')
+
+    def test_variant_impact_lands_before_a_late_swings_next_beat(self):
+        # Phase 1 review M3: a swing 10 ticks late on its beat has cooldown - 10 ticks to the next, and impactDelay clamps the blow one tick
+        # before that, so the cooldown must be at least impactTicks + 11 for the blow to land on the client's impact frame.
+        cooldown = self.troop(self.sheet, 'gl_marshal')['cooldown']
+        def impact(ticks):
+            return lambda d: self.variant(d, 'sword_shield_overhead').__setitem__('impactTicks', ticks)
+        self.refuses(impact(cooldown - 10), 'sword_shield_overhead', 'gl_marshal', 'impactTicks + 11')
+        def review_case(d):  # the review's scenario: cooldown 15 against impactTicks 10 passed the old cooldown > impactTicks bound
+            self.troop(d, 'gl_marshal')['cooldown'] = 15
+            self.variant(d, 'sword_shield_overhead')['impactTicks'] = 10
+        self.refuses(review_case, 'sword_shield_overhead', 'gl_marshal')
+        code, out = self.run_preflight(impact(cooldown - 11))
+        self.assertEqual(code, 0, out)
+
+    def test_variant_family_must_be_used_by_a_troop(self):
+        # Vacate a known family: the harpooner joins the bows, so the thrower rows belong to no troop.
+        self.refuses(lambda d: self.troop(d, 'tc_harpooner').__setitem__('family', 'bow'), 'thrower_throw', 'used by no troop')
+
+    def variant(self, data, vid):
+        return next(v for v in data['attackVariants'] if v['id'] == vid)
+
+    def test_shell_family_lands_blunt(self):
+        # Task 6 carry M5: the Mortar's shell (the crew family, every troop's ability shell) lands as a blunt blow, never as an arrow.
+        self.refuses(lambda d: self.variant(d, 'crew_fire').__setitem__('kind', 'arrow'), 'crew_fire', 'shell')
+        self.refuses(lambda d: self.variant(d, 'crew_fire').__setitem__('kind', 'stab'), 'crew_fire', 'shell')
+
+    def test_ranged_family_never_blunt(self):
+        self.refuses(lambda d: self.variant(d, 'bow_volley').__setitem__('kind', 'blunt'), 'bow_volley', 'ranged family')
+
+    def test_variant_family_must_be_known(self):
+        def orphan(d):
+            row = dict(d['attackVariants'][0])
+            row['id'] = 'lance_thrust'
+            row['family'] = 'lance'
+            d['attackVariants'].append(row)
+        self.refuses(orphan, 'lance_thrust', 'family')
+
+    def test_shieldwall_formation_rejected(self):
+        def wall(d):
+            if not any(f['id'] == 'shieldwall' for f in d['formations']):
+                row = dict(d['formations'][0])
+                row['id'] = 'shieldwall'
+                row['label'] = 'Shieldwall'
+                d['formations'].append(row)
+        self.refuses(wall, 'shieldwall', 'Hold')
+
+    def test_combat_discipline_new_bounds(self):
+        bad = {'shieldWallCell': (0.5, 1.31), 'crawlShare': (0.0, 1.0), 'fireMemoryTicks': (0,), 'volleyPeakPerBlock': (0.0, -0.1),
+               'volleyPeakMax': (0.0,), 'crossbowArcScale': (0.0, 1.01), 'thrownArcScale': (0.0, 1.01), 'meleeReachGrace': (-0.01,),
+               'corpseLieTicks': (-1,), 'corpseFadeTicks': (0,), 'arcTravelScale': (0.99, 2.01), 'heavyHitShare': (0.10, 0.05)}
+        for col, values in bad.items():
+            for value in values:
+                with self.subTest(column=col, value=value):
+                    self.refuses(lambda d, col=col, value=value: d['combatDiscipline'][0].__setitem__(col, value), 'combatDiscipline', col)
+        # mediumHitShare's own bounds (heavyHitShare raised out of the way so only the medium bound is broken)
+        for value in (0.0, 1.0):
+            with self.subTest(column='mediumHitShare', value=value):
+                def medium(d, value=value):
+                    d['combatDiscipline'][0]['mediumHitShare'] = value
+                    d['combatDiscipline'][0]['heavyHitShare'] = 0.99
+                self.refuses(medium, 'combatDiscipline', 'mediumHitShare')
+        # a tick column must be a whole number
+        for col in ('fireMemoryTicks', 'corpseLieTicks', 'corpseFadeTicks'):
+            with self.subTest(column=col, value='non-int'):
+                self.refuses(lambda d, col=col: d['combatDiscipline'][0].__setitem__(col, 40.5), 'combatDiscipline', col, 'whole number')
+        # a missing column
+        for col in ('shieldWallCell', 'heavyHitShare'):
+            with self.subTest(column=col, value='missing'):
+                self.refuses(lambda d, col=col: d['combatDiscipline'][0].pop(col), 'combatDiscipline', 'missing', col)
+
 if __name__ == '__main__':
     unittest.main(verbosity=2)

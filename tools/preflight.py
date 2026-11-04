@@ -295,6 +295,8 @@ for r in data['ui']:
         formationIds={f['id'] for f in data['formations']}
         for id in r['bottom'].split(','):
             if id not in formationIds: errors.append('UI formation reference missing: '+id)
+# Animation rework (spec 7.2): the Shieldwall formation went; Hold builds the wall (shield and spear troops brace on Hold).
+if any(f['id']=='shieldwall' for f in data['formations']): errors.append('formations/shieldwall: the Shieldwall formation was removed; Hold builds the shield wall')
 # Phase 2 Houses (spec 6.1): a troop's House, rarity, ability and evolve line (the levelNames key since the in-match progression design) are its own columns.
 # (modes, above, left the rules row its arena, capacity and reinforcement columns and took the round's own numbers with it.)
 squad=data['rules'][0]['squadSize']
@@ -390,6 +392,53 @@ if cd['chargeImpactTicks']<1: errors.append('combatDiscipline: chargeImpactTicks
 for col,lo,hi in (('flankArcDegrees',0,180),('lastStandShare',0,1),('lastStandRadius',0,None),('hornCooldownSeconds',0,None),('hornVolume',0,None),('woundedShare',0,1),('lastStandFeedSeconds',1,None),('arriveRadius',0,None),('bleedDamage',0,None),('bleedEveryTicks',0,None)):
     if col not in cd: errors.append(f'combatDiscipline: missing {col}')
     elif cd[col]<lo or hi is not None and cd[col]>hi or cd[col]==lo and col not in ('hornCooldownSeconds','lastStandFeedSeconds'): errors.append(f'combatDiscipline: {col} must be above {lo}'+(f' and at most {hi}' if hi is not None else ''))
+# Animation rework (plan Phase 1): the wall, the volley, the corpse and the hit-weight numbers. Each (column, low, high, low open, high open).
+for col,lo,hi,loOpen,hiOpen in (('shieldWallCell',.5,1.3,True,False),('crawlShare',0,1,True,True),('fireMemoryTicks',1,None,False,False),('volleyPeakPerBlock',0,None,True,False),('volleyPeakMax',0,None,True,False),
+        ('crossbowArcScale',0,1,True,False),('thrownArcScale',0,1,True,False),('meleeReachGrace',0,None,False,False),('corpseLieTicks',0,None,False,False),('corpseFadeTicks',1,None,False,False),('arcTravelScale',1,2,False,False),('mediumHitShare',0,1,True,True),('heavyHitShare',0,1,True,True)):
+    if col not in cd: errors.append(f'combatDiscipline: missing {col}'); continue
+    v=cd[col]
+    if isinstance(v,bool) or not isinstance(v,(int,float)) or v<lo or loOpen and v==lo or hi is not None and (v>hi or hiOpen and v==hi):
+        errors.append(f'combatDiscipline: {col} is {v}; it must be '+('above' if loOpen else 'at least')+f' {lo}'+('' if hi is None else (' and below' if hiOpen else ' and at most')+f' {hi}'))
+for col in ('fireMemoryTicks','corpseLieTicks','corpseFadeTicks'):
+    if col in cd and (isinstance(cd[col],bool) or not isinstance(cd[col],int)): errors.append(f'combatDiscipline: {col} must be a whole number of ticks')
+if 'mediumHitShare' in cd and 'heavyHitShare' in cd and not cd['heavyHitShare']>cd['mediumHitShare']: errors.append(f'combatDiscipline: heavyHitShare {cd["heavyHitShare"]} must be above mediumHitShare {cd["mediumHitShare"]}')
+# Animation rework (spec 6.2): every troop names its weapon family; attackVariants holds each family's attacks in the order the engine cycles them.
+FAMILIES=('sword_shield','axe_shield','sword','axe','greatsword','spear','scythe','bow','crossbow','thrower','caster','crew','hound','spider','bear','ravager','colossus')
+VARIANT_ZONES=('head','body','legs');VARIANT_KINDS=('stab','slash','blunt','arrow','bolt','magic');VARIANT_WEIGHTS=('light','medium','heavy');MELEE_KINDS=('stab','slash','blunt')
+familyTroops={}
+for t in data['troops']:
+    fam=t.get('family')
+    if fam not in FAMILIES: errors.append(f'troops/{t["id"]}: family {fam!r} must be one of {", ".join(FAMILIES)}')
+    else: familyTroops.setdefault(fam,[]).append(t)
+LATE_SWING_TICKS=10 # Tactics.tick keeps a swing's beat when it comes up to this many ticks after nextAttack
+variantRows=data.get('attackVariants',[])
+if 'attackVariants' not in data: errors.append('attackVariants: the sheet is missing (spec 6.2)')
+variantFamilies={}
+for v in variantRows:
+    vid=v.get('id');fam=v.get('family')
+    if fam not in FAMILIES: errors.append(f'attackVariants/{vid}: family {fam!r} must be one of {", ".join(FAMILIES)}')
+    elif fam not in familyTroops: errors.append(f'attackVariants/{vid}: family {fam} is used by no troop')
+    variantFamilies.setdefault(fam,[]).append(v)
+    if v.get('zone') not in VARIANT_ZONES: errors.append(f'attackVariants/{vid}: zone {v.get("zone")!r} must be one of {", ".join(VARIANT_ZONES)}')
+    if v.get('kind') not in VARIANT_KINDS: errors.append(f'attackVariants/{vid}: kind {v.get("kind")!r} must be one of {", ".join(VARIANT_KINDS)}')
+    if v.get('weight') not in VARIANT_WEIGHTS: errors.append(f'attackVariants/{vid}: weight {v.get("weight")!r} must be one of {", ".join(VARIANT_WEIGHTS)}')
+    tk=v.get('impactTicks')
+    if isinstance(tk,bool) or not isinstance(tk,int) or tk<1: errors.append(f'attackVariants/{vid}: impactTicks {tk!r} must be a whole number of ticks, at least 1')
+    elif fam in familyTroops:
+        # A swing up to LATE_SWING_TICKS late keeps its beat (Tactics.tick: nextAttack + cooldown), leaving cooldown - late ticks to the next swing, and
+        # BattleMath.impactDelay clamps the blow one tick before that. Cooldown at least impactTicks + LATE_SWING_TICKS + 1 means the clamp never bites,
+        # so the blow never lands before the client's impact frame (Phase 1 review M3).
+        short=[t['id'] for t in familyTroops[fam] if t['cooldown']<tk+LATE_SWING_TICKS+1]
+        if short: errors.append(f'attackVariants/{vid}: impactTicks {tk} must land before the next beat of a late swing: the cooldown of {", ".join(short)} must be at least impactTicks + {LATE_SWING_TICKS + 1} ({tk+LATE_SWING_TICKS+1})')
+    if fam in familyTroops and v.get('kind') in VARIANT_KINDS:
+        melee=any(not t['ranged'] for t in familyTroops[fam])
+        # A shell (the Mortar's crew: every troop of the family fires a shell) lands as a blunt blow (Task 6, M5); any other ranged family flies arrows, bolts or magic.
+        shell=not melee and all(t.get('ability')=='shell' for t in familyTroops[fam])
+        if shell:
+            if v['kind']!='blunt': errors.append(f'attackVariants/{vid}: kind {v["kind"]} must be blunt for a shell family (its shell lands as a blunt blow)')
+        elif melee!=(v['kind'] in MELEE_KINDS): errors.append(f'attackVariants/{vid}: kind {v["kind"]} '+('must be stab, slash or blunt for a melee family' if melee else 'is a melee kind on a ranged family'))
+for fam,famTroops in familyTroops.items():
+    if fam not in variantFamilies: errors.append(f'attackVariants: family {fam} (troops {", ".join(t["id"] for t in famTroops)}) has no rows'+(' and a melee family needs at least one' if any(not t['ranged'] for t in famTroops) else ''))
 if 'morale' in data: errors.append('morale: the sheet went with routing (Task 8b); its surviving numbers live in combatDiscipline')
 if len(data['recruitment'])!=1: errors.append('recruitment: exactly one row')
 if any(data['campaign'][0].get(k,-1)<0 for k in ('completionShards','victoryShards','completionRenown','victoryRenown')): errors.append('campaign: completionShards, victoryShards, completionRenown and victoryRenown must be 0 or more')

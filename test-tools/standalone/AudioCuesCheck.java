@@ -104,17 +104,9 @@ public final class AudioCuesCheck {
 
  /** Plans of the timing audit (docs/reports/audio-cue-timing-2026-11-02.md): each cue plays once, at its moment. */
  static void timing(Path assets,String code) throws Exception {
-  // 1. A melee blow's sound waits for the attack clip's contact frame: the table must say what the animation data says.
-  String houses=Files.readString(Path.of("src/main/java/gg/gravesandglory/HouseAttacks.java"));
-  var m=java.util.regex.Pattern.compile("STRIKE\\s*=\\s*Map\\.of\\(([^)]*)\\)").matcher(houses);
-  check(m.find(),"HouseAttacks.STRIKE is in the source");
-  var pair=java.util.regex.Pattern.compile("\"(\\w+)\"\\s*,\\s*(\\d*\\.\\d+)f").matcher(m.group(1));
-  int strikes=0;
-  while(pair.find()){strikes++;String house=pair.group(1);double seconds=Double.parseDouble(pair.group(2));
-   check(AudioCues.contactTicks(house)==(int)Math.round(seconds*20),house+": the hit sound waits "+Math.round(seconds*20)+" ticks, the clip's strike ("+seconds+" s), not "+AudioCues.contactTicks(house));}
-  check(strikes==AudioCues.CONTACT_TICKS.size(),"Every House with a strike has a contact tick: "+strikes+" vs "+AudioCues.CONTACT_TICKS.size());
-  var peak=java.util.regex.Pattern.compile("PEAKS\\s*=\\s*Map\\.of\\(\"attack\",\\s*(\\.\\d+)f").matcher(Files.readString(Path.of("src/main/java/gg/gravesandglory/TroopClips.java")));
-  check(peak.find()&&AudioCues.DEFAULT_CONTACT_TICKS==(int)Math.round(Double.parseDouble(peak.group(1))*20),"A troop with no House attack waits the rig's attack peak");
+  // 1. A blow from Tactics.swing lands on its clip's impact frame already, so its sound has no wait (HouseAttacks and TroopClips went with the motion engine);
+  // the contact ticks are left for melee that still resolves on the swing's first tick.
+  check(Files.readString(Path.of("src/main/java/gg/gravesandglory/Audio.java")).contains("if (u != null && u.blowVariant >= 0) return 0;"),"An impact-frame blow (Tactics.land) does not wait a second time");
   check(AudioCues.contactTicks(null)==AudioCues.DEFAULT_CONTACT_TICKS&&AudioCues.contactTicks("nobody")==AudioCues.DEFAULT_CONTACT_TICKS,"An unknown House uses the default");
   for(int t:AudioCues.CONTACT_TICKS.values())check(t>0&&t<=10,"A contact tick is inside the 0.5 s attack clip");
   // 2. The waiting queue: a delayed cue plays on its tick, once, in order; a zero delay plays now; a clear or a clock that went back drops it.

@@ -292,7 +292,7 @@ def bones():
     B.append(Bone("brow", "head", tag="helm", stages=[2, 3], boxes=[Box((-4.7, -6.5, -4.9), (9.4, 1, 1), IT.brass(3))]))
     B.append(Bone("gorget", "body", stages=[2, 3], boxes=[Box((-3.5, -12.8, -2.9), (7, 1.6, 5.8), IT.P("hggt", 3), dil=0.1)]))
     # the shield, on the left arm (TroopFeatures.Shield draws none of vanilla's for a model that carries its own)
-    B.append(Bone("shield", "left_arm", SHIELD_PIVOT, rot=SHIELD_ROT, tag="shield", boxes=
+    B.append(Bone("shield", "left_arm", (2.7, 10.0, -1.5), rot=SHIELD_ROT, tag="shield", boxes=   # the one-piece arm's grip: handlib.SHIELD_PIVOT is the forearm frame's
         [Box((x, y, -1.9), (w, h, 1), wood) for (x, y), (w, h) in SHIELD_BODY]
         + [Box((x, y, -2.5), (w, h, 2), shield_rim_ic()) for (x, y), (w, h) in SHIELD_RIM]
         + [Box((-1, -5, -2.7), (2, 2, 1), shield_boss_ic()), Box((-1, -3, -0.9), (2, 5, 3), leather_ic(base=2))]))

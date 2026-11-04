@@ -72,6 +72,9 @@ public final class GravesAndGloryClient implements ClientModInitializer {
         TroopRenderers.register();
         WagonRenderer.register(); // the Convoy supply wagon
         net.fabricmc.fabric.api.resource.ResourceManagerHelper.get(net.minecraft.resource.ResourceType.CLIENT_RESOURCES).registerReloadListener(new TroopModelLoader());
+        // The motion engine's clips (animation rework Task 13): clips/<rig>/<family>/*.json, each family's attacks in the sheet's order (Tactics.variants).
+        {Map<String,List<String>> order=new LinkedHashMap<>();for(Spec.AttackVariantsRow v:Spec.ATTACKVARIANTS)order.computeIfAbsent(v.family(),k->new ArrayList<>()).add(v.id());
+        net.fabricmc.fabric.api.resource.ResourceManagerHelper.get(net.minecraft.resource.ResourceType.CLIENT_RESOURCES).registerReloadListener(new ClipLibrary(order));}
         menu=key("menu",GLFW.GLFW_KEY_R);attack=key("attack",GLFW.GLFW_KEY_G);follow=key("follow",GLFW.GLFW_KEY_V);cycle=key("formation",GLFW.GLFW_KEY_B);mapKey=key("map",GLFW.GLFW_KEY_M);
         rotateLeft=key("rotate_left",GLFW.GLFW_KEY_LEFT_BRACKET);rotateRight=key("rotate_right",GLFW.GLFW_KEY_RIGHT_BRACKET);
         hints=key("hints",GLFW.GLFW_KEY_LEFT_ALT); // held, the battle HUD shows every key hint (BattleHud.altLayer)
@@ -95,12 +98,17 @@ public final class GravesAndGloryClient implements ClientModInitializer {
         ClientPlayNetworking.registerGlobalReceiver(GravesAndGlory.CAMP,(client,handler,buf,responder)->{String page=buf.readString(32);client.execute(()->CampScreen.open(page));});
         ClientPlayNetworking.registerGlobalReceiver(GravesAndGlory.OPEN_BARRACKS,(client,handler,buf,responder)->client.execute(()->client.setScreen(running?new BarracksScreen():new LobbyScreen())));
         ClientPlayNetworking.registerGlobalReceiver(GravesAndGlory.PARTY,(client,handler,buf,responder)->client.execute(()->client.setScreen(new LobbyScreen(3))));
-        // A troop's stance (stance_v1): TroopAnimator picks its still and move clips by it. The packet a player gets on START_TRACKING comes before
-        // the entity's spawn packet (Fabric calls the event first), so the entry is kept for an id the world does not have yet; an unloaded entity's entry goes.
-        ClientPlayNetworking.registerGlobalReceiver(GravesAndGlory.STANCE,(client,handler,buf,responder)->{int id=buf.readVarInt(),i=buf.readByte();client.execute(()->{
-            String stance=i>=0&&i<Tactics.STANCES.size()?Tactics.STANCES.get(i):"";
-            if(stance.isEmpty())TroopAnimator.STANCES.remove(id);else TroopAnimator.STANCES.put(id,stance);});});
-        ClientEntityEvents.ENTITY_UNLOAD.register((entity,world)->TroopAnimator.forget(entity.getId()));
+        // The motion events (Task 6): a troop's stance (stance_v2), its swings (attack_v1) and the blows on it (hit_v1), kept in MotionEvents.Client for the
+        // motion engine. A stance a player gets on START_TRACKING comes before the entity's spawn packet (Fabric calls the event first), so a stance is
+        // kept for an id the world does not have yet (the server sends the catch-up swing after the spawn); an unloaded entity's entries go. TroopMotion reads them each frame.
+        ClientPlayNetworking.registerGlobalReceiver(MotionEvents.STANCE,(client,handler,buf,responder)->{int id=buf.readVarInt(),i=buf.readByte();float pitch=buf.readFloat();client.execute(()->MotionEvents.Client.stance(id,i,pitch));});
+        // A swing or a blow for an id this world does not have is dropped (no queue for an unloaded troop); a swing is checked against its family's rows.
+        ClientPlayNetworking.registerGlobalReceiver(MotionEvents.ATTACK,(client,handler,buf,responder)->{int id=buf.readVarInt(),variant=buf.readVarInt();long start=buf.readVarLong();client.execute(()->{
+            net.minecraft.entity.Entity e=client.world==null?null:client.world.getEntityById(id);Spec.TroopsRow t=e==null?null:TroopModels.troopOf(e);
+            MotionEvents.Client.attack(id,variant,start,e==null?MotionEvents.Client.NO_ENTITY:t==null?MotionEvents.Client.UNKNOWN_TROOP:Tactics.variants(t.family()).size());});});
+        ClientPlayNetworking.registerGlobalReceiver(MotionEvents.HIT,(client,handler,buf,responder)->{int id=buf.readVarInt(),kind=buf.readByte(),zone=buf.readByte();float bearing=buf.readFloat();int weight=buf.readByte(),flags=buf.readByte();long tick=buf.readVarLong();
+            client.execute(()->MotionEvents.Client.hit(client.world!=null&&client.world.getEntityById(id)!=null,id,kind,zone,bearing,weight,flags,tick));});
+        ClientEntityEvents.ENTITY_UNLOAD.register((entity,world)->{TroopMotion.forget(entity.getId());MotionEvents.Client.forget(entity.getId());});
         // A soldier's rank (rank_v1): level, weapon tier and armour tier by entity id, for the troop renderer, the chevrons and the portraits (Task 9).
         RankSync.registerClient();
         ClientPlayNetworking.registerGlobalReceiver(GravesAndGlory.STATE,(client,handler,buf,responder)->{
@@ -131,7 +139,7 @@ public final class GravesAndGloryClient implements ClientModInitializer {
         // thread, and not through client.execute: Fabric can fire this event on the network thread, and MinecraftClient.disconnect
         // wipes the queued tasks (the Task 3 re-review's race). The flag waits for the first client tick without a world, and the
         // next join clears them as well; no HUD frame runs without a world to clear them before the next one.
-        ClientPlayConnectionEvents.DISCONNECT.register((handler,client)->{if(connectingInvitation&&!joined)say("Melty join failed: connection closed before joining");CampaignClient.end(client);CampaignClient.forget();MusicDirector.reset(client);TroopAnimator.clear();RankSync.clear();hudResetPending=true;ready=false;modServer=false;running=false;team=-1;houses=Map.of();opened=false;worldTicks=0;shareCamp=false;connectingInvitation=false;});
+        ClientPlayConnectionEvents.DISCONNECT.register((handler,client)->{if(connectingInvitation&&!joined)say("Melty join failed: connection closed before joining");CampaignClient.end(client);CampaignClient.forget();MusicDirector.reset(client);TroopMotion.clear();MotionEvents.Client.clear();RankSync.clear();hudResetPending=true;ready=false;modServer=false;running=false;team=-1;houses=Map.of();opened=false;worldTicks=0;shareCamp=false;connectingInvitation=false;});
         ClientTickEvents.END_CLIENT_TICK.register(client->{
             if(hudResetPending&&client.world==null)resetHud();
             if(client.getOverlay()==null&&client.currentScreen instanceof TitleScreen){
@@ -157,6 +165,11 @@ public final class GravesAndGloryClient implements ClientModInitializer {
         net.fabricmc.fabric.api.client.rendering.v1.WorldRenderEvents.AFTER_ENTITIES.register(CommandMode::renderWorld);
         // Troop depth: the frame's cutoff from the game camera, once, before any pass draws (Iris's shadow pass among them).
         net.fabricmc.fabric.api.client.rendering.v1.WorldRenderEvents.START.register(ctx->TroopDepth.beginFrame(ctx.camera().getPos(),ctx.world().getEntities()));
+        // Settled bodies (BodyCache): queue from the frame's start, drawn from their buffers after the entities.
+        net.fabricmc.fabric.api.client.rendering.v1.WorldRenderEvents.START.register(ctx->BodyCache.begin(ctx.tickDelta()));
+        net.fabricmc.fabric.api.client.rendering.v1.WorldRenderEvents.AFTER_ENTITIES.register(BodyCache::flush);
+        // Bodies part way through their corpse fade (R42): translucent, once every entity layer of the frame is drawn.
+        net.fabricmc.fabric.api.client.rendering.v1.WorldRenderEvents.BEFORE_DEBUG_RENDER.register(BodyCache::fadePass);
     }
     /** A packet buffer as LevelMath's pure reader: readBoolean, readByte and readString (64 characters at most, a troop id). */
     static LevelMath.In wire(PacketByteBuf b){return new LevelMath.In(){public boolean bool(){return b.readBoolean();}public int b(){return b.readByte();}public String str(){return b.readString(64);}};}
@@ -269,7 +282,7 @@ public final class GravesAndGloryClient implements ClientModInitializer {
     static String lessonText(int step){
         return switch(step){
             case 0->"Press "+hint("menu")+", choose a group and Move, then click the ground to send them.";
-            case 1->"Press "+hint("formation")+" to change formation. Shieldwall holds a line; Wedge breaks one.";
+            case 1->"Press "+hint("formation")+" to change formation. Line holds a front; Wedge breaks one.";
             case 2->"Press "+hint("attack")+" and aim at an enemy or a point to send your army in.";
             default->"Press "+hint("use")+" at your barracks lectern to recruit. Trained troops march out from the held point nearest the fight.";
         };
@@ -379,7 +392,7 @@ public final class GravesAndGloryClient implements ClientModInitializer {
             panel(g,4,35,80,132);panel(g,width-80,39,76,32);
             int cardWidth=Math.min(105,(width-24)/Spec.FORMATIONS.length),i=0;
             for(var f:Spec.FORMATIONS){int x=width/2-Spec.FORMATIONS.length*cardWidth/2+i*cardWidth;panel(g,x,height-65,cardWidth-3,37);if(f.id().equals(CommandMode.formation))g.drawBorder(x,height-65,cardWidth-3,37,DarkUi.GOLD);
-                for(int n=0;n<12;n++){int col=f.id().equals("line")||f.id().equals("shieldwall")?6:4;int dx=n%col*7,dy=n/col*6;if(f.wedge()){int rank=(int)Math.sqrt(n);dx=(n-rank*rank-rank)*7+20;dy=rank*6;}if(f.id().equals("loose")){dx*=2;dy*=2;}g.fill(x+12+dx,height-60+dy,x+15+dx,height-57+dy,DarkUi.GOLD);}i++;}
+                for(int n=0;n<12;n++){int col=f.id().equals("line")?6:4;int dx=n%col*7,dy=n/col*6;if(f.wedge()){int rank=(int)Math.sqrt(n);dx=(n-rank*rank-rank)*7+20;dy=rank*6;}if(f.id().equals("loose")){dx*=2;dy*=2;}g.fill(x+12+dx,height-60+dy,x+15+dx,height-57+dy,DarkUi.GOLD);}i++;}
             g.drawCenteredTextWithShadow(textRenderer,"Choose group and order. Aim and confirm in the battlefield.",width/2,32,DarkUi.IVORY);super.render(g,mx,my,delta);
         }
     }

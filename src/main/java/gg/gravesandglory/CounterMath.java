@@ -63,6 +63,11 @@ public final class CounterMath {
     /** The flank arc (combatDiscipline.flankArcDegrees, 110): counter rows C16 and C16s, Pack Hunters and the pierce cone read one number. */
     static double flankDegrees() { return Spec.COMBATDISCIPLINE[0].flankArcDegrees(); }
 
+    /** Whether a raised shield took the hit (hit_v1's blocked, spec 7.6): a counters row of the raised-shield kind (condition raised_front) matches it. */
+    public static boolean blocked(Hit h, Spec.CountersRow[] rows) {
+        for (var r : rows) if (r.condition().equals("raised_front") && matches(r, h)) return true;
+        return false;
+    }
     /** The counter multiplier for a hit: the product of the applied rows' multipliers, 1 when no row matches. */
     public static double counters(Hit h, Spec.CountersRow[] rows) {
         double product = 1;
@@ -162,7 +167,7 @@ public final class CounterMath {
         return switch (kind) {
             case "melee" -> Set.of("melee");
             case "arrow" -> Set.of("arrow", "shot");
-            case "bolt" -> Set.of("bolt", "shot", "magic");
+            case "bolt" -> Set.of("bolt", "shot", "magic"); // a caster's magic bolt. Not the attackVariants kind "bolt", which is a crossbow's animation kind (crossbows fire "arrow" here)
             case "blight" -> Set.of("blight", "magic");
             case "slam" -> Set.of("slam", "melee");
             default -> Set.of();

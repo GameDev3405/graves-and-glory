@@ -99,9 +99,8 @@ public final class AudioCues {
 
 
     // ---- Timing (docs/reports/audio-cue-timing-2026-11-02.md) ----------------------------------------------------------------------------------------
-    // A melee blow resolves on the tick the swing starts, but the blade only meets its target at the contact frame of the attack clip. The hit sound waits
-    // that long. HouseAttacks.STRIKE holds the seconds per House (x20 here); a troop without a House attack (a beast, the colossus) uses the rig's attack
-    // peak, TroopClips.PEAKS "attack" (0.25 s). AudioCuesCheck reads both source files and fails if these drift.
+    // A melee blow that resolves on the tick its swing starts (a troop without attack variants) waits for the blade to meet its target. A blow from
+    // Tactics.swing already lands on its clip's impact frame and waits nothing (Audio.contact). The ticks below are the Houses' old clip strikes (x20).
     /** Ticks from a swing's start to the blade meeting its target, by House id. */
     public static final Map<String, Integer> CONTACT_TICKS = Map.of("gilded", 4, "graveborn", 6, "wildmoot", 5, "ironclad", 7, "tidecallers", 6);
     /** The contact tick of a melee troop with no House attack of its own. */

@@ -305,8 +305,8 @@ def vet_band(rows_at):
 
 def veteran(bone, box):
     n = bone.name
-    if n.endswith("_arm"): return vet_band((6,))                          # a gilt band above the bracer
-    if n.endswith("_leg"): return vet_band((6,))                          # and one under the knee
+    if n.endswith(("_arm", "_forearm")): return vet_band((6,))            # a gilt band above the bracer
+    if n.endswith(("_leg", "_shin")): return vet_band((6,))               # and one under the knee
     return None
 
 # ---- assembling ----
@@ -317,13 +317,9 @@ def bones():
     B.append(Bone("head", "body", (0, -12, 0)))
     for k in range(4):
         B.append(Bone(f"face_v{k}", "head", boxes=[Box((-4, -8, -4), (8, 8, 8), face_painter(k))], variants=[k]))
-    B.append(Bone("right_arm", "body", (-5, -10, 0), [Box((-3, -2, -2), (4, 12, 4), per_tier(arm))]))
-    B.append(Bone("right_hand", "right_arm", (-1, 8, 0)))
-    B.append(Bone("left_arm", "body", (5, -10, 0), [Box((-1, -2, -2), (4, 12, 4), per_tier(arm))]))
-    B.append(Bone("left_hand", "left_arm", (1, 8, 0)))
+    B += arms(per_tier(arm))
     B.append(Bone("arms_folded", "body", (0, -9, -1), rot=(-43, 0, 0)))
-    B.append(Bone("right_leg", "root", (-1.9, 12, 0), [Box((-2, 0, -2), (4, 12, 4), per_tier(leg))]))
-    B.append(Bone("left_leg", "root", (1.9, 12, 0), [Box((-2, 0, -2), (4, 12, 4), per_tier(leg))]))
+    B += legs(per_tier(leg))
     # the hood and its tail
     B.append(Bone("hood", "head", tag="helm", stages=[1, 2], boxes=[
         Box((-4.5, -8.5, -4.5), (9, 9, 9), per_tier(hood, (1, 2))), Box((-1, -6.5, 4.5), (2, 8, 1), per_tier(liripipe, (1, 2)))]))
@@ -345,10 +341,10 @@ def bones():
         Box((-2, -5, 0), (4, 12, 3), per_tier(quiver)), Box((-1.5, -9, 0.5), (3, 4, 2), fletching)]))
     for side in ("right", "left"):
         c = -1 if side == "right" else 1
-        B.append(Bone(f"{side}_knee", f"{side}_leg", stages=[2, 3], boxes=[
-            Box((-1.5, 5, -2.6), (3, 2, 1), per_tier(knee_cop, (2, 3)))]))
-        B.append(Bone(f"{side}_boot_cuff", f"{side}_leg", stages=[2, 3], boxes=[
-            Box((-2.5, 7, -2.5), (5, 2, 5), per_tier(boot_cuff, (2, 3)))]))
+        B.append(Bone(f"{side}_knee", f"{side}_shin", stages=[2, 3], boxes=[
+            Box((-1.5, -1, -2.6), (3, 2, 1), per_tier(knee_cop, (2, 3)))]))
+        B.append(Bone(f"{side}_boot_cuff", f"{side}_shin", stages=[2, 3], boxes=[
+            Box((-2.5, 1, -2.5), (5, 2, 5), per_tier(boot_cuff, (2, 3)))]))
         inner = 3 if side == "right" else 0
         for st, g in (([1], 1), ([2], 2), ([3], 3)):
             B.append(Bone(f"{side}_skirt_t{g}", f"{side}_leg", team=True, stages=st, boxes=[

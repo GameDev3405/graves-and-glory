@@ -164,16 +164,53 @@ def with_faces(painter, **faces):
 
 # --- the model -----------------------------------------------------------------------------------
 class Box:
-    def __init__(s, origin, size, paint, dil=0.0, sheet="skin"):
-        s.origin, s.size, s.dil, s.sheet = list(origin), list(size), dil, sheet
+    """cut=(full_h, y0): this box is rows y0..y0+h of a limb full_h tall (a jointed limb's upper or lower half, limb()): its painter
+    paints the whole limb's sides and the box keeps its rows, so the two halves at rest look as the one-piece limb did. The limb's
+    top shows on the box at y0 0 and its bottom on the box that ends it; the faces at the joint are caps (paint_box)."""
+    def __init__(s, origin, size, paint, dil=0.0, sheet="skin", cut=None):
+        s.origin, s.size, s.dil, s.sheet, s.cut = list(origin), list(size), dil, sheet, cut
         s.paint = paint if isinstance(paint, dict) else {0: paint}   # {tier or 0 for every tier: painter}
         s.uv = None
 
 class Bone:
-    def __init__(s, name, parent, pivot=(0, 0, 0), boxes=(), stages=(), tag="", team=False, rot=(0, 0, 0), variants=None, part="", weapon_tiers=()):
+    """limit: the joint's pitch range in degrees, [min, max], or None (no limit); the troop file keeps it as the bone's "limit"
+    and the client reads it through TroopModel.jointLimit (a mage's rigid robe holds its knees to [0, 10])."""
+    def __init__(s, name, parent, pivot=(0, 0, 0), boxes=(), stages=(), tag="", team=False, rot=(0, 0, 0), variants=None, part="", limit=None, weapon_tiers=()):
         s.weapon_tiers = list(weapon_tiers)   # a weapon part of a troop with no held weapon: the weapon tiers it shows at
         s.name, s.parent, s.pivot, s.boxes, s.stages, s.tag, s.team, s.rot, s.variants = name, parent, list(pivot), list(boxes), list(stages), tag, team, list(rot), variants
         s.part = part   # "pennant" or "standard": a flag bone, drawn only on the squad's bearer
+        s.limit = list(limit) if limit is not None else None
+
+# The biped's jointed limbs (animation rework Task 9, the rig contract): each 4x12x4 limb is an upper and a lower 4x6x4 box, the
+# lower on a bone at the joint, 6 px down the limb: the forearm at the elbow ([-1, 4, 0] in the right arm's frame, [1, 4, 0] in the
+# left's), the shin at the knee ([0, 6, 0]); a hand hangs from its forearm at [0, 4, 0], where the one-piece arm held it.
+ELBOW = {"right": (-1, 4, 0), "left": (1, 4, 0)}
+KNEE = (0, 6, 0)
+HAND = (0, 4, 0)
+
+def limb(name, parent, pivot, origin, paint, lower, joint, size=(4, 12, 4), dil=0.0, sheet="skin", limit=None, upper_h=6):
+    """A jointed limb as two bones: `name` at pivot with the upper box at origin, and `lower` at joint (in the upper bone's frame)
+    with the lower box under it, both painted from the one painter of the whole limb (Box cut). Returns [upper bone, lower bone]."""
+    w, h, d = size
+    lo = [origin[0] - joint[0], origin[1] + upper_h - joint[1], origin[2] - joint[2]]
+    return [Bone(name, parent, pivot, [Box(origin, (w, upper_h, d), paint, dil, sheet, cut=(h, 0))]),
+            Bone(lower, name, joint, [Box(lo, (w, h - upper_h, d), paint, dil, sheet, cut=(h, upper_h))], limit=limit)]
+
+def arms(painter, right=None):
+    """The biped's two jointed arms with their hands (right painter, then left; one painter serves both when right is None)."""
+    out = []
+    for side, x, ox in (("right", -5, -3), ("left", 5, -1)):
+        p = painter if right is None or side == "left" else right
+        out += limb(f"{side}_arm", "body", (x, -10, 0), (ox, -2, -2), p, f"{side}_forearm", ELBOW[side])
+        out.append(Bone(f"{side}_hand", f"{side}_forearm", HAND))
+    return out
+
+def legs(painter, limit=None):
+    """The biped's two jointed legs (thigh and shin)."""
+    out = []
+    for side, x in (("right", -1.9), ("left", 1.9)):
+        out += limb(f"{side}_leg", "root", (x, 12, 0), (-2, 0, -2), painter, f"{side}_shin", KNEE, limit=limit)
+    return out
 
 def on(bone, tier): return not bone.stages or tier in bone.stages
 def shown(bone, tier): return on(bone, tier) and (not bone.weapon_tiers or tier in bone.weapon_tiers)   # weapon tier = worn tier on the sheets
@@ -263,8 +300,9 @@ def face_painter(k):
 # Its frame is vanilla's shield model (face outward along -z, y down, the grip at the origin). Vanilla's held pose ran the
 # forearm through the board, so it hangs on the forearm instead: TroopAnimator carries the shield arm 45 degrees forward,
 # and SHIELD_ROT is Rx(45)*Ry(-60), which undoes that carry and turns the face out and forward, so the board stands upright
-# beside the forearm, its top at the shoulder, clear of the pauldron, the enarmes reaching back to the arm.
-SHIELD_PIVOT, SHIELD_ROT = (2.7, 10.0, -1.5), (63.435, -37.761, -50.768)
+# beside the forearm, its top at the shoulder, clear of the pauldron, the enarmes reaching back to the arm. Its bone is the
+# left_forearm's child: SHIELD_PIVOT is the old arm-frame grip (2.7, 10, -1.5) less the elbow (1, 4, 0), the same point at rest.
+SHIELD_PIVOT, SHIELD_ROT = (1.7, 6.0, -1.5), (63.435, -37.761, -50.768)
 SHIELD_W = [12] * 12 + [10, 10, 8, 8, 6, 4]           # row widths, top to bottom: 18 rows, y -10..8
 SHIELD_BODY = [((-6, -10), (12, 12)), ((-5, 2), (10, 2)), ((-4, 4), (8, 2)), ((-3, 6), (6, 1)), ((-2, 7), (4, 1))]
 SHIELD_RIM = [((-6, -10), (12, 1)), ((-6, -9), (1, 11)), ((5, -9), (1, 11)), ((-5, 2), (1, 2)), ((4, 2), (1, 2)),
@@ -329,12 +367,41 @@ def rects(b):
     return {"top": (u + d, v), "bottom": (u + d + w, v), "right": (u, v + d), "front": (u + d, v + d),
             "left": (u + d + w, v + d), "back": (u + 2 * d + w, v + d)}
 
-def paint_box(img, b, painter):
+SIDE_FACES = ("front", "back", "right", "left")
+
+def joint_cap(painter, face, w, d, full, row):
+    """A cut limb's face at its joint (the upper box's bottom, the lower box's top): each texel takes the colour of the nearest side
+    face's texel in the joint row, so a bent joint shows the limb's own skin, cloth or armour across the cut, never a hole.
+    The top face's rows run back to front and the bottom's front to back (render.faces_of, ModelPart's box UV)."""
+    sides = {f: painter(f, *dims(f, w, full, d)) for f in SIDE_FACES}
+    def px(f, col):
+        g = sides[f]
+        return g[row][col] if row < len(g) and col < len(g[row]) else None
+    g = blank(w, d)
+    for r in range(d):
+        k = r if face == "bottom" else d - 1 - r      # depth from the front
+        for i in range(w):                            # columns run from the wearer's right (x min)
+            near = sorted([(k, 0, "front", i), (d - 1 - k, 1, "back", w - 1 - i), (i, 2, "right", d - 1 - k), (w - 1 - i, 3, "left", k)])
+            for _, _, f, col in near:
+                c = px(f, col)
+                if c is not None: g[r][i] = c; break
+    return g
+
+def paint_box(img, b, painter, caps=True):
+    """Paints a box's faces from a painter. A cut box (Box cut) paints its rows of the whole limb's sides; its joint faces are caps
+    (joint_cap), which the trim and glow overlays leave blank (caps=False)."""
     w, h, d = (int(round(v)) for v in b.size)
+    full, c0 = b.cut if b.cut else (h, 0)
     for face, (x0, y0) in rects(b).items():
         fw, fh = dims(face, w, h, d)
         if fw == 0 or fh == 0: continue
-        g = painter(face, fw, fh)
+        if b.cut and face in SIDE_FACES:
+            g = painter(face, fw, full)[c0:c0 + h]
+        elif b.cut and (face == "top" and c0 > 0 or face == "bottom" and c0 + h < full):
+            if not caps: continue
+            g = joint_cap(painter, face, w, d, full, c0 if face == "top" else c0 + h - 1)
+        else:
+            g = painter(face, fw, fh)
         for y in range(fh):
             for x in range(fw):
                 c = g[y][x] if y < len(g) and x < len(g[y]) else None
@@ -380,7 +447,7 @@ class Troop:
         for bone in B:
             for b in bone.boxes:
                 p = s.glow(bone, b) if b.sheet == "skin" else None
-                if p: paint_box(img, b, p)
+                if p: paint_box(img, b, p, caps=False)
         px, sp = img.load(), skins[s.meta.get("glowFrom", s.tiers[0])].load()
         for y in range(s.skin[1]):
             for x in range(s.skin[0]):
@@ -395,7 +462,7 @@ class Troop:
         for bone in B:
             for b in bone.boxes:
                 p = s.veteran(bone, b) if b.sheet == "skin" else None
-                if p: paint_box(img, b, p)
+                if p: paint_box(img, b, p, caps=False)
         px, sp = img.load(), [skins[t].load() for t in s.tiers]
         n = 0
         for y in range(s.skin[1]):
@@ -419,6 +486,7 @@ class Troop:
             j = {"name": bone.name, "parent": bone.parent, "part": bone.part, "team": bone.team, "tag": bone.tag, "stages": bone.stages}
             if bone.weapon_tiers: j["weaponTiers"] = bone.weapon_tiers
             if bone.variants is not None: j["variants"] = bone.variants
+            if bone.limit is not None: j["limit"] = bone.limit
             j.update({"sheet": list(s.cloth if bone.team else s.skin), "pivot": bone.pivot, "rotation": bone.rot,
                       "boxes": [{"origin": b.origin, "size": b.size, "uv": b.uv, "mirror": False, "dilation": [b.dil] * 3} for b in bone.boxes]})
             out["bones"].append(j)
