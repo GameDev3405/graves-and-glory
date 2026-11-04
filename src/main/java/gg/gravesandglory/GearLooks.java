@@ -20,10 +20,7 @@ final class GearLooks {
     static final String UID = "gg_uid";
 
     /** The gearFamilies row for a weapon family or an armour slot, or null. */
-    static Spec.GearFamiliesRow family(String id) {
-        for (var f : Spec.GEARFAMILIES) if (f.id().equals(id)) return f;
-        return null;
-    }
+    static Spec.GearFamiliesRow family(String id) { return GearStats.family(id); }
 
     /** The row a piece's look comes from: its weapon family, or its armour slot. */
     static Spec.GearFamiliesRow familyOf(Gear.Piece p) {
