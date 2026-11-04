@@ -20,6 +20,7 @@ Merged and in `main`:
 
 Awaiting Kort, not in `main`:
 
+- Commander gear foundation (plan 1 of the gear index, branch `feat/gear-foundation`, local, not pushed or merged): data tables and preflight rules, `Gear`, `Forge`, `GearWire`, `GearCommands`, save v4 with the 3-to-4 migration and the starter set, Forge marks on a settled match, the `gear_v1` sync and the `gear:` and `forge:` ORDER commands. It adds no UI or art, and its numbers are placeholders for the balance step (g). Next: (c) gear screen, (d) gear in combat and class removal, (f) gear art, per `docs/superpowers/plans/2026-11-03-commander-gear-index.md`.
 - Maps: Kort designs all five maps himself in the map engine editor (2026-11-02) and signs off each master layout. Agents do not build layouts.
 - Animation rework (1.5), `work/anim-rework`: merge approved (Q62) but the branch conflicts with `main` in 10 files and its session is merging `main` in. Animation editor `work/anim-edit`: Kort poses the guard himself.
 - Audio, `audio/pixabay` (`fa54d8e`): not listened to yet.

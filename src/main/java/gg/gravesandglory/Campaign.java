@@ -200,7 +200,7 @@ public final class Campaign {
         if(ArenaAutosave.settle()&&b.server.isRunning()){long at=System.nanoTime();b.server.saveAll(true,false,false);System.out.println("[Graves and Glory] Saved the world after the battle ("+(System.nanoTime()-at)/1_000_000+" ms).");}
     }
     /** Leaving frees the pad, any seat in a custom lobby, and invitations to it, and forgets which snapshot forms were logged for him. */
-    void left(UUID id){gearSent.remove(id);onPad.remove(id);padRefused.remove(id);leaveParty(id);snapshotForms.remove(id);notices.remove(id);noticeAt.remove(id);} // his notice entries go with him, a standing line's too (expireNotices never drops those)
+    void left(UUID id){gearSent.remove(id);forgeResults.remove(id);onPad.remove(id);padRefused.remove(id);leaveParty(id);snapshotForms.remove(id);notices.remove(id);noticeAt.remove(id);} // his notice entries go with him, a standing line's too (expireNotices never drops those)
     boolean handle(ServerPlayerEntity p,String cmd){
         if(cmd.startsWith("social:"))return socialCommand(p,cmd);
         if(cmd.startsWith("progress:"))return progressCommand(p,cmd);
@@ -230,7 +230,7 @@ public final class Campaign {
         if(b.running){
             var current=b.squads.get(p.getUuid());
             boolean global=cmd.startsWith("map:")||cmd.startsWith("mode:")||cmd.equals("fill")||cmd.equals("start")||cmd.startsWith("difficulty:");
-            boolean personal=cmd.equals("roll")||cmd.startsWith("roll:")||cmd.startsWith("buy:")||cmd.startsWith("star:")||cmd.startsWith("legendary:")||cmd.startsWith("unlock:")||cmd.startsWith("army:")||cmd.startsWith("slot:")||cmd.startsWith("colour:")||cmd.startsWith("class:");
+            boolean personal=cmd.equals("roll")||cmd.startsWith("roll:")||cmd.startsWith("buy:")||cmd.startsWith("star:")||cmd.startsWith("legendary:")||cmd.startsWith("unlock:")||cmd.startsWith("army:")||cmd.startsWith("slot:")||cmd.startsWith("colour:")||cmd.startsWith("class:")||cmd.startsWith("gear:")||cmd.startsWith("forge:");
             if(global||personal&&current!=null&&current.seated){notice(p.getUuid(),"Active battle choices are locked until the match ends.");return true;}
         }
         if(cmd.startsWith("difficulty:")){
@@ -241,6 +241,7 @@ public final class Campaign {
         Profile pr=profile(p.getUuid());var squad=b.squads.get(p.getUuid());if(squad==null)return false;
         if(cmd.equals("roll")||cmd.startsWith("roll:")){roll(p,pr,cmd.equals("roll")?RosterMath.rollHouse(pr.banner):cmd.substring(5));return true;}
         if(cmd.startsWith("buy:")){buy(p,pr,cmd.substring(4));return true;}
+        if(cmd.startsWith("gear:")||cmd.startsWith("forge:")){gear(p,pr,cmd);return true;}
         if(cmd.startsWith("star:")){star(p,pr,cmd.substring(5));return true;}
         if(cmd.startsWith("legendary:")){legendary(p,pr,cmd.substring(10));return true;}
         if(cmd.startsWith("unlock:")||cmd.startsWith("army:")){notice(p.getUuid(),"Troops now join by recruitment rolls at the camp shrine.");return true;}
@@ -451,6 +452,23 @@ public final class Campaign {
     /** The recruitment reveal sound, to the commander alone (the ServerPlayerEntity overload). */
     static void reveal(ServerPlayerEntity p){Audio.to(p,AudioCues.Cue.UNIT_REVEAL);}
     /** Undoes a command whose save failed: the profile goes back to its JSON from before, and the commander is told nothing changed. */
+    /** Per commander, the last Forge roll (the snapshot's "forge"): {n, item, rarity, relic, duplicate, refund}; n counts up so the client tells a new roll from the same. Not saved. */
+    final Map<UUID,JsonObject> forgeResults=new HashMap<>();
+    /** One gear or forge request (spec 2026-11-03-commander-gear-design): GearCommands validates and applies it, a refusal changes nothing, and a profile that will not save is put back. */
+    void gear(ServerPlayerEntity p,Profile pr,String cmd){
+        UUID id=p.getUuid();String before=JSON.toJson(pr);
+        var outcome=GearCommands.apply(pr,cmd,rollRng);
+        if(!outcome.ok()){notice(id,outcome.refusal());return;}
+        if(!save(id)){unsaved(id,before,"That gear change");return;}
+        var rolled=outcome.rolled();
+        if(rolled!=null){
+            JsonObject card=new JsonObject();var last=forgeResults.get(id);card.addProperty("n",last==null?1:last.get("n").getAsInt()+1);
+            card.addProperty("item",rolled.piece()==null?"":rolled.piece().item);card.addProperty("rarity",rolled.piece()==null?"":rolled.piece().rarity);card.addProperty("relic",rolled.relic()==null?"":rolled.relic());
+            card.addProperty("duplicate",rolled.duplicate());card.addProperty("refund",rolled.refund());forgeResults.put(id,card);
+        }
+        notice(id,outcome.notice());
+        syncGear(p);
+    }
     void unsaved(UUID id,String before,String what){profiles.put(id,JSON.fromJson(before,Profile.class));notice(id,what+" was not saved, so nothing changed. Check disk space and try again.");}
     /**
      * A chosen recruit (buy:<troop>, spec 4.2): a Common or Rare of any House for recruitment.chosenCost gold, as a new troop or a copy toward its
@@ -909,7 +927,7 @@ public final class Campaign {
         partyJson.add("online",online);j.add("party",partyJson);j.add("result",results.getOrDefault(p.getUuid(),new JsonObject()));
         // In the lobby a row carries the team the viewer's next round gives that commander (nextSeats), or -1 when he would not enter with the viewer, so the list's marks read like the side preview; in battle, the squad's team.
         Map<UUID,Integer> nextTeams=new HashMap<>();if(!b.running)for(var seat:nextSeats(p.getUuid()))nextTeams.put(seat.owner(),seat.team());
-        JsonArray players=new JsonArray();for(var s:b.squads.values()){JsonObject row=new JsonObject();var player=b.server.getPlayerManager().getPlayer(s.owner);row.addProperty("name",s.bot?"AI Commander":player==null?"Commander":player.getGameProfile().getName());row.addProperty("team",b.running?s.team:nextTeams.getOrDefault(s.owner,-1));row.addProperty("bot",s.bot);players.add(row);}j.add("players",players);j.add("sides",sidesJson(p.getUuid()));j.add("banner",bannerJson(p.getUuid()));j.add("social",socialSnapshot(p.getUuid()));j.add("progression",progressSnapshot(p.getUuid()));j.add("lastRoll",lastRolls.getOrDefault(p.getUuid(),new JsonObject()));
+        JsonArray players=new JsonArray();for(var s:b.squads.values()){JsonObject row=new JsonObject();var player=b.server.getPlayerManager().getPlayer(s.owner);row.addProperty("name",s.bot?"AI Commander":player==null?"Commander":player.getGameProfile().getName());row.addProperty("team",b.running?s.team:nextTeams.getOrDefault(s.owner,-1));row.addProperty("bot",s.bot);players.add(row);}j.add("players",players);j.add("sides",sidesJson(p.getUuid()));j.add("banner",bannerJson(p.getUuid()));j.add("social",socialSnapshot(p.getUuid()));j.add("progression",progressSnapshot(p.getUuid()));j.add("lastRoll",lastRolls.getOrDefault(p.getUuid(),new JsonObject()));j.add("forge",forgeResults.getOrDefault(p.getUuid(),new JsonObject()));
         BattleMode shown=b.running?b.mode:Modes.create(battleMode);
         j.add("battleMode",shown.snapshot(b,b.running?b.squads.get(p.getUuid()):null));
         return fitted(j,p.getUuid());
