@@ -178,7 +178,7 @@ def beats(name, length, impact, cocked_at, hold, poses, lag=None, two=False):
     linear strike into the impact pose, follow-through 0.12 s later, a settle at about the clip's two-thirds and a near-rest
     key 0.16 s before the end. poses: (cocked, cocked2, hit, follow, settle, near)."""
     if two:
-        poses = [both_hands(p) for p in poses]
+        poses = [both_hands(p, two if isinstance(two, tuple) else (0, 2.1, 2.1)) for p in poses]
     cocked, cocked2, hit, follow, settle, near = poses
     keys = [(cocked_at, C, cocked), (cocked_at + hold, L, cocked2), (impact, L, hit), (impact + 0.12, C, follow),
             (impact + (length - impact) * 0.48, C, settle), (length - 0.16, C, near)]
@@ -228,7 +228,7 @@ def axe_cuts(prefix, chop_at, hew_name, hew_at, chop_name='overhead_chop', two=F
     return out
 
 
-def both_hands(pose):
+def both_hands(pose, grip=(0, 2.1, 2.1)):
     """A two-handed grip: the free arm's shoulder is solved (a small grid search over the rig's forward kinematics) so its
     hand closes on the hilt or haft 3 px below the weapon fist, toward the pommel; a slight cost on the side turns keeps it
     from reaching round the far side. The forearm-less troop models share the rig's 8 px shoulder-to-hand length."""
@@ -238,7 +238,7 @@ def both_hands(pose):
     six = {b: B.six(v) for b, v in pose.items()}
     w = B.world(six)
     rm, ro = w['right_hand']
-    target = [ro[i] + B.mat_vec(rm, [0, 2.1, 2.1])[i] for i in range(3)]
+    target = [ro[i] + B.mat_vec(rm, list(grip))[i] for i in range(3)]
     rx0 = pose['right_arm'][0]
 
     def cost(a):
@@ -296,12 +296,59 @@ def greatsword():
     return out
 
 
+# ---- biped: scythe (reaper), both hands on the snath; the blade (+x of the weapon, at the snath's top) leads each cut
+
+SNATH = (0, 5, -3)   # the lower hand 5 px down the snath (the upright grip sits 3 px ahead of the fist)
+
+
+def scythe(P=None):
+    P = dict(SCY, **(P or {}))
+    out = []
+    # Reap (impact tick 12): the snath reaches forward and low, the body coiled toward the right so the blade waits out on
+    # the right; a held beat, then the body unwinds and sinks and the blade sweeps right to left across the front at shin
+    # height, point first (the blade's +x lies along the sweep), and carries on past the left hip.
+    a = P['reap_arm']
+    out.append(beats('scythe_reap', 1.3, 0.6, 0.26, 0.22, (
+        dict(root=(0, 0, 0, 0, 0.6, 0.6), body=(-2, P['reap_coil'], 0), head=(0, -24, 0), right_arm=(a, 0, -8),
+             right_hand=(P['reap_wrist'], 0, 0), right_leg=(6, 0, 0), left_leg=(-10, 0, 0), left_shin=(8, 0, 0)),
+        dict(root=(0, 0, 0, 0, 0.7, 0.7), body=(-3, P['reap_coil'] + 4, 0), head=(0, -26, 0), right_arm=(a - 2, 0, -8),
+             right_hand=(P['reap_wrist'] + 2, 0, 0)),
+        dict(root=(0, 0, 0, 0, 1.8, -1.2), body=(P['reap_lean'], -4, 0), head=(-6, 4, 0), right_arm=(a - 4, 0, -4),
+             right_hand=(P['reap_wrist'] + P['reap_hit'], 0, 0),
+             right_leg=(12, 0, 0), left_leg=(-24, 0, 0), left_shin=(20, 0, 0), right_shin=(10, 0, 0)),
+        dict(root=(0, 0, 0, 0, 1.9, -1.4), body=(P['reap_lean'] + 2, -44, 0), head=(-8, 24, 0), right_arm=(a - 6, 0, 8),
+             right_hand=(P['reap_wrist'] + P['reap_hit'] - 14, 0, 0)),
+        dict(root=(0, 0, 0, 0, 0.5, -0.4), body=(4, -10, 0), head=(-2, 6, 0), right_arm=(-10, 0, 0), right_hand=(30, 0, 0),
+             right_leg=(3, 0, 0), left_leg=(-6, 0, 0), left_shin=(5, 0, 0), right_shin=(2, 0, 0)),
+        dict(root=(0, 0, 0, 0, 0.05, 0), body=(0.5, -1, 0), right_arm=(-2, 0, 0), right_hand=(4, 0, 0))), two=SNATH))
+    # Overhead hook (impact tick 12): the scythe climbs high behind the head with the blade twisted to hang down; a held
+    # beat, then the body drops and the arms pull the snath down and forward so the blade hooks down onto the foe point
+    # first, dragging back toward the reaper through the follow-through.
+    tw = P['hook_twist']
+    out.append(beats('scythe_overhead_hook', 1.3, 0.6, 0.26, 0.22, (
+        dict(root=(0, 0, 0, 0, -0.2, 0.8), body=(-9, P['hook_coil'], 0), head=(-6, -P['hook_coil'] // 2, 0), right_arm=(-150, 0, P['hook_out']), right_hand=(P['hook_cock'], tw, 0),
+             right_leg=(6, 0, 0), left_leg=(-8, 0, 0), left_shin=(4, 0, 0), right_shin=(2, 0, 0)),
+        dict(root=(0, 0, 0, 0, -0.3, 0.9), body=(-10, P['hook_coil'] + 3, 0), head=(-7, -P['hook_coil'] // 2, 0), right_arm=(-156, 0, P['hook_out'] - 2), right_hand=(P['hook_cock'] - 4, tw, 0)),
+        dict(root=(0, 0, 0, 0, 1.6, -1.6), body=(16, P['hook_unw'], 0), head=(6, 10, 0), right_arm=(P['hook_arm'], 0, 0), right_hand=(P['hook_hit'], tw, 0),
+             right_leg=(14, 0, 0), left_leg=(-26, 0, 0), left_shin=(22, 0, 0), right_shin=(12, 0, 0)),
+        dict(root=(0, 0, 0, 0, 1.7, -1.4), body=(18, P['hook_unw'] - 14, 0), head=(7, 14, 0), right_arm=(P['hook_arm'] + 12, 0, 6),
+             right_hand=(P['hook_hit'] - 14, tw, 0)),
+        dict(root=(0, 0, 0, 0, 0.5, -0.5), body=(4, -5, 0), head=(2, 4, 0), right_arm=(-14, 0, -4), right_hand=(40, tw * 0.3, 0),
+             right_leg=(3, 0, 0), left_leg=(-5, 0, 0), left_shin=(4, 0, 0), right_shin=(2, 0, 0)),
+        dict(root=(0, 0, 0, 0, 0.05, 0), body=(0.5, -1, 0), right_arm=(-2, 0, 0), right_hand=(4, 0, 0))), two=SNATH))
+    return out
+
+
+SCY = dict(reap_arm=-34, reap_wrist=124, reap_coil=42, reap_lean=12, reap_hit=2,
+           hook_twist=0, hook_cock=40, hook_arm=-80, hook_hit=134, hook_coil=65, hook_out=-50, hook_unw=-8)
+
 FAMILIES = {
     ('biped', 'sword'): sword,
     ('biped', 'spear'): spear,
     ('biped', 'axe'): axe,
     ('biped', 'axe_shield'): axe_shield,
     ('biped', 'greatsword'): greatsword,
+    ('biped', 'scythe'): scythe,
 }
 
 
