@@ -208,6 +208,7 @@ final class WarTableHome {
         to[old] = 0; changedAt[old] = now;
         to[i] = 1; changedAt[i] = now;
         focused = i; focusStart = now;
+        UiSounds.play(AudioCues.Cue.PAGE_TURN); // the next sheet rises
         CampaignClient.homeMode = MODES[i];
         placeSheets();
         if (change != null) change.active = focused != 2;
@@ -526,7 +527,7 @@ final class WarTableHome {
             rectsDrawn.put("seal", new int[]{sx, sy, 37, 38});
             if (since >= UiMath.SHEET_TICKS && stampedFor != focusStart) {
                 stampedFor = focusStart;
-                MinecraftClient.getInstance().getSoundManager().play(PositionedSoundInstance.master(SoundEvents.ITEM_BOOK_PAGE_TURN, 1f, PAGE_TURN_VOLUME));
+                UiSounds.play(AudioCues.Cue.STAMP_SEAL); // the wax lands on the sheet
             }
         }
     }

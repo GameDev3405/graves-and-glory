@@ -86,13 +86,47 @@ Source: pixabay.com, downloaded 2026-11-02 (Pixabay Content Licence). Author is 
 | alex_besss | alex_besss-dark-and-grim-epic-trailer-short-628100.mp3 | music_battle_dark_grim |
 | miromaxmusic | miromaxmusic-epic-drums-stomp-percussion-no-copyright-628251.mp3 | music_battle_drums_stomp |
 
+## Hooked by the audio/hooks pass
+
+Server cues play through `Audio.at` (a small random pitch spread, a per-key cooldown); client cues through `UiSounds.play`.
+
+| Cue | Where it plays |
+| --- | --- |
+| hound_attack | Abilities.pounce (the hound's pounce; was the vanilla wolf growl) |
+| brute_attack | Abilities.trample (the Brute's trample; was the polar-bear warning) |
+| tusk_attack | Audio.swing, for the Wildmoot Tusk's blade-arm swing |
+| spear_thrust | Audio.swing, for a spear-family or trident melee troop |
+| ballista_release, mortar_fire, harpoon_throw | Audio.shot, by troop id (the Mortar had no arm, so no shot sound at all) |
+| dummy_thud | GravesAndGlory structure hit and fell cue (was wool hit/break); the gate keeps gate_hit/gate_breach |
+| firepot_burn | Abilities, the Firepot's mist lands (was the vanilla fire charge) |
+| healer_cast | Statuses cleanse (was the amethyst chime) |
+| soul_leaving | BattleEffects.soul (Rise Again, Grave Bloom) and SurvivalMode's wave warning at each rise site (was the vanilla soul escape) |
+| relic_use_dark, relic_use_ice, relic_use_earth, relic_use_fire | Bloodrush, Dash, Shove and War Cry in RelicEffects (the relics are not elemental, so this is a flavour mapping); Volley keeps the vanilla arrow shot |
+| overtime_drum_pulse | GravesAndGlory battle loop: a Convoy round whose clock is out and whose wagon holds it open, to every seat, once per 7 s |
+| stamp_seal, page_turn | WarTableHome: the wax seal landing (was the vanilla page turn) and a sheet rising |
+| banner_drag | WarTablePages, when a Banner page press becomes a drag |
+| equip, break_down, repair_hammer, blacksmith_roll | WarTableGear actions (the Roll button no longer plays the UI confirm) |
+| rarity_common ... rarity_epic | WarTableGear, the forge reveal card (Legendary takes the epic sting) |
+| forge_marks | WarTableGear, when the forge marks count rises |
+
+## Registered, not played
+
+These have files, events, subtitles (the long beds have none) and an `AudioCues` entry, but no clear game moment, and the check lists them so a later hook removes the name there. Each hook is one `Audio.at`, `Audio.all` or `UiSounds.play` call.
+
+- troop_voices, march_leather: no per-troop voice or footstep system exists; adding one is its own design.
+- siege_ram_swing: no ram unit. gate_chains: the gate's shutting is already gate_shut.
+- banner_flap: no banner idle moment.
+- ambience_wind, ambience_birds, ambience_water, ambience_crows, ambience_snow, camp_room_tone, survival_wind: MusicDirector carries one track and picks it by camp or battle, not by map. A layered ambient bed needs a second stream and a map-to-bed table.
+- campaign_briefing_music: needs the briefing screen to ask MusicDirector for a track.
+- overtime_music: the client has no overtime flag (CampaignClient.mode is the party size, not the mode id), so it needs a protocol addition.
+
 ## Still missing
 
-- Troop deaths and hurt grunts (vanilla mob sounds), beast attacks (hounds, tusk, Brute), Mortar and Ballista firing and shell bursts, the Firepot burn, spear thrusts and harpoon throws.
-- Footsteps and marching, formation changes, banner flapping, capture-point progress.
-- Siege ram swing, gate chains in motion, wagon wheels loop, survival wave ambience beyond the two horns.
-- Victory/defeat music for the losing side (defeat has only its sting), a tense track for overtime, a menu track.
-- Banner page drag sounds; Survival and Veterans still use vanilla sounds (soul escape, level-up chime, wither spawn).
+- Troop deaths and hurt grunts (vanilla mob sounds), shell bursts.
+- Formation changes, capture-point progress.
+- Wagon wheels loop, survival wave ambience beyond the two horns.
+- Victory/defeat music for the losing side (defeat has only its sting), a menu track.
+- Veterans still use vanilla sounds (level-up chime, wither spawn).
 
 ## Installing new candidates
 

@@ -422,6 +422,7 @@
     ]
   },
   "ballista_release": {
+    "subtitle": "subtitles.gravesandglory.ballista_release",
     "sounds": [
       {
         "name": "gravesandglory:ballista_release_2",
@@ -434,6 +435,7 @@
     ]
   },
   "banner_drag": {
+    "subtitle": "subtitles.gravesandglory.banner_drag",
     "sounds": [
       {
         "name": "gravesandglory:banner_drag_3",
@@ -446,6 +448,7 @@
     ]
   },
   "banner_flap": {
+    "subtitle": "subtitles.gravesandglory.banner_flap",
     "sounds": [
       {
         "name": "gravesandglory:banner_flap_1",
@@ -458,6 +461,7 @@
     ]
   },
   "hound_attack": {
+    "subtitle": "subtitles.gravesandglory.hound_attack",
     "sounds": [
       {
         "name": "gravesandglory:hound_attack_1",
@@ -474,6 +478,7 @@
     ]
   },
   "brute_attack": {
+    "subtitle": "subtitles.gravesandglory.brute_attack",
     "sounds": [
       {
         "name": "gravesandglory:brute_attack_1",
@@ -486,6 +491,7 @@
     ]
   },
   "tusk_attack": {
+    "subtitle": "subtitles.gravesandglory.tusk_attack",
     "sounds": [
       {
         "name": "gravesandglory:tusk_attack_2",
@@ -494,6 +500,7 @@
     ]
   },
   "blacksmith_roll": {
+    "subtitle": "subtitles.gravesandglory.blacksmith_roll",
     "sounds": [
       {
         "name": "gravesandglory:blacksmith_roll_3",
@@ -506,6 +513,7 @@
     ]
   },
   "break_down": {
+    "subtitle": "subtitles.gravesandglory.break_down",
     "sounds": [
       {
         "name": "gravesandglory:break_down_2",
@@ -534,6 +542,7 @@
     ]
   },
   "dummy_thud": {
+    "subtitle": "subtitles.gravesandglory.dummy_thud",
     "sounds": [
       {
         "name": "gravesandglory:dummy_thud_1",
@@ -550,6 +559,7 @@
     ]
   },
   "equip": {
+    "subtitle": "subtitles.gravesandglory.equip",
     "sounds": [
       {
         "name": "gravesandglory:equip_1",
@@ -558,6 +568,7 @@
     ]
   },
   "firepot_burn": {
+    "subtitle": "subtitles.gravesandglory.firepot_burn",
     "sounds": [
       {
         "name": "gravesandglory:firepot_burn_1",
@@ -570,6 +581,7 @@
     ]
   },
   "march_leather": {
+    "subtitle": "subtitles.gravesandglory.march_leather",
     "sounds": [
       {
         "name": "gravesandglory:march_leather_1",
@@ -578,6 +590,7 @@
     ]
   },
   "forge_marks": {
+    "subtitle": "subtitles.gravesandglory.forge_marks",
     "sounds": [
       {
         "name": "gravesandglory:forge_marks_1",
@@ -594,6 +607,7 @@
     ]
   },
   "gate_chains": {
+    "subtitle": "subtitles.gravesandglory.gate_chains",
     "sounds": [
       {
         "name": "gravesandglory:gate_chains_1",
@@ -602,6 +616,7 @@
     ]
   },
   "harpoon_throw": {
+    "subtitle": "subtitles.gravesandglory.harpoon_throw",
     "sounds": [
       {
         "name": "gravesandglory:harpoon_throw_1",
@@ -614,6 +629,7 @@
     ]
   },
   "healer_cast": {
+    "subtitle": "subtitles.gravesandglory.healer_cast",
     "sounds": [
       {
         "name": "gravesandglory:healer_cast_1",
@@ -670,6 +686,7 @@
     ]
   },
   "mortar_fire": {
+    "subtitle": "subtitles.gravesandglory.mortar_fire",
     "sounds": [
       {
         "name": "gravesandglory:mortar_fire_2",
@@ -678,6 +695,7 @@
     ]
   },
   "overtime_drum_pulse": {
+    "subtitle": "subtitles.gravesandglory.overtime_drum_pulse",
     "sounds": [
       {
         "name": "gravesandglory:overtime_drum_pulse_2",
@@ -694,6 +712,7 @@
     ]
   },
   "page_turn": {
+    "subtitle": "subtitles.gravesandglory.page_turn",
     "sounds": [
       {
         "name": "gravesandglory:page_turn_2",
@@ -706,6 +725,7 @@
     ]
   },
   "rarity_common": {
+    "subtitle": "subtitles.gravesandglory.rarity_common",
     "sounds": [
       {
         "name": "gravesandglory:rarity_common_1",
@@ -714,6 +734,7 @@
     ]
   },
   "rarity_uncommon": {
+    "subtitle": "subtitles.gravesandglory.rarity_uncommon",
     "sounds": [
       {
         "name": "gravesandglory:rarity_uncommon_2",
@@ -722,6 +743,7 @@
     ]
   },
   "rarity_rare": {
+    "subtitle": "subtitles.gravesandglory.rarity_rare",
     "sounds": [
       {
         "name": "gravesandglory:rarity_rare_2",
@@ -730,6 +752,7 @@
     ]
   },
   "rarity_epic": {
+    "subtitle": "subtitles.gravesandglory.rarity_epic",
     "sounds": [
       {
         "name": "gravesandglory:rarity_epic_2",
@@ -738,6 +761,7 @@
     ]
   },
   "relic_use_dark": {
+    "subtitle": "subtitles.gravesandglory.relic_use_dark",
     "sounds": [
       {
         "name": "gravesandglory:relic_use_dark_2",
@@ -750,6 +774,7 @@
     ]
   },
   "relic_use_earth": {
+    "subtitle": "subtitles.gravesandglory.relic_use_earth",
     "sounds": [
       {
         "name": "gravesandglory:relic_use_earth_2",
@@ -762,6 +787,7 @@
     ]
   },
   "relic_use_fire": {
+    "subtitle": "subtitles.gravesandglory.relic_use_fire",
     "sounds": [
       {
         "name": "gravesandglory:relic_use_fire_1",
@@ -774,6 +800,7 @@
     ]
   },
   "relic_use_ice": {
+    "subtitle": "subtitles.gravesandglory.relic_use_ice",
     "sounds": [
       {
         "name": "gravesandglory:relic_use_ice_2",
@@ -786,6 +813,7 @@
     ]
   },
   "repair_hammer": {
+    "subtitle": "subtitles.gravesandglory.repair_hammer",
     "sounds": [
       {
         "name": "gravesandglory:repair_hammer_3",
@@ -794,6 +822,7 @@
     ]
   },
   "siege_ram_swing": {
+    "subtitle": "subtitles.gravesandglory.siege_ram_swing",
     "sounds": [
       {
         "name": "gravesandglory:siege_ram_swing_3",
@@ -806,6 +835,7 @@
     ]
   },
   "soul_leaving": {
+    "subtitle": "subtitles.gravesandglory.soul_leaving",
     "sounds": [
       {
         "name": "gravesandglory:soul_leaving_2",
@@ -818,6 +848,7 @@
     ]
   },
   "spear_thrust": {
+    "subtitle": "subtitles.gravesandglory.spear_thrust",
     "sounds": [
       {
         "name": "gravesandglory:spear_thrust_2",
@@ -830,6 +861,7 @@
     ]
   },
   "stamp_seal": {
+    "subtitle": "subtitles.gravesandglory.stamp_seal",
     "sounds": [
       {
         "name": "gravesandglory:stamp_seal_1",
@@ -854,6 +886,7 @@
     ]
   },
   "troop_voices": {
+    "subtitle": "subtitles.gravesandglory.troop_voices",
     "sounds": [
       {
         "name": "gravesandglory:troop_voices_1",

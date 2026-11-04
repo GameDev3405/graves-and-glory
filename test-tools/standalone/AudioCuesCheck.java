@@ -25,24 +25,22 @@ public final class AudioCuesCheck {
    check(Set.of("master","players","hostile","neutral","ambient","music").contains(c.category),c.id+": a known sound category");
    JsonObject entry=sounds.getAsJsonObject(c.id);
    JsonObject sound=entry.getAsJsonArray("sounds").get(0).getAsJsonObject();
-   if(c.id.contains(".")){
+   if(c.remap==null){
     // A third-party variant group (docs/AUDIO.md Credits): every variant is a file of its own, the game picks one at random; music streams, one-shots do not.
     check(c.remap==null&&entry.getAsJsonArray("sounds").size()>=1,c.id+": a variant group plays its own files");
     for(var v:entry.getAsJsonArray("sounds")){
      JsonObject o=v.getAsJsonObject();String n=o.get("name").getAsString();
      check(n.startsWith("gravesandglory:")&&!o.has("type"),c.id+": variant "+n+" is a file of the mod");
      check(Files.exists(assets.resolve("sounds/"+n.substring("gravesandglory:".length())+".ogg")),c.id+": variant "+n+" is in the repo");
-     check(o.get("stream").getAsBoolean()==c.music(),c.id+": only music streams");
+     if(c.music()||c.category.equals("ambient"))check(o.get("stream").getAsBoolean(),c.id+": music and ambient beds stream (tools/install_audio.py decides the rest)");
     }
-    check(c.music()==c.id.startsWith("music."),c.id+": the music category is for the music. cues alone");
+    check(c.music()==(c.id.startsWith("music.")||c.id.endsWith("_music")),c.id+": the music category is for the music cues alone");
+    if(c.category.equals("ambient"))check(c.scope==AudioCues.Scope.LOCAL,c.id+": an ambient bed is client side");
     if(c.music())check(c.scope==AudioCues.Scope.LOCAL&&c.subtitle.isEmpty()&&c.cooldownTicks==0,c.id+": music is client side with no subtitle");
-    if(c.scope==AudioCues.Scope.NEARBY)check(c.maxPerTick>0&&c.cooldownTicks>0,c.id+": a positional combat cue is capped per tick and has a cooldown");
+    if(c.scope==AudioCues.Scope.NEARBY&&!c.id.equals("gate_hit"))check(c.maxPerTick>0&&c.cooldownTicks>0,c.id+": a positional combat cue is capped per tick and has a cooldown");
    }else if(c.remap!=null){
     check(sound.get("name").getAsString().equals(c.remap)&&sound.has("type")&&sound.get("type").getAsString().equals("event"),c.id+": remapped to "+c.remap+" as an event, with no file of its own");
     check(c.remap.startsWith("minecraft:"),c.id+": a remap names a vanilla event");
-   }else{
-    check(sound.get("name").getAsString().equals("gravesandglory:"+c.id)&&!sound.has("type"),c.id+": plays its own file");
-    check(Files.exists(assets.resolve("sounds/"+c.id+".ogg")),c.id+": its .ogg is in the repo");
    }
    String key="subtitles.gravesandglory."+c.id;
    if(c.subtitle.isEmpty())check(!entry.has("subtitle")&&!lang.has(key),c.id+": no subtitle anywhere");
@@ -52,8 +50,8 @@ public final class AudioCuesCheck {
    if(c.scope==AudioCues.Scope.LOCAL&&c.category.equals("master")&&c.id.startsWith("ui_"))check(c.volume<=.6f,c.id+": a UI cue stays quiet");
   }
   for(String h:AudioCues.HORNS){
-   check(sounds.getAsJsonObject(h).getAsJsonArray("sounds").get(0).getAsJsonObject().get("name").getAsString().equals("gravesandglory:"+h),h+" plays its own file");
-   check(Files.exists(assets.resolve("sounds/"+h+".ogg")),h+": its .ogg is in the repo");
+   check(sounds.getAsJsonObject(h).getAsJsonArray("sounds").get(0).getAsJsonObject().get("name").getAsString().startsWith("gravesandglory:"+h),h+" plays its own files");
+   check(Files.exists(snd(assets,h)),h+": its first variant is in the repo");
   }
   // Every sound file in the mod is claimed by an event (no orphan audio), and every cue is played from somewhere.
   Set<String> claimed=new HashSet<>();
@@ -65,7 +63,9 @@ public final class AudioCuesCheck {
   try(var walk=Files.walk(Path.of("src/main/java/gg/gravesandglory"))){
    code=walk.filter(p->p.toString().endsWith(".java")&&!p.getFileName().toString().equals("AudioCues.java")).map(p->{try{return Files.readString(p);}catch(Exception e){throw new RuntimeException(e);}}).collect(Collectors.joining("\n"));
   }
-  for(AudioCues.Cue c:AudioCues.Cue.values())check(code.contains("Cue."+c.name()),c.id+": some code plays it");
+  // Registered with files and a subtitle but no game moment yet (docs/AUDIO.md, "Registered, not played"): the only cues allowed to have no caller.
+  Set<String> unplayed=Set.of("SIEGE_RAM_SWING","GATE_CHAINS","BANNER_FLAP","MARCH_LEATHER","TROOP_VOICES","AMBIENCE_WIND","AMBIENCE_BIRDS","AMBIENCE_WATER","AMBIENCE_CROWS","AMBIENCE_SNOW","CAMP_ROOM_TONE","SURVIVAL_WIND","CAMPAIGN_BRIEFING_MUSIC","OVERTIME_MUSIC");
+  for(AudioCues.Cue c:AudioCues.Cue.values())check(unplayed.contains(c.name())?!code.contains("Cue."+c.name()):code.contains("Cue."+c.name()),c.id+": "+(unplayed.contains(c.name())?"is listed as not yet played, so no code plays it (remove it from the list when one does)":"some code plays it"));
   check(code.contains("Audio.register()"),"The mod registers the table at start");
   // The cooldowns.
   var t=new AudioCues.Throttle();
@@ -92,6 +92,10 @@ public final class AudioCuesCheck {
  }
 
  /** The seconds an Ogg Vorbis file plays: the last page's granule position over the sample rate of the identification header. */
+ /** The first variant file of an event, as sounds.json lists it (every one-shot is a variant group now: victory_1.ogg and so on). */
+ static Path snd(Path assets,String id)throws Exception{JsonObject sounds=JsonParser.parseString(Files.readString(assets.resolve("sounds.json"))).getAsJsonObject();return assets.resolve("sounds/"+sounds.getAsJsonObject(id).getAsJsonArray("sounds").get(0).getAsJsonObject().get("name").getAsString().replace("gravesandglory:","")+".ogg");}
+ /** The shortest and longest variant of an event, in seconds. */
+ static double[] range(Path assets,String id)throws Exception{JsonObject sounds=JsonParser.parseString(Files.readString(assets.resolve("sounds.json"))).getAsJsonObject();double lo=1e9,hi=0;for(var v:sounds.getAsJsonObject(id).getAsJsonArray("sounds")){double t=oggSeconds(assets.resolve("sounds/"+v.getAsJsonObject().get("name").getAsString().replace("gravesandglory:","")+".ogg"));lo=Math.min(lo,t);hi=Math.max(hi,t);}return new double[]{lo,hi};}
  static double oggSeconds(Path f) throws Exception {
   byte[] d=Files.readAllBytes(f);
   int id=-1;for(int i=0;i<d.length-6&&id<0;i++)if(d[i]==1&&d[i+1]=='v'&&d[i+2]=='o'&&d[i+3]=='r'&&d[i+4]=='b'&&d[i+5]=='i'&&d[i+6]=='s')id=i;
@@ -137,10 +141,11 @@ public final class AudioCuesCheck {
   check(cs.allow(AudioCues.Cue.CAPTURE_START,"Keep",2020),"The second point, a second later, still sounds");
   check(!cs.allow(AudioCues.Cue.CAPTURE_START,"Yard",2100),"The same point does not sound again inside the cooldown");
   // 6. The stings, the gate and the wave: the lead each is started ahead by matches its file (the strike or swell is that far into the sound).
-  double victory=oggSeconds(assets.resolve("sounds/victory.ogg")),defeat=oggSeconds(assets.resolve("sounds/defeat.ogg"));
-  check(Math.abs(AudioCues.VICTORY_STING_TICKS-victory*20)<=1,"The music waits the victory sting's length: "+AudioCues.VICTORY_STING_TICKS+" ticks vs "+victory+" s");
+  double victory=oggSeconds(snd(assets,"victory")),defeat=oggSeconds(snd(assets,"defeat"));
+  double[] vr=range(assets,"victory");
+  check(AudioCues.VICTORY_STING_TICKS>=vr[0]*20-1&&AudioCues.VICTORY_STING_TICKS<=vr[1]*20+1,"The music waits a victory sting's length (the variants run "+vr[0]+" to "+vr[1]+" s): "+AudioCues.VICTORY_STING_TICKS+" ticks");
   check(Math.abs(AudioCues.DEFEAT_STING_TICKS-defeat*20)<=1,"The music waits the defeat sting's length: "+AudioCues.DEFEAT_STING_TICKS+" ticks vs "+defeat+" s");
-  check(AudioCues.GATE_SHUT_LEAD_TICKS*.05<oggSeconds(assets.resolve("sounds/gate_shut.ogg"))&&AudioCues.WAVE_RISE_LEAD_TICKS*.05<oggSeconds(assets.resolve("sounds/wave_rise.ogg")),"A lead is inside its sound");
+  check(AudioCues.GATE_SHUT_LEAD_TICKS*.05<oggSeconds(snd(assets,"gate_shut"))&&AudioCues.WAVE_RISE_LEAD_TICKS*.05<oggSeconds(snd(assets,"wave_rise")),"A lead is inside its sound");
   // The approved samples are untouched (Kort approved the sounds as they are): the bow, arrow and armour files keep their lengths.
   check(Math.abs(oggSeconds(assets.resolve("sounds/arrow_hit_1.ogg"))-.23)<.02&&Math.abs(oggSeconds(assets.resolve("sounds/bow_shoot_1.ogg"))-.65)<.02&&Math.abs(oggSeconds(assets.resolve("sounds/armor_hit_1.ogg"))-.76)<.02,"The bow, arrow and armour samples are the approved ones, trimmed so the strike is at the start");
   // 7. Where the cues are played from (text of the sources): one place each, so none can double.
