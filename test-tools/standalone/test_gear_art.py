@@ -107,4 +107,20 @@ class GearArt(unittest.TestCase):
                 used = {px[:3] for px in pixels(img) if px[3]}
                 self.assertFalse(used & banned, iid)
 
+    def test_relic_icons(self):
+        """Every relic id has a 32 x 32 icon, a clear 1 px margin, no House ramp, and no two icons alike."""
+        import icons, graveborn, tidecallers, wildmoot
+        banned = {tuple(c[:3]) for R in (graveborn.VIOLET, tidecallers.SEA, wildmoot.OCHRE) for c in R}
+        ics = icons.relics()
+        self.assertEqual(set(ics), {r["id"] for r in gearlib.ids()["relics"]})
+        seen = set()
+        for k, im in ics.items():
+            self.assertEqual(im.size, (32, 32), k)
+            for x in range(32):
+                for y in (0, 31):
+                    self.assertEqual(im.getpixel((x, y))[3], 0, k); self.assertEqual(im.getpixel((y, x))[3], 0, k)
+            px = tuple(pixels(im))
+            self.assertFalse({p[:3] for p in px if p[3]} & banned, k)
+            self.assertNotIn(px, seen, k); seen.add(px)
+
 if __name__ == "__main__": unittest.main()
