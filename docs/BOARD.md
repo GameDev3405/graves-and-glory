@@ -128,15 +128,14 @@ One row per started task or task done in `main`; unlisted tasks in each phase ha
 | 5. Balance, performance, hardening | In progress (5.1, 5.4 and 5.5 done, 5.6 partly) | Plan section 3, tasks 5.1 to 5.8 |
 | 6. 1.0 release | In progress (6.1 and 6.2 tooling done) | Plan section 3, tasks 6.1 to 6.6 |
 
-## Open lanes at 2026-11-03
+## Open lanes at 2026-11-04
 
 Every other session branch is merged into `main` or archived.
 
 | Lane | Branch | Plan task | Waits on |
 |---|---|---|---|
-| Animation rework | `work/anim-rework` | 1.5, 4E | Its session merging `main` in (10 conflicting files), then the merge Kort approved |
-| Animation editor | `work/anim-edit` | 1.5 | Kort poses the guard himself (Q28) |
-| Title screen | none yet | 4F.3 | Slow-motion battle shots; a painted scene is being explored |
+| Gear art | `claude/elastic-proskuriakova-2b07e1` | gear | Kort's review fixes, then Kort sees the shots (Q108) |
+| House gear sets | cloud branch `claude/gifted-ptolemy-j2rv7i` (not pushed yet) | gear | The push, Q113 and the gear art merge |
 | Maps | `maps/` in `main` | 3.1, 4A | Kort's own designs and layout sign-off |
 | Real six-player round | none | 3.7 | Kort and friends; scratch-folder EULA is allowed for smoke tests only (Q79) |
 
