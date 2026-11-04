@@ -227,6 +227,8 @@ public final class Commander {
         var a = b.assignment(attacker);
         f *= GearEffects.troopFactor(s.gear, inAura, a != null && "attack".equals(a.order));
         if (c.passive().equals("warden") && covers(c, attacker.spec)) f *= 1 + c.passiveValue();
+        int w = runningSlot(b, s, "war_cry"); // Battle Cry: his own troops within its radius hit x(1 + value1) while it runs
+        if (w >= 0 && p != null) { var t = tuningIn(s, w); if (GravesAndGlory.Battle.horizontalDistance(p.getPos(), attacker.mob.getPos()) <= t.radius() * t.radius()) f *= 1 + t.value1(); }
         return f * marked(b, s, target) * Statuses.markFactor(b, s, target);
     }
 
@@ -238,14 +240,25 @@ public final class Commander {
         return mark == target || target.getUuid().equals(mark) ? 1 + tuningIn(s, i).value1() : 1;
     }
 
-    /** The commander share on the receiving side: x(1 - value1) for a troop whose squad's Stand Fast runs while it stands within radius of its commander, else 1. */
+    /** The commander share on the receiving side: for a troop, oathkeeper inside the command aura and x(1 - value1) while its squad's Stand Fast runs within radius of its commander; for a seated commander, surrounded_guard. Else 1. */
     public static double takenFactor(GravesAndGlory.Battle b, LivingEntity target) {
+        if (target instanceof ServerPlayerEntity pl) { // surrounded_guard: a seated commander with enough foes about him (gear-combat Task 6)
+            var s = b.squads.get(pl.getUuid());
+            if (s == null || s.bot || !s.seated || !GearStats.has(s.gear, "surrounded_guard")) return 1;
+            return GearEffects.surroundedFactor(s.gear, GearCombat.foesNear(b, pl, s.team, GearStats.combat().surroundedRadius()));
+        }
         var u = Combat.unitOf(b, target);
-        int i = u == null ? -1 : runningSlot(b, u.squad, "stand_fast");
-        if (i < 0) return 1;
-        var c = tuningIn(u.squad, i);
+        if (u == null) return 1;
         var p = player(b, u.squad);
-        return p != null && GravesAndGlory.Battle.horizontalDistance(p.getPos(), u.mob.getPos()) <= c.radius() * c.radius() ? 1 - c.value1() : 1;
+        double f = 1;
+        if (p != null && GearStats.has(u.squad.gear, "oathkeeper")) { // oathkeeper: a troop inside his command aura
+            double r = GearEffects.commandRadius(u.squad.gear);
+            f *= GearEffects.oathFactor(u.squad.gear, GravesAndGlory.Battle.horizontalDistance(p.getPos(), u.mob.getPos()) <= r * r);
+        }
+        int i = runningSlot(b, u.squad, "stand_fast");
+        if (i < 0) return f;
+        var c = tuningIn(u.squad, i);
+        return p != null && GravesAndGlory.Battle.horizontalDistance(p.getPos(), u.mob.getPos()) <= c.radius() * c.radius() ? f * (1 - c.value1()) : f;
     }
 
     /**

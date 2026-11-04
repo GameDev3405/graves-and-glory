@@ -6,6 +6,7 @@ import net.minecraft.entity.EquipmentSlot;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.damage.DamageSource;
 import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.entity.projectile.PersistentProjectileEntity;
 import net.minecraft.registry.tag.DamageTypeTags;
 import net.minecraft.util.Hand;
 import net.minecraft.util.TypedActionResult;
@@ -91,7 +92,7 @@ public final class GearCombat {
     }
 
     /** Removes every gear modifier (the lobby, between battles). Health above the new maximum is cut back to it. */
-    static void clear(ServerPlayerEntity pl) { apply(pl, GearStats.empty()); }
+    static void clear(ServerPlayerEntity pl) { apply(pl, GearStats.empty()); Abilities.keepSpeed(pl, TRAIL, "Graves and Glory trailblazer", 0); }
 
     /** Replaces the gear modifiers with this Loadout's, then heals to the new maximum. */
     static void apply(ServerPlayerEntity pl, GearStats.Loadout l) {
@@ -107,6 +108,7 @@ public final class GearCombat {
     /** In a running battle a seated commander always holds his main weapon: hotbar slot 0 (the keys 1 to 3 are relics). END_SERVER_TICK. */
     static void tick(GravesAndGlory.Battle b) {
         if (!b.running) return;
+        if (b.time % 20 == 0) second(b);
         for (var s : b.squads.values()) {
             if (s.bot || !s.seated) continue;
             var pl = b.server.getPlayerManager().getPlayer(s.owner);
@@ -220,5 +222,112 @@ public final class GearCombat {
         f *= GearEffects.grudgeFactor(l, target != null && target.getUuid().equals(s.grudge));
         f *= GearEffects.lastLightFactor(l, pl.getHealth() / pl.getMaxHealth());
         return f;
+    }
+
+    // ---- Set bonuses and perks that act on their own (gear-combat plan Task 6). Each reads its gearSetBonuses or gearPerks row through GearStats.
+
+    /** Fixed ids of the trailblazer speed on the commander and the formation_charge speed on his troops. */
+    static final UUID TRAIL = UUID.fromString("3f6a2c18-9b7e-4d05-a1c3-5e8f0b2d4a61"), FORMATION = UUID.fromString("b8d14e72-6c39-4a0f-9e15-2f7a3c6b8d94");
+
+    /** How many foes (troops and seated commanders of the other side) stand within radius blocks of e. */
+    static int foesNear(GravesAndGlory.Battle b, Entity e, int team, double radius) {
+        int n = 0;
+        for (var o : b.world.getOtherEntities(e, e.getBoundingBox().expand(radius, radius, radius))) if (foe(b, o, team) && o.squaredDistanceTo(e) <= radius * radius) n++;
+        return n;
+    }
+
+    /** The once-a-second bonuses of every seated commander (GearCombat.tick on the battle's whole seconds): heal_over_time, cleanse, trailblazer and formation_charge. */
+    static void second(GravesAndGlory.Battle b) {
+        for (var s : b.squads.values()) {
+            if (s.bot || !s.seated) continue;
+            var p = Commander.player(b, s);
+            healOverTime(b, s, p);
+            if (cleanseDue(b, s)) cleanse(b, s, p);
+            trail(b, s, p);
+            formation(b, s, p);
+        }
+    }
+
+    /** heal_over_time: each of his own troops within the bonus radius of him heals value1. */
+    static void healOverTime(GravesAndGlory.Battle b, GravesAndGlory.Squad s, ServerPlayerEntity p) {
+        if (p == null || !GearStats.has(s.gear, "heal_over_time")) return;
+        double r = GearStats.radius(s.gear, "heal_over_time");
+        float heal = (float) GearStats.value1(s.gear, "heal_over_time");
+        for (var u : b.units) if (u.squad == s && u.mob.isAlive() && u.mob.squaredDistanceTo(p) <= r * r) u.mob.heal(heal);
+    }
+
+    /** cleanse is due every value1 seconds of battle time (its value1 is the period). */
+    static boolean cleanseDue(GravesAndGlory.Battle b, GravesAndGlory.Squad s) {
+        if (!GearStats.has(s.gear, "cleanse")) return false;
+        long every = Math.max(1, Math.round(GearStats.value1(s.gear, "cleanse")));
+        return (b.time / 20) % every == 0;
+    }
+
+    /** cleanse: slow, weaken and bleed leave him and his own troops within the bonus radius (Statuses.cleanse). */
+    static void cleanse(GravesAndGlory.Battle b, GravesAndGlory.Squad s, ServerPlayerEntity p) {
+        if (p == null || !GearStats.has(s.gear, "cleanse")) return;
+        double r = GearStats.radius(s.gear, "cleanse");
+        Statuses.cleanse(b, null, p);
+        for (var u : b.units) if (u.squad == s && u.mob.isAlive() && u.mob.squaredDistanceTo(p) <= r * r) Statuses.cleanse(b, null, u.mob);
+    }
+
+    /** trailblazer: x(1 + value1) movement speed on him while no foe stands within value2 blocks; off again once one does. */
+    static void trail(GravesAndGlory.Battle b, GravesAndGlory.Squad s, ServerPlayerEntity p) {
+        if (p == null) return;
+        boolean has = GearStats.has(s.gear, "trailblazer");
+        double f = has ? GearEffects.trailFactor(s.gear, foesNear(b, p, s.team, GearStats.value2(s.gear, "trailblazer")) > 0) : 1;
+        Abilities.keepSpeed(p, TRAIL, "Graves and Glory trailblazer", f - 1);
+    }
+
+    /** formation_charge: his own troops inside his command aura on the Attack order move x(1 + value1) on their ground (BattleMath.speedModifier); the rest lose it. */
+    static void formation(GravesAndGlory.Battle b, GravesAndGlory.Squad s, ServerPlayerEntity p) {
+        boolean has = p != null && GearStats.has(s.gear, "formation_charge");
+        double r = has ? GearEffects.commandRadius(s.gear) : 0;
+        for (var u : b.units) {
+            if (u.squad != s || !u.mob.isAlive()) continue;
+            var a = b.assignment(u);
+            boolean on = has && a != null && "attack".equals(a.order) && GravesAndGlory.Battle.horizontalDistance(p.getPos(), u.mob.getPos()) <= r * r;
+            Abilities.keepSpeed(u.mob, FORMATION, "Graves and Glory formation charge", on ? BattleMath.speedModifier(1 + GearStats.value1(s.gear, "formation_charge"), u.mob.isTouchingWater()) : 0);
+        }
+    }
+
+    /**
+     * taunt_aura: the enemy commander a troop is drawn to, or null (Tactics). Of the troops of the troop's army that stand within the bonus radius of a commander
+     * wearing it, the tauntShare of them (rounded) with the lowest entity ids pick him, so the share is exact and each troop's choice holds still.
+     */
+    static ServerPlayerEntity taunter(GravesAndGlory.Battle b, GravesAndGlory.Unit u) {
+        for (var s : b.squads.values()) {
+            if (s.bot || !s.seated || s.team == u.squad.team || !GearStats.has(s.gear, "taunt_aura")) continue;
+            var p = Commander.player(b, s);
+            double r = GearStats.radius(s.gear, "taunt_aura");
+            if (p == null || u.mob.squaredDistanceTo(p) > r * r) continue;
+            List<Integer> ids = new ArrayList<>();
+            for (var o : b.units) if (o.squad.team == u.squad.team && o.mob.isAlive() && o.mob.squaredDistanceTo(p) <= r * r) ids.add(o.mob.getId());
+            Collections.sort(ids);
+            int idx = ids.indexOf(u.mob.getId());
+            if (idx >= 0 && idx < Math.round(GearEffects.tauntShare(s.gear) * ids.size())) return p;
+        }
+        return null;
+    }
+
+    /** pierce (ENTITY_LOAD): an arrow a seated commander looses (his bow's or his Volley's) pierces GearEffects.pierceLevel foes, never fewer than it already would. */
+    static void onEntityLoad(Entity e) {
+        if (!(e instanceof PersistentProjectileEntity a) || !(a.getOwner() instanceof PlayerEntity pl)) return;
+        var s = seated(pl);
+        if (s == null) return;
+        int level = GearEffects.pierceLevel(s.gear);
+        if (level > a.getPierceLevel()) a.setPierceLevel((byte) Math.min(127, level));
+    }
+
+    /**
+     * second_chance (Battle.allowDamage, before the downed branch): the blow that would down a seated commander leaves him on value1 health instead, once a
+     * round (Squad.secondChanceUsed, which round start clears). True when it caught the blow.
+     */
+    static boolean secondChance(GravesAndGlory.Squad s, ServerPlayerEntity p) {
+        if (s == null || s.bot || !GearEffects.secondChance(s.gear, s.secondChanceUsed)) return false;
+        s.secondChanceUsed = true;
+        p.setHealth((float) Math.max(1, Math.min(p.getMaxHealth(), GearStats.value1(s.gear, "second_chance"))));
+        p.getWorld().playSound(null, p.getBlockPos(), net.minecraft.sound.SoundEvents.ITEM_TOTEM_USE, net.minecraft.sound.SoundCategory.PLAYERS, .6f, 1.2f);
+        return true;
     }
 }

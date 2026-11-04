@@ -1,6 +1,8 @@
 package gg.gravesandglory;
 
 import net.minecraft.entity.LivingEntity;
+import net.minecraft.entity.projectile.ArrowEntity;
+import net.minecraft.entity.projectile.PersistentProjectileEntity;
 import net.minecraft.entity.attribute.EntityAttributes;
 import net.minecraft.entity.effect.StatusEffectInstance;
 import net.minecraft.entity.effect.StatusEffects;
@@ -50,6 +52,13 @@ public final class RelicEffects {
         ACTIVES.put("forward_supply", new ForwardSupply());
         ACTIVES.put("mark_prey", new MarkPrey());
         ACTIVES.put("bloodrush", new Bloodrush());
+        ACTIVES.put("dash", new Dash());
+        ACTIVES.put("shove", new Shove());
+        ACTIVES.put("heal_pulse", new HealPulse());
+        ACTIVES.put("volley", new Volley());
+        ACTIVES.put("war_cry", new WarCry());
+        ACTIVES.put("self_heal", new SelfHeal());
+        ACTIVES.put("iron_skin", ACTIVES.get("self_heal"));
     }
 
     /**
@@ -260,5 +269,130 @@ public final class RelicEffects {
                 return;
             }
         }
+    }
+
+    // ---- The new relics (gear-combat plan Task 6). Each reads only its relicTuning row.
+
+    /** The commander's look laid flat (no pitch), a unit vector; his yaw's when he looks straight up or down. */
+    static Vec3d flatLook(ServerPlayerEntity p) {
+        Vec3d look = p.getRotationVector(), flat = new Vec3d(look.x, 0, look.z);
+        return flat.lengthSquared() < 1e-6 ? Vec3d.fromPolar(0, p.getYaw()) : flat.normalize();
+    }
+
+    /** Charger's Spur (dash): his horizontal velocity becomes value1 blocks a tick along his flat look, at once; for durationTicks he takes no fall. It always starts. */
+    static final class Dash implements Active {
+        @Override public boolean start(GravesAndGlory.Battle b, ServerPlayerEntity p, GravesAndGlory.Squad s, int slot, Spec.RelicTuningRow c) {
+            Vec3d v = flatLook(p).multiply(c.value1());
+            p.setVelocity(v.x, Math.max(p.getVelocity().y, 0.1), v.z);
+            p.velocityModified = true;
+            p.fallDistance = 0;
+            b.world.spawnParticles(ParticleTypes.CLOUD, p.getX(), p.getY() + .2, p.getZ(), 10, .3, .1, .3, .02);
+            b.world.playSound(null, p.getBlockPos(), SoundEvents.ENTITY_PLAYER_ATTACK_SWEEP, SoundCategory.PLAYERS, .7f, 1.4f);
+            return true;
+        }
+        @Override public void tick(GravesAndGlory.Battle b, GravesAndGlory.Squad s, int slot, Spec.RelicTuningRow c) {
+            var p = Commander.player(b, s);
+            if (p != null) p.fallDistance = 0;
+        }
+        @Override public void end(GravesAndGlory.Battle b, GravesAndGlory.Squad s, int slot) {}
+    }
+
+    /** The foes (troops and seated commanders of the other side) within radius of the commander and in front of him (the half his flat look faces). */
+    static List<LivingEntity> inFront(GravesAndGlory.Battle b, ServerPlayerEntity p, int team, double radius) {
+        Vec3d look = flatLook(p);
+        List<LivingEntity> out = new ArrayList<>();
+        for (var e : b.world.getOtherEntities(p, p.getBoundingBox().expand(radius, 2, radius))) {
+            if (!(e instanceof LivingEntity le) || !GearCombat.foe(b, le, team) || e.squaredDistanceTo(p) > radius * radius) continue;
+            Vec3d to = new Vec3d(e.getX() - p.getX(), 0, e.getZ() - p.getZ());
+            if (to.lengthSquared() < 1e-6 || to.normalize().dotProduct(look) >= 0) out.add(le);
+        }
+        return out;
+    }
+
+    /**
+     * Gatebreaker's Shove (shove, the relic shield_bash): every foe within radius in front of him takes value3 as his own blow (Battle.allowDamage scales it
+     * like any blow of his), a knockback of strength value1 away from him and Slowness II for value2 ticks. With no foe there it is refused with a notice and no cooldown.
+     */
+    static final class Shove implements Active {
+        @Override public boolean start(GravesAndGlory.Battle b, ServerPlayerEntity p, GravesAndGlory.Squad s, int slot, Spec.RelicTuningRow c) {
+            var hit = inFront(b, p, s.team, c.radius());
+            if (hit.isEmpty()) { b.campaign.notice(s.owner, "No foe in front of you."); return false; }
+            for (var le : hit) {
+                le.timeUntilRegen = 0;
+                le.damage(b.world.getDamageSources().playerAttack(p), (float) c.value3());
+                le.takeKnockback(c.value1(), p.getX() - le.getX(), p.getZ() - le.getZ());
+                le.velocityModified = true;
+                Abilities.slow(b, le, 1, (int) Math.round(c.value2()));
+            }
+            Vec3d look = flatLook(p);
+            b.world.spawnParticles(ParticleTypes.SWEEP_ATTACK, p.getX() + look.x, p.getBodyY(.5), p.getZ() + look.z, 3, .4, .2, .4, 0);
+            b.world.playSound(null, p.getBlockPos(), SoundEvents.ITEM_SHIELD_BLOCK, SoundCategory.PLAYERS, 1f, .7f);
+            return true;
+        }
+        @Override public void tick(GravesAndGlory.Battle b, GravesAndGlory.Squad s, int slot, Spec.RelicTuningRow c) {}
+        @Override public void end(GravesAndGlory.Battle b, GravesAndGlory.Squad s, int slot) {}
+    }
+
+    /** Lantern of Mercy (heal_pulse): he and his own troops within radius heal value1 x his healingFactor at once. It always starts. */
+    static final class HealPulse implements Active {
+        @Override public boolean start(GravesAndGlory.Battle b, ServerPlayerEntity p, GravesAndGlory.Squad s, int slot, Spec.RelicTuningRow c) {
+            float heal = (float) (c.value1() * GearStats.healingFactor(s.gear));
+            p.heal(heal);
+            for (var u : b.units) if (u.squad == s && u.mob.isAlive() && u.mob.squaredDistanceTo(p) <= c.radius() * c.radius()) u.mob.heal(heal);
+            Abilities.ring(b, p.getPos(), c.radius(), b.side(s.team).color());
+            b.world.spawnParticles(ParticleTypes.HEART, p.getX(), p.getY() + 1.8, p.getZ(), 6, .5, .3, .5, 0);
+            return true;
+        }
+        @Override public void tick(GravesAndGlory.Battle b, GravesAndGlory.Squad s, int slot, Spec.RelicTuningRow c) {}
+        @Override public void end(GravesAndGlory.Battle b, GravesAndGlory.Squad s, int slot) {}
+    }
+
+    /**
+     * Hunter's Volley (volley): value1 arrows of his own (no pickup) from his eyes, fanned evenly across value2 degrees about his look, each at value3 blocks a
+     * tick. They hit as his shots (rangedFactor, hawkeye; pierce from GearCombat.onEntityLoad). It always starts.
+     */
+    static final class Volley implements Active {
+        @Override public boolean start(GravesAndGlory.Battle b, ServerPlayerEntity p, GravesAndGlory.Squad s, int slot, Spec.RelicTuningRow c) {
+            int n = (int) Math.max(1, Math.round(c.value1()));
+            for (int i = 0; i < n; i++) {
+                float yaw = p.getYaw() + (n == 1 ? 0f : (float) (-c.value2() / 2 + c.value2() * i / (n - 1)));
+                var a = new ArrowEntity(b.world, p);
+                a.setVelocity(p, p.getPitch(), yaw, 0f, (float) c.value3(), 0f);
+                a.pickupType = PersistentProjectileEntity.PickupPermission.DISALLOWED;
+                b.world.spawnEntity(a);
+            }
+            b.world.playSound(null, p.getBlockPos(), SoundEvents.ENTITY_ARROW_SHOOT, SoundCategory.PLAYERS, 1f, .9f);
+            return true;
+        }
+        @Override public void tick(GravesAndGlory.Battle b, GravesAndGlory.Squad s, int slot, Spec.RelicTuningRow c) {}
+        @Override public void end(GravesAndGlory.Battle b, GravesAndGlory.Squad s, int slot) {}
+    }
+
+    /** Battle Cry (war_cry): for durationTicks his own troops within radius of him hit x(1 + value1) (Commander.factor reads it per blow). It always starts. */
+    static final class WarCry implements Active {
+        @Override public boolean start(GravesAndGlory.Battle b, ServerPlayerEntity p, GravesAndGlory.Squad s, int slot, Spec.RelicTuningRow c) {
+            Abilities.ring(b, p.getPos(), c.radius(), b.side(s.team).color());
+            b.world.playSound(null, p.getBlockPos(), SoundEvents.EVENT_RAID_HORN.value(), SoundCategory.PLAYERS, .5f, 1.3f);
+            return true;
+        }
+        @Override public void tick(GravesAndGlory.Battle b, GravesAndGlory.Squad s, int slot, Spec.RelicTuningRow c) {
+            var p = Commander.player(b, s);
+            if (p != null && b.time % 20 == 0) Abilities.ring(b, p.getPos(), c.radius(), b.side(s.team).color());
+        }
+        @Override public void end(GravesAndGlory.Battle b, GravesAndGlory.Squad s, int slot) {}
+    }
+
+    /** Second Wind (self_heal, the relic iron_skin): he heals value1 x his healingFactor, spread evenly over durationTicks. Refused with a notice at full health. */
+    static final class SelfHeal implements Active {
+        @Override public boolean start(GravesAndGlory.Battle b, ServerPlayerEntity p, GravesAndGlory.Squad s, int slot, Spec.RelicTuningRow c) {
+            if (p.getHealth() >= p.getMaxHealth()) { b.campaign.notice(s.owner, "You are not hurt."); return false; }
+            b.world.spawnParticles(ParticleTypes.HEART, p.getX(), p.getY() + 1.8, p.getZ(), 3, .3, .2, .3, 0);
+            return true;
+        }
+        @Override public void tick(GravesAndGlory.Battle b, GravesAndGlory.Squad s, int slot, Spec.RelicTuningRow c) {
+            var p = Commander.player(b, s);
+            if (p != null && c.durationTicks() > 0) p.heal((float) (c.value1() * GearStats.healingFactor(s.gear) / c.durationTicks()));
+        }
+        @Override public void end(GravesAndGlory.Battle b, GravesAndGlory.Squad s, int slot) {}
     }
 }
