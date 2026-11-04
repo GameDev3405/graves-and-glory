@@ -13,6 +13,7 @@ Plain files for running one Graves and Glory server on Minecraft 1.20.1 with Fab
 | `restore.ps1` / `restore.sh` | Put a backup back; backs up first, keeps the replaced world |
 | `update.ps1` / `update.sh` | Stop, back up, swap jar, pin, optional restart |
 | `lib.ps1` / `lib.sh` | Shared code |
+| `jvm-args.txt` | Optional, yours: extra JVM flags, one per line (not shipped) |
 | `server.properties.default` | Defaults: port 25580, whitelist on, online mode on, RCON off, 16 slots |
 | `whitelist.template.json` | Empty whitelist (`[]`) |
 
@@ -31,7 +32,7 @@ Pick a folder, for example `C:\GGServer` on Windows or `/opt/gg` on Linux. Run a
 5. **Pin the jar:** `.\gate.ps1 -Pin` (or `./gate.sh --pin`). This writes `mod-lock.json` with the version, build identity and file hash. Do this only after you know this is the build your players have.
 6. **EULA.** Run `.\start.ps1`. It creates `eula.txt` containing `eula=false` and stops. Read https://aka.ms/MinecraftEULA yourself. If you agree, edit `eula.txt` to `eula=true`. No script in this kit writes that line.
 7. **Whitelist.** `whitelist.json` starts empty and `white-list=true`, so nobody can join yet. Start the server and type `whitelist add <name>` in its console, or add entries by hand (`{"uuid": "...", "name": "..."}`).
-8. **Start:** `.\start.ps1` (Linux: `./start.sh`). Optional `-MemoryGB 8`; the default is 6 (min and max heap equal, as Aikar advises). First start downloads Minecraft and Fabric libraries and builds the camp, so it is slow.
+8. **Start:** `.\start.ps1` (Linux: `./start.sh`). Optional `-MemoryGB 8` (and `-JvmArgs`, see Extra JVM flags); the default is 6 (min and max heap equal, as Aikar advises). First start downloads Minecraft and Fabric libraries and builds the camp, so it is slow.
 9. **Reach it.** Players join `<host>:25580`. Open that one port in the host firewall, or keep it on Tailscale. The builder server uses 25570 and the Kingdom servers 25565-25567 and 25571, so 25580 does not collide. The default binds all interfaces; set `server-ip=` in `server.properties` to pin one address.
 10. **Smoke test:** join as a whitelisted player with the matching client build. The mod itself also refuses mismatched clients at login.
 
@@ -41,6 +42,18 @@ Pick a folder, for example `C:\GGServer` on Windows or `/opt/gg` on Linux. Run a
 - **Keep it running:** run `start.ps1` from a Task Scheduler task (at startup, restart on failure), or `start.sh` from systemd (`Restart=on-failure`, `ExecStop=/opt/gg/stop.sh`) or screen/tmux. The scripts do not loop on their own.
 - **Back up:** `.\backup.ps1 -Label manual`. Output is `backups/<world>-<UTC time>-<label>.zip` (`.tar.gz` on Linux), read back and checked for `level.dat` before it counts. The server must be stopped (`-AllowRunning` overrides at your risk). Start backups (`start`) and `auto` backups keep the newest 20; every other label is kept forever. Add a scheduled `backup.ps1 -Label auto -AllowRunning` only if you accept a possibly inconsistent copy; the safe copy is the one made at each start.
 - **Restore:** stop the server, then `.\restore.ps1 -Backup backups\<file>.zip`. It backs up the current world as `prerestore`, then moves it to `<world>.replaced-<time>`. Nothing is deleted. A `.zip` restores on Windows, a `.tar.gz` on Linux; convert by hand if you move between them.
+
+## Extra JVM flags
+
+To add JVM flags (for example `-Dgg.build=camp`), either pass them on the command line or list them in `jvm-args.txt` next to `start.ps1`:
+
+```
+.\start.ps1 -JvmArgs "-Dgg.build=camp -Xss1M"      (Linux: ./start.sh --jvm-args "-Dgg.build=camp -Xss1M")
+```
+
+`jvm-args.txt` holds one flag per line; `#` starts a comment and blank lines are ignored. File flags come first, then the command-line flags, both after the Aikar flags and before `-jar`, so a later flag wins over an Aikar default. Every flag must start with `-`; anything else stops the start. A dry run prints the final command. The kit does not ship a `jvm-args.txt`, so updating the kit never overwrites yours.
+
+The Java version check reads the line that contains `version "N"` from `java -version`, so a `JAVA_TOOL_OPTIONS` or `JDK_JAVA_OPTIONS` banner ("Picked up JAVA_TOOL_OPTIONS: ...") ahead of it no longer breaks the check. Setting `JAVA_TOOL_OPTIONS` also works as a way to pass flags, but `jvm-args.txt` is the supported route.
 
 ## Update loop (2A.8)
 

@@ -1,11 +1,12 @@
 <#
 Start the Graves and Glory dedicated server (port 25580). Stays in the foreground and supervises the java process.
-  .\start.ps1 [-MemoryGB N] [-DryRun] [-Root DIR]
+  .\start.ps1 [-MemoryGB N] [-JvmArgs "-Dkey=value -Xss1M"] [-DryRun] [-Root DIR]
 Order: Java check, version gate, config, EULA check, world backup, launch with Aikar flags.
 Console input is passed to the server (type stop to shut down). .\stop.ps1 asks this script to stop it cleanly.
+Extra JVM flags: -JvmArgs (flags separated by spaces) and/or jvm-args.txt in the server folder (one flag per line, # comments).
 -DryRun runs every check and prints the java command; it writes nothing and starts nothing.
 #>
-param([ValidateRange(2, 64)][int]$MemoryGB = 6, [string]$Root, [switch]$DryRun)
+param([ValidateRange(2, 64)][int]$MemoryGB = 6, [string]$Root, [string]$JvmArgs, [switch]$DryRun)
 $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot 'lib.ps1')
 try {
@@ -15,9 +16,9 @@ try {
     if (!(Test-Path -LiteralPath 'fabric-server-launch.jar')) { throw 'fabric-server-launch.jar is missing. See README.md, step 3.' }
     $java = Get-Command java -ErrorAction SilentlyContinue
     if ($null -eq $java) { throw 'java not found. Install Java 17 or newer (README.md, step 1).' }
-    $versionLine = (cmd /c 'java -version 2>&1') | Select-Object -First 1
-    if ("$versionLine" -notmatch '"(\d+)[."]') { throw 'Could not read the Java version.' }
-    if ([int]$Matches[1] -lt 17) { throw "Java $($Matches[1]) is too old; need 17 or newer." }
+    $javaMajor = Get-JavaMajor (cmd /c 'java -version 2>&1')
+    if ($javaMajor -eq 0) { throw 'Could not read the Java version.' }
+    if ($javaMajor -lt 17) { throw "Java $javaMajor is too old; need 17 or newer." }
     if (Get-ServerProcess) { throw "Server already running (pid $((Get-Content -LiteralPath 'server.pid' -Raw).Trim()))." }
 
     [void](Test-Gate)
@@ -52,7 +53,7 @@ try {
 
     [void](New-Backup 'start')
 
-    $javaArgs = @("-Xms${MemoryGB}G", "-Xmx${MemoryGB}G") + (Get-AikarFlags $MemoryGB) + @('-jar', 'fabric-server-launch.jar', '--nogui')
+    $javaArgs = @("-Xms${MemoryGB}G", "-Xmx${MemoryGB}G") + (Get-AikarFlags $MemoryGB) + (Get-JvmArgs $JvmArgs) + @('-jar', 'fabric-server-launch.jar', '--nogui')
     if ($DryRun) {
         Write-Kit "[dry-run] command: java $($javaArgs -join ' ')"
         Write-Kit '[dry-run] checks complete; nothing was started.'
