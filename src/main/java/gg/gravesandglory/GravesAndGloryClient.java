@@ -118,7 +118,7 @@ public final class GravesAndGloryClient implements ClientModInitializer {
             int g=buf.readInt();boolean near=buf.readBoolean();int q=buf.readInt(),eta=buf.readInt(),types=buf.readInt();if(types!=Spec.TROOPS.length)return;
             int[] owned=new int[types],waiting=new int[types];for(int i=0;i<types;i++){owned[i]=buf.readInt();waiting[i]=buf.readInt();}
             int amount=buf.readInt();if(amount<0||amount>160)return;List<Marker> friendly=new ArrayList<>();for(int i=0;i<amount;i++)friendly.add(new Marker(buf.readFloat(),buf.readFloat(),buf.readBoolean(),buf.readBoolean(),buf.readString()));
-            int groupCount=buf.readInt();if(groupCount!=3)return;var groups=new ArrayList<CommandMode.Group>();
+            int groupCount=buf.readInt();if(groupCount<0||groupCount>8)return;/* state_v10: 3 to 5 group records, Riders and Siege when fielded */var groups=new ArrayList<CommandMode.Group>();
             for(int i=0;i<groupCount;i++)groups.add(new CommandMode.Group(buf.readString(),buf.readInt(),buf.readFloat(),buf.readString(),buf.readString(),buf.readFloat(),buf.readFloat(),buf.readFloat(),buf.readFloat(),buf.readFloat(),buf.readBoolean(),buf.readBoolean(),buf.readInt(),buf.readFloat(),buf.readInt(),buf.readInt(),buf.readBoolean())); // full and strength (UI), then state_v9's level2, level3 and armouryOpen
             String abilityRead=buf.readString();int cooldownLeft=buf.readInt(),cooldownAll=buf.readInt();
             int pingCount=buf.readInt();if(pingCount<0||pingCount>4)return;var pings=new ArrayList<CommandMode.Ping>();for(int i=0;i<pingCount;i++)pings.add(new CommandMode.Ping(buf.readString(),buf.readFloat(),buf.readFloat()));int seconds=buf.readInt();

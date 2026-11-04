@@ -185,9 +185,25 @@ public final class BattleMath {
     }
     /**
      * The stances a troop shows its clients, in stance_v2's wire order (the byte is the index): none, hold-ready, brace, the formed shield wall,
-     * shield-up moving, fall back, run, ranged lowered and ranged aiming (spec 6.4).
+     * shield-up moving, fall back, run, ranged lowered and ranged aiming (spec 6.4), then the command UI's rally (weapons raised on an order's
+     * acknowledgement). New stances are appended, never inserted: the index is the wire byte.
      */
-    public static final List<String> STANCES = List.of("", "hold", "brace", "wall", "shield_move", "fall_back", "run", "ranged_rest", "ranged_aim");
+    public static final List<String> STANCES = List.of("", "hold", "brace", "wall", "shield_move", "fall_back", "run", "ranged_rest", "ranged_aim", "rally");
+    /**
+     * An order id as the command UI reads it (OrderRules.loadOrder): the old Move and Hold are both the player's Formation order, hold; the
+     * other sheet orders stay; anything unknown or missing is the squad default, follow. Bots, Siege and Muster still issue move internally.
+     */
+    public static String loadOrder(String order) {
+        if (order == null) return "follow";
+        if (order.equals("move") || order.equals("hold")) return "hold";
+        for (var o : Spec.ORDERS) if (o.id().equals(order)) return order;
+        return "follow";
+    }
+    /** A formation id as the command UI reads it (OrderRules.loadFormation): a sheet shape stays (block is now labelled Shield wall); anything else is line. */
+    public static String loadFormation(String formation) {
+        if (formation != null) for (var f : Spec.FORMATIONS) if (f.id().equals(formation)) return formation;
+        return "line";
+    }
     /** The plain-hold rule (carry 2 of Task 6): on Hold a shield or spear troop braces, a shield troop formed in its wall shows the wall, and every other troop holds. */
     public static String holdStance(boolean shield, boolean spear, boolean formed) { return shield && formed ? "wall" : shield || spear ? "brace" : "hold"; }
     /**

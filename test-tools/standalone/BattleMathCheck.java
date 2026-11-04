@@ -362,7 +362,7 @@ public final class BattleMathCheck {
         check(BattleMath.stance("attack", true, false, false, false, false, true).equals("shield_move") && BattleMath.stance("attack", true, false, false, false, false, false).isEmpty() && BattleMath.stance("move", false, false, false, false, false, true).isEmpty(),
             "stance: a shield troop moving with its shield up is shield_move");
         for (String name : List.of("hold", "brace", "wall", "shield_move", "fall_back", "run", "ranged_rest", "ranged_aim")) check(BattleMath.STANCES.indexOf(name) > 0, "STANCES holds " + name);
-        check(BattleMath.STANCES.equals(List.of("", "hold", "brace", "wall", "shield_move", "fall_back", "run", "ranged_rest", "ranged_aim")), "STANCES in the stance_v2 wire order");
+        check(BattleMath.STANCES.equals(List.of("", "hold", "brace", "wall", "shield_move", "fall_back", "run", "ranged_rest", "ranged_aim", "rally")), "STANCES in the stance_v2 wire order (the command UI's rally appended)");
         // hit_v1's kind from Combat.resolve's kind, the shooter's family and its swing's attackVariants kind
         check(BattleMath.hitKind("slam", "blunt", "blunt").equals("blunt") && BattleMath.hitKind("slam", "bow", "arrow").equals("blunt"), "hitKind: a slam is blunt");
         check(BattleMath.hitKind("bolt", "caster", "magic").equals("magic") && BattleMath.hitKind("blight", "caster", "magic").equals("magic"), "hitKind: a caster's bolt and blight are magic");

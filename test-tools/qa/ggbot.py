@@ -146,7 +146,7 @@ class Bot:
                 self.alive = True
                 self.play_started = time.time()
                 threading.Thread(target=self._loop, daemon=True).start()
-                reg = "\0".join(["gravesandglory:state_v9", "gravesandglory:impact_v1", "gravesandglory:barracks_v1",
+                reg = "\0".join(["gravesandglory:state_v10", "gravesandglory:impact_v1", "gravesandglory:barracks_v1",
                                  "gravesandglory:party_v1", "gravesandglory:stance_v1", "gravesandglory:feed_v1",
                                  "gravesandglory:camp_station"]).encode()
                 if not getattr(self,"quiet",False):
