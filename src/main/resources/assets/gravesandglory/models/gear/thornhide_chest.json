@@ -1,0 +1,666 @@
+{
+ "format": 1,
+ "item": "thornhide_chest",
+ "slot": "chest",
+ "density": 1,
+ "size": [
+  64,
+  64
+ ],
+ "cloth": "gravesandglory:textures/entity/gear/thornhide_chest/team_cloth_",
+ "skins": {
+  "1": "gravesandglory:textures/entity/gear/thornhide_chest/thornhide_chest_r1.png",
+  "2": "gravesandglory:textures/entity/gear/thornhide_chest/thornhide_chest_r2.png",
+  "3": "gravesandglory:textures/entity/gear/thornhide_chest/thornhide_chest_r3.png",
+  "4": "gravesandglory:textures/entity/gear/thornhide_chest/thornhide_chest_r4.png",
+  "5": "gravesandglory:textures/entity/gear/thornhide_chest/thornhide_chest_r5.png"
+ },
+ "glow": {
+  "5": "gravesandglory:textures/entity/gear/thornhide_chest/thornhide_chest_e5.png"
+ },
+ "bones": [
+  {
+   "name": "jerkin",
+   "parent": "body",
+   "team": false,
+   "tag": "chest",
+   "stages": [],
+   "sheet": [
+    64,
+    64
+   ],
+   "pivot": [
+    0,
+    12,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "boxes": [
+    {
+     "origin": [
+      -4.5,
+      -12.5,
+      -3.0
+     ],
+     "size": [
+      9.0,
+      13.0,
+      6.0
+     ],
+     "uv": [
+      0,
+      0
+     ],
+     "mirror": false,
+     "dilation": [
+      0.02,
+      0.02,
+      0.02
+     ]
+    }
+   ]
+  },
+  {
+   "name": "fur_collar",
+   "parent": "body",
+   "team": false,
+   "tag": "chest",
+   "stages": [],
+   "sheet": [
+    64,
+    64
+   ],
+   "pivot": [
+    0,
+    12,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "boxes": [
+    {
+     "origin": [
+      -6.0,
+      -12.600000000000001,
+      -4.5
+     ],
+     "size": [
+      12.0,
+      4.0,
+      9.0
+     ],
+     "uv": [
+      20,
+      19
+     ],
+     "mirror": false,
+     "dilation": [
+      0.0,
+      0.0,
+      0.0
+     ]
+    }
+   ]
+  },
+  {
+   "name": "cloak",
+   "parent": "body",
+   "team": true,
+   "tag": "chest",
+   "stages": [
+    1,
+    2,
+    3,
+    4
+   ],
+   "sheet": [
+    64,
+    32
+   ],
+   "pivot": [
+    0,
+    12,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "boxes": [
+    {
+     "origin": [
+      -4.5,
+      -9.0,
+      3.1
+     ],
+     "size": [
+      9.0,
+      14.0,
+      1.0
+     ],
+     "uv": [
+      20,
+      0
+     ],
+     "mirror": false,
+     "dilation": [
+      0.02,
+      0.02,
+      0.02
+     ]
+    }
+   ]
+  },
+  {
+   "name": "cloak_long",
+   "parent": "body",
+   "team": true,
+   "tag": "chest",
+   "stages": [
+    5
+   ],
+   "sheet": [
+    64,
+    32
+   ],
+   "pivot": [
+    0,
+    12,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "boxes": [
+    {
+     "origin": [
+      -4.5,
+      -9.0,
+      3.1
+     ],
+     "size": [
+      9.0,
+      18.0,
+      1.0
+     ],
+     "uv": [
+      0,
+      0
+     ],
+     "mirror": false,
+     "dilation": [
+      0.02,
+      0.02,
+      0.02
+     ]
+    }
+   ]
+  },
+  {
+   "name": "pad",
+   "parent": "right_arm",
+   "team": false,
+   "tag": "chest",
+   "stages": [],
+   "sheet": [
+    64,
+    64
+   ],
+   "pivot": [
+    0,
+    0,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "boxes": [
+    {
+     "origin": [
+      -5.5,
+      -2.3000000000000007,
+      -3.0
+     ],
+     "size": [
+      6.0,
+      4.0,
+      6.0
+     ],
+     "uv": [
+      26,
+      37
+     ],
+     "mirror": false,
+     "dilation": [
+      0.04,
+      0.04,
+      0.04
+     ]
+    }
+   ]
+  },
+  {
+   "name": "pad_spike_a",
+   "parent": "right_arm",
+   "team": false,
+   "tag": "chest",
+   "stages": [
+    5
+   ],
+   "sheet": [
+    64,
+    64
+   ],
+   "pivot": [
+    0,
+    0,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "boxes": [
+    {
+     "origin": [
+      -4.0,
+      -4.300000000000001,
+      -1.5
+     ],
+     "size": [
+      1.0,
+      2.0,
+      1.0
+     ],
+     "uv": [
+      50,
+      49
+     ],
+     "mirror": false,
+     "dilation": [
+      0.0,
+      0.0,
+      0.0
+     ]
+    }
+   ]
+  },
+  {
+   "name": "pad_spike_b",
+   "parent": "right_arm",
+   "team": false,
+   "tag": "chest",
+   "stages": [
+    5
+   ],
+   "sheet": [
+    64,
+    64
+   ],
+   "pivot": [
+    0,
+    0,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "boxes": [
+    {
+     "origin": [
+      -4.0,
+      -5.300000000000001,
+      0.5
+     ],
+     "size": [
+      1.0,
+      3.0,
+      1.0
+     ],
+     "uv": [
+      46,
+      49
+     ],
+     "mirror": false,
+     "dilation": [
+      0.0,
+      0.0,
+      0.0
+     ]
+    }
+   ]
+  },
+  {
+   "name": "pelt",
+   "parent": "left_arm",
+   "team": false,
+   "tag": "chest",
+   "stages": [],
+   "sheet": [
+    64,
+    64
+   ],
+   "pivot": [
+    0,
+    0,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "boxes": [
+    {
+     "origin": [
+      -0.5,
+      -2.8000000000000007,
+      -3.5
+     ],
+     "size": [
+      6.0,
+      5.0,
+      7.0
+     ],
+     "uv": [
+      0,
+      37
+     ],
+     "mirror": false,
+     "dilation": [
+      0.02,
+      0.02,
+      0.02
+     ]
+    }
+   ]
+  },
+  {
+   "name": "paw",
+   "parent": "left_arm",
+   "team": false,
+   "tag": "chest",
+   "stages": [],
+   "sheet": [
+    64,
+    64
+   ],
+   "pivot": [
+    0,
+    0,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "boxes": [
+    {
+     "origin": [
+      2.5,
+      2.1999999999999993,
+      -3.9
+     ],
+     "size": [
+      2.0,
+      3.0,
+      1.0
+     ],
+     "uv": [
+      40,
+      49
+     ],
+     "mirror": false,
+     "dilation": [
+      0.0,
+      0.0,
+      0.0
+     ]
+    }
+   ]
+  },
+  {
+   "name": "arm_r",
+   "parent": "right_arm",
+   "team": false,
+   "tag": "chest",
+   "stages": [],
+   "sheet": [
+    64,
+    64
+   ],
+   "pivot": [
+    0,
+    0,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "boxes": [
+    {
+     "origin": [
+      -3.5,
+      -2.5,
+      -2.5
+     ],
+     "size": [
+      5.0,
+      13.0,
+      5.0
+     ],
+     "uv": [
+      30,
+      0
+     ],
+     "mirror": false,
+     "dilation": [
+      0.04,
+      0.04,
+      0.04
+     ]
+    }
+   ]
+  },
+  {
+   "name": "arm_l",
+   "parent": "left_arm",
+   "team": false,
+   "tag": "chest",
+   "stages": [],
+   "sheet": [
+    64,
+    64
+   ],
+   "pivot": [
+    0,
+    0,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "boxes": [
+    {
+     "origin": [
+      -1.5,
+      -2.5,
+      -2.5
+     ],
+     "size": [
+      5.0,
+      13.0,
+      5.0
+     ],
+     "uv": [
+      0,
+      19
+     ],
+     "mirror": false,
+     "dilation": [
+      0.04,
+      0.04,
+      0.04
+     ]
+    }
+   ]
+  },
+  {
+   "name": "bracer_r",
+   "parent": "right_arm",
+   "team": false,
+   "tag": "chest",
+   "stages": [],
+   "sheet": [
+    64,
+    64
+   ],
+   "pivot": [
+    0,
+    0,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "boxes": [
+    {
+     "origin": [
+      -3.5,
+      5.0,
+      -2.5
+     ],
+     "size": [
+      5.0,
+      5.0,
+      5.0
+     ],
+     "uv": [
+      0,
+      49
+     ],
+     "mirror": false,
+     "dilation": [
+      0.06,
+      0.06,
+      0.06
+     ]
+    }
+   ]
+  },
+  {
+   "name": "bracer_l",
+   "parent": "left_arm",
+   "team": false,
+   "tag": "chest",
+   "stages": [],
+   "sheet": [
+    64,
+    64
+   ],
+   "pivot": [
+    0,
+    0,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "boxes": [
+    {
+     "origin": [
+      -1.5,
+      5.0,
+      -2.5
+     ],
+     "size": [
+      5.0,
+      5.0,
+      5.0
+     ],
+     "uv": [
+      20,
+      49
+     ],
+     "mirror": false,
+     "dilation": [
+      0.08,
+      0.08,
+      0.08
+     ]
+    }
+   ]
+  },
+  {
+   "name": "cloak_tail",
+   "parent": "body",
+   "team": true,
+   "tag": "chest",
+   "stages": [
+    5
+   ],
+   "sheet": [
+    64,
+    32
+   ],
+   "pivot": [
+    0,
+    12,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "boxes": [
+    {
+     "origin": [
+      -1.5,
+      -1.0,
+      4.1
+     ],
+     "size": [
+      3.0,
+      12.0,
+      1.0
+     ],
+     "uv": [
+      40,
+      0
+     ],
+     "mirror": false,
+     "dilation": [
+      0.0,
+      0.0,
+      0.0
+     ]
+    }
+   ]
+  }
+ ]
+}

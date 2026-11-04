@@ -1,0 +1,201 @@
+{
+ "format": 1,
+ "item": "thornhide_boots",
+ "slot": "boots",
+ "density": 1,
+ "size": [
+  64,
+  32
+ ],
+ "cloth": "gravesandglory:textures/entity/gear/thornhide_boots/team_cloth_",
+ "skins": {
+  "1": "gravesandglory:textures/entity/gear/thornhide_boots/thornhide_boots_r1.png",
+  "2": "gravesandglory:textures/entity/gear/thornhide_boots/thornhide_boots_r2.png",
+  "3": "gravesandglory:textures/entity/gear/thornhide_boots/thornhide_boots_r3.png",
+  "4": "gravesandglory:textures/entity/gear/thornhide_boots/thornhide_boots_r4.png",
+  "5": "gravesandglory:textures/entity/gear/thornhide_boots/thornhide_boots_r5.png"
+ },
+ "glow": {},
+ "bones": [
+  {
+   "name": "boot_r",
+   "parent": "right_leg",
+   "team": false,
+   "tag": "boots",
+   "stages": [],
+   "sheet": [
+    64,
+    32
+   ],
+   "pivot": [
+    0,
+    0,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "boxes": [
+    {
+     "origin": [
+      -2.5000000000000004,
+      7.75,
+      -2.5
+     ],
+     "size": [
+      5.0,
+      4.0,
+      5.0
+     ],
+     "uv": [
+      24,
+      0
+     ],
+     "mirror": false,
+     "dilation": [
+      0.02,
+      0.02,
+      0.02
+     ]
+    }
+   ]
+  },
+  {
+   "name": "boot_l",
+   "parent": "left_leg",
+   "team": false,
+   "tag": "boots",
+   "stages": [],
+   "sheet": [
+    64,
+    32
+   ],
+   "pivot": [
+    0,
+    0,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "boxes": [
+    {
+     "origin": [
+      -2.4999999999999996,
+      7.75,
+      -2.5
+     ],
+     "size": [
+      5.0,
+      4.0,
+      5.0
+     ],
+     "uv": [
+      44,
+      0
+     ],
+     "mirror": false,
+     "dilation": [
+      0.08,
+      0.08,
+      0.08
+     ]
+    }
+   ]
+  },
+  {
+   "name": "cuff_r",
+   "parent": "right_leg",
+   "team": false,
+   "tag": "boots",
+   "stages": [],
+   "sheet": [
+    64,
+    32
+   ],
+   "pivot": [
+    0,
+    0,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "boxes": [
+    {
+     "origin": [
+      -2.5000000000000004,
+      6.399999999999999,
+      -2.5
+     ],
+     "size": [
+      5.0,
+      2.0,
+      5.0
+     ],
+     "uv": [
+      0,
+      9
+     ],
+     "mirror": false,
+     "dilation": [
+      0.1,
+      0.1,
+      0.1
+     ]
+    }
+   ]
+  },
+  {
+   "name": "cuff_l",
+   "parent": "left_leg",
+   "team": false,
+   "tag": "boots",
+   "stages": [],
+   "sheet": [
+    64,
+    32
+   ],
+   "pivot": [
+    0,
+    0,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "boxes": [
+    {
+     "origin": [
+      -2.9999999999999996,
+      5.899999999999999,
+      -3.0
+     ],
+     "size": [
+      6.0,
+      3.0,
+      6.0
+     ],
+     "uv": [
+      0,
+      0
+     ],
+     "mirror": false,
+     "dilation": [
+      0.0,
+      0.0,
+      0.0
+     ]
+    }
+   ]
+  }
+ ]
+}

@@ -301,9 +301,11 @@ def item_icons():
     for d in ("sets", "weapons"): sys.path.insert(0, os.path.join(HERE, d))
     import weaponlib
     out = {}
+    art_only = {i["id"] for i in gearlib.ids().get("art_only", [])}   # no item yet, so no icon (Kort's #113)
     for f in sorted(os.listdir(os.path.join(HERE, "sets"))):
         if not f.endswith(".py") or f.startswith("_"): continue
         for p in importlib.import_module(f[:-3]).pieces():
+            if p.item_id in art_only: continue
             b = p.build()
             for r in gearlib.RARITIES: out[(p.item_id, r)] = inked(fold(piece_render(p, r, {p.item_id: b})))
     for w in weaponlib.items():

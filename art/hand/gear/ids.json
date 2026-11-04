@@ -289,5 +289,128 @@
    "name": "Second Wind",
    "role": "healer"
   }
+ ],
+ "art_only_note": "House armour sets Kort approved as art on 2026-11-04. Art only: no stats, catalogue rows or drops until Kort answers question #113 (docs/drafts/house-gear-sets-2026-11-04.md).",
+ "art_only": [
+  {
+   "id": "oathbound_helm",
+   "slot": "helm",
+   "set": "oathbound",
+   "house": "Gilded Order"
+  },
+  {
+   "id": "oathbound_chest",
+   "slot": "chest",
+   "set": "oathbound",
+   "house": "Gilded Order"
+  },
+  {
+   "id": "oathbound_legs",
+   "slot": "legs",
+   "set": "oathbound",
+   "house": "Gilded Order"
+  },
+  {
+   "id": "oathbound_boots",
+   "slot": "boots",
+   "set": "oathbound",
+   "house": "Gilded Order"
+  },
+  {
+   "id": "barrow_warden_helm",
+   "slot": "helm",
+   "set": "barrow_warden",
+   "house": "Graveborn"
+  },
+  {
+   "id": "barrow_warden_chest",
+   "slot": "chest",
+   "set": "barrow_warden",
+   "house": "Graveborn"
+  },
+  {
+   "id": "barrow_warden_legs",
+   "slot": "legs",
+   "set": "barrow_warden",
+   "house": "Graveborn"
+  },
+  {
+   "id": "barrow_warden_boots",
+   "slot": "boots",
+   "set": "barrow_warden",
+   "house": "Graveborn"
+  },
+  {
+   "id": "thornhide_helm",
+   "slot": "helm",
+   "set": "thornhide",
+   "house": "Wildmoot"
+  },
+  {
+   "id": "thornhide_chest",
+   "slot": "chest",
+   "set": "thornhide",
+   "house": "Wildmoot"
+  },
+  {
+   "id": "thornhide_legs",
+   "slot": "legs",
+   "set": "thornhide",
+   "house": "Wildmoot"
+  },
+  {
+   "id": "thornhide_boots",
+   "slot": "boots",
+   "set": "thornhide",
+   "house": "Wildmoot"
+  },
+  {
+   "id": "forgewall_helm",
+   "slot": "helm",
+   "set": "forgewall",
+   "house": "Ironclad"
+  },
+  {
+   "id": "forgewall_chest",
+   "slot": "chest",
+   "set": "forgewall",
+   "house": "Ironclad"
+  },
+  {
+   "id": "forgewall_legs",
+   "slot": "legs",
+   "set": "forgewall",
+   "house": "Ironclad"
+  },
+  {
+   "id": "forgewall_boots",
+   "slot": "boots",
+   "set": "forgewall",
+   "house": "Ironclad"
+  },
+  {
+   "id": "tidewrought_helm",
+   "slot": "helm",
+   "set": "tidewrought",
+   "house": "Tidecallers"
+  },
+  {
+   "id": "tidewrought_chest",
+   "slot": "chest",
+   "set": "tidewrought",
+   "house": "Tidecallers"
+  },
+  {
+   "id": "tidewrought_legs",
+   "slot": "legs",
+   "set": "tidewrought",
+   "house": "Tidecallers"
+  },
+  {
+   "id": "tidewrought_boots",
+   "slot": "boots",
+   "set": "tidewrought",
+   "house": "Tidecallers"
+  }
  ]
 }

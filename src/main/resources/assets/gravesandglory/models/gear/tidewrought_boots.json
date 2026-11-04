@@ -1,0 +1,201 @@
+{
+ "format": 1,
+ "item": "tidewrought_boots",
+ "slot": "boots",
+ "density": 1,
+ "size": [
+  32,
+  32
+ ],
+ "cloth": "gravesandglory:textures/entity/gear/tidewrought_boots/team_cloth_",
+ "skins": {
+  "1": "gravesandglory:textures/entity/gear/tidewrought_boots/tidewrought_boots_r1.png",
+  "2": "gravesandglory:textures/entity/gear/tidewrought_boots/tidewrought_boots_r2.png",
+  "3": "gravesandglory:textures/entity/gear/tidewrought_boots/tidewrought_boots_r3.png",
+  "4": "gravesandglory:textures/entity/gear/tidewrought_boots/tidewrought_boots_r4.png",
+  "5": "gravesandglory:textures/entity/gear/tidewrought_boots/tidewrought_boots_r5.png"
+ },
+ "glow": {},
+ "bones": [
+  {
+   "name": "boot_r",
+   "parent": "right_leg",
+   "team": false,
+   "tag": "boots",
+   "stages": [],
+   "sheet": [
+    32,
+    32
+   ],
+   "pivot": [
+    0,
+    0,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "boxes": [
+    {
+     "origin": [
+      -2.5000000000000004,
+      8.75,
+      -2.5
+     ],
+     "size": [
+      5.0,
+      3.0,
+      5.0
+     ],
+     "uv": [
+      0,
+      10
+     ],
+     "mirror": false,
+     "dilation": [
+      0.02,
+      0.02,
+      0.02
+     ]
+    }
+   ]
+  },
+  {
+   "name": "boot_l",
+   "parent": "left_leg",
+   "team": false,
+   "tag": "boots",
+   "stages": [],
+   "sheet": [
+    32,
+    32
+   ],
+   "pivot": [
+    0,
+    0,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "boxes": [
+    {
+     "origin": [
+      -2.9999999999999996,
+      8.0,
+      -3.0
+     ],
+     "size": [
+      6.0,
+      4.0,
+      6.0
+     ],
+     "uv": [
+      0,
+      0
+     ],
+     "mirror": false,
+     "dilation": [
+      0.0,
+      0.0,
+      0.0
+     ]
+    }
+   ]
+  },
+  {
+   "name": "boot_fin_r",
+   "parent": "right_leg",
+   "team": false,
+   "tag": "boots",
+   "stages": [],
+   "sheet": [
+    32,
+    32
+   ],
+   "pivot": [
+    0,
+    0,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "boxes": [
+    {
+     "origin": [
+      -0.5,
+      7.0,
+      2.75
+     ],
+     "size": [
+      1.0,
+      4.0,
+      2.0
+     ],
+     "uv": [
+      20,
+      10
+     ],
+     "mirror": false,
+     "dilation": [
+      0.0,
+      0.0,
+      0.0
+     ]
+    }
+   ]
+  },
+  {
+   "name": "boot_fin_l",
+   "parent": "left_leg",
+   "team": false,
+   "tag": "boots",
+   "stages": [],
+   "sheet": [
+    32,
+    32
+   ],
+   "pivot": [
+    0,
+    0,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "boxes": [
+    {
+     "origin": [
+      -0.5,
+      7.0,
+      2.75
+     ],
+     "size": [
+      1.0,
+      4.0,
+      2.0
+     ],
+     "uv": [
+      26,
+      10
+     ],
+     "mirror": false,
+     "dilation": [
+      0.0,
+      0.0,
+      0.0
+     ]
+    }
+   ]
+  }
+ ]
+}
