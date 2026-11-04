@@ -120,6 +120,15 @@ durable lessons into this file with their commit hashes. Start by reading the ne
 - Bow troops loosing in lockstep looked mechanical; a per-troop 0-3 tick UUID offset fixed it (bde23063).
 - Hit reactions must stay under the hit-over-attack check (15 degrees per tick; the knight v2 hits run 14.7, a4bb848b).
 
+- **Rate limit 60 degrees per 100 ms** (r2 review). Compute it from the clip JSON: the peak per-axis change over any
+  100 ms window, linear between keys, on every bone the review grades, before reshooting. Moving a windup key later can
+  push the excess into the strike (colossus hit 68 until its hold shrank to 0.18).
+- Keys, not only markers, must sit on the 0.05 s tick; clips.py refuses an impact at 0.34 ("not on a tick").
+- Make the impact root y the deepest sink, with the follow-through a little shallower; a root rising into the hit kills
+  the weight. Kill a held windup with linear segments and an early key at 0.9 of the cocked pose (a creep, not a freeze).
+- MotionEngineCheck "hit over attack" caps the sword_shield thrust at 15 degrees per tick (baseline 14.7): any shin key
+  gives 18.6 and a root sink of 0.9 or more fails (0.8 passes). Low_cut is not gated.
+
 ## 4. Joints and rig
 
 - **Clips are offsets on the stance** (`MotionStack.action`). An elbow or knee that looks right in the clip's own keys
@@ -131,6 +140,8 @@ durable lessons into this file with their commit hashes. Start by reading the ne
 - `handlib.JOINT_LIMITS` gives every `_forearm` (-150, 0) and `_shin` (0, 150) a runtime limit unless the model sets
   its own, so `TroopMotion.limits` clamps any clip or sum. wm_tusk's custom shin has pivot (0,0,0), is not a hinge, and
   gets none.
+- Check a weapon's parent bone before keying the hand. ic_colossus's maul sat on right_arm, so hand keys moved nothing
+  and the haft ran back along the arm; parented to right_hand (pivot 0, rot -18), hand rx swings it.
 - Gear hung from a thigh or upper arm must stop at the hinge (y6 on a leg). A 3D robe tier below the knee belongs on the
   shin (mage `*_shin_robe`).
 - `build_knight.py install` runs `tools/build_skins.py`, which rebuilds all 30 troops; a full sheet stops it

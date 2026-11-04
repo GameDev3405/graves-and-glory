@@ -156,7 +156,8 @@ never touching a client you did not start.
 - **Turn runner:** `tools/ingame_check_run.sh <root> <suites>` only sets `GRAVES_PHASE4_CHECKS`. For the Turn suite use
   a copy that instead sets `GRAVES_PHASE2_CHECKS=turn`, `GRAVES_PHASE2_TURN`, `GRAVES_PHASE2_TURN_ATTACKS` and
   `GRAVES_PHASE2_TURN_ANGLES` (root `work/ingame-check/<root>`, shots in `<root>/run/screenshots/`). One run shoots one
-  attack list, so a second list (the knight overhead) needs a second run.
+  attack list, so a second list (the knight overhead) needs a second run. `GRAVES_PHASE2_TURN_DIST` sets the camera
+  distance in blocks (default 3); big troops need more (ic_colossus 4.2 keeps the maul head in frame).
 - **Turn suite** (`GRAVES_PHASE2_CHECKS=turn`, troops from `GRAVES_PHASE2_TURN` = a House id or comma list): each troop
   frozen through `TroopMotion.force` at 8 angles (0 front, 90 weapon side, 180 back, 270 off side) in idle, attack
   peak or bow draw/loose, cast, walk at a quarter. Shots `p2-turn-TROOP-POSE-ANGLE.png`; weapon axes logged as

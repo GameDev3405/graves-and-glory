@@ -57,7 +57,7 @@ and at the end of a pass fold its durable lessons into `references/lessons.md`.
    and a mode-gate sim. Run `python tools/preflight.py` after any sheet edit; never hand-edit `Spec.java`.
 6. **Apply and verify offline:** `python tools/anim_edit.py apply`, `python tools/clips.py --verify`,
    `python tools/verify.py fast`. Lint your own keys on the net pose (stance plus action, not the action
-   alone): forearm > 0, shin < 0, >90 degrees in 100 ms. Wrist past ±40 through a strike applies only to models with a
+   alone): forearm > 0, shin < 0, >60 degrees in 100 ms on any bone the review grades (peak per-axis change over any 100 ms window, linear between keys, read from the clip JSON), keys off the 0.05 s tick. Wrist past ±40 through a strike applies only to models with a
    forearm bone; forearm-less models carry the blade on the wrist.
 7. **Shoot the in-game contact sheet** through the client harness (turn suite or motion-grade), never desktop
    computer-use. Same camera relative to the troop for every key, plus a side view for blade and joints.
