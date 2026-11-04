@@ -600,7 +600,7 @@ for r in data.get('campPieces',[]):
 for r in data.get('campStations',[]):
     where=f'campStations/{r["id"]}'
     if r['npc'] not in ('-','armorer','cleric','librarian','cartographer','weaponsmith'): errors.append(f'{where}: npc {r["npc"]} is not - or a villager profession of the camp')
-    if r['page'] not in ('home','contracts','chapter','match','recruit','friends','army','train'): errors.append(f'{where}: page {r["page"]} is not a camp page')
+    if r['page'] not in ('home','contracts','chapter','match','recruit','friends','army','train','forge'): errors.append(f'{where}: page {r["page"]} is not a camp page')
 # Lesson boards (Phase 3): ids unique (the generic check above), and every {key:<id>} marker of a text names a key the HUD lessons and the camp labels know.
 LESSON_KEYS={'menu','attack','follow','formation','map','rotate_left','rotate_right','confirm','cancel','use'}
 for r in data.get('campLessons',[]):
@@ -819,6 +819,12 @@ for f in data.get('forge',[]):
     if f['relicSlots']!=3: errors.append(f'{fid}/relicSlots: {f["relicSlots"]} must be 3')
     if not (0<=f['starterQuality']<=100): errors.append(f'{fid}/starterQuality: {f["starterQuality"]} is outside 0 to 100')
     if not (0<f['brokenStatPct']<=1): errors.append(f'{fid}/brokenStatPct: {f["brokenStatPct"]} is outside (0, 1]')
+# Blacksmith lines (gear screen): the Forge tab shows one, so the sheet needs at least one, each short enough for its line.
+if not data.get('blacksmithLines'): errors.append('blacksmithLines: the Forge tab needs at least one blacksmith line')
+for r in data.get('blacksmithLines',[]):
+    text=str(r.get('text',''))
+    if not text.strip(): errors.append(f'blacksmithLines/{r["id"]}/text: the line is empty')
+    elif len(text)>90: errors.append(f'blacksmithLines/{r["id"]}/text: {len(text)} characters, at most 90 fit the Forge tab')
 if errors:
     print('\n'.join(errors)); sys.exit(1)
 def typ(v): return 'boolean' if isinstance(v,bool) else 'int' if isinstance(v,int) else 'double' if isinstance(v,float) else 'String'

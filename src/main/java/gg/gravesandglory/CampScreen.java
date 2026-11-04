@@ -29,20 +29,23 @@ final class CampScreen extends ArmyScreen {
     WarTableReport report;
     /** The War Table's other pages (UI plan Task 7), kept while the page is open, so the armed troop, the track's place and a room code being written survive a rebuild; leaving the page drops it. */
     WarTablePages pages;
+    /** The Arsenal (page gear, the gear screen plan): the commander's gear on its Arsenal tab, the blacksmith on its Forge tab (gearTab, from the station's forge). Kept while the page is open; leaving the page drops it. */
+    WarTableGear arsenal;
+    String gearTab="armoury";
     /** The keys whose press a War Table page took, not released since, and the watched keys already down when the screen opened (the key that opened it, say). Minecraft hands a screen each repeat of a held key as another keyPressed: those go no further, on whatever page the press left the table at (a held Esc that went home must not then close it, a held Enter must not ride again, the menu key that opened the table must not close it), until keyReleased lets the key through again. */
     final Set<Integer> held=new HashSet<>();
     /** Whether a key is down now, as GLFW has it (the checks stand in for it). */
     static IntPredicate keyDown=k->InputUtil.isKeyPressed(MinecraftClient.getInstance().getWindow().getHandle(),k);
-    CampScreen(String page){super("Banner camp");this.page=alias(page);for(int k:watched())if(keyDown.test(k))held.add(k);}
+    CampScreen(String page){super("Banner camp");if("forge".equals(page))gearTab="forge";this.page=alias(page);for(int k:watched())if(keyDown.test(k))held.add(k);}
     /** The keys the War Table acts on (its pages' keys, Tab, the arrows) and the menu key, which closes it. */
     static List<Integer> watched(){
         List<Integer> keys=new ArrayList<>(List.of(GLFW.GLFW_KEY_ESCAPE,GLFW.GLFW_KEY_ENTER,GLFW.GLFW_KEY_KP_ENTER,GLFW.GLFW_KEY_SPACE,GLFW.GLFW_KEY_TAB,GLFW.GLFW_KEY_LEFT,GLFW.GLFW_KEY_RIGHT,GLFW.GLFW_KEY_UP,GLFW.GLFW_KEY_DOWN));
-        for(var binding:new net.minecraft.client.option.KeyBinding[]{menu,banner}){ // the menu key closes the table and the banner key opens that page: both are the player's own
+        for(var binding:new net.minecraft.client.option.KeyBinding[]{menu,banner,gearKey}){ // the menu key closes the table and the banner key opens that page: both are the player's own
             if(binding==null)continue;var bound=InputUtil.fromTranslationKey(binding.getBoundKeyTranslationKey());if(bound.getCategory()==InputUtil.Type.KEYSYM&&bound.getCode()>=0&&!keys.contains(bound.getCode()))keys.add(bound.getCode());}
         return keys;
     }
     /** The page a name opens: the old names still sent (the war gates' match is the field, the private room is on Friends, the Quartermaster's army is the Banner), else the name. */
-    static String alias(String page){return switch(page){case "match"->"field";case "room"->"friends";case "army"->"banner";default->page;};}
+    static String alias(String page){return switch(page){case "match"->"field";case "room"->"friends";case "army"->"banner";case "forge"->"gear";default->page;};}
     /** The House a station named (recruit:<house>, a tent of the House ring), which the recruit page opens on; "" for none. */
     String stationHouse="";
     /** A station: a page, or page:house (the House ring's tents send recruit:<house>), split on the first colon. */
@@ -59,12 +62,12 @@ final class CampScreen extends ArmyScreen {
     /** Sends cmd to the server unless a command went less than 300 ms ago; returns whether it went. */
     boolean action(String cmd){if(System.currentTimeMillis()-requestAt<300)return false;requestAt=System.currentTimeMillis();CampaignClient.notice="";CampaignClient.dismissed="";send(cmd);return true;} // what the player does next speaks anew: a notice he left behind by changing page shows again if the server answers with the same words (review fix round 2)
     /** Turns the table to another page (an old name goes through alias); the keyboard's focus starts afresh there. */
-    void page(String next){if(CampaignClient.rollShowing())CampaignClient.revealUntil=0;CampaignClient.dismissed=CampaignClient.notice;page=alias(next);offset=0;if(!page.equals("recruit"))recruit=null;if(!page.equals("troop"))troopSheet=null;if(!page.equals("lobby"))lobby=null;if(!page.equals("results"))report=null;if(pages!=null&&!pages.page.equals(page))pages=null;super.clearAndInit();}
+    void page(String next){if(CampaignClient.rollShowing())CampaignClient.revealUntil=0;CampaignClient.dismissed=CampaignClient.notice;if("forge".equals(next))gearTab="forge";page=alias(next);if(!page.equals("gear"))arsenal=null;offset=0;if(!page.equals("recruit"))recruit=null;if(!page.equals("troop"))troopSheet=null;if(!page.equals("lobby"))lobby=null;if(!page.equals("results"))report=null;if(pages!=null&&!pages.page.equals(page))pages=null;super.clearAndInit();}
     void rebuild(){clearAndInit();}
     /** The pages drawn at UiMath.pageScale, so they fill a 1440p window (Kort, 2026-10-31): every War Table page (home, recruit,
      *  the troop sheet, the lobby, the report and WarTablePages'), so the rail keeps one size from page to page. */
     boolean fillsWindow(){return isWarTable(page);}
-    static boolean isWarTable(String page){return "home".equals(page)||"recruit".equals(page)||"troop".equals(page)||"lobby".equals(page)||"results".equals(page)||WarTablePages.NAMES.contains(page);}
+    static boolean isWarTable(String page){return "home".equals(page)||"recruit".equals(page)||"troop".equals(page)||"lobby".equals(page)||"results".equals(page)||"gear".equals(page)||WarTablePages.NAMES.contains(page);}
     UiButton add(UiButton b){return addDrawableChild(b);}
     String state(){return CampaignClient.social.toString()+CampaignClient.progression.toString()+CampaignClient.profile.gold+CampaignClient.profile.owned.keySet()+CampaignClient.profile.pity+CampaignClient.profile.campaignCleared+CampaignClient.difficulty+running+ready+RecruitPages.stateKey(CampaignClient.profile);}
     /** The widgets of the War Table page shown, by name: home's, the recruit page's or WarTablePages'; none on the old pages. */
@@ -74,6 +77,7 @@ final class CampScreen extends ArmyScreen {
         if(page.equals("troop")&&troopSheet!=null)return troopSheet.buttons;
         if(page.equals("lobby")&&lobby!=null)return lobby.buttons;
         if(page.equals("results")&&report!=null)return report.buttons;
+        if(page.equals("gear")&&arsenal!=null)return arsenal.buttons;
         if(pages!=null&&pages.page.equals(page))return pages.buttons;
         return Map.of();
     }
@@ -91,6 +95,7 @@ final class CampScreen extends ArmyScreen {
         if(page.equals("troop")){scale=1;key=state();if(troopSheet==null)troopSheet=new WarTableTroop(this);troopSheet.init();return;}
         if(page.equals("lobby")){scale=1;key=state();if(lobby==null)lobby=new WarTableLobby(this);lobby.init();return;}
         if(page.equals("results")){scale=1;key=state();if(report==null)report=new WarTableReport(this);report.init();return;}
+        if(page.equals("gear")){scale=1;key=state();if(arsenal==null)arsenal=new WarTableGear(this,gearTab);arsenal.init();return;}
         if(WarTablePages.NAMES.contains(page)){scale=1;key=state();if(pages==null||!pages.page.equals(page))pages=new WarTablePages(this,page);pages.init();return;}
         scale=Math.min(1,Math.min(client.getWindow().getScaledWidth()/760f,client.getWindow().getScaledHeight()/460f));width=(int)(client.getWindow().getScaledWidth()/scale);height=(int)(client.getWindow().getScaledHeight()/scale);key=state();
         String[] names={"Camp guide","Recruitment","Friends","Contracts","Chapter rewards"};String[] ids={"home","recruit","friends","contracts","chapter"};
@@ -108,7 +113,7 @@ final class CampScreen extends ArmyScreen {
             var practice=button("PRACTICE",x+w/2+7,203,w/2-7,b->action("camp:practice"));practice.active=!running; // a button is 20 high and a primary 26: 3 lower, so both labels sit on one line
         }
     }
-    @Override public void tick(){if(home!=null&&page.equals("home"))home.tick();if(recruit!=null&&page.equals("recruit"))recruit.tick();if(troopSheet!=null&&page.equals("troop"))troopSheet.tick();if(lobby!=null&&page.equals("lobby"))lobby.tick();if(report!=null&&page.equals("results"))report.tick();if(pages!=null&&pages.page.equals(page))pages.tick();if(!key.equals(state()))clearAndInit();if(running&&!CampaignClient.waiting)close();}
+    @Override public void tick(){if(home!=null&&page.equals("home"))home.tick();if(recruit!=null&&page.equals("recruit"))recruit.tick();if(troopSheet!=null&&page.equals("troop"))troopSheet.tick();if(lobby!=null&&page.equals("lobby"))lobby.tick();if(report!=null&&page.equals("results"))report.tick();if(arsenal!=null&&page.equals("gear"))arsenal.tick();if(pages!=null&&pages.page.equals(page))pages.tick();if(!key.equals(state()))clearAndInit();if(running&&!CampaignClient.waiting)close();}
     /** The troops one recruitment roll in this House can give: its Commons, Rares and Epic in sheet order (Legendaries come from Pacts). */
     static List<Spec.TroopsRow> pool(String house){return Arrays.stream(Spec.TROOPS).filter(t->t.house().equals(house)&&!t.rarity().equals("legendary")).toList();}
     static int weight(Spec.TroopsRow t){var r=RosterMath.rarityRow(t.rarity());return r==null?0:r.rollWeight();}
@@ -211,6 +216,7 @@ final class CampScreen extends ArmyScreen {
         if(page.equals("troop")&&troopSheet!=null){troopSheet.render(g);super.render(g,mx,my,delta);return;}
         if(page.equals("lobby")&&lobby!=null){lobby.render(g);super.render(g,mx,my,delta);return;}
         if(page.equals("results")&&report!=null){report.render(g);super.render(g,mx,my,delta);return;}
+        if(page.equals("gear")&&arsenal!=null){arsenal.render(g);super.render(g,mx,my,delta);arsenal.overlay(g);return;} // the tooltip and confirm strip lie over the widgets
         if(pages!=null&&pages.page.equals(page)){pages.render(g);super.render(g,mx,my,delta);pages.overlay(g);return;}
         g.getMatrices().push();g.getMatrices().scale(scale,scale,1);DarkUi.background(g,width,height);DarkUi.crest(g,20,16,26,false);DarkUi.title(g,"BANNER CAMP",58,19,DarkUi.GOLD);
         line(g,header(),width-280,24,DarkUi.PAPER,260);
@@ -230,12 +236,12 @@ final class CampScreen extends ArmyScreen {
         if(card){RecruitPages.rollOn=page;RecruitPages.noticeShown=false;RecruitPages.rollCard(g,textRenderer,0,0,width,height);} // dims the whole screen, nav and header too: one focal point
         g.getMatrices().pop();
     }
-    @Override public boolean mouseClicked(double x,double y,int button){if(page.equals("troop")&&troopSheet==null&&CampaignClient.rollShowing()){CampaignClient.revealUntil=0;return true;}if(page.equals("recruit")&&recruit!=null&&recruit.clickCloses())return true;if(pages!=null&&pages.page.equals(page)){if(button==GLFW.GLFW_MOUSE_BUTTON_RIGHT&&pages.secondaryClick(x,y))return true;pages.clicked(x,y);if(button==GLFW.GLFW_MOUSE_BUTTON_LEFT&&pages.press(x,y))return true;}return super.mouseClicked(x/scale,y/scale,button);}
-    @Override public boolean mouseScrolled(double x,double y,double amount){if(page.equals("recruit")&&recruit!=null)return recruit.scrolled(amount);return super.mouseScrolled(x/scale,y/scale,amount);}
+    @Override public boolean mouseClicked(double x,double y,int button){if(page.equals("troop")&&troopSheet==null&&CampaignClient.rollShowing()){CampaignClient.revealUntil=0;return true;}if(page.equals("recruit")&&recruit!=null&&recruit.clickCloses())return true;if(page.equals("gear")&&arsenal!=null&&arsenal.mouseClicked(x,y,button))return true;if(pages!=null&&pages.page.equals(page)){if(button==GLFW.GLFW_MOUSE_BUTTON_RIGHT&&pages.secondaryClick(x,y))return true;pages.clicked(x,y);if(button==GLFW.GLFW_MOUSE_BUTTON_LEFT&&pages.press(x,y))return true;}return super.mouseClicked(x/scale,y/scale,button);}
+    @Override public boolean mouseScrolled(double x,double y,double amount){if(page.equals("recruit")&&recruit!=null)return recruit.scrolled(amount);if(page.equals("gear")&&arsenal!=null&&arsenal.mouseScrolled(x,y,amount))return true;return super.mouseScrolled(x/scale,y/scale,amount);}
     @Override public boolean mouseReleased(double x,double y,int button){boolean drop=pages!=null&&pages.page.equals(page)&&pages.released(x,y,button);return super.mouseReleased(x/scale,y/scale,button)||drop;}
     @Override public boolean mouseDragged(double x,double y,int button,double dx,double dy){if(button==GLFW.GLFW_MOUSE_BUTTON_LEFT&&pages!=null&&pages.page.equals(page)&&pages.dragged(x,y))return true;return super.mouseDragged(x/scale,y/scale,button,dx/scale,dy/scale);}
     /** A key's press: the room code being written takes its keys first (so Backspace repeats as it is held); then a held key's repeats stop here (see held); then the page shown, whose keys count as held until released. */
-    @Override public boolean keyPressed(int key,int scan,int mods){boolean onPages=pages!=null&&pages.page.equals(page);if(onPages&&pages.typing(key))return true;if(held.contains(key))return true;if(page.equals("home")&&home!=null&&home.keyPressed(key)){held.add(key);return true;}if(page.equals("recruit")&&recruit!=null&&recruit.keyPressed(key)){held.add(key);return true;}if(page.equals("troop")&&troopSheet!=null&&troopSheet.keyPressed(key)){held.add(key);return true;}if(page.equals("lobby")&&lobby!=null&&lobby.keyPressed(key)){held.add(key);return true;}if(page.equals("results")&&report!=null&&report.keyPressed(key)){held.add(key);return true;}if(onPages&&pages.keyPressed(key)){held.add(key);return true;}if(key==77)return true;return super.keyPressed(key,scan,mods);}
+    @Override public boolean keyPressed(int key,int scan,int mods){boolean onPages=pages!=null&&pages.page.equals(page);if(onPages&&pages.typing(key))return true;if(held.contains(key))return true;if(page.equals("home")&&home!=null&&home.keyPressed(key)){held.add(key);return true;}if(page.equals("recruit")&&recruit!=null&&recruit.keyPressed(key)){held.add(key);return true;}if(page.equals("troop")&&troopSheet!=null&&troopSheet.keyPressed(key)){held.add(key);return true;}if(page.equals("lobby")&&lobby!=null&&lobby.keyPressed(key)){held.add(key);return true;}if(page.equals("results")&&report!=null&&report.keyPressed(key)){held.add(key);return true;}if(page.equals("gear")&&arsenal!=null&&arsenal.keyPressed(key,scan)){held.add(key);return true;}if(onPages&&pages.keyPressed(key)){held.add(key);return true;}if(key==77)return true;return super.keyPressed(key,scan,mods);}
     @Override public boolean charTyped(char ch,int mods){if(pages!=null&&pages.page.equals(page)&&pages.charTyped(ch))return true;return super.charTyped(ch,mods);}
     /** A held key's release lets its presses through again (see held). */
     @Override public boolean keyReleased(int key,int scan,int mods){if(held.remove(key))return true;return super.keyReleased(key,scan,mods);}

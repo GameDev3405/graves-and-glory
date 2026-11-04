@@ -40,7 +40,7 @@ final class WarTable {
     /** Home's oak, the table every page falls back to until its own is exported. */
     static final String HOME_TABLE = "table/oak-table";
     /** The pages that have a seed in tools/ui_art/kit_props.TABLE_SEEDS: each has, or will have, its own table/oak-table-<page>. */
-    static final Set<String> PAGES = Set.of("home", "recruit", "banner", "contracts", "chapter", "friends", "field", "results");
+    static final Set<String> PAGES = Set.of("home", "recruit", "banner", "contracts", "chapter", "friends", "field", "results", "gear");
     /** Where home's rolled map lies, on the rail line (canvas y), its far end pushed under the rail. */
     static final int MAPROLL_Y = 48;
     /** The table's size (UI Task 8b-2: the big-canvas oak, tools/ui_art/kit_props.table_big, whose middle 1280x720 is the page's
