@@ -1,6 +1,6 @@
 # Command panel and troop orders redesign
 
-Status: DRAFT, waiting for Kort's approval (brainstorm 2026-11-04). Do not build until approved.
+Status: APPROVED by Kort 2026-11-04
 Mockups: https://claude.ai/artifact/CG8htdqYoRbqCWeEfEnozJ (variation 2, "Pennants down the left edge", was picked).
 
 ## Why
