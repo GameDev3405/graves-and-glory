@@ -7,14 +7,17 @@
 # so a map change is a restore from a world archive (./restore.sh), not part of this script.
 DIR=$(cd "$(dirname "$0")" && pwd); ROOT=; NEW=; RESTART=0; MEM=6; GG_DRY=0
 while [ $# -gt 0 ]; do
+  case $1 in --root|--jar|--backup|--label|--keep|--memory-gb|--jvm-args|--timeout) [ $# -ge 2 ] || { echo "$1 needs a value." >&2; exit 2; };; esac
   case $1 in
     --jar) NEW=$2; shift;; --restart) RESTART=1;; --memory-gb) MEM=$2; shift;;
     --dry-run) GG_DRY=1;; --root) ROOT=$2; shift;;
-    -h|--help) sed -n '2,8p' "$0"; exit 0;;
+    -h|--help) sed -n '2,/^[^#]/{/^#/p;}' "$0"; exit 0;;
     *) echo "Unknown option: $1" >&2; exit 2;;
   esac; shift
 done
 [ -n "$NEW" ] || { echo "--jar PATH is required." >&2; exit 2; }
+# Resolve a relative --jar against where you ran this, before moving into the server folder.
+case $NEW in /*) ;; *) [ ! -f "$NEW" ] || NEW=$(cd "$(dirname "$NEW")" && pwd)/$(basename "$NEW");; esac
 export GG_DRY GG_ALLOW_RUNNING=0
 . "$DIR/lib.sh"; gg_init "$DIR" "$ROOT"
 cd "$GG_ROOT" || exit 1

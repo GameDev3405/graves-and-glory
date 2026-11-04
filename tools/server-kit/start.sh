@@ -7,9 +7,10 @@
 # --dry-run runs every check and prints the java command; it writes nothing and starts nothing.
 DIR=$(cd "$(dirname "$0")" && pwd); ROOT=; MEM=6; GG_DRY=0; JVMARGS=
 while [ $# -gt 0 ]; do
+  case $1 in --root|--jar|--backup|--label|--keep|--memory-gb|--jvm-args|--timeout) [ $# -ge 2 ] || { echo "$1 needs a value." >&2; exit 2; };; esac
   case $1 in
     --memory-gb) MEM=$2; shift;; --dry-run) GG_DRY=1;; --root) ROOT=$2; shift;; --jvm-args) JVMARGS=$2; shift;;
-    -h|--help) sed -n '2,8p' "$0"; exit 0;;
+    -h|--help) sed -n '2,/^[^#]/{/^#/p;}' "$0"; exit 0;;
     *) echo "Unknown option: $1" >&2; exit 2;;
   esac; shift
 done
