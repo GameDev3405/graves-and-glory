@@ -96,6 +96,10 @@ public final class CampaignClient {
     }
     /** The snapshot's battleMode block (Campaign: the round's mode while one runs): the HUD reads its track maxima and number formats. */
     static JsonObject battleMode=new JsonObject();
+    /** Whether the running round is in overtime (battleMode.overtime: its clock is out and the mode holds it open); false from a server that does not send it. MusicDirector swaps the battle music for overtime_music while it holds. */
+    static boolean overtime(){try{return battleMode.has("overtime")&&battleMode.get("overtime").getAsBoolean();}catch(Exception e){return false;}}
+    /** The battle mode's id from the snapshot's battleMode ("survival", "convoy" ...), or "" before the first snapshot. */
+    static String modeId(){return text(battleMode,"id");}
     /** A ledger track's maximum and format from battleMode; Domination's target and plain numbers before the first snapshot. */
     static int ledgerMax(int i){try{return battleMode.getAsJsonArray("max").get(i).getAsInt();}catch(Exception e){return Modes.row(Modes.DOMINATION).winTarget();}}
     /** Whether the round's mode plays the map's points (Siege takes its flags down): the HUD hangs no seals when it does not. */

@@ -67,6 +67,8 @@ final class CampScreen extends ArmyScreen {
     /** The pages drawn at UiMath.pageScale, so they fill a 1440p window (Kort, 2026-10-31): every War Table page (home, recruit,
      *  the troop sheet, the lobby, the report and WarTablePages'), so the rail keeps one size from page to page. */
     boolean fillsWindow(){return isWarTable(page);}
+    /** Whether this is the campaign briefing screen: the War Table home with the campaign sheet raised (the Long March battle's card), or the old training page; MusicDirector plays the briefing music. */
+    boolean briefing(){return page.equals("train")||page.equals("home")&&"campaign".equals(CampaignClient.homeMode);}
     static boolean isWarTable(String page){return "home".equals(page)||"recruit".equals(page)||"troop".equals(page)||"lobby".equals(page)||"results".equals(page)||"gear".equals(page)||WarTablePages.NAMES.contains(page);}
     UiButton add(UiButton b){return addDrawableChild(b);}
     String state(){return CampaignClient.social.toString()+CampaignClient.progression.toString()+CampaignClient.profile.gold+CampaignClient.profile.owned.keySet()+CampaignClient.profile.pity+CampaignClient.profile.campaignCleared+CampaignClient.difficulty+running+ready+RecruitPages.stateKey(CampaignClient.profile);}

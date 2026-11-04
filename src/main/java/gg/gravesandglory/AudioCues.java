@@ -101,7 +101,7 @@ public final class AudioCues {
         BANNER_FLAP("banner_flap", null, .3f, 1f, "hostile", Scope.NEARBY, 40, "A banner flaps", 2),
         MARCH_LEATHER("march_leather", null, .3f, 1f, "hostile", Scope.NEARBY, 10, "Leather boots march", 3),
         TROOP_VOICES("troop_voices", null, .4f, 1f, "hostile", Scope.NEARBY, 40, "Troops call out", 2),
-        // Streamed loops and music not yet played (MusicDirector carries one track at a time): music and ambient categories, no subtitle.
+        // Streamed ambience beds (MusicDirector's bed layer, picked by AudioCues.bed) and the briefing and overtime music (MusicDirector's track): music and ambient categories, no subtitle.
         AMBIENCE_WIND("ambience_wind", null, .5f, 1f, "ambient", Scope.LOCAL, 0, ""),
         AMBIENCE_BIRDS("ambience_birds", null, .5f, 1f, "ambient", Scope.LOCAL, 0, ""),
         AMBIENCE_WATER("ambience_water", null, .5f, 1f, "ambient", Scope.LOCAL, 0, ""),
@@ -197,6 +197,22 @@ public final class AudioCues {
         public int size() { return due.size(); }
 
         public void clear() { due.clear(); plays.clear(); }
+    }
+
+    /**
+     * The ambience bed under the music for a moment (MusicDirector's second, looping stream): the camp's room tone in the Banner Camp; the survival wind in a
+     * Survival battle, whatever the map; otherwise the bed of the map's theme (Spec.MAPS theme: river water, fortress crows, snow wind, forest birds, plains wind).
+     */
+    public static Cue bed(boolean inCamp, String mode, String theme) {
+        if (inCamp) return Cue.CAMP_ROOM_TONE;
+        if ("survival".equals(mode)) return Cue.SURVIVAL_WIND;
+        return switch (theme == null ? "" : theme) {
+            case "river" -> Cue.AMBIENCE_WATER;
+            case "fortress" -> Cue.AMBIENCE_CROWS;
+            case "snow" -> Cue.AMBIENCE_SNOW;
+            case "forest" -> Cue.AMBIENCE_BIRDS;
+            default -> Cue.AMBIENCE_WIND;
+        };
     }
 
     /** The command horns: own files, volume from combatDiscipline.hornVolume, throttled by BattleEffects.feedback, to the commanding player only. */

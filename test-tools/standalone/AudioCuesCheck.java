@@ -64,8 +64,14 @@ public final class AudioCuesCheck {
    code=walk.filter(p->p.toString().endsWith(".java")&&!p.getFileName().toString().equals("AudioCues.java")).map(p->{try{return Files.readString(p);}catch(Exception e){throw new RuntimeException(e);}}).collect(Collectors.joining("\n"));
   }
   // Registered with files and a subtitle but no game moment yet (docs/AUDIO.md, "Registered, not played"): the only cues allowed to have no caller.
-  Set<String> unplayed=Set.of("SIEGE_RAM_SWING","GATE_CHAINS","BANNER_FLAP","MARCH_LEATHER","TROOP_VOICES","AMBIENCE_WIND","AMBIENCE_BIRDS","AMBIENCE_WATER","AMBIENCE_CROWS","AMBIENCE_SNOW","CAMP_ROOM_TONE","SURVIVAL_WIND","CAMPAIGN_BRIEFING_MUSIC","OVERTIME_MUSIC");
-  for(AudioCues.Cue c:AudioCues.Cue.values())check(unplayed.contains(c.name())?!code.contains("Cue."+c.name()):code.contains("Cue."+c.name()),c.id+": "+(unplayed.contains(c.name())?"is listed as not yet played, so no code plays it (remove it from the list when one does)":"some code plays it"));
+  Set<String> unplayed=Set.of("SIEGE_RAM_SWING","GATE_CHAINS","BANNER_FLAP","MARCH_LEATHER","TROOP_VOICES");
+  // The ambience beds are picked by AudioCues.bed (so the choice is testable without Minecraft) and played by MusicDirector's bed layer.
+  Set<AudioCues.Cue> beds=EnumSet.of(AudioCues.Cue.AMBIENCE_WIND,AudioCues.Cue.AMBIENCE_BIRDS,AudioCues.Cue.AMBIENCE_WATER,AudioCues.Cue.AMBIENCE_CROWS,AudioCues.Cue.AMBIENCE_SNOW,AudioCues.Cue.CAMP_ROOM_TONE,AudioCues.Cue.SURVIVAL_WIND);
+  for(AudioCues.Cue c:AudioCues.Cue.values()){
+   if(beds.contains(c))continue;
+   check(unplayed.contains(c.name())?!code.contains("Cue."+c.name()):code.contains("Cue."+c.name()),c.id+": "+(unplayed.contains(c.name())?"is listed as not yet played, so no code plays it (remove it from the list when one does)":"some code plays it"));
+  }
+  ambienceLayers(code,beds);
   check(code.contains("Audio.register()"),"The mod registers the table at start");
   // The cooldowns.
   var t=new AudioCues.Throttle();
@@ -89,6 +95,38 @@ public final class AudioCuesCheck {
    check(c.cooldownTicks>0,c.id+": a cue that can repeat has a cooldown");
   timing(assets,code);
   System.out.println("PASS "+count+" audio table scenarios");
+ }
+
+ /** The ambience and music layers: each bed is chosen by some moment and played in the ambient category, and the briefing and overtime music have their play sites. */
+ static void ambienceLayers(String code,Set<AudioCues.Cue> beds)throws Exception{
+  String director=Files.readString(Path.of("src/main/java/gg/gravesandglory/MusicDirector.java"));
+  // Every bed is reachable from a moment: the camp, a survival battle on any map, or the battle bed of a map's theme (five maps, five themes, five beds).
+  Set<AudioCues.Cue> reached=EnumSet.noneOf(AudioCues.Cue.class);
+  check(AudioCues.bed(true,"","")==AudioCues.Cue.CAMP_ROOM_TONE&&AudioCues.bed(true,"survival","river")==AudioCues.Cue.CAMP_ROOM_TONE,"The Banner Camp has its room tone");
+  reached.add(AudioCues.Cue.CAMP_ROOM_TONE);
+  Set<AudioCues.Cue> mapBeds=EnumSet.noneOf(AudioCues.Cue.class);
+  for(var m:Spec.MAPS){
+   check(AudioCues.bed(false,"survival",m.theme())==AudioCues.Cue.SURVIVAL_WIND,m.id()+": a survival battle plays the survival wind");
+   var b=AudioCues.bed(false,"domination",m.theme());check(b.name().startsWith("AMBIENCE_"),m.id()+": a battle bed is an ambience bed, "+b.name());mapBeds.add(b);reached.add(b);reached.add(AudioCues.Cue.SURVIVAL_WIND);
+   check(AudioCues.bed(false,"siege",m.theme())==b&&AudioCues.bed(false,"convoy",m.theme())==b,m.id()+": the bed follows the map, not the mode");
+  }
+  check(mapBeds.size()==Spec.MAPS.length,"Each map has a bed of its own: "+mapBeds);
+  check(AudioCues.bed(false,"domination","unknown")==AudioCues.Cue.AMBIENCE_WIND&&AudioCues.bed(false,"domination",null)==AudioCues.Cue.AMBIENCE_WIND,"An unknown theme falls back to the wind");
+  reached.add(AudioCues.Cue.AMBIENCE_WIND);
+  check(reached.containsAll(beds),"Every bed is chosen by some moment: "+reached);
+  for(var c:beds)check(c.category.equals("ambient"),c.id+": a bed is in the ambient category, so the vanilla Ambient slider governs it");
+  check(director.contains("AudioCues.bed(")&&director.contains("SoundCategory.AMBIENT")&&director.contains("this.repeat = loop")&&director.contains("bed = new Track("),"MusicDirector plays the bed as a looping ambient stream");
+  check(director.contains("BED_FADE_IN_TICKS")&&director.contains("BED_FADE_OUT_TICKS"),"The bed fades in and out");
+  // Briefing music: the director asks the screen, and the screen answers for the campaign sheet.
+  check(director.contains("Cue.CAMPAIGN_BRIEFING_MUSIC")&&director.contains("briefingOpen(c)"),"MusicDirector plays the briefing music while the briefing screen is up");
+  check(Files.readString(Path.of("src/main/java/gg/gravesandglory/CampScreen.java")).contains("boolean briefing()"),"The camp screen says when it is the briefing");
+  // Overtime music: the server sends the flag, the client reads it, the director swaps the battle music for it.
+  check(Files.readString(Path.of("src/main/java/gg/gravesandglory/BattleMode.java")).contains("j.addProperty(\"overtime\",b.inOvertime())"),"The server's battleMode snapshot carries overtime");
+  check(Files.readString(Path.of("src/main/java/gg/gravesandglory/CampaignClient.java")).contains("battleMode.get(\"overtime\")"),"The client reads battleMode.overtime");
+  check(director.contains("CampaignClient.overtime()")&&director.contains("Cue.OVERTIME_MUSIC"),"MusicDirector swaps the battle music for overtime_music while the round is in overtime");
+  check(AudioCues.Cue.OVERTIME_MUSIC.music()&&AudioCues.Cue.CAMPAIGN_BRIEFING_MUSIC.music(),"The briefing and overtime tracks are music, governed by the Music slider");
+  // The cues Kort kept off still have no play site.
+  for(String off:List.of("TROOP_VOICES","MARCH_LEATHER","SIEGE_RAM_SWING","GATE_CHAINS","BANNER_FLAP"))check(!code.contains("Cue."+off),off+" stays off");
  }
 
  /** The seconds an Ogg Vorbis file plays: the last page's granule position over the sample rate of the identification header. */

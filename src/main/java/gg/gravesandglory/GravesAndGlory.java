@@ -652,6 +652,8 @@ public final class GravesAndGlory implements ModInitializer {
         /** New troops deploy from a safely held point nearest the fight instead of the barracks; a check can switch it off. */
         public boolean forwardReinforcement=Spec.ECONOMY[0].forwardReinforcement();
         /** Round length in seconds, from the round's mode row; the bot simulation shortens it. */
+        /** Whether the round is in overtime: its clock is out and the mode keeps it open (Convoy's wagon near a stop). Survival's open-ended round is no overtime. The snapshot's battleMode.overtime carries it to the client's music. */
+        public boolean inOvertime(){return running&&mode instanceof ConvoyMode&&time-roundStarted>=roundSeconds*20L&&mode.overtime(this);}
         public int roundSeconds=Modes.row(Modes.DOMINATION).roundSeconds();
         /**
          * The mode this round plays (Phase 4 Task 2): its clock, scoring, income, bases and timeout. A fresh object each
@@ -813,9 +815,9 @@ public final class GravesAndGlory implements ModInitializer {
             }
             Audio.tick(this); // cues that wait for their moment (a blow's contact frame, the gate's crash, the wave's rise)
             if(running)Audio.clock(this,roundSeconds*20L-(time-roundStarted)); // the last ten seconds tick
+            if(inOvertime())Audio.all(this,AudioCues.Cue.OVERTIME_DRUM_PULSE,"overtime"); // the clock is out and the wagon still holds the round open: a drum beat to every seat, throttled by its cooldown
             if(running&&time-roundStarted>=roundSeconds*20L){
                 if(!mode.overtime(this))campaign.finish(mode.timeoutWinner(this));
-                else if(mode instanceof ConvoyMode)Audio.all(this,AudioCues.Cue.OVERTIME_DRUM_PULSE,"overtime"); // the clock is out and the wagon still holds the round open: a drum beat to every seat, throttled by its cooldown
             }
             // Explicit revision checks are driven by the client test timeline.
             if(time%10==0)sendState();
