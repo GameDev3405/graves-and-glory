@@ -130,6 +130,166 @@
    "hands": 1
   },
   {
+   "id": "oathbound_helm",
+   "name": "Oathbound Greathelm",
+   "slot": "helm",
+   "set": "oathbound",
+   "family": "-",
+   "hands": 1
+  },
+  {
+   "id": "oathbound_chest",
+   "name": "Dawnwall Cuirass",
+   "slot": "chest",
+   "set": "oathbound",
+   "family": "-",
+   "hands": 1
+  },
+  {
+   "id": "oathbound_legs",
+   "name": "Vowkeeper Tassets",
+   "slot": "legs",
+   "set": "oathbound",
+   "family": "-",
+   "hands": 1
+  },
+  {
+   "id": "oathbound_boots",
+   "name": "Pilgrim Sabatons",
+   "slot": "boots",
+   "set": "oathbound",
+   "family": "-",
+   "hands": 1
+  },
+  {
+   "id": "barrow_warden_helm",
+   "name": "Barrow Skull-Mask",
+   "slot": "helm",
+   "set": "barrow_warden",
+   "family": "-",
+   "hands": 1
+  },
+  {
+   "id": "barrow_warden_chest",
+   "name": "Tombplate",
+   "slot": "chest",
+   "set": "barrow_warden",
+   "family": "-",
+   "hands": 1
+  },
+  {
+   "id": "barrow_warden_legs",
+   "name": "Ossuary Greaves",
+   "slot": "legs",
+   "set": "barrow_warden",
+   "family": "-",
+   "hands": 1
+  },
+  {
+   "id": "barrow_warden_boots",
+   "name": "Crypt-Treads",
+   "slot": "boots",
+   "set": "barrow_warden",
+   "family": "-",
+   "hands": 1
+  },
+  {
+   "id": "thornhide_helm",
+   "name": "Boar-Snout Mantle",
+   "slot": "helm",
+   "set": "thornhide",
+   "family": "-",
+   "hands": 1
+  },
+  {
+   "id": "thornhide_chest",
+   "name": "Thornhide Hauberk",
+   "slot": "chest",
+   "set": "thornhide",
+   "family": "-",
+   "hands": 1
+  },
+  {
+   "id": "thornhide_legs",
+   "name": "Bramble Leggings",
+   "slot": "legs",
+   "set": "thornhide",
+   "family": "-",
+   "hands": 1
+  },
+  {
+   "id": "thornhide_boots",
+   "name": "Moot-Runner Boots",
+   "slot": "boots",
+   "set": "thornhide",
+   "family": "-",
+   "hands": 1
+  },
+  {
+   "id": "forgewall_helm",
+   "name": "Grille-Box Helm",
+   "slot": "helm",
+   "set": "forgewall",
+   "family": "-",
+   "hands": 1
+  },
+  {
+   "id": "forgewall_chest",
+   "name": "Furnace Cuirass",
+   "slot": "chest",
+   "set": "forgewall",
+   "family": "-",
+   "hands": 1
+  },
+  {
+   "id": "forgewall_legs",
+   "name": "Boilerplate Cuisses",
+   "slot": "legs",
+   "set": "forgewall",
+   "family": "-",
+   "hands": 1
+  },
+  {
+   "id": "forgewall_boots",
+   "name": "Anvil-Treads",
+   "slot": "boots",
+   "set": "forgewall",
+   "family": "-",
+   "hands": 1
+  },
+  {
+   "id": "tidewrought_helm",
+   "name": "Tidecaller's Hoplite Helm",
+   "slot": "helm",
+   "set": "tidewrought",
+   "family": "-",
+   "hands": 1
+  },
+  {
+   "id": "tidewrought_chest",
+   "name": "Reefscale Cuirass",
+   "slot": "chest",
+   "set": "tidewrought",
+   "family": "-",
+   "hands": 1
+  },
+  {
+   "id": "tidewrought_legs",
+   "name": "Brinewrap Greaves",
+   "slot": "legs",
+   "set": "tidewrought",
+   "family": "-",
+   "hands": 1
+  },
+  {
+   "id": "tidewrought_boots",
+   "name": "Wavestep Sandals",
+   "slot": "boots",
+   "set": "tidewrought",
+   "family": "-",
+   "hands": 1
+  },
+  {
    "id": "arming_sword",
    "name": "Oathkeeper's Longsword",
    "slot": "main",
@@ -290,8 +450,8 @@
    "role": "healer"
   }
  ],
- "art_only_note": "House armour sets Kort approved as art on 2026-11-04. Art only: no stats, catalogue rows or drops until Kort answers question #113 (docs/drafts/house-gear-sets-2026-11-04.md).",
- "art_only": [
+ "house_note": "The five House armour sets (Kort 2026-11-04, docs/drafts/house-gear-sets-2026-11-04.md): items now, with gearItems rows; this list keeps their House and marks them for the House painters' relaxed art checks.",
+ "house": [
   {
    "id": "oathbound_helm",
    "slot": "helm",

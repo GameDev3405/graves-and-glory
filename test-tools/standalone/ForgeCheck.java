@@ -44,8 +44,11 @@ public final class ForgeCheck {
             double share = 100.0 * byRarity.getOrDefault(row.id(), 0) / n, want = 100.0 * row.rollWeight() / totalWeight;
             check(Math.abs(share - want) <= 1.5, row.id() + " share " + share + " vs " + want);
         }
-        check(byItem.size() == 4, "all four helms come up: " + byItem);
-        for (var e : byItem.entrySet()) check(Math.abs(100.0 * e.getValue() / n - 25.0) <= 2.0, e.getKey() + " is about 25%: " + e.getValue());
+        int helms = 0;
+        for (var it : Spec.GEARITEMS) if (it.slot().equals("helm")) helms++;
+        check(helms == 9 && byItem.size() == helms, "every helm in the sheet comes up (four starter, five House): " + byItem);
+        double even = 100.0 / helms;
+        for (var e : byItem.entrySet()) check(Math.abs(100.0 * e.getValue() / n - even) <= 2.0, e.getKey() + " is about " + even + "%: " + e.getValue());
 
         // pity: the always-zero stub draws common until the pity count
         Profile y = rich(75 * 12);

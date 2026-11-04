@@ -9,7 +9,7 @@ from handlib import on, rects, dims, SIDES
 SETS = [f[:-3] for f in sorted(os.listdir(os.path.join(GEAR, "sets"))) if f.endswith(".py") and not f.startswith("_")]
 _cache = {}
 def pixels(img): return img.get_flattened_data() if hasattr(img, "get_flattened_data") else img.getdata()
-def art_only(): return {i["id"] for i in gearlib.ids().get("art_only", [])}
+def art_only(): return {i["id"] for i in gearlib.ids().get("house", [])}   # the House sets: their painters get the relaxed checks below
 def built():
     if not _cache:
         for s in SETS:
@@ -21,9 +21,17 @@ class GearArt(unittest.TestCase):
         if not SETS: self.skipTest("no set modules yet")
 
     def test_ids_known(self):
-        items = {i["id"]: i for i in gearlib.ids()["items"] + gearlib.ids().get("art_only", [])}   # art_only: House sets, pending Kort's #113
+        items = {i["id"]: i for i in gearlib.ids()["items"]}
         for iid, (_, p, _) in built().items():
             self.assertIn(iid, items); self.assertEqual(p.slot, items[iid]["slot"], iid)
+
+    def test_ids_match_the_sheet(self):
+        """ids.json's items are the sheet's gearItems (id, slot, set), the House sets included since Kort approved them 2026-11-04."""
+        import json
+        with open(os.path.join(ROOT, "sheets", "design.json"), encoding="utf-8") as f: sheet = json.load(f)["gearItems"]
+        pick = lambda rows: {(i["id"], i["slot"], i["set"]) for i in rows}
+        self.assertEqual(pick(gearlib.ids()["items"]), pick(sheet))
+        self.assertTrue({i["id"] for i in gearlib.ids()["house"]} <= {i["id"] for i in sheet})
 
     def test_one_texel_per_pixel(self):
         for iid, (_, p, (B, skins, cloths, glows)) in built().items():
