@@ -44,7 +44,7 @@ Pixabay Content Licence; authors are listed in docs/AUDIO-CREDITS.md. Full
 credits and licences are in docs/THIRD_PARTY.md.
 
 Not in this build: gear art (worn gear shows as stand-in vanilla items), gear
-animations and gear sounds, the animation rework, a new title screen and more
+animations and gear sounds, and more
 battle maps. Gear numbers are placeholders until the balance pass. There is no
 public matchmaking, no account system and no paid service. Six-player and
 Internet play have not been independently verified. Do not go back to a build
