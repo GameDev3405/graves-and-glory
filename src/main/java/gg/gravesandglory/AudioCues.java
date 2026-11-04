@@ -172,8 +172,8 @@ public final class AudioCues {
 
     /** How long the victory and defeat stings run, in ticks (3.2 s, inside the three victory takes' range; 35.7 s, the defeat music): the music waits them out so the next track never starts over the sting. */
     public static final int VICTORY_STING_TICKS = 64, DEFEAT_STING_TICKS = 714;
-    /** The portcullis drops this many ticks after the gate_shut cue starts, so the crash lands as the gate meets the ground (the file's thud is 0.35 s in). */
-    public static final int GATE_SHUT_LEAD_TICKS = 7;
+    /** The portcullis drops this many ticks after the gate_shut cue starts, so the crash lands as the gate meets the ground (gate_shut_8 peaks 2.3 s in). */
+    public static final int GATE_SHUT_LEAD_TICKS = 46;
     /** The wave rises this many ticks after the wave_rise cue starts (the file swells for 1.5 s before its hit). */
     public static final int WAVE_RISE_LEAD_TICKS = 30;
 
