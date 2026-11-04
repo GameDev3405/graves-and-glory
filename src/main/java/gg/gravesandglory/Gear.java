@@ -117,4 +117,41 @@ final class Gear {
         for (Piece piece : p.gear) if (piece != null && piece.uid == uid) return piece;
         return null;
     }
+
+    /**
+     * Wears an owned piece in its item's slot. A two-handed main clears the off-hand and an off-hand clears a two-handed main; the
+     * displaced piece stays in the inventory. Returns "" or the refusal, and a refusal changes nothing. Durability 0 may be worn.
+     */
+    static String equip(Profile p, int uid) {
+        Piece piece = piece(p, uid);
+        var it = piece == null ? null : item(piece.item);
+        if (it == null) return "You do not own that piece.";
+        p.equipped.put(it.slot(), uid);
+        if (it.slot().equals("main") && it.hands() == 2) p.equipped.remove("off");
+        if (it.slot().equals("off")) {
+            Piece main = piece(p, p.equipped.getOrDefault("main", 0));
+            var mainItem = main == null ? null : item(main.item);
+            if (mainItem != null && mainItem.hands() == 2) p.equipped.remove("main");
+        }
+        p.gearPower = power(p);
+        return "";
+    }
+    /** Empties a worn slot (an already empty slot succeeds). The piece stays in the inventory. */
+    static String unequip(Profile p, String slot) {
+        if (!SLOTS.contains(slot)) return "No such slot.";
+        p.equipped.remove(slot);
+        p.gearPower = power(p);
+        return "";
+    }
+    /** Puts an unlocked relic into slot 0 to 2 ("-" empties it). A relic already in another slot moves, leaving that slot empty. */
+    static String setRelic(Profile p, int slot, String relicId) {
+        int slots = forge().relicSlots();
+        if (slot < 0 || slot >= slots) return "No such relic slot.";
+        boolean clear = "-".equals(relicId);
+        if (!clear && (relicId == null || relic(relicId) == null || !p.relics.contains(relicId))) return "You have not unlocked that relic.";
+        while (p.relicSlots.size() < slots) p.relicSlots.add("");
+        if (!clear) for (int i = 0; i < p.relicSlots.size(); i++) if (relicId.equals(p.relicSlots.get(i))) p.relicSlots.set(i, "");
+        p.relicSlots.set(slot, clear ? "" : relicId);
+        return "";
+    }
 }
