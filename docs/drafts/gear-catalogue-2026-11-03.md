@@ -1,6 +1,6 @@
-# Commander gear catalogue: DRAFT for Kort to edit
+# Commander gear catalogue (approved by Kort 2026-11-03)
 
-**DRAFT, 2026-11-03.** Every name, look and line below is a suggestion. Cross out, rewrite or replace anything. Source: the approved spec (`docs/superpowers/specs/2026-11-03-commander-gear-design.md`), the art guide (section 10.0 rules) and the six class actives in `Commander.java` and `sheets/design.json`. No numbers except cooldowns; balance comes later.
+**Approved as drafted by Kort, 2026-11-03** (healer 4-piece cleanse, ranged 4-piece pierce). Source: the approved spec (`docs/superpowers/specs/2026-11-03-commander-gear-design.md`), the art guide (section 10.0 rules) and the six class actives in `Commander.java` and `sheets/design.json`. No numbers except cooldowns; balance comes later.
 
 Art rules that apply to everything: Souls-like game art, each piece unique, 1 texel per pixel. No flag, pennant or standard on any back. Cloth parts (tabard, sash) take the side's colour; metal and leather are fixed paint. Gear is house-neutral, so it can leave the House art to the troops.
 

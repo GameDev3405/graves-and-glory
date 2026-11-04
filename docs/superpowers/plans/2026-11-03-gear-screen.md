@@ -4,7 +4,7 @@
 
 **Goal:** Build part (c): the gear screen (layout A from the approved mockup), the blacksmith camp station with its Forge tab and roll reveal, tooltips, and the key that opens the screen anywhere in camp.
 
-**Architecture:** All view logic (filters, sorts, compare arrows, tooltip lines, set progress, stat totals, grid scrolling, relic-slot targeting) lives in a pure class `GearView` that reads `GearWire.View` and the foundation's `Gear`/`Forge` lookups, so the standalone `*Check.java` suite tests it without Minecraft. A new War Table page class `WarTableGear` (page `gear`, tabs Armoury and Forge) draws it in canvas pixels, the same way `WarTableTroop` does, and records its drawn rects for the harness. Every click sends a foundation `gear:` or `forge:` ORDER command; the client never decides an outcome.
+**Architecture:** All view logic (filters, sorts, compare arrows, tooltip lines, set progress, stat totals, grid scrolling, relic-slot targeting) lives in a pure class `GearView` that reads `GearWire.View` and the foundation's `Gear`/`Forge` lookups, so the standalone `*Check.java` suite tests it without Minecraft. A new War Table page class `WarTableGear` (page `gear`, tabs Arsenal and Forge) draws it in canvas pixels, the same way `WarTableTroop` does, and records its drawn rects for the harness. Every click sends a foundation `gear:` or `forge:` ORDER command; the client never decides an outcome.
 
 **Tech Stack:** Java 17, Fabric 1.20.1 (Loader 0.16.14, API 0.92.2+1.20.1), Python 3.12 preflight.
 
@@ -16,13 +16,13 @@
 - Quick loop: `python tools/verify.py fast --offline`. Never build in a checkout with a running Minecraft client.
 - Commit with explicit paths, never `git commit -a`; leave `maps/*/design.json` uncommitted. End commits with `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`. Do not push.
 - **No catalogue data in code.** Item, set, rarity, relic and perk names, colours and numbers come from `Spec.GEARITEMS`, `Spec.GEARSETS`, `Spec.GEARRARITIES`, `Spec.RELICS`, `Spec.FORGE` (foundation Task 1) and the combat plan's tables. Tests build expectations from the sheet rows, never from literal catalogue names. The draft names (`docs/drafts/gear-catalogue-2026-11-03.md`) need Kort's approval before release; changing them is a sheet edit only.
-- Layout A: top bar "Armoury" badge with Esc chip, Forge marks and gold on the right, gold rope divider. Left parchment card: Stats column (Health, Damage, Armour, Speed, Ranged, Healing, Command), commander in a gold frame, "Worn" row of 6 slots (Helm, Chest, Legs, Boots, Main hand, Off hand) with "Set: <name> N of 4", "Relics" row of 3 slots labelled keys 1, 2, 3. Right card: "Inventory N of M", filter tabs All, Helms, Chests, Legs, Boots, Weapons, Relics, a sort dropdown (Rarity, Newest, Slot, Set), an 8-column grid of rarity-bordered slots, and the hover tooltip.
+- Layout A: top bar "Arsenal" badge with Esc chip, Forge marks and gold on the right, gold rope divider. Left parchment card: Stats column (Health, Damage, Armour, Speed, Ranged, Healing, Command), commander in a gold frame, "Worn" row of 6 slots (Helm, Chest, Legs, Boots, Main hand, Off hand) with "Set: <name> N of 4", "Relics" row of 3 slots labelled keys 1, 2, 3. Right card: "Inventory N of M", filter tabs All, Helms, Chests, Legs, Boots, Weapons, Relics, a sort dropdown (Rarity, Newest, Slot, Set), an 8-column grid of rarity-bordered slots, and the hover tooltip.
 - Rarity border colours are `gearRarities.border`. Click or right-click equips; shift-click breaks down, with a confirmation for Epic and above (rarity index ≥ 3).
 - The screen never opens during a battle (`GravesAndGloryClient.battleActive()`).
 - Player-facing UI acceptance: rubric 9, checked at 1920x1080, 2560x1440 and 3840x2160, plus hover, selected, disabled and refusal states (WORKFLOW Quality).
 
 ## Settled calls (log for Kort; reversible)
-1. **Title "Armoury"**, as the approved mockup shows. `ArmouryTab` (troops, key U in battle) keeps its name; Kort may prefer "Gear" to avoid the clash. It is one string constant.
+1. **Title "Arsenal"** (Kort, 2026-11-03, to avoid the clash with the troop Armoury). `ArmouryTab` (troops, key U in battle) keeps its name. It is one string constant.
 2. **Open key:** a new binding `key.gravesandglory.gear`, default **I**, in camp only. The blacksmith station opens the same page on its Forge tab.
 3. **Blacksmith station:** `campStations` row `blacksmith`, page `forge`, npc `weaponsmith`, placed 6 blocks south of the quartermaster (x 10.5, y 77.0, z -51.5, yaw 90, half 1/1), label `Blacksmith / Forge & repairs`. The spot is checked in game and moved if not standable.
 4. **Stats column shows the summed gear stats** (`Gear.stats` over worn pieces), one decimal, `—` for 0. Effective in-battle values (after the combat plan's conversion) can replace them later; that is a display change only.
@@ -120,7 +120,7 @@ git add sheets/design.json sheets/preflight.json tools/preflight.py test-tools/s
 git commit -m "Add the blacksmith station, the gear key and the gear page hook"
 ```
 
-### Task 3: The Armoury tab (layout A)
+### Task 3: The Arsenal tab (layout A)
 
 **Files:**
 - Modify: `src/main/java/gg/gravesandglory/WarTableGear.java`
@@ -136,7 +136,7 @@ git commit -m "Add the blacksmith station, the gear key and the gear page hook"
 - [ ] **Step 4: Commit**
 ```bash
 git add src/main/java/gg/gravesandglory/WarTableGear.java
-git commit -m "Draw the gear screen's Armoury tab: stats, worn slots, relics and the inventory grid"
+git commit -m "Draw the gear screen's Arsenal tab: stats, worn slots, relics and the inventory grid"
 ```
 
 ### Task 4: The Forge tab, the reveal, and the real-client screen suite
