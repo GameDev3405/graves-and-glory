@@ -94,4 +94,4 @@ Source: pixabay.com, downloaded 2026-11-02 (Pixabay Content Licence). Author is 
 
 ## Installing new candidates
 
-The candidate takes live in `work/audio-cues/` (not in the game yet). Once Kort picks, write `work/audio-cues/PICKS.json` (shape: `tools/audio/PICKS.example.json`) and run `python tools/install_audio.py --dry-run`, then without the flag. It copies the files, updates `sounds.json` and appends the credits to `docs/CREDITS-AUDIO.md`. `--report` lists the vanilla sound calls a cue would replace; those code changes are made by hand. New events still need an `AudioCues` entry and a subtitle.
+The candidate takes live in `work/audio-cues/` (not in the game yet). Once Kort picks, write `work/audio-cues/PICKS.json` (shape: `tools/audio/PICKS.example.json`) and run `python tools/install_audio.py --dry-run`, then without the flag. It copies the files, updates `sounds.json` and appends the credits to `docs/AUDIO-CREDITS.md`. `--report` lists the vanilla sound calls a cue would replace; those code changes are made by hand. New events still need an `AudioCues` entry and a subtitle.

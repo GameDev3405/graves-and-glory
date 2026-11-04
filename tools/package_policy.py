@@ -84,8 +84,8 @@ def package_policy_errors(names, texts, deps, release_version, file_name, gradle
         errors.append('Unlisted jar in mods/: ' + extra)
     for missing in sorted(expected_mods - set(names)):
         errors.append('Pinned jar missing from archive: ' + missing)
-    if 'Pixabay' not in credits or 'docs/AUDIO.md' not in names:
-        errors.append('Pixabay audio credit missing: THIRD_PARTY.md must credit Pixabay and docs/AUDIO.md must be packaged')
+    if 'Pixabay' not in credits or 'docs/AUDIO-CREDITS.md' not in names:
+        errors.append('Pixabay audio credit missing: THIRD_PARTY.md must credit Pixabay and docs/AUDIO-CREDITS.md must be packaged')
     if 'Fabric API' not in credits:
         errors.append('THIRD_PARTY.md does not credit Fabric API')
     errors += excalibur_errors(names, texts, deps, release_version)

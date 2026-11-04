@@ -17,7 +17,7 @@ EXCALIBUR = {'slug': 'excalibur', 'title': 'Excalibur', 'version': '1.0', 'fileN
 
 def archive(deps, version='0.5.0', extra=()):
     """A clean synthetic archive for deps: (names, texts)."""
-    names = ['docs/LICENSE', 'docs/README.md', 'docs/AUDIO.md', 'docs/THIRD_PARTY.md', 'mods/graves-and-glory-%s.jar' % version,
+    names = ['docs/LICENSE', 'docs/README.md', 'docs/AUDIO-CREDITS.md', 'docs/THIRD_PARTY.md', 'mods/graves-and-glory-%s.jar' % version,
              'mods/fabric-api-0.92.2+1.20.1.jar', *extra]
     credits = 'Fabric API\nPixabay Content Licence\n' +''.join('## %s %s\nMaffhew CC BY-NC-ND\n' % (d['title'], d['version']) for d in deps)
     for d in deps:
@@ -35,7 +35,7 @@ class PackagePolicyChecks(unittest.TestCase):
 
     def test_pixabay_audio_credit_is_required(self):
         self.assertEqual(self.errors(DEPS), [])
-        self.assertTrue(any('Pixabay' in e for e in self.errors(DEPS, drop=('docs/AUDIO.md',))))
+        self.assertTrue(any('Pixabay' in e for e in self.errors(DEPS, drop=('docs/AUDIO-CREDITS.md',))))
         names, texts = archive(DEPS)
         texts['docs/THIRD_PARTY.md'] = texts['docs/THIRD_PARTY.md'].replace('Pixabay', 'Other')
         self.assertTrue(any('Pixabay' in e for e in package_policy_errors(names, texts, DEPS, '0.5.0', 'graves-and-glory-0.5.0.zip', GRADLE)))

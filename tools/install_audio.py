@@ -15,7 +15,7 @@ For the picks it:
      takes as its variants. The stem is the cue's name for every cue whose files share one stem; mortar, ballista,
      footsteps, rarity_stings, commander_actives, map_ambience and beast_attacks have several, one event each.
      An existing event keeps its subtitle; music and ambience are streamed;
-  3. appends the third-party credits to docs/CREDITS-AUDIO.md (a row already there is not repeated).
+  3. appends the third-party credits to docs/AUDIO-CREDITS.md (a row already there is not repeated).
 It never touches Java. --report lists the vanilla sound call sites a cue would replace, for a person to change.
 --dry-run prints everything and writes nothing. --example prints a PICKS file (first take of each cue).
 """
@@ -25,7 +25,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 SOUNDS_REL = "src/main/resources/assets/gravesandglory/sounds"
 JSON_REL = "src/main/resources/assets/gravesandglory/sounds.json"
-CREDITS_REL = "docs/CREDITS-AUDIO.md"
+CREDITS_REL = "docs/AUDIO-CREDITS.md"
 NAMESPACE = "gravesandglory"
 
 STREAMED = {"title_music", "campaign_briefing_music", "defeat_music", "overtime_music", "map_ambience",
