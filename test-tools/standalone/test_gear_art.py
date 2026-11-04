@@ -225,7 +225,9 @@ class GearWeapons(unittest.TestCase):
 
     def test_clip_faces(self):
         """Every clip key points the weapon's tip the way the move goes (Kort 11-03), and gear_clips.json is clips.py's export."""
-        import json, clips
+        import json, importlib.util
+        spec = importlib.util.spec_from_file_location("gear_clips", os.path.join(GEAR, "clips.py"))  # tools/clips.py is also "clips"
+        clips = importlib.util.module_from_spec(spec); spec.loader.exec_module(clips)
         for item, trig in clips.ITEMS.items():
             w = clips.weapons()[item]
             for name in trig.values():
