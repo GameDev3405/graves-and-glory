@@ -39,9 +39,10 @@ public final class CommandUiChecks implements ClientModInitializer {
     static volatile Suite current;
     static volatile String currentName = "";
     static volatile boolean failed, broken, finishing;
-    static int tick, front, now;
+    static int tick, front, now, finishWait;
     static boolean started;
     static Path results;
+    static final int FINISH_WAIT_TICKS = 200; // 10 s for the lobby return between queued suites
 
     /** One evidence line, appended to results.txt, plus a "[cu]" log line and the shared MeltyTest evidence line. */
     public static synchronized void report(String check, boolean pass, String detail) {
@@ -78,7 +79,7 @@ public final class CommandUiChecks implements ClientModInitializer {
         });
     }
 
-    /** Presses a binding for one tick through KeyBinding.onKeyPressed, the path a real key takes, and releases it a tick later. */
+    /** Presses a binding for exactly one input pass through KeyBinding.onKeyPressed, the path a real key takes: pressed during client tick n, seen by the input handling at the start of tick n+1, released at the end of tick n+1. */
     public static void press(MinecraftClient c, KeyBinding k) {
         KeyBinding.onKeyPressed(KeyBindingHelper.getBoundKeyOf(k));
         k.setPressed(true);
@@ -128,13 +129,23 @@ public final class CommandUiChecks implements ClientModInitializer {
             if (!started) { if (c.currentScreen instanceof FrontMenuScreen && ++front == 40) { started = true; GravesAndGloryClient.startCamp(c, false); } return; }
             if (c.player == null || c.getServer() == null || !GravesAndGloryClient.ready) return;
             now++;
-            pressed.entrySet().removeIf(e -> { if (e.getValue() < now - 1) { e.getKey().setPressed(false); return true; } return false; });
+            pressed.entrySet().removeIf(e -> { if (e.getValue() < now) { e.getKey().setPressed(false); return true; } return false; });
             if (current == null) {
                 if (queue.isEmpty()) return;
-                if (finishing) { if (GravesAndGloryClient.battleActive()) return; finishing = false; } // wait for the previous round to end
+                if (finishing) { // wait for the previous round to end, but not forever
+                    if (GravesAndGloryClient.battleActive()) {
+                        if (++finishWait <= FINISH_WAIT_TICKS) return;
+                        finishWait = 0;
+                        String skipped = queue.poll();
+                        report("cu-" + key(skipped) + "-suite", false, "the previous round was still running " + FINISH_WAIT_TICKS + " ticks after its suite ended; suite not run");
+                        if (queue.isEmpty()) c.scheduleStop();
+                        return;
+                    }
+                    finishing = false; finishWait = 0;
+                }
                 currentName = queue.poll(); failed = false; broken = false; tick = 0;
                 try { current = load(currentName); }
-                catch (ReflectiveOperationException | RuntimeException e) {
+                catch (ReflectiveOperationException | RuntimeException | LinkageError e) {
                     report("cu-" + key(currentName) + "-suite", false, "unknown suite " + currentName + "Suite: " + e);
                     if (queue.isEmpty()) c.scheduleStop();
                     return;
