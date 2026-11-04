@@ -52,14 +52,23 @@ public final class GravesAndGlory implements ModInitializer {
     public static final Identifier FEED = new Identifier("gravesandglory", "feed_v1");
     /** Server to client: the commander's gear as one GearWire string, sent when it changes (kept out of the camp snapshot, which has a client size limit). */
     public static final Identifier GEAR = new Identifier("gravesandglory", "gear_v1");
+    /** Server to client: the commander's relic slots (gear-combat Task 5), sent with each state and on a relic's start: a byte n, then per slot String relic id ("" empty), int ticks until ready (-1: empty or no behaviour), int ticks left running. */
+    public static final Identifier RELICS = new Identifier("gravesandglory", "relics_v1");
     public static Battle battle;
+    /** Sends a seated commander his relic slots (relics_v1); nothing to a bot, an unseated squad or a client without the channel. */
+    static void sendRelics(Battle b,Squad s){
+        if(s==null||s.bot)return;var p=b.server.getPlayerManager().getPlayer(s.owner);if(p==null||!ServerPlayNetworking.canSend(p,RELICS))return;
+        PacketByteBuf out=PacketByteBufs.create();int n=s.relicState.size();out.writeByte(n);
+        for(int i=0;i<n;i++){boolean on=s.seated;out.writeString(on?Commander.relicIn(s,i):"");out.writeInt(on?Commander.readyIn(b,s,i):-1);out.writeInt(on?Commander.activeFor(b,s,i):0);}
+        ServerPlayNetworking.send(p,RELICS,out);
+    }
     public static final Spec.RulesRow R = Spec.RULES[0];
     @Override public void onInitialize() {
         Diagnostics.start();
         VersionGate.registerServer();
         Audio.register(); // every sound event of the AudioCues table (plan 4F.4)
         // The commander actives, once. (The horn cues above are command feedback for the commanding player alone: no horn sounds in the field.)
-        Commander.register();
+        RelicEffects.register();
         // The Convoy supply wagon's entity type (Kort approved 2026-11-01; never saved).
         WagonEntity.register();
         // A planted banner block must not outlive the battle in the save.
@@ -81,12 +90,13 @@ public final class GravesAndGlory implements ModInitializer {
             if(battle!=null&&world==battle.world&&(entity.getCommandTags().contains("gravesandglory")||entity.getCommandTags().contains("bannerbound"))&&!ArmyMobs.isTroop(entity))entity.discard();
             // A shot's arrow saved mid-flight comes back from disk as a real, clipping arrow. This event also fires for a new spawn, so only a tagged arrow that no queued shot owns is discarded (Projectiles.fire queues the shot before it spawns the arrow). Any world.
             if(entity.getCommandTags().contains(Projectiles.TAG)&&!Projectiles.owns(battle,entity))entity.discard();
+            if(battle!=null)GearCombat.onEntityLoad(entity); // pierce: a seated commander's arrows
         });
         // The backstop for a troop's side-team membership (gg_<side>): it fires when any troop entity leaves the world (a death, a discard, a chunk unload), so a path that removes a troop without Battle.leaveSide (a chunk unload, the checks' direct discards, BotSimulation.field) still leaves no stale member; returnLobby discards its troops and then empties all four teams with clearSides. The call sites that discard a troop (Houses.discard, which Grave Bloom's expiry goes through, among them) still call leaveSide first, as before, and AFTER_DEATH keeps its own call; the two are harmless repeats, since leaveSide does nothing for an entity that is on no gg_ team.
         ServerEntityEvents.ENTITY_UNLOAD.register((entity,world)->{if(ArmyMobs.isTroop(entity))Battle.leaveSide(entity);});
         ServerTickEvents.END_SERVER_TICK.register(server -> {
             if(battle==null) return;
-            battle.tick();FeedEvents.tick(battle);
+            battle.tick();FeedEvents.tick(battle);GearCombat.tick(battle);
             // No hunger in Graves and Glory: food stays full (sprinting and slow natural healing still work) and saturation empty (so healing stays slow).
             for(ServerPlayerEntity p:server.getPlayerManager().getPlayerList()){var hunger=p.getHungerManager();if(hunger.getFoodLevel()!=20)hunger.setFoodLevel(20);hunger.setSaturationLevel(0);hunger.setExhaustion(0);}
         });
@@ -122,6 +132,7 @@ public final class GravesAndGlory implements ModInitializer {
         ServerPlayConnectionEvents.DISCONNECT.register((handler, server) -> {
             if(battle!=null) battle.leave(handler.player.getUuid());
         });
+        net.fabricmc.fabric.api.event.player.UseItemCallback.EVENT.register(GearCombat::useItem); // a staff's heal
         ServerLivingEntityEvents.ALLOW_DAMAGE.register((entity,source,amount) -> {
             if(battle==null) return true;
             return battle.allowDamage(entity,source,amount);
@@ -178,7 +189,7 @@ public final class GravesAndGlory implements ModInitializer {
     public static final class Squad {
         UUID owner;
         int team;
-        String order="follow", formation="block", commander="champion";
+        String order="follow", formation="block";
         boolean bot, seated=true; int lane;
         /** The tick a dropped owner's bot takes command (MatchRules.takeoverAt); 0 when no one is waited for. */
         long takeoverAt;
@@ -205,10 +216,16 @@ public final class GravesAndGlory implements ModInitializer {
         final Map<String,Long> chargedAt=new HashMap<>();
         /** House id to trait tier (1 to 3) for the Houses this army's living troops reach, from their slot weights; Houses.recompute keeps it. */
         final Map<String,Integer> traits=new LinkedHashMap<>();
-        /** Troop id to how many of them this army lost this round and has not had back as a Reaver's Bloodrush refund (Commander.Bloodrush); the round's start clears it. */
+        /** Troop id to how many of them this army lost this round and has not had back as a Reaver's Bloodrush refund (RelicEffects.Bloodrush); the round's start clears it. */
         final Map<String,Integer> fallen=new LinkedHashMap<>();
-        /** The commander ability (Commander): the battle time its cooldown ends, the time its run ends (0: not running), and what the running active keeps. */
-        long abilityReadyAt,abilityUntil;Object abilityData;
+        /** The commander's relic slots (Commander, RelicSlots): per slot the battle time its cooldown ends, the time its run ends (0: not running), and what the running relic keeps. */
+        final RelicSlots relicState=new RelicSlots(Gear.forge().relicSlots());
+        /** The commander's worn gear this round (GearCombat.seat at round setup, a takeover or a fresh seat) and its relic slots; a bot seat has none. */
+        GearStats.Loadout gear=GearStats.empty();String[] relics=gear.relics().toArray(new String[0]);
+        /** Whoever last hurt one of this army's troops (the grudge perk); Battle.allowDamage sets it. */
+        UUID grudge;
+        /** second_chance spent this match (GearCombat.secondChance); a new match makes a new Squad. */
+        boolean secondChanceUsed;
         /** The most troops of each group alive at once this round (the HUD card's "of" count), raised with fullHealth and cleared with it. */
         final Map<String,Integer> fullCount=new HashMap<>();
         /** The commander's last enemy blow (a player commander is no Unit): the army whose troop or commander landed it and when (battle ticks). Battle.allowDamage sets it; a death with no attacker within Projectiles.CREDIT_WINDOW_TICKS of it (a pull into lava, a knock off an edge) is that army's (Veterans.onCommanderDeath, which clears it). */
@@ -221,7 +238,7 @@ public final class GravesAndGlory implements ModInitializer {
         boolean perch;
         Assignment(String o,String f,Vec3d t,float y){order=o;formation=f;target=t;yaw=y;}
     }
-    /** A troop in a squad's training queue: when it is done, and the gold paid for it (the class cost, Commander.cost), which a cancel or a full army refunds. The short form is a free troop: nothing paid, nothing refunded. */
+    /** A troop in a squad's training queue: when it is done, and the gold paid for it (the troop's sheet cost), which a cancel or a full army refunds. The short form is a free troop: nothing paid, nothing refunded. */
     public record Training(Spec.TroopsRow spec,long finished,int paid) {public Training(Spec.TroopsRow spec,long finished){this(spec,finished,0);}}
     public static final class Unit {
         MobEntity mob;
@@ -347,7 +364,7 @@ public final class GravesAndGlory implements ModInitializer {
                     getWorld().setBlockState(block,was==null?net.minecraft.block.Blocks.AIR.getDefaultState():was);
                 if(battle!=null){
                     battle.structures.remove(this);
-                    if((felled||reason==RemovalReason.KILLED)&&squad!=null&&squad.abilityData==this){battle.campaign.notice(squad.owner,FALLEN);Commander.stop(battle,squad);}
+                    if((felled||reason==RemovalReason.KILLED)&&squad!=null&&java.util.Arrays.asList(squad.relicState.data).contains(this)){battle.campaign.notice(squad.owner,FALLEN);Commander.stop(battle,squad,java.util.Arrays.asList(squad.relicState.data).indexOf(this));}
                 }
             }
             super.remove(reason);
@@ -775,11 +792,11 @@ public final class GravesAndGlory implements ModInitializer {
                 // The seat keeps the bot's living army and its queue, but from now on it trains and reinforces from the joiner's own banner, and fights under his class.
                 // The active's cooldown belongs to the squad, not to whoever commands it: it stays with the seat, so taking a seat over (its owner coming back, or
                 // anyone else) never refreshes an active. Only a running active stops here, before the class changes; leave already stopped the owner's.
-                Commander.stop(this,s);s.banner=campaign.banner(s);s.commander=campaign.profile(s.owner).commander;
+                Commander.stop(this,s);s.banner=campaign.banner(s);GearCombat.seat(s,campaign.profile(s.owner));
             }else{
                 s=new Squad(p.getUuid(),team,fieldBase(team));s.seated=decision.seated();
                 // A fresh seat mid-round fights under its owner's class, as round setup (Campaign.prepareRound) and a takeover give it.
-                if(s.seated){s.commander=campaign.profile(s.owner).commander;s.banner=campaign.banner(s);reinforce(s);}
+                if(s.seated){GearCombat.seat(s,campaign.profile(s.owner));s.banner=campaign.banner(s);reinforce(s);}
             }
             squads.put(s.owner,s);welcomed.add(s.owner);
             p.changeGameMode(GameMode.ADVENTURE);equipPlayer(p);
@@ -812,14 +829,13 @@ public final class GravesAndGlory implements ModInitializer {
          *  "moved too quickly". syncWithPlayerPosition() moves that reference to the new spot, which is what the vanilla /tp path gets from the next tick. */
         void relocate(ServerPlayerEntity p,double x,double y,double z,float yaw,float pitch){p.fallDistance=0;p.setVelocity(Vec3d.ZERO);p.teleport(world,x,y,z,yaw,pitch);TeleportSync.afterTeleport(p);p.fallDistance=0;p.velocityModified=true;}
         void toBase(ServerPlayerEntity p,int team){Vec3d b=fieldBase(team);relocate(p,b.x,b.y+1,b.z,team==0?-90:90,8);}
+        /** Arms the commander from the gear he wears (GearCombat): the kit, then the squad's Loadout as attribute modifiers. An unseated
+         *  player (a spectator seat) gets the kit with no modifiers. */
         void equipPlayer(ServerPlayerEntity p){
-            p.getInventory().clear();p.getInventory().insertStack(new ItemStack(Items.IRON_SWORD));
-            p.getInventory().insertStack(new ItemStack(Items.BOW));p.getInventory().insertStack(new ItemStack(Items.ARROW,64));
-            for(var slot:new EquipmentSlot[]{EquipmentSlot.HEAD,EquipmentSlot.CHEST,EquipmentSlot.LEGS,EquipmentSlot.FEET}){
-                Item item=switch(slot){case HEAD->Items.IRON_HELMET;case CHEST->Items.IRON_CHESTPLATE;case LEGS->Items.IRON_LEGGINGS;default->Items.IRON_BOOTS;};
-                p.equipStack(slot,unbreakable(item));
-            }
-            Commander.applyPlayer(p,squads.get(p.getUuid()));p.setHealth(p.getMaxHealth());p.getHungerManager().setFoodLevel(20);
+            var pr=campaign.profile(p.getUuid());var s=squads.get(p.getUuid());
+            GearCombat.kit(p,pr);
+            if(s!=null&&s.seated&&!s.bot){GearCombat.seat(s,pr);GearCombat.apply(p,s.gear);}else GearCombat.clear(p);
+            p.getHungerManager().setFoodLevel(20);
         }
         static ItemStack unbreakable(Item item){if(item==Items.AIR)return ItemStack.EMPTY;ItemStack s=new ItemStack(item);s.getOrCreateNbt().putBoolean("Unbreakable",true);return s;}
         public void command(ServerPlayerEntity p,String cmd){
@@ -828,7 +844,7 @@ public final class GravesAndGlory implements ModInitializer {
             Squad s=squads.get(p.getUuid());if(s==null||!ready||respawns.containsKey(s.owner))return;
             if(campaign.handle(p,cmd))return;
             if(running&&!s.seated)return;
-            if(cmd.equals("ability")){Commander.activate(this,p);return;}
+            if(cmd.startsWith("relic:")){int slot;try{slot=Integer.parseInt(cmd.substring(6));}catch(NumberFormatException e){return;}Commander.activate(this,p,slot);return;}
             if(cmd.equals("barracks")){openBarracks(p);return;}
             if(cmd.startsWith("train:")||cmd.startsWith("disband:")||cmd.equals("cancel-training")){manage(p,s,cmd);return;}
             if(cmd.startsWith("gear:")){Veterans.buy(this,p,s,cmd);return;} // gear:<troop>:<weapon|armour>:<tier>, checked as manage checks training (in-match progression design 5)
@@ -936,7 +952,7 @@ public final class GravesAndGlory implements ModInitializer {
         boolean queueFree(Squad s,Spec.TroopsRow spec){
             if(s.training.size()>=Spec.ECONOMY[0].maxQueue()||roomFor(s,spec)!=null)return false;
             long previous=s.training.isEmpty()?time:s.training.getLast().finished();
-            s.training.addLast(new Training(spec,Math.max(time,previous)+Commander.trainingTicks(s,spec)));return true;
+            s.training.addLast(new Training(spec,Math.max(time,previous)+Commander.trainingTicks(spec)));return true;
         }
         void manage(ServerPlayerEntity p,Squad s,String cmd){
             if(!atBarracks(p,s)){p.sendMessage(Text.literal("Return to your faction's barracks to train or disband troops."),true);return;}
@@ -948,11 +964,11 @@ public final class GravesAndGlory implements ModInitializer {
                 return;
             }
             String full=roomFor(s,spec);if(full!=null){p.sendMessage(Text.literal(full),true);return;}
-            int price=Commander.cost(s,spec);
+            int price=spec.cost();
             if(s.gold<price){p.sendMessage(Text.literal("Not enough gold. Battle supplies arrive over time; holding points increases them."),true);return;}
             if(s.training.size()>=Spec.ECONOMY[0].maxQueue())return;
             s.gold-=price;long previous=s.training.isEmpty()?time:s.training.getLast().finished();
-            s.training.addLast(new Training(spec,Math.max(time,previous)+Commander.trainingTicks(s,spec),price));
+            s.training.addLast(new Training(spec,Math.max(time,previous)+Commander.trainingTicks(spec),price));
         }
         /** Round gold a squad earns per income tick: the mode's income, Domination's passive gold plus its team's held points. */
         int income(Squad s){return mode.income(this,s);}
@@ -972,7 +988,7 @@ public final class GravesAndGlory implements ModInitializer {
          */
         List<Anchor> reinforcementAnchors(int team){
             List<Anchor> anchors=new ArrayList<>(mode.anchors(this,team)); // the mode's places: Domination's held points, none while the flags are down
-            var supply=Commander.byActive("forward_supply");
+            var supply=Commander.tuningByEffect("forward_supply");
             if(supply!=null)for(var st:structures)if(st.team()==team&&!(st instanceof SiegeMode.GateTarget)&&st.isAlive()&&!Morale.enemyWithin(this,team,st.getPos(),supply.radius()))anchors.add(st.anchor());
             return anchors;
         }
@@ -1131,7 +1147,8 @@ public final class GravesAndGlory implements ModInitializer {
             if(!R.friendlyFire()&&attackTeam==team)return false;
             // A commander's own blow: a troop takes it at combatDiscipline.damageScale, and the commander effects (his Mark Prey, the target side's Stand Fast) multiply in. Under his Bloodrush a blow by hand feeds him from what the target really loses (this hook fires before vanilla's shield block and hurt cooldown, which may take nothing), so the scaled blow is dealt here and measured.
             if(!scalingDamage&&attacker instanceof ServerPlayerEntity p){
-                double scale=(entity instanceof ServerPlayerEntity?1:Spec.COMBATDISCIPLINE[0].damageScale())*Commander.playerFactor(this,attackerSquad,entity);
+                GearCombat.onPlayerHit(this,p,attackerSquad,entity,source,amount); // a greatweapon's sweep: its own blows come back here as his
+                double scale=(entity instanceof ServerPlayerEntity?1:Spec.COMBATDISCIPLINE[0].damageScale())*Commander.playerFactor(this,attackerSquad,entity,source);
                 boolean feeds=Commander.feeds(this,attackerSquad,source);
                 if(scale!=1||feeds){
                     float before=entity.getHealth()+entity.getAbsorptionAmount();
@@ -1142,14 +1159,15 @@ public final class GravesAndGlory implements ModInitializer {
             }
             Squad hitter=attackerSquad;Unit striker=null;for(Unit u:units)if(u.mob==attacker){hitter=u.squad;striker=u;}
             Squad side=hitter!=null?hitter:fallenSquad(attacker); // a commander's view of the blow: a shot that lands after its troop fell is still his army's (a troop victim has it from Combat.resolve's lastHitBy already)
+            if(entity instanceof ServerPlayerEntity p&&p.getHealth()<=amount&&GearCombat.secondChance(victimSquad,p))return false; // second_chance catches the downing blow once a match
             if(entity instanceof ServerPlayerEntity p&&p.getHealth()<=amount){
                 if(Diagnostics.active())System.out.println("[Graves and Glory damage] respawn cause="+source.getType().msgId()+" amount="+amount+" hp="+p.getHealth()+" pos="+p.getPos()+" fall="+p.fallDistance);
                 p.setHealth(p.getMaxHealth());toBase(p,team);p.changeGameMode(GameMode.SPECTATOR);
-                respawns.put(p.getUuid(),time+Commander.respawnSeconds(victimSquad)*20L);FeedEvents.commander(this,p,false);
+                respawns.put(p.getUuid(),time+R.respawnSeconds()*20L);FeedEvents.commander(this,p,false);
                 Veterans.onCommanderDeath(this,p,victimSquad,team,attacker,striker,side); // a commander struck down never reaches AFTER_DEATH: his killers get the commander bounty here, and his credit log is forgotten (he stands again within its window)
                 return false;
             }
-            if(hitter!=null)for(Unit u:units)if(u.mob==entity){u.lastHitBy=hitter;u.lastHitAt=time;u.lastHitTroop=striker==null||striker.temporary?null:striker.spec.id();break;}
+            if(hitter!=null)for(Unit u:units)if(u.mob==entity){if(attacker!=null&&hitter.team!=u.squad.team)u.squad.grudge=attacker.getUuid();u.lastHitBy=hitter;u.lastHitAt=time;u.lastHitTroop=striker==null||striker.temporary?null:striker.spec.id();break;}
             if(side!=null&&victimSquad!=null&&side.team!=team){victimSquad.hitBy=side;victimSquad.hitAt=time;} // a commander's last enemy blow, as lastHitBy is a troop's: a death with no attacker soon after is that army's (Veterans.onCommanderDeath)
             if(striker!=null)Veterans.helped(this,striker,entity); // every troop blow the battle lets through (Combat.resolve's and any other) logs its striker as a helper on the victim (kill credit, design 3.2)
             return true;
@@ -1210,10 +1228,11 @@ public final class GravesAndGlory implements ModInitializer {
                 // Added in state_v8, after the Phase 1 fields: the side id each team flies, this army's House tiers (count, then House and tier), and the commander ability of a seated squad (its class's active id, ticks until ready, ticks left active; ready is -1 while this build has no behaviour for that active, and the fields are "", 0, 0 for anyone unseated).
                 b.writeString(side(0).id());b.writeString(side(1).id());
                 Map<String,Integer> tiers=s==null?Map.of():s.traits;b.writeByte(tiers.size());for(var tier:tiers.entrySet()){b.writeString(tier.getKey());b.writeByte(tier.getValue());}
-                boolean commanding=s!=null&&s.seated;b.writeString(commanding?Commander.row(s).active():"");b.writeInt(commanding?Commander.readyIn(this,s):0);b.writeInt(commanding?Commander.activeFor(this,s):0);
+                boolean commanding=s!=null&&s.seated;b.writeString(commanding?Commander.relicIn(s,0):"");b.writeInt(commanding?Commander.readyIn(this,s):0);b.writeInt(commanding?Commander.activeFor(this,s):0);
                 // state_v9, after the commander ability: this army's Armoury (LevelMath.encodeArmoury sets the layout: boolean armouryHere, byte n, then per banner troop type String troop and the bytes weapon2, weapon3, armour2, armour3, each a LevelMath.Buy ordinal). armouryHere is whether this commander stands where he may buy (Veterans.buyHere).
                 LevelMath.encodeArmoury(s==null?LevelMath.Armoury.EMPTY:Veterans.armouryState(this,s,p),wire(b));
                 ServerPlayNetworking.send(p,STATE,b);
+                if(s!=null)sendRelics(this,s);
             }
         }
         // Runs only under Melty's explicit test file; uses actual pathfinding, capture and combat.
@@ -1280,7 +1299,7 @@ public final class GravesAndGlory implements ModInitializer {
                     trainingSwapBefore=(int)units.stream().filter(u->u.squad==testSquad&&u.spec.id().equals(swap)&&u.mob.isAlive()).count();
                     trainingGold=testSquad.gold;manage(p,testSquad,"disband:"+swap);manage(p,testSquad,"train:"+swap);
                     int after=testSquad.gold;manage(p,testSquad,"train:"+swap);
-                    boolean paid=after==trainingGold-Commander.cost(testSquad,Campaign.troop(swap))&&testSquad.gold==after&&testSquad.training.size()==1;
+                    boolean paid=after==trainingGold-Campaign.troop(swap).cost()&&testSquad.gold==after&&testSquad.training.size()==1;
                     if(!paid)Diagnostics.report("barracks-management",false,"gold or capacity was not enforced");
                     Unit own=units.stream().filter(u->u.squad==testSquad&&u.mob.isAlive()).findFirst().orElseThrow();
                     float hp=own.mob.getHealth();boolean damage=own.mob.damage(world.getDamageSources().mobAttack(own.mob),8);

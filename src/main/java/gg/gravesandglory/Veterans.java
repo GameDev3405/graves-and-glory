@@ -393,7 +393,7 @@ final class Veterans {
     /**
      * A bot's gear buying, in its economy tick after the banner refill (Campaign.tick; design 9.1). The banner's types go to LevelMath.botPicks with the
      * Armoury's state, the living soldiers at level 2 or higher, the bot's gold and the cheapest banner troop at the price the bot really pays
-     * (Commander.cost, a class discount included: spec gap 11). Each pick is bought in order through the same rules as a player's buy, bar the location
+     * (the troop's sheet cost: the class discounts ended with the classes). Each pick is bought in order through the same rules as a player's buy, bar the location
      * (design 5.3: bots ignore it). Returns what was bought.
      */
     static List<LevelMath.Option> botBuy(GravesAndGlory.Battle b, GravesAndGlory.Squad s) {
@@ -403,7 +403,7 @@ final class Veterans {
         int cheapest = Integer.MAX_VALUE;
         List<LevelMath.TypeState> states = new ArrayList<>();
         for (var t : banner) {
-            cheapest = Math.min(cheapest, Commander.cost(s, t));
+            cheapest = Math.min(cheapest, t.cost());
             var k = peek(b, s, t.id());
             int living = (int) b.fielded(s).filter(u -> u.spec == t && u.level >= 2).count();
             states.add(new LevelMath.TypeState(t.id(), t.group(), t.rarity(), k == null ? 1 : k.highest, k == null ? 1 : k.weapon, k == null ? 1 : k.armour, living));

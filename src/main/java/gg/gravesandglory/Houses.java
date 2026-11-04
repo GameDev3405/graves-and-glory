@@ -217,7 +217,7 @@ final class Houses {
     }
 
     /** How many ticks the death log keeps an entry: the Warlock's value3 (the classes row whose active is Grave Bloom), 0 when no class carries it. */
-    static long deathWindow() { var c = Commander.byActive("grave_bloom"); return c == null ? 0 : Math.round(c.value3()); }
+    static long deathWindow() { var c = Commander.tuningByEffect("grave_bloom"); return c == null ? 0 : Math.round(c.value3()); }
 
     /** Logs a troop that really died (AFTER_DEATH), where it fell, and drops what is older than the window. Grave Bloom raises from this log. */
     static void logDeath(GravesAndGlory.Battle b, GravesAndGlory.Unit u) {

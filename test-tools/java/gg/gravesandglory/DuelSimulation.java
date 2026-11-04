@@ -276,7 +276,7 @@ public final class DuelSimulation implements ModInitializer {
     }
     GravesAndGlory.Squad squad(int team) {
         var s = new GravesAndGlory.Squad(UUID.randomUUID(), team, centre);
-        s.bot = true; s.seated = true; s.tier = "normal"; s.commander = "champion"; s.banner = new ArrayList<>();
+        s.bot = true; s.seated = true; s.tier = "normal"; s.banner = new ArrayList<>();
         s.order = "attack"; s.formation = "block"; s.target = centre; s.yaw = team == 0 ? -90 : 90;
         return s;
     }

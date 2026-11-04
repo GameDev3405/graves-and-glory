@@ -144,10 +144,23 @@ final class GearView {
         for (int i = 0; i < s.length; i++) if (!statText(s[i]).equals("—")) parts.add("+" + statText(s[i]) + " " + statWord(i));
         if (!parts.isEmpty()) out.add(String.join(" · ", parts));
         out.addAll(compare(v, p));
+        if (Gear.rarityIndex(p.rarity) >= 3) for (var k : Spec.GEARPERKS) if (k.item().equals(p.item)) out.add(k.name() + ": " + k.text()); // Epic and above carry the item's fixed perk
+        if (!weapon && set != null) { // the set's bonuses, each with the worn count toward it
+            int n = setWorn(v, it.set());
+            for (var sb : Spec.GEARSETBONUSES) if (sb.set().equals(it.set())) out.add("(" + Math.min(n, sb.pieces()) + "/" + sb.pieces() + ") " + sb.text());
+        }
         out.add(p.durability <= 0 ? "Broken: half stats until repaired" : "Durability " + p.durability * 100 / Math.max(1, Gear.forge().maxDurability()) + "%");
         if (v != null && Forge.duplicate(asProfile(v), p)) out.add("Duplicate");
         out.add(worn(v, p.uid) ? "Worn" : "Click to equip · Shift-click to break down");
         return out;
+    }
+
+    /** How many worn pieces belong to the set. */
+    static int setWorn(GearWire.View v, String set) {
+        int n = 0;
+        if (v == null) return n;
+        for (String slot : Gear.SLOTS) { Gear.Piece w = wornIn(v, slot); if (w != null && resolves(w) && set.equals(Gear.item(w.item).set())) n++; }
+        return n;
     }
 
     /** A breakdown that asks first: Epic and above. */

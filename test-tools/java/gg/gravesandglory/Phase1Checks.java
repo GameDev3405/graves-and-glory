@@ -38,7 +38,7 @@ public final class Phase1Checks implements ClientModInitializer {
      *  while the client's ready is false, when step() does not run. clientTick runs every client tick, ready or not. */
     public interface HudWatch { void hudFrame(MinecraftClient c); default void clientTick(MinecraftClient c){} }
     static final Map<String,Supplier<Suite>> SUITES=new LinkedHashMap<>();
-    static{SUITES.put("combat",Combat::new);SUITES.put("ui-lobby",LobbyChecks::new);SUITES.put("ui-bannerfield",BannerFieldChecks::new);SUITES.put("morale",MoraleChecks::new);SUITES.put("reinforce",ReinforceChecks::new);SUITES.put("bots",Bots::new);SUITES.put("tutorial",TutorialChecks::new);SUITES.put("report",ReportChecks::new);SUITES.put("ui-art",UiArtChecks::new);SUITES.put("ui-hud",UiHudChecks::new);SUITES.put("ui-feed",UiFeedChecks::new);SUITES.put("ui-home",UiHomeChecks::new);SUITES.put("ui-recruit",UiRecruitChecks::new);SUITES.put("ui-pages",UiPagesChecks::new);SUITES.put("ui-icons",UiIconsChecks::new);SUITES.put("ui-leave",UiLeaveChecks::new);SUITES.put("ui-report",UiReportChecks::new);SUITES.put("gear",GearChecks::new);SUITES.put("ui-gear",GearScreenChecks::new);}
+    static{SUITES.put("combat",Combat::new);SUITES.put("ui-lobby",LobbyChecks::new);SUITES.put("ui-bannerfield",BannerFieldChecks::new);SUITES.put("morale",MoraleChecks::new);SUITES.put("reinforce",ReinforceChecks::new);SUITES.put("bots",Bots::new);SUITES.put("tutorial",TutorialChecks::new);SUITES.put("report",ReportChecks::new);SUITES.put("ui-art",UiArtChecks::new);SUITES.put("ui-hud",UiHudChecks::new);SUITES.put("ui-feed",UiFeedChecks::new);SUITES.put("ui-home",UiHomeChecks::new);SUITES.put("ui-recruit",UiRecruitChecks::new);SUITES.put("ui-pages",UiPagesChecks::new);SUITES.put("ui-icons",UiIconsChecks::new);SUITES.put("ui-leave",UiLeaveChecks::new);SUITES.put("ui-report",UiReportChecks::new);SUITES.put("gear",GearChecks::new);SUITES.put("gear-combat",GearCombatChecks::new);SUITES.put("ui-gear",GearScreenChecks::new);}
     static final ArrayDeque<String> queue=new ArrayDeque<>();
     static volatile Suite current;static volatile String currentName="";static volatile boolean failed;
     static int tick,front,hold;static boolean started; // hold: client ticks the current suite waits (Phase1Checks.window)
@@ -1940,7 +1940,7 @@ public final class Phase1Checks implements ClientModInitializer {
         /** A feed line for the frame to draw (the Task 8a review's Important 2: the feed in every measured frame). */
         static void feedLine(){EventFeed.push("point",0,"Dawn took Mill Hamlet",net.minecraft.util.Util.getMeasuringTimeMs());}
         /** A frame's plates as BattleHud drew them: its rects without the ability slot (vanilla's GUI px) and the aimed point's name. */
-        static Map<String,int[]> plates(Map<String,int[]> r){var p=new LinkedHashMap<>(r);p.remove("ability");p.remove("aim-name");return p;}
+        static Map<String,int[]> plates(Map<String,int[]> r){var p=new LinkedHashMap<>(r);p.remove("ability");p.remove("relic-1");p.remove("relic-2");p.remove("aim-name");return p;}
         /** Where drawn boxes differ from the layout: a box the layout has that the frame lacks or drew elsewhere, and one it drew that
          *  the layout lacks. Empty when they are the same. */
         static List<String> layoutDiff(Map<String,int[]> want,Map<String,int[]> got){
@@ -3069,8 +3069,8 @@ public final class Phase1Checks implements ClientModInitializer {
                     if(k==16){var s=screen(c);boolean home=s!=null&&s.page.equals("home");keysOk&=home;keysWhy+="; the back plaque "+(home?"went home":"WRONG: "+(s==null?"the table closed":s.page));click(c,UiHomeChecks.box(c,"recruit"));return;}
                     if(k==19){boolean again=page(c)!=null;keysOk&=again;if(!again)keysWhy+="; WRONG: home's Recruit plaque did not reopen the page";click(c,box(c,"banner"));return;}
                     if(k==22){var s=screen(c);boolean banner=s!=null&&s.page.equals("banner")&&s.pages!=null;keysOk&=banner;keysWhy+="; reopened, the Banner plaque "+(banner?"opened the Banner page":"WRONG: "+(s==null?c.currentScreen:s.page));CampScreen.open("recruit");return;}
-                    if(k==25){boolean again=page(c)!=null;keysOk&=again;if(!again)keysWhy+="; WRONG: the page did not open again";press(c,GLFW.GLFW_KEY_B);return;}
-                    if(k==27){var s=screen(c);boolean banner=s!=null&&s.page.equals("banner")&&s.pages!=null;keysOk&=banner;keysWhy+="; reopened, B "+(banner?"opened the Banner page":"WRONG: "+(s==null?c.currentScreen:s.page));release(c,GLFW.GLFW_KEY_B);
+                    if(k==25){boolean again=page(c)!=null;keysOk&=again;if(!again)keysWhy+="; WRONG: the page did not open again";press(c,GLFW.GLFW_KEY_N);return;}
+                    if(k==27){var s=screen(c);boolean banner=s!=null&&s.page.equals("banner")&&s.pages!=null;keysOk&=banner;keysWhy+="; reopened, N "+(banner?"opened the Banner page":"WRONG: "+(s==null?c.currentScreen:s.page));release(c,GLFW.GLFW_KEY_N);
                         report("p1-ui-recruit-keys",keysOk,keysWhy);CampScreen.open("recruit");stage=10;}
                 }
                 case 10->{ // p1-ui-recruit-scales: the page as the layout step saw it (a fresh commander with GOLD gold)
@@ -3854,8 +3854,11 @@ public final class Phase1Checks implements ClientModInitializer {
         static final String[] ACTIVES={"stand_fast","bloodrush","mark_prey","rally_horn","grave_bloom","forward_supply"};
         /** The active whose slot the HUD hides (War Table port Task 6, ruling 5): the Quartermaster's Forward Supply; p1-ui-ability-hidden checks that it draws nothing. */
         static final String HIDDEN="forward_supply";
+        /** The class art the role plaques and seats still use (the first legacy class of each gear set's roles). */
+        static final String[] CLASS_ART={"champion","reaver","warden","marshal","warlock","quartermaster"};
+        static final String[] ROLE_SETS={"bruiser","healer","ranged","commander"};
         // the server thread writes these, the client thread reads them
-        volatile int stage;volatile UUID player;volatile String serverClass;
+        volatile int stage;volatile UUID player;volatile String serverRelic;
         // client thread only
         int mark=-1,waitFrom,oldW,oldH,oldGui,index,sub,subAt;boolean finished,hudOk=true,realOk=true;String hudWhy="",realWhy="";
         int since(int tick){if(mark!=stage){mark=stage;waitFrom=tick;}return tick-waitFrom;}
@@ -3864,15 +3867,15 @@ public final class Phase1Checks implements ClientModInitializer {
         public void serverTick(GravesAndGlory.Battle b){
             var own=player==null?null:b.squads.get(player);
             if(stage==40&&player!=null){var p=b.server.getPlayerManager().getPlayer(player);if(p!=null&&skirmish(b,p,0,1,"normal")){UiHudChecks.quiet(b,b.squads.get(player));stage=41;}}
-            String want=serverClass;if(own!=null&&want!=null&&!want.equals(own.commander)){own.commander=want;Commander.reset(b,own);}
+            String want=serverRelic;if(own!=null&&want!=null&&!want.equals(Commander.relicIn(own,0))){var pr=b.campaign.profile(player);pr.relics.add(want);Gear.setRelic(pr,0,want);GearCombat.seat(own,pr);Commander.reset(b,own);}
         }
         static String box(int[] a){return a==null?"none":a[0]+","+a[1]+" "+a[2]+"x"+a[3];}
         /** The slot as the last frame drew it: the picture's texture, the key, the seconds, the rect. */
         static String slot(){var t=BattleHud.texts();return "ability \""+t.get("ability")+"\", picture \""+t.get("ability-icon")+"\", key \""+t.get("ability-key")+"\", seconds \""+t.get("ability-seconds")+"\", rect "+box(BattleHud.rects().get("ability"));}
         void fail(MinecraftClient c,String id,String why){report(id,false,why);end(c);}
         void end(MinecraftClient c){
-            finished=true;c.setScreen(null);serverClass=null;
-            server(c,b->{b.testAbility=null;var own=player==null?null:b.squads.get(player);if(own!=null){own.commander="champion";Commander.reset(b,own);}if(b.running)b.campaign.returnLobby();});
+            finished=true;c.setScreen(null);serverRelic=null;
+            server(c,b->{b.testAbility=null;var own=player==null?null:b.squads.get(player);if(own!=null){Commander.reset(b,own);}if(b.running)b.campaign.returnLobby();});
             if(oldW>0)window(c,oldW,oldH,oldGui);stage=99;
         }
 
@@ -3882,15 +3885,18 @@ public final class Phase1Checks implements ClientModInitializer {
                 case 0->{ // the atlas, then a fresh commander (the Marshal) with 300 gold at camp, in no party or room, on a 960x540 GUI 1 window
                     if(tick<20)return;var w=c.getWindow();oldW=w.getWidth();oldH=w.getHeight();oldGui=c.options.getGuiScale().getValue();player=c.player.getUuid();
                     List<String> bad=new ArrayList<>();
-                    for(var cl:Spec.CLASSES){
-                        String iconName="table/icon-class-"+cl.id(),pic=BattleHud.abilityIcon(cl.active()); // named in a variable: the generator's literal scan (build_ui_art --verify) reads only whole names
+                    for(String cl:CLASS_ART){
+                        String iconName="table/icon-class-"+cl;
                         var ic=UiTex.has(iconName)?UiTex.entry(iconName):null;
                         if(ic==null||ic.w()!=14||ic.h()!=14)bad.add(iconName+(ic==null?" missing":" "+ic.w()+"x"+ic.h()));
+                    }
+                    for(String active:ACTIVES){
+                        String pic=BattleHud.abilityIcon(active); // named in a variable: the generator's literal scan (build_ui_art --verify) reads only whole names // named in a variable: the generator's literal scan (build_ui_art --verify) reads only whole names
                         var ab=UiTex.has(pic)?UiTex.entry(pic):null;
                         if(ab==null||ab.w()!=22||ab.h()!=20)bad.add(pic+(ab==null?" missing":" "+ab.w()+"x"+ab.h()));
                     }
-                    boolean same=Spec.CLASSES.length==ACTIVES.length;for(int i=0;same&&i<ACTIVES.length;i++)same=Arrays.asList(ACTIVES).contains(Spec.CLASSES[i].active());
-                    report("p1-ui-icons-atlas",bad.isEmpty()&&same,Spec.CLASSES.length+" classes, each with its 14x14 icon and its active's 22x20 picture in the atlas"+(bad.isEmpty()?"":"; wrong: "+bad)+(same?"":"; the sheet's actives are not the six this suite knows"));
+                    List<String> ported=new ArrayList<>();for(var r:Spec.RELICS)if(!r.fromClass().equals("-"))ported.add(r.id());boolean same=ported.size()==ACTIVES.length&&ported.containsAll(Arrays.asList(ACTIVES));
+                    report("p1-ui-icons-atlas",bad.isEmpty()&&same,CLASS_ART.length+" role icons, each with its 14x14 icon and its active's 22x20 picture in the atlas"+(bad.isEmpty()?"":"; wrong: "+bad)+(same?"":"; the sheet's actives are not the six this suite knows"));
                     c.setScreen(null);CampaignClient.homeMode="skirmish";window(c,960,540,1);stage=-1;
                     server(c,b->{if(b.running)b.campaign.returnLobby();var id=player;b.campaign.social.leaveRoom(id);b.campaign.social.leaveParty(id);b.campaign.closeParty();b.campaign.difficulty="normal";
                         var p=new Profile();p.gold=300;p.commander="marshal";b.campaign.profiles.put(id,p);b.campaign.save(id);stage=1;});
@@ -3914,10 +3920,10 @@ public final class Phase1Checks implements ClientModInitializer {
                     if(k==6)UiRecruitChecks.park(c);
                     if(k==12){var s=UiPagesChecks.screen(c);
                         List<String> boxes=new ArrayList<>(),missing=new ArrayList<>();
-                        for(var cl:Spec.CLASSES){int[] r=WarTablePages.rects().get("class-"+cl.id());boxes.add(cl.id()+" "+box(r));if(r==null)missing.add(cl.id());}
+                        for(String set:ROLE_SETS){int[] r=WarTablePages.rects().get("role-"+set);boxes.add(set+" "+box(r));if(r==null)missing.add(set);}
                         shot(c,"ui-icons-classes-gui2");
-                        boolean ok=s!=null&&UiPagesChecks.pages(c)!=null&&missing.isEmpty()&&"table/plaque-120-here".equals(WarTablePages.textures().get("class-marshal"))&&"table/plaque-120".equals(WarTablePages.textures().get("class-champion"));
-                        report("p1-ui-icons-classes",ok,"the Banner page at 1920x1080 GUI 2 (canvas "+UiCanvas.width()+"x"+UiCanvas.height()+", k "+UiCanvas.k()+") drew a plaque for each class, the Marshal's lit: "+boxes+(missing.isEmpty()?"":"; no plaque for "+missing)+(ok?"":" WRONG"));
+                        boolean ok=s!=null&&UiPagesChecks.pages(c)!=null&&missing.isEmpty()&&"table/plaque-120-here".equals(WarTablePages.textures().get("role-commander"))&&"table/plaque-120".equals(WarTablePages.textures().get("role-bruiser"));
+                        report("p1-ui-icons-classes",ok,"the Banner page at 1920x1080 GUI 2 (canvas "+UiCanvas.width()+"x"+UiCanvas.height()+", k "+UiCanvas.k()+") drew a plaque for each role, the Commander's lit (a fresh Marshal wears no gear): "+boxes+(missing.isEmpty()?"":"; no plaque for "+missing)+(ok?"":" WRONG"));
                         c.setScreen(null);window(c,960,540,1);stage=40; // the practice battle (the server starts it)
                     }
                 }
@@ -3971,21 +3977,21 @@ public final class Phase1Checks implements ClientModInitializer {
         /** The class path: testAbility cleared, the squad's class set on the server, the packet's active fills the slot (the Quartermaster's
          *  too once the build has Forward Supply; an active with no behaviour here, ready below 0, leaves it bare). */
         void real(MinecraftClient c,int tick){
-            if(index>=Spec.CLASSES.length){stage=8;return;}
-            var cl=Spec.CLASSES[index];int k=at(tick);var t=BattleHud.texts();
+            if(index>=ACTIVES.length){stage=8;return;}
+            String active=ACTIVES[index];int k=at(tick);var t=BattleHud.texts();
             switch(sub){
-                case 0->{if(k>=10){serverClass=cl.id();go(1,tick);}}
+                case 0->{if(k>=10){serverRelic=active;go(1,tick);}}
                 case 1->{
-                    boolean named=GravesAndGloryClient.commanderActive.equals(cl.active());
-                    boolean drawn=BattleHud.rects().containsKey("ability")&&cl.active().equals(t.get("ability"));
-                    if(named&&k>=8&&(drawn||cl.active().equals(HIDDEN)||GravesAndGloryClient.commanderReady<0)){
+                    boolean named=GravesAndGloryClient.commanderActive.equals(active);
+                    boolean drawn=BattleHud.rects().containsKey("ability")&&active.equals(t.get("ability"));
+                    if(named&&k>=8&&(drawn||active.equals(HIDDEN)||GravesAndGloryClient.commanderReady<0)){
                         UiRecruitChecks.park(c);String pic=t.getOrDefault("ability-icon","");
-                        boolean right=drawn?!cl.active().equals(HIDDEN)&&BattleHud.abilityIcon(cl.active()).equals(pic):!BattleHud.rects().containsKey("ability");
-                        realOk&=right;realWhy+=(realWhy.isEmpty()?"":"; ")+cl.id()+": the packet names "+GravesAndGloryClient.commanderActive+" (ready in "+GravesAndGloryClient.commanderReady+", running "+GravesAndGloryClient.commanderFor+"), the slot "+(drawn?"drew "+pic+" ("+slot()+")":cl.active().equals(HIDDEN)?"was hidden, as the Quartermaster's is":"stayed bare")+(right?"":" WRONG");
+                        boolean right=drawn?!active.equals(HIDDEN)&&BattleHud.abilityIcon(active).equals(pic):!BattleHud.rects().containsKey("ability");
+                        realOk&=right;realWhy+=(realWhy.isEmpty()?"":"; ")+active+": the packet names "+GravesAndGloryClient.commanderActive+" (ready in "+GravesAndGloryClient.commanderReady+", running "+GravesAndGloryClient.commanderFor+"), the slot "+(drawn?"drew "+pic+" ("+slot()+")":active.equals(HIDDEN)?"was hidden, as the Quartermaster's is":"stayed bare")+(right?"":" WRONG");
                         go(2,tick);}
-                    else if(k>300){realOk=false;realWhy+=(realWhy.isEmpty()?"":"; ")+cl.id()+": the slot never followed the class (packet "+GravesAndGloryClient.commanderActive+", ready "+GravesAndGloryClient.commanderReady+", "+slot()+") WRONG";index++;go(0,tick);}
+                    else if(k>300){realOk=false;realWhy+=(realWhy.isEmpty()?"":"; ")+active+": the slot never followed the class (packet "+GravesAndGloryClient.commanderActive+", ready "+GravesAndGloryClient.commanderReady+", "+slot()+") WRONG";index++;go(0,tick);}
                 }
-                case 2->{if(k==3){shot(c,"ui-icons-hud-"+cl.id()+"-real-gui2");index++;go(0,tick);}}
+                case 2->{if(k==3){shot(c,"ui-icons-hud-"+active+"-real-gui2");index++;go(0,tick);}}
                 default->{index++;go(0,tick);}
             }
         }

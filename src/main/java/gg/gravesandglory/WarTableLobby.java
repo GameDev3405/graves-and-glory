@@ -11,11 +11,11 @@ import java.util.*;
 
 /** The War Table lobby (plan 3.4 and 4C.3; Kort, 2026-10-30): one page where a room of up to eight commanders, four a side, takes
  *  its seats (CampScreen page lobby). On the left the council sheet: the two sides' four seats each (a commander's House seal,
- *  name, class and ready mark; a seat bots will fill says BOT; a seat beyond the room's size is closed), then the viewer's own
- *  House and class, the Ready plate and the countdown line. On the right the orders note: the mode, the map, the seats a side and
+ *  name, role and ready mark; a seat bots will fill says BOT; a seat beyond the room's size is closed), then the viewer's own
+ *  House and role (the set he wears most of; gear is changed in the Arsenal), the Ready plate and the countdown line. On the right the orders note: the mode, the map, the seats a side and
  *  the bot fill, which only the host changes and everyone sees. Every commander ready starts the server's ten-second countdown
  *  (SocialHub.countdown); anyone standing down stops it. The state is the server's (Campaign.socialSnapshot): the page only sends
- *  social: and class: commands. Everything is drawn in canvas pixels; page coordinates are offset by WarTable.column(COMPACT). */
+ *  social: commands. Everything is drawn in canvas pixels; page coordinates are offset by WarTable.column(COMPACT). */
 final class WarTableLobby {
     /** The sheet and the note on the 960 page: the pair stands centred, 24 apart, both papers 124 from the top. */
     static final int SHEET_X = 150, NOTE_X = 578, TOP = 124, SHEET_W = 404, NOTE_W = 232, PAPER_H = 373;
@@ -23,7 +23,7 @@ final class WarTableLobby {
     static final int[] COMPACT = {-53, -32};
     /** On the sheet (sheet-relative): text edge and width, the seat columns, the seats' rows, the picks and the Ready plate. */
     static final int PAD = 22, TEXT_W = 360, COL_W = 174, COL_GAP = 12, SEATS = 4, TEAM_Y = 40, SEAT_Y = 56, SEAT_H = 24, SEAT_STEP = 27,
-            HOST_Y = 166, HOUSE_HEAD_Y = 184, HOUSE_Y = 202, CHIP_PAD = 6, CHIP_SEAL = 16, CHIP_SEAL_GAP = 4, CHIP_GAP = 4, CLASS_HEAD_Y = 236, CLASS_Y = 254, TILE_W = 36, TILE_GAP = 4,
+            HOST_Y = 166, HOUSE_HEAD_Y = 184, HOUSE_Y = 202, CHIP_PAD = 6, CHIP_SEAL = 16, CHIP_SEAL_GAP = 4, CHIP_GAP = 4, ROLE_HEAD_Y = 236, ROLE_Y = 254,
             READY_Y = 288, STATUS_Y = 334, NOTICE_Y = 350, STEP = 12;
     /** On the note (note-relative): its text edge and width, and the rows of the orders. */
     static final int NPAD = 18, NOTE_TEXT_W = 196, MODE_Y = 44, MAP_Y = 116, CARD_Y = 132, SIZE_Y = 254, FILL_Y = 302, LEAVE_Y = 344,
@@ -37,11 +37,11 @@ final class WarTableLobby {
     private static final Map<String, Integer> colorsDrawn = new LinkedHashMap<>();
     private static final Map<String, String> texturesDrawn = new LinkedHashMap<>();
     private static final List<String> sentCommands = new ArrayList<>();
-    /** Boxes {x,y,w,h} in canvas px the last frame drew: table, rail, sheet, note, seat-(team)-(i), house-(id), class-(id), ready,
+    /** Boxes {x,y,w,h} in canvas px the last frame drew: table, rail, sheet, note, seat-(team)-(i), house-(id), ready,
      *  status, mode-(id), map-card, map-prev, map-next, size-down, size-up, fill, leave, notice. */
     static Map<String, int[]> rects() { return Collections.unmodifiableMap(rectsDrawn); }
     /** Words drawn: room, host, seat-(team)-(i) (a commander's name, "BOT", "Open" or "Closed"), seat-(team)-(i)-state ("ready",
-     *  "waiting", "bot", "open", "closed"), seat-(team)-(i)-house, seat-(team)-(i)-class, house (the viewer's pick), class, ready
+     *  "waiting", "bot", "open", "closed"), seat-(team)-(i)-house, seat-(team)-(i)-role, house (the viewer's pick), role, gear, ready
      *  (the plate's label), status, countdown, mode, map, size, fill, orders ("host" or the host's name), notice. */
     static Map<String, String> texts() { return Collections.unmodifiableMap(textsDrawn); }
     static Map<String, Integer> colors() { return Collections.unmodifiableMap(colorsDrawn); }
@@ -50,7 +50,7 @@ final class WarTableLobby {
     static List<String> sent() { return Collections.unmodifiableList(sentCommands); }
 
     /** One seat as the sheet shows it. kind: human, bot, open or closed. */
-    record Seat(String kind, String name, String house, String cls, boolean ready, boolean online, boolean host, boolean me) {}
+    record Seat(String kind, String name, String house, String role, boolean ready, boolean online, boolean host, boolean me) {}
 
     final CampScreen screen;
     final Map<String, UiButton> buttons = new LinkedHashMap<>();
@@ -97,7 +97,8 @@ final class WarTableLobby {
     static int myTeam() { var m = me(); return m == null || !m.has("team") ? -1 : m.get("team").getAsInt(); }
     static boolean myReady() { var m = me(); return m != null && flag(m, "ready"); }
     static String myHouse() { var m = me(); String h = m == null ? "" : str(m, "house"); return h.isEmpty() ? RosterMath.rollHouse(CampaignClient.profile.banner) : h; }
-    static String myClass() { return CampaignClient.profile.commander; }
+    /** The role the viewer fights in: the set he wears most pieces of (GearStats), as the server tells the room. */
+    static String myRole() { var m = me(); String r = m == null ? "" : str(m, "role"); return r.isEmpty() ? GearStats.of(CampaignClient.profile).role() : r; }
     /** Units my banner fields under my House pick (the server's count; -1 before it says). */
     static int myTroops() { var m = me(); return m == null || !m.has("troops") ? -1 : m.get("troops").getAsInt(); }
     /** Why I cannot ready ("" when I can): my banner holds no troop of the House I picked. The server refuses the same. */
@@ -122,7 +123,7 @@ final class WarTableLobby {
         List<Seat> out = new ArrayList<>();
         for (var r : commanders()) {
             if (!r.has("team") || r.get("team").getAsInt() != team || out.size() >= SEATS) continue;
-            out.add(new Seat("human", str(r, "name"), str(r, "house"), str(r, "class"), flag(r, "ready"), !r.has("online") || flag(r, "online"), flag(r, "host"), flag(r, "me")));
+            out.add(new Seat("human", str(r, "name"), str(r, "house"), str(r, "role"), flag(r, "ready"), !r.has("online") || flag(r, "online"), flag(r, "host"), flag(r, "me")));
         }
         boolean fill = !social().has("fill") || flag("fill");
         while (out.size() < SEATS) out.add(out.size() < size() ? new Seat(fill ? "bot" : "open", fill ? "BOT" : "Open seat", "", "", false, true, false, false) : new Seat("closed", "Closed", "", "", false, true, false, false));
@@ -162,11 +163,6 @@ final class WarTableLobby {
             chipSeals.put(id, row.seals()[i]);
             var b = add("house-" + id, new UiButton(cx, sy + HOUSE_Y, row.widths()[i], WarTablePages.CHIP_H, Text.literal(RosterMath.houseName(id)), x -> send("social:house:" + id), (g, x, y, w, h, hot) -> paintHouse(g, id, x, y, w, h)));
             b.active = idle && !choosing;
-        }
-        for (int i = 0; i < Spec.CLASSES.length; i++) {
-            var c = Spec.CLASSES[i];
-            var b = add("class-" + c.id(), new UiButton(sx + PAD + (TILE_W + TILE_GAP) * i, sy + CLASS_Y, TILE_W, 24, Text.literal(c.name()), x -> send("class:" + c.id()), (g, x, y, w, h, hot) -> paintClass(g, c, x, y, w, h)));
-            b.active = idle;
         }
         String label = readyLabel();
         var ready = add("ready", new UiButton(sx + (SHEET_W - 240) / 2, sy + READY_Y, 240, 40, Text.literal(label), b -> { UiSounds.toggled(!myReady()); send("social:ready"); }, (g, x, y, w, h, hot) -> plate(g, "ready", readyLabel(), !myReady(), x, y)));
@@ -293,7 +289,11 @@ final class WarTableLobby {
     void underline(DrawContext g, int x, int y, int width, int color) { g.fill(x, y, x + width, y + 1, color); }
 
     static Spec.HousesRow houseRow(String id) { for (var h : Spec.HOUSES) if (h.id().equals(id)) return h; return null; }
-    static Spec.ClassesRow classRow(String id) { for (var c : Spec.CLASSES) if (c.id().equals(id)) return c; return null; }
+    static Spec.GearSetsRow setRow(String id) { for (var r : Spec.GEARSETS) if (r.id().equals(id)) return r; return null; }
+    /** A role's word: the id capitalised (Bruiser, Healer, Ranged, Commander). */
+    static String roleName(String id) { return id.isEmpty() ? "" : Character.toUpperCase(id.charAt(0)) + id.substring(1); }
+    /** The seat icon of a role: the art the first class of its set had (the table has no role icons yet), or null for an unknown role. */
+    static String roleIcon(String id) { var r = setRow(id); return r == null ? null : "table/icon-class-" + r.classes().split(",")[0]; }
 
     void seal(DrawContext g, String house, int x, int y, int size) {
         var h = houseRow(house);
@@ -328,8 +328,12 @@ final class WarTableLobby {
         var hr = houseRow(house);
         int troops = myTroops();
         head(g, "house", "Your House", hr == null ? "" : hr.name() + (troops > 0 ? ", " + troops + (troops == 1 ? " troop" : " troops") : troops == 0 ? ", no troops" : ""), lx, y + HOUSE_HEAD_Y, TEXT_W);
-        var cr = classRow(myClass());
-        head(g, "class", "Your class", cr == null ? "" : cr.name(), lx, y + CLASS_HEAD_Y, TEXT_W);
+        String role = myRole();
+        var sr = setRow(role);
+        head(g, "role", "Your role", sr == null ? "" : roleName(role) + ", " + sr.name(), lx, y + ROLE_HEAD_Y, TEXT_W);
+        int worn = sr == null ? 0 : GearStats.of(CampaignClient.profile).setCounts().getOrDefault(role, 0);
+        String gearLine = UiMath.trim(worn + " of 4 " + (sr == null ? "" : sr.name()) + " pieces worn. Change gear and relics in the Arsenal.", TEXT_W, t -> font.getWidth(DarkUi.body(t)));
+        line(g, "gear", DarkUi.body(gearLine), gearLine, lx, y + ROLE_Y, DarkUi.SEPIA);
         status(g, x, y);
         notice(g, lx, y);
     }
@@ -365,15 +369,15 @@ final class WarTableLobby {
                         right -= hw + 6;
                     }
                     if (seat.ready()) { UiTex.draw(g, "table/ready-check", right - 9, y + 8); right -= 13; }
-                    var c = classRow(seat.cls());
-                    if (c != null) { String icon = "table/icon-class-" + c.id(); UiTex.draw(g, icon, right - 14, y + 5); right -= 18; }
+                    String icon = roleIcon(seat.role());
+                    if (icon != null) { UiTex.draw(g, icon, right - 14, y + 5); right -= 18; }
                     String tagWord = seat.host() ? "Host" : !seat.online() ? "Away" : "";
                     if (!tagWord.isEmpty()) { int tw = font.getWidth(DarkUi.body(tagWord)); g.drawText(font, DarkUi.body(tagWord), right - tw, y + 7, DarkUi.SEPIA, false); right -= tw + 5; }
                     String name = UiMath.trim(seat.name(), right - (x + 25), s -> font.getWidth(DarkUi.body(s)));
                     g.drawText(font, DarkUi.body(name), x + 25, y + 7, ink, false);
                     if (seat.me()) g.fill(x + 25, y + 18, x + 25 + font.getWidth(DarkUi.body(name)), y + 19, DarkUi.INK_TEXT);
                     textsDrawn.put(key + "-house", seat.house());
-                    textsDrawn.put(key + "-class", seat.cls());
+                    textsDrawn.put(key + "-role", seat.role());
                     state = seat.ready() ? "ready" : "waiting";
                 }
                 case "bot" -> {
@@ -426,19 +430,6 @@ final class WarTableLobby {
         rectsDrawn.put("house-" + id, new int[]{x, y, w, h});
         texturesDrawn.put("house-" + id, tex);
         if (on) textsDrawn.put("house", id);
-    }
-
-    void paintClass(DrawContext g, Spec.ClassesRow c, int x, int y, int w, int h) {
-        boolean on = c.id().equals(myClass());
-        String tex = on ? "table/chip-house-on" : "table/chip-house";
-        UiTex.nine(g, tex, x, y, w + 1, on ? h + WarTablePages.CHIP_RULE : h + 2);
-        String icon = "table/icon-class-" + c.id();
-        UiTex.draw(g, icon, x + (w - 14) / 2, y + 5 + (on ? 1 : 0));
-        if (on) g.fill(x + 8, y + h, x + w - 8, y + h + 2, DarkUi.INK_TEXT);
-        else if (WarTableRecruit.hot(buttons.get("class-" + c.id()))) underline(g, x + 8, y + h - 2, w - 16, DarkUi.INK_TEXT);
-        rectsDrawn.put("class-" + c.id(), new int[]{x, y, w, h});
-        texturesDrawn.put("class-" + c.id(), tex);
-        if (on) textsDrawn.put("class", c.id());
     }
 
     /** A 240x40 plate: brass while it calls to act (Ready, Open), iron once pressed (Stand down), dull while it cannot be pressed. */
