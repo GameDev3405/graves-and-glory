@@ -1,0 +1,339 @@
+{
+ "format": 1,
+ "item": "healer_boots",
+ "slot": "boots",
+ "density": 1,
+ "size": [
+  64,
+  64
+ ],
+ "cloth": "gravesandglory:textures/entity/gear/healer_boots/team_cloth_",
+ "skins": {
+  "1": "gravesandglory:textures/entity/gear/healer_boots/healer_boots_r1.png",
+  "2": "gravesandglory:textures/entity/gear/healer_boots/healer_boots_r2.png",
+  "3": "gravesandglory:textures/entity/gear/healer_boots/healer_boots_r3.png",
+  "4": "gravesandglory:textures/entity/gear/healer_boots/healer_boots_r4.png",
+  "5": "gravesandglory:textures/entity/gear/healer_boots/healer_boots_r5.png"
+ },
+ "glow": {
+  "5": "gravesandglory:textures/entity/gear/healer_boots/healer_boots_e5.png"
+ },
+ "bones": [
+  {
+   "name": "sandal_right",
+   "parent": "right_leg",
+   "team": false,
+   "tag": "boots",
+   "stages": [],
+   "sheet": [
+    64,
+    64
+   ],
+   "pivot": [
+    0,
+    0,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "boxes": [
+    {
+     "origin": [
+      -2.5,
+      8.75,
+      -2.5
+     ],
+     "size": [
+      5,
+      3,
+      5
+     ],
+     "uv": [
+      0,
+      0
+     ],
+     "mirror": false,
+     "dilation": [
+      0.0,
+      0.0,
+      0.0
+     ]
+    },
+    {
+     "origin": [
+      -2.5,
+      11.5,
+      -3
+     ],
+     "size": [
+      5,
+      1,
+      6
+     ],
+     "uv": [
+      24,
+      8
+     ],
+     "mirror": false,
+     "dilation": [
+      0.0,
+      0.0,
+      0.0
+     ]
+    },
+    {
+     "origin": [
+      -2,
+      9,
+      -3.5
+     ],
+     "size": [
+      1,
+      1,
+      1
+     ],
+     "uv": [
+      22,
+      15
+     ],
+     "mirror": false,
+     "dilation": [
+      0.0,
+      0.0,
+      0.0
+     ]
+    },
+    {
+     "origin": [
+      1,
+      9.5,
+      -3.5
+     ],
+     "size": [
+      1,
+      1,
+      1
+     ],
+     "uv": [
+      26,
+      15
+     ],
+     "mirror": false,
+     "dilation": [
+      0.0,
+      0.0,
+      0.0
+     ]
+    }
+   ]
+  },
+  {
+   "name": "cuff_right",
+   "parent": "right_leg",
+   "team": false,
+   "tag": "boots",
+   "stages": [
+    5
+   ],
+   "sheet": [
+    64,
+    64
+   ],
+   "pivot": [
+    0,
+    0,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "boxes": [
+    {
+     "origin": [
+      -3,
+      7.75,
+      -3
+     ],
+     "size": [
+      6,
+      1,
+      6
+     ],
+     "uv": [
+      40,
+      0
+     ],
+     "mirror": false,
+     "dilation": [
+      0.0,
+      0.0,
+      0.0
+     ]
+    }
+   ]
+  },
+  {
+   "name": "sandal_left",
+   "parent": "left_leg",
+   "team": false,
+   "tag": "boots",
+   "stages": [],
+   "sheet": [
+    64,
+    64
+   ],
+   "pivot": [
+    0,
+    0,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "boxes": [
+    {
+     "origin": [
+      -2.5,
+      8.75,
+      -2.5
+     ],
+     "size": [
+      5,
+      3,
+      5
+     ],
+     "uv": [
+      20,
+      0
+     ],
+     "mirror": false,
+     "dilation": [
+      0.0,
+      0.0,
+      0.0
+     ]
+    },
+    {
+     "origin": [
+      -2.5,
+      11.5,
+      -3
+     ],
+     "size": [
+      5,
+      1,
+      6
+     ],
+     "uv": [
+      0,
+      15
+     ],
+     "mirror": false,
+     "dilation": [
+      0.0,
+      0.0,
+      0.0
+     ]
+    },
+    {
+     "origin": [
+      -2,
+      9,
+      -3.5
+     ],
+     "size": [
+      1,
+      1,
+      1
+     ],
+     "uv": [
+      30,
+      15
+     ],
+     "mirror": false,
+     "dilation": [
+      0.0,
+      0.0,
+      0.0
+     ]
+    },
+    {
+     "origin": [
+      1,
+      9.5,
+      -3.5
+     ],
+     "size": [
+      1,
+      1,
+      1
+     ],
+     "uv": [
+      34,
+      15
+     ],
+     "mirror": false,
+     "dilation": [
+      0.0,
+      0.0,
+      0.0
+     ]
+    }
+   ]
+  },
+  {
+   "name": "cuff_left",
+   "parent": "left_leg",
+   "team": false,
+   "tag": "boots",
+   "stages": [
+    5
+   ],
+   "sheet": [
+    64,
+    64
+   ],
+   "pivot": [
+    0,
+    0,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "boxes": [
+    {
+     "origin": [
+      -3,
+      7.75,
+      -3
+     ],
+     "size": [
+      6,
+      1,
+      6
+     ],
+     "uv": [
+      0,
+      8
+     ],
+     "mirror": false,
+     "dilation": [
+      0.0,
+      0.0,
+      0.0
+     ]
+    }
+   ]
+  }
+ ]
+}

@@ -178,8 +178,7 @@ class GearWeapons(unittest.TestCase):
 
 class GearIcons(unittest.TestCase):
     def test_item_icons(self):
-        """Every item id at every rarity: 32 x 32 RGBA, a clear 1 px margin, no House ramp, Common unlike Legendary.
-        The atlas rows wait on Kort's approval of the art, so they are not checked here yet."""
+        """Every item id at every rarity: 32 x 32 RGBA, a clear 1 px margin, no House ramp, Common unlike Legendary."""
         import icons, graveborn, tidecallers, wildmoot
         banned = {tuple(c[:3]) for R in (graveborn.VIOLET, tidecallers.SEA, wildmoot.OCHRE) for c in R}
         ics = icons.item_icons()
@@ -198,5 +197,15 @@ class GearIcons(unittest.TestCase):
                 self.assertFalse({p[:3] for p in px if p[3]} & banned, (iid, r))
                 looks[r] = px
             self.assertNotEqual(looks[1], looks[5], iid)   # the slot border carries rarity; middle tiers may fold alike
+    def test_atlas_rows(self):
+        """Every item at every rarity and every relic has a fixed 32 x 32 row in the UI atlas, and its PNG is there."""
+        import json, icons
+        gui = os.path.join(ROOT, "src", "main", "resources", "assets", "gravesandglory", "textures", "gui")
+        with open(os.path.join(gui, "atlas.json"), encoding="utf-8") as f: rows = json.load(f)["textures"]
+        want = ["gear/%s_r%d" % (i["id"], r) for i in gearlib.ids()["items"] for r in gearlib.RARITIES] + ["relic/" + k for k in icons.RELICS]
+        for name in want:
+            self.assertIn(name, rows)
+            self.assertEqual((rows[name]["kind"], rows[name]["w"], rows[name]["h"]), ("fixed", 32, 32), name)
+            self.assertTrue(os.path.isfile(os.path.join(gui, name + ".png")), name)
 
 if __name__ == "__main__": unittest.main()
