@@ -91,3 +91,7 @@ Source: pixabay.com, downloaded 2026-11-02 (Pixabay Content Licence). Author is 
 - Siege ram swing, gate chains in motion, wagon wheels loop, survival wave ambience beyond the two horns.
 - Victory/defeat music for the losing side (defeat has only its sting), a tense track for overtime, a menu track.
 - Banner page drag sounds; Survival and Veterans still use vanilla sounds (soul escape, level-up chime, wither spawn).
+
+## Installing new candidates
+
+The candidate takes live in `work/audio-cues/` (not in the game yet). Once Kort picks, write `work/audio-cues/PICKS.json` (shape: `tools/audio/PICKS.example.json`) and run `python tools/install_audio.py --dry-run`, then without the flag. It copies the files, updates `sounds.json` and appends the credits to `docs/CREDITS-AUDIO.md`. `--report` lists the vanilla sound calls a cue would replace; those code changes are made by hand. New events still need an `AudioCues` entry and a subtitle.

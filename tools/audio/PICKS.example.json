@@ -1,0 +1,225 @@
+{
+  "ballista": [
+    "ballista_hit_1.ogg",
+    "ballista_release_1.ogg"
+  ],
+  "banner_drag": [
+    "banner_drag_1.ogg"
+  ],
+  "banner_flap": [
+    "banner_flap_1.ogg"
+  ],
+  "battle_intro": [
+    "battle_intro.ogg"
+  ],
+  "beast_attacks": [
+    "brute_attack_1.ogg",
+    "hound_attack_1.ogg",
+    "tusk_attack_1.ogg"
+  ],
+  "beast_bite": [
+    "beast_bite_1.ogg"
+  ],
+  "blacksmith_roll": [
+    "blacksmith_roll_1.ogg"
+  ],
+  "break_down": [
+    "break_down_1.ogg"
+  ],
+  "camp_room_tone": [
+    "camp_room_tone_1.ogg"
+  ],
+  "campaign_briefing_music": [
+    "campaign_briefing_music_1.ogg"
+  ],
+  "capture_lost": [
+    "capture_lost.ogg"
+  ],
+  "capture_rising": [
+    "capture_rising_1.ogg"
+  ],
+  "capture_start": [
+    "capture_start.ogg"
+  ],
+  "capture_won": [
+    "capture_won.ogg"
+  ],
+  "coin_clink": [
+    "coin_clink_1.ogg"
+  ],
+  "commander_actives": [
+    "active_bloodrush_1.ogg",
+    "active_curse_1.ogg",
+    "active_heal_1.ogg",
+    "active_rally_1.ogg",
+    "active_shield_1.ogg",
+    "active_volley_1.ogg"
+  ],
+  "convoy_checkpoint": [
+    "convoy_checkpoint.ogg"
+  ],
+  "convoy_roll": [
+    "convoy_roll.ogg"
+  ],
+  "convoy_rollback": [
+    "convoy_rollback.ogg"
+  ],
+  "convoy_stop": [
+    "convoy_stop.ogg"
+  ],
+  "countdown_tick": [
+    "countdown_tick.ogg"
+  ],
+  "defeat": [
+    "defeat.ogg"
+  ],
+  "defeat_music": [
+    "defeat_music_1.ogg"
+  ],
+  "dummy_thud": [
+    "dummy_thud_1.ogg"
+  ],
+  "equip": [
+    "equip_1.ogg"
+  ],
+  "firepot_burn": [
+    "firepot_burn_1.ogg"
+  ],
+  "footsteps": [
+    "march_hooves_1.ogg",
+    "march_leather_1.ogg",
+    "march_plate_1.ogg"
+  ],
+  "forge_marks": [
+    "forge_marks_1.ogg"
+  ],
+  "formation_shout": [
+    "formation_shout_1.ogg"
+  ],
+  "gate_breach": [
+    "gate_breach.ogg"
+  ],
+  "gate_chains": [
+    "gate_chains_1.ogg"
+  ],
+  "gate_hit": [
+    "gate_hit.ogg"
+  ],
+  "gate_shut": [
+    "gate_shut.ogg"
+  ],
+  "harpoon_throw": [
+    "harpoon_throw_1.ogg"
+  ],
+  "healer_cast": [
+    "healer_cast_1.ogg"
+  ],
+  "horn_charge": [
+    "horn_charge.ogg"
+  ],
+  "horn_rally": [
+    "horn_rally.ogg"
+  ],
+  "horn_rout": [
+    "horn_rout.ogg"
+  ],
+  "map_ambience": [
+    "ambience_birds_1.ogg",
+    "ambience_crows_1.ogg",
+    "ambience_snow_1.ogg",
+    "ambience_water_1.ogg",
+    "ambience_wind_1.ogg"
+  ],
+  "morale_break": [
+    "morale_break_1.ogg"
+  ],
+  "mortar": [
+    "mortar_fire_1.ogg",
+    "shell_burst_1.ogg"
+  ],
+  "overtime_drum_pulse": [
+    "overtime_drum_pulse_1.ogg"
+  ],
+  "overtime_music": [
+    "overtime_music_1.ogg"
+  ],
+  "page_turn": [
+    "page_turn_1.ogg"
+  ],
+  "rarity_stings": [
+    "rarity_common_1.ogg",
+    "rarity_epic_1.ogg",
+    "rarity_legendary_1.ogg",
+    "rarity_rare_1.ogg",
+    "rarity_uncommon_1.ogg"
+  ],
+  "relic_use_dark": [
+    "relic_use_dark_1.ogg"
+  ],
+  "relic_use_earth": [
+    "relic_use_earth_1.ogg"
+  ],
+  "relic_use_fire": [
+    "relic_use_fire_1.ogg"
+  ],
+  "relic_use_ice": [
+    "relic_use_ice_1.ogg"
+  ],
+  "relic_use_light": [
+    "relic_use_light_1.ogg"
+  ],
+  "relic_use_lightning": [
+    "relic_use_lightning_1.ogg"
+  ],
+  "repair_hammer": [
+    "repair_hammer_1.ogg"
+  ],
+  "siege_ram_swing": [
+    "siege_ram_swing_1.ogg"
+  ],
+  "soul_leaving": [
+    "soul_leaving_1.ogg"
+  ],
+  "spear_thrust": [
+    "spear_thrust_1.ogg"
+  ],
+  "stamp_seal": [
+    "stamp_seal_1.ogg"
+  ],
+  "survival_wind": [
+    "survival_wind_1.ogg"
+  ],
+  "title_music": [
+    "title_music_1.ogg"
+  ],
+  "troop_voices": [
+    "troop_voices_1.ogg"
+  ],
+  "ui_back": [
+    "ui_back.ogg"
+  ],
+  "ui_confirm": [
+    "ui_confirm.ogg"
+  ],
+  "ui_deny": [
+    "ui_deny.ogg"
+  ],
+  "unit_reveal": [
+    "unit_reveal.ogg"
+  ],
+  "veteran_levelup": [
+    "veteran_levelup_1.ogg"
+  ],
+  "victory": [
+    "victory.ogg"
+  ],
+  "wagon_wheels": [
+    "wagon_wheels_1.ogg"
+  ],
+  "wave_rise": [
+    "wave_rise.ogg"
+  ],
+  "wave_warning": [
+    "wave_warning.ogg"
+  ]
+}
