@@ -4,6 +4,7 @@ import io
 import json
 import os
 import pathlib
+import shutil
 import sys
 import tempfile
 import unittest
@@ -105,8 +106,7 @@ class PortableLocalPaths(unittest.TestCase):
                 z.writestr('docs/N.txt', 'n')
             (root / 'dist/package-manifest.json').write_text(
                 json.dumps({'fileName': player.name, 'sha256': hashlib.sha256(player.read_bytes()).hexdigest()}))
-            with zipfile.ZipFile(root / 'dist/graves-and-glory-9.9.9.mrpack', 'w') as z:
-                z.writestr('server-overrides/server.properties', 'x=1\n')
+            shutil.copytree(ROOT / 'tools/server-kit', root / 'tools/server-kit')
             saved = {n: getattr(export_server, n) for n in ('ROOT', 'version', 'source_identity', 'validate_player_jar')}
             gate = export_server.build_skins.release_gate
             export_server.ROOT = root

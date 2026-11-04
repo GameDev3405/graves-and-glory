@@ -13,7 +13,7 @@ try {
     Initialize-Kit $PSScriptRoot $Root ([bool]$DryRun)
     Set-Location -LiteralPath $script:Root
 
-    if (!(Test-Path -LiteralPath 'fabric-server-launch.jar')) { throw 'fabric-server-launch.jar is missing. See README.md, step 3.' }
+    if (!(Test-Path -LiteralPath 'fabric-server-launch.jar')) { throw 'fabric-server-launch.jar is missing. Run .\setup.ps1 first (README.md, step 3).' }
     $java = Get-Command java -ErrorAction SilentlyContinue
     if ($null -eq $java) { throw 'java not found. Install Java 17 or newer (README.md, step 1).' }
     $javaMajor = Get-JavaMajor (cmd /c 'java -version 2>&1')

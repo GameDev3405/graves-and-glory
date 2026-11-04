@@ -1,11 +1,14 @@
-# Graves and Glory dedicated server kit (task 3.5, update loop 2A.8)
+# Graves and Glory dedicated server
 
-Plain files for running one Graves and Glory server on Minecraft 1.20.1 with Fabric. Port **25580**. Windows (`.ps1`) and Linux (`.sh`) twins do the same jobs. Nothing here downloads anything, touches a remote machine, or accepts the Minecraft EULA for you.
+Run one Graves and Glory server on Minecraft 1.20.1 with Fabric. This folder is the whole server kit: the server download extracts to exactly this layout, and `tools/server-kit/` in the repository is its source. Port **25580**, whitelist on. Windows (`.ps1`) and Linux (`.sh`) scripts do the same jobs. The only thing a script downloads is the Fabric launcher (`setup`), checked against a pinned SHA-256. Nothing here touches another machine or accepts the Minecraft EULA for you.
 
-## What is in the kit
+## What is in the folder
 
 | File | Job |
 |---|---|
+| `mods/` | The Graves and Glory jar and the four server dependency jars (Fabric API, Lithium, FerriteCore, ModernFix). Not in the repository folder; the server zip adds it |
+| `docs/` | Licence notices and third-party sources (server zip only) |
+| `setup.ps1` / `setup.sh` | Downloads the pinned Fabric 0.16.14 launcher (`fabric-server-launch.jar`) and checks its SHA-256. Starts nothing |
 | `start.ps1` / `start.sh` | Checks Java, version gate, config, EULA, backs up the world, then launches with Aikar flags |
 | `stop.ps1` / `stop.sh` | Clean stop (world saved). Never kills the process |
 | `gate.ps1` / `gate.sh` | Version gate; `-Pin` / `--pin` records the approved jar |
@@ -13,28 +16,27 @@ Plain files for running one Graves and Glory server on Minecraft 1.20.1 with Fab
 | `restore.ps1` / `restore.sh` | Put a backup back; backs up first, keeps the replaced world |
 | `update.ps1` / `update.sh` | Stop, back up, swap jar, pin, optional restart |
 | `lib.ps1` / `lib.sh` | Shared code |
+| `server.properties.default` | Defaults: port 25580, whitelist on, online mode on, RCON off, 16 slots. Copied to `server.properties` on first start only |
+| `whitelist.template.json` | Empty whitelist (`[]`), copied to `whitelist.json` on first start only |
 | `jvm-args.txt` | Optional, yours: extra JVM flags, one per line (not shipped) |
-| `server.properties.default` | Defaults: port 25580, whitelist on, online mode on, RCON off, 16 slots |
-| `whitelist.template.json` | Empty whitelist (`[]`) |
 
-Every script takes `-DryRun` (`--dry-run` for `.sh`) and `-Root DIR` (`--root DIR`). A dry run does all the checks and prints what it would do; it writes and starts nothing. Scripts work in the folder they sit in, so copy the whole kit into the server folder.
+Every script takes `-DryRun` (`--dry-run` for `.sh`) and `-Root DIR` (`--root DIR`). A dry run does all the checks and prints what it would do; it writes and starts nothing. Scripts work in the folder they sit in.
 
-## Install (a person does these steps)
+## Set up (a person does these steps)
 
-Pick a folder, for example `C:\GGServer` on Windows or `/opt/gg` on Linux. Run all commands from it.
+Extract the server zip into a new folder, for example `C:\GGServer` on Windows or `/opt/gg` on Linux. Run all commands from it. When you later extract a newer zip over it, never overwrite your own `server.properties`, `whitelist.json` or `eula.txt`; the zip does not contain those names.
 
-1. **Java 17 or newer.** Java 21 is what the research notes used. The scripts refuse older Java.
-2. **Copy this kit** (everything in `tools/server-kit/`) into the folder. Do not overwrite a live `server.properties`, `whitelist.json` or `eula.txt` when you copy a newer kit later; the kit does not ship those names.
-3. **Get the Fabric launcher and the server mods.** Two ways:
-   - Run `python tools/export_server.py` in the repo (needs a release build and the package step), extract `dist/*-server.zip` into the folder, and run its `setup-server.ps1`. It downloads the pinned Fabric 0.16.14 launcher and checks its SHA-256. Then **delete the extracted `server.properties`** (it binds localhost:25565) and the extracted `start-server.ps1`, and use this kit's scripts instead. That zip also carries the four server dependency jars in `mods/`.
-   - Or install Fabric Loader 0.16.14 for 1.20.1 yourself so that `fabric-server-launch.jar` is in the folder, and put the mod jar and Fabric API 0.92.2+1.20.1 in `mods/`.
-4. **Put exactly one `graves-and-glory-<version>.jar` in `mods/`.** The test-tool jar (`*DO-NOT-SHIP*`) and `-sources` jars are refused.
-5. **Pin the jar:** `.\gate.ps1 -Pin` (or `./gate.sh --pin`). This writes `mod-lock.json` with the version, build identity and file hash. Do this only after you know this is the build your players have.
-6. **EULA.** Run `.\start.ps1`. It creates `eula.txt` containing `eula=false` and stops. Read https://aka.ms/MinecraftEULA yourself. If you agree, edit `eula.txt` to `eula=true`. No script in this kit writes that line.
-7. **Whitelist.** `whitelist.json` starts empty and `white-list=true`, so nobody can join yet. Start the server and type `whitelist add <name>` in its console, or add entries by hand (`{"uuid": "...", "name": "..."}`).
-8. **Start:** `.\start.ps1` (Linux: `./start.sh`). Optional `-MemoryGB 8` (and `-JvmArgs`, see Extra JVM flags); the default is 6 (min and max heap equal, as Aikar advises). First start downloads Minecraft and Fabric libraries and builds the camp, so it is slow.
-9. **Reach it.** Players join `<host>:25580`. Open that one port in the host firewall, or keep it on Tailscale. The builder server uses 25570 and the Kingdom servers 25565-25567 and 25571, so 25580 does not collide. The default binds all interfaces; set `server-ip=` in `server.properties` to pin one address.
-10. **Smoke test:** join as a whitelisted player with the matching client build. The mod itself also refuses mismatched clients at login.
+1. **Java 17 or newer.** The scripts refuse older Java.
+2. **Get the Fabric launcher:** `.\setup.ps1` (Linux: `./setup.sh`; Linux and macOS need `chmod +x *.sh` if your unzip dropped the permission). It downloads the pinned Fabric 0.16.14 launcher and checks its SHA-256. It will not replace a launcher that is already there.
+3. **Check `mods/`.** It must hold exactly one `graves-and-glory-<version>.jar` plus the four dependency jars. The test-tool jar (`*DO-NOT-SHIP*`) and `-sources` jars are refused.
+4. **Pin the jar:** `.\gate.ps1 -Pin` (or `./gate.sh --pin`). This writes `mod-lock.json` with the version, build identity and file hash. Do this only after you know this is the build your players have.
+5. **EULA.** Run `.\start.ps1`. It creates `eula.txt` containing `eula=false` and stops. Read https://aka.ms/MinecraftEULA yourself. If you agree, edit `eula.txt` to `eula=true`. No script in this kit writes that line.
+6. **Whitelist.** `whitelist.json` starts empty and `white-list=true`, so nobody can join yet. Start the server and type `whitelist add <name>` in its console, or add entries by hand (`{"uuid": "...", "name": "..."}`).
+7. **Start:** `.\start.ps1` (Linux: `./start.sh`). Optional `-MemoryGB 8` (and `-JvmArgs`, see Extra JVM flags); the default is 6 (min and max heap equal, as Aikar advises). The first start downloads Minecraft and Fabric libraries and builds the camp, so it is slow.
+8. **Reach it.** Players join `<host>:25580` with the exact same client build. Open that one port in the host firewall, or keep it on Tailscale. The default binds all interfaces; set `server-ip=` in `server.properties` to pin one address. Port 25580 stays clear of 25565-25567, 25570 and 25571, which other servers on the same machine may use.
+9. **Smoke test:** join as a whitelisted player. The mod itself also refuses mismatched clients at login.
+
+Keep `level-name=Graves and Glory` in `server.properties`: the mod only activates on a world with that internal name (or the legacy `Bannerbound`), and logs why when it stays inactive. A random existing world is not converted. One shared battlefield per server process; the default 16 slots allow up to eight battle commanders plus camp visitors.
 
 ## Daily use
 
@@ -55,9 +57,9 @@ To add JVM flags (for example `-Dgg.build=camp`), either pass them on the comman
 
 The Java version check reads the line that contains `version "N"` from `java -version`, so a `JAVA_TOOL_OPTIONS` or `JDK_JAVA_OPTIONS` banner ("Picked up JAVA_TOOL_OPTIONS: ...") ahead of it no longer breaks the check. Setting `JAVA_TOOL_OPTIONS` also works as a way to pass flags, but `jvm-args.txt` is the supported route.
 
-## Update loop (2A.8)
+## Update
 
-After each candidate build:
+When there is a new build:
 
 ```
 .\update.ps1 -Jar C:\path\to\graves-and-glory-0.5.1.jar -Restart
@@ -73,12 +75,10 @@ Map artifacts live inside the world, so there is no separate map swap. To change
 - **No world without a backup:** `start` backs up first and aborts if the backup fails. `update` and `restore` do the same. A backup never overwrites an existing archive. Restore moves the old world aside rather than deleting it.
 - **EULA:** `start` refuses unless `eula.txt` says `eula=true`, and only a person writes that.
 
-## Assumptions made while building this (change freely)
+## Defaults and limits
 
-- World folder is `Graves and Glory` (the project's existing template and activation check use that name).
-- 6 GB default heap from the research notes; confirm it against the host's RAM. Aikar flags are the Paper docs set, with the 12 GB and up variant used from 12 GB.
-- 16 player slots and the flat-world, adventure-mode, normal-difficulty defaults copy the project's server template.
-- No server-side performance mods (Lithium and the rest in the research notes) are included; they need a licence and compatibility check first.
-- Whitelist is on and enforced. Online mode is on; RCON and query are off.
-- All mod state is inside the world folder, so a world backup is a full backup. Whitelist, ops and `mod-lock.json` are small; copy them by hand if you care.
-- Tested on Windows against a real 1.20.1 Fabric server and a harness client (`docs/reports/server-kit-2026-11.md`). The Linux `.sh` twins were only dry-run checked and have not booted a server. Nothing was installed on tjepkema-server.
+- World folder is `Graves and Glory`. The 16 player slots and the flat-world, adventure-mode, normal-difficulty defaults are the project's server template. The whitelist is on and enforced, online mode is on, RCON and query are off.
+- The default heap is 6 GB; confirm it against the host's RAM. Aikar flags are the Paper docs set, with the 12 GB and up variant used from 12 GB.
+- All mod state is inside the world folder, so a world backup is a full backup. The whitelist, ops and `mod-lock.json` are small; copy them by hand if you care.
+- Tested on Windows against a real 1.20.1 Fabric server and a client. The Linux `.sh` scripts have only been dry-run checked and have not booted a server.
+- This is a plain server for friends. It has no public matchmaking, and local-profile imports are still trusted.
