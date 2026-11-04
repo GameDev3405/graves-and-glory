@@ -5,8 +5,10 @@ import datetime as dt
 import json
 import os
 import pathlib
+import shutil
 import socket
 import struct
+import subprocess
 import sys
 import tempfile
 import threading
@@ -360,10 +362,74 @@ class CrashedRun(unittest.TestCase):
     def test_supervisor_checks_before_ending_on_exit_0(self):
         ps = (ROOT / 'tools' / 'builder-server' / 'start-build-server.ps1').read_text()
         stop = ps.index("'clean stop; supervisor ending.'")
-        check = ps.index("Invoke-Ops @('run-crashed', '--since', \"$startedEpoch\")")
+        check = ps.index('Test-RunCrashed $PSScriptRoot $startedUtc')
         self.assertLess(check, stop)
-        self.assertLess(ps.index('$startedEpoch = '), ps.index('Start-Process'))
+        self.assertLess(ps.index('$startedUtc = '), ps.index('Start-Process'))
+        self.assertNotIn("Invoke-Ops @('run-crashed'", ps)   # the server PC has no Python; the check must not need it
 
+
+POWERSHELL = shutil.which('powershell') or shutil.which('pwsh')
+
+
+@unittest.skipUnless(POWERSHELL, 'needs PowerShell')
+class SupervisorCrashCheck(unittest.TestCase):
+    """The pure-PowerShell Test-RunCrashed in start-build-server.ps1 (no Python on the server PC), run through its -CheckCrashedSince
+    dry run against a temp server folder. Same cases as CrashedRun."""
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.t = pathlib.Path(self.tmp.name)
+        (self.t / 'logs').mkdir()
+        self.since = int(time.time()) - 60
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def log(self, text, age=0):
+        f = self.t / 'logs' / 'latest.log'
+        f.write_text(text)
+        os.utime(f, (time.time() - age, time.time() - age))
+
+    def check(self):
+        script = ROOT / 'tools' / 'builder-server' / 'start-build-server.ps1'
+        r = subprocess.run([POWERSHELL, '-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', str(script),
+                            '-CheckCrashedSince', str(self.since), '-CheckDir', str(self.t)], capture_output=True, text=True, timeout=60)
+        self.assertIn(r.returncode, (0, 1), r.stdout + r.stderr)
+        return r.returncode, r.stdout
+
+    def test_deliberate_stop_is_clean(self):
+        self.log('[12:00:00] [Server thread/INFO]: Stopping the server' + chr(10))
+        self.assertEqual(self.check(), (0, 'clean' + chr(10)))
+
+    def test_tick_loop_lines_count_as_a_crash(self):
+        for line in ('[16:08:12] [Server thread/ERROR]: Encountered an unexpected exception', '[16:08:12] [Server thread/ERROR]: Exception in server tick loop'):
+            with self.subTest(line=line):
+                self.log('[16:00:00] Done (3.3s)!' + chr(10) + line + chr(10) + 'java.lang.NullPointerException' + chr(10))
+                code, out = self.check()
+                self.assertEqual(code, 1)
+                self.assertIn('latest.log', out)
+
+    def test_new_crash_report_counts_and_an_old_one_does_not(self):
+        self.log('clean' + chr(10))
+        reports = self.t / 'crash-reports'
+        reports.mkdir()
+        old = reports / 'crash-2026-11-01_10.00.00-server.txt'
+        old.write_text('old')
+        os.utime(old, (self.since - 3600, self.since - 3600))
+        self.assertEqual(self.check()[0], 0)
+        (reports / 'crash-2026-11-03_16.08.12-server.txt').write_text('new')
+        code, out = self.check()
+        self.assertEqual(code, 1)
+        self.assertIn('crash-2026-11-03_16.08.12-server.txt', out)
+
+    def test_a_previous_runs_log_is_ignored(self):
+        self.log('Exception in server tick loop' + chr(10), age=3600)
+        self.assertEqual(self.check()[0], 0)
+
+    def test_dry_run_leaves_the_server_folder_alone(self):
+        before = sorted(p.name for p in (ROOT / 'tools' / 'builder-server').iterdir())
+        self.log('clean' + chr(10))
+        self.check()
+        self.assertEqual(sorted(p.name for p in (ROOT / 'tools' / 'builder-server').iterdir()), before)
 
 if __name__ == '__main__':
     unittest.main()

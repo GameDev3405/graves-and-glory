@@ -12,8 +12,35 @@ param(
     [ValidateRange(30,3600)][int]$HealthyAfterSeconds = 600,   # a run this long resets the backoff
     [ValidateRange(1,100)][int]$MaxQuickFailures = 10,         # give up after this many failed starts in a row
     [string]$Python = 'python',
-    [string]$JavaExe = 'java'
+    [string]$JavaExe = 'java',
+    [long]$CheckCrashedSince = -1,      # dry run for tests: report Test-RunCrashed for -CheckDir since this Unix time, then exit (1 crash, 0 not)
+    [string]$CheckDir = $PSScriptRoot
 )
+# The server PC has no Python (2026-11-03), so the exit-0 crash check is pure PowerShell. Minecraft can exit 0 after a crash: a
+# tick-loop exception, then a normal shutdown. The run crashed if crash-reports/ got a file at or after the start, or if
+# logs/latest.log was written at or after the start and holds a crash line. Returns the reason, or $null for a clean run.
+function Test-RunCrashed([string]$dir, [DateTime]$sinceUtc) {
+    $reports = Join-Path $dir 'crash-reports'
+    if (Test-Path -LiteralPath $reports -PathType Container) {
+        $new = @(Get-ChildItem -LiteralPath $reports -File -ErrorAction SilentlyContinue | Where-Object { $_.LastWriteTimeUtc -ge $sinceUtc } | ForEach-Object { $_.Name } | Sort-Object)
+        if ($new.Count -gt 0) { return 'new crash report: ' + ($new -join ', ') }
+    }
+    $log = Join-Path $dir 'logs/latest.log'
+    try {
+        $item = Get-Item -LiteralPath $log -ErrorAction Stop
+        if ($item.LastWriteTimeUtc -ge $sinceUtc) {
+            $text = [System.IO.File]::ReadAllText($item.FullName)
+            foreach ($m in @('Exception in server tick loop', 'Encountered an unexpected exception')) {
+                if ($text.Contains($m)) { return 'latest.log: ' + $m }
+            }
+        }
+    } catch { }
+    return $null
+}
+if ($CheckCrashedSince -ge 0) {
+    $why = Test-RunCrashed $CheckDir ([DateTimeOffset]::FromUnixTimeSeconds($CheckCrashedSince).UtcDateTime)
+    if ($why) { Write-Host "crashed: $why"; exit 1 } else { Write-Host 'clean'; exit 0 }
+}
 Set-Location -LiteralPath $PSScriptRoot
 $ErrorActionPreference = 'Stop'
 $world = 'gg-build'   # the save folder and the backups/<world> folder name
@@ -57,7 +84,7 @@ while ($true) {
 
     Write-Log "starting world: $world"
     $started = Get-Date
-    $startedEpoch = [DateTimeOffset]::UtcNow.ToUnixTimeSeconds() - 2   # run-crashed counts crash reports and a latest.log written from here on
+    $startedUtc = [DateTime]::UtcNow.AddSeconds(-2)   # Test-RunCrashed counts crash reports and a latest.log written from here on
     $p = Start-Process -FilePath $JavaExe -NoNewWindow -PassThru -ArgumentList @('-Xms1G', "-Xmx${MemoryGB}G", "-Dgg.build=all", '-jar', 'fabric-server-launch.jar', 'nogui')
     $null = $p.Handle   # keeps the process handle so ExitCode is readable after exit
     Set-Content -LiteralPath 'server.pid' -Value $p.Id -NoNewline
@@ -78,9 +105,11 @@ while ($true) {
 
     Remove-Item -LiteralPath 'next-world.txt' -ErrorAction SilentlyContinue   # left by the old world-switching mod; no longer used
     # Minecraft can exit 0 after a crash (2026-11-03), so exit 0 is a clean stop only when the run left no crash report and no
-    # crash line in latest.log. run-crashed exits 1 for a crash; anything else (0, or 99 if the helper failed) keeps the old rule.
+    # crash line in latest.log (Test-RunCrashed, pure PowerShell: no Python on the server PC).
     if ($code -eq 0) {
-        if ((Invoke-Ops @('run-crashed', '--since', "$startedEpoch")) -eq 1) { Write-Log 'exit 0, but the run crashed; restarting as after a crash' }
+        $why = $null
+        try { $why = Test-RunCrashed $PSScriptRoot $startedUtc } catch { Write-Log "crash check failed: $_" }
+        if ($why) { Write-Log "exit 0, but the run crashed ($why); restarting as after a crash" }
         else { Write-Log 'clean stop; supervisor ending.'; break }
     }
 
