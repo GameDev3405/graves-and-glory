@@ -1,0 +1,5 @@
+== E10 again with snapshot
+Done after 16s
+[server-kit] Stopping java pid 29264 (saving the world)...
+[server-kit] Stopped.
+stop.ps1 returned after 1s; start.ps1 exit=; javaLeft=

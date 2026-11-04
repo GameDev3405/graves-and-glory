@@ -1,0 +1,41 @@
+﻿== C10 stop (hidden console, stop.ps1)
+[server-kit] Stopping java pid 29340 (saving the world)...
+[server-kit] Stopped.
+stop.ps1 returned after 2s; start.ps1 exit=; javaLeft=
+
+== C11 other level-name
+Done after 16s
+[02:44:58] [Server thread/INFO]: Graves and Glory is inactive: level-name "Vanilla Probe" is not "Graves and Glory" or "Bannerbound". Set level-name in server.properties to one of those to enable it.
+data
+datapacks
+DIM-1
+DIM1
+entities
+playerdata
+region
+level.dat
+session.lock
+
+[server-kit] Stopping java pid 53780 (saving the world)...
+[server-kit] Stopped.
+stop.ps1 returned after 3s; start.ps1 exit=; javaLeft=
+== E10 Bannerbound
+Done after 16s
+[02:45:17] [Server thread/INFO]: Preparing level "Bannerbound"
+keys None
+camp:practice -> False None
+data
+datapacks
+DIM-1
+DIM1
+entities
+playerdata
+poi
+region
+gravesandglory-camp.json
+level.dat
+session.lock
+
+[server-kit] Stopping java pid 54600 (saving the world)...
+[server-kit] Stopped.
+stop.ps1 returned after 5s; start.ps1 exit=; javaLeft=

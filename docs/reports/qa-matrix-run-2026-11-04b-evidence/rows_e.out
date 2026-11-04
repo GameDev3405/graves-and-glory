@@ -1,0 +1,9 @@
+=== rows_e start (J2 de-opped)
+J2e start Done after 14s
+J2 bot alive True
+J2 /backup -> ['{"color":"red","extra":[{"translate":"command.unknown.command"}],"text":""}', '{"color":"red","extra":[{"color":"gray","clickEvent":{"action":"suggest_command","value":"/backup"},"extra":[{"text":""},{"underlined":true,']
+J2 /map -> ['{"color":"red","extra":[{"translate":"command.unknown.command"}],"text":""}', '{"color":"red","extra":[{"color":"gray","clickEvent":{"action":"suggest_command","value":"/map"},"extra":[{"text":""},{"underlined":true,"co']
+J2 /warp -> ['{"color":"red","extra":[{"translate":"command.unknown.command"}],"text":""}', '{"color":"red","extra":[{"color":"gray","clickEvent":{"action":"suggest_command","value":"/warp"},"extra":[{"text":""},{"underlined":true,"c']
+J2 server lines []
+[server-kit] Stopping java pid 16628 (saving the world)...
+=== rows_e done 03:05:03
