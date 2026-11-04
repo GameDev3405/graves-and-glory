@@ -387,12 +387,12 @@ def bones():
     # pushed further so each tier reads at game distance: a breastplate round the ribs, a violet belt, cuisses, cheek guards,
     # a crest fin and a spiked cap on each pauldron; tier III adds gilt collar, buckle and rim bands
     P2 = lambda seed, worn=0.12: per_tier(lambda t: gb_plate(t, seed, worn), (2, 3))
-    B.append(Bone("breast_l", "body", stages=[2, 3], boxes=[Box((-4, -10.5, -2.4), (3.3, 6, 0.8), P2("bl"), dil=0.25)]))
-    B.append(Bone("breast_r", "body", stages=[2, 3], boxes=[Box((0.7, -10.5, -2.4), (3.3, 6, 0.8), P2("br"), dil=0.25)]))
-    B.append(Bone("plate_belt", "body", stages=[2, 3], boxes=[Box((-4, -4.4, -2.3), (8, 1.4, 4.6), gb_band(VIOLET, 2), dil=0.3)]))
-    B.append(Bone("crest_fin", "head", stages=[2, 3], boxes=[Box((-0.5, -10.6, -3.5), (1, 3, 7), P2("cf"), dil=0.05)]))
-    for side, ox in (("r", -5.2), ("l", 4.2)):
-        B.append(Bone(f"cheek_{side}", "head", stages=[2, 3], boxes=[Box((ox, -5.2, -3.2), (1, 3.4, 5), P2("ck" + side), dil=0.15)]))
+    # one bone each for the breastplate and the helm plates: the jointed limbs took four bones and a model holds 64 (TroopModel.MAX_BONES)
+    B.append(Bone("breastplate", "body", stages=[2, 3], boxes=[
+        Box((-4, -10.5, -2.4), (3.3, 6, 0.8), P2("bl"), dil=0.25), Box((0.7, -10.5, -2.4), (3.3, 6, 0.8), P2("br"), dil=0.25),
+        Box((-4, -4.4, -2.3), (8, 1.4, 4.6), gb_band(VIOLET, 2), dil=0.3)]))
+    B.append(Bone("helm_plates", "head", stages=[2, 3], boxes=[Box((-0.5, -10.6, -3.5), (1, 3, 7), P2("cf"), dil=0.05)]
+        + [Box((ox, -5.2, -3.2), (1, 3.4, 5), P2("ck" + side), dil=0.15) for side, ox in (("r", -5.2), ("l", 4.2))]))
     for side in ("right", "left"):
         B.append(Bone(f"{side}_cuisse", f"{side}_leg", stages=[2, 3], boxes=[Box((-2, 0.8, -2), (4, 4, 4), P2("cs" + side), dil=0.4)]))
     B.append(Bone("left_cap2", "left_arm", (1, -2.5, 0), rot=(0, 0, -12), stages=[2], boxes=[

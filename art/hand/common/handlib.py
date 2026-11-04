@@ -500,6 +500,8 @@ class Troop:
             j.update({"sheet": list(s.cloth if bone.team else s.skin), "pivot": bone.pivot, "rotation": bone.rot,
                       "boxes": [{"origin": b.origin, "size": b.size, "uv": b.uv, "mirror": False, "dilation": [b.dil] * 3} for b in bone.boxes]})
             out["bones"].append(j)
+        if len(out["bones"]) > 64:   # TroopModel.MAX_BONES: the client keeps a draw's bones as the bits of one long and refuses a bigger model
+            raise SystemExit("%s: %d bones, more than 64" % (s.tid, len(out["bones"])))
         return out
 
     def geo(s, B, tier, face, name):
