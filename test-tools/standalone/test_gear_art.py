@@ -123,4 +123,49 @@ class GearArt(unittest.TestCase):
             self.assertFalse({p[:3] for p in px if p[3]} & banned, k)
             self.assertNotIn(px, seen, k); seen.add(px)
 
+sys.path.insert(0, os.path.join(GEAR, "weapons")); sys.path.insert(0, os.path.join(ROOT, "art", "hand", "weapons"))
+
+class GearWeapons(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        import weaponlib
+        cls.L = weaponlib; cls.ws = {w.item_id: w for w in weaponlib.items()}
+
+    def test_weapon_ids(self):
+        want = {i["id"]: i for i in gearlib.ids()["items"] if i["slot"] in ("main", "off")}
+        self.assertEqual(set(self.ws), set(want))
+        for iid, w in self.ws.items(): self.assertEqual(w.hands, want[iid].get("hands", 1), iid)
+
+    def test_cube_caps(self):
+        for iid, w in self.ws.items():
+            for r in gearlib.RARITIES: self.assertLessEqual(len(w.counted(r)), self.L.CAP[r], (iid, r))
+
+    def test_gilt_and_house_colours(self):
+        import graveborn, tidecallers, wildmoot
+        banned = {tuple(c[:3]) for R in (graveborn.VIOLET, tidecallers.SEA, wildmoot.OCHRE) for c in R}
+        gilt = {c[:3] for c in self.L.GILT}
+        for iid, w in self.ws.items():
+            for r in gearlib.RARITIES:
+                for side in (("crimson", "teal") if w.show_side else ("crimson",)):
+                    n = g = 0
+                    for c in w.cubes(r, side):
+                        for f in self.L.W.FACES:
+                            if f in c.skip: continue
+                            fw, fh = c.size(f)
+                            if not (fw and fh): continue
+                            for row in c.paint(f, fw, fh):
+                                for px in row:
+                                    if px is None or (len(px) > 3 and not px[3]): continue
+                                    n += 1; g += tuple(px[:3]) in gilt
+                                    self.assertNotIn(tuple(px[:3]), banned, (iid, r, c.name))
+                    self.assertLessEqual(g / n, 0.25, (iid, r, side, g / n))
+
+    def test_two_handed_grips(self):
+        for iid, w in self.ws.items():
+            if w.hands < 2: continue
+            for r in gearlib.RARITIES:
+                for y in w.grips: self.assertTrue(w.haft_of(y, r), (iid, r, y))
+            for clip in ("idle", "attack"):
+                self.L.posed(w, clip); self.assertLess(self.L.reach.miss, 2.5, (iid, clip))
+
 if __name__ == "__main__": unittest.main()
