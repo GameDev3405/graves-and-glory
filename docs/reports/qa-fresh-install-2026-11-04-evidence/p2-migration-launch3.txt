@@ -1,0 +1,6 @@
+p2-migrate-fixtures=true profile-v1-fresh, -full, -invalid (a short Dawn line, so the Dusk line is used) and the invalid one with an emptied Dusk line too, each as <uuid>.json read through Campaign.pr
+p2-migrate-restart=true a second launch on the same run root: all four files byte-unchanged (hash and modified time), the .v1.json equal to its fixture, and each profile equal to the one before the re
+p2-migrate-import=true first visit: profile-v1-cache.json imported and migrated (gold 1800, 11 owned, class warden, saved as the current schema); a second import with 99999 gold and a stalker was igno
+p2-full-roster=true a profile owning all 30 troops at star 1 (the client shows 30): gilded 6/6 owned; graveborn 6/6 owned; wildmoot 6/6 owned; ironclad 6/6 owned; tidecallers 6/6 owned; pictures p2-mi
+p2-migrate-restore=true the player's own profile put back after the import and the roster test, and read as before=true
+p2-migration-suite=true all checks passed
