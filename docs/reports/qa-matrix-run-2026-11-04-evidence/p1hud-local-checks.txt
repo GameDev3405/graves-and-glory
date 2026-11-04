@@ -1,0 +1,33 @@
+pass mod-loads
+pass client-compatibility
+pass arena-ready
+pass p1-ui-no-hunger
+pass p1-ui-cards
+pass p1-ui-cards-last-stand
+pass p1-ui-army-selected
+pass p1-ui-ability
+pass p1-ui-ability-hidden
+pass p1-ui-chat-respawn
+pass p1-ui-hud-size-setting
+pass p1-ui-chat-open
+pass p1-ui-small-window
+pass p1-ui-hud-layout
+pass p1-ui-chat-lift
+pass p1-ui-hud-scale
+pass p1-ui-hud-footprint
+pass p1-ui-chat-edge
+pass p1-ui-cards-edge
+pass p1-ui-seals
+pass p1-ui-aim-name
+pass arena-ready
+pass p1-ui-seals-five
+pass p1-ui-no-hunger-build
+pass p1-ui-hud-guard
+pass p1-ui-hud-cache
+pass p1-ui-hud-suite
+fail p1-ui-report-open: the results page did not open for domination
+fail p1-ui-report-suite: an earlier p1 check failed
+pass arena-ready
+pass p1-ui-leave-clear
+pass p1-ui-keybind-scope
+pass p1-ui-leave-suite
