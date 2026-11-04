@@ -22,7 +22,7 @@ sys.dont_write_bytecode = True
 ROOT = Path(__file__).resolve().parents[1]
 ART = ROOT / 'tools' / 'ui_art'
 OUT = ROOT / 'src/main/resources/assets/gravesandglory/textures/gui'
-FOREIGN = ('house/',)  # folders under OUT this tool does not paint: Phase 2's House glyphs (integration-0.5)
+FOREIGN = ('house/', 'title/')  # folders under OUT this tool does not paint: Phase 2's House glyphs (integration-0.5), the approved painted title key art (board 4F.3)
 JAVA = (ROOT / 'src/main/java', ROOT / 'test-tools/java')
 PAINTERS = ('v4lib', 'v4pal', 'v4a_table', 'v4a_paper', 'v4a_hud', 'v4a_recruit', 'v4a_ink', 'v4a_map', 'v4a_furn',
             'v4a_portrait', 'v4a_recruit2', 'v4art')
