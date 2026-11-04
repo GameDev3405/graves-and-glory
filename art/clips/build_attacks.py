@@ -119,8 +119,63 @@ def sword():
     return out
 
 
+# ---- biped: spear (wm_tusk, tc_tideguard, tc_admiral; upright grip, the free hand out along the shaft)
+
+def spear():
+    out = []
+    # Thrust (impact tick 7): the spear hand draws back past the hip with the point level at the foe and the free hand
+    # forward as a guide; a held beat, then a step and a straight drive, the wrist turning so the point stays level.
+    out.append(clip('spear_thrust', 1.1, 0.35, 0.1, [
+        (0.1, C, dict(root=(0, 0, 0, 0, 0.4, 0.8), body=(-2, 18, 0), head=(0, -12, 0), right_arm=(24, 0, 4), right_hand=(54, 0, 0),
+                      left_arm=(-46, 0, -12), right_leg=(8, 0, 0), left_leg=(-12, 0, 0), left_shin=(8, 0, 0))),
+        (0.26, L, dict(root=(0, 0, 0, 0, 0.5, 1.0), body=(-3, 21, 0), head=(0, -13, 0), right_arm=(28, 0, 5), right_hand=(58, 0, 0),
+                       left_arm=(-50, 0, -14))),
+        (0.35, L, dict(root=(0, 0, 0, 0, 0.8, -2.4), body=(6, -20, 0), head=(-4, 14, 0), right_arm=(-74, 0, -6), right_hand=(148, 0, 0),
+                       left_arm=(-60, 0, -6), right_leg=(14, 0, 0), left_leg=(-26, 0, 0), left_shin=(18, 0, 0))),
+        (0.46, C, dict(root=(0, 0, 0, 0, 0.85, -2.6), body=(7, -23, 0), head=(-4, 16, 0), right_arm=(-78, 0, -8), right_hand=(150, 0, 0),
+                       left_arm=(-62, 0, -6))),
+        (0.72, C, dict(root=(0, 0, 0, 0, 0.3, -0.8), body=(2, -6, 0), head=(-1, 5, 0), right_arm=(-20, 0, -2), right_hand=(60, 0, 0),
+                       left_arm=(-16, 0, -2), right_leg=(5, 0, 0), left_leg=(-8, 0, 0), left_shin=(5, 0, 0))),
+        (0.94, C, dict(root=(0, 0, 0, 0, 0.05, -0.1), body=(0, -1, 0), right_arm=(-3, 0, 0), right_hand=(6, 0, 0), left_arm=(-2, 0, 0))),
+    ], lag=dict(head=0.02, left_arm=0.03)))
+
+    # High thrust (impact tick 7): the spear comes up over the shoulder, the point aimed down the line at the face; a held
+    # beat cocked there, then the arm drives forward and down over the top, the point leading.
+    out.append(clip('spear_high_thrust', 1.1, 0.35, 0.12, [
+        (0.12, C, dict(root=(0, 0, 0, 0, 0.2, 0.7), body=(-6, 16, 0), head=(-2, -10, 0), right_arm=(-160, 0, -8), right_hand=(228, 0, 0),
+                       left_arm=(-60, 0, -10), right_leg=(6, 0, 0), left_leg=(-10, 0, 0), left_shin=(6, 0, 0))),
+        (0.27, L, dict(root=(0, 0, 0, 0, 0.25, 0.9), body=(-7, 19, 0), head=(-2, -12, 0), right_arm=(-166, 0, -9), right_hand=(232, 0, 0),
+                       left_arm=(-64, 0, -12))),
+        (0.35, L, dict(root=(0, 0, 0, 0, 0.7, -2.2), body=(8, -20, 0), head=(-2, 14, 0), right_arm=(-118, 0, -8), right_hand=(182, 0, 0),
+                       left_arm=(-30, 0, 4), right_leg=(12, 0, 0), left_leg=(-24, 0, 0), left_shin=(16, 0, 0))),
+        (0.46, C, dict(root=(0, 0, 0, 0, 0.8, -2.5), body=(10, -24, 0), head=(-2, 16, 0), right_arm=(-112, 0, -10), right_hand=(180, 0, 0),
+                       left_arm=(-24, 0, 6))),
+        (0.72, C, dict(root=(0, 0, 0, 0, 0.3, -0.7), body=(2, -6, 0), head=(0, 4, 0), right_arm=(-40, 0, -3), right_hand=(80, 0, 0),
+                       left_arm=(-6, 0, 2), right_leg=(4, 0, 0), left_leg=(-7, 0, 0), left_shin=(4, 0, 0))),
+        (0.94, C, dict(root=(0, 0, 0, 0, 0.05, -0.1), body=(0, -1, 0), right_arm=(-4, 0, 0), right_hand=(8, 0, 0), left_arm=(-1, 0, 0))),
+    ], lag=dict(head=0.02, left_arm=0.03)))
+
+    # Low sweep (impact tick 8, blunt): the body coils toward the spear side, the shaft laid low and out to that side;
+    # a held beat, then the body unwinds and sinks and the shaft sweeps across at shin height, carrying on past the front.
+    out.append(clip('spear_low_sweep', 1.1, 0.4, 0.14, [
+        (0.14, C, dict(root=(0, 0, 0, 0, 0.6, 0.5), body=(0, 30, 0), head=(0, -18, 0), right_arm=(-30, 0, -36), right_hand=(120, 0, 0),
+                       left_arm=(-44, 0, -16), right_leg=(6, 0, 0), left_leg=(-10, 0, 0), left_shin=(8, 0, 0))),
+        (0.3, L, dict(root=(0, 0, 0, 0, 0.7, 0.6), body=(0, 34, 0), head=(0, -20, 0), right_arm=(-32, 0, -40), right_hand=(122, 0, 0),
+                      left_arm=(-46, 0, -18))),
+        (0.4, L, dict(root=(0, 0, 0, 0, 1.8, -1.2), body=(14, -18, 0), head=(-8, 12, 0), right_arm=(-46, 0, -10), right_hand=(126, 0, 0),
+                      left_arm=(-20, 0, 10), right_leg=(12, 0, 0), left_leg=(-26, 0, 0), left_shin=(22, 0, 0), right_shin=(10, 0, 0))),
+        (0.52, C, dict(root=(0, 0, 0, 0, 1.9, -1.4), body=(16, -32, 0), head=(-8, 20, 0), right_arm=(-50, 0, 6), right_hand=(120, 0, 0),
+                       left_arm=(-12, 0, 14))),
+        (0.8, C, dict(root=(0, 0, 0, 0, 0.5, -0.4), body=(4, -8, 0), head=(-2, 5, 0), right_arm=(-14, 0, 0), right_hand=(40, 0, 0),
+                      left_arm=(-4, 0, 4), right_leg=(3, 0, 0), left_leg=(-6, 0, 0), left_shin=(5, 0, 0), right_shin=(2, 0, 0))),
+        (0.96, C, dict(root=(0, 0, 0, 0, 0.05, 0), body=(0.5, -1, 0), right_arm=(-2, 0, 0), right_hand=(4, 0, 0))),
+    ], lag=dict(head=0.02, left_arm=0.04)))
+    return out
+
+
 FAMILIES = {
     ('biped', 'sword'): sword,
+    ('biped', 'spear'): spear,
 }
 
 
