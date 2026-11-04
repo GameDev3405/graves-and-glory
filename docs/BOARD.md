@@ -135,7 +135,7 @@ Every other session branch is merged into `main` or archived.
 | Lane | Branch | Plan task | Waits on |
 |---|---|---|---|
 | Gear art | `claude/elastic-proskuriakova-2b07e1` | gear | Kort's review fixes, then Kort sees the shots (Q108) |
-| House gear sets | cloud branch `claude/gifted-ptolemy-j2rv7i` (not pushed yet) | gear | The push, Q113 and the gear art merge |
+| House gear sets | `origin/claude/gifted-ptolemy-j2rv7i` (fetched, art only) | gear | Q113 and the gear art merge |
 | Maps | `maps/` in `main` | 3.1, 4A | Kort's own designs and layout sign-off |
 | Real six-player round | none | 3.7 | Kort and friends; scratch-folder EULA is allowed for smoke tests only (Q79) |
 
