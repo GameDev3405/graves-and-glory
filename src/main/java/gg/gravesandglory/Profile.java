@@ -38,6 +38,14 @@ public final class Profile {
     Set<Integer> writChapters = new LinkedHashSet<>();
     /** Unlocked banner cosmetics (renown rewards such as cosmetic:pennant). */
     Set<String> cosmetics = new LinkedHashSet<>();
+    /** Schema 4: the commander's gear. Pieces (any number, kept even above inventorySize), worn uids by slot, unlocked relics and the three relic slots. */
+    List<Gear.Piece> gear = new ArrayList<>();
+    Map<String, Integer> equipped = new LinkedHashMap<>();
+    Set<String> relics = new LinkedHashSet<>();
+    List<String> relicSlots = new ArrayList<>(List.of("", "", ""));
+    int nextGearUid = 1;
+    /** Cached Gear.power of the worn pieces, for matchmaking and bot scaling. */
+    int gearPower = 0;
 
     /**
      * Repairs a loaded or migrated profile in place. Owned ids the catalog does not know are dropped. Stars clamp to
