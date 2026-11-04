@@ -1,0 +1,6 @@
+pauseOnLostFocus:false
+onboardAccessibility:false
+renderDistance:8
+simulationDistance:6
+guiScale:3
+resourcePacks:["fabric","gravesandglory:armory"]

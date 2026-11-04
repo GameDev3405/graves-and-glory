@@ -20,6 +20,7 @@
       "gg.gravesandglory.testing.LocalVisualInspection",
       "gg.gravesandglory.CommandPlaytest",
       "gg.gravesandglory.CompatibilityChecks",
+      "gg.gravesandglory.ConnectOnStart",
       "gg.gravesandglory.ServerKitSmoke",
       "gg.gravesandglory.PerfClient",
       "gg.gravesandglory.PerfIntegrated",

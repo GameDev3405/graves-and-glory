@@ -542,7 +542,7 @@ final class LevelChecks {
         /** How long a check waits before it reads an action's notice as gone: the expiry runs at b.time % 20 == 0 and drops what is older than Campaign.NOTICE_TICKS, so a notice posted on such a tick goes 220 ticks later, in that tick's pass. Both the mod's tick and a suite's serverTick are END_SERVER_TICK handlers and the mod's runs first, so 220 is enough today; one more tick keeps the check right if the order changes (review M4). */
         static final int NOTICE_WAIT = 221;
         Spec.TroopsRow knight, archer, mage;
-        List<String> bannerBefore; String commanderBefore;
+        List<String> bannerBefore;
         int knightStars; boolean starsSet;
         GravesAndGlory.Capture held, unheld; int heldOwner, unheldOwner, heldProgress; long heldSince; boolean heldContested;
         GravesAndGlory.Unit u1, u2, u3;
@@ -585,7 +585,6 @@ final class LevelChecks {
                 Veterans.override = null; restoreHeld();
                 var s = player == null ? null : b.squads.get(player);
                 if (s != null && bannerBefore != null) s.banner = bannerBefore;
-                if (s != null && commanderBefore != null) s.commander = commanderBefore;
                 restoreStars(b);
                 clearFixture(b, "cleanup");
                 if (site != null) platform(b, site, 12, net.minecraft.block.Blocks.AIR.getDefaultState());
@@ -700,7 +699,6 @@ final class LevelChecks {
                     stageFixture(b); b.campaign.introUntil = b.time; Veterans.override = null; Houses.forceRise = Boolean.FALSE;
                     knight = Campaign.troop("knight"); archer = Campaign.troop("archer"); mage = Campaign.troop("mage");
                     bannerBefore = own.banner; own.banner = new ArrayList<>(List.of("knight", "knight", "knight", "knight", "archer", "archer", "mage", "^"));
-                    commanderBefore = own.commander;
                     home(b);
                     // two points far from the barracks and the platform: one Dawn will hold for a buy, one nobody holds
                     var f = Spec.FACTIONS[0]; double reach = Spec.ECONOMY[0].accessRadius();
@@ -772,18 +770,16 @@ final class LevelChecks {
                     Phase2Checks.report("p2-gear-open-stays", ok, "a Sunweaver reached level 2 (row " + states(before) + ") and fell (dead " + !m.mob.isAlive() + ", no Sunweaver fielded " + none + "): the row " + states(after) + " (want OPEN/LOCKED/OPEN/LOCKED: what a level opened stays open)");
                     clearFixture(b, "open-stays"); next(b, 40);
                 }
-                case 40 -> { // p2-gear-price: Common 40/80, Epic 80/160, for a Warlock too (his discount is on troops, never gear)
-                    own.commander = "warlock";
+                case 40 -> { // p2-gear-price: Common 40/80, Epic 80/160, flat (no discount touches gear)
                     var k3 = at(b, own, "knight", -4, -4); Veterans.credit(b, k3, L3); var m3 = at(b, own, "mage", 4, -8); Veterans.credit(b, m3, L3);
-                    int troop = Commander.cost(own, mage);
                     toBarracks(b); int g0 = own.gold;
                     String kw3 = say(b, "gear:knight:weapon:3"); int g1 = own.gold;
                     String mw2 = say(b, "gear:mage:weapon:2"); int g2 = own.gold;
                     String mw3 = say(b, "gear:mage:weapon:3"); int g3 = own.gold;
-                    home(b); own.commander = commanderBefore;
-                    boolean ok = troop < mage.cost() && g0 - g1 == 80 && g1 - g2 == 80 && g2 - g3 == 160 && kw3.equals("Order Squire: Weapon III bought for 80 gold") && mw2.equals("Sunweaver: Weapon II bought for 80 gold") && mw3.equals("Sunweaver: Weapon III bought for 160 gold")
+                    home(b);
+                    boolean ok = g0 - g1 == 80 && g1 - g2 == 80 && g2 - g3 == 160 && kw3.equals("Order Squire: Weapon III bought for 80 gold") && mw2.equals("Sunweaver: Weapon II bought for 80 gold") && mw3.equals("Sunweaver: Weapon III bought for 160 gold")
                         && k3.weaponTier == 3 && m3.weaponTier == 3 && LevelMath.price("common", 2) == 40 && LevelMath.price("epic", 2) == 80;
-                    Phase2Checks.report("p2-gear-price", ok, "a Warlock (a Sunweaver costs him " + troop + " gold, the sheet " + mage.cost() + ": his discount is on) bought Squire Weapon III for " + (g0 - g1) + " (want 80; Weapon II was 40), Sunweaver Weapon II for " + (g1 - g2) + " (want 80) and Weapon III for " + (g2 - g3) + " (want 160): \"" + kw3 + "\", \"" + mw2 + "\", \"" + mw3 + "\"; worn " + k3.weaponTier + "/" + m3.weaponTier + " (want 3/3)");
+                    Phase2Checks.report("p2-gear-price", ok, "a commander bought Squire Weapon III for " + (g0 - g1) + " (want 80; Weapon II was 40), Sunweaver Weapon II for " + (g1 - g2) + " (want 80) and Weapon III for " + (g2 - g3) + " (want 160): \"" + kw3 + "\", \"" + mw2 + "\", \"" + mw3 + "\"; worn " + k3.weaponTier + "/" + m3.weaponTier + " (want 3/3)");
                     clearFixture(b, "price"); next(b, 50);
                 }
                 case 50 -> { // p2-gear-no-refund: nothing sells gear back; a disband refunds the troop's refund only
@@ -816,8 +812,8 @@ final class LevelChecks {
                     String arrived = "level " + fresh.level + " wearing " + fresh.weaponTier + "/" + fresh.armourTier + " at max " + fmt(fresh.mob.getMaxHealth());
                     Veterans.credit(b, fresh, L2);
                     boolean levels = fresh.level == 2 && fresh.weaponTier == 2 && fresh.armourTier == 2;
-                    boolean ok = paid == Commander.cost(own, knight) && goldNow >= goldTrained && tierOne && levels && kit.weapon == 3 && kit.armour == 2;
-                    Phase2Checks.report("p2-gear-rebuy-tier1", ok, "train:knight at the barracks took " + paid + " gold (want the troop's " + Commander.cost(own, knight) + ", no gear charge), and gold stayed at or above " + goldTrained + " to the spawn (" + goldNow + "); the new Squire arrived at " + arrived + " (want level 1, tier I/I, " + fmt(want) + ") though the army bought " + kit + "; at level 2 he wears " + fresh.weaponTier + "/" + fresh.armourTier + " (want 2/2: min of his level and the tier bought)");
+                    boolean ok = paid == knight.cost() && goldNow >= goldTrained && tierOne && levels && kit.weapon == 3 && kit.armour == 2;
+                    Phase2Checks.report("p2-gear-rebuy-tier1", ok, "train:knight at the barracks took " + paid + " gold (want the troop's " + knight.cost() + ", no gear charge), and gold stayed at or above " + goldTrained + " to the spawn (" + goldNow + "); the new Squire arrived at " + arrived + " (want level 1, tier I/I, " + fmt(want) + ") though the army bought " + kit + "; at level 2 he wears " + fresh.weaponTier + "/" + fresh.armourTier + " (want 2/2: min of his level and the tier bought)");
                     clearFixture(b, "rebuy"); next(b, 70);
                 }
                 case 70 -> { // p2-gear-allies-separate: a second Dawn army keeps its own Armoury
@@ -1115,7 +1111,7 @@ final class LevelChecks {
                     if (since(b) < 10) return;
                     stageFixture(b); b.campaign.introUntil = b.time; Veterans.override = null; Houses.forceRise = Boolean.FALSE;
                     knight = Campaign.troop("knight"); archer = Campaign.troop("archer"); mage = Campaign.troop("mage");
-                    bannerBefore = own.banner; commanderBefore = own.commander; own.banner = new ArrayList<>(BANNER5);
+                    bannerBefore = own.banner; own.banner = new ArrayList<>(BANNER5);
                     kits(b); place = "home"; placed = ""; home(b);
                     var f = Spec.FACTIONS[0]; double reach = Spec.ECONOMY[0].accessRadius();
                     double fromBarracks = distance(sp(b).getPos(), new Vec3d(f.barracksX(), 0, f.barracksZ()));

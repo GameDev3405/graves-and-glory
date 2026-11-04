@@ -1,14 +1,15 @@
 #!/bin/sh
 # Start the Graves and Glory dedicated server (port 25580) in the foreground.
-#   ./start.sh [--memory-gb N] [--dry-run] [--root DIR]
+#   ./start.sh [--memory-gb N] [--jvm-args "-Dkey=value -Xss1M"] [--dry-run] [--root DIR]
 # Order: Java check, version gate, config, EULA check, world backup, launch with Aikar flags.
 # Run it under screen, tmux or systemd to keep it alive. Stop it with ./stop.sh.
+# Extra JVM flags: --jvm-args (flags separated by spaces) and/or jvm-args.txt in the server folder (one flag per line, # comments).
 # --dry-run runs every check and prints the java command; it writes nothing and starts nothing.
-DIR=$(cd "$(dirname "$0")" && pwd); ROOT=; MEM=6; GG_DRY=0
+DIR=$(cd "$(dirname "$0")" && pwd); ROOT=; MEM=6; GG_DRY=0; JVMARGS=
 while [ $# -gt 0 ]; do
   case $1 in
-    --memory-gb) MEM=$2; shift;; --dry-run) GG_DRY=1;; --root) ROOT=$2; shift;;
-    -h|--help) sed -n '2,7p' "$0"; exit 0;;
+    --memory-gb) MEM=$2; shift;; --dry-run) GG_DRY=1;; --root) ROOT=$2; shift;; --jvm-args) JVMARGS=$2; shift;;
+    -h|--help) sed -n '2,8p' "$0"; exit 0;;
     *) echo "Unknown option: $1" >&2; exit 2;;
   esac; shift
 done
@@ -20,7 +21,8 @@ cd "$GG_ROOT" || exit 1
 
 [ -f fabric-server-launch.jar ] || gg_die "fabric-server-launch.jar is missing. See README.md, step 3."
 command -v java >/dev/null 2>&1 || gg_die "java not found. Install Java 17 or newer (README.md, step 1)."
-JV=$(java -version 2>&1 | head -n 1 | sed -nE 's/.*"([0-9]+)[."].*/\1/p')
+# The first line may be a JAVA_TOOL_OPTIONS banner; take the first line that has: version "N"
+JV=$(java -version 2>&1 | sed -nE 's/.*version[[:space:]]+"([0-9]+)[."].*/\1/p' | head -n 1)
 case $JV in ''|*[!0-9]*) gg_die "Could not read the Java version.";; esac
 [ "$JV" -ge 17 ] || gg_die "Java $JV is too old; need 17 or newer."
 if gg_alive; then gg_die "Server already running (pid $(cat server.pid))."; fi
@@ -56,6 +58,8 @@ fi
 
 gg_backup start
 FLAGS=$(gg_aikar_flags "$MEM")
+EXTRA=$(gg_jvm_args "$JVMARGS") || gg_die "$EXTRA"
+[ -z "$EXTRA" ] || FLAGS="$FLAGS $EXTRA"
 CMD="java -Xms${MEM}G -Xmx${MEM}G $FLAGS -jar fabric-server-launch.jar --nogui"
 if gg_dry; then
   gg_say "[dry-run] command: $CMD"

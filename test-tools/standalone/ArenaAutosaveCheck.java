@@ -45,7 +45,8 @@ public final class ArenaAutosaveCheck {
             "only the saveAll inside tick (the periodic autosave) is redirected; stop/shutdown and commands keep theirs");
         check(mixin.contains("ArenaAutosave.allow(battle!=null&&battle.running&&battle.server==server)"), "the gate is the battle's running flag");
         check(mixin.contains("return server.saveAll(suppressLogs,flush,force);"), "an allowed autosave runs with vanilla's arguments");
-        check(java.util.regex.Pattern.compile("\"mixins\": \\[[^\\]]*\"AutosaveMixin\"").matcher(mixins).find(), "AutosaveMixin is a common mixin (dedicated servers load it)");
+        String common = mixins.substring(mixins.indexOf("\"mixins\":"), mixins.indexOf("]", mixins.indexOf("\"mixins\":")));
+        check(common.contains("\"AutosaveMixin\""), "AutosaveMixin is a common mixin (dedicated servers load it)");
 
         // Wiring: the lobby return pays the debt after the armies are gone; a stopping server leaves it to the shutdown save.
         int lobby = campaign.indexOf("void returnLobby(){"), end = campaign.indexOf("void left(UUID id)", lobby);

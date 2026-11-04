@@ -503,23 +503,30 @@ public final class BattleHud {
      *  slot, no empty frame, no number, and nothing in rects() or texts(). */
     static final String UNSHOWN_ABILITY="forward_supply";
 
-    /** The commander ability beside the hotbar, in GUI px at the player's GUI Scale: the iron slot, the active's own picture, the cooldown sweep (a
-     *  veil over the part of the turn still to come and its bright leading edge), the key on its brass plate and the seconds left.
-     *  A ready ability (nothing left of its cooldown) shows no sweep and no number. The Quartermaster's forward supply (UNSHOWN_ABILITY)
-     *  and a commander with no active draw nothing here. */
+    /** The commander's three relic slots beside the hotbar, in GUI px at the player's GUI Scale (gear-combat Task 5): slot 0 (key 1) at the
+     *  bottom where the one ability slot was, slots 1 and 2 (keys 2 and 3) stacked above it (UiMath.relicRect). Each slot: the iron slot, the
+     *  relic's own picture, the cooldown sweep (a veil over the part of the turn still to come and its bright leading edge), the hotbar key on
+     *  its brass plate and the seconds left. A ready relic (nothing left of its cooldown) shows no sweep and no number. Forward supply
+     *  (UNSHOWN_ABILITY), an empty slot and a relic with no behaviour draw nothing. */
     static void ability(DrawContext g,MinecraftClient c,TextRenderer font,Map<String,int[]> r,Map<String,String> tx){
-        String id=GravesAndGloryClient.abilityId;if(id.equals("none")||id.equals(UNSHOWN_ABILITY))return;
-        var w=c.getWindow();int x=w.getScaledWidth()/2+104,y=w.getScaledHeight()-47,left=GravesAndGloryClient.abilityRemaining,total=GravesAndGloryClient.abilityTotal;
+        relicSlot(g,c,font,r,tx,0,"ability",GravesAndGloryClient.abilityId,GravesAndGloryClient.abilityRemaining,GravesAndGloryClient.abilityTotal);
+        for(int i=1;i<3;i++)relicSlot(g,c,font,r,tx,i,"relic-"+i,GravesAndGloryClient.relicShown[i],GravesAndGloryClient.relicLeft[i],GravesAndGloryClient.relicTotal[i]);
+    }
+
+    /** One relic slot (ability): its rect and texts under key (key-icon, key-seconds, key-key). */
+    static void relicSlot(DrawContext g,MinecraftClient c,TextRenderer font,Map<String,int[]> r,Map<String,String> tx,int slot,String rk,String id,int left,int total){
+        if(id.equals("none")||id.isEmpty()||id.equals(UNSHOWN_ABILITY))return;
+        var w=c.getWindow();int[] at=UiMath.relicAt(slot,w.getScaledWidth(),w.getScaledHeight());int x=at[0],y=at[1];
         UiTex.draw(g,"hud/ability-slot",x,y);
         String icon=abilityIcon(id);if(UiTex.has(icon))UiTex.draw(g,icon,x+5,y+6); // 22 x 20 as the horn was; an id with no picture leaves the vellum bare
         if(left>0&&total>0)sweep(g,x+4,y+4,Math.min(1,left/(double)total));
         UiTex.draw(g,"hud/key-brass-plate",x+1,y+1);
-        String key=GravesAndGloryClient.hint("ability"),secs=left>0?String.valueOf((left+19)/20):"";
+        String key=c.options.hotbarKeys[slot].getBoundKeyLocalizedText().getString(),secs=left>0?String.valueOf((left+19)/20):"";
         g.drawText(font,key,x+4,y+4,DarkUi.ABILITY_KEY,false);
         if(!secs.isEmpty())g.drawText(font,secs,centred(font,secs,x+39),y+12,DarkUi.IVORY,true);
         double f=w.getScaleFactor()/UiCanvas.hudK();
         int x0=(int)Math.floor(x*f+1e-9),y0=(int)Math.floor(y*f+1e-9),x1=(int)Math.ceil((x+50)*f-1e-9),y1=(int)Math.ceil((y+32)*f-1e-9);
-        r.put("ability",new int[]{x0,y0,x1-x0,y1-y0});tx.put("ability",id);tx.put("ability-icon",UiTex.has(icon)?icon:"");tx.put("ability-seconds",secs);tx.put("ability-key",key);
+        r.put(rk,new int[]{x0,y0,x1-x0,y1-y0});tx.put(rk,id);tx.put(rk+"-icon",UiTex.has(icon)?icon:"");tx.put(rk+"-seconds",secs);tx.put(rk+"-key",key);
     }
 
     /** The 24 px cooldown sweep at (x, y) by UiMath.sweep, filled one run of a row at a time. */

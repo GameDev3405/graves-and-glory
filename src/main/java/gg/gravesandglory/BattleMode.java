@@ -77,7 +77,7 @@ public abstract class BattleMode {
         var E=Spec.ECONOMY[0];
         long owned=b.points.stream().filter(p->p.owner==s.team).count();
         int passive=(int)Math.round(E.passiveGold()*row.passiveScale());
-        int objective=(int)Math.round(BattleMath.pointIncome(owned,E.pointGold(),Commander.pointGoldBonus(s),E.objectiveIncomeCap())*row.pointScale());
+        int objective=(int)Math.round(BattleMath.pointIncome(owned,E.pointGold(),0,E.objectiveIncomeCap())*row.pointScale());
         return passive+objective;
     }
     /** Who wins when the clock runs out: -1 a draw, 0 Dawn, 1 Dusk. */

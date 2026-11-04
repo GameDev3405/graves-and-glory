@@ -563,11 +563,11 @@ final class Abilities {
     }
 
     /**
-     * The reach of a troop's attack in blocks: its sheet range plus its commander's bonus (the Warden's ranged troops), times 1 + the Entrench
+     * The reach of a troop's attack in blocks: its sheet range, times 1 + the Entrench
      * tier's value2 for a siege-tag troop of Ironclad that stands entrenched (Houses.still).
      */
     static double range(GravesAndGlory.Battle b, GravesAndGlory.Unit u) {
-        double reach = u.spec.range() + Commander.rangeBonus(u.squad, u);
+        double reach = u.spec.range();
         var entrench = Houses.entrench(u);
         return entrench != null && u.tags.contains("siege") && Houses.still(u) ? reach * (1 + entrench.value2()) : reach;
     }
@@ -707,7 +707,7 @@ final class Abilities {
     /**
      * Keeps one speed modifier (by its id) on a mob at a value: added where it lacks, replaced where the value changed (the ground did: BattleMath.speedModifier
      * differs on land and in water), left alone where it stands at that value already, and only taken off for a value of 0. The Howl (hasten), Muster
-     * (Commander.Muster.hasten) and Riptide (Houses.swim) keep theirs through it; a mob without the attribute is left alone.
+     * (RelicEffects.Muster.hasten) and Riptide (Houses.swim) keep theirs through it; a mob without the attribute is left alone.
      */
     static void keepSpeed(LivingEntity mob, UUID id, String name, double value) {
         var speed = mob.getAttributeInstance(EntityAttributes.GENERIC_MOVEMENT_SPEED);

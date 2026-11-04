@@ -7,6 +7,7 @@ import sys
 import urllib.parse
 import zipfile
 from release_config import ROOT, version, source_identity, validate_player_jar
+from release_files import resolve_local_path, mrpack_summary
 import build_skins
 
 MINECRAFT_VERSION='1.20.1'
@@ -36,7 +37,7 @@ def locked_files(rows,root):
     """Index entries for every pinned file (mods, shaders, resource packs); refuse when a local file differs from its pin."""
     files=[]
     for row in rows:
-        data=(root/row['localPath']).read_bytes()
+        data=resolve_local_path(root,row['localPath']).read_bytes()
         if hashlib.sha512(data).hexdigest()!=row['hashes']['sha512']:raise RuntimeError('Platform lock is stale: '+row['slug'])
         folder={'mod':'mods','shader':'shaderpacks','resourcepack':'resourcepacks'}[row['kind']]
         files.append({'path':folder+'/'+row['fileName'],'hashes':row['hashes'],
@@ -51,7 +52,7 @@ def export(argv=()):
     validate_player_jar(jar,source_identity())
     rows=json.loads((ROOT/'dependencies/platform-lock.json').read_text(encoding='utf8'))
     index={'formatVersion':1,'game':'minecraft','versionId':release,'name':'Graves and Glory',
-           'summary':'Collect an army and command fantasy battles. Local release candidate.',
+           'summary':mrpack_summary(release),
            'dependencies':{'minecraft':MINECRAFT_VERSION,'fabric-loader':FABRIC_LOADER},'files':[]}
     index['files']=locked_files(rows,ROOT)
     validate_index(index)

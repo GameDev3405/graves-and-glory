@@ -1,0 +1,21 @@
+=== rows_b start
+[server-kit] Stopping java pid 41008 (saving the world)...
+D20 start Done after 14s
+D20 oversized: alive False disconnect ?{"translate":"disconnect.genericReason","with":["Internal Exception: io.netty.handler.codec.DecoderException: The received string length is longer than maximu
+D20 files unchanged True dave alive True
+D20 valid-size foreign profile: files unchanged True log ["thread/INFO]: [STDOUT]: [Graves and Glory] Ignored the collection sent by DaveV1; the server's saved collection is kept."]
+server errors ['[03:00:33] [Netty Server IO #1/ERROR]: Encountered exception while handling in channel with name "gravesandglory:profile_v1"', 'io.netty.handler.codec.DecoderException: The received string length is longer than maximum allowed (20022 > 16000)', '[03:00:33] [Server thread/INFO]: CarlP lost connection: Internal Exception: io.netty.handler.codec.DecoderException: The received string len']
+[server-kit] Stopping java pid 45104 (saving the world)...
+I11 start Done after 16s
+I11 PASS marker rewritten True after 2 s errors []
+E10-like practice lines ['[03:01:01] [Server thread/INFO]: [STDOUT]: [Graves and Glory] Prewarmed the troop spawn (30 troops, 56 ms).']
+[server-kit] Stopping java pid 23104 (saving the world)...
+J2 start start.ps1 exited
+Traceback (most recent call last):
+  File "C:\Users\kortt\Melty\bannerbound-qa2-1104\work\qa2\rows_b.py", line 44, in <module>
+    say('J2 log',[l[:160] for l in log().splitlines() if 'build' in l.lower() and 'Graves' in l][:3])
+                                   ^^^^^
+  File "C:\Users/kortt/Melty/bannerbound-qa2-1104/work/qa2\orch.py", line 12, in log
+    def log(): return open(SRV+'/logs/latest.log',encoding='utf8',errors='replace').read()
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: 'C:/Users/kortt/Melty/bannerbound-qa2-1104/work/qa2/srv/logs/latest.log'

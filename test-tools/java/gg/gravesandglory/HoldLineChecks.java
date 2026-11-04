@@ -887,15 +887,15 @@ final class HoldLineChecks {
          */
         void crawlMuster(GravesAndGlory.Battle b) {
             var u = crawlers.get(0); var spd = u.mob.getAttributeInstance(net.minecraft.entity.attribute.EntityAttributes.GENERIC_MOVEMENT_SPEED);
-            var marshal = Arrays.stream(Spec.CLASSES).filter(r -> r.active().equals("rally_horn")).findFirst().orElse(null);
+            var marshal = Commander.tuningByEffect("rally_horn");
             if (spd == null || marshal == null) {crawlPass = false; crawlWhy.add("crawl x Muster: no movement speed attribute or no rally_horn row (want both)=false"); return;}
             var crawl = spd.getModifier(Tactics.CRAWL_ID); double base = spd.getBaseValue(), alone = spd.getValue();
-            Commander.Muster.hasten(b, own, marshal);
-            var rally = spd.getModifier(Commander.RALLY); double both = spd.getValue();
-            new Commander.Muster().end(b, own);
+            RelicEffects.Muster.hasten(b, own, marshal);
+            var rally = spd.getModifier(RelicEffects.RALLY); double both = spd.getValue();
+            new RelicEffects.Muster().end(b, own, 0);
             double after = spd.getValue(), m = rally == null ? Double.NaN : rally.getValue(), product = alone * (1 + m), sum = alone + base * m;
             boolean ops = crawl != null && rally != null && crawl.getOperation() == net.minecraft.entity.attribute.EntityAttributeModifier.Operation.MULTIPLY_TOTAL && rally.getOperation() == net.minecraft.entity.attribute.EntityAttributeModifier.Operation.MULTIPLY_TOTAL;
-            boolean ok = ops && Math.abs(both - product) < 1e-9 && Math.abs(both - sum) > 1e-6 && Math.abs(after - alone) < 1e-12 && spd.getModifier(Commander.RALLY) == null && spd.getModifier(Tactics.CRAWL_ID) != null;
+            boolean ok = ops && Math.abs(both - product) < 1e-9 && Math.abs(both - sum) > 1e-6 && Math.abs(after - alone) < 1e-12 && spd.getModifier(RelicEffects.RALLY) == null && spd.getModifier(Tactics.CRAWL_ID) != null;
             crawlPass &= ok;
             crawlWhy.add(String.format(Locale.ROOT, "crawl x Muster on a crawling Squire: base %.5f, crawl alone %.5f (modifier %s); Muster's hasten (rally_horn +%.2f: modifier %s) on it gives %.5f (want the product %.5f = crawl alone x (1 + %.5f), not the sum %.5f); Muster's end leaves %.5f (want the crawl alone again, the crawl still on)=%b",
                 base, alone, crawl == null ? "none" : String.format(Locale.ROOT, "%.5f %s", crawl.getValue(), crawl.getOperation()), marshal.value1(), rally == null ? "none" : String.format(Locale.ROOT, "%.5f %s", m, rally.getOperation()), both, product, m, sum, after, ok));
@@ -1945,7 +1945,7 @@ final class HoldLineChecks {
                     cpBait = cpOwn(b, 61, ground(b, cpHome.x - 6, cpHome.z));
                     cpHunter = pinned(b, "knight", 62, ground(b, cpHome.x + 1.8, cpHome.z), false);
                     var v = cpVictim.mob; // marked well before the blow, so the client holds its glow (Task 7 fix 2, N5)
-                    v.addStatusEffect(new net.minecraft.entity.effect.StatusEffectInstance(net.minecraft.entity.effect.StatusEffects.GLOWING, 400, 0, false, false)); // as Mark Prey marks it (Commander.MarkPrey)
+                    v.addStatusEffect(new net.minecraft.entity.effect.StatusEffectInstance(net.minecraft.entity.effect.StatusEffects.GLOWING, 400, 0, false, false)); // as Mark Prey marks it (RelicEffects.MarkPrey)
                     v.addStatusEffect(new net.minecraft.entity.effect.StatusEffectInstance(net.minecraft.entity.effect.StatusEffects.SLOWNESS, 400));
                     cpGlowId = v.getId(); cpBaitId = cpBait.mob.getId();
                     next(b, 122);
@@ -2035,7 +2035,7 @@ final class HoldLineChecks {
                     cpCheck(cpClientFireFall && !cpClientFireLate, "on the client the burning body was drawn on fire as it fell (death ticks 1-15) " + cpClientFireFall + " (want true), and still on fire from death tick 35 " + cpClientFireLate + " (want false: its fire burned out, the flag cleared, not frozen on as it lies)");
                     cpCheck(cpSwept && r.isRemoved(), "the battle holds the body (Battle.corpses)=" + cpSwept + "; stamped past its removal tick it is swept within 20 ticks: removed " + r.isRemoved());
                     // Task 7 fix 2 (N7, R33): a Squire falls where the commander looks; once it lies, Grave Bloom cast there raises a Risen and takes the body
-                    var p = sp(b); Vec3d aim = Commander.GraveBloom.aim(p, Commander.byActive("grave_bloom").range());
+                    var p = sp(b); Vec3d aim = RelicEffects.GraveBloom.aim(p, Commander.tuningByEffect("grave_bloom").range());
                     b.deaths.clear(); cpBloomBody = cpOwn(b, 64, ground(b, aim.x, aim.z)); fall(b, cpBloomBody); cpBloomAt = cpBloomBody.mob.getPos();
                     next(b, 127);
                 }
@@ -2044,7 +2044,7 @@ final class HoldLineChecks {
                     var body = cpBloomBody.mob; var p = sp(b);
                     boolean lay = body.isDead() && !body.isRemoved() && body.deathTime > BattleMath.DEATH_FALL_TICKS;
                     long risen0 = b.units.stream().filter(u -> u.temporary && u.squad == own).count();
-                    boolean cast = new Commander.GraveBloom().start(b, p, own, Commander.byActive("grave_bloom"));
+                    boolean cast = new RelicEffects.GraveBloom().start(b, p, own, 0, Commander.tuningByEffect("grave_bloom"));
                     var risen = b.units.stream().filter(u -> u.temporary && u.squad == own).toList();
                     boolean there = risen.stream().anyMatch(u -> u.mob.isAlive() && u.mob.getPos().distanceTo(cpBloomAt) < 1.5);
                     var team = body.getScoreboardTeam();

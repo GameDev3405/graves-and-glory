@@ -105,7 +105,9 @@ for k in (A, B):
     check("R1 %s gold +%d (win), memory" % (k, COMP + VICT), m1["gold"] - m0["gold"] == COMP + VICT, (m0["gold"], m1["gold"]))
     check("R1 %s matches +1 and wins +1" % k, m1["matches"] - m0["matches"] == 1 and m1["wins"] - m0["wins"] == 1)
     check("R1 %s saved to disk equal to memory" % k, d1 == m1, (d1, m1))
-check("R1 visitor unchanged in memory and on disk", both(post, C) == base[C], both(post, C))
+def unchanged(now, was):  # a visitor profile file first written on join is all zeros: no file before and a zero file after is unchanged
+    return now[0] == was[0] and (now[1] == was[1] or (was[1] is None and now[1] is not None and all(v == 0 for v in now[1].values())))
+check("R1 visitor unchanged in memory and on disk", unchanged(both(post, C), base[C]), both(post, C))
 check("R1 reports saved and eligible for both", all(r["saved"] and r["eligible"] for r in post["results"]) and len(post["results"]) == 2, post["results"])
 fin2 = drv("finish", t[A]); time.sleep(1); post2 = drv("state")
 check("R1 second finish is a no-op (no round running)", fin2["wasRunning"] is False)

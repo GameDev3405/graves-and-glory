@@ -4,6 +4,7 @@ import json
 import sys
 import zipfile
 from release_config import ROOT, version, source_identity, validate_player_jar
+from release_files import resolve_local_path
 import build_skins
 
 FABRIC_URL='https://meta.fabricmc.net/v2/versions/loader/1.20.1/0.16.14/1.1.2/server/jar'
@@ -19,7 +20,7 @@ def export(argv=()):
     files={'mods/'+jar.name:jar.read_bytes()}
     for row in rows:
         if row['env']['server']!='required':continue
-        data=(ROOT/row['localPath']).read_bytes()
+        data=resolve_local_path(ROOT,row['localPath']).read_bytes()
         if hashlib.sha512(data).hexdigest()!=row['hashes']['sha512']:raise RuntimeError('Stale server dependency')
         files['mods/'+row['fileName']]=data
     manifest=json.loads((ROOT/'dist/package-manifest.json').read_text())

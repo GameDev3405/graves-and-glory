@@ -231,7 +231,7 @@ public final class UiMathCheck {
         for (int[] s : win) for (int z = UiMath.HUD_COMPACT; z <= UiMath.HUD_LARGE; z++) for (int p = 0; p < 4; p++) {
             int k = UiMath.hudScale(s[0],s[1],s[2],z), sw = -Math.floorDiv(-s[0],s[2]), sh = -Math.floorDiv(-s[1],s[2]);
             var r = UiMath.hudLayout(s[0],s[1],s[2],k,z,new UiMath.HudState(3,groups,"all",p==1||p==3,p<2?2:0,p==0,true));
-            r.put("ability", UiMath.abilityRect(sw,sh,s[2],k));
+            r.put("ability", UiMath.abilityRect(sw,sh,s[2],k)); for (int i = 1; i < 3; i++) r.put("relic-" + i, UiMath.relicRect(i,sw,sh,s[2],k));
             for (int open = 0; open < 2; open++) {
                 var slot = UiMath.chatSlot(r,k/(double)s[2],sw,sh,UiMath.CHAT_RIGHT,9,open==1?20:10,open==1);
                 int[] box = {0,slot.bottom()-9*slot.lines(),(int)UiMath.CHAT_RIGHT,9*slot.lines()};
@@ -332,7 +332,7 @@ public final class UiMathCheck {
      *  HUD at s[3]x. */
     static String chat(java.util.Map<String,int[]> r, int[] s) {
         int sw = -Math.floorDiv(-s[0],s[2]), sh = -Math.floorDiv(-s[1],s[2]); double f = s[3] / (double) s[2];
-        r = new java.util.LinkedHashMap<>(r); r.put("ability", UiMath.abilityRect(sw,sh,s[2],s[3]));
+        r = new java.util.LinkedHashMap<>(r); r.put("ability", UiMath.abilityRect(sw,sh,s[2],s[3])); for (int i = 1; i < 3; i++) r.put("relic-" + i, UiMath.relicRect(i,sw,sh,s[2],s[3]));
         return UiMath.chatSlot(r,f,sw,sh,332,9,10,false).lines()+"/"+UiMath.chatSlot(r,f,sw,sh,332,9,20,true).lines();
     }
 }

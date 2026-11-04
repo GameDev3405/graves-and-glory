@@ -153,6 +153,19 @@ gg_prune() {
   done
 }
 
+gg_jvm_args() { # <inline>; flags from jvm-args.txt (one per line, # comments) then the inline text, space separated; each must start with "-"
+  _out=
+  if [ -f "$GG_ROOT/jvm-args.txt" ]; then
+    _file=$(sed -e 's/#.*$//' -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//' "$GG_ROOT/jvm-args.txt" | grep -v '^$' | tr '
+' ' ')
+    _out="$_file"
+  fi
+  _out="$_out $1"
+  for _f in $_out; do
+    case $_f in -*) ;; *) echo "JVM flag '$_f' must start with '-' (jvm-args.txt or --jvm-args)."; return 1;; esac
+  done
+  printf '%s' "$(echo $_out)"
+}
 gg_aikar_flags() { # <memory-gb>; Aikar's G1 flags, the large-heap variant from 12 GB up
   if [ "$1" -ge 12 ]; then _new=40; _max=50; _region=16M; _res=15; _ihop=20
   else _new=30; _max=40; _region=8M; _res=20; _ihop=15; fi

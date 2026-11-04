@@ -212,6 +212,7 @@ final class Tactics {
                 if(d<nearest&&!Abilities.tooClose(u,d)){enemy=p;nearest=d;}
             }
         }
+        if(order.engage()&&!locked){var drawn=GearCombat.taunter(battle,u);if(drawn!=null&&!Abilities.tooClose(u,mob.squaredDistanceTo(drawn))){enemy=drawn;nearest=mob.squaredDistanceTo(drawn);close=drawn;closest=nearest;}} // taunt_aura: a share of the troops near a commander wearing it pick him
         if(order.engage()&&!locked&&enemy==null)for(var st:battle.structures){ // a supply banner is a target when no troop or commander is: the army first, then its commander, then its banner
             if(st.team()==s.team||!st.isAlive())continue;
             double d=mob.squaredDistanceTo(st);

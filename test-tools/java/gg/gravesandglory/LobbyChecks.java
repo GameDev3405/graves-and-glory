@@ -123,7 +123,7 @@ final class LobbyChecks implements Phase1Checks.Suite, Phase1Checks.ServerWatch 
                 server(c,b->{ // the stand-in guest joins Dusk, picks Graveborn, and takes the host's seat
                     var p=new Phase1Checks.Listener(b.world);stand=p;b.server.getPlayerManager().getPlayerList().add(p);guest=p.getUuid();var s=b.campaign.social;s.names.put(guest,"Aldric");
                     s.presence(new HashSet<>(b.server.getPlayerManager().getPlayerList().stream().map(ServerPlayerEntity::getUuid).toList()),System.currentTimeMillis());
-                    b.campaign.profile(guest).commander=Spec.CLASSES[Spec.CLASSES.length-1].id();
+                    b.campaign.profile(guest).commander="quartermaster";
                     s.joinRoom(guest,s.room(player).code);s.house(guest,"graveborn",RosterMath.fieldableHouses());s.handHost(player,guest);s.ready(guest);stage=11;});
             }
             case 11->{ // the guest's view: every order locked, the seats and Ready still live

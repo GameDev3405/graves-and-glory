@@ -745,7 +745,7 @@ public final class UiMath {
      *  8b-2: on a GUI under 456 px wide, as 1280x720 GUI 3, it reaches under vanilla's widest chat, and the open chat at vanilla's
      *  bottom covered it). The group column is below the chat by its place. */
     public static boolean overChat(String key) {
-        return key.equals("score") || key.endsWith("-boss") || key.startsWith("seal-") || key.equals("aim-name") || key.equals("lesson") || key.equals("respawn") || key.equals("feed") || key.equals("ability");
+        return key.equals("score") || key.endsWith("-boss") || key.startsWith("seal-") || key.equals("aim-name") || key.equals("lesson") || key.equals("respawn") || key.equals("feed") || key.equals("ability") || key.startsWith("relic-");
     }
 
     /** The camp's two slips on the HUD canvas of a fbW x fbH window at k screen px per canvas px (UI Task 8b-2), each a notice
@@ -770,6 +770,24 @@ public final class UiMath {
      *  vanilla's GUI px, 50x32 at (sw/2 + 104, sh - 47), beside the hotbar's right end. */
     public static int[] abilityRect(int sw, int sh, int gui, int k) {
         return guiToCanvas(new int[]{sw / 2 + 104, sh - 47, 50, 32}, gui, k);
+    }
+
+    /** The GUI px between relic slots (gear-combat Task 5): RELIC_STEP_X along a row, RELIC_STEP between rows. */
+    public static final int RELIC_STEP = 34, RELIC_STEP_X = 54;
+
+    /** Relic slot i's top left in vanilla GUI px: slot 0 is the ability slot beside the hotbar's right end, and the others run on to its
+     *  right as far as the GUI is wide; a slot that would run off wraps to the row above, under the rightmost slot, so the slots keep
+     *  right of vanilla's widest chat (332 px) and below the feed leaf. A column of three met the feed at 1920x1080 GUI 4 Standard,
+     *  and slots left of slot 0 cost the lifted chat its lines. */
+    public static int[] relicAt(int i, int sw, int sh) {
+        int x0 = sw / 2 + 104, perRow = Math.max(1, Math.min(3, (sw - x0 - 50) / RELIC_STEP_X + 1)), row = i / perRow, col = i % perRow;
+        return new int[]{x0 + RELIC_STEP_X * (row == 0 ? col : perRow - 1 - col), sh - 47 - RELIC_STEP * row};
+    }
+
+    /** Relic slot i's 50x32 box in canvas px: abilityRect for slot 0. */
+    public static int[] relicRect(int i, int sw, int sh, int gui, int k) {
+        int[] at = relicAt(i, sw, sh);
+        return guiToCanvas(new int[]{at[0], at[1], 50, 32}, gui, k);
     }
 
     /** The rows a HUD plate's PNG paints above its box, by rect key (atlas.json oy): 1 for the score card, the lesson note, the
@@ -882,7 +900,7 @@ public final class UiMath {
         for (int i = 0; i < keys.size(); i++) {
             String ka = keys.get(i);
             int[] a = r.get(ka);
-            if (!ka.equals("ability") && (a[0] < 12 || a[1] < 12 || a[0] + a[2] > w - 12 || a[1] + a[3] > h - 12)) bad.add(ka + " " + java.util.Arrays.toString(a) + " is not 12 px inside the " + w + "x" + h + " canvas");
+            if (!ka.equals("ability") && !ka.startsWith("relic-") && (a[0] < 12 || a[1] < 12 || a[0] + a[2] > w - 12 || a[1] + a[3] > h - 12)) bad.add(ka + " " + java.util.Arrays.toString(a) + " is not 12 px inside the " + w + "x" + h + " canvas");
             for (var b : bars.entrySet()) if (meets(a, b.getValue())) bad.add(ka + " " + java.util.Arrays.toString(a) + " meets " + b.getKey() + " " + java.util.Arrays.toString(b.getValue()));
             for (int j = i + 1; j < keys.size(); j++) {
                 String kb = keys.get(j);
@@ -921,6 +939,7 @@ public final class UiMath {
                 var r = hudLayout(fbW, fbH, gui, k, size, new HudState(n, groups, sel, hint == 1, content == 1 ? 2 : 0, down == 1, true));
                 if (content == 2) r.put("aim-name", new int[]{sealCentre(0, n, w) - AIM_REACH, 68, sealCentre(n - 1, n, w) - sealCentre(0, n, w) + 2 * AIM_REACH, 9});
                 r.put("ability", ability);
+                for (int i = 1; i < 3; i++) r.put("relic-" + i, relicRect(i, sw, sh, gui, k));
                 if (!frameFaults(r, w, h, bars).isEmpty()) return false;
                 for (int open = 0; open < 2; open++) if (!chatSlot(r, f, sw, sh, CHAT_RIGHT, 9, open == 1 ? 20 : 10, open == 1).onScreen()) return false;
             }

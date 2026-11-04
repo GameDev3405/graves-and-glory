@@ -149,10 +149,10 @@ public final class Profile {
         for (var t : Spec.TROOPS) if (t.rarity().equals("common")) out.put(t.id(), new Owned());
         return out;
     }
-    /** sanitize against the sheets: the troops catalog, the classes, the side rows and the House order. */
+    /** sanitize against the sheets: the troops catalog, the legacy class ids (gearSets.classes), the side rows and the House order. */
     void sanitize() {
         Set<String> classes = new LinkedHashSet<>(), sides = new LinkedHashSet<>();
-        for (var c : Spec.CLASSES) classes.add(c.id());
+        for (var set : Spec.GEARSETS) for (String c : set.classes().split(",")) if (!c.isEmpty() && !c.equals("-")) classes.add(c); // the legacy class ids: the starter role of an old profile
         for (var f : Spec.FACTIONS) sides.add(f.id());
         sanitize(RosterMath.Catalog.fromSpec(), classes, sides, houseOrder());
     }
