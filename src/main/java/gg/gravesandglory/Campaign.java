@@ -100,11 +100,11 @@ public final class Campaign {
         } catch(java.io.IOException migration) { throw new IllegalStateException("Could not upgrade legacy commander data; original files were kept",migration); }
         try{JsonObject marker=JsonParser.parseString(Files.readString(layoutFile())).getAsJsonObject();if(marker.get("layout").getAsString().equals(LayoutMarker.LAYOUT))map=marker.get("map").getAsInt();}catch(Exception ignored){}CampaignMaps.select(map);
     }
-    /** A commander's collection, read once: a schema-1 or schema-2 file is upgraded in place to schema 3 first (spec 6.3, plan 2C.3; its original bytes stay as <uuid>.v1.json or <uuid>.v2.json), then the profile is sanitized. A new commander owns the 10 Commons and flies the starter banner. */
+    /** A commander's collection, read once: a schema-1, 2 or 3 file is upgraded in place to schema 4 first (spec 6.3, plan 2C.3; its original bytes stay as <uuid>.v1.json, .v2.json or .v3.json), then the profile is sanitized. A new commander owns the 10 Commons, flies the starter banner and wears the starter gear. */
     Profile profile(UUID id){return profiles.computeIfAbsent(id,key->SafeFiles.load(directory.resolve(key+".json"),Campaign::readProfile,Campaign::freshProfile,"Commander profile "+key));}
-    /** A new commander: the 10 Commons and the starter banner (sanitize fills them in). Also what a damaged profile with no usable .bak falls back to. */
-    static Profile freshProfile(){Profile fresh=new Profile();fresh.sanitize();return fresh;}
-    /** One profile file, upgraded in place first when it is schema 1 or 2; throws when it cannot be read (SafeFiles.load then tries the .bak). */
+    /** A new commander: the 10 Commons, the starter banner (sanitize fills them in) and the role's starter gear. Also what a damaged profile with no usable .bak falls back to. */
+    static Profile freshProfile(){Profile fresh=new Profile();Gear.grantStarter(fresh);fresh.sanitize();return fresh;}
+    /** One profile file, upgraded in place first when it is schema 1, 2 or 3; throws when it cannot be read (SafeFiles.load then tries the .bak). */
     static Profile readProfile(Path file) throws Exception{
         Profile p=ProfileMigration.upgradeFile(file,text->JSON.fromJson(text,ProfileMigration.V1.class),text->JSON.fromJson(text,Profile.class),JSON::toJson,RosterMath.Catalog.fromSpec());
         if(p==null)p=JSON.fromJson(Files.readString(file),Profile.class);if(p==null)throw new IllegalStateException("Empty profile");p.sanitize();return p;}
@@ -122,7 +122,7 @@ public final class Campaign {
         // existing collections carry over; dedicated servers never accept one.
         UUID id=p.getUuid();boolean allowed=importAllowed.remove(id)&&!b.server.isDedicated();
         try{var v1=JSON.fromJson(json,ProfileMigration.V1.class); // a portable copy from before Houses is upgraded the same way as a server file
-            Profile portable=v1!=null&&v1.schema<2?ProfileMigration.toV2(v1,RosterMath.Catalog.fromSpec()):JSON.fromJson(json,Profile.class);portable.sanitize();
+            Profile portable=v1!=null&&v1.schema<2?ProfileMigration.toV2(v1,RosterMath.Catalog.fromSpec()):JSON.fromJson(json,Profile.class);portable.sanitize();portable.gear.clear();portable.equipped.clear();portable.relics.clear();portable.relicSlots=new java.util.ArrayList<>(java.util.List.of("","",""));portable.forgeMarks=0;portable.gearPity=0;portable.nextGearUid=1;Gear.grantStarter(portable);
             if(allowed){profiles.put(id,portable);save(id);}
             else{Profile stored=profile(id);if(portable.gold>stored.gold||!stored.owned.keySet().containsAll(portable.owned.keySet()))System.out.println("[Graves and Glory] Ignored the collection sent by "+p.getName().getString()+"; the server's saved collection is kept.");}
         }catch(Exception ignored){}

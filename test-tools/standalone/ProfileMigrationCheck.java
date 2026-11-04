@@ -146,7 +146,7 @@ public final class ProfileMigrationCheck {
         check(moved.xp == 4321 && moved.claims.equals(Set.of("founders:20", "daily:0")) && moved.titles.equals(Set.of("Recruit", "Scout", "Vanguard")) && moved.title.equals("Vanguard"), "mig-progression: xp, claims and titles (Vanguard too) are copied unchanged");
         // profile defaults and the sanitizer
         var blank = new Profile();
-        check(blank.schema == 3 && blank.banner.equals(RosterMath.starterBanner()) && blank.commander.equals("champion") && blank.bannerColour.equals("gold"), "profile-default: schema 3, the starter banner, champion, gold");
+        check(blank.schema == 4 && blank.banner.equals(RosterMath.starterBanner()) && blank.commander.equals("champion") && blank.bannerColour.equals("gold"), "profile-default: schema 4, the starter banner, champion, gold");
         check(blank.owned.keySet().equals(COMMONS) && new ArrayList<>(blank.owned.keySet()).equals(List.of("knight", "archer", "revenant", "bonebow", "wm_hound", "wm_hunter", "ic_hearthguard", "ic_arbalist", "tc_raider", "tc_harpooner"))
             && blank.owned.values().stream().allMatch(o -> o.copies == 1 && o.stars == 1) && RosterMath.validBanner(blank.banner, cat, blank.owned.keySet()) == null, "profile-default: one copy of each of the 10 Commons, in sheet order, so the starter banner is valid");
         var p = new Profile();
@@ -167,7 +167,7 @@ public final class ProfileMigrationCheck {
         check(RosterMath.validBanner(p.banner, cat, p.owned.keySet()) == null && p.banner.equals(line("knight*12,mage,^,mage,^,empty*4")), "sanitize: a banner that fails validBanner is repacked");
         check(p.commander.equals("champion") && p.bannerColour.equals("gold"), "sanitize: an unknown class maps to champion and an unknown colour to gold");
         check(zeros(p.shards) && zeros(p.renown) && zeros(p.pity), "sanitize: shards, renown and pity hold the five House keys at 0 or more, and nothing else");
-        check(p.gold == 0 && p.wins == 3 && p.progression != null && p.schema == 3, "sanitize: gold and wins clamp; a missing progression is rebuilt");
+        check(p.gold == 0 && p.wins == 3 && p.progression != null && p.schema == 4, "sanitize: gold and wins clamp; a missing progression is rebuilt");
         var valid = new Profile();
         for (String id : COMMONS) valid.owned.put(id, owned(1, 1));
         valid.banner = new ArrayList<>(line("revenant*12,bonebow*8"));
@@ -176,12 +176,12 @@ public final class ProfileMigrationCheck {
         // schema 3 (plan 2C.3): a fresh save, v2toV3 in memory, the sanitizer and a round trip
         var newSave = new Profile();
         newSave.sanitize(cat, CLASSES, SIDES, HOUSES);
-        check(newSave.schema == 3 && newSave.battlesWon.isEmpty() && newSave.bonusClaimed.isEmpty() && newSave.campaignCleared == 0, "fresh-save: schema 3, no battle won, no bonus claimed, campaignCleared 0");
+        check(newSave.schema == 4 && newSave.battlesWon.isEmpty() && newSave.bonusClaimed.isEmpty() && newSave.campaignCleared == 0, "fresh-save: schema 4, no battle won, no bonus claimed, campaignCleared 0");
         var old = parseV2(V2_SAVE.replace("\"campaignCleared\":1", "\"campaignCleared\":6"));
         check(ProfileMigration.v2toV3(old, Spec.CAMPAIGNBATTLES) == old && old.schema == 3 && old.battlesWon.equals(march(6)) && old.bonusClaimed.isEmpty() && old.writs == 1, "v2toV3: in place; campaignCleared 6 gives all six battles, writs kept");
         var unmigrated = parseV2(V2_SAVE);
         unmigrated.sanitize(cat, CLASSES, SIDES, HOUSES);
-        check(unmigrated.schema == 3 && unmigrated.battlesWon.equals(march(1)) && unmigrated.campaignCleared == 1, "sanitize: a schema-2 profile that skipped the file upgrade runs v2toV3 first");
+        check(unmigrated.schema == 4 && unmigrated.battlesWon.equals(march(1)) && unmigrated.campaignCleared == 1, "sanitize: a schema-2 profile that skipped the file upgrade runs v2toV3 first");
         var broken = new Profile();
         broken.battlesWon = new LinkedHashSet<>(List.of("march-1", "march-3", "march-9")); broken.bonusClaimed = new LinkedHashSet<>(List.of("b1_hold_all", "b_bogus")); broken.campaignCleared = 5;
         broken.sanitize(cat, CLASSES, SIDES, HOUSES);
@@ -195,7 +195,7 @@ public final class ProfileMigrationCheck {
         saved.sanitize(cat, CLASSES, SIDES, HOUSES);
         var loaded = parseV2(write(saved));
         loaded.sanitize(cat, CLASSES, SIDES, HOUSES);
-        check(write(loaded).equals(write(saved)) && loaded.battlesWon.equals(march(2)) && loaded.bonusClaimed.equals(Set.of("b1_hold_all")) && loaded.campaignCleared == 2 && loaded.schema == 3, "round-trip: a schema 3 save loads and saves back unchanged (battlesWon, bonusClaimed, campaignCleared 2)");
+        check(write(loaded).equals(write(saved)) && loaded.battlesWon.equals(march(2)) && loaded.bonusClaimed.equals(Set.of("b1_hold_all")) && loaded.campaignCleared == 2 && loaded.schema == 4, "round-trip: a schema 4 save loads and saves back unchanged (battlesWon, bonusClaimed, campaignCleared 2)");
         // the file upgrade
         Path dir = Files.createTempDirectory("gravesandglory-profile-migration-check-");
         try {
@@ -203,14 +203,14 @@ public final class ProfileMigrationCheck {
             Path file = dir.resolve("a1.json"), backup = dir.resolve("a1.v1.json"), tmp = dir.resolve("a1.tmp");
             Files.write(file, original);
             Profile migrated = upgrade(file);
-            check(migrated != null && migrated.schema == 3 && Arrays.equals(Files.readAllBytes(backup), original), "mig-file: <id>.v1.json is a byte copy of the original");
-            check(Files.readString(file).contains("\"schema\":3") && Files.readString(file).equals(write(migrated)) && !Files.exists(tmp), "mig-file: <id>.json is the new schema 3 file, written through a temp file and a move");
+            check(migrated != null && migrated.schema == 4 && Arrays.equals(Files.readAllBytes(backup), original), "mig-file: <id>.v1.json is a byte copy of the original");
+            check(Files.readString(file).contains("\"schema\":4") && Files.readString(file).equals(write(migrated)) && !Files.exists(tmp), "mig-file: <id>.json is the new schema 4 file, written through a temp file and a move");
             byte[] backupBytes = Files.readAllBytes(backup), fileBytes = Files.readAllBytes(file);
             check(upgrade(file) == null && Arrays.equals(Files.readAllBytes(backup), backupBytes) && Arrays.equals(Files.readAllBytes(file), fileBytes), "mig-idempotent: a second call returns null and both files are byte-unchanged");
             Path again = dir.resolve("b2.json"), oldBackup = dir.resolve("b2.v1.json");
             Files.write(again, original);
             Files.writeString(oldBackup, "an earlier v1 copy");
-            check(upgrade(again) != null && Files.readString(oldBackup).equals("an earlier v1 copy") && Files.readString(again).contains("\"schema\":3"), "mig-backup-once: an existing <id>.v1.json is never replaced");
+            check(upgrade(again) != null && Files.readString(oldBackup).equals("an earlier v1 copy") && Files.readString(again).contains("\"schema\":4"), "mig-backup-once: an existing <id>.v1.json is never replaced");
             byte[] corrupt = "{\"gold\":42".getBytes(StandardCharsets.UTF_8);
             Path bad = dir.resolve("c3.json");
             Files.write(bad, corrupt);
@@ -221,11 +221,11 @@ public final class ProfileMigrationCheck {
             Path v2 = dir.resolve("e5.json"), v2Backup = dir.resolve("e5.v2.json");
             Files.writeString(v2, V2_SAVE);
             Profile up = upgrade(v2);
-            check(up != null && up.schema == 3 && up.battlesWon.equals(march(1)) && up.bonusClaimed.isEmpty(), "mig-v2: schema 2 with campaignCleared 1 becomes schema 3 with battlesWon [march-1] and no bonus claimed");
+            check(up != null && up.schema == 4 && up.battlesWon.equals(march(1)) && up.bonusClaimed.isEmpty(), "mig-v2: schema 2 with campaignCleared 1 becomes schema 4 with battlesWon [march-1] and no bonus claimed");
             check(up.gold == 77 && up.banner.equals(List.of("knight", "archer")) && up.campaignCleared == 1 && up.writs == 1 && up.writChapters.equals(Set.of(1)), "mig-v2: gold, banner, campaignCleared, writs and writChapters are kept unchanged");
-            check(Files.readString(v2Backup).equals(V2_SAVE) && !Files.exists(dir.resolve("e5.v1.json")) && Files.readString(v2).equals(write(up)), "mig-v2: <id>.v2.json is a byte copy of the schema-2 file, no .v1.json, and <id>.json is the schema 3 file");
+            check(Files.readString(v2Backup).equals(V2_SAVE) && !Files.exists(dir.resolve("e5.v1.json")) && Files.readString(v2).equals(write(up)), "mig-v2: <id>.v2.json is a byte copy of the schema-2 file, no .v1.json, and <id>.json is the schema 4 file");
             byte[] v3Bytes = Files.readAllBytes(v2);
-            check(upgrade(v2) == null && Arrays.equals(Files.readAllBytes(v2), v3Bytes) && Files.readString(v2Backup).equals(V2_SAVE), "mig-v2-idempotent: a schema 3 file returns null; both files are unchanged");
+            check(upgrade(v2) == null && Arrays.equals(Files.readAllBytes(v2), v3Bytes) && Files.readString(v2Backup).equals(V2_SAVE), "mig-v2-idempotent: a schema 4 file returns null; both files are unchanged");
             Path deep = dir.resolve("f6.json");
             Files.writeString(deep, V2_SAVE.replace("\"campaignCleared\":1", "\"campaignCleared\":3"));
             check(upgrade(deep).battlesWon.equals(march(3)), "mig-v2: campaignCleared 3 gives march-1, march-2 and march-3");
