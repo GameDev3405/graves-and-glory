@@ -122,6 +122,7 @@ public final class GravesAndGlory implements ModInitializer {
         ServerPlayConnectionEvents.DISCONNECT.register((handler, server) -> {
             if(battle!=null) battle.leave(handler.player.getUuid());
         });
+        net.fabricmc.fabric.api.event.player.UseItemCallback.EVENT.register(GearCombat::useItem); // a staff's heal
         ServerLivingEntityEvents.ALLOW_DAMAGE.register((entity,source,amount) -> {
             if(battle==null) return true;
             return battle.allowDamage(entity,source,amount);
@@ -211,6 +212,8 @@ public final class GravesAndGlory implements ModInitializer {
         long abilityReadyAt,abilityUntil;Object abilityData;
         /** The commander's worn gear this round (GearCombat.seat at round setup, a takeover or a fresh seat) and its relic slots; a bot seat has none. */
         GearStats.Loadout gear=GearStats.empty();String[] relics=gear.relics().toArray(new String[0]);
+        /** Whoever last hurt one of this army's troops (the grudge perk); Battle.allowDamage sets it. */
+        UUID grudge;
         /** The most troops of each group alive at once this round (the HUD card's "of" count), raised with fullHealth and cleared with it. */
         final Map<String,Integer> fullCount=new HashMap<>();
         /** The commander's last enemy blow (a player commander is no Unit): the army whose troop or commander landed it and when (battle ticks). Battle.allowDamage sets it; a death with no attacker within Projectiles.CREDIT_WINDOW_TICKS of it (a pull into lava, a knock off an edge) is that army's (Veterans.onCommanderDeath, which clears it). */
@@ -1132,7 +1135,8 @@ public final class GravesAndGlory implements ModInitializer {
             if(!R.friendlyFire()&&attackTeam==team)return false;
             // A commander's own blow: a troop takes it at combatDiscipline.damageScale, and the commander effects (his Mark Prey, the target side's Stand Fast) multiply in. Under his Bloodrush a blow by hand feeds him from what the target really loses (this hook fires before vanilla's shield block and hurt cooldown, which may take nothing), so the scaled blow is dealt here and measured.
             if(!scalingDamage&&attacker instanceof ServerPlayerEntity p){
-                double scale=(entity instanceof ServerPlayerEntity?1:Spec.COMBATDISCIPLINE[0].damageScale())*Commander.playerFactor(this,attackerSquad,entity);
+                GearCombat.onPlayerHit(this,p,attackerSquad,entity,source,amount); // a greatweapon's sweep: its own blows come back here as his
+                double scale=(entity instanceof ServerPlayerEntity?1:Spec.COMBATDISCIPLINE[0].damageScale())*Commander.playerFactor(this,attackerSquad,entity,source);
                 boolean feeds=Commander.feeds(this,attackerSquad,source);
                 if(scale!=1||feeds){
                     float before=entity.getHealth()+entity.getAbsorptionAmount();
@@ -1150,7 +1154,7 @@ public final class GravesAndGlory implements ModInitializer {
                 Veterans.onCommanderDeath(this,p,victimSquad,team,attacker,striker,side); // a commander struck down never reaches AFTER_DEATH: his killers get the commander bounty here, and his credit log is forgotten (he stands again within its window)
                 return false;
             }
-            if(hitter!=null)for(Unit u:units)if(u.mob==entity){u.lastHitBy=hitter;u.lastHitAt=time;u.lastHitTroop=striker==null||striker.temporary?null:striker.spec.id();break;}
+            if(hitter!=null)for(Unit u:units)if(u.mob==entity){if(attacker!=null&&hitter.team!=u.squad.team)u.squad.grudge=attacker.getUuid();u.lastHitBy=hitter;u.lastHitAt=time;u.lastHitTroop=striker==null||striker.temporary?null:striker.spec.id();break;}
             if(side!=null&&victimSquad!=null&&side.team!=team){victimSquad.hitBy=side;victimSquad.hitAt=time;} // a commander's last enemy blow, as lastHitBy is a troop's: a death with no attacker soon after is that army's (Veterans.onCommanderDeath)
             if(striker!=null)Veterans.helped(this,striker,entity); // every troop blow the battle lets through (Combat.resolve's and any other) logs its striker as a helper on the victim (kill credit, design 3.2)
             return true;

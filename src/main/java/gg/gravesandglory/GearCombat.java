@@ -1,7 +1,17 @@
 package gg.gravesandglory;
 
-import java.util.UUID;
+import java.util.*;
+import net.minecraft.entity.Entity;
 import net.minecraft.entity.EquipmentSlot;
+import net.minecraft.entity.LivingEntity;
+import net.minecraft.entity.damage.DamageSource;
+import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.registry.tag.DamageTypeTags;
+import net.minecraft.util.Hand;
+import net.minecraft.util.TypedActionResult;
+import net.minecraft.util.math.Box;
+import net.minecraft.util.math.Vec3d;
+import net.minecraft.world.World;
 import net.minecraft.entity.attribute.EntityAttribute;
 import net.minecraft.entity.attribute.EntityAttributeModifier;
 import net.minecraft.entity.attribute.EntityAttributes;
@@ -16,7 +26,7 @@ import net.minecraft.server.network.ServerPlayerEntity;
  * apply() turns his Loadout into fixed-id attribute modifiers. The stand-ins carry no attributes of their own, so every number is the Loadout's.
  * A profile wearing nothing fights with the starter kit of its role (on a copy; the profile is never changed here).
  */
-final class GearCombat {
+public final class GearCombat {
     private GearCombat() {}
 
     /** Fixed ids, so a respawn or a new battle replaces the modifier and never stacks it. HEALTH and ATTACK keep the old class-passive ids. */
@@ -104,5 +114,111 @@ final class GearCombat {
             pl.getInventory().selectedSlot = 0;
             pl.networkHandler.sendPacket(new UpdateSelectedSlotS2CPacket(0));
         }
+    }
+
+    // ---- Weapon behaviours (gear-combat plan Task 4). Each reads the worn family's gearFamilies row; a zero cell turns the behaviour off.
+
+    /** The seated human squad of a player in a running battle, or null (the lobby, a spectator seat, no battle). */
+    static GravesAndGlory.Squad seated(PlayerEntity pl) {
+        var b = GravesAndGlory.battle;
+        if (b == null || !b.running || !(pl instanceof ServerPlayerEntity)) return null;
+        var s = b.squads.get(pl.getUuid());
+        return s == null || s.bot || !s.seated ? null : s;
+    }
+
+    /** Whether e fights on the other side of team: a troop or a seated commander of the other army, alive and not a spectator. */
+    static boolean foe(GravesAndGlory.Battle b, Entity e, int team) {
+        if (!(e instanceof LivingEntity le) || !le.isAlive() || e.isSpectator()) return false;
+        int t = b.teamOf(e);
+        return t >= 0 && t != team;
+    }
+    static boolean friend(GravesAndGlory.Battle b, Entity e, int team) {
+        if (!(e instanceof LivingEntity le) || !le.isAlive() || e.isSpectator()) return false;
+        return b.teamOf(e) == team;
+    }
+
+    /** Swings each commander has made with a sweeping family (heavy_hand counts them). */
+    static final Map<UUID, Integer> swings = new HashMap<>();
+    static boolean sweeping;
+
+    /**
+     * A commander's own blow by hand (Battle.allowDamage, before the blow is scaled): with a sweeping main family (sweepRadius and sweepShare above 0),
+     * every other foe within sweepRadius of the target (heavy_hand widens every value2-th swing) takes sweepShare of the blow, once per swing (the
+     * sweep's own blows never sweep again). Those blows go through allowDamage as the commander's, so they are scaled like any blow of his.
+     */
+    static void onPlayerHit(GravesAndGlory.Battle b, ServerPlayerEntity pl, GravesAndGlory.Squad s, LivingEntity target, DamageSource src, float amount) {
+        if (sweeping || s == null || src.getSource() != pl || src.isIn(DamageTypeTags.IS_PROJECTILE)) return;
+        var f = GearStats.family(s.gear.mainFamily());
+        if (f == null || f.sweepRadius() <= 0 || f.sweepShare() <= 0) return;
+        int swing = swings.merge(pl.getUuid(), 1, Integer::sum);
+        double r = f.sweepRadius() * GearEffects.sweepRadiusFactor(s.gear, swing);
+        List<LivingEntity> hit = new ArrayList<>();
+        for (var e : b.world.getOtherEntities(target, new Box(target.getPos(), target.getPos()).expand(r, 2, r)))
+            if (e != pl && e instanceof LivingEntity le && foe(b, le, s.team) && e.squaredDistanceTo(target) <= r * r) hit.add(le);
+        sweeping = true;
+        try { for (var le : hit) le.damage(src, (float) (amount * f.sweepShare())); } finally { sweeping = false; }
+    }
+
+    /** A shield block (ShieldCooldownMixin, PlayerEntity.damageShield): the worn off-hand family's cooldownTicks on the shield, which lowers it. */
+    public static void onShieldBlock(PlayerEntity pl) {
+        var s = seated(pl);
+        if (s == null || !pl.getActiveItem().isOf(Items.SHIELD)) return;
+        var f = GearStats.family(s.gear.offFamily());
+        if (f == null || f.cooldownTicks() <= 0) return;
+        pl.getItemCooldownManager().set(Items.SHIELD, f.cooldownTicks());
+        pl.clearActiveItem();
+        pl.getWorld().sendEntityStatus(pl, (byte) 30); // the shield-down sound and animation
+    }
+
+    /** The bow's use ticks as its draw progress reads them (BowDrawMixin): x GearEffects.drawFactor for a seated commander, else unchanged. */
+    public static int drawTicks(LivingEntity user, int ticks) {
+        var s = user instanceof PlayerEntity pl ? seated(pl) : null;
+        return s == null ? ticks : (int) Math.round(ticks * GearEffects.drawFactor(s.gear));
+    }
+
+    /**
+     * A staff's use (UseItemCallback): the nearest friendly troop or commander the commander looks at within the family's range is healed
+     * healBase x healingFactor, then the staff waits cooldownTicks. Other items and anyone outside battle pass through to vanilla.
+     */
+    static TypedActionResult<ItemStack> useItem(PlayerEntity pl, World world, Hand hand) {
+        ItemStack stack = pl.getStackInHand(hand);
+        var s = seated(pl);
+        if (world.isClient || s == null || hand != Hand.MAIN_HAND || GearLooks.uid(stack) < 0) return TypedActionResult.pass(stack);
+        var f = GearStats.family(s.gear.mainFamily());
+        if (f == null || f.healBase() <= 0 || f.range() <= 0) return TypedActionResult.pass(stack);
+        if (pl.getItemCooldownManager().isCoolingDown(stack.getItem())) return TypedActionResult.fail(stack);
+        LivingEntity target = lookedAt(GravesAndGlory.battle, pl, s.team, f.range());
+        if (target == null) return TypedActionResult.fail(stack);
+        target.heal((float) (f.healBase() * GearStats.healingFactor(s.gear)));
+        pl.getItemCooldownManager().set(stack.getItem(), Math.max(1, f.cooldownTicks()));
+        return TypedActionResult.success(stack);
+    }
+
+    /** The nearest friend (troop or commander) whose box the look ray from the eyes crosses within range blocks, or null. */
+    static LivingEntity lookedAt(GravesAndGlory.Battle b, PlayerEntity pl, int team, double range) {
+        Vec3d from = pl.getEyePos(), to = from.add(pl.getRotationVec(1f).multiply(range));
+        LivingEntity best = null; double bestD = Double.MAX_VALUE;
+        for (var e : b.world.getOtherEntities(pl, new Box(from, to).expand(1))) {
+            if (!friend(b, e, team)) continue;
+            var hit = e.getBoundingBox().expand(0.3).raycast(from, to);
+            if (hit.isEmpty()) continue;
+            double d = hit.get().squaredDistanceTo(from);
+            if (d < bestD) { bestD = d; best = (LivingEntity) e; }
+        }
+        return best;
+    }
+
+    /**
+     * The gear share of a blow the commander strikes himself (Commander.playerFactor): rangedFactor and hawkeye on a projectile, grudge on whoever
+     * last hurt one of his troops, last_light while he is low. 1 for a squad with no gear.
+     */
+    static double blowFactor(GravesAndGlory.Squad s, ServerPlayerEntity pl, LivingEntity target, DamageSource src) {
+        if (s == null || pl == null) return 1;
+        var l = s.gear;
+        double f = 1;
+        if (src != null && src.isIn(DamageTypeTags.IS_PROJECTILE)) f *= GearStats.rangedFactor(l) * GearEffects.hawkeyeFactor(l, Math.sqrt(pl.squaredDistanceTo(target)));
+        f *= GearEffects.grudgeFactor(l, target != null && target.getUuid().equals(s.grudge));
+        f *= GearEffects.lastLightFactor(l, pl.getHealth() / pl.getMaxHealth());
+        return f;
     }
 }

@@ -401,10 +401,11 @@ public final class Commander {
         var s = attacker.squad;
         var c = row(s);
         double f = 1;
-        if (c.passive().equals("champion") && covers(c, attacker.spec)) {
-            var p = player(b, s);
-            if (p != null && GravesAndGlory.Battle.horizontalDistance(p.getPos(), attacker.mob.getPos()) <= c.passiveRadius() * c.passiveRadius()) f *= 1 + c.passiveValue2();
-        }
+        var p = player(b, s); // the command aura (gear-combat Task 4): the worn command stat, a banner's wider reach, formation_charge on Attack
+        double r = GearEffects.commandRadius(s.gear);
+        boolean inAura = p != null && GravesAndGlory.Battle.horizontalDistance(p.getPos(), attacker.mob.getPos()) <= r * r;
+        var a = b.assignment(attacker);
+        f *= GearEffects.troopFactor(s.gear, inAura, a != null && "attack".equals(a.order));
         if (c.passive().equals("warden") && covers(c, attacker.spec)) f *= 1 + c.passiveValue();
         return f * marked(b, s, target) * Statuses.markFactor(b, s, target);
     }
@@ -429,9 +430,11 @@ public final class Commander {
      * The commander share of a blow a commander strikes himself (Battle.allowDamage): his own Mark Prey on its mark, the target side's Stand Fast, and a weaken
      * on the commander himself (Statuses.factorOut: Kort, round 34 question 3, statuses hit commanders too).
      */
-    public static double playerFactor(GravesAndGlory.Battle b, GravesAndGlory.Squad attacker, LivingEntity target) {
+    public static double playerFactor(GravesAndGlory.Battle b, GravesAndGlory.Squad attacker, LivingEntity target) { return playerFactor(b, attacker, target, null); }
+    /** With the blow's source: the commander's gear share too (GearCombat.blowFactor: ranged, hawkeye, grudge, last_light). */
+    public static double playerFactor(GravesAndGlory.Battle b, GravesAndGlory.Squad attacker, LivingEntity target, net.minecraft.entity.damage.DamageSource source) {
         var p = attacker == null ? null : player(b, attacker);
-        return marked(b, attacker, target) * takenFactor(b, target) * (p == null ? 1 : Statuses.factorOut(b, p));
+        return marked(b, attacker, target) * takenFactor(b, target) * (p == null ? 1 : Statuses.factorOut(b, p)) * GearCombat.blowFactor(attacker, p, target, source);
     }
 
     /** The Warden's extra reach for a troop of his group (passiveValue2 blocks); 0 otherwise. Abilities.range adds it. */
