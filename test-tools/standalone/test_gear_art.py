@@ -168,4 +168,27 @@ class GearWeapons(unittest.TestCase):
             for clip in ("idle", "attack"):
                 self.L.posed(w, clip); self.assertLess(self.L.reach.miss, 2.5, (iid, clip))
 
+class GearIcons(unittest.TestCase):
+    def test_item_icons(self):
+        """Every item id at every rarity: 32 x 32 RGBA, a clear 1 px margin, no House ramp, Common unlike Legendary.
+        The atlas rows wait on Kort's approval of the art, so they are not checked here yet."""
+        import icons, graveborn, tidecallers, wildmoot
+        banned = {tuple(c[:3]) for R in (graveborn.VIOLET, tidecallers.SEA, wildmoot.OCHRE) for c in R}
+        ics = icons.item_icons()
+        ids = [i["id"] for i in gearlib.ids()["items"]]
+        self.assertEqual(set(ics), {(i, r) for i in ids for r in gearlib.RARITIES})
+        for iid in ids:
+            looks = {}
+            for r in gearlib.RARITIES:
+                im = ics[(iid, r)]
+                self.assertEqual((im.mode, im.size), ("RGBA", (32, 32)), (iid, r))
+                for x in range(32):
+                    for y in (0, 31):
+                        self.assertEqual(im.getpixel((x, y))[3], 0, (iid, r)); self.assertEqual(im.getpixel((y, x))[3], 0, (iid, r))
+                px = tuple(pixels(im))
+                self.assertGreater(sum(1 for p in px if p[3]), 60, (iid, r))
+                self.assertFalse({p[:3] for p in px if p[3]} & banned, (iid, r))
+                looks[r] = px
+            self.assertNotEqual(looks[1], looks[5], iid)   # the slot border carries rarity; middle tiers may fold alike
+
 if __name__ == "__main__": unittest.main()
