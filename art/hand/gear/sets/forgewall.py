@@ -1,5 +1,5 @@
 """Forgewall, a House armour set Kort approved on 2026-11-04: authored in ../house/forgewall.py (from 5ff7ed4c), drawn in the gear
-frame by houselib. Art only until Kort answers question #113; the ids sit in ids.json's art_only list."""
+frame by houselib. Kort approved the set's data 2026-11-04 (#113); its ids sit in ids.json's items and house lists."""
 import os, sys
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
 import houselib

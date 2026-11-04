@@ -79,6 +79,11 @@ class PreflightGear(unittest.TestCase):
 
     def test_starter_weapons_resolve(self):
         self.refuses(lambda d: self.row(d, 'gearSets', 'bruiser').__setitem__('starterMain', 'nope'), 'starterMain')
+        self.refuses(lambda d: self.row(d, 'gearSets', 'bruiser').__setitem__('starterMain', '-'), 'starterMain')
+
+    def test_house_set_starts_no_one(self):
+        """A House set (classes -, Kort 2026-11-04) has no starter weapons; naming one is refused."""
+        self.refuses(lambda d: self.row(d, 'gearSets', 'oathbound').__setitem__('starterMain', 'arming_sword'), 'starts no one')
 
     def test_every_class_maps_to_one_set(self):
         self.refuses(lambda d: self.row(d, 'gearSets', 'bruiser').__setitem__('classes', 'champion'), 'reaver')

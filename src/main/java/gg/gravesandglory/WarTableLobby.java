@@ -290,10 +290,23 @@ final class WarTableLobby {
 
     static Spec.HousesRow houseRow(String id) { for (var h : Spec.HOUSES) if (h.id().equals(id)) return h; return null; }
     static Spec.GearSetsRow setRow(String id) { for (var r : Spec.GEARSETS) if (r.id().equals(id)) return r; return null; }
-    /** A role's word: the id capitalised (Bruiser, Healer, Ranged, Commander). */
-    static String roleName(String id) { return id.isEmpty() ? "" : Character.toUpperCase(id.charAt(0)) + id.substring(1); }
-    /** The seat icon of a role: the art the first class of its set had (the table has no role icons yet), or null for an unknown role. */
-    static String roleIcon(String id) { var r = setRow(id); return r == null ? null : "table/icon-class-" + r.classes().split(",")[0]; }
+    /** The shared seat icon of a House set (Kort 2026-11-04: classes -, so no class art to borrow) until it has its own. */
+    static final String HOUSE_SET_ICON = "table/icon-banner";
+    /** Whether a gearSets row is one of the House sets (no starting class), not one of the four starter roles. */
+    static boolean houseSet(Spec.GearSetsRow r) { return r != null && r.classes().equals("-"); }
+    /** A role's word: a starter role's id capitalised (Bruiser, Healer, Ranged, Commander), a House set's own name (Barrow Warden). */
+    static String roleName(String id) {
+        var r = setRow(id);
+        if (houseSet(r)) return r.name();
+        return id.isEmpty() ? "" : Character.toUpperCase(id.charAt(0)) + id.substring(1);
+    }
+    /** The seat icon of a role: the art the first class of its set had (the table has no role icons yet), HOUSE_SET_ICON for a House set,
+     *  or null for an unknown role. */
+    static String roleIcon(String id) {
+        var r = setRow(id);
+        if (r == null) return null;
+        return houseSet(r) ? HOUSE_SET_ICON : "table/icon-class-" + r.classes().split(",")[0];
+    }
 
     void seal(DrawContext g, String house, int x, int y, int size) {
         var h = houseRow(house);
@@ -330,7 +343,7 @@ final class WarTableLobby {
         head(g, "house", "Your House", hr == null ? "" : hr.name() + (troops > 0 ? ", " + troops + (troops == 1 ? " troop" : " troops") : troops == 0 ? ", no troops" : ""), lx, y + HOUSE_HEAD_Y, TEXT_W);
         String role = myRole();
         var sr = setRow(role);
-        head(g, "role", "Your role", sr == null ? "" : roleName(role) + ", " + sr.name(), lx, y + ROLE_HEAD_Y, TEXT_W);
+        head(g, "role", "Your role", sr == null ? "" : houseSet(sr) ? sr.name() : roleName(role) + ", " + sr.name(), lx, y + ROLE_HEAD_Y, TEXT_W);
         int worn = sr == null ? 0 : GearStats.of(CampaignClient.profile).setCounts().getOrDefault(role, 0);
         String gearLine = UiMath.trim(worn + " of 4 " + (sr == null ? "" : sr.name()) + " pieces worn. Change gear and relics in the Arsenal.", TEXT_W, t -> font.getWidth(DarkUi.body(t)));
         line(g, "gear", DarkUi.body(gearLine), gearLine, lx, y + ROLE_Y, DarkUi.SEPIA);

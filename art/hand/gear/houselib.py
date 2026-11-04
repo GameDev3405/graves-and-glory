@@ -1,6 +1,6 @@
 """The five House armour sets Kort approved on 2026-11-04 (Oathbound, Barrow Warden, Thornhide, Forgewall, Tidewrought),
 brought into the commander gear frame. ART ONLY: no stats, catalogue rows or drops until Kort answers question #113
-(docs/drafts/house-gear-sets-2026-11-04.md on main); their ids sit in ids.json's art_only list.
+(docs/drafts/house-gear-sets-2026-11-04.md on main); their ids sit in ids.json's items and house lists (data approved 2026-11-04).
 
 The sets are authored in house/ (copied unchanged from claude/gifted-ptolemy-j2rv7i at 5ff7ed4c, tools/player_armor/):
 each box with its painters, in Blockbench space (y up, feet at 0, the wearer's right at +x), each rarity and team from
