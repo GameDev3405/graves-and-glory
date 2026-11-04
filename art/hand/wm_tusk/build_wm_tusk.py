@@ -229,22 +229,21 @@ def bones():
         Box((2, -5, -6), (2, 4, 1), tusk()), Box((2, -7, -6.5), (2, 2, 1), tusk())]))
     B.append(Bone("cap", "head", tag="helm", boxes=[Box((-4.5, -9.5, -4.5), (9, 3, 9), cap())]))
     B.append(Bone("headband", "head", team=True, tag="helm", boxes=[Box((-4.5, -6.5, -4.5), (9, 1, 9), "band", sheet="cloth")]))
-    B.append(Bone("right_arm", "body", (-5, -10, 0), [Box((-3, -2, -2), (4, 12, 4), arm_bare())], rot=(-HUNCH, 0, 0)))
-    B.append(Bone("right_hand", "right_arm", (-1, 8, 0)))
-    B.append(Bone("left_arm", "body", (5, -10, 0), [Box((-1, -2, -2), (4, 12, 4), arm_bare())], rot=(-HUNCH, 0, 0)))
-    B.append(Bone("left_hand", "left_arm", (1, 8, 0)))
+    for side, x, ox in (("right", -5, -3), ("left", 5, -1)):   # jointed: elbow and hand as handlib.arms(), the arm standing back up
+        B += limb(f"{side}_arm", "body", (x, -10, 0), (ox, -2, -2), arm_bare(), f"{side}_forearm", ELBOW[side], rot=(-HUNCH, 0, 0))
+        B.append(Bone(f"{side}_hand", f"{side}_forearm", HAND))
     B.append(Bone("arms_folded", "body", (0, -9, -1), rot=(-43, 0, 0)))
-    B.append(Bone("right_leg", "root", (-1.9, 12, 0), [Box((-2, 0, -2), (4, 12, 4), leg_painter())]))
-    B.append(Bone("left_leg", "root", (1.9, 12, 0), [Box((-2, 0, -2), (4, 12, 4), leg_painter())]))
+    for side, x in (("right", -1.9), ("left", 1.9)):   # jointed: the knee 6 px down the leg
+        B += limb(f"{side}_leg", "root", (x, 12, 0), (-2, 0, -2), leg_painter(), f"{side}_shin", KNEE)
     B.append(Bone("mantle", "body", boxes=[Box((-5, -13.5, -3), (10, 3, 6), mantle(), dil=0.2)]))
     B.append(Bone("belt", "body", boxes=[Box((-4, -4, -2), (8, 2, 4), belt(), dil=0.5)]))
     B.append(Bone("trophy", "body", boxes=[Box((1.5, -3, -3), (1, 3, 1), trophy())]))
     B.append(Bone("kilt", "body", team=True, boxes=[Box((-4.5, -3, -2.5), (9, 6, 5), "kilt", sheet="cloth")]))
     for side in ("right", "left"):
         c = -1 if side == "right" else 1
-        B.append(Bone(f"{side}_wrap", f"{side}_arm", team=True, boxes=[Box((-2 + (0 if side == "right" else -1), 5, -2), (4, 4, 4), "wrap", dil=0.3, sheet="cloth")]))
-        B.append(Bone(f"{side}_shin", f"{side}_leg", boxes=[Box((-2, 6, -2), (4, 4, 4), shin(), dil=0.3)]))
-        B.append(Bone(f"{side}_hoof", f"{side}_leg", boxes=[Box((-2.5, 10, -3), (5, 2, 5), hoof())]))
+        B.append(Bone(f"{side}_wrap", f"{side}_forearm", team=True, boxes=[Box((-1 if side == "right" else -4, 1, -2), (4, 4, 4), "wrap", dil=0.3, sheet="cloth")]))
+        B.append(Bone(f"{side}_shin_guard", f"{side}_shin", boxes=[Box((-2, 0, -2), (4, 4, 4), shin(), dil=0.3)]))   # was "<side>_shin", now the joint's name
+        B.append(Bone(f"{side}_hoof", f"{side}_shin", boxes=[Box((-2.5, 4, -3), (5, 2, 5), hoof())]))
     B.append(Bone("pauldron", "right_arm", (-1, -2.5, 0), rot=(0, 0, -12), boxes=[Box((-3.5, -2.5, -3.5), (7, 3, 7), pauldron())]))
     B.append(Bone("pauldron_spikes", "right_arm", (-1, -2.5, 0), rot=(0, 0, -12), boxes=[
         Box((-3, -5.5, -0.5), (1, 3, 1), spike()), Box((0, -5.5, -0.5), (1, 3, 1), spike())]))
@@ -262,7 +261,7 @@ def bones():
         Box((-2.5, -10, -2.4), (1, 2, 1), WM.wm_tusk()), Box((-0.5, -10, -2.6), (1, 3, 1), WM.wm_tusk()), Box((1.5, -10, -2.4), (1, 2, 1), WM.wm_tusk())]))
     B.append(Bone("hip_skull", "body", stages=[2, 3], boxes=[Box((-3.5, -4.5, -3.3), (2, 2, 1), WM.wm_skull("tsk"))]))
     for side in ("right", "left"):
-        B.append(Bone(f"{side}_knee", f"{side}_leg", stages=[2, 3], boxes=[Box((-1.5, 5, -2.6), (3, 2, 1), WM.wm_skull("tk" + side))]))
+        B.append(Bone(f"{side}_knee", f"{side}_shin", stages=[2, 3], boxes=[Box((-1.5, -1, -2.6), (3, 2, 1), WM.wm_skull("tk" + side))]))
     # tier III, the Warlord: a tusk crown, ochre bands and rings, a grey pelt mantle
     B.append(Bone("tusk_crown", "head", tag="helm", stages=[3], boxes=[
         Box((-3.5, -11, -3.5), (7, 2, 7), WM.lashing(WM.HORN, 3), dil=0.2),
@@ -306,8 +305,8 @@ def veteran(bone, box):
     n = bone.name
     if n == "body": return WM.vet_baldric()
     if n == "belt": return WM.vet_rows((0, 1), every=2, bead=True)
-    if n.endswith("_arm"): return WM.vet_rows((4,))
-    if n.endswith("_leg"): return WM.vet_rows((3,))
+    if n.endswith(("_arm", "_forearm")): return WM.vet_rows((4,))
+    if n.endswith(("_leg", "_shin")): return WM.vet_rows((3,))
     return None
 
 WM_TUSK = Troop("wm_tusk", SKIN, CLOTH, bones, cloth_painter,

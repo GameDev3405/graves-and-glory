@@ -192,9 +192,10 @@ HAND = (0, 4, 0)
 JOINT_LIMITS = {"_forearm": (-150, 0), "_shin": (0, 150)}
 JOINT_OVERLAP = 2  # px a limb's lower box reaches past its hinge into the upper box (review 2026-11-04 section 1.3)
 
-def limb(name, parent, pivot, origin, paint, lower, joint, size=(4, 12, 4), dil=0.0, sheet="skin", limit=None, upper_h=6):
+def limb(name, parent, pivot, origin, paint, lower, joint, size=(4, 12, 4), dil=0.0, sheet="skin", limit=None, upper_h=6, rot=(0, 0, 0)):
     """A jointed limb as two bones: `name` at pivot with the upper box at origin, and `lower` at joint (in the upper bone's frame)
-    with the lower box under it, both painted from the one painter of the whole limb (Box cut). Returns [upper bone, lower bone]."""
+    with the lower box under it, both painted from the one painter of the whole limb (Box cut). Returns [upper bone, lower bone].
+    rot: the upper bone's rest rotation (a leaning troop's arms stand back up); the lower bone has none of its own."""
     w, h, d = size
     if limit is None:  # a hinge bends one way: an elbow flexes (rx <= 0), a knee folds back (rx >= 0); see JOINT_LIMITS
         limit = next((v for k, v in JOINT_LIMITS.items() if lower.endswith(k)), None)
@@ -202,7 +203,7 @@ def limb(name, parent, pivot, origin, paint, lower, joint, size=(4, 12, 4), dil=
     # elbow or knee shows the limb's own texels across the outside of the bend instead of a gap
     o = min(JOINT_OVERLAP, upper_h)
     lo = [origin[0] - joint[0], origin[1] + upper_h - o - joint[1], origin[2] - joint[2]]
-    return [Bone(name, parent, pivot, [Box(origin, (w, upper_h, d), paint, dil, sheet, cut=(h, 0))]),
+    return [Bone(name, parent, pivot, [Box(origin, (w, upper_h, d), paint, dil, sheet, cut=(h, 0))], rot=rot),
             Bone(lower, name, joint, [Box(lo, (w, h - upper_h + o, d), paint, dil, sheet, cut=(h, upper_h - o))], limit=limit)]
 
 def arms(painter, right=None):
