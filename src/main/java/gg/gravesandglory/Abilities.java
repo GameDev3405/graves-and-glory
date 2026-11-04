@@ -689,7 +689,7 @@ final class Abilities {
     /**
      * Keeps one speed modifier (by its id) on a mob at a value: added where it lacks, replaced where the value changed (the ground did: BattleMath.speedModifier
      * differs on land and in water), left alone where it stands at that value already, and only taken off for a value of 0. The Howl (hasten), Muster
-     * (Commander.Muster.hasten) and Riptide (Houses.swim) keep theirs through it; a mob without the attribute is left alone.
+     * (RelicEffects.Muster.hasten) and Riptide (Houses.swim) keep theirs through it; a mob without the attribute is left alone.
      */
     static void keepSpeed(LivingEntity mob, UUID id, String name, double value) {
         var speed = mob.getAttributeInstance(EntityAttributes.GENERIC_MOVEMENT_SPEED);

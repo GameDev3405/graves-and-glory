@@ -1940,7 +1940,7 @@ public final class Phase1Checks implements ClientModInitializer {
         /** A feed line for the frame to draw (the Task 8a review's Important 2: the feed in every measured frame). */
         static void feedLine(){EventFeed.push("point",0,"Dawn took Mill Hamlet",net.minecraft.util.Util.getMeasuringTimeMs());}
         /** A frame's plates as BattleHud drew them: its rects without the ability slot (vanilla's GUI px) and the aimed point's name. */
-        static Map<String,int[]> plates(Map<String,int[]> r){var p=new LinkedHashMap<>(r);p.remove("ability");p.remove("aim-name");return p;}
+        static Map<String,int[]> plates(Map<String,int[]> r){var p=new LinkedHashMap<>(r);p.remove("ability");p.remove("relic-1");p.remove("relic-2");p.remove("aim-name");return p;}
         /** Where drawn boxes differ from the layout: a box the layout has that the frame lacks or drew elsewhere, and one it drew that
          *  the layout lacks. Empty when they are the same. */
         static List<String> layoutDiff(Map<String,int[]> want,Map<String,int[]> got){

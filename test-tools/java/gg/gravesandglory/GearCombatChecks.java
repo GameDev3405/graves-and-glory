@@ -15,7 +15,8 @@ import java.util.*;
  * Real-client checks for gear combat (plan 2026-11-03-gear-combat). GRAVES_PHASE1_CHECKS=gear-combat. Task 3: the kit in hand and armour is the
  * worn gear, max health is the Loadout's, two downs and respawns leave it unchanged, and a profile wearing nothing fights with the starter kit.
  * Task 4: a greatweapon sweeps foes near its target, a shield block lowers the shield on its cooldown, a bow draws at the family's speed, a staff
- * heals the friend it looks at, and a banner widens the command aura. The profile is put back from a JSON copy taken at the start. Never shipped.
+ * heals the friend it looks at, and a banner widens the command aura. Task 5: key 2 fires relic slot 1 in battle and keeps the hotbar on slot 0, selects
+ * hotbar slot 1 in camp, and the six class relics keep their classes' numbers and clocks. The profile is put back from a JSON copy taken at the start. Never shipped.
  */
 final class GearCombatChecks implements Phase1Checks.Suite {
     volatile UUID player;
@@ -202,6 +203,13 @@ final class GearCombatChecks implements Phase1Checks.Suite {
         if (arrow != null) arrow.discard();
     }
     volatile boolean ok;
+    volatile String keyWhy = "", campScreen = "";
+    volatile boolean inBattle, fired, drawn, camp;
+    volatile int clientSlot = -1, serverSlot = -1;
+    /** Presses hotbar key i+1 as the keyboard would: one press counted on the binding. */
+    static void press(MinecraftClient c, int i) {
+        net.minecraft.client.option.KeyBinding.onKeyPressed(net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper.getBoundKeyOf(c.options.hotbarKeys[i]));
+    }
 
     public void step(MinecraftClient c, int tick) {
         switch (stage) {
@@ -321,7 +329,76 @@ final class GearCombatChecks implements Phase1Checks.Suite {
                     ok = true;
                 });
                 if (t == 15) c.options.useKey.setPressed(false);
-                if (t > 15 && ok) { ok = false; next(tick, 9); }
+                if (t > 15 && ok) { ok = false; next(tick, 7); }
+            }
+            case 7 -> { // p1-gear-combat-relic-keys: in battle key 2 fires slot 1 and the hotbar stays on slot 0; in camp key 2 selects slot 1
+                int t = tick - stageAt;
+                if (t == 1) Phase1Checks.server(c, b -> {
+                    var p = sp(b, player); var pr = b.campaign.profile(player); var s = b.squads.get(player);
+                    if (!pr.relics.contains("stand_fast")) pr.relics.add("stand_fast");
+                    keyWhy = Gear.setRelic(pr, 1, "stand_fast");
+                    Commander.stop(b, s); s.relicState.clear(); GearCombat.seat(s, pr);
+                    b.campaign.introUntil = b.time; p.getInventory().selectedSlot = 0;
+                    GravesAndGlory.sendRelics(b, s);
+                });
+                if (t == 12) { inBattle = GravesAndGloryClient.battleActive() && c.currentScreen == null; press(c, 1); }
+                if (t == 30) {
+                    clientSlot = c.player.getInventory().selectedSlot; drawn = BattleHud.rects().containsKey("relic-1");
+                    Phase1Checks.server(c, b -> {
+                        var p = sp(b, player); var s = b.squads.get(player);
+                        fired = Commander.running(b, s, "stand_fast") && s.relicState.readyAt[1] > 0 && s.relicState.readyAt[0] == 0;
+                        serverSlot = p.getInventory().selectedSlot;
+                        Commander.stop(b, s);
+                        b.campaign.returnLobby(); battleReady = false;
+                    });
+                }
+                if (t == 60) { camp = !GravesAndGloryClient.battleActive(); campScreen = c.currentScreen == null ? "none" : c.currentScreen.getClass().getSimpleName(); c.setScreen(null); c.player.getInventory().selectedSlot = 0; }
+                if (t == 62) press(c, 1);
+                if (t == 75) {
+                    int got = c.player.getInventory().selectedSlot;
+                    boolean pass = keyWhy.isEmpty() && inBattle && fired && clientSlot == 0 && serverSlot == 0 && drawn && camp && got == 1;
+                    Phase1Checks.report("p1-gear-combat-relic-keys", pass, "slot 1 holds stand_fast (" + (keyWhy.isEmpty() ? "set" : keyWhy) + "); in battle=" + inBattle + " key 2 started slot 1 only=" + fired
+                        + ", the hotbar stayed on slot " + clientSlot + " (client) and " + serverSlot + " (server), the HUD drew relic-1=" + drawn + "; in camp=" + camp + " (screen " + campScreen + ", closed) key 2 selected hotbar slot " + got + " (want 1)");
+                    c.player.getInventory().selectedSlot = 0;
+                    battleAt = -1; next(tick, 8);
+                }
+            }
+            case 8 -> { // p1-gear-combat-ported: each class relic keeps its class's numbers, and seated in slot 0 it starts on those clocks or refuses as before
+                if (!battle(c, tick, "p1-gear-combat-ported")) return;
+                if (!done) {
+                    done = true;
+                    Phase1Checks.server(c, b -> {
+                        var p = sp(b, player); var pr = b.campaign.profile(player); var s = b.squads.get(player);
+                        StringBuilder out = new StringBuilder(); boolean pass = true; int ported = 0, started = 0;
+                        b.campaign.introUntil = b.time;
+                        for (var r : Spec.RELICS) {
+                            if (r.fromClass().equals("-")) continue;
+                            ported++;
+                            Spec.ClassesRow k = null; for (var row : Spec.CLASSES) if (row.id().equals(r.fromClass())) k = row;
+                            var tu = Commander.tuning(r.id());
+                            boolean same = k != null && tu != null && k.active().equals(tu.effect()) && k.cooldownTicks() == r.cooldownTicks() && k.durationTicks() == tu.durationTicks()
+                                && near(k.radius(), tu.radius()) && near(k.range(), tu.range()) && near(k.value1(), tu.value1()) && near(k.value2(), tu.value2()) && near(k.value3(), tu.value3());
+                            if (!pr.relics.contains(r.id())) pr.relics.add(r.id());
+                            String set = Gear.setRelic(pr, 0, r.id());
+                            Commander.stop(b, s); s.relicState.clear(); GearCombat.seat(s, pr);
+                            b.campaign.notices.remove(player);
+                            Commander.activate(b, p, 0);
+                            String notice = b.campaign.notices.getOrDefault(player, "");
+                            boolean ran = s.relicState.readyAt[0] > 0, clocks;
+                            int cd = Commander.cooldownTicks(s, r);
+                            if (ran) { started++; clocks = Commander.readyIn(b, s, 0) == cd && (tu.durationTicks() == 0 || Commander.activeFor(b, s, 0) == tu.durationTicks()); }
+                            else clocks = !notice.isEmpty() && Commander.readyIn(b, s, 0) == 0;
+                            pass &= same && set.isEmpty() && clocks;
+                            out.append(r.id()).append(" (").append(r.fromClass()).append("): sheet same=").append(same).append(ran ? ", started: ready in " + Commander.readyIn(b, s, 0) + " (want " + cd + "), runs " + Commander.activeFor(b, s, 0) + " (want " + tu.durationTicks() + ")" : ", refused \"" + notice + "\"").append("; ");
+                            Commander.stop(b, s); s.relicState.clear();
+                            p.clearStatusEffects();
+                        }
+                        pass &= ported == 6 && started >= 3;
+                        Phase1Checks.report("p1-gear-combat-ported", pass, ported + " class relics, " + started + " started (stand_fast, rally_horn and bloodrush always can): " + out);
+                        ok = true;
+                    });
+                }
+                if (ok) { ok = false; next(tick, 9); }
             }
             case 9 -> {
                 if (tick - stageAt == 1) Phase1Checks.server(c, b -> restore());

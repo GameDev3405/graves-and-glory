@@ -52,14 +52,23 @@ public final class GravesAndGlory implements ModInitializer {
     public static final Identifier FEED = new Identifier("gravesandglory", "feed_v1");
     /** Server to client: the commander's gear as one GearWire string, sent when it changes (kept out of the camp snapshot, which has a client size limit). */
     public static final Identifier GEAR = new Identifier("gravesandglory", "gear_v1");
+    /** Server to client: the commander's relic slots (gear-combat Task 5), sent with each state and on a relic's start: a byte n, then per slot String relic id ("" empty), int ticks until ready (-1: empty or no behaviour), int ticks left running. */
+    public static final Identifier RELICS = new Identifier("gravesandglory", "relics_v1");
     public static Battle battle;
+    /** Sends a seated commander his relic slots (relics_v1); nothing to a bot, an unseated squad or a client without the channel. */
+    static void sendRelics(Battle b,Squad s){
+        if(s==null||s.bot)return;var p=b.server.getPlayerManager().getPlayer(s.owner);if(p==null||!ServerPlayNetworking.canSend(p,RELICS))return;
+        PacketByteBuf out=PacketByteBufs.create();int n=s.relicState.size();out.writeByte(n);
+        for(int i=0;i<n;i++){boolean on=s.seated;out.writeString(on?Commander.relicIn(s,i):"");out.writeInt(on?Commander.readyIn(b,s,i):-1);out.writeInt(on?Commander.activeFor(b,s,i):0);}
+        ServerPlayNetworking.send(p,RELICS,out);
+    }
     public static final Spec.RulesRow R = Spec.RULES[0];
     @Override public void onInitialize() {
         Diagnostics.start();
         VersionGate.registerServer();
         Audio.register(); // every sound event of the AudioCues table (plan 4F.4)
         // The commander actives, once. (The horn cues above are command feedback for the commanding player alone: no horn sounds in the field.)
-        Commander.register();
+        RelicEffects.register();
         // The Convoy supply wagon's entity type (Kort approved 2026-11-01; never saved).
         WagonEntity.register();
         // A planted banner block must not outlive the battle in the save.
@@ -206,10 +215,10 @@ public final class GravesAndGlory implements ModInitializer {
         final Map<String,Long> chargedAt=new HashMap<>();
         /** House id to trait tier (1 to 3) for the Houses this army's living troops reach, from their slot weights; Houses.recompute keeps it. */
         final Map<String,Integer> traits=new LinkedHashMap<>();
-        /** Troop id to how many of them this army lost this round and has not had back as a Reaver's Bloodrush refund (Commander.Bloodrush); the round's start clears it. */
+        /** Troop id to how many of them this army lost this round and has not had back as a Reaver's Bloodrush refund (RelicEffects.Bloodrush); the round's start clears it. */
         final Map<String,Integer> fallen=new LinkedHashMap<>();
-        /** The commander ability (Commander): the battle time its cooldown ends, the time its run ends (0: not running), and what the running active keeps. */
-        long abilityReadyAt,abilityUntil;Object abilityData;
+        /** The commander's relic slots (Commander, RelicSlots): per slot the battle time its cooldown ends, the time its run ends (0: not running), and what the running relic keeps. */
+        final RelicSlots relicState=new RelicSlots(Gear.forge().relicSlots());
         /** The commander's worn gear this round (GearCombat.seat at round setup, a takeover or a fresh seat) and its relic slots; a bot seat has none. */
         GearStats.Loadout gear=GearStats.empty();String[] relics=gear.relics().toArray(new String[0]);
         /** Whoever last hurt one of this army's troops (the grudge perk); Battle.allowDamage sets it. */
@@ -352,7 +361,7 @@ public final class GravesAndGlory implements ModInitializer {
                     getWorld().setBlockState(block,was==null?net.minecraft.block.Blocks.AIR.getDefaultState():was);
                 if(battle!=null){
                     battle.structures.remove(this);
-                    if((felled||reason==RemovalReason.KILLED)&&squad!=null&&squad.abilityData==this){battle.campaign.notice(squad.owner,FALLEN);Commander.stop(battle,squad);}
+                    if((felled||reason==RemovalReason.KILLED)&&squad!=null&&java.util.Arrays.asList(squad.relicState.data).contains(this)){battle.campaign.notice(squad.owner,FALLEN);Commander.stop(battle,squad,java.util.Arrays.asList(squad.relicState.data).indexOf(this));}
                 }
             }
             super.remove(reason);
@@ -832,7 +841,7 @@ public final class GravesAndGlory implements ModInitializer {
             Squad s=squads.get(p.getUuid());if(s==null||!ready||respawns.containsKey(s.owner))return;
             if(campaign.handle(p,cmd))return;
             if(running&&!s.seated)return;
-            if(cmd.equals("ability")){Commander.activate(this,p);return;}
+            if(cmd.startsWith("relic:")){int slot;try{slot=Integer.parseInt(cmd.substring(6));}catch(NumberFormatException e){return;}Commander.activate(this,p,slot);return;}
             if(cmd.equals("barracks")){openBarracks(p);return;}
             if(cmd.startsWith("train:")||cmd.startsWith("disband:")||cmd.equals("cancel-training")){manage(p,s,cmd);return;}
             if(cmd.startsWith("gear:")){Veterans.buy(this,p,s,cmd);return;} // gear:<troop>:<weapon|armour>:<tier>, checked as manage checks training (in-match progression design 5)
@@ -976,7 +985,7 @@ public final class GravesAndGlory implements ModInitializer {
          */
         List<Anchor> reinforcementAnchors(int team){
             List<Anchor> anchors=new ArrayList<>(mode.anchors(this,team)); // the mode's places: Domination's held points, none while the flags are down
-            var supply=Commander.byActive("forward_supply");
+            var supply=Commander.tuningByEffect("forward_supply");
             if(supply!=null)for(var st:structures)if(st.team()==team&&!(st instanceof SiegeMode.GateTarget)&&st.isAlive()&&!Morale.enemyWithin(this,team,st.getPos(),supply.radius()))anchors.add(st.anchor());
             return anchors;
         }
@@ -1215,10 +1224,11 @@ public final class GravesAndGlory implements ModInitializer {
                 // Added in state_v8, after the Phase 1 fields: the side id each team flies, this army's House tiers (count, then House and tier), and the commander ability of a seated squad (its class's active id, ticks until ready, ticks left active; ready is -1 while this build has no behaviour for that active, and the fields are "", 0, 0 for anyone unseated).
                 b.writeString(side(0).id());b.writeString(side(1).id());
                 Map<String,Integer> tiers=s==null?Map.of():s.traits;b.writeByte(tiers.size());for(var tier:tiers.entrySet()){b.writeString(tier.getKey());b.writeByte(tier.getValue());}
-                boolean commanding=s!=null&&s.seated;b.writeString(commanding?Commander.row(s).active():"");b.writeInt(commanding?Commander.readyIn(this,s):0);b.writeInt(commanding?Commander.activeFor(this,s):0);
+                boolean commanding=s!=null&&s.seated;b.writeString(commanding?Commander.relicIn(s,0):"");b.writeInt(commanding?Commander.readyIn(this,s):0);b.writeInt(commanding?Commander.activeFor(this,s):0);
                 // state_v9, after the commander ability: this army's Armoury (LevelMath.encodeArmoury sets the layout: boolean armouryHere, byte n, then per banner troop type String troop and the bytes weapon2, weapon3, armour2, armour3, each a LevelMath.Buy ordinal). armouryHere is whether this commander stands where he may buy (Veterans.buyHere).
                 LevelMath.encodeArmoury(s==null?LevelMath.Armoury.EMPTY:Veterans.armouryState(this,s,p),wire(b));
                 ServerPlayNetworking.send(p,STATE,b);
+                if(s!=null)sendRelics(this,s);
             }
         }
         // Runs only under Melty's explicit test file; uses actual pathfinding, capture and combat.

@@ -256,7 +256,7 @@ public final class Campaign {
         if(cmd.startsWith("star:")){star(p,pr,cmd.substring(5));return true;}
         if(cmd.startsWith("legendary:")){legendary(p,pr,cmd.substring(10));return true;}
         if(cmd.startsWith("unlock:")||cmd.startsWith("army:")){notice(p.getUuid(),"Troops now join by recruitment rolls at the camp shrine.");return true;}
-        if(cmd.startsWith("class:")){String id=cmd.substring(6);if(Arrays.stream(Spec.CLASSES).anyMatch(c->c.id().equals(id))){pr.commander=id;squad.commander=id;save(p.getUuid());var room=social.room(p.getUuid());if(room!=null&&!room.playing&&room.ready.remove(p.getUuid()))social.revision++;}return true;}
+        if(cmd.startsWith("class:")){String id=cmd.substring(6);if(Arrays.stream(Spec.CLASSES).anyMatch(c->c.id().equals(id))){pr.commander=id;squad.commander=id;String relic=Gear.starterRelic(id);pr.relics.add(relic);Gear.setRelic(pr,0,relic);Commander.stop(b,squad);GearCombat.seat(squad,pr);save(p.getUuid());var room=social.room(p.getUuid());if(room!=null&&!room.playing&&room.ready.remove(p.getUuid()))social.revision++;}return true;}
         if(cmd.startsWith("slot:")){ // slot:<i>:<troop id or empty>: the banner is rebuilt with repack, so markers follow their Epic or Legendary
             String[] parts=cmd.split(":");if(parts.length!=3)return true;int slot;try{slot=Integer.parseInt(parts[1]);}catch(Exception e){return true;}
             var catalog=RosterMath.Catalog.fromSpec();String id=parts[2];var type=troop(id);

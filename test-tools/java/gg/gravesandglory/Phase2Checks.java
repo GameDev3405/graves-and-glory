@@ -697,7 +697,7 @@ public final class Phase2Checks implements ClientModInitializer {
      * Task 4: the six commander classes. Each class is set through the real class:(id) packet, then a 1v1 skirmish shows its passive
      * from its sheet row (p2-class-passives, the Reaver's through a whole respawn); the commander's own blows through Battle.allowDamage,
      * struck for real (p2-commander-blows); the ability key and the HUD tile with no active registered (p2-ability-key); an active's
-     * start, run, end and cooldown with a probe registered in Commander.ACTIVES (p2-ability-cycle), with the group panels clear of
+     * start, run, end and cooldown with a probe registered in RelicEffects.ACTIVES (p2-ability-cycle), with the group panels clear of
      * vanilla's hearts (p2-hud-hearts); the probe stopped by its commander leaving and taking his seat back (p2-ability-seat) and by a
      * round start and the lobby (p2-ability-stops); a commander seated fresh in a running round under his own class (p2-fresh-seat);
      * and the camp class tab (p2-class-picker), with the banner editor's dimmed cards beside it. Stages run on the server tick; the
@@ -705,16 +705,16 @@ public final class Phase2Checks implements ClientModInitializer {
      */
     static final class Commanders implements Suite,ServerWatch {
         /** A stand-in active: counts its calls and accepts every start. */
-        static final class Probe implements Commander.Active {
+        static final class Probe implements RelicEffects.Active {
             volatile int starts,ticks,ends;volatile long startedAt=-1;
-            public boolean start(GravesAndGlory.Battle b,ServerPlayerEntity p,GravesAndGlory.Squad s,Spec.ClassesRow c){starts++;startedAt=b.time;s.abilityData="probe";return true;}
-            public void tick(GravesAndGlory.Battle b,GravesAndGlory.Squad s,Spec.ClassesRow c){ticks++;}
-            public void end(GravesAndGlory.Battle b,GravesAndGlory.Squad s){ends++;}
+            public boolean start(GravesAndGlory.Battle b,ServerPlayerEntity p,GravesAndGlory.Squad s,int slot,Spec.RelicTuningRow c){starts++;startedAt=b.time;s.relicState.data[slot]="probe";return true;}
+            public void tick(GravesAndGlory.Battle b,GravesAndGlory.Squad s,int slot,Spec.RelicTuningRow c){ticks++;}
+            public void end(GravesAndGlory.Battle b,GravesAndGlory.Squad s,int slot){ends++;}
         }
         volatile int stage;volatile UUID player;volatile String send,wantShot,expectActive="";volatile boolean shotTaken,finished,wantPress,clientDone;
         long stageAt;int shotDelay,ci;
         final List<String> order=Arrays.stream(Spec.CLASSES).map(Spec.ClassesRow::id).toList();
-        final Map<String,Commander.Active> saved=new HashMap<>();
+        final Map<String,RelicEffects.Active> saved=new HashMap<>();
         final StringBuilder passiveWhy=new StringBuilder();boolean passivesOk=true;
         // the lobby after the Champion and after the Reaver: their modifiers are gone
         double lobbyHealth=-1;boolean lobbyAttackGone;
@@ -812,30 +812,30 @@ public final class Phase2Checks implements ClientModInitializer {
             var keeper=Commander.byActive("stand_fast");double scale=Spec.COMBATDISCIPLINE[0].damageScale(),mark=1+warden.value1(),cover=keeper==null?Double.NaN:1-keeper.value1();
             List<Blow> got=new ArrayList<>();boolean ok=warden.active().equals("mark_prey")&&keeper!=null;String why="";
             var enemy=foe.squad;var players=playerMap(b.server.getPlayerManager());Target them=null;
-            boolean wasBot=enemy.bot;String wasClass=enemy.commander;long wasUntil=enemy.abilityUntil;Object wasData=enemy.abilityData;
+            boolean wasBot=enemy.bot;String wasClass=enemy.commander;String[] wasRelics=enemy.relics;long wasUntil=enemy.relicState.until[0];Object wasData=enemy.relicState.data[0];
             try{
-                own.abilityUntil=0;own.abilityData=null;var plain=strike(b,p,foe.mob,"a foe troop");
-                own.abilityUntil=b.time+100;own.abilityData=foe.mob;var hunted=strike(b,p,foe.mob,"that troop under his Mark Prey");
-                own.abilityUntil=0;own.abilityData=null;
+                own.relicState.until[0]=0;own.relicState.data[0]=null;var plain=strike(b,p,foe.mob,"a foe troop");
+                own.relicState.until[0]=b.time+100;own.relicState.data[0]=foe.mob;var hunted=strike(b,p,foe.mob,"that troop under his Mark Prey");
+                own.relicState.until[0]=0;own.relicState.data[0]=null;
                 ok&=plain.is(10*scale,10*scale)&&hunted.is(10*scale*mark,10*scale*mark);got.add(plain);got.add(hunted);
                 if(keeper!=null){
                     var other=unit(b,enemy,u->u!=foe);var troop=other==null?foe:other;Vec3d at=troop.mob.getPos();
                     them=new Target(b.world,new com.mojang.authlib.GameProfile(enemy.owner,"FoeCommander"));vulnerable(them);
                     players.put(them.getUuid(),them);
-                    enemy.bot=false;enemy.commander=keeper.id();enemy.abilityUntil=b.time+100;
+                    enemy.bot=false;enemy.commander=keeper.id();enemy.relics=new String[]{keeper.active(),"",""};enemy.relicState.until[0]=b.time+100;
                     them.refreshPositionAndAngles(at.x+keeper.radius()/2,at.y,at.z,0,0);boolean found=Commander.player(b,enemy)==them;
                     var inside=strike(b,p,troop.mob,"a foe troop "+keeper.radius()/2+" blocks from its commander under his Stand Fast");
                     them.refreshPositionAndAngles(at.x+keeper.radius()+8,at.y,at.z,0,0);
                     var outside=strike(b,p,troop.mob,"that troop "+(keeper.radius()+8)+" blocks from him");
-                    enemy.abilityUntil=0;them.refreshPositionAndAngles(at.x+2,at.y,at.z,0,0);
-                    own.abilityUntil=b.time+100;own.abilityData=null;var pvp=strike(b,p,them,"the foe commander");
-                    own.abilityData=them.getUuid();var marked=strike(b,p,them,"the foe commander under his Mark Prey");
+                    enemy.relicState.until[0]=0;them.refreshPositionAndAngles(at.x+2,at.y,at.z,0,0);
+                    own.relicState.until[0]=b.time+100;own.relicState.data[0]=null;var pvp=strike(b,p,them,"the foe commander");
+                    own.relicState.data[0]=them.getUuid();var marked=strike(b,p,them,"the foe commander under his Mark Prey");
                     ok&=found&&inside.is(10*scale*cover,10*scale*cover)&&outside.is(10*scale,10*scale)&&pvp.is(10,null)&&marked.is(10*mark,10*mark);
                     got.add(inside);got.add(outside);got.add(pvp);got.add(marked);if(!found)why="; Commander.player did not find the foe commander";
                 }
             }finally{ // the foe army, his own and the player list are put back whatever a blow did
-                if(them!=null)players.remove(them.getUuid());own.abilityUntil=0;own.abilityData=null;
-                enemy.bot=wasBot;enemy.commander=wasClass;enemy.abilityUntil=wasUntil;enemy.abilityData=wasData;
+                if(them!=null)players.remove(them.getUuid());own.relicState.until[0]=0;own.relicState.data[0]=null;
+                enemy.bot=wasBot;enemy.commander=wasClass;enemy.relics=wasRelics;enemy.relicState.until[0]=wasUntil;enemy.relicState.data[0]=wasData;
             }
             report("p2-commander-blows",ok,"his blows of 10 as "+own.commander+" (damageScale "+scale+", Mark Prey x"+mark+", Stand Fast x"+cover+"): "+got+why);
         }
@@ -850,7 +850,7 @@ public final class Phase2Checks implements ClientModInitializer {
         }
 
         public void cleanup(MinecraftClient c){
-            server(c,b->{for(var e:saved.entrySet()){if(e.getValue()==null)Commander.ACTIVES.remove(e.getKey());else Commander.ACTIVES.put(e.getKey(),e.getValue());}saved.clear();
+            server(c,b->{for(var e:saved.entrySet()){if(e.getValue()==null)RelicEffects.ACTIVES.remove(e.getKey());else RelicEffects.ACTIVES.put(e.getKey(),e.getValue());}saved.clear();
                 if(b.running)b.campaign.returnLobby();var p=sp(b);if(p!=null)b.campaign.handle(p,"class:"+Spec.CLASSES[0].id());});
         }
 
@@ -858,7 +858,7 @@ public final class Phase2Checks implements ClientModInitializer {
             if(tick==20){c.setScreen(null);UUID id=c.player.getUuid();keys(c);server(c,b->{player=id;next(b,1);});}
             String cmd=send;if(cmd!=null){send=null;GravesAndGloryClient.send(cmd);System.out.println("[p2] sent "+cmd);}
             if(wantShot!=null&&!shotTaken&&++shotDelay>=12){shot(c,wantShot);shotTaken=true;}
-            if(wantPress&&GravesAndGloryClient.battleActive()&&c.currentScreen==null){wantPress=false;net.minecraft.client.option.KeyBinding.onKeyPressed(net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper.getBoundKeyOf(GravesAndGloryClient.ability));System.out.println("[p2] pressed the ability key");}
+            if(wantPress&&GravesAndGloryClient.battleActive()&&c.currentScreen==null){wantPress=false;net.minecraft.client.option.KeyBinding.onKeyPressed(net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper.getBoundKeyOf(c.options.hotbarKeys[0]));System.out.println("[p2] pressed relic key 1");}
             if(stage==5&&GravesAndGloryClient.respawn>0)respawnSeen=Math.max(respawnSeen,GravesAndGloryClient.respawn);
             if((stage==34||stage==35)&&hudRight<0&&GravesAndGloryClient.battleActive()){ // vanilla draws the hearts and armour from GUI x width / 2 - 91; the Iron Ledger's column (spine and group plates) is on its canvas
                 int right=0;for(var r:BattleHud.rects().entrySet())if(r.getKey().equals("spine")||r.getKey().startsWith("card-"))right=Math.max(right,r.getValue()[0]+r.getValue()[2]);
@@ -875,15 +875,15 @@ public final class Phase2Checks implements ClientModInitializer {
             if(tick>14000&&!finished){finished=true;report("p2-commander-timeout",false,"stuck in stage "+stage+" (class "+(ci<order.size()?order.get(ci):"-")+")");finish(c,"commander");}
         }
 
-        /** The ability key's default is H, no other mod binding defaults to H, and hint names it H. */
+        /** Relics fire on vanilla's hotbar keys 1 to 3 (Kort, 2026-11-03): the mod binds no ability key of its own any more (H is gone),
+         *  the three hotbar keys default to 1, 2 and 3, and hint("menu") and hint("nothing") still read R and Not Bound. */
         void keys(MinecraftClient c){
-            var ability=GravesAndGloryClient.ability;var def=ability.getDefaultKey();
-            boolean h=def.getCategory()==net.minecraft.client.util.InputUtil.Type.KEYSYM&&def.getCode()==org.lwjgl.glfw.GLFW.GLFW_KEY_H;
-            List<String> mod=new ArrayList<>(),other=new ArrayList<>();int mine=0;
-            for(var k:c.options.allKeys){if(k.getTranslationKey().startsWith("key.gravesandglory."))mine++;if(k==ability||!k.getDefaultKey().equals(def))continue;(k.getTranslationKey().startsWith("key.gravesandglory.")?mod:other).add(k.getTranslationKey());}
-            String hint=GravesAndGloryClient.hint("ability");
-            keyOk=h&&ability.getTranslationKey().equals("key.gravesandglory.ability")&&mod.isEmpty()&&hint.equals("H")&&GravesAndGloryClient.hint("menu").equals("R")&&GravesAndGloryClient.hint("nothing").equals("Not Bound");
-            keyWhy="key.gravesandglory.ability defaults to "+def.getTranslationKey()+" (H="+h+"); of "+mine+" mod bindings none else defaults to it="+mod.isEmpty()+(mod.isEmpty()?"":" "+mod)+(other.isEmpty()?"":" (vanilla or other mods on it: "+other+")")+"; hint(ability)=\""+hint+"\", hint(menu)=\""+GravesAndGloryClient.hint("menu")+"\", hint(nothing)=\""+GravesAndGloryClient.hint("nothing")+"\"";
+            boolean noAbility=true;int mine=0;
+            for(var k:c.options.allKeys){if(k.getTranslationKey().startsWith("key.gravesandglory."))mine++;if(k.getTranslationKey().equals("key.gravesandglory.ability"))noAbility=false;}
+            List<String> defs=new ArrayList<>();boolean digits=true;
+            for(int i=0;i<3;i++){var d=c.options.hotbarKeys[i].getDefaultKey();defs.add(d.getTranslationKey());digits&=d.getCategory()==net.minecraft.client.util.InputUtil.Type.KEYSYM&&d.getCode()==org.lwjgl.glfw.GLFW.GLFW_KEY_1+i;}
+            keyOk=noAbility&&digits&&GravesAndGloryClient.hint("menu").equals("R")&&GravesAndGloryClient.hint("nothing").equals("Not Bound");
+            keyWhy="of "+mine+" mod bindings none is key.gravesandglory.ability="+noAbility+"; the relic keys (hotbar 1-3) default to "+defs+" (1, 2, 3="+digits+"); hint(menu)=\""+GravesAndGloryClient.hint("menu")+"\", hint(nothing)=\""+GravesAndGloryClient.hint("nothing")+"\"";
         }
         /** Stage 6: the barracks lines on the client follow the class the state packet names (the Marshal's knight trains in 3.2 s, the Warlock's Sunweaver costs 56). */
         void barracksLines(){
@@ -897,7 +897,7 @@ public final class Phase2Checks implements ClientModInitializer {
         void tile(){
             var d=slotTile();boolean ledger=BattleHud.rects().containsKey("score"),named=GravesAndGloryClient.commanderActive.equals(expectActive)&&GravesAndGloryClient.commanderReady<0;
             if(tileState==0){
-                if(ledger&&named&&d.isEmpty()){tileWhy="the packet names "+expectActive+" with ready "+GravesAndGloryClient.commanderReady+" and the slot drew nothing under the ledger (the key "+GravesAndGloryClient.hint("ability")+" answers that it is not ready in this build)";clientOk=GravesAndGloryClient.hint("ability").equals("H");requestShot("commander-tile");tileState=1;}
+                if(ledger&&named&&d.isEmpty()){tileWhy="the packet names "+expectActive+" with ready "+GravesAndGloryClient.commanderReady+" and the slot drew nothing under the ledger (relic key 1 answers that it is not ready in this build)";clientOk=true;requestShot("commander-tile");tileState=1;}
                 else if(++tileWait>300){tileWhy="ledger up "+ledger+", packet names "+GravesAndGloryClient.commanderActive+" with ready "+GravesAndGloryClient.commanderReady+", the slot drew "+d+" (want an empty slot under the ledger and "+expectActive+" with ready -1)";clientOk=false;clientDone=true;}
             }else if(tileState==1&&shotTaken){wantShot=null;clientDone=true;}
         }
@@ -953,9 +953,9 @@ public final class Phase2Checks implements ClientModInitializer {
                     if(knight==null||bow==null||foe==null){passive(false,id,"the skirmish has no knight, archer or enemy");ci++;next(b,1);return;}
                     Vec3d home=knight.mob.getPos(),bowHome=bow.mob.getPos();
                     place(knight,p,5);var within=hit(b,knight,foe.mob,"melee");place(knight,p,20);var beyond=hit(b,knight,foe.mob,"melee");place(bow,p,5);var archer=hit(b,bow,foe.mob,"arrow");
-                    own.abilityUntil=b.time+100; // Stand Fast's share on the receiving side, as if it ran: a foe's blow on the knight 6 blocks from him, then 20
+                    own.relicState.until[0]=b.time+100; // Stand Fast's share on the receiving side, as if it ran: a foe's blow on the knight 6 blocks from him, then 20
                     place(knight,p,6);var guarded=hit(b,foe,knight.mob,"melee");place(knight,p,20);var exposed=hit(b,foe,knight.mob,"melee");
-                    own.abilityUntil=0;knight.mob.refreshPositionAndAngles(home.x,home.y,home.z,0,0);bow.mob.refreshPositionAndAngles(bowHome.x,bowHome.y,bowHome.z,0,0);
+                    own.relicState.until[0]=0;knight.mob.refreshPositionAndAngles(home.x,home.y,home.z,0,0);bow.mob.refreshPositionAndAngles(bowHome.x,bowHome.y,bowHome.z,0,0);
                     p.damage(b.world.getDamageSources().generic(),1000f);Long until=b.respawns.get(player);long wait=until==null?-1:until-b.time;
                     boolean ok=near(health,24)&&near(health,p.getAttributeBaseValue(maxHealth)+c.passiveValue())&&near(factor(within),1.10)&&near(factor(beyond),1)&&near(factor(archer),1)&&near(factor(guarded),1-c.value1())&&near(factor(exposed),1)&&wait==GravesAndGlory.R.respawnSeconds()*20L;
                     passive(ok,id,"max health "+health+" (want 24); his knight 5 blocks off x"+factor(within)+" (want 1.1), at 20 x"+factor(beyond)+", an archer at 5 x"+factor(archer)+" (infantry only); with Stand Fast running a foe's blow on the knight 6 off x"+factor(guarded)+" (want "+(1-c.value1())+"), at 20 x"+factor(exposed)+"; he waits "+wait+" ticks to respawn (rules "+GravesAndGlory.R.respawnSeconds()+" s)");
@@ -973,9 +973,9 @@ public final class Phase2Checks implements ClientModInitializer {
                     var bow=unit(b,own,u->u.spec.id().equals("archer"));var knight=unit(b,own,u->u.spec.id().equals("knight"));
                     if(knight==null||bow==null||foe==null){passive(false,id,"the skirmish has no knight, archer or enemy");ci++;next(b,1);return;}
                     double reach=Abilities.range(b,bow),knightReach=Abilities.range(b,knight);var shot=hit(b,bow,foe.mob,"arrow");var blow=hit(b,knight,foe.mob,"melee");
-                    own.abilityUntil=b.time+100;own.abilityData=foe.mob; // Mark Prey's share, as if it ran with this foe marked: on the mark only, for his troops and for himself
+                    own.relicState.until[0]=b.time+100;own.relicState.data[0]=foe.mob; // Mark Prey's share, as if it ran with this foe marked: on the mark only, for his troops and for himself
                     var marked=hit(b,bow,foe.mob,"arrow");var other=unit(b,foe.squad,u->u!=foe);var unmarked=other==null?null:hit(b,bow,other.mob,"arrow");
-                    own.abilityUntil=0;own.abilityData=null;
+                    own.relicState.until[0]=0;own.relicState.data[0]=null;
                     boolean ok=near(reach,24)&&near(reach,bow.spec.range()+c.passiveValue2())&&near(knightReach,knight.spec.range())&&near(factor(shot),1.10)&&near(factor(blow),1)
                         &&near(factor(marked),(1+c.passiveValue())*(1+c.value1()))&&(other==null||near(factor(unmarked),1+c.passiveValue()))&&lobbyAttackGone;
                     passive(ok,id,"an archer's reach "+reach+" (sheet "+bow.spec.range()+", want 24), a knight's "+knightReach+"; the archer's shot x"+factor(shot)+" (want 1.1), the knight's blow x"+factor(blow)+"; with Mark Prey running on the foe the archer x"+factor(marked)+" (want 1.43), another foe x"+factor(unmarked)+"; the Reaver's +2 attack left in the lobby="+lobbyAttackGone);
@@ -1045,12 +1045,12 @@ public final class Phase2Checks implements ClientModInitializer {
                 }
                 case 19->{var p=sp(b);if(p==null)return;if(!b.running||!b.squads.get(player).seated){Phase1Checks.skirmish(b,p,0,1,"normal");stageAt=b.time;return;}if(since(b)>=10)next(b,20);}
                 case 20->{ // p2-ability-key: with no active registered for his class, the key gives the notice and starts no cooldown
-                    var own=b.squads.get(player);var c=Commander.row(own);saved.putIfAbsent(c.active(),Commander.ACTIVES.get(c.active()));Commander.ACTIVES.remove(c.active());
+                    var own=b.squads.get(player);var c=Commander.row(own);saved.putIfAbsent(c.active(),RelicEffects.ACTIVES.get(c.active()));RelicEffects.ACTIVES.remove(c.active());
                     b.campaign.notices.remove(player);expectActive=c.active();wantPress=true;next(b,21);
                 }
                 case 21->{if(since(b)<20)return;var own=b.squads.get(player);String notice=b.campaign.notices.getOrDefault(player,"");
-                    keyServerOk=notice.equals(Commander.NOT_READY)&&own.abilityReadyAt==0&&own.abilityUntil==0&&Commander.readyIn(b,own)==-1;
-                    keyServerWhy="after the key as "+own.commander+": notice \""+notice+"\", abilityReadyAt "+own.abilityReadyAt+", abilityUntil "+own.abilityUntil+", readyIn "+Commander.readyIn(b,own);
+                    keyServerOk=notice.equals(RelicEffects.NOT_READY)&&own.relicState.readyAt[0]==0&&own.relicState.until[0]==0&&Commander.readyIn(b,own)==-1;
+                    keyServerWhy="after the key as "+own.commander+": notice \""+notice+"\", abilityReadyAt "+own.relicState.readyAt[0]+", abilityUntil "+own.relicState.until[0]+", readyIn "+Commander.readyIn(b,own);
                     clientOk=false;clientDone=false;tileState=0;tileWait=0;next(b,22);}
                 case 22->{if(!clientDone){if(since(b)>400){tileWhy+=" (the client never finished)";clientDone=true;}return;}
                     clientDone=false;report("p2-ability-key",keyOk&&keyServerOk&&clientOk,keyWhy+"; "+keyServerWhy+"; "+tileWhy);next(b,30);}
@@ -1058,53 +1058,53 @@ public final class Phase2Checks implements ClientModInitializer {
                     if(b.running)b.campaign.returnLobby();cycleClass=Arrays.stream(Spec.CLASSES).min(Comparator.comparingInt(Spec.ClassesRow::durationTicks)).orElseThrow();command(b,"class:"+cycleClass.id(),31);}
                 case 31->{if(since(b)<20)return;if(profile(b).commander.equals(cycleClass.id()))next(b,32);else if(since(b)>200){report("p2-ability-cycle",false,"class:"+cycleClass.id()+" never reached the profile");next(b,50);}}
                 case 32->{var p=sp(b);if(p==null||!Phase1Checks.skirmish(b,p,0,1,"normal"))return;next(b,33);}
-                case 33->{if(since(b)<10)return;probe=new Probe();saved.putIfAbsent(cycleClass.active(),Commander.ACTIVES.get(cycleClass.active()));Commander.ACTIVES.put(cycleClass.active(),probe);
+                case 33->{if(since(b)<10)return;probe=new Probe();saved.putIfAbsent(cycleClass.active(),RelicEffects.ACTIVES.get(cycleClass.active()));RelicEffects.ACTIVES.put(cycleClass.active(),probe);
                     b.campaign.notices.remove(player);expectActive=cycleClass.active();activeSeen=false;readyInSeen=false;wantPress=true;next(b,34);}
                 case 34->{var own=b.squads.get(player);
                     if(probe.starts>0){long t0=probe.startedAt;
-                        cycleOk=probe.starts==1&&own.abilityReadyAt==t0+cycleClass.cooldownTicks()&&own.abilityUntil==t0+cycleClass.durationTicks()&&"probe".equals(own.abilityData)&&Commander.running(b,own);
-                        cycleWhy=cycleClass.id()+"'s "+cycleClass.active()+" started at "+t0+": ready again at +"+(own.abilityReadyAt-t0)+" (want "+cycleClass.cooldownTicks()+"), runs to +"+(own.abilityUntil-t0)+" (want "+cycleClass.durationTicks()+")";next(b,35);}
+                        cycleOk=probe.starts==1&&own.relicState.readyAt[0]==t0+cycleClass.cooldownTicks()&&own.relicState.until[0]==t0+cycleClass.durationTicks()&&"probe".equals(own.relicState.data[0])&&Commander.running(b,own);
+                        cycleWhy=cycleClass.id()+"'s "+cycleClass.active()+" started at "+t0+": ready again at +"+(own.relicState.readyAt[0]-t0)+" (want "+cycleClass.cooldownTicks()+"), runs to +"+(own.relicState.until[0]-t0)+" (want "+cycleClass.durationTicks()+")";next(b,35);}
                     else if(since(b)>300){report("p2-ability-cycle",false,"the probe never started (notice \""+b.campaign.notices.getOrDefault(player,"")+"\")");next(b,50);}}
                 case 35->{var own=b.squads.get(player);if(b.time<probe.startedAt+cycleClass.durationTicks()+3)return;
-                    boolean ended=probe.ends==1&&own.abilityUntil==0&&own.abilityData==null&&!Commander.running(b,own)&&probe.ticks>=cycleClass.durationTicks()-3&&probe.ticks<=cycleClass.durationTicks();
-                    cycleOk&=ended;cycleWhy+="; it ticked "+probe.ticks+" times and ended "+probe.ends+" time(s), abilityData cleared="+(own.abilityData==null);
+                    boolean ended=probe.ends==1&&own.relicState.until[0]==0&&own.relicState.data[0]==null&&!Commander.running(b,own)&&probe.ticks>=cycleClass.durationTicks()-3&&probe.ticks<=cycleClass.durationTicks();
+                    cycleOk&=ended;cycleWhy+="; it ticked "+probe.ticks+" times and ended "+probe.ends+" time(s), abilityData cleared="+(own.relicState.data[0]==null);
                     b.campaign.notices.remove(player);wantPress=true;next(b,36);}
                 case 36->{if(since(b)<30)return;var own=b.squads.get(player);String notice=b.campaign.notices.getOrDefault(player,"");String want=Commander.activeName(cycleClass.active())+" is ready in ";
-                    boolean refused=probe.starts==1&&notice.startsWith(want)&&notice.endsWith(" s.")&&own.abilityReadyAt==probe.startedAt+cycleClass.cooldownTicks();
+                    boolean refused=probe.starts==1&&notice.startsWith(want)&&notice.endsWith(" s.")&&own.relicState.readyAt[0]==probe.startedAt+cycleClass.cooldownTicks();
                     cycleOk&=refused&&activeSeen&&readyInSeen;
                     report("p2-ability-cycle",cycleOk,cycleWhy+"; a second press on cooldown: notice \""+notice+"\", starts "+probe.starts+"; the tile showed ACTIVE="+activeSeen+" and READY IN="+readyInSeen);
                     report("p2-hud-hearts",hudRight>0&&hudRight<hudHearts,"in the HUD frame "+hudFrame+" the Iron Ledger's column (spine and group plates) ends at x "+hudRight+" and vanilla's hearts and armour start at x "+hudHearts+" (see commander-tile-active)");
                     next(b,37);}
                 case 37->{ // p2-ability-seat: the probe stops when its commander leaves; the stand-in keeps the seat's cooldown, and so does he when he takes the seat back
                     var p=sp(b);var own=b.squads.get(player);if(p==null||own==null)return;
-                    probe=new Probe();Commander.ACTIVES.put(cycleClass.active(),probe);own.abilityReadyAt=0;b.command(p,"ability");
+                    probe=new Probe();RelicEffects.ACTIVES.put(cycleClass.active(),probe);own.relicState.readyAt[0]=0;b.command(p,"relic:0");
                     if(probe.starts!=1||!Commander.running(b,own)){report("p2-ability-seat",false,"the probe did not start (starts "+probe.starts+")");next(b,39);return;}
-                    long t0=probe.startedAt;seat=own;seatReadyAt=own.abilityReadyAt;
+                    long t0=probe.startedAt;seat=own;seatReadyAt=own.relicState.readyAt[0];
                     b.leave(player);UUID stand=b.campaign.vacated.get(player);
-                    seatOk=probe.ends==1&&own.abilityUntil==0&&own.abilityData==null&&own.abilityReadyAt==t0+cycleClass.cooldownTicks()&&own.bot&&stand!=null&&own.owner.equals(stand)&&b.squads.get(stand)==own&&!b.squads.containsKey(player);
-                    seatWhy="he left while "+cycleClass.active()+" ran: it ended "+probe.ends+" time(s), abilityData "+own.abilityData+", a stand-in took the seat="+(own.bot&&own.owner.equals(stand))+" and keeps its cooldown to +"+(own.abilityReadyAt-t0)+" (want "+cycleClass.cooldownTicks()+")";
-                    own.abilityUntil=b.time+cycleClass.durationTicks();own.abilityData="probe"; // as if the stand-in ran the class active, so the takeover has one to stop
+                    seatOk=probe.ends==1&&own.relicState.until[0]==0&&own.relicState.data[0]==null&&own.relicState.readyAt[0]==t0+cycleClass.cooldownTicks()&&own.bot&&stand!=null&&own.owner.equals(stand)&&b.squads.get(stand)==own&&!b.squads.containsKey(player);
+                    seatWhy="he left while "+cycleClass.active()+" ran: it ended "+probe.ends+" time(s), abilityData "+own.relicState.data[0]+", a stand-in took the seat="+(own.bot&&own.owner.equals(stand))+" and keeps its cooldown to +"+(own.relicState.readyAt[0]-t0)+" (want "+cycleClass.cooldownTicks()+")";
+                    own.relicState.until[0]=b.time+cycleClass.durationTicks();own.relicState.data[0]="probe"; // as if the stand-in ran the class active, so the takeover has one to stop
                     next(b,38);}
                 case 38->{ // the next battle tick welcomes him again and he takes his reserved seat back: the takeover
                     var own=b.squads.get(player);
                     if(own==null){if(since(b)>100){report("p2-ability-seat",false,seatWhy+"; he never got his seat back");next(b,39);}return;}
-                    boolean back=own==seat&&!own.bot&&own.seated&&probe.ends==2&&own.abilityUntil==0&&own.abilityData==null&&own.abilityReadyAt==seatReadyAt&&!b.campaign.vacated.containsKey(player)&&own.commander.equals(profile(b).commander);
-                    b.campaign.notices.remove(player);var p=sp(b);if(p!=null)b.command(p,"ability");String notice=b.campaign.notices.getOrDefault(player,"");
+                    boolean back=own==seat&&!own.bot&&own.seated&&probe.ends==2&&own.relicState.until[0]==0&&own.relicState.data[0]==null&&own.relicState.readyAt[0]==seatReadyAt&&!b.campaign.vacated.containsKey(player)&&own.commander.equals(profile(b).commander);
+                    b.campaign.notices.remove(player);var p=sp(b);if(p!=null)b.command(p,"relic:0");String notice=b.campaign.notices.getOrDefault(player,"");
                     boolean refused=probe.starts==1&&notice.startsWith(Commander.activeName(cycleClass.active())+" is ready in ");
-                    report("p2-ability-seat",seatOk&&back&&refused,seatWhy+"; he took the same seat back="+(own==seat)+" after "+since(b)+" tick(s): the stand-in's running active ended there (ends "+probe.ends+", want 2), abilityData "+own.abilityData+", the cooldown kept="+(own.abilityReadyAt==seatReadyAt)+"; his press: \""+notice+"\" (starts "+probe.starts+")");
+                    report("p2-ability-seat",seatOk&&back&&refused,seatWhy+"; he took the same seat back="+(own==seat)+" after "+since(b)+" tick(s): the stand-in's running active ended there (ends "+probe.ends+", want 2), abilityData "+own.relicState.data[0]+", the cooldown kept="+(own.relicState.readyAt[0]==seatReadyAt)+"; his press: \""+notice+"\" (starts "+probe.starts+")");
                     next(b,39);}
                 case 39->{ // p2-ability-stops: a round start and the lobby end a running active once, clear its data and reset its cooldown
                     var p=sp(b);var own=b.squads.get(player);if(p==null||own==null)return;
                     boolean ok=true;StringBuilder why=new StringBuilder();
                     for(String path:List.of("startRound","returnLobby")){
-                        probe=new Probe();Commander.ACTIVES.put(cycleClass.active(),probe);own.abilityReadyAt=0;b.campaign.introUntil=b.time;b.command(p,"ability");
-                        boolean ran=probe.starts==1&&Commander.running(b,own)&&own.abilityReadyAt>b.time;
+                        probe=new Probe();RelicEffects.ACTIVES.put(cycleClass.active(),probe);own.relicState.readyAt[0]=0;b.campaign.introUntil=b.time;b.command(p,"relic:0");
+                        boolean ran=probe.starts==1&&Commander.running(b,own)&&own.relicState.readyAt[0]>b.time;
                         if(path.equals("startRound")){b.startRound();b.campaign.introUntil=b.time;}else b.campaign.returnLobby();
-                        boolean stopped=probe.ends==1&&own.abilityUntil==0&&own.abilityData==null&&own.abilityReadyAt==0&&!Commander.running(b,own);
-                        ok&=ran&&stopped;why.append(path).append(" while ").append(cycleClass.active()).append(" ran (it started=").append(ran).append("): it ended ").append(probe.ends).append(" time(s), abilityData ").append(own.abilityData).append(", abilityReadyAt ").append(own.abilityReadyAt).append("; ");
+                        boolean stopped=probe.ends==1&&own.relicState.until[0]==0&&own.relicState.data[0]==null&&own.relicState.readyAt[0]==0&&!Commander.running(b,own);
+                        ok&=ran&&stopped;why.append(path).append(" while ").append(cycleClass.active()).append(" ran (it started=").append(ran).append("): it ended ").append(probe.ends).append(" time(s), abilityData ").append(own.relicState.data[0]).append(", abilityReadyAt ").append(own.relicState.readyAt[0]).append("; ");
                     }
                     report("p2-ability-stops",ok,why.toString());
-                    for(var e:saved.entrySet()){if(e.getValue()==null)Commander.ACTIVES.remove(e.getKey());else Commander.ACTIVES.put(e.getKey(),e.getValue());}saved.clear();next(b,50);}
+                    for(var e:saved.entrySet()){if(e.getValue()==null)RelicEffects.ACTIVES.remove(e.getKey());else RelicEffects.ACTIVES.put(e.getKey(),e.getValue());}saved.clear();next(b,50);}
                 case 50->{ // p2-fresh-seat: a commander seated fresh in a running round (bot fill off, an empty seat on his side) fights under his own class, here the Reaver
                     if(b.running)b.campaign.returnLobby();command(b,"class:reaver",51);}
                 case 51->{if(since(b)<20)return;if(profile(b).commander.equals("reaver"))next(b,52);else if(since(b)>200){report("p2-fresh-seat",false,"class:reaver never reached the profile (it says "+profile(b).commander+")");next(b,40);}}
@@ -1487,19 +1487,19 @@ public final class Phase2Checks implements ClientModInitializer {
                 }
                 case 51->{if(since(b)<5)return;var p=sp(b);var c=Commander.row(own);
                     firstActive="";readyFirst="";readyLater="";activeCooldownSeconds=-1;
-                    t0=b.time;b.command(p,"ability");
+                    t0=b.time;b.command(p,"relic:0");
                     var res=p.getStatusEffect(StatusEffects.RESISTANCE);
-                    boolean started=c.id().equals("champion")&&Commander.running(b,own,"stand_fast")&&own.abilityUntil==t0+c.durationTicks()&&own.abilityReadyAt==t0+c.cooldownTicks()&&Commander.readyIn(b,own)==1800&&c.cooldownTicks()==1800&&c.durationTicks()==160&&res!=null&&res.getAmplifier()==0&&res.getDuration()>=c.durationTicks()-1;
+                    boolean started=c.id().equals("champion")&&Commander.running(b,own,"stand_fast")&&own.relicState.until[0]==t0+c.durationTicks()&&own.relicState.readyAt[0]==t0+c.cooldownTicks()&&Commander.readyIn(b,own)==1800&&c.cooldownTicks()==1800&&c.durationTicks()==160&&res!=null&&res.getAmplifier()==0&&res.getDuration()>=c.durationTicks()-1;
                     var inside=Commanders.hit(b,foe,knights.get(0).mob,"melee");var beyond=Commanders.hit(b,foe2,outside.mob,"melee");
                     boolean taken=inside!=null&&near(inside.commander(),1-c.value1())&&beyond!=null&&near(beyond.commander(),1);
                     activeOk=started&&taken;
-                    activeWhy="the ability command as "+own.commander+": stand_fast runs="+Commander.running(b,own,"stand_fast")+" to +"+(own.abilityUntil-t0)+" (want 160), ready again at +"+(own.abilityReadyAt-t0)+" (readyIn "+Commander.readyIn(b,own)+", want 1800, 90 s), Resistance "+(res==null?"none":"level "+(res.getAmplifier()+1)+" for "+res.getDuration())+"="+started
+                    activeWhy="the ability command as "+own.commander+": stand_fast runs="+Commander.running(b,own,"stand_fast")+" to +"+(own.relicState.until[0]-t0)+" (want 160), ready again at +"+(own.relicState.readyAt[0]-t0)+" (readyIn "+Commander.readyIn(b,own)+", want 1800, 90 s), Resistance "+(res==null?"none":"level "+(res.getAmplifier()+1)+" for "+res.getDuration())+"="+started
                         +"; a Dusk blow on his Risen "+fmt(distance(p,knights.get(0).mob))+" from him "+show(inside)+", on his Bone Archer "+fmt(distance(p,outside.mob))+" away "+show(beyond)+"="+taken;
                     tileWatch=1;next(b,52);
                 }
                 case 52->{ // it ends with the active (nothing holds anyone: no group routs); the tile counts down
                     long t=b.time-t0;var c=Commander.row(own);
-                    if(t==c.durationTicks()+1){var p=sp(b);boolean ended=own.abilityUntil==0&&!Commander.running(b,own)&&p!=null&&!p.hasStatusEffect(StatusEffects.RESISTANCE);activeOk&=ended;activeWhy+="; at +"+t+" it has ended and his Resistance is gone="+ended;}
+                    if(t==c.durationTicks()+1){var p=sp(b);boolean ended=own.relicState.until[0]==0&&!Commander.running(b,own)&&p!=null&&!p.hasStatusEffect(StatusEffects.RESISTANCE);activeOk&=ended;activeWhy+="; at +"+t+" it has ended and his Resistance is gone="+ended;}
                     if(t>c.durationTicks()+1&&!readyLater.isEmpty()||t>c.durationTicks()+400){
                         tileWatch=0;
                         int active=seconds(firstActive),cool=activeCooldownSeconds,ready1=seconds(readyFirst),ready2=seconds(readyLater);
@@ -1526,30 +1526,30 @@ public final class Phase2Checks implements ClientModInitializer {
                     var p=sp(b);var c=Commander.row(own);
                     heardBefore=BattleEffects.heard.size();startDistance=meanDistance(p);firstActive="";readyFirst="";readyLater="";activeCooldownSeconds=-1;
                     var listener=Phase1Checks.Listener.join(b,p.getX()+5,p.getY(),p.getZ());rallyBefore=Phase1Checks.heardOnClient("gravesandglory:horn_rally");
-                    t0=b.time;b.command(p,"ability");listenerCues=listener.cues();listener.leave(b);
+                    t0=b.time;b.command(p,"relic:0");listenerCues=listener.cues();listener.leave(b);
                     // the order path's spot: where he stands, one block above the ground there (he stands on the platform at y 140, far above it)
                     Vec3d to=p.getPos();Vec3d spot=new Vec3d(to.x,Arena.ground((int)to.x,(int)to.z)+1,to.z);boolean moves=true,snapped=Math.abs(to.y-spot.y)>20;StringBuilder orders=new StringBuilder();
                     for(var gr:Spec.GROUPS){if(gr.id().equals("all"))continue;String g=gr.id();var a=own.assignments.get(g);boolean m=a!=null&&a.order.equals("move")&&a.target.squaredDistanceTo(spot)<1e-6&&a.issued==t0;moves&=m;orders.append(g).append(' ').append(a==null?"none":a.order+" to "+fmt(a.target.x)+", "+fmt(a.target.y)+", "+fmt(a.target.z)).append(m?"":" (BAD)").append("; ");}
                     moves&=snapped;
                     double want=BattleMath.speedModifier(1+c.value1(),false);int speedy=0,troops=0;StringBuilder speeds=new StringBuilder();
-                    for(var u:fixture)if(u.mob.isAlive()){troops++;var a=u.mob.getAttributeInstance(net.minecraft.entity.attribute.EntityAttributes.GENERIC_MOVEMENT_SPEED);var m=a==null?null:a.getModifier(Commander.RALLY);
+                    for(var u:fixture)if(u.mob.isAlive()){troops++;var a=u.mob.getAttributeInstance(net.minecraft.entity.attribute.EntityAttributes.GENERIC_MOVEMENT_SPEED);var m=a==null?null:a.getModifier(RelicEffects.RALLY);
                         boolean good=m!=null&&Math.abs(m.getValue()-want)<1e-9&&m.getOperation()==net.minecraft.entity.attribute.EntityAttributeModifier.Operation.MULTIPLY_TOTAL&&Math.abs(a.getValue()/a.getBaseValue()-Math.sqrt(1+c.value1()))<1e-6;if(good)speedy++;
                         speeds.append(u.spec.id()).append(' ').append(a==null?"-":fmt(a.getBaseValue())+" -> "+String.format(Locale.ROOT,"%.4f",a.getValue())).append(good?"":" (BAD)").append(", ");}
                     int heard=BattleEffects.heard.size()-heardBefore;var last=BattleEffects.heard.isEmpty()?null:BattleEffects.heard.get(BattleEffects.heard.size()-1);
                     boolean sound=heard==1&&last!=null&&last.player().equals(player)&&last.kind().equals("rally")&&listenerCues.isEmpty();
-                    boolean started=c.id().equals("marshal")&&Commander.running(b,own,"rally_horn")&&own.abilityUntil==t0+c.durationTicks()&&Commander.readyIn(b,own)==2400&&c.cooldownTicks()==2400&&c.durationTicks()==300&&near(c.value1(),0.2)&&near(c.value2(),0)&&Commander.activeName(c.active()).equals("Muster");
+                    boolean started=c.id().equals("marshal")&&Commander.running(b,own,"rally_horn")&&own.relicState.until[0]==t0+c.durationTicks()&&Commander.readyIn(b,own)==2400&&c.cooldownTicks()==2400&&c.durationTicks()==300&&near(c.value1(),0.2)&&near(c.value2(),0)&&Commander.activeName(c.active()).equals("Muster");
                     activeOk=started&&moves&&speedy==troops&&troops==6&&sound;
-                    activeWhy="the ability command as "+own.commander+": "+c.active()+" (named "+Commander.activeName(c.active())+", want Muster; value1 "+c.value1()+", value2 "+c.value2()+") runs="+Commander.running(b,own,"rally_horn")+" to +"+(own.abilityUntil-t0)+" (want 300), readyIn "+Commander.readyIn(b,own)+" (want 2400, 120 s)="+started+"; orders for every group (the ground at his feet, y "+fmt(spot.y)+", not his own y "+fmt(to.y)+"="+snapped+"): "+orders+"="+moves
+                    activeWhy="the ability command as "+own.commander+": "+c.active()+" (named "+Commander.activeName(c.active())+", want Muster; value1 "+c.value1()+", value2 "+c.value2()+") runs="+Commander.running(b,own,"rally_horn")+" to +"+(own.relicState.until[0]-t0)+" (want 300), readyIn "+Commander.readyIn(b,own)+" (want 2400, 120 s)="+started+"; orders for every group (the ground at his feet, y "+fmt(spot.y)+", not his own y "+fmt(to.y)+"="+snapped+"): "+orders+"="+moves
                         +"; speed: "+speeds+speedy+" of "+troops+" troops carry the modifier "+String.format(Locale.ROOT,"%.4f",want)+" (a real x"+(1+c.value1())+" on land: the square root, BattleMath.speedModifier); the Marshal alone heard the rally cue ("+heard+" sound(s), the last of kind "+(last==null?"none":last.kind())+") and a second player 5 blocks from him was sent "+listenerCues+" (want nothing)="+sound;
                     tileWatch=1;late=null;lateHastened=false;next(b,65);
                 }
                 case 65->{long t=b.time-t0;var c=Commander.row(own);
                     if(t==40){long rally=Phase1Checks.heardOnClient("gravesandglory:horn_rally")-rallyBefore;boolean played=rally==1;activeOk&=played;activeWhy+="; his own client played horn_rally "+rally+" time(s) by +40 (want 1)="+played;}
                     if(t==50)late=free(b,"knight",8,6);
-                    if(t==52&&late!=null){var a=late.mob.getAttributeInstance(net.minecraft.entity.attribute.EntityAttributes.GENERIC_MOVEMENT_SPEED);lateHastened=a!=null&&a.getModifier(Commander.RALLY)!=null;}
+                    if(t==52&&late!=null){var a=late.mob.getAttributeInstance(net.minecraft.entity.attribute.EntityAttributes.GENERIC_MOVEMENT_SPEED);lateHastened=a!=null&&a.getModifier(RelicEffects.RALLY)!=null;}
                     if(t==100){var p=sp(b);double d=meanDistance(p);boolean closer=startDistance-d>=5;activeOk&=closer;activeWhy+="; his troops' mean distance to him "+fmt(startDistance)+" -> "+fmt(d)+" after 100 ticks="+closer;}
-                    if(t==c.durationTicks()+1){int left=0;for(var u:fixture){var a=u.mob.getAttributeInstance(net.minecraft.entity.attribute.EntityAttributes.GENERIC_MOVEMENT_SPEED);if(a!=null&&a.getModifier(Commander.RALLY)!=null)left++;}
-                        boolean ended=own.abilityUntil==0&&!Commander.running(b,own)&&left==0;activeOk&=ended&&lateHastened;activeWhy+="; a Squire that joined at +50 had the speed by +52="+lateHastened+"; at +"+t+" it has ended and "+left+" troops keep the speed="+ended;}
+                    if(t==c.durationTicks()+1){int left=0;for(var u:fixture){var a=u.mob.getAttributeInstance(net.minecraft.entity.attribute.EntityAttributes.GENERIC_MOVEMENT_SPEED);if(a!=null&&a.getModifier(RelicEffects.RALLY)!=null)left++;}
+                        boolean ended=own.relicState.until[0]==0&&!Commander.running(b,own)&&left==0;activeOk&=ended&&lateHastened;activeWhy+="; a Squire that joined at +50 had the speed by +52="+lateHastened+"; at +"+t+" it has ended and "+left+" troops keep the speed="+ended;}
                     if(t>c.durationTicks()+1&&!readyLater.isEmpty()||t>c.durationTicks()+400){
                         tileWatch=0;int active=seconds(firstActive),cool=activeCooldownSeconds,ready1=seconds(readyFirst),ready2=seconds(readyLater);
                         boolean tile=active==15&&cool==120&&ready1>=103&&ready1<=105&&ready2>=0&&ready2<ready1;
@@ -1566,10 +1566,10 @@ public final class Phase2Checks implements ClientModInitializer {
                         Map<String,GravesAndGlory.Assignment> before=new HashMap<>(own.assignments);
                         b.relocate(p,where[i].x,where[i].y,where[i].z,0,0);
                         Commander.reset(b,own);int heardAt=BattleEffects.heard.size();
-                        b.campaign.notices.remove(player);b.command(p,"ability");String said=b.campaign.notices.getOrDefault(player,"");
+                        b.campaign.notices.remove(player);b.command(p,"relic:0");String said=b.campaign.notices.getOrDefault(player,"");
                         boolean unmoved=true;for(var gr:Spec.GROUPS)if(!gr.id().equals("all"))unmoved&=own.assignments.get(gr.id())==before.get(gr.id());
                         boolean ran=Commander.running(b,own,"rally_horn");
-                        int speedy=0,troops=0;for(var u:fixture)if(u.mob.isAlive()){troops++;var a=u.mob.getAttributeInstance(net.minecraft.entity.attribute.EntityAttributes.GENERIC_MOVEMENT_SPEED);if(a!=null&&a.getModifier(Commander.RALLY)!=null)speedy++;}
+                        int speedy=0,troops=0;for(var u:fixture)if(u.mob.isAlive()){troops++;var a=u.mob.getAttributeInstance(net.minecraft.entity.attribute.EntityAttributes.GENERIC_MOVEMENT_SPEED);if(a!=null&&a.getModifier(RelicEffects.RALLY)!=null)speedy++;}
                         int added=BattleEffects.heard.size()-heardAt;boolean cue=i==0?added==1:added==0;
                         boolean spoke=said.equals(words[i]);ok&=unmoved&&ran&&speedy==troops&&troops>0&&spoke&&cue;
                         why.append("he stands ").append(name[i]).append(" at ").append(fmt(where[i].x)).append(", ").append(fmt(where[i].z)).append(": no group got a new order=").append(unmoved).append("; the Muster still ran=").append(ran).append("; the speed reached ").append(speedy).append(" of ").append(troops).append(" troops; the notice read \"").append(said).append("\" (want \"").append(words[i]).append("\")=").append(spoke).append("; feedback sounds +").append(added).append(i==0?" (want 1)":" (want 0: inside the 8 s of the first)").append("=").append(cue).append("; ");
@@ -1743,7 +1743,7 @@ public final class Phase2Checks implements ClientModInitializer {
         /** The commander on the platform, west of its centre, facing east and looking down at the ground 12 blocks ahead; aim is where the Bloom's raycast lands. */
         void stand(GravesAndGlory.Battle b,ServerPlayerEntity p,float yaw){
             p.changeGameMode(net.minecraft.world.GameMode.ADVENTURE);b.relocate(p,site.getX()+.5-10,site.getY(),site.getZ()+.5,yaw,(float)Math.toDegrees(Math.atan2(1.62,12)));
-            aim=Commander.GraveBloom.aim(p,Commander.row(own).range());
+            aim=RelicEffects.GraveBloom.aim(p,Commander.row(own).range());
         }
         /** A fallen troop of this army at an offset from the aim: posted where it falls, then dead by a fall with no attacker. */
         GravesAndGlory.Unit corpse(GravesAndGlory.Battle b,GravesAndGlory.Squad s,String troop,double distance,double degrees){
@@ -2068,18 +2068,18 @@ public final class Phase2Checks implements ClientModInitializer {
                     bloomWhy="the commander looks 12 blocks ahead at the floor and the raycast lands at "+fmt(aim.x-site.getX()-.5)+", "+fmt(aim.z-site.getZ()-.5)+" from the platform's centre (want 2, 0)="+onFloor+"; a log entry 401 ticks old was pruned by the next death, and eight fell (seven inside 8 blocks of the aim, one 9.5 off): the log holds "+b.deaths.size()+" ("+staleBefore+" before them)="+pruned+"; ";
                     bloomOk=onFloor&&pruned;
                     // first a cast at nothing: looking west off the platform
-                    var c=Commander.row(own);stand(b,p,90f);final Vec3d westAim=aim;float westYaw=p.getYaw();long nearWest=b.deaths.stream().filter(d->distance(d.at(),westAim)<=c.radius()).count();long ready=own.abilityReadyAt;int logBefore=b.deaths.size();
-                    b.campaign.notices.remove(player);b.command(p,"ability");
-                    boolean refused=own.abilityUntil==0&&own.abilityReadyAt==ready&&temporaries(b)==0&&b.deaths.size()==logBefore&&"No fallen troops there.".equals(b.campaign.notices.get(player));
+                    var c=Commander.row(own);stand(b,p,90f);final Vec3d westAim=aim;float westYaw=p.getYaw();long nearWest=b.deaths.stream().filter(d->distance(d.at(),westAim)<=c.radius()).count();long ready=own.relicState.readyAt[0];int logBefore=b.deaths.size();
+                    b.campaign.notices.remove(player);b.command(p,"relic:0");
+                    boolean refused=own.relicState.until[0]==0&&own.relicState.readyAt[0]==ready&&temporaries(b)==0&&b.deaths.size()==logBefore&&"No fallen troops there.".equals(b.campaign.notices.get(player));
                     bloomOk&=refused;bloomWhy+="a cast with no fallen troop within 8 of where he looks (west, off the platform: he looks at "+fmt(westAim.x-site.getX()-.5)+", "+fmt(westAim.z-site.getZ()-.5)+" from the centre, yaw "+fmt(westYaw)+", "+nearWest+" log entries within 8 of it) was refused with the notice \""+b.campaign.notices.get(player)+"\", no cooldown, no troop and no log change="+refused+"; ";
                     stand(b,p,-90f);next(b,51);
                 }
                 case 51->{ // the cast
                     var p=sp(b);p.sendMessage(net.minecraft.text.Text.empty(),true);var c=Commander.row(own);t0=b.time;soulsBefore=BattleEffects.souls;int fieldedBefore=(int)b.fielded(own).count();
-                    b.command(p,"ability");
+                    b.command(p,"relic:0");
                     var made=b.units.stream().filter(u->u.temporary&&u.squad==own).toList();bloom.clear();bloom.addAll(made);
                     boolean row=c.id().equals("warlock")&&c.active().equals("grave_bloom")&&c.cooldownTicks()==2400&&c.durationTicks()==600&&near(c.radius(),8)&&near(c.range(),30)&&near(c.value1(),0.6)&&near(c.value2(),6)&&near(c.value3(),400);
-                    boolean timing=own.abilityUntil==t0+c.durationTicks()&&own.abilityReadyAt==t0+c.cooldownTicks()&&Commander.readyIn(b,own)==2400&&Commander.running(b,own,"grave_bloom");
+                    boolean timing=own.relicState.until[0]==t0+c.durationTicks()&&own.relicState.readyAt[0]==t0+c.cooldownTicks()&&Commander.readyIn(b,own)==2400&&Commander.running(b,own,"grave_bloom");
                     boolean six=made.size()==6&&made.stream().map(u->u.slot).distinct().count()==6&&made.stream().allMatch(u->u.slot>=GravesAndGlory.R.squadSize());
                     boolean shape=made.stream().allMatch(u->u.spec.id().equals("revenant")&&u.mob instanceof GravesAndGlory.ArmyZombie&&u.expiresAt==t0+600&&Math.abs(u.mob.getHealth()-0.6*u.mob.getMaxHealth())<0.01&&u.mob.isAlive());
                     var names=sideMembers(b);boolean teams=made.stream().allMatch(u->names.stream().anyMatch(m->m.startsWith(b.side(own.team).id()+":")&&m.endsWith(u.mob.getEntityName())));
@@ -2090,7 +2090,7 @@ public final class Phase2Checks implements ClientModInitializer {
                     audit(b,"bloom raise",false);
                     for(var u:made){u.mob.setAiDisabled(true);fixture.add(u);pins.add(new Pin(u,u.mob.getPos(),-90));}
                     bloomOk&=row&&timing&&six&&shape&&teams&&where&&counted&&log&&souls;
-                    bloomWhy+="the cast: Warlock row "+c.id()+"/"+c.active()+" (cooldown "+c.cooldownTicks()+", lasts "+c.durationTicks()+", radius "+c.radius()+", range "+c.range()+", "+c.value1()+" of health, up to "+c.value2()+", log "+c.value3()+" ticks)="+row+"; runs to +"+(own.abilityUntil-t0)+", ready again at +"+(own.abilityReadyAt-t0)+"="+timing+"; "+made.size()+" temporary Risen stand in his army (slots "+made.stream().map(u->u.slot).sorted().toList()+", want six, all 20 or higher)="+six+", each a revenant in an ArmyZombie, gone at +"+(made.isEmpty()?"-":String.valueOf(made.get(0).expiresAt-t0))+" (want 600), at 60% of its health="+shape+", on its side's team="+teams+", where a corpse lay (distances from the aim "+spots+")="+where+"; his army still counts "+b.fielded(own).count()+" troops for its slots (want 2) and no Graveborn tier "+own.traits+"="+counted+"; the log kept the two not raised ("+deathsAfter+")="+log+"; soul effects +"+(BattleEffects.souls-soulsBefore)+"="+souls+"; ";
+                    bloomWhy+="the cast: Warlock row "+c.id()+"/"+c.active()+" (cooldown "+c.cooldownTicks()+", lasts "+c.durationTicks()+", radius "+c.radius()+", range "+c.range()+", "+c.value1()+" of health, up to "+c.value2()+", log "+c.value3()+" ticks)="+row+"; runs to +"+(own.relicState.until[0]-t0)+", ready again at +"+(own.relicState.readyAt[0]-t0)+"="+timing+"; "+made.size()+" temporary Risen stand in his army (slots "+made.stream().map(u->u.slot).sorted().toList()+", want six, all 20 or higher)="+six+", each a revenant in an ArmyZombie, gone at +"+(made.isEmpty()?"-":String.valueOf(made.get(0).expiresAt-t0))+" (want 600), at 60% of its health="+shape+", on its side's team="+teams+", where a corpse lay (distances from the aim "+spots+")="+where+"; his army still counts "+b.fielded(own).count()+" troops for its slots (want 2) and no Graveborn tier "+own.traits+"="+counted+"; the log kept the two not raised ("+deathsAfter+")="+log+"; soul effects +"+(BattleEffects.souls-soulsBefore)+"="+souls+"; ";
                     requestShot("graveborn-bloom",12);next(b,52);
                 }
                 case 52->{ // 600 ticks: they stand to the end and are gone with it
@@ -2099,9 +2099,9 @@ public final class Phase2Checks implements ClientModInitializer {
                     if(t==598){long alive=bloom.stream().filter(u->u.mob.isAlive()&&!u.mob.isRemoved()).count();boolean stand=alive==6&&temporaries(b)==6;bloomOk&=stand;bloomWhy+="at +598 "+alive+" of them still stand="+stand+"; ";}
                     if(t>=602){
                         long left=bloom.stream().filter(u->u.mob.isAlive()&&!u.mob.isRemoved()).count();audit(b,"bloom expiry",false);
-                        boolean gone=left==0&&temporaries(b)==0&&bloom.stream().noneMatch(u->b.units.contains(u))&&own.abilityUntil==0;
+                        boolean gone=left==0&&temporaries(b)==0&&bloom.stream().noneMatch(u->b.units.contains(u))&&own.relicState.until[0]==0;
                         bloomOk&=gone&&shotTaken;
-                        report("p2-grave-bloom",bloomOk,bloomWhy+"at +"+t+" "+left+" are left and "+temporaries(b)+" temporary troops stand in the battle, his active has ended="+(own.abilityUntil==0)+" (all gone="+gone+"); the picture graveborn-bloom was taken="+shotTaken);
+                        report("p2-grave-bloom",bloomOk,bloomWhy+"at +"+t+" "+left+" are left and "+temporaries(b)+" temporary troops stand in the battle, his active has ended="+(own.relicState.until[0]==0)+" (all gone="+gone+"); the picture graveborn-bloom was taken="+shotTaken);
                         wantShot=null;next(b,53);
                     }
                 }
@@ -2110,7 +2110,7 @@ public final class Phase2Checks implements ClientModInitializer {
                     for(int i=0;i<6;i++)group.add(post(b,own,"revenant",-9+i*1.5,-6,-90,true));Houses.recompute(own); // six Risen of his own: tier I, so one of them can rise
                     stand(b,p,-90f);corpse(b,dusk,"revenant",0,0);corpse(b,dusk,"knight",2,90);
                     var scout=post(b,dusk,"knight",9,9,180,true);
-                    b.command(p,"ability");
+                    b.command(p,"relic:0");
                     var temps=b.units.stream().filter(u->u.temporary).toList();bloom.clear();bloom.addAll(temps);
                     Houses.forceRise=Boolean.TRUE;var lucky=group.get(0);final Vec3d luckyAt=lucky.mob.getPos();lucky.mob.setHealth(1f);strike(b,scout,lucky,500f);boolean rose=lucky.mob.isAlive()&&lucky.rose&&!lucky.temporary;
                     Houses.forceRise=Boolean.FALSE;var lost=group.get(1);final Vec3d lostAt=lost.mob.getPos();lost.mob.setHealth(1f);strike(b,scout,lost,500f);
@@ -2231,7 +2231,7 @@ public final class Phase2Checks implements ClientModInitializer {
         GravesAndGlory.ArmySupplyBanner plant(GravesAndGlory.Battle b,ServerPlayerEntity p,double dx){return plant(b,p,dx,0);}
         GravesAndGlory.ArmySupplyBanner plant(GravesAndGlory.Battle b,ServerPlayerEntity p,double dx,double dz){
             Commander.reset(b,own);p.changeGameMode(net.minecraft.world.GameMode.ADVENTURE);
-            b.relocate(p,site.getX()+.5+dx,site.getY(),site.getZ()+.5+dz,-90f,0f);b.campaign.notices.remove(player);b.command(p,"ability");
+            b.relocate(p,site.getX()+.5+dx,site.getY(),site.getZ()+.5+dz,-90f,0f);b.campaign.notices.remove(player);b.command(p,"relic:0");
             return b.structures.isEmpty()?null:b.structures.get(b.structures.size()-1);
         }
         /** A bare, tough knight of Dusk, frozen and pinned on real ground at `at`. */
@@ -2458,11 +2458,11 @@ public final class Phase2Checks implements ClientModInitializer {
                     clearFixture(b,"supply");reset(own);own.order="hold";own.target=new Vec3d(site.getX()+.5+60,70,site.getZ()+.5);own.training.clear();
                     var c=Commander.row(own);t0=b.time;banner=plant(b,p,0);
                     boolean row=c.id().equals("quartermaster")&&c.active().equals("forward_supply")&&c.cooldownTicks()==3000&&c.durationTicks()==1200&&near(c.radius(),12)&&near(c.range(),30)&&near(c.value1(),40);
-                    boolean placed=banner!=null&&b.structures.size()==1&&banner.squad()==own&&near(banner.hp(),40)&&banner.isAlive()&&banner.getCommandTags().containsAll(List.of("gravesandglory","structure"))&&banner.block!=null&&b.world.getBlockState(banner.block).getBlock() instanceof net.minecraft.block.BannerBlock&&own.abilityData==banner;
+                    boolean placed=banner!=null&&b.structures.size()==1&&banner.squad()==own&&near(banner.hp(),40)&&banner.isAlive()&&banner.getCommandTags().containsAll(List.of("gravesandglory","structure"))&&banner.block!=null&&b.world.getBlockState(banner.block).getBlock() instanceof net.minecraft.block.BannerBlock&&own.relicState.data[0]==banner;
                     double away=banner==null?-1:distance(banner.getPos(),base0());
-                    boolean timing=own.abilityUntil==t0+1200&&own.abilityReadyAt==t0+3000&&Commander.running(b,own,"forward_supply")&&Commander.readyIn(b,own)==3000;
+                    boolean timing=own.relicState.until[0]==t0+1200&&own.relicState.readyAt[0]==t0+3000&&Commander.running(b,own,"forward_supply")&&Commander.readyIn(b,own)==3000;
                     supplyOk=row&&placed&&away>=30&&away<=45&&timing;
-                    supplyWhy.clear();supplyWhy.add("the Quartermaster's row "+c.id()+"/"+c.active()+" (cooldown "+c.cooldownTicks()+", lasts "+c.durationTicks()+", radius "+c.radius()+", range "+c.range()+", "+c.value1()+" health)="+row+"; he stood "+fmt(distance(p.getPos(),base0()))+" from his base: a banner stands "+fmt(away)+" from it (want 30 or more), with "+(banner==null?"no health":fmt(banner.hp())+" health")+", the tags structure and gravesandglory, its block placed, held in his active's data="+placed+", the active runs to +"+(own.abilityUntil-t0)+" and is ready again at +"+(own.abilityReadyAt-t0)+"="+timing);
+                    supplyWhy.clear();supplyWhy.add("the Quartermaster's row "+c.id()+"/"+c.active()+" (cooldown "+c.cooldownTicks()+", lasts "+c.durationTicks()+", radius "+c.radius()+", range "+c.range()+", "+c.value1()+" health)="+row+"; he stood "+fmt(distance(p.getPos(),base0()))+" from his base: a banner stands "+fmt(away)+" from it (want 30 or more), with "+(banner==null?"no health":fmt(banner.hp())+" health")+", the tags structure and gravesandglory, its block placed, held in his active's data="+placed+", the active runs to +"+(own.relicState.until[0]-t0)+" and is ready again at +"+(own.relicState.readyAt[0]-t0)+"="+timing);
                     if(banner==null){report("p2-supply-banner",false,supplyWhy.get(0));next(b,99);return;}
                     bannerBlock=banner.block;
                     own.training.addLast(new GravesAndGlory.Training(Campaign.troop("knight"),b.time));
@@ -2480,19 +2480,19 @@ public final class Phase2Checks implements ClientModInitializer {
                     if(u!=null){u.mob.setAiDisabled(true);fixture.add(u);pins.add(new Pin(u,u.mob.getPos(),-90f));}
                     // refused too near his base: from the platform's west edge
                     var p=sp(b);Commander.reset(b,own);boolean gone=b.structures.isEmpty()&&b.world.getBlockState(bannerBlock).isAir();
-                    long ready=own.abilityReadyAt;
-                    b.relocate(p,site.getX()+.5-11.5,site.getY(),site.getZ()+.5,-90f,0f);b.campaign.notices.remove(player);b.command(p,"ability");
+                    long ready=own.relicState.readyAt[0];
+                    b.relocate(p,site.getX()+.5-11.5,site.getY(),site.getZ()+.5,-90f,0f);b.campaign.notices.remove(player);b.command(p,"relic:0");
                     String notice=b.campaign.notices.get(player);double edge=distance(p.getPos(),base0());
-                    boolean refused=edge<30&&b.structures.isEmpty()&&own.abilityUntil==0&&own.abilityReadyAt==ready&&("Too near your base. Plant it 30 or more blocks away.").equals(notice);
+                    boolean refused=edge<30&&b.structures.isEmpty()&&own.relicState.until[0]==0&&own.relicState.readyAt[0]==ready&&("Too near your base. Plant it 30 or more blocks away.").equals(notice);
                     supplyOk&=gone&&refused;
                     supplyWhy.add("the active stopped by hand took the banner down and put its block back (air again)="+gone+"; from the platform's west edge, "+fmt(edge)+" from his base, the cast was refused with the notice \""+notice+"\", no banner, no cooldown, no duration="+refused);
                     // the rule is measured where the banner stands: a step behind his feet when he faces away from his base, a step beyond them when he faces it
-                    Commander.reset(b,own);b.relocate(p,base0().x+30.6,site.getY(),site.getZ()+.5,-90f,0f);b.campaign.notices.remove(player);b.command(p,"ability");
+                    Commander.reset(b,own);b.relocate(p,base0().x+30.6,site.getY(),site.getZ()+.5,-90f,0f);b.campaign.notices.remove(player);b.command(p,"relic:0");
                     double feetA=distance(p.getPos(),base0());String noticeA=b.campaign.notices.get(player);
-                    boolean stepBack=feetA>=30&&b.structures.isEmpty()&&own.abilityUntil==0&&own.abilityReadyAt==0&&("Too near your base. Plant it 30 or more blocks away.").equals(noticeA);
-                    Commander.reset(b,own);b.relocate(p,base0().x+29.4,site.getY(),site.getZ()+.5,90f,0f);b.campaign.notices.remove(player);b.command(p,"ability");
+                    boolean stepBack=feetA>=30&&b.structures.isEmpty()&&own.relicState.until[0]==0&&own.relicState.readyAt[0]==0&&("Too near your base. Plant it 30 or more blocks away.").equals(noticeA);
+                    Commander.reset(b,own);b.relocate(p,base0().x+29.4,site.getY(),site.getZ()+.5,90f,0f);b.campaign.notices.remove(player);b.command(p,"relic:0");
                     var beyond=b.structures.isEmpty()?null:b.structures.get(0);double feetB=distance(p.getPos(),base0()),bannerB=beyond==null?-1:distance(beyond.getPos(),base0());
-                    boolean stepOn=feetB<30&&beyond!=null&&bannerB>=30&&own.abilityUntil>b.time;
+                    boolean stepOn=feetB<30&&beyond!=null&&bannerB>=30&&own.relicState.until[0]>b.time;
                     Commander.reset(b,own);
                     supplyOk&=stepBack&&stepOn;
                     supplyWhy.add("the 30 blocks are measured at the banner: standing "+fmt(feetA)+" from his base facing away (the banner would stand a step nearer) the cast was refused with \""+noticeA+"\", no banner, no cooldown="+stepBack+"; standing "+fmt(feetB)+" from it facing it (the banner stands a step beyond) a banner was planted "+(beyond==null?"never":fmt(bannerB)+" from his base")+"="+stepOn);
@@ -2509,14 +2509,14 @@ public final class Phase2Checks implements ClientModInitializer {
                     t0=b.time;castTime=-1;next(b,33);
                 }
                 case 33->{
-                    if(castTime<0&&banner.isRemoved()){castTime=b.time-t0;fallNotice=b.campaign.notices.getOrDefault(player,"");fallUntil=own.abilityUntil;fallReady=own.abilityReadyAt;}
+                    if(castTime<0&&banner.isRemoved()){castTime=b.time-t0;fallNotice=b.campaign.notices.getOrDefault(player,"");fallUntil=own.relicState.until[0];fallReady=own.relicState.readyAt[0];}
                     if(since(b)<110)return; // the troop is finished at +100
                     boolean down=castTime>=0&&b.structures.isEmpty()&&b.world.getBlockState(bannerBlock).isAir();
                     var fresh=b.units.stream().filter(u->u.squad==own).toList();var u=fresh.isEmpty()?null:fresh.get(0);
                     boolean home=u!=null&&distance(u.mob.getPos(),base0())<12&&distance(u.mob.getPos(),centre())>25;
                     supplyWhy.add("(a) an enemy Ballista Crew 9 blocks off shot the banner down "+(castTime<0?"never":castTime+" ticks")+" after it was planted, its block is air again="+down+"; the troop that finished training afterwards appeared "+(u==null?"never":fmt(distance(u.mob.getPos(),base0()))+" from his base and "+fmt(distance(u.mob.getPos(),centre()))+" from the platform")+" (want the barracks)="+home);
                     boolean told=fallNotice.equals("Your supply banner has fallen.");
-                    boolean ended=fallUntil==0&&Math.abs(fallReady-(t0+3000))<=2&&!Commander.running(b,own,"forward_supply")&&Commander.activeFor(b,own)==0&&own.abilityData==null;
+                    boolean ended=fallUntil==0&&Math.abs(fallReady-(t0+3000))<=2&&!Commander.running(b,own,"forward_supply")&&Commander.activeFor(b,own)==0&&own.relicState.data[0]==null;
                     supplyWhy.add("when it fell its commander read \""+fallNotice+"\"="+told+" and his active ended with it (it ran to +"+fallUntil+" (0 is stopped), the HUD tile shows "+Commander.activeFor(b,own)+" ticks of it, the cooldown stands until +"+(fallReady-t0)+" of 3000)="+ended);
                     supplyOk=down&&home&&told&&ended;
                     if(u!=null)Houses.discard(b,u);
@@ -2536,11 +2536,11 @@ public final class Phase2Checks implements ClientModInitializer {
                 }
                 case 35->{ // (c): the timer runs out
                     var p=sp(b);banner=plant(b,p,0);if(banner==null){report("p2-supply-lost",false,"no banner could be planted (c)");next(b,99);return;}
-                    bannerBlock=banner.block;boolean standing=b.deploy(own,0).anchor()!=null;own.abilityUntil=b.time+5;next(b,36);
+                    bannerBlock=banner.block;boolean standing=b.deploy(own,0).anchor()!=null;own.relicState.until[0]=b.time+5;next(b,36);
                     supplyWhy.add("(c) with the banner standing a troop deploys at it="+standing);supplyOk&=standing;
                 }
                 case 36->{if(since(b)<12)return;
-                    boolean gone=b.structures.isEmpty()&&banner.isRemoved()&&b.world.getBlockState(bannerBlock).isAir()&&own.abilityUntil==0&&b.deploy(own,0).anchor()==null;
+                    boolean gone=b.structures.isEmpty()&&banner.isRemoved()&&b.world.getBlockState(bannerBlock).isAir()&&own.relicState.until[0]==0&&b.deploy(own,0).anchor()==null;
                     boolean quiet=!"Your supply banner has fallen.".equals(b.campaign.notices.get(player));
                     supplyWhy.add("when the timer runs out the banner is taken down, its block restored and a troop deploys at the barracks="+gone+", and its commander is not told it fell (an expiry is no fall)="+quiet);supplyOk&=gone&&quiet;
                     Commander.reset(b,own);next(b,37);
@@ -2795,7 +2795,7 @@ public final class Phase2Checks implements ClientModInitializer {
                     Commander.reset(b,own);
                     banner=plant(b,p,0);if(banner==null){report("p2-supply-cleanup",false,"no banner could be planted (kill)");next(b,70);return;}
                     bannerBlock=banner.block;banner.kill(); // what /kill does to an armor stand
-                    boolean killed=banner.isRemoved()&&b.structures.isEmpty()&&b.world.getBlockState(bannerBlock).isAir()&&"Your supply banner has fallen.".equals(b.campaign.notices.get(player))&&own.abilityUntil==0&&own.abilityReadyAt>b.time;
+                    boolean killed=banner.isRemoved()&&b.structures.isEmpty()&&b.world.getBlockState(bannerBlock).isAir()&&"Your supply banner has fallen.".equals(b.campaign.notices.get(player))&&own.relicState.until[0]==0&&own.relicState.readyAt[0]>b.time;
                     supplyOk=swept&&killed;
                     supplyWhy.add("Abilities.clearBanners (the call a round start, a map switch, the lobby and a server stop each make) took a standing banner down, its block air again and nobody told it fell="+swept+"; a killed banner (what /kill does) left the list, its block air again, its commander told it fell and his active stopped (cooldown stands)="+killed);
                     next(b,72);
@@ -2806,7 +2806,7 @@ public final class Phase2Checks implements ClientModInitializer {
                     if(banner==null){report("p2-supply-cleanup",false,"no banner could be planted (lobby)");next(b,70);return;}
                     bannerBlock=banner.block;var planted=banner;
                     b.campaign.returnLobby();
-                    boolean lobby=!b.running&&planted.isRemoved()&&b.structures.isEmpty()&&b.world.getBlockState(bannerBlock).isAir()&&own.abilityUntil==0&&own.abilityData==null;
+                    boolean lobby=!b.running&&planted.isRemoved()&&b.structures.isEmpty()&&b.world.getBlockState(bannerBlock).isAir()&&own.relicState.until[0]==0&&own.relicState.data[0]==null;
                     supplyWhy.add("returnLobby with a banner standing took it down, its block air again and ended the active (round running="+b.running+")="+lobby);
                     report("p2-supply-cleanup",supplyOk&&lobby,String.join("; ",supplyWhy)+"; a round start and a map switch were not run with a banner standing: each begins with the Abilities.clearBanners call checked above");
                     next(b,70);
@@ -3238,27 +3238,27 @@ public final class Phase2Checks implements ClientModInitializer {
                     markOk=sheet;markWhy="the Warden's row "+c.id()+"/"+c.active()+" (cooldown "+c.cooldownTicks()+", lasts "+c.durationTicks()+", range "+c.range()+", +"+c.value1()+")="+sheet+"; ";
                     // behind a wall: refused, with a notice, and no cooldown
                     int wx=site.getX()-5;for(int dz=-1;dz<=1;dz++)for(int y=0;y<=3;y++)put(b,new BlockPos(wx,site.getY()+y,site.getZ()+dz),Blocks.STONE.getDefaultState());
-                    long readyBefore=own.abilityReadyAt;b.campaign.notices.remove(player);b.command(p,"ability");
+                    long readyBefore=own.relicState.readyAt[0];b.campaign.notices.remove(player);b.command(p,"relic:0");
                     String refused=b.campaign.notices.get(player);
-                    boolean wall=Commander.MarkPrey.pick(b,p,own,40)==null&&"No foe in sight.".equals(refused)&&!Commander.running(b,own,"mark_prey")&&own.abilityReadyAt==readyBefore&&own.abilityData==null;
+                    boolean wall=RelicEffects.MarkPrey.pick(b,p,own,40)==null&&"No foe in sight.".equals(refused)&&!Commander.running(b,own,"mark_prey")&&own.relicState.readyAt[0]==readyBefore&&own.relicState.data[0]==null;
                     unbuild(b);Commander.reset(b,own);
-                    boolean reach=Commander.MarkPrey.pick(b,p,own,10)==null&&Commander.MarkPrey.pick(b,p,own,14)==us[0].mob&&Commander.MarkPrey.pick(b,p,own,40)==us[0].mob;
+                    boolean reach=RelicEffects.MarkPrey.pick(b,p,own,10)==null&&RelicEffects.MarkPrey.pick(b,p,own,14)==us[0].mob&&RelicEffects.MarkPrey.pick(b,p,own,40)==us[0].mob;
                     markOk&=wall&&reach;
                     markWhy+="with a stone wall between him and the knight the cast was refused with \""+refused+"\", no mark, no cooldown="+wall+"; the view ray picks the knight 12 off at a range of 14 and 40, nothing at 10, and not the one 7 off the line="+reach+"; ";
-                    markAt=b.time;b.campaign.notices.remove(player);b.command(p,"ability");
+                    markAt=b.time;b.campaign.notices.remove(player);b.command(p,"relic:0");
                     var glow=us[0].mob.getStatusEffect(StatusEffects.GLOWING);
-                    boolean cast=Commander.running(b,own,"mark_prey")&&own.abilityData==us[0].mob&&glow!=null&&Math.abs(glow.getDuration()-240)<=2&&own.abilityUntil==markAt+240&&own.abilityReadyAt==markAt+1200&&!us[1].mob.hasStatusEffect(StatusEffects.GLOWING);
+                    boolean cast=Commander.running(b,own,"mark_prey")&&own.relicState.data[0]==us[0].mob&&glow!=null&&Math.abs(glow.getDuration()-240)<=2&&own.relicState.until[0]==markAt+240&&own.relicState.readyAt[0]==markAt+1200&&!us[1].mob.hasStatusEffect(StatusEffects.GLOWING);
                     var own1=Commanders.hit(b,u1,us[0].mob,"melee");var other=Commanders.hit(b,u2,us[0].mob,"melee");var wrong=Commanders.hit(b,u3,us[1].mob,"melee");
                     double self=Commander.playerFactor(b,own,us[0].mob),selfOther=Commander.playerFactor(b,own,us[1].mob);
                     boolean factors=own1!=null&&near(own1.commander(),1.3)&&other!=null&&near(other.commander(),1.0)&&wrong!=null&&near(wrong.commander(),1.0)&&near(self,1.3)&&near(selfOther,1.0);
                     markOk&=cast&&factors;
-                    markWhy+="the cast marked the knight (the active runs to +"+(own.abilityUntil-markAt)+" and is ready again at +"+(own.abilityReadyAt-markAt)+", the knight glows "+(glow==null?"not":glow.getDuration()+" ticks")+", the other does not)="+cast+"; a blow from his own Order Squire on it has commander "+(own1==null?"none":String.valueOf(own1.commander()))+" (want 1.3), from another army's Order Squire "+(other==null?"none":String.valueOf(other.commander()))+" (want 1.0), his Order Squire on the knight off the line "+(wrong==null?"none":String.valueOf(wrong.commander()))+" (want 1.0), the Warden's own blow on it x"+fmt(self)+" (want 1.3) and on the other x"+fmt(selfOther)+"="+factors+"; ";
+                    markWhy+="the cast marked the knight (the active runs to +"+(own.relicState.until[0]-markAt)+" and is ready again at +"+(own.relicState.readyAt[0]-markAt)+", the knight glows "+(glow==null?"not":glow.getDuration()+" ticks")+", the other does not)="+cast+"; a blow from his own Order Squire on it has commander "+(own1==null?"none":String.valueOf(own1.commander()))+" (want 1.3), from another army's Order Squire "+(other==null?"none":String.valueOf(other.commander()))+" (want 1.0), his Order Squire on the knight off the line "+(wrong==null?"none":String.valueOf(wrong.commander()))+" (want 1.0), the Warden's own blow on it x"+fmt(self)+" (want 1.3) and on the other x"+fmt(selfOther)+"="+factors+"; ";
                     next(b,51);
                 }
                 case 51->{ // 240 ticks on, the mark and its glow are gone
                     if(b.time<markAt+242)return;
                     var h=Commanders.hit(b,u1,us[0].mob,"melee");
-                    boolean over=!Commander.running(b,own,"mark_prey")&&!us[0].mob.hasStatusEffect(StatusEffects.GLOWING)&&h!=null&&near(h.commander(),1.0)&&own.abilityData==null;
+                    boolean over=!Commander.running(b,own,"mark_prey")&&!us[0].mob.hasStatusEffect(StatusEffects.GLOWING)&&h!=null&&near(h.commander(),1.0)&&own.relicState.data[0]==null;
                     report("p2-warden-mark",markOk&&over,markWhy+"at +"+(b.time-markAt)+" the mark has ended: the glow is gone from the knight and a blow from his troop has commander "+(h==null?"none":String.valueOf(h.commander()))+" (want 1.0)="+over+" (the glow is the vanilla one, so both teams see it: a glow for the Warden's side only needs a client renderer that state_v8 does not carry, as docs/PARKED.md records)");
                     Commander.reset(b,own);clearFixture(b,"mark done");next(b,30);
                 }
@@ -3890,11 +3890,11 @@ public final class Phase2Checks implements ClientModInitializer {
                     for(var u:List.of(us[0],us[1],us[4]))u.mob.damage(b.world.getDamageSources().generic(),1000f);
                     boolean fell=own.stats.lost==lostBefore+3;
                     p.setHealth(10f);float a0=line[0].mob.getHealth();playerBlow(b,p,line[0].mob,10f);float plain=p.getHealth(),plainLost=a0-line[0].mob.getHealth();
-                    b.campaign.notices.remove(player);t0=b.time;b.command(p,"ability");
+                    b.campaign.notices.remove(player);t0=b.time;b.command(p,"relic:0");
                     var speed=p.getStatusEffect(StatusEffects.SPEED);
-                    boolean started=Commander.running(b,own,"bloodrush")&&own.abilityUntil==t0+200&&own.abilityReadyAt==t0+1500&&speed!=null&&speed.getAmplifier()==1&&Math.abs(speed.getDuration()-200)<=2;
+                    boolean started=Commander.running(b,own,"bloodrush")&&own.relicState.until[0]==t0+200&&own.relicState.readyAt[0]==t0+1500&&speed!=null&&speed.getAmplifier()==1&&Math.abs(speed.getDuration()-200)<=2;
                     rushOk=sheet&&fell&&near(plain,10)&&plainLost>0&&started;
-                    rushWhy="the Reaver's row "+c.id()+"/"+c.active()+" (cooldown "+c.cooldownTicks()+", lasts "+c.durationTicks()+", lifesteal "+c.value1()+", refunds "+c.value2()+")="+sheet+"; two hounds and a hunter of his army fell (lost "+(own.stats.lost-lostBefore)+")="+fell+"; before the active a blow of 10 on an archer (it lost "+fmt(plainLost)+") left him at "+fmt(plain)+" (want 10)="+near(plain,10)+"; the key started Bloodrush (runs to +"+(own.abilityUntil-t0)+", ready at +"+(own.abilityReadyAt-t0)+", "+(speed==null?"no Speed":"Speed "+(speed.getAmplifier()+1)+" for "+speed.getDuration())+")="+started;
+                    rushWhy="the Reaver's row "+c.id()+"/"+c.active()+" (cooldown "+c.cooldownTicks()+", lasts "+c.durationTicks()+", lifesteal "+c.value1()+", refunds "+c.value2()+")="+sheet+"; two hounds and a hunter of his army fell (lost "+(own.stats.lost-lostBefore)+")="+fell+"; before the active a blow of 10 on an archer (it lost "+fmt(plainLost)+") left him at "+fmt(plain)+" (want 10)="+near(plain,10)+"; the key started Bloodrush (runs to +"+(own.relicState.until[0]-t0)+", ready at +"+(own.relicState.readyAt[0]-t0)+", "+(speed==null?"no Speed":"Speed "+(speed.getAmplifier()+1)+" for "+speed.getDuration())+")="+started;
                     next(b,47);
                 }
                 case 47->{if(since(b)<10)return; // the shield has been up 10 ticks: the lifesteal, then the kills
@@ -3932,12 +3932,12 @@ public final class Phase2Checks implements ClientModInitializer {
                 }
                 case 48->{if(b.time<t0+203)return; // after the duration: no Speed, nothing kept, and a kill queues nothing; then the Speed it ends is its own alone
                     var p=sp(b);if(p==null)return;
-                    boolean over=!Commander.running(b,own)&&!p.hasStatusEffect(StatusEffects.SPEED)&&own.abilityData==null;
+                    boolean over=!Commander.running(b,own)&&!p.hasStatusEffect(StatusEffects.SPEED)&&own.relicState.data[0]==null;
                     line[11].mob.setHealth(1f);playerBlow(b,p,line[11].mob,10f);boolean none=!line[11].mob.isAlive()&&own.training.isEmpty();
-                    own.abilityReadyAt=0;b.command(p,"ability");boolean second=Commander.running(b,own,"bloodrush");
+                    own.relicState.readyAt[0]=0;b.command(p,"relic:0");boolean second=Commander.running(b,own,"bloodrush");
                     p.addStatusEffect(new net.minecraft.entity.effect.StatusEffectInstance(StatusEffects.SPEED,600,2));Commander.stop(b,own);var kept=p.getStatusEffect(StatusEffects.SPEED);
                     boolean keeps=second&&kept!=null&&kept.getAmplifier()==2&&kept.getDuration()>=590;p.removeStatusEffect(StatusEffects.SPEED);
-                    own.abilityReadyAt=0;b.command(p,"ability");boolean third=Commander.running(b,own,"bloodrush");Commander.stop(b,own);boolean gone=third&&!p.hasStatusEffect(StatusEffects.SPEED);
+                    own.relicState.readyAt[0]=0;b.command(p,"relic:0");boolean third=Commander.running(b,own,"bloodrush");Commander.stop(b,own);boolean gone=third&&!p.hasStatusEffect(StatusEffects.SPEED);
                     report("p2-reaver-bloodrush",rushOk&&over&&none&&keeps&&gone,rushWhy+"; at +"+(b.time-t0)+" it has ended (Speed gone, nothing kept)="+over+" and a kill queues nothing="+none+"; started again (the cooldown waived by hand) and ended early with a Speed III of 600 ticks given meanwhile, that Speed stays ("+(kept==null?"none":"Speed "+(kept.getAmplifier()+1)+" for "+kept.getDuration())+")="+keeps+"; started and ended early with nothing else given, the Speed is gone="+gone);
                     dusk.formation=formationWas;own.training.clear();clearFixture(b,"bloodrush done");next(b,50);
                 }

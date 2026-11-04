@@ -40,13 +40,17 @@ public final class GravesAndGloryClient implements ClientModInitializer {
     static String[] sideIds={"",""};static Map<String,Integer> houses=Map.of();static String commanderActive="";static int commanderReady,commanderFor;
     /** The commander ability the HUD slot shows ("none": no slot), with the ticks left and in all of its cooldown. */
     static String abilityId="none";static int abilityRemaining,abilityTotal;
+    /** From relics_v1 (gear-combat Task 5): each relic slot's id ("" empty), ticks until ready (-1 empty or no behaviour) and ticks left running. Slot 0 also rides in state_v9's ability field. */
+    static String[] relicIds={"","",""};static int[] relicReady={-1,-1,-1},relicFor=new int[3];
+    /** What the HUD shows for relic slots 1 and 2 (slot 0 is abilityId above): the id ("none": no slot), the ticks left and in all of the cooldown or run. */
+    static String[] relicShown={"none","none","none"};static int[] relicLeft=new int[3],relicTotal=new int[3];
     static boolean[] contested={false,false,false};
     record Sight(float x,float z,int age){}
     static List<Sight> sightings=List.of();
     static int[] owners={-1,-1,-1},progress={0,0,0},challengers={-1,-1,-1},roster=new int[Spec.TROOPS.length],pending=new int[Spec.TROOPS.length];
     static List<Marker> markers=List.of();
     record Marker(float x,float z,boolean fighting,boolean own,String name){}
-    static KeyBinding menu,attack,follow,cycle,mapKey,rotateLeft,rotateRight,confirmOrder,cancelOrder,ability,hints,armoury,banner,gearKey;
+    static KeyBinding menu,attack,follow,cycle,mapKey,rotateLeft,rotateRight,confirmOrder,cancelOrder,hints,armoury,banner,gearKey;
     static Path runtime;
     static String join="",error="";
     static boolean attempted,opened,joined,shareCamp,launcherContext,connectingInvitation;
@@ -70,7 +74,6 @@ public final class GravesAndGloryClient implements ClientModInitializer {
         net.fabricmc.fabric.api.resource.ResourceManagerHelper.get(net.minecraft.resource.ResourceType.CLIENT_RESOURCES).registerReloadListener(new TroopModelLoader());
         menu=key("menu",GLFW.GLFW_KEY_R);attack=key("attack",GLFW.GLFW_KEY_G);follow=key("follow",GLFW.GLFW_KEY_V);cycle=key("formation",GLFW.GLFW_KEY_B);mapKey=key("map",GLFW.GLFW_KEY_M);
         rotateLeft=key("rotate_left",GLFW.GLFW_KEY_LEFT_BRACKET);rotateRight=key("rotate_right",GLFW.GLFW_KEY_RIGHT_BRACKET);
-        ability=key("ability",GLFW.GLFW_KEY_H); // the commander ability (Commander.activate); G is the attack order
         hints=key("hints",GLFW.GLFW_KEY_LEFT_ALT); // held, the battle HUD shows every key hint (BattleHud.altLayer)
         armoury=key("armoury",GLFW.GLFW_KEY_U); // opens the barracks screen on its Armoury tab, anywhere in a battle (ArmouryTab)
         gearKey=key("gear",GLFW.GLFW_KEY_I); // the Arsenal (the commander's gear, WarTableGear), in camp only
@@ -81,6 +84,13 @@ public final class GravesAndGloryClient implements ClientModInitializer {
         // Optional launcher integration. Ordinary installs need no runtime directory.
         launcherContext=Files.isRegularFile(runtime.resolve("melty.properties"));
         if(launcherContext)try{Files.writeString(runtime.resolve("melty.log"),"");Properties props=new Properties();try(var in=Files.newInputStream(runtime.resolve("melty.properties"))){props.load(in);}join=props.getProperty("join","").trim();}catch(Exception e){System.err.println("[Graves and Glory] Optional launcher invitation could not be read: "+e.getMessage());}
+        ClientPlayNetworking.registerGlobalReceiver(GravesAndGlory.RELICS,(client,handler,buf,responder)->{int n=Math.min(3,buf.readByte());String[] ids={"","",""};int[] ready={-1,-1,-1},run=new int[3];
+            for(int i=0;i<n;i++){ids[i]=buf.readString(64);ready[i]=buf.readInt();run[i]=buf.readInt();}
+            client.execute(()->{relicIds=ids;relicReady=ready;relicFor=run;for(int i=1;i<3;i++){int[] s=relicShow(ids[i],ready[i],run[i]);relicShown[i]=s==null?"none":ids[i];relicLeft[i]=s==null?0:s[0];relicTotal[i]=s==null?0:s[1];}});});
+        // Relics fire on hotbar keys 1 to 3 in battle (gear-combat Task 5): drained here before vanilla's input handling, so in battle they never
+        // change the selected slot (the server pins it to 0 as well, GearCombat.tick); outside battle vanilla gets them and they change slot as ever.
+        ClientTickEvents.START_CLIENT_TICK.register(client->{if(client.player==null||client.currentScreen!=null||!battleActive())return;
+            for(int i=0;i<3;i++)while(client.options.hotbarKeys[i].wasPressed())send("relic:"+i);});
         ClientPlayNetworking.registerGlobalReceiver(GravesAndGlory.GEAR,(client,handler,buf,responder)->{String text=buf.readString(GearWire.LIMIT);client.execute(()->CampaignClient.gear=GearWire.decode(text));});
         ClientPlayNetworking.registerGlobalReceiver(GravesAndGlory.CAMP,(client,handler,buf,responder)->{String page=buf.readString(32);client.execute(()->CampScreen.open(page));});
         ClientPlayNetworking.registerGlobalReceiver(GravesAndGlory.OPEN_BARRACKS,(client,handler,buf,responder)->client.execute(()->client.setScreen(running?new BarracksScreen():new LobbyScreen())));
@@ -131,7 +141,6 @@ public final class GravesAndGloryClient implements ClientModInitializer {
             if(client.player!=null){
                 worldTicks++;if(ready&&worldTicks%20==0)client.getToastManager().clear();prepareMap(client);CampaignClient.tick(client);MusicDirector.tick(client);Diagnostics.tick(client);
                 while(menu.wasPressed()){CampaignClient.end(client);CommandMode.cancel();client.setScreen(battleActive()?new CommandScreen():new CampScreen("home"));}
-                while(ability.wasPressed())if(battleActive())send("ability");
                 while(armoury.wasPressed())if(battleActive())client.setScreen(new RecruitmentScreen(1));
                 while(gearKey.wasPressed())if(!battleActive())client.setScreen(new CampScreen("gear"));
                 while(attack.wasPressed())CommandMode.begin("attack");while(follow.wasPressed())CommandMode.issue("all","follow",CommandMode.formation,client.player.getPos(),client.player.getYaw(),-1);
@@ -302,13 +311,18 @@ public final class GravesAndGloryClient implements ClientModInitializer {
         if(CampaignClient.padCountdown>0)g.drawCenteredTextWithShadow(c.textRenderer,"War gates: "+CampaignClient.padCountdown+"s / Step off to cancel",w/2,24,DarkUi.GOLD);
         else if(CampaignClient.waiting)g.drawCenteredTextWithShadow(c.textRenderer,"A battle is underway / Your camp remains open",w/2,24,DarkUi.MUTED);
     }
-    /** The commander class's active in the HUD's ability slot (BattleHud.ability). The slot reads the state packet's test-ability triple, which is "none" in play, so the active the packet
-     *  names (commanderActive) fills it: the seconds it still runs (commanderFor, against its duration) while it runs, then its cooldown (commanderReady, against the class's cooldown). An active this
-     *  build has no behaviour for (commanderReady below 0) leaves the slot empty: its key would only answer "not ready in this build". Client thread, after the packet's fields are read. */
+    /** Relic slot 0 in the HUD's ability slot (BattleHud.ability). The slot reads the state packet's test-ability triple, which is "none" in play, so the relic the packet
+     *  names (commanderActive, slot 0's relic id) fills it: the ticks it still runs (commanderFor, against its duration) while it runs, then its cooldown (commanderReady, against
+     *  the relic's cooldown). An empty slot or a relic this build has no behaviour for (commanderReady below 0) leaves the slot empty. Client thread, after the packet's fields are read. */
     static void classAbility(){
-        var row=Commander.byActive(commanderActive);if(row==null||commanderReady<0)return;
-        boolean running=commanderFor>0;abilityId=commanderActive;abilityRemaining=running?commanderFor:commanderReady;
-        abilityTotal=Math.max(abilityRemaining,running?row.durationTicks():row.cooldownTicks());
+        int[] s=relicShow(commanderActive,commanderReady,commanderFor);if(s==null)return;
+        abilityId=commanderActive;abilityRemaining=s[0];abilityTotal=s[1];
+    }
+    /** A relic slot's shown ticks {left, total}: the run left against relicTuning.durationTicks while it runs, else the cooldown left against relics.cooldownTicks
+     *  (at least what is left: quickened_relic only shortens it); null for an empty slot or one with no behaviour (ready below 0). */
+    static int[] relicShow(String id,int ready,int running){
+        var t=Commander.tuning(id);var r=Commander.relic(id);if(t==null||r==null||ready<0)return null;
+        boolean on=running>0;int left=on?running:ready;return new int[]{left,Math.max(left,on?t.durationTicks():r.cooldownTicks())};
     }
     /** The HUD: the camp line in camp, the entrance letterbox during a battle's entrance, else the Iron Ledger (BattleHud), with the
      *  contact accent over it. */
