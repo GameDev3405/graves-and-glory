@@ -353,13 +353,12 @@ def bones():
                                                        Box((-5.6, -6.2, -1.8), (1.6, 2.2, 6.8), brim("l")),
                                                        Box((4, -6.2, -1.8), (1.6, 2.2, 6.8), brim("r"))]))
     B.append(Bone("brim_tail", "head", (0, -6.2, 4.4), rot=(-20, 0, 0), tag="helm", boxes=[Box((-5.2, 0, 0), (10.4, 9, 1.6), tail())]))
-    B.append(Bone("right_arm", "body", (-5, -10, 0), [Box((-3, -2, -2), (4, 12, 4), arm_painter())]))
-    B.append(Bone("right_hand", "right_arm", (-1, 8, 0)))
-    B.append(Bone("left_arm", "body", (5, -10, 0), [Box((-1, -2, -2), (4, 12, 4), arm_painter())]))
-    B.append(Bone("left_hand", "left_arm", (1, 8, 0)))
+    for side, x, ox in (("right", -5, -3), ("left", 5, -1)):   # jointed: elbow and hand as handlib.arms()
+        B += limb(f"{side}_arm", "body", (x, -10, 0), (ox, -2, -2), arm_painter(), f"{side}_forearm", ELBOW[side])
+        B.append(Bone(f"{side}_hand", f"{side}_forearm", HAND))
     B.append(Bone("arms_folded", "body", (0, -9, -1), rot=(-43, 0, 0)))
-    B.append(Bone("right_leg", "root", (-1.9, 12, 0), [Box((-2, 0, -2), (4, 12, 4), leg_painter())]))
-    B.append(Bone("left_leg", "root", (1.9, 12, 0), [Box((-2, 0, -2), (4, 12, 4), leg_painter())]))
+    for side, x in (("right", -1.9), ("left", 1.9)):   # jointed: the knee 6 px down the leg
+        B += limb(f"{side}_leg", "root", (x, 12, 0), (-2, 0, -2), leg_painter(), f"{side}_shin", KNEE)
     B.append(Bone("skirt", "body", boxes=[Box((-4.6, -3, -2.6), (9.2, 10, 5.2), skirt())]))
     B.append(Bone("belt", "body", boxes=[Box((-4, -4, -2), (8, 2, 4), belt(), dil=0.5)]))
     B.append(Bone("sash", "body", team=True, boxes=[Box((-3, -3.5, -2.9), (2, 8, 0), "sash", sheet="cloth")]))
@@ -383,22 +382,23 @@ def bones():
     B.append(strand("kelp_hat", "head", (-4.5, -6, 2), (10, 0, -14), [((-1, 0, 0), (2, 9, 1))]))
     for side in ("right", "left"):
         c = -1 if side == "right" else 1
-        B.append(Bone(f"{side}_wrap", f"{side}_arm", team=True, boxes=[Box((-2 + (0 if side == "right" else -1), 7, -2), (4, 2, 4), "wrap", dil=0.3, sheet="cloth")]))
-        B.append(Bone(f"{side}_foot", f"{side}_leg", boxes=[Box((-2.5, 9, -3.2), (5, 3, 5.2), foot())]))
-    B.append(strand("kelp_shin", "left_leg", (1, 6, 2.2), (14, 0, 6), [((-1, 0, 0), (2, 6, 1))]))
+        B.append(Bone(f"{side}_wrap", f"{side}_forearm", team=True, boxes=[Box((-1 if side == "right" else -4, 3, -2), (4, 2, 4), "wrap", dil=0.3, sheet="cloth")]))
+        B.append(Bone(f"{side}_foot", f"{side}_shin", boxes=[Box((-2.5, 3, -3.2), (5, 3, 5.2), foot())]))
+    B.append(strand("kelp_shin", "left_shin", (1, 0, 2.2), (14, 0, 6), [((-1, 0, 0), (2, 6, 1))]))
     # tier II, the Whale-Taker: a bronze pauldron over the pad, bracers, greaves, a studded hat band
     B.append(Bone("pauldron", "body", (-6, -13, 0), rot=(0, 0, -12), stages=[2, 3], boxes=[
         Box((-3, -1, -3.4), (6.4, 2.6, 6.8), TC.P("hppd"), dil=0.15), Box((-2, -2, -2.4), (4, 1, 4.8), TC.P("hppt"), dil=0.05)]))
     B.append(Bone("hat_band", "head", tag="helm", stages=[2, 3], boxes=[Box((-4.9, -8, -4.9), (9.8, 1.4, 9.8), TC.band("hphb"), dil=0.05)]))
     for side in ("right", "left"):
-        B.append(Bone(f"{side}_bracer", f"{side}_arm", stages=[2, 3], boxes=[Box((-2.2 + (0 if side == "right" else -1), 3.5, -2.2), (4.4, 3.5, 4.4), TC.P("hpbr" + side, 0.03), dil=0.1)]))
-        B.append(Bone(f"{side}_greave", f"{side}_leg", stages=[2, 3], boxes=[Box((-2.3, 4, -2.3), (4.6, 5, 4.6), TC.P("hpgv" + side), dil=0.1)]))
+        B.append(Bone(f"{side}_bracer", f"{side}_forearm", stages=[2, 3], boxes=[Box((-1.2 if side == "right" else -4.2, -0.5, -2.2), (4.4, 3.5, 4.4), TC.P("hpbr" + side, 0.03), dil=0.1)]))
+        B.append(Bone(f"{side}_greave", f"{side}_shin", stages=[2, 3], boxes=[Box((-2.3, -2, -2.3), (4.6, 5, 4.6), TC.P("hpgv" + side), dil=0.1)]))
     # tier III, the Leviathan Hunter: a necklace of great teeth under the scarf, barnacles on the hat crown, a bronze-chased gorget
     teeth = [Box((-3.5 + 1.2 * i, -10.8 + (0 if i in (0, 5) else 0.6 if i in (1, 4) else 1.0), -3.0), (1, 2 + (i in (2, 3)), 1), TC.tc_spike(TC.PEARL, 2, 2)) for i in range(6)]
     B.append(Bone("tooth_necklace", "body", stages=[3], boxes=[Box((-4, -11.2, -2.8), (8, 0.6, 0.6), TC.band("hptn"))] + teeth))
     for i, (x, z, w) in enumerate([(-3, -2, 2), (1, -1, 2), (-1, 1.5, 3), (2.2, 2, 1)]):
         B.append(Bone(f"hat_barn{i}", "head", tag="helm", stages=[3], boxes=[Box((x, -13, z), (w, 1.2, w), TC.tc_barnacles(("hph", i)))]))
-    B.append(Bone("gauntlet", "left_arm", stages=[3], boxes=[Box((-3.3, 1.5, -2.3), (4.6, 2, 4.6), TC.band("hpga"), dil=0.15)]))
+    B.append(Bone("gauntlet", "left_arm", stages=[3],   # a band above the elbow (y 1.5-3.5): stays on the upper arm
+               boxes=[Box((-3.3, 1.5, -2.3), (4.6, 2, 4.6), TC.band("hpga"), dil=0.15)]))
     return B
 
 NOTE = ("Tidecaller Harpooner (unit identity, Tidecallers): drowned whaler, biped, upright; an oilskin sou'wester with a banded sea-blue hat "
