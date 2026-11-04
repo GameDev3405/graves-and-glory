@@ -400,6 +400,167 @@ def crew():
         dict(root=(0, 0, 0, 0, 0.05, 0), body=(-0.5, 0.5, 0), left_arm=(-2, 0, 0))))]
 
 
+# ---- creature rigs. y is down and the beast faces -z, as on the biped: rx > 0 dips a forward-pointing bone (head, jaw,
+# chest) and swings a hanging leg back; rx < 0 rears the front up or reaches a leg forward. Root ty > 0 sinks, tz < 0 is
+# forward. The muzzle (or fangs, or fists) points at the target at every key from the cocked pose to the follow-through.
+
+BEAST_LAG = dict(head=0.02, tail=0.05)
+
+
+def bite(name, impact, s=1.0, low=0.0):
+    """Head drawn back and low with the jaw opening through the held beat; the head lunges and the jaw snaps shut on the
+    impact, then a short worrying shake. s scales the travel, low dips the strike (a leg bite)."""
+    cock = 0.12 + (impact - 0.4) * 0.5
+    return beats(name, impact + 0.8, impact, cock, 0.16, (
+        dict(root=(0, 0, 0, 0, 0.8 * s, 1.0 * s), chest=(4, 0, 0), head=(-8, 0, 0), jaw=(16, 0, 0),
+             front_left_leg=(-6, 0, 0), front_right_leg=(4, 0, 0), tail=(-10, 0, 0)),
+        dict(root=(0, 0, 0, 0, 1.0 * s, 1.2 * s), chest=(5, 0, 0), head=(-10, 0, 0), jaw=(34, 0, 0), tail=(-12, 0, 0)),
+        dict(root=(0, 0, 0, 0, 0.6 * s + low, -2.6 * s), chest=(8 + 10 * low, 0, 0), head=(10 + 12 * low, 0, 0), jaw=(2, 0, 0),
+             front_left_leg=(-14, 0, 0), front_right_leg=(10, 0, 0), back_left_leg=(8, 0, 0), back_right_leg=(6, 0, 0),
+             tail=(6, 0, 0)),
+        dict(root=(0, 0, 0, 0, 0.7 * s + low, -2.4 * s), chest=(8 + 10 * low, 6, 0), head=(12 + 12 * low, 14, 10), jaw=(4, 0, 0),
+             tail=(2, 14, 0)),
+        dict(root=(0, 0, 0, 0, 0.3 * s, -0.6 * s), chest=(2, -2, 0), head=(4, -6, -4), jaw=(3, 0, 0),
+             front_left_leg=(-3, 0, 0), front_right_leg=(2, 0, 0), back_left_leg=(2, 0, 0), back_right_leg=(1, 0, 0),
+             tail=(-2, -4, 0)),
+        dict(root=(0, 0, 0, 0, 0.05, 0), head=(0.5, 0, 0), jaw=(0.5, 0, 0))), lag=BEAST_LAG)
+
+
+def lunge(name, impact, s=1.0):
+    """Crouch on bent haunches, held; spring forward and up, forelegs reaching and jaws open, body striking at impact; land."""
+    cock = 0.12 + (impact - 0.4) * 0.5
+    return beats(name, impact + 0.9, impact, cock, 0.18, (
+        dict(root=(0, 0, 0, 0, 2.0 * s, 1.6 * s), body=(4, 0, 0), chest=(4, 0, 0), head=(-12, 0, 0), jaw=(6, 0, 0),
+             front_left_leg=(16, 0, 0), front_right_leg=(16, 0, 0), back_left_leg=(-22, 0, 0), back_right_leg=(-22, 0, 0),
+             tail=(-14, 0, 0)),
+        dict(root=(0, 0, 0, 0, 2.4 * s, 1.9 * s), body=(5, 0, 0), chest=(5, 0, 0), head=(-14, 0, 0), jaw=(8, 0, 0),
+             front_left_leg=(18, 0, 0), front_right_leg=(18, 0, 0), back_left_leg=(-26, 0, 0), back_right_leg=(-26, 0, 0)),
+        dict(root=(0, 0, 0, 0, -2.6 * s, -5.0 * s), body=(-12, 0, 0), chest=(-4, 0, 0), head=(14, 0, 0), jaw=(26, 0, 0),
+             front_left_leg=(-56, 0, 0), front_right_leg=(-50, 0, 0), back_left_leg=(38, 0, 0), back_right_leg=(42, 0, 0),
+             tail=(14, 0, 0)),
+        dict(root=(0, 0, 0, 0, -1.6 * s, -5.6 * s), body=(-6, 0, 0), chest=(0, 0, 0), head=(10, 0, 0), jaw=(10, 0, 0),
+             front_left_leg=(-30, 0, 0), front_right_leg=(-26, 0, 0), back_left_leg=(30, 0, 0), back_right_leg=(32, 0, 0),
+             tail=(8, 0, 0)),
+        dict(root=(0, 0, 0, 0, 0.8 * s, -2.4 * s), body=(4, 0, 0), chest=(3, 0, 0), head=(-2, 0, 0), jaw=(2, 0, 0),
+             front_left_leg=(6, 0, 0), front_right_leg=(4, 0, 0), back_left_leg=(-6, 0, 0), back_right_leg=(-4, 0, 0),
+             tail=(-4, 0, 0)),
+        dict(root=(0, 0, 0, 0, 0.1, -0.1), body=(0.5, 0, 0), head=(-0.5, 0, 0))), lag=BEAST_LAG)
+
+
+def hound():
+    return [bite('hound_bite', 0.4, low=1.0), lunge('hound_lunge', 0.4)]
+
+
+def bear():
+    # Maul (impact tick 10, head zone): the bear rears onto its haunches, the right forepaw raised high and forward, head
+    # tucked; a held beat, then the body drops forward and the paw rakes down through head height, claws first, and on
+    # down past the chest.
+    maul = beats('bear_maul', 1.3, 0.5, 0.16, 0.2, (
+        dict(root=(0, 0, 0, 0, -1.2, 1.0), body=(-34, 0, 0), chest=(-4, 0, 0), head=(26, 0, 0), jaw=(14, 0, 0),
+             front_right_leg=(-118, 0, -10), front_left_leg=(-40, 0, 0), back_left_leg=(-14, 0, 0), back_right_leg=(-10, 0, 0),
+             tail=(-16, 0, 0)),
+        dict(root=(0, 0, 0, 0, -1.4, 1.2), body=(-38, 0, 0), chest=(-5, 0, 0), head=(28, 0, 0), jaw=(20, 0, 0),
+             front_right_leg=(-126, 0, -10), front_left_leg=(-42, 0, 0)),
+        dict(root=(0, 0, 0, 0, 0.8, -2.2), body=(-6, 0, 0), chest=(6, 0, 0), head=(-2, 0, 0), jaw=(28, 0, 0),
+             front_right_leg=(-44, 0, 6), front_left_leg=(-10, 0, 0), back_left_leg=(6, 0, 0), back_right_leg=(8, 0, 0),
+             tail=(4, 0, 0)),
+        dict(root=(0, 0, 0, 0, 1.2, -2.4), body=(2, 0, 0), chest=(8, 0, 0), head=(-4, 0, 0), jaw=(22, 0, 0),
+             front_right_leg=(6, 0, 8), front_left_leg=(-2, 0, 0)),
+        dict(root=(0, 0, 0, 0, 0.4, -0.8), body=(1, 0, 0), chest=(2, 0, 0), head=(0, 0, 0), jaw=(4, 0, 0),
+             front_right_leg=(2, 0, 2), front_left_leg=(0, 0, 0), back_left_leg=(2, 0, 0), back_right_leg=(2, 0, 0),
+             tail=(-2, 0, 0)),
+        dict(root=(0, 0, 0, 0, 0.05, 0), body=(0.3, 0, 0), front_right_leg=(0.5, 0, 0))), lag=BEAST_LAG)
+    return [maul, bite('bear_bite', 0.4, s=0.8)]
+
+
+def ravager():
+    # Charge (impact tick 10): the brute backs up a step and lowers its head, a forefoot pawing; held; then it drives
+    # forward head-down, tusks first, and tosses its head up through the follow-through.
+    charge = beats('ravager_charge', 1.4, 0.5, 0.16, 0.2, (
+        dict(root=(0, 0, 0, 0, 1.0, 2.0), body=(4, 0, 0), chest=(6, 0, 0), head=(24, 0, 0), jaw=(4, 0, 0),
+             front_right_leg=(-30, 0, 0), front_left_leg=(6, 0, 0), back_left_leg=(-10, 0, 0), back_right_leg=(-12, 0, 0),
+             tail=(-14, 0, 0)),
+        dict(root=(0, 0, 0, 0, 1.2, 2.2), body=(5, 0, 0), chest=(7, 0, 0), head=(28, 0, 0), jaw=(4, 0, 0),
+             front_right_leg=(12, 0, 0), front_left_leg=(8, 0, 0), back_left_leg=(-14, 0, 0), back_right_leg=(-16, 0, 0)),
+        dict(root=(0, 0, 0, 0, 0.6, -5.0), body=(6, 0, 0), chest=(8, 0, 0), head=(20, 0, 0), jaw=(6, 0, 0),
+             front_right_leg=(-28, 0, 0), front_left_leg=(20, 0, 0), back_left_leg=(26, 0, 0), back_right_leg=(18, 0, 0),
+             tail=(10, 0, 0)),
+        dict(root=(0, 0, 0, 0, 0.2, -5.4), body=(-6, 0, 0), chest=(-4, 0, 0), head=(-24, 0, 0), jaw=(14, 0, 0),
+             front_right_leg=(-20, 0, 0), front_left_leg=(-8, 0, 0), back_left_leg=(16, 0, 0), back_right_leg=(12, 0, 0),
+             tail=(16, 0, 0)),
+        dict(root=(0, 0, 0, 0, 0.4, -2.0), body=(1, 0, 0), chest=(1, 0, 0), head=(-4, 0, 0), jaw=(3, 0, 0),
+             front_right_leg=(-2, 0, 0), front_left_leg=(2, 0, 0), back_left_leg=(3, 0, 0), back_right_leg=(2, 0, 0),
+             tail=(2, 0, 0)),
+        dict(root=(0, 0, 0, 0, 0.05, -0.1), head=(-0.5, 0, 0))), lag=BEAST_LAG)
+    return [charge, bite('ravager_bite', 0.4, s=0.9)]
+
+
+def spider():
+    # Bite (impact tick 8): the front rears, forelegs lift and the fangs cock forward; held; then the thorax plunges, the
+    # head drives down and the fangs stab in on the impact.
+    leg = lambda l, r: dict(left_leg_1=(0, 0, l[0]), right_leg_1=(0, 0, -l[0]), left_leg_2=(0, 0, l[1]), right_leg_2=(0, 0, -l[1]),
+                            left_leg_3=(0, 0, l[2]), right_leg_3=(0, 0, -l[2]), left_leg_4=(0, 0, l[3]), right_leg_4=(0, 0, -l[3]))
+    bite_ = beats('spider_bite', 1.2, 0.4, 0.12, 0.16, (
+        dict(root=(0, 0, 0, 0, -0.8, 1.0), thorax=(-16, 0, 0), head=(-6, 0, 0), fangs=(-30, 0, 0), abdomen=(12, 0, 0),
+             **leg((-30, -12, 4, 6), None)),
+        dict(root=(0, 0, 0, 0, -1.0, 1.2), thorax=(-19, 0, 0), head=(-8, 0, 0), fangs=(-38, 0, 0), abdomen=(14, 0, 0),
+             **leg((-34, -14, 4, 7), None)),
+        dict(root=(0, 0, 0, 0, 0.6, -2.4), thorax=(8, 0, 0), head=(12, 0, 0), fangs=(28, 0, 0), abdomen=(-6, 0, 0),
+             **leg((6, 2, -2, -4), None)),
+        dict(root=(0, 0, 0, 0, 0.8, -2.6), thorax=(10, 0, 0), head=(14, 0, 0), fangs=(34, 0, 0), abdomen=(-8, 0, 0),
+             **leg((8, 3, -2, -4), None)),
+        dict(root=(0, 0, 0, 0, 0.3, -0.8), thorax=(2, 0, 0), head=(3, 0, 0), fangs=(6, 0, 0), abdomen=(-2, 0, 0),
+             **leg((2, 1, 0, -1), None)),
+        dict(root=(0, 0, 0, 0, 0.05, 0), thorax=(0.3, 0, 0), fangs=(0.5, 0, 0))), lag=dict(head=0.02, abdomen=0.05))
+    # Lunge (impact tick 8): every leg folds and the body sinks low, held; it springs forward and up, forelegs thrown out,
+    # and the body hits at impact; it lands spread and settles.
+    lunge_ = beats('spider_lunge', 1.3, 0.4, 0.12, 0.18, (
+        dict(root=(0, 0, 0, 0, 2.6, 1.4), thorax=(4, 0, 0), head=(-4, 0, 0), fangs=(-10, 0, 0), abdomen=(-6, 0, 0),
+             **leg((-14, -14, -14, -14), None)),
+        dict(root=(0, 0, 0, 0, 3.0, 1.6), thorax=(5, 0, 0), head=(-5, 0, 0), fangs=(-12, 0, 0), abdomen=(-7, 0, 0),
+             **leg((-16, -16, -16, -16), None)),
+        dict(root=(0, 0, 0, 0, -3.0, -6.0), thorax=(-10, 0, 0), head=(6, 0, 0), fangs=(20, 0, 0), abdomen=(10, 0, 0),
+             **leg((-36, -20, 14, 22), None)),
+        dict(root=(0, 0, 0, 0, -1.6, -6.4), thorax=(-4, 0, 0), head=(6, 0, 0), fangs=(24, 0, 0), abdomen=(6, 0, 0),
+             **leg((-20, -10, 10, 14), None)),
+        dict(root=(0, 0, 0, 0, 0.8, -2.6), thorax=(2, 0, 0), head=(1, 0, 0), fangs=(4, 0, 0), abdomen=(-2, 0, 0),
+             **leg((2, 2, 2, 2), None)),
+        dict(root=(0, 0, 0, 0, 0.1, -0.1), thorax=(0.3, 0, 0))), lag=dict(head=0.02, abdomen=0.05))
+    return [bite_, lunge_]
+
+
+def colossus():
+    # Slam (impact tick 12, head zone): both fists climb overhead and the body leans back, held; then the body folds
+    # forward onto bent hips and both fists hammer down through head height in front, and on into the ground.
+    slam = beats('colossus_slam', 1.5, 0.6, 0.22, 0.22, (
+        dict(root=(0, 0, 0, 0, -0.4, 0.8), body=(-10, 0, 0), head=(-6, 0, 0), right_arm=(-166, 0, 8), left_arm=(-166, 0, -8),
+             right_hand=(-20, 0, 0), left_hand=(-20, 0, 0), right_leg=(6, 0, 0), left_leg=(-6, 0, 0)),
+        dict(root=(0, 0, 0, 0, -0.6, 1.0), body=(-12, 0, 0), head=(-8, 0, 0), right_arm=(-172, 0, 8), left_arm=(-172, 0, -8),
+             right_hand=(-24, 0, 0), left_hand=(-24, 0, 0)),
+        dict(root=(0, 0, 0, 0, 2.4, -1.6), body=(22, 0, 0), head=(-10, 0, 0), right_arm=(-62, 0, 6), left_arm=(-62, 0, -6),
+             right_hand=(10, 0, 0), left_hand=(10, 0, 0), right_leg=(-18, 0, 0), left_leg=(10, 0, 0)),
+        dict(root=(0, 0, 0, 0, 2.8, -1.8), body=(26, 0, 0), head=(-12, 0, 0), right_arm=(-40, 0, 6), left_arm=(-40, 0, -6),
+             right_hand=(14, 0, 0), left_hand=(14, 0, 0)),
+        dict(root=(0, 0, 0, 0, 0.8, -0.6), body=(6, 0, 0), head=(-3, 0, 0), right_arm=(-10, 0, 2), left_arm=(-10, 0, -2),
+             right_hand=(3, 0, 0), left_hand=(3, 0, 0), right_leg=(-4, 0, 0), left_leg=(2, 0, 0)),
+        dict(root=(0, 0, 0, 0, 0.05, 0), body=(0.5, 0, 0), right_arm=(-1, 0, 0), left_arm=(-1, 0, 0))), lag=dict(head=0.03))
+    # Backhand (impact tick 8): the right arm swings across the chest to the left with the body coiled left, held; then the
+    # body unwinds and the arm sweeps out to the right at chest height, back of the fist leading, and carries past.
+    back = beats('colossus_backhand', 1.2, 0.4, 0.12, 0.16, (
+        dict(root=(0, 0, 0, 0, 0.6, 0.4), body=(4, -30, 0), head=(0, 22, 0), right_arm=(-84, -56, 0), right_hand=(-10, 0, 0),
+             left_arm=(10, 0, -10), right_leg=(-4, 0, 0), left_leg=(6, 0, 0)),
+        dict(root=(0, 0, 0, 0, 0.7, 0.5), body=(5, -34, 0), head=(0, 24, 0), right_arm=(-86, -62, 0), right_hand=(-12, 0, 0),
+             left_arm=(12, 0, -10)),
+        dict(root=(0, 0, 0, 0, 1.2, -0.8), body=(6, 18, 0), head=(0, -6, 0), right_arm=(-82, 26, 0), right_hand=(-6, 0, 0),
+             left_arm=(-6, 0, -6), right_leg=(6, 0, 0), left_leg=(-8, 0, 0)),
+        dict(root=(0, 0, 0, 0, 1.3, -0.9), body=(6, 32, 0), head=(0, -12, 0), right_arm=(-74, 56, 0), right_hand=(-4, 0, 0),
+             left_arm=(-8, 0, -6)),
+        dict(root=(0, 0, 0, 0, 0.4, -0.3), body=(2, 6, 0), head=(0, -2, 0), right_arm=(-14, 10, 0), right_hand=(-1, 0, 0),
+             left_arm=(-2, 0, -1), right_leg=(1, 0, 0), left_leg=(-2, 0, 0)),
+        dict(root=(0, 0, 0, 0, 0.05, 0), body=(0, 0.5, 0), right_arm=(-1, 0, 0))), lag=dict(head=0.03, left_arm=0.04))
+    return [slam, back]
+
+
 FAMILIES = {
     ('biped', 'sword'): sword,
     ('biped', 'spear'): spear,
@@ -410,6 +571,11 @@ FAMILIES = {
     ('biped', 'crossbow'): crossbow,
     ('biped', 'thrower'): thrower,
     ('biped', 'crew'): crew,
+    ('hound', 'hound'): hound,
+    ('hound', 'bear'): bear,
+    ('hound', 'ravager'): ravager,
+    ('spider', 'spider'): spider,
+    ('colossus', 'colossus'): colossus,
 }
 
 
