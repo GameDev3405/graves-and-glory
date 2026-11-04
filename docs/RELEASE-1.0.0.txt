@@ -1,0 +1,52 @@
+Graves and Glory 1.0.0 — release candidate (draft)
+November 4, 2026
+
+Graves and Glory is a Fabric mod for Minecraft: Java Edition 1.20.1. You
+collect troops, arrange an army of twenty, command it in real time and fight
+over objectives on large fantasy maps, alone or with friends.
+
+Five Houses, thirty troops: the Gilded Order, Ironclad, Wildmoot, Tidecallers
+and Graveborn. The ten Commons are yours from the start; the rest come from
+rolls, chosen buys, Pacts and chapter rewards. Tier II and III troop art is in
+for all five Houses, and each House has its own look in the menus. Graveborn
+are violet and Tidecallers sea blue.
+
+Your commander now fights in gear instead of a class. There are four sets
+(Last Watch, Ashen Vigil, Frostmarch Hunt and Marchwarden) and 28 pieces from
+Common to Legendary. What you wear sets your role, health, attack and armour.
+Twelve relics give active abilities, three at a time, on keys 1 to 3. Press I
+in camp for the Arsenal; the Blacksmith's Forge rolls, breaks down and repairs
+gear. Every new commander starts with a starter set. Saves move to schema 4,
+and older saves migrate.
+
+The War Table holds the troop sheet, Armoury, Banner and Field pages and the
+campaign card. The six-seat lobby lets the host pick the map and mode and
+starts a 10-second countdown. Empty seats fill with Easy, Normal or Hard bots.
+A dropped player's seat is held for 2 minutes, then a bot commands the army.
+An interrupted match pays a partial reward by time played.
+
+Modes: Domination, Siege, Convoy, Survival and the six-battle Long March
+campaign (solo). Practice and 1vAI remain. Ironhold is the adopted battle map.
+
+Combat, magic and music now use royalty-free recordings, with a music director
+that picks tracks for the moment. Sounds fire when the hit lands. Round start
+is faster because troops are prepared while you wait in the lobby.
+
+Install: import the .mrpack into Prism Launcher or any launcher that supports
+it, or use the plain zip with Fabric Loader 0.16.14 yourself. Needs Minecraft
+1.20.1, Java 17 or newer and Fabric API 0.92.2 or newer. Everyone in a game
+must run the same build. A server kit is available for a dedicated server; you
+supply the EULA agreement yourself.
+
+Credits: the Excalibur resource pack is by Maffhew, used with permission and
+unmodified (CC BY-NC-ND 3.0). Sound recordings are from Pixabay under the
+Pixabay Content Licence; authors are listed in docs/AUDIO-CREDITS.md. Full
+credits and licences are in docs/THIRD_PARTY.md.
+
+Not in this build: gear art (worn gear shows as stand-in vanilla items), gear
+animations and gear sounds, the animation rework, a new title screen and more
+battle maps. Gear numbers are placeholders until the balance pass. There is no
+public matchmaking, no account system and no paid service. Six-player and
+Internet play have not been independently verified. Do not go back to a build
+older than 0.6 after playing with gear: older builds drop the gear fields from
+your commander save.
