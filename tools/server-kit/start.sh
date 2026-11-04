@@ -19,7 +19,7 @@ export GG_DRY
 . "$DIR/lib.sh"; gg_init "$DIR" "$ROOT"
 cd "$GG_ROOT" || exit 1
 
-[ -f fabric-server-launch.jar ] || gg_die "fabric-server-launch.jar is missing. See README.md, step 3."
+[ -f fabric-server-launch.jar ] || gg_die "fabric-server-launch.jar is missing. Run ./setup.sh first (README.md, step 3)."
 command -v java >/dev/null 2>&1 || gg_die "java not found. Install Java 17 or newer (README.md, step 1)."
 # The first line may be a JAVA_TOOL_OPTIONS banner; take the first line that has: version "N"
 JV=$(java -version 2>&1 | sed -nE 's/.*version[[:space:]]+"([0-9]+)[."].*/\1/p' | head -n 1)

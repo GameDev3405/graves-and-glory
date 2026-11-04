@@ -110,7 +110,7 @@ python tools/package.py               -> dist/graves-and-glory-<version>.zip and
 python tools/verify_package.py        -> reads back the zip
 python tools/export_modrinth.py       -> dist/graves-and-glory-<version>.mrpack
 python tools/verify_modrinth.py       -> reads back the .mrpack
-python tools/export_server.py         -> dist/graves-and-glory-<version>-server.zip
+python tools/export_server.py         -> dist/graves-and-glory-<version>-server.zip (tools/server-kit/ at the root, plus mods/ and docs/)
 ```
 
 - `gradle.properties` supplies the single `mod_version` value (currently `0.5.0`). Gradle expands it into `fabric.mod.json` and the archive names. `docs/RELEASE-<version>.txt` must exist for that version, or packaging fails. Packaging does not read `melty.json`.

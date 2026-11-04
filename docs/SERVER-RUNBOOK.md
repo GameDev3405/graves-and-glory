@@ -3,8 +3,8 @@
 Kit: `tools/server-kit/` (full detail in its `README.md`). Target for the six-player slice test: `C:\GGMatch` on tjepkema-server, port **25580**, Tailscale only. Do not touch the builder (25570) or Kingdom ports (25565-25567, 25571). Deploying is Kort's step.
 
 ## One-time setup (PowerShell, in `C:\GGMatch`)
-1. Copy everything in `tools/server-kit/` into the folder.
-2. Put in the folder: `fabric-server-launch.jar` (Fabric 0.16.14 for 1.20.1, sha256 `856a5f9f...cf113`, from `tools/export_server.py`'s `setup-server.ps1` or meta.fabricmc.net), and in `mods\`: exactly one `graves-and-glory-<version>.jar` plus the four server jars pinned in `dependencies/platform-lock.json`: `fabric-api-0.92.2+1.20.1.jar`, Lithium, FerriteCore and ModernFix (the export zip carries all four).
+1. Extract `dist/graves-and-glory-<version>-server.zip` (from `python tools/export_server.py`) into the folder. It is the whole kit: the `tools/server-kit/` scripts and config at the root, plus `mods\` with exactly one `graves-and-glory-<version>.jar` and the four server jars pinned in `dependencies/platform-lock.json` (Fabric API 0.92.2, Lithium, FerriteCore, ModernFix).
+2. `.\setup.ps1` downloads `fabric-server-launch.jar` (Fabric 0.16.14 for 1.20.1, sha256 `856a5f9f...cf113`, checked; starts nothing).
 3. `.\gate.ps1 -Pin` after confirming that jar is the build the players have (it writes `mod-lock.json`).
 4. `.\start.ps1 -MemoryGB 6` once. It creates `server.properties` (port 25580, whitelist on, online-mode on, RCON off, 16 slots), an empty `whitelist.json`, and `eula.txt` with `eula=false`. Kort reads the EULA and sets `eula=true` himself.
 5. Whitelist the six names (`whitelist add <name>` in the server window, or edit `whitelist.json`). Ops: Kort only. Set `max-players=6` if desired (kit default 16 for visitors).
