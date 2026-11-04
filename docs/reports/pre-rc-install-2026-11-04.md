@@ -19,7 +19,7 @@ Build: `gradlew build -x test` 1 m 4 s; `package.py`, `verify_package.py` (63 en
 - `profile_on_join.py` against the kit server with the packaged jar: all 8 checks PASS (schema 4, 10 Commons, 6 starter gear worn, relic in slot 0, rejoin unchanged).
 - Real client join: harness client (`ConnectOnStart`, case `match`, same source identity) logged in to the kit server and stayed connected until its harness exit (server log `JoinKit joined the game`). Harness pass lines were not written for this case (expected for `match`).
 - Dev-client harness, same source identity, one client at a time: `GRAVES_PHASE1_CHECKS=ui-gear` (Arsenal opens and closes with the gear key, etc.) 15 pass, 0 fail; default Phase 1 `combat` suite (the `verify.py game` suite: a battle starts and runs) 39 pass, 0 fail. Evidence: `work/prerc1/hc-ui-gear/evidence/local-checks.txt`, `work/prerc1/hc-combat/evidence/local-checks.txt`.
-- VERIFY_PLACEHOLDER
+- `python tools/verify.py fast --offline` (with the scratch version 1.0.0-prerc1 and the Pixabay change): status pass, result at `work/verify/20261104-041735-53528/result.json`. Preflight regenerated `Spec.java` and `sheets/preflight.json`; left uncommitted, as were the scratch `gradle.properties` version and RELEASE file.
 
 The packaged jar excludes every harness class, so Arsenal and battle checks cannot run against it; they ran in a dev client built from the same source identity.
 
