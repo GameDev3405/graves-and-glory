@@ -176,6 +176,39 @@ class GearWeapons(unittest.TestCase):
             for clip in ("idle", "attack"):
                 self.L.posed(w, clip); self.assertLess(self.L.reach.miss, 2.5, (iid, clip))
 
+    def test_exported_models(self):
+        """Each weapon's models/gear/weapon/<id>.json, as the game loads it (TroopMesh.parse): every rarity's quads are
+        parallelograms with their texels on the sheet, each one's normal points out of its cube, and every texture it names is
+        in the assets."""
+        import json
+        assets = os.path.join(ROOT, "src", "main", "resources", "assets", "gravesandglory")
+        tex = lambda ident: os.path.join(assets, ident.split(":", 1)[1])
+        for iid, w in self.ws.items():
+            with open(os.path.join(assets, "models", "gear", "weapon", iid + ".json")) as f: j = json.load(f)
+            self.assertEqual((j["item"], j["hands"], j["side"]), (iid, w.hands, w.show_side))
+            self.assertEqual("pose" in j, w.hands == 2, iid)
+            for r in gearlib.RARITIES:
+                row = j["rarities"][str(r)]; sw, sh = row["sheet"]
+                names = [row["texture"] + s + ".png" for s in SIDES] if w.show_side else [row["texture"]]
+                for n in names + ([row["glow"]] if "glow" in row else []): self.assertTrue(os.path.exists(tex(n)), n)
+                self.assertEqual(row["quads"], self.L.model_quads(w, w.cubes(r), self.L.W.pack(w.cubes(r))[2])[1], (iid, r))
+                for q in row["quads"]:
+                    c = [q[3 * k:3 * k + 3] for k in range(4)]
+                    for a in range(3): self.assertAlmostEqual(c[2][a], c[1][a] + c[3][a] - c[0][a], 3, (iid, r))
+                    for k in range(4): self.assertTrue(0 <= q[12 + 2 * k] <= sw and 0 <= q[13 + 2 * k] <= sh, (iid, r))
+            part, off = self.L.ARM[self.L.HOLDS[w.hold][0]]
+            for c in w.cubes(5):   # outward: the face centre minus the cube centre runs along the normal
+                R = self.L.W.rot(0, 0, c.turn)
+                to = lambda p: [v + o for v, o in zip(self.L.hold_point(w.hold, [x + y for x, y in zip(self.L.W.app(R, [p[i] - c.pivot[i] for i in range(3)]), c.pivot)]), off)]
+                mid = to([(c.lo[i] + c.hi[i]) / 2 for i in range(3)])
+                _, quads = self.L.model_quads(w, [c], self.L.W.pack([c])[2])
+                for q in quads:
+                    p = [q[3 * k:3 * k + 3] for k in range(4)]
+                    u = [p[1][i] - p[0][i] for i in range(3)]; v = [p[3][i] - p[0][i] for i in range(3)]
+                    n = [u[1] * v[2] - u[2] * v[1], u[2] * v[0] - u[0] * v[2], u[0] * v[1] - u[1] * v[0]]
+                    m = [sum(p[k][i] for k in range(4)) / 4 - mid[i] for i in range(3)]
+                    self.assertGreaterEqual(sum(n[i] * m[i] for i in range(3)), 0, (iid, c.name))
+
 class GearIcons(unittest.TestCase):
     def test_item_icons(self):
         """Every item id at every rarity: 32 x 32 RGBA, a clear 1 px margin, no House ramp, Common unlike Legendary."""

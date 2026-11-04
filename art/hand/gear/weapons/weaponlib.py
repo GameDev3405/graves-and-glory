@@ -24,7 +24,7 @@ for p in (os.path.join(GEAR, "..", "weapons"), GEAR, os.path.join(GEAR, "sets"),
     sys.path.insert(0, os.path.abspath(p))
 import build_swords as W
 from build_swords import Cube, by_face, flat
-from handlib import ramp, clamp, STEEL, GOLD, LEATH, LINEN, TEAM
+from handlib import ramp, clamp, STEEL, GOLD, LEATH, LINEN, TEAM, SIDES
 from marchwarden import BRIGHT, PIPE, ENAMEL, GEM, SUN
 import gearlib, render, mannequin
 
@@ -293,6 +293,56 @@ def bare(w, r, side, px=5):
     cubes = w.cubes(r, side)
     img = W.render(cubes, 35, 15, px=px)
     return img
+
+# ---- in-game export ----
+ARM = {"right_hand": ("right_arm", (-1, 8, 0)), "left_hand": ("left_arm", (1, 8, 0)), "body": ("body", (0, 12, 0))}   # the mannequin frame -> the vanilla biped part's
+
+def model_quads(w, cubes, uv):
+    """Every face as a 20-number quad (four corners in the vanilla biped part's frame, model px with y down, then the texel
+    of each corner): weapon_quads' corners taken the other way round, so (corner 1 - corner 0) x (corner 3 - corner 0)
+    points out of the cube as TroopMesh lights it."""
+    part, off = ARM[HOLDS[w.hold][0]]
+    out = []
+    for c in cubes:
+        R = W.rot(0, 0, c.turn)
+        for f in W.FACES:
+            if (c.name, f) not in uv: continue
+            x0, y0, x1, y1 = uv[(c.name, f)]; P = []
+            for s_, t_ in ((0, 0), (0, 1), (1, 1), (1, 0)):
+                pick = W.CORNER[f](s_, t_)
+                p = [c.lo[i] + (c.hi[i] - c.lo[i]) * pick[i] for i in range(3)]
+                q = W.app(R, [p[i] - c.pivot[i] for i in range(3)])
+                h = hold_point(w.hold, [q[i] + c.pivot[i] for i in range(3)])
+                P += [round(h[i] + off[i], 4) for i in range(3)]
+            out.append(P + [x0, y0, x0, y1, x1, y1, x1, y0])
+    return part, out
+
+def outputs(w):
+    """{path under the assets: PIL image or JSON} for one weapon: models/gear/weapon/<id>.json and, per rarity, its sheet
+    textures/entity/gear/weapon/<id>/<id>_r<n>.png (a banner's per side, _r<n>_<side>.png) and the lit sheet _e<n>.png. The
+    model holds each rarity's quads in the vanilla biped part's frame, and a two-handed weapon its idle and attack arm angles."""
+    d = "textures/entity/gear/weapon/%s/" % w.item_id; ns = "gravesandglory:"
+    out = {}; rar = {}
+    for r in gearlib.RARITIES:
+        cubes = w.cubes(r)
+        colour, _, uv = W.pack(cubes); glow = W.pack.glow
+        part, quads = model_quads(w, cubes, uv)
+        row = {"sheet": list(colour.size), "quads": quads}
+        if w.show_side:
+            for side in SIDES:
+                sc, _, suv = W.pack(w.cubes(r, side)); assert suv == uv and sc.size == colour.size, (w.item_id, r, side)
+                out[d + "%s_r%d_%s.png" % (w.item_id, r, side)] = sc
+            row["texture"] = ns + d + "%s_r%d_" % (w.item_id, r)
+        else:
+            out[d + "%s_r%d.png" % (w.item_id, r)] = colour; row["texture"] = ns + d + "%s_r%d.png" % (w.item_id, r)
+        if glow:
+            out[d + "%s_e%d.png" % (w.item_id, r)] = glow; row["glow"] = ns + d + "%s_e%d.png" % (w.item_id, r)
+        rar[str(r)] = row
+    j = {"format": 1, "item": w.item_id, "hold": w.hold, "parent": part, "hands": w.hands, "side": w.show_side, "rarities": rar}
+    if w.hands == 2:
+        j["pose"] = {clip: {b: list(posed(w, clip)[b]) for b in ("right_arm", "left_arm")} for clip in POSES}
+    out["models/gear/weapon/%s.json" % w.item_id] = j
+    return out
 
 # ---- the contact sheet ----
 def items():
