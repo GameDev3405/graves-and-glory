@@ -1,5 +1,7 @@
 # Audio cues
 
+Credits for every file installed from Kort's picks (2026-11-04) are in docs/AUDIO-CREDITS.md and supersede the Pixabay table below where they differ; ui_back, ui_deny, gate_shut and gate_breach are still generated, awaiting re-sourcing.
+
 The 23 older cues are original syntheses. The combat, magic, clock, drum and music cues are royalty-free Pixabay recordings (Pixabay Content Licence: use in a game is allowed, no attribution required; credited below anyway), converted by `tools/audio/import_pixabay.py`. Table: `AudioCues.java` (volume, category, who hears it, cooldown). Files: `src/main/resources/assets/gravesandglory/sounds/`, registered in `sounds.json` with subtitles in `lang/en_us.json`.
 
 Rebuild: `python tools/audio/make_cues.py [cue_id ...]` (numpy and ffmpeg on PATH; mono 44.1 kHz Ogg Vorbis, q4, deterministic seeds). The six older files (battle_intro, unit_reveal, victory, three horns) come from `tools/create_battle_audio.py`. Change a level in `AudioCues`, not in the file.
