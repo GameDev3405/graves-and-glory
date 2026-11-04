@@ -779,7 +779,7 @@ final class WarTablePages {
         }
         flyAt = 0; dropWhy = "";
         if (!classify()) { cancelDrag(); return true; }
-        dragging = true; pressed = false;
+        dragging = true; pressed = false; UiSounds.play(AudioCues.Cue.BANNER_DRAG);
         return true;
     }
 

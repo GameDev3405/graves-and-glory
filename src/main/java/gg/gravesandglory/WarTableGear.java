@@ -43,6 +43,8 @@ final class WarTableGear {
     CampaignClient.ForgeRoll revealing;
     long revealAt;
     int seenRoll;
+    /** The forge marks the last tick saw (-1: no view yet), so a rise plays the earned sting. */
+    int lastMarks = -1;
     /** How long the reveal card stays, and how long its rarity border takes to fade in. */
     static final long REVEAL_MS = 1500, FADE_MS = 400;
     /** Times the Forge tab has been opened this session: the blacksmith's line rotates by it. */
@@ -134,9 +136,9 @@ final class WarTableGear {
         add("roll", new UiButton(l[0] + (l[2] - 240) / 2, l[1] + 160, 240, 40, Text.literal("Roll"), b -> roll(), (g, x, y, bw, bh, hot) -> rollPlate(g, x, y, hot)));
         int bw = Math.min(320, r[2] - 32), bx = r[0] + 16;
         add("dupes", new UiButton(bx, r[1] + 104, bw, 24, Text.literal("Break down all duplicates"), b -> { dupesConfirm = true; UiSounds.deny(); }, (g, x, y, ww, hh, hot) -> service(g, "dupes", dupesLabel(), x, y, ww, hh, hot)));
-        add("dupes-yes", new UiButton(bx + 6, r[1] + 156, 88, 24, Text.literal("Break down"), b -> { dupesConfirm = false; screen.action("forge:breakdown-duplicates"); }, (g, x, y, ww, hh, hot) -> tag(g, "Break down", x, y, ww, hh, hot)));
+        add("dupes-yes", new UiButton(bx + 6, r[1] + 156, 88, 24, Text.literal("Break down"), b -> { dupesConfirm = false; if (screen.action("forge:breakdown-duplicates")) UiSounds.play(AudioCues.Cue.BREAK_DOWN); }, (g, x, y, ww, hh, hot) -> tag(g, "Break down", x, y, ww, hh, hot)));
         add("dupes-no", new UiButton(bx + 100, r[1] + 156, 80, 24, Text.literal("Keep"), b -> dupesConfirm = false, (g, x, y, ww, hh, hot) -> tag(g, "Keep", x, y, ww, hh, hot)));
-        add("repair-all", new UiButton(bx, r[1] + 200, bw, 24, Text.literal("Repair all"), b -> screen.action("forge:repair-all"), (g, x, y, ww, hh, hot) -> service(g, "repair-all", "Repair all (" + GearView.repairAllCost(view()) + " gold)", x, y, ww, hh, hot)));
+        add("repair-all", new UiButton(bx, r[1] + 200, bw, 24, Text.literal("Repair all"), b -> { if (screen.action("forge:repair-all")) UiSounds.play(AudioCues.Cue.REPAIR_HAMMER); }, (g, x, y, ww, hh, hot) -> service(g, "repair-all", "Repair all (" + GearView.repairAllCost(view()) + " gold)", x, y, ww, hh, hot)));
         add("expand", new UiButton(bx, r[1] + 234, bw, 24, Text.literal("Add a row"), b -> screen.action("forge:expand"), (g, x, y, ww, hh, hot) -> service(g, "expand", expandLabel(), x, y, ww, hh, hot)));
     }
 
@@ -147,7 +149,7 @@ final class WarTableGear {
         if (v.inventorySize() >= Gear.forge().maxSlots()) return "Inventory at its largest";
         return "Add a row (" + Forge.expandCost(GearView.asProfile(v)) + " gold)";
     }
-    void roll() { if (screen.action("forge:roll:" + forgeSlot)) UiSounds.confirm(); }
+    void roll() { if (screen.action("forge:roll:" + forgeSlot)) UiSounds.play(AudioCues.Cue.BLACKSMITH_ROLL); }
 
     /** Shows and greys the widgets for this frame's state: nothing acts until the gear view arrives. */
     void sync() {
@@ -181,11 +183,21 @@ final class WarTableGear {
     void confirmYes() {
         int uid = confirmUid;
         confirmUid = -1;
-        if (uid >= 0) screen.action("forge:breakdown:" + uid);
+        if (uid >= 0 && screen.action("forge:breakdown:" + uid)) UiSounds.play(AudioCues.Cue.BREAK_DOWN);
     }
 
     static String filterWord(String f) { return switch (f) { case "all" -> "All"; case "weapon" -> "Weapons"; case "relic" -> "Relics"; default -> Character.toUpperCase(f.charAt(0)) + f.substring(1); }; }
     static String sortWord(String s) { return Character.toUpperCase(s.charAt(0)) + s.substring(1); }
+
+    /** The reveal sting for a rarity; Legendary has no sting of its own and takes the Epic one. */
+    static AudioCues.Cue rarityCue(String rarity) {
+        return switch (rarity == null ? "" : rarity.toLowerCase(java.util.Locale.ROOT)) {
+            case "uncommon" -> AudioCues.Cue.RARITY_UNCOMMON;
+            case "rare" -> AudioCues.Cue.RARITY_RARE;
+            case "epic", "legendary" -> AudioCues.Cue.RARITY_EPIC;
+            default -> AudioCues.Cue.RARITY_COMMON;
+        };
+    }
 
     void tick() {
         GearWire.View v = view();
@@ -195,8 +207,12 @@ final class WarTableGear {
         var last = CampaignClient.forgeRoll;
         if (last != null && last.n() > seenRoll) {
             seenRoll = last.n();
-            if (tab.equals("forge")) { revealing = last; revealAt = System.currentTimeMillis(); }
+            if (tab.equals("forge")) { revealing = last; revealAt = System.currentTimeMillis(); UiSounds.play(rarityCue(last.rarity())); }
         }
+        // Forge marks earned (the count rose since the last tick; the first sight of the view only records it).
+        int marks = v == null ? -1 : v.forgeMarks();
+        if (lastMarks >= 0 && marks > lastMarks) UiSounds.play(AudioCues.Cue.FORGE_MARKS);
+        lastMarks = marks;
         if (revealing != null && revealHeldAt < 0 && revealElapsed() >= REVEAL_MS) revealing = null;
         sync();
     }
@@ -736,7 +752,7 @@ final class WarTableGear {
             if (at >= pieces.size()) return true;
             Gear.Piece p = pieces.get(at);
             if (shift && button == 0) breakdown(p);
-            else if (!GearView.worn(v, p.uid) && (button == 0 || button == 1)) screen.action("gear:equip:" + p.uid);
+            else if (!GearView.worn(v, p.uid) && (button == 0 || button == 1)) { if (screen.action("gear:equip:" + p.uid)) UiSounds.play(AudioCues.Cue.EQUIP); }
             return true;
         }
         return false;
@@ -746,7 +762,7 @@ final class WarTableGear {
     void breakdown(Gear.Piece p) {
         if (p == null) return;
         if (GearView.confirmBreakdown(p)) { confirmUid = p.uid; UiSounds.deny(); sync(); }
-        else screen.action("forge:breakdown:" + p.uid);
+        else if (screen.action("forge:breakdown:" + p.uid)) UiSounds.play(AudioCues.Cue.BREAK_DOWN);
     }
 
     boolean mouseScrolled(double gx, double gy, double amount) {

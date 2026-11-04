@@ -104,6 +104,14 @@ public final class Audio {
         team(b, AudioCues.Cue.CAPTURE_LOST, 1 - team, point);
     }
 
+    /** The cue at a block for everyone near it, with no throttle (a caller that has a world but no battle); the pitch gets the same small spread as a capped cue. */
+    public static void world(net.minecraft.server.world.ServerWorld w, AudioCues.Cue cue, BlockPos at, float pitchScale) {
+        var e = event(cue);
+        if (w == null || e == null) return;
+        float spread = cue.maxPerTick > 0 ? .94f + w.random.nextFloat() * .12f : 1f;
+        w.playSound(null, at, e, category(cue), cue.volume, cue.pitch * pitchScale * spread);
+    }
+
     /** The cue at a place for everyone near it (the world's own sound packet), once per key per cooldown. */
     public static boolean at(GravesAndGlory.Battle b, AudioCues.Cue cue, Vec3d at, String key) {
         return at(b, cue, at, key, 1f);
@@ -141,13 +149,34 @@ public final class Audio {
 
     /** A soldier's swing of a blade as the blow starts (heavy weapons and beasts stay quiet until they land). */
     public static void swing(GravesAndGlory.Battle b, GravesAndGlory.Unit u) {
-        if (u != null && u.slot % 2 == 0 && arm(u) == Arm.BLADE) at(b, AudioCues.Cue.SWORD_SWING, u.mob.getPos(), "s" + u.mob.getId());
+        if (u != null && u.slot % 2 == 0 && arm(u) == Arm.BLADE) at(b, meleeCue(u), u.mob.getPos(), "s" + u.mob.getId());
+    }
+
+    /** The sound of a blade-arm troop's swing: the Tusk's gore, a spear or trident's thrust, a sword's swing for the rest. */
+    static AudioCues.Cue meleeCue(GravesAndGlory.Unit u) {
+        if (u.spec.id().equals("wm_tusk")) return AudioCues.Cue.TUSK_ATTACK;
+        String weapon = u.spec.weapon();
+        if ("spear".equals(u.spec.family()) || (weapon != null && (weapon.endsWith("trident") || weapon.endsWith("spear")))) return AudioCues.Cue.SPEAR_THRUST;
+        return AudioCues.Cue.SWORD_SWING;
+    }
+
+    /** The shot sound of a siege or thrower troop that has its own cue (the Mortar has no weapon, so no arm), or null for the bow and spell defaults. */
+    static AudioCues.Cue shotCue(GravesAndGlory.Unit u) {
+        if (u == null || u.spec == null) return null;
+        return switch (u.spec.id()) {
+            case "ic_mortar" -> AudioCues.Cue.MORTAR_FIRE;
+            case "ic_ballista" -> AudioCues.Cue.BALLISTA_RELEASE;
+            case "tc_harpooner" -> AudioCues.Cue.HARPOON_THROW;
+            default -> null;
+        };
     }
 
     /** A ranged troop's shot as it leaves: a spell for a caster, a bowstring for the rest (lower for a siege crew's bolt). */
     public static void shot(GravesAndGlory.Battle b, GravesAndGlory.Unit u) {
         var arm = arm(u);
-        if (arm == Arm.MAGIC) at(b, AudioCues.Cue.MAGIC_CAST, u.mob.getPos(), "c" + u.mob.getId());
+        var special = shotCue(u);
+        if (special != null) at(b, special, u.mob.getPos(), "c" + u.mob.getId());
+        else if (arm == Arm.MAGIC) at(b, AudioCues.Cue.MAGIC_CAST, u.mob.getPos(), "c" + u.mob.getId());
         else if (arm == Arm.BOW) at(b, AudioCues.Cue.BOW_SHOOT, u.mob.getPos(), "b" + u.mob.getId(), u.tags.contains("siege") ? .6f : 1f);
     }
 

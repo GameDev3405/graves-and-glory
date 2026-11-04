@@ -25,7 +25,7 @@ public final class BattleEffects {
     public static void soul(GravesAndGlory.Battle b,Vec3d at){
         for(int i=0;i<PLUME;i++){double turn=i*2.399963,height=at.y+.1+1.9*i/PLUME; // the golden angle spreads the flames round the ring
             b.world.spawnParticles(ParticleTypes.SOUL_FIRE_FLAME,at.x+Math.cos(turn)*.6,height,at.z+Math.sin(turn)*.6,0,0,1,0,.08);}
-        b.world.playSound(null,at.x,at.y,at.z,SoundEvents.PARTICLE_SOUL_ESCAPE,SoundCategory.HOSTILE,1f,.9f);
+        Audio.at(b,AudioCues.Cue.SOUL_LEAVING,at,"so"+(long)at.x+","+(long)at.z);
         souls++;
     }
     /** One command feedback sound a player heard: who, which kind (charge, retreat or rally) and the battle time. */

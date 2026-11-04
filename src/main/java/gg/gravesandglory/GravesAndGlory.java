@@ -355,8 +355,7 @@ public final class GravesAndGlory implements ModInitializer {
          */
         /** The sound of a blow on the structure (felled: its last): the wool of a banner; the Siege gate's target overrides it (SiegeMode.GateTarget). */
         void structureCue(ServerWorld w,boolean felled){
-            if(felled)w.playSound(null,getBlockPos(),SoundEvents.BLOCK_WOOL_BREAK,SoundCategory.HOSTILE,1f,.8f);
-            else w.playSound(null,getBlockPos(),SoundEvents.BLOCK_WOOL_HIT,SoundCategory.HOSTILE,.8f,1f);
+            Audio.world(w,AudioCues.Cue.DUMMY_THUD,getBlockPos(),felled?.8f:1f); // a felled structure thuds lower
         }
         @Override public boolean damage(DamageSource source,float amount){
             var b=battle;
@@ -814,7 +813,10 @@ public final class GravesAndGlory implements ModInitializer {
             }
             Audio.tick(this); // cues that wait for their moment (a blow's contact frame, the gate's crash, the wave's rise)
             if(running)Audio.clock(this,roundSeconds*20L-(time-roundStarted)); // the last ten seconds tick
-            if(running&&time-roundStarted>=roundSeconds*20L&&!mode.overtime(this))campaign.finish(mode.timeoutWinner(this));
+            if(running&&time-roundStarted>=roundSeconds*20L){
+                if(!mode.overtime(this))campaign.finish(mode.timeoutWinner(this));
+                else if(mode instanceof ConvoyMode)Audio.all(this,AudioCues.Cue.OVERTIME_DRUM_PULSE,"overtime"); // the clock is out and the wagon still holds the round open: a drum beat to every seat, throttled by its cooldown
+            }
             // Explicit revision checks are driven by the client test timeline.
             if(time%10==0)sendState();
         }

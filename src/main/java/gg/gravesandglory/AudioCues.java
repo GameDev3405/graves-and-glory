@@ -64,6 +64,53 @@ public final class AudioCues {
         CLOCK_TICK("clock.tick", null, .5f, 1f, "players", Scope.ALL, 15, "The clock ticks"),
         // War drums under the battle entrance camera, beside battle_intro (client only).
         BATTLE_DRUMS("battle.drums", null, .45f, 1f, "master", Scope.LOCAL, 0, "War drums beat"),
+        // Event hooks added with the audio/hooks pass: every one is a variant group of its own files (see docs/AUDIO.md for where each plays).
+        HOUND_ATTACK("hound_attack", null, .5f, 1f, "hostile", Scope.NEARBY, 10, "A hound lunges", 2),
+        BRUTE_ATTACK("brute_attack", null, .55f, 1f, "hostile", Scope.NEARBY, 12, "A brute charges", 2),
+        TUSK_ATTACK("tusk_attack", null, .55f, 1f, "hostile", Scope.NEARBY, 12, "A tusked beast gores", 2),
+        SPEAR_THRUST("spear_thrust", null, .35f, 1f, "hostile", Scope.NEARBY, 10, "A spear thrusts", 3),
+        BALLISTA_RELEASE("ballista_release", null, .55f, 1f, "hostile", Scope.NEARBY, 12, "A ballista fires", 2),
+        MORTAR_FIRE("mortar_fire", null, .6f, 1f, "hostile", Scope.NEARBY, 15, "A mortar fires", 2),
+        HARPOON_THROW("harpoon_throw", null, .45f, 1f, "hostile", Scope.NEARBY, 12, "A harpoon is thrown", 2),
+        DUMMY_THUD("dummy_thud", null, .45f, 1f, "hostile", Scope.NEARBY, 6, "A dummy is struck", 3),
+        FIREPOT_BURN("firepot_burn", null, .5f, 1f, "hostile", Scope.NEARBY, 15, "A firepot burns", 2),
+        HEALER_CAST("healer_cast", null, .5f, 1f, "hostile", Scope.NEARBY, 15, "A healing spell", 2),
+        SOUL_LEAVING("soul_leaving", null, .5f, 1f, "hostile", Scope.NEARBY, 20, "A soul departs", 2),
+        RELIC_USE_DARK("relic_use_dark", null, .6f, 1f, "hostile", Scope.NEARBY, 20, "A dark relic stirs", 2),
+        RELIC_USE_EARTH("relic_use_earth", null, .6f, 1f, "hostile", Scope.NEARBY, 20, "An earthen relic stirs", 2),
+        RELIC_USE_FIRE("relic_use_fire", null, .6f, 1f, "hostile", Scope.NEARBY, 20, "A fiery relic flares", 2),
+        RELIC_USE_ICE("relic_use_ice", null, .6f, 1f, "hostile", Scope.NEARBY, 20, "A frozen relic chills", 2),
+        // Server cue to every seated player: the convoy's overtime beat.
+        OVERTIME_DRUM_PULSE("overtime_drum_pulse", null, .6f, 1f, "players", Scope.ALL, 140, "Overtime drums beat"),
+        // Client only, from the War Table screens (UiSounds.play): master category, no spatial position.
+        BANNER_DRAG("banner_drag", null, .4f, 1f, "master", Scope.LOCAL, 6, "A banner is dragged"),
+        PAGE_TURN("page_turn", null, .4f, 1f, "master", Scope.LOCAL, 6, "A page turns"),
+        STAMP_SEAL("stamp_seal", null, .5f, 1f, "master", Scope.LOCAL, 10, "A seal is stamped"),
+        EQUIP("equip", null, .5f, 1f, "master", Scope.LOCAL, 6, "Gear is equipped"),
+        BREAK_DOWN("break_down", null, .5f, 1f, "master", Scope.LOCAL, 6, "Gear is broken down"),
+        BLACKSMITH_ROLL("blacksmith_roll", null, .5f, 1f, "master", Scope.LOCAL, 10, "The forge rolls"),
+        REPAIR_HAMMER("repair_hammer", null, .5f, 1f, "master", Scope.LOCAL, 10, "Gear is repaired"),
+        FORGE_MARKS("forge_marks", null, .5f, 1f, "master", Scope.LOCAL, 6, "Forge marks are earned"),
+        RARITY_COMMON("rarity_common", null, .5f, 1f, "master", Scope.LOCAL, 10, "A common find"),
+        RARITY_UNCOMMON("rarity_uncommon", null, .5f, 1f, "master", Scope.LOCAL, 10, "An uncommon find"),
+        RARITY_RARE("rarity_rare", null, .55f, 1f, "master", Scope.LOCAL, 10, "A rare find"),
+        RARITY_EPIC("rarity_epic", null, .6f, 1f, "master", Scope.LOCAL, 10, "An epic find"),
+        // Registered, not yet played (no clear game moment; docs/AUDIO.md lists why): they have files and events so a later hook is one line.
+        SIEGE_RAM_SWING("siege_ram_swing", null, .55f, 1f, "hostile", Scope.NEARBY, 15, "A ram swings", 2),
+        GATE_CHAINS("gate_chains", null, .6f, 1f, "players", Scope.ALL, 0, "Gate chains rattle"),
+        BANNER_FLAP("banner_flap", null, .3f, 1f, "hostile", Scope.NEARBY, 40, "A banner flaps", 2),
+        MARCH_LEATHER("march_leather", null, .3f, 1f, "hostile", Scope.NEARBY, 10, "Leather boots march", 3),
+        TROOP_VOICES("troop_voices", null, .4f, 1f, "hostile", Scope.NEARBY, 40, "Troops call out", 2),
+        // Streamed loops and music not yet played (MusicDirector carries one track at a time): music and ambient categories, no subtitle.
+        AMBIENCE_WIND("ambience_wind", null, .5f, 1f, "ambient", Scope.LOCAL, 0, ""),
+        AMBIENCE_BIRDS("ambience_birds", null, .5f, 1f, "ambient", Scope.LOCAL, 0, ""),
+        AMBIENCE_WATER("ambience_water", null, .5f, 1f, "ambient", Scope.LOCAL, 0, ""),
+        AMBIENCE_CROWS("ambience_crows", null, .5f, 1f, "ambient", Scope.LOCAL, 0, ""),
+        AMBIENCE_SNOW("ambience_snow", null, .5f, 1f, "ambient", Scope.LOCAL, 0, ""),
+        CAMP_ROOM_TONE("camp_room_tone", null, .4f, 1f, "ambient", Scope.LOCAL, 0, ""),
+        SURVIVAL_WIND("survival_wind", null, .5f, 1f, "ambient", Scope.LOCAL, 0, ""),
+        CAMPAIGN_BRIEFING_MUSIC("campaign_briefing_music", null, .8f, 1f, "music", Scope.LOCAL, 0, ""),
+        OVERTIME_MUSIC("overtime_music", null, .8f, 1f, "music", Scope.LOCAL, 0, ""),
         // Streamed music (client only, MusicDirector): the category is music, so the player's Music slider governs it and no subtitle shows.
         MUSIC_CALM("music.calm", null, .8f, 1f, "music", Scope.LOCAL, 0, ""),
         MUSIC_EPIC("music.epic", null, .8f, 1f, "music", Scope.LOCAL, 0, ""),
@@ -109,8 +156,8 @@ public final class AudioCues {
     /** Ticks between a melee swing starting and its hit sound for a troop of this House (null or unknown: the default). */
     public static int contactTicks(String house) { return house == null ? DEFAULT_CONTACT_TICKS : CONTACT_TICKS.getOrDefault(house, DEFAULT_CONTACT_TICKS); }
 
-    /** How long the victory and defeat stings run, in ticks (3.2 s and 4.2 s): the music waits them out so the next track never starts over the sting. */
-    public static final int VICTORY_STING_TICKS = 64, DEFEAT_STING_TICKS = 84;
+    /** How long the victory and defeat stings run, in ticks (3.2 s, inside the three victory takes' range; 5 s): the music waits them out so the next track never starts over the sting. */
+    public static final int VICTORY_STING_TICKS = 64, DEFEAT_STING_TICKS = 100;
     /** The portcullis drops this many ticks after the gate_shut cue starts, so the crash lands as the gate meets the ground (the file's thud is 0.35 s in). */
     public static final int GATE_SHUT_LEAD_TICKS = 7;
     /** The wave rises this many ticks after the wave_rise cue starts (the file swells for 1.5 s before its hit). */
