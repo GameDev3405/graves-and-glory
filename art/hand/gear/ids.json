@@ -186,12 +186,30 @@
    "hands": 1
   },
   {
+   "id": "sunwell_crook",
+   "name": "Sunwell Crook",
+   "slot": "main",
+   "set": "-",
+   "family": "staff",
+   "hands": 1,
+   "pending": "Kort Q-art-1 2026-11-03: added; not yet in sheets/design.json, so the combat or catalogue task must add the row"
+  },
+  {
    "id": "war_banner",
    "name": "Marchwarden's Standard",
    "slot": "main",
    "set": "-",
    "family": "banner",
    "hands": 1
+  },
+  {
+   "id": "long_colours",
+   "name": "The Long Colours",
+   "slot": "main",
+   "set": "-",
+   "family": "banner",
+   "hands": 1,
+   "pending": "Kort Q-art-1 2026-11-03: added; not yet in sheets/design.json, so the combat or catalogue task must add the row"
   },
   {
    "id": "kite_shield",

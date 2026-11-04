@@ -150,6 +150,8 @@ def helm_bones():
             ox = x if c > 0 else -x - w
             boxes.append(box((ox, y, z), (w, h, d), lambda r: iron(r, base=3, seam=False, spec=False)))
         B.append(Bone(f"helm_horn_{side}", "head", tag="helm", stages=[LEGEND], boxes=boxes))
+    B.append(Bone("helm_plume", "head", tag="helm", team=True, stages=[LEGEND], boxes=[   # horsehair in the side's colour along the crest
+        Box((-0.5, -13, -4.5), (1, 2, 8), ("plume", "top"), sheet="cloth")]))
     return B
 
 # ---- Wallbreaker Cuirass: a slab breastplate in riveted bands, one huge pauldron on the left, a tabard strip ----
@@ -240,9 +242,15 @@ def chest_bones():
             lambda r: ember_of(r, CUIRASS_L)),
         box((-4.5, -3.5, -2.5), (9, 2, 5), lambda r: strap(r)),
         box((-5, -1.5, -3), (10, 2, 6), fauld)])]
+    # the side's colour, readable at a glance from any angle: a broad tabard front and back, and a short mantle over
+    # the shoulders behind (back gear, not a standard) that ends at the belt so the tabard shows below it
     B.append(Bone("tabard", "body", tag="chest", team=True, boxes=[
-        Box((-2, -1.5, -3.25), (4, 9, 0), ("tabard", "front"), sheet="cloth"),
-        Box((-2, -1.5, 3.25), (4, 9, 0), ("tabard", "back"), sheet="cloth")]))
+        Box((-3, -1.5, -3.25), (6, 10, 0), ("tabard", "front"), sheet="cloth"),
+        Box((-3, -1.5, 3.25), (6, 10, 0), ("tabard", "back"), sheet="cloth"),
+        Box((-4.5, -12.5, 3.75), (9, 10, 0), ("mantle", "back"), sheet="cloth")]))
+    # a sash slung from the great pauldron across the breastplate to the right hip, so the front reads as well
+    B.append(Bone("sash", "body", (0, -8, 0), rot=(0, 0, -35), tag="chest", team=True, boxes=[
+        Box((-5.5, -1.5, -2.75), (11, 3, 0), ("sash", "front"), sheet="cloth")]))
     # the great pauldron on the wearer's left: a broad dome over two lames, rolled outward from the shoulder
     B.append(Bone("pauldron_left", "left_arm", (1, -2, 0), rot=(0, 0, 14), tag="chest", boxes=[
         box((-4, -2, -4), (8, 3, 8), lambda r: stamped(pauldron(r, "dome"), r, PAULDRON_L if r == LEGEND else {}),
@@ -267,18 +275,26 @@ def chest_bones():
     return B
 
 def tabard(spec, side):
-    _, which = spec
-    T = TEAM[side][0]
+    part, which = spec
+    T, trim = TEAM[side][0], TEAM[side][1][1]
     def paint(face, w, h):
         g = blank(w, h)
         for y in range(h):
             for x in range(w):
-                v = 2 + (1 if x in (1, 2) else 0) - (1 if y >= h - 3 else 0)
+                if part == "plume":   # horsehair: dark-rooted strands, the crown catching light
+                    g[y][x] = clamp(T, 3 - y + (1 if face in ("right", "top") else 0) - (x % 2 if face in ("right", "left") else 0)); continue
+                v = 2 + (1 if 0 < x < w - 1 and x < w // 2 else 0) - (1 if y >= h - 3 else 0)
                 if which == "back": v -= 1
-                if y == 0: v = 1   # the fold under the belt
+                if part == "mantle" and x in (2, w - 3): v -= 1                          # two heavy folds
+                if part == "tabard" and y == 0: v = 1                                      # the fold under the belt
                 g[y][x] = clamp(T, v)
-        # a torn, uneven hem
-        cut(g, [(0, h - 1), (3, h - 1), (3, h - 2), (1, h - 1)] if which == "front" else [(0, h - 1), (2, h - 1), (3, h - 1)])
+                if part == "sash": g[y][x] = clamp(T, 3 - y + (1 if x % 4 == 0 and y == 1 else 0))   # lit top edge, a stitched seam
+                elif x in (0, w - 1) and part != "plume": g[y][x] = T[0]   # a dark selvedge
+                if y == h - 2 and part in ("tabard", "mantle"): g[y][x] = trim   # the gold-thread hem
+        if part == "tabard":   # a torn, uneven hem
+            cut(g, [(0, h - 1), (4, h - 1), (5, h - 1), (5, h - 2), (1, h - 1)] if which == "front" else [(0, h - 1), (3, h - 1), (5, h - 1)])
+        elif part == "mantle":
+            cut(g, [(0, h - 1), (1, h - 1), (4, h - 1), (7, h - 1), (8, h - 1), (8, h - 2)])
         return g
     return paint
 
@@ -338,7 +354,7 @@ def boots_bones():
     return B
 
 def pieces():
-    return [GearPiece("bruiser_helm", "helm", helm_bones, glow=glow_cb),
-            GearPiece("bruiser_chest", "chest", chest_bones, cloth_painter=tabard, skin=(128, 64), cloth=(32, 16), glow=glow_cb),
+    return [GearPiece("bruiser_helm", "helm", helm_bones, cloth_painter=tabard, cloth=(32, 16), glow=glow_cb),
+            GearPiece("bruiser_chest", "chest", chest_bones, cloth_painter=tabard, skin=(128, 64), cloth=(64, 32), glow=glow_cb),
             GearPiece("bruiser_legs", "legs", legs_bones, glow=glow_cb),
             GearPiece("bruiser_boots", "boots", boots_bones, glow=glow_cb)]
