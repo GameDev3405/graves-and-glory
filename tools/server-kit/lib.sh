@@ -56,10 +56,16 @@ gg_alive() { # true when server.pid names a live java process
   _p=$(tr -d '\r\n ' < "$GG_PIDFILE")
   case $_p in ''|*[!0-9]*) return 1;; esac
   kill -0 "$_p" 2>/dev/null || return 1
-  if command -v ps >/dev/null 2>&1; then
+  # Guard against a recycled pid: the process must be called java. Linux: /proc (no ps needed, works in
+  # minimal containers). Elsewhere: ps, trusted only when it prints exactly one line (some ps builds ignore -o).
+  _n=
+  if [ -r "/proc/$_p/comm" ]; then _n=$(cat "/proc/$_p/comm" 2>/dev/null)
+  elif command -v ps >/dev/null 2>&1; then
     _n=$(ps -p "$_p" -o comm= 2>/dev/null)
-    if [ -n "$_n" ]; then case $_n in *java*) ;; *) return 1;; esac; fi
+    [ "$(printf '%s
+' "$_n" | wc -l)" -le 1 ] || _n=
   fi
+  if [ -n "$_n" ]; then case $_n in *java*) ;; *) return 1;; esac; fi
   return 0
 }
 
@@ -147,9 +153,10 @@ gg_backup() {
 # Prune only start/auto archives beyond the newest <keep>. Manual, pre-update and pre-restore archives are never pruned.
 gg_prune() {
   _i=0
-  for _f in $(ls -1 "$GG_BACKUPS"/*-"$1".tar.gz 2>/dev/null | sort -r); do
+  # Archive names never contain spaces, but the server folder may, so list from inside backups/.
+  for _f in $(cd "$GG_BACKUPS" && ls -1 ./*-"$1".tar.gz 2>/dev/null | sort -r); do
     _i=$((_i+1))
-    if [ "$_i" -gt "$2" ]; then rm -f "$_f"; gg_say "Pruned old $1 backup: ${_f##*/}"; fi
+    if [ "$_i" -gt "$2" ]; then rm -f "$GG_BACKUPS/$_f"; gg_say "Pruned old $1 backup: ${_f#./}"; fi
   done
 }
 
