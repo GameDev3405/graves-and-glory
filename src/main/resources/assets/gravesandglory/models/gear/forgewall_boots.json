@@ -1,0 +1,201 @@
+{
+ "format": 1,
+ "item": "forgewall_boots",
+ "slot": "boots",
+ "density": 1,
+ "size": [
+  32,
+  32
+ ],
+ "cloth": "gravesandglory:textures/entity/gear/forgewall_boots/team_cloth_",
+ "skins": {
+  "1": "gravesandglory:textures/entity/gear/forgewall_boots/forgewall_boots_r1.png",
+  "2": "gravesandglory:textures/entity/gear/forgewall_boots/forgewall_boots_r2.png",
+  "3": "gravesandglory:textures/entity/gear/forgewall_boots/forgewall_boots_r3.png",
+  "4": "gravesandglory:textures/entity/gear/forgewall_boots/forgewall_boots_r4.png",
+  "5": "gravesandglory:textures/entity/gear/forgewall_boots/forgewall_boots_r5.png"
+ },
+ "glow": {},
+ "bones": [
+  {
+   "name": "boot_r",
+   "parent": "right_leg",
+   "team": false,
+   "tag": "boots",
+   "stages": [],
+   "sheet": [
+    32,
+    32
+   ],
+   "pivot": [
+    0,
+    0,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "boxes": [
+    {
+     "origin": [
+      -3.1999999999999997,
+      8.0,
+      -3.0
+     ],
+     "size": [
+      6.0,
+      4.0,
+      6.0
+     ],
+     "uv": [
+      0,
+      0
+     ],
+     "mirror": false,
+     "dilation": [
+      0.02,
+      0.02,
+      0.02
+     ]
+    }
+   ]
+  },
+  {
+   "name": "boot_l",
+   "parent": "left_leg",
+   "team": false,
+   "tag": "boots",
+   "stages": [],
+   "sheet": [
+    32,
+    32
+   ],
+   "pivot": [
+    0,
+    0,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "boxes": [
+    {
+     "origin": [
+      -2.8000000000000003,
+      8.0,
+      -3.0
+     ],
+     "size": [
+      6.0,
+      4.0,
+      6.0
+     ],
+     "uv": [
+      0,
+      10
+     ],
+     "mirror": false,
+     "dilation": [
+      0.04,
+      0.04,
+      0.04
+     ]
+    }
+   ]
+  },
+  {
+   "name": "toe_r",
+   "parent": "right_leg",
+   "team": false,
+   "tag": "boots",
+   "stages": [],
+   "sheet": [
+    32,
+    32
+   ],
+   "pivot": [
+    0,
+    0,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "boxes": [
+    {
+     "origin": [
+      -2.6999999999999997,
+      10.0,
+      -4.0
+     ],
+     "size": [
+      5.0,
+      2.0,
+      1.0
+     ],
+     "uv": [
+      0,
+      20
+     ],
+     "mirror": false,
+     "dilation": [
+      0.0,
+      0.0,
+      0.0
+     ]
+    }
+   ]
+  },
+  {
+   "name": "toe_l",
+   "parent": "left_leg",
+   "team": false,
+   "tag": "boots",
+   "stages": [],
+   "sheet": [
+    32,
+    32
+   ],
+   "pivot": [
+    0,
+    0,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "boxes": [
+    {
+     "origin": [
+      -2.3000000000000003,
+      10.0,
+      -4.0
+     ],
+     "size": [
+      5.0,
+      2.0,
+      1.0
+     ],
+     "uv": [
+      12,
+      20
+     ],
+     "mirror": false,
+     "dilation": [
+      0.02,
+      0.02,
+      0.02
+     ]
+    }
+   ]
+  }
+ ]
+}

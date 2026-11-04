@@ -1,0 +1,1244 @@
+{
+ "format": 1,
+ "item": "tidewrought_chest",
+ "slot": "chest",
+ "density": 1,
+ "size": [
+  64,
+  64
+ ],
+ "cloth": "gravesandglory:textures/entity/gear/tidewrought_chest/team_cloth_",
+ "skins": {
+  "1": "gravesandglory:textures/entity/gear/tidewrought_chest/tidewrought_chest_r1.png",
+  "2": "gravesandglory:textures/entity/gear/tidewrought_chest/tidewrought_chest_r2.png",
+  "3": "gravesandglory:textures/entity/gear/tidewrought_chest/tidewrought_chest_r3.png",
+  "4": "gravesandglory:textures/entity/gear/tidewrought_chest/tidewrought_chest_r4.png",
+  "5": "gravesandglory:textures/entity/gear/tidewrought_chest/tidewrought_chest_r5.png"
+ },
+ "glow": {
+  "5": "gravesandglory:textures/entity/gear/tidewrought_chest/tidewrought_chest_e5.png"
+ },
+ "bones": [
+  {
+   "name": "scale_coat",
+   "parent": "body",
+   "team": false,
+   "tag": "chest",
+   "stages": [],
+   "sheet": [
+    64,
+    64
+   ],
+   "pivot": [
+    0,
+    12,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "boxes": [
+    {
+     "origin": [
+      -4.5,
+      -12.5,
+      -3.0
+     ],
+     "size": [
+      9.0,
+      13.0,
+      6.0
+     ],
+     "uv": [
+      0,
+      0
+     ],
+     "mirror": false,
+     "dilation": [
+      0.02,
+      0.02,
+      0.02
+     ]
+    }
+   ]
+  },
+  {
+   "name": "pectoral",
+   "parent": "body",
+   "team": false,
+   "tag": "chest",
+   "stages": [],
+   "sheet": [
+    64,
+    64
+   ],
+   "pivot": [
+    0,
+    12,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "boxes": [
+    {
+     "origin": [
+      -2.5,
+      -9.5,
+      -3.5
+     ],
+     "size": [
+      5.0,
+      5.0,
+      1.0
+     ],
+     "uv": [
+      36,
+      47
+     ],
+     "mirror": false,
+     "dilation": [
+      0.0,
+      0.0,
+      0.0
+     ]
+    }
+   ]
+  },
+  {
+   "name": "cloak",
+   "parent": "body",
+   "team": true,
+   "tag": "chest",
+   "stages": [
+    1,
+    2,
+    3,
+    4
+   ],
+   "sheet": [
+    64,
+    32
+   ],
+   "pivot": [
+    0,
+    12,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "boxes": [
+    {
+     "origin": [
+      -4.5,
+      -11.0,
+      3.1
+     ],
+     "size": [
+      9.0,
+      17.0,
+      1.0
+     ],
+     "uv": [
+      20,
+      0
+     ],
+     "mirror": false,
+     "dilation": [
+      0.02,
+      0.02,
+      0.02
+     ]
+    }
+   ]
+  },
+  {
+   "name": "cloak_long",
+   "parent": "body",
+   "team": true,
+   "tag": "chest",
+   "stages": [
+    5
+   ],
+   "sheet": [
+    64,
+    32
+   ],
+   "pivot": [
+    0,
+    12,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "boxes": [
+    {
+     "origin": [
+      -4.5,
+      -11.0,
+      3.1
+     ],
+     "size": [
+      9.0,
+      21.0,
+      1.0
+     ],
+     "uv": [
+      0,
+      0
+     ],
+     "mirror": false,
+     "dilation": [
+      0.02,
+      0.02,
+      0.02
+     ]
+    }
+   ]
+  },
+  {
+   "name": "shell_r",
+   "parent": "right_arm",
+   "team": false,
+   "tag": "chest",
+   "stages": [],
+   "sheet": [
+    64,
+    64
+   ],
+   "pivot": [
+    0,
+    0,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "boxes": [
+    {
+     "origin": [
+      -5.5,
+      -2.1999999999999993,
+      -3.5
+     ],
+     "size": [
+      6.0,
+      3.0,
+      7.0
+     ],
+     "uv": [
+      20,
+      19
+     ],
+     "mirror": false,
+     "dilation": [
+      0.0,
+      0.0,
+      0.0
+     ]
+    }
+   ]
+  },
+  {
+   "name": "shell_l",
+   "parent": "left_arm",
+   "team": false,
+   "tag": "chest",
+   "stages": [],
+   "sheet": [
+    64,
+    64
+   ],
+   "pivot": [
+    0,
+    0,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "boxes": [
+    {
+     "origin": [
+      -0.5,
+      -2.1999999999999993,
+      -3.5
+     ],
+     "size": [
+      6.0,
+      3.0,
+      7.0
+     ],
+     "uv": [
+      0,
+      37
+     ],
+     "mirror": false,
+     "dilation": [
+      0.0,
+      0.0,
+      0.0
+     ]
+    }
+   ]
+  },
+  {
+   "name": "shell_hump_r",
+   "parent": "right_arm",
+   "team": false,
+   "tag": "chest",
+   "stages": [],
+   "sheet": [
+    64,
+    64
+   ],
+   "pivot": [
+    0,
+    0,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "boxes": [
+    {
+     "origin": [
+      -4.5,
+      -3.0,
+      -2.5
+     ],
+     "size": [
+      4.0,
+      1.0,
+      5.0
+     ],
+     "uv": [
+      0,
+      47
+     ],
+     "mirror": false,
+     "dilation": [
+      0.0,
+      0.0,
+      0.0
+     ]
+    }
+   ]
+  },
+  {
+   "name": "shell_hump_l",
+   "parent": "left_arm",
+   "team": false,
+   "tag": "chest",
+   "stages": [],
+   "sheet": [
+    64,
+    64
+   ],
+   "pivot": [
+    0,
+    0,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "boxes": [
+    {
+     "origin": [
+      0.5,
+      -3.0,
+      -2.5
+     ],
+     "size": [
+      4.0,
+      1.0,
+      5.0
+     ],
+     "uv": [
+      18,
+      47
+     ],
+     "mirror": false,
+     "dilation": [
+      0.0,
+      0.0,
+      0.0
+     ]
+    }
+   ]
+  },
+  {
+   "name": "arm_r",
+   "parent": "right_arm",
+   "team": false,
+   "tag": "chest",
+   "stages": [],
+   "sheet": [
+    64,
+    64
+   ],
+   "pivot": [
+    0,
+    0,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "boxes": [
+    {
+     "origin": [
+      -3.5,
+      -2.5,
+      -2.5
+     ],
+     "size": [
+      5.0,
+      13.0,
+      5.0
+     ],
+     "uv": [
+      30,
+      0
+     ],
+     "mirror": false,
+     "dilation": [
+      0.04,
+      0.04,
+      0.04
+     ]
+    }
+   ]
+  },
+  {
+   "name": "arm_l",
+   "parent": "left_arm",
+   "team": false,
+   "tag": "chest",
+   "stages": [],
+   "sheet": [
+    64,
+    64
+   ],
+   "pivot": [
+    0,
+    0,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "boxes": [
+    {
+     "origin": [
+      -1.5,
+      -2.5,
+      -2.5
+     ],
+     "size": [
+      5.0,
+      13.0,
+      5.0
+     ],
+     "uv": [
+      0,
+      19
+     ],
+     "mirror": false,
+     "dilation": [
+      0.04,
+      0.04,
+      0.04
+     ]
+    }
+   ]
+  },
+  {
+   "name": "kelp_a_r",
+   "parent": "right_arm",
+   "team": false,
+   "tag": "chest",
+   "stages": [
+    1,
+    2,
+    3,
+    4
+   ],
+   "sheet": [
+    64,
+    64
+   ],
+   "pivot": [
+    0,
+    0,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "boxes": [
+    {
+     "origin": [
+      -4.550000000000001,
+      8.0,
+      -1.5
+     ],
+     "size": [
+      1.0,
+      6.0,
+      1.0
+     ],
+     "uv": [
+      42,
+      37
+     ],
+     "mirror": false,
+     "dilation": [
+      0.0,
+      0.0,
+      0.0
+     ]
+    }
+   ]
+  },
+  {
+   "name": "kelp_a_l",
+   "parent": "left_arm",
+   "team": false,
+   "tag": "chest",
+   "stages": [
+    1,
+    2,
+    3,
+    4
+   ],
+   "sheet": [
+    64,
+    64
+   ],
+   "pivot": [
+    0,
+    0,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "boxes": [
+    {
+     "origin": [
+      3.5500000000000007,
+      8.0,
+      -1.5
+     ],
+     "size": [
+      1.0,
+      6.0,
+      1.0
+     ],
+     "uv": [
+      46,
+      37
+     ],
+     "mirror": false,
+     "dilation": [
+      0.0,
+      0.0,
+      0.0
+     ]
+    }
+   ]
+  },
+  {
+   "name": "kelp_b_r",
+   "parent": "right_arm",
+   "team": false,
+   "tag": "chest",
+   "stages": [
+    1,
+    2,
+    3,
+    4
+   ],
+   "sheet": [
+    64,
+    64
+   ],
+   "pivot": [
+    0,
+    0,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "boxes": [
+    {
+     "origin": [
+      -4.550000000000001,
+      7.5,
+      0.4
+     ],
+     "size": [
+      1.0,
+      5.0,
+      1.0
+     ],
+     "uv": [
+      48,
+      47
+     ],
+     "mirror": false,
+     "dilation": [
+      0.0,
+      0.0,
+      0.0
+     ]
+    }
+   ]
+  },
+  {
+   "name": "kelp_b_l",
+   "parent": "left_arm",
+   "team": false,
+   "tag": "chest",
+   "stages": [
+    1,
+    2,
+    3,
+    4
+   ],
+   "sheet": [
+    64,
+    64
+   ],
+   "pivot": [
+    0,
+    0,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "boxes": [
+    {
+     "origin": [
+      3.5500000000000007,
+      7.5,
+      0.4
+     ],
+     "size": [
+      1.0,
+      5.0,
+      1.0
+     ],
+     "uv": [
+      52,
+      47
+     ],
+     "mirror": false,
+     "dilation": [
+      0.0,
+      0.0,
+      0.0
+     ]
+    }
+   ]
+  },
+  {
+   "name": "kelp_la_r",
+   "parent": "right_arm",
+   "team": false,
+   "tag": "chest",
+   "stages": [
+    5
+   ],
+   "sheet": [
+    64,
+    64
+   ],
+   "pivot": [
+    0,
+    0,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "boxes": [
+    {
+     "origin": [
+      -4.550000000000001,
+      8.0,
+      -1.5
+     ],
+     "size": [
+      1.0,
+      9.0,
+      1.0
+     ],
+     "uv": [
+      26,
+      37
+     ],
+     "mirror": false,
+     "dilation": [
+      0.0,
+      0.0,
+      0.0
+     ]
+    }
+   ]
+  },
+  {
+   "name": "kelp_la_l",
+   "parent": "left_arm",
+   "team": false,
+   "tag": "chest",
+   "stages": [
+    5
+   ],
+   "sheet": [
+    64,
+    64
+   ],
+   "pivot": [
+    0,
+    0,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "boxes": [
+    {
+     "origin": [
+      3.5500000000000007,
+      8.0,
+      -1.5
+     ],
+     "size": [
+      1.0,
+      9.0,
+      1.0
+     ],
+     "uv": [
+      30,
+      37
+     ],
+     "mirror": false,
+     "dilation": [
+      0.0,
+      0.0,
+      0.0
+     ]
+    }
+   ]
+  },
+  {
+   "name": "kelp_lb_r",
+   "parent": "right_arm",
+   "team": false,
+   "tag": "chest",
+   "stages": [
+    5
+   ],
+   "sheet": [
+    64,
+    64
+   ],
+   "pivot": [
+    0,
+    0,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "boxes": [
+    {
+     "origin": [
+      -4.550000000000001,
+      7.5,
+      0.4
+     ],
+     "size": [
+      1.0,
+      7.0,
+      1.0
+     ],
+     "uv": [
+      34,
+      37
+     ],
+     "mirror": false,
+     "dilation": [
+      0.0,
+      0.0,
+      0.0
+     ]
+    }
+   ]
+  },
+  {
+   "name": "kelp_lb_l",
+   "parent": "left_arm",
+   "team": false,
+   "tag": "chest",
+   "stages": [
+    5
+   ],
+   "sheet": [
+    64,
+    64
+   ],
+   "pivot": [
+    0,
+    0,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "boxes": [
+    {
+     "origin": [
+      3.5500000000000007,
+      7.5,
+      0.4
+     ],
+     "size": [
+      1.0,
+      7.0,
+      1.0
+     ],
+     "uv": [
+      38,
+      37
+     ],
+     "mirror": false,
+     "dilation": [
+      0.0,
+      0.0,
+      0.0
+     ]
+    }
+   ]
+  },
+  {
+   "name": "coral_stem_r",
+   "parent": "right_arm",
+   "team": false,
+   "tag": "chest",
+   "stages": [
+    5
+   ],
+   "sheet": [
+    64,
+    64
+   ],
+   "pivot": [
+    0,
+    0,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "boxes": [
+    {
+     "origin": [
+      -2.5,
+      -6.199999999999999,
+      -0.5
+     ],
+     "size": [
+      1.0,
+      3.0,
+      1.0
+     ],
+     "uv": [
+      56,
+      47
+     ],
+     "mirror": false,
+     "dilation": [
+      0.02,
+      0.02,
+      0.02
+     ]
+    }
+   ]
+  },
+  {
+   "name": "coral_stem_l",
+   "parent": "left_arm",
+   "team": false,
+   "tag": "chest",
+   "stages": [
+    5
+   ],
+   "sheet": [
+    64,
+    64
+   ],
+   "pivot": [
+    0,
+    0,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "boxes": [
+    {
+     "origin": [
+      1.5,
+      -6.199999999999999,
+      -0.5
+     ],
+     "size": [
+      1.0,
+      3.0,
+      1.0
+     ],
+     "uv": [
+      60,
+      47
+     ],
+     "mirror": false,
+     "dilation": [
+      0.02,
+      0.02,
+      0.02
+     ]
+    }
+   ]
+  },
+  {
+   "name": "coral_out_r",
+   "parent": "right_arm",
+   "team": false,
+   "tag": "chest",
+   "stages": [
+    5
+   ],
+   "sheet": [
+    64,
+    64
+   ],
+   "pivot": [
+    0,
+    0,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "boxes": [
+    {
+     "origin": [
+      -3.5,
+      -8.0,
+      -0.5
+     ],
+     "size": [
+      1.0,
+      3.0,
+      1.0
+     ],
+     "uv": [
+      0,
+      53
+     ],
+     "mirror": false,
+     "dilation": [
+      0.0,
+      0.0,
+      0.0
+     ]
+    }
+   ]
+  },
+  {
+   "name": "coral_out_l",
+   "parent": "left_arm",
+   "team": false,
+   "tag": "chest",
+   "stages": [
+    5
+   ],
+   "sheet": [
+    64,
+    64
+   ],
+   "pivot": [
+    0,
+    0,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "boxes": [
+    {
+     "origin": [
+      2.5,
+      -8.0,
+      -0.5
+     ],
+     "size": [
+      1.0,
+      3.0,
+      1.0
+     ],
+     "uv": [
+      4,
+      53
+     ],
+     "mirror": false,
+     "dilation": [
+      0.0,
+      0.0,
+      0.0
+     ]
+    }
+   ]
+  },
+  {
+   "name": "coral_in_r",
+   "parent": "right_arm",
+   "team": false,
+   "tag": "chest",
+   "stages": [
+    5
+   ],
+   "sheet": [
+    64,
+    64
+   ],
+   "pivot": [
+    0,
+    0,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "boxes": [
+    {
+     "origin": [
+      -1.5,
+      -7.5,
+      -0.5
+     ],
+     "size": [
+      1.0,
+      2.0,
+      1.0
+     ],
+     "uv": [
+      8,
+      53
+     ],
+     "mirror": false,
+     "dilation": [
+      0.0,
+      0.0,
+      0.0
+     ]
+    }
+   ]
+  },
+  {
+   "name": "coral_in_l",
+   "parent": "left_arm",
+   "team": false,
+   "tag": "chest",
+   "stages": [
+    5
+   ],
+   "sheet": [
+    64,
+    64
+   ],
+   "pivot": [
+    0,
+    0,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "boxes": [
+    {
+     "origin": [
+      0.5,
+      -7.5,
+      -0.5
+     ],
+     "size": [
+      1.0,
+      2.0,
+      1.0
+     ],
+     "uv": [
+      12,
+      53
+     ],
+     "mirror": false,
+     "dilation": [
+      0.0,
+      0.0,
+      0.0
+     ]
+    }
+   ]
+  },
+  {
+   "name": "coral_back_r",
+   "parent": "right_arm",
+   "team": false,
+   "tag": "chest",
+   "stages": [
+    5
+   ],
+   "sheet": [
+    64,
+    64
+   ],
+   "pivot": [
+    0,
+    0,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "boxes": [
+    {
+     "origin": [
+      -2.5,
+      -7.0,
+      0.5
+     ],
+     "size": [
+      1.0,
+      2.0,
+      1.0
+     ],
+     "uv": [
+      16,
+      53
+     ],
+     "mirror": false,
+     "dilation": [
+      0.0,
+      0.0,
+      0.0
+     ]
+    }
+   ]
+  },
+  {
+   "name": "coral_back_l",
+   "parent": "left_arm",
+   "team": false,
+   "tag": "chest",
+   "stages": [
+    5
+   ],
+   "sheet": [
+    64,
+    64
+   ],
+   "pivot": [
+    0,
+    0,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "boxes": [
+    {
+     "origin": [
+      1.5,
+      -7.0,
+      0.5
+     ],
+     "size": [
+      1.0,
+      2.0,
+      1.0
+     ],
+     "uv": [
+      20,
+      53
+     ],
+     "mirror": false,
+     "dilation": [
+      0.0,
+      0.0,
+      0.0
+     ]
+    }
+   ]
+  }
+ ]
+}

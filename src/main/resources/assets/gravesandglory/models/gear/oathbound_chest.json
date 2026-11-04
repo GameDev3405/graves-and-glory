@@ -1,0 +1,1036 @@
+{
+ "format": 1,
+ "item": "oathbound_chest",
+ "slot": "chest",
+ "density": 1,
+ "size": [
+  64,
+  64
+ ],
+ "cloth": "gravesandglory:textures/entity/gear/oathbound_chest/team_cloth_",
+ "skins": {
+  "1": "gravesandglory:textures/entity/gear/oathbound_chest/oathbound_chest_r1.png",
+  "2": "gravesandglory:textures/entity/gear/oathbound_chest/oathbound_chest_r2.png",
+  "3": "gravesandglory:textures/entity/gear/oathbound_chest/oathbound_chest_r3.png",
+  "4": "gravesandglory:textures/entity/gear/oathbound_chest/oathbound_chest_r4.png",
+  "5": "gravesandglory:textures/entity/gear/oathbound_chest/oathbound_chest_r5.png"
+ },
+ "glow": {
+  "5": "gravesandglory:textures/entity/gear/oathbound_chest/oathbound_chest_e5.png"
+ },
+ "bones": [
+  {
+   "name": "cuirass",
+   "parent": "body",
+   "team": false,
+   "tag": "chest",
+   "stages": [],
+   "sheet": [
+    64,
+    64
+   ],
+   "pivot": [
+    0,
+    12,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "boxes": [
+    {
+     "origin": [
+      -4.5,
+      -12.5,
+      -3.0
+     ],
+     "size": [
+      9.0,
+      13.0,
+      6.0
+     ],
+     "uv": [
+      0,
+      0
+     ],
+     "mirror": false,
+     "dilation": [
+      0.02,
+      0.02,
+      0.02
+     ]
+    }
+   ]
+  },
+  {
+   "name": "pauldron_cap_r",
+   "parent": "right_arm",
+   "team": false,
+   "tag": "chest",
+   "stages": [],
+   "sheet": [
+    64,
+    64
+   ],
+   "pivot": [
+    0,
+    0,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "boxes": [
+    {
+     "origin": [
+      -5.5,
+      -3.0,
+      -3.5
+     ],
+     "size": [
+      6.0,
+      3.0,
+      7.0
+     ],
+     "uv": [
+      20,
+      19
+     ],
+     "mirror": false,
+     "dilation": [
+      0.02,
+      0.02,
+      0.02
+     ]
+    }
+   ]
+  },
+  {
+   "name": "pauldron_cap_l",
+   "parent": "left_arm",
+   "team": false,
+   "tag": "chest",
+   "stages": [],
+   "sheet": [
+    64,
+    64
+   ],
+   "pivot": [
+    0,
+    0,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "boxes": [
+    {
+     "origin": [
+      -0.5,
+      -3.0,
+      -3.5
+     ],
+     "size": [
+      6.0,
+      3.0,
+      7.0
+     ],
+     "uv": [
+      0,
+      37
+     ],
+     "mirror": false,
+     "dilation": [
+      0.02,
+      0.02,
+      0.02
+     ]
+    }
+   ]
+  },
+  {
+   "name": "pauldron_dome_r",
+   "parent": "right_arm",
+   "team": false,
+   "tag": "chest",
+   "stages": [],
+   "sheet": [
+    64,
+    64
+   ],
+   "pivot": [
+    0,
+    0,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "boxes": [
+    {
+     "origin": [
+      -5.0,
+      -4.0,
+      -2.0
+     ],
+     "size": [
+      3.0,
+      1.0,
+      4.0
+     ],
+     "uv": [
+      0,
+      55
+     ],
+     "mirror": false,
+     "dilation": [
+      0.0,
+      0.0,
+      0.0
+     ]
+    }
+   ]
+  },
+  {
+   "name": "pauldron_dome_l",
+   "parent": "left_arm",
+   "team": false,
+   "tag": "chest",
+   "stages": [],
+   "sheet": [
+    64,
+    64
+   ],
+   "pivot": [
+    0,
+    0,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "boxes": [
+    {
+     "origin": [
+      2.0,
+      -4.0,
+      -2.0
+     ],
+     "size": [
+      3.0,
+      1.0,
+      4.0
+     ],
+     "uv": [
+      14,
+      55
+     ],
+     "mirror": false,
+     "dilation": [
+      0.0,
+      0.0,
+      0.0
+     ]
+    }
+   ]
+  },
+  {
+   "name": "pauldron_lame_r",
+   "parent": "right_arm",
+   "team": false,
+   "tag": "chest",
+   "stages": [],
+   "sheet": [
+    64,
+    64
+   ],
+   "pivot": [
+    0,
+    0,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "boxes": [
+    {
+     "origin": [
+      -6.0,
+      0.0,
+      -3.0
+     ],
+     "size": [
+      6.0,
+      2.0,
+      6.0
+     ],
+     "uv": [
+      26,
+      37
+     ],
+     "mirror": false,
+     "dilation": [
+      0.0,
+      0.0,
+      0.0
+     ]
+    }
+   ]
+  },
+  {
+   "name": "pauldron_lame_l",
+   "parent": "left_arm",
+   "team": false,
+   "tag": "chest",
+   "stages": [],
+   "sheet": [
+    64,
+    64
+   ],
+   "pivot": [
+    0,
+    0,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "boxes": [
+    {
+     "origin": [
+      0.0,
+      0.0,
+      -3.0
+     ],
+     "size": [
+      6.0,
+      2.0,
+      6.0
+     ],
+     "uv": [
+      0,
+      47
+     ],
+     "mirror": false,
+     "dilation": [
+      0.0,
+      0.0,
+      0.0
+     ]
+    }
+   ]
+  },
+  {
+   "name": "arm_r",
+   "parent": "right_arm",
+   "team": false,
+   "tag": "chest",
+   "stages": [],
+   "sheet": [
+    64,
+    64
+   ],
+   "pivot": [
+    0,
+    0,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "boxes": [
+    {
+     "origin": [
+      -3.5,
+      -2.5,
+      -2.5
+     ],
+     "size": [
+      5.0,
+      13.0,
+      5.0
+     ],
+     "uv": [
+      30,
+      0
+     ],
+     "mirror": false,
+     "dilation": [
+      0.04,
+      0.04,
+      0.04
+     ]
+    }
+   ]
+  },
+  {
+   "name": "arm_l",
+   "parent": "left_arm",
+   "team": false,
+   "tag": "chest",
+   "stages": [],
+   "sheet": [
+    64,
+    64
+   ],
+   "pivot": [
+    0,
+    0,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "boxes": [
+    {
+     "origin": [
+      -1.5,
+      -2.5,
+      -2.5
+     ],
+     "size": [
+      5.0,
+      13.0,
+      5.0
+     ],
+     "uv": [
+      0,
+      19
+     ],
+     "mirror": false,
+     "dilation": [
+      0.04,
+      0.04,
+      0.04
+     ]
+    }
+   ]
+  },
+  {
+   "name": "couter_r",
+   "parent": "right_arm",
+   "team": false,
+   "tag": "chest",
+   "stages": [],
+   "sheet": [
+    64,
+    64
+   ],
+   "pivot": [
+    0,
+    0,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "boxes": [
+    {
+     "origin": [
+      -4.5,
+      3.0,
+      -1.5
+     ],
+     "size": [
+      1.0,
+      3.0,
+      3.0
+     ],
+     "uv": [
+      48,
+      47
+     ],
+     "mirror": false,
+     "dilation": [
+      0.0,
+      0.0,
+      0.0
+     ]
+    }
+   ]
+  },
+  {
+   "name": "couter_l",
+   "parent": "left_arm",
+   "team": false,
+   "tag": "chest",
+   "stages": [],
+   "sheet": [
+    64,
+    64
+   ],
+   "pivot": [
+    0,
+    0,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "boxes": [
+    {
+     "origin": [
+      3.5,
+      3.0,
+      -1.5
+     ],
+     "size": [
+      1.0,
+      3.0,
+      3.0
+     ],
+     "uv": [
+      56,
+      47
+     ],
+     "mirror": false,
+     "dilation": [
+      0.0,
+      0.0,
+      0.0
+     ]
+    }
+   ]
+  },
+  {
+   "name": "wing0_r",
+   "parent": "right_arm",
+   "team": false,
+   "tag": "chest",
+   "stages": [
+    5
+   ],
+   "sheet": [
+    64,
+    64
+   ],
+   "pivot": [
+    0,
+    0,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "boxes": [
+    {
+     "origin": [
+      -5.0,
+      -4.5,
+      -2.5
+     ],
+     "size": [
+      1.0,
+      1.0,
+      5.0
+     ],
+     "uv": [
+      24,
+      47
+     ],
+     "mirror": false,
+     "dilation": [
+      0.02,
+      0.02,
+      0.02
+     ]
+    }
+   ]
+  },
+  {
+   "name": "wing0_l",
+   "parent": "left_arm",
+   "team": false,
+   "tag": "chest",
+   "stages": [
+    5
+   ],
+   "sheet": [
+    64,
+    64
+   ],
+   "pivot": [
+    0,
+    0,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "boxes": [
+    {
+     "origin": [
+      4.0,
+      -4.5,
+      -2.5
+     ],
+     "size": [
+      1.0,
+      1.0,
+      5.0
+     ],
+     "uv": [
+      36,
+      47
+     ],
+     "mirror": false,
+     "dilation": [
+      0.02,
+      0.02,
+      0.02
+     ]
+    }
+   ]
+  },
+  {
+   "name": "wing1_r",
+   "parent": "right_arm",
+   "team": false,
+   "tag": "chest",
+   "stages": [
+    5
+   ],
+   "sheet": [
+    64,
+    64
+   ],
+   "pivot": [
+    0,
+    0,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "boxes": [
+    {
+     "origin": [
+      -5.0,
+      -5.5,
+      -1.5
+     ],
+     "size": [
+      1.0,
+      1.0,
+      4.0
+     ],
+     "uv": [
+      28,
+      55
+     ],
+     "mirror": false,
+     "dilation": [
+      0.04,
+      0.04,
+      0.04
+     ]
+    }
+   ]
+  },
+  {
+   "name": "wing1_l",
+   "parent": "left_arm",
+   "team": false,
+   "tag": "chest",
+   "stages": [
+    5
+   ],
+   "sheet": [
+    64,
+    64
+   ],
+   "pivot": [
+    0,
+    0,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "boxes": [
+    {
+     "origin": [
+      4.0,
+      -5.5,
+      -1.5
+     ],
+     "size": [
+      1.0,
+      1.0,
+      4.0
+     ],
+     "uv": [
+      38,
+      55
+     ],
+     "mirror": false,
+     "dilation": [
+      0.04,
+      0.04,
+      0.04
+     ]
+    }
+   ]
+  },
+  {
+   "name": "wing2_r",
+   "parent": "right_arm",
+   "team": false,
+   "tag": "chest",
+   "stages": [
+    5
+   ],
+   "sheet": [
+    64,
+    64
+   ],
+   "pivot": [
+    0,
+    0,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "boxes": [
+    {
+     "origin": [
+      -5.0,
+      -6.5,
+      -0.5
+     ],
+     "size": [
+      1.0,
+      1.0,
+      3.0
+     ],
+     "uv": [
+      48,
+      55
+     ],
+     "mirror": false,
+     "dilation": [
+      0.02,
+      0.02,
+      0.02
+     ]
+    }
+   ]
+  },
+  {
+   "name": "wing2_l",
+   "parent": "left_arm",
+   "team": false,
+   "tag": "chest",
+   "stages": [
+    5
+   ],
+   "sheet": [
+    64,
+    64
+   ],
+   "pivot": [
+    0,
+    0,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "boxes": [
+    {
+     "origin": [
+      4.0,
+      -6.5,
+      -0.5
+     ],
+     "size": [
+      1.0,
+      1.0,
+      3.0
+     ],
+     "uv": [
+      56,
+      55
+     ],
+     "mirror": false,
+     "dilation": [
+      0.02,
+      0.02,
+      0.02
+     ]
+    }
+   ]
+  },
+  {
+   "name": "wing3_r",
+   "parent": "right_arm",
+   "team": false,
+   "tag": "chest",
+   "stages": [
+    5
+   ],
+   "sheet": [
+    64,
+    64
+   ],
+   "pivot": [
+    0,
+    0,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "boxes": [
+    {
+     "origin": [
+      -5.0,
+      -7.5,
+      0.5
+     ],
+     "size": [
+      1.0,
+      1.0,
+      2.0
+     ],
+     "uv": [
+      0,
+      60
+     ],
+     "mirror": false,
+     "dilation": [
+      0.0,
+      0.0,
+      0.0
+     ]
+    }
+   ]
+  },
+  {
+   "name": "wing3_l",
+   "parent": "left_arm",
+   "team": false,
+   "tag": "chest",
+   "stages": [
+    5
+   ],
+   "sheet": [
+    64,
+    64
+   ],
+   "pivot": [
+    0,
+    0,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "boxes": [
+    {
+     "origin": [
+      4.0,
+      -7.5,
+      0.5
+     ],
+     "size": [
+      1.0,
+      1.0,
+      2.0
+     ],
+     "uv": [
+      6,
+      60
+     ],
+     "mirror": false,
+     "dilation": [
+      0.0,
+      0.0,
+      0.0
+     ]
+    }
+   ]
+  },
+  {
+   "name": "cape",
+   "parent": "body",
+   "team": true,
+   "tag": "chest",
+   "stages": [
+    1,
+    2,
+    3,
+    4
+   ],
+   "sheet": [
+    64,
+    32
+   ],
+   "pivot": [
+    0,
+    12,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "boxes": [
+    {
+     "origin": [
+      -4.5,
+      -12.5,
+      3.1
+     ],
+     "size": [
+      9.0,
+      18.0,
+      1.0
+     ],
+     "uv": [
+      20,
+      0
+     ],
+     "mirror": false,
+     "dilation": [
+      0.0,
+      0.0,
+      0.0
+     ]
+    }
+   ]
+  },
+  {
+   "name": "cape_long",
+   "parent": "body",
+   "team": true,
+   "tag": "chest",
+   "stages": [
+    5
+   ],
+   "sheet": [
+    64,
+    32
+   ],
+   "pivot": [
+    0,
+    12,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "boxes": [
+    {
+     "origin": [
+      -4.5,
+      -12.5,
+      3.1
+     ],
+     "size": [
+      9.0,
+      22.0,
+      1.0
+     ],
+     "uv": [
+      0,
+      0
+     ],
+     "mirror": false,
+     "dilation": [
+      0.0,
+      0.0,
+      0.0
+     ]
+    }
+   ]
+  },
+  {
+   "name": "cape_bar",
+   "parent": "body",
+   "team": false,
+   "tag": "chest",
+   "stages": [],
+   "sheet": [
+    64,
+    64
+   ],
+   "pivot": [
+    0,
+    12,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "boxes": [
+    {
+     "origin": [
+      -3.5,
+      -12.600000000000001,
+      2.9
+     ],
+     "size": [
+      7.0,
+      1.0,
+      1.0
+     ],
+     "uv": [
+      12,
+      60
+     ],
+     "mirror": false,
+     "dilation": [
+      0.0,
+      0.0,
+      0.0
+     ]
+    }
+   ]
+  }
+ ]
+}
