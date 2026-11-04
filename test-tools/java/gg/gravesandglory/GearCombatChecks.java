@@ -29,6 +29,15 @@ final class GearCombatChecks implements Phase1Checks.Suite {
 
     void next(int tick, int s) { stage = s; stageAt = tick; done = false; }
     static void say(String line) { System.out.println("[p1] gear-combat: " + line); }
+    /** The six class actives' numbers as the retired class sheet had them: cooldown, duration, radius, range, value1-3. */
+    static final java.util.Map<String, double[]> OLD_CLASS = java.util.Map.of(
+        "champion", new double[]{1800, 160, 12, 0, 0.25, 0, 0},
+        "reaver", new double[]{1500, 200, 0, 0, 0.3, 3, 0},
+        "warden", new double[]{1200, 240, 0, 40, 0.3, 0, 0},
+        "marshal", new double[]{2400, 300, 0, 0, 0.2, 0, 0},
+        "warlock", new double[]{2400, 600, 8, 30, 0.6, 6, 400},
+        "quartermaster", new double[]{3000, 1200, 12, 30, 40, 0, 0});
+
     static boolean near(double a, double b) { return Math.abs(a - b) < 1e-3; } // max health is a float
 
     @Override public void cleanup(MinecraftClient c) {
@@ -376,10 +385,10 @@ final class GearCombatChecks implements Phase1Checks.Suite {
                         for (var r : Spec.RELICS) {
                             if (r.fromClass().equals("-")) continue;
                             ported++;
-                            Spec.ClassesRow k = null; for (var row : Spec.CLASSES) if (row.id().equals(r.fromClass())) k = row;
+                            double[] k = OLD_CLASS.get(r.fromClass()); // the numbers the class sheet carried before gear replaced classes
                             var tu = Commander.tuning(r.id());
-                            boolean same = k != null && tu != null && k.active().equals(tu.effect()) && k.cooldownTicks() == r.cooldownTicks() && k.durationTicks() == tu.durationTicks()
-                                && near(k.radius(), tu.radius()) && near(k.range(), tu.range()) && near(k.value1(), tu.value1()) && near(k.value2(), tu.value2()) && near(k.value3(), tu.value3());
+                            boolean same = k != null && tu != null && r.id().equals(tu.effect()) && (int) k[0] == r.cooldownTicks() && (int) k[1] == tu.durationTicks()
+                                && near(k[2], tu.radius()) && near(k[3], tu.range()) && near(k[4], tu.value1()) && near(k[5], tu.value2()) && near(k[6], tu.value3());
                             if (!pr.relics.contains(r.id())) pr.relics.add(r.id());
                             String set = Gear.setRelic(pr, 0, r.id());
                             Commander.stop(b, s); s.relicState.clear(); GearCombat.seat(s, pr);

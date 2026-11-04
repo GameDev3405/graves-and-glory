@@ -545,11 +545,11 @@ final class Abilities {
     }
 
     /**
-     * The reach of a troop's attack in blocks: its sheet range plus its commander's bonus (the Warden's ranged troops), times 1 + the Entrench
+     * The reach of a troop's attack in blocks: its sheet range, times 1 + the Entrench
      * tier's value2 for a siege-tag troop of Ironclad that stands entrenched (Houses.still).
      */
     static double range(GravesAndGlory.Battle b, GravesAndGlory.Unit u) {
-        double reach = u.spec.range() + Commander.rangeBonus(u.squad, u);
+        double reach = u.spec.range();
         var entrench = Houses.entrench(u);
         return entrench != null && u.tags.contains("siege") && Houses.still(u) ? reach * (1 + entrench.value2()) : reach;
     }

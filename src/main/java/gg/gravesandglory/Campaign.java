@@ -172,7 +172,7 @@ public final class Campaign {
     /** A seated commander has just dropped from a running round (before his seat is handed to a bot): his time away starts, and a copy of his seat is kept to settle him if he does not return. */
     void dropped(GravesAndGlory.Squad s){
         UUID id=s.owner;if(!b.running||!participants.contains(id))return;
-        var copy=new GravesAndGlory.Squad(id,s.team,b.fieldBase(s.team));copy.banner=new ArrayList<>(s.banner);copy.commander=s.commander;copy.seated=true;
+        var copy=new GravesAndGlory.Squad(id,s.team,b.fieldBase(s.team));copy.banner=new ArrayList<>(s.banner);copy.seated=true;
         leftAt.put(id,b.time);absentSeat.put(id,copy);
     }
     /** A dropped participant is seated again: the time he was away is added up, and it comes off his pay. */
@@ -241,7 +241,7 @@ public final class Campaign {
         if(b.running){
             var current=b.squads.get(p.getUuid());
             boolean global=cmd.startsWith("map:")||cmd.startsWith("mode:")||cmd.equals("fill")||cmd.equals("start")||cmd.startsWith("difficulty:");
-            boolean personal=cmd.equals("roll")||cmd.startsWith("roll:")||cmd.startsWith("buy:")||cmd.startsWith("star:")||cmd.startsWith("legendary:")||cmd.startsWith("unlock:")||cmd.startsWith("army:")||cmd.startsWith("slot:")||cmd.startsWith("colour:")||cmd.startsWith("class:")||cmd.startsWith("gear:")||cmd.startsWith("forge:");
+            boolean personal=cmd.equals("roll")||cmd.startsWith("roll:")||cmd.startsWith("buy:")||cmd.startsWith("star:")||cmd.startsWith("legendary:")||cmd.startsWith("unlock:")||cmd.startsWith("army:")||cmd.startsWith("slot:")||cmd.startsWith("colour:")||cmd.startsWith("gear:")||cmd.startsWith("forge:");
             if(global||personal&&current!=null&&current.seated){notice(p.getUuid(),"Active battle choices are locked until the match ends.");return true;}
         }
         if(cmd.startsWith("difficulty:")){
@@ -256,7 +256,6 @@ public final class Campaign {
         if(cmd.startsWith("star:")){star(p,pr,cmd.substring(5));return true;}
         if(cmd.startsWith("legendary:")){legendary(p,pr,cmd.substring(10));return true;}
         if(cmd.startsWith("unlock:")||cmd.startsWith("army:")){notice(p.getUuid(),"Troops now join by recruitment rolls at the camp shrine.");return true;}
-        if(cmd.startsWith("class:")){String id=cmd.substring(6);if(Arrays.stream(Spec.CLASSES).anyMatch(c->c.id().equals(id))){pr.commander=id;squad.commander=id;String relic=Gear.starterRelic(id);pr.relics.add(relic);Gear.setRelic(pr,0,relic);Commander.stop(b,squad);GearCombat.seat(squad,pr);save(p.getUuid());var room=social.room(p.getUuid());if(room!=null&&!room.playing&&room.ready.remove(p.getUuid()))social.revision++;}return true;}
         if(cmd.startsWith("slot:")){ // slot:<i>:<troop id or empty>: the banner is rebuilt with repack, so markers follow their Epic or Legendary
             String[] parts=cmd.split(":");if(parts.length!=3)return true;int slot;try{slot=Integer.parseInt(parts[1]);}catch(Exception e){return true;}
             var catalog=RosterMath.Catalog.fromSpec();String id=parts[2];var type=troop(id);
@@ -338,9 +337,9 @@ public final class Campaign {
         for(var u:b.units){GravesAndGlory.Battle.leaveSide(u.mob);u.mob.discard();}b.units.clear();botRespawns.clear();botRetreating.clear();vacated.clear();vacatedUntil.clear();awayTicks.clear();leftAt.clear();absentSeat.clear();
         for(int team=0;team<2;team++){final int t=team;int humans=(int)b.squads.values().stream().filter(s->s.team==t&&s.seated).count();
             int target=size; // practice and a March battle set size in soloStart, so one bot per team stays the practice rule
-            if(fill||practice)for(int i=humans;i<target;i++){UUID id=UUID.randomUUID();var s=new GravesAndGlory.Squad(id,team,b.fieldBase(team));s.bot=true;s.tier=activeBattle!=null?activeBattle.difficulty():difficulty;s.commander=Spec.CLASSES[i%Spec.CLASSES.length].id();s.lane=i%3;var ally=allyRow(s);if(ally!=null)s.tier=ally.difficulty();b.squads.put(id,s);} // a March battle's allies fight at their own row's tier
+            if(fill||practice)for(int i=humans;i<target;i++){UUID id=UUID.randomUUID();var s=new GravesAndGlory.Squad(id,team,b.fieldBase(team));s.bot=true;s.tier=activeBattle!=null?activeBattle.difficulty():difficulty;s.lane=i%3;var ally=allyRow(s);if(ally!=null)s.tier=ally.difficulty();b.squads.put(id,s);} // a March battle's allies fight at their own row's tier
         }
-        participants.clear();for(var s:b.squads.values())if(!s.bot&&s.seated){participants.add(s.owner);results.remove(s.owner);joinedAt.put(s.owner,b.time);s.commander=profile(s.owner).commander;GearCombat.seat(s,profile(s.owner));}
+        participants.clear();for(var s:b.squads.values())if(!s.bot&&s.seated){participants.add(s.owner);results.remove(s.owner);joinedAt.put(s.owner,b.time);GearCombat.seat(s,profile(s.owner));}
         for(var s:b.squads.values())if(s.seated)s.banner=banner(s);
         chooseSides();
         serial++;matchId=UUID.randomUUID().toString();introUntil=b.time+120;headline="";
@@ -737,8 +736,8 @@ public final class Campaign {
                 int weight=b.fielded(s).mapToInt(u->u.spec.slotWeight()).sum()+s.training.stream().mapToInt(q->q.spec().slotWeight()).sum();
                 for(var want:wanted.entrySet()){var type=troop(want.getKey());
                     long have=b.fielded(s).filter(u->u.spec==type).count()+s.training.stream().filter(q->q.spec()==type).count();
-                    int price=Commander.cost(s,type); // the bot's class price (a Warlock's magic troops cost less)
-                    while(have<want.getValue()&&s.gold>=price&&weight+type.slotWeight()<=GravesAndGlory.R.squadSize()){s.gold-=price;long previous=s.training.isEmpty()?b.time:s.training.getLast().finished();s.training.addLast(new GravesAndGlory.Training(type,Math.max(b.time,previous)+Commander.trainingTicks(s,type),price));weight+=type.slotWeight();have++;}
+                    int price=type.cost();
+                    while(have<want.getValue()&&s.gold>=price&&weight+type.slotWeight()<=GravesAndGlory.R.squadSize()){s.gold-=price;long previous=s.training.isEmpty()?b.time:s.training.getLast().finished();s.training.addLast(new GravesAndGlory.Training(type,Math.max(b.time,previous)+Commander.trainingTicks(type),price));weight+=type.slotWeight();have++;}
                 }
                 Veterans.botBuy(b,s); // then gear, from what the refill left, keeping its tier's reserve for rebuys (in-match progression design 9.1)
             }
@@ -1033,7 +1032,7 @@ public final class Campaign {
         j.addProperty("mode",room==null?Modes.DOMINATION:room.mode);JsonArray modes=new JsonArray();Modes.ids().forEach(modes::add);j.add("modes",modes);
         j.addProperty("countdown",room==null||room.countdown<0?0:(room.countdown+19)/20);j.addProperty("waiting",room==null||room.playing?"":social.startFailure(room.leader,b.running));
         JsonArray commanders=new JsonArray();if(room!=null)for(UUID m:room.members){JsonObject row=new JsonObject();row.addProperty("name",name(m));row.addProperty("team",room.teams.get(m));row.addProperty("ready",room.ready.contains(m));row.addProperty("online",social.online.contains(m));
-            row.addProperty("house",lobbyHouse(room,m));row.addProperty("troops",houseUnits(room,m));row.addProperty("class",profile(m).commander);row.addProperty("host",m.equals(room.leader));row.addProperty("me",m.equals(id));commanders.add(row);}j.add("commanders",commanders);return j;
+            row.addProperty("house",lobbyHouse(room,m));row.addProperty("troops",houseUnits(room,m));row.addProperty("role",GearStats.of(profile(m)).role());row.addProperty("host",m.equals(room.leader));row.addProperty("me",m.equals(id));commanders.add(row);}j.add("commanders",commanders);return j;
     }
 
     boolean progressCommand(ServerPlayerEntity player,String cmd){

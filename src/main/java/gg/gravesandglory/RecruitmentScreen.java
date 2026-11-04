@@ -84,10 +84,8 @@ class RecruitmentScreen extends ArmyScreen {
     static int weight(boolean queued){int w=0;for(int i=0;i<Spec.TROOPS.length;i++)w+=(roster[i]+(queued?pending[i]:0))*Spec.TROOPS[i].slotWeight();return w;}
     static int index(Spec.TroopsRow t){for(int i=0;i<Spec.TROOPS.length;i++)if(Spec.TROOPS[i]==t)return i;return 0;}
     /** Whether the barracks would train one more of this troop now: banner count, slot weights and gold. */
-    /** The class this commander fights under: the one whose active the state packet names, else his profile's. Its passives set the prices and training times shown here, as the server charges them (Commander.cost, Commander.trainingTicks). */
-    static Spec.ClassesRow commanderClass(){var c=Commander.byActive(commanderActive);return c!=null?c:Commander.row(CampaignClient.profile.commander);}
-    /** A troop's round price for this commander's class. */
-    static int price(Spec.TroopsRow t){return Commander.cost(commanderClass(),t);}
+    /** A troop's round price: the sheet cost, as the server charges it (no class discount: the classes are gone). */
+    static int price(Spec.TroopsRow t){return t.cost();}
     static boolean trainable(Spec.TroopsRow t){int i=index(t);return nearBarracks&&gold>=price(t)&&roster[i]+pending[i]<listed(t)&&weight(true)+t.slotWeight()<=GravesAndGlory.R.squadSize();}
     String unavailable(Spec.TroopsRow t){
         if(!nearBarracks)return "Return to your barracks to recruit.";
@@ -98,8 +96,8 @@ class RecruitmentScreen extends ArmyScreen {
         if(gold<price(t))return "You need "+(price(t)-gold)+" more gold.";
         return trainingTime(t);
     }
-    /** The training time line for this commander's class: whole seconds without a decimal (4 seconds), others with theirs (3.2 seconds for a Marshal's knight). */
-    static String trainingTime(Spec.TroopsRow t){double s=Commander.trainingTicks(commanderClass(),t)/20.0;String n=s==Math.rint(s)?Long.toString(Math.round(s)):Double.toString(s);return "Training time: "+n+(n.equals("1")?" second":" seconds");}
+    /** The training time line: whole seconds without a decimal (4 seconds), others with theirs (3.5 seconds). */
+    static String trainingTime(Spec.TroopsRow t){double s=Commander.trainingTicks(t)/20.0;String n=s==Math.rint(s)?Long.toString(Math.round(s)):Double.toString(s);return "Training time: "+n+(n.equals("1")?" second":" seconds");}
     void update(){
         for(var c:controls){var t=Spec.TROOPS[c.index];c.train.active=trainable(t);c.disband.active=nearBarracks&&roster[c.index]>0;}
         var c=chosen();if(c!=null){recruit.active=c.train.active;disband.active=c.disband.active;recruit.setMessage(Text.literal("RECRUIT / "+price(Spec.TROOPS[selected])+" GOLD"));}

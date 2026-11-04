@@ -17,7 +17,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * The commander engine (spec section 5): the squad's three relic slots on hotbar keys 1 to 3 in battle (gear-combat Task 5), each with its
- * own cooldown (relics.cooldownTicks x quickened_relic) and run (relicTuning.durationTicks), and the class passives until Task 7. What a
+ * own cooldown (relics.cooldownTicks x quickened_relic) and run (relicTuning.durationTicks). What a
  * relic does is in RelicEffects.ACTIVES by its tuning effect id; a relic nobody registered refuses with NOT_READY and starts no cooldown.
  */
 public final class Commander {
@@ -93,21 +93,6 @@ public final class Commander {
     /** A relic's cooldown for this squad: the relics sheet's cooldownTicks x GearEffects.relicCooldownFactor (quickened_relic), rounded. */
     static int cooldownTicks(GravesAndGlory.Squad s, Spec.RelicsRow r) { return (int) Math.round(r.cooldownTicks() * GearEffects.relicCooldownFactor(s.gear)); }
 
-    /** The class row a squad fights under: its commander id, or the sheet's first class for an unknown id. */
-    public static Spec.ClassesRow row(GravesAndGlory.Squad s) { return row(s == null ? "" : s.commander); }
-
-    /** The class row by id, or the sheet's first class for an unknown id. */
-    public static Spec.ClassesRow row(String id) {
-        for (var c : Spec.CLASSES) if (c.id().equals(id)) return c;
-        return Spec.CLASSES[0];
-    }
-
-    /** The class whose active ability this is, or null (the state packet names the active, not the class). */
-    public static Spec.ClassesRow byActive(String active) {
-        for (var c : Spec.CLASSES) if (c.active().equals(active)) return c;
-        return null;
-    }
-
     /** An active id as the HUD tile and the class cards name it: stand_fast reads Stand Fast, bloodrush Bloodrush; rally_horn reads Muster (the no-routing design renamed it; the sheet id stays). */
     public static String activeName(String id) {
         if (id.equals("rally_horn")) return "Muster";
@@ -119,9 +104,6 @@ public final class Commander {
         }
         return out.toString();
     }
-
-    /** Whether the class's group covers this troop: its own group, or every troop for the group all. */
-    static boolean covers(Spec.ClassesRow c, Spec.TroopsRow t) { return c.group().equals("all") || c.group().equals(t.group()); }
 
     /** The commander in the field for a squad: its seated human owner, online in the battle world, alive, not a spectator and not waiting to respawn. Null for a bot. */
     public static ServerPlayerEntity player(GravesAndGlory.Battle b, GravesAndGlory.Squad s) {
@@ -219,14 +201,12 @@ public final class Commander {
      */
     public static double factor(GravesAndGlory.Battle b, GravesAndGlory.Unit attacker, LivingEntity target) {
         var s = attacker.squad;
-        var c = row(s);
         double f = 1;
         var p = player(b, s); // the command aura (gear-combat Task 4): the worn command stat, a banner's wider reach, formation_charge on Attack
         double r = GearEffects.commandRadius(s.gear);
         boolean inAura = p != null && GravesAndGlory.Battle.horizontalDistance(p.getPos(), attacker.mob.getPos()) <= r * r;
         var a = b.assignment(attacker);
         f *= GearEffects.troopFactor(s.gear, inAura, a != null && "attack".equals(a.order));
-        if (c.passive().equals("warden") && covers(c, attacker.spec)) f *= 1 + c.passiveValue();
         int w = runningSlot(b, s, "war_cry"); // Battle Cry: his own troops within its radius hit x(1 + value1) while it runs
         if (w >= 0 && p != null) { var t = tuningIn(s, w); if (GravesAndGlory.Battle.horizontalDistance(p.getPos(), attacker.mob.getPos()) <= t.radius() * t.radius()) f *= 1 + t.value1(); }
         return f * marked(b, s, target) * Statuses.markFactor(b, s, target);
@@ -272,39 +252,6 @@ public final class Commander {
         return marked(b, attacker, target) * takenFactor(b, target) * (p == null ? 1 : Statuses.factorOut(b, p)) * GearCombat.blowFactor(attacker, p, target, source);
     }
 
-    /** The Warden's extra reach for a troop of his group (passiveValue2 blocks); 0 otherwise. Abilities.range adds it. */
-    public static double rangeBonus(GravesAndGlory.Squad s, GravesAndGlory.Unit u) {
-        var c = row(s);
-        return c.passive().equals("warden") && covers(c, u.spec) ? c.passiveValue2() : 0;
-    }
-
-    /** The share of the sheet training time a troop takes: the Marshal's 1 - passiveValue, else 1. */
-    public static double trainingFactor(GravesAndGlory.Squad s) { return trainingFactor(row(s)); }
-    static double trainingFactor(Spec.ClassesRow c) { return c.passive().equals("marshal") ? 1 - c.passiveValue() : 1; }
-
-    /** The share of the sheet cost a troop costs in battle: the Warlock's 1 - passiveValue on magic troops, else 1. */
-    public static double costFactor(GravesAndGlory.Squad s, Spec.TroopsRow t) { return costFactor(row(s), t); }
-    static double costFactor(Spec.ClassesRow c, Spec.TroopsRow t) { return c.passive().equals("warlock") && t.magic() ? 1 - c.passiveValue() : 1; }
-
-    /** The round gold a troop costs this squad: the sheet cost times costFactor, rounded. */
-    public static int cost(GravesAndGlory.Squad s, Spec.TroopsRow t) { return cost(row(s), t); }
-    /** The same for a class row (the barracks screen, from the class the state packet names). */
-    public static int cost(Spec.ClassesRow c, Spec.TroopsRow t) { return BattleMath.classCost(t.cost(), costFactor(c, t)); }
-
-    /** Ticks a troop trains for this squad: the sheet seconds times 20 times trainingFactor, rounded. */
-    public static long trainingTicks(GravesAndGlory.Squad s, Spec.TroopsRow t) { return trainingTicks(row(s), t); }
-    /** The same for a class row. */
-    public static long trainingTicks(Spec.ClassesRow c, Spec.TroopsRow t) { return BattleMath.trainingTicks(t.trainingSeconds(), trainingFactor(c)); }
-
-    /** The Quartermaster's extra round gold per held point per income tick (passiveValue, rounded); 0 otherwise. */
-    public static int pointGoldBonus(GravesAndGlory.Squad s) {
-        var c = row(s);
-        return c.passive().equals("quartermaster") ? (int) Math.round(c.passiveValue()) : 0;
-    }
-
-    /** Seconds a fallen commander waits to return: the Reaver's passiveValue2, else rules.respawnSeconds. */
-    public static int respawnSeconds(GravesAndGlory.Squad s) {
-        var c = row(s);
-        return c.passive().equals("reaver") ? (int) Math.round(c.passiveValue2()) : GravesAndGlory.R.respawnSeconds();
-    }
+    /** Ticks a troop trains for: the sheet seconds times 20, rounded (no class discount: the classes are gone). */
+    public static long trainingTicks(Spec.TroopsRow t) { return BattleMath.trainingTicks(t.trainingSeconds(), 1); }
 }

@@ -345,20 +345,6 @@ for h in houses.values():
     for r,n in HOUSE_SHAPE.items():
         have=sum(1 for t in mine if rarityOf.get(t)==r)
         if have!=n: errors.append(f'houses/{h["id"]}: {have} {r} troops; every House has exactly {n} (all five are fieldable since Phase 2 Task 13)')
-CLASS_ACTIVES=('stand_fast','bloodrush','mark_prey','rally_horn','grave_bloom','forward_supply')
-CLASS_PASSIVES=('champion','reaver','warden','marshal','warlock','quartermaster')
-for c in data['classes']:
-    if c['group'] not in groups: errors.append(f'classes/{c["id"]}: group {c["group"]} does not resolve')
-    if c['track'] not in ('hero','general'): errors.append(f'classes/{c["id"]}: track must be hero or general')
-    if c['active'] not in CLASS_ACTIVES: errors.append(f'classes/{c["id"]}: active {c["active"]} is not one of {", ".join(CLASS_ACTIVES)} (Commander.ACTIVES keys)')
-    if c['passive'] not in CLASS_PASSIVES: errors.append(f'classes/{c["id"]}: passive {c["passive"]} is not one of {", ".join(CLASS_PASSIVES)} (the effect kinds Commander reads)')
-    if c['cooldownTicks']<c['durationTicks']: errors.append(f'classes/{c["id"]}: cooldownTicks must be at least durationTicks')
-    for col in ('activeText','passiveText'):
-        if len(c[col])>90: errors.append(f'classes/{c["id"]}: {col} is {len(c[col])} characters, over 90')
-    if c['bonus']!=c['passiveText']: errors.append(f'classes/{c["id"]}: bonus must equal passiveText')
-for col in ('active','passive'):
-    seen=[c[col] for c in data['classes']]
-    if len(set(seen))!=len(seen): errors.append(f'classes: every class needs its own {col}')
 thresholds={}
 for h in houses:
     tiers=sorted((t for t in data['houseTraits'] if t['house']==h),key=lambda t:t['tier'])
@@ -753,12 +739,13 @@ for r in relic_rows:
     if not GEAR_ID.fullmatch(str(r['id'])): errors.append(f'{rid}/id: {r["id"]!r} is not 1 to 24 characters of [a-z0-9_]')
     if r['cooldownTicks']<=0: errors.append(f'{rid}/cooldownTicks: {r["cooldownTicks"]} must be above 0')
     if r['role'] not in set_ids: errors.append(f'{rid}/role: {r["role"]!r} is not a gearSets id')
-if 'classes' in data:
-    for c in data['classes']:
-        n=sum(1 for s in set_rows if c['id'] in str(s['classes']).split(','))
-        if n!=1: errors.append(f'gearSets: class {c["id"]} appears in {n} classes lists, it needs exactly one')
-        n=sum(1 for r in relic_rows if r['fromClass']==c['id'])
-        if n!=1: errors.append(f'relics: class {c["id"]} is the fromClass of {n} relics, it needs exactly one')
+legacy_classes=[c for s in set_rows for c in str(s['classes']).split(',') if c and c!='-']
+if len(set(legacy_classes))!=len(legacy_classes): errors.append('gearSets: a legacy class id is in more than one classes list, it needs exactly one')
+for c in legacy_classes:
+    n=sum(1 for r in relic_rows if r['fromClass']==c)
+    if n!=1: errors.append(f'relics: class {c} (gearSets.classes) is the fromClass of {n} relics, it needs exactly one')
+for r in relic_rows:
+    if r['fromClass']!='-' and r['fromClass'] not in legacy_classes: errors.append(f'relics/{r["id"]}/fromClass: {r["fromClass"]!r} is not in any gearSets classes list')
 # Gear combat (gear-combat plan Task 1). Draft numbers, for Kort's balance review (part g). The code knows only the effect ids below; the sheet picks and tunes them.
 RELIC_EFFECTS=('stand_fast','rally_horn','grave_bloom','forward_supply','mark_prey','bloodrush','dash','shove','heal_pulse','volley','self_heal','war_cry','iron_skin')
 SET_EFFECTS=('surrounded_guard','taunt_aura','heal_over_time','cleanse','draw_speed','pierce','command_radius','formation_charge')
