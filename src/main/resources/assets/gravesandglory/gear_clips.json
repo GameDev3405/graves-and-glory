@@ -1,0 +1,683 @@
+{
+ "format": 1,
+ "items": {
+  "greatsword": {
+   "strike": {
+    "clip": "great_swing",
+    "kind": "once",
+    "length": 0.6,
+    "keys": [
+     {
+      "t": 0.0,
+      "right_arm": [
+       -45,
+       -22,
+       0
+      ],
+      "right_hand": [
+       0,
+       0,
+       0
+      ],
+      "left_arm": [
+       -26,
+       81,
+       24
+      ]
+     },
+     {
+      "t": 0.3,
+      "right_arm": [
+       -165,
+       -10,
+       0
+      ],
+      "right_hand": [
+       30,
+       0,
+       0
+      ],
+      "left_arm": [
+       -142,
+       57,
+       -36
+      ]
+     },
+     {
+      "t": 0.55,
+      "right_arm": [
+       -80,
+       -15,
+       0
+      ],
+      "right_hand": [
+       145,
+       0,
+       0
+      ],
+      "left_arm": [
+       -128,
+       57,
+       -30
+      ]
+     },
+     {
+      "t": 0.8,
+      "right_arm": [
+       -25,
+       -20,
+       0
+      ],
+      "right_hand": [
+       90,
+       0,
+       0
+      ],
+      "left_arm": [
+       -18,
+       -39,
+       90
+      ]
+     },
+     {
+      "t": 1.0,
+      "right_arm": [
+       -45,
+       -22,
+       0
+      ],
+      "right_hand": [
+       0,
+       0,
+       0
+      ],
+      "left_arm": [
+       -26,
+       81,
+       24
+      ]
+     }
+    ]
+   }
+  },
+  "great_axe": {
+   "strike": {
+    "clip": "great_swing",
+    "kind": "once",
+    "length": 0.6,
+    "keys": [
+     {
+      "t": 0.0,
+      "right_arm": [
+       -45,
+       -22,
+       0
+      ],
+      "right_hand": [
+       0,
+       0,
+       0
+      ],
+      "left_arm": [
+       -14,
+       78,
+       36
+      ]
+     },
+     {
+      "t": 0.3,
+      "right_arm": [
+       -165,
+       -10,
+       0
+      ],
+      "right_hand": [
+       30,
+       0,
+       0
+      ],
+      "left_arm": [
+       -150,
+       39,
+       -54
+      ]
+     },
+     {
+      "t": 0.55,
+      "right_arm": [
+       -80,
+       -15,
+       0
+      ],
+      "right_hand": [
+       145,
+       0,
+       0
+      ],
+      "left_arm": [
+       -126,
+       60,
+       -24
+      ]
+     },
+     {
+      "t": 0.8,
+      "right_arm": [
+       -25,
+       -20,
+       0
+      ],
+      "right_hand": [
+       90,
+       0,
+       0
+      ],
+      "left_arm": [
+       -16,
+       87,
+       60
+      ]
+     },
+     {
+      "t": 1.0,
+      "right_arm": [
+       -45,
+       -22,
+       0
+      ],
+      "right_hand": [
+       0,
+       0,
+       0
+      ],
+      "left_arm": [
+       -14,
+       78,
+       36
+      ]
+     }
+    ]
+   }
+  },
+  "mending_staff": {
+   "strike": {
+    "clip": "staff_strike",
+    "kind": "once",
+    "length": 0.5,
+    "keys": [
+     {
+      "t": 0.0,
+      "right_arm": [
+       0,
+       0,
+       0
+      ],
+      "right_hand": [
+       0,
+       0,
+       0
+      ]
+     },
+     {
+      "t": 0.3,
+      "right_arm": [
+       -150,
+       0,
+       0
+      ],
+      "right_hand": [
+       105,
+       0,
+       0
+      ]
+     },
+     {
+      "t": 0.55,
+      "right_arm": [
+       -70,
+       0,
+       0
+      ],
+      "right_hand": [
+       205,
+       0,
+       0
+      ]
+     },
+     {
+      "t": 0.8,
+      "right_arm": [
+       -30,
+       0,
+       0
+      ],
+      "right_hand": [
+       165,
+       0,
+       0
+      ]
+     },
+     {
+      "t": 1.0,
+      "right_arm": [
+       0,
+       0,
+       0
+      ],
+      "right_hand": [
+       0,
+       0,
+       0
+      ]
+     }
+    ]
+   },
+   "use": {
+    "clip": "staff_cast",
+    "kind": "once",
+    "length": 0.6,
+    "keys": [
+     {
+      "t": 0.0,
+      "right_arm": [
+       0,
+       0,
+       0
+      ],
+      "right_hand": [
+       0,
+       0,
+       0
+      ]
+     },
+     {
+      "t": 0.35,
+      "right_arm": [
+       -100,
+       0,
+       0
+      ],
+      "right_hand": [
+       125,
+       0,
+       0
+      ]
+     },
+     {
+      "t": 0.7,
+      "right_arm": [
+       -100,
+       0,
+       0
+      ],
+      "right_hand": [
+       125,
+       0,
+       0
+      ]
+     },
+     {
+      "t": 1.0,
+      "right_arm": [
+       0,
+       0,
+       0
+      ],
+      "right_hand": [
+       0,
+       0,
+       0
+      ]
+     }
+    ]
+   }
+  },
+  "sunwell_crook": {
+   "strike": {
+    "clip": "staff_strike",
+    "kind": "once",
+    "length": 0.5,
+    "keys": [
+     {
+      "t": 0.0,
+      "right_arm": [
+       0,
+       0,
+       0
+      ],
+      "right_hand": [
+       0,
+       0,
+       0
+      ]
+     },
+     {
+      "t": 0.3,
+      "right_arm": [
+       -150,
+       0,
+       0
+      ],
+      "right_hand": [
+       105,
+       0,
+       0
+      ]
+     },
+     {
+      "t": 0.55,
+      "right_arm": [
+       -70,
+       0,
+       0
+      ],
+      "right_hand": [
+       205,
+       0,
+       0
+      ]
+     },
+     {
+      "t": 0.8,
+      "right_arm": [
+       -30,
+       0,
+       0
+      ],
+      "right_hand": [
+       165,
+       0,
+       0
+      ]
+     },
+     {
+      "t": 1.0,
+      "right_arm": [
+       0,
+       0,
+       0
+      ],
+      "right_hand": [
+       0,
+       0,
+       0
+      ]
+     }
+    ]
+   },
+   "use": {
+    "clip": "staff_cast",
+    "kind": "once",
+    "length": 0.6,
+    "keys": [
+     {
+      "t": 0.0,
+      "right_arm": [
+       0,
+       0,
+       0
+      ],
+      "right_hand": [
+       0,
+       0,
+       0
+      ]
+     },
+     {
+      "t": 0.35,
+      "right_arm": [
+       -100,
+       0,
+       0
+      ],
+      "right_hand": [
+       125,
+       0,
+       0
+      ]
+     },
+     {
+      "t": 0.7,
+      "right_arm": [
+       -100,
+       0,
+       0
+      ],
+      "right_hand": [
+       125,
+       0,
+       0
+      ]
+     },
+     {
+      "t": 1.0,
+      "right_arm": [
+       0,
+       0,
+       0
+      ],
+      "right_hand": [
+       0,
+       0,
+       0
+      ]
+     }
+    ]
+   }
+  },
+  "war_banner": {
+   "strike": {
+    "clip": "banner_strike",
+    "kind": "once",
+    "length": 0.5,
+    "keys": [
+     {
+      "t": 0.0,
+      "right_arm": [
+       0,
+       0,
+       0
+      ],
+      "right_hand": [
+       0,
+       0,
+       0
+      ]
+     },
+     {
+      "t": 0.3,
+      "right_arm": [
+       -40,
+       0,
+       0
+      ],
+      "right_hand": [
+       65,
+       0,
+       0
+      ]
+     },
+     {
+      "t": 0.55,
+      "right_arm": [
+       -75,
+       0,
+       0
+      ],
+      "right_hand": [
+       165,
+       0,
+       0
+      ]
+     },
+     {
+      "t": 0.8,
+      "right_arm": [
+       -60,
+       0,
+       0
+      ],
+      "right_hand": [
+       195,
+       0,
+       0
+      ]
+     },
+     {
+      "t": 1.0,
+      "right_arm": [
+       0,
+       0,
+       0
+      ],
+      "right_hand": [
+       0,
+       0,
+       0
+      ]
+     }
+    ]
+   },
+   "sneak": {
+    "clip": "banner_raise",
+    "kind": "hold",
+    "length": 0.5,
+    "keys": [
+     {
+      "t": 0.0,
+      "right_arm": [
+       0,
+       0,
+       0
+      ],
+      "right_hand": [
+       0,
+       0,
+       0
+      ]
+     },
+     {
+      "t": 1.0,
+      "right_arm": [
+       -170,
+       0,
+       0
+      ],
+      "right_hand": [
+       170,
+       0,
+       0
+      ]
+     }
+    ]
+   }
+  },
+  "long_colours": {
+   "strike": {
+    "clip": "banner_strike",
+    "kind": "once",
+    "length": 0.5,
+    "keys": [
+     {
+      "t": 0.0,
+      "right_arm": [
+       0,
+       0,
+       0
+      ],
+      "right_hand": [
+       0,
+       0,
+       0
+      ]
+     },
+     {
+      "t": 0.3,
+      "right_arm": [
+       -40,
+       0,
+       0
+      ],
+      "right_hand": [
+       65,
+       0,
+       0
+      ]
+     },
+     {
+      "t": 0.55,
+      "right_arm": [
+       -75,
+       0,
+       0
+      ],
+      "right_hand": [
+       165,
+       0,
+       0
+      ]
+     },
+     {
+      "t": 0.8,
+      "right_arm": [
+       -60,
+       0,
+       0
+      ],
+      "right_hand": [
+       195,
+       0,
+       0
+      ]
+     },
+     {
+      "t": 1.0,
+      "right_arm": [
+       0,
+       0,
+       0
+      ],
+      "right_hand": [
+       0,
+       0,
+       0
+      ]
+     }
+    ]
+   },
+   "sneak": {
+    "clip": "banner_raise",
+    "kind": "hold",
+    "length": 0.5,
+    "keys": [
+     {
+      "t": 0.0,
+      "right_arm": [
+       0,
+       0,
+       0
+      ],
+      "right_hand": [
+       0,
+       0,
+       0
+      ]
+     },
+     {
+      "t": 1.0,
+      "right_arm": [
+       -170,
+       0,
+       0
+      ],
+      "right_hand": [
+       170,
+       0,
+       0
+      ]
+     }
+    ]
+   }
+  }
+ }
+}

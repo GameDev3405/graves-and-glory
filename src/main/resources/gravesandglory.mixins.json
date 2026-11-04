@@ -11,7 +11,10 @@
     "ChatHudMixin",
     "ChatHudAccessor",
     "LivingEntityRendererAccessor",
-    "KeybindTextMixin"
+    "KeybindTextMixin",
+    "ArmorFeatureMixin",
+    "HeldItemFeatureMixin",
+    "PlayerModelMixin"
   ],
   "injectors": {
     "defaultRequire": 1

@@ -209,6 +209,18 @@ class GearWeapons(unittest.TestCase):
                     m = [sum(p[k][i] for k in range(4)) / 4 - mid[i] for i in range(3)]
                     self.assertGreaterEqual(sum(n[i] * m[i] for i in range(3)), 0, (iid, c.name))
 
+    def test_clip_faces(self):
+        """Every clip key points the weapon's tip the way the move goes (Kort 11-03), and gear_clips.json is clips.py's export."""
+        import json, clips
+        for item, trig in clips.ITEMS.items():
+            w = clips.weapons()[item]
+            for name in trig.values():
+                for k in clips.CLIPS[name]["keys"]:
+                    off = clips.angle(clips.tip(w, clips.pose_of(w, k)), k["face"])
+                    self.assertLessEqual(off, 45, (item, name, k["t"], k["note"], round(off)))
+        with open(os.path.join(ROOT, "src", "main", "resources", "assets", "gravesandglory", "gear_clips.json")) as f:
+            self.assertEqual(json.load(f), json.loads(json.dumps(clips.exported())), "run: python art/hand/gear/clips.py export")
+
 class GearIcons(unittest.TestCase):
     def test_item_icons(self):
         """Every item id at every rarity: 32 x 32 RGBA, a clear 1 px margin, no House ramp, Common unlike Legendary."""
