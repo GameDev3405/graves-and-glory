@@ -349,18 +349,19 @@ STOCK = (0, -5, -5)   # the off hand under the stock, 7 px ahead of the trigger 
 
 
 def crossbow():
-    # Loose (impact tick 4): the stock snaps to the shoulder and settles on the aim for 150 ms; the bolt looses, the prod
-    # kicks the arms up and the body rocks back a touch; then the crossbow drops nose-down to the foot to span, and comes
-    # back to rest.
-    return [beats('crossbow_loose', 1.4, 0.2, 0.04, 0.15, (
-        dict(root=(0, 0, 0, 0, 0.3, 0), body=(2, 12, 0), head=(2, -12, 0), right_arm=(-84, 0, 0), right_hand=(125, 0, 0),
+    # Loose (impact tick 4): the stock comes up to the shoulder over 100 ms, the crossbow rolling level (prod across, as it is
+    # aimed: the sword grip holds it prod-upright, so the wrist turns it a quarter round, right_hand ry ~90) and settles on
+    # the aim to tick 4; the bolt looses, the prod kicks the arms up and the body rocks back and sinks; the crossbow comes
+    # down to chest height, nose low, and back to rest. (Review r1 F1: the prod read vertical and the raise popped in 40 ms.)
+    return [beats('crossbow_loose', 1.4, 0.2, 0.10, 0.09, (
+        dict(root=(0, 0, 0, 0, 0.3, 0), body=(2, 12, 0), head=(2, -12, 0), right_arm=(-84, 0, 0), right_hand=(142, 88, -6),
              right_leg=(4, 0, 0), left_leg=(-6, 0, 0)),
-        dict(root=(0, 0, 0, 0, 0.35, 0), body=(2, 12, 0), head=(2, -12, 0), right_arm=(-85, 0, 0), right_hand=(126, 0, 0)),
-        dict(root=(0, 0, 0, 0, 0.2, 0.5), body=(-5, 12, 0), head=(-2, -12, 0), right_arm=(-89, 0, 0), right_hand=(127, 0, 0)),
-        dict(root=(0, 0, 0, 0, 0.3, 0.4), body=(-3, 12, 0), head=(0, -12, 0), right_arm=(-86, 0, 0), right_hand=(126, 0, 0)),
-        dict(root=(0, 0, 0, 0, 1.4, -0.4), body=(18, 4, 0), head=(14, -4, 0), right_arm=(-30, 0, 0), right_hand=(100, 0, 0),
-             right_leg=(-6, 0, 0), right_shin=(8, 0, 0), left_leg=(-14, 0, 0), left_shin=(14, 0, 0)),
-        dict(root=(0, 0, 0, 0, 0.1, 0), body=(1, 1, 0), right_arm=(-4, 0, 0), right_hand=(4, 0, 0))),
+        dict(root=(0, 0, 0, 0, 0.35, 0), body=(2, 12, 0), head=(2, -12, 0), right_arm=(-85, 0, 0), right_hand=(140, 89, -6)),
+        dict(root=(0, 0, 0, 0, 1.0, 0.6), body=(-10, 12, 0), head=(-4, -12, 0), right_arm=(-95, 0, 0), right_hand=(140, 92, -6)),
+        dict(root=(0, 0, 0, 0, 0.6, 0.4), body=(-6, 12, 0), head=(-2, -12, 0), right_arm=(-90, 0, 0), right_hand=(140, 91, -6)),
+        dict(root=(0, 0, 0, 0, 0.8, -0.2), body=(10, 6, 0), head=(8, -6, 0), right_arm=(-55, 0, 0), right_hand=(115, 40, -3),
+             right_leg=(-4, 0, 0), right_shin=(5, 0, 0), left_leg=(-8, 0, 0), left_shin=(8, 0, 0)),
+        dict(root=(0, 0, 0, 0, 0.1, 0), body=(1, 1, 0), right_arm=(-4, 0, 0), right_hand=(4, 2, 0))),
         lag=dict(head=0.02), two=STOCK)]
 
 
@@ -391,10 +392,10 @@ def crew():
              left_arm=(14, 0, 8), right_leg=(-14, 0, 0), right_shin=(14, 0, 0), left_leg=(6, 0, 0)),
         dict(root=(0, 0, 0, 0, 1.3, -0.6), body=(17, -10, 0), head=(11, -8, 0), right_arm=(-54, 0, -6), right_hand=(12, 0, 0),
              left_arm=(14, 0, 8)),
-        dict(root=(0, 0, 0, 0, 0.6, 0.8), body=(-10, 8, 0), head=(-12, 14, 0), right_arm=(-30, 0, -14), right_hand=(4, 0, 0),
-             left_arm=(-110, 30, 0), right_leg=(-6, 0, 0), right_shin=(6, 0, 0), left_leg=(4, 0, 0)),
-        dict(root=(0, 0, 0, 0, 0.5, 0.9), body=(-12, 10, 0), head=(-14, 16, 0), right_arm=(-26, 0, -16), right_hand=(2, 0, 0),
-             left_arm=(-120, 34, 0)),
+        dict(root=(0, 0, 0, 0, 1.5, 0.8), body=(-10, 8, 0), head=(-12, 14, 0), right_arm=(-30, 0, -14), right_hand=(4, 0, 0),
+             left_arm=(-55, 16, 0), right_leg=(-6, 0, 0), right_shin=(6, 0, 0), left_leg=(4, 0, 0)),
+        dict(root=(0, 0, 0, 0, 1.2, 0.9), body=(-12, 10, 0), head=(-14, 16, 0), right_arm=(-26, 0, -16), right_hand=(2, 0, 0),
+             left_arm=(-115, 32, 0)),
         dict(root=(0, 0, 0, 0, 0.3, 0.3), body=(-3, 3, 0), head=(-4, 5, 0), right_arm=(-8, 0, -4), right_hand=(2, 0, 0),
              left_arm=(-30, 10, 0), right_leg=(-2, 0, 0), right_shin=(2, 0, 0)),
         dict(root=(0, 0, 0, 0, 0.05, 0), body=(-0.5, 0.5, 0), left_arm=(-2, 0, 0))))]
@@ -415,10 +416,10 @@ def bite(name, impact, s=1.0, low=0.0):
         dict(root=(0, 0, 0, 0, 0.8 * s, 1.0 * s), chest=(4, 0, 0), head=(-8, 0, 0), jaw=(16, 0, 0),
              front_left_leg=(-6, 0, 0), front_right_leg=(4, 0, 0), tail=(-10, 0, 0)),
         dict(root=(0, 0, 0, 0, 1.0 * s, 1.2 * s), chest=(5, 0, 0), head=(-10, 0, 0), jaw=(34, 0, 0), tail=(-12, 0, 0)),
-        dict(root=(0, 0, 0, 0, 0.6 * s + low, -2.6 * s), chest=(8 + 10 * low, 0, 0), head=(10 + 12 * low, 0, 0), jaw=(2, 0, 0),
+        dict(root=(0, 0, 0, 0, max(0.6 * s + low, 1.5 * s), -2.6 * s), chest=(8 + 10 * low, 0, 0), head=(10 + 12 * low, 0, 0), jaw=(2, 0, 0),
              front_left_leg=(-14, 0, 0), front_right_leg=(10, 0, 0), back_left_leg=(8, 0, 0), back_right_leg=(6, 0, 0),
              tail=(6, 0, 0)),
-        dict(root=(0, 0, 0, 0, 0.7 * s + low, -2.4 * s), chest=(8 + 10 * low, 6, 0), head=(12 + 12 * low, 14, 10), jaw=(4, 0, 0),
+        dict(root=(0, 0, 0, 0, max(0.7 * s + low, 1.25 * s), -2.4 * s), chest=(8 + 10 * low, 6, 0), head=(12 + 12 * low, 14, 10), jaw=(4, 0, 0),
              tail=(2, 14, 0)),
         dict(root=(0, 0, 0, 0, 0.3 * s, -0.6 * s), chest=(2, -2, 0), head=(4, -6, -4), jaw=(3, 0, 0),
              front_left_leg=(-3, 0, 0), front_right_leg=(2, 0, 0), back_left_leg=(2, 0, 0), back_right_leg=(1, 0, 0),
@@ -482,10 +483,10 @@ def ravager():
              tail=(-14, 0, 0)),
         dict(root=(0, 0, 0, 0, 1.2, 2.2), body=(5, 0, 0), chest=(7, 0, 0), head=(28, 0, 0), jaw=(4, 0, 0),
              front_right_leg=(12, 0, 0), front_left_leg=(8, 0, 0), back_left_leg=(-14, 0, 0), back_right_leg=(-16, 0, 0)),
-        dict(root=(0, 0, 0, 0, 0.6, -5.0), body=(6, 0, 0), chest=(8, 0, 0), head=(20, 0, 0), jaw=(6, 0, 0),
+        dict(root=(0, 0, 0, 0, 1.4, -5.0), body=(6, 0, 0), chest=(8, 0, 0), head=(20, 0, 0), jaw=(6, 0, 0),
              front_right_leg=(-28, 0, 0), front_left_leg=(20, 0, 0), back_left_leg=(26, 0, 0), back_right_leg=(18, 0, 0),
              tail=(10, 0, 0)),
-        dict(root=(0, 0, 0, 0, 0.2, -5.4), body=(-6, 0, 0), chest=(-4, 0, 0), head=(-24, 0, 0), jaw=(14, 0, 0),
+        dict(root=(0, 0, 0, 0, 0.9, -5.4), body=(-6, 0, 0), chest=(-4, 0, 0), head=(-24, 0, 0), jaw=(14, 0, 0),
              front_right_leg=(-20, 0, 0), front_left_leg=(-8, 0, 0), back_left_leg=(16, 0, 0), back_right_leg=(12, 0, 0),
              tail=(16, 0, 0)),
         dict(root=(0, 0, 0, 0, 0.4, -2.0), body=(1, 0, 0), chest=(1, 0, 0), head=(-4, 0, 0), jaw=(3, 0, 0),
@@ -501,9 +502,9 @@ def spider():
     leg = lambda l, r: dict(left_leg_1=(0, 0, l[0]), right_leg_1=(0, 0, -l[0]), left_leg_2=(0, 0, l[1]), right_leg_2=(0, 0, -l[1]),
                             left_leg_3=(0, 0, l[2]), right_leg_3=(0, 0, -l[2]), left_leg_4=(0, 0, l[3]), right_leg_4=(0, 0, -l[3]))
     bite_ = beats('spider_bite', 1.2, 0.4, 0.12, 0.16, (
-        dict(root=(0, 0, 0, 0, -0.8, 1.0), thorax=(-16, 0, 0), head=(-6, 0, 0), fangs=(-30, 0, 0), abdomen=(12, 0, 0),
+        dict(root=(0, 0, 0, 0, 0.5, 1.0), thorax=(-16, 0, 0), head=(-6, 0, 0), fangs=(-30, 0, 0), abdomen=(12, 0, 0),
              **leg((-30, -12, 4, 6), None)),
-        dict(root=(0, 0, 0, 0, -1.0, 1.2), thorax=(-19, 0, 0), head=(-8, 0, 0), fangs=(-38, 0, 0), abdomen=(14, 0, 0),
+        dict(root=(0, 0, 0, 0, 0.5, 1.2), thorax=(-19, 0, 0), head=(-8, 0, 0), fangs=(-38, 0, 0), abdomen=(14, 0, 0),
              **leg((-34, -14, 4, 7), None)),
         dict(root=(0, 0, 0, 0, 0.6, -2.4), thorax=(8, 0, 0), head=(12, 0, 0), fangs=(28, 0, 0), abdomen=(-6, 0, 0),
              **leg((6, 2, -2, -4), None)),
@@ -530,20 +531,23 @@ def spider():
 
 
 def colossus():
-    # Slam (impact tick 12, head zone): both fists climb overhead and the body leans back, held; then the body folds
-    # forward onto bent hips and both fists hammer down through head height in front, and on into the ground.
+    # Slam (impact tick 12, head zone): both fists climb overhead and the body leans back, the maul upright and laid back
+    # behind the head, held; then the body folds forward onto bent hips, the arms come down level in front, fists together,
+    # and the wrist brings the maul over the top so its head leads and lands on the ground ahead (the maul hangs from
+    # right_hand, so the wrist keys turn it; review r1 F3).
     slam = beats('colossus_slam', 1.5, 0.6, 0.22, 0.22, (
         dict(root=(0, 0, 0, 0, -0.4, 0.8), body=(-10, 0, 0), head=(-6, 0, 0), right_arm=(-166, 0, 8), left_arm=(-166, 0, -8),
-             right_hand=(-20, 0, 0), left_hand=(-20, 0, 0), right_leg=(6, 0, 0), left_leg=(-6, 0, 0)),
+             right_hand=(170, 0, 0), right_leg=(6, 0, 0), left_leg=(-6, 0, 0)),
         dict(root=(0, 0, 0, 0, -0.6, 1.0), body=(-12, 0, 0), head=(-8, 0, 0), right_arm=(-172, 0, 8), left_arm=(-172, 0, -8),
-             right_hand=(-24, 0, 0), left_hand=(-24, 0, 0)),
-        dict(root=(0, 0, 0, 0, 2.4, -1.6), body=(22, 0, 0), head=(-10, 0, 0), right_arm=(-62, 0, 6), left_arm=(-62, 0, -6),
-             right_hand=(10, 0, 0), left_hand=(10, 0, 0), right_leg=(-18, 0, 0), left_leg=(10, 0, 0)),
-        dict(root=(0, 0, 0, 0, 2.8, -1.8), body=(26, 0, 0), head=(-12, 0, 0), right_arm=(-40, 0, 6), left_arm=(-40, 0, -6),
-             right_hand=(14, 0, 0), left_hand=(14, 0, 0)),
-        dict(root=(0, 0, 0, 0, 0.8, -0.6), body=(6, 0, 0), head=(-3, 0, 0), right_arm=(-10, 0, 2), left_arm=(-10, 0, -2),
-             right_hand=(3, 0, 0), left_hand=(3, 0, 0), right_leg=(-4, 0, 0), left_leg=(2, 0, 0)),
-        dict(root=(0, 0, 0, 0, 0.05, 0), body=(0.5, 0, 0), right_arm=(-1, 0, 0), left_arm=(-1, 0, 0))), lag=dict(head=0.03))
+             right_hand=(164, 0, 0)),
+        dict(root=(0, 0, 0, 0, 2.4, -1.6), body=(22, 0, 0), head=(-10, 0, 0), right_arm=(-104, -10, 0), left_arm=(-104, 10, 0),
+             right_hand=(234, 0, 0), right_leg=(-18, 0, 0), left_leg=(10, 0, 0)),
+        dict(root=(0, 0, 0, 0, 2.8, -1.8), body=(26, 0, 0), head=(-12, 0, 0), right_arm=(-112, -10, 0), left_arm=(-112, 10, 0),
+             right_hand=(242, 0, 0)),
+        dict(root=(0, 0, 0, 0, 0.8, -0.6), body=(6, 0, 0), head=(-3, 0, 0), right_arm=(-20, 0, 2), left_arm=(-10, 0, -2),
+             right_hand=(40, 0, 0), right_leg=(-4, 0, 0), left_leg=(2, 0, 0)),
+        dict(root=(0, 0, 0, 0, 0.05, 0), body=(0.5, 0, 0), right_arm=(-1, 0, 0), left_arm=(-1, 0, 0), right_hand=(1, 0, 0))),
+        lag=dict(head=0.03))
     # Backhand (impact tick 8): the right arm swings across the chest to the left with the body coiled left, held; then the
     # body unwinds and the arm sweeps out to the right at chest height, back of the fist leading, and carries past.
     back = beats('colossus_backhand', 1.2, 0.4, 0.12, 0.16, (
