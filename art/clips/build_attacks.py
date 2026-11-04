@@ -173,9 +173,84 @@ def spear():
     return out
 
 
+def beats(name, length, impact, cocked_at, hold, poses, lag=None):
+    """The shared beat layout: cocked pose at cocked_at, held (creeping to the second cocked pose) for `hold` seconds, a
+    linear strike into the impact pose, follow-through 0.12 s later, a settle at about the clip's two-thirds and a near-rest
+    key 0.16 s before the end. poses: (cocked, cocked2, hit, follow, settle, near)."""
+    cocked, cocked2, hit, follow, settle, near = poses
+    keys = [(cocked_at, C, cocked), (cocked_at + hold, L, cocked2), (impact, L, hit), (impact + 0.12, C, follow),
+            (impact + (length - impact) * 0.48, C, settle), (length - 0.16, C, near)]
+    return clip(name, length, impact, cocked_at, keys, lag=lag or dict(head=0.02, left_arm=0.04))
+
+
+# ---- biped: axe (ic_breaker) and axe_shield (ic_hearthguard); the bit (+x of the weapon) leads every cut
+
+def axe_cuts(prefix, chop_at, hew_name, hew_at):
+    out = []
+    # Overhead chop: the axe climbs over the head and lays back, bit up and the haft behind the shoulders; a held beat, then
+    # the body drops onto bent knees and the arm brings the bit down through the line, the haft in line with the arm at
+    # impact; it follows through low and climbs back.
+    cock = 0.1 + (chop_at - 0.2 - 0.1) * 0.5
+    out.append(beats(f'{prefix}_overhead_chop', chop_at + 0.7, chop_at, cock, min(0.22, chop_at - 0.11 - cock), (
+        dict(root=(0, 0, 0, 0, -0.2, 0.8), body=(-9, 10, 0), head=(-6, -6, 0), right_arm=(-162, 0, -10), right_hand=(48, 0, 0),
+             left_arm=(-50, 0, -16), right_leg=(6, 0, 0), left_leg=(-8, 0, 0), left_shin=(4, 0, 0), right_shin=(2, 0, 0)),
+        dict(root=(0, 0, 0, 0, -0.3, 0.9), body=(-10, 11, 0), head=(-7, -7, 0), right_arm=(-170, 0, -10), right_hand=(42, 0, 0),
+             left_arm=(-54, 0, -18)),
+        dict(root=(0, 0, 0, 0, 1.6, -1.8), body=(16, -16, 0), head=(6, 12, 0), right_arm=(-82, 0, -8), right_hand=(122, 0, 0),
+             left_arm=(4, 0, 8), right_leg=(14, 0, 0), left_leg=(-26, 0, 0), left_shin=(22, 0, 0), right_shin=(12, 0, 0)),
+        dict(root=(0, 0, 0, 0, 1.8, -2.0), body=(18, -20, 0), head=(7, 15, 0), right_arm=(-58, 0, -10), right_hand=(108, 0, 0),
+             left_arm=(8, 0, 10)),
+        dict(root=(0, 0, 0, 0, 0.5, -0.5), body=(4, -5, 0), head=(2, 4, 0), right_arm=(-14, 0, -4), right_hand=(40, 0, 0),
+             left_arm=(2, 0, 2), right_leg=(3, 0, 0), left_leg=(-5, 0, 0), left_shin=(4, 0, 0), right_shin=(2, 0, 0)),
+        dict(root=(0, 0, 0, 0, 0.05, 0), body=(0.5, -1, 0), right_arm=(-2, 0, 0), right_hand=(4, 0, 0))),
+        lag=dict(head=0.02, left_arm=0.04)))
+    # Side hew (or hook hew): the body coils and the arm swings out and back on the axe side at chest height, the bit
+    # turned out; a held beat, then the body unwinds and the arm sweeps the bit across the front, following through to the
+    # far side.
+    cock = 0.1 + (hew_at - 0.2 - 0.1) * 0.4
+    out.append(beats(f'{prefix}_{hew_name}', hew_at + 0.65, hew_at, cock, min(0.22, hew_at - 0.1 - cock), (
+        dict(root=(0, 0, 0, 0, 0.5, 0.6), body=(-2, 32, 0), head=(0, -20, 0), right_arm=(-80, 0, -70), right_hand=(60, 0, 0),
+             left_arm=(-40, 0, -14), right_leg=(6, 0, 0), left_leg=(-10, 0, 0), left_shin=(8, 0, 0)),
+        dict(root=(0, 0, 0, 0, 0.6, 0.7), body=(-3, 36, 0), head=(0, -22, 0), right_arm=(-84, 0, -74), right_hand=(56, 0, 0),
+             left_arm=(-42, 0, -16)),
+        dict(root=(0, 0, 0, 0, 1.2, -1.4), body=(8, -14, 0), head=(-2, 8, 0), right_arm=(-88, 0, -6), right_hand=(120, 0, 0),
+             left_arm=(4, 0, 14), right_leg=(12, 0, 0), left_leg=(-24, 0, 0), left_shin=(18, 0, 0), right_shin=(8, 0, 0)),
+        dict(root=(0, 0, 0, 0, 1.3, -1.6), body=(10, -34, 0), head=(-2, 20, 0), right_arm=(-80, 0, 30), right_hand=(118, 0, 0),
+             left_arm=(10, 0, 16)),
+        dict(root=(0, 0, 0, 0, 0.4, -0.4), body=(3, -8, 0), head=(0, 5, 0), right_arm=(-20, 0, 4), right_hand=(40, 0, 0),
+             left_arm=(2, 0, 4), right_leg=(3, 0, 0), left_leg=(-5, 0, 0), left_shin=(4, 0, 0), right_shin=(2, 0, 0)),
+        dict(root=(0, 0, 0, 0, 0.05, 0), body=(0.5, -1, 0), right_arm=(-2, 0, 0), right_hand=(4, 0, 0)))))
+    return out
+
+
+def axe():
+    out = axe_cuts('axe', 0.6, 'side_hew', 0.6)
+    # Haft jab (impact tick 7, blunt): the axe draws back to the hip with the head forward, then a short straight punch of
+    # the head into the foe's body and back.
+    out.append(beats('axe_haft_jab', 1.0, 0.35, 0.1, 0.16, (
+        dict(root=(0, 0, 0, 0, 0.4, 0.7), body=(-2, 16, 0), head=(0, -10, 0), right_arm=(30, 0, 6), right_hand=(18, 0, 0),
+             left_arm=(-30, 0, -10), right_leg=(8, 0, 0), left_leg=(-12, 0, 0), left_shin=(8, 0, 0)),
+        dict(root=(0, 0, 0, 0, 0.5, 0.9), body=(-3, 19, 0), head=(0, -12, 0), right_arm=(34, 0, 7), right_hand=(20, 0, 0),
+             left_arm=(-34, 0, -12)),
+        dict(root=(0, 0, 0, 0, 0.7, -1.8), body=(6, -20, 0), head=(-4, 14, 0), right_arm=(-80, 0, -8), right_hand=(112, 0, 0),
+             left_arm=(10, 0, 8), right_leg=(12, 0, 0), left_leg=(-22, 0, 0), left_shin=(14, 0, 0)),
+        dict(root=(0, 0, 0, 0, 0.7, -1.9), body=(6, -21, 0), head=(-4, 15, 0), right_arm=(-76, 0, -8), right_hand=(108, 0, 0),
+             left_arm=(12, 0, 8)),
+        dict(root=(0, 0, 0, 0, 0.25, -0.6), body=(2, -6, 0), head=(-1, 4, 0), right_arm=(-24, 0, -2), right_hand=(40, 0, 0),
+             left_arm=(4, 0, 2), right_leg=(4, 0, 0), left_leg=(-7, 0, 0), left_shin=(4, 0, 0)),
+        dict(root=(0, 0, 0, 0, 0.05, -0.1), body=(0, -1, 0), right_arm=(-4, 0, 0), right_hand=(6, 0, 0)))))
+    return out
+
+
+def axe_shield():
+    return axe_cuts('axe_shield', 0.5, 'hook_hew', 0.4)
+
+
 FAMILIES = {
     ('biped', 'sword'): sword,
     ('biped', 'spear'): spear,
+    ('biped', 'axe'): axe,
+    ('biped', 'axe_shield'): axe_shield,
 }
 
 
