@@ -33,6 +33,10 @@ public final class FrontMenuChecks implements ClientModInitializer {
                     if(!(c.currentScreen instanceof FrontMenuScreen)&&step==0)return;
                     ticks++;
                     if(ticks==80){report("idle-no-world",c.player==null&&c.getServer()==null);report("no-public-placeholder",c.currentScreen.children().stream().noneMatch(e->e instanceof ButtonWidget w&&w.getMessage().getString().startsWith("Public battles")));controls(c);shot(c,"home");}
+                    // Key art (board 4F.3): the home page at two window sizes, GUI scale Auto, to check the cover-scale and that the buttons leave the figures clear.
+                    if(ticks==81){c.options.getGuiScale().setValue(0);org.lwjgl.glfw.GLFW.glfwSetWindowSize(c.getWindow().getHandle(),1920,1080);}
+                    if(ticks==85){MeltyTest.report("front-art-1080-size",true,c.getWindow().getFramebufferWidth()+"x"+c.getWindow().getFramebufferHeight()+" gui "+c.getWindow().getScaledWidth()+"x"+c.getWindow().getScaledHeight());shot(c,"home-1080");org.lwjgl.glfw.GLFW.glfwSetWindowSize(c.getWindow().getHandle(),854,480);}
+                    if(ticks==89){MeltyTest.report("front-art-480-size",true,c.getWindow().getFramebufferWidth()+"x"+c.getWindow().getFramebufferHeight()+" gui "+c.getWindow().getScaledWidth()+"x"+c.getWindow().getScaledHeight());shot(c,"home-480p");}
                     if(ticks==90){click(c,"Settings");step=1;}
                     if(ticks==100){report("settings",c.currentScreen instanceof net.minecraft.client.gui.screen.option.OptionsScreen);c.currentScreen.close();}
                     if(ticks==110){click(c,"Credits");}
