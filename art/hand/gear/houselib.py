@@ -22,7 +22,7 @@ one palette. This module turns one into four GearPieces (helm, chest, legs, boot
 - Glow: texels in a glowing material (ember) of skin boxes go to the glow sheet. Ember inside a team box stays painted
   but is not lit (the cloth pass has no glow sheet); cloth_glow() counts them.
 """
-import copy, functools, math, os, sys
+import copy, functools, itertools, math, os, sys
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE); sys.path.insert(0, os.path.join(HERE, "..", "common"))
 from gearlib import GearPiece, RARITIES
@@ -59,14 +59,51 @@ def _face(b, f):
     ax, sign = OUTWARD[f]; lo, hi = b.lo_hi()
     return sign * (hi[ax] if sign > 0 else lo[ax])                     # larger is further out
 
-def converted_boxes(source):
+# Head clearance (brief: nothing clips the head). Source boxes whose tops rose above the shoulder band (y 25) into the
+# helm at rest are lowered, in px, before conversion; both sides move alike, so mirrored _l boxes take the same shift.
+LOWER = {
+    "forgewall": {"slab_r": 1.2, "slab_l": 1.2, "gorget": 1.0},
+    "tidewrought": {"shell_hump_r": 0.2, "shell_hump_l": 0.2},
+    "barrow_warden": {"skull_pauldron": 1.0, "skull_lame": 1.0, "skull_horn_back": 1.0, "skull_horn_tip": 1.0,
+                      "skull_horn_front": 1.0},
+}
+
+# Right-side boxes narrowed to a new outer-x span (x0, x1) so a turned helm clears them; _l boxes mirror it.
+SPAN = {"oathbound": {"pauldron_dome_r": (7.0, 10.0)}}
+
+def _lowered(name, boxes):
+    out = []
+    for b in boxes:
+        d = LOWER.get(name, {}).get(b.name)
+        if d:
+            b = copy.copy(b); b.frm = list(b.frm); b.origin = list(b.origin)
+            b.frm[1] -= d; b.origin[1] -= d
+        sp = SPAN.get(name, {}).get(b.name) or SPAN.get(name, {}).get(b.name[:-2] + "_r" if b.name.endswith("_l") else "")
+        if sp:
+            x0, x1 = sp if b.name.endswith("_r") else (-sp[1], -sp[0])
+            b = copy.copy(b); b.frm = list(b.frm); b.size = list(b.size); b.origin = list(b.origin)
+            b.frm[0], b.size[0], b.origin[0] = x0, x1 - x0, (x0 + x1) / 2
+        out.append(b)
+    return out
+
+def touching(boxes, eps=1e-4):
+    """Pairs of unrotated boxes whose opposite faces meet in one plane over some area: armour renders without back-face
+    culling, so these z-fight too (the engine's coplanar() only pairs faces that point the same way)."""
+    flat, out = [(b, b.lo_hi()) for b in boxes if not any(b.rot)], []
+    for (a, (la, ha)), (b, (lb, hb)) in itertools.combinations(flat, 2):
+        for ax in range(3):
+            if abs(ha[ax] - lb[ax]) > eps and abs(hb[ax] - la[ax]) > eps: continue
+            if all(min(ha[i], hb[i]) - max(la[i], lb[i]) > 0.02 for i in range(3) if i != ax): out.append((a.name, b.name))
+    return out
+
+def converted_boxes(source, name=None):
     """The source boxes at whole-pixel geometry, as source-space engine Boxes whose `inflate` is only a separator.
 
     Each box grows by its source inflate rounded to whole pixels. Where two faces then share a plane (they would
     z-fight), the one the source drew further out wins: if the inner one grew past where the source had it, it gives the
     pixel back; otherwise the outer one is lifted by 0.02 px (at most 0.1 px), which keeps the texels one per pixel to
     within a few hundredths."""
-    src = {b.name: b for b in source.boxes}
+    src = {b.name: b for b in _lowered(name, source.boxes)}
     k = {n: grow(b.inflate) for n, b in src.items()}
     e = {n: 0.0 for n in src}
     for _ in range(200):
@@ -76,7 +113,13 @@ def converted_boxes(source):
         for tier in ("base", "legendary"):
             for a, b, f in E.coplanar([x for x in boxes if x.in_tier(tier)] + BODY):
                 if not (a.startswith("p_") and b.startswith("p_")): clash.append((a, b, f))
-        if not clash: return boxes
+        if not clash:
+            touch = [t for tier in ("base", "legendary")
+                     for t in touching([x for x in boxes if x.in_tier(tier)])]
+            if not touch: return boxes
+            a, b = touch[0]; lift = a if e[a] <= e[b] else b   # either one rising a hair makes them overlap instead
+            if e[lift] + EPS > MAX_SEP + 1e-9: raise SystemExit("cannot separate %s and %s (touching)" % (a, b))
+            e[lift] = round(e[lift] + EPS, 4); continue
         a, b, f = clash[0]
         sa = _face(src.get(a) or BODY_BY[a], f); sb = _face(src.get(b) or BODY_BY[b], f)
         if sa == sb: outer, inner = (a, b) if b.startswith("p_") else (b, a)
@@ -95,7 +138,7 @@ def armour_set(name):
     def pal(rarity, team):   # the source palette with any of the six sides
         if team in C.TEAMS: return src.palette_fn(rarity, team)
         p = src.palette_fn(rarity, "crimson"); p.add("team", TEAMS[team], 0.20, clamp=False); return p
-    return E.ArmourSet(src.id, src.title, src.house, pal, converted_boxes(src), src.notes)
+    return E.ArmourSet(src.id, src.title, src.house, pal, converted_boxes(src, name), src.notes)
 
 @functools.lru_cache(maxsize=None)
 def palette(name, r, team): return armour_set(name).palette_fn(RAR[r], team)

@@ -17,7 +17,7 @@ def obb(b, above=None):
     height (unrotated boxes), None when nothing is left."""
     lo, hi = (np.array(v, dtype=float) for v in b.lo_hi())
     if above is not None and not any(b.rot):
-        if hi[1] <= above: return None
+        if hi[1] <= above + houselib.MAX_SEP + 1e-9: return None   # a dilation separator over the band is not a clip
         lo[1] = max(lo[1], above)
     c, h, ax = (lo + hi) / 2, (hi - lo) / 2, np.eye(3)
     if any(b.rot):
@@ -45,7 +45,7 @@ def depth(a, b):
         if best <= 0: return 0.0
     return best
 
-def clashes(name, tol=0.05):
+def clashes(name, tol=0.05, yaws=YAWS):
     """[(tier, head box, other box, worst depth, yaw, pitch)] where the turned head cuts into armour deeper than tol px."""
     s, out = houselib.armour_set(name), []
     for tier in ("base", "legendary"):
@@ -55,7 +55,7 @@ def clashes(name, tol=0.05):
         for h, o in itertools.product(head, rest):
             oh, oo, worst = obb(h), obb(o, BAND), (0.0, 0, 0)
             if oo is None: continue
-            for yaw, pitch in itertools.product(YAWS, PITCHES):
+            for yaw, pitch in itertools.product(yaws, PITCHES):
                 d = depth(turn(oh, yaw, pitch), oo)
                 if d > worst[0]: worst = (d, yaw, pitch)
             if worst[0] > tol: out.append((tier, h.name, o.name, round(worst[0], 2), worst[1], worst[2]))
