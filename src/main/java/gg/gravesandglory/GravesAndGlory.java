@@ -86,7 +86,7 @@ public final class GravesAndGlory implements ModInitializer {
         ServerEntityEvents.ENTITY_UNLOAD.register((entity,world)->{if(ArmyMobs.isTroop(entity))Battle.leaveSide(entity);});
         ServerTickEvents.END_SERVER_TICK.register(server -> {
             if(battle==null) return;
-            battle.tick();FeedEvents.tick(battle);
+            battle.tick();FeedEvents.tick(battle);GearCombat.tick(battle);
             // No hunger in Graves and Glory: food stays full (sprinting and slow natural healing still work) and saturation empty (so healing stays slow).
             for(ServerPlayerEntity p:server.getPlayerManager().getPlayerList()){var hunger=p.getHungerManager();if(hunger.getFoodLevel()!=20)hunger.setFoodLevel(20);hunger.setSaturationLevel(0);hunger.setExhaustion(0);}
         });
@@ -209,6 +209,8 @@ public final class GravesAndGlory implements ModInitializer {
         final Map<String,Integer> fallen=new LinkedHashMap<>();
         /** The commander ability (Commander): the battle time its cooldown ends, the time its run ends (0: not running), and what the running active keeps. */
         long abilityReadyAt,abilityUntil;Object abilityData;
+        /** The commander's worn gear this round (GearCombat.seat at round setup, a takeover or a fresh seat) and its relic slots; a bot seat has none. */
+        GearStats.Loadout gear=GearStats.empty();String[] relics=gear.relics().toArray(new String[0]);
         /** The most troops of each group alive at once this round (the HUD card's "of" count), raised with fullHealth and cleared with it. */
         final Map<String,Integer> fullCount=new HashMap<>();
         /** The commander's last enemy blow (a player commander is no Unit): the army whose troop or commander landed it and when (battle ticks). Battle.allowDamage sets it; a death with no attacker within Projectiles.CREDIT_WINDOW_TICKS of it (a pull into lava, a knock off an edge) is that army's (Veterans.onCommanderDeath, which clears it). */
@@ -775,11 +777,11 @@ public final class GravesAndGlory implements ModInitializer {
                 // The seat keeps the bot's living army and its queue, but from now on it trains and reinforces from the joiner's own banner, and fights under his class.
                 // The active's cooldown belongs to the squad, not to whoever commands it: it stays with the seat, so taking a seat over (its owner coming back, or
                 // anyone else) never refreshes an active. Only a running active stops here, before the class changes; leave already stopped the owner's.
-                Commander.stop(this,s);s.banner=campaign.banner(s);s.commander=campaign.profile(s.owner).commander;
+                Commander.stop(this,s);s.banner=campaign.banner(s);s.commander=campaign.profile(s.owner).commander;GearCombat.seat(s,campaign.profile(s.owner));
             }else{
                 s=new Squad(p.getUuid(),team,fieldBase(team));s.seated=decision.seated();
                 // A fresh seat mid-round fights under its owner's class, as round setup (Campaign.prepareRound) and a takeover give it.
-                if(s.seated){s.commander=campaign.profile(s.owner).commander;s.banner=campaign.banner(s);reinforce(s);}
+                if(s.seated){s.commander=campaign.profile(s.owner).commander;GearCombat.seat(s,campaign.profile(s.owner));s.banner=campaign.banner(s);reinforce(s);}
             }
             squads.put(s.owner,s);welcomed.add(s.owner);
             p.changeGameMode(GameMode.ADVENTURE);equipPlayer(p);
@@ -812,14 +814,13 @@ public final class GravesAndGlory implements ModInitializer {
          *  "moved too quickly". syncWithPlayerPosition() moves that reference to the new spot, which is what the vanilla /tp path gets from the next tick. */
         void relocate(ServerPlayerEntity p,double x,double y,double z,float yaw,float pitch){p.fallDistance=0;p.setVelocity(Vec3d.ZERO);p.teleport(world,x,y,z,yaw,pitch);TeleportSync.afterTeleport(p);p.fallDistance=0;p.velocityModified=true;}
         void toBase(ServerPlayerEntity p,int team){Vec3d b=fieldBase(team);relocate(p,b.x,b.y+1,b.z,team==0?-90:90,8);}
+        /** Arms the commander from the gear he wears (GearCombat): the kit, then the squad's Loadout as attribute modifiers. An unseated
+         *  player (a spectator seat) gets the kit with no modifiers. */
         void equipPlayer(ServerPlayerEntity p){
-            p.getInventory().clear();p.getInventory().insertStack(new ItemStack(Items.IRON_SWORD));
-            p.getInventory().insertStack(new ItemStack(Items.BOW));p.getInventory().insertStack(new ItemStack(Items.ARROW,64));
-            for(var slot:new EquipmentSlot[]{EquipmentSlot.HEAD,EquipmentSlot.CHEST,EquipmentSlot.LEGS,EquipmentSlot.FEET}){
-                Item item=switch(slot){case HEAD->Items.IRON_HELMET;case CHEST->Items.IRON_CHESTPLATE;case LEGS->Items.IRON_LEGGINGS;default->Items.IRON_BOOTS;};
-                p.equipStack(slot,unbreakable(item));
-            }
-            Commander.applyPlayer(p,squads.get(p.getUuid()));p.setHealth(p.getMaxHealth());p.getHungerManager().setFoodLevel(20);
+            var pr=campaign.profile(p.getUuid());var s=squads.get(p.getUuid());
+            GearCombat.kit(p,pr);
+            if(s!=null&&s.seated&&!s.bot){GearCombat.seat(s,pr);GearCombat.apply(p,s.gear);}else GearCombat.clear(p);
+            p.getHungerManager().setFoodLevel(20);
         }
         static ItemStack unbreakable(Item item){if(item==Items.AIR)return ItemStack.EMPTY;ItemStack s=new ItemStack(item);s.getOrCreateNbt().putBoolean("Unbreakable",true);return s;}
         public void command(ServerPlayerEntity p,String cmd){

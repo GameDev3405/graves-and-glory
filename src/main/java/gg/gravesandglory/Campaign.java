@@ -193,7 +193,7 @@ public final class Campaign {
         if(b.running&&squad!=null&&squad.seated){returned(p.getUuid());b.toBase(p,squad.team);}else toLobby(p);
         if(b.running&&(squad==null||!squad.seated))notice(p.getUuid(),WELCOME_WAIT); // true for the moments he reads it, and gone with the round (returnLobby) or after NOTICE_TICKS: no standing line, which the round's end would leave false
         else standing(p.getUuid(),WELCOME);}
-    void toLobby(ServerPlayerEntity p){var at=CampWorld.spawn(profile(p.getUuid()));b.relocate(p,at.x(),at.y(),at.z(),at.yaw(),at.pitch());p.changeGameMode(GameMode.ADVENTURE);p.getInventory().clear();Commander.applyPlayer(p,null);p.setHealth(p.getMaxHealth());p.getHungerManager().setFoodLevel(20);}
+    void toLobby(ServerPlayerEntity p){var at=CampWorld.spawn(profile(p.getUuid()));b.relocate(p,at.x(),at.y(),at.z(),at.yaw(),at.pitch());p.changeGameMode(GameMode.ADVENTURE);p.getInventory().clear();GearCombat.clear(p);p.setHealth(p.getMaxHealth());p.getHungerManager().setFoodLevel(20);}
     void returnLobby(){
         // The mode takes down what it placed before the round's armies go (idempotent: finish and a manual return both call it).
         // Only a clean teardown deletes the marker: a piece that could not be put back stays recoverable after a crash.
@@ -256,7 +256,7 @@ public final class Campaign {
         if(cmd.startsWith("star:")){star(p,pr,cmd.substring(5));return true;}
         if(cmd.startsWith("legendary:")){legendary(p,pr,cmd.substring(10));return true;}
         if(cmd.startsWith("unlock:")||cmd.startsWith("army:")){notice(p.getUuid(),"Troops now join by recruitment rolls at the camp shrine.");return true;}
-        if(cmd.startsWith("class:")){String id=cmd.substring(6);if(Arrays.stream(Spec.CLASSES).anyMatch(c->c.id().equals(id))){pr.commander=id;squad.commander=id;Commander.applyPlayer(p,squad);save(p.getUuid());var room=social.room(p.getUuid());if(room!=null&&!room.playing&&room.ready.remove(p.getUuid()))social.revision++;}return true;}
+        if(cmd.startsWith("class:")){String id=cmd.substring(6);if(Arrays.stream(Spec.CLASSES).anyMatch(c->c.id().equals(id))){pr.commander=id;squad.commander=id;save(p.getUuid());var room=social.room(p.getUuid());if(room!=null&&!room.playing&&room.ready.remove(p.getUuid()))social.revision++;}return true;}
         if(cmd.startsWith("slot:")){ // slot:<i>:<troop id or empty>: the banner is rebuilt with repack, so markers follow their Epic or Legendary
             String[] parts=cmd.split(":");if(parts.length!=3)return true;int slot;try{slot=Integer.parseInt(parts[1]);}catch(Exception e){return true;}
             var catalog=RosterMath.Catalog.fromSpec();String id=parts[2];var type=troop(id);
@@ -340,7 +340,7 @@ public final class Campaign {
             int target=size; // practice and a March battle set size in soloStart, so one bot per team stays the practice rule
             if(fill||practice)for(int i=humans;i<target;i++){UUID id=UUID.randomUUID();var s=new GravesAndGlory.Squad(id,team,b.fieldBase(team));s.bot=true;s.tier=activeBattle!=null?activeBattle.difficulty():difficulty;s.commander=Spec.CLASSES[i%Spec.CLASSES.length].id();s.lane=i%3;var ally=allyRow(s);if(ally!=null)s.tier=ally.difficulty();b.squads.put(id,s);} // a March battle's allies fight at their own row's tier
         }
-        participants.clear();for(var s:b.squads.values())if(!s.bot&&s.seated){participants.add(s.owner);results.remove(s.owner);joinedAt.put(s.owner,b.time);s.commander=profile(s.owner).commander;}
+        participants.clear();for(var s:b.squads.values())if(!s.bot&&s.seated){participants.add(s.owner);results.remove(s.owner);joinedAt.put(s.owner,b.time);s.commander=profile(s.owner).commander;GearCombat.seat(s,profile(s.owner));}
         for(var s:b.squads.values())if(s.seated)s.banner=banner(s);
         chooseSides();
         serial++;matchId=UUID.randomUUID().toString();introUntil=b.time+120;headline="";

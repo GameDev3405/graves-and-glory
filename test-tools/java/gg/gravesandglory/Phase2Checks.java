@@ -962,7 +962,7 @@ public final class Phase2Checks implements ClientModInitializer {
                     ci++;next(b,1);
                 }
                 case "reaver"->{
-                    var attack=p.getAttributeInstance(net.minecraft.entity.attribute.EntityAttributes.GENERIC_ATTACK_DAMAGE);var mod=attack==null?null:attack.getModifier(Commander.ATTACK);
+                    var attack=p.getAttributeInstance(net.minecraft.entity.attribute.EntityAttributes.GENERIC_ATTACK_DAMAGE);var mod=attack==null?null:attack.getModifier(GearCombat.ATTACK);
                     boolean blade=mod!=null&&near(mod.getValue(),2)&&near(mod.getValue(),c.passiveValue());
                     p.damage(b.world.getDamageSources().generic(),1000f);Long until=b.respawns.get(player);long wait=until==null?-1:until-b.time;
                     reaverOk=blade&&near(health,20)&&near(lobbyHealth,20)&&wait==180&&wait==Math.round(c.passiveValue2())*20L;
@@ -1019,7 +1019,7 @@ public final class Phase2Checks implements ClientModInitializer {
                     if(ci>=order.size()){report("p2-class-passives",passivesOk,passiveWhy.toString());next(b,19);return;}
                     if(b.running)b.campaign.returnLobby();var p=sp(b);if(p==null)return;
                     if(ci>0&&order.get(ci-1).equals("champion"))lobbyHealth=p.getMaxHealth();
-                    if(ci>0&&order.get(ci-1).equals("reaver")){var a=p.getAttributeInstance(net.minecraft.entity.attribute.EntityAttributes.GENERIC_ATTACK_DAMAGE);lobbyAttackGone=a!=null&&a.getModifier(Commander.ATTACK)==null;}
+                    if(ci>0&&order.get(ci-1).equals("reaver")){var a=p.getAttributeInstance(net.minecraft.entity.attribute.EntityAttributes.GENERIC_ATTACK_DAMAGE);lobbyAttackGone=a!=null&&a.getModifier(GearCombat.ATTACK)==null;}
                     command(b,"class:"+order.get(ci),2);
                 }
                 case 2->{if(since(b)<20)return;String id=order.get(ci);var own=b.squads.get(player);
@@ -1029,7 +1029,7 @@ public final class Phase2Checks implements ClientModInitializer {
                 case 4->{if(since(b)>=10)classCheck(b);}
                 case 5->{ // the Reaver waits out his 9 s, and the respawn equips him again: his +2 attack comes back with it
                     var p=sp(b);if(p==null)return;boolean back=!b.respawns.containsKey(player);if(!back&&since(b)<400)return;
-                    var attack=p.getAttributeInstance(net.minecraft.entity.attribute.EntityAttributes.GENERIC_ATTACK_DAMAGE);var mod=attack==null?null:attack.getModifier(Commander.ATTACK);
+                    var attack=p.getAttributeInstance(net.minecraft.entity.attribute.EntityAttributes.GENERIC_ATTACK_DAMAGE);var mod=attack==null?null:attack.getModifier(GearCombat.ATTACK);
                     boolean again=back&&since(b)>=180&&since(b)<=182&&!p.isSpectator()&&mod!=null&&near(mod.getValue(),2)&&near(p.getMaxHealth(),20)&&Commander.player(b,b.squads.get(player))==p;
                     passive(reaverOk&&again&&respawnSeen==9,"reaver",reaverWhy+"; the client's countdown read "+respawnSeen+" s; he was back "+(back?"after "+since(b)+" ticks":"never")+" (want 180) as "+(p.isSpectator()?"a spectator":"a commander")+" with attack modifier "+(mod==null?"none":"+"+mod.getValue())+" and max health "+p.getMaxHealth());
                     ci++;next(b,1);}
@@ -1114,7 +1114,7 @@ public final class Phase2Checks implements ClientModInitializer {
                     b.units.removeIf(u->{if(u.squad==old){u.mob.discard();return true;}return false;});freshBots=b.squads.values().stream().filter(s->s.bot&&s.seated).count();next(b,54);}
                 case 54->{var s=b.squads.get(player);var p=sp(b);
                     if(s==null||p==null){if(since(b)>100){report("p2-fresh-seat",false,"he was never seated again");b.campaign.returnLobby();next(b,40);}return;}
-                    var attack=p.getAttributeInstance(net.minecraft.entity.attribute.EntityAttributes.GENERIC_ATTACK_DAMAGE);var mod=attack==null?null:attack.getModifier(Commander.ATTACK);
+                    var attack=p.getAttributeInstance(net.minecraft.entity.attribute.EntityAttributes.GENERIC_ATTACK_DAMAGE);var mod=attack==null?null:attack.getModifier(GearCombat.ATTACK);
                     boolean ok=freshBots==0&&s!=freshOld&&s.seated&&!s.bot&&s.commander.equals("reaver")&&mod!=null&&near(mod.getValue(),2)&&near(p.getMaxHealth(),20)&&Commander.respawnSeconds(s)==9;
                     report("p2-fresh-seat",ok,"bot fill off, two seats a side, "+freshBots+" bot seats: he joined into a new seat="+(s!=freshOld)+" (seated "+s.seated+") as "+s.commander+" (his class is reaver): attack modifier "+(mod==null?"none":"+"+mod.getValue())+", max health "+p.getMaxHealth()+" (a Champion has 24), respawn "+Commander.respawnSeconds(s)+" s");
                     b.campaign.returnLobby();next(b,40);}

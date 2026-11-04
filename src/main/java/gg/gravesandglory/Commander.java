@@ -44,9 +44,6 @@ public final class Commander {
     /** The notice for an active this build has no behaviour for yet. */
     public static final String NOT_READY = "This command is not ready in this build.";
 
-    /** Fixed ids of the two attribute modifiers applyPlayer manages, so a new one always replaces the old. */
-    static final UUID HEALTH = UUID.fromString("e01516bb-07f8-49b1-86c4-873d30106609"), ATTACK = UUID.fromString("8352fccf-a081-4a35-a122-2f5e5de6e1de");
-
     /** The fixed id of Muster's speed modifier on its army's troops. */
     static final UUID RALLY = UUID.fromString("8382ceb7-bd85-41fd-b662-34b5f1d36d95");
 
@@ -471,25 +468,5 @@ public final class Commander {
     public static int respawnSeconds(GravesAndGlory.Squad s) {
         var c = row(s);
         return c.passive().equals("reaver") ? (int) Math.round(c.passiveValue2()) : GravesAndGlory.R.respawnSeconds();
-    }
-
-    /**
-     * The Champion's extra health and the Reaver's extra attack on the commander himself, as temporary attribute modifiers (never
-     * saved with the player). The old ones always go first; then a seated human squad's class adds its own. A null or unseated squad
-     * (the lobby, a class change in camp) leaves none. Health above the new maximum is cut back to it.
-     */
-    public static void applyPlayer(ServerPlayerEntity p, GravesAndGlory.Squad s) {
-        var health = p.getAttributeInstance(EntityAttributes.GENERIC_MAX_HEALTH);
-        var attack = p.getAttributeInstance(EntityAttributes.GENERIC_ATTACK_DAMAGE);
-        if (health != null) health.removeModifier(HEALTH);
-        if (attack != null) attack.removeModifier(ATTACK);
-        if (s != null && s.seated && !s.bot) {
-            var c = row(s);
-            if (health != null && c.passive().equals("champion") && c.passiveValue() != 0)
-                health.addTemporaryModifier(new EntityAttributeModifier(HEALTH, "Graves and Glory commander health", c.passiveValue(), EntityAttributeModifier.Operation.ADDITION));
-            if (attack != null && c.passive().equals("reaver") && c.passiveValue() != 0)
-                attack.addTemporaryModifier(new EntityAttributeModifier(ATTACK, "Graves and Glory commander attack", c.passiveValue(), EntityAttributeModifier.Operation.ADDITION));
-        }
-        if (p.getHealth() > p.getMaxHealth()) p.setHealth(p.getMaxHealth());
     }
 }
