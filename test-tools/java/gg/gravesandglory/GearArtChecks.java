@@ -11,7 +11,9 @@ import java.util.*;
  * shots from the front and back); with only the helm and weapons worn, only those draw (p1-gear-art-single); the gear screen frame
  * draws the worn loadout at 1920x1080 and 3840x2160 (p1-gear-art-frame). Task 10: back in battle, a greatsword, a mending staff and a
  * war banner each play their clips, shot at the strike's peak: the strike over a swing, the staff's cast in a fresh cooldown, the
- * banner raised while sneaking (p1-gear-art-clips). The profile is put back from a JSON copy. Never shipped.
+ * banner raised while sneaking (p1-gear-art-clips). Kort's 11-04 review: each class set at Legendary with a sword and shield, a
+ * staff and a banner, shot from the front, both sides and the back by a camera stand (p1-gear-art-sets). The profile is put back
+ * from a JSON copy. Never shipped.
  */
 final class GearArtChecks implements Phase1Checks.Suite {
     static final List<String> SET = List.of("bruiser_helm", "bruiser_chest", "bruiser_legs", "bruiser_boots", "arming_sword", "kite_shield");
@@ -20,14 +22,18 @@ final class GearArtChecks implements Phase1Checks.Suite {
     volatile String backup, why = "";
     volatile boolean ready, battleReady, restored, ok;
     static final List<String> CLIP_WEAPONS = List.of("greatsword", "mending_staff", "war_banner");
+    static final List<String> CLASSES = List.of("bruiser", "commander", "healer", "ranged");
+    static final List<List<String>> HELD = List.of(List.of("arming_sword", "kite_shield"), List.of("mending_staff"), List.of("war_banner"));
+    static final String[] VIEWS = {"front", "right", "back", "left"};
     int stage, at, oldW, oldH, oldGui, wi;
+    float yaw;
     long frames0;
 
     static void say(String line) { System.out.println("[p1] gear-art: " + line); }
     void next(int tick, int s) { stage = s; at = tick; ok = false; }
 
     @Override public void cleanup(MinecraftClient c) {
-        c.options.setPerspective(Perspective.FIRST_PERSON); c.options.hudHidden = false; c.options.sneakKey.setPressed(false);
+        c.options.setPerspective(Perspective.FIRST_PERSON); c.options.hudHidden = false; c.options.sneakKey.setPressed(false); c.setCameraEntity(c.player);
         if (restored || player == null || c.getServer() == null) return;
         try { c.getServer().submit(this::restore).join(); } catch (RuntimeException e) { say("restore in cleanup failed: " + e); }
     }
@@ -57,7 +63,7 @@ final class GearArtChecks implements Phase1Checks.Suite {
     }
 
     public void step(MinecraftClient c, int tick) {
-        if (tick > 9000 && stage < 9) { Phase1Checks.report("p1-gear-art-timeout", false, "stuck at stage " + stage); next(tick, 9); }
+        if (tick > 16000 && stage < 9) { Phase1Checks.report("p1-gear-art-timeout", false, "stuck at stage " + stage); next(tick, 9); }
         int k = tick - at;
         switch (stage) {
             case 0 -> { // the full bruiser set at Legendary, worn
@@ -188,6 +194,37 @@ final class GearArtChecks implements Phase1Checks.Suite {
                     if (++wi < CLIP_WEAPONS.size()) { next(tick, 6); return; }
                     c.options.setPerspective(Perspective.FIRST_PERSON); c.options.hudHidden = false;
                     Phase1Checks.report("p1-gear-art-clips", why.isEmpty(), why.isEmpty() ? "greatsword, mending staff and war banner play their strike, cast and raise clips" : why);
+                    why = ""; wi = 0; next(tick, 7);
+                }
+            }
+            case 7 -> { // p1-gear-art-sets: a class set and a loadout per pass, four views each
+                String cls = CLASSES.get(wi / HELD.size()); var held = HELD.get(wi % HELD.size());
+                List<String> want = new ArrayList<>(List.of(cls + "_helm", cls + "_chest", cls + "_legs", cls + "_boots")); want.addAll(held);
+                if (k == 1) Phase1Checks.server(c, b -> {
+                    var pr = b.campaign.profile(player);
+                    pr.gear.clear(); pr.equipped.clear();
+                    for (String item : want) {
+                        var piece = new Gear.Piece(pr.nextGearUid++, item, "legendary", 90, 100);
+                        pr.gear.add(piece);
+                        var err = Gear.equip(pr, piece.uid);
+                        if (!err.isEmpty()) why += item + ": " + err + "; ";
+                    }
+                    b.equipPlayer(b.server.getPlayerManager().getPlayer(player));
+                });
+                if (k == 2) { c.setScreen(null); c.options.hudHidden = true; c.options.setPerspective(Perspective.THIRD_PERSON_FRONT); yaw = c.player.getYaw(); }
+                // the front camera follows the look yaw, held still; the model turns by its body and head yaw instead (vanilla never draws
+                // the local player through another camera entity)
+                int v = (k - 30) / 20; float turn = yaw + 90 * Math.max(0, Math.min(v, VIEWS.length - 1));
+                c.player.setYaw(yaw); c.player.setPitch(0); c.player.prevYaw = yaw; c.player.prevPitch = 0;
+                c.player.setBodyYaw(turn); c.player.prevBodyYaw = turn; c.player.setHeadYaw(turn); c.player.prevHeadYaw = turn;
+                if (k >= 30 && (k - 30) % 20 == 15 && v < VIEWS.length) {
+                    Phase1Checks.shot(c, "gear-art-set-" + cls + "-" + String.join("+", held) + "-" + VIEWS[v]);
+                    if (v == 0) why += wornWhy(c, want);
+                }
+                if (k == 30 + 20 * VIEWS.length) {
+                    if (++wi < CLASSES.size() * HELD.size()) { next(tick, 7); return; }
+                    c.options.hudHidden = false;
+                    Phase1Checks.report("p1-gear-art-sets", why.isEmpty(), why.isEmpty() ? "four class sets with sword and shield, staff and banner, each drawn by its own models from four sides" : why);
                     next(tick, 9);
                 }
             }

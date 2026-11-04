@@ -27,4 +27,4 @@ def make(r, side):
     if r == LEGEND: c.append(Cube("crown", [-1.75, 18.25, -1.75], [1.75, 19.0, 1.75], "gilt", tone(GOLD, 3, lead=False)))
     return c
 
-def weapon(): return Weapon("mending_staff", make, "pole", note="gnarled staff, two tines, a small lantern head")
+def weapon(): return Weapon("mending_staff", make, "staff", note="gnarled staff, two tines, a small lantern head")

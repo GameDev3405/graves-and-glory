@@ -30,4 +30,4 @@ def make(r, side):
     if r == LEGEND: c.append(Cube("fringe", [0.85, 23.2, -0.35], [7, 23.6, 0.35], "gilt", tone(GOLD, 4, lead=False)))
     return c
 
-def weapon(): return Weapon("long_colours", make, "pole", show_side=True, note="tall pole, long tattered charred flag, iron cross")
+def weapon(): return Weapon("long_colours", make, "staff", show_side=True, note="tall pole, long tattered charred flag, iron cross")

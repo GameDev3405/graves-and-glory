@@ -36,6 +36,20 @@ class GearArt(unittest.TestCase):
                         fw, fh = dims(face, *(int(v) for v in b.size))
                         self.assertLessEqual(x0 + fw, sheet[0]); self.assertLessEqual(y0 + fh, sheet[1])
 
+    def test_body_bones_on_the_neck_frame(self):
+        """Kort 11-04: a body-parented bone exports in the vanilla body part's frame (box y 0..12 from the neck), not the
+        mannequin's waist frame, or the chest rides up over the head and bares the torso."""
+        import json
+        d = os.path.join(ROOT, "src", "main", "resources", "assets", "gravesandglory", "models", "gear")
+        for f in sorted(os.listdir(d)):
+            if not f.endswith(".json"): continue
+            with open(os.path.join(d, f)) as h: j = json.load(h)
+            for b in j["bones"]:
+                if b["parent"] != "body" or any(b["rotation"]): continue
+                for x in b["boxes"]:
+                    lo = b["pivot"][1] + x["origin"][1]
+                    self.assertTrue(-8 <= lo and lo + x["size"][1] <= 26, (f, b["name"], lo))   # embers rise a little over the shoulders
+
     def test_every_rarity_paints(self):
         for iid, (_, p, (B, skins, _, _)) in built().items():
             for r in gearlib.RARITIES:
@@ -220,6 +234,19 @@ class GearWeapons(unittest.TestCase):
                     self.assertLessEqual(off, 45, (item, name, k["t"], k["note"], round(off)))
         with open(os.path.join(ROOT, "src", "main", "resources", "assets", "gravesandglory", "gear_clips.json")) as f:
             self.assertEqual(json.load(f), json.loads(json.dumps(clips.exported())), "run: python art/hand/gear/clips.py export")
+
+    def test_held_clear_of_the_body(self):
+        """Kort 11-04: a staff or banner leans out of the arm, its shaft clear of the arm from 5 px above the fist; the shield's
+        top stays below the head (body y 0) at rest."""
+        for iid, w in self.ws.items():
+            if w.hold != "staff": continue
+            part, off = self.L.ARM[self.L.HOLDS[w.hold][0]]
+            for h in range(5, 21):
+                p = [a + b for a, b in zip(self.L.hold_point(w.hold, (0, h, 0)), off)]
+                if -2 <= p[1] <= 10: self.assertTrue(p[0] < -3.8 or p[0] > 1.8 or p[2] < -2.8 or p[2] > 2.8, (iid, h, p))
+        part, off = self.L.ARM[self.L.HOLDS["shield"][0]]
+        top = min(self.L.hold_point("shield", c)[1] + off[1] + 2 for c in ([x, y, z] for b in self.ws["kite_shield"].cubes(5) for x in (b.lo[0], b.hi[0]) for y in (b.lo[1], b.hi[1]) for z in (b.lo[2], b.hi[2])))
+        self.assertGreaterEqual(top, 0, "the shield reaches the head")
 
 class GearIcons(unittest.TestCase):
     def test_item_icons(self):

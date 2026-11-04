@@ -63,6 +63,15 @@ public final class CommanderGearFeature extends FeatureRenderer<AbstractClientPl
         return e instanceof AbstractClientPlayerEntity p ? p.getEquippedStack(slot) : ItemStack.EMPTY;
     }
 
+    /** Hides the skin's outer layer under each worn piece this feature draws, so it cannot show through or flicker against the
+     *  armour (the hat layer sits where a helm does). Runs after setAngles, past setModelPose; 0 age is the first-person arm. */
+    public static void cover(PlayerEntityModel<?> m, net.minecraft.entity.LivingEntity e, float age) {
+        if (age == 0f) return;
+        if (drawsOwn(stack(e, EquipmentSlot.HEAD))) m.hat.visible = false;
+        if (drawsOwn(stack(e, EquipmentSlot.CHEST))) { m.jacket.visible = false; m.leftSleeve.visible = false; m.rightSleeve.visible = false; }
+        if (drawsOwn(stack(e, EquipmentSlot.LEGS))) { m.leftPants.visible = false; m.rightPants.visible = false; }
+    }
+
     ModelPart part(String name) {
         var m = getContextModel();
         return switch (name) { case "head" -> m.head; case "body" -> m.body; case "right_arm" -> m.rightArm; case "left_arm" -> m.leftArm;

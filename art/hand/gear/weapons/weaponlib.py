@@ -11,7 +11,7 @@ Each step up also changes the build (a wrap, guard, plate, spike or fitting), so
 borders: test_tiers_change_shape holds every weapon to it.
 
 Held on the mannequin: a `blade` hold points the weapon forward from the right fist (edge down), a `pole` hold stands
-it upright (string or flag trailing back), `shield` sits before the left forearm, `hip` hangs at the right hip. A
+it upright (string trailing back), a `staff` hold leans a staff or banner slightly out and forward of the arm, `shield` sits before the left forearm, `hip` hangs at the right hip. A
 two-handed weapon names its second grip; the left arm reaches for it by a search over the arm's angles.
 
   python weaponlib.py sheet <png>     the contact sheet of every weapon (art/hand/gear/weapons/*.py)
@@ -172,7 +172,7 @@ def chain(prefix, start, lengths, leans, widths, depth, mat, paint, mirror=False
 
 # ---- the weapon ----
 class Weapon:
-    """make(r, side) -> [Cube]; grips: the y of each fist on the weapon (0 first); hold: blade, pole, shield or hip."""
+    """make(r, side) -> [Cube]; grips: the y of each fist on the weapon (0 first); hold: blade, pole, staff, shield or hip."""
     def __init__(s, item_id, make, hold="blade", grips=(0,), note="", show_side=False):
         s.item_id, s.make, s.hold, s.grips, s.note, s.show_side = item_id, make, hold, tuple(grips), note, show_side
         s.hands = len(s.grips)
@@ -190,10 +190,13 @@ class Weapon:
 HOLDS = {   # parent bone, weapon point -> parent frame (y down, -z forward), offset in the parent frame
     "blade":  ("right_hand", lambda p: (p[2], -p[0], -p[1]), (0, 0, 0)),
     "pole":   ("right_hand", lambda p: (p[2], -p[1], p[0]), (0, 0, 0)),
-    "shield": ("left_hand", lambda p: (-p[0], -p[1], p[2]), (0.5, -2, -2.65)),
+    # a staff or banner leans out and forward from before the knuckles, so the shaft clears the arm (Kort 11-04)
+    "staff":  ("right_hand", lambda p: render.app(STAFF, (p[2], -p[1], p[0])), (-1, 0, -2.2)),
+    "shield": ("left_hand", lambda p: (-p[0], -p[1], p[2]), (1.5, 1.5, -2.65)),   # its top at the shoulder, clear of the head (Kort 11-04)
     "hip":    ("body", None, (-5.4, -0.5, 1.2)),
 }
 HIP = render.rot(0, 0, -22)
+STAFF = render.rot(12, 0, -8)   # the top 12 degrees forward, 8 out from the body
 POSES = {"idle": {}, "attack": {"right_arm": (-30, 0, 0)}}   # BipedClips attack at TroopClips.PEAKS["attack"] (0.25 s)
 TWO_HAND = {"idle": (-45, -22, 0), "attack": (-30, -22, 0)}    # a two-handed grip brings the fist in to the centre line
 LIGHT = [0.35, -0.85, -0.45]

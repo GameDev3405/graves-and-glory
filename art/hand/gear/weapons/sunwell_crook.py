@@ -20,4 +20,4 @@ def make(r, side):
     if r == LEGEND: c.append(Cube("sun", [1.5, 14.6, -0.3], [3.6, 16.8, 0.3], "gem", stone(SUN), lit=W.FACES))
     return c
 
-def weapon(): return Weapon("sunwell_crook", make, "pole", note="pale ash crook, a gold ring under the hook")
+def weapon(): return Weapon("sunwell_crook", make, "staff", note="pale ash crook, a gold ring under the hook")

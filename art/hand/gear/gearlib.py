@@ -68,8 +68,10 @@ class GearPiece:
                "skins": {str(r): base + "%s_r%d.png" % (s.item_id, r) for r in RARITIES},
                "glow": {str(r): base + "%s_e%d.png" % (s.item_id, r) for r in glows}, "bones": []}
         for bone in B:
+            # the mannequin body's frame sits at its waist (box y -12..0); the vanilla body part's at its neck (box y 0..12)
+            pivot = [bone.pivot[0], bone.pivot[1] + 12, bone.pivot[2]] if bone.parent == "body" else bone.pivot
             out["bones"].append({"name": bone.name, "parent": bone.parent, "team": bone.team, "tag": bone.tag, "stages": bone.stages,
-                                 "sheet": list(s.cloth if bone.team else s.skin), "pivot": bone.pivot, "rotation": bone.rot,
+                                 "sheet": list(s.cloth if bone.team else s.skin), "pivot": pivot, "rotation": bone.rot,
                                  "boxes": [{"origin": b.origin, "size": b.size, "uv": b.uv, "mirror": False, "dilation": [b.dil] * 3} for b in bone.boxes]})
         return out
 

@@ -112,15 +112,18 @@ def muster_seal():               # rally_horn: a wax seal on a strip of cloth, a
     i.px([(12, 12), (15, 11), (19, 12)], WAX[1]); i.px([(11, 7), (12, 6)], WAX[4])
     return i.done()
 
-def gravebloom_censer():         # grave_bloom: a hanging iron censer, pale grave-light curling out
+def gravebloom_censer():         # grave_bloom: a censer swung on its chain, grave-light pouring out and opening into a flower
     i = Icon()
-    i.layer(IRON, 2, lambda d: d.line([(15, 3), (15, 9)], fill=1), light=False)
-    i.layer(IRON, 3, lambda d: d.polygon([(10, 12), (21, 12), (22, 17), (19, 22), (12, 22), (9, 17)], fill=1))
-    i.layer(IRON, 4, lambda d: d.polygon([(12, 9), (19, 9), (21, 12), (10, 12)], fill=1))
-    i.layer(IRON, 2, lambda d: d.rectangle([13, 22, 18, 24], fill=1))
-    i.px([(11, 15), (13, 15), (15, 15), (17, 15), (19, 15), (12, 18), (14, 18), (16, 18), (18, 18)], GHOST[4])   # light through the holes
-    i.px([(22, 9), (23, 8), (23, 7), (22, 6), (22, 5), (23, 4)], GHOST[3]); i.px([(24, 9), (25, 8)], GHOST[2])
-    i.px([(8, 10), (7, 9), (7, 8), (8, 7)], GHOST[3]); i.px([(6, 11)], GHOST[2])
+    i.layer(IRON, 4, lambda d: d.ellipse([9, 2, 11, 4], outline=1))                                 # the ring it swings from
+    i.layer(IRON, 3, lambda d: d.line([(10, 5), (10, 8)], fill=1, width=2)); i.px([(10, 6), (11, 7)], IRON[1])   # the chain, link by link
+    i.layer(IRON, 4, lambda d: d.ellipse([7, 9, 14, 13], fill=1))                                  # the domed lid
+    i.layer(IRON, 3, lambda d: d.polygon([(6, 13), (15, 13), (15, 18), (13, 21), (8, 21), (6, 18)], fill=1))   # the bowl
+    i.layer(IRON, 2, lambda d: d.rectangle([8, 21, 13, 22], fill=1))                               # the foot
+    i.px([(8, 15), (10, 15), (12, 15), (9, 17), (11, 17), (13, 17)], GHOST[5])                     # light through the piercings
+    i.layer(GHOST, 3, lambda d: d.line([(15, 12), (17, 11), (18, 13), (20, 14), (21, 12), (20, 10)], fill=1, width=2))   # the smoke
+    i.layer(GHOST, 4, lambda d: d.ellipse([20, 3, 23, 6], fill=1)); i.layer(GHOST, 4, lambda d: d.ellipse([24, 6, 27, 9], fill=1))
+    i.layer(GHOST, 4, lambda d: d.ellipse([20, 9, 23, 12], fill=1)); i.layer(GHOST, 4, lambda d: d.ellipse([16, 6, 19, 9], fill=1))
+    i.layer(AMBER, 3, lambda d: d.ellipse([20, 6, 23, 9], fill=1))                                # the bloom's heart
     return i.done()
 
 def forward_cache():             # forward_supply: a strapped supply crate with a lantern-hook stake
@@ -133,13 +136,16 @@ def forward_cache():             # forward_supply: a strapped supply crate with 
     i.px([(11, 18), (20, 18)], IRON[5]); i.px([(9, 14), (22, 14), (9, 23), (22, 23)], IRON[4])
     return i.done()
 
-def chargers_spur():             # dash: a rider's spur, the rowel a spiked star
+def chargers_spur():             # dash: a rider's boot at full stride, the spur's star rowel at the heel, speed streaks behind
     i = Icon()
-    i.layer(IRON, 4, lambda d: d.arc([5, 7, 21, 25], 60, 300, fill=1, width=2))
-    i.layer(IRON, 3, lambda d: d.line([(19, 16), (22, 16)], fill=1, width=2))
-    i.layer(BRASS, 3, lambda d: d.polygon([(24, 10), (25, 14), (29, 16), (25, 18), (24, 22), (23, 18), (19, 16), (23, 14)], fill=1))
-    i.px([(24, 16)], INK); i.px([(24, 11), (24, 12)], BRASS[5])
-    i.layer(LEATH, 2, lambda d: d.rectangle([7, 14, 9, 18], fill=1))
+    i.layer(LEATH, 3, lambda d: d.polygon([(12, 5), (19, 5), (19, 18), (25, 20), (26, 23), (12, 23)], fill=1))   # shaft and foot
+    i.layer(LEATH, 4, lambda d: d.rectangle([11, 4, 20, 6], fill=1))                               # the turned-down cuff
+    i.layer(LEATH, 1, lambda d: d.rectangle([12, 24, 26, 25], fill=1))                             # the sole
+    i.layer(IRON, 4, lambda d: d.line([(12, 18), (9, 19)], fill=1, width=2))                       # the spur's neck
+    i.layer(BRASS, 4, lambda d: d.polygon([(7, 15), (8, 18), (11, 19), (8, 20), (7, 23), (6, 20), (4, 19), (6, 18)], fill=1))   # the rowel
+    i.px([(7, 19)], INK); i.px([(13, 18), (18, 18)], BRASS[4])                                     # the strap's buckle line
+    i.px([(x, 18) for x in range(14, 18)], LEATH[1])
+    for y, x0 in ((8, 5), (11, 4), (14, 6)): i.px([(x, y) for x in range(x0, x0 + 5)], IRON[5 - (y - 8) // 3])   # speed streaks
     return i.done()
 
 def gatebreakers_shove():        # shield_bash: an armoured fist, knuckle plates forward

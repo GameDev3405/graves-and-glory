@@ -31,4 +31,4 @@ def make(r, side):
               Cube("sun", [3.0, 11.2, -0.45], [5.4, 13.6, 0.45], "gem", stone(SUN), lit=W.FACES)]
     return c
 
-def weapon(): return Weapon("war_banner", make, "pole", show_side=True, note="held standard, swallow-tail flag in the side colour")
+def weapon(): return Weapon("war_banner", make, "staff", show_side=True, note="held standard, swallow-tail flag in the side colour")
