@@ -5817,21 +5817,21 @@
       "dx": -55.9,
       "y": 66.55,
       "dz": -3.5,
-      "text": "LESSON 1 OF 4 / Press {key:menu}, choose a group and Move, then click the ground to send them."
+      "text": "LESSON 1 OF 4 / Press {key:follow} for Follow me, or {key:retreat} to Retreat. Follow me keeps your army at your side."
     },
     {
       "id": "lesson-2",
       "dx": -55.9,
       "y": 66.55,
       "dz": 2.5,
-      "text": "LESSON 2 OF 4 / Press {key:formation} to change formation. Line holds a front; Wedge breaks one."
+      "text": "LESSON 2 OF 4 / Press {key:formation} for Formation, then aim and click to set your army's shape. Line makes a front; Wedge breaks one."
     },
     {
       "id": "lesson-3",
       "dx": -55.9,
       "y": 66.78,
       "dz": 8.5,
-      "text": "LESSON 3 OF 4 / Press {key:attack} and aim at an enemy or a point to send your army in."
+      "text": "LESSON 3 OF 4 / Press {key:attack} for Attack to send your army at the enemy, or {key:charge} for Charge. A Charge needs a short rest."
     },
     {
       "id": "lesson-4",

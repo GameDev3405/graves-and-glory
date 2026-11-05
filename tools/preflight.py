@@ -647,7 +647,7 @@ for r in data.get('campStations',[]):
     if r['npc'] not in ('-','armorer','cleric','librarian','cartographer','weaponsmith'): errors.append(f'{where}: npc {r["npc"]} is not - or a villager profession of the camp')
     if r['page'] not in ('home','contracts','chapter','match','recruit','friends','army','train','forge'): errors.append(f'{where}: page {r["page"]} is not a camp page')
 # Lesson boards (Phase 3): ids unique (the generic check above), and every {key:<id>} marker of a text names a key the HUD lessons and the camp labels know.
-LESSON_KEYS={'menu','attack','follow','formation','map','rotate_left','rotate_right','confirm','cancel','use'}
+LESSON_KEYS={'menu','attack','charge','follow','retreat','formation','map','rotate_left','rotate_right','confirm','cancel','use'}
 for r in data.get('campLessons',[]):
     where=f'campLessons/{r["id"]}'
     text=r['text']

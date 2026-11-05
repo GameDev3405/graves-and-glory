@@ -128,7 +128,7 @@ final class OrderRules {
         }
         if (order.equals("charge")) { markChargeUsed(b, s); CommandNet.cooldown(p, Spec.COMBATDISCIPLINE[0].chargeCooldownTicks()); }
         for (String group : charging) b.markCharge(s, group);
-        b.campaign.tutorialDid(p, order.equals("attack") || order.equals("charge") ? 2 : 0); b.campaign.progressEvent(p.getUuid(), false);
+        b.campaign.tutorialDid(p, order.equals("attack") || order.equals("charge") ? 2 : order.equals("hold") ? 1 : 0); // lessons: Attack or Charge, Formation (hold), else Follow me or Retreat b.campaign.progressEvent(p.getUuid(), false);
         // The command's feedback, as world sounds at this player (every player in range hears them; BattleEffects.feedback): Retreat's and Charge's
         // cues, Hold's shout (an old move arrives as hold), every other order the chime (to his connection only, a UI cue).
         if (order.equals("retreat") || order.equals("charge")) BattleEffects.feedback(b, p, order); else if (order.equals("hold")) BattleEffects.feedback(b, p, "hold"); else p.playSound(SoundEvents.BLOCK_NOTE_BLOCK_CHIME.value(), SoundCategory.PLAYERS, .6f, 1.1f);

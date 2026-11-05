@@ -42,7 +42,7 @@ public final class Campaign {
     final Map<UUID,UUID> vacated=new HashMap<>();
     /** The tick each dropped commander's slot is released (MatchRules.releaseAt); after it he no longer holds the army. */
     final Map<UUID,Long> vacatedUntil=new HashMap<>();
-    /** Lessons reached in the campaign battle being fought, when its sheet row teaches: 0 move, 1 formation, 2 attack, 3 barracks, 4 all done. Cleared as each round starts. */
+    /** Lessons reached in the campaign battle being fought, when its sheet row teaches: 0 Follow me or Retreat, 1 Formation, 2 Attack or Charge, 3 barracks, 4 all done. Cleared as each round starts. */
     final Map<UUID,Integer> tutorial=new HashMap<>();
     /** AI armies that fell back stay there until rallied, so they do not walk back into the fight. */
     final Set<UUID> botRetreating=new HashSet<>();
@@ -752,7 +752,7 @@ public final class Campaign {
     }
     /** A remembered enemy counts as near a point, or near an army, within this many times the point's radius or the tier's charge distance. */
     static final double NEAR_RADIUS_FACTOR=2;
-    /** One command decision for a bot army, run at its tier's cadence: retreat or rally, pick the point to take, set the order, stamp the charge (Battle.markCharge; a bot's command plays no sound).
+    /** One command decision for a bot army, run at its tier's cadence: retreat or rally, pick the point to take, set the order, stamp the charge (Battle.markCharge; a bot's command plays no sound). A new Charge starts only when the squad's Charge cooldown is ready (OrderRules.useCharge).
      *  Easy and Normal read the whole battlefield; Hard reads only what its team has seen (b.sightings), and holds the points it owns before it flanks (garrisonPoint). */
     void botDecide(GravesAndGlory.Squad s,Spec.BotCommandRow tier){
         var mine=b.units.stream().filter(u->u.squad==s&&u.mob.isAlive()).toList();
@@ -797,6 +797,7 @@ public final class Campaign {
         }
         Vec3d objective=retreating?null:b.mode.botTarget(b,s); // a mode's own objective (Siege's stage) replaces the point plan
         if(objective!=null){s.target=objective;if(b.mode.howToSide(b,s).equals("defend"))s.order="hold";else if(!s.order.equals("charge"))s.order="attack";}
+        if(s.order.equals("charge")&&couldCharge&&!OrderRules.useCharge(b,s))s.order="attack"; // a new Charge needs the commander's cooldown (OrderRules.chargeReady, markChargeUsed); not ready, the army attacks its objective. A bot never hunts: only a player's Attack does (Assignment.hunt).
         s.yaw=s.team==0?-90:90;
         if(!retreating)b.mode.botPlan(b,s,tier); // a mode's per-group split of the order (Siege's stage plan)
         if(!s.order.equals(wasOrder)||!Objects.equals(s.target,wasTarget))s.arrived.clear(); // a new order or spot ends an arrival (Tactics.arrived); the same decision again keeps it
@@ -830,7 +831,9 @@ public final class Campaign {
     }
     /** Advances the lesson when the commander does what it asks. The last one pays for a first recruitment roll, once per commander (tutorialDone). */
     void tutorialDid(ServerPlayerEntity p,int step){
-        UUID id=p.getUuid();if(tutorialStep(id)!=step)return;
+        UUID id=p.getUuid();int at=tutorialStep(id);
+        if(step==1&&at==0){tutorial.put(id,1);return;} // a Formation given first still completes the Follow me or Retreat lesson; the Formation lesson then waits for the next one
+        if(at!=step)return;
         tutorial.put(id,step+1);if(step<3)return;
         Profile pr=profile(id);if(pr.tutorialDone){notice(id,"Training complete. The reward is paid once.");return;}
         pr.tutorialDone=true;pr.gold+=Spec.RECRUITMENT[0].rollCost();save(id);

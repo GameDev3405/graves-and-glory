@@ -58,6 +58,17 @@ class CommandUiSheet(unittest.TestCase):
         result = subprocess.run([sys.executable, 'tools/preflight.py'], cwd=ROOT, capture_output=True, text=True)
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
 
+    def test_lessons_name_new_orders(self):
+        import re
+        texts = [r['text'] for r in sheet()['campLessons']]
+        joined = ' '.join(texts)
+        for word in ('Hold', 'Move', 'Compact'):
+            self.assertIsNone(re.search(r'' + word + r'', joined), word + ' is not an order any more')
+        for order in ('Attack', 'Charge', 'Follow me', 'Retreat', 'Formation'):
+            self.assertIn(order, joined, order)
+        for key in ('attack', 'charge', 'follow', 'retreat', 'formation'):
+            self.assertIn('{key:' + key + '}', joined, key)
+
 
 if __name__ == '__main__':
     unittest.main()
