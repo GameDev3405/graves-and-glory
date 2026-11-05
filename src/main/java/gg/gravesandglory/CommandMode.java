@@ -48,29 +48,43 @@ public final class CommandMode {
     }
     public static boolean active(){return !pending.isEmpty();}
     static int count(String id){return groups.stream().filter(g->id.equals("all")||id.equals(g.id())).mapToInt(Group::count).sum();}
-    static void changeFormation(String id){formation=id;var c=MinecraftClient.getInstance();if(c.player!=null)issue(selected,"formation",id,c.player.getPos(),c.player.getYaw(),-1);}
-    static void begin(String order){if(!GravesAndGloryClient.battleActive())return;pending=order;facingSet=false;MinecraftClient.getInstance().setScreen(null);}
-    public static boolean cancel(){if(!active())return false;pending="";destination=null;return true;}
+    static void begin(String order){if(!GravesAndGloryClient.battleActive())return;CommandSelection.clearAimKeep();pending=order;facingSet=false;MinecraftClient.getInstance().setScreen(null);}
+    public static boolean cancel(){CommandSelection.clearAimKeep();if(!active())return false;pending="";destination=null;return true;}
     /** A disconnect: no order stays aimed, and the cards' groups and loss flashes go, so the next server's first snapshot is compared
      *  with nothing (noteGroups would flash a card for the old battle's losses). The rest of the command state starts as a new
      *  client's: the map's pings, the clock, the whole army selected (a group the next world lacks would leave no card selected),
      *  the default formation and the facing taken from the player again. */
     static void reset(){cancel();preview.clear();enemy=-1;groups=java.util.List.of();flashUntil.clear();flashFrom.clear();pings=java.util.List.of();seconds=600;selected="all";formation="block";facing=0;facingSet=false;}
+    /** Sends the aimed order to the selected groups: a Charge from the selection's centre along the look yaw (the server clamps the run), anything else at the aimed point. */
     public static boolean confirm(){
         if(!active())return false;
-        if(destination==null){refuse("Aim at reachable terrain");return true;}
-        if(pending.equals("charge")&&enemy<0){refuse("Charge: aim at an enemy");return true;}
-        issue(selected,pending,formation,destination,facing,enemy);pending="";return true;
+        String order=pending;boolean charge=order.equals("charge");
+        if(!charge&&destination==null){refuse("Aim at reachable terrain");return true;}
+        pending="";
+        if(charge)CommandSelection.issueSelected(order,formation,CommandSelection.selectedCentre(),facing,-1);
+        else CommandSelection.issueSelected(order,formation,destination,facing,enemy);
+        CommandSelection.afterOrder(CommandSelection.keepOpenOnConfirm());
+        return true;
     }
     /** A refused confirmation as a feed notice; clicking again while the same notice still shows adds no second line. */
     static void refuse(String why){
+        UiSounds.deny();
         long now=net.minecraft.util.Util.getMeasuringTimeMs();var lines=EventFeed.lines(now);
         if(lines.isEmpty()||!lines.get(lines.size()-1).text().equals(why))EventFeed.push("notice",GravesAndGloryClient.team,why,now);
     }
     static void ping(String kind,double x,double z){if(ClientPlayNetworking.canSend(GravesAndGlory.PING)){var b=PacketByteBufs.create();b.writeString(kind);b.writeDouble(x);b.writeDouble(z);ClientPlayNetworking.send(GravesAndGlory.PING,b);}}
-    static void issue(String group,String action,String form,Vec3d dest,float yaw,int target){
-        if(!GravesAndGloryClient.battleActive()||!ClientPlayNetworking.canSend(GravesAndGlory.TACTICAL))return;
-        var b=PacketByteBufs.create();b.writeString(group);b.writeString(action);b.writeString(form);b.writeDouble(dest.x);b.writeDouble(dest.z);b.writeFloat(yaw);b.writeInt(target);ClientPlayNetworking.send(GravesAndGlory.TACTICAL,b);
+    /** Order packets this client has sent (for the harness: a multi-group order must be one packet). */
+    static int ordersSent;
+    /** One group's order: a one-entry tactical_v2 packet. */
+    static void issue(String group,String action,String form,Vec3d dest,float yaw,int target){issue(java.util.List.of(new Aim(group,dest)),action,form,yaw,target);}
+    /** One group of an order and its own point (a Charge's start, a Formation's anchor). */
+    record Aim(String group,Vec3d at){}
+    /** One order to every listed group as ONE tactical_v2 packet (the server applies it as one order: one cooldown, one Charge). */
+    static void issue(java.util.List<Aim> groups,String action,String form,float yaw,int target){
+        if(groups.isEmpty()||!GravesAndGloryClient.battleActive()||!ClientPlayNetworking.canSend(GravesAndGlory.TACTICAL_V2))return;
+        var b=PacketByteBufs.create();b.writeString(action);b.writeString(form);b.writeFloat(yaw);b.writeInt(target);
+        b.writeInt(groups.size());for(var g:groups){b.writeString(g.group());b.writeDouble(g.at().x);b.writeDouble(g.at().z);}
+        ClientPlayNetworking.send(GravesAndGlory.TACTICAL_V2,b);ordersSent++;
     }
     /** The team a unit fights for, read from its name colour (team 0 aqua, team 1 light purple; see GravesAndGlory.spawn), or -1. */
     static int nameTeam(net.minecraft.entity.Entity e){
@@ -79,19 +93,25 @@ public final class CommandMode {
         if(colour.getRgb()==net.minecraft.util.Formatting.LIGHT_PURPLE.getColorValue())return 1;
         return -1;
     }
+    /** The army's own troops of this group, as the state packet names them (its markers); a troop's sheet row names its mob and tags. */
+    static java.util.List<Spec.TroopsRow> troops(Group group){
+        java.util.List<Spec.TroopsRow> out=new java.util.ArrayList<>();
+        for(var m:GravesAndGloryClient.markers){if(!m.own())continue;var spec=ArmyMobs.named(m.name());if(spec!=null&&spec.group().equals(group.id()))out.add(spec);}
+        return out;
+    }
     /**
-     * The cell the server forms this group in (Battle.formation): the formation's spacing, or the room of the widest body among the army's troops of the group
-     * (BattleMath.spacing of the troop's mob width) when that is more. The state packet names each own troop, and a troop's sheet row names its mob.
+     * The places, {side, back} from the order's point before facing, the server forms a group of `count` in (Battle.formation, through the same
+     * BattleMath.holdLayout): on Hold its shield troops close into the wall in the front ranks, the rest form behind them, and any other order
+     * forms all of it in one cell, the formation's spacing or the widest body's room. `troops` are the group's soldiers as far as known; any
+     * count past them is laid out as a husk-wide soldier with no shield. The places depend only on the counts and cells, so the markers'
+     * order need not be the server's slot order.
      */
-    static double cell(Group group,double formationSpacing){
-        double cell=formationSpacing;
-        for(var m:GravesAndGloryClient.markers){
-            if(!m.own())continue;
-            var spec=ArmyMobs.named(m.name());if(spec==null||!spec.group().equals(group.id()))continue;
-            var id=net.minecraft.util.Identifier.tryParse(spec.entity());
-            if(id!=null&&net.minecraft.registry.Registries.ENTITY_TYPE.containsId(id))cell=Math.max(cell,BattleMath.spacing(net.minecraft.registry.Registries.ENTITY_TYPE.get(id).getWidth()));
-        }
-        return cell;
+    static double[][] places(java.util.List<Spec.TroopsRow> troops,int count,String groupId,String order,Spec.FormationsRow f){
+        boolean[] shield=new boolean[count];double[] width=new double[count];
+        for(int i=0;i<count;i++){var t=i<troops.size()?troops.get(i):null;width[i]=t==null?net.minecraft.entity.EntityType.HUSK.getWidth():ArmyMobs.width(t);shield[i]=t!=null&&order.equals("hold")&&ArmyMobs.tags(t).contains("shield");}
+        double[][] places=BattleMath.holdLayout(shield,width,f.spacing(),Spec.COMBATDISCIPLINE[0].shieldWallCell(),BattleMath.groupColumns(groupId,f.columns()),f.wedge());
+        double role=BattleMath.roleDepth(groupId);for(double[] p:places)p[1]+=role;
+        return places;
     }
     static void tick(MinecraftClient c){
         preview.clear();if(!GravesAndGloryClient.battleActive()){cancel();return;}if(!active()||c.player==null||c.world==null||c.currentScreen!=null)return;
@@ -109,11 +129,8 @@ public final class CommandMode {
         var f=java.util.Arrays.stream(Spec.FORMATIONS).filter(v->v.id().equals(formation)).findFirst().orElse(Spec.FORMATIONS[0]);
         var dust=new DustParticleEffect(new Vector3f(.95f,.82f,.44f),1.15f);
         for(Group group:groups)if(selected.equals("all")||selected.equals(group.id())){
-            int columns=Math.min(f.columns(),group.id().equals("support")?2:group.id().equals("ranged")?6:12);
-            double role=group.id().equals("support")?9:group.id().equals("ranged")?5:0,cell=cell(group,f.spacing());
-            for(int i=0;i<group.count();i++){
-                double side=(i%columns-(columns-1)/2.0)*cell,back=role+(i/columns+1)*cell;
-                if(f.wedge()){int rank=(int)Math.floor(Math.sqrt(i));side=(i-rank*rank-rank)*cell;back=role+(rank+1)*cell;}
+            for(double[] place:places(troops(group),group.count(),group.id(),pending,f)){
+                double side=place[0],back=place[1];
                 double angle=Math.toRadians(facing),x=destination.x+Math.cos(angle)*side+Math.sin(angle)*back,z=destination.z+Math.sin(angle)*side-Math.cos(angle)*back;
                 preview.add(new Vec3d(x,Arena.ground((int)x,(int)z)+1.05,z));
             }
@@ -121,7 +138,7 @@ public final class CommandMode {
         double angle=Math.toRadians(facing);for(int i=0;i<6;i++){double x=destination.x-Math.sin(angle)*i,z=destination.z+Math.cos(angle)*i;preview.add(new Vec3d(x,Arena.ground((int)x,(int)z)+1.05,z));}
     }
     static void renderWorld(net.fabricmc.fabric.api.client.rendering.v1.WorldRenderContext context){
-        if(!active()||context.consumers()==null)return;var matrices=context.matrixStack();var camera=context.camera().getPos();matrices.push();matrices.translate(-camera.x,-camera.y,-camera.z);
+        if(!active()||context.consumers()==null||CommandSelection.aiming().equals("hold")||ChargeCamera.held())return; /* a Formation aim is drawn by OrderOutlines, an overhead Charge by ChargeCamera */ var matrices=context.matrixStack();var camera=context.camera().getPos();matrices.push();matrices.translate(-camera.x,-camera.y,-camera.z);
         var lines=context.consumers().getBuffer(net.minecraft.client.render.RenderLayer.getLines());
         for(Vec3d p:preview)net.minecraft.client.render.WorldRenderer.drawBox(matrices,lines,new net.minecraft.util.math.Box(p.x-.32,p.y,p.z-.32,p.x+.32,p.y+.09,p.z+.32),1,.82f,.4f,1);
         matrices.pop();

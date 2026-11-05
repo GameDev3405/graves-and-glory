@@ -8,6 +8,8 @@ import net.fabricmc.fabric.api.resource.SimpleSynchronousResourceReloadListener;
 import net.minecraft.client.model.*;
 import net.minecraft.resource.ResourceManager;
 import net.minecraft.util.Identifier;
+import it.unimi.dsi.fastutil.objects.Object2ObjectArrayMap;
+import net.minecraft.util.math.Direction;
 import net.minecraft.util.math.MathHelper;
 import net.minecraft.util.math.Vec3d;
 import org.slf4j.Logger;
@@ -68,7 +70,9 @@ public final class TroopModelLoader implements SimpleSynchronousResourceReloadLi
                 for(String key:List.of("veteran","glow","outer"))if(!str(j,key).isEmpty())texture(manager,TroopModels.twin(new Identifier(str(j,key))));
             }
             boolean team=false;for(JsonElement b:j.getAsJsonArray("bones"))team|=b.getAsJsonObject().has("team")&&b.getAsJsonObject().get("team").getAsBoolean();
-            need(!team||missingCloth==null,"the cloth sheet "+missingCloth+" is missing");
+            String own=str(j,"cloth");
+            if(own.isEmpty())need(!team||missingCloth==null,"the cloth sheet "+missingCloth+" is missing");
+            else if(team)for(String c:cloths)texture(manager,TroopModels.cloth(own,"linen".equals(c)?null:c));
             float outer=rig.get("outer").getAsFloat();
             ModelPart twin=str(j,"outer").isEmpty()?null:build(j,outer,true).createModel();
             TroopModel<?> model=new TroopModel<>(j,parse(j).createModel(),hands(rig),twin,weapon.equals("none")?List.of():tierPoints(weapons,weapon));
@@ -122,13 +126,58 @@ public final class TroopModelLoader implements SimpleSynchronousResourceReloadLi
     static void texture(ResourceManager manager,Identifier id){need(manager.getResource(id).isPresent(),"missing texture "+id);}
 
     /** The ModelParts of a generated troop or rig file: a root part holding the file's bones by name, each box on its own sheet. */
-    static TexturedModelData parse(JsonObject model){return build(model,0,false);}
+    static Parts parse(JsonObject model){return build(model,0,false);}
+
+    /**
+     * A troop or rig file's parts, ready to build: createModel makes a fresh ModelPart tree on each call, as TexturedModelData did.
+     * The parts are built here rather than through ModelPartBuilder because a jointed limb's box (Task 9) moves some of its faces
+     * on the sheet ("faceuv"), which ModelPartBuilder cannot say: such a box is one Cuboid of its other faces at the box's uv and
+     * one Cuboid of each moved face, laid so that face's rectangle starts at the texel faceuv names. A box without faceuv is one
+     * Cuboid of all six faces, exactly the one ModelPartBuilder made.
+     */
+    static final class Parts{
+        final Node root=new Node(List.of(),ModelTransform.NONE);
+        ModelPart createModel(){return root.part();}
+    }
+    /** One ModelPart.Cuboid's arguments: the uv its faces are laid from, its corner, size and dilation, mirror, the sheet size and the faces it draws. */
+    record Cub(int u,int v,float[] o,float[] s,float[] d,boolean mirror,float texW,float texH,Set<Direction> sides){
+        ModelPart.Cuboid make(){return new ModelPart.Cuboid(u,v,o[0],o[1],o[2],s[0],s[1],s[2],d[0],d[1],d[2],mirror,texW,texH,sides);}
+    }
+    /** A bone to build: its cuboids, its transform and its children (a HashMap, built into the part in its order, as ModelPartData does). */
+    static final class Node{
+        final List<Cub> cubs;final ModelTransform at;final Map<String,Node> kids=new HashMap<>();
+        Node(List<Cub> cubs,ModelTransform at){this.cubs=cubs;this.at=at;}
+        ModelPart part(){
+            Object2ObjectArrayMap<String,ModelPart> children=new Object2ObjectArrayMap<>();for(var e:kids.entrySet())children.put(e.getKey(),e.getValue().part());
+            List<ModelPart.Cuboid> list=new ArrayList<>(cubs.size());for(Cub c:cubs)list.add(c.make());
+            ModelPart p=new ModelPart(List.copyOf(list),children);p.setDefaultTransform(at);p.setTransform(at);return p;
+        }
+    }
+    /** A box's faces by the build's names (build_skins.FACEUV) and the Cuboid direction each draws as (y down: the top face is DOWN). */
+    static final Map<String,Direction> FACES=Map.of("top",Direction.DOWN,"bottom",Direction.UP,"right",Direction.WEST,"front",Direction.NORTH,"left",Direction.EAST,"back",Direction.SOUTH);
+    /**
+     * The uv to lay a Cuboid from so that one face's rectangle starts at texel (fu, fv), for a box of size w, h, d: the inverse of
+     * the box UV layout (top at u+d, v; bottom at u+d+w, v; right at u, v+d; front at u+d, v+d; left at u+d+w, v+d; back at u+2d+w, v+d).
+     */
+    static int[] faceUv(String face,int fu,int fv,int w,int d){
+        return switch(face){
+            case "top"->new int[]{fu-d,fv};
+            case "bottom"->new int[]{fu-d-w,fv};
+            case "right"->new int[]{fu,fv-d};
+            case "front"->new int[]{fu-d,fv-d};
+            case "left"->new int[]{fu-d-w,fv-d};
+            case "back"->new int[]{fu-2*d-w,fv-d};
+            default->throw new IllegalArgumentException("no face "+face);
+        };
+    }
+    /** The most a joint limit ("limit", degrees of pitch) may reach either way. */
+    static final float MAX_LIMIT=180;
 
     /** outer: only the rig's own bones (no parts), every box dilated by that much more, for the outer layer's twin. */
-    static TexturedModelData build(JsonObject model,float outer,boolean rigOnly){
+    static Parts build(JsonObject model,float outer,boolean rigOnly){
         need(model.has("format")&&model.get("format").getAsInt()==FORMAT,"format is not "+FORMAT);
         int[] size=ints(model,"size",2);need(size[0]>0&&size[1]>0,"size must be above 0");
-        ModelData data=new ModelData();Map<String,ModelPartData> made=new HashMap<>();Set<String> skipped=new HashSet<>();
+        Parts out=new Parts();Map<String,Node> made=new HashMap<>();Set<String> skipped=new HashSet<>();
         JsonArray bones=model.getAsJsonArray("bones");need(bones!=null&&!bones.isEmpty(),"no bones");need(bones.size()<=TroopModel.MAX_BONES,bones.size()+" bones, more than "+TroopModel.MAX_BONES);
         boolean first=true;
         for(JsonElement el:bones){
@@ -137,21 +186,50 @@ public final class TroopModelLoader implements SimpleSynchronousResourceReloadLi
             need(!name.isEmpty(),"a bone without a name");need(!made.containsKey(name)&&!skipped.contains(name),"duplicate bone "+name);
             if(first)need(parent.isEmpty(),"the first bone "+name+" has a parent");else need(made.containsKey(parent)||skipped.contains(parent),name+" has parent "+parent+", which is not a bone listed before it");
             first=false;
+            limit(b,name);
             if(rigOnly&&(!str(b,"part").isEmpty()||skipped.contains(parent))){skipped.add(name);continue;}
             int[] sheet=b.has("sheet")?ints(b,"sheet",2):size;need(sheet[0]>0&&sheet[1]>0,name+": sheet must be above 0");
-            ModelPartBuilder builder=ModelPartBuilder.create();
+            // the sheet's size as ModelCuboidData works it out: the model's size times the box's texture scale
+            float texW=(float)size[0]*(sheet[0]/(float)size[0]),texH=(float)size[1]*(sheet[1]/(float)size[1]);
             JsonArray boxes=b.getAsJsonArray("boxes");need(boxes!=null,name+": no boxes list");
+            List<Cub> cubs=new ArrayList<>();
             for(JsonElement be:boxes){
                 JsonObject x=be.getAsJsonObject();float[] o=floats(x,"origin",3),d=x.has("dilation")?floats(x,"dilation",3):new float[3];int[] s=ints(x,"size",3),uv=ints(x,"uv",2);
                 need(s[0]>=0&&s[1]>=0&&s[2]>=0&&uv[0]>=0&&uv[1]>=0,name+": a box with a negative size or uv");
-                builder.uv(uv[0],uv[1]).mirrored(x.has("mirror")&&x.get("mirror").getAsBoolean())
-                    .cuboid(o[0],o[1],o[2],s[0],s[1],s[2],new Dilation(d[0]+outer,d[1]+outer,d[2]+outer),sheet[0]/(float)size[0],sheet[1]/(float)size[1]);
+                boolean mirror=x.has("mirror")&&x.get("mirror").getAsBoolean();
+                float[] fs={s[0],s[1],s[2]},dd={d[0]+outer,d[1]+outer,d[2]+outer};
+                Set<Direction> rest=EnumSet.allOf(Direction.class);List<Cub> moved=new ArrayList<>();
+                if(x.has("faceuv")){
+                    need(x.get("faceuv").isJsonObject(),name+": faceuv is not an object");need(!mirror,name+": a mirrored box with faceuv");
+                    for(var f:x.getAsJsonObject("faceuv").entrySet()){
+                        Direction dir=FACES.get(f.getKey());need(dir!=null,name+": faceuv names "+f.getKey()+", not a face (top, bottom, right, front, left, back)");
+                        need(f.getValue().isJsonArray()&&f.getValue().getAsJsonArray().size()==2,name+": faceuv "+f.getKey()+" must hold 2 whole numbers");
+                        int fu=f.getValue().getAsJsonArray().get(0).getAsInt(),fv=f.getValue().getAsJsonArray().get(1).getAsInt();
+                        need(fu>=0&&fv>=0,name+": faceuv "+f.getKey()+" is negative");
+                        int[] at=faceUv(f.getKey(),fu,fv,s[0],s[2]);
+                        rest.remove(dir);moved.add(new Cub(at[0],at[1],o,fs,dd,false,texW,texH,EnumSet.of(dir)));
+                    }
+                }
+                if(!rest.isEmpty())cubs.add(new Cub(uv[0],uv[1],o,fs,dd,mirror,texW,texH,rest));
+                cubs.addAll(moved);
             }
             float[] p=floats(b,"pivot",3),r=b.has("rotation")?floats(b,"rotation",3):new float[3];
-            ModelPartData parentData=parent.isEmpty()?data.getRoot():made.get(parent);
-            made.put(name,parentData.addChild(name,builder,ModelTransform.of(p[0],p[1],p[2],r[0]*MathHelper.RADIANS_PER_DEGREE,r[1]*MathHelper.RADIANS_PER_DEGREE,r[2]*MathHelper.RADIANS_PER_DEGREE)));
+            Node node=new Node(List.copyOf(cubs),ModelTransform.of(p[0],p[1],p[2],r[0]*MathHelper.RADIANS_PER_DEGREE,r[1]*MathHelper.RADIANS_PER_DEGREE,r[2]*MathHelper.RADIANS_PER_DEGREE));
+            (parent.isEmpty()?out.root:made.get(parent)).kids.put(name,node);made.put(name,node);
         }
-        return TexturedModelData.of(data,size[0],size[1]);
+        return out;
+    }
+    /**
+     * A bone's joint limit (R7 of the animation rework): an optional "limit", [min, max] degrees of pitch the bone may take from
+     * its file pose, min at most max, each within MAX_LIMIT. The mage's shins carry [0, 10] (its robe hangs rigid from the thigh).
+     * Returns null for a bone without one; TroopModel.jointLimit serves it.
+     */
+    static float[] limit(JsonObject b,String name){
+        if(!b.has("limit"))return null;
+        need(b.get("limit").isJsonArray()&&b.getAsJsonArray("limit").size()==2,name+": limit must hold 2 numbers, [min, max] degrees");
+        float lo=b.getAsJsonArray("limit").get(0).getAsFloat(),hi=b.getAsJsonArray("limit").get(1).getAsFloat();
+        need(lo<=hi&&Math.abs(lo)<=MAX_LIMIT&&Math.abs(hi)<=MAX_LIMIT,name+": limit ["+lo+", "+hi+"] is not a min at most its max, each within "+MAX_LIMIT+" degrees");
+        return new float[]{lo,hi};
     }
 
     /**

@@ -36,7 +36,7 @@ Ground rules for every capture
 
 ## D. Scenarios (stills; brainstorm, keep the ones that read well)
 - D1 crouched (sneak) beside a fallen Dawn banner on the slope, battle behind.
-- D2 standing in the front rank of a Dawn shieldwall, shoulder to shoulder with his infantry, enemy line ahead.
+- D2 standing in the front rank of a Dawn line braced on Hold, shoulder to shoulder with his infantry, enemy line ahead.
 - D3 on the bridge in the middle of the clash, both armies around him.
 - D4 alone at the camp war table at dawn (if the camp is reachable in the same session; else skip).
 - D5 arm raised, pointing forward (the pose hook: arm straight out, no item), the Dawn line charging past him.
@@ -51,7 +51,7 @@ Ground rules for every capture
 - E2 orbit: a full slow circle around Steve on the summit, 12 s, golden.
 - E3 crane reveal: start on B1's face close-up, rise and pull back until the whole battle is in frame, 10 s. Intro candidate.
 - E4 walk-away tracking: camera leads Steve as he walks away down the hill, battle behind, then he walks out of frame, 10 s. Outro candidate. Also at night.
-- E5 battle b-roll, each 6 to 8 s: low tracking along a shieldwall; archers' volley from behind; knight charge toward camera; a capture seal changing hands; a last stand: a line fighting on under the stamp; the bridge melee from above.
+- E5 battle b-roll, each 6 to 8 s: low tracking along a braced line on Hold; archers' volley from behind; knight charge toward camera; a capture seal changing hands; a last stand: a line fighting on under the stamp; the bridge melee from above.
 - E6 gameplay: first-person, HUD on, 60 to 90 s of a real skirmish from the player's seat: deploy, give a move order, select a group, a charge, a volley, a capture. Shaders may go off for this clip if the frame rate drops below 24; say so in CONTACT.md.
 - E7 intro/outro plates: 3 s each of the empty hill at dawn, the empty summit at night, and the battlefield smoke after the fight, as backgrounds for titles.
 

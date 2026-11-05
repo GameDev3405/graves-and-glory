@@ -34,7 +34,7 @@ Set **Bots** to Hard. Stand alone on the **DUSK** pad this time, so the enemy Ha
 
 | You should see | Yes | No |
 |---|:-:|:-:|
-| Dawn's Hard knights raising a shieldwall when three or more of your Bone Rangers are within 30 blocks of their army and none of your revenants is within 8. | [ ] | [ ] |
+| Dawn's knights bracing their shields whenever their group is on Hold (Hold builds the shield wall; the Shieldwall formation and the Hard bots' Shieldwall tactic were removed on 2026-10-29). | [ ] | [ ] |
 | Hard charges starting close, within about 18 blocks, breaking into a run, not from across the map (no horn sounds in the field). | [ ] | [ ] |
 | The report naming an MVP (a crest and "MVP" on the best row). | [ ] | [ ] |
 

@@ -43,10 +43,10 @@ Invite draft (update the date and time before sending):
 
 ## 3. Deploying a candidate (builder untouched)
 The builder lives in `C:\GGBuild` (task `GGBuilderServer`, port 25570). Leave it running.
-1. Create a separate folder `C:\GGMatch`. Copy the Fabric launcher, `mods\` (candidate jar plus the server dependencies `tools/export_server.py` lists), `server.properties`. Kort supplies `eula.txt` himself.
+1. Create a separate folder `C:\GGMatch`. Extract the server zip from `tools/export_server.py` (kit scripts, `mods\` with the candidate jar and server dependencies) and run `setup.ps1` for the Fabric launcher. Kort supplies `eula.txt` himself.
 2. Set `server-port=25580`, `white-list=true`, `max-players=6` [A], `level-name=gg-match`. Never reuse a `gg-build-*` save. Do not pass `-Dgg.build` (that mode creates no Battle).
 3. [A] Add a firewall rule for 25580, Tailscale only, mirroring the builder rule.
-4. Start `start-server.ps1` (from the export kit) in a visible window, not a boot task. Heap 6 GB [A], since the builder uses 6 GB on the same host.
+4. Start `start.ps1` (from the server zip) in a visible window, not a boot task. Heap 6 GB [A], since the builder uses 6 GB on the same host.
 5. Before each upgrade: `stop` in console, zip `gg-match`, keep the old jar under a unique name, then swap the jar.
 6. Check from Kort's PC: `Test-NetConnection 100.72.202.38 -Port 25580`.
 
@@ -71,7 +71,7 @@ The builder lives in `C:\GGBuild` (task `GGBuilderServer`, port 25570). Leave it
 Run folder `work/six-player/<date>-<jar-sha8>/`: `run.md` (who, hardware, times), logs named by player, samples. Do not commit bulk logs; summarize in docs only.
 
 ## 6. Reconnect and restart tests
-- **Reconnect:** mid-match one player quits and rejoins within 60 s; another drops hard (kill client). Expect same side, House, class; no duplicate unit or reward; no server error.
+- **Reconnect:** mid-match one player quits and rejoins within 2 minutes (the slot is then released); another drops hard (kill client). Expect same side, House, class; no duplicate unit or reward; no server error.
 - **Seats:** [A] a leaving player's seat goes to a bot; a rejoin reclaims it.
 - **Restart:** clean `stop` in lobby, and mid-match. [A] a mid-match restart may end the match; lobby/profile state must survive. Any other outcome needs Kort's call.
 - **Crash:** kill only the `C:\GGMatch` java process, never the builder's; check world integrity after restart.

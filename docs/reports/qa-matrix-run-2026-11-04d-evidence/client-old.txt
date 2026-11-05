@@ -1,0 +1,2 @@
+[connect-on-start] connecting to 127.0.0.1:25650
+[Graves and Glory compatibility fixture] old=true Failed to connect to the server. Your Graves and Glory pack does not match this server. This server requires Graves and Glory 0.5.0 (build adc7f749). Install the same modpack release as the server, then reconnect.

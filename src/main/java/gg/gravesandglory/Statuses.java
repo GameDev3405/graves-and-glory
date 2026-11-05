@@ -140,7 +140,7 @@ final class Statuses {
             var mine = e.getValue();
             var bleed = mine.get("bleed");
             if (bleed != null && b.time >= bleed.nextTick && bleed.nextTick <= bleed.until && target.timeUntilRegen <= HURT_HALF) {
-                bleed.nextTick += bleedEvery();
+                bleed.nextTick = BattleMath.nextBleedBeat(bleed.nextTick, b.time, bleedEvery());
                 bleed(b, target, bleed);
                 if (!target.isAlive()) { map.remove(target); continue; }
             }
@@ -257,7 +257,7 @@ final class Statuses {
             cleanses++;
             if (by != null) Veterans.supported(b, by, e);
             b.world.spawnParticles(ParticleTypes.END_ROD, e.getX(), e.getBodyY(.6), e.getZ(), 6, .25, .35, .25, .02);
-            b.world.playSound(null, e.getBlockPos(), SoundEvents.BLOCK_AMETHYST_BLOCK_CHIME, SoundCategory.HOSTILE, .6f, 1.4f);
+            Audio.at(b, AudioCues.Cue.HEALER_CAST, e.getPos(), "cl" + e.getId());
         }
         return took;
     }

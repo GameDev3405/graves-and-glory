@@ -24,14 +24,24 @@ class RecruitmentScreen extends ArmyScreen {
     void rebuild(){clearAndInit();}
     void show(int next){if(tab!=next){tab=next;clearAndInit();}}
     /** The two tabs beside the title, marked as the command screen marks its group (a "> " prefix, a gold edge and bar). */
+    /** The Armoury's rail, as every War Table page has it: Back (Esc) to the battle, the Barracks plaque, and the Armoury's own plaque lit as the page you are on ("> Armoury", as the old tab was marked). */
+    void railTabs(){
+        add(WarTable.plaque(56,96,"icon-camp","Back","Esc",61,0,b->close()));
+        barracksTab=add(WarTable.plaque(184,112,"icon-recruit","Barracks",null,0,0,b->show(0)));
+        armouryTab=add(new UiButton(WarTable.railX(304),12,112,28,Text.literal("> Armoury"),b->{},(g,x,y,w,h,hot)->{
+            UiTex.draw(g,"table/plaque-112-here",x,y);
+            UiTex.draw(g,"table/icon-banner",x+8,y+7);
+            g.drawText(textRenderer,DarkUi.heading("Armoury"),x+28,y+8,DarkUi.RAIL_KEY,false);
+        }));
+    }
     void tabs(){
         barracksTab=button((tab==0?"> ":"")+"Barracks",200,12,100,b->show(0));
         armouryTab=button((tab==1?"> ":"")+"Armoury",304,12,100,b->show(1));
     }
     @Override protected void init(){
+        if(tab==1){uiScale=1;controls.clear();page.init();railTabs();return;} // the Armoury is a War Table page: canvas pixels at UiMath.pageScale, the window's own GUI size
         uiScale=Math.min(1,Math.min(client.getWindow().getScaledWidth()/640f,client.getWindow().getScaledHeight()/360f));
         width=(int)(client.getWindow().getScaledWidth()/uiScale);height=(int)(client.getWindow().getScaledHeight()/uiScale);
-        if(tab==1){controls.clear();page.init();button("Esc  Back",18,height-32,90,b->close());tabs();return;}
         controls.clear();int row=0;int left=18,lw=width*30/100;var listed=bannerTroops();
         if(!listed.contains(selected))selected=listed.isEmpty()?-1:listed.get(0);
         int rowH=Math.max(14,Math.min(29,(height-67-6-82)/Math.max(1,listed.size()))); // a banner can list up to 11 troop types; the rows shrink to fit
@@ -58,6 +68,7 @@ class RecruitmentScreen extends ArmyScreen {
             int x=getX(),y=getY();var t=Spec.TROOPS[index];boolean chosen=selected==index;
             g.fill(x,y,x+width,y+height,chosen?0xff30474a:isHovered()?0xff354146:0xff222d32);
             if(chosen||isFocused())g.drawBorder(x,y,width,height,DarkUi.GOLD);
+            DarkUi.focus(g,this);
             String fielded=roster[index]+" / "+listed(t);
             if(height>=24){g.drawItem(new net.minecraft.item.ItemStack(net.minecraft.registry.Registries.ITEM.get(new net.minecraft.util.Identifier(t.weapon()))),x+5,y+5);
                 DarkUi.label(g,t.name(),x+28,y+3,DarkUi.IVORY);DarkUi.label(g,price(t)+" gold",x+28,y+15,DarkUi.MUTED);DarkUi.label(g,fielded,x+width-40,y+15,DarkUi.MUTED);}
@@ -73,10 +84,8 @@ class RecruitmentScreen extends ArmyScreen {
     static int weight(boolean queued){int w=0;for(int i=0;i<Spec.TROOPS.length;i++)w+=(roster[i]+(queued?pending[i]:0))*Spec.TROOPS[i].slotWeight();return w;}
     static int index(Spec.TroopsRow t){for(int i=0;i<Spec.TROOPS.length;i++)if(Spec.TROOPS[i]==t)return i;return 0;}
     /** Whether the barracks would train one more of this troop now: banner count, slot weights and gold. */
-    /** The class this commander fights under: the one whose active the state packet names, else his profile's. Its passives set the prices and training times shown here, as the server charges them (Commander.cost, Commander.trainingTicks). */
-    static Spec.ClassesRow commanderClass(){var c=Commander.byActive(commanderActive);return c!=null?c:Commander.row(CampaignClient.profile.commander);}
-    /** A troop's round price for this commander's class. */
-    static int price(Spec.TroopsRow t){return Commander.cost(commanderClass(),t);}
+    /** A troop's round price: the sheet cost, as the server charges it (no class discount: the classes are gone). */
+    static int price(Spec.TroopsRow t){return t.cost();}
     static boolean trainable(Spec.TroopsRow t){int i=index(t);return nearBarracks&&gold>=price(t)&&roster[i]+pending[i]<listed(t)&&weight(true)+t.slotWeight()<=GravesAndGlory.R.squadSize();}
     String unavailable(Spec.TroopsRow t){
         if(!nearBarracks)return "Return to your barracks to recruit.";
@@ -87,8 +96,8 @@ class RecruitmentScreen extends ArmyScreen {
         if(gold<price(t))return "You need "+(price(t)-gold)+" more gold.";
         return trainingTime(t);
     }
-    /** The training time line for this commander's class: whole seconds without a decimal (4 seconds), others with theirs (3.2 seconds for a Marshal's knight). */
-    static String trainingTime(Spec.TroopsRow t){double s=Commander.trainingTicks(commanderClass(),t)/20.0;String n=s==Math.rint(s)?Long.toString(Math.round(s)):Double.toString(s);return "Training time: "+n+(n.equals("1")?" second":" seconds");}
+    /** The training time line: whole seconds without a decimal (4 seconds), others with theirs (3.5 seconds). */
+    static String trainingTime(Spec.TroopsRow t){double s=Commander.trainingTicks(t)/20.0;String n=s==Math.rint(s)?Long.toString(Math.round(s)):Double.toString(s);return "Training time: "+n+(n.equals("1")?" second":" seconds");}
     void update(){
         for(var c:controls){var t=Spec.TROOPS[c.index];c.train.active=trainable(t);c.disband.active=nearBarracks&&roster[c.index]>0;}
         var c=chosen();if(c!=null){recruit.active=c.train.active;disband.active=c.disband.active;recruit.setMessage(Text.literal("RECRUIT / "+price(Spec.TROOPS[selected])+" GOLD"));}
@@ -101,14 +110,14 @@ class RecruitmentScreen extends ArmyScreen {
     @Override public boolean mouseScrolled(double x,double y,double amount){if(tab==1&&page.scroll(amount>0?-1:1))return true;return super.mouseScrolled(x/uiScale,y/uiScale,amount);}
     /** The Armoury key switches to the Armoury page (from the barracks) or closes the screen (from the Armoury); Page Up and Down scroll the Armoury's troop rows. */
     @Override public boolean keyPressed(int key,int scan,int mods){
-        if(armoury!=null&&armoury.matchesKey(key,scan)){if(tab==1)close();else show(1);return true;}
+        if(armoury!=null&&armoury.matchesKey(key,scan)&&!(tab==1&&page.editing>0)){if(tab==1)close();else show(1);return true;}
         if(tab==1&&(key==GLFW.GLFW_KEY_PAGE_UP||key==GLFW.GLFW_KEY_PAGE_DOWN)&&page.scroll(key==GLFW.GLFW_KEY_PAGE_UP?-1:1))return true;
         return super.keyPressed(key,scan,mods);
     }
     @Override public void render(DrawContext g,int mx,int my,float delta){
+        if(tab==1){UiCanvas.begin(g);try{page.render(g);}finally{UiCanvas.end(g);}super.render(g,mx,my,delta);return;}
         if(tab==0)update();g.getMatrices().push();g.getMatrices().scale(uiScale,uiScale,1);
         DarkUi.background(g,width,height);
-        if(tab==1){page.render(g);super.render(g,(int)(mx/uiScale),(int)(my/uiScale),delta);g.getMatrices().pop();return;}
         DarkUi.title(g,"BARRACKS",18,15,DarkUi.IVORY);
         DarkUi.label(g,"Recruit and manage your army",18,40,DarkUi.MUTED);
         DarkUi.label(g,"GOLD  "+gold,width-190,19,DarkUi.GOLD);DarkUi.label(g,"ARMY  "+weight(false)+" / "+GravesAndGlory.R.squadSize()+" SLOTS",width-190,39,DarkUi.IVORY);

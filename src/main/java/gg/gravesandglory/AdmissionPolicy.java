@@ -11,6 +11,13 @@ final class AdmissionPolicy {
 
     static Decision decide(boolean running, boolean practice, int size, UUID player,
                            List<Seat> seats, Map<UUID, UUID> reservations) {
+        return decide(running, practice, size, player, seats, reservations, -1);
+    }
+
+    /** rosterTeam is the team the lobby roster lists the player on (-1: none). A joiner without his own held seat takes a bot seat of that team
+     *  first, or an empty seat on it, before any other side is tried. */
+    static Decision decide(boolean running, boolean practice, int size, UUID player,
+                           List<Seat> seats, Map<UUID, UUID> reservations, int rosterTeam) {
         int[] occupied = new int[2];
         int humans = 0;
         for (Seat seat : seats) if (seat.seated() || !running) {
@@ -26,6 +33,15 @@ final class AdmissionPolicy {
                 return new Decision(seat.team(), seat.owner(), true);
         // Practice's opponent remains AI; a visitor cannot take that army.
         if (practice) return new Decision(team, null, false);
+        if (rosterTeam == 0 || rosterTeam == 1) {
+            for (Seat seat : seats)
+                if (seat.seated() && seat.bot() && seat.team() == rosterTeam && !reservations.containsValue(seat.owner()))
+                    return new Decision(seat.team(), seat.owner(), true);
+            if (occupied[rosterTeam] < size) return new Decision(rosterTeam, null, true);
+            for (Seat seat : seats)
+                if (seat.seated() && seat.bot() && seat.team() == rosterTeam)
+                    return new Decision(seat.team(), seat.owner(), true);
+        }
         for (boolean reserved : new boolean[]{false, true})
             for (Seat seat : seats)
                 if (seat.seated() && seat.bot() && reservations.containsValue(seat.owner()) == reserved)

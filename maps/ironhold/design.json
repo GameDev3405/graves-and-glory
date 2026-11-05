@@ -1,0 +1,88 @@
+{
+ "baseY": 64,
+ "depth": 500,
+ "format": 1,
+ "id": "ironhold",
+ "name": "Ironhold Siege",
+ "objects": [
+  {
+   "by": "kort",
+   "id": "spawn-dawn",
+   "kind": "spawn",
+   "state": "accepted",
+   "team": "dawn",
+   "x": 67,
+   "z": 250
+  },
+  {
+   "by": "kort",
+   "id": "spawn-dusk",
+   "kind": "spawn",
+   "state": "accepted",
+   "team": "dusk",
+   "x": 633,
+   "z": 250
+  },
+  {
+   "by": "kort",
+   "id": "point-supply-yard",
+   "kind": "point",
+   "name": "Supply Yard",
+   "radius": 17,
+   "state": "accepted",
+   "x": 321,
+   "z": 120
+  },
+  {
+   "by": "kort",
+   "id": "point-iron-gate",
+   "kind": "point",
+   "name": "Iron Gate",
+   "radius": 17,
+   "state": "accepted",
+   "x": 350,
+   "z": 250
+  },
+  {
+   "by": "kort",
+   "id": "point-watch-hill",
+   "kind": "point",
+   "name": "Watch Hill",
+   "radius": 17,
+   "state": "accepted",
+   "x": 379,
+   "z": 380
+  },
+  {
+   "by": "kort",
+   "id": "mode-siege_ironhold_yard",
+   "kind": "note",
+   "radius": 15,
+   "state": "accepted",
+   "text": "Siege: Outer Yard (stage, stage 0) - starting position, Kort designs the rest",
+   "x": 295,
+   "z": 250
+  },
+  {
+   "by": "kort",
+   "id": "mode-siege_ironhold_gate",
+   "kind": "note",
+   "radius": 4,
+   "state": "accepted",
+   "text": "Siege: Iron Gate (gate, stage 1) - starting position, Kort designs the rest",
+   "x": 313,
+   "z": 250
+  },
+  {
+   "by": "kort",
+   "id": "mode-siege_ironhold_keep",
+   "kind": "note",
+   "radius": 7,
+   "state": "accepted",
+   "text": "Siege: Keep (stage, stage 2) - starting position, Kort designs the rest",
+   "x": 342,
+   "z": 284
+  }
+ ],
+ "width": 700
+}

@@ -13,6 +13,48 @@ public final class UiMath {
         return Math.min(guiScale, Math.max(1, (int) Math.floor(Math.min(fbW / 960.0, fbH / 540.0))));
     }
 
+    /** The canvas a page that fills the window must still hold: the compact page (854x480) less its 12 px outer margin on the right,
+     *  where no box stands, so a 2560x1440 window (853x480 at 3) takes it. */
+    public static final int FILL_W = 842, FILL_H = 480;
+
+    /** Screen pixels per design pixel for the pages that fill the window (every War Table page and the Armoury; Kort, 2026-10-31):
+     *  the largest whole step at which the compact page still fits, never below pixelScale and never past the player's GUI Scale.
+     *  It equals pixelScale at 1080p, 4K and every small window; at 2560x1440 it is 3, not 2, so the page is not left small in a
+     *  wide margin (its 853x480 canvas takes the compact layout). */
+    public static int pageScale(int fbW, int fbH, int guiScale) {
+        int fit = (int) Math.floor(Math.min(fbW / (double) FILL_W, fbH / (double) FILL_H));
+        return Math.max(pixelScale(fbW, fbH, guiScale), Math.min(Math.max(1, guiScale), fit));
+    }
+
+    /** A row of name chips laid out whole (no name is ever cut): each chip's width and whether it carries its seal. Every chip is
+     *  pad, the name and pad; seals (seal plus sealGap) go on every chip if the row then fits maxW, else on the picked chip only,
+     *  else on none. */
+    public record ChipRow(int[] widths, boolean[] seals) {
+        public int total(int gap) { int t = -gap; for (int w : widths) t += w + gap; return widths.length == 0 ? 0 : t; }
+    }
+
+    public static ChipRow chipRow(int[] nameW, int picked, int maxW, int pad, int seal, int sealGap, int gap) {
+        ChipRow row = null;
+        for (int mode = 0; mode < 3; mode++) {
+            int[] w = new int[nameW.length];
+            boolean[] s = new boolean[nameW.length];
+            for (int i = 0; i < nameW.length; i++) {
+                s[i] = mode == 0 || mode == 1 && i == picked;
+                w[i] = 2 * pad + nameW[i] + (s[i] ? seal + sealGap : 0);
+            }
+            row = new ChipRow(w, s);
+            if (row.total(gap) <= maxW) return row;
+        }
+        return row;
+    }
+
+    /** Tab i of a tab block that wraps cols to a row inside maxW px: {x, y, w} from the block's top left, each tab (maxW less the gaps) / cols wide,
+     *  rows h tall and gap apart. The block never leaves its width, however many tabs a mode list grows to. */
+    public static int[] tabBox(int i, int cols, int maxW, int gap, int h) {
+        int w = (maxW - gap * (cols - 1)) / cols;
+        return new int[]{i % cols * (w + gap), i / cols * (h + gap), w};
+    }
+
     /** The text unchanged if it fits in maxW, else its longest prefix plus "..." that fits ("" when not even "..." fits). */
     public static String trim(String s, int maxW, ToIntFunction<String> width) {
         if (width.applyAsInt(s) <= maxW) return s;
@@ -71,6 +113,52 @@ public final class UiMath {
     static double channel(int c) {
         double v = c / 255.0;
         return v <= 0.04045 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
+    }
+
+    /** The dark panels' fill (DarkUi.frame): iron at 93%, over the world or the camp's scrim. */
+    public static final int PANEL_FILL = 0xee1a2125;
+    /** The lightest ground text on a panel can have: the panel's fill over a white world (the Command mode HUD against snow or sky). */
+    public static final int PANEL_LIGHTEST = over(PANEL_FILL, 0xffffffff);
+
+    /** The opaque colour seen when argb is drawn, at its own alpha, over the opaque colour under. */
+    public static int over(int argb, int under) {
+        double a = (argb >>> 24) / 255.0;
+        int out = 0xff000000;
+        for (int shift = 16; shift >= 0; shift -= 8)
+            out |= (int) Math.round((argb >> shift & 0xff) * a + (under >> shift & 0xff) * (1 - a)) << shift;
+        return out;
+    }
+
+    /** A text ink in the colour rgb that holds min:1 on a dark ground: rgb itself (opaque) when it already does, else the same HSL hue and
+     *  saturation with the lightness raised in steps of 1/200 until it does; white if nothing short of it does. */
+    public static int textTint(int rgb, int ground, double min) {
+        int opaque = 0xff000000 | rgb;
+        if (contrast(opaque, ground) >= min) return opaque;
+        double r = (rgb >> 16 & 0xff) / 255.0, g = (rgb >> 8 & 0xff) / 255.0, b = (rgb & 0xff) / 255.0;
+        double max = Math.max(r, Math.max(g, b)), lo = Math.min(r, Math.min(g, b)), l = (max + lo) / 2, d = max - lo;
+        double s = d == 0 ? 0 : d / (1 - Math.abs(2 * l - 1));
+        double h = d == 0 ? 0 : max == r ? ((g - b) / d + 6) % 6 : max == g ? (b - r) / d + 2 : (r - g) / d + 4;
+        for (int step = (int) Math.ceil(l * 200); step <= 200; step++) {
+            int tint = hsl(h, s, step / 200.0);
+            if (contrast(tint, ground) >= min) return tint;
+        }
+        return 0xffffffff;
+    }
+
+    /** Opaque RGB of an HSL colour: h in sixths of a turn (0 to 6), s and l in 0 to 1. */
+    static int hsl(double h, double s, double l) {
+        double c = (1 - Math.abs(2 * l - 1)) * s, x = c * (1 - Math.abs(h % 2 - 1)), m = l - c / 2;
+        double[] rgb = h < 1 ? new double[]{c, x, 0} : h < 2 ? new double[]{x, c, 0} : h < 3 ? new double[]{0, c, x}
+                : h < 4 ? new double[]{0, x, c} : h < 5 ? new double[]{x, 0, c} : new double[]{c, 0, x};
+        int out = 0xff000000;
+        for (int i = 0; i < 3; i++) out |= (int) Math.round(Math.min(1, Math.max(0, rgb[i] + m)) * 255) << (16 - 8 * i);
+        return out;
+    }
+
+    /** A House accent as text (controller ruling R37): the accent's own hue, lightened until it holds 4.5:1 on the lightest panel ground.
+     *  Fills, swatches and glyphs keep the true accent; only words drawn in it take this ink. */
+    public static int accentText(int accent) {
+        return textTint(accent, PANEL_LIGHTEST, 4.5);
     }
 
     /** Width of a brass key cap round its label: 13 for one character, else the label plus 9, at most 48 (key-brass-13 to key-brass-48). */
@@ -483,12 +571,12 @@ public final class UiMath {
 
     // The left column on its iron spine (UI Task 8c, Kort's choice): the selected group keeps its ledger card with its order,
     // formation and key row; every other group hangs as a chip one line high; while the whole army is selected every group's
-    // chip is brass and one key strip hangs under the bottom chip. Canvas px.
+    // chip is brass. Canvas px.
     /** The column's cards and chips start at x 24, 176 wide; the spine at x 12 and the hooks between, so the column lies in x 12
      *  to 200. */
     public static final int CARD_X = 24, CARD_W = 176, COLUMN_LEFT = 12, COLUMN_RIGHT = 200;
-    /** Heights: the selected group's ledger card, a chip, and the army's key strip. */
-    public static final int CARD_H = 62, CHIP_H = 18, KEYS_H = 16;
+    /** Heights: the selected group's ledger card, and a chip. */
+    public static final int CARD_H = 62, CHIP_H = 18;
     /** The px between two plates of the column, and between the column and a vanilla bar below it. */
     public static final int COLUMN_GAP = 4;
     /** The column's foot: 18 px above the canvas's bottom, as the mock hangs the cards. */
@@ -610,8 +698,7 @@ public final class UiMath {
     /** Every plate of one frame of the battle HUD, {x, y, w, h} in canvas px, on a fbW x fbH window at GUI Scale gui with k screen
      *  px per canvas px and at a HUD size, keyed as BattleHud.rects keys them: score, dawn-boss, dusk-boss and seal-(i); card-(group)
      *  for each group fielded, the selected group's card CARD_H tall and every other group's chip CHIP_H, stacked up from the
-     *  column's foot (columnBottom) COLUMN_GAP apart; keys, the army's key strip under the bottom chip while the whole army is
-     *  selected; spine, from 4 px above the top plate to 4 px below the foot; hints, the hint slip in the hint layer; lesson, unless
+     *  column's foot (columnBottom) COLUMN_GAP apart; spine, from 4 px above the top plate to 4 px below the foot; hints, the hint slip in the hint layer; lesson, unless
      *  it gives way to the respawn card (lessonYields); respawn; feed (feedBox). Not the aimed point's name, whose width is its
      *  text's, nor the ability slot, which sits in vanilla's GUI px. BattleHud draws by it; hudFits tries it in every state. */
     public static java.util.Map<String, int[]> hudLayout(int fbW, int fbH, int gui, int k, int size, HudState s) {
@@ -626,11 +713,10 @@ public final class UiMath {
         boolean army = "all".equals(s.selected()) && n > 0;
         int[] heights = new int[n];
         for (int i = 0; i < n; i++) heights[i] = !army && gs.get(i).equals(s.selected()) ? CARD_H : CHIP_H;
-        int[] tops = cardTops(army ? bottom - KEYS_H - COLUMN_GAP : bottom, heights, COLUMN_GAP);
+        int[] tops = cardTops(bottom, heights, COLUMN_GAP);
         int first = n > 0 ? tops[0] : bottom;
         if (n > 0) r.put("spine", new int[]{COLUMN_LEFT, first - 4, 9, bottom - first + 8});
         for (int i = 0; i < n; i++) r.put("card-" + gs.get(i), new int[]{CARD_X, tops[i], CARD_W, heights[i]});
-        if (army) r.put("keys", new int[]{CARD_X, bottom - KEYS_H, CARD_W, KEYS_H});
         if (s.hints()) r.put("hints", new int[]{CARD_X, first - HINTS_ABOVE, HINTS_W, HINTS_H});
         int[] respawn = s.respawn() ? new int[]{cx - 100, respawnY(h, crosshairTop(sh, g, kk)), 200, 28} : null;
         if (s.lessonLines() > 0) {
@@ -657,7 +743,7 @@ public final class UiMath {
      *  8b-2: on a GUI under 456 px wide, as 1280x720 GUI 3, it reaches under vanilla's widest chat, and the open chat at vanilla's
      *  bottom covered it). The group column is below the chat by its place. */
     public static boolean overChat(String key) {
-        return key.equals("score") || key.endsWith("-boss") || key.startsWith("seal-") || key.equals("aim-name") || key.equals("lesson") || key.equals("respawn") || key.equals("feed") || key.equals("ability");
+        return key.equals("score") || key.endsWith("-boss") || key.startsWith("seal-") || key.equals("aim-name") || key.equals("lesson") || key.equals("respawn") || key.equals("feed") || key.equals("ability") || key.startsWith("relic-");
     }
 
     /** The camp's two slips on the HUD canvas of a fbW x fbH window at k screen px per canvas px (UI Task 8b-2), each a notice
@@ -684,20 +770,38 @@ public final class UiMath {
         return guiToCanvas(new int[]{sw / 2 + 104, sh - 47, 50, 32}, gui, k);
     }
 
+    /** The GUI px between relic slots (gear-combat Task 5): RELIC_STEP_X along a row, RELIC_STEP between rows. */
+    public static final int RELIC_STEP = 34, RELIC_STEP_X = 54;
+
+    /** Relic slot i's top left in vanilla GUI px: slot 0 is the ability slot beside the hotbar's right end, and the others run on to its
+     *  right as far as the GUI is wide; a slot that would run off wraps to the row above, under the rightmost slot, so the slots keep
+     *  right of vanilla's widest chat (332 px) and below the feed leaf. A column of three met the feed at 1920x1080 GUI 4 Standard,
+     *  and slots left of slot 0 cost the lifted chat its lines. */
+    public static int[] relicAt(int i, int sw, int sh) {
+        int x0 = sw / 2 + 104, perRow = Math.max(1, Math.min(3, (sw - x0 - 50) / RELIC_STEP_X + 1)), row = i / perRow, col = i % perRow;
+        return new int[]{x0 + RELIC_STEP_X * (row == 0 ? col : perRow - 1 - col), sh - 47 - RELIC_STEP * row};
+    }
+
+    /** Relic slot i's 50x32 box in canvas px: abilityRect for slot 0. */
+    public static int[] relicRect(int i, int sw, int sh, int gui, int k) {
+        int[] at = relicAt(i, sw, sh);
+        return guiToCanvas(new int[]{at[0], at[1], 50, 32}, gui, k);
+    }
+
     /** The rows a HUD plate's PNG paints above its box, by rect key (atlas.json oy): 1 for the score card, the lesson note, the
-     *  respawn card and the key strip, 2 for a card or chip (its loss flash's rule; 1 otherwise), 3 for the feed leaf; the seals,
+     *  respawn card, 2 for a card or chip (its loss flash's rule; 1 otherwise), 3 for the feed leaf; the seals,
      *  the bosses, the hint slip and the aimed point's name paint inside or below their boxes. */
     static int inkAbove(String key) {
         if (key.startsWith("card-")) return 2;
-        return switch (key) { case "feed" -> 3; case "score", "lesson", "respawn", "keys" -> 1; default -> 0; };
+        return switch (key) { case "feed" -> 3; case "score", "lesson", "respawn" -> 1; default -> 0; };
     }
 
     /** The rows of drop shadow a HUD plate's PNG paints below its box (atlas.json: the PNG's height less oy and the box's): 5 for the
-     *  score card, the lesson note, the respawn card and the key strip, 6 for a card or chip (in its loss flash; 5 otherwise) and
+     *  score card, the lesson note, the respawn card, 6 for a card or chip (in its loss flash; 5 otherwise) and
      *  for the hint slip, 7 for the feed leaf, none for the rest. */
     static int inkBelow(String key) {
         if (key.startsWith("card-")) return 6;
-        return switch (key) { case "feed" -> 7; case "hints" -> 6; case "score", "lesson", "respawn", "keys" -> 5; default -> 0; };
+        return switch (key) { case "feed" -> 7; case "hints" -> 6; case "score", "lesson", "respawn" -> 5; default -> 0; };
     }
 
     /** The pairs whose inks keep CARD_GAP rows apart (inksApart): the lesson note, the respawn card or the feed leaf with one
@@ -707,7 +811,7 @@ public final class UiMath {
         return ca && (cb || column(b)) || cb && column(a);
     }
 
-    static boolean column(String key) { return key.equals("hints") || key.equals("keys") || key.startsWith("card-"); }
+    static boolean column(String key) { return key.equals("hints") || key.startsWith("card-"); }
 
     /** columnTop's answer for a frame that drew no column (camp, an entrance, a screen over the HUD). */
     public static final int NO_COLUMN = Integer.MIN_VALUE;
@@ -718,7 +822,7 @@ public final class UiMath {
         int top = NO_COLUMN;
         for (var e : r.entrySet()) {
             String k = e.getKey();
-            if (k.equals("spine") || k.equals("hints") || k.equals("keys") || k.startsWith("card-")) top = top == NO_COLUMN ? e.getValue()[1] : Math.min(top, e.getValue()[1]);
+            if (k.equals("spine") || k.equals("hints") || k.startsWith("card-")) top = top == NO_COLUMN ? e.getValue()[1] : Math.min(top, e.getValue()[1]);
         }
         return top;
     }
@@ -794,7 +898,7 @@ public final class UiMath {
         for (int i = 0; i < keys.size(); i++) {
             String ka = keys.get(i);
             int[] a = r.get(ka);
-            if (!ka.equals("ability") && (a[0] < 12 || a[1] < 12 || a[0] + a[2] > w - 12 || a[1] + a[3] > h - 12)) bad.add(ka + " " + java.util.Arrays.toString(a) + " is not 12 px inside the " + w + "x" + h + " canvas");
+            if (!ka.equals("ability") && !ka.startsWith("relic-") && (a[0] < 12 || a[1] < 12 || a[0] + a[2] > w - 12 || a[1] + a[3] > h - 12)) bad.add(ka + " " + java.util.Arrays.toString(a) + " is not 12 px inside the " + w + "x" + h + " canvas");
             for (var b : bars.entrySet()) if (meets(a, b.getValue())) bad.add(ka + " " + java.util.Arrays.toString(a) + " meets " + b.getKey() + " " + java.util.Arrays.toString(b.getValue()));
             for (int j = i + 1; j < keys.size(); j++) {
                 String kb = keys.get(j);
@@ -833,6 +937,7 @@ public final class UiMath {
                 var r = hudLayout(fbW, fbH, gui, k, size, new HudState(n, groups, sel, hint == 1, content == 1 ? 2 : 0, down == 1, true));
                 if (content == 2) r.put("aim-name", new int[]{sealCentre(0, n, w) - AIM_REACH, 68, sealCentre(n - 1, n, w) - sealCentre(0, n, w) + 2 * AIM_REACH, 9});
                 r.put("ability", ability);
+                for (int i = 1; i < 3; i++) r.put("relic-" + i, relicRect(i, sw, sh, gui, k));
                 if (!frameFaults(r, w, h, bars).isEmpty()) return false;
                 for (int open = 0; open < 2; open++) if (!chatSlot(r, f, sw, sh, CHAT_RIGHT, 9, open == 1 ? 20 : 10, open == 1).onScreen()) return false;
             }
@@ -845,10 +950,10 @@ public final class UiMath {
         return a.endsWith("-boss") && b.equals("score") || b.endsWith("-boss") && a.equals("score");
     }
 
-    /** The plates the footprint counts (UI Task 8c): the group cards and chips, the army's key strip, the feed leaf, the hint slip,
+    /** The plates the footprint counts (UI Task 8c): the group cards and chips, the feed leaf, the hint slip,
      *  the lesson note and the respawn card. */
     public static boolean plate(String key) {
-        return key.startsWith("card-") || key.equals("keys") || key.equals("feed") || key.equals("hints") || key.equals("lesson") || key.equals("respawn");
+        return key.startsWith("card-") || key.equals("feed") || key.equals("hints") || key.equals("lesson") || key.equals("respawn");
     }
 
     /** The share of a fbW x fbH screen the HUD's plates cover (plate), from their boxes in canvas px at k screen px each; plates never

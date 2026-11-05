@@ -1,0 +1,19 @@
+{
+ "weapon": "admiral_trident_t2",
+ "density": 1,
+ "thickness": 2,
+ "grip": {
+  "offset": [
+   0,
+   0,
+   0
+  ],
+  "rotation": [
+   0,
+   0,
+   0
+  ],
+  "note": "held upright like the sun staff"
+ },
+ "note": "Admiral Vael's trident (Tidecallers), hand-authored at 1 texel a px: a dark wet driftwood shaft with gilt rings and crown, a sea-blue band, three barbed gilt prongs and a pearl at the fork; held upright. Tier II: a sea-blue lower band, a broader crossbar and a longer middle prong."
+}

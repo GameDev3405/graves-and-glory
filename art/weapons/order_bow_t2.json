@@ -1,5 +1,6 @@
 {
  "weapon": "order_bow_t2",
+ "density": 1,
  "thickness": 2,
  "grip": {
   "offset": [
@@ -21,21 +22,21 @@
  ],
  "nocks": [
   [
-   -3.31,
-   0.0
+   -3.2886,
+   0
   ],
   [
-   -4.06,
-   0.0
+   -6.0924,
+   -2.6
   ],
   [
-   -4.81,
-   0.0
+   -8.7962,
+   -2.6
   ],
   [
-   -5.56,
-   0.0
+   -11.5,
+   -2.6
   ]
  ],
- "note": "The Archer's bow, tier II (upgraded): a longer, sharper recurve whose tips turn past the string (one unbroken grain line, three flecks a limb), a gilt cuff round the second stave of each limb, a linen-wound grip between gilt collars, gilt nocks; 27.3 px tall."
+ "note": "order_bow_t2"
 }

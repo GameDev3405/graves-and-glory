@@ -1,0 +1,10 @@
+PASS no profile file before the first join :: work/qa2/srv\Graves and Glory\gravesandglory-profiles\eaf8867e-28d3-3ead-a2ee-24bde5a3da9e.json
+PASS bot joins :: None
+PASS profile file exists after the first join :: work/qa2/srv\Graves and Glory\gravesandglory-profiles\eaf8867e-28d3-3ead-a2ee-24bde5a3da9e.json
+PASS profile is schema 4 :: 4
+PASS profile holds the 10 starter Commons :: 10
+PASS profile holds the starter gear, all worn :: 6 pieces, 6 worn
+PASS starter relic is seated in slot 0 :: ['stand_fast', '', '']
+PASS same bot rejoins :: None
+PASS a rejoin leaves the profile unchanged
+RESULT PASS

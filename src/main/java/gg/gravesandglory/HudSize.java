@@ -52,7 +52,7 @@ public final class HudSize {
         loaded = true;
         try {
             Files.createDirectories(file().getParent());
-            Files.writeString(file(), "{\"size\":\"" + NAMES[size] + "\"}");
+            SafeFiles.write(file(), "{\"size\":\"" + NAMES[size] + "\"}");
             Presentation.notice = UiMath.hudSizeNotice(size, shownAs());
         } catch (Exception e) { Presentation.notice = "Your HUD size could not be saved."; }
     }

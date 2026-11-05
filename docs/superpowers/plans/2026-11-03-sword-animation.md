@@ -1,0 +1,139 @@
+# One-Handed Sword Troops Animation Implementation Plan
+
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+
+**Goal:** Give the `sword` family (troops `revenant` and `tc_raider`) video-style stances `idle`, `carry`, `guard` and swings `sword_overhead`, `sword_low_cut`, `sword_thrust`, thrown from and returning to the guard. Kort approves each swing in game, with no self-clipping and no blend pops.
+
+**Architecture:** Clip data only, after `main` (which has both models) is merged in (Task 0). The family has no clip file, so a new `art/clips/biped/sword.bbmodel` is created (a copy of the sword_shield structure) and `tools/clips.py` builds `clips/biped/sword/*.json`, which override `common/` by name. An action clip is added to the stance as an offset (`MotionStack.action`, `Clip.add`), so each swing's keys are deltas from the guard and the first and last keys of every keyed channel are 0. Hold maps to `guard` for a troop with no shield, so no `_wall` clips are made. Numbers for every key are in the spec's Key tables.
+
+**Tech Stack:** Blockbench clip JSON (Python edits), `tools/anim_edit.py`, `tools/clips.py`, scratchpad `pose_preview.py`, `test-tools/work/t16r12/live/run.sh`, scratchpad `build_compare.py` at localhost:8771, `test-tools/standalone/MotionEngineCheck.java`.
+
+**Spec:** `docs/superpowers/specs/2026-11-03-sword-animation-design.md`
+
+## Global Constraints
+
+- Strike timing is approved:
+  - Each `impact` marker stays: overhead 0.5 s (10 ticks), low cut 0.4 s (8), thrust 0.35 s (7).
+  - Clip lengths stay within `BattleMath.ATTACK_CLIP_MAX_TICKS` = 40 ticks (2.0 s).
+  - Any timing change needs Kort first.
+- Fix clipping in the clip keys only. Mounts and part sizes stay unchanged. The crouch and lunge are visual only.
+- No gameplay, save-format or protocol change. No ability visuals (fearless, brine).
+- `python tools/clips.py --verify` must pass. `Spec.java` changes only through `tools/preflight.py`.
+- Limits on running the game and touching the machine:
+  - At most 2 Minecraft instances; Kort's client counts.
+  - Never touch PIDs 29360, 4580, 6048 or `C:/GGMatch`.
+  - No computer-use on Minecraft. No eula.txt.
+- No push, publish or merge to main. Commit trailer: `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`.
+- Pose checks cover both troops: `revenant` and `tc_raider`.
+- Ask Kort with AskUserQuestion, short and plain. Each swing is approved and committed on its own.
+- After any `--verify` or gradle run: `git checkout -- sheets/preflight.json src/main/java/gg/gravesandglory/Spec.java` (they are already modified on this branch; keep that in mind before committing and stage only the listed files).
+
+## Review Focus
+
+1. **Start and end in guard, blade direction on every key.** Every keyed channel's first and last key is 0, and each key's blade direction matches the spec's Key tables (overhead edge-first from behind the head, low cut flat and edge-leading, thrust point-first level with the arm). `swing_ends.py` checks the zeros.
+2. **Legs and planting.** Leave the legs unkeyed so `MotionFeet` plants the feet; the step-in is a root offset only. Add leg keys only if Kort asks for a real step.
+3. **Blade through the helmet, the drowned head layer or a leg at the extremes**, at all 8 angles, on both troops.
+4. **Swing into swing and hit over attack.** The grading pop flag reads "no" for every swing; the sword-family MEC fixture (Task 7) passes.
+5. **Thrust blade drift:** at impact the blade points at the target, within 2 degrees yaw of the body's forward line and 5 degrees pitch of level, measured as in Task 5 step 4.
+
+---
+
+### Task 0: Bring in the models from main, and add harness cases
+
+Both models are on `main`: `models/troop/revenant.json` (`notched_sword`) and `tc_raider.json` (`cutlass`), plus `art/troops/` sources, skins and weapons. This branch is 351 commits behind `main` (corrected 2026-11-03; an earlier draft planned to author them here). See the spec, Units.
+
+**Files:**
+- No model files are written here. The models come from merging `main` into `work/anim-rework`, which needs coordinator approval: it is a merge into a work branch, not into `main`.
+- Modify: `test-tools/work/t16r12/live/run.sh` (gitignored): add cases `solo_revenant` and `solo_tc_raider`, copied from `solo_sentinel` with `GRAVES_MOTION_FAMILY=sword`, `GRAVES_GRADE_TROOP=revenant` or `tc_raider`, and `GRAVES_GRADE_CLIPS=${GRAVES_GRADE_CLIPS:-guard}`. Run each as `bash run.sh <tag> solo_revenant`.
+
+- [ ] **Step 1:** Ask the coordinator to merge `main` into `work/anim-rework` (or to rebase the clip work onto a branch cut from `main`). Expected: `git ls-files src/main/resources/assets/gravesandglory/models/troop/revenant.json src/main/resources/assets/gravesandglory/models/troop/tc_raider.json` lists both files.
+- [ ] **Step 2:** Run `python tools/build_skins.py --verify`. Expected: exit 0. `git status --short` shows only the pre-existing `sheets/preflight.json` and `Spec.java` changes.
+- [ ] **Step 3:** Render `bash run.sh r0 solo_revenant` and `bash run.sh x0 solo_tc_raider` with `GRAVES_GRADE_CLIPS=guard`, no sword clips yet, at levels 1 and 3. Expected checklist:
+  - (a) both draw with the custom model;
+  - (b) the notched sword and the cutlass are in the right hand, blade forward-down;
+  - (c) the forward lean (body x about +15) is visible and the feet are on the ground;
+  - (d) the Raider's arms sit slightly forward (rest x -16);
+  - (e) no tabard, skirt or kelp strip pokes through a leg or arm.
+  If (b) fails, stop and report: a hold or model fix is Kort's decision.
+- [ ] **Step 4:** Record in the ledger, from the model JSONs and the render, the extra clearance the overhead needs:
+  - the revenant crest fin top, which sits at head y -10.6 plus the helm;
+  - the Raider helm and kelp extent beyond the head, in px;
+  - the front tabard strip's reach below the belt, in px.
+  Task 3 uses them, so its 0.5 px figure becomes the recorded offset plus 0.5 px. Expected: three numbers written down.
+- [ ] **Step 5:** Re-sum the spec's Key tables with the rest lean: blade pitch = body rest (+15 Risen, +16 Raider) + body key + arm + forearm. Expected: every row's stated blade direction holds within 10 deg for both troops. If not, adjust body x on that key (usually about -15 at the overhead impact and the thrust) in the spec before Task 2.
+
+### Task 1: Preview, blade and end-key tools (scratch files, not committed)
+
+**Files:**
+- Modify: scratchpad `pose_preview.py`: add `--over guard` (sample guard at time 0, add the swing's offset) and `--blade` (print the hilt-to-tip blade vector, yaw = atan2(x, -z), pitch, per requested time).
+- Create: scratchpad `swing_ends.py <clip>...`: FAIL for any keyed channel whose first or last key is not within 0.01 of 0, and for any `impact` marker other than 0.5, 0.4 or 0.35; otherwise OK.
+
+- [ ] **Step 1:** Write `swing_ends.py` and run it on the built `sword_shield_thrust.json` as a smoke test. Expected: a printed OK or FAIL per clip, no traceback.
+- [ ] **Step 2:** Add `--over` and `--blade` to `pose_preview.py` (neither exists today). `--blade` prints one line per requested time: `blade t=<s> yaw=<deg> pitch=<deg> hilt_y=<px> tip_y=<px>`, yaw against the body's forward line (atan2(x, -z)), pitch from level, heights in px above the ground. Run `pose_preview.py sword_shield_thrust --over guard --blade 0.35`. Expected: exactly one such line with a numeric yaw whose magnitude is between 0 and 12 degrees (the knight plan measured 2-10 degrees outward drift at impact) and a pitch within 15 degrees of level; no traceback.
+- [ ] **Step 3:** Confirm every sign assumption in the spec's Key tables (root y negative = lower, root z negative = forward, arm x negative = forward and up, left-arm z negative = out, forearm and hand x negative = bent forward) by previewing one knight clip and one hand-made offset per sign. **The Key tables are not usable until this passes.** Expected: each sign shown as stated in the preview; any wrong one is listed and that column is flipped in the spec before Task 3.
+
+### Task 2: Stances idle, carry, guard (video 10.5-11.0 ready; 16-20 carry)
+
+**Files:**
+- Modify: `tools/anim_edit.py` (add `'sword': 'knight'` to `TROOP`; the knight mesh is the stand-in until the Task 0 models are the editing mesh, then switch to `revenant`).
+- Create: `art/clips/biped/sword.bbmodel`; generated `src/main/resources/assets/gravesandglory/clips/biped/sword/{idle,carry,guard}.json`.
+
+Pre-check result (done while writing this plan): `python tools/anim_edit.py open sword` prints usage and exits 2 today, for three reasons: `sword` is not in `TROOP`; `art/clips/biped/sword.bbmodel` does not exist; and `mesh('revenant')` fails because `art/troops/revenant.json` does not exist (it will after Task 0). `tools/clips.py` globs `art/clips/*/*.bbmodel`, so a new `sword.bbmodel` is picked up without a change.
+
+- [ ] **Step 1:** Create the source file: copy `art/clips/biped/sword_shield.bbmodel` to `art/clips/biped/sword.bbmodel`, set its `name` to `sword`, and keep only the animations `idle`, `carry`, `guard` (delete the shield, wall, brace, `sword_shield_*`, block and hit animations; hits come from `common/`). Add `'sword': 'knight'` to `TROOP` in `tools/anim_edit.py`. Expected: `python tools/anim_edit.py open sword` prints `anim_edit: wrote work/anim-edit/sword-knight.bbmodel (3 clips)` and the path.
+- [ ] **Step 2:** Set `guard` body [14,18,0] and head [-12,-14,0], drop the shield-arm keys, and author the arm keys to the Stances table (blade 15-30 degrees below level aimed at the belly, off hand open forward and out at waist height). `idle`: relaxed, blade forward-down about 40 degrees. `carry`: idle plus an off-arm swing only. Expected: `python tools/anim_edit.py apply sword` runs `clips.py` and `--verify` with no error, and `git status --short` lists exactly `art/clips/biped/sword.bbmodel`, `tools/anim_edit.py` and `clips/biped/sword/` (three JSONs) as new or changed, besides the already-modified `sheets/preflight.json` and `src/main/java/gg/gravesandglory/Spec.java` and the existing untracked docs.
+- [ ] **Step 3:** Render `solo_revenant`, then `solo_tc_raider`, with `GRAVES_GRADE_CLIPS=idle,carry,guard`. Expected checklist: (a) guard blade 15-30 degrees below level, point at belly height; (b) the off hand is open, forward and out, and clears the chest chainmail on the revenant; (c) carry's sword arm is still, only the off arm swings; (d) nothing passes through the body at any of the 8 angles; (e) the zombie's default arms-forward does not show.
+- [ ] **Step 4:** Rebuild the compare page ("Stances v<N>") and ask Kort to approve. Expected: approval, or a list of changes; repeat from step 2.
+- [ ] **Step 5:** Commit `art/clips/biped/sword.bbmodel`, `tools/anim_edit.py` and the three JSONs: "Give the one-handed sword troops a video-style guard". Expected: `git status --short` shows no further changes from this task.
+
+### Task 3: Overhead (video 10.9-11.7; frames `overhead`)
+
+**Files:** `art/clips/biped/sword.bbmodel` (animation `sword_overhead` only); generated `sword_overhead.json`.
+
+The target is the spec's Key table for `sword_overhead` (wind-up 0.20, top 0.35, impact 0.50, follow-through 0.65, back to guard by 1.20), with the blade direction written on every row.
+
+- [ ] **Step 1:** Add the animation with the table's keys; impact marker at 0.5. Expected: `python tools/clips.py` then `python tools/clips.py --verify` print no errors; `swing_ends.py sword_overhead` prints OK.
+- [ ] **Step 2:** `pose_preview.py sword_overhead out.png 0 0.2 0.35 0.5 0.65 1.2 --over guard`. Expected: the blade is behind the head at 0.35 with at least the recorded head-layer offset plus 0.5 px clear of the head or helmet (Task 0 step 4); at 0.50 it is about 50 degrees below level in front of the face. Iterate here before rendering.
+- [ ] **Step 3:** Render both troops in the background with `GRAVES_GRADE_CLIPS=sword_overhead,guard`. Expected checklist: (a) keys 0.20, 0.35, 0.50, 0.65 at all 8 angles show no blade through head, helmet, head layer (raider) or leg; (b) the pop flag for overhead reads "no"; (c) feet stay planted (contact sheet shows no slide).
+- [ ] **Step 4:** Rebuild the compare page ("Overhead v<N>"), ask Kort to approve or change. Expected: approval; repeat steps 1-3 for any change.
+- [ ] **Step 5:** Run `bash <scratchpad>/mec.sh`. Expected: no FAIL lines (this still runs the sword_shield fixture; the sword fixture is Task 7).
+- [ ] **Step 6:** Commit the bbmodel and `sword_overhead.json`: "Swing the one-handed sword overhead from the guard, video style". Expected: `git status --short` shows only the pre-existing `sheets/preflight.json`, `Spec.java` and untracked docs.
+
+### Task 4: Low cut (video 11.4-12.1; frames `side_slash` 3-5)
+
+Same steps as Task 3, for `sword_low_cut`: length 1.1 s, impact 0.4, keys 0.25, 0.40, 0.55, 0.80, 1.10 from the Key table.
+
+The default is the lowered knee-to-hip flat cut (spec Question 3 is optional: Kort may ask for a chest-height side slash instead, which is then a change to the 0.40 and 0.55 rows only).
+
+Step 2 expected: run `pose_preview.py sword_low_cut --over guard --blade 0.40`; the printed line shows pitch within 5 degrees of level and both `hilt_y` and `tip_y` between 6 and 12 px (knee to hip; the rig's hips are at y 12 px and its knees at 6 px). If either is outside, adjust the root y and body x at 0.40 and repeat. Also: at 0.40 the blade is flat and edge-leading, crossing in front of the body; at 0.25 it points rearward at the right hip, not through the back leg. Step 3 checklist adds: (d) at 0.55 the blade does not pass through the left leg or the off hand.
+
+Commit message: "Swing the one-handed sword low cut from the guard, video style".
+
+### Task 5: Thrust (video 1.5-1.9 and 4.2-4.3; frames `thrust` and `thrust2`)
+
+Same steps as Task 3, for `sword_thrust`: length 1.25 s, impact 0.35, keys 0.24, 0.35, 0.55, 0.80, 1.25 from the Key table.
+
+Step 4 is the blade-yaw measurement (this replaces step 4 of Task 3): run `pose_preview.py sword_thrust --over guard --blade 0.35 0.55` and read the render's top-down angle at tick 7. Expected: yaw within 2 degrees of the body's forward line (the one reference line), pitch within 5 degrees of level, the preview and the top-down render agreeing within 1 degree; blade height 20-26 px above the ground (chest to stomach). If yaw is over 2 degrees, adjust right_arm y and right_hand z at 0.35 and 0.55 and repeat.
+
+Commit message: "Lunge the one-handed sword thrust from the guard, video style".
+
+### Task 6: Both-troop check
+
+- [ ] **Step 1:** Render `solo_revenant`, then `solo_tc_raider`, one at a time, with `GRAVES_GRADE_CLIPS=guard,sword_overhead,sword_low_cut,sword_thrust`. Expected checklist for each: every key pose at 8 angles without blade through head, helmet, chest chainmail (revenant), head layer (raider) or leg; pop flag "no" for all three; the three swings return to guard with no visible snap.
+- [ ] **Step 2:** If anything clips, adjust only that swing's keys, re-run `clips.py --verify`, re-render, and show Kort again if the change is visible. Expected: the checklist passes; commit "Fix one-handed sword swing clipping on the Risen and Raider" only if files changed, otherwise no commit.
+
+### Task 7: Sword-family hit-over-attack check
+
+`MotionEngineCheck.hitOverAttack` (about line 1093) calls `hitWhileAttacking` (line 1057), which loads `realSwordShield` and sets `d.shield = true`. Add a sword-family copy.
+
+**Files:** Modify `test-tools/standalone/MotionEngineCheck.java`.
+
+- [ ] **Step 1:** Add `realSword(Map<String, Clip> all)` modelled on `realSwordShield`, loading `clips/biped/sword/*.json` over `clips/biped/common/*.json` (the common hits are inherited). Add `hitWhileAttackingSword(seed, hit, keep, attackIndex)`: a copy of `hitWhileAttacking` using `realSword`, with `d.stance = "hold"`, **`d.shield = false`** (hold maps to guard for a troop with no shield) and `d.enemy = true`; the attack index comes from the sword rows of `ATTACKVARIANTS` in order: 0 thrust, 1 overhead, 2 low cut. Add `hitOverAttackSword()` looping the three indices over the four seeds, and register it as `hit over attack (sword)`. Expected: the file compiles with the project's standalone check command (`docs/SETUP.md`).
+- [ ] **Step 2:** Run MotionEngineCheck alone (`bash <scratchpad>/mec.sh`). The attack starts at tick 20 and the hit at tick 25, so ticks 26-35 fall inside every swing (22, 24 and 25 ticks long). Expected: `hit over attack (sword)` reports, per swing, a worst step of 15 deg/tick or less over ticks 26-35, with the same tracks/overlay assertions as the original (attack the only track, overlay under 0.5 one tick in), and no FAIL lines. If a swing exceeds 15, soften that swing's keys around its impact (0.35-0.50 s), not the hit clips.
+- [ ] **Step 3:** Commit: "Check hits over the one-handed sword attacks". Expected: `git status --short` shows only the pre-existing changes.
+
+### Task 8: Land it
+
+- [ ] **Step 1:** Run `JAVA_HOME="/c/Program Files/Eclipse Adoptium/jdk-17.0.19.10-hotspot" python tools/verify.py game --offline` in the background. Expected: PASS. Then run `git checkout -- sheets/preflight.json src/main/java/gg/gravesandglory/Spec.java` and check that `git status --short` no longer lists those two.
+- [ ] **Step 2:** Write the ledger and tell the coordinator the new head of `work/anim-rework`; if it is gone, leave a note in the shared notes folder. Expected: the note names the head commit and the list of commits from this plan.
+- [ ] **Step 3:** Ask Kort which comes next: hits, guarded advance, taunt, or the Risen/Raider difference (spec Question 2). Expected: an answer recorded in the ledger.

@@ -1,0 +1,26 @@
+Dedicated-server QA rows, 2026-11-03, branch work/qa-server-rows, base main fd983e7b.
+Scratch server (deleted afterwards): kit scripts from tools/server-kit + jar graves-and-glory-0.5.0 (build 2e255adde989) + fabric-api 0.92.2, lithium, ferritecore, modernfix + fabric-server-launch.jar (sha256 856a5f9f...cf113, matched the pin). Port 25640, online-mode=false, white-list=false (scratch only). Clients: dev harness clients via runClient -PlocalIntegration (QaClient), one at a time. Processes: server + 1 client at most.
+
+C7  first start with eula=true (scratch): libraries and versions/ downloaded, world "Graves and Glory" created,
+    "Done (2.224s)", "Dedicated server took 25.45 seconds to load", camp terrain 2201 ms, camp pieces 522 ms, one "Can't keep up! 73 ticks behind",
+    no Exception / ERROR in latest.log. Second start: "camp terrain skipped", "Cached map ready", Done (1.910s).
+C8  status JSON: {"version":{"name":"1.20.1","protocol":763},"description":{"text":"Graves and Glory"},"players":{"max":16,"online":0}}
+    test-tools/standalone/server_status_probe.py itself exits 1: its assert requires players.max == 8, the kit default is 16 (stale probe).
+C9  client QaClient (ServerKitSmoke case ok): "PASS ok in world as QaClient"; server: "QaClient[/127.0.0.1:57114] logged in with entity id 56", "joined the game", "left the game".
+    <world>/gravesandglory-profiles/ was NOT created by the join (Campaign.save runs only on a collection change); gravesandglory-layout.json was written.
+C10 stop.ps1 against a start.ps1 run under a redirected, BOM-writing stdin: server received "?stop" -> "Unknown or incomplete command ... ?stop<--[HERE]",
+    java kept running ("Still running after 120s"), stopped by Stop-Process (scratch process). Retried with [Console]::InputEncoding set to UTF-8 without BOM:
+    stop.ps1 -> "Stopping the server / Saving players / Saving worlds / All dimensions are saved", "[server-kit] Stopped.", start.ps1 exit code 0, server.pid removed.
+C11 level-name=Vanilla Probe: "Done (2.200s)", world folder holds only vanilla dirs (no gravesandglory-camp.json, no layout file), no crash,
+    zero lines mentioning Graves and Glory in the log after "Starting minecraft server" (no operator-facing reason).
+E9  world "Graves and Glory" given bannerbound-layout.json (sha256 09f7d391...) and bannerbound-profiles/1111...5555.json (test-tools/resources/fixtures/profile-v1-cache.json, sha256 c6ba7465...)
+    and no gravesandglory-* copies. After start: gravesandglory-layout.json sha256 09f7d391... and gravesandglory-profiles/1111...5555.json sha256 c6ba7465... (identical), originals still present, no Exception.
+    The failure branch (originals kept, clear message) was not run live; covered by AUTO LegacyDataMigrationCheck.
+F2 old / F3 old version / F4 build (CompatibilityChecks via --quickPlayMultiplayer 127.0.0.1:25640, GRAVES_ROADMAP_COMPAT_CASE):
+    "old=true", "build=true": "Failed to connect ... This server requires Graves and Glory 0.5.0 (build 2e255add). Install the same modpack release ..."
+    server: "[Graves and Glory] Refused incompatible client during login" (no stack trace).
+    (the "old" case sends version 0.0.0-old; the "build" case a zero hash; protocol is not varied by the harness.)
+F5  malformed=true: "Invalid modpack compatibility response. This server requires Graves and Glory 0.5.0 ..."; missing=true: "This server requires Graves and Glory 0.5.0 ...". Server: Refused, no exception.
+J9  kit server.properties.default: enable-rcon=false; live server: no RCON line in latest.log, nothing listening on 25575 (rcon.port default).
+J2  server started with -Dgg.build=camp ("[Graves and Glory build] camp generated; builders may join"), non-op protocol bot (offline login, version gate answered):
+    command tree sent to the player lacks backup/map/warp; /backup, /map and /warp each returned command.unknown.command (refused). No control run as an op.

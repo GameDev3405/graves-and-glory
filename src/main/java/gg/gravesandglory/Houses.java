@@ -37,6 +37,7 @@ final class Houses {
         for (var u : battle.units) if (u.squad == s && !u.temporary && u.mob.isAlive()) slots.merge(u.spec.house(), u.spec.slotWeight(), Integer::sum);
         s.traits.clear();
         for (var h : Spec.HOUSES) { int tier = RosterMath.traitTier(slots.getOrDefault(h.id(), 0), thresholds(h.id())); if (tier > 0) s.traits.put(h.id(), tier); }
+        battle.mode.traits(battle, s); // a mode may set an army's tiers itself (Survival's dead take the tier's waveTraitTier)
     }
 
     /** The tiers a squad's banner reaches, House order, tier I or higher only; battle rewards read them. */
@@ -216,11 +217,11 @@ final class Houses {
     }
 
     /** How many ticks the death log keeps an entry: the Warlock's value3 (the classes row whose active is Grave Bloom), 0 when no class carries it. */
-    static long deathWindow() { var c = Commander.byActive("grave_bloom"); return c == null ? 0 : Math.round(c.value3()); }
+    static long deathWindow() { var c = Commander.tuningByEffect("grave_bloom"); return c == null ? 0 : Math.round(c.value3()); }
 
     /** Logs a troop that really died (AFTER_DEATH), where it fell, and drops what is older than the window. Grave Bloom raises from this log. */
     static void logDeath(GravesAndGlory.Battle b, GravesAndGlory.Unit u) {
-        b.deaths.add(new GravesAndGlory.Death(u.mob.getPos(), b.time, u.spec.id(), u.squad.team));
+        b.deaths.add(new GravesAndGlory.Death(u.mob.getPos(), b.time, u.spec.id(), u.squad.team, u.mob));
         prune(b);
     }
 

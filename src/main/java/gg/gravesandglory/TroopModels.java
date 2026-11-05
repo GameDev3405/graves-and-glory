@@ -38,7 +38,21 @@ public final class TroopModels {
      */
     public record Weapon(String id, java.util.List<TroopMesh> frames, TroopMesh far, float[] pull, net.minecraft.client.model.ModelTransform grip, java.util.List<Vec3d> nocks, Identifier texture, Identifier glow, org.joml.Quaternionf rot) {
         public Weapon(String id, java.util.List<TroopMesh> frames, TroopMesh far, float[] pull, net.minecraft.client.model.ModelTransform grip, java.util.List<Vec3d> nocks, Identifier texture, Identifier glow) {
-            this(id, frames, far, pull, grip, nocks, texture, glow, turn(grip));
+            this(id, frames, far, pull, carry(pull, grip), nocks, texture, glow, turn(carry(pull, grip)));
+        }
+        /** How far forward of the arm's axis an upright weapon's shaft sits (model px, hand frame -Z is front): the fist's front half, clear of the 4 px arm. */
+        static final float CARRY_FORWARD = 3f;
+        /** How far an upright weapon's tip leans forward (degrees about the hand's X), so the shaft clears the shoulder and pauldron above the fist. */
+        static final float CARRY_TILT = 10f;
+        /**
+         * The hand bone runs along the forearm, so a weapon with no grip turn and no offset ("held upright": staffs, spears, tridents)
+         * would sit on the arm's axis and run up through the forearm, shoulder and pauldron. Such a weapon, unless it draws (bows keep
+         * their pose-driven grip), is carried in front of the arm instead: shaft through the fist's front half, tip leaning forward.
+         */
+        static net.minecraft.client.model.ModelTransform carry(float[] pull, net.minecraft.client.model.ModelTransform g) {
+            boolean upright = g.pivotX == 0f && g.pivotY == 0f && g.pivotZ == 0f && g.pitch == 0f && g.yaw == 0f && g.roll == 0f;
+            if (!upright || (pull != null && pull.length > 0)) return g;
+            return net.minecraft.client.model.ModelTransform.of(0f, 0f, -CARRY_FORWARD, CARRY_TILT * (float) (Math.PI / 180.0), 0f, 0f);
         }
         /** Whether this is a cube weapon (a Blockbench model, with a far version), which draws whole at every depth setting; a sprite weapon draws its two big faces with troop depth off. */
         public boolean cube() { return far != null; }
@@ -203,6 +217,8 @@ public final class TroopModels {
     static final int MAX_TIER=Arrays.stream(Spec.GEARTIERS).mapToInt(Spec.GearTiersRow::tier).max().orElse(3);
     /** The cloth sheet of a side (a factions id), of the company ("company"), or linen for null. */
     public static Identifier cloth(String side){return new Identifier(NAMESPACE,CLOTH+(side==null?"linen":side)+".png");}
+    /** A troop's own cloth sheet of a side: <prefix><side>.png, or the shared sheet when the prefix is empty. */
+    public static Identifier cloth(String prefix,String side){return prefix.isEmpty()?cloth(side):new Identifier(prefix+(side==null?"linen":side)+".png");}
     /** A weapon model by its id (a tier model's id is <id>_t<n>); weapon(id, tier) picks a worn tier's. */
     public static Weapon weapon(String id){return id==null?null:weapons.get(id);}
     /** N for a troop framed "tall N", else 0 (the UI plan's Portrait.draw tall argument). */

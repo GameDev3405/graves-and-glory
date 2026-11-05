@@ -23,7 +23,16 @@ def game_guard():
     data=subprocess.check_output([shell,'-NoProfile','-Command',"@(Get-CimInstance Win32_Process | Where-Object { $_.Name -match '^java(w)?\\.exe$' } | Select-Object ProcessId,CommandLine) | ConvertTo-Json -Compress"])
     rows=json.loads(data or b'[]'); rows=rows if isinstance(rows,list) else [rows]
     clients=[p for p in rows if any(s in (p.get('CommandLine') or '') for s in ['devlaunchinjector','net.minecraft.client','--gameDir'])]
-    if clients: raise RuntimeError('Minecraft client already running: defer compilation/game work; do not terminate it')
+    # WORKFLOW.md forbids compiling in a checkout with a running client; clients of other checkouts don't block this one.
+    root=str(ROOT).replace(chr(92),'/').lower().rstrip('/')
+    def ours(cmd):
+        cmd=cmd.replace(chr(92),'/').lower(); i=cmd.find(root)
+        while i>=0:
+            if i+len(root)==len(cmd) or cmd[i+len(root)] in '/;" ': return True
+            i=cmd.find(root,i+1)
+        return False
+    clients=[p for p in clients if ours(p.get('CommandLine') or '')]
+    if clients: raise RuntimeError('Minecraft client already running in this checkout: defer compilation/game work; do not terminate it')
 def run(args):
     stamp=datetime.datetime.now().strftime('%Y%m%d-%H%M%S')+'-'+str(os.getpid())
     out=ROOT/'work/verify'/stamp; out.mkdir(parents=True)
@@ -61,12 +70,15 @@ def run(args):
         # test_build_skins is already included in unittest discovery; do not run it twice.
         step('ui-assets',[sys.executable,'tools/build_ui_art.py','--verify'])
         step('skin-assets',[sys.executable,'tools/build_skins.py','--verify'])
+        step('clips',[sys.executable,'tools/clips.py','--verify'])
         gson=list((pathlib.Path.home()/'.gradle/caches/modules-2/files-2.1/com.google.code.gson/gson/2.10.1').glob('*/*.jar'))
         if not gson: raise RuntimeError('Gson 2.10.1 missing; run documented online setup once')
         classes=out/'classes'; classes.mkdir()
-        names='Spec BattleMath MatchStats Progression Profile ProfileMigration RosterMath CounterMath LevelMath CreditLog AdmissionPolicy SocialHub CampTerrain CompatibilityPolicy HouseRoute StepHop Wedge LayoutMarker LegacyDataMigration TroopFaces UiMath HintText FeedLines'.split()
+        names='Spec Gear GearStats GearEffects RelicSlots Forge GearWire GearCommands GearView BattleMath ModeMath MatchStats Progression Profile ProfileMigration MarchMath RosterMath CounterMath LevelMath CreditLog AdmissionPolicy SocialHub CampTerrain CompatibilityPolicy HouseRoute StepHop Wedge LayoutMarker LegacyDataMigration TroopFaces UiMath HintText FeedLines ModeLines BannerDrop AudioCues SafeFiles MatchRules ArenaAutosave EngineMap MovementGuard MotionMath Clip MotionInput Pose MotionBody MotionFeet MotionStack MotionEngine'.split()
         checks=sorted((ROOT/'test-tools/standalone').glob('*Check.java'))
         sources=[ROOT/'src/main/java/gg/gravesandglory'/(n+'.java') for n in names]
+        sources+=[ROOT/'test-tools/java/gg/gravesandglory/SoleSlide.java']  # pure geometry the motion grade shares with SoleSlideCheck
+        sources+=[ROOT/'test-tools/java/gg/gravesandglory/StepWindows.java']  # the grade's event windows and authored ratios, pinned by StepWindowsCheck
         game_guard()
         step('java-compile',[jdk/'bin/javac','--release','17','-cp',gson[0],'-d',classes,*sources,*checks])
         for test in checks: step(test.stem,[jdk/'bin/java','-cp',str(classes)+os.pathsep+str(gson[0]),'gg.gravesandglory.'+test.stem])

@@ -1,5 +1,6 @@
 import hashlib,json,pathlib,shutil,zipfile
 from release_config import version, source_identity, validate_player_jar
+from release_files import gradle_home, require_release_notes
 root=pathlib.Path(__file__).resolve().parents[1]
 # The tier art gate (in-match progression design 4.4, round 34 question 6): refuse while any troop draws a stopgap tier
 # (python tools/build_skins.py --tiers lists them), unless --allow-stopgap marks a local build's file name -stopgap.
@@ -7,10 +8,11 @@ import sys,build_skins
 stopgap=build_skins.release_gate(root,sys.argv[1:])
 dist=root/'dist';dist.mkdir(exist_ok=True)
 release_version=version()
+release_notes=require_release_notes(root,release_version)  # fail early, with a clear message, before anything is built
 jar=root/f'build/libs/graves-and-glory-{release_version}.jar'
 package=dist/build_skins.release_name(release_version,stopgap,'.zip')
 identity=source_identity()
-api=next((pathlib.Path.home()/'.gradle/caches/modules-2/files-2.1/net.fabricmc.fabric-api/fabric-api/0.92.2+1.20.1').rglob('fabric-api-0.92.2+1.20.1.jar'))
+api=next((gradle_home()/'caches/modules-2/files-2.1/net.fabricmc.fabric-api/fabric-api/0.92.2+1.20.1').rglob('fabric-api-0.92.2+1.20.1.jar'))
 entries=[];files={}
 dependencies=json.loads((root/'dependencies/manifest.json').read_text(encoding='utf8'))
 research=json.loads((root/'dependencies/author-permissions.json').read_text(encoding='utf8'))
@@ -22,8 +24,10 @@ credits=['# Graves and Glory: third-party credits and permissions','',
  'Shader/modpack compatibility support is the responsibility of Graves and Glory, not the shader authors.',
  'Complementary Reimagined and Unbound r5.5.1 are by EminGTR / Complementary Development: https://www.complementary.dev/shaders/ . Their contained License Agreement 1.5 explicitly permits modpack redistribution. Newer versions have different terms; do not replace these files automatically.',
  'MakeUp Ultra Fast: Javier GC (javiergcim), LGPL-3.0-or-later; GLSL source is inside its unchanged shader archive.',
+ 'Combat, magic, clock, drum and music sound cues: royalty-free recordings from pixabay.com under the Pixabay Content Licence (use in a game allowed, no attribution required). Per-file author credits are in docs/AUDIO-CREDITS.md.',
  'Lato body font: Lukasz Dziedzic, SIL Open Font License 1.1; original OFL is inside the Graves and Glory jar. Source: https://github.com/google/fonts/tree/main/ofl/lato',
  'Marcellus heading font: Brian J. Bonislawsky / Astigmatic, SIL Open Font License 1.1; original OFL is inside the Graves and Glory jar.',
+ 'Excalibur resource pack by Maffhew, used with permission, unmodified. Licence: CC BY-NC-ND 3.0 (http://creativecommons.org/licenses/by-nc-nd/3.0/; the licence text is in docs/third-party/excalibur/README.txt). Official page: https://modrinth.com/resourcepack/excal . Paid features are not covered by the permission and are not used.',
  'Fabric API: FabricMC contributors, Apache-2.0; Fabric Loader is provided by the selected launcher or server installer.',
  'Nested libraries retain their original licenses: ANTLR 4.13.1 (BSD-3-Clause), glsl-transformer 2.0.1 (AGPL-3.0), jcpp 1.4.14 (Apache-2.0), Reflect 1.6.2 (MIT), Kirin 1.15.6 (MIT).',
  'Corresponding library sources and build files are supplied in docs/third-party/sources alongside their notices. They may be replaced by compatible builds; no library is merged into Graves and Glory\'s code.', '']
@@ -36,7 +40,7 @@ with zipfile.ZipFile(package.with_suffix('.zip.tmp'),'w',zipfile.ZIP_DEFLATED) a
         if isinstance(data,str):data=data.encode('utf8')
         archive.writestr(dest,data);entries.append({'path':dest,'size':len(data),'sha256':hashlib.sha256(data).hexdigest()})
         if len(data)<40000:files[dest]=data.decode('utf8',errors='replace')
-    for src,dest in [(jar,'mods/'+jar.name),(api,'mods/'+api.name),(root/'README.md','docs/README.md'),(root/'docs/UI_REDESIGN.md','docs/UI_REDESIGN.md'),(root/f'docs/RELEASE-{release_version}.txt',f'docs/RELEASE-{release_version}.txt'),(root/'LICENSE','docs/LICENSE')]:
+    for src,dest in [(jar,'mods/'+jar.name),(api,'mods/'+api.name),(root/'docs/PLAYER-README.md','docs/README.md'),(root/'docs/AUDIO-CREDITS.md','docs/AUDIO-CREDITS.md'),(release_notes,f'docs/RELEASE-{release_version}.txt'),(root/'LICENSE','docs/LICENSE')]:
         add(src,dest)
     # Preserve the exact upstream license without changing its notices.
     with zipfile.ZipFile(api) as z:

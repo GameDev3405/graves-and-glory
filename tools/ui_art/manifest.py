@@ -47,7 +47,7 @@ for _a, _paint in kit_icons.ABILITY.items():
     add('hud/ability-' + _a, _paint)
 mock('hud', 'score-card', ox=1, oy=1)
 mock('hud', 'feed-slip', ox=1, oy=3)
-for _g in ('g-attack', 'g-hold', 'g-follow', 'g-shieldwall', 'g-line', 'g-compact', 'g-fight', 'g-cycle'):
+for _g in ('g-attack', 'g-hold', 'g-follow', 'g-line', 'g-compact', 'g-fight', 'g-cycle'):
     mock('hud', _g)
     mock('hud', _g + '-faded')
 mock('hud', 'g-fight-red')

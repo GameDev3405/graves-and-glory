@@ -74,8 +74,154 @@ for f in sides:
 if len({f['glyph'] for f in sides})!=len(sides) or len({f['color'] for f in sides})!=len(sides): errors.append('factions: every side needs its own colour and its own glyph')
 troops={r['id']:r for r in data['troops']}
 if data['rules'][0]['playersPerTeam']*2!=data['rules'][0]['maxPlayers']: errors.append('capacity mismatch: maxPlayers must be playersPerTeam for each of the two teams')
+# Battle modes (Phase 4 Task 2): the mode's own numbers live on a modes row, so the frame reads a row instead of Domination's
+# hard-coded win score, score interval and round length, and a new mode adds a row rather than another branch in Battle.
+modes=data.get('modes',[])
+if not modes: errors.append('modes: at least one row; domination is the mode every map hosts and the round falls back to')
+if 'domination' not in {m['id'] for m in modes}: errors.append('modes: no domination row, the mode a lobby opens on')
+for m in modes:
+    where=f'modes/{m["id"]}'
+    for part in m['maps'].split(','):
+        if not part.strip().isdigit() or int(part) not in range(len(data['maps'])): errors.append(f'{where}: maps entry {part!r} is not a map index 0..{len(data["maps"])-1}')
+    if m['timeout'] not in ('score','team0','team1'): errors.append(f'{where}: timeout {m["timeout"]!r} is not score, team0 or team1')
+    if m['ruleLine'].count('{n}')>1: errors.append(f'{where}: ruleLine holds more than one {{n}}')
+    if m['roundSeconds']<0 or m['winTarget']<0 or m['scoreInterval']<0: errors.append(f'{where}: roundSeconds, winTarget and scoreInterval cannot be negative')
+    if m['scoreInterval']>0 and m['winTarget']<=0: errors.append(f'{where}: a mode that scores needs a winTarget above 0')
+    if m['scoreInterval']==0 and m['timeout']=='score': errors.append(f'{where}: timeout score needs a scoreInterval above 0')
+    for column in ('howTo','howToDefend'):
+        parts=[p.strip() for p in m.get(column,'').split('|') if p.strip()]
+        if not 1<=len(parts)<=2: errors.append(f'{where}: {column} holds {len(parts)} parts, want 1 or 2')
+# Mode copy (plan 2C.2): the feed lines a mode sends, the 2 to 4 numbers of its ledger and its briefing how-to lines are draft copy in
+# the sheets, not in the mode classes. A feed line has a kind FeedLines.style knows, the {name} fields its args column lists, and a text
+# FeedLines.MAX_TEXT can carry; FeedFitCheck measures how wide each one draws on the feed leaf. A how-to part may name a key as {key:<id>}.
+FEED_KINDS=('point','loss','kill','down','up','laststand','deploy','notice')
+FEED_ARGS=('team','point','stop','n','site','gold')
+HOWTO_KEYS={'menu','attack','follow','formation','map','rotate_left','rotate_right','confirm','cancel','use','hints'}
+copy_modes={m['id'] for m in modes}
+events=set()
+for r in data.get('modeLines',[]):
+    where=f'modeLines/{r["id"]}'
+    if r['mode'] not in copy_modes: errors.append(f'{where}: mode {r["mode"]} is not a modes id')
+    if (r['mode'],r['event']) in events: errors.append(f'{where}: the event {r["event"]} of {r["mode"]} is already a row')
+    events.add((r['mode'],r['event']))
+    if not re.fullmatch(r'[a-z][a-z0-9_]*',r['event']): errors.append(f'{where}: event {r["event"]!r} is not lower-case words joined by _')
+    if r['kind'] not in FEED_KINDS: errors.append(f'{where}: kind {r["kind"]} is not one of '+', '.join(FEED_KINDS))
+    if r['status'] not in ('draft','approved'): errors.append(f'{where}: status {r["status"]} is not draft or approved')
+    declared=[] if r['args']=='-' else r['args'].split(',')
+    for a in declared:
+        if a not in FEED_ARGS: errors.append(f'{where}: arg {a} is not one of '+', '.join(FEED_ARGS))
+    used=re.findall(r'\{([a-z]+)\}',r['text'])
+    if r['text'].count('{')!=len(used) or r['text'].count('}')!=len(used): errors.append(f'{where}: a brace in the text is not a {{name}} field')
+    if sorted(set(used))!=sorted(set(declared)): errors.append(f'{where}: the text uses fields {sorted(set(used))}, its args column lists {sorted(set(declared))}')
+    if len(r['text'])>120: errors.append(f'{where}: the text is {len(r["text"])} characters, a feed line carries 120')
+    if r['text']!=r['text'].strip(): errors.append(f'{where}: the text has spaces at either end')
+ledger_slots={}
+for r in data.get('modeLedger',[]):
+    where=f'modeLedger/{r["id"]}'
+    if r['mode'] not in copy_modes: errors.append(f'{where}: mode {r["mode"]} is not a modes id')
+    if r['format'] not in ('plain','fraction','percent','time'): errors.append(f'{where}: format {r["format"]} is not plain, fraction, percent or time')
+    if r['team'] not in (-1,0,1): errors.append(f'{where}: team {r["team"]} is not -1 (both), 0 or 1')
+    if r['status'] not in ('draft','approved'): errors.append(f'{where}: status {r["status"]} is not draft or approved')
+    if not 0<=r['slot']<=3: errors.append(f'{where}: slot {r["slot"]} is not 0 to 3')
+    if len(r['label'])>16: errors.append(f'{where}: label {r["label"]!r} is over 16 characters')
+    ledger_slots.setdefault(r['mode'],[]).append(r['slot'])
+for mode_id,slots in ledger_slots.items():
+    if not 2<=len(slots)<=4 or sorted(slots)!=list(range(len(slots))): errors.append(f'modeLedger: {mode_id} has slots {sorted(slots)}, it needs 2 to 4 rows in slots 0, 1, 2...')
+for mode_id in ('domination','siege','convoy','survival'):
+    if mode_id in copy_modes and mode_id not in ledger_slots: errors.append(f'modeLedger: the {mode_id} mode needs its ledger rows')
+    if mode_id in copy_modes and not any(r['mode']==mode_id for r in data.get('modeLines',[])): errors.append(f'modeLines: the {mode_id} mode needs its feed lines')
+for m in modes:
+    for column in ('howTo','howToDefend'):
+        for key in re.findall(r'\{key:([a-z_]+)\}',m.get(column,'')):
+            if key not in HOWTO_KEYS: errors.append(f'modes/{m["id"]}: {column} names {{key:{key}}}, not one of '+', '.join(sorted(HOWTO_KEYS)))
+# Convoy (spec 2026-10-31-convoy-escort-design.md 5.1): the mode's numbers are a modeRules row and its road and bases modeSites
+# rows, so ConvoyMode holds no map data. A road's nodes have consecutive stages from 0, at least two named checkpoints before
+# the destination (the last node, always named); a base row (stage = team) stands off the road and more than 40 blocks from
+# the end its team does not hold (the defence's from the destination, the escort's from the start).
+mode_ids={m['id'] for m in modes}
+rule_rows={r['id']:r for r in data.get('modeRules',[])}
+for r in data.get('modeRules',[]):
+    where=f'modeRules/{r["id"]}'
+    if r['id'] not in mode_ids: errors.append(f'{where}: no modes row {r["id"]}')
+    for c in ('pushRadius','pushHeight','rollbackSpeed','idleSeconds','checkpointSeconds','checkpointGold','overtimeRadius','overtimeGraceSeconds','stoppedAfterSeconds','stoppedEverySeconds','siegeStageBonus','portcullisSeconds','keepEdgeAttackers','keepEdgeDefenders'):
+        if r[c]<0: errors.append(f'{where}: {c} cannot be negative')
+    if r['id']=='convoy':
+        if not 0<r['speedOne']<=r['speedTwo']<=r['speedThree']: errors.append(f'{where}: push speeds must be above 0 and never fall with more pushers')
+        if not 0<r['uphill']<=1<=r['downhill']: errors.append(f'{where}: uphill must be in (0,1] and downhill at least 1')
+    if r['id']=='siege' and not (r['keepEdgeAttackers']>0 and r['keepEdgeDefenders']>=r['keepEdgeAttackers']): errors.append(f'{where}: the keep edge is attackers of defenders, 0 < keepEdgeAttackers <= keepEdgeDefenders')
+if 'convoy' in mode_ids and 'convoy' not in rule_rows: errors.append('modeRules: the convoy mode needs its row')
+if 'siege' in mode_ids and 'siege' not in rule_rows: errors.append('modeRules: the siege mode needs its row')
+def seg_distance(px,pz,a,b):
+    dx,dz=b[0]-a[0],b[1]-a[1];t=max(0,min(1,((px-a[0])*dx+(pz-a[1])*dz)/((dx*dx+dz*dz) or 1)))
+    return ((px-a[0]-t*dx)**2+(pz-a[1]-t*dz)**2)**.5
+piece_ids={p['id'] for p in data.get('pieces',[])}
+roads={}
+for s in data.get('modeSites',[]):
+    where=f'modeSites/{s["id"]}'
+    if s['mode'] not in mode_ids: errors.append(f'{where}: mode {s["mode"]} is not a modes id')
+    if s['map'] not in range(len(data['maps'])): errors.append(f'{where}: map {s["map"]} is not a map index')
+    if s['kind'] not in ('road','base','stage','gate','ward','shrine','rise'): errors.append(f'{where}: kind {s["kind"]} is not road, base, stage, gate, ward, shrine or rise')
+    if s['piece']!='-' and s['piece'] not in piece_ids: errors.append(f'{where}: piece {s["piece"]} is not a pieces id')
+    if s['kind'] in ('gate','ward') and s['piece']=='-': errors.append(f'{where}: a {s["kind"]} row needs its piece')
+    if s['rotation'] not in (0,90,180,270): errors.append(f'{where}: rotation {s["rotation"]} is not 0, 90, 180 or 270')
+    if s['hp']<0 or s['seconds']<0: errors.append(f'{where}: hp and seconds cannot be negative')
+    if s['kind']=='road': roads.setdefault((s['mode'],s['map']),[]).append(s)
+for (mode,m),nodes in roads.items():
+    nodes.sort(key=lambda s:s['stage']);where=f'modeSites {mode} map {m}'
+    if [s['stage'] for s in nodes]!=list(range(len(nodes))): errors.append(f'{where}: road stages must run 0..{len(nodes)-1} with no gap')
+    if nodes[-1]['name']=='-': errors.append(f'{where}: the last road node is the destination and needs a name')
+    if sum(1 for s in nodes[1:-1] if s['name']!='-')<2: errors.append(f'{where}: at least two named checkpoints before the destination')
+    pts=[(s['x'],s['z']) for s in nodes]
+    for b in data.get('modeSites',[]):
+        if b['kind']!='base' or b['mode']!=mode or b['map']!=m: continue
+        if b['stage'] not in (0,1): errors.append(f'modeSites/{b["id"]}: a base stage is its team, 0 or 1')
+        end=pts[-1] if b['stage']==1 else pts[0]
+        if ((b['x']-end[0])**2+(b['z']-end[1])**2)**.5<=40: errors.append(f'modeSites/{b["id"]}: a base within 40 blocks of the road end its enemy pushes for')
+        near=min(seg_distance(b['x'],b['z'],pts[i],pts[i+1]) for i in range(len(pts)-1))
+        if near<=b['radius']+8: errors.append(f'modeSites/{b["id"]}: base {near:.1f} blocks from the road, it must stand off it')
+# Siege: the three stages in order (a ring each for the yard and the keep, the gate between them) and the wards' rows.
+for m in {s['map'] for s in data.get('modeSites',[]) if s['mode']=='siege'}:
+    st=sorted((s['stage'],s['kind']) for s in data['modeSites'] if s['mode']=='siege' and s['map']==m and s['kind'] in ('stage','gate'))
+    if st!=[(0,'stage'),(1,'gate'),(2,'stage')]: errors.append(f'modeSites siege map {m}: the stages must be a stage row 0, the gate row 1 and a stage row 2, found {st}')
+    for s in data['modeSites']:
+        if s['mode']=='siege' and s['map']==m and s['kind']=='stage' and (s['radius']<=0 or s['seconds']<=0): errors.append(f'modeSites/{s["id"]}: a stage ring needs a radius and seconds above 0')
+        if s['mode']=='siege' and s['map']==m and s['kind']=='gate' and s['hp']<=0: errors.append(f'modeSites/{s["id"]}: the gate needs hp above 0')
+# Survival (Phase 4 spec 6): the modeRules survival row, a waves set of consecutive waves, waveGroups that rise at a rise site
+# (modeSites id <...>_rise_<site>) on every map the mode hosts, one shrine ring and one court (base, team 0) per map, and the
+# botCommand tiers' waveScale and waveTraitTier.
+if 'survival' in mode_ids:
+    sr=rule_rows.get('survival')
+    if sr is None: errors.append('modeRules: the survival mode needs its row')
+    else:
+        if sr['survivalPerBanner']<0 or sr['riseWarning']<0: errors.append('modeRules/survival: survivalPerBanner and riseWarning cannot be negative')
+        if sr['maxDeadAlive']<=0: errors.append('modeRules/survival: maxDeadAlive must be above 0')
+        wave_set=[w for w in data.get('waves',[]) if w['set']==sr['waveSet']]
+        if [w['wave'] for w in sorted(wave_set,key=lambda w:w['wave'])]!=list(range(1,len(wave_set)+1)) or not wave_set: errors.append(f'waves: set {sr["waveSet"]} must hold waves 1..n with no gap')
+        for w in wave_set:
+            if w['seconds']<=0 or w['gold']<0: errors.append(f'waves/{w["id"]}: seconds must be above 0 and gold not negative')
+            if not any(g['wave']==w['id'] for g in data.get('waveGroups',[])): errors.append(f'waves/{w["id"]}: no waveGroups row rises in this wave')
+    surv_maps=[int(p) for p in next(m for m in modes if m['id']=='survival')['maps'].split(',') if p.strip()]
+    troop_ids={t['id'] for t in data['troops']}
+    wave_ids={w['id'] for w in data.get('waves',[])}
+    for m in surv_maps:
+        rows=[s for s in data['modeSites'] if s['mode']=='survival' and s['map']==m]
+        shrines=[s for s in rows if s['kind']=='shrine'];courts=[s for s in rows if s['kind']=='base' and s['stage']==0]
+        if len(shrines)!=1 or shrines[0]['radius']<=0 or shrines[0]['seconds']<=0: errors.append(f'modeSites survival map {m}: one shrine row with a radius and seconds above 0')
+        if len(courts)!=1: errors.append(f'modeSites survival map {m}: one base row for team 0 (the court)')
+        rises={s['id'].rsplit('_rise_',1)[1] for s in rows if s['kind']=='rise' and '_rise_' in s['id']}
+        for s in rows:
+            if s['kind']=='rise' and ('_rise_' not in s['id'] or s['radius']<=0): errors.append(f'modeSites/{s["id"]}: a rise row is named <...>_rise_<site> and needs a radius above 0')
+        for g in data.get('waveGroups',[]):
+            if g['site'] not in rises: errors.append(f'waveGroups/{g["id"]}: site {g["site"]} is no rise row on map {m}')
+    for g in data.get('waveGroups',[]):
+        if g['wave'] not in wave_ids: errors.append(f'waveGroups/{g["id"]}: wave {g["wave"]} is not a waves id')
+        if g['troop'] not in troop_ids: errors.append(f'waveGroups/{g["id"]}: troop {g["troop"]} is not a troops id')
+        if g['count']<=0: errors.append(f'waveGroups/{g["id"]}: count must be above 0')
+    for r in data['botCommand']:
+        if r['waveScale']<=0 or r['waveTraitTier'] not in range(0,4): errors.append(f'botCommand/{r["id"]}: waveScale above 0 and waveTraitTier 0..3')
 groups={g['id'] for g in data.get('groups',[])}
-orders={o['id'] for o in data['orders']}
+orderRows={o['id']:o for o in data['orders']}
+orders=set(orderRows)
 for t in data['troops']:
     if t.get('group') not in groups: errors.append(t['id']+': group does not resolve')
 for row in data.get('commandInterface',[]):
@@ -83,6 +229,15 @@ for row in data.get('commandInterface',[]):
         if group not in groups: errors.append('command selection does not resolve: '+group)
     for order in row['orders'].split(','):
         if order not in orders: errors.append('command order does not resolve: '+order)
+        elif order!='hold' and not orderRows[order]['playerFacing']: errors.append(f'commandInterface/{row["id"]}: order {order} is not playerFacing (only hold may be listed without it)')
+    if not 0<=row['pennantAlpha']<=1: errors.append(f'commandInterface/{row["id"]}: pennantAlpha {row["pennantAlpha"]} must be between 0 and 1')
+    if row['panelSlideTicks']<0: errors.append(f'commandInterface/{row["id"]}: panelSlideTicks cannot be negative')
+for f in data['formations']:
+    if not 0<f['moveMultiplier']<=1.5: errors.append(f'formations/{f["id"]}: moveMultiplier {f["moveMultiplier"]} must be above 0 and at most 1.5')
+    if not 0<=f['arrowBlock']<=1: errors.append(f'formations/{f["id"]}: arrowBlock {f["arrowBlock"]} must be between 0 and 1')
+    if f['shove']<0: errors.append(f'formations/{f["id"]}: shove cannot be negative')
+if sorted(g['pill'] for g in data.get('groups',[]))!=list(range(1,len(data.get('groups',[]))+1)): errors.append('groups: pill must run 1, 2, 3 and on, each once')
+if data['combatDiscipline'][0]['chargeBonusMultiplier']<1: errors.append('combatDiscipline: chargeBonusMultiplier must be at least 1')
 # Troop textures. A gravesandglory: path must exist in the mod's assets. A minecraft: path must be one of VANILLA_TEXTURES, the
 # vanilla paths the sheet may name, each checked by hand against the Minecraft client jar of build.gradle (1.20.1); when Loom has
 # cached that jar (after the first build) the path must also be an entry of it, so a misspelled or renamed vanilla texture fails
@@ -150,7 +305,10 @@ for r in data['ui']:
         formationIds={f['id'] for f in data['formations']}
         for id in r['bottom'].split(','):
             if id not in formationIds: errors.append('UI formation reference missing: '+id)
+# Animation rework (spec 7.2): the Shieldwall formation went; Hold builds the wall (shield and spear troops brace on Hold).
+if any(f['id']=='shieldwall' for f in data['formations']): errors.append('formations/shieldwall: the Shieldwall formation was removed; Hold builds the shield wall')
 # Phase 2 Houses (spec 6.1): a troop's House, rarity, ability and evolve line (the levelNames key since the in-match progression design) are its own columns.
+# (modes, above, left the rules row its arena, capacity and reinforcement columns and took the round's own numbers with it.)
 squad=data['rules'][0]['squadSize']
 houses={h['id']:h for h in data['houses']}
 rarities={r['id']:r for r in data['rarities']}
@@ -199,20 +357,6 @@ for h in houses.values():
     for r,n in HOUSE_SHAPE.items():
         have=sum(1 for t in mine if rarityOf.get(t)==r)
         if have!=n: errors.append(f'houses/{h["id"]}: {have} {r} troops; every House has exactly {n} (all five are fieldable since Phase 2 Task 13)')
-CLASS_ACTIVES=('stand_fast','bloodrush','mark_prey','rally_horn','grave_bloom','forward_supply')
-CLASS_PASSIVES=('champion','reaver','warden','marshal','warlock','quartermaster')
-for c in data['classes']:
-    if c['group'] not in groups: errors.append(f'classes/{c["id"]}: group {c["group"]} does not resolve')
-    if c['track'] not in ('hero','general'): errors.append(f'classes/{c["id"]}: track must be hero or general')
-    if c['active'] not in CLASS_ACTIVES: errors.append(f'classes/{c["id"]}: active {c["active"]} is not one of {", ".join(CLASS_ACTIVES)} (Commander.ACTIVES keys)')
-    if c['passive'] not in CLASS_PASSIVES: errors.append(f'classes/{c["id"]}: passive {c["passive"]} is not one of {", ".join(CLASS_PASSIVES)} (the effect kinds Commander reads)')
-    if c['cooldownTicks']<c['durationTicks']: errors.append(f'classes/{c["id"]}: cooldownTicks must be at least durationTicks')
-    for col in ('activeText','passiveText'):
-        if len(c[col])>90: errors.append(f'classes/{c["id"]}: {col} is {len(c[col])} characters, over 90')
-    if c['bonus']!=c['passiveText']: errors.append(f'classes/{c["id"]}: bonus must equal passiveText')
-for col in ('active','passive'):
-    seen=[c[col] for c in data['classes']]
-    if len(set(seen))!=len(seen): errors.append(f'classes: every class needs its own {col}')
 thresholds={}
 for h in houses:
     tiers=sorted((t for t in data['houseTraits'] if t['house']==h),key=lambda t:t['tier'])
@@ -258,9 +402,57 @@ if cd['chargeImpactTicks']<1: errors.append('combatDiscipline: chargeImpactTicks
 for col,lo,hi in (('flankArcDegrees',0,180),('lastStandShare',0,1),('lastStandRadius',0,None),('hornCooldownSeconds',0,None),('hornVolume',0,None),('woundedShare',0,1),('lastStandFeedSeconds',1,None),('arriveRadius',0,None),('bleedDamage',0,None),('bleedEveryTicks',0,None)):
     if col not in cd: errors.append(f'combatDiscipline: missing {col}')
     elif cd[col]<lo or hi is not None and cd[col]>hi or cd[col]==lo and col not in ('hornCooldownSeconds','lastStandFeedSeconds'): errors.append(f'combatDiscipline: {col} must be above {lo}'+(f' and at most {hi}' if hi is not None else ''))
+# Animation rework (plan Phase 1): the wall, the volley, the corpse and the hit-weight numbers. Each (column, low, high, low open, high open).
+for col,lo,hi,loOpen,hiOpen in (('shieldWallCell',.5,1.3,True,False),('crawlShare',0,1,True,True),('fireMemoryTicks',1,None,False,False),('volleyPeakPerBlock',0,None,True,False),('volleyPeakMax',0,None,True,False),
+        ('crossbowArcScale',0,1,True,False),('thrownArcScale',0,1,True,False),('meleeReachGrace',0,None,False,False),('corpseLieTicks',0,None,False,False),('corpseFadeTicks',1,None,False,False),('arcTravelScale',1,2,False,False),('mediumHitShare',0,1,True,True),('heavyHitShare',0,1,True,True)):
+    if col not in cd: errors.append(f'combatDiscipline: missing {col}'); continue
+    v=cd[col]
+    if isinstance(v,bool) or not isinstance(v,(int,float)) or v<lo or loOpen and v==lo or hi is not None and (v>hi or hiOpen and v==hi):
+        errors.append(f'combatDiscipline: {col} is {v}; it must be '+('above' if loOpen else 'at least')+f' {lo}'+('' if hi is None else (' and below' if hiOpen else ' and at most')+f' {hi}'))
+for col in ('fireMemoryTicks','corpseLieTicks','corpseFadeTicks'):
+    if col in cd and (isinstance(cd[col],bool) or not isinstance(cd[col],int)): errors.append(f'combatDiscipline: {col} must be a whole number of ticks')
+if 'mediumHitShare' in cd and 'heavyHitShare' in cd and not cd['heavyHitShare']>cd['mediumHitShare']: errors.append(f'combatDiscipline: heavyHitShare {cd["heavyHitShare"]} must be above mediumHitShare {cd["mediumHitShare"]}')
+# Animation rework (spec 6.2): every troop names its weapon family; attackVariants holds each family's attacks in the order the engine cycles them.
+FAMILIES=('sword_shield','axe_shield','sword','axe','greatsword','spear','scythe','bow','crossbow','thrower','caster','crew','hound','spider','bear','ravager','colossus')
+VARIANT_ZONES=('head','body','legs');VARIANT_KINDS=('stab','slash','blunt','arrow','bolt','magic');VARIANT_WEIGHTS=('light','medium','heavy');MELEE_KINDS=('stab','slash','blunt')
+familyTroops={}
+for t in data['troops']:
+    fam=t.get('family')
+    if fam not in FAMILIES: errors.append(f'troops/{t["id"]}: family {fam!r} must be one of {", ".join(FAMILIES)}')
+    else: familyTroops.setdefault(fam,[]).append(t)
+LATE_SWING_TICKS=10 # Tactics.tick keeps a swing's beat when it comes up to this many ticks after nextAttack
+variantRows=data.get('attackVariants',[])
+if 'attackVariants' not in data: errors.append('attackVariants: the sheet is missing (spec 6.2)')
+variantFamilies={}
+for v in variantRows:
+    vid=v.get('id');fam=v.get('family')
+    if fam not in FAMILIES: errors.append(f'attackVariants/{vid}: family {fam!r} must be one of {", ".join(FAMILIES)}')
+    elif fam not in familyTroops: errors.append(f'attackVariants/{vid}: family {fam} is used by no troop')
+    variantFamilies.setdefault(fam,[]).append(v)
+    if v.get('zone') not in VARIANT_ZONES: errors.append(f'attackVariants/{vid}: zone {v.get("zone")!r} must be one of {", ".join(VARIANT_ZONES)}')
+    if v.get('kind') not in VARIANT_KINDS: errors.append(f'attackVariants/{vid}: kind {v.get("kind")!r} must be one of {", ".join(VARIANT_KINDS)}')
+    if v.get('weight') not in VARIANT_WEIGHTS: errors.append(f'attackVariants/{vid}: weight {v.get("weight")!r} must be one of {", ".join(VARIANT_WEIGHTS)}')
+    tk=v.get('impactTicks')
+    if isinstance(tk,bool) or not isinstance(tk,int) or tk<1: errors.append(f'attackVariants/{vid}: impactTicks {tk!r} must be a whole number of ticks, at least 1')
+    elif fam in familyTroops:
+        # A swing up to LATE_SWING_TICKS late keeps its beat (Tactics.tick: nextAttack + cooldown), leaving cooldown - late ticks to the next swing, and
+        # BattleMath.impactDelay clamps the blow one tick before that. Cooldown at least impactTicks + LATE_SWING_TICKS + 1 means the clamp never bites,
+        # so the blow never lands before the client's impact frame (Phase 1 review M3).
+        short=[t['id'] for t in familyTroops[fam] if t['cooldown']<tk+LATE_SWING_TICKS+1]
+        if short: errors.append(f'attackVariants/{vid}: impactTicks {tk} must land before the next beat of a late swing: the cooldown of {", ".join(short)} must be at least impactTicks + {LATE_SWING_TICKS + 1} ({tk+LATE_SWING_TICKS+1})')
+    if fam in familyTroops and v.get('kind') in VARIANT_KINDS:
+        melee=any(not t['ranged'] for t in familyTroops[fam])
+        # A shell (the Mortar's crew: every troop of the family fires a shell) lands as a blunt blow (Task 6, M5); any other ranged family flies arrows, bolts or magic.
+        shell=not melee and all(t.get('ability')=='shell' for t in familyTroops[fam])
+        if shell:
+            if v['kind']!='blunt': errors.append(f'attackVariants/{vid}: kind {v["kind"]} must be blunt for a shell family (its shell lands as a blunt blow)')
+        elif melee!=(v['kind'] in MELEE_KINDS): errors.append(f'attackVariants/{vid}: kind {v["kind"]} '+('must be stab, slash or blunt for a melee family' if melee else 'is a melee kind on a ranged family'))
+for fam,famTroops in familyTroops.items():
+    if fam not in variantFamilies: errors.append(f'attackVariants: family {fam} (troops {", ".join(t["id"] for t in famTroops)}) has no rows'+(' and a melee family needs at least one' if any(not t['ranged'] for t in famTroops) else ''))
 if 'morale' in data: errors.append('morale: the sheet went with routing (Task 8b); its surviving numbers live in combatDiscipline')
 if len(data['recruitment'])!=1: errors.append('recruitment: exactly one row')
 if any(data['campaign'][0].get(k,-1)<0 for k in ('completionShards','victoryShards','completionRenown','victoryRenown')): errors.append('campaign: completionShards, victoryShards, completionRenown and victoryRenown must be 0 or more')
+if not isinstance(data['campaign'][0].get('disconnectGraceSeconds'),int) or data['campaign'][0]['disconnectGraceSeconds']<0: errors.append('campaign: disconnectGraceSeconds must be a whole number of seconds, 0 or more (MatchRules.takeoverAt)')
 cap=data['recruitment'][0]['capPct']
 for r in rarities.values():
     if not 0<=r['starPct2']<=r['starPct3']<=cap+1e-9: errors.append(f'rarities/{r["id"]}: star bonuses must rise and stay within recruitment.capPct')
@@ -369,10 +561,10 @@ for b in data['botCommand']:
     if isinstance(b['gearMaxTier'],bool) or not isinstance(b['gearMaxTier'],int) or not 1<=b['gearMaxTier']<=PRICED_GEAR_TIERS: errors.append(f'{name}/gearMaxTier: {b["gearMaxTier"]!r} must be a whole tier from 1 to {PRICED_GEAR_TIERS} (the tiers rarities.gearPrice2 and gearPrice3 price)')
 for b in data['botBanners']:
     name=f'botBanners/{b["id"]}';parts=b['id'].split('_')
-    mixed=parts[0]=='mix' and len(parts)==4
-    allowed={parts[1],parts[2]} if mixed else {b['house']}
+    mixed=parts[0]=='mix' and len(parts)>=4
+    allowed=set(parts[1:-1]) if mixed else {b['house']}
     if b['house'] not in houses or b['difficulty'] not in difficulties: errors.append(f'{name}: house or difficulty does not resolve')
-    if b['id']!=(f'mix_{b["house"]}_{parts[2]}_{b["difficulty"]}' if mixed else f'{b["house"]}_{b["difficulty"]}') or not allowed<=set(houses): errors.append(f'{name}: id must be <house>_<difficulty>, or mix_<house>_<second house>_<difficulty> with house the first House')
+    if b['id']!=(f'mix_{b["house"]}_{"_".join(parts[2:-1])}_{b["difficulty"]}' if mixed else f'{b["house"]}_{b["difficulty"]}') or len(allowed)!=len(parts)-2 and mixed or not allowed<=set(houses): errors.append(f'{name}: id must be <house>_<difficulty>, or mix_<house>_<second house>[_<more Houses>]_<difficulty> with house the first House and each House once')
     slots=b['slots'].split(',')
     if len(slots)!=squad: errors.append(f'{name}: {len(slots)} entries, not {squad}')
     pending,weights,units,last=0,0,{},None
@@ -390,9 +582,46 @@ for b in data['botBanners']:
             if n>rarities.get(r,{}).get('bannerMax',squad): errors.append(f'{name}: {n} {r} units, over bannerMax {rarities[r]["bannerMax"]}')
 for d in sorted(difficulties):
     if not any(b['difficulty']==d and all(houses.get(houseOf.get(s),{}).get('fieldable') for s in b['slots'].split(',') if s!='^') for b in data['botBanners']): errors.append(f'botBanners: no {d} banner fields only fieldable Houses (Campaign.botBanner picks from those)')
+# The Long March (plan 2C.3): six battles in one order, each on a map index, in one of the four 1.0 modes, at a botCommand difficulty, with one
+# bonusObjectives row of its own. A cell the plan leaves open is listed in the row's placeholder column ('none' when the row is settled).
+MARCH_MODES={'domination','siege','survival','convoy'}
+BONUS_KINDS={'hold_all','lose_at_most','stage_by','never_rolled','win_within','kill_unit'}
+SIEGE_STAGES=('yard','gate','keep')
+bonus_rows={o['id']:o for o in data.get('bonusObjectives',[])}
+march=data['campaignBattles']
+if sorted(r['order'] for r in march)!=list(range(1,len(march)+1)): errors.append('campaignBattles: orders must run 1, 2, 3 and on, each once (MarchMath reads the order lock from them)')
+used_bonus=[r['bonus'] for r in march]
+for r in march:
+    where=f'campaignBattles/{r["id"]}'
+    if r['chapter']<1: errors.append(f'{where}: chapter {r["chapter"]} is under 1')
+    if r['map'] not in range(len(data['maps'])): errors.append(f'{where}: map {r["map"]} is not a maps index')
+    if r['mode'] not in MARCH_MODES: errors.append(f'{where}: mode {r["mode"]} is not one of {sorted(MARCH_MODES)}')
+    if r['difficulty'] not in difficulties: errors.append(f'{where}: difficulty {r["difficulty"]} is not a botCommand id')
+    if r['size']<1: errors.append(f'{where}: size {r["size"]} is under 1')
+    if r['bonus'] not in bonus_rows: errors.append(f'{where}: bonus {r["bonus"]} is not a bonusObjectives id')
+    elif used_bonus.count(r['bonus'])!=1: errors.append(f'{where}: bonus {r["bonus"]} is named by {used_bonus.count(r["bonus"])} battles; each battle has its own')
+    if r['house'] not in houses and not (r['house']=='all' and 'house' in r['placeholder'] and bonus_rows.get(r['bonus'],{}).get('kind')=='tbd'): errors.append(f'{where}: house {r["house"]} is not a houses id (all is allowed only as a placeholder whose bonus is still tbd, since the shards need one House)')
+    if not r['placeholder'].strip(): errors.append(f'{where}: placeholder is blank; it lists the open cells, or reads none')
+    # allies (Kort 2026-11-02, Q76): none, or the botBanners rows the commander's bot allies field, one per allied seat (size - 1); those rows are reserved and never join a tier's pool (Campaign.fieldableBotBanners)
+    if r['allies']!='none':
+        ally=r['allies'].split(',');banner_ids={b['id'] for b in data['botBanners']}
+        if len(ally)!=r['size']-1 or len(set(ally))!=len(ally): errors.append(f'{where}: allies names {len(ally)} rows; it needs {r["size"]-1} distinct rows, one per allied bot seat (size - 1)')
+        for a in ally:
+            if a not in banner_ids: errors.append(f'{where}: allies {a} is not a botBanners id')
+    stage_bonus=bonus_rows.get(r['bonus'],{})
+    if stage_bonus.get('kind')=='stage_by' and (r['mode']!='siege' or stage_bonus['target'] not in SIEGE_STAGES): errors.append(f'{where}: a stage_by bonus needs a siege battle and a target of {", ".join(SIEGE_STAGES)} (SiegeMode feeds those stages)')
+for o in bonus_rows.values():
+    where=f'bonusObjectives/{o["id"]}'
+    if o['id'] not in used_bonus: errors.append(f'{where}: no campaignBattles row names it')
+    if o['kind'] not in BONUS_KINDS and not (o['kind']=='tbd' and 'kind' in o['placeholder']): errors.append(f'{where}: kind {o["kind"]} is not one of {sorted(BONUS_KINDS)} (tbd only as a listed placeholder)')
+    if min(o['value'],o['shards'],o['gold'])<0: errors.append(f'{where}: value, shards and gold must be 0 or more')
+    if o['kind']=='kill_unit' and o['target'] not in houseOf: errors.append(f'{where}: a kill_unit target must be a troop id')
+    if o['kind'] not in ('kill_unit','stage_by') and o['target']!='none': errors.append(f'{where}: target must be none for kind {o["kind"]}')
+    if o['kind'] in ('lose_at_most','stage_by','win_within') and o['value']<1: errors.append(f'{where}: kind {o["kind"]} needs a value of 1 or more')
+    if not o['placeholder'].strip(): errors.append(f'{where}: placeholder is blank; it lists the open cells, or reads none')
 # Troop card text (Task 12): one troopNotes row per troop, in troops order, and nothing else; the economy model row (houses design 4.9, NOT_SHIPPED) has every input.
 if [n['id'] for n in data.get('troopNotes',[])]!=[t['id'] for t in data['troops']]: errors.append('troopNotes: one row per troops row, in the same order, with the same ids')
-ECONOMY_INPUTS={'matchesPerHour','winRate','hoursPerPlayDay','playDaysPerWeek','matchGold','winGold','dailyGold','weeklyGold','chapterGold','chapterRareValue','runs'}
+ECONOMY_INPUTS={'matchesPerHour','winRate','hoursPerPlayDay','playDaysPerWeek','matchGold','winGold','dailyGold','weeklyGold','runs'}
 if len(data.get('economyModel',[]))!=1 or not ECONOMY_INPUTS<=set(data['economyModel'][0]): errors.append('economyModel: one row with '+', '.join(sorted(ECONOMY_INPUTS))+' (tools/economy_model.py reads it)')
 elif not 0<=data['economyModel'][0]['winRate']<=1 or any(data['economyModel'][0][k]<=0 for k in ECONOMY_INPUTS-{'winRate'}): errors.append('economyModel: winRate within 0 to 1 and every other input above 0')
 # Built world (Phase 3): the pieces sheet describes the structure files, campPieces places them, campStations names the people and boards of the camp.
@@ -416,9 +645,9 @@ for r in data.get('campPieces',[]):
 for r in data.get('campStations',[]):
     where=f'campStations/{r["id"]}'
     if r['npc'] not in ('-','armorer','cleric','librarian','cartographer','weaponsmith'): errors.append(f'{where}: npc {r["npc"]} is not - or a villager profession of the camp')
-    if r['page'] not in ('home','contracts','chapter','match','recruit','friends','army','train'): errors.append(f'{where}: page {r["page"]} is not a camp page')
+    if r['page'] not in ('home','contracts','chapter','match','recruit','friends','army','train','forge'): errors.append(f'{where}: page {r["page"]} is not a camp page')
 # Lesson boards (Phase 3): ids unique (the generic check above), and every {key:<id>} marker of a text names a key the HUD lessons and the camp labels know.
-LESSON_KEYS={'menu','attack','follow','formation','map','rotate_left','rotate_right','confirm','cancel','use'}
+LESSON_KEYS={'menu','attack','charge','follow','retreat','formation','map','rotate_left','rotate_right','confirm','cancel','use'}
 for r in data.get('campLessons',[]):
     where=f'campLessons/{r["id"]}'
     text=r['text']
@@ -517,6 +746,133 @@ for h in house_land:
     if h['replaces']!='-': errors.append(f'landmarks/{h["id"]}: replaces is {h["replaces"]!r}, a house replaces nothing (-)')
     if h['encloses']!='-': errors.append(f'landmarks/{h["id"]}: encloses is {h["encloses"]!r}, a house encloses nothing (-)')
     if used.count(h['id'])!=1: errors.append(f'landmarks/{h["id"]}: {used.count(h["id"])} supplyHouses rows name this house, there must be one')
+# Commander gear (gear foundation plan Task 1): the catalogue is data, so every name, number and link between the gear tables is checked here.
+GEAR_RARITIES=['common','uncommon','rare','epic','legendary']
+GEAR_ARMOUR=['helm','chest','legs','boots']
+GEAR_STATS=['health','damage','armour','speed','ranged','healing','command']
+GEAR_ID=re.compile(r'[a-z0-9_]{1,24}')
+rarity_rows=data.get('gearRarities',[])
+if [r['id'] for r in rarity_rows]!=GEAR_RARITIES: errors.append(f'gearRarities: the ids must be exactly {", ".join(GEAR_RARITIES)}, in that order')
+for i,r in enumerate(rarity_rows):
+    rid=f'gearRarities/{r["id"]}'
+    if not (0<r['statMin']<=r['statMax']): errors.append(f'{rid}/statMin: needs 0 < statMin <= statMax, got {r["statMin"]} and {r["statMax"]}')
+    if not (0<r['breakdownPct']<=1): errors.append(f'{rid}/breakdownPct: {r["breakdownPct"]} is outside (0, 1]')
+    if r['power']<1: errors.append(f'{rid}/power: {r["power"]} is below 1')
+    if r['rollWeight']<=0: errors.append(f'{rid}/rollWeight: {r["rollWeight"]} must be above 0')
+    if not re.fullmatch(r'#[0-9a-f]{6}',str(r['border'])): errors.append(f'{rid}/border: {r["border"]!r} is not #rrggbb in lower case')
+    if i:
+        before=rarity_rows[i-1]
+        for col in ('statMin','statMax','breakdownPct','power'):
+            if r[col]<=before[col]: errors.append(f'{rid}/{col}: {r[col]} does not rise above {before["id"]} ({before[col]})')
+set_rows=data.get('gearSets',[])
+set_ids={s['id'] for s in set_rows}
+item_rows=data.get('gearItems',[])
+items_by_id={i['id']:i for i in item_rows}
+for it in item_rows:
+    iid=f'gearItems/{it["id"]}'
+    if not GEAR_ID.fullmatch(str(it['id'])): errors.append(f'{iid}/id: {it["id"]!r} is not 1 to 24 characters of [a-z0-9_]')
+    if it['slot'] not in GEAR_ARMOUR+['main','off']: errors.append(f'{iid}/slot: {it["slot"]!r} is not one of {", ".join(GEAR_ARMOUR+["main","off"])}')
+    for col in GEAR_STATS:
+        if it[col]<0: errors.append(f'{iid}/{col}: {it[col]} is negative')
+    if it['slot'] in GEAR_ARMOUR:
+        if it['set'] not in set_ids: errors.append(f'{iid}/set: {it["set"]!r} is not a gearSets id')
+        if it['hands']!=1: errors.append(f'{iid}/hands: an armour piece has hands 1, got {it["hands"]}')
+    else:
+        if it['set']!='-': errors.append(f'{iid}/set: a weapon belongs to no set, so set must be -')
+        if it['hands'] not in (1,2): errors.append(f'{iid}/hands: {it["hands"]} is not 1 or 2')
+        elif it['hands']==2 and it['slot']!='main': errors.append(f'{iid}/hands: only a main-hand item can have hands 2')
+for s in set_rows:
+    for slot in GEAR_ARMOUR:
+        n=sum(1 for it in item_rows if it['set']==s['id'] and it['slot']==slot)
+        if n!=1: errors.append(f'gearSets/{s["id"]}: set {s["id"]} has {n} {slot} pieces in gearItems, it needs exactly one')
+    sid=f'gearSets/{s["id"]}'
+    starter=str(s['classes'])!='-'   # House sets (Kort 2026-11-04) start no class: classes, starterMain and starterOff are all -
+    if not starter and (s['starterMain']!='-' or s['starterOff']!='-'): errors.append(f'{sid}: a set with classes - starts no one, so starterMain and starterOff must be -')
+    main=items_by_id.get(s['starterMain'])
+    if starter and (main is None or main['slot']!='main'): errors.append(f'{sid}/starterMain: {s["starterMain"]!r} is not a main-hand gearItems id')
+    if s['starterOff']!='-':
+        off=items_by_id.get(s['starterOff'])
+        if off is None or off['slot']!='off': errors.append(f'{sid}/starterOff: {s["starterOff"]!r} is not - or an off-hand gearItems id')
+    if main is not None and main['hands']==2 and s['starterOff']!='-': errors.append(f'{sid}/starterOff: the starter main {s["starterMain"]} is two-handed, so starterOff must be -')
+relic_rows=data.get('relics',[])
+for r in relic_rows:
+    rid=f'relics/{r["id"]}'
+    if not GEAR_ID.fullmatch(str(r['id'])): errors.append(f'{rid}/id: {r["id"]!r} is not 1 to 24 characters of [a-z0-9_]')
+    if r['cooldownTicks']<=0: errors.append(f'{rid}/cooldownTicks: {r["cooldownTicks"]} must be above 0')
+    if r['role'] not in set_ids: errors.append(f'{rid}/role: {r["role"]!r} is not a gearSets id')
+legacy_classes=[c for s in set_rows for c in str(s['classes']).split(',') if c and c!='-']
+if len(set(legacy_classes))!=len(legacy_classes): errors.append('gearSets: a legacy class id is in more than one classes list, it needs exactly one')
+for c in legacy_classes:
+    n=sum(1 for r in relic_rows if r['fromClass']==c)
+    if n!=1: errors.append(f'relics: class {c} (gearSets.classes) is the fromClass of {n} relics, it needs exactly one')
+for r in relic_rows:
+    if r['fromClass']!='-' and r['fromClass'] not in legacy_classes: errors.append(f'relics/{r["id"]}/fromClass: {r["fromClass"]!r} is not in any gearSets classes list')
+# Gear combat (gear-combat plan Task 1). Draft numbers, for Kort's balance review (part g). The code knows only the effect ids below; the sheet picks and tunes them.
+RELIC_EFFECTS=('stand_fast','rally_horn','grave_bloom','forward_supply','mark_prey','bloodrush','dash','shove','heal_pulse','volley','self_heal','war_cry','iron_skin')
+SET_EFFECTS=('surrounded_guard','taunt_aura','heal_over_time','cleanse','draw_speed','pierce','command_radius','formation_charge')
+PERK_EFFECTS=('second_chance','grudge','quickened_relic','heavy_hand','last_light','hawkeye','oathkeeper','trailblazer')
+family_rows=data.get('gearFamilies',[])
+family_ids={f['id'] for f in family_rows}
+for it in item_rows:
+    if it['slot'] in ('main','off') and it['family'] not in family_ids: errors.append(f'gearItems/{it["id"]}/family: {it["family"]!r} has no gearFamilies row')
+for slot in GEAR_ARMOUR:
+    if slot not in family_ids: errors.append(f'gearFamilies: the armour slot {slot} needs a stand-in row')
+for f in family_rows:
+    fid=f'gearFamilies/{f["id"]}'
+    if f['id'] not in GEAR_ARMOUR and not any(it['family']==f['id'] for it in item_rows): errors.append(f'{fid}: no gearItems row has family {f["id"]}, and it is not an armour slot')
+    if not re.fullmatch(r'minecraft:[a-z0-9_]+',str(f['item'])): errors.append(f'{fid}/item: {f["item"]!r} is not a minecraft: item id')
+    for col in ('attackSpeed','damageMult','drawMult','auraMult'):
+        if f[col]<=0: errors.append(f'{fid}/{col}: {f[col]} must be above 0')
+    for col in ('sweepRadius','sweepShare','cooldownTicks','range','healBase'):
+        if f[col]<0: errors.append(f'{fid}/{col}: {f[col]} is negative')
+    if f['sweepShare']>1: errors.append(f'{fid}/sweepShare: {f["sweepShare"]} is above 1')
+for b in data.get('gearSetBonuses',[]):
+    bid=f'gearSetBonuses/{b["id"]}'
+    if b['set'] not in set_ids: errors.append(f'{bid}/set: {b["set"]!r} is not a gearSets id')
+    if b['pieces'] not in (2,4): errors.append(f'{bid}/pieces: {b["pieces"]} is not 2 or 4')
+    if b['effect'] not in SET_EFFECTS: errors.append(f'{bid}/effect: {b["effect"]!r} is not one of {", ".join(SET_EFFECTS)}')
+    if len(b['text'])>90: errors.append(f'{bid}/text: {len(b["text"])} characters, over 90')
+for s in set_rows:
+    for n in (2,4):
+        if not any(b['set']==s['id'] and b['pieces']==n for b in data.get('gearSetBonuses',[])): errors.append(f'gearSetBonuses: set {s["id"]} has no {n}-piece row')
+perk_items=[]
+for k in data.get('gearPerks',[]):
+    kid=f'gearPerks/{k["id"]}'
+    it=items_by_id.get(k['item'])
+    if it is None: errors.append(f'{kid}/item: {k["item"]!r} is not a gearItems id')
+    elif it['slot'] not in GEAR_ARMOUR+['main','off']: errors.append(f'{kid}/item: {k["item"]} sits in slot {it["slot"]}, not a worn slot')
+    if k['effect'] not in PERK_EFFECTS: errors.append(f'{kid}/effect: {k["effect"]!r} is not one of {", ".join(PERK_EFFECTS)}')
+    if k['item'] in perk_items: errors.append(f'{kid}/item: {k["item"]} already has a perk; perks are fixed, one per item')
+    perk_items.append(k['item'])
+    if len(k['text'])>90: errors.append(f'{kid}/text: {len(k["text"])} characters, over 90')
+relic_ids={r['id'] for r in relic_rows}
+tuning_rows=data.get('relicTuning',[])
+for t in tuning_rows:
+    tid=f'relicTuning/{t["id"]}'
+    if t['id'] not in relic_ids: errors.append(f'{tid}/id: {t["id"]!r} is not a relics id')
+    if t['effect'] not in RELIC_EFFECTS: errors.append(f'{tid}/effect: {t["effect"]!r} is not one of {", ".join(RELIC_EFFECTS)}')
+    r=next((r for r in relic_rows if r['id']==t['id']),None)
+    if r is not None and r['cooldownTicks']<t['durationTicks']: errors.append(f'{tid}/durationTicks: {t["durationTicks"]} is above the relic cooldown {r["cooldownTicks"]}')
+for r in relic_rows:
+    n=sum(1 for t in tuning_rows if t['id']==r['id'])
+    if n!=1: errors.append(f'relicTuning: relic {r["id"]} has {n} tuning rows, it needs exactly one')
+if len(data.get('gearCombat',[]))!=1: errors.append(f'gearCombat: needs exactly one row, has {len(data.get("gearCombat",[]))}')
+for g in data.get('gearCombat',[]):
+    if g['surroundedCount']<1: errors.append(f'gearCombat/{g["id"]}/surroundedCount: {g["surroundedCount"]} is below 1')
+    if not (0<=g['tauntShare']<=1): errors.append(f'gearCombat/{g["id"]}/tauntShare: {g["tauntShare"]} is outside 0 to 1')
+for f in data.get('forge',[]):
+    fid=f'forge/{f["id"]}'
+    if f['maxSlots']<f['startSlots'] or f['rowSlots']<1 or (f['maxSlots']-f['startSlots'])%f['rowSlots']!=0: errors.append(f'{fid}/maxSlots: {f["maxSlots"]} is not startSlots {f["startSlots"]} plus a whole number of rows of {f["rowSlots"]}')
+    if f['pity']<1: errors.append(f'{fid}/pity: {f["pity"]} is below 1')
+    if f['relicSlots']!=3: errors.append(f'{fid}/relicSlots: {f["relicSlots"]} must be 3')
+    if not (0<=f['starterQuality']<=100): errors.append(f'{fid}/starterQuality: {f["starterQuality"]} is outside 0 to 100')
+    if not (0<f['brokenStatPct']<=1): errors.append(f'{fid}/brokenStatPct: {f["brokenStatPct"]} is outside (0, 1]')
+# Blacksmith lines (gear screen): the Forge tab shows one, so the sheet needs at least one, each short enough for its line.
+if not data.get('blacksmithLines'): errors.append('blacksmithLines: the Forge tab needs at least one blacksmith line')
+for r in data.get('blacksmithLines',[]):
+    text=str(r.get('text',''))
+    if not text.strip(): errors.append(f'blacksmithLines/{r["id"]}/text: the line is empty')
+    elif len(text)>90: errors.append(f'blacksmithLines/{r["id"]}/text: {len(text)} characters, at most 90 fit the Forge tab')
 if errors:
     print('\n'.join(errors)); sys.exit(1)
 def typ(v): return 'boolean' if isinstance(v,bool) else 'int' if isinstance(v,int) else 'double' if isinstance(v,float) else 'String'

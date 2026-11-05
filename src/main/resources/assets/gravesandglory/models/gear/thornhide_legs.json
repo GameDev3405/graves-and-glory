@@ -1,0 +1,343 @@
+{
+ "format": 1,
+ "item": "thornhide_legs",
+ "slot": "legs",
+ "density": 1,
+ "size": [
+  64,
+  32
+ ],
+ "cloth": "gravesandglory:textures/entity/gear/thornhide_legs/team_cloth_",
+ "skins": {
+  "1": "gravesandglory:textures/entity/gear/thornhide_legs/thornhide_legs_r1.png",
+  "2": "gravesandglory:textures/entity/gear/thornhide_legs/thornhide_legs_r2.png",
+  "3": "gravesandglory:textures/entity/gear/thornhide_legs/thornhide_legs_r3.png",
+  "4": "gravesandglory:textures/entity/gear/thornhide_legs/thornhide_legs_r4.png",
+  "5": "gravesandglory:textures/entity/gear/thornhide_legs/thornhide_legs_r5.png"
+ },
+ "glow": {},
+ "bones": [
+  {
+   "name": "belt",
+   "parent": "body",
+   "team": false,
+   "tag": "legs",
+   "stages": [],
+   "sheet": [
+    64,
+    32
+   ],
+   "pivot": [
+    0,
+    12,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "boxes": [
+    {
+     "origin": [
+      -5.0,
+      -0.5,
+      -3.5
+     ],
+     "size": [
+      10.0,
+      2.0,
+      7.0
+     ],
+     "uv": [
+      0,
+      15
+     ],
+     "mirror": false,
+     "dilation": [
+      0.02,
+      0.02,
+      0.02
+     ]
+    }
+   ]
+  },
+  {
+   "name": "loincloth_0",
+   "parent": "body",
+   "team": true,
+   "tag": "legs",
+   "stages": [
+    1,
+    2,
+    3,
+    4
+   ],
+   "sheet": [
+    32,
+    16
+   ],
+   "pivot": [
+    0,
+    12,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "boxes": [
+    {
+     "origin": [
+      -2.0,
+      1.5,
+      -3.8
+     ],
+     "size": [
+      4.0,
+      7.0,
+      1.0
+     ],
+     "uv": [
+      0,
+      0
+     ],
+     "mirror": false,
+     "dilation": [
+      0.0,
+      0.0,
+      0.0
+     ]
+    }
+   ]
+  },
+  {
+   "name": "loincloth_1",
+   "parent": "body",
+   "team": true,
+   "tag": "legs",
+   "stages": [
+    5
+   ],
+   "sheet": [
+    32,
+    16
+   ],
+   "pivot": [
+    0,
+    12,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "boxes": [
+    {
+     "origin": [
+      -2.0,
+      1.5,
+      -3.8
+     ],
+     "size": [
+      4.0,
+      7.0,
+      1.0
+     ],
+     "uv": [
+      10,
+      0
+     ],
+     "mirror": false,
+     "dilation": [
+      0.0,
+      0.0,
+      0.0
+     ]
+    }
+   ]
+  },
+  {
+   "name": "leg_r",
+   "parent": "right_leg",
+   "team": false,
+   "tag": "legs",
+   "stages": [],
+   "sheet": [
+    64,
+    32
+   ],
+   "pivot": [
+    0,
+    0,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "boxes": [
+    {
+     "origin": [
+      -2.5000000000000004,
+      -0.5,
+      -2.5
+     ],
+     "size": [
+      5.0,
+      10.0,
+      5.0
+     ],
+     "uv": [
+      0,
+      0
+     ],
+     "mirror": false,
+     "dilation": [
+      0.0,
+      0.0,
+      0.0
+     ]
+    }
+   ]
+  },
+  {
+   "name": "leg_l",
+   "parent": "left_leg",
+   "team": false,
+   "tag": "legs",
+   "stages": [],
+   "sheet": [
+    64,
+    32
+   ],
+   "pivot": [
+    0,
+    0,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "boxes": [
+    {
+     "origin": [
+      -2.4999999999999996,
+      -0.5,
+      -2.5
+     ],
+     "size": [
+      5.0,
+      10.0,
+      5.0
+     ],
+     "uv": [
+      20,
+      0
+     ],
+     "mirror": false,
+     "dilation": [
+      0.06,
+      0.06,
+      0.06
+     ]
+    }
+   ]
+  },
+  {
+   "name": "thigh_r",
+   "parent": "right_leg",
+   "team": false,
+   "tag": "legs",
+   "stages": [],
+   "sheet": [
+    64,
+    32
+   ],
+   "pivot": [
+    0,
+    0,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "boxes": [
+    {
+     "origin": [
+      -2.6999999999999997,
+      0.5,
+      -2.9
+     ],
+     "size": [
+      5.0,
+      4.0,
+      1.0
+     ],
+     "uv": [
+      34,
+      15
+     ],
+     "mirror": false,
+     "dilation": [
+      0.0,
+      0.0,
+      0.0
+     ]
+    }
+   ]
+  },
+  {
+   "name": "thigh_l",
+   "parent": "left_leg",
+   "team": false,
+   "tag": "legs",
+   "stages": [],
+   "sheet": [
+    64,
+    32
+   ],
+   "pivot": [
+    0,
+    0,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "boxes": [
+    {
+     "origin": [
+      -2.3000000000000003,
+      0.5,
+      -2.9
+     ],
+     "size": [
+      5.0,
+      4.0,
+      1.0
+     ],
+     "uv": [
+      46,
+      15
+     ],
+     "mirror": false,
+     "dilation": [
+      0.02,
+      0.02,
+      0.02
+     ]
+    }
+   ]
+  }
+ ]
+}

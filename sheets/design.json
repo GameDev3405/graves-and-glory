@@ -69,9 +69,10 @@
       "ability": "shield",
       "evolveLine": "knight",
       "slotWeight": 1,
-      "pennant": true,
+      "pennant": false,
       "shield": "white:cs",
-      "texture": "gravesandglory:textures/entity/dawn_guard.png"
+      "texture": "gravesandglory:textures/entity/dawn_guard.png",
+      "family": "sword_shield"
     },
     {
       "id": "archer",
@@ -85,7 +86,7 @@
       "range": 22.0,
       "ranged": true,
       "speed": 0.3,
-      "cooldown": 40,
+      "cooldown": 50,
       "cost": 24,
       "trainingSeconds": 4.0,
       "magic": false,
@@ -96,9 +97,10 @@
       "ability": "steady",
       "evolveLine": "archer",
       "slotWeight": 1,
-      "pennant": true,
+      "pennant": false,
       "shield": "none",
-      "texture": "gravesandglory:textures/entity/dawn_guard.png"
+      "texture": "gravesandglory:textures/entity/dawn_guard.png",
+      "family": "bow"
     },
     {
       "id": "sentinel",
@@ -113,7 +115,7 @@
       "ranged": false,
       "speed": 0.25,
       "cooldown": 28,
-      "cost": 48,
+      "cost": 40,
       "trainingSeconds": 7.0,
       "magic": false,
       "weapon": "minecraft:diamond_sword",
@@ -123,9 +125,10 @@
       "ability": "shield",
       "evolveLine": "sentinel",
       "slotWeight": 1,
-      "pennant": true,
+      "pennant": false,
       "shield": "white:sc",
-      "texture": "gravesandglory:textures/entity/dawn_guard.png"
+      "texture": "gravesandglory:textures/entity/dawn_guard.png",
+      "family": "sword_shield"
     },
     {
       "id": "longbow",
@@ -139,8 +142,8 @@
       "range": 30.0,
       "ranged": true,
       "speed": 0.28,
-      "cooldown": 45,
-      "cost": 46,
+      "cooldown": 56,
+      "cost": 35,
       "trainingSeconds": 7.0,
       "magic": false,
       "weapon": "minecraft:bow",
@@ -150,9 +153,10 @@
       "ability": "pierce_longbow",
       "evolveLine": "longbow",
       "slotWeight": 1,
-      "pennant": true,
+      "pennant": false,
       "shield": "none",
-      "texture": "gravesandglory:textures/entity/dawn_guard.png"
+      "texture": "gravesandglory:textures/entity/dawn_guard.png",
+      "family": "bow"
     },
     {
       "id": "mage",
@@ -177,9 +181,10 @@
       "ability": "mend_sunweaver",
       "evolveLine": "none",
       "slotWeight": 2,
-      "pennant": true,
+      "pennant": false,
       "shield": "none",
-      "texture": "gravesandglory:textures/entity/dawn_guard.png"
+      "texture": "gravesandglory:textures/entity/dawn_guard.png",
+      "family": "caster"
     },
     {
       "id": "gl_marshal",
@@ -204,9 +209,10 @@
       "ability": "oath_banner",
       "evolveLine": "none",
       "slotWeight": 4,
-      "pennant": true,
+      "pennant": false,
       "shield": "white:sc,light_gray:bo",
-      "texture": "gravesandglory:textures/entity/dawn_guard.png"
+      "texture": "gravesandglory:textures/entity/dawn_guard.png",
+      "family": "sword_shield"
     },
     {
       "id": "revenant",
@@ -215,13 +221,13 @@
       "name": "Risen",
       "entity": "zombie",
       "group": "infantry",
-      "health": 29,
+      "health": 23,
       "damage": 4,
       "range": 3.0,
       "ranged": false,
       "speed": 0.28,
       "cooldown": 22,
-      "cost": 14,
+      "cost": 17,
       "trainingSeconds": 2.6,
       "magic": false,
       "weapon": "minecraft:iron_sword",
@@ -231,9 +237,10 @@
       "ability": "fearless",
       "evolveLine": "revenant",
       "slotWeight": 1,
-      "pennant": true,
+      "pennant": false,
       "shield": "none",
-      "texture": "minecraft:textures/entity/zombie/zombie.png"
+      "texture": "minecraft:textures/entity/zombie/zombie.png",
+      "family": "sword"
     },
     {
       "id": "bonebow",
@@ -247,8 +254,8 @@
       "range": 25.0,
       "ranged": true,
       "speed": 0.3,
-      "cooldown": 35,
-      "cost": 16,
+      "cooldown": 44,
+      "cost": 20,
       "trainingSeconds": 2.6,
       "magic": false,
       "weapon": "minecraft:bow",
@@ -258,9 +265,10 @@
       "ability": "fearless",
       "evolveLine": "bonebow",
       "slotWeight": 1,
-      "pennant": true,
+      "pennant": false,
       "shield": "none",
-      "texture": "minecraft:textures/entity/skeleton/skeleton.png"
+      "texture": "minecraft:textures/entity/skeleton/skeleton.png",
+      "family": "bow"
     },
     {
       "id": "reaper",
@@ -269,8 +277,8 @@
       "name": "Grave Reaper",
       "entity": "wither_skeleton",
       "group": "infantry",
-      "health": 39,
-      "damage": 9,
+      "health": 30,
+      "damage": 7,
       "range": 3.0,
       "ranged": false,
       "speed": 0.33,
@@ -285,9 +293,10 @@
       "ability": "cleave_reaper",
       "evolveLine": "reaper",
       "slotWeight": 1,
-      "pennant": true,
+      "pennant": false,
       "shield": "none",
-      "texture": "minecraft:textures/entity/skeleton/wither_skeleton.png"
+      "texture": "minecraft:textures/entity/skeleton/wither_skeleton.png",
+      "family": "scythe"
     },
     {
       "id": "stalker",
@@ -301,7 +310,7 @@
       "range": 29.0,
       "ranged": true,
       "speed": 0.33,
-      "cooldown": 35,
+      "cooldown": 44,
       "cost": 40,
       "trainingSeconds": 5.2,
       "magic": false,
@@ -312,9 +321,10 @@
       "ability": "frostshot",
       "evolveLine": "stalker",
       "slotWeight": 1,
-      "pennant": true,
+      "pennant": false,
       "shield": "none",
-      "texture": "minecraft:textures/entity/skeleton/stray.png"
+      "texture": "minecraft:textures/entity/skeleton/stray.png",
+      "family": "bow"
     },
     {
       "id": "hexer",
@@ -339,9 +349,10 @@
       "ability": "blight_gravecaller",
       "evolveLine": "none",
       "slotWeight": 2,
-      "pennant": true,
+      "pennant": false,
       "shield": "none",
-      "texture": "minecraft:textures/entity/skeleton/wither_skeleton.png"
+      "texture": "minecraft:textures/entity/skeleton/wither_skeleton.png",
+      "family": "caster"
     },
     {
       "id": "gb_hollowking",
@@ -366,9 +377,10 @@
       "ability": "dread",
       "evolveLine": "none",
       "slotWeight": 4,
-      "pennant": true,
+      "pennant": false,
       "shield": "none",
-      "texture": "minecraft:textures/entity/skeleton/wither_skeleton.png"
+      "texture": "minecraft:textures/entity/skeleton/wither_skeleton.png",
+      "family": "greatsword"
     },
     {
       "id": "wm_hound",
@@ -393,9 +405,10 @@
       "ability": "pounce",
       "evolveLine": "wm_hound",
       "slotWeight": 1,
-      "pennant": true,
+      "pennant": false,
       "shield": "none",
-      "texture": "minecraft:textures/entity/wolf/wolf.png"
+      "texture": "minecraft:textures/entity/wolf/wolf.png",
+      "family": "hound"
     },
     {
       "id": "wm_hunter",
@@ -409,7 +422,7 @@
       "range": 20.0,
       "ranged": true,
       "speed": 0.31,
-      "cooldown": 36,
+      "cooldown": 45,
       "cost": 20,
       "trainingSeconds": 3.5,
       "magic": false,
@@ -420,9 +433,10 @@
       "ability": "ambush",
       "evolveLine": "wm_hunter",
       "slotWeight": 1,
-      "pennant": true,
+      "pennant": false,
       "shield": "none",
-      "texture": "minecraft:textures/entity/piglin/zombified_piglin.png"
+      "texture": "minecraft:textures/entity/piglin/zombified_piglin.png",
+      "family": "bow"
     },
     {
       "id": "wm_stalker",
@@ -447,9 +461,10 @@
       "ability": "ensnare",
       "evolveLine": "wm_stalker",
       "slotWeight": 1,
-      "pennant": true,
+      "pennant": false,
       "shield": "none",
-      "texture": "minecraft:textures/entity/spider/spider.png"
+      "texture": "minecraft:textures/entity/spider/spider.png",
+      "family": "spider"
     },
     {
       "id": "wm_tusk",
@@ -474,9 +489,10 @@
       "ability": "brace",
       "evolveLine": "wm_tusk",
       "slotWeight": 1,
-      "pennant": true,
+      "pennant": false,
       "shield": "none",
-      "texture": "minecraft:textures/entity/piglin/zombified_piglin.png"
+      "texture": "minecraft:textures/entity/piglin/zombified_piglin.png",
+      "family": "spear"
     },
     {
       "id": "wm_seer",
@@ -501,9 +517,10 @@
       "ability": "howl",
       "evolveLine": "none",
       "slotWeight": 2,
-      "pennant": true,
+      "pennant": false,
       "shield": "none",
-      "texture": "minecraft:textures/entity/piglin/zombified_piglin.png"
+      "texture": "minecraft:textures/entity/piglin/zombified_piglin.png",
+      "family": "caster"
     },
     {
       "id": "wm_oldhorn",
@@ -528,9 +545,10 @@
       "ability": "trample",
       "evolveLine": "none",
       "slotWeight": 4,
-      "pennant": true,
+      "pennant": false,
       "shield": "none",
-      "texture": "minecraft:textures/entity/bear/polarbear.png"
+      "texture": "minecraft:textures/entity/bear/polarbear.png",
+      "family": "bear"
     },
     {
       "id": "ic_hearthguard",
@@ -555,9 +573,10 @@
       "ability": "shield",
       "evolveLine": "ic_hearthguard",
       "slotWeight": 1,
-      "pennant": true,
+      "pennant": false,
       "shield": "black:bo,light_gray:mc",
-      "texture": "minecraft:textures/entity/illager/vindicator.png"
+      "texture": "minecraft:textures/entity/illager/vindicator.png",
+      "family": "axe_shield"
     },
     {
       "id": "ic_arbalist",
@@ -582,9 +601,10 @@
       "ability": "armour_bolt",
       "evolveLine": "ic_arbalist",
       "slotWeight": 1,
-      "pennant": true,
+      "pennant": false,
       "shield": "none",
-      "texture": "minecraft:textures/entity/illager/pillager.png"
+      "texture": "minecraft:textures/entity/illager/pillager.png",
+      "family": "crossbow"
     },
     {
       "id": "ic_breaker",
@@ -599,7 +619,7 @@
       "ranged": false,
       "speed": 0.25,
       "cooldown": 32,
-      "cost": 44,
+      "cost": 34,
       "trainingSeconds": 7.0,
       "magic": false,
       "weapon": "minecraft:netherite_axe",
@@ -609,9 +629,10 @@
       "ability": "sunder",
       "evolveLine": "ic_breaker",
       "slotWeight": 1,
-      "pennant": true,
+      "pennant": false,
       "shield": "none",
-      "texture": "minecraft:textures/entity/illager/vindicator.png"
+      "texture": "minecraft:textures/entity/illager/vindicator.png",
+      "family": "axe"
     },
     {
       "id": "ic_ballista",
@@ -626,7 +647,7 @@
       "ranged": true,
       "speed": 0.2,
       "cooldown": 80,
-      "cost": 48,
+      "cost": 38,
       "trainingSeconds": 8.0,
       "magic": false,
       "weapon": "minecraft:crossbow",
@@ -636,9 +657,10 @@
       "ability": "pierce_ballista",
       "evolveLine": "ic_ballista",
       "slotWeight": 1,
-      "pennant": true,
+      "pennant": false,
       "shield": "none",
-      "texture": "minecraft:textures/entity/illager/pillager.png"
+      "texture": "minecraft:textures/entity/illager/pillager.png",
+      "family": "crossbow"
     },
     {
       "id": "ic_mortar",
@@ -653,7 +675,7 @@
       "ranged": true,
       "speed": 0.18,
       "cooldown": 100,
-      "cost": 70,
+      "cost": 55,
       "trainingSeconds": 10.0,
       "magic": false,
       "weapon": "minecraft:air",
@@ -663,9 +685,10 @@
       "ability": "shell",
       "evolveLine": "none",
       "slotWeight": 2,
-      "pennant": true,
+      "pennant": false,
       "shield": "none",
-      "texture": "minecraft:textures/entity/illager/pillager.png"
+      "texture": "minecraft:textures/entity/illager/pillager.png",
+      "family": "crew"
     },
     {
       "id": "ic_colossus",
@@ -690,9 +713,10 @@
       "ability": "forge_slam",
       "evolveLine": "none",
       "slotWeight": 4,
-      "pennant": true,
+      "pennant": false,
       "shield": "none",
-      "texture": "minecraft:textures/entity/iron_golem/iron_golem.png"
+      "texture": "minecraft:textures/entity/iron_golem/iron_golem.png",
+      "family": "colossus"
     },
     {
       "id": "tc_raider",
@@ -717,9 +741,10 @@
       "ability": "brine",
       "evolveLine": "tc_raider",
       "slotWeight": 1,
-      "pennant": true,
+      "pennant": false,
       "shield": "none",
-      "texture": "minecraft:textures/entity/zombie/drowned.png"
+      "texture": "minecraft:textures/entity/zombie/drowned.png",
+      "family": "sword"
     },
     {
       "id": "tc_harpooner",
@@ -744,9 +769,10 @@
       "ability": "harpoon",
       "evolveLine": "tc_harpooner",
       "slotWeight": 1,
-      "pennant": true,
+      "pennant": false,
       "shield": "none",
-      "texture": "minecraft:textures/entity/zombie/drowned.png"
+      "texture": "minecraft:textures/entity/zombie/drowned.png",
+      "family": "thrower"
     },
     {
       "id": "tc_tideguard",
@@ -771,9 +797,10 @@
       "ability": "brace",
       "evolveLine": "tc_tideguard",
       "slotWeight": 1,
-      "pennant": true,
+      "pennant": false,
       "shield": "none",
-      "texture": "minecraft:textures/entity/zombie/drowned.png"
+      "texture": "minecraft:textures/entity/zombie/drowned.png",
+      "family": "spear"
     },
     {
       "id": "tc_mist",
@@ -798,9 +825,10 @@
       "ability": "mist",
       "evolveLine": "tc_mist",
       "slotWeight": 1,
-      "pennant": true,
+      "pennant": false,
       "shield": "none",
-      "texture": "minecraft:textures/entity/illager/evoker.png"
+      "texture": "minecraft:textures/entity/illager/evoker.png",
+      "family": "caster"
     },
     {
       "id": "tc_brute",
@@ -825,9 +853,10 @@
       "ability": "tentacle_sweep",
       "evolveLine": "none",
       "slotWeight": 2,
-      "pennant": true,
+      "pennant": false,
       "shield": "none",
-      "texture": "minecraft:textures/entity/illager/ravager.png"
+      "texture": "minecraft:textures/entity/illager/ravager.png",
+      "family": "ravager"
     },
     {
       "id": "tc_admiral",
@@ -852,20 +881,24 @@
       "ability": "undertow",
       "evolveLine": "none",
       "slotWeight": 4,
-      "pennant": true,
+      "pennant": false,
       "shield": "none",
-      "texture": "minecraft:textures/entity/zombie/drowned.png"
+      "texture": "minecraft:textures/entity/zombie/drowned.png",
+      "family": "spear"
     }
   ],
   "orders": [
     {
       "id": "follow",
-      "label": "Follow",
+      "label": "Follow me",
       "targeted": false,
       "engage": true,
       "engageRadius": 10,
       "moveMultiplier": 1.0,
-      "meaning": "Guard the commander; keep support behind the frontline."
+      "meaning": "Guard the commander; keep support behind the frontline.",
+      "hunt": false,
+      "playerFacing": true,
+      "hotkey": "C"
     },
     {
       "id": "move",
@@ -874,7 +907,10 @@
       "engage": false,
       "engageRadius": 0,
       "moveMultiplier": 1.0,
-      "meaning": "Travel without pursuing unrelated enemies."
+      "meaning": "Travel without pursuing unrelated enemies.",
+      "hunt": false,
+      "playerFacing": false,
+      "hotkey": "none"
     },
     {
       "id": "attack",
@@ -883,7 +919,10 @@
       "engage": true,
       "engageRadius": 24,
       "moveMultiplier": 1.0,
-      "meaning": "Advance and engage nearby threats, or focus a selected enemy."
+      "meaning": "Advance and engage nearby threats, or focus a selected enemy.",
+      "hunt": true,
+      "playerFacing": true,
+      "hotkey": "Z"
     },
     {
       "id": "hold",
@@ -892,7 +931,10 @@
       "engage": true,
       "engageRadius": 10,
       "moveMultiplier": 1.0,
-      "meaning": "Defend the chosen anchor; pursue only within ten blocks."
+      "meaning": "Defend the chosen anchor; pursue only within ten blocks.",
+      "hunt": false,
+      "playerFacing": false,
+      "hotkey": "none"
     },
     {
       "id": "charge",
@@ -901,7 +943,10 @@
       "engage": true,
       "engageRadius": 32,
       "moveMultiplier": 1.25,
-      "meaning": "Commit to a selected enemy with reduced cohesion."
+      "meaning": "Commit to a selected enemy with reduced cohesion.",
+      "hunt": false,
+      "playerFacing": true,
+      "hotkey": "X"
     },
     {
       "id": "retreat",
@@ -910,17 +955,23 @@
       "engage": false,
       "engageRadius": 0,
       "moveMultiplier": 1.15,
-      "meaning": "Disengage to the destination; ignore enemies and interrupt prior attacks."
+      "meaning": "Disengage to the destination; ignore enemies and interrupt prior attacks.",
+      "hunt": false,
+      "playerFacing": true,
+      "hotkey": "V"
     }
   ],
   "formations": [
     {
       "id": "block",
-      "label": "Compact",
+      "label": "Shield wall",
       "columns": 5,
       "spacing": 1.8,
       "wedge": false,
-      "purpose": "Narrow frontage; infantry screen the rear."
+      "purpose": "Narrow frontage; infantry screen the rear.",
+      "moveMultiplier": 0.85,
+      "arrowBlock": 0.75,
+      "shove": 0.0
     },
     {
       "id": "line",
@@ -928,7 +979,10 @@
       "columns": 10,
       "spacing": 1.8,
       "wedge": false,
-      "purpose": "Wide firing frontage; needs open ground."
+      "purpose": "Wide firing frontage; needs open ground.",
+      "moveMultiplier": 1.0,
+      "arrowBlock": 0.0,
+      "shove": 0.0
     },
     {
       "id": "wedge",
@@ -936,7 +990,10 @@
       "columns": 5,
       "spacing": 1.8,
       "wedge": true,
-      "purpose": "Concentrated advance; exposed sides."
+      "purpose": "Concentrated advance; exposed sides.",
+      "moveMultiplier": 1.0,
+      "arrowBlock": 0.0,
+      "shove": 0.6
     },
     {
       "id": "loose",
@@ -944,15 +1001,10 @@
       "columns": 5,
       "spacing": 3.2,
       "wedge": false,
-      "purpose": "Spread out; less concentrated protection."
-    },
-    {
-      "id": "shieldwall",
-      "label": "Shieldwall",
-      "columns": 12,
-      "spacing": 1.5,
-      "wedge": false,
-      "purpose": "Wide shield front; shield troops brace when enemies close."
+      "purpose": "Spread out; less concentrated protection.",
+      "moveMultiplier": 1.0,
+      "arrowBlock": 0.0,
+      "shove": 0.0
     }
   ],
   "points": [
@@ -1212,8 +1264,6 @@
       "maxPlayers": 8,
       "playersPerTeam": 4,
       "squadSize": 20,
-      "winScore": 300,
-      "scoreInterval": 80,
       "respawnSeconds": 12,
       "reinforceSeconds": 25,
       "friendlyFire": false,
@@ -1226,8 +1276,493 @@
       "worldHalfX": 366,
       "worldHalfZ": 266,
       "automaticReinforcements": false,
-      "commandCooldownTicks": 4,
-      "roundSeconds": 900
+      "commandCooldownTicks": 4
+    }
+  ],
+  "modes": [
+    {
+      "id": "domination",
+      "name": "Domination",
+      "maps": "0,1,2,3,4",
+      "roundSeconds": 900,
+      "winTarget": 300,
+      "scoreInterval": 80,
+      "passiveScale": 1.0,
+      "pointScale": 1.0,
+      "timeout": "score",
+      "ruleLine": "Domination to {n}",
+      "howTo": "Send troops onto a point to take it; hold it to score. | Reach the target score first, or lead when time ends.",
+      "howToDefend": "Send troops onto a point to take it; hold it to score. | Reach the target score first, or lead when time ends."
+    },
+    {
+      "id": "siege",
+      "name": "Siege",
+      "maps": "1",
+      "roundSeconds": 185,
+      "winTarget": 3,
+      "scoreInterval": 0,
+      "passiveScale": 1.0,
+      "pointScale": 0.0,
+      "timeout": "team1",
+      "ruleLine": "Siege of Ironhold",
+      "howTo": "Break the gate; siege troops strike it four times harder. | Seize the keep before the clock runs out.",
+      "howToDefend": "Hold the yard, then the gate, then the keep. | When the clock runs out, Ironhold is yours."
+    },
+    {
+      "id": "convoy",
+      "name": "Convoy",
+      "maps": "2",
+      "roundSeconds": 420,
+      "winTarget": 0,
+      "scoreInterval": 0,
+      "passiveScale": 1.0,
+      "pointScale": 0.0,
+      "timeout": "team1",
+      "ruleLine": "Convoy: reach {n}",
+      "howTo": "Stay by the wagon to push it; an enemy beside it stops it. | Reach the refuge before the clock runs out.",
+      "howToDefend": "Stand by the wagon to stop it. | Hold it until the clock runs out."
+    },
+    {
+      "id": "survival",
+      "name": "Survival",
+      "maps": "3",
+      "roundSeconds": 0,
+      "winTarget": 0,
+      "scoreInterval": 0,
+      "passiveScale": 0.0,
+      "pointScale": 0.0,
+      "timeout": "team0",
+      "ruleLine": "Survival: {n} waves",
+      "howTo": "Hold the shrine against every wave; clear a wave for its gold. | Lose the shrine for 20 seconds and the night is lost.",
+      "howToDefend": "Hold the shrine against every wave; clear a wave for its gold. | Lose the shrine for 20 seconds and the night is lost."
+    }
+  ],
+  "modeRules": [
+    {
+      "id": "convoy",
+      "pushRadius": 6.0,
+      "pushHeight": 3.0,
+      "speedOne": 0.5,
+      "speedTwo": 0.63,
+      "speedThree": 0.75,
+      "rollbackSpeed": 0.6,
+      "idleSeconds": 10,
+      "checkpointSeconds": 180,
+      "checkpointGold": 50,
+      "maxGrade": 0.25,
+      "uphill": 0.75,
+      "downhill": 1.25,
+      "overtimeRadius": 6.0,
+      "overtimeGraceSeconds": 3,
+      "stoppedAfterSeconds": 5,
+      "stoppedEverySeconds": 20,
+      "siegeStageBonus": 0,
+      "portcullisSeconds": 0,
+      "keepEdgeAttackers": 0,
+      "keepEdgeDefenders": 0,
+      "survivalPerBanner": 0.0,
+      "riseWarning": 0,
+      "maxDeadAlive": 0,
+      "waveSet": "-",
+      "note": "draft values (convoy spec 3.1 to 3.3, 8); Kort tunes them after the sim gate"
+    },
+    {
+      "id": "siege",
+      "pushRadius": 0.0,
+      "pushHeight": 0.0,
+      "speedOne": 0.0,
+      "speedTwo": 0.0,
+      "speedThree": 0.0,
+      "rollbackSpeed": 0.0,
+      "idleSeconds": 0,
+      "checkpointSeconds": 0,
+      "checkpointGold": 0,
+      "maxGrade": 0.0,
+      "uphill": 0.0,
+      "downhill": 0.0,
+      "overtimeRadius": 0.0,
+      "overtimeGraceSeconds": 0,
+      "stoppedAfterSeconds": 0,
+      "stoppedEverySeconds": 0,
+      "siegeStageBonus": 180,
+      "portcullisSeconds": 10,
+      "keepEdgeAttackers": 2,
+      "keepEdgeDefenders": 3,
+      "survivalPerBanner": 0.0,
+      "riseWarning": 0,
+      "maxDeadAlive": 0,
+      "waveSet": "-",
+      "note": "Siege draft values (siege spec section 5; keep edge: attackers add a second while contested at 2 of every 3 defenders); Kort tunes them after the sim gate. The convoy columns are unused here"
+    },
+    {
+      "id": "survival",
+      "pushRadius": 0.0,
+      "pushHeight": 0.0,
+      "speedOne": 0.0,
+      "speedTwo": 0.0,
+      "speedThree": 0.0,
+      "rollbackSpeed": 0.0,
+      "idleSeconds": 0,
+      "checkpointSeconds": 0,
+      "checkpointGold": 0,
+      "maxGrade": 0.0,
+      "uphill": 0.0,
+      "downhill": 0.0,
+      "overtimeRadius": 0.0,
+      "overtimeGraceSeconds": 0,
+      "stoppedAfterSeconds": 0,
+      "stoppedEverySeconds": 0,
+      "siegeStageBonus": 0,
+      "portcullisSeconds": 0,
+      "keepEdgeAttackers": 0,
+      "keepEdgeDefenders": 0,
+      "survivalPerBanner": 0.5,
+      "riseWarning": 5,
+      "maxDeadAlive": 60,
+      "waveSet": "moon",
+      "note": "DRAFT (Phase 4 plan Task 6, question for Kort): +50% dead per extra banner, 5 s rise warning, at most 60 dead alive, the moon wave set"
+    }
+  ],
+  "modeSites": [
+    {
+      "id": "convoy_frostmarch_road_0",
+      "mode": "convoy",
+      "map": 2,
+      "kind": "road",
+      "stage": 0,
+      "name": "-",
+      "x": -230.0,
+      "z": 0.0,
+      "radius": 3.5,
+      "y": 0.0,
+      "piece": "-",
+      "rotation": 0,
+      "hp": 0.0,
+      "seconds": 0,
+      "note": "draft road (convoy spec 5.2), straight draft Frostmarch road accepted by Kort 2026-11-01 for now"
+    },
+    {
+      "id": "convoy_frostmarch_road_1",
+      "mode": "convoy",
+      "map": 2,
+      "kind": "road",
+      "stage": 1,
+      "name": "-",
+      "x": -28.0,
+      "z": 0.0,
+      "radius": 3.5,
+      "y": 0.0,
+      "piece": "-",
+      "rotation": 0,
+      "hp": 0.0,
+      "seconds": 0,
+      "note": "draft road (convoy spec 5.2), straight draft Frostmarch road accepted by Kort 2026-11-01 for now"
+    },
+    {
+      "id": "convoy_frostmarch_road_2",
+      "mode": "convoy",
+      "map": 2,
+      "kind": "road",
+      "stage": 2,
+      "name": "Pass Crossing",
+      "x": 32.0,
+      "z": 0.0,
+      "radius": 3.5,
+      "y": 0.0,
+      "piece": "-",
+      "rotation": 0,
+      "hp": 0.0,
+      "seconds": 0,
+      "note": "draft road (convoy spec 5.2), straight draft Frostmarch road accepted by Kort 2026-11-01 for now"
+    },
+    {
+      "id": "convoy_frostmarch_road_3",
+      "mode": "convoy",
+      "map": 2,
+      "kind": "road",
+      "stage": 3,
+      "name": "-",
+      "x": 100.0,
+      "z": 30.0,
+      "radius": 3.5,
+      "y": 0.0,
+      "piece": "-",
+      "rotation": 0,
+      "hp": 0.0,
+      "seconds": 0,
+      "note": "draft road (convoy spec 5.2), straight draft Frostmarch road accepted by Kort 2026-11-01 for now"
+    },
+    {
+      "id": "convoy_frostmarch_road_4",
+      "mode": "convoy",
+      "map": 2,
+      "kind": "road",
+      "stage": 4,
+      "name": "Signal Ridge",
+      "x": 150.0,
+      "z": 60.0,
+      "radius": 3.5,
+      "y": 0.0,
+      "piece": "-",
+      "rotation": 0,
+      "hp": 0.0,
+      "seconds": 0,
+      "note": "draft road (convoy spec 5.2), straight draft Frostmarch road accepted by Kort 2026-11-01 for now"
+    },
+    {
+      "id": "convoy_frostmarch_road_5",
+      "mode": "convoy",
+      "map": 2,
+      "kind": "road",
+      "stage": 5,
+      "name": "-",
+      "x": 220.0,
+      "z": 30.0,
+      "radius": 3.5,
+      "y": 0.0,
+      "piece": "-",
+      "rotation": 0,
+      "hp": 0.0,
+      "seconds": 0,
+      "note": "draft road (convoy spec 5.2), straight draft Frostmarch road accepted by Kort 2026-11-01 for now"
+    },
+    {
+      "id": "convoy_frostmarch_road_6",
+      "mode": "convoy",
+      "map": 2,
+      "kind": "road",
+      "stage": 6,
+      "name": "The Refuge",
+      "x": 280.0,
+      "z": 0.0,
+      "radius": 3.5,
+      "y": 0.0,
+      "piece": "-",
+      "rotation": 0,
+      "hp": 0.0,
+      "seconds": 0,
+      "note": "draft road (convoy spec 5.2), straight draft Frostmarch road accepted by Kort 2026-11-01 for now"
+    },
+    {
+      "id": "convoy_frostmarch_dusk_base",
+      "mode": "convoy",
+      "map": 2,
+      "kind": "base",
+      "stage": 1,
+      "name": "Dusk muster",
+      "x": 255.0,
+      "z": -64.0,
+      "radius": 3.5,
+      "y": 0.0,
+      "piece": "-",
+      "rotation": 0,
+      "hp": 0.0,
+      "seconds": 0,
+      "note": "Dusk's field base in Convoy (stage is the team): moved off the road's end, where the map's Dusk spawn (283, 0) sits 3 blocks from The Refuge; on the Dusk fan road, 69 blocks from The Refuge and clear of the Dusk barracks (draft value, 2026-11-01)"
+    },
+    {
+      "id": "siege_ironhold_yard",
+      "mode": "siege",
+      "map": 1,
+      "kind": "stage",
+      "stage": 0,
+      "name": "Outer Yard",
+      "x": -55.0,
+      "z": 0.0,
+      "radius": 15.0,
+      "y": 0.0,
+      "piece": "-",
+      "rotation": 0,
+      "hp": 0.0,
+      "seconds": 15,
+      "note": "Siege draft value (siege spec section 5); attackers hold the ring uncontested for 20 s"
+    },
+    {
+      "id": "siege_ironhold_gate",
+      "mode": "siege",
+      "map": 1,
+      "kind": "gate",
+      "stage": 1,
+      "name": "Iron Gate",
+      "x": -37.0,
+      "z": 0.0,
+      "radius": 0.0,
+      "y": 64.0,
+      "piece": "ironhold/gate_intact",
+      "rotation": 0,
+      "hp": 1600.0,
+      "seconds": 0,
+      "note": "Siege draft value (siege spec section 5); 1600 HP; the intact piece replaces the open gate portcullisSeconds after the yard falls"
+    },
+    {
+      "id": "siege_ironhold_ward_n",
+      "mode": "siege",
+      "map": 1,
+      "kind": "ward",
+      "stage": 0,
+      "name": "Ward",
+      "x": -23.0,
+      "z": -25.0,
+      "radius": 0.0,
+      "y": 64.0,
+      "piece": "ironhold/ward",
+      "rotation": 90,
+      "hp": 0.0,
+      "seconds": 0,
+      "note": "Siege draft placement (spec section 5): wall closing the gap beside the gate for the whole round; no HP, takes no damage"
+    },
+    {
+      "id": "siege_ironhold_ward_s",
+      "mode": "siege",
+      "map": 1,
+      "kind": "ward",
+      "stage": 0,
+      "name": "Ward",
+      "x": -32.0,
+      "z": 25.0,
+      "radius": 0.0,
+      "y": 64.0,
+      "piece": "ironhold/ward_south",
+      "rotation": 90,
+      "hp": 0.0,
+      "seconds": 0,
+      "note": "Siege draft placement (spec section 5): wall closing the gap beside the gate for the whole round; no HP, takes no damage"
+    },
+    {
+      "id": "siege_ironhold_ward_keep",
+      "mode": "siege",
+      "map": 1,
+      "kind": "ward",
+      "stage": 0,
+      "name": "Ward",
+      "x": -14.0,
+      "z": 49.0,
+      "radius": 0.0,
+      "y": 64.0,
+      "piece": "ironhold/ward_south",
+      "rotation": 90,
+      "hp": 0.0,
+      "seconds": 0,
+      "note": "Siege draft placement: wall across the keep's south door on the west bank, from the keep corner to the river bank, so the gate is the only dry way in"
+    },
+    {
+      "id": "siege_ironhold_keep",
+      "mode": "siege",
+      "map": 1,
+      "kind": "stage",
+      "stage": 2,
+      "name": "Keep",
+      "x": -8.0,
+      "z": 34.0,
+      "radius": 7.0,
+      "y": 0.0,
+      "piece": "-",
+      "rotation": 0,
+      "hp": 0.0,
+      "seconds": 60,
+      "note": "Kort 2026-10-31: radius 7 and 60 s, hard but takeable (the spec's 10 and 30 s are replaced)"
+    },
+    {
+      "id": "survival_hollowwood_shrine",
+      "mode": "survival",
+      "map": 3,
+      "kind": "shrine",
+      "stage": 0,
+      "name": "the shrine",
+      "x": 76.0,
+      "z": 127.0,
+      "radius": 10.0,
+      "y": 64.0,
+      "piece": "-",
+      "rotation": 0,
+      "hp": 0.0,
+      "seconds": 20,
+      "note": "DRAFT (Phase 4 plan Task 6, question for Kort): the shrine ring; lost once the dead hold it 20 s with no defender on it; placed on the current Hollowwood Reach, replace with the Map Forge Hollowwood rows"
+    },
+    {
+      "id": "survival_hollowwood_court",
+      "mode": "survival",
+      "map": 3,
+      "kind": "base",
+      "stage": 0,
+      "name": "the court",
+      "x": 76.0,
+      "z": 127.0,
+      "radius": 0.0,
+      "y": 65.0,
+      "piece": "-",
+      "rotation": 0,
+      "hp": 0.0,
+      "seconds": 0,
+      "note": "DRAFT (Phase 4 plan Task 6, question for Kort): the defenders' base, respawn and barracks; placed on the current Hollowwood Reach, replace with the Map Forge Hollowwood rows"
+    },
+    {
+      "id": "survival_hollowwood_rise_chapel",
+      "mode": "survival",
+      "map": 3,
+      "kind": "rise",
+      "stage": 1,
+      "name": "the chapel",
+      "x": 70.0,
+      "z": 55.0,
+      "radius": 4.0,
+      "y": 64.0,
+      "piece": "-",
+      "rotation": 0,
+      "hp": 0.0,
+      "seconds": 0,
+      "note": "DRAFT (Phase 4 plan Task 6, question for Kort): a rise site; placed on the current Hollowwood Reach, replace with the Map Forge Hollowwood rows"
+    },
+    {
+      "id": "survival_hollowwood_rise_ford",
+      "mode": "survival",
+      "map": 3,
+      "kind": "rise",
+      "stage": 1,
+      "name": "the ford",
+      "x": 17.0,
+      "z": 145.0,
+      "radius": 4.0,
+      "y": 64.0,
+      "piece": "-",
+      "rotation": 0,
+      "hp": 0.0,
+      "seconds": 0,
+      "note": "DRAFT (Phase 4 plan Task 6, question for Kort): a rise site; placed on the current Hollowwood Reach, replace with the Map Forge Hollowwood rows"
+    },
+    {
+      "id": "survival_hollowwood_rise_wood",
+      "mode": "survival",
+      "map": 3,
+      "kind": "rise",
+      "stage": 1,
+      "name": "the deep wood",
+      "x": 150.0,
+      "z": 120.0,
+      "radius": 4.0,
+      "y": 64.0,
+      "piece": "-",
+      "rotation": 0,
+      "hp": 0.0,
+      "seconds": 0,
+      "note": "DRAFT (Phase 4 plan Task 6, question for Kort): a rise site; placed on the current Hollowwood Reach, replace with the Map Forge Hollowwood rows"
+    },
+    {
+      "id": "survival_hollowwood_rise_track",
+      "mode": "survival",
+      "map": 3,
+      "kind": "rise",
+      "stage": 1,
+      "name": "the track",
+      "x": 80.0,
+      "z": 200.0,
+      "radius": 4.0,
+      "y": 64.0,
+      "piece": "-",
+      "rotation": 0,
+      "hp": 0.0,
+      "seconds": 0,
+      "note": "DRAFT (Phase 4 plan Task 6, question for Kort): a rise site; placed on the current Hollowwood Reach, replace with the Map Forge Hollowwood rows"
     }
   ],
   "hooks": [
@@ -1831,7 +2366,7 @@
       "trigger": "R",
       "screen": "CommandScreen",
       "content": "attack,rush,move,follow,hold",
-      "bottom": "block,line,wedge,loose,shieldwall"
+      "bottom": "block,line,wedge,loose"
     },
     {
       "id": "barracks",
@@ -1861,39 +2396,45 @@
     {
       "id": "all",
       "label": "All troops",
-      "role": "all"
+      "role": "all",
+      "pill": 4
     },
     {
       "id": "infantry",
       "label": "Infantry",
-      "role": "frontline"
+      "role": "frontline",
+      "pill": 1
     },
     {
       "id": "ranged",
-      "label": "Ranged",
-      "role": "ranged"
+      "label": "Archers",
+      "role": "ranged",
+      "pill": 2
     },
     {
       "id": "support",
       "label": "Support",
-      "role": "support"
+      "role": "support",
+      "pill": 5
     },
     {
       "id": "cavalry",
-      "label": "Cavalry",
-      "role": "flank"
+      "label": "Riders",
+      "role": "flank",
+      "pill": 3
     },
     {
       "id": "siege",
       "label": "Siege",
-      "role": "siege"
+      "role": "siege",
+      "pill": 6
     }
   ],
   "commandInterface": [
     {
       "id": "battlefield",
       "selection": "all,infantry,ranged,support,cavalry,siege",
-      "orders": "move,attack,charge,hold,follow,retreat",
+      "orders": "attack,charge,follow,retreat,hold",
       "targeting": "choose,aim,preview,confirm",
       "facingStep": 15,
       "targetRange": 240,
@@ -1901,7 +2442,9 @@
       "lobby": "separate",
       "confirm": "left_mouse",
       "cancel": "right_mouse",
-      "preview": "world_slots"
+      "preview": "world_slots",
+      "pennantAlpha": 0.55,
+      "panelSlideTicks": 6
     }
   ],
   "playtestMilestone": [
@@ -1999,13 +2542,14 @@
       "decisionTicks": 160,
       "flankLeastDefended": false,
       "defenderWeight": 0.0,
-      "shieldwallVsArchers": false,
       "archerThreatCount": 3,
       "archerThreatRange": 30.0,
       "chargeDistance": 0.0,
       "gearMaxTier": 2,
       "gearReserveTroops": 8,
-      "gearPriority": "banner"
+      "gearPriority": "banner",
+      "waveScale": 0.75,
+      "waveTraitTier": 0
     },
     {
       "id": "normal",
@@ -2015,13 +2559,14 @@
       "decisionTicks": 100,
       "flankLeastDefended": false,
       "defenderWeight": 0.0,
-      "shieldwallVsArchers": false,
       "archerThreatCount": 3,
       "archerThreatRange": 30.0,
       "chargeDistance": 0.0,
       "gearMaxTier": 3,
       "gearReserveTroops": 5,
-      "gearPriority": "role"
+      "gearPriority": "role",
+      "waveScale": 1.0,
+      "waveTraitTier": 1
     },
     {
       "id": "hard",
@@ -2031,13 +2576,14 @@
       "decisionTicks": 60,
       "flankLeastDefended": false,
       "defenderWeight": 25.0,
-      "shieldwallVsArchers": true,
       "archerThreatCount": 3,
       "archerThreatRange": 30.0,
       "chargeDistance": 18.0,
       "gearMaxTier": 3,
       "gearReserveTroops": 2,
-      "gearPriority": "open"
+      "gearPriority": "open",
+      "waveScale": 1.25,
+      "waveTraitTier": 2
     }
   ],
   "combatDiscipline": [
@@ -2053,10 +2599,10 @@
       "healAmount": 4.0,
       "healRadius": 10.0,
       "abilityCooldownTicks": 100,
-      "arrowSpeed": 2.2,
-      "boltSpeed": 1.2,
+      "arrowSpeed": 1.0,
+      "boltSpeed": 1.4,
       "projectileMinTicks": 2,
-      "projectileMaxTicks": 14,
+      "projectileMaxTicks": 32,
       "impactParticles": 8,
       "multiplierMin": 0.25,
       "multiplierMax": 2.5,
@@ -2065,12 +2611,314 @@
       "lastStandShare": 0.25,
       "lastStandRadius": 16.0,
       "hornCooldownSeconds": 8,
-      "hornVolume": 1.6,
+      "hornVolume": 4.0,
       "woundedShare": 0.3,
       "lastStandFeedSeconds": 30,
       "arriveRadius": 4.0,
       "bleedDamage": 1.0,
-      "bleedEveryTicks": 20
+      "bleedEveryTicks": 20,
+      "shieldWallCell": 0.7,
+      "crawlShare": 0.33,
+      "fireMemoryTicks": 60,
+      "volleyPeakPerBlock": 0.25,
+      "volleyPeakMax": 6.0,
+      "crossbowArcScale": 0.4,
+      "thrownArcScale": 0.6,
+      "meleeReachGrace": 1.0,
+      "corpseLieTicks": 30,
+      "corpseFadeTicks": 40,
+      "arcTravelScale": 1.0,
+      "mediumHitShare": 0.1,
+      "heavyHitShare": 0.25,
+      "chargeCooldownTicks": 400,
+      "chargeRunBlocks": 32,
+      "chargeBonusMultiplier": 1.3,
+      "chargeKnockback": 0.8,
+      "outlineShareTicks": 200,
+      "outlineLitTicks": 20,
+      "retreatArriveRadius": 4.0
+    }
+  ],
+  "attackVariants": [
+    {
+      "id": "sword_shield_thrust",
+      "family": "sword_shield",
+      "zone": "body",
+      "kind": "stab",
+      "impactTicks": 7,
+      "weight": "light"
+    },
+    {
+      "id": "sword_shield_overhead",
+      "family": "sword_shield",
+      "zone": "head",
+      "kind": "slash",
+      "impactTicks": 10,
+      "weight": "medium"
+    },
+    {
+      "id": "sword_shield_low_cut",
+      "family": "sword_shield",
+      "zone": "legs",
+      "kind": "slash",
+      "impactTicks": 8,
+      "weight": "medium"
+    },
+    {
+      "id": "axe_shield_overhead_chop",
+      "family": "axe_shield",
+      "zone": "head",
+      "kind": "slash",
+      "impactTicks": 10,
+      "weight": "medium"
+    },
+    {
+      "id": "axe_shield_hook_hew",
+      "family": "axe_shield",
+      "zone": "body",
+      "kind": "slash",
+      "impactTicks": 8,
+      "weight": "medium"
+    },
+    {
+      "id": "sword_thrust",
+      "family": "sword",
+      "zone": "body",
+      "kind": "stab",
+      "impactTicks": 7,
+      "weight": "light"
+    },
+    {
+      "id": "sword_overhead",
+      "family": "sword",
+      "zone": "head",
+      "kind": "slash",
+      "impactTicks": 10,
+      "weight": "medium"
+    },
+    {
+      "id": "sword_low_cut",
+      "family": "sword",
+      "zone": "legs",
+      "kind": "slash",
+      "impactTicks": 8,
+      "weight": "medium"
+    },
+    {
+      "id": "axe_overhead_chop",
+      "family": "axe",
+      "zone": "head",
+      "kind": "slash",
+      "impactTicks": 12,
+      "weight": "heavy"
+    },
+    {
+      "id": "axe_side_hew",
+      "family": "axe",
+      "zone": "body",
+      "kind": "slash",
+      "impactTicks": 12,
+      "weight": "heavy"
+    },
+    {
+      "id": "axe_haft_jab",
+      "family": "axe",
+      "zone": "body",
+      "kind": "blunt",
+      "impactTicks": 7,
+      "weight": "light"
+    },
+    {
+      "id": "greatsword_overhead_cleave",
+      "family": "greatsword",
+      "zone": "head",
+      "kind": "slash",
+      "impactTicks": 12,
+      "weight": "heavy"
+    },
+    {
+      "id": "greatsword_side_cut",
+      "family": "greatsword",
+      "zone": "body",
+      "kind": "slash",
+      "impactTicks": 12,
+      "weight": "heavy"
+    },
+    {
+      "id": "greatsword_thrust",
+      "family": "greatsword",
+      "zone": "body",
+      "kind": "stab",
+      "impactTicks": 7,
+      "weight": "medium"
+    },
+    {
+      "id": "spear_thrust",
+      "family": "spear",
+      "zone": "body",
+      "kind": "stab",
+      "impactTicks": 7,
+      "weight": "light"
+    },
+    {
+      "id": "spear_high_thrust",
+      "family": "spear",
+      "zone": "head",
+      "kind": "stab",
+      "impactTicks": 7,
+      "weight": "light"
+    },
+    {
+      "id": "spear_low_sweep",
+      "family": "spear",
+      "zone": "legs",
+      "kind": "blunt",
+      "impactTicks": 8,
+      "weight": "medium"
+    },
+    {
+      "id": "scythe_reap",
+      "family": "scythe",
+      "zone": "legs",
+      "kind": "slash",
+      "impactTicks": 12,
+      "weight": "heavy"
+    },
+    {
+      "id": "scythe_overhead_hook",
+      "family": "scythe",
+      "zone": "head",
+      "kind": "slash",
+      "impactTicks": 12,
+      "weight": "heavy"
+    },
+    {
+      "id": "bow_volley",
+      "family": "bow",
+      "zone": "body",
+      "kind": "arrow",
+      "impactTicks": 16,
+      "weight": "light"
+    },
+    {
+      "id": "bow_direct",
+      "family": "bow",
+      "zone": "body",
+      "kind": "arrow",
+      "impactTicks": 16,
+      "weight": "light"
+    },
+    {
+      "id": "crossbow_loose",
+      "family": "crossbow",
+      "zone": "body",
+      "kind": "bolt",
+      "impactTicks": 4,
+      "weight": "medium"
+    },
+    {
+      "id": "thrower_throw",
+      "family": "thrower",
+      "zone": "body",
+      "kind": "arrow",
+      "impactTicks": 8,
+      "weight": "medium"
+    },
+    {
+      "id": "caster_cast",
+      "family": "caster",
+      "zone": "body",
+      "kind": "magic",
+      "impactTicks": 10,
+      "weight": "medium"
+    },
+    {
+      "id": "crew_fire",
+      "family": "crew",
+      "zone": "body",
+      "kind": "blunt",
+      "impactTicks": 8,
+      "weight": "heavy"
+    },
+    {
+      "id": "hound_bite",
+      "family": "hound",
+      "zone": "legs",
+      "kind": "stab",
+      "impactTicks": 8,
+      "weight": "light"
+    },
+    {
+      "id": "hound_lunge",
+      "family": "hound",
+      "zone": "body",
+      "kind": "blunt",
+      "impactTicks": 8,
+      "weight": "medium"
+    },
+    {
+      "id": "spider_bite",
+      "family": "spider",
+      "zone": "body",
+      "kind": "stab",
+      "impactTicks": 8,
+      "weight": "light"
+    },
+    {
+      "id": "spider_lunge",
+      "family": "spider",
+      "zone": "body",
+      "kind": "blunt",
+      "impactTicks": 8,
+      "weight": "medium"
+    },
+    {
+      "id": "bear_maul",
+      "family": "bear",
+      "zone": "head",
+      "kind": "slash",
+      "impactTicks": 10,
+      "weight": "heavy"
+    },
+    {
+      "id": "bear_bite",
+      "family": "bear",
+      "zone": "body",
+      "kind": "stab",
+      "impactTicks": 8,
+      "weight": "medium"
+    },
+    {
+      "id": "ravager_charge",
+      "family": "ravager",
+      "zone": "body",
+      "kind": "blunt",
+      "impactTicks": 10,
+      "weight": "heavy"
+    },
+    {
+      "id": "ravager_bite",
+      "family": "ravager",
+      "zone": "head",
+      "kind": "stab",
+      "impactTicks": 8,
+      "weight": "medium"
+    },
+    {
+      "id": "colossus_slam",
+      "family": "colossus",
+      "zone": "head",
+      "kind": "blunt",
+      "impactTicks": 12,
+      "weight": "heavy"
+    },
+    {
+      "id": "colossus_backhand",
+      "family": "colossus",
+      "zone": "body",
+      "kind": "blunt",
+      "impactTicks": 8,
+      "weight": "heavy"
     }
   ],
   "recruitmentView": [
@@ -2228,132 +3076,1899 @@
       "description": "Five objectives: two fords, a central bridge and a raised outpost on each flank."
     }
   ],
-  "classes": [
+  "gearRarities": [
     {
-      "id": "champion",
-      "name": "Champion",
-      "group": "infantry",
-      "bonus": "+4 max health for you; your infantry within 10 blocks deal 10% more damage.",
-      "track": "hero",
-      "active": "stand_fast",
+      "id": "common",
+      "name": "Common",
+      "border": "#9d9d9d",
+      "rollWeight": 50,
+      "statMin": 1.0,
+      "statMax": 1.1,
+      "breakdownPct": 0.2,
+      "repairGold": 20,
+      "power": 1
+    },
+    {
+      "id": "uncommon",
+      "name": "Uncommon",
+      "border": "#3fae49",
+      "rollWeight": 28,
+      "statMin": 1.15,
+      "statMax": 1.3,
+      "breakdownPct": 0.35,
+      "repairGold": 30,
+      "power": 2
+    },
+    {
+      "id": "rare",
+      "name": "Rare",
+      "border": "#3d7fd6",
+      "rollWeight": 15,
+      "statMin": 1.35,
+      "statMax": 1.55,
+      "breakdownPct": 0.5,
+      "repairGold": 45,
+      "power": 3
+    },
+    {
+      "id": "epic",
+      "name": "Epic",
+      "border": "#9a4fd6",
+      "rollWeight": 6,
+      "statMin": 1.6,
+      "statMax": 1.85,
+      "breakdownPct": 0.7,
+      "repairGold": 65,
+      "power": 5
+    },
+    {
+      "id": "legendary",
+      "name": "Legendary",
+      "border": "#e8892b",
+      "rollWeight": 1,
+      "statMin": 1.9,
+      "statMax": 2.2,
+      "breakdownPct": 1.0,
+      "repairGold": 90,
+      "power": 8
+    }
+  ],
+  "gearSets": [
+    {
+      "id": "bruiser",
+      "name": "Last Watch",
+      "role": "bruiser",
+      "classes": "champion,reaver",
+      "starterMain": "arming_sword",
+      "starterOff": "kite_shield"
+    },
+    {
+      "id": "healer",
+      "name": "Ashen Vigil",
+      "role": "healer",
+      "classes": "warlock",
+      "starterMain": "mending_staff",
+      "starterOff": "-"
+    },
+    {
+      "id": "ranged",
+      "name": "Frostmarch Hunt",
+      "role": "ranged",
+      "classes": "warden",
+      "starterMain": "hunting_bow",
+      "starterOff": "quiver"
+    },
+    {
+      "id": "commander",
+      "name": "Marchwarden",
+      "role": "commander",
+      "classes": "marshal,quartermaster",
+      "starterMain": "war_banner",
+      "starterOff": "-"
+    },
+    {
+      "id": "oathbound",
+      "name": "Oathbound",
+      "role": "oathbound",
+      "classes": "-",
+      "starterMain": "-",
+      "starterOff": "-"
+    },
+    {
+      "id": "barrow_warden",
+      "name": "Barrow Warden",
+      "role": "barrow_warden",
+      "classes": "-",
+      "starterMain": "-",
+      "starterOff": "-"
+    },
+    {
+      "id": "thornhide",
+      "name": "Thornhide",
+      "role": "thornhide",
+      "classes": "-",
+      "starterMain": "-",
+      "starterOff": "-"
+    },
+    {
+      "id": "forgewall",
+      "name": "Forgewall",
+      "role": "forgewall",
+      "classes": "-",
+      "starterMain": "-",
+      "starterOff": "-"
+    },
+    {
+      "id": "tidewrought",
+      "name": "Tidewrought",
+      "role": "tidewrought",
+      "classes": "-",
+      "starterMain": "-",
+      "starterOff": "-"
+    }
+  ],
+  "gearItems": [
+    {
+      "id": "bruiser_helm",
+      "name": "Watchman's Greathelm",
+      "slot": "helm",
+      "set": "bruiser",
+      "family": "-",
+      "hands": 1,
+      "health": 3.0,
+      "damage": 0.0,
+      "armour": 2.0,
+      "speed": 0.0,
+      "ranged": 0.0,
+      "healing": 0.0,
+      "command": 0.0
+    },
+    {
+      "id": "bruiser_chest",
+      "name": "Wallbreaker Cuirass",
+      "slot": "chest",
+      "set": "bruiser",
+      "family": "-",
+      "hands": 1,
+      "health": 6.0,
+      "damage": 0.0,
+      "armour": 4.0,
+      "speed": 0.0,
+      "ranged": 0.0,
+      "healing": 0.0,
+      "command": 0.0
+    },
+    {
+      "id": "bruiser_legs",
+      "name": "Gatepost Greaves",
+      "slot": "legs",
+      "set": "bruiser",
+      "family": "-",
+      "hands": 1,
+      "health": 4.0,
+      "damage": 0.0,
+      "armour": 3.0,
+      "speed": 0.0,
+      "ranged": 0.0,
+      "healing": 0.0,
+      "command": 0.0
+    },
+    {
+      "id": "bruiser_boots",
+      "name": "Cairn-Treads",
+      "slot": "boots",
+      "set": "bruiser",
+      "family": "-",
+      "hands": 1,
+      "health": 2.0,
+      "damage": 0.0,
+      "armour": 2.0,
+      "speed": 0.0,
+      "ranged": 0.0,
+      "healing": 0.0,
+      "command": 0.0
+    },
+    {
+      "id": "healer_helm",
+      "name": "Lanternbearer's Hood",
+      "slot": "helm",
+      "set": "healer",
+      "family": "-",
+      "hands": 1,
+      "health": 1.0,
+      "damage": 0.0,
+      "armour": 0.0,
+      "speed": 0.0,
+      "ranged": 0.0,
+      "healing": 2.0,
+      "command": 0.0
+    },
+    {
+      "id": "healer_chest",
+      "name": "Vigilant Vestment",
+      "slot": "chest",
+      "set": "healer",
+      "family": "-",
+      "hands": 1,
+      "health": 2.0,
+      "damage": 0.0,
+      "armour": 0.0,
+      "speed": 0.0,
+      "ranged": 0.0,
+      "healing": 3.0,
+      "command": 0.0
+    },
+    {
+      "id": "healer_legs",
+      "name": "Candlewake Skirt",
+      "slot": "legs",
+      "set": "healer",
+      "family": "-",
+      "hands": 1,
+      "health": 1.0,
+      "damage": 0.0,
+      "armour": 0.0,
+      "speed": 0.0,
+      "ranged": 0.0,
+      "healing": 2.0,
+      "command": 0.0
+    },
+    {
+      "id": "healer_boots",
+      "name": "Mourner's Sandals",
+      "slot": "boots",
+      "set": "healer",
+      "family": "-",
+      "hands": 1,
+      "health": 1.0,
+      "damage": 0.0,
+      "armour": 0.0,
+      "speed": 0.01,
+      "ranged": 0.0,
+      "healing": 1.0,
+      "command": 0.0
+    },
+    {
+      "id": "ranged_helm",
+      "name": "Stalker's Maskhood",
+      "slot": "helm",
+      "set": "ranged",
+      "family": "-",
+      "hands": 1,
+      "health": 1.0,
+      "damage": 0.0,
+      "armour": 0.0,
+      "speed": 0.0,
+      "ranged": 2.0,
+      "healing": 0.0,
+      "command": 0.0
+    },
+    {
+      "id": "ranged_chest",
+      "name": "Pass-Warden Jerkin",
+      "slot": "chest",
+      "set": "ranged",
+      "family": "-",
+      "hands": 1,
+      "health": 2.0,
+      "damage": 0.0,
+      "armour": 0.0,
+      "speed": 0.0,
+      "ranged": 3.0,
+      "healing": 0.0,
+      "command": 0.0
+    },
+    {
+      "id": "ranged_legs",
+      "name": "Snowshod Leggings",
+      "slot": "legs",
+      "set": "ranged",
+      "family": "-",
+      "hands": 1,
+      "health": 1.0,
+      "damage": 0.0,
+      "armour": 0.0,
+      "speed": 0.01,
+      "ranged": 2.0,
+      "healing": 0.0,
+      "command": 0.0
+    },
+    {
+      "id": "ranged_boots",
+      "name": "Silent Hunter's Boots",
+      "slot": "boots",
+      "set": "ranged",
+      "family": "-",
+      "hands": 1,
+      "health": 1.0,
+      "damage": 0.0,
+      "armour": 0.0,
+      "speed": 0.02,
+      "ranged": 1.0,
+      "healing": 0.0,
+      "command": 0.0
+    },
+    {
+      "id": "commander_helm",
+      "name": "Marchwarden's Crown-Helm",
+      "slot": "helm",
+      "set": "commander",
+      "family": "-",
+      "hands": 1,
+      "health": 2.0,
+      "damage": 0.0,
+      "armour": 1.0,
+      "speed": 0.0,
+      "ranged": 0.0,
+      "healing": 0.0,
+      "command": 2.0
+    },
+    {
+      "id": "commander_chest",
+      "name": "Oathplate",
+      "slot": "chest",
+      "set": "commander",
+      "family": "-",
+      "hands": 1,
+      "health": 3.0,
+      "damage": 0.0,
+      "armour": 2.0,
+      "speed": 0.0,
+      "ranged": 0.0,
+      "healing": 0.0,
+      "command": 3.0
+    },
+    {
+      "id": "commander_legs",
+      "name": "Kingsfield Cuisses",
+      "slot": "legs",
+      "set": "commander",
+      "family": "-",
+      "hands": 1,
+      "health": 2.0,
+      "damage": 0.0,
+      "armour": 1.0,
+      "speed": 0.0,
+      "ranged": 0.0,
+      "healing": 0.0,
+      "command": 2.0
+    },
+    {
+      "id": "commander_boots",
+      "name": "Marching Sabatons",
+      "slot": "boots",
+      "set": "commander",
+      "family": "-",
+      "hands": 1,
+      "health": 1.0,
+      "damage": 0.0,
+      "armour": 0.0,
+      "speed": 0.01,
+      "ranged": 0.0,
+      "healing": 0.0,
+      "command": 1.0
+    },
+    {
+      "id": "arming_sword",
+      "name": "Oathkeeper's Longsword",
+      "slot": "main",
+      "set": "-",
+      "family": "sword",
+      "hands": 1,
+      "health": 0.0,
+      "damage": 6.0,
+      "armour": 0.0,
+      "speed": 0.0,
+      "ranged": 0.0,
+      "healing": 0.0,
+      "command": 0.0
+    },
+    {
+      "id": "falchion",
+      "name": "Notched Falchion",
+      "slot": "main",
+      "set": "-",
+      "family": "sword",
+      "hands": 1,
+      "health": 0.0,
+      "damage": 5.0,
+      "armour": 0.0,
+      "speed": 0.01,
+      "ranged": 0.0,
+      "healing": 0.0,
+      "command": 0.0
+    },
+    {
+      "id": "greatsword",
+      "name": "Hollowfell Greatsword",
+      "slot": "main",
+      "set": "-",
+      "family": "greatsword",
+      "hands": 2,
+      "health": 2.0,
+      "damage": 10.0,
+      "armour": 0.0,
+      "speed": 0.0,
+      "ranged": 0.0,
+      "healing": 0.0,
+      "command": 0.0
+    },
+    {
+      "id": "great_axe",
+      "name": "Ironhold Cleaver",
+      "slot": "main",
+      "set": "-",
+      "family": "greataxe",
+      "hands": 2,
+      "health": 2.0,
+      "damage": 11.0,
+      "armour": 0.0,
+      "speed": 0.0,
+      "ranged": 0.0,
+      "healing": 0.0,
+      "command": 0.0
+    },
+    {
+      "id": "hunting_bow",
+      "name": "Frostmarch Longbow",
+      "slot": "main",
+      "set": "-",
+      "family": "bow",
+      "hands": 1,
+      "health": 0.0,
+      "damage": 0.0,
+      "armour": 0.0,
+      "speed": 0.0,
+      "ranged": 7.0,
+      "healing": 0.0,
+      "command": 0.0
+    },
+    {
+      "id": "crossbow",
+      "name": "Rivergate Arbalest",
+      "slot": "main",
+      "set": "-",
+      "family": "crossbow",
+      "hands": 1,
+      "health": 0.0,
+      "damage": 0.0,
+      "armour": 0.0,
+      "speed": 0.0,
+      "ranged": 9.0,
+      "healing": 0.0,
+      "command": 0.0
+    },
+    {
+      "id": "mending_staff",
+      "name": "Candlewake Staff",
+      "slot": "main",
+      "set": "-",
+      "family": "staff",
+      "hands": 1,
+      "health": 0.0,
+      "damage": 1.0,
+      "armour": 0.0,
+      "speed": 0.0,
+      "ranged": 0.0,
+      "healing": 6.0,
+      "command": 0.0
+    },
+    {
+      "id": "sunwell_crook",
+      "name": "Sunwell Crook",
+      "slot": "main",
+      "set": "-",
+      "family": "staff",
+      "hands": 1,
+      "health": 1.0,
+      "damage": 0.0,
+      "armour": 0.0,
+      "speed": 0.0,
+      "ranged": 0.0,
+      "healing": 5.0,
+      "command": 0.0
+    },
+    {
+      "id": "war_banner",
+      "name": "Marchwarden's Standard",
+      "slot": "main",
+      "set": "-",
+      "family": "banner",
+      "hands": 1,
+      "health": 0.0,
+      "damage": 2.0,
+      "armour": 0.0,
+      "speed": 0.0,
+      "ranged": 0.0,
+      "healing": 0.0,
+      "command": 5.0
+    },
+    {
+      "id": "long_colours",
+      "name": "The Long Colours",
+      "slot": "main",
+      "set": "-",
+      "family": "banner",
+      "hands": 1,
+      "health": 0.0,
+      "damage": 3.0,
+      "armour": 0.0,
+      "speed": 0.0,
+      "ranged": 0.0,
+      "healing": 0.0,
+      "command": 4.0
+    },
+    {
+      "id": "kite_shield",
+      "name": "Last Watch Tower Shield",
+      "slot": "off",
+      "set": "-",
+      "family": "shield",
+      "hands": 1,
+      "health": 2.0,
+      "damage": 0.0,
+      "armour": 4.0,
+      "speed": 0.0,
+      "ranged": 0.0,
+      "healing": 0.0,
+      "command": 0.0
+    },
+    {
+      "id": "quiver",
+      "name": "Barrowleaf Quiver",
+      "slot": "off",
+      "set": "-",
+      "family": "quiver",
+      "hands": 1,
+      "health": 0.0,
+      "damage": 0.0,
+      "armour": 0.0,
+      "speed": 0.0,
+      "ranged": 2.0,
+      "healing": 0.0,
+      "command": 0.0
+    },
+    {
+      "id": "oathbound_helm",
+      "name": "Oathbound Greathelm",
+      "slot": "helm",
+      "set": "oathbound",
+      "family": "-",
+      "hands": 1,
+      "health": 2.0,
+      "damage": 0.0,
+      "armour": 1.0,
+      "speed": 0.0,
+      "ranged": 0.0,
+      "healing": 0.0,
+      "command": 1.0
+    },
+    {
+      "id": "oathbound_chest",
+      "name": "Dawnwall Cuirass",
+      "slot": "chest",
+      "set": "oathbound",
+      "family": "-",
+      "hands": 1,
+      "health": 3.0,
+      "damage": 0.0,
+      "armour": 3.0,
+      "speed": 0.0,
+      "ranged": 0.0,
+      "healing": 0.0,
+      "command": 2.0
+    },
+    {
+      "id": "oathbound_legs",
+      "name": "Vowkeeper Tassets",
+      "slot": "legs",
+      "set": "oathbound",
+      "family": "-",
+      "hands": 1,
+      "health": 2.0,
+      "damage": 0.0,
+      "armour": 2.0,
+      "speed": 0.0,
+      "ranged": 0.0,
+      "healing": 0.0,
+      "command": 1.0
+    },
+    {
+      "id": "oathbound_boots",
+      "name": "Pilgrim Sabatons",
+      "slot": "boots",
+      "set": "oathbound",
+      "family": "-",
+      "hands": 1,
+      "health": 1.0,
+      "damage": 0.0,
+      "armour": 1.0,
+      "speed": 0.0,
+      "ranged": 0.0,
+      "healing": 0.0,
+      "command": 1.0
+    },
+    {
+      "id": "barrow_warden_helm",
+      "name": "Barrow Skull-Mask",
+      "slot": "helm",
+      "set": "barrow_warden",
+      "family": "-",
+      "hands": 1,
+      "health": 3.0,
+      "damage": 0.0,
+      "armour": 2.0,
+      "speed": 0.0,
+      "ranged": 0.0,
+      "healing": 0.0,
+      "command": 0.0
+    },
+    {
+      "id": "barrow_warden_chest",
+      "name": "Tombplate",
+      "slot": "chest",
+      "set": "barrow_warden",
+      "family": "-",
+      "hands": 1,
+      "health": 5.0,
+      "damage": 0.0,
+      "armour": 3.0,
+      "speed": 0.0,
+      "ranged": 0.0,
+      "healing": 1.0,
+      "command": 0.0
+    },
+    {
+      "id": "barrow_warden_legs",
+      "name": "Ossuary Greaves",
+      "slot": "legs",
+      "set": "barrow_warden",
+      "family": "-",
+      "hands": 1,
+      "health": 3.0,
+      "damage": 0.0,
+      "armour": 2.0,
+      "speed": 0.0,
+      "ranged": 0.0,
+      "healing": 1.0,
+      "command": 0.0
+    },
+    {
+      "id": "barrow_warden_boots",
+      "name": "Crypt-Treads",
+      "slot": "boots",
+      "set": "barrow_warden",
+      "family": "-",
+      "hands": 1,
+      "health": 2.0,
+      "damage": 0.0,
+      "armour": 1.0,
+      "speed": 0.0,
+      "ranged": 0.0,
+      "healing": 0.0,
+      "command": 0.0
+    },
+    {
+      "id": "thornhide_helm",
+      "name": "Boar-Snout Mantle",
+      "slot": "helm",
+      "set": "thornhide",
+      "family": "-",
+      "hands": 1,
+      "health": 2.0,
+      "damage": 0.0,
+      "armour": 1.0,
+      "speed": 0.0,
+      "ranged": 0.0,
+      "healing": 0.0,
+      "command": 0.0
+    },
+    {
+      "id": "thornhide_chest",
+      "name": "Thornhide Hauberk",
+      "slot": "chest",
+      "set": "thornhide",
+      "family": "-",
+      "hands": 1,
+      "health": 4.0,
+      "damage": 0.0,
+      "armour": 2.0,
+      "speed": 0.0,
+      "ranged": 0.0,
+      "healing": 0.0,
+      "command": 0.0
+    },
+    {
+      "id": "thornhide_legs",
+      "name": "Bramble Leggings",
+      "slot": "legs",
+      "set": "thornhide",
+      "family": "-",
+      "hands": 1,
+      "health": 2.0,
+      "damage": 0.0,
+      "armour": 1.0,
+      "speed": 0.01,
+      "ranged": 0.0,
+      "healing": 0.0,
+      "command": 0.0
+    },
+    {
+      "id": "thornhide_boots",
+      "name": "Moot-Runner Boots",
+      "slot": "boots",
+      "set": "thornhide",
+      "family": "-",
+      "hands": 1,
+      "health": 1.0,
+      "damage": 0.0,
+      "armour": 0.0,
+      "speed": 0.02,
+      "ranged": 0.0,
+      "healing": 0.0,
+      "command": 0.0
+    },
+    {
+      "id": "forgewall_helm",
+      "name": "Grille-Box Helm",
+      "slot": "helm",
+      "set": "forgewall",
+      "family": "-",
+      "hands": 1,
+      "health": 2.0,
+      "damage": 0.0,
+      "armour": 2.0,
+      "speed": 0.0,
+      "ranged": 1.0,
+      "healing": 0.0,
+      "command": 0.0
+    },
+    {
+      "id": "forgewall_chest",
+      "name": "Furnace Cuirass",
+      "slot": "chest",
+      "set": "forgewall",
+      "family": "-",
+      "hands": 1,
+      "health": 4.0,
+      "damage": 0.0,
+      "armour": 3.0,
+      "speed": 0.0,
+      "ranged": 2.0,
+      "healing": 0.0,
+      "command": 0.0
+    },
+    {
+      "id": "forgewall_legs",
+      "name": "Boilerplate Cuisses",
+      "slot": "legs",
+      "set": "forgewall",
+      "family": "-",
+      "hands": 1,
+      "health": 2.0,
+      "damage": 0.0,
+      "armour": 2.0,
+      "speed": 0.0,
+      "ranged": 1.0,
+      "healing": 0.0,
+      "command": 0.0
+    },
+    {
+      "id": "forgewall_boots",
+      "name": "Anvil-Treads",
+      "slot": "boots",
+      "set": "forgewall",
+      "family": "-",
+      "hands": 1,
+      "health": 1.0,
+      "damage": 0.0,
+      "armour": 1.0,
+      "speed": 0.0,
+      "ranged": 1.0,
+      "healing": 0.0,
+      "command": 0.0
+    },
+    {
+      "id": "tidewrought_helm",
+      "name": "Tidecaller's Hoplite Helm",
+      "slot": "helm",
+      "set": "tidewrought",
+      "family": "-",
+      "hands": 1,
+      "health": 1.0,
+      "damage": 0.0,
+      "armour": 0.0,
+      "speed": 0.0,
+      "ranged": 1.0,
+      "healing": 0.0,
+      "command": 1.0
+    },
+    {
+      "id": "tidewrought_chest",
+      "name": "Reefscale Cuirass",
+      "slot": "chest",
+      "set": "tidewrought",
+      "family": "-",
+      "hands": 1,
+      "health": 2.0,
+      "damage": 0.0,
+      "armour": 0.0,
+      "speed": 0.0,
+      "ranged": 2.0,
+      "healing": 0.0,
+      "command": 2.0
+    },
+    {
+      "id": "tidewrought_legs",
+      "name": "Brinewrap Greaves",
+      "slot": "legs",
+      "set": "tidewrought",
+      "family": "-",
+      "hands": 1,
+      "health": 1.0,
+      "damage": 0.0,
+      "armour": 0.0,
+      "speed": 0.01,
+      "ranged": 1.0,
+      "healing": 0.0,
+      "command": 1.0
+    },
+    {
+      "id": "tidewrought_boots",
+      "name": "Wavestep Sandals",
+      "slot": "boots",
+      "set": "tidewrought",
+      "family": "-",
+      "hands": 1,
+      "health": 1.0,
+      "damage": 0.0,
+      "armour": 0.0,
+      "speed": 0.02,
+      "ranged": 0.0,
+      "healing": 0.0,
+      "command": 1.0
+    }
+  ],
+  "gearFamilies": [
+    {
+      "id": "sword",
+      "item": "minecraft:iron_sword",
+      "attackSpeed": 1.6,
+      "damageMult": 1.0,
+      "drawMult": 1.0,
+      "sweepRadius": 0.0,
+      "sweepShare": 0.0,
+      "cooldownTicks": 0,
+      "range": 0.0,
+      "healBase": 0.0,
+      "auraMult": 1.0
+    },
+    {
+      "id": "greatsword",
+      "item": "minecraft:netherite_sword",
+      "attackSpeed": 0.8,
+      "damageMult": 1.0,
+      "drawMult": 1.0,
+      "sweepRadius": 2.5,
+      "sweepShare": 0.5,
+      "cooldownTicks": 0,
+      "range": 0.0,
+      "healBase": 0.0,
+      "auraMult": 1.0
+    },
+    {
+      "id": "greataxe",
+      "item": "minecraft:iron_axe",
+      "attackSpeed": 0.7,
+      "damageMult": 1.0,
+      "drawMult": 1.0,
+      "sweepRadius": 2.5,
+      "sweepShare": 0.5,
+      "cooldownTicks": 0,
+      "range": 0.0,
+      "healBase": 0.0,
+      "auraMult": 1.0
+    },
+    {
+      "id": "bow",
+      "item": "minecraft:bow",
+      "attackSpeed": 4.0,
+      "damageMult": 1.0,
+      "drawMult": 1.2,
+      "sweepRadius": 0.0,
+      "sweepShare": 0.0,
+      "cooldownTicks": 0,
+      "range": 0.0,
+      "healBase": 0.0,
+      "auraMult": 1.0
+    },
+    {
+      "id": "crossbow",
+      "item": "minecraft:crossbow",
+      "attackSpeed": 4.0,
+      "damageMult": 1.0,
+      "drawMult": 1.0,
+      "sweepRadius": 0.0,
+      "sweepShare": 0.0,
+      "cooldownTicks": 0,
+      "range": 0.0,
+      "healBase": 0.0,
+      "auraMult": 1.0
+    },
+    {
+      "id": "staff",
+      "item": "minecraft:blaze_rod",
+      "attackSpeed": 1.2,
+      "damageMult": 1.0,
+      "drawMult": 1.0,
+      "sweepRadius": 0.0,
+      "sweepShare": 0.0,
+      "cooldownTicks": 30,
+      "range": 12.0,
+      "healBase": 4.0,
+      "auraMult": 1.0
+    },
+    {
+      "id": "banner",
+      "item": "minecraft:white_banner",
+      "attackSpeed": 1.2,
+      "damageMult": 1.0,
+      "drawMult": 1.0,
+      "sweepRadius": 0.0,
+      "sweepShare": 0.0,
+      "cooldownTicks": 0,
+      "range": 0.0,
+      "healBase": 0.0,
+      "auraMult": 2.0
+    },
+    {
+      "id": "shield",
+      "item": "minecraft:shield",
+      "attackSpeed": 4.0,
+      "damageMult": 1.0,
+      "drawMult": 1.0,
+      "sweepRadius": 0.0,
+      "sweepShare": 0.0,
+      "cooldownTicks": 40,
+      "range": 0.0,
+      "healBase": 0.0,
+      "auraMult": 1.0
+    },
+    {
+      "id": "quiver",
+      "item": "minecraft:arrow",
+      "attackSpeed": 4.0,
+      "damageMult": 1.0,
+      "drawMult": 1.0,
+      "sweepRadius": 0.0,
+      "sweepShare": 0.0,
+      "cooldownTicks": 0,
+      "range": 0.0,
+      "healBase": 0.0,
+      "auraMult": 1.0
+    },
+    {
+      "id": "helm",
+      "item": "minecraft:iron_helmet",
+      "attackSpeed": 4.0,
+      "damageMult": 1.0,
+      "drawMult": 1.0,
+      "sweepRadius": 0.0,
+      "sweepShare": 0.0,
+      "cooldownTicks": 0,
+      "range": 0.0,
+      "healBase": 0.0,
+      "auraMult": 1.0
+    },
+    {
+      "id": "chest",
+      "item": "minecraft:iron_chestplate",
+      "attackSpeed": 4.0,
+      "damageMult": 1.0,
+      "drawMult": 1.0,
+      "sweepRadius": 0.0,
+      "sweepShare": 0.0,
+      "cooldownTicks": 0,
+      "range": 0.0,
+      "healBase": 0.0,
+      "auraMult": 1.0
+    },
+    {
+      "id": "legs",
+      "item": "minecraft:iron_leggings",
+      "attackSpeed": 4.0,
+      "damageMult": 1.0,
+      "drawMult": 1.0,
+      "sweepRadius": 0.0,
+      "sweepShare": 0.0,
+      "cooldownTicks": 0,
+      "range": 0.0,
+      "healBase": 0.0,
+      "auraMult": 1.0
+    },
+    {
+      "id": "boots",
+      "item": "minecraft:iron_boots",
+      "attackSpeed": 4.0,
+      "damageMult": 1.0,
+      "drawMult": 1.0,
+      "sweepRadius": 0.0,
+      "sweepShare": 0.0,
+      "cooldownTicks": 0,
+      "range": 0.0,
+      "healBase": 0.0,
+      "auraMult": 1.0
+    }
+  ],
+  "gearSetBonuses": [
+    {
+      "id": "bruiser_2",
+      "set": "bruiser",
+      "pieces": 2,
+      "effect": "surrounded_guard",
+      "value1": 0.3,
+      "value2": 0.0,
+      "radius": 0.0,
+      "text": "Take 30% less damage while 3 or more foes are within 4 blocks."
+    },
+    {
+      "id": "bruiser_4",
+      "set": "bruiser",
+      "pieces": 4,
+      "effect": "taunt_aura",
+      "value1": 0.0,
+      "value2": 0.0,
+      "radius": 8.0,
+      "text": "Foes within 8 blocks are drawn to fight you first."
+    },
+    {
+      "id": "healer_2",
+      "set": "healer",
+      "pieces": 2,
+      "effect": "heal_over_time",
+      "value1": 1.0,
+      "value2": 0.0,
+      "radius": 8.0,
+      "text": "Your troops within 8 blocks heal 1 health every second."
+    },
+    {
+      "id": "healer_4",
+      "set": "healer",
+      "pieces": 4,
+      "effect": "cleanse",
+      "value1": 5.0,
+      "value2": 0.0,
+      "radius": 8.0,
+      "text": "Every 5 s, slow, weaken and bleed leave you and your troops within 8 blocks."
+    },
+    {
+      "id": "ranged_2",
+      "set": "ranged",
+      "pieces": 2,
+      "effect": "draw_speed",
+      "value1": 0.25,
+      "value2": 0.0,
+      "radius": 0.0,
+      "text": "Bows draw 25% faster."
+    },
+    {
+      "id": "ranged_4",
+      "set": "ranged",
+      "pieces": 4,
+      "effect": "pierce",
+      "value1": 1.0,
+      "value2": 0.0,
+      "radius": 0.0,
+      "text": "Your arrows pierce through 1 foe."
+    },
+    {
+      "id": "commander_2",
+      "set": "commander",
+      "pieces": 2,
+      "effect": "command_radius",
+      "value1": 4.0,
+      "value2": 0.0,
+      "radius": 0.0,
+      "text": "Your command aura reaches 4 blocks further."
+    },
+    {
+      "id": "commander_4",
+      "set": "commander",
+      "pieces": 4,
+      "effect": "formation_charge",
+      "value1": 0.15,
+      "value2": 0.1,
+      "radius": 0.0,
+      "text": "Troops in your command aura move 15% faster and hit 10% harder on Attack."
+    },
+    {
+      "id": "oathbound_2",
+      "set": "oathbound",
+      "pieces": 2,
+      "effect": "command_radius",
+      "value1": 3.0,
+      "value2": 0.0,
+      "radius": 0.0,
+      "text": "Your command aura reaches 3 blocks further."
+    },
+    {
+      "id": "oathbound_4",
+      "set": "oathbound",
+      "pieces": 4,
+      "effect": "heal_over_time",
+      "value1": 0.5,
+      "value2": 0.0,
+      "radius": 8.0,
+      "text": "Your troops within 8 blocks heal 0.5 health every second."
+    },
+    {
+      "id": "barrow_warden_2",
+      "set": "barrow_warden",
+      "pieces": 2,
+      "effect": "cleanse",
+      "value1": 8.0,
+      "value2": 0.0,
+      "radius": 6.0,
+      "text": "Every 8 s, slow, weaken and bleed leave you and your troops within 6 blocks."
+    },
+    {
+      "id": "barrow_warden_4",
+      "set": "barrow_warden",
+      "pieces": 4,
+      "effect": "taunt_aura",
+      "value1": 0.0,
+      "value2": 0.0,
+      "radius": 6.0,
+      "text": "Foes within 6 blocks are drawn to fight you first."
+    },
+    {
+      "id": "thornhide_2",
+      "set": "thornhide",
+      "pieces": 2,
+      "effect": "surrounded_guard",
+      "value1": 0.2,
+      "value2": 0.0,
+      "radius": 0.0,
+      "text": "Take 20% less damage while 3 or more foes are within 4 blocks."
+    },
+    {
+      "id": "thornhide_4",
+      "set": "thornhide",
+      "pieces": 4,
+      "effect": "formation_charge",
+      "value1": 0.1,
+      "value2": 0.15,
+      "radius": 0.0,
+      "text": "Troops in your command aura move 10% faster and hit 15% harder on Attack."
+    },
+    {
+      "id": "forgewall_2",
+      "set": "forgewall",
+      "pieces": 2,
+      "effect": "taunt_aura",
+      "value1": 0.0,
+      "value2": 0.0,
+      "radius": 5.0,
+      "text": "Foes within 5 blocks are drawn to fight you first."
+    },
+    {
+      "id": "forgewall_4",
+      "set": "forgewall",
+      "pieces": 4,
+      "effect": "pierce",
+      "value1": 1.0,
+      "value2": 0.0,
+      "radius": 0.0,
+      "text": "Your arrows pierce through 1 foe."
+    },
+    {
+      "id": "tidewrought_2",
+      "set": "tidewrought",
+      "pieces": 2,
+      "effect": "draw_speed",
+      "value1": 0.15,
+      "value2": 0.0,
+      "radius": 0.0,
+      "text": "Bows draw 15% faster."
+    },
+    {
+      "id": "tidewrought_4",
+      "set": "tidewrought",
+      "pieces": 4,
+      "effect": "formation_charge",
+      "value1": 0.15,
+      "value2": 0.0,
+      "radius": 0.0,
+      "text": "Troops in your command aura move 15% faster on Attack."
+    }
+  ],
+  "gearPerks": [
+    {
+      "id": "bruiser_helm_perk",
+      "name": "Grudge",
+      "item": "bruiser_helm",
+      "effect": "grudge",
+      "value1": 0.2,
+      "value2": 0.0,
+      "text": "You deal 20% more to whoever last hurt a troop of yours."
+    },
+    {
+      "id": "bruiser_chest_perk",
+      "name": "Second Chance",
+      "item": "bruiser_chest",
+      "effect": "second_chance",
+      "value1": 2.0,
+      "value2": 0.0,
+      "text": "Once a match, the blow that would down you leaves you on 2 health."
+    },
+    {
+      "id": "bruiser_legs_perk",
+      "name": "Heavy Hand",
+      "item": "bruiser_legs",
+      "effect": "heavy_hand",
+      "value1": 0.5,
+      "value2": 3.0,
+      "text": "Every third greatweapon swing sweeps 50% wider."
+    },
+    {
+      "id": "bruiser_boots_perk",
+      "name": "Trailblazer",
+      "item": "bruiser_boots",
+      "effect": "trailblazer",
+      "value1": 0.1,
+      "value2": 12.0,
+      "text": "You move 10% faster with no foe within 12 blocks."
+    },
+    {
+      "id": "healer_helm_perk",
+      "name": "Quickened Relic",
+      "item": "healer_helm",
+      "effect": "quickened_relic",
+      "value1": 0.15,
+      "value2": 0.0,
+      "text": "Your relics come back 15% sooner."
+    },
+    {
+      "id": "healer_chest_perk",
+      "name": "Second Chance",
+      "item": "healer_chest",
+      "effect": "second_chance",
+      "value1": 2.0,
+      "value2": 0.0,
+      "text": "Once a match, the blow that would down you leaves you on 2 health."
+    },
+    {
+      "id": "healer_legs_perk",
+      "name": "Last Light",
+      "item": "healer_legs",
+      "effect": "last_light",
+      "value1": 0.25,
+      "value2": 0.3,
+      "text": "Below 30% health you deal 25% more."
+    },
+    {
+      "id": "healer_boots_perk",
+      "name": "Last Light",
+      "item": "healer_boots",
+      "effect": "last_light",
+      "value1": 0.25,
+      "value2": 0.3,
+      "text": "Below 30% health you deal 25% more."
+    },
+    {
+      "id": "ranged_helm_perk",
+      "name": "Quickened Relic",
+      "item": "ranged_helm",
+      "effect": "quickened_relic",
+      "value1": 0.15,
+      "value2": 0.0,
+      "text": "Your relics come back 15% sooner."
+    },
+    {
+      "id": "ranged_chest_perk",
+      "name": "Second Chance",
+      "item": "ranged_chest",
+      "effect": "second_chance",
+      "value1": 2.0,
+      "value2": 0.0,
+      "text": "Once a match, the blow that would down you leaves you on 2 health."
+    },
+    {
+      "id": "ranged_legs_perk",
+      "name": "Hawkeye",
+      "item": "ranged_legs",
+      "effect": "hawkeye",
+      "value1": 0.15,
+      "value2": 20.0,
+      "text": "Your shots deal 15% more at 20 blocks or further."
+    },
+    {
+      "id": "ranged_boots_perk",
+      "name": "Trailblazer",
+      "item": "ranged_boots",
+      "effect": "trailblazer",
+      "value1": 0.1,
+      "value2": 12.0,
+      "text": "You move 10% faster with no foe within 12 blocks."
+    },
+    {
+      "id": "commander_helm_perk",
+      "name": "Quickened Relic",
+      "item": "commander_helm",
+      "effect": "quickened_relic",
+      "value1": 0.15,
+      "value2": 0.0,
+      "text": "Your relics come back 15% sooner."
+    },
+    {
+      "id": "commander_chest_perk",
+      "name": "Second Chance",
+      "item": "commander_chest",
+      "effect": "second_chance",
+      "value1": 2.0,
+      "value2": 0.0,
+      "text": "Once a match, the blow that would down you leaves you on 2 health."
+    },
+    {
+      "id": "commander_legs_perk",
+      "name": "Oathkeeper",
+      "item": "commander_legs",
+      "effect": "oathkeeper",
+      "value1": 0.1,
+      "value2": 0.0,
+      "text": "Your troops in your command aura take 10% less damage."
+    },
+    {
+      "id": "commander_boots_perk",
+      "name": "Trailblazer",
+      "item": "commander_boots",
+      "effect": "trailblazer",
+      "value1": 0.1,
+      "value2": 12.0,
+      "text": "You move 10% faster with no foe within 12 blocks."
+    },
+    {
+      "id": "arming_sword_perk",
+      "name": "Grudge",
+      "item": "arming_sword",
+      "effect": "grudge",
+      "value1": 0.2,
+      "value2": 0.0,
+      "text": "You deal 20% more to whoever last hurt a troop of yours."
+    },
+    {
+      "id": "falchion_perk",
+      "name": "Grudge",
+      "item": "falchion",
+      "effect": "grudge",
+      "value1": 0.2,
+      "value2": 0.0,
+      "text": "You deal 20% more to whoever last hurt a troop of yours."
+    },
+    {
+      "id": "greatsword_perk",
+      "name": "Heavy Hand",
+      "item": "greatsword",
+      "effect": "heavy_hand",
+      "value1": 0.5,
+      "value2": 3.0,
+      "text": "Every third greatweapon swing sweeps 50% wider."
+    },
+    {
+      "id": "great_axe_perk",
+      "name": "Heavy Hand",
+      "item": "great_axe",
+      "effect": "heavy_hand",
+      "value1": 0.5,
+      "value2": 3.0,
+      "text": "Every third greatweapon swing sweeps 50% wider."
+    },
+    {
+      "id": "hunting_bow_perk",
+      "name": "Hawkeye",
+      "item": "hunting_bow",
+      "effect": "hawkeye",
+      "value1": 0.15,
+      "value2": 20.0,
+      "text": "Your shots deal 15% more at 20 blocks or further."
+    },
+    {
+      "id": "crossbow_perk",
+      "name": "Hawkeye",
+      "item": "crossbow",
+      "effect": "hawkeye",
+      "value1": 0.15,
+      "value2": 20.0,
+      "text": "Your shots deal 15% more at 20 blocks or further."
+    },
+    {
+      "id": "mending_staff_perk",
+      "name": "Last Light",
+      "item": "mending_staff",
+      "effect": "last_light",
+      "value1": 0.25,
+      "value2": 0.3,
+      "text": "Below 30% health you deal 25% more."
+    },
+    {
+      "id": "sunwell_crook_perk",
+      "name": "Last Light",
+      "item": "sunwell_crook",
+      "effect": "last_light",
+      "value1": 0.25,
+      "value2": 0.3,
+      "text": "Below 30% health you deal 25% more."
+    },
+    {
+      "id": "war_banner_perk",
+      "name": "Oathkeeper",
+      "item": "war_banner",
+      "effect": "oathkeeper",
+      "value1": 0.1,
+      "value2": 0.0,
+      "text": "Your troops in your command aura take 10% less damage."
+    },
+    {
+      "id": "long_colours_perk",
+      "name": "Oathkeeper",
+      "item": "long_colours",
+      "effect": "oathkeeper",
+      "value1": 0.1,
+      "value2": 0.0,
+      "text": "Your troops in your command aura take 10% less damage."
+    },
+    {
+      "id": "kite_shield_perk",
+      "name": "Grudge",
+      "item": "kite_shield",
+      "effect": "grudge",
+      "value1": 0.2,
+      "value2": 0.0,
+      "text": "You deal 20% more to whoever last hurt a troop of yours."
+    },
+    {
+      "id": "quiver_perk",
+      "name": "Hawkeye",
+      "item": "quiver",
+      "effect": "hawkeye",
+      "value1": 0.15,
+      "value2": 20.0,
+      "text": "Your shots deal 15% more at 20 blocks or further."
+    },
+    {
+      "id": "oathbound_helm_perk",
+      "name": "Oathkeeper",
+      "item": "oathbound_helm",
+      "effect": "oathkeeper",
+      "value1": 0.1,
+      "value2": 0.0,
+      "text": "Your troops in your command aura take 10% less damage."
+    },
+    {
+      "id": "oathbound_chest_perk",
+      "name": "Second Chance",
+      "item": "oathbound_chest",
+      "effect": "second_chance",
+      "value1": 2.0,
+      "value2": 0.0,
+      "text": "Once a match, the blow that would down you leaves you on 2 health."
+    },
+    {
+      "id": "oathbound_legs_perk",
+      "name": "Grudge",
+      "item": "oathbound_legs",
+      "effect": "grudge",
+      "value1": 0.2,
+      "value2": 0.0,
+      "text": "You deal 20% more to whoever last hurt a troop of yours."
+    },
+    {
+      "id": "oathbound_boots_perk",
+      "name": "Quickened Relic",
+      "item": "oathbound_boots",
+      "effect": "quickened_relic",
+      "value1": 0.15,
+      "value2": 0.0,
+      "text": "Your relics come back 15% sooner."
+    },
+    {
+      "id": "barrow_warden_helm_perk",
+      "name": "Quickened Relic",
+      "item": "barrow_warden_helm",
+      "effect": "quickened_relic",
+      "value1": 0.15,
+      "value2": 0.0,
+      "text": "Your relics come back 15% sooner."
+    },
+    {
+      "id": "barrow_warden_chest_perk",
+      "name": "Second Chance",
+      "item": "barrow_warden_chest",
+      "effect": "second_chance",
+      "value1": 2.0,
+      "value2": 0.0,
+      "text": "Once a match, the blow that would down you leaves you on 2 health."
+    },
+    {
+      "id": "barrow_warden_legs_perk",
+      "name": "Oathkeeper",
+      "item": "barrow_warden_legs",
+      "effect": "oathkeeper",
+      "value1": 0.1,
+      "value2": 0.0,
+      "text": "Your troops in your command aura take 10% less damage."
+    },
+    {
+      "id": "barrow_warden_boots_perk",
+      "name": "Last Light",
+      "item": "barrow_warden_boots",
+      "effect": "last_light",
+      "value1": 0.25,
+      "value2": 0.3,
+      "text": "Below 30% health you deal 25% more."
+    },
+    {
+      "id": "thornhide_helm_perk",
+      "name": "Grudge",
+      "item": "thornhide_helm",
+      "effect": "grudge",
+      "value1": 0.2,
+      "value2": 0.0,
+      "text": "You deal 20% more to whoever last hurt a troop of yours."
+    },
+    {
+      "id": "thornhide_chest_perk",
+      "name": "Last Light",
+      "item": "thornhide_chest",
+      "effect": "last_light",
+      "value1": 0.25,
+      "value2": 0.3,
+      "text": "Below 30% health you deal 25% more."
+    },
+    {
+      "id": "thornhide_legs_perk",
+      "name": "Heavy Hand",
+      "item": "thornhide_legs",
+      "effect": "heavy_hand",
+      "value1": 0.5,
+      "value2": 3.0,
+      "text": "Every third greatweapon swing sweeps 50% wider."
+    },
+    {
+      "id": "thornhide_boots_perk",
+      "name": "Trailblazer",
+      "item": "thornhide_boots",
+      "effect": "trailblazer",
+      "value1": 0.1,
+      "value2": 12.0,
+      "text": "You move 10% faster with no foe within 12 blocks."
+    },
+    {
+      "id": "forgewall_helm_perk",
+      "name": "Hawkeye",
+      "item": "forgewall_helm",
+      "effect": "hawkeye",
+      "value1": 0.15,
+      "value2": 20.0,
+      "text": "Your shots deal 15% more at 20 blocks or further."
+    },
+    {
+      "id": "forgewall_chest_perk",
+      "name": "Second Chance",
+      "item": "forgewall_chest",
+      "effect": "second_chance",
+      "value1": 2.0,
+      "value2": 0.0,
+      "text": "Once a match, the blow that would down you leaves you on 2 health."
+    },
+    {
+      "id": "forgewall_legs_perk",
+      "name": "Heavy Hand",
+      "item": "forgewall_legs",
+      "effect": "heavy_hand",
+      "value1": 0.5,
+      "value2": 3.0,
+      "text": "Every third greatweapon swing sweeps 50% wider."
+    },
+    {
+      "id": "forgewall_boots_perk",
+      "name": "Quickened Relic",
+      "item": "forgewall_boots",
+      "effect": "quickened_relic",
+      "value1": 0.15,
+      "value2": 0.0,
+      "text": "Your relics come back 15% sooner."
+    },
+    {
+      "id": "tidewrought_helm_perk",
+      "name": "Hawkeye",
+      "item": "tidewrought_helm",
+      "effect": "hawkeye",
+      "value1": 0.15,
+      "value2": 20.0,
+      "text": "Your shots deal 15% more at 20 blocks or further."
+    },
+    {
+      "id": "tidewrought_chest_perk",
+      "name": "Last Light",
+      "item": "tidewrought_chest",
+      "effect": "last_light",
+      "value1": 0.25,
+      "value2": 0.3,
+      "text": "Below 30% health you deal 25% more."
+    },
+    {
+      "id": "tidewrought_legs_perk",
+      "name": "Trailblazer",
+      "item": "tidewrought_legs",
+      "effect": "trailblazer",
+      "value1": 0.1,
+      "value2": 12.0,
+      "text": "You move 10% faster with no foe within 12 blocks."
+    },
+    {
+      "id": "tidewrought_boots_perk",
+      "name": "Quickened Relic",
+      "item": "tidewrought_boots",
+      "effect": "quickened_relic",
+      "value1": 0.15,
+      "value2": 0.0,
+      "text": "Your relics come back 15% sooner."
+    }
+  ],
+  "relics": [
+    {
+      "id": "stand_fast",
+      "name": "Ward of the Wall",
+      "role": "bruiser",
+      "fromClass": "champion",
       "cooldownTicks": 1800,
+      "text": "Your troops within 12 take 25% less damage for 8 s; you gain Resistance I."
+    },
+    {
+      "id": "bloodrush",
+      "name": "Reaver's Fang",
+      "role": "bruiser",
+      "fromClass": "reaver",
+      "cooldownTicks": 1500,
+      "text": "Speed II and 30% lifesteal for 10 s; each troop you kill returns a fallen one, up to 3."
+    },
+    {
+      "id": "mark_prey",
+      "name": "Hunter's Eye",
+      "role": "ranged",
+      "fromClass": "warden",
+      "cooldownTicks": 1200,
+      "text": "Mark a foe within 40 blocks: it glows; your troops and you deal 30% more to it for 12 s."
+    },
+    {
+      "id": "rally_horn",
+      "name": "Muster Seal",
+      "role": "commander",
+      "fromClass": "marshal",
+      "cooldownTicks": 2400,
+      "text": "Every group marches to you, 20% faster for 15 s."
+    },
+    {
+      "id": "grave_bloom",
+      "name": "Gravebloom Censer",
+      "role": "healer",
+      "fromClass": "warlock",
+      "cooldownTicks": 2400,
+      "text": "Up to 6 troops that fell within 8 blocks in the last 20 s rise as your Risen for 30 s."
+    },
+    {
+      "id": "forward_supply",
+      "name": "Forward Cache",
+      "role": "commander",
+      "fromClass": "quartermaster",
+      "cooldownTicks": 3000,
+      "text": "Plant a 40-health supply banner 30+ from base: troops deploy there for 60 s while safe."
+    },
+    {
+      "id": "dash",
+      "name": "Charger's Spur",
+      "role": "bruiser",
+      "fromClass": "-",
+      "cooldownTicks": 200,
+      "text": "Dash a short way forward."
+    },
+    {
+      "id": "shield_bash",
+      "name": "Gatebreaker's Shove",
+      "role": "bruiser",
+      "fromClass": "-",
+      "cooldownTicks": 300,
+      "text": "Slam forward, knocking back and staggering foes in front of you."
+    },
+    {
+      "id": "heal_pulse",
+      "name": "Lantern of Mercy",
+      "role": "healer",
+      "fromClass": "-",
+      "cooldownTicks": 600,
+      "text": "A heal pulse on you and the troops near you."
+    },
+    {
+      "id": "volley",
+      "name": "Hunter's Volley",
+      "role": "ranged",
+      "fromClass": "-",
+      "cooldownTicks": 500,
+      "text": "A fan of arrows from your position, in a cone."
+    },
+    {
+      "id": "war_cry",
+      "name": "Battle Cry",
+      "role": "commander",
+      "fromClass": "-",
+      "cooldownTicks": 800,
+      "text": "Nearby troops hit a little harder for a short time."
+    },
+    {
+      "id": "iron_skin",
+      "name": "Second Wind",
+      "role": "healer",
+      "fromClass": "-",
+      "cooldownTicks": 900,
+      "text": "Heal yourself over a few seconds."
+    }
+  ],
+  "relicTuning": [
+    {
+      "id": "stand_fast",
+      "effect": "stand_fast",
       "durationTicks": 160,
       "radius": 12.0,
       "range": 0.0,
       "value1": 0.25,
       "value2": 0.0,
-      "value3": 0.0,
-      "passive": "champion",
-      "passiveValue": 4.0,
-      "passiveValue2": 0.1,
-      "passiveRadius": 10.0,
-      "activeText": "Your troops within 12 take 25% less damage for 8 s; you gain Resistance I.",
-      "passiveText": "+4 max health for you; your infantry within 10 blocks deal 10% more damage."
+      "value3": 0.0
     },
     {
-      "id": "reaver",
-      "name": "Reaver",
-      "group": "infantry",
-      "bonus": "+2 attack damage for you; you respawn in 9 s instead of 12.",
-      "track": "hero",
-      "active": "bloodrush",
-      "cooldownTicks": 1500,
+      "id": "bloodrush",
+      "effect": "bloodrush",
       "durationTicks": 200,
       "radius": 0.0,
       "range": 0.0,
       "value1": 0.3,
       "value2": 3.0,
-      "value3": 0.0,
-      "passive": "reaver",
-      "passiveValue": 2.0,
-      "passiveValue2": 9.0,
-      "passiveRadius": 0.0,
-      "activeText": "Speed II and 30% lifesteal for 10 s; each troop you kill returns a fallen one, up to 3.",
-      "passiveText": "+2 attack damage for you; you respawn in 9 s instead of 12."
+      "value3": 0.0
     },
     {
-      "id": "warden",
-      "name": "Warden",
-      "group": "ranged",
-      "bonus": "Your ranged troops deal 10% more damage and reach 2 blocks further.",
-      "track": "hero",
-      "active": "mark_prey",
-      "cooldownTicks": 1200,
+      "id": "mark_prey",
+      "effect": "mark_prey",
       "durationTicks": 240,
       "radius": 0.0,
       "range": 40.0,
       "value1": 0.3,
       "value2": 0.0,
-      "value3": 0.0,
-      "passive": "warden",
-      "passiveValue": 0.1,
-      "passiveValue2": 2.0,
-      "passiveRadius": 0.0,
-      "activeText": "Mark a foe within 40 blocks: it glows; your troops and you deal 30% more to it for 12 s.",
-      "passiveText": "Your ranged troops deal 10% more damage and reach 2 blocks further."
+      "value3": 0.0
     },
     {
-      "id": "marshal",
-      "name": "Marshal",
-      "group": "all",
-      "bonus": "Your troops train in 20% less time.",
-      "track": "general",
-      "active": "rally_horn",
-      "cooldownTicks": 2400,
+      "id": "rally_horn",
+      "effect": "rally_horn",
       "durationTicks": 300,
       "radius": 0.0,
       "range": 0.0,
       "value1": 0.2,
       "value2": 0.0,
-      "value3": 0.0,
-      "passive": "marshal",
-      "passiveValue": 0.2,
-      "passiveValue2": 0.0,
-      "passiveRadius": 0.0,
-      "activeText": "Every group marches to you, 20% faster for 15 s.",
-      "passiveText": "Your troops train in 20% less time."
+      "value3": 0.0
     },
     {
-      "id": "warlock",
-      "name": "Warlock",
-      "group": "support",
-      "bonus": "Your magic troops cost 20% less gold in battle.",
-      "track": "general",
-      "active": "grave_bloom",
-      "cooldownTicks": 2400,
+      "id": "grave_bloom",
+      "effect": "grave_bloom",
       "durationTicks": 600,
       "radius": 8.0,
       "range": 30.0,
       "value1": 0.6,
       "value2": 6.0,
-      "value3": 400.0,
-      "passive": "warlock",
-      "passiveValue": 0.2,
-      "passiveValue2": 0.0,
-      "passiveRadius": 0.0,
-      "activeText": "Up to 6 troops that fell within 8 blocks in the last 20 s rise as your Risen for 30 s.",
-      "passiveText": "Your magic troops cost 20% less gold in battle."
+      "value3": 400.0
     },
     {
-      "id": "quartermaster",
-      "name": "Quartermaster",
-      "group": "all",
-      "bonus": "Each point you hold pays 2 more gold every income tick: 5 instead of 3.",
-      "track": "general",
-      "active": "forward_supply",
-      "cooldownTicks": 3000,
+      "id": "forward_supply",
+      "effect": "forward_supply",
       "durationTicks": 1200,
       "radius": 12.0,
       "range": 30.0,
       "value1": 40.0,
       "value2": 0.0,
-      "value3": 0.0,
-      "passive": "quartermaster",
-      "passiveValue": 2.0,
-      "passiveValue2": 0.0,
-      "passiveRadius": 0.0,
-      "activeText": "Plant a 40-health supply banner 30+ from base: troops deploy there for 60 s while safe.",
-      "passiveText": "Each point you hold pays 2 more gold every income tick: 5 instead of 3."
+      "value3": 0.0
+    },
+    {
+      "id": "dash",
+      "effect": "dash",
+      "durationTicks": 6,
+      "radius": 0.0,
+      "range": 0.0,
+      "value1": 1.4,
+      "value2": 0.0,
+      "value3": 0.0
+    },
+    {
+      "id": "shield_bash",
+      "effect": "shove",
+      "durationTicks": 1,
+      "radius": 3.5,
+      "range": 0.0,
+      "value1": 1.2,
+      "value2": 40.0,
+      "value3": 4.0
+    },
+    {
+      "id": "heal_pulse",
+      "effect": "heal_pulse",
+      "durationTicks": 1,
+      "radius": 8.0,
+      "range": 0.0,
+      "value1": 6.0,
+      "value2": 0.0,
+      "value3": 0.0
+    },
+    {
+      "id": "volley",
+      "effect": "volley",
+      "durationTicks": 1,
+      "radius": 0.0,
+      "range": 0.0,
+      "value1": 7.0,
+      "value2": 40.0,
+      "value3": 2.5
+    },
+    {
+      "id": "war_cry",
+      "effect": "war_cry",
+      "durationTicks": 160,
+      "radius": 10.0,
+      "range": 0.0,
+      "value1": 0.15,
+      "value2": 0.0,
+      "value3": 0.0
+    },
+    {
+      "id": "iron_skin",
+      "effect": "self_heal",
+      "durationTicks": 100,
+      "radius": 0.0,
+      "range": 0.0,
+      "value1": 10.0,
+      "value2": 0.0,
+      "value3": 0.0
+    }
+  ],
+  "gearCombat": [
+    {
+      "id": "default",
+      "healthPerPoint": 1.0,
+      "damagePerPoint": 1.0,
+      "armourPerPoint": 1.0,
+      "speedPerPoint": 1.0,
+      "rangedPerPoint": 0.05,
+      "healingPerPoint": 0.05,
+      "commandPerPoint": 0.01,
+      "surroundedCount": 3,
+      "surroundedRadius": 4.0,
+      "commandRadius": 10.0,
+      "tauntShare": 0.5
+    }
+  ],
+  "forge": [
+    {
+      "id": "forge",
+      "rollMarks": 75,
+      "relicRollPct": 1.5,
+      "relicDuplicatePct": 0.5,
+      "pity": 10,
+      "startSlots": 60,
+      "rowSlots": 10,
+      "maxSlots": 120,
+      "rowGold": 500,
+      "rowGoldStep": 250,
+      "wearPct": 10,
+      "brokenStatPct": 0.5,
+      "maxDurability": 100,
+      "relicSlots": 3,
+      "starterQuality": 50
     }
   ],
   "campaign": [
@@ -2363,10 +4978,14 @@
       "victoryGold": 40,
       "practiceGold": 40,
       "minimumRewardSeconds": 180,
+      "disconnectGraceSeconds": 60,
       "completionShards": 1,
       "victoryShards": 1,
       "completionRenown": 1,
-      "victoryRenown": 1
+      "victoryRenown": 1,
+      "forgeMarks": 100,
+      "lossMarksPct": 0.5,
+      "botOnlyMarksPct": 0.5
     }
   ],
   "campaignBattles": [
@@ -2380,7 +4999,159 @@
       "difficulty": "easy",
       "lessons": true,
       "briefing": "Dusk raiders hold the river road. Take the crossings and teach your banner to follow you.",
-      "reason": "The road west must open before the march begins."
+      "reason": "The road west must open before the march begins.",
+      "mode": "domination",
+      "house": "gilded",
+      "bonus": "b1_hold_all",
+      "allies": "none",
+      "placeholder": "none"
+    },
+    {
+      "id": "march-2",
+      "chapter": 1,
+      "order": 2,
+      "name": "The Iron Gate",
+      "map": 1,
+      "size": 2,
+      "difficulty": "normal",
+      "lessons": false,
+      "briefing": "The Ironclad hold their gate and will not open it. Break it with the engines, then take the keep behind it.",
+      "reason": "The march cannot go north past a shut iron gate.",
+      "mode": "siege",
+      "house": "ironclad",
+      "bonus": "b2_gate_by",
+      "allies": "none",
+      "placeholder": "briefing,reason (draft text 2026-11-02 for Kort to edit, Q74)"
+    },
+    {
+      "id": "march-3",
+      "chapter": 1,
+      "order": 3,
+      "name": "The Long Night",
+      "map": 3,
+      "size": 2,
+      "difficulty": "normal",
+      "lessons": false,
+      "briefing": "The graves of Hollowwood are opening under the moon. Hold the shrine and keep your banner standing until the dead lie still.",
+      "reason": "The march must camp at the shrine tonight, and so must the dead.",
+      "mode": "survival",
+      "house": "graveborn",
+      "bonus": "b3_lose8",
+      "allies": "none",
+      "placeholder": "briefing,reason (draft text 2026-11-02 for Kort to edit, Q74)"
+    },
+    {
+      "id": "march-4",
+      "chapter": 1,
+      "order": 4,
+      "name": "The Frozen Standard",
+      "map": 2,
+      "size": 3,
+      "difficulty": "hard",
+      "lessons": false,
+      "briefing": "The Wildmoot hunt the pass and the wagon with our standard must cross it. Walk beside it and do not let it be stopped.",
+      "reason": "Without its standard the march is only a crowd of armed men.",
+      "mode": "convoy",
+      "house": "wildmoot",
+      "bonus": "b4_never_rolled",
+      "allies": "none",
+      "placeholder": "briefing,reason (draft text 2026-11-02 for Kort to edit, Q74); Kort 2026-10-31: a convoy escort; mode and bonus set by the approved convoy spec"
+    },
+    {
+      "id": "march-5",
+      "chapter": 1,
+      "order": 5,
+      "name": "The Five Crossings",
+      "map": 4,
+      "size": 3,
+      "difficulty": "hard",
+      "lessons": false,
+      "briefing": "Tidecaller raiders have come up out of the water to take Kingsfield. Hold the fords and bridges, and strike where they are thin.",
+      "reason": "Kingsfield is where every road meets, and the march needs them.",
+      "mode": "domination",
+      "house": "tidecallers",
+      "bonus": "b5_hold_all",
+      "allies": "none",
+      "placeholder": "briefing,reason (draft text 2026-11-02 for Kort to edit, Q74)"
+    },
+    {
+      "id": "march-6",
+      "chapter": 1,
+      "order": 6,
+      "name": "The Last Watch",
+      "map": 1,
+      "size": 3,
+      "difficulty": "hard",
+      "lessons": false,
+      "briefing": "The Hollow King has taken the keep at Ironhold. The Houses you met stand with you now. Break his gate and strike him down yourself.",
+      "reason": "The king in the keep ends the march, or the march ends.",
+      "mode": "siege",
+      "house": "graveborn",
+      "bonus": "b6_kill_hollowking",
+      "allies": "mix_gilded_ironclad_wildmoot_normal,mix_tidecallers_graveborn_normal",
+      "placeholder": "briefing,reason (draft text 2026-11-02 for Kort to edit, Q74); Kort 2026-11-02 (Q76, Q77): Siege with allied bot banners from all five Houses; hard, the top tier, with the allies one tier below so the enemy outclasses your side"
+    }
+  ],
+  "bonusObjectives": [
+    {
+      "id": "b1_hold_all",
+      "kind": "hold_all",
+      "value": 0,
+      "target": "none",
+      "shards": 5,
+      "gold": 40,
+      "text": "Hold all three crossings at the same moment.",
+      "placeholder": "gold (draft value)"
+    },
+    {
+      "id": "b2_gate_by",
+      "kind": "stage_by",
+      "value": 360,
+      "target": "gate",
+      "shards": 5,
+      "gold": 40,
+      "text": "Break the gate inside six minutes.",
+      "placeholder": "none (Kort 2026-11-02, Q78: option 2A now battle 2 is Siege)"
+    },
+    {
+      "id": "b3_lose8",
+      "kind": "lose_at_most",
+      "value": 8,
+      "target": "none",
+      "shards": 5,
+      "gold": 40,
+      "text": "Lose no more than 8 troops.",
+      "placeholder": "none"
+    },
+    {
+      "id": "b4_never_rolled",
+      "kind": "never_rolled",
+      "value": 0,
+      "target": "none",
+      "shards": 5,
+      "gold": 40,
+      "text": "Never let the wagon roll back.",
+      "placeholder": "gold (draft value; Kort picked option A on 2026-10-31, convoy spec 11)"
+    },
+    {
+      "id": "b5_hold_all",
+      "kind": "hold_all",
+      "value": 0,
+      "target": "none",
+      "shards": 5,
+      "gold": 50,
+      "text": "Hold all five crossings at the same moment.",
+      "placeholder": "none"
+    },
+    {
+      "id": "b6_kill_hollowking",
+      "kind": "kill_unit",
+      "value": 0,
+      "target": "gb_hollowking",
+      "shards": 5,
+      "gold": 60,
+      "text": "Strike down the Hollow King with your own banner.",
+      "placeholder": "none"
     }
   ],
   "pieces": [
@@ -2559,6 +5330,30 @@
       "height": 17,
       "palette": "stone",
       "purpose": "west gate, 11-wide passage"
+    },
+    {
+      "id": "ironhold/gate_intact",
+      "width": 7,
+      "depth": 47,
+      "height": 17,
+      "palette": "stone",
+      "purpose": "west gate once the yard falls: portcullis down, doors shut (Siege)"
+    },
+    {
+      "id": "ironhold/ward",
+      "width": 3,
+      "depth": 35,
+      "height": 8,
+      "palette": "stone",
+      "purpose": "north ward wall closing the gap beside the gate (Siege)"
+    },
+    {
+      "id": "ironhold/ward_south",
+      "width": 3,
+      "depth": 17,
+      "height": 8,
+      "palette": "stone",
+      "purpose": "south ward wall closing the gap beside the gate (Siege)"
     },
     {
       "id": "ironhold/curtain",
@@ -2988,6 +5783,32 @@
       "halfX": 1,
       "halfZ": 1,
       "label": "DRILLMASTER / Battle 1 and practice"
+    },
+    {
+      "id": "blacksmith",
+      "page": "forge",
+      "npc": "weaponsmith",
+      "x": 10.5,
+      "y": 77.0,
+      "z": -51.5,
+      "yaw": 90.0,
+      "halfX": 1,
+      "halfZ": 1,
+      "label": "Blacksmith / Forge & repairs"
+    }
+  ],
+  "blacksmithLines": [
+    {
+      "id": "steel",
+      "text": "Bring me marks and I'll bring you steel."
+    },
+    {
+      "id": "edges",
+      "text": "Every edge dulls. Mine come back sharper."
+    },
+    {
+      "id": "luck",
+      "text": "The anvil remembers. Keep at it and something fine will turn up."
     }
   ],
   "campLessons": [
@@ -2996,21 +5817,21 @@
       "dx": -55.9,
       "y": 66.55,
       "dz": -3.5,
-      "text": "LESSON 1 OF 4 / Press {key:menu}, choose a group and Move, then click the ground to send them."
+      "text": "LESSON 1 OF 4 / Press {key:follow} for Follow me, or {key:retreat} to Retreat. Follow me keeps your army at your side."
     },
     {
       "id": "lesson-2",
       "dx": -55.9,
       "y": 66.55,
       "dz": 2.5,
-      "text": "LESSON 2 OF 4 / Press {key:formation} to change formation. Shieldwall holds a line; Wedge breaks one."
+      "text": "LESSON 2 OF 4 / Press {key:formation} for Formation, then aim and click to set your army's shape. Line makes a front; Wedge breaks one."
     },
     {
       "id": "lesson-3",
       "dx": -55.9,
       "y": 66.78,
       "dz": 8.5,
-      "text": "LESSON 3 OF 4 / Press {key:attack} and aim at an enemy or a point to send your army in."
+      "text": "LESSON 3 OF 4 / Press {key:attack} for Attack to send your army at the enemy, or {key:charge} for Charge. A Charge needs a short rest."
     },
     {
       "id": "lesson-4",
@@ -4557,7 +7378,7 @@
     {
       "id": "graveborn",
       "name": "Graveborn",
-      "accent": 10338206,
+      "accent": 10653626,
       "glyph": "gravesandglory:textures/gui/house/graveborn.png",
       "troops": "revenant,bonebow,reaper,stalker,hexer,gb_hollowking",
       "title": "Gravebound",
@@ -4584,7 +7405,7 @@
     {
       "id": "tidecallers",
       "name": "Tidecallers",
-      "accent": 5220506,
+      "accent": 6195366,
       "glyph": "gravesandglory:textures/gui/house/tidecallers.png",
       "troops": "tc_raider,tc_harpooner,tc_tideguard,tc_mist,tc_brute,tc_admiral",
       "title": "Tidesworn",
@@ -8009,6 +10830,18 @@
       "house": "wildmoot",
       "difficulty": "hard",
       "slots": "wm_oldhorn,^,^,^,wm_hound,wm_hound,wm_hunter,wm_hunter,wm_stalker,wm_tusk,mage,^,knight,knight,knight,knight,archer,archer,sentinel,longbow"
+    },
+    {
+      "id": "mix_gilded_ironclad_wildmoot_normal",
+      "house": "gilded",
+      "difficulty": "normal",
+      "slots": "mage,^,knight,knight,knight,archer,sentinel,longbow,ic_mortar,^,ic_hearthguard,ic_hearthguard,ic_arbalist,ic_breaker,wm_hound,wm_hound,wm_hound,wm_hunter,wm_stalker,wm_tusk"
+    },
+    {
+      "id": "mix_tidecallers_graveborn_normal",
+      "house": "tidecallers",
+      "difficulty": "normal",
+      "slots": "tc_brute,^,tc_raider,tc_raider,tc_raider,tc_raider,tc_harpooner,tc_harpooner,tc_tideguard,tc_mist,hexer,^,revenant,revenant,revenant,revenant,bonebow,bonebow,reaper,stalker"
     }
   ],
   "troopNotes": [
@@ -8064,7 +10897,7 @@
     },
     {
       "id": "hexer",
-      "beats": "shieldwalls, clumped Commons",
+      "beats": "braced shields, clumped Commons",
       "beatenBy": "Hounds, Harpooners, pierce"
     },
     {
@@ -8124,7 +10957,7 @@
     },
     {
       "id": "ic_mortar",
-      "beats": "shieldwalls, entrenched lines, clumps",
+      "beats": "braced shields, entrenched lines, clumps",
       "beatenBy": "anything that gets closer than 10"
     },
     {
@@ -8174,9 +11007,713 @@
       "winGold": 40,
       "dailyGold": 100,
       "weeklyGold": 150,
-      "chapterGold": 300,
-      "chapterRareValue": 300,
       "runs": 20000
+    }
+  ],
+  "modeLines": [
+    {
+      "id": "domination_point_taken",
+      "mode": "domination",
+      "event": "point_taken",
+      "kind": "point",
+      "args": "team,point",
+      "text": "{team} took {point}",
+      "status": "draft"
+    },
+    {
+      "id": "siege_start",
+      "mode": "siege",
+      "event": "start",
+      "kind": "notice",
+      "args": "-",
+      "text": "Take the Outer Yard, break the gate, seize the Keep.",
+      "status": "draft"
+    },
+    {
+      "id": "siege_yard_taken",
+      "mode": "siege",
+      "event": "yard_taken",
+      "kind": "point",
+      "args": "team",
+      "text": "{team} took the Outer Yard",
+      "status": "draft"
+    },
+    {
+      "id": "siege_gate_closing",
+      "mode": "siege",
+      "event": "gate_closing",
+      "kind": "point",
+      "args": "n",
+      "text": "The gate shuts in {n} s",
+      "status": "draft"
+    },
+    {
+      "id": "siege_gate_shut",
+      "mode": "siege",
+      "event": "gate_shut",
+      "kind": "point",
+      "args": "-",
+      "text": "The Iron Gate is shut",
+      "status": "draft"
+    },
+    {
+      "id": "siege_gate_breached",
+      "mode": "siege",
+      "event": "gate_breached",
+      "kind": "point",
+      "args": "-",
+      "text": "The Iron Gate is breached",
+      "status": "draft"
+    },
+    {
+      "id": "siege_keep_taken",
+      "mode": "siege",
+      "event": "keep_taken",
+      "kind": "point",
+      "args": "team",
+      "text": "{team} took the Keep",
+      "status": "draft"
+    },
+    {
+      "id": "convoy_start",
+      "mode": "convoy",
+      "event": "start",
+      "kind": "notice",
+      "args": "stop",
+      "text": "The wagon sets out for {stop}.",
+      "status": "draft"
+    },
+    {
+      "id": "convoy_wagon_rolls",
+      "mode": "convoy",
+      "event": "wagon_rolls",
+      "kind": "point",
+      "args": "-",
+      "text": "The wagon rolls",
+      "status": "draft"
+    },
+    {
+      "id": "convoy_wagon_stopped",
+      "mode": "convoy",
+      "event": "wagon_stopped",
+      "kind": "point",
+      "args": "-",
+      "text": "The wagon is stopped",
+      "status": "draft"
+    },
+    {
+      "id": "convoy_wagon_rolls_back",
+      "mode": "convoy",
+      "event": "wagon_rolls_back",
+      "kind": "point",
+      "args": "-",
+      "text": "The wagon rolls back",
+      "status": "draft"
+    },
+    {
+      "id": "convoy_checkpoint",
+      "mode": "convoy",
+      "event": "checkpoint",
+      "kind": "point",
+      "args": "team,stop",
+      "text": "{team} at {stop}",
+      "status": "draft"
+    },
+    {
+      "id": "convoy_through",
+      "mode": "convoy",
+      "event": "through",
+      "kind": "point",
+      "args": "-",
+      "text": "The convoy is through",
+      "status": "draft"
+    },
+    {
+      "id": "survival_start",
+      "mode": "survival",
+      "event": "start",
+      "kind": "notice",
+      "args": "n",
+      "text": "Hold the shrine through {n} waves",
+      "status": "draft"
+    },
+    {
+      "id": "survival_rise",
+      "mode": "survival",
+      "event": "rise",
+      "kind": "point",
+      "args": "site",
+      "text": "Dead rise: {site}",
+      "status": "draft"
+    },
+    {
+      "id": "survival_rise_unknown",
+      "mode": "survival",
+      "event": "rise_unknown",
+      "kind": "point",
+      "args": "-",
+      "text": "The dead rise",
+      "status": "draft"
+    },
+    {
+      "id": "survival_rest",
+      "mode": "survival",
+      "event": "rest",
+      "kind": "point",
+      "args": "n,gold",
+      "text": "Wave {n} at rest, +{gold} gold",
+      "status": "draft"
+    },
+    {
+      "id": "survival_rest_plain",
+      "mode": "survival",
+      "event": "rest_plain",
+      "kind": "point",
+      "args": "n",
+      "text": "Wave {n} laid to rest",
+      "status": "draft"
+    },
+    {
+      "id": "survival_shrine_falling",
+      "mode": "survival",
+      "event": "shrine_falling",
+      "kind": "point",
+      "args": "-",
+      "text": "The dead take the shrine",
+      "status": "draft"
+    },
+    {
+      "id": "survival_stands",
+      "mode": "survival",
+      "event": "stands",
+      "kind": "point",
+      "args": "-",
+      "text": "The shrine stands till dawn",
+      "status": "draft"
+    },
+    {
+      "id": "survival_dead_hold",
+      "mode": "survival",
+      "event": "dead_hold",
+      "kind": "point",
+      "args": "-",
+      "text": "The dead hold the shrine",
+      "status": "draft"
+    }
+  ],
+  "modeLedger": [
+    {
+      "id": "domination_score_0",
+      "mode": "domination",
+      "slot": 0,
+      "label": "Score",
+      "format": "fraction",
+      "team": 0,
+      "status": "draft"
+    },
+    {
+      "id": "domination_score_1",
+      "mode": "domination",
+      "slot": 1,
+      "label": "Score",
+      "format": "fraction",
+      "team": 1,
+      "status": "draft"
+    },
+    {
+      "id": "domination_points_0",
+      "mode": "domination",
+      "slot": 2,
+      "label": "Points held",
+      "format": "fraction",
+      "team": 0,
+      "status": "draft"
+    },
+    {
+      "id": "domination_points_1",
+      "mode": "domination",
+      "slot": 3,
+      "label": "Points held",
+      "format": "fraction",
+      "team": 1,
+      "status": "draft"
+    },
+    {
+      "id": "siege_stage",
+      "mode": "siege",
+      "slot": 0,
+      "label": "Stages taken",
+      "format": "fraction",
+      "team": -1,
+      "status": "draft"
+    },
+    {
+      "id": "siege_strength",
+      "mode": "siege",
+      "slot": 1,
+      "label": "Defence holding",
+      "format": "percent",
+      "team": 1,
+      "status": "draft"
+    },
+    {
+      "id": "siege_time",
+      "mode": "siege",
+      "slot": 2,
+      "label": "Time left",
+      "format": "time",
+      "team": -1,
+      "status": "draft"
+    },
+    {
+      "id": "convoy_progress",
+      "mode": "convoy",
+      "slot": 0,
+      "label": "Road covered",
+      "format": "percent",
+      "team": 0,
+      "status": "draft"
+    },
+    {
+      "id": "convoy_stops",
+      "mode": "convoy",
+      "slot": 1,
+      "label": "Stops held",
+      "format": "plain",
+      "team": 1,
+      "status": "draft"
+    },
+    {
+      "id": "convoy_time",
+      "mode": "convoy",
+      "slot": 2,
+      "label": "Time left",
+      "format": "time",
+      "team": -1,
+      "status": "draft"
+    },
+    {
+      "id": "survival_wave",
+      "mode": "survival",
+      "slot": 0,
+      "label": "Wave",
+      "format": "fraction",
+      "team": -1,
+      "status": "draft"
+    },
+    {
+      "id": "survival_dead",
+      "mode": "survival",
+      "slot": 1,
+      "label": "Dead standing",
+      "format": "plain",
+      "team": 1,
+      "status": "draft"
+    },
+    {
+      "id": "survival_time",
+      "mode": "survival",
+      "slot": 2,
+      "label": "Next wave in",
+      "format": "time",
+      "team": -1,
+      "status": "draft"
+    }
+  ],
+  "waves": [
+    {
+      "id": "moon-1",
+      "set": "moon",
+      "wave": 1,
+      "seconds": 90,
+      "gold": 60,
+      "note": "DRAFT (Phase 4 plan Task 6, question for Kort)"
+    },
+    {
+      "id": "moon-2",
+      "set": "moon",
+      "wave": 2,
+      "seconds": 90,
+      "gold": 60,
+      "note": "DRAFT (Phase 4 plan Task 6, question for Kort)"
+    },
+    {
+      "id": "moon-3",
+      "set": "moon",
+      "wave": 3,
+      "seconds": 100,
+      "gold": 80,
+      "note": "DRAFT (Phase 4 plan Task 6, question for Kort)"
+    },
+    {
+      "id": "moon-4",
+      "set": "moon",
+      "wave": 4,
+      "seconds": 100,
+      "gold": 80,
+      "note": "DRAFT (Phase 4 plan Task 6, question for Kort)"
+    },
+    {
+      "id": "moon-5",
+      "set": "moon",
+      "wave": 5,
+      "seconds": 110,
+      "gold": 100,
+      "note": "DRAFT (Phase 4 plan Task 6, question for Kort)"
+    },
+    {
+      "id": "moon-6",
+      "set": "moon",
+      "wave": 6,
+      "seconds": 120,
+      "gold": 100,
+      "note": "DRAFT (Phase 4 plan Task 6, question for Kort)"
+    },
+    {
+      "id": "moon-7",
+      "set": "moon",
+      "wave": 7,
+      "seconds": 150,
+      "gold": 0,
+      "note": "DRAFT (Phase 4 plan Task 6, question for Kort)"
+    }
+  ],
+  "waveGroups": [
+    {
+      "id": "moon-1-1",
+      "wave": "moon-1",
+      "troop": "revenant",
+      "count": 4,
+      "site": "chapel",
+      "note": "DRAFT (Phase 4 plan Task 6, question for Kort)"
+    },
+    {
+      "id": "moon-1-2",
+      "wave": "moon-1",
+      "troop": "revenant",
+      "count": 4,
+      "site": "ford",
+      "note": "DRAFT (Phase 4 plan Task 6, question for Kort)"
+    },
+    {
+      "id": "moon-2-1",
+      "wave": "moon-2",
+      "troop": "revenant",
+      "count": 4,
+      "site": "chapel",
+      "note": "DRAFT (Phase 4 plan Task 6, question for Kort)"
+    },
+    {
+      "id": "moon-2-2",
+      "wave": "moon-2",
+      "troop": "revenant",
+      "count": 4,
+      "site": "wood",
+      "note": "DRAFT (Phase 4 plan Task 6, question for Kort)"
+    },
+    {
+      "id": "moon-2-3",
+      "wave": "moon-2",
+      "troop": "bonebow",
+      "count": 2,
+      "site": "chapel",
+      "note": "DRAFT (Phase 4 plan Task 6, question for Kort)"
+    },
+    {
+      "id": "moon-2-4",
+      "wave": "moon-2",
+      "troop": "bonebow",
+      "count": 2,
+      "site": "wood",
+      "note": "DRAFT (Phase 4 plan Task 6, question for Kort)"
+    },
+    {
+      "id": "moon-3-1",
+      "wave": "moon-3",
+      "troop": "revenant",
+      "count": 5,
+      "site": "ford",
+      "note": "DRAFT (Phase 4 plan Task 6, question for Kort)"
+    },
+    {
+      "id": "moon-3-2",
+      "wave": "moon-3",
+      "troop": "revenant",
+      "count": 5,
+      "site": "track",
+      "note": "DRAFT (Phase 4 plan Task 6, question for Kort)"
+    },
+    {
+      "id": "moon-3-3",
+      "wave": "moon-3",
+      "troop": "bonebow",
+      "count": 3,
+      "site": "ford",
+      "note": "DRAFT (Phase 4 plan Task 6, question for Kort)"
+    },
+    {
+      "id": "moon-3-4",
+      "wave": "moon-3",
+      "troop": "bonebow",
+      "count": 3,
+      "site": "track",
+      "note": "DRAFT (Phase 4 plan Task 6, question for Kort)"
+    },
+    {
+      "id": "moon-4-1",
+      "wave": "moon-4",
+      "troop": "revenant",
+      "count": 5,
+      "site": "chapel",
+      "note": "DRAFT (Phase 4 plan Task 6, question for Kort)"
+    },
+    {
+      "id": "moon-4-2",
+      "wave": "moon-4",
+      "troop": "revenant",
+      "count": 5,
+      "site": "wood",
+      "note": "DRAFT (Phase 4 plan Task 6, question for Kort)"
+    },
+    {
+      "id": "moon-4-3",
+      "wave": "moon-4",
+      "troop": "bonebow",
+      "count": 3,
+      "site": "chapel",
+      "note": "DRAFT (Phase 4 plan Task 6, question for Kort)"
+    },
+    {
+      "id": "moon-4-4",
+      "wave": "moon-4",
+      "troop": "bonebow",
+      "count": 3,
+      "site": "wood",
+      "note": "DRAFT (Phase 4 plan Task 6, question for Kort)"
+    },
+    {
+      "id": "moon-4-5",
+      "wave": "moon-4",
+      "troop": "reaper",
+      "count": 3,
+      "site": "ford",
+      "note": "DRAFT (Phase 4 plan Task 6, question for Kort)"
+    },
+    {
+      "id": "moon-5-1",
+      "wave": "moon-5",
+      "troop": "revenant",
+      "count": 6,
+      "site": "ford",
+      "note": "DRAFT (Phase 4 plan Task 6, question for Kort)"
+    },
+    {
+      "id": "moon-5-2",
+      "wave": "moon-5",
+      "troop": "revenant",
+      "count": 6,
+      "site": "track",
+      "note": "DRAFT (Phase 4 plan Task 6, question for Kort)"
+    },
+    {
+      "id": "moon-5-3",
+      "wave": "moon-5",
+      "troop": "bonebow",
+      "count": 3,
+      "site": "chapel",
+      "note": "DRAFT (Phase 4 plan Task 6, question for Kort)"
+    },
+    {
+      "id": "moon-5-4",
+      "wave": "moon-5",
+      "troop": "bonebow",
+      "count": 3,
+      "site": "wood",
+      "note": "DRAFT (Phase 4 plan Task 6, question for Kort)"
+    },
+    {
+      "id": "moon-5-5",
+      "wave": "moon-5",
+      "troop": "stalker",
+      "count": 2,
+      "site": "chapel",
+      "note": "DRAFT (Phase 4 plan Task 6, question for Kort)"
+    },
+    {
+      "id": "moon-5-6",
+      "wave": "moon-5",
+      "troop": "stalker",
+      "count": 2,
+      "site": "wood",
+      "note": "DRAFT (Phase 4 plan Task 6, question for Kort)"
+    },
+    {
+      "id": "moon-6-1",
+      "wave": "moon-6",
+      "troop": "revenant",
+      "count": 6,
+      "site": "chapel",
+      "note": "DRAFT (Phase 4 plan Task 6, question for Kort)"
+    },
+    {
+      "id": "moon-6-2",
+      "wave": "moon-6",
+      "troop": "revenant",
+      "count": 6,
+      "site": "wood",
+      "note": "DRAFT (Phase 4 plan Task 6, question for Kort)"
+    },
+    {
+      "id": "moon-6-3",
+      "wave": "moon-6",
+      "troop": "bonebow",
+      "count": 4,
+      "site": "ford",
+      "note": "DRAFT (Phase 4 plan Task 6, question for Kort)"
+    },
+    {
+      "id": "moon-6-4",
+      "wave": "moon-6",
+      "troop": "bonebow",
+      "count": 4,
+      "site": "track",
+      "note": "DRAFT (Phase 4 plan Task 6, question for Kort)"
+    },
+    {
+      "id": "moon-6-5",
+      "wave": "moon-6",
+      "troop": "reaper",
+      "count": 2,
+      "site": "chapel",
+      "note": "DRAFT (Phase 4 plan Task 6, question for Kort)"
+    },
+    {
+      "id": "moon-6-6",
+      "wave": "moon-6",
+      "troop": "reaper",
+      "count": 2,
+      "site": "wood",
+      "note": "DRAFT (Phase 4 plan Task 6, question for Kort)"
+    },
+    {
+      "id": "moon-6-7",
+      "wave": "moon-6",
+      "troop": "hexer",
+      "count": 1,
+      "site": "track",
+      "note": "DRAFT (Phase 4 plan Task 6, question for Kort)"
+    },
+    {
+      "id": "moon-7-1",
+      "wave": "moon-7",
+      "troop": "revenant",
+      "count": 4,
+      "site": "chapel",
+      "note": "DRAFT (Phase 4 plan Task 6, question for Kort)"
+    },
+    {
+      "id": "moon-7-2",
+      "wave": "moon-7",
+      "troop": "revenant",
+      "count": 4,
+      "site": "ford",
+      "note": "DRAFT (Phase 4 plan Task 6, question for Kort)"
+    },
+    {
+      "id": "moon-7-3",
+      "wave": "moon-7",
+      "troop": "revenant",
+      "count": 4,
+      "site": "wood",
+      "note": "DRAFT (Phase 4 plan Task 6, question for Kort)"
+    },
+    {
+      "id": "moon-7-4",
+      "wave": "moon-7",
+      "troop": "revenant",
+      "count": 4,
+      "site": "track",
+      "note": "DRAFT (Phase 4 plan Task 6, question for Kort)"
+    },
+    {
+      "id": "moon-7-5",
+      "wave": "moon-7",
+      "troop": "bonebow",
+      "count": 2,
+      "site": "chapel",
+      "note": "DRAFT (Phase 4 plan Task 6, question for Kort)"
+    },
+    {
+      "id": "moon-7-6",
+      "wave": "moon-7",
+      "troop": "bonebow",
+      "count": 2,
+      "site": "ford",
+      "note": "DRAFT (Phase 4 plan Task 6, question for Kort)"
+    },
+    {
+      "id": "moon-7-7",
+      "wave": "moon-7",
+      "troop": "bonebow",
+      "count": 2,
+      "site": "wood",
+      "note": "DRAFT (Phase 4 plan Task 6, question for Kort)"
+    },
+    {
+      "id": "moon-7-8",
+      "wave": "moon-7",
+      "troop": "bonebow",
+      "count": 2,
+      "site": "track",
+      "note": "DRAFT (Phase 4 plan Task 6, question for Kort)"
+    },
+    {
+      "id": "moon-7-9",
+      "wave": "moon-7",
+      "troop": "reaper",
+      "count": 2,
+      "site": "chapel",
+      "note": "DRAFT (Phase 4 plan Task 6, question for Kort)"
+    },
+    {
+      "id": "moon-7-10",
+      "wave": "moon-7",
+      "troop": "reaper",
+      "count": 2,
+      "site": "ford",
+      "note": "DRAFT (Phase 4 plan Task 6, question for Kort)"
+    },
+    {
+      "id": "moon-7-11",
+      "wave": "moon-7",
+      "troop": "stalker",
+      "count": 2,
+      "site": "wood",
+      "note": "DRAFT (Phase 4 plan Task 6, question for Kort)"
+    },
+    {
+      "id": "moon-7-12",
+      "wave": "moon-7",
+      "troop": "stalker",
+      "count": 2,
+      "site": "track",
+      "note": "DRAFT (Phase 4 plan Task 6, question for Kort)"
+    },
+    {
+      "id": "moon-7-13",
+      "wave": "moon-7",
+      "troop": "hexer",
+      "count": 1,
+      "site": "chapel",
+      "note": "DRAFT (Phase 4 plan Task 6, question for Kort)"
+    },
+    {
+      "id": "moon-7-14",
+      "wave": "moon-7",
+      "troop": "hexer",
+      "count": 1,
+      "site": "track",
+      "note": "DRAFT (Phase 4 plan Task 6, question for Kort)"
     }
   ]
 }

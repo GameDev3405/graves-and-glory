@@ -1,4 +1,4 @@
-> **Current state (2026-10-29):** `main` is the 0.5.0 development integration — five Houses, thirty troops, six commander classes, in-match levels and gear, the War Table, and the builder server. It is not a published release. Start with [docs/BOARD.md](docs/BOARD.md) for one row per task, then [docs/HANDOFF.md](docs/HANDOFF.md) for what is done, in progress and blocked; [docs/BACKLOG.md](docs/BACKLOG.md), [docs/DECISIONS.md](docs/DECISIONS.md) and [docs/SETUP.md](docs/SETUP.md) are the active records. Active work is on `work/*` branches; the War Table, House-model and animation lanes are rebased and green on their `*-rebase` branches and await review; historical lanes are preserved under `archive/2026-10/*` tags.
+> **Current state (2026-11-04):** `main` is the 0.5.0 development integration heading for 1.0.0 (a draft of the player notes is in [docs/releases/1.0.0-notes-DRAFT.md](docs/releases/1.0.0-notes-DRAFT.md)). It has five Houses, thirty troops, in-match levels and gear, the War Table with a six-seat lobby, the Domination, Siege and Convoy modes, the Survival mode, campaign battles 1 to 6 (battle 6 is a Siege with allied bots from all five Houses, and difficulty ramps up), bots, and the dedicated server kit. Commander gear is in: four sets, 28 pieces, 12 relics on keys 1 to 3, the Arsenal gear screen (I key in camp), the Blacksmith and Forge. The commander classes and the H key are removed. Tier II and III art is merged for all five Houses, with the House identity set and recolour (Graveborn violet, Tidecallers sea blue), the Pixabay audio cues timed to the hit, and a prewarmed troop spawn that cuts round start from about 105 ms to 29 ms. Pending, not in `main`: gear art (worn gear shows as stand-in vanilla items), gear animations, new gear and relic sounds (candidates only), the animation rework and Kort's own map redesigns. It is not a published release. Start with [docs/BOARD.md](docs/BOARD.md) for one row per task, then [docs/HANDOFF.md](docs/HANDOFF.md); [docs/BACKLOG.md](docs/BACKLOG.md), [docs/DECISIONS.md](docs/DECISIONS.md) and [docs/SETUP.md](docs/SETUP.md) are the active records. Historical lanes are preserved under `archive/2026-10/*` tags.
 
 
 
@@ -11,7 +11,7 @@ work. This candidate reworks the solo game: shots that fly before they land,
 lines that fight on to a last stand (nothing routs in 0.5.0), recruits deploying from held points, Easy, Normal and
 Hard bots, a guided first campaign battle and a report after every match (see
 "0.4.0 solo rework candidate" below). Version 0.5.0 adds five Houses (thirty troops), schema 2 collections that migrate
-from older camps, six commander classes, in-match levels and gear tiers with the Armoury, the War Table pages, the banner page, and the live builder server; it
+from older camps, commander gear and relics, in-match levels and gear tiers, the Arsenal and Forge, the War Table pages, the banner page, and the live builder server; it
 remains a local candidate for Kort's playtest only
 (docs/PHASE-2-PLAYTEST.md). Nothing in this update has been published
 automatically.
@@ -20,8 +20,7 @@ Clients must match the server's game version and build identity. A missing or
 incompatible pack receives an update instruction before entering the world.
 This compatibility check does not authenticate progression or prevent cheating.
 
-This modpack currently ships no third-party resource packs. Its look is
-its own built-in assets plus the shaders credited below. Excalibur is approved in principle for the friends' pack (M4) but is not in this candidate.
+This modpack's look is its own built-in assets plus the shaders credited below, and one third-party resource pack: Excalibur 1.20, bundled unmodified and pinned by hash. Excalibur resource pack by Maffhew, used with permission, unmodified (CC BY-NC-ND 3.0).
 
 Upgrades copy legacy Bannerbound collections, deployment data and visual
 preferences into the current folders without overwriting current files. When
@@ -45,7 +44,7 @@ The ten Commons of the five Houses are yours from the start. The other twenty tr
 
 Earn 80 collection gold for completing a regular match, plus 40 for victory. Practice awards 40. A match must last at least three minutes to award gold; leaving before the result earns none. A roll costs 100 gold and draws from the House you pick, by rarity: a new troop is unlocked, and a duplicate raises its stars (a duplicate of a full-star troop pays shards). A chosen buy costs 300 gold and Epics are guaranteed by pity. Houses also pay shards, Renown and Mastery after matches of three minutes or more. There are no real-money rolls. Collections and army arrangements save automatically with the Minecraft player profile and travel to friends' hosts; the host also keeps a saved copy. This is a local friends-hosted economy, not a centrally secured competitive service.
 
-Pick one of six commander classes in the war council. Heroes lead from the front: the Champion has 4 more health and his infantry within 10 blocks deal 10% more damage; the Reaver deals 2 more attack damage and respawns in 9 seconds instead of 12; the Warden's ranged troops deal 10% more damage and reach 2 blocks further. Generals run the army: the Marshal's troops train in 20% less time; the Warlock's magic troops cost 20% less gold in battle; each point the Quartermaster holds pays 2 more gold every income tick. Each class also has an active ability on the ability key (H). Dawn shield troops guard in close compact combat and support heal wounded allies. Dusk casters mark an area before a damaging slowing spell lands. Ranged attacks require line of sight.
+Your commander fights in his gear; the old commander classes and the H key are gone. What you wear sets your role, health, attack and armour, set bonuses and perks. Up to three relics give active abilities on keys 1 to 3. The old class actives live on as relics: Stand Fast, Bloodrush, Mark Prey, Rally Horn, Grave Bloom and Forward Supply, with six more. In camp, press I for the Arsenal (stats, worn gear, relics, filters, compare and equip), and visit the Blacksmith to roll, break down and repair gear at the Forge. Pending: gear art, gear animations and gear sounds. Dawn shield troops guard in close compact combat and support heal wounded allies. Dusk casters mark an area before a damaging slowing spell lands. Ranged attacks require line of sight.
 
 ## Five purposeful battlefields
 
@@ -73,11 +72,11 @@ Six-second skippable camera entrances feature the commander and army with origin
 
 ## Dark fantasy presentation
 
-The war council, collection, class selection, command controls and battlefield panels share original dark ironwork, muted gold trim and readable faction colors. Collection portraits render the actual equipped troop models. Numbered deployment slots show troop roles and weapons; tooltips identify the full unit.
+The war council, collection, gear role, command controls and battlefield panels share original dark ironwork, muted gold trim and readable faction colors. Collection portraits render the actual equipped troop models. Numbered deployment slots show troop roles and weapons; tooltips identify the full unit.
 
 Visuals & sound in the lobby lets each player choose one shader: Complementary Reimagined r5.5.1, Complementary Unbound r5.5.1, MakeUp Ultra Fast 9.5g, or shaders off. Shader changes are saved locally. Shaders begin off for reliable battle performance on a range of PCs; selecting one loads it inside the game. Complementary's pinned releases have an explicit modpack distribution grant; the latest shader versions have different distribution terms and are not silently substituted.
 
-The look is the modpack's own. This candidate ships no third-party resource packs, so there is no world texture choice: Minecraft's textures come from each player's own game, and the built-in armory pack adds the weapon and armour overlays. Each player's graphics choices are independent in multiplayer.
+The look is the modpack's own plus the bundled Excalibur 1.20 resource pack. Minecraft's textures come from each player's own game, and the built-in armory and weapons packs sit above Excalibur, so weapons keep the game's own look and only the environment is Excalibur. Each player's graphics choices are independent in multiplayer.
 
 Confirmed commander hits receive a brief ink-and-gold contact accent and restrained camera recoil. Choose Off, Subtle (default), or Strong. Ambient troop fights never trigger repeated screen flashes; accents do not stop the simulation, change damage or interrupt other players. The camera entrance is sampled every rendered frame instead of stepping its coordinates at the simulation tick rate.
 
@@ -87,17 +86,19 @@ Sodium, Iris, Lithium, FerriteCore, ImmediatelyFast and ModernFix support render
 
 Requires an account owning Minecraft: Java Edition. Built for Minecraft 1.20.1, Fabric Loader 0.16.14 and Fabric API 0.92.2+1.20.1. Install the Modrinth .mrpack in Prism Launcher or another launcher that imports .mrpack files; it sets up Minecraft and Fabric Loader for the instance and downloads the pinned mods, including Fabric API. Java 17 or newer is required. The plain zip bundles the redistributable Fabric API and expects you to install Fabric Loader yourself. Roblox's Command an Army is inspiration only; Roblox is not required. No Minecraft or Roblox content is included.
 
-A local Modrinth .mrpack candidate, a plain zip and a dedicated-server kit are prepared, with pinned official downloads and a localhost-only dedicated-server configuration template. The title menu works with no launcher-specific runtime files. A Prism Launcher import and start of the 0.3.3 .mrpack was checked on this PC; 0.3.7 has not been installed that way. Dedicated-server and real launcher checks are tracked in the work log; they do not establish Internet reachability. It is not yet a published Modrinth or CurseForge release.
+Three pack formats and a server kit are prepared locally, none published: a Modrinth .mrpack (for Prism Launcher or any launcher that imports .mrpack), a CurseForge modpack zip (`tools/export_curseforge.py`, with `tools/verify_curseforge.py` as its readback check), and a plain zip. The dedicated-server zip is the one way to run a server: it is `tools/server-kit/` (see docs/SERVER-RUNBOOK.md) plus the mod jars, with setup, start, stop, backup, restore and update scripts, a version gate and a whitelist-on configuration on port 25580; it never writes the EULA for you, so you set `eula=true` yourself. The server kit booted, saved and stopped cleanly in a scratch test on 2026-11-02 with no clients. The title menu works with no launcher-specific runtime files. The Modrinth .mrpack install test in a launcher passed. Dedicated-server and real launcher checks are tracked in the work log; they do not establish Internet reachability. It is not yet a published Modrinth or CurseForge release.
 
 Up to eight human commanders, four per faction, each with twenty troops (160 total). A client can host a local-network camp and stay open, or players can join a separately configured dedicated server. Practice stays private. If a launcher supplies an invitation file, it adds an optional action under Play with friends and never starts a connection automatically; an ordinary Prism or Modrinth install has no such file. Remote friends need a reachable server. Direct Internet reachability and an eight-human Internet match have not been independently tested.
 
 ## Verification
 
-Development game runs exercise the physical lobby, paid unlocks, saved profiles, deployment editing, class bonuses, bot objectives, actual combat, client orders, rewards and all team capacities. All twelve map crossings passed with twenty actual pathfinding troops. Two local development clients joined and stayed in a running match with the graphics and animation stack installed. All three shaders ran real 4v4 entrances on this PC. Production installation and final contact-feedback checks are still being verified for this release. Mechanical tests do not establish balance or replace human playtesting. The local development authentication harness is never included in the player package.
+Development game runs exercise the physical lobby, paid unlocks, saved profiles, deployment editing, gear bonuses, bot objectives, actual combat, client orders, rewards and all team capacities. All twelve map crossings passed with twenty actual pathfinding troops. Two local development clients joined and stayed in a running match with the graphics and animation stack installed. All three shaders ran real 4v4 entrances on this PC. Production installation and final contact-feedback checks are still being verified for this release. Mechanical tests do not establish balance or replace human playtesting. The local development authentication harness is never included in the player package.
 
 ## Credits and permissions
 
-Concept and direction: Kort Tjepkema. Implementation, authored environments, animation adjustments, effects and original synthesized sound cues assisted by OpenAI Codex using Melty's modding kit. Original Graves and Glory code and content: MIT; remixes allowed.
+Concept and direction: Kort Tjepkema. Implementation, authored environments, animation adjustments, effects assisted by OpenAI Codex using Melty's modding kit. Sound effects are Pixabay samples (Pixabay Content License). Original Graves and Glory code and content: MIT; remixes allowed.
+
+Excalibur resource pack by Maffhew, used with permission, unmodified (CC BY-NC-ND 3.0).
 
 Inspired by Command an Army on Roblox; no Roblox code, assets or branding included. Minecraft belongs to Mojang/Microsoft. Minecraft models, equipment, textures, particles and stock sounds are read from each player's own game and are not redistributed.
 
@@ -109,7 +110,7 @@ Sodium: CaffeineMC, PolyForm Shield 1.0.0. Iris: IrisShaders contributors, LGPL-
 
 ## Interface and troop detail (0.3.0)
 
-Redesigned battle setup, class selection and barracks with live troop previews, readable Lato body type, and restrained brass selection states. Select a class, then confirm it. Recruitment costs and availability remain server-authoritative.
+Redesigned battle setup, gear role and barracks with live troop previews, readable Lato body type, and restrained brass selection states. Recruitment costs and availability remain server-authoritative.
 
 Armour detail uses Entity Model Features overlays from the built-in armory pack: a tabard, buckle, belt and shoulder pauldrons on player, husk, skeleton and wither skeleton models. Limits: one neutral armour set, so faction colours are not applied to these overlays; the overlays apply to every husk, skeleton and wither skeleton in a Graves and Glory world, (named troops no longer use them: in 0.5.0 troops draw their own models).
 

@@ -38,7 +38,7 @@ final class VisualChecks {
             case 120 -> shot(c,"01-village-gameplay");
             case 140 -> net.minecraft.client.option.KeyBinding.onKeyPressed(net.minecraft.client.util.InputUtil.fromKeyCode(org.lwjgl.glfw.GLFW.GLFW_KEY_R,0));
             case 170 -> shot(c,"02-command-screen");
-            case 190 -> {if(c.currentScreen instanceof GravesAndGloryClient.CommandScreen)c.currentScreen.mouseClicked(c.currentScreen.width/2.0+100,c.currentScreen.height/2.0-30,0);}
+            case 190 -> CommandSelection.select("ranged",false); // the panel from tick 140 stays open; pick the archers (the old screen click picked a shape)
             case 220 -> shot(c,"03-battlefield-map");
             case 240 -> {c.setScreen(null);camera(c,-108,67,-24,-90,10);}
             case 280 -> GravesAndGloryClient.send("barracks");
@@ -55,7 +55,7 @@ final class VisualChecks {
         if(GravesAndGlory.battle!=null&&GravesAndGlory.battle.testStage>=8&&elapsed>700){
             if(!showcaseStarted){showcaseStarted=true;showcase=0;}
             showcase++;
-            if(showcase==1){c.getServer().execute(()->GravesAndGlory.battle.prepareVisualSquads(false));camera(c,-76,80,-21,0,35);}
+            if(showcase==1){c.getServer().execute(()->{var b=GravesAndGlory.battle;b.prepareVisualSquads(false);b.issue(b.testSquad,"all","hold","block",b.testSquad.target,-90,-1);});camera(c,-76,80,-21,0,35);} // a Hold order (Task 2): each formation forms round the point with its shield troops closed into the wall in front (the default Hold leaves them where they deployed)
             for(int i=0;i<Spec.FORMATIONS.length;i++){
                 if(showcase==20+i*100)GravesAndGloryClient.send("formation:"+Spec.FORMATIONS[i].id());
                 if(showcase==100+i*100)shot(c,"formation-"+Spec.FORMATIONS[i].id());

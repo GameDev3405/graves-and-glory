@@ -1,0 +1,836 @@
+{
+ "camp/archive": {
+  "blockEntities": 6,
+  "blocks": 1387,
+  "door": "west",
+  "doorSpan": [
+   8,
+   16
+  ],
+  "footprint": [
+   23,
+   31
+  ],
+  "group": "camp",
+  "id": "camp/archive",
+  "sha256": "da1a9603a4bcae2aa3713f8c072f8e2c23c1cac2aa2ce96f56bfce72d14d665b",
+  "size": [
+   23,
+   14,
+   31
+  ]
+ },
+ "camp/command_tent": {
+  "blockEntities": 16,
+  "blocks": 1577,
+  "door": "south",
+  "doorSpan": [
+   3,
+   21
+  ],
+  "footprint": [
+   25,
+   15
+  ],
+  "group": "camp",
+  "id": "camp/command_tent",
+  "sha256": "af2fed0e7027cf969b33a93a9705223c6719e457dcc1e1bc88fb209c426a58a3",
+  "size": [
+   25,
+   14,
+   15
+  ]
+ },
+ "camp/graveyard": {
+  "blockEntities": 2,
+  "blocks": 2710,
+  "door": "south",
+  "doorSpan": [
+   8,
+   14
+  ],
+  "footprint": [
+   23,
+   23
+  ],
+  "group": "camp",
+  "id": "camp/graveyard",
+  "sha256": "450998980146ef4ed3468aa6db424f0d4bf43e540fe7ea887d2a2eff2abcaedc",
+  "size": [
+   23,
+   16,
+   23
+  ]
+ },
+ "camp/parade": {
+  "blockEntities": 14,
+  "blocks": 1243,
+  "door": "open",
+  "doorSpan": null,
+  "footprint": [
+   41,
+   33
+  ],
+  "group": "camp",
+  "id": "camp/parade",
+  "sha256": "8e79cf52d9eedae68e6c24deebad045effeeb3e168ee054fc8e25ea8e48715b3",
+  "size": [
+   41,
+   6,
+   33
+  ]
+ },
+ "camp/ridge_stair": {
+  "blockEntities": 0,
+  "blocks": 1141,
+  "door": "none",
+  "doorSpan": null,
+  "footprint": [
+   13,
+   13
+  ],
+  "group": "camp",
+  "id": "camp/ridge_stair",
+  "sha256": "da2d0431c2cea184a681a938199518b4a28bc1cb8ae05837b7e6e74e467632c8",
+  "size": [
+   13,
+   14,
+   13
+  ]
+ },
+ "camp/tent_gilded": {
+  "blockEntities": 9,
+  "blocks": 580,
+  "door": "none",
+  "doorSpan": null,
+  "footprint": [
+   13,
+   11
+  ],
+  "group": "camp",
+  "id": "camp/tent_gilded",
+  "sha256": "4a6fbccbc4f42c0de6bf43524fc2a88447244ee7444f4d9ded7d9dc1a28285ef",
+  "size": [
+   13,
+   12,
+   11
+  ]
+ },
+ "camp/tent_ironclad": {
+  "blockEntities": 8,
+  "blocks": 504,
+  "door": "none",
+  "doorSpan": null,
+  "footprint": [
+   13,
+   11
+  ],
+  "group": "camp",
+  "id": "camp/tent_ironclad",
+  "sha256": "d4398241599f00d3c2afb47f82eaea872b9e3ab59e1f007ab0dbfd7d8b798388",
+  "size": [
+   13,
+   12,
+   11
+  ]
+ },
+ "camp/tent_tidecallers": {
+  "blockEntities": 6,
+  "blocks": 564,
+  "door": "none",
+  "doorSpan": null,
+  "footprint": [
+   13,
+   11
+  ],
+  "group": "camp",
+  "id": "camp/tent_tidecallers",
+  "sha256": "9759b9ea9838f93f438ccb7bcc426025951ad4bce7ef2b62a023690714cc611f",
+  "size": [
+   13,
+   12,
+   11
+  ]
+ },
+ "camp/tent_wildmoot": {
+  "blockEntities": 5,
+  "blocks": 491,
+  "door": "none",
+  "doorSpan": null,
+  "footprint": [
+   13,
+   11
+  ],
+  "group": "camp",
+  "id": "camp/tent_wildmoot",
+  "sha256": "93798ccc449f44579765253b8a3dc022a2ea375fc3480e026358297e3d23add8",
+  "size": [
+   13,
+   12,
+   11
+  ]
+ },
+ "camp/training_yard": {
+  "blockEntities": 7,
+  "blocks": 5670,
+  "door": "east",
+  "doorSpan": [
+   11,
+   20
+  ],
+  "footprint": [
+   23,
+   31
+  ],
+  "group": "camp",
+  "id": "camp/training_yard",
+  "sha256": "6d0a60cf4ada3a46ac79974e8766a6ae624ca733274652035f7c2edd5f631291",
+  "size": [
+   23,
+   8,
+   31
+  ]
+ },
+ "camp/war_gates": {
+  "blockEntities": 8,
+  "blocks": 1600,
+  "door": "north",
+  "doorSpan": [
+   7,
+   29
+  ],
+  "footprint": [
+   37,
+   11
+  ],
+  "group": "camp",
+  "id": "camp/war_gates",
+  "sha256": "a8ec4dbc00d34a582a20f539a192dd1c8c8d1fb5353b3185073dc825aee14b3e",
+  "size": [
+   37,
+   16,
+   11
+  ]
+ },
+ "frostmarch/lodge": {
+  "blockEntities": 19,
+  "blocks": 7025,
+  "door": "east",
+  "doorSpan": [
+   12,
+   16
+  ],
+  "footprint": [
+   27,
+   19
+  ],
+  "group": "frostmarch",
+  "id": "frostmarch/lodge",
+  "sha256": "917b0e77a2c5e7da66357738306cdaf3010f155a88f0a602dfca74df838d534a",
+  "size": [
+   27,
+   14,
+   19
+  ]
+ },
+ "frostmarch/refuge": {
+  "blockEntities": 10,
+  "blocks": 4114,
+  "door": "north",
+  "doorSpan": [
+   5,
+   14
+  ],
+  "footprint": [
+   21,
+   17
+  ],
+  "group": "frostmarch",
+  "id": "frostmarch/refuge",
+  "sha256": "55df4d011672b2efbf3977a81775a29602a6ded2ac25d133c2bee6cdbc690563",
+  "size": [
+   21,
+   12,
+   17
+  ]
+ },
+ "frostmarch/signal_tower": {
+  "blockEntities": 8,
+  "blocks": 4647,
+  "door": "north",
+  "doorSpan": [
+   6,
+   8
+  ],
+  "footprint": [
+   15,
+   15
+  ],
+  "group": "frostmarch",
+  "id": "frostmarch/signal_tower",
+  "sha256": "d6bad8db1d5684c976515ab8181c2a09e87390823a79cb6400ebde566156e9ef",
+  "size": [
+   15,
+   21,
+   15
+  ]
+ },
+ "hollowwood/chapel": {
+  "blockEntities": 2,
+  "blocks": 11790,
+  "door": "south",
+  "doorSpan": [
+   5,
+   9
+  ],
+  "footprint": [
+   29,
+   23
+  ],
+  "group": "hollowwood",
+  "id": "hollowwood/chapel",
+  "sha256": "acae57cbffee995bcc05a0f9364ed7f9bfd800f70f38c365119a9b44e3831c3a",
+  "size": [
+   29,
+   18,
+   23
+  ]
+ },
+ "hollowwood/logging_camp": {
+  "blockEntities": 9,
+  "blocks": 1862,
+  "door": "east",
+  "doorSpan": [
+   4,
+   4
+  ],
+  "footprint": [
+   19,
+   17
+  ],
+  "group": "hollowwood",
+  "id": "hollowwood/logging_camp",
+  "sha256": "33b704a81c9bf603f6890d07d0721ea12979f923e25771e365b1e560e3e2d0a2",
+  "size": [
+   19,
+   6,
+   17
+  ]
+ },
+ "hollowwood/moon_shrine": {
+  "blockEntities": 0,
+  "blocks": 6842,
+  "door": "south",
+  "doorSpan": [
+   10,
+   12
+  ],
+  "footprint": [
+   23,
+   19
+  ],
+  "group": "hollowwood",
+  "id": "hollowwood/moon_shrine",
+  "sha256": "b9b9fe845ad2381d903301bd5c75d5b3adfa2d7b8415edf6e1067f1c02e57578",
+  "size": [
+   23,
+   16,
+   19
+  ]
+ },
+ "hollowwood/sawmill": {
+  "blockEntities": 8,
+  "blocks": 5948,
+  "door": "south",
+  "doorSpan": [
+   3,
+   21
+  ],
+  "footprint": [
+   25,
+   19
+  ],
+  "group": "hollowwood",
+  "id": "hollowwood/sawmill",
+  "sha256": "c5e774d6c5e9a5bc9221d806714088c10bbe4542f69d5246d12d713415f9459a",
+  "size": [
+   25,
+   13,
+   19
+  ]
+ },
+ "ironhold/curtain": {
+  "blockEntities": 2,
+  "blocks": 2927,
+  "door": "east",
+  "doorSpan": [
+   3,
+   27
+  ],
+  "footprint": [
+   5,
+   31
+  ],
+  "group": "ironhold",
+  "id": "ironhold/curtain",
+  "sha256": "5ad9b8446b602eed1bf39d776a06a51b674148bf0478366e035bbe22c0aa08fc",
+  "size": [
+   5,
+   19,
+   31
+  ]
+ },
+ "ironhold/garrison": {
+  "blockEntities": 59,
+  "blocks": 10621,
+  "door": "north",
+  "doorSpan": [
+   13,
+   17
+  ],
+  "footprint": [
+   31,
+   23
+  ],
+  "group": "ironhold",
+  "id": "ironhold/garrison",
+  "sha256": "f887359e83e48c6314399b0d965d3ae5e8794bf2ad40911eafbfc2b59fd3344e",
+  "size": [
+   31,
+   15,
+   23
+  ]
+ },
+ "ironhold/gate": {
+  "blockEntities": 8,
+  "blocks": 5494,
+  "door": "east",
+  "doorSpan": [
+   14,
+   32
+  ],
+  "footprint": [
+   7,
+   47
+  ],
+  "group": "ironhold",
+  "id": "ironhold/gate",
+  "sha256": "63c5a6af005bbc5d938e01b23cb7f4934060c4dc2eb69bc3e8b39a5af580fde9",
+  "size": [
+   7,
+   17,
+   47
+  ]
+ },
+ "ironhold/gate_intact": {
+  "blockEntities": 8,
+  "blocks": 5494,
+  "door": "east",
+  "doorSpan": [
+   17,
+   29
+  ],
+  "footprint": [
+   7,
+   47
+  ],
+  "group": "ironhold",
+  "id": "ironhold/gate_intact",
+  "sha256": "cb4f0ecabebcaee5b650660931f31c6a63850c431c3220c01df0998b0d7b6015",
+  "size": [
+   7,
+   17,
+   47
+  ]
+ },
+ "ironhold/hay_barn": {
+  "blockEntities": 5,
+  "blocks": 6119,
+  "door": "east",
+  "doorSpan": [
+   6,
+   7
+  ],
+  "footprint": [
+   25,
+   19
+  ],
+  "group": "ironhold",
+  "id": "ironhold/hay_barn",
+  "sha256": "c3dd46f9028a11d3392eb73d5fc5647aa38a1ee39d8409c67175647f2bdca638",
+  "size": [
+   25,
+   13,
+   19
+  ]
+ },
+ "ironhold/keep": {
+  "blockEntities": 40,
+  "blocks": 27896,
+  "door": "north",
+  "doorSpan": [
+   7,
+   39
+  ],
+  "footprint": [
+   47,
+   27
+  ],
+  "group": "ironhold",
+  "id": "ironhold/keep",
+  "sha256": "63d2fba0d5d35061eccd4281e41b2a4b1a40877403674cba1b9c3606e2c8a30c",
+  "size": [
+   47,
+   22,
+   27
+  ]
+ },
+ "ironhold/ward": {
+  "blockEntities": 0,
+  "blocks": 840,
+  "door": "open",
+  "doorSpan": null,
+  "footprint": [
+   3,
+   35
+  ],
+  "group": "ironhold",
+  "id": "ironhold/ward",
+  "sha256": "1467c69a68c50b6b9a88a8b66acfaf215862935444c36b97f79cdd808d45801f",
+  "size": [
+   3,
+   8,
+   35
+  ]
+ },
+ "ironhold/ward_south": {
+  "blockEntities": 0,
+  "blocks": 408,
+  "door": "open",
+  "doorSpan": null,
+  "footprint": [
+   3,
+   17
+  ],
+  "group": "ironhold",
+  "id": "ironhold/ward_south",
+  "sha256": "5d69767cda7a41be0ee2f1751b7bbbea24eb1d777c0ee804cc6fc44ebb24c3b8",
+  "size": [
+   3,
+   8,
+   17
+  ]
+ },
+ "kingsfield/outpost": {
+  "blockEntities": 16,
+  "blocks": 5457,
+  "door": "west",
+  "doorSpan": [
+   20,
+   26
+  ],
+  "footprint": [
+   47,
+   47
+  ],
+  "group": "kingsfield",
+  "id": "kingsfield/outpost",
+  "sha256": "8bd8a0fa861fa2b874b81319c4f3f2a05f5eec9f6debca5efc848e77b4475edf",
+  "size": [
+   47,
+   14,
+   47
+  ]
+ },
+ "kit/customs": {
+  "blockEntities": 15,
+  "blocks": 3617,
+  "door": "north",
+  "doorSpan": [
+   8,
+   12
+  ],
+  "footprint": [
+   19,
+   15
+  ],
+  "group": "kit",
+  "id": "kit/customs",
+  "sha256": "e26c0882b05424098fdb5e55d7854b946594fbb3d4f87a75995fb1221e2bc0d6",
+  "size": [
+   19,
+   13,
+   15
+  ]
+ },
+ "kit/farm": {
+  "blockEntities": 0,
+  "blocks": 1539,
+  "door": "open",
+  "doorSpan": null,
+  "footprint": [
+   27,
+   19
+  ],
+  "group": "kit",
+  "id": "kit/farm",
+  "sha256": "62ed40fb0fb60b425a4f7c40a62f4af1bdf72f98879df350a27fa04d5d835f43",
+  "size": [
+   27,
+   3,
+   19
+  ]
+ },
+ "kit/house_a": {
+  "blockEntities": 8,
+  "blocks": 2073,
+  "door": "east",
+  "doorSpan": [
+   6,
+   6
+  ],
+  "footprint": [
+   15,
+   13
+  ],
+  "group": "kit",
+  "id": "kit/house_a",
+  "sha256": "52ac115655624e11bb4d22cd4bec4880345331e44fae58471be56846d4da48f5",
+  "size": [
+   15,
+   11,
+   13
+  ]
+ },
+ "kit/house_b": {
+  "blockEntities": 11,
+  "blocks": 3237,
+  "door": "east",
+  "doorSpan": [
+   6,
+   6
+  ],
+  "footprint": [
+   15,
+   13
+  ],
+  "group": "kit",
+  "id": "kit/house_b",
+  "sha256": "aba9cfcd8e16e63c8335bcff973b5e24d2f5489dff63786b1fb924715528f0f4",
+  "size": [
+   15,
+   17,
+   13
+  ]
+ },
+ "kit/market": {
+  "blockEntities": 16,
+  "blocks": 1701,
+  "door": "east",
+  "doorSpan": [
+   4,
+   5
+  ],
+  "footprint": [
+   19,
+   9
+  ],
+  "group": "kit",
+  "id": "kit/market",
+  "sha256": "010955e87ce8cf32ef8bdfb30fce2f0aa2850c5e422f693749fcea33356a44ca",
+  "size": [
+   19,
+   10,
+   9
+  ]
+ },
+ "kit/shrine": {
+  "blockEntities": 0,
+  "blocks": 6555,
+  "door": "south",
+  "doorSpan": [
+   3,
+   19
+  ],
+  "footprint": [
+   23,
+   19
+  ],
+  "group": "kit",
+  "id": "kit/shrine",
+  "sha256": "67ee72cc252630a05c0fde5c0a776feaa2e624dba560823cc8c7ef078a0ece48",
+  "size": [
+   23,
+   15,
+   19
+  ]
+ },
+ "kit/warehouse": {
+  "blockEntities": 137,
+  "blocks": 5598,
+  "door": "north",
+  "doorSpan": [
+   10,
+   14
+  ],
+  "footprint": [
+   25,
+   19
+  ],
+  "group": "kit",
+  "id": "kit/warehouse",
+  "sha256": "af262186b4afcce65d9558d7846a3120ac42a0b02333e196937bed5d245fe435",
+  "size": [
+   25,
+   12,
+   19
+  ]
+ },
+ "kit/watchtower": {
+  "blockEntities": 4,
+  "blocks": 2057,
+  "door": "west",
+  "doorSpan": [
+   4,
+   6
+  ],
+  "footprint": [
+   11,
+   11
+  ],
+  "group": "kit",
+  "id": "kit/watchtower",
+  "sha256": "70620093dba2b0395022557dee4d4b803f947ccf464b2345096cc1345bed87dc",
+  "size": [
+   11,
+   17,
+   11
+  ]
+ },
+ "rivergate/mill": {
+  "blockEntities": 9,
+  "blocks": 6384,
+  "door": "east",
+  "doorSpan": [
+   12,
+   12
+  ],
+  "footprint": [
+   19,
+   21
+  ],
+  "group": "rivergate",
+  "id": "rivergate/mill",
+  "sha256": "cb6bbac080c782057b8c3c620e3144f6d77eb8b7d8d4dd66193a7d5a4b2e81de",
+  "size": [
+   19,
+   16,
+   21
+  ]
+ },
+ "supply/frostmarch": {
+  "blockEntities": 44,
+  "blocks": 9931,
+  "door": "south",
+  "doorSpan": [
+   11,
+   16
+  ],
+  "footprint": [
+   31,
+   37
+  ],
+  "group": "supply",
+  "id": "supply/frostmarch",
+  "sha256": "21324e89a7a41d1e90f450c5a56f08d754a08e3c900279d98c329667a191af13",
+  "size": [
+   31,
+   9,
+   37
+  ]
+ },
+ "supply/hollowwood": {
+  "blockEntities": 41,
+  "blocks": 9931,
+  "door": "south",
+  "doorSpan": [
+   11,
+   16
+  ],
+  "footprint": [
+   31,
+   37
+  ],
+  "group": "supply",
+  "id": "supply/hollowwood",
+  "sha256": "7ed152cf24236072aa5c2fd3f0d5ab343a1ffe9904906f0b264a1c966b762f45",
+  "size": [
+   31,
+   9,
+   37
+  ]
+ },
+ "supply/ironhold": {
+  "blockEntities": 43,
+  "blocks": 9931,
+  "door": "south",
+  "doorSpan": [
+   11,
+   16
+  ],
+  "footprint": [
+   31,
+   37
+  ],
+  "group": "supply",
+  "id": "supply/ironhold",
+  "sha256": "28bff898b2b8f7e76cb3e5021388c8a499022eb0b47ec03a0c177812cc581bed",
+  "size": [
+   31,
+   9,
+   37
+  ]
+ },
+ "supply/kingsfield": {
+  "blockEntities": 47,
+  "blocks": 9931,
+  "door": "south",
+  "doorSpan": [
+   11,
+   16
+  ],
+  "footprint": [
+   31,
+   37
+  ],
+  "group": "supply",
+  "id": "supply/kingsfield",
+  "sha256": "9fd6f432a8f34067bb008c9147a924fc05ffb28e02fce3aeda427308ad412288",
+  "size": [
+   31,
+   9,
+   37
+  ]
+ },
+ "supply/rivergate": {
+  "blockEntities": 44,
+  "blocks": 9931,
+  "door": "south",
+  "doorSpan": [
+   11,
+   16
+  ],
+  "footprint": [
+   31,
+   37
+  ],
+  "group": "supply",
+  "id": "supply/rivergate",
+  "sha256": "9e49f4f5f3dcfbfa9febef1a1735fb1475619a1c207ab952ac10f4800cdd6117",
+  "size": [
+   31,
+   9,
+   37
+  ]
+ }
+}

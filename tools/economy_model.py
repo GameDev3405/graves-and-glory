@@ -1,5 +1,5 @@
 """The worked economy model of the houses design, section 4.9: hours to a full roster at one star, as a seeded Monte Carlo
-driven by sheets/design.json (the NOT_SHIPPED economyModel row, with the recruitment, rarities, troops and houses sheets).
+driven by sheets/design.json (the NOT_SHIPPED economyModel row, with the recruitment, rarities, troops, houses, campaign, campaignBattles and bonusObjectives sheets).
 Never shipped; balance passes rerun it after editing the sheet.
 
   python tools/economy_model.py             run economyModel.runs players, print the tables, assert the spec 4.9 figures
@@ -21,7 +21,8 @@ import sys
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 TOLERANCE = 0.03
 EXPECTED = {'house mean': 2920, 'five-House mean': 14700, 'P10': 11000, 'median': 14800, 'P90': 18200}
-TARGET_HOURS = (25, 40)   # spec 4.9: a median player completes the roster inside 25 to 40 hours
+TARGET_MEDIAN_HOURS, HOURS_BAND = 29, 0.12   # plan 5.4: a 29 hour median to a full roster, within 12 percent (25.5 to 32.5 hours)
+TARGET_HOURS = (TARGET_MEDIAN_HOURS * (1 - HOURS_BAND), TARGET_MEDIAN_HOURS * (1 + HOURS_BAND))
 # The "next visible goal" table of spec 4.9 for a median player, with the in-match progression design's section 10 rows.
 NEXT_GOALS = (
     ('0 to 2', 'campaign chapter 1, 10 Commons owned, Pact spent', 'first Rare (300 gold or rolls)'),
@@ -35,6 +36,20 @@ NEXT_GOALS = (
 
 def sheets():
     return json.loads((ROOT / 'sheets/design.json').read_text(encoding='utf-8'))
+
+
+def chapter_gold(data, chapter=1):
+    """One-off campaign gold of a chapter from the sheet: per battle the campaign row's completionGold + victoryGold (a win, as
+    Campaign.java pays it) plus the gold of its bonus objective, assuming every bonus is earned. Returns (base, bonus)."""
+    camp = data['campaign'][0]
+    bonus = {b['id']: b['gold'] for b in data['bonusObjectives']}
+    battles = [b for b in data['campaignBattles'] if b['chapter'] == chapter]
+    return (len(battles) * (camp['completionGold'] + camp['victoryGold']), sum(bonus[b['bonus']] for b in battles))
+
+
+def chapter_rare_value(data):
+    """The tier-20 reward Rare is worth one chosen buy of a Rare (rarities.rare.chosenPrice)."""
+    return next(r['chosenPrice'] for r in data['rarities'] if r['id'] == 'rare')
 
 
 def pools(data):
@@ -103,7 +118,10 @@ def main():
     daily_income = m['dailyGold'] / m['hoursPerPlayDay']
     weekly_income = m['weeklyGold'] / (m['hoursPerPlayDay'] * m['playDaysPerWeek'])
     per_hour = match_income + daily_income + weekly_income
-    offsets = m['chapterGold'] + m['chapterRareValue']
+    base_gold, bonus_gold = chapter_gold(data)
+    chapter = base_gold + bonus_gold
+    rare_value = chapter_rare_value(data)
+    offsets = chapter + rare_value
 
     print('Economy model (houses design 4.9): %d runs, seed %d, %d Houses, roll %d gold, chosen buy %d gold, Epic pity %d'
           % (m['runs'], args.seed, len(houses), roll_cost, chosen, pity))
@@ -111,7 +129,8 @@ def main():
           % (match_income, daily_income, weekly_income, per_hour))
     print('Gold for one House: mean %.0f; five Houses: mean %.0f, P10 %d, median %d, P90 %d'
           % (got['house mean'], got['five-House mean'], got['P10'], got['median'], got['P90']))
-    print('One-off offsets: %d chapter gold and the tier-20 Rare worth %d' % (m['chapterGold'], m['chapterRareValue']))
+    print('One-off offsets: %d chapter gold (%d wins + %d bonuses) and the tier-20 Rare worth %d'
+          % (chapter, base_gold, bonus_gold, rare_value))
     print()
     print('| Player | Gold needed | Hours |')
     print('|---|---|---|')
@@ -133,8 +152,9 @@ def main():
         print('assert %-16s %8.0f  want %6d within 3%%: %s' % (key, got[key], want, 'pass' if ok else 'FAIL'))
         if not ok:
             failures.append(key)
+    print('median hours (unrounded) %.2f; spread P10 %.1f to P90 %.1f' % (hours['median'], hours['P10'], hours['P90']))
     ok = TARGET_HOURS[0] <= hours['median'] <= TARGET_HOURS[1]
-    print('assert median hours     %8.1f  want %d to %d: %s' % (hours['median'], TARGET_HOURS[0], TARGET_HOURS[1], 'pass' if ok else 'FAIL'))
+    print('assert median hours     %8.1f  want %.1f to %.1f: %s' % (hours['median'], TARGET_HOURS[0], TARGET_HOURS[1], 'pass' if ok else 'FAIL'))
     if not ok:
         failures.append('median hours')
     if failures:

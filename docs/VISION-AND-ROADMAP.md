@@ -155,8 +155,8 @@ Modes:
 - **Banner**: carry an enemy banner home, or escort a supply wagon along a
   road while the enemy harasses.
 
-Bots: three difficulties. Hard bots flank the least-defended point, use
-shieldwall against archers, and time their charges.
+Bots: three difficulties. Hard bots flank the least-defended point, hold
+braced shields against archers, and time their charges.
 
 ## 7. Solo: campaign and skirmish
 

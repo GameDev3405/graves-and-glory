@@ -1,0 +1,21 @@
+{
+ "troop": "bonebow",
+ "note": "Graveborn Bone Archer (unit identity, Graveborn): a gaunt skeleton, biped, bare bone limbs 2 px thick, a bare skull with two dim soul-light pinpricks, a dark moss rag hood slumping back to a point, a moss collar, a ribcage under a torn team jerkin, violet sinew on hems, wrists and ankles, a bone quiver, and a skull on a grave-iron pauldron on the bow shoulder (the mark). Tier I only; no flag on the back.",
+ "rig": "biped",
+ "size": [
+  128,
+  64
+ ],
+ "density": 1,
+ "bones": [],
+ "idleArms": "hang",
+ "parts": [],
+ "skins": {
+  "1": "bonebow_s1.png",
+  "2": "bonebow_s2.png",
+  "3": "bonebow_s3.png"
+ },
+ "weapon": "bone_bow",
+ "hand": "left",
+ "portrait": "standard"
+}

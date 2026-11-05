@@ -1,0 +1,21 @@
+{
+ "troop": "ic_mortar",
+ "note": "Ironhold Mortar (unit identity, Ironclad): a scorch-bearded gunner, iron cap, goggles, leather apron, a brass-hooped mortar tube on a back pack board and a powder keg. Tier II brass cap band, spaulder lame and boss, bracers, knee plates, tube hoops; tier III spaulder spikes, greaves, an ember comb, brass trunnions. No back flag.",
+ "rig": "biped",
+ "size": [
+  128,
+  128
+ ],
+ "density": 1,
+ "bones": [],
+ "idleArms": "hang",
+ "parts": [],
+ "skins": {
+  "1": "ic_mortar_s1.png",
+  "2": "ic_mortar_s2.png",
+  "3": "ic_mortar_s3.png"
+ },
+ "weapon": "none",
+ "hand": "right",
+ "portrait": "tall 4"
+}

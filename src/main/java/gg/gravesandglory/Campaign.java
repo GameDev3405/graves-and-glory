@@ -21,20 +21,42 @@ public final class Campaign {
     SocialHub social=new SocialHub();String activeRoom="",preparingRoom="";
     final Map<UUID,Integer> mapVotes=new HashMap<>();
     int size=2,map=0;boolean practice=false,fill=true;
+    /** The mode the next round plays (Phase 4 Task 2): a lobby setting kept across rounds like the map, reset to Domination when a new map does not host it. */
+    String battleMode=Modes.DOMINATION;
+    /** The battleMode a room's round replaced (null outside a room's round); returnLobby puts it back, so a later skirmish or practice plays its own mode. */
+    String battleModeBeforeRoom;
     long introUntil;int serial;String matchId=UUID.randomUUID().toString();
     final Map<UUID,Long> botRespawns=new HashMap<>();
     final Set<UUID> participants=new HashSet<>();
     final Map<UUID,Long> joinedAt=new HashMap<>();
+    /** Ticks each participant has spent away this round in absences that ended (he dropped and came back); his pay is pro-rated by the time he was seated (MatchRules.seatedTicks). */
+    final Map<UUID,Long> awayTicks=new HashMap<>();
+    /** The tick each participant who dropped this round and has not returned left, so a match that ends without him still pays his time seated. */
+    final Map<UUID,Long> leftAt=new HashMap<>();
+    /** What settles a participant who is away at the end: a detached copy of his seat (team, banner, class) taken at the drop. It is in no squads map. */
+    final Map<UUID,GravesAndGlory.Squad> absentSeat=new HashMap<>();
     final Set<UUID> collectionsReady=new HashSet<>();
     /** Players with no server record when they joined; only they may bring a collection from their own computer, once. */
     final Set<UUID> importAllowed=new HashSet<>();
     /** Commanders who left mid-battle, mapped to the bot squad holding their army until they return this round. */
     final Map<UUID,UUID> vacated=new HashMap<>();
-    /** Lessons reached in the campaign battle being fought, when its sheet row teaches: 0 move, 1 formation, 2 attack, 3 barracks, 4 all done. Cleared as each round starts. */
+    /** The tick each dropped commander's slot is released (MatchRules.releaseAt); after it he no longer holds the army. */
+    final Map<UUID,Long> vacatedUntil=new HashMap<>();
+    /** Lessons reached in the campaign battle being fought, when its sheet row teaches: 0 Follow me or Retreat, 1 Formation, 2 Attack or Charge, 3 barracks, 4 all done. Cleared as each round starts. */
     final Map<UUID,Integer> tutorial=new HashMap<>();
     /** AI armies that fell back stay there until rallied, so they do not walk back into the fight. */
     final Set<UUID> botRetreating=new HashSet<>();
     final Map<UUID,String> notices=new HashMap<>();
+    /** The last gear_v1 string each player was sent, so the packet goes out only when it changes. */
+    final Map<UUID,String> gearSent=new HashMap<>();
+    void syncGear(ServerPlayerEntity p){
+        if(!net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking.canSend(p,GravesAndGlory.GEAR))return;
+        String text=GearWire.encode(profile(p.getUuid()));
+        if(text.equals(gearSent.get(p.getUuid())))return;
+        var packet=net.fabricmc.fabric.api.networking.v1.PacketByteBufs.create();packet.writeString(text,GearWire.LIMIT);
+        net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking.send(p,GravesAndGlory.GEAR,packet);
+        gearSent.put(p.getUuid(),text);
+    }
     /** How many notices each player has been sent; the snapshot carries it so a client can tell a notice sent again from one it has already shown. */
     final Map<UUID,Integer> noticeSerials=new HashMap<>();
     /**
@@ -64,6 +86,8 @@ public final class Campaign {
     String difficulty="normal";
     /** The Long March battle being fought (a Spec.CAMPAIGNBATTLES row), or null in practice, pad matches and rooms. Cleared in returnLobby. */
     Spec.CampaignBattlesRow activeBattle;
+    /** The bonus objective of activeBattle (plan 2C.3), or null. Set in soloStart, cleared in returnLobby; the round's events feed it from plan 2C.4. */
+    MarchMath.Tracker bonusTracker;
     /** A battle asked for before its map was built, and the commander who asked; it starts on the first ready tick. */
     Spec.CampaignBattlesRow pendingBattle;UUID pendingCommander;
     /** The winner of the last finished round: 0 Dawn, 1 Dusk, -1 a draw (and before any round has finished). The bot simulation sets -2 before each of its rounds. */
@@ -78,24 +102,37 @@ public final class Campaign {
         b=battle;Path save=b.server.getSavePath(WorldSavePath.ROOT);
         directory=save.resolve(Diagnostics.active()?"gravesandglory-test-profiles":"gravesandglory-profiles");
         Path groups=save.resolve("gravesandglory-parties.json");
-        if(Files.exists(groups))try{social=JSON.fromJson(Files.readString(groups),SocialHub.class);if(social==null)throw new IllegalStateException("Empty party data");social.restore();}
-        catch(Exception e){throw new IllegalStateException("Party data could not be read; original and .bak are preserved",e);}
+        // A damaged parties file falls back to its .bak, then to no parties, with a logged warning (SafeFiles.load); it never stops the server.
+        social=SafeFiles.load(groups,Campaign::readParties,SocialHub::new,"Party data");
         try {
             LegacyDataMigration.profiles(save.resolve(Diagnostics.active()?"bannerbound-test-profiles":"bannerbound-profiles"),directory);
             LegacyDataMigration.copyMissing(save.resolve("bannerbound-layout.json"),layoutFile());
         } catch(java.io.IOException migration) { throw new IllegalStateException("Could not upgrade legacy commander data; original files were kept",migration); }
         try{JsonObject marker=JsonParser.parseString(Files.readString(layoutFile())).getAsJsonObject();if(marker.get("layout").getAsString().equals(LayoutMarker.LAYOUT))map=marker.get("map").getAsInt();}catch(Exception ignored){}CampaignMaps.select(map);
     }
-    /** A commander's collection, read once: a schema-1 file is upgraded in place first (spec 6.3; its original bytes stay as <uuid>.v1.json), then the profile is sanitized. A new commander owns the 10 Commons and flies the starter banner. */
-    Profile profile(UUID id){return profiles.computeIfAbsent(id,key->{Path file=directory.resolve(key+".json");if(!Files.exists(file)){Profile fresh=new Profile();fresh.sanitize();return fresh;}
-        try{Profile p=ProfileMigration.upgradeFile(file,text->JSON.fromJson(text,ProfileMigration.V1.class),JSON::toJson,RosterMath.Catalog.fromSpec());
-            if(p==null)p=JSON.fromJson(Files.readString(file),Profile.class);if(p==null)throw new IllegalStateException("Empty profile");p.sanitize();return p;}
-        catch(Exception e){throw new IllegalStateException("Commander profile could not be read. Original and .bak preserved: "+key,e);}});}
+    /** A commander's collection, read once: a schema-1, 2 or 3 file is upgraded in place to schema 4 first (spec 6.3, plan 2C.3; its original bytes stay as <uuid>.v1.json, .v2.json or .v3.json), then the profile is sanitized. A new commander owns the 10 Commons, flies the starter banner and wears the starter gear. */
+    Profile profile(UUID id){
+        Profile pr=profiles.computeIfAbsent(id,key->SafeFiles.load(directory.resolve(key+".json"),Campaign::readProfile,Campaign::freshProfile,"Commander profile "+key));
+        if(pr.readOnly&&newerSaveTold.add(id)){ // a save from a newer build: kept untouched all session (save writes nothing); the player is told once, the log keeps a warning
+            System.err.println("[Graves and Glory] Commander profile "+id+" is schema "+pr.schema+", newer than this build's schema "+Profile.SCHEMA+"; the file is left untouched and this session's progress will not be saved.");
+            notice(id,"Your commander save is from a newer version of Graves and Glory; progress this session will not be saved.");
+        }
+        return pr;
+    }
+    /** Players already told that their save is from a newer build (Profile.readOnly), so the notice comes once per session. */
+    final Set<UUID> newerSaveTold=new HashSet<>();
+    /** A new commander: the 10 Commons, the starter banner (sanitize fills them in) and the role's starter gear. Also what a damaged profile with no usable .bak falls back to. */
+    static Profile freshProfile(){Profile fresh=new Profile();Gear.grantStarter(fresh);fresh.sanitize();return fresh;}
+    /** One profile file, upgraded in place first when it is schema 1, 2 or 3; throws when it cannot be read (SafeFiles.load then tries the .bak). */
+    static Profile readProfile(Path file) throws Exception{
+        Profile p=ProfileMigration.upgradeFile(file,text->JSON.fromJson(text,ProfileMigration.V1.class),text->JSON.fromJson(text,Profile.class),JSON::toJson,RosterMath.Catalog.fromSpec());
+        if(p==null)p=JSON.fromJson(Files.readString(file),Profile.class);if(p==null)throw new IllegalStateException("Empty profile");p.sanitize();return p;}
+    /** The parties file: Gson to SocialHub, then restore; throws when it cannot be read. */
+    static SocialHub readParties(Path file) throws Exception{SocialHub s=JSON.fromJson(Files.readString(file),SocialHub.class);if(s==null)throw new IllegalStateException("Empty party data");s.restore();return s;}
     /** The marker (see LayoutMarker) names this layout, this map, this revision of the arena margin and the hash of the map's landmarks (Structures.hash); a save made before the margin was tapered, or before these landmarks, builds its arena once more. */
     boolean cached(){try{return LayoutMarker.current(Files.readString(layoutFile()),map,Structures.hash(map));}catch(Exception e){return false;}}
-    void built(){try{Files.writeString(b.server.getSavePath(WorldSavePath.ROOT).resolve("gravesandglory-layout.json"),LayoutMarker.text(map,Structures.hash(map)));}catch(Exception e){System.err.println("[Graves and Glory] Map cache marker could not be saved.");}}
-    boolean save(UUID id){try{Files.createDirectories(directory);Path path=directory.resolve(id+".json"),tmp=directory.resolve(id+".tmp");Files.writeString(tmp,JSON.toJson(profile(id)));if(Files.exists(path))Files.copy(path,path.resolveSibling(path.getFileName()+".bak"),StandardCopyOption.REPLACE_EXISTING);
-            try{Files.move(tmp,path,StandardCopyOption.REPLACE_EXISTING,StandardCopyOption.ATOMIC_MOVE);}catch(AtomicMoveNotSupportedException e){Files.move(tmp,path,StandardCopyOption.REPLACE_EXISTING);}return true;
+    void built(){try{SafeFiles.write(layoutFile(),LayoutMarker.text(map,Structures.hash(map)));}catch(Exception e){System.err.println("[Graves and Glory] Map cache marker could not be saved.");}}
+    boolean save(UUID id){try{var pr=profile(id);ProfileMigration.saveProfile(pr,directory.resolve(id+".json"),JSON.toJson(pr));return true;
         }catch(Exception e){System.err.println("[Graves and Glory] Could not save commander collection: "+e.getClass().getSimpleName());notice(id,"Collection could not be saved; check disk space.");return false;}}
     void importProfile(ServerPlayerEntity p,String json){
         if(json.length()>16000)return;
@@ -104,7 +141,7 @@ public final class Campaign {
         // existing collections carry over; dedicated servers never accept one.
         UUID id=p.getUuid();boolean allowed=importAllowed.remove(id)&&!b.server.isDedicated();
         try{var v1=JSON.fromJson(json,ProfileMigration.V1.class); // a portable copy from before Houses is upgraded the same way as a server file
-            Profile portable=v1!=null&&v1.schema<2?ProfileMigration.toV2(v1,RosterMath.Catalog.fromSpec()):JSON.fromJson(json,Profile.class);portable.sanitize();
+            Profile portable=v1!=null&&v1.schema<2?ProfileMigration.toV2(v1,RosterMath.Catalog.fromSpec()):JSON.fromJson(json,Profile.class);portable.sanitize();Gear.resetForImport(portable);
             if(allowed){profiles.put(id,portable);save(id);}
             else{Profile stored=profile(id);if(portable.gold>stored.gold||!stored.owned.keySet().containsAll(portable.owned.keySet()))System.out.println("[Graves and Glory] Ignored the collection sent by "+p.getName().getString()+"; the server's saved collection is kept.");}
         }catch(Exception ignored){}
@@ -132,26 +169,51 @@ public final class Campaign {
     }
     /** The first-visit rule: a player with no server file may bring his collection from his own computer, once; one with a file may not (the server copy wins). */
     void grantImport(UUID id){if(!Files.exists(directory.resolve(id+".json")))importAllowed.add(id);}
+    /** A seated commander has just dropped from a running round (before his seat is handed to a bot): his time away starts, and a copy of his seat is kept to settle him if he does not return. */
+    void dropped(GravesAndGlory.Squad s){
+        UUID id=s.owner;if(!b.running||!participants.contains(id))return;
+        var copy=new GravesAndGlory.Squad(id,s.team,b.fieldBase(s.team));copy.banner=new ArrayList<>(s.banner);copy.seated=true;
+        leftAt.put(id,b.time);absentSeat.put(id,copy);
+    }
+    /** A dropped participant is seated again: the time he was away is added up, and it comes off his pay. */
+    void returned(UUID id){
+        Long at=leftAt.remove(id);absentSeat.remove(id);
+        if(at!=null)awayTicks.merge(id,Math.max(0,b.time-at),Long::sum);
+    }
+    /** Ticks a participant has been seated in this round so far (MatchRules.seatedTicks): from his own seating, less the time he was away. */
+    long seatedTicks(UUID id){return MatchRules.seatedTicks(b.time,b.roundStarted,joinedAt.getOrDefault(id,b.roundStarted),awayTicks.getOrDefault(id,0L),leftAt.getOrDefault(id,-1L));}
+    /** True while a participant has dropped from this round and is not seated again; the round still owes him his time seated. */
+    boolean away(UUID id){return leftAt.containsKey(id);}
     void joined(ServerPlayerEntity p){
         grantImport(p.getUuid());profile(p.getUuid());
+        // A dedicated server writes a new commander's file on the first join, not on the first collection change (QA C9). The first-visit import is never offered there.
+        if(b.server.isDedicated()&&!Files.exists(directory.resolve(p.getUuid()+".json")))save(p.getUuid());
         // Rejoining the same battle keeps the original start time, so a dropped connection does not cost the reward.
         if(!(b.running&&participants.contains(p.getUuid())))joinedAt.put(p.getUuid(),b.time);var squad=b.squads.get(p.getUuid());
-        if(b.running&&squad!=null&&squad.seated)b.toBase(p,squad.team);else toLobby(p);
+        if(b.running&&squad!=null&&squad.seated){returned(p.getUuid());b.toBase(p,squad.team);}else toLobby(p);
         if(b.running&&(squad==null||!squad.seated))notice(p.getUuid(),WELCOME_WAIT); // true for the moments he reads it, and gone with the round (returnLobby) or after NOTICE_TICKS: no standing line, which the round's end would leave false
         else standing(p.getUuid(),WELCOME);}
-    void toLobby(ServerPlayerEntity p){var at=CampWorld.spawn(profile(p.getUuid()));b.relocate(p,at.x(),at.y(),at.z(),at.yaw(),at.pitch());p.changeGameMode(GameMode.ADVENTURE);p.getInventory().clear();Commander.applyPlayer(p,null);p.setHealth(p.getMaxHealth());p.getHungerManager().setFoodLevel(20);}
+    void toLobby(ServerPlayerEntity p){var at=CampWorld.spawn(profile(p.getUuid()));b.relocate(p,at.x(),at.y(),at.z(),at.yaw(),at.pitch());p.changeGameMode(GameMode.ADVENTURE);p.getInventory().clear();GearCombat.clear(p);p.setHealth(p.getMaxHealth());p.getHungerManager().setFoodLevel(20);}
     void returnLobby(){
+        // The mode takes down what it placed before the round's armies go (idempotent: finish and a manual return both call it).
+        // Only a clean teardown deletes the marker: a piece that could not be put back stays recoverable after a crash.
+        if(b.mode.teardown(b))Modes.unmark(b);else System.err.println("[Graves and Glory] The round's teardown left "+b.saves.size()+" saved piece(s); the mode marker is kept.");
+        if(battleModeBeforeRoom!=null){battleMode=battleModeBeforeRoom;battleModeBeforeRoom=null;} // the room's mode ends with its round
         for(var s:b.squads.values())Commander.reset(b,s); // every running commander ability ends before its units go
-        b.running=false;introUntil=0;social.finish();activeRoom="";activeBattle=null;Projectiles.clear(b);Abilities.clearBanners(b);
-        Houses.reset(b);for(var u:b.units)u.mob.discard();b.units.clear();b.clearSides();b.clearProgression();
-        b.squads.values().removeIf(s->s.bot);botRespawns.clear();botRetreating.clear();b.respawns.clear();vacated.clear();
+        b.running=false;introUntil=0;social.finish();activeRoom="";activeBattle=null;bonusTracker=null;Projectiles.clear(b);b.strikes.clear();Abilities.clearBanners(b);b.clearIntel();
+        Houses.reset(b);for(var u:b.units)u.mob.discard();b.units.clear();b.clearCorpses();b.clearSides();b.clearProgression();
+        b.squads.values().removeIf(s->s.bot);botRespawns.clear();botRetreating.clear();b.respawns.clear();vacated.clear();vacatedUntil.clear();awayTicks.clear();leftAt.clear();absentSeat.clear();deleteProgress();
         for(var s:b.squads.values()){s.training.clear();s.seated=false;}onPad.clear();padCountdown=-1;closeParty();
         notices.values().removeIf(WELCOME_WAIT::equals);noticeAt.keySet().retainAll(notices.keySet()); // "Battle in progress" is no longer true
         for(var p:b.server.getPlayerManager().getPlayerList())toLobby(p);
+        // The autosaves skipped during the round (ArenaAutosave) are paid now, with the armies gone and everyone in camp.
+        // A stopping server skips this: its own shutdown save follows.
+        if(ArenaAutosave.settle()&&b.server.isRunning()){long at=System.nanoTime();b.server.saveAll(true,false,false);System.out.println("[Graves and Glory] Saved the world after the battle ("+(System.nanoTime()-at)/1_000_000+" ms).");}
     }
     /** Leaving frees the pad, any seat in a custom lobby, and invitations to it, and forgets which snapshot forms were logged for him. */
-    void left(UUID id){onPad.remove(id);padRefused.remove(id);leaveParty(id);snapshotForms.remove(id);notices.remove(id);noticeAt.remove(id);} // his notice entries go with him, a standing line's too (expireNotices never drops those)
+    void left(UUID id){newerSaveTold.remove(id);gearSent.remove(id);forgeResults.remove(id);onPad.remove(id);padRefused.remove(id);leaveParty(id);snapshotForms.remove(id);notices.remove(id);noticeAt.remove(id);} // his notice entries go with him, a standing line's too (expireNotices never drops those)
     boolean handle(ServerPlayerEntity p,String cmd){
+        if(cmd.startsWith("group:"))return CustomGroups.command(this,b,p,cmd); // custom group edits from the Armoury (command UI Task 12)
         if(cmd.startsWith("social:"))return socialCommand(p,cmd);
         if(cmd.startsWith("progress:"))return progressCommand(p,cmd);
         if(cmd.startsWith("vote:")){try{int pick=Integer.parseInt(cmd.substring(5));if(!b.running&&onPad.containsKey(p.getUuid())&&pick>=0&&pick<Spec.MAPS.length){mapVotes.put(p.getUuid(),pick);notice(p.getUuid(),"Vote saved: "+Spec.MAPS[pick].name());}}catch(NumberFormatException ignored){}return true;}
@@ -168,6 +230,8 @@ public final class Campaign {
             var row=Arrays.stream(Spec.CAMPAIGNBATTLES).filter(r->r.id().equals(cmd.substring(9))).findFirst().orElse(null);
             if(row==null)return true;
             if(row.map()<0||row.map()>=Spec.MAPS.length){notice(p.getUuid(),row.name()+" cannot start: its map is missing.");return true;}
+            var lock=MarchMath.lockedBy(row,profile(p.getUuid()).battlesWon,Spec.CAMPAIGNBATTLES);if(lock!=null){notice(p.getUuid(),"Win "+lock.name()+" first.");return true;} // plan 2C.3: the March is won in order
+            if(!Modes.registered(row.mode())||!Modes.hosts(row.mode(),row.map())){notice(p.getUuid(),row.name()+" cannot start yet: its mode arrives with the mode frame.");return true;} // survival and banner come with plan 2C.4
             String refused=soloRefusal(p.getUuid(),MARCH_SOLO);if(!refused.isEmpty()){notice(p.getUuid(),refused);return true;}
             pendingBattle=row;pendingCommander=p.getUuid();
             if(row.map()!=map){switchMap(row.map());notice(p.getUuid(),"Preparing "+Spec.MAPS[map].name()+" for "+row.name()+".");}
@@ -178,7 +242,7 @@ public final class Campaign {
         if(b.running){
             var current=b.squads.get(p.getUuid());
             boolean global=cmd.startsWith("map:")||cmd.startsWith("mode:")||cmd.equals("fill")||cmd.equals("start")||cmd.startsWith("difficulty:");
-            boolean personal=cmd.equals("roll")||cmd.startsWith("roll:")||cmd.startsWith("buy:")||cmd.startsWith("star:")||cmd.startsWith("legendary:")||cmd.startsWith("unlock:")||cmd.startsWith("army:")||cmd.startsWith("slot:")||cmd.startsWith("colour:")||cmd.startsWith("class:");
+            boolean personal=cmd.equals("roll")||cmd.startsWith("roll:")||cmd.startsWith("buy:")||cmd.startsWith("star:")||cmd.startsWith("legendary:")||cmd.startsWith("unlock:")||cmd.startsWith("army:")||cmd.startsWith("slot:")||cmd.startsWith("colour:")||cmd.startsWith("gear:")||cmd.startsWith("forge:");
             if(global||personal&&current!=null&&current.seated){notice(p.getUuid(),"Active battle choices are locked until the match ends.");return true;}
         }
         if(cmd.startsWith("difficulty:")){
@@ -189,10 +253,10 @@ public final class Campaign {
         Profile pr=profile(p.getUuid());var squad=b.squads.get(p.getUuid());if(squad==null)return false;
         if(cmd.equals("roll")||cmd.startsWith("roll:")){roll(p,pr,cmd.equals("roll")?RosterMath.rollHouse(pr.banner):cmd.substring(5));return true;}
         if(cmd.startsWith("buy:")){buy(p,pr,cmd.substring(4));return true;}
+        if(cmd.startsWith("gear:")||cmd.startsWith("forge:")){gear(p,pr,cmd);return true;}
         if(cmd.startsWith("star:")){star(p,pr,cmd.substring(5));return true;}
         if(cmd.startsWith("legendary:")){legendary(p,pr,cmd.substring(10));return true;}
         if(cmd.startsWith("unlock:")||cmd.startsWith("army:")){notice(p.getUuid(),"Troops now join by recruitment rolls at the camp shrine.");return true;}
-        if(cmd.startsWith("class:")){String id=cmd.substring(6);if(Arrays.stream(Spec.CLASSES).anyMatch(c->c.id().equals(id))){pr.commander=id;squad.commander=id;Commander.applyPlayer(p,squad);save(p.getUuid());}return true;}
         if(cmd.startsWith("slot:")){ // slot:<i>:<troop id or empty>: the banner is rebuilt with repack, so markers follow their Epic or Legendary
             String[] parts=cmd.split(":");if(parts.length!=3)return true;int slot;try{slot=Integer.parseInt(parts[1]);}catch(Exception e){return true;}
             var catalog=RosterMath.Catalog.fromSpec();String id=parts[2];var type=troop(id);
@@ -202,7 +266,10 @@ public final class Campaign {
             List<String> entries=new ArrayList<>(pr.banner);entries.set(slot,id);
             List<String> before=pr.banner,next=RosterMath.fieldable(RosterMath.repack(entries,catalog,pr.owned.keySet()),catalog,RosterMath.fieldableHouses());
             if(type!=null&&Collections.frequency(next,id)<Collections.frequency(entries,id))notice(p.getUuid(),"No room for "+type.name()+": a banner holds 2 Epics (2 slots each) and 1 Legendary (4).");
-            pr.banner=next;if(!save(p.getUuid()))pr.banner=before;return true;
+            pr.banner=next;if(!save(p.getUuid())){pr.banner=before;return true;}
+            var room=social.room(p.getUuid()); // a banner change that leaves the lobby's House pick no troop takes back the Ready
+            if(room!=null&&!room.playing&&room.ready.contains(p.getUuid())&&!houseRefusal(room,p.getUuid()).isEmpty()){room.ready.remove(p.getUuid());social.revision++;notice(p.getUuid(),houseRefusal(room,p.getUuid()));}
+            return true;
         }
         if(cmd.startsWith("colour:")){ // the side row this commander asks to fly (spec 1.1); chooseSides settles it as the round is prepared
             String side=cmd.substring(7);var row=Arrays.stream(Spec.FACTIONS).filter(f->f.id().equals(side)).findFirst().orElse(null);if(row==null)return true;
@@ -222,6 +289,13 @@ public final class Campaign {
             if(index>=0&&index<Spec.MAPS.length&&index!=map){switchMap(index);notice(p.getUuid(),"Preparing "+Spec.MAPS[map].name()+". Your army choices are saved.");}
             return true;
         }
+        if(cmd.startsWith("battlemode:")){
+            if(!leader(p))return true;
+            String id=cmd.substring(11).trim();
+            if(!Modes.registered(id)){notice(p.getUuid(),"No such battle mode: "+id+".");return true;}
+            if(!Modes.hosts(id,map)){notice(p.getUuid(),Modes.row(id).name()+" is not played on "+Spec.MAPS[map].name()+".");return true;}
+            battleMode=id;notice(p.getUuid(),"Battle mode: "+Modes.row(id).name()+".");return true;
+        }
         if(cmd.equals("start")){
             if(!leader(p)){notice(p.getUuid(),"Only the custom lobby leader starts the match.");return true;}
             if(!fill&&!practice&&party.size()!=size*2){notice(p.getUuid(),"Waiting for commanders. Enable bot fill to play now.");return true;}
@@ -240,11 +314,12 @@ public final class Campaign {
         if(!preparingRoom.isEmpty()||pendingBattle!=null&&!id.equals(pendingCommander))return "Another battlefield is being prepared. Try again shortly.";
         return "";
     }
-    /** Starts a solo battle: the commander alone on Dawn against one bot. Practice passes no row; a Long March battle passes its row, which sets the bot tier and the lessons. */
+    /** Starts a solo battle: the commander alone on Dawn; bot fill seats the rest of both teams (one bot opposite in practice, a March battle's size otherwise). Practice passes no row; a Long March battle passes its row, which sets the bot tier and the lessons. */
     void soloStart(ServerPlayerEntity p,Spec.CampaignBattlesRow row){
-        closeParty();partyLeader=p.getUuid();party.add(p.getUuid());practice=true;size=1;fill=true;
+        closeParty();partyLeader=p.getUuid();party.add(p.getUuid());practice=true;size=MarchMath.seatSize(row);fill=true; // practice stays the solo-seating flag (one human, no visitors); the battle's own size sets the sides, and bot fill seats the rest
         for(var squad:b.squads.values())if(!squad.bot){squad.seated=squad.owner.equals(p.getUuid());if(squad.seated)squad.team=0;}
-        activeBattle=row;b.startRound();
+        if(row!=null){if(battleModeBeforeRoom==null)battleModeBeforeRoom=battleMode;battleMode=row.mode();} // a March battle plays its own mode; returnLobby puts the lobby's back
+        activeBattle=row;var bonus=MarchMath.bonus(row,Spec.BONUSOBJECTIVES);bonusTracker=bonus==null?null:new MarchMath.Tracker(bonus);b.startRound();
     }
     void balance(){for(var seat:balanced(seats(s->s.seated),practice,size))b.squads.get(seat.owner()).team=seat.team();}
     /** A commander's seat as balance and the side pick read it: who, on which team. */
@@ -260,12 +335,12 @@ public final class Campaign {
     void prepareRound(){
         onPad.clear();padCountdown=-1;padMapRolled=false;tutorial.clear();
         b.squads.values().removeIf(s->s.bot);balance();
-        for(var u:b.units){GravesAndGlory.Battle.leaveSide(u.mob);u.mob.discard();}b.units.clear();botRespawns.clear();botRetreating.clear();vacated.clear();
+        for(var u:b.units){GravesAndGlory.Battle.leaveSide(u.mob);u.mob.discard();}b.units.clear();b.clearCorpses();botRespawns.clear();botRetreating.clear();vacated.clear();vacatedUntil.clear();awayTicks.clear();leftAt.clear();absentSeat.clear();
         for(int team=0;team<2;team++){final int t=team;int humans=(int)b.squads.values().stream().filter(s->s.team==t&&s.seated).count();
-            int target=practice?(team==0?1:1):size;
-            if(fill||practice)for(int i=humans;i<target;i++){UUID id=UUID.randomUUID();var s=new GravesAndGlory.Squad(id,team,GravesAndGlory.Battle.base(team));s.bot=true;s.tier=activeBattle!=null?activeBattle.difficulty():difficulty;s.commander=Spec.CLASSES[i%Spec.CLASSES.length].id();s.lane=i%3;b.squads.put(id,s);}
+            int target=size; // practice and a March battle set size in soloStart, so one bot per team stays the practice rule
+            if(fill||practice)for(int i=humans;i<target;i++){UUID id=UUID.randomUUID();var s=new GravesAndGlory.Squad(id,team,b.fieldBase(team));s.bot=true;s.tier=activeBattle!=null?activeBattle.difficulty():difficulty;s.lane=i%3;var ally=allyRow(s);if(ally!=null)s.tier=ally.difficulty();b.squads.put(id,s);} // a March battle's allies fight at their own row's tier
         }
-        participants.clear();for(var s:b.squads.values())if(!s.bot&&s.seated){participants.add(s.owner);results.remove(s.owner);joinedAt.put(s.owner,b.time);s.commander=profile(s.owner).commander;}
+        participants.clear();for(var s:b.squads.values())if(!s.bot&&s.seated){participants.add(s.owner);results.remove(s.owner);joinedAt.put(s.owner,b.time);GearCombat.seat(s,profile(s.owner));}
         for(var s:b.squads.values())if(s.seated)s.banner=banner(s);
         chooseSides();
         serial++;matchId=UUID.randomUUID().toString();introUntil=b.time+120;headline="";
@@ -274,21 +349,48 @@ public final class Campaign {
     static Spec.TroopsRow troop(String id){for(var t:Spec.TROOPS)if(t.id().equals(id))return t;return null;}
     /** A botBanners row as a banner list, or the starter banner when the sheet has no such row. */
     static List<String> bannerRow(String id){for(var row:Spec.BOTBANNERS)if(row.id().equals(id))return new ArrayList<>(Arrays.asList(row.slots().split(",")));return RosterMath.starterBanner();}
-    /** The banner a squad fields this round: a bot's from botBanner, a commander's own banner with the units of Houses that cannot be fielded yet left empty. */
+    /** The banner a squad fields this round: a bot's from botBanner; a War Table room member's own banner with only the units of
+     *  the House he took on the lobby (lobbyHouse; Kort, 2026-10-31); anyone else's own banner with the units of Houses that
+     *  cannot be fielded yet left empty. */
     List<String> banner(GravesAndGlory.Squad s){
         if(s.bot)return botBanner(s);
+        var room=activeRoom.isEmpty()?null:social.rooms.get(activeRoom);
+        if(room!=null&&room.members.contains(s.owner))return houseBanner(room,s.owner);
         return RosterMath.fieldable(profile(s.owner).banner,RosterMath.Catalog.fromSpec(),RosterMath.fieldableHouses());
     }
+    /** A room member's banner as the lobby's House pick fields it: only that House's units. */
+    List<String> houseBanner(SocialHub.Room r,UUID m){return RosterMath.houseBanner(profile(m).banner,RosterMath.Catalog.fromSpec(),lobbyHouse(r,m),RosterMath.fieldableHouses());}
+    /** Units a room member would field under his House pick. */
+    int houseUnits(SocialHub.Room r,UUID m){return RosterMath.units(houseBanner(r,m),RosterMath.Catalog.fromSpec());}
+    /** Why a room member cannot ready under his House pick ("" when he can): his banner holds no unit of that House. The pick
+     *  never borrows troops he has not placed; he picks another House or puts that House's troops in his banner first. */
+    String houseRefusal(SocialHub.Room r,UUID m){if(r==null||houseUnits(r,m)>0)return "";String h=RosterMath.houseName(lobbyHouse(r,m));
+        return "Your banner holds no "+h+" troops. Pick another House, or add "+h+" troops on the Banner page.";}
     /** A bot's banner (the botBanners sheet, spec 6.1): of the botBanners rows for its tier whose troops all belong to fieldable Houses, the one at lane % rows; Normal rows for a tier with none, the starter banner if no row fits. */
     List<String> botBanner(GravesAndGlory.Squad s){
+        var ally=allyRow(s);if(ally!=null)return new ArrayList<>(Arrays.asList(ally.slots().split(",")));
         var rows=fieldableBotBanners(s.tier);if(rows.isEmpty())rows=fieldableBotBanners("normal");
         if(rows.isEmpty())return RosterMath.starterBanner();
+        var boss=bossBanner(s);if(boss!=null)return boss;
         return new ArrayList<>(Arrays.asList(rows.get(Math.floorMod(s.lane,rows.size())).slots().split(",")));
     }
-    /** The botBanners rows of a tier, in sheet order, whose every troop belongs to a fieldable House (houses.fieldable). */
+    /** A kill_unit battle's target (Kort, 2026-11-01: the Hollow King stands in march-6): the enemy's first bot army uses the botBanners row that fields the target troop, whatever its tier; null when the battle has no such bonus or no row fits. */
+    List<String> bossBanner(GravesAndGlory.Squad s){
+        if(activeBattle==null||bonusTracker==null||!bonusTracker.kind.equals("kill_unit")||s.team!=1||s.lane!=0)return null;
+        var catalog=RosterMath.Catalog.fromSpec();var fieldable=RosterMath.fieldableHouses();
+        for(var row:Spec.BOTBANNERS){var slots=Arrays.asList(row.slots().split(","));
+            if(slots.contains(bonusTracker.target)&&slots.stream().allMatch(id->id.equals(RosterMath.MARKER)||id.equals(RosterMath.EMPTY)||fieldable.contains(catalog.houseOf(id))))return new ArrayList<>(slots);}
+        return null;
+    }
+    /** A March battle's allied banner for a bot on the commander's side (campaignBattles.allies; Kort 2026-11-02, Q76: battle 6 fields all five Houses beside you): the named row at lane % allies, or null when the battle names none. */
+    Spec.BotBannersRow allyRow(GravesAndGlory.Squad s){
+        if(!s.bot||s.team!=0)return null;var ids=MarchMath.allyIds(activeBattle);if(ids.isEmpty())return null;
+        String id=ids.get(Math.floorMod(s.lane,ids.size()));for(var row:Spec.BOTBANNERS)if(row.id().equals(id))return row;return null;
+    }
+    /** The botBanners rows of a tier, in sheet order, whose every troop belongs to a fieldable House (houses.fieldable), less the rows a battle reserves as allies. */
     static List<Spec.BotBannersRow> fieldableBotBanners(String tier){
         var catalog=RosterMath.Catalog.fromSpec();var fieldable=RosterMath.fieldableHouses();List<Spec.BotBannersRow> out=new ArrayList<>();
-        for(var row:Spec.BOTBANNERS)if(row.difficulty().equals(tier)&&Arrays.stream(row.slots().split(",")).allMatch(id->id.equals(RosterMath.MARKER)||id.equals(RosterMath.EMPTY)||fieldable.contains(catalog.houseOf(id))))out.add(row);
+        for(var row:Spec.BOTBANNERS)if(row.difficulty().equals(tier)&&!MarchMath.reservedAlly(row.id(),Spec.CAMPAIGNBATTLES)&&Arrays.stream(row.slots().split(",")).allMatch(id->id.equals(RosterMath.MARKER)||id.equals(RosterMath.EMPTY)||fieldable.contains(catalog.houseOf(id))))out.add(row);
         return out;
     }
     /** Units in the banner a commander would field now; 0 means he has no army to bring. */
@@ -359,8 +461,25 @@ public final class Campaign {
         card.addProperty("shards",pr.shards.getOrDefault(t.house(),0)-card.get("shards").getAsInt());card.addProperty("n",++rollSerial);return card;
     }
     /** The recruitment reveal sound, to the commander alone (the ServerPlayerEntity overload). */
-    static void reveal(ServerPlayerEntity p){p.playSound(net.minecraft.registry.Registries.SOUND_EVENT.get(new net.minecraft.util.Identifier("gravesandglory","unit_reveal")),SoundCategory.PLAYERS,.7f,1f);}
+    static void reveal(ServerPlayerEntity p){Audio.to(p,AudioCues.Cue.UNIT_REVEAL);}
     /** Undoes a command whose save failed: the profile goes back to its JSON from before, and the commander is told nothing changed. */
+    /** Per commander, the last Forge roll (the snapshot's "forge"): {n, item, rarity, relic, duplicate, refund}; n counts up so the client tells a new roll from the same. Not saved. */
+    final Map<UUID,JsonObject> forgeResults=new HashMap<>();
+    /** One gear or forge request (spec 2026-11-03-commander-gear-design): GearCommands validates and applies it, a refusal changes nothing, and a profile that will not save is put back. */
+    void gear(ServerPlayerEntity p,Profile pr,String cmd){
+        UUID id=p.getUuid();String before=JSON.toJson(pr);
+        var outcome=GearCommands.apply(pr,cmd,rollRng);
+        if(!outcome.ok()){notice(id,outcome.refusal());return;}
+        if(!save(id)){unsaved(id,before,"That gear change");return;}
+        var rolled=outcome.rolled();
+        if(rolled!=null){
+            JsonObject card=new JsonObject();var last=forgeResults.get(id);card.addProperty("n",last==null?1:last.get("n").getAsInt()+1);
+            card.addProperty("item",rolled.piece()==null?"":rolled.piece().item);card.addProperty("rarity",rolled.piece()==null?"":rolled.piece().rarity);card.addProperty("relic",rolled.relic()==null?"":rolled.relic());
+            card.addProperty("duplicate",rolled.duplicate());card.addProperty("refund",rolled.refund());forgeResults.put(id,card);
+        }
+        notice(id,outcome.notice());
+        syncGear(p);
+    }
     void unsaved(UUID id,String before,String what){profiles.put(id,JSON.fromJson(before,Profile.class));notice(id,what+" was not saved, so nothing changed. Check disk space and try again.");}
     /**
      * A chosen recruit (buy:<troop>, spec 4.2): a Common or Rare of any House for recruitment.chosenCost gold, as a new troop or a copy toward its
@@ -411,25 +530,91 @@ public final class Campaign {
         if(!save(who)){unsaved(who,before,"The Legendary");return;}
         notice(who,t.name()+" joins your collection"+(pact?", sworn by your Pact!":"!"));reveal(p);
     }
+    /**
+     * A stopped or crashed match is not settled (MatchRules, Kort 2026-11-02): no win bonus, no shards, Renown, XP or record, and the
+     * armies go back to camp. Each seated player is paid the participation gold pro-rated by the share of the match he played
+     * (MatchRules.partialGold). A stop pays here; a crash never reaches here, so a progress checkpoint (see checkpoint) lets the
+     * next start pay the same share from the last 30 seconds of play (payInterrupted). Modes.recover puts the map back.
+     */
+    void voidMatch(MatchRules.Ending ending){
+        if(!b.running||MatchRules.settles(ending))return;
+        System.err.println("[Graves and Glory] Match "+matchId+" was interrupted ("+ending+"): partial participation gold only; the armies return to camp.");
+        payPartial(playedNow(),b.roundSeconds,practice);
+        for(UUID id:participants)results.remove(id);participants.clear();
+        b.message="The battle was called off. Back to the war council.";headline=b.message;
+        returnLobby();
+    }
+    /** Seconds each human who is or was seated has played of this round: from his own seating, less any time he was away, and a player who dropped keeps what he had played. */
+    Map<UUID,Long> playedNow(){
+        Map<UUID,Long> played=new LinkedHashMap<>();
+        for(UUID id:participants){var s=b.squads.get(id);if((s==null||!s.seated)&&!away(id))continue;played.put(id,seatedTicks(id)/20);}
+        return played;
+    }
+    /** Pays each player the participation gold of an interrupted match, pro-rated (MatchRules.partialGold); a failed save changes nothing. */
+    void payPartial(Map<UUID,Long> played,int roundSeconds,boolean wasPractice){
+        int base=wasPractice?Spec.CAMPAIGN[0].practiceGold():Spec.CAMPAIGN[0].completionGold();
+        for(var e:played.entrySet()){
+            int gold=MatchRules.partialGold(base,e.getValue(),roundSeconds);if(gold<=0)continue;
+            UUID id=e.getKey();Profile p=profile(id);String before=JSON.toJson(p);p.gold+=gold;
+            if(!save(id)){profiles.put(id,JSON.fromJson(before,Profile.class));continue;}
+            standing(id,"Battle called off / +"+gold+" collection gold for the time you played");
+        }
+    }
+    static final String PROGRESS="gravesandglory/match-progress.json";
+    Path progressFile(){return b.server.getSavePath(net.minecraft.util.WorldSavePath.ROOT).resolve(PROGRESS);}
+    void deleteProgress(){try{java.nio.file.Files.deleteIfExists(progressFile());}catch(Exception e){System.err.println("[Graves and Glory] The match progress file could not be deleted: "+e);}}
+    /** Every 30 seconds of a running match: what a crash would owe each player, written atomically under the world save. */
+    void checkpoint(){
+        JsonObject j=new JsonObject();j.addProperty("matchId",matchId);j.addProperty("practice",practice);j.addProperty("roundSeconds",b.roundSeconds);
+        JsonObject played=new JsonObject();playedNow().forEach((id,sec)->played.addProperty(id.toString(),sec));j.add("played",played);
+        SafeFiles.tryWrite(progressFile(),JSON.toJson(j),"The match progress");
+    }
+    /** A crash left a progress file (a clean end or stop deletes it): pay each player the pro-rated share it recorded, then delete it. */
+    void payInterrupted(){
+        Path path=progressFile();if(!java.nio.file.Files.exists(path))return;
+        try{
+            JsonObject j=JsonParser.parseString(java.nio.file.Files.readString(path)).getAsJsonObject();
+            Map<UUID,Long> played=new LinkedHashMap<>();
+            for(var e:j.getAsJsonObject("played").entrySet())played.put(UUID.fromString(e.getKey()),e.getValue().getAsLong());
+            System.err.println("[Graves and Glory] Match "+j.get("matchId").getAsString()+" was interrupted by a crash: partial participation gold for "+played.size()+" player(s).");
+            payPartial(played,j.get("roundSeconds").getAsInt(),j.get("practice").getAsBoolean());
+        }catch(Exception e){System.err.println("[Graves and Glory] The match progress file could not be read; no partial reward: "+e);}
+        deleteProgress();
+    }
+    /** Releases the slot of every dropped commander whose hold has run out: the reservation ends and the seat is an ordinary bot seat. */
+    void releaseExpiredHolds(){
+        for(var it=vacatedUntil.entrySet().iterator();it.hasNext();){var e=it.next();
+            if(!MatchRules.holdExpired(b.time,e.getValue()))continue;
+            vacated.remove(e.getKey());it.remove();
+            System.err.println("[Graves and Glory] The slot held for "+e.getKey()+" is released.");}
+    }
     void finish(int winner){
         if(!b.running)return;
         lastWinner=winner;
         long seconds=(b.time-b.roundStarted)/20;
-        for(UUID id:participants){var s=b.squads.get(id);if(s==null||!s.seated)continue;Profile p=profile(id);String before=JSON.toJson(p);
-            int earned=Math.min(seconds,(b.time-joinedAt.getOrDefault(id,b.roundStarted))/20)>=Spec.CAMPAIGN[0].minimumRewardSeconds()?(practice?Spec.CAMPAIGN[0].practiceGold():Spec.CAMPAIGN[0].completionGold()+(s.team==winner?Spec.CAMPAIGN[0].victoryGold():0)):0;
-            int priorXp=p.progression.xp;Progression.reset(p.progression,Progression.today());Progression.match(p.progression,matchId,s.team==winner,earned>0);p.gold+=earned;p.matches++;if(s.team==winner)p.wins++;if(s.team==winner&&activeBattle!=null)p.campaignCleared=Math.max(p.campaignCleared,activeBattle.order());
+        for(UUID id:participants){var s=b.squads.get(id);if(s==null||!s.seated)s=absentSeat.get(id);if(s==null)continue;Profile p=profile(id);String before=JSON.toJson(p);
+            // Pay is pro-rated by the share of the match he was seated (Kort 2026-11-02): a commander who dropped and did not return, or came back late, gets that share of the gold, XP, shards and Renown;
+            // one seated the whole match is paid in full. The win, the cleared battle and the bonus count only when he was seated for at least half of it.
+            long seated=seatedTicks(id)/20;boolean eligible=seated>0&&seconds>=Spec.CAMPAIGN[0].minimumRewardSeconds();int percent=MatchRules.sharePercent(seated,seconds);
+            boolean won=s.team==winner,credited=won&&MatchRules.majority(seated,seconds);final int team=s.team;boolean botOnly=activeBattle==null&&b.squads.values().stream().filter(o->o.team!=team).allMatch(o->o.bot);
+            int earned=eligible?MatchRules.prorate(MatchRules.grossGold(practice,activeBattle!=null,won,credited,Spec.CAMPAIGN[0].completionGold(),Spec.CAMPAIGN[0].practiceGold(),Spec.CAMPAIGN[0].victoryGold()),seated,seconds):0;
+            int priorXp=p.progression.xp;Progression.reset(p.progression,Progression.today());Progression.match(p.progression,matchId,credited,eligible,percent);p.gold+=earned;int marks=eligible?MatchRules.prorate(MatchRules.forgeMarks(Spec.CAMPAIGN[0].forgeMarks(),credited,botOnly,Spec.CAMPAIGN[0].lossMarksPct(),Spec.CAMPAIGN[0].botOnlyMarksPct()),seated,seconds):0;p.forgeMarks+=marks;if(eligible)Forge.wear(p);if(seated>0)p.matches++;if(credited)p.wins++;MarchMath.Settled march=null;
+            if(activeBattle!=null){ // plan 2C.3: the battle won, the cleared count and the bonus, in the same save as the gold
+                march=MarchMath.settle(activeBattle,MarchMath.bonus(activeBattle,Spec.BONUSOBJECTIVES),credited,bonusTracker!=null&&bonusTracker.kept(won,(int)seconds),p.battlesWon,p.bonusClaimed,Profile.houseOrder(),Spec.CAMPAIGNBATTLES);
+                p.campaignCleared=march.cleared();if(march.bonusPaid()){p.gold+=march.bonusGold();p.shards.merge(march.bonusHouse(),march.bonusShards(),Integer::sum);}}
             // The chase (spec 4.3 to 4.6), in the same save as the gold: an eligible match pays shards and Renown by the fielded banner's Houses and adds to the mastery ledger; a chapter cleared pays its Pact.
             var slots=RosterMath.houseSlots(s.banner,RosterMath.Catalog.fromSpec());
-            var paid=earned>0?RosterMath.matchRewards(slots,Houses.thresholds(Spec.HOUSES[0].id()),Profile.houseOrder(),s.team==winner):NO_REWARDS; // every House has the same slot thresholds (HousesCheck)
+            var paid=eligible?RosterMath.prorate(RosterMath.matchRewards(slots,Houses.thresholds(Spec.HOUSES[0].id()),Profile.houseOrder(),credited),seated,seconds):NO_REWARDS; // every House has the same slot thresholds (HousesCheck)
             paid.shards().forEach((h,n)->p.shards.merge(h,n,Integer::sum));paid.renown().forEach((h,n)->p.renown.merge(h,n,Integer::sum));
-            List<String> titles=earned>0?ledger(p,s):List.of();int pacts=pacts(p);
-            boolean saved=save(id);JsonObject report=new JsonObject();report.addProperty("id",matchId);report.addProperty("outcome",winner<0?"DRAW":s.team==winner?"VICTORY":"BATTLE COMPLETE");report.addProperty("map",Spec.MAPS[map].name());report.addProperty("seconds",seconds);report.addProperty("saved",saved);report.addProperty("eligible",earned>0);report.addProperty("gold",saved?earned:0);report.addProperty("xp",saved?p.progression.xp-priorXp:0);report.addProperty("beforeXp",priorXp);report.add("squads",reportSquads(s));report.add("points",reportPoints());report.add("houses",reportHouses(s,slots,saved?paid:NO_REWARDS));report.add("levels",reportLevels(s));results.put(id,report);
+            List<String> titles=eligible?ledger(p,s):List.of();int pacts=pacts(p);
+            boolean saved=save(id);JsonObject report=new JsonObject();report.addProperty("id",matchId);report.addProperty("outcome",winner<0?"DRAW":s.team==winner?"VICTORY":"BATTLE COMPLETE");report.addProperty("map",Spec.MAPS[map].name());report.addProperty("seconds",seconds);report.addProperty("saved",saved);report.addProperty("eligible",eligible);report.addProperty("gold",saved?earned:0);report.addProperty("forgeMarks",saved?marks:0);report.addProperty("xp",saved?p.progression.xp-priorXp:0);report.addProperty("beforeXp",priorXp);report.add("squads",reportSquads(s));report.add("points",reportPoints());report.add("houses",reportHouses(s,slots,saved?paid:NO_REWARDS));report.add("levels",reportLevels(s));report.add("mode",reportMode());if(activeBattle!=null)report.add("march",reportMarch(p,credited,march,pacts));results.put(id,report);
             if(!saved){profiles.put(id,JSON.fromJson(before,Profile.class));standing(id,"Match reward could not be saved. Progress was not changed; check disk space.");continue;}
-            String extra=(pacts>0?" / "+(pacts==1?"a Pact":pacts+" Pacts")+" earned":"")+(titles.isEmpty()?"":" / new title"+(titles.size()==1?" ":"s ")+String.join(", ",titles));
-            standing(id,(winner<0?"Draw":s.team==winner?"Victory":"Battle complete")+" / +"+earned+" collection gold"+(earned==0?" (reward requires 3 minutes of play)":"")+extra);
+            String extra=(march!=null&&march.bonusPaid()?" / bonus objective: +"+march.bonusShards()+" "+RosterMath.houseName(march.bonusHouse())+" shards, +"+march.bonusGold()+" gold":"")+(pacts>0?" / "+(pacts==1?"a Pact":pacts+" Pacts")+" earned":"")+(titles.isEmpty()?"":" / new title"+(titles.size()==1?" ":"s ")+String.join(", ",titles));
+            standing(id,(winner<0?"Draw":s.team==winner?"Victory":"Battle complete")+" / +"+earned+" collection gold"+(!eligible?" (reward requires 3 minutes of play)":percent<100?" (pro-rated: you were seated for "+percent+"% of the match)":"")+(marks>0?" / +"+marks+" Forge marks":"")+extra);
         }
         b.message=(winner<0?"Draw":b.side(winner).name()+" wins")+"! Back to the war council.";headline=b.message;
-        for(var p:b.server.getPlayerManager().getPlayerList())if(participants.contains(p.getUuid()))p.playSound(net.minecraft.registry.Registries.SOUND_EVENT.get(new net.minecraft.util.Identifier("gravesandglory","victory")),SoundCategory.PLAYERS,.8f,1); // each participant, to his own connection
+        Audio.reset(); // the round is over: cues still waiting for their moment (a blow's contact frame, a queued rise) are dropped so nothing plays over the sting
+        for(var p:b.server.getPlayerManager().getPlayerList())if(participants.contains(p.getUuid())){var sq=b.squads.get(p.getUuid());Audio.ending(p,winner,sq==null?-1:sq.team);} // each participant, to his own connection: the victory sting, the defeat sting for the losing side (AudioCues)
         returnLobby();
     }
     static final RosterMath.Rewards NO_REWARDS=new RosterMath.Rewards(Map.of(),Map.of());
@@ -460,6 +645,19 @@ public final class Campaign {
         var chapters=RosterMath.pactChapters(Arrays.asList(Spec.CAMPAIGNBATTLES),p.campaignCleared,p.writChapters);
         for(int chapter:chapters){p.writs++;p.writChapters.add(chapter);}
         return chapters.size();
+    }
+    /**
+     * The report's Long March block (plan 2C.5), read by the War Table report: the battle, whether it was won, how its bonus ended ("paid", "claimed" earlier,
+     * "missed", "lost" with the battle, or "none" without a bonus row), what the bonus pays, the Pacts this battle earned and the Pacts now held. Display only;
+     * every figure was settled before this call.
+     */
+    JsonObject reportMarch(Profile p,boolean won,MarchMath.Settled march,int pacts){
+        JsonObject j=new JsonObject();var bonus=MarchMath.bonus(activeBattle,Spec.BONUSOBJECTIVES);
+        j.addProperty("id",activeBattle.id());j.addProperty("name",activeBattle.name());j.addProperty("order",activeBattle.order());j.addProperty("won",won);
+        String state=bonus==null?"none":!won?"lost":march!=null&&march.bonusPaid()?"paid":p.bonusClaimed.contains(bonus.id())?"claimed":"missed";
+        j.addProperty("bonus",bonus==null?"":bonus.text());j.addProperty("bonusState",state);j.addProperty("bonusShards",bonus==null?0:bonus.shards());j.addProperty("bonusGold",bonus==null?0:bonus.gold());
+        j.addProperty("house",activeBattle.house());j.addProperty("pacts",pacts);j.addProperty("writs",p.writs);
+        return j;
     }
     /** The report's House rows (MatchStats.houseRows): every House the fielded banner has slots in, its banner tier, its trait seconds this round, and what the match paid it (0 when nothing was saved). */
     JsonArray reportHouses(GravesAndGlory.Squad s,Map<String,Integer> slots,RosterMath.Rewards paid){
@@ -492,10 +690,22 @@ public final class Campaign {
         for(int i=0;i<b.points.size();i++){JsonObject row=new JsonObject();row.addProperty("name",b.points.get(i).spec.name());row.addProperty("dawn",i<held[0].length?held[0][i]:0);row.addProperty("dusk",i<held[1].length?held[1][i]:0);rows.add(row);}
         return rows;
     }
+    /** The report's mode block (the 4F.2 report): the round's mode id, name, rule line, whether it plays the capture points, and its two ledger numbers with their maxima and formats, as the lobby's mode block gives them (BattleMode.snapshot). The report screen reads it to give each mode a section of its own (ReportSections); a client that does not know the field ignores it. */
+    JsonObject reportMode(){
+        JsonObject j=new JsonObject();var m=b.mode;
+        j.addProperty("id",m.id());j.addProperty("name",m.name());j.addProperty("rule",m.rule());j.addProperty("points",m.capturesPoints(b));
+        JsonArray ledger=new JsonArray(),max=new JsonArray(),format=new JsonArray();
+        var entries=m.ledgerEntries(b); // the mode's ledger rows (ModeLines.Entry); a mode without them falls back to its ledger/max/formats arrays
+        if(!entries.isEmpty())for(var e:entries){ledger.add(e.value());max.add(e.max());format.add(e.format());}
+        else{for(int n:m.ledger(b))ledger.add(n);for(int n:m.max(b))max.add(n);for(String f:m.formats())format.add(f);}
+        j.add("ledger",ledger);j.add("max",max);j.add("format",format);
+        return j;
+    }
     /** Harness cameras: while false, the lobby leashes here and in the build tick leave every player where he stands. Always true in play. */
     boolean leash=true;
     void tick(){
         if(b.time%20==0)expireNotices();
+        if(b.running){if(b.time%20==0)releaseExpiredHolds();if(b.time%600==0)checkpoint();}
         if(pendingBattle!=null&&b.ready){ // the map of a campaign battle is built: it starts unless something changed meanwhile
             var row=pendingBattle;UUID id=pendingCommander;pendingBattle=null;pendingCommander=null;
             var host=b.server.getPlayerManager().getPlayer(id);String refused=host==null?"":soloRefusal(id,MARCH_SOLO);
@@ -509,12 +719,14 @@ public final class Campaign {
                 else for(UUID member:pending.members)notice(member,"Map prepared. Match cancelled because readiness or room membership changed.");}
         }
         if(b.time%20==0)social.presence(new HashSet<>(b.server.getPlayerManager().getPlayerList().stream().map(ServerPlayerEntity::getUuid).toList()),System.currentTimeMillis());
-        if(!b.running){for(var p:b.server.getPlayerManager().getPlayerList())if(leash&&!CampWorld.inCamp(p.getX(),p.getY(),p.getZ()))toLobby(p);if(b.time%20==0)expireInvites();if(b.time%10==0)padTick();return;}
+        if(!b.running){for(var p:b.server.getPlayerManager().getPlayerList())if(leash&&!CampWorld.inCamp(p.getX(),p.getY(),p.getZ()))toLobby(p);if(b.time%20==0)expireInvites();if(b.time%10==0){padTick();roomCountdown();}return;}
         // Unseated lobby players wait in the hall while a match runs.
         if(b.time%20==0)for(var p:b.server.getPlayerManager().getPlayerList()){var s=b.squads.get(p.getUuid());if(leash&&(s==null||!s.seated)&&!CampWorld.inCamp(p.getX(),p.getY(),p.getZ()))toLobby(p);}
-        if(b.time<introUntil){for(var p:b.server.getPlayerManager().getPlayerList()){var s=b.squads.get(p.getUuid());if(s!=null&&s.seated&&p.squaredDistanceTo(GravesAndGlory.Battle.base(s.team))>2)b.toBase(p,s.team);}return;}
+        if(b.time<introUntil){for(var p:b.server.getPlayerManager().getPlayerList()){var s=b.squads.get(p.getUuid());if(s!=null&&s.seated&&p.squaredDistanceTo(b.fieldBase(s.team))>2)b.toBase(p,s.team);}return;}
         boolean economy=b.time%100==0;
         for(var s:b.squads.values())if(s.bot){
+            // A dropped commander's army keeps its last orders for disconnectGraceSeconds; then its bot takes command (MatchRules).
+            if(MatchRules.waiting(b.time,s.takeoverAt))continue;if(s.takeoverAt>0){s.takeoverAt=0;s.order="attack";}
             var tier=tier(s);boolean decide=b.time%Math.max(1,tier.decisionTicks())==0;
             if(!economy&&!decide)continue;
             if(economy){
@@ -525,8 +737,8 @@ public final class Campaign {
                 int weight=b.fielded(s).mapToInt(u->u.spec.slotWeight()).sum()+s.training.stream().mapToInt(q->q.spec().slotWeight()).sum();
                 for(var want:wanted.entrySet()){var type=troop(want.getKey());
                     long have=b.fielded(s).filter(u->u.spec==type).count()+s.training.stream().filter(q->q.spec()==type).count();
-                    int price=Commander.cost(s,type); // the bot's class price (a Warlock's magic troops cost less)
-                    while(have<want.getValue()&&s.gold>=price&&weight+type.slotWeight()<=GravesAndGlory.R.squadSize()){s.gold-=price;long previous=s.training.isEmpty()?b.time:s.training.getLast().finished();s.training.addLast(new GravesAndGlory.Training(type,Math.max(b.time,previous)+Commander.trainingTicks(s,type),price));weight+=type.slotWeight();have++;}
+                    int price=type.cost();
+                    while(have<want.getValue()&&s.gold>=price&&weight+type.slotWeight()<=GravesAndGlory.R.squadSize()){s.gold-=price;long previous=s.training.isEmpty()?b.time:s.training.getLast().finished();s.training.addLast(new GravesAndGlory.Training(type,Math.max(b.time,previous)+Commander.trainingTicks(type),price));weight+=type.slotWeight();have++;}
                 }
                 Veterans.botBuy(b,s); // then gear, from what the refill left, keeping its tier's reserve for rebuys (in-match progression design 9.1)
             }
@@ -539,11 +751,9 @@ public final class Campaign {
         for(var row:Spec.BOTCOMMAND)if(row.id().equals("normal"))return row;
         return Spec.BOTCOMMAND[0];
     }
-    /** An enemy infantry unit this close to a Hard bot's army counts as melee: no shieldwall. */
-    static final double MELEE_THREAT_RANGE=8;
     /** A remembered enemy counts as near a point, or near an army, within this many times the point's radius or the tier's charge distance. */
     static final double NEAR_RADIUS_FACTOR=2;
-    /** One command decision for a bot army, run at its tier's cadence: retreat or rally, pick the point to take, set the order, stamp the charge (Battle.markCharge; a bot's command plays no sound).
+    /** One command decision for a bot army, run at its tier's cadence: retreat or rally, pick the point to take, set the order, stamp the charge (Battle.markCharge; a bot's command plays no sound). A new Charge starts only when the squad's Charge cooldown is ready (OrderRules.useCharge).
      *  Easy and Normal read the whole battlefield; Hard reads only what its team has seen (b.sightings), and holds the points it owns before it flanks (garrisonPoint). */
     void botDecide(GravesAndGlory.Squad s,Spec.BotCommandRow tier){
         var mine=b.units.stream().filter(u->u.squad==s&&u.mob.isAlive()).toList();
@@ -554,7 +764,8 @@ public final class Campaign {
         Map<UUID,GravesAndGlory.Battle.Sight> seen=new HashMap<>();for(var entry:b.sightings.getOrDefault(s.team,Map.of()).entrySet())if(foes.containsKey(entry.getKey()))seen.put(entry.getKey(),entry.getValue());
         int count=b.points.size();GravesAndGlory.Capture choice;
         int full=RosterMath.units(s.banner,RosterMath.Catalog.fromSpec()); // the units its banner lists, an Epic or a Legendary once
-        if(living<=full*tier.retreatShare())botRetreating.add(s.owner);
+        if(!b.mode.botRetreats(b,s))botRetreating.remove(s.owner); // a mode can deny the fall-back (Siege's defenders behind the gate)
+        else if(living<=full*tier.retreatShare())botRetreating.add(s.owner);
         else if(living>=full*tier.rallyShare())botRetreating.remove(s.owner);
         int hold=tier.flankLeastDefended()?garrisonPoint(s,center,tier):-1;
         if(hold>=0)choice=b.points.get(hold);
@@ -572,9 +783,10 @@ public final class Campaign {
         long enemies=foes.size();
         boolean couldCharge=b.startsCharge(s,"all"),retreating=botRetreating.contains(s.owner);
         String wasOrder=s.order;Vec3d wasTarget=s.target;s.assignments.clear();
-        if(retreating){s.order="retreat";s.formation="loose";s.target=GravesAndGlory.Battle.base(s.team);}
+        if(retreating){s.order="retreat";s.formation="loose";s.target=b.fieldBase(s.team);}
         else{
-            s.order=choice.owner==s.team?"hold":"attack";s.formation=living<8?"loose":"block";s.target=new Vec3d(choice.spec.x(),choice.spec.elevation()+1,choice.spec.z());
+            Vec3d goal=b.mode.botGoal(b,s,center,tier); // a mode's own goal (Convoy's wagon), else the chosen point
+            s.order=goal!=null||choice.owner!=s.team?"attack":"hold";s.formation=living<8?"loose":"block";s.target=goal!=null?goal:new Vec3d(choice.spec.x(),choice.spec.elevation()+1,choice.spec.z());
             if(s.order.equals("attack")){
                 if(tier.chargeDistance()>0){
                     // Timed charge: judged on the enemies this team has seen, counted near the army, and only once the nearest is in range.
@@ -584,17 +796,11 @@ public final class Campaign {
                 }else if(enemies>0&&BattleMath.timedCharge(0,living,enemies,tier.chargeRatio(),0))s.order="charge";
             }
         }
+        Vec3d objective=retreating?null:b.mode.botTarget(b,s); // a mode's own objective (Siege's stage) replaces the point plan
+        if(objective!=null){s.target=objective;if(b.mode.howToSide(b,s).equals("defend"))s.order="hold";else if(!s.order.equals("charge"))s.order="attack";}
+        if(s.order.equals("charge")&&couldCharge&&!OrderRules.useCharge(b,s))s.order="attack"; // a new Charge needs the commander's cooldown (OrderRules.chargeReady, markChargeUsed); not ready, the army attacks its objective. A bot never hunts: only a player's Attack does (Assignment.hunt).
         s.yaw=s.team==0?-90:90;
-        if(!retreating&&tier.shieldwallVsArchers()){
-            // Brace the shield troops when remembered archers are in range and nothing has closed to melee. Only troops with a shield can brace.
-            boolean shields=mine.stream().anyMatch(u->u.spec.group().equals("infantry")&&u.tags.contains("shield"));
-            int ranged=0,melee=0;
-            for(var entry:seen.entrySet()){var enemy=foes.get(entry.getKey());
-                double d=Math.hypot(entry.getValue().x()-center.x,entry.getValue().z()-center.z);
-                if(enemy.spec.group().equals("ranged")&&d<=tier.archerThreatRange())ranged++;
-                else if(enemy.spec.group().equals("infantry")&&d<=MELEE_THREAT_RANGE)melee++;}
-            if(BattleMath.shieldwallVsArchers(ranged,melee,tier.archerThreatCount(),shields))s.assignments.put("infantry",new GravesAndGlory.Assignment(s.order,"shieldwall",s.target,s.yaw));
-        }
+        if(!retreating)b.mode.botPlan(b,s,tier); // a mode's per-group split of the order (Siege's stage plan)
         if(!s.order.equals(wasOrder)||!Objects.equals(s.target,wasTarget))s.arrived.clear(); // a new order or spot ends an arrival (Tactics.arrived); the same decision again keeps it
         if(s.order.equals("charge")&&couldCharge)b.markCharge(s,"all");
     }
@@ -617,7 +823,8 @@ public final class Campaign {
         return BattleMath.garrison(owners,s.team,at.toArray(double[][]::new),assignable,points,NEAR_RADIUS_FACTOR*tier.chargeDistance())[me];
     }
     /** Switches the battlefield. The arena rebuilds on the next ticks; the lobby stays. */
-    void switchMap(int index){Projectiles.clear(b);Abilities.clearBanners(b);Houses.reset(b);b.clearSides();b.clearProgression();FeedEvents.clear();map=index;CampaignMaps.select(map);b.points.clear();for(var point:Spec.POINTS)b.points.add(new GravesAndGlory.Capture(point));b.ready=false;b.buildColumn=0;Structures.clearQueue();b.placing=false;}
+    void switchMap(int index){if(b.mode.teardown(b))Modes.unmark(b);b.saves.clear(); // the next map's recover drops a kept marker and its files: the arena is rebuilt
+        Projectiles.clear(b);b.strikes.clear();Abilities.clearBanners(b);Houses.reset(b);b.clearCorpses();b.clearSides();b.clearProgression();FeedEvents.clear();map=index;if(!Modes.registered(battleMode)||!Modes.hosts(battleMode,map))battleMode=Modes.DOMINATION;CampaignMaps.select(map);b.points.clear();for(var point:Spec.POINTS)b.points.add(new GravesAndGlory.Capture(point));b.ready=false;b.buildColumn=0;Structures.clearQueue();b.placing=false;}
     /** The lesson a commander is on, or -1: only a campaign battle whose sheet row teaches (lessons) shows them, to its commanders, until all four are done. They repeat on every replay. */
     int tutorialStep(UUID id){
         if(!b.running||activeBattle==null||!activeBattle.lessons()||!participants.contains(id))return -1;
@@ -625,7 +832,9 @@ public final class Campaign {
     }
     /** Advances the lesson when the commander does what it asks. The last one pays for a first recruitment roll, once per commander (tutorialDone). */
     void tutorialDid(ServerPlayerEntity p,int step){
-        UUID id=p.getUuid();if(tutorialStep(id)!=step)return;
+        UUID id=p.getUuid();int at=tutorialStep(id);
+        if(step==1&&at==0){tutorial.put(id,1);return;} // a Formation given first still completes the Follow me or Retreat lesson; the Formation lesson then waits for the next one
+        if(at!=step)return;
         tutorial.put(id,step+1);if(step<3)return;
         Profile pr=profile(id);if(pr.tutorialDone){notice(id,"Training complete. The reward is paid once.");return;}
         pr.tutorialDone=true;pr.gold+=Spec.RECRUITMENT[0].rollCost();save(id);
@@ -654,7 +863,7 @@ public final class Campaign {
         if(changed){padCountdown=-1;for(UUID id:onPad.keySet())notice(id,"Ready group changed. Countdown reset; step off to cancel.");}
         if(onPad.isEmpty()){padCountdown=-1;return;}
         if(padCountdown<0){padCountdown=200;for(UUID id:onPad.keySet())notice(id,"Starting in 10 seconds. Open the war table and press Change to vote for a map.");return;}
-        padCountdown-=10;if(padCountdown<=0)startQuickMatch();
+        padCountdown-=10;if(padCountdown<=0)startQuickMatch();else Audio.countdown(b,onPad.keySet(),padCountdown);
     }
     void startQuickMatch(){
         int selected=map,best=0;for(int i=0;i<Spec.MAPS.length;i++){final int index=i;int votes=(int)mapVotes.values().stream().filter(v->v==index).count();if(votes>best){best=votes;selected=i;}}
@@ -720,7 +929,10 @@ public final class Campaign {
         partyJson.add("online",online);j.add("party",partyJson);j.add("result",results.getOrDefault(p.getUuid(),new JsonObject()));
         // In the lobby a row carries the team the viewer's next round gives that commander (nextSeats), or -1 when he would not enter with the viewer, so the list's marks read like the side preview; in battle, the squad's team.
         Map<UUID,Integer> nextTeams=new HashMap<>();if(!b.running)for(var seat:nextSeats(p.getUuid()))nextTeams.put(seat.owner(),seat.team());
-        JsonArray players=new JsonArray();for(var s:b.squads.values()){JsonObject row=new JsonObject();var player=b.server.getPlayerManager().getPlayer(s.owner);row.addProperty("name",s.bot?"AI Commander":player==null?"Commander":player.getGameProfile().getName());row.addProperty("team",b.running?s.team:nextTeams.getOrDefault(s.owner,-1));row.addProperty("bot",s.bot);players.add(row);}j.add("players",players);j.add("sides",sidesJson(p.getUuid()));j.add("banner",bannerJson(p.getUuid()));j.add("social",socialSnapshot(p.getUuid()));j.add("progression",progressSnapshot(p.getUuid()));j.add("lastRoll",lastRolls.getOrDefault(p.getUuid(),new JsonObject()));return fitted(j,p.getUuid());
+        JsonArray players=new JsonArray();for(var s:b.squads.values()){JsonObject row=new JsonObject();var player=b.server.getPlayerManager().getPlayer(s.owner);row.addProperty("name",s.bot?"AI Commander":player==null?"Commander":player.getGameProfile().getName());row.addProperty("team",b.running?s.team:nextTeams.getOrDefault(s.owner,-1));row.addProperty("bot",s.bot);players.add(row);}j.add("players",players);j.add("sides",sidesJson(p.getUuid()));j.add("banner",bannerJson(p.getUuid()));j.add("social",socialSnapshot(p.getUuid()));j.add("progression",progressSnapshot(p.getUuid()));j.add("lastRoll",lastRolls.getOrDefault(p.getUuid(),new JsonObject()));j.add("forge",forgeResults.getOrDefault(p.getUuid(),new JsonObject()));
+        BattleMode shown=b.running?b.mode:Modes.create(battleMode);
+        j.add("battleMode",shown.snapshot(b,b.running?b.squads.get(p.getUuid()):null));
+        return fitted(j,p.getUuid());
     }
     /**
      * The seats the viewer's next round would have, for the lobby's side preview. While a start is under way they are the seated
@@ -742,7 +954,7 @@ public final class Campaign {
     /** The banner a commander fields: his battle banner while he is seated in a running battle, else his profile banner. */
     JsonArray bannerJson(UUID id){var s=b.squads.get(id);List<String> shown=b.running&&s!=null&&s.seated?s.banner:profile(id).banner;JsonArray out=new JsonArray();for(String entry:shown)out.add(entry);return out;}
     /** The client's copy of a profile: match ids stay on the server. They only stop one match paying twice, and 256 of them (94 characters a match across both copies) would outgrow SNAPSHOT_LIMIT. */
-    static JsonObject forClient(Profile p){JsonObject j=JSON.toJsonTree(p).getAsJsonObject();var s=j.getAsJsonObject(Profile.PROGRESSION);if(s!=null)s.remove(Progression.State.MATCH_GRANTS);return j;}
+    static JsonObject forClient(Profile p){JsonObject j=JSON.toJsonTree(p).getAsJsonObject();var s=j.getAsJsonObject(Profile.PROGRESSION);if(s!=null)s.remove(Progression.State.MATCH_GRANTS);j.remove(Profile.GEAR);return j;} // the gear list travels on gear_v1 (GearWire), never in the camp snapshot
     static JsonObject forClient(Progression.State s){JsonObject j=JSON.toJsonTree(s).getAsJsonObject();j.remove(Progression.State.MATCH_GRANTS);return j;}
     /** The snapshot as sent: pretty when it fits SNAPSHOT_LIMIT, else compact, else compact without the battle report, else "{}" (the client then keeps its last camp state). Each shortened form is logged the first time a commander is sent it. */
     String fitted(JsonObject j,UUID id){
@@ -754,9 +966,8 @@ public final class Campaign {
     }
 
     boolean saveSocial(){
-        Path file=b.server.getSavePath(WorldSavePath.ROOT).resolve("gravesandglory-parties.json"),tmp=file.resolveSibling(file.getFileName()+".tmp");
-        try{Files.writeString(tmp,JSON.toJson(social));if(Files.exists(file))Files.copy(file,file.resolveSibling(file.getFileName()+".bak"),StandardCopyOption.REPLACE_EXISTING);
-            try{Files.move(tmp,file,StandardCopyOption.REPLACE_EXISTING,StandardCopyOption.ATOMIC_MOVE);}catch(AtomicMoveNotSupportedException e){Files.move(tmp,file,StandardCopyOption.REPLACE_EXISTING);}return true;
+        Path file=b.server.getSavePath(WorldSavePath.ROOT).resolve("gravesandglory-parties.json");
+        try{SafeFiles.writeWithBackup(file,JSON.toJson(social));return true;
         }catch(java.io.IOException e){System.err.println("[Graves and Glory] Party save failed: "+e.getClass().getSimpleName());return false;}
     }
     boolean socialCommand(ServerPlayerEntity p,String cmd){
@@ -768,29 +979,52 @@ public final class Campaign {
             case "invite","kick","transfer"->{var target=b.server.getPlayerManager().getPlayer(arg);UUID targetId=target==null?social.group(id).stream().filter(m->name(m).equals(arg)).findFirst().orElse(null):target.getUuid();
                 if(targetId==null)yield "Commander not found.";
                 yield action.equals("invite")?social.invite(id,targetId,System.currentTimeMillis()):action.equals("kick")?social.kick(id,targetId):social.transfer(id,targetId);}
-            case "room"->social.createRoom(id);case "join"->social.joinRoom(id,arg);case "exit"->social.leaveRoom(id);case "ready"->social.ready(id);
+            case "room"->social.createRoom(id);case "lobby"->social.lobby(id);
+            case "mode"->{String said=social.mode(id,arg,Modes.ids());var room=social.room(id); // a mode that does not host the room's map takes the room to its first map
+                if(said.startsWith("Mode set")&&room!=null&&!Modes.hosts(room.mode,room.map))for(int m=0;m<Spec.MAPS.length;m++)if(Modes.hosts(room.mode,m)){room.map=m;said=Modes.row(room.mode).name()+" is played on "+Spec.MAPS[m].name()+". "+said;break;}
+                yield said;}case "house"->{String said=social.house(id,arg,RosterMath.fieldableHouses());String no=said.startsWith("House chosen")?houseRefusal(social.room(id),id):"";yield no.isEmpty()?said:no;}
+            case "host"->{UUID targetId=social.room(id)==null?null:social.room(id).members.stream().filter(m->name(m).equals(arg)).findFirst().orElse(null);yield social.handHost(id,targetId);}case "join"->social.joinRoom(id,arg);case "exit"->social.leaveRoom(id);case "ready"->social.ready(id,houseRefusal(social.room(id),id));
             case "team"->social.team(id,Integer.parseInt(arg));
             case "size","map","fill"->{var room=social.room(id);if(room==null)yield "Create or join a room first.";
-                yield social.configure(id,action.equals("size")?Integer.parseInt(arg):room.size,action.equals("map")?Integer.parseInt(arg):room.map,action.equals("fill")?!room.fill:room.fill,Spec.MAPS.length);}
+                String said=social.configure(id,action.equals("size")?Integer.parseInt(arg):room.size,action.equals("map")?Integer.parseInt(arg):room.map,action.equals("fill")?!room.fill:room.fill,Spec.MAPS.length);
+                if(said.startsWith("Room settings saved")&&!Modes.hosts(room.mode,room.map)){said=Modes.row(room.mode).name()+" is not played on "+Spec.MAPS[room.map].name()+": the mode is now Domination. "+said;room.mode=Modes.DOMINATION;} // a map the room's mode does not host plays Domination
+                yield said;}
             case "start"->{if(!preparingRoom.isEmpty()&&!preparingRoom.equals(social.room(id)==null?"":social.room(id).code))yield "Another room is preparing a battlefield. Your room is saved.";String failure=social.startFailure(id,b.running);if(!failure.isEmpty())yield failure;
                 var room=social.room(id);if(!b.ready)yield "Preparing the battlefield. Please wait.";
                 if(room.map!=map){preparingRoom=room.code;switchMap(room.map);yield "Preparing your chosen map. Your ready group will enter automatically; unready to cancel.";}
-                boolean empty=room.members.stream().anyMatch(m->bannerUnits(m)==0);if(empty)yield "Every commander needs at least one troop in their banner.";
+                var empty=room.members.stream().filter(m->houseUnits(room,m)==0).findFirst();if(empty.isPresent())yield name(empty.get())+"'s banner holds no "+RosterMath.houseName(lobbyHouse(room,empty.get()))+" troops.";
                 size=room.size;fill=room.fill;practice=false;activeRoom=room.code;activeBattle=null;
                 for(var squad:b.squads.values())if(!squad.bot){squad.seated=room.members.contains(squad.owner);if(squad.seated)squad.team=room.teams.get(squad.owner);}
+                if(battleModeBeforeRoom==null)battleModeBeforeRoom=battleMode;
+                battleMode=room.mode; // the room's mode plays (startRound falls back to Domination on a map the mode does not host)
                 social.begin(room);b.startRound();yield "Your room is entering battle together.";}
             default->"Unknown social action.";
         };}catch(IllegalArgumentException e){result="Invalid selection.";}
-        if(!before.equals(JSON.toJson(social))&&!saveSocial()){social.parties=JSON.fromJson(before,SocialHub.class).parties;result="Party change could not be saved. It was not applied; check disk space.";}
+        if(!before.equals(JSON.toJson(social))&&!saveSocial()){social.rollback(JSON.fromJson(before,SocialHub.class));result="Party change could not be saved. It was not applied; check disk space.";}
         notice(id,result);return true;
     }
+    /** The War Table lobby's ready countdown, every 10 ticks between battles: a room whose every commander is ready counts down
+     *  SocialHub.COUNTDOWN_TICKS and then starts as the host's start would; an un-ready (or anything that stops the start) stops it. */
+    void roomCountdown(){
+        var step=social.countdown(10,b.running,preparingRoom);
+        for(var r:step.started())for(UUID m:r.members)notice(m,"All commanders ready. The battle begins in 10 seconds; un-ready to stop it.");
+        for(var r:social.rooms.values())if(r.countdown>0)Audio.countdown(b,r.members,r.countdown); // a tick for each of the last three seconds
+        for(var r:step.cancelled()){String why=social.startFailure(r.leader,b.running);for(UUID m:r.members)notice(m,"Countdown stopped."+(why.isEmpty()?"":" "+why));}
+        for(var r:step.due()){var host=b.server.getPlayerManager().getPlayer(r.leader);if(host!=null)socialCommand(host,"social:start");
+            if(!r.playing&&!r.code.equals(preparingRoom)){r.ready.clear();social.revision++;for(UUID m:r.members)if(!m.equals(r.leader))notice(m,"The battle could not start. Ready up again.");}}
+    }
+    /** A member's House as the lobby shows it: the pick, else the House the banner leans to. */
+    String lobbyHouse(SocialHub.Room r,UUID m){String h=r.houses.get(m);return h!=null?h:RosterMath.rollHouse(profile(m).banner);}
     JsonObject socialSnapshot(UUID id){
         JsonObject j=new JsonObject();var party=social.party(id);var room=social.room(id);j.addProperty("party",party!=null);j.addProperty("partyLead",party!=null&&party.leader.equals(id));j.addProperty("leader",party==null?"":name(party.leader));
         JsonArray members=new JsonArray();if(party!=null)for(UUID m:party.members){JsonObject row=new JsonObject();row.addProperty("name",name(m));row.addProperty("online",social.online.contains(m));row.addProperty("me",m.equals(id));members.add(row);}j.add("members",members);
         var invite=social.invites.get(id);j.addProperty("inviter",invite==null?"":name(invite.sender()));j.addProperty("inviteSeconds",invite==null?0:Math.max(0,(invite.expires()-System.currentTimeMillis()+999)/1000));
         JsonArray available=new JsonArray();for(var p:b.server.getPlayerManager().getPlayerList())if(!p.getUuid().equals(id)&&social.party(p.getUuid())==null)available.add(p.getGameProfile().getName());j.add("available",available);
         j.addProperty("room",room==null?"":room.code);j.addProperty("host",room!=null&&room.leader.equals(id));j.addProperty("playing",room!=null&&room.playing);j.addProperty("preparing",room!=null&&room.code.equals(preparingRoom));j.addProperty("size",room==null?2:room.size);j.addProperty("map",room==null?0:room.map);j.addProperty("fill",room==null||room.fill);
-        JsonArray commanders=new JsonArray();if(room!=null)for(UUID m:room.members){JsonObject row=new JsonObject();row.addProperty("name",name(m));row.addProperty("team",room.teams.get(m));row.addProperty("ready",room.ready.contains(m));row.addProperty("online",social.online.contains(m));commanders.add(row);}j.add("commanders",commanders);return j;
+        j.addProperty("mode",room==null?Modes.DOMINATION:room.mode);JsonArray modes=new JsonArray();Modes.ids().forEach(modes::add);j.add("modes",modes);
+        j.addProperty("countdown",room==null||room.countdown<0?0:(room.countdown+19)/20);j.addProperty("waiting",room==null||room.playing?"":social.startFailure(room.leader,b.running));
+        JsonArray commanders=new JsonArray();if(room!=null)for(UUID m:room.members){JsonObject row=new JsonObject();row.addProperty("name",name(m));row.addProperty("team",room.teams.get(m));row.addProperty("ready",room.ready.contains(m));row.addProperty("online",social.online.contains(m));
+            row.addProperty("house",lobbyHouse(room,m));row.addProperty("troops",houseUnits(room,m));row.addProperty("role",GearStats.of(profile(m)).role());row.addProperty("host",m.equals(room.leader));row.addProperty("me",m.equals(id));commanders.add(row);}j.add("commanders",commanders);return j;
     }
 
     boolean progressCommand(ServerPlayerEntity player,String cmd){

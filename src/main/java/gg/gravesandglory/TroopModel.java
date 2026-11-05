@@ -6,7 +6,6 @@ import com.google.gson.JsonObject;
 import net.minecraft.client.model.ModelPart;
 import net.minecraft.client.render.RenderLayer;
 import net.minecraft.client.render.VertexConsumer;
-import net.minecraft.client.render.entity.animation.Animation;
 import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.client.render.entity.model.SinglePartEntityModel;
 import net.minecraft.entity.Entity;
@@ -19,16 +18,14 @@ import java.util.*;
 
 /**
  * One troop's own model (or a bare rig), built by TroopModelLoader from its generated models/troop JSON. Proportions are
- * baked in that file; this class shows and hides parts per armour tier (the stages key), weapon tier (weaponTiers), fold and helm, and TroopAnimator poses it from its rig's
- * clips (Task 5b). Team bones (panels, pennant, standard) are hidden for the skin pass and drawn by TroopFeatures.Cloth
+ * baked in that file; this class shows and hides parts per armour tier (the stages key), weapon tier (weaponTiers), fold and helm, and TroopMotion poses it with the
+ * motion engine (animation rework Task 13). Team bones (panels, pennant, standard) are hidden for the skin pass and drawn by TroopFeatures.Cloth
  * from the cloth sheet. One instance serves every entity of the troop, so prepare and setAngles run right before each draw.
  */
 public final class TroopModel<T extends MobEntity> extends SinglePartEntityModel<T> {
     /** A bone as the generated file describes it. variants is empty for every bone but a face bone, which shows only for the face variants it names (TroopFaces.shows). */
     record Bone(String name,String parent,String part,boolean team,String tag,Set<Integer> stages,Set<Integer> weaponTiers,Set<Integer> variants){}
     static final float RAD=MathHelper.RADIANS_PER_DEGREE;
-    /** Head look limits in degrees: yaw both ways, pitch only downwards, so a helm never swings into the pennant pole behind it. */
-    static final float HEAD_YAW=30,HEAD_DOWN=30;
     /** The reach of an off-hand shield from its hand bone, in model pixels (vanilla's held shield, held at its far corner). */
     static final double SHIELD_REACH=24;
     /** Bones a model may have: prepare records the bones a draw shows as bits of one long. */
@@ -37,6 +34,8 @@ public final class TroopModel<T extends MobEntity> extends SinglePartEntityModel
     final ModelPart top;
     final String troop,rig,hand,idleArms,portrait,weapon;
     final Identifier veteran,glow,outer;final int glowFrom;
+    /** The troop's own cloth sheets ("cloth": a texture id prefix, <prefix><side>.png), or "" for the shared team_cloth_ sheets. */
+    final String cloth;
     /** Texels a model px of this troop's PNGs carry (the file's "density", 1 unless it says; texel-3 plan): above 1 the build also ships a one-texel-a-px twin of each PNG (TroopModels.twin). */
     final int density;
     /** The faces of this troop (texel-3 faces design F2): how many face bones its head has (0 for a troop with none), the face a card portrait wears, and the face a singular character is pinned to (-1 for none). */
@@ -46,6 +45,8 @@ public final class TroopModel<T extends MobEntity> extends SinglePartEntityModel
     private final Set<Integer> partTiers=new TreeSet<>();
     private final Map<String,ModelPart> parts=new LinkedHashMap<>();
     private final Map<String,Bone> info=new LinkedHashMap<>();
+    /** The bones with a joint limit ("limit" in the file, TroopModelLoader.limit): [min, max] degrees of pitch from the file pose. */
+    private final Map<String,float[]> limits=new HashMap<>();
     private final Map<String,List<ModelPart>> paths=new HashMap<>();
     private final List<List<ModelPart>> teamPaths=new ArrayList<>();
     private final List<Bone> teamBones=new ArrayList<>();
@@ -59,6 +60,8 @@ public final class TroopModel<T extends MobEntity> extends SinglePartEntityModel
     /** The outer layer's twin (rig boxes dilated by the rig's outer), or null; its bones copy this model's pose. */
     final ModelPart outerTop;private final Map<String,ModelPart> outerParts=new HashMap<>();
     boolean folded;
+    /** Whether the troop holds nothing in its off hand, so the model's own shield parts (tag shield) hide; TroopRenderer sets it before prepare. */
+    boolean shieldOff;
     private long shown;
     /** The bits of the team bones in a shownMask. */
     private final long teamBits;
@@ -66,8 +69,12 @@ public final class TroopModel<T extends MobEntity> extends SinglePartEntityModel
     private final List<double[]> weaponPoints;
     /** How much taller than its rig this troop stands (rootScale); set by TroopModelLoader from the rig. */
     private float rootK=1f;
-    /** The frustum test's reach (radius, bottom and top in blocks) with the clips sampled: normal, and posed with the whole-body clips; worked out on first use. */
-    private double[] normalCull,posedCull;
+    /** The frustum test's reach (radius, bottom and top in blocks) with the motion engine's reach in it (cullReach), and the clip generation it was worked out for. */
+    private double[] motionCull;private int motionGen;
+    /** Per bone, its pivot at rest in model space (model pixels, y down) and the farthest of its own box corners from that pivot. */
+    private final Map<String,double[]> pivots;private final Map<String,Double> ownReach=new HashMap<>();
+    /** Per hand bone, how far what it holds reaches from its pivot: the weapon's farthest corner in the weapon hand, a shield's reach in the other. */
+    private final Map<String,Double> itemReach=new HashMap<>();
     /** The inputs of the last setAngles: age, limb angle, limb distance, head yaw and head pitch (the harness reads them). */
     final float[] lastInputs=new float[5];
     /** The relief layer (troop depth design, section 3): per key ("1", "2" or "3") the mesh of each skin bone that has one, in file order. */
@@ -84,9 +91,9 @@ public final class TroopModel<T extends MobEntity> extends SinglePartEntityModel
     boolean reliefSpent;int reliefDrawn;
 
     private TroopModel(){
-        super(RenderLayer::getEntityCutout);top=new ModelPart(List.of(),Map.of());troop=rig=hand=idleArms=portrait=weapon="";
+        super(RenderLayer::getEntityCutout);top=new ModelPart(List.of(),Map.of());troop=rig=hand=idleArms=portrait=weapon=cloth="";
         veteran=glow=outer=null;glowFrom=1;density=1;faceCount=0;faceCard=0;faceFixed=-1;teamOn=new boolean[0];hands=Map.of();rest=new Box(0,0,0,0,0,0);outerTop=null;
-        cullRadius=cullBottom=cullTop=0;crown=Double.NaN;teamBits=0;weaponPoints=List.of();relief=Map.of();reliefWalk=Map.of();
+        cullRadius=cullBottom=cullTop=0;pivots=Map.of();crown=Double.NaN;teamBits=0;weaponPoints=List.of();relief=Map.of();reliefWalk=Map.of();
     }
     /** An empty placeholder: TroopRenderer is built before TroopModelLoader may have loaded anything. */
     static <T extends MobEntity> TroopModel<T> empty(){return new TroopModel<>();}
@@ -100,7 +107,7 @@ public final class TroopModel<T extends MobEntity> extends SinglePartEntityModel
         super(RenderLayer::getEntityCutout);
         this.top=top;this.hands=Map.copyOf(hands);this.outerTop=outerTop;this.weaponPoints=List.copyOf(weaponPoints);
         troop=str(json,"troop");rig=str(json,"rig");hand=str(json,"hand");idleArms=json.has("idleArms")?str(json,"idleArms"):"hang";
-        portrait=str(json,"portrait");weapon=str(json,"weapon");
+        portrait=str(json,"portrait");weapon=str(json,"weapon");cloth=str(json,"cloth");
         veteran=id(str(json,"veteran"));glow=id(str(json,"glow"));outer=id(str(json,"outer"));
         glowFrom=json.has("glowFrom")?json.get("glowFrom").getAsInt():1;
         density=json.has("density")?json.get("density").getAsInt():1;
@@ -127,7 +134,7 @@ public final class TroopModel<T extends MobEntity> extends SinglePartEntityModel
             Set<Integer> variants=new TreeSet<>();if(b.has("variants"))for(var s:b.getAsJsonArray("variants"))variants.add(s.getAsInt());
             Bone bone=new Bone(name,parent,str(b,"part"),b.has("team")&&b.get("team").getAsBoolean(),str(b,"tag"),Collections.unmodifiableSet(stages),Collections.unmodifiableSet(arms),Collections.unmodifiableSet(variants));
             ModelPart p=parent.isEmpty()?top.getChild(name):parts.get(parent).getChild(name);
-            parts.put(name,p);info.put(name,bone);
+            parts.put(name,p);info.put(name,bone);float[] limit=TroopModelLoader.limit(b,name);if(limit!=null)limits.put(name,limit);
             List<ModelPart> path=new ArrayList<>(parent.isEmpty()?List.of(top):paths.get(parent));path.add(p);paths.put(name,List.copyOf(path));
             if(bone.team()){teamPaths.add(paths.get(name));teamBones.add(bone);}
             if(outerTop!=null&&bone.part().isEmpty()){ModelPart twin=parent.isEmpty()?outerTop.getChild(name):outerParts.get(parent).getChild(name);outerParts.put(name,twin);}
@@ -168,13 +175,23 @@ public final class TroopModel<T extends MobEntity> extends SinglePartEntityModel
         String weaponBone=this.hands.get(hand);
         for(String side:List.of("right","left")){
             String h=this.hands.get(side);Bone hb=h==null?null:info.get(h);if(hb==null||hb.parent().isEmpty())continue;
-            double[] shoulder=at.get(hb.parent()),held=at.get(h);double item=0;
+            // a jointed arm (Task 9) swings from its shoulder, the forearm's parent: the reach of the whole arm, the elbow bent any way
+            // inside it (the hand is never farther from the shoulder than with the arm straight, as at rest)
+            String arm=hb.parent();if(arm.endsWith("_forearm")&&!info.get(arm).parent().isEmpty())arm=info.get(arm).parent();
+            double[] shoulder=at.get(arm),held=at.get(h);double item=0;
             if(h.equals(weaponBone))for(double[] p:weaponPoints)item=Math.max(item,Math.sqrt(p[0]*p[0]+p[1]*p[1]+p[2]*p[2]));
             else item=SHIELD_REACH;
-            spheres.add(sphere(shoulder,Math.max(reachOf(hb.parent(),shoulder,corners),dist(shoulder,held)+item)));
+            spheres.add(sphere(shoulder,Math.max(reachOf(arm,shoulder,corners),dist(shoulder,held)+item)));
         }
         for(double[] s:spheres){radius=Math.max(radius,Math.hypot(s[0],s[2])+s[3]);high=Math.min(high,s[1]-s[3]);low=Math.max(low,s[1]+s[3]);}
         boolean any=low>-Double.MAX_VALUE;
+        pivots=Map.copyOf(at);
+        for(var c:corners.entrySet()){double r=0;for(double[] w:c.getValue())r=Math.max(r,dist(at.get(c.getKey()),w));ownReach.put(c.getKey(),r);}
+        for(String side:List.of("right","left")){
+            String h=this.hands.get(side);if(h==null||!info.containsKey(h))continue;double item=0;
+            if(h.equals(weaponBone))for(double[] p:weaponPoints)item=Math.max(item,Math.sqrt(p[0]*p[0]+p[1]*p[1]+p[2]*p[2]));else item=SHIELD_REACH;
+            itemReach.merge(h,item,Math::max);
+        }
         cullRadius=any?radius/16+.25:1;cullTop=any?1.501-high/16+.25:2;cullBottom=any?1.501-low/16-.25:0;
         Map<String,Set<String>> walk=new TreeMap<>();
         for(var k:rel.entrySet()){
@@ -197,7 +214,17 @@ public final class TroopModel<T extends MobEntity> extends SinglePartEntityModel
     @Override public ModelPart getPart(){return top;}
     /** A bone by its name, for AnimationHelper (the default would take "root" for the unnamed top part). */
     @Override public Optional<ModelPart> getChild(String name){return Optional.ofNullable(parts.get(name));}
+    /** A bone's part by its name (the rig's elbow and knee bones, right_forearm, left_forearm, right_shin and left_shin, among them), or null. */
     public ModelPart bone(String name){return parts.get(name);}
+    /** The animation rework's rig-contract name for {@link #bone(String)}: the same part. */
+    public ModelPart part(String bone){return bone(bone);}
+    /**
+     * A bone's joint limit, [min, max] degrees of pitch from its file pose, or null for a bone the file gives none (any bend).
+     * R7 of the animation rework: the mage's shins carry [0, 10], so its robe, which hangs rigid from the thigh, never parts from the shin.
+     */
+    public float[] jointLimit(String bone){float[] l=limits.get(bone);return l==null?null:l.clone();}
+    /** Every joint limit, by bone (TroopMotion clamps by them each frame; read only). */
+    Map<String,float[]> limits(){return limits;}
     public Set<String> bones(){return Collections.unmodifiableSet(parts.keySet());}
     /** The skin bones shown at armour and weapon tier I, at rest, in model pixels (y down, the ground at y 24). */
     public Box restBounds(){return rest;}
@@ -212,39 +239,54 @@ public final class TroopModel<T extends MobEntity> extends SinglePartEntityModel
     /** The rig's hand bone for "right" or "left" (null when the rig has none). */
     public String handBone(String side){return hands.get(side);}
     /**
-     * The box the frustum test keeps an entity of this model by: its feet, every part and flag, the reach of its head, arms and
-     * weapon, and every base and overlay clip; a dead or posed troop (TroopAnimator.posed) also every whole-body clip.
+     * The box the frustum test keeps an entity of this model by (cullReach about its feet). A body lying past its fall, once drawn
+     * lying, takes only its own pose's reach (TroopMotion.lyingReach, Task 7).
      */
-    public Box cullBox(Entity e){double[] c=cullReach(TroopAnimator.posed(e));return new Box(e.getX()-c[0],e.getY()+c[1],e.getZ()-c[0],e.getX()+c[0],e.getY()+c[2],e.getZ()+c[0]);}
-    /** The cull reach (radius, bottom and top over the feet, in blocks), the whole-body clips in it for posed. */
-    public double[] cullReach(boolean posed){
-        if(normalCull==null){
-            double[] n={cullRadius,cullBottom,cullTop};
-            Map<String,Animation> plain=TroopClips.of(rig);
-            if(!plain.isEmpty()){
-                for(String clip:TroopClips.NAMES)if(!WHOLE.contains(clip))sample(clip,n);
-                Spec.TroopsRow row=TroopAnimator.row(this);
-                for(Animation a:TroopTells.own(troop,row==null?null:row.house(),rig))sample(a,n); // its tell, overrides and House attack: none is a whole-body clip
-                double[] p=n.clone();for(String clip:WHOLE)sample(clip,p);
-                top.traverse().forEach(ModelPart::resetTransform);normalCull=n;posedCull=p;
-            }else{normalCull=n;posedCull=n;}
+    public Box cullBox(Entity e){double[] c=TroopMotion.lyingReach(e,this);if(c==null)c=cullReach();return new Box(e.getX()-c[0],e.getY()+c[1],e.getZ()-c[0],e.getX()+c[0],e.getY()+c[2],e.getZ()+c[0]);}
+    /**
+     * The cull reach (radius, bottom and top over the feet, in blocks): the rest reach (every box, the head and arms swung any way
+     * with what the hands hold), grown by what the motion engine can do to this model. Every bone may turn any way about its pivot,
+     * and each bone's pivot may move by its own translation reach (TroopMotion.bonePx: the procedural bound for that bone plus its
+     * clips' envelope at that bone, the root's scaled by rootScale), added once down each chain (Task 13 fix round 1, I1); a
+     * top-level bone's sideways reach counts toward the radius only and its vertical reach toward the top and bottom only.
+     * Task 16 M2: a model with a family takes the reach sampled from its clips and the engine instead (TroopMotion.bounds); the
+     * analytic reach below (analyticReach) stays for a bare rig. Worked out again when the clips reload. Shared: callers only read it.
+     */
+    public double[] cullReach(){
+        int gen=ClipLibrary.generation();
+        if(motionCull==null||motionGen!=gen){
+            double[] sampled=TroopMotion.bounds(this);
+            motionCull=sampled!=null?sampled:analyticReach();motionGen=gen;
         }
-        return (posed?posedCull:normalCull).clone();
+        return motionCull;
     }
-    /** The clips only a dead or posed troop plays. */
-    private static final Set<String> WHOLE=Set.of("death","kneel","point","sit","fall","stand");
-    /** Grows a reach by one of the rig's clips, plain and mirrored. */
-    private void sample(String clip,double[] reach){
-        for(Map<String,Animation> set:List.of(TroopClips.of(rig),TroopClips.mirrored(rig))){
-            Animation a=set.get(clip);if(a!=null)sample(a,reach);
+    /** The analytic cull reach (cullReach's fallback for a bare rig; the harness's red side for M2), no clip sampled. */
+    double[] analyticReach(){
+        {
+            double radius=cullRadius,bottom=cullBottom,up=cullTop;Map<String,Double> memo=new HashMap<>();
+            for(String r:kids.getOrDefault("",List.of())){
+                // a top-level bone moves in the model's own axes, which setupTransforms turns about the vertical only: its sideways
+                // reach widens the radius alone and its vertical reach the top and bottom alone
+                double[] p=pivots.get(r);if(p==null)continue;double[] t=TroopMotion.bonePx(this,r);double k=r.equals("root")?Math.max(1,rootK):1,s=reachFrom(r,memo);
+                double side=Math.hypot(t[0],t[2])*k,lift=Math.abs(t[1])*k;
+                radius=Math.max(radius,(Math.hypot(p[0],p[2])+side+s)/16+TroopMotion.CULL_MARGIN);
+                up=Math.max(up,1.501-(p[1]-lift-s)/16+TroopMotion.CULL_MARGIN);
+                bottom=Math.min(bottom,1.501-(p[1]+lift+s)/16-TroopMotion.CULL_MARGIN);
+            }
+            return new double[]{radius,bottom,up};
         }
     }
-    /** Grows a reach by one clip, every 50 ms: every box, the weapon at its hand and a shield's reach at the other. */
-    private void sample(Animation a,double[] reach){
-        for(float t=0;t<=a.lengthInSeconds()+1e-4f;t+=.05f){
-            top.traverse().forEach(ModelPart::resetTransform);TroopAnimator.animate(this,a,t,1f);TroopAnimator.rootScale(this);
-            double[] e=extent();reach[0]=Math.max(reach[0],e[0]+.25);reach[2]=Math.max(reach[2],e[2]+.25);reach[1]=Math.min(reach[1],e[1]-.25);
-        }
+    /** How far the motion engine can move a bone's pivot (pixels): the length of its translation reach, a root's times rootScale (when it grows). */
+    private double move(String bone){
+        double[] t=TroopMotion.bonePx(this,bone);double d=Math.sqrt(t[0]*t[0]+t[1]*t[1]+t[2]*t[2]);
+        return bone.equals("root")?d*Math.max(1,rootK):d;
+    }
+    /** How far a bone's subtree can reach from its pivot, every bone turned any way and each child's pivot moved by its own reach (move). */
+    private double reachFrom(String bone,Map<String,Double> memo){
+        Double m=memo.get(bone);if(m!=null)return m;
+        double r=Math.max(ownReach.getOrDefault(bone,0.0),itemReach.getOrDefault(bone,0.0));double[] at=pivots.get(bone);
+        for(String k:kids.getOrDefault(bone,List.of())){double[] ka=pivots.get(k);if(at!=null&&ka!=null)r=Math.max(r,dist(at,ka)+move(k)+reachFrom(k,memo));}
+        memo.put(bone,r);return r;
     }
     /**
      * How far the pose the bones are in now reaches about the feet, in blocks, as cullReach reads it (no margin): the horizontal
@@ -270,9 +312,9 @@ public final class TroopModel<T extends MobEntity> extends SinglePartEntityModel
     void rig(TroopModel<?> rigModel){
         ModelPart mine=parts.get("root"),theirs=rigModel==null?null:rigModel.bone("root");
         if(mine!=null&&theirs!=null){float r=24-theirs.getDefaultTransform().pivotY;rootK=r<=0?1f:(24-mine.getDefaultTransform().pivotY)/r;}
-        normalCull=posedCull=null;
+        motionCull=null;
     }
-    /** How much taller than its rig this troop stands: TroopAnimator scales the root's offsets by it, so its falls land on the ground. */
+    /** How much taller than its rig this troop stands: TroopMotion scales the root's offsets by it, so its falls land on the ground. */
     public float rootScale(){return rootK;}
     // ---- the relief layer (troop depth design, sections 3 and 4) ----
     /** The relief mesh of a bone for a key; empty when the bone has none. */
@@ -309,9 +351,41 @@ public final class TroopModel<T extends MobEntity> extends SinglePartEntityModel
     }
     /** The skin pass, then the relief of the key the draw armed: the same consumer, light, overlay and tint, so the relief is one more layer of the skin. */
     @Override public void render(MatrixStack m,VertexConsumer vc,int light,int overlay,float r,float g,float b,float a){
+        if(BodyCache.parts!=BodyCache.ALL){masked(m,vc,light,overlay,r,g,b,a);return;}
+        skin(m,vc,light,overlay,r,g,b,a);
+    }
+    private void skin(MatrixStack m,VertexConsumer vc,int light,int overlay,float r,float g,float b,float a){
         super.render(m,vc,light,overlay,r,g,b,a);
         String key=armed;armed=null;
         if(key!=null){reliefDrawn=renderRelief(key,m,vc,light,overlay,r,g,b,a);reliefSpent=true;}
+    }
+    /** The part a whole-model pass draws (BodyCache.BODY for the skin; the Trim and Glow layers set BodyCache.ARMOUR for theirs): the harness's part switches read it. */
+    int pass=BodyCache.BODY;
+    private Set<String> shieldBones;
+    /** The bones of the model's own shield: each bone tagged shield and every bone under it (file order puts a parent first). */
+    Set<String> shieldBones(){
+        if(shieldBones==null){Set<String> out=new HashSet<>();for(Bone b:info.values())if("shield".equals(b.tag())||out.contains(b.parent()))out.add(b.name());shieldBones=out;}
+        return shieldBones;
+    }
+    /**
+     * Harness only (mo-fade, R56; BodyCache.parts not ALL): this pass with only the parts the switches name. The model's own
+     * shield counts as the shield, the rest of the pass as its part (pass): without the shield its bones are not visible for
+     * the pass; the shield alone, every other part's own boxes are skipped (ModelPart.hidden; its children still walk), so the
+     * shield draws where it hangs.
+     */
+    private void masked(MatrixStack m,VertexConsumer vc,int light,int overlay,float r,float g,float b,float a){
+        Set<String> sh=shieldBones();boolean rest=BodyCache.drawn(pass),shield=!sh.isEmpty()&&BodyCache.drawn(BodyCache.SHIELD);
+        if(rest&&(shield||sh.isEmpty())){skin(m,vc,light,overlay,r,g,b,a);return;}
+        if(!rest&&!shield){armed=null;return;}
+        List<ModelPart> touched=new ArrayList<>();
+        if(rest){
+            for(String n:sh){ModelPart p=parts.get(n);if(p.visible){p.visible=false;touched.add(p);}}
+            try{skin(m,vc,light,overlay,r,g,b,a);}finally{for(ModelPart p:touched)p.visible=true;}
+        }else{
+            if(!top.hidden){top.hidden=true;touched.add(top);}
+            for(var en:parts.entrySet())if(!sh.contains(en.getKey())&&!en.getValue().hidden){en.getValue().hidden=true;touched.add(en.getValue());}
+            try{skin(m,vc,light,overlay,r,g,b,a);}finally{for(ModelPart p:touched)p.hidden=false;}
+        }
     }
     /** Every bone's pose (pivot x, y and z, pitch, yaw and roll) in file order, 6 floats a bone; into reuse when it fits. */
     public float[] snapshot(float[] reuse){
@@ -345,7 +419,7 @@ public final class TroopModel<T extends MobEntity> extends SinglePartEntityModel
     /**
      * Sets visibility for one draw: parts shown at the armour tier the Look's art draws as (armourArt, its stages key) and at
      * the weapon tier its weapon parts draw as (weaponPartTier, their weaponTiers key), the arms or arms_folded by the fold
-     * (any model with an arms_folded bone folds when asked; TroopAnimator.folds asks), helm parts unless
+     * (any model with an arms_folded bone folds when asked; TroopMotion.folds asks), helm parts unless
      * helmOff, and every team bone hidden for the skin pass (renderCloth shows the ones that draw: a pennant or standard
      * only for a troop on a side whose row flies one).
      */
@@ -357,14 +431,30 @@ public final class TroopModel<T extends MobEntity> extends SinglePartEntityModel
     public void prepare(TroopModels.Look l,boolean folded,boolean helmOff,int variant){
         int stage=armourArt(l==null?1:l.armourTier()),arms=weaponPartTier(l==null?1:l.weaponTier());this.folded=folded&&parts.containsKey("arms_folded");
         for(Bone b:info.values()){
-            boolean on=(b.stages().isEmpty()||b.stages().contains(stage))&&(b.weaponTiers().isEmpty()||b.weaponTiers().contains(arms));if(helmOff&&"helm".equals(b.tag()))on=false;
+            boolean on=(b.stages().isEmpty()||b.stages().contains(stage))&&(b.weaponTiers().isEmpty()||b.weaponTiers().contains(arms));if(helmOff&&"helm".equals(b.tag()))on=false;if(shieldOff&&"shield".equals(b.tag()))on=false;
             on&=TroopFaces.shows(b.variants(),variant,faceCount);
             parts.get(b.name()).visible=on&&!b.team();
         }
-        ModelPart right=parts.get("right_arm"),left=parts.get("left_arm"),fold=parts.get("arms_folded");
-        if(fold!=null){fold.visible=this.folded;if(right!=null)right.visible=!this.folded;if(left!=null)left.visible=!this.folded;}
+        showFold();
         boolean flies=l!=null&&l.side()!=null&&l.troop().pennant();
-        for(int i=0;i<teamBones.size();i++){Bone b=teamBones.get(i);teamOn[i]=(b.stages().isEmpty()||b.stages().contains(stage))&&(b.weaponTiers().isEmpty()||b.weaponTiers().contains(arms))&&(!FLAGS.contains(b.part())||flies)&&(!helmOff||!"helm".equals(b.tag()));}
+        for(int i=0;i<teamBones.size();i++){Bone b=teamBones.get(i);teamOn[i]=(b.stages().isEmpty()||b.stages().contains(stage))&&(b.weaponTiers().isEmpty()||b.weaponTiers().contains(arms))&&(!FLAGS.contains(b.part())||flies)&&(!helmOff||!"helm".equals(b.tag()))&&(!shieldOff||!"shield".equals(b.tag()));}
+        mask();
+    }
+    /**
+     * Shows the folded arms or the arms as the fold reads after this frame's pose (TroopMotion.pose; Task 13 fix round 1, M1): prepare
+     * took the fold from the last frame, so the first frame of a swing or a scene clip on a folded-arms troop would otherwise draw
+     * both. Changes only the fold's three bones, as prepare sets them, and the shown bones.
+     */
+    void refold(boolean folded){
+        boolean f=folded&&parts.containsKey("arms_folded");if(f==this.folded)return;
+        this.folded=f;showFold();mask();
+    }
+    private void showFold(){
+        ModelPart right=parts.get("right_arm"),left=parts.get("left_arm"),fold=parts.get("arms_folded");
+        if(fold!=null){fold.visible=folded;if(right!=null)right.visible=!folded;if(left!=null)left.visible=!folded;}
+    }
+    /** Works out the shown bones (shownMask) from the bones' visibility and the team bones prepare left on. */
+    private void mask(){
         long mask=0;int i=0,t=0;
         for(Bone b:info.values()){
             List<ModelPart> path=paths.get(b.name());boolean on=b.team()?teamOn[t++]:path.get(path.size()-1).visible;
@@ -390,7 +480,7 @@ public final class TroopModel<T extends MobEntity> extends SinglePartEntityModel
             if(b.team()&&teamOn[i++]){
                 List<ModelPart> path=teamPaths.get(i-1);boolean shown=true;
                 for(int k=0;k<path.size()-1;k++)shown&=path.get(k).visible;
-                if(shown){
+                if(shown&&(BodyCache.parts==BodyCache.ALL||BodyCache.drawn(shieldBones().contains(b.name())?BodyCache.SHIELD:BodyCache.ARMOUR))){ // the harness's part switches (mo-fade)
                     m.push();for(int k=0;k<path.size()-1;k++)path.get(k).rotate(m);
                     ModelPart bone=path.get(path.size()-1);bone.visible=true;bone.render(m,vc,light,overlay);bone.visible=false;
                     m.pop();drawn|=1L<<bit;
@@ -402,19 +492,20 @@ public final class TroopModel<T extends MobEntity> extends SinglePartEntityModel
     }
 
     /**
-     * Resets every part to its file pose, then TroopAnimator poses it for the entity: its rig's clips (base, overlays and
-     * whole-body poses, blended), the carries (shield arm, bow twist, arms forward) and the head look, yaw within 30 degrees
-     * and pitch only down.
+     * Resets every part to its file pose, then TroopMotion poses it for the entity with the motion engine: its family's clips
+     * and the procedural layers, the joint limits, and the carries (shield arm, bow twist, arms forward).
      */
     @Override public void setAngles(T entity,float limbAngle,float limbDistance,float animationProgress,float headYaw,float headPitch){
         lastInputs[0]=animationProgress;lastInputs[1]=limbAngle;lastInputs[2]=limbDistance;lastInputs[3]=headYaw;lastInputs[4]=headPitch;
         top.traverse().forEach(ModelPart::resetTransform);
-        TroopAnimator.pose(this,entity,limbAngle,limbDistance,animationProgress,headYaw,headPitch);
+        TroopMotion.pose(this,entity,limbAngle,limbDistance,animationProgress,headYaw,headPitch);
     }
 
     private static String str(JsonObject o,String key){return o.has(key)&&!o.get(key).isJsonNull()?o.get(key).getAsString():"";}
     private static Identifier id(String s){return s.isEmpty()?null:new Identifier(s);}
     private static double[] vec(JsonObject o,String key){JsonArray a=o.getAsJsonArray(key);double[] v=new double[a.size()];for(int i=0;i<v.length;i++)v[i]=a.get(i).getAsDouble();return v;}
+    /** Whether the model carries its own shield (bones tagged shield), drawn in place of the vanilla shield item (TroopFeatures.Shield). */
+    boolean ownShield(){for(Bone b:info.values())if("shield".equals(b.tag()))return true;return false;}
     private static double[][] identity(){return new double[][]{{1,0,0},{0,1,0},{0,0,1}};}
     /** The ModelPart rotation (pitch, yaw, roll in degrees) as a matrix: Z then Y then X, as Quaternionf.rotationZYX. */
     static double[][] rotation(double[] deg){

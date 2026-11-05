@@ -1,5 +1,6 @@
 package gg.gravesandglory;
 
+import com.google.gson.JsonObject;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.minecraft.block.Block;
 import net.minecraft.nbt.NbtCompound;
@@ -13,12 +14,15 @@ import net.minecraft.structure.processor.BlockIgnoreStructureProcessor;
 import net.minecraft.util.BlockMirror;
 import net.minecraft.util.BlockRotation;
 import net.minecraft.util.Identifier;
+import net.minecraft.util.WorldSavePath;
 import net.minecraft.util.math.BlockBox;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Vec3d;
 import net.minecraft.util.math.Vec3i;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayDeque;
 import java.util.List;
 import java.util.Map;
@@ -165,6 +169,7 @@ public final class Structures {
     /** CRC32 (hex) of what the landmarks of a map are made of: its landmarks rows, the pieces rows and the bytes of their templates' structure files, the landmarkLines rows of those templates, its supplyHouses rows, the revision of the
      *  landmark pass (PASS, on a map with landmarks rows only) and salt. It is in the map cache marker, so a world whose map was built with other landmarks builds that map once more. */
     public static String hash(int map){
+        if(EngineMaps.on(map))return "engine-"+EngineMaps.map.sha;
         var crc=new CRC32();boolean any=false;
         for(var r:Spec.LANDMARKS)if(r.map()==map){
             any=true;crc.update(r.toString().getBytes(StandardCharsets.UTF_8));
@@ -181,5 +186,56 @@ public final class Structures {
     static byte[] fileBytes(String id){
         try(InputStream in=Structures.class.getResourceAsStream("/data/"+NS+"/structures/"+id+".nbt")){return in==null?new byte[0]:in.readAllBytes();}
         catch(Exception e){return new byte[0];}
+    }
+
+    // ---- a mode's saved pieces (Phase 4 Task 5): what stood under a piece before the mode changed it ----
+    /** A piece a mode must put back: the tag its file is named after, that file, and the block box the snapshot covers. */
+    public record Saved(String tag,Path file,BlockPos origin,Vec3i size){
+        public JsonObject toJson(){
+            JsonObject j=new JsonObject();j.addProperty("tag",tag);j.addProperty("file",file.toString());
+            JsonObject at=new JsonObject();at.addProperty("x",origin.getX());at.addProperty("y",origin.getY());at.addProperty("z",origin.getZ());j.add("origin",at);
+            JsonObject span=new JsonObject();span.addProperty("x",size.getX());span.addProperty("y",size.getY());span.addProperty("z",size.getZ());j.add("size",span);
+            return j;
+        }
+        public static Saved fromJson(JsonObject j){
+            var at=j.getAsJsonObject("origin");var span=j.getAsJsonObject("size");
+            return new Saved(j.get("tag").getAsString(),Path.of(j.get("file").getAsString()),
+                new BlockPos(at.get("x").getAsInt(),at.get("y").getAsInt(),at.get("z").getAsInt()),
+                new Vec3i(span.get("x").getAsInt(),span.get("y").getAsInt(),span.get("z").getAsInt()));
+        }
+    }
+    /** Where a mode's saved pieces live, under the world save. */
+    static Path savedDir(ServerWorld w){return w.getServer().getSavePath(WorldSavePath.ROOT).resolve("gravesandglory/mode-saved");}
+    /**
+     * Saves the blocks a piece covers, then places the piece over them (Phase 4 Task 5): a mode that changes a map piece calls this
+     * so teardown can put exactly what stood there back. The snapshot is a vanilla structure file under mode-saved/<tag>.nbt; null
+     * when the piece is missing or the file cannot be written (nothing is placed then).
+     */
+    public static Saved placeSaving(ServerWorld w,String id,int cx,int y,int cz,int rotation,String tag){
+        Loaded piece=load(w,id);if(piece==null)return null;
+        BlockBox box=footprint(piece.template().getSize(),cx,y,cz,rotation);
+        Vec3i span=new Vec3i(box.getMaxX()-box.getMinX()+1,box.getMaxY()-box.getMinY()+1,box.getMaxZ()-box.getMinZ()+1);
+        BlockPos origin=new BlockPos(box.getMinX(),box.getMinY(),box.getMinZ());
+        StructureTemplate snapshot=new StructureTemplate();
+        snapshot.saveFromWorld(w,origin,span,false,net.minecraft.block.Blocks.STRUCTURE_VOID);
+        Path file=savedDir(w).resolve(tag+".nbt");
+        try{
+            Files.createDirectories(file.getParent());
+            NbtIo.writeCompressed(snapshot.writeNbt(new NbtCompound()),file.toFile());
+        }catch(Exception e){System.err.println("[Graves and Glory] structure could not be saved: "+tag+": "+e);return null;}
+        place(w,id,cx,y,cz,rotation);
+        return new Saved(tag,file,origin,span);
+    }
+    /** Puts a saved box back and deletes its file; false when the file is gone or cannot be read. */
+    public static boolean restore(ServerWorld w,Saved saved){
+        try{
+            if(!Files.exists(saved.file()))return false;
+            NbtCompound nbt=NbtIo.readCompressed(saved.file().toFile());
+            StructureTemplate template=w.getStructureTemplateManager().createTemplate(nbt);
+            StructurePlacementData data=new StructurePlacementData().setIgnoreEntities(true).setUpdateNeighbors(false).addProcessor(BlockIgnoreStructureProcessor.IGNORE_STRUCTURE_BLOCKS);
+            template.place(w,saved.origin(),saved.origin(),data,w.getRandom(),Block.NOTIFY_LISTENERS);
+            Files.deleteIfExists(saved.file());
+            return true;
+        }catch(Exception e){System.err.println("[Graves and Glory] structure could not be restored: "+saved.tag()+": "+e);return false;}
     }
 }

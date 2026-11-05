@@ -1,0 +1,49 @@
+QA rows D20, H7, K11, 2026-11-03, branch qa/d20-h7-k11 (base main f24ffe46), jar graves-and-glory-0.5.0.jar sha256 800c5d8e92e1c57db..
+Scratch dedicated server (server kit scripts, port 25640, RCON 25641, online-mode=false, EULA set in the scratch folder only per the parent brief) and a stdlib protocol-763 bot; one java process at a time; both stopped with stop.ps1; scratch folder deleted afterwards.
+
+== D20 ==
+fresh uuid 63bcf14d-aa26-3b61-b6c3-4bacc15e073b exist uuid 50536c90-be0d-3543-a108-04c2c1eaa3fd
+baseline after join (existing): {'50536c90-be0d-3543-a108-04c2c1eaa3fd.json': 'a68003bb973f', '50536c90-be0d-3543-a108-04c2c1eaa3fd.v1.json': '2864a7a7d179', '50536c90-be0d-3543-a108-04c2c1eaa3fd.v2.json': '486266daa877'}
+oversized len 20022
+[D20Exist] play disconnect: {"translate":"disconnect.genericReason","with":["Internal Exception: io.netty.handler.codec.DecoderException: The received string length is longer than maximum allowed (20022 > 16000)"]}
+after oversized: alive=False disconnect={"translate":"disconnect.genericReason","with":["Internal Exception: io.netty.handler.codec.DecoderException: The received string length is longer than maximum allowed (20022 > 16000)"]}
+files unchanged
+after valid-size big-gold profile: alive=True files unchanged
+fresh join files: no file for fresh uuid
+fresh after valid-size profile: alive=True new file for fresh uuid: none others unchanged: True
+[D20Fresh] play disconnect: {"translate":"disconnect.genericReason","with":["Internal Exception: io.netty.handler.codec.DecoderException: The received string length is longer than maximum allowed (20022 > 16000)"]}
+fresh after oversized: alive=False disc={"translate":"disconnect.genericReason","with":["Internal Exception: io.netty.handler.codec.DecoderException: The received string length is longer than maximum allowed (20022 > 16000)"]} fresh file: none
+final {'50536c90-be0d-3543-a108-04c2c1eaa3fd.json': 'a68003bb973f', '50536c90-be0d-3543-a108-04c2c1eaa3fd.v1.json': '2864a7a7d179', '50536c90-be0d-3543-a108-04c2c1eaa3fd.v2.json': '486266daa877'}
+
+== H7 / K11 round ==
+ONLINE rcon: There are 0 of a max of 16 players online: 
+13:20:20 COUNTS non-player=0 players=0 byType={}
+profile before join: None
+profile after join: None
+13:20:31 COUNTS non-player=2 players=1 byType={'villager': 1, 'text_display': 1}
+13:20:56 COUNTS non-player=39 players=1 byType={'husk': 39}
+round log: ['[13:18:47] [Server thread/INFO]: [STDOUT]: [Graves and Glory] camp terrain 1744 ms', '[13:18:47] [Server thread/INFO]: [STDOUT]: [Graves and Glory] camp pieces 268 ms', "[13:19:14] [Server thread/INFO]: [STDOUT]: [Graves and Glory] Ignored the collection sent by D20Exist; the server's saved collection is kept.", "[13:19:28] [Server thread/INFO]: [STDOUT]: [Graves and Glory] Ignored the collection sent by D20Fresh; the server's saved collection is kept.", '[13:19:36] [Server thread/I
+13:22:57 COUNTS non-player=39 players=1 byType={'husk': 39}
+13:24:57 COUNTS non-player=39 players=1 byType={'husk': 39}
+13:26:57 COUNTS non-player=39 players=1 byType={'husk': 39}
+13:28:58 COUNTS non-player=39 players=1 byType={'husk': 39}
+13:30:58 COUNTS non-player=39 players=1 byType={'husk': 39}
+13:32:59 COUNTS non-player=39 players=1 byType={'husk': 39}
+13:34:59 COUNTS non-player=39 players=1 byType={'husk': 39}
+ROUND FINISHED after 928s: profile {'sha': '0a6a21363055', 'gold': 40, 'matches': 1, 'wins': 0, 'shards': {'gilded': 1, 'graveborn': 0, 'wildmoot': 0, 'ironclad': 0, 'tidecallers': 0}, 'files': ['bf1a0e34-ccf3-368b-9c6d-015f46372568.json']}
+bot alive=True disconnect=None
+13:36:10 COUNTS non-player=2 players=1 byType={'villager': 1, 'text_display': 1}
+log after finish: ['io.netty.handler.codec.DecoderException: The received string length is longer than maximum allowed (20022 > 16000)', '[13:19:02] [Server thread/INFO]: D20Exist lost connection: Internal Exception: io.netty.handler.codec.DecoderException: The received string length is longer than maximum allowed (20022 > 16000)', 'io.netty.handler.codec.DecoderException: The received string length is longer than maximum allowed (20022 > 16000)', '[13:19:43] [Server thread/INFO]: D20Fresh lost 
+H7 profile before rejoin: {'sha': '0a6a21363055', 'gold': 40, 'matches': 1, 'wins': 0, 'shards': {'gilded': 1, 'graveborn': 0, 'wildmoot': 0, 'ironclad': 0, 'tidecallers': 0}, 'files': ['bf1a0e34-ccf3-368b-9c6d-015f46372568.json']}
+H7 rejoined alive=True; profile after rejoin: {'sha': '0a6a21363055', 'gold': 40, 'matches': 1, 'wins': 0, 'shards': {'gilded': 1, 'graveborn': 0, 'wildmoot': 0, 'ironclad': 0, 'tidecallers': 0}, 'files': ['bf1a0e34-ccf3-368b-9c6d-015f46372568.json']}
+H7 notices/chans: {'fabric:registry/sync/direct': 2, 'minecraft:register': 1, 'minecraft:brand': 1, 'gravesandglory:state_v9': 24}
+13:36:25 COUNTS non-player=23 players=1 byType={'villager': 4, 'armor_stand': 6, 'text_display': 13}
+H7 profile 5s later: {'sha': '0a6a21363055', 'gold': 40, 'matches': 1, 'wins': 0, 'shards': {'gilded': 1, 'graveborn': 0, 'wildmoot': 0, 'ironclad': 0, 'tidecallers': 0}, 'files': ['bf1a0e34-ccf3-368b-9c6d-015f46372568.json']}
+13:36:34 COUNTS non-player=0 players=0 byType={}
+PHASE-ROUND-DONE finished=True
+
+== after stop and restart ==
+13:37:18 first RCON count read 23 while chunks were still loading, then 0 with nobody online (separate queries: every type 0)
+13:37:44 COUNTS non-player=23 players=1 byType={villager 4, armor_stand 6, text_display 13}; husks 0; profile sha 0a6a21363055 gold 40 matches 1 (unchanged)
+13:37:47 COUNTS non-player=0 players=0
+Expected log errors: 2 'Encountered exception while handling in channel gravesandglory:profile_v1' (the oversized sends); no other Exception/ERROR.

@@ -1,6 +1,7 @@
 package gg.gravesandglory;
 
 import net.minecraft.entity.Entity;
+import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.mob.MobEntity;
 import net.minecraft.util.math.Vec3d;
 import java.util.Arrays;
@@ -32,8 +33,10 @@ public final class TroopDepth {
     private static int frame=1;
     private static volatile Vec3d camera=Vec3d.ZERO;
     private static volatile double cutoff=NEAR_SQ;
-    /** The squared distances beginFrame gathers each frame; the render thread alone touches it, and cutoffInPlace sorts it where it lies. */
-    private static double[] inRange=new double[256];
+    /** The cutoff for bodies lying past their fall (Task 7): they rank after every living troop, so -1 when the living fill the cap. */
+    private static volatile double bodyCutoff=NEAR_SQ;
+    /** The squared distances beginFrame gathers each frame, living troops and lying bodies apart; the render thread alone touches them, and the cutoffs sort them where they lie. */
+    private static double[] inRange=new double[256],bodiesInRange=new double[64];
 
     /**
      * Called on WorldRenderEvents.START: publishes the last frame's counts and works out this frame's cutoff from the entities'
@@ -42,13 +45,25 @@ public final class TroopDepth {
      */
     public static void beginFrame(Vec3d cam,Iterable<Entity> entities){
         nearDraws=drawsNow;reliefQuads=reliefNow;weaponQuads=weaponNow;drawsNow=0;reliefNow=weaponNow=0;frame++;
-        camera=cam;int n=0;
+        camera=cam;int n=0,nb=0;
         if(enabled)for(Entity e:entities){
-            if(!(e instanceof MobEntity)||e.getCustomName()==null)continue;
+            if(!(e instanceof MobEntity))continue;
+            if(BodyCache.recent(e)){ // a body BodyCache drew a few frames ago: a lying troop with a model
+                double d=distSq(e,cam);if(d>=NEAR_SQ)continue;
+                if(nb==bodiesInRange.length)bodiesInRange=Arrays.copyOf(bodiesInRange,nb*2);
+                bodiesInRange[nb++]=d;continue;
+            }
+            if(e.getCustomName()==null)continue;
             double d=distSq(e,cam);if(d>=NEAR_SQ||TroopModels.resolve(e)==null)continue;
+            if(lying(e)){
+                if(nb==bodiesInRange.length)bodiesInRange=Arrays.copyOf(bodiesInRange,nb*2);
+                bodiesInRange[nb++]=d;continue;
+            }
             if(n==inRange.length)inRange=Arrays.copyOf(inRange,n*2);
             inRange[n++]=d;
         }
+        // the body cutoff counts the living in range before cutoffInPlace reorders them (it only reads them)
+        bodyCutoff=BattleMath.bodyCutoffSq(inRange,n,bodiesInRange,nb,NEAR_CAP,NEAR_SQ);
         cutoff=cutoffInPlace(inRange,n,NEAR_CAP,NEAR_SQ);
     }
 
@@ -62,11 +77,11 @@ public final class TroopDepth {
     }
     /** cutoffSq on an array it may reorder: the in-range values are gathered at its front and sorted there. */
     private static double cutoffInPlace(double[] a,int n,int cap,double nearSq){
-        int k=0;
-        for(int i=0;i<n;i++)if(a[i]<nearSq)a[k++]=a[i];
-        if(k<cap||cap<1)return nearSq;
-        Arrays.sort(a,0,k);
-        return a[cap-1];
+        return BattleMath.reliefCutoffSq(a,n,cap,nearSq);
+    }
+    /** A troop's body lying past its fall (Task 7): it ranks after every living troop for relief and whole weapons. */
+    private static boolean lying(Entity e){
+        return e instanceof LivingEntity l&&l.isDead()&&l.deathTime>BattleMath.DEATH_FALL_TICKS;
     }
 
     /** Whether relief is drawn at all: the harness flag and the player's "Troop depth" option (Presentation.troopDepth) are both on. The option gates only the relief; weapons keep their sprite meshes. */
@@ -90,7 +105,7 @@ public final class TroopDepth {
     }
     private static boolean inRange(Entity e){
         if(TroopModels.dressed(e))return true;
-        double d=distSq(e,camera);return d<NEAR_SQ&&d<=cutoff;
+        double d=distSq(e,camera);return d<NEAR_SQ&&d<=(lying(e)?bodyCutoff:cutoff);
     }
     private static double distSq(Entity e,Vec3d cam){double dx=e.getX()-cam.x,dy=e.getY()-cam.y,dz=e.getZ()-cam.z;return dx*dx+dy*dy+dz*dz;}
 

@@ -4,6 +4,7 @@ import io
 import json
 import zipfile
 from export_modrinth import validate_index
+from release_files import resolve_local_path
 from release_config import ROOT, version, source_identity, validate_player_jar
 
 def verify():
@@ -18,7 +19,7 @@ def verify():
         assert index['versionId']==version() and index['dependencies']=={'minecraft':'1.20.1','fabric-loader':'0.16.14'}
         assert len(index['files'])==len(lock)
         for file in index['files']:
-            row=lock[file['path']];data=(ROOT/row['localPath']).read_bytes()
+            row=lock[file['path']];data=resolve_local_path(ROOT,row['localPath']).read_bytes()
             assert file['hashes']=={a:hashlib.new(a,data).hexdigest() for a in ('sha1','sha512')}
             assert file['downloads']==row['downloads'] and file['env']==row['env'] and file['fileSize']==len(data)
         jar_name=f'overrides/mods/graves-and-glory-{version()}.jar'

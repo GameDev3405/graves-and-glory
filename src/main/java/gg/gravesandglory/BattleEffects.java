@@ -25,7 +25,7 @@ public final class BattleEffects {
     public static void soul(GravesAndGlory.Battle b,Vec3d at){
         for(int i=0;i<PLUME;i++){double turn=i*2.399963,height=at.y+.1+1.9*i/PLUME; // the golden angle spreads the flames round the ring
             b.world.spawnParticles(ParticleTypes.SOUL_FIRE_FLAME,at.x+Math.cos(turn)*.6,height,at.z+Math.sin(turn)*.6,0,0,1,0,.08);}
-        b.world.playSound(null,at.x,at.y,at.z,SoundEvents.PARTICLE_SOUL_ESCAPE,SoundCategory.HOSTILE,1f,.9f);
+        Audio.at(b,AudioCues.Cue.SOUL_LEAVING,at,"so"+(long)at.x+","+(long)at.z);
         souls++;
     }
     /** One command feedback sound a player heard: who, which kind (charge, retreat or rally) and the battle time. */
@@ -37,20 +37,31 @@ public final class BattleEffects {
     /** A new round: the sounds of the last one and the throttle go. */
     static void startRound(){heard.clear();lastFeedback.clear();}
     /**
-     * A command's feedback sound, to the commanding player alone (nobody else hears it, and a bot's command plays nothing): the kind's cue (charge for
-     * Charge: horn_charge; retreat for Retreat: horn_rout; rally for Muster: horn_rally) at combatDiscipline.hornVolume, once per kind per player per
-     * hornCooldownSeconds. A second command of the kind within the cooldown plays nothing (the design's 5.2). Returns whether it played. The call is the
-     * ServerPlayerEntity overload (sound, category, volume, pitch): one PlaySoundS2CPacket to his connection; the three-argument PlayerEntity one goes
-     * through the world (sendToAround), which sends to every player near him and skips him.
+     * A command's sound, played in the world at the commander's position in the PLAYERS category, so every player in range hears it, the other side
+     * included (Kort, 2026-11-04; the old rule was that the commander alone heard it). The kind's horn (charge: horn_charge; retreat: horn_rout; rally for
+     * Muster: horn_rally) at combatDiscipline.hornVolume, and the troops' shout beside it: Charge also plays ORDER_CHARGE_SHOUT; the kind "hold", sent for a
+     * Hold or Move order or a formation change, plays ORDER_HOLD_SHOUT alone and is not logged in {@link #heard}. Once per kind per commander per
+     * hornCooldownSeconds: a second command of the kind within the cooldown plays nothing (the design's 5.2). Only a player's command comes here, so a
+     * bot's orders (Campaign.botDecide, markCharge) play nothing. Returns whether it played. The call is the world overload with no excluded player
+     * (sendToAround), which sends to every player near him, the commander too.
      */
     public static boolean feedback(GravesAndGlory.Battle b,net.minecraft.server.network.ServerPlayerEntity p,String kind){
         if(p==null)return false;
         var mine=lastFeedback.computeIfAbsent(p.getUuid(),k->new java.util.concurrent.ConcurrentHashMap<>());Long last=mine.get(kind);
         if(last!=null&&b.time>=last&&b.time-last<Spec.COMBATDISCIPLINE[0].hornCooldownSeconds()*20L)return false;
-        var sound=net.minecraft.registry.Registries.SOUND_EVENT.get(new net.minecraft.util.Identifier("gravesandglory",kind.equals("retreat")?"horn_rout":"horn_"+kind));if(sound==null)return false;
+        var shout=kind.equals("charge")?AudioCues.Cue.ORDER_CHARGE_SHOUT:kind.equals("hold")?AudioCues.Cue.ORDER_HOLD_SHOUT:null;
+        // "hold" has no horn, only its shout; the other kinds keep their horn.
+        var sound=kind.equals("hold")?null:net.minecraft.registry.Registries.SOUND_EVENT.get(new net.minecraft.util.Identifier("gravesandglory",kind.equals("retreat")?"horn_rout":"horn_"+kind));
+        if(sound==null&&shout==null)return false;
         mine.put(kind,b.time);
-        p.playSound(sound,SoundCategory.PLAYERS,(float)Spec.COMBATDISCIPLINE[0].hornVolume(),1f);
-        heard.add(new Heard(p.getUuid(),kind,b.time));
+        if(sound!=null){
+            b.world.playSound(null,p.getX(),p.getY(),p.getZ(),sound,SoundCategory.PLAYERS,(float)Spec.COMBATDISCIPLINE[0].hornVolume(),1f);
+            heard.add(new Heard(p.getUuid(),kind,b.time));
+        }
+        if(shout!=null){
+            var shoutSound=net.minecraft.registry.Registries.SOUND_EVENT.get(new net.minecraft.util.Identifier("gravesandglory",shout.id));
+            if(shoutSound!=null)b.world.playSound(null,p.getX(),p.getY(),p.getZ(),shoutSound,SoundCategory.PLAYERS,shout.volume,shout.pitch);
+        }
         return true;
     }
     public static void contact(LivingEntity victim,net.minecraft.entity.damage.DamageSource source,float amount){
@@ -68,11 +79,7 @@ public final class BattleEffects {
             Vec3d at=u.mob.getPos().add(0,1,0),dir=enemy.getPos().subtract(u.mob.getPos()).normalize();
             b.world.spawnParticles(ParticleTypes.SWEEP_ATTACK,at.x+dir.x,at.y,at.z+dir.z,1,0,0,0,0);
             flash(b,new Vec3d(enemy.getX(),enemy.getBodyY(.6),enemy.getZ()),u.squad.team);
-            if(u.slot%3==0){
-                // Vanilla cues, rotated and randomly pitched so a line of blows does not sound identical.
-                SoundEvent[] cues={SoundEvents.ENTITY_PLAYER_ATTACK_SWEEP,SoundEvents.ENTITY_PLAYER_ATTACK_KNOCKBACK,SoundEvents.ENTITY_PLAYER_ATTACK_CRIT};
-                b.world.playSound(null,u.mob.getBlockPos(),cues[b.world.random.nextInt(cues.length)],SoundCategory.HOSTILE,.3f,.85f+b.world.random.nextFloat()*.3f);
-            }
+            Audio.swing(b,u); // a blade's swish (AudioCues.SWORD_SWING); the landed blow has its own sound in Combat.resolve
         }else if(u.spec.magic()){
             b.world.spawnParticles(u.squad.team==0?ParticleTypes.ENCHANT:ParticleTypes.SOUL,u.mob.getX(),u.mob.getY()+1.3,u.mob.getZ(),8,.4,.4,.4,.03);
         }

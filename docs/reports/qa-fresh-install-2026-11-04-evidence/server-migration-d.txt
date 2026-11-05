@@ -1,0 +1,23 @@
+=== D16 D17 D18 D22 D23 on a dedicated server: restart with old profile files ===
+--- server start 1 ---
+server Done: True
+run 1 QaV1Fresh joined True | battlesWon [] schema 4 gold 1020 matches 0 wins 0 owned 10 commander champion gear 6 worn 6 relic0 stand_fast | files ['<uuid>.json', '<uuid>.v1.json', '<uuid>.v2.json', '<uuid>.v3.json'] | backup byte-copy True | unchanged-since-run1 None
+run 1 QaV1Full joined True | battlesWon ['march-1'] schema 4 gold 2700 matches 31 wins 17 owned 14 commander warlock gear 5 worn 5 relic0 grave_bloom | files ['<uuid>.json', '<uuid>.v1.json', '<uuid>.v2.json', '<uuid>.v3.json'] | backup byte-copy True | unchanged-since-run1 None
+run 1 QaV1Partial joined True | battlesWon ['march-1'] schema 4 gold 1320 matches 3 wins 1 owned 11 commander warden gear 6 worn 6 relic0 mark_prey | files ['<uuid>.json', '<uuid>.v1.json', '<uuid>.v2.json', '<uuid>.v3.json'] | backup byte-copy True | unchanged-since-run1 None
+run 1 QaV1Cache joined True | battlesWon ['march-1'] schema 4 gold 1800 matches 12 wins 7 owned 11 commander warden gear 6 worn 6 relic0 mark_prey | files ['<uuid>.json', '<uuid>.v1.json', '<uuid>.v2.json', '<uuid>.v3.json'] | backup byte-copy True | unchanged-since-run1 None
+run 1 QaV1Invalid joined True | battlesWon ['march-1'] schema 4 gold 690 matches 3 wins 1 owned 10 commander warden gear 6 worn 6 relic0 mark_prey | files ['<uuid>.json', '<uuid>.v1.json', '<uuid>.v2.json', '<uuid>.v3.json'] | backup byte-copy True | unchanged-since-run1 None
+run 1 QaV3Vet joined True | battlesWon ['march-1'] schema 4 gold 950 matches 14 wins 8 owned 10 commander marshal gear 5 worn 5 relic0 rally_horn | files ['<uuid>.json', '<uuid>.v3.json'] | backup byte-copy True | unchanged-since-run1 None
+run 1 QaV2 joined True | battlesWon ['march-1', 'march-2', 'march-3'] schema 4 gold 2700 matches 31 wins 17 owned 14 commander warlock gear 5 worn 5 relic0 grave_bloom | files ['<uuid>.json', '<uuid>.v2.json', '<uuid>.v3.json'] | backup byte-copy True | unchanged-since-run1 None
+run 1 QaBad joined True | unreadable: [Errno 2] No such file or directory: 'C:\\Users\\kortt\\Melty\\bannerbound-qa1104\\work\\qa1104\\srv\\Graves and Glory\\gravesandglory-profiles\\067e4e46-c31d-3299-abb6-5b6d63def529.json' | files ['<uuid>.json.corrupt'] | backup byte-copy None | unchanged-since-run1 None
+run 1 errors: ['[16:49:35] [Server thread/INFO] (Minecraft) [STDERR]: [Graves and Glory] Commander profile 067e4e46-c31d-3299-abb6-5b6d63def529 could not be read (java.lang.IllegalStateException: Commander profile co']
+--- server start 2 ---
+server Done: True
+run 2 QaV1Fresh joined True | battlesWon [] schema 4 gold 1020 matches 0 wins 0 owned 10 commander champion gear 6 worn 6 relic0 stand_fast | files ['<uuid>.json', '<uuid>.v1.json', '<uuid>.v2.json', '<uuid>.v3.json'] | backup byte-copy None | unchanged-since-run1 True
+run 2 QaV1Full joined True | battlesWon ['march-1'] schema 4 gold 2700 matches 31 wins 17 owned 14 commander warlock gear 5 worn 5 relic0 grave_bloom | files ['<uuid>.json', '<uuid>.v1.json', '<uuid>.v2.json', '<uuid>.v3.json'] | backup byte-copy None | unchanged-since-run1 True
+run 2 QaV1Partial joined True | battlesWon ['march-1'] schema 4 gold 1320 matches 3 wins 1 owned 11 commander warden gear 6 worn 6 relic0 mark_prey | files ['<uuid>.json', '<uuid>.v1.json', '<uuid>.v2.json', '<uuid>.v3.json'] | backup byte-copy None | unchanged-since-run1 True
+run 2 QaV1Cache joined True | battlesWon ['march-1'] schema 4 gold 1800 matches 12 wins 7 owned 11 commander warden gear 6 worn 6 relic0 mark_prey | files ['<uuid>.json', '<uuid>.v1.json', '<uuid>.v2.json', '<uuid>.v3.json'] | backup byte-copy None | unchanged-since-run1 True
+run 2 QaV1Invalid joined True | battlesWon ['march-1'] schema 4 gold 690 matches 3 wins 1 owned 10 commander warden gear 6 worn 6 relic0 mark_prey | files ['<uuid>.json', '<uuid>.v1.json', '<uuid>.v2.json', '<uuid>.v3.json'] | backup byte-copy None | unchanged-since-run1 True
+run 2 QaV3Vet joined True | battlesWon ['march-1'] schema 4 gold 950 matches 14 wins 8 owned 10 commander marshal gear 5 worn 5 relic0 rally_horn | files ['<uuid>.json', '<uuid>.v3.json'] | backup byte-copy None | unchanged-since-run1 True
+run 2 QaV2 joined True | battlesWon ['march-1', 'march-2', 'march-3'] schema 4 gold 2700 matches 31 wins 17 owned 14 commander warlock gear 5 worn 5 relic0 grave_bloom | files ['<uuid>.json', '<uuid>.v2.json', '<uuid>.v3.json'] | backup byte-copy None | unchanged-since-run1 True
+run 2 QaBad joined True | battlesWon [] schema 4 gold 0 matches 0 wins 0 owned 10 commander champion gear 6 worn 6 relic0 stand_fast | files ['<uuid>.json', '<uuid>.json.corrupt'] | backup byte-copy None | unchanged-since-run1 False
+run 2 errors: []

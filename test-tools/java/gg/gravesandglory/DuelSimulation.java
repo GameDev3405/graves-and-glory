@@ -118,6 +118,7 @@ public final class DuelSimulation implements ModInitializer {
         Identifier late = new Identifier("gravesandglory_local_test_tools", "late");
         ServerLivingEntityEvents.AFTER_DEATH.addPhaseOrdering(Event.DEFAULT_PHASE, late);
         ServerLivingEntityEvents.AFTER_DEATH.register(late, (entity, source) -> { ledger.onDeath(GravesAndGlory.battle, entity, source); if (phase == Phase.FIGHT) reforce(); });
+        ScratchFlags.install();
         ServerTickEvents.END_SERVER_TICK.register(this::tick);
     }
 
@@ -165,6 +166,7 @@ public final class DuelSimulation implements ModInitializer {
                 if (!b.running) { System.out.println("[duel] the round stopped during fight " + current.order() + "; restarting it"); endFight(b, "aborted"); startEmptyRound(b); phase = Phase.GAP; gapUntil = startAt(b.time + 140); return; }
                 keepRound(b);
                 ledger.tick(b);
+                ScratchFlags.track(b);
                 reforce();
                 if (b.time >= nextDecision) { decide(b, west, east); decide(b, east, west); nextDecision += DECISION_TICKS; }
                 long w = living(b, west).size(), e = living(b, east).size();
@@ -185,8 +187,8 @@ public final class DuelSimulation implements ModInitializer {
     /** A round with no army in it: no bots (fill off), no clock that runs out, so the troops tick and nothing scores. */
     void startEmptyRound(GravesAndGlory.Battle b) {
         var c = b.campaign; c.fill = false; c.practice = false; c.size = 1; c.lastWinner = -2;
-        b.roundSeconds = Integer.MAX_VALUE / 40;
         b.startRound();
+        b.roundSeconds = Integer.MAX_VALUE / 40; // after startRound, which sets the row's clock
         System.out.println("[duel] empty round started at tick " + b.time + "; units " + b.units.size() + ", squads " + b.squads.size());
     }
     /** Nothing may score in a duel round: the scores stay 0, so the round never ends by points. False when the round is not running. */
@@ -274,7 +276,7 @@ public final class DuelSimulation implements ModInitializer {
     }
     GravesAndGlory.Squad squad(int team) {
         var s = new GravesAndGlory.Squad(UUID.randomUUID(), team, centre);
-        s.bot = true; s.seated = true; s.tier = "normal"; s.commander = "champion"; s.banner = new ArrayList<>();
+        s.bot = true; s.seated = true; s.tier = "normal"; s.banner = new ArrayList<>();
         s.order = "attack"; s.formation = "block"; s.target = centre; s.yaw = team == 0 ? -90 : 90;
         return s;
     }
@@ -346,12 +348,13 @@ public final class DuelSimulation implements ModInitializer {
         recorded++; if (end.equals("wipe")) wipes++; else if (end.equals("cap")) caps++; else aborted++;
         if (recorded % 25 == 0) System.out.println("[duel] " + recorded + " of " + fights.size() + " fights, " + (System.currentTimeMillis() - runWallStart) / 1000 + " s");
         for (var u : new ArrayList<>(b.units)) if (u.squad == west || u.squad == east) { GravesAndGlory.Battle.leaveSide(u.mob); u.mob.discard(); b.units.remove(u); }
-        Projectiles.clear(b); Abilities.clearBanners(b); b.deaths.clear();
+        ScratchFlags.reset(); Projectiles.clear(b); Abilities.clearBanners(b); b.deaths.clear();
         west = null; east = null; forcedWest.clear(); forcedEast.clear();
     }
     void summary() {
         String line = String.format(Locale.ROOT, "[duel] fights=%d wipes=%d caps=%d aborted=%d wallSeconds=%d fastApplied=%s", recorded, wipes, caps, aborted, (System.currentTimeMillis() - runWallStart) / 1000, gg.gravesandglory.testing.SimSpeed.applied);
         System.out.println(line);
         BotSimulation.append(meta, line.substring(7) + "\n");
+        ScratchFlags.write(duels.resolveSibling("drops.csv"));
     }
 }

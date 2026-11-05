@@ -1,0 +1,121 @@
+{
+ "baseY": 64,
+ "depth": 72,
+ "format": 1,
+ "id": "fixture",
+ "name": "Engine map fixture",
+ "objects": [
+  {
+   "by": "kort",
+   "id": "spawn-1",
+   "kind": "spawn",
+   "state": "accepted",
+   "team": "dawn",
+   "x": 10,
+   "z": 36
+  },
+  {
+   "by": "kort",
+   "id": "spawn-2",
+   "kind": "spawn",
+   "state": "accepted",
+   "team": "dusk",
+   "x": 118,
+   "z": 36
+  },
+  {
+   "by": "kort",
+   "id": "point-3",
+   "kind": "point",
+   "name": "A",
+   "radius": 5,
+   "state": "accepted",
+   "x": 40,
+   "z": 36
+  },
+  {
+   "by": "kort",
+   "id": "point-4",
+   "kind": "point",
+   "name": "B",
+   "radius": 5,
+   "state": "accepted",
+   "x": 88,
+   "z": 30
+  },
+  {
+   "by": "kort",
+   "depth": 1,
+   "id": "river-5",
+   "kind": "river",
+   "path": [
+    [
+     64,
+     0
+    ],
+    [
+     66,
+     36
+    ],
+    [
+     62,
+     72
+    ]
+   ],
+   "state": "accepted",
+   "width": 4
+  },
+  {
+   "by": "kort",
+   "id": "road-6",
+   "kind": "road",
+   "path": [
+    [
+     10,
+     36
+    ],
+    [
+     40,
+     36
+    ],
+    [
+     88,
+     30
+    ],
+    [
+     118,
+     36
+    ]
+   ],
+   "state": "accepted",
+   "width": 3
+  },
+  {
+   "by": "kort",
+   "height": 6,
+   "id": "hill-7",
+   "kind": "hill",
+   "outline": [
+    [
+     80,
+     8
+    ],
+    [
+     100,
+     10
+    ],
+    [
+     104,
+     24
+    ],
+    [
+     84,
+     26
+    ]
+   ],
+   "state": "accepted",
+   "steepness": 0.6
+  }
+ ],
+ "width": 128
+}

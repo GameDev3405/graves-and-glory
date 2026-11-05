@@ -12,7 +12,7 @@ import static gg.gravesandglory.GravesAndGloryClient.*;
 public class CampaignLobbyScreen extends GravesAndGloryClient.ArmyScreen {
     float uiScale=1;
     String selectedUnit="knight";final List<ArmyCards.Deployment> slots=new ArrayList<>();
-    String pendingClass="";int tab=0;String key="";List<ButtonWidget> leadControls=new ArrayList<>();ButtonWidget start,confirmClass;
+    int tab=0;String key="";List<ButtonWidget> leadControls=new ArrayList<>();ButtonWidget start;
     /** The House whose owned troops the banner editor shows; "" until the tab opens, then the largest House in the banner. */
     String house="";
     public CampaignLobbyScreen(){super("Graves and Glory war council");}
@@ -24,13 +24,13 @@ public class CampaignLobbyScreen extends GravesAndGloryClient.ArmyScreen {
         var chosen=ArmyCards.spec(selectedUnit);
         return chosen==null?"Clear: pick a slot to empty it.":chosen.name()+" / "+ArmyCards.rarityName(chosen)+(chosen.slotWeight()>1?" / fills "+chosen.slotWeight()+" slots":"");
     }
-    String stateKey(){return CampaignClient.mode+CampaignClient.map+CampaignClient.fill+CampaignClient.difficulty+CampaignClient.partyKey+team+CampaignClient.profile.commander+CampaignClient.profile.owned.size()+CampaignClient.headline;}
+    String stateKey(){return CampaignClient.mode+CampaignClient.map+CampaignClient.fill+CampaignClient.difficulty+CampaignClient.partyKey+team+CampaignClient.profile.owned.size()+CampaignClient.headline;}
     public void showTab(int value){tab=value;clearAndInit();}
     @Override protected void init(){
         uiScale=Math.min(1,Math.min(client.getWindow().getScaledWidth()/640f,client.getWindow().getScaledHeight()/360f));width=(int)(client.getWindow().getScaledWidth()/uiScale);height=(int)(client.getWindow().getScaledHeight()/uiScale);
-        start=null;slots.clear();leadControls.clear();key=stateKey();int cw=(width-40)/4;
-        String[] names={"Battle setup","Your banner","Commander class","Custom lobby"};
-        for(int i=0;i<4;i++){final int t=i;button((tab==i?"> ":"")+names[i]+(i==3&&invited()?" *":""),16+i*(cw+4),43,cw,b->{if(t==0)client.setScreen(new CampScreen("home"));else if(t==3)client.setScreen(new CampScreen("friends"));else{tab=t;clearAndInit();}});}
+        start=null;slots.clear();leadControls.clear();key=stateKey();int cw=(width-36)/3;
+        String[] names={"Battle setup","Your banner","Custom lobby"};
+        for(int i=0;i<3;i++){final int t=i;button((tab==i?"> ":"")+names[i]+(i==2&&invited()?" *":""),16+i*(cw+4),43,cw,b->{if(t==0)client.setScreen(new CampScreen("home"));else if(t==2)client.setScreen(new CampScreen("friends"));else{tab=t;clearAndInit();}});}
         button("Visuals & sound",width-156,17,140,b->client.setScreen(new PresentationScreen()));
         if(tab==0){
             int lw=(width-52)*2/3,rx=28+lw,rw=width-rx-16;
@@ -54,52 +54,10 @@ public class CampaignLobbyScreen extends GravesAndGloryClient.ArmyScreen {
             for(int slot=0;slot<20;slot++){final int index=slot;slots.add(addDrawableChild(new ArmyCards.Deployment(index,24+(slot%5)*54,111+(slot/5)*36,b->{if(!selectedUnit.isEmpty())send("slot:"+index+":"+selectedUnit);})));}
             button((selectedUnit.equals(RosterMath.EMPTY)?"> ":"")+"Clear a slot",20,276,120,b->{selectedUnit=RosterMath.EMPTY;clearAndInit();});
             for(int i=0;i<Spec.FACTIONS.length;i++){var side=Spec.FACTIONS[i];addDrawableChild(new ArmyCards.Colour(side,146+i*38,276,b->send("colour:"+side.id())));}
-        }else if(tab==2){
-            // One row of cards per track (HERO, GENERAL), each class a card: click to pick it, CONFIRM CLASS to lead as it.
-            if(pendingClass.isEmpty())pendingClass=CampaignClient.profile.commander;
-            var tracks=classTracks();int perRow=tracks.stream().mapToInt(List::size).max().orElse(1),cardW=(width-32-8*(perRow-1))/perRow,ph=classPanelHeight();
-            for(int r=0;r<tracks.size();r++){var row=tracks.get(r);for(int i=0;i<row.size();i++)addDrawableChild(new ClassCard(row.get(i),16+i*(cardW+8),classRowTop(r)+12,cardW,ph));}
-            confirmClass=primary("CONFIRM CLASS",width-195,height-33,177,b->{send("class:"+pendingClass);});
         }else{
             partyTab();
         }
 
-    }
-    /** The classes by track (hero, then general, in sheet order), one row of cards each. */
-    static List<List<Spec.ClassesRow>> classTracks(){Map<String,List<Spec.ClassesRow>> out=new LinkedHashMap<>();for(var c:Spec.CLASSES)out.computeIfAbsent(c.track(),k->new ArrayList<>()).add(c);return new ArrayList<>(out.values());}
-    /** The y of a track's heading; its cards stand 12 below it. */
-    int classRowTop(int row){return 81+row*(classPanelHeight()+14);}
-    /** The card height: the room between the tab bar and the footer, shared by the track rows and their headings. */
-    int classPanelHeight(){int rows=Math.max(1,classTracks().size());return (height-41-81-2*(rows-1))/rows-12;}
-    /** A track heading's note. */
-    static String trackNote(String track){return switch(track){case "hero"->"Fights in the front rank";case "general"->"Commands the whole army";default->"";};}
-    /** The track headings drawn in the last frame, top to bottom, for the checks. */
-    final List<String> classHeadings=new ArrayList<>();
-    /**
-     * One class card: its name and the troops it favours, its active ability (the ability key) with its cooldown and effect, and its
-     * passive. A click picks it; CONFIRM CLASS sends the pick. Gold marks the pick.
-     */
-    final class ClassCard extends ButtonWidget {
-        static final int ACTIVE_LINES=3,PASSIVE_LINES=2;
-        final Spec.ClassesRow c;
-        /** Text lines the card had no room for in the last frame; the checks want none. */
-        int clipped;
-        ClassCard(Spec.ClassesRow c,int x,int y,int w,int h){super(x,y,w,h,Text.literal(c.name()),b->{pendingClass=c.id();clearAndInit();},DEFAULT_NARRATION_SUPPLIER);this.c=c;}
-        @Override public void renderButton(DrawContext g,int mx,int my,float delta){
-            int x=getX(),y=getY(),w=width,h=height,room=w-20;boolean selected=pendingClass.equals(c.id());
-            panel(g,x,y,w,h);
-            if(selected){g.fill(x,y,x+w,y+3,DarkUi.GOLD);g.drawBorder(x,y,w,h,DarkUi.GOLD);}else if(isHovered()||isFocused())g.drawBorder(x,y,w,h,DarkUi.MUTED);
-            String group=Arrays.stream(Spec.GROUPS).filter(r->r.id().equals(c.group())).map(r->r.label()).findFirst().orElse(c.group()).toUpperCase(Locale.ROOT);
-            int gw=textRenderer.getWidth(DarkUi.body(group));DarkUi.label(g,group,x+w-10-gw,y+9,selected?DarkUi.GOLD:DarkUi.MUTED);
-            DarkUi.titleFit(g,c.name().toUpperCase(Locale.ROOT),x+10,y+6,DarkUi.IVORY,room-gw-8);
-            String an=Commander.activeName(c.active()).toUpperCase(Locale.ROOT),cooldown=c.cooldownTicks()/20+(textRenderer.getWidth(DarkUi.body(an))+textRenderer.getWidth(DarkUi.body(c.cooldownTicks()/20+" s cooldown"))+12>room?" s":" s cooldown");int cdw=textRenderer.getWidth(DarkUi.body(cooldown));
-            DarkUi.label(g,cooldown,x+w-10-cdw,y+23,DarkUi.MUTED);text(g,Commander.activeName(c.active()).toUpperCase(Locale.ROOT),x+10,y+23,room-cdw-6,DarkUi.GOLD);
-            clipped=0;int ty=y+33;var lines=textRenderer.wrapLines(DarkUi.body(c.activeText()),room);
-            for(int i=0;i<lines.size();i++){if(ty+9>y+h){clipped++;continue;}g.drawText(textRenderer,lines.get(i),x+10,ty,DarkUi.IVORY,false);ty+=10;}
-            int py=ty;DarkUi.label(g,"PASSIVE",x+10,py,DarkUi.MUTED);int pw=textRenderer.getWidth(DarkUi.body("PASSIVE"))+6;DarkUi.rule(g,x+10+pw,py+5,room-pw);
-            ty=py+10;lines=textRenderer.wrapLines(DarkUi.body(c.passiveText()),room);
-            for(int i=0;i<lines.size();i++){if(ty+9>y+h){clipped++;continue;}g.drawText(textRenderer,lines.get(i),x+10,ty,DarkUi.IVORY,false);ty+=10;}
-        }
     }
     /** An invitation waits for this player: they are not in the lobby yet and the lead's invite has not expired. */
     boolean invited(){JsonObject party=CampaignClient.party;return !party.get("member").getAsBoolean()&&party.get("inviteSeconds").getAsInt()>0;}
@@ -148,7 +106,7 @@ public class CampaignLobbyScreen extends GravesAndGloryClient.ArmyScreen {
     @Override public void render(DrawContext g,int mx,int my,float delta){
         g.getMatrices().push();g.getMatrices().scale(uiScale,uiScale,1);mx=(int)(mx/uiScale);my=(int)(my/uiScale);
         DarkUi.background(g,width,height);
-        DarkUi.title(g,new String[]{"BATTLE SETUP","YOUR BANNER","CHOOSE YOUR CLASS","CUSTOM LOBBY"}[tab],18,10,DarkUi.IVORY);text(g,"GOLD  "+CampaignClient.profile.gold,width-270,21,110,DarkUi.GOLD);
+        DarkUi.title(g,new String[]{"BATTLE SETUP","YOUR BANNER","CUSTOM LOBBY"}[tab],18,10,DarkUi.IVORY);text(g,"GOLD  "+CampaignClient.profile.gold,width-270,21,110,DarkUi.GOLD);
         boolean hasResult=!CampaignClient.headline.isEmpty();
         text(g,hasResult?CampaignClient.headline:ready?"Choose your army. Raise your banner.":HintText.expand(message,GravesAndGloryClient::hint),18,30,width-185,hasResult?DarkUi.GOLD:DarkUi.MUTED);
         if(tab==0){
@@ -180,16 +138,6 @@ public class CampaignLobbyScreen extends GravesAndGloryClient.ArmyScreen {
             text(g,pickLine(),left,266,width-left-16,DarkUi.GOLD);
             text(g,row!=null&&!row.fieldable()?row.name()+" has not joined the war: its troops cannot be fielded yet.":"Pick a troop, then a slot. Epics fill 2 slots, Legendaries 4.",left,280,width-left-16,DarkUi.MUTED);
             text(g,"New troops join by recruitment rolls at the camp shrine, "+Spec.RECRUITMENT[0].rollCost()+" gold each. The four marks set your banner colour.",16,height-27,width-32,DarkUi.MUTED);
-        }else if(tab==2){
-            // The track headings over each row of class cards (the cards draw themselves).
-            classHeadings.clear();var tracks=classTracks();
-            for(int r=0;r<tracks.size();r++){String track=tracks.get(r).get(0).track(),head=track.toUpperCase(Locale.ROOT),note=trackNote(track);int y=classRowTop(r),hx=18;
-                text(g,head,hx,y,width-36,DarkUi.GOLD);hx+=textRenderer.getWidth(DarkUi.body(head))+8;
-                if(!note.isEmpty()){text(g,note,hx,y,width-hx-18,DarkUi.MUTED);hx+=textRenderer.getWidth(DarkUi.body(note))+8;}
-                DarkUi.rule(g,hx,y+5,width-16-hx);classHeadings.add(head);
-            }
-            var current=Arrays.stream(Spec.CLASSES).filter(c->c.id().equals(CampaignClient.profile.commander)).findFirst().orElse(Spec.CLASSES[0]);
-            text(g,"Active commander: "+current.name(),18,height-23,width-230,DarkUi.IVORY);
         }else{
             partyText(g);
         }

@@ -6,17 +6,24 @@ import net.minecraft.client.gui.screen.multiplayer.MultiplayerScreen;
 import net.minecraft.client.gui.screen.option.OptionsScreen;
 import net.minecraft.client.gui.widget.ButtonWidget;
 import net.minecraft.text.Text;
+import net.minecraft.util.Identifier;
 
 /** Ordinary launcher entry point. Starting a world or connection always takes a click. */
 public final class FrontMenuScreen extends Screen {
+    /** The approved key art (board 4F.3), 1920x1080, drawn cover-scaled behind every page of this menu. */
+    private static final Identifier KEY_ART=new Identifier("gravesandglory","textures/gui/title/key_art.png");
     private final String page;
     public FrontMenuScreen(){this("home");}
     FrontMenuScreen(String page){super(Text.literal("Graves and Glory / "+page));this.page=page;}
     private ButtonWidget button(String label,int y,boolean primary,Runnable action){
-        var b=new GravesAndGloryClient.FantasyButton(width/2-110,y,220,20,Text.literal(label),w->action.run());
+        // Home: a left column clear of the two heroes at the centre of the art; the other pages stay centred over a dimmed picture.
+        int bw=page.equals("home")?columnWidth():220,x=page.equals("home")?columnX():width/2-110;
+        var b=new GravesAndGloryClient.FantasyButton(x,y,bw,20,Text.literal(label),w->action.run());
         b.primary=primary;return addDrawableChild(b);
     }
-    private int maxTop(){return Math.max(76,height/2-38);}
+    private int columnWidth(){return Math.max(96,Math.min(150,width*3/10));}
+    private int columnX(){return Math.max(6,width/32);}
+    private int maxTop(){return page.equals("home")?Math.max(30,height-26-108):Math.max(76,height/2-38);}
     @Override protected void init(){
         int top=maxTop();
         if(page.equals("home")){
@@ -36,10 +43,13 @@ public final class FrontMenuScreen extends Screen {
         }else button("Back",height-40,false,()->client.setScreen(new FrontMenuScreen()));
     }
     @Override public void render(DrawContext g,int mx,int my,float delta){
-        g.fillGradient(0,0,width,height,0xff101b22,0xff24202b);
-        int horizon=height*2/3;
-        // Original battlements and paired faction banners, drawn at the current UI scale.
-        for(int i=0;i<width;i+=40){int roof=horizon+(i/40%3)*9;g.fill(i,roof,i+29,height,0xff14191e);g.fill(i,roof-7,i+7,roof,0xff14191e);g.fill(i+22,roof-7,i+29,roof,0xff14191e);}
+        // Cover-scale: fill the window, keep the aspect, crop the overflow equally on both sides.
+        float cover=Math.max(width/1920f,height/1080f);
+        g.enableScissor(0,0,width,height);
+        g.getMatrices().push();g.getMatrices().translate((width-1920*cover)/2f,(height-1080*cover)/2f,0);g.getMatrices().scale(cover,cover,1);
+        g.drawTexture(KEY_ART,0,0,0,0,1920,1080,1920,1080);g.getMatrices().pop();g.disableScissor();
+        if(!page.equals("home"))g.fill(0,0,width,height,0xaa000000);
+        else{g.fillGradient(0,0,width,72,0x99000000,0x00000000);g.fillGradient(0,height-150,columnX()+columnWidth()+24,height,0x00000000,0x88000000);}
         DarkUi.crest(g,width/2-153,27,28,false);DarkUi.crest(g,width/2+125,27,28,true);
         g.getMatrices().push();g.getMatrices().translate(width/2f,29,0);g.getMatrices().scale(1.5f,1.5f,1);
         g.drawCenteredTextWithShadow(textRenderer,Text.literal("GRAVES AND GLORY").setStyle(net.minecraft.text.Style.EMPTY.withFont(DarkUi.TITLE)),0,0,DarkUi.GOLD);g.getMatrices().pop();

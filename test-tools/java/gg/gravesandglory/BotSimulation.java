@@ -50,11 +50,20 @@ public final class BotSimulation implements ModInitializer {
     int dawnWins,duskWins,draws,aborted;final long[] earnedAtEnd={0,0};
     /** Soak probe: the columns of botsim/probe.csv, and the state of the round being timed. */
     static final String[] PROBE_COLUMNS={"match","map","startedAt","endedAt","roundTicks","tickMeanMs","tickP50Ms","tickP95Ms","tickP99Ms","tickMaxMs","ticksOver50ms","ticksOver100ms","serverAvgTickMs",
-        "heapMbBeforeGc","heapMbAfterGc","heapMaxMb","gcCount","gcMillis","threads","classes","directMb","nonHeapMb","loadedChunks","entities","units","shots","points","specPoints","squads","respawns","pings","botRespawns","botRetreating","vacated","kinds"};
+        "heapMbBeforeGc","heapMbAfterGc","heapMaxMb","gcCount","gcMillis","threads","classes","directMb","nonHeapMb","loadedChunks","entities","units","shots","points","specPoints","squads","respawns","pings","botRespawns","botRetreating","vacated","committedMb","buildMs","buildTickCount","buildTickMeanMs","buildTickP95Ms","buildTickMaxMs","startRoundMs","fieldMs","unitsPeak","slowTicks","kinds"};
     static final DateTimeFormatter CLOCK=DateTimeFormatter.ofPattern("HH:mm:ss");
+    /** Setup timing (probe only, test tooling): wall time from the map switch (or the first tick that saw an unbuilt arena) to ready, the tick bodies during that build, and startRound() and field() on the match that follows. */
+    boolean building;long buildStartNs,buildNs=-1,startRoundNs,fieldNs;long[] buildTicks=new long[1024];int buildTickCount;
+    int unitsPeak;
     boolean probe;Path probeCsv;long tickStart;long[] tickNanos=new long[8192];int tickCount;String probeStartedAt="";
     /** -PsimBanner0 and -PsimBanner1: the botBanners id each team must field, or null for the kit's banner. fielded holds the id each team fields this run, for the CSV and the summary. */
     final String[] bannerChoice={null,null},fielded={"",""};
+    /** -PsimMode: the battle mode every round plays (default domination; the map list must host it). A mode other than Domination keeps its own clock unless -PsimRoundSeconds is given.
+     *  Under siege, botsim/siege.csv gets one row per bot army and group every SIEGE_TICKS: where the group stands and what it was told, for the stage plan's report. */
+    String simMode;boolean roundSecondsGiven;Path siegeCsv,convoyCsv;
+    /** Lobby ticks waited since the arena was ready (or the last round ended); a round starts at LOBBY_TICKS, the shipped ready-pad countdown. */
+    int lobbyTicks;static final int LOBBY_TICKS=200;
+    static final int SIEGE_TICKS=100;
 
     @Override public void onInitialize(){
         // Absent means a normal server. Given but blank or non-numeric is an error, not a silent plain server.
@@ -63,6 +72,9 @@ public final class BotSimulation implements ModInitializer {
         dawnTier=tier(System.getProperty("gravesandglory.simDawn","normal"));duskTier=tier(System.getProperty("gravesandglory.simDusk","normal"));
         String mapList=System.getProperty("gravesandglory.simMaps");
         maps=mapList==null?IntStream.range(0,Spec.MAPS.length).toArray():Arrays.stream(mapList.split(",")).map(String::trim).filter(v->!v.isEmpty()).mapToInt(v->number("simMaps",v)).toArray();
+        simMode=System.getProperty("gravesandglory.simMode",Modes.DOMINATION).trim();roundSecondsGiven=System.getProperty("gravesandglory.simRoundSeconds")!=null;
+        if(!Modes.registered(simMode))throw new IllegalArgumentException("[botsim] simMode must be a registered mode, got '"+simMode+"'");
+        for(int m:maps)if(!Modes.hosts(simMode,m))throw new IllegalArgumentException("[botsim] map "+m+" does not host "+simMode);
         size=number("simSize",System.getProperty("gravesandglory.simSize","3"));roundSeconds=number("simRoundSeconds",System.getProperty("gravesandglory.simRoundSeconds","300"));
         kit=System.getProperty("gravesandglory.simKit","native").trim();
         if(!kit.equals("native")&&Arrays.stream(Spec.HOUSES).noneMatch(h->h.id().equals(kit)&&h.fieldable()))throw new IllegalArgumentException("[botsim] simKit must be native or a fieldable House ("+Arrays.stream(Spec.HOUSES).filter(h->h.fieldable()).map(h->h.id()).collect(java.util.stream.Collectors.joining(", "))+"), got '"+kit+"'");
@@ -76,7 +88,9 @@ public final class BotSimulation implements ModInitializer {
         Path dir=FabricLoader.getInstance().getGameDir().resolve("botsim");results=dir.resolve("results.csv");gold=dir.resolve("gold.csv");levels=dir.resolve("levels.csv");types=dir.resolve("types.csv");meta=dir.resolve("meta.txt");
         SheetOverride.applyFromProperty(); // -PsimOverride: in-memory sheet changes for an ablation (balance method); none by default
         try{Files.createDirectories(dir);
-            Files.writeString(results,"match,map,dawnTier,duskTier,winner,dawnScore,duskScore,seconds,banner0,banner1,dawnKills,duskKills,dawnWiped,duskWiped,dawnRetreats,duskRetreats,fights,meanFightSeconds,dawnFlankHits,duskFlankHits,dawnFlankShots,duskFlankShots,score300_0,score300_1\n",StandardCharsets.UTF_8);
+            Files.writeString(results,"match,map,dawnTier,duskTier,winner,dawnScore,duskScore,seconds,banner0,banner1,dawnKills,duskKills,dawnWiped,duskWiped,dawnRetreats,duskRetreats,fights,meanFightSeconds,dawnFlankHits,duskFlankHits,dawnFlankShots,duskFlankShots,score300_0,score300_1,mode,stage,gateBlows,gateDamage,yardSecond,gateSecond,keepSecond,checkpoints,progress,idleMax\n",StandardCharsets.UTF_8);
+            if(simMode.equals(Modes.SIEGE)){siegeCsv=dir.resolve("siege.csv");Files.writeString(siegeCsv,"match,second,stage,gateHp,army,team,group,living,x,y,z,order,targetX,targetY,targetZ,enemy\n",StandardCharsets.UTF_8);}
+            if(simMode.equals(Modes.CONVOY)){convoyCsv=dir.resolve("convoy.csv");Files.writeString(convoyCsv,"match,second,state,distance,pushers,defenders,army,team,group,living,x,z,wagonDist,order,targetX,targetZ,retreating\n",StandardCharsets.UTF_8);}
             Files.writeString(gold,"match,second,team,goldEarned,goldBank,living\n",StandardCharsets.UTF_8);
             Files.writeString(levels,"match,team,banner,firstLevel2,firstLevel3,endShareLevel2,level3Count,gear\n",StandardCharsets.UTF_8);
             Files.writeString(types,"match,map,seat,banner,"+TypeLedger.HEADER+"\n",StandardCharsets.UTF_8);
@@ -90,7 +104,7 @@ public final class BotSimulation implements ModInitializer {
             try{Files.writeString(probeCsv,String.join(",",PROBE_COLUMNS)+"\n",StandardCharsets.UTF_8);}catch(IOException e){throw new UncheckedIOException(e);}
             // Registered after the harness's own listener, so the tick that ends a round is not timed as part of it.
             ServerTickEvents.START_SERVER_TICK.register(s->tickStart=System.nanoTime());
-            ServerTickEvents.END_SERVER_TICK.register(s->{if(playing){if(tickCount==tickNanos.length)tickNanos=Arrays.copyOf(tickNanos,tickCount*2);tickNanos[tickCount++]=System.nanoTime()-tickStart;}});
+            ServerTickEvents.END_SERVER_TICK.register(s->{if(building){if(buildTickCount==buildTicks.length)buildTicks=Arrays.copyOf(buildTicks,buildTickCount*2);buildTicks[buildTickCount++]=System.nanoTime()-tickStart;}if(playing){if(tickCount==tickNanos.length)tickNanos=Arrays.copyOf(tickNanos,tickCount*2);tickNanos[tickCount++]=System.nanoTime()-tickStart;var bt=GravesAndGlory.battle;if(bt!=null)unitsPeak=Math.max(unitsPeak,bt.units.size());}});
         }
     }
     static String tier(String id){
@@ -105,20 +119,26 @@ public final class BotSimulation implements ModInitializer {
         if(b==null){if(++waited==200){System.out.println("[botsim] no battle on this world (level-name must be Graves and Glory); stopping");done=true;server.stop(false);}return;}
         if(playing){
             if(b.running){scan(b);ledger.tick(b);progress(b);long elapsed=b.time-b.roundStarted;if(elapsed>0&&elapsed%SAMPLE_TICKS==0)sample(b,elapsed/20);
+                if(siegeCsv!=null&&elapsed>0&&elapsed%SIEGE_TICKS==0)siegeSample(b,elapsed/20);
+                if(convoyCsv!=null&&elapsed>0&&elapsed%SIEGE_TICKS==0)convoyTrace(b,elapsed/20);
+                if(elapsed>0&&elapsed%20==0)convoySample(b);
                 if(elapsed>=SCORE_TICKS&&score300[0]<0){score300[0]=b.scores[0];score300[1]=b.scores[1];}return;}
             playing=false;record(b);
             if(++match>=matches){summary();done=true;server.stop(false);}
             return;
         }
         // A fresh world or a map switch: wait until the arena is built, but not forever.
-        if(!b.ready){if(++notReady==READY_TICKS){System.out.println("[botsim] arena not ready after "+READY_TICKS+" ticks; stopping");done=true;server.stop(false);}return;}
-        notReady=0;if(b.running)return;
+        if(!b.ready){if(probe&&!building){building=true;buildStartNs=System.nanoTime();buildTickCount=0;}if(++notReady==READY_TICKS){System.out.println("[botsim] arena not ready after "+READY_TICKS+" ticks; stopping");done=true;server.stop(false);}return;}
+        notReady=0;if(probe&&building){building=false;buildNs=System.nanoTime()-buildStartNs;}if(b.running)return;
         int map=maps[match%maps.length];
-        if(b.campaign.map!=map){b.campaign.switchMap(map);return;}
-        var c=b.campaign;c.size=size;c.fill=true;c.practice=false;c.difficulty=dawnTier;b.roundSeconds=roundSeconds;c.lastWinner=ABORTED;
-        b.startRound();
+        if(b.campaign.map!=map){lobbyTicks=0;if(probe){building=true;buildStartNs=System.nanoTime();buildTickCount=0;}b.campaign.switchMap(map);return;}
+        // A real round starts from the camp at least one ready-pad countdown after the arena is ready (Campaign.padTick, 200 ticks); starting in the ready tick put
+        // the build's last step (landmarks, overlay, war table, mapReady) inside the round's tick 0 (docs/reports/perf-targets-2026-11-02.md, tick 0 fix).
+        if(++lobbyTicks<LOBBY_TICKS)return;lobbyTicks=0;
+        var c=b.campaign;c.size=size;c.fill=true;c.practice=false;c.difficulty=dawnTier;c.lastWinner=ABORTED;c.battleMode=simMode;
+        long t0=System.nanoTime();b.startRound();startRoundNs=System.nanoTime()-t0;if(roundSecondsGiven||simMode.equals(Modes.DOMINATION))b.roundSeconds=roundSeconds; // after startRound, which sets the row's clock
         armies.clear();for(var s:b.squads.values())if(s.bot){if(s.team==1)s.tier=duskTier;armies.add(s);}
-        field(b);seen.clear();resetStats();ledger.reset(b.time);wallStart=System.currentTimeMillis();
+        t0=System.nanoTime();field(b);fieldNs=System.nanoTime()-t0;seen.clear();resetStats();ledger.reset(b.time);wallStart=System.currentTimeMillis();
         score300[0]=score300[1]=-1;startedAt=b.roundStarted;tallies[0]=tallies[1]=null;shareLevel2[0]=shareLevel2[1]=-1;
         playing=true;if(probe)probeStart();
     }
@@ -161,7 +181,7 @@ public final class BotSimulation implements ModInitializer {
      *  dawnFlankHits, duskFlankHits, dawnFlankShots and duskFlankShots are the C16 and C16s rows each side's blows and shots carried (MatchStats.SquadStats). */
     final Map<String,Integer> living=new HashMap<>();final Set<UUID> retreating=new HashSet<>();
     final int[] wiped={0,0},retreats={0,0};int fights;long fightTicks,fightOpenedAt=-1;Combat.HitLog lastBlow;
-    void resetStats(){living.clear();retreating.clear();wiped[0]=wiped[1]=0;retreats[0]=retreats[1]=0;fights=0;fightTicks=0;fightOpenedAt=-1;lastBlow=Combat.LAST.peekLast();}
+    void resetStats(){stallRun=stallMax=0;living.clear();retreating.clear();wiped[0]=wiped[1]=0;retreats[0]=retreats[1]=0;fights=0;fightTicks=0;fightOpenedAt=-1;lastBlow=Combat.LAST.peekLast();}
     void scan(GravesAndGlory.Battle b){
         boolean closes=false;Map<String,Integer> now=new HashMap<>();
         for(var u:b.units)if(u.mob.isAlive()&&!u.temporary)now.merge(u.squad.owner+"/"+u.spec.group(),1,Integer::sum);
@@ -197,12 +217,59 @@ public final class BotSimulation implements ModInitializer {
         append(results,String.join(",",String.valueOf(match+1),String.valueOf(maps[match%maps.length]),dawnTier,duskTier,winner==ABORTED?"aborted":winner<0?"draw":SEATS[winner],
             String.valueOf(b.scores[0]),String.valueOf(b.scores[1]),String.valueOf((b.time-b.roundStarted)/20),fielded[0],fielded[1],
             String.valueOf(kills[0]),String.valueOf(kills[1]),String.valueOf(wiped[0]),String.valueOf(wiped[1]),String.valueOf(retreats[0]),String.valueOf(retreats[1]),String.valueOf(fights),fights==0?"":String.format(Locale.ROOT,"%.1f",fightTicks/20.0/fights),String.valueOf(flankHits[0]),String.valueOf(flankHits[1]),String.valueOf(flankShots[0]),String.valueOf(flankShots[1]),
-            String.valueOf(score300[0]<0?b.scores[0]:score300[0]),String.valueOf(score300[1]<0?b.scores[1]:score300[1]))+"\n");
+            String.valueOf(score300[0]<0?b.scores[0]:score300[0]),String.valueOf(score300[1]<0?b.scores[1]:score300[1]),b.mode.row.id(),siegeColumns(b),convoyColumns(b))+"\n");
         if(probe)probeRow(b);
         recordLevels();
         ledger.stop();String at=(match+1)+","+maps[match%maps.length]+",";
         append(types,ledger.rows(0,at+"dawn,"+fielded[0])+ledger.rows(1,at+"dusk,"+fielded[1]));
         append(meta,String.format(Locale.ROOT,"match=%d wallSeconds=%.1f gameSeconds=%d fastApplied=%s%n",match+1,(System.currentTimeMillis()-wallStart)/1000.0,(b.time-b.roundStarted)/20,gg.gravesandglory.testing.SimSpeed.applied));
+    }
+    /** results.csv's Siege columns: the final stage, the gate's blows and damage, and the round second the yard, the gate and the keep fell (blank: never, or not a siege). */
+    static String siegeColumns(GravesAndGlory.Battle b){
+        if(!(b.mode instanceof SiegeMode m))return ",,,,,";
+        return String.join(",",String.valueOf(m.stage),String.valueOf(m.gateBlows),String.format(Locale.ROOT,"%.0f",m.gateDamage),m.yardSecond<0?"":String.valueOf(m.yardSecond),m.gateSecond<0?"":String.valueOf(m.gateSecond),m.keepSecond<0?"":String.valueOf(m.keepSecond));
+    }
+    /** Convoy: the longest run, in seconds, the wagon sat Idle or Rolling back while the escort still had two or more groups alive (the spec's 60 s ceiling). */
+    int stallRun,stallMax;
+    void convoySample(GravesAndGlory.Battle b){
+        if(!(b.mode instanceof ConvoyMode m))return;
+        var groups=new HashSet<String>();for(var u:b.units)if(u.mob.isAlive()&&!u.temporary&&u.squad.team==ConvoyMode.ESCORT)groups.add(u.spec.group());
+        boolean stalled=(m.state.equals(ModeMath.IDLE)||m.state.equals(ModeMath.ROLLBACK))&&groups.size()>=2;
+        stallRun=stalled?stallRun+1:0;stallMax=Math.max(stallMax,stallRun);
+    }
+    /** results.csv's Convoy columns: the checkpoints the wagon passed (the destination not counted), the road covered in percent and the longest stall in seconds (blank: not a convoy). */
+    String convoyColumns(GravesAndGlory.Battle b){
+        if(!(b.mode instanceof ConvoyMode m))return ",,";
+        return String.join(",",String.valueOf(m.checkpoints()),String.valueOf(ModeMath.percent(m.distance,m.total())),String.valueOf(stallMax));
+    }
+    /** One convoy.csv row per bot army and group with living troops, every SIEGE_TICKS: the wagon's state, road distance and counts, the group's centre, its distance to the wagon, its order and whether the army is retreating. */
+    void convoyTrace(GravesAndGlory.Battle b,long second){
+        if(!(b.mode instanceof ConvoyMode m)||m.wagon==null)return;
+        var w=m.wagon.getPos();StringBuilder rows=new StringBuilder();
+        for(int i=0;i<armies.size();i++){var s=armies.get(i);
+            for(var group:Spec.GROUPS){String g=group.id();if(g.equals("all"))continue;
+                var mine=b.units.stream().filter(u->u.squad==s&&u.mob.isAlive()&&u.spec.group().equals(g)).toList();if(mine.isEmpty())continue;
+                var c=Morale.centre(mine);var a=b.storedAssignment(s,g);
+                rows.append(String.format(Locale.ROOT,"%d,%d,%s,%.1f,%d,%d,%d,%s,%s,%d,%.1f,%.1f,%.1f,%s,%.1f,%.1f,%s%n",match+1,second,m.state,m.distance,m.pushers,m.defenders,i,SEATS[s.team],g,mine.size(),c.x,c.z,Math.hypot(c.x-w.x,c.z-w.z),a.order,
+                    a.target==null?0:a.target.x,a.target==null?0:a.target.z,b.campaign.botRetreating.contains(s.owner)));}}
+        append(convoyCsv,rows.toString());
+        if(second%10!=0)return;StringBuilder units=new StringBuilder();
+        for(var u:b.units)if(u.mob.isAlive()&&armies.indexOf(u.squad)>=0){var f=b.formation(u);var t=u.lockedTarget;
+            units.append(String.format(Locale.ROOT,"%d,%d,%d,%s,%d,%.1f,%.1f,%.1f,%d,%s,%s,%.1f,%s,%d,%.1f,%.1f%n",match+1,second,armies.indexOf(u.squad),u.spec.group(),u.slot,u.mob.getX(),u.mob.getY(),u.mob.getZ(),u.mob.age,
+                b.world.shouldTickEntity(u.mob.getBlockPos()),t==null?"-":t.getClass().getSimpleName(),t==null?0:Math.sqrt(u.mob.squaredDistanceTo(t)),u.mob.getNavigation().isIdle(),u.stuckTicks,f.x,f.z));}
+        append(convoyCsv.resolveSibling("convoy-units.csv"),units.toString());
+    }
+    /** One siege.csv row per bot army and group with living troops: the stage, the gate's health (blank while it is not up), the group's centre and its order. */
+    void siegeSample(GravesAndGlory.Battle b,long second){
+        if(!(b.mode instanceof SiegeMode m))return;
+        StringBuilder rows=new StringBuilder();
+        for(int i=0;i<armies.size();i++){var s=armies.get(i);
+            for(var group:Spec.GROUPS){String g=group.id();if(g.equals("all"))continue;
+                var mine=b.units.stream().filter(u->u.squad==s&&u.mob.isAlive()&&u.spec.group().equals(g)).toList();if(mine.isEmpty())continue;
+                var c=Morale.centre(mine);var a=b.storedAssignment(s,g);
+                rows.append(String.format(Locale.ROOT,"%d,%d,%d,%s,%d,%s,%s,%d,%.1f,%.1f,%.1f,%s,%.1f,%.1f,%.1f,%s%n",match+1,second,m.stage,m.target==null?"":String.format(Locale.ROOT,"%.0f",m.target.hp()),i,SEATS[s.team],g,mine.size(),c.x,c.y,c.z,a.order,
+                    a.target==null?0:a.target.x,a.target==null?0:a.target.y,a.target==null?0:a.target.z,a.enemy>=0?"gate":""));}}
+        append(siegeCsv,rows.toString());
     }
     /** The final line. Mean gold earned is a team's total over its commanders at the end of a round, averaged over the matches.
      *  " aborted=N" goes on the end only when a round stopped without Campaign.finish, " kit=<id>" only under -PsimKit gilded or graveborn, then " banner0=<id> banner1=<id>": the banners the two teams fielded, and " progression=on|off" closes the line. */
@@ -210,7 +277,15 @@ public final class BotSimulation implements ModInitializer {
         System.out.println(String.format(Locale.ROOT,"[botsim] matches=%d dawn(%s)=%d dusk(%s)=%d draws=%d dawnWin=%.0f%% meanGoldEarnedAtEnd dawn=%.0f dusk=%.0f",
             matches,dawnTier,dawnWins,duskTier,duskWins,draws,100*MatchStats.winRate(dawnWins,matches),earnedAtEnd[0]/(double)matches,earnedAtEnd[1]/(double)matches)+(aborted>0?" aborted="+aborted:"")+(kit.equals("native")?"":" kit="+kit)+" banner0="+fielded[0]+" banner1="+fielded[1]+" progression="+progression);
     }
-    void probeStart(){tickCount=0;probeStartedAt=LocalTime.now().format(CLOCK);System.out.println("[botsim] probe start match="+(match+1)+" map="+maps[match%maps.length]+" at="+probeStartedAt);}
+    void probeStart(){tickCount=0;unitsPeak=0;probeStartedAt=LocalTime.now().format(CLOCK);System.out.println("[botsim] probe start match="+(match+1)+" map="+maps[match%maps.length]+" at="+probeStartedAt);}
+    /** Committed virtual memory of this server process (Windows: its commit charge), or blank when the JVM cannot say. */
+    static String committedMb(){try{if(ManagementFactory.getOperatingSystemMXBean() instanceof com.sun.management.OperatingSystemMXBean o)return mb(o.getCommittedVirtualMemorySize());}catch(Throwable e){}return "";}
+    /** The tick bodies timed while the arena was building, for the row of the match that follows it: 0 mean, 1 p95, 2 max, in ms; blank when no build was timed. */
+    String buildTickStat(int kind){
+        if(buildNs<0||buildTickCount==0)return "";
+        long[] t=Arrays.copyOf(buildTicks,buildTickCount);Arrays.sort(t);
+        return ms(kind==0?Arrays.stream(t).average().orElse(0)/1e6:kind==1?pct(t,.95):t[t.length-1]/1e6);
+    }
     static double pct(long[] sorted,double p){return sorted.length==0?0:sorted[Math.max(0,(int)Math.ceil(p*sorted.length)-1)]/1e6;}
     static String ms(double v){return String.format(Locale.ROOT,"%.2f",v);}
     static String mb(long bytes){return String.format(Locale.ROOT,"%.1f",bytes/1048576.0);}
@@ -218,7 +293,7 @@ public final class BotSimulation implements ModInitializer {
      *  the entities still alive in the world by class, the battle's own collections, and the heap after a forced GC. A failure is printed, never thrown: the probe must not end the soak it measures. */
     void probeRow(GravesAndGlory.Battle b){
         try{
-            int n=tickCount;long[] t=Arrays.copyOf(tickNanos,n);Arrays.sort(t);tickCount=0;
+            int n=tickCount;long[] t=Arrays.copyOf(tickNanos,n);StringBuilder slow=new StringBuilder();for(int i=0;i<n;i++)if(t[i]>50_000_000L)slow.append(slow.length()==0?"":";").append(i).append('@').append(Math.round(t[i]/1e6));Arrays.sort(t);tickCount=0;
             Map<String,Integer> kinds=new TreeMap<>();int entities=0;
             for(var e:b.world.iterateEntities())if(!e.isRemoved()){entities++;kinds.merge(e.getClass().getSimpleName(),1,Integer::sum);}
             StringBuilder kindText=new StringBuilder();for(var k:kinds.entrySet())kindText.append(kindText.length()==0?"":";").append(k.getKey()).append('=').append(k.getValue());
@@ -235,7 +310,9 @@ public final class BotSimulation implements ModInitializer {
                 String.valueOf(ManagementFactory.getClassLoadingMXBean().getLoadedClassCount()),mb(direct),mb(ManagementFactory.getMemoryMXBean().getNonHeapMemoryUsage().getUsed()),
                 String.valueOf(b.world.getChunkManager().getLoadedChunkCount()),String.valueOf(entities),String.valueOf(b.units.size()),String.valueOf(b.shots.size()),
                 String.valueOf(b.points.size()),String.valueOf(Spec.POINTS.length),String.valueOf(b.squads.size()),String.valueOf(b.respawns.size()),String.valueOf(b.pings.size()),
-                String.valueOf(c.botRespawns.size()),String.valueOf(c.botRetreating.size()),String.valueOf(c.vacated.size()),kindText.toString()));
+                String.valueOf(c.botRespawns.size()),String.valueOf(c.botRetreating.size()),String.valueOf(c.vacated.size()),committedMb(),
+                buildNs<0?"":ms(buildNs/1e6),buildNs<0?"":String.valueOf(buildTickCount),buildTickStat(0),buildTickStat(1),buildTickStat(2),ms(startRoundNs/1e6),ms(fieldNs/1e6),String.valueOf(unitsPeak),slow.toString(),kindText.toString()));
+            buildNs=-1;
             append(probeCsv,String.join(",",v)+"\n");
             StringBuilder line=new StringBuilder("[botsim] probe");for(int i=0;i<PROBE_COLUMNS.length;i++)line.append(' ').append(PROBE_COLUMNS[i]).append('=').append(v.get(i));
             System.out.println(line);

@@ -23,6 +23,8 @@ import net.minecraft.util.math.Vec3d;
 import net.minecraft.world.Heightmap;
 import org.joml.Vector3f;
 import java.util.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Troop abilities (spec 2, the abilities sheet). A troop's ability id names a row; the row's mechanic decides what it does. The shield is a tag
@@ -211,6 +213,7 @@ final class Abilities {
         double radius = row.radius() > 0 ? row.radius() : D.spellRadius();
         for (int i = 0; i < 12; i++) { double angle = i * Math.PI / 6; b.world.spawnParticles(ParticleTypes.WITCH, u.spellCenter.x + Math.cos(angle) * radius, u.spellCenter.y + .2, u.spellCenter.z + Math.sin(angle) * radius, 1, 0, 0, 0, 0); }
         if (time < u.windupUntil) return;
+        if (u.spec.magic()) Audio.at(b, AudioCues.Cue.MAGIC_IMPACT, u.spellCenter, "m" + u.mob.getId()); // the burst lands as magic even on empty ground; the hits below share its key, so it sounds once
         float base = (float) ((row.amount() > 0 ? row.amount() : u.spec.damage()) * b.campaign.damage(u));
         var two = second(u);
         var knell = two.mechanic().equals("raise") ? two : null;
@@ -223,7 +226,7 @@ final class Abilities {
         var firepot = rider(u, "mist");
         if (firepot != null) {
             b.mists.add(new Mist(u.squad.team, u.spellCenter, firepot.radius(), time + firepot.durationTicks(), u, firepot, null));
-            b.world.playSound(null, BlockPos.ofFloored(u.spellCenter), SoundEvents.ITEM_FIRECHARGE_USE, SoundCategory.HOSTILE, .8f, .9f);
+            Audio.at(b, AudioCues.Cue.FIREPOT_BURN, u.spellCenter, "f" + u.mob.getId());
         }
         u.spellCenter = null;
     }
@@ -251,26 +254,44 @@ final class Abilities {
 
     /**
      * The troop's attack when its cooldown is ready and its target is in reach: a caster starts its spell, a mender does not strike, anything
-     * else shoots an arrow (a ranged troop) or hits (a melee one) through Combat.resolve.
+     * else shoots an arrow (a ranged troop) or hits (a melee one with no swings in the sheet) through Combat.resolve. A melee troop with swings strikes
+     * through Tactics.swing, on its swing's impact frame: called for one here, this does nothing but log it (misrouted), so no blow lands twice or early.
      */
-    static void attack(GravesAndGlory.Battle b, GravesAndGlory.Unit u, LivingEntity enemy, long time) {
+    static boolean attack(GravesAndGlory.Battle b, GravesAndGlory.Unit u, LivingEntity enemy, long time) {
         var row = row(u);
         switch (row.mechanic()) {
             case "blight", "mist" -> {
-                if (time < u.abilityAt || tooClose(u, u.mob.squaredDistanceTo(enemy))) return; // a shell is never lobbed at an enemy inside the row's minimum range
+                if (time < u.abilityAt || tooClose(u, u.mob.squaredDistanceTo(enemy))) return false; // a shell is never lobbed at an enemy inside the row's minimum range
                 u.spellCenter = enemy.getPos();
                 u.windupUntil = time + (row.windupTicks() > 0 ? row.windupTicks() : D.spellWindupTicks());
                 u.abilityAt = time + (row.cooldownTicks() > 0 ? row.cooldownTicks() : D.abilityCooldownTicks());
                 Projectiles.bolt(b, u, u.spellCenter);
+                return true;
             }
-            case "mend" -> {}
+            case "mend" -> { return false; }
             default -> {
-                float amount = (float) baseHit(b, u);
+                if (melee(u) && !Tactics.variants(u.spec.family()).isEmpty()) {misrouted++; LOG.warn("Abilities.attack called for {} ({}), a melee troop whose blow is Tactics.swing's: no blow", u.spec.id(), u.mob.getId()); return false;}
                 animate(b, u);
                 // The hit is decided now; a ranged hit lands when its visible arrow arrives.
-                if (u.spec.ranged()) Projectiles.fire(b, u, enemy, visual(u), amount); else Combat.resolve(b, u, enemy, amount, "melee", false);
+                if (u.spec.ranged()) Projectiles.fire(b, u, enemy, visual(u), (float) baseHit(b, u)); else land(b, u, enemy);
+                return true;
             }
         }
+    }
+
+    static final Logger LOG = LoggerFactory.getLogger("gravesandglory");
+    /** Calls of attack for a melee troop with swings, refused (its blow is Tactics.swing's), since the server started. */
+    static int misrouted;
+
+    /** Whether the troop's attack is a melee blow (a troop not ranged whose ability row strikes rather than casts or mends): the blow Tactics lands on its swing's impact frame. */
+    static boolean melee(GravesAndGlory.Unit u) {
+        if (u.spec.ranged()) return false;
+        return switch (row(u).mechanic()) {case "blight", "mist", "mend" -> false; default -> true;};
+    }
+
+    /** A melee troop's blow on the enemy: its base hit through Combat.resolve, which runs the on-hit abilities (attack, and Tactics.land on the impact frame). */
+    static void land(GravesAndGlory.Battle b, GravesAndGlory.Unit u, LivingEntity enemy) {
+        Combat.resolve(b, u, enemy, (float) baseHit(b, u), "melee", false);
     }
 
     /** The swing a golem or a ravager shows: the client plays it on entity status 4, which their own attack goal would send and a troop has no such goal. */
@@ -345,7 +366,8 @@ final class Abilities {
         if (!target.isAlive() || Combat.structure(target) || !offCooldown(b, u, row, second)) return;
         Statuses.apply(b, u, target, "knockback", 0, 0, row.knockback());
         Statuses.apply(b, u, target, row.status().equals("none") ? "stun" : row.status(), row.statusTicks(), row.statusLevel(), row.amount());
-        b.world.playSound(null, target.getBlockPos(), SoundEvents.ITEM_SHIELD_BLOCK, SoundCategory.HOSTILE, 1f, .7f);
+        Vec3d struck = target.getPos();
+        Audio.later(b, Audio.contact(u), () -> Audio.at(b, AudioCues.Cue.SHIELD_BLOCK, struck, "bash" + u.mob.getId(), .8f)); // the shield meets him at the swing's contact frame, with the blow
     }
 
     /** Slowness I is the amplifier 0 of Riptide's slow (the spec's fixed effect kind); the abilities rows carry their own statusLevel. */
@@ -373,7 +395,9 @@ final class Abilities {
         int swept = splash(b, u, at, primary, (float) (row.amount() * baseHit(b, u)), row.radius(), row.knockback(), u.mob.getPos());
         if (swept > 0 && row.cooldownTicks() > 0) spend(u, second, b.time + row.cooldownTicks()); // a sweep that struck nobody keeps its cooldown for the next hit
         b.world.spawnParticles(ParticleTypes.CLOUD, at.x, at.y + .2, at.z, 16, row.radius() / 2, .1, row.radius() / 2, .06);
-        b.world.playSound(null, primary.getBlockPos(), SoundEvents.BLOCK_ANVIL_LAND, SoundCategory.HOSTILE, .35f, .7f);
+        // The slam sounds at the swing's contact frame under the blow's own key, so the primary's heavy thud and the slam are one sound, not two.
+        Vec3d slammed = primary.getPos();
+        Audio.later(b, Audio.contact(u), () -> Audio.at(b, AudioCues.Cue.HEAVY_METAL_HIT, slammed, "h" + u.mob.getId(), .8f));
     }
 
     /**
@@ -401,12 +425,12 @@ final class Abilities {
      * Charge stamp, Squad.chargedAt of his group, he last trampled under), every enemy within the row's radius of him, the one his blow struck among them, takes
      * the row's amount (times his army's progression) as a secondary slam hit, which their counters and traits shape, and each that lives is thrown from his spot
      * with the row's knockback (a structure is not moved); the cooldown starts and he rears (ArmyBear.rear: the warning pose for its pulse, his attack animation)
-     * in a cloud of dust. On Hold, under a Charge order with no stamp or one he trampled under already, or inside the cooldown, his blow is a bite alone. The
+     * in a cloud of dust. The order read is the one his blow's swing was judged under (Combat.charge). On Hold, under a Charge order with no stamp or one he trampled under already, or inside the cooldown, his blow is a bite alone. The
      * trample lands with the blow that makes contact, not before it: the struck enemy took the bite this tick, so its hurt cooldown is cleared first, or vanilla
      * would swallow the smaller blow.
      */
     static void trample(GravesAndGlory.Battle b, GravesAndGlory.Unit u, LivingEntity primary, Spec.AbilitiesRow row) {
-        if (!b.assignment(u).order.equals("charge") || b.time < u.abilityAt) return;
+        if (!Combat.charge(b, u, true).charging() || b.time < u.abilityAt) return; // the order his blow's swing was judged under (Ruling R29)
         Long charged = u.squad.chargedAt.get(u.spec.group());
         if (charged == null || u.trampledCharge >= charged) return;
         u.trampledCharge = charged;
@@ -416,7 +440,7 @@ final class Abilities {
         splash(b, u, at, null, (float) (row.amount() * b.campaign.damage(u)), row.radius(), row.knockback(), primary.getPos());
         if (u.mob instanceof GravesAndGlory.ArmyBear bear) bear.rear();
         b.world.spawnParticles(ParticleTypes.CLOUD, at.x, at.y + .2, at.z, 20, row.radius() / 2, .1, row.radius() / 2, .06);
-        b.world.playSound(null, u.mob.getBlockPos(), SoundEvents.ENTITY_POLAR_BEAR_WARNING, SoundCategory.HOSTILE, 1f, .8f);
+        Audio.at(b, AudioCues.Cue.BRUTE_ATTACK, at, "t" + u.mob.getId());
     }
 
     /** Whether a pounce troop's next blow is the pounce: its row's mechanic, the row's radius or more blocks walked since its last attack (Unit.travelSinceAttack), and its cooldown up. For either of the soldier's rows (second: his level-3 row, the Drowned Raider's Boarding rush, on the store's cooldown). auraFactor and pounce read it. */
@@ -431,7 +455,7 @@ final class Abilities {
     static void pounce(GravesAndGlory.Battle b, GravesAndGlory.Unit u, Spec.AbilitiesRow row, String kind, boolean second) {
         if (kind.equals("melee") && pounceReady(b, u, row, second)) {
             spend(u, second, b.time + (row.cooldownTicks() > 0 ? row.cooldownTicks() : D.abilityCooldownTicks()));
-            b.world.playSound(null, u.mob.getBlockPos(), SoundEvents.ENTITY_WOLF_GROWL, SoundCategory.HOSTILE, 1.5f, 1f);
+            Audio.at(b, AudioCues.Cue.HOUND_ATTACK, u.mob.getPos(), "p" + u.mob.getId());
             b.world.spawnParticles(dust(CLAY), u.mob.getX(), u.mob.getY() + .2, u.mob.getZ(), 12, .5, .1, .5, 0);
         }
         u.travelSinceAttack = 0;
@@ -539,11 +563,11 @@ final class Abilities {
     }
 
     /**
-     * The reach of a troop's attack in blocks: its sheet range plus its commander's bonus (the Warden's ranged troops), times 1 + the Entrench
+     * The reach of a troop's attack in blocks: its sheet range, times 1 + the Entrench
      * tier's value2 for a siege-tag troop of Ironclad that stands entrenched (Houses.still).
      */
     static double range(GravesAndGlory.Battle b, GravesAndGlory.Unit u) {
-        double reach = u.spec.range() + Commander.rangeBonus(u.squad, u);
+        double reach = u.spec.range();
         var entrench = Houses.entrench(u);
         return entrench != null && u.tags.contains("siege") && Houses.still(u) ? reach * (1 + entrench.value2()) : reach;
     }
@@ -636,9 +660,9 @@ final class Abilities {
     static void aura(GravesAndGlory.Battle b, GravesAndGlory.Unit u, Spec.AbilitiesRow row, long time) {
         switch (row.trigger()) {
             case "hold" -> {
-                if (u.seenOrder == null) u.seenOrder = b.storedAssignment(u.squad, u.spec.group()).order; // the order found on his first beat is remembered even in a stun, so a Hold given during it plants when it ends (review M6)
+                if (u.seenOrder == null) u.seenOrder = b.assignment(u).order; // the order found on his first beat is remembered even in a stun, so a Hold given during it plants when it ends (review M6)
                 if (time < u.stunnedUntil) return; // a stunned Marshal plants nothing; the order he has not seen yet waits, so a Hold given during the stun plants when it ends
-                String order = b.storedAssignment(u.squad, u.spec.group()).order, was = u.seenOrder;
+                String order = b.assignment(u).order, was = u.seenOrder; // his own order, a custom group's included (Task 12 fix I2)
                 u.seenOrder = order;
                 if (was != null && !was.equals(order) && order.equals("hold") && time >= u.abilityAt) plant(b, u, row, time);
             }
@@ -683,7 +707,7 @@ final class Abilities {
     /**
      * Keeps one speed modifier (by its id) on a mob at a value: added where it lacks, replaced where the value changed (the ground did: BattleMath.speedModifier
      * differs on land and in water), left alone where it stands at that value already, and only taken off for a value of 0. The Howl (hasten), Muster
-     * (Commander.Muster.hasten) and Riptide (Houses.swim) keep theirs through it; a mob without the attribute is left alone.
+     * (RelicEffects.Muster.hasten) and Riptide (Houses.swim) keep theirs through it; a mob without the attribute is left alone.
      */
     static void keepSpeed(LivingEntity mob, UUID id, String name, double value) {
         var speed = mob.getAttributeInstance(EntityAttributes.GENERIC_MOVEMENT_SPEED);
@@ -720,7 +744,7 @@ final class Abilities {
      */
     static void plant(GravesAndGlory.Battle b, GravesAndGlory.Unit u, Spec.AbilitiesRow row, long time) {
         u.abilityAt = time + (row.cooldownTicks() > 0 ? row.cooldownTicks() : D.abilityCooldownTicks());
-        float yaw = b.storedAssignment(u.squad, u.spec.group()).yaw;
+        float yaw = b.assignment(u).yaw;
         BlockPos block = spot(b, u, yaw);
         BlockState was = null;
         Vec3d at = u.mob.getPos();
@@ -890,7 +914,7 @@ final class Abilities {
         if (time < u.windupUntil) return;
         long lasts = Math.round(row.durationTicks() * Veterans.outputFactor(u));
         b.mists.add(new Mist(u.squad.team, u.spellCenter, radius, time + lasts, u, row, rider(u, "mist")));
-        b.world.playSound(null, BlockPos.ofFloored(u.spellCenter), SoundEvents.ENTITY_EVOKER_PREPARE_SUMMON, SoundCategory.HOSTILE, .6f, 1.3f);
+        Audio.at(b, AudioCues.Cue.MAGIC_IMPACT, u.spellCenter, "mist" + u.mob.getId()); // the cloud lands: an impact, not a second cast (the cast sounded when the windup began)
         u.spellCenter = null;
     }
 

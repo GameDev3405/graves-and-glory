@@ -1,0 +1,21 @@
+{
+ "troop": "ic_arbalist",
+ "note": "Ironclad Arbalist (unit identity, Ironclad): pillager biped, ember-banded kettle hat over a mail aventail, brigandine, crossed-bolt surcoat, fur mantle, back quiver, crossbow held level. Tier II brass studs and rims, a bevor, bracers and a banded quiver; tier III a brass-rimmed shoulder plate, an ember-seamed hat comb, brass goggles, greaves. No back flag.",
+ "rig": "biped",
+ "size": [
+  128,
+  128
+ ],
+ "density": 1,
+ "bones": [],
+ "idleArms": "hang",
+ "parts": [],
+ "skins": {
+  "1": "ic_arbalist_s1.png",
+  "2": "ic_arbalist_s2.png",
+  "3": "ic_arbalist_s3.png"
+ },
+ "weapon": "ic_crossbow",
+ "hand": "right",
+ "portrait": "tall 4"
+}

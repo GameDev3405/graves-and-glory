@@ -7,12 +7,29 @@ allprojects {
    def testRoot = System.getenv('GRAVES_ROADMAP_TEST_ROOT')
    if (!testRoot) throw new GradleException('GRAVES_ROADMAP_TEST_ROOT is required')
    workingDir file(testRoot + '/run')
+   // A fresh root has no options.txt, so Minecraft opens the accessibility onboarding screen and waits for it: seed the same lines the other harnesses use.
+   doFirst {
+    def options = file(testRoot + '/run/options.txt')
+    options.parentFile.mkdirs()
+    if (!options.exists()) {
+     options.text = 'pauseOnLostFocus:false\nonboardAccessibility:false\nrenderDistance:8\nsimulationDistance:6\nguiScale:3\n'
+    }
+    // Completed on every launch, not only the first: a root whose options.txt has no resourcePacks line (the older seed, or a file
+    // Minecraft never rewrote) otherwise loses the built-in armory pack on its second launch (restart-armory-enabled).
+    if (!options.readLines().any { it.startsWith('resourcePacks:') }) {
+     options.append((options.text.endsWith('\n') ? '' : '\n') + 'resourcePacks:["fabric","gravesandglory:armory"]\n')
+    }
+   }
+   // A relaunch is otherwise a different commander (Minecraft picks Player<random>): a fixed name keeps one profile across launches.
+   if (System.getenv('GRAVES_ROADMAP_USER')) args('--username', System.getenv('GRAVES_ROADMAP_USER'))
    jvmArgs = jvmArgs.findAll { !it.startsWith('-Dgravesandglory.localChecks=') && !it.startsWith('-Dgravesandglory.runtime=') }
    systemProperty 'gravesandglory.localChecks', testRoot + '/evidence/local-checks.txt'
    systemProperty 'gravesandglory.runtime', testRoot + '/runtime'
    systemProperty 'gravesandglory.migrationFixture', System.getenv('GRAVES_ROADMAP_MIGRATION') ?: 'false'
    systemProperty 'gravesandglory.startupOnly', System.getenv('GRAVES_ROADMAP_STARTUP_ONLY') ?: 'false'
    systemProperty 'gravesandglory.compatibilityCase', System.getenv('GRAVES_ROADMAP_COMPAT_CASE') ?: ''
+   // host:port of a dedicated server to join once the title screen has settled (ConnectOnStart); empty means do not connect.
+   systemProperty 'gravesandglory.connect', System.getenv('GRAVES_ROADMAP_CONNECT') ?: ''
    systemProperty 'gravesandglory.networkHost', System.getenv('GRAVES_NETWORK_HOST') ?: 'false'
    systemProperty 'gravesandglory.networkRoot', System.getenv('GRAVES_NETWORK_ROOT') ?: testRoot
    systemProperty 'gravesandglory.campChecks', System.getenv('GRAVES_CAMP_CHECKS') ?: 'false'
@@ -25,10 +42,20 @@ allprojects {
    systemProperty 'gravesandglory.studioOut', System.getenv('GRAVES_STUDIO_OUT') ?: testRoot + '/studio-out'
    systemProperty 'gravesandglory.phase1Checks', System.getenv('GRAVES_PHASE1_CHECKS') ?: ''
    systemProperty 'gravesandglory.phase2Checks', System.getenv('GRAVES_PHASE2_CHECKS') ?: ''
+   systemProperty 'gravesandglory.fadeRed', System.getenv('GRAVES_FADE_RED') ?: 'false'
+   systemProperty 'gravesandglory.phase4Checks', System.getenv('GRAVES_PHASE4_CHECKS') ?: ''
+   systemProperty 'gravesandglory.commandUiChecks', System.getenv('GRAVES_COMMAND_UI_CHECKS') ?: ''
    systemProperty 'gravesandglory.turnTroops', System.getenv('GRAVES_PHASE2_TURN') ?: 'gilded'
    systemProperty 'gravesandglory.turnStage', System.getenv('GRAVES_PHASE2_STAGE') ?: '1'
+   systemProperty 'gravesandglory.turnWeapon', System.getenv('GRAVES_PHASE2_WEAPON') ?: '1'
    systemProperty 'gravesandglory.faceTroops', System.getenv('GRAVES_PHASE2_FACES') ?: ''
    systemProperty 'gravesandglory.faceForce', System.getenv('GRAVES_PHASE2_FACE') ?: '-1'
+   systemProperty 'gravesandglory.motionBaseline', System.getenv('GRAVES_MOTION_BASELINE') ?: ''
+   systemProperty 'gravesandglory.motionFamily', System.getenv('GRAVES_MOTION_FAMILY') ?: 'stub'
+   systemProperty 'gravesandglory.repoRoot', project.rootDir.absolutePath
+   systemProperty 'gravesandglory.gradeOut', System.getenv('GRAVES_GRADE_OUT') ?: (project.rootDir.absolutePath + '/test-tools/work/grade')
+   systemProperty 'gravesandglory.gradeNoPillow', System.getenv('GRAVES_GRADE_NO_PILLOW') ?: 'false'
+   systemProperty 'gravesandglory.gradeParts', System.getenv('GRAVES_GRADE_PARTS') ?: 'solo,loco,states,transitions'
   }
  }
 }

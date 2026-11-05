@@ -81,7 +81,7 @@ public final class HousesCheck {
     static Hit covered(String attacker, String target, double bearing) { return new Hit(tags(attacker), tags(target), bearing, false, false, false, false, false, false, true, false); }
     static Hit area(String attacker, String target, double bearing) { return new Hit(tags(attacker), tags(target), bearing, false, false, false, false, false, false, false, true); }
     static Spec.AbilitiesRow ability(String id) { for (var r : Spec.ABILITIES) if (r.id().equals(id)) return r; throw new AssertionError("no abilities row " + id); }
-    static Spec.ClassesRow classRow(String id) { for (var r : Spec.CLASSES) if (r.id().equals(id)) return r; throw new AssertionError("no classes row " + id); }
+    static Spec.RelicTuningRow tuning(String id) { for (var r : Spec.RELICTUNING) if (r.id().equals(id)) return r; throw new AssertionError("no relicTuning row " + id); }
     static Spec.TroopsRow troop(String id) { for (var r : Spec.TROOPS) if (r.id().equals(id)) return r; throw new AssertionError("no troops row " + id); }
     static double counters(Hit h) { return CounterMath.counters(h, Spec.COUNTERS); }
     static Spec.HouseTraitsRow trait(String house, int tier) { return CounterMath.trait(Spec.HOUSETRAITS, house, tier); }
@@ -200,7 +200,7 @@ public final class HousesCheck {
     }
     static List<String> ids(List<CounterMath.CardRow> rows) { return rows.stream().map(r -> r.id() + (r.incoming() ? "<" : ">")).toList();
     }
-    static Spec.CampaignBattlesRow march(String id, int chapter, int order) { return new Spec.CampaignBattlesRow(id, chapter, order, id, 0, 1, "easy", false, "", ""); }
+    static Spec.CampaignBattlesRow march(String id, int chapter, int order) { return new Spec.CampaignBattlesRow(id, chapter, order, id, 0, 1, "easy", false, "", "", "domination", "gilded", "b1_hold_all", "none", "none"); }
     /** The re-authored Founders chapter (spec 4.8) and the House-aware contract claims (spec 4.5), through Progression.claim alone. */
     static void founders() {
         var s = tier30();
@@ -365,10 +365,10 @@ public final class HousesCheck {
         check(eq(counters(covered("melee","any",130)),1.0) && CounterMath.applied(covered("melee","any",130),Spec.COUNTERS).isEmpty() && eq(counters(covered("shot","any",130)),1.0), "a covered flank (Bulwark) takes neither C16 nor C16s");
         check(eq(counters(area("melee","any",130)),1.0) && CounterMath.applied(area("melee","any",130),Spec.COUNTERS).isEmpty() && eq(counters(area("melee,sunder","shield",130)),1.4) && CounterMath.applied(area("melee,sunder","shield",130),Spec.COUNTERS).equals(List.of("C14")), "area damage (a cleave's second target, a slam, blight) takes no flank row; the other rows still apply (C14)");
         var D=Spec.COMBATDISCIPLINE[0];
-        check(D.lastStandShare()==0.25 && D.lastStandRadius()==16 && D.hornCooldownSeconds()==8 && D.hornVolume()==1.6 && D.woundedShare()==0.3 && D.lastStandFeedSeconds()==30 && D.arriveRadius()==4.0, "combatDiscipline carries the last stand, the feedback cue, the wounded share and the arrival radius");
+        check(D.lastStandShare()==0.25 && D.lastStandRadius()==16 && D.hornCooldownSeconds()==8 && D.hornVolume()==4.0 && D.woundedShare()==0.3 && D.lastStandFeedSeconds()==30 && D.arriveRadius()==4.0, "combatDiscipline carries the last stand, the feedback cue, the wounded share and the arrival radius");
         check(Arrays.stream(Spec.class.getDeclaredFields()).noneMatch(f->f.getName().equals("MORALE")), "Spec has no MORALE table: the morale sheet is gone");
         check(ability("fearless").amount()==0.2 && ability("fearless").amount2()==0.3 && ability("dread").amount2()==0 && ability("oath_banner").anchors() && Arrays.stream(Spec.ABILITIES).filter(Spec.AbilitiesRow::anchors).map(Spec.AbilitiesRow::id).toList().equals(List.of("oath_banner","gl_marshal_l2")), "fearless is +20% at 30% health, dread routs nothing, the Oath Banner and its level-2 row alone anchor");
-        check(classRow("marshal").value1()==0.2 && classRow("marshal").value2()==0 && classRow("marshal").active().equals("rally_horn"), "the Marshal's Muster (the sheet's rally_horn): +20% speed, nothing steadies");
+        check(tuning("rally_horn").value1()==0.2 && tuning("rally_horn").value2()==0 && tuning("rally_horn").effect().equals("rally_horn"), "the Muster relic (the sheet's rally_horn): +20% speed, nothing steadies");
         check(Set.of(troop("ic_colossus").tags().split(",")).contains("large") && !Set.of(troop("ic_colossus").tags().split(",")).contains("fearless") && Set.of(troop("bonebow").tags().split(",")).contains("fearless"), "Brassjaw is large and not fearless; the Bone Archer is fearless");
         check(CounterMath.applied(impact("melee,beast,cavalry","ranged"),Spec.COUNTERS).equals(List.of("C5")) && CounterMath.applied(hit("arrow,armour_bolt","shield",10,true),Spec.COUNTERS).equals(List.of("C15")) && CounterMath.applied(hit("arrow","any",10,false),Spec.COUNTERS).isEmpty(), "applied names the row that wins each group");
         check(total(0.1,1,1,1,.25,2.5)==0.25 && total(2,1.5,1,1,.25,2.5)==2.5 && eq(total(1.4,0.85,1,0.75,.25,2.5),0.8925), "clamp");

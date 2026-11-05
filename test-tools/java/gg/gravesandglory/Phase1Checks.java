@@ -38,7 +38,7 @@ public final class Phase1Checks implements ClientModInitializer {
      *  while the client's ready is false, when step() does not run. clientTick runs every client tick, ready or not. */
     public interface HudWatch { void hudFrame(MinecraftClient c); default void clientTick(MinecraftClient c){} }
     static final Map<String,Supplier<Suite>> SUITES=new LinkedHashMap<>();
-    static{SUITES.put("combat",Combat::new);SUITES.put("morale",MoraleChecks::new);SUITES.put("reinforce",ReinforceChecks::new);SUITES.put("bots",Bots::new);SUITES.put("tutorial",TutorialChecks::new);SUITES.put("report",ReportChecks::new);SUITES.put("ui-art",UiArtChecks::new);SUITES.put("ui-hud",UiHudChecks::new);SUITES.put("ui-feed",UiFeedChecks::new);SUITES.put("ui-home",UiHomeChecks::new);SUITES.put("ui-recruit",UiRecruitChecks::new);SUITES.put("ui-pages",UiPagesChecks::new);SUITES.put("ui-icons",UiIconsChecks::new);SUITES.put("ui-leave",UiLeaveChecks::new);}
+    static{SUITES.put("combat",Combat::new);SUITES.put("ui-lobby",LobbyChecks::new);SUITES.put("ui-bannerfield",BannerFieldChecks::new);SUITES.put("morale",MoraleChecks::new);SUITES.put("reinforce",ReinforceChecks::new);SUITES.put("bots",Bots::new);SUITES.put("tutorial",TutorialChecks::new);SUITES.put("report",ReportChecks::new);SUITES.put("ui-art",UiArtChecks::new);SUITES.put("ui-hud",UiHudChecks::new);SUITES.put("ui-feed",UiFeedChecks::new);SUITES.put("ui-home",UiHomeChecks::new);SUITES.put("ui-recruit",UiRecruitChecks::new);SUITES.put("ui-pages",UiPagesChecks::new);SUITES.put("ui-icons",UiIconsChecks::new);SUITES.put("ui-leave",UiLeaveChecks::new);SUITES.put("ui-report",UiReportChecks::new);SUITES.put("gear",GearChecks::new);SUITES.put("gear-combat",GearCombatChecks::new);SUITES.put("ui-gear",GearScreenChecks::new);SUITES.put("gear-art",GearArtChecks::new);SUITES.put("house-art",HouseArtChecks::new);SUITES.put("weapon-look",WeaponLookChecks::new);}
     static final ArrayDeque<String> queue=new ArrayDeque<>();
     static volatile Suite current;static volatile String currentName="";static volatile boolean failed;
     static int tick,front,hold;static boolean started; // hold: client ticks the current suite waits (Phase1Checks.window)
@@ -221,9 +221,10 @@ public final class Phase1Checks implements ClientModInitializer {
                         System.out.println("[p1] first arrow fired="+first.fired()+" lands="+first.lands()+" health="+firstHealth+" now="+first.target().getHealth());
                     }
                     if(b.time==(first.fired()+first.lands())/2){
-                        Vec3d from=first.from(),to=Projectiles.aim(first.target());double best=1e9;
-                        for(var e:b.world.iterateEntities())if(e instanceof ArrowEntity&&e.getCommandTags().contains(Projectiles.TAG))best=Math.min(best,segmentDistance(e.getPos(),from,to));
-                        report("p1-arrow-visible",best<=3,"nearest tagged arrow "+String.format("%.2f",best)+" blocks from the shot line at tick "+(b.time-first.fired())+" of "+(first.lands()-first.fired()));
+                        // arrows fly the arced curve (Projectiles.curve, 2026-10-30), so measure against the first shot's point on it, not the straight line
+                        Vec3d from=first.from(),to=Projectiles.aim(first.target()),on=Projectiles.curve(from,to,first.peak(),first.ticks(),b.time-first.fired());double best=1e9;
+                        for(var e:b.world.iterateEntities())if(e instanceof ArrowEntity&&e.getCommandTags().contains(Projectiles.TAG))best=Math.min(best,e.getPos().distanceTo(on));
+                        report("p1-arrow-visible",best<=3,"nearest tagged arrow "+String.format("%.2f",best)+" blocks from the arced shot path at tick "+(b.time-first.fired())+" of "+(first.lands()-first.fired()));
                     }
                     if(b.time==first.lands()+1){
                         var t=first.target();boolean hurt=!t.isAlive()||t.getHealth()<firstHealth;
@@ -297,7 +298,7 @@ public final class Phase1Checks implements ClientModInitializer {
         }
     }
 
-    /** Task 2, rewritten by the no-routing design: no group breaks (p1-no-rout); flank blows, C16s and covered flanks (p1-flank-damage); the LAST STAND state, its feed line and its HUD stamp (p1-last-stand, p1-hud-last-stand); command feedback to the commanding player alone and no horn in the world (p1-command-sound, p1-charge-horn); Retreat and Move arrive and fight as Hold (p1-retreat-arrive). Stages run on the server tick. */
+    /** Task 2, rewritten by the no-routing design: no group breaks (p1-no-rout); flank blows, C16s and covered flanks (p1-flank-damage); the LAST STAND state, its feed line and its HUD stamp (p1-last-stand, p1-hud-last-stand); command feedback as world sounds at the commander, heard by every player in range (p1-command-sound, p1-charge-horn); Retreat and Move arrive and fight as Hold (p1-retreat-arrive). Stages run on the server tick. */
     static final class MoraleChecks implements Suite,ServerWatch {
         static final Spec.CombatDisciplineRow D=Spec.COMBATDISCIPLINE[0];
         static final double FX=48,FZ=0; // open valley on the Dusk side of Rivergate (60 blocks from the sheet's Dusk base; CampaignMaps moves the live base to x=283, inside a village)
@@ -314,6 +315,8 @@ public final class Phase1Checks implements ClientModInitializer {
         // the arrival
         GravesAndGlory.Unit waylayer,greeter;int strikes;boolean targetOnWay,runSeen,fought;long arrivedAt=-1,foughtAt=-1;String arriveWhy="";boolean arriveOk=true;Vec3d dest;
         // the sounds' transport (p1-feedback-reach): what the commanding client played and what a second player 5 blocks from him was sent
+        static final List<String> WORLD_CUES=List.of("gravesandglory:horn_rout","gravesandglory:horn_charge","gravesandglory:order_charge_shout","gravesandglory:order_hold_shout");
+        static boolean heardAll(List<String> got){return got.stream().sorted().toList().equals(WORLD_CUES.stream().sorted().toList());}
         List<String> listenerCues=List.of();long routBefore,chargeBefore,chimeBefore;
         // the arrival's pull and its ranged and support legs
         long pullAt=-1,settleAt=-1;double pullMax;int pullSamples,pullArrived,pullHold,pullTargets;boolean pullOk,rangedStart,supportStart;Leg rangedLeg,supportLeg;Vec3d rangedDest,supportDest;
@@ -511,10 +514,10 @@ public final class Phase1Checks implements ClientModInitializer {
                     next(b,11);
                 }
                 case 11->{freshInfantry(b,true);enemyFront(b);camera(b,FX-12,FZ,4,-90,12);next(b,12);}
-                case 12->{if(since(b)>=20){ // p1-charge-horn and the command sounds: Retreat and Charge play to the commanding player alone, once per kind per hornCooldownSeconds; another order the chime; a bot's charge nothing
+                case 12->{if(since(b)>=20){ // p1-charge-horn and the command sounds: Retreat and Charge (horn, and the charge shout) and Hold (the hold shout) sound in the world at the commander, once per kind per hornCooldownSeconds, so a player near him hears them; another order the chime; a bot's charge nothing
                     var p=sp(b);var foe=b.units.stream().filter(u->u.squad==enemy&&u.mob.isAlive()&&p.canSee(u.mob)).findFirst().orElse(null);
                     if(foe==null){report("p1-charge-horn",false,"no Dusk troop visible from the camera");soundOk=false;soundWhy="no Dusk troop visible from the camera";next(b,13);break;}
-                    var listener=Listener.join(b,p.getX()+5,p.getY(),p.getZ());routBefore=heardOnClient("gravesandglory:horn_rout");chargeBefore=heardOnClient("gravesandglory:horn_charge");chimeBefore=heardOnClient("minecraft:block.note_block.chime");
+                    var listener=Listener.join(b,p.getX()+5,p.getY(),p.getZ());routBefore=heardOnClient("gravesandglory:horn_rout");chargeBefore=heardOnClient("gravesandglory:horn_charge");chimeBefore=heardOnClient("gravesandglory:order_hold_shout");
                     int total=BattleEffects.heard.size(),r0=heard(player,"retreat"),c0=heard(player,"charge");
                     own.lastOrder=-1000;b.tactical(p,"infantry","retreat","block",FX-20,FZ,-90,-1);int r1=heard(player,"retreat");
                     own.lastOrder=-1000;b.tactical(p,"ranged","retreat","block",FX-20,FZ+24,-90,-1);int r2=heard(player,"retreat");
@@ -523,20 +526,20 @@ public final class Phase1Checks implements ClientModInitializer {
                     var ranged=own.assignments.get("ranged");
                     own.lastOrder=-1000;b.tactical(p,"support","hold","block",FX-8,FZ+30,-90,-1);int afterHold=BattleEffects.heard.size();
                     b.markCharge(enemy,"all");int afterBot=BattleEffects.heard.size();
-                    listenerCues=listener.cues();listener.leave(b);boolean nobodyElse=listenerCues.isEmpty();
+                    listenerCues=listener.cues();listener.leave(b);boolean nobodyElse=heardAll(listenerCues);
                     boolean mine=BattleEffects.heard.stream().allMatch(h->h.player().equals(player));
                     boolean charge=c1==c0+1&&c2==c1&&ranged!=null&&ranged.order.equals("charge");
-                    report("p1-charge-horn",charge&&nobodyElse,"the commanding player's charge feedback "+c0+" -> "+c1+" after the infantry charge, "+c2+" after the ranged charge inside the "+D.hornCooldownSeconds()+" s cooldown (ranged order "+(ranged==null?"none":ranged.order)+"); a second player 5 blocks from him was sent "+listenerCues+" (want nothing: the cues go to him alone)="+nobodyElse);
+                    report("p1-charge-horn",charge&&nobodyElse,"the commanding player's charge feedback "+c0+" -> "+c1+" after the infantry charge, "+c2+" after the ranged charge inside the "+D.hornCooldownSeconds()+" s cooldown (ranged order "+(ranged==null?"none":ranged.order)+"); a second player 5 blocks from him was sent "+listenerCues+" (want "+WORLD_CUES+": the commands sound in the world, once each inside the cooldown)="+nobodyElse);
                     soundOk=r1==r0+1&&r2==r1&&charge&&afterHold==total+2&&afterBot==afterHold&&mine;
-                    soundWhy="Retreat feedback to the player "+r0+" -> "+r1+" (want +1), a second Retreat at once "+r2+" (want no more); Charge "+c0+" -> "+c1+" -> "+c2+"; a Hold order added nothing ("+total+" -> "+afterHold+", want +2 over the four orders); a bot's charge added nothing ("+afterBot+"); every sound heard was this player's="+mine;
+                    soundWhy="Retreat feedback to the player "+r0+" -> "+r1+" (want +1), a second Retreat at once "+r2+" (want no more); Charge "+c0+" -> "+c1+" -> "+c2+"; a Hold order added nothing ("+total+" -> "+afterHold+", want +2 over the four orders); a bot's charge added nothing ("+afterBot+"); every logged sound was this player's="+mine;
                     next(b,16);
                 }}
-                case 16->{ // p1-feedback-reach: what was really sent. The commanding client played the Retreat cue, the Charge cue and the chime once each (its own sound system, SoundInstanceListener), and the second player 5 blocks from him was sent none of them
+                case 16->{ // p1-feedback-reach: what was really sent. The commanding client played the Retreat cue, the Charge cue and the chime once each (its own sound system, SoundInstanceListener), and the second player 5 blocks from him heard each of them too (world sounds)
                     if(since(b)<30)return;
-                    long rout=heardOnClient("gravesandglory:horn_rout")-routBefore,charges=heardOnClient("gravesandglory:horn_charge")-chargeBefore,chime=heardOnClient("minecraft:block.note_block.chime")-chimeBefore;
-                    boolean reach=rout==1&&charges==1&&chime==1&&listenerCues.isEmpty();
-                    report("p1-feedback-reach",reach,"after Retreat, Retreat, Charge, Charge and Hold the commanding client played horn_rout "+rout+" time(s), horn_charge "+charges+", the chime "+chime+" (want 1, 1, 1: the throttled repeats play nothing) and a second player 5 blocks from him was sent "+listenerCues+" (want nothing)="+reach);
-                    soundOk&=reach;soundWhy+="; the transport: the client played rout "+rout+", charge "+charges+", chime "+chime+" (want 1 each) and the second player was sent "+listenerCues+" (want nothing)="+reach;
+                    long rout=heardOnClient("gravesandglory:horn_rout")-routBefore,charges=heardOnClient("gravesandglory:horn_charge")-chargeBefore,chime=heardOnClient("gravesandglory:order_hold_shout")-chimeBefore;
+                    boolean reach=rout==1&&charges==1&&chime==1&&heardAll(listenerCues);
+                    report("p1-feedback-reach",reach,"after Retreat, Retreat, Charge, Charge and Hold the commanding client played horn_rout "+rout+" time(s), horn_charge "+charges+", the hold shout "+chime+" (want 1, 1, 1: the throttled repeats play nothing) and a second player 5 blocks from him was sent "+listenerCues+" (want "+WORLD_CUES+")="+reach);
+                    soundOk&=reach;soundWhy+="; the transport: the client played rout "+rout+", charge "+charges+", hold shout "+chime+" (want 1 each) and the second player was sent "+listenerCues+" (want "+WORLD_CUES+")="+reach;
                     report("p1-command-sound",soundOk,soundWhy); // reported here, not at stage 99: the client ends the suite the tick the stage turns 99, before a server tick could report
                     next(b,13);
                 }
@@ -561,9 +564,9 @@ public final class Phase1Checks implements ClientModInitializer {
                     }
                     if(foughtAt<0&&anyTarget(b))foughtAt=since(b)-arrivedAt;
                     if(foughtAt<0&&since(b)-arrivedAt<=100)return;
-                    boolean onWay=strikes>0&&!targetOnWay&&runSeen,after=foughtAt>=0&&foughtAt<=100&&Tactics.stance(b,ks.get(0)).equals("hold")&&b.assignment(ks.get(0)).order.equals("retreat");
+                    boolean onWay=strikes>0&&!targetOnWay&&runSeen,after=foughtAt>=0&&foughtAt<=100&&Tactics.stance(b,ks.get(0)).equals("brace")&&b.assignment(ks.get(0)).order.equals("retreat"); // arrived, they stand as on Hold, and Hold braces a shield troop
                     arriveOk=onWay&&after;
-                    arriveWhy="on the way a Risen struck them "+strikes+" times and no knight ever took a target="+!targetOnWay+" (stance run="+runSeen+")="+onWay+"; they arrived at +"+arrivedAt+" and "+(foughtAt<0?"never":foughtAt+" ticks later")+" a knight took a target (the Risen 5 blocks beyond, within Hold's 10), their stance now "+Tactics.stance(b,ks.get(0))+" (want hold) with the stored order still "+b.assignment(ks.get(0)).order+"="+after;
+                    arriveWhy="on the way a Risen struck them "+strikes+" times and no knight ever took a target="+!targetOnWay+" (stance run="+runSeen+")="+onWay+"; they arrived at +"+arrivedAt+" and "+(foughtAt<0?"never":foughtAt+" ticks later")+" a knight took a target (the Risen 5 blocks beyond, within Hold's 10), their stance now "+Tactics.stance(b,ks.get(0))+" (want brace: Hold braces a shield troop) with the stored order still "+b.assignment(ks.get(0)).order+"="+after;
                     // the same for a Move order: to 10 blocks south of the fixture point, with a Risen waiting 8 blocks beyond it (inside Hold's 10, past arriveRadius)
                     for(var u:new ArrayList<>(flank))u.mob.discard();b.units.removeAll(flank);flank.clear();
                     greeter=risen(b,FX,FZ+18,-90);dest=new Vec3d(FX,top(b,FX,FZ+10),FZ+10);order(b,"infantry","move",FX,FZ+10);
@@ -594,10 +597,10 @@ public final class Phase1Checks implements ClientModInitializer {
                         else if(since(b)>600){report("p1-retreat-arrive",false,arriveWhy+"; the Hold fight never pulled the centre past "+(D.arriveRadius()+1)+" of the spot in 600 ticks ("+String.format("%.1f",off)+" off now)");next(b,99);}
                         return;
                     }
-                    pullMax=Math.max(pullMax,off);pullSamples++;if(arrived(b))pullArrived++;if(Tactics.stance(b,ks.get(0)).equals("hold"))pullHold++;if(anyTarget(b))pullTargets++;
+                    pullMax=Math.max(pullMax,off);pullSamples++;if(arrived(b))pullArrived++;if(Tactics.stance(b,ks.get(0)).equals("brace"))pullHold++;if(anyTarget(b))pullTargets++;
                     if(since(b)-pullAt<60)return;
                     pullOk=pullArrived==pullSamples&&pullHold==pullSamples&&pullTargets*4>=pullSamples*3&&own.arrived.contains("infantry");
-                    arriveWhy+="; the Hold fight pulled the centre "+String.format("%.1f",pullMax)+" from the spot: over "+pullSamples+" ticks past "+(D.arriveRadius()+1)+" arrived="+pullArrived+", stance hold="+pullHold+", a knight had a target in "+pullTargets+" (want all, all, three in four) and the latch holds="+own.arrived.contains("infantry")+"="+pullOk;
+                    arriveWhy+="; the Hold fight pulled the centre "+String.format("%.1f",pullMax)+" from the spot: over "+pullSamples+" ticks past "+(D.arriveRadius()+1)+" arrived="+pullArrived+", stance brace (Hold, a shield troop)="+pullHold+", a knight had a target in "+pullTargets+" (want all, all, three in four) and the latch holds="+own.arrived.contains("infantry")+"="+pullOk;
                     arriveOk&=pullOk;
                     // ranged and support on Retreat, 10 blocks west of where they hold: their slots stand 6.8 and 10.8 or more behind each spot (Battle.formation), so the centre never comes within arriveRadius of the spot itself; arrival is measured at the slots
                     dropFlankers(b);
@@ -801,13 +804,13 @@ public final class Phase1Checks implements ClientModInitializer {
 
     /** Task 4: bot difficulty tiers. The command, the lobby and camp buttons and the Hard cadence first (map 0), then Hard's decisions on Kingsfield Crossroads (map 4, five points). Stages run on the server tick; the UI stages run on the client tick. */
     static final class Bots implements Suite,ServerWatch {
-        volatile int stage;volatile String wantShot;volatile boolean finished,shotAsked;
+        volatile int stage;volatile String wantShot;volatile boolean finished;
         volatile UUID player;long stageAt;int shotDelay,lobbyAt=-1,homeAt=-1;
         boolean lobbyOk,commandOk,homeOk,buttonOk,tiersOk,refusedOk;String lobbyWhy="",homeWhy="",tiersWhy="";
         final Map<UUID,Vec3d> firstTarget=new HashMap<>();final Map<UUID,Long> decidedAt=new HashMap<>();
         GravesAndGlory.Squad hard;List<GravesAndGlory.Unit> foes=new ArrayList<>();
-        String farOrder="";boolean shieldFormation;double gap;
-        GravesAndGlory.Unit hexer,aim;final Map<GravesAndGlory.Unit,Float> hpBefore=new HashMap<>();final Set<GravesAndGlory.Unit> bracedBefore=new HashSet<>();boolean frontalBlocked;String frontalWhy="";
+        String farOrder="";boolean noShieldwall;double gap;
+        GravesAndGlory.Unit hexer,aim;final Map<GravesAndGlory.Unit,Float> hpBefore=new HashMap<>();final Set<GravesAndGlory.Unit> bracedBefore=new HashSet<>();boolean frontalBlocked,facingOk;String frontalWhy="",facingWhy="";
 
         void next(GravesAndGlory.Battle b,int s){stage=s;stageAt=b.time;}
         long since(GravesAndGlory.Battle b){return b.time-stageAt;}
@@ -926,7 +929,7 @@ public final class Phase1Checks implements ClientModInitializer {
                     }
                 }
                 case 8->{if(since(b)>=40)next(b,9);} // the client learns the round is over before the map changes under it
-                case 9->{ // Kingsfield Crossroads, a camera over the shieldwall ground, everything else inert
+                case 9->{ // Kingsfield Crossroads, a camera over the archer-threat ground, everything else inert
                     var p=sp(b);if(p==null||!skirmish(b,p,4,1,"normal"))return;
                     clear(b);camera(b,-92,11,2,180,6);
                     System.out.println("[p1] bots fixture: map "+b.campaign.map+" "+Spec.MAPS[b.campaign.map].name()+", "+b.points.size()+" points: "+b.points.stream().map(c->c.spec.id()+"@"+c.spec.x()+","+c.spec.z()).toList());
@@ -934,7 +937,7 @@ public final class Phase1Checks implements ClientModInitializer {
                 }
                 case 10->{ // p1-bots-least-defended
                     clear(b);hard=army(b,0,"hard",-105,100); // 25 blocks east of West Outpost (index 1)
-                    var shipped=b.campaign.tier(hard);var row=new Spec.BotCommandRow(shipped.id(),shipped.retreatShare(),shipped.rallyShare(),shipped.chargeRatio(),shipped.decisionTicks(),true,shipped.defenderWeight(),shipped.shieldwallVsArchers(),shipped.archerThreatCount(),shipped.archerThreatRange(),shipped.chargeDistance(),shipped.gearMaxTier(),shipped.gearReserveTroops(),shipped.gearPriority()); // the flanking rule stays tested; the shipped Hard row has it off (Kort, 2026-10-18)
+                    var shipped=b.campaign.tier(hard);var row=new Spec.BotCommandRow(shipped.id(),shipped.retreatShare(),shipped.rallyShare(),shipped.chargeRatio(),shipped.decisionTicks(),true,shipped.defenderWeight(),shipped.archerThreatCount(),shipped.archerThreatRange(),shipped.chargeDistance(),shipped.gearMaxTier(),shipped.gearReserveTroops(),shipped.gearPriority(),shipped.waveScale(),shipped.waveTraitTier()); // the flanking rule stays tested; the shipped Hard row has it off (Kort, 2026-10-18)
                     b.campaign.botDecide(hard,row);int none=chosen(b,hard);
                     plant(b,1,9);b.campaign.botDecide(hard,row);int defended=chosen(b,hard);
                     for(var u:foes)u.mob.discard(); // the nine fall, but the memory of them stays
@@ -950,37 +953,44 @@ public final class Phase1Checks implements ClientModInitializer {
                     report("p1-bots-least-defended",ok,b.points.size()+" points; Hard near "+name(b,1)+" with no sightings -> "+name(b,none)+", with nine Dusk sightings on it -> "+name(b,defended)+", with those nine dead but still remembered -> "+name(b,stale)+"; Normal on the same state -> "+name(b,normal)+" (expected "+name(b,1)+"); Hard near "+name(b,4)+" -> "+name(b,reach)+" (index above 2 needs the arrays sized from battle.points); Dusk Normal on "+name(b,2)+", lane 1, holding points 0, 2 and 4 -> "+name(b,duskNormal)+" (expected "+name(b,3)+", lane 1 mirrored)");
                     next(b,11);
                 }
-                case 11->{if(since(b)>=40){ // p1-bots-shieldwall: six frozen Dusk archers 20 blocks ahead of a Dawn Hard army
+                case 11->{if(since(b)>=40){ // p1-bots-no-shieldwall: six frozen Dusk archers 20 blocks ahead of a Dawn Hard army; bots never pick a Shieldwall (the formation is gone; Hold builds the wall)
                     clear(b);hard=army(b,0,"hard",-100,0);Vec3d at=centre(b,hard);
                     for(var u:foes)u.mob.discard();foes.clear();
                     var duskSquad=new GravesAndGlory.Squad(UUID.randomUUID(),1,new Vec3d(-80,top(b,-80,0),0));duskSquad.order="hold";duskSquad.yaw=90;
                     for(int i=0;i<6;i++){double z=(i-2.5)*2;foes.add(freezeIt(b.spawn(duskSquad,troop("bonebow"),i,new Vec3d(-80,top(b,-80,z),z))));}
                     b.updateSight();int sighted=b.sightings.get(0).size();gap=-80-b.units.stream().filter(u->u.squad==hard).mapToDouble(u->u.mob.getX()).max().orElse(0);
-                    hard.tier="normal";b.campaign.botDecide(hard,b.campaign.tier(hard));boolean normalPlain=!hard.assignments.containsKey("infantry");
+                    hard.tier="normal";b.campaign.botDecide(hard,b.campaign.tier(hard));boolean normalPlain=!hard.assignments.containsKey("infantry")&&!hard.formation.equals("shieldwall");
                     hard.tier="hard";b.campaign.botDecide(hard,b.campaign.tier(hard));var wall=hard.assignments.get("infantry");
-                    boolean formation=wall!=null&&wall.formation.equals("shieldwall");
-                    System.out.println("[p1] shieldwall fixture: army centre "+at+", "+sighted+" Dusk sightings, Normal on the same state leaves infantry in "+hard.formation+" (no override="+normalPlain+"), Hard infantry assignment "+(wall==null?"none":wall.order+"/"+wall.formation));
-                    shieldFormation=formation&&normalPlain;next(b,12);
+                    boolean hardPlain=wall==null&&!hard.formation.equals("shieldwall"),gone=Arrays.stream(Spec.FORMATIONS).noneMatch(f->f.id().equals("shieldwall"));
+                    System.out.println("[p1] no-shieldwall fixture: army centre "+at+", "+sighted+" Dusk sightings, Normal leaves infantry in "+hard.formation+" (no override="+normalPlain+"), Hard infantry assignment "+(wall==null?"none":wall.order+"/"+wall.formation)+", Shieldwall gone from the sheet="+gone);
+                    noShieldwall=normalPlain&&hardPlain&&gone;
+                    // Hold builds the wall: the Hard army holds where it stands in Compact, so its shield troops brace for p1-bots-blight (BattleMath.raiseShield on Hold)
+                    hard.assignments.clear();hard.order="hold";hard.formation="block";hard.target=at;hard.yaw=-90;next(b,12); // facing +x, at the archers
                 }}
                 case 12->{
-                    if(since(b)>=40&&!shotAsked){shotAsked=true;
+                    if(since(b)>=40){
                         long up=shields(b,hard).stream().filter(u->u.mob.isUsingItem()).count(),knights=shields(b,hard).size();
                         Vec3d at=centre(b,hard);
-                        report("p1-bots-shieldwall",shieldFormation&&up>=6,"Hard infantry formation shieldwall (Normal left it alone)="+shieldFormation+"; "+up+" of "+knights+" shield troops using their shield "+since(b)+" ticks later; six Dusk archers "+String.format("%.0f",gap)+" blocks in front of the front rank when ordered ("+String.format("%.0f",Math.abs(foes.get(0).mob.getX()-at.x))+" from the army centre now), no Dusk melee");
-                        wantShot="bots-shieldwall";
+                        report("p1-bots-no-shieldwall",noShieldwall,"neither Normal nor Hard picks a Shieldwall against six archers (the formation is gone; Hold builds the wall)="+noShieldwall+"; on Hold in Compact "+up+" of "+knights+" shield troops use their shield "+since(b)+" ticks later; six Dusk archers "+String.format("%.0f",gap)+" blocks in front of the front rank when ordered ("+String.format("%.0f",Math.abs(foes.get(0).mob.getX()-at.x))+" from the army centre now), no Dusk melee");
+                        next(b,13); // the archers stay, so the wall keeps bracing on Hold for p1-bots-blight
                     }
-                    if(shotAsked&&wantShot==null)next(b,13); // the archers stay, so the wall keeps bracing for p1-bots-blight
                 }
-                case 13->{ // p1-bots-blight: a frontal blow on a knight braced in shieldwall is blocked; a Gravecaller burst on the same wall is not
+                case 13->{ // p1-bots-blight: a frontal blow on a knight braced on Hold is blocked; a Gravecaller burst on the same wall is not
                     var knights=shields(b,hard);
                     if(hexer==null){
+                        // The wall settles first (bounded): every knight within 1.5 of his place, where Tactics.stretch holds him to Hold's yaw; then every braced knight must face the archers (+x, yaw -90).
+                        double off=knights.stream().mapToDouble(u->Math.sqrt(GravesAndGlory.Battle.horizontalDistance(u.mob.getPos(),b.formation(u)))).max().orElse(0);
+                        if(off>1.5&&since(b)<200)return;
                         var braced=knights.stream().filter(u->u.mob.isBlocking()).toList();
                         if(braced.size()<2){report("p1-bots-blight",false,"only "+braced.size()+" knights braced");for(var u:foes)u.mob.discard();b.units.removeAll(foes);foes.clear();next(b,14);return;}
+                        List<String> askew=new ArrayList<>();
+                        for(var u:braced){double dy=Math.abs(net.minecraft.util.math.MathHelper.wrapDegrees(u.mob.getYaw()+90)),db=Math.abs(net.minecraft.util.math.MathHelper.wrapDegrees(u.mob.bodyYaw+90));if(dy>10||db>10)askew.add(u.slot+": yaw "+String.format(java.util.Locale.ROOT,"%.0f",u.mob.getYaw())+" body "+String.format(java.util.Locale.ROOT,"%.0f",u.mob.bodyYaw));}
+                        facingOk=askew.isEmpty();facingWhy=(braced.size()-askew.size())+" of "+braced.size()+" braced knights face the archers within 10 degrees, yaw and body, "+since(b)+" ticks on (the farthest knight "+String.format(java.util.Locale.ROOT,"%.2f",off)+" from his place)"+(facingOk?"":"; askew "+askew)+"="+facingOk;
                         aim=braced.get(0);var guard=braced.get(1);double hx=aim.mob.getX()+12,hz=aim.mob.getZ(); // 12 blocks ahead of the wall (Dawn faces +x), inside every shield arc
                         var squad=new GravesAndGlory.Squad(UUID.randomUUID(),1,new Vec3d(hx,top(b,hx,hz),hz));squad.order="hold";squad.yaw=90;
                         hexer=freezeIt(b.spawn(squad,troop("hexer"),0,new Vec3d(hx,top(b,hx,hz),hz)));foes.add(hexer);
                         float hp=guard.mob.getHealth();int regen=guard.mob.timeUntilRegen;boolean hit=guard.mob.damage(b.world.getDamageSources().mobAttack(hexer.mob),5);
-                        frontalBlocked=!hit&&regen<=10&&guard.mob.getHealth()==hp;frontalWhy="a frontal blow of 5 from the Gravecaller on a braced knight: health "+hp+" -> "+guard.mob.getHealth()+" (hurt cooldown before it "+regen+")";
+                        frontalBlocked=!hit&&regen<=10&&guard.mob.getHealth()==hp;frontalWhy=facingWhy+"; a frontal blow of 5 from the Gravecaller on a braced knight: health "+hp+" -> "+guard.mob.getHealth()+" (hurt cooldown before it "+regen+(frontalBlocked?"":String.format(java.util.Locale.ROOT,"; its yaw %.0f, at %s, the Gravecaller at %s",guard.mob.getYaw(),guard.mob.getPos(),hexer.mob.getPos()))+")";
                     }
                     if(hexer.spellCenter!=null||hpBefore.isEmpty()){
                         if(since(b)>60){report("p1-bots-blight",false,"the burst never landed; "+frontalWhy);for(var u:foes)u.mob.discard();b.units.removeAll(foes);foes.clear();next(b,14);return;}
@@ -991,7 +1001,7 @@ public final class Phase1Checks implements ClientModInitializer {
                     }
                     float before=hpBefore.getOrDefault(aim,0f),after=aim.mob.getHealth();boolean aimBraced=bracedBefore.contains(aim);
                     long hitBraced=bracedBefore.stream().filter(u->u.mob.getHealth()<hpBefore.get(u)).count();
-                    report("p1-bots-blight",frontalBlocked&&aimBraced&&after<before,frontalWhy+", blocked="+frontalBlocked+"; then a Gravecaller burst on a braced knight (braced="+aimBraced+"): health "+before+" -> "+after+"; "+hitBraced+" of "+bracedBefore.size()+" braced knights lost health");
+                    report("p1-bots-blight",facingOk&&frontalBlocked&&aimBraced&&after<before,frontalWhy+", blocked="+frontalBlocked+"; then a Gravecaller burst on a braced knight (braced="+aimBraced+"): health "+before+" -> "+after+"; "+hitBraced+" of "+bracedBefore.size()+" braced knights lost health");
                     for(var u:foes)u.mob.discard();b.units.removeAll(foes);foes.clear();hexer=null;next(b,14);
                 }
                 case 14->{ // p1-bots-charge-timing: eight frozen Dusk revenants 60 blocks away, then 15 blocks away
@@ -1108,11 +1118,12 @@ public final class Phase1Checks implements ClientModInitializer {
                 if(afterAt<0){if(c.currentScreen instanceof CampScreen s&&s.page.equals("results")||++waited>=60){afterAt=tick;CampScreen.open("home");}}
                 else if(tick==afterAt+20)raiseCampaign(c);
                 else if(tick==afterAt+25){String ride=march(c);
-                    report("p1-tutorial-clear",clearOk&&CampaignClient.profile.campaignCleared==1&&"Ride to The Training Field".equals(beforeRide)&&"Ride to The Training Field".equals(ride),clearWhy+"; client campaignCleared "+CampaignClient.profile.campaignCleared+"; camp home before the battle: "+beforeWhy+"; after the victory: "+describe(ride));
+                    report("p1-tutorial-clear",clearOk&&CampaignClient.profile.campaignCleared==1&&"Ride to The Training Field".equals(beforeRide)&&("Ride to "+Spec.CAMPAIGNBATTLES[1].name()).equals(ride),clearWhy+"; client campaignCleared "+CampaignClient.profile.campaignCleared+"; camp home before the battle: "+beforeWhy+"; after the victory: "+describe(ride));
                     shot(c,"tutorial-camp-after");
                 }
                 else if(tick==afterAt+30){var ride=c.currentScreen instanceof CampScreen s&&s.home!=null?s.home.button("ride"):null;
-                    if(ride!=null&&march(c)!=null){ride.onPress();server(c,b->next(b,9));}
+                    // plan 2C.3: once battle 1 is won the Ride plate leads on to battle 2, so the replay asks for battle 1 by id, as the march page will (2C.5)
+                    if(ride!=null&&march(c)!=null&&c.currentScreen instanceof CampScreen s&&s.action("campaign:"+Spec.CAMPAIGNBATTLES[0].id()))server(c,b->next(b,9));
                     else{replay.commands="no Ride plate to replay from";replay.over=true;c.setScreen(null);server(c,b->next(b,12));}
                     CampaignClient.homeMode="skirmish";
                 }
@@ -1520,7 +1531,7 @@ public final class Phase1Checks implements ClientModInitializer {
             var p=sp(b);if(p==null||!Phase2Checks.skirmishBanners(b,p,0,HUD_BANNER,null))return;
             var own=b.squads.get(player);quiet(b,own);float yaw=-90;
             own.order="hold";own.formation="block";own.target=new Vec3d(AX,top(b,AX,AZ),AZ);own.yaw=yaw;
-            own.assignments.put("infantry",new GravesAndGlory.Assignment("attack","shieldwall",new Vec3d(AX,top(b,AX,AZ),AZ),yaw));
+            own.assignments.put("infantry",new GravesAndGlory.Assignment("attack","wedge",new Vec3d(AX,top(b,AX,AZ),AZ),yaw));
             own.assignments.put("ranged",new GravesAndGlory.Assignment("hold","line",new Vec3d(AX-9,top(b,AX-9,AZ),AZ),yaw));
             own.assignments.put("support",new GravesAndGlory.Assignment("follow","block",new Vec3d(AX-16,top(b,AX-16,AZ+9),AZ+9),yaw));
             for(var u:b.units)if(u.squad==own){Vec3d at=b.formation(u);MoraleChecks.place(b,u,at.x,at.z,yaw);freeze(u);}
@@ -1656,11 +1667,11 @@ public final class Phase1Checks implements ClientModInitializer {
                     var sup=group("support");boolean settled=sup!=null&&!sup.lastStand()&&!CommandMode.flashing("infantry")&&!CommandMode.flashing("ranged")&&!CommandMode.flashing("support");
                     if(!settled)seen=0;else if(seen==0)seen=tick;
                     if(seen>0&&tick>=seen+2){var cs=BattleHud.cards();int[] strip=BattleHud.rects().get("keys");var rows=BattleHud.keyRows().stream().map(k->k.group()+" "+k.parts()).toList();
-                        // UI Task 8c: a brass chip for each group over the army's one key strip, the keys the same for every group
-                        boolean ok=cs.size()==3&&cs.stream().allMatch(d->d.state().equals("SELECTED"))&&cs.stream().map(BattleHud.CardDraw::tall).toList().equals(List.of(false,false,false))&&cs.stream().map(BattleHud.CardDraw::y).toList().equals(List.of(440,462,484))
-                            &&Arrays.equals(strip,new int[]{24,506,176,16})&&BattleHud.keyRows().size()==1&&BattleHud.keyRows().get(0).group().equals("all");
+                        // a brass chip for each group; the old key strip is gone (command UI cleanup)
+                        boolean ok=cs.size()==3&&cs.stream().allMatch(d->d.state().equals("SELECTED"))&&cs.stream().map(BattleHud.CardDraw::tall).toList().equals(List.of(false,false,false))&&cs.stream().map(BattleHud.CardDraw::y).toList().equals(List.of(456,478,500))
+                            &&strip==null&&BattleHud.keyRows().isEmpty();
                         shot(c,"ui-hud-army");
-                        report("p1-ui-army-selected",ok,"with the whole army selected the column drew "+cs+", the key strip at "+box(strip)+" and the key rows "+rows+" (wanted three brass chips at y 440, 462 and 484 over the strip at [24, 506, 176, 16] with one row, all's)");seen=0;stage=30;}
+                        report("p1-ui-army-selected",ok,"with the whole army selected the column drew "+cs+", the key strip at "+box(strip)+" and the key rows "+rows+" (wanted three brass chips at y 456, 478 and 500 with no key strip and no key row: the pennant panel carries the keys)");seen=0;stage=30;}
                     else if(seen==0&&tick-waitFrom>200){report("p1-ui-army-selected",false,"support never stopped routing, or a flash never ended: "+BattleHud.cards());stage=30;}
                 }
                 case 30->{askAt=tick;stage=-30;server(c,b->{b.testAbility=new GravesAndGlory.Battle.AbilityState("rally_horn",960,1800);stage=31;});}
@@ -1939,7 +1950,7 @@ public final class Phase1Checks implements ClientModInitializer {
         /** A feed line for the frame to draw (the Task 8a review's Important 2: the feed in every measured frame). */
         static void feedLine(){EventFeed.push("point",0,"Dawn took Mill Hamlet",net.minecraft.util.Util.getMeasuringTimeMs());}
         /** A frame's plates as BattleHud drew them: its rects without the ability slot (vanilla's GUI px) and the aimed point's name. */
-        static Map<String,int[]> plates(Map<String,int[]> r){var p=new LinkedHashMap<>(r);p.remove("ability");p.remove("aim-name");return p;}
+        static Map<String,int[]> plates(Map<String,int[]> r){var p=new LinkedHashMap<>(r);p.remove("ability");p.remove("relic-1");p.remove("relic-2");p.remove("aim-name");return p;}
         /** Where drawn boxes differ from the layout: a box the layout has that the frame lacks or drew elsewhere, and one it drew that
          *  the layout lacks. Empty when they are the same. */
         static List<String> layoutDiff(Map<String,int[]> want,Map<String,int[]> got){
@@ -2391,6 +2402,18 @@ public final class Phase1Checks implements ClientModInitializer {
         long noticeFirst,noticeSecond;Progression.State oldProgression;JsonObject oldResult;
         /** The result the suite pretends the last battle left, held in CampaignClient.result every tick (each camp snapshot puts the server's back), so Last battle is on the home for the stages that follow. */
         JsonObject fakeResult;
+        int[] cardWindow={1280,720};
+        /** The Campaign sheet's field card (plan 2C.5): the battle's name, map, rule and teams line, the bonus block with its reward, no Change button; shot at the window's size. */
+        void campaignCard(MinecraftClient c,String tag){
+            var h=home(c);if(h==null){report("p1-ui-home-campaign-card"+tag,false,"the home closed before the card was read");return;}
+            var t=WarTableHome.texts();var r=WarTableHome.rects();var row=Spec.CAMPAIGNBATTLES[0];var ch=h.button("change");
+            var f=r.get("field");var b=r.get("field-bonus");
+            boolean named=row.name().equals(t.get("field-name"))&&t.get("field-rule")!=null&&t.get("field-teams")!=null&&t.get("field-teams").startsWith("Battle 1 of "+Spec.CAMPAIGNBATTLES.length);
+            boolean has=t.containsKey("field-bonus")&&t.containsKey("field-bonus-reward")&&"open".equals(t.get("field-bonus-state"))&&b!=null&&f!=null&&b[1]+b[3]<=f[1]+f[3]&&b[0]>=f[0]&&b[0]+b[2]<=f[0]+f[2];
+            boolean noChange=ch==null||!ch.active;
+            report("p1-ui-home-campaign-card"+tag,named&&has&&noChange,"Campaign card"+(tag.isEmpty()?"":" at "+tag.substring(1))+": name \""+t.get("field-name")+"\", rule \""+t.get("field-rule")+"\", teams \""+t.get("field-teams")+"\", bonus \""+t.get("field-bonus")+"\" "+t.get("field-bonus-reward")+" ("+t.get("field-bonus-state")+") in "+str(b)+" of card "+str(f)+", Change button "+(noChange?"off":"LIVE"));
+            shot(c,"ui-home-campaign"+tag);
+        }
         static final String PRACTICE_SOLO="Practice is solo. Use a private room to play with your party.";
 
         public void serverTick(GravesAndGlory.Battle b){serverRunning=b.running;var id=player;serverOnPad=id!=null&&b.campaign.onPad.containsKey(id);serverRoom=id!=null&&b.campaign.social.room(id)!=null;padCountdown=b.campaign.padCountdown;}
@@ -2489,7 +2512,7 @@ public final class Phase1Checks implements ClientModInitializer {
                     int[] drawnTable=WarTable.drawn().get("table"),drawnRail=WarTable.drawn().get("rail");var badges=WarTable.badges();
                     boolean chrome=WarTable.drawnTable().equals("table/oak-table")&&Arrays.equals(drawnTable,new int[]{-480,-270,1920,1080})&&drawnRail!=null&&drawnRail[2]==UiCanvas.width()&&drawnRail[3]==UiTex.entry("table/rail").h()&&!WarTable.drawn().containsKey("floor")&&Arrays.equals(WarTable.drawn().get("maproll"),new int[]{148,48,156,80});
                     boolean badged=Integer.valueOf(WarTableHome.contractsBadge()).equals(badges.get("Contracts"))&&Integer.valueOf(WarTableHome.friendsBadge()).equals(badges.get("Friends"))&&badges.get("Camp")!=null&&badges.get("Camp")==0;
-                    report("p1-ui-home-layout",home(c)!=null&&bad.length()==0&&ride.equals("Ride to the war gates")&&o[0]==0&&o[1]==0&&CampaignClient.homeMode.equals("skirmish")&&chrome&&badged,
+                    report("p1-ui-home-layout",home(c)!=null&&bad.length()==0&&ride.equals("Open the war council")&&o[0]==0&&o[1]==0&&CampaignClient.homeMode.equals("skirmish")&&chrome&&badged,
                         "canvas "+UiCanvas.width()+"x"+UiCanvas.height()+", origin "+o[0]+","+o[1]+"; "+(bad.length()==0?"the 11 widget boxes as pinned":"wrong: "+bad)+"; the plate reads \""+ride+"\"; homeMode "+CampaignClient.homeMode+"; drawChrome drew "+WarTable.drawnTable()+" at "+str(drawnTable)+", the rail "+str(drawnRail)+", badges "+badges+"; field card \""+t.get("field-name")+"\" / \""+t.get("field-rule")+"\" / \""+t.get("field-teams")+"\"");
                     shot(c,"ui-home");stage=3;
                 }
@@ -2539,17 +2562,26 @@ public final class Phase1Checks implements ClientModInitializer {
                         int[] sheet=WarTableHome.rects().get("campaign"),card=WarTableHome.rects().get("field");int gap=sheet==null||card==null?-99:card[0]-(sheet[0]+sheet[2]); // the raised sheet stays off the field card
                         modesOk&=CampaignClient.profile.campaignCleared==0&&home(c).focused==2&&l.equals("Ride to The Training Field")&&start>=57&&stop<=232&&gap>=8;
                         modesWhy+="; campaignCleared "+CampaignClient.profile.campaignCleared+", a click on Campaign: focused "+home(c).focused+", the plate \""+l+"\" from x "+start+" to "+stop+" of the plate; the raised Campaign sheet "+str(sheet)+" ends "+gap+" px left of the field card "+str(card);
-                        report("p1-ui-home-modes",modesOk,modesWhy);stage=9;}
+                        report("p1-ui-home-modes",modesOk,modesWhy);cardWindow=new int[]{c.getWindow().getWidth(),c.getWindow().getHeight()};}
+                    else if(k==8){campaignCard(c,"");}
+                    else if(k==40)window(c,1920,1080,0,true);
+                    else if(k==70)campaignCard(c,"-1920x1080");
+                    else if(k==80)window(c,2560,1440,0,true);
+                    else if(k==110)campaignCard(c,"-2560x1440");
+                    else if(k==120){window(c,cardWindow[0],cardWindow[1],0);stage=9;}
                 }
-                case 9->{ // p1-ui-home-gates: Skirmish, then Ride, sets the commander on the ready pad
+                case 9->{ // p1-ui-home-gates: Skirmish, then Ride, opens the War Table lobby with a room three a side
                     int k=since(tick);
                     if(k==0){if(home(c)==null)CampScreen.open("home");return;}
                     if(k==5){click(c,box(c,"skirmish"));return;}
                     if(k==7){gatesWhy="a click on Skirmish, the plate \""+label()+"\"";click(c,box(c,"ride"));padAt=tick;return;}
                     if(k<7)return;
-                    if(serverOnPad){gatesWhy+="; Ride: on the pad "+(tick-padAt)+" ticks later (countdown "+padCountdown+"), the table "+(c.currentScreen==null?"closed":"still open: "+c.currentScreen.getClass().getSimpleName());
-                        stage=-10;server(c,b->{var p=b.server.getPlayerManager().getPlayer(player);if(p!=null)b.campaign.toLobby(p);stage=10;});}
-                    else if(tick-padAt>40){report("p1-ui-home-gates",false,gatesWhy+"; Ride: not on the pad 40 ticks later (notice \""+CampaignClient.notice+"\")");stage=11;}
+                    // Kort, 2026-10-30: the War Table lobby is the skirmish's main path; Ride opens it and asks the server for a room (social:lobby). The pads keep working in camp.
+                    String room=CampaignClient.social.has("room")?CampaignClient.social.get("room").getAsString():"";
+                    if(c.currentScreen instanceof CampScreen s&&s.page.equals("lobby")&&!room.isEmpty()){
+                        gatesWhy+="; Ride: the War Table lobby opened "+(tick-padAt)+" ticks later with room "+room+" ("+CampaignClient.social.get("size").getAsInt()+" a side)";
+                        report("p1-ui-home-gates",CampaignClient.social.get("size").getAsInt()==SocialHub.LOBBY_SIZE,gatesWhy);GravesAndGloryClient.send("social:exit");s.page("home");stage=11;}
+                    else if(tick-padAt>60){report("p1-ui-home-gates",false,gatesWhy+"; Ride: no lobby with a room 60 ticks later (screen "+(c.currentScreen instanceof CampScreen s2?s2.page:String.valueOf(c.currentScreen))+", notice \""+CampaignClient.notice+"\")");stage=11;}
                 }
                 case 10->{ // stepping off the pad cancels it
                     int k=since(tick);
@@ -3047,8 +3079,8 @@ public final class Phase1Checks implements ClientModInitializer {
                     if(k==16){var s=screen(c);boolean home=s!=null&&s.page.equals("home");keysOk&=home;keysWhy+="; the back plaque "+(home?"went home":"WRONG: "+(s==null?"the table closed":s.page));click(c,UiHomeChecks.box(c,"recruit"));return;}
                     if(k==19){boolean again=page(c)!=null;keysOk&=again;if(!again)keysWhy+="; WRONG: home's Recruit plaque did not reopen the page";click(c,box(c,"banner"));return;}
                     if(k==22){var s=screen(c);boolean banner=s!=null&&s.page.equals("banner")&&s.pages!=null;keysOk&=banner;keysWhy+="; reopened, the Banner plaque "+(banner?"opened the Banner page":"WRONG: "+(s==null?c.currentScreen:s.page));CampScreen.open("recruit");return;}
-                    if(k==25){boolean again=page(c)!=null;keysOk&=again;if(!again)keysWhy+="; WRONG: the page did not open again";press(c,GLFW.GLFW_KEY_B);return;}
-                    if(k==27){var s=screen(c);boolean banner=s!=null&&s.page.equals("banner")&&s.pages!=null;keysOk&=banner;keysWhy+="; reopened, B "+(banner?"opened the Banner page":"WRONG: "+(s==null?c.currentScreen:s.page));release(c,GLFW.GLFW_KEY_B);
+                    if(k==25){boolean again=page(c)!=null;keysOk&=again;if(!again)keysWhy+="; WRONG: the page did not open again";press(c,GLFW.GLFW_KEY_N);return;}
+                    if(k==27){var s=screen(c);boolean banner=s!=null&&s.page.equals("banner")&&s.pages!=null;keysOk&=banner;keysWhy+="; reopened, N "+(banner?"opened the Banner page":"WRONG: "+(s==null?c.currentScreen:s.page));release(c,GLFW.GLFW_KEY_N);
                         report("p1-ui-recruit-keys",keysOk,keysWhy);CampScreen.open("recruit");stage=10;}
                 }
                 case 10->{ // p1-ui-recruit-scales: the page as the layout step saw it (a fresh commander with GOLD gold)
@@ -3170,13 +3202,16 @@ public final class Phase1Checks implements ClientModInitializer {
                 &&rf!=null&&lf!=null&&of!=null&&rf>=489&&rf<=492&&lf>=489&&lf<=492&&of>=489&&of<=492;
             boolean chrome="table/oak-table-recruit".equals(tx.get("table"))&&Arrays.equals(box(c,"back"),new int[]{56,12,120,28})&&Arrays.equals(box(c,"banner"),new int[]{800,12,104,28})
                 &&!WarTableRecruit.rects().containsKey("maproll")&&hotNone();
-            layoutOk=r!=null&&canvas&&banners&&roll&&portraits&&letter&&ladder&&baseline&&chrome&&boxes(c).size()==2+hs.length+WarTableRecruit.ROWS+3;
+            int[] sb=box(c,"sheet"),nm=rect("name"); // the widget that opens the troop sheet covers the letter's name and little more
+            boolean sheet=sb!=null&&nm!=null&&sb[0]<=nm[0]&&sb[0]+sb[2]>=nm[0]+nm[2]&&sb[1]<=nm[1]&&sb[1]+sb[3]>=nm[1]+11&&sb[2]<=nm[2]+10&&sb[1]+sb[3]<=rect("letter")[1]+240&&!WarTableRecruit.underlined().contains("sheet");
+            layoutOk=r!=null&&canvas&&banners&&roll&&portraits&&letter&&ladder&&baseline&&chrome&&sheet&&boxes(c).size()==2+hs.length+WarTableRecruit.ROWS+4;
             return "canvas "+UiCanvas.width()+"x"+UiCanvas.height()+" k "+UiCanvas.k()+(canvas?"":" WRONG")+"; rod "+str(rect("rod"))+", banners "+bw+(banners?"":"WRONG")
                 +"; roll "+rowTroops()+": "+rowWhy+"mark "+str(rect("mark"))+", rules "+str(rect("rule-1"))+" "+str(rect("rule-2"))+" "+str(rect("rule-3"))+" "+str(rect("rule-4"))+" "+str(rect("rule-5"))+(roll?"":" WRONG")+"; portraits (size@x,feet) "+ptWhy+(portraits?"":"WRONG")
                 +"; letter "+text("letter-troop")+" \""+text("letter-name")+"\" "+hex(color("letter-name"))+" / \""+text("letter-line1")+"\" "+hex(color("letter-line1"))+" / \""+text("letter-line2")+"\" "+hex(color("letter-line2"))+", portrait "+ld+", window "+str(rect("window"))+", tag \""+text("choose")+"\" ("+text("choose-command")+") "+str(box(c,"choose"))+" "+hex(color("choose"))+", under it \""+text("reason")+"\" "+hex(color("reason"))+(letter?"":" WRONG")
                 +"; enlist \""+text("enlist")+"\" "+hex(color("enlist"))+" for "+text("enlist-cost")+" on "+tx.get("enlist")+", purse "+text("purse")+" "+str(rect("purse"))+", rung \""+text("rung")+"\" "+hex(color("rung"))+", bundle "+str(bd)+(ladder?"":" WRONG")
                 +"; columns: roll "+str(rl)+", letter "+str(lt)+", bundle "+str(bd)+" from 124; the paper's foot (framebuffer) roll "+rf+", letter "+lf+", Odds tag "+of+(baseline?" (one foot at 492)":" WRONG")
-                +"; table "+tx.get("table")+", back "+str(box(c,"back"))+", banner "+str(box(c,"banner"))+", "+boxes(c).size()+" widgets, no rolled map, underlined "+WarTableRecruit.underlined()+(chrome?"":" WRONG");
+                +"; table "+tx.get("table")+", back "+str(box(c,"back"))+", banner "+str(box(c,"banner"))+", "+boxes(c).size()+" widgets, no rolled map, underlined "+WarTableRecruit.underlined()+(chrome?"":" WRONG")
+                +"; the sheet widget "+str(sb)+" over the name "+str(nm)+(sheet?"":" WRONG");
         }
         boolean buyOk,epicOk,legOk;String epicId,legId;
         /** 854x480 GUI 2, the first-launch window: the compact page (UI Task 8b-2; Kort, 2026-10-22: everything fits, no crop). The
@@ -3191,7 +3226,7 @@ public final class Phase1Checks implements ClientModInitializer {
             var bad=UiHomeChecks.fits(r,b);String letterBad=letterFits();
             int[] roll=r.get("roll"),enlist=box(c,"enlist"),rung=r.get("rung"),odds=box(c,"odds");
             boolean row=rung!=null&&odds!=null&&rung[0]+rung[2]<=odds[0]&&rung[1]>=odds[1]&&rung[1]+rung[3]<=odds[1]+odds[3]; // the rung's line and Odds on one row, either side of the axis
-            boolean ok=page(c)!=null&&WarTable.compact()&&w==854&&h==480&&UiCanvas.k()==1&&b.size()==2+Spec.HOUSES.length+WarTableRecruit.ROWS+3&&out.isEmpty()&&over.isEmpty()&&bad.isEmpty()&&letterBad.isEmpty()&&row
+            boolean ok=page(c)!=null&&WarTable.compact()&&w==854&&h==480&&UiCanvas.k()==1&&b.size()==2+Spec.HOUSES.length+WarTableRecruit.ROWS+4&&out.isEmpty()&&over.isEmpty()&&bad.isEmpty()&&letterBad.isEmpty()&&row
                 &&Arrays.equals(roll,new int[]{12,92,270,372})&&Arrays.equals(enlist,new int[]{600,322,240,40})&&Arrays.equals(r.get("bundle"),new int[]{600,92,240,218})&&Arrays.equals(r.get("letter"),new int[]{286,92,310,376})&&Arrays.equals(box(c,"choose"),new int[]{378,404,120,24})
                 &&Arrays.equals(box(c,"back"),new int[]{12,12,120,28})&&Arrays.equals(box(c,"banner"),new int[]{738,12,104,28})&&Arrays.equals(odds,new int[]{724,408,64,24})&&hotNone();
             scalesOk&=ok;
@@ -3211,7 +3246,7 @@ public final class Phase1Checks implements ClientModInitializer {
                 &&Arrays.equals(enlist,new int[]{o[0]+664,o[1]+354,240,40})&&Arrays.equals(roll,new int[]{o[0]+41,o[1]+124,270,372})&&Arrays.equals(first,new int[]{o[0]+bx(0),13,104,60})&&!r.containsKey("maproll")
                 &&Arrays.equals(r.get("bundle"),new int[]{o[0]+664,o[1]+124,240,218})&&Arrays.equals(box(c,"choose"),new int[]{o[0]+CHOOSE[0],o[1]+CHOOSE[1],CHOOSE[2],CHOOSE[3]});
             var floor=UiHomeChecks.oakToEdges(c);
-            boolean ok=page(c)!=null&&placed&&out.isEmpty()&&over.isEmpty()&&floor.isEmpty()&&letterBad.isEmpty()&&b.size()==2+Spec.HOUSES.length+WarTableRecruit.ROWS+3&&hotNone();
+            boolean ok=page(c)!=null&&placed&&out.isEmpty()&&over.isEmpty()&&floor.isEmpty()&&letterBad.isEmpty()&&b.size()==2+Spec.HOUSES.length+WarTableRecruit.ROWS+4&&hotNone();
             scalesOk&=ok;
             return "1920x974 GUI 1: canvas "+cw+"x"+ch+" (k "+k+"), origin "+o[0]+","+o[1]+", table "+str(t)+", rail "+str(rail)+", the first banner "+str(first)+", roll "+str(roll)+", bundle "+str(r.get("bundle"))+", enlist "+str(enlist)+", choose "+str(box(c,"choose"))+", "+b.size()+" widgets, outside "+out+", overlapping "+over+", letter lines "+(letterBad.isEmpty()?"inside the paper":letterBad)
                 +"; the edges "+(floor.isEmpty()?"oak all round, no floor":"not oak at "+floor)+(ok?"":" WRONG");
@@ -3383,9 +3418,15 @@ public final class Phase1Checks implements ClientModInitializer {
                     if(k==0){window(c,1920,1080,2,true);return;}
                     if(k==20){UiRecruitChecks.park(c);return;}
                     if(k==22){if(pages(c)!=null){why+="; 1920x1080 GUI 2, "+layout(c,name);shot(c,"ui-page-"+name+"-1080");}return;}
-                    if(k==24){window(c,960,540,1);return;}
-                    if(k==40){UiRecruitChecks.park(c);click(c,box(c,"back"));return;}
-                    if(k==44){var s=screen(c);boolean home=s!=null&&s.page.equals("home")&&s.home!=null;ok&=home;why+="; the back plaque went "+(home?"home":"WRONG: "+(s==null?"the table closed":s.page));
+                    if(k==24){window(c,2560,1440,0,true);return;} // and at 2560x1440, the automatic GUI Scale: the War Table's 3x (Kort, 2026-10-31)
+                    if(k==42){UiRecruitChecks.park(c);return;}
+                    if(k==44){if(pages(c)!=null){ // the compact page at k 3 (853x480): every widget inside and fitting, the War Table's 3x
+                        var bx=boxes(c);int w=UiCanvas.width(),h=UiCanvas.height();List<String> out=new ArrayList<>();for(var e:bx.entrySet())if(!UiHomeChecks.inside(e.getValue(),w,h))out.add(e.getKey());
+                        var unfit=UiHomeChecks.fits(WarTablePages.rects(),bx);boolean pass=UiCanvas.k()==3&&WarTable.compact()&&out.isEmpty()&&unfit.isEmpty();ok&=pass;
+                        why+="; 2560x1440 auto: canvas "+w+"x"+h+" (k "+UiCanvas.k()+", compact "+WarTable.compact()+"), outside "+out+", not fitting "+unfit+(pass?"":" WRONG");shot(c,"ui-page-"+name+"-1440");}return;}
+                    if(k==46){window(c,960,540,1);return;}
+                    if(k==62){UiRecruitChecks.park(c);click(c,box(c,"back"));return;}
+                    if(k==66){var s=screen(c);boolean home=s!=null&&s.page.equals("home")&&s.home!=null;ok&=home;why+="; the back plaque went "+(home?"home":"WRONG: "+(s==null?"the table closed":s.page));
                         report("p1-ui-page-"+name,ok,why);index++;stage=index<PAGES.length?2:5;}
                 }
                 case 5->{ // p1-ui-page-scales: each page at 1280x720 GUI 3 (canvas 1280x720), 854x480 GUI 2 (the compact page, UI Task 8b-2)
@@ -3823,8 +3864,11 @@ public final class Phase1Checks implements ClientModInitializer {
         static final String[] ACTIVES={"stand_fast","bloodrush","mark_prey","rally_horn","grave_bloom","forward_supply"};
         /** The active whose slot the HUD hides (War Table port Task 6, ruling 5): the Quartermaster's Forward Supply; p1-ui-ability-hidden checks that it draws nothing. */
         static final String HIDDEN="forward_supply";
+        /** The class art the role plaques and seats still use (the first legacy class of each gear set's roles). */
+        static final String[] CLASS_ART={"champion","reaver","warden","marshal","warlock","quartermaster"};
+        static final String[] ROLE_SETS={"bruiser","healer","ranged","commander"};
         // the server thread writes these, the client thread reads them
-        volatile int stage;volatile UUID player;volatile String serverClass;
+        volatile int stage;volatile UUID player;volatile String serverRelic;
         // client thread only
         int mark=-1,waitFrom,oldW,oldH,oldGui,index,sub,subAt;boolean finished,hudOk=true,realOk=true;String hudWhy="",realWhy="";
         int since(int tick){if(mark!=stage){mark=stage;waitFrom=tick;}return tick-waitFrom;}
@@ -3833,15 +3877,15 @@ public final class Phase1Checks implements ClientModInitializer {
         public void serverTick(GravesAndGlory.Battle b){
             var own=player==null?null:b.squads.get(player);
             if(stage==40&&player!=null){var p=b.server.getPlayerManager().getPlayer(player);if(p!=null&&skirmish(b,p,0,1,"normal")){UiHudChecks.quiet(b,b.squads.get(player));stage=41;}}
-            String want=serverClass;if(own!=null&&want!=null&&!want.equals(own.commander)){own.commander=want;Commander.reset(b,own);}
+            String want=serverRelic;if(own!=null&&want!=null&&!want.equals(Commander.relicIn(own,0))){var pr=b.campaign.profile(player);pr.relics.add(want);Gear.setRelic(pr,0,want);GearCombat.seat(own,pr);Commander.reset(b,own);}
         }
         static String box(int[] a){return a==null?"none":a[0]+","+a[1]+" "+a[2]+"x"+a[3];}
         /** The slot as the last frame drew it: the picture's texture, the key, the seconds, the rect. */
         static String slot(){var t=BattleHud.texts();return "ability \""+t.get("ability")+"\", picture \""+t.get("ability-icon")+"\", key \""+t.get("ability-key")+"\", seconds \""+t.get("ability-seconds")+"\", rect "+box(BattleHud.rects().get("ability"));}
         void fail(MinecraftClient c,String id,String why){report(id,false,why);end(c);}
         void end(MinecraftClient c){
-            finished=true;c.setScreen(null);serverClass=null;
-            server(c,b->{b.testAbility=null;var own=player==null?null:b.squads.get(player);if(own!=null){own.commander="champion";Commander.reset(b,own);}if(b.running)b.campaign.returnLobby();});
+            finished=true;c.setScreen(null);serverRelic=null;
+            server(c,b->{b.testAbility=null;var own=player==null?null:b.squads.get(player);if(own!=null){Commander.reset(b,own);}if(b.running)b.campaign.returnLobby();});
             if(oldW>0)window(c,oldW,oldH,oldGui);stage=99;
         }
 
@@ -3851,15 +3895,18 @@ public final class Phase1Checks implements ClientModInitializer {
                 case 0->{ // the atlas, then a fresh commander (the Marshal) with 300 gold at camp, in no party or room, on a 960x540 GUI 1 window
                     if(tick<20)return;var w=c.getWindow();oldW=w.getWidth();oldH=w.getHeight();oldGui=c.options.getGuiScale().getValue();player=c.player.getUuid();
                     List<String> bad=new ArrayList<>();
-                    for(var cl:Spec.CLASSES){
-                        String iconName="table/icon-class-"+cl.id(),pic=BattleHud.abilityIcon(cl.active()); // named in a variable: the generator's literal scan (build_ui_art --verify) reads only whole names
+                    for(String cl:CLASS_ART){
+                        String iconName="table/icon-class-"+cl;
                         var ic=UiTex.has(iconName)?UiTex.entry(iconName):null;
                         if(ic==null||ic.w()!=14||ic.h()!=14)bad.add(iconName+(ic==null?" missing":" "+ic.w()+"x"+ic.h()));
+                    }
+                    for(String active:ACTIVES){
+                        String pic=BattleHud.abilityIcon(active); // named in a variable: the generator's literal scan (build_ui_art --verify) reads only whole names // named in a variable: the generator's literal scan (build_ui_art --verify) reads only whole names
                         var ab=UiTex.has(pic)?UiTex.entry(pic):null;
                         if(ab==null||ab.w()!=22||ab.h()!=20)bad.add(pic+(ab==null?" missing":" "+ab.w()+"x"+ab.h()));
                     }
-                    boolean same=Spec.CLASSES.length==ACTIVES.length;for(int i=0;same&&i<ACTIVES.length;i++)same=Arrays.asList(ACTIVES).contains(Spec.CLASSES[i].active());
-                    report("p1-ui-icons-atlas",bad.isEmpty()&&same,Spec.CLASSES.length+" classes, each with its 14x14 icon and its active's 22x20 picture in the atlas"+(bad.isEmpty()?"":"; wrong: "+bad)+(same?"":"; the sheet's actives are not the six this suite knows"));
+                    List<String> ported=new ArrayList<>();for(var r:Spec.RELICS)if(!r.fromClass().equals("-"))ported.add(r.id());boolean same=ported.size()==ACTIVES.length&&ported.containsAll(Arrays.asList(ACTIVES));
+                    report("p1-ui-icons-atlas",bad.isEmpty()&&same,CLASS_ART.length+" role icons, each with its 14x14 icon and its active's 22x20 picture in the atlas"+(bad.isEmpty()?"":"; wrong: "+bad)+(same?"":"; the sheet's actives are not the six this suite knows"));
                     c.setScreen(null);CampaignClient.homeMode="skirmish";window(c,960,540,1);stage=-1;
                     server(c,b->{if(b.running)b.campaign.returnLobby();var id=player;b.campaign.social.leaveRoom(id);b.campaign.social.leaveParty(id);b.campaign.closeParty();b.campaign.difficulty="normal";
                         var p=new Profile();p.gold=300;p.commander="marshal";b.campaign.profiles.put(id,p);b.campaign.save(id);stage=1;});
@@ -3883,10 +3930,10 @@ public final class Phase1Checks implements ClientModInitializer {
                     if(k==6)UiRecruitChecks.park(c);
                     if(k==12){var s=UiPagesChecks.screen(c);
                         List<String> boxes=new ArrayList<>(),missing=new ArrayList<>();
-                        for(var cl:Spec.CLASSES){int[] r=WarTablePages.rects().get("class-"+cl.id());boxes.add(cl.id()+" "+box(r));if(r==null)missing.add(cl.id());}
+                        for(String set:ROLE_SETS){int[] r=WarTablePages.rects().get("role-"+set);boxes.add(set+" "+box(r));if(r==null)missing.add(set);}
                         shot(c,"ui-icons-classes-gui2");
-                        boolean ok=s!=null&&UiPagesChecks.pages(c)!=null&&missing.isEmpty()&&"table/plaque-120-here".equals(WarTablePages.textures().get("class-marshal"))&&"table/plaque-120".equals(WarTablePages.textures().get("class-champion"));
-                        report("p1-ui-icons-classes",ok,"the Banner page at 1920x1080 GUI 2 (canvas "+UiCanvas.width()+"x"+UiCanvas.height()+", k "+UiCanvas.k()+") drew a plaque for each class, the Marshal's lit: "+boxes+(missing.isEmpty()?"":"; no plaque for "+missing)+(ok?"":" WRONG"));
+                        boolean ok=s!=null&&UiPagesChecks.pages(c)!=null&&missing.isEmpty()&&"table/plaque-120-here".equals(WarTablePages.textures().get("role-commander"))&&"table/plaque-120".equals(WarTablePages.textures().get("role-bruiser"));
+                        report("p1-ui-icons-classes",ok,"the Banner page at 1920x1080 GUI 2 (canvas "+UiCanvas.width()+"x"+UiCanvas.height()+", k "+UiCanvas.k()+") drew a plaque for each role, the Commander's lit (a fresh Marshal wears no gear): "+boxes+(missing.isEmpty()?"":"; no plaque for "+missing)+(ok?"":" WRONG"));
                         c.setScreen(null);window(c,960,540,1);stage=40; // the practice battle (the server starts it)
                     }
                 }
@@ -3940,21 +3987,21 @@ public final class Phase1Checks implements ClientModInitializer {
         /** The class path: testAbility cleared, the squad's class set on the server, the packet's active fills the slot (the Quartermaster's
          *  too once the build has Forward Supply; an active with no behaviour here, ready below 0, leaves it bare). */
         void real(MinecraftClient c,int tick){
-            if(index>=Spec.CLASSES.length){stage=8;return;}
-            var cl=Spec.CLASSES[index];int k=at(tick);var t=BattleHud.texts();
+            if(index>=ACTIVES.length){stage=8;return;}
+            String active=ACTIVES[index];int k=at(tick);var t=BattleHud.texts();
             switch(sub){
-                case 0->{if(k>=10){serverClass=cl.id();go(1,tick);}}
+                case 0->{if(k>=10){serverRelic=active;go(1,tick);}}
                 case 1->{
-                    boolean named=GravesAndGloryClient.commanderActive.equals(cl.active());
-                    boolean drawn=BattleHud.rects().containsKey("ability")&&cl.active().equals(t.get("ability"));
-                    if(named&&k>=8&&(drawn||cl.active().equals(HIDDEN)||GravesAndGloryClient.commanderReady<0)){
+                    boolean named=GravesAndGloryClient.commanderActive.equals(active);
+                    boolean drawn=BattleHud.rects().containsKey("ability")&&active.equals(t.get("ability"));
+                    if(named&&k>=8&&(drawn||active.equals(HIDDEN)||GravesAndGloryClient.commanderReady<0)){
                         UiRecruitChecks.park(c);String pic=t.getOrDefault("ability-icon","");
-                        boolean right=drawn?!cl.active().equals(HIDDEN)&&BattleHud.abilityIcon(cl.active()).equals(pic):!BattleHud.rects().containsKey("ability");
-                        realOk&=right;realWhy+=(realWhy.isEmpty()?"":"; ")+cl.id()+": the packet names "+GravesAndGloryClient.commanderActive+" (ready in "+GravesAndGloryClient.commanderReady+", running "+GravesAndGloryClient.commanderFor+"), the slot "+(drawn?"drew "+pic+" ("+slot()+")":cl.active().equals(HIDDEN)?"was hidden, as the Quartermaster's is":"stayed bare")+(right?"":" WRONG");
+                        boolean right=drawn?!active.equals(HIDDEN)&&BattleHud.abilityIcon(active).equals(pic):!BattleHud.rects().containsKey("ability");
+                        realOk&=right;realWhy+=(realWhy.isEmpty()?"":"; ")+active+": the packet names "+GravesAndGloryClient.commanderActive+" (ready in "+GravesAndGloryClient.commanderReady+", running "+GravesAndGloryClient.commanderFor+"), the slot "+(drawn?"drew "+pic+" ("+slot()+")":active.equals(HIDDEN)?"was hidden, as the Quartermaster's is":"stayed bare")+(right?"":" WRONG");
                         go(2,tick);}
-                    else if(k>300){realOk=false;realWhy+=(realWhy.isEmpty()?"":"; ")+cl.id()+": the slot never followed the class (packet "+GravesAndGloryClient.commanderActive+", ready "+GravesAndGloryClient.commanderReady+", "+slot()+") WRONG";index++;go(0,tick);}
+                    else if(k>300){realOk=false;realWhy+=(realWhy.isEmpty()?"":"; ")+active+": the slot never followed the class (packet "+GravesAndGloryClient.commanderActive+", ready "+GravesAndGloryClient.commanderReady+", "+slot()+") WRONG";index++;go(0,tick);}
                 }
-                case 2->{if(k==3){shot(c,"ui-icons-hud-"+cl.id()+"-real-gui2");index++;go(0,tick);}}
+                case 2->{if(k==3){shot(c,"ui-icons-hud-"+active+"-real-gui2");index++;go(0,tick);}}
                 default->{index++;go(0,tick);}
             }
         }

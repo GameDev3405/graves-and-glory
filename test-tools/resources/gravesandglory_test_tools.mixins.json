@@ -9,7 +9,9 @@
   "client": [
     "TitleDemoCameraMixin",
     "TitleDemoPoseMixin",
-    "StoryStillsPoseMixin"
+    "StoryStillsPoseMixin",
+    "MotionRigPoseMixin",
+    "ParticleCountMixin"
   ],
   "injectors": {
     "defaultRequire": 0

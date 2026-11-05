@@ -78,6 +78,13 @@ public final class BattleHud {
      *  line lives), then aim-name (the aimed point's name, while an order is aimed into a point) and ability (the slot converted
      *  from GUI px, rounded outward). */
     public static Map<String,int[]> rects(){return rects;}
+    /** Top (GUI px) of the group cards and chips this frame drew in the lower-left quarter, or -1: the pennant stack stays above them (the hint slip hides while the panel is open). */
+    static int lowerLeftTop(double guiScale){
+        int hw=UiCanvas.hudWidth(),hh=UiCanvas.hudHeight(),top=Integer.MAX_VALUE;
+        for(var e:rectsDrawn.entrySet()){int[] b=e.getValue();String k=e.getKey();
+            if((k.startsWith("card-")||k.equals("spine"))&&b!=null&&b.length>=4&&b[0]<hw/3&&b[1]>hh/2)top=Math.min(top,b[1]);}
+        return top==Integer.MAX_VALUE?-1:(int)Math.floor(top*UiCanvas.hudK()/guiScale);
+    }
     /** The words and numbers the last frame drew: score-dawn, clock, score-dusk, count-(group), state-(group) (the word a card
      *  shows; on a chip LAST STAND and Fallen as drawn, Fighting for its crossed swords and Steady for none), plate-(group) (the
      *  atlas name of the plate drawn), stamp-(group) (the atlas name of the LAST STAND stamp, only while the group stands its last
@@ -136,6 +143,7 @@ public final class BattleHud {
                 feed(g,font,size,now,at,rectsDrawn,textsDrawn);
             }finally{UiCanvas.end(g);}
             ability(g,c,font,rectsDrawn,textsDrawn);
+            CommandPanel.render(g,delta); // the pennant panel replaced the order key rows (command UI Task 7)
         }catch(IllegalArgumentException e){ // UiTex.entry names a texture the atlas lacks: a resource pack's atlas, or none read at all
             stopped=true;clear();
             System.err.println("[Graves and Glory] The battle HUD stopped: "+e.getMessage()+". It stays off until the next resource reload.");
@@ -163,19 +171,37 @@ public final class BattleHud {
     /** The score bar: Dawn's score, its track, the round clock, Dusk's track and score, centred between the Dawn and Dusk bosses. */
     static void ledger(DrawContext g,TextRenderer font,Map<String,int[]> at,Map<String,int[]> r,Map<String,String> tx){
         int[] card=at.get("score"),dawnBoss=at.get("dawn-boss"),duskBoss=at.get("dusk-boss");int cx=card[0]+card[2]/2,y=card[1]+8;
-        String dawn=String.valueOf(GravesAndGloryClient.dawn),clock=UiMath.clock(CommandMode.seconds),dusk=String.valueOf(GravesAndGloryClient.dusk);
-        int win=GravesAndGlory.R.winScore(),wa=font.getWidth(dawn),wc=font.getWidth(clock),wd=font.getWidth(dusk);
+        int dawnMax=CampaignClient.ledgerMax(0),duskMax=CampaignClient.ledgerMax(1); // the round's own mode: Siege reads 1/3 and 64%
+        String dawn=ModeMath.ledgerText(CampaignClient.ledgerFormat(0),GravesAndGloryClient.dawn,dawnMax),clock=UiMath.clock(CommandMode.seconds),dusk=ModeMath.ledgerText(CampaignClient.ledgerFormat(1),GravesAndGloryClient.dusk,duskMax);
+        int wa=font.getWidth(dawn),wc=font.getWidth(clock),wd=font.getWidth(dusk);
         UiTex.draw(g,"hud/score-card",card[0],card[1]);
         // The row as the mock lays it out: each 8 px text takes its width plus one, with 6 px gaps round the two 56 px tracks.
         int x=(int)Math.round(cx-(wa+1+wc+1+wd+1+2*56+4*6)/2.0);
         g.drawText(font,dawn,x,y,DarkUi.INK_TEXT,false);x+=wa+1+6;
-        UiTex.draw(g,"hud/track-empty",x,y);UiTex.bar(g,"hud/track-dawn-fill",x+1,y+2,UiMath.trackFill(GravesAndGloryClient.dawn,win),false);x+=56+6;
+        UiTex.draw(g,"hud/track-empty",x,y);UiTex.bar(g,"hud/track-dawn-fill",x+1,y+2,UiMath.trackFill(GravesAndGloryClient.dawn,dawnMax),false);x+=56+6;
         g.drawText(font,clock,x,y,DarkUi.INK_TEXT,false);x+=wc+1+6;
-        UiTex.draw(g,"hud/track-empty",x,y);UiTex.bar(g,"hud/track-dusk-fill",x+1,y+2,UiMath.trackFill(GravesAndGloryClient.dusk,win),true);x+=56+6;
+        UiTex.draw(g,"hud/track-empty",x,y);UiTex.bar(g,"hud/track-dusk-fill",x+1,y+2,UiMath.trackFill(GravesAndGloryClient.dusk,duskMax),true);x+=56+6;
         g.drawText(font,dusk,x,y,DarkUi.INK_TEXT,false);
         UiTex.draw(g,"hud/boss-dawn",dawnBoss[0],dawnBoss[1]);UiTex.draw(g,"hud/boss-dusk",duskBoss[0],duskBoss[1]);
         r.put("score",card);r.put("dawn-boss",dawnBoss);r.put("dusk-boss",duskBoss);
         tx.put("score-dawn",dawn);tx.put("clock",clock);tx.put("score-dusk",dusk);
+    }
+
+    /** Convoy's road strip, where the seals hang in Domination: the road as a bar filled to the wagon, a tick at each stop, the
+     *  wagon's marker, and the next stop's name with the wagon's state below it. Placeholder art (plain fills in DarkUi inks) until the strip's sprites are drawn. */
+    static void road(DrawContext g,TextRenderer font,Map<String,int[]> at,Map<String,int[]> r,Map<String,String> tx){
+        var c=CampaignClient.battleMode.getAsJsonObject("convoy");int[] card=at.get("score");if(card==null)return;
+        int w=150,h=5,x=card[0]+card[2]/2-w/2,y=card[1]+card[3]+4;
+        double prog=Math.max(0,Math.min(1,c.has("progress")?c.get("progress").getAsDouble():0));
+        String state=c.has("state")?c.get("state").getAsString():ModeMath.IDLE;
+        g.fill(x-1,y-1,x+w+1,y+h+1,DarkUi.OAK0);g.fill(x,y,x+w,y+h,DarkUi.TRACK);
+        g.fill(x,y,x+(int)Math.round(w*prog),y+h,DarkUi.DAWN);
+        if(c.has("stops"))for(var s:c.getAsJsonArray("stops")){int sx=x+(int)Math.round(w*s.getAsDouble());g.fill(sx-1,y-2,sx+1,y+h+2,DarkUi.VELLUM);}
+        int mx=x+(int)Math.round(w*prog);int mark=state.equals(ModeMath.CONTESTED)?DarkUi.ALARM_TEXT:state.equals(ModeMath.ROLLBACK)?DarkUi.DUSK_TEXT:DarkUi.BRASS_HI;
+        g.fill(mx-2,y-3,mx+3,y+h+3,DarkUi.OAK0);g.fill(mx-1,y-2,mx+2,y+h+2,mark);
+        String next=(c.has("next")?c.get("next").getAsString():"")+" - "+switch(state){case ModeMath.MOVING->"rolling";case ModeMath.CONTESTED->"stopped";case ModeMath.ROLLBACK->"rolling back";default->"waiting";};
+        g.drawText(font,next,centred(font,next,x+w/2),y+h+5,DarkUi.IVORY,true);
+        r.put("road",new int[]{x,y,w,h});tx.put("road",next);
     }
 
     /** The top of the aimed point's name: the seal rects' foot (each seal's box runs from its chain's top at 37 down 31 px), so the
@@ -185,6 +211,8 @@ public final class BattleHud {
     /** The points hang from the bar on a 28 px pitch: chain, seal (its owner's, or split while contested) and letter; while an order
      *  is aimed into a point's radius, that point's name hangs below its seal. */
     static void seals(DrawContext g,TextRenderer font,Map<String,int[]> at,Map<String,int[]> r,List<SealDraw> sd,Map<String,String> tx){
+        if(CampaignClient.battleMode.has("convoy")){road(g,font,at,r,tx);return;} // Convoy plays no points: its road strip hangs there
+        if(!CampaignClient.showsPoints())return; // Siege: the flags are down, so no seal or letter hangs from the bar
         int n=GravesAndGloryClient.owners.length,aim=CommandMode.aimPoint();var pts=Spec.POINTS;
         for(int i=0;i<n;i++){
             int[] box=at.get("seal-"+i);if(box==null)continue;
@@ -204,7 +232,7 @@ public final class BattleHud {
 
     /** The group column (UI Task 8c), each plate where the layout hangs it, infantry at the top: the spine; the selected group's
      *  ledger card (card) and a chip for every other group the round fielded (chip), or while the whole army is selected a brass
-     *  chip for each group over the army's key strip (keyStrip); and in the hint layer the hint slip above the top plate (above the
+     *  chip for each group; and in the hint layer the hint slip above the top plate (above the
      *  column's foot when there is none). A group the round never fielded has no plate. */
     static void column(DrawContext g,TextRenderer font,UiMath.HudState s,Map<String,int[]> at,Map<String,int[]> r,List<CardDraw> cd,Map<String,String> tx){
         boolean army="all".equals(s.selected());
@@ -213,8 +241,7 @@ public final class BattleHud {
             var grp=group(id);int[] box=at.get("card-"+id);if(grp==null||box==null)continue;
             if(box[3]==UiMath.CARD_H)card(g,font,grp,box,r,cd,tx);else chip(g,font,grp,box,army,r,cd,tx);
         }
-        int[] keys=at.get("keys");if(keys!=null)keyStrip(g,font,keys,r);
-        int[] hints=at.get("hints");if(hints!=null)hintSlip(g,font,hints,r);
+        int[] hints=at.get("hints");if(hints!=null&&CommandPanel.slide()<=0)hintSlip(g,font,hints,r); // the open pennant panel shows every key the slip lists (Ruling 15)
     }
 
     /** How far a hint-slip row may run: from 10 px into the slip to 12 px inside its box's right edge (the 164 px slip's paper ends
@@ -234,12 +261,16 @@ public final class BattleHud {
         String[][] words={aiming?new String[]{"Confirm","Cancel"}:new String[]{"Map","Commands"},{null,"Turn","Hints"}};
         for(int row=0;row<2;row++){
             List<String> keys=new ArrayList<>(),shorts=new ArrayList<>();for(String id:ids[row]){keys.add(GravesAndGloryClient.hint(id));shorts.add(GravesAndGloryClient.hintShort(id));}
-            keys=UiMath.fitKeys(keys,shorts,Arrays.asList(words[row]),HINT_ROW_W,8,font::getWidth);
+            String[] rowWords=words[row];
+            if(row==1&&ChargeCamera.active()){ // the overhead charge camera: the mouse turns the arrow, the facing keys do nothing
+                keys=new ArrayList<>(List.of("Mouse",keys.get(2)));shorts=new ArrayList<>(List.of("Mouse",shorts.get(2)));rowWords=new String[]{"Aim","Hints"};
+            }
+            keys=UiMath.fitKeys(keys,shorts,Arrays.asList(rowWords),HINT_ROW_W,8,font::getWidth);
             List<String> drawn=new ArrayList<>();int kx=x+10,ky=y+(row==0?7:22),end=kx;
             for(int k=0;k<keys.size();k++){
                 String key=keys.get(k);int kw=UiMath.chipWidth(font.getWidth(key));
                 UiTex.three(g,"hud/key-chip",kx,ky,kw);g.drawText(font,key,kx+2,ky+2,DarkUi.CHIP_TEXT,false);drawn.add(key);end=kx+kw;kx+=kw+2;
-                String word=words[row][k];
+                String word=rowWords[k];
                 if(word!=null){g.drawText(font,word,kx,ky+2,DarkUi.SEPIA,false);drawn.add(word);end=kx+font.getWidth(word);kx+=font.getWidth(word)+8;}
             }
             hintRowsDrawn.add(List.copyOf(drawn));hintEndsDrawn.add(end);
@@ -289,7 +320,6 @@ public final class BattleHud {
         g.drawText(font,orderLabel(grp.order()),x+22,y+31,DarkUi.INK_TEXT,false);
         formationGlyph(g,grp.formation(),down,x+72,y+30);
         g.drawText(font,formationLabel(grp.formation()),x+84,y+31,DarkUi.INK_TEXT,false);
-        keyRow(g,font,id,x,y+44,DarkUi.SEPIA);
         cd.add(new CardDraw(id,state,true,x,y,box[2],box[3]));r.put("card-"+id,box);
         tx.put("count-"+id,count);tx.put("state-"+id,word);tx.put("plate-"+id,plate);
     }
@@ -326,33 +356,6 @@ public final class BattleHud {
         tx.put("count-"+id,count);tx.put("state-"+id,word);tx.put("plate-"+id,plate);
     }
 
-    /** The army's key strip under the bottom chip while the whole army is selected (UI Task 8c): the order keys of a card's key row
-     *  at a card's places, on a 176 x 16 plate capped in brass and hung on the spine by a brass hook. The keys are the same for every
-     *  group, so one row serves the army: the cheapest form that keeps them on screen. Its labels are in KEY_INK, a step darker than
-     *  the card's sepia: the strip is the darker vellum, where sepia holds 4.6:1 and 3.7:1 at its edges (#bda97c), KEY_INK 6.0:1
-     *  there (UI Task 8c fix round 1; test_ui_standard checks it). */
-    static void keyStrip(DrawContext g,TextRenderer font,int[] box,Map<String,int[]> r){
-        int x=box[0],y=box[1];
-        UiTex.draw(g,"hud/keys-strip",x,y);UiTex.draw(g,"hud/hook-brass",x-7,y+3);
-        keyRow(g,font,"all",x,y+3,DarkUi.KEY_INK);r.put("keys",box);
-    }
-
-    /** A key row at canvas y ky on a plate at x: the order keys, each in an ink chip as wide as its key's name, at the mock's places,
-     *  or where long names crowd the row flowed and fitted as on the hint slip, short names first (UiMath.cardRow); each key's label
-     *  after it in labelInk, the plate's own (sepia on a card, KEY_INK on the key strip). */
-    static void keyRow(DrawContext g,TextRenderer font,String group,int x,int ky,int labelInk){
-        var row=UiMath.cardRow(List.of(GravesAndGloryClient.hint("attack"),GravesAndGloryClient.hint("follow"),GravesAndGloryClient.hint("formation")),List.of(GravesAndGloryClient.hintShort("attack"),GravesAndGloryClient.hintShort("follow"),GravesAndGloryClient.hintShort("formation")),CARD_WORDS,CARD_SHORT_WORDS,font::getWidth);
-        List<String> parts=new ArrayList<>();List<Integer> from=new ArrayList<>(),to=new ArrayList<>();
-        for(int k=0;k<3;k++){
-            String key=row.keys().get(k),label=row.words().get(k);int kw=UiMath.chipWidth(font.getWidth(key)),kx=x+row.at().get(k);
-            UiTex.three(g,"hud/key-chip",kx,ky,kw);
-            g.drawText(font,key,kx+2,ky+2,DarkUi.CHIP_TEXT,false);
-            g.drawText(font,label,kx+kw+2,ky+2,labelInk,false);
-            parts.add(key);from.add(kx);to.add(kx+kw);parts.add(label);from.add(kx+kw+2);to.add(kx+kw+2+font.getWidth(label));
-        }
-        keyRowsDrawn.add(new KeyRowDraw(group,List.copyOf(parts),List.copyOf(from),List.copyOf(to)));
-    }
-
     static void orderGlyph(DrawContext g,String order,boolean faded,int x,int y){
         if(faded)switch(order){
             case "follow"->UiTex.draw(g,"hud/g-follow-faded",x,y);
@@ -380,14 +383,12 @@ public final class BattleHud {
             case "line"->UiTex.draw(g,"hud/g-line-faded",x,y);
             case "wedge"->UiTex.draw(g,"hud/g-wedge-faded",x,y);
             case "loose"->UiTex.draw(g,"hud/g-loose-faded",x,y);
-            case "shieldwall"->UiTex.draw(g,"hud/g-shieldwall-faded",x,y);
             default->{}
         }else switch(formation){
             case "block"->UiTex.draw(g,"hud/g-compact",x,y);
             case "line"->UiTex.draw(g,"hud/g-line",x,y);
             case "wedge"->UiTex.draw(g,"hud/g-wedge",x,y);
             case "loose"->UiTex.draw(g,"hud/g-loose",x,y);
-            case "shieldwall"->UiTex.draw(g,"hud/g-shieldwall",x,y);
             default->{}
         }
     }
@@ -485,23 +486,30 @@ public final class BattleHud {
      *  slot, no empty frame, no number, and nothing in rects() or texts(). */
     static final String UNSHOWN_ABILITY="forward_supply";
 
-    /** The commander ability beside the hotbar, in GUI px at the player's GUI Scale: the iron slot, the active's own picture, the cooldown sweep (a
-     *  veil over the part of the turn still to come and its bright leading edge), the key on its brass plate and the seconds left.
-     *  A ready ability (nothing left of its cooldown) shows no sweep and no number. The Quartermaster's forward supply (UNSHOWN_ABILITY)
-     *  and a commander with no active draw nothing here. */
+    /** The commander's three relic slots beside the hotbar, in GUI px at the player's GUI Scale (gear-combat Task 5): slot 0 (key 1) at the
+     *  bottom where the one ability slot was, slots 1 and 2 (keys 2 and 3) stacked above it (UiMath.relicRect). Each slot: the iron slot, the
+     *  relic's own picture, the cooldown sweep (a veil over the part of the turn still to come and its bright leading edge), the hotbar key on
+     *  its brass plate and the seconds left. A ready relic (nothing left of its cooldown) shows no sweep and no number. Forward supply
+     *  (UNSHOWN_ABILITY), an empty slot and a relic with no behaviour draw nothing. */
     static void ability(DrawContext g,MinecraftClient c,TextRenderer font,Map<String,int[]> r,Map<String,String> tx){
-        String id=GravesAndGloryClient.abilityId;if(id.equals("none")||id.equals(UNSHOWN_ABILITY))return;
-        var w=c.getWindow();int x=w.getScaledWidth()/2+104,y=w.getScaledHeight()-47,left=GravesAndGloryClient.abilityRemaining,total=GravesAndGloryClient.abilityTotal;
+        relicSlot(g,c,font,r,tx,0,"ability",GravesAndGloryClient.abilityId,GravesAndGloryClient.abilityRemaining,GravesAndGloryClient.abilityTotal);
+        for(int i=1;i<3;i++)relicSlot(g,c,font,r,tx,i,"relic-"+i,GravesAndGloryClient.relicShown[i],GravesAndGloryClient.relicLeft[i],GravesAndGloryClient.relicTotal[i]);
+    }
+
+    /** One relic slot (ability): its rect and texts under key (key-icon, key-seconds, key-key). */
+    static void relicSlot(DrawContext g,MinecraftClient c,TextRenderer font,Map<String,int[]> r,Map<String,String> tx,int slot,String rk,String id,int left,int total){
+        if(id.equals("none")||id.isEmpty()||id.equals(UNSHOWN_ABILITY))return;
+        var w=c.getWindow();int[] at=UiMath.relicAt(slot,w.getScaledWidth(),w.getScaledHeight());int x=at[0],y=at[1];
         UiTex.draw(g,"hud/ability-slot",x,y);
         String icon=abilityIcon(id);if(UiTex.has(icon))UiTex.draw(g,icon,x+5,y+6); // 22 x 20 as the horn was; an id with no picture leaves the vellum bare
         if(left>0&&total>0)sweep(g,x+4,y+4,Math.min(1,left/(double)total));
         UiTex.draw(g,"hud/key-brass-plate",x+1,y+1);
-        String key=GravesAndGloryClient.hint("ability"),secs=left>0?String.valueOf((left+19)/20):"";
+        String key=c.options.hotbarKeys[slot].getBoundKeyLocalizedText().getString(),secs=left>0?String.valueOf((left+19)/20):"";
         g.drawText(font,key,x+4,y+4,DarkUi.ABILITY_KEY,false);
         if(!secs.isEmpty())g.drawText(font,secs,centred(font,secs,x+39),y+12,DarkUi.IVORY,true);
         double f=w.getScaleFactor()/UiCanvas.hudK();
         int x0=(int)Math.floor(x*f+1e-9),y0=(int)Math.floor(y*f+1e-9),x1=(int)Math.ceil((x+50)*f-1e-9),y1=(int)Math.ceil((y+32)*f-1e-9);
-        r.put("ability",new int[]{x0,y0,x1-x0,y1-y0});tx.put("ability",id);tx.put("ability-icon",UiTex.has(icon)?icon:"");tx.put("ability-seconds",secs);tx.put("ability-key",key);
+        r.put(rk,new int[]{x0,y0,x1-x0,y1-y0});tx.put(rk,id);tx.put(rk+"-icon",UiTex.has(icon)?icon:"");tx.put(rk+"-seconds",secs);tx.put(rk+"-key",key);
     }
 
     /** The 24 px cooldown sweep at (x, y) by UiMath.sweep, filled one run of a row at a time. */

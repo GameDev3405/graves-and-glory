@@ -1,5 +1,6 @@
 {
  "weapon": "order_bow_t3",
+ "density": 1,
  "thickness": 2,
  "grip": {
   "offset": [
@@ -21,21 +22,21 @@
  ],
  "nocks": [
   [
-   -3.35,
-   0.0
+   -3.2677,
+   0
   ],
   [
-   -4.1,
-   0.0
+   -6.0785,
+   -2.6
   ],
   [
-   -4.85,
-   0.0
+   -8.7892,
+   -2.6
   ],
   [
-   -5.6,
-   0.0
+   -11.5,
+   -2.6
   ]
  ],
- "note": "The Archer's bow, tier III (elite): broad stained-wood limbs with a solid gilt wire inlaid down the first four staves of each, a softened tip, long gilt-capped horn tips (3.0 px), an enamel-wound grip between gilt collars; 33.3 px tall, no badge."
+ "note": "order_bow_t3"
 }

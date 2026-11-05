@@ -1,0 +1,35 @@
+QA4 rest pass evidence, 2026-11-03 (scratch server, deleted afterwards)
+
+== J6 (python bot, live round with 37 husks) ==
+connect True None
+players There are 1 of a max of 16 players online: J6Cmdr
+husks Test passed, count: 37
+control try (-40, -60) ['{"text":"all / move / -40, -60"}']
+good (-40, -60)
+CASE bad group                          -> alive=True feedback=[]
+CASE bad formation                      -> alive=True feedback=[]
+CASE bad action                         -> alive=True feedback=[]
+CASE empty strings                      -> alive=True feedback=[]
+CASE control chars/unicode              -> alive=True feedback=[]
+CASE yaw NaN                            -> alive=True feedback=[]
+CASE x NaN                              -> alive=True feedback=[]
+CASE x 1e308                            -> alive=True feedback=[]
+CASE z -inf                             -> alive=True feedback=[]
+CASE x,z outside arena 5000             -> alive=True feedback=[]
+CASE attack target 999999               -> alive=True feedback=[]
+CASE attack target INT_MAX              -> alive=True feedback=[]
+CASE attack target INT_MIN              -> alive=True feedback=['{"text":"all / attack / -40, -60"}']
+CASE charge no target                   -> alive=True feedback=[]
+CASE attack ids 1..159 (own/enemy/other) -> alive=True distinct feedback=[] count=0
+husks still Test passed, count: 37
+CASE ORDER abuse x24 -> alive=True feedback=[]
+visitor connect True None
+CASE unseated visitor tactical+order -> alive=True visitor feedback=[] seated bot feedback=[]
+(over-length cases, second run:)
+tactical group 17 chars: DecoderException 17 > 16, sender dropped, 0 players left, server alive
+tactical formation 300 chars: DecoderException 300 > 48
+order 129 chars: DecoderException 129 > 128
+
+== D19 harness ==
+gradle: BUILD SUCCESSFUL
+aft) [STDOUT]: [p2] p2-migrate-import=true first visit: profile-v1-cache.json imported and migrated (gold 1800, 11 owned, class warden, saved as schema 3); a second import with 99999 gold and a stalker was ignored, the file byte-unchanged

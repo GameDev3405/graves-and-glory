@@ -37,7 +37,7 @@ final class TroopFeatures {
     static final class Outer<T extends MobEntity> extends FeatureRenderer<T,TroopModel<T>> {
         final TroopRenderer<T> r;Outer(TroopRenderer<T> r){super(r);this.r=r;}
         @Override public void render(MatrixStack m,VertexConsumerProvider v,int light,T e,float limbAngle,float limbDistance,float tickDelta,float age,float headYaw,float headPitch){
-            TroopModel<T> model=getContextModel();if(r.look==null||e.isInvisible()||model.outerTop==null||model.outer==null)return;
+            TroopModel<T> model=getContextModel();if(r.look==null||e.isInvisible()||model.outerTop==null||model.outer==null||!BodyCache.drawn(BodyCache.ARMOUR))return;
             for(var entry:model.outerParts().entrySet()){ModelPart own=model.bone(entry.getKey());entry.getValue().copyTransform(own);entry.getValue().visible=own.visible;}
             model.outerTop.render(m,v.getBuffer(RenderLayer.getEntityCutoutNoCull(r.far&&model.density>1?TroopModels.twin(model.outer):model.outer)),light,LivingEntityRenderer.getOverlay(e,0f));
         }
@@ -51,7 +51,7 @@ final class TroopFeatures {
         final TroopRenderer<T> r;Cloth(TroopRenderer<T> r){super(r);this.r=r;}
         @Override public void render(MatrixStack m,VertexConsumerProvider v,int light,T e,float limbAngle,float limbDistance,float tickDelta,float age,float headYaw,float headPitch){
             var l=r.look;if(l==null||e.isInvisible())return;
-            Identifier cloth=TroopModels.cloth(TroopModels.clothOf(e,l));
+            Identifier cloth=TroopModels.cloth(getContextModel().cloth,TroopModels.clothOf(e,l));
             long drawn=getContextModel().renderCloth(m,v.getBuffer(RenderLayer.getEntityCutout(cloth)),light,LivingEntityRenderer.getOverlay(e,0f));
             r.clothSheet=cloth;r.clothMask=drawn;
         }
@@ -62,7 +62,8 @@ final class TroopFeatures {
         final TroopRenderer<T> r;Trim(TroopRenderer<T> r){super(r);this.r=r;}
         @Override public void render(MatrixStack m,VertexConsumerProvider v,int light,T e,float limbAngle,float limbDistance,float tickDelta,float age,float headYaw,float headPitch){
             var l=r.look;if(l==null||e.isInvisible())return;Identifier trim=TroopModels.trim(l,r.far);if(trim==null)return;
-            getContextModel().render(m,v.getBuffer(RenderLayer.getEntityCutoutNoCull(trim)),light,LivingEntityRenderer.getOverlay(e,0f),1f,1f,1f,1f);
+            TroopModel<T> model=getContextModel();model.pass=BodyCache.ARMOUR;
+            try{model.render(m,v.getBuffer(RenderLayer.getEntityCutoutNoCull(trim)),light,LivingEntityRenderer.getOverlay(e,0f),1f,1f,1f,1f);}finally{model.pass=BodyCache.BODY;}
             r.trimSheet=trim;
         }
     }
@@ -72,19 +73,23 @@ final class TroopFeatures {
         final TroopRenderer<T> r;Glow(TroopRenderer<T> r){super(r);this.r=r;}
         @Override public void render(MatrixStack m,VertexConsumerProvider v,int light,T e,float limbAngle,float limbDistance,float tickDelta,float age,float headYaw,float headPitch){
             var l=r.look;if(l==null||e.isInvisible())return;Identifier glow=TroopModels.glow(l,r.far);if(glow==null)return;
-            getContextModel().render(m,v.getBuffer(RenderLayer.getEyes(glow)),FULL_BRIGHT,OverlayTexture.DEFAULT_UV,1f,1f,1f,1f);
+            TroopModel<T> model=getContextModel();model.pass=BodyCache.ARMOUR;
+            try{model.render(m,v.getBuffer(RenderLayer.getEyes(glow)),FULL_BRIGHT,OverlayTexture.DEFAULT_UV,1f,1f,1f,1f);}finally{model.pass=BodyCache.BODY;}
         }
     }
 
-    /** The troop's own weapon model at its hand bone, at the weapon tier it wears (<weapon>_t<n>; a tier without a model draws the highest tier below it), and the weapon's glow. */
+    /**
+     * The troop's own weapon model at its hand bone, at the weapon tier it wears (<weapon>_t<n>; a tier without a model draws the highest tier below it), and the weapon's glow.
+     * The weapon follows handPath, the whole chain from the root part to the hand: on the jointed biped (Task 9) that is the arm, the forearm and the hand, so it bends with the elbow.
+     */
     static final class Weapon<T extends MobEntity> extends FeatureRenderer<T,TroopModel<T>> {
         final TroopRenderer<T> r;Weapon(TroopRenderer<T> r){super(r);this.r=r;}
         @Override public void render(MatrixStack m,VertexConsumerProvider v,int light,T e,float limbAngle,float limbDistance,float tickDelta,float age,float headYaw,float headPitch){
             TroopModel<T> model=getContextModel();if(r.look==null||e.isInvisible()||model.folded)return;
-            var w=TroopModels.weapon(model.weaponId(),r.look.weaponTier());List<ModelPart> path=model.handPath(model.hand());if(w==null||!shown(path)||HIDDEN.contains(w.id())||HIDDEN.contains(model.weaponId()))return;
+            var w=TroopModels.weapon(model.weaponId(),r.look.weaponTier());List<ModelPart> path=model.handPath(model.hand());if(w==null||!shown(path)||HIDDEN.contains(w.id())||HIDDEN.contains(model.weaponId())||!BodyCache.drawn(BodyCache.WEAPON))return;
             // a draw weapon shows the pull frame its bow_draw time is at (the rest frame when nothing draws). A cube weapon draws whole within
             // TroopDepth.weaponNear and its far version (at most 32 quads) outside it, depth off included; a sprite weapon draws whole, or with troop depth off only its two big faces
-            int frame=w.pull().length==0?0:TroopModels.Weapon.frameAt(w.pull(),TroopAnimator.drawSeconds(e,model,age),TroopClips.BOW_TIMES.getOrDefault(model.rig,TroopClips.BOW_TIMES.get("biped"))[1]);
+            int frame=w.pull().length==0?0:TroopModels.Weapon.frameAt(w.pull(),TroopMotion.drawSeconds(e,model,age),TroopMotion.BOW_LOOSE);
             boolean far=w.cube()&&!TroopDepth.weaponNear(e);
             var mesh=far?w.far():w.frames().get(Math.min(frame,w.frames().size()-1));int limit=w.cube()||TroopDepth.enabled?Integer.MAX_VALUE:2;
             m.push();for(ModelPart p:path)p.rotate(m);w.grip(m);
@@ -100,7 +105,8 @@ final class TroopFeatures {
      * carried face out at all times: from the hand frame vanilla's HeldItemFeatureRenderer uses (2 px down and 2 px forward of
      * the hand bone), the vanilla shield_blocking model's third-person left-hand transform (mirrored for a shield in the right
      * hand), drawn with no display transform of its own. So the face covers the troop's front at rest (the shield arm carries
-     * it 45 degrees forward) and on guard, never edge-on as vanilla's lowered hold reads from the side.
+     * it 45 degrees forward) and on guard, never edge-on as vanilla's lowered hold reads from the side. A model with its own
+     * shield (TroopModel.ownShield) draws that on its own arm bone with its skin and cloth, and the item draws nothing.
      */
     static final class Shield<T extends MobEntity> extends FeatureRenderer<T,TroopModel<T>> {
         final TroopRenderer<T> r;final HeldItemRenderer held;Shield(TroopRenderer<T> r,HeldItemRenderer held){super(r);this.r=r;this.held=held;}
@@ -108,6 +114,8 @@ final class TroopFeatures {
             TroopModel<T> model=getContextModel();if(r.look==null||e.isInvisible()||model.folded)return;
             ItemStack stack=e.getOffHandStack();if(stack.isEmpty())return;
             boolean left=!"left".equals(model.hand());List<ModelPart> path=model.handPath(left?"left":"right");if(!shown(path))return;
+            if(model.ownShield()){r.shieldDrawn=true;return;}
+            if(!BodyCache.drawn(BodyCache.SHIELD))return; // the harness's part switches (mo-fade)
             m.push();for(ModelPart p:path)p.rotate(m);
             m.multiply(RotationAxis.POSITIVE_X.rotationDegrees(-90f));m.multiply(RotationAxis.POSITIVE_Y.rotationDegrees(180f));m.translate(0f,0.125f,-0.125f);
             float side=left?-1:1;m.translate(side*13.51f/16f,3f/16f,5f/16f);

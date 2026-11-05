@@ -1,0 +1,630 @@
+{
+ "format": 1,
+ "item": "tidewrought_helm",
+ "slot": "helm",
+ "density": 1,
+ "size": [
+  64,
+  32
+ ],
+ "cloth": "gravesandglory:textures/entity/gear/tidewrought_helm/team_cloth_",
+ "skins": {
+  "1": "gravesandglory:textures/entity/gear/tidewrought_helm/tidewrought_helm_r1.png",
+  "2": "gravesandglory:textures/entity/gear/tidewrought_helm/tidewrought_helm_r2.png",
+  "3": "gravesandglory:textures/entity/gear/tidewrought_helm/tidewrought_helm_r3.png",
+  "4": "gravesandglory:textures/entity/gear/tidewrought_helm/tidewrought_helm_r4.png",
+  "5": "gravesandglory:textures/entity/gear/tidewrought_helm/tidewrought_helm_r5.png"
+ },
+ "glow": {
+  "5": "gravesandglory:textures/entity/gear/tidewrought_helm/tidewrought_helm_e5.png"
+ },
+ "bones": [
+  {
+   "name": "corinthian",
+   "parent": "head",
+   "team": false,
+   "tag": "helm",
+   "stages": [],
+   "sheet": [
+    64,
+    32
+   ],
+   "pivot": [
+    0,
+    0,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "boxes": [
+    {
+     "origin": [
+      -5.0,
+      -9.0,
+      -5.0
+     ],
+     "size": [
+      10.0,
+      10.0,
+      10.0
+     ],
+     "uv": [
+      0,
+      0
+     ],
+     "mirror": false,
+     "dilation": [
+      0.02,
+      0.02,
+      0.02
+     ]
+    }
+   ]
+  },
+  {
+   "name": "fin_0",
+   "parent": "head",
+   "team": true,
+   "tag": "helm",
+   "stages": [
+    1
+   ],
+   "sheet": [
+    64,
+    64
+   ],
+   "pivot": [
+    0,
+    0,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "boxes": [
+    {
+     "origin": [
+      -0.5,
+      -12.0,
+      -5.0
+     ],
+     "size": [
+      1.0,
+      3.0,
+      11.0
+     ],
+     "uv": [
+      0,
+      0
+     ],
+     "mirror": false,
+     "dilation": [
+      0.04,
+      0.04,
+      0.04
+     ]
+    }
+   ]
+  },
+  {
+   "name": "fin_1",
+   "parent": "head",
+   "team": true,
+   "tag": "helm",
+   "stages": [
+    2
+   ],
+   "sheet": [
+    64,
+    64
+   ],
+   "pivot": [
+    0,
+    0,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "boxes": [
+    {
+     "origin": [
+      -0.5,
+      -12.0,
+      -5.0
+     ],
+     "size": [
+      1.0,
+      3.0,
+      11.0
+     ],
+     "uv": [
+      24,
+      0
+     ],
+     "mirror": false,
+     "dilation": [
+      0.04,
+      0.04,
+      0.04
+     ]
+    }
+   ]
+  },
+  {
+   "name": "fin_2",
+   "parent": "head",
+   "team": true,
+   "tag": "helm",
+   "stages": [
+    3
+   ],
+   "sheet": [
+    64,
+    64
+   ],
+   "pivot": [
+    0,
+    0,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "boxes": [
+    {
+     "origin": [
+      -0.5,
+      -12.0,
+      -5.0
+     ],
+     "size": [
+      1.0,
+      3.0,
+      11.0
+     ],
+     "uv": [
+      0,
+      14
+     ],
+     "mirror": false,
+     "dilation": [
+      0.04,
+      0.04,
+      0.04
+     ]
+    }
+   ]
+  },
+  {
+   "name": "fin_3",
+   "parent": "head",
+   "team": true,
+   "tag": "helm",
+   "stages": [
+    4
+   ],
+   "sheet": [
+    64,
+    64
+   ],
+   "pivot": [
+    0,
+    0,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "boxes": [
+    {
+     "origin": [
+      -0.5,
+      -12.0,
+      -5.0
+     ],
+     "size": [
+      1.0,
+      3.0,
+      11.0
+     ],
+     "uv": [
+      24,
+      14
+     ],
+     "mirror": false,
+     "dilation": [
+      0.04,
+      0.04,
+      0.04
+     ]
+    }
+   ]
+  },
+  {
+   "name": "fin_4",
+   "parent": "head",
+   "team": true,
+   "tag": "helm",
+   "stages": [
+    5
+   ],
+   "sheet": [
+    64,
+    64
+   ],
+   "pivot": [
+    0,
+    0,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "boxes": [
+    {
+     "origin": [
+      -0.5,
+      -12.0,
+      -5.0
+     ],
+     "size": [
+      1.0,
+      3.0,
+      11.0
+     ],
+     "uv": [
+      0,
+      28
+     ],
+     "mirror": false,
+     "dilation": [
+      0.04,
+      0.04,
+      0.04
+     ]
+    }
+   ]
+  },
+  {
+   "name": "fin_top_0",
+   "parent": "head",
+   "team": true,
+   "tag": "helm",
+   "stages": [
+    1
+   ],
+   "sheet": [
+    64,
+    64
+   ],
+   "pivot": [
+    0,
+    0,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "boxes": [
+    {
+     "origin": [
+      -0.5,
+      -14.0,
+      -3.0
+     ],
+     "size": [
+      1.0,
+      2.0,
+      8.0
+     ],
+     "uv": [
+      24,
+      28
+     ],
+     "mirror": false,
+     "dilation": [
+      0.02,
+      0.02,
+      0.02
+     ]
+    }
+   ]
+  },
+  {
+   "name": "fin_top_1",
+   "parent": "head",
+   "team": true,
+   "tag": "helm",
+   "stages": [
+    2
+   ],
+   "sheet": [
+    64,
+    64
+   ],
+   "pivot": [
+    0,
+    0,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "boxes": [
+    {
+     "origin": [
+      -0.5,
+      -14.0,
+      -3.0
+     ],
+     "size": [
+      1.0,
+      2.0,
+      8.0
+     ],
+     "uv": [
+      42,
+      28
+     ],
+     "mirror": false,
+     "dilation": [
+      0.02,
+      0.02,
+      0.02
+     ]
+    }
+   ]
+  },
+  {
+   "name": "fin_top_2",
+   "parent": "head",
+   "team": true,
+   "tag": "helm",
+   "stages": [
+    3
+   ],
+   "sheet": [
+    64,
+    64
+   ],
+   "pivot": [
+    0,
+    0,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "boxes": [
+    {
+     "origin": [
+      -0.5,
+      -14.0,
+      -3.0
+     ],
+     "size": [
+      1.0,
+      2.0,
+      8.0
+     ],
+     "uv": [
+      0,
+      42
+     ],
+     "mirror": false,
+     "dilation": [
+      0.02,
+      0.02,
+      0.02
+     ]
+    }
+   ]
+  },
+  {
+   "name": "fin_top_3",
+   "parent": "head",
+   "team": true,
+   "tag": "helm",
+   "stages": [
+    4
+   ],
+   "sheet": [
+    64,
+    64
+   ],
+   "pivot": [
+    0,
+    0,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "boxes": [
+    {
+     "origin": [
+      -0.5,
+      -14.0,
+      -3.0
+     ],
+     "size": [
+      1.0,
+      2.0,
+      8.0
+     ],
+     "uv": [
+      18,
+      42
+     ],
+     "mirror": false,
+     "dilation": [
+      0.02,
+      0.02,
+      0.02
+     ]
+    }
+   ]
+  },
+  {
+   "name": "fin_top_4",
+   "parent": "head",
+   "team": true,
+   "tag": "helm",
+   "stages": [
+    5
+   ],
+   "sheet": [
+    64,
+    64
+   ],
+   "pivot": [
+    0,
+    0,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "boxes": [
+    {
+     "origin": [
+      -0.5,
+      -14.0,
+      -3.0
+     ],
+     "size": [
+      1.0,
+      2.0,
+      8.0
+     ],
+     "uv": [
+      36,
+      42
+     ],
+     "mirror": false,
+     "dilation": [
+      0.02,
+      0.02,
+      0.02
+     ]
+    }
+   ]
+  },
+  {
+   "name": "fin_tall",
+   "parent": "head",
+   "team": true,
+   "tag": "helm",
+   "stages": [
+    5
+   ],
+   "sheet": [
+    64,
+    64
+   ],
+   "pivot": [
+    0,
+    0,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "boxes": [
+    {
+     "origin": [
+      -0.5,
+      -16.0,
+      -1.5
+     ],
+     "size": [
+      1.0,
+      2.0,
+      5.0
+     ],
+     "uv": [
+      0,
+      52
+     ],
+     "mirror": false,
+     "dilation": [
+      0.0,
+      0.0,
+      0.0
+     ]
+    }
+   ]
+  },
+  {
+   "name": "nape_spine",
+   "parent": "head",
+   "team": false,
+   "tag": "helm",
+   "stages": [],
+   "sheet": [
+    64,
+    32
+   ],
+   "pivot": [
+    0,
+    0,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "boxes": [
+    {
+     "origin": [
+      -0.5,
+      -8.0,
+      5.0
+     ],
+     "size": [
+      1.0,
+      6.0,
+      1.0
+     ],
+     "uv": [
+      40,
+      0
+     ],
+     "mirror": false,
+     "dilation": [
+      0.0,
+      0.0,
+      0.0
+     ]
+    }
+   ]
+  }
+ ]
+}

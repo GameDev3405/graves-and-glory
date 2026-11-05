@@ -14,10 +14,18 @@ public final class UiCanvas {
 
     static Window window() { return MinecraftClient.getInstance().getWindow(); }
 
-    /** Screen pixels per canvas pixel, from the effective GUI scale, so GUI Scale Auto (stored as 0) works. */
+    /** Screen pixels per canvas pixel, from the effective GUI scale, so GUI Scale Auto (stored as 0) works. On a War Table page that
+     *  fills the window (CampScreen.fillsWindow: every War Table page; and the Armoury, RecruitmentScreen's tab 1) it is UiMath.pageScale, else UiMath.pixelScale. */
     public static int k() {
         Window w = window();
-        return UiMath.pixelScale(w.getFramebufferWidth(), w.getFramebufferHeight(), (int) w.getScaleFactor());
+        int fw = w.getFramebufferWidth(), fh = w.getFramebufferHeight(), gui = (int) w.getScaleFactor();
+        return fillsWindow() ? UiMath.pageScale(fw, fh, gui) : UiMath.pixelScale(fw, fh, gui);
+    }
+
+    /** True while the screen shown is drawn at UiMath.pageScale: a War Table page, or the Armoury in its War Table dress. */
+    public static boolean fillsWindow() {
+        var screen = MinecraftClient.getInstance().currentScreen;
+        return screen instanceof CampScreen s && s.fillsWindow() || screen instanceof RecruitmentScreen r && r.tab == 1;
     }
 
     public static int width() { return window().getFramebufferWidth() / k(); }

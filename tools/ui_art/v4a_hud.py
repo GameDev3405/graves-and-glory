@@ -478,7 +478,6 @@ GLYPHS = {
     'g-attack':     ['......kkk', '.....kLLk', '....kLLk.', '.k.kLLk..', '.kkLLk...', '..kkk....', '.kkkkk...', 'kkk.kk...', 'kk.......'],
     'g-hold':       ['kkkkkkkkk', 'kLLLkLLLk', 'kLLLkLLLk', 'kkkkkkkkk', 'kLLLkLLLk', '.kLLkLLk.', '..kLkLk..', '...kkk...', '....k....'],
     'g-follow':     ['k...k....', 'kk..kk...', '.kk..kk..', '..kk..kk.', '...kk..kk', '..kk..kk.', '.kk..kk..', 'kk..kk...', 'k...k....'],
-    'g-shieldwall': ['.k..k..k.', '.k..k..k.', 'kkkkkkkkk', 'kLkkLkkLk', 'kLkkLkkLk', 'kLkkLkkLk', '.k..k..k.', '.........', '.........'],
     'g-line':       ['.........', '.........', '.k.k.k.k.', 'kkkkkkkkk', '.k.k.k.k.', '.k.k.k.k.', '.........', '.........', '.........'],
     'g-compact':    ['kk.kk.kk.', 'kk.kk.kk.', '.........', 'kk.kk.kk.', 'kk.kk.kk.', '.........', 'kk.kk.kk.', 'kk.kk.kk.', '.........'],
     'g-fight':      ['k.......k', 'kk.....kk', '.kk...kk.', '..kk.kk..', '...kkk...', '..kk.kk..', 'kkk...kkk', '.k.....k.', 'k.......k'],

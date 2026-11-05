@@ -1,0 +1,21 @@
+{
+ "troop": "tc_mist",
+ "note": "Tidecaller Mist Caller (unit identity, Tidecallers): a drowned priest of the fog in a deep sea-blue robe to the ground, a pale barnacle rune band round the hem (the signature), a barnacle-crusted shoulder mantle, a deep hood over a grey face with sea-foam glow eyes, wide bell sleeves, kelp trailing from the hood, cuffs, belt and hem, a rope cord with a conch charm, a driftwood rod with a conch in the right hand, a team sash with a barry-wavy tail. Tier II bronze mantle plate and bracers; tier III deep sea-blue plate, mist strips and a pearl-topped rod. No back flag.",
+ "rig": "biped",
+ "size": [
+  128,
+  128
+ ],
+ "density": 1,
+ "bones": [],
+ "idleArms": "hang",
+ "parts": [],
+ "skins": {
+  "1": "tc_mist_s1.png",
+  "2": "tc_mist_s2.png",
+  "3": "tc_mist_s3.png"
+ },
+ "weapon": "none",
+ "hand": "right",
+ "portrait": "standard"
+}

@@ -7,8 +7,9 @@ import java.util.*;
 import java.util.function.Function;
 
 /**
- * The one-time upgrade of a schema-1 commander profile (Dawn and Dusk, 12 troops) to schema 2 (spec 6.3). Pure: JSON goes
- * through the parse and write functions the caller passes, so the standalone ProfileMigrationCheck needs no Gson.
+ * The one-time upgrades of a commander profile: schema 1 (Dawn and Dusk, 12 troops) to schema 2 (spec 6.3), and schema 2 to
+ * schema 3 (plan 2C.3: the Long March battles won and bonuses paid), schema 3 to 4 (commander gear) and schema 4 to 5 (custom groups). Pure: JSON goes through the parse and write functions the
+ * caller passes, so the standalone ProfileMigrationCheck needs no Gson.
  */
 public final class ProfileMigration {
     private ProfileMigration() {}
@@ -56,6 +57,7 @@ public final class ProfileMigration {
      */
     static Profile toV2(V1 v1, RosterMath.Catalog c) {
         Profile p = new Profile();
+        p.schema = 2; // the schema-2 image; v2toV3 takes it to 3
         p.gold = v1.gold;
         p.matches = v1.matches;
         p.wins = v1.wins;
@@ -108,26 +110,91 @@ public final class ProfileMigration {
     }
 
     /**
-     * Upgrades one profile file in place when it is schema 1, and returns the new profile; returns null when the file is
-     * already schema 2 or later. The original bytes are kept once as <uuid>.v1.json (an existing copy is never replaced),
-     * then the new file is written to <uuid>.tmp and moved over the original. A parse failure throws
-     * IllegalStateException and touches no file.
+     * Schema 2 to 3 (Phase 4 spec 12), in place, and returns the same profile: battlesWon gains every row whose order is at most
+     * campaignCleared (a schema-2 profile could only clear battles in order); bonusClaimed starts empty, since no bonus existed before.
+     * Every schema-2 field is kept as it is, the Pact count (writs) and writChapters included. Sets schema 3.
      */
-    static Profile upgradeFile(Path file, Function<String, V1> parse, Function<Profile, String> write, RosterMath.Catalog c) throws IOException {
+    static Profile v2toV3(Profile p, Spec.CampaignBattlesRow[] rows) {
+        if (p.battlesWon == null) p.battlesWon = new LinkedHashSet<>();
+        if (p.bonusClaimed == null) p.bonusClaimed = new LinkedHashSet<>();
+        for (var row : MarchMath.byOrder(rows)) if (row.order() <= p.campaignCleared) p.battlesWon.add(row.id());
+        p.schema = 3;
+        return p;
+    }
+
+    /**
+     * Schema 3 to 4 (commander gear spec), in place, and returns the same profile: forgeMarks and gearPity start at 0, inventorySize at the
+     * Forge's start size, and the starter set of the commander's role is granted once (only when the profile holds no gear yet, so a
+     * second run adds nothing). Every schema-3 field is kept as it is; the class refund is 0. Sets schema 4.
+     */
+    static Profile v3toV4(Profile p) {
+        p.forgeMarks = 0;
+        p.gearPity = 0;
+        p.inventorySize = Spec.FORGE[0].startSlots();
+        if (p.gear == null) p.gear = new ArrayList<>();
+        if (p.equipped == null) p.equipped = new LinkedHashMap<>();
+        if (p.relics == null) p.relics = new LinkedHashSet<>();
+        if (p.relicSlots == null) p.relicSlots = new ArrayList<>(List.of("", "", ""));
+        if (p.gear.isEmpty()) Gear.grantStarter(p);
+        p.schema = 4;
+        return p;
+    }
+
+    /**
+     * Schema 4 to 5 (command UI custom groups), in place, and returns the same profile: customGroups starts empty. Every schema-4 field
+     * is kept as it is. Sets schema 5. Runs in Profile.sanitize, so a schema-4 file loads unchanged and the next save writes schema 5
+     * (SafeFiles.writeWithBackup keeps the schema-4 bytes as its .bak).
+     */
+    static Profile v4toV5(Profile p) {
+        p.customGroups = new ArrayList<>();
+        p.schema = 5;
+        return p;
+    }
+
+    /**
+     * Upgrades one profile file in place when it is below schema 4, and returns the new profile; returns null when the file is already
+     * schema 4 or later. The file's schema is read first (parse: a file with no schema field reads 0, meaning 1). Schema 1 runs toV2,
+     * v2toV3 and then v3toV4; schema 2 is read whole (parseV2) and runs v2toV3 and v3toV4; schema 3 is read whole and runs v3toV4. The
+     * original bytes are kept once as <uuid>.v1.json, .v2.json or .v3.json by the schema they hold, and each intermediate image is kept
+     * once too (a schema-1 file also keeps its schema-2 and schema-3 images, a schema-2 file its schema-3 image); an existing copy is never
+     * replaced. The new file is written to <uuid>.tmp and moved over the original. A parse failure throws IllegalStateException and
+     * touches no file. The caller sanitizes the result.
+     */
+    static Profile upgradeFile(Path file, Function<String, V1> parse, Function<String, Profile> parseV2, Function<Profile, String> write, RosterMath.Catalog c) throws IOException {
         byte[] original = Files.readAllBytes(file);
+        String source = new String(original, StandardCharsets.UTF_8);
         V1 v1;
+        Profile p;
         try {
-            v1 = parse.apply(new String(original, StandardCharsets.UTF_8));
+            v1 = parse.apply(source);
+            if (v1 == null) throw new IllegalStateException("Commander profile is empty; it was left unchanged: " + file.getFileName());
+            if (v1.schema >= 4) return null;
+            p = v1.schema >= 2 ? parseV2.apply(source) : null;
+        } catch (IllegalStateException e) {
+            throw e;
         } catch (RuntimeException e) {
             throw new IllegalStateException("Commander profile could not be read; it was left unchanged: " + file.getFileName(), e);
         }
-        if (v1 == null) throw new IllegalStateException("Commander profile is empty; it was left unchanged: " + file.getFileName());
-        if (v1.schema >= 2) return null;
-        Profile p = toV2(v1, c);
-        String text = write.apply(p);
         String name = file.getFileName().toString(), stem = name.endsWith(".json") ? name.substring(0, name.length() - 5) : name;
-        Path backup = file.resolveSibling(stem + ".v1.json"), tmp = file.resolveSibling(stem + ".tmp");
-        if (!Files.exists(backup)) Files.write(backup, original, StandardOpenOption.CREATE_NEW);
+        Path v1Backup = file.resolveSibling(stem + ".v1.json"), v2Backup = file.resolveSibling(stem + ".v2.json"), v3Backup = file.resolveSibling(stem + ".v3.json"), tmp = file.resolveSibling(stem + ".tmp");
+        int schema = Math.max(1, v1.schema);
+        byte[] v2Bytes = null, v3Bytes = null;
+        if (schema < 2) {
+            p = toV2(v1, c);
+            v2Bytes = write.apply(p).getBytes(StandardCharsets.UTF_8);
+        } else {
+            if (p == null) throw new IllegalStateException("Commander profile is empty; it was left unchanged: " + file.getFileName());
+            if (schema == 2) v2Bytes = original;
+        }
+        if (schema < 3) {
+            v3Bytes = write.apply(v2toV3(p, Spec.CAMPAIGNBATTLES)).getBytes(StandardCharsets.UTF_8);
+        } else {
+            v3Bytes = original;
+        }
+        String text = write.apply(v3toV4(p));
+        if (schema < 2 && !Files.exists(v1Backup)) Files.write(v1Backup, original, StandardOpenOption.CREATE_NEW);
+        if (v2Bytes != null && !Files.exists(v2Backup)) Files.write(v2Backup, v2Bytes, StandardOpenOption.CREATE_NEW);
+        if (!Files.exists(v3Backup)) Files.write(v3Backup, v3Bytes, StandardOpenOption.CREATE_NEW);
         Files.writeString(tmp, text);
         try {
             Files.move(tmp, file, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
@@ -135,5 +202,14 @@ public final class ProfileMigration {
             Files.move(tmp, file, StandardCopyOption.REPLACE_EXISTING);
         }
         return p;
+    }
+
+    /**
+     * Writes a profile through SafeFiles.writeWithBackup unless it came from a newer build (Profile.readOnly): then nothing is written, so the
+     * newer file, its backup and everything beside it stay as they are. The caller's in-memory changes last only for the session.
+     */
+    static void saveProfile(Profile p, java.nio.file.Path file, String json) throws java.io.IOException {
+        if (p.readOnly) return;
+        SafeFiles.writeWithBackup(file, json);
     }
 }

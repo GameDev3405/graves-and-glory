@@ -9,15 +9,27 @@
       "gg.gravesandglory.testing.LocalIntegration",
       "gg.gravesandglory.StructureStudio",
       "gg.gravesandglory.BotSimulation",
-      "gg.gravesandglory.DuelSimulation"
+      "gg.gravesandglory.DuelSimulation",
+      "gg.gravesandglory.MapForge",
+      "gg.gravesandglory.ZombieReinforcementProbe",
+      "gg.gravesandglory.PerfProbe",
+      "gg.gravesandglory.SliceProbe",
+      "gg.gravesandglory.RewardDriver"
     ],
     "client": [
       "gg.gravesandglory.testing.LocalVisualInspection",
       "gg.gravesandglory.CommandPlaytest",
       "gg.gravesandglory.CompatibilityChecks",
+      "gg.gravesandglory.ConnectOnStart",
+      "gg.gravesandglory.ServerKitSmoke",
+      "gg.gravesandglory.PerfClient",
+      "gg.gravesandglory.PerfIntegrated",
+      "gg.gravesandglory.SliceClient",
       "gg.gravesandglory.FrontMenuChecks",
       "gg.gravesandglory.CampaignChecks",
       "gg.gravesandglory.MapTour",
+      "gg.gravesandglory.MapWalk",
+      "gg.gravesandglory.MapForgeHarness",
       "gg.gravesandglory.SelfTestHost",
       "gg.gravesandglory.CampRedesignChecks",
       "gg.gravesandglory.CampNetworkChecks",
@@ -25,6 +37,9 @@
       "gg.gravesandglory.RankNetworkChecks",
       "gg.gravesandglory.Phase1Checks",
       "gg.gravesandglory.Phase2Checks",
+      "gg.gravesandglory.Phase4Checks",
+      "gg.gravesandglory.CommandUiChecks",
+      "gg.gravesandglory.FeedbackMate",
       "gg.gravesandglory.TitleDemos",
       "gg.gravesandglory.StoryStills"
     ]

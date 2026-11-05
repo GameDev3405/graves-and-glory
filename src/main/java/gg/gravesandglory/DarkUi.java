@@ -13,6 +13,8 @@ final class DarkUi {
     static final int DAWN=0xff5fb3ad, DUSK=0xffa07cc2, DUSK_TEXT=0xffb99ad6, VELLUM=0xffe6d9b8, CHARCOAL=0xff1a2125, OAK0=0xff160c0d;
     /** The floor a canvas larger than the War Table shows round the planks: the kit's deepest iron (tools/ui_art/v4pal.IRON[0]). */
     static final int FLOOR=0xff0b0d0f;
+    /** Accessibility cues (UI task 4F.5): the keyboard-focus ring's two dashes (brass and iron, so one shows on dark and on vellum) and the disabled veil's scanline. */
+    static final int FOCUS_DASH=0xffdfbd77, FOCUS_GAP=0xff1a1410, DISABLED_LINE=0x55231a12, DISABLED_EDGE=0xff2c3438;
     /** A troop not yet recruited, as the muster roll's portraits show it: the flat silhouette the mock's portraits are painted in
      *  (tools/ui_art/v4a_portrait.py, sil). */
     static final int SILHOUETTE=0xff46555b;
@@ -29,7 +31,7 @@ final class DarkUi {
     // Screen inks: the map screen's scrim, the entrance letterbox, the band over the battle preview and the chapter bar's track.
     static final int SCRIM=0xee0c1420, LETTERBOX=0xff080c13, PREVIEW_BAND=0xdd172126, TRACK=0xff29383c;
     /** Phase 2's troop page, cards and House tabs in CampScreen, under the UI standard (integration-0.5; the values Phase 2 drew): the rarity inks, the card's accent shade and fade, the dim of a troop not owned, the House tab fills and edge, and the opaque alpha a House accent takes. */
-    static final int RARE_INK=0xff8fb8d8, EPIC_INK=0xffc79be0, CARD_SHADE=0x33000000, CARD_FADE=0x00181820, CARD_DIM=0x99111119, TAB_CHOSEN=0xff30474a, TAB_FOCUS=0xff39464b, TAB_IDLE=0xff252f34, TAB_EDGE=0xff455156, OPAQUE=0xff000000;
+    static final int RARE_INK=0xff8fb8d8, EPIC_INK=0xffc79be0, CARD_SHADE=0x33000000, DROP_VEIL=0x77160c0d, DROP_DIM=0xaa160c0d, DROP_LIFT=0x66000000, CARD_FADE=0x00181820, CARD_DIM=0x99111119, TAB_CHOSEN=0xff30474a, TAB_FOCUS=0xff39464b, TAB_IDLE=0xff252f34, TAB_EDGE=0xff455156, OPAQUE=0xff000000;
     static final Identifier TITLE=new Identifier("gravesandglory","title"), FOCAL=new Identifier("gravesandglory","focal"), BODY=new Identifier("gravesandglory","body"), SMALL=new Identifier("gravesandglory","small");
     /** The Lato body style: body and label draw in it. */
     static final Style BODY_STYLE=Style.EMPTY.withFont(BODY);
@@ -53,6 +55,20 @@ final class DarkUi {
         return row!=null?row:Spec.FACTIONS[team];
     }
     /** A team's side colour, opaque; muted for no team. Always paired with its glyph (teamMark), never alone. */
+    /** Whether the keyboard, not the pointer, holds this widget's focus: the only time the focus ring draws (a hover and a click keep their own looks). */
+    static boolean keyboardFocus(net.minecraft.client.gui.widget.ClickableWidget w){return w.isFocused()&&w.active&&w.visible&&MinecraftClient.getInstance().getNavigationType().isKeyboard();}
+    /** The keyboard-focus ring (4F.5): a 1 px dashed ring 2 px outside the box, two px of brass and two of iron in turn, so it reads on dark plates and on vellum alike and apart from the hover look. */
+    static void focusRing(DrawContext g,int x,int y,int w,int h){
+        int x0=x-2,y0=y-2,x1=x+w+2,y1=y+h+2;
+        for(int i=x0;i<x1;i++){int c=((i-x0)/2&1)==0?FOCUS_DASH:FOCUS_GAP;g.fill(i,y0,i+1,y0+1,c);g.fill(i,y1-1,i+1,y1,c);}
+        for(int j=y0+1;j<y1-1;j++){int c=((j-y0)/2&1)==0?FOCUS_DASH:FOCUS_GAP;g.fill(x0,j,x0+1,j+1,c);g.fill(x1-1,j,x1,j+1,c);}
+    }
+    /** focusRing round a widget's own GUI box, when the keyboard holds its focus. */
+    static void focus(DrawContext g,net.minecraft.client.gui.widget.ClickableWidget w){if(keyboardFocus(w))focusRing(g,w.getX(),w.getY(),w.getWidth(),w.getHeight());}
+    /** The disabled veil (4F.5): a scanline over every other row of a box, so a plate that cannot be pressed reads as dimmed by its texture, not by a shade of ink alone. */
+    static void disabledVeil(DrawContext g,int x,int y,int w,int h){for(int j=y;j<y+h;j+=2)g.fill(x,j,x+w,j+1,DISABLED_LINE);}
+    /** A House accent (rgb) as an opaque colour. */
+    static int opaque(int rgb){return 0xff000000|rgb;}
     static int teamColor(int team){var f=side(team);return f==null?MUTED:0xff000000|f.color();}
     /** A team's side in one word, the first of its name (Gold, Violet, Crimson, Teal); Neutral for no team. */
     static String teamText(int team){var f=side(team);if(f==null)return "Neutral";int space=f.name().indexOf(' ');return space<0?f.name():f.name().substring(0,space);}
@@ -70,11 +86,11 @@ final class DarkUi {
     }
     /** The width houseMark draws for a tier: the 16 px glyph, a gap and the numeral. */
     static int houseMarkWidth(int tier){return 19+MinecraftClient.getInstance().textRenderer.getWidth(MatchStats.roman(tier));}
-    /** A House's 16x16 glyph (houses.glyph) with its trait tier in Roman numerals beside it, in the House's accent. Nothing is drawn for a House the sheet lacks. */
+    /** A House's 16x16 glyph (houses.glyph) with its trait tier in Roman numerals beside it, in the accent's text ink (UiMath.accentText). Nothing is drawn for a House the sheet lacks. */
     static void houseMark(DrawContext g,String house,int tier,int x,int y){
         Spec.HousesRow row=null;for(var h:Spec.HOUSES)if(h.id().equals(house))row=h;if(row==null)return;
         g.drawTexture(new Identifier(row.glyph()),x,y,0f,0f,16,16,16,16);
-        g.drawTextWithShadow(MinecraftClient.getInstance().textRenderer,MatchStats.roman(tier),x+19,y+4,0xff000000|row.accent());
+        g.drawTextWithShadow(MinecraftClient.getInstance().textRenderer,MatchStats.roman(tier),x+19,y+4,UiMath.accentText(row.accent()));
     }
     private static final String[] DOT={".xxx.","xxxxx","xxxxx","xxxxx",".xxx."};
     private static final String[] RING={".xxx.","x...x","x...x","x...x",".xxx."};
@@ -94,7 +110,7 @@ final class DarkUi {
         g.fill(0,67,w,68,0xff394246);
     }
     static void frame(DrawContext g,int x,int y,int w,int h){
-        g.fill(x,y,x+w,y+h,0xee1a2125);
+        g.fill(x,y,x+w,y+h,UiMath.PANEL_FILL);
         g.drawBorder(x,y,w,h,0xff394246);
     }
     static Text body(String text){return Text.literal(text).setStyle(BODY_STYLE);}
@@ -120,8 +136,12 @@ final class DarkUi {
         for(int i=0;i<size/4;i++)g.fill(x+i,y+size*3/4+i,x+size-i,y+size*3/4+i+1,EDGE);
         g.fill(x+2,y+2,x+size-2,y+size*3/4,col);
         for(int i=2;i<size/4;i++)g.fill(x+i,y+size*3/4+i-2,x+size-i,y+size*3/4+i-1,col);
-        g.fill(x+size/2-1,y+4,x+size/2+1,y+size-3,PAPER);
-        g.fill(x+4,y+size/3,x+size-4,y+size/3+2,PAPER);
+        if(dusk){ // a saltire for the dusk side, a cross for dawn: the shape tells the sides apart as the colour does (4F.5)
+            int span=size-9;for(int i=0;i<=span;i++){int px=x+4+i,py=y+4+i*(size*3/4-6)/Math.max(1,span);g.fill(px,py,px+2,py+2,PAPER);int qx=x+size-6-i;g.fill(qx,py,qx+2,py+2,PAPER);}
+        }else{
+            g.fill(x+size/2-1,y+4,x+size/2+1,y+size-3,PAPER);
+            g.fill(x+4,y+size/3,x+size-4,y+size/3+2,PAPER);
+        }
     }
     static void mapSeal(DrawContext g,int x,int y,int n){
         g.fill(x,y,x+24,y+20,0xff15171b);g.drawBorder(x,y,24,20,EDGE);
@@ -136,6 +156,7 @@ final class DarkUi {
         @Override public void renderButton(DrawContext g,int mx,int my,float delta){
             int x=getX(),y=getY();frame(g,x,y,width,height);boolean selected=CampaignClient.map==index;
             if(selected||active&&(isHovered()||isFocused()))g.drawBorder(x+1,y+1,width-2,height-2,GOLD);
+            focus(g,this);
             mapSeal(g,x+6,y+5,index);var font=MinecraftClient.getInstance().textRenderer;
             g.drawTextWithShadow(font,font.trimToWidth(getMessage().getString(),width-44),x+36,y+9,active?PAPER:MUTED);
             String[] labels={"River town / three crossings","Fortress / supply roads","Snow / sheltered passes","Forest / old causeways","Plains / five points, two flanks"};g.drawText(font,font.trimToWidth(labels[index],width-12),x+6,y+28,MUTED,false);

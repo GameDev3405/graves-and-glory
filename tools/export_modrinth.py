@@ -7,8 +7,11 @@ import sys
 import urllib.parse
 import zipfile
 from release_config import ROOT, version, source_identity, validate_player_jar
+from release_files import resolve_local_path, mrpack_summary
 import build_skins
 
+MINECRAFT_VERSION='1.20.1'
+FABRIC_LOADER='0.16.14'  # the pin export_curseforge.py reuses
 ALLOWED_HOSTS={'cdn.modrinth.com','github.com','raw.githubusercontent.com','gitlab.com'}
 
 def validate_index(index):
@@ -30,6 +33,17 @@ def validate_index(index):
         for side in ('client','server'):
             if file['env'][side] not in ('required','unsupported','optional'):raise ValueError('Invalid environment')
 
+def locked_files(rows,root):
+    """Index entries for every pinned file (mods, shaders, resource packs); refuse when a local file differs from its pin."""
+    files=[]
+    for row in rows:
+        data=resolve_local_path(root,row['localPath']).read_bytes()
+        if hashlib.sha512(data).hexdigest()!=row['hashes']['sha512']:raise RuntimeError('Platform lock is stale: '+row['slug'])
+        folder={'mod':'mods','shader':'shaderpacks','resourcepack':'resourcepacks'}[row['kind']]
+        files.append({'path':folder+'/'+row['fileName'],'hashes':row['hashes'],
+                      'downloads':row['downloads'],'fileSize':len(data),'env':row['env']})
+    return files
+
 def export(argv=()):
     # The tier art gate first, as tools/package.py runs it (design 4.4; Task 9 review I2): refuse while a troop draws a stopgap
     # tier unless --allow-stopgap, which marks the .mrpack -stopgap and takes only the -stopgap player archive.
@@ -38,14 +52,9 @@ def export(argv=()):
     validate_player_jar(jar,source_identity())
     rows=json.loads((ROOT/'dependencies/platform-lock.json').read_text(encoding='utf8'))
     index={'formatVersion':1,'game':'minecraft','versionId':release,'name':'Graves and Glory',
-           'summary':'Collect an army and command fantasy battles. Local release candidate.',
-           'dependencies':{'minecraft':'1.20.1','fabric-loader':'0.16.14'},'files':[]}
-    for row in rows:
-        path=ROOT/row['localPath'];data=path.read_bytes()
-        if hashlib.sha512(data).hexdigest()!=row['hashes']['sha512']:raise RuntimeError('Platform lock is stale: '+row['slug'])
-        folder={'mod':'mods','shader':'shaderpacks','resourcepack':'resourcepacks'}[row['kind']]
-        index['files'].append({'path':folder+'/'+row['fileName'],'hashes':row['hashes'],
-                               'downloads':row['downloads'],'fileSize':len(data),'env':row['env']})
+           'summary':mrpack_summary(release),
+           'dependencies':{'minecraft':MINECRAFT_VERSION,'fabric-loader':FABRIC_LOADER},'files':[]}
+    index['files']=locked_files(rows,ROOT)
     validate_index(index)
     manifest=json.loads((ROOT/'dist/package-manifest.json').read_text())
     archive=ROOT/'dist'/build_skins.release_archive(manifest,release,stopgap,'export_modrinth')

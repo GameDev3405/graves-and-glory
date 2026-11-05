@@ -1,0 +1,138 @@
+{
+ "baseY": 64,
+ "depth": 500,
+ "format": 1,
+ "id": "frostmarch",
+ "name": "Frostmarch Pass",
+ "objects": [
+  {
+   "by": "kort",
+   "id": "spawn-dawn",
+   "kind": "spawn",
+   "state": "accepted",
+   "team": "dawn",
+   "x": 67,
+   "z": 250
+  },
+  {
+   "by": "kort",
+   "id": "spawn-dusk",
+   "kind": "spawn",
+   "state": "accepted",
+   "team": "dusk",
+   "x": 633,
+   "z": 250
+  },
+  {
+   "by": "kort",
+   "id": "point-caravan-refuge",
+   "kind": "point",
+   "name": "Caravan Refuge",
+   "radius": 17,
+   "state": "accepted",
+   "x": 313,
+   "z": 95
+  },
+  {
+   "by": "kort",
+   "id": "point-pass-crossing",
+   "kind": "point",
+   "name": "Pass Crossing",
+   "radius": 17,
+   "state": "accepted",
+   "x": 350,
+   "z": 250
+  },
+  {
+   "by": "kort",
+   "id": "point-signal-ridge",
+   "kind": "point",
+   "name": "Signal Ridge",
+   "radius": 17,
+   "state": "accepted",
+   "x": 387,
+   "z": 405
+  },
+  {
+   "by": "kort",
+   "id": "mode-convoy_frostmarch_road_0",
+   "kind": "note",
+   "radius": 4,
+   "state": "accepted",
+   "text": "Convoy: road (road, stage 0) - starting position, Kort designs the rest",
+   "x": 120,
+   "z": 250
+  },
+  {
+   "by": "kort",
+   "id": "mode-convoy_frostmarch_road_1",
+   "kind": "note",
+   "radius": 4,
+   "state": "accepted",
+   "text": "Convoy: road (road, stage 1) - starting position, Kort designs the rest",
+   "x": 322,
+   "z": 250
+  },
+  {
+   "by": "kort",
+   "id": "mode-convoy_frostmarch_road_2",
+   "kind": "note",
+   "radius": 4,
+   "state": "accepted",
+   "text": "Convoy: Pass Crossing (road, stage 2) - starting position, Kort designs the rest",
+   "x": 382,
+   "z": 250
+  },
+  {
+   "by": "kort",
+   "id": "mode-convoy_frostmarch_road_3",
+   "kind": "note",
+   "radius": 4,
+   "state": "accepted",
+   "text": "Convoy: road (road, stage 3) - starting position, Kort designs the rest",
+   "x": 450,
+   "z": 280
+  },
+  {
+   "by": "kort",
+   "id": "mode-convoy_frostmarch_road_4",
+   "kind": "note",
+   "radius": 4,
+   "state": "accepted",
+   "text": "Convoy: Signal Ridge (road, stage 4) - starting position, Kort designs the rest",
+   "x": 500,
+   "z": 310
+  },
+  {
+   "by": "kort",
+   "id": "mode-convoy_frostmarch_road_5",
+   "kind": "note",
+   "radius": 4,
+   "state": "accepted",
+   "text": "Convoy: road (road, stage 5) - starting position, Kort designs the rest",
+   "x": 570,
+   "z": 280
+  },
+  {
+   "by": "kort",
+   "id": "mode-convoy_frostmarch_road_6",
+   "kind": "note",
+   "radius": 4,
+   "state": "accepted",
+   "text": "Convoy: The Refuge (road, stage 6) - starting position, Kort designs the rest",
+   "x": 630,
+   "z": 250
+  },
+  {
+   "by": "kort",
+   "id": "mode-convoy_frostmarch_dusk_base",
+   "kind": "note",
+   "radius": 4,
+   "state": "accepted",
+   "text": "Convoy: Dusk muster (base, stage 1) - starting position, Kort designs the rest",
+   "x": 605,
+   "z": 186
+  }
+ ],
+ "width": 700
+}

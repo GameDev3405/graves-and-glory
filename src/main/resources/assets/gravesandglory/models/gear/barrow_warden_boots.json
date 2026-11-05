@@ -1,0 +1,381 @@
+{
+ "format": 1,
+ "item": "barrow_warden_boots",
+ "slot": "boots",
+ "density": 1,
+ "size": [
+  32,
+  32
+ ],
+ "cloth": "gravesandglory:textures/entity/gear/barrow_warden_boots/team_cloth_",
+ "skins": {
+  "1": "gravesandglory:textures/entity/gear/barrow_warden_boots/barrow_warden_boots_r1.png",
+  "2": "gravesandglory:textures/entity/gear/barrow_warden_boots/barrow_warden_boots_r2.png",
+  "3": "gravesandglory:textures/entity/gear/barrow_warden_boots/barrow_warden_boots_r3.png",
+  "4": "gravesandglory:textures/entity/gear/barrow_warden_boots/barrow_warden_boots_r4.png",
+  "5": "gravesandglory:textures/entity/gear/barrow_warden_boots/barrow_warden_boots_r5.png"
+ },
+ "glow": {},
+ "bones": [
+  {
+   "name": "boot_r",
+   "parent": "right_leg",
+   "team": false,
+   "tag": "boots",
+   "stages": [],
+   "sheet": [
+    32,
+    32
+   ],
+   "pivot": [
+    0,
+    0,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "boxes": [
+    {
+     "origin": [
+      -2.5000000000000004,
+      7.75,
+      -2.5
+     ],
+     "size": [
+      5.0,
+      4.0,
+      5.0
+     ],
+     "uv": [
+      0,
+      11
+     ],
+     "mirror": false,
+     "dilation": [
+      0.02,
+      0.02,
+      0.02
+     ]
+    }
+   ]
+  },
+  {
+   "name": "boot_l",
+   "parent": "left_leg",
+   "team": false,
+   "tag": "boots",
+   "stages": [],
+   "sheet": [
+    32,
+    32
+   ],
+   "pivot": [
+    0,
+    0,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "boxes": [
+    {
+     "origin": [
+      -2.9999999999999996,
+      7.0,
+      -3.0
+     ],
+     "size": [
+      6.0,
+      5.0,
+      6.0
+     ],
+     "uv": [
+      0,
+      0
+     ],
+     "mirror": false,
+     "dilation": [
+      0.0,
+      0.0,
+      0.0
+     ]
+    }
+   ]
+  },
+  {
+   "name": "claw0_r",
+   "parent": "right_leg",
+   "team": false,
+   "tag": "boots",
+   "stages": [],
+   "sheet": [
+    32,
+    32
+   ],
+   "pivot": [
+    0,
+    0,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "boxes": [
+    {
+     "origin": [
+      1.2,
+      11.0,
+      -3.75
+     ],
+     "size": [
+      1.0,
+      1.0,
+      1.0
+     ],
+     "uv": [
+      20,
+      11
+     ],
+     "mirror": false,
+     "dilation": [
+      0.0,
+      0.0,
+      0.0
+     ]
+    }
+   ]
+  },
+  {
+   "name": "claw0_l",
+   "parent": "left_leg",
+   "team": false,
+   "tag": "boots",
+   "stages": [],
+   "sheet": [
+    32,
+    32
+   ],
+   "pivot": [
+    0,
+    0,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "boxes": [
+    {
+     "origin": [
+      -2.2,
+      11.0,
+      -3.75
+     ],
+     "size": [
+      1.0,
+      1.0,
+      1.0
+     ],
+     "uv": [
+      24,
+      11
+     ],
+     "mirror": false,
+     "dilation": [
+      0.02,
+      0.02,
+      0.02
+     ]
+    }
+   ]
+  },
+  {
+   "name": "claw1_r",
+   "parent": "right_leg",
+   "team": false,
+   "tag": "boots",
+   "stages": [],
+   "sheet": [
+    32,
+    32
+   ],
+   "pivot": [
+    0,
+    0,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "boxes": [
+    {
+     "origin": [
+      -0.5,
+      11.0,
+      -3.75
+     ],
+     "size": [
+      1.0,
+      1.0,
+      1.0
+     ],
+     "uv": [
+      28,
+      11
+     ],
+     "mirror": false,
+     "dilation": [
+      0.0,
+      0.0,
+      0.0
+     ]
+    }
+   ]
+  },
+  {
+   "name": "claw1_l",
+   "parent": "left_leg",
+   "team": false,
+   "tag": "boots",
+   "stages": [],
+   "sheet": [
+    32,
+    32
+   ],
+   "pivot": [
+    0,
+    0,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "boxes": [
+    {
+     "origin": [
+      -0.5,
+      11.0,
+      -3.75
+     ],
+     "size": [
+      1.0,
+      1.0,
+      1.0
+     ],
+     "uv": [
+      0,
+      20
+     ],
+     "mirror": false,
+     "dilation": [
+      0.0,
+      0.0,
+      0.0
+     ]
+    }
+   ]
+  },
+  {
+   "name": "claw2_r",
+   "parent": "right_leg",
+   "team": false,
+   "tag": "boots",
+   "stages": [],
+   "sheet": [
+    32,
+    32
+   ],
+   "pivot": [
+    0,
+    0,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "boxes": [
+    {
+     "origin": [
+      -2.1999999999999997,
+      11.0,
+      -3.75
+     ],
+     "size": [
+      1.0,
+      1.0,
+      1.0
+     ],
+     "uv": [
+      4,
+      20
+     ],
+     "mirror": false,
+     "dilation": [
+      0.0,
+      0.0,
+      0.0
+     ]
+    }
+   ]
+  },
+  {
+   "name": "claw2_l",
+   "parent": "left_leg",
+   "team": false,
+   "tag": "boots",
+   "stages": [],
+   "sheet": [
+    32,
+    32
+   ],
+   "pivot": [
+    0,
+    0,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "boxes": [
+    {
+     "origin": [
+      1.1999999999999997,
+      11.0,
+      -3.75
+     ],
+     "size": [
+      1.0,
+      1.0,
+      1.0
+     ],
+     "uv": [
+      8,
+      20
+     ],
+     "mirror": false,
+     "dilation": [
+      0.0,
+      0.0,
+      0.0
+     ]
+    }
+   ]
+  }
+ ]
+}

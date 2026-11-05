@@ -57,7 +57,7 @@ public final class CampaignMaps {
         for(int side:new int[]{-1,1}){
             String palette=side<0?"dawn":"dusk";
             structures.add(s(palette+"_gate","base",side*314,0,20,72,16,palette,64));
-            structures.add(s(palette+"_barracks","barracks",side*286,-side*32,28,24,12,palette,64));
+            int team=side<0?0:1;structures.add(s(palette+"_barracks","barracks",barracksX(selected,team),barracksZ(team),28,24,12,palette,64));
             structures.add(s(palette+"_stores","house",side*287,side*40,18,16,10,"wood",64));
             road(side*286,-32,side*286,40,5);road(side*205,zs[0],side*205,zs[2],4);
             for(int z:new int[]{-85,85}){structures.add(s(palette+"_tower_"+z,"watchtower",side*180,z,11,11,15,palette,67));road(side*180,z,side*205,z,3);}
@@ -103,8 +103,16 @@ public final class CampaignMaps {
         }
         Spec.POINTS=points;Spec.SCENERY=scenery.toArray(Spec.SceneryRow[]::new);
         // Rows 0 and 1 hold the team positions; each keeps its side identity (id, name, colour, glyph).
-        for(int t=0;t<2;t++){var f=Spec.FACTIONS[t];Spec.FACTIONS[t]=new Spec.FactionsRow(f.id(),f.name(),f.color(),f.glyph(),f.dye(),t==0?-283:283,0,t==0?-286:286,t==0?32:-32);}
+        for(int t=0;t<2;t++){var f=Spec.FACTIONS[t];Spec.FACTIONS[t]=new Spec.FactionsRow(f.id(),f.name(),f.color(),f.glyph(),f.dye(),spawnX(selected,t),0,barracksX(selected,t),barracksZ(t));}
+        if(EngineMaps.on(selected))EngineMaps.apply(); // map engine Plan 2: an opt-in engine build replaces this slot
     }
+    /** The spawn x of a team (0 Dawn, 1 Dusk) on a map; every spawn is at z 0. The one source for the team rows, the barracks and the client's map check. Ironhold uses Kort's signed
+     *  D1a values (docs/maps/ironhold/layout-draft-2026-10-30.md, make_manifest.py): Dawn on the siege camp shelf at -314, Dusk in the Donjon Court at 128. Other maps: the camp muster at ±283. */
+    public static int spawnX(int map,int team){if(EngineMaps.on(map))return EngineMaps.spawnX(team);return map==1?(team==0?-314:128):(team==0?-283:283);}
+    /** The barracks of a team: 3 blocks behind its spawn in the camp (±286), except Ironhold's Dawn barracks, which keep their camp place (-286) because the spawn moved onto the gate shelf.
+     *  Ironhold's Dusk barracks hall stands in the Donjon Court, clear of the north supply house. */
+    static int barracksX(int map,int team){return team==0?-286:map==1?spawnX(map,1)+3:286;}
+    static int barracksZ(int team){return team==0?32:-32;}
     /** The fan road from the muster point of a camp (side*290, 0) to a lane head (side*205, z) bends once on the side where the barracks of the camp stand (the Dawn barracks are south of the muster point, the Dusk barracks north of it), at (side*266, -side*12),
      *  so that the road passes the end of the hall 5 blocks off. It used to run straight and into the wall of the barracks. Null: the road is straight. */
     static int[] fanBend(int side,int z){return Integer.signum(z)==-side?new int[]{side*266,-side*12}:null;}

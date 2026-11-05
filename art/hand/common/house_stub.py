@@ -1,0 +1,30 @@
+"""The art/troops/<troop>.json stub and tier I skin that tools/build_skins.py wants beside a hand-authored troop.
+
+The hand builder's outputs() replace everything build_skins would generate for the troop; the catalogue still reads
+art/troops/<troop>.json (troop, rig, size, density, weapon, hand, portrait) and checks that its listed skins exist.
+"""
+import json, os, sys
+HERE = os.path.dirname(os.path.abspath(__file__))
+REPO = os.path.abspath(os.path.join(HERE, "..", "..", ".."))
+
+def write_stub(troop, note):
+    """Write art/troops/<tid>.json and <tid>_s1.png from the troop's own build; call before tools/build_skins.py."""
+    B, skins, _ = troop.build()
+    meta = troop.meta
+    stub = {"troop": troop.tid, "note": note, "rig": meta.get("rig", "biped"), "size": list(troop.skin), "density": 1, "bones": [],
+            "idleArms": meta.get("idleArms", "hang"), "parts": [],
+            "skins": {str(t): "%s_s%d.png" % (troop.tid, t) for t in troop.tiers},
+            "weapon": meta["weapon"], "hand": meta.get("hand", "right"), "portrait": meta.get("portrait", "standard")}
+    if "hunch" in meta: stub["hunch"] = meta["hunch"]
+    folder = os.path.join(REPO, "art", "troops")
+    with open(os.path.join(folder, troop.tid + ".json"), "w", encoding="utf-8", newline="\n") as f:
+        f.write(json.dumps(stub, indent=1) + "\n")
+    for t in troop.tiers:
+        skins[t].save(os.path.join(folder, "%s_s%d.png" % (troop.tid, t)))
+    if getattr(troop, "trim", None) is not None:   # the veteran trim overlay, which build_skins finds by its name
+        troop.trim.save(os.path.join(folder, "%s_veteran.png" % troop.tid))
+
+def main(troop, note, argv):
+    if len(argv) > 1 and argv[1] in ("install", "stub"): write_stub(troop, note)
+    if len(argv) > 1 and argv[1] == "stub": print("stub written for", troop.tid); return   # stub only, no build_skins run
+    troop.main(argv)
