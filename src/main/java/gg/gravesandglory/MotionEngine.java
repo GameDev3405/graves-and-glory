@@ -289,6 +289,31 @@ public final class MotionEngine {
         final double[][] pc = new double[2][2], pcl = new double[2][2], pp = new double[2][2], pNext = new double[2][2], pivotT = new double[2][2];
         final int[] pIdx = new int[2], pNextIdx = new int[2];
         final boolean[] pStance = new boolean[2], pNow = new boolean[2];
+        /**
+         * Anim redo gait (2026-11): whether the rig has the waist and ankle joints (chest, right_foot, left_foot). The biped's
+         * stride then counter-turns the chest, rolls each foot heel to toe on its ankle and keeps the foot's ground point fixed
+         * (MotionFeet.strideAnkle); without them the stride is the one before (TroopMotion sets it from the model's rig).
+         */
+        boolean waist = true;
+        /**
+         * Anim redo gait: each foot's pitch on its ankle (deg, toe down) as last drawn and as it left the ground; its ground
+         * pivot (0 heel, 1 toe); the pivot's ground offset from the sweep in stance and the shin tip's at lift-off (px, x and z);
+         * whether it stood last frame; the stride's own last leg solve (warm start); and whether that state is live.
+         */
+        final double[] footRx = new double[2], footRx0 = new double[2];
+        final int[] footPivot = new int[2];
+        final double[][] footK = new double[2][2], footKs = new double[2][2], footSol = new double[2][3];
+        /** Anim redo gait: a swinging foot's ground offset as last drawn (faded), so a foot that sets down again straight after leaving (a stop's duty grows over it) keeps its place. */
+        final double[][] footKf = new double[2][2];
+        final boolean[] footStance = new boolean[2];
+        boolean footLive;
+        /** Anim redo gait: the heel-to-toe roll's weight, eased with the travel's speed (MotionFeet.ROLL_V), so a foot stood on through a stop sets flat. */
+        double rollW;
+        /** Anim redo gait: strideAnkle's scratch (a foot's channels, a pivot's offset from the shin tip, the pass's ground offsets). */
+        final double[] footT = new double[6], offH = new double[3], offT = new double[3];
+        final double[][] kNow = new double[2][2];
+        final double[] footRxNow = new double[2];
+        final int[] pivNow = new int[2];
     }
 
     /**
@@ -350,6 +375,10 @@ public final class MotionEngine {
         double vF, vL, dyaw, dF, dL;
         /** G1 stride (ground only): its weight, duty, horizontal speed (b/s), and per leg (right, left) the phase in [0, 1), the foot's sweep along the travel (px, forward of the hip) and its swing lift (0 in stance, 1 at mid-swing); liftCap (round 4b) scales a swing foot's corner clearance like its lift on a start. */
         double gaitW, duty, gaitV, liftCap = 1;
+        /** Anim redo gait: the hips' twist this frame (deg, root RY), which each foot turns back so it points along the travel. */
+        double hipYaw;
+        /** Anim redo gait: the travel's forward share in the body's frame (1 forward, -1 a backpedal, 0 a strafe), for the feet's roll. */
+        double travelF = 1;
         final double[] q = new double[2], sweep = new double[2], lift = new double[2];
     }
 

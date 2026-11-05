@@ -582,6 +582,20 @@ final class MotionGrade extends Phase2Checks.Stage {
         }
         String only = System.getenv("GRAVES_GRADE_LOCO");
         if (only != null && !only.isBlank()) { var keep = Set.of(only.split(",")); segs.removeIf(g -> !keep.contains(g.name())); }
+        // anim redo gait (2026-11): GRAVES_GRADE_LOCO_ANGLES, a comma list of camera angles round the troop (0 in front, 90 on its right:
+        // the default side view), shoots each moving segment once per angle; an angle other than 90 is the segment NAME-aANGLE
+        if (!LOCO_ANGLES.equals(List.of(90))) {
+            List<Seg> perAngle = new ArrayList<>();
+            for (Seg g : segs) {
+                if (g.turn()) { perAngle.add(g); continue; }
+                for (int a : LOCO_ANGLES) {
+                    if (a == 90) { perAngle.add(g); continue; }
+                    Seg h = new Seg(g.name() + "-a" + a, g.stance(), g.raised(), g.speed(), g.yaw(), g.dir(), g.turn(), g.move(), g.path(), g.title() + "; the camera at " + a + " degrees round the troop (0 in front)");
+                    perAngle.add(h); locoAngle.put(h.name(), a);
+                }
+            }
+            segs.clear(); segs.addAll(perAngle);
+        }
         // states
         var f2 = fam.family();
         for (String s : TroopMotion.STANCES) if (f2.stances().containsKey(s)) { String k = keyOf(f2.stances().get(s)); states.add(new St("stance-" + s, "stance", k, SERVER_STANCE.get(s), s.equals("idle") ? "hold" : "", -1, null, false, 0, 20, fam.all().get(k).length())); }
@@ -987,10 +1001,21 @@ final class MotionGrade extends Phase2Checks.Stage {
     final List<double[][][]> lcorn = new ArrayList<>();
     /** Each loco frame's two sole middles (the bottom face's middle of each shin's lowest box; site-relative blocks). */
     final List<double[][]> lsole = new ArrayList<>();
-    void trackCam(Entity e) {
+    void trackCam(Entity e, Seg g) {
         if (e == null) return; double off = soloD;
-        cam = new double[]{e.getX(), site.getY() + soloEye, e.getZ() + off, 180, 0, e.prevX, e.prevZ + off};
+        Integer a = locoAngle.get(g.name());
+        if (a == null) { locoCamYaw = 180; cam = new double[]{e.getX(), site.getY() + soloEye, e.getZ() + off, 180, 0, e.prevX, e.prevZ + off}; return; }
+        // anim redo gait: the camera at angle a round the troop's facing (the segment's yaw), looking back at it
+        double y = Math.toRadians(g.yaw()), t = Math.toRadians(a), fx = -Math.sin(y), fz = Math.cos(y), rx = -Math.cos(y), rz = -Math.sin(y);
+        double dx = fx * Math.cos(t) + rx * Math.sin(t), dz = fz * Math.cos(t) + rz * Math.sin(t);
+        locoCamYaw = Math.toDegrees(Math.atan2(dx, -dz));
+        cam = new double[]{e.getX() + off * dx, site.getY() + soloEye, e.getZ() + off * dz, locoCamYaw, 0, e.prevX + off * dx, e.prevZ + off * dz};
     }
+    /** Anim redo gait: the loco camera's yaw (degrees; 180 for the side view) and the camera angles GRAVES_GRADE_LOCO_ANGLES asks for. */
+    double locoCamYaw = 180;
+    final Map<String, Integer> locoAngle = new HashMap<>();
+    static final List<Integer> LOCO_ANGLES = java.util.Optional.ofNullable(System.getenv("GRAVES_GRADE_LOCO_ANGLES")).filter(v -> !v.isBlank())
+            .map(v -> Arrays.stream(v.split(",")).map(String::trim).map(Integer::valueOf).toList()).orElse(List.of(90));
     void loco(MinecraftClient c) {
         if (li >= segs.size()) { finishLoco(); next(c); return; }
         if (awayFor > 0) { litStart(c); return; }
@@ -1001,7 +1026,7 @@ final class MotionGrade extends Phase2Checks.Stage {
                 if (wait == 1) { int tok = ++req; final boolean up = g.raised(); server(c, b -> { locoPath = null; locoI = -1; respawn(b); layout(b, L_LOCO, 1.8, x0, y0); raised.clear(); if (up) raised.add(cast.get(SOLO_UNIT).mob.getId()); done = tok; }); held = 0; return; }
                 if (done != req) return;
                 if (e != null) TroopModels.forceFace(e, 0);
-                inject(c, stanceAt(g.stance(), 0)); trackCam(e);
+                inject(c, stanceAt(g.stance(), 0)); trackCam(e, g);
                 boolean ok = e != null && e.isAlive() && placed(c, L_LOCO, 1.8, x0); held = ok ? held + 1 : 0;
                 if (held >= 25 && shotReady(c, "loco " + g.name())) {
                     final double[][] p = g.path(); server(c, b -> { locoPath = p; locoI = 0; });
@@ -1009,7 +1034,7 @@ final class MotionGrade extends Phase2Checks.Stage {
                 } else if (wait > 900) { locoBad.add(g.name() + ": never placed"); li++; wait = 0; }
             }
             case 1 -> {
-                inject(c, stanceAt(g.stance(), Math.max(0, locoI))); trackCam(e);
+                inject(c, stanceAt(g.stance(), Math.max(0, locoI))); trackCam(e, g);
                 Snap s = fresh(); Ent en = s == null || e == null ? null : s.ents.get(e.getId());
                 int idx = locoI;
                 if (en != null && en.pose != null && idx >= 0) {
@@ -1026,10 +1051,10 @@ final class MotionGrade extends Phase2Checks.Stage {
                     for (int i = 0; i < 2; i++) if (q.soleMid[i] != null) { double[] p = q.soleMid[i]; sm[i] = new double[]{en.pos.x + p[0] - site.getX() - .5, en.pos.y + p[1] - site.getY(), en.pos.z + p[2] - site.getZ() - .5}; }
                     lsole.add(sm);
                     String rel = String.format(Locale.ROOT, "loco/%s/f%03d.png", g.name(), k);
-                    var x = entry("loco_frame", null, null, "side-tracking", k, 90, Double.NaN); x.addProperty("segment", g.name()); x.addProperty("serverTick", idx);
+                    var x = entry("loco_frame", null, null, "side-tracking", k, locoAngle.getOrDefault(g.name(), 90), Double.NaN); x.addProperty("segment", g.name()); x.addProperty("serverTick", idx);
                     x.addProperty("phase", idx < 15 ? "idle" : idx < 15 + g.move() ? (g.turn() ? "turn" : "move") : "stop"); x.addProperty("engineNow", en.now);
                     x.addProperty("bodyYaw", en.bodyYaw); x.addProperty("moving", en.m); x.addProperty("running", en.run); x.addProperty("shuffle", en.sh); x.addProperty("backpedal", en.bp); x.addProperty("turning", en.tw); x.addProperty("planted", en.plant); x.addProperty("solverPw", en.pw);
-                    var m = new JsonArray(); marks(m, s, en, q, locoCrop, 180, true); x.add("marks", m); crops(x, s, en, q, locoCrop); framing(rel, m, locoCrop);
+                    var m = new JsonArray(); marks(m, s, en, q, locoCrop, locoCamYaw, true); x.add("marks", m); crops(x, s, en, q, locoCrop); framing(rel, m, locoCrop);
                     save(c, rel, locoCrop, 1, x);
                 }
                 if (idx >= g.path().length && ++tail > 12 || wait > g.path().length + 300) {

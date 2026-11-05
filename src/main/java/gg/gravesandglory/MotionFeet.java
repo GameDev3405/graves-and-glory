@@ -131,7 +131,8 @@ final class MotionFeet {
      */
     static void stride(MotionEngine.Frame f, MotionEngine.State st, Pose out) {
         double gwAll = f.gaitW * f.plant * (1 - f.tw) * (1 - Math.min(1, f.bodyAction));
-        if (!(gwAll > 0)) { st.dipHeld = 0; return; }
+        if (!(gwAll > 0)) { st.dipHeld = 0; st.footLive = false; return; }
+        if (st.waist) { strideAnkle(f, st, out, gwAll); return; }
         // round 4: the dip may deepen at once (a foot must reach) but lets go over DIP_RELEASE, so a trailing foot that lifts off
         // does not drop its hip demand in one frame and snap the stance knee straight
         double held = st.dipHeld * Math.exp(-f.dt / DIP_RELEASE);
@@ -221,6 +222,225 @@ final class MotionFeet {
             for (int c = TX; c <= TZ; c++) shin[c] -= shin[c] * gw;
         }
     }
+
+    /** Anim redo gait (2026-11): the heel's and the toe's ground points in the shin's frame (px): the back and front edges of the boot's floor (HULL). */
+    static final double[] HEEL = {0, 6, 2}, TOE = {0, 6, -4};
+    /**
+     * Anim redo gait: the sole's pitch (deg, toe down) at the heel strike, walk to run (negative: toe up), which eases flat by
+     * FLAT_AT of the stance; the share of the stance at which the heel rises (walk to run) and the toe-off pitch it rolls to.
+     */
+    static final double STRIKE_WALK = -14, STRIKE_RUN = -6, FLAT_AT = 0.2, HEEL_OFF_WALK = 0.6, HEEL_OFF_RUN = 0.45, TOE_WALK = 28, TOE_RUN = 35;
+    /**
+     * Anim redo gait: in the swing the foot hangs HANG (walk to run) deg toe down off its shin by HANG_U of the swing, then from
+     * LAND_U turns to the strike's pitch; the shin tip hands its toe-off offset back over KS_U of the swing. A foot turns at most
+     * FOOT_MAX deg on its ankle (TroopMotion.limits allows 45) and turns back at most FOOT_YAW deg of the hips' twist.
+     */
+    static final double HANG_WALK = 8, HANG_RUN = 12, HANG_U = 0.35, LAND_U = 0.5, KS_U = 0.4, FOOT_MAX = 40, FOOT_YAW = 15;
+    /**
+     * Anim redo gait: the roll follows the travel's forward share (a strafe's feet stay flat); a backpedal runs it backwards (it
+     * lands on the toe, rolls flat and rocks onto the heel to lift) at BACK_ROLL of the forward pitch.
+     */
+    static final double BACK_ROLL = 0.6;
+    /**
+     * Anim redo gait: the roll's full speed (b/s) and its ease (s): slower, the roll shrinks toward a flat-footed step, so through a
+     * stop the standing feet set flat and the stop's own steps land flat instead of holding a strike or a toe-off.
+     */
+    static final double ROLL_V = 1.2, ROLL_T = 0.12;
+
+    /** Anim redo gait: the thigh (hip to knee) the ankle's leg solve works with; the shin's knee-to-ankle part is ANKLE (px). */
+    static final double THIGH = LEG - SHIN;
+
+    /**
+     * Anim redo gait (2026-11): stride for a biped with the waist and ankle joints, in the Fresh Animations style. Each foot rolls on
+     * its ankle: it lands on its heel toe-up, rolls flat, raises its heel onto its toe and leaves the ground toe down, then hangs off
+     * the shin in the swing and turns to the strike's pitch to land; a backpedal runs the roll backwards, a strafe keeps the sole
+     * flat. The foot turns back the hips' twist, so it points along the travel. The ground point the foot stands on (its heel,
+     * then its toe) stays where it landed: the ankle's target is that point less the point's offset from the ankle under the
+     * foot's pitch, so the leg (solved for the ankle, not the shin's tip) carries no offset of its own back into its target and
+     * the sole does not slide however the shin turns over it. The foot's pitch on the ankle is what the shin leaves to reach the
+     * wanted pitch, within FOOT_MAX; the passes settle the two from last frame's legs. The swing lifts the lower of heel and toe
+     * LIFT_MIN to LIFT_RUN. The hips drop as far as the ankles need to reach, as in stride. Replaces stride's corner roll on
+     * these rigs.
+     */
+    static void strideAnkle(MotionEngine.Frame f, MotionEngine.State st, Pose out, double gwAll) {
+        double held = st.dipHeld * Math.exp(-f.dt / DIP_RELEASE);
+        double[] root = out.get("root"), full = st.rootFull, v = st.vec, ft = st.footT, oh = st.offH, ot = st.offT, l = st.legT, k = st.shinT;
+        double run = f.run, dip = 0;
+        double kr = Math.toRadians(STRIDE_KNEE), soft = Math.sqrt(THIGH * THIGH + ANKLE * ANKLE + 2 * THIGH * ANKLE * Math.cos(kr));
+        double liftPx = MotionBody.LIFT_MIN + (MotionBody.LIFT_RUN - MotionBody.LIFT_MIN) * run;
+        double strike = STRIKE_WALK + (STRIKE_RUN - STRIKE_WALK) * run, heelOff = HEEL_OFF_WALK + (HEEL_OFF_RUN - HEEL_OFF_WALK) * run;
+        double toeOff = TOE_WALK + (TOE_RUN - TOE_WALK) * run, hang = HANG_WALK + (HANG_RUN - HANG_WALK) * run;
+        double yaw = MotionEngine.clamp(-f.hipYaw, -FOOT_YAW, FOOT_YAW);
+        boolean live = st.footLive, back = f.travelF < 0;
+        double rollGoal = MotionMath.clamp01(f.gaitV / ROLL_V);
+        st.rollW = live ? MotionEngine.toward(st.rollW, rollGoal, f.dt / ROLL_T) : rollGoal;
+        double amp = Math.min(1, Math.abs(f.travelF)) * (back ? BACK_ROLL : 1) * smooth(st.rollW), land = amp * (back ? toeOff : strike);
+        for (int pass = 0; pass <= CORNER_PASSES; pass++) {
+            System.arraycopy(root, 0, full, 0, 6);
+            dip = 0;
+            for (int i = 0; i < 2; i++) {
+                double[] leg = out.get(LEGS[i]), shin = out.get(SHINS[i]), t = st.feet[i], clip = footOf(out, i), kn = st.kNow[i];
+                foot(i, leg, shin, t);
+                // the legs as last solved (this frame's previous pass, or last frame's for the first)
+                legsAt(leg, shin, pass > 0 ? st.sol[i] : live ? st.footSol[i] : null, l, k);
+                double p0 = pitch(clip, k, l, full, v), q = f.q[i];
+                boolean locked = st.locked[i], stand = q < f.duty || locked, was = live && st.footStance[i];
+                double x = q / Math.max(1e-6, f.duty), u = stand ? 0 : (q - f.duty) / Math.max(1e-6, 1 - f.duty);
+                if (back) x = 1 - x;
+                double rx = footPitch(st, i, stand, locked, was, live, x, u, p0, amp, strike, heelOff, toeOff, hang, land, clip);
+                System.arraycopy(clip, 0, ft, 0, 6);
+                ft[RX] += rx;
+                ft[RY] += yaw;
+                offset(HEEL, ft, k, l, full, oh);
+                offset(TOE, ft, k, l, full, ot);
+                double low = Math.max(oh[1], ot[1]);
+                // a foot sets down on its lower end; the pivot then passes once per stance (heel to toe; toe to heel on a backpedal)
+                // and does not pass back when the stance share runs backwards (a stop's duty grows over a standing foot)
+                int raw = x < heelOff ? 0 : 1, landOn = oh[1] >= ot[1] ? 0 : 1;
+                int piv = !was ? (locked ? landOn : back ? Math.min(raw, landOn) : Math.max(raw, landOn)) : locked ? st.footPivot[i]
+                    : back ? Math.min(raw, st.footPivot[i]) : Math.max(raw, st.footPivot[i]);
+                if (stand) {
+                    double[] o = piv == 0 ? oh : ot;
+                    // a landing: the ankle sets down over the sweep's point, less what is left of the swing's carried offset (none on a
+                    // full swing; all of it on a foot that sets down again straight after leaving)
+                    if (!was) { kn[0] = o[0] + (live ? st.footKf[i][0] : 0); kn[1] = o[2] + (live ? st.footKf[i][1] : 0); }
+                    else if (piv != st.footPivot[i]) { double[] o0 = piv == 0 ? ot : oh; kn[0] = st.footK[i][0] - o0[0] + o[0]; kn[1] = st.footK[i][1] - o0[2] + o[2]; }
+                    else { kn[0] = st.footK[i][0]; kn[1] = st.footK[i][1]; }
+                    t[0] += kn[0] - o[0]; t[2] += kn[1] - o[2];
+                    t[1] = GROUND - low;
+                } else {
+                    if (was) { double[] o0 = st.footPivot[i] == 0 ? oh : ot; kn[0] = st.footK[i][0] - o0[0]; kn[1] = st.footK[i][1] - o0[2]; }
+                    else if (live) { kn[0] = st.footKs[i][0]; kn[1] = st.footKs[i][1]; }
+                    else kn[0] = kn[1] = 0;
+                    double fade = 1 - smooth(u / KS_U);
+                    t[0] += kn[0] * fade; t[2] += kn[1] * fade;
+                    t[1] = GROUND - liftPx * f.lift[i] - low;
+                }
+                st.pivNow[i] = piv;
+                v[0] = HIPS[i][0] + leg[TX]; v[1] = HIPS[i][1] + leg[TY]; v[2] = HIPS[i][2] + leg[TZ];
+                rotate(v, full);
+                double dx = t[0] - v[0] - full[TX], dy = t[1] - v[1] - full[TY], dz = t[2] - v[2] - full[TZ];
+                dip = Math.max(dip, st.fw[i] * (dy - Math.sqrt(Math.max(0, soft * soft - dx * dx - dz * dz))));
+            }
+            dip = Math.max(MotionEngine.clamp(dip, 0, 6), held);
+            full[TY] += dip;
+            for (int i = 0; i < 2; i++) solveAnkle(i, st.feet[i], full, out.get(LEGS[i]), out.get(SHINS[i]), st.sol[i], v);
+        }
+        // the ankle's pitch under the legs as finally solved
+        for (int i = 0; i < 2; i++) {
+            double[] clip = footOf(out, i);
+            legsAt(out.get(LEGS[i]), out.get(SHINS[i]), st.sol[i], l, k);
+            double p0 = pitch(clip, k, l, full, v), q = f.q[i];
+            boolean locked = st.locked[i], stand = q < f.duty || locked, was = live && st.footStance[i];
+            double x = q / Math.max(1e-6, f.duty), u = stand ? 0 : (q - f.duty) / Math.max(1e-6, 1 - f.duty);
+            if (back) x = 1 - x;
+            st.footRxNow[i] = clampFoot(footPitch(st, i, stand, locked, was, live, x, u, p0, amp, strike, heelOff, toeOff, hang, land, clip), clip);
+        }
+        for (int i = 0; i < 2; i++) {
+            boolean stand = f.q[i] < f.duty || st.locked[i], was = live && st.footStance[i];
+            if (stand) { st.footK[i][0] = st.kNow[i][0]; st.footK[i][1] = st.kNow[i][1]; }
+            else {
+                double fade = 1 - smooth((f.q[i] - f.duty) / Math.max(1e-6, 1 - f.duty) / KS_U);
+                st.footKs[i][0] = st.kNow[i][0]; st.footKs[i][1] = st.kNow[i][1];
+                st.footKf[i][0] = st.kNow[i][0] * fade; st.footKf[i][1] = st.kNow[i][1] * fade;
+                if (was) st.footRx0[i] = st.footRx[i]; else if (!live) st.footRx0[i] = 0;
+            }
+            st.footStance[i] = stand;
+            st.footPivot[i] = st.pivNow[i];
+            st.footRx[i] = st.footRxNow[i];
+            System.arraycopy(st.sol[i], 0, st.footSol[i], 0, 3);
+        }
+        st.footLive = true;
+        st.dipHeld = dip;
+        root[TY] += gwAll * dip;
+        for (int i = 0; i < 2; i++) {
+            double[] leg = out.get(LEGS[i]), shin = out.get(SHINS[i]), sol = st.sol[i], fo = out.get(FEET[i]);
+            double gw = gwAll * st.fw[i];
+            leg[RX] += (sol[0] - leg[RX]) * gw;
+            leg[RZ] += (sol[1] - leg[RZ]) * gw;
+            shin[RX] += (sol[2] - shin[RX]) * gw;
+            shin[RY] -= shin[RY] * gw;
+            shin[RZ] -= shin[RZ] * gw;
+            for (int c = TX; c <= TZ; c++) shin[c] -= shin[c] * gw;
+            fo[RX] += gw * st.footRx[i];
+            fo[RY] += gw * yaw;
+        }
+    }
+
+    /**
+     * Anim redo gait: the foot's pitch on its ankle (deg, toe down, on top of the clip's) for a sole pitch p0 under the legs. In
+     * stance the sole takes the roll's world pitch at x (the stance share, run backwards on a backpedal): the strike's toe-up
+     * easing flat by FLAT_AT, then from the heel's rise to the toe-off. In the swing it hangs toward HANG off the shin by
+     * HANG_U, then from LAND_U turns to the landing's world pitch (flat on a stop's last step). Not clamped: the ankle's target
+     * takes the ground points under the wanted pitch, so a leg folded past what FOOT_MAX can turn back is not held folded by
+     * the foot it drew (a stop's spread feet); clampFoot bounds the pitch drawn.
+     */
+    static double footPitch(MotionEngine.State st, int i, boolean stand, boolean locked, boolean was, boolean live, double x, double u,
+                            double p0, double amp, double strike, double heelOff, double toeOff, double hang, double land, double[] clip) {
+        double rx;
+        if (stand) {
+            double want = locked ? 0 : amp * (x < FLAT_AT ? strike * sq(1 - x / FLAT_AT) : x < heelOff ? 0 : toeOff * sq((x - heelOff) / (1 - heelOff)));
+            rx = want - p0;
+        } else {
+            double rx0 = was ? st.footRx[i] : live ? st.footRx0[i] : 0;
+            double hung = rx0 + (hang - rx0) * smooth(u / HANG_U);
+            rx = hung + ((st.settleSwing[i] ? 0 : land) - p0 - hung) * smooth((u - LAND_U) / (1 - LAND_U));
+        }
+        return rx;
+    }
+
+    /** Anim redo gait: a foot pitch on top of clip's, within FOOT_MAX on the ankle. */
+    static double clampFoot(double rx, double[] clip) { return MotionEngine.clamp(rx, -FOOT_MAX - clip[RX], FOOT_MAX - clip[RX]); }
+
+    /** Anim redo gait: the leg and shin channels for a solve sol ({thigh rx, thigh rz, knee}; null: the channels as they are) into l and k. */
+    static void legsAt(double[] leg, double[] shin, double[] sol, double[] l, double[] k) {
+        System.arraycopy(leg, 0, l, 0, 6);
+        Arrays.fill(k, 0);
+        if (sol != null) { l[RX] = sol[0]; l[RZ] = sol[1]; k[RX] = sol[2]; } else k[RX] = shin[RX];
+    }
+
+    /** Anim redo gait: the sole's world pitch (deg, toe down; past 90 when the toe points backwards) under foot, shin, leg and root rotations. */
+    static double pitch(double[] foot, double[] shin, double[] leg, double[] root, double[] v) {
+        v[0] = 0; v[1] = 0; v[2] = -1;
+        rotate(v, foot); rotate(v, shin); rotate(v, leg); rotate(v, root);
+        return Math.toDegrees(Math.atan2(v[1], Math.copySign(Math.hypot(v[0], v[2]), -v[2])));
+    }
+
+    /** Anim redo gait: point c of the shin's frame (a foot point, turned about the ankle by foot) less the ankle, carried through shin, leg and root rotations into o. */
+    static void offset(double[] c, double[] foot, double[] shin, double[] leg, double[] root, double[] o) {
+        o[0] = c[0]; o[1] = c[1] - ANKLE; o[2] = c[2];
+        rotate(o, foot);
+        o[0] += foot[TX]; o[1] += foot[TY]; o[2] += foot[TZ];
+        rotate(o, shin); rotate(o, leg); rotate(o, root);
+    }
+
+    /**
+     * Anim redo gait: as solve, for leg i's ankle (THIGH, then ANKLE down the shin) at target: the knee bends to the distance
+     * and the thigh turns back from the target's line by the angle the bent shin opens.
+     */
+    static void solveAnkle(int i, double[] target, double[] root, double[] leg, double[] shin, double[] sol, double[] v) {
+        sol[0] = leg[RX]; sol[1] = leg[RZ]; sol[2] = shin[RX];
+        v[0] = target[0] - root[TX]; v[1] = target[1] - root[TY]; v[2] = target[2] - root[TZ];
+        unrotate(v, root);
+        double vx = v[0] - (HIPS[i][0] + leg[TX]), vy = v[1] - (HIPS[i][1] + leg[TY]), vz = v[2] - (HIPS[i][2] + leg[TZ]);
+        double d = Math.sqrt(vx * vx + vy * vy + vz * vz);
+        if (!(d > 1e-6)) return;
+        double r = MotionEngine.clamp(d, THIGH - ANKLE + 1e-6, THIGH + ANKLE);
+        double knee = Math.acos(MotionEngine.clamp((r * r - THIGH * THIGH - ANKLE * ANKLE) / (2 * THIGH * ANKLE), -1, 1));
+        double c = Math.toRadians(leg[RY]), cc = Math.cos(c);
+        double beta = Math.asin(MotionEngine.clamp(vz / d / (Math.abs(cc) < 1e-6 ? 1e-6 : cc), -1, 1));
+        double a = Math.atan2(vy / d, vx / d) - Math.atan2(Math.cos(beta), Math.sin(beta) * Math.sin(c));
+        double rz = Math.toDegrees(a);
+        rz += 360 * Math.rint((leg[RZ] - rz) / 360);
+        sol[0] = Math.toDegrees(beta - Math.atan2(ANKLE * Math.sin(knee), THIGH + ANKLE * Math.cos(knee)));
+        sol[1] = rz;
+        sol[2] = Math.toDegrees(knee);
+    }
+
+    static double sq(double x) { return x * x; }
+
+    /** Smoothstep of x clamped to [0, 1]. */
+    static double smooth(double x) { x = MotionEngine.clamp(x, 0, 1); return x * x * (3 - 2 * x); }
 
     /** Fix r3: the extra stride solves that move each foot's target by its lowest corner's drop below the sole's middle. */
     static final int CORNER_PASSES = 2;

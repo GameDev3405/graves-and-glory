@@ -139,6 +139,8 @@ public final class TroopMotion {
         if(r!=null)return r;double p=procPx(bone);return new double[]{p,p,p};
     }
 
+    /** Anim redo gait (2026-11): a rig with the chest and both foot bones (the waist and ankle rig) takes the Fresh Animations stride (MotionBody.strideWaist, MotionFeet.strideAnkle). */
+    static boolean waist(TroopModel<?> m){return m.bone("chest")!=null&&m.bone(MotionFeet.FEET[0])!=null&&m.bone(MotionFeet.FEET[1])!=null;}
     static Spec.TroopsRow row(TroopModel<?> m){
         if(m.troop.isEmpty())return null;
         return ROWS.computeIfAbsent(m.troop,id->Arrays.stream(Spec.TROOPS).filter(t->t.id().equals(id)).findFirst()).orElse(null);
@@ -156,6 +158,7 @@ public final class TroopMotion {
         if(!lies)b.lying=null;
         else if(b.lying!=null&&b.lyingModel==m){m.applyPose(b.lying);return;} // a lying body's pose no longer changes: put it back
         MotionInput in=input(e,fam,b,limbAngle,limbDistance,age,headYaw,headPitch);
+        b.state.waist=waist(m);
         MotionEngine.pose(in,b.state,fam.family(),b.pose);
         scene(b,fam,e.getId(),in.time());
         if(b.sceneClip!=null)MotionFeet.ground(b.pose,b.state.vec); // fix r3: a scene clip's legs keep the soles out of the ground too
@@ -495,6 +498,7 @@ public final class TroopMotion {
     public static MotionEngine.Family simulate(TroopModel<?> m,MotionEngine.State st,MotionInput in,boolean shield){
         m.getPart().traverse().forEach(ModelPart::resetTransform);
         Fam f=family(m);if(f==null)return null;
+        st.waist=waist(m);
         Pose p=new Pose();MotionEngine.pose(in,st,f.family(),p);apply(m,p);limits(m);
         double[] shares=new double[st.tracks.size()];MotionStack.shares(st.tracks,shares.length,shares);
         carries(m,bow(row(m)),shield,draw(st,in.time(),bow(row(m)),shares),bone->Math.min(1,stanceHeld(st,bone)+actionHeld(st,bone,shares)));rootScale(m);

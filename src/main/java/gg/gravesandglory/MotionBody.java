@@ -128,6 +128,8 @@ final class MotionBody {
 
     /** G1: duty factor walk to run, the stride's half-length cap forward walk to run and sideways (px), at the soft knee's reach. */
     static final double DUTY_WALK = 0.62, DUTY_RUN = 0.38, HALF_WALK = 6.4, HALF_RUN = 7.0, HALF_SIDE = 3.2;
+    /** Anim redo gait (2026-11): a biped with the waist and ankle joints runs a longer stride (px; its cadence drops to match the speed). */
+    static final double HALF_RUN_WAIST = 7.8;
     /** G1: the least and most cadence (cycles per second), the swing knee walk to run (degrees), and the swing foot's lift walk to run (px). */
     static final double F_MIN = 0.9, F_MAX = 3.6, KNEE_WALK = 35, KNEE_RUN = 70, LIFT_MIN = 2.4, LIFT_RUN = 2.6, LIFT_POW = 0.6;
     /** Fix 1 (R109): the speed (b/s) under which the phase stops dividing by the speed, and the most a frame's travel may step the phase, in multiples of the cadence's own step. */
@@ -174,7 +176,8 @@ final class MotionBody {
         // over RUN_BLEND), so a start's stride takes the run's longer swing from its first steps; once settled gr equals run
         double gr = Math.max(run, MotionMath.ease(MotionEngine.runTarget(f.speed)));
         double dirF = v > 1e-9 ? f.vF / v : 1, dirL = v > 1e-9 ? f.vL / v : 0;
-        double duty = DUTY_WALK + (DUTY_RUN - DUTY_WALK) * gr, hF = HALF_WALK + (HALF_RUN - HALF_WALK) * gr;
+        f.travelF = dirF;
+        double duty = DUTY_WALK + (DUTY_RUN - DUTY_WALK) * gr, hF = HALF_WALK + ((st.waist ? HALF_RUN_WAIST : HALF_RUN) - HALF_WALK) * gr;
         double half = 1 / Math.sqrt(dirF * dirF / (hF * hF) + dirL * dirL / (HALF_SIDE * HALF_SIDE));
         double cad = MotionEngine.clamp(16 * v * duty / (2 * half), F_MIN, F_MAX) * f.seed.tempo();
         double h = 16 * v * duty / (2 * cad);
@@ -292,7 +295,9 @@ final class MotionBody {
             out.add("head", RX, -0.5 * first * dirF);
             out.add("root", TY, DIP_PER_DEG * first);
         }
+        f.hipYaw = 0;
         if (b <= 0) return;
+        if (st.waist) { strideWaist(f, st, out, b, duty, g); return; }
         double p = TAU * st.psi, s = Math.sin(p), cr = Math.cos(TAU * (st.psi - duty / 2));
         out.add("root", TY, 1.3 * b * run * cr * cr);
         out.add("root", TX, 0.35 * b * (1 - run) * s);
@@ -311,6 +316,74 @@ final class MotionBody {
         double elbow = b * (10 + 45 * run), flick = MotionMath.tri(p - 0.85);
         out.add("right_forearm", RX, -elbow - 12 * b * Math.max(0, -flick));
         out.add("left_forearm", RX, -elbow - 12 * b * Math.max(0, flick));
+    }
+
+    /**
+     * Anim redo gait (2026-11): the hips twist (deg) walk to run; the lower torso's share against them; the chest's turn back
+     * past them, so the shoulders counter-rotate against the hips; and how much of the chest's turn the head undoes (its gaze stays on the travel).
+     */
+    static final double TWIST_WALK = 6, TWIST_RUN = 9, BODY_TWIST = 0.35, CHEST_TWIST = 1.45, HEAD_STEADY = 0.85;
+    /**
+     * Anim redo gait: the weight landing on each contact: the hips sink BOB_WALK px just after each walking landing and BOB_RUN px
+     * at the run's mid-stance (kept small: the ankle stride holds the soles on the ground, so a deeper bob folds the stance knee), and
+     * the chest pitches PULSE_WALK to PULSE_RUN deg forward, both peaking LAND_SPAN / 2 of a cycle after the foot lands.
+     */
+    static final double BOB_WALK = 0.6, BOB_RUN = 0.3, PULSE_WALK = 1.5, PULSE_RUN = 2.5, LAND_SPAN = 0.24;
+    /** Anim redo gait: the hips' sideways shift over the stance foot (px), their roll (deg) and the chest's roll back against it (deg), walk only. */
+    static final double SHIFT_WALK = 0.35, HIP_ROLL = 1.2, CHEST_ROLL = 2.0;
+    /** Anim redo gait: the lean walk to run (deg forward). */
+    static final double LEAN_WALK = 3, LEAN_RUN = 13;
+    /**
+     * Anim redo gait: the arm swing walk to run (deg), each forearm's extra bend as its arm swings forward (deg), and its follow-through:
+     * the forearm trails the arm by ARM_LAG of a cycle at ARM_FOLLOW of the swing, never straighter than ELBOW_MIN (deg bent).
+     */
+    static final double ARM_WALK = 26, ARM_RUN = 16, FOREARM_FLEX = 14, ARM_LAG = 0.08, ARM_FOLLOW = 0.55, ELBOW_MIN = 3;
+
+    /**
+     * Anim redo gait (2026-11): the stride's upper body on a biped with the waist and ankle joints, in the Fresh Animations
+     * style. The hips twist with the forward leg and the chest turns back past them, so the shoulders counter-rotate and the arms
+     * swing from the chest; the head undoes most of the chest's turn. Walking, the hips shift over the stance foot and sink just
+     * after each landing while the chest takes a small forward pulse (the weight arriving); running leans further and keeps a
+     * small mid-stance bob. Each forearm bends more as its arm swings forward and trails the arm's swing (follow-through). b is the
+     * upper body's weight, g leg 0's forward-ness (+1 right foot forward).
+     */
+    static void strideWaist(MotionEngine.Frame f, MotionEngine.State st, Pose out, double b, double duty, double g) {
+        double run = f.run, sh = f.sh, bp = f.bp, walk = 1 - run;
+        double p = TAU * st.psi, s = Math.sin(p), cr = Math.cos(TAU * (st.psi - duty / 2));
+        double land = 0;
+        for (int i = 0; i < 2; i++) {
+            double x = f.q[i] / LAND_SPAN;
+            if (x < 1 && !st.locked[i]) { double w = Math.sin(Math.PI * x); land += w * w; }
+        }
+        out.add("root", TY, BOB_RUN * b * run * cr * cr + BOB_WALK * b * walk * land);
+        out.add("root", TX, -SHIFT_WALK * b * walk * s);
+        out.add("body", RZ, HIP_ROLL * b * walk * s);
+        out.add("chest", RZ, -CHEST_ROLL * b * walk * s);
+        double lean = b * (LEAN_WALK + (LEAN_RUN - LEAN_WALK) * run) * (1 - bp) - 4 * bp * b;
+        double pulse = b * (PULSE_WALK + (PULSE_RUN - PULSE_WALK) * run) * land;
+        out.add("body", RX, lean);
+        out.add("chest", RX, pulse);
+        out.add("head", RX, -0.6 * lean - pulse);
+        double twist = b * (TWIST_WALK + (TWIST_RUN - TWIST_WALK) * run) * (1 - sh);
+        f.hipYaw = -twist * g;
+        out.add("root", RY, -twist * g);
+        out.add("body", RY, BODY_TWIST * twist * g);
+        out.add("chest", RY, CHEST_TWIST * twist * g);
+        out.add("head", RY, -HEAD_STEADY * (BODY_TWIST + CHEST_TWIST - 1) * twist * g);
+        double arm = b * (ARM_WALK + ARM_RUN * run) * (1 - 0.75 * sh) * (1 - 0.3 * bp);
+        out.add("right_arm", RX, arm * g);
+        out.add("left_arm", RX, -arm * g);
+        out.add("right_arm", RZ, b * (4 + 5 * run));
+        out.add("left_arm", RZ, -b * (4 + 5 * run));
+        double elbow = b * (10 + 45 * run), now = gAt(st.psi, duty), lag = ARM_FOLLOW * arm * (gAt(st.psi - ARM_LAG, duty) - now);
+        out.add("right_forearm", RX, Math.min(-ELBOW_MIN * b, -elbow - FOREARM_FLEX * b * Math.max(0, -now) + lag));
+        out.add("left_forearm", RX, Math.min(-ELBOW_MIN * b, -elbow - FOREARM_FLEX * b * Math.max(0, now) - lag));
+    }
+
+    /** Anim redo gait: leg 0's forward-ness at phase psi on the stride's shape: +1 as it lands, -1 as it lifts off (a half cosine each way). */
+    static double gAt(double psi, double duty) {
+        double q = frac(psi);
+        return q < duty ? Math.cos(Math.PI * q / duty) : -Math.cos(Math.PI * (q - duty) / (1 - duty));
     }
 
     static double frac(double x) { return x - Math.floor(x); }

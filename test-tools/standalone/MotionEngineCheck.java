@@ -7,6 +7,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -75,6 +76,8 @@ public final class MotionEngineCheck {
         run("interrupt steps", MotionEngineCheck::interruptSteps);
         run("ground velocity", MotionEngineCheck::groundVelocity);
         run("stance slip", () -> stanceSlip(rig));
+        run("waist gait", () -> waistGait(rig));
+        run("stop settle", () -> stopSettle(rig));
         run("corpse ground", () -> corpseGround(rig));
         run("turn step", () -> turnStep(rig));
         held("run start", MotionEngineCheck::runStart);
@@ -113,6 +116,8 @@ public final class MotionEngineCheck {
             if (b.has("rotation")) for (int i = 0; i < 3; i++) rest[i] = b.getAsJsonArray("rotation").get(i).getAsDouble();
             rig.put(b.get("name").getAsString(), new RigBone(b.get("parent").getAsString(), pivot, rest));
         }
+        // anim redo gait (2026-11): the waist/ankle rig's feet, which the fixture predates: each turns on the shin's ankle
+        for (int k = 0; k < 2; k++) rig.putIfAbsent(MotionFeet.FEET[k], new RigBone(MotionFeet.SHINS[k], new double[]{0, MotionFeet.ANKLE, 0}, new double[3]));
         return rig;
     }
 
@@ -852,7 +857,7 @@ public final class MotionEngineCheck {
             for (int k = 0; k < 2; k++) {
                 int n = 0;
                 for (int cx = 0; cx < 2; cx++) for (int cz = 3; cz < 5; cz++) {
-                    double[] p = world(rig, pose, MotionFeet.SHINS[k], new double[]{s[cx], s[2], s[cz]});
+                    double[] p = world(rig, pose, MotionFeet.FEET[k], new double[]{s[cx], s[2] - MotionFeet.ANKLE, s[cz]});
                     double fwd = -p[2] / 16, lft = p[0] / 16;
                     r[k][n] = p;
                     w[k][n++] = new double[]{d.gx - fwd * sy + lft * cy, (24 - p[1]) / 16, d.gz + fwd * cy + lft * sy};
@@ -932,6 +937,207 @@ public final class MotionEngineCheck {
         double[] m = new double[3];
         for (double[] c : corners) for (int i = 0; i < 3; i++) m[i] += c[i] / corners.length;
         return m;
+    }
+
+    /**
+     * Anim redo gait (2026-11): the waist and ankle stride's outputs on a grounded walk (2.4 b/s) and run (6.1 b/s) at four seeds,
+     * from 2.5 s on: the chest's world turn (root, body and chest) runs against the hips' (root) and swings at least 4 deg; each
+     * foot lands toe-up (heel strike) and leaves toe down (toe-off), from the heel's and toe's heights; the hips are lowest
+     * (root TY highest) in the first 12% of a stance; each forearm's world pitch trails its arm's; the run leans further than the
+     * walk. With the waist off (a rig without the chest and foot bones) the stride writes no chest or foot channel.
+     */
+    static String waistGait(Map<String, RigBone> rig) {
+        MotionEngine.Family fam = realSwordShield(new HashMap<>());
+        MotionMath.Seed[] seeds = seeds(4, 1800);
+        StringBuilder sb = new StringBuilder();
+        double[] lean = new double[2];
+        String[] names = {"walk", "run"};
+        double[] speeds = {2.4, 6.1};
+        for (int g = 0; g < 2; g++) {
+            double corr = -1, swing = Double.MAX_VALUE, strike = Double.MAX_VALUE, toeOff = Double.MAX_VALUE, bob = Double.MAX_VALUE, lag = Double.MAX_VALUE;
+            for (MotionMath.Seed seed : seeds) {
+                Drive d = new Drive(seed);
+                d.grounded = true;
+                d.gyaw = seed.phase() * 360;
+                var st = new MotionEngine.State();
+                Pose out = new Pose();
+                List<double[]> rows = new ArrayList<>();
+                for (int f = 0; f < 480; f++) {
+                    d.walk(speeds[g], 0);
+                    MotionEngine.pose(d.in(), st, fam, out);
+                    if (f >= 150) {
+                        Map<String, double[]> pose = out.snapshot();
+                        double[] z = new double[6];
+                        double[] root = pose.getOrDefault("root", z), body = pose.getOrDefault("body", z), chest = pose.getOrDefault("chest", z);
+                        double[] arm = pose.getOrDefault("right_arm", z), fore = pose.getOrDefault("right_forearm", z);
+                        double[] row = new double[14];
+                        row[0] = root[1];
+                        row[1] = root[1] + body[1] + chest[1];
+                        row[2] = root[4];
+                        row[3] = root[0] + body[0];
+                        row[4] = arm[0];
+                        row[5] = arm[0] + fore[0];
+                        row[6] = st.frame.duty;
+                        for (int k = 0; k < 2; k++) {
+                            double[] heel = world(rig, pose, MotionFeet.FEET[k], new double[]{0, MotionFeet.SHIN - MotionFeet.ANKLE, 2});
+                            double[] toe = world(rig, pose, MotionFeet.FEET[k], new double[]{0, MotionFeet.SHIN - MotionFeet.ANKLE, -4});
+                            row[7 + 3 * k] = st.frame.q[k];
+                            row[8 + 3 * k] = heel[1];
+                            row[9 + 3 * k] = toe[1];
+                        }
+                        rows.add(row);
+                    }
+                    d.step(1 / 60.0);
+                }
+                int n = rows.size();
+                double[] hip = new double[n], chest = new double[n], arm = new double[n], fore = new double[n];
+                double ty = 0, tyContact = 0, leanSum = 0, strikeSum = 0, toeSum = 0;
+                int contact = 0, strikes = 0, toes = 0;
+                for (int i = 0; i < n; i++) {
+                    double[] r = rows.get(i);
+                    hip[i] = r[0]; chest[i] = r[1]; arm[i] = r[4]; fore[i] = r[5];
+                    ty += r[2] / n;
+                    leanSum += r[3] / n;
+                    boolean landing = false;
+                    for (int k = 0; k < 2; k++) {
+                        double x = r[7 + 3 * k] / r[6];
+                        if (x < 0.12) landing = true;
+                        if (x < 0.05) { strikeSum += r[8 + 3 * k] - r[9 + 3 * k]; strikes++; }
+                        if (x > 0.9 && x < 1) { toeSum += r[9 + 3 * k] - r[8 + 3 * k]; toes++; }
+                    }
+                    if (landing) { tyContact += r[2]; contact++; }
+                }
+                corr = Math.max(corr, correlation(hip, chest, 0));
+                swing = Math.min(swing, range(chest));
+                strike = Math.min(strike, strikes > 0 ? strikeSum / strikes : -1);
+                toeOff = Math.min(toeOff, toes > 0 ? toeSum / toes : -1);
+                bob = Math.min(bob, contact > 0 ? tyContact / contact - ty : -1);
+                int best = 0;
+                double bestC = -2;
+                for (int l = -20; l <= 20; l++) { double c = correlation(arm, fore, l); if (c > bestC) { bestC = c; best = l; } }
+                lag = Math.min(lag, best);
+                lean[g] += leanSum / seeds.length;
+            }
+            check(corr < -0.8, names[g] + ": the chest's world turn runs with the hips' (correlation " + corr + ", want under -0.8)");
+            check(swing >= 4, names[g] + ": the chest swings " + swing + " deg (want 4 or more)");
+            check(strike > 0.2, names[g] + ": the foot lands with its toe " + strike + " px over its heel (want over 0.2: a heel strike)");
+            check(toeOff > 1, names[g] + ": the foot leaves with its heel " + toeOff + " px over its toe (want over 1: a toe-off)");
+            check(bob > 0.1, names[g] + ": the hips sit " + bob + " px under their mean in the first 12% of a stance (want over 0.1: the weight lands)");
+            check(lag >= 1, names[g] + ": the forearm trails the arm by " + lag + " frames (want 1 or more)");
+            sb.append(String.format(Locale.ROOT, "%s: chest against hips %.2f, chest swing %.1f deg, strike toe-up %.2f px, toe-off heel-up %.2f px, contact sink %.2f px, forearm lag %.0f frames, lean %.1f deg; ",
+                names[g], corr, swing, strike, toeOff, bob, lag, lean[g]));
+        }
+        check(lean[1] > lean[0] + 5, "the run leans " + lean[1] + " deg against the walk's " + lean[0] + " (want 5 more)");
+        // the waist off: no chest or foot channel from the stride
+        double most = 0;
+        for (MotionMath.Seed seed : seeds) {
+            Drive d = new Drive(seed);
+            d.grounded = true;
+            var st = new MotionEngine.State();
+            st.waist = false;
+            Pose out = new Pose();
+            for (int f = 0; f < 300; f++) {
+                d.walk(f < 150 ? 3.9 : 6.1, 0);
+                MotionEngine.pose(d.in(), st, fam, out);
+                Map<String, double[]> pose = out.snapshot();
+                for (String b : new String[]{"chest", MotionFeet.FEET[0], MotionFeet.FEET[1]}) {
+                    double[] ch = pose.get(b);
+                    if (ch != null) for (double c : ch) most = Math.max(most, Math.abs(c));
+                }
+                d.step(1 / 60.0);
+            }
+        }
+        check(most < 1e-9, "with the waist off the stride wrote " + most + " on a chest or foot channel");
+        sb.append(String.format(Locale.ROOT, "waist off: chest and foot channels %.1e", most));
+        return sb.toString();
+    }
+
+    /**
+     * Anim redo gait (2026-11): a walk (3.4 b/s) stopped at 40 phases (every third frame from 2 s) for four seeds, at 60 fps, with
+     * an in-game stop's speed by tick (1.36, 1.16, 1.16, 0.24, 0.2, 0.18, 0.04 b/s, then 0). Over the 1.5 s after each stop: a
+     * standing heel or toe on the ground (within 0.3 px) does not move over the ground more than SLIDE_MAX (the corner slide; worst
+     * case and 90th percentile), the hips' dip under the feet stays within DIP_P90 at the 90th percentile, and no knee folds past
+     * KNEE_MAX. The old stride (no chest or foot bones) is held to the same bounds.
+     */
+    static String stopSettle(Map<String, RigBone> rig) {
+        final double SLIDE_MAX = 2.5, SLIDE_P90 = 1.6, DIP_P90 = 4.5, KNEE_MAX = 160;
+        double[] profile = {1.36, 1.16, 1.16, 0.24, 0.2, 0.18, 0.04};
+        MotionEngine.Family fam = realSwordShield(new HashMap<>());
+        MotionMath.Seed[] seeds = seeds(4, 1800);
+        StringBuilder sb = new StringBuilder();
+        double dt = 1 / 60.0;
+        for (boolean waist : new boolean[]{true, false}) {
+            List<double[]> res = new ArrayList<>();
+            for (MotionMath.Seed seed : seeds) {
+                for (int stop = 120; stop < 240; stop += 3) {
+                    Drive d = new Drive(seed);
+                    d.grounded = true;
+                    d.gyaw = seed.phase() * 360;
+                    var st = new MotionEngine.State();
+                    st.waist = waist;
+                    Pose out = new Pose();
+                    double dip = 0, knee = 0, slide = 0;
+                    double[][] anchor = new double[4][];
+                    for (int f = 0; f < stop + 90; f++) {
+                        int j = (int) ((f - stop) * dt / 0.05);
+                        d.walk(f < stop ? 3.4 : j < profile.length ? profile[j] : 0, 0);
+                        MotionEngine.pose(d.in(), st, fam, out);
+                        if (f >= stop - 18) {
+                            Map<String, double[]> pose = out.snapshot();
+                            if (f >= stop) dip = Math.max(dip, st.dipHeld);
+                            for (int k = 0; k < 2; k++) {
+                                if (f >= stop) knee = Math.max(knee, Math.abs(st.sol[k][2]));
+                                boolean stand = st.frame.q[k] < st.frame.duty || st.locked[k];
+                                for (int c = 0; c < 2; c++) {
+                                    double[] p = world(rig, pose, MotionFeet.FEET[k], new double[]{0, MotionFeet.SHIN - MotionFeet.ANKLE, c == 0 ? 2 : -4});
+                                    int ai = 2 * k + c;
+                                    if (stand && p[1] > MotionFeet.GROUND - 0.3) {
+                                        double yr = Math.toRadians(d.gyaw), fw = -p[2] / 16, lf = p[0] / 16;
+                                        double gx = (d.gx + fw * -Math.sin(yr) + lf * Math.cos(yr)) * 16, gz = (d.gz + fw * Math.cos(yr) + lf * Math.sin(yr)) * 16;
+                                        if (anchor[ai] == null) anchor[ai] = new double[]{gx, gz};
+                                        else if (f >= stop) slide = Math.max(slide, Math.hypot(gx - anchor[ai][0], gz - anchor[ai][1]));
+                                    } else anchor[ai] = null;
+                                }
+                            }
+                        }
+                        d.step(dt);
+                    }
+                    res.add(new double[]{dip, knee, slide});
+                }
+            }
+            double[] p90 = new double[3], max = new double[3];
+            for (int m = 0; m < 3; m++) {
+                final int mm = m;
+                res.sort(Comparator.comparingDouble(r -> r[mm]));
+                p90[m] = res.get(res.size() * 9 / 10)[m];
+                max[m] = res.get(res.size() - 1)[m];
+            }
+            String name = waist ? "waist" : "old stride";
+            check(max[2] <= SLIDE_MAX && p90[2] <= SLIDE_P90, name + ": a standing corner slides " + max[2] + " px at worst, " + p90[2] + " at the 90th percentile (want " + SLIDE_MAX + ", " + SLIDE_P90 + ")");
+            check(p90[0] <= DIP_P90, name + ": the hips dip " + p90[0] + " px at the 90th percentile of stops (want " + DIP_P90 + " or less)");
+            check(max[1] <= KNEE_MAX, name + ": a knee folds to " + max[1] + " deg (want " + KNEE_MAX + " or less)");
+            sb.append(String.format(Locale.ROOT, "%s: corner slide p90 %.2f max %.2f px, dip p90 %.2f max %.2f px, knee max %.0f deg; ", name, p90[2], max[2], p90[0], max[0], max[1]));
+        }
+        return sb.toString();
+    }
+
+    /** Pearson correlation of a[i] with b[i + lag] over the overlap. */
+    static double correlation(double[] a, double[] b, int lag) {
+        int from = Math.max(0, -lag), to = Math.min(a.length, b.length - lag);
+        double ma = 0, mb = 0;
+        int n = to - from;
+        if (n < 2) return 0;
+        for (int i = from; i < to; i++) { ma += a[i]; mb += b[i + lag]; }
+        ma /= n; mb /= n;
+        double ab = 0, aa = 0, bb = 0;
+        for (int i = from; i < to; i++) { double x = a[i] - ma, y = b[i + lag] - mb; ab += x * y; aa += x * x; bb += y * y; }
+        return aa > 0 && bb > 0 ? ab / Math.sqrt(aa * bb) : 0;
+    }
+
+    static double range(double[] a) {
+        double lo = Double.MAX_VALUE, hi = -Double.MAX_VALUE;
+        for (double v : a) { lo = Math.min(lo, v); hi = Math.max(hi, v); }
+        return hi - lo;
     }
 
     /** stanceSlip (R109): at nine gaits and four seeds the stance foot's ground travel is under 0.15 of the body's, no sole corner sinks past 2 px, and every swing lifts the foot 1 px clear. */
