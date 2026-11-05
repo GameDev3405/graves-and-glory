@@ -34,7 +34,7 @@ recipe (tools/troop_anim/recipes.py) ─> Timeline (chained poses, PCHIP/linear 
 | `tools/troop_anim/recipes.py` | Family presets and tuned recipes (`RECIPES`). |
 | `test-tools/standalone/test_troop_anim.py` | `Clip.java` sampling parity, aims and IK, export round-trip, settle, gates. |
 
-Commands (Python 3.13; unittest, not pytest):
+Commands (Python 3.12 with numpy and Pillow; unittest, not pytest):
 
 ```bash
 python tools/animate_troop.py --list                                     # troops, family, weapon hand, attacks
