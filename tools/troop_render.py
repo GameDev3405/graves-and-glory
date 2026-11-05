@@ -143,12 +143,13 @@ class Troop:
             out[name] = out[b.parent] @ M if b.parent else M
         return out
 
-    def quads(self, pose):
-        """[(quad, 4x4)] for every shown box and the weapon, posed."""
+    def quads(self, pose, draw=None):
+        """[(quad, 4x4)] for every shown box and the weapon (at the pull frame a bow's draw seconds show), posed."""
         mats = self.matrices(pose)
         items = [(q, mats[n]) for n in self.order if n not in self.hidden for q in self.bones[n].quads]
         if self.weapon is not None and self.hand in mats and self.hand not in self.hidden:
-            items += [(q, mats[self.hand] @ self.weapon.grip) for q in self.weapon.quads]
+            fq = self.weapon.frames[min(self.weapon.frame_at(draw), len(self.weapon.frames) - 1)]
+            items += [(q, mats[self.hand] @ self.weapon.grip) for q in fq]
         return items, mats
 
 
@@ -163,8 +164,22 @@ class Weapon:
         self.grip[:3, 3] = g.get('offset', [0, 0, 0])
         tw, th = w['size']
         sx, sy = tex.shape[1] / tw, tex.shape[0] / th
-        self.quads = []
-        for qd in w['frames'][0]['quads']:
+        self.pull = w.get('pull') or []
+        self.frames = []
+        for fr in w['frames']:
+            self.quads = []
+            self._frame(fr, tex, sx, sy)
+            self.frames.append(self.quads)
+        self.quads = self.frames[0]
+
+    def frame_at(self, seconds, loose=0.8):
+        """TroopModels.Weapon.frameAt: the pull frame a draw time shows (0, the rest frame, before the first pull and from the loose)."""
+        if not self.pull or seconds is None or seconds < self.pull[0] or seconds >= loose:
+            return 0
+        return 1 + max(i for i, p in enumerate(self.pull) if seconds >= p)
+
+    def _frame(self, fr, tex, sx, sy):
+        for qd in fr['quads']:
             P = [np.array(qd[i * 3:i * 3 + 3], float) for i in range(4)]
             uv = [(qd[12 + i * 2] * sx, qd[13 + i * 2] * sy) for i in range(4)]
             # TroopMesh quads: four corners with their texels; draw as the parallelogram from corner 1 (edges to 0 and 2)

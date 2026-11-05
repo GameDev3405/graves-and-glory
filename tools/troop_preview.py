@@ -54,9 +54,10 @@ def run(scene):
         return json.loads(op.read_text())
 
 
-def draw(troop, pose, yaw, pitch=10, scale=7, size=(240, 300), ground=None):
-    items, _ = troop.quads(pose)
+def draw(troop, pose, yaw, pitch=10, scale=7, size=(240, 300), ground=None, bow=None):
+    items, _ = troop.quads(pose, bow)
     img = Image.new('RGBA', size, BG)
+    # keep the hips in the middle of the tile: a lunge or a step carries the root several px
     if ground is not None:  # floor studs that move with the ground, so travel reads
         d = ImageDraw.Draw(img)
         gx, gz = ground
@@ -68,11 +69,15 @@ def draw(troop, pose, yaw, pitch=10, scale=7, size=(240, 300), ground=None):
                 sx = size[0] / 2 + (x * cy - z * sy) * scale
                 sy_ = size[1] * 0.92 + (x * sy + z * cy) * scale * math.sin(math.radians(pitch))
                 d.rectangle([sx - 1, sy_ - 1, sx + 1, sy_ + 1], fill=(70, 76, 88, 255))
-    img.alpha_composite(R.render(items, yaw, pitch, scale, size))
+    import math as _m
+    rt = pose.get('root', [0] * 6)
+    cy_, sy_ = _m.cos(_m.radians(yaw)), _m.sin(_m.radians(yaw))
+    shift = (rt[3] * cy_ - rt[5] * sy_) * scale * 0.5
+    img.alpha_composite(R.render(items, yaw, pitch, scale, size, anchor=(size[0] / 2 - shift, size[1] * 0.92)))
     return img
 
 
-def sheet(troop, frames, times, views=(0, 40, 90), label=None, scale=6, size=(200, 260)):
+def sheet(troop, frames, times, views=(0, 40, 90), label=None, scale=5, size=(250, 230)):
     """A contact sheet: one column a time, one row a view."""
     W, H = size
     out = Image.new('RGBA', (W * len(times), H * len(views) + (22 if label else 0)), BG)
@@ -82,7 +87,7 @@ def sheet(troop, frames, times, views=(0, 40, 90), label=None, scale=6, size=(20
     for c, t in enumerate(times):
         f = by_t[min(ts, key=lambda x: abs(x - t))]
         for r, yaw in enumerate(views):
-            out.alpha_composite(draw(troop, f['pose'], yaw, scale=scale, size=size), (c * W, r * H))
+            out.alpha_composite(draw(troop, f['pose'], yaw, scale=scale, size=size, bow=f.get('draw')), (c * W, r * H))
         d.text((c * W + 4, H * len(views) + 4 if label else 4), f'{t:.2f}s', fill=(220, 220, 220, 255))
     if label:
         d.text((4, H * len(views) + 4 + 0), '', fill=(220, 220, 220, 255))
@@ -96,8 +101,9 @@ def reel(troop, frames, path, views=(20, 90), scale=6, size=(320, 360), title=''
     for i, f in enumerate(frames):
         img = Image.new('RGBA', (size[0] * len(views), size[1] + 24), BG)
         for k, yaw in enumerate(views):
-            img.alpha_composite(draw(troop, f['pose'], yaw, scale=scale, size=size, ground=(f.get('gx', 0), f.get('gz', 0))), (k * size[0], 0))
-        ImageDraw.Draw(img).text((6, size[1] + 5), f"{title}  {f['t']:.2f}s", fill=(225, 225, 225, 255))
+            img.alpha_composite(draw(troop, f['pose'], yaw, scale=scale, size=size, ground=(f.get('gx', 0), f.get('gz', 0)), bow=f.get('draw')), (k * size[0], 0))
+        txt = title(f) if callable(title) else f"{title}  {f['t']:.2f}s"
+        ImageDraw.Draw(img).text((6, size[1] + 5), txt, fill=(225, 225, 225, 255))
         img.convert('RGB').save(tmp / f'{i:05d}.png')
     subprocess.run(['ffmpeg', '-y', '-loglevel', 'error', '-framerate', str(fps), '-i', str(tmp / '%05d.png'), '-pix_fmt', 'yuv420p',
                     '-vf', 'pad=ceil(iw/2)*2:ceil(ih/2)*2', str(path)], check=True)

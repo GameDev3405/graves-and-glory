@@ -141,10 +141,12 @@ public final class TroopMotion {
         if(!anyWall)wall.clear();
         Map<String,List<Clip>> hits=new HashMap<>();Map<String,List<Clip>> deaths=new HashMap<>();
         // a troop folder with hit (or death) clips of its own replaces the inherited ones: its reactions are its character
-        boolean ownHits=mine.keySet().stream().anyMatch(n->HIT.matcher(n).matches()||BLOCK.matcher(n).matches()),ownDeaths=mine.keySet().stream().anyMatch(n->deathKey(n)!=null);
+        // (hits, blocks and deaths each on their own: a troop with its own hits keeps its family's blocks until it has blocks of its own)
+        boolean ownHits=mine.keySet().stream().anyMatch(n->HIT.matcher(n).matches()),ownBlocks=mine.keySet().stream().anyMatch(n->BLOCK.matcher(n).matches()),
+            ownDeaths=mine.keySet().stream().anyMatch(n->deathKey(n)!=null);
         for(var e:all.entrySet()){
-            boolean inherited=!mine.containsKey(e.getKey());
-            if(inherited&&(ownHits&&(HIT.matcher(e.getKey()).matches()||BLOCK.matcher(e.getKey()).matches())||ownDeaths&&deathKey(e.getKey())!=null))continue;
+            String n0=e.getKey();boolean inherited=!mine.containsKey(n0);
+            if(inherited&&(ownHits&&HIT.matcher(n0).matches()||ownBlocks&&BLOCK.matcher(n0).matches()||ownDeaths&&deathKey(n0)!=null))continue;
             String n=e.getKey();Matcher h=HIT.matcher(n);
             if(h.matches())hits.computeIfAbsent(h.group(1),k->new ArrayList<>()).add(e.getValue());
             else if((h=BLOCK.matcher(n)).matches())hits.computeIfAbsent(h.group(1)==null||h.group(1).equals("body")?"block":"block_"+h.group(1),k->new ArrayList<>()).add(e.getValue());

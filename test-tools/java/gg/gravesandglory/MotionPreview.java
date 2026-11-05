@@ -76,10 +76,12 @@ public final class MotionPreview {
         for (int k = 0; k < attacks.size(); k++) { Clip w = own.get(ids.get(k) + "_wall"); anyWall |= w != null; wall.add(w != null ? w : attacks.get(k)); }
         if (!anyWall) wall.clear();
         Map<String, List<Clip>> hits = new HashMap<>(), deaths = new HashMap<>();
-        boolean ownHits = mine.keySet().stream().anyMatch(x -> HIT.matcher(x).matches() || BLOCK.matcher(x).matches()), ownDeaths = mine.keySet().stream().anyMatch(x -> MotionEngine.deathKey(x) != null);
+        boolean ownHits = mine.keySet().stream().anyMatch(x -> HIT.matcher(x).matches()), ownBlocks = mine.keySet().stream().anyMatch(x -> BLOCK.matcher(x).matches()),
+            ownDeaths = mine.keySet().stream().anyMatch(x -> MotionEngine.deathKey(x) != null);
         for (var e : all.entrySet()) {
-            boolean inherited = !mine.containsKey(e.getKey());
-            if (inherited && (ownHits && (HIT.matcher(e.getKey()).matches() || BLOCK.matcher(e.getKey()).matches()) || ownDeaths && MotionEngine.deathKey(e.getKey()) != null)) continue;
+            String n0 = e.getKey();
+            boolean inherited = !mine.containsKey(n0);
+            if (inherited && (ownHits && HIT.matcher(n0).matches() || ownBlocks && BLOCK.matcher(n0).matches() || ownDeaths && MotionEngine.deathKey(n0) != null)) continue;
             String n = e.getKey();
             Matcher h = HIT.matcher(n);
             if (h.matches()) hits.computeIfAbsent(h.group(1), k -> new ArrayList<>()).add(e.getValue());
@@ -199,6 +201,7 @@ public final class MotionPreview {
             fr.addProperty("t", Math.round(t * 1e4) / 1e4);
             fr.add("pose", pose);
             fr.addProperty("psi", st.psi);
+            if (bow) fr.addProperty("draw", drawSeconds(st, time));
             fr.addProperty("idle", st.novKind);
             fr.addProperty("gx", gx);
             fr.addProperty("gz", gz);
@@ -226,6 +229,22 @@ public final class MotionPreview {
     }
 
     static final double TroopMotion_BOW_REST_YAW = 45;
+
+    /** TroopMotion.drawSeconds: the bow's pull timeline seconds (-1: at rest). */
+    static double drawSeconds(MotionEngine.State st, double now) {
+        for (int i = st.tracks.size() - 1; i >= 0; i--) {
+            MotionStack.Track t = st.tracks.get(i);
+            if (t.kind != MotionEngine.ATTACK) continue;
+            double s = t.time(now);
+            if (s >= t.length()) break;
+            if (t.impact > 0 && s >= t.impact) return 0.8 + (s - t.impact);
+            Double d0 = t.a.markers().get("draw"), d1 = t.a.markers().get("full");
+            if (d0 != null && d1 != null && d1 > d0) return s < d0 ? 0 : 0.65 * Math.min(1, (s - d0) / (d1 - d0));
+            if (t.impact > 0) return s / t.impact * 0.8;
+            return Math.min(s / Math.max(t.length(), 1e-3) * 0.65, 0.65);
+        }
+        return -1;
+    }
 
     static double stanceHeld(MotionEngine.State st, String bone) {
         double carry = 1, w = 0;

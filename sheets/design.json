@@ -2921,7 +2921,122 @@
       "weight": "heavy"
     }
   ],
-  "troopAttacks": [],
+  "troopAttacks": [
+    {
+      "id": "knight_kn_barge",
+      "troop": "knight",
+      "clip": "kn_barge",
+      "slot": "sword_shield_thrust"
+    },
+    {
+      "id": "knight_kn_combination",
+      "troop": "knight",
+      "clip": "kn_combination",
+      "slot": "sword_shield_low_cut"
+    },
+    {
+      "id": "knight_kn_drill_cut",
+      "troop": "knight",
+      "clip": "kn_drill_cut",
+      "slot": "sword_shield_overhead"
+    },
+    {
+      "id": "knight_kn_lunge",
+      "troop": "knight",
+      "clip": "kn_lunge",
+      "slot": "sword_shield_thrust"
+    },
+    {
+      "id": "archer_ar_aimed_shot",
+      "troop": "archer",
+      "clip": "ar_aimed_shot",
+      "slot": "bow_direct"
+    },
+    {
+      "id": "archer_ar_quick_shot",
+      "troop": "archer",
+      "clip": "ar_quick_shot",
+      "slot": "bow_direct"
+    },
+    {
+      "id": "archer_ar_retreat_shot",
+      "troop": "archer",
+      "clip": "ar_retreat_shot",
+      "slot": "bow_volley"
+    },
+    {
+      "id": "sentinel_se_cleave",
+      "troop": "sentinel",
+      "clip": "se_cleave",
+      "slot": "sword_shield_overhead"
+    },
+    {
+      "id": "sentinel_se_pommel",
+      "troop": "sentinel",
+      "clip": "se_pommel",
+      "slot": "sword_shield_thrust"
+    },
+    {
+      "id": "sentinel_se_sweep",
+      "troop": "sentinel",
+      "clip": "se_sweep",
+      "slot": "sword_shield_low_cut"
+    },
+    {
+      "id": "longbow_lb_heavy_shot",
+      "troop": "longbow",
+      "clip": "lb_heavy_shot",
+      "slot": "bow_direct"
+    },
+    {
+      "id": "longbow_lb_kneel_shot",
+      "troop": "longbow",
+      "clip": "lb_kneel_shot",
+      "slot": "bow_direct"
+    },
+    {
+      "id": "longbow_lb_volley",
+      "troop": "longbow",
+      "clip": "lb_volley",
+      "slot": "bow_volley"
+    },
+    {
+      "id": "mage_ma_staff_swing",
+      "troop": "mage",
+      "clip": "ma_staff_swing",
+      "slot": "caster_cast"
+    },
+    {
+      "id": "mage_ma_sunbolt",
+      "troop": "mage",
+      "clip": "ma_sunbolt",
+      "slot": "caster_cast"
+    },
+    {
+      "id": "mage_ma_sunburst",
+      "troop": "mage",
+      "clip": "ma_sunburst",
+      "slot": "caster_cast"
+    },
+    {
+      "id": "gl_marshal_gm_executioner",
+      "troop": "gl_marshal",
+      "clip": "gm_executioner",
+      "slot": "sword_shield_overhead"
+    },
+    {
+      "id": "gl_marshal_gm_flourish",
+      "troop": "gl_marshal",
+      "clip": "gm_flourish",
+      "slot": "sword_shield_low_cut"
+    },
+    {
+      "id": "gl_marshal_gm_riposte",
+      "troop": "gl_marshal",
+      "clip": "gm_riposte",
+      "slot": "sword_shield_thrust"
+    }
+  ],
   "recruitmentView": [
     {
       "id": "barracks",
