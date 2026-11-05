@@ -1,6 +1,7 @@
 package gg.gravesandglory;
 
 import com.mojang.blaze3d.systems.RenderSystem;
+import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderEvents;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.font.TextRenderer;
@@ -36,7 +37,7 @@ public final class CommandPanel {
     static final String[] SHAPE_ICONS = {"command/shape_line", "command/shape_block", "command/shape_wedge", "command/shape_loose"};
     static final int CREAM = 0xfff6dc, GOLD = 0xffd27a, TRIM = 0xe6c46a, DARK = 0x1b1a1f;
     static final int[] PILL_INSET = {4, 2, 1, 1, 0, 0, 0, 0, 1, 1, 2, 4};
-    static final int PENNANT_H = 24, PILL_H = 12, CELL_W = 32, CELL_H = 36;
+    static final int PENNANT_H = 24, PILL_H = 12, CELL_W = 32, CELL_W_WIDE = 36, CELL_H = 44;
 
     /** What the last frame drew, {id, x, y, w, h} in GUI px (the slide's offset included). */
     public static final List<int[]> lastDrawn = new ArrayList<>();
@@ -53,8 +54,8 @@ public final class CommandPanel {
     private static int flashId = -1;
     private static long flashAt;
     private static final boolean[] keyWas = new boolean[ORDERS.length];
-    // cursor bookkeeping (PanelInputMixin)
-    static boolean unlockedByPanel;
+    // cursor bookkeeping (PanelInputMixin): whether the panel held the mouse at the last client tick
+    static boolean wasCapturing;
 
     // the world camera of the last frame, for the cursor ray and the projection of a troop onto the screen
     private static final Matrix4f view = new Matrix4f(), proj = new Matrix4f();
@@ -68,6 +69,8 @@ public final class CommandPanel {
             camPos = ctx.camera().getPos();
             haveCamera = true;
         });
+        // the cursor follows the panel every client tick, HUD drawn or not (a pause, a cinematic, the battle's end)
+        ClientTickEvents.END_CLIENT_TICK.register(CommandPanel::syncCursor);
     }
 
     /** 0 closed .. 1 open: the panel's slide, eased over Spec panelSlideTicks from the moment it was opened or shut. */
@@ -88,14 +91,15 @@ public final class CommandPanel {
         return CommandSelection.panelOpen() && !CommandMode.active() && c.currentScreen == null && c.player != null && GravesAndGloryClient.battleActive();
     }
 
-    /** Frees the cursor while capturing and gives it back afterwards (PanelInputMixin blocks the game relocking it meanwhile). */
+    /**
+     * Frees the cursor while capturing and takes it back the tick capturing ends with no Screen up (PanelInputMixin blocks the game
+     * relocking it meanwhile). Runs at the end of every client tick, so a pause and resume, the battle's end or a cinematic still relock.
+     */
     static void syncCursor(MinecraftClient c) {
-        if (capturing()) {
-            if (c.mouse.isCursorLocked()) { unlockedByPanel = true; c.mouse.unlockCursor(); }
-        } else if (unlockedByPanel) {
-            unlockedByPanel = false;
-            if (c.currentScreen == null && !c.mouse.isCursorLocked()) c.mouse.lockCursor();
-        }
+        boolean cap = capturing();
+        if (cap) { if (c.mouse.isCursorLocked()) c.mouse.unlockCursor(); }
+        else if (wasCapturing && c.currentScreen == null && !c.mouse.isCursorLocked()) c.mouse.lockCursor();
+        wasCapturing = cap;
     }
 
     /** The cursor in GUI px, or null while the cursor is locked. */
@@ -116,7 +120,6 @@ public final class CommandPanel {
     public static void render(DrawContext g, float delta) {
         var c = MinecraftClient.getInstance();
         lastDrawn.clear(); lastAlpha.clear(); hits.clear();
-        syncCursor(c);
         // a key's press shows on its pennant as a click does
         for (int i = 0; i < ORDERS.length; i++) {
             KeyBinding k = binding(i);
@@ -156,7 +159,7 @@ public final class CommandPanel {
         // pennant width: the mockup's 150 of 960, or as long as its words need
         int words = 0;
         for (int i = 0; i < ORDERS.length; i++) words = Math.max(words, font.getWidth(NAMES[i]) + 4 + font.getWidth(key(ORDERS[i])));
-        int W = Math.max(64, Math.max((int) Math.round(sw * 150 / 960.0), 22 + words + 18));
+        int W = Math.max(64, Math.max((int) Math.round(sw * 150 / 960.0), 22 + words + 24));
         int ext = sw >= 600 ? (int) Math.round(W * 0.19) : Math.max(4, (int) Math.round(W * 0.08));
         W = Math.min(W, limit - flagX - ext);
         int pitch = Math.max(26, (int) Math.round(sh * 42 / 540.0));
@@ -166,7 +169,7 @@ public final class CommandPanel {
         List<String> pillText = new ArrayList<>();
         int px = flagX + 2, rows = 1, rowW = 0;
         for (int i = 0; i < pills.size(); i++) {
-            String t = (i < 4 ? (i + 1) + " " : "") + shortName(pills.get(i).id());
+            String t = (i < 4 && sw >= 500 ? (i + 1) + " " : "") + shortName(pills.get(i).id()); // narrow screens drop the number: one row
             int w = font.getWidth(t) + 10;
             if (px + w > limit && px > flagX + 2) { px = flagX + 2; rows++; }
             pillBox.add(new int[]{px, rows - 1, w});
@@ -177,7 +180,7 @@ public final class CommandPanel {
         // the stack ends above the group column and hint slip (lower left); on a short screen the pennants close up to fit
         int floor = (int) Math.floor(sh * 0.74);
         int column = BattleHud.lowerLeftTop(MinecraftClient.getInstance().getWindow().getScaleFactor());
-        if (column > 0) floor = Math.min(floor, column - 4);
+        if (column > 0) floor = Math.min(floor, column - 4 - 6); // the pole runs 6 past the last pennant
         int room = floor - 4 - pillsH - 6 - PENNANT_H;
         if (room < (ORDERS.length - 1) * pitch) pitch = Math.max(PENNANT_H + 2, room / (ORDERS.length - 1));
         int total = pillsH + 6 + (ORDERS.length - 1) * pitch + PENNANT_H;
@@ -244,20 +247,22 @@ public final class CommandPanel {
                 RenderSystem.setShaderColor(((TRIM >> 16) & 255) / 255f, ((TRIM >> 8) & 255) / 255f, (TRIM & 255) / 255f, cooling ? 0.5f : 0.8f);
                 pennant(g, "command/pennant_trim", x, yy, w);
             }
+            if (cooling) BattleHud.sweep(g, x + 1, yy, Math.min(1, chargeLeft / (double) chargeTotal));
             RenderSystem.setShaderColor(1, 1, 1, cooling ? 0.55f : 1f);
             UiTex.draw(g, ICONS[i], x + 5, yy + 4);
             RenderSystem.setShaderColor(1, 1, 1, 1);
-            int ink = active ? GOLD : CREAM;
-            if (cooling) ink = 0x9a9488;
-            g.drawText(font, NAMES[i], x + 22, yy + 8, 0xff000000 | ink, false);
+            // cream ink with the vanilla shadow reads on any House cloth (the gilded one included); gold stays on the active trim only
+            int ink = cooling ? 0xb3000000 | CREAM : 0xff000000 | CREAM;
+            g.drawText(font, NAMES[i], x + 22, yy + 8, ink, true);
             String kk = key(ORDERS[i]);
-            int keyRight = x + w - 18;
-            g.drawText(font, kk, keyRight - font.getWidth(kk), yy + 8, 0xcc000000 | ink, false);
+            int keyRight = x + w - 24; // inside the solid body, clear of the swallowtail notch
+            g.drawText(font, kk, keyRight - font.getWidth(kk), yy + 8, cooling ? ink : 0xe6000000 | CREAM, true);
             if (cooling) {
-                BattleHud.sweep(g, x + 1, yy, Math.min(1, chargeLeft / (double) chargeTotal));
-                String secs = String.valueOf((chargeLeft + 19) / 20);
-                g.drawText(font, secs, x + 13 - font.getWidth(secs) / 2, yy + 8, 0xffffffff, true);
-                record(SWEEP, x + 1, yy, 24, 24, dx);
+                // the seconds left sit just past the swallowtail tip, clear of the icon
+                String secs = (chargeLeft + 19) / 20 + "s";
+                int sx = Math.min(x + w - 2, limit - 1 - font.getWidth(secs));
+                g.drawText(font, secs, sx, yy + 8, 0xffffffff, true);
+                record(SWEEP, x + 1, yy, Math.max(24, sx + font.getWidth(secs) - x - 1), 24, dx);
             }
             if (fl > 0) {
                 int fa = (int) Math.round(fl * 0.55 * 255);
@@ -273,32 +278,37 @@ public final class CommandPanel {
         if (CommandSelection.trayOpen()) {
             int cells = CommandSelection.SHAPES.length, pad = 6;
             int ax = flagX + formationW - 2;
-            int tw, th, tx, ty, cols;
-            if (ax + pad * 2 + cells * CELL_W + (cells - 1) * 2 <= trayLimit) { cols = 4; tx = ax; ty = formationY + PENNANT_H / 2 - (CELL_H + pad * 2) / 2; }
-            else if (ax + pad * 2 + 2 * CELL_W + 2 <= trayLimit) { cols = 2; tx = ax; ty = formationY + PENNANT_H - (2 * CELL_H + 2 + pad * 2); }
-            else { cols = 2; tx = flagX; ty = formationY + PENNANT_H + 3; }
+            int tw, th, tx, ty, cols, cw, gap;
+            // a 1x4 strip beside the pennant when it fits (wide cells first, so the names never touch), else 2x2 above it, else below
+            if (ax + pad * 2 + cells * CELL_W_WIDE + (cells - 1) * 3 <= trayLimit) { cols = 4; cw = CELL_W_WIDE; gap = 3; }
+            else if (ax + pad * 2 + cells * CELL_W + (cells - 1) * 3 <= trayLimit) { cols = 4; cw = CELL_W; gap = 3; }
+            else { cols = 2; gap = 2; cw = ax + pad * 2 + 2 * CELL_W_WIDE + gap <= trayLimit ? CELL_W_WIDE : CELL_W; }
             int rowsT = (cells + cols - 1) / cols;
-            tw = pad * 2 + cols * CELL_W + (cols - 1) * 2; th = pad * 2 + rowsT * CELL_H + (rowsT - 1) * 2;
+            tw = pad * 2 + cols * cw + (cols - 1) * gap; th = pad * 2 + rowsT * CELL_H + (rowsT - 1) * gap;
+            if (cols == 4) { tx = ax; ty = formationY + PENNANT_H / 2 - th / 2; }
+            else { tx = Math.max(flagX, Math.min(ax, trayLimit - tw)); ty = formationY + PENNANT_H - th; } // above the anchor, never down over the group cards
+            if (ty < 2) ty = 2;
             if (ty + th > sh - 2) ty = sh - 2 - th;
             RenderSystem.setShaderColor(1, 1, 1, 1);
             UiTex.nine(g, "command/tray", tx, ty, tw, th);
             record(TRAY, tx, ty, tw, th, dx);
             for (int j = 0; j < cells; j++) {
-                int cx = tx + pad + (j % cols) * (CELL_W + 2), cy = ty + pad + (j / cols) * (CELL_H + 2);
+                int cx = tx + pad + (j % cols) * (cw + gap), cy = ty + pad + (j / cols) * (CELL_H + gap);
                 boolean picked = CommandSelection.SHAPES[j].equals(CommandMode.formation);
-                boolean hov = over(mouse, cx, cy, CELL_W, CELL_H, dx);
+                boolean hov = over(mouse, cx, cy, cw, CELL_H, dx);
                 double fl = flashLeft(CELL + j);
-                if (picked) g.fill(cx, cy, cx + CELL_W, cy + CELL_H, 0x4d000000 | GOLD);
-                else if (hov) g.fill(cx, cy, cx + CELL_W, cy + CELL_H, 0x26000000 | GOLD);
-                if (fl > 0) g.fill(cx, cy, cx + CELL_W, cy + CELL_H, ((int) Math.round(fl * 0.5 * 255) << 24) | GOLD);
+                if (picked) g.fill(cx, cy, cx + cw, cy + CELL_H, 0x4d000000 | GOLD);
+                else if (hov) g.fill(cx, cy, cx + cw, cy + CELL_H, 0x26000000 | GOLD);
+                if (fl > 0) g.fill(cx, cy, cx + cw, cy + CELL_H, ((int) Math.round(fl * 0.5 * 255) << 24) | GOLD);
                 if (picked) RenderSystem.setShaderColor(((GOLD >> 16) & 255) / 255f, ((GOLD >> 8) & 255) / 255f, (GOLD & 255) / 255f, 1f);
-                UiTex.draw(g, SHAPE_ICONS[j], cx + 4, cy + 1);
+                // the key number in its own row at the top-left, the shape below it, the name at the foot: nothing overlaps
+                UiTex.draw(g, SHAPE_ICONS[j], cx + (cw - 24) / 2, cy + 9);
                 RenderSystem.setShaderColor(1, 1, 1, 1);
                 String name = SHAPE_NAMES[j];
                 int ink = 0xff000000 | (picked ? GOLD : CREAM);
-                g.drawText(font, name, cx + (CELL_W - font.getWidth(name) + 1) / 2, cy + 26, ink, false);
-                g.drawText(font, String.valueOf(j + 1), cx + CELL_W - 6, cy + 1, 0xb3000000 | (picked ? GOLD : CREAM), false);
-                record(CELL + j, cx, cy, CELL_W, CELL_H, dx);
+                g.drawText(font, name, cx + (cw - font.getWidth(name) + 1) / 2, cy + CELL_H - 9, ink, true);
+                g.drawText(font, String.valueOf(j + 1), cx + 2, cy + 1, 0xcc000000 | (picked ? GOLD : CREAM), true);
+                record(CELL + j, cx, cy, cw, CELL_H, dx);
             }
         }
     }

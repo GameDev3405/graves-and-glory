@@ -33,7 +33,8 @@ public final class PanelSuite implements CommandUiChecks.Suite {
     Path shots;
     final List<String> shotLog = new ArrayList<>();
     final List<String> edgeFails = new ArrayList<>();
-    int edgeChecked;
+    int edgeChecked, overlapChecked;
+    final List<String> overlapFails = new ArrayList<>();
     int openSeenAt = -1, openFullAt = -1, closeAt = -1, closeZeroAt = -1;
     Vec3d walkFrom;
     int[] initialSize;
@@ -189,17 +190,30 @@ public final class PanelSuite implements CommandUiChecks.Suite {
             CommandUiChecks.report("cu-panel-left-edge", edgeFails.isEmpty() && edgeChecked >= 8,
                 edgeChecked + " frames checked (1920x1080 and 854x480: open, hover, tray, cooldown); " + (edgeFails.isEmpty() ? "every rect inside 30% (tray inside 45%)" : String.join("; ", edgeFails))
                     + "; 854 cooldown sweep drawn=" + sweep854 + "; shots: " + String.join(", ", shotLog));
+            CommandUiChecks.report("cu-panel-overlap", overlapFails.isEmpty() && overlapChecked >= 8,
+                overlapChecked + " frames (1920x1080 and 854x480): " + (overlapFails.isEmpty() ? "no panel rect meets the hint slip, a group card or the spine; the hint slip hidden while open" : String.join("; ", overlapFails.subList(0, Math.min(6, overlapFails.size())))));
         }
         if (tick == 310) { GLFW.glfwSetWindowSize(c.getWindow().getHandle(), initialSize[0], initialSize[1]); CommandSelection.setPanelOpen(true); CommandSelection.select("ranged", false); }
 
+        // the cursor comes back: panel open, the pause screen opened and closed, the panel shut -> the cursor is locked again
+        if (tick == 314) { relockFreeBefore = !c.mouse.isCursorLocked(); c.setScreen(new net.minecraft.client.gui.screen.GameMenuScreen(true)); }
+        if (tick == 318) c.setScreen(null);
+        if (tick == 322) { relockFreeAfterResume = !c.mouse.isCursorLocked(); CommandSelection.setPanelOpen(false); }
+        if (tick == 326) {
+            boolean locked = c.mouse.isCursorLocked();
+            CommandUiChecks.report("cu-panel-relock", relockFreeBefore && relockFreeAfterResume && locked,
+                "panel open: cursor free=" + relockFreeBefore + "; after Esc and resume: free=" + relockFreeAfterResume + "; panel shut: locked=" + locked + " (window focused=" + c.isWindowFocused() + ")");
+            CommandSelection.setPanelOpen(true); CommandSelection.select("ranged", false);
+        }
+
         // disconnect with the panel open; the listener records the state without a world and rejoins
-        if (tick == 314) {
+        if (tick == 330) {
             beforeDisconnect = "panel open=" + CommandSelection.panelOpen() + " selection " + CommandSelection.selected();
             disconnectStage = 1;
             c.world.disconnect();
             c.disconnect(new gg.gravesandglory.FrontMenuScreen());
         }
-        if (tick >= 315 && disconnectStage == 3 && rejoinTick < 0) rejoinTick = tick;
+        if (tick >= 331 && disconnectStage == 3 && rejoinTick < 0) rejoinTick = tick;
         if (rejoinTick > 0 && tick == rejoinTick + 20) {
             boolean ok = afterDisconnect.contains("panel open=false") && !CommandSelection.panelOpen() && CommandSelection.selected().equals(List.of("all")) && CommandPanel.slide() <= 0;
             CommandUiChecks.report("cu-panel-disconnect", ok, "before: " + beforeDisconnect + "; without a world: " + afterDisconnect + "; after rejoin: panel open=" + CommandSelection.panelOpen()
@@ -212,6 +226,7 @@ public final class PanelSuite implements CommandUiChecks.Suite {
     boolean trayOpened, sweepDrawn;
     String chargeAimed = "", beforeDisconnect = "";
     int cooling, rejoinTick = -1;
+    boolean relockFreeBefore, relockFreeAfterResume;
     double slideBeforeClose;
 
     /** A tick listener of the suite's own: the suite's ticks stop while there is no world, so this one watches the disconnect and rejoins. */
@@ -243,6 +258,22 @@ public final class PanelSuite implements CommandUiChecks.Suite {
             boolean tray = r[0] >= CommandPanel.TRAY && r[0] < CommandPanel.SWEEP;
             double limit = (tray ? 0.45 : 0.30) * sw;
             if (r[1] + r[3] > limit + 1e-9) edgeFails.add(state + ": id " + r[0] + " right " + (r[1] + r[3]) + " > " + limit);
+        }
+        // no panel rect (the cooldown sweep aside) may cover a HUD box drawn the same frame: the hint slip, a group card or chip, the spine
+        overlapChecked++;
+        double k = gg.gravesandglory.UiCanvas.hudK() / c.getWindow().getScaleFactor();
+        var hud = gg.gravesandglory.BattleHud.rects();
+        if (hud.containsKey("hints")) overlapFails.add(state + ": hint slip drawn while the panel is open");
+        for (var e : hud.entrySet()) {
+            String name = e.getKey(); int[] b = e.getValue();
+            if (b == null || b.length < 4 || !(name.equals("hints") || name.startsWith("card-") || name.equals("spine"))) continue;
+            double bx = b[0] * k, by = b[1] * k, bw = b[2] * k, bh = b[3] * k;
+            for (int[] r : CommandPanel.lastDrawn) {
+                if (r[0] == CommandPanel.SWEEP) continue;
+                if (r[1] < bx + bw && bx < r[1] + r[3] && r[2] < by + bh && by < r[2] + r[4])
+                    overlapFails.add(state + ": panel id " + r[0] + " [" + r[1] + "," + r[2] + " " + r[3] + "x" + r[4] + "] meets " + name
+                        + String.format(Locale.ROOT, " [%.0f,%.0f %.0fx%.0f]", bx, by, bw, bh));
+            }
         }
     }
 

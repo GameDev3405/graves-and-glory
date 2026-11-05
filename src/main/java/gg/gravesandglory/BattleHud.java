@@ -78,10 +78,11 @@ public final class BattleHud {
      *  line lives), then aim-name (the aimed point's name, while an order is aimed into a point) and ability (the slot converted
      *  from GUI px, rounded outward). */
     public static Map<String,int[]> rects(){return rects;}
-    /** Top (GUI px) of whatever this frame drew in the lower-left quarter (group column, hint slip), or -1: the pennant stack stays above it. */
+    /** Top (GUI px) of the group cards and chips this frame drew in the lower-left quarter, or -1: the pennant stack stays above them (the hint slip hides while the panel is open). */
     static int lowerLeftTop(double guiScale){
         int hw=UiCanvas.hudWidth(),hh=UiCanvas.hudHeight(),top=Integer.MAX_VALUE;
-        for(int[] b:rectsDrawn.values())if(b!=null&&b.length>=4&&b[0]<hw/3&&b[1]>hh/2)top=Math.min(top,b[1]);
+        for(var e:rectsDrawn.entrySet()){int[] b=e.getValue();String k=e.getKey();
+            if((k.startsWith("card-")||k.equals("spine"))&&b!=null&&b.length>=4&&b[0]<hw/3&&b[1]>hh/2)top=Math.min(top,b[1]);}
         return top==Integer.MAX_VALUE?-1:(int)Math.floor(top*UiCanvas.hudK()/guiScale);
     }
     /** The words and numbers the last frame drew: score-dawn, clock, score-dusk, count-(group), state-(group) (the word a card
@@ -240,7 +241,7 @@ public final class BattleHud {
             var grp=group(id);int[] box=at.get("card-"+id);if(grp==null||box==null)continue;
             if(box[3]==UiMath.CARD_H)card(g,font,grp,box,r,cd,tx);else chip(g,font,grp,box,army,r,cd,tx);
         }
-        int[] hints=at.get("hints");if(hints!=null)hintSlip(g,font,hints,r);
+        int[] hints=at.get("hints");if(hints!=null&&CommandPanel.slide()<=0)hintSlip(g,font,hints,r); // the open pennant panel shows every key the slip lists (Ruling 15)
     }
 
     /** How far a hint-slip row may run: from 10 px into the slip to 12 px inside its box's right edge (the 164 px slip's paper ends
