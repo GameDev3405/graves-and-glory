@@ -24,8 +24,10 @@ from . import rig
 from .combat_clips import NECK, _cape_clamp, _unwrap, bake_legs_and_head, seq
 from .rig import Clip, spring_follow
 from . import accessories as AC
+from . import pose_search as PS
 
 STEP = 0.025
+POSES_FILE = str(__import__('pathlib').Path(__file__).resolve().parent / 'archer_poses.json')
 ROOT_REF = np.array([0.0, -1.0, 0.0])     # bow_at, hand_at and nocks are written for the root here (low ready)
 
 # the follow bones: the cloak from the chest, the feather fan from the head, the loincloth from the hips
@@ -54,7 +56,7 @@ QUIVER_LOCAL = _m(rig.rz(math.radians(-24)) @ rig.rx(math.radians(20)), np.array
 NOCK = np.array([0.0, 0.25, -0.1])       # the nock on the string, bow space (x set by the draw)
 REST = np.array([1.2, 0.25, -1.6])       # where the shaft lies on the bow, beside the grip
 FLIGHT_SPEED = 160.0
-DRAW_FORE = 0.6                          # how hard the draw forearm is pulled in line with the nocked arrow                     # px a second for the flying arrow (it is off the frame in a few frames)
+DRAW_FORE = 0.45                         # how hard the draw forearm is pulled in line with the nocked arrow (searched)                     # px a second for the flying arrow (it is off the frame in a few frames)
 
 
 def unit(v):
@@ -245,15 +247,21 @@ def _far():
 
 STANCE = dict(root=(0.0, -1.0, 0.0), r_place=(2.2, 3.0, 0, 65, 0), l_place=(2.0, -3.0, 0, 25, 0))
 
-# low ready: the arrow nocked, the bow canted and pointed down and ahead of the lead foot
-READY_AIM, READY_NOCK = (-25, -50, 35), (0.0, 18.0, -5.0)
-READY = dict(
-    STANCE, body=(4, 25, 0), chest=(4, 10, 0), look=(4, 0, 0),
-    bow_at=None, aim=READY_AIM, draw=AC.BRACE, on_string=1.0, hand_at=READY_NOCK, arrow_dir=(-25, -50), arrow=1,
-    r_pole=(1, -0.5, 0.3), l_pole=(-1, -0.4, 0.2))
+# The two key poses were found by search (see docs/ANIMATING-TROOPS.md): both hands on their targets, the bow, arrow
+# and quiver out of the body, and the forearms out of the jerkin, the fur collar and the hood, which at Minecraft
+# proportions (a 10 px head, 8 px arms, a 6 px draw) leaves little room.
 
-# full draw: the bow arm nearly straight at the target, the string at the chin, the draw elbow up and back
-SHOT_AIM, SHOT_NOCK = (0, 0, 10), (1.5, 24.0, -4.0)
+# low ready: the arrow nocked, the bow canted and pointed down and ahead, low across the hips
+READY_AIM, READY_NOCK = (-49, -38.5, 43), (1.1, 18.5, -6.4)
+READY = dict(
+    STANCE, body=(3, 27.5, 0), chest=(3, 3, 0), look=(4, 0, 0),
+    bow_at=None, aim=READY_AIM, draw=AC.BRACE, on_string=1.0, hand_at=READY_NOCK, arrow_dir=(-49, -38.5), arrow=1,
+    r_pole=(1, -0.5, 0.8), l_pole=(-1.37, 0.23, 0.28))
+
+# full draw: side-on, the bow arm out at the target, the string at the right cheek, the draw elbow out to the side
+SHOT_AIM, SHOT_NOCK = (-16.7, -2.8, 28), (6.5, 21.5, -3.6)
+SHOT_TORSO = dict(body=(3, 57, 0), chest=(3, 18, 0), look=(2.8, -16.7, 0), l_pole=(-1.3, 0.28, 0.17),
+                  r_pole=(0.19, -0.35, 0.47))
 
 
 def bow_for(nock, aim, draw):
@@ -342,7 +350,7 @@ def idle_timeline():
 
 
 def idle():
-    return build('archer_idle', 3.0, True, idle_timeline())
+    return build('archer_idle', 3.0, True, timeline('archer_idle'))
 
 
 LOOSE = 1.00
@@ -351,21 +359,21 @@ LOOSE = 1.00
 def shoot_timeline():
     """Raise, draw, anchor, aim, loose at 1.00 s, follow through, reach to the quiver, draw an arrow, nock it."""
     qm = quiver_mouth()
-    shot = dict(aim=SHOT_AIM, bow_at=SHOT_BOW, look=(0, 0, 0), l_pole=(-0.2, -1, 0.4), r_pole=(1, 0.4, 0.5))
+    shot = dict(SHOT_TORSO, aim=SHOT_AIM, bow_at=SHOT_BOW)
     lift_aim, lift_nock = (-10, -18, 22), (2.0, 21.0, -6.2)
     return seq(READY, [
         (0.00, 'low ready', {}),
         (0.16, 'raise', dict(_ready_with(aim=lift_aim, nock=lift_nock, draw=-3.3), root=(0, -1.1, 0), body=(3, 26, 0),
                              chest=(3, 11, 0), look=(1, 0, 0), l_pole=(-0.6, -0.8, 0.3), r_pole=(1, 0, 0.4))),
-        (0.34, 'set and draw', dict(shot, draw=-4.2, hand_at=SHOT_NOCK, body=(2, 25, 0), chest=(2, 10, 0))),
-        (0.60, 'anchor', dict(draw=AC.FULL, chest=(2, 13, 0), r_pole=(1, 0.6, 0.6))),
-        (0.70, 'settle', dict(root=(0, -1.15, 0), chest=(2, 12, 0))),
-        (0.96, 'aim', dict(draw=-6.1, chest=(2, 12.5, 0))),
+        (0.34, 'set and draw', dict(shot, draw=-4.2, hand_at=SHOT_NOCK, body=(3, 50, 0), chest=(3, 15, 0))),
+        (0.60, 'anchor', dict(draw=AC.FULL, body=SHOT_TORSO['body'], chest=(3, 19, 0))),
+        (0.70, 'settle', dict(root=(0, -1.15, 0), chest=SHOT_TORSO['chest'])),
+        (0.96, 'aim', dict(draw=-6.1, chest=(3, 18.5, 0))),
         (0.999, 'loose', dict(on_string=1.0, hand_at=SHOT_NOCK)),
         (1.00, 'loose', dict(on_string=0.0, arrow=0)),
         (1.08, 'follow-through', dict(hand_at=_add(SHOT_NOCK, (2.0, 0.6, 2.5)), aim=(3, -2, 12),
-                                      bow_at=_add(SHOT_BOW, (0.2, -0.6, 0.2)), chest=(2, 14, 0))),
-        (1.30, 'hold the finish', dict(hand_at=_add(SHOT_NOCK, (2.3, 0.4, 2.8)), chest=(3, 12, 0))),
+                                      bow_at=_add(SHOT_BOW, (0.2, -0.6, 0.2)), chest=(3, 20, 0))),
+        (1.30, 'hold the finish', dict(hand_at=_add(SHOT_NOCK, (2.3, 0.4, 2.8)), chest=(3, 17, 0))),
         (1.50, 'to the quiver', dict(aim=(-15, -30, 25), bow_at=bow_for((1.0, 19.5, -6.8), (-15, -30, 25), AC.BRACE),
                                      hand_at=_add(qm, (0.5, 3.0, -1.0)), body=(4, 26, 0), chest=(4, 9, 0),
                                      look=(8, 6, 0), l_pole=(-1, -0.4, 0.2), r_pole=(1, -0.6, 0.4))),
@@ -383,7 +391,7 @@ def shoot_timeline():
 
 
 def shoot():
-    return build('archer_shoot', 2.7, False, shoot_timeline(), loose=LOOSE)
+    return build('archer_shoot', 2.7, False, timeline('archer_shoot'), loose=LOOSE)
 
 
 KITE_SPEED = -4.5       # px a second: the ground slides forward under planted feet as the archer backs away
@@ -421,7 +429,7 @@ def kite_timeline():
 
 
 def kite():
-    return build('archer_kite', 1.2, True, kite_timeline(), ground_speed=KITE_SPEED)
+    return build('archer_kite', 1.2, True, timeline('archer_kite'), ground_speed=KITE_SPEED)
 
 
 FLUNG = dict(aim=(-55, -55, 20), nock=(-1.5, 16.5, -6.0), hand=(6.5, 18.0, 0.5), arrow_dir=(30, -40))   # searched
@@ -453,7 +461,20 @@ def hit_timeline():
 
 
 def hit_react():
-    return build('archer_hit', 0.9, False, hit_timeline())
+    return build('archer_hit', 0.9, False, timeline('archer_hit'))
 
 
 CLIPS = [idle, kite, shoot, hit_react]
+TIMELINES = {'archer_idle': idle_timeline, 'archer_kite': kite_timeline, 'archer_shoot': shoot_timeline,
+             'archer_hit': hit_timeline}
+LOOPS = {'archer_idle': 3.0, 'archer_kite': 1.2}
+
+
+def timeline(name):
+    """A clip's written timeline with the searched fixes (archer_poses.json, from pose_search.py) laid over it."""
+    return PS.apply(TIMELINES[name](), PS.load(POSES_FILE).get(name, {}))
+
+
+def still(pose):
+    """A pose held still (for judging one beat)."""
+    return build('still', 0.05, False, [(0, 'still', pose), (0.05, 'still', pose)])
