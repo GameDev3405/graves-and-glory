@@ -28,7 +28,7 @@ from . import solve as S
 
 FPS = 60
 GATES = {'reach': 0.3, 'sink': 0.15, 'hover': 0.15, 'skate': 8.0, 'pop': 50.0, 'jerk': 30.0, 'clip': 1.5,
-         'loop': 0.5, 'loop_root': 0.01, 'ends': 1.0, 'rate': 60.0, 'wrist': 40.0}
+         'loop': 0.5, 'loop_root': 0.01, 'ends': 1.0, 'rate': 60.0, 'wrist': 40.0, 'ground': 0.5}
 PLANTED = 0.3
 STRIKE = 0.15
 
@@ -148,6 +148,20 @@ def clipping(run, clipper=None):
     return worst
 
 
+def ground(run, clipper=None):
+    """{item: (px under the ground, t)} at its worst, less what the stance already has (the clip cannot do better)."""
+    cl = clipper or C.Clipper(run.troop)
+    st = run.stance_pose()
+    floor = C.below(cl, run.troop.fk(st), M.GROUND) if st is not None else {}
+    worst = {}
+    for t, W in zip(run.times, run.W):
+        for item, d in C.below(cl, W, M.GROUND).items():
+            d = max(0.0, d - floor.get(item, 0.0))
+            if d > worst.get(item, (0.0, 0.0))[0]:
+                worst[item] = (d, float(t))
+    return worst
+
+
 def ends(run):
     """Loops: (deg, root px) last against first. Once clips: deg of the first and last poses against the stance."""
     tr = run.troop
@@ -258,6 +272,7 @@ def measure(troop, clip, stance='default', reach=None, clipper=None):
     res['jerk'], res['jerk_at'] = round(sm['jerk'][0], 2), (sm['jerk'][1], round(sm['jerk'][2], 3))
     cl = clipping(run, clipper)
     res['clipping'] = {k: (round(v, 2), round(t, 3)) for k, (v, t) in cl.items()}
+    res['ground'] = {k: (round(v, 2), round(t, 3)) for k, (v, t) in ground(run, clipper).items()}
     res.update(ends(run))
     res['signs'] = signs(run)
     rt = rate(run.player.clip, troop)
@@ -279,6 +294,8 @@ def measure(troop, clip, stance='default', reach=None, clipper=None):
         gate(k, res[k], GATES[k])
     for item, (v, t) in res['clipping'].items():
         gate(f'clip {item}@{t}', v, GATES['clip'])
+    for item, (v, t) in res['ground'].items():
+        gate(f'ground {item}@{t}', v, GATES['ground'])
     if run.loop:
         gate('loop', res.get('loop'), GATES['loop'], True)
         gate('loop root', res.get('loop_root'), GATES['loop_root'], True)
@@ -307,6 +324,7 @@ def report(res):
                  + (f"  (stance gap R/L {res['stance_gap']})" if 'stance_gap' in res else ''))
     lines.append(f"  smooth     pop {res['pop']:.1f} deg {res['pop_at']}  jerk {res['jerk']:.1f} deg {res['jerk_at']}")
     lines.append(f"  clipping   {res['clipping'] or 'none'}")
+    lines.append(f"  ground     {res['ground'] or 'clear'} (px under the ground)")
     if res['loop']:
         lines.append(f"  loop       {res.get('loop', 0):.2f} deg, root {res.get('loop_root', 0):.3f} px")
     elif 'ends' in res:

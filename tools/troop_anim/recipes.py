@@ -43,7 +43,8 @@ def overhead(troop, clip, impact=None, length=None, shield=None):
       0 .. T-0.25    wind-up (eases out of the stance; the body coils back); 0.25 s keeps the shoulder under 60 deg/100 ms
       T-0.25 .. T-0.15 the held top (a moving hold: it creeps a few degrees further back)
       T-0.15 .. T    the strike, linear (the arm unloads; the hips and chest drive it)
-      T .. T+0.1     follow-through to a low blade (root down, knees bent, root forward)
+      T .. T+0.1     follow-through to a low blade (root down, knees bent, root forward); the wrist stays cocked so a
+                     long hilt clears the upper arm and the tip clears the ground
       T+0.1 .. T+0.3 the pause on the low blade
       T+0.3 .. L     recovery to the stance
     """
@@ -71,10 +72,10 @@ def overhead(troop, clip, impact=None, length=None, shield=None):
             'off': off_tuck}},
         {'t': follow, 'pose': {
             'root': (0.0, 2.0, 2.8), 'hips': (6.0, 7.0, 0.0), 'body': (15.0, 14.0, 3.0),
-            'weapon': {'upper': (-50.0, 4.0), 'fore': (-36.0, 0.0), 'item': (-12.0, -10.0), 'twist': 0.0}}},
+            'weapon': {'upper': (-50.0, 4.0), 'fore': (-36.0, 0.0), 'item': (4.0, -10.0), 'twist': 0.0}}},
         {'t': pause, 'pose': {
             'root': (0.0, 1.9, 2.7), 'hips': (5.5, 6.5, 0.0), 'body': (14.0, 13.0, 3.0),
-            'weapon': {'upper': (-53.0, 4.0), 'fore': (-39.0, 0.0), 'item': (-15.0, -10.0), 'twist': 0.0}}},
+            'weapon': {'upper': (-53.0, 4.0), 'fore': (-39.0, 0.0), 'item': (2.0, -10.0), 'twist': 0.0}}},
         {'t': snap(L), 'stance': True},
     ]
     return _base(troop, clip, keys, L, impact=T)

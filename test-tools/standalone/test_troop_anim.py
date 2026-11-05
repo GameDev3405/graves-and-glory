@@ -262,6 +262,24 @@ def _synthetic(bones, length=1.0, impact=-1, name=OVERHEAD):
             'bones': {b: {'rotation': [{'t': t, 'v': list(v)} for t, v in keys]} for b, keys in bones.items()}}
 
 
+class Settle(unittest.TestCase):
+    """The bake lands on the stance's numbers: no Euler-form or free-roll snap into a pinned tick."""
+
+    def test_slerp_ends_and_midpoint(self):
+        A0, B0 = M.rot((0.0, 0.0, 0.0)), M.rot((0.0, 0.0, 90.0))
+        np.testing.assert_allclose(A._slerp_R(A0, B0, 0.0), A0, atol=1e-9)
+        np.testing.assert_allclose(A._slerp_R(A0, B0, 1.0), B0, atol=1e-9)
+        np.testing.assert_allclose(A._slerp_R(A0, B0, 0.5), M.rot((0.0, 0.0, 45.0)), atol=1e-9)
+
+    def test_a_preset_comes_home_without_a_snap(self):
+        troop = M.Troop('revenant')
+        bk = A.Baker(troop, R.recipe(troop, 'sword_overhead'))
+        clip = bk.bake()
+        for b in ('right_arm', 'right_hand'):              # unsettled, these came home with 85 and 340 deg snaps
+            step = np.abs(clip[b][-1, :3] - clip[b][-2, :3]).max()
+            self.assertLess(step, 20.0, b)
+
+
 class Gates(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -269,7 +287,8 @@ class Gates(unittest.TestCase):
 
     def test_gates_are_the_guides(self):
         self.assertEqual(K.GATES, {'reach': 0.3, 'sink': 0.15, 'hover': 0.15, 'skate': 8.0, 'pop': 50.0, 'jerk': 30.0,
-                                   'clip': 1.5, 'loop': 0.5, 'loop_root': 0.01, 'ends': 1.0, 'rate': 60.0, 'wrist': 40.0})
+                                   'clip': 1.5, 'loop': 0.5, 'loop_root': 0.01, 'ends': 1.0, 'rate': 60.0, 'wrist': 40.0,
+                                   'ground': 0.5})
 
     def test_rate_flags_a_snap_and_passes_a_swing(self):
         snap = _synthetic({'right_arm': [(0.0, (0, 0, 0)), (0.05, (-80, 0, 0)), (1.0, (-80, 0, 0))]})
@@ -297,7 +316,7 @@ class Gates(unittest.TestCase):
 
     def test_measure_reports_every_gate_on_a_committed_clip(self):
         res = K.measure(self.troop, OVERHEAD)
-        for k in ('sink', 'hover', 'skate', 'pop', 'jerk', 'clipping', 'ends', 'signs', 'rate', 'wrist', 'ticks_off',
+        for k in ('sink', 'hover', 'skate', 'pop', 'jerk', 'clipping', 'ground', 'ends', 'signs', 'rate', 'wrist', 'ticks_off',
                   'timing', 'fails', 'stance_gap'):
             self.assertIn(k, res)
         self.assertEqual(res['timing']['want'], 10)

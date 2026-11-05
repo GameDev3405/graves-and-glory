@@ -253,6 +253,18 @@ class Clipper:
         return out
 
 
+def below(clipper, W, ground=24.0):
+    """{item: px its lowest point sits under the ground plane (model y = MotionFeet.GROUND, y down)}."""
+    out = {}
+    for item, part, bone, pts, grip, tip in clipper.items:
+        if bone not in W or not len(pts):
+            continue
+        M = W[bone]
+        y = (M[1, :3] @ pts.T) + M[1, 3]
+        out[item] = max(out.get(item, 0.0), float(max(0.0, y.max() - ground)))
+    return out
+
+
 def smooth(values, step, hold=0.15, ease=0.05, loop=False):
     """Spreads per-tick pushes over time: each held `hold` s either side, eased by a Gaussian of `ease` s, never below
     what the tick itself needs; a once clip eases to 0 over its first 0.06 s and last 0.2 s (it starts and ends on its

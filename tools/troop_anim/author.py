@@ -175,6 +175,23 @@ def _interp(times, values, interps, t, slopes=None):
     return float(h00 * values[k] + h10 * h * m[k] + h01 * values[k + 1] + h11 * h * m[k + 1])
 
 
+def _slerp_R(A, B, w):
+    """The rotation w of the way from A to B (shortest arc)."""
+    D = A.T @ B
+    c = max(-1.0, min(1.0, (np.trace(D) - 1) / 2))
+    ang = math.acos(c)
+    if ang < 1e-9:
+        return A
+    v = np.array([D[2, 1] - D[1, 2], D[0, 2] - D[2, 0], D[1, 0] - D[0, 1]])
+    if np.linalg.norm(v) < 1e-9:                      # a half turn: any axis of D's +1 eigenvector
+        val, vec = np.linalg.eigh((D + D.T) / 2)
+        v = vec[:, int(val.argmax())]
+    v = v / np.linalg.norm(v)
+    K = np.array([[0, -v[2], v[1]], [v[2], 0, -v[0]], [-v[1], v[0], 0]])
+    a = ang * w
+    return A @ (np.eye(3) + math.sin(a) * K + (1 - math.cos(a)) * K @ K)
+
+
 def _unwrap(vals):
     out = [float(vals[0])]
     for v in vals[1:]:
@@ -455,12 +472,85 @@ class Baker:
                 need[item][i] = best
         return {k: C.smooth(v, self.step, loop=self.loop) for k, v in need.items() if v.any()}
 
+    def _ends(self):
+        """Tick indices the clip pins to the stance."""
+        ends = {int(round(st / self.step)) for st in self.tl.stance_times()}
+        if not self.loop:
+            ends |= {0, self.n - 1}
+        return {i for i in ends if 0 <= i < self.n}
+
+    def _settle(self, nets, ends):
+        """Land every free bone on the stance's own rotation and numbers at the pinned ticks.
+
+        1. A straight arm's roll is free (the hand carries the item's turn), so the solver may come home with the
+           upper arm rolled and the hand counter-rolled. Each segment that closes on a pinned tick eases the arm and
+           hand rotations onto the stance's (smoothstep, slerp), so the pin is not a snap.
+        2. A rotation has two ZYX Euler forms, each moved by whole turns; the game interpolates the numbers, so each
+           tick takes the form that moves the channels least (dynamic programming), pinned ticks fixed to the stance."""
+        tr, r = self.troop, self.rig
+        keys = sorted(set(float(x) for x in self.tl.times))
+        st_net = r.stance_net
+        arm_bones = {b for a in r.arms.values() for b in (a.arm, a.hand) if b in tr.rest}
+        nets = [{b: list(v) for b, v in ch.items()} for ch in nets]
+
+        def net_r(ch, b):
+            return np.array(tr.rest[b][0], float) + np.array(ch[b][:3], float)
+
+        def put(ch, b, e):
+            for k in range(3):
+                ch[b][k] = float(e[k]) - float(tr.rest[b][0][k])
+
+        for i in sorted(ends):
+            ts = self.times[i]
+            prev = [k for k in keys if k < ts - 1e-9]
+            if not prev or i == 0:
+                continue
+            tp = prev[-1]
+            for j in range(self.n):
+                t = self.times[j]
+                if not tp < t < ts:
+                    continue
+                x = (t - tp) / (ts - tp)
+                w = x * x * (3 - 2 * x)
+                for b in arm_bones:
+                    if b in nets[j] and b in st_net:
+                        Rs, Rt = M.rot(st_net[b]), M.rot(net_r(nets[j], b))
+                        put(nets[j], b, S.closest_euler(_slerp_R(Rt, Rs, w), net_r(nets[j], b)))
+        shifts = np.array([(i, j, k) for i in (-1, 0, 1) for j in (-1, 0, 1) for k in (-1, 0, 1)], float) * 360.0
+        for b in sorted({b for ch in nets for b in ch}):
+            if b in tr.limits or b not in tr.rest or b not in st_net or any(b not in ch for ch in nets):
+                continue
+            cands = []
+            for j, ch in enumerate(nets):
+                if j in ends:
+                    cands.append(np.array([st_net[b]], float))
+                    continue
+                e = np.array(net_r(ch, b), float)
+                alt = np.array([e[0] + 180.0, 180.0 - e[1], e[2] + 180.0])
+                alt = alt + 360.0 * np.round((e - alt) / 360.0)
+                cands.append(np.concatenate([e + shifts, alt + shifts]))
+            cost = np.zeros(len(cands[0]))
+            back = []
+            for j in range(1, len(cands)):
+                d = ((cands[j][:, None, :] - cands[j - 1][None, :, :]) ** 2).sum(-1) + cost[None, :]
+                arg = d.argmin(1)
+                back.append(arg)
+                cost = d[np.arange(len(arg)), arg]
+            pick = [int(cost.argmin())]
+            for arg in reversed(back):
+                pick.append(int(arg[pick[-1]]))
+            pick.reverse()
+            for j, ch in enumerate(nets):
+                put(ch, b, cands[j][pick[j]])
+        return nets
+
     def bake(self):
         """{bone: n x 6 clip channels}; also sets .nets, .pushes, .reach."""
         nets, states, reach = self.run()
         pushes = self.solve_pushes(nets, states)
         if pushes:
             nets, states, reach = self.run(pushes)
+        nets = self._settle(nets, self._ends())
         bones = sorted({b for ch in nets for b in ch})
         clip = {}
         for b in bones:
@@ -472,15 +562,9 @@ class Baker:
                     tt = self.times - delay
                     tt = tt % self.length if self.loop else tt
                     clip[b] = np.stack([np.interp(tt, self.times, clip[b][:, k]) for k in range(6)], 1)
-        ends = set()
-        for st in self.tl.stance_times():
-            ends.add(int(round(st / self.step)))
-        if not self.loop:
-            ends |= {0, self.n - 1}
-        for i in ends:
-            if 0 <= i < self.n:
-                for b in clip:
-                    clip[b][i] = self.rig.zero.get(b, np.zeros(6))
+        for i in self._ends():
+            for b in clip:
+                clip[b][i] = self.rig.zero.get(b, np.zeros(6))
         if self.loop:
             for b in clip:
                 clip[b][-1] = clip[b][0]
