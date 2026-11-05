@@ -2768,7 +2768,7 @@
       "family": "crossbow",
       "zone": "body",
       "kind": "bolt",
-      "impactTicks": 4,
+      "impactTicks": 7,
       "weight": "medium"
     },
     {
