@@ -94,11 +94,13 @@ class Clip:
         return rot, pos
 
 
-def world(rot, pos):
-    """Bone -> 4x4 Blockbench-space matrix for a pose (rot, pos as Clip.at returns them)."""
+def world(rot, pos, bones=None):
+    """Bone -> 4x4 Blockbench-space matrix for a pose (rot, pos as Clip.at returns them). bones: a rig table like BONES
+    (parents listed before children); the troop rig by default."""
+    bones = bones or BONES
     out = {}
-    for b in ORDER:
-        parent, piv = BONES[b]
+    for b in bones:
+        parent, piv = bones[b]
         piv = np.array(piv, float)
         p = pos.get(b, (0, 0, 0))
         off = np.array([-p[0], p[1], p[2]])          # model x is Blockbench -x
@@ -108,6 +110,14 @@ def world(rot, pos):
         L[:3, 3] = piv + off - R @ piv
         out[b] = (out[parent] @ L) if parent else L
     return out
+
+
+def mc_euler(R):
+    """The inverse of mc_rotation: a Blockbench-space rotation matrix as clip angles (pitch, yaw, roll) in degrees."""
+    b = math.asin(max(-1.0, min(1.0, -R[2, 0])))
+    a = math.atan2(R[1, 0], R[0, 0])
+    c = math.atan2(R[2, 1], R[2, 2])
+    return (-math.degrees(c), -math.degrees(b), math.degrees(a))
 
 
 def apply(M, p):
@@ -130,14 +140,14 @@ def ground_root_y(rot, pos):
 
 
 def spring_follow(clip, bone, parent_bone, axis_weights, stiffness=90.0, damping=11.0, rest=(0, 0, 0),
-                  clamp=None, dt=1 / 240, step=0.05, passes=2):
+                  clamp=None, dt=1 / 240, step=0.05, passes=2, bones=None):
     """Bakes a hanging part's swing (the cape from the body, the plume from the head) as rotation keys every `step` s.
 
     The part is a damped pendulum: it wants to hang straight down in the world, so its target pitch and roll cancel its
     parent's lean, and the parent's angular velocity and the root's acceleration kick it. axis_weights scales the
     reaction on pitch and roll; clamp(t, pitch, roll) can stop it passing through the body or legs."""
     def parent_angles(t):
-        pose = world(*clip.at(t))
+        pose = world(*clip.at(t), bones=bones)
         Rp = pose[parent_bone][:3, :3]
         down = Rp.T @ np.array([0, -1.0, 0])                 # world down in the parent's frame
         pitch = math.degrees(math.atan2(down[2], -down[1]))   # positive: the world's down lies behind the parent

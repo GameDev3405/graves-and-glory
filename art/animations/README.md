@@ -1,5 +1,8 @@
 # Unit animations
 
+**See also `oathbound_combat/`:** a Fresh Animations-style combat pack for the same knight, with elbows, knees, a
+waist and ankles: idle, advance, a three-hit combo, block and hit reaction. Its README has the details.
+
 ## Oathbound knight: `oath_combo` and `oath_guard`
 
 The Oathbound knight (`art/armor/`) with the Oathblade in the right hand and the Sunward shield in the left
@@ -66,4 +69,5 @@ degrees on the sword arm and wrist, and the frame-to-frame change in speed stays
 - **Item placement.** The held items sit on the rig's hand bones by a grip transform written in `animate_unit.py`, not
   by the game's held-item transforms. A weapon's in-game grip may sit slightly differently.
 - **Blockbench keys.** They are converted to Blockbench's space (rotation as -pitch, -yaw, roll; position as -x, y,
-  z) but have not been checked by opening the file in Blockbench.
+  z) but have not been checked by opening the file in Blockbench. The sword and shield groups carry their grip
+  rotation, so the items sit in the fists. The first version left them at the origin.

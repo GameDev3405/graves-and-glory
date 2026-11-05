@@ -125,10 +125,10 @@ class Unit:
 
 # ---- frames ------------------------------------------------------------------------------------
 
-def frame(unit, clip, t, yaw, pitch, scale, size, ss=2):
+def frame(unit, clip, t, yaw, pitch, scale, size, ss=2, world=None):
     """One view of the unit at time t: supersampled ss times and filtered down, with a contact shadow on the floor."""
     rot, pos = clip.at(t)
-    pose = rig.world(rot, pos)
+    pose = (world or rig.world)(rot, pos)
     W, H = size
     anchor = (W * ss / 2, H * ss - 46 * ss)
     im = render(unit.drawables(pose), yaw, pitch, scale * ss, size=(W * ss, H * ss), anchor=anchor)
@@ -265,12 +265,15 @@ def bbmodel(unit, clips):
         textures.append((wid, wimg, WW, WH))
         gid = uid('item', wid)
         cubes = []
+        grip = local[:3, 3]
         for b in wp.boxes('base', 'rest'):
             e = _element(b, wpos, ti, uid('w', wid, b.name))
+            for k in ('from', 'to', 'origin'):          # the item's grip sits at its group's origin, in the fist
+                e[k] = [round(e[k][i] + grip[i], 4) for i in range(3)]
             elements.append(e)
             cubes.append(e['uuid'])
         kids.setdefault('item:' + wid, cubes)
-    # the item groups carry the grip transform as a rotation and an origin at the grip
+    # each item group carries its grip: an origin at the fist and the rotation that lays the item in it
     groups = []
 
     def group(name, origin, children, rotation=(0, 0, 0)):
@@ -286,9 +289,9 @@ def bbmodel(unit, clips):
             if p == b:
                 ch.append(tree(c))
         if b == 'right_hand':
-            ch.append(group('oathblade', SWORD_GRIP, kids['item:oathblade'], (0, 0, 0)))
+            ch.append(group('oathblade', SWORD_GRIP, kids['item:oathblade'], _bb_rotation(SWORD_LOCAL[:3, :3])))
         if b == 'left_hand':
-            ch.append(group('sunward', SHIELD_GRIP, kids['item:sunward'], (0, 0, 0)))
+            ch.append(group('sunward', SHIELD_GRIP, kids['item:sunward'], _bb_rotation(SHIELD_LOCAL[:3, :3])))
         return group(b, rig.BONES[b][1], ch)
     outliner = [tree('root')]
     anims = []
@@ -317,6 +320,13 @@ def bbmodel(unit, clips):
                           'uuid': uid('t', n), 'relative_path': '', 'width': w, 'height': h, 'uv_width': w,
                           'uv_height': h, 'source': _png64(im)} for i, (n, im, w, h) in enumerate(textures)],
             'animations': anims}
+
+
+def _bb_rotation(R):
+    """Blockbench's group rotation (x, y, z degrees, applied x then y then z) of a rotation matrix."""
+    b = math.asin(max(-1.0, min(1.0, -R[2, 0])))
+    return [round(math.degrees(math.atan2(R[2, 1], R[2, 2])), 4), round(math.degrees(b), 4),
+            round(math.degrees(math.atan2(R[1, 0], R[0, 0])), 4)]
 
 
 def _element(b, pos, tex, u):
