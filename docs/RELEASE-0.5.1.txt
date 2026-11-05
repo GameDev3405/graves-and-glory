@@ -1,4 +1,4 @@
-Graves and Glory 0.5.1 — release candidate 1
+Graves and Glory 0.5.1 — release candidate 2
 November 4, 2026
 
 Graves and Glory is a Fabric mod for Minecraft: Java Edition 1.20.1. You
@@ -31,6 +31,19 @@ campaign (solo). Practice and 1vAI remain. Ironhold is the adopted battle map.
 Combat, magic and music now use royalty-free recordings, with a music director
 that picks tracks for the moment. Sounds fire when the hit lands. Round start
 is faster because troops are prepared while you wait in the lobby.
+
+What landed since release candidate 1:
+- Ambience and music layers. Maps now play quiet ambience beds under the
+  fight, with their own music for the pre-match briefing and for overtime.
+- Round 2 audio. Order horns can be heard from 64 blocks away and shouts
+  from 16, by every player nearby, not only the one giving the order. Hold
+  and charge now have their own shouts.
+- Commander downs now count armour, so the gear you wear protects you from
+  being downed as it should.
+- Bleed timing is fixed, so it no longer lands as one burst.
+- A first-join profile import that was refused is fixed.
+- Stale enemy sightings no longer carry into the next round.
+- A failed party save is rolled back instead of leaving the party half saved.
 
 What landed since the draft:
 - Attack clips. Every troop family now has its own attack animations: sword,
