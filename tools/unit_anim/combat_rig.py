@@ -391,7 +391,7 @@ def _chain(side, chest_M, arm, elbow, bones=None):
 
 
 def reach_arm(side, chest_M, target, pole, guess, bones=None, pole_weight=0.35, fore=None, fore_weight=0.6,
-              stay=0.3, prev_swivel=None, min_bend=15.0, twist=0.25):
+              stay=0.3, prev_swivel=None, min_bend=15.0, twist=0.5):
     """Aims (upper, fore) that put the hand's pivot at `target` (world), with the elbow drawn toward `pole` (a world
     direction from the shoulder). Damped Gauss-Newton on small turns of last tick's two directions (`guess`), so the
     arm moves continuously and the solve has no poles (yaw and pitch angles would, with an arm hanging straight down). `fore` (a world direction, optional) pulls the forearm toward
