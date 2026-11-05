@@ -3,6 +3,8 @@
   python tools/animate_combat.py                  everything: the reel, the GIF, the beat sheets and the exports
   python tools/animate_combat.py --still combo 0.4   one frame of a clip, both views
   python tools/animate_combat.py --check          the clips' smoothness, foot-planting and clipping report only
+  python tools/animate_combat.py --sheet combo 0.32 0.4 --out DIR   three large views per time, with clipping volumes
+  python tools/animate_combat.py --strip combo 0.26 0.5 --out DIR   consecutive 60 fps frames of a strike, tiled
 
 Writes art/animations/oathbound_combat/:
   combat_reel.mp4          60 fps, 1280x720: every clip at full speed, the strikes again in slow motion
@@ -348,13 +350,70 @@ def reel_plan(clips, fps=60):
     return plan
 
 
+# ---- review sheets (for blocking and checking poses) ------------------------------------------
+
+REVIEW_VIEWS = ((-32, 8), (90, 0), (0, 4))      # three-quarter shield side, profile sword side, front
+
+
+def review_sheet(unit, items, out, scale=7, cell=(340, 380), cols=2):
+    """[(label, clip, t)] -> one sheet, each item in three views at a large scale, with its clipping volume."""
+    cl = CL.Clipper()
+    cw, ch = cell
+    rows = math.ceil(len(items) / cols)
+    im = Image.new('RGBA', (cols * 3 * cw, rows * ch), BG)
+    d = ImageDraw.Draw(im)
+    for k, (label, clip, t) in enumerate(items):
+        r, c = divmod(k, cols)
+        for i, (yaw, pitch) in enumerate(REVIEW_VIEWS):
+            im.alpha_composite(frame(unit, clip, t, yaw, pitch, scale, cell), ((c * 3 + i) * cw, r * ch))
+        v = cl.volumes(CR.world(*clip.at(t)))
+        d.text((c * 3 * cw + 8, r * ch + 6), '%s   inside the body: sword %.1f, shield %.1f px^3' %
+               (label, v['oathblade'], v['sunward']), font=font(13, True), fill=(230, 230, 230))
+    im.convert('RGB').save(out)
+    return out
+
+
+def filmstrip(unit, clip, t0, t1, out, fps=60, cols=7):
+    """Consecutive 60 fps frames from t0 to t1 in the three-quarter view, tiled: arcs and pops show here, not on a
+    sheet of beats."""
+    ts = [t0 + i / fps for i in range(int(round((t1 - t0) * fps)) + 1)]
+    cw, ch = 220, 250
+    rows = math.ceil(len(ts) / cols)
+    im = Image.new('RGBA', (cols * cw, rows * ch), BG)
+    d = ImageDraw.Draw(im)
+    for k, t in enumerate(ts):
+        r, c = divmod(k, cols)
+        im.alpha_composite(frame(unit, clip, t, -32, 8, 4.5, (cw, ch)), (c * cw, r * ch))
+        d.text((c * cw + 6, r * ch + 4), '%.3f' % t, font=font(11), fill=(200, 200, 200))
+    im.convert('RGB').save(out)
+    return out
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser()
     ap.add_argument('--still', nargs=2, metavar=('CLIP', 'SECONDS'))
     ap.add_argument('--check', action='store_true')
+    ap.add_argument('--sheet', nargs='+', metavar=('CLIP', 'SECONDS'),
+                    help='three views of a clip at its beats (or at the given times), large, with clipping volumes')
+    ap.add_argument('--strip', nargs=3, metavar=('CLIP', 'FROM', 'TO'), help='consecutive 60 fps frames, tiled')
+    ap.add_argument('--out', help='where --sheet and --strip write (default: the system temp folder)')
     ap.add_argument('--rarity', default='common')
     a = ap.parse_args(argv)
     clips = [f() for f in CC.CLIPS]
+    by_name = {c.name: c for c in clips}
+    pick = lambda n: by_name['combat_' + n.replace('combat_', '')]
+    if a.sheet or a.strip:
+        unit = CombatUnit(a.rarity)
+        name = (a.sheet or a.strip)[0]
+        out = pathlib.Path(a.out or tempfile.gettempdir()) / ('%s_%s.png' % ('sheet' if a.sheet else 'strip', name))
+        clip = pick(name)
+        if a.sheet:
+            ts = [float(x) for x in a.sheet[1:]] or [t for t, _ in clip.beats]
+            labels = dict(clip.beats)
+            print(review_sheet(unit, [('%.2f s  %s' % (t, labels.get(t, '')), clip, t) for t in ts], out))
+        else:
+            print(filmstrip(unit, clip, float(a.strip[1]), float(a.strip[2]), out))
+        return 0
     if a.check:
         for c in clips:
             print(c.name, 'ik %.3f' % c.ik_error, 'feet (sink, gap, slide)', feet_report(c))
@@ -364,7 +423,7 @@ def main(argv=None):
     unit = CombatUnit(a.rarity)
     OUT.mkdir(parents=True, exist_ok=True)
     if a.still:
-        clip = {c.name: c for c in clips}['combat_' + a.still[0].replace('combat_', '')]
+        clip = pick(a.still[0])
         p = OUT / ('still_%s_%.2f.png' % (clip.name, float(a.still[1])))
         composite(unit, clip, float(a.still[1]), '1.0x').convert('RGB').save(p)
         print(p)

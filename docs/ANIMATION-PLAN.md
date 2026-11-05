@@ -2,6 +2,11 @@
 
 Decision (Kort): hybrid. Code-authored clips for the everyday states; hand-keyed Blender clips only for signature attacks and the charge. First pass covers all 6 classes and the core states; formation and charge come second. Implementation starts after SLICE-1 scoping; this is the plan only. Excalibur is the look; Fresh Animations is not used.
 
+> **2026-11-05:** the workflow used to animate troops so far (rigs, solvers, clipping control, checks, and what failed)
+> is in `docs/ANIMATING-TROOPS.md`. The Oathbound combat pack there was made Fresh Animations-style, on request, for
+> combat, with a new articulated rig. That conflicts with the line above. Settle which look holds, and update this plan
+> (QUESTIONS-FOR-KORT ANIM-02).
+
 ## What already exists (do not redo)
 `TroopClips`/`BipedClips`/`HoundClips`/`SpiderClips`/`ColossusClips` hold 18 code-authored keyframe clips per rig: idle, walk, run, attack, hit, death, shield_up, bow_draw, cast, kneel, point, sit, raise, fall, stand, brace, hold, fall_back. `TroopAnimator` blends them by state and stance (server `stance_v1` packet), `TroopTells` adds idle tells and per-House attack variants, mirroring handles left-handed troops. So the "procedural base" half of the hybrid is mostly built.
 
