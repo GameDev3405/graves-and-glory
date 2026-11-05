@@ -19,7 +19,11 @@ import static gg.gravesandglory.Phase2Checks.server;
  * wall's neighbours in each rank (by the places of its layout) stand 0.7 apart (the wall cell, give or take 0.05), no two bodies' boxes overlap
  * by more than 0.02, every Shieldbreaker stands behind the Hearthguard's ranks, the Marshal's place has at least his width and 0.1 of room to
  * the places beside it, the shield troops brace, every wall troop faces its Hold yaw within 10 degrees (yaw and body yaw: ruling R21, Tactics.stretch),
- * and nothing still shuffles in the last 40 ticks (no jam, no stutter). The screenshot is hl-wall.png.</li>
+ * and nothing still shuffles in the 40 ticks after the army has reached its slots (no jam, no stutter). The screenshot is hl-wall.png. The
+ * settle window starts once every troop of the fixture stands within the arrival tolerance of its slot, no earlier than tick 160 and no later
+ * than 520 (command UI Task 6, Ruling 12: a Compact army walks at its formation's 0.85, so it may arrive later than 160); a troop that leaves the
+ * tolerance again counts as not arrived, so a troop rocking about its slot delays the window to 520 and fails the 0.05 limit. The report logs
+ * each troop's distance to its slot every 5 ticks from tick 120 for the troops that moved most (drift into the slot against oscillation).</li>
  * <li>hl-deploy: before the round's fixture, a mixed Ironclad banner (Hearthguard with shields, Brassjaw golems without) is deployed at the
  * barracks (Battle.deploy, forward reinforcement off): no two deploy points stand closer than the two troops' half widths and 0.1.</li>
  * <li>hl-reinforce: the round-start rows (Battle.reinforce) of two Hearthguard rows and a mixed row: the wall rows one deep wall 0.7 apart, the
@@ -120,6 +124,13 @@ final class HoldLineChecks {
         GravesAndGlory.Unit marshal;
         Vec3d lineAt, blockAt, cameraAt;
         final Map<GravesAndGlory.Unit, Vec3d> settledAt = new HashMap<>();
+        /** hl-wall's settle window (Task 6, Ruling 12): the tick each fixture troop last came within the arrival tolerance of its slot (gone when it
+         *  left it), the window's start (-1 until every troop has arrived), the positions at the old fixed window's start (160) and each troop's
+         *  distance to its slot every 5 ticks from 120. */
+        final Map<GravesAndGlory.Unit, Long> arrivedAt = new HashMap<>();
+        long settleStart = -1;
+        final Map<GravesAndGlory.Unit, Vec3d> oldSettledAt = new HashMap<>();
+        final Map<GravesAndGlory.Unit, StringBuilder> slotTrace = new HashMap<>();
         /** The commander's units' places ({side, back}) just before the loss, and the man killed. */
         final Map<GravesAndGlory.Unit, double[]> placeBefore = new HashMap<>();
         /** The same units' held places in cells ({file, rank} of BattleMath.holdGrid, from the server's Squad.places) just before the loss. */
@@ -496,9 +507,18 @@ final class HoldLineChecks {
                 }
                 case 10 -> {
                     sampleFacing(b);
-                    if (since(b) == 160) for (var u : fixture) settledAt.put(u, u.mob.getPos());
-                    if (since(b) == 190) requestShot("hl-wall", 4);
-                    if (since(b) < 200) return;
+                    long now = since(b); double tol = Spec.NAVIGATION[0].arrivalTolerance();
+                    boolean all = true;
+                    for (var u : fixture) {
+                        if (!u.mob.isAlive()) continue;
+                        double off = distance(u.mob.getPos(), b.formation(u));
+                        if (off <= tol) arrivedAt.putIfAbsent(u, now); else {arrivedAt.remove(u); all = false;}
+                        if (now >= 120 && now % 5 == 0) slotTrace.computeIfAbsent(u, k -> new StringBuilder()).append(now).append(':').append(fmt(off)).append(' ');
+                    }
+                    if (now == 160) for (var u : fixture) oldSettledAt.put(u, u.mob.getPos());
+                    if (settleStart < 0 && now >= 160 && (all || now >= 520)) {settleStart = now; for (var u : fixture) settledAt.put(u, u.mob.getPos());}
+                    if (now == 190) requestShot("hl-wall", 4);
+                    if (now < 200 || settleStart < 0 || now < settleStart + 40) return;
                     wall(b);
                     // hl-wall-loss: a front-rank man with a man directly behind him falls (the first such Squire, beside the rear rank's flank: its rank slides)
                     List<GravesAndGlory.Unit> line = wallLine();
@@ -775,7 +795,19 @@ final class HoldLineChecks {
                 else if (o > restOff) {restOff = o; restWorst = u.spec.id() + " " + u.slot;}
             }
             boolean still = moved < 0.05 && wallOff < 0.1 && restOff <= tolerance + 0.05; pass &= still;
-            why.add("in the last 40 ticks the most any troop moved is " + fmt(moved) + " (" + mover + "; want under 0.05: no jam, no stutter); the farthest wall troop from its slot stands " + fmt(wallOff) + " off it (" + wallWorst + "; want under 0.1), the farthest of the rest " + fmt(restOff) + " (" + restWorst + "; want within the arrival tolerance " + fmt(tolerance) + ")=" + still);
+            // the old fixed window (ticks 160-200) for comparison, and the slot traces of the three troops that moved most in either window
+            double oldMoved = 0; String oldMover = "none"; Map<GravesAndGlory.Unit, Double> movedBy = new HashMap<>();
+            for (var u : fixture) {
+                Vec3d then = oldSettledAt.get(u), now = settledAt.get(u);
+                double mo = then == null ? 0 : distance(then, u.mob.getPos()), mn = now == null ? 0 : distance(now, u.mob.getPos());
+                if (mo > oldMoved) {oldMoved = mo; oldMover = u.spec.id() + " " + u.slot;}
+                movedBy.put(u, Math.max(mo, mn));
+            }
+            List<String> traces = new ArrayList<>();
+            movedBy.entrySet().stream().sorted((x, y) -> Double.compare(y.getValue(), x.getValue())).limit(3).forEach(e -> traces.add(e.getKey().spec.id() + " " + e.getKey().slot + " [" + String.valueOf(slotTrace.getOrDefault(e.getKey(), new StringBuilder())).trim() + "]"));
+            System.out.println("[p2] hl-wall trace: settle window from tick " + settleStart + " (all within " + fmt(Spec.NAVIGATION[0].arrivalTolerance()) + " of their slots), checked at " + since(b) + "; ticks 160-200 the most any troop moved " + fmt(oldMoved) + " (" + oldMover + "); distance to slot every 5 ticks: " + String.join("; ", traces));
+            why.add("the settle window from tick " + settleStart + " (every troop within the arrival tolerance of its slot, from 160; ticks 160-200 the most moved " + fmt(oldMoved) + " (" + oldMover + "))");
+            why.add("in the 40 ticks after the army reached its slots the most any troop moved is " + fmt(moved) + " (" + mover + "; want under 0.05: no jam, no stutter); the farthest wall troop from its slot stands " + fmt(wallOff) + " off it (" + wallWorst + "; want under 0.1), the farthest of the rest " + fmt(restOff) + " (" + restWorst + "; want within the arrival tolerance " + fmt(tolerance) + ")=" + still);
             String[] face = facing(b); boolean faces = face[0].equals("true"); pass &= faces; why.add(face[1] + "=" + faces);
             long bad = faceBad.size(); boolean walkIn = faceSamples >= 20 && bad == 0 && faceBack > 0 && faceSide > 0 && faceRouted * 4 <= faceSamples && faceRoutedAir == 0; pass &= walkIn;
             why.add("walking in, every tick: " + faceSamples + " samples of a wall troop within 2 blocks of its slot moving over 0.02 a tick (" + faceBack + " stepping back, " + faceSide + " sideways, " + (faceSamples - faceBack - faceSide) + " ahead, " + faceAir + " in the air), " + bad + " more than 15 degrees off its Hold yaw" + (bad == 0 ? "" : " " + faceBad.stream().filter(x -> !x.isEmpty()).toList()) + ", the worst " + fmt(faceWorst) + " (" + faceWho + "); besides, " + faceRouted + " ticks walk routed him (the stretch yields, no facing)" + (faceRouted == 0 ? "" : " " + faceRoutedWho) + ", " + faceRoutedAir + " of them in the air with the line read blocked (Task 16, R89: a hop reads its line from the level it left)" + " (want at least 20 samples, some back and some sideways, none off, routed ticks at most a quarter of the samples and none read blocked in the air)=" + walkIn);

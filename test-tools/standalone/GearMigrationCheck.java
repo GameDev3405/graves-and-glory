@@ -45,7 +45,7 @@ public final class GearMigrationCheck {
             Path file = root.resolve("vet.json"), backup = root.resolve("vet.v3.json");
             Files.write(file, v3Bytes);
             Profile p = load(file);
-            check(p.schema == 4, "schema is 4, got " + p.schema);
+            check(p.schema == Profile.SCHEMA, "schema is current, got " + p.schema);
             check(p.gold == 950 && p.commander.equals("marshal"), "gold and commander are unchanged");
             check(p.battlesWon.equals(before.battlesWon) && p.battlesWon.equals(Set.of("march-1")), "battlesWon is unchanged: " + p.battlesWon);
             check(p.owned.keySet().equals(before.owned.keySet()) && p.banner.equals(before.banner), "owned troops and banner are unchanged");
@@ -67,7 +67,7 @@ public final class GearMigrationCheck {
             Files.write(backup, "KEEP".getBytes(StandardCharsets.UTF_8));
             Profile redo = load(file);
             check(new String(Files.readAllBytes(backup), StandardCharsets.UTF_8).equals("KEEP"), "an existing backup is never replaced");
-            check(redo.gear.size() == 5 && redo.schema == 4, "the migrated again profile has 5 pieces, not 10: " + redo.gear.size());
+            check(redo.gear.size() == 5 && redo.schema == Profile.SCHEMA, "the migrated again profile has 5 pieces, not 10: " + redo.gear.size());
             try (Stream<Path> s = Files.list(root)) { check(s.noneMatch(x -> x.getFileName().toString().endsWith(".tmp")), "no .tmp left behind"); }
 
             // mig4-chain
@@ -75,7 +75,7 @@ public final class GearMigrationCheck {
             Path chain = root.resolve("chain.json");
             Files.write(chain, v1Bytes);
             Profile c = load(chain);
-            check(c.schema == 4 && Files.readString(chain).contains("\"schema\": 4"), "a v1 file ends at schema 4");
+            check(c.schema == Profile.SCHEMA && Files.readString(chain).contains("\"schema\": 4"), "a v1 file ends at the current schema (the file at 4, sanitize brings the rest)");
             check(Arrays.equals(Files.readAllBytes(root.resolve("chain.v1.json")), v1Bytes), ".v1.json keeps the original");
             check(Files.readString(root.resolve("chain.v2.json")).contains("\"schema\": 2"), ".v2.json keeps the schema 2 image");
             check(Files.readString(root.resolve("chain.v3.json")).contains("\"schema\": 3"), ".v3.json keeps the schema 3 image");
@@ -85,7 +85,7 @@ public final class GearMigrationCheck {
             Path two = root.resolve("two.json");
             Files.write(two, v2Bytes);
             Profile t = load(two);
-            check(t.schema == 4 && Arrays.equals(Files.readAllBytes(root.resolve("two.v2.json")), v2Bytes), "a schema 2 file keeps .v2.json");
+            check(t.schema == Profile.SCHEMA && Arrays.equals(Files.readAllBytes(root.resolve("two.v2.json")), v2Bytes), "a schema 2 file keeps .v2.json");
             check(Files.readString(root.resolve("two.v3.json")).contains("\"schema\": 3"), "and gains a .v3.json image");
 
             // sanitize-gear
@@ -142,24 +142,24 @@ public final class GearMigrationCheck {
             Gear.grantStarter(f);
             f.sanitize();
             check(f.gear.size() == 6 && f.relics.equals(Set.of("stand_fast")) && f.relicSlots.get(0).equals("stand_fast"), "a fresh champion has the 6 bruiser pieces and stand_fast");
-            check(f.schema == 4 && f.gearPower == 6, "fresh is schema 4 with gear power 6");
+            check(f.schema == Profile.SCHEMA && f.gearPower == 6, "fresh is the current schema with gear power 6");
 
-            // newer-save: a schema-5 file survives a load and a save attempt byte for byte, and the profile is read-only for the session
-            String future = "{\"schema\": 5, \"gold\": 123, \"futureField\": {\"a\": [1, 2, 3]}}";
+            // newer-save: a schema-6 file (newer than Profile.SCHEMA) survives a load and a save attempt byte for byte, and the profile is read-only for the session
+            String future = "{\"schema\": 6, \"gold\": 123, \"futureField\": {\"a\": [1, 2, 3]}}";
             Path newer = root.resolve("future.json");
             Files.writeString(newer, future);
             byte[] futureBytes = Files.readAllBytes(newer);
             Profile fut = load(newer);
-            check(fut.readOnly && fut.schema == 5, "a schema-5 profile loads read-only and keeps schema 5, got " + fut.schema);
+            check(fut.readOnly && fut.schema == 6, "a schema-6 profile loads read-only and keeps schema 6, got " + fut.schema);
             check(!JSON.toJson(fut).contains("readOnly"), "the read-only flag is never saved");
             fut.gold = 999;
             ProfileMigration.saveProfile(fut, newer, JSON.toJson(fut));
-            check(Arrays.equals(Files.readAllBytes(newer), futureBytes), "the save attempt leaves the schema-5 file byte for byte");
+            check(Arrays.equals(Files.readAllBytes(newer), futureBytes), "the save attempt leaves the schema-6 file byte for byte");
             check(!Files.exists(root.resolve("future.json.bak")) && !Files.exists(root.resolve("future.json.tmp")) && !Files.exists(root.resolve("future.v3.json")), "no backup or temp file appears beside it");
             Path normal = root.resolve("normal.json");
             Profile ok = new Profile();
             ok.sanitize();
-            check(!ok.readOnly && ok.schema == 4, "a current profile is not read-only");
+            check(!ok.readOnly && ok.schema == Profile.SCHEMA, "a current profile is not read-only");
             ok.gold = 77;
             ProfileMigration.saveProfile(ok, normal, JSON.toJson(ok));
             check(JSON.fromJson(Files.readString(normal), Profile.class).gold == 77, "a current profile saves");

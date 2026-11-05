@@ -43,7 +43,7 @@ public final class ProfileFixtureCheck {
                 Files.write(file, original);
                 V1Probe v1 = new V1Probe(JSON.fromJson(new String(original, java.nio.charset.StandardCharsets.UTF_8), ProfileMigration.V1.class));
                 Profile p = load(file);
-                check(p.schema == 4, name + ": migrates to schema 4, got " + p.schema);
+                check(p.schema == Profile.SCHEMA, name + ": migrates to the current schema, got " + p.schema);
                 check(p.owned.keySet().containsAll(commons), name + ": owns all 10 Commons");
                 check(Collections.disjoint(p.owned.keySet(), ProfileMigration.REFUNDED), name + ": mage, hexer, oracle and wraith are refunded, never owned");
                 check(p.owned.values().stream().allMatch(o -> o.copies >= 1 && o.stars >= 1), name + ": every owned troop has a copy and a star");

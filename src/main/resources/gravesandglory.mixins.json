@@ -5,6 +5,8 @@
   "mixins": ["ContactFeedbackMixin", "AutosaveMixin", "ShieldCooldownMixin", "BowDrawMixin", "CorpseMixin", "HitEventMixin", "ShotAttitudeMixin"],
   "client": [
     "CommandInputMixin",
+    "PanelInputMixin",
+    "ChargeCameraMixin",
     "EntranceCameraMixin",
     "CinematicHudMixin",
     "HungerHudMixin",

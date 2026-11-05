@@ -188,9 +188,25 @@ public final class BattleMath {
     }
     /**
      * The stances a troop shows its clients, in stance_v2's wire order (the byte is the index): none, hold-ready, brace, the formed shield wall,
-     * shield-up moving, fall back, run, ranged lowered and ranged aiming (spec 6.4).
+     * shield-up moving, fall back, run, ranged lowered and ranged aiming (spec 6.4), then the command UI's rally (weapons raised on an order's
+     * acknowledgement). New stances are appended, never inserted: the index is the wire byte.
      */
-    public static final List<String> STANCES = List.of("", "hold", "brace", "wall", "shield_move", "fall_back", "run", "ranged_rest", "ranged_aim");
+    public static final List<String> STANCES = List.of("", "hold", "brace", "wall", "shield_move", "fall_back", "run", "ranged_rest", "ranged_aim", "rally");
+    /**
+     * An order id as the command UI reads it (OrderRules.loadOrder): the old Move and Hold are both the player's Formation order, hold; the
+     * other sheet orders stay; anything unknown or missing is the squad default, follow. Bots, Siege and Muster still issue move internally.
+     */
+    public static String loadOrder(String order) {
+        if (order == null) return "follow";
+        if (order.equals("move") || order.equals("hold")) return "hold";
+        for (var o : Spec.ORDERS) if (o.id().equals(order)) return order;
+        return "follow";
+    }
+    /** A formation id as the command UI reads it (OrderRules.loadFormation): a sheet shape stays (block is now labelled Shield wall); anything else is line. */
+    public static String loadFormation(String formation) {
+        if (formation != null) for (var f : Spec.FORMATIONS) if (f.id().equals(formation)) return formation;
+        return "line";
+    }
     /** The plain-hold rule (carry 2 of Task 6): on Hold a shield or spear troop braces, a shield troop formed in its wall shows the wall, and every other troop holds. */
     public static String holdStance(boolean shield, boolean spear, boolean formed) { return shield && formed ? "wall" : shield || spear ? "brace" : "hold"; }
     /**
@@ -706,5 +722,34 @@ public final class BattleMath {
     /** Whether a blow crashes in on its Charge's impact (the counters condition charge_impact): it fell inside a stamp's window, and its attacker has not landed an impact under that stamp already (chargeHitAt, the tick he last did). */
     public static boolean chargeImpact(Long stamp, long chargeHitAt) {
         return stamp != null && chargeHitAt < stamp;
+    }
+    /**
+     * A surrounded Shield wall's square (command UI Task 6): n places as {side, back, facingYaw}, in the same side/back frame as holdLayout (back
+     * from the front, side across) and a facing relative to the formation's yaw: the front edge faces 0, the -side edge 90, the back edge 180 and
+     * the +side edge 270, so every man faces out. The places go round the four edges in turn (front, +side, back, -side), so the edges hold
+     * n / 4 each, the first ones one more; each edge is centred, and the square's half width is (k + 1) / 2 cells for k men on the longest edge,
+     * so the corners stay a cell apart.
+     */
+    public static double[][] squareLayout(int n, double cell) {
+        double[][] places = new double[Math.max(n, 0)][];
+        int k = (Math.max(n, 0) + 3) / 4; double half = (k + 1) / 2.0 * cell;
+        int[] onEdge = new int[4];
+        for (int i = 0; i < places.length; i++) onEdge[i % 4]++;
+        for (int i = 0; i < places.length; i++) {
+            int edge = i % 4, at = i / 4; double along = (at - (onEdge[edge] - 1) / 2.0) * cell;
+            places[i] = switch (edge) {
+                case 0 -> new double[]{along, 0, 0};
+                case 1 -> new double[]{half, half + along, 270};
+                case 2 -> new double[]{-along, 2 * half, 180};
+                default -> new double[]{-half, half - along, 90};
+            };
+        }
+        return places;
+    }
+    /** The half angle (degrees) of a Shield wall man's front arc: an arrow from within it of his facing is the one his shield stops (FormationRules.arrowBlock). */
+    public static final double FRONT_ARC = 60;
+    /** Whether a point dx, dz away lies within halfDeg of a facing yaw (relativeBearing): the Shield wall's front-arc test. */
+    public static boolean frontArc(double facingYawDeg, double dx, double dz, double halfDeg) {
+        return relativeBearing(facingYawDeg, dx, dz) <= halfDeg;
     }
 }

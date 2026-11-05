@@ -20,6 +20,9 @@ import static gg.gravesandglory.GravesAndGloryClient.*;
  * the server checks again. Every state carries a word and a glyph or a shape, never colour alone: a padlock and what is needed, a vellum tag with "Buy" and
  * the price, a check and "Bought", a flat greyed box with the price and "Not enough gold". Away from a buy place every buy is greyed and says "Not here",
  * the sheet's notice line gives the reason; with progression off the tab says "Levels are off".
+ * A tag on the note under the rows turns the sheet to the custom groups (command UI plan Task 12): the four columns become groups 1 to 4, each head a
+ * name tag (press, type, Enter) over a Delete tag (pressed twice), the lowest empty column a New group tag, and each cell a tag that puts the row's
+ * troop type in or out of that group. Every edit is a group: command (CustomGroups.command), which the server checks and saves with the profile.
  */
 final class ArmouryTab {
     /** The page (960x540 coordinates): the note at NOTE_X, the sheet at SHEET_X, both from TOP; on the compact page every box moves by COMPACT. */
@@ -29,12 +32,14 @@ final class ArmouryTab {
     static final int ROW_Y = 52, ROWS_H = 220, MIN_ROW = 44, MAX_ROW = 48, LINE = 11, GAP = 4, GUTTER = 12, PORTRAIT = 40, ARROW = 24;
     /** The sheet's notice line (up to two lines) and, under it, the key line (from the sheet's top). */
     static final int NOTICE_Y = 278, HINT_Y = 302;
+    /** The mode tag on the note, under the rows (from the note's top); the group heads' two tags (from the sheet's top). */
+    static final int MODE_Y = 284, NAME_Y = 6, DELETE_Y = 28, HEAD_H = 20;
     /** The fills a buy is drawn on: the vellum tag of an open buy (the same whether hovered or not: the hover is an underline), the flat greyed box, the paper itself (bought, locked). */
     static final int OPEN_FILL = 0xfff1e7cb, OPEN_FOCUS = OPEN_FILL, OFF_FILL = DarkUi.VELLUM, PAPER_FILL = 0xffdccb9f;
     private static final String[] UP = {"...x...", "..xxx..", ".xxxxx.", "xxxxxxx"}, DOWN = {"xxxxxxx", ".xxxxx.", "..xxx..", "...x..."};
     /** The words of the fixed lines. */
     static final String TITLE = "Armoury", SUBTITLE = "Gear for this round, per troop type", OFF = "Levels are off", OFF_WHY = "Soldiers do not level and no gear is sold this match.",
-        AWAY = "Buy at your barracks or a held point", NOT_HERE = "Not here", NO_GOLD = "Not enough gold", BOUGHT = "Bought", EMPTY = "Your banner has no troop types to buy gear for.";
+        AWAY = "Buy at your barracks or a held point", GROUPS_SUB = "Numbered groups for orders", TO_GROUPS = "Custom groups", TO_GEAR = "Back to gear", NOT_HERE = "Not here", NO_GOLD = "Not enough gold", BOUGHT = "Bought", EMPTY = "Your banner has no troop types to buy gear for.";
     static final String[] GROUPS = {"Weapons", "Armour"}, COLUMNS = {"II", "III", "II", "III"};
     /** The wire tracks and tiers of the four columns, in order. */
     static final String[] TRACKS = {LevelMath.WEAPON, LevelMath.WEAPON, LevelMath.ARMOUR, LevelMath.ARMOUR};
@@ -54,6 +59,10 @@ final class ArmouryTab {
     List<String> signature = List.of(); boolean builtOn;
     final List<Gear> buttons = new ArrayList<>();
     final List<Arrow> arrows = new ArrayList<>();
+    /** Whether the sheet shows the custom groups (else the gear), the tags of that view, the mode tag, the group numbers it was built for. */
+    boolean groupsMode; final List<GroupTag> groupTags = new ArrayList<>(); GroupTag modeTag; List<Integer> groupSignature = List.of();
+    /** The group whose name is being typed (0 for none) and the name so far; a Delete pressed once (the group, until when). */
+    int editing; String draft = ""; int deleteArmed; long deleteUntil;
     /** The first visible troop row, how many fit, how many rows the banner has, the row height, the most lines a button holds and whether the rows scroll. */
     int first, shown, total, rowH, lineCap = 2; boolean scrolling;
     /** The papers' top left corners in canvas px (the note's, the sheet's) and a buy tag's width. */
@@ -179,11 +188,14 @@ final class ArmouryTab {
     /** Builds the page: the layout, the buy tags of every visible row and the scroll arrows. Called by the screen's init and when the rows change. */
     void init() {
         var rows = CampaignClient.armoury.rows();
-        signature = ids(rows); builtOn = levelsOn(); buttons.clear(); arrows.clear(); rowBoxes.clear(); nameBoxes.clear(); portraitBoxes.clear();
+        signature = ids(rows); builtOn = levelsOn(); buttons.clear(); arrows.clear(); rowBoxes.clear(); nameBoxes.clear(); portraitBoxes.clear(); groupTags.clear(); modeTag = null;
+        groupSignature = groupNumbers();
         if (serialAtOpen < 0) serialAtOpen = CampaignClient.noticeSerial;
         int[] o = columnAt(); nx = o[0] + NOTE_X; ny = o[1] + TOP; sx = o[0] + SHEET_X; sy = o[1] + TOP; bw = tagWidth();
         total = rows.size(); shown = 0; scrolling = false; list = new Rect(sx + PAD, sy + ROW_Y, TEXT_W, 0);
-        if (!builtOn || rows.isEmpty()) return;
+        if (rows.isEmpty()) { groupsMode = false; return; }
+        modeTag = screen.add(new GroupTag(this, GroupTag.MODE, 0, null, new Rect(nx + NOTE_PAD, ny + MODE_Y, NOTE_W - 2 * NOTE_PAD, ARROW)));
+        if (!builtOn && !groupsMode) return;
         var lay = layout(rows, width());
         rowH = lay.rowH(); shown = lay.shown(); scrolling = lay.scrolling(); lineCap = lay.lines();
         first = Math.max(0, Math.min(first, total - shown));
@@ -194,7 +206,21 @@ final class ArmouryTab {
             rowBoxes.add(new Rect(sx + PAD, y, TEXT_W, rowH));
             nameBoxes.add(new Rect(nx + NOTE_PAD + PORTRAIT + 28, y, NOTE_W - NOTE_PAD * 2 - PORTRAIT - 28, rowH));
             portraitBoxes.add(new Rect(nx + NOTE_PAD + 1, y + (rowH - PORTRAIT) / 2, PORTRAIT, PORTRAIT));
-            for (int col = 0; col < 4; col++) buttons.add(screen.add(new Gear(this, t, TRACKS[col], TIERS[col], new Rect(columnX(col), y + 3, bw, rowH - 6))));
+            for (int col = 0; col < 4; col++) {
+                var box = new Rect(columnX(col), y + 3, bw, rowH - 6);
+                if (!groupsMode) buttons.add(screen.add(new Gear(this, t, TRACKS[col], TIERS[col], box)));
+                else if (group(col + 1) != null) groupTags.add(screen.add(new GroupTag(this, GroupTag.MEMBER, col + 1, t, box)));
+            }
+        }
+        if (groupsMode) {
+            int fresh = freeNumber();
+            for (int col = 0; col < 4; col++) {
+                int n = col + 1, x = columnX(col);
+                if (group(n) != null) {
+                    groupTags.add(screen.add(new GroupTag(this, GroupTag.NAME, n, null, new Rect(x, sy + NAME_Y, bw, HEAD_H))));
+                    groupTags.add(screen.add(new GroupTag(this, GroupTag.DELETE, n, null, new Rect(x, sy + DELETE_Y, bw, HEAD_H))));
+                } else if (n == fresh) groupTags.add(screen.add(new GroupTag(this, GroupTag.NEW, n, null, new Rect(x, sy + NAME_Y, bw, DELETE_Y + HEAD_H - NAME_Y))));
+            }
         }
         if (scrolling) {
             int ax = sx + PAD + TEXT_W - ARROW, ay = sy + NOTICE_Y - 2;
@@ -205,8 +231,22 @@ final class ArmouryTab {
 
     /** One tick: the rows the server sent changed (a new banner) or levels were switched, so the page is built again. */
     void tick() {
-        if (!ids(CampaignClient.armoury.rows()).equals(signature) || levelsOn() != builtOn) screen.rebuild();
+        if (!ids(CampaignClient.armoury.rows()).equals(signature) || levelsOn() != builtOn || groupsMode && !groupNumbers().equals(groupSignature)) screen.rebuild();
     }
+
+    // ---- the custom groups (Profile.customGroups, the client's copy from the snapshot; the server keeps the real one) ----
+
+    static Profile.CustomGroup group(int n) { return CampaignClient.profile.customGroup(n); }
+    static List<Integer> groupNumbers() {
+        List<Integer> out = new ArrayList<>();
+        if (CampaignClient.profile.customGroups != null) for (var g : CampaignClient.profile.customGroups) out.add(g.number());
+        return out;
+    }
+    /** The number group:new would take (the lowest free one), or 0 when all four are kept. */
+    static int freeNumber() { for (int n = 1; n <= Profile.MAX_CUSTOM_GROUPS; n++) if (group(n) == null) return n; return 0; }
+    /** Switches the sheet between the gear and the groups. */
+    void toggleGroups() { groupsMode = !groupsMode; editing = 0; deleteArmed = 0; first = 0; screen.rebuild(); }
+    void say(String text) { note = text; noteUntil = System.currentTimeMillis() + 4000; noteSerial = CampaignClient.noticeSerial; }
 
     /** Scrolls by rows; true when the page scrolls at all (so the wheel is not passed on). */
     boolean scroll(int rows) {
@@ -236,18 +276,20 @@ final class ArmouryTab {
         String gold = GravesAndGloryClient.gold + " gold"; int gw = w.applyAsInt(gold);
         text(g, gold, tx + tw - gw, ny + 17, DarkUi.INK_TEXT); UiTex.draw(g, "recruit/coin-m", tx + tw - gw - 10, ny + 19); head.add(gold);
         var rows = CampaignClient.armoury.rows();
-        String sub = scrolling ? "Troops " + (first + 1) + "-" + (first + shown) + " of " + total : SUBTITLE;
+        String sub = scrolling ? "Troops " + (first + 1) + "-" + (first + shown) + " of " + total : groupsMode ? GROUPS_SUB : SUBTITLE;
         text(g, sub, tx, ny + 34, DarkUi.SEPIA); head.add(sub);
         // the sheet's heads: the two tracks over their columns, each with its rule, the tiers under them
-        for (int t = 0; t < 2; t++) {
+        if (groupsMode) {
+            for (int col = 0; col < 4; col++) if (group(col + 1) == null && col + 1 != freeNumber()) { centre(g, "No group " + (col + 1), columnX(col) + bw / 2, sy + 22, DarkUi.SEPIA); head.add("No group " + (col + 1)); }
+        } else for (int t = 0; t < 2; t++) {
             int x0 = columnX(2 * t), x1 = columnX(2 * t + 1) + bw;
             headCentre(g, GROUPS[t], (x0 + x1) / 2, sy + 16, DarkUi.INK_TEXT); head.add(GROUPS[t]);
             g.fill(x0, sy + 28, x1, sy + 29, DarkUi.SEPIA_LINE);
         }
-        for (int col = 0; col < 4; col++) { headCentre(g, COLUMNS[col], columnX(col) + bw / 2, sy + 35, DarkUi.SEPIA); head.add(COLUMNS[col]); }
+        if (!groupsMode) for (int col = 0; col < 4; col++) { headCentre(g, COLUMNS[col], columnX(col) + bw / 2, sy + 35, DarkUi.SEPIA); head.add(COLUMNS[col]); }
         List<String> names = new ArrayList<>();
         message = "";
-        if (!builtOn) {
+        if (!builtOn && !groupsMode) {
             headCentre(g, OFF, sx + PAD + TEXT_W / 2, sy + 110, DarkUi.INK_TEXT); centre(g, OFF_WHY, sx + PAD + TEXT_W / 2, sy + 128, DarkUi.SEPIA); message = OFF; head.add(OFF); head.add(OFF_WHY);
         } else if (rows.isEmpty()) {
             message = EMPTY; centre(g, message, sx + PAD + TEXT_W / 2, sy + 110, DarkUi.INK_TEXT); head.add(message);
@@ -290,7 +332,7 @@ final class ArmouryTab {
         String line; int colour;
         if (!note.isEmpty() && System.currentTimeMillis() < noteUntil && CampaignClient.noticeSerial == noteSerial) { line = note; colour = DarkUi.INK_TEXT; }
         else if (CampaignClient.noticeSerial > serialAtOpen && !CampaignClient.shownNotice().isEmpty()) { line = CampaignClient.shownNotice(); colour = DarkUi.INK_TEXT; }
-        else if (builtOn && !CampaignClient.armoury.rows().isEmpty() && !CampaignClient.armoury.here()) { line = AWAY; colour = DarkUi.SEPIA; }
+        else if (!groupsMode && builtOn && !CampaignClient.armoury.rows().isEmpty() && !CampaignClient.armoury.here()) { line = AWAY; colour = DarkUi.SEPIA; }
         else { line = ""; colour = DarkUi.SEPIA; }
         int x = sx + PAD, room = TEXT_W - (scrolling ? 2 * ARROW + GAP + 8 : 0);
         var lines = line.isEmpty() ? List.<String>of() : UiMath.lines(line, room, 2, w);
@@ -394,6 +436,83 @@ final class ArmouryTab {
         }
     }
 
+    /**
+     * A tag of the groups view: MODE (on the note, gear or groups), NEW (makes the lowest free group), NAME (the group's number and name; pressed,
+     * it takes typing, Enter or a second press sends the name, Backspace takes a letter), DELETE (pressed twice within three seconds) and MEMBER
+     * (the row's troop type in or out of the group: a check and "In group" on the paper, or a vellum "Add"). Same dress as the buy tags.
+     */
+    static final class GroupTag extends UiButton {
+        static final String MODE = "mode", NEW = "new", NAME = "name", DELETE = "delete", MEMBER = "member";
+        final ArmouryTab tab; final String kind; final int number; final Spec.TroopsRow troop; final Rect box;
+        List<String> lines = List.of(); String tip = "";
+        GroupTag(ArmouryTab tab, String kind, int number, Spec.TroopsRow troop, Rect box) {
+            super(box.x(), box.y(), box.w(), box.h(), Text.literal(kind), b -> {}, null);
+            this.tab = tab; this.kind = kind; this.number = number; this.troop = troop; this.box = box; refresh();
+        }
+        Profile.CustomGroup group() { return ArmouryTab.group(number); }
+        boolean member() { var g = group(); return troop != null && g != null && g.troopIds().contains(troop.id()); }
+        boolean hasGlyph() { return MEMBER.equals(kind) && member(); }
+        boolean typing() { return NAME.equals(kind) && tab.editing == number; }
+        boolean armed() { return DELETE.equals(kind) && tab.deleteArmed == number && System.currentTimeMillis() < tab.deleteUntil; }
+        void refresh() {
+            var g = group(); String label, next;
+            switch (kind) {
+                case MODE -> { label = tab.groupsMode ? TO_GEAR : TO_GROUPS; next = tab.groupsMode ? "Show the gear buys again." : "Make numbered groups of troop types to order together."; }
+                case NEW -> { label = "New group"; next = "Makes group " + number + ". Then add troop types to it."; }
+                case NAME -> { String name = typing() ? tab.draft + "_" : g == null ? "" : g.name(); label = number + " " + name; next = "Group " + number + ": press to rename, type, then Enter."; }
+                case DELETE -> { label = armed() ? "Press to delete" : "Delete"; next = "Deletes group " + number + ". Press twice."; }
+                default -> { boolean in = member(); label = in ? "In group" : "Add"; next = troop.name() + (in ? " is in group " + number + ". Press to take it out." : " is not in group " + number + ". Press to add it."); }
+            }
+            lines = UiMath.lines(label, box.w() - 8 - (hasGlyph() ? 14 : 0), 1, width());
+            if (!next.equals(tip)) { tip = next; setTooltip(Tooltip.of(Text.literal(next))); setMessage(Text.literal(next)); }
+        }
+        @Override public void onPress() {
+            var g = group();
+            switch (kind) {
+                case MODE -> tab.toggleGroups();
+                case NEW -> send("group:new");
+                case NAME -> { if (typing()) commit(); else if (g != null) { tab.editing = number; tab.draft = g.name(); } }
+                case DELETE -> {
+                    if (armed()) { tab.deleteArmed = 0; send("group:delete:" + number); }
+                    else { tab.deleteArmed = number; tab.deleteUntil = System.currentTimeMillis() + 3000; tab.say("Press Delete again to delete group " + number + "."); }
+                }
+                default -> { if (g != null && troop != null) send("group:" + (member() ? "remove:" : "add:") + number + ":" + troop.id()); }
+            }
+            refresh();
+        }
+        void commit() {
+            String name = Profile.groupName(tab.draft, number); tab.editing = 0;
+            var g = group(); if (g != null && !name.equals(g.name())) send("group:name:" + number + ":" + name);
+        }
+        @Override public boolean charTyped(char chr, int mods) {
+            if (!typing()) return super.charTyped(chr, mods);
+            if (chr >= ' ' && chr != 127 && tab.draft.length() < Profile.GROUP_NAME_MAX) tab.draft += chr;
+            refresh(); return true;
+        }
+        @Override public boolean keyPressed(int key, int scan, int mods) {
+            if (!typing()) return super.keyPressed(key, scan, mods);
+            if (key == org.lwjgl.glfw.GLFW.GLFW_KEY_ESCAPE) return false; // the screen closes; the typing is dropped
+            if (key == org.lwjgl.glfw.GLFW.GLFW_KEY_ENTER || key == org.lwjgl.glfw.GLFW.GLFW_KEY_KP_ENTER) commit();
+            else if (key == org.lwjgl.glfw.GLFW.GLFW_KEY_BACKSPACE && !tab.draft.isEmpty()) tab.draft = tab.draft.substring(0, tab.draft.length() - 1);
+            refresh(); return true;
+        }
+        @Override public void setFocused(boolean focused) { super.setFocused(focused); if (!focused && typing()) commit(); }
+        /** A tag that acts is a vellum tag in ink; an "In group" cell the paper with a check in ink; the name being typed a ruled box with a caret. Hovered, the first line is underlined. */
+        @Override protected void paint(DrawContext g, int x, int y, int w, int h, boolean hot) {
+            refresh();
+            boolean check = hasGlyph(), typing = typing();
+            if (check || typing) { g.fill(x, y, x + w, y + h, PAPER_FILL); g.drawBorder(x, y, w, h, hot || typing ? DarkUi.SEPIA : DarkUi.SEPIA_LINE); }
+            else UiTex.nine(g, "table/btn-vellum-64x24", x, y, w + 1, h + 2);
+            if (check) UiTex.draw(g, "table/ready-check", x + 5, y + (h - 8) / 2);
+            var fw = width(); int n = lines.size(), ty = y + (h - LINE * n) / 2 + 1;
+            for (int i = 0; i < n; i++) {
+                String s = lines.get(i); int sw = fw.applyAsInt(s), tx = check ? x + 18 : typing ? x + 4 : x + (w - sw) / 2;
+                g.drawText(font(), DarkUi.body(s), tx, ty + LINE * i, DarkUi.INK_TEXT, false);
+                if (i == 0 && hot && !typing) g.fill(tx, ty + 9, tx + sw, ty + 10, DarkUi.INK_TEXT);
+            }
+        }
+    }
+
     // ---- what the checks read ----
 
     /** Every way the page fails to fit its canvas, in words (an empty list for none): a tag outside the canvas or off its sheet, under 20 x 20, overlapping another, a line wider than its box or cut with an ellipsis, a name cut or off the note, the notice line past its room, the key line past the note. */
@@ -413,6 +532,14 @@ final class ArmouryTab {
             if (b.lines.size() * LINE > r.h() - 2) bad.add(who + " " + b.lines.size() + " lines in " + r.h() + " px");
             if (r.y() + r.h() > sy + NOTICE_Y - 2) bad.add(who + " reaches the notice line");
         }
+        for (var t : groupTags) {
+            all.add(t.box); String who = "group tag " + t.kind + " " + t.number;
+            if (!t.box.inside(W, H) || !t.box.within(sheet)) bad.add(who + " off the sheet");
+            if (t.box.w() < 20 || t.box.h() < 20) bad.add(who + " under 20x20");
+            for (var s : t.lines) if (w.applyAsInt(s) > t.box.w() - 8 - (t.hasGlyph() ? 14 : 0) || s.endsWith("...")) bad.add(who + " line " + s + " does not fit");
+            if (GroupTag.MEMBER.equals(t.kind) && t.box.y() + t.box.h() > sy + NOTICE_Y - 2) bad.add(who + " reaches the notice line");
+        }
+        if (modeTag != null && (!modeTag.box.within(paper) || modeTag.box.h() < 20)) bad.add("the groups tag is off the note");
         for (var a : arrows) { all.add(a.box); if (!a.box.inside(W, H) || !a.box.within(sheet)) bad.add("a scroll button off the sheet"); if (a.box.w() < 20 || a.box.h() < 20) bad.add("a scroll button under 20x20"); }
         for (int i = 0; i < all.size(); i++) for (int j = i + 1; j < all.size(); j++) if (all.get(i).overlaps(all.get(j))) bad.add("buttons " + i + " and " + j + " overlap");
         for (int r = 0; r < rowBoxes.size(); r++) {

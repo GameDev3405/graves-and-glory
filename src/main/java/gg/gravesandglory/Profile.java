@@ -3,7 +3,7 @@ package gg.gravesandglory;
 import java.util.*;
 
 /**
- * A commander's saved collection, schema 4 (spec 6.2, plan 2C.3, commander gear spec): the banner, the owned troops with stars and mastery, per
+ * A commander's saved collection, schema 5 (spec 6.2, plan 2C.3, commander gear spec, command UI custom groups): the banner, the owned troops with stars and mastery, per
  * House shards, Renown and Epic pity, the Long March battles won and bonuses paid, and the commander's gear, relics and Forge marks. Server-owned JSON, one file per player
  * (Campaign.profile loads it, migrating an older file first). Pure, so the standalone checks compile it.
  */
@@ -16,7 +16,11 @@ public final class Profile {
     static final class Owned { int copies=1, stars=1, kills, survived, mastery; String variant="base"; }
 
     /** The current profile schema; ProfileMigration upgrades older files to it. */
-    static final int SCHEMA = 4;
+    static final int SCHEMA = 5;
+    /** Schema 5: the most custom numbered groups a commander keeps, and the longest group name. */
+    static final int MAX_CUSTOM_GROUPS = 4, GROUP_NAME_MAX = 12;
+    /** One custom numbered group (command UI): its number 1..MAX_CUSTOM_GROUPS, a short name and the troop type ids it orders. */
+    record CustomGroup(int number, String name, List<String> troopIds) {}
     int schema = SCHEMA;
     /** Set when the file was saved by a newer build (schema above SCHEMA). Never saved: Gson skips transient fields. Campaign.save then writes nothing. */
     transient boolean readOnly;
@@ -53,6 +57,8 @@ public final class Profile {
     /** Schema 4: Forge marks (the blacksmith's currency), the rolls since the last Epic or better, and the inventory capacity in pieces. */
     int forgeMarks, gearPity;
     int inventorySize = Spec.FORGE[0].startSlots();
+    /** Schema 5: custom numbered groups, stored with the Armoury loadout; orders sent to custom:<number> reach these troop types. */
+    List<CustomGroup> customGroups = new ArrayList<>();
 
     /**
      * Repairs a loaded or migrated profile in place. Owned ids the catalog does not know are dropped. Stars clamp to
@@ -64,6 +70,7 @@ public final class Profile {
     void sanitize(RosterMath.Catalog c, Set<String> classIds, Set<String> sideIds, List<String> houses) {
         if (schema < 3) ProfileMigration.v2toV3(this, Spec.CAMPAIGNBATTLES);
         if (schema < 4) ProfileMigration.v3toV4(this);
+        if (schema < 5) ProfileMigration.v4toV5(this);
         if (schema > SCHEMA) readOnly = true; // a save from a newer build: kept as it is, never written by this one
         else schema = SCHEMA;
         if (progression == null) progression = new Progression.State();
@@ -100,6 +107,35 @@ public final class Profile {
         bonusClaimed.removeIf(id -> id == null || Arrays.stream(Spec.BONUSOBJECTIVES).noneMatch(b -> b.id().equals(id)));
         campaignCleared = MarchMath.cleared(battlesWon, Spec.CAMPAIGNBATTLES);
         sanitizeGear();
+        customGroups = customGroups(customGroups, c);
+    }
+    /**
+     * Repairs custom groups: nulls and repeated or out-of-range numbers go (the first stays), a name is trimmed, clamped to GROUP_NAME_MAX
+     * and defaults to "Group n", troop ids keep catalog ids once each, at most MAX_CUSTOM_GROUPS remain, sorted by number.
+     */
+    static List<CustomGroup> customGroups(List<CustomGroup> groups, RosterMath.Catalog c) {
+        List<CustomGroup> out = new ArrayList<>();
+        if (groups == null) return out;
+        Set<Integer> numbers = new HashSet<>();
+        for (CustomGroup g : groups) {
+            if (g == null || g.number() < 1 || g.number() > MAX_CUSTOM_GROUPS || !numbers.add(g.number())) continue;
+            List<String> ids = new ArrayList<>();
+            if (g.troopIds() != null) for (String id : g.troopIds()) if (id != null && c.known(id) && !ids.contains(id)) ids.add(id);
+            out.add(new CustomGroup(g.number(), groupName(g.name(), g.number()), ids));
+        }
+        out.sort(Comparator.comparingInt(CustomGroup::number));
+        return out;
+    }
+    /** A group name trimmed to GROUP_NAME_MAX characters, "Group n" when blank. */
+    static String groupName(String name, int number) {
+        String n = name == null ? "" : name.replaceAll("\\p{Cntrl}", "").trim();
+        if (n.length() > GROUP_NAME_MAX) n = n.substring(0, GROUP_NAME_MAX).trim();
+        return n.isEmpty() ? "Group " + number : n;
+    }
+    /** The custom group with this number, or null. */
+    CustomGroup customGroup(int number) {
+        if (customGroups != null) for (CustomGroup g : customGroups) if (g != null && g.number() == number) return g;
+        return null;
     }
     /**
      * The gear half of sanitize. Null pieces, unknown items or rarities and repeated uids (the first stays) are dropped; quality clamps to

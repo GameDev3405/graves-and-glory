@@ -660,9 +660,9 @@ final class Abilities {
     static void aura(GravesAndGlory.Battle b, GravesAndGlory.Unit u, Spec.AbilitiesRow row, long time) {
         switch (row.trigger()) {
             case "hold" -> {
-                if (u.seenOrder == null) u.seenOrder = b.storedAssignment(u.squad, u.spec.group()).order; // the order found on his first beat is remembered even in a stun, so a Hold given during it plants when it ends (review M6)
+                if (u.seenOrder == null) u.seenOrder = b.assignment(u).order; // the order found on his first beat is remembered even in a stun, so a Hold given during it plants when it ends (review M6)
                 if (time < u.stunnedUntil) return; // a stunned Marshal plants nothing; the order he has not seen yet waits, so a Hold given during the stun plants when it ends
-                String order = b.storedAssignment(u.squad, u.spec.group()).order, was = u.seenOrder;
+                String order = b.assignment(u).order, was = u.seenOrder; // his own order, a custom group's included (Task 12 fix I2)
                 u.seenOrder = order;
                 if (was != null && !was.equals(order) && order.equals("hold") && time >= u.abilityAt) plant(b, u, row, time);
             }
@@ -744,7 +744,7 @@ final class Abilities {
      */
     static void plant(GravesAndGlory.Battle b, GravesAndGlory.Unit u, Spec.AbilitiesRow row, long time) {
         u.abilityAt = time + (row.cooldownTicks() > 0 ? row.cooldownTicks() : D.abilityCooldownTicks());
-        float yaw = b.storedAssignment(u.squad, u.spec.group()).yaw;
+        float yaw = b.assignment(u).yaw;
         BlockPos block = spot(b, u, yaw);
         BlockState was = null;
         Vec3d at = u.mob.getPos();

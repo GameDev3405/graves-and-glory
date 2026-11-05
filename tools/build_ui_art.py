@@ -36,6 +36,7 @@ def manifest():
     sys.path.insert(0, str(ART))
     import manifest as m
     import wt_claims  # War Table port Task 1: the House chips join the manifest (their module adds them to m.MANIFEST)
+    import cmd_panel  # command UI Task 8: the command panel's pole, pennant, glass, order icons and formation shapes
     import gear_icons  # commander gear Task 8: the gear and relic grid icons join the manifest
     return m.MANIFEST
 

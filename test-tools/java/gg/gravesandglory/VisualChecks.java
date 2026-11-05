@@ -38,7 +38,7 @@ final class VisualChecks {
             case 120 -> shot(c,"01-village-gameplay");
             case 140 -> net.minecraft.client.option.KeyBinding.onKeyPressed(net.minecraft.client.util.InputUtil.fromKeyCode(org.lwjgl.glfw.GLFW.GLFW_KEY_R,0));
             case 170 -> shot(c,"02-command-screen");
-            case 190 -> {if(c.currentScreen instanceof GravesAndGloryClient.CommandScreen)c.currentScreen.mouseClicked(c.currentScreen.width/2.0+100,c.currentScreen.height/2.0-30,0);}
+            case 190 -> CommandSelection.select("ranged",false); // the panel from tick 140 stays open; pick the archers (the old screen click picked a shape)
             case 220 -> shot(c,"03-battlefield-map");
             case 240 -> {c.setScreen(null);camera(c,-108,67,-24,-90,10);}
             case 280 -> GravesAndGloryClient.send("barracks");

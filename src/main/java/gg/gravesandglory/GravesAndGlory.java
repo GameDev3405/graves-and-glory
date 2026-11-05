@@ -42,8 +42,11 @@ public final class GravesAndGlory implements ModInitializer {
     public static final Identifier IMPACT = new Identifier("gravesandglory", "impact_v1");
     public static final Identifier PING = new Identifier("gravesandglory", "ping_v1");
     public static final Identifier TACTICAL = new Identifier("gravesandglory", "tactical_v1");
-    /** The battle state, server to client every 10 ticks: its layout is Battle.sendState's (state_v9 adds the in-match progression fields there), and GravesAndGloryClient reads it. */
-    public static final Identifier STATE = new Identifier("gravesandglory", "state_v9");
+    /** One order to several groups (command UI Task 3b): action, formation, float yaw, int target, int n, then n x (String group, double x, z), each
+     *  group with its own point. The command keys send only this; tactical_v1 (one group) stays accepted for old clients, bots and tests. */
+    public static final Identifier TACTICAL_V2 = new Identifier("gravesandglory", "tactical_v2");
+    /** The battle state, server to client every 10 ticks: its layout is Battle.sendState's (state_v9 added the in-match progression fields there; state_v10 sends 3 to 5 group records, Riders and Siege when fielded), and GravesAndGloryClient reads it. */
+    public static final Identifier STATE = new Identifier("gravesandglory", "state_v10");
     public static final Identifier OPEN_BARRACKS = new Identifier("gravesandglory", "barracks_v1");
     public static final Identifier PARTY = new Identifier("gravesandglory", "party_v1");
     /** A troop's stance, server to client: stance_v2 (MotionEvents.STANCE), which retired stance_v1. */
@@ -118,6 +121,7 @@ public final class GravesAndGlory implements ModInitializer {
         });
         // A soldier's rank (rank_v1: level, weapon tier, armour tier) goes the same two ways as his stance: on START_TRACKING and on a late channel registration.
         RankSync.registerServer();
+        CommandNet.registerServer(); // command_v1, server to client: charge cooldown, teammate outlines, order acknowledgements (command UI plan)
         ServerPlayNetworking.registerGlobalReceiver(ORDER, (server, player, handler, buf, responder) -> {
             String command=buf.readString(128);
             server.execute(() -> { if(battle!=null) battle.command(player,command); });
@@ -127,7 +131,13 @@ public final class GravesAndGlory implements ModInitializer {
         ServerPlayNetworking.registerGlobalReceiver(TACTICAL, (server, player, handler, buf, responder) -> {
             String group=buf.readString(16), action=buf.readString(16), formation=buf.readString(16);
             double x=buf.readDouble(),z=buf.readDouble();float yaw=buf.readFloat();int target=buf.readInt();
-            server.execute(()->{if(battle!=null)battle.tactical(player,group,action,formation,x,z,yaw,target);});
+            server.execute(()->{if(battle!=null)battle.tactical(player,group,action,formation,x,z,yaw,target);}); // wire format unchanged; OrderRules reads the new meanings
+        });
+        ServerPlayNetworking.registerGlobalReceiver(TACTICAL_V2, (server, player, handler, buf, responder) -> {
+            String action=buf.readString(16), formation=buf.readString(16);float yaw=buf.readFloat();int target=buf.readInt();int n=buf.readInt();
+            if(n<1||n>OrderRules.MAX_GROUPS)return;
+            List<OrderRules.At> groups=new ArrayList<>(n);for(int i=0;i<n;i++)groups.add(new OrderRules.At(buf.readString(32),buf.readDouble(),buf.readDouble()));
+            server.execute(()->{if(battle!=null)OrderRules.playerOrder(battle,player,groups,action,formation,yaw,target);}); // one order, one cooldown, however many groups
         });
         // The first-visit import permission is granted as the connection joins, before the client's PROFILE packet is handled: Battle.join
         // (and Campaign.joined) waits for the arena, and a profile sent while it builds would otherwise be refused and marked ready.
@@ -207,6 +217,8 @@ public final class GravesAndGlory implements ModInitializer {
         Vec3d target;
         float yaw;
         long lastOrder=-100, reinforceAt;
+        /** Battle time (ticks) this squad's Charge is ready again (OrderRules.chargeReady, markChargeUsed); 0 at a round's start. */
+        long chargeReadyAt;
         int gold=Spec.ECONOMY[0].startingGold();
         /** This round's tally (gold earned so far); Battle.startRound gives the squad a fresh one. */
         MatchStats.SquadStats stats=new MatchStats.SquadStats();
@@ -247,6 +259,14 @@ public final class GravesAndGlory implements ModInitializer {
         String order,formation;Vec3d target;float yaw;int enemy=-1;long issued;
         /** A raised post (Siege's gate-tower tops): the target's own height counts, the slots pack tight around it (Battle.formation) and a ranged troop there shoots from it rather than walk off after an enemy (Tactics). */
         boolean perch;
+        /** A player's Attack (OrderRules): hunt enemies map-wide. Never set for a bot's or SiegeMode's attack, which keep their objectives. */
+        boolean hunt;
+        /** A Charge's run direction, a horizontal unit vector (OrderRules); null for every other order. */
+        Vec3d chargeDir;
+        /** A Retreat that becomes Follow me once the group reaches its commander (OrderRules; Tactics reads it, Task 5). */
+        boolean thenFollow;
+        /** A player's Formation (OrderRules' hold): once the group is in place its melee troops keep their slots and its ranged troops shoot anything in reach (Tactics, Task 5). Never set for a bot's, Siege's or Muster's Hold. */
+        boolean holdSlots;
         Assignment(String o,String f,Vec3d t,float y){order=o;formation=f;target=t;yaw=y;}
     }
     /** A troop in a squad's training queue: when it is done, and the gold paid for it (the troop's sheet cost), which a cancel or a full army refunds. The short form is a free troop: nothing paid, nothing refunded. */
@@ -917,7 +937,7 @@ public final class GravesAndGlory implements ModInitializer {
             if(cmd.equals("barracks")){openBarracks(p);return;}
             if(cmd.startsWith("train:")||cmd.startsWith("disband:")||cmd.equals("cancel-training")){manage(p,s,cmd);return;}
             if(cmd.startsWith("gear:")){Veterans.buy(this,p,s,cmd);return;} // gear:<troop>:<weapon|armour>:<tier>, checked as manage checks training (in-match progression design 5)
-            if(time-s.lastOrder<R.commandCooldownTicks())return;s.lastOrder=time;
+            if(time-s.lastOrder<R.commandCooldownTicks())return;long prevOrder=s.lastOrder;s.lastOrder=time;
             if(!running)return;
             for(var f:Spec.FORMATIONS)if(cmd.equals("formation:"+f.id())){
                 s.formation=f.id();s.yaw=p.getYaw();for(Assignment a:s.assignments.values())a.formation=f.id();
@@ -926,11 +946,16 @@ public final class GravesAndGlory implements ModInitializer {
                 campaign.tutorialDid(p,1);return;
             }
             for(var order:Spec.ORDERS)if(cmd.equals(order.id())){
-                boolean charging=order.id().equals("charge")&&startsCharge(s,"all");
-                s.assignments.clear();s.arrived.clear();s.order=order.id();s.yaw=p.getYaw();if(charging)markCharge(s,"all");
-                if(order.id().equals("charge")||order.id().equals("retreat"))BattleEffects.feedback(this,p,order.id()); // the command's feedback, a world sound at this player
-                else if(order.id().equals("hold")||order.id().equals("move"))BattleEffects.feedback(this,p,"hold");
-                campaign.tutorialDid(p,order.id().equals("attack")||order.id().equals("charge")?2:0);
+                String id=OrderRules.loadOrder(order.id()); // an old move is the Formation order, hold
+                if(id.equals("charge")&&!OrderRules.useCharge(this,s)){ // the per-commander Charge cooldown holds on this path too (final review I1): refused before anything changes, and it does not use up the command cooldown
+                    s.lastOrder=prevOrder;int left=(int)(s.chargeReadyAt-time);CommandNet.cooldown(p,left);p.sendMessage(Text.literal("Charge ready in "+(left+19)/20+"s"),true);return;
+                }
+                if(id.equals("charge"))CommandNet.cooldown(p,Spec.COMBATDISCIPLINE[0].chargeCooldownTicks());
+                boolean charging=id.equals("charge")&&startsCharge(s,"all");
+                s.assignments.clear();s.arrived.clear();s.order=id;s.yaw=p.getYaw();if(charging)markCharge(s,"all");
+                if(id.equals("charge")||id.equals("retreat"))BattleEffects.feedback(this,p,id); // the command's feedback, a world sound at this player
+                else if(id.equals("hold"))BattleEffects.feedback(this,p,"hold"); // an old move is hold here: the troops' hold shout
+                campaign.tutorialDid(p,id.equals("attack")||id.equals("charge")?2:0);
                 if(Diagnostics.active()&&testedOrders.add(order.id())&&testedOrders.size()==Spec.ORDERS.length)Diagnostics.report("orders-commanded",true,null);
                 if(order.targeted()){
                     // Target is derived on the server, never trusted from the client.
@@ -940,11 +965,20 @@ public final class GravesAndGlory implements ModInitializer {
                     if(Arena.river(tx,tz)&&Arena.ground(tx,tz)<64)tx=(int)Arena.riverX(tz)+(tx>Arena.riverX(tz)?12:-12);
                     s.target=new Vec3d(tx,Arena.ground(tx,tz)+1,tz);
                 }else s.target=p.getPos();
+                if(id.equals("charge")||id.equals("retreat")){ // a Charge keeps its run direction and a Retreat turns to Follow me, as a player's tactical order (OrderRules; final review M4)
+                    issue(s,"all",id,s.formation,s.target,s.yaw,-1);
+                    double r=Math.toRadians(s.yaw);Vec3d dir=id.equals("charge")?new Vec3d(Math.sin(-r),0,Math.cos(r)).normalize():null;
+                    for(Assignment a:s.assignments.values()){a.chargeDir=dir;a.thenFollow=id.equals("retreat");}
+                }
+                if(!id.equals(order.id()))issue(s,"all",id,s.formation,s.target,s.yaw,-1); // a move-turned-hold still goes to the aimed spot, not the deploy spots of a bare Hold
                 return;
             }
         }
-        /** The order a group is under: its stored one. No group ever leaves it on its own (the no-routing design); only its commander's next order changes it. */
-        Assignment assignment(Unit u){return storedAssignment(u.squad,u.spec.group());}
+        /** The order a troop is under: its group's stored one, or its troop type's (troop:<id>, from a custom group order, CustomGroups) when that was issued at the same time or later. No group ever leaves it on its own (the no-routing design); only its commander's next order changes it. */
+        Assignment assignment(Unit u){Assignment t=u.squad.assignments.get(CustomGroups.TROOP+u.spec.id()),g=u.squad.assignments.get(u.spec.group());return t!=null&&(g==null||t.issued>=g.issued)?t:storedAssignment(u.squad,u.spec.group());}
+        /** The newest order among the squad's living troops of a group as assignment(u) reads it (a custom group's order included, Task 12 fix I2),
+         *  else the group's stored one: what the HUD shows for the group and where reinforcements go. */
+        Assignment groupOrder(Squad s,String group){Assignment best=null;for(Unit u:units)if(u.squad==s&&u.spec.group().equals(group)&&u.mob.isAlive()){var a=assignment(u);if(best==null||a.issued>best.issued)best=a;}return best!=null?best:storedAssignment(s,group);}
         Assignment storedAssignment(Squad s,String group){return s.assignments.getOrDefault(group,new Assignment(s.order,s.formation,s.target,s.yaw));}
         /** Stamps the charge of the named group(s) (Squad.chargedAt), which the counters table's charge impact (row C5) reads. A bot's order sounds nothing; a player's order sounds in the world at him (BattleEffects.feedback), on the order paths. */
         void markCharge(Squad s,String group){for(var g:Spec.GROUPS)if(!g.id().equals("all")&&(group.equals("all")||group.equals(g.id())))s.chargedAt.put(g.id(),time);}
@@ -967,29 +1001,9 @@ public final class GravesAndGlory implements ModInitializer {
             }
             for(Unit u:units)if(u.squad==s&&(group.equals("all")||u.spec.group().equals(group))){Abilities.keepSpeed(u.mob,Tactics.CRAWL_ID,"Graves and Glory crawl",0);u.lockedTarget=null;u.spellCenter=null;u.mob.setTarget(null);u.mob.getNavigation().stop();u.nextPath=0;u.stuckTicks=0;}
         }
+        /** A player's group order (tactical_v1): OrderRules.playerOrder applies the command panel's rules and gates. */
         public void tactical(ServerPlayerEntity p,String group,String action,String formation,double x,double z,float yaw,int enemyId){
-            Squad s=squads.get(p.getUuid());
-            if(s==null||!ready||!running||!s.seated||time<campaign.introUntil||respawns.containsKey(s.owner)||time-s.lastOrder<R.commandCooldownTicks())return;
-            if(Arrays.stream(Spec.GROUPS).noneMatch(g->g.id().equals(group))||Arrays.stream(Spec.FORMATIONS).noneMatch(f->f.id().equals(formation)))return;
-            if(action.equals("formation")){
-                for(var g:Spec.GROUPS)if(!g.id().equals("all")&&(group.equals("all")||group.equals(g.id()))){Assignment a=s.assignments.computeIfAbsent(g.id(),k->new Assignment(s.order,s.formation,s.target,s.yaw));a.formation=formation;}
-                s.lastOrder=time;campaign.tutorialDid(p,1);BattleEffects.feedback(this,p,"hold");return;
-            }
-            var order=Arrays.stream(Spec.ORDERS).filter(o->o.id().equals(action)).findFirst().orElse(null);
-            if(order==null||!Float.isFinite(yaw)||!inArena(x,z))return;
-            if(!action.equals("attack")&&!action.equals("charge"))enemyId=-1;
-            Entity enemy=world.getEntityById(enemyId);
-            if(enemyId>=0&&(enemy==null||!enemy.isAlive()||teamOf(enemy)<0||teamOf(enemy)==s.team||!p.canSee(enemy))){p.sendMessage(Text.literal("Target lost. Aim again or issue an attack-move."),true);return;}
-            if(action.equals("charge")&&enemy==null){p.sendMessage(Text.literal("Charge needs a visible enemy. Use Attack to advance to terrain."),true);return;}
-            if(wet(x,z)){p.sendMessage(Text.literal("Choose dry ground or a crossing."),true);return;}
-            s.lastOrder=time;Vec3d dest=groundAt(x,z);boolean charging=action.equals("charge")&&startsCharge(s,group);
-            if(action.equals("follow"))dest=p.getPos();
-            issue(s,group,action,formation,dest,yaw,enemyId);
-            if(charging)markCharge(s,group);
-            campaign.tutorialDid(p,action.equals("attack")||action.equals("charge")?2:0);campaign.progressEvent(p.getUuid(),false);
-            // The command's feedback, as world sounds at this player (every player in range hears them): Retreat's and Charge's own cues, and Hold's and Move's shout (once per kind per hornCooldownSeconds, else nothing), every other order the chime (the ServerPlayerEntity overload: to his connection only, a UI cue).
-            if(action.equals("retreat")||action.equals("charge"))BattleEffects.feedback(this,p,action);else if(action.equals("hold")||action.equals("move"))BattleEffects.feedback(this,p,"hold");else p.playSound(SoundEvents.BLOCK_NOTE_BLOCK_CHIME.value(),SoundCategory.PLAYERS,.6f,1.1f);
-            p.sendMessage(Text.literal(group+" / "+action+" / "+(int)x+", "+(int)z),true);
+            OrderRules.playerOrder(this,p,group,action,formation,x,z,yaw,enemyId);
         }
         /** The room a troop's body takes in a formation and the lane it takes on a bridge: its width and 0.3, at least 1.3 (BattleMath.spacing). */
         public static double spacing(Unit u){return BattleMath.spacing(u.mob.getWidth());}
@@ -997,16 +1011,18 @@ public final class GravesAndGlory implements ModInitializer {
         static boolean walls(Unit u,String order){return order.equals("hold")&&u.tags.contains("shield");}
         /** The unit's formation slot: its deploy spot on a player's default Hold, else its place in its group's formation round the order's point (BattleMath.holdLayout). */
         Vec3d formation(Unit u){
-            Assignment a=assignment(u);if(!u.squad.bot&&u.squad.order.equals("hold")&&!u.squad.assignments.containsKey(u.spec.group()))return u.deployed;var f=Arrays.stream(Spec.FORMATIONS).filter(v->v.id().equals(a.formation)).findFirst().orElse(Spec.FORMATIONS[0]);
+            Assignment a=assignment(u);if(!u.squad.bot&&u.squad.order.equals("hold")&&!u.squad.assignments.containsKey(u.spec.group())&&!CustomGroups.ordered(u))return u.deployed;var f=Arrays.stream(Spec.FORMATIONS).filter(v->v.id().equals(a.formation)).findFirst().orElse(Spec.FORMATIONS[0]);
             // the group in slot order (then entity id, so every member sees the same order); BattleMath.holdLayout lays it out: on Hold its shield troops close into the wall in the front ranks, the rest form behind them
             List<Unit> group=new ArrayList<>();group.add(u);
-            for(Unit other:units)if(other!=u&&other.squad==u.squad&&other.spec.group().equals(u.spec.group())&&other.mob.isAlive())group.add(other);
+            String key=CustomGroups.stateKey(u); // its spec group, or the troops sharing its custom group's order (Task 12 fix I1)
+            for(Unit other:units)if(other!=u&&other.squad==u.squad&&other.mob.isAlive()&&CustomGroups.stateKey(other).equals(key))group.add(other);
             group.sort(Comparator.<Unit>comparingInt(m->m.slot).thenComparingInt(m->m.mob.getId()));
             boolean[] shield=new boolean[group.size()];double[] width=new double[group.size()];int at=0;
             for(int i=0;i<shield.length;i++){Unit m=group.get(i);shield[i]=walls(m,a.order);width[i]=m.mob.getWidth();if(m==u)at=i;}
             int columns=BattleMath.groupColumns(u.spec.group(),f.columns());
             double[][] layout=BattleMath.holdLayout(shield,width,f.spacing(),Spec.COMBATDISCIPLINE[0].shieldWallCell(),columns,f.wedge());
             double[] place=a.order.equals("hold")&&u.mob.isAlive()?heldPlace(u,group,shield,layout,columns,f.wedge(),f.id()+"/"+columns+"/"+f.wedge()):layout[at];
+            place=FormationRules.place(this,u,a,group,shield,layout,at,f,place); // a surrounded Shield wall closes into a square facing out (command UI Task 6)
             double side=place[0],back=BattleMath.roleDepth(u.spec.group())+place[1];
             if(a.perch){side=(at%3-1)*1.0;back=at/3*1.0;} // a post's floor is a few blocks across: rows of three a block apart, from the post back, at its height
             double angle=Math.toRadians(a.yaw);return a.target.add(Math.cos(angle)*side+Math.sin(angle)*back,0,Math.sin(angle)*side-Math.cos(angle)*back);
@@ -1019,8 +1035,8 @@ public final class GravesAndGlory implements ModInitializer {
          * order. A Hold given again after another order, with the same members and shape, keeps the cached places.
          */
         double[] heldPlace(Unit u,List<Unit> group,boolean[] shield,double[][] layout,int columns,boolean wedge,String shape){
-            var kept=BattleMath.held(u.squad.places.get(u.spec.group()),group,shape,layout,shield,columns,wedge);
-            u.squad.places.put(u.spec.group(),kept);
+            String key=CustomGroups.stateKey(u);var kept=BattleMath.held(u.squad.places.get(key),group,shape,layout,shield,columns,wedge);
+            u.squad.places.put(key,kept);
             return kept.at.get(u);
         }
         /** The cell the unit takes under its order: on Hold a shield troop's wall cell (BattleMath.shieldCell), any other its body's room (spacing). The bridge lanes use it (Tactics.route). */
@@ -1112,7 +1128,7 @@ public final class GravesAndGlory implements ModInitializer {
             Vec3d home=fieldBase(s.team),ring=ringPlace(s,slot,spec),barracks=home.add(ring);
             if(!forwardReinforcement)return new Deploy(barracks,null);
             List<Anchor> anchors=reinforcementAnchors(s.team);if(anchors.isEmpty())return new Deploy(barracks,null);
-            Vec3d target=storedAssignment(s,"infantry").target;double[] ax=new double[anchors.size()],az=new double[anchors.size()];
+            Vec3d target=groupOrder(s,"infantry").target;double[] ax=new double[anchors.size()],az=new double[anchors.size()];
             for(int i=0;i<ax.length;i++){ax[i]=anchors.get(i).x();az[i]=anchors.get(i).z();}
             int chosen=BattleMath.nearestAnchor(target.x,target.z,home.x,home.z,ax,az);if(chosen<0)return new Deploy(barracks,null);
             Anchor anchor=anchors.get(chosen);Vec3d centre=deployCentre(s.team,anchor);
@@ -1145,7 +1161,7 @@ public final class GravesAndGlory implements ModInitializer {
             mode.setup(this); // after the flags, so a mode that takes them down keeps them down
             respawns.clear();BattleEffects.startRound();Morale.startRound();
             for(Squad s:squads.values()){
-                Commander.reset(this,s);if(!s.seated)continue;s.assignments.clear();s.arrived.clear();s.training.clear();s.lastStand.clear();s.lastStandAt.clear();s.fullHealth.clear();s.fullCount.clear();s.places.clear();s.chargedAt.clear();s.shotAt.clear();s.traits.clear();s.fallen.clear();s.hitBy=null;s.gold=Spec.ECONOMY[0].startingGold();s.stats=new MatchStats.SquadStats();s.order=s.bot?"attack":"hold";s.target=fieldBase(s.team);s.reinforceAt=time+R.reinforceSeconds()*20L;
+                Commander.reset(this,s);if(!s.seated)continue;s.assignments.clear();s.arrived.clear();s.training.clear();s.lastStand.clear();s.lastStandAt.clear();s.fullHealth.clear();s.fullCount.clear();s.places.clear();s.chargedAt.clear();s.chargeReadyAt=0;s.shotAt.clear();s.traits.clear();s.fallen.clear();s.hitBy=null;s.gold=Spec.ECONOMY[0].startingGold();s.stats=new MatchStats.SquadStats();s.order=s.bot?"attack":"hold";s.target=fieldBase(s.team);s.reinforceAt=time+R.reinforceSeconds()*20L;
                 var player=server.getPlayerManager().getPlayer(s.owner);
                 if(player!=null){toBase(player,s.team);player.changeGameMode(GameMode.ADVENTURE);equipPlayer(player);}
                 reinforce(s);
@@ -1218,7 +1234,7 @@ public final class GravesAndGlory implements ModInitializer {
             for(long key:unitChunks)if(!wanted.contains(key)){var p=new net.minecraft.util.math.ChunkPos(key);world.setChunkForced(p.x,p.z,false);}
             unitChunks.clear();unitChunks.addAll(wanted);
         }
-        void unitTick(Unit u){ Abilities.unitTick(this,u,time);Tactics.tick(this,u,time); }
+        void unitTick(Unit u){ Abilities.unitTick(this,u,time);Tactics.tick(this,u,time);FormationRules.tick(this,u); }
         void captureTick(){
             if(!mode.capturesPoints(this)){for(Capture p:points){p.contested=false;p.progress=0;p.challenger=-1;}return;} // flags down: no point is taken, held or scored
             Set<Squad> onPoint=new HashSet<>(); // armies with a troop or their commander inside any point radius this second
@@ -1312,6 +1328,8 @@ public final class GravesAndGlory implements ModInitializer {
          * level3 and armouryOpen), the pings, the seconds left, the sightings, the camp snapshot, then state_v8's sides, House tiers and commander
          * ability, then state_v9's Armoury block (LevelMath.encodeArmoury). GravesAndGloryClient reads the same order.
          */
+        /** The group records state_v10 may carry, in wire order. */
+        static final List<String> STATE_GROUPS=List.of("infantry","ranged","cavalry","support","siege");
         void sendState(){
             updateSight();
             for(ServerPlayerEntity p:server.getPlayerManager().getPlayerList())if(ServerPlayNetworking.canSend(p,STATE)){
@@ -1329,10 +1347,13 @@ public final class GravesAndGlory implements ModInitializer {
                 List<Unit> friendly=units.stream().filter(u->s!=null&&u.squad.team==s.team&&u.mob.isAlive()).toList();
                 b.writeInt(friendly.size());
                 for(Unit u:friendly){b.writeFloat((float)u.mob.getX());b.writeFloat((float)u.mob.getZ());b.writeBoolean(u.mob.getTarget()!=null);b.writeBoolean(u.squad==s);b.writeString(u.spec.name());}
-                b.writeInt(3);
-                for(String group:Morale.GROUPS){ // the three morale groups: the client reads exactly 3 (cavalry and siege wait for their troops)
+                // state_v10 (command UI Ruling 1): 3 to 5 group records in the order infantry, ranged, cavalry, support, siege. The three morale groups always come; cavalry and siege only when this army fields them (living members, or a full count this round).
+                List<String> sent=new ArrayList<>();
+                for(String group:STATE_GROUPS)if(Arrays.asList(Morale.GROUPS).contains(group)||(s!=null&&(units.stream().anyMatch(u->u.squad==s&&u.spec.group().equals(group)&&u.mob.isAlive())||s.fullCount.getOrDefault(group,0)>0)))sent.add(group);
+                b.writeInt(sent.size());
+                for(String group:sent){
                     var members=units.stream().filter(u->u.squad==s&&u.spec.group().equals(group)&&u.mob.isAlive()).toList();
-                    Assignment a=s==null?new Assignment("follow","block",Vec3d.ZERO,0):storedAssignment(s,group);
+                    Assignment a=s==null?new Assignment("follow","block",Vec3d.ZERO,0):groupOrder(s,group);
                     b.writeString(group);b.writeInt(members.size());b.writeFloat((float)members.stream().mapToDouble(u->u.mob.getHealth()/u.mob.getMaxHealth()).average().orElse(0));
                     b.writeString(a.order);b.writeString(a.formation);b.writeFloat((float)a.target.x);b.writeFloat((float)a.target.z);b.writeFloat(a.yaw);
                     b.writeFloat((float)members.stream().mapToDouble(u->u.mob.getX()).average().orElse(a.target.x));b.writeFloat((float)members.stream().mapToDouble(u->u.mob.getZ()).average().orElse(a.target.z));

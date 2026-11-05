@@ -35,7 +35,7 @@ public final class GravesAndGloryClient implements ClientModInitializer {
      *  too), cleared on disconnect. Public because HungerHudMixin reads it from inside InGameHud. */
     public static volatile boolean modServer;
     static int dawn,dusk,team=-1,count,respawn,gold,queued,trainingSeconds;
-    static String message="Preparing battlefield",order="follow",formation="block";
+    static String message="Preparing battlefield",order="follow",squadFormation="block";
     /** From state_v8 (still in state_v9): the side id each team flies, this army's House trait tiers (tier I or higher), and the commander ability (its active id, ticks until ready or -1 when this build has no behaviour for it, ticks left active; "" while unseated). */
     static String[] sideIds={"",""};static Map<String,Integer> houses=Map.of();static String commanderActive="";static int commanderReady,commanderFor;
     /** The commander ability the HUD slot shows ("none": no slot), with the ticks left and in all of its cooldown. */
@@ -50,7 +50,7 @@ public final class GravesAndGloryClient implements ClientModInitializer {
     static int[] owners={-1,-1,-1},progress={0,0,0},challengers={-1,-1,-1},roster=new int[Spec.TROOPS.length],pending=new int[Spec.TROOPS.length];
     static List<Marker> markers=List.of();
     record Marker(float x,float z,boolean fighting,boolean own,String name){}
-    static KeyBinding menu,attack,follow,cycle,mapKey,rotateLeft,rotateRight,confirmOrder,cancelOrder,hints,armoury,banner,gearKey;
+    static KeyBinding menu,attack,charge,followMe,retreat,formation,mapKey,rotateLeft,rotateRight,confirmOrder,cancelOrder,hints,armoury,banner,gearKey;
     static Path runtime;
     static String join="",error="";
     static boolean attempted,opened,joined,shareCamp,launcherContext,connectingInvitation;
@@ -82,7 +82,7 @@ public final class GravesAndGloryClient implements ClientModInitializer {
         net.fabricmc.fabric.api.client.rendering.v1.LivingEntityFeatureRendererRegistrationCallback.EVENT.register((type,renderer,helper,context)->{
             if(renderer instanceof net.minecraft.client.render.entity.PlayerEntityRenderer player)helper.register(new CommanderGearFeature(player));
         });
-        menu=key("menu",GLFW.GLFW_KEY_R);attack=key("attack",GLFW.GLFW_KEY_G);follow=key("follow",GLFW.GLFW_KEY_V);cycle=key("formation",GLFW.GLFW_KEY_B);mapKey=key("map",GLFW.GLFW_KEY_M);
+        menu=key("menu",GLFW.GLFW_KEY_R);attack=key("attack",GLFW.GLFW_KEY_Z);charge=key("charge",GLFW.GLFW_KEY_X);followMe=key("follow",GLFW.GLFW_KEY_C);retreat=key("retreat",GLFW.GLFW_KEY_V);formation=key("formation",GLFW.GLFW_KEY_B);mapKey=key("map",GLFW.GLFW_KEY_M);
         rotateLeft=key("rotate_left",GLFW.GLFW_KEY_LEFT_BRACKET);rotateRight=key("rotate_right",GLFW.GLFW_KEY_RIGHT_BRACKET);
         hints=key("hints",GLFW.GLFW_KEY_LEFT_ALT); // held, the battle HUD shows every key hint (BattleHud.altLayer)
         armoury=key("armoury",GLFW.GLFW_KEY_U); // opens the barracks screen on its Armoury tab, anywhere in a battle (ArmouryTab)
@@ -99,7 +99,9 @@ public final class GravesAndGloryClient implements ClientModInitializer {
             client.execute(()->{relicIds=ids;relicReady=ready;relicFor=run;for(int i=1;i<3;i++){int[] s=relicShow(ids[i],ready[i],run[i]);relicShown[i]=s==null?"none":ids[i];relicLeft[i]=s==null?0:s[0];relicTotal[i]=s==null?0:s[1];}});});
         // Relics fire on hotbar keys 1 to 3 in battle (gear-combat Task 5): drained here before vanilla's input handling, so in battle they never
         // change the selected slot (the server pins it to 0 as well, GearCombat.tick); outside battle vanilla gets them and they change slot as ever.
+        // With the command panel open the number keys 1 to 4 pick a pill (or a shape, with the tray open) instead and never reach the relics (CommandSelection.pick).
         ClientTickEvents.START_CLIENT_TICK.register(client->{if(client.player==null||client.currentScreen!=null||!battleActive())return;
+            if(CommandSelection.panelOpen()){boolean shift=CommandSelection.shiftHeld(client);for(int i=0;i<4;i++)while(client.options.hotbarKeys[i].wasPressed())CommandSelection.pick(i+1,shift,shift);return;}
             for(int i=0;i<3;i++)while(client.options.hotbarKeys[i].wasPressed())send("relic:"+i);});
         ClientPlayNetworking.registerGlobalReceiver(GravesAndGlory.GEAR,(client,handler,buf,responder)->{String text=buf.readString(GearWire.LIMIT);client.execute(()->CampaignClient.gear=GearWire.decode(text));});
         ClientPlayNetworking.registerGlobalReceiver(GravesAndGlory.CAMP,(client,handler,buf,responder)->{String page=buf.readString(32);client.execute(()->CampScreen.open(page));});
@@ -118,6 +120,7 @@ public final class GravesAndGloryClient implements ClientModInitializer {
         ClientEntityEvents.ENTITY_UNLOAD.register((entity,world)->{TroopMotion.forget(entity.getId());MotionEvents.Client.forget(entity.getId());});
         // A soldier's rank (rank_v1): level, weapon tier and armour tier by entity id, for the troop renderer, the chevrons and the portraits (Task 9).
         RankSync.registerClient();
+        CommandNet.registerClient(); // command_v1: the charge cooldown, teammates' outlines and order acknowledgements
         ClientPlayNetworking.registerGlobalReceiver(GravesAndGlory.STATE,(client,handler,buf,responder)->{
             modServer=true;
             boolean r=buf.readBoolean(),run=buf.readBoolean();int a=buf.readInt(),b=buf.readInt();String msg=buf.readString();int t=buf.readInt(),n=buf.readInt();String o=buf.readString(),f=buf.readString();int resp=buf.readInt();
@@ -125,7 +128,7 @@ public final class GravesAndGloryClient implements ClientModInitializer {
             int g=buf.readInt();boolean near=buf.readBoolean();int q=buf.readInt(),eta=buf.readInt(),types=buf.readInt();if(types!=Spec.TROOPS.length)return;
             int[] owned=new int[types],waiting=new int[types];for(int i=0;i<types;i++){owned[i]=buf.readInt();waiting[i]=buf.readInt();}
             int amount=buf.readInt();if(amount<0||amount>160)return;List<Marker> friendly=new ArrayList<>();for(int i=0;i<amount;i++)friendly.add(new Marker(buf.readFloat(),buf.readFloat(),buf.readBoolean(),buf.readBoolean(),buf.readString()));
-            int groupCount=buf.readInt();if(groupCount!=3)return;var groups=new ArrayList<CommandMode.Group>();
+            int groupCount=buf.readInt();if(groupCount<0||groupCount>8)return;/* state_v10: 3 to 5 group records, Riders and Siege when fielded */var groups=new ArrayList<CommandMode.Group>();
             for(int i=0;i<groupCount;i++)groups.add(new CommandMode.Group(buf.readString(),buf.readInt(),buf.readFloat(),buf.readString(),buf.readString(),buf.readFloat(),buf.readFloat(),buf.readFloat(),buf.readFloat(),buf.readFloat(),buf.readBoolean(),buf.readBoolean(),buf.readInt(),buf.readFloat(),buf.readInt(),buf.readInt(),buf.readBoolean())); // full and strength (UI), then state_v9's level2, level3 and armouryOpen
             String abilityRead=buf.readString();int cooldownLeft=buf.readInt(),cooldownAll=buf.readInt();
             int pingCount=buf.readInt();if(pingCount<0||pingCount>4)return;var pings=new ArrayList<CommandMode.Ping>();for(int i=0;i<pingCount;i++)pings.add(new CommandMode.Ping(buf.readString(),buf.readFloat(),buf.readFloat()));int seconds=buf.readInt();
@@ -137,9 +140,9 @@ public final class GravesAndGloryClient implements ClientModInitializer {
             client.execute(()->{boolean was=running;String before=message;long now=net.minecraft.util.Util.getMeasuringTimeMs();
                 // The feed starts empty with each round and empties when it ends, so a map build's "Preparing ..." never reaches it;
                 // while the round runs, a changed server message joins it as a notice with the player's own keys filled in.
-                if(run!=was)EventFeed.clear();if(run&&!was)BattleHud.roundShownMs=now;
+                if(run!=was)EventFeed.clear();if(run&&!was){BattleHud.roundShownMs=now;CommandNet.Client.reset();CommandSelection.reset();}
                 if(run&&!msg.isEmpty()&&(!msg.equals(before)||!was))EventFeed.push("notice",t,HintText.expand(msg,GravesAndGloryClient::hint),now);
-                CampaignClient.armoury=armoury;sideIds=new String[]{sideA,sideB};houses=Collections.unmodifiableMap(tiers);commanderActive=ability;commanderReady=abilityReady;commanderFor=abilityFor;CampaignClient.accept(client,campaignJson,run);sightings=List.copyOf(sight);contested=contest;CommandMode.pings=java.util.List.copyOf(pings);CommandMode.seconds=seconds;CommandMode.noteGroups(CommandMode.groups,groups,net.minecraft.util.Util.getMeasuringTimeMs());CommandMode.groups=java.util.List.copyOf(groups);ready=r;running=run;dawn=a;dusk=b;message=msg;team=t;count=n;order=o;formation=f;respawn=resp;owners=own;progress=pr;challengers=ch;gold=g;nearBarracks=near;queued=q;trainingSeconds=eta;roster=owned;pending=waiting;markers=List.copyOf(friendly);abilityId=abilityRead;abilityRemaining=cooldownLeft;abilityTotal=cooldownAll;if(abilityRead.equals("none"))classAbility();});
+                CampaignClient.armoury=armoury;sideIds=new String[]{sideA,sideB};houses=Collections.unmodifiableMap(tiers);commanderActive=ability;commanderReady=abilityReady;commanderFor=abilityFor;CampaignClient.accept(client,campaignJson,run);sightings=List.copyOf(sight);contested=contest;CommandMode.pings=java.util.List.copyOf(pings);CommandMode.seconds=seconds;CommandMode.noteGroups(CommandMode.groups,groups,net.minecraft.util.Util.getMeasuringTimeMs());CommandMode.groups=java.util.List.copyOf(groups);ready=r;running=run;dawn=a;dusk=b;message=msg;team=t;count=n;order=o;squadFormation=f;respawn=resp;owners=own;progress=pr;challengers=ch;gold=g;nearBarracks=near;queued=q;trainingSeconds=eta;roster=owned;pending=waiting;markers=List.copyOf(friendly);abilityId=abilityRead;abilityRemaining=cooldownLeft;abilityTotal=cooldownAll;if(abilityRead.equals("none"))classAbility();});
         });
         ClientPlayConnectionEvents.JOIN.register((handler,sender,client)->{resetHud();CampaignClient.sendProfile(client);if(connectingInvitation&&!joined){joined=true;say("Melty joined: "+join);}});
         // The battle HUD's records (the feed, what the last frame drew, the lesson wrap, an aimed order) are cleared on the client
@@ -148,6 +151,7 @@ public final class GravesAndGloryClient implements ClientModInitializer {
         // next join clears them as well; no HUD frame runs without a world to clear them before the next one.
         ClientPlayConnectionEvents.DISCONNECT.register((handler,client)->{if(connectingInvitation&&!joined)say("Melty join failed: connection closed before joining");CampaignClient.end(client);CampaignClient.forget();MusicDirector.reset(client);TroopMotion.clear();MotionEvents.Client.clear();RankSync.clear();hudResetPending=true;ready=false;modServer=false;running=false;team=-1;houses=Map.of();opened=false;worldTicks=0;shareCamp=false;connectingInvitation=false;});
         ClientTickEvents.END_CLIENT_TICK.register(client->{
+            if(!toolbarFreed&&client.options!=null){toolbarFreed=true;freeToolbarKeys(client,toolbarFlag());}
             if(hudResetPending&&client.world==null)resetHud();
             if(client.getOverlay()==null&&client.currentScreen instanceof TitleScreen){
                 if(!attempted){PackControls.prepare(client);attempted=true;}
@@ -155,21 +159,28 @@ public final class GravesAndGloryClient implements ClientModInitializer {
             }
             if(client.player!=null){
                 worldTicks++;if(ready&&worldTicks%20==0)client.getToastManager().clear();prepareMap(client);CampaignClient.tick(client);MusicDirector.tick(client);Diagnostics.tick(client);
-                while(menu.wasPressed()){CampaignClient.end(client);CommandMode.cancel();client.setScreen(battleActive()?new CommandScreen():new CampScreen("home"));}
+                while(menu.wasPressed()){CampaignClient.end(client);CommandMode.cancel();if(battleActive())CommandSelection.setPanelOpen(!CommandSelection.panelOpen());else client.setScreen(new CampScreen("home"));}
                 while(armoury.wasPressed())if(battleActive())client.setScreen(new RecruitmentScreen(1));
                 while(gearKey.wasPressed())if(!battleActive())client.setScreen(new CampScreen("gear"));
-                while(attack.wasPressed())CommandMode.begin("attack");while(follow.wasPressed())CommandMode.issue("all","follow",CommandMode.formation,client.player.getPos(),client.player.getYaw(),-1);
+                // Orders work with the panel closed, on the last selection; Shift keeps the panel open for the next one.
+                boolean shift=CommandSelection.shiftHeld(client);
+                while(attack.wasPressed())CommandSelection.order("attack",shift);while(charge.wasPressed())CommandSelection.order("charge",shift);
+                while(followMe.wasPressed())CommandSelection.order("follow",shift);while(retreat.wasPressed())CommandSelection.order("retreat",shift);
+                while(formation.wasPressed())CommandSelection.order("formation",shift);
                 while(rotateLeft.wasPressed()){CommandMode.facingSet=true;CommandMode.facing-=Spec.COMMANDINTERFACE[0].facingStep();}
                 while(rotateRight.wasPressed()){CommandMode.facingSet=true;CommandMode.facing+=Spec.COMMANDINTERFACE[0].facingStep();}
-                CommandMode.tick(client);
+                CommandMode.tick(client);CommandSelection.tick();
+                ChargeCamera.tick(client,charge); // holding X lifts the overhead charge camera; its release sends the Charge
                 while(confirmOrder.wasPressed())if(CommandMode.active())CommandMode.confirm();
-                while(cancelOrder.wasPressed())CommandMode.cancel();while(mapKey.wasPressed())if(battleActive())client.setScreen(new MapScreen(null));
-                while(cycle.wasPressed()){int i=0;for(int k=0;k<Spec.FORMATIONS.length;k++)if(Spec.FORMATIONS[k].id().equals(CommandMode.formation))i=k;CommandMode.changeFormation(Spec.FORMATIONS[(i+1)%Spec.FORMATIONS.length].id());}
+                while(cancelOrder.wasPressed())if(!CommandMode.cancel()&&CommandSelection.trayOpen())CommandSelection.setTrayOpen(false);
+                while(mapKey.wasPressed())if(battleActive())client.setScreen(new MapScreen(null));
                 if(ready&&!opened&&shareCamp&&client.getServer()!=null){opened=true;try{int port=0;String requested=System.getenv("GRAVESANDGLORY_HOST_PORT");if(requested==null)requested=System.getenv("BANNERBOUND_HOST_PORT");if(requested!=null){port=Integer.parseInt(requested);if(port<1024||port>65535)throw new IllegalArgumentException("Invalid host port");}if(port==0)try(ServerSocket socket=new ServerSocket(0)){port=socket.getLocalPort();}if(client.getServer().openToLan(GameMode.ADVENTURE,false,port)){String address=InetAddress.getLocalHost().getHostAddress()+":"+port;say("Melty join address: "+address);client.player.sendMessage(Text.literal("Camp open on your local network: "+address),false);}else client.player.sendMessage(Text.literal("Could not open camp to the local network."),false);}catch(Exception e){client.player.sendMessage(Text.literal("Could not share camp: "+e.getMessage()),false);}}
             }
         });
         HudRenderCallback.EVENT.register(GravesAndGloryClient::renderHud);
         net.fabricmc.fabric.api.client.rendering.v1.WorldRenderEvents.AFTER_ENTITIES.register(CommandMode::renderWorld);
+        ChargeCamera.register(); // the overhead charge camera: its option, its toggle binding and the ground arrow
+        OrderOutlines.register(); // formation outlines, pulses and the rally pose; registered after the tick handler above so it reads the aim that handler left
         // Troop depth: the frame's cutoff from the game camera, once, before any pass draws (Iris's shadow pass among them).
         net.fabricmc.fabric.api.client.rendering.v1.WorldRenderEvents.START.register(ctx->TroopDepth.beginFrame(ctx.camera().getPos(),ctx.world().getEntities()));
         // Settled bodies (BodyCache): queue from the frame's start, drawn from their buffers after the entities.
@@ -180,13 +191,30 @@ public final class GravesAndGloryClient implements ClientModInitializer {
     }
     /** A packet buffer as LevelMath's pure reader: readBoolean, readByte and readString (64 characters at most, a troop id). */
     static LevelMath.In wire(PacketByteBuf b){return new LevelMath.In(){public boolean bool(){return b.readBoolean();}public int b(){return b.readByte();}public String str(){return b.readString(64);}};}
+    private static boolean toolbarFreed;
+    /** Vanilla's creative hotbar activators sit on C (save) and X (load), the keys Follow me and Charge now use, and only one binding per key receives
+     *  presses. On the FIRST launch ever (no flag file yet) those two are unbound if they still hold C or X; the flag file records it, so later launches
+     *  never touch them and a player who rebinds them back to C or X keeps that choice. Returns whether a binding was changed. */
+    public static boolean freeToolbarKeys(MinecraftClient client,Path flag){
+        if(client.options==null||Files.exists(flag))return false;
+        boolean changed=false;
+        for(KeyBinding k:new KeyBinding[]{client.options.saveToolbarActivatorKey,client.options.loadToolbarActivatorKey}){
+            String bound=k.getBoundKeyTranslationKey();
+            if(bound.equals("key.keyboard.c")||bound.equals("key.keyboard.x")){client.options.setKeyCode(k,InputUtil.UNKNOWN_KEY);changed=true;}
+        }
+        if(changed){KeyBinding.updateKeysByCode();client.options.write();}
+        try{Files.createDirectories(flag.getParent());Files.writeString(flag,"toolbarKeysFreed=true\n");}catch(Exception e){System.err.println("[Graves and Glory] Could not record the first-launch key flag: "+e.getMessage());}
+        return changed;
+    }
+    /** The file whose presence says the first launch has happened. */
+    public static Path toolbarFlag(){return net.fabricmc.loader.api.FabricLoader.getInstance().getConfigDir().resolve("gravesandglory-client.properties");}
     static KeyBinding key(String name,int key){return KeyBindingHelper.registerKeyBinding(new KeyBinding("key.gravesandglory."+name,InputUtil.Type.KEYSYM,key,"category.gravesandglory"));}
     /** Set by a disconnect, which may come on the network thread; the client tick clears the battle HUD's records once no world is
      *  left (resetHud). */
     static volatile boolean hudResetPending;
     /** The last battle's records go: the feed, what the HUD last drew and its lesson wrap, the command state. On the client thread:
      *  the first client tick without a world after a disconnect, and every join. */
-    static void resetHud(){hudResetPending=false;EventFeed.clear();BattleHud.reset();CommandMode.reset();}
+    static void resetHud(){hudResetPending=false;EventFeed.clear();BattleHud.reset();CommandMode.reset();CommandSelection.reset();CommandNet.Client.reset();OrderOutlines.reset();OrderFeedback.reset();ChargeCamera.reset();}
     /** The binding with this translation key, or null when there is none. */
     static KeyBinding binding(String translationKey){
         for(KeyBinding k:MinecraftClient.getInstance().options.allKeys)if(k.getTranslationKey().equals(translationKey))return k;
@@ -230,7 +258,7 @@ public final class GravesAndGloryClient implements ClientModInitializer {
     public static String campHint(){return hint("menu")+" / War table    "+hint("use")+" on a station to interact";}
     static void say(String line){try{Files.writeString(runtime.resolve("melty.log"),line+"\n",StandardOpenOption.CREATE,StandardOpenOption.APPEND);}catch(Exception ignored){}}
     /** The last action send passed on (the harness reads what a screen sent). */
-    static volatile String lastSent="";
+    public static volatile String lastSent="";
     static void send(String action){if(ClientPlayNetworking.canSend(GravesAndGlory.ORDER)){lastSent=action;PacketByteBuf b=PacketByteBufs.create();b.writeString(action);ClientPlayNetworking.send(GravesAndGlory.ORDER,b);}}
     static void connectOrHost(MinecraftClient c){
         if(!join.isEmpty()){connectingInvitation=true;ConnectScreen.connect(new FrontMenuScreen("friends"),c,ServerAddress.parse(join),new ServerInfo("Graves and Glory",join,false),false);return;}
@@ -271,7 +299,7 @@ public final class GravesAndGloryClient implements ClientModInitializer {
             if(progressAt(i)>0){int ch=challengerAt(i);g.fill(px-5,pz+6,px-5+10*progressAt(i)/p.captureSeconds(),pz+8,DarkUi.teamColor(ch));DarkUi.teamMark(g,ch,px+7,pz+6);}
             if(labels)g.drawTextWithShadow(font,p.name(),px-22,pz+14,DarkUi.IVORY);}
         for(Marker m:markers){int px=x+(int)((m.x()+350)*w/700),pz=y+(int)((m.z()+250)*h/500);int color=m.fighting()?DarkUi.WARN:DarkUi.MAP_TROOP;DarkUi.mapMark(g,m.own()?"own":"ally",px,pz,color);if(m.fighting())g.fill(px-3,pz-4,px+4,pz-3,color);}
-        for(var group:CommandMode.groups){int gx=x+(int)((group.cx()+350)*w/700),gz=y+(int)((group.cz()+250)*h/500);boolean selected=CommandMode.selected.equals("all")||CommandMode.selected.equals(group.id());
+        for(var group:CommandMode.groups){int gx=x+(int)((group.cx()+350)*w/700),gz=y+(int)((group.cz()+250)*h/500);boolean selected=CommandSelection.isSelected(group.id());
             if(selected){int dx=x+(int)((group.x()+350)*w/700),dz=y+(int)((group.z()+250)*h/500);for(int k=0;k<=20;k++){int lx=gx+(dx-gx)*k/20,lz=gz+(dz-gz)*k/20;g.fill(lx,lz,lx+1,lz+1,DarkUi.GOLD);}g.drawBorder(dx-3,dz-3,7,7,DarkUi.GOLD);}
             g.fill(gx-4,gz-4,gx+5,gz+5,DarkUi.MAP_GROUP);g.drawTextWithShadow(font,group.id().substring(0,1).toUpperCase(),gx-2,gz-3,group.fighting()?DarkUi.WARN:DarkUi.GOLD);
             if(group.fighting())g.fill(gx-4,gz+5,gx+5,gz+7,DarkUi.WARN); // a bar under the pin: fighting is a shape as well as the orange letter (4F.5)
@@ -385,24 +413,6 @@ public final class GravesAndGloryClient implements ClientModInitializer {
         LobbyScreen(){this(0);}
         LobbyScreen(int first){super();tab=first;}
     }
-    public static final class CommandScreen extends ArmyScreen {
-        CommandScreen(){super("Battlefield commands");}
-        @Override protected void init(){
-            int groupWidth=Math.min(100,(width-24)/Spec.GROUPS.length);int i=0;
-            for(var group:Spec.GROUPS){String id=group.id();button((CommandMode.selected.equals(id)?"> ":"")+group.label()+" "+CommandMode.count(id),width/2-Spec.GROUPS.length*groupWidth/2+i*groupWidth,8,groupWidth-3,b->{CommandMode.selected=id;clearAndInit();});i++;}
-            i=0;for(String id:new String[]{"move","attack","charge","hold","follow","retreat"}){var order=Arrays.stream(Spec.ORDERS).filter(o->o.id().equals(id)).findFirst().orElseThrow();var btn=button(order.label(),8,40+i*21,72,b->{if(id.equals("follow")){CommandMode.issue(CommandMode.selected,id,CommandMode.formation,client.player.getPos(),client.player.getYaw(),-1);close();}else CommandMode.begin(id);});btn.setTooltip(net.minecraft.client.gui.tooltip.Tooltip.of(Text.literal(order.meaning())));i++;}
-            button("Map",width-76,45,68,b->client.setScreen(new MapScreen(this)));
-            int cardWidth=Math.min(105,(width-24)/Spec.FORMATIONS.length);i=0;
-            for(var f:Spec.FORMATIONS){String id=f.id();var btn=button((id.equals(CommandMode.formation)?"> ":"")+f.label(),width/2-Spec.FORMATIONS.length*cardWidth/2+i*cardWidth,height-27,cardWidth-3,b->{CommandMode.changeFormation(id);clearAndInit();});btn.setTooltip(net.minecraft.client.gui.tooltip.Tooltip.of(Text.literal(f.purpose())));i++;}
-        }
-        @Override public void render(DrawContext g,int mx,int my,float delta){
-            panel(g,4,35,80,132);panel(g,width-80,39,76,32);
-            int cardWidth=Math.min(105,(width-24)/Spec.FORMATIONS.length),i=0;
-            for(var f:Spec.FORMATIONS){int x=width/2-Spec.FORMATIONS.length*cardWidth/2+i*cardWidth;panel(g,x,height-65,cardWidth-3,37);if(f.id().equals(CommandMode.formation))g.drawBorder(x,height-65,cardWidth-3,37,DarkUi.GOLD);
-                for(int n=0;n<12;n++){int col=f.id().equals("line")?6:4;int dx=n%col*7,dy=n/col*6;if(f.wedge()){int rank=(int)Math.sqrt(n);dx=(n-rank*rank-rank)*7+20;dy=rank*6;}if(f.id().equals("loose")){dx*=2;dy*=2;}g.fill(x+12+dx,height-60+dy,x+15+dx,height-57+dy,DarkUi.GOLD);}i++;}
-            g.drawCenteredTextWithShadow(textRenderer,"Choose group and order. Aim and confirm in the battlefield.",width/2,32,DarkUi.IVORY);super.render(g,mx,my,delta);
-        }
-    }
     public static final class BarracksScreen extends RecruitmentScreen { BarracksScreen(){super();} }
     public static final class MapScreen extends ArmyScreen {
         int x,y,w,h;Marker selected;String pingMode="";
@@ -410,8 +420,8 @@ public final class GravesAndGloryClient implements ClientModInitializer {
         final Screen parent;
         MapScreen(Screen parent){super("Battlefield map");this.parent=parent;}
         @Override protected void init(){h=Math.min(height-86,230);w=Math.min(width-40,h*280/200);h=w*200/280;x=(width-w)/2;y=34;button("Back",12,8,55,b->client.setScreen(parent));int i=0;for(var ping:Spec.PINGS){String id=ping.id();button(ping.label(),width/2-152+i*77,height-22,74,b->pingMode=id);i++;}}
-        @Override public boolean mouseClicked(double mx,double my,int b){if(!pingMode.isEmpty()&&b==0&&mx>=x&&mx<=x+w&&my>=y&&my<=y+h){CommandMode.ping(pingMode,(mx-x)*700/w-350,(my-y)*500/h-250);pingMode="";return true;}if(b==1&&mx>=x&&mx<=x+w&&my>=y&&my<=y+h){double tx=(mx-x)*700/w-350,tz=(my-y)*500/h-250;CommandMode.issue(CommandMode.selected,"move",CommandMode.formation,new net.minecraft.util.math.Vec3d(tx,65,tz),client.player.getYaw(),-1);return true;}
-            for(var group:CommandMode.groups){double gx=x+(group.cx()+350)*w/700,gz=y+(group.cz()+250)*h/500;if(b==0&&Math.hypot(mx-gx,my-gz)<8){CommandMode.selected=group.id();return true;}}
+        @Override public boolean mouseClicked(double mx,double my,int b){if(!pingMode.isEmpty()&&b==0&&mx>=x&&mx<=x+w&&my>=y&&my<=y+h){CommandMode.ping(pingMode,(mx-x)*700/w-350,(my-y)*500/h-250);pingMode="";return true;}if(b==1&&mx>=x&&mx<=x+w&&my>=y&&my<=y+h){double tx=(mx-x)*700/w-350,tz=(my-y)*500/h-250;CommandSelection.issueSelected("hold",CommandMode.formation,new net.minecraft.util.math.Vec3d(tx,65,tz),client.player.getYaw(),-1);return true;}
+            for(var group:CommandMode.groups){double gx=x+(group.cx()+350)*w/700,gz=y+(group.cz()+250)*h/500;if(b==0&&Math.hypot(mx-gx,my-gz)<8){CommandSelection.select(group.id(),hasShiftDown());return true;}}
             for(Marker m:markers){double px=x+(m.x()+350)*w/700,pz=y+(m.z()+250)*h/500;if(Math.hypot(mx-px,my-pz)<6){selected=m;return true;}}return super.mouseClicked(mx,my,b);}
         @Override public void render(DrawContext g,int mx,int my,float delta){g.fill(0,0,width,height,DarkUi.SCRIM);g.drawCenteredTextWithShadow(textRenderer,"BATTLEFIELD / FRIENDLY FORCES",width/2,12,DarkUi.GOLD);panel(g,x-4,y-4,w+8,h+8);map(g,x,y,w,h,true);key(g,width/2,y+h+12);if(selected!=null)g.drawCenteredTextWithShadow(textRenderer,selected.name()+" / "+(selected.own()?"Your troop":"Allied troop")+(selected.fighting()?" / IN COMBAT":" / moving or holding"),width/2,y+h+24,DarkUi.IVORY);super.render(g,mx,my,delta);}
         /** The map's controls, named by the player's own bindings (a mouse button as LMB, RMB or MMB). */

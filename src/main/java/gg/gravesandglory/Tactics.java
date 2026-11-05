@@ -34,15 +34,43 @@ final class Tactics {
      */
     static boolean arrived(GravesAndGlory.Battle b,GravesAndGlory.Unit u,GravesAndGlory.Assignment a){
         var order=Arrays.stream(Spec.ORDERS).filter(o->o.id().equals(a.order)).findFirst().orElse(Spec.ORDERS[0]);
-        if(order.engage())return false;
-        String group=u.spec.group();if(u.squad.arrived.contains(group))return true;
-        var members=Morale.members(b,u.squad,group);if(members.isEmpty())return false;
+        if(order.engage()||a.thenFollow)return false; // a player's Retreat never holds where it stops: it turns to Follow me at its commander (tick)
+        String group=CustomGroups.stateKey(u);if(u.squad.arrived.contains(group))return true; // a custom group's own latch when it splits a spec group (Task 12 fix I1)
+        var members=sharers(b,u);if(members.isEmpty())return false;
         double r=Spec.COMBATDISCIPLINE[0].arriveRadius();
         if(GravesAndGlory.Battle.horizontalDistance(Morale.centre(members),slotCentre(b,members))>r*r)return false;
         u.squad.arrived.add(group);return true;
     }
     /** The centre of the members' formation slots (Battle.formation): where their walk ends. */
     static Vec3d slotCentre(GravesAndGlory.Battle b,List<GravesAndGlory.Unit> members){Vec3d sum=Vec3d.ZERO;for(var m:members)sum=sum.add(b.formation(m));return sum.multiply(1.0/members.size());}
+    /** Whether the unit's group centre stands within r of the centre of its formation slots (as arrived reads it, without the latch). */
+    static boolean groupWithin(GravesAndGlory.Battle b,GravesAndGlory.Unit u,double r){
+        var members=sharers(b,u);if(members.isEmpty())return false;
+        return GravesAndGlory.Battle.horizontalDistance(Morale.centre(members),slotCentre(b,members))<=r*r;
+    }
+    /** The living troops that count toward the unit's group centre (not temporary, as Morale.members) by its position key (CustomGroups.stateKey):
+     *  its spec group's troops less any under a custom group's order, or the troops that share that custom order (Task 12). */
+    static List<GravesAndGlory.Unit> sharers(GravesAndGlory.Battle b,GravesAndGlory.Unit u){
+        String key=CustomGroups.stateKey(u);List<GravesAndGlory.Unit> out=new java.util.ArrayList<>();
+        for(var m:b.units)if(m.squad==u.squad&&!m.temporary&&m.mob.isAlive()&&CustomGroups.stateKey(m).equals(key))out.add(m);
+        return out;
+    }
+    /** The unit's group turns to another order in place (command UI Task 5): a player's Charge to Attack (hunt) on its first landed blow or at its
+     *  end point, a player's Retreat to Follow me at its commander. Same point, formation and facing; chargedAt is kept for the charge impact.
+     *  Every key that holds the old assignment takes the new one, so a custom group's order (troop:&lt;id&gt; keys, Task 12) turns for its troops alone. */
+    static GravesAndGlory.Assignment become(GravesAndGlory.Unit u,GravesAndGlory.Assignment a,String order,long time){
+        var n=new GravesAndGlory.Assignment(order,a.formation,a.target,a.yaw);n.issued=time;n.perch=a.perch;n.hunt=order.equals("attack");
+        boolean shared=false;for(var e:u.squad.assignments.entrySet())if(e.getValue()==a){e.setValue(n);shared=true;}
+        if(!shared)u.squad.assignments.put(u.spec.group(),n);u.squad.arrived.remove(CustomGroups.stateKey(u));return n;
+    }
+    /** Whether a point is on a player's Charge path from this troop: ahead along Assignment.chargeDir (up to chargeRunBlocks) and within
+     *  chargeLane blocks of the troop's line. Every other order has no path, so anything passes. */
+    static final double CHARGE_LANE=3;
+    static boolean ahead(GravesAndGlory.Unit u,GravesAndGlory.Assignment a,Vec3d p){
+        if(a.chargeDir==null)return true;
+        double dx=p.x-u.mob.getX(),dz=p.z-u.mob.getZ(),along=dx*a.chargeDir.x+dz*a.chargeDir.z,across=Math.abs(dx*a.chargeDir.z-dz*a.chargeDir.x);
+        return along>=-1&&along<=Spec.COMBATDISCIPLINE[0].chargeRunBlocks()&&across<=CHARGE_LANE;
+    }
     static String stance(GravesAndGlory.Assignment a,GravesAndGlory.Unit u){
         var tags=ArmyMobs.tags(u.spec);return BattleMath.stance(a.order,tags.contains("shield"),tags.contains("spear"),false,false,false,false);
     }
@@ -82,8 +110,24 @@ final class Tactics {
     }
     /** Whether the unit's squad group was shot at within fireMemoryTicks (BattleMath.underFire). */
     static boolean underFire(GravesAndGlory.Battle b,GravesAndGlory.Unit u){return BattleMath.underFire(b.time,u.squad.shotAt.getOrDefault(u.spec.group(),0L),C.fireMemoryTicks());}
-    /** The order a shield troop raises its shield by (BattleMath.shieldOrder): an arrived Move group stands as on Hold (the latch Squad.arrived, which arrived sets on the beat); a Retreat never raises. */
-    static String shieldOrder(GravesAndGlory.Unit u,GravesAndGlory.Assignment a){return BattleMath.shieldOrder(a.order,u.squad.arrived.contains(u.spec.group()));}
+    /** Whether a player's Formation (Assignment.holdSlots) group is in place: its centre came within arriveRadius of its slots once; latched on
+     *  Squad.arrived like an arrival, cleared by the next order. */
+    static boolean placed(GravesAndGlory.Battle b,GravesAndGlory.Unit u){
+        String group=CustomGroups.stateKey(u);if(u.squad.arrived.contains(group))return true;
+        if(!groupWithin(b,u,Spec.COMBATDISCIPLINE[0].arriveRadius()))return false;
+        u.squad.arrived.add(group);return true;
+    }
+    /** The leash a target must be inside. In place on a player's Formation (slotted): a melee troop takes only what comes within its reach of
+     *  its own slot, a ranged troop anything (its weapon's reach bounds it). Otherwise Hold's: within the engage radius of the anchor. */
+    static boolean leash(GravesAndGlory.Unit u,GravesAndGlory.Assignment a,boolean hold,boolean holdSiege,boolean slotted,Vec3d slot,double keep,double engage,Vec3d p){
+        if(slotted)return u.spec.ranged()||GravesAndGlory.Battle.horizontalDistance(p,slot)<=keep*keep;
+        return !hold||holdSiege||GravesAndGlory.Battle.horizontalDistance(p,a.target)<engage*engage;
+    }
+    /** The order a shield troop raises its shield by (BattleMath.shieldOrder): an arrived Move group stands as on Hold (the latch Squad.arrived, which arrived sets on the beat); a player's Retreat (thenFollow) raises as Follow me does, under fire and without Hold's wall (Ruling 2), and still strikes nothing. */
+    static String shieldOrder(GravesAndGlory.Unit u,GravesAndGlory.Assignment a){
+        if(a.thenFollow&&a.order.equals("retreat"))return "follow"; // a player's Retreat raises shields under fire as on the march (Ruling 2), and still strikes nothing
+        return BattleMath.shieldOrder(a.order,u.squad.arrived.contains(CustomGroups.stateKey(u)));
+    }
     /** Squared distance to the nearest living enemy troop or commander inside scouting range that the troop can see (one line-of-sight test, on the
      *  nearest), or -1 for none: on Hold a shield wall raises its shields once an enemy is in sight, not only once one walks into its leash. */
     static double sighted(GravesAndGlory.Battle b,GravesAndGlory.Unit u){
@@ -97,7 +141,7 @@ final class Tactics {
     /** The crawl (section 5): a shield troop with its shield up under archer fire on any order but Hold moves at crawlShare of its pace. Kept every tick
      *  (brace), so it comes off on the tick the shield drops, the fire memory runs out or the order turns to Hold; never stacked (Abilities.keepSpeed). */
     static void crawl(GravesAndGlory.Battle b,GravesAndGlory.Unit u,String order){
-        boolean on=u.tags.contains("shield")&&u.mob.isUsingItem()&&!order.equals("hold")&&underFire(b,u);
+        boolean on=u.tags.contains("shield")&&u.mob.isUsingItem()&&!order.equals("hold")&&!b.assignment(u).thenFollow&&underFire(b,u); // a player's Retreat runs at its pace with shields up (fix round 1 ruling)
         Abilities.keepSpeed(u.mob,CRAWL_ID,"Graves and Glory crawl",on?BattleMath.speedModifier(C.crawlShare(),u.mob.isTouchingWater()):0);
     }
     /** Between beats a shield troop re-reads the distance to the enemy it chose on its beat, so it lowers its shield on the tick that enemy steps
@@ -189,40 +233,60 @@ final class Tactics {
         Houses.swim(battle,u); // Riptide: faster while it touches water or it rains
         boolean arrived=arrived(battle,u,a); // a Retreat or Move group at its destination fights as on Hold from its slot (arrived)
         var owner=battle.server.getPlayerManager().getPlayer(s.owner);
+        if(a.thenFollow&&a.order.equals("retreat")){ // a player's Retreat (Task 5): back to the commander where he stands now, frozen at his last spot while he waits to respawn; Follow me once there
+            if(owner!=null&&!battle.respawns.containsKey(s.owner)&&!owner.isSpectator()&&owner.isAlive())a.target=owner.getPos();
+            if(groupWithin(battle,u,C.retreatArriveRadius()))a=become(u,a,"follow",time);
+        }else if(a.order.equals("charge")&&a.chargeDir!=null&&groupWithin(battle,u,C.arriveRadius()))a=become(u,a,"attack",time); // a player's Charge at its end point hunts on
         if(a.order.equals("follow")&&owner!=null&&!battle.respawns.containsKey(s.owner)){a.target=owner.getPos();a.yaw=owner.getYaw();}
-        var order=arrived?HOLD:Arrays.stream(Spec.ORDERS).filter(o->o.id().equals(a.order)).findFirst().orElse(Spec.ORDERS[0]);
+        String orderId=a.order;
+        var order=arrived?HOLD:Arrays.stream(Spec.ORDERS).filter(o->o.id().equals(orderId)).findFirst().orElse(Spec.ORDERS[0]);
         boolean hold=a.order.equals("hold")||arrived;
         boolean holdSiege=hold&&u.tags.contains("siege"); // artillery on Hold shoots what is within its reach from where it stands and never walks toward a target, so it never walks out of Entrench
-        double engage=holdSiege?Abilities.range(battle,u):engageRadius(battle,u,order.engageRadius()); // the order's radius, widened to the weapon's reach for a siege troop; on Hold the weapon's reach as it is now
+        boolean hunt=a.order.equals("attack")&&a.hunt; // a player's Attack: anything it can see within scouting range, else the nearest enemy anywhere (no leash)
+        boolean dash=a.order.equals("charge")&&a.chargeDir!=null; // a player's Charge down its direction
+        boolean volley=dash&&u.spec.ranged(),lane=dash&&!volley; // ranged on a Charge advance and shoot what is in reach; melee strike only what stands on their path
+        boolean sight=hunt||volley; // picks only what it can see (one line-of-sight test, on a nearer candidate)
+        double speed=order.moveMultiplier()*(a.order.equals("hold")?FormationRules.moveShare(u,a):1); // a Formation (Hold) walks at its formation's share
+        double engage=holdSiege?Abilities.range(battle,u):engageRadius(battle,u,hunt?Spec.SCOUTING[0].range():order.engageRadius()); // the order's radius, widened to the weapon's reach for a siege troop; on Hold the weapon's reach as it is now
+        if(volley)engage=Math.min(engage,Abilities.range(battle,u));
+        boolean slotted=a.order.equals("hold")&&a.holdSlots&&placed(battle,u); // a player's Formation in place: melee keep their slots, ranged shoot anything in reach
+        Vec3d slot=slotted?battle.formation(u):null;double keep=Abilities.range(battle,u);
+        if(slotted&&u.spec.ranged())engage=keep;
         LivingEntity enemy=null,close=null;double nearest=engage*engage,closest=nearest; // enemy: the one it picks (never one inside its minimum range); close: the nearest of any, which a ranged troop backs off from
-        if(order.engage()&&u.lockedTarget!=null&&u.lockedTarget.isAlive()&&time<u.lockUntil&&mob.squaredDistanceTo(u.lockedTarget)<nearest*(holdSiege?1:1.4)&&!Abilities.tooClose(u,mob.squaredDistanceTo(u.lockedTarget))&&(!hold||holdSiege||GravesAndGlory.Battle.horizontalDistance(u.lockedTarget.getPos(),a.target)<nearest))enemy=u.lockedTarget;
+        if(order.engage()&&u.lockedTarget!=null&&u.lockedTarget.isAlive()&&time<u.lockUntil&&mob.squaredDistanceTo(u.lockedTarget)<nearest*(holdSiege?1:1.4)&&!Abilities.tooClose(u,mob.squaredDistanceTo(u.lockedTarget))&&leash(u,a,hold,holdSiege,slotted,slot,keep,engage,u.lockedTarget.getPos())&&(!lane||ahead(u,a,u.lockedTarget.getPos()))&&(!sight||mob.canSee(u.lockedTarget)))enemy=u.lockedTarget;
         if(order.engage()&&a.enemy>=0&&battle.world.getEntityById(a.enemy) instanceof LivingEntity explicit&&explicit.isAlive()&&mob.canSee(explicit)&&!Abilities.tooClose(u,mob.squaredDistanceTo(explicit))){enemy=explicit;a.target=explicit.getPos();}
         if(enemy!=null){nearest=mob.squaredDistanceTo(enemy);close=enemy;closest=nearest;}
         boolean locked=enemy!=null;
         for(var other:battle.units)if(order.engage()&&!locked&&other.squad.team!=s.team&&other.mob.isAlive()){
             double d=mob.squaredDistanceTo(other.mob);
-            boolean inLeash=!hold||holdSiege||GravesAndGlory.Battle.horizontalDistance(other.mob.getPos(),a.target)<engage*engage;
+            boolean inLeash=leash(u,a,hold,holdSiege,slotted,slot,keep,engage,other.mob.getPos())&&(!lane||ahead(u,a,other.mob.getPos()));
             if(inLeash&&d<closest){close=other.mob;closest=d;}
-            if(inLeash&&d<nearest&&!Abilities.tooClose(u,d)){enemy=other.mob;nearest=d;}
+            if(inLeash&&d<nearest&&!Abilities.tooClose(u,d)&&(!sight||mob.canSee(other.mob))){enemy=other.mob;nearest=d;}
         }
         for(ServerPlayerEntity p:battle.server.getPlayerManager().getPlayerList()){
-            var other=battle.squads.get(p.getUuid());if(order.engage()&&!locked&&other!=null&&other.team!=s.team&&!p.isSpectator()&&p.isAlive()&&(!hold||holdSiege||GravesAndGlory.Battle.horizontalDistance(p.getPos(),a.target)<engage*engage)){
+            var other=battle.squads.get(p.getUuid());if(order.engage()&&!locked&&other!=null&&other.team!=s.team&&!p.isSpectator()&&p.isAlive()&&leash(u,a,hold,holdSiege,slotted,slot,keep,engage,p.getPos())&&(!lane||ahead(u,a,p.getPos()))){
                 double d=mob.squaredDistanceTo(p);
                 if(d<closest){close=p;closest=d;}
-                if(d<nearest&&!Abilities.tooClose(u,d)){enemy=p;nearest=d;}
+                if(d<nearest&&!Abilities.tooClose(u,d)&&(!sight||mob.canSee(p))){enemy=p;nearest=d;}
             }
         }
-        if(order.engage()&&!locked){var drawn=GearCombat.taunter(battle,u);if(drawn!=null&&!Abilities.tooClose(u,mob.squaredDistanceTo(drawn))){enemy=drawn;nearest=mob.squaredDistanceTo(drawn);close=drawn;closest=nearest;}} // taunt_aura: a share of the troops near a commander wearing it pick him
+        if(order.engage()&&!locked){var drawn=GearCombat.taunter(battle,u);if(drawn!=null&&!Abilities.tooClose(u,mob.squaredDistanceTo(drawn))&&(!lane||ahead(u,a,drawn.getPos()))&&(!volley||mob.squaredDistanceTo(drawn)<=engage*engage)){enemy=drawn;nearest=mob.squaredDistanceTo(drawn);close=drawn;closest=nearest;}} // taunt_aura: a share of the troops near a commander wearing it pick him
         if(order.engage()&&!locked&&enemy==null)for(var st:battle.structures){ // a supply banner is a target when no troop or commander is: the army first, then its commander, then its banner
             if(st.team()==s.team||!st.isAlive())continue;
             double d=mob.squaredDistanceTo(st);
-            boolean inLeash=!hold||holdSiege||GravesAndGlory.Battle.horizontalDistance(st.getPos(),a.target)<engage*engage;
+            boolean inLeash=leash(u,a,hold,holdSiege,slotted,slot,keep,engage,st.getPos())&&(!lane||ahead(u,a,st.getPos()));
             if(inLeash&&d<closest){close=st;closest=d;}
             if(inLeash&&d<nearest&&!Abilities.tooClose(u,d)){enemy=st;nearest=d;}
         }
+        if(hunt&&!locked&&enemy==null){ // nothing in sight within scouting range: the nearest living enemy troop or commander anywhere in the battle
+            double far=Double.MAX_VALUE;
+            for(var other:battle.units)if(other.squad.team!=s.team&&other.mob.isAlive()){double d=mob.squaredDistanceTo(other.mob);if(d<far&&!Abilities.tooClose(u,d)){far=d;enemy=other.mob;}}
+            for(ServerPlayerEntity p:battle.server.getPlayerManager().getPlayerList()){var other=battle.squads.get(p.getUuid());if(other!=null&&other.team!=s.team&&!p.isSpectator()&&p.isAlive()&&!battle.respawns.containsKey(p.getUuid())){double d=mob.squaredDistanceTo(p);if(d<far&&!Abilities.tooClose(u,d)){far=d;enemy=p;}}}
+            if(enemy!=null)nearest=far;
+        }
         if(enemy!=u.lockedTarget){u.lockedTarget=enemy;u.lockUntil=time+Spec.COMBATDISCIPLINE[0].targetMemoryTicks();}
         mob.setTarget(enemy);mob.setAttacking(enemy!=null);
-        double reach=Abilities.range(battle,u);boolean ranged=u.spec.ranged();
+        double reach=Abilities.range(battle,u);boolean ranged=u.spec.ranged();boolean post=a.perch||slotted&&ranged; // a ranged troop on a raised post or in place on a Formation shoots from its slot
         if(enemy!=null&&nearest<=reach*reach)stamp(battle,u,enemy); // an archer taking aim from within its reach puts its target's group under fire
         if(u.tags.contains("shield")){ // Hold: up with any enemy picked or in sight; other orders: up under archer fire; never on Charge or Retreat, down to swing once the enemy is in reach
             String shieldOrder=shieldOrder(u,a);double near=nearest;boolean any=enemy!=null;
@@ -239,7 +303,7 @@ final class Tactics {
             boolean visible=mob.canSee(enemy);
             if(nearest<=reach*reach&&visible){
                 if(ranged&&close!=null&&closest<flee*flee&&!hold&&!a.perch)backOff(battle,u,close,time);
-                else if(a.perch&&ranged)toSlot(battle,u,a,time,order.moveMultiplier()); // it shoots on its way up and climbs on
+                else if(post&&ranged)toSlot(battle,u,a,time,speed); // it shoots on its way up and climbs on
                 else mob.getNavigation().stop();
                 if(time>=u.nextAttack&&time>=u.stunnedUntil&&!pending(battle,u)&&!Abilities.tooClose(u,nearest)){
                     int cooldown=u.spec.cooldown();u.nextAttack=u.nextAttack<time-10?time+cooldown:u.nextAttack+cooldown;mob.swingHand(Hand.MAIN_HAND);
@@ -247,19 +311,22 @@ final class Tactics {
                     if(late>0){u.looseAt=time+late;u.looseTarget=enemy;} // Kort Q70: a bow troop's shot leaves late ticks on (looseLate)
                     else shoot(battle,u,enemy,time,ranged);
                 }else if(drawsAhead(u)&&time+10>=u.nextAttack&&time+10>=u.stunnedUntil&&!pending(battle,u)&&!Abilities.tooClose(u,nearest))Projectiles.drawAhead(battle,u,enemy,10); // the beat before a bow's shot: its draw starts now, the arrow still leaves on the next beat (cosmetic, R110 Plan B)
-            }else if(a.perch&&ranged){toSlot(battle,u,a,time,order.moveMultiplier()); // a ranged troop on a post shoots what it can reach from there and never walks off after the rest
-            }else if(!holdSiege&&(!hold||GravesAndGlory.Battle.horizontalDistance(enemy.getPos(),a.target)<engage*engage)){
+            }else if(post&&ranged){toSlot(battle,u,a,time,speed); // a ranged troop on a post shoots what it can reach from there and never walks off after the rest
+            }else if(volley){toSlot(battle,u,a,time,speed); // a ranged troop on a Charge never closes on its target: it runs on down the path and stops once it can shoot
+            }else if(!holdSiege&&leash(u,a,hold,holdSiege,slotted,slot,keep,engage,enemy.getPos())){
                 Vec3d goal=enemy.getPos();
-                if(ranged&&!visible){Vec3d toward=enemy.getPos().subtract(mob.getPos()).multiply(1,0,1).normalize();double sign=u.slot%2==0?1:-1;goal=mob.getPos().add(-toward.z*sign*Spec.COMBATDISCIPLINE[0].rangedObstructionStep(),0,toward.x*sign*Spec.COMBATDISCIPLINE[0].rangedObstructionStep());}
+                boolean far=hunt&&nearest>reach*reach; // a hunt's far quarry, unseen: walk at it, not around the obstruction in front
+                if(ranged&&!visible&&!far){Vec3d toward=enemy.getPos().subtract(mob.getPos()).multiply(1,0,1).normalize();double sign=u.slot%2==0?1:-1;goal=mob.getPos().add(-toward.z*sign*Spec.COMBATDISCIPLINE[0].rangedObstructionStep(),0,toward.x*sign*Spec.COMBATDISCIPLINE[0].rangedObstructionStep());}
                 if(!ranged){double angle=u.slot*2.399963;goal=goal.add(Math.cos(angle)*1.6,0,Math.sin(angle)*1.6);}
-                if(ranged&&visible&&nearest>reach*reach)goal=goal.add(mob.getPos().subtract(goal).multiply(1,0,1).normalize().multiply(reach*N.rangedStandoff()));
-                walk(battle,u,goal,time,order.moveMultiplier());
+                if(ranged&&(visible||far)&&nearest>reach*reach)goal=goal.add(mob.getPos().subtract(goal).multiply(1,0,1).normalize().multiply(reach*N.rangedStandoff()));
+                walk(battle,u,goal,time,speed);
             }else mob.getNavigation().stop();
         }else if(close!=null&&ranged){ // everything in its leash stands inside its minimum range: nothing to shoot; it backs off (unless it holds) and does not walk off to its formation
-            if(a.perch)toSlot(battle,u,a,time,order.moveMultiplier());else if(!hold&&closest<flee*flee)backOff(battle,u,close,time);else mob.getNavigation().stop();
+            if(post)toSlot(battle,u,a,time,speed);else if(!hold&&closest<flee*flee)backOff(battle,u,close,time);else mob.getNavigation().stop();
         }else{
-            toSlot(battle,u,a,time,order.moveMultiplier());
+            toSlot(battle,u,a,time,speed);
         }
+        if(a.order.equals("hold")&&!mob.getNavigation().isIdle())FormationRules.shove(battle,u,a); // a Formation's troops walking into place make room (Task 6's rule)
     }
     /** To its formation slot, and still there facing the order's way once it stands on it: within arrivalTolerance across and, on a post (Assignment.perch), at its height, so that a troop under a tower top is not taken for one on it. */
     static void toSlot(GravesAndGlory.Battle battle,GravesAndGlory.Unit u,GravesAndGlory.Assignment a,long time,double speed){
@@ -574,5 +641,7 @@ final class Tactics {
         BattleEffects.strike(b,u,target);
         u.blow=s.charge();u.blowVariant=s.variant();
         try{Abilities.land(b,u,target);}finally{u.blow=null;u.blowVariant=-1;}
+        var a=b.assignment(u); // a player's Charge: the group's first landed blow turns it to Attack (hunt); its chargedAt stays for the impact
+        if(a!=null&&a.order.equals("charge")&&a.chargeDir!=null&&Combat.landedNow(b,u))become(u,a,"attack",b.time); // landed: damage() took it (Task 6 review I1), so a blow that did not land keeps the Charge and its crash
     }
 }
