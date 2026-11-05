@@ -511,7 +511,8 @@ NOTE = ("Admiral Vael, the Drowned Tide (unit identity, Tidecallers, Legendary):
         "right hand. No coral. Tier II a bronze half-cuirass, plate pauldrons, vambraces and greaves; tier III deep sea-blue plate, "
         "a ring of pearls round the tricorne and a third plume. No back flag.")
 TC_ADMIRAL = Troop("tc_admiral", SKIN, CLOTH, bones, cloth_painter,
-                   {"weapon": "admiral_trident", "hand": "right", "idleArms": "hang", "portrait": "tall 4"})
+                   {"weapon": "admiral_trident", "hand": "right", "idleArms": "hang", "portrait": "tall 4"},
+                   waist={"anchor": "up"}, merge={f"hat_pearl{i}": "hat_pearl0" for i in range(1, 8)})
 def build(): return TC_ADMIRAL.build()
 def outputs(): return TC_ADMIRAL.outputs()
 

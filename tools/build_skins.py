@@ -144,10 +144,13 @@ RIGS = {'husk': 'biped', 'zombie': 'biped', 'skeleton': 'biped', 'stray': 'biped
 # the hand and team bones by their paths from the root, and Task 5b's clips turn bones by name, so a rig keeps the tree.
 # The biped is jointed (animation rework Task 9, the plan's rig contract): a forearm under each arm at the elbow, a shin under
 # each leg at the knee, and the hands on the forearms, where the one-piece arm held them (arm-frame [-1, 8, 0] and [1, 8, 0]).
-BIPED_BONES = (('root', ''), ('body', 'root'), ('head', 'body'), ('right_arm', 'body'), ('right_forearm', 'right_arm'),
-               ('right_hand', 'right_forearm'), ('left_arm', 'body'), ('left_forearm', 'left_arm'), ('left_hand', 'left_forearm'),
-               ('arms_folded', 'body'), ('right_leg', 'root'), ('right_shin', 'right_leg'), ('left_leg', 'root'),
-               ('left_shin', 'left_leg'))
+# The animation redo (2026-11) adds the waist and ankles: chest under body at the waist carries the head, the arms and
+# arms_folded, and a foot hangs under each shin at the ankle.
+BIPED_BONES = (('root', ''), ('body', 'root'), ('chest', 'body'), ('head', 'chest'), ('right_arm', 'chest'),
+               ('right_forearm', 'right_arm'), ('right_hand', 'right_forearm'), ('left_arm', 'chest'),
+               ('left_forearm', 'left_arm'), ('left_hand', 'left_forearm'), ('arms_folded', 'chest'), ('right_leg', 'root'),
+               ('right_shin', 'right_leg'), ('right_foot', 'right_shin'), ('left_leg', 'root'), ('left_shin', 'left_leg'),
+               ('left_foot', 'left_shin'))
 # The colossus keeps the one-piece biped tree: an iron golem's limbs do not bend.
 COLOSSUS_BONES = (('root', ''), ('body', 'root'), ('head', 'body'), ('right_arm', 'body'), ('right_hand', 'right_arm'),
                   ('left_arm', 'body'), ('left_hand', 'left_arm'), ('arms_folded', 'body'), ('right_leg', 'root'),
@@ -161,12 +164,14 @@ RIG_BONES = {
               + tuple(('%s_leg_%d' % (s, n), 'thorax') for s in ('left', 'right') for n in (1, 2, 3, 4)),
     'colossus': COLOSSUS_BONES,
 }
-# The bones whose boxes the rig stands on (bake_bones sets their lowest point on the ground): a jointed leg's foot is on its shin.
-LEGS = {'right_leg', 'left_leg', 'right_shin', 'left_shin', 'front_left_leg', 'front_right_leg', 'back_left_leg', 'back_right_leg'} | \
+# The bones whose boxes the rig stands on (bake_bones sets their lowest point on the ground): a jointed leg's sole is on its foot.
+LEGS = {'right_leg', 'left_leg', 'right_shin', 'left_shin', 'right_foot', 'left_foot', 'front_left_leg', 'front_right_leg', 'back_left_leg', 'back_right_leg'} | \
        {'%s_leg_%d' % (s, n) for s in ('left', 'right') for n in (1, 2, 3, 4)}
 # A jointed limb's (upper, lower) bones: a troop's scale for the upper bone also scales the lower one unless it sets its own, so
-# a scaled arm or leg keeps its proportions and its hand or foot where the one-piece limb had it.
-JOINTS = (('right_arm', 'right_forearm'), ('left_arm', 'left_forearm'), ('right_leg', 'right_shin'), ('left_leg', 'left_shin'))
+# a scaled arm or leg keeps its proportions and its hand or foot where the one-piece limb had it. Applied in order, so a leg's
+# scale reaches its foot through its shin; the torso's lower half (body) passes its scale up to chest the same way.
+JOINTS = (('body', 'chest'), ('right_arm', 'right_forearm'), ('left_arm', 'left_forearm'), ('right_leg', 'right_shin'),
+          ('left_leg', 'left_shin'), ('right_shin', 'right_foot'), ('left_shin', 'left_foot'))
 MODEL_KEYS = ('format', 'troop', 'rig', 'size', 'bones', 'skins', 'veteran', 'glow', 'glowFrom', 'outer', 'weapon',
               'hand', 'idleArms', 'portrait')
 

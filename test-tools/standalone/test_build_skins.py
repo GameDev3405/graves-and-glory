@@ -31,26 +31,37 @@ def box(origin, size, uv, mirror=False, faceuv=None):
     return out
 
 
-def limb(name, parent, pivot, origin, uv, lower, joint):
-    """A jointed limb as the biped rig has it (Task 9): two 4x6x4 boxes on the halves of the vanilla 4x12x4 layout at uv."""
+def limb(name, parent, pivot, origin, uv, lower, joint, foot=None):
+    """A jointed limb as the biped rig has it (Task 9): two 4x6x4 boxes on the halves of the vanilla 4x12x4 layout at uv. A
+    leg names its foot: the shin is then the 4x4x4 middle rows and the foot (under the shin at the ankle, 4 down) the 4x2x4
+    bottom rows, whose bottom cap reads the vanilla sole."""
     u, v = uv
-    return [{'name': name, 'parent': parent, 'pivot': pivot,
-             'boxes': [box(origin, [4, 6, 4], [u, v], faceuv={'bottom': [u + 4, v + 6]})]},
+    upper = {'name': name, 'parent': parent, 'pivot': pivot,
+             'boxes': [box(origin, [4, 6, 4], [u, v], faceuv={'bottom': [u + 4, v + 6]})]}
+    if not foot:
+        return [upper, {'name': lower, 'parent': name, 'pivot': joint,
+                        'boxes': [box([-2, 0, -2], [4, 6, 4], [u, v + 6], faceuv={'top': [u + 4, v + 10], 'bottom': [u + 8, v]})]}]
+    return [upper,
             {'name': lower, 'parent': name, 'pivot': joint,
-             'boxes': [box([-2, 0, -2], [4, 6, 4], [u, v + 6], faceuv={'top': [u + 4, v + 10], 'bottom': [u + 8, v]})]}]
+             'boxes': [box([-2, 0, -2], [4, 4, 4], [u, v + 6], faceuv={'top': [u + 4, v + 10], 'bottom': [u + 4, v + 10]})]},
+            {'name': foot, 'parent': lower, 'pivot': [0, 4, 0],
+             'boxes': [box([-2, 0, -2], [4, 2, 4], [u, v + 10], faceuv={'top': [u + 8, v], 'bottom': [u + 8, v]})]}]
 
 
 BIPED = {'rig': 'biped', 'size': [64, 64], 'outer': 0.25, 'hands': {'right': 'right_hand', 'left': 'left_hand'}, 'bones': [
     {'name': 'root', 'parent': '', 'pivot': [0, 0, 0], 'boxes': []},
-    {'name': 'body', 'parent': 'root', 'pivot': [0, 12, 0], 'boxes': [box([-4, -12, -2], [8, 12, 4], [16, 16])]},
-    {'name': 'head', 'parent': 'body', 'pivot': [0, -12, 0], 'boxes': [box([-4, -8, -4], [8, 8, 8], [0, 0])]},
-    *limb('right_arm', 'body', [-5, -10, 0], [-3, -2, -2], [40, 16], 'right_forearm', [-1, 4, 0]),
+    {'name': 'body', 'parent': 'root', 'pivot': [0, 12, 0],
+     'boxes': [box([-4, -6, -2], [8, 6, 4], [16, 22], faceuv={'top': [20, 26], 'bottom': [28, 16]})]},
+    {'name': 'chest', 'parent': 'body', 'pivot': [0, -6, 0],
+     'boxes': [box([-4, -6, -2], [8, 6, 4], [16, 16], faceuv={'bottom': [20, 22]})]},
+    {'name': 'head', 'parent': 'chest', 'pivot': [0, -6, 0], 'boxes': [box([-4, -8, -4], [8, 8, 8], [0, 0])]},
+    *limb('right_arm', 'chest', [-5, -4, 0], [-3, -2, -2], [40, 16], 'right_forearm', [-1, 4, 0]),
     {'name': 'right_hand', 'parent': 'right_forearm', 'pivot': [0, 6, 0], 'boxes': []},
-    *limb('left_arm', 'body', [5, -10, 0], [-1, -2, -2], [32, 48], 'left_forearm', [1, 4, 0]),
+    *limb('left_arm', 'chest', [5, -4, 0], [-1, -2, -2], [32, 48], 'left_forearm', [1, 4, 0]),
     {'name': 'left_hand', 'parent': 'left_forearm', 'pivot': [0, 6, 0], 'boxes': []},
-    {'name': 'arms_folded', 'parent': 'body', 'pivot': [0, -9, -1], 'rotation': [-43, 0, 0], 'boxes': [box([-4, 2, -2], [8, 4, 4], [40, 40])]},
-    *limb('right_leg', 'root', [-1.9, 12, 0], [-2, 0, -2], [0, 16], 'right_shin', [0, 6, 0]),
-    *limb('left_leg', 'root', [1.9, 12, 0], [-2, 0, -2], [16, 48], 'left_shin', [0, 6, 0])]}
+    {'name': 'arms_folded', 'parent': 'chest', 'pivot': [0, -3, -1], 'rotation': [-43, 0, 0], 'boxes': [box([-4, 2, -2], [8, 4, 4], [40, 40])]},
+    *limb('right_leg', 'root', [-1.9, 12, 0], [-2, 0, -2], [0, 16], 'right_shin', [0, 6, 0], 'right_foot'),
+    *limb('left_leg', 'root', [1.9, 12, 0], [-2, 0, -2], [16, 48], 'left_shin', [0, 6, 0], 'left_foot')]}
 HOUND = {'rig': 'hound', 'size': [64, 64], 'outer': 0.25, 'hands': {'right': 'jaw', 'left': 'jaw'}, 'bones': [
     {'name': 'root', 'parent': '', 'pivot': [0, 0, 0], 'boxes': []},
     {'name': 'body', 'parent': 'root', 'pivot': [0, 14, 4], 'boxes': [box([-3, -3, -4], [6, 6, 8], [0, 0])]},
@@ -502,12 +513,14 @@ class BuildSkinsChecks(unittest.TestCase):
     def test_feet_on_ground(self):
         legs = {'right_leg': {'scale': [1, 1.15, 1]}, 'left_leg': {'scale': [1, 1.15, 1]}}
         model = self.bake(self.with_knight(bones=legs))['knight']
-        for foot in ('right_shin', 'left_shin'):   # a jointed leg stands on its shin, which takes the leg's scale
-            self.assertAlmostEqual(absolute_bottom(model, foot), 24.0)
-            self.assertAlmostEqual(find(model, foot)['pivot'][1], 6 * 1.15)
+        for side in ('right', 'left'):   # a jointed leg stands on its foot; the shin and the foot take the leg's scale
+            self.assertAlmostEqual(absolute_bottom(model, side + '_foot'), 24.0)
+            self.assertAlmostEqual(find(model, side + '_shin')['pivot'][1], 6 * 1.15)
+            self.assertAlmostEqual(find(model, side + '_foot')['pivot'][1], 4 * 1.15)
         self.assertAlmostEqual(find(model, 'root')['pivot'][1], -1.8)
         plain = self.bake(TROOPS)['knight']
-        self.assertAlmostEqual(absolute_bottom(plain, 'right_shin'), 24.0)
+        self.assertAlmostEqual(absolute_bottom(plain, 'right_foot'), 24.0)
+        self.assertAlmostEqual(absolute_bottom(plain, 'right_shin'), 22.0)
         self.assertAlmostEqual(absolute_bottom(plain, 'right_leg'), 18.0)
 
     def test_hunch(self):
@@ -692,8 +705,8 @@ class BuildSkinsChecks(unittest.TestCase):
             rig = copy.deepcopy(rig)
             next(b for b in rig['bones'] if b['name'] == bone)['parent'] = parent
             return rig
-        for rig, bone, parent, want in ((BIPED, 'head', 'root', 'body'), (BIPED, 'right_hand', 'right_arm', 'right_forearm'),
-                                        (HOUND, 'head', 'body', 'chest')):
+        for rig, bone, parent, want in ((BIPED, 'head', 'root', 'chest'), (BIPED, 'right_hand', 'right_arm', 'right_forearm'),
+                                        (BIPED, 'right_foot', 'right_leg', 'right_shin'), (HOUND, 'head', 'body', 'chest')):
             with self.subTest(rig=rig['rig'], bone=bone), tempfile.TemporaryDirectory() as tmp:
                 rigs = [moved(rig, bone, parent) if r is rig else r for r in (BIPED, HOUND)]
                 said = self.fails(export_assets, fixture(tmp, rigs=rigs))
@@ -722,21 +735,22 @@ class BuildSkinsChecks(unittest.TestCase):
             cat = build_skins.load(fixture(tmp))
             im = build_skins.template(cat, 'knight').convert('RGBA')
         self.assertEqual(im.size, (64, 64))
-        body, head = build_skins.HUES[0], build_skins.HUES[1]   # root has no box, so body takes the first hue
+        body, chest, head = build_skins.HUES[:3]   # root has no box, so body takes the first hue, then chest, then head
 
         def shade(rgb, k):
             return tuple(max(0, min(255, int(c * k))) for c in rgb) + (255,)
-        self.assertEqual(im.getpixel((24, 26)), shade(body, 1.0))     # body north (front), uv 16,16 size 8x12x4
-        self.assertEqual(im.getpixel((24, 18)), shade(body, 1.25))    # body top
-        self.assertEqual(im.getpixel((31, 18)), shade(body, 0.55))    # body bottom
+        self.assertEqual(im.getpixel((24, 26)), shade(body, 1.0))     # body north (front), uv 16,22 size 8x6x4 (below the waist)
+        self.assertEqual(im.getpixel((24, 21)), shade(chest, 1.0))    # chest north, uv 16,16 size 8x6x4 (above it)
+        self.assertEqual(im.getpixel((24, 18)), shade(chest, 1.25))   # the torso top is the chest's
+        self.assertEqual(im.getpixel((31, 18)), shade(body, 0.55))    # the torso bottom is the body's
         self.assertEqual(im.getpixel((38, 26)), shade(body, 0.7))     # body south (back)
         self.assertEqual(im.getpixel((12, 12)), shade(head, 1.0))     # head north
-        self.assertNotEqual(shade(body, 1.0), shade(head, 1.0))
+        self.assertEqual(len({shade(body, 1.0), shade(chest, 1.0), shade(head, 1.0)}), 3)
         self.assertEqual(im.getpixel((2, 0))[3], 0)    # the pennant's top face lies here on the cloth sheet: not painted
         self.assertEqual(im.getpixel((63, 63))[3], 0)  # no box
         cap = im.getpixel((44, 9))                     # the cap part at uv 32,0 (size 8x2x8): its north face, y 8..9
         self.assertEqual(cap[3], 255)
-        self.assertNotIn(cap, (shade(body, 1.0), shade(head, 1.0)))
+        self.assertNotIn(cap, (shade(body, 1.0), shade(head, 1.0)))   # the hues cycle: with the waist and ankles the cap takes the chest's
 
     def test_exported_pixels(self):
         """The exported skin, outer, glow and weapon PNGs carry the sources' pixels; a transparent texel leaves with no
@@ -819,10 +833,10 @@ class BuildSkinsChecks(unittest.TestCase):
         def flags(n):
             return self.with_knight(parts=TROOPS['knight']['parts'] + [{'part': 'pennant', 'name': 'pennant_%d' % i} for i in range(n)])
         with tempfile.TemporaryDirectory() as tmp:
-            cat = build_skins.load(fixture(tmp, troops=flags(47)))   # the jointed biped has 14 bones
+            cat = build_skins.load(fixture(tmp, troops=flags(44)))   # the jointed biped has 17 bones (waist and ankles too)
             self.assertEqual(len(build_skins.bake(cat, 'knight')['bones']), build_skins.MAX_BONES)
         with tempfile.TemporaryDirectory() as tmp:
-            said = self.fails(export_assets, fixture(tmp, troops=flags(48)))
+            said = self.fails(export_assets, fixture(tmp, troops=flags(45)))
         self.assertIn('knight: 65 bones, more than 64', said)
 
     # ---- Task 5d: sprite weapons ----
@@ -1478,7 +1492,7 @@ class BuildSkinsChecks(unittest.TestCase):
             ('arm inner face', None, None, [(49, 25)], MINT, None, ['overlaps', '(49, 25)']),
             ('under the chest panel', self.knight_with([panel]), RELIEF_PARTS, [(24, 25)], MINT, None, ['overlaps', '(24, 25)']),
             ('partial alpha', None, None, [(22, 22)], (120, 100, 80, 128), None, ['alpha', '(22, 22)']),
-            ('21% of a face', None, None, rows[:21], MINT, None, ['20%']),
+            ('21% of a face', None, None, rows[:10], MINT, None, ['20%']),
             ('257 quads', None, None, many(52), MINT, None, ['256 quads']),
             ('under a part that never hides', self.with_knight(parts=[{'part': 'plain', 'uv': [32, 0]}, {'part': 'pennant'}]),
              RELIEF_PARTS, [(10, 2)], MINT, None, ['overlaps', '(10, 2)']),
@@ -1506,8 +1520,8 @@ class BuildSkinsChecks(unittest.TestCase):
             said = self.fails(export_assets, root)
             self.assertIn('knight_s1_r.png', said)
             self.assertIn('32x32', said)
-        passing = [   # 19 of 96 texels, 255 quads, and a texel under a helm part (which can hide)
-            ('under 20%', None, None, rows[:19]),
+        passing = [   # 9 of the chest front's 48 texels, 255 quads, and a texel under a helm part (which can hide)
+            ('under 20%', None, None, rows[:9]),
             ('255 quads', None, None, many(51)),
             ('under a helm', {'sentinel': TROOPS['sentinel']}, None, [(10, 2)])]
         for name, troops, parts, texels in passing:
@@ -1533,16 +1547,16 @@ class BuildSkinsChecks(unittest.TestCase):
         self.assertFalse(set(model) & set(build_skins.VANILLA_KEYS))
         self.assertEqual(model['veteran'], 'gravesandglory:textures/entity/troop/knight_veteran.png')
         bones = {b['name']: b for b in model['bones']}
-        self.assertEqual(list(bones['body']['relief']), ['1', '2'])
+        self.assertEqual(list(bones['chest']['relief']), ['1', '2'])   # (22, 22) is on the chest front, above the waist
         self.assertEqual(list(bones['head']['relief']), ['2'])
         for name, bone in bones.items():
-            if name not in ('body', 'head'):
+            if name not in ('chest', 'head'):
                 self.assertNotIn('relief', bone, name)
             for key, quads in bone.get('relief', {}).items():
                 self.assertTrue(quads, (name, key))
                 for q in quads:
                     self.assert_quad(q)
-        self.assertEqual(len(bones['body']['relief']['1']), 5)
+        self.assertEqual(len(bones['chest']['relief']['1']), 5)
         self.assertEqual(index['outputs'], sorted(index['outputs']))
 
     def test_veteran_trim(self):
@@ -1602,7 +1616,7 @@ class BuildSkinsChecks(unittest.TestCase):
             cat = build_skins.load(fixture(tmp, troops=self.knight_with([{'part': 'panel'}]), parts=RELIEF_PARTS))
             im = build_skins.relief_template(cat, 'knight').convert('RGBA')
         self.assertEqual(im.size, (64, 64))
-        allowed = tuple(int(c * 0.4 + 255 * 0.6) for c in build_skins.HUES[0]) + (255,)   # the body, its front
+        allowed = tuple(int(c * 0.4 + 255 * 0.6) for c in build_skins.HUES[1]) + (255,)   # the chest, its front
         red = build_skins.RELIEF_RED + (255,)
         self.assertEqual(im.getpixel((22, 21)), allowed)
         self.assertEqual(im.getpixel((63, 63))[3], 0)
@@ -1665,8 +1679,8 @@ class BuildSkinsChecks(unittest.TestCase):
         self.assertEqual(list(model)[:6], ['format', 'troop', 'rig', 'size', 'density', 'bones'])
         self.assertNotIn('density', sentinel)
         self.assertEqual(shipped, (192, 192))
-        body = find(model, 'body')
-        self.assertEqual((body['sheet'], body['boxes'][0]['uv'], body['boxes'][0]['size']), ([64, 64], [16, 16], [8, 12, 4]))
+        chest = find(model, 'chest')
+        self.assertEqual((chest['sheet'], chest['boxes'][0]['uv'], chest['boxes'][0]['size']), ([64, 64], [16, 16], [8, 6, 4]))
 
     def test_cloth_layout_is_not_the_png_size(self):
         """The cloth template drawn at 3 is 48x48 for a 16x16 layout, and the team bones' sheet stays 16x16: taken from the PNG it
@@ -1848,14 +1862,14 @@ class BuildSkinsChecks(unittest.TestCase):
 
     def test_relief_density_rules(self):
         """The relief rules count in texels of the troop's density: the layer must be D times the layout, a texel off every face is
-        named in layer texels, and a face may have 20% of its texels raised (19 of 96 at 1x are 171 of 864 at 3)."""
+        named in layer texels, and a face may have 20% of its texels raised (9 of the chest front's 48 at 1x are 81 of 432 at 3)."""
         rows = [(x, y) for y in (20, 21, 22) for x in range(20, 28)]
         with tempfile.TemporaryDirectory() as tmp:
             root = fixture(tmp)
             densify(root)
-            relief_png(root, 'knight_s1_r.png', self.raised(rows[:19]), size=(192, 192))
+            relief_png(root, 'knight_s1_r.png', self.raised(rows[:9]), size=(192, 192))
             self.export(root)
-        cases = [('21 of 96', self.raised(rows[:21]), (192, 192), ['20%']),
+        cases = [('10 of 48', self.raised(rows[:10]), (192, 192), ['20%']),
                  ('off every face', [(189, 189)], (192, 192), ['no skin box face', '(189, 189)']),
                  ('a layer at 1x', [(22, 22)], (64, 64), ['knight_s1_r.png is 64x64', '192x192'])]
         for name, texels, size, wants in cases:
@@ -2405,8 +2419,8 @@ class BuildSkinsChecks(unittest.TestCase):
             self.assertEqual(b['sheet'], [96, 144], b['name'])
             self.assertEqual(b['boxes'][0]['uv'], [x * 3 // 2, y * 3 // 2], b['name'])
             self.assertEqual(b['boxes'][0]['size'], [8, 8, 8])
-        self.assertEqual(find(model, 'body')['sheet'], [64, 96])
-        self.assertEqual(find(model, 'body')['boxes'][0]['uv'], [16, 16])
+        self.assertEqual(find(model, 'chest')['sheet'], [64, 96])
+        self.assertEqual(find(model, 'chest')['boxes'][0]['uv'], [16, 16])
         same = self.bake(self.faces_troops(density=3))['knight']   # no key: the faces at the troop's density as before
         self.assertEqual(find(same, 'face_v1')['sheet'], [64, 96])
         self.assertEqual(find(same, 'face_v1')['boxes'][0]['uv'], FACE_SLOTS[0])
@@ -2602,7 +2616,7 @@ class BuildSkinsChecks(unittest.TestCase):
 
     def test_faces_carry_no_relief(self):
         """Faces are flat paint: a relief texel on the head's faces or on a slot's is refused, naming the face bone; relief elsewhere
-        (the body) still builds, and no face bone carries any."""
+        (the chest) still builds, and no face bone carries any."""
         for name, texel, wants in (('the head front', (12, 12), ['face bone', 'face_v0', '(12, 12)']),
                                    ('slot 2', (44, 76), ['face bone', 'face_v2', '(44, 76)'])):
             with self.subTest(name=name), tempfile.TemporaryDirectory() as tmp:
@@ -2617,7 +2631,7 @@ class BuildSkinsChecks(unittest.TestCase):
             relief_png(root, 'knight_s1_r.png', [(22, 22)], size=(64, 96))
             self.export(root)
             model = json.loads((root / ASSETS / 'models/troop/knight.json').read_text(encoding='utf-8'))
-        self.assertIn('relief', find(model, 'body'))
+        self.assertIn('relief', find(model, 'chest'))
         self.assertFalse([b['name'] for b in model['bones'] if b['name'].startswith('face_v') and 'relief' in b])
 
     def test_faces_verify_and_templates(self):
@@ -3234,9 +3248,11 @@ class BuildSkinsChecks(unittest.TestCase):
 
 class JointedRigChecks(unittest.TestCase):
     """Animation rework Task 9: the biped rig has elbows and knees (the plan's rig contract), every limb split into an upper and a
-    lower 4x6x4 box whose faces read the halves of the vanilla 64x64 limb layout, and the hands where they were."""
+    lower box whose faces read the vanilla 64x64 limb layout, and the hands where they were. The 2026-11 redo adds a waist (the
+    chest, the torso's top 6 rows, under the body) and ankles (each foot, a leg's bottom 2 rows, under its shin)."""
     LIMBS = (('right_arm', 'right_forearm', [40, 16]), ('left_arm', 'left_forearm', [32, 48]),
              ('right_leg', 'right_shin', [0, 16]), ('left_leg', 'left_shin', [16, 48]))
+    FEET = {'right_leg': 'right_foot', 'left_leg': 'left_foot'}
     FACE = ('top', 'bottom', 'right', 'front', 'left', 'back')
 
     @classmethod
@@ -3260,25 +3276,29 @@ class JointedRigChecks(unittest.TestCase):
 
     def test_biped_has_joints(self):
         """Names, parents and pivots as the rig contract has them; the skeleton check takes the rig."""
-        names = ['root', 'body', 'head', 'right_arm', 'right_forearm', 'right_hand', 'left_arm', 'left_forearm', 'left_hand',
-                 'arms_folded', 'right_leg', 'right_shin', 'left_leg', 'left_shin']
+        names = ['root', 'body', 'chest', 'head', 'right_arm', 'right_forearm', 'right_hand', 'left_arm', 'left_forearm', 'left_hand',
+                 'arms_folded', 'right_leg', 'right_shin', 'right_foot', 'left_leg', 'left_shin', 'left_foot']
         self.assertEqual([b['name'] for b in self.rig['bones']], names)
-        want = {'right_forearm': ('right_arm', [-1, 4, 0]), 'left_forearm': ('left_arm', [1, 4, 0]),
+        want = {'chest': ('body', [0, -6, 0]), 'head': ('chest', [0, -6, 0]),
+                'right_arm': ('chest', [-5, -4, 0]), 'left_arm': ('chest', [5, -4, 0]),
+                'right_forearm': ('right_arm', [-1, 4, 0]), 'left_forearm': ('left_arm', [1, 4, 0]),
                 'right_hand': ('right_forearm', [0, 4, 0]), 'left_hand': ('left_forearm', [0, 4, 0]),
-                'right_shin': ('right_leg', [0, 6, 0]), 'left_shin': ('left_leg', [0, 6, 0])}
+                'right_shin': ('right_leg', [0, 6, 0]), 'left_shin': ('left_leg', [0, 6, 0]),
+                'right_foot': ('right_shin', [0, 4, 0]), 'left_foot': ('left_shin', [0, 4, 0])}
         for name, (parent, pivot) in want.items():
             with self.subTest(bone=name):
                 self.assertEqual(self.bones[name]['parent'], parent)
                 self.assertEqual(self.bones[name]['pivot'], pivot)
                 self.assertEqual(self.bones[name].get('rotation', [0, 0, 0]), [0, 0, 0])
+        self.assertEqual(self.bones['arms_folded']['parent'], 'chest')
         self.assertEqual([n for n, _ in build_skins.RIG_BONES['biped']], names)
         self.assertEqual(self.rig['hands'], {'right': 'right_hand', 'left': 'left_hand'})
         build_skins.check_rig(type('Cat', (), {'rigs': {'biped': self.rig}})(), 'biped')
 
     def test_every_troop_project_bakes_jointed(self):
-        """Every troop of the real catalog bakes (a .bbmodel's bone groups must carry the rig's elbows and knees: the release
-        build skips bake for hand-authored troops, so only this reaches the projects), with each limb jointed, the hand on the
-        forearm, and --template and the relief template drawn."""
+        """Every troop of the real catalog bakes (a .bbmodel's bone groups must carry the rig's elbows, knees, waist and ankles:
+        the release build skips bake for hand-authored troops, so only this reaches the projects), with each limb jointed, the
+        hand on the forearm, the head and arms on the chest, each foot on its shin, and --template and the relief template drawn."""
         cat = build_skins.load(build_skins.ROOT)
         projects = sorted(p.stem for p in (build_skins.ROOT / 'art/troops').glob('*.bbmodel'))
         self.assertTrue(projects)
@@ -3290,37 +3310,86 @@ class JointedRigChecks(unittest.TestCase):
                 for upper, lower, _ in self.LIMBS:
                     self.assertEqual(bones[lower]['parent'], upper)
                     self.assertEqual([b['size'] for b in bones[upper]['boxes']][:1], [[4, 6, 4]])
-                    self.assertIn([4, 6, 4], [b['size'] for b in bones[lower]['boxes']])
+                    foot = self.FEET.get(upper)
+                    self.assertIn([4, 4, 4] if foot else [4, 6, 4], [b['size'] for b in bones[lower]['boxes']])
+                    if foot:
+                        self.assertEqual(bones[foot]['parent'], lower)
+                        self.assertIn([4, 2, 4], [b['size'] for b in bones[foot]['boxes']])
                 self.assertEqual((bones['right_hand']['parent'], bones['left_hand']['parent']), ('right_forearm', 'left_forearm'))
+                self.assertEqual(bones['chest']['parent'], 'body')
+                self.assertEqual({bones[n]['parent'] for n in ('head', 'right_arm', 'left_arm', 'arms_folded')}, {'chest'})
+                self.assertEqual([b['size'] for b in bones['chest']['boxes']][:1], [[8, 6, 4]])
+                self.assertEqual([b['size'] for b in bones['body']['boxes']][:1], [[8, 6, 4]])
                 self.assertEqual(build_skins.template(cat, troop).size, build_skins.relief_template(cat, troop).size)
 
     def test_split_limb_uv_covers_vanilla_layout(self):
-        """Each limb is two 4x6x4 boxes, the joint at the bone's pivot; the union of their faces' texels is the vanilla 4x12x4 box's
-        layout, the top face on the upper box and the bottom face on the lower, and each joint cap reads that box's own front."""
+        """An arm is two 4x6x4 boxes and a leg a 4x6x4 thigh, a 4x4x4 shin and a 4x2x4 foot, each joint at the bone's pivot; the
+        union of their faces' texels is the vanilla 4x12x4 box's layout, the top face on the upper box and the bottom face on the
+        lowest, the side faces cut by rows, and each knee, elbow and shin cap reads that box's own front (the foot's top cap,
+        hidden until the ankle bends, reads the sole)."""
+        def inside(cap, own):
+            return own[0] <= cap[0] and own[1] <= cap[1] and cap[2] <= own[2] and cap[3] <= own[3]
         for upper, lower, uv in self.LIMBS:
             with self.subTest(limb=upper):
-                (a,), (b,) = self.bones[upper]['boxes'], self.bones[lower]['boxes']
-                self.assertEqual((a['size'], b['size']), ([4, 6, 4], [4, 6, 4]))
-                self.assertFalse(a.get('mirror', False) or b.get('mirror', False))
+                foot = self.FEET.get(upper)
+                chain = [upper, lower] + ([foot] if foot else [])
+                boxes = [self.bones[n]['boxes'] for n in chain]
+                self.assertEqual([len(b) for b in boxes], [1] * len(chain))
+                boxes = [b[0] for b in boxes]
+                rows = [6, 4, 2] if foot else [6, 6]
+                self.assertEqual([b['size'] for b in boxes], [[4, r, 4] for r in rows])
+                self.assertFalse(any(b.get('mirror', False) for b in boxes))
+                a = boxes[0]
                 joint = self.bones[lower]['pivot']
                 self.assertEqual(a['origin'][1] + 6, joint[1])   # the upper box ends at the joint, the lower starts there
-                self.assertEqual([a['origin'][0] - joint[0], a['origin'][2] - joint[2]], [b['origin'][0], b['origin'][2]])
-                self.assertEqual(b['origin'][1], 0)
+                self.assertEqual([a['origin'][0] - joint[0], a['origin'][2] - joint[2]], [boxes[1]['origin'][0], boxes[1]['origin'][2]])
+                for n, b in zip(chain[1:], boxes[1:]):
+                    self.assertEqual(b['origin'][1], 0, n)
+                if foot:
+                    self.assertEqual(self.bones[foot]['pivot'], [0, 4, 0])   # the shin ends at the ankle
+                    self.assertEqual(boxes[2]['origin'], boxes[1]['origin'])
                 whole = self.face_rects({'uv': uv, 'size': [4, 12, 4]})
-                ra, rb = self.face_rects(a), self.face_rects(b)
-                self.assertEqual(ra['top'], whole['top'])
-                self.assertEqual(rb['bottom'], whole['bottom'])
+                rects = [self.face_rects(b) for b in boxes]
+                self.assertEqual(rects[0]['top'], whole['top'])
+                self.assertEqual(rects[-1]['bottom'], whole['bottom'])
                 for side in ('right', 'front', 'left', 'back'):
                     x0, y0, x1, y1 = whole[side]
-                    self.assertEqual(ra[side], (x0, y0, x1, y0 + 6))
-                    self.assertEqual(rb[side], (x0, y0 + 6, x1, y1))
-                caps = (ra['bottom'], rb['top'])
-                for cap, own in zip(caps, (ra['front'], rb['front'])):
-                    self.assertTrue(own[0] <= cap[0] and own[1] <= cap[1] and cap[2] <= own[2] and cap[3] <= own[3], cap)
+                    top = y0
+                    for r, rect in zip(rows, rects):
+                        self.assertEqual(rect[side], (x0, top, x1, top + r))
+                        top += r
+                    self.assertEqual(top, y1)
+                ra, rb = rects[0], rects[1]
+                for cap, own in ((ra['bottom'], ra['front']), (rb['top'], rb['front'])):
+                    self.assertTrue(inside(cap, own), cap)
                 self.assertEqual(ra['bottom'][3], ra['front'][3])   # the upper cap reads the rows at the elbow or knee
                 self.assertEqual(rb['top'][1], rb['front'][1])
-                self.assertEqual(self.cells(list(ra.values()) + list(rb.values())), self.cells(whole.values()))
+                if foot:
+                    self.assertTrue(inside(rb['bottom'], rb['front']), rb['bottom'])   # the shin's ankle cap reads the shin
+                    self.assertEqual(rects[2]['top'], whole['bottom'])                 # the foot's reads the sole
+                cells = self.cells([r for rect in rects for r in rect.values()])
+                self.assertEqual(cells, self.cells(whole.values()))
                 self.assertEqual(self.cells(build_skins.footprint(uv, [4, 12, 4])), self.cells(whole.values()))
+
+    def test_split_torso_uv_covers_vanilla_layout(self):
+        """The torso is the chest (rows 0-5, the waist at the chest's pivot) over the body (rows 6-11): together their faces read the
+        vanilla 8x12x4 torso layout at 16,16, the top on the chest and the bottom on the body, and each waist cap reads its own front."""
+        (c,), (b,) = self.bones['chest']['boxes'], self.bones['body']['boxes']
+        self.assertEqual((c['size'], b['size']), ([8, 6, 4], [8, 6, 4]))
+        self.assertEqual(self.bones['chest']['pivot'], [0, -6, 0])   # the waist, 6 px above the hips
+        self.assertEqual(b['origin'][1], -6)                         # the body box runs from the waist to the hips
+        self.assertEqual(c['origin'][1] + 6, 0)                      # the chest box ends at its pivot, the waist
+        whole = self.face_rects({'uv': [16, 16], 'size': [8, 12, 4]})
+        rc, rb = self.face_rects(c), self.face_rects(b)
+        self.assertEqual(rc['top'], whole['top'])
+        self.assertEqual(rb['bottom'], whole['bottom'])
+        for side in ('right', 'front', 'left', 'back'):
+            x0, y0, x1, y1 = whole[side]
+            self.assertEqual(rc[side], (x0, y0, x1, y0 + 6))
+            self.assertEqual(rb[side], (x0, y0 + 6, x1, y1))
+        for cap, own in ((rc['bottom'], rc['front']), (rb['top'], rb['front'])):
+            self.assertTrue(own[0] <= cap[0] and own[1] <= cap[1] and cap[2] <= own[2] and cap[3] <= own[3], cap)
+        self.assertEqual(self.cells(list(rc.values()) + list(rb.values())), self.cells(whole.values()))
 
     def test_hand_world_position_unchanged_at_rest(self):
         """The hand rides at arm-frame [-1, 8, 0] (right) and [1, 8, 0] (left), where the one-piece arm held it, in the baked rig too."""
@@ -3336,7 +3405,8 @@ class JointedRigChecks(unittest.TestCase):
                 self.assertEqual(self.bones[chain[0]]['parent'], arm)
                 self.assertEqual([sum(self.bones[n]['pivot'][i] for n in chain) for i in range(3)], at)
         feet = build_skins.bounds(baked, lambda b: b['name'] in build_skins.LEGS)
-        self.assertEqual(feet[1][1], 24)   # still standing on the ground: the shins hold the feet
+        self.assertEqual(feet[1][1], 24)   # still standing on the ground: the feet are the legs' bottom rows
+        self.assertEqual(build_skins.bounds(baked, lambda b: b['name'] in ('right_foot', 'left_foot'))[1][1], 24)
         self.assertEqual(next(b for b in baked if b['name'] == 'root')['pivot'], [0.0, 0.0, 0.0])
 
 

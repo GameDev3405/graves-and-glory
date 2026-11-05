@@ -1,22 +1,25 @@
 {
 "rig":"biped",
-"note":"Husk, zombie, skeleton, stray, wither skeleton, drowned, zombified piglin, vindicator, pillager, evoker. The 64x64 zombie layout with the left limbs on their own texels, (16,48) and (32,48); body pivots at the hips (y 12) and carries the head and arms; arms_folded is the illager pose, kept for idleArms folded: it stands in for both arms with their forearms and hands, which the client hides while it shows. Each limb is jointed (the animation rework rig contract): an upper and a lower 4x6x4 box, the lower on right_forearm, left_forearm, right_shin or left_shin at the elbow or knee, whose faces read the two halves of the vanilla 4x12x4 limb layout; faceuv moves a face to another top-left texel: the top face stays on the upper box, the bottom face on the lower, and each joint cap (the upper box's bottom, the lower box's top) reads the 4 rows of its own front nearest the joint, so a bent joint shows the limb's colour, not a hole.",
+"note":"Husk, zombie, skeleton, stray, wither skeleton, drowned, zombified piglin, vindicator, pillager, evoker. The 64x64 zombie layout with the left limbs on their own texels, (16,48) and (32,48); body pivots at the hips (y 12) and carries the head and arms; arms_folded is the illager pose, kept for idleArms folded: it stands in for both arms with their forearms and hands, which the client hides while it shows. Each limb is jointed (the animation rework rig contract): an upper and a lower 4x6x4 box, the lower on right_forearm, left_forearm, right_shin or left_shin at the elbow or knee, whose faces read the two halves of the vanilla 4x12x4 limb layout; faceuv moves a face to another top-left texel: the top face stays on the upper box, the bottom face on the lower, and each joint cap (the upper box's bottom, the lower box's top) reads the 4 rows of its own front nearest the joint, so a bent joint shows the limb's colour, not a hole. The waist and ankles (animation redo 2026-11, Kort): chest under body at the waist, 6 px above the hips, carries the head, the arms and arms_folded; body keeps the torso's lower 6 rows and chest its upper 6, read from the vanilla 8x12x4 layout the way the limbs read theirs (chest's bottom cap and body's top cap read the 4 rows of their own front nearest the waist, body's bottom stays the vanilla bottom). right_foot and left_foot hang under the shins at the ankle, 4 px below the knee: the shin keeps 4 rows of the limb and the foot the lowest 2, whose caps both read the vanilla sole (a 2-row front cannot hold a 4x4 cap). The troops' own builds (art/hand/common/handlib.py waist_and_ankles) cut their boxes at the same rows, the lower box reaching JOINT_OVERLAP rows past each hinge.",
 "size":[64, 64],
 "outer":0.25,
 "hands":{"right":"right_hand","left":"left_hand"},
 "bones":[
 {"name":"root","parent":"","pivot":[0,0,0],"boxes":[]},
-{"name":"body","parent":"root","pivot":[0,12,0],"boxes":[{"origin":[-4,-12,-2],"size":[8,12,4],"uv":[16,16]}]},
-{"name":"head","parent":"body","pivot":[0,-12,0],"boxes":[{"origin":[-4,-8,-4],"size":[8,8,8],"uv":[0,0]}]},
-{"name":"right_arm","parent":"body","pivot":[-5,-10,0],"boxes":[{"origin":[-3,-2,-2],"size":[4,6,4],"uv":[40,16],"faceuv":{"bottom":[44,22]}}]},
+{"name":"body","parent":"root","pivot":[0,12,0],"boxes":[{"origin":[-4,-6,-2],"size":[8,6,4],"uv":[16,22],"faceuv":{"top":[20,26],"bottom":[28,16]}}]},
+{"name":"chest","parent":"body","pivot":[0,-6,0],"boxes":[{"origin":[-4,-6,-2],"size":[8,6,4],"uv":[16,16],"faceuv":{"bottom":[20,22]}}]},
+{"name":"head","parent":"chest","pivot":[0,-6,0],"boxes":[{"origin":[-4,-8,-4],"size":[8,8,8],"uv":[0,0]}]},
+{"name":"right_arm","parent":"chest","pivot":[-5,-4,0],"boxes":[{"origin":[-3,-2,-2],"size":[4,6,4],"uv":[40,16],"faceuv":{"bottom":[44,22]}}]},
 {"name":"right_forearm","parent":"right_arm","pivot":[-1,4,0],"boxes":[{"origin":[-2,0,-2],"size":[4,6,4],"uv":[40,22],"faceuv":{"top":[44,26],"bottom":[48,16]}}]},
 {"name":"right_hand","parent":"right_forearm","pivot":[0,4,0],"boxes":[]},
-{"name":"left_arm","parent":"body","pivot":[5,-10,0],"boxes":[{"origin":[-1,-2,-2],"size":[4,6,4],"uv":[32,48],"faceuv":{"bottom":[36,54]}}]},
+{"name":"left_arm","parent":"chest","pivot":[5,-4,0],"boxes":[{"origin":[-1,-2,-2],"size":[4,6,4],"uv":[32,48],"faceuv":{"bottom":[36,54]}}]},
 {"name":"left_forearm","parent":"left_arm","pivot":[1,4,0],"boxes":[{"origin":[-2,0,-2],"size":[4,6,4],"uv":[32,54],"faceuv":{"top":[36,58],"bottom":[40,48]}}]},
 {"name":"left_hand","parent":"left_forearm","pivot":[0,4,0],"boxes":[]},
-{"name":"arms_folded","parent":"body","pivot":[0,-9,-1],"rotation":[-43,0,0],"boxes":[{"origin":[-8,-2,-2],"size":[4,8,4],"uv":[0,48]},{"origin":[-4,2,-2],"size":[8,4,4],"uv":[40,32]},{"origin":[4,-2,-2],"size":[4,8,4],"uv":[48,48],"mirror":true}]},
+{"name":"arms_folded","parent":"chest","pivot":[0,-3,-1],"rotation":[-43,0,0],"boxes":[{"origin":[-8,-2,-2],"size":[4,8,4],"uv":[0,48]},{"origin":[-4,2,-2],"size":[8,4,4],"uv":[40,32]},{"origin":[4,-2,-2],"size":[4,8,4],"uv":[48,48],"mirror":true}]},
 {"name":"right_leg","parent":"root","pivot":[-1.9,12,0],"boxes":[{"origin":[-2,0,-2],"size":[4,6,4],"uv":[0,16],"faceuv":{"bottom":[4,22]}}]},
-{"name":"right_shin","parent":"right_leg","pivot":[0,6,0],"boxes":[{"origin":[-2,0,-2],"size":[4,6,4],"uv":[0,22],"faceuv":{"top":[4,26],"bottom":[8,16]}}]},
+{"name":"right_shin","parent":"right_leg","pivot":[0,6,0],"boxes":[{"origin":[-2,0,-2],"size":[4,4,4],"uv":[0,22],"faceuv":{"top":[4,26],"bottom":[4,26]}}]},
+{"name":"right_foot","parent":"right_shin","pivot":[0,4,0],"boxes":[{"origin":[-2,0,-2],"size":[4,2,4],"uv":[0,26],"faceuv":{"top":[8,16],"bottom":[8,16]}}]},
 {"name":"left_leg","parent":"root","pivot":[1.9,12,0],"boxes":[{"origin":[-2,0,-2],"size":[4,6,4],"uv":[16,48],"faceuv":{"bottom":[20,54]}}]},
-{"name":"left_shin","parent":"left_leg","pivot":[0,6,0],"boxes":[{"origin":[-2,0,-2],"size":[4,6,4],"uv":[16,54],"faceuv":{"top":[20,58],"bottom":[24,48]}}]}
+{"name":"left_shin","parent":"left_leg","pivot":[0,6,0],"boxes":[{"origin":[-2,0,-2],"size":[4,4,4],"uv":[16,54],"faceuv":{"top":[20,58],"bottom":[20,58]}}]},
+{"name":"left_foot","parent":"left_shin","pivot":[0,4,0],"boxes":[{"origin":[-2,0,-2],"size":[4,2,4],"uv":[16,58],"faceuv":{"top":[24,48],"bottom":[24,48]}}]}
 ]}

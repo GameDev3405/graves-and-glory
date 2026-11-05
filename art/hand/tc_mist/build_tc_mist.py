@@ -377,7 +377,8 @@ NOTE = ("Tidecaller Mist Caller (unit identity, Tidecallers): a drowned priest o
         "wide bell sleeves, kelp trailing from the hood, cuffs, belt and hem, a rope cord with a conch charm, a driftwood rod with a conch in "
         "the right hand, a team sash with a barry-wavy tail. Tier II bronze mantle plate and bracers; tier III deep sea-blue plate, mist strips and a pearl-topped rod. No back flag.")
 TC_MIST = Troop("tc_mist", SKIN, CLOTH, bones, cloth_painter,
-                {"weapon": "none", "hand": "right", "idleArms": "hang", "portrait": "standard"}, glow=glow_fn)
+                {"weapon": "none", "hand": "right", "idleArms": "hang", "portrait": "standard"}, glow=glow_fn,
+                waist={"mist_back": "up"})
 def build(): return TC_MIST.build()
 def outputs(): return TC_MIST.outputs()
 

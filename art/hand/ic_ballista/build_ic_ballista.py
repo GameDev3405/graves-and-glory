@@ -168,7 +168,7 @@ def cloth_painter(spec, side):
 
 IC_BALLISTA = Troop("ic_ballista", SKIN, CLOTH, bones, cloth_painter,
                     {"weapon": "none", "hand": "right", "idleArms": "hang", "portrait": "tall 4", "faces": {"count": 4, "card": 0}},
-                    )
+                    merge={"right_boot": "right_foot", "left_boot": "left_foot", "bevor": "cap_band", "coif": "cap"})
 def build(): return IC_BALLISTA.build()
 def outputs(): return IC_BALLISTA.outputs()
 
