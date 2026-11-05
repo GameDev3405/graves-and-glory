@@ -27,7 +27,7 @@ import java.util.UUID;
  */
 public final class CustomGroupsSuite implements CommandUiChecks.Suite {
     static final String NAME = "Vanguard", KNIGHT = "knight", ARCHER = "archer", SPLIT = "sentinel";
-    volatile net.minecraft.util.math.Vec3d spot, startCentre, endCentre; volatile String splitResult;
+    volatile net.minecraft.util.math.Vec3d spot, startCentre, endCentre; volatile String splitResult, retreatResult; volatile Map<Integer, String> preRetreat = Map.of();
     UUID id;
     Path shots;
     int step, at;
@@ -198,7 +198,7 @@ public final class CustomGroupsSuite implements CommandUiChecks.Suite {
             }
             case 18 -> { // the split (fix I1): custom:2 (knights) holds at a spot ten blocks off while the Sentinels keep infantry's Follow me
                 if (r < 5) return;
-                if (spot == null) { if (r > 100) { CommandUiChecks.report("cu-custom-split", false, "no dry spot near the knights"); step = 20; at = tick; } return; }
+                if (spot == null) { if (r > 100) { CommandUiChecks.report("cu-custom-split", false, "no dry spot near the knights"); retreatResult = "skipped"; step = 20; at = tick; } return; }
                 OrderIntakeProbe.sendMany("hold", "line", 0, List.of(new OrderIntakeProbe.At("custom:2", spot.x, spot.z)));
                 step = 19; at = tick;
             }
@@ -212,11 +212,28 @@ public final class CustomGroupsSuite implements CommandUiChecks.Suite {
                     splitResult = bad;
                     CommandUiChecks.report("cu-custom-split", bad.isEmpty(), "custom:2 (" + troopA + " only) Hold at a spot " + Math.round(was) + " blocks off; " + troopA + " now " + Math.round(now)
                         + " blocks from it, in their own slots and key; " + SPLIT + " (same infantry group) kept Follow me, its key and slots" + (bad.isEmpty() ? "" : "; wrong " + bad));
+                    preRetreat = CustomGroupsProbe.orders(b, id);
+                });
+                step = 21; at = tick;
+            }
+            case 21 -> { // a custom Retreat moves only its members: the rest of the infantry group keeps its order, key and places
+                if (r < 5) return;
+                if (preRetreat.isEmpty()) { if (r > 100) { CommandUiChecks.report("cu-custom-retreat-split", false, "no order snapshot after the split"); CommandUiChecks.server(c, b -> CustomGroupsProbe.returnLobby(b)); retreatResult = "skipped"; step = 20; at = tick; } return; }
+                OrderIntakeProbe.sendMany("retreat", "line", 0, List.of(new OrderIntakeProbe.At("custom:2", 0, 0)));
+                step = 22; at = tick;
+            }
+            case 22 -> {
+                if (r < 40) return;
+                CommandUiChecks.server(c, b -> {
+                    String bad = CustomGroupsProbe.retreatSplit(b, id, troopA, SPLIT, preRetreat);
+                    retreatResult = bad;
+                    CommandUiChecks.report("cu-custom-retreat-split", bad.isEmpty(), "custom:2 (" + troopA + " only) Retreat: " + troopA + " retreat on their own key; " + SPLIT
+                        + " (same infantry group) kept the same order and issue time, the group key and its places" + (bad.isEmpty() ? "" : "; wrong " + bad));
                     CustomGroupsProbe.returnLobby(b);
                 });
                 step = 20; at = tick;
             }
-            case 20 -> { if (r < 5) return; if (splitResult == null && r < 200) return; step = 15; at = tick; asked = false; }
+            case 20 -> { if (r < 5) return; if ((splitResult == null || retreatResult == null) && r < 200) return; step = 15; at = tick; asked = false; }
             case 15 -> { // back in camp: the group is on the profile and in its file
                 if (r < 20 || GravesAndGloryClient.battleActive()) { if (r > 400) fail(c, "cu-custom-create", "the second round did not end"); return; }
                 if (!asked) { asked = true; CommandUiChecks.server(c, b -> { serverGroups = CustomGroupsProbe.groups(b, id); savedFile = CustomGroupsProbe.saved(b, id); serverName = "done"; }); return; }

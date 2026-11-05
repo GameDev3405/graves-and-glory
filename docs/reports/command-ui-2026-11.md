@@ -34,6 +34,7 @@ WIP commit `84178ab7` (Task 5 fix round 1) was reviewed. It was kept, squashed w
 | 86f7244a | End-to-end suite, docs (HANDOFF, HOW-TO-EDIT), verification |
 | 6a029982 | Final fix wave: the legacy order_v4 charge is held to the Charge cooldown and gets chargeDir and thenFollow; troop keys cached |
 | (this report) | docs/reports/command-ui-2026-11.md |
+| (follow-up) | CustomGroups check `cu-custom-retreat-split`: a custom Retreat leaves the rest of the spec group alone (test-only) |
 
 ## Checks at 6a029982 (2026-11-05, JDK 17)
 
@@ -42,6 +43,7 @@ WIP commit `84178ab7` (Task 5 fix round 1) was reviewed. It was kept, squashed w
 | Fast gate | `python tools/verify.py fast --offline` | 0 | 60 PASS, 0 FAIL (`work/final-checks/fast.log`) |
 | Command UI harness, all 11 suites | `GRAVES_COMMAND_UI_CHECKS=Smoke,OrderIntake,Keys,OrderBehaviour,FormationRules,Panel,Feedback,ChargeCamera,BotOrders,CustomGroups,EndToEnd ... runClient -PlocalIntegration -I test-tools/isolated-checks.gradle` | 0 | 98 PASS, 0 FAIL (`work/final-checks/cmdui/run/command-ui/results.txt`) |
 | Game tier | `python tools/verify.py game --offline` | 0 | 61 PASS (`work/verify/20261105-073540-51008`) |
+| CustomGroups suite after the added check | `GRAVES_COMMAND_UI_CHECKS=CustomGroups ...` | 0 | 8 PASS, 0 FAIL, including `cu-custom-retreat-split` (`work/retreat-split/run/command-ui/results.txt`); fast gate rerun exit 0, 60 PASS |
 | Release tier, first run | `python tools/verify.py release --offline` | 1 | Package failed: the git-ignored `dependencies/resourcepacks/Excalibur_V1.20.zip` was missing from this worktree. An environment gap, not a code failure (`work/verify/20261105-074619-27176`) |
 | Release tier, rerun | same | 0 | 62 PASS, including package and package-readback (`work/verify/20261105-081348-33336`) |
 | HoldLine | `GRAVES_PHASE2_CHECKS=holdline ... runClient` | 0 | 14/16 true. `hl-arc` false (known). `hl-corpse-load` false: client frame B-A median 0.972 ms against a 0.75 ms limit, spread 1.215; server tick B/A 1.089, which passes. `hl-wall`, `hl-wall-loss`, `hl-wall-loss2` and `hl-wall-knock` pass (`work/final-checks/holdline.log`) |
@@ -72,7 +74,7 @@ Every harness run used one client at a time. No other java process was touched.
 | Outlines, ghosts, horn, shout, rally pose | yes | yes (Feedback; two clients) | outlines yes (screenshots). The rally pose was tuned without looking at it, and Kort has not reviewed it |
 | Charge camera and toggle | yes | yes (ChargeCamera) | screenshot only |
 | Bot cooldown and lessons | yes | yes (BotOrders) | no |
-| Custom groups (Armoury editor, schema 5) | yes | yes (CustomGroups; migration checks in fast) | Armoury editor screenshot only |
+| Custom groups (Armoury editor, schema 5) | yes | yes (CustomGroups, including custom Charge, Hold and Retreat isolation; migration checks in fast) | Armoury editor screenshot only |
 
 ### Controller visual check against `panel-mockup-v2.md`
 

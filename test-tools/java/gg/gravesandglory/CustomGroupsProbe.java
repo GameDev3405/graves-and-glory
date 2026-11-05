@@ -145,6 +145,31 @@ public final class CustomGroupsProbe {
         return String.join("; ", bad);
     }
 
+    /** After a custom Retreat on troop a: every a retreats on its own troop key and is out of the group's places; every c of the same spec group
+     *  keeps the exact order and issue time it had before (snapshot from orders()), the plain group key, and no Retreat. Empty when all hold. */
+    public static String retreatSplit(GravesAndGlory.Battle b, UUID id, String a, String c, Map<Integer, String> before) {
+        var s = b.squads.get(id); List<String> bad = new ArrayList<>(); int na = 0, nc = 0; String group = null;
+        for (var u : b.units) {
+            if (u.squad != s || !u.mob.isAlive()) continue;
+            var asg = b.assignment(u); String key = CustomGroups.stateKey(u), now = asg.order + "@" + asg.issued;
+            if (u.spec.id().equals(a)) {
+                na++; group = u.spec.group();
+                if (!asg.order.equals("retreat")) bad.add(a + " " + u.mob.getId() + " order " + now);
+                if (!key.startsWith(CustomGroups.TROOP)) bad.add(a + " " + u.mob.getId() + " key " + key);
+            } else if (u.spec.id().equals(c)) {
+                nc++;
+                String was = before.get(u.mob.getId());
+                if (was != null && !was.equals(now)) bad.add(c + " " + u.mob.getId() + " order " + was + " -> " + now);
+                if (asg.order.equals("retreat")) bad.add(c + " " + u.mob.getId() + " took the Retreat");
+                if (!key.equals(u.spec.group())) bad.add(c + " " + u.mob.getId() + " key " + key);
+            }
+        }
+        if (na == 0 || nc == 0) return "fielded " + na + " " + a + ", " + nc + " " + c;
+        var held = group == null ? null : s.places.get(group);
+        if (held != null) for (var u : b.units) if (u.squad == s && u.spec.id().equals(a) && held.members.contains(u)) { bad.add(group + " places hold a " + a); break; }
+        return String.join("; ", bad);
+    }
+
     // ---- client side (call on the client thread) ----
 
     public static void openArmoury(MinecraftClient c) { c.setScreen(new RecruitmentScreen(1)); }
