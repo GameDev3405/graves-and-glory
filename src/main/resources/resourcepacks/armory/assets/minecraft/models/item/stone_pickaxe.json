@@ -1,10 +1,10 @@
 {
   "parent": "minecraft:block/block",
   "textures": {
-    "metal": "minecraft:block/stone",
-    "handle": "minecraft:block/dark_oak_planks",
-    "trim": "minecraft:block/gold_block",
-    "particle": "minecraft:block/stone"
+    "metal": "gravesandglory:item/armory/stone",
+    "handle": "gravesandglory:item/armory/dark",
+    "trim": "gravesandglory:item/armory/trim",
+    "particle": "gravesandglory:item/armory/stone"
   },
   "elements": [
     {

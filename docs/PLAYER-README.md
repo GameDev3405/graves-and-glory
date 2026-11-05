@@ -17,7 +17,7 @@ Pick one.
 2. **Plain zip.** Install Fabric Loader 0.16.14 for Minecraft 1.20.1 yourself, then copy the zip's `mods`, `shaderpacks` and `resourcepacks` folders into your instance's game folder.
 3. **Dedicated server.** Use the server kit zip. It does not accept the Minecraft server EULA for you; read it and supply `eula.txt` yourself.
 
-The shaders and Excalibur are optional. Excalibur is in `resourcepacks` but is not switched on for you; turn it on in Options, Resource Packs if you want it.
+The shaders and Excalibur are optional. Excalibur is in `resourcepacks` and is switched on for you the first time you start the game. The game's own armory and weapons packs sit above it, so weapons keep their own look. Turn Excalibur off in Options, Resource Packs if you prefer.
 
 ## Start a battle
 
