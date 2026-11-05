@@ -78,6 +78,12 @@ public final class BattleHud {
      *  line lives), then aim-name (the aimed point's name, while an order is aimed into a point) and ability (the slot converted
      *  from GUI px, rounded outward). */
     public static Map<String,int[]> rects(){return rects;}
+    /** Top (GUI px) of whatever this frame drew in the lower-left quarter (group column, hint slip), or -1: the pennant stack stays above it. */
+    static int lowerLeftTop(double guiScale){
+        int hw=UiCanvas.hudWidth(),hh=UiCanvas.hudHeight(),top=Integer.MAX_VALUE;
+        for(int[] b:rectsDrawn.values())if(b!=null&&b.length>=4&&b[0]<hw/3&&b[1]>hh/2)top=Math.min(top,b[1]);
+        return top==Integer.MAX_VALUE?-1:(int)Math.floor(top*UiCanvas.hudK()/guiScale);
+    }
     /** The words and numbers the last frame drew: score-dawn, clock, score-dusk, count-(group), state-(group) (the word a card
      *  shows; on a chip LAST STAND and Fallen as drawn, Fighting for its crossed swords and Steady for none), plate-(group) (the
      *  atlas name of the plate drawn), stamp-(group) (the atlas name of the LAST STAND stamp, only while the group stands its last
@@ -136,6 +142,7 @@ public final class BattleHud {
                 feed(g,font,size,now,at,rectsDrawn,textsDrawn);
             }finally{UiCanvas.end(g);}
             ability(g,c,font,rectsDrawn,textsDrawn);
+            CommandPanel.render(g,delta); // the pennant panel replaced the order key rows (command UI Task 7)
         }catch(IllegalArgumentException e){ // UiTex.entry names a texture the atlas lacks: a resource pack's atlas, or none read at all
             stopped=true;clear();
             System.err.println("[Graves and Glory] The battle HUD stopped: "+e.getMessage()+". It stays off until the next resource reload.");
@@ -233,7 +240,6 @@ public final class BattleHud {
             var grp=group(id);int[] box=at.get("card-"+id);if(grp==null||box==null)continue;
             if(box[3]==UiMath.CARD_H)card(g,font,grp,box,r,cd,tx);else chip(g,font,grp,box,army,r,cd,tx);
         }
-        int[] keys=at.get("keys");if(keys!=null)keyStrip(g,font,keys,r);
         int[] hints=at.get("hints");if(hints!=null)hintSlip(g,font,hints,r);
     }
 
@@ -309,7 +315,6 @@ public final class BattleHud {
         g.drawText(font,orderLabel(grp.order()),x+22,y+31,DarkUi.INK_TEXT,false);
         formationGlyph(g,grp.formation(),down,x+72,y+30);
         g.drawText(font,formationLabel(grp.formation()),x+84,y+31,DarkUi.INK_TEXT,false);
-        keyRow(g,font,id,x,y+44,DarkUi.SEPIA);
         cd.add(new CardDraw(id,state,true,x,y,box[2],box[3]));r.put("card-"+id,box);
         tx.put("count-"+id,count);tx.put("state-"+id,word);tx.put("plate-"+id,plate);
     }
