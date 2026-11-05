@@ -50,7 +50,7 @@ FOCUS_CALL = re.compile(r'(?:\bDarkUi\s*\.\s*|(?<![\w.]))(focus|focusRing|keyboa
 ARGB = re.compile(r'\b0[xX][0-9a-fA-F]{8}(?![0-9a-fA-F_])')
 BACKSLASH = chr(92)
 KEY_TOKEN = re.compile(r'\{key:[^{}]*\}')
-LO_PLATE_TEXT = {'BattleHud': ('keyStrip', 'lesson')}
+LO_PLATE_TEXT = {'BattleHud': ('lesson',)}
 # the literals a method must hold (a texture name or a word, quotes left off) and the ones it must not
 MUST_DRAW = {'BattleHud': {'card': ('hud/stamp-last-card', 'LAST STAND'), 'chip': ('hud/stamp-last-chip', 'LAST STAND')}}
 NEVER_DRAW = {'BattleHud': {'ability': ('hud/horn',)}}

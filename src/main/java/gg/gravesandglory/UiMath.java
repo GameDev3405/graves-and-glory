@@ -571,12 +571,12 @@ public final class UiMath {
 
     // The left column on its iron spine (UI Task 8c, Kort's choice): the selected group keeps its ledger card with its order,
     // formation and key row; every other group hangs as a chip one line high; while the whole army is selected every group's
-    // chip is brass and one key strip hangs under the bottom chip. Canvas px.
+    // chip is brass. Canvas px.
     /** The column's cards and chips start at x 24, 176 wide; the spine at x 12 and the hooks between, so the column lies in x 12
      *  to 200. */
     public static final int CARD_X = 24, CARD_W = 176, COLUMN_LEFT = 12, COLUMN_RIGHT = 200;
-    /** Heights: the selected group's ledger card, a chip, and the army's key strip. */
-    public static final int CARD_H = 62, CHIP_H = 18, KEYS_H = 16;
+    /** Heights: the selected group's ledger card, and a chip. */
+    public static final int CARD_H = 62, CHIP_H = 18;
     /** The px between two plates of the column, and between the column and a vanilla bar below it. */
     public static final int COLUMN_GAP = 4;
     /** The column's foot: 18 px above the canvas's bottom, as the mock hangs the cards. */
@@ -698,8 +698,7 @@ public final class UiMath {
     /** Every plate of one frame of the battle HUD, {x, y, w, h} in canvas px, on a fbW x fbH window at GUI Scale gui with k screen
      *  px per canvas px and at a HUD size, keyed as BattleHud.rects keys them: score, dawn-boss, dusk-boss and seal-(i); card-(group)
      *  for each group fielded, the selected group's card CARD_H tall and every other group's chip CHIP_H, stacked up from the
-     *  column's foot (columnBottom) COLUMN_GAP apart; keys, the army's key strip under the bottom chip while the whole army is
-     *  selected; spine, from 4 px above the top plate to 4 px below the foot; hints, the hint slip in the hint layer; lesson, unless
+     *  column's foot (columnBottom) COLUMN_GAP apart; spine, from 4 px above the top plate to 4 px below the foot; hints, the hint slip in the hint layer; lesson, unless
      *  it gives way to the respawn card (lessonYields); respawn; feed (feedBox). Not the aimed point's name, whose width is its
      *  text's, nor the ability slot, which sits in vanilla's GUI px. BattleHud draws by it; hudFits tries it in every state. */
     public static java.util.Map<String, int[]> hudLayout(int fbW, int fbH, int gui, int k, int size, HudState s) {
@@ -714,11 +713,10 @@ public final class UiMath {
         boolean army = "all".equals(s.selected()) && n > 0;
         int[] heights = new int[n];
         for (int i = 0; i < n; i++) heights[i] = !army && gs.get(i).equals(s.selected()) ? CARD_H : CHIP_H;
-        int[] tops = cardTops(army ? bottom - KEYS_H - COLUMN_GAP : bottom, heights, COLUMN_GAP);
+        int[] tops = cardTops(bottom, heights, COLUMN_GAP);
         int first = n > 0 ? tops[0] : bottom;
         if (n > 0) r.put("spine", new int[]{COLUMN_LEFT, first - 4, 9, bottom - first + 8});
         for (int i = 0; i < n; i++) r.put("card-" + gs.get(i), new int[]{CARD_X, tops[i], CARD_W, heights[i]});
-        if (army) r.put("keys", new int[]{CARD_X, bottom - KEYS_H, CARD_W, KEYS_H});
         if (s.hints()) r.put("hints", new int[]{CARD_X, first - HINTS_ABOVE, HINTS_W, HINTS_H});
         int[] respawn = s.respawn() ? new int[]{cx - 100, respawnY(h, crosshairTop(sh, g, kk)), 200, 28} : null;
         if (s.lessonLines() > 0) {
@@ -791,19 +789,19 @@ public final class UiMath {
     }
 
     /** The rows a HUD plate's PNG paints above its box, by rect key (atlas.json oy): 1 for the score card, the lesson note, the
-     *  respawn card and the key strip, 2 for a card or chip (its loss flash's rule; 1 otherwise), 3 for the feed leaf; the seals,
+     *  respawn card, 2 for a card or chip (its loss flash's rule; 1 otherwise), 3 for the feed leaf; the seals,
      *  the bosses, the hint slip and the aimed point's name paint inside or below their boxes. */
     static int inkAbove(String key) {
         if (key.startsWith("card-")) return 2;
-        return switch (key) { case "feed" -> 3; case "score", "lesson", "respawn", "keys" -> 1; default -> 0; };
+        return switch (key) { case "feed" -> 3; case "score", "lesson", "respawn" -> 1; default -> 0; };
     }
 
     /** The rows of drop shadow a HUD plate's PNG paints below its box (atlas.json: the PNG's height less oy and the box's): 5 for the
-     *  score card, the lesson note, the respawn card and the key strip, 6 for a card or chip (in its loss flash; 5 otherwise) and
+     *  score card, the lesson note, the respawn card, 6 for a card or chip (in its loss flash; 5 otherwise) and
      *  for the hint slip, 7 for the feed leaf, none for the rest. */
     static int inkBelow(String key) {
         if (key.startsWith("card-")) return 6;
-        return switch (key) { case "feed" -> 7; case "hints" -> 6; case "score", "lesson", "respawn", "keys" -> 5; default -> 0; };
+        return switch (key) { case "feed" -> 7; case "hints" -> 6; case "score", "lesson", "respawn" -> 5; default -> 0; };
     }
 
     /** The pairs whose inks keep CARD_GAP rows apart (inksApart): the lesson note, the respawn card or the feed leaf with one
@@ -813,7 +811,7 @@ public final class UiMath {
         return ca && (cb || column(b)) || cb && column(a);
     }
 
-    static boolean column(String key) { return key.equals("hints") || key.equals("keys") || key.startsWith("card-"); }
+    static boolean column(String key) { return key.equals("hints") || key.startsWith("card-"); }
 
     /** columnTop's answer for a frame that drew no column (camp, an entrance, a screen over the HUD). */
     public static final int NO_COLUMN = Integer.MIN_VALUE;
@@ -824,7 +822,7 @@ public final class UiMath {
         int top = NO_COLUMN;
         for (var e : r.entrySet()) {
             String k = e.getKey();
-            if (k.equals("spine") || k.equals("hints") || k.equals("keys") || k.startsWith("card-")) top = top == NO_COLUMN ? e.getValue()[1] : Math.min(top, e.getValue()[1]);
+            if (k.equals("spine") || k.equals("hints") || k.startsWith("card-")) top = top == NO_COLUMN ? e.getValue()[1] : Math.min(top, e.getValue()[1]);
         }
         return top;
     }
@@ -952,10 +950,10 @@ public final class UiMath {
         return a.endsWith("-boss") && b.equals("score") || b.endsWith("-boss") && a.equals("score");
     }
 
-    /** The plates the footprint counts (UI Task 8c): the group cards and chips, the army's key strip, the feed leaf, the hint slip,
+    /** The plates the footprint counts (UI Task 8c): the group cards and chips, the feed leaf, the hint slip,
      *  the lesson note and the respawn card. */
     public static boolean plate(String key) {
-        return key.startsWith("card-") || key.equals("keys") || key.equals("feed") || key.equals("hints") || key.equals("lesson") || key.equals("respawn");
+        return key.startsWith("card-") || key.equals("feed") || key.equals("hints") || key.equals("lesson") || key.equals("respawn");
     }
 
     /** The share of a fbW x fbH screen the HUD's plates cover (plate), from their boxes in canvas px at k screen px each; plates never

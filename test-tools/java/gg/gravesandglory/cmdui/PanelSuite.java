@@ -117,6 +117,7 @@ public final class PanelSuite implements CommandUiChecks.Suite {
             CommandUiChecks.report("cu-panel-click-pill", pillFirst.equals(List.of("ranged")) && both.equals(Set.of("ranged", "infantry")),
                 "Archers pill click -> " + pillFirst + "; shift-click Infantry -> " + CommandSelection.selected());
         }
+        if (tick == 117) shot(c, "panel-pills-1920.png"); // Infantry and Archers selected
 
         // a click on a troop of the army selects its group, with no swing
         if (tick == 117) spawnRider(c);
@@ -145,6 +146,19 @@ public final class PanelSuite implements CommandUiChecks.Suite {
 
         // slide: open fully, then an order without Shift slides it shut
         if (tick == 196) { CommandSelection.setPanelOpen(true); CommandSelection.select("infantry", false); }
+        // a keyboard-bound attack and use are swallowed while the panel holds the mouse (CommandInputMixin)
+        if (tick == 198) {
+            keyPitch = c.player.getPitch(); c.player.setPitch(-80); c.player.prevPitch = -80; // sky ahead: a swing that got through has no target to hide behind
+            swallowBefore = CommandPanel.swallowedKeys; keyCapturing = CommandPanel.capturing();
+            CommandUiChecks.press(c, c.options.attackKey); CommandUiChecks.press(c, c.options.useKey);
+        }
+        if (tick == 201) {
+            int swallowed = CommandPanel.swallowedKeys - swallowBefore;
+            boolean swung = c.player.handSwinging;
+            c.player.setPitch(keyPitch); c.player.prevPitch = keyPitch;
+            CommandUiChecks.report("cu-panel-keys-swallowed", keyCapturing && swallowed >= 2 && !swung,
+                "panel open and capturing=" + keyCapturing + "; the attack and use keys pressed once each: swallowed " + swallowed + " (wanted 2), hand swinging=" + swung);
+        }
         if (tick == 206) { slideBeforeClose = CommandPanel.slide(); CommandUiChecks.press(c, find(c, "key.gravesandglory.attack")); }
         if (tick >= 207 && tick <= 225 && closeZeroAt < 0) { if (closeAt < 0 && !CommandSelection.panelOpen()) closeAt = tick; if (closeAt >= 0 && CommandPanel.slide() <= 0) closeZeroAt = tick; }
         if (tick == 226) {
@@ -183,7 +197,14 @@ public final class PanelSuite implements CommandUiChecks.Suite {
         if (tick == 294) cursorTo(c, CommandPanel.PENNANT);
         if (tick == 298) { edges(c, "hover-854"); shot(c, "panel-hover-854.png"); cursorCentre(c); }
         if (tick == 300) CommandSelection.order("formation", false);
-        if (tick == 304) { edges(c, "tray-854"); shot(c, "panel-tray-854.png"); CommandSelection.setTrayOpen(false); }
+        if (tick == 304) {
+            edges(c, "tray-854"); shot(c, "panel-tray-854.png");
+            int[] tr = rect(CommandPanel.TRAY), se = rect(CommandPanel.SECS);
+            boolean meet = tr != null && se != null && se[1] < tr[1] + tr[3] && tr[1] < se[1] + se[3] && se[2] < tr[2] + tr[4] && tr[2] < se[2] + se[4];
+            CommandUiChecks.report("cu-panel-tray-secs", tr != null && se != null && !meet,
+                "854x480, Formation tray open while Charge cools: tray " + (tr == null ? "none" : Arrays.toString(Arrays.copyOfRange(tr, 1, 5))) + ", cooldown seconds " + (se == null ? "none" : Arrays.toString(Arrays.copyOfRange(se, 1, 5))) + ", meet=" + meet);
+            CommandSelection.setTrayOpen(false);
+        }
         if (tick == 308) {
             boolean sweep854 = drawn(CommandPanel.SWEEP);
             edges(c, "cooldown-854"); shot(c, "panel-cooldown-854.png");
@@ -206,6 +227,14 @@ public final class PanelSuite implements CommandUiChecks.Suite {
             CommandSelection.setPanelOpen(true); CommandSelection.select("ranged", false);
         }
 
+        // F1 (a hidden HUD): the invisible panel must not keep the cursor or take clicks
+        if (tick == 327) { hudWas = c.options.hudHidden; hudCapBefore = CommandPanel.capturing(); c.options.hudHidden = true; }
+        if (tick == 329) {
+            boolean capHidden = CommandPanel.capturing(), locked = c.mouse.isCursorLocked();
+            c.options.hudHidden = hudWas;
+            CommandUiChecks.report("cu-panel-hud-hidden", hudCapBefore && !capHidden && locked,
+                "panel open: capturing=" + hudCapBefore + "; HUD hidden (F1): capturing=" + capHidden + ", cursor locked=" + locked + " (wanted capturing false, cursor locked)");
+        }
         // disconnect with the panel open; the listener records the state without a world and rejoins
         if (tick == 330) {
             beforeDisconnect = "panel open=" + CommandSelection.panelOpen() + " selection " + CommandSelection.selected();
@@ -226,7 +255,9 @@ public final class PanelSuite implements CommandUiChecks.Suite {
     boolean trayOpened, sweepDrawn;
     String chargeAimed = "", beforeDisconnect = "";
     int cooling, rejoinTick = -1;
-    boolean relockFreeBefore, relockFreeAfterResume;
+    boolean relockFreeBefore, relockFreeAfterResume, keyCapturing, hudWas, hudCapBefore;
+    int swallowBefore;
+    float keyPitch;
     double slideBeforeClose;
 
     /** A tick listener of the suite's own: the suite's ticks stop while there is no world, so this one watches the disconnect and rejoins. */

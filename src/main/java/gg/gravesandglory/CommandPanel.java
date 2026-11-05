@@ -28,7 +28,7 @@ import java.util.*;
 public final class CommandPanel {
     private CommandPanel() {}
 
-    public static final int POLE = 1, PILL = 100, PENNANT = 200, TRAY = 300, CELL = 400, SWEEP = 500;
+    public static final int POLE = 1, PILL = 100, PENNANT = 200, TRAY = 300, CELL = 400, SWEEP = 500, SECS = 501;
     /** The orders in pennant order, with their names. */
     public static final String[] ORDERS = {"attack", "charge", "follow", "retreat", "formation"};
     static final String[] NAMES = {"Attack", "Charge", "Follow me", "Retreat", "Formation"};
@@ -85,10 +85,15 @@ public final class CommandPanel {
         return slideOpen ? Math.min(1, slideFrom + moved) : Math.max(0, slideFrom - moved);
     }
 
-    /** Whether the panel holds the mouse: open, no order being aimed (the aim relocks the cursor for its crosshair), no Screen, in battle. */
+    /** Keyboard attack / use presses swallowed while capturing (CommandInputMixin); a probe for the checks. */
+    public static int swallowedKeys;
+
+    /** Whether the panel holds the mouse: open, no order being aimed (the aim relocks the cursor for its crosshair), no Screen, in battle,
+     *  and drawn: a hidden HUD (F1), a cinematic or a diagnostics run that hides the HUD leaves an invisible panel that must not keep the cursor. */
     public static boolean capturing() {
         var c = MinecraftClient.getInstance();
-        return CommandSelection.panelOpen() && !CommandMode.active() && c.currentScreen == null && c.player != null && GravesAndGloryClient.battleActive();
+        return CommandSelection.panelOpen() && !CommandMode.active() && c.currentScreen == null && c.player != null && GravesAndGloryClient.battleActive()
+            && !c.options.hudHidden && !CampaignClient.cinematic() && !(Diagnostics.active() && Diagnostics.hideHud());
     }
 
     /**
@@ -226,6 +231,7 @@ public final class CommandPanel {
         DarkUi.teamMark(g, team, poleX - 1, Math.max(0, top - 12)); // the House shape on the finial: the cloth colour never stands alone
         int chargeLeft = CommandNet.Client.chargeTicksLeft(), chargeTotal = Math.max(1, CommandNet.Client.chargeReadyIn);
         int formationY = 0, formationW = W;
+        int secsRight = -1, secsBottom = -1; // the Charge cooldown seconds' right edge and the foot of that row, for the tray to keep clear of
         for (int i = 0; i < ORDERS.length; i++) {
             int y = flagTop + i * pitch;
             boolean hov = over(mouse, flagX, y, W, PENNANT_H, dx);
@@ -263,6 +269,8 @@ public final class CommandPanel {
                 int sx = Math.min(x + w - 2, limit - 1 - font.getWidth(secs));
                 g.drawText(font, secs, sx, yy + 8, 0xffffffff, true);
                 record(SWEEP, x + 1, yy, Math.max(24, sx + font.getWidth(secs) - x - 1), 24, dx);
+                lastDrawn.add(new int[]{SECS, sx + dx, yy + 8, font.getWidth(secs), 9}); // the seconds alone, for the tray check
+                secsRight = sx + font.getWidth(secs); secsBottom = yy + PENNANT_H;
             }
             if (fl > 0) {
                 int fa = (int) Math.round(fl * 0.55 * 255);
@@ -287,6 +295,10 @@ public final class CommandPanel {
             tw = pad * 2 + cols * cw + (cols - 1) * gap; th = pad * 2 + rowsT * CELL_H + (rowsT - 1) * gap;
             if (cols == 4) { tx = ax; ty = formationY + PENNANT_H / 2 - th / 2; }
             else { tx = Math.max(flagX, Math.min(ax, trayLimit - tw)); ty = formationY + PENNANT_H - th; } // above the anchor, never down over the group cards
+            if (secsRight >= 0 && cols == 2 && tx < secsRight + 2 && ty < secsBottom) {
+                // the tray would cover the cooldown seconds: slide right of them if the 45% limit allows, else drop below the Charge row
+                if (secsRight + 2 + tw <= trayLimit) tx = secsRight + 2; else ty = secsBottom + 1;
+            }
             if (ty < 2) ty = 2;
             if (ty + th > sh - 2) ty = sh - 2 - th;
             RenderSystem.setShaderColor(1, 1, 1, 1);

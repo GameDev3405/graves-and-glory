@@ -1667,11 +1667,11 @@ public final class Phase1Checks implements ClientModInitializer {
                     var sup=group("support");boolean settled=sup!=null&&!sup.lastStand()&&!CommandMode.flashing("infantry")&&!CommandMode.flashing("ranged")&&!CommandMode.flashing("support");
                     if(!settled)seen=0;else if(seen==0)seen=tick;
                     if(seen>0&&tick>=seen+2){var cs=BattleHud.cards();int[] strip=BattleHud.rects().get("keys");var rows=BattleHud.keyRows().stream().map(k->k.group()+" "+k.parts()).toList();
-                        // UI Task 8c: a brass chip for each group over the army's one key strip, the keys the same for every group
-                        boolean ok=cs.size()==3&&cs.stream().allMatch(d->d.state().equals("SELECTED"))&&cs.stream().map(BattleHud.CardDraw::tall).toList().equals(List.of(false,false,false))&&cs.stream().map(BattleHud.CardDraw::y).toList().equals(List.of(440,462,484))
-                            &&Arrays.equals(strip,new int[]{24,506,176,16})&&BattleHud.keyRows().size()==1&&BattleHud.keyRows().get(0).group().equals("all");
+                        // a brass chip for each group; the old key strip is gone (command UI cleanup)
+                        boolean ok=cs.size()==3&&cs.stream().allMatch(d->d.state().equals("SELECTED"))&&cs.stream().map(BattleHud.CardDraw::tall).toList().equals(List.of(false,false,false))&&cs.stream().map(BattleHud.CardDraw::y).toList().equals(List.of(456,478,500))
+                            &&strip==null&&BattleHud.keyRows().isEmpty();
                         shot(c,"ui-hud-army");
-                        report("p1-ui-army-selected",ok,"with the whole army selected the column drew "+cs+", the key strip at "+box(strip)+" and the key rows "+rows+" (wanted three brass chips at y 440, 462 and 484 over the strip at [24, 506, 176, 16] with one row, all's)");seen=0;stage=30;}
+                        report("p1-ui-army-selected",ok,"with the whole army selected the column drew "+cs+", the key strip at "+box(strip)+" and the key rows "+rows+" (wanted three brass chips at y 456, 478 and 500 with no key strip and no key row: the pennant panel carries the keys)");seen=0;stage=30;}
                     else if(seen==0&&tick-waitFrom>200){report("p1-ui-army-selected",false,"support never stopped routing, or a flash never ended: "+BattleHud.cards());stage=30;}
                 }
                 case 30->{askAt=tick;stage=-30;server(c,b->{b.testAbility=new GravesAndGlory.Battle.AbilityState("rally_horn",960,1800);stage=31;});}

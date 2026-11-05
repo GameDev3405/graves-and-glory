@@ -232,7 +232,7 @@ public final class BattleHud {
 
     /** The group column (UI Task 8c), each plate where the layout hangs it, infantry at the top: the spine; the selected group's
      *  ledger card (card) and a chip for every other group the round fielded (chip), or while the whole army is selected a brass
-     *  chip for each group over the army's key strip (keyStrip); and in the hint layer the hint slip above the top plate (above the
+     *  chip for each group; and in the hint layer the hint slip above the top plate (above the
      *  column's foot when there is none). A group the round never fielded has no plate. */
     static void column(DrawContext g,TextRenderer font,UiMath.HudState s,Map<String,int[]> at,Map<String,int[]> r,List<CardDraw> cd,Map<String,String> tx){
         boolean army="all".equals(s.selected());
@@ -261,12 +261,16 @@ public final class BattleHud {
         String[][] words={aiming?new String[]{"Confirm","Cancel"}:new String[]{"Map","Commands"},{null,"Turn","Hints"}};
         for(int row=0;row<2;row++){
             List<String> keys=new ArrayList<>(),shorts=new ArrayList<>();for(String id:ids[row]){keys.add(GravesAndGloryClient.hint(id));shorts.add(GravesAndGloryClient.hintShort(id));}
-            keys=UiMath.fitKeys(keys,shorts,Arrays.asList(words[row]),HINT_ROW_W,8,font::getWidth);
+            String[] rowWords=words[row];
+            if(row==1&&ChargeCamera.active()){ // the overhead charge camera: the mouse turns the arrow, the facing keys do nothing
+                keys=new ArrayList<>(List.of("Mouse",keys.get(2)));shorts=new ArrayList<>(List.of("Mouse",shorts.get(2)));rowWords=new String[]{"Aim","Hints"};
+            }
+            keys=UiMath.fitKeys(keys,shorts,Arrays.asList(rowWords),HINT_ROW_W,8,font::getWidth);
             List<String> drawn=new ArrayList<>();int kx=x+10,ky=y+(row==0?7:22),end=kx;
             for(int k=0;k<keys.size();k++){
                 String key=keys.get(k);int kw=UiMath.chipWidth(font.getWidth(key));
                 UiTex.three(g,"hud/key-chip",kx,ky,kw);g.drawText(font,key,kx+2,ky+2,DarkUi.CHIP_TEXT,false);drawn.add(key);end=kx+kw;kx+=kw+2;
-                String word=words[row][k];
+                String word=rowWords[k];
                 if(word!=null){g.drawText(font,word,kx,ky+2,DarkUi.SEPIA,false);drawn.add(word);end=kx+font.getWidth(word);kx+=font.getWidth(word)+8;}
             }
             hintRowsDrawn.add(List.copyOf(drawn));hintEndsDrawn.add(end);
@@ -350,33 +354,6 @@ public final class BattleHud {
         g.drawText(font,count,x+156-font.getWidth(count),y+5,down||last?DarkUi.ROUT_TEXT:DarkUi.INK_TEXT,false);
         cd.add(new CardDraw(id,state,false,x,y,box[2],box[3]));r.put("card-"+id,box);
         tx.put("count-"+id,count);tx.put("state-"+id,word);tx.put("plate-"+id,plate);
-    }
-
-    /** The army's key strip under the bottom chip while the whole army is selected (UI Task 8c): the order keys of a card's key row
-     *  at a card's places, on a 176 x 16 plate capped in brass and hung on the spine by a brass hook. The keys are the same for every
-     *  group, so one row serves the army: the cheapest form that keeps them on screen. Its labels are in KEY_INK, a step darker than
-     *  the card's sepia: the strip is the darker vellum, where sepia holds 4.6:1 and 3.7:1 at its edges (#bda97c), KEY_INK 6.0:1
-     *  there (UI Task 8c fix round 1; test_ui_standard checks it). */
-    static void keyStrip(DrawContext g,TextRenderer font,int[] box,Map<String,int[]> r){
-        int x=box[0],y=box[1];
-        UiTex.draw(g,"hud/keys-strip",x,y);UiTex.draw(g,"hud/hook-brass",x-7,y+3);
-        keyRow(g,font,"all",x,y+3,DarkUi.KEY_INK);r.put("keys",box);
-    }
-
-    /** A key row at canvas y ky on a plate at x: the order keys, each in an ink chip as wide as its key's name, at the mock's places,
-     *  or where long names crowd the row flowed and fitted as on the hint slip, short names first (UiMath.cardRow); each key's label
-     *  after it in labelInk, the plate's own (sepia on a card, KEY_INK on the key strip). */
-    static void keyRow(DrawContext g,TextRenderer font,String group,int x,int ky,int labelInk){
-        var row=UiMath.cardRow(List.of(GravesAndGloryClient.hint("attack"),GravesAndGloryClient.hint("follow"),GravesAndGloryClient.hint("formation")),List.of(GravesAndGloryClient.hintShort("attack"),GravesAndGloryClient.hintShort("follow"),GravesAndGloryClient.hintShort("formation")),CARD_WORDS,CARD_SHORT_WORDS,font::getWidth);
-        List<String> parts=new ArrayList<>();List<Integer> from=new ArrayList<>(),to=new ArrayList<>();
-        for(int k=0;k<3;k++){
-            String key=row.keys().get(k),label=row.words().get(k);int kw=UiMath.chipWidth(font.getWidth(key)),kx=x+row.at().get(k);
-            UiTex.three(g,"hud/key-chip",kx,ky,kw);
-            g.drawText(font,key,kx+2,ky+2,DarkUi.CHIP_TEXT,false);
-            g.drawText(font,label,kx+kw+2,ky+2,labelInk,false);
-            parts.add(key);from.add(kx);to.add(kx+kw);parts.add(label);from.add(kx+kw+2);to.add(kx+kw+2+font.getWidth(label));
-        }
-        keyRowsDrawn.add(new KeyRowDraw(group,List.copyOf(parts),List.copyOf(from),List.copyOf(to)));
     }
 
     static void orderGlyph(DrawContext g,String order,boolean faded,int x,int y){

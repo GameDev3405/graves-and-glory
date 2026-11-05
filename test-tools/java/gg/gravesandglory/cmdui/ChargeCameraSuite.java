@@ -110,6 +110,10 @@ public final class ChargeCameraSuite implements CommandUiChecks.Suite {
             shot(c, "charge-camera.png");
         }
         if (tick == 69) {
+            var rows = gg.gravesandglory.BattleHud.hintRows();
+            String second = rows.size() > 1 ? String.valueOf(rows.get(1)) : "none";
+            CommandUiChecks.report("cu-cam-hint", rows.size() > 1 && rows.get(1).contains("Aim") && !rows.get(1).contains("Turn"),
+                "overhead camera held: the hint slip's second row reads " + second + " (wanted Mouse Aim, no Turn: the mouse turns the arrow)");
             float[] sl = serverLook;
             boolean high = heldActive && !Double.isNaN(troopsY) && heldCamY >= troopsY + 15;
             boolean lookKept = heldPlayerYaw == LOOK_YAW && heldPlayerPitch == LOOK_PITCH && sl != null && Math.abs(MathHelper.wrapDegrees(sl[0] - LOOK_YAW)) < 0.01 && Math.abs(sl[1] - LOOK_PITCH) < 0.01;
