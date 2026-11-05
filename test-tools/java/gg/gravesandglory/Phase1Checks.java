@@ -221,9 +221,10 @@ public final class Phase1Checks implements ClientModInitializer {
                         System.out.println("[p1] first arrow fired="+first.fired()+" lands="+first.lands()+" health="+firstHealth+" now="+first.target().getHealth());
                     }
                     if(b.time==(first.fired()+first.lands())/2){
-                        Vec3d from=first.from(),to=Projectiles.aim(first.target());double best=1e9;
-                        for(var e:b.world.iterateEntities())if(e instanceof ArrowEntity&&e.getCommandTags().contains(Projectiles.TAG))best=Math.min(best,segmentDistance(e.getPos(),from,to));
-                        report("p1-arrow-visible",best<=3,"nearest tagged arrow "+String.format("%.2f",best)+" blocks from the shot line at tick "+(b.time-first.fired())+" of "+(first.lands()-first.fired()));
+                        // arrows fly the arced curve (Projectiles.curve, 2026-10-30), so measure against the first shot's point on it, not the straight line
+                        Vec3d from=first.from(),to=Projectiles.aim(first.target()),on=Projectiles.curve(from,to,first.peak(),first.ticks(),b.time-first.fired());double best=1e9;
+                        for(var e:b.world.iterateEntities())if(e instanceof ArrowEntity&&e.getCommandTags().contains(Projectiles.TAG))best=Math.min(best,e.getPos().distanceTo(on));
+                        report("p1-arrow-visible",best<=3,"nearest tagged arrow "+String.format("%.2f",best)+" blocks from the arced shot path at tick "+(b.time-first.fired())+" of "+(first.lands()-first.fired()));
                     }
                     if(b.time==first.lands()+1){
                         var t=first.target();boolean hurt=!t.isAlive()||t.getHealth()<firstHealth;
