@@ -31,6 +31,9 @@ public final class Pose {
         return v;
     }
 
+    /** The bone's six channels, or null when the pose has no row for it (a read that does not make one). */
+    double[] find(String bone) { return index.get(bone); }
+
     public double get(String bone, int channel) {
         double[] v = index.get(bone);
         return v == null ? 0 : v[channel];

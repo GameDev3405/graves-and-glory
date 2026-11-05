@@ -222,6 +222,237 @@ def legs(painter, limit=None):
         out += limb(f"{side}_leg", "root", (x, 12, 0), (-2, 0, -2), painter, f"{side}_shin", KNEE, limit=limit)
     return out
 
+# ---- the waist and the ankles (anim redo rig contract, Kort 2026-11-05) ----
+# The torso bends at the waist: `chest` hangs from `body` at WAIST and carries the torso box's upper rows, the head, the arms,
+# the fold and every gear part above the waist; `body` keeps the lower rows, which reach JOINT_OVERLAP rows up into the chest
+# like a limb's lower box. Each shin's last rows go to a foot at ANKLE, 2 px over a 12 px leg's sole, the foot's box reaching
+# JOINT_OVERLAP rows up into the shin. Troop.build makes both from a troop's bones (waist_and_ankles), so the builders keep their
+# gear in the body's and the shins' frames; a troop's `waist` overrides name the parts the rules below place wrong.
+WAIST = (0, -6, 0)    # the chest's pivot in the body's frame
+ANKLE = (0, 4, 0)     # a foot's pivot in its shin's frame
+JOINT_LIMITS.update({"chest": (-35, 45), "_foot": (-45, 45)})
+UPPER_BONES = ("head", "right_arm", "left_arm", "arms_folded")
+# A part that crosses the waist is cut by its texel rows unless it is worn by one segment: these ride the chest whole (their
+# weight hangs from the shoulders) and these the body (they hang from the hips). A name matches when it holds the word.
+RIDE_CHEST = ("cape", "cloak", "quiver", "pack", "mantle", "gorget", "pauldron", "collar", "scarf", "shawl", "hood", "necklace")
+RIDE_BODY = ("belt", "skirt", "fauld", "tasset", "kilt", "girdle", "cincture", "pouch", "apron", "tails", "hip")
+
+def _dil(b): return [float(v) for v in b.dil] if isinstance(b.dil, (list, tuple)) else [float(b.dil)] * 3
+
+def _flags(bone): return (bone.stages, bone.weapon_tiers, bone.variants, bone.tag, bone.part, bone.team, bone.limit)
+
+def _frames(B, top):
+    """{bone: (rotation, origin)} of `top` and every bone under it, in top's frame (render's maths; parents come first in B)."""
+    import render
+    F = {top: (render.rot(0, 0, 0), [0.0, 0.0, 0.0])}
+    for bn in B:
+        if bn.parent in F and bn.name not in F:
+            pm, po = F[bn.parent]
+            F[bn.name] = (render.mul(pm, render.rot(*bn.rot)), [po[i] + render.app(pm, bn.pivot)[i] for i in range(3)])
+    return F
+
+def _yspan(B, F, names):
+    """The lowest and highest y (y down: top, bottom) of the boxes of the named bones, in the frame F was made in."""
+    import render
+    lo, hi = float("inf"), float("-inf")
+    for bn in B:
+        if bn.name not in names: continue
+        M, O = F[bn.name]
+        for b in bn.boxes:
+            d = _dil(b)
+            for c in range(8):
+                p = [b.origin[i] - d[i] + ((b.size[i] + 2 * d[i]) if c >> i & 1 else 0) for i in range(3)]
+                y = O[1] + render.app(M, p)[1]
+                lo, hi = min(lo, y), max(hi, y)
+    return lo, hi
+
+def _subtree(B, name):
+    out = {name}
+    for bn in B:
+        if bn.parent in out: out.add(bn.name)
+    return out
+
+def _shift(b, by):
+    """The box moved by -by (re-expressed in a frame whose origin sits at `by`)."""
+    b.origin = [b.origin[i] - by[i] for i in range(3)]
+    return b
+
+def cut_box(b, y, overlap=JOINT_OVERLAP):
+    """(upper, lower) of box b cut by its texel rows at y (the box's own frame): the lower starts `overlap` rows above the cut
+    with the same rows, as a jointed limb's (limb). Each piece keeps its rows' texels and, for a dilated box, exactly the
+    stretch of the one box those rows covered (its own y dilation). A dilated box's pieces (a garment worn over the torso or
+    the shin) get no joint caps: their caps would only fill the dilation's ring, which shows at rest through an open hem or
+    neck or a see-through texel, so the rest pose would change (zbuf check, 2026-11-05). None when the box has no whole row
+    on each side of y."""
+    import copy
+    h = b.size[1]
+    if h != int(h) or h < 2: return None
+    h = int(h); d = _dil(b); s = (h + 2 * d[1]) / h   # px a row covers
+    k = int(round((y - (b.origin[1] - d[1])) / s))
+    if not 1 <= k <= h - 1: return None
+    full, c0 = b.cut if b.cut else (h, 0)
+    def piece(r0, n):
+        nb = copy.copy(b); nb.uv = None
+        dy = n * d[1] / h
+        nb.origin = [b.origin[0], b.origin[1] - d[1] + r0 * s + dy, b.origin[2]]
+        nb.size = [b.size[0], n, b.size[2]]
+        nb.dil = [d[0], dy, d[2]] if any(d) else b.dil
+        nb.cut = (full, c0 + r0)
+        nb.caps = getattr(b, "caps", True) and not any(d)
+        return nb
+    o = min(overlap, k)
+    lower = piece(k - o, h - k + o)
+    lower.dup = o   # its first o rows repeat the upper piece's last: the glow lights them once, on the upper (build_glow)
+    return piece(0, k), lower
+
+def _split(bone, y, overlap, frame):
+    """bone's boxes as (above, below) of y in its parent's frame: the boxes wholly on one side, each crossing box cut by rows
+    (or, when it cannot be, put whole on the side of its middle). The bone must stand unturned. frame: the bone's pivot."""
+    up, down = [], []
+    for b in bone.boxes:
+        d = _dil(b)
+        y0, y1 = frame[1] + b.origin[1] - d[1], frame[1] + b.origin[1] + b.size[1] + d[1]
+        if y1 <= y + 1e-6: up.append(b); continue
+        if y0 >= y - 1e-6: down.append(b); continue
+        two = cut_box(b, y - frame[1], overlap)
+        if two: up.append(two[0]); down.append(two[1])
+        else: (up if (y0 + y1) / 2 < y else down).append(b)
+    return up, down
+
+def _rule(name, overrides, default):
+    if name in overrides: return overrides[name]
+    if any(w in name for w in RIDE_CHEST): return "up"
+    if any(w in name for w in RIDE_BODY): return "down"
+    return default
+
+def waist_and_ankles(B, overrides=None, report=None):
+    """The troop's bones with the waist and ankles of the rig contract: `chest` (under body at WAIST) and `right_foot` and
+    `left_foot` (under the shins at ANKLE), the torso and shin boxes cut by rows between them, the head, arms and fold on the
+    chest, and each gear part placed by where it sits: wholly above the waist on the chest, wholly below on the body; a part
+    crossing it rides the chest or the body whole (RIDE_CHEST, RIDE_BODY) or is cut by rows (its upper boxes on the chest, or
+    on a `<name>_up` bone under the chest that keeps its stages, team and tags). Likewise on the shin: below the ankle on the
+    foot, a boot crossing it (at most 2 px above) rides the foot whole, a taller part is cut (`<name>_ft` on the foot).
+    overrides {part: "up" | "down" | "cut"} (the chest or foot, the body or shin, cut) places a part the rules place wrong;
+    "<bone>#<i>" names a bone's own box i. Each new bone and box keeps `src`, the builder's own bone (and box), for the
+    veteran, glow and hide callbacks. B is untouched; a troop without a body, or one that has a chest, comes back as it is.
+    report: a list that gets a (part, placement) row per part the rules placed."""
+    import copy
+    overrides = dict(overrides or {})
+    names = {bn.name for bn in B}
+    if "body" not in names or "chest" in names: return B
+    out = []
+    for bn in B:
+        nb = copy.copy(bn); nb.src = getattr(bn, "src", bn)
+        nb.pivot, nb.rot, nb.stages, nb.boxes = list(bn.pivot), list(bn.rot), list(bn.stages), []
+        for b in bn.boxes:
+            x = copy.copy(b); x.src = getattr(b, "src", (nb.src, b)); nb.boxes.append(x)
+        out.append(nb)
+    B = out
+    for side in ("right", "left"):   # a builder's own foot (a boot on the shin) becomes gear of the new foot
+        for bn in B:
+            if bn.name == f"{side}_foot": bn.name = f"{side}_foot_gear"
+            if bn.parent == f"{side}_foot": bn.parent = f"{side}_foot_gear"
+    by = {bn.name: bn for bn in B}
+    log = report if report is not None else []
+    added = {}    # bone name: [bones to insert right after it]
+
+    def place(top, joint, new_name, upper_side, kids_rule):
+        """Cuts `top` (body or a shin) at `joint` into itself and `new_name`; upper_side: whether the new bone is the upper part."""
+        jy = joint[1]
+        nbone = Bone(new_name, top.name, joint, limit=next((v for k, v in JOINT_LIMITS.items() if new_name.endswith(k)), None))
+        nbone.src = top.src
+        keep, move = [], []
+        for i, b in enumerate(top.boxes):
+            key = f"{top.name}#{i}"
+            up, down = _split(Bone("_", "", (0, 0, 0), [b]), jy, JOINT_OVERLAP, (0, 0, 0))
+            how = overrides.get(key, "cut")
+            if up and down and how != "cut":
+                up, down = ([b], []) if how == "up" else ([], [b])
+            if up and down: log.append((key, "cut"))
+            (move if upper_side else keep).extend(up); (keep if upper_side else move).extend(down)
+        top.boxes = keep
+        nbone.boxes = [_shift(b, joint) for b in move]
+        added.setdefault(top.name, []).append(nbone)
+        F = _frames(B, top.name)
+        for c in [c for c in B if c.parent == top.name]:
+            if top.name == "body" and c.name in UPPER_BONES: how = "up"
+            else:
+                lo, hi = _yspan(B, F, _subtree(B, c.name))
+                if lo == float("inf"): continue                     # an empty bone with no boxes under it stays
+                if hi <= jy + 1e-6: how = "up"
+                elif lo >= jy - 1e-6: how = "down"
+                else:
+                    how = kids_rule(c.name, jy - lo, hi - jy)
+                    if how == "cut" and (any(c.rot) or any(k.parent == c.name for k in B)):
+                        how = "up" if lo + hi < 2 * jy else "down"   # a turned part, or one with parts on it, can't be cut by rows: whole, by its middle
+                        log.append((c.name, how + " (whole)"))
+                    else: log.append((c.name, how))
+            want_new = (how == "up") == upper_side
+            if how in ("up", "down"):
+                if want_new: c.parent = new_name; c.pivot = [c.pivot[i] - joint[i] for i in range(3)]
+                continue
+            # cut: the part's boxes on each side of the joint; its own bone keeps the side it hangs from
+            if any(c.rot) or any(k.parent == c.name for k in B):
+                raise SystemExit(f"{c.name}: a turned part or one with bones under it can't be cut at the {new_name} joint")
+            up, down = _split(c, jy, JOINT_OVERLAP, c.pivot)
+            go, stay = (up, down) if upper_side else (down, up)
+            if not go: continue
+            if not stay:                                            # no box of it could be cut: it moves whole
+                c.parent = new_name; c.pivot = [c.pivot[i] - joint[i] for i in range(3)]
+                continue
+            c.boxes = stay
+            boxes = [_shift(b, [joint[i] - c.pivot[i] for i in range(3)]) for b in go]
+            if not any(_flags(c)[:-1]) and _flags(c)[-1] is None:   # a plain part: its cut boxes join the new bone
+                nbone.boxes += boxes
+            else:
+                part = copy.copy(c); part.src = c.src
+                part.name = c.name + ("_up" if upper_side else "_ft")
+                part.parent, part.pivot, part.boxes, part.stages = new_name, [0.0, 0.0, 0.0], boxes, list(c.stages)
+                added.setdefault(c.name, []).append(part)
+
+    place(by["body"], WAIST, "chest", True,
+          lambda n, above, below: _rule(n, overrides, "cut"))
+    for side in ("right", "left"):
+        shin = by.get(f"{side}_shin")
+        if shin is None: continue
+        # a boot that reaches at most 2 px above the ankle rides the foot whole; a taller part is cut
+        place(shin, ANKLE, f"{side}_foot", False,
+              lambda n, above, below: overrides.get(n, "down" if above <= 2 + 1e-6 else "cut"))
+    out = []
+    for bn in B:
+        out.append(bn); out += added.get(bn.name, [])
+    # a cut part's own bone may now hold nothing: it goes, unless a bone hangs from it
+    used = {bn.parent for bn in out}
+    out = [bn for bn in out if bn.boxes or bn.name in used or bn.name in ("chest", "right_foot", "left_foot") or not getattr(bn.src, "boxes", None)]
+    for side in ("right", "left"):   # and a plain foot of the builder's folds into it
+        g = next((bn for bn in out if bn.name == f"{side}_foot_gear"), None)
+        if g and g.parent == f"{side}_foot" and not any(_flags(g)) and not any(g.rot): out = merge_bones(out, {g.name: g.parent})
+    return out
+
+def _src(bone, b):
+    """The builder's own (bone, box) a rigged box came from (waist_and_ankles), for the veteran and glow callbacks."""
+    return b.src if hasattr(b, "src") else (getattr(bone, "src", bone), b)
+
+def merge_bones(B, merges):
+    """Folds each part of merges {part: into} into a bone of the same frame (its parent or a sibling), for the 64-bone cap:
+    the part's boxes move into it unchanged on screen and its children hang from it. Both must stand unturned, show alike
+    (stages, weapon tiers, variants, tag, flag part, team) and the part may have no joint limit."""
+    import copy
+    by = {bn.name: bn for bn in B}
+    for name, into in (merges or {}).items():
+        m, t = by[name], by[into]
+        if m.parent == into: off = list(m.pivot)
+        elif m.parent == t.parent and not any(t.rot): off = [m.pivot[i] - t.pivot[i] for i in range(3)]
+        else: raise SystemExit(f"merge {name} into {into}: not its parent or a sibling")
+        if any(m.rot) or _flags(m)[:-1] != _flags(t)[:-1] or m.limit is not None:
+            raise SystemExit(f"merge {name} into {into}: turned, a joint, or shown otherwise")
+        t.boxes = t.boxes + [_shift(copy.copy(b), [-v for v in off]) for b in m.boxes]
+        for k in B:
+            if k.parent == name: k.parent, k.pivot = into, [k.pivot[i] + off[i] for i in range(3)]
+        B = [bn for bn in B if bn is not m]
+        by.pop(name)
+    return B
+
 def on(bone, tier): return not bone.stages or tier in bone.stages
 def shown(bone, tier): return on(bone, tier) and (not bone.weapon_tiers or tier in bone.weapon_tiers)   # weapon tier = worn tier on the sheets
 
@@ -397,9 +628,13 @@ def joint_cap(painter, face, w, d, full, row):
                 if c is not None: g[r][i] = c; break
     return g
 
-def paint_box(img, b, painter, caps=True):
+def paint_box(img, b, painter, caps=True, dup=True):
     """Paints a box's faces from a painter. A cut box (Box cut) paints its rows of the whole limb's sides; its joint faces are caps
-    (joint_cap), which the trim and glow overlays leave blank (caps=False)."""
+    (joint_cap), which the trim and glow overlays leave blank (caps=False), as does a box whose own caps are off (cut_box).
+    dup=False leaves blank the side rows a waist or ankle cut's lower piece repeats from its upper piece (cut_box `dup`): the
+    additive glow pass writes no depth, so a texel lit on both would glow twice at rest."""
+    caps = caps and getattr(b, "caps", True)
+    skip = 0 if dup else getattr(b, "dup", 0)
     w, h, d = (int(round(v)) for v in b.size)
     full, c0 = b.cut if b.cut else (h, 0)
     for face, (x0, y0) in rects(b).items():
@@ -407,6 +642,7 @@ def paint_box(img, b, painter, caps=True):
         if fw == 0 or fh == 0: continue
         if b.cut and face in SIDE_FACES:
             g = painter(face, fw, full)[c0:c0 + h]
+            if skip: g = [[None] * fw for _ in range(skip)] + list(g[skip:])
         elif b.cut and (face == "top" and c0 > 0 or face == "bottom" and c0 + h < full):
             if not caps: continue
             g = joint_cap(painter, face, w, d, full, c0 if face == "top" else c0 + h - 1)
@@ -422,14 +658,23 @@ class Troop:
     """One hand-authored troop. bones() -> [Bone]; cloth(spec, side) -> painter for a team box's paint spec; meta holds
     the troop JSON's own fields (weapon, hand, idleArms, portrait, faces, glow...). veteran(bone, box) -> painter or None
     paints the Mastery II trim, an overlay on the skin sheet kept to texels every tier paints (build_skins' trim rules)."""
-    def __init__(s, tid, skin, cloth, bones, cloth_painter, meta, tiers=(1, 2, 3), hide=lambda bone: False, veteran=None, glow=None):
+    def __init__(s, tid, skin, cloth, bones, cloth_painter, meta, tiers=(1, 2, 3), hide=lambda bone: False, veteran=None, glow=None,
+                 waist=None, merge=None):
         s.tid, s.skin, s.cloth, s.bones, s.cloth_painter, s.meta, s.tiers, s.hide = tid, tuple(skin), tuple(cloth), bones, cloth_painter, meta, tiers, hide
         s.veteran, s.glow = veteran, glow   # glow(bone, box) -> painter or None: the _e sheet, lit only where the skin is opaque
+        # a biped gets its waist and ankles here (waist_and_ankles; waist: its placement overrides), then merge {part: into}
+        # folds static parts together for the 64-bone cap (merge_bones). The callbacks above still get the builder's bones.
+        s.waist, s.merge = waist, merge
+
+    def rig_bones(s):
+        B = s.bones()
+        if s.meta.get("rig", "biped") == "biped": B = waist_and_ankles(B, s.waist)
+        return merge_bones(B, s.merge)
 
     def faces(s): return s.meta.get("faces", {}).get("count", 1)
 
     def build(s):
-        B = s.bones()
+        B = s.rig_bones()
         skin_boxes = [b for bone in B for b in bone.boxes if b.sheet == "skin"]
         cloth_boxes = [b for bone in B for b in bone.boxes if b.sheet == "cloth"]
         pack(skin_boxes, s.skin, s.tid + " skin"); pack(cloth_boxes, s.cloth, s.tid + " cloth")
@@ -456,8 +701,8 @@ class Troop:
         img = Image.new("RGBA", s.skin, (0, 0, 0, 0))
         for bone in B:
             for b in bone.boxes:
-                p = s.glow(bone, b) if b.sheet == "skin" else None
-                if p: paint_box(img, b, p, caps=False)
+                p = s.glow(*_src(bone, b)) if b.sheet == "skin" else None
+                if p: paint_box(img, b, p, caps=False, dup=False)
         px, sp = img.load(), skins[s.meta.get("glowFrom", s.tiers[0])].load()
         for y in range(s.skin[1]):
             for x in range(s.skin[0]):
@@ -471,7 +716,7 @@ class Troop:
         img = Image.new("RGBA", s.skin, (0, 0, 0, 0))
         for bone in B:
             for b in bone.boxes:
-                p = s.veteran(bone, b) if b.sheet == "skin" else None
+                p = s.veteran(*_src(bone, b)) if b.sheet == "skin" else None
                 if p: paint_box(img, b, p, caps=False)
         px, sp = img.load(), [skins[t].load() for t in s.tiers]
         n = 0
@@ -498,7 +743,7 @@ class Troop:
             if bone.variants is not None: j["variants"] = bone.variants
             if bone.limit is not None: j["limit"] = bone.limit
             j.update({"sheet": list(s.cloth if bone.team else s.skin), "pivot": bone.pivot, "rotation": bone.rot,
-                      "boxes": [{"origin": b.origin, "size": b.size, "uv": b.uv, "mirror": False, "dilation": [b.dil] * 3} for b in bone.boxes]})
+                      "boxes": [{"origin": b.origin, "size": b.size, "uv": b.uv, "mirror": False, "dilation": _dil(b)} for b in bone.boxes]})
             out["bones"].append(j)
         if len(out["bones"]) > 64:   # TroopModel.MAX_BONES: the client keeps a draw's bones as the bits of one long and refuses a bigger model
             raise SystemExit("%s: %d bones, more than 64" % (s.tid, len(out["bones"])))
@@ -516,7 +761,7 @@ class Troop:
             for b in bone.boxes:
                 o = [ap[i] + b.origin[i] for i in range(3)]
                 uv = list(b.uv) if b.sheet == "skin" else [b.uv[0], b.uv[1] + s.skin[1]]
-                cubes.append({"origin": [o[0], 24 - (o[1] + b.size[1]), o[2]], "size": b.size, "uv": uv, "inflate": b.dil})
+                cubes.append({"origin": [o[0], 24 - (o[1] + b.size[1]), o[2]], "size": b.size, "uv": uv, "inflate": max(_dil(b))})
             j = {"name": bone.name, "pivot": [ap[0], 24 - ap[1], ap[2]], "rotation": [-bone.rot[0], bone.rot[1], -bone.rot[2]], "cubes": cubes}
             if bone.parent: j["parent"] = bone.parent
             bones_out.append(j)
@@ -535,7 +780,7 @@ class Troop:
 
     def visible(s, t, show_hidden=False):
         n = s.faces()
-        return lambda bn: shown(bn, t) and (bn.variants is None or ((t - 1) % n) in bn.variants) and (show_hidden or not s.hide(bn))
+        return lambda bn: shown(bn, t) and (bn.variants is None or ((t - 1) % n) in bn.variants) and (show_hidden or not s.hide(getattr(bn, "src", bn)))
 
     def contact(s, out, side="crimson", show_hidden=False, px=6, vet=False):
         import render

@@ -143,9 +143,12 @@ def world(pose):
 
 
 # The knight's boots, toe caps and knee plates stand up to 1 px proud of the rig's shins (Task 16 fix r3: ten corpses
-# rested with a boot toe 0.85 to 1.0 px under the ground), so a death lands on them too: their boxes ride the shin.
+# rested with a boot toe 0.85 to 1.0 px under the ground), so a death lands on them too: their boxes ride the shin, and
+# since the animation redo's ankles (2026-11) the boots and toes the foot. A box is kept in its parent's frame (the bone's
+# own pivot added), so a bone that sits off its parent's pivot, as the boots do under the foot, lands where the game draws it.
 _KNIGHT = json.loads((ROOT / 'src/main/resources/assets/gravesandglory/models/troop/knight.json').read_text(encoding='utf-8'))
-ARMOUR = [(b['parent'], box) for b in _KNIGHT['bones'] if b['name'].endswith(('_boot', '_toe', '_knee')) for box in b['boxes']]
+ARMOUR = [(b['parent'], dict(box, origin=[box['origin'][i] + b['pivot'][i] for i in range(3)]))
+          for b in _KNIGHT['bones'] if b['name'].endswith(('_boot', '_toe', '_knee')) for box in b['boxes']]
 
 
 def lowest(pose):

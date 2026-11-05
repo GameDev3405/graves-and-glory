@@ -584,9 +584,11 @@ final class MotionBody {
     static void secondary(MotionEngine.Frame f, MotionEngine.State st, Pose out) {
         double[] t = st.lagTarget, lag = st.lag, prev = st.lagPrev;
         double bodyX = out.get("body", RX) + out.get("root", RX), bodyY = out.get("body", RY) + out.get("root", RY);
+        // the cape hangs from the chest (the waist joint's upper half), so it trails the waist's turn too
+        double capeX = bodyX + out.get("chest", RX), capeY = bodyY + out.get("chest", RY);
         double headX = out.get("head", RX), headY = out.get("head", RY);
         double hipZ = out.get("root", RZ) + out.get("body", RZ) + 8 * out.get("root", TX), hipX = bodyX + 5 * out.get("root", TY);
-        t[CAPE_X] = bodyX; t[CAPE_Y] = bodyY; t[CREST_X] = headX; t[CREST_Y] = headY;
+        t[CAPE_X] = capeX; t[CAPE_Y] = capeY; t[CREST_X] = headX; t[CREST_Y] = headY;
         t[RSTRAP_Z] = t[LSTRAP_Z] = hipZ;
         t[RSTRAP_X] = t[LSTRAP_X] = hipX;
         double rLeg = out.get("right_leg", RX), lLeg = out.get("left_leg", RX), legs = softMin(softMin(rLeg, lLeg), 0);
@@ -613,7 +615,7 @@ final class MotionBody {
         st.flutterRate = rate;
 
         double a = f.m * Math.min(f.speed / 0.6, 1), settle = f.settle;
-        double lagX = (lag[CAPE_X] - bodyX) * settle, lagY = (lag[CAPE_Y] - bodyY) * settle;
+        double lagX = (lag[CAPE_X] - capeX) * settle, lagY = (lag[CAPE_Y] - capeY) * settle;
         out.add("cape", RX, MotionEngine.clamp(a * (14 + 22 * f.run) + 2.5 * a * Math.sin(st.flutter) + 0.9 * lagX, -15, 75));
         out.add("cape", RZ, MotionEngine.clamp(0.6 * lagY - 0.03 * st.yawRate * settle, -20, 20));
         double follow = legs + (lag[TABARD] - legs) * settle;

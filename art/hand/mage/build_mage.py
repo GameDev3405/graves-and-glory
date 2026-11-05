@@ -24,7 +24,7 @@ from handlib import *   # noqa: F401,F403
 from handlib import Troop, FACE_ART, SKINS, HAIRS
 import build_archer as A
 
-SKIN = (128, 80)
+SKIN = (128, 96)    # the waist and ankle cuts (2026-11-05) outgrew 128x80
 CLOTH = (128, 64)
 WHITE = ramp("5e5a52", "8e897c", "b9b4a4", "d9d5c6", "efece0", "fbf9f1")   # the robe's white, shadowed warm
 ROPE = ramp("6a5a3a", "9c8858", "c8b57e", "e6d8a6")
@@ -348,7 +348,8 @@ def cloth_painter(spec, side):
 
 MAGE = Troop("mage", SKIN, CLOTH, bones, cloth_painter,
              {"weapon": "sun_staff", "hand": "right", "idleArms": "hang", "portrait": "tall 6", "faces": {"count": 4, "card": 0}},
-             veteran=veteran, glow=glow)
+             veteran=veteran, glow=glow,
+             waist={"brooch": "down"})
 def build(): return MAGE.build()
 def outputs(): return MAGE.outputs()
 

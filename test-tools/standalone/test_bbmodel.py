@@ -484,7 +484,7 @@ class JointedCubeChecks(unittest.TestCase):
                     got = bbmodel._troop_cube(jointed_cube(bone['name'] + '_0', base, box), base, 'fixture')
                     self.assertEqual(got, {'origin': box['origin'], 'size': box['size'], 'uv': box['uv'], 'mirror': False,
                                            'dilation': [0, 0, 0], 'faceuv': box['faceuv']})
-        self.assertEqual(seen, 8)   # the four limbs' upper and lower boxes
+        self.assertEqual(seen, 12)   # the four limbs' upper and lower boxes, the body and chest, and the two feet
 
     def test_unmoved_per_face_cube_has_no_faceuv(self):
         box = {'origin': [-2, 0, -2], 'size': [4, 6, 4], 'uv': [40, 22]}

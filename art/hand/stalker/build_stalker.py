@@ -401,7 +401,8 @@ NOTE = ("Graveborn Barrow Stalker (unit identity, Graveborn): a solid blue-grey 
         "bare bone legs, a team wrap, the frost bow. Tier II iron plate with rime tines, tier III black gilt plate; no flag on the back, no antlers.")
 
 STALKER = Troop("stalker", SKIN, CLOTH, bones, cloth_painter,
-                {"weapon": "frost_bow", "hand": "left", "idleArms": "hang", "portrait": "standard"}, glow=glow)
+                {"weapon": "frost_bow", "hand": "left", "idleArms": "hang", "portrait": "standard"}, glow=glow,
+                waist={"pelt_tail": "up"})
 def build(): return STALKER.build()
 def outputs(): return STALKER.outputs()
 
