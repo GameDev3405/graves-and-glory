@@ -42,6 +42,9 @@ public final class GravesAndGlory implements ModInitializer {
     public static final Identifier IMPACT = new Identifier("gravesandglory", "impact_v1");
     public static final Identifier PING = new Identifier("gravesandglory", "ping_v1");
     public static final Identifier TACTICAL = new Identifier("gravesandglory", "tactical_v1");
+    /** One order to several groups (command UI Task 3b): action, formation, float yaw, int target, int n, then n x (String group, double x, z), each
+     *  group with its own point. The command keys send only this; tactical_v1 (one group) stays accepted for old clients, bots and tests. */
+    public static final Identifier TACTICAL_V2 = new Identifier("gravesandglory", "tactical_v2");
     /** The battle state, server to client every 10 ticks: its layout is Battle.sendState's (state_v9 added the in-match progression fields there; state_v10 sends 3 to 5 group records, Riders and Siege when fielded), and GravesAndGloryClient reads it. */
     public static final Identifier STATE = new Identifier("gravesandglory", "state_v10");
     public static final Identifier OPEN_BARRACKS = new Identifier("gravesandglory", "barracks_v1");
@@ -129,6 +132,12 @@ public final class GravesAndGlory implements ModInitializer {
             String group=buf.readString(16), action=buf.readString(16), formation=buf.readString(16);
             double x=buf.readDouble(),z=buf.readDouble();float yaw=buf.readFloat();int target=buf.readInt();
             server.execute(()->{if(battle!=null)battle.tactical(player,group,action,formation,x,z,yaw,target);}); // wire format unchanged; OrderRules reads the new meanings
+        });
+        ServerPlayNetworking.registerGlobalReceiver(TACTICAL_V2, (server, player, handler, buf, responder) -> {
+            String action=buf.readString(16), formation=buf.readString(16);float yaw=buf.readFloat();int target=buf.readInt();int n=buf.readInt();
+            if(n<1||n>OrderRules.MAX_GROUPS)return;
+            List<OrderRules.At> groups=new ArrayList<>(n);for(int i=0;i<n;i++)groups.add(new OrderRules.At(buf.readString(32),buf.readDouble(),buf.readDouble()));
+            server.execute(()->{if(battle!=null)OrderRules.playerOrder(battle,player,groups,action,formation,yaw,target);}); // one order, one cooldown, however many groups
         });
         ServerPlayConnectionEvents.DISCONNECT.register((handler, server) -> {
             if(battle!=null) battle.leave(handler.player.getUuid());

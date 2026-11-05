@@ -5,7 +5,6 @@ import net.minecraft.client.util.InputUtil;
 import net.minecraft.util.math.Vec3d;
 import org.lwjgl.glfw.GLFW;
 
-import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -31,10 +30,6 @@ public final class CommandSelection {
     private static boolean panelOpen, trayOpen;
     /** Set when the order that began the current aim was given with Shift held, so confirming it leaves the panel open. */
     private static boolean aimKeepOpen;
-    /** Packets for the selected groups after the first: the server takes one order per commandCooldownTicks, so a multi-group order goes out one group every GAP ticks. */
-    private static final ArrayDeque<Runnable> queued = new ArrayDeque<>();
-    private static int queueDelay;
-    private static final int GAP = 5;
 
     /** The selected group ids in the order they were picked; ["all"] is the whole army. A copy. */
     public static List<String> selected() { return List.copyOf(selected); }
@@ -96,7 +91,7 @@ public final class CommandSelection {
     public static void order(String action, boolean keepOpen) {
         var c = MinecraftClient.getInstance();
         if (c.player == null || !GravesAndGloryClient.battleActive()) return;
-        aimKeepOpen = false; queued.clear(); // a new order supersedes the last one's aim flag and any packets still waiting
+        aimKeepOpen = false; // a new order supersedes the last one's aim flag
         switch (action) {
             case "attack", "follow", "retreat" -> {
                 CommandMode.cancel();
@@ -142,18 +137,14 @@ public final class CommandSelection {
     /** Whether the order that began the aim keeps the panel open when confirmed (Shift at either moment). */
     static boolean keepOpenOnConfirm() { return aimKeepOpen || shiftHeld(MinecraftClient.getInstance()); }
 
-    /** Sends one tactical_v1 packet per selected group ("all" is one packet to the whole army). The first goes at once and the rest follow
-     *  every GAP ticks (the server's order gap). A Charge's start is each group's own centre; Attack's target the server takes from the group's
+    /** Sends the order to every selected group as ONE tactical_v2 packet ("all" is the whole army), which the server applies as one order (one
+     *  cooldown, one Charge for the commander). A Charge's start is each group's own centre; Attack's target the server takes from each group's
      *  centre, Follow me and Retreat from the player, so `at` matters for hold only. */
     static void issueSelected(String action, String formation, Vec3d at, float yaw, int target) {
-        queued.clear();
-        if (selected.contains("all")) { CommandMode.issue("all", action, formation, at, yaw, target); return; }
-        boolean first = true;
-        for (String id : selected) {
-            Vec3d where = action.equals("charge") ? groupCentre(id, at) : at;
-            if (first) { CommandMode.issue(id, action, formation, where, yaw, target); queueDelay = GAP; first = false; }
-            else queued.add(() -> CommandMode.issue(id, action, formation, where, yaw, target));
-        }
+        List<CommandMode.Aim> groups = new ArrayList<>();
+        if (selected.contains("all")) groups.add(new CommandMode.Aim("all", at));
+        else for (String id : selected) groups.add(new CommandMode.Aim(id, action.equals("charge") ? groupCentre(id, at) : at));
+        CommandMode.issue(groups, action, formation, yaw, target);
     }
 
     /** One group's living centre from the last state packet, or the fallback when the group has no living members there. */
@@ -183,14 +174,13 @@ public final class CommandSelection {
     /** Every client tick in battle: the panel cannot stay open once the battle is over. */
     static void tick() {
         if (panelOpen && !GravesAndGloryClient.battleActive()) setPanelOpen(false);
-        if (!queued.isEmpty() && --queueDelay <= 0) { queued.poll().run(); queueDelay = GAP; }
     }
 
     /** A disconnect or a new round: panel and tray shut, no aim, the whole army selected, so a stale selection or a stale charge aim never carries over. */
     public static void reset() {
         CommandMode.cancel();
         selected.clear(); selected.add("all");
-        panelOpen = false; trayOpen = false; aimKeepOpen = false; queued.clear();
+        panelOpen = false; trayOpen = false; aimKeepOpen = false;
         mirror();
     }
 }

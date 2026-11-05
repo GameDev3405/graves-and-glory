@@ -96,7 +96,7 @@ public final class KeysSuite implements CommandUiChecks.Suite {
         // First launch only: the vanilla toolbar keys are freed once, then a flag file keeps later launches (and a player's rebinding) alone
         if (tick == 43) toolbarFlag(c);
 
-        // Several selected groups: one packet each, one every few ticks (the server takes one order per command gap)
+        // Several selected groups: one tactical_v2 packet, both groups take the order (cu-intake-multi-* count the packets)
         if (tick == 146) { CommandSelection.select("infantry", false); CommandSelection.select("ranged", true); CommandUiChecks.press(c, find(c, "key.gravesandglory.follow")); }
         if (tick == 176) CommandUiChecks.server(c, b -> {
             Snap inf = OrderIntakeProbe.snap(b, id, "infantry"), rng = OrderIntakeProbe.snap(b, id, "ranged");

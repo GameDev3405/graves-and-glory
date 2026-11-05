@@ -73,9 +73,18 @@ public final class CommandMode {
         if(lines.isEmpty()||!lines.get(lines.size()-1).text().equals(why))EventFeed.push("notice",GravesAndGloryClient.team,why,now);
     }
     static void ping(String kind,double x,double z){if(ClientPlayNetworking.canSend(GravesAndGlory.PING)){var b=PacketByteBufs.create();b.writeString(kind);b.writeDouble(x);b.writeDouble(z);ClientPlayNetworking.send(GravesAndGlory.PING,b);}}
-    static void issue(String group,String action,String form,Vec3d dest,float yaw,int target){
-        if(!GravesAndGloryClient.battleActive()||!ClientPlayNetworking.canSend(GravesAndGlory.TACTICAL))return;
-        var b=PacketByteBufs.create();b.writeString(group);b.writeString(action);b.writeString(form);b.writeDouble(dest.x);b.writeDouble(dest.z);b.writeFloat(yaw);b.writeInt(target);ClientPlayNetworking.send(GravesAndGlory.TACTICAL,b);
+    /** Order packets this client has sent (for the harness: a multi-group order must be one packet). */
+    static int ordersSent;
+    /** One group's order: a one-entry tactical_v2 packet. */
+    static void issue(String group,String action,String form,Vec3d dest,float yaw,int target){issue(java.util.List.of(new Aim(group,dest)),action,form,yaw,target);}
+    /** One group of an order and its own point (a Charge's start, a Formation's anchor). */
+    record Aim(String group,Vec3d at){}
+    /** One order to every listed group as ONE tactical_v2 packet (the server applies it as one order: one cooldown, one Charge). */
+    static void issue(java.util.List<Aim> groups,String action,String form,float yaw,int target){
+        if(groups.isEmpty()||!GravesAndGloryClient.battleActive()||!ClientPlayNetworking.canSend(GravesAndGlory.TACTICAL_V2))return;
+        var b=PacketByteBufs.create();b.writeString(action);b.writeString(form);b.writeFloat(yaw);b.writeInt(target);
+        b.writeInt(groups.size());for(var g:groups){b.writeString(g.group());b.writeDouble(g.at().x);b.writeDouble(g.at().z);}
+        ClientPlayNetworking.send(GravesAndGlory.TACTICAL_V2,b);ordersSent++;
     }
     /** The team a unit fights for, read from its name colour (team 0 aqua, team 1 light purple; see GravesAndGlory.spawn), or -1. */
     static int nameTeam(net.minecraft.entity.Entity e){
