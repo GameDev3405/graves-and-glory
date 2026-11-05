@@ -261,6 +261,8 @@ public final class GravesAndGlory implements ModInitializer {
         Vec3d chargeDir;
         /** A Retreat that becomes Follow me once the group reaches its commander (OrderRules; Tactics reads it, Task 5). */
         boolean thenFollow;
+        /** A player's Formation (OrderRules' hold): once the group is in place its melee troops keep their slots and its ranged troops shoot anything in reach (Tactics, Task 5). Never set for a bot's, Siege's or Muster's Hold. */
+        boolean holdSlots;
         Assignment(String o,String f,Vec3d t,float y){order=o;formation=f;target=t;yaw=y;}
     }
     /** A troop in a squad's training queue: when it is done, and the gold paid for it (the troop's sheet cost), which a cancel or a full army refunds. The short form is a free troop: nothing paid, nothing refunded. */

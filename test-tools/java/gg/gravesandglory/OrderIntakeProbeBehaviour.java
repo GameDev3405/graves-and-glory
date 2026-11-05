@@ -74,6 +74,12 @@ public final class OrderIntakeProbeBehaviour {
     public static boolean walking(GravesAndGlory.Unit u) { return !u.mob.getNavigation().isIdle() || u.mob.getMoveControl().isMoving(); }
     /** The movement speed MoveControl set this tick over the troop's movement speed attribute: the walk's speed multiplier (an order's moveMultiplier). */
     public static double speedShare(GravesAndGlory.Unit u) { double attr = u.mob.getAttributeValue(EntityAttributes.GENERIC_MOVEMENT_SPEED); return attr <= 0 ? 0 : u.mob.getMovementSpeed() / attr; }
+    /** The movement speed MoveControl set this tick over the troop's BASE movement speed: the walk's multiplier with every speed modifier on it (the shield crawl included). */
+    public static double baseShare(GravesAndGlory.Unit u) { var i = u.mob.getAttributeInstance(EntityAttributes.GENERIC_MOVEMENT_SPEED); double base = i == null ? 0 : i.getBaseValue(); return base <= 0 ? 0 : u.mob.getMovementSpeed() / base; }
+    /** Whether the shield crawl's speed modifier (Tactics.crawl) is on the troop. */
+    public static boolean crawling(GravesAndGlory.Unit u) { var i = u.mob.getAttributeInstance(EntityAttributes.GENERIC_MOVEMENT_SPEED); return i != null && i.getModifier(Tactics.CRAWL_ID) != null; }
+    /** The troop's weapon reach (Abilities.range). */
+    public static double reach(GravesAndGlory.Battle b, GravesAndGlory.Unit u) { return Abilities.range(b, u); }
     /** The troop's formation slot (Battle.formation). */
     public static Vec3d slot(GravesAndGlory.Battle b, GravesAndGlory.Unit u) { return b.formation(u); }
     public static long chargedAt(GravesAndGlory.Battle b, UUID id, String group) { return b.squads.get(id).chargedAt.getOrDefault(group, -1L); }

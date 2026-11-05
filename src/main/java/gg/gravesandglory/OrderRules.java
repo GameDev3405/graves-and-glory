@@ -124,6 +124,7 @@ final class OrderRules {
             a.hunt = order.equals("attack");
             a.chargeDir = chargeDir;
             a.thenFollow = order.equals("retreat");
+            a.holdSlots = order.equals("hold");
         }
         if (order.equals("charge")) { markChargeUsed(b, s); CommandNet.cooldown(p, Spec.COMBATDISCIPLINE[0].chargeCooldownTicks()); }
         for (String group : charging) b.markCharge(s, group);

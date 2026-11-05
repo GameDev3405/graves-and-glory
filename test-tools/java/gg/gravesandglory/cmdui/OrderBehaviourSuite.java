@@ -30,6 +30,7 @@ public final class OrderBehaviourSuite implements CommandUiChecks.Suite {
     final Map<GravesAndGlory.Unit, Long> attackMarks = new HashMap<>();
 
     static final String[] NAMES = {"attack-hunts-far", "bot-attack-leashed", "charge-run", "charge-impact", "charge-archers", "retreat", "retreat-respawning", "formation-hold"};
+    long chargedAt0; boolean crawled; double shieldPace, offMelee = Double.MAX_VALUE, reachGap;
     static final int[] LIMITS = {520, 420, 760, 560, 560, 760, 480, 420};
 
     @Override public void tick(MinecraftClient c, int tick) {
@@ -153,10 +154,11 @@ public final class OrderBehaviourSuite implements CommandUiChecks.Suite {
     // An enemy 15 blocks ahead: on the first landed blow the infantry's Charge has turned into attack (hunt); chargedAt kept.
     void chargeImpact(GravesAndGlory.Battle b, long t) {
         if (t == 40) { if (!layout(b)) { next(b); return; } E = C.add(side * 15, 0, 0); foes = enemies(b, false, E, "hold", "revenant", 3, true); }
-        if (t == 45) { OrderIntakeProbeBehaviour.order(b, id, "infantry", "charge", "line", C.x, C.z, face()); issuedAt = now(b); strikes0 = OrderIntakeProbeBehaviour.strikesLanded(); note = "charge stored " + snap(b, "infantry") + ", chargedAt " + OrderIntakeProbeBehaviour.chargedAt(b, id, "infantry"); }
+        if (t == 45) { OrderIntakeProbeBehaviour.order(b, id, "infantry", "charge", "line", C.x, C.z, face()); issuedAt = now(b); strikes0 = OrderIntakeProbeBehaviour.strikesLanded(); chargedAt0 = OrderIntakeProbeBehaviour.chargedAt(b, id, "infantry"); note = "charge stored " + snap(b, "infantry") + ", chargedAt " + OrderIntakeProbeBehaviour.chargedAt(b, id, "infantry"); }
         if (t > 45 && OrderIntakeProbeBehaviour.strikesLanded() > strikes0) {
             Snap a = snap(b, "infantry");
-            pass(a != null && a.order().equals("attack") && a.hunt(), String.format("first landed blow at +%d: stored %s; chargedAt %d (issued %d); %s", now(b) - issuedAt, a, OrderIntakeProbeBehaviour.chargedAt(b, id, "infantry"), issuedAt, note));
+            long kept = OrderIntakeProbeBehaviour.chargedAt(b, id, "infantry");
+            pass(a != null && a.order().equals("attack") && a.hunt() && kept == chargedAt0 && kept >= 0, String.format("first landed blow at +%d: stored %s; chargedAt %d after the switch (want %d, as stamped by the Charge; issued %d); %s", now(b) - issuedAt, a, kept, chargedAt0, issuedAt, note));
             next(b);
         }
     }
@@ -185,12 +187,16 @@ public final class OrderBehaviourSuite implements CommandUiChecks.Suite {
             if (now(b) - issuedAt <= 40) OrderIntakeProbeBehaviour.fire(b, id, "infantry");
             if (!a.order().equals("follow")) {
                 for (var u : us) if (OrderIntakeProbeBehaviour.swungAt(u) > issuedAt) { swings++; attackMarks.put(u, OrderIntakeProbeBehaviour.swungAt(u)); }
-                if (now(b) - issuedAt > 2 && now(b) - issuedAt <= 40) for (var u : us) if (OrderIntakeProbeBehaviour.shieldUp(u)) shield = true;
+                if (now(b) - issuedAt > 2 && now(b) - issuedAt <= 40) for (var u : us) if (OrderIntakeProbeBehaviour.shieldUp(u)) {
+                    shield = true; if (OrderIntakeProbeBehaviour.crawling(u)) crawled = true;
+                    if (OrderIntakeProbeBehaviour.walking(u)) shieldPace = Math.max(shieldPace, OrderIntakeProbeBehaviour.baseShare(u));
+                }
             } else if (switchedAt < 0) switchedAt = now(b);
             if (switchedAt >= 0 || t == LIMITS[scene] - 1) {
                 int swingers = attackMarks.size();
                 pass(switchedAt >= 0 && swingers == 0, String.format("follow at +%d; members that swung on the way %d; now %s; %s", switchedAt < 0 ? -1 : switchedAt - issuedAt, swingers, a, note));
-                CommandUiChecks.report("cu-beh-retreat-shield", shield, "a knight's shield up under arrow fire during the first 40 ticks of the Retreat: " + shield);
+                boolean pace = shieldPace >= 1.10 && !crawled; // Retreat's moveMultiplier 1.15, no shield crawl (fix round 1 ruling)
+                CommandUiChecks.report("cu-beh-retreat-shield", shield && pace, String.format("a knight's shield up under arrow fire during the first 40 ticks of the Retreat: %s; shielded knights' pace %.3f of their base speed (want 1.10 or more, Retreat's 1.15), the shield crawl on one of them %s (want false)", shield, shieldPace, crawled));
                 next(b);
             }
         }
@@ -217,13 +223,20 @@ public final class OrderBehaviourSuite implements CommandUiChecks.Suite {
     // Formation (hold + line): ranged shoot an enemy in reach, melee stay within arriveRadius (4) of their slots while an enemy stands 8 blocks off.
     void formationHold(GravesAndGlory.Battle b, long t) {
         if (t == 40) { if (!layout(b)) { next(b); return; } OrderIntakeProbeBehaviour.order(b, id, "all", "hold", "line", C.x, C.z, face()); note = "stored " + snap(b, "infantry"); }
-        if (t == 180) { E = C.add(side * 8, 0, 0); foes = enemies(b, false, E, "hold", "revenant", 1, true); countAttacks(rng(b)); best = 0; issuedAt = now(b); }
+        if (t == 180) {
+            double front = -Double.MAX_VALUE; for (var u : inf(b)) front = Math.max(front, side * OrderIntakeProbeBehaviour.slot(b, u).x);
+            E = new Vec3d(side * front + side * 8, C.y, C.z); // 8 blocks ahead of the front melee slot
+            for (var u : inf(b)) offMelee = Math.min(offMelee, flat(E, OrderIntakeProbeBehaviour.slot(b, u)));
+            reachGap = Double.MAX_VALUE; for (var u : rng(b)) reachGap = Math.min(reachGap, flat(E, OrderIntakeProbeBehaviour.slot(b, u)) - OrderIntakeProbeBehaviour.reach(b, u));
+            foes = enemies(b, false, E, "hold", "revenant", 1, true); countAttacks(rng(b)); best = 0; issuedAt = now(b);
+        }
         if (t > 180) {
             shots += countAttacks(rng(b));
             for (var u : inf(b)) best = Math.max(best, flat(OrderIntakeProbeBehaviour.mob(u).getPos(), OrderIntakeProbeBehaviour.slot(b, u)));
             if (t == 400) {
                 double ranged = Double.MAX_VALUE; for (var u : rng(b)) ranged = Math.min(ranged, OrderIntakeProbeBehaviour.mob(u).distanceTo(OrderIntakeProbeBehaviour.mob(foes.get(0))));
-                pass(best <= 4 && shots >= 1, String.format("enemy at %s, 8 off the anchor; infantry max off slot %.1f; ranged shots %d (nearest archer %.1f from it); %s", xz(E), best, shots, ranged, note));
+                boolean inReach = reachGap <= -1; // the enemy stands at least a block inside the nearest archer's weapon reach from its slot
+                pass(inReach && offMelee >= 7.5 && best <= 4 && shots >= 1, String.format("enemy at %s, %.1f off the nearest melee slot; %.1f inside the nearest archer's reach from its slot (want 1 or more); infantry max off slot %.1f (want arriveRadius 4 at most); ranged shots %d (nearest archer %.1f from it); %s", xz(E), offMelee, -reachGap, best, shots, ranged, note));
                 next(b);
             }
         }
