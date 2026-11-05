@@ -59,7 +59,7 @@ Every harness run used one client at a time. No other java process was touched.
 - `panel-open-1920.png` and `panel-open-854.png`: panel open.
 - `panel-tray-1920.png` and `panel-tray-854.png`: selected (Formation pennant active, tray open, Wall picked).
 - `panel-cooldown-1920.png` and `panel-cooldown-854.png`: disabled (Charge cooldown).
-- `outline-aim.png`, `outline-team.png`, `charge-camera.png` and `custom-groups.png`.
+- `panel-pills-1920.png`, `outline-aim.png`, `rally-pose.png`, `charge-camera.png` and `custom-groups.png`.
 
 ## Status, kept apart
 
