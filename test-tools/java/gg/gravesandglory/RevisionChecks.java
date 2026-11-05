@@ -24,10 +24,10 @@ public final class RevisionChecks implements ClientModInitializer {
             if(tick==60){CommandMode.selected="infantry";CommandMode.issue("infantry","hold","line",new Vec3d(-68,65,10),-90,-1);}
             if(tick==80)CommandMode.issue("ranged","move","line",new Vec3d(-70,65,35),-90,-1);
             if(tick==100)CommandMode.issue("support","hold","loose",new Vec3d(-92,65,12),-90,-1);
-            if(tick==140)server(c,b->{var s=b.squads.get(c.player.getUuid());result("independent-packet-orders",s.assignments.size()==3&&s.assignments.get("infantry").order.equals("hold")&&s.assignments.get("ranged").order.equals("move")&&s.assignments.get("support").target.x==-92,"Three real client packets / distinct assignments");initial=b.units.stream().filter(u->u.squad==s&&u.spec.group().equals("ranged")).findFirst().orElseThrow().mob.getPos();});
-            if(tick==160)c.setScreen(new GravesAndGloryClient.CommandScreen());
+            if(tick==140)server(c,b->{var s=b.squads.get(c.player.getUuid());result("independent-packet-orders",s.assignments.size()==3&&s.assignments.get("infantry").order.equals("hold")&&s.assignments.get("ranged").order.equals("hold")&&s.assignments.get("support").target.x==-92,"Three real client packets / distinct assignments (a ranged move packet is stored as hold)");initial=b.units.stream().filter(u->u.squad==s&&u.spec.group().equals("ranged")).findFirst().orElseThrow().mob.getPos();});
+            if(tick==160)CommandSelection.setPanelOpen(true);
             if(tick==180)shot(c,"command-interface");
-            if(tick==200){c.setScreen(null);server(c,b->{var p=b.server.getPlayerManager().getPlayer(c.player.getUuid());p.changeGameMode(GameMode.SPECTATOR);p.teleport(b.world,-85,84,5,-90,45);});CommandMode.begin("move");}
+            if(tick==200){CommandSelection.setPanelOpen(false);c.setScreen(null);server(c,b->{var p=b.server.getPlayerManager().getPlayer(c.player.getUuid());p.changeGameMode(GameMode.SPECTATOR);p.teleport(b.world,-85,84,5,-90,45);});CommandMode.begin("move");}
             if(tick==220)shot(c,"world-preview");
             if(tick==240){CommandMode.cancel();c.setScreen(new GravesAndGloryClient.MapScreen(null));}
             if(tick==260)shot(c,"tactical-map");
@@ -37,7 +37,7 @@ public final class RevisionChecks implements ClientModInitializer {
             if(tick==420)server(c,b->{var s=b.squads.get(c.player.getUuid());result("retreat-interrupt",b.units.stream().filter(u->u.squad==s&&u.spec.group().equals("infantry")).allMatch(u->u.mob.getTarget()==null),"Attack targets cleared within one second");hp=victim.mob.getHealth();initial=b.units.stream().filter(u->u.squad==s&&u.spec.group().equals("infantry")).findFirst().orElseThrow().mob.getPos();});
             if(tick==500)server(c,b->{var s=b.squads.get(c.player.getUuid());var u=b.units.stream().filter(v->v.squad==s&&v.spec.group().equals("infantry")).findFirst().orElseThrow();result("retreat-disengages",u.mob.getX()<initial.x-3&&victim.mob.getHealth()==hp,"retreat distance="+(initial.x-u.mob.getX())+", enemy hp="+victim.mob.getHealth());victim.mob.discard();});
             if(tick==520)CommandMode.issue("all","follow","block",c.player.getPos(),c.player.getYaw(),-1);
-            if(tick==560)server(c,b->{var s=b.squads.get(c.player.getUuid());result("whole-army-recall",s.assignments.values().stream().allMatch(a->a.order.equals("follow")),"All groups recalled");var p=b.server.getPlayerManager().getPlayer(s.owner);long before=s.lastOrder;b.tactical(p,"all","charge","block",-60,10,0,-1);result("charge-requires-enemy",s.lastOrder==before,"No terrain-only charge accepted");});
+            if(tick==560)server(c,b->{var s=b.squads.get(c.player.getUuid());result("whole-army-recall",s.assignments.values().stream().allMatch(a->a.order.equals("follow")),"All groups recalled");/* the old charge-requires-enemy check is gone: a charge needs no enemy now; cmdui/OrderIntakeSuite cu-intake-charge-* cover the rule */});
             if(tick==600){shot(c,"group-hud");result("suite-complete",true,"Local interaction slice; four-player experience and map rework remain unverified");server(c,b->{var p=b.server.getPlayerManager().getPlayer(c.player.getUuid());var f=Spec.FACTIONS[b.squads.get(p.getUuid()).team];p.teleport(b.world,f.barracksX(),66,f.barracksZ(),0,0);});}
             if(tick==620)GravesAndGloryClient.send("barracks");
             if(tick==640)shot(c,"barracks");

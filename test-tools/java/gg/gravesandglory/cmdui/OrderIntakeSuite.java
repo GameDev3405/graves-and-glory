@@ -27,7 +27,6 @@ public final class OrderIntakeSuite implements CommandUiChecks.Suite {
     @Override public void tick(MinecraftClient c, int tick) {
         if (tick == 1) {
             id = c.player.getUuid();
-            CommandNet.registerClient(); // Task 4 adds this call to GravesAndGloryClient; idempotent
             CommandNet.Client.reset();
             CommandUiChecks.seatAndStart(c);
         }

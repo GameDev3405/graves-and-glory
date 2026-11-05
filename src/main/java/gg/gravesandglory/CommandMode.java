@@ -48,7 +48,6 @@ public final class CommandMode {
     }
     public static boolean active(){return !pending.isEmpty();}
     static int count(String id){return groups.stream().filter(g->id.equals("all")||id.equals(g.id())).mapToInt(Group::count).sum();}
-    static void changeFormation(String id){formation=id;var c=MinecraftClient.getInstance();if(c.player!=null)issue(selected,"formation",id,c.player.getPos(),c.player.getYaw(),-1);}
     static void begin(String order){if(!GravesAndGloryClient.battleActive())return;pending=order;facingSet=false;MinecraftClient.getInstance().setScreen(null);}
     public static boolean cancel(){if(!active())return false;pending="";destination=null;return true;}
     /** A disconnect: no order stays aimed, and the cards' groups and loss flashes go, so the next server's first snapshot is compared
@@ -56,11 +55,16 @@ public final class CommandMode {
      *  client's: the map's pings, the clock, the whole army selected (a group the next world lacks would leave no card selected),
      *  the default formation and the facing taken from the player again. */
     static void reset(){cancel();preview.clear();enemy=-1;groups=java.util.List.of();flashUntil.clear();flashFrom.clear();pings=java.util.List.of();seconds=600;selected="all";formation="block";facing=0;facingSet=false;}
+    /** Sends the aimed order to the selected groups: a Charge from the selection's centre along the look yaw (the server clamps the run), anything else at the aimed point. */
     public static boolean confirm(){
         if(!active())return false;
-        if(destination==null){refuse("Aim at reachable terrain");return true;}
-        if(pending.equals("charge")&&enemy<0){refuse("Charge: aim at an enemy");return true;}
-        issue(selected,pending,formation,destination,facing,enemy);pending="";return true;
+        String order=pending;boolean charge=order.equals("charge");
+        if(!charge&&destination==null){refuse("Aim at reachable terrain");return true;}
+        pending="";
+        if(charge)CommandSelection.issueSelected(order,formation,CommandSelection.selectedCentre(),facing,-1);
+        else CommandSelection.issueSelected(order,formation,destination,facing,enemy);
+        CommandSelection.afterOrder(CommandSelection.keepOpenOnConfirm());
+        return true;
     }
     /** A refused confirmation as a feed notice; clicking again while the same notice still shows adds no second line. */
     static void refuse(String why){
