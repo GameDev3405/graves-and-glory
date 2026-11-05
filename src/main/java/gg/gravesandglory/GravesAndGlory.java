@@ -967,6 +967,9 @@ public final class GravesAndGlory implements ModInitializer {
         }
         /** The order a troop is under: its group's stored one, or its troop type's (troop:<id>, from a custom group order, CustomGroups) when that was issued at the same time or later. No group ever leaves it on its own (the no-routing design); only its commander's next order changes it. */
         Assignment assignment(Unit u){Assignment t=u.squad.assignments.get(CustomGroups.TROOP+u.spec.id()),g=u.squad.assignments.get(u.spec.group());return t!=null&&(g==null||t.issued>=g.issued)?t:storedAssignment(u.squad,u.spec.group());}
+        /** The newest order among the squad's living troops of a group as assignment(u) reads it (a custom group's order included, Task 12 fix I2),
+         *  else the group's stored one: what the HUD shows for the group and where reinforcements go. */
+        Assignment groupOrder(Squad s,String group){Assignment best=null;for(Unit u:units)if(u.squad==s&&u.spec.group().equals(group)&&u.mob.isAlive()){var a=assignment(u);if(best==null||a.issued>best.issued)best=a;}return best!=null?best:storedAssignment(s,group);}
         Assignment storedAssignment(Squad s,String group){return s.assignments.getOrDefault(group,new Assignment(s.order,s.formation,s.target,s.yaw));}
         /** Stamps the charge of the named group(s) (Squad.chargedAt), which the counters table's charge impact (row C5) reads. A bot's order sounds nothing; a player's order sounds in the world at him (BattleEffects.feedback), on the order paths. */
         void markCharge(Squad s,String group){for(var g:Spec.GROUPS)if(!g.id().equals("all")&&(group.equals("all")||group.equals(g.id())))s.chargedAt.put(g.id(),time);}
@@ -1002,7 +1005,8 @@ public final class GravesAndGlory implements ModInitializer {
             Assignment a=assignment(u);if(!u.squad.bot&&u.squad.order.equals("hold")&&!u.squad.assignments.containsKey(u.spec.group())&&!CustomGroups.ordered(u))return u.deployed;var f=Arrays.stream(Spec.FORMATIONS).filter(v->v.id().equals(a.formation)).findFirst().orElse(Spec.FORMATIONS[0]);
             // the group in slot order (then entity id, so every member sees the same order); BattleMath.holdLayout lays it out: on Hold its shield troops close into the wall in the front ranks, the rest form behind them
             List<Unit> group=new ArrayList<>();group.add(u);
-            for(Unit other:units)if(other!=u&&other.squad==u.squad&&other.spec.group().equals(u.spec.group())&&other.mob.isAlive())group.add(other);
+            String key=CustomGroups.stateKey(u); // its spec group, or the troops sharing its custom group's order (Task 12 fix I1)
+            for(Unit other:units)if(other!=u&&other.squad==u.squad&&other.mob.isAlive()&&CustomGroups.stateKey(other).equals(key))group.add(other);
             group.sort(Comparator.<Unit>comparingInt(m->m.slot).thenComparingInt(m->m.mob.getId()));
             boolean[] shield=new boolean[group.size()];double[] width=new double[group.size()];int at=0;
             for(int i=0;i<shield.length;i++){Unit m=group.get(i);shield[i]=walls(m,a.order);width[i]=m.mob.getWidth();if(m==u)at=i;}
@@ -1022,8 +1026,8 @@ public final class GravesAndGlory implements ModInitializer {
          * order. A Hold given again after another order, with the same members and shape, keeps the cached places.
          */
         double[] heldPlace(Unit u,List<Unit> group,boolean[] shield,double[][] layout,int columns,boolean wedge,String shape){
-            var kept=BattleMath.held(u.squad.places.get(u.spec.group()),group,shape,layout,shield,columns,wedge);
-            u.squad.places.put(u.spec.group(),kept);
+            String key=CustomGroups.stateKey(u);var kept=BattleMath.held(u.squad.places.get(key),group,shape,layout,shield,columns,wedge);
+            u.squad.places.put(key,kept);
             return kept.at.get(u);
         }
         /** The cell the unit takes under its order: on Hold a shield troop's wall cell (BattleMath.shieldCell), any other its body's room (spacing). The bridge lanes use it (Tactics.route). */
@@ -1115,7 +1119,7 @@ public final class GravesAndGlory implements ModInitializer {
             Vec3d home=fieldBase(s.team),ring=ringPlace(s,slot,spec),barracks=home.add(ring);
             if(!forwardReinforcement)return new Deploy(barracks,null);
             List<Anchor> anchors=reinforcementAnchors(s.team);if(anchors.isEmpty())return new Deploy(barracks,null);
-            Vec3d target=storedAssignment(s,"infantry").target;double[] ax=new double[anchors.size()],az=new double[anchors.size()];
+            Vec3d target=groupOrder(s,"infantry").target;double[] ax=new double[anchors.size()],az=new double[anchors.size()];
             for(int i=0;i<ax.length;i++){ax[i]=anchors.get(i).x();az[i]=anchors.get(i).z();}
             int chosen=BattleMath.nearestAnchor(target.x,target.z,home.x,home.z,ax,az);if(chosen<0)return new Deploy(barracks,null);
             Anchor anchor=anchors.get(chosen);Vec3d centre=deployCentre(s.team,anchor);
@@ -1340,7 +1344,7 @@ public final class GravesAndGlory implements ModInitializer {
                 b.writeInt(sent.size());
                 for(String group:sent){
                     var members=units.stream().filter(u->u.squad==s&&u.spec.group().equals(group)&&u.mob.isAlive()).toList();
-                    Assignment a=s==null?new Assignment("follow","block",Vec3d.ZERO,0):storedAssignment(s,group);
+                    Assignment a=s==null?new Assignment("follow","block",Vec3d.ZERO,0):groupOrder(s,group);
                     b.writeString(group);b.writeInt(members.size());b.writeFloat((float)members.stream().mapToDouble(u->u.mob.getHealth()/u.mob.getMaxHealth()).average().orElse(0));
                     b.writeString(a.order);b.writeString(a.formation);b.writeFloat((float)a.target.x);b.writeFloat((float)a.target.z);b.writeFloat(a.yaw);
                     b.writeFloat((float)members.stream().mapToDouble(u->u.mob.getX()).average().orElse(a.target.x));b.writeFloat((float)members.stream().mapToDouble(u->u.mob.getZ()).average().orElse(a.target.z));

@@ -26,7 +26,8 @@ import java.util.UUID;
  * goes to work/cmdui-shots (never committed). Never included in releases.
  */
 public final class CustomGroupsSuite implements CommandUiChecks.Suite {
-    static final String NAME = "Vanguard";
+    static final String NAME = "Vanguard", KNIGHT = "knight", ARCHER = "archer", SPLIT = "sentinel";
+    volatile net.minecraft.util.math.Vec3d spot, startCentre, endCentre; volatile String splitResult;
     UUID id;
     Path shots;
     int step, at;
@@ -39,7 +40,7 @@ public final class CustomGroupsSuite implements CommandUiChecks.Suite {
     final List<String> createNotes = new ArrayList<>();
     boolean createOk = true, keyOk, pressed2, pressedA, pressedB;
 
-    @Override public int limit() { return 3000; }
+    @Override public int limit() { return 3600; }
 
     void next(int tick) { step++; at = tick; asked = false; }
     void fail(MinecraftClient c, String check, String why) { CommandUiChecks.report(check, false, why); CommandUiChecks.finish(c); }
@@ -51,8 +52,8 @@ public final class CustomGroupsSuite implements CommandUiChecks.Suite {
                 id = c.player.getUuid();
                 shots = Path.of(System.getProperty("gravesandglory.repoRoot", ".")).resolve("work").resolve("cmdui-shots");
                 try { Files.createDirectories(shots); } catch (Exception ignored) { }
+                CommandUiChecks.server(c, b -> { CustomGroupsProbe.clearGroups(b, id); CustomGroupsProbe.splitBanner(b, id); }); // knights and Sentinels in infantry (fix I1)
                 CommandUiChecks.seatAndStart(c);
-                CommandUiChecks.server(c, b -> CustomGroupsProbe.clearGroups(b, id));
                 next(tick);
             }
             case 1 -> { // the battle runs; open the Armoury and turn the sheet to the groups
@@ -76,9 +77,9 @@ public final class CustomGroupsSuite implements CommandUiChecks.Suite {
             case 4 -> { // group 1 reaches the client, then pick two fielded troop types on the page that leave other troops out
                 if (!CustomGroupsProbe.clientGroups().contains("1:")) { if (r > 200) fail(c, "cu-custom-create", "group 1 never reached the client: " + CustomGroupsProbe.clientGroups()); return; }
                 Set<String> types = new LinkedHashSet<>(); for (var v : fielded.values()) types.add(v.split("/")[0]);
-                List<String> pick = new ArrayList<>(); for (var t : CustomGroupsProbe.visibleTroops(c)) if (types.contains(t)) pick.add(t);
-                if (pick.size() < 2) { fail(c, "cu-custom-create", "need two fielded troop types on the page: page " + CustomGroupsProbe.visibleTroops(c) + ", fielded " + types); return; }
-                troopA = pick.get(0); troopB = pick.get(1);
+                var page = CustomGroupsProbe.visibleTroops(c);
+                if (!page.contains(KNIGHT) || !page.contains(ARCHER) || !types.contains(KNIGHT) || !types.contains(ARCHER) || !types.contains(SPLIT)) { fail(c, "cu-custom-create", "need knight and archer on the page and knight, archer and sentinel fielded: page " + page + ", fielded " + types); return; }
+                troopA = KNIGHT; troopB = ARCHER;
                 for (var v : fielded.values()) if (v.startsWith(troopA + "/")) groupG = v.split("/")[1];
                 if (!pressedA) pressedA = CustomGroupsProbe.press(c, "member", 1, troopA);
                 if (!pressedB) pressedB = CustomGroupsProbe.press(c, "member", 1, troopB);
@@ -191,10 +192,31 @@ public final class CustomGroupsSuite implements CommandUiChecks.Suite {
                             + g + " troops in " + groupG + ", " + a + " members" + (bad.isEmpty() ? "" : "; wrong " + bad));
                     become = CustomGroupsProbe.becomeCheck(b, id, troopA, troopB);
                     CommandUiChecks.report("cu-custom-become", become.isEmpty(), become.isEmpty() ? "a custom Charge turned to Attack on its troop keys only; " + groupG + "'s own order kept" : become);
+                    spot = CustomGroupsProbe.spotNear(b, id, troopA); startCentre = CustomGroupsProbe.centreOf(b, id, troopA);
+                });
+                step = 18; at = tick; asked = false;
+            }
+            case 18 -> { // the split (fix I1): custom:2 (knights) holds at a spot ten blocks off while the Sentinels keep infantry's Follow me
+                if (r < 5) return;
+                if (spot == null) { if (r > 100) { CommandUiChecks.report("cu-custom-split", false, "no dry spot near the knights"); step = 20; at = tick; } return; }
+                OrderIntakeProbe.sendMany("hold", "line", 0, List.of(new OrderIntakeProbe.At("custom:2", spot.x, spot.z)));
+                step = 19; at = tick;
+            }
+            case 19 -> {
+                if (r < 140) return; // seven seconds to walk there
+                CommandUiChecks.server(c, b -> {
+                    endCentre = CustomGroupsProbe.centreOf(b, id, troopA);
+                    String bad = CustomGroupsProbe.split(b, id, troopA, SPLIT, spot);
+                    double was = Math.sqrt(GravesAndGlory_dist(startCentre, spot)), now = Math.sqrt(GravesAndGlory_dist(endCentre, spot));
+                    if (now > was - 2 && now > 4) bad = (bad.isEmpty() ? "" : bad + "; ") + troopA + " did not walk to the spot: " + Math.round(was) + " then " + Math.round(now) + " blocks";
+                    splitResult = bad;
+                    CommandUiChecks.report("cu-custom-split", bad.isEmpty(), "custom:2 (" + troopA + " only) Hold at a spot " + Math.round(was) + " blocks off; " + troopA + " now " + Math.round(now)
+                        + " blocks from it, in their own slots and key; " + SPLIT + " (same infantry group) kept Follow me, its key and slots" + (bad.isEmpty() ? "" : "; wrong " + bad));
                     CustomGroupsProbe.returnLobby(b);
                 });
-                next(tick);
+                step = 20; at = tick;
             }
+            case 20 -> { if (r < 5) return; if (splitResult == null && r < 200) return; step = 15; at = tick; asked = false; }
             case 15 -> { // back in camp: the group is on the profile and in its file
                 if (r < 20 || GravesAndGloryClient.battleActive()) { if (r > 400) fail(c, "cu-custom-create", "the second round did not end"); return; }
                 if (!asked) { asked = true; CommandUiChecks.server(c, b -> { serverGroups = CustomGroupsProbe.groups(b, id); savedFile = CustomGroupsProbe.saved(b, id); serverName = "done"; }); return; }
@@ -209,6 +231,8 @@ public final class CustomGroupsSuite implements CommandUiChecks.Suite {
             default -> { }
         }
     }
+
+    static double GravesAndGlory_dist(net.minecraft.util.math.Vec3d a, net.minecraft.util.math.Vec3d b) { if (a == null || b == null) return 1e6; double dx = a.x - b.x, dz = a.z - b.z; return dx * dx + dz * dz; }
 
     @Override public void cleanup(MinecraftClient c) { if (c.currentScreen != null) c.setScreen(null); }
 }

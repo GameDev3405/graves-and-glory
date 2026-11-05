@@ -19,10 +19,16 @@ final class CustomGroups {
     /** The group id prefix a custom group order names, and the assignment key prefix of a troop type's own order. */
     static final String PREFIX = "custom:", TROOP = "troop:";
 
-    /** The group number of a custom:&lt;n&gt; id, or -1 when the id is not one. */
+    /** The group number of a custom:&lt;n&gt; id, or -1 when the id is not one. Only the canonical spelling counts: custom:+1 and custom:01 are not ids. */
     static int number(String group) {
         if (group == null || !group.startsWith(PREFIX)) return -1;
-        try { return Integer.parseInt(group.substring(PREFIX.length())); } catch (NumberFormatException e) { return -1; }
+        return canonical(group.substring(PREFIX.length()));
+    }
+    /** A group number written canonically (1, not +1 or 01), or -1. */
+    static int canonical(String digits) {
+        int n;
+        try { n = Integer.parseInt(digits); } catch (NumberFormatException e) { return -1; }
+        return n > 0 && String.valueOf(n).equals(digits) ? n : -1;
     }
 
     /** The commander's custom group a custom:&lt;n&gt; id names, or null (not an id, a bot, or no such group in his profile). */
@@ -65,7 +71,7 @@ final class CustomGroups {
         a.issued = b.time;
         for (String id : custom.troopIds()) s.assignments.put(TROOP + id, a);
         for (var u : resolve(b, s, group)) {
-            s.arrived.remove(u.spec.group());
+            s.arrived.remove(stateKey(u)); // the custom group's own latch (Task 12 fix I1); the spec group's latch stays the rest of that group's
             Abilities.keepSpeed(u.mob, Tactics.CRAWL_ID, "Graves and Glory crawl", 0);
             u.lockedTarget = null; u.spellCenter = null; u.mob.setTarget(null); u.mob.getNavigation().stop(); u.nextPath = 0; u.stuckTicks = 0;
         }
@@ -77,6 +83,20 @@ final class CustomGroups {
         var t = u.squad.assignments.get(TROOP + u.spec.id());
         var g = u.squad.assignments.get(u.spec.group());
         return t != null && (g == null || t.issued >= g.issued);
+    }
+
+    /**
+     * The key a troop's position state is kept under (Squad.arrived, Squad.places, the formation it is laid out in, FormationRules' surround memory):
+     * its spec group, or, under a custom group's order (ordered), the troop:&lt;id&gt; keys that share that one assignment, sorted and joined with "+".
+     * So a custom group that splits a spec group has its own slots and latch, and the rest of the spec group keeps theirs (Task 12 fix I1).
+     */
+    static String stateKey(GravesAndGlory.Unit u) {
+        if (!ordered(u)) return u.spec.group();
+        var a = u.squad.assignments.get(TROOP + u.spec.id());
+        List<String> keys = new ArrayList<>();
+        for (var e : u.squad.assignments.entrySet()) if (e.getValue() == a) keys.add(e.getKey());
+        java.util.Collections.sort(keys);
+        return String.join("+", keys);
     }
 
     /**
@@ -92,8 +112,20 @@ final class CustomGroups {
         if (next == null) return true;
         if (next.size() > Profile.MAX_CUSTOM_GROUPS) { c.notice(p.getUuid(), "You can keep " + Profile.MAX_CUSTOM_GROUPS + " custom groups."); return true; }
         pr.customGroups = next;
-        if (!c.save(p.getUuid())) pr.customGroups = before;
+        if (!c.save(p.getUuid())) { pr.customGroups = before; return true; }
+        if (b != null && b.running) dropStale(b.squads.get(p.getUuid()), before, next);
         return true;
+    }
+
+    /**
+     * A troop type that left its groups (group:remove, or group:delete) loses its troop:&lt;id&gt; order, so it falls back to its spec group's order at
+     * once; a type still in another group keeps it (that group's order may be the one in force).
+     */
+    static void dropStale(GravesAndGlory.Squad s, List<Profile.CustomGroup> before, List<Profile.CustomGroup> after) {
+        if (s == null || before == null) return;
+        java.util.Set<String> kept = new java.util.HashSet<>();
+        for (var g : after) if (g != null) kept.addAll(g.troopIds());
+        for (var g : before) if (g != null) for (String id : g.troopIds()) if (!kept.contains(id)) s.assignments.remove(TROOP + id);
     }
 
     /** The edited group list for one group: command body (verb:number[:arg]), or null when it changes nothing or is malformed. Pure. */
@@ -107,8 +139,8 @@ final class CustomGroups {
             return out;
         }
         if (parts.length < 2) return null;
-        int n;
-        try { n = Integer.parseInt(parts[1]); } catch (NumberFormatException e) { return null; }
+        int n = canonical(parts[1]);
+        if (n < 0) return null;
         Profile.CustomGroup g = pr.customGroup(n);
         if (g == null) return null;
         int at = out.indexOf(g);

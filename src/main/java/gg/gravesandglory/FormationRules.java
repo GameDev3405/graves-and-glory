@@ -104,7 +104,7 @@ final class FormationRules {
      * stepped up holds the rank he stepped into), else its holdGrid place by slot order. Rank 0 is the front of its kind's ranks.
      */
     static double[] cells(GravesAndGlory.Unit u, List<GravesAndGlory.Unit> group, boolean[] shield, int at, Spec.FormationsRow f) {
-        var held = u.squad.places.get(u.spec.group());
+        var held = u.squad.places.get(CustomGroups.stateKey(u));
         if (held != null && held.members.equals(group)) { double[] g = held.grid.get(u); if (g != null) return g; }
         return BattleMath.holdGrid(shield, BattleMath.groupColumns(u.spec.group(), f.columns()), f.wedge())[at];
     }
@@ -176,9 +176,10 @@ final class FormationRules {
      */
     static boolean surrounded(GravesAndGlory.Battle b, GravesAndGlory.Unit u) {
         var byGroup = SURROUNDED.computeIfAbsent(u.squad, s -> new HashMap<>());
-        long[] kept = byGroup.get(u.spec.group());
+        String key = CustomGroups.stateKey(u); // a custom group splitting a spec group keeps its own (Task 12 fix I1)
+        long[] kept = byGroup.get(key);
         if (kept != null && b.time - kept[0] < SURROUND_TICKS && b.time >= kept[0]) return kept[1] == 1;
-        var members = Morale.members(b, u.squad, u.spec.group());
+        var members = Tactics.sharers(b, u);
         Vec3d c = members.isEmpty() ? u.mob.getPos() : Morale.centre(members);
         float yaw = b.assignment(u).yaw; double range = Spec.SCOUTING[0].range();
         boolean[] seen = new boolean[4];
@@ -189,7 +190,7 @@ final class FormationRules {
         }
         int n = 0; for (boolean q : seen) if (q) n++;
         boolean out = n >= 3;
-        byGroup.put(u.spec.group(), new long[]{b.time, out ? 1 : 0});
+        byGroup.put(key, new long[]{b.time, out ? 1 : 0});
         return out;
     }
     static void mark(boolean[] seen, float yaw, Vec3d c, Vec3d p, double range) {

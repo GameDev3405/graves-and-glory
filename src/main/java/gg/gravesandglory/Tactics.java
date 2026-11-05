@@ -35,8 +35,8 @@ final class Tactics {
     static boolean arrived(GravesAndGlory.Battle b,GravesAndGlory.Unit u,GravesAndGlory.Assignment a){
         var order=Arrays.stream(Spec.ORDERS).filter(o->o.id().equals(a.order)).findFirst().orElse(Spec.ORDERS[0]);
         if(order.engage()||a.thenFollow)return false; // a player's Retreat never holds where it stops: it turns to Follow me at its commander (tick)
-        String group=u.spec.group();if(u.squad.arrived.contains(group))return true;
-        var members=Morale.members(b,u.squad,group);if(members.isEmpty())return false;
+        String group=CustomGroups.stateKey(u);if(u.squad.arrived.contains(group))return true; // a custom group's own latch when it splits a spec group (Task 12 fix I1)
+        var members=sharers(b,u);if(members.isEmpty())return false;
         double r=Spec.COMBATDISCIPLINE[0].arriveRadius();
         if(GravesAndGlory.Battle.horizontalDistance(Morale.centre(members),slotCentre(b,members))>r*r)return false;
         u.squad.arrived.add(group);return true;
@@ -48,11 +48,11 @@ final class Tactics {
         var members=sharers(b,u);if(members.isEmpty())return false;
         return GravesAndGlory.Battle.horizontalDistance(Morale.centre(members),slotCentre(b,members))<=r*r;
     }
-    /** The living troops under the unit's order: its group's, or, under a custom group's order (CustomGroups.ordered), the troops that share that assignment (Task 12). */
+    /** The living troops that count toward the unit's group centre (not temporary, as Morale.members) by its position key (CustomGroups.stateKey):
+     *  its spec group's troops less any under a custom group's order, or the troops that share that custom order (Task 12). */
     static List<GravesAndGlory.Unit> sharers(GravesAndGlory.Battle b,GravesAndGlory.Unit u){
-        if(!CustomGroups.ordered(u))return Morale.members(b,u.squad,u.spec.group());
-        var a=b.assignment(u);List<GravesAndGlory.Unit> out=new java.util.ArrayList<>();
-        for(var m:b.units)if(m.squad==u.squad&&m.mob.isAlive()&&b.assignment(m)==a)out.add(m);
+        String key=CustomGroups.stateKey(u);List<GravesAndGlory.Unit> out=new java.util.ArrayList<>();
+        for(var m:b.units)if(m.squad==u.squad&&!m.temporary&&m.mob.isAlive()&&CustomGroups.stateKey(m).equals(key))out.add(m);
         return out;
     }
     /** The unit's group turns to another order in place (command UI Task 5): a player's Charge to Attack (hunt) on its first landed blow or at its
@@ -61,7 +61,7 @@ final class Tactics {
     static GravesAndGlory.Assignment become(GravesAndGlory.Unit u,GravesAndGlory.Assignment a,String order,long time){
         var n=new GravesAndGlory.Assignment(order,a.formation,a.target,a.yaw);n.issued=time;n.perch=a.perch;n.hunt=order.equals("attack");
         boolean shared=false;for(var e:u.squad.assignments.entrySet())if(e.getValue()==a){e.setValue(n);shared=true;}
-        if(!shared)u.squad.assignments.put(u.spec.group(),n);u.squad.arrived.remove(u.spec.group());return n;
+        if(!shared)u.squad.assignments.put(u.spec.group(),n);u.squad.arrived.remove(CustomGroups.stateKey(u));return n;
     }
     /** Whether a point is on a player's Charge path from this troop: ahead along Assignment.chargeDir (up to chargeRunBlocks) and within
      *  chargeLane blocks of the troop's line. Every other order has no path, so anything passes. */
@@ -113,7 +113,7 @@ final class Tactics {
     /** Whether a player's Formation (Assignment.holdSlots) group is in place: its centre came within arriveRadius of its slots once; latched on
      *  Squad.arrived like an arrival, cleared by the next order. */
     static boolean placed(GravesAndGlory.Battle b,GravesAndGlory.Unit u){
-        String group=u.spec.group();if(u.squad.arrived.contains(group))return true;
+        String group=CustomGroups.stateKey(u);if(u.squad.arrived.contains(group))return true;
         if(!groupWithin(b,u,Spec.COMBATDISCIPLINE[0].arriveRadius()))return false;
         u.squad.arrived.add(group);return true;
     }
@@ -126,7 +126,7 @@ final class Tactics {
     /** The order a shield troop raises its shield by (BattleMath.shieldOrder): an arrived Move group stands as on Hold (the latch Squad.arrived, which arrived sets on the beat); a player's Retreat (thenFollow) raises as Follow me does, under fire and without Hold's wall (Ruling 2), and still strikes nothing. */
     static String shieldOrder(GravesAndGlory.Unit u,GravesAndGlory.Assignment a){
         if(a.thenFollow&&a.order.equals("retreat"))return "follow"; // a player's Retreat raises shields under fire as on the march (Ruling 2), and still strikes nothing
-        return BattleMath.shieldOrder(a.order,u.squad.arrived.contains(u.spec.group()));
+        return BattleMath.shieldOrder(a.order,u.squad.arrived.contains(CustomGroups.stateKey(u)));
     }
     /** Squared distance to the nearest living enemy troop or commander inside scouting range that the troop can see (one line-of-sight test, on the
      *  nearest), or -1 for none: on Hold a shield wall raises its shields once an enemy is in sight, not only once one walks into its leash. */

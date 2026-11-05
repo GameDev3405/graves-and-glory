@@ -87,6 +87,64 @@ public final class CustomGroupsProbe {
         } finally { s.assignments.clear(); s.assignments.putAll(saved); s.arrived.clear(); s.arrived.addAll(arrived); }
     }
 
+    /**
+     * The split fixture (Task 12 fix I1): the commander owns a Sentinel and his banner's first four slots field Sentinels, so infantry is knights
+     * and Sentinels and a custom group of knights is a strict subset of it. Saved; the next round fields it.
+     */
+    public static void splitBanner(GravesAndGlory.Battle b, UUID id) {
+        var p = b.campaign.profile(id);
+        p.owned.putIfAbsent("sentinel", new Profile.Owned());
+        var banner = new ArrayList<>(RosterMath.starterBanner());
+        for (int i = 0; i < 4; i++) banner.set(i, "sentinel");
+        p.banner = banner;
+        b.campaign.save(id);
+    }
+    /** The centre of the commander's living troops of one type. */
+    public static Vec3d centreOf(GravesAndGlory.Battle b, UUID id, String troop) {
+        var s = b.squads.get(id); Vec3d sum = Vec3d.ZERO; int n = 0;
+        for (var u : b.units) if (u.squad == s && u.mob.isAlive() && u.spec.id().equals(troop)) { sum = sum.add(u.mob.getPos()); n++; }
+        return n == 0 ? null : sum.multiply(1.0 / n);
+    }
+    /** A dry spot in the arena about ten blocks from a troop type's centre, or null. */
+    public static Vec3d spotNear(GravesAndGlory.Battle b, UUID id, String troop) {
+        var c = centreOf(b, id, troop); if (c == null) return null;
+        double[][] dirs = {{10, 0}, {-10, 0}, {0, 10}, {0, -10}, {7, 7}, {-7, -7}};
+        for (var d : dirs) { double x = c.x + d[0], z = c.z + d[1]; if (GravesAndGlory.Battle.inArena(x, z) && !GravesAndGlory.Battle.wet(x, z)) return new Vec3d(x, c.y, z); }
+        return null;
+    }
+    /**
+     * The split state (Task 12 fix I1) once the custom group (troop type a alone) holds at p while type c of the same spec group keeps its own order:
+     * the a troops share one position key that is not the spec group and hold, c keeps the spec group key and an order other than Hold, the a slots
+     * stand apart round p, no c slot stands on an a slot, and the spec group's kept places hold no a troop. Returns "" when it holds, else what failed.
+     */
+    public static String split(GravesAndGlory.Battle b, UUID id, String a, String c, Vec3d p) {
+        var s = b.squads.get(id); List<String> bad = new ArrayList<>();
+        List<GravesAndGlory.Unit> as = new ArrayList<>(), cs = new ArrayList<>();
+        for (var u : b.units) if (u.squad == s && u.mob.isAlive()) { if (u.spec.id().equals(a)) as.add(u); else if (u.spec.id().equals(c)) cs.add(u); }
+        if (as.isEmpty() || cs.isEmpty()) return "fielded " + as.size() + " " + a + ", " + cs.size() + " " + c;
+        String group = as.get(0).spec.group(), key = CustomGroups.stateKey(as.get(0));
+        if (!cs.get(0).spec.group().equals(group)) bad.add(a + " and " + c + " are not one spec group");
+        if (key.equals(group) || !key.startsWith(CustomGroups.TROOP)) bad.add(a + " key " + key);
+        List<Vec3d> slots = new ArrayList<>();
+        for (var u : as) {
+            if (!CustomGroups.stateKey(u).equals(key)) bad.add(a + " " + u.mob.getId() + " key " + CustomGroups.stateKey(u));
+            if (!b.assignment(u).order.equals("hold")) bad.add(a + " " + u.mob.getId() + " order " + b.assignment(u).order);
+            Vec3d f = b.formation(u);
+            if (GravesAndGlory.Battle.horizontalDistance(f, p) > 8 * 8) bad.add(a + " " + u.mob.getId() + " slot " + Math.round(Math.sqrt(GravesAndGlory.Battle.horizontalDistance(f, p))) + " from the spot");
+            for (var o : slots) if (GravesAndGlory.Battle.horizontalDistance(f, o) < 0.25) bad.add(a + " slots overlap");
+            slots.add(f);
+        }
+        for (var u : cs) {
+            if (!CustomGroups.stateKey(u).equals(group)) bad.add(c + " " + u.mob.getId() + " key " + CustomGroups.stateKey(u));
+            if (b.assignment(u).order.equals("hold")) bad.add(c + " " + u.mob.getId() + " took the Hold");
+            Vec3d f = b.formation(u);
+            for (var o : slots) if (GravesAndGlory.Battle.horizontalDistance(f, o) < 0.64) { bad.add(c + " " + u.mob.getId() + " slot on a " + a + " slot"); break; }
+        }
+        var held = s.places.get(group);
+        if (held != null) for (var u : as) if (held.members.contains(u)) { bad.add(group + " places hold a " + a); break; }
+        return String.join("; ", bad);
+    }
+
     // ---- client side (call on the client thread) ----
 
     public static void openArmoury(MinecraftClient c) { c.setScreen(new RecruitmentScreen(1)); }
