@@ -25,6 +25,20 @@ def torso(root=(0, 0, 0), drop=0.0, fwd=0.0, side=0.0, body=(0, 0, 0), chest=(0,
     return {'root': [*root, -side, drop, -fwd], 'body': list(body), 'chest': list(chest), 'head': list(head)}
 
 
+def live(clip, amp=1.0, arms=1.0, shift=1.0):
+    """A stance loop rebuilt from its first pose with visible life: two breaths (chest and shoulders rise, head settles), a slow
+    weight shift onto one hip and back, a settle of the arms. amp scales it (a heavy Templar breathes slower and smaller)."""
+    p0 = clip.keys[0][1]
+    L = clip.length
+    def at(breath, sway):
+        return add(p0, chest=[-1.6 * amp * breath, 0, 0], head=[0.8 * amp * breath, 0, 0], body=[0, 0, 1.2 * amp * sway * shift],
+                   root=[0, 0, -1.0 * amp * sway * shift, -0.4 * amp * sway * shift, -0.2 * amp * breath + 0.25 * abs(sway) * shift, 0],
+                   right_arm=[-2.0 * amp * arms * breath, 0, 1.0 * amp * arms * breath], left_arm=[-1.5 * amp * arms * breath, 0, -1.0 * amp * arms * breath])
+    tk = lambda u: round(L * u / 0.05) * 0.05
+    keys = [(0, p0, CR), (tk(0.25), at(1, 0.5), CR), (tk(0.5), at(0, 1), CR), (tk(0.75), at(1, 0.5), CR), (L, p0, CR)]
+    return Clip(clip.name, L, keys, mode=clip.mode, base=clip.base, loop=True, markers=clip.markers)
+
+
 # ---------------------------------------------------------------- Order Squire (knight): young, eager, drilled
 
 def fk(arm_r=None, fore_r=None, arm_l=None, fore_l=None):
@@ -56,26 +70,27 @@ def knight():
     # KN-1 idle: textbook guard, sword raised, breathing steady (the engine breathes; the loop keeps the point alive)
     idle = P(torso(drop=0.3, body=(3, -6, 0), chest=(2, -5, 0), head=(-2, 9, 0)), legs((8, -10), (6, 8), (2, -2), (8, 4)),
              fk((-28, -6, 6), -50, (-25, 25, 0), -20))
-    idle = sword(k, idle, (-0.1, 0.75, 0.65))
-    idle_b = sword(k, add(idle, right_arm=[-3, 0, 1], body=[1, 0, 0], left_arm=[-2, 0, 0]), (-0.1, 0.78, 0.62))
+    idle = sword(k, idle, (0.15, 0.75, 0.64))                   # point up and forward, turned out clear of the face
+    idle_b = sword(k, add(idle, right_arm=[-3, 0, 1], body=[1, 0, 0], left_arm=[-2, 0, 0]), (0.15, 0.78, 0.61))
     # guard: tighter and lower, the point on the enemy, the shield up over the chest
     guard = P(torso(drop=0.9, body=(6, -10, 0), chest=(3, -6, 0), head=(-5, 15, 0)), legs((14, -18), (12, 14), (2, -3), (12, 6)),
               fk((-38, -8, 6), -52, (-45, 25, 0), -20))
     guard = sword(k, guard, (-0.12, 0.45, 0.88))
     guard_b = sword(k, add(guard, right_arm=[-3, 0, 0], root=[0, 0, 0, 0, 0.25, 0]), (-0.12, 0.47, 0.87))
     # carry (KN-4): marching with the sword shouldered, blade up and back over the right shoulder, shield at the side
-    carry = P(torso(body=(1, 0, 0)), legs(), fk((-22, -18, 4), -112, (-10, 12, 0), -12))
-    carry = sword(k, carry, (0.15, 0.62, -0.77))
+    carry = P(torso(body=(1, 0, 0)), legs(), fk((-8, -14, 8), -96, (-6, 10, 0), -10))
+    carry = sword(k, carry, (0.3, 0.38, -0.87))              # sloped back over the shoulder, the hand low at the chest
     stances = [
         Clip('idle', 4.0, [(0, idle, CR), (2.0, idle_b, CR), (4.0, idle, CR)], mode='stance', loop=True),
         Clip('guard', 2.4, [(0, guard, CR), (1.2, guard_b, CR), (2.4, guard, CR)], mode='stance', loop=True),
         Clip('carry', 2.0, [(0, carry, CR), (1.0, add(carry, right_arm=[-1.5, 0, 0]), CR), (2.0, carry, CR)], mode='stance', loop=True),
     ]
+    stances = [live(c) for c in stances]
 
     # ---- KN-7: a lunging thrust that steps in (thrust slot: impact tick 7 = 0.35 s)
     # chamber: elbow drawn back to the hip, right shoulder turned back, weight on the back leg; strike 0.1 s; the lunge carries the reach
-    ch = P(guard, torso(drop=1.2, fwd=-0.5, body=(2, 8, 0), chest=(0, 12, 0), head=(-4, -8, 0)), legs((20, -16), (18, 12), (2, -3), (12, 6)),
-           fk((-26, -2, 8), -72, (-50, 25, 0), -22))
+    ch = P(guard, torso(drop=1.5, fwd=-1.0, body=(0, 14, 0), chest=(-2, 22, 0), head=(-4, -18, 0)), legs((22, -14), (20, 10), (2, -3), (12, 6)),
+           fk((-27, 0, 10), -70, (-52, 25, 0), -22))
     ch = sword(k, ch, (-0.1, 0.3, 0.95))
     ch2 = sword(k, add(ch, right_arm=[-2, 0, 0], root=[0, 0, 0, 0, 0.15, 0]), (-0.1, 0.28, 0.96))
     hit = P(guard, torso(drop=1.9, fwd=3.2, body=(12, -8, 0), chest=(5, -10, 0), head=(-12, 14, 0)), legs((30, -40), (6, 36), (2, -3), (12, 6)),
@@ -84,7 +99,7 @@ def knight():
     hold = sword(k, add(hit, root=[0, 0, 0, 0, 0.2, -0.3], right_arm=[2, 0, 0]), (-0.05, 0.02, 1.0))
     back = mix(hold, guard, 0.55)
     back = sword(k, back, (-0.1, 0.35, 0.93))
-    lunge = Clip('kn_lunge', 1.3, [(0, guard, L), (0.15, ch, BZ), (0.25, ch2, L), (0.35, hit, L), (0.5, hold, BZ), (0.9, back, BZ), (1.3, guard, L)],
+    lunge = Clip('kn_lunge', 1.3, [(0, guard, L), (0.1, ch, BZ), (0.25, ch2, L), (0.35, hit, L), (0.5, hold, BZ), (0.9, back, BZ), (1.3, guard, L)],
                  markers={'impact': 0.35}, slot='sword_shield_thrust')
 
     # ---- KN-6: the drill cut, a clean diagonal from high right to low left (overhead slot: impact tick 10 = 0.5 s)
@@ -120,7 +135,7 @@ def knight():
                  markers={'impact': 0.4}, slot='sword_shield_low_cut')
 
     # ---- KN-9: a shoulder barge to break a guard, eager and a little reckless (thrust slot: impact 0.35 s)
-    ld = P(guard, torso(drop=1.8, fwd=-0.6, body=(10, -10, 0), chest=(4, -16, 0), head=(-8, 22, 0)), legs((20, -14), (22, 16), (2, -3), (12, 6)),
+    ld = P(guard, torso(drop=2.0, fwd=-1.0, body=(12, -14, 0), chest=(4, -22, 0), head=(-8, 26, 0)), legs((20, -14), (22, 16), (2, -3), (12, 6)),
            fk((-20, 6, 14), -62, (-24, 42, 0), -96))
     ld = sword(k, ld, (0.2, 0.7, 0.68))
     ld2 = add(ld, root=[0, 0, 0, 0, 0.15, 0.1])
@@ -254,6 +269,7 @@ def archer():
         Clip('guard', 2.4, [(0, guard, CR), (1.2, add(guard, root=[0, 0, 0, 0, 0.25, 0]), CR), (2.4, guard, CR)], mode='stance', loop=True),
         Clip('aim', 3.0, [(0, aim, CR), (1.5, add(aim, chest=[0, 1, 0], root=[0, 0, 0, 0, 0.2, 0]), CR), (3.0, aim, CR)], mode='stance', loop=True),
     ]
+    stances = [live(c, arms=0 if c.name == 'aim' else 1) for c in stances]
 
     def shot(name, slot, line, timeline):
         return Clip(name, 2.0, timeline, base='aim', slot=slot, markers=line)
@@ -265,21 +281,27 @@ def archer():
         return [(t0, reach, BZ), (t0 + 0.2, pull, BZ), (t0 + 0.45, string_hand(k, aim, 1.0, 0, off=(1, 0.5, 2)), BZ)]
 
     # AR-6: quick shot, a snap up from low, a fast draw, a short hold, loose (bow_direct: the loose on tick 16)
-    q0 = bow_arm(k, P(aim, torso(drop=1.1, body=(8, 30, 0), chest=(2, 22, 0), head=(-4, -50, 0))), (0.2, -0.45, 0.87), 1.0)
+    LOAD = legs((14, -16), (16, 20), (3, -3), (40, 6))          # weight down into the knees at full draw
+    q0 = bow_arm(k, P(aim, torso(drop=1.8, body=(10, 30, 0), chest=(2, 22, 0), head=(-4, -50, 0)), legs((16, -18), (22, 26), (3, -3), (40, 6))), (0.2, -0.45, 0.87), 1.0)
     q0 = string_hand(k, q0, 1.0, 0)
-    q1 = string_hand(k, bow_arm(k, aim, (0, 0.06, 1), 1.0), 1.0, 1)
-    qf = string_hand(k, bow_arm(k, add(aim, chest=[0, 3, 0]), F, 1.0), 1.0, 3)
-    ql = string_hand(k, bow_arm(k, add(aim, chest=[0, 5, 0], head=[0, -2, 0]), (0, 0.05, 1), 1.0), 1.0, 3, off=(1.0, 0.3, -1.2))
+    q1 = string_hand(k, bow_arm(k, P(add(aim, root=[0, 0, 0, 0, 1.2, 0]), LOAD), (0, 0.06, 1), 1.0), 1.0, 1)
+    qf = string_hand(k, bow_arm(k, P(add(aim, chest=[0, 3, 0], root=[0, 0, 0, 0, 1.3, 0]), LOAD), F, 1.0), 1.0, 3)
+    # the loose: a hop back off the shot, the bow arm kicking up
+    ql = string_hand(k, bow_arm(k, P(add(aim, chest=[0, 5, 0], head=[0, -2, 0], body=[-4, 0, 0], root=[0, 0, 0, 0, 0.2, 1.2]), legs((4, -6), (8, 10), (3, -3), (40, 6))),
+                                (0, 0.15, 0.99), 1.0), 1.0, 3, off=(1.0, 0.3, -1.2))
+    qs = string_hand(k, bow_arm(k, P(add(aim, root=[0, 0, 0, 0, 1.0, 1.4]), LOAD), (0, 0.05, 1), 1.0), 1.0, 3, off=(1.0, 0.3, -1.2))
     quick = shot('ar_quick_shot', 'bow_direct', {'draw': 0.45, 'full': 0.65, 'impact': 0.8},
-                 [(0, aim, L), (0.25, q0, BZ), (0.45, q1, BZ), (0.65, qf, L), (0.8, qf, L), (0.95, ql, BZ), (1.1, add(ql, right_arm=[4, 0, 0]), BZ)]
+                 [(0, aim, L), (0.25, q0, BZ), (0.45, q1, BZ), (0.65, qf, L), (0.8, qf, L), (0.9, ql, BZ), (1.1, qs, BZ)]
                  + reload_keys(1.3, aim) + [(2.0, aim, BZ)])
-    # AR-7: aimed shot, up early, a long steady draw, a still hold, a clean loose
-    a1 = string_hand(k, bow_arm(k, add(aim, root=[0, 0, 0, 0, 0.3, 0], head=[2, 0, 0]), F, 1.0), 1.0, 0)
-    a2 = string_hand(k, bow_arm(k, add(aim, chest=[0, 3, 0], head=[3, -3, 0]), F, 1.0), 1.0, 3)
-    a3 = string_hand(k, bow_arm(k, add(aim, chest=[0, 3, 0], head=[3, -3, 0], root=[0, 0, 0, 0, 0.15, 0]), (0, 0.035, 1), 1.0), 1.0, 3)
-    al = string_hand(k, bow_arm(k, add(aim, chest=[0, 4, 0], head=[3, -3, 0]), F, 1.0), 1.0, 3, off=(1.2, 0, -1.4))
+    # AR-7: aimed shot, standing tall, leaning into the line, the head down to the string, a long still hold, a clean loose
+    TALL = legs((12, -14), (12, 16), (3, -3), (40, 6))
+    a1 = string_hand(k, bow_arm(k, P(add(aim, root=[0, 0, 0, 0, 0.6, 0], head=[3, 0, 0]), TALL), F, 1.0), 1.0, 0)
+    a2 = string_hand(k, bow_arm(k, P(add(aim, chest=[0, 3, 0], head=[6, -4, 4], body=[4, 0, 0], root=[0, 0, 0, 0, 0.9, -0.3]), TALL), F, 1.0), 1.0, 3)
+    a3 = string_hand(k, bow_arm(k, P(add(aim, chest=[0, 3, 0], head=[6, -4, 4], body=[4, 0, 0], root=[0, 0, 0, 0, 1.0, -0.3]), TALL), (0, 0.035, 1), 1.0), 1.0, 3)
+    al = string_hand(k, bow_arm(k, P(add(aim, chest=[0, 4, 0], head=[2, -3, 2], body=[-2, 0, 0], root=[0, 0, 0, 0, 0.5, 0.5]), TALL), (0, 0.1, 1), 1.0), 1.0, 3,
+                     off=(1.2, 0, -1.4))
     aimed = shot('ar_aimed_shot', 'bow_direct', {'draw': 0.2, 'full': 0.55, 'impact': 0.8},
-                 [(0, aim, L), (0.2, a1, BZ), (0.55, a2, L), (0.7, a3, CR), (0.8, a2, L), (0.95, al, BZ), (1.1, al, BZ)] + reload_keys(1.35, aim)[:2] + [(2.0, aim, BZ)])
+                 [(0, aim, L), (0.2, a1, BZ), (0.55, a2, L), (0.7, a3, CR), (0.8, a2, L), (0.95, al, BZ), (1.15, al, BZ)] + reload_keys(1.35, aim)[:2] + [(2.0, aim, BZ)])
     # AR-8: retreating shot, two steps back, a turn, loosed mid-step (bow_volley: aimed up into an arc)
     UP = (0, 0.42, 0.91)
     r1 = P(add(aim, root=[0, 0, 0, 0, 0.8, 1.6], body=[-4, -10, 0]), legs((-10, 18), (16, 4), (3, -3), (30, 6)))
@@ -367,10 +389,12 @@ def sentinel():
     guard = swing(k, g, (-30, -20, 6), -58, (-0.15, 0.55, 0.82))
     # carry: the sword held upright before the chest, as in a procession
     c = P(torso(body=(0, 0, 0), chest=(-2, 0, 0), head=(-2, 0, 0)), legs())
-    carry = swing(k, c, (-40, -24, 4), -86, (0, 1, 0.08))
+    carry = swing(k, c, (-40, -6, 14), -86, (0.3, 1, 0.1))     # upright, outboard of the visor
     # SE-9: braced, the sword planted and one knee down, holding the line (the brace stance)
-    br = P(torso(drop=4.4, fwd=0.5, body=(8, -6, 0), chest=(2, -4, 0), head=(-6, 8, 0)),
-           {'right_leg': [26, 6, 3], 'right_shin': [88, 0, 0], 'right_foot': [-42, 0, 0], 'left_leg': [-62, -4, -3], 'left_shin': [70, 0, 0], 'left_foot': [-8, 0, 0]})
+    # (a full kneel as a stance fights the engine's foot planting, which twists the kneeling thigh to keep its foot: a deep braced
+    # lunge instead, the back knee low, the front knee over the foot)
+    br = P(torso(drop=2.6, fwd=0.4, body=(10, -8, 0), chest=(2, -6, 0), head=(-8, 10, 0)),
+           {'right_leg': [30, 6, 3], 'right_shin': [36, 0, 0], 'right_foot': [-30, 0, 0], 'left_leg': [-40, -4, -3], 'left_shin': [52, 0, 0], 'left_foot': [-10, 0, 0]})
     brace = swing(k, br, (-50, -16, 8), -46, (0.0, -0.78, 0.62), along=-0.5, **PLANT)
     stances = [
         Clip('idle', 4.5, [(0, idle, CR), (2.25, idle_b, CR), (4.5, idle, CR)], mode='stance', loop=True),
@@ -378,14 +402,19 @@ def sentinel():
         Clip('carry', 2.0, [(0, carry, CR), (1.0, add(carry, chest=[-1, 0, 0]), CR), (2.0, carry, CR)], mode='stance', loop=True),
         Clip('brace', 3.0, [(0, brace, CR), (1.5, add(brace, chest=[-1, 0, 0]), CR), (3.0, brace, CR)], mode='stance', loop=True),
     ]
+    stances = [live(c, amp=0.8, arms=0 if c.name in ('idle', 'brace', 'guard', 'carry') else 1, shift=0.6) for c in stances]
     # SE-6: overhead cleave, two-handed, all the body's weight behind it (overhead slot: impact 0.5 s)
-    w1 = swing(k, P(guard, torso(drop=0.6, fwd=-0.8, body=(-8, 6, 0), chest=(-8, 6, 0), head=(-10, -4, 0))), (-120, -10, -6), -90, (0.1, 0.7, -0.7))
-    w2 = swing(k, P(guard, torso(drop=0.5, fwd=-1.0, body=(-10, 6, 0), chest=(-10, 6, 0), head=(-12, -4, 0))), (-136, -8, -6), -96, (0.1, 0.55, -0.83))
+    # the shield rides the off forearm, so the wind-up is one-handed with the shield held up in front (two hands overhead would lift
+    # the board onto the helm); the weight comes from the whole body dropping through
+    SH = fk(None, None, (-62, 30, 0), -30)
+    w1 = swing(k, P(guard, torso(drop=0.6, fwd=-0.8, body=(-8, 6, 0), chest=(-8, 6, 0), head=(-10, -4, 0)), SH), (-132, -10, -6), -94, (0.1, 0.62, -0.78), two=False)
+    w2 = swing(k, P(guard, torso(drop=0.5, fwd=-1.0, body=(-10, 6, 0), chest=(-10, 6, 0), head=(-12, -4, 0)), SH), (-136, -8, -6), -96, (0.1, 0.55, -0.83), two=False)
     c1 = swing(k, P(guard, torso(drop=2.4, fwd=1.6, body=(16, -6, 0), chest=(8, -6, 0), head=(-8, 6, 0)), legs((24, -28), (14, 26), (4, -4), (16, 8))),
-               (-90, -12, 4), -36, (-0.05, 0.1, 1.0))
-    c2 = swing(k, P(guard, torso(drop=3.0, fwd=2.0, body=(26, -6, 0), chest=(12, -6, 0), head=(-14, 6, 0)), legs((28, -32), (16, 30), (4, -4), (16, 8))),
-               (-48, -10, 6), -30, (-0.05, -0.42, 0.9))
-    cleave = Clip('se_cleave', 1.9, [(0, guard, L), (0.3, w1, BZ), (0.4, w2, L), (0.5, c1, L), (0.6, c2, BZ), (0.95, c2, CR), (1.4, mix(c2, guard, 0.6), BZ), (1.9, guard, L)],
+               (-90, -12, 4), -36, (-0.05, 0.1, 1.0), two=False)
+    c1 = P(c1, fk(None, None, (-50, 30, 0), -34))
+    c2 = swing(k, P(guard, torso(drop=3.0, fwd=2.0, body=(26, -6, 0), chest=(12, -6, 0), head=(-14, 6, 0)), legs((28, -32), (16, 30), (4, -4), (16, 8)), fk(None, None, (-46, 30, 0), -34)),
+               (-48, -10, 6), -30, (-0.05, -0.42, 0.9), two=False)
+    cleave = Clip('se_cleave', 1.9, [(0, guard, L), (0.25, w1, BZ), (0.4, w2, L), (0.5, c1, L), (0.6, c2, BZ), (0.95, c2, CR), (1.4, mix(c2, guard, 0.6), BZ), (1.9, guard, L)],
                   markers={'impact': 0.5}, slot='sword_shield_overhead')
     # SE-7: a horizontal sweep that turns the hips through (low_cut slot: impact 0.4 s)
     s1 = swing(k, P(guard, torso(drop=1.6, body=(6, 26, 0), chest=(2, 22, 0), head=(-6, -24, 0))), (-70, 34, -10), -40, (0.95, 0.2, 0.2))
@@ -398,8 +427,8 @@ def sentinel():
     p1 = swing(k, P(guard, torso(drop=1.2, body=(4, 18, 0), chest=(0, 16, 0), head=(-4, -16, 0))), (-50, 10, 6), -100, (0.3, -0.4, -0.86))
     p2 = swing(k, P(guard, torso(drop=1.6, fwd=2.4, body=(12, -10, 0), chest=(4, -12, 0), head=(-8, 12, 0)), legs((20, -26), (10, 22), (4, -4), (16, 8))),
                (-96, -6, 4), -40, (0.1, -0.35, -0.93))                 # pommel first, the blade back past the shoulder
-    p3 = swing(k, P(p2, torso(drop=1.8, fwd=2.6, body=(16, 10, 0), chest=(8, 14, 0), head=(-8, -10, 0))), (-120, 6, -8), -90, (0.3, 0.6, -0.74))
-    p4 = swing(k, P(p2, torso(drop=2.2, fwd=2.8, body=(20, -16, 0), chest=(10, -18, 0), head=(-10, 16, 0))), (-60, -24, 8), -30, (-0.5, -0.6, 0.62))
+    p3 = swing(k, P(p2, torso(drop=1.8, fwd=2.6, body=(16, 10, 0), chest=(8, 14, 0), head=(-8, -10, 0)), fk(None, None, (-60, 30, 0), -30)), (-120, 6, -8), -90, (0.3, 0.6, -0.74), two=False)
+    p4 = swing(k, P(p2, torso(drop=2.2, fwd=2.8, body=(20, -16, 0), chest=(10, -18, 0), head=(-10, 16, 0)), fk(None, None, (-48, 30, 0), -34)), (-60, -24, 8), -30, (-0.5, -0.6, 0.62), two=False)
     pommel = Clip('se_pommel', 1.9, [(0, guard, L), (0.2, p1, BZ), (0.25, p1, L), (0.35, p2, L), (0.55, p2, CR), (0.75, p3, BZ), (0.9, p4, L), (1.4, mix(p4, guard, 0.6), BZ),
                                      (1.9, guard, L)], markers={'impact': 0.35}, slot='sword_shield_thrust')
     # SE-2: a short prayer, the head bowed over the crossguard
@@ -452,13 +481,14 @@ def gl_marshal():
           fk((-126, 14, -16), -70, (-46, 25, 0), -20))
     guard = sword(k, g, (0.35, 0.75, 0.55))
     # carry: the sword at the slope, upright against the shoulder, the shield at his side
-    c = P(torso(chest=(-4, 0, 0), head=(-4, 0, 0)), legs(), fk((-34, -16, 4), -96, (-14, 14, 0), -14))
-    carry = sword(k, c, (0.05, 0.98, 0.12))
+    c = P(torso(chest=(-4, 0, 0), head=(-4, 0, 0)), legs(), fk((-30, -2, 16), -92, (-14, 14, 0), -14))
+    carry = sword(k, c, (0.32, 0.94, 0.1))                    # at the slope, outboard of the shoulder, clear of the face
     stances = [
         Clip('idle', 4.0, [(0, idle, CR), (2.0, idle_b, CR), (4.0, idle, CR)], mode='stance', loop=True),
         Clip('guard', 2.6, [(0, guard, CR), (1.3, add(guard, root=[0, 0, 0, 0, 0.2, 0], right_arm=[-2, 0, 0]), CR), (2.6, guard, CR)], mode='stance', loop=True),
         Clip('carry', 2.0, [(0, carry, CR), (1.0, add(carry, chest=[-1, 0, 0]), CR), (2.0, carry, CR)], mode='stance', loop=True),
     ]
+    stances = [live(c, arms=0 if c.name == 'idle' else 1) for c in stances]
     # GM-6: a sweeping executioner's cut: the sword wheels up behind, then down in one long arc (overhead slot: impact 0.5 s)
     e1 = sword(k, P(guard, torso(drop=0.6, fwd=-0.6, body=(-8, 16, 0), chest=(-8, 18, 0), head=(-10, -10, 0)), fk((-150, 20, -20), -96, None, None)), (0.4, 0.3, -0.86))
     e2 = sword(k, add(e1, chest=[-2, 2, 0]), (0.4, 0.28, -0.87))
@@ -526,8 +556,10 @@ def gl_marshal():
     stand2 = P(torso(chest=(-4, 0, 0)), legs((0, 0), (0, 0), (5, -5), (14, 14)), fk((-30, -10, 6), -40, (-20, 20, 0), -20))
     cry = sword(k, P(torso(drop=0.8, body=(-6, 0, 0), chest=(-12, 0, 0), head=(-30, 0, 0)), legs((6, -8), (8, 8), (6, -6), (14, 14)), fk((-176, -6, -12), -6, (-30, 30, -20), -30)),
                 (0, 1, 0))
-    war_cry = Clip('war_cry', 2.4, [(0, stand2, L), (0.3, add(stand2, root=[0, 0, 0, 0, 1.0, 0], chest=[8, 0, 0]), BZ), (0.7, cry, BZ), (1.6, add(cry, head=[-4, 0, 0]), CR),
-                                    (2.4, cry, CR)], mode='whole')
+    # the cry held with breath: the chest heaving, the head shaking with the shout, the sword hand trembling
+    heave = lambda c_, h_, r_: add(cry, chest=[c_, 0, 0], head=[h_, r_, 0], right_arm=[c_ * 0.5, 0, 0], left_arm=[0, 0, -c_ * 0.5])
+    war_cry = Clip('war_cry', 3.0, [(0, stand2, L), (0.3, add(stand2, root=[0, 0, 0, 0, 1.0, 0], chest=[8, 0, 0]), BZ), (0.7, cry, BZ), (1.1, heave(-3, -4, 4), CR),
+                                    (1.5, heave(2, 2, -4), CR), (1.9, heave(-3, -5, 3), CR), (2.3, heave(2, 1, -2), CR), (3.0, cry, CR)], mode='whole')
     return k, stances + [execu, riposte, flourish, alt1, alt2, walk, run] + hits + [death, war_cry]
 
 
@@ -554,6 +586,7 @@ def longbow():
         Clip('guard', 2.6, [(0, guard, CR), (1.3, add(guard, root=[0, 0, 0, 0, 0.2, 0]), CR), (2.6, guard, CR)], mode='stance', loop=True),
         Clip('aim', 3.0, [(0, aim, CR), (1.5, add(aim, chest=[0, 1, 0], root=[0, 0, 0, 0, 0.15, 0]), CR), (3.0, aim, CR)], mode='stance', loop=True),
     ]
+    stances = [live(c, arms=0 if c.name == 'aim' else 1) for c in stances]
 
     def reload_keys(t0, pose):    # LB-9: up over the shoulder to the tall back quiver
         reach = quiver_hand(k, add(pose, head=[0, 10, 0]))
@@ -568,15 +601,16 @@ def longbow():
     volley = Clip('lb_volley', 2.0, [(0, aim, L), (0.3, v1, BZ), (0.6, v2, L), (0.8, v2, L), (0.95, vl, BZ), (1.15, vl, BZ)] + reload_keys(1.3, aim)[:2] + [(2.0, aim, BZ)],
                   base='aim', slot='bow_volley', markers={'draw': 0.25, 'full': 0.6, 'impact': 0.8})
     # LB-7: a direct heavy shot: a deep draw leaning into the bow, a hard release that rocks him back
-    d1 = string_hand(k, bow_arm(k, add(aim, root=[0, 0, 0, 0, 0.4, -0.4], body=[4, 0, 0]), F, 1.0), 1.0, 1)
-    d2 = string_hand(k, bow_arm(k, add(aim, root=[0, 0, 0, 0, 0.6, -0.6], body=[6, 0, 0], chest=[0, 4, 0]), F, 1.0), 1.0, 3, off=(0.8, 0, -0.6))
-    dl = string_hand(k, bow_arm(k, add(aim, root=[0, 0, 0, 0, 0.3, 0.8], body=[-4, 0, 0], chest=[-2, 6, 0], head=[-4, 0, 0]), (0, 0.12, 0.99), 1.0), 1.0, 3,
+    HEAVY = legs((16, -20), (18, 22), (4, -4), (44, 6))
+    d1 = string_hand(k, bow_arm(k, P(add(aim, root=[0, 0, 0, 0, 0.9, -0.4], body=[4, 0, 0]), HEAVY), F, 1.0), 1.0, 1)
+    d2 = string_hand(k, bow_arm(k, P(add(aim, root=[0, 0, 0, 0, 1.5, -0.6], body=[6, 0, 0], chest=[0, 4, 0]), HEAVY), F, 1.0), 1.0, 3, off=(0.8, 0, -0.6))
+    dl = string_hand(k, bow_arm(k, P(add(aim, root=[0, 0, 0, 0, 0.6, 1.2], body=[-6, 0, 0], chest=[-2, 6, 0], head=[-4, 0, 0]), legs((6, -10), (8, 12), (4, -4), (44, 6))), (0, 0.14, 0.99), 1.0), 1.0, 3,
                      off=(1.4, 0.4, -1.6))
     heavy = Clip('lb_heavy_shot', 2.0, [(0, aim, L), (0.25, d1, BZ), (0.6, d2, L), (0.8, d2, L), (0.95, dl, BZ), (1.2, dl, CR)] + reload_keys(1.35, aim)[:2] + [(2.0, aim, BZ)],
                  base='aim', slot='bow_direct', markers={'draw': 0.25, 'full': 0.6, 'impact': 0.8})
     # LB-8: a kneeling shot: down on the right knee, steadier, the loose from low
-    kn = P(aim, torso(drop=4.6, body=(4, 36, 0), chest=(-2, 40, 0), head=(-4, -70, 0)),
-           {'right_leg': [20, 30, 4], 'right_shin': [88, 0, 0], 'right_foot': [-40, 0, 0], 'left_leg': [-56, -10, -4], 'left_shin': [66, 0, 0], 'left_foot': [-8, 0, 0]})
+    kn = P(aim, torso(drop=5.8, body=(4, 36, 0), chest=(-2, 40, 0), head=(-4, -70, 0)),
+           {'right_leg': [14, 30, 4], 'right_shin': [100, 0, 0], 'right_foot': [-42, 0, 0], 'left_leg': [-66, -10, -4], 'left_shin': [80, 0, 0], 'left_foot': [-12, 0, 0]})
     k1 = string_hand(k, bow_arm(k, kn, (0, -0.1, 1), 1.0), 1.0, 1)
     k2 = string_hand(k, bow_arm(k, kn, (0, 0.06, 1), 1.0), 1.0, 3)
     kl = string_hand(k, bow_arm(k, add(kn, chest=[0, 4, 0]), (0, 0.06, 1), 1.0), 1.0, 3, off=(1.2, 0.2, -1.4))
@@ -638,6 +672,7 @@ def mage():
         Clip('guard', 2.6, [(0, guard, CR), (1.3, add(guard, root=[0, 0, 0, 0, -0.3, 0]), CR), (2.6, guard, CR)], mode='stance', loop=True),
         Clip('carry', 2.0, [(0, carry, CR), (1.0, add(carry, root=[0, 0, 0, 0, -0.2, 0]), CR), (2.0, carry, CR)], mode='stance', loop=True),
     ]
+    stances = [live(c) for c in stances]
     S = dict(base='guard', slot='caster_cast')
     # MA-6: sunbolt, the staff thrust forward (caster_cast: the spell leaves on tick 10 = 0.5 s)
     b1 = held(P(guard, torso(drop=0.8, fwd=-0.6, body=(-4, 16, 0), chest=(-4, 18, 0), head=(-6, -16, 0)), fk(None, None, (-60, 30, -30), -70)), (-34, 20, 10), -62, (0.3, 0.8, -0.5), **STRIKE)
@@ -653,15 +688,16 @@ def mage():
     s1 = held(P(guard, torso(drop=2.4, fwd=1.0, body=(18, 0, 0), chest=(8, 0, 0), head=(-6, 0, 0)), legs((16, -20), (6, 10), (3, -3), (10, 6)), fk(None, None, (-96, 20, -30), -40)),
               (-104, -8, 4), -20, (0, -0.6, 0.8), **STRIKE)
     s2 = add(s1, root=[0, 0, 0, 0, 0.4, 0], body=[2, 0, 0])
-    burst = Clip('ma_sunburst', 1.9, [(0, guard, L), (0.3, u1, BZ), (0.4, u2, L), (0.5, s1, L), (0.6, s2, BZ), (1.0, s2, CR), (1.4, mix(s2, guard, 0.6), BZ), (1.9, guard, L)],
+    # the burst: off the slam the staff springs up and both arms open wide, the light thrown out
+    bu = held(P(s2, torso(drop=1.2, fwd=0.6, body=(2, 0, 0), chest=(-8, 0, 0), head=(-16, 0, 0)), fk(None, None, (-60, 0, -70), -10)), (-138, -6, 16), -20, (0.1, 0.8, 0.6), **STRIKE)
+    burst = Clip('ma_sunburst', 1.9, [(0, guard, L), (0.3, u1, BZ), (0.4, u2, L), (0.5, s1, L), (0.6, s2, BZ), (0.8, bu, BZ), (1.1, bu, CR), (1.5, mix(bu, guard, 0.6), BZ), (1.9, guard, L)],
                  markers={'impact': 0.5}, **S)
-    # MA-8: a staff swing when an enemy gets close: a quick two-handed sweep with the heel of the staff
-    w1 = held(P(guard, torso(drop=1.0, body=(4, 24, 0), chest=(2, 24, 0), head=(-4, -20, 0))), (-60, 30, -10), -60, (0.7, 0.6, -0.4), **STRIKE)
-    w1 = k.reach(w1, 'left', pos=k.weapon(w1)[0] + v(0, -3, 0), free=range(4))
-    w2 = held(P(guard, torso(drop=1.4, fwd=1.4, body=(8, -24, 0), chest=(6, -24, 0), head=(-6, 22, 0)), legs((16, -20), (6, 10), (3, -3), (10, 6))), (-76, -30, 10), -30,
-              (-0.7, -0.3, 0.65), **STRIKE)
-    w2 = k.reach(w2, 'left', pos=k.weapon(w2)[0] + v(0.5, -2, 0), free=range(4))
-    w3 = held(P(w2, torso(drop=1.4, fwd=1.4, body=(8, -36, 0), chest=(6, -34, 0), head=(-6, 30, 0))), (-60, -40, 14), -26, (-0.9, -0.2, 0.3), **STRIKE)
+    # MA-8: a staff swing when an enemy gets close: one hand, the staff's head swept across at chest height, the hips and shoulders
+    # carrying the arc, the free arm flung out for balance
+    w1 = held(P(guard, torso(drop=1.0, body=(4, 24, 0), chest=(2, 26, 0), head=(-4, -20, 0)), fk(None, None, (-20, 0, -24), -30)), (-66, 8, -6), -40, (0.6, 0.45, 0.66), **STRIKE)
+    w2 = held(P(guard, torso(drop=1.4, fwd=1.4, body=(8, -28, 0), chest=(6, -28, 0), head=(-6, 26, 0)), legs((16, -20), (6, 10), (3, -3), (10, 6)), fk(None, None, (-28, 0, -44), -20)),
+              (-84, -40, 14), -24, (-0.85, 0.05, 0.52), **STRIKE)
+    w3 = held(P(w2, torso(drop=1.6, fwd=1.4, body=(10, -40, 0), chest=(6, -40, 0), head=(-6, 34, 0)), fk(None, None, (-20, 0, -50), -12)), (-66, -54, 18), -22, (-0.9, -0.35, 0.25), **STRIKE)
     staffswing = Clip('ma_staff_swing', 1.4, [(0, guard, L), (0.25, w1, BZ), (0.4, w1, L), (0.5, w2, L), (0.65, w3, BZ), (1.0, mix(w3, guard, 0.5), BZ), (1.4, guard, L)],
                       markers={'impact': 0.5}, **S)
     # MA-2: traces a sun sigil in the air with her free hand (a circle, then the rays)

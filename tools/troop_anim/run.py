@@ -53,7 +53,8 @@ def scene_for(clip, k):
         return {'length': 1.0 + clip.length + 1.0, 'events': ev + [{'t': 1.0, 'do': 'die', 'bearing': 0}]}, 1.0
     if clip.mode == 'whole':
         return {'length': 1.0 + clip.length + 0.5, 'events': ev + [{'t': 1.0, 'do': 'scene', 'clip': clip.name}]}, 1.0
-    stance = {'guard': [{'t': 0, 'do': 'enemy', 'on': True}], 'aim': [{'t': 0, 'do': 'stance', 'stance': 'ranged_aim'}], 'carry': [{'t': 0, 'do': 'walk', 'speed': 0.0}, {'t': 0, 'do': 'stance', 'stance': 'move'}]}
+    stance = {'guard': [{'t': 0, 'do': 'enemy', 'on': True}], 'aim': [{'t': 0, 'do': 'stance', 'stance': 'ranged_aim'}], 'carry': [{'t': 0, 'do': 'walk', 'speed': 0.0}, {'t': 0, 'do': 'stance', 'stance': 'run'}],   # the march carry (stanceKey: run, no enemy)
+             'brace': [{'t': 0, 'do': 'stance', 'stance': 'brace'}]}
     return {'length': clip.length + 1.0, 'events': ev + stance.get(clip.name, [])}, 1.0
 
 
@@ -65,7 +66,7 @@ def show(k, clip, out, tier=1, cols=8):
     beats = sorted({start + t for t, _, _ in K.norm_keys(clip.keys)} | {start + m for m in clip.markers.values()})
     if clip.loop or len(beats) < 3:
         beats = [start + clip.length * i / (cols - 1) for i in range(cols)]
-    img = TP.sheet(troop, res['frames'], beats, views=(0, 40, 90))
+    img = TP.sheet(troop, res['frames'], beats, views=(0, 40, 90), label=f"{k.id} / {clip.name}  ({clip.mode}{', over ' + clip.base if clip.mode in ('offset', 'raw') else ''}{', slot ' + clip.slot if clip.slot else ''})  columns: seconds into the scene")
     path = out / f'{k.id}_{clip.name}.png'
     img.save(path)
     return path, res

@@ -18,6 +18,20 @@ import clips as C  # noqa: E402
 STANCES = {'idle', 'carry', 'guard', 'brace', 'wall', 'shield', 'aim', 'rest'}
 # the stance an action clip of these families plays on in a fight: a wall attack on the wall, a bow attack on the aim
 STANCE_OF = {'sword_shield': lambda clip: 'wall' if clip.endswith('_wall') else 'guard', 'bow': lambda clip: 'aim'}
+# a troop folder's clips that play whole-body (scene poses), not as offsets on a stance
+WHOLE = {'victory', 'war_cry', 'summon', 'spawn_rise', 'bless', 'reload'}
+
+
+def troop_stance(name, family):
+    """The stance a troop folder's offset clip plays on (tools/troop_anim/kit.py modes): idle variants on idle, walk and run on
+    carry, everything else (its attacks, hits and blocks) on aim for a bow family and on guard otherwise."""
+    if name.startswith('idle_alt'):
+        return 'idle'
+    if name in ('walk', 'run'):
+        return 'carry'
+    return 'aim' if family == 'bow' else 'guard'
+
+
 TOL = 0.05
 # the pitch limits art/hand/common/handlib.py JOINT_LIMITS writes into every biped model ("limit" on the bone)
 LIMITS = {'chest': (-35, 45), 'right_foot': (-45, 45), 'left_foot': (-45, 45)}
@@ -26,6 +40,7 @@ LIMITS = {'chest': (-35, 45), 'right_foot': (-45, 45), 'left_foot': (-45, 45)}
 class AttackClips(unittest.TestCase):
     def setUp(self):
         self.sheet = json.loads((ROOT / 'sheets/design.json').read_text(encoding='utf-8'))
+        self.troops = {t['id']: t for t in self.sheet['troops']}
 
     def test_every_troop_resolves_every_attack(self):
         rows = {}
@@ -52,6 +67,13 @@ class AttackClips(unittest.TestCase):
             stance = None
             if fam in STANCE_OF and name not in STANCES:
                 stance = C.parse(json.loads((path.parent / f'{STANCE_OF[fam](name)}.json').read_text(encoding='utf-8')))
+            elif fam in self.troops and name not in STANCES and not name.startswith('death') and name not in WHOLE:
+                # a troop's own folder (troop clips): its offsets play on its own stances, else the family's
+                under = troop_stance(name, self.troops[fam]['family'])
+                for folder in (path.parent, path.parent.parent / self.troops[fam]['family']):
+                    if (folder / f'{under}.json').is_file():
+                        stance = C.parse(json.loads((folder / f'{under}.json').read_text(encoding='utf-8')))
+                        break
             for bone, ch in clip['bones'].items():
                 if not bone.endswith(('forearm', 'shin')):
                     continue
@@ -75,6 +97,13 @@ class AttackClips(unittest.TestCase):
             stance = None
             if fam in STANCE_OF and name not in STANCES:
                 stance = C.parse(json.loads((path.parent / f'{STANCE_OF[fam](name)}.json').read_text(encoding='utf-8')))
+            elif fam in self.troops and name not in STANCES and not name.startswith('death') and name not in WHOLE:
+                # a troop's own folder (troop clips): its offsets play on its own stances, else the family's
+                under = troop_stance(name, self.troops[fam]['family'])
+                for folder in (path.parent, path.parent.parent / self.troops[fam]['family']):
+                    if (folder / f'{under}.json').is_file():
+                        stance = C.parse(json.loads((folder / f'{under}.json').read_text(encoding='utf-8')))
+                        break
             for bone, (lo, hi) in LIMITS.items():
                 for k in clip['bones'].get(bone, {}).get('rotation', []):
                     rx = k['v'][0] + (C.sample(stance, k['t'], wrap=True).get(bone, [0])[0] if stance else 0)

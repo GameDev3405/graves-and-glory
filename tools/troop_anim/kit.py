@@ -149,7 +149,7 @@ class Kit:
             r += list(0.02 * (qq[:4] - q0[:4]) / 30.0)
             dev = qq[4:] - w0
             r += list(wrist * dev / 30.0)
-            r += list(2.0 * np.maximum(0.0, np.abs(dev) - self.WRIST_SPAN) / 10.0)  # the ±40 bound round the hold
+            r += list(8.0 * np.maximum(0.0, np.abs(dev) - self.WRIST_SPAN) / 10.0)  # the ±40 bound round the hold (near hard)
             r += [3.0 * max(0.0, qq[3] + 3) / 10, 3.0 * max(0.0, -150 - qq[3]) / 10]
             return np.array(r)
 

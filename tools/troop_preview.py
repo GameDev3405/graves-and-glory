@@ -78,19 +78,21 @@ def draw(troop, pose, yaw, pitch=10, scale=7, size=(240, 300), ground=None, bow=
 
 
 def sheet(troop, frames, times, views=(0, 40, 90), label=None, scale=5, size=(250, 230)):
-    """A contact sheet: one column a time, one row a view."""
+    """A contact sheet: one column a time, one row a view (front, three-quarter from the right, side from the right), the clip
+    named in a header when label is given."""
     W, H = size
-    out = Image.new('RGBA', (W * len(times), H * len(views) + (22 if label else 0)), BG)
+    top = 24 if label else 0
+    out = Image.new('RGBA', (W * len(times), H * len(views) + top + 16), BG)
     d = ImageDraw.Draw(out)
+    if label:
+        d.text((6, 6), label, fill=(240, 220, 150, 255))
     by_t = {round(f['t'], 4): f for f in frames}
     ts = sorted(by_t)
     for c, t in enumerate(times):
         f = by_t[min(ts, key=lambda x: abs(x - t))]
         for r, yaw in enumerate(views):
-            out.alpha_composite(draw(troop, f['pose'], yaw, scale=scale, size=size, bow=f.get('draw')), (c * W, r * H))
-        d.text((c * W + 4, H * len(views) + 4 if label else 4), f'{t:.2f}s', fill=(220, 220, 220, 255))
-    if label:
-        d.text((4, H * len(views) + 4 + 0), '', fill=(220, 220, 220, 255))
+            out.alpha_composite(draw(troop, f['pose'], yaw, scale=scale, size=size, bow=f.get('draw')), (c * W, top + r * H))
+        d.text((c * W + 4, top + H * len(views) + 2), f'{t:.2f}s', fill=(220, 220, 220, 255))
     return out
 
 
