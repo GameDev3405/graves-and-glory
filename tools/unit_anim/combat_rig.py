@@ -391,7 +391,7 @@ def _chain(side, chest_M, arm, elbow, bones=None):
 
 
 def reach_arm(side, chest_M, target, pole, guess, bones=None, pole_weight=0.35, fore=None, fore_weight=0.6,
-              stay=0.3, prev_swivel=None, min_bend=15.0):
+              stay=0.3, prev_swivel=None, min_bend=15.0, twist=0.25):
     """Aims (upper, fore) that put the hand's pivot at `target` (world), with the elbow drawn toward `pole` (a world
     direction from the shoulder). Damped Gauss-Newton on small turns of last tick's two directions (`guess`), so the
     arm moves continuously and the solve has no poles (yaw and pitch angles would, with an arm hanging straight down). `fore` (a world direction, optional) pulls the forearm toward
@@ -418,6 +418,11 @@ def reach_arm(side, chest_M, target, pole, guess, bones=None, pole_weight=0.35, 
         return (_unit(U0[0] + v[0] * U0[1] + v[1] * U0[2]), _unit(F0[0] + v[2] * F0[1] + v[3] * F0[2]))
     x = np.zeros(4)
 
+    def bend_dir(u, f):          # which way the forearm leaves the upper arm's line: it sets the arm's twist
+        b = f - np.dot(f, u) * u
+        return b / np.linalg.norm(b) if np.linalg.norm(b) > 1e-6 else b
+    b0 = bend_dir(U0[0], F0[0])
+
     def resid(v):
         u, f = to_vecs(v)
         a = aim_arm(u, f)
@@ -433,6 +438,7 @@ def reach_arm(side, chest_M, target, pole, guess, bones=None, pole_weight=0.35, 
         if fore is not None:
             r.append(fore_weight * (_unit(hand - elbow) - _unit(fore)))
         r.append(stay * v)
+        r.append(twist * (bend_dir(u, f) - b0))            # the twist turns smoothly, even near a straight arm
         bend = math.degrees(math.acos(max(-1.0, min(1.0, float(np.dot(u, f))))))
         r.append([0.08 * max(0.0, min_bend - bend)])       # a soft floor: an elbow never locks straight
         return np.concatenate(r)

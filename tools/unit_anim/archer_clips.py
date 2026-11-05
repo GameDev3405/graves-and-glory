@@ -56,6 +56,8 @@ QUIVER_LOCAL = _m(rig.rz(math.radians(-24)) @ rig.rx(math.radians(20)), np.array
 NOCK = np.array([0.0, 0.25, -0.1])       # the nock on the string, bow space (x set by the draw)
 REST = np.array([1.2, 0.25, -1.6])       # where the shaft lies on the bow, beside the grip
 FLIGHT_SPEED = 160.0
+# the thick fur ruff gives under a forearm pressed into it (the limb check treats it like the cloak)
+LIMB_SOFT = ('cloak', 'fur_collar', 'feather', 'loincloth')
 DRAW_FORE = 0.45                         # how hard the draw forearm is pulled in line with the nocked arrow (searched)                     # px a second for the flying arrow (it is off the frame in a few frames)
 
 
@@ -358,16 +360,16 @@ def shoot_timeline():
     lift_aim, lift_nock = (-20, -12, 40), (4.5, 20.5, -6.0)
     return seq(READY, [
         (0.00, 'ready', {}),
-        (0.12, 'to the quiver', dict(hand_at=_add(qm, (0.5, 3.5, -1.0)), r_pole=(1, 0.3, 0.6), look=(8, 6, 0),
-                                     bow_at=(-6.6, 12.5, -3.0), aim=(-10, -60, 20))),
+        (0.12, 'to the quiver', dict(hand_at=_add(qm, (0.5, 3.5, -1.0)), r_pole=(1, 0.3, 0.6), look=(8, 6, 0))),
         (0.22, 'grab', dict(hand_at=_add(qm, (0.0, 3.2, -0.3)), arrow=1, arrow_dir=_down_axis())),
         (0.38, 'pull clear', dict(hand_at=_add(_add(qm, 11.5 * np.array(quiver_axis())), (1.0, 0, 0)),
                                   r_pole=(1, 0.6, 0.6), look=(6, 0, 0))),
-        (0.54, 'bring to the bow', dict(hand_at=_add(NOCK_AT, (2.0, 2.0, -1.0)), arrow_dir=NOCK_AIM[:2],
+        (0.48, 'present the bow', dict(bow_at=(-6.5, 13.5, -9.0), aim=(-15, -55, 20), l_pole=(-1, -0.4, 0.3))),
+        (0.58, 'bring to the bow', dict(hand_at=_add(NOCK_AT, (2.0, 2.0, -1.0)), arrow_dir=NOCK_AIM[:2],
                                         aim=NOCK_AIM, bow_at=NOCK_BOW, body=(3, 32, 0), chest=(3, 10, 0),
                                         r_pole=(1, 0.2, 0.5), l_pole=(-1, -0.4, 0.2), look=(10, -10, 0))),
-        (0.66, 'nock', dict(on_string=1.0, hand_at=NOCK_AT)),
-        (0.80, 'raise', dict(aim=lift_aim, bow_at=bow_for(lift_nock, lift_aim, -3.3), draw=-3.3, hand_at=lift_nock,
+        (0.70, 'nock', dict(on_string=1.0, hand_at=NOCK_AT)),
+        (0.84, 'raise', dict(aim=lift_aim, bow_at=bow_for(lift_nock, lift_aim, -3.3), draw=-3.3, hand_at=lift_nock,
                              body=(3, 45, 0), chest=(3, 14, 0), look=(3, -12, 0), l_pole=(-1, -0.2, 0.2),
                              r_pole=(0.6, -0.3, 0.5))),
         (0.98, 'set and draw', dict(shot, draw=-4.2, hand_at=SHOT_NOCK, body=(3, 52, 0), chest=(3, 16, 0))),
@@ -379,15 +381,18 @@ def shoot_timeline():
         (1.63, 'follow-through', dict(hand_at=_add(SHOT_NOCK, (2.0, 0.6, 2.5)), aim=_add(SHOT_AIM, (3, -2, 2)),
                                       bow_at=_add(SHOT_BOW, (0.2, -0.6, 0.2)), chest=(3, 20, 0))),
         (1.85, 'hold the finish', dict(hand_at=_add(SHOT_NOCK, (2.3, 0.4, 2.8)), chest=(3, 17, 0))),
-        (2.15, 'lower', dict(bow_at=_add(READY['bow_at'], (0.0, 1.0, -1.5)), aim=(-5, -70, 10), hand_at=READY['hand_at'],
+        (2.00, 'drop the bow', dict(bow_at=(-4.5, 13.5, -9.0), aim=(-20, -55, 10), hand_at=(7.0, 15.5, -1.0),
+                                    body=(3, 38, 0), chest=(3, 10, 0), look=(4, -6, 0), l_pole=(-1, -0.4, 0.3),
+                                    r_pole=(1, -0.5, 0.3))),
+        (2.22, 'lower', dict(bow_at=_add(READY['bow_at'], (0.0, 0.8, -1.2)), aim=(-3, -72, 4), hand_at=READY['hand_at'],
                              root=(0, -1.05, 0), body=(3, 22, 0), chest=(2, 6, 0), look=(5, 0, 0),
                              r_pole=READY['r_pole'], l_pole=READY['l_pole'])),
-        (2.50, 'ready', {k: READY[k] for k in ('root', 'body', 'chest', 'look', 'bow_at', 'aim')}),
+        (2.55, 'ready', {k: READY[k] for k in ('root', 'body', 'chest', 'look', 'bow_at', 'aim')}),
     ])
 
 
 def shoot():
-    return build('archer_shoot', 2.5, False, timeline('archer_shoot'), loose=LOOSE)
+    return build('archer_shoot', 2.55, False, timeline('archer_shoot'), loose=LOOSE)
 
 
 KITE_SPEED = -4.5       # px a second: the ground slides forward under planted feet as the archer backs away

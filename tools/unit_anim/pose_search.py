@@ -93,7 +93,8 @@ def run(unit_name, clip_names=None, steps=110, gate_items=1.5, gate_limbs=8.0):
     from unit_anim import clearance as CL
     unit = AA.ArcherUnit()
     judge = Judge(unit, XC.still, unit.clipper(),
-                  CL.LimbClipper([(b, bone) for b, f, bone, l in unit.parts if l is None], bones=XC.BONES))
+                  CL.LimbClipper([(b, bone) for b, f, bone, l in unit.parts if l is None], bones=XC.BONES,
+                                 soft=XC.LIMB_SOFT))
     store = load(XC.POSES_FILE)
     for name, timeline_fn in XC.TIMELINES.items():
         if clip_names and name not in clip_names:
@@ -120,3 +121,70 @@ def run(unit_name, clip_names=None, steps=110, gate_items=1.5, gate_limbs=8.0):
 
 if __name__ == '__main__':
     run(sys.argv[1], sys.argv[2:] or None)
+
+
+def search_window(unit_name, clip_name, beat_time, steps=50, seed=0, fps=20):
+    """Like the beat search, but judged on the motion: each try rebuilds the clip and scores the worst moment
+    (items + forearms in the body) anywhere between the beat's neighbours, plus any bone turning more than 45 degrees
+    in a 60 fps frame there, plus any reach miss. For the transitions a still pose cannot see."""
+    import math
+    from animate_combat import clip_pose
+    from unit_anim import rig
+    import animate_archer as AA
+    from unit_anim import archer_clips as XC
+    from unit_anim import clearance as CL
+    unit = AA.ArcherUnit()
+    clipper = unit.clipper()
+    limbs = CL.LimbClipper([(b, bone) for b, f, bone, l in unit.parts if l is None], bones=XC.BONES, soft=XC.LIMB_SOFT)
+    store = load(XC.POSES_FILE)
+    key = '%.3f' % beat_time
+    times = [t for t, _, _ in XC.TIMELINES[clip_name]()]
+    i = min(range(len(times)), key=lambda k: abs(times[k] - beat_time))
+    t0, t1 = times[max(0, i - 1)], times[min(len(times) - 1, i + 1)]
+    build = {f.__name__: f for f in XC.CLIPS}[clip_name.replace('archer_', '').replace('hit', 'hit_react')]
+
+    def geo(A, B):
+        return math.degrees(math.acos(max(-1.0, min(1.0, (np.trace(A.T @ B) - 1) / 2))))
+
+    def judge(over):
+        store.setdefault(clip_name, {})[key] = over
+        _save(XC.POSES_FILE, store)
+        c = build()
+        worst = 0.0
+        for k in range(int(t0 * fps), int(t1 * fps) + 1):
+            p = clip_pose(c, k / fps)
+            worst = max(worst, sum(clipper.volumes(p).values()) + limbs.volume(p))
+        pops = 0.0
+        for b in c.rot:
+            prev = None
+            for k in range(int(t0 * 60), int(t1 * 60) + 1):
+                R = rig.mc_rotation(*rig.sample(c.rot[b], k / 60))
+                if prev is not None:
+                    pops = max(pops, geo(prev, R) - 45.0)
+                prev = R
+        return worst + 2.0 * max(0.0, pops) + 300.0 * max(0.0, c.reach_error - 0.1), worst, pops, c.reach_error
+    rnd = random.Random(seed)
+    tl = apply(XC.TIMELINES[clip_name](), store.get(clip_name, {}))
+    pose = [p for t, _, p in tl if abs(t - times[i]) < 1e-6][0]
+    base = dict(store.get(clip_name, {}).get(key, {}))
+    fields = [f for f in FIELDS if f in pose]
+    best = (judge(base), base)
+    print('%s %s start %s' % (clip_name, key, [round(float(x), 2) for x in best[0]]), flush=True)
+    for _ in range(steps):
+        cand = dict(best[1])
+        f = rnd.choice(fields)
+        v = list(cand.get(f, pose[f]))
+        j = rnd.randrange(len(v))
+        v[j] = round(v[j] + rnd.gauss(0, FIELDS[f]), 3)
+        cand[f] = v
+        r = judge(cand)
+        if r[0] < best[0][0]:
+            best = (r, cand)
+            print('   ', [round(float(x), 2) for x in r], flush=True)
+    store.setdefault(clip_name, {})[key] = best[1]
+    _save(XC.POSES_FILE, store)
+    return best
+
+
+def _save(path, store):
+    pathlib.Path(path).write_text(json.dumps(store, indent=1, sort_keys=True) + '\n', encoding='utf-8')
