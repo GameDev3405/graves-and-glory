@@ -107,7 +107,12 @@ public final class Combat {
 
         if (impact) attacker.chargeHitAt = b.time;
         if (victim != null) { victim.lastHitBy = attacker.squad; victim.lastHitAt = b.time; victim.lastHitTroop = attacker.temporary ? null : attacker.spec.id(); } // the troop type too, for the mastery ledger (a shot whose archer fell still credits it)
-        float amount = (float) (base * veteran * total);
+        // Command UI Task 6, each its own factor outside the clamp: a front-rank Shield wall man's raised shield stops arrowBlock of an arrow from
+        // his front arc (FormationRules.arrowBlock), and a charging troop's first landed blow after its run crashes in (FormationRules.firstChargeHit:
+        // chargeBonusMultiplier beside the counters rows C5 and C6, then chargeKnockback below).
+        float block = kind.equals("arrow") ? FormationRules.arrowBlock(b, victim, attacker.mob) : 0f;
+        boolean crash = kind.equals("melee") && !secondary && FormationRules.firstChargeHit(b, attacker);
+        float amount = (float) (base * veteran * total * (1 - block) * (crash ? D.chargeBonusMultiplier() : 1));
         boolean anchored = victim != null && Abilities.anchored(b, victim);
         Vec3d stood = target.getVelocity();
         var watchers = victim == null ? List.<net.minecraft.server.network.ServerPlayerEntity>of() : List.copyOf(MotionEvents.watchers(target)); // read before a killing blow can take the troop from its trackers
@@ -120,6 +125,7 @@ public final class Combat {
         // and that is exactly the block the player should hear, so it sounds before the early return.
         if (!secondary && (hurt || raised)) Audio.hit(b, attacker, target, victim, kind, raised);
         if (!hurt) return 0;
+        if (crash) Abilities.knock(b, target, attacker.mob.getPos(), target.getPos().subtract(attacker.mob.getRotationVector().multiply(1, 0, 1)), D.chargeKnockback()); // an anchored troop stays (knock)
         if (victim != null) sendHit(attacker, target, kind, melee, area, structure(target), hit, cooldown, BattleMath.lostHealth(before, target.getHealth() + target.getAbsorptionAmount()), impactY, watchers);
         // Ruling (Task 6 review M1): a killing blow levels its striker inside target.damage (AFTER_DEATH, lane A), so onHit below reads his new rows: the level
         // up lands at the kill and its first benefit is that same blow (a pierce, a cleave or a slam at the new share, Reap at level 3).

@@ -999,6 +999,7 @@ public final class GravesAndGlory implements ModInitializer {
             int columns=BattleMath.groupColumns(u.spec.group(),f.columns());
             double[][] layout=BattleMath.holdLayout(shield,width,f.spacing(),Spec.COMBATDISCIPLINE[0].shieldWallCell(),columns,f.wedge());
             double[] place=a.order.equals("hold")&&u.mob.isAlive()?heldPlace(u,group,shield,layout,columns,f.wedge(),f.id()+"/"+columns+"/"+f.wedge()):layout[at];
+            place=FormationRules.place(this,u,a,group,shield,layout,at,f,place); // a surrounded Shield wall closes into a square facing out (command UI Task 6)
             double side=place[0],back=BattleMath.roleDepth(u.spec.group())+place[1];
             if(a.perch){side=(at%3-1)*1.0;back=at/3*1.0;} // a post's floor is a few blocks across: rows of three a block apart, from the post back, at its height
             double angle=Math.toRadians(a.yaw);return a.target.add(Math.cos(angle)*side+Math.sin(angle)*back,0,Math.sin(angle)*side-Math.cos(angle)*back);
@@ -1210,7 +1211,7 @@ public final class GravesAndGlory implements ModInitializer {
             for(long key:unitChunks)if(!wanted.contains(key)){var p=new net.minecraft.util.math.ChunkPos(key);world.setChunkForced(p.x,p.z,false);}
             unitChunks.clear();unitChunks.addAll(wanted);
         }
-        void unitTick(Unit u){ Abilities.unitTick(this,u,time);Tactics.tick(this,u,time); }
+        void unitTick(Unit u){ Abilities.unitTick(this,u,time);Tactics.tick(this,u,time);FormationRules.tick(this,u); }
         void captureTick(){
             if(!mode.capturesPoints(this)){for(Capture p:points){p.contested=false;p.progress=0;p.challenger=-1;}return;} // flags down: no point is taken, held or scored
             Set<Squad> onPoint=new HashSet<>(); // armies with a troop or their commander inside any point radius this second

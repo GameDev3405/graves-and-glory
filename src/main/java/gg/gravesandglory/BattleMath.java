@@ -720,4 +720,33 @@ public final class BattleMath {
     public static boolean chargeImpact(Long stamp, long chargeHitAt) {
         return stamp != null && chargeHitAt < stamp;
     }
+    /**
+     * A surrounded Shield wall's square (command UI Task 6): n places as {side, back, facingYaw}, in the same side/back frame as holdLayout (back
+     * from the front, side across) and a facing relative to the formation's yaw: the front edge faces 0, the -side edge 90, the back edge 180 and
+     * the +side edge 270, so every man faces out. The places go round the four edges in turn (front, +side, back, -side), so the edges hold
+     * n / 4 each, the first ones one more; each edge is centred, and the square's half width is (k + 1) / 2 cells for k men on the longest edge,
+     * so the corners stay a cell apart.
+     */
+    public static double[][] squareLayout(int n, double cell) {
+        double[][] places = new double[Math.max(n, 0)][];
+        int k = (Math.max(n, 0) + 3) / 4; double half = (k + 1) / 2.0 * cell;
+        int[] onEdge = new int[4];
+        for (int i = 0; i < places.length; i++) onEdge[i % 4]++;
+        for (int i = 0; i < places.length; i++) {
+            int edge = i % 4, at = i / 4; double along = (at - (onEdge[edge] - 1) / 2.0) * cell;
+            places[i] = switch (edge) {
+                case 0 -> new double[]{along, 0, 0};
+                case 1 -> new double[]{half, half + along, 270};
+                case 2 -> new double[]{-along, 2 * half, 180};
+                default -> new double[]{-half, half - along, 90};
+            };
+        }
+        return places;
+    }
+    /** The half angle (degrees) of a Shield wall man's front arc: an arrow from within it of his facing is the one his shield stops (FormationRules.arrowBlock). */
+    public static final double FRONT_ARC = 60;
+    /** Whether a point dx, dz away lies within halfDeg of a facing yaw (relativeBearing): the Shield wall's front-arc test. */
+    public static boolean frontArc(double facingYawDeg, double dx, double dz, double halfDeg) {
+        return relativeBearing(facingYawDeg, dx, dz) <= halfDeg;
+    }
 }
