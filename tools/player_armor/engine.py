@@ -442,18 +442,28 @@ def render(drawables, yaw, pitch, scale, size=None, bg=(0, 0, 0, 0), anchor=None
     col[:, :] = bg
     depth = np.full((H, W), np.inf)
     cx0, cy0 = anchor if anchor else (W / 2, H * 0.9)
-    for box, faces in drawables:
+    for item in drawables:
+        box, faces = item[0], item[1]
+        M = item[2] if len(item) > 2 else None   # an optional 4x4 bone matrix (an animated rig)
         for f, (tex, glow, rect, shade) in faces.items():
             o, u, v = box.face_frame(f)
-            n = np.cross(u, v)   # outward for our winding? check against the face normal sign below
             centre = o + u / 2 + v / 2
             mid = np.array([(a + b) / 2 for a, b in zip(*box.lo_hi())])
             if any(box.rot):
                 m = box.matrix()
                 p = np.array(box.origin, dtype=float)
                 mid = m @ (mid - p) + p
+            if M is not None:
+                R3, t3 = M[:3, :3], M[:3, 3]
+                o, u, v = R3 @ o + t3, R3 @ u, R3 @ v
+                centre, mid = R3 @ centre + t3, R3 @ mid + t3
+            n = np.cross(u, v)
             if np.dot(n, centre - mid) < 0:
                 n = -n
+            if M is not None:
+                # light by where the face now points: up 1.0, down 0.52, z faces 0.86, x faces 0.70, blended
+                nn = n / (np.linalg.norm(n) + 1e-12)
+                shade = 0.70 * nn[0] ** 2 + 0.86 * nn[2] ** 2 + (1.0 if nn[1] > 0 else 0.52) * nn[1] ** 2
             if np.dot(n, fwd2) >= -1e-9:
                 continue   # back face
             P = lambda q: np.array([cx0 + np.dot(q, right) * scale, cy0 - np.dot(q, up2) * scale, np.dot(q, fwd2)])
