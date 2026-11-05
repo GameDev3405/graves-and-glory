@@ -108,6 +108,10 @@ public final class LobbyRulesCheck {
   check(UiMath.pageScale(2560,1440,6)*UiMath.FILL_W<=2560&&UiMath.pageScale(2560,1440,6)*UiMath.FILL_H<=1440,"The page at 3 still fits 1440p");
   // the lobby's state is never saved
   String saved=new com.google.gson.Gson().toJson(solo);check(!saved.contains(one.code)&&!saved.contains("countdown"),"Rooms, picks and countdowns are not saved");
+  { var gson=new com.google.gson.Gson();SocialHub hub=new SocialHub();UUID lead=id(),guest=id();hub.names.put(lead,"Aldric");hub.createParty(lead);
+    String snapshot=gson.toJson(hub);hub.names.put(guest,"Brannoc");hub.names.put(lead,"Renamed");hub.createParty(guest);
+    hub.rollback(gson.fromJson(snapshot,SocialHub.class));
+    check(hub.names.equals(Map.of(lead,"Aldric"))&&hub.parties.size()==1&&hub.party(lead)!=null&&hub.party(guest)==null,"A party change that could not be saved rolls back both the parties and the names"); }
   System.out.println("LobbyRulesCheck: "+count+" checks passed");
  }
 }

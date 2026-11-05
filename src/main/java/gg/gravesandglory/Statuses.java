@@ -140,7 +140,7 @@ final class Statuses {
             var mine = e.getValue();
             var bleed = mine.get("bleed");
             if (bleed != null && b.time >= bleed.nextTick && bleed.nextTick <= bleed.until && target.timeUntilRegen <= HURT_HALF) {
-                bleed.nextTick += bleedEvery();
+                bleed.nextTick = BattleMath.nextBleedBeat(bleed.nextTick, b.time, bleedEvery());
                 bleed(b, target, bleed);
                 if (!target.isAlive()) { map.remove(target); continue; }
             }
