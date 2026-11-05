@@ -9,7 +9,8 @@ Review a committed clip (or, with --recipe, a recipe baked in memory):
 Author (bake a recipe from tools/troop_anim/recipes.py, check it, and with --write put it in the bbmodel and run
 tools/clips.py and tools/clips.py --verify; a recipe that fails a gate is never written):
   python tools/animate_troop.py --author knight sword_shield_overhead [--out DIR] [--write]
-Options: --tier 1..3, --cloth crimson|teal|gold|violet|linen|company, --stance KEY (default: the clip's own).
+Options: --tier 1..3, --cloth crimson|teal|gold|violet|linen|company. The stance under a clip is the game's default for it
+(a recipe may name another with its 'stance' field).
 Exit status: 0 when every check passes, 1 when one fails, 2 on a usage or pipeline error.
 """
 import argparse

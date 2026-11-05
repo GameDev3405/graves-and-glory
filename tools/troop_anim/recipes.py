@@ -1,9 +1,10 @@
 """Recipes: a clip as a few chained poses (see author.py for the pose fields), timed from sheets/design.json.
 
-A recipe is {'clip', 'length', 'loop', 'stance', 'keys', 'push', 'lag'}. The functions here build them from a troop and
-the clip's design timing so one recipe serves every troop of a family (and, mirrored, a left-handed one). Times are in
-seconds and land on the 0.05 s tick; aims are (elevation, azimuth) in the chest's frame (the body's until the rig has a
-chest), azimuth + outward on that arm's side. An elevation past 90 goes over the top: (120, 0) is up and 30 degrees back.
+A recipe is {'clip', 'length', 'impact', 'loop', 'stance', 'keys', 'push', 'lag'}. The functions here build them from
+a troop and the clip's design timing so one recipe serves every troop of a family (and, mirrored, a left-handed one).
+Times are in seconds and land on the 0.05 s tick; aims are (elevation, azimuth) in the chest's frame (the body's until
+the rig has a chest), azimuth + outward on that arm's side. An elevation past 90 goes over the top: (120, 0) is up and
+30 degrees back.
 
 The proven recipe is RECIPES['knight']['sword_shield_overhead'] (docs/review/anim-redo/tools-proof). The family presets
 are starting points: bake one with `--check`, look at its `--sheet`, then tune the key poses for that troop.

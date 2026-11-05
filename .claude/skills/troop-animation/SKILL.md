@@ -12,6 +12,11 @@ skill is the working method that fixes those, plus the review loop that catches 
 
 Read `docs/WORKFLOW.md` and `docs/HANDOFF.md` first; they win over this skill on policy. This skill covers method.
 
+**Authoring for the 2026-11 redo:** every troop clip is re-authored from scratch with `tools/animate_troop.py`
+(recipes solved per tick, clearance, gates, sheets). Use `.claude/skills/animate-troop/SKILL.md` for the procedure and
+`docs/ANIMATING-TROOPS.md` for the full guide; it replaces hand keying in anim_edit (step 2) and the hand lint
+(step 6) for clips it covers. Kort's rules, the in-game sheet and the review loop below still apply.
+
 ## Reference files (read the one you need)
 
 | File | Read it when |
