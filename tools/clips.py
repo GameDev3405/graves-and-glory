@@ -17,7 +17,7 @@ A troop's own project, art/clips/<rig>/<troop>.bbmodel (its name a troops id), w
 game layers over the troop's family folder. It may key any bone of the troop's model (models/troop/<troop>.json: props such as
 a ballista's bolt) as well as the rig's; a bone in neither is refused. A clip a troopAttacks row names is checked as an attack
 of its slot (the slot row's impactTicks and the length cap). A walk or run clip must loop; its stride_<tenths> marker states
-the blocks one loop travels. An idle_alt_<n> clip plays once.
+the blocks one loop travels, and a knee_<degrees> marker caps the swinging knee. An idle_alt_<n> clip plays once.
 
   python tools/clips.py            write the clip JSON (and remove clips no project holds)
   python tools/clips.py --verify   rebuild in memory and compare with the committed JSON"""
@@ -51,6 +51,7 @@ BATTLE_MATH = 'src/main/java/gg/gravesandglory/BattleMath.java'
 MODELS = 'src/main/resources/assets/gravesandglory/models/troop'
 GAITS = ('walk', 'run')
 STRIDE = re.compile(r'^stride_\d+$')
+KNEE = re.compile(r'^knee_\d+$')
 IDLE_ALT = 'idle_alt_'
 
 
@@ -375,6 +376,8 @@ def check(clip, parsed, rig, family, variants, at, slots=None):
         raise ClipError(f'{at}: a {name} clip loops (MotionBody.stride plays it by the distance travelled)')
     if name in GAITS and sum(1 for m in clip['markers'] if STRIDE.match(m)) > 1:
         raise ClipError(f'{at}: more than one stride_<tenths> marker')
+    if name in GAITS and sum(1 for m in clip['markers'] if KNEE.match(m)) > 1:
+        raise ClipError(f'{at}: more than one knee_<degrees> marker')
     if name.startswith(IDLE_ALT) and parsed['loop']:
         raise ClipError(f'{at}: an idle variant plays once (MotionBody.life); set its loop mode to play once')
     if parsed['loop']:

@@ -350,6 +350,8 @@ public final class MotionEngine {
         double m, run, cw, sh, bp, tw, lw, lookW, settle, straps, plant, calm;
         /** How much of the pose leg-keying actions own, and how much the aim stance does. */
         double bodyAction, aim;
+        /** Decision 1C: the swing knee's cap this frame (degrees, from the gait clips' knee_ markers) and how much of the gait it governs (0 to 1). */
+        double kneeCap = 180, kneeShare;
         /** Ground input (Task 16): whether there is one, whether airborne, the body-frame velocity (b/s), this frame's turn (deg) and its travel forward and left (blocks). */
         boolean ground, air;
         double vF, vL, dyaw, dF, dL;

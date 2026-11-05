@@ -12336,6 +12336,18 @@
        "time": 0.0,
        "color": -1,
        "interpolation": "linear"
+      },
+      {
+       "channel": "timeline",
+       "data_points": [
+        {
+         "script": "knee_30"
+        }
+       ],
+       "uuid": "d72d9c7f-5fe3-5285-b156-437f62ea1dba",
+       "time": 0.0,
+       "color": -1,
+       "interpolation": "linear"
       }
      ]
     }
@@ -12898,6 +12910,18 @@
         }
        ],
        "uuid": "d9cdfeab-9990-5cc0-958a-1b89b0000be3",
+       "time": 0.0,
+       "color": -1,
+       "interpolation": "linear"
+      },
+      {
+       "channel": "timeline",
+       "data_points": [
+        {
+         "script": "knee_50"
+        }
+       ],
+       "uuid": "c70dbece-e5a5-5e8e-b9d8-03fd2bfba639",
        "time": 0.0,
        "color": -1,
        "interpolation": "linear"

@@ -216,11 +216,18 @@ final class MotionFeet {
             leg[RX] += (sol[0] - leg[RX]) * gw;
             leg[RZ] += (sol[1] - leg[RZ]) * gw;
             shin[RX] += (sol[2] - shin[RX]) * gw;
+            // decision 1C: a gait clip's knee cap folds a swinging knee no further than its cap (a soft limit, so the fold eases
+            // into it), the foot swinging lower instead; the ground pass keeps the sole out of the floor
+            if (f.kneeShare > 0 && f.lift[i] > 0 && shin[RX] > f.kneeCap) shin[RX] -= f.kneeShare * (shin[RX] - softCap(shin[RX], f.kneeCap));
             shin[RY] -= shin[RY] * gw;
             shin[RZ] -= shin[RZ] * gw;
             for (int c = TX; c <= TZ; c++) shin[c] -= shin[c] * gw;
         }
     }
+
+    /** Decision 1C: the soft knee cap: x unchanged up to cap, then easing to at most cap + KNEE_SOFT. */
+    static double softCap(double x, double cap) { return x <= cap ? x : cap + KNEE_SOFT * Math.tanh((x - cap) / KNEE_SOFT); }
+    static final double KNEE_SOFT = 6;
 
     /** Fix r3: the extra stride solves that move each foot's target by its lowest corner's drop below the sole's middle. */
     static final int CORNER_PASSES = 2;

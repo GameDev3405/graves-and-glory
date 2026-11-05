@@ -169,6 +169,8 @@ final class MotionBody {
      */
     static void stride(MotionEngine.Frame f, MotionEngine.State st, Pose out) {
         st.startAge += f.dt;
+        f.kneeShare = 0;
+        f.kneeCap = 180;
         double v = Math.hypot(f.vF, f.vL), run = f.run, sh = f.sh, bp = f.bp;
         // round 4b: the duty and stride length follow the run the speed asks for as soon as it rises (the run weight eases in
         // over RUN_BLEND), so a start's stride takes the run's longer swing from its first steps; once settled gr equals run
@@ -301,6 +303,11 @@ final class MotionBody {
         // the left's) and takes over the code's upper-body gait in its share; the legs stay the stride's, planted by MotionFeet,
         // with whatever the clip keys on them added as an offset
         double cWalk = walkClip == null ? 0 : 1 - run, cRun = runClip == null ? 0 : run;
+        // decision 1C: the gait clips' knee caps, blended by the run weight; a clip with no knee_ marker leaves the code's knee
+        double capW = walkClip == null || Double.isNaN(walkClip.knee()) ? Double.NaN : walkClip.knee(), capR = runClip == null || Double.isNaN(runClip.knee()) ? Double.NaN : runClip.knee();
+        double shW = Double.isNaN(capW) ? 0 : 1 - run, shR = Double.isNaN(capR) ? 0 : run;
+        f.kneeShare = MotionMath.clamp01(shW + shR) * MotionMath.clamp01(f.m);
+        f.kneeCap = shW + shR > 0 ? ((Double.isNaN(capW) ? 0 : capW * shW) + (Double.isNaN(capR) ? 0 : capR * shR)) / (shW + shR) : 180;
         if (walkClip != null) walkClip.add(st.psi * walkClip.length(), out, b * cWalk, st.tmp);
         if (runClip != null) runClip.add(st.psi * runClip.length(), out, b * cRun, st.tmp);
         b *= 1 - cWalk - cRun;

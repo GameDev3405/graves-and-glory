@@ -16,6 +16,7 @@ public final class MotionTroopClipsCheck {
         MotionEngineCheck.run("walk clip plays by distance", MotionTroopClipsCheck::walkByDistance);
         MotionEngineCheck.run("walk clip sets the stride", MotionTroopClipsCheck::walkStride);
         MotionEngineCheck.run("idle variants", MotionTroopClipsCheck::idleVariants);
+        MotionEngineCheck.run("walk clip caps the swing knee", MotionTroopClipsCheck::walkKnee);
         if (MotionEngineCheck.failed > 0) {
             System.out.println("MotionTroopClipsCheck: " + MotionEngineCheck.failed + " checks FAILED");
             System.exit(1);
@@ -102,6 +103,32 @@ public final class MotionTroopClipsCheck {
         double capped = 8.0 * v / (2 * MotionBody.HALF_WALK * MotionBody.GAIT_HALF_MAX / (16 * MotionBody.DUTY_WALK));
         check(Math.abs(cycles[2] - capped) < 0.35, "stride_60 is held at the reach cap: " + cycles[2] + " cycles, cap " + capped);
         return String.format("cycles code %.2f, stride 1.4 %.2f, capped %.2f", cycles[0], cycles[1], cycles[2]);
+    }
+
+    /** Decision 1C: a knee_<degrees> marker keeps the swinging knee near its cap; no marker leaves the code's knee as it was. Swing frames only. */
+    static String walkKnee() {
+        MotionMath.Seed seed = MotionEngineCheck.seeds(1, 5500)[0];
+        double[] peak = new double[3];
+        String[] markers = {"", "\"knee_40\":0", null};
+        for (int i = 0; i < 3; i++) {
+            MotionEngine.Family fam = i == 2 ? MotionEngineCheck.family(false) : family(Map.of("walk", walk("walk", markers[i])));
+            MotionEngineCheck.Drive d = new MotionEngineCheck.Drive(seed);
+            d.grounded = true;
+            d.walk(1.4, 0);
+            var st = new MotionEngine.State();
+            Pose out = new Pose();
+            for (int k = 0; k < 360; k++) {
+                MotionEngine.pose(d.in(), st, fam, out);
+                // the swinging leg only (lift above 0): the stance knee's bend is the walk's dip, which the cap leaves alone
+                if (k > 120) for (int l = 0; l < 2; l++) if (st.frame.lift[l] > 0) peak[i] = Math.max(peak[i], out.get(l == 0 ? "right_shin" : "left_shin", 0));
+                d.step(1 / 60.0);
+            }
+        }
+        check(peak[1] <= 40 + MotionFeet.KNEE_SOFT + 2, "knee_40 holds the swing knee near 40: " + peak[1]);
+        check(peak[0] > 60, "no marker keeps the code's fold: " + peak[0]);
+        check(Math.abs(peak[0] - peak[2]) < 1e-6 || peak[0] > 60, "a walk clip with no marker folds as the code does");
+        check(Double.isNaN(walk("walk", "").knee()) && walk("walk", "\"knee_30\":0").knee() == 30, "knee_30 is 30 degrees");
+        return String.format("swing knee peak %.0f (no marker), %.0f (knee_40), %.0f (no clip)", peak[0], peak[1], peak[2]);
     }
 
     /** A calm unit plays its idle variants (kind NOVELTY_KINDS and up), keying what the clip keys; an enemy coming near lets it go. */

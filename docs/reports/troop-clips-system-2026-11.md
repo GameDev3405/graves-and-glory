@@ -1,6 +1,6 @@
 # Troop clips: per-troop folders, attack picks, idle variants, gait clips
 
-Status: **code for Kort's review before merge.** Branch `claude/gifted-ptolemy-j2rv7i`. Gameplay timing is unchanged.
+Status: **approved by Kort 2026-11-05** (DECISIONS.md); awaits merge. Branch `claude/gifted-ptolemy-j2rv7i`. Gameplay timing is unchanged.
 
 ## What it lets an animator do
 
@@ -11,7 +11,7 @@ Status: **code for Kort's review before merge.** Branch `claude/gifted-ptolemy-j
 | Several idles | `idle_alt_1`, `idle_alt_2`, ... play once in place of the code's novelty idles: on a calm unit, every 6 to 14 s, eased in and out over 0.3 s, and let go when the calm breaks. A family without them keeps the code's six novelties. | `MotionBody.life` |
 | Own reactions | A troop folder with any hit clip of its own replaces every inherited hit; the same for blocks and for deaths, each on its own. | `TroopMotion.build` |
 | Specials | `victory`, `war_cry`, `summon`, `spawn_rise` and any other named clip in the troop, family or `common` folder can be played by `setScenePose(<name>)`. **What triggers them in a match is a gameplay call and is not wired.** | `TroopMotion.scene` |
-| A character walk and run | Looping `walk` and `run` clips play on the stride's own phase, so by distance travelled (time 0 is the right heel striking, half the loop the left). In their share they replace the code's upper-body gait (bob, sway, lean, twist, arm swing, elbows). A `stride_<tenths>` timeline marker (for example `stride_16`, 1.6 blocks a loop) sets the stride length, held to 0.6 to 1.25 times the code's so the legs can reach. The legs stay the code's solved stride, planted by `MotionFeet`; what a gait clip keys on the legs is added as an offset. | `MotionBody.stride`, `Clip.stride` |
+| A character walk and run | Looping `walk` and `run` clips play on the stride's own phase, so by distance travelled (time 0 is the right heel striking, half the loop the left). In their share they replace the code's upper-body gait (bob, sway, lean, twist, arm swing, elbows). A `stride_<tenths>` timeline marker (for example `stride_16`, 1.6 blocks a loop) sets the stride length, held to 0.6 to 1.25 times the code's so the legs can reach. A `knee_<degrees>` marker caps the swinging knee (a soft limit in `MotionFeet.stride`; Kort 1C), so a heavy troop walks stiff-legged instead of kicking up like a jogger. The legs stay the code's solved stride, planted by `MotionFeet`; what a gait clip keys on the legs is added as an offset. | `MotionBody.stride`, `Clip.stride` |
 
 Bones: a troop project may key any bone of its troop model (props such as `bolt_t2`), as well as the rig's. A bone in neither
 is still refused.

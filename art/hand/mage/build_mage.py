@@ -168,9 +168,12 @@ def robe_tier(tier):
     g = cloth_v(3)(face, w, h)
     if face == "top": return blank(w, h)
     if face == "bottom":
-        g = [[WHITE[1]] * w for _ in range(h)]
-        for y in range(1, h - 1):
-            for x in range(1, w - 1): g[y][x] = None
+        # the underside painted whole (Kort 2026-11-05, decision 2A): a step lifts the hem, and a hollow underside showed the
+        # dark leg inside as a hole. Shadowed robe white, edged in the hem's gilt.
+        g = [[WHITE[2]] * w for _ in range(h)]
+        for y in range(h):
+            for x in range(w):
+                if y in (0, h - 1) or x in (0, w - 1): g[y][x] = GOLD[2]
         return g
     if h > 2: g[h - 2] = [clamp(WHITE, 2 + LIT[face])] * w
     if tier == 3 and h > 2:

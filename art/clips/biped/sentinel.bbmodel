@@ -13381,6 +13381,18 @@
        "time": 0.0,
        "color": -1,
        "interpolation": "linear"
+      },
+      {
+       "channel": "timeline",
+       "data_points": [
+        {
+         "script": "knee_30"
+        }
+       ],
+       "uuid": "7d582baf-cccf-5a07-a4fc-3e1ad0f452d6",
+       "time": 0.0,
+       "color": -1,
+       "interpolation": "linear"
       }
      ]
     }
@@ -13867,6 +13879,18 @@
         }
        ],
        "uuid": "0d133249-2a77-535f-ace8-3d603c562f45",
+       "time": 0.0,
+       "color": -1,
+       "interpolation": "linear"
+      },
+      {
+       "channel": "timeline",
+       "data_points": [
+        {
+         "script": "knee_45"
+        }
+       ],
+       "uuid": "26a7ca5b-0a69-5e10-b3ea-26159689c588",
        "time": 0.0,
        "color": -1,
        "interpolation": "linear"

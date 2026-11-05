@@ -169,13 +169,13 @@ def knight():
         return {'root': [0, 0, 0, 0, dip, 0], 'body': [2, 0, sway], 'chest': [0, chest, 0], 'left_arm': [shield, 0, 0], 'head': [0, -chest * 0.6, 0]}
     walk = Clip('walk', 1.0, [(0, wk(0.55, 1.5, -5, -9, 0), L), (0.15, wk(0.2, 1.0, -3, -5, 0), BZ), (0.3, wk(-0.3, 0, 0, 0, 0), BZ), (0.5, wk(0.55, -1.5, 5, 9, 0), L),
                               (0.65, wk(0.2, -1.0, 3, 5, 0), BZ), (0.8, wk(-0.3, 0, 0, 0, 0), BZ), (1.0, wk(0.55, 1.5, -5, -9, 0), L)],
-                mode='raw', base='carry', loop=True, markers={'stride_14': 0})
+                mode='raw', base='carry', loop=True, markers={'stride_14': 0, 'knee_45': 0})
     # ---- KN-5 run: a charge at the ready (forward lean, shield tucked, the sword arm pumping a little, head up)
     def rn(dip, chest, pump):
         return {'root': [0, 0, 0, 0, dip, 0], 'body': [9, 0, 0], 'chest': [2, chest, 0], 'head': [-8, -chest * 0.5, 0],
                 'left_arm': [-14, 0, 0], 'left_forearm': [-12, 0, 0], 'right_arm': [pump, 0, 0]}
     run = Clip('run', 1.0, [(0, rn(1.0, -6, -5), L), (0.1, rn(0.2, -3, -2), BZ), (0.3, rn(-0.4, 0, 2), BZ), (0.5, rn(1.0, 6, -5), L), (0.6, rn(0.2, 3, -2), BZ),
-                            (0.8, rn(-0.4, 0, 2), BZ), (1.0, rn(1.0, -6, -5), L)], mode='raw', base='carry', loop=True, markers={'stride_19': 0})
+                            (0.8, rn(-0.4, 0, 2), BZ), (1.0, rn(1.0, -6, -5), L)], mode='raw', base='carry', loop=True, markers={'stride_19': 0, 'knee_70': 0})
 
     # ---- KN-10: staggers, recovers into guard fast and shakes it off (body, head and legs)
     def hit(name, jolt, buckle=0.0, snap=0.0):
@@ -329,7 +329,7 @@ def archer():
     def wk(dip, sway, chest):
         return {'root': [0, 0, 0, 0, 1.3 + dip, 0], 'body': [9, 0, sway], 'chest': [0, chest, 0], 'head': [-8, -chest, 0], 'left_arm': [-6, 0, 0]}
     walk = Clip('walk', 1.0, [(0, wk(0.3, 1, -4), L), (0.25, wk(-0.2, 0, 0), BZ), (0.5, wk(0.3, -1, 4), L), (0.75, wk(-0.2, 0, 0), BZ), (1.0, wk(0.3, 1, -4), L)],
-                mode='raw', base='carry', loop=True, markers={'stride_12': 0})
+                mode='raw', base='carry', loop=True, markers={'stride_12': 0, 'knee_60': 0})
     # AR-5 run: quick and light, the bow carried at the side, the draw arm pumping
     def rn(dip, chest, pump):
         return {'root': [0, 0, 0, 0, dip, 0], 'body': [7, 0, 0], 'chest': [0, chest, 0], 'head': [-6, -chest * 0.6, 0],
@@ -444,13 +444,13 @@ def sentinel():
     def wk(dip, roll_, chest):
         return {'root': [0, 0, roll_ * 0.5, 0, dip, 0], 'body': [3, 0, roll_], 'chest': [0, chest, 0], 'head': [0, -chest * 0.7, -roll_ * 0.5]}
     walk = Clip('walk', 1.0, [(0, wk(0.9, 2.5, -3), L), (0.2, wk(0.5, 1.5, -2), BZ), (0.35, wk(-0.3, 0, 0), BZ), (0.5, wk(0.9, -2.5, 3), L), (0.7, wk(0.5, -1.5, 2), BZ),
-                              (0.85, wk(-0.3, 0, 0), BZ), (1.0, wk(0.9, 2.5, -3), L)], mode='raw', base='carry', loop=True, markers={'stride_13': 0})
+                              (0.85, wk(-0.3, 0, 0), BZ), (1.0, wk(0.9, 2.5, -3), L)], mode='raw', base='carry', loop=True, markers={'stride_13': 0, 'knee_30': 0})
     # SE-5 run: a lumbering charge, the sword held high
     def rn(dip, chest):
         return {'root': [0, 0, 0, 0, dip, 0], 'body': [8, 0, 0], 'chest': [-2, chest, 0], 'head': [-6, -chest * 0.6, 0],
                 'right_arm': [-34, 0, 0], 'left_arm': [-34, 0, 0]}
     run = Clip('run', 1.0, [(0, rn(1.4, -6), L), (0.25, rn(-0.2, 0), BZ), (0.5, rn(1.4, 6), L), (0.75, rn(-0.2, 0), BZ), (1.0, rn(1.4, -6), L)],
-               mode='raw', base='carry', loop=True, markers={'stride_15': 0})
+               mode='raw', base='carry', loop=True, markers={'stride_15': 0, 'knee_45': 0})
     # SE-10: barely moves: a shudder in the plate, rights himself
     def hit(name, s_):
         z = {'root': [0] * 6, 'body': [0, 0, 0], 'chest': [0, 0, 0], 'head': [0, 0, 0]}
@@ -526,13 +526,13 @@ def gl_marshal():
     def wk(dip, sway, chest):
         return {'root': [0, 0, 0, 0, dip, 0], 'body': [-1, 0, sway], 'chest': [-3, chest, 0], 'head': [-3, -chest * 0.8, 0], 'left_arm': [chest * 1.5, 0, 0]}
     walk = Clip('walk', 1.0, [(0, wk(0.35, 2, -4), L), (0.25, wk(-0.1, 0, 0), BZ), (0.5, wk(0.35, -2, 4), L), (0.75, wk(-0.1, 0, 0), BZ), (1.0, wk(0.35, 2, -4), L)],
-                mode='raw', base='carry', loop=True, markers={'stride_15': 0})
+                mode='raw', base='carry', loop=True, markers={'stride_15': 0, 'knee_30': 0})
     # GM-5 run: a commanding charge, the sword raised
     def rn(dip, chest):
         return {'root': [0, 0, 0, 0, dip, 0], 'body': [8, 0, 0], 'chest': [-2, chest, 0], 'head': [-10, -chest * 0.6, 0], 'right_arm': [-70, 0, -6],
                 'right_forearm': [30, 0, 0], 'left_arm': [-20, 0, 0]}
     run = Clip('run', 1.0, [(0, rn(1.0, -6), L), (0.25, rn(-0.3, 0), BZ), (0.5, rn(1.0, 6), L), (0.75, rn(-0.3, 0), BZ), (1.0, rn(1.0, -6), L)],
-               mode='raw', base='carry', loop=True, markers={'stride_18': 0})
+               mode='raw', base='carry', loop=True, markers={'stride_18': 0, 'knee_50': 0})
     # GM-10: unimpressed: a step back, then he straightens his cape
     def hit(name, s_):
         z = {'root': [0] * 6, 'body': [0, 0, 0], 'chest': [0, 0, 0], 'head': [0, 0, 0], 'left_arm': [0, 0, 0], 'left_forearm': [0, 0, 0]}
@@ -630,13 +630,13 @@ def longbow():
     def wk(dip, sway, chest):
         return {'root': [0, 0, 0, 0, dip, 0], 'body': [1, 0, sway], 'chest': [0, chest, 0], 'head': [0, -chest * 0.6, 0], 'right_arm': [-chest * 3, 0, 0]}
     walk = Clip('walk', 1.0, [(0, wk(0.4, 1.2, -5), L), (0.25, wk(-0.3, 0, 0), BZ), (0.5, wk(0.4, -1.2, 5), L), (0.75, wk(-0.3, 0, 0), BZ), (1.0, wk(0.4, 1.2, -5), L)],
-                mode='raw', base='carry', loop=True, markers={'stride_16': 0})
+                mode='raw', base='carry', loop=True, markers={'stride_16': 0, 'knee_40': 0})
     # LB-5 run: an awkward jog, the long bow lifted clear of the ground
     def rn(dip, chest, bob):
         return {'root': [0, 0, 0, 0, dip, 0], 'body': [6, 0, 2 * bob], 'chest': [0, chest, 0], 'head': [-4, -chest * 0.4, -2 * bob],
                 'left_arm': [-16 + 6 * bob, 0, 0], 'right_arm': [-chest * 4, 0, 0], 'right_forearm': [-40, 0, 0]}
     run = Clip('run', 1.0, [(0, rn(1.1, -6, 1), L), (0.25, rn(-0.2, 0, 0), BZ), (0.5, rn(1.1, 6, -1), L), (0.75, rn(-0.2, 0, 0), BZ), (1.0, rn(1.1, -6, 1), L)],
-               mode='raw', base='carry', loop=True, markers={'stride_17': 0})
+               mode='raw', base='carry', loop=True, markers={'stride_17': 0, 'knee_55': 0})
     # LB-10: steps back and draws the bow in to protect it
     def hit(name, s_):
         z = {'root': [0] * 6, 'body': [0, 0, 0], 'head': [0, 0, 0], 'left_arm': [0, 0, 0], 'left_forearm': [0, 0, 0]}

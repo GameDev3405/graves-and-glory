@@ -4,7 +4,8 @@
  "length": 1.0,
  "loop": true,
  "markers": {
-  "stride_15": 0.0
+  "stride_15": 0.0,
+  "knee_30": 0.0
  },
  "bones": {
   "body": {

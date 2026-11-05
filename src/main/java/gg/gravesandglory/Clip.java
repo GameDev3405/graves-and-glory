@@ -143,9 +143,19 @@ public final class Clip {
      * A gait clip's stride (walk and run, MotionBody.stride): blocks travelled over one loop, from its {@code stride_<tenths>}
      * timeline marker (stride_18 is 1.8 blocks; the marker's time is not read), or NaN when it has none.
      */
-    public double stride() {
+    public double stride() { return markerNumber("stride_", 10.0); }
+
+    /**
+     * A gait clip's swing-knee cap (Kort 2026-11-05, decision 1C): its {@code knee_<degrees>} marker (knee_30 lets a swinging knee
+     * fold at most about 30 degrees: a heavy, stiff-legged walk; MotionFeet.stride), or NaN when it has none.
+     */
+    public double knee() { return markerNumber("knee_", 1.0); }
+
+    /** The number a {@code <prefix><digits>} timeline marker names, over scale; NaN when the clip has none. */
+    double markerNumber(String prefix, double scale) {
         for (String m : markers.keySet())
-            if (m.startsWith("stride_") && m.length() > 7 && m.substring(7).chars().allMatch(Character::isDigit)) return Integer.parseInt(m.substring(7)) / 10.0;
+            if (m.startsWith(prefix) && m.length() > prefix.length() && m.substring(prefix.length()).chars().allMatch(Character::isDigit))
+                return Integer.parseInt(m.substring(prefix.length())) / scale;
         return Double.NaN;
     }
     /** The impact marker in ticks from the clip's start, or -1 when the clip has none. */

@@ -2,7 +2,7 @@
 
 Six troops, each with its own clips, built fresh from the approved list (`KN`, `AR`, `SE`, `LB`, `MA`, `GM`). Nothing is reused from
 the earlier family clips except what a troop does not key (formation stances wall and shield, blocks). Status: **for Kort's look;
-needs the troop clip system (ANIM-04) to merge.**
+the troop clip system it needs is approved (2026-11-05).**
 
 Watch the reels: `<troop>_reel.mp4`, two views (three-quarter and side), drawn from the game's own motion engine on the troop's
 real model and skin, with floor studs so travel reads. Each runs idle, the idle variants, walk, run, guard, every attack, the
@@ -30,7 +30,13 @@ three hits, the specials, then the death.
 - **Lint on every clip** (`tools/troop_anim/kit.py`): no backward elbow or knee on the net pose, joint limits, no bone over 60
   degrees in any 100 ms, keys on the 0.05 s tick, loops closed, impacts on the slot tick, no weapon tip under the floor.
 - **Feet** stay the engine's: the stride and planting solve the legs; walk and run clips key rhythm (bob, sway, shoulders, arms)
-  so they sit on either the carry or the guard.
+  so they sit on either the carry or the guard. Each sets its swing knee (`knee_<degrees>`, Kort 1C): Templar and Marshal 30,
+  Longbow 40, Squire 45, Archer 60; the Sunweaver's robe already holds hers at 10.
+
+## Kort's calls (2026-11-05)
+
+1C per-troop walk knee; 2A the Sunweaver's robe undersides painted; 3A the Templar braces in a deep lunge; 4A the Templar's
+cleave winds up one-handed with the shield in front; 5 the troop clip system approved.
 
 ## How it is built
 
