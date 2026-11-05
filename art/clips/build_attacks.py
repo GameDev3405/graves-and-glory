@@ -173,14 +173,15 @@ def spear():
     return out
 
 
-def beats(name, length, impact, cocked_at, hold, poses, lag=None, two=False):
+def beats(name, length, impact, cocked_at, hold, poses, lag=None, two=False, follow_interp=None):
     """The shared beat layout: cocked pose at cocked_at, held (creeping to the second cocked pose) for `hold` seconds, a
     linear strike into the impact pose, follow-through 0.12 s later, a settle at about the clip's two-thirds and a near-rest
     key 0.16 s before the end. poses: (cocked, cocked2, hit, follow, settle, near)."""
     if two:
         poses = [both_hands(p, two if isinstance(two, tuple) else (0, 2.1, 2.1)) for p in poses]
     cocked, cocked2, hit, follow, settle, near = poses
-    keys = [(cocked_at, C, cocked), (cocked_at + hold, L, cocked2), (impact, L, hit), (impact + 0.12, C, follow),
+    # follow_interp=L holds a ground strike's follow-through on the line from the impact (no catmull overshoot into the floor)
+    keys = [(cocked_at, C, cocked), (cocked_at + hold, L, cocked2), (impact, L, hit), (impact + 0.12, follow_interp or C, follow),
             (impact + (length - impact) * 0.48, C, settle), (length - 0.16, C, near)]
     lag = dict(lag or dict(head=0.02, left_arm=0.04))
     if two:
@@ -304,19 +305,21 @@ SNATH = (0, 5, -3)   # the lower hand 5 px down the snath (the upright grip sits
 def scythe(P=None):
     P = dict(SCY, **(P or {}))
     out = []
-    # Reap (impact tick 12): the snath reaches forward and low, the body coiled toward the right so the blade waits out on
-    # the right; a held beat, then the body unwinds and sinks and the blade sweeps right to left across the front at shin
-    # height, point first (the blade's +x lies along the sweep), and carries on past the left hip.
+    # Reap (impact tick 12): a backswing. The body coils toward the right and the fists come across the chest, so the snath
+    # runs back over the right shoulder and the blade is drawn up and out behind on the right at head height; a held beat,
+    # then the body unwinds and sinks and the blade sweeps right to left across the front at shin height, point first (the
+    # blade's +x lies along the sweep), 4 px clear of the grass, and carries on past the left hip. (Art QA 2026-11 D1: the
+    # old cocked pose held the blade forward and low, out of view; D2: the impact tip sat 3 px into the ground.)
     a = P['reap_arm']
     out.append(beats('scythe_reap', 1.3, 0.6, 0.26, 0.22, (
-        dict(root=(0, 0, 0, 0, 0.6, 0.6), body=(-2, P['reap_coil'], 0), head=(0, -24, 0), right_arm=(a, 0, -8),
-             right_hand=(P['reap_wrist'], 0, 0), right_leg=(6, 0, 0), left_leg=(-10, 0, 0), left_shin=(8, 0, 0)),
-        dict(root=(0, 0, 0, 0, 0.7, 0.7), body=(-3, P['reap_coil'] + 4, 0), head=(0, -26, 0), right_arm=(a - 2, 0, -8),
-             right_hand=(P['reap_wrist'] + 2, 0, 0)),
-        dict(root=(0, 0, 0, 0, 1.8, -1.2), body=(P['reap_lean'], -4, 0), head=(-6, 4, 0), right_arm=(a - 4, 0, -4),
+        dict(root=(0, 0, 0, 0, 0.6, 0.6), body=(-2, P['reap_coil'], 0), head=(0, -30, 0), right_arm=(-50, 0, -70),
+             right_hand=(50, 0, 0), right_leg=(6, 0, 0), left_leg=(-10, 0, 0), left_shin=(8, 0, 0)),
+        dict(root=(0, 0, 0, 0, 0.7, 0.7), body=(-3, P['reap_coil'] + 4, 0), head=(0, -32, 0), right_arm=(-52, 0, -72),
+             right_hand=(48, 0, 0)),
+        dict(root=(0, 0, 0, 0, 1.2, -1.2), body=(P['reap_lean'], -4, 0), head=(-6, 4, 0), right_arm=(a - 4, 0, -4),
              right_hand=(P['reap_wrist'] + P['reap_hit'], 0, 0),
              right_leg=(12, 0, 0), left_leg=(-24, 0, 0), left_shin=(20, 0, 0), right_shin=(10, 0, 0)),
-        dict(root=(0, 0, 0, 0, 1.9, -1.4), body=(P['reap_lean'] + 2, -44, 0), head=(-8, 24, 0), right_arm=(a - 6, 0, 8),
+        dict(root=(0, 0, 0, 0, 1.3, -1.4), body=(P['reap_lean'] + 2, -44, 0), head=(-8, 24, 0), right_arm=(a - 6, 0, 8),
              right_hand=(P['reap_wrist'] + P['reap_hit'] - 14, 0, 0)),
         dict(root=(0, 0, 0, 0, 0.5, -0.4), body=(4, -10, 0), head=(-2, 6, 0), right_arm=(-10, 0, 0), right_hand=(30, 0, 0),
              right_leg=(3, 0, 0), left_leg=(-6, 0, 0), left_shin=(5, 0, 0), right_shin=(2, 0, 0)),
@@ -339,7 +342,7 @@ def scythe(P=None):
     return out
 
 
-SCY = dict(reap_arm=-34, reap_wrist=124, reap_coil=42, reap_lean=12, reap_hit=2,
+SCY = dict(reap_arm=-34, reap_wrist=124, reap_coil=55, reap_lean=12, reap_hit=-14,
            hook_twist=0, hook_cock=40, hook_arm=-80, hook_hit=134, hook_coil=65, hook_out=-50, hook_unw=-8)
 
 # ---- biped: crossbow (ic_arbalist; ic_ballista's crewman runs the same clip at his engine), thrower (tc_harpooner) and
@@ -384,21 +387,23 @@ def thrower():
 
 
 def crew():
-    # Fire (impact tick 8 = the shot): the gunner crouches and reaches the linstock to the touch-hole, eyes on the fuse; a
-    # held beat while it catches, then the mortar fires: he flinches back off it, the free arm comes up across his face and
-    # his head turns away; he recovers to rest.
+    # Fire (impact tick 8 = the shot; the tube rides on his back, muzzle past the right shoulder): he drops into a braced
+    # crouch, the right hand reaching back up to the firing lanyard at the tube, the left forearm up before his face and
+    # his head turned away from the muzzle; a held beat while he takes up the slack, then he yanks the lanyard and the
+    # mortar fires: the recoil slams him down into a deep squat, body pitched over, head ducked, the right arm thrown out
+    # and down; he rises back to rest. (Art QA 2026-11 D3: the old clip barely left the idle pose at game distance.)
     return [beats('crew_fire', 1.3, 0.4, 0.12, 0.2, (
-        dict(root=(0, 0, 0, 0, 1.2, -0.6), body=(16, -10, 0), head=(10, -8, 0), right_arm=(-50, 0, -6), right_hand=(10, 0, 0),
-             left_arm=(14, 0, 8), right_leg=(-14, 0, 0), right_shin=(14, 0, 0), left_leg=(6, 0, 0)),
-        dict(root=(0, 0, 0, 0, 1.3, -0.6), body=(17, -10, 0), head=(11, -8, 0), right_arm=(-54, 0, -6), right_hand=(12, 0, 0),
-             left_arm=(14, 0, 8)),
-        dict(root=(0, 0, 0, 0, 1.5, 0.8), body=(-10, 8, 0), head=(-12, 14, 0), right_arm=(-30, 0, -14), right_hand=(4, 0, 0),
-             left_arm=(-34, 10, 0), right_leg=(-6, 0, 0), right_shin=(6, 0, 0), left_leg=(4, 0, 0)),
-        dict(root=(0, 0, 0, 0, 1.2, 0.9), body=(-12, 10, 0), head=(-14, 16, 0), right_arm=(-26, 0, -16), right_hand=(2, 0, 0),
-             left_arm=(-94, 26, 0)),
-        dict(root=(0, 0, 0, 0, 0.3, 0.3), body=(-3, 3, 0), head=(-4, 5, 0), right_arm=(-8, 0, -4), right_hand=(2, 0, 0),
-             left_arm=(-30, 10, 0), right_leg=(-2, 0, 0), right_shin=(2, 0, 0)),
-        dict(root=(0, 0, 0, 0, 0.05, 0), body=(-0.5, 0.5, 0), left_arm=(-2, 0, 0))))]
+        dict(root=(0, 0, 0, 0, 1.0, 0.4), body=(16, -10, 0), head=(10, -30, 0), right_arm=(30, 0, -14), right_hand=(0, 0, 0),
+             left_arm=(-66, 0, 18), right_leg=(-22, 0, 0), right_shin=(26, 0, 0), left_leg=(-16, 0, 0), left_shin=(20, 0, 0)),
+        dict(root=(0, 0, 0, 0, 1.3, 0.5), body=(18, -12, 0), head=(12, -34, 0), right_arm=(36, 0, -16), right_hand=(0, 0, 0),
+             left_arm=(-72, 0, 20), right_leg=(-28, 0, 0), right_shin=(32, 0, 0), left_leg=(-20, 0, 0), left_shin=(24, 0, 0)),
+        dict(root=(0, 0, 0, 0, 2.8, 1.6), body=(30, -4, 0), head=(26, -20, 0), right_arm=(-8, 0, -30), right_hand=(0, 0, 0),
+             left_arm=(-100, 0, 26), right_leg=(-56, 0, 0), right_shin=(64, 0, 0), left_leg=(-46, 0, 0), left_shin=(56, 0, 0)),
+        dict(root=(0, 0, 0, 0, 3.0, 1.8), body=(32, -2, 0), head=(30, -16, 0), right_arm=(-20, 0, -40), right_hand=(0, 0, 0),
+             left_arm=(-110, 0, 26)),
+        dict(root=(0, 0, 0, 0, 0.8, 0.4), body=(8, -2, 0), head=(4, -6, 0), right_arm=(-6, 0, -8), right_hand=(0, 0, 0),
+             left_arm=(-30, 0, 6), right_leg=(-12, 0, 0), right_shin=(14, 0, 0), left_leg=(-8, 0, 0), left_shin=(10, 0, 0)),
+        dict(root=(0, 0, 0, 0, 0.05, 0), body=(1, 0, 0), left_arm=(-2, 0, 0), right_leg=(-1, 0, 0), right_shin=(1, 0, 0))))]
 
 
 # ---- creature rigs. y is down and the beast faces -z, as on the biped: rx > 0 dips a forward-pointing bone (head, jaw,
@@ -486,10 +491,11 @@ def ravager():
         dict(root=(0, 0, 0, 0, 1.4, -5.0), body=(6, 0, 0), chest=(8, 0, 0), head=(20, 0, 0), jaw=(6, 0, 0),
              front_right_leg=(-28, 0, 0), front_left_leg=(20, 0, 0), back_left_leg=(26, 0, 0), back_right_leg=(18, 0, 0),
              tail=(10, 0, 0)),
-        dict(root=(0, 0, 0, 0, 0.9, -5.4), body=(-6, 0, 0), chest=(-4, 0, 0), head=(-24, 0, 0), jaw=(14, 0, 0),
+        dict(root=(0, 0, 0, 0, 0.4, -5.4), body=(-6, 0, 0), chest=(-4, 0, 0), head=(-30, 0, 0), jaw=(6, 0, 0),
              front_right_leg=(-20, 0, 0), front_left_leg=(-8, 0, 0), back_left_leg=(16, 0, 0), back_right_leg=(12, 0, 0),
              tail=(16, 0, 0)),
-        dict(root=(0, 0, 0, 0, 0.4, -2.0), body=(1, 0, 0), chest=(1, 0, 0), head=(-4, 0, 0), jaw=(3, 0, 0),
+        # the head stays up and the jaw shut through the recovery so the jaw tentacles clear the grass (Art QA 2026-11 D6)
+        dict(root=(0, 0, 0, 0, 0.1, -2.0), body=(1, 0, 0), chest=(1, 0, 0), head=(-24, 0, 0), jaw=(0, 0, 0),
              front_right_leg=(-2, 0, 0), front_left_leg=(2, 0, 0), back_left_leg=(3, 0, 0), back_right_leg=(2, 0, 0),
              tail=(2, 0, 0)),
         dict(root=(0, 0, 0, 0, 0.05, -0.1), head=(-0.5, 0, 0))), lag=BEAST_LAG)
@@ -530,7 +536,11 @@ def spider():
     return [bite_, lunge_]
 
 
-def colossus():
+COL = dict(hit_ty=0.3, hit_wrist=234, follow_wrist=236)
+
+
+def colossus(P=None):
+    P = dict(COL, **(P or {}))
     # Slam (impact tick 12, head zone): both fists climb overhead and the body leans back, the maul upright and laid back
     # behind the head, held; then the body folds forward onto bent hips, the arms come down level in front, fists together,
     # and the wrist brings the maul over the top so its head leads and lands on the ground ahead (the maul hangs from
@@ -540,14 +550,18 @@ def colossus():
              right_hand=(170, 0, 0), right_leg=(6, 0, 0), left_leg=(-6, 0, 0)),
         dict(root=(0, 0, 0, 0, -0.6, 1.0), body=(-12, 0, 0), head=(-8, 0, 0), right_arm=(-172, 0, 8), left_arm=(-172, 0, -8),
              right_hand=(164, 0, 0)),
-        dict(root=(0, 0, 0, 0, 2.4, -1.6), body=(22, 0, 0), head=(-10, 0, 0), right_arm=(-104, -10, 0), left_arm=(-104, 10, 0),
-             right_hand=(234, 0, 0), right_leg=(-18, 0, 0), left_leg=(10, 0, 0)),
-        dict(root=(0, 0, 0, 0, 2.8, -1.8), body=(26, 0, 0), head=(-12, 0, 0), right_arm=(-112, -10, 0), left_arm=(-112, 10, 0),
-             right_hand=(242, 0, 0)),
-        dict(root=(0, 0, 0, 0, 0.8, -0.6), body=(6, 0, 0), head=(-3, 0, 0), right_arm=(-20, 0, 2), left_arm=(-10, 0, -2),
-             right_hand=(40, 0, 0), right_leg=(-4, 0, 0), left_leg=(2, 0, 0)),
+        # the slam is a ground strike: the maul head lands on the grass, not in it (Art QA 2026-11 D5); the kneeless legs
+        # take little root drop, so the weight goes into the body fold
+        dict(root=(0, 0, 0, 0, P['hit_ty'], -1.6), body=(22, 0, 0), head=(-10, 0, 0), right_arm=(-104, -10, 0), left_arm=(-104, 10, 0),
+             right_hand=(P['hit_wrist'], 0, 0), right_leg=(-18, 0, 0), left_leg=(10, 0, 0)),
+        dict(root=(0, 0, 0, 0, P['hit_ty'] + 0.3, -1.8), body=(26, 0, 0), head=(-12, 0, 0), right_arm=(-112, -10, 0), left_arm=(-112, 10, 0),
+             right_hand=(P['follow_wrist'], 0, 0)),
+        # the recovery lifts the maul upright before the chest and the fists off the grass, rather than reaching both long
+        # arms forward to the ground (D4: they read as a splayed leg)
+        dict(root=(0, 0, 0, 0, 0.3, -0.4), body=(4, 0, 0), head=(-2, 0, 0), right_arm=(-56, 0, 4), left_arm=(-44, 0, -4),
+             right_hand=(100, 0, 0), right_leg=(-2, 0, 0), left_leg=(1, 0, 0)),
         dict(root=(0, 0, 0, 0, 0.05, 0), body=(0.5, 0, 0), right_arm=(-1, 0, 0), left_arm=(-1, 0, 0), right_hand=(1, 0, 0))),
-        lag=dict(head=0.03))
+        lag=dict(head=0.03), follow_interp=L)
     # Backhand (impact tick 8): the right arm swings across the chest to the left with the body coiled left, held; then the
     # body unwinds and the arm sweeps out to the right at chest height, back of the fist leading, and carries past.
     back = beats('colossus_backhand', 1.2, 0.4, 0.12, 0.16, (
