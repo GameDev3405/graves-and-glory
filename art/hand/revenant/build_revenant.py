@@ -419,7 +419,8 @@ NOTE = ("Graveborn Risen (unit identity, Graveborn): a stooped, shambling dead m
         "shredded team tabard hanging in strips. He carries the notched sword in the right hand. Tier II: salvaged plate with violet piping; "
         "tier III: black gilt-chased plate, a slitted visor and a team half-cape. No back flag.")
 REVENANT = Troop("revenant", SKIN, CLOTH, bones, cloth_painter,
-                 {"weapon": "notched_sword", "hand": "right", "idleArms": "forward", "portrait": "standard"}, glow=glow_fn)
+                 {"weapon": "notched_sword", "hand": "right", "idleArms": "forward", "portrait": "standard"}, glow=glow_fn,
+                 merge={"right_boot": "right_foot", "left_boot": "left_foot", "brow_plate": "helm_plates", "cape_clasp": "gilt_collar"})
 def build(): return REVENANT.build()
 def outputs(): return REVENANT.outputs()
 

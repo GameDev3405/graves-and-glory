@@ -22,7 +22,11 @@ final class MotionFeet {
     /** Hip spacing (px) and the largest roll (degrees) the hips take to let one knee buckle more than the other. */
     static final double HIP_WIDTH = 3.8, MAX_ROLL = 30;
     static final double[][] HIPS = {{-1.9, 12, 0}, {1.9, 12, 0}};
-    static final String[] LEGS = {"right_leg", "left_leg"}, SHINS = {"right_shin", "left_shin"};
+    static final String[] LEGS = {"right_leg", "left_leg"}, SHINS = {"right_shin", "left_shin"}, FEET = {"right_foot", "left_foot"};
+    /** The ankle's pivot below the knee (px, the shin's frame): the foot bone turns the boot about it. */
+    static final double ANKLE = 4;
+    /** A bone's channels at rest: a foot or chest the pose has no row for (read only). */
+    private static final double[] NONE = new double[6];
 
     /**
      * Plants the feet while standing. Each foot's target is where the legs' own channels put it with the root at rest. A
@@ -186,7 +190,7 @@ final class MotionFeet {
                 rotate(v, full);
                 double mid = v[1] + full[TY];
                 double mx = v[0] + full[TX], mz = v[2] + full[TZ];
-                int at = lowestAt(i, full, l, k, v);
+                int at = lowestAt(i, full, l, k, footOf(out, i), v);
                 drop[i] = f.lift[i] > 0 ? Math.max(0, v[1] - mid) : 0;
                 if (!st.pNow[i]) continue;
                 double px = v[0] - mx, pz = v[2] - mz;
@@ -224,12 +228,15 @@ final class MotionFeet {
     static final double DROP_GAIN = 2.5;
 
     /**
-     * Fix r3 (Task 16): the drawn shin's corners in its own frame (px, knee pivot at the origin, y down): the shin box, the boot,
-     * the toe cap and the knee guard of the troop rig (TroopModel's knight; the other troops' boots sit inside it). What the ground
-     * pass and the stride's corner targets keep on the ground.
+     * Fix r3 (Task 16): the drawn lower leg's corners in the shin's frame (px, knee pivot at the origin, y down): the shin box below
+     * the ankle, the boot and the toe cap, which ride the foot (before FOOT_TO), then the knee guard and the shin box above the
+     * ankle (the troop rig's knight; the other troops' boots sit inside it). What the ground pass and the stride's corner targets
+     * keep on the ground. The waist and ankle rig (2026-11) split the shin at ANKLE; at rest the corners are the whole shin's.
      */
     static final double[][] HULL = hull(new double[][]{
-        {-2, 2, 0, 6, -2, 2}, {-2.5, 2.5, 3, 6, -3, 2}, {-1.5, 1.5, 5, 6, -4, -3}, {-2.5, 2.5, -1, 1, -3, -1}});
+        {-2, 2, 4, 6, -2, 2}, {-2.5, 2.5, 3, 6, -3, 2}, {-1.5, 1.5, 5, 6, -4, -3}, {-2.5, 2.5, -1, 1, -3, -1}, {-2, 2, 0, 4, -2, 2}});
+    /** HULL's corners before this index ride the foot: they turn about the ankle by its channels. */
+    static final int FOOT_TO = 24;
 
     static double[][] hull(double[][] boxes) {
         double[][] h = new double[boxes.length * 8][];
@@ -238,11 +245,11 @@ final class MotionFeet {
         return h;
     }
 
-    /** Leg i's lowest drawn corner (rig y, px, larger is lower) under the given root, leg and shin channels; v is scratch. */
-    static double lowest(int i, double[] root, double[] leg, double[] shin, double[] v) {
+    /** Leg i's lowest drawn corner (rig y, px, larger is lower) under the given root, leg, shin and foot channels; v is scratch. */
+    static double lowest(int i, double[] root, double[] leg, double[] shin, double[] foot, double[] v) {
         double lo = Double.NEGATIVE_INFINITY;
-        for (double[] p : HULL) {
-            v[0] = p[0]; v[1] = p[1]; v[2] = p[2];
+        for (int c = 0; c < HULL.length; c++) {
+            corner(c, foot, v);
             rotate(v, shin);
             v[0] += shin[TX]; v[1] += SHIN + shin[TY]; v[2] += shin[TZ];
             rotate(v, leg);
@@ -260,11 +267,10 @@ final class MotionFeet {
     static final double ROLL_U = 0.25, ROLL_BACK = 0.35, ROLL_LAND = 0.2;
 
     /** Leg i's lowest drawn corner's index in HULL, leaving that corner (rig space, root translation included) in v. */
-    static int lowestAt(int i, double[] root, double[] leg, double[] shin, double[] v) {
+    static int lowestAt(int i, double[] root, double[] leg, double[] shin, double[] foot, double[] v) {
         double lo = Double.NEGATIVE_INFINITY, x = 0, y = 0, z = 0; int at = -1;
         for (int c = 0; c < HULL.length; c++) {
-            double[] p = HULL[c];
-            v[0] = p[0]; v[1] = p[1]; v[2] = p[2];
+            corner(c, foot, v);
             rotate(v, shin);
             v[0] += shin[TX]; v[1] += SHIN + shin[TY]; v[2] += shin[TZ];
             rotate(v, leg);
@@ -275,6 +281,22 @@ final class MotionFeet {
         }
         v[0] = x; v[1] = y; v[2] = z;
         return at;
+    }
+
+    /** HULL's corner c in the shin's frame, into v: a foot corner turned about the ankle by the foot's channels (unmoved at rest). */
+    static void corner(int c, double[] foot, double[] v) {
+        double[] p = HULL[c];
+        v[0] = p[0]; v[1] = p[1]; v[2] = p[2];
+        if (c >= FOOT_TO) return;
+        v[1] -= ANKLE;
+        rotate(v, foot);
+        v[0] += foot[TX]; v[1] += ANKLE + foot[TY]; v[2] += foot[TZ];
+    }
+
+    /** Leg i's foot channels in the pose, or NONE: read without making a row. */
+    static double[] footOf(Pose out, int i) {
+        double[] f = out.find(FEET[i]);
+        return f == null ? NONE : f;
     }
 
     /** Fix r3: how far (px) a drawn sole may sink before the ground pass lifts the hips, and the width (px) its lift eases in over. */
@@ -296,8 +318,8 @@ final class MotionFeet {
     static void ground(Pose out, double[] v, double w, double lie) {
         if (!(w > 0)) return;
         double[] root = out.get("root");
-        double a = lowest(0, root, out.get(LEGS[0]), out.get(SHINS[0]), v) - GROUND;
-        double b = lowest(1, root, out.get(LEGS[1]), out.get(SHINS[1]), v) - GROUND;
+        double a = lowest(0, root, out.get(LEGS[0]), out.get(SHINS[0]), footOf(out, 0), v) - GROUND;
+        double b = lowest(1, root, out.get(LEGS[1]), out.get(SHINS[1]), footOf(out, 1), v) - GROUND;
         double d = a - b, s = (a + b + Math.sqrt(d * d + SINK_EASE * SINK_EASE)) / 2 - SINK_TOL;
         double k = SINK_EASE, lift = s <= -k ? 0 : s >= k ? s : (s + k) * (s + k) / (4 * k);
         if (!(lift > 0)) return;
@@ -306,18 +328,24 @@ final class MotionFeet {
         if (lift > 0) root[TY] -= w * lift;
     }
 
-    /** The torso and head boxes (clip_rig: the body pivots at the hips, the head at the neck), as {x0, y0, z0, x1, y1, z1}. */
-    private static final double[] BODY_BOX = {-4, -12, -2, 4, 0, 2}, HEAD_BOX = {-4, -8, -4, 4, 0, 4};
+    /**
+     * The torso's two halves and the head box (the body pivots at the hips, the chest at the waist WAIST above them, the head at
+     * the neck NECK above the waist), as {x0, y0, z0, x1, y1, z1}.
+     */
+    private static final double[] BODY_BOX = {-4, -6, -2, 4, 0, 2}, CHEST_BOX = {-4, -6, -2, 4, 0, 2}, HEAD_BOX = {-4, -8, -4, 4, 0, 4};
+    static final double WAIST = 6, NECK = 6;
 
     /** How high (px) the torso's and head's lowest corner is over the ground (root translation included). */
     static double torsoClear(Pose out, double[] v) {
-        double[] root = out.get("root"), body = out.get("body"), head = out.get("head");
+        double[] root = out.get("root"), body = out.get("body"), head = out.get("head"), chest = out.find("chest");
+        if (chest == null) chest = NONE;
         double lo = Double.NEGATIVE_INFINITY;
-        for (int h = 0; h < 2; h++) {
-            double[] b = h == 0 ? BODY_BOX : HEAD_BOX;
+        for (int h = 0; h < 3; h++) {
+            double[] b = h == 0 ? BODY_BOX : h == 1 ? CHEST_BOX : HEAD_BOX;
             for (int c = 0; c < 8; c++) {
                 v[0] = b[(c & 1) * 3]; v[1] = b[1 + (c >> 1 & 1) * 3]; v[2] = b[2 + (c >> 2 & 1) * 3];
-                if (h == 1) { rotate(v, head); v[0] += head[TX]; v[1] += head[TY] - 12; v[2] += head[TZ]; }
+                if (h == 2) { rotate(v, head); v[0] += head[TX]; v[1] += head[TY] - NECK; v[2] += head[TZ]; }
+                if (h >= 1) { rotate(v, chest); v[0] += chest[TX]; v[1] += chest[TY] - WAIST; v[2] += chest[TZ]; }
                 rotate(v, body);
                 v[0] += body[TX]; v[1] += 12 + body[TY]; v[2] += body[TZ];
                 rotate(v, root);

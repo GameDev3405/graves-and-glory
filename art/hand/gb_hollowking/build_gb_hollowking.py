@@ -457,7 +457,8 @@ NOTE = ("Graveborn Hollow King (unit identity, Graveborn Legendary): the grandes
         "salvaged plate, tier III tall gilt crown, gilt rails and a spine fan; no flag. Glow sheet 16 texels (ribs and eyes).")
 
 HOLLOWKING = Troop("gb_hollowking", SKIN, CLOTH, bones, cloth_painter,
-                   {"weapon": "grave_sword", "hand": "right", "idleArms": "hang", "portrait": "tall 4"}, glow=glow)
+                   {"weapon": "grave_sword", "hand": "right", "idleArms": "hang", "portrait": "tall 4"}, glow=glow,
+                   waist={"rib_rail_r": "up", "rib_rail_l": "up"})
 def build(): return HOLLOWKING.build()
 def outputs(): return HOLLOWKING.outputs()
 

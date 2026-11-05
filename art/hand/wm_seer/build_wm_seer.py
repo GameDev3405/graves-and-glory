@@ -313,7 +313,8 @@ def veteran(bone, box):
     return None
 
 WM_SEER = Troop("wm_seer", SKIN, CLOTH, bones, cloth_painter,
-                {"weapon": "none", "hand": "right", "idleArms": "hang", "portrait": "tall 6"}, glow=glow_fn, veteran=veteran)
+                {"weapon": "none", "hand": "right", "idleArms": "hang", "portrait": "tall 6"}, glow=glow_fn, veteran=veteran,
+                waist={"chest_skull": "up", "breastplate": "up"})
 def build(): return WM_SEER.build()
 def outputs(): return WM_SEER.outputs()
 

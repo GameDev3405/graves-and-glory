@@ -50,7 +50,7 @@ final class MotionStack {
      * The guard's crouch (hips and legs) is a standing pose: while moving the stride owns these bones, so the guard's share of
      * them fades with the move weight. Stacked on the stride's sweep, the crouched thighs kicked the feet out (Kort 2026-11-02).
      */
-    static final String[] CROUCH_BONES = {"root", "right_leg", "left_leg", "right_shin", "left_shin"};
+    static final String[] CROUCH_BONES = {"root", "right_leg", "left_leg", "right_shin", "left_shin", "right_foot", "left_foot"};
     /**
      * The share of the crouch kept at full move weight. Pure stride legs at the guarded shuffle's pace wobble at toe-off (the
      * sole sags under 0.25 px for a frame as the roll hands back), which MotionEngineCheck's stance slip reads as a second,
@@ -281,7 +281,7 @@ final class MotionStack {
     }
 
     static boolean keysLegs(Clip c) {
-        for (String b : c.bones()) if (b.endsWith("_leg") || b.endsWith("_shin")) return true;
+        for (String b : c.bones()) if (b.endsWith("_leg") || b.endsWith("_shin") || b.endsWith("_foot")) return true;
         return false;
     }
 

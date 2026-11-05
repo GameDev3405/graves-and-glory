@@ -5089,6 +5089,30 @@ public final class Phase2Checks implements ClientModInitializer {
         static final float BOW_RECOVERY=1.0f;
         static final String TURN_EXTRA=Optional.ofNullable(System.getenv("GRAVES_PHASE2_TURN_EXTRA")).orElse(""),TURN_FAR=Optional.ofNullable(System.getenv("GRAVES_PHASE2_TURN_FAR")).orElse("");
         static final double FAR_DIST=30,FAR_EYE=1.62;
+        /**
+         * Rig redo 2026-11 (waist and ankles): GRAVES_PHASE2_TURN_BEND=1 shoots only each troop at rest (RIG_REST, a clip keying
+         * nothing: the file pose and the carries) and bent (RIG_BEND: the waist twisted 30 and pitched 25 degrees, the right ankle
+         * -30, the left +30, both knees 60) at TURN_ANGLES, as turn-TROOP-rest-ANGLE and turn-TROOP-bent-ANGLE. The two clips are
+         * the harness's own, laid into the troop's family (rigClips), not art.
+         */
+        static final boolean BEND="1".equals(System.getenv("GRAVES_PHASE2_TURN_BEND"));
+        static final String RIG_REST="rig_rest",RIG_BEND="rig_bend";
+        static String key(double[] v){return "[{\"t\":0,\"i\":\"linear\",\"v\":["+v[0]+","+v[1]+","+v[2]+"]}]";}
+        static final String RIG_BEND_JSON="{\"format\":1,\"clip\":\""+RIG_BEND+"\",\"length\":1,\"bones\":{"
+            +"\"chest\":{\"rotation\":"+key(new double[]{25,30,0})+"},"
+            +"\"right_foot\":{\"rotation\":"+key(new double[]{-30,0,0})+"},\"left_foot\":{\"rotation\":"+key(new double[]{30,0,0})+"},"
+            +"\"right_shin\":{\"rotation\":"+key(new double[]{60,0,0})+"},\"left_shin\":{\"rotation\":"+key(new double[]{60,0,0})+"}}}";
+        /** Client: the troop's family (TroopMotion.FAMILIES) gains RIG_REST and RIG_BEND, once per family build. */
+        @SuppressWarnings("unchecked")
+        static void rigClips(TroopModel<?> m){
+            var f=TroopMotion.family(m);if(f==null||f.all().containsKey(RIG_BEND))return;
+            Map<String,Clip> all=new TreeMap<>(f.all());
+            all.put(RIG_REST,Clip.parse("{\"format\":1,\"clip\":\""+RIG_REST+"\",\"length\":1,\"bones\":{}}"));all.put(RIG_BEND,Clip.parse(RIG_BEND_JSON));
+            var g=new TroopMotion.Fam(f.family(),f.attackIndex(),f.generation(),Collections.unmodifiableMap(all),f.bonePx());
+            try{var fl=TroopMotion.class.getDeclaredField("FAMILIES");fl.setAccessible(true);var fams=(Map<String,TroopMotion.Fam>)fl.get(null);
+                for(var e:fams.entrySet())if(e.getValue()==f)e.setValue(g);}
+            catch(ReflectiveOperationException e){throw new IllegalStateException(e);}
+        }
         /** Task 16 r6: the turn suite's nock pose, an arrow on the string and the cant coming in (bow_draw keys the nock 0.12 to 0.48). */
         static final float BOW_NOCK=0.25f;
         /** The windup second of an attack clip: its "windup" marker, else 45 percent of the way to its impact, on a tick. */
@@ -5146,6 +5170,11 @@ public final class Phase2Checks implements ClientModInitializer {
                         }
                     }
                 }
+                return;
+            }
+            if(BEND){
+                for(String t:TROOPS)for(String[] p:new String[][]{{"rest",RIG_REST},{"bent",RIG_BEND}})for(int a:ANGLES)if(TURN_ANGLES.contains(a))
+                    shots.add(new Shot("turn-"+t+"-"+p[0]+"-"+a,t,p[0],p[1],0f,a,null,false,false));
                 return;
             }
             for(String t:TROOPS){
@@ -5240,6 +5269,7 @@ public final class Phase2Checks implements ClientModInitializer {
             Shot s=shots.get(si);var e=client(c,units.get(s.troop()).mob);var m=TroopModels.model(s.troop());
             if(e==null||m==null){if(++held>400){bad.add(s.name()+": no client entity or model");si++;held=0;wait=0;}return;}
             if(FACE>=0)TroopModels.forceFace(e,FACE); // GRAVES_PHASE2_FACE: the same face on every shot, so shots of two runs (or two trees) compare
+            if(BEND)rigClips(m);
             wait++;
             if(t3&&s.pose().equals("bg")){ // the shimmer set's empty frame: the same camera, the troop parked away
                 if(wait==1){
@@ -5408,6 +5438,7 @@ public final class Phase2Checks implements ClientModInitializer {
             for(String t:TROOPS){
                 var m=TroopModels.model(t);var w=m==null?null:TroopModels.weapon(m.weaponId());
                 if(m==null||w==null||TroopMotion.row(m)==null){System.out.println("[p2-turn-fact] "+t+": no model, weapon or row");continue;}
+                if(BEND)rigClips(m); // the facts come before the first shot: rig_bend must be in the family already
                 for(Shot s:shots)if(s.hand()==null&&!s.bare()&&!s.flat()&&s.troop().equals(t)&&s.angle()==0)try{
                     if(tiers)setWeapon(t,s.tier());
                     fact(m,tiers?TroopModels.weapon(m.weaponId()):w,s);

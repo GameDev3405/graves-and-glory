@@ -362,7 +362,8 @@ MAGE_NOTE = ("Graveborn Grave Reaper (unit identity, Graveborn): tall bone wrait
              "a scythe whose 10 px blade rises over the hood. Tier II iron plate, tier III black gilt plate and a crown of tines. No flag on the back.")
 
 REAPER = Troop("reaper", SKIN, CLOTH, bones, cloth_painter,
-               {"weapon": "scythe", "hand": "right", "idleArms": "hang", "portrait": "tall 4"}, glow=glow)
+               {"weapon": "scythe", "hand": "right", "idleArms": "hang", "portrait": "tall 4"}, glow=glow,
+               waist={"shroud": "up"})
 def build(): return REAPER.build()
 def outputs(): return REAPER.outputs()
 

@@ -19,7 +19,7 @@ sys.path.insert(0, os.path.join(HERE, "..", "common"))
 import house_stub
 import ironclad_tiers as IT
 
-SKIN = (128, 128)
+SKIN = (128, 144)   # the waist and ankle cuts (2026-11-05) outgrew 128x128
 CLOTH = (128, 64)
 
 def barrel(rows_hoop, R=IRON, base=3, seed="tube"):
@@ -131,7 +131,8 @@ def glow(bone, box):
 
 IC_MORTAR = Troop("ic_mortar", SKIN, CLOTH, bones, cloth_painter,
                   {"weapon": "none", "hand": "right", "idleArms": "hang", "portrait": "tall 4", "faces": {"count": 4, "card": 0}},
-                  glow=glow)
+                  glow=glow,
+                  waist={"board": "up"})
 def build(): return IC_MORTAR.build()
 def outputs(): return IC_MORTAR.outputs()
 
