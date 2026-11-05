@@ -38,7 +38,7 @@ public final class Phase1Checks implements ClientModInitializer {
      *  while the client's ready is false, when step() does not run. clientTick runs every client tick, ready or not. */
     public interface HudWatch { void hudFrame(MinecraftClient c); default void clientTick(MinecraftClient c){} }
     static final Map<String,Supplier<Suite>> SUITES=new LinkedHashMap<>();
-    static{SUITES.put("combat",Combat::new);SUITES.put("ui-lobby",LobbyChecks::new);SUITES.put("ui-bannerfield",BannerFieldChecks::new);SUITES.put("morale",MoraleChecks::new);SUITES.put("reinforce",ReinforceChecks::new);SUITES.put("bots",Bots::new);SUITES.put("tutorial",TutorialChecks::new);SUITES.put("report",ReportChecks::new);SUITES.put("ui-art",UiArtChecks::new);SUITES.put("ui-hud",UiHudChecks::new);SUITES.put("ui-feed",UiFeedChecks::new);SUITES.put("ui-home",UiHomeChecks::new);SUITES.put("ui-recruit",UiRecruitChecks::new);SUITES.put("ui-pages",UiPagesChecks::new);SUITES.put("ui-icons",UiIconsChecks::new);SUITES.put("ui-leave",UiLeaveChecks::new);SUITES.put("ui-report",UiReportChecks::new);SUITES.put("gear",GearChecks::new);SUITES.put("gear-combat",GearCombatChecks::new);SUITES.put("ui-gear",GearScreenChecks::new);}
+    static{SUITES.put("combat",Combat::new);SUITES.put("ui-lobby",LobbyChecks::new);SUITES.put("ui-bannerfield",BannerFieldChecks::new);SUITES.put("morale",MoraleChecks::new);SUITES.put("reinforce",ReinforceChecks::new);SUITES.put("bots",Bots::new);SUITES.put("tutorial",TutorialChecks::new);SUITES.put("report",ReportChecks::new);SUITES.put("ui-art",UiArtChecks::new);SUITES.put("ui-hud",UiHudChecks::new);SUITES.put("ui-feed",UiFeedChecks::new);SUITES.put("ui-home",UiHomeChecks::new);SUITES.put("ui-recruit",UiRecruitChecks::new);SUITES.put("ui-pages",UiPagesChecks::new);SUITES.put("ui-icons",UiIconsChecks::new);SUITES.put("ui-leave",UiLeaveChecks::new);SUITES.put("ui-report",UiReportChecks::new);SUITES.put("gear",GearChecks::new);SUITES.put("gear-combat",GearCombatChecks::new);SUITES.put("ui-gear",GearScreenChecks::new);SUITES.put("gear-art",GearArtChecks::new);SUITES.put("house-art",HouseArtChecks::new);}
     static final ArrayDeque<String> queue=new ArrayDeque<>();
     static volatile Suite current;static volatile String currentName="";static volatile boolean failed;
     static int tick,front,hold;static boolean started; // hold: client ticks the current suite waits (Phase1Checks.window)
@@ -221,9 +221,10 @@ public final class Phase1Checks implements ClientModInitializer {
                         System.out.println("[p1] first arrow fired="+first.fired()+" lands="+first.lands()+" health="+firstHealth+" now="+first.target().getHealth());
                     }
                     if(b.time==(first.fired()+first.lands())/2){
-                        Vec3d from=first.from(),to=Projectiles.aim(first.target());double best=1e9;
-                        for(var e:b.world.iterateEntities())if(e instanceof ArrowEntity&&e.getCommandTags().contains(Projectiles.TAG))best=Math.min(best,segmentDistance(e.getPos(),from,to));
-                        report("p1-arrow-visible",best<=3,"nearest tagged arrow "+String.format("%.2f",best)+" blocks from the shot line at tick "+(b.time-first.fired())+" of "+(first.lands()-first.fired()));
+                        // arrows fly the arced curve (Projectiles.curve, 2026-10-30), so measure against the first shot's point on it, not the straight line
+                        Vec3d from=first.from(),to=Projectiles.aim(first.target()),on=Projectiles.curve(from,to,first.peak(),first.ticks(),b.time-first.fired());double best=1e9;
+                        for(var e:b.world.iterateEntities())if(e instanceof ArrowEntity&&e.getCommandTags().contains(Projectiles.TAG))best=Math.min(best,e.getPos().distanceTo(on));
+                        report("p1-arrow-visible",best<=3,"nearest tagged arrow "+String.format("%.2f",best)+" blocks from the arced shot path at tick "+(b.time-first.fired())+" of "+(first.lands()-first.fired()));
                     }
                     if(b.time==first.lands()+1){
                         var t=first.target();boolean hurt=!t.isAlive()||t.getHealth()<firstHealth;
@@ -297,7 +298,7 @@ public final class Phase1Checks implements ClientModInitializer {
         }
     }
 
-    /** Task 2, rewritten by the no-routing design: no group breaks (p1-no-rout); flank blows, C16s and covered flanks (p1-flank-damage); the LAST STAND state, its feed line and its HUD stamp (p1-last-stand, p1-hud-last-stand); command feedback to the commanding player alone and no horn in the world (p1-command-sound, p1-charge-horn); Retreat and Move arrive and fight as Hold (p1-retreat-arrive). Stages run on the server tick. */
+    /** Task 2, rewritten by the no-routing design: no group breaks (p1-no-rout); flank blows, C16s and covered flanks (p1-flank-damage); the LAST STAND state, its feed line and its HUD stamp (p1-last-stand, p1-hud-last-stand); command feedback as world sounds at the commander, heard by every player in range (p1-command-sound, p1-charge-horn); Retreat and Move arrive and fight as Hold (p1-retreat-arrive). Stages run on the server tick. */
     static final class MoraleChecks implements Suite,ServerWatch {
         static final Spec.CombatDisciplineRow D=Spec.COMBATDISCIPLINE[0];
         static final double FX=48,FZ=0; // open valley on the Dusk side of Rivergate (60 blocks from the sheet's Dusk base; CampaignMaps moves the live base to x=283, inside a village)
@@ -314,6 +315,8 @@ public final class Phase1Checks implements ClientModInitializer {
         // the arrival
         GravesAndGlory.Unit waylayer,greeter;int strikes;boolean targetOnWay,runSeen,fought;long arrivedAt=-1,foughtAt=-1;String arriveWhy="";boolean arriveOk=true;Vec3d dest;
         // the sounds' transport (p1-feedback-reach): what the commanding client played and what a second player 5 blocks from him was sent
+        static final List<String> WORLD_CUES=List.of("gravesandglory:horn_rout","gravesandglory:horn_charge","gravesandglory:order_charge_shout","gravesandglory:order_hold_shout");
+        static boolean heardAll(List<String> got){return got.stream().sorted().toList().equals(WORLD_CUES.stream().sorted().toList());}
         List<String> listenerCues=List.of();long routBefore,chargeBefore,chimeBefore;
         // the arrival's pull and its ranged and support legs
         long pullAt=-1,settleAt=-1;double pullMax;int pullSamples,pullArrived,pullHold,pullTargets;boolean pullOk,rangedStart,supportStart;Leg rangedLeg,supportLeg;Vec3d rangedDest,supportDest;
@@ -511,10 +514,10 @@ public final class Phase1Checks implements ClientModInitializer {
                     next(b,11);
                 }
                 case 11->{freshInfantry(b,true);enemyFront(b);camera(b,FX-12,FZ,4,-90,12);next(b,12);}
-                case 12->{if(since(b)>=20){ // p1-charge-horn and the command sounds: Retreat and Charge play to the commanding player alone, once per kind per hornCooldownSeconds; another order the chime; a bot's charge nothing
+                case 12->{if(since(b)>=20){ // p1-charge-horn and the command sounds: Retreat and Charge (horn, and the charge shout) and Hold (the hold shout) sound in the world at the commander, once per kind per hornCooldownSeconds, so a player near him hears them; another order the chime; a bot's charge nothing
                     var p=sp(b);var foe=b.units.stream().filter(u->u.squad==enemy&&u.mob.isAlive()&&p.canSee(u.mob)).findFirst().orElse(null);
                     if(foe==null){report("p1-charge-horn",false,"no Dusk troop visible from the camera");soundOk=false;soundWhy="no Dusk troop visible from the camera";next(b,13);break;}
-                    var listener=Listener.join(b,p.getX()+5,p.getY(),p.getZ());routBefore=heardOnClient("gravesandglory:horn_rout");chargeBefore=heardOnClient("gravesandglory:horn_charge");chimeBefore=heardOnClient("minecraft:block.note_block.chime");
+                    var listener=Listener.join(b,p.getX()+5,p.getY(),p.getZ());routBefore=heardOnClient("gravesandglory:horn_rout");chargeBefore=heardOnClient("gravesandglory:horn_charge");chimeBefore=heardOnClient("gravesandglory:order_hold_shout");
                     int total=BattleEffects.heard.size(),r0=heard(player,"retreat"),c0=heard(player,"charge");
                     own.lastOrder=-1000;b.tactical(p,"infantry","retreat","block",FX-20,FZ,-90,-1);int r1=heard(player,"retreat");
                     own.lastOrder=-1000;b.tactical(p,"ranged","retreat","block",FX-20,FZ+24,-90,-1);int r2=heard(player,"retreat");
@@ -523,20 +526,20 @@ public final class Phase1Checks implements ClientModInitializer {
                     var ranged=own.assignments.get("ranged");
                     own.lastOrder=-1000;b.tactical(p,"support","hold","block",FX-8,FZ+30,-90,-1);int afterHold=BattleEffects.heard.size();
                     b.markCharge(enemy,"all");int afterBot=BattleEffects.heard.size();
-                    listenerCues=listener.cues();listener.leave(b);boolean nobodyElse=listenerCues.isEmpty();
+                    listenerCues=listener.cues();listener.leave(b);boolean nobodyElse=heardAll(listenerCues);
                     boolean mine=BattleEffects.heard.stream().allMatch(h->h.player().equals(player));
                     boolean charge=c1==c0+1&&c2==c1&&ranged!=null&&ranged.order.equals("charge");
-                    report("p1-charge-horn",charge&&nobodyElse,"the commanding player's charge feedback "+c0+" -> "+c1+" after the infantry charge, "+c2+" after the ranged charge inside the "+D.hornCooldownSeconds()+" s cooldown (ranged order "+(ranged==null?"none":ranged.order)+"); a second player 5 blocks from him was sent "+listenerCues+" (want nothing: the cues go to him alone)="+nobodyElse);
+                    report("p1-charge-horn",charge&&nobodyElse,"the commanding player's charge feedback "+c0+" -> "+c1+" after the infantry charge, "+c2+" after the ranged charge inside the "+D.hornCooldownSeconds()+" s cooldown (ranged order "+(ranged==null?"none":ranged.order)+"); a second player 5 blocks from him was sent "+listenerCues+" (want "+WORLD_CUES+": the commands sound in the world, once each inside the cooldown)="+nobodyElse);
                     soundOk=r1==r0+1&&r2==r1&&charge&&afterHold==total+2&&afterBot==afterHold&&mine;
-                    soundWhy="Retreat feedback to the player "+r0+" -> "+r1+" (want +1), a second Retreat at once "+r2+" (want no more); Charge "+c0+" -> "+c1+" -> "+c2+"; a Hold order added nothing ("+total+" -> "+afterHold+", want +2 over the four orders); a bot's charge added nothing ("+afterBot+"); every sound heard was this player's="+mine;
+                    soundWhy="Retreat feedback to the player "+r0+" -> "+r1+" (want +1), a second Retreat at once "+r2+" (want no more); Charge "+c0+" -> "+c1+" -> "+c2+"; a Hold order added nothing ("+total+" -> "+afterHold+", want +2 over the four orders); a bot's charge added nothing ("+afterBot+"); every logged sound was this player's="+mine;
                     next(b,16);
                 }}
-                case 16->{ // p1-feedback-reach: what was really sent. The commanding client played the Retreat cue, the Charge cue and the chime once each (its own sound system, SoundInstanceListener), and the second player 5 blocks from him was sent none of them
+                case 16->{ // p1-feedback-reach: what was really sent. The commanding client played the Retreat cue, the Charge cue and the chime once each (its own sound system, SoundInstanceListener), and the second player 5 blocks from him heard each of them too (world sounds)
                     if(since(b)<30)return;
-                    long rout=heardOnClient("gravesandglory:horn_rout")-routBefore,charges=heardOnClient("gravesandglory:horn_charge")-chargeBefore,chime=heardOnClient("minecraft:block.note_block.chime")-chimeBefore;
-                    boolean reach=rout==1&&charges==1&&chime==1&&listenerCues.isEmpty();
-                    report("p1-feedback-reach",reach,"after Retreat, Retreat, Charge, Charge and Hold the commanding client played horn_rout "+rout+" time(s), horn_charge "+charges+", the chime "+chime+" (want 1, 1, 1: the throttled repeats play nothing) and a second player 5 blocks from him was sent "+listenerCues+" (want nothing)="+reach);
-                    soundOk&=reach;soundWhy+="; the transport: the client played rout "+rout+", charge "+charges+", chime "+chime+" (want 1 each) and the second player was sent "+listenerCues+" (want nothing)="+reach;
+                    long rout=heardOnClient("gravesandglory:horn_rout")-routBefore,charges=heardOnClient("gravesandglory:horn_charge")-chargeBefore,chime=heardOnClient("gravesandglory:order_hold_shout")-chimeBefore;
+                    boolean reach=rout==1&&charges==1&&chime==1&&heardAll(listenerCues);
+                    report("p1-feedback-reach",reach,"after Retreat, Retreat, Charge, Charge and Hold the commanding client played horn_rout "+rout+" time(s), horn_charge "+charges+", the hold shout "+chime+" (want 1, 1, 1: the throttled repeats play nothing) and a second player 5 blocks from him was sent "+listenerCues+" (want "+WORLD_CUES+")="+reach);
+                    soundOk&=reach;soundWhy+="; the transport: the client played rout "+rout+", charge "+charges+", hold shout "+chime+" (want 1 each) and the second player was sent "+listenerCues+" (want "+WORLD_CUES+")="+reach;
                     report("p1-command-sound",soundOk,soundWhy); // reported here, not at stage 99: the client ends the suite the tick the stage turns 99, before a server tick could report
                     next(b,13);
                 }

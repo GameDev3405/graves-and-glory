@@ -1408,7 +1408,7 @@ public final class Phase2Checks implements ClientModInitializer {
                         boolean good=m!=null&&Math.abs(m.getValue()-want)<1e-9&&m.getOperation()==net.minecraft.entity.attribute.EntityAttributeModifier.Operation.MULTIPLY_TOTAL&&Math.abs(a.getValue()/a.getBaseValue()-Math.sqrt(1+c.value1()))<1e-6;if(good)speedy++;
                         speeds.append(u.spec.id()).append(' ').append(a==null?"-":fmt(a.getBaseValue())+" -> "+String.format(Locale.ROOT,"%.4f",a.getValue())).append(good?"":" (BAD)").append(", ");}
                     int heard=BattleEffects.heard.size()-heardBefore;var last=BattleEffects.heard.isEmpty()?null:BattleEffects.heard.get(BattleEffects.heard.size()-1);
-                    boolean sound=heard==1&&last!=null&&last.player().equals(player)&&last.kind().equals("rally")&&listenerCues.isEmpty();
+                    boolean sound=heard==1&&last!=null&&last.player().equals(player)&&last.kind().equals("rally")&&listenerCues.equals(List.of("gravesandglory:horn_rally"));
                     boolean started=c.id().equals("marshal")&&Commander.running(b,own,"rally_horn")&&own.relicState.until[0]==t0+c.durationTicks()&&Commander.readyIn(b,own)==2400&&c.cooldownTicks()==2400&&c.durationTicks()==300&&near(c.value1(),0.2)&&near(c.value2(),0)&&Commander.activeName(c.active()).equals("Muster");
                     activeOk=started&&moves&&speedy==troops&&troops==6&&sound;
                     activeWhy="the ability command with "+Commander.relicIn(own,0)+" in slot 0: "+c.active()+" (named "+Commander.activeName(c.active())+", want Muster; value1 "+c.value1()+", value2 "+c.value2()+") runs="+Commander.running(b,own,"rally_horn")+" to +"+(own.relicState.until[0]-t0)+" (want 300), readyIn "+Commander.readyIn(b,own)+" (want 2400, 120 s)="+started+"; orders for every group (the ground at his feet, y "+fmt(spot.y)+", not his own y "+fmt(to.y)+"="+snapped+"): "+orders+"="+moves
@@ -5055,7 +5055,8 @@ public final class Phase2Checks implements ClientModInitializer {
         final boolean tiers;
         /** The t3 mode (suite t3): the texel-3 trial's distance and card shots. */
         final boolean t3;
-        static final double DIST=3,EYE=1.2,CLOSE=2.0,PARK=24;
+        /** Review r2: the turn camera distance (GRAVES_PHASE2_TURN_DIST, blocks; 3 unless set), so a tall troop and its weapon stay in frame. */
+        static final double DIST=Double.parseDouble(Optional.ofNullable(System.getenv("GRAVES_PHASE2_TURN_DIST")).filter(v->!v.isBlank()).orElse("3")),EYE=1.2,CLOSE=2.0,PARK=24;
         /** The t3 mode: the LOD shots' distances (blocks), the shimmer set's steps (count, blocks), the floor's half width (a camera 36 blocks out on the diagonal stands over it) and the two card sizes (px a block: 19 and 80 are what DepthCards uses for the 36 px and 160 px portraits). */
         static final int[] T3_LOD={12,16,24,36};
         static final int T3_STEPS=8,T3_HALF=30,T3_SMALL=19,T3_LARGE=80;
@@ -5161,7 +5162,8 @@ public final class Phase2Checks implements ClientModInitializer {
                     String stance=row!=null&&row.ranged()?"aim":"guard";if(!magic)poses.add(new Object[]{"guard",stance,0f});
                     for(String a:TURN_ATTACKS){
                         String clip=a.equals("attack")&&magic?"cast":a;boolean alias=clip.equals("attack")||clip.equals("cast");
-                        if(tm==null||TroopMotion.resolve(tm,clip)==null)continue;
+                        // anim review 2026-11-04 section 0: never shoot a stand-in for a missing attack; say NO CLIP and fail the suite
+                        if(tm==null||TroopMotion.resolve(tm,clip)==null){String why="NO CLIP: "+t+" ("+(row==null?"?":row.family())+") has no clip for "+clip;System.out.println("[p2] "+why);bad.add(why);continue;}
                         String pre=alias?"":(row!=null&&clip.startsWith(row.family()+"_")?clip.substring(row.family().length()+1):clip)+"_";
                         float imp=Anim.shotTime(tm,clip);
                         poses.add(new Object[]{pre+"windup",stance+"+"+clip,windup(tm,clip,imp)});
@@ -6412,7 +6414,9 @@ public final class Phase2Checks implements ClientModInitializer {
                 case 2->{
                     if(!(c.currentScreen instanceof CampScreen s))return;
                     CampaignClient.revealUntil=0;CampaignClient.notice=""; // the roster's arrival would otherwise light a letter
-                    if(++frames==8){String house=Spec.HOUSES[tabIdx].id();var rows=WarTableRecruit.rows();
+                    // Wait for the real condition, not a tick count: the page has drawn its six rows and six portraits (render frames lag client ticks). Judge once; give up after 200 ticks so a real failure still reports.
+                    boolean ready=WarTableRecruit.rows().size()==6&&WarTableRecruit.rows().stream().allMatch(r->java.util.Arrays.stream(Spec.TROOPS).anyMatch(t->t.id().equals(r.troop())&&t.house().equals(Spec.HOUSES[tabIdx].id())))&&WarTableRecruit.portraits().stream().filter(q->q.where().startsWith("row-")).count()==6;
+                    if(frames<30&&++frames>=8&&(ready||frames>=200)){frames=30;String house=Spec.HOUSES[tabIdx].id();var rows=WarTableRecruit.rows();
                         var want=new ArrayList<String>();for(var t:Spec.TROOPS)if(t.house().equals(house))want.add(t.id());
                         boolean listed=want.size()==6&&rows.size()==6&&rows.stream().map(WarTableRecruit.RowDraw::troop).toList().equals(want);
                         boolean inks=rows.stream().allMatch(r->!r.silhouette()&&r.color()==DarkUi.INK_TEXT);
@@ -6423,7 +6427,7 @@ public final class Phase2Checks implements ClientModInitializer {
                         if(!all){rosterOk=false;rosterWhy+=house+": drew "+rows.stream().map(WarTableRecruit.RowDraw::troop).toList()+" (want these six, all owned: "+want+"), inks "+inks+", portraits drawn flat "+!portraits+", banner chosen "+chosen+"; ";}
                         else rosterWhy+=house+" 6/6 owned; ";
                         shot(c,"migration-full-roster-"+house);}
-                    if(frames>=40){if(++tabIdx<Spec.HOUSES.length)cs=1;else cs=9;}}
+                    if(frames>=30&&++frames>=40){if(++tabIdx<Spec.HOUSES.length)cs=1;else cs=9;}}
                 case 9->{
                     report("p2-full-roster",rosterOk&&rosterWhy.length()>0,"a profile owning all "+Spec.TROOPS.length+" troops at star 1 (the client shows "+CampaignClient.profile.owned.size()+"): "+rosterWhy+"pictures p2-migration-full-roster-<house>.png (five)");
                     cs=10;wait=0;server(c,b->stage=3);}

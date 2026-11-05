@@ -226,7 +226,7 @@ final class Abilities {
         var firepot = rider(u, "mist");
         if (firepot != null) {
             b.mists.add(new Mist(u.squad.team, u.spellCenter, firepot.radius(), time + firepot.durationTicks(), u, firepot, null));
-            b.world.playSound(null, BlockPos.ofFloored(u.spellCenter), SoundEvents.ITEM_FIRECHARGE_USE, SoundCategory.HOSTILE, .8f, .9f);
+            Audio.at(b, AudioCues.Cue.FIREPOT_BURN, u.spellCenter, "f" + u.mob.getId());
         }
         u.spellCenter = null;
     }
@@ -440,7 +440,7 @@ final class Abilities {
         splash(b, u, at, null, (float) (row.amount() * b.campaign.damage(u)), row.radius(), row.knockback(), primary.getPos());
         if (u.mob instanceof GravesAndGlory.ArmyBear bear) bear.rear();
         b.world.spawnParticles(ParticleTypes.CLOUD, at.x, at.y + .2, at.z, 20, row.radius() / 2, .1, row.radius() / 2, .06);
-        b.world.playSound(null, u.mob.getBlockPos(), SoundEvents.ENTITY_POLAR_BEAR_WARNING, SoundCategory.HOSTILE, 1f, .8f);
+        Audio.at(b, AudioCues.Cue.BRUTE_ATTACK, at, "t" + u.mob.getId());
     }
 
     /** Whether a pounce troop's next blow is the pounce: its row's mechanic, the row's radius or more blocks walked since its last attack (Unit.travelSinceAttack), and its cooldown up. For either of the soldier's rows (second: his level-3 row, the Drowned Raider's Boarding rush, on the store's cooldown). auraFactor and pounce read it. */
@@ -455,7 +455,7 @@ final class Abilities {
     static void pounce(GravesAndGlory.Battle b, GravesAndGlory.Unit u, Spec.AbilitiesRow row, String kind, boolean second) {
         if (kind.equals("melee") && pounceReady(b, u, row, second)) {
             spend(u, second, b.time + (row.cooldownTicks() > 0 ? row.cooldownTicks() : D.abilityCooldownTicks()));
-            b.world.playSound(null, u.mob.getBlockPos(), SoundEvents.ENTITY_WOLF_GROWL, SoundCategory.HOSTILE, 1.5f, 1f);
+            Audio.at(b, AudioCues.Cue.HOUND_ATTACK, u.mob.getPos(), "p" + u.mob.getId());
             b.world.spawnParticles(dust(CLAY), u.mob.getX(), u.mob.getY() + .2, u.mob.getZ(), 12, .5, .1, .5, 0);
         }
         u.travelSinceAttack = 0;

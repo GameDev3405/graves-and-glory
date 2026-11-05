@@ -75,6 +75,11 @@ public final class GravesAndGloryClient implements ClientModInitializer {
         // The motion engine's clips (animation rework Task 13): clips/<rig>/<family>/*.json, each family's attacks in the sheet's order (Tactics.variants).
         {Map<String,List<String>> order=new LinkedHashMap<>();for(Spec.AttackVariantsRow v:Spec.ATTACKVARIANTS)order.computeIfAbsent(v.family(),k->new ArrayList<>()).add(v.id());
         net.fabricmc.fabric.api.resource.ResourceManagerHelper.get(net.minecraft.resource.ResourceType.CLIENT_RESOURCES).registerReloadListener(new ClipLibrary(order));}
+        // The commander gear's own models (gear art Task 9), drawn over every player by CommanderGearFeature.
+        net.fabricmc.fabric.api.resource.ResourceManagerHelper.get(net.minecraft.resource.ResourceType.CLIENT_RESOURCES).registerReloadListener(new GearModels());
+        net.fabricmc.fabric.api.client.rendering.v1.LivingEntityFeatureRendererRegistrationCallback.EVENT.register((type,renderer,helper,context)->{
+            if(renderer instanceof net.minecraft.client.render.entity.PlayerEntityRenderer player)helper.register(new CommanderGearFeature(player));
+        });
         menu=key("menu",GLFW.GLFW_KEY_R);attack=key("attack",GLFW.GLFW_KEY_Z);charge=key("charge",GLFW.GLFW_KEY_X);followMe=key("follow",GLFW.GLFW_KEY_C);retreat=key("retreat",GLFW.GLFW_KEY_V);formation=key("formation",GLFW.GLFW_KEY_B);mapKey=key("map",GLFW.GLFW_KEY_M);
         rotateLeft=key("rotate_left",GLFW.GLFW_KEY_LEFT_BRACKET);rotateRight=key("rotate_right",GLFW.GLFW_KEY_RIGHT_BRACKET);
         hints=key("hints",GLFW.GLFW_KEY_LEFT_ALT); // held, the battle HUD shows every key hint (BattleHud.altLayer)

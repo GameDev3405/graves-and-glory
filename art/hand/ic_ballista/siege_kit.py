@@ -233,13 +233,12 @@ def crew_bones(plume=False, goggles=False):
     B.append(Bone("head", "body", (0, -12, 0)))
     for k in range(4):
         B.append(Bone(f"face_v{k}", "head", boxes=[Box((-4, -8, -4), (8, 8, 8), face_painter(k))], variants=[k]))
-    B.append(Bone("right_arm", "body", (-5, -10, 0), [Box((-3, -2, -2), (4, 12, 4), crew_arm())]))
-    B.append(Bone("right_hand", "right_arm", (-1, 8, 0)))
-    B.append(Bone("left_arm", "body", (5, -10, 0), [Box((-1, -2, -2), (4, 12, 4), crew_arm())]))
-    B.append(Bone("left_hand", "left_arm", (1, 8, 0)))
+    for side, x, ox in (("right", -5, -3), ("left", 5, -1)):   # jointed: elbow and hand as handlib.arms()
+        B += limb(f"{side}_arm", "body", (x, -10, 0), (ox, -2, -2), crew_arm(), f"{side}_forearm", ELBOW[side])
+        B.append(Bone(f"{side}_hand", f"{side}_forearm", HAND))
     B.append(Bone("arms_folded", "body", (0, -9, -1), rot=(-43, 0, 0)))
-    B.append(Bone("right_leg", "root", (-1.9, 12, 0), [Box((-2, 0, -2), (4, 12, 4), crew_leg())]))
-    B.append(Bone("left_leg", "root", (1.9, 12, 0), [Box((-2, 0, -2), (4, 12, 4), crew_leg())]))
+    for side, x in (("right", -1.9), ("left", 1.9)):   # jointed: the knee 6 px down the leg
+        B += limb(f"{side}_leg", "root", (x, 12, 0), (-2, 0, -2), crew_leg(), f"{side}_shin", KNEE)
     B.append(Bone("cap", "head", tag="helm", boxes=[
         Box((-4.5, -9, -4.5), (9, 5, 9), cap_painter()),
         Box((-3.5, -10, -3.5), (7, 1, 7), iron_plain(4, "capcrown", 2)),
@@ -254,8 +253,8 @@ def crew_bones(plume=False, goggles=False):
             Box((-4, -1.5, -4), (8, 2, 8), spaulder_lame(0)),
             Box((-4 + 0.5 * c, 0.5, -3.5), (8, 2, 7), spaulder_lame(1), dil=0.15),
             Box((-3.5 + 1.0 * c, 2.5, -3), (7, 2, 6), spaulder_lame(2), dil=0.15)]))
-        B.append(Bone(f"{side}_cuff", f"{side}_arm", boxes=[Box((c - 2.5, 6, -2.5), (5, 2, 5), lames([2], base=3, rivets=False, wear=1))]))
-        B.append(Bone(f"{side}_boot", f"{side}_leg", boxes=[Box((-2.5, 9, -3), (5, 3, 5), rows([(0, leather_ic(base=2)), (1, leather_ic(base=1, stitch=True)), (2, lames([1], base=2, rivets=False, wear=0))]))]))
+        B.append(Bone(f"{side}_cuff", f"{side}_forearm", boxes=[Box((-2.5, 2, -2.5), (5, 2, 5), lames([2], base=3, rivets=False, wear=1))]))
+        B.append(Bone(f"{side}_boot", f"{side}_shin", boxes=[Box((-2.5, 3, -3), (5, 3, 5), rows([(0, leather_ic(base=2)), (1, leather_ic(base=1, stitch=True)), (2, lames([1], base=2, rivets=False, wear=0))]))]))
         inner = 3 if side == "right" else 0
         B.append(Bone(f"{side}_skirt", f"{side}_leg", team=True, boxes=[
             Box((-2, 0, -2.45), (4, 7, 0), ("flap", inner), sheet="cloth"),

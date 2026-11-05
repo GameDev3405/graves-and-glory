@@ -209,13 +209,12 @@ def bones():
     for i, (rot, zz) in enumerate((((0, 0, 6), -1.5), ((-4, 0, -12), -0.8), ((-8, 0, -30), 0), ((-12, 0, -48), 0.8), ((-16, 0, -66), 1.5))):
         B.append(Bone("feather_fan_5_%d" % i, "head", pivot=(3, -9, zz), rot=rot, stages=[3],
                       boxes=[Box((-1, -8 - (i % 2), -0.5), (2, 8 + (i % 2), 1), feather(OCHRE))]))
-    B.append(Bone("right_arm", "body", (-5, -10, 0), [Box((-3, -2, -2), (4, 12, 4), arm_bare())], rot=(-HUNCH, 0, 0)))
-    B.append(Bone("right_hand", "right_arm", (-1, 8, 0)))
-    B.append(Bone("left_arm", "body", (5, -10, 0), [Box((-1, -2, -2), (4, 12, 4), arm_bare())], rot=(-HUNCH, 0, 0)))
-    B.append(Bone("left_hand", "left_arm", (1, 8, 0)))
+    for side, x, ox in (("right", -5, -3), ("left", 5, -1)):   # jointed: elbow and hand as handlib.arms(), the arm standing back up
+        B += limb(f"{side}_arm", "body", (x, -10, 0), (ox, -2, -2), arm_bare(), f"{side}_forearm", ELBOW[side], rot=(-HUNCH, 0, 0))
+        B.append(Bone(f"{side}_hand", f"{side}_forearm", HAND))
     B.append(Bone("arms_folded", "body", (0, -9, -1), rot=(-43, 0, 0)))
-    B.append(Bone("right_leg", "root", (-1.9, 12, 0), [Box((-2, 0, -2), (4, 12, 4), leg_painter())]))
-    B.append(Bone("left_leg", "root", (1.9, 12, 0), [Box((-2, 0, -2), (4, 12, 4), leg_painter())]))
+    for side, x in (("right", -1.9), ("left", 1.9)):   # jointed: the knee 6 px down the leg
+        B += limb(f"{side}_leg", "root", (x, 12, 0), (-2, 0, -2), leg_painter(), f"{side}_shin", KNEE)
     B.append(Bone("collar", "body", boxes=[Box((-4.5, -13, -2.5), (9, 2, 5), collar(), dil=0.1)]))
     B.append(Bone("cloak", "body", boxes=[Box((-4.5, -12, 2), (9, 13, 1), cloak(), dil=0.1)]))
     B.append(Bone("belt", "body", boxes=[Box((-4, -3, -2), (8, 2, 4), belt(), dil=0.5)]))
@@ -223,17 +222,17 @@ def bones():
     B.append(Bone("quiver", "body", pivot=(-1.5, -6, 3.5), rot=(0, 0, -16), boxes=[
         Box((-1.5, -4.5, -1), (3, 9, 2), per_tier(quiver, (1, 2, 3))), Box((-2, -5, -1.5), (4, 1, 3), rim()),
         Box((-1.5, -8, -0.5), (1, 3, 1), fletch()), Box((-0.5, -9, -0.5), (1, 4, 1), fletch()), Box((0.5, -8, -0.5), (1, 3, 1), fletch())]))
-    B.append(Bone("left_bracer", "left_arm", boxes=[Box((-1, 5, -2), (4, 4, 4), bracer(), dil=0.3)]))
+    B.append(Bone("left_bracer", "left_forearm", boxes=[Box((-2, 1, -2), (4, 4, 4), bracer(), dil=0.3)]))
     for side in ("right", "left"):
-        B.append(Bone("%s_bind" % side, "%s_leg" % side, boxes=[Box((-2, 6, -2), (4, 1, 4), bind(), dil=0.3)]))
-        B.append(Bone("%s_hoof" % side, "%s_leg" % side, boxes=[Box((-2.5, 10, -3), (5, 2, 5), hoof())]))
+        B.append(Bone("%s_bind" % side, "%s_shin" % side, boxes=[Box((-2, 0, -2), (4, 1, 4), bind(), dil=0.3)]))
+        B.append(Bone("%s_hoof" % side, "%s_shin" % side, boxes=[Box((-2.5, 4, -3), (5, 2, 5), hoof())]))
     # tier II, the Thornstalker: a bone plate over the cap's brow, a thorn-spiked hide pauldron, a second bracer, a bone quiver rim
     B.append(Bone("brow_plate", "head", stages=[2, 3], boxes=[Box((-3.5, -10.5, -5.2), (7, 3, 1), per_tier(cap_plate, (2, 3))),
         Box((-0.5, -12.5, -5.2), (1, 2, 1), wm_tusk())]))
     B.append(Bone("pauldron", "right_arm", stages=[2, 3], boxes=[
         Box((-3.5, -3, -2.5), (5, 3, 5), pelt(HIDE, "wm-hpd"), dil=0.1),
         Box((-3, -5, -1.5), (1, 2, 1), wm_tusk()), Box((-1.5, -6, -0.5), (1, 3, 1), wm_tusk()), Box((-3, -5, 0.5), (1, 2, 1), wm_tusk())]))
-    B.append(Bone("right_bracer", "right_arm", stages=[2, 3], boxes=[Box((-3, 5, -2), (4, 4, 4), bracer(), dil=0.3)]))
+    B.append(Bone("right_bracer", "right_forearm", stages=[2, 3], boxes=[Box((-2, 1, -2), (4, 4, 4), bracer(), dil=0.3)]))
     B.append(Bone("quiver_rim", "body", pivot=(-1.5, -6, 3.5), rot=(0, 0, -16), stages=[2, 3], boxes=[
         Box((-2, -5, -1.5), (4, 1, 3), bone_paint(4, "hqb"), dil=0.15), Box((-2, 3.5, -1.5), (4, 1, 3), bone_paint(3, "hqc"), dil=0.15)]))
     # tier III, the Elder Hunter: a five-feather fan barred in ochre, a pelt mantle and a tusk necklace
@@ -271,8 +270,8 @@ def veteran(bone, box):
     """The Mastery II trim: ochre studs on the belt, a bone-beaded cord on each arm above the bracer and on each thigh."""
     n = bone.name
     if n == "belt": return vet_rows((0, 1), every=2, bead=True)
-    if n.endswith("_arm"): return vet_rows((4,))
-    if n.endswith("_leg"): return vet_rows((3,))
+    if n.endswith(("_arm", "_forearm")): return vet_rows((4,))
+    if n.endswith(("_leg", "_shin")): return vet_rows((3,))
     return None
 
 WM_HUNTER = Troop("wm_hunter", SKIN, CLOTH, bones, cloth_painter,

@@ -361,15 +361,14 @@ def bones():
     B.append(Bone("hood_tip", "head", (0, -8, 2), tag="helm", rot=(-35, 0, 0), boxes=[Box((-2, -4, -2), (4, 4, 4), tip)]))
     B.append(Bone("hood_tip2", "hood_tip", (0, -4, 0), tag="helm", rot=(-35, 0, 0), boxes=[Box((-1.5, -4, -1.5), (3, 4, 3), tip)]))
     B.append(Bone("hood_tip3", "hood_tip2", (0, -4, 0), tag="helm", rot=(-35, 0, 0), boxes=[Box((-1, -3, -1), (2, 3, 2), tip)]))
-    B.append(Bone("right_arm", "body", (-5, -11, 0), [Box((-1, -2, -1), (2, 12, 2), arm("right"))], rot=(-LEAN, 0, 0)))
-    B.append(Bone("right_hand", "right_arm", (0, 8, 0)))
-    B.append(Bone("left_arm", "body", (5, -11, 0), [Box((-1, -2, -1), (2, 12, 2), arm("left"))], rot=(-LEAN, 0, 0)))
-    B.append(Bone("left_hand", "left_arm", (0, 8, 0)))
+    for side, x in (("right", -5), ("left", 5)):   # jointed: the elbow at the arm's mid-height, the hand 4 px under it
+        B += limb(f"{side}_arm", "body", (x, -11, 0), (-1, -2, -1), arm(side), f"{side}_forearm", (0, 4, 0), size=(2, 12, 2), rot=(-LEAN, 0, 0))
+        B.append(Bone(f"{side}_hand", f"{side}_forearm", (0, 4, 0)))
     B.append(Bone("arms_folded", "body", (0, -9, -1), rot=(-43, 0, 0)))
-    B.append(Bone("right_leg", "root", (-2, 12, 0), [Box((-1, 0, -1), (2, 12, 2), leg("right"))]))
-    B.append(Bone("left_leg", "root", (2, 12, 0), [Box((-1, 0, -1), (2, 12, 2), leg("left"))]))
-    B.append(Bone("right_foot", "right_leg", boxes=[Box((-1.5, 10, -3), (3, 2, 4), foot)]))
-    B.append(Bone("left_foot", "left_leg", boxes=[Box((-1.5, 10, -3), (3, 2, 4), foot)]))
+    for side, x in (("right", -2), ("left", 2)):   # jointed: the knee 6 px down the leg
+        B += limb(f"{side}_leg", "root", (x, 12, 0), (-1, 0, -1), leg(side), f"{side}_shin", KNEE, size=(2, 12, 2))
+    B.append(Bone("right_foot", "right_shin", boxes=[Box((-1.5, 4, -3), (3, 2, 4), foot)]))
+    B.append(Bone("left_foot", "left_shin", boxes=[Box((-1.5, 4, -3), (3, 2, 4), foot)]))
     # the rag collar, the belt and its cord
     B.append(Bone("collar", "body", boxes=[Box((-5, -12.5, -3), (10, 3, 6), collar, dil=0.25)]))
     B.append(Bone("belt", "body", boxes=[Box((-4, -3, -2), (8, 2, 4), belt, dil=0.45)]))
@@ -394,7 +393,7 @@ def bones():
         Box((-3, -2.6, -3), (5, 3, 5.6), P2("rp"), dil=0.3),
         Box((-1.5, -6.2, -0.5), (1.5, 3.6, 1.5), per_tier(lambda t: gb_spike(GI, 3, 3), (2, 3)))]))
     for side in ("right", "left"):
-        B.append(Bone(f"{side}_bracer", f"{side}_arm", stages=[2, 3], boxes=[Box((-1.8, 4.5, -1.8), (3.6, 3.5, 3.6), P2("br" + side, 0.18), dil=0.1)]))
+        B.append(Bone(f"{side}_bracer", f"{side}_forearm", stages=[2, 3], boxes=[Box((-1.8, 0.5, -1.8), (3.6, 3.5, 3.6), P2("br" + side, 0.18), dil=0.1)]))
     B.append(Bone("quiver_bands", "body", (0, -6, 2.9), rot=(0, 0, -26), stages=[2, 3], boxes=[
         Box((-2, -3.2, -0.5), (4, 2, 4), P2("qb1"), dil=0.1), Box((-2, 2.6, -0.5), (4, 2, 4), P2("qb2"), dil=0.1)]))
     B.append(Bone("rib_guard", "body", stages=[2, 3], boxes=[Box((-3, -7, -2.5), (6, 1.8, 0.6), P2("rg"), dil=0.05)]))

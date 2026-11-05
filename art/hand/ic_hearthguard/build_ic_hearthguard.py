@@ -258,13 +258,12 @@ def bones():
     B.append(Bone("crest", "head", tag="helm", boxes=[
         Box((-1, -12.5, -3), (2, 3, 7), crest(), dil=0.1),
         Box((-1, -10.5, 3.5), (2, 6, 1), crest_tail(), dil=0.1)]))
-    B.append(Bone("right_arm", "body", (-5, -10, 0), [Box((-3, -2, -2), (4, 12, 4), sleeve())]))
-    B.append(Bone("right_hand", "right_arm", (-1, 8, 0)))
-    B.append(Bone("left_arm", "body", (5, -10, 0), [Box((-1, -2, -2), (4, 12, 4), sleeve())]))
-    B.append(Bone("left_hand", "left_arm", (1, 8, 0)))
+    for side, x, ox in (("right", -5, -3), ("left", 5, -1)):   # jointed: elbow and hand as handlib.arms()
+        B += limb(f"{side}_arm", "body", (x, -10, 0), (ox, -2, -2), sleeve(), f"{side}_forearm", ELBOW[side])
+        B.append(Bone(f"{side}_hand", f"{side}_forearm", HAND))
     B.append(Bone("arms_folded", "body", (0, -9, -1), rot=(-43, 0, 0)))
-    B.append(Bone("right_leg", "root", (-1.9, 12, 0), [Box((-2, 0, -2), (4, 12, 4), leg())]))
-    B.append(Bone("left_leg", "root", (1.9, 12, 0), [Box((-2, 0, -2), (4, 12, 4), leg())]))
+    for side, x in (("right", -1.9), ("left", 1.9)):   # jointed: the knee 6 px down the leg
+        B += limb(f"{side}_leg", "root", (x, 12, 0), (-2, 0, -2), leg(), f"{side}_shin", KNEE)
     B.append(Bone("breastplate", "body", boxes=[Box((-4.5, -12, -2.5), (9, 6, 5), IT.T(breastplate(), top=False, every=True), dil=0.1)]))
     B.append(Bone("coat", "body", boxes=[Box((-4.5, -6, -2.5), (9, 8, 5), {1: coat(), 2: coat(), 3: brass_scales(coat())}, dil=0.05)]))
     B.append(Bone("belt", "body", boxes=[Box((-4, -5, -2), (8, 2, 4), belt(), dil=0.6)]))
@@ -281,10 +280,10 @@ def bones():
         B.append(Bone(f"{side}_lame4", f"{side}_pauldron", stages=[2, 3], boxes=[Box((-4 + 2.0 * c, 3.5, -3), (8, 2, 6), IT.P("hgl4" + side, 3, ember=True), dil=0.2)]))
         B.append(Bone(f"{side}_boss", f"{side}_pauldron", stages=[2, 3], boxes=[Box((0.5 * c - 1.5, -3.5, -1.5), (3, 1, 3), IT.brass(3))]))
         B.append(Bone(f"{side}_boss_spike", f"{side}_pauldron", stages=[3], boxes=[Box((0.5 * c - 0.5, -6, -0.5), (1, 2.5, 1), IT.spike(IT.IRON, 3, 3))]))
-        B.append(Bone(f"{side}_knee", f"{side}_leg", boxes=[Box((-2.5, 5, -3), (5, 2, 2), IT.T(knee(), top=False, every=True))]))
-        B.append(Bone(f"{side}_knee_wing", f"{side}_leg", stages=[2, 3], boxes=[Box((-3, 4, -3.4), (6, 4, 1.4), IT.P("hgkw" + side, 4), dil=0.1)]))
-        B.append(Bone(f"{side}_greave", f"{side}_leg", stages=[3], boxes=[Box((-2.4, 7.5, -2.4), (4.8, 2, 4.8), IT.P("hggv" + side, 3), dil=0.1)]))
-        B.append(Bone(f"{side}_boot", f"{side}_leg", boxes=[Box((-2.5, 9, -3), (5, 3, 5), IT.T(boot(), top=False, every=True))]))
+        B.append(Bone(f"{side}_knee", f"{side}_shin", boxes=[Box((-2.5, -1, -3), (5, 2, 2), IT.T(knee(), top=False, every=True))]))
+        B.append(Bone(f"{side}_knee_wing", f"{side}_shin", stages=[2, 3], boxes=[Box((-3, -2, -3.4), (6, 4, 1.4), IT.P("hgkw" + side, 4), dil=0.1)]))
+        B.append(Bone(f"{side}_greave", f"{side}_shin", stages=[3], boxes=[Box((-2.4, 1.5, -2.4), (4.8, 2, 4.8), IT.P("hggv" + side, 3), dil=0.1)]))
+        B.append(Bone(f"{side}_boot", f"{side}_shin", boxes=[Box((-2.5, 3, -3), (5, 3, 5), IT.T(boot(), top=False, every=True))]))
         B.append(Bone(f"{side}_tasset", "body", stages=[3], boxes=[Box((-5.4 if side == "right" else 4.4, -5, -2.6), (1, 5, 5.2), IT.P("hgts" + side, 3, ember=True))]))
         B.append(Bone(f"{side}_horn", "head", tag="helm", stages=[3], boxes=[
             Box((-6.5 if side == "right" else 4.5, -9, -1), (2, 1.5, 2), IT.horn()), Box((-7.5 if side == "right" else 5.5, -12.5, -0.75), (2, 3.5, 1.5), IT.horn())]))
@@ -292,7 +291,7 @@ def bones():
     B.append(Bone("brow", "head", tag="helm", stages=[2, 3], boxes=[Box((-4.7, -6.5, -4.9), (9.4, 1, 1), IT.brass(3))]))
     B.append(Bone("gorget", "body", stages=[2, 3], boxes=[Box((-3.5, -12.8, -2.9), (7, 1.6, 5.8), IT.P("hggt", 3), dil=0.1)]))
     # the shield, on the left arm (TroopFeatures.Shield draws none of vanilla's for a model that carries its own)
-    B.append(Bone("shield", "left_arm", (2.7, 10.0, -1.5), rot=SHIELD_ROT, tag="shield", boxes=   # the one-piece arm's grip: handlib.SHIELD_PIVOT is the forearm frame's
+    B.append(Bone("shield", "left_forearm", SHIELD_PIVOT, rot=SHIELD_ROT, tag="shield", boxes=   # the old arm-frame grip less the elbow
         [Box((x, y, -1.9), (w, h, 1), wood) for (x, y), (w, h) in SHIELD_BODY]
         + [Box((x, y, -2.5), (w, h, 2), shield_rim_ic()) for (x, y), (w, h) in SHIELD_RIM]
         + [Box((-1, -5, -2.7), (2, 2, 1), shield_boss_ic()), Box((-1, -3, -0.9), (2, 5, 3), leather_ic(base=2))]))

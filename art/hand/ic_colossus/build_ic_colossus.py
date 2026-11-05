@@ -172,7 +172,7 @@ def bones():
             out += [Box((-0.5, 6, -0.5), (1, 2, 1), IT.spike(IT.IRON, 3, 2))]
         return out
     for t in (1, 2, 3):
-        B.append(Bone("maul" if t == 1 else f"maul_t{t}", "right_arm", (0, 25, 0), rot=(-18, 0, 0), tag="weapon", weapon_tiers=[t], boxes=maul_boxes(t)))
+        B.append(Bone("maul" if t == 1 else f"maul_t{t}", "right_hand", (0, 0, 0), rot=(-18, 0, 0), tag="weapon", weapon_tiers=[t], boxes=maul_boxes(t)))
     B.append(Bone("brow", "head", stages=[2, 3], boxes=[Box((-4.5, -10, -6.5), (9, 2, 1), IT.P("cb", 4), dil=0.05)]))
     B.append(Bone("backplate", "body", boxes=[
         Box((-6.5, -16, 5), (13, 10, 1.5), banded(hull(5, 3, 1, "bp"), [3, 6], R=BRASS)),

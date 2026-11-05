@@ -33,7 +33,7 @@ Checked column: **T** = asserted by `AudioCuesCheck` (fast verify: table, sounds
 |---|---|---|---|---|
 | battle_intro | .8 / 1.0 (now read from the table) | local, at the intro | one per round | T, E |
 | unit_reveal | .7 / 1.0 | the recruiting player | one per recruit | T, E |
-| horn_charge / horn_rout / horn_rally | combatDiscipline.hornVolume (1.6) / 1.0 | the commanding player only | 8 s per kind per player | T, E |
+| horn_charge / horn_rout / horn_rally | combatDiscipline.hornVolume (4.0, 64 blocks) / 1.0 (shouts, 16 blocks) | world sound at the commander, every player in range | 8 s per kind per commander | T, E |
 
 ## Existing vanilla calls, left as they are (battle texture)
 

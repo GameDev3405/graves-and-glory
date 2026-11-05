@@ -1,0 +1,675 @@
+{
+ "format": 1,
+ "item": "bruiser_chest",
+ "slot": "chest",
+ "density": 1,
+ "size": [
+  128,
+  64
+ ],
+ "cloth": "gravesandglory:textures/entity/gear/bruiser_chest/team_cloth_",
+ "skins": {
+  "1": "gravesandglory:textures/entity/gear/bruiser_chest/bruiser_chest_r1.png",
+  "2": "gravesandglory:textures/entity/gear/bruiser_chest/bruiser_chest_r2.png",
+  "3": "gravesandglory:textures/entity/gear/bruiser_chest/bruiser_chest_r3.png",
+  "4": "gravesandglory:textures/entity/gear/bruiser_chest/bruiser_chest_r4.png",
+  "5": "gravesandglory:textures/entity/gear/bruiser_chest/bruiser_chest_r5.png"
+ },
+ "glow": {
+  "4": "gravesandglory:textures/entity/gear/bruiser_chest/bruiser_chest_e4.png",
+  "5": "gravesandglory:textures/entity/gear/bruiser_chest/bruiser_chest_e5.png"
+ },
+ "bones": [
+  {
+   "name": "cuirass",
+   "parent": "body",
+   "team": false,
+   "tag": "chest",
+   "stages": [],
+   "sheet": [
+    128,
+    64
+   ],
+   "pivot": [
+    0,
+    12,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "boxes": [
+    {
+     "origin": [
+      -4.5,
+      -12.5,
+      -2.5
+     ],
+     "size": [
+      9,
+      9,
+      5
+     ],
+     "uv": [
+      0,
+      0
+     ],
+     "mirror": false,
+     "dilation": [
+      0.0,
+      0.0,
+      0.0
+     ]
+    },
+    {
+     "origin": [
+      -4.5,
+      -3.5,
+      -2.5
+     ],
+     "size": [
+      9,
+      2,
+      5
+     ],
+     "uv": [
+      40,
+      22
+     ],
+     "mirror": false,
+     "dilation": [
+      0.0,
+      0.0,
+      0.0
+     ]
+    },
+    {
+     "origin": [
+      -5,
+      -1.5,
+      -3
+     ],
+     "size": [
+      10,
+      2,
+      6
+     ],
+     "uv": [
+      0,
+      14
+     ],
+     "mirror": false,
+     "dilation": [
+      0.0,
+      0.0,
+      0.0
+     ]
+    }
+   ]
+  },
+  {
+   "name": "tabard",
+   "parent": "body",
+   "team": true,
+   "tag": "chest",
+   "stages": [],
+   "sheet": [
+    64,
+    32
+   ],
+   "pivot": [
+    0,
+    12,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "boxes": [
+    {
+     "origin": [
+      -3,
+      -1.5,
+      -3.25
+     ],
+     "size": [
+      6,
+      10,
+      0
+     ],
+     "uv": [
+      18,
+      0
+     ],
+     "mirror": false,
+     "dilation": [
+      0.0,
+      0.0,
+      0.0
+     ]
+    },
+    {
+     "origin": [
+      -3,
+      -1.5,
+      3.25
+     ],
+     "size": [
+      6,
+      10,
+      0
+     ],
+     "uv": [
+      30,
+      0
+     ],
+     "mirror": false,
+     "dilation": [
+      0.0,
+      0.0,
+      0.0
+     ]
+    },
+    {
+     "origin": [
+      -4.5,
+      -12.5,
+      3.75
+     ],
+     "size": [
+      9,
+      10,
+      0
+     ],
+     "uv": [
+      0,
+      0
+     ],
+     "mirror": false,
+     "dilation": [
+      0.0,
+      0.0,
+      0.0
+     ]
+    }
+   ]
+  },
+  {
+   "name": "sash",
+   "parent": "body",
+   "team": true,
+   "tag": "chest",
+   "stages": [],
+   "sheet": [
+    64,
+    32
+   ],
+   "pivot": [
+    0,
+    4,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    -35
+   ],
+   "boxes": [
+    {
+     "origin": [
+      -5.5,
+      -1.5,
+      -2.75
+     ],
+     "size": [
+      11,
+      3,
+      0
+     ],
+     "uv": [
+      42,
+      0
+     ],
+     "mirror": false,
+     "dilation": [
+      0.0,
+      0.0,
+      0.0
+     ]
+    }
+   ]
+  },
+  {
+   "name": "pauldron_left",
+   "parent": "left_arm",
+   "team": false,
+   "tag": "chest",
+   "stages": [],
+   "sheet": [
+    128,
+    64
+   ],
+   "pivot": [
+    1,
+    -2,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    14
+   ],
+   "boxes": [
+    {
+     "origin": [
+      -4,
+      -2,
+      -4
+     ],
+     "size": [
+      8,
+      3,
+      8
+     ],
+     "uv": [
+      48,
+      0
+     ],
+     "mirror": false,
+     "dilation": [
+      0.0,
+      0.0,
+      0.0
+     ]
+    },
+    {
+     "origin": [
+      -3.5,
+      1,
+      -3.5
+     ],
+     "size": [
+      8,
+      2,
+      7
+     ],
+     "uv": [
+      80,
+      0
+     ],
+     "mirror": false,
+     "dilation": [
+      0.0,
+      0.0,
+      0.0
+     ]
+    },
+    {
+     "origin": [
+      -3,
+      2.5,
+      -3
+     ],
+     "size": [
+      8,
+      2,
+      6
+     ],
+     "uv": [
+      32,
+      14
+     ],
+     "mirror": false,
+     "dilation": [
+      0.0,
+      0.0,
+      0.0
+     ]
+    }
+   ]
+  },
+  {
+   "name": "pauldron_left_l",
+   "parent": "pauldron_left",
+   "team": false,
+   "tag": "chest",
+   "stages": [
+    5
+   ],
+   "sheet": [
+    128,
+    64
+   ],
+   "pivot": [
+    0,
+    0,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "boxes": [
+    {
+     "origin": [
+      -3,
+      -3,
+      -3
+     ],
+     "size": [
+      6,
+      1,
+      6
+     ],
+     "uv": [
+      94,
+      22
+     ],
+     "mirror": false,
+     "dilation": [
+      0.0,
+      0.0,
+      0.0
+     ]
+    },
+    {
+     "origin": [
+      -4.5,
+      -5,
+      -4.5
+     ],
+     "size": [
+      1,
+      3,
+      9
+     ],
+     "uv": [
+      28,
+      0
+     ],
+     "mirror": false,
+     "dilation": [
+      0.0,
+      0.0,
+      0.0
+     ]
+    },
+    {
+     "origin": [
+      -2.5,
+      4,
+      -2.5
+     ],
+     "size": [
+      8,
+      2,
+      5
+     ],
+     "uv": [
+      68,
+      22
+     ],
+     "mirror": false,
+     "dilation": [
+      0.0,
+      0.0,
+      0.0
+     ]
+    }
+   ]
+  },
+  {
+   "name": "pauldron_right",
+   "parent": "right_arm",
+   "team": false,
+   "tag": "chest",
+   "stages": [],
+   "sheet": [
+    128,
+    64
+   ],
+   "pivot": [
+    -1,
+    -2,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    -14
+   ],
+   "boxes": [
+    {
+     "origin": [
+      -3,
+      -1.5,
+      -3
+     ],
+     "size": [
+      6,
+      2,
+      6
+     ],
+     "uv": [
+      60,
+      14
+     ],
+     "mirror": false,
+     "dilation": [
+      0.0,
+      0.0,
+      0.0
+     ]
+    },
+    {
+     "origin": [
+      -3.5,
+      0.5,
+      -2.5
+     ],
+     "size": [
+      6,
+      2,
+      5
+     ],
+     "uv": [
+      0,
+      30
+     ],
+     "mirror": false,
+     "dilation": [
+      0.0,
+      0.0,
+      0.0
+     ]
+    }
+   ]
+  },
+  {
+   "name": "pauldron_right_l",
+   "parent": "pauldron_right",
+   "team": false,
+   "tag": "chest",
+   "stages": [
+    5
+   ],
+   "sheet": [
+    128,
+    64
+   ],
+   "pivot": [
+    0,
+    0,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "boxes": [
+    {
+     "origin": [
+      -4,
+      2,
+      -2
+     ],
+     "size": [
+      6,
+      2,
+      4
+     ],
+     "uv": [
+      22,
+      30
+     ],
+     "mirror": false,
+     "dilation": [
+      0.0,
+      0.0,
+      0.0
+     ]
+    }
+   ]
+  },
+  {
+   "name": "gauntlet_right",
+   "parent": "right_arm",
+   "team": false,
+   "tag": "chest",
+   "stages": [],
+   "sheet": [
+    128,
+    64
+   ],
+   "pivot": [
+    0,
+    0,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "boxes": [
+    {
+     "origin": [
+      -3.5,
+      4,
+      -2.5
+     ],
+     "size": [
+      5,
+      3,
+      5
+     ],
+     "uv": [
+      84,
+      14
+     ],
+     "mirror": false,
+     "dilation": [
+      0.0,
+      0.0,
+      0.0
+     ]
+    },
+    {
+     "origin": [
+      -3.5,
+      7.5,
+      -2.5
+     ],
+     "size": [
+      5,
+      3,
+      5
+     ],
+     "uv": [
+      104,
+      14
+     ],
+     "mirror": false,
+     "dilation": [
+      0.0,
+      0.0,
+      0.0
+     ]
+    }
+   ]
+  },
+  {
+   "name": "gauntlet_left",
+   "parent": "left_arm",
+   "team": false,
+   "tag": "chest",
+   "stages": [],
+   "sheet": [
+    128,
+    64
+   ],
+   "pivot": [
+    0,
+    0,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "boxes": [
+    {
+     "origin": [
+      -1.5,
+      4,
+      -2.5
+     ],
+     "size": [
+      5,
+      3,
+      5
+     ],
+     "uv": [
+      0,
+      22
+     ],
+     "mirror": false,
+     "dilation": [
+      0.0,
+      0.0,
+      0.0
+     ]
+    },
+    {
+     "origin": [
+      -1.5,
+      7.5,
+      -2.5
+     ],
+     "size": [
+      5,
+      3,
+      5
+     ],
+     "uv": [
+      20,
+      22
+     ],
+     "mirror": false,
+     "dilation": [
+      0.0,
+      0.0,
+      0.0
+     ]
+    }
+   ]
+  }
+ ]
+}

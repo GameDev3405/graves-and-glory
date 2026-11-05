@@ -1,0 +1,193 @@
+{
+  "schema": 2,
+  "gold": 2700,
+  "matches": 31,
+  "wins": 17,
+  "tutorialDone": true,
+  "commander": "warlock",
+  "banner": [
+    "sentinel",
+    "sentinel",
+    "sentinel",
+    "sentinel",
+    "longbow",
+    "longbow",
+    "longbow",
+    "longbow",
+    "knight",
+    "knight",
+    "knight",
+    "knight",
+    "knight",
+    "knight",
+    "knight",
+    "knight",
+    "knight",
+    "knight",
+    "empty",
+    "empty"
+  ],
+  "bannerColour": "gold",
+  "owned": {
+    "knight": {
+      "copies": 1,
+      "stars": 1,
+      "kills": 0,
+      "survived": 0,
+      "mastery": 0,
+      "variant": "base"
+    },
+    "archer": {
+      "copies": 1,
+      "stars": 1,
+      "kills": 0,
+      "survived": 0,
+      "mastery": 0,
+      "variant": "base"
+    },
+    "revenant": {
+      "copies": 1,
+      "stars": 1,
+      "kills": 0,
+      "survived": 0,
+      "mastery": 0,
+      "variant": "base"
+    },
+    "bonebow": {
+      "copies": 1,
+      "stars": 1,
+      "kills": 0,
+      "survived": 0,
+      "mastery": 0,
+      "variant": "base"
+    },
+    "wm_hound": {
+      "copies": 1,
+      "stars": 1,
+      "kills": 0,
+      "survived": 0,
+      "mastery": 0,
+      "variant": "base"
+    },
+    "wm_hunter": {
+      "copies": 1,
+      "stars": 1,
+      "kills": 0,
+      "survived": 0,
+      "mastery": 0,
+      "variant": "base"
+    },
+    "ic_hearthguard": {
+      "copies": 1,
+      "stars": 1,
+      "kills": 0,
+      "survived": 0,
+      "mastery": 0,
+      "variant": "base"
+    },
+    "ic_arbalist": {
+      "copies": 1,
+      "stars": 1,
+      "kills": 0,
+      "survived": 0,
+      "mastery": 0,
+      "variant": "base"
+    },
+    "tc_raider": {
+      "copies": 1,
+      "stars": 1,
+      "kills": 0,
+      "survived": 0,
+      "mastery": 0,
+      "variant": "base"
+    },
+    "tc_harpooner": {
+      "copies": 1,
+      "stars": 1,
+      "kills": 0,
+      "survived": 0,
+      "mastery": 0,
+      "variant": "base"
+    },
+    "sentinel": {
+      "copies": 1,
+      "stars": 1,
+      "kills": 0,
+      "survived": 0,
+      "mastery": 0,
+      "variant": "base"
+    },
+    "longbow": {
+      "copies": 1,
+      "stars": 1,
+      "kills": 0,
+      "survived": 0,
+      "mastery": 0,
+      "variant": "base"
+    },
+    "reaper": {
+      "copies": 1,
+      "stars": 1,
+      "kills": 0,
+      "survived": 0,
+      "mastery": 0,
+      "variant": "base"
+    },
+    "stalker": {
+      "copies": 1,
+      "stars": 1,
+      "kills": 0,
+      "survived": 0,
+      "mastery": 0,
+      "variant": "base"
+    }
+  },
+  "shards": {
+    "gilded": 0,
+    "graveborn": 0,
+    "wildmoot": 0,
+    "ironclad": 0,
+    "tidecallers": 0
+  },
+  "renown": {
+    "gilded": 0,
+    "graveborn": 0,
+    "wildmoot": 0,
+    "ironclad": 0,
+    "tidecallers": 0
+  },
+  "pity": {
+    "gilded": 0,
+    "graveborn": 0,
+    "wildmoot": 0,
+    "ironclad": 0,
+    "tidecallers": 0
+  },
+  "writs": 0,
+  "progression": {
+    "schema": 1,
+    "xp": 4321,
+    "totalBattles": 31,
+    "totalWins": 17,
+    "weeklyBattles": 3,
+    "day": "2026-10-16",
+    "week": "2026-10-12",
+    "title": "Vanguard",
+    "rerolled": false,
+    "dailyBattles": 0,
+    "dailyCaptures": 0,
+    "dailyOrders": 0,
+    "claims": [
+      "founders:20"
+    ],
+    "titles": [
+      "Recruit",
+      "Scout",
+      "Vanguard"
+    ],
+    "matchGrants": []
+  },
+  "campaignCleared": 3,
+  "writChapters": [],
+  "cosmetics": []
+}

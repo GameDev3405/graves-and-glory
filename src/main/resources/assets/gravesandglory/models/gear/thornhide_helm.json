@@ -1,0 +1,1366 @@
+{
+ "format": 1,
+ "item": "thornhide_helm",
+ "slot": "helm",
+ "density": 1,
+ "size": [
+  64,
+  32
+ ],
+ "cloth": "gravesandglory:textures/entity/gear/thornhide_helm/team_cloth_",
+ "skins": {
+  "1": "gravesandglory:textures/entity/gear/thornhide_helm/thornhide_helm_r1.png",
+  "2": "gravesandglory:textures/entity/gear/thornhide_helm/thornhide_helm_r2.png",
+  "3": "gravesandglory:textures/entity/gear/thornhide_helm/thornhide_helm_r3.png",
+  "4": "gravesandglory:textures/entity/gear/thornhide_helm/thornhide_helm_r4.png",
+  "5": "gravesandglory:textures/entity/gear/thornhide_helm/thornhide_helm_r5.png"
+ },
+ "glow": {
+  "5": "gravesandglory:textures/entity/gear/thornhide_helm/thornhide_helm_e5.png"
+ },
+ "bones": [
+  {
+   "name": "hood",
+   "parent": "head",
+   "team": false,
+   "tag": "helm",
+   "stages": [],
+   "sheet": [
+    64,
+    32
+   ],
+   "pivot": [
+    0,
+    0,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "boxes": [
+    {
+     "origin": [
+      -5.0,
+      -9.0,
+      -5.0
+     ],
+     "size": [
+      10.0,
+      10.0,
+      10.0
+     ],
+     "uv": [
+      0,
+      0
+     ],
+     "mirror": false,
+     "dilation": [
+      0.02,
+      0.02,
+      0.02
+     ]
+    }
+   ]
+  },
+  {
+   "name": "snout",
+   "parent": "head",
+   "team": false,
+   "tag": "helm",
+   "stages": [],
+   "sheet": [
+    64,
+    32
+   ],
+   "pivot": [
+    0,
+    0,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "boxes": [
+    {
+     "origin": [
+      -2.0,
+      -3.0,
+      -7.0
+     ],
+     "size": [
+      4.0,
+      3.0,
+      2.0
+     ],
+     "uv": [
+      52,
+      0
+     ],
+     "mirror": false,
+     "dilation": [
+      0.02,
+      0.02,
+      0.02
+     ]
+    }
+   ]
+  },
+  {
+   "name": "tusk_r",
+   "parent": "head",
+   "team": false,
+   "tag": "helm",
+   "stages": [],
+   "sheet": [
+    64,
+    32
+   ],
+   "pivot": [
+    0,
+    0,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "boxes": [
+    {
+     "origin": [
+      -3.0,
+      -2.5,
+      -7.0
+     ],
+     "size": [
+      1.0,
+      2.0,
+      1.0
+     ],
+     "uv": [
+      28,
+      20
+     ],
+     "mirror": false,
+     "dilation": [
+      0.04,
+      0.04,
+      0.04
+     ]
+    }
+   ]
+  },
+  {
+   "name": "tusk_l",
+   "parent": "head",
+   "team": false,
+   "tag": "helm",
+   "stages": [],
+   "sheet": [
+    64,
+    32
+   ],
+   "pivot": [
+    0,
+    0,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "boxes": [
+    {
+     "origin": [
+      2.0,
+      -2.5,
+      -7.0
+     ],
+     "size": [
+      1.0,
+      2.0,
+      1.0
+     ],
+     "uv": [
+      32,
+      20
+     ],
+     "mirror": false,
+     "dilation": [
+      0.04,
+      0.04,
+      0.04
+     ]
+    }
+   ]
+  },
+  {
+   "name": "tusk_tip_r",
+   "parent": "head",
+   "team": false,
+   "tag": "helm",
+   "stages": [],
+   "sheet": [
+    64,
+    32
+   ],
+   "pivot": [
+    0,
+    0,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "boxes": [
+    {
+     "origin": [
+      -4.0,
+      -3.0,
+      -7.2
+     ],
+     "size": [
+      1.0,
+      1.0,
+      1.0
+     ],
+     "uv": [
+      0,
+      25
+     ],
+     "mirror": false,
+     "dilation": [
+      0.02,
+      0.02,
+      0.02
+     ]
+    }
+   ]
+  },
+  {
+   "name": "tusk_tip_l",
+   "parent": "head",
+   "team": false,
+   "tag": "helm",
+   "stages": [],
+   "sheet": [
+    64,
+    32
+   ],
+   "pivot": [
+    0,
+    0,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "boxes": [
+    {
+     "origin": [
+      3.0,
+      -3.0,
+      -7.2
+     ],
+     "size": [
+      1.0,
+      1.0,
+      1.0
+     ],
+     "uv": [
+      4,
+      25
+     ],
+     "mirror": false,
+     "dilation": [
+      0.02,
+      0.02,
+      0.02
+     ]
+    }
+   ]
+  },
+  {
+   "name": "tusk_long_r",
+   "parent": "head",
+   "team": false,
+   "tag": "helm",
+   "stages": [
+    5
+   ],
+   "sheet": [
+    64,
+    32
+   ],
+   "pivot": [
+    0,
+    0,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "boxes": [
+    {
+     "origin": [
+      -4.0,
+      -5.0,
+      -7.2
+     ],
+     "size": [
+      1.0,
+      2.0,
+      1.0
+     ],
+     "uv": [
+      36,
+      20
+     ],
+     "mirror": false,
+     "dilation": [
+      0.0,
+      0.0,
+      0.0
+     ]
+    }
+   ]
+  },
+  {
+   "name": "tusk_long_l",
+   "parent": "head",
+   "team": false,
+   "tag": "helm",
+   "stages": [
+    5
+   ],
+   "sheet": [
+    64,
+    32
+   ],
+   "pivot": [
+    0,
+    0,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "boxes": [
+    {
+     "origin": [
+      3.0,
+      -5.0,
+      -7.2
+     ],
+     "size": [
+      1.0,
+      2.0,
+      1.0
+     ],
+     "uv": [
+      40,
+      20
+     ],
+     "mirror": false,
+     "dilation": [
+      0.0,
+      0.0,
+      0.0
+     ]
+    }
+   ]
+  },
+  {
+   "name": "tusk_up_r",
+   "parent": "head",
+   "team": false,
+   "tag": "helm",
+   "stages": [
+    1,
+    2,
+    3,
+    4
+   ],
+   "sheet": [
+    64,
+    32
+   ],
+   "pivot": [
+    0,
+    0,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "boxes": [
+    {
+     "origin": [
+      -4.0,
+      -4.0,
+      -7.2
+     ],
+     "size": [
+      1.0,
+      1.0,
+      1.0
+     ],
+     "uv": [
+      8,
+      25
+     ],
+     "mirror": false,
+     "dilation": [
+      0.0,
+      0.0,
+      0.0
+     ]
+    }
+   ]
+  },
+  {
+   "name": "tusk_up_l",
+   "parent": "head",
+   "team": false,
+   "tag": "helm",
+   "stages": [
+    1,
+    2,
+    3,
+    4
+   ],
+   "sheet": [
+    64,
+    32
+   ],
+   "pivot": [
+    0,
+    0,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "boxes": [
+    {
+     "origin": [
+      3.0,
+      -4.0,
+      -7.2
+     ],
+     "size": [
+      1.0,
+      1.0,
+      1.0
+     ],
+     "uv": [
+      12,
+      25
+     ],
+     "mirror": false,
+     "dilation": [
+      0.0,
+      0.0,
+      0.0
+     ]
+    }
+   ]
+  },
+  {
+   "name": "ear_r",
+   "parent": "head",
+   "team": false,
+   "tag": "helm",
+   "stages": [],
+   "sheet": [
+    64,
+    32
+   ],
+   "pivot": [
+    -3.5,
+    -8.5,
+    -0.5
+   ],
+   "rotation": [
+    -0.0,
+    -0.0,
+    -22.5
+   ],
+   "boxes": [
+    {
+     "origin": [
+      -1.0,
+      -2.0,
+      -0.5
+     ],
+     "size": [
+      2.0,
+      2.0,
+      1.0
+     ],
+     "uv": [
+      16,
+      20
+     ],
+     "mirror": false,
+     "dilation": [
+      0.0,
+      0.0,
+      0.0
+     ]
+    }
+   ]
+  },
+  {
+   "name": "ear_l",
+   "parent": "head",
+   "team": false,
+   "tag": "helm",
+   "stages": [],
+   "sheet": [
+    64,
+    32
+   ],
+   "pivot": [
+    3.5,
+    -8.5,
+    -0.5
+   ],
+   "rotation": [
+    -0.0,
+    0.0,
+    22.5
+   ],
+   "boxes": [
+    {
+     "origin": [
+      -1.0,
+      -2.0,
+      -0.5
+     ],
+     "size": [
+      2.0,
+      2.0,
+      1.0
+     ],
+     "uv": [
+      22,
+      20
+     ],
+     "mirror": false,
+     "dilation": [
+      0.0,
+      0.0,
+      0.0
+     ]
+    }
+   ]
+  },
+  {
+   "name": "ear_tip_r",
+   "parent": "head",
+   "team": false,
+   "tag": "helm",
+   "stages": [],
+   "sheet": [
+    64,
+    32
+   ],
+   "pivot": [
+    -3.5,
+    -8.5,
+    -0.5
+   ],
+   "rotation": [
+    -0.0,
+    -0.0,
+    -22.5
+   ],
+   "boxes": [
+    {
+     "origin": [
+      -0.5,
+      -3.0,
+      -0.5
+     ],
+     "size": [
+      1.0,
+      1.0,
+      1.0
+     ],
+     "uv": [
+      16,
+      25
+     ],
+     "mirror": false,
+     "dilation": [
+      0.0,
+      0.0,
+      0.0
+     ]
+    }
+   ]
+  },
+  {
+   "name": "ear_tip_l",
+   "parent": "head",
+   "team": false,
+   "tag": "helm",
+   "stages": [],
+   "sheet": [
+    64,
+    32
+   ],
+   "pivot": [
+    3.5,
+    -8.5,
+    -0.5
+   ],
+   "rotation": [
+    -0.0,
+    0.0,
+    22.5
+   ],
+   "boxes": [
+    {
+     "origin": [
+      -0.5,
+      -3.0,
+      -0.5
+     ],
+     "size": [
+      1.0,
+      1.0,
+      1.0
+     ],
+     "uv": [
+      20,
+      25
+     ],
+     "mirror": false,
+     "dilation": [
+      0.0,
+      0.0,
+      0.0
+     ]
+    }
+   ]
+  },
+  {
+   "name": "feather_0",
+   "parent": "head",
+   "team": false,
+   "tag": "helm",
+   "stages": [],
+   "sheet": [
+    64,
+    32
+   ],
+   "pivot": [
+    5.5,
+    -4,
+    1.0
+   ],
+   "rotation": [
+    -0.0,
+    -0.0,
+    10.0
+   ],
+   "boxes": [
+    {
+     "origin": [
+      -0.5,
+      -5.0,
+      -0.5
+     ],
+     "size": [
+      1.0,
+      5.0,
+      1.0
+     ],
+     "uv": [
+      40,
+      0
+     ],
+     "mirror": false,
+     "dilation": [
+      0.0,
+      0.0,
+      0.0
+     ]
+    }
+   ]
+  },
+  {
+   "name": "feather_1",
+   "parent": "head",
+   "team": false,
+   "tag": "helm",
+   "stages": [],
+   "sheet": [
+    64,
+    32
+   ],
+   "pivot": [
+    5.5,
+    -4,
+    2.0
+   ],
+   "rotation": [
+    -0.0,
+    -0.0,
+    32.5
+   ],
+   "boxes": [
+    {
+     "origin": [
+      -0.5,
+      -5.0,
+      -0.5
+     ],
+     "size": [
+      1.0,
+      5.0,
+      1.0
+     ],
+     "uv": [
+      44,
+      0
+     ],
+     "mirror": false,
+     "dilation": [
+      0.0,
+      0.0,
+      0.0
+     ]
+    }
+   ]
+  },
+  {
+   "name": "feather_2",
+   "parent": "head",
+   "team": false,
+   "tag": "helm",
+   "stages": [],
+   "sheet": [
+    64,
+    32
+   ],
+   "pivot": [
+    5.5,
+    -4,
+    3.0
+   ],
+   "rotation": [
+    -0.0,
+    -0.0,
+    55.0
+   ],
+   "boxes": [
+    {
+     "origin": [
+      -0.5,
+      -5.0,
+      -0.5
+     ],
+     "size": [
+      1.0,
+      5.0,
+      1.0
+     ],
+     "uv": [
+      48,
+      0
+     ],
+     "mirror": false,
+     "dilation": [
+      0.0,
+      0.0,
+      0.0
+     ]
+    }
+   ]
+  },
+  {
+   "name": "antler_base_r",
+   "parent": "head",
+   "team": false,
+   "tag": "helm",
+   "stages": [
+    5
+   ],
+   "sheet": [
+    64,
+    32
+   ],
+   "pivot": [
+    0,
+    0,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "boxes": [
+    {
+     "origin": [
+      -5.6,
+      -10.0,
+      -0.5
+     ],
+     "size": [
+      1.0,
+      3.0,
+      1.0
+     ],
+     "uv": [
+      8,
+      20
+     ],
+     "mirror": false,
+     "dilation": [
+      0.02,
+      0.02,
+      0.02
+     ]
+    }
+   ]
+  },
+  {
+   "name": "antler_base_l",
+   "parent": "head",
+   "team": false,
+   "tag": "helm",
+   "stages": [
+    5
+   ],
+   "sheet": [
+    64,
+    32
+   ],
+   "pivot": [
+    0,
+    0,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "boxes": [
+    {
+     "origin": [
+      4.6,
+      -10.0,
+      -0.5
+     ],
+     "size": [
+      1.0,
+      3.0,
+      1.0
+     ],
+     "uv": [
+      12,
+      20
+     ],
+     "mirror": false,
+     "dilation": [
+      0.02,
+      0.02,
+      0.02
+     ]
+    }
+   ]
+  },
+  {
+   "name": "antler_beam_r",
+   "parent": "head",
+   "team": false,
+   "tag": "helm",
+   "stages": [
+    5
+   ],
+   "sheet": [
+    64,
+    32
+   ],
+   "pivot": [
+    0,
+    0,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "boxes": [
+    {
+     "origin": [
+      -7.6,
+      -10.0,
+      -0.5
+     ],
+     "size": [
+      2.0,
+      1.0,
+      1.0
+     ],
+     "uv": [
+      52,
+      20
+     ],
+     "mirror": false,
+     "dilation": [
+      0.04,
+      0.04,
+      0.04
+     ]
+    }
+   ]
+  },
+  {
+   "name": "antler_beam_l",
+   "parent": "head",
+   "team": false,
+   "tag": "helm",
+   "stages": [
+    5
+   ],
+   "sheet": [
+    64,
+    32
+   ],
+   "pivot": [
+    0,
+    0,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "boxes": [
+    {
+     "origin": [
+      5.6,
+      -10.0,
+      -0.5
+     ],
+     "size": [
+      2.0,
+      1.0,
+      1.0
+     ],
+     "uv": [
+      58,
+      20
+     ],
+     "mirror": false,
+     "dilation": [
+      0.04,
+      0.04,
+      0.04
+     ]
+    }
+   ]
+  },
+  {
+   "name": "antler_tine1_r",
+   "parent": "head",
+   "team": false,
+   "tag": "helm",
+   "stages": [
+    5
+   ],
+   "sheet": [
+    64,
+    32
+   ],
+   "pivot": [
+    0,
+    0,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "boxes": [
+    {
+     "origin": [
+      -6.8,
+      -12.0,
+      -0.5
+     ],
+     "size": [
+      1.0,
+      2.0,
+      1.0
+     ],
+     "uv": [
+      44,
+      20
+     ],
+     "mirror": false,
+     "dilation": [
+      0.02,
+      0.02,
+      0.02
+     ]
+    }
+   ]
+  },
+  {
+   "name": "antler_tine1_l",
+   "parent": "head",
+   "team": false,
+   "tag": "helm",
+   "stages": [
+    5
+   ],
+   "sheet": [
+    64,
+    32
+   ],
+   "pivot": [
+    0,
+    0,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "boxes": [
+    {
+     "origin": [
+      5.8,
+      -12.0,
+      -0.5
+     ],
+     "size": [
+      1.0,
+      2.0,
+      1.0
+     ],
+     "uv": [
+      48,
+      20
+     ],
+     "mirror": false,
+     "dilation": [
+      0.02,
+      0.02,
+      0.02
+     ]
+    }
+   ]
+  },
+  {
+   "name": "antler_main_r",
+   "parent": "head",
+   "team": false,
+   "tag": "helm",
+   "stages": [
+    5
+   ],
+   "sheet": [
+    64,
+    32
+   ],
+   "pivot": [
+    0,
+    0,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "boxes": [
+    {
+     "origin": [
+      -8.6,
+      -13.0,
+      -0.5
+     ],
+     "size": [
+      1.0,
+      4.0,
+      1.0
+     ],
+     "uv": [
+      0,
+      20
+     ],
+     "mirror": false,
+     "dilation": [
+      0.02,
+      0.02,
+      0.02
+     ]
+    }
+   ]
+  },
+  {
+   "name": "antler_main_l",
+   "parent": "head",
+   "team": false,
+   "tag": "helm",
+   "stages": [
+    5
+   ],
+   "sheet": [
+    64,
+    32
+   ],
+   "pivot": [
+    0,
+    0,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "boxes": [
+    {
+     "origin": [
+      7.6,
+      -13.0,
+      -0.5
+     ],
+     "size": [
+      1.0,
+      4.0,
+      1.0
+     ],
+     "uv": [
+      4,
+      20
+     ],
+     "mirror": false,
+     "dilation": [
+      0.02,
+      0.02,
+      0.02
+     ]
+    }
+   ]
+  },
+  {
+   "name": "antler_fore_r",
+   "parent": "head",
+   "team": false,
+   "tag": "helm",
+   "stages": [
+    5
+   ],
+   "sheet": [
+    64,
+    32
+   ],
+   "pivot": [
+    0,
+    0,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "boxes": [
+    {
+     "origin": [
+      -7.6,
+      -10.5,
+      -1.5
+     ],
+     "size": [
+      1.0,
+      1.0,
+      1.0
+     ],
+     "uv": [
+      24,
+      25
+     ],
+     "mirror": false,
+     "dilation": [
+      0.0,
+      0.0,
+      0.0
+     ]
+    }
+   ]
+  },
+  {
+   "name": "antler_fore_l",
+   "parent": "head",
+   "team": false,
+   "tag": "helm",
+   "stages": [
+    5
+   ],
+   "sheet": [
+    64,
+    32
+   ],
+   "pivot": [
+    0,
+    0,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "boxes": [
+    {
+     "origin": [
+      6.6,
+      -10.5,
+      -1.5
+     ],
+     "size": [
+      1.0,
+      1.0,
+      1.0
+     ],
+     "uv": [
+      28,
+      25
+     ],
+     "mirror": false,
+     "dilation": [
+      0.0,
+      0.0,
+      0.0
+     ]
+    }
+   ]
+  },
+  {
+   "name": "antler_out_r",
+   "parent": "head",
+   "team": false,
+   "tag": "helm",
+   "stages": [
+    5
+   ],
+   "sheet": [
+    64,
+    32
+   ],
+   "pivot": [
+    0,
+    0,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "boxes": [
+    {
+     "origin": [
+      -9.6,
+      -12.0,
+      -0.5
+     ],
+     "size": [
+      1.0,
+      1.0,
+      1.0
+     ],
+     "uv": [
+      32,
+      25
+     ],
+     "mirror": false,
+     "dilation": [
+      0.0,
+      0.0,
+      0.0
+     ]
+    }
+   ]
+  },
+  {
+   "name": "antler_out_l",
+   "parent": "head",
+   "team": false,
+   "tag": "helm",
+   "stages": [
+    5
+   ],
+   "sheet": [
+    64,
+    32
+   ],
+   "pivot": [
+    0,
+    0,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "boxes": [
+    {
+     "origin": [
+      8.6,
+      -12.0,
+      -0.5
+     ],
+     "size": [
+      1.0,
+      1.0,
+      1.0
+     ],
+     "uv": [
+      36,
+      25
+     ],
+     "mirror": false,
+     "dilation": [
+      0.0,
+      0.0,
+      0.0
+     ]
+    }
+   ]
+  }
+ ]
+}

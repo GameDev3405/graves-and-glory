@@ -208,8 +208,8 @@ def bones():
             Box((s * 1 - 0.5, -5, -0.5), (1, 3, 1), antlerp()),                            # an outer tine
             Box((-0.5 - s * 1.0, -5, -0.5), (1, 2, 1), antlerp()),                         # an inner tine
             Box((-1, -1.5, -1), (2, 1, 2), lash(), dil=0.1)]))                            # ochre lashing at the base
-    B.append(Bone("right_arm", "body", (-5, -10, 0), [Box((-3, -2, -2), (4, 12, 4), arm())], rot=(-HUNCH, 0, 0)))
-    B.append(Bone("right_hand", "right_arm", (-1, 8, 0)))
+    B += limb("right_arm", "body", (-5, -10, 0), (-3, -2, -2), arm(), "right_forearm", ELBOW["right"], rot=(-HUNCH, 0, 0))   # jointed: elbow and hand as handlib.arms()
+    B.append(Bone("right_hand", "right_forearm", HAND))
     # the weapon, the bone wand (weaponTiers): I a bone rod with an ochre grip; II longer, ochre-banded, a fang at the head;
     # III a trophy skull on the head between two antler tines, the shaft bound in ochre
     for t in (1, 2, 3):
@@ -221,15 +221,15 @@ def bones():
                    Box((-1.5, -1.5, -10), (3, 3, 3), wm_skull("swk")), Box((-2.5, -3.5, -9), (1, 3, 1), antler(4, "swa")),
                    Box((1.5, -3.5, -9), (1, 3, 1), antler(4, "swb")), Box((-1, -1, -7), (2, 2, 1), lash(), dil=0.1)]
         B.append(Bone("wand" if t == 1 else f"wand_t{t}", "right_hand", tag="weapon", weapon_tiers=[t], boxes=bx))
-    B.append(Bone("left_arm", "body", (5, -10, 0), [Box((-1, -2, -2), (4, 12, 4), arm())], rot=(-HUNCH, 0, 0)))
-    B.append(Bone("left_hand", "left_arm", (1, 8, 0)))
+    B += limb("left_arm", "body", (5, -10, 0), (-1, -2, -2), arm(), "left_forearm", ELBOW["left"], rot=(-HUNCH, 0, 0))
+    B.append(Bone("left_hand", "left_forearm", HAND))
     B.append(Bone("arms_folded", "body", (0, -9, -1), rot=(-43, 0, 0)))
-    B.append(Bone("right_leg", "root", (-1.9, 12, 0), [Box((-2, 0, -2), (4, 12, 4), leg_painter())]))
-    B.append(Bone("left_leg", "root", (1.9, 12, 0), [Box((-2, 0, -2), (4, 12, 4), leg_painter())]))
+    for side, x in (("right", -1.9), ("left", 1.9)):   # jointed: the knee 6 px down the leg
+        B += limb(f"{side}_leg", "root", (x, 12, 0), (-2, 0, -2), leg_painter(), f"{side}_shin", KNEE)
     B.append(Bone("skirt", "root", boxes=[Box((-4.5, 11.5, -2.5), (9, 9, 5), skirt())]))
     for side in ("right", "left"):
-        B.append(Bone("%s_hoof" % side, "%s_leg" % side, boxes=[Box((-2.5, 10, -3), (5, 2, 5), hoof())]))
-        B.append(Bone("%s_cuff" % side, "%s_arm" % side, boxes=[Box((-2 + (0 if side == "right" else -1), 7, -2), (4, 1, 4), cuff(), dil=0.3)]))
+        B.append(Bone("%s_hoof" % side, "%s_shin" % side, boxes=[Box((-2.5, 4, -3), (5, 2, 5), hoof())]))
+        B.append(Bone("%s_cuff" % side, "%s_forearm" % side, boxes=[Box((-1 if side == "right" else -4, 3, -2), (4, 1, 4), cuff(), dil=0.3)]))
     B.append(Bone("shawl", "body", boxes=[Box((-5, -13.5, -3), (10, 4, 6), shaw(), dil=0.2)]))
     B.append(Bone("belt", "body", boxes=[Box((-4, -3, -2), (8, 1, 4), belt(), dil=0.5)]))
     B.append(Bone("trinkets", "body", boxes=[
@@ -259,8 +259,8 @@ def bones():
         B.append(Bone(f"{side}_shoulder", f"{side}_arm", stages=[2, 3], boxes=[
             Box((x0, -3, -2.6), (5, 2, 5.2), per_tier(lambda t, sd=side: wm_plate(t, "ssh" + sd), (2, 3)), dil=0.1),
             Box((x0 + 0.5, -1, -2.4), (4, 2, 4.8), per_tier(lambda t, sd=side: wm_plate(t, "ssi" + sd), (2, 3)), dil=0.05)]))
-        B.append(Bone(f"{side}_bracer", f"{side}_arm", stages=[2, 3], boxes=[
-            Box((x0 + 0.5, 4, -2.3), (4, 3, 4.6), per_tier(lambda t, sd=side: wm_plate(t, "sbr" + sd), (2, 3)), dil=0.05)]))
+        B.append(Bone(f"{side}_bracer", f"{side}_forearm", stages=[2, 3], boxes=[   # x0 + 0.5 less the elbow is -2 on both sides
+            Box((-2, 0, -2.3), (4, 3, 4.6), per_tier(lambda t, sd=side: wm_plate(t, "sbr" + sd), (2, 3)), dil=0.05)]))
     B.append(Bone("breastplate", "body", stages=[2, 3], boxes=[
         Box((-3, -9, -2.9), (6, 5, 1), per_tier(lambda t: wm_plate(t, "sbp"), (2, 3)), dil=0.05)]))
     # tier III: a taller crown of more tines, two trophy skulls on the staff, a bone and tooth collar, an ochre fringe at the hem
@@ -307,8 +307,8 @@ def veteran(bone, box):
     n = bone.name
     if n == "body": return vet_baldric()
     if n == "belt": return vet_rows((0,), every=2, bead=True)
-    if n.endswith("_arm"): return vet_rows((4,))
-    if n.endswith("_leg"): return vet_rows((3,))
+    if n.endswith(("_arm", "_forearm")): return vet_rows((4,))
+    if n.endswith(("_leg", "_shin")): return vet_rows((3,))
     if n == "skirt": return vet_rows((6,), bead=True)
     return None
 

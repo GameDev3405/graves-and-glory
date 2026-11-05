@@ -41,7 +41,10 @@ public final class GearStatsCheck {
         check(GearStats.rangedFactor(e) == 1 && GearStats.healingFactor(e) == 1 && GearStats.commandBonus(e) == 0, "empty factors are neutral");
         check(e.relics().size() == slots && e.relics().stream().allMatch(String::isEmpty), "empty relic slots are blank");
 
-        for (var s : Spec.GEARSETS) {
+        List<Spec.GearSetsRow> starters = new ArrayList<>(), houses = new ArrayList<>();
+        for (var s : Spec.GEARSETS) (s.classes().equals("-") ? houses : starters).add(s);
+        check(starters.size() == 4 && houses.size() == 5, "four class starter sets and five House sets");
+        for (var s : starters) {
             Profile p = starter(s);
             var l = GearStats.of(p);
             check(l.role().equals(s.id()), "a full " + s.id() + " set gives the " + s.id() + " role");
@@ -66,8 +69,8 @@ public final class GearStatsCheck {
         }
 
         // Two pieces of the last set: only its 2-piece rows. Then pieces of the first set: the larger count wins, a tie goes to sheet order.
-        var a = Spec.GEARSETS[Spec.GEARSETS.length - 1];
-        var b = Spec.GEARSETS[0];
+        var a = starters.get(starters.size() - 1);
+        var b = starters.get(0);
         Profile two = new Profile();
         two.commander = classOf(b);
         wear(two, armourOf(a.id(), Gear.ARMOUR.get(0)).id(), "common");
@@ -82,6 +85,9 @@ public final class GearStatsCheck {
         Profile bare = new Profile();
         bare.commander = classOf(a);
         check(GearStats.of(bare).role().equals(a.id()), "no armour falls back to the class's role");
+
+        houseSets(houses, classOf(b));
+        houseExpected();
 
         // Perks: Epic and above only, one per item.
         int epic = Gear.rarityIndex(GearStats.PERK_RARITY);
@@ -98,5 +104,66 @@ public final class GearStatsCheck {
             check(GearStats.has(l, k.effect()) && near(GearStats.value1(l, k.effect()), k.value1()), k.id() + " effect and value1 read back");
         }
         System.out.println("GearStatsCheck: " + checks + " checks passed");
+    }
+
+    /** The five House sets (Kort 2026-11-04): each piece worn adds its count, 2 switch on only the 2-piece bonus, 4 switch on both; the most-worn set is the role; no one starts in them. */
+    static void houseSets(List<Spec.GearSetsRow> houses, String commander) {
+        for (var s : houses) {
+            check(s.starterMain().equals("-") && s.starterOff().equals("-"), s.id() + " starts no one");
+            check(!Gear.roleFor(commander).equals(s.id()) && Gear.roleFor("-").equals("bruiser"), "no class maps to " + s.id());
+            Profile p = new Profile();
+            p.commander = commander;
+            for (int n = 0; n < Gear.ARMOUR.size(); n++) {
+                wear(p, armourOf(s.id(), Gear.ARMOUR.get(n)).id(), "common");
+                var l = GearStats.of(p);
+                int worn = n + 1;
+                check(l.setCounts().get(s.id()) == worn, s.id() + " counts " + worn);
+                check(l.role().equals(s.id()), worn + " " + s.id() + " pieces set the role");
+                for (var r : Spec.GEARSETBONUSES) check(l.bonuses().contains(r) == (r.set().equals(s.id()) && r.pieces() <= worn), worn + " " + s.id() + " pieces: " + r.id());
+                check(l.perks().isEmpty(), s.id() + " Commons carry no perk");
+            }
+        }
+    }
+    /** The approved draft's numbers read back through GearStats (docs/drafts/house-gear-sets-2026-11-04.md). */
+    static void houseExpected() {
+        // set, then 2-piece and 4-piece: effect, value1, value2, radius
+        Object[][] bonus = {
+            {"oathbound", "command_radius", 3.0, 0.0, 0.0, "heal_over_time", 0.5, 0.0, 8.0},
+            {"barrow_warden", "cleanse", 8.0, 0.0, 6.0, "taunt_aura", 0.0, 0.0, 6.0},
+            {"thornhide", "surrounded_guard", 0.2, 0.0, 0.0, "formation_charge", 0.1, 0.15, 0.0},
+            {"forgewall", "taunt_aura", 0.0, 0.0, 5.0, "pierce", 1.0, 0.0, 0.0},
+            {"tidewrought", "draw_speed", 0.15, 0.0, 0.0, "formation_charge", 0.15, 0.0, 0.0},
+        };
+        for (var row : bonus) {
+            String set = (String) row[0];
+            Profile p = new Profile();
+            for (String slot : Gear.ARMOUR) wear(p, armourOf(set, slot).id(), "common");
+            var l = GearStats.of(p);
+            check(l.bonuses().size() == 2, set + " full set switches on two bonuses");
+            for (int k = 0; k < 2; k++) {
+                String eff = (String) row[1 + 4 * k];
+                check(GearStats.has(l, eff), set + " " + eff + " is on");
+                check(near(GearStats.value1(l, eff), (double) row[2 + 4 * k]), set + " " + eff + " value1 " + GearStats.value1(l, eff));
+                check(near(GearStats.value2(l, eff), (double) row[3 + 4 * k]), set + " " + eff + " value2 " + GearStats.value2(l, eff));
+                check(near(GearStats.radius(l, eff), (double) row[4 + 4 * k]), set + " " + eff + " radius " + GearStats.radius(l, eff));
+            }
+        }
+        // set, then the helm, chest, legs and boots perk effects
+        String[][] perks = {
+            {"oathbound", "oathkeeper", "second_chance", "grudge", "quickened_relic"},
+            {"barrow_warden", "quickened_relic", "second_chance", "oathkeeper", "last_light"},
+            {"thornhide", "grudge", "last_light", "heavy_hand", "trailblazer"},
+            {"forgewall", "hawkeye", "second_chance", "heavy_hand", "quickened_relic"},
+            {"tidewrought", "hawkeye", "last_light", "trailblazer", "quickened_relic"},
+        };
+        String top = Spec.GEARRARITIES[Spec.GEARRARITIES.length - 1].id();
+        for (var row : perks) for (int i = 0; i < 4; i++) {
+            String item = armourOf(row[0], Gear.ARMOUR.get(i)).id();
+            var k = GearStats.perkFor(item, top);
+            check(k != null && k.effect().equals(row[1 + i]), item + " carries " + row[1 + i]);
+            Profile p = new Profile();
+            wear(p, item, top);
+            check(GearStats.has(GearStats.of(p), row[1 + i]), "a worn top-rarity " + item + " switches on " + row[1 + i]);
+        }
     }
 }

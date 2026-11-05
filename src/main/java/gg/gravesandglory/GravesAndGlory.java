@@ -70,7 +70,7 @@ public final class GravesAndGlory implements ModInitializer {
         Diagnostics.start();
         VersionGate.registerServer();
         Audio.register(); // every sound event of the AudioCues table (plan 4F.4)
-        // The commander actives, once. (The horn cues above are command feedback for the commanding player alone: no horn sounds in the field.)
+        // The commander actives, once. (The horn cues above are command feedback played in the world at the commander, so every player in range hears them; see BattleEffects.feedback.)
         RelicEffects.register();
         // The Convoy supply wagon's entity type (Kort approved 2026-11-01; never saved).
         WagonEntity.register();
@@ -139,6 +139,9 @@ public final class GravesAndGlory implements ModInitializer {
             List<OrderRules.At> groups=new ArrayList<>(n);for(int i=0;i<n;i++)groups.add(new OrderRules.At(buf.readString(32),buf.readDouble(),buf.readDouble()));
             server.execute(()->{if(battle!=null)OrderRules.playerOrder(battle,player,groups,action,formation,yaw,target);}); // one order, one cooldown, however many groups
         });
+        // The first-visit import permission is granted as the connection joins, before the client's PROFILE packet is handled: Battle.join
+        // (and Campaign.joined) waits for the arena, and a profile sent while it builds would otherwise be refused and marked ready.
+        ServerPlayConnectionEvents.JOIN.register((handler,sender,server)->{if(battle!=null)battle.campaign.grantImport(handler.player.getUuid());});
         ServerPlayConnectionEvents.DISCONNECT.register((handler, server) -> {
             if(battle!=null) battle.leave(handler.player.getUuid());
         });
@@ -148,7 +151,8 @@ public final class GravesAndGlory implements ModInitializer {
             return battle.allowDamage(entity,source,amount);
         });
         // Rise Again: a Graveborn troop may stand up instead of dying (Houses.allowDeath); returning false skips vanilla's death and AFTER_DEATH below.
-        ServerLivingEntityEvents.ALLOW_DEATH.register((entity,source,amount)->Houses.allowDeath(entity,source));
+        // A commander's downing blow is judged here, after armour, absorption, resistance and the hurt cooldown took their share (Battle.allowCommanderDeath).
+        ServerLivingEntityEvents.ALLOW_DEATH.register((entity,source,amount)->(battle==null||!(entity instanceof ServerPlayerEntity p)||battle.allowCommanderDeath(p,source,amount))&&Houses.allowDeath(entity,source));
         ServerLivingEntityEvents.AFTER_DEATH.register((entity,source)->{
             Battle.leaveSide(entity);
             // Task 7: a troop's body lies a while; it keeps no effect (a Mark Prey glow, a slow), and its next full tick clears the glow flag
@@ -375,8 +379,7 @@ public final class GravesAndGlory implements ModInitializer {
          */
         /** The sound of a blow on the structure (felled: its last): the wool of a banner; the Siege gate's target overrides it (SiegeMode.GateTarget). */
         void structureCue(ServerWorld w,boolean felled){
-            if(felled)w.playSound(null,getBlockPos(),SoundEvents.BLOCK_WOOL_BREAK,SoundCategory.HOSTILE,1f,.8f);
-            else w.playSound(null,getBlockPos(),SoundEvents.BLOCK_WOOL_HIT,SoundCategory.HOSTILE,.8f,1f);
+            Audio.world(w,AudioCues.Cue.DUMMY_THUD,getBlockPos(),felled?.8f:1f); // a felled structure thuds lower
         }
         @Override public boolean damage(DamageSource source,float amount){
             var b=battle;
@@ -673,6 +676,8 @@ public final class GravesAndGlory implements ModInitializer {
         /** New troops deploy from a safely held point nearest the fight instead of the barracks; a check can switch it off. */
         public boolean forwardReinforcement=Spec.ECONOMY[0].forwardReinforcement();
         /** Round length in seconds, from the round's mode row; the bot simulation shortens it. */
+        /** Whether the round is in overtime: its clock is out and the mode keeps it open (Convoy's wagon near a stop). Survival's open-ended round is no overtime. The snapshot's battleMode.overtime carries it to the client's music. */
+        public boolean inOvertime(){return running&&mode instanceof ConvoyMode&&time-roundStarted>=roundSeconds*20L&&mode.overtime(this);}
         public int roundSeconds=Modes.row(Modes.DOMINATION).roundSeconds();
         /**
          * The mode this round plays (Phase 4 Task 2): its clock, scoring, income, bases and timeout. A fresh object each
@@ -834,7 +839,10 @@ public final class GravesAndGlory implements ModInitializer {
             }
             Audio.tick(this); // cues that wait for their moment (a blow's contact frame, the gate's crash, the wave's rise)
             if(running)Audio.clock(this,roundSeconds*20L-(time-roundStarted)); // the last ten seconds tick
-            if(running&&time-roundStarted>=roundSeconds*20L&&!mode.overtime(this))campaign.finish(mode.timeoutWinner(this));
+            if(inOvertime())Audio.all(this,AudioCues.Cue.OVERTIME_DRUM_PULSE,"overtime"); // the clock is out and the wagon still holds the round open: a drum beat to every seat, throttled by its cooldown
+            if(running&&time-roundStarted>=roundSeconds*20L){
+                if(!mode.overtime(this))campaign.finish(mode.timeoutWinner(this));
+            }
             // Explicit revision checks are driven by the client test timeline.
             if(time%10==0)sendState();
         }
@@ -934,13 +942,15 @@ public final class GravesAndGlory implements ModInitializer {
             for(var f:Spec.FORMATIONS)if(cmd.equals("formation:"+f.id())){
                 s.formation=f.id();s.yaw=p.getYaw();for(Assignment a:s.assignments.values())a.formation=f.id();
                 if(Diagnostics.active()&&testedFormations.add(f.id())&&testedFormations.size()==Spec.FORMATIONS.length)Diagnostics.report("formations-commanded",true,null);
+                BattleEffects.feedback(this,p,"hold"); // a formation change shouts like a Hold (the troops' hold shout, a world sound at the commander)
                 campaign.tutorialDid(p,1);return;
             }
             for(var order:Spec.ORDERS)if(cmd.equals(order.id())){
                 String id=OrderRules.loadOrder(order.id()); // an old move is the Formation order, hold
                 boolean charging=id.equals("charge")&&startsCharge(s,"all");
                 s.assignments.clear();s.arrived.clear();s.order=id;s.yaw=p.getYaw();if(charging)markCharge(s,"all");
-                if(id.equals("charge")||id.equals("retreat"))BattleEffects.feedback(this,p,id); // the command's feedback, to this player alone
+                if(id.equals("charge")||id.equals("retreat"))BattleEffects.feedback(this,p,id); // the command's feedback, a world sound at this player
+                else if(id.equals("hold"))BattleEffects.feedback(this,p,"hold"); // an old move is hold here: the troops' hold shout
                 campaign.tutorialDid(p,id.equals("attack")||id.equals("charge")?2:0);
                 if(Diagnostics.active()&&testedOrders.add(order.id())&&testedOrders.size()==Spec.ORDERS.length)Diagnostics.report("orders-commanded",true,null);
                 if(order.targeted()){
@@ -958,7 +968,7 @@ public final class GravesAndGlory implements ModInitializer {
         /** The order a group is under: its stored one. No group ever leaves it on its own (the no-routing design); only its commander's next order changes it. */
         Assignment assignment(Unit u){return storedAssignment(u.squad,u.spec.group());}
         Assignment storedAssignment(Squad s,String group){return s.assignments.getOrDefault(group,new Assignment(s.order,s.formation,s.target,s.yaw));}
-        /** Stamps the charge of the named group(s) (Squad.chargedAt), which the counters table's charge impact (row C5) reads. Nothing sounds in the field: the commanding player alone hears his feedback (BattleEffects.feedback), on the order paths. */
+        /** Stamps the charge of the named group(s) (Squad.chargedAt), which the counters table's charge impact (row C5) reads. A bot's order sounds nothing; a player's order sounds in the world at him (BattleEffects.feedback), on the order paths. */
         void markCharge(Squad s,String group){for(var g:Spec.GROUPS)if(!g.id().equals("all")&&(group.equals("all")||group.equals(g.id())))s.chargedAt.put(g.id(),time);}
         /** Whether a Charge order on the named group(s) starts a charge: some named group is not charging already. */
         boolean startsCharge(Squad s,String group){return Arrays.stream(Morale.GROUPS).anyMatch(g->(group.equals("all")||group.equals(g))&&!storedAssignment(s,g).order.equals("charge"));}
@@ -1130,7 +1140,7 @@ public final class GravesAndGlory implements ModInitializer {
             if(!Modes.registered(campaign.battleMode)||!Modes.hosts(campaign.battleMode,campaign.map))campaign.battleMode=Modes.DOMINATION;
             mode=Modes.create(campaign.battleMode);
             roundSeconds=mode.row.roundSeconds();
-            Projectiles.clear(this);strikes.clear();Abilities.clearBanners(this);Houses.reset(this);FeedEvents.clear();clearProgression();
+            Projectiles.clear(this);strikes.clear();Abilities.clearBanners(this);Houses.reset(this);FeedEvents.clear();clearProgression();clearIntel();
             campaign.prepareRound();
             clearSides();
             Arrays.fill(scores,0);pointSeconds=new int[2][points.size()];
@@ -1266,19 +1276,28 @@ public final class GravesAndGlory implements ModInitializer {
             }
             Squad hitter=attackerSquad;Unit striker=null;for(Unit u:units)if(u.mob==attacker){hitter=u.squad;striker=u;}
             Squad side=hitter!=null?hitter:fallenSquad(attacker); // a commander's view of the blow: a shot that lands after its troop fell is still his army's (a troop victim has it from Combat.resolve's lastHitBy already)
-            if(entity instanceof ServerPlayerEntity p&&p.getHealth()<=amount&&GearCombat.secondChance(victimSquad,p))return false; // second_chance catches the downing blow once a match
-            if(entity instanceof ServerPlayerEntity p&&p.getHealth()<=amount){
-                if(Diagnostics.active())System.out.println("[Graves and Glory damage] respawn cause="+source.getType().msgId()+" amount="+amount+" hp="+p.getHealth()+" pos="+p.getPos()+" fall="+p.fallDistance);
-                p.setHealth(p.getMaxHealth());toBase(p,team);p.changeGameMode(GameMode.SPECTATOR);
-                respawns.put(p.getUuid(),time+R.respawnSeconds()*20L);FeedEvents.commander(this,p,false);
-                Veterans.onCommanderDeath(this,p,victimSquad,team,attacker,striker,side); // a commander struck down never reaches AFTER_DEATH: his killers get the commander bounty here, and his credit log is forgotten (he stands again within its window)
-                return false;
-            }
             if(hitter!=null)for(Unit u:units)if(u.mob==entity){if(attacker!=null&&hitter.team!=u.squad.team)u.squad.grudge=attacker.getUuid();u.lastHitBy=hitter;u.lastHitAt=time;u.lastHitTroop=striker==null||striker.temporary?null:striker.spec.id();break;}
             if(side!=null&&victimSquad!=null&&side.team!=team){victimSquad.hitBy=side;victimSquad.hitAt=time;} // a commander's last enemy blow, as lastHitBy is a troop's: a death with no attacker soon after is that army's (Veterans.onCommanderDeath)
             if(striker!=null)Veterans.helped(this,striker,entity); // every troop blow the battle lets through (Combat.resolve's and any other) logs its striker as a helper on the victim (kill credit, design 3.2)
             return true;
         }
+        /** ALLOW_DEATH for a player: a commander seated in a running round whose blow, after mitigation, took his health to 0 is not killed.
+         *  second_chance catches the downing blow once a match; otherwise he stands at full health at his base as a spectator until his respawn. */
+        boolean allowCommanderDeath(ServerPlayerEntity p,net.minecraft.entity.damage.DamageSource source,float amount){
+            Squad victimSquad=squads.get(p.getUuid());int team=teamOf(p);
+            if(!running||team<0)return true;
+            if(GearCombat.secondChance(victimSquad,p))return false; // second_chance catches the downing blow once a match
+            Entity attacker=source.getAttacker();Squad hitter=attacker==null?null:squads.get(attacker.getUuid());Unit striker=null;
+            for(Unit u:units)if(u.mob==attacker){hitter=u.squad;striker=u;}
+            Squad side=hitter!=null?hitter:fallenSquad(attacker);
+            if(Diagnostics.active())System.out.println("[Graves and Glory damage] respawn cause="+source.getType().msgId()+" amount="+amount+" pos="+p.getPos()+" fall="+p.fallDistance);
+            p.setHealth(p.getMaxHealth());toBase(p,team);p.changeGameMode(GameMode.SPECTATOR);
+            respawns.put(p.getUuid(),time+R.respawnSeconds()*20L);FeedEvents.commander(this,p,false);
+            Veterans.onCommanderDeath(this,p,victimSquad,team,attacker,striker,side); // a commander struck down never reaches AFTER_DEATH: his killers get the commander bounty here, and his credit log is forgotten (he stands again within its window)
+            return false;
+        }
+        /** Forgets the enemy sightings and pings of the last round (a new round, the return to camp). */
+        void clearIntel(){sightings.clear();pings.clear();}
         record Sight(float x,float z,long seen){}
         final Map<Integer,Map<UUID,Sight>> sightings=new HashMap<>();
         void updateSight(){for(int team=0;team<2;team++){var memory=sightings.computeIfAbsent(team,k->new HashMap<>());memory.values().removeIf(v->time-v.seen>Spec.SCOUTING[0].memorySeconds()*20);

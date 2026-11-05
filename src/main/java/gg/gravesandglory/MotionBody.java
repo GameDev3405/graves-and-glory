@@ -95,13 +95,14 @@ final class MotionBody {
             double legAmp = a * (1 - 0.55 * sh) * (1 - 0.3 * bp) * (36 + 10 * run);
             out.add("right_leg", RX, -legAmp * g);
             out.add("left_leg", RX, legAmp * g);
-            double knee = a * (1 - 0.4 * sh) * (32 + 38 * run);
-            out.add("right_shin", RX, knee * lerp(Math.max(0, Math.cos(p - 0.25)), Math.max(0, -Math.cos(p + 0.25)), bp));
-            out.add("left_shin", RX, knee * lerp(Math.max(0, -Math.cos(p - 0.25)), Math.max(0, Math.cos(p + 0.25)), bp));
+            // review 2026-11-04 section 4: a squared forward-swing bend so the back foot does not kick up behind
+            double knee = a * (1 - 0.4 * sh) * (22 + 33 * run), kr = Math.max(0, Math.cos(p - 0.25)), kl = Math.max(0, -Math.cos(p - 0.25));
+            out.add("right_shin", RX, knee * lerp(kr * kr, Math.max(0, -Math.cos(p + 0.25)), bp));
+            out.add("left_shin", RX, knee * lerp(kl * kl, Math.max(0, Math.cos(p + 0.25)), bp));
             double s = Math.sin(p), c = Math.cos(p);
-            out.add("root", TY, a * (0.9 * s * s * (1 - run) + 1.3 * c * c * run));
-            out.add("root", TX, 0.35 * a * (1 - run) * s);
-            out.add("body", RZ, 1.5 * a * (1 - run) * s);
+            out.add("root", TY, a * (1.35 * s * s * (1 - run) + 1.3 * c * c * run));
+            out.add("root", TX, 0.9 * a * (1 - run) * s);
+            out.add("body", RZ, 3.5 * a * (1 - run) * s);
             double lean = a * (3 + 7 * run) * (1 - bp) - 4 * bp * a;
             out.add("body", RX, lean);
             out.add("head", RX, -0.6 * lean);

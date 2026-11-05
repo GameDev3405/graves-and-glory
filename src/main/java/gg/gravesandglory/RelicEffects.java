@@ -246,7 +246,7 @@ public final class RelicEffects {
         @Override public boolean start(GravesAndGlory.Battle b, ServerPlayerEntity p, GravesAndGlory.Squad s, int slot, Spec.RelicTuningRow c) {
             p.addStatusEffect(new StatusEffectInstance(StatusEffects.SPEED, c.durationTicks(), SPEED_II));
             var st = new State(); st.speedUntil = b.time + c.durationTicks(); s.relicState.data[slot] = st;
-            b.world.playSound(null, p.getBlockPos(), SoundEvents.ENTITY_WOLF_GROWL, SoundCategory.PLAYERS, 1f, .6f);
+            Audio.at(b, AudioCues.Cue.RELIC_USE_DARK, p.getPos(), "r" + p.getId());
             b.world.spawnParticles(ParticleTypes.CRIT, p.getX(), p.getBodyY(.5), p.getZ(), 24, .6, .6, .6, .2);
             return true;
         }
@@ -290,7 +290,7 @@ public final class RelicEffects {
             p.velocityModified = true;
             p.fallDistance = 0;
             b.world.spawnParticles(ParticleTypes.CLOUD, p.getX(), p.getY() + .2, p.getZ(), 10, .3, .1, .3, .02);
-            b.world.playSound(null, p.getBlockPos(), SoundEvents.ENTITY_PLAYER_ATTACK_SWEEP, SoundCategory.PLAYERS, .7f, 1.4f);
+            Audio.at(b, AudioCues.Cue.RELIC_USE_ICE, p.getPos(), "r" + p.getId());
             return true;
         }
         @Override public void tick(GravesAndGlory.Battle b, GravesAndGlory.Squad s, int slot, Spec.RelicTuningRow c) {
@@ -329,7 +329,7 @@ public final class RelicEffects {
             }
             Vec3d look = flatLook(p);
             b.world.spawnParticles(ParticleTypes.SWEEP_ATTACK, p.getX() + look.x, p.getBodyY(.5), p.getZ() + look.z, 3, .4, .2, .4, 0);
-            b.world.playSound(null, p.getBlockPos(), SoundEvents.ITEM_SHIELD_BLOCK, SoundCategory.PLAYERS, 1f, .7f);
+            Audio.at(b, AudioCues.Cue.RELIC_USE_EARTH, p.getPos(), "r" + p.getId());
             return true;
         }
         @Override public void tick(GravesAndGlory.Battle b, GravesAndGlory.Squad s, int slot, Spec.RelicTuningRow c) {}
@@ -375,7 +375,7 @@ public final class RelicEffects {
     static final class WarCry implements Active {
         @Override public boolean start(GravesAndGlory.Battle b, ServerPlayerEntity p, GravesAndGlory.Squad s, int slot, Spec.RelicTuningRow c) {
             Abilities.ring(b, p.getPos(), c.radius(), b.side(s.team).color());
-            b.world.playSound(null, p.getBlockPos(), SoundEvents.EVENT_RAID_HORN.value(), SoundCategory.PLAYERS, .5f, 1.3f);
+            Audio.at(b, AudioCues.Cue.RELIC_USE_FIRE, p.getPos(), "r" + p.getId());
             return true;
         }
         @Override public void tick(GravesAndGlory.Battle b, GravesAndGlory.Squad s, int slot, Spec.RelicTuningRow c) {

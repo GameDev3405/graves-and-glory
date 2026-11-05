@@ -566,7 +566,7 @@ def bones():
         B.append(Bone(f"{side}_skirt_plate", f"{side}_leg", team=True, stages=[2], boxes=[
             Box((x0, 0, -2.4), (3, 6, 0), ("flap12", inner3), sheet="cloth"), Box((x0, 0, 2.4), (3, 6, 0), ("flap12", 2 - inner3), sheet="cloth")]))
         B.append(Bone(f"{side}_skirt_gilt", f"{side}_leg", team=True, stages=[3], boxes=[
-            Box((x0, 0, -2.4), (3, 7, 0), ("flap3", inner3), sheet="cloth"), Box((x0, 0, 2.4), (3, 7, 0), ("flap3", 2 - inner3), sheet="cloth")]))
+            Box((x0, 0, -2.4), (3, 6, 0), ("flap3", inner3), sheet="cloth"), Box((x0, 0, 2.4), (3, 6, 0), ("flap3", 2 - inner3), sheet="cloth")]))   # to the knee hinge (y6), not past it
     return B
 
 def cloth_painter(spec, side):

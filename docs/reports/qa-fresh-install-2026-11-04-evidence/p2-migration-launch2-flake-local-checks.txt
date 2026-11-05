@@ -1,0 +1,19 @@
+pass mod-loads
+pass client-compatibility
+pass arena-ready
+pass p2-migrate-fixtures
+pass p2-migrate-restart
+pass p2-migrate-import
+pass p2-profile-stage-ignored
+pass p2-full-roster
+pass p2-migrate-restore
+pass p2-migration-suite
+pass mod-loads
+pass client-compatibility
+pass p2-migrate-fixtures
+pass p2-migrate-restart
+pass p2-migrate-import
+pass p2-profile-stage-ignored
+fail p2-full-roster: a profile owning all 30 troops at star 1 (the client shows 30): gilded: drew [] (want these six, all owned: [knight, archer, sentinel, longbow, mage, gl_marshal]), inks true, portraits drawn flat true, banner chosen false; graveborn 6/6 owned; wildmoot 6/6 owned; ironclad 6/6 owned; tidecallers 6/6 owned; pictures p2-migration-full-roster-<house>.png (five)
+pass p2-migrate-restore
+fail p2-migration-suite: an earlier p2 check failed

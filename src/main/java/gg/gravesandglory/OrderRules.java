@@ -65,7 +65,7 @@ final class OrderRules {
         Vec3d at = centre(b, s, ids, p.getPos());
         if (action.equals("formation")) {
             for (var g : Spec.GROUPS) if (!g.id().equals("all") && covers(ids, g.id())) { var a = s.assignments.computeIfAbsent(g.id(), k -> new GravesAndGlory.Assignment(s.order, s.formation, s.target, s.yaw)); a.formation = formation; }
-            s.lastOrder = b.time; b.campaign.tutorialDid(p, 1);
+            s.lastOrder = b.time; b.campaign.tutorialDid(p, 1); BattleEffects.feedback(b, p, "hold"); // a formation change shouts like a Hold (main's audio round 2)
             CommandNet.ack(b, s, "formation", unitIds(b, s, ids), at.x, at.z);
             return;
         }
@@ -129,8 +129,9 @@ final class OrderRules {
         if (order.equals("charge")) { markChargeUsed(b, s); CommandNet.cooldown(p, Spec.COMBATDISCIPLINE[0].chargeCooldownTicks()); }
         for (String group : charging) b.markCharge(s, group);
         b.campaign.tutorialDid(p, order.equals("attack") || order.equals("charge") ? 2 : 0); b.campaign.progressEvent(p.getUuid(), false);
-        // The command's feedback, to this player alone, as before: Retreat's and Charge's cues, every other order the chime (order sounds are Task 9's).
-        if (order.equals("retreat") || order.equals("charge")) BattleEffects.feedback(b, p, order); else p.playSound(SoundEvents.BLOCK_NOTE_BLOCK_CHIME.value(), SoundCategory.PLAYERS, .6f, 1.1f);
+        // The command's feedback, as world sounds at this player (every player in range hears them; BattleEffects.feedback): Retreat's and Charge's
+        // cues, Hold's shout (an old move arrives as hold), every other order the chime (to his connection only, a UI cue).
+        if (order.equals("retreat") || order.equals("charge")) BattleEffects.feedback(b, p, order); else if (order.equals("hold")) BattleEffects.feedback(b, p, "hold"); else p.playSound(SoundEvents.BLOCK_NOTE_BLOCK_CHIME.value(), SoundCategory.PLAYERS, .6f, 1.1f);
         Vec3d mid = mean(dests.values());
         p.sendMessage(Text.literal(String.join("+", moved) + " / " + order + " / " + (int) mid.x + ", " + (int) mid.z), true);
 

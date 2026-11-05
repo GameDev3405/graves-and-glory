@@ -28,7 +28,7 @@ JSON_REL = "src/main/resources/assets/gravesandglory/sounds.json"
 CREDITS_REL = "docs/AUDIO-CREDITS.md"
 NAMESPACE = "gravesandglory"
 
-STREAMED = {"title_music", "campaign_briefing_music", "defeat_music", "overtime_music", "map_ambience",
+STREAMED = {"music.calm", "music.epic", "music.battle_grim", "music.battle_drums", "title_music", "campaign_briefing_music", "defeat", "overtime_music", "map_ambience", "ambience_wind", "ambience_birds", "ambience_water", "ambience_crows", "ambience_snow",
             "camp_room_tone", "survival_wind"}
 
 # cue -> [(java file glob under src/main/java/gg/gravesandglory, regex of the vanilla sound it would replace)].
@@ -46,8 +46,30 @@ for _el in ("fire", "ice", "lightning", "earth", "light", "dark"):
     REPLACES["relic_use_" + _el] = [("RelicEffects.java", r"playSound\(.*SoundEvents\.")]
 
 
+# File stem -> the event id the game already plays it under (AudioCues). Every other stem is its own event id.
+EVENT_ALIAS = {"shield_block": "combat.shield_block", "heavy_metal_hit": "combat.heavy_metal_hit",
+               "sword_swing": "combat.sword_swing", "sword_clash": "combat.sword_clash", "armor_hit": "combat.armor_hit",
+               "bow_shoot": "combat.bow_shoot", "arrow_hit": "combat.arrow_hit", "magic_cast": "magic.cast",
+               "magic_impact": "magic.impact", "clock_tick": "clock.tick", "battle_drums": "battle.drums",
+               "music_calm": "music.calm", "music_epic": "music.epic", "music_battle_grim": "music.battle_grim",
+               "music_battle_drums": "music.battle_drums",
+               # Round 2: the defeat music is the defeat sting's event (one variant, so the music waits its whole length).
+               "defeat_music": "defeat"}
+
+# Single takes that become an event of their own, named by file stem (checked before EVENT_ALIAS). Round 2 split the formation shouts in two:
+# take 5 is the hold / take-a-position shout, take 7 the charge shout (BattleEffects.feedback plays them).
+FILE_EVENT = {"formation_shout_5": "order_hold_shout", "formation_shout_7": "order_charge_shout"}
+
+
 def stem_of(name):
     return re.sub(r"_\d+$", "", Path(name).stem)
+
+
+def event_of(name):
+    if Path(name).stem in FILE_EVENT:
+        return FILE_EVENT[Path(name).stem]
+    s = stem_of(name)
+    return EVENT_ALIAS.get(s, s)
 
 
 def resolve(cues, cue, name):
@@ -98,7 +120,7 @@ def check_picks(cues, picks):
             if p is None:
                 problems.append(f"{cue}: {n} not found")
             else:
-                plan.append((cue, stem_of(n), p))
+                plan.append((cue, event_of(n), p))
     return problems, plan
 
 

@@ -427,6 +427,10 @@ public final class BattleMathCheck {
         check(BattleMath.corpseHurtTint(0, 5) && !BattleMath.corpseHurtTint(0, 0), "corpseHurtTint: a living troop tints only while hurt");
         check(BattleMath.corpseHurtTint(1, 10) && BattleMath.corpseHurtTint(20, 0), "corpseHurtTint: red through the 20-tick fall, as vanilla");
         check(!BattleMath.corpseHurtTint(21, 0) && !BattleMath.corpseHurtTint(60, 3) && !BattleMath.corpseHurtTint(119, 0), "corpseHurtTint: no red once the body lies");
+        check(BattleMath.nextBleedBeat(100, 100, 20) == 120, "nextBleedBeat: a beat on time schedules the next one interval on");
+        check(BattleMath.nextBleedBeat(100, 135, 20) == 155, "nextBleedBeat: a beat held back by the hurt cooldown waits a full interval, no catch-up");
+        { long next = 100; int beats = 0; for (long t = 100; t < 200; t++) if (t >= next && t >= 130) { next = BattleMath.nextBleedBeat(next, t, 20); beats++; if (beats > 1) check(next - t == 20, "nextBleedBeat: beats stay 20 ticks apart"); }
+          check(beats == 4, "nextBleedBeat: 70 ticks after a 30-tick hold give 4 beats (130, 150, 170, 190), not a burst"); }
         System.out.println("BattleMathCheck: " + checks + " checks passed");
     }
 }

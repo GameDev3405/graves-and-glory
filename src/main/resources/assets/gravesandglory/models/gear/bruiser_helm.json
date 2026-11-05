@@ -1,0 +1,389 @@
+{
+ "format": 1,
+ "item": "bruiser_helm",
+ "slot": "helm",
+ "density": 1,
+ "size": [
+  64,
+  64
+ ],
+ "cloth": "gravesandglory:textures/entity/gear/bruiser_helm/team_cloth_",
+ "skins": {
+  "1": "gravesandglory:textures/entity/gear/bruiser_helm/bruiser_helm_r1.png",
+  "2": "gravesandglory:textures/entity/gear/bruiser_helm/bruiser_helm_r2.png",
+  "3": "gravesandglory:textures/entity/gear/bruiser_helm/bruiser_helm_r3.png",
+  "4": "gravesandglory:textures/entity/gear/bruiser_helm/bruiser_helm_r4.png",
+  "5": "gravesandglory:textures/entity/gear/bruiser_helm/bruiser_helm_r5.png"
+ },
+ "glow": {
+  "4": "gravesandglory:textures/entity/gear/bruiser_helm/bruiser_helm_e4.png",
+  "5": "gravesandglory:textures/entity/gear/bruiser_helm/bruiser_helm_e5.png"
+ },
+ "bones": [
+  {
+   "name": "helm",
+   "parent": "head",
+   "team": false,
+   "tag": "helm",
+   "stages": [],
+   "sheet": [
+    64,
+    64
+   ],
+   "pivot": [
+    0,
+    0,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "boxes": [
+    {
+     "origin": [
+      -5,
+      -9,
+      -5
+     ],
+     "size": [
+      10,
+      9,
+      10
+     ],
+     "uv": [
+      0,
+      0
+     ],
+     "mirror": false,
+     "dilation": [
+      0.0,
+      0.0,
+      0.0
+     ]
+    }
+   ]
+  },
+  {
+   "name": "helm_crest",
+   "parent": "head",
+   "team": false,
+   "tag": "helm",
+   "stages": [
+    5
+   ],
+   "sheet": [
+    64,
+    64
+   ],
+   "pivot": [
+    0,
+    0,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "boxes": [
+    {
+     "origin": [
+      -1,
+      -11,
+      -4
+     ],
+     "size": [
+      2,
+      2,
+      8
+     ],
+     "uv": [
+      40,
+      0
+     ],
+     "mirror": false,
+     "dilation": [
+      0.0,
+      0.0,
+      0.0
+     ]
+    }
+   ]
+  },
+  {
+   "name": "helm_horn_right",
+   "parent": "head",
+   "team": false,
+   "tag": "helm",
+   "stages": [
+    5
+   ],
+   "sheet": [
+    64,
+    64
+   ],
+   "pivot": [
+    0,
+    0,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "boxes": [
+    {
+     "origin": [
+      -7,
+      -7,
+      -1
+     ],
+     "size": [
+      2,
+      3,
+      3
+     ],
+     "uv": [
+      0,
+      19
+     ],
+     "mirror": false,
+     "dilation": [
+      0.0,
+      0.0,
+      0.0
+     ]
+    },
+    {
+     "origin": [
+      -8,
+      -9,
+      0
+     ],
+     "size": [
+      2,
+      2,
+      2
+     ],
+     "uv": [
+      20,
+      19
+     ],
+     "mirror": false,
+     "dilation": [
+      0.0,
+      0.0,
+      0.0
+     ]
+    },
+    {
+     "origin": [
+      -8,
+      -11,
+      1
+     ],
+     "size": [
+      1,
+      2,
+      2
+     ],
+     "uv": [
+      36,
+      19
+     ],
+     "mirror": false,
+     "dilation": [
+      0.0,
+      0.0,
+      0.0
+     ]
+    },
+    {
+     "origin": [
+      -8,
+      -12,
+      2
+     ],
+     "size": [
+      1,
+      1,
+      1
+     ],
+     "uv": [
+      48,
+      19
+     ],
+     "mirror": false,
+     "dilation": [
+      0.0,
+      0.0,
+      0.0
+     ]
+    }
+   ]
+  },
+  {
+   "name": "helm_horn_left",
+   "parent": "head",
+   "team": false,
+   "tag": "helm",
+   "stages": [
+    5
+   ],
+   "sheet": [
+    64,
+    64
+   ],
+   "pivot": [
+    0,
+    0,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "boxes": [
+    {
+     "origin": [
+      5,
+      -7,
+      -1
+     ],
+     "size": [
+      2,
+      3,
+      3
+     ],
+     "uv": [
+      10,
+      19
+     ],
+     "mirror": false,
+     "dilation": [
+      0.0,
+      0.0,
+      0.0
+     ]
+    },
+    {
+     "origin": [
+      6,
+      -9,
+      0
+     ],
+     "size": [
+      2,
+      2,
+      2
+     ],
+     "uv": [
+      28,
+      19
+     ],
+     "mirror": false,
+     "dilation": [
+      0.0,
+      0.0,
+      0.0
+     ]
+    },
+    {
+     "origin": [
+      7,
+      -11,
+      1
+     ],
+     "size": [
+      1,
+      2,
+      2
+     ],
+     "uv": [
+      42,
+      19
+     ],
+     "mirror": false,
+     "dilation": [
+      0.0,
+      0.0,
+      0.0
+     ]
+    },
+    {
+     "origin": [
+      7,
+      -12,
+      2
+     ],
+     "size": [
+      1,
+      1,
+      1
+     ],
+     "uv": [
+      52,
+      19
+     ],
+     "mirror": false,
+     "dilation": [
+      0.0,
+      0.0,
+      0.0
+     ]
+    }
+   ]
+  },
+  {
+   "name": "helm_plume",
+   "parent": "head",
+   "team": true,
+   "tag": "helm",
+   "stages": [
+    5
+   ],
+   "sheet": [
+    32,
+    16
+   ],
+   "pivot": [
+    0,
+    0,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "boxes": [
+    {
+     "origin": [
+      -0.5,
+      -13,
+      -4.5
+     ],
+     "size": [
+      1,
+      2,
+      8
+     ],
+     "uv": [
+      0,
+      0
+     ],
+     "mirror": false,
+     "dilation": [
+      0.0,
+      0.0,
+      0.0
+     ]
+    }
+   ]
+  }
+ ]
+}

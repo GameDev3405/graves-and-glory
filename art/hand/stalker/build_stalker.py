@@ -21,7 +21,7 @@ from handlib import Troop
 from graveborn import VIOLET as V, BONE as BN, GIRON as GI, FROST as F, SOUL, GILT, gb_plate, gb_spike, gb_gilt, gb_band
 import house_stub
 
-SKIN = (128, 64)
+SKIN = (128, 80)       # 128 x 64 was full once the limbs were jointed (the joint caps)
 CLOTH = (128, 64)
 LEAN = 8        # degrees the torso leans forward; the head half way back, the arms stand back up
 INK_EYE = hx("07090c")
@@ -354,15 +354,14 @@ def bones():
         Box((-1, -11, -3), (2, 2, 8), crest, dil=0.2),
         Box((-6.5, -4, -3), (1, 7, 5), lappet, dil=0.2),
         Box((5.5, -4, -3), (1, 7, 5), lappet, dil=0.2)]))
-    B.append(Bone("right_arm", "body", (-5.5, -11, 0), [Box((-1, -2, -1), (2, 12, 2), arm_draw)], rot=(-LEAN, 0, 0)))
-    B.append(Bone("right_hand", "right_arm", (0, 8, 0)))
-    B.append(Bone("left_arm", "body", (5.5, -11, 0), [Box((-1, -2, -1), (2, 12, 2), arm_bow)], rot=(-LEAN, 0, 0)))
-    B.append(Bone("left_hand", "left_arm", (0, 8, 0)))
+    for side, x, paint in (("right", -5.5, arm_draw), ("left", 5.5, arm_bow)):   # jointed: the elbow at mid-arm, the hand 4 px under it
+        B += limb(f"{side}_arm", "body", (x, -11, 0), (-1, -2, -1), paint, f"{side}_forearm", (0, 4, 0), size=(2, 12, 2), rot=(-LEAN, 0, 0))
+        B.append(Bone(f"{side}_hand", f"{side}_forearm", (0, 4, 0)))
     B.append(Bone("arms_folded", "body", (0, -10, -1), rot=(-43, 0, 0)))
-    B.append(Bone("right_leg", "root", (-2.5, 12, 0), [Box((-1, 0, -1), (2, 12, 2), leg("right"))]))
-    B.append(Bone("left_leg", "root", (2.5, 12, 0), [Box((-1, 0, -1), (2, 12, 2), leg("left"))]))
-    B.append(Bone("right_foot", "right_leg", boxes=[Box((-1.5, 10, -3), (3, 2, 4), boot), Box((-2, 8.5, -2), (4, 2, 4), cuff, dil=0.25)]))
-    B.append(Bone("left_foot", "left_leg", boxes=[Box((-1.5, 10, -3), (3, 2, 4), boot), Box((-2, 8.5, -2), (4, 2, 4), cuff, dil=0.25)]))
+    for side, x in (("right", -2.5), ("left", 2.5)):   # jointed: the knee 6 px down the leg
+        B += limb(f"{side}_leg", "root", (x, 12, 0), (-1, 0, -1), leg(side), f"{side}_shin", KNEE, size=(2, 12, 2))
+    B.append(Bone("right_foot", "right_shin", boxes=[Box((-1.5, 4, -3), (3, 2, 4), boot), Box((-2, 2.5, -2), (4, 2, 4), cuff, dil=0.25)]))
+    B.append(Bone("left_foot", "left_shin", boxes=[Box((-1.5, 4, -3), (3, 2, 4), boot), Box((-2, 2.5, -2), (4, 2, 4), cuff, dil=0.25)]))
     # the knee-length mantle: a fur-edged shoulder cape, three felt strips down the back, a flap either side of the front
     B.append(Bone("knee_mantle", "body", boxes=[Box((-6.5, -13, -3.5), (13, 5, 7), cape, dil=0.3)]))
     B.append(Bone("mantle_back", "body", (0, -9, 2.4), boxes=[Box((-3, 0, 0), (6, 15, 1), strip("bc", "back"))]))
@@ -386,8 +385,8 @@ def bones():
         B.append(Bone(f"{side}_pauldron", f"{side}_arm", (sx * 1.2, -0.3, 0), rot=(0, 0, rz), stages=[2, 3], boxes=[
             Box((-2.7, -3.4, -3.2), (5.4, 3, 6.4), P2("pd" + side), dil=0.9),
             Box((-0.5 + sx * 1.5, -7.6, -0.5), (1, 4.4, 1), TN), Box((-0.5 + sx * 0.2, -6.4, 1.6), (1, 3.4, 1), TN)]))
-        B.append(Bone(f"{side}_bracer", f"{side}_arm", stages=[2, 3], boxes=[Box((-1.8, 4.5, -1.8), (3.6, 3.5, 3.6), P2("br" + side, 0.18), dil=0.5)]))
-        B.append(Bone(f"{side}_greave", f"{side}_leg", stages=[2, 3], boxes=[Box((-1.7, 4.2, -1.7), (3.4, 3, 3.4), P2("gv" + side), dil=0.5)]))
+        B.append(Bone(f"{side}_bracer", f"{side}_forearm", stages=[2, 3], boxes=[Box((-1.8, 0.5, -1.8), (3.6, 3.5, 3.6), P2("br" + side, 0.18), dil=0.5)]))
+        B.append(Bone(f"{side}_greave", f"{side}_shin", stages=[2, 3], boxes=[Box((-1.7, -1.8, -1.7), (3.4, 3, 3.4), P2("gv" + side), dil=0.5)]))
     B.append(Bone("belt_plate", "body", stages=[2, 3], boxes=[Box((-2, -4.4, -2.7), (4, 2.6, 0.8), P2("bt"), dil=0.5)]))
     # tier III, the Wight Stalker: a gilt band round the cowl, a gilt breast clasp with one pale stone, taller rime tines
     B.append(Bone("cowl_band", "head", stages=[3], boxes=[Box((-5.2, -9.4, -5.2), (10.4, 1.3, 10.4), gb_gilt("cwb"), dil=0.05)]))

@@ -786,8 +786,10 @@ for s in set_rows:
         n=sum(1 for it in item_rows if it['set']==s['id'] and it['slot']==slot)
         if n!=1: errors.append(f'gearSets/{s["id"]}: set {s["id"]} has {n} {slot} pieces in gearItems, it needs exactly one')
     sid=f'gearSets/{s["id"]}'
+    starter=str(s['classes'])!='-'   # House sets (Kort 2026-11-04) start no class: classes, starterMain and starterOff are all -
+    if not starter and (s['starterMain']!='-' or s['starterOff']!='-'): errors.append(f'{sid}: a set with classes - starts no one, so starterMain and starterOff must be -')
     main=items_by_id.get(s['starterMain'])
-    if main is None or main['slot']!='main': errors.append(f'{sid}/starterMain: {s["starterMain"]!r} is not a main-hand gearItems id')
+    if starter and (main is None or main['slot']!='main'): errors.append(f'{sid}/starterMain: {s["starterMain"]!r} is not a main-hand gearItems id')
     if s['starterOff']!='-':
         off=items_by_id.get(s['starterOff'])
         if off is None or off['slot']!='off': errors.append(f'{sid}/starterOff: {s["starterOff"]!r} is not - or an off-hand gearItems id')

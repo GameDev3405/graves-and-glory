@@ -79,8 +79,9 @@ final class Gear {
         return sum / humans.size();
     }
 
-    /** The gearSets id whose classes list names the class, else bruiser. */
+    /** The gearSets id whose classes list names the class, else bruiser. A House set's classes - names no class. */
     static String roleFor(String commanderClass) {
+        if (commanderClass == null || commanderClass.equals("-")) return "bruiser";
         for (var s : Spec.GEARSETS) if (Arrays.asList(s.classes().split(",")).contains(commanderClass)) return s.id();
         return "bruiser";
     }

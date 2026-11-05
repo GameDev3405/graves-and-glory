@@ -779,7 +779,7 @@ final class WarTablePages {
         }
         flyAt = 0; dropWhy = "";
         if (!classify()) { cancelDrag(); return true; }
-        dragging = true; pressed = false;
+        dragging = true; pressed = false; UiSounds.play(AudioCues.Cue.BANNER_DRAG);
         return true;
     }
 
@@ -1148,9 +1148,18 @@ final class WarTablePages {
         var font = font();
         g.drawText(font, DarkUi.heading("Your role"), x, oy + 124, DarkUi.BRASS, false);
         var mine = GearStats.of(CampaignClient.profile);
-        for (int i = 0; i < Spec.GEARSETS.length; i++) paintRole(g, Spec.GEARSETS[i], mine, x, oy + CLASS_Y + CLASS_STEP * i);
-        int top = oy + CLASS_Y + CLASS_STEP * Spec.GEARSETS.length + 8;
+        var shown = shownRoles(mine.role());
+        int step = shown.size() <= 4 ? CLASS_STEP : CLASS_STEP * 4 / shown.size(); // a fifth plaque packs the column into the four's height
+        for (int i = 0; i < shown.size(); i++) paintRole(g, shown.get(i), mine, x, oy + CLASS_Y + step * i);
+        int top = oy + CLASS_Y + CLASS_STEP * 4 + 8;
         textsDrawn.put("bonus", String.join(" ", lines(g, "Wear four pieces of one set to unlock its bonuses. Gear and relics are changed in the Arsenal.", x, top, BONUS_W, 4, DarkUi.MUTED)));
+    }
+
+    /** The role plaques: the four starter roles, and the commander's own role under them when it is a House set (the column holds five, not nine). */
+    static List<Spec.GearSetsRow> shownRoles(String role) {
+        List<Spec.GearSetsRow> out = new ArrayList<>();
+        for (var s : Spec.GEARSETS) if (!WarTableLobby.houseSet(s) || s.id().equals(role)) out.add(s);
+        return out;
     }
 
     /** A role plaque: plaque-120 with the set's role name and the pieces worn, the commander's own role lit (plaque-120-here, RAIL_KEY). */
@@ -1160,9 +1169,10 @@ final class WarTablePages {
         UiTex.draw(g, plate, x, y);
         if (icon != null && UiTex.has(icon)) UiTex.draw(g, icon, x + 8, y + 7);
         int ink = on ? DarkUi.RAIL_KEY : DarkUi.IVORY;
-        String name = WarTableLobby.roleName(set.id()), worn = mine.setCounts().getOrDefault(set.id(), 0) + "/4";
-        text(g, key, DarkUi.heading(name), name, x + 28, y + 8, ink);
+        String worn = mine.setCounts().getOrDefault(set.id(), 0) + "/4";
         int ww = font().getWidth(DarkUi.body(worn));
+        String name = UiMath.trim(WarTableLobby.roleName(set.id()), CLASS_W - 34 - ww - 4, s -> font().getWidth(DarkUi.heading(s))); // Barrow Warden beside its count
+        text(g, key, DarkUi.heading(name), name, x + 28, y + 8, ink);
         g.drawText(font(), DarkUi.body(worn), x + CLASS_W - 6 - ww, y + 9, on ? DarkUi.RAIL_KEY : DarkUi.MUTED, false);
         rectsDrawn.put(key, new int[]{x, y, CLASS_W, 28});
         texturesDrawn.put(key, plate);

@@ -1,0 +1,2 @@
+startup-armory-enabled=true The built-in armory pack is enabled on a first launch
+startup-suite=true Startup-only fixture complete

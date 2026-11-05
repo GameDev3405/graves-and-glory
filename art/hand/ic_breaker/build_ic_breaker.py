@@ -188,13 +188,12 @@ def bones():
     B.append(Bone("helm_plume", "head", tag="helm", boxes=[
         Box((-1, -14, -4), (2, 4, 8), ember_plume("pl")),
         Box((-1, -12, 3.5), (2, 9, 2), ember_plume("tail", tail=True), dil=0.1)]))
-    B.append(Bone("right_arm", "body", (-5, -10, 0), [Box((-3, -2, -2), (4, 12, 4), arm())]))
-    B.append(Bone("right_hand", "right_arm", (-1, 8, 0)))
-    B.append(Bone("left_arm", "body", (5, -10, 0), [Box((-1, -2, -2), (4, 12, 4), arm())]))
-    B.append(Bone("left_hand", "left_arm", (1, 8, 0)))
+    for side, x, ox in (("right", -5, -3), ("left", 5, -1)):   # jointed: elbow and hand as handlib.arms()
+        B += limb(f"{side}_arm", "body", (x, -10, 0), (ox, -2, -2), arm(), f"{side}_forearm", ELBOW[side])
+        B.append(Bone(f"{side}_hand", f"{side}_forearm", HAND))
     B.append(Bone("arms_folded", "body", (0, -9, -1), rot=(-43, 0, 0)))
-    B.append(Bone("right_leg", "root", (-1.9, 12, 0), [Box((-2, 0, -2), (4, 12, 4), leg())]))
-    B.append(Bone("left_leg", "root", (1.9, 12, 0), [Box((-2, 0, -2), (4, 12, 4), leg())]))
+    for side, x in (("right", -1.9), ("left", 1.9)):   # jointed: the knee 6 px down the leg
+        B += limb(f"{side}_leg", "root", (x, 12, 0), (-2, 0, -2), leg(), f"{side}_shin", KNEE)
     B.append(Bone("fur_collar", "body", boxes=[Box((-5.5, -12.5, -3), (11, 3, 6), gorget_fur(), dil=0.2)]))
     B.append(Bone("tabard", "body", team=True, boxes=[Box((-4, -12, -2), (8, 12, 4), "tabard", dil=0.3, sheet="cloth")]))
     B.append(Bone("belt", "body", boxes=[Box((-4, -3, -2), (8, 2, 4), belt(), dil=0.45)]))
@@ -206,12 +205,12 @@ def bones():
             Box((-4 + 0.5 * c, 0.5, -3.5), (8, 2, 7), IT.T(pauldron_lame(1), top=False, foot=True), dil=0.15),
             Box((-3.5 + 1.0 * c, 2.5, -3), (7, 2, 6), IT.T(pauldron_lame(2), top=False, foot=True), dil=0.15),
             Box((-3 + 1.5 * c, 4.5, -2.5), (6, 1, 5), pauldron_lame(3), dil=0.1)]))
-        B.append(Bone(f"{side}_cuff", f"{side}_arm", boxes=[Box((c - 2.5, 5, -2.5), (5, 2, 5), IT.T(cuff(), top=True))]))
-        B.append(Bone(f"{side}_gauntlet", f"{side}_arm", stages=[2, 3], boxes=[Box((c - 2.3, 7, -2.3), (4.6, 2, 4.6), IT.P("bga" + side, 3, ember=True), dil=0.05)]))
-        B.append(Bone(f"{side}_knee", f"{side}_leg", boxes=[Box((-2.5, 6, -3), (5, 2, 2), IT.T(knee(), top=False))]))
-        B.append(Bone(f"{side}_knee_wing", f"{side}_leg", stages=[2, 3], boxes=[Box((-3, 5, -3.4), (6, 4, 1.4), IT.P("bkw" + side, 4), dil=0.1)]))
-        B.append(Bone(f"{side}_greave", f"{side}_leg", stages=[3], boxes=[Box((-2.4, 8, -2.4), (4.8, 1.5, 4.8), IT.P("bgv" + side, 3), dil=0.1)]))
-        B.append(Bone(f"{side}_boot", f"{side}_leg", boxes=[Box((-2.5, 9, -3), (5, 3, 5), IT.T(boot(), top=False))]))
+        B.append(Bone(f"{side}_cuff", f"{side}_forearm", boxes=[Box((-2.5, 1, -2.5), (5, 2, 5), IT.T(cuff(), top=True))]))
+        B.append(Bone(f"{side}_gauntlet", f"{side}_forearm", stages=[2, 3], boxes=[Box((-2.3, 3, -2.3), (4.6, 2, 4.6), IT.P("bga" + side, 3, ember=True), dil=0.05)]))
+        B.append(Bone(f"{side}_knee", f"{side}_shin", boxes=[Box((-2.5, 0, -3), (5, 2, 2), IT.T(knee(), top=False))]))
+        B.append(Bone(f"{side}_knee_wing", f"{side}_shin", stages=[2, 3], boxes=[Box((-3, -1, -3.4), (6, 4, 1.4), IT.P("bkw" + side, 4), dil=0.1)]))
+        B.append(Bone(f"{side}_greave", f"{side}_shin", stages=[3], boxes=[Box((-2.4, 2, -2.4), (4.8, 1.5, 4.8), IT.P("bgv" + side, 3), dil=0.1)]))
+        B.append(Bone(f"{side}_boot", f"{side}_shin", boxes=[Box((-2.5, 3, -3), (5, 3, 5), IT.T(boot(), top=False))]))
         B.append(Bone(f"{side}_boss", f"{side}_pauldron", stages=[2, 3], boxes=[Box((-1.5, -2.5, -1.5), (3, 1, 3), IT.brass(3))]))
         B.append(Bone(f"{side}_spikes", f"{side}_pauldron", stages=[3], boxes=[Box((-0.5 + 2.5 * c, -4.5, -0.5 + dz), (1, 3, 1), IT.spike(IT.IRON, 3, 3)) for dz in (-2.5, 0, 2.5)]))
         B.append(Bone(f"{side}_tasset", "body", stages=[2, 3], boxes=[Box((-5.4 if side == "right" else 4.4, -2, -2.6), (1, 5, 5.2), IT.P("bts" + side, 3, ember=True))]))

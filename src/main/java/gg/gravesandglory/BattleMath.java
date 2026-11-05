@@ -72,6 +72,9 @@ public final class BattleMath {
     public static double arrowPitch(double vx, double vy, double vz) { return Math.toDegrees(Math.atan2(vy, Math.hypot(vx, vz))); }
     /** An arced shot's flight in ticks: travelTicks times scale (combatDiscipline arcTravelScale, 1 to 2), rounded; a shot with no arc keeps travelTicks. At 1, no flight time changes. */
     public static int arcTravelTicks(int travel, double peak, double scale) { return peak > 0 ? (int) Math.round(travel * scale) : travel; }
+    /** A bleed's next beat after one landed at now that was due at scheduled: every ticks on, but never sooner than every ticks after this beat,
+     *  so beats held back (the hurt cooldown) are not caught up in a burst of one a tick. */
+    public static long nextBleedBeat(long scheduled, long now, int every) { return Math.max(scheduled + every, now + every); }
     /** Whether a blow struck at lastHitAt can still credit a death at now: no more than window ticks ago, and not in the future. */
     public static boolean creditWindowOpen(long now, long lastHitAt, int window) {
         long age = now - lastHitAt;

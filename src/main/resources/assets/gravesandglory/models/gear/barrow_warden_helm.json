@@ -1,0 +1,869 @@
+{
+ "format": 1,
+ "item": "barrow_warden_helm",
+ "slot": "helm",
+ "density": 1,
+ "size": [
+  64,
+  64
+ ],
+ "cloth": "gravesandglory:textures/entity/gear/barrow_warden_helm/team_cloth_",
+ "skins": {
+  "1": "gravesandglory:textures/entity/gear/barrow_warden_helm/barrow_warden_helm_r1.png",
+  "2": "gravesandglory:textures/entity/gear/barrow_warden_helm/barrow_warden_helm_r2.png",
+  "3": "gravesandglory:textures/entity/gear/barrow_warden_helm/barrow_warden_helm_r3.png",
+  "4": "gravesandglory:textures/entity/gear/barrow_warden_helm/barrow_warden_helm_r4.png",
+  "5": "gravesandglory:textures/entity/gear/barrow_warden_helm/barrow_warden_helm_r5.png"
+ },
+ "glow": {
+  "5": "gravesandglory:textures/entity/gear/barrow_warden_helm/barrow_warden_helm_e5.png"
+ },
+ "bones": [
+  {
+   "name": "sallet",
+   "parent": "head",
+   "team": false,
+   "tag": "helm",
+   "stages": [],
+   "sheet": [
+    64,
+    64
+   ],
+   "pivot": [
+    0,
+    0,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "boxes": [
+    {
+     "origin": [
+      -5.0,
+      -9.0,
+      -5.0
+     ],
+     "size": [
+      10.0,
+      10.0,
+      10.0
+     ],
+     "uv": [
+      0,
+      0
+     ],
+     "mirror": false,
+     "dilation": [
+      0.02,
+      0.02,
+      0.02
+     ]
+    }
+   ]
+  },
+  {
+   "name": "mask",
+   "parent": "head",
+   "team": false,
+   "tag": "helm",
+   "stages": [],
+   "sheet": [
+    64,
+    64
+   ],
+   "pivot": [
+    0,
+    0,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "boxes": [
+    {
+     "origin": [
+      -3.5,
+      -7.0,
+      -5.3
+     ],
+     "size": [
+      7.0,
+      7.0,
+      1.0
+     ],
+     "uv": [
+      24,
+      20
+     ],
+     "mirror": false,
+     "dilation": [
+      0.0,
+      0.0,
+      0.0
+     ]
+    }
+   ]
+  },
+  {
+   "name": "hood_0",
+   "parent": "head",
+   "team": true,
+   "tag": "helm",
+   "stages": [
+    1,
+    2,
+    3,
+    4
+   ],
+   "sheet": [
+    64,
+    64
+   ],
+   "pivot": [
+    0,
+    0,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "boxes": [
+    {
+     "origin": [
+      -5.5,
+      -10.0,
+      -5.5
+     ],
+     "size": [
+      11.0,
+      9.0,
+      11.0
+     ],
+     "uv": [
+      0,
+      0
+     ],
+     "mirror": false,
+     "dilation": [
+      0.02,
+      0.02,
+      0.02
+     ]
+    }
+   ]
+  },
+  {
+   "name": "hood_1",
+   "parent": "head",
+   "team": true,
+   "tag": "helm",
+   "stages": [
+    5
+   ],
+   "sheet": [
+    64,
+    64
+   ],
+   "pivot": [
+    0,
+    0,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "boxes": [
+    {
+     "origin": [
+      -5.5,
+      -10.0,
+      -5.5
+     ],
+     "size": [
+      11.0,
+      9.0,
+      11.0
+     ],
+     "uv": [
+      0,
+      20
+     ],
+     "mirror": false,
+     "dilation": [
+      0.02,
+      0.02,
+      0.02
+     ]
+    }
+   ]
+  },
+  {
+   "name": "hood_peak",
+   "parent": "head",
+   "team": true,
+   "tag": "helm",
+   "stages": [],
+   "sheet": [
+    64,
+    64
+   ],
+   "pivot": [
+    0,
+    0,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "boxes": [
+    {
+     "origin": [
+      -1.0,
+      -11.0,
+      0.0
+     ],
+     "size": [
+      2.0,
+      1.0,
+      4.0
+     ],
+     "uv": [
+      18,
+      40
+     ],
+     "mirror": false,
+     "dilation": [
+      0.02,
+      0.02,
+      0.02
+     ]
+    }
+   ]
+  },
+  {
+   "name": "hood_tail_0",
+   "parent": "head",
+   "team": true,
+   "tag": "helm",
+   "stages": [
+    1,
+    2,
+    3,
+    4
+   ],
+   "sheet": [
+    64,
+    64
+   ],
+   "pivot": [
+    0,
+    0,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "boxes": [
+    {
+     "origin": [
+      -4.0,
+      -1.0,
+      4.6
+     ],
+     "size": [
+      8.0,
+      7.0,
+      1.0
+     ],
+     "uv": [
+      44,
+      20
+     ],
+     "mirror": false,
+     "dilation": [
+      0.0,
+      0.0,
+      0.0
+     ]
+    }
+   ]
+  },
+  {
+   "name": "hood_tail_1",
+   "parent": "head",
+   "team": true,
+   "tag": "helm",
+   "stages": [
+    5
+   ],
+   "sheet": [
+    64,
+    64
+   ],
+   "pivot": [
+    0,
+    0,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "boxes": [
+    {
+     "origin": [
+      -4.0,
+      -1.0,
+      4.6
+     ],
+     "size": [
+      8.0,
+      7.0,
+      1.0
+     ],
+     "uv": [
+      0,
+      40
+     ],
+     "mirror": false,
+     "dilation": [
+      0.0,
+      0.0,
+      0.0
+     ]
+    }
+   ]
+  },
+  {
+   "name": "crown_front",
+   "parent": "head",
+   "team": false,
+   "tag": "helm",
+   "stages": [
+    5
+   ],
+   "sheet": [
+    64,
+    64
+   ],
+   "pivot": [
+    0,
+    0,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "boxes": [
+    {
+     "origin": [
+      -5.0,
+      -10.200000000000003,
+      -6.0
+     ],
+     "size": [
+      10.0,
+      1.0,
+      1.0
+     ],
+     "uv": [
+      0,
+      32
+     ],
+     "mirror": false,
+     "dilation": [
+      0.02,
+      0.02,
+      0.02
+     ]
+    }
+   ]
+  },
+  {
+   "name": "crown_side_r",
+   "parent": "head",
+   "team": false,
+   "tag": "helm",
+   "stages": [
+    5
+   ],
+   "sheet": [
+    64,
+    64
+   ],
+   "pivot": [
+    0,
+    0,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "boxes": [
+    {
+     "origin": [
+      -6.0,
+      -10.200000000000003,
+      -6.0
+     ],
+     "size": [
+      1.0,
+      1.0,
+      11.0
+     ],
+     "uv": [
+      40,
+      0
+     ],
+     "mirror": false,
+     "dilation": [
+      0.04,
+      0.04,
+      0.04
+     ]
+    }
+   ]
+  },
+  {
+   "name": "crown_side_l",
+   "parent": "head",
+   "team": false,
+   "tag": "helm",
+   "stages": [
+    5
+   ],
+   "sheet": [
+    64,
+    64
+   ],
+   "pivot": [
+    0,
+    0,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "boxes": [
+    {
+     "origin": [
+      5.0,
+      -10.200000000000003,
+      -6.0
+     ],
+     "size": [
+      1.0,
+      1.0,
+      11.0
+     ],
+     "uv": [
+      0,
+      20
+     ],
+     "mirror": false,
+     "dilation": [
+      0.04,
+      0.04,
+      0.04
+     ]
+    }
+   ]
+  },
+  {
+   "name": "crown_back",
+   "parent": "head",
+   "team": false,
+   "tag": "helm",
+   "stages": [
+    5
+   ],
+   "sheet": [
+    64,
+    64
+   ],
+   "pivot": [
+    0,
+    0,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "boxes": [
+    {
+     "origin": [
+      -5.0,
+      -10.200000000000003,
+      4.0
+     ],
+     "size": [
+      10.0,
+      1.0,
+      1.0
+     ],
+     "uv": [
+      22,
+      32
+     ],
+     "mirror": false,
+     "dilation": [
+      0.0,
+      0.0,
+      0.0
+     ]
+    }
+   ]
+  },
+  {
+   "name": "crown_spike_0",
+   "parent": "head",
+   "team": false,
+   "tag": "helm",
+   "stages": [
+    5
+   ],
+   "sheet": [
+    64,
+    64
+   ],
+   "pivot": [
+    0,
+    0,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "boxes": [
+    {
+     "origin": [
+      3.5,
+      -12.200000000000003,
+      -6.0
+     ],
+     "size": [
+      1.0,
+      2.0,
+      1.0
+     ],
+     "uv": [
+      52,
+      20
+     ],
+     "mirror": false,
+     "dilation": [
+      0.0,
+      0.0,
+      0.0
+     ]
+    }
+   ]
+  },
+  {
+   "name": "crown_spike_1",
+   "parent": "head",
+   "team": false,
+   "tag": "helm",
+   "stages": [
+    5
+   ],
+   "sheet": [
+    64,
+    64
+   ],
+   "pivot": [
+    0,
+    0,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "boxes": [
+    {
+     "origin": [
+      0.5,
+      -13.200000000000003,
+      -6.0
+     ],
+     "size": [
+      1.0,
+      3.0,
+      1.0
+     ],
+     "uv": [
+      40,
+      20
+     ],
+     "mirror": false,
+     "dilation": [
+      0.0,
+      0.0,
+      0.0
+     ]
+    }
+   ]
+  },
+  {
+   "name": "crown_spike_2",
+   "parent": "head",
+   "team": false,
+   "tag": "helm",
+   "stages": [
+    5
+   ],
+   "sheet": [
+    64,
+    64
+   ],
+   "pivot": [
+    0,
+    0,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "boxes": [
+    {
+     "origin": [
+      -1.5,
+      -11.200000000000003,
+      -6.0
+     ],
+     "size": [
+      1.0,
+      1.0,
+      1.0
+     ],
+     "uv": [
+      44,
+      32
+     ],
+     "mirror": false,
+     "dilation": [
+      0.0,
+      0.0,
+      0.0
+     ]
+    }
+   ]
+  },
+  {
+   "name": "crown_spike_3",
+   "parent": "head",
+   "team": false,
+   "tag": "helm",
+   "stages": [
+    5
+   ],
+   "sheet": [
+    64,
+    64
+   ],
+   "pivot": [
+    0,
+    0,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "boxes": [
+    {
+     "origin": [
+      -4.5,
+      -12.200000000000003,
+      -6.0
+     ],
+     "size": [
+      1.0,
+      2.0,
+      1.0
+     ],
+     "uv": [
+      56,
+      20
+     ],
+     "mirror": false,
+     "dilation": [
+      0.0,
+      0.0,
+      0.0
+     ]
+    }
+   ]
+  },
+  {
+   "name": "crown_gem",
+   "parent": "head",
+   "team": false,
+   "tag": "helm",
+   "stages": [
+    5
+   ],
+   "sheet": [
+    64,
+    64
+   ],
+   "pivot": [
+    0,
+    0,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "boxes": [
+    {
+     "origin": [
+      -0.5,
+      -9.899999999999999,
+      -6.4
+     ],
+     "size": [
+      1.0,
+      1.0,
+      1.0
+     ],
+     "uv": [
+      48,
+      32
+     ],
+     "mirror": false,
+     "dilation": [
+      0.0,
+      0.0,
+      0.0
+     ]
+    }
+   ]
+  },
+  {
+   "name": "crown_spike_side_r",
+   "parent": "head",
+   "team": false,
+   "tag": "helm",
+   "stages": [
+    5
+   ],
+   "sheet": [
+    64,
+    64
+   ],
+   "pivot": [
+    0,
+    0,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "boxes": [
+    {
+     "origin": [
+      -6.0,
+      -13.200000000000003,
+      -2.0
+     ],
+     "size": [
+      1.0,
+      3.0,
+      1.0
+     ],
+     "uv": [
+      44,
+      20
+     ],
+     "mirror": false,
+     "dilation": [
+      0.0,
+      0.0,
+      0.0
+     ]
+    }
+   ]
+  },
+  {
+   "name": "crown_spike_side_l",
+   "parent": "head",
+   "team": false,
+   "tag": "helm",
+   "stages": [
+    5
+   ],
+   "sheet": [
+    64,
+    64
+   ],
+   "pivot": [
+    0,
+    0,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "boxes": [
+    {
+     "origin": [
+      5.0,
+      -13.200000000000003,
+      -2.0
+     ],
+     "size": [
+      1.0,
+      3.0,
+      1.0
+     ],
+     "uv": [
+      48,
+      20
+     ],
+     "mirror": false,
+     "dilation": [
+      0.0,
+      0.0,
+      0.0
+     ]
+    }
+   ]
+  }
+ ]
+}

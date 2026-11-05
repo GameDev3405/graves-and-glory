@@ -261,7 +261,7 @@ public final class SurvivalMode extends BattleMode {
         for (var key : sites(wave)) {
             var s = rise(b.campaign.map, key);
             names.add(s.name());
-            b.world.playSound(null, s.x(), surface(b, s.x(), s.z()).y, s.z(), SoundEvents.PARTICLE_SOUL_ESCAPE, SoundCategory.HOSTILE, 4f, 0.6f);
+            Audio.at(b, AudioCues.Cue.SOUL_LEAVING, surface(b, s.x(), s.z()), "wave" + key, .7f);
         }
         for (var line : ModeMath.riseLines(names)) feed(b, line);
         Audio.all(b, AudioCues.Cue.WAVE_WARNING, "wave");

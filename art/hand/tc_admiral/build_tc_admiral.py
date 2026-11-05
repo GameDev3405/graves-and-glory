@@ -443,15 +443,14 @@ def bones():
     B.append(Bone("plume_b", "head", (7.6, -5.6, 1.4), rot=(24, 0, -4), tag="helm", boxes=[Box((-0.6, -0.4, -1.6), (1, 7, 4), plume("b"))]))
     B.append(Bone("collar", "body", boxes=[Box((-4.5, -13.2, -2.6), (9, 2.6, 5.2), collar())]))
     # arms
-    B.append(Bone("right_arm", "body", (-5, -10, 0), [Box((-3, -2, -2), (4, 12, 4), sleeve_painter())]))
-    B.append(Bone("right_hand", "right_arm", (-1, 8, 0)))
-    B.append(Bone("left_arm", "body", (5, -10, 0), [Box((-1, -2, -2), (4, 12, 4), sleeve_painter())]))
-    B.append(Bone("left_hand", "left_arm", (1, 8, 0)))
+    for side, x, ox in (("right", -5, -3), ("left", 5, -1)):   # jointed: elbow and hand as handlib.arms()
+        B += limb(f"{side}_arm", "body", (x, -10, 0), (ox, -2, -2), sleeve_painter(), f"{side}_forearm", ELBOW[side])
+        B.append(Bone(f"{side}_hand", f"{side}_forearm", HAND))
     B.append(Bone("arms_folded", "body", (0, -9, -1), rot=(-43, 0, 0)))
-    B.append(Bone("right_leg", "root", (-1.9, 12, 0), [Box((-2, 0, -2), (4, 12, 4), leg_painter())]))
-    B.append(Bone("left_leg", "root", (1.9, 12, 0), [Box((-2, 0, -2), (4, 12, 4), leg_painter())]))
+    for side, x in (("right", -1.9), ("left", 1.9)):   # jointed: the knee 6 px down the leg
+        B += limb(f"{side}_leg", "root", (x, 12, 0), (-2, 0, -2), leg_painter(), f"{side}_shin", KNEE)
     for side in ("right", "left"):
-        B.append(Bone(f"{side}_foot", f"{side}_leg", boxes=[Box((-2.5, 9, -3.2), (5, 3, 5.2), foot())]))
+        B.append(Bone(f"{side}_foot", f"{side}_shin", boxes=[Box((-2.5, 3, -3.2), (5, 3, 5.2), foot())]))
     # the sash and its team end, the cravat
     B.append(Bone("belt", "body", boxes=[Box((-4, -4, -2), (8, 2.4, 4), sash(), dil=0.5)]))
     B.append(Bone("sash_end", "body", (3.4, -3, -2.7), rot=(0, 0, 4), team=True, boxes=[Box((-1.6, 0, 0), (3.2, 10, 0), "send", sheet="cloth")]))
@@ -479,7 +478,7 @@ def bones():
     B.append(strand("kelp_hem", "body", (3, 4, 2.9), (10, 0, 6), [((-1, 0, 0), (2, 8, 1))]))
     B.append(strand("kelp_sash", "body", (-2.5, -3, -2.8), (-8, 0, -4), [((-1, 0, 0), (2, 11, 1))]))
     B.append(strand("kelp_hat", "head", (-5, -9, -0.5), (6, 0, -16), [((-1, 0, 0), (2, 9, 1))]))
-    B.append(strand("kelp_boot", "left_leg", (1, 6, -2.4), (-14, 0, 6), [((-1, 0, 0), (2, 6, 1))]))
+    B.append(strand("kelp_boot", "left_shin", (1, 0, -2.4), (-14, 0, 6), [((-1, 0, 0), (2, 6, 1))]))
     # the anchor on the back, stepped like a pixel icon: ring, stock, shank, a stepped crescent of arms with flukes, a rope loop
     B.append(Bone("anchor", "body", (0, 0, 2.1), boxes=[
         Box((-0.7, -10.2, 0), (1.4, 9.0, 1.3), anchor_iron("sh")),                     # shank
@@ -496,8 +495,8 @@ def bones():
         c = -1 if side == "right" else 1
         B.append(Bone(f"{side}_pauldron", f"{side}_arm", (c, -1.8, 0), rot=(0, 0, 16 * c), stages=[2, 3], boxes=[
             Box((-3.6 + 0.5 * c, -0.4, -3.2), (7.2, 3, 6.4), TC.P("adpd" + side, 0.03), dil=0.15)]))
-        B.append(Bone(f"{side}_vambrace", f"{side}_arm", stages=[2, 3], boxes=[Box((-2.2 + (0 if side == "right" else -1), 4, -2.2), (4.4, 3.5, 4.4), TC.P("advb" + side, 0.02), dil=0.1)]))
-        B.append(Bone(f"{side}_greave", f"{side}_leg", stages=[2, 3], boxes=[Box((-2.3, 4.5, -2.3), (4.6, 4.5, 4.6), TC.P("adgv" + side, 0.03), dil=0.1)]))
+        B.append(Bone(f"{side}_vambrace", f"{side}_forearm", stages=[2, 3], boxes=[Box((-1.2 if side == "right" else -4.2, 0, -2.2), (4.4, 3.5, 4.4), TC.P("advb" + side, 0.02), dil=0.1)]))
+        B.append(Bone(f"{side}_greave", f"{side}_shin", stages=[2, 3], boxes=[Box((-2.3, -1.5, -2.3), (4.6, 4.5, 4.6), TC.P("adgv" + side, 0.03), dil=0.1)]))
     # tier III, the Drowned Tide: a ring of pearls round the tricorne crown, a gorget pearl, a third plume
     for i, (x, z) in enumerate([(-3.6, -4.8), (-1.2, -5.0), (1.2, -5.0), (3.6, -4.8), (-4.8, -2), (4.8, -2), (-4.8, 1), (4.8, 1)]):
         B.append(Bone(f"hat_pearl{i}", "head", tag="helm", stages=[3], boxes=[Box((x - 0.5, -12, z - 0.5 + (0.6 if abs(x) > 4 else 0)), (1, 1, 1), TC.tc_pearl())]))
