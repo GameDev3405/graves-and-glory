@@ -29,8 +29,8 @@ public final class FormationRulesSuite implements CommandUiChecks.Suite {
     int scene = -1; long t0;
     final List<GravesAndGlory.Unit> junk = new ArrayList<>();
 
-    static final String[] NAMES = {"cu-form-wall-arrows", "cu-form-wall-slow", "cu-form-wall-square", "cu-form-wedge-shove", "cu-form-loose-spacing", "cu-charge-first-hit", "cu-focus-follow-respawning", "cu-focus-charge-edge"};
-    static final int[] LIMITS = {620, 420, 360, 420, 120, 620, 420, 640};
+    static final String[] NAMES = {"cu-form-wall-arrows", "cu-form-wall-slow", "cu-form-wall-square", "cu-form-wedge-shove", "cu-form-loose-spacing", "cu-charge-first-hit", "cu-focus-follow-respawning", "cu-focus-charge-edge", "cu-charge-unlanded-blow", "cu-form-wedge-roles"};
+    static final int[] LIMITS = {620, 420, 360, 420, 120, 620, 420, 640, 700, 360};
 
     // scene state
     int side, zs, team; Vec3d C, P, D, D1, spec, T; String note = ""; long issuedAt, arrivedAt, switchedAt;
@@ -113,6 +113,8 @@ public final class FormationRulesSuite implements CommandUiChecks.Suite {
             case 5 -> chargeFirstHit(b, t);
             case 6 -> followRespawning(b, t);
             case 7 -> chargeEdge(b, t);
+            case 8 -> chargeUnlanded(b, t);
+            case 9 -> wedgeRoles(b, t);
             default -> {}
         }
     }
@@ -281,6 +283,95 @@ public final class FormationRulesSuite implements CommandUiChecks.Suite {
                 next(b);
             }
         }
+    }
+
+    // Task 6 review I1: one knight charges an enemy knight 11 blocks ahead (stunned, bare, a deep pool of health) that has just taken a heavier
+    // blow and stays in vanilla's hurt cooldown until the knight's first blow: that blow does not land (damage() answers false, no health lost;
+    // a troop blow's damage type bypasses_shield, so a raised shield never stops one, and the hurt cooldown is how a troop blow fails to land)
+    // and does not spend the crash; the cooldown then runs out, and his next landed blow deals chargeBonusMultiplier (1.3) and knocks the
+    // target 0.5 or more; the first-hit counter moves once, on the landed blow.
+    int absorbed = -1; double absorbedHits = -1;
+    void chargeUnlanded(GravesAndGlory.Battle b, long t) {
+        if (t == 40) {
+            if (!layout(b)) { next(b); return; }
+            mine = troops(b, true, P, "knight", 1);
+            foes = troops(b, false, P.add(side * 11, 0, 0), "knight", 1); OrderIntakeProbeFormation.stun(foes); OrderIntakeProbeFormation.bare(foes.get(0), 400);
+            absorbed = -1; absorbedHits = -1;
+        }
+        var tgt = foes.isEmpty() ? null : foes.get(0);
+        if (t == 60) {
+            OrderIntakeProbeFormation.charge(b, squadA, "infantry", ground(P.add(side * 18, 0, 0)), new Vec3d(side, 0, 0), face());
+            hits0 = OrderIntakeProbeFormation.firstHits(); issuedAt = now(b);
+            var tm = OrderIntakeProbeBehaviour.mob(tgt); tm.damage(tm.getDamageSources().generic(), 60); tm.setVelocity(Vec3d.ZERO); hp = tm.getHealth(); tPos = tm.getPos(); seen = Combat.LAST.peekLast();
+        }
+        if (t > 60) {
+            var k = mine.get(0); var tm = OrderIntakeProbeBehaviour.mob(tgt);
+            if (absorbed < 0) tm.timeUntilRegen = 20; // still in the heavier blow's hurt cooldown, so a lighter blow does not land
+            if (OrderIntakeProbeFormation.order(b, k).equals("charge")) run = Math.max(run, OrderIntakeProbeFormation.run(k));
+            int ka = OrderIntakeProbeFormation.id(k), ta = OrderIntakeProbeFormation.id(tgt);
+            List<Combat.HitLog> fresh = new ArrayList<>(); boolean past = seen == null;
+            for (var h : Combat.LAST) { if (past) fresh.add(h); else if (h == seen) past = true; }
+            if (!past) fresh.addAll(Combat.LAST);
+            seen = Combat.LAST.peekLast();
+            float now = tm.getHealth();
+            for (var h : fresh) if (h.attacker() == ka && h.target() == ta) {
+                if (absorbed < 0) {
+                    absorbed = (int) (now(b) - issuedAt); absorbedHits = OrderIntakeProbeFormation.firstHits() - hits0;
+                    note += String.format("blow 1 at +%d: lost %.2f in the hurt cooldown, first hits %d (want 0); ", absorbed, hp - now, (int) absorbedHits);
+                    if (hp - now > 0.01) absorbedHits = 99; // landed: the scene's premise failed
+                } else if (hits.isEmpty() && hp - now > 0.01) {
+                    double expected = h.base() * h.veteran() * h.total();
+                    hits.add(new double[]{(hp - now) / expected, hp - now, expected, 0, OrderIntakeProbeFormation.firstHits() - hits0, run});
+                    hitFrom = tPos; watch = 12; note += "landed blow rows " + h.rows() + "; ";
+                }
+            }
+            if (watch > 0) { watch--; double[] last = hits.get(0); last[3] = Math.max(last[3], flat(tm.getPos(), hitFrom)); }
+            hp = now; tPos = tm.getPos();
+            if (hits.size() == 1 && watch == 0 || t == LIMITS[scene] - 1) {
+                double[] h = hits.isEmpty() ? null : hits.get(0);
+                boolean ok = absorbedHits == 0 && h != null && Math.abs(h[0] - 1.3) <= 0.02 && h[3] >= 0.5 && h[4] == 1 && h[5] >= 6;
+                pass(ok, (h == null ? "no landed blow; " : String.format("landed blow: dealt %.2f of plain %.2f = x%.3f (want 1.3), target moved %.2f (want 0.5 or more), first hits %d (want 1), run %.1f; ", h[1], h[2], h[0], h[3], (int) h[4], h[5])) + note);
+                next(b);
+            }
+        }
+    }
+
+    // Task 6 review I2: a Wedge of six knights (shield troops, so on Hold they make the wall kind's wedge) and three revenants: one point and two
+    // flankers, all knights, the point the only front-rank man; the point falls, and 60 ticks later there is again one point and two flankers
+    // (the held places closed up), the new point the man who stepped into rank 0.
+    String rolesBefore = "";
+    void wedgeRoles(GravesAndGlory.Battle b, long t) {
+        if (t == 40) {
+            if (!layout(b)) { next(b); return; }
+            mine = new ArrayList<>(troops(b, true, P, "knight", 6)); Object s = squadA;
+            var rev = OrderIntakeProbeBehaviour.spawn(b, s, "revenant", P, 3); junk.addAll(rev); mine.addAll(rev);
+            OrderIntakeProbeFormation.issue(b, s, "infantry", "hold", "wedge", ground(P), face(), true);
+        }
+        if (t == 140) {
+            String[] r = roles(b); rolesBefore = r[0];
+            GravesAndGlory.Unit point = null; for (var u : mine) if (OrderIntakeProbeBehaviour.mob(u).isAlive() && OrderIntakeProbeFormation.wedgeRole(b, u).equals("point")) point = u;
+            boolean ok = r[1].equals("ok");
+            if (!ok || point == null) { fail("before the loss: " + r[0]); next(b); return; }
+            OrderIntakeProbeFormation.kill(point); note = "point " + OrderIntakeProbeFormation.id(point) + " killed; ";
+        }
+        if (t == 200) {
+            String[] r = roles(b);
+            pass(r[1].equals("ok"), "before the loss: " + rolesBefore + "; " + note + "60 ticks on: " + r[0]);
+            next(b);
+        }
+    }
+    /** The wedge's roles now: {description, "ok" when there is one point and two flankers, all shield troops, and the point the only front-rank man}. */
+    String[] roles(GravesAndGlory.Battle b) {
+        int points = 0, flanks = 0, fronts = 0, noShield = 0; List<String> who = new ArrayList<>();
+        for (var u : mine) {
+            if (!OrderIntakeProbeBehaviour.mob(u).isAlive()) continue;
+            String r = OrderIntakeProbeFormation.wedgeRole(b, u); boolean f = OrderIntakeProbeFormation.frontRank(b, u);
+            if (r.equals("point")) points++; if (r.equals("flank")) flanks++; if (f) fronts++;
+            if (!r.equals("none") && !OrderIntakeProbeFormation.shield(u)) noShield++;
+            if (!r.equals("none") || f) who.add(OrderIntakeProbeFormation.id(u) + (OrderIntakeProbeFormation.shield(u) ? " shield " : " ") + r + (f ? " front" : ""));
+        }
+        boolean ok = points == 1 && flanks == 2 && fronts == 1 && noShield == 0;
+        return new String[]{String.format("%d points, %d flankers, %d front-rank, %d non-shield in a role (want 1, 2, 1, 0) %s", points, flanks, fronts, noShield, who), ok ? "ok" : "no"};
     }
 
     // Ruling 11: Follow me while the commander waits to respawn: the troops stop at his last living spot, not at a stale point nor at the spectator.

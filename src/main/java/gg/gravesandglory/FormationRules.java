@@ -40,8 +40,17 @@ final class FormationRules {
     /** Ticks a troop's recorded place stays good for the arrow and facing rules before Battle.formation is asked again. */
     static final int PLACE_TICKS = 20;
 
-    /** A troop's place as Battle.formation last gave it: {side, back} in the formation's frame, the group's front back (its first rank's), the square facing offset (degrees from the order's yaw) and whether it stood in the square. */
-    record Place(long time, double side, double back, double front, float facing, boolean square) {}
+    /** A wedge man's part in the shove: none, the point, or one of the two men flanking it. */
+    static final int NONE = 0, POINT = 1, FLANK = 2;
+    /**
+     * A troop's place as Battle.formation last gave it: {side, back} in blocks in the formation's frame; whether it stands in the formation's
+     * front rank (rank 0 of the leading kind, its shield troops when it has any, else the rest; every shield man of a square) and its wedge role
+     * (NONE, POINT or FLANK), both read from its place in cells (the held grid heldPlace keeps, else holdGrid); the square facing offset
+     * (degrees from the order's yaw) and whether it stood in the square.
+     */
+    record Place(long time, double side, double back, boolean frontRank, int wedge, float facing, boolean square) {}
+    /** The battle tick FormationRules.tick last asked Battle.formation for a troop's place (at most once per PLACE_TICKS). */
+    static final Map<GravesAndGlory.Unit, Long> ASKED = new WeakHashMap<>();
     static final Map<GravesAndGlory.Unit, Place> PLACES = new WeakHashMap<>();
     /** The surrounded reading per squad and group: {time, 1 or 0}. */
     static final Map<GravesAndGlory.Squad, Map<String, long[]>> SURROUNDED = new WeakHashMap<>();
@@ -69,23 +78,35 @@ final class FormationRules {
      * order) and the rest keep their ranks, moved back behind the square. Records the place for the arrow, facing and shove rules.
      */
     static double[] place(GravesAndGlory.Battle b, GravesAndGlory.Unit u, GravesAndGlory.Assignment a, List<GravesAndGlory.Unit> group, boolean[] shield, double[][] layout, int at, Spec.FormationsRow f, double[] place) {
-        double front = Double.MAX_VALUE;
-        for (double[] p : layout) front = Math.min(front, p[1]);
         int shields = 0, index = 0; double cell = 0, wallDepth = 0;
         for (int i = 0; i < shield.length; i++) if (shield[i]) {
             if (i < at) index++;
             shields++; cell = Math.max(cell, BattleMath.shieldCell(group.get(i).mob.getWidth(), Spec.COMBATDISCIPLINE[0].shieldWallCell())); wallDepth = Math.max(wallDepth, layout[i][1]);
         }
+        double[] cellPlace = cells(u, group, shield, at, f);
+        boolean leading = shields == 0 || shield[at]; // the formation's front kind: its wall when it has one
+        boolean frontRank = leading && Math.abs(cellPlace[1]) < 1e-6;
+        int wedge = !f.wedge() || !leading ? NONE : frontRank && Math.abs(cellPlace[0]) < 1e-6 ? POINT : Math.abs(cellPlace[1] - 1) < 1e-6 && Math.abs(Math.abs(cellPlace[0]) - 1) < 1e-6 ? FLANK : NONE;
         double[] out = place; float facing = 0; boolean square = false;
         if (f.id().equals("block") && a.order.equals("hold") && shields >= 4 && surrounded(b, u)) {
             double[][] ring = BattleMath.squareLayout(shields, cell);
             double depth = 0; for (double[] r : ring) depth = Math.max(depth, r[1]);
             if (shield[at]) { double[] r = ring[index]; out = new double[]{r[0], r[1] + cell}; facing = (float) r[2]; }
             else out = new double[]{layout[at][0], layout[at][1] - wallDepth + depth + cell + cell};
-            square = true; front = cell;
+            square = true; frontRank = shield[at]; wedge = NONE;
         }
-        PLACES.put(u, new Place(b.time, out[0], out[1], front, facing, square));
+        PLACES.put(u, new Place(b.time, out[0], out[1], frontRank, wedge, facing, square));
         return out;
+    }
+
+    /**
+     * The unit's place in cells, {side, rank}: on Hold the one the group's held places keep for it (Battle.heldPlace; after a loss the man who
+     * stepped up holds the rank he stepped into), else its holdGrid place by slot order. Rank 0 is the front of its kind's ranks.
+     */
+    static double[] cells(GravesAndGlory.Unit u, List<GravesAndGlory.Unit> group, boolean[] shield, int at, Spec.FormationsRow f) {
+        var held = u.squad.places.get(u.spec.group());
+        if (held != null && held.members.equals(group)) { double[] g = held.grid.get(u); if (g != null) return g; }
+        return BattleMath.holdGrid(shield, BattleMath.groupColumns(u.spec.group(), f.columns()), f.wedge())[at];
     }
 
     /** The unit's recorded place, asking Battle.formation again when it is missing or old; null on a player's default Hold (its deploy spot, no place). */
@@ -94,10 +115,15 @@ final class FormationRules {
         if (p == null || b.time - p.time() > PLACE_TICKS) { PLACES.remove(u); b.formation(u); p = PLACES.get(u); }
         return p;
     }
+    /** The unit's recorded place while it is fresh (FormationRules.tick keeps it within PLACE_TICKS), else null; never asks Battle.formation, so a hit runs no group build (Task 6 review M6). */
+    static Place current(GravesAndGlory.Battle b, GravesAndGlory.Unit u) {
+        Place p = PLACES.get(u);
+        return p == null || b.time - p.time() > 2L * PLACE_TICKS ? null : p;
+    }
 
     /** The unit's facing in its formation: the order's yaw, or in a square its edge's way out. */
     static float facing(GravesAndGlory.Battle b, GravesAndGlory.Unit u) {
-        var a = b.assignment(u); Place p = recorded(b, u);
+        var a = b.assignment(u); Place p = current(b, u);
         return p != null && p.square() ? a.yaw + p.facing() : a.yaw;
     }
 
@@ -111,8 +137,8 @@ final class FormationRules {
         if (!mob.isUsingItem() || !mob.getActiveItem().isOf(Items.SHIELD)) return 0f;
         var f = row(b.assignment(victim).formation);
         if (f.arrowBlock() <= 0) return 0f;
-        Place p = recorded(b, victim);
-        if (p == null || !(p.square() || p.back() <= p.front() + 0.25)) return 0f;
+        Place p = current(b, victim);
+        if (p == null || !p.frontRank()) return 0f;
         return BattleMath.frontArc(facing(b, victim), arrow.getX() - mob.getX(), arrow.getZ() - mob.getZ(), BattleMath.FRONT_ARC) ? (float) f.arrowBlock() : 0f;
     }
 
@@ -125,11 +151,7 @@ final class FormationRules {
         var f = row(a.formation);
         if (f.shove() <= 0 || !f.wedge() || !u.mob.isAlive()) return;
         Place p = recorded(b, u);
-        if (p == null || p.square()) return;
-        double cell = p.front();
-        boolean point = p.back() <= cell * 1.25 && Math.abs(p.side()) < cell * 0.5;
-        boolean flank = Math.abs(p.back() - 2 * cell) <= cell * 0.25 && Math.abs(p.side()) >= cell * 0.5 && Math.abs(p.side()) <= cell * 1.5;
-        if (!point && !flank) return;
+        if (p == null || p.square() || p.wedge() == NONE) return;
         double yaw = Math.toRadians(a.yaw), rx = Math.cos(yaw), rz = Math.sin(yaw); // the formation's +side direction
         double axis = rx * u.mob.getX() + rz * u.mob.getZ() - p.side(); // the axis's side coordinate, from where this man stands and his place
         for (var other : b.units) {
@@ -191,7 +213,8 @@ final class FormationRules {
             else if (last != null) run[1] += Math.sqrt(GravesAndGlory.Battle.horizontalDistance(at, last));
             RUN_AT.put(u, at);
         } else RUN_AT.remove(u);
-        Place p = PLACES.get(u);
+        Place p = PLACES.get(u); Long asked = ASKED.get(u);
+        if ((p == null || b.time - p.time() > PLACE_TICKS) && (asked == null || b.time - asked >= PLACE_TICKS || b.time < asked)) { ASKED.put(u, b.time); b.formation(u); p = PLACES.get(u); } // keeps the place fresh for the damage path (current)
         if (p == null || !p.square() || b.time - p.time() > PLACE_TICKS || !a.order.equals("hold")) return;
         if (u.lockedTarget != null && u.lockedTarget.isAlive() || !mob.getNavigation().isIdle()) return;
         float yaw = a.yaw + p.facing();
@@ -207,15 +230,18 @@ final class FormationRules {
     /**
      * Whether this melee blow is the attacker's first landed blow of its Charge after a run of CHARGE_RUN blocks or more: the blow is judged under
      * the Charge (Combat.charge: its swing's order), the troop ran that far since its group's stamp, and it has not had this bonus under that stamp.
-     * A true answer spends it, so never twice per troop per Charge.
+     * Read-only: Combat.resolve spends it (spendChargeHit) only when the blow lands, so never twice per troop per Charge.
      */
     static boolean firstChargeHit(GravesAndGlory.Battle b, GravesAndGlory.Unit attacker) {
         if (!Combat.charge(b, attacker, true).charging()) return false;
         Long stamp = attacker.squad.chargedAt.get(attacker.spec.group());
         if (stamp == null || run(attacker) < CHARGE_RUN) return false;
         Long spent = SPENT.get(attacker);
-        if (spent != null && spent.longValue() == stamp) return false;
-        SPENT.put(attacker, stamp); firstHits++;
-        return true;
+        return spent == null || spent.longValue() != stamp;
+    }
+    /** Spends the attacker's first-blow bonus under its group's current Charge stamp. Combat.resolve calls it once the crashing blow has landed (hurt), so a blow that does not land (damage() false: the hurt cooldown, invulnerability) keeps the bonus for the next (Task 6 review I1). */
+    static void spendChargeHit(GravesAndGlory.Unit attacker) {
+        Long stamp = attacker.squad.chargedAt.get(attacker.spec.group());
+        if (stamp != null) { SPENT.put(attacker, stamp); firstHits++; }
     }
 }

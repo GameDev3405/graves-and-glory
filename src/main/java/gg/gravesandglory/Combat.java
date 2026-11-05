@@ -33,6 +33,9 @@ public final class Combat {
     public record HitLog(int attacker, int target, float base, double counters, double stance, double traits, double auras, double commander, double veteran, double status, double total, List<String> rows) {}
     /** The newest resolved hits, oldest first, at most 64. Server thread only. */
     public static final ArrayDeque<HitLog> LAST = new ArrayDeque<>();
+    /** The battle tick each troop last landed a blow (damage() answered true). Tactics.strike turns a player's Charge to Attack only on a landed blow (Task 6 review I1). */
+    static final Map<GravesAndGlory.Unit, Long> LANDED = new WeakHashMap<>();
+    static boolean landedNow(GravesAndGlory.Battle b, GravesAndGlory.Unit u) { Long t = LANDED.get(u); return t != null && t == b.time; }
 
     /** The troop damage source for a blow by this mob. */
     public static DamageSource source(GravesAndGlory.Battle b, LivingEntity attacker) { return b.world.getDamageSources().create(TROOP, attacker); }
@@ -125,6 +128,8 @@ public final class Combat {
         // and that is exactly the block the player should hear, so it sounds before the early return.
         if (!secondary && (hurt || raised)) Audio.hit(b, attacker, target, victim, kind, raised);
         if (!hurt) return 0;
+        LANDED.put(attacker, b.time);
+        if (crash) FormationRules.spendChargeHit(attacker); // the first LANDED blow spends it (Task 6 review I1): one that did not land (hurt cooldown, invulnerable) keeps it
         if (crash) Abilities.knock(b, target, attacker.mob.getPos(), target.getPos().subtract(attacker.mob.getRotationVector().multiply(1, 0, 1)), D.chargeKnockback()); // an anchored troop stays (knock)
         if (victim != null) sendHit(attacker, target, kind, melee, area, structure(target), hit, cooldown, BattleMath.lostHealth(before, target.getHealth() + target.getAbsorptionAmount()), impactY, watchers);
         // Ruling (Task 6 review M1): a killing blow levels its striker inside target.damage (AFTER_DEATH, lane A), so onHit below reads his new rows: the level

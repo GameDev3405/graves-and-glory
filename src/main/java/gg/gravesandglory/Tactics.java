@@ -633,6 +633,6 @@ final class Tactics {
         u.blow=s.charge();u.blowVariant=s.variant();
         try{Abilities.land(b,u,target);}finally{u.blow=null;u.blowVariant=-1;}
         var a=u.squad.assignments.get(u.spec.group()); // a player's Charge: the group's first landed blow turns it to Attack (hunt); its chargedAt stays for the impact
-        if(a!=null&&a.order.equals("charge")&&a.chargeDir!=null)become(u,a,"attack",b.time);
+        if(a!=null&&a.order.equals("charge")&&a.chargeDir!=null&&Combat.landedNow(b,u))become(u,a,"attack",b.time); // landed: damage() took it (Task 6 review I1), so a blow that did not land keeps the Charge and its crash
     }
 }

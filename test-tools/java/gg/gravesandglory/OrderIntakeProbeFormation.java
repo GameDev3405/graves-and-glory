@@ -20,10 +20,17 @@ public final class OrderIntakeProbeFormation {
     public static float facing(GravesAndGlory.Battle b, GravesAndGlory.Unit u) { return FormationRules.facing(b, u); }
     public static double run(GravesAndGlory.Unit u) { return FormationRules.run(u); }
     public static boolean surrounded(GravesAndGlory.Battle b, GravesAndGlory.Unit u) { return FormationRules.surrounded(b, u); }
-    /** Whether the unit stands in its formation's front rank (in a square, any man of it), as FormationRules.arrowBlock reads it. */
+    /** Whether the unit stands in its formation's front rank (in a square, any shield man of it), as FormationRules.arrowBlock reads it. */
     public static boolean frontRank(GravesAndGlory.Battle b, GravesAndGlory.Unit u) {
-        var p = FormationRules.recorded(b, u); return p != null && (p.square() || p.back() <= p.front() + 0.25);
+        var p = FormationRules.recorded(b, u); return p != null && p.frontRank();
     }
+    /** The unit's wedge role as FormationRules.shove reads it: "point", "flank" or "none". */
+    public static String wedgeRole(GravesAndGlory.Battle b, GravesAndGlory.Unit u) {
+        var p = FormationRules.recorded(b, u); int r = p == null ? FormationRules.NONE : p.wedge();
+        return r == FormationRules.POINT ? "point" : r == FormationRules.FLANK ? "flank" : "none";
+    }
+    /** Kills the troop outright (a generic kill). */
+    public static void kill(GravesAndGlory.Unit u) { u.mob.kill(); }
     public static boolean square(GravesAndGlory.Battle b, GravesAndGlory.Unit u) { var p = FormationRules.recorded(b, u); return p != null && p.square(); }
     public static String order(GravesAndGlory.Battle b, GravesAndGlory.Unit u) { return b.assignment(u).order; }
     public static String formation(GravesAndGlory.Battle b, GravesAndGlory.Unit u) { return b.assignment(u).formation; }
