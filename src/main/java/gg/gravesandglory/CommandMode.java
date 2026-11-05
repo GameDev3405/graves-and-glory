@@ -138,7 +138,7 @@ public final class CommandMode {
         double angle=Math.toRadians(facing);for(int i=0;i<6;i++){double x=destination.x-Math.sin(angle)*i,z=destination.z+Math.cos(angle)*i;preview.add(new Vec3d(x,Arena.ground((int)x,(int)z)+1.05,z));}
     }
     static void renderWorld(net.fabricmc.fabric.api.client.rendering.v1.WorldRenderContext context){
-        if(!active()||context.consumers()==null||CommandSelection.aiming().equals("hold"))return; /* a Formation aim is drawn by OrderOutlines */ var matrices=context.matrixStack();var camera=context.camera().getPos();matrices.push();matrices.translate(-camera.x,-camera.y,-camera.z);
+        if(!active()||context.consumers()==null||CommandSelection.aiming().equals("hold")||ChargeCamera.held())return; /* a Formation aim is drawn by OrderOutlines, an overhead Charge by ChargeCamera */ var matrices=context.matrixStack();var camera=context.camera().getPos();matrices.push();matrices.translate(-camera.x,-camera.y,-camera.z);
         var lines=context.consumers().getBuffer(net.minecraft.client.render.RenderLayer.getLines());
         for(Vec3d p:preview)net.minecraft.client.render.WorldRenderer.drawBox(matrices,lines,new net.minecraft.util.math.Box(p.x-.32,p.y,p.z-.32,p.x+.32,p.y+.09,p.z+.32),1,.82f,.4f,1);
         matrices.pop();

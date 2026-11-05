@@ -168,6 +168,7 @@ public final class GravesAndGloryClient implements ClientModInitializer {
                 while(rotateLeft.wasPressed()){CommandMode.facingSet=true;CommandMode.facing-=Spec.COMMANDINTERFACE[0].facingStep();}
                 while(rotateRight.wasPressed()){CommandMode.facingSet=true;CommandMode.facing+=Spec.COMMANDINTERFACE[0].facingStep();}
                 CommandMode.tick(client);CommandSelection.tick();
+                ChargeCamera.tick(client,charge); // holding X lifts the overhead charge camera; its release sends the Charge
                 while(confirmOrder.wasPressed())if(CommandMode.active())CommandMode.confirm();
                 while(cancelOrder.wasPressed())if(!CommandMode.cancel()&&CommandSelection.trayOpen())CommandSelection.setTrayOpen(false);
                 while(mapKey.wasPressed())if(battleActive())client.setScreen(new MapScreen(null));
@@ -176,6 +177,7 @@ public final class GravesAndGloryClient implements ClientModInitializer {
         });
         HudRenderCallback.EVENT.register(GravesAndGloryClient::renderHud);
         net.fabricmc.fabric.api.client.rendering.v1.WorldRenderEvents.AFTER_ENTITIES.register(CommandMode::renderWorld);
+        ChargeCamera.register(); // the overhead charge camera: its option, its toggle binding and the ground arrow
         OrderOutlines.register(); // formation outlines, pulses and the rally pose; registered after the tick handler above so it reads the aim that handler left
         // Troop depth: the frame's cutoff from the game camera, once, before any pass draws (Iris's shadow pass among them).
         net.fabricmc.fabric.api.client.rendering.v1.WorldRenderEvents.START.register(ctx->TroopDepth.beginFrame(ctx.camera().getPos(),ctx.world().getEntities()));
@@ -210,7 +212,7 @@ public final class GravesAndGloryClient implements ClientModInitializer {
     static volatile boolean hudResetPending;
     /** The last battle's records go: the feed, what the HUD last drew and its lesson wrap, the command state. On the client thread:
      *  the first client tick without a world after a disconnect, and every join. */
-    static void resetHud(){hudResetPending=false;EventFeed.clear();BattleHud.reset();CommandMode.reset();CommandSelection.reset();CommandNet.Client.reset();OrderOutlines.reset();OrderFeedback.reset();}
+    static void resetHud(){hudResetPending=false;EventFeed.clear();BattleHud.reset();CommandMode.reset();CommandSelection.reset();CommandNet.Client.reset();OrderOutlines.reset();OrderFeedback.reset();ChargeCamera.reset();}
     /** The binding with this translation key, or null when there is none. */
     static KeyBinding binding(String translationKey){
         for(KeyBinding k:MinecraftClient.getInstance().options.allKeys)if(k.getTranslationKey().equals(translationKey))return k;

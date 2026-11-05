@@ -4,6 +4,7 @@
   "key.gravesandglory.menu": "Command panel",
   "key.gravesandglory.attack": "Attack",
   "key.gravesandglory.charge": "Charge",
+  "key.gravesandglory.charge_overhead": "Charge camera stays overhead (toggle)",
   "key.gravesandglory.follow": "Follow me",
   "key.gravesandglory.retreat": "Retreat",
   "key.gravesandglory.formation": "Formation",
