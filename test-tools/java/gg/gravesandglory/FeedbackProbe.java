@@ -46,4 +46,12 @@ public final class FeedbackProbe {
         var m = b.server.getPlayerManager().getPlayer(mate); var h = b.server.getPlayerManager().getPlayer(host);
         if (m != null && h != null) m.requestTeleport(h.getX() + dx, h.getY(), h.getZ() + dz);
     }
+
+    /** Server thread: holds the named group's living troops where they stand (or lets them go), so a far order cannot be reached and the ghost can only retire on its cap. */
+    public static void freeze(GravesAndGlory.Battle b, java.util.UUID owner, String group, boolean on) {
+        for (int id : OrderRules.unitIds(b, b.squads.get(owner), group)) {
+            var e = b.server.getPlayerManager().getPlayer(owner).getServerWorld().getEntityById(id);
+            if (e instanceof net.minecraft.entity.mob.MobEntity mob) { mob.setAiDisabled(on); mob.getNavigation().stop(); }
+        }
+    }
 }

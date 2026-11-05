@@ -22,7 +22,9 @@ import java.nio.file.StandardOpenOption;
  */
 public final class FeedbackMate implements ClientModInitializer {
     int clock, inWorld, offline, lookedAt = -1, shotAt = -1;
-    boolean started, shot, joined;
+    boolean started, shot, joined, disconnected;
+    int armed, goneTicks;
+    int[] lastAckUnits = new int[0];
     int lastN = -1, lastG = -1, lastS = -1;
     String lastSig = "";
     Path control;
@@ -55,6 +57,7 @@ public final class FeedbackMate implements ClientModInitializer {
             ConnectScreen.connect(new FrontMenuScreen(), c, ServerAddress.parse(address), new ServerInfo("Feedback host", address, false), false);
             return;
         }
+        if (disconnected) { afterDisconnect(c); return; }
         if (c.player == null || c.world == null || !GravesAndGloryClient.ready) {
             if (joined && ++offline == 100) { log("disconnected"); c.scheduleStop(); }
             return;
@@ -63,6 +66,16 @@ public final class FeedbackMate implements ClientModInitializer {
         if (!joined) { joined = true; log("joined"); try { Files.writeString(control.resolve("mate-joined.txt"), "joined"); } catch (Exception ignored) { } }
         if (c.currentScreen != null && GravesAndGloryClient.battleActive()) c.setScreen(null);
         inWorld++;
+        if (Files.exists(control.resolve("disconnect.txt"))) { // armed: leave the server for real once the host's last order shows everywhere (or after 60 ticks)
+            armed++;
+            int rally = rallyingUnits();
+            if ((OrderOutlines.ghostOutlines() >= 1 && OrderOutlines.pulseCount() >= 1 && rally >= 1) || armed >= 60) {
+                log("predisc " + state() + " armed=" + armed);
+                disconnected = true;
+                c.world.disconnect(); c.disconnect();
+                return;
+            }
+        }
         var outlines = CommandNet.Client.outlines;
         int n = outlines.size(), g = OrderOutlines.ghostOutlines(), slots = OrderOutlines.ghostCount();
         StringBuilder sig = new StringBuilder();
@@ -91,5 +104,28 @@ public final class FeedbackMate implements ClientModInitializer {
                 log(String.format("shot t=%d outline-team.png %dx%d alpha=%.2f ghosts=%d", inWorld, img.getWidth(), img.getHeight(), OrderOutlines.lastTeamAlpha, g));
             }
         }
+    }
+
+    /** How many of the last acknowledgement's troops this client would still pose with a raised weapon. */
+    int rallyingUnits() {
+        var acks = CommandNet.Client.acks;
+        if (!acks.isEmpty()) lastAckUnits = acks.get(acks.size() - 1).units();
+        int n = 0;
+        for (int id : lastAckUnits) if (OrderFeedback.rallying(id)) n++;
+        return n;
+    }
+
+    /** Every piece of command-UI state the client keeps for orders, on one line. */
+    String state() {
+        return String.format("outlines=%d ghosts=%d slots=%d lit=%d pulses=%d acks=%d rally=%d", CommandNet.Client.outlines.size(), OrderOutlines.ghostOutlines(), OrderOutlines.ghostCount(),
+            OrderOutlines.litCount(), OrderOutlines.pulseCount(), CommandNet.Client.acks.size(), rallyingUnits());
+    }
+
+    /** After the disconnect: once the world has been gone a few ticks (the HUD reset runs on a tick), log the same state; it must all be empty. */
+    void afterDisconnect(MinecraftClient c) {
+        if (c.world != null) return;
+        goneTicks++;
+        if (goneTicks == 4) log("postdisc " + state());
+        if (goneTicks >= 100) { log("disconnected"); c.scheduleStop(); }
     }
 }

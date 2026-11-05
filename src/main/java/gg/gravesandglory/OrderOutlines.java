@@ -66,6 +66,8 @@ public final class OrderOutlines {
     public static volatile float lastTeamAlpha;
     /** The opacity the last own lit or aimed slot was drawn at. */
     public static volatile float lastOwnAlpha;
+    /** The alpha of the last square actually handed to the renderer; the team alphas above are read from it, so a test sees what was drawn. */
+    static volatile float lastSquareAlpha;
     /** Frames that drew at least one teammate slot / one lit own slot / one aimed slot. */
     public static volatile int ghostFrames, litFrames, aimFrames;
 
@@ -246,14 +248,14 @@ public final class OrderOutlines {
             if (now >= l.until()) continue;
             float a = l.own() ? 1f : GHOST_ALPHA;
             for (var p : l.slots()) square(matrices, lines, p, a);
-            if (l.own()) { lastOwnAlpha = a; ownLit = true; } else { lastTeamAlpha = a; teamLit = true; }
+            if (l.own()) { lastOwnAlpha = a; ownLit = true; } else if (!l.slots().isEmpty()) { lastTeamAlpha = lastSquareAlpha; teamLit = true; }
         }
         if (ownLit) litFrames++;
         boolean teamDrawn = teamLit;
         for (var g : ghosts) {
             for (var p : g.slots()) square(matrices, lines, p, GHOST_ALPHA);
             heading(matrices, lines, new Vec3d(g.src().x(), g.slots().isEmpty() ? 65 : g.slots().get(0).y, g.src().z()), g.src().yaw(), GHOST_ALPHA);
-            if (!g.slots().isEmpty()) { lastTeamAlpha = GHOST_ALPHA; teamDrawn = true; }
+            if (!g.slots().isEmpty()) { lastTeamAlpha = lastSquareAlpha; teamDrawn = true; }
         }
         if (teamDrawn) ghostFrames++;
         for (var pulse : pulses) {
@@ -268,6 +270,7 @@ public final class OrderOutlines {
 
     private static void square(MatrixStack matrices, VertexConsumer lines, Vec3d p, float alpha) {
         WorldRenderer.drawBox(matrices, lines, new Box(p.x - .32, p.y, p.z - .32, p.x + .32, p.y + .09, p.z + .32), R, G, B, alpha);
+        lastSquareAlpha = alpha;
     }
 
     /** A short line from the point along the facing, so the row's front reads. The facing is the player's yaw in degrees, 0 toward +z. */

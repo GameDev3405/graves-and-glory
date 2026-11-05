@@ -219,8 +219,17 @@ public final class FeedbackSuite implements CommandUiChecks.Suite {
             });
         }
         if (r == 396) evaluateSends();
-        // the last Formation's ghost lives at most outlineShareTicks (200) on the mate: give it that and some
-        if (r == 600) {
+        // Cap path: the troops are held where they stand and sent a Formation 25 blocks away, so they cannot arrive; the mate's ghost must then retire on
+        // outlineShareTicks (200). Then a last Formation, and the mate really disconnects while its ghost, pulse and raised weapons are live.
+        if (r == 416) CommandUiChecks.server(c, b -> FeedbackProbe.freeze(b, id, "infantry", true));
+        if (r == 420) { events.put("hold3", System.currentTimeMillis()); OrderIntakeProbe.send("infantry", "hold", "line", px + 6, pz + 25, 20f); }
+        if (r == 650 && wantMate) {
+            try { Files.writeString(ctl.resolve("disconnect.txt"), "go"); } catch (Exception e) { throw new RuntimeException(e); }
+            events.put("hold4", System.currentTimeMillis());
+            OrderIntakeProbe.send("infantry", "hold", "line", px - 8, pz + 25, 20f);
+        }
+        if (r == 740) {
+            CommandUiChecks.server(c, b -> FeedbackProbe.freeze(b, id, "infantry", false));
             if (wantMate) evaluateMate();
             CommandUiChecks.finish(c);
         }
@@ -310,6 +319,7 @@ public final class FeedbackSuite implements CommandUiChecks.Suite {
     // ---- the teammate's log ----
 
     static final Pattern STATE = Pattern.compile("state t=(\\d+) wall=(\\d+) outlines=(\\d+) ghosts=(\\d+) slots=(\\d+) alpha=([0-9.]+) frames=(\\d+) sig=(.*)");
+    static final Pattern DISC = Pattern.compile("(predisc|postdisc) (?:t=\\d+ )?outlines=(\\d+) ghosts=(\\d+) slots=(\\d+) lit=(\\d+) pulses=(\\d+) acks=(\\d+) rally=(\\d+).*");
     static final Pattern SAMPLE = Pattern.compile("sample t=(\\d+) wall=(\\d+) ghosts=(\\d+) alpha=([0-9.]+) frames=(\\d+)");
     record State(int t, long wall, int outlines, int ghosts, int slots, float alpha, String sig) {}
 
@@ -318,16 +328,19 @@ public final class FeedbackSuite implements CommandUiChecks.Suite {
         try { lines = Files.readAllLines(ctl.resolve("mate-log.txt")); }
         catch (Exception e) { CommandUiChecks.report("cu-fx-team-faint", false, "no teammate log: " + e); return; }
         List<State> states = new ArrayList<>();
-        float maxAlpha = 0, minAlphaDrawn = 9; int samples = 0; String shotLine = "";
+        float maxAlpha = 0, minAlphaDrawn = 9; int samples = 0; String shotLine = "", discLine = ""; int[] pre = null, post = null;
         for (String line : lines) {
             Matcher m = STATE.matcher(line);
             if (m.matches()) { states.add(new State(Integer.parseInt(m.group(1)), Long.parseLong(m.group(2)), Integer.parseInt(m.group(3)), Integer.parseInt(m.group(4)), Integer.parseInt(m.group(5)), Float.parseFloat(m.group(6)), m.group(8))); continue; }
             m = SAMPLE.matcher(line);
             if (m.matches()) { float a = Float.parseFloat(m.group(4)); samples++; maxAlpha = Math.max(maxAlpha, a); if (a > 0) minAlphaDrawn = Math.min(minAlphaDrawn, a); continue; }
+            m = DISC.matcher(line);
+            if (m.matches()) { int[] v = new int[7]; for (int i = 0; i < 7; i++) v[i] = Integer.parseInt(m.group(i + 2)); if (m.group(1).equals("predisc")) pre = v; else post = v; discLine += line + " | "; continue; }
             if (line.startsWith("shot ")) shotLine = line;
         }
-        // 1. faint: ghosts were drawn at 0.35
-        boolean faint = samples > 0 && Math.abs(maxAlpha - OrderOutlines.GHOST_ALPHA) < 0.006 && Math.abs(minAlphaDrawn - OrderOutlines.GHOST_ALPHA) < 0.006;
+        // 1. faint: the alpha of the squares the renderer really drew for the teammate's ghosts (OrderOutlines.lastSquareAlpha, sampled by the mate) is the literal 0.35,
+        // not the constant compared with itself
+        boolean faint = samples > 0 && Math.abs(maxAlpha - 0.35f) < 0.006 && Math.abs(minAlphaDrawn - 0.35f) < 0.006;
         // 2. replacement, from the shared list the teammate holds: each later order replaces the owner's earlier outlines
         String replace = replaceDetail(states);
         boolean replaced = replace.startsWith("ok");
@@ -339,6 +352,21 @@ public final class FeedbackSuite implements CommandUiChecks.Suite {
         int life = appear != null && gone != null ? gone.t - appear.t : -1;
         boolean goneOk = life >= 10 && life <= 205;
         boolean shotOk = shotLine.contains("outline-team.png");
+        // 4. the cap path: held troops cannot arrive, so the ghost of hold3 retires on outlineShareTicks (200), not on arrival (~24 ticks)
+        long hold3 = events.getOrDefault("hold3", 0L), hold4 = events.getOrDefault("hold4", Long.MAX_VALUE);
+        State a3 = null, g3 = null;
+        for (State x : states) if (a3 == null && x.wall >= hold3 && x.ghosts >= 1) a3 = x;
+        if (a3 != null) for (State x : states) if (x.wall > a3.wall && x.wall < hold4 && x.ghosts == 0 && x.outlines == 0) { g3 = x; break; }
+        int life3 = a3 != null && g3 != null ? g3.t - a3.t : -1;
+        CommandUiChecks.report("cu-fx-ghost-cap", life3 >= 195 && life3 <= 206,
+            "troops frozen, Formation ordered 25 blocks away: the teammate's ghost appeared at its tick " + (a3 == null ? "never" : a3.t) + " and was gone at " + (g3 == null ? "never" : g3.t)
+                + " = " + life3 + " ticks (expected 200 +- 5; arrival takes about 24)");
+        // 5. a real disconnect clears the teammate client's outline, ghost, pulse and raised-weapon state
+        boolean liveBefore = pre != null && pre[0] >= 1 && pre[1] >= 1 && pre[2] >= 1 && pre[4] >= 1 && pre[5] >= 1 && pre[6] >= 1;
+        boolean clearAfter = post != null && java.util.Arrays.stream(post).allMatch(v -> v == 0);
+        CommandUiChecks.report("cu-fx-disconnect-clear", liveBefore && clearAfter,
+            "teammate client left the server for real (outlines/ghosts/slots/lit/pulses/acks/rally): before " + (pre == null ? "never logged" : java.util.Arrays.toString(pre))
+                + " (needs outlines, ghosts, slots, pulses, acks and rally all above 0), 4 ticks after the world went " + (post == null ? "never logged" : java.util.Arrays.toString(post)) + " (all must be 0); lit is the client's own order and the teammate has none; " + discLine);
         CommandUiChecks.report("cu-fx-team-faint", faint && replaced && goneOk && shotOk,
             "teammate client: ghost slots drawn at alpha " + (samples == 0 ? "never" : String.format("%.2f..%.2f", minAlphaDrawn, maxAlpha)) + " over " + samples + " samples (expected 0.35); " + replace
                 + "; last Formation's ghost lived " + (life < 0 ? "never gone/never seen" : life + " teammate ticks (gone by " + (life < 199 ? "arrival" : "the 200-tick limit") + ")") + "; screenshot: " + (shotLine.isEmpty() ? "none" : shotLine));
