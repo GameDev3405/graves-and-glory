@@ -245,20 +245,21 @@ def _far():
 # Positions: bow_at and hand_at in the root's frame (Blockbench axes, the feet at y 0). Directions: aim = (yaw, elevation, cant), arrow_dir = (yaw, elevation) in degrees; poles in the chest's
 # frame.
 
-STANCE = dict(root=(0.0, -1.0, 0.0), r_place=(2.2, 3.0, 0, 65, 0), l_place=(2.0, -3.0, 0, 25, 0))
+STANCE = dict(root=(0.0, -1.0, 0.0), r_place=(2.2, 3.0, 0, 55, 0), l_place=(2.0, -3.0, 0, 20, 0))
 
-# The two key poses were found by search (see docs/ANIMATING-TROOPS.md): both hands on their targets, the bow, arrow
-# and quiver out of the body, and the forearms out of the jerkin, the fur collar and the hood, which at Minecraft
-# proportions (a 10 px head, 8 px arms, a 6 px draw) leaves little room.
-
-# low ready: the arrow nocked, the bow canted and pointed down and ahead, low across the hips
-READY_AIM, READY_NOCK = (-49, -38.5, 43), (1.1, 18.5, -6.4)
+# Ready: the bow carried at the side by its grip, the limbs fore and aft beside the lead leg, the draw hand resting by
+# the quiver, no arrow nocked. Neither arm crosses the body: at Minecraft proportions (a 10 px head, a 12 px fur collar,
+# 8 px arms) a nocked arrow held low across the belly puts the draw forearm through the chest.
 READY = dict(
-    STANCE, body=(3, 27.5, 0), chest=(3, 3, 0), look=(4, 0, 0),
-    bow_at=None, aim=READY_AIM, draw=AC.BRACE, on_string=1.0, hand_at=READY_NOCK, arrow_dir=(-49, -38.5), arrow=1,
-    r_pole=(1, -0.5, 0.8), l_pole=(-1.37, 0.23, 0.28))
+    STANCE, body=(3, 18, 0), chest=(2, 4, 0), look=(4, 0, 0),
+    bow_at=(-5.71, 12.0, -5.0), aim=(1.8, -77.3, -5.9), draw=AC.BRACE, on_string=0.0, hand_at=(7.85, 12.72, -0.29),
+    arrow_dir=(0, -80), arrow=0, r_pole=(1.0, -0.64, 0.31), l_pole=(-0.67, -0.6, 0.3))     # searched: clear
 
-# full draw: side-on, the bow arm out at the target, the string at the right cheek, the draw elbow out to the side
+# Nocking: the bow held out in front and canted, the arrow laid on it and drawn back to the string.
+NOCK_AIM, NOCK_AT = (-25, -25, 55), (2.5, 18.5, -7.5)
+
+# Full draw (found by search, see docs/ANIMATING-TROOPS.md): side-on, the bow arm out at the target, the string at the
+# right cheek, the draw elbow out to the side.
 SHOT_AIM, SHOT_NOCK = (-16.7, -2.8, 28), (6.5, 21.5, -3.6)
 SHOT_TORSO = dict(body=(3, 57, 0), chest=(3, 18, 0), look=(2.8, -16.7, 0), l_pole=(-1.3, 0.28, 0.17),
                   r_pole=(0.19, -0.35, 0.47))
@@ -270,8 +271,10 @@ def bow_for(nock, aim, draw):
     return tuple(np.asarray(nock, float) - bow_frame(*aim) @ (NOCK + np.array([draw, 0.0, 0.0])))
 
 
-READY['bow_at'] = bow_for(READY_NOCK, READY_AIM, AC.BRACE)
 SHOT_BOW = bow_for(SHOT_NOCK, SHOT_AIM, AC.FULL)
+NOCK_BOW = bow_for(NOCK_AT, NOCK_AIM, AC.BRACE)
+
+
 def P(base=None, **kw):
     p = dict(base or READY)
     p.update(kw)
@@ -280,16 +283,6 @@ def P(base=None, **kw):
 
 def _add(a, b):
     return tuple(float(x) + float(y) for x, y in zip(a, b))
-
-
-def _ready_with(**kw):
-    """READY with the bow and nock moved, keeping the arrow on the string."""
-    p = dict(READY)
-    aim = kw.pop('aim', READY_AIM)
-    nock = kw.pop('nock', READY_NOCK)
-    draw = kw.pop('draw', AC.BRACE)
-    p.update(kw, aim=aim, draw=draw, bow_at=bow_for(nock, aim, draw), hand_at=nock)
-    return p
 
 
 _QUIVER = None
@@ -323,8 +316,8 @@ def quiver_axis():
 # ---- the clips ------------------------------------------------------------------------------------
 
 def idle_timeline():
-    """3.0 s: two breaths, the weight rocking to the lead foot and back, the bow tip drifting, the eyes checking left
-    (0.9 s) then right (2.0 s)."""
+    """3.0 s: two breaths, the weight rocking to the lead foot and back, the carried bow swaying a little, the draw
+    hand drifting by the quiver, the eyes checking left (0.9 s) then right (2.0 s)."""
     L, n = 3.0, 15
     steps = []
     for i in range(n + 1):
@@ -334,18 +327,18 @@ def idle_timeline():
         look = (4 + 2 * math.sin(a), 0.0, 0.0)
         if 0.8 <= t <= 1.4:
             k = math.sin(math.pi * (t - 0.8) / 0.6)
-            look = (3, -28 * k, -4 * k)
+            look = (3, -30 * k, -4 * k)
         if 1.9 <= t <= 2.5:
             k = math.sin(math.pi * (t - 1.9) / 0.6)
-            look = (3, 22 * k, 3 * k)
-        nock = _add(READY_NOCK, (0.3 * sway, 0.35 * breath, -0.2 * sway))
-        aim = (READY_AIM[0] + 4 * math.sin(a + 0.7), READY_AIM[1] + 3 * math.sin(a), READY_AIM[2])
+            look = (3, 26 * k, 3 * k)
         steps.append((t, 'breath' if i % 5 else 'weight %s' % ('forward' if sway > 0.5 else 'back' if sway < -0.5 else 'centre'),
-                      _ready_with(nock=nock, aim=aim, look=look,
-                                  root=(0.4 * sway, -1.0 - 0.1 * breath - 0.15 * abs(sway), -0.4 * sway),
-                                  body=(4 + 1.0 * sway, 25 + 2.0 * sway, -2.0 * sway),
-                                  chest=(4 - 1.2 * breath, 10 - 1.0 * sway, 1.0 * sway),
-                                  r_place=(2.2, 3.0, 0, 65, max(0.0, 5 * sway)))))
+                      dict(look=look, root=(0.4 * sway, -1.0 - 0.1 * breath - 0.15 * abs(sway), -0.4 * sway),
+                           body=(3 + 1.0 * sway, 18 + 2.0 * sway, -2.0 * sway),
+                           chest=(2 - 1.2 * breath, 4 - 1.0 * sway, 1.0 * sway),
+                           aim=_add(READY['aim'], (2 * math.sin(a + 0.6), 3 * math.sin(a), 0)),
+                           bow_at=_add(READY['bow_at'], (0.0, 0.15 * breath, 0.3 * math.sin(a + 0.6))),
+                           hand_at=_add(READY['hand_at'], (0.0, 0.2 * breath, -0.3 * math.sin(a + 1.2))),
+                           r_place=(2.2, 3.0, 0, 55, max(0.0, 5 * sway)))))
     return seq(READY, steps)
 
 
@@ -353,53 +346,57 @@ def idle():
     return build('archer_idle', 3.0, True, timeline('archer_idle'))
 
 
-LOOSE = 1.00
+LOOSE = 1.55
 
 
 def shoot_timeline():
-    """Raise, draw, anchor, aim, loose at 1.00 s, follow through, reach to the quiver, draw an arrow, nock it."""
+    """From ready: reach to the quiver, draw an arrow clear, bring it to the bow held out in front, nock it, raise,
+    draw to the cheek, settle and aim, loose at 1.55 s (the string snaps, the arrow flies), follow through, lower to
+    ready."""
     qm = quiver_mouth()
     shot = dict(SHOT_TORSO, aim=SHOT_AIM, bow_at=SHOT_BOW)
-    lift_aim, lift_nock = (-10, -18, 22), (2.0, 21.0, -6.2)
+    lift_aim, lift_nock = (-20, -12, 40), (4.5, 20.5, -6.0)
     return seq(READY, [
-        (0.00, 'low ready', {}),
-        (0.16, 'raise', dict(_ready_with(aim=lift_aim, nock=lift_nock, draw=-3.3), root=(0, -1.1, 0), body=(3, 26, 0),
-                             chest=(3, 11, 0), look=(1, 0, 0), l_pole=(-0.6, -0.8, 0.3), r_pole=(1, 0, 0.4))),
-        (0.34, 'set and draw', dict(shot, draw=-4.2, hand_at=SHOT_NOCK, body=(3, 50, 0), chest=(3, 15, 0))),
-        (0.60, 'anchor', dict(draw=AC.FULL, body=SHOT_TORSO['body'], chest=(3, 19, 0))),
-        (0.70, 'settle', dict(root=(0, -1.15, 0), chest=SHOT_TORSO['chest'])),
-        (0.96, 'aim', dict(draw=-6.1, chest=(3, 18.5, 0))),
-        (0.999, 'loose', dict(on_string=1.0, hand_at=SHOT_NOCK)),
-        (1.00, 'loose', dict(on_string=0.0, arrow=0)),
-        (1.08, 'follow-through', dict(hand_at=_add(SHOT_NOCK, (2.0, 0.6, 2.5)), aim=(3, -2, 12),
+        (0.00, 'ready', {}),
+        (0.12, 'to the quiver', dict(hand_at=_add(qm, (0.5, 3.5, -1.0)), r_pole=(1, 0.3, 0.6), look=(8, 6, 0),
+                                     bow_at=(-6.6, 12.5, -3.0), aim=(-10, -60, 20))),
+        (0.22, 'grab', dict(hand_at=_add(qm, (0.0, 3.2, -0.3)), arrow=1, arrow_dir=_down_axis())),
+        (0.38, 'pull clear', dict(hand_at=_add(_add(qm, 11.5 * np.array(quiver_axis())), (1.0, 0, 0)),
+                                  r_pole=(1, 0.6, 0.6), look=(6, 0, 0))),
+        (0.54, 'bring to the bow', dict(hand_at=_add(NOCK_AT, (2.0, 2.0, -1.0)), arrow_dir=NOCK_AIM[:2],
+                                        aim=NOCK_AIM, bow_at=NOCK_BOW, body=(3, 32, 0), chest=(3, 10, 0),
+                                        r_pole=(1, 0.2, 0.5), l_pole=(-1, -0.4, 0.2), look=(10, -10, 0))),
+        (0.66, 'nock', dict(on_string=1.0, hand_at=NOCK_AT)),
+        (0.80, 'raise', dict(aim=lift_aim, bow_at=bow_for(lift_nock, lift_aim, -3.3), draw=-3.3, hand_at=lift_nock,
+                             body=(3, 45, 0), chest=(3, 14, 0), look=(3, -12, 0), l_pole=(-1, -0.2, 0.2),
+                             r_pole=(0.6, -0.3, 0.5))),
+        (0.98, 'set and draw', dict(shot, draw=-4.2, hand_at=SHOT_NOCK, body=(3, 52, 0), chest=(3, 16, 0))),
+        (1.22, 'anchor', dict(draw=AC.FULL, body=SHOT_TORSO['body'], chest=(3, 19, 0))),
+        (1.32, 'settle', dict(root=(0, -1.12, 0), chest=SHOT_TORSO['chest'])),
+        (1.52, 'aim', dict(draw=-6.1, chest=(3, 18.5, 0))),
+        (1.549, 'loose', dict(on_string=1.0, hand_at=SHOT_NOCK)),
+        (1.55, 'loose', dict(on_string=0.0, arrow=0)),
+        (1.63, 'follow-through', dict(hand_at=_add(SHOT_NOCK, (2.0, 0.6, 2.5)), aim=_add(SHOT_AIM, (3, -2, 2)),
                                       bow_at=_add(SHOT_BOW, (0.2, -0.6, 0.2)), chest=(3, 20, 0))),
-        (1.30, 'hold the finish', dict(hand_at=_add(SHOT_NOCK, (2.3, 0.4, 2.8)), chest=(3, 17, 0))),
-        (1.50, 'to the quiver', dict(aim=(-15, -30, 25), bow_at=bow_for((1.0, 19.5, -6.8), (-15, -30, 25), AC.BRACE),
-                                     hand_at=_add(qm, (0.5, 3.0, -1.0)), body=(4, 26, 0), chest=(4, 9, 0),
-                                     look=(8, 6, 0), l_pole=(-1, -0.4, 0.2), r_pole=(1, -0.6, 0.4))),
-        (1.62, 'grab', dict(hand_at=_add(qm, (0.0, 3.2, -0.3)), arrow=1, arrow_dir=_down_axis(), r_pole=(1, 0.3, 0.6))),
-        (1.80, 'pull clear', dict(hand_at=_add(_add(qm, 11.5 * np.array(quiver_axis())), (1.0, 0, 0)), arrow_dir=_down_axis(),
-                                  look=(10, 0, 0),
-                            r_pole=(1, 0.6, 0.6))),
-        (2.06, 'bring', dict(hand_at=_add(READY_NOCK, BRING['hand']), arrow_dir=BRING['arrow_dir'],
-                             aim=READY_AIM, bow_at=READY['bow_at'], draw=AC.BRACE, look=(6, 0, 0), r_pole=BRING['pole'],
-                             root=READY['root'], body=READY['body'], chest=READY['chest'])),
-        (2.22, 'nock', dict(on_string=1.0, hand_at=READY_NOCK, r_pole=(1, -0.5, 0.3))),
-        (2.42, 'settle', dict(root=(0, -1.05, 0), body=(4, 25, 0), chest=(4, 10, 0), look=(4, 0, 0))),
-        (2.70, 'low ready', {k: READY[k] for k in ('root', 'body', 'chest', 'look', 'r_pole', 'l_pole')}),
+        (1.85, 'hold the finish', dict(hand_at=_add(SHOT_NOCK, (2.3, 0.4, 2.8)), chest=(3, 17, 0))),
+        (2.15, 'lower', dict(bow_at=_add(READY['bow_at'], (0.0, 1.0, -1.5)), aim=(-5, -70, 10), hand_at=READY['hand_at'],
+                             root=(0, -1.05, 0), body=(3, 22, 0), chest=(2, 6, 0), look=(5, 0, 0),
+                             r_pole=READY['r_pole'], l_pole=READY['l_pole'])),
+        (2.50, 'ready', {k: READY[k] for k in ('root', 'body', 'chest', 'look', 'bow_at', 'aim')}),
     ])
 
 
 def shoot():
-    return build('archer_shoot', 2.7, False, timeline('archer_shoot'), loose=LOOSE)
+    return build('archer_shoot', 2.5, False, timeline('archer_shoot'), loose=LOOSE)
 
 
 KITE_SPEED = -4.5       # px a second: the ground slides forward under planted feet as the archer backs away
 
 
 def kite_timeline():
-    """1.2 s: the back foot reaches back (0.0 to 0.3), the lead foot follows (0.6 to 0.85), the bow held at low ready,
-    the eyes on the threat; the root dips as each foot lands and sways over the one holding the weight."""
+    """1.2 s: the back foot reaches back (0.0 to 0.3), the lead foot follows (0.6 to 0.85), the bow carried at the
+    side and the draw hand swinging a little, the eyes on the threat; the root dips as each foot lands and sways over
+    the one holding the weight."""
     v = KITE_SPEED
 
     def back(t):            # the right foot, planted 0.3 to 1.2
@@ -408,23 +405,29 @@ def kite_timeline():
     def lead(t):            # the left foot, planted 0.85 to 1.8 (wrapping)
         t = t if t >= 0.85 else t + 1.2
         return -0.4 + v * (t - 0.85)
-    R = lambda z, lift=0.0, heel=0.0: (2.2, z, lift, 65, heel)
-    Lf = lambda z, lift=0.0, heel=0.0: (2.0, z, lift, 25, heel)
-    ready = lambda **kw: _ready_with(**kw)
+    R = lambda z, lift=0.0, heel=0.0: (2.2, z, lift, 55, heel)
+    Lf = lambda z, lift=0.0, heel=0.0: (2.0, z, lift, 20, heel)
+    hand = lambda dz: _add(READY['hand_at'], (0, 0, dz))
+    bow = lambda dz: _add(READY['bow_at'], (0, 0, dz))
     return seq(READY, [
-        (0.00, 'back foot lifts', dict(ready(look=(4, 0, 0)), root=(-0.3, -1.5, 0.2), body=(4, 26, 1),
+        (0.00, 'back foot lifts', dict(root=(-0.3, -1.5, 0.2), body=(3, 19, 1), hand_at=hand(-0.6), bow_at=bow(0.4),
                                        r_place=R(back(1.2), 0, 10), l_place=Lf(lead(0.0)))),
-        (0.15, 'reach back', dict(root=(-0.4, -1.3, 0.5), body=(3, 27, 2), r_place=R(2.2, 1.0, 0), l_place=Lf(lead(0.15)))),
-        (0.30, 'toe down', dict(root=(-0.2, -1.7, 0.9), body=(4, 26, 1), r_place=R(back(0.30), 0, -8),
-                                l_place=Lf(lead(0.30)))),
-        (0.42, 'weight back', dict(root=(0.1, -1.85, 0.7), body=(5, 25, -1), r_place=R(back(0.42)), l_place=Lf(lead(0.42), 0, 6))),
-        (0.60, 'lead foot lifts', dict(root=(0.4, -1.55, 0.4), body=(4, 24, -2), r_place=R(back(0.60)),
-                                       l_place=Lf(lead(0.60), 0, 14))),
-        (0.72, 'drag', dict(root=(0.45, -1.35, 0.2), body=(3, 24, -2), r_place=R(back(0.72)), l_place=Lf(-2.6, 0.8, 4))),
-        (0.85, 'lead foot plants', dict(root=(0.1, -1.7, 0.1), body=(4, 25, 0), r_place=R(back(0.85)), l_place=Lf(lead(0.85)))),
-        (1.00, 'settle', dict(root=(-0.2, -1.55, 0.1), body=(4, 25, 1), r_place=R(back(1.00)), l_place=Lf(lead(1.00)))),
-        (1.20, 'back foot lifts', dict(root=(-0.3, -1.5, 0.2), body=(4, 26, 1), r_place=R(back(1.2), 0, 10),
-                                       l_place=Lf(lead(1.2)))),
+        (0.15, 'reach back', dict(root=(-0.4, -1.3, 0.5), body=(2, 20, 2), hand_at=hand(0.2), bow_at=bow(-0.2),
+                                  r_place=R(2.2, 1.0, 0), l_place=Lf(lead(0.15)))),
+        (0.30, 'toe down', dict(root=(-0.2, -1.7, 0.9), body=(3, 19, 1), hand_at=hand(0.7), bow_at=bow(-0.6),
+                                r_place=R(back(0.30), 0, -8), l_place=Lf(lead(0.30)))),
+        (0.42, 'weight back', dict(root=(0.1, -1.85, 0.7), body=(4, 18, -1), hand_at=hand(0.5), bow_at=bow(-0.4),
+                                   r_place=R(back(0.42)), l_place=Lf(lead(0.42), 0, 6))),
+        (0.60, 'lead foot lifts', dict(root=(0.4, -1.55, 0.4), body=(3, 17, -2), hand_at=hand(-0.2), bow_at=bow(0.2),
+                                       r_place=R(back(0.60)), l_place=Lf(lead(0.60), 0, 14))),
+        (0.72, 'drag', dict(root=(0.45, -1.35, 0.2), body=(2, 17, -2), hand_at=hand(-0.6), bow_at=bow(0.5),
+                            r_place=R(back(0.72)), l_place=Lf(-2.6, 0.8, 4))),
+        (0.85, 'lead foot plants', dict(root=(0.1, -1.7, 0.1), body=(3, 18, 0), hand_at=hand(-0.7), bow_at=bow(0.6),
+                                        r_place=R(back(0.85)), l_place=Lf(lead(0.85)))),
+        (1.00, 'settle', dict(root=(-0.2, -1.55, 0.1), body=(3, 18, 1), hand_at=hand(-0.7), bow_at=bow(0.5),
+                              r_place=R(back(1.00)), l_place=Lf(lead(1.00)))),
+        (1.20, 'back foot lifts', dict(root=(-0.3, -1.5, 0.2), body=(3, 19, 1), hand_at=hand(-0.6), bow_at=bow(0.4),
+                                       r_place=R(back(1.2), 0, 10), l_place=Lf(lead(1.2)))),
     ])
 
 
@@ -432,31 +435,28 @@ def kite():
     return build('archer_kite', 1.2, True, timeline('archer_kite'), ground_speed=KITE_SPEED)
 
 
-FLUNG = dict(aim=(-55, -55, 20), nock=(-1.5, 16.5, -6.0), hand=(6.5, 18.0, 0.5), arrow_dir=(30, -40))   # searched
-BRING = dict(hand=(3.0, 1.5, -3.0), arrow_dir=(0, -50), pole=(1, 0.2, 0.5))                            # searched
-
-
 def hit_timeline():
-    flung_aim, flung_nock = FLUNG['aim'], FLUNG['nock']
+    """0.9 s: struck, the head snaps back and both arms fly wide, a stumbling step back, a crouch to catch it, back up
+    to ready."""
     return seq(READY, [
-        (0.00, 'low ready', {}),
-        (0.02, 'struck', dict(on_string=1.0)),
-        (0.08, 'struck', dict(_ready_with(aim=flung_aim, nock=flung_nock), on_string=0.0, hand_at=FLUNG['hand'],
-                              arrow_dir=FLUNG['arrow_dir'], root=(0, -1.0, 0.9), body=(-5, 31, 4), chest=(-12, 20, 6),
-                              look=(-18, 14, 10), l_pole=(-1, 0, 0.2), r_pole=(1, -0.4, 0.4))),
-        (0.14, 'reel', dict(root=(0, -1.2, 1.3), body=(-6, 32, 5), chest=(-10, 22, 6), look=(-14, 18, 8),
-                            hand_at=(7.0, 17.0, 2.0), r_place=(2.4, 4.4, 1.0, 62, 0))),
-        (0.22, 'catch', dict(root=(0, -1.6, 1.4), body=(-1, 28, 2), chest=(-2, 16, 2), look=(-4, 8, 3),
-                             hand_at=(5.5, 15.5, 0.5), arrow_dir=(10, -55), r_place=(2.4, 5.0, 0, 60, 0))),
-        (0.32, 'fold', dict(_ready_with(aim=(-30, -45, 20), nock=(-0.5, 16.5, -6.5)), on_string=0.0,
-                            hand_at=(2.5, 16.0, -3.0), arrow_dir=(-25, -50), root=(0, -1.8, 1.4), body=(6, 26, 0),
-                            chest=(10, 8, 0), look=(10, 0, 0), r_pole=(1, -0.5, 0.3), r_place=(2.4, 5.0, 0, 60, 0))),
-        (0.46, 'gather and re-nock', dict(_ready_with(), root=(0, -1.5, 1.3), body=(5, 25, 0), chest=(6, 10, 0),
-                                          look=(4, 0, 0), r_place=(2.4, 5.0, 0, 60, 0))),
-        (0.58, 'step up', dict(root=(0, -1.2, 1.0), r_place=(2.3, 4.6, 0.9, 66, 0))),
-        (0.68, 'plant', dict(root=(0, -1.1, 0.2), r_place=STANCE['r_place'])),
-        (0.78, 'settle', dict(root=(0, -0.95, -0.05), body=(4, 25, 0), chest=(4, 10, 0))),
-        (0.90, 'low ready', {k: READY[k] for k in ('root', 'body', 'chest', 'look')}),
+        (0.00, 'ready', {}),
+        (0.07, 'struck', dict(root=(0, -1.0, 0.9), body=(-5, 24, 4), chest=(-12, 12, 6), look=(-18, 14, 10),
+                              bow_at=(-9.0, 14.5, 1.0), aim=(-35, -45, 35), hand_at=(8.0, 16.0, 2.0),
+                              l_pole=(-1, 0.2, 0.2), r_pole=(1, 0.2, 0.4))),
+        (0.14, 'reel', dict(root=(0, -1.2, 1.3), body=(-6, 25, 5), chest=(-10, 14, 6), look=(-14, 18, 8),
+                            bow_at=(-9.5, 14.0, 1.5), hand_at=(8.5, 16.5, 2.5), r_place=(2.4, 4.4, 1.0, 55, 0))),
+        (0.24, 'catch', dict(root=(0, -1.6, 1.4), body=(-1, 22, 2), chest=(-2, 8, 2), look=(-4, 8, 3),
+                             bow_at=(-8.0, 12.5, 0.0), hand_at=(7.5, 14.5, 1.5), r_place=(2.4, 5.0, 0, 55, 0))),
+        (0.36, 'crouch', dict(root=(0, -1.9, 1.4), body=(6, 19, 0), chest=(8, 3, 0), look=(10, 0, 0),
+                              bow_at=_add(READY['bow_at'], (-0.5, -0.5, -0.5)), aim=READY['aim'],
+                              hand_at=_add(READY['hand_at'], (0.3, -0.3, -0.3)),
+                              l_pole=READY['l_pole'], r_pole=READY['r_pole'], r_place=(2.4, 5.0, 0, 55, 0))),
+        (0.50, 'gather', dict(root=(0, -1.5, 1.3), body=(4, 18, 0), chest=(4, 4, 0), look=(4, 0, 0),
+                              bow_at=READY['bow_at'], hand_at=READY['hand_at'], r_place=(2.4, 5.0, 0, 55, 0))),
+        (0.60, 'step up', dict(root=(0, -1.2, 1.0), r_place=(2.3, 4.4, 0.9, 55, 0))),
+        (0.70, 'plant', dict(root=(0, -1.1, 0.2), r_place=STANCE['r_place'])),
+        (0.80, 'settle', dict(root=(0, -0.95, -0.05), body=(3, 18, 0), chest=(2, 4, 0))),
+        (0.90, 'ready', {k: READY[k] for k in ('root', 'body', 'chest', 'look')}),
     ])
 
 

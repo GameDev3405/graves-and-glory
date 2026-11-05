@@ -168,11 +168,13 @@ TRUNK = ('chest', 'body', 'head')
 
 class LimbClipper:
     """How far the forearms pass into the torso or the head: the volume of forearm deeper than `min_depth` px inside
-    them. The upper arms are left out (they meet the torso at the shoulder by design), and so is the outer skin: the
-    armour is modelled with arms that overlap a wide jerkin or belt by a px at rest. parts: [(box, bone)]."""
+    them. Left out: the upper arms (they meet the torso at the shoulder by design), the outer skin, and any forearm and
+    trunk boxes that already overlap with the arms hanging at rest (the armour is modelled that way: a bracer over a
+    wide belt). parts: [(box, bone)]; bones: the rig, for that rest pose."""
 
-    def __init__(self, parts, step=0.5, soft=SOFT, min_depth=1.1):
+    def __init__(self, parts, step=0.5, soft=SOFT, min_depth=1.1, bones=None):
         self.min_depth = min_depth
+        self.bones = bones
         self.limbs, self.trunk = [], []
         for box, bone in parts:
             if box.name.startswith(soft) or box.name.startswith('p_'):
@@ -187,6 +189,20 @@ class LimbClipper:
                 self.trunk.append((box.name, bone, np.linalg.inv(_box_matrix(box)), np.array(lo) + 0.05,
                                    np.array(hi) - 0.05))
         self.cell = step ** 3
+        from . import combat_rig as CR
+        rest = CR.world({}, {}, bones)
+        self.skip = set()
+        for name, bone, pts in self.limbs:
+            for bname, bbone, Binv, lo, hi in self.trunk:
+                if self._inside(rest, bone, pts, bbone, Binv, lo, hi).any():
+                    self.skip.add((name, bname))
+
+    def _inside(self, pose, bone, pts, bbone, Binv, lo, hi):
+        W = pose[bone]
+        wp = (W[:3, :3] @ pts.T).T + W[:3, 3]
+        M = Binv @ np.linalg.inv(pose[bbone])
+        lp = (M[:3, :3] @ wp.T).T + M[:3, 3]
+        return np.all((lp > lo + self.min_depth) & (lp < hi - self.min_depth), axis=1)
 
     def volume(self, pose):
         total = 0.0
@@ -196,6 +212,8 @@ class LimbClipper:
             wp = (W[:3, :3] @ pts.T).T + W[:3, 3]
             inside = np.zeros(len(wp), bool)
             for bname, bbone, Binv, lo, hi in self.trunk:
+                if (name, bname) in self.skip:
+                    continue
                 M = Binv @ inv[bbone]
                 lp = (M[:3, :3] @ wp.T).T + M[:3, 3]
                 inside |= np.all((lp > lo + self.min_depth) & (lp < hi - self.min_depth), axis=1)

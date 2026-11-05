@@ -59,7 +59,7 @@ class Judge:
         p = clip_pose(c, 0.0)
         items = sum(self.clipper.volumes(p).values())
         limbs = self.limbs.volume(p)
-        cost = items + limbs + (300.0 if c.reach_error > self.reach_limit else 0.0)
+        cost = items + limbs + 300.0 * max(0.0, c.reach_error - self.reach_limit)     # never trade reach away
         if written is not None:
             for k, w in DEVIATION.items():
                 if k in pose and k in written:
@@ -85,14 +85,15 @@ def search_beat(judge, pose, fields, steps=60, seed=0):
     return best[0], judge(pose), changed
 
 
-def run(unit_name, clip_names=None, steps=60, gate_items=1.5, gate_limbs=30.0):
+def run(unit_name, clip_names=None, steps=110, gate_items=1.5, gate_limbs=8.0):
     if unit_name != 'archer':
         raise SystemExit('only the archer stores searched poses so far')
     import animate_archer as AA
     from unit_anim import archer_clips as XC
     from unit_anim import clearance as CL
     unit = AA.ArcherUnit()
-    judge = Judge(unit, XC.still, unit.clipper(), CL.LimbClipper([(b, bone) for b, f, bone, l in unit.parts if l is None]))
+    judge = Judge(unit, XC.still, unit.clipper(),
+                  CL.LimbClipper([(b, bone) for b, f, bone, l in unit.parts if l is None], bones=XC.BONES))
     store = load(XC.POSES_FILE)
     for name, timeline_fn in XC.TIMELINES.items():
         if clip_names and name not in clip_names:
