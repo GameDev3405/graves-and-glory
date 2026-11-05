@@ -17,10 +17,12 @@ failed and why. This file is the short procedure.
 
 ## Procedure
 
-1. **Set up the unit.** Armour from `tools/player_armor/<set>.py`, weapons from `tools/player_weapons/<set>.py`. The
-   drivers currently import the Oathbound set (`animate_unit.Unit`, `clearance.geometry`); parameterise them for a
-   new set. Write a grip transform per held item (see `SWORD_LOCAL`/`SHIELD_LOCAL`). Check the armour-cut prefixes
-   (`combat_rig.WHOLE`), the item grip boxes (`clearance.HELD_IN_HAND`) and the push directions (`clearance.PUSH`).
+1. **Set up the unit and its show.** Copy `tools/animate_archer.py`: a unit class (armour from
+   `tools/player_armor/<set>.py`, cut with `split_parts`; items with grip transforms; `drawables_at`, `export_parts`,
+   `clipper`) and a `Show` for `animate_combat.main`. Check the armour-cut prefixes (`combat_rig.WHOLE`), which
+   armour pieces are follow bones (springs), and the item grip boxes and allowed contacts in the clipper.
+   **Measure the proportions first** (reach about 8 px, head and collar size, item length): they decide which
+   poses can exist (see section 11 of the guide).
 2. **Block the guard** first. Pose fields: `root`, `body`, `chest`, `sword`/`shield_arm` as *direction vectors in the
    chest's frame* (+x the troop's right, +y up, −z forward), `shield` and `look` facings, and foot placements
    `r_place`/`l_place` = (out, z, lift, toe_out, heel). Render it with
@@ -31,9 +33,10 @@ failed and why. This file is the short procedure.
    heel-first steps, overlap through `lags`. Once-clips start and end on `GUARD`; loops close.
 4. **Build** with `combat_clips.build(name, length, loop, timeline, lags=...)`. It keys the torso, solves legs, head,
    arms and the shield wrist, bakes every 0.025 s, runs clearance and simulates the cape and plume.
-5. **Check clipping at the source**: list beats with `clearance=False` and `clearance.Clipper().volumes(...)`. Fix any
-   pose over about 1 px³. If hand fixes miss, search nearby aims (random perturbations, keep the clear one with the
-   least deviation) and write the results into the presets. The solver should only mop up (average push about 0.2).
+5. **Check clipping at the source**, items *and* forearms (`clearance.LimbClipper`). Fix poses, not the solver: search
+   the key poses first (wide random search, then local), then the beats (`pose_search.py`: still poses, then
+   `search_window` for transitions). If nothing in the search space gets clean, change the design, not the numbers.
+   Hands placed by IK (`reach_arm`) for bows, two-handed weapons and anything held at a point.
 6. **Measure**: `python tools/animate_combat.py --check`. It reports IK error, feet (sink, hover, skate), true-rotation
    smoothness and clipping. Gates: reach < 0.3 px; sink and hover ≤ 0.15 px; skate ≤ 8 px/s; ≤ 50 degrees a frame;
    jerk ≤ 30; items ≤ 1.5 px³. Use the geodesic rotation, not Euler steps.
@@ -55,3 +58,8 @@ failed and why. This file is the short procedure.
 - The shield's aim must include the item's rest rotation.
 - A clearance push is held early; if it causes new clipping, fix the pose that needs it rather than raising the push.
 - Fade clearance pushes at once-clip ends, or the clip won't start and end on the guard.
+- Never blend Euler numbers (settles, transitions): slerp rotations, then `closest_euler`.
+- IK in yaw and pitch has a pole at an arm hanging straight down; solve in tangent space with continuity and twist
+  terms.
+- Test at 60 fps, the rate the game draws: 30 fps sampling hides peaks.
+- A searched fix stored by beat time is lost when the beat is retimed: move its key in the poses file too.

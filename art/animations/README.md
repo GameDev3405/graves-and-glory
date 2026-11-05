@@ -1,6 +1,8 @@
 # Unit animations
 
-**See also `oathbound_combat/`:** a Fresh Animations-style combat pack for the same knight, with elbows, knees, a
+**See also `thornhide_archer/`:** a bow unit on the same rig: idle, backpedal, a full quiver-to-loose shot, hit reaction.
+
+**And `oathbound_combat/`:** a Fresh Animations-style combat pack for the same knight, with elbows, knees, a
 waist and ankles: idle, advance, a three-hit combo, block and hit reaction. Its README has the details.
 
 ## Oathbound knight: `oath_combo` and `oath_guard`

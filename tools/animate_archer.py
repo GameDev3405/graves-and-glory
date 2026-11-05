@@ -86,6 +86,7 @@ class ArcherUnit:
                           exclude=(('bow', 'limb_0', 'left_forearm'),       # the riser passes through the closed fist
                                    ('bow', 'string', 'left_forearm'),     # the string brushes the bracer: its job
                                    ('bow', 'string', 'right_forearm'),    # the drawing fingers hold the string
+                                   ('bow', 'string', 'head'),             # the string meets the cheek at the anchor
                                    ('quiver', 'fletch', 'right_forearm'),  # the hand among the fletchings, choosing one
                                    ('quiver', 'shaft', 'right_forearm'),
                                    ('quiver', 'mouth', 'right_forearm'),   # ... and at the quiver's mouth

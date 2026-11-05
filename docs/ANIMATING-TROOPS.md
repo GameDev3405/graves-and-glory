@@ -10,6 +10,7 @@ Two animation sets exist:
 |---|---|---|---|
 | `oath_combo`, `oath_guard` | the game's troop rig (rigid limbs) | `art/animations/oathbound/` | art; plays on today's model; not wired |
 | combat pack: `combat_idle`, `combat_advance`, `combat_combo`, `combat_block`, `combat_hit` | the articulated rig (waist, elbows, knees, ankles) | `art/animations/oathbound_combat/` | art; needs new model bones; not wired |
+| Thornhide archer: `archer_idle`, `archer_kite`, `archer_shoot`, `archer_hit` | the articulated rig, with hands placed by IK | `art/animations/thornhide_archer/` | art; needs new model bones; not wired |
 
 Both are **preview art**. Wiring clips into the game and changing the troop model are gameplay-visible, so Kort decides
 (QUESTIONS-FOR-KORT rows ANIM-01 and ANIM-02).
@@ -276,8 +277,10 @@ Process notes:
 The code is Oathbound-specific in a few places. To animate a new set (say Barrow Warden with Gravereaper and
 Wakelight):
 
-1. **Unit**: `animate_unit.Unit` imports `player_armor.oathbound` and `player_weapons.oathbound`, and so does
-   `clearance.geometry()`. Make both take the set (and the two weapon ids) as parameters.
+1. **Unit and show**: write a unit class and a `Show` (copy `tools/animate_archer.py`). The unit needs `parts` (cut
+   with `split_parts`), `drawables_at` (for items that change per frame), `export_parts` and `clipper`. The `Show`
+   holds the title, clips, titles, output folder, Java header and reel plan. The driver (`animate_combat.main`) does
+   the rest.
 2. **Grips**: write the grip transform for each held item (`SWORD_LOCAL`-style). Check it on a neutral pose from three
    views. A two-handed weapon needs both hands aimed at the haft (aim the off hand to a point on the item) and is a new
    feature.
@@ -293,10 +296,52 @@ Wakelight):
 8. **Render and export**, then update `art/animations/<set>/README.md`, BACKLOG and QUESTIONS-FOR-KORT.
 9. **Commit, then ask before pushing** if the session has not been told to push.
 
-## 11. Open decisions (Kort)
+## 11. Placed hands and searched poses (the archer)
+
+The archer adds what a bow needs, and lessons that hold for any two-handed or ranged unit.
+
+- **Placing a hand.** A bow's grip and a draw hand on the string are *positions*, not aims. `combat_rig.reach_arm` is
+  position IK: damped Gauss-Newton on small turns of last tick's arm directions (tangent space, so no poles), with a
+  forearm-direction guide (a straight wrist), a continuity term, a soft 15 degree minimum elbow bend, and a term that
+  keeps the forearm's bend direction (the arm's twist) turning smoothly.
+- **Items that change per frame** (a bow drawn continuously, an arrow that comes and goes) are drawn by the unit's
+  `drawables_at(pose, clip, t)`. The clipper sees them through pseudo-bones that a clip's `extra_pose` adds.
+- **Proportions decide the design.** Measure reach (about 8 px from the shoulder), head and collar size, and the item's
+  geometry *before* designing poses. A real archer's form (an anchor at the jaw, an arrow nocked across the belly) does
+  not fit a 10 px head and a 12 px fur ruff. The archer's poses changed design twice before they worked.
+- **Measure the forearms too.** The item clipper never sees an arm through the chest. `clearance.LimbClipper` measures
+  forearm volume deeper than 1.1 px in the torso or head. It skips pairs that already overlap at rest (armour modelled
+  that way), and it treats soft parts as soft (fur, cloth).
+- **Search, don't guess.** `tools/unit_anim/pose_search.py` fixes beats: random steps on a beat's own fields, scored by
+  items + forearms + reach + a cost for straying from the written beat. The results are stored as data
+  (`<unit>_poses.json`). There are two modes:
+  - judged as a still pose (fast)
+  - judged over the motion between the beat's neighbours (`search_window`), for transitions a still cannot see
+- **Proportions first, then search, then the solver.** First check the proportions, then search the key poses, then
+  search the beats, then search the windows. A search cannot rescue a design that does not fit the proportions.
+
+### What failed, and the fix
+
+| symptom | cause | fix |
+|---|---|---|
+| No full-draw pose could be reached | an anchor in front of the face is 11 px from the draw shoulder | side-on stance, string to the cheek; the anchor follows from where the string is |
+| The bow limb ran through the forearm | the bow was attached like a sword (limbs along the forearm) | grip across the fist; forearm guide down the shot |
+| Forearm 200 to 450 px³ in the chest at ready | a nocked arrow held low across the belly | carry the bow at the side; nock on the shooting line |
+| The nock was out of reach | the bow arm fully out puts the string 3 px past the cheek | push-pull: the bow arm bent to nock, pushed out while drawing |
+| The arm flipped about 160 degrees in a frame | yaw and pitch IK parameters have a pole at an arm hanging straight down; a near-straight elbow's bend side is undefined | tangent-space parameters; continuity, minimum bend and twist terms |
+| Analytic two-bone IK made it worse | it changed every elbow the poses had been tuned against; its side memory made loops path-dependent | kept the numeric solver and fixed its causes |
+| The bow swept through a thigh while lowering | its cant swung the lower limb across the body | roll the bow flat (cant -70) while it is still high |
+| Fixes per beat moved the clipping into the gaps | a still pose cannot see the motion | the window search, plus in-between beats routing the bow around the body |
+| The clip did not end on ready (arm off by 9 degrees) | the IK reaches the same hand with a different twist | settle the last 0.3 s onto the start by slerp |
+| The settle blend broke the hand (150 degrees) | it blended Euler numbers across branches | slerp of quaternions, then `closest_euler` |
+| Extra log entries at t = 0 | the solver warm-up appended to the per-tick log | reset the logs after warm-up |
+| The test passed but the game would show more | the test sampled at 30 fps, the game draws at 60 | test at 60 fps |
+
+## 12. Open decisions (Kort)
 
 - Whether troops get the articulated model: seven new bones and armour cut at the joints. It changes every troop's look.
 - Which clips become the attack, block, hit and in-combat idle/move animations (ANIMATION-PLAN gap 1).
 - Advance pace (0.5 block/s) against the AI's approach speed.
 - Cape and plume bones for the sprung keys.
-- Neither `.bbmodel` has been opened in Blockbench yet. The conversion is verified numerically only.
+- For the archer: drive the bow's pull frames from the clip's draw; whether the hip quiver joins the Thornhide armour.
+- No `.bbmodel` has been opened in Blockbench yet. The conversion is verified numerically only.

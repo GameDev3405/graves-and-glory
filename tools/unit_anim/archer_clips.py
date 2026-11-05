@@ -123,6 +123,8 @@ def build(name, length, loop, timeline, loose=None, ground_speed=0.0, step=STEP)
     for k, v in out.items():
         _unwrap(v)
         c.rot[k] = v
+    if not loop:
+        _settle_onto_start(c, length)
     spring_follow(c, 'cape', 'chest', (1.0, 1.0), stiffness=60, damping=8, rest=(3, 0), clamp=_cape_clamp(c),
                   passes=3 if loop else 2, bones=BONES)
     spring_follow(c, 'plume', 'head', (0.8, 0.8), stiffness=110, damping=8, rest=(0, 0), passes=3 if loop else 2,
@@ -182,6 +184,54 @@ def _solve_tick(c, t, tr, loose, out, guess, prev):
         hand = CR.closest_euler(F[:3, :3].T @ H, out[side + '_hand'][-1][1:] if out[side + '_hand'] else None)
         for bone, v in ((side + '_arm', a['arm']), (side + '_forearm', a['forearm']), (side + '_hand', hand)):
             out[bone].append((t,) + tuple(float(x) for x in v))
+
+
+def _quat(R):
+    w = math.sqrt(max(0.0, 1 + R[0, 0] + R[1, 1] + R[2, 2])) / 2
+    x = math.copysign(math.sqrt(max(0.0, 1 + R[0, 0] - R[1, 1] - R[2, 2])) / 2, R[2, 1] - R[1, 2])
+    y = math.copysign(math.sqrt(max(0.0, 1 - R[0, 0] + R[1, 1] - R[2, 2])) / 2, R[0, 2] - R[2, 0])
+    z = math.copysign(math.sqrt(max(0.0, 1 - R[0, 0] - R[1, 1] + R[2, 2])) / 2, R[1, 0] - R[0, 1])
+    return np.array([w, x, y, z])
+
+
+def _mat(q):
+    w, x, y, z = q / np.linalg.norm(q)
+    return np.array([[1 - 2 * (y * y + z * z), 2 * (x * y - z * w), 2 * (x * z + y * w)],
+                     [2 * (x * y + z * w), 1 - 2 * (x * x + z * z), 2 * (y * z - x * w)],
+                     [2 * (x * z - y * w), 2 * (y * z + x * w), 1 - 2 * (x * x + y * y)]])
+
+
+def _slerp(q0, q1, w):
+    d = float(np.dot(q0, q1))
+    if d < 0:
+        q1, d = -q1, -d
+    if d > 0.9995:
+        return q0 + w * (q1 - q0)
+    th = math.acos(d)
+    return (math.sin((1 - w) * th) * q0 + math.sin(w * th) * q1) / math.sin(th)
+
+
+def _settle_onto_start(c, length, span=0.3):
+    """A once clip ends where it began so it chains into the idle; the arms reach the same hands there, but the solve
+    can arrive with a slightly different twist. The last `span` s of arm keys turn onto the first tick's rotation
+    (a slerp of the rotations, never a blend of Euler numbers, which can swing through anything)."""
+    for b in ('right_arm', 'right_forearm', 'right_hand', 'left_arm', 'left_forearm', 'left_hand'):
+        keys = c.rot[b]
+        q_end = _quat(CR.mc_rotation(*keys[0][1:]))
+        out, prev = [], None
+        for k in keys:
+            w = (k[0] - (length - span)) / span
+            if w <= 0:
+                out.append(k)
+                prev = k[1:]
+                continue
+            w = min(1.0, w)
+            w = w * w * (3 - 2 * w)
+            q = _slerp(_quat(CR.mc_rotation(*k[1:])), q_end, w)
+            e = CR.closest_euler(_mat(q), prev)
+            out.append((k[0],) + tuple(float(v) for v in e))
+            prev = e
+        c.rot[b] = out
 
 
 def _loin_clamp(clip):
@@ -366,24 +416,24 @@ def shoot_timeline():
         (0.22, 'grab', dict(hand_at=_add(qm, (0.0, 3.2, -0.3)), arrow=1, arrow_dir=_down_axis())),
         (0.38, 'pull clear', dict(hand_at=_add(_add(qm, 11.5 * np.array(quiver_axis())), (1.0, 0, 0)),
                                   r_pole=(1, 0.6, 0.6), look=(6, 0, 0))),
-        (0.46, 'bow comes up', dict(bow_at=(-6.0, 15.5, -9.5), aim=(-15, -40, 20), body=(3, 38, 0), chest=(3, 12, 0),
+        (0.44, 'bow comes up', dict(bow_at=(-6.0, 15.5, -9.5), aim=(-15, -40, -15), body=(3, 38, 0), chest=(3, 12, 0),
                                     l_pole=(-1, -0.3, 0.3), r_pole=(0.6, 0.25, 0.6), look=(3, -10, 0))),
-        (0.56, 'on the line', dict(shot, draw=AC.BRACE, bow_at=bent_bow, hand_at=_add(nock_pt, (1.5, 1.5, 2.5)),
+        (0.60, 'on the line', dict(shot, draw=AC.BRACE, bow_at=bent_bow, hand_at=_add(nock_pt, (1.5, 1.5, 2.5)),
                                    arrow_dir=SHOT_AIM[:2], body=(3, 50, 0), chest=(3, 16, 0))),
-        (0.66, 'nock', dict(on_string=1.0, hand_at=nock_pt)),
-        (0.78, 'push and pull', dict(draw=-4.2, bow_at=mid_bow, body=(3, 54, 0), chest=(3, 17, 0))),
-        (0.98, 'anchor', dict(draw=AC.FULL, bow_at=SHOT_BOW, body=SHOT_TORSO['body'], chest=(3, 19, 0))),
-        (1.08, 'settle', dict(root=(0, -1.12, 0), chest=SHOT_TORSO['chest'])),
+        (0.70, 'nock', dict(on_string=1.0, hand_at=nock_pt)),
+        (0.82, 'push and pull', dict(draw=-4.2, bow_at=mid_bow, body=(3, 54, 0), chest=(3, 17, 0))),
+        (1.00, 'anchor', dict(draw=AC.FULL, bow_at=SHOT_BOW, body=SHOT_TORSO['body'], chest=(3, 19, 0))),
+        (1.10, 'settle', dict(root=(0, -1.12, 0), chest=SHOT_TORSO['chest'])),
         (1.32, 'aim', dict(draw=-6.1, chest=(3, 18.5, 0))),
         (1.349, 'loose', dict(on_string=1.0, hand_at=SHOT_NOCK)),
         (1.35, 'loose', dict(on_string=0.0, arrow=0)),
         (1.43, 'follow-through', dict(hand_at=_add(SHOT_NOCK, (2.0, 0.6, 2.5)), aim=_add(SHOT_AIM, (3, -2, 2)),
                                       bow_at=_add(SHOT_BOW, (0.2, -0.6, 0.2)), chest=(3, 20, 0))),
         (1.65, 'hold the finish', dict(hand_at=_add(SHOT_NOCK, (2.3, 0.4, 2.8)), chest=(3, 17, 0))),
-        (1.80, 'drop the bow', dict(bow_at=(-4.5, 13.5, -9.0), aim=(-20, -55, 10), hand_at=(7.0, 15.5, -1.0),
+        (1.80, 'drop the bow', dict(bow_at=(-7.0, 15.5, -12.0), aim=(-20, -35, -70), hand_at=(7.0, 15.5, -1.0),
                                     body=(3, 38, 0), chest=(3, 10, 0), look=(4, -6, 0), l_pole=(-1, -0.4, 0.3),
                                     r_pole=(1, -0.5, 0.3))),
-        (2.02, 'lower', dict(bow_at=_add(READY['bow_at'], (0.0, 0.8, -1.2)), aim=(-3, -72, 4), hand_at=READY['hand_at'],
+        (2.02, 'lower', dict(bow_at=_add(READY['bow_at'], (0.0, 0.8, -1.2)), aim=(-3, -72, -6), hand_at=READY['hand_at'],
                              root=(0, -1.05, 0), body=(3, 22, 0), chest=(2, 6, 0), look=(5, 0, 0),
                              r_pole=READY['r_pole'], l_pole=READY['l_pole'])),
         (2.35, 'ready', {k: READY[k] for k in ('root', 'body', 'chest', 'look', 'bow_at', 'aim')}),
