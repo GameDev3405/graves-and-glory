@@ -144,7 +144,7 @@ public final class GravesAndGloryClient implements ClientModInitializer {
         // next join clears them as well; no HUD frame runs without a world to clear them before the next one.
         ClientPlayConnectionEvents.DISCONNECT.register((handler,client)->{if(connectingInvitation&&!joined)say("Melty join failed: connection closed before joining");CampaignClient.end(client);CampaignClient.forget();MusicDirector.reset(client);TroopMotion.clear();MotionEvents.Client.clear();RankSync.clear();hudResetPending=true;ready=false;modServer=false;running=false;team=-1;houses=Map.of();opened=false;worldTicks=0;shareCamp=false;connectingInvitation=false;});
         ClientTickEvents.END_CLIENT_TICK.register(client->{
-            freeToolbarKeys(client);
+            if(!toolbarFreed&&client.options!=null){toolbarFreed=true;freeToolbarKeys(client,toolbarFlag());}
             if(hudResetPending&&client.world==null)resetHud();
             if(client.getOverlay()==null&&client.currentScreen instanceof TitleScreen){
                 if(!attempted){PackControls.prepare(client);attempted=true;}
@@ -182,16 +182,22 @@ public final class GravesAndGloryClient implements ClientModInitializer {
     /** A packet buffer as LevelMath's pure reader: readBoolean, readByte and readString (64 characters at most, a troop id). */
     static LevelMath.In wire(PacketByteBuf b){return new LevelMath.In(){public boolean bool(){return b.readBoolean();}public int b(){return b.readByte();}public String str(){return b.readString(64);}};}
     private static boolean toolbarFreed;
-    /** Vanilla's creative hotbar activators sit on C (save) and X (load), the keys Follow me and Charge now use. Only one binding per key receives presses, so the order key would
-     *  not fire; once per launch those two are unbound when they still hold C or X (a player who moved them keeps their choice). */
-    static void freeToolbarKeys(MinecraftClient client){
-        if(toolbarFreed||client.options==null)return;toolbarFreed=true;boolean changed=false;
+    /** Vanilla's creative hotbar activators sit on C (save) and X (load), the keys Follow me and Charge now use, and only one binding per key receives
+     *  presses. On the FIRST launch ever (no flag file yet) those two are unbound if they still hold C or X; the flag file records it, so later launches
+     *  never touch them and a player who rebinds them back to C or X keeps that choice. Returns whether a binding was changed. */
+    public static boolean freeToolbarKeys(MinecraftClient client,Path flag){
+        if(client.options==null||Files.exists(flag))return false;
+        boolean changed=false;
         for(KeyBinding k:new KeyBinding[]{client.options.saveToolbarActivatorKey,client.options.loadToolbarActivatorKey}){
             String bound=k.getBoundKeyTranslationKey();
             if(bound.equals("key.keyboard.c")||bound.equals("key.keyboard.x")){client.options.setKeyCode(k,InputUtil.UNKNOWN_KEY);changed=true;}
         }
         if(changed){KeyBinding.updateKeysByCode();client.options.write();}
+        try{Files.createDirectories(flag.getParent());Files.writeString(flag,"toolbarKeysFreed=true\n");}catch(Exception e){System.err.println("[Graves and Glory] Could not record the first-launch key flag: "+e.getMessage());}
+        return changed;
     }
+    /** The file whose presence says the first launch has happened. */
+    public static Path toolbarFlag(){return net.fabricmc.loader.api.FabricLoader.getInstance().getConfigDir().resolve("gravesandglory-client.properties");}
     static KeyBinding key(String name,int key){return KeyBindingHelper.registerKeyBinding(new KeyBinding("key.gravesandglory."+name,InputUtil.Type.KEYSYM,key,"category.gravesandglory"));}
     /** Set by a disconnect, which may come on the network thread; the client tick clears the battle HUD's records once no world is
      *  left (resetHud). */

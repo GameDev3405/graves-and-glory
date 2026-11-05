@@ -48,8 +48,8 @@ public final class CommandMode {
     }
     public static boolean active(){return !pending.isEmpty();}
     static int count(String id){return groups.stream().filter(g->id.equals("all")||id.equals(g.id())).mapToInt(Group::count).sum();}
-    static void begin(String order){if(!GravesAndGloryClient.battleActive())return;pending=order;facingSet=false;MinecraftClient.getInstance().setScreen(null);}
-    public static boolean cancel(){if(!active())return false;pending="";destination=null;return true;}
+    static void begin(String order){if(!GravesAndGloryClient.battleActive())return;CommandSelection.clearAimKeep();pending=order;facingSet=false;MinecraftClient.getInstance().setScreen(null);}
+    public static boolean cancel(){CommandSelection.clearAimKeep();if(!active())return false;pending="";destination=null;return true;}
     /** A disconnect: no order stays aimed, and the cards' groups and loss flashes go, so the next server's first snapshot is compared
      *  with nothing (noteGroups would flash a card for the old battle's losses). The rest of the command state starts as a new
      *  client's: the map's pings, the clock, the whole army selected (a group the next world lacks would leave no card selected),

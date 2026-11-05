@@ -1,5 +1,6 @@
 package gg.gravesandglory.cmdui;
 
+import gg.gravesandglory.CommandNet;
 import gg.gravesandglory.CommandSelection;
 import gg.gravesandglory.CommandUiChecks;
 import gg.gravesandglory.GravesAndGloryClient;
@@ -19,6 +20,8 @@ public final class KeysSuite implements CommandUiChecks.Suite {
     UUID id;
     volatile Snap infBefore, rngBefore, followed;
     String lastBefore = "";
+    String aimedCharge = "", aimedHold = "";
+    boolean chargeCooling;
     boolean openedByKey, closedByKey, openedNoScreen, shiftStayedOpen;
 
     static KeyBinding find(MinecraftClient c, String translationKey) {
@@ -52,11 +55,11 @@ public final class KeysSuite implements CommandUiChecks.Suite {
             boolean noRelic = GravesAndGloryClient.lastSent.equals(lastBefore);
             CommandSelection.setPanelOpen(false); CommandSelection.select("infantry", false);
             CommandUiChecks.press(c, c.options.hotbarKeys[1]);
-            CommandUiChecks.report("cu-keys-number-picks-part-open", picked && noRelic, "panel open, key 2: selection " + CommandSelection.selected() + ", lastSent before '" + lastBefore + "' after '" + GravesAndGloryClient.lastSent + "'");
+            CommandUiChecks.report("cu-keys-number-picks", picked && noRelic, "panel open, key 2: selection " + CommandSelection.selected() + ", lastSent before '" + lastBefore + "' after '" + GravesAndGloryClient.lastSent + "'");
         }
         if (tick == 72) {
             boolean unchanged = CommandSelection.selected().equals(List.of("infantry"));
-            CommandUiChecks.report("cu-keys-number-picks", unchanged, "panel closed, key 2: selection " + CommandSelection.selected() + " (unchanged " + unchanged + "); the open-panel half was reported above");
+            CommandUiChecks.report("cu-keys-number-closed", unchanged, "panel closed, key 2: selection " + CommandSelection.selected() + " (unchanged " + unchanged + ")");
         }
 
         // Attack with the panel closed acts on the last selection only
@@ -89,7 +92,54 @@ public final class KeysSuite implements CommandUiChecks.Suite {
             boolean ok = followed != null && followed.order().equals("follow") && r != null && r.order().equals("retreat") && r.thenFollow();
             CommandUiChecks.report("cu-keys-follow-retreat", ok, "C stored " + followed + "; V stored " + r);
         });
-        if (tick == 146) CommandUiChecks.finish(c);
+
+        // First launch only: the vanilla toolbar keys are freed once, then a flag file keeps later launches (and a player's rebinding) alone
+        if (tick == 43) toolbarFlag(c);
+
+        // Several selected groups: one packet each, one every few ticks (the server takes one order per command gap)
+        if (tick == 146) { CommandSelection.select("infantry", false); CommandSelection.select("ranged", true); CommandUiChecks.press(c, find(c, "key.gravesandglory.follow")); }
+        if (tick == 176) CommandUiChecks.server(c, b -> {
+            Snap inf = OrderIntakeProbe.snap(b, id, "infantry"), rng = OrderIntakeProbe.snap(b, id, "ranged");
+            CommandUiChecks.report("cu-keys-multi-select", inf != null && inf.order().equals("follow") && rng != null && rng.order().equals("follow"),
+                "infantry+ranged selected, C: infantry " + (inf == null ? null : inf.order()) + " at " + (inf == null ? 0 : inf.issued()) + ", ranged " + (rng == null ? null : rng.order()) + " at " + (rng == null ? 0 : rng.issued()));
+        });
+
+        // Charge: X starts the aim (no enemy needed), Enter sends it; the server stores a direction. Then X within the cooldown ends any aim.
+        if (tick == 180) { CommandSelection.select("infantry", false); CommandSelection.setPanelOpen(false); CommandUiChecks.server(c, b -> OrderIntakeProbe.resetCharge(b, id)); }
+        if (tick == 184) CommandUiChecks.press(c, find(c, "key.gravesandglory.charge"));
+        if (tick == 188) { aimedCharge = CommandSelection.aiming(); CommandUiChecks.press(c, find(c, "key.gravesandglory.confirm")); }
+        if (tick == 200) CommandUiChecks.server(c, b -> {
+            Snap a = OrderIntakeProbe.snap(b, id, "infantry");
+            CommandUiChecks.report("cu-keys-charge-aim", "charge".equals(aimedCharge) && a != null && a.order().equals("charge") && a.chargeDir() != null,
+                "X aimed '" + aimedCharge + "', Enter stored " + a + " (no enemy aimed)");
+        });
+        if (tick == 206) { chargeCooling = CommandNet.Client.chargeTicksLeft() > 0; CommandSelection.order("hold", false); aimedHold = CommandSelection.aiming(); CommandUiChecks.press(c, find(c, "key.gravesandglory.charge")); }
+        if (tick == 212) {
+            CommandUiChecks.report("cu-keys-charge-refused-cancels-aim", chargeCooling && "hold".equals(aimedHold) && CommandSelection.aiming().isEmpty(),
+                "client charge cooldown running=" + chargeCooling + "; hold aim before X '" + aimedHold + "', after X '" + CommandSelection.aiming() + "'");
+        }
+        if (tick == 216) CommandUiChecks.finish(c);
+    }
+
+    /** freeToolbarKeys: a fresh flag path unbinds a toolbar key on C; with the flag now written a second call leaves a re-bound C alone. */
+    void toolbarFlag(MinecraftClient c) {
+        var save = c.options.saveToolbarActivatorKey;
+        var key = net.minecraft.client.util.InputUtil.fromTranslationKey("key.keyboard.c");
+        java.nio.file.Path flag = java.nio.file.Path.of(System.getProperty("java.io.tmpdir"), "gg-toolbar-flag-" + System.nanoTime() + ".properties");
+        boolean real = java.nio.file.Files.exists(GravesAndGloryClient.toolbarFlag());
+        try {
+            c.options.setKeyCode(save, key); net.minecraft.client.option.KeyBinding.updateKeysByCode();
+            boolean first = GravesAndGloryClient.freeToolbarKeys(c, flag);
+            boolean freed = save.isUnbound(), written = java.nio.file.Files.exists(flag);
+            c.options.setKeyCode(save, key); net.minecraft.client.option.KeyBinding.updateKeysByCode();
+            boolean second = GravesAndGloryClient.freeToolbarKeys(c, flag);
+            boolean kept = save.getBoundKeyTranslationKey().equals("key.keyboard.c");
+            CommandUiChecks.report("cu-keys-first-launch-only", first && freed && written && !second && kept && real,
+                "no flag: unbound C=" + (first && freed) + ", flag written=" + written + "; flag present: left a re-bound C alone=" + (!second && kept) + "; this launch's own flag file existed=" + real);
+        } finally {
+            try { java.nio.file.Files.deleteIfExists(flag); } catch (Exception ignored) { }
+            c.options.setKeyCode(save, net.minecraft.client.util.InputUtil.UNKNOWN_KEY); net.minecraft.client.option.KeyBinding.updateKeysByCode();
+        }
     }
 
     /** Every command key is bound to its default: Attack Z, Charge X, Follow me C, Retreat V, Formation B, panel R, Enter, Backspace; Attack is no longer G. */

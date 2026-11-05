@@ -101,7 +101,7 @@ Move and Hold are removed. Formation covers both.
 - **Outline sharing:** the aiming preview exists only on your own screen. When you confirm, the server sends teammates the outline. They see it faintly until the troops arrive, or for at most 10 seconds.
 - **Charge cooldown:** shown as a darkened pennant with a sweep.
 - **Charge camera:** server-authoritative orders. The overhead camera is client-only.
-- **Key conflicts:** in vanilla, C and X are the creative toolbar save and load keys, so they clash in creative. Players can rebind them in Controls.
+- **Key conflicts:** in vanilla, C and X are the creative toolbar save and load keys, so they clash in creative. Players can rebind them in Controls. On the very first launch only (a flag file in the config folder records it) the mod unbinds the vanilla save and load toolbar keys if they still sit on C or X; later launches never touch them, so a player who binds them back keeps that choice.
 - **Bots and AI commanders** use the same order set.
 - **Sounds:** order sounds reuse the existing horn_charge, horn_rally and horn_rout, plus candidates from question 107. Missing sounds come from the audio-cue pipeline.
 - **Numbers:** the bonus damage and knockback, the Shield wall arrow block and speed penalty, and the Loose spacing live in Spec (tools/preflight.py), so playtesters can tune them.

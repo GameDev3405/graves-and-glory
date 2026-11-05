@@ -5,6 +5,7 @@ import net.minecraft.client.util.InputUtil;
 import net.minecraft.util.math.Vec3d;
 import org.lwjgl.glfw.GLFW;
 
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -30,6 +31,10 @@ public final class CommandSelection {
     private static boolean panelOpen, trayOpen;
     /** Set when the order that began the current aim was given with Shift held, so confirming it leaves the panel open. */
     private static boolean aimKeepOpen;
+    /** Packets for the selected groups after the first: the server takes one order per commandCooldownTicks, so a multi-group order goes out one group every GAP ticks. */
+    private static final ArrayDeque<Runnable> queued = new ArrayDeque<>();
+    private static int queueDelay;
+    private static final int GAP = 5;
 
     /** The selected group ids in the order they were picked; ["all"] is the whole army. A copy. */
     public static List<String> selected() { return List.copyOf(selected); }
@@ -91,6 +96,7 @@ public final class CommandSelection {
     public static void order(String action, boolean keepOpen) {
         var c = MinecraftClient.getInstance();
         if (c.player == null || !GravesAndGloryClient.battleActive()) return;
+        aimKeepOpen = false; queued.clear(); // a new order supersedes the last one's aim flag and any packets still waiting
         switch (action) {
             case "attack", "follow", "retreat" -> {
                 CommandMode.cancel();
@@ -98,7 +104,7 @@ public final class CommandSelection {
                 afterOrder(keepOpen);
             }
             case "charge" -> {
-                if (CommandNet.Client.chargeTicksLeft() > 0) { CommandMode.refuse("Charge ready in " + (CommandNet.Client.chargeTicksLeft() + 19) / 20 + "s"); return; }
+                if (CommandNet.Client.chargeTicksLeft() > 0) { CommandMode.cancel(); CommandMode.refuse("Charge ready in " + (CommandNet.Client.chargeTicksLeft() + 19) / 20 + "s"); return; }
                 trayOpen = false;
                 CommandMode.begin("charge");
                 aimKeepOpen = keepOpen;
@@ -126,17 +132,34 @@ public final class CommandSelection {
 
     /** What an order that has been sent does to the panel: its tray folds, and it slides shut unless Shift was held. */
     static void afterOrder(boolean keepOpen) {
-        trayOpen = false;
+        trayOpen = false; aimKeepOpen = false;
         if (!keepOpen) panelOpen = false;
     }
+
+    /** CommandMode.cancel and begin: an aim that ends or starts anew drops its Shift flag. */
+    static void clearAimKeep() { aimKeepOpen = false; }
 
     /** Whether the order that began the aim keeps the panel open when confirmed (Shift at either moment). */
     static boolean keepOpenOnConfirm() { return aimKeepOpen || shiftHeld(MinecraftClient.getInstance()); }
 
-    /** Sends one tactical_v1 packet per selected group ("all" is one packet to the whole army). */
+    /** Sends one tactical_v1 packet per selected group ("all" is one packet to the whole army). The first goes at once and the rest follow
+     *  every GAP ticks (the server's order gap). A Charge's start is each group's own centre; Attack's target the server takes from the group's
+     *  centre, Follow me and Retreat from the player, so `at` matters for hold only. */
     static void issueSelected(String action, String formation, Vec3d at, float yaw, int target) {
+        queued.clear();
         if (selected.contains("all")) { CommandMode.issue("all", action, formation, at, yaw, target); return; }
-        for (String id : selected) CommandMode.issue(id, action, formation, at, yaw, target);
+        boolean first = true;
+        for (String id : selected) {
+            Vec3d where = action.equals("charge") ? groupCentre(id, at) : at;
+            if (first) { CommandMode.issue(id, action, formation, where, yaw, target); queueDelay = GAP; first = false; }
+            else queued.add(() -> CommandMode.issue(id, action, formation, where, yaw, target));
+        }
+    }
+
+    /** One group's living centre from the last state packet, or the fallback when the group has no living members there. */
+    private static Vec3d groupCentre(String id, Vec3d fallback) {
+        for (var g : CommandMode.groups) if (g.id().equals(id) && g.count() > 0) return new Vec3d(g.cx(), fallback.y, g.cz());
+        return fallback;
     }
 
     /** The living centre of the selected groups from the last state packet (member-weighted), or the player's position when none is known. */
@@ -160,13 +183,14 @@ public final class CommandSelection {
     /** Every client tick in battle: the panel cannot stay open once the battle is over. */
     static void tick() {
         if (panelOpen && !GravesAndGloryClient.battleActive()) setPanelOpen(false);
+        if (!queued.isEmpty() && --queueDelay <= 0) { queued.poll().run(); queueDelay = GAP; }
     }
 
     /** A disconnect or a new round: panel and tray shut, no aim, the whole army selected, so a stale selection or a stale charge aim never carries over. */
     public static void reset() {
         CommandMode.cancel();
         selected.clear(); selected.add("all");
-        panelOpen = false; trayOpen = false; aimKeepOpen = false;
+        panelOpen = false; trayOpen = false; aimKeepOpen = false; queued.clear();
         mirror();
     }
 }
