@@ -71,6 +71,7 @@ def build(name, length, loop, timeline, lags=None, step=STEP, clearance=True):
     plume are simulated."""
     lags = lags or {}
     c = Clip(name, length, loop)
+    c.bones, c.ground_speed = CR.BONES, 0.0
     c.beats = [(t, label) for t, label, _ in timeline]
     for b in ('body', 'chest'):
         c.rot[b] = [(t,) + tuple(float(v) for v in p[b]) for t, _, p in timeline]
@@ -98,23 +99,7 @@ def build(name, length, loop, timeline, lags=None, step=STEP, clearance=True):
 
     # 1. the legs and the head: they do not depend on the arms
     out = {k: [] for k in BAKED}
-    guess = {'right': (0.0, 0.0, 10.0), 'left': (0.0, 0.0, 10.0)}
-    c.ik_error = 0.0
-    for t in times:
-        rot, pos = c.at(t)
-        for side in ('right', 'left'):
-            hip, knee, foot, err = CR.solve_leg(side, pos['root'], CR.pchip(track[side[0] + '_place'], t), guess[side])
-            guess[side] = (hip[0], hip[2], knee)
-            c.ik_error = max(c.ik_error, err)
-            out[side + '_leg'].append((t,) + hip)
-            out[side + '_shin'].append((t, knee, 0.0, 0.0))
-            out[side + '_foot'].append((t,) + foot)
-        pose = CR.world(rot, pos)
-        head = CR.mc_euler(pose['chest'][:3, :3].T @ CR.mc_rotation(*CR.pchip(track['look'], t)))
-        out['head'].append((t,) + tuple(max(-m, min(m, v)) for v, m in zip(head, NECK)))
-    for k in ('right_leg', 'right_shin', 'right_foot', 'left_leg', 'left_shin', 'left_foot', 'head'):
-        _unwrap(out[k])
-        c.rot[k] = out[k]
+    bake_legs_and_head(c, track, times)
 
     def arms(t, cs, ch, prev):
         s = CR.aim_arm(*CL.pushed(sword_aims(t), 'oathblade', cs), at(('sword', 3), t, lh)[0], prev=prev.get('right'))
@@ -169,6 +154,29 @@ def build(name, length, loop, timeline, lags=None, step=STEP, clearance=True):
     spring_follow(c, 'plume', 'head', (0.6, 0.6), stiffness=140, damping=10, rest=(0, 0), passes=3 if loop else 2,
                   bones=CR.BONES)
     return c
+
+
+def bake_legs_and_head(c, track, times, bones=None):
+    """Solves and bakes the legs onto the placed feet (`r_place`, `l_place`) and the head onto `look`, every tick in
+    `times`. Sets c.ik_error (the worst ankle miss)."""
+    out = {k: [] for k in ('right_leg', 'right_shin', 'right_foot', 'left_leg', 'left_shin', 'left_foot', 'head')}
+    guess = {'right': (0.0, 0.0, 10.0), 'left': (0.0, 0.0, 10.0)}
+    c.ik_error = 0.0
+    for t in times:
+        rot, pos = c.at(t)
+        for side in ('right', 'left'):
+            hip, knee, foot, err = CR.solve_leg(side, pos['root'], CR.pchip(track[side[0] + '_place'], t), guess[side])
+            guess[side] = (hip[0], hip[2], knee)
+            c.ik_error = max(c.ik_error, err)
+            out[side + '_leg'].append((t,) + hip)
+            out[side + '_shin'].append((t, knee, 0.0, 0.0))
+            out[side + '_foot'].append((t,) + foot)
+        pose = CR.world(rot, pos, bones)
+        head = CR.mc_euler(pose['chest'][:3, :3].T @ CR.mc_rotation(*CR.pchip(track['look'], t)))
+        out['head'].append((t,) + tuple(max(-m, min(m, v)) for v, m in zip(head, NECK)))
+    for k, v in out.items():
+        _unwrap(v)
+        c.rot[k] = v
 
 
 def _unwrap(keys):
@@ -383,8 +391,10 @@ def advance_timeline():
 
 
 def advance():
-    return build('combat_advance', 1.2, True, advance_timeline(),
-                 lags={'forearm': 0.05, 'hand': 0.09, 'shield_forearm': 0.06})
+    c = build('combat_advance', 1.2, True, advance_timeline(),
+              lags={'forearm': 0.05, 'hand': 0.09, 'shield_forearm': 0.06})
+    c.ground_speed = ADVANCE_SPEED
+    return c
 
 
 def block_timeline():

@@ -1,0 +1,459 @@
+"""The Thornhide archer on the articulated rig: the Antlerbow in the left hand, an arrow in the right, a hip quiver.
+
+  archer_idle   loop   low ready: an arrow nocked, the bow canted low across the hips, the weight rocking, the eyes
+                       hunting left and right, the cloak, feathers and loincloth swaying
+  archer_shoot  once   raise, draw to the anchor, settle and aim, loose (the string snaps and shivers, the arrow flies,
+                       the draw hand follows through past the jaw), then reach to the quiver, draw an arrow, nock it,
+                       back to low ready
+  archer_kite   loop   backpedalling at low ready, the back foot reaching back first, the eyes on the threat
+  archer_hit    once   struck: the head snaps, the bow flies wide, a stumble back, the arrow kept nocked, recover
+
+The hands are *placed*, not aimed. The bow's grip sits at `bow_at` (the root's frame), turned by `aim` (yaw,
+elevation, cant); poses are written by where the nock should be (`bow_for`). The draw hand holds the arrow's nock on the string (`on_string` 1) or goes where the clip sends it
+(`hand_at`, in the root's frame: the follow-through, the quiver, the nocking). Both arms reach their hands with an
+elbow pulled toward a pole (`r_pole`, `l_pole`, chest frame), and both wrists are solved so the bow and the arrow face
+where they should. The string's position (`draw`) bends the bow; after the loose a damped vibration takes over, and
+the arrow leaves the hand and flies.
+"""
+import math
+
+import numpy as np
+
+from . import combat_rig as CR
+from . import rig
+from .combat_clips import NECK, _cape_clamp, _unwrap, bake_legs_and_head, seq
+from .rig import Clip, spring_follow
+from . import accessories as AC
+
+STEP = 0.025
+ROOT_REF = np.array([0.0, -1.0, 0.0])     # bow_at, hand_at and nocks are written for the root here (low ready)
+
+# the follow bones: the cloak from the chest, the feather fan from the head, the loincloth from the hips
+BONES = CR.bones_with({'cape': ('chest', (0, 21, 3.6)), 'plume': ('head', (-5.5, 28, 1.5)),
+                       'loin': ('body', (0, 10.5, -3.3))})
+
+# where the items sit in the fists (hand space) and on the hips
+GRIP_R, GRIP_L = np.array([6.0, 12.5, -1.0]), np.array([-6.0, 12.5, -1.0])
+
+
+def _m(R, t):
+    M = np.eye(4)
+    M[:3, :3] = R
+    M[:3, 3] = t
+    return M
+
+
+# A bow is gripped across the fist: its arrow side (bow x) runs on down the forearm, its upper limb (bow y) out past the
+# knuckles. The arrow leaves the draw fingers along the forearm. So with a straight wrist the forearm points down the
+# shot.
+BOW_LOCAL = _m(np.column_stack([(0, -1, 0), (0, 0, -1), (1, 0, 0)]).astype(float), GRIP_L)
+ARROW_LOCAL = _m(rig.rx(math.radians(180)), GRIP_R)
+# tilted back and out, as a hip quiver hangs, so an arrow drawn out along it rises up and away from the head
+QUIVER_LOCAL = _m(rig.rz(math.radians(-24)) @ rig.rx(math.radians(20)), np.array([6.6, 7.8, 1.2]))
+
+NOCK = np.array([0.0, 0.25, -0.1])       # the nock on the string, bow space (x set by the draw)
+REST = np.array([1.2, 0.25, -1.6])       # where the shaft lies on the bow, beside the grip
+FLIGHT_SPEED = 160.0
+DRAW_FORE = 0.6                          # how hard the draw forearm is pulled in line with the nocked arrow                     # px a second for the flying arrow (it is off the frame in a few frames)
+
+
+def unit(v):
+    v = np.asarray(v, float)
+    return v / np.linalg.norm(v)
+
+
+def aim_dir(yaw, elev):
+    """A direction from yaw (degrees, positive toward the troop's right, +x) and elevation (degrees up)."""
+    y, e = math.radians(yaw), math.radians(elev)
+    return np.array([math.sin(y) * math.cos(e), math.sin(e), -math.cos(y) * math.cos(e)])
+
+
+def bow_frame(yaw, elev, cant):
+    """The bow's rotation in the world: its x along the aim, its y (the upper limb) up, canted `cant` degrees (the
+    upper limb toward the troop's right)."""
+    x = aim_dir(yaw, elev)
+    up = np.array([0.0, 1.0, 0.0])
+    y0 = unit(up - np.dot(up, x) * x)
+    c, s = math.cos(math.radians(cant)), math.sin(math.radians(cant))
+    y = c * y0 - s * np.cross(x, y0)
+    return np.column_stack([x, y, np.cross(x, y)])
+
+
+def vibrate(t):
+    """The string after the loose, t seconds on: it snaps past brace and shivers back."""
+    return AC.BRACE + 0.75 * math.exp(-t * 9.0) * math.sin(2 * math.pi * 11 * t + 0.4) * min(1.0, t / 0.012)
+
+
+def build(name, length, loop, timeline, loose=None, ground_speed=0.0, step=STEP):
+    c = Clip(name, length, loop)
+    c.bones, c.ground_speed, c.loose = BONES, ground_speed, loose
+    c.beats = [(t, label) for t, label, _ in timeline]
+    for b in ('body', 'chest'):
+        c.rot[b] = [(t,) + tuple(float(v) for v in p[b]) for t, _, p in timeline]
+    c.pos['root'] = [(t,) + tuple(float(v) for v in p['root']) for t, _, p in timeline]
+    keys = ('r_place', 'l_place', 'look', 'bow_at', 'aim', 'draw', 'on_string', 'hand_at', 'arrow_dir', 'r_pole', 'l_pole')
+    track = {k: [(t,) + tuple(float(v) for v in np.atleast_1d(p[k])) for t, _, p in timeline] for k in keys}
+    c.track = track
+    c.arrow_keys = [(t, bool(p['arrow'])) for t, _, p in timeline]
+    n = int(round(length / step))
+    times = [round(i * step, 4) for i in range(n + 1)]
+    bake_legs_and_head(c, track, times, BONES)
+
+    def tr(k, t):
+        v = CR.pchip(track[k], t % length if loop else t)
+        return v if len(v) > 1 else v[0]
+    guess = {'right': ((0.2, -1, -0.3), (0.0, 0.2, -1)), 'left': ((-0.2, -1, -0.3), (0.0, 0.2, -1))}
+    prev = {'right': None, 'left': None}
+    for pass_ in range(2 if loop else 1):      # a loop solves twice, the second pass starting where the first ended
+        out = {k: [] for k in ('right_arm', 'right_forearm', 'right_hand', 'left_arm', 'left_forearm', 'left_hand')}
+        c.draws, c.reach_error, c.items = [], 0.0, []
+        c.side_error = {'left': 0.0, 'right': 0.0}
+        c.misses = []
+        if pass_ == 0:          # settle the solver on the first pose before baking anything
+            for _ in range(12):
+                _solve_tick(c, times[0], tr, loose, {k: [] for k in out}, guess, {'right': None, 'left': None})
+            c.draws, c.reach_error, c.items, c.misses = [], 0.0, [], []
+            c.side_error = {'left': 0.0, 'right': 0.0}
+        for t in times:
+            _solve_tick(c, t, tr, loose, out, guess, prev)
+    for k, v in out.items():
+        _unwrap(v)
+        c.rot[k] = v
+    spring_follow(c, 'cape', 'chest', (1.0, 1.0), stiffness=60, damping=8, rest=(3, 0), clamp=_cape_clamp(c),
+                  passes=3 if loop else 2, bones=BONES)
+    spring_follow(c, 'plume', 'head', (0.8, 0.8), stiffness=110, damping=8, rest=(0, 0), passes=3 if loop else 2,
+                  bones=BONES)
+    spring_follow(c, 'loin', 'body', (1.0, 1.0), stiffness=80, damping=9, rest=(0, 0), clamp=_loin_clamp(c),
+                  passes=3 if loop else 2, bones=BONES)
+    c.extra_pose = lambda pose, t: extra_pose(c, pose, t)
+    c.report = lambda: ['hands on their targets: worst %.3f px; string draw %.2f to %.2f px' %
+                        (c.reach_error, min(d for _, d in c.draws), max(d for _, d in c.draws))]
+    return c
+
+
+
+def _solve_tick(c, t, tr, loose, out, guess, prev):
+    """One tick of the arms: place the bow and the draw hand, reach both, solve both wrists."""
+    rot, pos = c.at(t)
+    pose = CR.world(rot, pos, BONES)
+    chest = pose['chest']
+    # the string
+    d = vibrate(t - loose) if loose is not None and t >= loose and tr('on_string', t) < 0.5 else tr('draw', t)
+    # the bow (positions ride with the root: they are written for the root at ROOT_REF)
+    shift = np.array([-pos['root'][0], pos['root'][1], pos['root'][2]]) - ROOT_REF
+    D = bow_frame(*tr('aim', t))
+    P = np.array(tr('bow_at', t)) + shift
+    nock = P + D @ (NOCK + np.array([d, 0, 0]))
+    rest = P + D @ REST
+    # the draw hand: on the nock, or where the clip sends it
+    w = float(np.clip(tr('on_string', t), 0, 1))
+    free = np.array(tr('hand_at', t)) + shift
+    Pa = w * nock + (1 - w) * free
+    ya = unit(w * unit(rest - nock) + (1 - w) * aim_dir(*tr('arrow_dir', t)))
+    za = unit(D[:, 2] - np.dot(D[:, 2], ya) * ya)
+    A = np.column_stack([np.cross(ya, za), ya, za])
+    c.items.append((t, d, P, D, Pa, A))
+    c.draws.append((t, d))
+    # reach both hands: the wrist pivots where the items need them
+    for side, item_P, item_R, local in (('left', P, D, BOW_LOCAL), ('right', Pa, A, ARROW_LOCAL)):
+        H = item_R @ local[:3, :3].T
+        piv = np.array(BONES[side + '_hand'][1], float)
+        target = item_P - H @ (local[:3, 3] - piv)
+        pole = chest[:3, :3] @ np.asarray(tr(side[0] + '_pole', t), float)
+        # the bow arm's forearm points down the shot; the draw arm's lies along the arrow as far as it is nocked
+        # (the pull fades with the hand's hold on the string, so nothing switches)
+        hint, weight = (item_R[:, 0], 0.6) if side == 'left' else (item_R[:, 1], DRAW_FORE * w)
+        u, f, err, swivel = CR.reach_arm(side, chest, target, pole, guess[side], BONES,
+                                         fore=hint if weight > 1e-3 else None, fore_weight=weight,
+                                         prev_swivel=guess.get(side + '_swivel'))
+        guess[side], guess[side + '_swivel'] = (u, f), swivel
+        if side == 'right' and w > 0.98 or side == 'left':
+            c.reach_error = max(c.reach_error, err)
+            c.side_error[side] = max(c.side_error[side], err)
+            if err > 0.1:
+                c.misses.append((t, side, round(err, 2)))
+        a = CR.aim_arm(u, f, prev=prev[side])
+        prev[side] = a
+        _, F = CR._chain(side, chest, a['arm'], a['forearm'][0], BONES)
+        hand = CR.closest_euler(F[:3, :3].T @ H, out[side + '_hand'][-1][1:] if out[side + '_hand'] else None)
+        for bone, v in ((side + '_arm', a['arm']), (side + '_forearm', a['forearm']), (side + '_hand', hand)):
+            out[bone].append((t,) + tuple(float(x) for x in v))
+
+
+def _loin_clamp(clip):
+    """The loincloth hangs in front of the thighs: it may swing forward, never back into a thigh."""
+    def run(t, pitch, roll):
+        rot, _ = clip.at(t)
+        body = rot.get('body', (0, 0, 0))[0]
+        thigh = min(0.0, rot.get('right_leg', (0, 0, 0))[0], rot.get('left_leg', (0, 0, 0))[0])
+        return min(pitch, 0.9 * thigh - 2.0 - body), max(-25.0, min(25.0, roll))
+    return run
+
+
+def arrow_visible(clip, t):
+    tt = t % clip.length if clip.loop else t
+    v = clip.arrow_keys[0][1]
+    for kt, kv in clip.arrow_keys:
+        if kt <= tt + 1e-9:
+            v = kv
+    return v
+
+
+def item_state(clip, t):
+    """(draw, bow grip, bow rotation, arrow nock, arrow rotation) at t, between the baked ticks."""
+    tt = t % clip.length if clip.loop else min(t, clip.length)
+    i = min(len(clip.items) - 2, int(tt / STEP))
+    a, b = clip.items[i], clip.items[i + 1]
+    k = (tt - a[0]) / (b[0] - a[0])
+    lerp = lambda x, y: (1 - k) * x + k * y
+    return lerp(a[1], b[1]), lerp(a[2], b[2]), a[3] if k < 0.5 else b[3], lerp(a[4], b[4]), a[5] if k < 0.5 else b[5]
+
+
+def flight(clip, t):
+    """The loosed arrow's world matrix while it is in the air (None otherwise)."""
+    if clip.loose is None or t < clip.loose or t > clip.loose + 0.35:
+        return None
+    _, P, D, _, _ = item_state(clip, clip.loose)
+    nock0 = P + D @ (NOCK + np.array([AC.FULL, 0, 0]))
+    dirn = unit(P + D @ REST - nock0)
+    za = unit(D[:, 2] - np.dot(D[:, 2], dirn) * dirn)
+    M = np.eye(4)
+    M[:3, :3] = np.column_stack([np.cross(dirn, za), dirn, za])
+    M[:3, 3] = nock0 + dirn * FLIGHT_SPEED * (t - clip.loose)
+    return M
+
+
+def extra_pose(clip, pose, t):
+    """Pseudo-bones for the items, so the clipping check sees where they really are: 'bow' and 'arrow' (the arrow far
+    away while it is not in the hand), 'quiver' on the hips."""
+    pose = dict(pose)
+    pose['bow'] = pose['left_hand']
+    pose['arrow'] = pose['right_hand'] if arrow_visible(clip, t) else np.diag([1, 1, 1, 1.0]) @ _far()
+    pose['quiver'] = pose['body']
+    return pose
+
+
+def _far():
+    M = np.eye(4)
+    M[:3, 3] = (0, -1000, 0)
+    return M
+
+
+# ---- poses ------------------------------------------------------------------------------------
+# Positions: bow_at and hand_at in the root's frame (Blockbench axes, the feet at y 0). Directions: aim = (yaw, elevation, cant), arrow_dir = (yaw, elevation) in degrees; poles in the chest's
+# frame.
+
+STANCE = dict(root=(0.0, -1.0, 0.0), r_place=(2.2, 3.0, 0, 65, 0), l_place=(2.0, -3.0, 0, 25, 0))
+
+# low ready: the arrow nocked, the bow canted and pointed down and ahead of the lead foot
+READY_AIM, READY_NOCK = (-25, -50, 35), (0.0, 18.0, -5.0)
+READY = dict(
+    STANCE, body=(4, 25, 0), chest=(4, 10, 0), look=(4, 0, 0),
+    bow_at=None, aim=READY_AIM, draw=AC.BRACE, on_string=1.0, hand_at=READY_NOCK, arrow_dir=(-25, -50), arrow=1,
+    r_pole=(1, -0.5, 0.3), l_pole=(-1, -0.4, 0.2))
+
+# full draw: the bow arm nearly straight at the target, the string at the chin, the draw elbow up and back
+SHOT_AIM, SHOT_NOCK = (0, 0, 10), (1.5, 24.0, -4.0)
+
+
+def bow_for(nock, aim, draw):
+    """The bow grip that puts the string's nock at `nock` (root frame) with the bow turned by `aim` and the string at
+    `draw`."""
+    return tuple(np.asarray(nock, float) - bow_frame(*aim) @ (NOCK + np.array([draw, 0.0, 0.0])))
+
+
+READY['bow_at'] = bow_for(READY_NOCK, READY_AIM, AC.BRACE)
+SHOT_BOW = bow_for(SHOT_NOCK, SHOT_AIM, AC.FULL)
+def P(base=None, **kw):
+    p = dict(base or READY)
+    p.update(kw)
+    return p
+
+
+def _add(a, b):
+    return tuple(float(x) + float(y) for x, y in zip(a, b))
+
+
+def _ready_with(**kw):
+    """READY with the bow and nock moved, keeping the arrow on the string."""
+    p = dict(READY)
+    aim = kw.pop('aim', READY_AIM)
+    nock = kw.pop('nock', READY_NOCK)
+    draw = kw.pop('draw', AC.BRACE)
+    p.update(kw, aim=aim, draw=draw, bow_at=bow_for(nock, aim, draw), hand_at=nock)
+    return p
+
+
+_QUIVER = None
+
+
+def _quiver():
+    global _QUIVER
+    if _QUIVER is None:
+        c = build('probe', 0.05, False, [(0, 'p', READY), (0.05, 'p', READY)])
+        M = CR.world(*c.at(0), BONES)['body'] @ QUIVER_LOCAL
+        _QUIVER = (tuple(rig.apply(M, (0, 10.0, 0))), tuple(unit(M[:3, 1])))
+    return _QUIVER
+
+
+def quiver_mouth():
+    """Where the quiver's fletchings stand in the root's frame at low ready (the hips barely move from it)."""
+    return _quiver()[0]
+
+
+def _down_axis():
+    """(yaw, elevation) of a direction pointing back down the quiver: an arrow being drawn out hangs that way."""
+    d = -np.array(quiver_axis())
+    return (math.degrees(math.atan2(d[0], -d[2])), math.degrees(math.asin(d[1])))
+
+
+def quiver_axis():
+    """The quiver's long axis in the root's frame (out of the mouth): an arrow is drawn out along it."""
+    return _quiver()[1]
+
+
+# ---- the clips ------------------------------------------------------------------------------------
+
+def idle_timeline():
+    """3.0 s: two breaths, the weight rocking to the lead foot and back, the bow tip drifting, the eyes checking left
+    (0.9 s) then right (2.0 s)."""
+    L, n = 3.0, 15
+    steps = []
+    for i in range(n + 1):
+        t = round(L * i / n, 4)
+        a = 2 * math.pi * i / n
+        sway, breath = math.sin(a), math.sin(2 * a)
+        look = (4 + 2 * math.sin(a), 0.0, 0.0)
+        if 0.8 <= t <= 1.4:
+            k = math.sin(math.pi * (t - 0.8) / 0.6)
+            look = (3, -28 * k, -4 * k)
+        if 1.9 <= t <= 2.5:
+            k = math.sin(math.pi * (t - 1.9) / 0.6)
+            look = (3, 22 * k, 3 * k)
+        nock = _add(READY_NOCK, (0.3 * sway, 0.35 * breath, -0.2 * sway))
+        aim = (READY_AIM[0] + 4 * math.sin(a + 0.7), READY_AIM[1] + 3 * math.sin(a), READY_AIM[2])
+        steps.append((t, 'breath' if i % 5 else 'weight %s' % ('forward' if sway > 0.5 else 'back' if sway < -0.5 else 'centre'),
+                      _ready_with(nock=nock, aim=aim, look=look,
+                                  root=(0.4 * sway, -1.0 - 0.1 * breath - 0.15 * abs(sway), -0.4 * sway),
+                                  body=(4 + 1.0 * sway, 25 + 2.0 * sway, -2.0 * sway),
+                                  chest=(4 - 1.2 * breath, 10 - 1.0 * sway, 1.0 * sway),
+                                  r_place=(2.2, 3.0, 0, 65, max(0.0, 5 * sway)))))
+    return seq(READY, steps)
+
+
+def idle():
+    return build('archer_idle', 3.0, True, idle_timeline())
+
+
+LOOSE = 1.00
+
+
+def shoot_timeline():
+    """Raise, draw, anchor, aim, loose at 1.00 s, follow through, reach to the quiver, draw an arrow, nock it."""
+    qm = quiver_mouth()
+    shot = dict(aim=SHOT_AIM, bow_at=SHOT_BOW, look=(0, 0, 0), l_pole=(-0.2, -1, 0.4), r_pole=(1, 0.4, 0.5))
+    lift_aim, lift_nock = (-10, -18, 22), (2.0, 21.0, -6.2)
+    return seq(READY, [
+        (0.00, 'low ready', {}),
+        (0.16, 'raise', dict(_ready_with(aim=lift_aim, nock=lift_nock, draw=-3.3), root=(0, -1.1, 0), body=(3, 26, 0),
+                             chest=(3, 11, 0), look=(1, 0, 0), l_pole=(-0.6, -0.8, 0.3), r_pole=(1, 0, 0.4))),
+        (0.34, 'set and draw', dict(shot, draw=-4.2, hand_at=SHOT_NOCK, body=(2, 25, 0), chest=(2, 10, 0))),
+        (0.60, 'anchor', dict(draw=AC.FULL, chest=(2, 13, 0), r_pole=(1, 0.6, 0.6))),
+        (0.70, 'settle', dict(root=(0, -1.15, 0), chest=(2, 12, 0))),
+        (0.96, 'aim', dict(draw=-6.1, chest=(2, 12.5, 0))),
+        (0.999, 'loose', dict(on_string=1.0, hand_at=SHOT_NOCK)),
+        (1.00, 'loose', dict(on_string=0.0, arrow=0)),
+        (1.08, 'follow-through', dict(hand_at=_add(SHOT_NOCK, (2.0, 0.6, 2.5)), aim=(3, -2, 12),
+                                      bow_at=_add(SHOT_BOW, (0.2, -0.6, 0.2)), chest=(2, 14, 0))),
+        (1.30, 'hold the finish', dict(hand_at=_add(SHOT_NOCK, (2.3, 0.4, 2.8)), chest=(3, 12, 0))),
+        (1.50, 'to the quiver', dict(aim=(-15, -30, 25), bow_at=bow_for((1.0, 19.5, -6.8), (-15, -30, 25), AC.BRACE),
+                                     hand_at=_add(qm, (0.5, 3.0, -1.0)), body=(4, 26, 0), chest=(4, 9, 0),
+                                     look=(8, 6, 0), l_pole=(-1, -0.4, 0.2), r_pole=(1, -0.6, 0.4))),
+        (1.62, 'grab', dict(hand_at=_add(qm, (0.0, 3.2, -0.3)), arrow=1, arrow_dir=_down_axis(), r_pole=(1, 0.3, 0.6))),
+        (1.80, 'pull clear', dict(hand_at=_add(_add(qm, 11.5 * np.array(quiver_axis())), (1.0, 0, 0)), arrow_dir=_down_axis(),
+                                  look=(10, 0, 0),
+                            r_pole=(1, 0.6, 0.6))),
+        (2.06, 'bring', dict(hand_at=_add(READY_NOCK, BRING['hand']), arrow_dir=BRING['arrow_dir'],
+                             aim=READY_AIM, bow_at=READY['bow_at'], draw=AC.BRACE, look=(6, 0, 0), r_pole=BRING['pole'],
+                             root=READY['root'], body=READY['body'], chest=READY['chest'])),
+        (2.22, 'nock', dict(on_string=1.0, hand_at=READY_NOCK, r_pole=(1, -0.5, 0.3))),
+        (2.42, 'settle', dict(root=(0, -1.05, 0), body=(4, 25, 0), chest=(4, 10, 0), look=(4, 0, 0))),
+        (2.70, 'low ready', {k: READY[k] for k in ('root', 'body', 'chest', 'look', 'r_pole', 'l_pole')}),
+    ])
+
+
+def shoot():
+    return build('archer_shoot', 2.7, False, shoot_timeline(), loose=LOOSE)
+
+
+KITE_SPEED = -4.5       # px a second: the ground slides forward under planted feet as the archer backs away
+
+
+def kite_timeline():
+    """1.2 s: the back foot reaches back (0.0 to 0.3), the lead foot follows (0.6 to 0.85), the bow held at low ready,
+    the eyes on the threat; the root dips as each foot lands and sways over the one holding the weight."""
+    v = KITE_SPEED
+
+    def back(t):            # the right foot, planted 0.3 to 1.2
+        return 4.2 + v * (t - 0.3)
+
+    def lead(t):            # the left foot, planted 0.85 to 1.8 (wrapping)
+        t = t if t >= 0.85 else t + 1.2
+        return -0.4 + v * (t - 0.85)
+    R = lambda z, lift=0.0, heel=0.0: (2.2, z, lift, 65, heel)
+    Lf = lambda z, lift=0.0, heel=0.0: (2.0, z, lift, 25, heel)
+    ready = lambda **kw: _ready_with(**kw)
+    return seq(READY, [
+        (0.00, 'back foot lifts', dict(ready(look=(4, 0, 0)), root=(-0.3, -1.5, 0.2), body=(4, 26, 1),
+                                       r_place=R(back(1.2), 0, 10), l_place=Lf(lead(0.0)))),
+        (0.15, 'reach back', dict(root=(-0.4, -1.3, 0.5), body=(3, 27, 2), r_place=R(2.2, 1.0, 0), l_place=Lf(lead(0.15)))),
+        (0.30, 'toe down', dict(root=(-0.2, -1.7, 0.9), body=(4, 26, 1), r_place=R(back(0.30), 0, -8),
+                                l_place=Lf(lead(0.30)))),
+        (0.42, 'weight back', dict(root=(0.1, -1.85, 0.7), body=(5, 25, -1), r_place=R(back(0.42)), l_place=Lf(lead(0.42), 0, 6))),
+        (0.60, 'lead foot lifts', dict(root=(0.4, -1.55, 0.4), body=(4, 24, -2), r_place=R(back(0.60)),
+                                       l_place=Lf(lead(0.60), 0, 14))),
+        (0.72, 'drag', dict(root=(0.45, -1.35, 0.2), body=(3, 24, -2), r_place=R(back(0.72)), l_place=Lf(-2.6, 0.8, 4))),
+        (0.85, 'lead foot plants', dict(root=(0.1, -1.7, 0.1), body=(4, 25, 0), r_place=R(back(0.85)), l_place=Lf(lead(0.85)))),
+        (1.00, 'settle', dict(root=(-0.2, -1.55, 0.1), body=(4, 25, 1), r_place=R(back(1.00)), l_place=Lf(lead(1.00)))),
+        (1.20, 'back foot lifts', dict(root=(-0.3, -1.5, 0.2), body=(4, 26, 1), r_place=R(back(1.2), 0, 10),
+                                       l_place=Lf(lead(1.2)))),
+    ])
+
+
+def kite():
+    return build('archer_kite', 1.2, True, kite_timeline(), ground_speed=KITE_SPEED)
+
+
+FLUNG = dict(aim=(-55, -55, 20), nock=(-1.5, 16.5, -6.0), hand=(6.5, 18.0, 0.5), arrow_dir=(30, -40))   # searched
+BRING = dict(hand=(3.0, 1.5, -3.0), arrow_dir=(0, -50), pole=(1, 0.2, 0.5))                            # searched
+
+
+def hit_timeline():
+    flung_aim, flung_nock = FLUNG['aim'], FLUNG['nock']
+    return seq(READY, [
+        (0.00, 'low ready', {}),
+        (0.02, 'struck', dict(on_string=1.0)),
+        (0.08, 'struck', dict(_ready_with(aim=flung_aim, nock=flung_nock), on_string=0.0, hand_at=FLUNG['hand'],
+                              arrow_dir=FLUNG['arrow_dir'], root=(0, -1.0, 0.9), body=(-5, 31, 4), chest=(-12, 20, 6),
+                              look=(-18, 14, 10), l_pole=(-1, 0, 0.2), r_pole=(1, -0.4, 0.4))),
+        (0.14, 'reel', dict(root=(0, -1.2, 1.3), body=(-6, 32, 5), chest=(-10, 22, 6), look=(-14, 18, 8),
+                            hand_at=(7.0, 17.0, 2.0), r_place=(2.4, 4.4, 1.0, 62, 0))),
+        (0.22, 'catch', dict(root=(0, -1.6, 1.4), body=(-1, 28, 2), chest=(-2, 16, 2), look=(-4, 8, 3),
+                             hand_at=(5.5, 15.5, 0.5), arrow_dir=(10, -55), r_place=(2.4, 5.0, 0, 60, 0))),
+        (0.32, 'fold', dict(_ready_with(aim=(-30, -45, 20), nock=(-0.5, 16.5, -6.5)), on_string=0.0,
+                            hand_at=(2.5, 16.0, -3.0), arrow_dir=(-25, -50), root=(0, -1.8, 1.4), body=(6, 26, 0),
+                            chest=(10, 8, 0), look=(10, 0, 0), r_pole=(1, -0.5, 0.3), r_place=(2.4, 5.0, 0, 60, 0))),
+        (0.46, 'gather and re-nock', dict(_ready_with(), root=(0, -1.5, 1.3), body=(5, 25, 0), chest=(6, 10, 0),
+                                          look=(4, 0, 0), r_place=(2.4, 5.0, 0, 60, 0))),
+        (0.58, 'step up', dict(root=(0, -1.2, 1.0), r_place=(2.3, 4.6, 0.9, 66, 0))),
+        (0.68, 'plant', dict(root=(0, -1.1, 0.2), r_place=STANCE['r_place'])),
+        (0.78, 'settle', dict(root=(0, -0.95, -0.05), body=(4, 25, 0), chest=(4, 10, 0))),
+        (0.90, 'low ready', {k: READY[k] for k in ('root', 'body', 'chest', 'look')}),
+    ])
+
+
+def hit_react():
+    return build('archer_hit', 0.9, False, hit_timeline())
+
+
+CLIPS = [idle, kite, shoot, hit_react]

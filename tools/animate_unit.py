@@ -73,6 +73,37 @@ def _bone_of(box):
     return box.bone
 
 
+def body_parts():
+    """The placeholder player body, each face painted on its own: [(box, faces, bone, None)]."""
+    out = []
+    for b in BODY:
+        faces = {}
+        for f in FACES:
+            w, h = b.face_size(f)
+            c = Canvas(w, h, f, b, 'base')
+            for layer in b.paint:
+                layer(c)
+            t = np.zeros((h, w, 4), np.uint8)
+            for y in range(h):
+                for x in range(w):
+                    m = c.mat[y, x]
+                    if m is not None:
+                        t[y, x] = (*[int(v) for v in BODY_PAL.tones[m][int(c.tone[y, x])]], 255)
+            faces[f] = (t, np.zeros((h, w), bool), (0, 0, w, h), SHADE[f])
+        out.append((b, faces, b.bone, None))
+    return out
+
+
+def item_parts(wp, rarity, bone, local, frame='rest', skip=()):
+    """A weapon's boxes on its atlas, held on `bone` by `local`: [(box, faces, bone, local)]."""
+    tier = 'legendary' if rarity == 'legendary' else 'base'
+    img, glow, _ = wp.texture(rarity)
+    _, _, pos = wp.pack()
+    wt, wg = np.array(img), np.array(glow)[..., 3] > 0
+    return [(b, {f: (wt, wg, pos[(b.name, f)], SHADE[f]) for f in FACES if f not in b.hide}, bone, local)
+            for b in wp.boxes(tier, frame) if not b.name.startswith(skip)]
+
+
 class Unit:
     """The knight's parts with their textures and bones, ready to pose."""
 
@@ -86,21 +117,7 @@ class Unit:
         self.parts = []          # (box, faces, bone, local matrix)
         for b, faces in _tex_faces(aset.boxes_for(tier), None, pos, tex, gl):
             self.parts.append((b, faces, _bone_of(b), None))
-        for b in BODY:
-            faces = {}
-            for f in FACES:
-                w, h = b.face_size(f)
-                c = Canvas(w, h, f, b, 'base')
-                for layer in b.paint:
-                    layer(c)
-                t = np.zeros((h, w, 4), np.uint8)
-                for y in range(h):
-                    for x in range(w):
-                        m = c.mat[y, x]
-                        if m is not None:
-                            t[y, x] = (*[int(v) for v in BODY_PAL.tones[m][int(c.tone[y, x])]], 255)
-                faces[f] = (t, np.zeros((h, w), bool), (0, 0, w, h), SHADE[f])
-            self.parts.append((b, faces, b.bone, None))
+        self.parts += body_parts()
         for wp, bone, local in ((self._weapon('oathblade'), 'right_hand', SWORD_LOCAL),
                                 (self._weapon('sunward'), 'left_hand', SHIELD_LOCAL)):
             img, glow, _ = wp.texture(rarity)
@@ -131,7 +148,8 @@ def frame(unit, clip, t, yaw, pitch, scale, size, ss=2, world=None):
     pose = (world or rig.world)(rot, pos)
     W, H = size
     anchor = (W * ss / 2, H * ss - 46 * ss)
-    im = render(unit.drawables(pose), yaw, pitch, scale * ss, size=(W * ss, H * ss), anchor=anchor)
+    drawn = unit.drawables_at(pose, clip, t) if hasattr(unit, 'drawables_at') else unit.drawables(pose)
+    im = render(drawn, yaw, pitch, scale * ss, size=(W * ss, H * ss), anchor=anchor)
     # the floor: a soft shadow under the feet, where the root stands
     root = pose['root'][:3, 3]
     shadow = Image.new('L', (W * ss, H * ss), 0)

@@ -44,28 +44,44 @@ def geometry():
     return _GEOMETRY
 
 
+KNIGHT_EXCLUDE = (('oathblade', 'pommel', 'right_forearm'),    # the pommel rides just under the fist
+                  ('sunward', None, 'left_forearm'))           # the forearm is strapped behind the board
+
+
 class Clipper:
-    def __init__(self, parts=None, step=0.5):
-        self.items, self.body = [], []
-        for box, bone, local in parts or geometry():
+    """parts: [(box, bone, item local matrix or None, item name or None)] (the knight's by default; with three-tuples
+    the item is named by its hand). held: {item: grip boxes that belong in the fist}. exclude: (item, box prefix or
+    None, body bone) pairs that may touch. soft: name prefixes of cloth that items may brush."""
+
+    def __init__(self, parts=None, step=0.5, held=None, exclude=KNIGHT_EXCLUDE, soft=SOFT):
+        held = HELD_IN_HAND if held is None else held
+        self.items, self.body, self.exclude = [], [], exclude
+        for entry in parts or geometry():
+            box, bone, local = entry[:3]
+            item = entry[3] if len(entry) > 3 else ('oathblade' if bone == 'right_hand' else 'sunward')
             if local is not None:
-                item = 'oathblade' if bone == 'right_hand' else 'sunward'
-                if box.name in HELD_IN_HAND[item]:
+                if box.name in held.get(item, ()):
                     continue
                 lo, hi = box.lo_hi()
                 axes = [np.arange(lo[i] + step / 2, hi[i], step) for i in range(3)]
                 g = np.stack(np.meshgrid(*axes, indexing='ij'), -1).reshape(-1, 3)
+                if not len(g):
+                    continue
                 M = local @ _box_matrix(box)
                 self.items.append((item, box.name, bone, (M[:3, :3] @ g.T).T + M[:3, 3]))
-            elif not box.name.startswith(SOFT) and bone not in SOFT:
+            elif not box.name.startswith(soft) and bone not in soft:
                 lo, hi = box.lo_hi()
                 self.body.append((box.name, bone, np.linalg.inv(_box_matrix(box)), np.array(lo) + 0.05,
                                   np.array(hi) - 0.05))
         self.cell = step ** 3
+        self.names = sorted({i for i, *_ in self.items})
+
+    def _excluded(self, item, name, bbone):
+        return any(i == item and (pre is None or name.startswith(pre)) and b == bbone for i, pre, b in self.exclude)
 
     def volumes(self, pose, which=None, detail=False):
         """{item: px^3 of it inside the body} (with detail: also the deepest point and where)."""
-        out = {}
+        out = {n: ((0.0, 0.0, '') if detail else 0.0) for n in self.names if not which or n == which}
         inv = {}
         for item, name, bone, pts in self.items:
             if which and item != which:
@@ -76,10 +92,8 @@ class Clipper:
             depth = np.zeros(len(wp))
             where = np.empty(len(wp), object)
             for bname, bbone, Binv, lo, hi in self.body:
-                if item == 'oathblade' and name == 'pommel' and bbone == 'right_forearm':
-                    continue                             # the pommel rides just under the fist
-                if item == 'sunward' and bbone == 'left_forearm':
-                    continue                             # the forearm is strapped behind the board
+                if self._excluded(item, name, bbone):
+                    continue
                 if bbone not in inv:
                     inv[bbone] = np.linalg.inv(pose[bbone])
                 M = Binv @ inv[bbone]
@@ -92,15 +106,14 @@ class Clipper:
                         deeper = ins & (d > depth)
                         depth[deeper] = d[deeper]
                         where[deeper] = bname
-            v = out.get(item, (0.0, 0.0, '') if detail else 0.0)
             if detail:
-                vol, dm, part = v
+                vol, dm, part = out[item]
                 vol += inside.sum() * self.cell
                 if inside.any() and depth.max() > dm:
                     dm, part = float(depth.max()), '%s in %s' % (name, where[int(depth.argmax())])
                 out[item] = (vol, dm, part)
             else:
-                out[item] = v + inside.sum() * self.cell
+                out[item] += inside.sum() * self.cell
         return out
 
 
@@ -147,3 +160,44 @@ def smooth(values, step, hold=0.15, ease=0.05, loop=False):
         out = np.minimum(out, out.max() * ease_(np.clip((n - 1 - i) / round(0.2 / step), 0, 1)))
         out = np.minimum(out, out.max() * ease_(np.clip(i / round(0.06 / step), 0, 1)))
     return out
+
+
+LIMBS = ('right_forearm', 'left_forearm')
+TRUNK = ('chest', 'body', 'head')
+
+
+class LimbClipper:
+    """How far the forearms pass into the torso or the head: the volume of forearm deeper than `min_depth` px inside
+    them. The upper arms are left out (they meet the torso at the shoulder by design), and so is the outer skin: the
+    armour is modelled with arms that overlap a wide jerkin or belt by a px at rest. parts: [(box, bone)]."""
+
+    def __init__(self, parts, step=0.5, soft=SOFT, min_depth=1.1):
+        self.min_depth = min_depth
+        self.limbs, self.trunk = [], []
+        for box, bone in parts:
+            if box.name.startswith(soft) or box.name.startswith('p_'):
+                continue
+            lo, hi = box.lo_hi()
+            if bone in LIMBS:
+                axes = [np.arange(lo[i] + step / 2, hi[i], step) for i in range(3)]
+                g = np.stack(np.meshgrid(*axes, indexing='ij'), -1).reshape(-1, 3)
+                M = _box_matrix(box)
+                self.limbs.append((box.name, bone, (M[:3, :3] @ g.T).T + M[:3, 3]))
+            elif bone in TRUNK:
+                self.trunk.append((box.name, bone, np.linalg.inv(_box_matrix(box)), np.array(lo) + 0.05,
+                                   np.array(hi) - 0.05))
+        self.cell = step ** 3
+
+    def volume(self, pose):
+        total = 0.0
+        inv = {b: np.linalg.inv(pose[b]) for b in TRUNK}
+        for name, bone, pts in self.limbs:
+            W = pose[bone]
+            wp = (W[:3, :3] @ pts.T).T + W[:3, 3]
+            inside = np.zeros(len(wp), bool)
+            for bname, bbone, Binv, lo, hi in self.trunk:
+                M = Binv @ inv[bbone]
+                lp = (M[:3, :3] @ wp.T).T + M[:3, 3]
+                inside |= np.all((lp > lo + self.min_depth) & (lp < hi - self.min_depth), axis=1)
+            total += inside.sum() * self.cell
+        return total

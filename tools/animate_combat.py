@@ -48,9 +48,46 @@ class CombatUnit(AU.Unit):
         super().__init__(rarity, team)
         self.parts = CR.split_parts(self.parts)
 
+    def export_parts(self):
+        """[(box, faces, bone, item local or None, name)]: what goes into the Blockbench file (no placeholder body)."""
+        return [(b, f, bone, l, 'armour' if l is None else ('oathblade' if bone == 'right_hand' else 'sunward'))
+                for b, f, bone, l in self.parts if not b.name.startswith('p_')]
+
+    def clipper(self):
+        return CL.Clipper()
+
+
+class Show:
+    """Everything that makes one unit's animation set: its unit, clips, titles, files and reel. Every function below
+    takes one (the knight's by default)."""
+
+    def __init__(self, **kw):
+        self.__dict__.update(kw)
+
+    def stem(self, clip):
+        return clip.name.replace(self.prefix + '_', '')
+
+
+KNIGHT = Show(
+    prefix='combat', out=OUT, title='Oathbound knight  ·  combat pack', model='combat_knight',
+    unit=CombatUnit, clips=lambda: [f() for f in CC.CLIPS],
+    titles={'combat_idle': 'idle in guard', 'combat_advance': 'advance in guard', 'combat_combo': 'three-hit combo',
+            'combat_block': 'shield block', 'combat_hit': 'hit reaction'},
+    sheet_caption='shield side above, sword side below', idle='combat_idle',
+    java_header=['// The Oathbound knight\'s combat pack, written by tools/animate_combat.py in the TroopClips builder BipedClips',
+                 '// uses. These clips need the articulated troop model: the bones chest, right_forearm, left_forearm, right_shin,',
+                 '// left_shin, right_foot and left_foot (pivots in combat_clips.json) on top of the standard ones, and the armour',
+                 '// cut at those joints. Not wired: gameplay-visible, it waits on Kort\'s call. Custom clips, cubic like the loops.'],
+    follow_note='// The follow parts the preview simulates (a model that gives the cape and the plume bones can take these):',
+    reel=lambda clips: reel_plan(clips))
+
+
+def follow_bones(clip):
+    return [b for b in clip.bones if b not in CR.BONES or b in ('cape', 'plume')]
+
 
 def frame(unit, clip, t, yaw, pitch, scale, size, ss=2):
-    return AU.frame(unit, clip, t, yaw, pitch, scale, size, ss=ss, world=CR.world)
+    return AU.frame(unit, clip, t, yaw, pitch, scale, size, ss=ss, world=lambda r, p: CR.world(r, p, clip.bones))
 
 
 VIEWS = AU.VIEWS
@@ -63,7 +100,7 @@ def smoothness(clip, fps=60):
 
 
 def ground_speed(clip):
-    return CC.ADVANCE_SPEED if clip.name == 'combat_advance' else 0.0
+    return getattr(clip, 'ground_speed', 0.0)
 
 
 def feet_report(clip, fps=60):
@@ -76,7 +113,7 @@ def feet_report(clip, fps=60):
     for i in range(n + 1):
         t = i / fps
         rot, pos = clip.at(t)
-        pose = CR.world(rot, pos)
+        pose = CR.world(rot, pos, clip.bones)
         for side in ('right', 'left'):
             place = CR.pchip(clip.track[side[0] + '_place'], t)
             pts = CR.foot_points(pose, side)
@@ -129,19 +166,15 @@ def frame_floor(unit, clip, t, yaw, pitch, scale, size, ss=2):
     return out
 
 
-TITLES = {'combat_idle': 'idle in guard', 'combat_advance': 'advance in guard', 'combat_combo': 'three-hit combo',
-          'combat_block': 'shield block', 'combat_hit': 'hit reaction'}
-
-
-def composite(unit, clip, t, speed, scale=8.5):
+def composite(unit, clip, t, speed, scale=8.5, show=KNIGHT):
     vw, vh = 640, 620
     out = Image.new('RGBA', (1280, 720), BG)
     for i, (yaw, pitch, name) in enumerate(VIEWS):
         out.alpha_composite(frame_floor(unit, clip, t, yaw, pitch, scale, (vw, vh)), (i * vw, 46))
     d = ImageDraw.Draw(out)
-    d.text((24, 14), 'Oathbound knight  ·  combat pack', font=font(20, True), fill=(226, 222, 210))
+    d.text((24, 14), show.title, font=font(20, True), fill=(226, 222, 210))
     label = AU.beat_at(clip.beats, t % clip.length if clip.loop else t)
-    d.text((24, 40), '%s  ·  %s  ·  %s' % (clip.name, TITLES[clip.name], label), font=font(14), fill=(170, 174, 184))
+    d.text((24, 40), '%s  ·  %s  ·  %s' % (clip.name, show.titles[clip.name], label), font=font(14), fill=(170, 174, 184))
     d.text((1280 - 24 - d.textlength(speed, font=font(14, True)), 18), speed, font=font(14, True),
            fill=(232, 137, 42) if speed != '1.0x' else (150, 154, 164))
     for i, (_, _, name) in enumerate(VIEWS):
@@ -156,7 +189,7 @@ def composite(unit, clip, t, speed, scale=8.5):
     return out
 
 
-def beats_sheet(unit, clip, out, scale=5):
+def beats_sheet(unit, clip, out, scale=5, show=KNIGHT):
     picks = []
     for t, name in clip.beats:
         if clip.loop and t >= clip.length - 1e-6:
@@ -170,7 +203,7 @@ def beats_sheet(unit, clip, out, scale=5):
     rows = math.ceil(len(picks) / cols) * 2
     im = Image.new('RGBA', (cols * cw + 20, 60 + rows * ch), BG)
     d = ImageDraw.Draw(im)
-    d.text((20, 16), '%s  ·  %s  ·  shield side above, sword side below' % (clip.name, TITLES[clip.name]),
+    d.text((20, 16), '%s  ·  %s  ·  %s' % (clip.name, show.titles[clip.name], show.sheet_caption),
            font=font(20, True), fill=(226, 222, 210))
     for i, (t, name) in enumerate(picks):
         r, c = divmod(i, cols)
@@ -186,42 +219,42 @@ def _keys(keys):
     return ', '.join('%gf,%g,%g,%g' % (round(k[0], 3), round(k[1], 2), round(k[2], 2), round(k[3], 2)) for k in keys)
 
 
-def java(clips):
-    lines = ['// The Oathbound knight\'s combat pack, written by tools/animate_combat.py in the TroopClips builder BipedClips',
-             '// uses. These clips need the articulated troop model: the bones chest, right_forearm, left_forearm, right_shin,',
-             '// left_shin, right_foot and left_foot (pivots in combat_clips.json) on top of the standard ones, and the armour',
-             '// cut at those joints. Not wired: gameplay-visible, it waits on Kort\'s call. Custom clips, cubic like the loops.',
-             '']
+def java(clips, show=KNIGHT):
+    lines = list(show.java_header) + ['']
     for c in clips:
         kind = 'TroopClips.Kind.LOOP' if c.loop else 'TroopClips.Kind.ONCE'
         lines.append('new Clip("%s", %s, %sf, false)' % (c.name, kind, '%g' % c.length))
-        for b in CR.BONES:
-            if b in ('cape', 'plume'):
+        for b in c.bones:
+            if b in follow_bones(c):
                 continue
             for chan, keys in (('rot', c.rot.get(b)), ('pos', c.pos.get(b))):
                 if keys:
                     lines.append('    .%s("%s", %s)' % (chan, b, _keys(keys)))
         lines.append('')
-    lines.append('// The follow parts the preview simulates (a model that gives the cape and the plume bones can take these):')
+    lines.append(show.follow_note)
     for c in clips:
-        for b in ('cape', 'plume'):
+        for b in follow_bones(c):
             lines.append('// %s %s: %s' % (c.name, b, _keys(c.rot[b])))
     return '\n'.join(lines) + '\n'
 
 
-def data(clips):
+def data(clips, extra=None):
     r4 = lambda keys: [[round(x, 4) for x in k] for k in keys]
-    return {'convention': CR.__doc__.strip() + '\n\n' + rig.__doc__.strip(),
-            'bones': {b: {'parent': p, 'pivot_blockbench': list(v), 'new': b in CR.NEW_BONES} for b, (p, v) in CR.BONES.items()},
-            'clips': [{'name': c.name, 'length': c.length, 'loop': c.loop, 'interpolation': 'minecraft catmull-rom',
+    out = {'convention': CR.__doc__.strip() + '\n\n' + rig.__doc__.strip(),
+           'bones': {b: {'parent': p, 'pivot_blockbench': list(v), 'new': b in CR.NEW_BONES}
+                     for b, (p, v) in clips[0].bones.items()},
+           'clips': [{'name': c.name, 'length': c.length, 'loop': c.loop, 'interpolation': 'minecraft catmull-rom',
                        'ground_speed_px_per_s': ground_speed(c),
                        'rotation': {b: r4(v) for b, v in c.rot.items()},
                        'position': {b: r4(v) for b, v in c.pos.items()},
                        'beats': [[t, n] for t, n in c.beats],
                        'feet': {'right': r4(c.track['r_place']), 'left': r4(c.track['l_place'])}} for c in clips]}
+    for c, row in zip(clips, out['clips']):
+        row.update(extra(c) if extra else {})
+    return out
 
 
-def bbmodel(unit, clips):
+def bbmodel(unit, clips, show=KNIGHT):
     """The knight cut at the joints on the articulated rig: nested groups at every pivot, the armour, the sword and the
     shield (each item in a group that turns it into the fist), and every clip as an animation in Blockbench's space
     (rotation -pitch, -yaw, roll; position -x, y, z)."""
@@ -235,14 +268,9 @@ def bbmodel(unit, clips):
             tex_index[k] = len(texs)
             texs.append((name, Image.fromarray(arr.astype(np.uint8), 'RGBA')))
         return tex_index[k]
-    elements, kids, items = [], {b: [] for b in CR.BONES}, {}
-    for box, faces, bone, local in unit.parts:
-        if box.name.startswith('p_'):
-            continue                                  # the placeholder body stays out, as in the armour files
-        if local is None:
-            name = 'armour'
-        else:
-            name = 'oathblade' if bone == 'right_hand' else 'sunward'
+    bones = clips[0].bones
+    elements, kids, items = [], {b: [] for b in bones}, {}
+    for box, faces, bone, local, name in unit.export_parts():
         grip = np.zeros(3) if local is None else local[:3, 3]
         fe = {}
         for f in FACES:
@@ -272,18 +300,18 @@ def bbmodel(unit, clips):
 
     def tree(b):
         ch = list(kids[b])
-        for c, (p, _) in CR.BONES.items():
+        for c, (p, _) in bones.items():
             if p == b:
                 ch.append(tree(c))
         for (bone, name), (local, cubes) in items.items():
             if bone == b:
                 ch.append(group(name, local[:3, 3], cubes, AU._bb_rotation(local[:3, :3])))
-        return group(b, CR.BONES[b][1], ch)
+        return group(b, bones[b][1], ch)
     outliner = [tree('root')]
     anims = []
     for c in clips:
         animators = {}
-        for b in CR.BONES:
+        for b in bones:
             kf = []
             for chan, keys, conv in (('rotation', c.rot.get(b), lambda k: (-k[1], -k[2], k[3])),
                                      ('position', c.pos.get(b), lambda k: (-k[1], k[2], k[3]))):
@@ -298,8 +326,8 @@ def bbmodel(unit, clips):
                       'override': False, 'length': c.length, 'snapping': 40, 'selected': False, 'anim_time_update': '',
                       'blend_weight': '', 'start_delay': '', 'loop_delay': '', 'animators': animators})
     W, H = texs[0][1].size
-    return {'meta': {'format_version': '4.5', 'model_format': 'free', 'box_uv': False}, 'name': 'combat_knight',
-            'model_identifier': 'combat_knight', 'visible_box': [1, 2, 0], 'variable_placeholders': '',
+    return {'meta': {'format_version': '4.5', 'model_format': 'free', 'box_uv': False}, 'name': show.model,
+            'model_identifier': show.model, 'visible_box': [1, 2, 0], 'variable_placeholders': '',
             'variable_placeholder_buttons': [], 'resolution': {'width': W, 'height': H},
             'elements': elements, 'groups': groups, 'outliner': outliner,
             'textures': [{'path': '', 'name': n, 'folder': '', 'namespace': '', 'id': str(i), 'particle': i == 0,
@@ -315,49 +343,72 @@ def bbmodel(unit, clips):
 _W = {}
 
 
-def _init(rarity):
-    _W['unit'] = CombatUnit(rarity)
-    _W['clips'] = {c.name: c for c in (f() for f in CC.CLIPS)}
+def _init(show, rarity):
+    _W['show'] = show
+    _W['unit'] = show.unit(rarity)
+    _W['clips'] = {c.name: c for c in show.clips()}
 
 
 def _job(job):
     k, name, t, speed, tmp = job
-    img = composite(_W['unit'], _W['clips'][name], t, speed)
+    img = composite(_W['unit'], _W['clips'][name], t, speed, show=_W['show'])
     img.convert('RGB').save(pathlib.Path(tmp) / ('f%05d.png' % k))
     return k
+
+
+def run_into(plan, clip, speed=1.0, times=1, fps=60, label=None):
+    n = int(round(clip.length * fps / speed))
+    for _ in range(times):
+        for i in range(n + (0 if clip.loop else 1)):
+            plan.append((clip.name, i * speed / fps, label or ('1.0x' if speed == 1 else '%gx  slow motion' % speed)))
 
 
 def reel_plan(clips, fps=60):
     """idle; the advance twice; each strike clip at full speed then slowed; the idle again."""
     c = {x.name: x for x in clips}
     plan = []
-
-    def run(clip, speed=1.0, times=1, label=None):
-        n = int(round(clip.length * fps / speed))
-        for _ in range(times):
-            for i in range(n + (0 if clip.loop else 1)):
-                plan.append((clip.name, i * speed / fps, label or ('1.0x' if speed == 1 else '%gx  slow motion' % speed)))
-    run(c['combat_idle'])
-    run(c['combat_advance'], times=2)
+    run_into(plan, c['combat_idle'])
+    run_into(plan, c['combat_advance'], times=2)
     for name, slow in (('combat_combo', 0.35), ('combat_block', 0.5), ('combat_hit', 0.5)):
-        run(c[name])
+        run_into(plan, c[name])
         for i in range(int(0.3 * fps)):
             plan.append(('combat_idle', i / fps, '1.0x'))
-        run(c[name], slow)
+        run_into(plan, c[name], slow)
         for i in range(int(0.3 * fps)):
             plan.append(('combat_idle', i / fps, '1.0x'))
-    run(c['combat_idle'])
+    run_into(plan, c['combat_idle'])
     return plan
+
+
+# ---- clipping -------------------------------------------------------------------------------
+
+def clipping_report(clip, fps=60, clipper=None):
+    """Per item, over the clip: (most px^3 inside the body on a frame, at what time, the deepest point and where)."""
+    cl = clipper or CL.Clipper()
+    worst = {}
+    for i in range(int(round(clip.length * fps)) + 1):
+        t = i / fps
+        for item, (v, d, part) in cl.volumes(clip_pose(clip, t), detail=True).items():
+            w = worst.setdefault(item, [0.0, 0.0, ''])
+            if v > w[0]:
+                w[:] = [round(v, 2), round(t, 2), '%.2f px deep: %s' % (d, part)]
+    return worst
+
+
+def clip_pose(clip, t):
+    """The world pose of a clip at t (with any per-frame extras a clip adds, such as items that move)."""
+    pose = CR.world(*clip.at(t), clip.bones)
+    return clip.extra_pose(pose, t) if hasattr(clip, 'extra_pose') else pose
 
 
 # ---- review sheets (for blocking and checking poses) ------------------------------------------
 
-REVIEW_VIEWS = ((-32, 8), (90, 0), (0, 4))      # three-quarter shield side, profile sword side, front
+REVIEW_VIEWS = ((-32, 8), (90, 0), (0, 4))      # three-quarter left side, profile right side, front
 
 
 def review_sheet(unit, items, out, scale=7, cell=(340, 380), cols=2):
-    """[(label, clip, t)] -> one sheet, each item in three views at a large scale, with its clipping volume."""
-    cl = CL.Clipper()
+    """[(label, clip, t)] -> one sheet, each item in three views at a large scale, with its clipping volumes."""
+    cl = unit.clipper()
     cw, ch = cell
     rows = math.ceil(len(items) / cols)
     im = Image.new('RGBA', (cols * 3 * cw, rows * ch), BG)
@@ -366,9 +417,10 @@ def review_sheet(unit, items, out, scale=7, cell=(340, 380), cols=2):
         r, c = divmod(k, cols)
         for i, (yaw, pitch) in enumerate(REVIEW_VIEWS):
             im.alpha_composite(frame(unit, clip, t, yaw, pitch, scale, cell), ((c * 3 + i) * cw, r * ch))
-        v = cl.volumes(CR.world(*clip.at(t)))
-        d.text((c * 3 * cw + 8, r * ch + 6), '%s   inside the body: sword %.1f, shield %.1f px^3' %
-               (label, v['oathblade'], v['sunward']), font=font(13, True), fill=(230, 230, 230))
+        v = cl.volumes(clip_pose(clip, t))
+        d.text((c * 3 * cw + 8, r * ch + 6), '%s   inside the body: %s' %
+               (label, ', '.join('%s %.1f' % (n, x) for n, x in v.items()) + ' px^3'), font=font(13, True),
+               fill=(230, 230, 230))
     im.convert('RGB').save(out)
     return out
 
@@ -389,7 +441,7 @@ def filmstrip(unit, clip, t0, t1, out, fps=60, cols=7):
     return out
 
 
-def main(argv=None):
+def main(argv=None, show=KNIGHT):
     ap = argparse.ArgumentParser()
     ap.add_argument('--still', nargs=2, metavar=('CLIP', 'SECONDS'))
     ap.add_argument('--check', action='store_true')
@@ -399,11 +451,11 @@ def main(argv=None):
     ap.add_argument('--out', help='where --sheet and --strip write (default: the system temp folder)')
     ap.add_argument('--rarity', default='common')
     a = ap.parse_args(argv)
-    clips = [f() for f in CC.CLIPS]
+    clips = show.clips()
     by_name = {c.name: c for c in clips}
-    pick = lambda n: by_name['combat_' + n.replace('combat_', '')]
+    pick = lambda n: by_name[show.prefix + '_' + n.replace(show.prefix + '_', '')]
     if a.sheet or a.strip:
-        unit = CombatUnit(a.rarity)
+        unit = show.unit(a.rarity)
         name = (a.sheet or a.strip)[0]
         out = pathlib.Path(a.out or tempfile.gettempdir()) / ('%s_%s.png' % ('sheet' if a.sheet else 'strip', name))
         clip = pick(name)
@@ -415,53 +467,52 @@ def main(argv=None):
             print(filmstrip(unit, clip, float(a.strip[1]), float(a.strip[2]), out))
         return 0
     if a.check:
+        cl = show.unit(a.rarity).clipper()
         for c in clips:
             print(c.name, 'ik %.3f' % c.ik_error, 'feet (sink, gap, slide)', feet_report(c))
             print('   ', smoothness(c))
-            print('    items inside the body:', clipping_report(c))
+            print('    items inside the body:', clipping_report(c, clipper=cl))
+            for line in getattr(c, 'report', lambda: [])():
+                print('   ', line)
         return 0
-    unit = CombatUnit(a.rarity)
-    OUT.mkdir(parents=True, exist_ok=True)
+    unit = show.unit(a.rarity)
+    out_dir = show.out
+    out_dir.mkdir(parents=True, exist_ok=True)
     if a.still:
         clip = pick(a.still[0])
-        p = OUT / ('still_%s_%.2f.png' % (clip.name, float(a.still[1])))
-        composite(unit, clip, float(a.still[1]), '1.0x').convert('RGB').save(p)
+        p = out_dir / ('still_%s_%.2f.png' % (clip.name, float(a.still[1])))
+        composite(unit, clip, float(a.still[1]), '1.0x', show=show).convert('RGB').save(p)
         print(p)
         return 0
-    (OUT / 'combat_clips.java').write_text(java(clips), encoding='utf-8')
-    (OUT / 'combat_clips.json').write_text(json.dumps(data(clips), indent=1) + '\n', encoding='utf-8')
-    (OUT / 'combat_knight.bbmodel').write_text(json.dumps(bbmodel(unit, clips), indent=1) + '\n', encoding='utf-8')
+    export(show, unit, clips)
     for c in clips:
-        beats_sheet(unit, c, OUT / ('%s_beats.png' % c.name.replace('combat_', '')))
-    plan = reel_plan(clips)
+        beats_sheet(unit, c, out_dir / ('%s_beats.png' % show.stem(c)), show=show)
+    plan = show.reel(clips)
     import multiprocessing as mp
     with tempfile.TemporaryDirectory() as tmp:
         jobs = [(k, name, t, speed, tmp) for k, (name, t, speed) in enumerate(plan)]
-        with mp.get_context('fork').Pool(initializer=_init, initargs=(a.rarity,)) as pool:
+        with mp.get_context('fork').Pool(initializer=_init, initargs=(show, a.rarity)) as pool:
             for done, k in enumerate(pool.imap_unordered(_job, jobs, chunksize=4)):
                 if done % 120 == 0:
                     print('frame %d of %d' % (done, len(jobs)), flush=True)
-        AU.encode(pathlib.Path(tmp), 'f%05d.png', 60, OUT / 'combat_reel.mp4')
+        AU.encode(pathlib.Path(tmp), 'f%05d.png', 60, out_dir / ('%s_reel.mp4' % show.prefix))
         gif_frames = [Image.open(pathlib.Path(tmp) / ('f%05d.png' % k)).resize((640, 360), Image.LANCZOS)
                       for k, (name, t, speed) in enumerate(plan) if speed == '1.0x' and k % 2 == 0]
-    AU.gif(gif_frames, OUT / 'combat_reel.gif')
-    print('wrote', OUT)
+    AU.gif(gif_frames, out_dir / ('%s_reel.gif' % show.prefix))
+    print('wrote', out_dir)
     return 0
+
+
+def export(show, unit, clips):
+    """The Java, JSON and Blockbench files of a show."""
+    out_dir = show.out
+    out_dir.mkdir(parents=True, exist_ok=True)
+    (out_dir / ('%s_clips.java' % show.prefix)).write_text(java(clips, show), encoding='utf-8')
+    (out_dir / ('%s_clips.json' % show.prefix)).write_text(
+        json.dumps(data(clips, getattr(show, 'data_extra', None)), indent=1) + '\n', encoding='utf-8')
+    (out_dir / ('%s.bbmodel' % show.model)).write_text(json.dumps(bbmodel(unit, clips, show), indent=1) + '\n',
+                                                        encoding='utf-8')
 
 
 if __name__ == '__main__':
     sys.exit(main())
-
-
-# ---- clipping -------------------------------------------------------------------------------
-
-def clipping_report(clip, fps=60, clipper=None):
-    """Per item, over the clip: (most px^3 inside the body on a frame, at what time, the deepest point and where)."""
-    cl = clipper or CL.Clipper()
-    worst = {}
-    for i in range(int(round(clip.length * fps)) + 1):
-        for item, (v, d, part) in cl.volumes(CR.world(*clip.at(i / fps)), detail=True).items():
-            w = worst.setdefault(item, [0.0, 0.0, ''])
-            if v > w[0]:
-                w[:] = [round(v, 2), round(i / fps, 2), '%.2f px deep: %s' % (d, part)]
-    return worst

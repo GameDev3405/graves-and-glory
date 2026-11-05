@@ -55,8 +55,16 @@ NEW_BONES = ['chest', 'right_forearm', 'left_forearm', 'right_shin', 'left_shin'
 HINGES = {'right_forearm': (-150, 0), 'left_forearm': (-150, 0), 'right_shin': (0, 150), 'left_shin': (0, 150)}
 
 
-def world(rot, pos):
-    return rig.world(rot, pos, BONES)
+def world(rot, pos, bones=None):
+    return rig.world(rot, pos, bones or BONES)
+
+
+def bones_with(follow):
+    """The articulated rig with a unit's own follow bones (springs) instead of the knight's cape and plume:
+    follow = {name: (parent, pivot)}."""
+    out = {b: v for b, v in BONES.items() if b not in ('cape', 'plume')}
+    out.update(follow)
+    return out
 
 
 # ---- cutting the armour at the joints ---------------------------------------------------
@@ -70,7 +78,8 @@ SEGMENTS = {
     'left_leg': ([KNEE_Y, ANKLE_Y], ['left_leg', 'left_shin', 'left_foot']),
 }
 # pieces that ride one segment whole instead of being cut (name prefix -> segment index)
-WHOLE = {'couter': 0, 'skirt': 0, 'poleyn': 1, 'sabaton': 2, 'toe': 2, 'pauldron': 0, 'wing': 0}
+WHOLE = {'couter': 0, 'skirt': 0, 'poleyn': 1, 'sabaton': 2, 'toe': 2, 'pauldron': 0, 'wing': 0,
+         'boot': 2, 'paw': 0}
 SIDES = ('north', 'east', 'south', 'west')
 
 
@@ -368,3 +377,76 @@ def aim_arm(upper, fore, blade=None, twist=0.0, prev=None):
         H = np.column_stack([x, y, z])
         out['hand'] = closest_euler(Rf.T @ H, prev.get('hand'))
     return out
+
+
+# ---- reaching: an arm that puts its hand somewhere ----------------------------------------
+
+def _chain(side, chest_M, arm, elbow, bones=None):
+    """World matrices of an arm and its forearm from the chest's world matrix."""
+    bones = bones or BONES
+    p = side + '_'
+    A = chest_M @ _local(bones[p + 'arm'][1], mc_rotation(*arm))
+    F = A @ _local(bones[p + 'forearm'][1], mc_rotation(elbow, 0, 0))
+    return A, F
+
+
+def reach_arm(side, chest_M, target, pole, guess, bones=None, pole_weight=0.35, fore=None, fore_weight=0.6,
+              stay=0.3, prev_swivel=None, min_bend=15.0):
+    """Aims (upper, fore) that put the hand's pivot at `target` (world), with the elbow drawn toward `pole` (a world
+    direction from the shoulder). Damped Gauss-Newton on small turns of last tick's two directions (`guess`), so the
+    arm moves continuously and the solve has no poles (yaw and pitch angles would, with an arm hanging straight down). `fore` (a world direction, optional) pulls the forearm toward
+    it with `fore_weight`: a bow arm's forearm points down the shot and a draw arm's lies along the arrow, so the wrist
+    stays nearly straight. `stay` holds the solution near last tick's: near full stretch the two sides an elbow can
+    bend score almost alike, and without it the solve hops between them tick to tick. `min_bend` (degrees) keeps the
+    elbow off that singularity. Returns (upper, fore, error in px, None)."""
+    bones = bones or BONES
+    p = side + '_'
+    hand_piv = np.array(bones[p + 'hand'][1], float)
+    elbow_piv = np.array(bones[p + 'forearm'][1], float)
+    shoulder = rig.apply(chest_M @ _local(bones[p + 'arm'][1], np.eye(3)), bones[p + 'arm'][1])
+    Rc = chest_M[:3, :3]
+    pole = _unit(Rc.T @ np.asarray(pole, float))          # in the chest's frame, like the aims
+
+    def basis(v):                # two directions square to v: the plane a small turn of v moves in
+        v = _unit(v)
+        a = np.array([1.0, 0, 0]) if abs(v[0]) < 0.9 else np.array([0, 1.0, 0])
+        t1 = _unit(np.cross(v, a))
+        return v, t1, np.cross(v, t1)
+    U0, F0 = basis(guess[0]), basis(guess[1])
+
+    def to_vecs(v):              # small turns of last tick's directions: no poles anywhere, unlike yaw and pitch
+        return (_unit(U0[0] + v[0] * U0[1] + v[1] * U0[2]), _unit(F0[0] + v[2] * F0[1] + v[3] * F0[2]))
+    x = np.zeros(4)
+
+    def resid(v):
+        u, f = to_vecs(v)
+        a = aim_arm(u, f)
+        A, F = _chain(side, chest_M, a['arm'], a['forearm'][0], bones)
+        hand = rig.apply(F, hand_piv)
+        elbow = rig.apply(A, elbow_piv)
+        mid = (shoulder + hand) / 2
+        want = Rc @ pole
+        e = elbow - mid
+        e = e - np.dot(e, _unit(hand - shoulder)) * _unit(hand - shoulder)
+        side_err = (_unit(e) if np.linalg.norm(e) > 1e-6 else e) - want
+        r = [hand - target, pole_weight * side_err]
+        if fore is not None:
+            r.append(fore_weight * (_unit(hand - elbow) - _unit(fore)))
+        r.append(stay * v)
+        bend = math.degrees(math.acos(max(-1.0, min(1.0, float(np.dot(u, f))))))
+        r.append([0.08 * max(0.0, min_bend - bend)])       # a soft floor: an elbow never locks straight
+        return np.concatenate(r)
+    for it in range(40):
+        r = resid(x)
+        J = np.zeros((len(r), 4))
+        for k in range(4):
+            d = np.zeros(4)
+            d[k] = 1e-4
+            J[:, k] = (resid(x + d) - r) / 1e-4
+        dx = np.linalg.solve(J.T @ J + 1e-3 * np.eye(4), -J.T @ r)
+        x = x + np.clip(dx, -0.3, 0.3)
+        if np.linalg.norm(dx) < 1e-5:
+            break
+    r = resid(x)
+    u, f = to_vecs(x)
+    return u, f, float(np.linalg.norm(r[:3])), None
