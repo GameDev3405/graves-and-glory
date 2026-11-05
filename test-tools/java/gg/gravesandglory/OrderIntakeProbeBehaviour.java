@@ -104,4 +104,28 @@ public final class OrderIntakeProbeBehaviour {
         b.respawns.put(id, b.time + GravesAndGlory.R.respawnSeconds() * 20L);
         return "steps";
     }
+
+    // Final fix wave (review I1, M4): the legacy bare-order path, Battle.command("charge"), as an old or modified client reaches it through the ORDER packet.
+    /** The legacy command path with the command cooldown cleared first, for a command that should only meet the Charge cooldown. */
+    /** Returns the lastOrder it left in place before the command, so a check can see whether a refusal kept it. */
+    public static long legacy(GravesAndGlory.Battle b, UUID id, String cmd) { long cleared = Long.MIN_VALUE / 4; b.squads.get(id).lastOrder = cleared; b.command(b.server.getPlayerManager().getPlayer(id), cmd); return cleared; }
+    public static long lastOrder(GravesAndGlory.Battle b, UUID id) { return b.squads.get(id).lastOrder; }
+    /** Forgets the once-per-kind feedback throttle so a shout that a refused command wrongly played could not hide behind it. */
+    public static void clearThrottle() { BattleEffects.lastFeedback.clear(); }
+    /** How many charge horns this player has heard since the round started. */
+    public static int chargeHeard(UUID id) { int n = 0; for (var h : BattleEffects.heard) if (h.player().equals(id) && h.kind().equals("charge")) n++; return n; }
+    public static int chargeCooldownTicks() { return Spec.COMBATDISCIPLINE[0].chargeCooldownTicks(); }
+    public static float yaw(GravesAndGlory.Battle b, UUID id) { return b.server.getPlayerManager().getPlayer(id).getYaw(); }
+    /** The squad's stored assignments as text, for a check's detail. */
+    public static String flags(GravesAndGlory.Battle b, UUID id) {
+        StringBuilder out = new StringBuilder();
+        for (var e : b.squads.get(id).assignments.entrySet()) out.append(e.getKey()).append('=').append(e.getValue().order).append(e.getValue().chargeDir != null ? " dir" : "").append(e.getValue().thenFollow ? " thenFollow" : "").append("; ");
+        return out.toString();
+    }
+    /** Whether the squad has stored assignments and every one is this order with (or without) a chargeDir and thenFollow. */
+    public static boolean allAssigned(GravesAndGlory.Battle b, UUID id, String order, boolean dir, boolean thenFollow) {
+        var s = b.squads.get(id); if (s.assignments.isEmpty()) return false;
+        for (var a : s.assignments.values()) if (!a.order.equals(order) || (a.chargeDir != null) != dir || a.thenFollow != thenFollow) return false;
+        return true;
+    }
 }

@@ -1,5 +1,6 @@
 package gg.gravesandglory.cmdui;
 
+import gg.gravesandglory.CommandNet;
 import gg.gravesandglory.CommandUiChecks;
 import gg.gravesandglory.GravesAndGlory;
 import gg.gravesandglory.OrderIntakeProbe;
@@ -29,9 +30,9 @@ public final class OrderBehaviourSuite implements CommandUiChecks.Suite {
     boolean flag, shield; String note = ""; Object squad; List<GravesAndGlory.Unit> foes = List.of(), bots = List.of();
     final Map<GravesAndGlory.Unit, Long> attackMarks = new HashMap<>();
 
-    static final String[] NAMES = {"attack-hunts-far", "bot-attack-leashed", "charge-run", "charge-impact", "charge-archers", "retreat", "retreat-respawning", "formation-hold"};
+    static final String[] NAMES = {"attack-hunts-far", "bot-attack-leashed", "charge-run", "charge-impact", "charge-archers", "retreat", "retreat-respawning", "formation-hold", "legacy-charge"};
     long chargedAt0; boolean crawled; double shieldPace, offMelee = Double.MAX_VALUE, reachGap;
-    static final int[] LIMITS = {520, 420, 760, 560, 560, 760, 480, 420};
+    static final int[] LIMITS = {520, 420, 760, 560, 560, 760, 480, 420, 900};
 
     @Override public void tick(MinecraftClient c, int tick) {
         if (tick == 1) id = c.player.getUuid();
@@ -95,6 +96,7 @@ public final class OrderBehaviourSuite implements CommandUiChecks.Suite {
             case 5 -> retreat(b, t);
             case 6 -> retreatRespawning(b, t);
             case 7 -> formationHold(b, t);
+            case 8 -> legacyCharge(b, t);
             default -> {}
         }
     }
@@ -239,6 +241,50 @@ public final class OrderBehaviourSuite implements CommandUiChecks.Suite {
                 pass(inReach && offMelee >= 7.5 && best <= 4 && shots >= 1, String.format("enemy at %s, %.1f off the nearest melee slot; %.1f inside the nearest archer's reach from its slot (want 1 or more); infantry max off slot %.1f (want arriveRadius 4 at most); ranged shots %d (nearest archer %.1f from it); %s", xz(E), offMelee, -reachGap, best, shots, ranged, note));
                 next(b);
             }
+        }
+    }
+
+    // Final fix wave, review I1 and M4: the legacy bare-order path (Battle.command "charge", what an old or modified client's ORDER packet reaches) holds the
+    // per-commander Charge cooldown. A second charge inside it changes nothing: no new stamp, no new cooldown, no shout, and it does not use up lastOrder.
+    // After the real cooldown a charge works again. The legacy charge and retreat also set chargeDir and thenFollow as a player's tactical order does.
+    long ready1, stamp1; int heard1, cd0, cd1; Snap snap1; boolean refusedSame; String refusedNote = "";
+    void legacyCharge(GravesAndGlory.Battle b, long t) {
+        int cool = OrderIntakeProbeBehaviour.chargeCooldownTicks();
+        if (t == 40) {
+            OrderIntakeProbe.resetCharge(b, id); OrderIntakeProbeBehaviour.clearThrottle();
+            cd0 = CommandNet.sentTo(id, CommandNet.COOLDOWN);
+            OrderIntakeProbeBehaviour.legacy(b, id, "charge");
+            snap1 = snap(b, "infantry"); ready1 = OrderIntakeProbe.chargeReadyAt(b, id); stamp1 = OrderIntakeProbeBehaviour.chargedAt(b, id, "infantry");
+            heard1 = OrderIntakeProbeBehaviour.chargeHeard(id); cd1 = CommandNet.sentTo(id, CommandNet.COOLDOWN);
+            double r = Math.toRadians(OrderIntakeProbeBehaviour.yaw(b, id)), dx = Math.sin(-r), dz = Math.cos(r);
+            boolean dir = snap1 != null && snap1.chargeDir() != null && Math.abs(snap1.chargeDir().x - dx) < 0.01 && Math.abs(snap1.chargeDir().z - dz) < 0.01
+                && OrderIntakeProbeBehaviour.allAssigned(b, id, "charge", true, false);
+            CommandUiChecks.report("cu-legacy-charge-flags-charge", dir && ready1 > now(b) && stamp1 >= 0 && heard1 == 1 && cd1 == cd0 + 1,
+                "legacy charge: stored " + OrderIntakeProbeBehaviour.flags(b, id) + "infantry " + snap1 + " vs yaw dir " + String.format("%.2f, %.2f", dx, dz) + "; chargeReadyAt " + ready1 + " at " + now(b) + "; stamp " + stamp1 + "; shouts " + heard1 + "; COOLDOWN sends " + (cd1 - cd0));
+        }
+        if (t == 55) { // 15 ticks later: past the 4-tick command cooldown, far inside the Charge cooldown
+            OrderIntakeProbeBehaviour.clearThrottle();
+            long cleared = OrderIntakeProbeBehaviour.legacy(b, id, "charge");
+            Snap again = snap(b, "infantry"); int cd2 = CommandNet.sentTo(id, CommandNet.COOLDOWN);
+            refusedSame = again != null && again.equals(snap1) && OrderIntakeProbe.chargeReadyAt(b, id) == ready1 && OrderIntakeProbeBehaviour.chargedAt(b, id, "infantry") == stamp1
+                && OrderIntakeProbeBehaviour.chargeHeard(id) == heard1 && OrderIntakeProbeBehaviour.lastOrder(b, id) == cleared && cd2 == cd1 + 1;
+            refusedNote = "second charge at +" + (now(b) - t0) + ": stored " + (again != null && again.equals(snap1) ? "unchanged" : "now " + again) + ", chargeReadyAt " + OrderIntakeProbe.chargeReadyAt(b, id) + " (was " + ready1
+                + "), stamp " + OrderIntakeProbeBehaviour.chargedAt(b, id, "infantry") + " (was " + stamp1 + "), shouts " + OrderIntakeProbeBehaviour.chargeHeard(id) + " (was " + heard1 + "), lastOrder "
+                + (OrderIntakeProbeBehaviour.lastOrder(b, id) == cleared ? "kept (not stamped)" : "consumed") + ", COOLDOWN sends " + (cd2 - cd1) + " (the remaining time, as a refused tactical charge)";
+        }
+        if (t == 60) OrderIntakeProbeBehaviour.legacy(b, id, "follow"); // the charge ends as it would at its end point, so the next one starts a new charge
+        if (t == 40 + cool + 5) { // the real cooldown has run: nothing was reset by hand since the first charge
+            OrderIntakeProbeBehaviour.clearThrottle();
+            OrderIntakeProbeBehaviour.legacy(b, id, "charge");
+            long ready3 = OrderIntakeProbe.chargeReadyAt(b, id), stamp3 = OrderIntakeProbeBehaviour.chargedAt(b, id, "infantry"); int heard3 = OrderIntakeProbeBehaviour.chargeHeard(id);
+            boolean ok = refusedSame && ready3 > ready1 && ready3 > now(b) && stamp3 > stamp1 && heard3 == heard1 + 1 && OrderIntakeProbeBehaviour.allAssigned(b, id, "charge", true, false);
+            CommandUiChecks.report("cu-legacy-charge-cooldown", ok, refusedNote + "; after the cooldown (" + cool + " ticks, +" + (t - 40) + ") a third charge: chargeReadyAt " + ready3 + " (first " + ready1 + "), stamp " + stamp3 + " (first " + stamp1
+                + "), shouts " + heard3 + " (want " + (heard1 + 1) + ")");
+        }
+        if (t == 40 + cool + 15) {
+            OrderIntakeProbeBehaviour.legacy(b, id, "retreat");
+            CommandUiChecks.report("cu-legacy-charge-flags-retreat", OrderIntakeProbeBehaviour.allAssigned(b, id, "retreat", false, true), "legacy retreat: stored " + OrderIntakeProbeBehaviour.flags(b, id));
+            next(b);
         }
     }
 }

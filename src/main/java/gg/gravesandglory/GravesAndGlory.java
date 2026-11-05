@@ -937,7 +937,7 @@ public final class GravesAndGlory implements ModInitializer {
             if(cmd.equals("barracks")){openBarracks(p);return;}
             if(cmd.startsWith("train:")||cmd.startsWith("disband:")||cmd.equals("cancel-training")){manage(p,s,cmd);return;}
             if(cmd.startsWith("gear:")){Veterans.buy(this,p,s,cmd);return;} // gear:<troop>:<weapon|armour>:<tier>, checked as manage checks training (in-match progression design 5)
-            if(time-s.lastOrder<R.commandCooldownTicks())return;s.lastOrder=time;
+            if(time-s.lastOrder<R.commandCooldownTicks())return;long prevOrder=s.lastOrder;s.lastOrder=time;
             if(!running)return;
             for(var f:Spec.FORMATIONS)if(cmd.equals("formation:"+f.id())){
                 s.formation=f.id();s.yaw=p.getYaw();for(Assignment a:s.assignments.values())a.formation=f.id();
@@ -947,6 +947,10 @@ public final class GravesAndGlory implements ModInitializer {
             }
             for(var order:Spec.ORDERS)if(cmd.equals(order.id())){
                 String id=OrderRules.loadOrder(order.id()); // an old move is the Formation order, hold
+                if(id.equals("charge")&&!OrderRules.useCharge(this,s)){ // the per-commander Charge cooldown holds on this path too (final review I1): refused before anything changes, and it does not use up the command cooldown
+                    s.lastOrder=prevOrder;int left=(int)(s.chargeReadyAt-time);CommandNet.cooldown(p,left);p.sendMessage(Text.literal("Charge ready in "+(left+19)/20+"s"),true);return;
+                }
+                if(id.equals("charge"))CommandNet.cooldown(p,Spec.COMBATDISCIPLINE[0].chargeCooldownTicks());
                 boolean charging=id.equals("charge")&&startsCharge(s,"all");
                 s.assignments.clear();s.arrived.clear();s.order=id;s.yaw=p.getYaw();if(charging)markCharge(s,"all");
                 if(id.equals("charge")||id.equals("retreat"))BattleEffects.feedback(this,p,id); // the command's feedback, a world sound at this player
@@ -961,6 +965,11 @@ public final class GravesAndGlory implements ModInitializer {
                     if(Arena.river(tx,tz)&&Arena.ground(tx,tz)<64)tx=(int)Arena.riverX(tz)+(tx>Arena.riverX(tz)?12:-12);
                     s.target=new Vec3d(tx,Arena.ground(tx,tz)+1,tz);
                 }else s.target=p.getPos();
+                if(id.equals("charge")||id.equals("retreat")){ // a Charge keeps its run direction and a Retreat turns to Follow me, as a player's tactical order (OrderRules; final review M4)
+                    issue(s,"all",id,s.formation,s.target,s.yaw,-1);
+                    double r=Math.toRadians(s.yaw);Vec3d dir=id.equals("charge")?new Vec3d(Math.sin(-r),0,Math.cos(r)).normalize():null;
+                    for(Assignment a:s.assignments.values()){a.chargeDir=dir;a.thenFollow=id.equals("retreat");}
+                }
                 if(!id.equals(order.id()))issue(s,"all",id,s.formation,s.target,s.yaw,-1); // a move-turned-hold still goes to the aimed spot, not the deploy spots of a bare Hold
                 return;
             }

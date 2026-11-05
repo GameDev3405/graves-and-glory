@@ -78,11 +78,21 @@ final class CustomGroups {
         return a;
     }
 
-    /** Whether this troop is under its troop type's own order (a custom group order newer than its group's), which Battle.assignment returns. */
+    private static final java.util.Map<String, String> TROOP_KEYS = new java.util.concurrent.ConcurrentHashMap<>();
+    /** The troop:&lt;id&gt; key of a spec id, built once: ordered and stateKey run per unit inside the O(n^2) formation loops, so no concatenation there. */
+    static String troopKey(String specId) {
+        String k = TROOP_KEYS.get(specId);
+        if (k == null) { k = TROOP + specId; TROOP_KEYS.put(specId, k); }
+        return k;
+    }
+
+    /** Whether this troop is under its troop type's own order (a custom group order newer than its group's), which Battle.assignment returns.
+     *  A squad with no troop:&lt;id&gt; assignment for this type (the common case) answers after one lookup. */
     static boolean ordered(GravesAndGlory.Unit u) {
-        var t = u.squad.assignments.get(TROOP + u.spec.id());
+        var t = u.squad.assignments.get(troopKey(u.spec.id()));
+        if (t == null) return false;
         var g = u.squad.assignments.get(u.spec.group());
-        return t != null && (g == null || t.issued >= g.issued);
+        return g == null || t.issued >= g.issued;
     }
 
     /**
@@ -91,8 +101,10 @@ final class CustomGroups {
      * So a custom group that splits a spec group has its own slots and latch, and the rest of the spec group keeps theirs (Task 12 fix I1).
      */
     static String stateKey(GravesAndGlory.Unit u) {
-        if (!ordered(u)) return u.spec.group();
-        var a = u.squad.assignments.get(TROOP + u.spec.id());
+        var a = u.squad.assignments.get(troopKey(u.spec.id()));
+        if (a == null) return u.spec.group(); // no troop:<id> assignment: the ordinary group key
+        var g = u.squad.assignments.get(u.spec.group());
+        if (g != null && a.issued < g.issued) return u.spec.group();
         List<String> keys = new ArrayList<>();
         for (var e : u.squad.assignments.entrySet()) if (e.getValue() == a) keys.add(e.getKey());
         java.util.Collections.sort(keys);
