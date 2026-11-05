@@ -683,6 +683,27 @@ final class GearCombatChecks implements Phase1Checks.Suite {
           Phase1Checks.report("p1-gear-combat-second_chance", up && close(left, want, 1e-3) && downed && s.secondChanceUsed, "the first downing blow left " + left + " (want " + want + ", still up " + up + "); the second downed him " + downed);
           put(b, f0, p.getX() - 60, p.getZ() + 60, 0); }
 
+        // the downing blow is judged after mitigation: a blow the hurt cooldown ignores, or that full Resistance cancels, never downs him
+        { s.gear = only(gear); s.secondChanceUsed = true;
+          b.respawns.remove(player); p.changeGameMode(net.minecraft.world.GameMode.ADVENTURE); // the block above left him down
+          at(b, p, f0, 3, 0);
+          p.setHealth(pm); p.timeUntilRegen = 0;
+          p.damage(b.world.getDamageSources().mobAttack(f0.mob), 2f); // starts the hurt cooldown, remembering a 2 blow
+          p.setHealth(1);
+          p.damage(b.world.getDamageSources().mobAttack(f0.mob), 2f); // inside the cooldown and no bigger: vanilla ignores it
+          boolean cooldownUp = !p.isSpectator() && !b.respawns.containsKey(player) && p.getHealth() == 1;
+          p.timeUntilRegen = 0;
+          p.addStatusEffect(new net.minecraft.entity.effect.StatusEffectInstance(net.minecraft.entity.effect.StatusEffects.RESISTANCE, 40, 4));
+          p.damage(b.world.getDamageSources().mobAttack(f0.mob), 100f); // Resistance V takes it all
+          boolean resistUp = !p.isSpectator() && !b.respawns.containsKey(player);
+          p.removeStatusEffect(net.minecraft.entity.effect.StatusEffects.RESISTANCE);
+          p.timeUntilRegen = 0;
+          p.damage(b.world.getDamageSources().mobAttack(f0.mob), 100f);
+          boolean downed = b.respawns.containsKey(player) && p.getHealth() == p.getMaxHealth();
+          if (b.respawns.containsKey(player)) b.respawns.put(player, b.time + 5);
+          Phase1Checks.report("p1-gear-combat-mitigated", cooldownUp && resistUp && downed, "a blow inside the hurt cooldown left him up " + cooldownUp + "; one Resistance V cancels left him up " + resistUp + "; an unmitigated lethal blow downed him at full health " + downed);
+          put(b, f0, p.getX() - 60, p.getZ() + 60, 0); }
+
         s.gear = gear;
         p.setHealth(pm);
     }

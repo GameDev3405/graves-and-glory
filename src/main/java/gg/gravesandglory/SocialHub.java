@@ -37,6 +37,8 @@ final class SocialHub {
         parties.values().removeIf(p->p==null||p.id==null||p.members==null||p.members.isEmpty()||p.members.size()>PARTY_LIMIT);
         for(Party p:parties.values()){p.members.removeIf(id->id==null||!seen.add(id));if(!p.members.contains(p.leader)&&!p.members.isEmpty())p.leader=p.members.iterator().next();}
         parties.values().removeIf(p->p.members.isEmpty());}
+    /** A party change that could not be saved is undone: the saved parts (parties and the names seen with them) go back to a copy taken before it. */
+    void rollback(SocialHub before){parties=before.parties;names=before.names;}
     Party party(UUID id){return parties.values().stream().filter(p->p.members.contains(id)).findFirst().orElse(null);}
     Room room(UUID id){return rooms.values().stream().filter(r->r.members.contains(id)).findFirst().orElse(null);}
     Set<UUID> group(UUID id){Party p=party(id);return p==null?Set.of(id):Set.copyOf(p.members);}

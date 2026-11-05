@@ -129,6 +129,9 @@ public final class GravesAndGlory implements ModInitializer {
             double x=buf.readDouble(),z=buf.readDouble();float yaw=buf.readFloat();int target=buf.readInt();
             server.execute(()->{if(battle!=null)battle.tactical(player,group,action,formation,x,z,yaw,target);});
         });
+        // The first-visit import permission is granted as the connection joins, before the client's PROFILE packet is handled: Battle.join
+        // (and Campaign.joined) waits for the arena, and a profile sent while it builds would otherwise be refused and marked ready.
+        ServerPlayConnectionEvents.JOIN.register((handler,sender,server)->{if(battle!=null)battle.campaign.grantImport(handler.player.getUuid());});
         ServerPlayConnectionEvents.DISCONNECT.register((handler, server) -> {
             if(battle!=null) battle.leave(handler.player.getUuid());
         });
@@ -138,7 +141,8 @@ public final class GravesAndGlory implements ModInitializer {
             return battle.allowDamage(entity,source,amount);
         });
         // Rise Again: a Graveborn troop may stand up instead of dying (Houses.allowDeath); returning false skips vanilla's death and AFTER_DEATH below.
-        ServerLivingEntityEvents.ALLOW_DEATH.register((entity,source,amount)->Houses.allowDeath(entity,source));
+        // A commander's downing blow is judged here, after armour, absorption, resistance and the hurt cooldown took their share (Battle.allowCommanderDeath).
+        ServerLivingEntityEvents.ALLOW_DEATH.register((entity,source,amount)->(battle==null||!(entity instanceof ServerPlayerEntity p)||battle.allowCommanderDeath(p,source,amount))&&Houses.allowDeath(entity,source));
         ServerLivingEntityEvents.AFTER_DEATH.register((entity,source)->{
             Battle.leaveSide(entity);
             // Task 7: a troop's body lies a while; it keeps no effect (a Mark Prey glow, a slow), and its next full tick clears the glow flag
@@ -1133,7 +1137,7 @@ public final class GravesAndGlory implements ModInitializer {
             if(!Modes.registered(campaign.battleMode)||!Modes.hosts(campaign.battleMode,campaign.map))campaign.battleMode=Modes.DOMINATION;
             mode=Modes.create(campaign.battleMode);
             roundSeconds=mode.row.roundSeconds();
-            Projectiles.clear(this);strikes.clear();Abilities.clearBanners(this);Houses.reset(this);FeedEvents.clear();clearProgression();
+            Projectiles.clear(this);strikes.clear();Abilities.clearBanners(this);Houses.reset(this);FeedEvents.clear();clearProgression();clearIntel();
             campaign.prepareRound();
             clearSides();
             Arrays.fill(scores,0);pointSeconds=new int[2][points.size()];
@@ -1269,19 +1273,28 @@ public final class GravesAndGlory implements ModInitializer {
             }
             Squad hitter=attackerSquad;Unit striker=null;for(Unit u:units)if(u.mob==attacker){hitter=u.squad;striker=u;}
             Squad side=hitter!=null?hitter:fallenSquad(attacker); // a commander's view of the blow: a shot that lands after its troop fell is still his army's (a troop victim has it from Combat.resolve's lastHitBy already)
-            if(entity instanceof ServerPlayerEntity p&&p.getHealth()<=amount&&GearCombat.secondChance(victimSquad,p))return false; // second_chance catches the downing blow once a match
-            if(entity instanceof ServerPlayerEntity p&&p.getHealth()<=amount){
-                if(Diagnostics.active())System.out.println("[Graves and Glory damage] respawn cause="+source.getType().msgId()+" amount="+amount+" hp="+p.getHealth()+" pos="+p.getPos()+" fall="+p.fallDistance);
-                p.setHealth(p.getMaxHealth());toBase(p,team);p.changeGameMode(GameMode.SPECTATOR);
-                respawns.put(p.getUuid(),time+R.respawnSeconds()*20L);FeedEvents.commander(this,p,false);
-                Veterans.onCommanderDeath(this,p,victimSquad,team,attacker,striker,side); // a commander struck down never reaches AFTER_DEATH: his killers get the commander bounty here, and his credit log is forgotten (he stands again within its window)
-                return false;
-            }
             if(hitter!=null)for(Unit u:units)if(u.mob==entity){if(attacker!=null&&hitter.team!=u.squad.team)u.squad.grudge=attacker.getUuid();u.lastHitBy=hitter;u.lastHitAt=time;u.lastHitTroop=striker==null||striker.temporary?null:striker.spec.id();break;}
             if(side!=null&&victimSquad!=null&&side.team!=team){victimSquad.hitBy=side;victimSquad.hitAt=time;} // a commander's last enemy blow, as lastHitBy is a troop's: a death with no attacker soon after is that army's (Veterans.onCommanderDeath)
             if(striker!=null)Veterans.helped(this,striker,entity); // every troop blow the battle lets through (Combat.resolve's and any other) logs its striker as a helper on the victim (kill credit, design 3.2)
             return true;
         }
+        /** ALLOW_DEATH for a player: a commander seated in a running round whose blow, after mitigation, took his health to 0 is not killed.
+         *  second_chance catches the downing blow once a match; otherwise he stands at full health at his base as a spectator until his respawn. */
+        boolean allowCommanderDeath(ServerPlayerEntity p,net.minecraft.entity.damage.DamageSource source,float amount){
+            Squad victimSquad=squads.get(p.getUuid());int team=teamOf(p);
+            if(!running||team<0)return true;
+            if(GearCombat.secondChance(victimSquad,p))return false; // second_chance catches the downing blow once a match
+            Entity attacker=source.getAttacker();Squad hitter=attacker==null?null:squads.get(attacker.getUuid());Unit striker=null;
+            for(Unit u:units)if(u.mob==attacker){hitter=u.squad;striker=u;}
+            Squad side=hitter!=null?hitter:fallenSquad(attacker);
+            if(Diagnostics.active())System.out.println("[Graves and Glory damage] respawn cause="+source.getType().msgId()+" amount="+amount+" pos="+p.getPos()+" fall="+p.fallDistance);
+            p.setHealth(p.getMaxHealth());toBase(p,team);p.changeGameMode(GameMode.SPECTATOR);
+            respawns.put(p.getUuid(),time+R.respawnSeconds()*20L);FeedEvents.commander(this,p,false);
+            Veterans.onCommanderDeath(this,p,victimSquad,team,attacker,striker,side); // a commander struck down never reaches AFTER_DEATH: his killers get the commander bounty here, and his credit log is forgotten (he stands again within its window)
+            return false;
+        }
+        /** Forgets the enemy sightings and pings of the last round (a new round, the return to camp). */
+        void clearIntel(){sightings.clear();pings.clear();}
         record Sight(float x,float z,long seen){}
         final Map<Integer,Map<UUID,Sight>> sightings=new HashMap<>();
         void updateSight(){for(int team=0;team<2;team++){var memory=sightings.computeIfAbsent(team,k->new HashMap<>());memory.values().removeIf(v->time-v.seen>Spec.SCOUTING[0].memorySeconds()*20);
