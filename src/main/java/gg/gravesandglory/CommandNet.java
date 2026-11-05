@@ -97,8 +97,8 @@ public final class CommandNet {
     /** What the client last heard on command_v1. Task 4 registers it; the panel (Task 7) and outlines and feedback (Task 9) read it. */
     public static final class Client {
         private Client() {}
-        /** A teammate's Formation or Charge outline: shown until untilMs (outlineShareTicks after it arrived) or until his troops arrive. own is set for an outline of this client's own order (a client-side addition; the server never sends a commander his own). */
-        public record Outline(String formation, double x, double z, float yaw, List<Map.Entry<String, Integer>> groups, long untilMs, boolean own) {}
+        /** A teammate's Formation or Charge outline: shown until untilMs (outlineShareTicks after it arrived) or until his troops arrive. own is set for an outline of this client's own order (a client-side addition; the server never sends a commander his own). owner is the sender's team slot and atMs when it arrived: one order's several outlines arrive together, and an owner's later order replaces his earlier ones (OrderOutlines). */
+        public record Outline(String formation, double x, double z, float yaw, List<Map.Entry<String, Integer>> groups, long untilMs, boolean own, int owner, long atMs) {}
         /** An order acknowledgement: the order, the troops that raise their weapons, the pulse centre and when it arrived. */
         public record Ack(String order, int[] units, double x, double z, long atMs) {}
         /** Ticks until this commander's Charge is ready, as last sent (0: ready); chargeStampMs is when it arrived, so a reader may count it down. */
@@ -126,13 +126,14 @@ public final class CommandNet {
                     int ticks = buf.readInt();
                     client.execute(() -> { chargeReadyIn = ticks; chargeStampMs = now; });
                 } else if (kind == OUTLINE) {
-                    buf.readInt(); // ownerTeamSlot: which teammate; the outline list keeps one entry per arrival
+                    int owner = buf.readInt(); // ownerTeamSlot: which teammate
                     String formation = buf.readString(); double x = buf.readDouble(), z = buf.readDouble(); float yaw = buf.readFloat();
                     int n = buf.readInt(); if (n < 0 || n > 16) return;
                     List<Map.Entry<String, Integer>> groups = new ArrayList<>();
                     for (int i = 0; i < n; i++) groups.add(Map.entry(buf.readString(), buf.readInt()));
-                    var outline = new Outline(formation, x, z, yaw, List.copyOf(groups), now + Spec.COMBATDISCIPLINE[0].outlineShareTicks() * 50L, false);
-                    client.execute(() -> { outlines.removeIf(o -> o.untilMs() < now); outlines.add(outline); });
+                    var outline = new Outline(formation, x, z, yaw, List.copyOf(groups), now + Spec.COMBATDISCIPLINE[0].outlineShareTicks() * 50L, false, owner, now);
+                    // one order's outlines arrive within a few ms of each other (several for a multi-group Charge); an earlier order of this owner is replaced
+                    client.execute(() -> { outlines.removeIf(o -> o.untilMs() < now || (o.owner() == owner && Math.abs(o.atMs() - now) > 150)); outlines.add(outline); });
                 } else if (kind == ACK) {
                     String order = buf.readString();
                     int n = buf.readInt(); if (n < 0 || n > 512) return;

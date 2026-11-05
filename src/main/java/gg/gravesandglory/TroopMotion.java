@@ -44,7 +44,7 @@ public final class TroopMotion {
     /** The clip folder every family of a rig falls back to. */
     static final String COMMON="common";
     static final List<String> ARMS=List.of("right_arm","left_arm","right_forearm","left_forearm");
-    static final List<String> STANCES=List.of("idle","carry","guard","brace","wall","shield","aim","rest");
+    static final List<String> STANCES=List.of("idle","carry","guard","brace","wall","shield","aim","rest","rally");
     static final Set<String> DIRECTIONS=Set.of("front","back","left","right");
     private static final Pattern HIT=Pattern.compile("hit_(head|body|legs)(_\\d+)?"),BLOCK=Pattern.compile("block(?:_(head|body|legs))?(_\\d+)?");
     /** Seconds a scene pose takes to blend in or out. */
@@ -97,6 +97,7 @@ public final class TroopMotion {
     static Fam build(String rig,String family,int gen){
         Map<String,Clip> all=new TreeMap<>(ClipLibrary.folder(rig,COMMON));all.putAll(ClipLibrary.folder(rig,family));
         Map<String,Clip> stances=new HashMap<>();for(String s:STANCES)if(all.containsKey(s))stances.put(s,all.get(s));
+        if(!stances.containsKey("rally"))stances.put("rally",rally(stances)); // a family's own rally.json wins over this one
         Map<String,Clip> own=ClipLibrary.folder(rig,family);
         List<Spec.AttackVariantsRow> rows=Tactics.variants(family);int[] index=new int[rows.size()];List<Clip> attacks=new ArrayList<>();
         for(int i=0;i<rows.size();i++){Clip c=own.get(rows.get(i).id());if(c==null)index[i]=-1;else{index[i]=attacks.size();attacks.add(c);}}
@@ -183,11 +184,43 @@ public final class TroopMotion {
         long world=e.getWorld()==null?e.age:e.getWorld().getTime();
         return (world+(double)(age-e.age))/20.0;
     }
+    /** The stance a troop shows now: none while it dies (carry B12), rally while its order's acknowledgement lasts (OrderFeedback), else what the server sent. */
+    static MotionEvents.Stance stance(int id,boolean dead){
+        if(dead)return MotionEvents.Stance.NONE;
+        return OrderFeedback.rallying(id)?RALLY:MotionEvents.Client.stance(id);
+    }
+    static final MotionEvents.Stance RALLY=new MotionEvents.Stance("rally",0);
+    /** The rally pose, for a family that has no rally.json: its calm stance held (carry, else idle, else guard) with the sword arm thrown up, so the
+     *  weapon stays in the grip the family already holds it with. A family with no stance clips keeps the procedural pose in every other bone. */
+    static Clip rally(Map<String,Clip> stances){
+        Map<String,double[]> base=new TreeMap<>();
+        for(String k:MotionEngine.stanceChain("carry")){Clip c=stances.get(k);if(c!=null){c.sample(0,base);break;}}
+        base.put("right_arm",new double[]{-158,0,-8,0,0,0});
+        base.put("right_forearm",new double[]{-10,0,0,0,0,0});
+        com.google.gson.JsonObject root=new com.google.gson.JsonObject(),bones=new com.google.gson.JsonObject();
+        root.addProperty("format",1);root.addProperty("clip","rally");root.addProperty("length",1.0);root.addProperty("loop",true);root.add("markers",new com.google.gson.JsonObject());
+        for(var e:base.entrySet()){
+            com.google.gson.JsonObject chans=new com.google.gson.JsonObject();double[] v=e.getValue();
+            chans.add("rotation",hold(v[0],v[1],v[2]));
+            if(v[3]!=0||v[4]!=0||v[5]!=0)chans.add("position",hold(v[3],v[4],v[5]));
+            bones.add(e.getKey(),chans);
+        }
+        root.add("bones",bones);
+        return Clip.parse(root);
+    }
+    private static com.google.gson.JsonArray hold(double x,double y,double z){
+        com.google.gson.JsonArray keys=new com.google.gson.JsonArray();
+        for(double t:new double[]{0,1}){
+            com.google.gson.JsonObject k=new com.google.gson.JsonObject();k.addProperty("t",t);k.addProperty("i","linear");
+            com.google.gson.JsonArray v=new com.google.gson.JsonArray();v.add(x);v.add(y);v.add(z);k.add("v",v);keys.add(k);
+        }
+        return keys;
+    }
     /** The entity's MotionInput for this frame (the class comment, step 1). */
     static MotionInput input(MobEntity e,Fam fam,Body b,float limbAngle,float limbDistance,float age,float headYaw,float headPitch){
         int id=e.getId();boolean dead=!e.isAlive()||e.deathTime>0;
         // carry B12: a dying troop's stance no longer counts (the engine fades the stance to rest on death)
-        MotionEvents.Stance s=dead?MotionEvents.Stance.NONE:MotionEvents.Client.stance(id);
+        MotionEvents.Stance s=stance(id,dead);
         float partial=age-e.age;
         double yawRate=MathHelper.wrapDegrees(e.bodyYaw-e.prevBodyYaw)*20.0;
         MotionInput.Attack a=MotionEvents.Client.attacks(id).peekLast();
