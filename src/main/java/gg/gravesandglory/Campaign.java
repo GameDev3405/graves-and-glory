@@ -213,6 +213,7 @@ public final class Campaign {
     /** Leaving frees the pad, any seat in a custom lobby, and invitations to it, and forgets which snapshot forms were logged for him. */
     void left(UUID id){newerSaveTold.remove(id);gearSent.remove(id);forgeResults.remove(id);onPad.remove(id);padRefused.remove(id);leaveParty(id);snapshotForms.remove(id);notices.remove(id);noticeAt.remove(id);} // his notice entries go with him, a standing line's too (expireNotices never drops those)
     boolean handle(ServerPlayerEntity p,String cmd){
+        if(cmd.startsWith("group:"))return CustomGroups.command(this,b,p,cmd); // custom group edits from the Armoury (command UI Task 12)
         if(cmd.startsWith("social:"))return socialCommand(p,cmd);
         if(cmd.startsWith("progress:"))return progressCommand(p,cmd);
         if(cmd.startsWith("vote:")){try{int pick=Integer.parseInt(cmd.substring(5));if(!b.running&&onPad.containsKey(p.getUuid())&&pick>=0&&pick<Spec.MAPS.length){mapVotes.put(p.getUuid(),pick);notice(p.getUuid(),"Vote saved: "+Spec.MAPS[pick].name());}}catch(NumberFormatException ignored){}return true;}

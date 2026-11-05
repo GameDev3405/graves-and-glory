@@ -169,7 +169,7 @@ public final class CommandPanel {
         List<String> pillText = new ArrayList<>();
         int px = flagX + 2, rows = 1, rowW = 0;
         for (int i = 0; i < pills.size(); i++) {
-            String t = (i < 4 && sw >= 500 ? (i + 1) + " " : "") + shortName(pills.get(i).id()); // narrow screens drop the number: one row
+            String t = pills.get(i).custom() ? pills.get(i).label() : (i < 4 && sw >= 500 ? (i + 1) + " " : "") + shortName(pills.get(i).id()); // narrow screens drop the number: one row; a custom group's pill is "<n> <name>" (Task 12)
             int w = font.getWidth(t) + 10;
             if (px + w > limit && px > flagX + 2) { px = flagX + 2; rows++; }
             pillBox.add(new int[]{px, rows - 1, w});

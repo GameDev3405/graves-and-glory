@@ -45,14 +45,23 @@ final class Tactics {
     static Vec3d slotCentre(GravesAndGlory.Battle b,List<GravesAndGlory.Unit> members){Vec3d sum=Vec3d.ZERO;for(var m:members)sum=sum.add(b.formation(m));return sum.multiply(1.0/members.size());}
     /** Whether the unit's group centre stands within r of the centre of its formation slots (as arrived reads it, without the latch). */
     static boolean groupWithin(GravesAndGlory.Battle b,GravesAndGlory.Unit u,double r){
-        var members=Morale.members(b,u.squad,u.spec.group());if(members.isEmpty())return false;
+        var members=sharers(b,u);if(members.isEmpty())return false;
         return GravesAndGlory.Battle.horizontalDistance(Morale.centre(members),slotCentre(b,members))<=r*r;
     }
+    /** The living troops under the unit's order: its group's, or, under a custom group's order (CustomGroups.ordered), the troops that share that assignment (Task 12). */
+    static List<GravesAndGlory.Unit> sharers(GravesAndGlory.Battle b,GravesAndGlory.Unit u){
+        if(!CustomGroups.ordered(u))return Morale.members(b,u.squad,u.spec.group());
+        var a=b.assignment(u);List<GravesAndGlory.Unit> out=new java.util.ArrayList<>();
+        for(var m:b.units)if(m.squad==u.squad&&m.mob.isAlive()&&b.assignment(m)==a)out.add(m);
+        return out;
+    }
     /** The unit's group turns to another order in place (command UI Task 5): a player's Charge to Attack (hunt) on its first landed blow or at its
-     *  end point, a player's Retreat to Follow me at its commander. Same point, formation and facing; chargedAt is kept for the charge impact. */
+     *  end point, a player's Retreat to Follow me at its commander. Same point, formation and facing; chargedAt is kept for the charge impact.
+     *  Every key that holds the old assignment takes the new one, so a custom group's order (troop:&lt;id&gt; keys, Task 12) turns for its troops alone. */
     static GravesAndGlory.Assignment become(GravesAndGlory.Unit u,GravesAndGlory.Assignment a,String order,long time){
         var n=new GravesAndGlory.Assignment(order,a.formation,a.target,a.yaw);n.issued=time;n.perch=a.perch;n.hunt=order.equals("attack");
-        u.squad.assignments.put(u.spec.group(),n);u.squad.arrived.remove(u.spec.group());return n;
+        boolean shared=false;for(var e:u.squad.assignments.entrySet())if(e.getValue()==a){e.setValue(n);shared=true;}
+        if(!shared)u.squad.assignments.put(u.spec.group(),n);u.squad.arrived.remove(u.spec.group());return n;
     }
     /** Whether a point is on a player's Charge path from this troop: ahead along Assignment.chargeDir (up to chargeRunBlocks) and within
      *  chargeLane blocks of the troop's line. Every other order has no path, so anything passes. */
@@ -632,7 +641,7 @@ final class Tactics {
         BattleEffects.strike(b,u,target);
         u.blow=s.charge();u.blowVariant=s.variant();
         try{Abilities.land(b,u,target);}finally{u.blow=null;u.blowVariant=-1;}
-        var a=u.squad.assignments.get(u.spec.group()); // a player's Charge: the group's first landed blow turns it to Attack (hunt); its chargedAt stays for the impact
+        var a=b.assignment(u); // a player's Charge: the group's first landed blow turns it to Attack (hunt); its chargedAt stays for the impact
         if(a!=null&&a.order.equals("charge")&&a.chargeDir!=null&&Combat.landedNow(b,u))become(u,a,"attack",b.time); // landed: damage() took it (Task 6 review I1), so a blow that did not land keeps the Charge and its crash
     }
 }

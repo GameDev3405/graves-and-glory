@@ -29,7 +29,8 @@ import java.util.Set;
  *   <li>hold: the Formation order, at the dry anchor (x, z) in the shape and yaw sent. An old client's move arrives as hold (loadOrder).</li>
  *   <li>formation: a shape change only, as before.</li>
  * </ul>
- * Unknown ids, and custom:&lt;n&gt; until Task 12, are skipped; "all" in the list stands for the whole army alone. A group whose own point fails
+ * A custom:&lt;n&gt; id (Task 12) names the commander's custom group n of his own troop types (CustomGroups), stored per troop type; unknown ids,
+ * and custom ids his profile lacks, are skipped; "all" in the list stands for the whole army alone. A group whose own point fails
  * (outside the arena, no dry end) is left out and the rest still move; when none is left the order is refused. After a stored order the issuer
  * and his teammates get one ACK, and for hold and charge his teammates one OUTLINE per distinct destination (CommandNet). Bots and SiegeMode call
  * Battle.issue directly and never pass here; they share the commander's Charge cooldown through chargeReady and markChargeUsed (or useCharge).
@@ -59,12 +60,13 @@ final class OrderRules {
         if (s == null || !b.ready || !b.running || !s.seated || b.time < b.campaign.introUntil || b.respawns.containsKey(s.owner) || b.time - s.lastOrder < R.commandCooldownTicks()) return;
         if (groups == null || action == null || formation == null) return;
         if (Arrays.stream(Spec.FORMATIONS).noneMatch(f -> f.id().equals(formation))) return;
-        List<At> named = known(groups);
+        List<At> named = known(b, s, groups);
         if (named.isEmpty()) return;
         List<String> ids = named.stream().map(At::group).toList();
         Vec3d at = centre(b, s, ids, p.getPos());
         if (action.equals("formation")) {
             for (var g : Spec.GROUPS) if (!g.id().equals("all") && covers(ids, g.id())) { var a = s.assignments.computeIfAbsent(g.id(), k -> new GravesAndGlory.Assignment(s.order, s.formation, s.target, s.yaw)); a.formation = formation; }
+            for (String id : ids) for (var u : CustomGroups.number(id) > 0 ? CustomGroups.resolve(b, s, id) : List.<GravesAndGlory.Unit>of()) if (CustomGroups.ordered(u)) b.assignment(u).formation = formation; // a custom group under its own order changes shape
             s.lastOrder = b.time; b.campaign.tutorialDid(p, 1); BattleEffects.feedback(b, p, "hold"); // a formation change shouts like a Hold (main's audio round 2)
             CommandNet.ack(b, s, "formation", unitIds(b, s, ids), at.x, at.z);
             return;
@@ -92,9 +94,10 @@ final class OrderRules {
                 case "attack" -> { Vec3d c = centre(b, s, List.of(g.group()), p.getPos()); dest = GravesAndGlory.Battle.groundAt(c.x, c.z); }
                 case "follow", "retreat" -> dest = p.getPos();
                 case "charge" -> {
-                    if (!GravesAndGlory.Battle.inArena(g.x(), g.z())) break;
+                    Vec3d start = CustomGroups.number(g.group()) > 0 ? centre(b, s, List.of(g.group()), new Vec3d(g.x(), 0, g.z())) : new Vec3d(g.x(), 0, g.z()); // a custom group's start is its troops' centre: the client has no per-type centre
+                    if (!GravesAndGlory.Battle.inArena(start.x, start.z)) break;
                     for (int d = Spec.COMBATDISCIPLINE[0].chargeRunBlocks(); d >= 0 && dest == null; d--) {
-                        double ex = g.x() + dx * d, ez = g.z() + dz * d;
+                        double ex = start.x + dx * d, ez = start.z + dz * d;
                         if (GravesAndGlory.Battle.inArena(ex, ez) && !GravesAndGlory.Battle.wet(ex, ez)) dest = GravesAndGlory.Battle.groundAt(ex, ez);
                     }
                     if (dest == null) wetRefusal = true;
@@ -113,13 +116,20 @@ final class OrderRules {
         s.lastOrder = b.time;
         List<String> moved = new ArrayList<>(dests.keySet());
         List<String> charging = new ArrayList<>();
+        List<GravesAndGlory.Assignment> stored = new ArrayList<>();
         for (var e : dests.entrySet()) {
             String group = e.getKey();
+            if (CustomGroups.number(group) > 0) { // a custom group: its troop types' own order (CustomGroups.issue); a charge stamps the groups its troops belong to
+                List<GravesAndGlory.Unit> units = CustomGroups.resolve(b, s, group);
+                if (order.equals("charge")) for (var u : units) if (!b.assignment(u).order.equals("charge") && !charging.contains(u.spec.group())) charging.add(u.spec.group());
+                stored.add(CustomGroups.issue(b, s, group, order, formation, e.getValue(), yaw, enemyId));
+                continue;
+            }
             if (order.equals("charge") && b.startsCharge(s, group)) charging.add(group);
             b.issue(s, group, order, formation, e.getValue(), yaw, enemyId);
         }
-        for (var g : Spec.GROUPS) if (!g.id().equals("all") && covers(moved, g.id())) {
-            var a = s.assignments.get(g.id());
+        for (var g : Spec.GROUPS) if (!g.id().equals("all") && covers(moved, g.id())) stored.add(s.assignments.get(g.id()));
+        for (var a : stored) {
             if (a == null) continue;
             a.hunt = order.equals("attack");
             a.chargeDir = chargeDir;
@@ -144,12 +154,13 @@ final class OrderRules {
         }
     }
 
-    /** The list's known groups in order, each once: "all" alone if it is named; unknown ids (custom:n until Task 12) and nulls are skipped. */
-    static List<At> known(List<At> groups) {
+    /** The list's known groups in order, each once: "all" alone if it is named; unknown ids, custom:n the commander has no group n for, and nulls are skipped. */
+    static List<At> known(GravesAndGlory.Battle b, GravesAndGlory.Squad s, List<At> groups) {
         List<At> out = new ArrayList<>();
         Set<String> seen = new HashSet<>();
         for (At g : groups) {
-            if (g == null || g.group() == null || Arrays.stream(Spec.GROUPS).noneMatch(x -> x.id().equals(g.group()))) continue;
+            if (g == null || g.group() == null) continue;
+            if (CustomGroups.number(g.group()) > 0 ? CustomGroups.group(b, s, g.group()) == null : Arrays.stream(Spec.GROUPS).noneMatch(x -> x.id().equals(g.group()))) continue;
             if (g.group().equals("all")) return List.of(g);
             if (seen.add(g.group())) out.add(g);
             if (out.size() >= MAX_GROUPS) break;
@@ -184,26 +195,32 @@ final class OrderRules {
 
     /** Whether a group id is covered by the named groups ("all" covers every one). */
     static boolean covers(Collection<String> groups, String id) { return groups.contains("all") || groups.contains(id); }
-    static boolean named(Collection<String> groups, GravesAndGlory.Unit u) { return covers(groups, u.spec.group()); }
+    /** Whether the named groups take in this unit: its own group, "all", or a custom group of its troop type. */
+    static boolean named(GravesAndGlory.Battle b, Collection<String> groups, GravesAndGlory.Unit u) {
+        if (covers(groups, u.spec.group())) return true;
+        for (String g : groups) if (CustomGroups.number(g) > 0 && CustomGroups.contains(b, u, g)) return true;
+        return false;
+    }
 
     /** The average position of the named groups' living troops, else the fallback (the commander). */
     static Vec3d centre(GravesAndGlory.Battle b, GravesAndGlory.Squad s, String group, Vec3d fallback) { return centre(b, s, List.of(group), fallback); }
     static Vec3d centre(GravesAndGlory.Battle b, GravesAndGlory.Squad s, Collection<String> groups, Vec3d fallback) {
         double x = 0, z = 0; int n = 0;
-        for (var u : b.units) if (u.squad == s && named(groups, u) && u.mob.isAlive()) { x += u.mob.getX(); z += u.mob.getZ(); n++; }
+        for (var u : b.units) if (u.squad == s && named(b, groups, u) && u.mob.isAlive()) { x += u.mob.getX(); z += u.mob.getZ(); n++; }
         return n == 0 ? fallback : new Vec3d(x / n, fallback.y, z / n);
     }
 
     /** The entity ids of the named groups' living troops: the ones that raise their weapons on the ACK. */
     static int[] unitIds(GravesAndGlory.Battle b, GravesAndGlory.Squad s, String group) { return unitIds(b, s, List.of(group)); }
     static int[] unitIds(GravesAndGlory.Battle b, GravesAndGlory.Squad s, Collection<String> groups) {
-        return b.units.stream().filter(u -> u.squad == s && named(groups, u) && u.mob.isAlive()).mapToInt(u -> u.mob.getId()).toArray();
+        return b.units.stream().filter(u -> u.squad == s && named(b, groups, u) && u.mob.isAlive()).mapToInt(u -> u.mob.getId()).toArray();
     }
 
     /** Each named group with its living troops, for the OUTLINE (for "all", only the groups that have some). */
     static List<Map.Entry<String, Integer>> members(GravesAndGlory.Battle b, GravesAndGlory.Squad s, Collection<String> groups) {
         boolean all = groups.contains("all");
         List<Map.Entry<String, Integer>> out = new ArrayList<>();
+        for (String g : groups) if (CustomGroups.number(g) > 0) out.add(CustomGroups.members(b, s, g));
         for (var g : Spec.GROUPS) {
             if (g.id().equals("all") || !covers(groups, g.id())) continue;
             int n = (int) b.units.stream().filter(u -> u.squad == s && u.spec.group().equals(g.id()) && u.mob.isAlive()).count();

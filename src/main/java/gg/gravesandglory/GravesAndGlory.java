@@ -965,8 +965,8 @@ public final class GravesAndGlory implements ModInitializer {
                 return;
             }
         }
-        /** The order a group is under: its stored one. No group ever leaves it on its own (the no-routing design); only its commander's next order changes it. */
-        Assignment assignment(Unit u){return storedAssignment(u.squad,u.spec.group());}
+        /** The order a troop is under: its group's stored one, or its troop type's (troop:<id>, from a custom group order, CustomGroups) when that was issued at the same time or later. No group ever leaves it on its own (the no-routing design); only its commander's next order changes it. */
+        Assignment assignment(Unit u){Assignment t=u.squad.assignments.get(CustomGroups.TROOP+u.spec.id()),g=u.squad.assignments.get(u.spec.group());return t!=null&&(g==null||t.issued>=g.issued)?t:storedAssignment(u.squad,u.spec.group());}
         Assignment storedAssignment(Squad s,String group){return s.assignments.getOrDefault(group,new Assignment(s.order,s.formation,s.target,s.yaw));}
         /** Stamps the charge of the named group(s) (Squad.chargedAt), which the counters table's charge impact (row C5) reads. A bot's order sounds nothing; a player's order sounds in the world at him (BattleEffects.feedback), on the order paths. */
         void markCharge(Squad s,String group){for(var g:Spec.GROUPS)if(!g.id().equals("all")&&(group.equals("all")||group.equals(g.id())))s.chargedAt.put(g.id(),time);}
@@ -999,7 +999,7 @@ public final class GravesAndGlory implements ModInitializer {
         static boolean walls(Unit u,String order){return order.equals("hold")&&u.tags.contains("shield");}
         /** The unit's formation slot: its deploy spot on a player's default Hold, else its place in its group's formation round the order's point (BattleMath.holdLayout). */
         Vec3d formation(Unit u){
-            Assignment a=assignment(u);if(!u.squad.bot&&u.squad.order.equals("hold")&&!u.squad.assignments.containsKey(u.spec.group()))return u.deployed;var f=Arrays.stream(Spec.FORMATIONS).filter(v->v.id().equals(a.formation)).findFirst().orElse(Spec.FORMATIONS[0]);
+            Assignment a=assignment(u);if(!u.squad.bot&&u.squad.order.equals("hold")&&!u.squad.assignments.containsKey(u.spec.group())&&!CustomGroups.ordered(u))return u.deployed;var f=Arrays.stream(Spec.FORMATIONS).filter(v->v.id().equals(a.formation)).findFirst().orElse(Spec.FORMATIONS[0]);
             // the group in slot order (then entity id, so every member sees the same order); BattleMath.holdLayout lays it out: on Hold its shield troops close into the wall in the front ranks, the rest form behind them
             List<Unit> group=new ArrayList<>();group.add(u);
             for(Unit other:units)if(other!=u&&other.squad==u.squad&&other.spec.group().equals(u.spec.group())&&other.mob.isAlive())group.add(other);

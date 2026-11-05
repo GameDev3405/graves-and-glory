@@ -110,7 +110,7 @@ class RecruitmentScreen extends ArmyScreen {
     @Override public boolean mouseScrolled(double x,double y,double amount){if(tab==1&&page.scroll(amount>0?-1:1))return true;return super.mouseScrolled(x/uiScale,y/uiScale,amount);}
     /** The Armoury key switches to the Armoury page (from the barracks) or closes the screen (from the Armoury); Page Up and Down scroll the Armoury's troop rows. */
     @Override public boolean keyPressed(int key,int scan,int mods){
-        if(armoury!=null&&armoury.matchesKey(key,scan)){if(tab==1)close();else show(1);return true;}
+        if(armoury!=null&&armoury.matchesKey(key,scan)&&!(tab==1&&page.editing>0)){if(tab==1)close();else show(1);return true;}
         if(tab==1&&(key==GLFW.GLFW_KEY_PAGE_UP||key==GLFW.GLFW_KEY_PAGE_DOWN)&&page.scroll(key==GLFW.GLFW_KEY_PAGE_UP?-1:1))return true;
         return super.keyPressed(key,scan,mods);
     }

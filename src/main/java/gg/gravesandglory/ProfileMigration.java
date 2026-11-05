@@ -8,7 +8,7 @@ import java.util.function.Function;
 
 /**
  * The one-time upgrades of a commander profile: schema 1 (Dawn and Dusk, 12 troops) to schema 2 (spec 6.3), and schema 2 to
- * schema 3 (plan 2C.3: the Long March battles won and bonuses paid). Pure: JSON goes through the parse and write functions the
+ * schema 3 (plan 2C.3: the Long March battles won and bonuses paid), schema 3 to 4 (commander gear) and schema 4 to 5 (custom groups). Pure: JSON goes through the parse and write functions the
  * caller passes, so the standalone ProfileMigrationCheck needs no Gson.
  */
 public final class ProfileMigration {
@@ -137,6 +137,17 @@ public final class ProfileMigration {
         if (p.relicSlots == null) p.relicSlots = new ArrayList<>(List.of("", "", ""));
         if (p.gear.isEmpty()) Gear.grantStarter(p);
         p.schema = 4;
+        return p;
+    }
+
+    /**
+     * Schema 4 to 5 (command UI custom groups), in place, and returns the same profile: customGroups starts empty. Every schema-4 field
+     * is kept as it is. Sets schema 5. Runs in Profile.sanitize, so a schema-4 file loads unchanged and the next save writes schema 5
+     * (SafeFiles.writeWithBackup keeps the schema-4 bytes as its .bak).
+     */
+    static Profile v4toV5(Profile p) {
+        p.customGroups = new ArrayList<>();
+        p.schema = 5;
         return p;
     }
 

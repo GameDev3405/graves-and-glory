@@ -51,14 +51,24 @@ public final class CommandSelection {
     /** CommandMode.selected is the battle HUD's single highlighted group (BattleHud, until its panel is rebuilt): "all", or the one group selected. */
     private static void mirror() { CommandMode.selected = selected.size() == 1 ? selected.get(0) : "all"; }
 
-    /** The pills in panel order: Infantry (key 1), Archers (2), Riders (3), All (4), then Support and Siege when fielded (no key). Counts
-     *  come from the state packet's groups, read by id. */
+    /** The pills in panel order: Infantry (key 1), Archers (2), Riders (3), All (4), then Support and Siege when fielded (no key), then the
+     *  commander's custom groups (Task 12, Profile.customGroups) labelled "&lt;n&gt; &lt;name&gt;". Counts come from the state packet's groups, read by id;
+     *  a custom group counts its troop types' slots in the banner (the packet has no per-type counts). */
     public static List<Pill> pills() {
         List<Pill> out = new ArrayList<>();
         for (String id : new String[]{"infantry", "ranged", "cavalry"}) out.add(new Pill(id, label(id), members(id), false));
         out.add(new Pill("all", "All", members("all"), false));
         for (String id : new String[]{"support", "siege"}) if (fielded(id)) out.add(new Pill(id, label(id), members(id), false));
+        var profile = CampaignClient.profile;
+        if (profile != null && profile.customGroups != null) for (var g : profile.customGroups)
+            if (g != null) out.add(new Pill(CustomGroups.PREFIX + g.number(), g.number() + " " + g.name(), bannerCount(profile, g.troopIds()), true));
         return out;
+    }
+    /** The banner slots holding one of these troop types: a custom group's strength as fielded. */
+    private static int bannerCount(Profile profile, List<String> troopIds) {
+        int n = 0;
+        if (profile.banner != null && troopIds != null) for (String id : profile.banner) if (troopIds.contains(id)) n++;
+        return n;
     }
     private static String label(String id) {
         for (var g : Spec.GROUPS) if (g.id().equals(id)) return g.label();
