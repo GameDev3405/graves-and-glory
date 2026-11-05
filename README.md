@@ -76,7 +76,7 @@ The war council, collection, gear role, command controls and battlefield panels 
 
 Visuals & sound in the lobby lets each player choose one shader: Complementary Reimagined r5.5.1, Complementary Unbound r5.5.1, MakeUp Ultra Fast 9.5g, or shaders off. Shader changes are saved locally. Shaders begin off for reliable battle performance on a range of PCs; selecting one loads it inside the game. Complementary's pinned releases have an explicit modpack distribution grant; the latest shader versions have different distribution terms and are not silently substituted.
 
-The look is the modpack's own plus the bundled Excalibur 1.20 resource pack. Minecraft's textures come from each player's own game, and the built-in armory pack adds the weapon and armour overlays. Each player's graphics choices are independent in multiplayer.
+The look is the modpack's own plus the bundled Excalibur 1.20 resource pack. Minecraft's textures come from each player's own game, and the built-in armory and weapons packs sit above Excalibur, so weapons keep the game's own look and only the environment is Excalibur. Each player's graphics choices are independent in multiplayer.
 
 Confirmed commander hits receive a brief ink-and-gold contact accent and restrained camera recoil. Choose Off, Subtle (default), or Strong. Ambient troop fights never trigger repeated screen flashes; accents do not stop the simulation, change damage or interrupt other players. The camera entrance is sampled every rendered frame instead of stepping its coordinates at the simulation tick rate.
 
