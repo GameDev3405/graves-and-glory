@@ -18,12 +18,12 @@ This pack adds joints, as Fresh Animations does for mobs:
 | joint | bone | pivot (Blockbench) | moves |
 |---|---|---|---|
 | waist | `chest` | (0, 17.5, 0) | the torso bends and twists; the head and arms ride on it |
-| elbows | `right_forearm`, `left_forearm` | (±6, 17.5, 2.5), at the back of the arm | a hinge, 0 to 145 degrees |
+| elbows | `right_forearm`, `left_forearm` | (±6, 17.5, 0.5), just behind the arm's centre | a hinge, 0 to 145 degrees |
 | knees | `right_shin`, `left_shin` | (±1.9, 7.5, -2.5), at the front of the leg | a hinge, 0 to 150 degrees |
 | ankles | `right_foot`, `left_foot` | (±1.9, 2.5, 0) | the foot stays flat or rolls onto its toe |
 
-The hinges sit at the back of the elbow and the front of the knee, so the point of the elbow and the knee cop stay
-closed when they bend. The armour is cut at the joints: every box that crosses one becomes two boxes whose faces take
+The knee hinges at the front of the leg, so the knee cop stays closed when it bends. The elbow hinges just behind the
+arm's centre: a hinge at the back edge would fold the fist up into the upper arm and drive the sword's pommel through it. The armour is cut at the joints: every box that crosses one becomes two boxes whose faces take
 the matching rows of the original texture, so the set needs no repainting. Inside each cut sits a hidden **joint
 sleeve**, a plate a hair smaller than the limb, which fills the gap when the joint bends so neither a seam nor the body
 beneath shows. The couter, poleyn, skirt, sabaton and pauldrons each ride one segment whole.
@@ -34,7 +34,7 @@ beneath shows. The couter, poleyn, skirt, sabaton and pauldrons each ride one se
 |---|---|---|
 | `combat_idle` | 3.2 s, loop | The guard, alive. The weight rocks onto the lead foot and back, with the hips rolling over it. Two breaths lift the chest. The point hunts in a slow circle and the shield settles. The eyes check the left flank, then the right. At 2.0 s the wrist rolls the blade and resets the grip. It starts and ends on the guard every strike returns to. |
 | `combat_advance` | 1.2 s, loop | Moving in guard at 0.5 block/s with a step and drag. The lead foot lands heel first, the root dips on each landing, and the back foot drags up with its heel peeling. The hips sway over the planted foot while the guard rides steady above. |
-| `combat_combo` | 2.1 s, once | The three-hit string. First a crouched, loaded wind-up: the hips twist 60 degrees away and the blade cocks behind the shoulder. Then an overhead cut that steps in and drives off the back foot onto its toe. A rising backhand ends in a high guard, the point at the enemy's face. Then a shield bash with a second step and the elbow behind it. Last, a two-step recovery, back foot first. |
+| `combat_combo` | 2.1 s, once | The three-hit string. First a crouched, loaded wind-up: the hips twist 60 degrees away and the blade cocks behind the shoulder. Then an overhead cut that steps in and drives off the back foot onto its toe. Through the cut the shield arm swings out wide and low on the left as a counterweight. A rising backhand ends in a shoulder guard: the fist by the right ear, the blade cocked back over the shoulder, clear of the helm. Then a shield bash with a second step and the elbow behind it, the sword held cocked for the next blow. Last, a two-step recovery, back foot first. |
 | `combat_block` | 1.0 s, once | Brace behind the shield and the blow lands. The shield is driven back into the shoulder, the knees soak it, and the lead foot skids half a step. A shove, then a step back in to the guard. |
 | `combat_hit` | 0.9 s, once | Struck unguarded. The head snaps back, the chest folds open and the arms fly wide. A stumbling step back, a catch, the guard gathered again, and a step up to the line. |
 
@@ -55,9 +55,29 @@ beneath shows. The couter, poleyn, skirt, sabaton and pauldrons each ride one se
 - **Secondary motion.** The cape and the plume are damped springs off the chest and the head, baked into keys.
 - **Baking.** Everything solved is baked into keys every 25 ms (twice a tick), so the game plays it as previewed.
 
+## Keeping the items out of the body
+
+The sword and the shield are big next to the body: the board alone is 12 px wide and rises 9 px above the fist. Two
+things keep them from passing through it:
+
+- **Poses that leave room.** The guard holds the shield fist low and well forward, so the board stands in front of the
+  chest and below the bevor. Through big cuts the shield swings out to the side rather than folding into the chest.
+  The sword's high guard is cocked back over the shoulder, not across the face. Where a pose clipped, a search tried
+  nearby arm aims and kept the clear one closest to the original, so each beat keeps its intent.
+- **A clearance solver** (`tools/unit_anim/clearance.py`) covers what is left. Every tick it measures how much of each
+  item is inside the body (points every 0.5 px through the sword and the shield, against every body and armour box)
+  and finds the smallest push that clears it: the shield arm reaches further forward, the sword arm carries the blade
+  out. Each push is held 0.15 s either side and eased, so the arm is already aside when the item arrives and never
+  pops. One-shot clips fade the pushes out so they still start and end on the guard. In practice the solver barely
+  works: the idle and the advance need no push at all, and the combo's average is 0.2.
+
+The grips are left out of the measure, because they belong in the fist, and so is the forearm strapped behind the
+board. At every 60 fps frame of every clip, at most 1.1 px^3 of either item is inside the body: a brush, never a
+pass-through. Before this, the combo had up to 120 px^3 and the resting guard had 43.
+
 Checks (`test-tools/standalone/test_combat_anim.py`) measure each bone's true rotation between 60 fps frames, not
 its Euler numbers. No bone turns more than 50 degrees in a frame (only the strikes come close), and no change in speed
-is larger than 30 degrees. The loops close within 0.02 degrees, and every strike ends exactly on the guard. Python
+is larger than 30 degrees. No item is more than 1.5 px^3 inside the body on any frame. The loops close within 0.02 degrees, and every strike ends exactly on the guard. Python
 writes the exports, and the test checks the committed copies match.
 
 ## Files

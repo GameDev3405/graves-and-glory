@@ -12,7 +12,7 @@ import numpy as np
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / 'tools'))
 import animate_combat as A                                    # noqa: E402
-from unit_anim import combat_clips as CC, combat_rig as CR, rig   # noqa: E402
+from unit_anim import clearance as CL, combat_clips as CC, combat_rig as CR, rig   # noqa: E402
 
 CLIPS = [f() for f in CC.CLIPS]
 
@@ -80,6 +80,16 @@ class CombatAnimTest(unittest.TestCase):
                         continue      # the idle's arms carry their overlap lag at its first frame
                     self.assertLess(geo(rig.mc_rotation(*r1[b]), rig.mc_rotation(*guard_rot[b])), 1.0,
                                     '%s ends off the guard at %s' % (c.name, b))
+
+    def test_items_stay_out_of_the_body(self):
+        """At every 60 fps frame, no more than 1.5 px^3 of the sword or the shield (less the grips in the fist) is inside
+        the knight's body or armour: a brush, never a pass-through."""
+        clipper = CL.Clipper()
+        for c in CLIPS:
+            n = int(round(c.length * 60))
+            for i in range(n + 1):
+                for item, v in clipper.volumes(CR.world(*c.at(i / 60))).items():
+                    self.assertLessEqual(v, 1.5, '%s at %.2f s: %.1f px^3 of %s inside the body' % (c.name, i / 60, v, item))
 
     def test_exports_match(self):
         out = ROOT / 'art/animations/oathbound_combat'

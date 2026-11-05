@@ -4,7 +4,8 @@ The game's troop rig (rig.py) has rigid limbs: an arm is one cube from shoulder 
 foot, the torso one block. This rig keeps every one of its pivots and adds four kinds of joint:
 
   chest           the torso bends and twists at the waist (y 17.5); the head and both arms ride on it
-  *_forearm       the elbows, hinged at the back of the arm (y 17.5, z +2.5) so the point of the elbow stays closed
+  *_forearm       the elbows, hinged just behind the arm's centre (y 17.5, z +0.5), so a bent arm brings the fist
+                  clear in front of the upper arm (the joint sleeve closes the point of the elbow)
   *_shin          the knees, hinged at the front of the leg (y 7.5, z -2.5) so the knee cop stays closed
   *_foot          the ankles (y 2.5), so a planted foot stays flat while the leg above it moves, or rolls onto its toes
 
@@ -36,10 +37,10 @@ BONES = {
     'chest': ('body', (0, WAIST_Y, 0)),
     'head': ('chest', (0, 24, 0)),
     'right_arm': ('chest', (5, 22, 0)),
-    'right_forearm': ('right_arm', (6, ELBOW_Y, 2.5)),
+    'right_forearm': ('right_arm', (6, ELBOW_Y, 0.5)),
     'right_hand': ('right_forearm', (6, 14, 0)),
     'left_arm': ('chest', (-5, 22, 0)),
-    'left_forearm': ('left_arm', (-6, ELBOW_Y, 2.5)),
+    'left_forearm': ('left_arm', (-6, ELBOW_Y, 0.5)),
     'left_hand': ('left_forearm', (-6, 14, 0)),
     'right_leg': ('root', (1.9, 12, 0)),
     'right_shin': ('right_leg', (1.9, KNEE_Y, -2.5)),
@@ -342,9 +343,15 @@ def aim_arm(upper, fore, blade=None, twist=0.0, prev=None):
     # forward) steadies it and the hinge never spins
     hint = np.asarray(blade if blade is not None else (0, 0, -1), float)
     hint = hint - np.dot(hint, u) * u
-    Ra = frame_from(u, (f - np.dot(f, u) * u) + 0.12 * hint)
+    bend = f - np.dot(f, u) * u
+    w = bend + 0.12 * hint
+    if prev.get('bend') is not None:                       # nearly straight: keep bending the way it was
+        pw = np.asarray(prev['bend'], float)
+        pw = pw - np.dot(pw, u) * u
+        w = w + max(0.0, 0.35 - np.linalg.norm(bend)) * 4 * pw
+    Ra = frame_from(u, w)
     elbow = max(-145.0, -math.degrees(math.acos(max(-1.0, min(1.0, float(np.dot(u, f)))))))   # elbows stop at 145
-    out = {'arm': closest_euler(Ra, prev.get('arm')), 'forearm': (elbow, 0.0, 0.0)}
+    out = {'arm': closest_euler(Ra, prev.get('arm')), 'forearm': (elbow, 0.0, 0.0), 'bend': -Ra[:, 2]}
     if blade is not None:
         b = _unit(blade)
         Rf = Ra @ mc_rotation(elbow, 0, 0)

@@ -2,7 +2,7 @@
 
   python tools/animate_combat.py                  everything: the reel, the GIF, the beat sheets and the exports
   python tools/animate_combat.py --still combo 0.4   one frame of a clip, both views
-  python tools/animate_combat.py --check          the clips' smoothness and foot-planting report only
+  python tools/animate_combat.py --check          the clips' smoothness, foot-planting and clipping report only
 
 Writes art/animations/oathbound_combat/:
   combat_reel.mp4          60 fps, 1280x720: every clip at full speed, the strikes again in slow motion
@@ -30,6 +30,7 @@ sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 import animate_unit as AU                                                   # noqa: E402
 from build_player_armor import BG, font                                    # noqa: E402
 from player_armor.engine import FACES                                      # noqa: E402
+from unit_anim import clearance as CL                                      # noqa: E402
 from unit_anim import combat_clips as CC                                   # noqa: E402
 from unit_anim import combat_rig as CR                                     # noqa: E402
 from unit_anim import rig                                                  # noqa: E402
@@ -358,6 +359,7 @@ def main(argv=None):
         for c in clips:
             print(c.name, 'ik %.3f' % c.ik_error, 'feet (sink, gap, slide)', feet_report(c))
             print('   ', smoothness(c))
+            print('    items inside the body:', clipping_report(c))
         return 0
     unit = CombatUnit(a.rarity)
     OUT.mkdir(parents=True, exist_ok=True)
@@ -390,3 +392,17 @@ def main(argv=None):
 
 if __name__ == '__main__':
     sys.exit(main())
+
+
+# ---- clipping -------------------------------------------------------------------------------
+
+def clipping_report(clip, fps=60, clipper=None):
+    """Per item, over the clip: (most px^3 inside the body on a frame, at what time, the deepest point and where)."""
+    cl = clipper or CL.Clipper()
+    worst = {}
+    for i in range(int(round(clip.length * fps)) + 1):
+        for item, (v, d, part) in cl.volumes(CR.world(*clip.at(i / fps)), detail=True).items():
+            w = worst.setdefault(item, [0.0, 0.0, ''])
+            if v > w[0]:
+                w[:] = [round(v, 2), round(i / fps, 2), '%.2f px deep: %s' % (d, part)]
+    return worst

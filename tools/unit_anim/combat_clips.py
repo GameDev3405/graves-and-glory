@@ -20,6 +20,7 @@ import math
 
 import numpy as np
 
+from . import clearance as CL
 from . import combat_rig as CR
 from . import rig
 from .rig import Clip, sample, spring_follow
@@ -61,12 +62,13 @@ def _vec_track(timeline, field, i):
     return [(t,) + tuple(float(v) for v in CR._unit(p[field][i])) for t, _, p in timeline]
 
 
-def build(name, length, loop, timeline, lags=None, step=STEP):
+def build(name, length, loop, timeline, lags=None, step=STEP, clearance=True):
     """A clip from a chained timeline. The hips and chest are hand keys (Minecraft's Catmull-Rom). Everything else is
     solved and baked every `step`: the arms from their aims (each direction interpolated with the same Catmull-Rom,
     so limbs travel in arcs; `lags` delay the forearm's and the blade's aims for overlapping action), the head (eyes on
-    `look`), the shield's wrist (board on `shield`) and the legs (feet on `r_place`, `l_place`). The cape and the plume
-    are simulated."""
+    `look`), the shield's wrist (board on `shield`) and the legs (feet on `r_place`, `l_place`). With `clearance`, the
+    arms are moved aside wherever the sword or the shield would pass through the body (clearance.py). The cape and the
+    plume are simulated."""
     lags = lags or {}
     c = Clip(name, length, loop)
     c.beats = [(t, label) for t, label, _ in timeline]
@@ -85,24 +87,20 @@ def build(name, length, loop, timeline, lags=None, step=STEP):
         t = t % length if loop else max(0.0, t)
         return np.array(sample(aims[key], t))
     n = int(round(length / step))
+    times = [round(i * step, 4) for i in range(n + 1)]
+    lf, lh, ls = lags.get('forearm', 0.0), lags.get('hand', 0.0), lags.get('shield_forearm', 0.0)
+
+    def sword_aims(t):
+        return (at(('sword', 0), t), at(('sword', 1), t, lf), at(('sword', 2), t, lh))
+
+    def shield_aims(t):
+        return (at(('shield_arm', 0), t), at(('shield_arm', 1), t, ls))
+
+    # 1. the legs and the head: they do not depend on the arms
     out = {k: [] for k in BAKED}
     guess = {'right': (0.0, 0.0, 10.0), 'left': (0.0, 0.0, 10.0)}
-    prev = {}
     c.ik_error = 0.0
-    for i in range(n + 1):
-        t = round(i * step, 4)
-        lf, lh, ls = lags.get('forearm', 0.0), lags.get('hand', 0.0), lags.get('shield_forearm', 0.0)
-        s = CR.aim_arm(at(('sword', 0), t), at(('sword', 1), t, lf), at(('sword', 2), t, lh), at(('sword', 3), t, lh)[0],
-                       prev=prev.get('right'))
-        h = CR.aim_arm(at(('shield_arm', 0), t), at(('shield_arm', 1), t, ls), prev=prev.get('left'))
-        prev = {'right': s, 'left': h}
-        for bone, v in (('right_arm', s['arm']), ('right_forearm', s['forearm']), ('right_hand', s['hand']),
-                        ('left_arm', h['arm']), ('left_forearm', h['forearm'])):
-            out[bone].append((t,) + tuple(float(x) for x in v))
-    for b in ('right_arm', 'right_forearm', 'right_hand', 'left_arm', 'left_forearm'):
-        c.rot[b] = out[b]
-    for i in range(n + 1):
-        t = round(i * step, 4)
+    for t in times:
         rot, pos = c.at(t)
         for side in ('right', 'left'):
             hip, knee, foot, err = CR.solve_leg(side, pos['root'], CR.pchip(track[side[0] + '_place'], t), guess[side])
@@ -112,12 +110,60 @@ def build(name, length, loop, timeline, lags=None, step=STEP):
             out[side + '_shin'].append((t, knee, 0.0, 0.0))
             out[side + '_foot'].append((t,) + foot)
         pose = CR.world(rot, pos)
-        out['left_hand'].append((t,) + CR.aim_hand(pose['left_forearm'], CR.pchip(track['shield'], t), SHIELD_ITEM))
         head = CR.mc_euler(pose['chest'][:3, :3].T @ CR.mc_rotation(*CR.pchip(track['look'], t)))
         out['head'].append((t,) + tuple(max(-m, min(m, v)) for v, m in zip(head, NECK)))
-    for k in BAKED[5:]:
+    for k in ('right_leg', 'right_shin', 'right_foot', 'left_leg', 'left_shin', 'left_foot', 'head'):
         _unwrap(out[k])
         c.rot[k] = out[k]
+
+    def arms(t, cs, ch, prev):
+        s = CR.aim_arm(*CL.pushed(sword_aims(t), 'oathblade', cs), at(('sword', 3), t, lh)[0], prev=prev.get('right'))
+        h = CR.aim_arm(*CL.pushed(shield_aims(t), 'sunward', ch), prev=prev.get('left'))
+        return s, h
+
+    def posed(t, s, h):
+        rot, pos = c.at(t)
+        rot.update(right_arm=s['arm'], right_forearm=s['forearm'], right_hand=s['hand'], left_arm=h['arm'],
+                   left_forearm=h['forearm'])
+        pose = CR.world(rot, pos)
+        hand = CR.aim_hand(pose['left_forearm'], CR.pchip(track['shield'], t), SHIELD_ITEM)
+        rot['left_hand'] = hand
+        return CR.world(rot, pos), hand
+
+    # 2. how far each arm must move aside, tick by tick, to keep its item out of the body
+    need = {'oathblade': [], 'sunward': []}
+    c.clearance_raw = {}
+    if clearance:
+        clip_ = CL.Clipper()
+        for t in times:
+            for item in need:
+                best = None
+                for lvl in CL.LEVELS:
+                    s, h = arms(t, lvl if item == 'oathblade' else 0.0, lvl if item == 'sunward' else 0.0, {})
+                    v = clip_.volumes(posed(t, s, h)[0], which=item)[item]
+                    if best is None or v < best[1] - 0.25:
+                        best = (lvl, v)
+                    if v <= CL.TOLERANCE:
+                        best = (lvl, v)
+                        break
+                need[item].append(best[0])
+        need = {k: CL.smooth(v, step, loop=loop) for k, v in need.items()}
+    else:
+        need = {k: np.zeros(len(times)) for k in need}
+    c.push = need
+
+    # 3. the arms and the shield's wrist, with the pushes
+    prev = {}
+    for i, t in enumerate(times):
+        s, h = arms(t, need['oathblade'][i], need['sunward'][i], prev)
+        prev = {'right': s, 'left': h}
+        _, hand = posed(t, s, h)
+        for bone, v in (('right_arm', s['arm']), ('right_forearm', s['forearm']), ('right_hand', s['hand']),
+                        ('left_arm', h['arm']), ('left_forearm', h['forearm']), ('left_hand', hand)):
+            out[bone].append((t,) + tuple(float(x) for x in v))
+    _unwrap(out['left_hand'])
+    for b in ('right_arm', 'right_forearm', 'right_hand', 'left_arm', 'left_forearm', 'left_hand'):
+        c.rot[b] = out[b]
     spring_follow(c, 'cape', 'chest', (1.0, 1.0), stiffness=70, damping=9, rest=(4, 0), clamp=_cape_clamp(c),
                   passes=3 if loop else 2, bones=CR.BONES)
     spring_follow(c, 'plume', 'head', (0.6, 0.6), stiffness=140, damping=10, rest=(0, 0), passes=3 if loop else 2,
@@ -164,36 +210,41 @@ def P(base=None, **kw):
 
 
 GUARD = P(root=(0, -1.6, 0), body=(4, 20, 0), chest=(8, -6, 0), look=(0, 0, 0),
-          sword=((0.3, -1, 0.1), (0.05, 0.25, -1), (-0.15, 0.9, -0.8), 0),
-          shield_arm=((-0.15, -1, -0.55), (0.9, 0.15, -0.45)), shield=(-4, 12, 0),
+          sword=((0.35, -1, -0.35), (0.1, -0.35, -1), (-0.15, 0.85, -0.9), 0),
+          shield_arm=((-0.1, -0.8, -0.8), (0.7, -0.15, -0.8)), shield=(-4, 12, 0),
           r_place=(2.6, 3.5, 0, 35, 0), l_place=(2.4, -3.5, 0, 10, 0))
 
 
 # the sword arm: (upper arm, forearm, blade, twist of the grip about the blade in degrees)
 S_GUARD = GUARD['sword']
-S_LOAD = ((0.8, 0.15, 0.35), (0.0, 1, 0.25), (0.1, 0.55, 1), 0)
+S_LOAD = ((0.88, 0.29, 0.37), (0.16, 0.96, 0.25), (0.07, 0.25, 0.97), 0)
 S_WIND = ((0.65, 0.65, 0.3), (-0.35, 0.9, 0.45), (-0.4, -0.2, 1), 0)
-S_CUT = ((0.35, 0.75, -0.6), (0.05, 0.75, -0.9), (-0.1, 0.95, -0.35), 0)
+S_CUT = ((0.55, 0.7, -0.45), (0.3, 0.75, -0.6), (0.15, 0.95, -0.3), 0)   # the arc passes outside the helm
 S_CONTACT = ((0.0, -0.15, -1), (-0.3, -0.45, -1), (-0.5, -0.65, -1), 0)
-S_FOLLOW = ((-0.45, -0.75, -0.55), (-0.75, -0.65, -0.1), (-0.8, -0.55, 0.35), 0)
-S_SETTLE = ((-0.35, -0.8, -0.5), (-0.65, -0.65, -0.3), (-0.75, -0.5, 0.1), 0)
-S_GATHER = ((-0.25, -1, -0.25), (-0.6, -0.65, -0.55), (-0.55, -0.75, -0.45), 0)
+S_FOLLOW = ((-0.59, -0.59, -0.55), (-0.81, -0.47, -0.35), (-0.9, -0.13, -0.41), 0)
+S_SETTLE = ((-0.38, -0.51, -0.78), (-0.61, -0.35, -0.71), (-0.89, -0.46, -0.01), 0)
+S_GATHER = ((-0.26, -0.16, -0.95), (-0.42, 0.08, -0.9), (-0.64, -0.43, -0.64), 0)   # elbow bent up, blade low by the wrist
 S_RISE = ((0.2, -0.35, -1), (0.45, 0.15, -1), (0.55, 0.45, -1), 0)
 S_RISEHIT = ((0.65, 0.35, -0.6), (0.6, 0.8, -0.35), (0.6, 0.9, 0.15), 0)
-S_OX = ((0.65, 0.55, 0.15), (-0.1, 1, -0.15), (-0.6, -0.08, -0.8), 0)
-S_OX_BACK = ((0.6, 0.45, 0.45), (-0.05, 1, 0.1), (-0.7, 0.0, -0.7), 0)
+# the shoulder guard: the fist by the right ear, the blade up and back over the shoulder, clear of the helm
+S_OX = ((0.97, 0.11, 0.24), (0.17, 0.97, 0.16), (0.06, 0.26, 0.96), 0)
+S_OX_BACK = ((0.96, 0.09, 0.25), (0.23, 0.95, 0.21), (0.0, 0.04, 1), 0)
 S_BROKEN = ((0.8, -0.4, 0.45), (0.65, 0.45, 0.25), (0.35, 0.9, 0.45), 0)
 S_LOW = ((0.45, -1, 0.3), (0.2, -0.2, -1), (0.0, 0.5, -1), 0)
-S_COCKED = ((0.55, -0.6, 0.55), (0.15, 0.55, -0.85), (0.0, 1, -0.35), 0)
+S_COCKED = ((0.67, -0.74, 0.09), (0.39, 0.0, -0.92), (-0.04, 0.77, -0.64), 0)
 
 # the shield arm: (upper arm, forearm)
 H_GUARD = GUARD['shield_arm']
 H_REACH = ((-0.2, -0.65, -1), (0.55, 0.2, -1))
-H_TUCK = ((-0.3, -1, 0.2), (0.65, 0.05, -0.8))
-H_CHAMBER = ((-0.4, -0.8, 0.5), (0.4, 0.3, -1))
+H_TUCK = ((-0.55, -0.85, 0.0), (-0.1, -0.55, -0.8))       # low and out to the left: the off-arm's counterweight
+H_CHAMBER = ((-0.5, -0.82, 0.28), (0.21, -0.12, -0.97))
+# the shield arm swung wide and low on the left, the off-arm's counterweight through a big cut
+H_WIDE = ((-0.71, -0.66, -0.24), (-0.56, -0.01, -0.83))
+H_WIDER = ((-0.9, -0.2, -0.4), (-0.45, 0.15, -0.88))
+H_DRIVE = ((-0.48, -0.79, -0.39), (0.35, 0.19, -0.92))   # the bash's step: the fist driving forward
 H_PUNCH = ((-0.1, -0.3, -1), (0.1, 0.1, -1))
 H_BRACE = ((-0.1, -0.45, -1), (0.8, 0.3, -0.6))
-H_DRIVEN = ((-0.2, -0.85, 0.3), (0.75, 0.2, -0.45))
+H_DRIVEN = ((-0.17, -0.93, -0.34), (0.79, 0.11, -0.61))
 H_FLUNG = ((-0.65, -0.7, 0.3), (-0.25, -0.55, -0.6))
 
 R_GUARD, L_GUARD = GUARD['r_place'], GUARD['l_place']
@@ -213,10 +264,11 @@ def combo_timeline():
         (0.22, 'wind-up', dict(root=(0, -2.4, 1.1), body=(-3, 42, 0), chest=(-6, 16, -6), sword=S_WIND)),
         (0.26, 'wind-up hold', dict(root=(0, -2.5, 1.2), body=(-4, 43, 0), chest=(-7, 17, -6))),
         (0.32, 'cut', dict(root=(0, -2.2, -0.6), body=(6, 12, 0), chest=(6, -4, 2), sword=S_CUT, shield_arm=H_TUCK,
-                           shield=(0, 20, 0), r_place=(2.6, 3.5, 0, 35, 14), l_place=(2.5, -5.2, 1.3, 9, -6))),
-        (0.40, 'contact', dict(root=(0, -2.8, -2.0), body=(14, -14, 0), chest=(16, -16, 4), sword=S_CONTACT,
-                               shield=(0, 0, 0), r_place=(2.6, 3.5, 0, 35, 24), l_place=(2.6, -6.5, 0, 8, 0))),
+                           shield=(0, -10, 0), r_place=(2.6, 3.5, 0, 35, 14), l_place=(2.5, -5.2, 1.3, 9, -6))),
+        (0.40, 'contact', dict(root=(0, -2.8, -2.0), body=(14, -14, 0), chest=(16, -16, 4), sword=S_CONTACT, shield_arm=H_WIDE,
+                               shield=(0, -25, 0), r_place=(2.6, 3.5, 0, 35, 24), l_place=(2.6, -6.5, 0, 8, 0))),
         (0.50, 'follow-through', dict(root=(0, -3.0, -2.3), body=(16, -24, 0), chest=(18, -20, 6), sword=S_FOLLOW,
+                                      shield_arm=H_WIDER,
                                       r_place=(2.6, 3.5, 0, 35, 20))),
         (0.62, 'settle', dict(root=(0, -2.6, -2.2), body=(12, -18, 0), chest=(12, -14, 4), sword=S_SETTLE,
                               r_place=(2.6, 3.5, 0, 35, 6))),
@@ -229,7 +281,8 @@ def combo_timeline():
         (1.02, 'high guard', dict(root=(0, -1.9, -3.0), body=(0, 30, 0), chest=(2, 6, -2), sword=S_OX)),
         (1.12, 'bash load', dict(root=(0, -2.6, -2.2), body=(2, 42, 0), chest=(-2, 14, 0), sword=S_OX_BACK,
                                  shield_arm=H_CHAMBER, shield=(0, 30, 0))),
-        (1.17, 'bash step', dict(root=(0, -2.3, -3.4), body=(6, 22, 0), chest=(6, 0, 2), r_place=(2.6, 0.5, 0, 35, 14),
+        (1.17, 'bash step', dict(root=(0, -2.3, -3.4), body=(6, 22, 0), chest=(6, 0, 2), shield_arm=H_DRIVE,
+                                 r_place=(2.6, 0.5, 0, 35, 14),
                                  l_place=(2.6, -7.5, 1.2, 8, -6))),
         (1.22, 'bash', dict(root=(0, -2.4, -4.5), body=(10, 4, 0), chest=(14, -14, 2), sword=S_OX,
                             shield_arm=H_PUNCH, shield=(-8, 0, 0), r_place=(2.6, 0.5, 0, 35, 24),
