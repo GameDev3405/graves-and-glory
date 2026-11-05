@@ -17,8 +17,8 @@ import java.util.regex.Pattern;
  * TroopModel.setAngles reset every bone, pose:
  * 1. builds the troop's MotionInput: render time on the world clock, its limbs, head and body turn, the stance the server sent
  *    (stance_v2, none while it dies: carry B12), its newest swing and blow (MotionEvents.Client), whether it is dead, and its seed;
- * 2. runs the engine on the troop's Family (its rig's clips/<rig>/<family>/ folder over clips/<rig>/common/) and adds the pose to
- *    the bones (degrees and pixels);
+ * 2. runs the engine on the troop's Family (its own clips/<rig>/<troop>/ folder over its rig's clips/<rig>/<family>/ folder over
+ *    clips/<rig>/common/) and adds the pose to the bones (degrees and pixels);
  * 3. clamps every bone with a joint limit (carry C13: the mage's shins);
  * 4. adds the carries on what no clip holds: the shield arm 45 degrees forward, a bow turned in its hand (string back at rest,
  *    to the archer while it draws or aims) and idleArms forward;
@@ -45,6 +45,8 @@ public final class TroopMotion {
     static final String COMMON="common";
     static final List<String> ARMS=List.of("right_arm","left_arm","right_forearm","left_forearm");
     static final List<String> STANCES=List.of("idle","carry","guard","brace","wall","shield","aim","rest","rally");
+    /** The gait clips a family or troop may key (MotionBody.stride plays them by the distance travelled, in place of the code's upper-body gait). */
+    static final List<String> GAITS=List.of("walk","run");
     static final Set<String> DIRECTIONS=Set.of("front","back","left","right");
     private static final Pattern HIT=Pattern.compile("hit_(head|body|legs)(_\\d+)?"),BLOCK=Pattern.compile("block(?:_(head|body|legs))?(_\\d+)?");
     /** Seconds a scene pose takes to blend in or out. */
@@ -78,35 +80,71 @@ public final class TroopMotion {
         }
     }
 
-    /** A rig and family's clips as the engine takes them, and for each server attack variant index the engine's index (-1: no clip). */
     /**
-     * A rig and family's clips as the engine takes them, for each server attack variant index the engine's index (-1: no clip), the
-     * each bone's own translation reach in pixels (bonePx: every bone a clip keys, the root and the arms).
+     * A troop's clips as the engine takes them (its rig, family and own folders), for each server attack variant index the engine's
+     * index (-1: no clip) and every engine index the swing may play (attackChoices: the troop's own troopAttacks clips for that
+     * variant, else the one clip of the variant's id), and each bone's own translation reach in pixels (bonePx: every bone a clip
+     * keys, the root and the arms). attackIndex is each variant's first choice.
      */
-    record Fam(MotionEngine.Family family,int[] attackIndex,int generation,Map<String,Clip> all,Map<String,double[]> bonePx){}
+    record Fam(MotionEngine.Family family,int[] attackIndex,int[][] attackChoices,int generation,Map<String,Clip> all,Map<String,double[]> bonePx){
+        /** A family whose every variant has one choice, its attackIndex (the harness's copies). */
+        Fam(MotionEngine.Family family,int[] attackIndex,int generation,Map<String,Clip> all,Map<String,double[]> bonePx){
+            this(family,attackIndex,single(attackIndex),generation,all,bonePx);
+        }
+        static int[][] single(int[] index){int[][] c=new int[index.length][];for(int i=0;i<index.length;i++)c[i]=index[i]<0?new int[0]:new int[]{index[i]};return c;}
+        /** The engine index a swing of server variant v starting at startTick plays: one of its choices, by the unit's seed and the tick (-1: none). */
+        int attack(int v,long variantBias,long startTick){
+            if(v<0||v>=attackChoices.length)return -1;int[] c=attackChoices[v];if(c.length==0)return -1;if(c.length==1)return c[0];
+            return c[(int)Math.floorMod(MotionMath.mix(variantBias^0x94D049BB133111EBL^(startTick*0x9E3779B97F4A7C15L)),(long)c.length)];
+        }
+    }
 
     // ---- families ----
     /** The Family of a troop's model, or null for a bare rig. Rebuilt when the clips reload. */
     static Fam family(TroopModel<?> m){
         Spec.TroopsRow row=row(m);if(row==null)return null;
-        String key=m.rig+"/"+row.family();int gen=ClipLibrary.generation();
+        String key=m.rig+"/"+row.family()+"/"+row.id();int gen=ClipLibrary.generation();
         Fam f=FAMILIES.get(key);
-        if(f==null||f.generation()!=gen){f=build(m.rig,row.family(),gen);FAMILIES.put(key,f);}
+        if(f==null||f.generation()!=gen){f=build(m.rig,row.family(),row.id(),gen);FAMILIES.put(key,f);}
         return f;
     }
-    static Fam build(String rig,String family,int gen){
+    /** A family's clips with no troop folder of its own (the family as every troop of it shared it before troop folders). */
+    static Fam build(String rig,String family,int gen){return build(rig,family,null,gen);}
+    /**
+     * A troop's Fam: its clips/<rig>/<troop>/ folder over clips/<rig>/<family>/ over clips/<rig>/common/, each by clip name. A
+     * troop with troopAttacks rows for a variant swings those clips (picked per swing by the seed: Fam.attack) instead of the
+     * variant's own clip; every other variant plays the clip of its id from the troop or family folder. The troop's walk and run
+     * clips, when it has them, go to the engine with the stances (MotionBody.stride plays them by the distance travelled).
+     */
+    static Fam build(String rig,String family,String troop,int gen){
         Map<String,Clip> all=new TreeMap<>(ClipLibrary.folder(rig,COMMON));all.putAll(ClipLibrary.folder(rig,family));
+        Map<String,Clip> mine=troop==null||troop.equals(family)||troop.equals(COMMON)?Map.of():ClipLibrary.folder(rig,troop);
+        all.putAll(mine);
         Map<String,Clip> stances=new HashMap<>();for(String s:STANCES)if(all.containsKey(s))stances.put(s,all.get(s));
+        for(String s:GAITS)if(all.containsKey(s))stances.put(s,all.get(s));
+        for(var e:all.entrySet())if(e.getKey().startsWith(MotionBody.IDLE_ALT))stances.put(e.getKey(),e.getValue()); // idle variants (MotionBody.life)
         if(!stances.containsKey("rally"))stances.put("rally",rally(stances)); // a family's own rally.json wins over this one
-        Map<String,Clip> own=ClipLibrary.folder(rig,family);
-        List<Spec.AttackVariantsRow> rows=Tactics.variants(family);int[] index=new int[rows.size()];List<Clip> attacks=new ArrayList<>();
-        for(int i=0;i<rows.size();i++){Clip c=own.get(rows.get(i).id());if(c==null)index[i]=-1;else{index[i]=attacks.size();attacks.add(c);}}
-        // <id>_wall: the attack thrown from the wall or brace hold (Task 16), parallel to attacks; a row without one keeps its plain clip
+        Map<String,Clip> own=new TreeMap<>(ClipLibrary.folder(rig,family));own.putAll(mine);
+        List<Spec.AttackVariantsRow> rows=Tactics.variants(family);int[] index=new int[rows.size()];int[][] choices=new int[rows.size()][];
+        List<Clip> attacks=new ArrayList<>();List<String> ids=new ArrayList<>();
+        for(int i=0;i<rows.size();i++){
+            List<String> names=new ArrayList<>();
+            if(troop!=null)for(Spec.TroopAttacksRow t:Spec.TROOPATTACKS)if(t.troop().equals(troop)&&t.slot().equals(rows.get(i).id())&&mine.containsKey(t.clip()))names.add(t.clip());
+            if(names.isEmpty()&&own.containsKey(rows.get(i).id()))names.add(rows.get(i).id());
+            choices[i]=new int[names.size()];
+            for(int k=0;k<names.size();k++){choices[i][k]=attacks.size();attacks.add(own.get(names.get(k)));ids.add(names.get(k));}
+            index[i]=names.isEmpty()?-1:choices[i][0];
+        }
+        // <id>_wall: the attack thrown from the wall or brace hold (Task 16), parallel to attacks; a clip without one keeps its plain clip
         List<Clip> wall=new ArrayList<>();boolean anyWall=false;
-        for(int i=0;i<rows.size();i++)if(index[i]>=0){Clip w=own.get(rows.get(i).id()+"_wall");anyWall|=w!=null;wall.add(w!=null?w:attacks.get(index[i]));}
+        for(int k=0;k<attacks.size();k++){Clip w=own.get(ids.get(k)+"_wall");anyWall|=w!=null;wall.add(w!=null?w:attacks.get(k));}
         if(!anyWall)wall.clear();
         Map<String,List<Clip>> hits=new HashMap<>();Map<String,List<Clip>> deaths=new HashMap<>();
+        // a troop folder with hit (or death) clips of its own replaces the inherited ones: its reactions are its character
+        boolean ownHits=mine.keySet().stream().anyMatch(n->HIT.matcher(n).matches()||BLOCK.matcher(n).matches()),ownDeaths=mine.keySet().stream().anyMatch(n->deathKey(n)!=null);
         for(var e:all.entrySet()){
+            boolean inherited=!mine.containsKey(e.getKey());
+            if(inherited&&(ownHits&&(HIT.matcher(e.getKey()).matches()||BLOCK.matcher(e.getKey()).matches())||ownDeaths&&deathKey(e.getKey())!=null))continue;
             String n=e.getKey();Matcher h=HIT.matcher(n);
             if(h.matches())hits.computeIfAbsent(h.group(1),k->new ArrayList<>()).add(e.getValue());
             else if((h=BLOCK.matcher(n)).matches())hits.computeIfAbsent(h.group(1)==null||h.group(1).equals("body")?"block":"block_"+h.group(1),k->new ArrayList<>()).add(e.getValue());
@@ -121,7 +159,7 @@ public final class TroopMotion {
             for(Clip c:all.values()){double[] k=c.reach(bone);for(int i=0;i<3;i++)r[i]=Math.max(r[i],proc+k[3+i]*MotionEngine.HIT_GAIN);}
             px.put(bone,r);
         }
-        return new Fam(fam,index,gen,Collections.unmodifiableMap(all),Collections.unmodifiableMap(px));
+        return new Fam(fam,index,choices,gen,Collections.unmodifiableMap(all),Collections.unmodifiableMap(px));
     }
     /** A death clip's key in Family.deaths: death is "any", death_<dir> "any/<dir>", death_<kind> "<kind>", death_<kind>_<dir> "<kind>/<dir>"; null for any other clip. */
     static String deathKey(String name){return MotionEngine.deathKey(name);}
@@ -224,7 +262,7 @@ public final class TroopMotion {
         float partial=age-e.age;
         double yawRate=MathHelper.wrapDegrees(e.bodyYaw-e.prevBodyYaw)*20.0;
         MotionInput.Attack a=MotionEvents.Client.attacks(id).peekLast();
-        if(a!=null){int v=a.variant();int i=v>=0&&v<fam.attackIndex().length?fam.attackIndex()[v]:-1;a=i<0?null:new MotionInput.Attack(i,a.startTick());}
+        if(a!=null){int i=fam.attack(a.variant(),b.seed.variantBias(),a.startTick());a=i<0?null:new MotionInput.Attack(i,a.startTick());}
         boolean shieldUp=e.isUsingItem()&&e.getActiveHand()==Hand.OFF_HAND;
         // carry B10: aimPitch arrives positive-down (stance_v2) and the engine takes it so, unchanged
         return new MotionInput(time(e,age),limbAngle,limbDistance,MathHelper.wrapDegrees(headYaw),headPitch,yawRate,s.name(),s.aimPitch(),shieldUp,

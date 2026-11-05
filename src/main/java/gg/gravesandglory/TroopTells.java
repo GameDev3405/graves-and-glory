@@ -8,7 +8,10 @@ package gg.gravesandglory;
  */
 public final class TroopTells {
     private TroopTells() {}
-    /** A novelty idle playing: its kind (MotionBody's index), seconds since it began, its length and side (-1 left, 1 right). */
+    /**
+     * A novelty idle playing: its kind (MotionBody's index; NOVELTY_KINDS and up is the family's idle variant idle_alt_(kind - NOVELTY_KINDS
+     * + 1) in name order), seconds since it began, its length and side (-1 left, 1 right).
+     */
     public record Tell(int kind,double seconds,double length,double side){}
     /** The tell an entity id is playing now (on its last drawn frame), or null for none or an entity this client has not posed. */
     public static Tell playing(int id){

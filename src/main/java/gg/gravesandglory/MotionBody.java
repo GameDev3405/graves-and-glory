@@ -174,7 +174,11 @@ final class MotionBody {
         // over RUN_BLEND), so a start's stride takes the run's longer swing from its first steps; once settled gr equals run
         double gr = Math.max(run, MotionMath.ease(MotionEngine.runTarget(f.speed)));
         double dirF = v > 1e-9 ? f.vF / v : 1, dirL = v > 1e-9 ? f.vL / v : 0;
-        double duty = DUTY_WALK + (DUTY_RUN - DUTY_WALK) * gr, hF = HALF_WALK + (HALF_RUN - HALF_WALK) * gr;
+        // a troop's walk and run clips state their stride (blocks a loop): the half-stride follows it (one loop is two steps, a
+        // stance foot travels half a stride either side of its hip in duty of the loop), held within the legs' reach
+        Clip walkClip = gaitClip(f, "walk"), runClip = gaitClip(f, "run");
+        double hW = walkClip == null ? HALF_WALK : clipHalf(walkClip, DUTY_WALK, HALF_WALK), hR = runClip == null ? HALF_RUN : clipHalf(runClip, DUTY_RUN, HALF_RUN);
+        double duty = DUTY_WALK + (DUTY_RUN - DUTY_WALK) * gr, hF = hW + (hR - hW) * gr;
         double half = 1 / Math.sqrt(dirF * dirF / (hF * hF) + dirL * dirL / (HALF_SIDE * HALF_SIDE));
         double cad = MotionEngine.clamp(16 * v * duty / (2 * half), F_MIN, F_MAX) * f.seed.tempo();
         double h = 16 * v * duty / (2 * cad);
@@ -293,6 +297,14 @@ final class MotionBody {
             out.add("root", TY, DIP_PER_DEG * first);
         }
         if (b <= 0) return;
+        // a gait clip plays on the stride's own phase (so by the distance travelled: time 0 is the right heel's strike, half the loop
+        // the left's) and takes over the code's upper-body gait in its share; the legs stay the stride's, planted by MotionFeet,
+        // with whatever the clip keys on them added as an offset
+        double cWalk = walkClip == null ? 0 : 1 - run, cRun = runClip == null ? 0 : run;
+        if (walkClip != null) walkClip.add(st.psi * walkClip.length(), out, b * cWalk, st.tmp);
+        if (runClip != null) runClip.add(st.psi * runClip.length(), out, b * cRun, st.tmp);
+        b *= 1 - cWalk - cRun;
+        if (b <= 1e-9) return;
         double p = TAU * st.psi, s = Math.sin(p), cr = Math.cos(TAU * (st.psi - duty / 2));
         out.add("root", TY, 1.3 * b * run * cr * cr);
         out.add("root", TX, 0.35 * b * (1 - run) * s);
@@ -315,6 +327,40 @@ final class MotionBody {
 
     static double frac(double x) { return x - Math.floor(x); }
 
+    /** A looping gait clip ("walk" or "run") of the frame's family, or null. */
+    static Clip gaitClip(MotionEngine.Frame f, String name) {
+        if (f.fam == null) return null;
+        Clip c = f.fam.stances().get(name);
+        return c != null && c.loop() && c.length() > 0 ? c : null;
+    }
+
+    /** The legs' reach bounds a clip's half-stride (px) to GAIT_HALF_MIN to GAIT_HALF_MAX of the code's own. */
+    static final double GAIT_HALF_MIN = 0.6, GAIT_HALF_MAX = 1.25;
+
+    /** The half-stride (px) a gait clip's stride asks for at a duty, or the code's own when the clip states none. */
+    static double clipHalf(Clip c, double duty, double code) {
+        double stride = c.stride();
+        if (!(stride > 0)) return code;
+        return MotionEngine.clamp(8 * stride * duty, GAIT_HALF_MIN * code, GAIT_HALF_MAX * code);
+    }
+
+    /** The prefix of a family's idle variants (idle_alt_1, idle_alt_2, ...), which play in place of a novelty idle (life). */
+    static final String IDLE_ALT = "idle_alt_";
+    /** Seconds an idle variant eases in and out over, so a calm that breaks mid-clip lets go smoothly. */
+    static final double IDLE_ALT_EASE = 0.3;
+
+    /** The frame family's idle variants, by name order (empty for none), listed once per family into the state. */
+    static java.util.List<Clip> idleAlts(MotionEngine.Frame f, MotionEngine.State st) {
+        if (f.fam == null) return java.util.List.of();
+        if (st.altsOf != f.fam) {
+            java.util.List<Clip> out = new java.util.ArrayList<>();
+            new java.util.TreeMap<>(f.fam.stances()).forEach((k, c) -> { if (k.startsWith(IDLE_ALT)) out.add(c); });
+            st.alts = java.util.List.copyOf(out);
+            st.altsOf = f.fam;
+        }
+        return st.alts;
+    }
+
     // ---- life ----
 
     static final int NOVELTY_KINDS = 6;
@@ -335,9 +381,11 @@ final class MotionBody {
             st.noveltyRng = MotionMath.mix(bias ^ 0x6A09E667F3BCC908L);
         }
         if (st.novKind >= 0 && (f.now - st.novStart >= st.novLength || f.now < st.novStart)) st.novKind = -1;
+        java.util.List<Clip> alts = idleAlts(f, st);
         if (st.novKind < 0 && f.now >= st.noveltyNext && f.calm >= 1) {
-            st.novKind = Math.floorMod(next(st), NOVELTY_KINDS);
-            st.novLength = 1.8 + 1.4 * MotionMath.unit(next(st));
+            // a family with idle variants plays one of them (kind NOVELTY_KINDS + its index) in place of a code novelty
+            st.novKind = alts.isEmpty() ? Math.floorMod(next(st), NOVELTY_KINDS) : NOVELTY_KINDS + Math.floorMod(next(st), alts.size());
+            st.novLength = st.novKind >= NOVELTY_KINDS ? alts.get(st.novKind - NOVELTY_KINDS).length() : 1.8 + 1.4 * MotionMath.unit(next(st));
             st.novSide = (next(st) & 1) == 0 ? -1 : 1;
             st.novStart = f.now;
             st.noveltyNext = f.now + 6 + 8 * MotionMath.unit(next(st));
@@ -393,7 +441,13 @@ final class MotionBody {
         out.add("root", TY, MotionFeet.LEG * (1 - Math.cos(r)));
         out.add("body", RZ, -1.3 * drop);
 
-        if (kind >= 0) novelty(kind, ne, wave, st.novSide, out);
+        if (kind >= NOVELTY_KINDS) {
+            if (kind - NOVELTY_KINDS < alts.size()) {
+                double t = f.now - st.novStart, edge = Math.min(t, st.novLength - t);
+                double w = MotionMath.ease(MotionMath.clamp01(edge / IDLE_ALT_EASE)) * MotionMath.ease(f.calm) * lw;
+                alts.get(kind - NOVELTY_KINDS).add(t, out, w, st.tmp);
+            }
+        } else if (kind >= 0) novelty(kind, ne, wave, st.novSide, out);
     }
 
     /**

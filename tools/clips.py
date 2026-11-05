@@ -13,6 +13,12 @@ row's impactTicks, and every attackVariants clip at most BattleMath.ATTACK_CLIP_
 a swing that long, Task 13 carry B8); a death clip does not loop, and its last frame keeps every bone pivot and box corner within 0.1 px of
 the ground; a looping clip ends where it starts, within 0.01.
 
+A troop's own project, art/clips/<rig>/<troop>.bbmodel (its name a troops id), writes clips/<rig>/<troop>/, which the
+game layers over the troop's family folder. It may key any bone of the troop's model (models/troop/<troop>.json: props such as
+a ballista's bolt) as well as the rig's; a bone in neither is refused. A clip a troopAttacks row names is checked as an attack
+of its slot (the slot row's impactTicks and the length cap). A walk or run clip must loop; its stride_<tenths> marker states
+the blocks one loop travels. An idle_alt_<n> clip plays once.
+
   python tools/clips.py            write the clip JSON (and remove clips no project holds)
   python tools/clips.py --verify   rebuild in memory and compare with the committed JSON"""
 import json
@@ -42,6 +48,10 @@ HIDDEN_IN_DEATH = ('arms_folded',)
 LOOP_SLACK = 0.01
 TIME_SLACK = 1e-6          # float noise in a saved time
 BATTLE_MATH = 'src/main/java/gg/gravesandglory/BattleMath.java'
+MODELS = 'src/main/resources/assets/gravesandglory/models/troop'
+GAITS = ('walk', 'run')
+STRIDE = re.compile(r'^stride_\d+$')
+IDLE_ALT = 'idle_alt_'
 
 
 def attack_cap():
@@ -86,13 +96,14 @@ def triple(v, where):
 
 # ---- Blockbench project -> clip JSON
 
-def convert(project, rig, where):
-    """The clips in one project as {name: clip JSON}; raises ClipError naming the first problem."""
+def convert(project, rig, where, extra=None):
+    """The clips in one project as {name: clip JSON}; raises ClipError naming the first problem. extra: more bones the project
+    may key (a troop project's model bones)."""
     fmt = (project.get('meta') or {}).get('model_format')
     if fmt != 'free':
         raise ClipError(f"{where}: model_format {fmt!r}; clip projects are troop projects in the 'free' format")
     groups = {g['uuid']: g.get('name') for g in project.get('groups') or [] if isinstance(g, dict) and 'uuid' in g}
-    bones = {b['name'] for b in rig['bones']}
+    bones = {b['name'] for b in rig['bones']} | set(extra or ())
     clips = {}
     for a in project.get('animations') or []:
         name = a.get('name')
@@ -134,7 +145,7 @@ def convert(project, rig, where):
                 raise ClipError(f"{at}: animator {an.get('name')!r} has no group in the project")
             bone = groups[uid]
             if bone not in bones:
-                raise ClipError(f"{at}: bone {bone!r} is not in {RIGS}/{rig['rig']}.json")
+                raise ClipError(f"{at}: bone {bone!r} is not in {RIGS}/{rig['rig']}.json" + (' or the troop model' if extra else ''))
             if an.get('rotation_global') or an.get('quaternion_interpolation'):
                 raise ClipError(f'{at}: {bone} uses global rotation or quaternion interpolation; clips keep local Euler keys')
             out = clip['bones'].setdefault(bone, {})
@@ -333,10 +344,13 @@ def points(rig, pose):
     return out
 
 
-def check(clip, parsed, rig, family, variants, at):
+def check(clip, parsed, rig, family, variants, at, slots=None):
+    """slots: a troop project's {clip: attackVariants id} from troopAttacks; that clip is checked as an attack of the slot row."""
     name = clip['clip']
     # <id>_wall, the attack as thrown from a shield wall or brace, keeps its row's impact tick and length cap
-    row = variants.get((family, name[:-5] if name.endswith('_wall') else name)) if variants is not None else None
+    base = name[:-5] if name.endswith('_wall') else name
+    base = (slots or {}).get(base, base)
+    row = variants.get((family, base)) if variants is not None else None
     if row:
         cap = attack_cap()
         if parsed['length'] * TICKS > cap + TIME_SLACK:
@@ -357,6 +371,12 @@ def check(clip, parsed, rig, family, variants, at):
                       key=lambda p: p[1])
         if y > ground + GROUND_SLACK:
             raise ClipError(f'{at}: the last frame puts {bone} {y - ground:.2f} px below the ground')
+    if name in GAITS and not parsed['loop']:
+        raise ClipError(f'{at}: a {name} clip loops (MotionBody.stride plays it by the distance travelled)')
+    if name in GAITS and sum(1 for m in clip['markers'] if STRIDE.match(m)) > 1:
+        raise ClipError(f'{at}: more than one stride_<tenths> marker')
+    if name.startswith(IDLE_ALT) and parsed['loop']:
+        raise ClipError(f'{at}: an idle variant plays once (MotionBody.life); set its loop mode to play once')
     if parsed['loop']:
         first, last = sample(parsed, 0, wrap=False), sample(parsed, parsed['length'], wrap=False)
         for bone in first:
@@ -381,6 +401,7 @@ def build(root):
     rows = variants(sheet) if sheet_path.is_file() else None
     if rows is None:
         print(f'clips: {SHEET} has no attackVariants impactTicks yet; impact check skipped')
+    troops = {t['id']: t for t in sheet.get('troops', []) if isinstance(t, dict) and 'id' in t}
     out = {}
     for path in sorted((root / SRC).glob('*/*.bbmodel')):
         rig_name, family = path.parent.name, path.stem
@@ -391,6 +412,24 @@ def build(root):
         if not rig_path.is_file():
             raise ClipError(f'{where}: no rig {RIGS}/{rig_name}.json')
         rig = json.loads(rig_path.read_text(encoding='utf-8'))
+        troop = troops.get(family)
+        if troop is not None:
+            # a troop's own project: its family's rows check its clips; its model's bones may be keyed; troopAttacks names its swings
+            model = root / MODELS / (family + '.json')
+            if not model.is_file():
+                raise ClipError(f'{where}: troop {family} has no model {MODELS}/{family}.json')
+            m = json.loads(model.read_text(encoding='utf-8'))
+            if m.get('rig') != rig_name:
+                raise ClipError(f"{where}: troop {family}'s model is on rig {m.get('rig')!r}, not {rig_name}")
+            made = convert(json.loads(path.read_text(encoding='utf-8')), rig, where, {b['name'] for b in m.get('bones', [])})
+            slots = {r['clip']: r['slot'] for r in sheet.get('troopAttacks', []) if r.get('troop') == family}
+            for clip_name in sorted(slots):
+                if clip_name not in made:
+                    raise ClipError(f'{where}: troopAttacks {family}_{clip_name} has no clip; name an animation {clip_name}')
+            for name, clip in made.items():
+                check(clip, parse(clip), rig, troop.get('family'), rows, f'{where} {name}', slots)
+                out[f'{rig_name}/{family}/{name}.json'] = clip
+            continue
         made = convert(json.loads(path.read_text(encoding='utf-8')), rig, where)
         for (fam, row), r in sorted((rows or {}).items()):
             if fam == family and r.get('kind') in MELEE and row not in made:

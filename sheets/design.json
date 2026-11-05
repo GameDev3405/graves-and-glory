@@ -2921,6 +2921,7 @@
       "weight": "heavy"
     }
   ],
+  "troopAttacks": [],
   "recruitmentView": [
     {
       "id": "barracks",

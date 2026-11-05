@@ -244,6 +244,9 @@ public final class MotionEngine {
 
         // scratch, so steady-state frames do not allocate
         final double[] tmp = new double[6];
+        /** The idle variants of the family they were listed from (MotionBody.idleAlts caches them here, so a frame allocates nothing). */
+        Family altsOf;
+        java.util.List<Clip> alts = java.util.List.of();
         final Clip[] mixClips = new Clip[MotionStack.LAYER_CLIPS];
         final double[] mixCoef = new double[MotionStack.LAYER_CLIPS];
         final double[][] stanceLegs = new double[MotionStack.CROUCH_BONES.length][6];
@@ -337,6 +340,8 @@ public final class MotionEngine {
         double now, dt, speed, limbAngle, headYaw, headPitch, yawRate, aimPitch;
         boolean first, dead, enemy;
         MotionMath.Seed seed;
+        /** This frame's family: the gait clips (MotionBody.stride) and the idle variants (MotionBody.life) read it. */
+        Family fam;
         /**
          * Eased weights: moving, running, combat, shield shuffle, backpedal, turning in place, life, look, settle, the straps'
          * settle and planted feet; calm is raw. The planted-feet weight drops on death and eases back in on revive, so the feet are not
@@ -367,6 +372,7 @@ public final class MotionEngine {
         st.started = true;
         st.last = f.now;
         f.seed = in.seed();
+        f.fam = fam;
         ground(in.ground(), st, f, rawDt);
         f.speed = f.ground ? clamp(Math.hypot(f.vF, f.vL) / 5, 0, 1.5) : clamp(finite(in.limbSpeed()), 0, 1.5);
         f.limbAngle = finite(in.limbAngle()) % LIMB_WRAP;

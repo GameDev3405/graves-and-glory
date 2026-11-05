@@ -139,6 +139,15 @@ public final class Clip {
     public String name() { return name; }
     public double length() { return length; }
     public boolean loop() { return loop; }
+    /**
+     * A gait clip's stride (walk and run, MotionBody.stride): blocks travelled over one loop, from its {@code stride_<tenths>}
+     * timeline marker (stride_18 is 1.8 blocks; the marker's time is not read), or NaN when it has none.
+     */
+    public double stride() {
+        for (String m : markers.keySet())
+            if (m.startsWith("stride_") && m.length() > 7 && m.substring(7).chars().allMatch(Character::isDigit)) return Integer.parseInt(m.substring(7)) / 10.0;
+        return Double.NaN;
+    }
     /** The impact marker in ticks from the clip's start, or -1 when the clip has none. */
     public int impact() { return impact; }
     public Map<String, Double> markers() { return markers; }

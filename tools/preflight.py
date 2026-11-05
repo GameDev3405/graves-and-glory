@@ -54,7 +54,9 @@ for folder in ('src/main/resources/data/gravesandglory/structures','test-tools/r
         if depth>48: errors.append(f'structure {sid}: depth {depth} is more than 48')
         if height>32: errors.append(f'structure {sid}: height {height} is more than 32')
 for sheet, rows in data.items():
-    if not rows: errors.append(f'{sheet}: empty sheet'); continue
+    if not rows:
+        if sheet!='troopAttacks': errors.append(f'{sheet}: empty sheet')  # troopAttacks may be empty (EMPTY_SHEETS below)
+        continue
     columns=set(rows[0])
     ids=set()
     for row in rows:
@@ -449,6 +451,26 @@ for v in variantRows:
         elif melee!=(v['kind'] in MELEE_KINDS): errors.append(f'attackVariants/{vid}: kind {v["kind"]} '+('must be stab, slash or blunt for a melee family' if melee else 'is a melee kind on a ranged family'))
 for fam,famTroops in familyTroops.items():
     if fam not in variantFamilies: errors.append(f'attackVariants: family {fam} (troops {", ".join(t["id"] for t in famTroops)}) has no rows'+(' and a melee family needs at least one' if any(not t['ranged'] for t in famTroops) else ''))
+# Per-troop attacks (troop animation pass, Kort's review): a troopAttacks row gives one troop its own swing for one of its family's
+# attackVariants rows (its slot). The swing keeps that row's timing, zone, kind and weight, so gameplay does not change; the client
+# picks among a troop's clips for a slot per swing (TroopMotion.Fam.attack). Its clip lives in the troop's own clip folder.
+troopRows={t['id']:t for t in data['troops']}
+seenTroopAttacks=set()
+for r in data.get('troopAttacks',[]):
+    rid,troop,clip,slot=r.get('id'),r.get('troop'),r.get('clip'),r.get('slot')
+    if rid!=f'{troop}_{clip}': errors.append(f'troopAttacks/{rid}: id must be <troop>_<clip> ({troop}_{clip})')
+    if rid in seenTroopAttacks: errors.append(f'troopAttacks/{rid}: appears twice')
+    seenTroopAttacks.add(rid)
+    if troop not in troopRows: errors.append(f'troopAttacks/{rid}: troop {troop!r} is not a troops row'); continue
+    fam=troopRows[troop].get('family')
+    if not any(v.get('id')==slot and v.get('family')==fam for v in variantRows): errors.append(f'troopAttacks/{rid}: slot {slot!r} is not an attackVariants row of {troop}\'s family {fam}')
+    if not isinstance(clip,str) or not re.match(r'^[a-z][a-z0-9_]*$',clip): errors.append(f'troopAttacks/{rid}: clip {clip!r} must be lowercase letters, digits and _'); continue
+    if any(v.get('id')==clip for v in variantRows): errors.append(f'troopAttacks/{rid}: clip {clip} is an attackVariants id; a troop swing needs a name of its own')
+    model=root/'src/main/resources/assets/gravesandglory/models/troop'/(troop+'.json')
+    rig=json.loads(model.read_text(encoding='utf-8')).get('rig') if model.is_file() else None
+    if rig is None: errors.append(f'troopAttacks/{rid}: {troop} has no troop model naming its rig')
+    elif not (root/'src/main/resources/assets/gravesandglory/clips'/rig/troop/(clip+'.json')).is_file():
+        errors.append(f'troopAttacks/{rid}: no clip clips/{rig}/{troop}/{clip}.json (a missing clip fails the build: python tools/clips.py writes it from art/clips/{rig}/{troop}.bbmodel)')
 if 'morale' in data: errors.append('morale: the sheet went with routing (Task 8b); its surviving numbers live in combatDiscipline')
 if len(data['recruitment'])!=1: errors.append('recruitment: exactly one row')
 if any(data['campaign'][0].get(k,-1)<0 for k in ('completionShards','victoryShards','completionRenown','victoryRenown')): errors.append('campaign: completionShards, victoryShards, completionRenown and victoryRenown must be 0 or more')
@@ -879,10 +901,13 @@ def typ(v): return 'boolean' if isinstance(v,bool) else 'int' if isinstance(v,in
 def literal(v): return json.dumps(v,ensure_ascii=True)
 # Validated above, but process metadata rather than game data: never shipped as Spec records.
 NOT_SHIPPED={'checks','revisionChecks','playtestMilestone','economyModel'}
+# Sheets that may have no rows yet: their columns, by an example value of each column's type.
+EMPTY_SHEETS={'troopAttacks':{'id':'','troop':'','clip':'','slot':''}}
 out=['package gg.gravesandglory;','public final class Spec {']
 for sheet,rows in data.items():
     if sheet in NOT_SHIPPED: continue
     name=sheet[0].upper()+sheet[1:]+'Row'
+    if not rows and sheet in EMPTY_SHEETS: rows=[]; cols=list(EMPTY_SHEETS[sheet]); out.append(f'public record {name}('+','.join(typ(v)+' '+c for c,v in EMPTY_SHEETS[sheet].items())+') {}'); out.append(f'public static {name}[] {sheet.upper()} = new {name}[] {{}};'); continue
     cols=list(rows[0])
     out.append(f'public record {name}('+','.join(typ(rows[0][c])+' '+c for c in cols)+') {}')
     out.append(f'public static {name}[] {sheet.upper()} = new {name}[] {{'+','.join('new '+name+'('+','.join(literal(r[c]) for c in cols)+')' for r in rows)+'};')
