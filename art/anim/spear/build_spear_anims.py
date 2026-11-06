@@ -30,9 +30,13 @@ _GEO = json.loads((HERE.parent / TROOP / "out" / f"{TROOP}.geo.json").read_text(
 GEO_BONES = {b["name"] for b in _GEO}
 # Secondary cloth (STYLE.md rule 9): the knight's cape lag, given to each troop's hanging gear at a scale.
 SPEAR_TROOPS = {"wm_tusk": {"gear": {"kilt": 0.4, "trophy": 0.7}},
-                "tc_tideguard": {"gear": {"tabard": 0.35}},
-                "tc_admiral": {"gear": {"cape": 0.35, "tails_l": 0.7, "tails_r": 0.7}}}
+                "tc_tideguard": {"gear": {"tabard": 0.35}, "rear_x": -0.6, "death_lookahead": True},
+                "tc_admiral": {"gear": {"cape": 0.35, "tails_l": 0.7, "tails_r": 0.7}, "rear_x": -0.6, "death_lookahead": True,
+                                  "soft": ("hair_", "kelp_", "plume", "tails_", "sash_end")}}
 ST = SPEAR_TROOPS[TROOP]
+LOOKAHEAD = ST.get("death_lookahead", False)   # per troop: wrist turn planned backwards through the fall (see flat_weapon)
+RX = ST.get("rear_x", 0.0)        # per-troop shift of the thrust contact fist outward, keeping the butt out of a wider torso
+K.SOFT = ST.get("soft", ())   # per troop: hanging hair and kelp never hold the falling body up (knight death_clip)
 W = "weapon_t1"                 # every tier's spear shares the pivot and axes
 
 # ------------------------------------------------------------------------------------------------
@@ -331,8 +335,8 @@ ATTACKS = {
         (0, GUARD),
         (2.5, KEY((8, 28, 0), (2, 0, 0), (-5.2, 13.8, -4.0), aim(10, 21), Ls=11.5)),
         (5.5, KEY((7, 32, 0), (2, 0, 0), (-5.4, 13.6, -4.8), aim(10, 22), Ls=12.0)),
-        (7, KEY((28, 4, 0), (7, 0, 0), (-4.0, 13.2, 10.0), aim(3, 10), Ls=2.5)),
-        (9, KEY((31, 6, 0), (7, 0, 0), (-4.2, 13.4, 11.0), aim(2, 11), Ls=2.0)),
+        (7, KEY((28, 4, 0), (7, 0, 0), (-4.0 + RX, 13.2, 10.0), aim(3, 10), Ls=2.5)),
+        (9, KEY((31, 6, 0), (7, 0, 0), (-4.2 + RX, 13.4, 11.0), aim(2, 11), Ls=2.0)),
         (12, KEY((20, 10, 0), (5, 0, 0), (-3.5, 14.0, 7.0), aim(8, 14), Ls=4.5)),
         (17, nudge(GUARD, O=(0.2, 0.0, 0.6), torso=(1, -1, 0))),
         (22, GUARD)],
@@ -753,12 +757,36 @@ def flat_weapon(keys, start, t0, t1, step=0.5):
             hand = slerp_rot(hand, ref, ramp(t, t0 - 1, t1))
         r = ground_hand(pose, hand, prev)
         turn, cap = turn_deg(prev, r), MAX_WRIST_TURN * step
+        if LOOKAHEAD:                                  # solve every key free first; the turn cap is applied backwards below
+            out.append((t, f, pose, r))
+            prev = r
+            continue
         if turn > cap:                                 # the spear swings round, it does not flip in a tick
             r = ground_hand(pose, slerp_rot(prev, r, cap / turn), prev)
         prev = near_euler(r, prev)
         f["right_hand"] = prev
         out.append((t, "lin", f))
-    return out
+    if not LOOKAHEAD:
+        return out
+    # Look-ahead: walking back from the end, a key the next one is too far from turns part-way towards it, so the wrist
+    # starts swinging early instead of flipping late; then a forward pass caps whatever is left.
+    cap = MAX_WRIST_TURN * step
+    rs = [o[3] for o in out]
+    for i in range(len(rs) - 2, -1, -1):
+        if out[i][0] < 3.0:                            # the first ticks keep the forward solve: the arm drops the spear
+            break                                      # into the floor at once there, and only the reactive turn clears it
+        turn = turn_deg(rs[i], rs[i + 1])
+        if turn > cap:
+            rs[i] = ground_hand(out[i][2], slerp_rot(rs[i + 1], rs[i], cap / turn), rs[i + 1])
+    res, prev = [], start["right_hand"][0]
+    for (t, f, pose, _), r in zip(out, rs):
+        turn = turn_deg(prev, r)
+        if turn > cap:
+            r = ground_hand(pose, slerp_rot(prev, r, cap / turn), prev)
+        prev = near_euler(r, prev)
+        f["right_hand"] = prev
+        res.append((t, "lin", f))
+    return res
 
 
 def death_clips():

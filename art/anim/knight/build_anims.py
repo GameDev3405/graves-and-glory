@@ -1199,6 +1199,7 @@ def mirror(keys):
 
 
 HELD = ("sword", "shield")   # bone-name parts of carried gear: it drags on the ground, the body never pivots on it
+SOFT = ()   # bone-name prefixes of soft hanging gear (hair, kelp, tails): it never holds the body up or pins its roll
 
 
 def death_clip(keys, start, name):
@@ -1213,6 +1214,7 @@ def death_clip(keys, start, name):
     base_y = None
     shift = np.zeros(3)
     prev = held = None
+    settled = {}
     for i in range(DEATH_TICKS * SUB + 1):
         tick = i / SUB
         j = next(j for j in range(1, len(frames)) if tick <= frames[j][0] or j == len(frames) - 1)
@@ -1223,9 +1225,10 @@ def death_clip(keys, start, name):
         pose = {n: (rot[n], None) for n in DEATH_BONES}
         pose["hips"] = (rot["hips"], hips_pos)
         P, owner = body_corners(pose)
-        low = int(np.argmin(P[:, 1]))
         if held is None:
-            held = np.array([any(h in o for h in HELD) for o in owner])
+            soft = np.array([any(o.startswith(h) for h in SOFT) for o in owner], dtype=bool)
+            held = np.array([any(h in o for h in HELD) for o in owner]) | soft
+        low = int(np.argmin(np.where(soft, np.inf, P[:, 1])))
         pivot = int(np.argmin(np.where(held, np.inf, P[:, 1])))
         if prev is None:
             base_y = P[low, 1]
@@ -1235,11 +1238,77 @@ def death_clip(keys, start, name):
         lift = base_y - P[low, 1]
         prev = P
         pose["root"] = (rot["root"], (shift[0], lift, -shift[2]))
+        if SOFT:
+            settle_soft(pose, base_y, settled)
         samples.append(pose)
     clip = bake(samples, DEATH_TICKS, loop=False)
     clip["loop"] = "hold_on_last_frame"
     death_report(name, samples)
     return clip
+
+
+SETTLE_TURN = 45.0   # deg per tick a soft strand may swing to stay out of the ground
+SETTLE_GRID = [(x, z) for x in range(-90, 91, 6) for z in range(-90, 91, 6)]
+
+
+def _bone_mat(b, rot, pos, par):
+    pos = pos or Z3
+    r = b.rot + np.radians([-rot[0], -rot[1], rot[2]])
+    pv = b.pivot / 16.0
+    return (par @ rg._T(-pos[0] / 16.0, pos[1] / 16.0, pos[2] / 16.0) @ rg._T(*pv)
+            @ rg._Rz(r[2]) @ rg._Ry(r[1]) @ rg._Rx(r[0]) @ rg._T(*(-pv)))
+
+
+def settle_soft(pose, ground, settled, model=None):
+    """Hanging hair and kelp (SOFT) swing about their own pivot by the smallest turn that keeps them out of the
+    ground, at most SETTLE_TURN per tick from the last sample, easing back as the body lifts off them. Writes
+    each strand's turn into pose; settled carries the last turn per strand."""
+    model = model or HEAVY
+    soft = lambda n: any(n.startswith(h) for h in SOFT)
+    M = {}
+    for n in model.order:
+        b = model.bones[n]
+        rot, pos = pose.get(n, (Z3, None))
+        M[n] = _bone_mat(b, rot, pos, M[b.parent] if b.parent is not None else rg.WORLD_FLIP)
+    cap = SETTLE_TURN / SUB
+    for r in model.order:
+        b = model.bones[r]
+        if not soft(r) or (b.parent is not None and soft(b.parent)):
+            continue
+        sub = [r]
+        for n in model.order:
+            if model.bones[n].parent in sub:
+                sub.append(n)
+        cubes = [ci for ci, cb in enumerate(model.cube_bone) if cb in sub]
+        if not cubes:
+            continue
+
+        def low(d):
+            L = {r: _bone_mat(b, (d[0], 0.0, d[1]), None, M[b.parent])}
+            for n in sub[1:]:
+                bn = model.bones[n]
+                L[n] = _bone_mat(bn, pose.get(n, (Z3, None))[0], None, L[bn.parent])
+            y = np.inf
+            for ci in cubes:
+                cube = model.cube_list[ci]
+                cp = cube.pivot / 16.0
+                Mc = (L[model.cube_bone[ci]] @ rg._T(*cp) @ rg._Rz(cube.rot[2]) @ rg._Ry(cube.rot[1])
+                      @ rg._Rx(cube.rot[0]) @ rg._T(*(-cp)))
+                y = min(y, float(((cube.corners @ Mc[:3, :3].T)[:, 1] + Mc[1, 3]).min() * 16.0))
+            return y
+
+        p = settled.get(r, (0.0, 0.0))
+        near = [d for d in SETTLE_GRID if max(abs(d[0] - p[0]), abs(d[1] - p[1])) <= cap + 1e-6] + [p]
+        near.sort(key=lambda d: d[0] ** 2 + d[1] ** 2 + 4.0 * ((d[0] - p[0]) ** 2 + (d[1] - p[1]) ** 2))
+        best = None
+        for d in near:
+            if low(d) >= ground - 0.01:
+                best = d
+                break
+        if best is None:
+            best = max(near, key=low)
+        settled[r] = best
+        pose[r] = ((float(best[0]), 0.0, float(best[1])), None)
 
 
 def death_report(name, samples):

@@ -1,0 +1,171 @@
+{
+ "troop": "tc_tideguard",
+ "tiers": [
+  1,
+  2,
+  3
+ ],
+ "faces": 1,
+ "bones": {
+  "root": {},
+  "hips": {},
+  "torso": {},
+  "head": {},
+  "cap": {
+   "tag": "helm"
+  },
+  "fin": {
+   "team": true,
+   "tag": "helm"
+  },
+  "cap_band": {
+   "stages": [
+    2,
+    3
+   ],
+   "tag": "helm"
+  },
+  "crown_coral0": {
+   "stages": [
+    3
+   ],
+   "tag": "helm"
+  },
+  "crown_coral1": {
+   "stages": [
+    3
+   ],
+   "tag": "helm"
+  },
+  "crown_coral2": {
+   "stages": [
+    3
+   ],
+   "tag": "helm"
+  },
+  "crown_coral3": {
+   "stages": [
+    3
+   ],
+   "tag": "helm"
+  },
+  "crown_coral4": {
+   "stages": [
+    3
+   ],
+   "tag": "helm"
+  },
+  "crown_coral5": {
+   "stages": [
+    3
+   ],
+   "tag": "helm"
+  },
+  "right_arm": {},
+  "right_forearm": {},
+  "right_hand": {},
+  "right_bracer": {},
+  "right_cuff": {
+   "stages": [
+    2,
+    3
+   ]
+  },
+  "right_pauldron": {},
+  "right_wrap": {
+   "team": true
+  },
+  "right_plate": {
+   "stages": [
+    2,
+    3
+   ]
+  },
+  "left_arm": {},
+  "left_forearm": {},
+  "left_hand": {},
+  "left_bracer": {},
+  "left_cuff": {
+   "stages": [
+    2,
+    3
+   ]
+  },
+  "left_pauldron": {},
+  "left_wrap": {
+   "team": true
+  },
+  "left_plate": {
+   "stages": [
+    2,
+    3
+   ]
+  },
+  "belt": {},
+  "tabard": {
+   "team": true
+  },
+  "shell": {},
+  "right_coral": {},
+  "left_coral": {},
+  "breastplate": {
+   "stages": [
+    2,
+    3
+   ]
+  },
+  "right_coral3": {
+   "stages": [
+    3
+   ]
+  },
+  "left_coral3": {
+   "stages": [
+    3
+   ]
+  },
+  "breast_pearl": {
+   "stages": [
+    3
+   ]
+  },
+  "right_leg": {},
+  "right_shin": {},
+  "right_foot": {},
+  "right_boot": {},
+  "right_greave": {
+   "stages": [
+    2,
+    3
+   ]
+  },
+  "left_leg": {},
+  "left_shin": {},
+  "left_foot": {},
+  "left_boot": {},
+  "left_greave": {
+   "stages": [
+    2,
+    3
+   ]
+  },
+  "weapon_t1": {
+   "stages": [
+    1
+   ],
+   "tag": "weapon"
+  },
+  "weapon_t2": {
+   "stages": [
+    2
+   ],
+   "tag": "weapon"
+  },
+  "weapon_t3": {
+   "stages": [
+    3
+   ],
+   "tag": "weapon"
+  }
+ }
+}

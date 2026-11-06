@@ -60,6 +60,9 @@ TROOPS = {
 SHIELD_AT = (-1, 4, -1.5)     # the knight's grip: in the left fist by its strap, face to the front
 WAIST, SPLIT = 8.5, ((12, 8), (12, 0))
 DROP = {"arms_folded"}
+# Per troop, body-hung gear re-hung on a leg bone: a strand that reaches the floor from the hips would sink through it
+# whenever the guard bends the knees, so it rides the shin it hangs behind instead (same place in the rest pose).
+HANG = {"tc_admiral": {"kelp_hem": "left_shin"}}
 
 
 def lined(paint):
@@ -76,7 +79,7 @@ def absolute(B):
     return a
 
 
-def rigify(src, weapon_rot, kind="blade"):
+def rigify(src, weapon_rot, kind="blade", hang=None):
     """The troop's handlib bones re-hung on the knight's skeleton (pivots relative to the parent)."""
     src = [bn for bn in src if bn.name not in DROP]
     for bn in src:   # a troop's own foot (the raider's) is shin gear: it rides the rig's foot like a boot
@@ -100,10 +103,14 @@ def rigify(src, weapon_rot, kind="blade"):
     torso = add(Bone("torso", "hips", boxes=[Box((-4, -9, -2), (8, 9, 4), bb.paint, cut=SPLIT[1])]), "hips", (0, 9, 0))
     del root, hips, torso
     cape_pivot = None
+    hang, later = hang or {}, []
     for bn in src:
         if bn.name in ("root", "body"):
             continue
         a, par = ab[bn.name], bn.parent
+        if bn.name in hang:
+            later.append((bn, hang[bn.name], a))
+            continue
         if par == "body":
             if bn.name.startswith("cape") or bn.name == "collar":
                 if cape_pivot is None:
@@ -139,6 +146,8 @@ def rigify(src, weapon_rot, kind="blade"):
             bn.boxes[0].size[1] -= 2          # the shin stops inside the boot, as the knight's
             foot = Bone(f"{side}_foot", bn.name)
             add(foot, bn.name, [a[0], a[1] + 4, a[2]])
+    for bn, par, a in later:
+        add(bn, par, a)
     # shin gear from y 3 down moves to the foot (boot, toe); a troop with no boot gets the shin's own bottom rows
     for side in ("right", "left"):
         shin, foot = f"{side}_shin", f"{side}_foot"
@@ -190,7 +199,7 @@ class Rig:
         s.weapon = importlib.import_module(wmod)
         s.skin, s.cloth = s.troop.skin, s.troop.cloth
         s.wy = s.skin[1] + s.cloth[1]
-        s.B = rigify(s.troop.bones(), wrot, s.kind)
+        s.B = rigify(s.troop.bones(), wrot, s.kind, HANG.get(tid))
         s.tiers = tuple(s.troop.tiers)
 
     def weapon_cubes(s, t):
