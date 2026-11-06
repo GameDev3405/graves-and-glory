@@ -161,6 +161,70 @@ def decompose_zyx(R):
 
 
 # ------------------------------------------------------------------------------------------------
+# Shield hold: the kite shield is gripped in the left fist (build_rig parents it to left_hand). The arm
+# places the fist (fist_arm), the wrist keeps the shield upright and facing the front whatever the arm
+# does (grip): its face is set relative to the torso, so it leans and turns only as much as asked.
+# Fist targets are world px with the torso at rest: x+ the troop's left, y up from the ground, z+ forward.
+# ------------------------------------------------------------------------------------------------
+
+SHIELD_ARM = ("left_arm", "left_forearm", "left_hand")
+Z3 = (0.0, 0.0, 0.0)
+
+
+def _fist(arm, fore):
+    M = world({"left_arm": (arm, (0, 0, 0)), "left_forearm": ((fore, 0, 0), (0, 0, 0))}, "left_hand")
+    return (M @ np.r_[MODEL.bones["left_hand"].pivot / 16.0, 1.0])[:3] * 16.0
+
+
+def fist_arm(target, roll=-4.0, guess=None):
+    """left_arm (x, y, roll) and left_forearm x putting the fist at target; the upper arm's roll (- out) is given."""
+    x = np.array(guess if guess is not None else (-20.0, 20.0, -80.0), dtype=float)
+    t = np.asarray(target, dtype=float)
+    f = lambda v: _fist((v[0], v[1], roll), v[2])
+    for _ in range(80):
+        a = f(x)
+        err = t - a
+        if np.linalg.norm(err) < 1e-4:
+            break
+        J = np.zeros((3, 3))
+        for i in range(3):
+            d = np.zeros(3)
+            d[i] = 1e-3
+            J[:, i] = (f(x + d) - a) / 1e-3
+        step = np.linalg.solve(J.T @ J + 0.02 * np.eye(3), J.T @ err)
+        n = np.linalg.norm(step)
+        if n > 10:
+            step *= 10 / n
+        x += step
+        x[2] = min(0.0, max(-150.0, x[2]))        # the elbow only flexes
+    if np.linalg.norm(t - f(x)) > 0.25:     # a quarter pixel: the arm is near straight there
+        raise ValueError("fist unreachable: target %s got %s" % (np.round(t, 2), np.round(f(x), 2)))
+    return (x[0], x[1], roll), x[2]
+
+
+def grip(arm, fore, face):
+    """left_hand rotation holding the shield at `face`, animation degrees relative to the torso with the torso's own
+    signs (x+ leans its top forward, y+ turns its face toward the troop's right), for this arm pose."""
+    Mf = world({"left_arm": (arm, (0, 0, 0)), "left_forearm": ((fore, 0, 0), (0, 0, 0))}, "left_forearm")[:3, :3]
+    Mt = world({}, "torso")[:3, :3]
+    Rd = local("left_hand", face)[:3, :3]
+    return decompose_zyx(Mf.T @ Mt @ Rd)
+
+
+def hold(fist, face, roll=-4.0, guess=None):
+    """The shield arm's three bones for a fist target and shield face."""
+    arm, fore = fist_arm(fist, roll, guess)
+    return {"left_arm": arm, "left_forearm": (fore, 0.0, 0.0), "left_hand": grip(arm, fore, face)}
+
+
+def regrip(frame):
+    """Replaces a frame's "_face" entry (interpolated with the arm) by the left_hand angles that hold it."""
+    face = frame.pop("_face")[0]
+    frame["left_hand"] = (grip(frame["left_arm"][0], frame["left_forearm"][0][0], face), None)
+    return frame
+
+
+# ------------------------------------------------------------------------------------------------
 # Gait plan
 # ------------------------------------------------------------------------------------------------
 
@@ -279,17 +343,18 @@ RUN = Gait("run", ticks=7, speed=0.26, duty=0.38, heel=6, toe_off=34, front=4.4,
 class Carry:
     """How the knight holds itself on the move. Angles in degrees; see the sign table at the top."""
 
-    def __init__(self, lean, twist, arm, arm_lag, shield, fore, blade, follow, shield_fore, head_keep, cape, arm_out=2.0,
-                 arm_base=0.0, blade_out=0.0, roll=0.0, shield_base=0.0):
+    def __init__(self, lean, twist, arm, arm_lag, shield, fore, blade, follow, fist, head_keep, cape, arm_out=2.0,
+                 arm_base=0.0, blade_out=0.0, roll=0.0, sway=0.0):
         self.lean, self.twist, self.arm, self.arm_lag = lean, twist, arm, arm_lag
-        self.shield, self.fore, self.shield_fore = shield, fore, shield_fore
+        self.shield, self.fore, self.fist, self.sway = shield, fore, fist, sway
         # blade: the sword's pitch in the world (+ tip down from level); follow: how far it rocks with the arm, a beat late
         self.blade, self.follow = blade, follow
         self.arm_out = arm_out   # the sword arm's roll out from the side (+ out), keeping a raised blade off the face
         self.arm_base = arm_base  # the sword arm's mean pitch (- forward), lifting the hand off the hip
         self.blade_out = blade_out  # the wrist's yaw turning the point out (+), away from the near leg
         self.head_keep, self.cape = head_keep, cape
-        self.shield_base = shield_base  # the shield arm's mean pitch (- forward), keeping the shield beside the body, not behind it
+        # the shield: fist is where it is carried (see fist_arm), shield how far (px) it rocks fore and aft against the stride,
+        # sway how far (deg) its top rocks with it
         self.roll = roll  # the shoulders' roll down toward the leg taking the weight, so the upper body reads the step
 
 
@@ -306,10 +371,12 @@ class Carry:
 # Fix round 2 (re-review, 2026-11-05): in three-quarter view the walking point still crossed the near shin and the running point
 # reached the helm, so both turn further out and the run blade sits lower; the shields are carried forward (shield_base) since
 # both still trailed; the walking blade rocks a little more so it reads as carried, not fixed.
-WALK_CARRY = Carry(lean=3, twist=4.0, arm=11, arm_lag=0.04, shield=7, fore=-42, blade=0, follow=5, shield_fore=-14,
-                   head_keep=0.85, cape=(5, 2.0), arm_out=7.0, arm_base=-6.0, blade_out=34.0, roll=1.6, shield_base=-6.0)
-RUN_CARRY = Carry(lean=14, twist=4.0, arm=24, arm_lag=0.05, shield=4, fore=-62, blade=-12, follow=2, shield_fore=-28,
-                  head_keep=0.8, cape=(16, 3.5), arm_out=16.0, arm_base=-14.0, blade_out=20.0, roll=1.2, shield_base=-14.0)
+# Shield hold (Kort, 2026-11-05): the shield is carried upright in the fist in front of the left chest, rocking a little
+# against the stride instead of swinging flat on the forearm.
+WALK_CARRY = Carry(lean=3, twist=4.0, arm=11, arm_lag=0.04, shield=1.6, fore=-42, blade=0, follow=5, fist=(3.0, 17.5, 4.5),
+                   head_keep=0.85, cape=(5, 2.0), arm_out=7.0, arm_base=-6.0, blade_out=34.0, roll=1.6, sway=5.0)
+RUN_CARRY = Carry(lean=14, twist=4.0, arm=24, arm_lag=0.05, shield=2.0, fore=-62, blade=-12, follow=2, fist=(2.5, 18.5, 4.6),
+                  head_keep=0.8, cape=(16, 3.5), arm_out=16.0, arm_base=-14.0, blade_out=20.0, roll=1.2, sway=8.0)
 
 
 def upper_pose(g, c, u):
@@ -335,15 +402,22 @@ def upper_pose(g, c, u):
     # The wrist keeps the blade at its carry pitch in the world, rocking a little a beat behind the arm.
     blade = c.blade + c.follow * math.cos(tw * (u - c.arm_lag - 0.1))
     rh = (blade - (hx + tx + ra[0] + rf[0]), c.blade_out, 0.0)
-    la = (c.shield_base - c.shield * sw, 0.0, -3.0)
-    lf = (c.shield_fore, 0.0, 0.0)
+    # The shield fist rocks against the stride, bobs with each footfall and drifts toward the leg in stance; the
+    # shield undoes only part of the body's lean, turn and roll (it rides the body), and its weight makes the top
+    # trail the fist a beat late and swing out with the shoulder's turn.
+    fx, fy, fz = c.fist
+    bob = math.cos(tw * 2 * (u - g.bob_phase - 0.06))
+    trail = math.cos(tw * (u - c.arm_lag - 0.12))
+    sh = hold((fx + 0.45 * math.sin(tw * (u - 0.05)), fy + 0.45 * bob, fz - c.shield * sw),
+              (-0.65 * (hx + tx) - c.sway * trail + 1.2 * bob, -0.35 * net_yaw - 0.6 * c.sway * trail,
+               -0.4 * net_roll + 0.4 * c.sway * math.sin(tw * (u - 0.1))))
     # Cape: blown back by the forward speed, flapping at the bob's rate, a quarter cycle late.
     flare, flap = c.cape
     cape = (flare + flap * math.sin(tw * 2 * (u - g.bob_phase - 0.12)), -0.5 * ty, -0.6 * tz)
     z = (0.0, 0.0, 0.0)
     return {"torso": ((tx, ty, tz), None), "head": (head, None), "right_arm": (ra, None),
-            "right_forearm": (rf, None), "right_hand": (rh, None), "left_arm": (la, None),
-            "left_forearm": (lf, None), "left_hand": (z, None), "cape": (cape, None)}
+            "right_forearm": (rf, None), "right_hand": (rh, None), "left_arm": (sh["left_arm"], None),
+            "left_forearm": (sh["left_forearm"], None), "left_hand": (sh["left_hand"], None), "cape": (cape, None)}
 
 
 def gait_upper(g, c):
@@ -378,16 +452,20 @@ def idle_clips():
             guesses[side] = (lr[0], lr[2], sr[0])
             out[side + "_leg"], out[side + "_shin"], out[side + "_foot"] = (lr, None), (sr, None), (fr, None)
         legs.append(out)
-        z = (0.0, 0.0, 0.0)
+        tor = (1.0 + 0.7 * br, -0.6 * sh, 0.5 * sh)
+        lag = math.sin(2 * math.pi * u - 0.5)               # the shield's weight follows the breath a beat late
+        shd = hold((3.0 + 0.25 * sh, 17.5 + 0.35 * br, 4.5 + 0.2 * lag),
+                   (-0.6 * tor[0] + 1.5 * lag, -0.4 * (hips[0][1] + tor[1]) + 1.2 * sh,
+                    -0.4 * (hips[0][2] + tor[2]) - 1.0 * sh))
         upper.append({
-            "torso": ((1.0 + 0.7 * br, -0.6 * sh, 0.5 * sh), None),
+            "torso": (tor, None),
             "head": ((-1.0 - 0.4 * br, 1.5 * math.sin(2 * math.pi * u * 2 - 1.0) * 0.5, -0.3 * sh), None),
             "right_arm": ((-2.0 - 0.6 * br, 0.0, 3.0 + 0.5 * br), None),
             "right_forearm": ((-22.0, 0.0, 0.0), None),
             "right_hand": ((40.0, 0.0, 0.0), None),
-            "left_arm": ((-3.0 - 0.4 * br, 0.0, -3.5 - 0.5 * br), None),
-            "left_forearm": ((-16.0, 0.0, 0.0), None),
-            "left_hand": (z, None),
+            "left_arm": (shd["left_arm"], None),
+            "left_forearm": (shd["left_forearm"], None),
+            "left_hand": (shd["left_hand"], None),
             "cape": ((1.0 + 0.6 * br, 0.0, 0.0), None),
         })
     return bake(legs, IDLE_TICKS), bake(upper, IDLE_TICKS)
@@ -404,47 +482,59 @@ ATTACK_TICKS = 22
 UPPER_BONES = ("torso", "head", "right_arm", "right_forearm", "right_hand", "left_arm", "left_forearm", "left_hand")
 
 
-def key(torso, arm, fore, blade, blade_out, shield_arm, shield_fore):
+def upright(torso, hips=Z3, keep=0.9, turn=0.7, tilt=0.0):
+    """The shield face (see grip) that undoes `keep` of the body's lean and `turn` of its yaw and roll, plus `tilt`
+    (+ top forward), so it stands near upright and faces the front."""
+    return (tilt - keep * (torso[0] + hips[0]), -turn * (torso[1] + hips[1]), -turn * (torso[2] + hips[2]))
+
+
+def key(torso, arm, fore, blade, blade_out, fist, face=None, throw=Z3):
     """One attack key pose. blade is the sword's world pitch (+ tip down, 0 level forward), turned into the
     wrist angle that holds it; blade_out swings the tip outward (+) or across the body (-). The head
-    counters most of the torso so the eyes stay on the target."""
+    counters most of the torso so the eyes stay on the target. fist places the shield fist (fist_arm), face
+    sets the shield (grip; default upright); the wrist is solved per sample after the keys are blended."""
     tx, ty, tz = torso
     hand = (blade - (tx + arm[0] + fore), blade_out, 0.0)
+    face = upright(torso, keep=0.7, turn=0.45) if face is None else face
+    face = tuple(f + t for f, t in zip(face, throw))    # the swing throws the shield's weight
+    sh = hold(fist, face)
     return {"torso": torso, "head": (-0.7 * tx, -0.85 * ty, -0.8 * tz), "right_arm": arm,
-            "right_forearm": (fore, 0.0, 0.0), "right_hand": hand, "left_arm": shield_arm,
-            "left_forearm": (shield_fore, 0.0, 0.0), "left_hand": (0.0, 0.0, 0.0)}
+            "right_forearm": (fore, 0.0, 0.0), "right_hand": hand, "left_arm": sh["left_arm"],
+            "left_forearm": sh["left_forearm"], "left_hand": sh["left_hand"], "_face": face}
 
 
-GUARD = key((2, 0, 0), (-6, 0, 6), -36, 0, 30, (-6, 0, -3), -16)
+# Shield fist targets (fist_arm): the guard holds it before the left chest; a cut swings it out to the left.
+FIST_GUARD = (2.5, 19.0, 5.5)
+GUARD = key((2, 0, 0), (-6, 0, 6), -36, 0, 30, FIST_GUARD)
 
 # (tick, pose). Anticipation draws the weapon away from the target, the drive accelerates into the impact
 # key, follow-through carries past it, recovery settles back to the guard.
 ATTACKS = {
     "thrust": [   # impact 7: body. Chamber the blade at the hip, then drive straight out with the shoulder.
         (0, GUARD),
-        (4, key((-3, 20, 0), (22, 0, 14), -96, -4, 0, (-34, 0, -3), -40)),
-        (7, key((13, -20, 0), (-88, 0, 2), -4, 4, -4, (-22, 0, -6), -30)),
-        (9, key((14, -22, 0), (-90, 0, 0), -2, 6, -6, (-20, 0, -6), -28)),
-        (12, key((10, -14, 0), (-55, 0, 4), -40, 0, 4, (-16, 0, -6), -25)),   # draw the arm back: no held lunge
-        (15, key((5, -4, 0), (-30, 0, 8), -50, -4, 14, (-12, 0, -5), -22)),
+        (4, key((-3, 20, 0), (22, 0, 14), -96, -4, 0, (2.0, 19.5, 6.0), throw=(4, 6, 0))),
+        (7, key((13, -20, 0), (-88, 0, 2), -4, 4, -4, (6.5, 18.0, 3.5), throw=(-8, -14, -8))),
+        (9, key((14, -22, 0), (-90, 0, 0), -2, 6, -6, (6.5, 18.0, 3.5), throw=(-10, -16, -10))),
+        (12, key((10, -14, 0), (-55, 0, 4), -40, 0, 4, (5.0, 18.0, 4.0), throw=(-4, -8, -4))),   # draw the arm back: no held lunge
+        (15, key((5, -4, 0), (-30, 0, 8), -50, -4, 14, (3.5, 18.5, 5.0))),
         (ATTACK_TICKS, GUARD),
     ],
     "overhead": [   # impact 10: head. Raise the blade behind the head, come over the top, cut down through.
         (0, GUARD),
-        (6, key((-8, 12, 0), (-165, 0, 18), -70, -150, 0, (-30, 0, -8), -30)),
-        (8, key((2, 4, 0), (-150, 0, 14), -28, -80, 0, (-28, 0, -8), -28)),
-        (10, key((12, -8, 0), (-100, 0, 6), -10, 22, 0, (-24, 0, -8), -26)),
-        (12, key((18, -14, 0), (-58, 0, 2), -12, 50, 0, (-18, 0, -6), -22)),
-        (14, key((18, -14, 0), (-44, 0, 2), -12, 58, 0, (-16, 0, -6), -22)),
-        (18, key((8, -4, 0), (-18, 0, 6), -34, 25, 18, (-10, 0, -4), -18)),
+        (6, key((-8, 12, 0), (-165, 0, 18), -70, -150, 0, (2.0, 20.0, 6.0), throw=(-6, 4, 4))),
+        (8, key((2, 4, 0), (-150, 0, 14), -28, -80, 0, (2.5, 19.5, 6.0))),
+        (10, key((12, -8, 0), (-100, 0, 6), -10, 22, 0, (5.0, 18.0, 4.0), throw=(-6, -10, -6))),
+        (12, key((18, -14, 0), (-58, 0, 2), -12, 50, 0, (6.0, 17.5, 3.5), throw=(-10, -14, -10))),
+        (14, key((18, -14, 0), (-44, 0, 2), -12, 58, 0, (6.0, 17.5, 3.5), throw=(-8, -12, -8))),
+        (18, key((8, -4, 0), (-18, 0, 6), -34, 25, 18, (4.0, 18.0, 4.5))),
         (ATTACK_TICKS, GUARD),
     ],
     "low_cut": [   # impact 8: legs. Cock the blade high on the right, sweep down and across at the shins.
         (0, GUARD),
-        (5, key((-2, 30, 4), (-30, 0, 55), -60, -40, 60, (-26, 0, -10), -34)),
-        (8, key((20, -20, -4), (-55, 0, 0), -10, 40, -30, (-26, 0, -10), -30)),
-        (11, key((22, -32, -4), (-45, 0, -18), -15, 50, -45, (-22, 0, -8), -26)),
-        (16, key((8, -8, 0), (-20, 0, 4), -35, 20, 10, (-12, 0, -5), -20)),
+        (5, key((-2, 30, 4), (-30, 0, 55), -60, -40, 60, (2.0, 19.0, 6.0), throw=(4, 8, 2))),
+        (8, key((20, -20, -4), (-55, 0, 0), -10, 40, -30, (6.0, 17.0, 3.5), throw=(-8, -14, -8))),
+        (11, key((22, -32, -4), (-45, 0, -18), -15, 50, -45, (6.5, 17.0, 3.0), throw=(-10, -16, -12))),
+        (16, key((8, -8, 0), (-20, 0, 4), -35, 20, 10, (4.0, 18.0, 4.5))),
         (ATTACK_TICKS, GUARD),
     ],
 }
@@ -467,7 +557,7 @@ def monotone(ts, vs):
 def sample_keys(keys, t):
     ts = [k[0] for k in keys]
     out = {}
-    for b in UPPER_BONES:
+    for b in UPPER_BONES + (("_face",) if "_face" in keys[0][1] else ()):
         rot = []
         for c in range(3):
             vs = [k[1][b][c] for k in keys]
@@ -477,7 +567,7 @@ def sample_keys(keys, t):
             s = min(1.0, max(0.0, (t - ts[i]) / h))
             rot.append(hermite(vs[i], vs[i + 1], m[i] * h, m[i + 1] * h, s))
         out[b] = (tuple(rot), None)
-    return out
+    return regrip(out) if "_face" in out else out
 
 
 # Each swing's impact tick: its attackVariants row's impactTicks (sheets), where the server lands the blow.
@@ -512,26 +602,27 @@ def attack_clips():
 STANCE_TICKS = 40
 
 
-def skey(torso, arm, fore, blade, blade_out, shield_arm, shield_fore, shield_hand=(0.0, 0.0, 0.0), head=None):
-    """A stance key: like key(), plus the shield hand's turn and an optional head override."""
-    k = key(torso, arm, fore, blade, blade_out, shield_arm, shield_fore)
-    k["left_hand"] = shield_hand
+def skey(torso, arm, fore, blade, blade_out, fist, hips=Z3, tilt=0.0, head=None):
+    """A stance key: like key(), with the shield set upright over the stance's hips (STANCE_LEGS), tilted by tilt
+    (+ top forward), and an optional head override."""
+    k = key(torso, arm, fore, blade, blade_out, fist, upright(torso, hips, keep=0.85, turn=0.65, tilt=tilt))
     if head is not None:
         k["head"] = head
     return k
 
 
 STANCE_UPPER = {
-    "ready": skey((5, 14, 0), (-22, 0, 12), -62, -28, -4, (-38, 10, -6), -58),
+    "ready": skey((5, 14, 0), (-22, 0, 12), -62, -28, -4, FIST_GUARD),
     # brace: the sword rides low by the right hip, point forward and a little down, under the shield's edge.
-    "brace": skey((8, 16, 0), (-10, 0, 14), -48, 18, -4, (-48, 30, -6), -62),
-    "brace_up": skey((9, 18, 0), (-14, 0, 16), -52, 12, -6, (-74, 30, -4), -66),
+    "brace": skey((8, 16, 0), (-10, 0, 14), -48, 18, -4, (2.5, 18.0, 5.5), hips=(0, 10, 0)),
+    # *_up: the fist rises to the shoulder so the rim covers the eyes.
+    "brace_up": skey((9, 18, 0), (-14, 0, 16), -52, 12, -6, (2.0, 22.5, 6.0), hips=(0, 10, 0)),
     # wall: torso pitched well forward over the deep set; the arm rises to keep the sword level over the rim.
-    "wall": skey((22, 24, 0), (-72, -30, 6), -40, -6, -6, (-62, 16, -4), -64),
-    "wall_up": skey((24, 26, 0), (-88, -32, 4), -30, -2, -8, (-90, 20, -2), -60),
-    "shield_up": skey((6, 16, 0), (-30, 0, 16), -76, -40, -8, (-70, 18, -4), -66),
+    "wall": skey((22, 24, 0), (-72, -30, 6), -40, -6, -6, (2.5, 18.5, 6.0), hips=(4, 16, 0)),
+    "wall_up": skey((24, 26, 0), (-88, -32, 4), -30, -2, -8, (2.0, 22.0, 6.0), hips=(4, 16, 0)),
+    "shield_up": skey((6, 16, 0), (-30, 0, 16), -76, -40, -8, (2.0, 22.0, 6.0)),
     # ward: leaning back as it gives ground, the sword held across the belly, point angled down at the enemy.
-    "ward": skey((-6, 8, 0), (-30, 0, -6), -62, 42, 50, (-36, 10, -6), -54),
+    "ward": skey((-6, 8, 0), (-30, 0, -6), -62, 42, 50, (3.0, 17.5, 5.0)),
 }
 
 # Feet (ankle targets, px) and hips (rot, pos) for the two set stances; yaw is each foot's turn (right, left).
@@ -557,8 +648,11 @@ def stance_upper(pose):
         ax, ay, az = pose["right_arm"]
         f["right_arm"] = ((ax - 0.6 * br, ay, az), None)
         sx, sy, sz = pose["left_arm"]
-        f["left_arm"] = ((sx - 0.4 * br, sy, sz), None)
-        out.append(f)
+        f["left_arm"] = ((sx - 0.8 * br, sy, sz), None)
+        fx_, fy_, fz_ = f["_face"][0]
+        lag = math.sin(2 * math.pi * u - 0.6)              # the shield settles a beat after the breath
+        f["_face"] = ((fx_ + 1.5 * lag, fy_ + 0.8 * lag, fz_ - 0.6 * lag), None)
+        out.append(regrip(f))
     return bake(out, STANCE_TICKS)
 
 
@@ -596,15 +690,30 @@ def stance_clips():
 # the shield arm is driven back and the body absorbs it, scaled by the blow's weight.
 # ------------------------------------------------------------------------------------------------
 
-Z3 = (0.0, 0.0, 0.0)
-
-
 def off(torso=Z3, head=Z3, rarm=Z3, rfore=0.0, larm=Z3, lfore=0.0):
     return {"torso": torso, "head": head, "right_arm": rarm, "right_forearm": (rfore, 0.0, 0.0), "right_hand": Z3,
             "left_arm": larm, "left_forearm": (lfore, 0.0, 0.0), "left_hand": Z3}
 
 
 ZERO = off()
+
+
+def wrap(a):
+    return (a + 180.0) % 360.0 - 180.0
+
+
+def shield_keep(o, keep=0.35, tilt=0.0):
+    """o with a left_hand offset that keeps the shield nearer upright under o's torso and arm offsets (from the ready
+    stance), so a blow rocks it without laying it flat; tilt (+ top forward) adds a rock of its own."""
+    r = STANCE_UPPER["ready"]
+    arm = tuple(a + b for a, b in zip(r["left_arm"], o["left_arm"]))
+    fore = r["left_forearm"][0] + o["left_forearm"][0]
+    face = tuple(f - keep * t for f, t in zip(r["_face"], o["torso"]))
+    face = (face[0] + tilt, face[1], face[2])
+    base = grip(r["left_arm"], r["left_forearm"][0], r["_face"])
+    o = dict(o)
+    o["left_hand"] = tuple(wrap(a - b) for a, b in zip(grip(arm, fore, face), base))
+    return o
 
 
 def scaled(o, k):
@@ -615,10 +724,10 @@ def scaled(o, k):
 # head snaps back; back: the body is pitched forward; right: the right shoulder is driven back and the
 # body bends away to the left; left mirrors it.
 HIT_PEAK = {
-    "front": off(torso=(-9, 0, 0), head=(-8, 0, 0), rarm=(-6, 0, 6), larm=(-4, 0, -4)),
-    "back": off(torso=(7, 0, 0), head=(3, 0, 0), rarm=(6, 0, 4), larm=(6, 0, -4)),
-    "right": off(torso=(-3, 8, 5), head=(0, 4, 2), rarm=(5, 0, 4), larm=(-3, 0, -3)),
-    "left": off(torso=(-3, -8, -5), head=(0, -4, -2), rarm=(-3, 0, 3), larm=(5, 0, -4)),
+    "front": shield_keep(off(torso=(-9, 0, 0), head=(-8, 0, 0), rarm=(-6, 0, 6), larm=(-4, 0, -4)), tilt=-4),
+    "back": shield_keep(off(torso=(7, 0, 0), head=(3, 0, 0), rarm=(6, 0, 4), larm=(6, 0, -4)), tilt=3),
+    "right": shield_keep(off(torso=(-3, 8, 5), head=(0, 4, 2), rarm=(5, 0, 4), larm=(-3, 0, -3))),
+    "left": shield_keep(off(torso=(-3, -8, -5), head=(0, -4, -2), rarm=(-3, 0, 3), larm=(5, 0, -4))),
 }
 HIT_TICKS = {"light": 9, "medium": 16}
 LIGHT = 0.5   # a light flinch reaches half the stagger's first key
@@ -634,7 +743,8 @@ def hit_keys(peak, weight):
 
 
 # the shield arm is thrown up and forward into the blow, then driven back by it as the body gives
-BLOCK_PEAK = off(torso=(-6, -10, 0), head=(-4, 6, 0), rarm=(-2, 0, 4), larm=(-14, -10, -8), lfore=26)
+BLOCK_PEAK = shield_keep(off(torso=(-6, -10, 0), head=(-4, 6, 0), rarm=(-2, 0, 4), larm=(-14, -10, -8), lfore=26),
+                         tilt=-8)
 BLOCK_TICKS = 10
 
 

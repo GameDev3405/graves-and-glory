@@ -187,3 +187,32 @@ Remaining MINORs, recorded and not iterated under the two-round limit:
 - The medium_left side view reads a little weaker than medium_right.
 - The reviewer did not open stance_in (the fade-in sheet), and the harness gate (over 0.5 within 4 ticks) is the only evidence
   for it.
+
+### Shield hold/flow (Kort, 2026-11-05)
+
+Kort asked that the shield stop sitting sideways and stuck to the forearm, stay upright, and not look stagnant: it should
+move with the unit.
+- build_rig.py: the shield is now held upright in the left fist, in front of the left chest.
+- build_anims.py: `hold`/`regrip` place the fist, and `upright` keeps the face mostly upright. The shield undoes only part
+  of the body's lean, turn and roll, so it still rides the body.
+  - Gait: the shield rocks against the stride and bobs with each footfall, and its top trails the fist a beat late.
+  - Idle and stances: the shield settles a beat after the breath.
+  - Attacks: each key has a `throw` that lets the swing toss the shield's weight.
+  - Hits: `shield_keep` is 0.35, so a blow knocks the shield more.
+- Sonnet review: approved. MINORs recorded and not iterated: the walk flow is subtle, the shield sits near the centre in
+  some frames, and the grip is not visible behind the rim.
+- Kort: "Looking good." Run 16 passed every check, including the suite.
+
+### Decisions for the next units (Kort, 2026-11-05)
+
+- The knight comes first. Add death falls and an in-game performance pass, so the knight is the template the other units copy.
+- After the knight, build the other units by body/weapon type, in this order:
+  1. humanoid swordsmen
+  2. archers and crossbows
+  3. spear and trident
+  4. axe
+  5. casters
+  6. beasts
+  7. bosses and siege crews
+- Each unit gets a Sonnet review, then a video for Kort to approve before the next unit starts.
+- Keep the current textures.

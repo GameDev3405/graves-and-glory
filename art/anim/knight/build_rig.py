@@ -29,7 +29,9 @@ SWORD_Y = SKIN[1] + CLOTH[1]                                  # the sword sheets
 TIERS = (1, 2, 3)
 SWORDS = {1: SW.tier1, 2: SW.tier2, 3: SW.tier3}
 SWORD_ROT = (-90, 0, 90)      # Java-frame degrees: blade forward out of a hanging fist, edges up and down (checked on render_geo)
-SHIELD_AT, SHIELD_ROT = (1.2, 3, 0), (0, -90, 0)              # strapped to the outside of the left forearm, face out to the left
+# gripped in the left fist by its strap, face to the front, boss over the knuckles and a little inside them (the hand bone is
+# turned by build_anims so the shield stays upright whatever the arm does)
+SHIELD_AT, SHIELD_ROT = (-1, 4, -1.5), (0, 0, 0)
 
 
 def lined(paint):
@@ -83,7 +85,7 @@ def bones(P):
         leg[1].boxes[0].size[1] -= 2
         B += leg
         B.append(Bone(f"{side}_foot", f"{side}_shin", (0, 4, 0), [Box((-2.5, -1, -3), (5, 3, 5), per_tier(g("boot")))]))
-    B.append(Bone("shield", "left_forearm", SHIELD_AT, rot=SHIELD_ROT, tag="shield", boxes=
+    B.append(Bone("shield", "left_hand", SHIELD_AT, rot=SHIELD_ROT, tag="shield", boxes=
         [Box((x, y, -1.9), (w, h, 1), g("wood")) for (x, y), (w, h) in H.SHIELD_BODY]
         + [Box((x, y, -2.5), (w, h, 2), per_tier(g("shield_rim")), dil=0.01) for (x, y), (w, h) in H.SHIELD_RIM]
         + [Box((-1, -5, -2.7), (2, 2, 1), per_tier(g("shield_boss"))), Box((-1, -3, -0.9), (2, 5, 3), H.leather(base=2))]))
