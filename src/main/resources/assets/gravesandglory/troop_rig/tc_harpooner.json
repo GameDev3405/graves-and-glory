@@ -1,0 +1,190 @@
+{
+ "troop": "tc_harpooner",
+ "tiers": [
+  1,
+  2,
+  3
+ ],
+ "faces": 1,
+ "bones": {
+  "root": {},
+  "hips": {},
+  "torso": {},
+  "head": {},
+  "hat": {
+   "tag": "helm"
+  },
+  "brim": {
+   "tag": "helm"
+  },
+  "brim_tail": {
+   "tag": "helm"
+  },
+  "kelp_hat": {},
+  "hat_band": {
+   "stages": [
+    2,
+    3
+   ],
+   "tag": "helm"
+  },
+  "hat_barn0": {
+   "stages": [
+    3
+   ],
+   "tag": "helm"
+  },
+  "hat_barn1": {
+   "stages": [
+    3
+   ],
+   "tag": "helm"
+  },
+  "hat_barn2": {
+   "stages": [
+    3
+   ],
+   "tag": "helm"
+  },
+  "hat_barn3": {
+   "stages": [
+    3
+   ],
+   "tag": "helm"
+  },
+  "right_arm": {},
+  "right_forearm": {},
+  "right_hand": {},
+  "right_wrap": {
+   "team": true
+  },
+  "right_bracer": {
+   "stages": [
+    2,
+    3
+   ]
+  },
+  "left_arm": {},
+  "left_forearm": {},
+  "left_hand": {},
+  "left_wrap": {
+   "team": true
+  },
+  "left_bracer": {
+   "stages": [
+    2,
+    3
+   ]
+  },
+  "gauntlet": {
+   "stages": [
+    3
+   ]
+  },
+  "belt": {},
+  "scarf": {
+   "team": true
+  },
+  "rope_bridge": {},
+  "rope_front": {},
+  "rope_back": {},
+  "baldric": {},
+  "quiver": {},
+  "barnacles": {},
+  "pad_right": {},
+  "kelp_pad": {},
+  "pauldron": {
+   "stages": [
+    2,
+    3
+   ]
+  },
+  "tooth_necklace": {
+   "stages": [
+    3
+   ]
+  },
+  "right_leg": {},
+  "right_shin": {},
+  "right_foot": {},
+  "right_foot_gear": {},
+  "right_greave": {
+   "stages": [
+    2,
+    3
+   ]
+  },
+  "left_leg": {},
+  "left_shin": {},
+  "left_foot": {},
+  "left_foot_gear": {},
+  "kelp_shin": {},
+  "kelp_foot": {},
+  "left_greave": {
+   "stages": [
+    2,
+    3
+   ]
+  },
+  "skirt": {},
+  "sash": {
+   "team": true
+  },
+  "kelp_belt": {},
+  "weapon_t1": {
+   "stages": [
+    1
+   ],
+   "tag": "weapon"
+  },
+  "bow_t1_rest": {
+   "stages": [
+    1
+   ],
+   "tag": "draw"
+  },
+  "bow_t1_pull_0": {
+   "stages": [
+    1
+   ],
+   "tag": "draw"
+  },
+  "weapon_t2": {
+   "stages": [
+    2
+   ],
+   "tag": "weapon"
+  },
+  "bow_t2_rest": {
+   "stages": [
+    2
+   ],
+   "tag": "draw"
+  },
+  "bow_t2_pull_0": {
+   "stages": [
+    2
+   ],
+   "tag": "draw"
+  },
+  "weapon_t3": {
+   "stages": [
+    3
+   ],
+   "tag": "weapon"
+  },
+  "bow_t3_rest": {
+   "stages": [
+    3
+   ],
+   "tag": "draw"
+  },
+  "bow_t3_pull_0": {
+   "stages": [
+    3
+   ],
+   "tag": "draw"
+  },
+  "draw": {}
+ }
+}

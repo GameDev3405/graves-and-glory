@@ -596,8 +596,8 @@ final class Tactics {
     }
     /** Late shots lost (looseLate) since the server started. */
     static int looseLost;
-    /** Whether a troop's shot is announced a beat early (Projectiles.drawAhead), so its clip's wind-up plays before the loose instead of fading in late: a bow's or a crossbow's (cosmetic; the thrower family has no clip yet). */
-    static boolean announcesAhead(GravesAndGlory.Unit u){return u.spec.ranged()&&!u.spec.magic()&&("bow".equals(u.spec.family())||"crossbow".equals(u.spec.family()));}
+    /** Whether a troop's shot is announced a beat early (Projectiles.drawAhead), so its clip's wind-up plays before the loose instead of fading in late: a bow's, a crossbow's or a thrower's (cosmetic). */
+    static boolean announcesAhead(GravesAndGlory.Unit u){return u.spec.ranged()&&!u.spec.magic()&&("bow".equals(u.spec.family())||"crossbow".equals(u.spec.family())||"thrower".equals(u.spec.family()));}
     /** Whether a troop's shot draws ahead with Kort Q70's loose and hold seeds (Projectiles.looseTicks, hold): a bow's, whose clip draws for its 10 impact ticks before the loose (R110 Plan B). */
     static boolean drawsAhead(GravesAndGlory.Unit u){return u.spec.ranged()&&!u.spec.magic()&&"bow".equals(u.spec.family());}
     /** Whether this troop has a blow pending (Battle.strikes): one at most, so its next swing waits for it. */

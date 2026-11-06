@@ -40,6 +40,10 @@ BOW_FRAMES = ("rest", "pull_0", "pull_1", "pull_2")
 #   pull_1 (channel 2)             spanned: the string back on the lock, no bolt yet
 XBOW_FRAMES = {"rest": ("string_l", "string_r", "bolt"), "pull_0": ("string_slack",), "pull_1": ("string_l", "string_r")}
 XBOW_LOOSE = {n for ns in XBOW_FRAMES.values() for n in ns}
+# A thrown weapon (kind "thrower", the harpoon) rides the right fist on the same "draw" channel: the whole weapon hangs on the
+#   rest   (channel 0, the default) frame: in hand
+#   pull_0 (channel 1)             frame, empty: thrown, the hand empty until the next is drawn
+THROW_FRAMES = ("rest", "pull_0")
 # troop id: (art dir, module, Troop attribute, weapon module, weapon id (tiers <id>, <id>_t2, <id>_t3), weapon rotation in the fist)
 TROOPS = {
     "sentinel": ("sentinel", "build_sentinel", "SENTINEL", "build_longsword", "longsword", (-90, 0, 90)),
@@ -63,6 +67,8 @@ TROOPS = {
     "stalker": ("stalker", "build_stalker", "STALKER", "build_gb_frost_bow", "frost_bow", BOW_ROT, "bow"),
     "wm_hunter": ("wm_hunter", "build_wm_hunter", "WM_HUNTER", "build_bows", "order_bow", BOW_ROT, "bow"),
     "ic_arbalist": ("ic_arbalist", "build_ic_arbalist", "IC_ARBALIST", "build_ic_weapons", "ic_crossbow", (-90, 0, 90), "crossbow"),
+    # a harpoon (kind "thrower") rides the right fist like a spear; it is thrown, so it hangs on the draw channel's rest frame
+    "tc_harpooner": ("tc_harpooner", "build_tc_harpooner", "TC_HARPOONER", "build_house_weapons", "harpoon", (-90, 0, 90), "thrower"),
 }
 SHIELD_AT = (-1, 4, -1.5)     # the knight's grip: in the left fist by its strap, face to the front
 WAIST, SPLIT = 8.5, ((12, 8), (12, 0))
@@ -190,10 +196,10 @@ def rigify(src, weapon_rot, kind="blade", hang=None):
                 order.append(Bone(f"bow_t{t}_{f}", f"weapon_t{t}", stages=[t], tag="draw"))
         else:
             order.append(Bone(f"weapon_t{t}", "right_hand", stages=[t], tag="weapon", rot=weapon_rot))
-            if kind == "crossbow":
-                for f in XBOW_FRAMES:
+            if kind in ("crossbow", "thrower"):
+                for f in (XBOW_FRAMES if kind == "crossbow" else THROW_FRAMES):
                     order.append(Bone(f"bow_t{t}_{f}", f"weapon_t{t}", stages=[t], tag="draw"))
-    if kind in ("bow", "crossbow"):   # the draw channel: an empty bone whose position x the attack clips key to the frame index
+    if kind in ("bow", "crossbow", "thrower"):   # the draw channel: an empty bone whose position x the attack clips key to the frame index
         order.append(Bone("draw", "root"))
     del names
     return order
@@ -258,6 +264,10 @@ class Rig:
                 s.frames[t] = {f: [by[n] for n in ns] for f, ns in XBOW_FRAMES.items()}
                 s.solid = {**getattr(s, "solid", {}), t: [c for c in cubes if c.name not in XBOW_LOOSE]}
                 s.cubes[t] = cubes
+            elif s.kind == "thrower":   # the whole weapon on the rest frame, nothing on weapon_t<n> or the thrown frame
+                s.cubes[t] = s.weapon_cubes(t)
+                s.frames[t] = {"rest": list(s.cubes[t]), "pull_0": []}
+                s.solid = {**getattr(s, "solid", {}), t: []}
             else:
                 s.cubes[t] = s.weapon_cubes(t)
             colour, _, uv = SW.pack(s.cubes[t])
@@ -293,7 +303,7 @@ class Rig:
                 cs.append(c)
             wcubes = ()
             if bn.tag == "weapon" and keep(bn) and s.kind != "bow":
-                t = int(bn.name[-1]); wcubes = s.solid[t] if s.kind == "crossbow" else s.cubes[t]
+                t = int(bn.name[-1]); wcubes = s.solid[t] if s.kind in ("crossbow", "thrower") else s.cubes[t]
             if bn.tag == "draw" and keep(bn):
                 t, frame = int(bn.name[5]), bn.name[7:]
                 wcubes = s.frames[t][frame]
@@ -350,8 +360,8 @@ def main():
         for side in SIDES:
             R.texture(t, side).save(os.path.join(out, f"{tid}_t{t}_{side}.png"))
         json.dump(R.geo(lambda bn: shows(bn, t)), open(os.path.join(out, "preview", f"t{t}.geo.json"), "w"))
-        if R.kind in ("bow", "crossbow"):   # one preview per draw frame, plus every frame at once for renders that switch frames by bone scale
-            for f in (BOW_FRAMES if R.kind == "bow" else XBOW_FRAMES):
+        if R.kind in ("bow", "crossbow", "thrower"):   # one preview per draw frame, plus every frame at once for renders that switch frames by bone scale
+            for f in {"bow": BOW_FRAMES, "crossbow": XBOW_FRAMES, "thrower": THROW_FRAMES}[R.kind]:
                 json.dump(R.geo(lambda bn, f=f: shows(bn, t, frame=f)), open(os.path.join(out, "preview", f"t{t}_{f}.geo.json"), "w"))
             json.dump(R.geo(lambda bn: shows(bn, t) or (bn.tag == "draw" and f"_t{t}_" in bn.name)),
                       open(os.path.join(out, "preview", f"t{t}_all.geo.json"), "w"))
