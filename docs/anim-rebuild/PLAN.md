@@ -24,7 +24,8 @@ Branch `anim/geckolib-rebuild`. Approved by Kort on 2026-11-05: GeckoLib + Block
 | `arms` | torso, chest, arms, item and shield bones | ready guard, attacks, shield stances, block, hit reactions |
 | procedural | head (yaw/pitch only) | look at target / move direction |
 
-Death takes the whole body: while dying, `arms` plays the death upper half and `legs` the lower half from one shared clip pair; no other clip runs.
+Death takes the whole body. The `death` layer (`DeathController`) is registered last. Once the troop dies it lerps every bone,
+the root included, toward one fall clip, so within 2 ticks it has replaced whatever the other layers wrote. See "Death" below.
 
 In code `arms` is the `upper` controller. **The one exception** is the `attack` layer (`AttackController`). It is registered after `upper` and
 weight-blends the swing the server announced over the upper bones `upper` has just written. The swing fades in over 2.5 ticks and out
@@ -43,7 +44,7 @@ Movement: idle, combat idle, walk, run (speed-matched), turn-in-place step.
 Attacks (impact tick must equal server impact): thrust (stab, body, light, impact 7), overhead (slash, head, medium, 10), low cut (slash, legs, medium, 8).
 Shield: hold, brace, wall, shield_move, fall_back, block reaction.
 Damage: hit reactions by weight (light flinch, medium stagger) and side.
-Death: 2–3 variants that finish within the despawn window.
+Death: four falls by the killing blow's side (back, forward, left, right). Each lands by `DEATH_FALL_TICKS` (20) and holds while the corpse fades.
 Orders: no gesture; the stance/movement change itself must start within 2 ticks and be readable at 16 blocks.
 
 ## Acceptance criteria (pilot)
@@ -216,3 +217,37 @@ move with the unit.
   7. bosses and siege crews
 - Each unit gets a Sonnet review, then a video for Kort to approve before the next unit starts.
 - Keep the current textures.
+
+### Death (2026-11-05)
+
+- **Clips.** `build_anims.py` has a death section that writes `death_back`, `death_forward`, `death_left` and `death_right`.
+  - The poses are keyed with eases, gravity-like into each impact.
+  - The root is not keyed by hand. It is solved per sample against the t3 armour, so the lowest corner stays on the ground and
+    the body rolls about whatever touches it without sliding.
+  - Every clip keys all 17 body bones and lands by tick 20. `hold_on_last_frame` keeps the last frame for the lie.
+- **Picking the fall.** `DeathController` latches one clip on the first dead frame from the lethal `hit_v1` blow's bearing:
+  - from the front: falls back
+  - from behind: falls forward
+  - from its right: falls left
+  - from its left: falls right
+  - no lethal blow: the newest blow decides; with no blow at all, the entity id picks.
+- **Timing.** It plays on `deathTime` and blends in over 2 ticks. Nothing feeds back into gameplay. The renderer already turns off
+  vanilla's death tip and head-look for dead troops.
+- **In-game check.** `p1-geo-knight-death` kills a live knight with a lethal blow from each side. Every frame it asserts:
+  - the clip matches the blow's side
+  - the weight is 1 from `deathTime` 3
+  - the clip time never runs backward and reaches 20
+  It also shoots each tick of the fall and two ticks of the lie.
+- **Review log.**
+  - Round 1 (Sonnet high): FAIL, with three MAJORs.
+    - death_right slid sideways and snapped. Fix: the roll pivot is now the body's lowest corner; the sword and shield no longer count.
+    - death_forward's kneel did not read. Fix: an upright kneel at t7, then a sway back at t9 and forward at t11.
+    - death_forward flopped over in 2 ticks. Fix: it now topples over t11 to t16.
+  - Round 2 (Sonnet high, fixed-camera reel frames): PASS. All three MAJORs are fixed and nothing new is MAJOR.
+  - Remaining MINORs:
+    - death_back falls a little fast.
+    - The sword tip may graze the ground.
+    - In death_left, the shield over the head barely shows, and the body rests slightly off-centre.
+    - death_right lies about 10 units forward of its start, mostly arms and gear.
+    - The last 45° of the forward topple takes 2 ticks.
+

@@ -127,6 +127,14 @@ final class GeoKnightChecks implements Phase1Checks.Suite {
     static final int[] HIT_WEIGHT = {0, 1, 2, 1, 1, 1, 1, 1};
     static final String[] HIT_VIEWS = {"side", "threequarter", "far"};
     final List<String> hitBad = new ArrayList<>();
+
+    /** Death cases: name and the lethal blow's bearing (degrees, + from the knight's right). */
+    static final String[] DEATH_CASES = {"back", "forward", "left", "right"};
+    static final float[] DEATH_BEARING = {0, 180, 90, -90};
+    final List<String> deathBad = new ArrayList<>();
+    volatile int deathVictim = -1;
+    int deathFrames;
+    double deathMaxT, deathPrevT;
     double hitMaxScale;
     int hitFrames;
 
@@ -633,6 +641,59 @@ final class GeoKnightChecks implements Phase1Checks.Suite {
                         Phase1Checks.report("p1-geo-knight-hit", hitBad.isEmpty(), HIT_CASES.length + " blows x " + HIT_VIEWS.length
                             + " views: clip, bearing mix, peak scale, frames, and gone after the clip" + (hitBad.isEmpty() ? "" : "; bad " + hitBad.subList(0, Math.min(8, hitBad.size()))));
                         Phase1Checks.server(c, b -> hold = null);
+                        i = 0; next(tick, 11);
+                    }
+                }
+            }
+            case 11 -> {
+                // Death falls: a live knight (tier III own first) stands three-quarter on to the camera and takes a lethal blow from
+                // each side in turn at k20. Its death layer must play the side's fall, fully in by deathTime 2, on deathTime, holding
+                // the last frame while the body lies; every tick of the fall and two of the lie are shot.
+                String name = DEATH_CASES[i], want = DeathController.clipFor(DEATH_BEARING[i]);
+                if (k == 1) {
+                    taken.clear(); deathFrames = 0; deathMaxT = -1; deathVictim = -1; deathPrevT = -1;
+                    Phase1Checks.server(c, b -> {
+                        hold = null;
+                        GravesAndGlory.Unit v = null;
+                        for (int j : new int[] {2, 1, 0, 5, 4, 3}) if (knights.get(j).mob.isAlive()) { v = knights.get(j); break; }
+                        if (v == null) return;
+                        stand(v, cx, cz, 135);
+                        deathVictim = v.mob.getId();
+                        eye(b, cx - 4, cz - 2.5, -58, 14);
+                    });
+                }
+                if (k == 3) { c.setScreen(null); c.options.hudHidden = true; }
+                if (k == 20) Phase1Checks.server(c, b -> {
+                    for (var u : knights) if (u.mob.getId() == deathVictim && u.mob.isAlive()) {
+                        u.mob.setInvulnerable(false); u.mob.kill();
+                        MotionEvents.sendHit(u.mob, "slash", "body", DEATH_BEARING[i], 1, false, true);
+                    }
+                });
+                if (k > 20 && c.world != null && deathVictim >= 0
+                        && c.world.getEntityById(deathVictim) instanceof net.minecraft.entity.LivingEntity e) {
+                    DeathController dc = DeathController.LIVE.get(e);
+                    if (dc == null) { if (deathBad.size() < 40) deathBad.add(name + " no death layer"); }
+                    else if (e.deathTime > 0) {
+                        if (!dc.shownClip.equals(want) && deathBad.size() < 40) deathBad.add(name + " clip " + dc.shownClip + " want " + want);
+                        if (e.deathTime >= 3 && dc.shownWeight < .999 && deathBad.size() < 40) deathBad.add(String.format("%s weight %.3f at death %d", name, dc.shownWeight, e.deathTime));
+                        if (dc.shownT + .01 < deathPrevT && deathBad.size() < 40) deathBad.add(String.format("%s clip time went back %.2f->%.2f", name, deathPrevT, dc.shownT));
+                        deathPrevT = dc.shownT; deathMaxT = Math.max(deathMaxT, dc.shownT);
+                        int tt = e.deathTime;
+                        if ((tt <= BattleMath.DEATH_FALL_TICKS || tt == 30 || tt == 45) && taken.add(name + ":" + tt)) {
+                            Phase1Checks.shot(c, String.format("geo-knight-death-%s-%02d", name, tt));
+                            deathFrames++;
+                        }
+                    } else if (!dc.shownClip.isEmpty() && deathBad.size() < 40) deathBad.add(name + " death layer playing while alive");
+                }
+                if (k == 130) {
+                    if (deathVictim < 0) deathBad.add(name + " no live knight");
+                    if (deathMaxT < BattleMath.DEATH_FALL_TICKS - .01) deathBad.add(String.format("%s clip time only reached %.2f", name, deathMaxT));
+                    if (deathFrames < 18) deathBad.add(name + " frames " + deathFrames);
+                    System.out.println(String.format("[p1] death %s frames %d max t %.2f", name, deathFrames, deathMaxT));
+                    if (++i < DEATH_CASES.length) next(tick, 11);
+                    else {
+                        Phase1Checks.report("p1-geo-knight-death", deathBad.isEmpty(), DEATH_CASES.length + " lethal blows: fall clip by bearing, "
+                            + "weight, clip time held, frames" + (deathBad.isEmpty() ? "" : "; bad " + deathBad.subList(0, Math.min(8, deathBad.size()))));
                         next(tick, 9);
                     }
                 }

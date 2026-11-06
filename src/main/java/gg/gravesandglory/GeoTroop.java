@@ -35,7 +35,8 @@ final class GeoTroop implements GeoReplacedEntity {
      * arms, gear, cape, head). Registered legs first: it owns the shared stride clock. Then the {@code attack} layer, the one
      * exception: it weight-blends a swing over what {@code upper} wrote (AttackController). Before it, the {@code stance} layer blends
      * the order's pose (Hold, shield wall, raised shield) over the gait (StanceController), so a swing starts from and returns to it.
-     * Last, the {@code hit} layer adds blow reactions on top of everything (HitController). Called once per troop entity.
+     * Then the {@code hit} layer adds blow reactions on top of everything (HitController). Last, the {@code death} layer: once the
+     * troop dies it lerps every bone into the fall the killing blow called for (DeathController). Called once per troop entity.
      */
     @Override public void registerControllers(AnimatableManager.ControllerRegistrar controllers) {
         Gait gait = new Gait();
@@ -44,6 +45,7 @@ final class GeoTroop implements GeoReplacedEntity {
         controllers.add(new StanceController(this, gait));
         controllers.add(new AttackController(this));
         controllers.add(new HitController(this));
+        controllers.add(new DeathController(this));
     }
 
     @Override public AnimatableInstanceCache getAnimatableInstanceCache() { return cache; }

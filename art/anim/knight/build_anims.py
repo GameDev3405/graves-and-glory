@@ -809,6 +809,263 @@ def gait_legs(g):
 
 
 # ------------------------------------------------------------------------------------------------
+# Death falls (PLAN.md "Death"). One clip per side the killing blow came from; DeathController picks it
+# from the lethal hit's bearing and plays it over every bone, so while dead it is the only writer. The
+# fall lands by BattleMath.DEATH_FALL_TICKS (20) and the last frame holds while the corpse lies and fades.
+#   death_back     struck from the front: thrown back, knees give, lands on its back
+#   death_forward  struck from behind: lurches, drops to its knees, pitches face down
+#   death_left     struck from its right: the left knee buckles, it falls on its left side, rolling face down
+#   death_right    struck from its left: the mirror
+# Poses are keyed; between keys each bone eases ("in" speeds into an impact like a fall under gravity,
+# "out" slows out of a bounce). The root is not keyed: it is solved per sample against the heaviest armour
+# (t3) so the lowest cube corner stays on the ground and the body rolls about whatever touches it (a
+# planted foot, then a knee, then a shoulder) without sliding.
+# ------------------------------------------------------------------------------------------------
+
+DEATH_TICKS = 20
+HEAVY = rg.load_geo(HERE / "out" / "A" / "preview" / "t3.geo.json")
+DEATH_BONES = ("root", "hips", "torso", "head", "cape", "right_arm", "right_forearm", "right_hand",
+               "left_arm", "left_forearm", "left_hand", "right_leg", "right_shin", "right_foot",
+               "left_leg", "left_shin", "left_foot")
+
+
+def body_corners(pose, model=HEAVY):
+    """World corners (px) of every cube of `model` and the bone each belongs to, for pose {bone: (rot, pos)}."""
+    M = {}
+    for n in model.order:
+        b = model.bones[n]
+        rot, pos = pose.get(n, (Z3, Z3))
+        pos = pos or Z3
+        r = b.rot + np.radians([-rot[0], -rot[1], rot[2]])
+        pv = b.pivot / 16.0
+        par = M[b.parent] if b.parent is not None else rg.WORLD_FLIP
+        M[n] = (par @ rg._T(-pos[0] / 16.0, pos[1] / 16.0, pos[2] / 16.0) @ rg._T(*pv)
+                @ rg._Rz(r[2]) @ rg._Ry(r[1]) @ rg._Rx(r[0]) @ rg._T(*(-pv)))
+    pts, owner = [], []
+    for ci, cube in enumerate(model.cube_list):
+        cp = cube.pivot / 16.0
+        Mc = (M[model.cube_bone[ci]] @ rg._T(*cp) @ rg._Rz(cube.rot[2]) @ rg._Ry(cube.rot[1])
+              @ rg._Rx(cube.rot[0]) @ rg._T(*(-cp)))
+        pts.append(cube.corners @ Mc[:3, :3].T + Mc[:3, 3])
+        owner += [model.cube_bone[ci]] * len(cube.corners)
+    return np.vstack(pts) * 16.0, owner
+
+
+def _ease(kind, s):
+    if kind == "in":
+        return s * s
+    if kind == "out":
+        return 1.0 - (1.0 - s) ** 2
+    if kind == "lin":
+        return s
+    return s * s * (3.0 - 2.0 * s)
+
+
+def idle_start():
+    """Idle frame 0, every death bone, so the fall blends in from where the knight stood."""
+    legs, upper = idle_clips()
+    out = {}
+    for clip in (legs, upper):
+        for b, ch in clip["bones"].items():
+            pos = ch.get("position", {}).get("0.0")
+            out[b] = (tuple(ch["rotation"]["0.0"]), tuple(pos) if pos else None)
+    out["root"] = (Z3, None)
+    return out
+
+
+def mirror(keys):
+    """The same fall to the other side: left and right bones swap and y/z rotations flip. Arms are left as
+    given (the sword and shield are not mirror images), so a mirrored variant re-keys them."""
+    sw = lambda b: ("left_" + b[6:] if b.startswith("right_") else "right_" + b[5:] if b.startswith("left_") else b)
+    out = []
+    for t, ease, k in keys:
+        out.append((t, ease, {sw(b): (r[0], -r[1], -r[2]) for b, r in k.items()
+                              if "arm" not in b and "hand" not in b}))
+    return out
+
+
+def death_clip(keys, start, name):
+    """keys: [(tick, ease into this key, {bone: rot})]; each key changes only the bones it names."""
+    frames = [(0, None, {b: start[b][0] for b in DEATH_BONES})]
+    for t, ease, k in keys:
+        f = dict(frames[-1][2])
+        f.update({b: tuple(map(float, r)) for b, r in k.items()})
+        frames.append((t, ease, f))
+    hips_pos = start["hips"][1]
+    samples = []
+    base_y = None
+    shift = np.zeros(3)
+    prev = held = None
+    for i in range(DEATH_TICKS * SUB + 1):
+        tick = i / SUB
+        j = next(j for j in range(1, len(frames)) if tick <= frames[j][0] or j == len(frames) - 1)
+        t0, _, a = frames[j - 1]
+        t1, ease, b = frames[j]
+        e = _ease(ease, min(1.0, max(0.0, (tick - t0) / (t1 - t0))))
+        rot = {n: tuple(a[n][c] + (b[n][c] - a[n][c]) * e for c in range(3)) for n in DEATH_BONES}
+        pose = {n: (rot[n], None) for n in DEATH_BONES}
+        pose["hips"] = (rot["hips"], hips_pos)
+        P, owner = body_corners(pose)
+        low = int(np.argmin(P[:, 1]))
+        if held is None:
+            held = np.array([("sword" in o or "shield" in o) for o in owner])
+        pivot = int(np.argmin(np.where(held, np.inf, P[:, 1])))
+        if prev is None:
+            base_y = P[low, 1]
+        else:                       # roll about the body's lowest corner: it does not slide. The sword and shield
+            d = prev[pivot] - P[pivot]  # drag on the ground instead, so a blade sweeping round never shoves the body.
+            shift += (d[0], 0.0, d[2])
+        lift = base_y - P[low, 1]
+        prev = P
+        pose["root"] = (rot["root"], (shift[0], lift, -shift[2]))
+        samples.append(pose)
+    clip = bake(samples, DEATH_TICKS, loop=False)
+    clip["loop"] = "hold_on_last_frame"
+    death_report(name, samples)
+    return clip
+
+
+def death_report(name, samples):
+    """Per bone, the lowest point at rest (px above ground): what the body lies on and whatever sinks."""
+    P, owner = body_corners(samples[-1])
+    root = samples[-1]["root"][1]
+    low = {}
+    for p, b in zip(P, owner):
+        low[b] = min(low.get(b, 99.0), p[1])
+    groups = {"head": ("head", "helm"), "torso": ("torso", "gorget", "mantle", "surcoat", "pauldron", "cape"),
+              "hips": ("hips", "belt", "skirt"), "arms": ("arm", "couter", "cuff", "hand"), "shield": ("shield",),
+              "sword": ("sword",), "legs": ("leg", "shin", "knee"), "feet": ("foot", "toe")}
+    rep = {g: round(float(min([v for b, v in low.items() if any(k in b for k in ks)] or [99.0])), 2)
+           for g, ks in groups.items()}
+    print("  %-14s rest min-y %s  root %s" % (name, rep, tuple(round(float(v), 2) for v in root)))
+
+
+# Struck from the front: the head snaps back, the arms fly up, the knees give; it tips over its heels,
+# lands flat on its back, bounces once and lies with the head rolled aside and the sword arm flung out.
+DEATH_BACK = [
+    (3, "out", {"root": (-6, 0, 0), "torso": (-14, 0, 0), "head": (-22, 0, 0),
+                "right_arm": (-60, 0, 25), "right_forearm": (-30, 0, 0), "left_arm": (-30, 30, -10),
+                "right_leg": (-25, 0, 4), "left_leg": (-22, 0, -3), "right_shin": (50, 0, 0), "left_shin": (48, 0, 0)}),
+    (11, "in", {"root": (-86, 0, 0), "hips": (0, 0, 0), "torso": (-6, 0, 0), "head": (10, 0, 0),
+                "right_arm": (-20, 0, 80), "right_forearm": (-20, 0, 0), "left_arm": (-10, 10, -60),
+                "right_leg": (-20, 0, 4), "right_shin": (25, 0, 0), "left_leg": (-40, 0, -6), "left_shin": (70, 0, 0),
+                "right_foot": (20, 0, 0), "left_foot": (20, 0, 0), "cape": (8, 0, 0)}),
+    (13, "out", {"root": (-78, 0, 0), "head": (20, 0, 0), "right_arm": (-30, 0, 75), "left_shin": (64, 0, 0),
+                 "right_hand": (-45, -40, 50), "left_arm": (5, 5, -50), "left_forearm": (-20, 0, 0)}),
+    # settled: the helm rolls aside, the sword hand drops open with the blade flat, the shield lies on the ground
+    (16, "io", {"root": (-83, 0, 0), "head": (40, 22, 0), "right_arm": (18, 0, 80), "right_forearm": (0, 0, 0),
+                "right_hand": (-90, -75, 105), "left_arm": (20, 0, -40), "left_forearm": (-30, 0, 0),
+                "left_hand": (-180, 0, -90), "left_shin": (60, 0, 0)}),
+    (20, "io", {"root": (-82, 0, 0), "head": (45, 28, 0), "right_arm": (20, 0, 80), "left_shin": (58, 0, 0)}),
+]
+
+# Struck from behind: the hips are driven forward and the head whips back, both knees drop to the ground,
+# it sways there a beat and pitches face down, the shield arm thrown out to the side.
+DEATH_FORWARD = [
+    (3, "out", {"root": (8, 0, 0), "torso": (16, 0, 0), "head": (-15, 0, 0),
+                "right_arm": (25, 0, 20), "left_arm": (0, 30, -15),
+                "right_leg": (-20, 0, 4), "left_leg": (-20, 0, -4), "right_shin": (55, 0, 0), "left_shin": (55, 0, 0)}),
+    # down on both knees, thighs upright and the body still straight, so the kneel reads from the side
+    (7, "in", {"root": (-2, 0, 0), "hips": (0, 0, 0), "torso": (4, 0, 0), "head": (24, 0, 0),
+               "right_arm": (-5, 0, 12), "right_forearm": (-15, 0, 0), "left_arm": (5, 25, -12),
+               "right_leg": (0, 0, 4), "left_leg": (0, 0, -4), "right_shin": (92, 0, 0), "left_shin": (92, 0, 0),
+               "right_foot": (30, 0, 0), "left_foot": (30, 0, 0)}),
+    # it sways back a beat on its knees, the head lolling, then sags forward past balance
+    (9, "out", {"root": (-7, 0, 0), "torso": (-2, 0, 0), "head": (12, 0, 0)}),
+    (11, "io", {"root": (6, 0, 0), "torso": (12, 0, 0), "head": (30, 0, 0)}),
+    (13, "in", {"root": (34, 0, 0), "torso": (10, 0, 0), "head": (25, 20, 0), "left_arm": (-10, 20, -40),
+                "right_shin": (70, 0, 0), "left_shin": (70, 0, 0)}),
+    (16, "in", {"root": (84, -18, 0), "torso": (8, 0, 0), "head": (-15, 0, 0),
+                "right_arm": (0, 0, -25), "right_forearm": (-40, 0, 0), "right_hand": (0, -40, -80),
+                "left_arm": (25, 0, -85), "left_forearm": (-40, 0, 0), "left_hand": (0, 0, 0),
+                "right_leg": (0, 0, 4), "left_leg": (0, 0, -4), "right_shin": (10, 0, 0), "left_shin": (12, 0, 0),
+                "cape": (10, 0, 0)}),
+    (18, "out", {"root": (76, -19, 0), "head": (-25, 0, 0), "right_shin": (20, 0, 0), "left_shin": (22, 0, 0)}),
+    (20, "io", {"root": (80, -20, 0), "torso": (10, 0, 0), "head": (-20, 0, 0), "right_arm": (0, 0, -30),
+                "right_hand": (0, -45, -90), "left_arm": (30, 0, -90), "right_shin": (12, 0, 0), "left_shin": (14, 0, 0)}),
+]
+
+# Struck from its right: the head and chest are knocked to the left, the left knee buckles first, it goes
+# down on its left side rolling toward face down, the sword arm draped forward over the body.
+DEATH_LEFT = [
+    (3, "out", {"root": (0, 0, 6), "torso": (0, 0, 12), "head": (0, -10, 15),
+                "right_arm": (-30, 0, 40), "left_leg": (-25, 0, -4), "left_shin": (60, 0, 0)}),
+    (11, "in", {"root": (5, 0, 82), "hips": (0, 0, 0), "torso": (6, 0, 4), "head": (0, 0, -20),
+                "right_arm": (-40, 0, 10), "right_forearm": (-20, 0, 0), "left_arm": (-80, 20, 0),
+                "left_leg": (-30, 0, -5), "left_shin": (70, 0, 0), "right_leg": (-50, 0, 0), "right_shin": (60, 0, 0)}),
+    (13, "out", {"root": (6, -15, 78), "head": (0, 0, -10)}),
+    # it rolls on over the shield arm to lie face down, the sword arm flung out with the blade flat
+    (17, "io", {"root": (10, -70, 88), "torso": (0, 0, -8), "head": (-15, 0, 0),
+                "right_arm": (-60, 0, 55), "right_forearm": (0, 0, 0), "right_hand": (-45, 45, 90),
+                "left_arm": (25, 0, -30), "left_forearm": (-40, 0, 0), "left_hand": (0, 0, 0)}),
+    (20, "io", {"root": (10, -80, 88), "torso": (0, 0, -10), "head": (-20, 0, 0),
+                "right_arm": (-60, 0, 60), "left_arm": (30, 0, -30)}),
+]
+
+# Struck from its left: the mirror, with the shield arm draped and the sword arm under, reaching forward.
+DEATH_RIGHT = mirror(DEATH_LEFT)
+for _t, _e, _k in DEATH_RIGHT:
+    if _t == 3:
+        _k.update({"left_arm": (-20, 20, -30)})
+    if _t == 11:
+        _k.update({"right_arm": (-80, -20, 0), "right_forearm": (-20, 0, 0), "left_arm": (-40, 0, -10)})
+    if _t == 17:
+        _k.update({"left_arm": (-55, 0, -55), "left_forearm": (0, 0, 0), "left_hand": (0, 135, 90),
+                   "right_arm": (25, 0, 25), "right_forearm": (-40, 0, 0), "right_hand": (-40, 70, -30)})
+    if _t == 20:
+        _k.update({"left_arm": (-60, 0, -60), "right_arm": (30, 0, 30), "right_hand": (-40, 80, -30)})
+
+
+def pose_at(keys, start, tick):
+    """Every death bone's rotation at `tick`, eased between the keys as death_clip does."""
+    f, prev_t, prev = {b: start[b][0] for b in DEATH_BONES}, 0, None
+    for kt, ease, k in keys:
+        nxt = dict(f)
+        nxt.update({b: tuple(map(float, r)) for b, r in k.items()})
+        if tick <= kt:
+            e = _ease(ease, (tick - prev_t) / (kt - prev_t)) if kt > prev_t else 1.0
+            return {b: tuple(f[b][c] + (nxt[b][c] - f[b][c]) * e for c in range(3)) for b in DEATH_BONES}
+        f, prev_t = nxt, kt
+    return f
+
+
+def roll_keys(keys, start, t0, overs):
+    """Re-key from key t0 to the last key once per tick, keeping the motion, with per-tick bone overrides."""
+    end = keys[-1][0]
+    out = [k for k in keys if k[0] <= t0]
+    for t in range(t0 + 1, end + 1):
+        f = pose_at(keys, start, t)
+        f.update(overs.get(t, {}))
+        out.append((t, "lin", f))
+    return out
+
+
+# The roll: the arm the body rolls over sweeps up past the head so the body, not the shield or the sword,
+# meets the ground (per-tick search; without it the gear props the body ~10px off the ground for 4 ticks),
+# and it ends flung out above the head.
+def _sweep(arm, path):
+    return {t: {arm + "_arm": a, arm + "_forearm": (f, 0, 0), arm + "_hand": h} for t, (a, f, h) in path.items()}
+
+
+ROLL_LEFT = _sweep("left", {14: ((-120, 0, -30), -60, (90, 0, 0)), 15: ((-150, 0, -30), -60, (90, 0, 0)),
+                            16: ((-180, 0, -30), -60, (90, 0, 0)), 17: ((-180, 0, -30), -60, (90, 0, 0)),
+                            18: ((-180, 0, -30), -60, (90, 0, 0)), 19: ((-180, 0, -30), -60, (90, 0, 0)),
+                            20: ((-180, 0, -30), -60, (90, 0, 0))})
+ROLL_RIGHT = _sweep("right", {14: ((-120, 0, 0), -30, (0, 0, 0)), 15: ((-150, 0, 0), -30, (0, 0, 0)),
+                              16: ((-150, 0, 0), -60, (0, 0, 0)), 17: ((-180, 0, 0), -60, (0, 0, 0)),
+                              18: ((-165, -15, -15), -45, (-25, 25, -25)),
+                              # the sword arm settles out past the head, the blade turned flat on the ground
+                              19: ((-150, -30, -30), -30, (-45, 45, -45)), 20: ((-150, -30, -30), -30, (-45, 45, -45))})
+
+
+def death_clips():
+    start = idle_start()
+    return {n: death_clip(k, start, n) for n, k in (("death_back", DEATH_BACK), ("death_forward", DEATH_FORWARD),
+                                                     ("death_left", roll_keys(DEATH_LEFT, start, 13, ROLL_LEFT)),
+                                                     ("death_right", roll_keys(DEATH_RIGHT, start, 13, ROLL_RIGHT)))}
+
+
+# ------------------------------------------------------------------------------------------------
 # Checks
 # ------------------------------------------------------------------------------------------------
 
@@ -856,7 +1113,8 @@ def main():
     idle_legs, idle_upper = idle_clips()
     anims = {"walk_legs": gait_legs(WALK), "walk_upper": gait_upper(WALK, WALK_CARRY),
              "run_legs": gait_legs(RUN), "run_upper": gait_upper(RUN, RUN_CARRY),
-             "idle_legs": idle_legs, "idle_upper": idle_upper, **attack_clips(), **stance_clips(), **hit_clips()}
+             "idle_legs": idle_legs, "idle_upper": idle_upper, **attack_clips(), **stance_clips(), **hit_clips(),
+             **death_clips()}
     OUT.parent.mkdir(parents=True, exist_ok=True)
     OUT.write_text(json.dumps({"format_version": "1.8.0", "animations": anims}, indent=1), encoding="utf-8")
     print("wrote", OUT, "clips:", ", ".join(anims))

@@ -110,7 +110,7 @@ final class AttackController extends AnimationController<GeoTroop> {
     }
 
     /** Lerps every bone the clip keys toward the clip's pose at tick {@code t}, by weight {@code w}. */
-    private static void apply(Animation clip, double t, Map<String, CoreGeoBone> bones, float w) {
+    static void apply(Animation clip, double t, Map<String, CoreGeoBone> bones, float w) {
         for (BoneAnimation b : clip.boneAnimations()) {
             CoreGeoBone bone = bones.get(b.boneName());
             if (bone == null) continue;
