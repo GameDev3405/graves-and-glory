@@ -61,7 +61,8 @@ final class StanceController extends AnimationController<GeoTroop> {
             case "shield_move" -> new String[]{"stance_shield_up_upper", null};
             case "fall_back" -> new String[]{shield ? "stance_shield_up_upper" : "stance_ward_upper", null};
             case "run" -> new String[]{null, null};
-            default -> new String[]{shield ? "stance_shield_up_upper" : fighting ? "stance_ready_upper" : null, null};
+            default -> new String[]{shield ? "stance_shield_up_upper" : fighting ? "stance_ready_upper" : null,
+                    fighting ? "stance_ready_legs" : null};
         };
     }
 

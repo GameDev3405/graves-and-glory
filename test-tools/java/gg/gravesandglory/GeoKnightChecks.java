@@ -28,6 +28,9 @@ final class GeoKnightChecks implements Phase1Checks.Suite {
     /** March gaits and their true speeds, blocks per tick: the knight's walk and charge (Spec troops row). */
     static final String[] GAITS = {"walk", "run"};
     static final double[] SPEEDS = {.169, .264};
+    /** The GeckoLib troop under test (-Dgravesandglory.geoCheckTroop, default the knight): any biped on the knight's skeleton. Its
+     *  march speeds scale the knight's by its troops-row speed (the knight's is .28). Reports and shots are named p1-geo-<troop>-... */
+    static final String TROOP = System.getProperty("gravesandglory.geoCheckTroop", "knight");
     static final Gait.Mode[] MODES = {Gait.Mode.WALK, Gait.Mode.RUN};
     /** March directions per view, seen from the camera north of the line looking south: side on, head on, three-quarter. */
     static final String[] MARCH_VIEWS = {"side", "front", "threequarter"};
@@ -169,8 +172,9 @@ final class GeoKnightChecks implements Phase1Checks.Suite {
     void place(GravesAndGlory.Battle b) {
         ServerPlayerEntity p = b.server.getPlayerManager().getPlayer(player);
         if (p == null) { why = "no player"; return; }
-        var spec = Campaign.troop("knight");
-        if (spec == null) { why = "no knight troop"; return; }
+        var spec = Campaign.troop(TROOP);
+        if (spec == null) { why = "no " + TROOP + " troop"; return; }
+        for (int g = 0; g < SPEEDS.length; g++) SPEEDS[g] = (g == 0 ? .169 : .264) * spec.speed() / .28;
         for (var u : b.units) { GravesAndGlory.Battle.leaveSide(u.mob); u.mob.discard(); }
         b.units.clear(); b.clearCorpses();
         GravesAndGlory.Squad mine = null, foe = null;
@@ -236,7 +240,7 @@ final class GeoKnightChecks implements Phase1Checks.Suite {
             ok &= Math.abs(med - v) <= .1 * v;
             seen.append(String.format(" %.3f[%.3f-%.3f]", med, lo, hi));
         }
-        Phase1Checks.report("p1-geo-knight-march-" + name, ok, "true " + v + ", " + samples.size() + " samples, client median[min-max]:" + seen
+        Phase1Checks.report("p1-geo-" + TROOP + "-march-" + name, ok, "true " + v + ", " + samples.size() + " samples, client median[min-max]:" + seen
             + (wrongClip.isEmpty() ? "" : ", wrong clip " + wrongClip));
     }
 
@@ -373,7 +377,7 @@ final class GeoKnightChecks implements Phase1Checks.Suite {
                 if (good) ok++; else if (bad.size() < 6) bad.add(String.format("%s v%d/%s delay%d clip%s landed+%d", key, r[2], v, r[3], imp, r[4] - r[1]));
             }
         }
-        Phase1Checks.report("p1-geo-knight-attack-sync-" + d.mode, n >= 4 && ok == n,
+        Phase1Checks.report("p1-geo-" + TROOP + "-attack-sync-" + d.mode, n >= 4 && ok == n,
             ok + "/" + n + " swings matched (variant, clip impact = server delay = landing)" + (d.forced > 0 ? ", " + d.forced + " nudged" : "") + (bad.isEmpty() ? "" : ", bad " + bad));
     }
 
@@ -390,20 +394,20 @@ final class GeoKnightChecks implements Phase1Checks.Suite {
     }
 
     public void step(MinecraftClient c, int tick) {
-        if (tick > 30000 && stage != 9 && stage < 99) { Phase1Checks.report("p1-geo-knight-timeout", false, "stuck at stage " + stage); next(tick, 9); }
+        if (tick > 30000 && stage != 9 && stage < 99) { Phase1Checks.report("p1-geo-" + TROOP + "-timeout", false, "stuck at stage " + stage); next(tick, 9); }
         int k = tick - at;
         switch (stage) {
             case 0 -> { if (tick == 20) { c.setScreen(null); player = c.player.getUuid(); next(tick, 1); } }
             case 1 -> {
                 if (!battleReady) {
                     Phase1Checks.server(c, b -> { var p = b.server.getPlayerManager().getPlayer(player); if (!battleReady && p != null && Phase1Checks.skirmish(b, p, 0, 1, "normal")) battleReady = true; });
-                    if (k > 600) { Phase1Checks.report("p1-geo-knight", false, "the practice battle never started"); next(tick, 9); }
+                    if (k > 600) { Phase1Checks.report("p1-geo-" + TROOP, false, "the practice battle never started"); next(tick, 9); }
                     return;
                 }
                 if (k == 80) Phase1Checks.server(c, this::place);
                 if (k > 100) {
-                    if (!placed) { Phase1Checks.report("p1-geo-knight-placed", false, "could not place knights: " + why); next(tick, 9); return; }
-                    Phase1Checks.report("p1-geo-knight-placed", true, "six knights");
+                    if (!placed) { Phase1Checks.report("p1-geo-" + TROOP + "-placed", false, "could not place knights: " + why); next(tick, 9); return; }
+                    Phase1Checks.report("p1-geo-" + TROOP + "-placed", true, "six knights");
                     i = 0; next(tick, 2);
                 }
             }
@@ -414,9 +418,9 @@ final class GeoKnightChecks implements Phase1Checks.Suite {
                 Phase1Checks.server(c, b -> turn(yaw));
                 if (k == 1) Phase1Checks.server(c, b -> camera(b, 0, 8, 8));
                 if (k == 2) { c.setScreen(null); c.options.hudHidden = true; c.options.setPerspective(Perspective.FIRST_PERSON); }
-                if (k == 40) Phase1Checks.shot(c, "geo-knight-" + view + "-near");
+                if (k == 40) Phase1Checks.shot(c, "geo-" + TROOP + "-" + view + "-near");
                 if (k == 41) Phase1Checks.server(c, b -> camera(b, 0, 16, 3));
-                if (k == 80) Phase1Checks.shot(c, "geo-knight-" + view + "-far");
+                if (k == 80) Phase1Checks.shot(c, "geo-" + TROOP + "-" + view + "-far");
                 if (k == 81) { if (++i < VIEWS.length) next(tick, 2); else { i = 0; next(tick, 3); } }
             }
             case 3 -> {
@@ -424,9 +428,9 @@ final class GeoKnightChecks implements Phase1Checks.Suite {
                 double dx = i == 0 ? -3 : 7;
                 Phase1Checks.server(c, b -> turn(150));
                 if (k == 1) Phase1Checks.server(c, b -> camera(b, dx, 3.5, 3));
-                if (k == 40) Phase1Checks.shot(c, "geo-knight-t3-" + (i == 0 ? "own" : "foe") + "-close");
+                if (k == 40) Phase1Checks.shot(c, "geo-" + TROOP + "-t3-" + (i == 0 ? "own" : "foe") + "-close");
                 if (k == 41) { if (++i < 2) next(tick, 3); else {
-                    Phase1Checks.report("p1-geo-knight", true, VIEWS.length + " views near and far, two close-ups");
+                    Phase1Checks.report("p1-geo-" + TROOP, true, VIEWS.length + " views near and far, two close-ups");
                     i = 0; next(tick, 4); } }
             }
             case 4 -> {
@@ -439,11 +443,11 @@ final class GeoKnightChecks implements Phase1Checks.Suite {
                 }
                 if (k == 3) { c.setScreen(null); c.options.hudHidden = true; }
                 March m = run;
-                if (k > 400) { Phase1Checks.report("p1-geo-knight-march-" + name, false, "march never ran"); run = null; next(tick, 9); return; }
+                if (k > 400) { Phase1Checks.report("p1-geo-" + TROOP + "-march-" + name, false, "march never ran"); run = null; next(tick, 9); return; }
                 if (m == null || !m.name.equals(name) || m.k == lastShot) return;
                 int mk = lastShot = m.k;
-                if (mk >= 12 && mk < 28) Phase1Checks.shot(c, "geo-knight-" + name + "-near-" + String.format("%02d", mk));
-                if (mk >= 32 && mk < 40) Phase1Checks.shot(c, "geo-knight-" + name + "-far-" + String.format("%02d", mk));
+                if (mk >= 12 && mk < 28) Phase1Checks.shot(c, "geo-" + TROOP + "-" + name + "-near-" + String.format("%02d", mk));
+                if (mk >= 32 && mk < 40) Phase1Checks.shot(c, "geo-" + TROOP + "-" + name + "-far-" + String.format("%02d", mk));
                 // The run is chosen on the 4-tick speed trend, so sample from mk 22: the trend is past WALK_TO_RUN by then on every knight.
                 if (mk >= 22 && mk < 30) sample(c, MODES[g], mk);
                 if (mk >= 30 && !reported) { reported = true; readBack(name, SPEEDS[g]); }
@@ -464,7 +468,7 @@ final class GeoKnightChecks implements Phase1Checks.Suite {
                 }
                 if (k == 3) { c.setScreen(null); c.options.hudHidden = true; }
                 Duel d = duel;
-                if (d == null || !d.mode.equals("stand")) { if (k > 200) { Phase1Checks.report("p1-geo-knight-attack", false, "duel never ran"); next(tick, 9); } return; }
+                if (d == null || !d.mode.equals("stand")) { if (k > 200) { Phase1Checks.report("p1-geo-" + TROOP + "-attack", false, "duel never ran"); next(tick, 9); } return; }
                 watch(c, d);
                 // Tick 0 is weight 0 by design (the same pose as the frame before it), and the client often hears of a swing a
                 // fraction of a tick after it starts, so it is saved when caught but not required: ticks 1-21 (far: 2-20) are.
@@ -477,17 +481,17 @@ final class GeoKnightChecks implements Phase1Checks.Suite {
                     if (ac != null && ac.shownT >= 0 && (ac.shownWeight > 0 || ac.shownT < .5)) {
                         int tt = (int) Math.round(ac.shownT);
                         if (Math.abs(ac.shownT - tt) <= (tt == 0 ? .5 : .3) && tt < 22 && (!far || tt % 2 == 0) && taken.add(ac.shownClip + ":" + tt))
-                            Phase1Checks.shot(c, String.format("geo-knight-attack-%s-%s-%02d", view, ac.shownClip.replace("attack_", ""), tt));
+                            Phase1Checks.shot(c, String.format("geo-" + TROOP + "-attack-%s-%s-%02d", view, ac.shownClip.replace("attack_", ""), tt));
                     }
                 }
                 int got = (int) taken.stream().filter(f -> !f.endsWith(":0")).count();
                 if (got >= want || k > 1200) {
-                    Phase1Checks.report("p1-geo-knight-attack-frames-" + view, got >= want, got + "/" + want + " clip frames of the own knight (tick 0 optional: "
+                    Phase1Checks.report("p1-geo-" + TROOP + "-attack-frames-" + view, got >= want, got + "/" + want + " clip frames of the own knight (tick 0 optional: "
                         + (taken.size() - got) + "/3 caught)");
                     if (++i < ATTACK_VIEWS.length) next(tick, 5);
                     else {
                         syncReport(d);
-                        Phase1Checks.report("p1-geo-knight-attack-plays", impactSamples > 10 && minImpactW > .9 && gapSamples > 4 && maxGapW == 0,
+                        Phase1Checks.report("p1-geo-" + TROOP + "-attack-plays", impactSamples > 10 && minImpactW > .9 && gapSamples > 4 && maxGapW == 0,
                             String.format("weight at impact (+-1 tick) min %.4f over %d samples; between swings max %.5f over %d", minImpactW, impactSamples, maxGapW, gapSamples));
                         duel = null; i = 0; next(tick, 6);
                     }
@@ -501,13 +505,13 @@ final class GeoKnightChecks implements Phase1Checks.Suite {
                 }
                 if (k == 3) { c.setScreen(null); c.options.hudHidden = true; }
                 Duel d = duel;
-                if (d == null || !d.mode.equals("walk")) { if (k > 200) { Phase1Checks.report("p1-geo-knight-attack-walk", false, "walk duel never ran"); next(tick, 9); } return; }
+                if (d == null || !d.mode.equals("walk")) { if (k > 200) { Phase1Checks.report("p1-geo-" + TROOP + "-attack-walk", false, "walk duel never ran"); next(tick, 9); } return; }
                 watch(c, d);
                 int dk = d.k;
-                if (dk != lastShot && dk >= WALK0 + 10 && dk < WALK0 + WALK - 4) { lastShot = dk; Phase1Checks.shot(c, String.format("geo-knight-attack-walk-%02d", dk - WALK0)); }
+                if (dk != lastShot && dk >= WALK0 + 10 && dk < WALK0 + WALK - 4) { lastShot = dk; Phase1Checks.shot(c, String.format("geo-" + TROOP + "-attack-walk-%02d", dk - WALK0)); }
                 if (dk >= WALK0 + WALK + 4 || k > 600) {
                     syncReport(d);
-                    Phase1Checks.report("p1-geo-knight-attack-walk", walkSwingSamples > 10 && walkWrong.isEmpty() && impactSamples > 2 && minImpactW > .9 && foeBackMin > .1,
+                    Phase1Checks.report("p1-geo-" + TROOP + "-attack-walk", walkSwingSamples > 10 && walkWrong.isEmpty() && impactSamples > 2 && minImpactW > .9 && foeBackMin > .1,
                         String.format("%d swinging samples, gait while swinging %s; weight at impact min %.3f over %d; foe backing speed min %.3f",
                             walkSwingSamples, walkWrong.isEmpty() ? "always WALK" : "wrong " + walkWrong, minImpactW, impactSamples, foeBackMin));
                     duel = null; next(tick, 7);
@@ -521,15 +525,15 @@ final class GeoKnightChecks implements Phase1Checks.Suite {
                 }
                 if (k == 3) { c.setScreen(null); c.options.hudHidden = true; }
                 Duel d = duel;
-                if (d == null || !d.mode.equals("death")) { if (k > 200) { Phase1Checks.report("p1-geo-knight-attack-death", false, "death duel never ran"); next(tick, 9); } return; }
+                if (d == null || !d.mode.equals("death")) { if (k > 200) { Phase1Checks.report("p1-geo-" + TROOP + "-attack-death", false, "death duel never ran"); next(tick, 9); } return; }
                 watch(c, d);
                 long ks = d.killSwing;
                 if (ks >= 0 && c.world != null) {
                     int t = (int) (c.world.getTime() - ks);
-                    if (t != lastShot && t >= 0 && t <= 16) { lastShot = t; Phase1Checks.shot(c, String.format("geo-knight-attack-death-%02d", t)); }
+                    if (t != lastShot && t >= 0 && t <= 16) { lastShot = t; Phase1Checks.shot(c, String.format("geo-" + TROOP + "-attack-death-%02d", t)); }
                 }
                 if ((d.killedAt >= 0 && c.world != null && c.world.getTime() - d.killedAt > 20) || k > 600) {
-                    Phase1Checks.report("p1-geo-knight-attack-death", d.killedAt >= 0 && d.killedDead && maxBeforeDeathW > 0 && deadSamples > 5 && maxDeadW == 0 && deadWrong.isEmpty(),
+                    Phase1Checks.report("p1-geo-" + TROOP + "-attack-death", d.killedAt >= 0 && d.killedDead && maxBeforeDeathW > 0 && deadSamples > 5 && maxDeadW == 0 && deadWrong.isEmpty(),
                         String.format("killed %s (dead %s); weight 2-4 ticks into the swing max %.3f; once faded (dead 3+ ticks) max %.5f over %d samples; gait %s",
                             d.killedAt >= 0 ? "at +4" : "never", d.killedDead, maxBeforeDeathW, maxDeadW, deadSamples, deadWrong.isEmpty() ? "IDLE" : "wrong " + deadWrong));
                     duel = null; i = 0; next(tick, 8);
@@ -555,7 +559,7 @@ final class GeoKnightChecks implements Phase1Checks.Suite {
                 if (k == 3) { c.setScreen(null); c.options.hudHidden = true; }
                 if (vi == 0 && k > (ready ? 8 : 1) && k < 30 && c.world != null && changedAt >= 0) {
                     long t = c.world.getTime() - changedAt;
-                    if (t >= 0 && t <= 6 && t != lastShot) { lastShot = (int) t; Phase1Checks.shot(c, String.format("geo-knight-stance-%s-in-%02d", sc[0], t)); }
+                    if (t >= 0 && t <= 6 && t != lastShot) { lastShot = (int) t; Phase1Checks.shot(c, String.format("geo-" + TROOP + "-stance-%s-in-%02d", sc[0], t)); }
                     for (int j = 0; j < knights.size(); j++) {
                         var e = c.world.getEntityById(knights.get(j).mob.getId());
                         StanceController st = e == null ? null : StanceController.LIVE.get(e);
@@ -566,7 +570,7 @@ final class GeoKnightChecks implements Phase1Checks.Suite {
                     }
                 }
                 if (k == 30) {
-                    Phase1Checks.shot(c, "geo-knight-stance-" + sc[0] + "-" + view);
+                    Phase1Checks.shot(c, "geo-" + TROOP + "-stance-" + sc[0] + "-" + view);
                     if (c.world != null) for (int j = 0; j < knights.size(); j++) {
                         var e = c.world.getEntityById(knights.get(j).mob.getId());
                         if (!(e instanceof LivingEntity l) || !l.isAlive()) continue;
@@ -583,7 +587,7 @@ final class GeoKnightChecks implements Phase1Checks.Suite {
                 if (k == 31) {
                     if (++i < STANCE_CASES.length * STANCE_VIEWS.length) next(tick, 8);
                     else {
-                        Phase1Checks.report("p1-geo-knight-stance", stanceBad.isEmpty(), STANCE_CASES.length + " stances x " + STANCE_VIEWS.length
+                        Phase1Checks.report("p1-geo-" + TROOP + "-stance", stanceBad.isEmpty(), STANCE_CASES.length + " stances x " + STANCE_VIEWS.length
                             + " views, every live knight on its pose at weight 1 by k30 and over .5 within 4 ticks of the change" + (stanceBad.isEmpty() ? "" : "; bad " + stanceBad));
                         i = 0; next(tick, 10);
                     }
@@ -616,7 +620,7 @@ final class GeoKnightChecks implements Phase1Checks.Suite {
                     if (hc != null && hc.shownT >= 0) {
                         int tt = (int) Math.round(hc.shownT);
                         if (Math.abs(hc.shownT - tt) <= .3 && (!far || tt % 2 == 0) && taken.add(name + ":" + tt)) {
-                            Phase1Checks.shot(c, String.format("geo-knight-hit-%s-%s-%02d", view, name, tt));
+                            Phase1Checks.shot(c, String.format("geo-" + TROOP + "-hit-%s-%s-%02d", view, name, tt));
                             hitFrames++;
                         }
                         if (!hc.shownClip.equals(clip) && hitBad.size() < 40) hitBad.add(name + "/" + view + " clip " + hc.shownClip + "@" + String.format("%.1f", hc.shownT));
@@ -638,7 +642,7 @@ final class GeoKnightChecks implements Phase1Checks.Suite {
                     System.out.println(String.format("[p1] hit %s/%s frames %d scale %.3f", name, view, hitFrames, hitMaxScale));
                     if (++i < HIT_CASES.length * HIT_VIEWS.length) next(tick, 10);
                     else {
-                        Phase1Checks.report("p1-geo-knight-hit", hitBad.isEmpty(), HIT_CASES.length + " blows x " + HIT_VIEWS.length
+                        Phase1Checks.report("p1-geo-" + TROOP + "-hit", hitBad.isEmpty(), HIT_CASES.length + " blows x " + HIT_VIEWS.length
                             + " views: clip, bearing mix, peak scale, frames, and gone after the clip" + (hitBad.isEmpty() ? "" : "; bad " + hitBad.subList(0, Math.min(8, hitBad.size()))));
                         Phase1Checks.server(c, b -> hold = null);
                         i = 0; next(tick, 11);
@@ -680,7 +684,7 @@ final class GeoKnightChecks implements Phase1Checks.Suite {
                         deathPrevT = dc.shownT; deathMaxT = Math.max(deathMaxT, dc.shownT);
                         int tt = e.deathTime;
                         if ((tt <= BattleMath.DEATH_FALL_TICKS || tt == 30 || tt == 45) && taken.add(name + ":" + tt)) {
-                            Phase1Checks.shot(c, String.format("geo-knight-death-%s-%02d", name, tt));
+                            Phase1Checks.shot(c, String.format("geo-" + TROOP + "-death-%s-%02d", name, tt));
                             deathFrames++;
                         }
                     } else if (!dc.shownClip.isEmpty() && deathBad.size() < 40) deathBad.add(name + " death layer playing while alive");
@@ -692,7 +696,7 @@ final class GeoKnightChecks implements Phase1Checks.Suite {
                     System.out.println(String.format("[p1] death %s frames %d max t %.2f", name, deathFrames, deathMaxT));
                     if (++i < DEATH_CASES.length) next(tick, 11);
                     else {
-                        Phase1Checks.report("p1-geo-knight-death", deathBad.isEmpty(), DEATH_CASES.length + " lethal blows: fall clip by bearing, "
+                        Phase1Checks.report("p1-geo-" + TROOP + "-death", deathBad.isEmpty(), DEATH_CASES.length + " lethal blows: fall clip by bearing, "
                             + "weight, clip time held, frames" + (deathBad.isEmpty() ? "" : "; bad " + deathBad.subList(0, Math.min(8, deathBad.size()))));
                         next(tick, 9);
                     }

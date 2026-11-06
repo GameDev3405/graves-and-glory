@@ -251,3 +251,16 @@ move with the unit.
     - death_right lies about 10 units forward of its start, mostly arms and gear.
     - The last 45° of the forward topple takes 2 ticks.
 
+
+### Performance (2026-11-05)
+
+`GRAVES_PHASE1_CHECKS=geo-perf` (test-tools GeoPerfChecks): 40 tier-III knights in view, 20 s of client frame times per phase, run
+once per rig (`GRAVES_GEO_TROOPS=true|false`), vsync off, maxFps 260.
+
+- The clips were baked dense (4 keys per tick on every channel), so every keyframe lookup walked long lists, and melee (most
+  layers playing at once) cost about 1 ms a frame more than the old rig.
+- `build_anims.py` now thins every baked channel: a key is kept only where dropping it would move the pose more than 0.02 degrees
+  or 0.002 px (straight-line interpolation between the kept keys). Keys 28,627 -> 7,529; clip lengths and impact markers unchanged.
+- Median frame time, 40 knights, after thinning: march 4.16 ms (GeckoLib) vs 4.17 ms (old rig); melee 4.35 ms vs 3.96 ms
+  (before thinning 4.78 vs 3.86). About +0.01 ms per fighting knight; accepted. If a later unit pushes this up, the next step
+  is AttackController/HitController sampling (cached arrays and binary search instead of a scan, no per-frame string building).

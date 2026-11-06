@@ -37,8 +37,13 @@ ROOT = HERE.parents[2]
 sys.path.insert(0, str(ROOT / "tools" / "anim"))
 import render_geo as rg  # noqa: E402
 
-GEO = HERE / "out" / "A" / "preview" / "t1.geo.json"
-OUT = HERE / "out" / "knight.animation.json"
+# Another biped troop on the knight's skeleton (art/anim/common/troop_rig.py) builds the same clips against its own
+# geometry (the falls ground its own corners): GG_ANIM_TROOP=sentinel python art/anim/knight/build_anims.py
+import os  # noqa: E402
+TROOP = os.environ.get("GG_ANIM_TROOP", "knight")
+PREVIEW = HERE / "out" / "A" / "preview" if TROOP == "knight" else HERE.parent / TROOP / "out" / "preview"
+GEO = PREVIEW / "t1.geo.json"
+OUT = (HERE if TROOP == "knight" else HERE.parent / TROOP) / "out" / f"{TROOP}.animation.json"
 SUB = 4                     # samples per tick in generated clips
 TPS = 20.0
 
@@ -524,8 +529,9 @@ ATTACKS = {
         (6, key((-8, 12, 0), (-165, 0, 18), -70, -150, 0, (2.0, 20.0, 6.0), throw=(-6, 4, 4))),
         (8, key((2, 4, 0), (-150, 0, 14), -28, -80, 0, (2.5, 19.5, 6.0))),
         (10, key((12, -8, 0), (-100, 0, 6), -10, 22, 0, (5.0, 18.0, 4.0), throw=(-6, -10, -6))),
-        (12, key((18, -14, 0), (-58, 0, 2), -12, 50, 0, (6.0, 17.5, 3.5), throw=(-10, -14, -10))),
-        (14, key((18, -14, 0), (-44, 0, 2), -12, 58, 0, (6.0, 17.5, 3.5), throw=(-8, -12, -8))),
+        # follow-through pitched so the tip stops just above the ground over the ready footing's lowered hips
+        (12, key((18, -14, 0), (-58, 0, 2), -12, 46, 0, (6.0, 17.5, 3.5), throw=(-10, -14, -10))),
+        (14, key((18, -14, 0), (-44, 0, 2), -12, 50, 0, (6.0, 17.5, 3.5), throw=(-8, -12, -8))),
         (18, key((8, -4, 0), (-18, 0, 6), -34, 25, 18, (4.0, 18.0, 4.5))),
         (ATTACK_TICKS, GUARD),
     ],
@@ -538,6 +544,12 @@ ATTACKS = {
         (ATTACK_TICKS, GUARD),
     ],
 }
+
+# A longer blade (the Templar's 25-31 px longsword) follows through flatter, so its tip clears the ground.
+if TROOP == "sentinel":
+    ATTACKS["overhead"][4] = (12, key((18, -14, 0), (-58, 0, 2), -12, 38, 0, (6.0, 17.5, 3.5), throw=(-10, -14, -10)))
+    ATTACKS["overhead"][5] = (14, key((18, -14, 0), (-44, 0, 2), -12, 42, 0, (6.0, 17.5, 3.5), throw=(-8, -12, -8)))
+    ATTACKS["low_cut"][3] = (11, key((22, -32, -4), (-45, 0, -18), -15, 42, -45, (6.5, 17.0, 3.0), throw=(-10, -16, -12)))
 
 
 def monotone(ts, vs):
@@ -590,7 +602,7 @@ def attack_clips():
 # Played by GeoTroop's stance layer (StanceController), which crossfades to the order's pose within
 # 2 ticks so the change reads at range. The upper poses go over any gait; the legs poses only while the
 # knight stands (the layer scales them by how still it is), so a planted foot never slides.
-#   ready      no order stance, but fighting: sword cocked, shield forward, left shoulder leading.
+#   ready      no order stance, but fighting: sword cocked, shield forward, left shoulder leading, feet set apart.
 #   brace      Hold, out of formation: feet set wide, knees bent, the same guard over them.
 #   wall       Hold, formed: a deep set, shoulder behind the shield, sword laid over its rim to stab.
 #   *_up       the same with the shield raised (the server's raised shield: it blocks counters).
@@ -612,7 +624,8 @@ def skey(torso, arm, fore, blade, blade_out, fist, hips=Z3, tilt=0.0, head=None)
 
 
 STANCE_UPPER = {
-    "ready": skey((5, 14, 0), (-22, 0, 12), -62, -28, -4, FIST_GUARD),
+    # ready stands on its own footing (STANCE_LEGS "ready"), so the shield is set upright over those hips.
+    "ready": skey((5, 14, 0), (-22, 0, 12), -62, -28, -4, FIST_GUARD, hips=(0, 6, 0)),
     # brace: the sword rides low by the right hip, point forward and a little down, under the shield's edge.
     "brace": skey((8, 16, 0), (-10, 0, 14), -48, 18, -4, (2.5, 18.0, 5.5), hips=(0, 10, 0)),
     # *_up: the fist rises to the shoulder so the rim covers the eyes.
@@ -627,6 +640,10 @@ STANCE_UPPER = {
 
 # Feet (ankle targets, px) and hips (rot, pos) for the two set stances; yaw is each foot's turn (right, left).
 STANCE_LEGS = {
+    # ready: the fighting footing every standing swing plays over (Kort, 2026-11-05: not upright with the feet together).
+    # Set a little wider and split fore and aft like the brace, knees soft, but shallower: a guard, not a hold.
+    "ready": {"hips": ((0.0, 6.0, 0.0), (0.0, -1.1, 0.1)), "right": (-3.4, 2.0, 2.0), "left": (3.2, 2.0, -2.0),
+              "yaw": (-12.0, 7.0)},
     "brace": {"hips": ((0.0, 10.0, 0.0), (0.0, -1.3, 0.2)), "right": (-3.0, 2.0, 2.6), "left": (2.8, 2.0, -2.6),
               "yaw": (-14.0, 8.0)},
     "wall": {"hips": ((4.0, 16.0, 0.0), (0.0, -3.6, 0.6)), "right": (-3.4, 2.0, 4.0), "left": (3.2, 2.0, -3.8),
@@ -785,13 +802,32 @@ def bake(samples, ticks, loop=True):
         ch = {}
         rots = [s[b][0] for s in samples]
         cols = [unwrap([r[i] for r in rots]) for i in range(3)]
-        ch["rotation"] = {fmt_t(i / SUB / TPS): [round(cols[0][i], 3), round(cols[1][i], 3), round(cols[2][i], 3)]
-                          for i in range(len(samples))}
+        rv = [[round(cols[0][i], 3), round(cols[1][i], 3), round(cols[2][i], 3)] for i in range(len(samples))]
+        ch["rotation"] = {fmt_t(i / SUB / TPS): rv[i] for i in thin(rv, ROT_TOL)}
         if any(s[b][1] is not None for s in samples):
-            ch["position"] = {fmt_t(i / SUB / TPS): [round(v, 4) for v in (s[b][1] or (0, 0, 0))]
-                              for i, s in enumerate(samples)}
+            pv = [[round(v, 4) for v in (s[b][1] or (0, 0, 0))] for s in samples]
+            ch["position"] = {fmt_t(i / SUB / TPS): pv[i] for i in thin(pv, POS_TOL)}
         out[b] = ch
     return {"loop": loop, "animation_length": round(ticks / TPS, 6), "bones": out}
+
+
+ROT_TOL = 0.02   # degrees: a dropped key is never further than this from the line through its kept neighbours
+POS_TOL = 0.002  # pixels
+
+
+def thin(vals, tol):
+    """Indices of the keys to keep from evenly spaced samples: first, last, and every key that linear interpolation
+    between the kept keys around it would miss by more than tol on any axis. GeckoLib (and AttackController.sample)
+    scan keys linearly every frame, so a dense bake of a still channel costs draw time for nothing."""
+    keep, a, n = [0], 0, len(vals)
+    while a < n - 1:
+        b = a + 1
+        while b + 1 < n and all(abs(vals[a][k] + (vals[b + 1][k] - vals[a][k]) * (m - a) / (b + 1 - a) - vals[m][k]) <= tol
+                                for m in range(a + 1, b + 1) for k in range(3)):
+            b += 1
+        keep.append(b)
+        a = b
+    return keep
 
 
 def fmt_t(sec):
@@ -823,7 +859,7 @@ def gait_legs(g):
 # ------------------------------------------------------------------------------------------------
 
 DEATH_TICKS = 20
-HEAVY = rg.load_geo(HERE / "out" / "A" / "preview" / "t3.geo.json")
+HEAVY = rg.load_geo(PREVIEW / "t3.geo.json")
 DEATH_BONES = ("root", "hips", "torso", "head", "cape", "right_arm", "right_forearm", "right_hand",
                "left_arm", "left_forearm", "left_hand", "right_leg", "right_shin", "right_foot",
                "left_leg", "left_shin", "left_foot")
