@@ -29,9 +29,11 @@ import handlib as H                                           # noqa: E402
 from handlib import Box, Bone, pack, paint_box, on, SIDES    # noqa: E402
 import build_swords as SW                                     # noqa: E402
 
-# troop id: (art dir, module, Troop attribute, weapon module, weapon rotation in the fist)
+# troop id: (art dir, module, Troop attribute, weapon module, weapon id (tiers <id>, <id>_t2, <id>_t3), weapon rotation in the fist)
 TROOPS = {
-    "sentinel": ("sentinel", "build_sentinel", "SENTINEL", "build_longsword", (-90, 0, 90)),
+    "sentinel": ("sentinel", "build_sentinel", "SENTINEL", "build_longsword", "longsword", (-90, 0, 90)),
+    "revenant": ("revenant", "build_revenant", "REVENANT", "build_gb_notched_sword", "notched_sword", (-90, 0, 90)),
+    "tc_raider": ("tc_raider", "build_tc_raider", "TC_RAIDER", "build_house_weapons", "cutlass", (-90, 0, 90)),
 }
 SHIELD_AT = (-1, 4, -1.5)     # the knight's grip: in the left fist by its strap, face to the front
 WAIST, SPLIT = 8.5, ((12, 8), (12, 0))
@@ -55,6 +57,9 @@ def absolute(B):
 def rigify(src, weapon_rot):
     """The troop's handlib bones re-hung on the knight's skeleton (pivots relative to the parent)."""
     src = [bn for bn in src if bn.name not in DROP]
+    for bn in src:   # a troop's own foot (the raider's) is shin gear: it rides the rig's foot like a boot
+        if bn.name in ("right_foot", "left_foot"):
+            bn.name += "_gear"
     ab = absolute(src)
     names = {bn.name for bn in src}
     out, at = [], {}
@@ -146,7 +151,7 @@ def rigify(src, weapon_rot):
 
 class Rig:
     def __init__(s, tid):
-        d, mod, attr, wmod, wrot = TROOPS[tid]
+        d, mod, attr, wmod, s.wid, wrot = TROOPS[tid]
         sys.path.insert(0, os.path.join(ART, "hand", d))
         s.tid, s.troop = tid, getattr(importlib.import_module(mod), attr)
         s.weapon = importlib.import_module(wmod)
@@ -156,7 +161,7 @@ class Rig:
         s.tiers = tuple(s.troop.tiers)
 
     def weapon_cubes(s, t):
-        return list(s.weapon.TIERS.values())[t - 1][0]()
+        return s.weapon.TIERS[s.wid if t == 1 else f"{s.wid}_t{t}"][0]()
 
     def textures(s):
         B = s.B

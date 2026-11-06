@@ -1,0 +1,153 @@
+{
+ "troop": "tc_raider",
+ "tiers": [
+  1,
+  2,
+  3
+ ],
+ "faces": 1,
+ "bones": {
+  "root": {},
+  "hips": {},
+  "torso": {},
+  "belly": {},
+  "head": {},
+  "helm": {
+   "tag": "helm"
+  },
+  "helm_back": {
+   "tag": "helm"
+  },
+  "kelp_helm": {},
+  "helm_rim": {
+   "stages": [
+    3
+   ],
+   "tag": "helm"
+  },
+  "shell_barn0": {
+   "stages": [
+    3
+   ],
+   "tag": "helm"
+  },
+  "shell_barn1": {
+   "stages": [
+    3
+   ],
+   "tag": "helm"
+  },
+  "shell_barn2": {
+   "stages": [
+    3
+   ],
+   "tag": "helm"
+  },
+  "shell_barn3": {
+   "stages": [
+    3
+   ],
+   "tag": "helm"
+  },
+  "right_arm": {},
+  "right_forearm": {},
+  "right_hand": {},
+  "right_wrap": {
+   "team": true
+  },
+  "right_bracer": {
+   "stages": [
+    2,
+    3
+   ]
+  },
+  "right_pauldron": {
+   "stages": [
+    2,
+    3
+   ]
+  },
+  "right_shell_barn": {
+   "stages": [
+    3
+   ]
+  },
+  "left_arm": {},
+  "left_forearm": {},
+  "left_hand": {},
+  "left_wrap": {
+   "team": true
+  },
+  "left_bracer": {
+   "stages": [
+    2,
+    3
+   ]
+  },
+  "left_pauldron": {
+   "stages": [
+    3
+   ]
+  },
+  "left_shell_barn": {
+   "stages": [
+    3
+   ]
+  },
+  "belt": {},
+  "barnacles": {},
+  "net": {},
+  "scarf": {
+   "team": true
+  },
+  "kelp_left_shoulder": {},
+  "gorget": {
+   "stages": [
+    2,
+    3
+   ]
+  },
+  "right_leg": {},
+  "right_shin": {},
+  "right_foot": {},
+  "right_foot_gear": {},
+  "right_greave": {
+   "stages": [
+    2,
+    3
+   ]
+  },
+  "left_leg": {},
+  "left_shin": {},
+  "left_foot": {},
+  "left_foot_gear": {},
+  "left_greave": {
+   "stages": [
+    2,
+    3
+   ]
+  },
+  "skirt": {},
+  "tail": {
+   "team": true
+  },
+  "weapon_t1": {
+   "stages": [
+    1
+   ],
+   "tag": "weapon"
+  },
+  "weapon_t2": {
+   "stages": [
+    2
+   ],
+   "tag": "weapon"
+  },
+  "weapon_t3": {
+   "stages": [
+    3
+   ],
+   "tag": "weapon"
+  }
+ }
+}

@@ -28,3 +28,12 @@ Pilot unit for the GeckoLib rebuild. It was judged against STYLE.md by a screens
   - A thin dark vertical line at overhead 0.75 s, side view (probably the cape).
   - A green streak beside the knight in the in-game medium-back hit, t2-t5.
   - Cape and plume lag (rule 9) is hard to judge at review scale.
+
+## Shared changes from the sentinel review (2026-11-06)
+
+The sentinel shares this builder, so its fix rounds changed the knight too:
+
+- **Idle:** a bigger weight cycle with a lead-knee flex, hip drop, lateral hip shift and arms trailing the torso. This addresses the idle minor above.
+- **Block shove:** less head pitch, with the shield arm further out.
+
+The knight was re-exported with both. See SENTINEL-REVIEW.md for what remains open.
