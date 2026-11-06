@@ -496,6 +496,161 @@ def attack_clips():
 
 
 # ------------------------------------------------------------------------------------------------
+# Stances (unit animation rebuild, PLAN.md "Shield"): what the knight holds while it obeys an order.
+# Played by GeoTroop's stance layer (StanceController), which crossfades to the order's pose within
+# 2 ticks so the change reads at range. The upper poses go over any gait; the legs poses only while the
+# knight stands (the layer scales them by how still it is), so a planted foot never slides.
+#   ready      no order stance, but fighting: sword cocked, shield forward, left shoulder leading.
+#   brace      Hold, out of formation: feet set wide, knees bent, the same guard over them.
+#   wall       Hold, formed: a deep set, shoulder behind the shield, sword laid over its rim to stab.
+#   *_up       the same with the shield raised (the server's raised shield: it blocks counters).
+#   shield_up  shield raised while moving (shield_move, a raised shield on fall_back).
+#   ward       fall_back with the shield down: backing off, point held at the enemy.
+# Each loops 40 ticks with a slow breath so a held line is never a frozen statue.
+# ------------------------------------------------------------------------------------------------
+
+STANCE_TICKS = 40
+
+
+def skey(torso, arm, fore, blade, blade_out, shield_arm, shield_fore, shield_hand=(0.0, 0.0, 0.0), head=None):
+    """A stance key: like key(), plus the shield hand's turn and an optional head override."""
+    k = key(torso, arm, fore, blade, blade_out, shield_arm, shield_fore)
+    k["left_hand"] = shield_hand
+    if head is not None:
+        k["head"] = head
+    return k
+
+
+STANCE_UPPER = {
+    "ready": skey((5, 14, 0), (-22, 0, 12), -62, -28, -4, (-38, 10, -6), -58),
+    # brace: the sword rides low by the right hip, point forward and a little down, under the shield's edge.
+    "brace": skey((8, 16, 0), (-10, 0, 14), -48, 18, -4, (-48, 30, -6), -62),
+    "brace_up": skey((9, 18, 0), (-14, 0, 16), -52, 12, -6, (-74, 30, -4), -66),
+    # wall: torso pitched well forward over the deep set; the arm rises to keep the sword level over the rim.
+    "wall": skey((22, 24, 0), (-72, -30, 6), -40, -6, -6, (-62, 16, -4), -64),
+    "wall_up": skey((24, 26, 0), (-88, -32, 4), -30, -2, -8, (-90, 20, -2), -60),
+    "shield_up": skey((6, 16, 0), (-30, 0, 16), -76, -40, -8, (-70, 18, -4), -66),
+    # ward: leaning back as it gives ground, the sword held across the belly, point angled down at the enemy.
+    "ward": skey((-6, 8, 0), (-30, 0, -6), -62, 42, 50, (-36, 10, -6), -54),
+}
+
+# Feet (ankle targets, px) and hips (rot, pos) for the two set stances; yaw is each foot's turn (right, left).
+STANCE_LEGS = {
+    "brace": {"hips": ((0.0, 10.0, 0.0), (0.0, -1.3, 0.2)), "right": (-3.0, 2.0, 2.6), "left": (2.8, 2.0, -2.6),
+              "yaw": (-14.0, 8.0)},
+    "wall": {"hips": ((4.0, 16.0, 0.0), (0.0, -3.6, 0.6)), "right": (-3.4, 2.0, 4.0), "left": (3.2, 2.0, -3.8),
+             "yaw": (-20.0, 10.0)},
+}
+
+
+def stance_upper(pose):
+    n = STANCE_TICKS * SUB
+    out = []
+    for i in range(n + 1):
+        u = (i % n) / n
+        br = math.sin(2 * math.pi * u)
+        f = {b: (tuple(v), None) for b, v in pose.items()}
+        tx, ty, tz = pose["torso"]
+        f["torso"] = ((tx + 0.8 * br, ty, tz), None)
+        hx, hy, hz = pose["head"]
+        f["head"] = ((hx - 0.5 * br, hy, hz), None)
+        ax, ay, az = pose["right_arm"]
+        f["right_arm"] = ((ax - 0.6 * br, ay, az), None)
+        sx, sy, sz = pose["left_arm"]
+        f["left_arm"] = ((sx - 0.4 * br, sy, sz), None)
+        out.append(f)
+    return bake(out, STANCE_TICKS)
+
+
+def stance_legs(spec):
+    n = STANCE_TICKS * SUB
+    out, guesses = [], {}
+    for i in range(n + 1):
+        u = (i % n) / n
+        br = math.sin(2 * math.pi * u)
+        (rx, ry, rz), (px, py, pz) = spec["hips"]
+        hips = ((rx, ry, rz), (px, py - 0.1 * br, pz))
+        pose = {"hips": hips}
+        f = {"hips": hips}
+        for side in ("right", "left"):
+            pose[side + "_leg"] = ((0, -ry, 0), (0, 0, 0))
+            yaw = spec["yaw"][0 if side == "right" else 1]
+            lr, sr, fr = leg_pose(pose, side, spec[side], 0.0, foot_yaw=yaw, guess=guesses.get(side))
+            guesses[side] = (lr[0], lr[2], sr[0])
+            f[side + "_leg"], f[side + "_shin"], f[side + "_foot"] = (lr, None), (sr, None), (fr, None)
+        out.append(f)
+    return bake(out, STANCE_TICKS)
+
+
+def stance_clips():
+    out = {"stance_%s_upper" % k: stance_upper(v) for k, v in STANCE_UPPER.items()}
+    out.update({"stance_%s_legs" % k: stance_legs(v) for k, v in STANCE_LEGS.items()})
+    return out
+
+
+# ------------------------------------------------------------------------------------------------
+# Hit reactions (PLAN.md "Damage"): additive. HitController adds these offsets to whatever the other
+# layers wrote, so a knight flinches mid-swing or mid-stride without losing it. Each starts and ends at
+# zero. Four directions per weight (where the blow came from); the layer mixes them by the hit's
+# bearing, so a blow from the front-right gives a little of both. A blocked blow plays block instead:
+# the shield arm is driven back and the body absorbs it, scaled by the blow's weight.
+# ------------------------------------------------------------------------------------------------
+
+Z3 = (0.0, 0.0, 0.0)
+
+
+def off(torso=Z3, head=Z3, rarm=Z3, rfore=0.0, larm=Z3, lfore=0.0):
+    return {"torso": torso, "head": head, "right_arm": rarm, "right_forearm": (rfore, 0.0, 0.0), "right_hand": Z3,
+            "left_arm": larm, "left_forearm": (lfore, 0.0, 0.0), "left_hand": Z3}
+
+
+ZERO = off()
+
+
+def scaled(o, k):
+    return {b: tuple(k * c for c in v) for b, v in o.items()}
+
+
+# The peak offset of a light blow from each direction, degrees. Front: the chest is driven back and the
+# head snaps back; back: the body is pitched forward; right: the right shoulder is driven back and the
+# body bends away to the left; left mirrors it.
+HIT_PEAK = {
+    "front": off(torso=(-9, 0, 0), head=(-8, 0, 0), rarm=(-6, 0, 6), larm=(-4, 0, -4)),
+    "back": off(torso=(7, 0, 0), head=(3, 0, 0), rarm=(6, 0, 4), larm=(6, 0, -4)),
+    "right": off(torso=(-3, 8, 5), head=(0, 4, 2), rarm=(5, 0, 4), larm=(-3, 0, -3)),
+    "left": off(torso=(-3, -8, -5), head=(0, -4, -2), rarm=(-3, 0, 3), larm=(5, 0, -4)),
+}
+HIT_TICKS = {"light": 9, "medium": 16}
+LIGHT = 0.5   # a light flinch reaches half the stagger's first key
+
+
+def hit_keys(peak, weight):
+    if weight == "light":    # a flinch: snap to the peak in 1.5 ticks, a small rebound, settled by t9
+        p = scaled(peak, LIGHT)
+        return [(0, ZERO), (1.5, p), (4, scaled(p, -0.15)), (6.5, scaled(p, 0.05)), (9, ZERO)]
+    # a stagger: driven further and held a beat, then the body recovers past centre and settles
+    return [(0, ZERO), (2, scaled(peak, 2.2)), (4.5, scaled(peak, 2.0)), (9, scaled(peak, -0.35)),
+            (12.5, scaled(peak, 0.1)), (16, ZERO)]
+
+
+# the shield arm is thrown up and forward into the blow, then driven back by it as the body gives
+BLOCK_PEAK = off(torso=(-6, -10, 0), head=(-4, 6, 0), rarm=(-2, 0, 4), larm=(-14, -10, -8), lfore=26)
+BLOCK_TICKS = 10
+
+
+def hit_clips():
+    out = {}
+    for weight, ticks in HIT_TICKS.items():
+        for d, peak in HIT_PEAK.items():
+            keys = hit_keys(peak, weight)
+            out["hit_%s_%s" % (weight, d)] = bake([sample_keys(keys, i / SUB) for i in range(ticks * SUB + 1)],
+                                                  ticks, loop=False)
+    keys = [(0, ZERO), (1.5, BLOCK_PEAK), (4, scaled(BLOCK_PEAK, 0.55)), (7, scaled(BLOCK_PEAK, -0.08)), (BLOCK_TICKS, ZERO)]
+    out["hit_block"] = bake([sample_keys(keys, i / SUB) for i in range(BLOCK_TICKS * SUB + 1)], BLOCK_TICKS, loop=False)
+    return out
+
+
+# ------------------------------------------------------------------------------------------------
 # Clip assembly
 # ------------------------------------------------------------------------------------------------
 
@@ -591,7 +746,7 @@ def main():
     idle_legs, idle_upper = idle_clips()
     anims = {"walk_legs": gait_legs(WALK), "walk_upper": gait_upper(WALK, WALK_CARRY),
              "run_legs": gait_legs(RUN), "run_upper": gait_upper(RUN, RUN_CARRY),
-             "idle_legs": idle_legs, "idle_upper": idle_upper, **attack_clips()}
+             "idle_legs": idle_legs, "idle_upper": idle_upper, **attack_clips(), **stance_clips(), **hit_clips()}
     OUT.parent.mkdir(parents=True, exist_ok=True)
     OUT.write_text(json.dumps({"format_version": "1.8.0", "animations": anims}, indent=1), encoding="utf-8")
     print("wrote", OUT, "clips:", ", ".join(anims))

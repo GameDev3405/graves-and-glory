@@ -73,8 +73,72 @@ final class GeoKnightChecks implements Phase1Checks.Suite {
         ServerTickEvents.END_SERVER_TICK.register(server -> {
             March m = run; if (m != null) m.owner.serverMarch(m, server.getTicks() - m.start);
             Duel d = duel; if (d != null) d.owner.serverDuel(d, server.getTicks() - d.start);
+            Hold h = GeoKnightChecks.hold; if (h != null) h.owner.serverHold(h);
         });
     }
+    /**
+     * Stance and hit stages: every live knight is held on its line mark facing yaw, in this order stance with its shield raised or
+     * not, every server tick (the battle's own beat would reset its stance; Tactics.set only resends a change). changedAt is the
+     * world tick the held stance last changed, hitAt the world tick of the last test blow.
+     */
+    static final class Hold {
+        final GeoKnightChecks owner; final String stance; final boolean shield; final float yaw;
+        Hold(GeoKnightChecks owner, String stance, boolean shield, float yaw) { this.owner = owner; this.stance = stance; this.shield = shield; this.yaw = yaw; }
+    }
+    static volatile Hold hold;
+    volatile long changedAt = -1, hitAt = -1;
+
+    double lineX(int slot) { return cx + (slot < 3 ? -7 + slot * 2 : 3 + (slot - 3) * 2); }
+
+    void serverHold(Hold h) {
+        for (int j = 0; j < knights.size(); j++) {
+            var u = knights.get(j);
+            if (!u.mob.isAlive()) continue;
+            stand(u, lineX(j), cz, h.yaw);
+            Tactics.set(u, h.stance, 0); Tactics.shield(u.mob, h.shield);
+        }
+    }
+
+    /** Holds every knight in a stance (server thread); a new stance or shield stamps changedAt. */
+    void hold(GravesAndGlory.Battle b, String stance, boolean shield, float yaw) {
+        Hold was = hold;
+        if (was == null || !was.stance.equals(stance) || was.shield != shield) changedAt = b.world.getTime();
+        Hold h = new Hold(this, stance, shield, yaw);
+        hold = h; serverHold(h);
+    }
+
+    /** The same blow on every live knight (server thread), stamped hitAt. */
+    void hitAll(GravesAndGlory.Battle b, float bearing, int weight, boolean blocked) {
+        hitAt = b.world.getTime();
+        for (var u : knights) if (u.mob.isAlive()) MotionEvents.sendHit(u.mob, "slash", "body", bearing, weight, blocked, false);
+    }
+
+    /** Stance cases: name, order stance, shield raised. "ready" is no order stance while fighting (a light blow starts it). */
+    static final String[][] STANCE_CASES = {{"ready", "", "0"}, {"brace", "brace", "0"}, {"brace_up", "brace", "1"}, {"wall", "wall", "0"},
+        {"wall_up", "wall", "1"}, {"shield_move", "shield_move", "1"}, {"ward", "fall_back", "0"}, {"fall_back_up", "fall_back", "1"}};
+    /** close: the tier III own knight three-quarter at 3.5 blocks; side: the line side on from 8; far: the line from 16. */
+    static final String[] STANCE_VIEWS = {"close", "side", "far"};
+    final Map<Integer, Long> stanceLag = new TreeMap<>();
+    final List<String> stanceBad = new ArrayList<>();
+
+    /** Hit cases: name, bearing (degrees, + from the knight's right), weight; "block" is taken on the raised shield. */
+    static final String[] HIT_CASES = {"light-front", "medium-front", "heavy-front", "medium-right", "medium-left", "medium-back", "medium-frontright", "block"};
+    static final float[] HIT_BEARING = {0, 0, 0, 90, -90, 180, 45, 0};
+    static final int[] HIT_WEIGHT = {0, 1, 2, 1, 1, 1, 1, 1};
+    static final String[] HIT_VIEWS = {"side", "threequarter", "far"};
+    final List<String> hitBad = new ArrayList<>();
+    double hitMaxScale;
+    int hitFrames;
+
+    /** Places the camera for a stance or hit view (server thread) and returns the knights' yaw for it. */
+    float view(GravesAndGlory.Battle b, String view, boolean stances) {
+        switch (view) {
+            case "close", "threequarter" -> { camera(b, -3, 3.5, 3); return 150; }
+            case "side" -> { if (stances) camera(b, 0, 8, 8); else camera(b, -3, 3.5, 3); return 90; }
+            default -> { camera(b, 0, 16, 3); return 150; }
+        }
+    }
+
     int lastShot;
     boolean reported;
     final List<double[]> samples = new ArrayList<>();
@@ -318,7 +382,7 @@ final class GeoKnightChecks implements Phase1Checks.Suite {
     }
 
     public void step(MinecraftClient c, int tick) {
-        if (tick > 30000 && stage < 9) { Phase1Checks.report("p1-geo-knight-timeout", false, "stuck at stage " + stage); next(tick, 9); }
+        if (tick > 30000 && stage != 9 && stage < 99) { Phase1Checks.report("p1-geo-knight-timeout", false, "stuck at stage " + stage); next(tick, 9); }
         int k = tick - at;
         switch (stage) {
             case 0 -> { if (tick == 20) { c.setScreen(null); player = c.player.getUuid(); next(tick, 1); } }
@@ -372,8 +436,9 @@ final class GeoKnightChecks implements Phase1Checks.Suite {
                 int mk = lastShot = m.k;
                 if (mk >= 12 && mk < 28) Phase1Checks.shot(c, "geo-knight-" + name + "-near-" + String.format("%02d", mk));
                 if (mk >= 32 && mk < 40) Phase1Checks.shot(c, "geo-knight-" + name + "-far-" + String.format("%02d", mk));
-                if (mk >= 18 && mk < 26) sample(c, MODES[g], mk);
-                if (mk >= 26 && !reported) { reported = true; readBack(name, SPEEDS[g]); }
+                // The run is chosen on the 4-tick speed trend, so sample from mk 22: the trend is past WALK_TO_RUN by then on every knight.
+                if (mk >= 22 && mk < 30) sample(c, MODES[g], mk);
+                if (mk >= 30 && !reported) { reported = true; readBack(name, SPEEDS[g]); }
                 if (mk >= 44) { run = null; if (++i < GAITS.length * MARCH_VIEWS.length) next(tick, 4); else { i = 0; next(tick, 5); } }
             }
             case 5 -> {
@@ -459,7 +524,117 @@ final class GeoKnightChecks implements Phase1Checks.Suite {
                     Phase1Checks.report("p1-geo-knight-attack-death", d.killedAt >= 0 && d.killedDead && maxBeforeDeathW > 0 && deadSamples > 5 && maxDeadW == 0 && deadWrong.isEmpty(),
                         String.format("killed %s (dead %s); weight 2-4 ticks into the swing max %.3f; once faded (dead 3+ ticks) max %.5f over %d samples; gait %s",
                             d.killedAt >= 0 ? "at +4" : "never", d.killedDead, maxBeforeDeathW, maxDeadW, deadSamples, deadWrong.isEmpty() ? "IDLE" : "wrong " + deadWrong));
-                    duel = null; next(tick, 9);
+                    duel = null; i = 0; next(tick, 8);
+                }
+            }
+            case 8 -> {
+                // Stances: every live knight held in each order stance in turn. On the close view the change is shot tick by tick as it
+                // fades in; every knight must show the pose at weight over .5 within 4 ticks of the server's change, and fully by k30.
+                int ci = i / STANCE_VIEWS.length, vi = i % STANCE_VIEWS.length;
+                String[] sc = STANCE_CASES[ci]; String view = STANCE_VIEWS[vi];
+                boolean shield = sc[2].equals("1"), ready = sc[0].equals("ready");
+                String[] want = StanceController.target(sc[1], shield, true);
+                if (k == 1) {
+                    if (i == 0) stanceBad.clear();
+                    if (vi == 0) stanceLag.clear();
+                    lastShot = -1;
+                    Phase1Checks.server(c, b -> hold(b, sc[1], shield, view(b, view, true)));
+                }
+                // Ready is the guard a fighting knight stands in: the change is the blow that starts the fight, once every knight stands
+                // still on its mark (the duel had parked four of them 30 blocks off; the move back is not the stance's lag).
+                if (ready && k == 8 && vi == 0) changedAt = -1;
+                if (ready && k == 8) Phase1Checks.server(c, b -> { hitAll(b, 0, 0, false); if (vi == 0) changedAt = hitAt; });
+                if (k == 3) { c.setScreen(null); c.options.hudHidden = true; }
+                if (vi == 0 && k > (ready ? 8 : 1) && k < 30 && c.world != null && changedAt >= 0) {
+                    long t = c.world.getTime() - changedAt;
+                    if (t >= 0 && t <= 6 && t != lastShot) { lastShot = (int) t; Phase1Checks.shot(c, String.format("geo-knight-stance-%s-in-%02d", sc[0], t)); }
+                    for (int j = 0; j < knights.size(); j++) {
+                        var e = c.world.getEntityById(knights.get(j).mob.getId());
+                        StanceController st = e == null ? null : StanceController.LIVE.get(e);
+                        if (st == null || stanceLag.containsKey(j) || !(e instanceof LivingEntity l) || !l.isAlive()) continue;
+                        boolean up = st.shownUpper.equals(want[0]) && st.shownUpperWeight > .5;
+                        boolean legs = want[1] == null || (st.shownLegs.equals(want[1]) && st.shownLegsWeight > .5);
+                        if (up && legs) stanceLag.put(j, t);
+                    }
+                }
+                if (k == 30) {
+                    Phase1Checks.shot(c, "geo-knight-stance-" + sc[0] + "-" + view);
+                    if (c.world != null) for (int j = 0; j < knights.size(); j++) {
+                        var e = c.world.getEntityById(knights.get(j).mob.getId());
+                        if (!(e instanceof LivingEntity l) || !l.isAlive()) continue;
+                        StanceController st = StanceController.LIVE.get(e);
+                        if (st == null) { stanceBad.add(sc[0] + ":" + j + " no stance layer"); continue; }
+                        boolean up = want[0] == null ? st.shownUpperWeight == 0 : st.shownUpper.equals(want[0]) && st.shownUpperWeight > .99;
+                        boolean legs = want[1] == null ? st.shownLegsWeight == 0 : st.shownLegs.equals(want[1]) && st.shownLegsWeight > .99;
+                        if (!up || !legs) stanceBad.add(String.format("%s/%s:%d shows %s %.2f + %s %.2f (stance %s shield %s still %.2f)", sc[0], view, j,
+                            st.shownUpper, st.shownUpperWeight, st.shownLegs, st.shownLegsWeight, st.shownStance, st.shownShield, st.shownStill));
+                        if (vi == 0) { Long lag = stanceLag.get(j); if (lag == null || lag > 4) stanceBad.add(sc[0] + ":" + j + " lag " + lag); }
+                    }
+                    if (vi == 0) System.out.println("[p1] stance " + sc[0] + " lag per knight " + stanceLag);
+                }
+                if (k == 31) {
+                    if (++i < STANCE_CASES.length * STANCE_VIEWS.length) next(tick, 8);
+                    else {
+                        Phase1Checks.report("p1-geo-knight-stance", stanceBad.isEmpty(), STANCE_CASES.length + " stances x " + STANCE_VIEWS.length
+                            + " views, every live knight on its pose at weight 1 by k30 and over .5 within 4 ticks of the change" + (stanceBad.isEmpty() ? "" : "; bad " + stanceBad));
+                        i = 0; next(tick, 10);
+                    }
+                }
+            }
+            case 10 -> {
+                // Hits: every live knight, in no order stance, takes the same blow at k25; the tier III own knight's hit layer is shot
+                // every tick of the reaction (far: even ticks) and checked: its clip, direction mix, peak scale, and gone after.
+                int hi = i / HIT_VIEWS.length, vi = i % HIT_VIEWS.length;
+                String name = HIT_CASES[hi], view = HIT_VIEWS[vi];
+                boolean blocked = name.equals("block"), far = view.equals("far"), first = i == 0;
+                int w = HIT_WEIGHT[hi];
+                float bearing = HIT_BEARING[hi];
+                String clip = blocked ? "hit_block" : w == 0 ? "hit_light" : "hit_medium";
+                int len = blocked ? 10 : w == 0 ? 9 : 16;
+                double scale = blocked ? HitController.BLOCK_SCALE[w] : w >= 2 ? HitController.HEAVY : 1;
+                if (k == 1) {
+                    if (first) hitBad.clear();
+                    taken.clear(); hitMaxScale = 0; hitFrames = 0; hitAt = -1;
+                    Phase1Checks.server(c, b -> {
+                        hold(b, "", blocked, view(b, view, false));
+                        if (first) hitAll(b, 0, 0, false); // starts the ready guard, so the first case is not also its fade in
+                    });
+                }
+                if (k == 3) { c.setScreen(null); c.options.hudHidden = true; }
+                if (k == 25) { hitAt = -1; Phase1Checks.server(c, b -> hitAll(b, bearing, w, blocked)); }
+                if (k > 25 && hitAt >= 0 && c.world != null) {
+                    var e = c.world.getEntityById(knights.get(2).mob.getId());
+                    HitController hc = e == null ? null : HitController.LIVE.get(e);
+                    if (hc != null && hc.shownT >= 0) {
+                        int tt = (int) Math.round(hc.shownT);
+                        if (Math.abs(hc.shownT - tt) <= .3 && (!far || tt % 2 == 0) && taken.add(name + ":" + tt)) {
+                            Phase1Checks.shot(c, String.format("geo-knight-hit-%s-%s-%02d", view, name, tt));
+                            hitFrames++;
+                        }
+                        if (!hc.shownClip.equals(clip) && hitBad.size() < 40) hitBad.add(name + "/" + view + " clip " + hc.shownClip + "@" + String.format("%.1f", hc.shownT));
+                        hitMaxScale = Math.max(hitMaxScale, hc.shownScale);
+                        if (!blocked) {
+                            double[] m = new double[4]; HitController.mix(bearing, m);
+                            for (int q = 0; q < 4; q++) if (Math.abs(m[q] - hc.shownMix[q]) > .01) { if (hitBad.size() < 40) hitBad.add(name + " mix " + Arrays.toString(hc.shownMix)); break; }
+                        }
+                    }
+                }
+                if (k == 25 + len + 12) {
+                    var e = c.world == null ? null : c.world.getEntityById(knights.get(2).mob.getId());
+                    HitController hc = e == null ? null : HitController.LIVE.get(e);
+                    if (hc == null) hitBad.add(name + "/" + view + " no hit layer");
+                    else if (!hc.shownClip.isEmpty()) hitBad.add(name + "/" + view + " still playing " + hc.shownClip + " at " + hc.shownT);
+                    if (hitMaxScale < .95 * scale || hitMaxScale > 1.001 * scale) hitBad.add(String.format("%s/%s peak scale %.3f want %.3f", name, view, hitMaxScale, scale));
+                    int need = far ? len / 4 : len / 2;
+                    if (hitFrames < need) hitBad.add(name + "/" + view + " frames " + hitFrames + "/" + need);
+                    System.out.println(String.format("[p1] hit %s/%s frames %d scale %.3f", name, view, hitFrames, hitMaxScale));
+                    if (++i < HIT_CASES.length * HIT_VIEWS.length) next(tick, 10);
+                    else {
+                        Phase1Checks.report("p1-geo-knight-hit", hitBad.isEmpty(), HIT_CASES.length + " blows x " + HIT_VIEWS.length
+                            + " views: clip, bearing mix, peak scale, frames, and gone after the clip" + (hitBad.isEmpty() ? "" : "; bad " + hitBad.subList(0, Math.min(8, hitBad.size()))));
+                        Phase1Checks.server(c, b -> hold = null);
+                        next(tick, 9);
+                    }
                 }
             }
             case 9 -> {

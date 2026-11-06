@@ -1,0 +1,171 @@
+package gg.gravesandglory;
+
+import net.minecraft.entity.Entity;
+import net.minecraft.entity.LivingEntity;
+import software.bernie.geckolib.constant.DataTickets;
+import software.bernie.geckolib.core.animatable.model.CoreGeoBone;
+import software.bernie.geckolib.core.animatable.model.CoreGeoModel;
+import software.bernie.geckolib.core.animation.Animation;
+import software.bernie.geckolib.core.animation.AnimationController;
+import software.bernie.geckolib.core.animation.AnimationState;
+import software.bernie.geckolib.core.keyframe.BoneAnimation;
+import software.bernie.geckolib.core.object.PlayState;
+import software.bernie.geckolib.core.state.BoneSnapshot;
+
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.Map;
+import java.util.WeakHashMap;
+
+/**
+ * The stance layer (unit animation rebuild, docs/anim-rebuild/PLAN.md, "Shield"): what the knight holds while it obeys an order.
+ * Registered after {@code upper} and before {@code attack}, it blends the order's pose (MotionEvents stance, plus the synced raised
+ * shield) over the gait, so a Hold or a shield wall reads at range and a swing starts from, and returns to, that pose.
+ * <p>
+ * Every pose has its own ramp that moves 1/{@link #RAMP} per tick toward on or off, so a new order shows within 2 ticks and two
+ * poses crossfade without a pop. The upper poses go over any gait. The leg poses, and the "ready" combat idle, play only while the
+ * troop stands: they are scaled by how still it is, so a planted foot never slides when the unit moves off.
+ */
+final class StanceController extends AnimationController<GeoTroop> {
+    /** Ticks for a pose to fully come in or go out. */
+    static final double RAMP = 2;
+    /** Ticks for the standing factor to follow the gait (legs poses and ready fade over this when the troop starts or stops). */
+    static final double STILL = 3;
+    /** A troop that swung or was struck within this many ticks, and has no order stance, stands in the ready guard. */
+    static final long FIGHTING = 100;
+
+    private final Gait gait;
+    /** Each pose's ramp, 0..1, by clip name; insertion order is the blend order. */
+    private final Map<String, Double> ramps = new LinkedHashMap<>();
+    private double still = 1, last = Double.NaN;
+    /** Per-bone blend accumulator, reused every frame: rot xyz, pos xyz, rot weight, pos weight. */
+    private final Map<String, float[]> acc = new HashMap<>();
+    /** What the last frame chose and showed, for the in-game checks (GeoKnightChecks). Never read in play. */
+    String shownUpper = "", shownLegs = "", shownStance = "";
+    double shownUpperWeight, shownLegsWeight, shownStill;
+    boolean shownShield;
+    private boolean listed;
+    static final Map<Entity, StanceController> LIVE = Collections.synchronizedMap(new WeakHashMap<>());
+
+    StanceController(GeoTroop troop, Gait gait) {
+        super(troop, "stance", 0, s -> PlayState.STOP);
+        this.gait = gait;
+    }
+
+    /** The upper and legs pose for a stance name, a raised shield and recent fighting (either may be null: none). */
+    static String[] target(String stance, boolean shield, boolean fighting) {
+        return switch (stance) {
+            case "wall" -> new String[]{shield ? "stance_wall_up_upper" : "stance_wall_upper", "stance_wall_legs"};
+            case "brace" -> new String[]{shield ? "stance_brace_up_upper" : "stance_brace_upper", "stance_brace_legs"};
+            case "shield_move" -> new String[]{"stance_shield_up_upper", null};
+            case "fall_back" -> new String[]{shield ? "stance_shield_up_upper" : "stance_ward_upper", null};
+            case "run" -> new String[]{null, null};
+            default -> new String[]{shield ? "stance_shield_up_upper" : fighting ? "stance_ready_upper" : null, null};
+        };
+    }
+
+    @Override
+    public void process(CoreGeoModel<GeoTroop> model, AnimationState<GeoTroop> state, Map<String, CoreGeoBone> bones,
+                        Map<String, BoneSnapshot> snapshots, double seekTime, boolean crashWhenCantFindBone) {
+        Entity e = state.getData(DataTickets.ENTITY);
+        if (e == null || e.getWorld() == null) return;
+        if (!listed) { listed = true; LIVE.put(e, this); }
+        double now = e.getWorld().getTime() + state.getPartialTick();
+        double dt = Double.isNaN(last) || now - last > 4 ? 1e9 : Math.max(0, now - last);
+        last = now;
+
+        boolean dead = e instanceof LivingEntity l && (l.isDead() || l.deathTime > 0);
+        boolean shield = e instanceof LivingEntity l && l.isUsingItem();
+        String stance = MotionEvents.Client.stance(e.getId()).name();
+        long recent = Long.MIN_VALUE;
+        for (MotionInput.Attack a : MotionEvents.Client.attacks(e.getId())) recent = Math.max(recent, a.startTick());
+        for (MotionInput.Hit h : MotionEvents.Client.hits(e.getId())) recent = Math.max(recent, h.tick());
+        boolean fighting = recent != Long.MIN_VALUE && now - recent < FIGHTING;
+        boolean standing = gait.mode == Gait.Mode.IDLE;
+        still = step(still, standing ? 1 : 0, dt / STILL);
+        String[] want = dead ? new String[]{null, null} : target(stance, shield, fighting);
+        shownStance = stance; shownShield = shield; shownStill = still;
+
+        for (String w : want) if (w != null) ramps.putIfAbsent(w, 0.0);
+        for (Map.Entry<String, Double> r : ramps.entrySet()) {
+            String k = r.getKey();
+            r.setValue(step(r.getValue(), k.equals(want[0]) || k.equals(want[1]) ? 1 : 0, dt / RAMP));
+        }
+
+        for (float[] a : acc.values()) java.util.Arrays.fill(a, 0);
+        shownUpper = ""; shownLegs = ""; shownUpperWeight = 0; shownLegsWeight = 0;
+        for (Map.Entry<String, Double> r : ramps.entrySet()) {
+            String k = r.getKey();
+            double w = AttackController.smooth(r.getValue());
+            boolean legs = k.endsWith("_legs");
+            if (legs || k.equals("stance_ready_upper")) w *= AttackController.smooth(still);
+            if (w <= 0) continue;
+            Animation clip = model.getAnimation(animatable, k);
+            if (clip == null) continue;
+            if (legs ? w > shownLegsWeight : w > shownUpperWeight) {
+                if (legs) { shownLegs = k; shownLegsWeight = w; } else { shownUpper = k; shownUpperWeight = w; }
+            }
+            accumulate(clip, now % clip.length(), bones, (float) w);
+        }
+        ramps.values().removeIf(v -> v <= 0);
+        apply(bones);
+    }
+
+    /** Moves {@code v} toward {@code to} by at most {@code by}. */
+    private static double step(double v, double to, double by) {
+        return v < to ? Math.min(to, v + by) : Math.max(to, v - by);
+    }
+
+    /** Adds the clip's pose at {@code t}, by weight {@code w}, into each keyed bone's accumulator. */
+    private void accumulate(Animation clip, double t, Map<String, CoreGeoBone> bones, float w) {
+        for (BoneAnimation b : clip.boneAnimations()) {
+            CoreGeoBone bone = bones.get(b.boneName());
+            if (bone == null) continue;
+            float[] a = acc.computeIfAbsent(b.boneName(), k -> new float[8]);
+            var rot = b.rotationKeyFrames();
+            if (!rot.xKeyframes().isEmpty()) {
+                BoneSnapshot init = bone.getInitialSnapshot();
+                a[0] += w * (AttackController.sample(rot.xKeyframes(), t) + init.getRotX());
+                a[1] += w * (AttackController.sample(rot.yKeyframes(), t) + init.getRotY());
+                a[2] += w * (AttackController.sample(rot.zKeyframes(), t) + init.getRotZ());
+                a[6] += w;
+            }
+            var pos = b.positionKeyFrames();
+            if (!pos.xKeyframes().isEmpty()) {
+                a[3] += w * AttackController.sample(pos.xKeyframes(), t);
+                a[4] += w * AttackController.sample(pos.yKeyframes(), t);
+                a[5] += w * AttackController.sample(pos.zKeyframes(), t);
+                a[7] += w;
+            }
+        }
+    }
+
+    /**
+     * Lerps each accumulated bone from what the gait wrote toward the weighted mean of the poses, by their summed weight (at most 1):
+     * one pose alone at weight w is a plain lerp, two poses crossfading share the bone without overshooting.
+     */
+    private void apply(Map<String, CoreGeoBone> bones) {
+        for (Map.Entry<String, float[]> en : acc.entrySet()) {
+            float[] a = en.getValue();
+            CoreGeoBone bone = bones.get(en.getKey());
+            if (bone == null) continue;
+            if (a[6] > 0) {
+                float k = Math.min(1, a[6]);
+                bone.setRotX(lerp(bone.getRotX(), a[0] / a[6], k));
+                bone.setRotY(lerp(bone.getRotY(), a[1] / a[6], k));
+                bone.setRotZ(lerp(bone.getRotZ(), a[2] / a[6], k));
+                bone.markRotationAsChanged();
+            }
+            if (a[7] > 0) {
+                float k = Math.min(1, a[7]);
+                bone.setPosX(lerp(bone.getPosX(), a[3] / a[7], k));
+                bone.setPosY(lerp(bone.getPosY(), a[4] / a[7], k));
+                bone.setPosZ(lerp(bone.getPosZ(), a[5] / a[7], k));
+                bone.markPositionAsChanged();
+            }
+        }
+    }
+
+    private static float lerp(float a, float b, float w) { return a + (b - a) * w; }
+}

@@ -152,3 +152,38 @@ often learns of a swing a fraction of a tick late, so runs 10 and 11 each missed
 Run 12 failed march-run-side (client median 0.303 against 0.264) and attack-walk (the foe's backing speed dipped once to 0.089)
 on a loaded machine. Run 13, with the same code, passed the full suite with every speed exact, so those two failures were server
 hitches, not gait faults. If they recur, make the foe-backing gate a median like the march check.
+
+**Shield and hits (2026-11-05).** Order stances (ready, brace, brace_up, wall, wall_up, shield_up for shield_move and
+fall_back_up, ward) are blended by StanceController, ramping in over 2 ticks. Hit reactions are additive in HitController:
+light (9 ticks) and medium (16 ticks) are each mixed from front, back, right and left clips by the blow's bearing, heavy is the
+medium clip at 1.55x, and a blocked blow plays hit_block, scaled by weight.
+
+A Sonnet high round 1 review of the renderer sheets and the run 14 in-game sheets raised these findings. Fix round 1, in
+build_anims.py and HitController, addressed them:
+- The light flinch was too close to the medium stagger. It is now 50% of the stagger's first key.
+- The medium_right and medium_left roll was excessive. It is cut.
+- The medium_back head dipped into the shoulders. The back pitch is reduced.
+- Heavy was not clearly deeper than medium. HEAVY went from 1.3 to 1.55.
+- Wall and ward read alike, since both pointed the sword forward. Wall is now deeper, with the torso pitched well forward and
+  the sword level over the rim. Ward leans back with the sword across the belly, point down.
+- In brace, the sword now rides low by the right hip and the shield is face-on.
+- On a block, the shield arm is thrown up and forward into the blow, then driven back.
+
+Run 13 missed the ready shot and the march window. Run 14 fixed the harness for both. Run 15, with fix round 1, passed every
+check: stance 8x3 (over 0.5 within 4 ticks), hit 8x3, and the suite.
+
+Round 2 (final) re-review of run 15. Verdict: the round 1 majors are resolved and no blockers remain.
+- FIXED: light vs medium, the medium_right roll, wall vs ward (in side view and at 16 blocks), heavy vs medium, and the
+  medium_back head.
+- PARTLY: brace and block.
+- No clipping was seen in any stance. All reactions return to the base pose by t10-15.
+
+Remaining MINORs, recorded and not iterated under the two-round limit:
+- Light flinch and block are weak at 16 blocks. Try a light flinch at 0.6 of the first key, or a small whole-body shift.
+- medium_back t3-5: the sword swings level and points at the neighbour, so it reads as a stab. Angle it about 30° down or back.
+- Brace: the near knight's shield reads edge-on in the close side view. It is face-on in the close and far views.
+- Block: the shield moves only a little from the ready pose.
+- wall_up is only slightly higher than wall at 16 blocks. Raise the shield 2-3 more units.
+- The medium_left side view reads a little weaker than medium_right.
+- The reviewer did not open stance_in (the fade-in sheet), and the harness gate (over 0.5 within 4 ticks) is the only evidence
+  for it.
