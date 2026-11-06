@@ -44,7 +44,7 @@ TROOP = os.environ.get("GG_ANIM_TROOP", "knight")
 # Shieldless one-handed troops (revenant: notched sword, tc_raider: cutlass) keep the same body mechanics, but the empty left
 # hand is a free fist: a lead/balance hand in the guard, a counter-pull to the hip on every blow, a natural arm swing in the
 # gait, hanging loose at ease. Every shield-hold solve below then aims the fist only, with the wrist straight (FREE_WRIST).
-SHIELD = TROOP in ("knight", "sentinel", "ic_hearthguard")
+SHIELD = TROOP in ("knight", "sentinel", "ic_hearthguard", "gl_marshal")
 PREVIEW = HERE / "out" / "A" / "preview" if TROOP == "knight" else HERE.parent / TROOP / "out" / "preview"
 GEO = PREVIEW / "t1.geo.json"
 OUT = (HERE if TROOP == "knight" else HERE.parent / TROOP) / "out" / f"{TROOP}.animation.json"
@@ -571,7 +571,10 @@ def skey(torso, arm, fore, blade, blade_out, fist, hips=Z3, tilt=0.0, head=None)
 # left shoulder leads over the staggered feet of the ready footing (STANCE_LEGS "ready"). Every swing starts and ends on it.
 READY = skey((5, 14, 0), (-44, 0, 14), -50, -44, -12, FIST_GUARD if SHIELD else FREE_GUARD, hips=(0, 6, 0))
 GUARD = READY
-LONG = TROOP == "sentinel"   # the Templar's 25-31 px longsword follows through flatter, so its tip clears the ground
+LONG = TROOP in ("sentinel", "gl_marshal")   # the Templar's 25-31 px longsword (and the Marshal's 24-32 px broadsword) follows through flatter, so its tip clears the ground
+# The Marshal's broadsword reaches lower still: its cuts carry flatter by this much more (review 2026-11-06: the low cut's tip
+# and the overhead's follow-through dipped under the soles).
+FLAT = float(os.environ.get("GG_FLAT", 18.0 if TROOP == "gl_marshal" else 0.0))
 
 # The standing footwork under each swing (STYLE.md rule 4): the hips coil back with the load, the lead (right) foot steps
 # in and plants by the impact tick while the hips drop and drive forward into a wide, deep stance, then the foot steps
@@ -664,8 +667,8 @@ ATTACKS = {
         swing("overhead", 7.5, (-15, 17, 2), (-170, 0, 20), -74, -158, 0, (1.4, 20.2, 4.8), throw=(-6, 4, 4)),
         swing("overhead", 8.8, (2, 4, 0), (-150, 0, 14), -28, -80, 0, (2.4, 19.5, 5.6)),
         swing("overhead", 10, (16, -10, 0), (-100, 0, 6), -8, 22, 0, (3.6, 18.2, 6.2), throw=(-3, -5, -3)),
-        swing("overhead", 12, (22, -16, 0), (-58, 0, 2), -12, 26 if LONG else 32, -6, (4.0, 17.9, 5.8), throw=(-4, -6, -4)),
-        swing("overhead", 14, (22, -18, 0), (-46, 0, 2), -12, 30 if LONG else 36, -10, (4.0, 17.9, 5.8), throw=(-4, -6, -4)),
+        swing("overhead", 12, (22, -16, 0), (-58, 0, 2), -12, (26 if LONG else 32) - FLAT, -6, (4.0, 17.9, 5.8), throw=(-4, -6, -4)),
+        swing("overhead", 14, (22, -18, 0), (-46, 0, 2), -12, (30 if LONG else 36) - FLAT, -10, (4.0, 17.9, 5.8), throw=(-4, -6, -4)),
         swing("overhead", 18, (8, 8, 0), (-40, 0, 12), -52, -34, -8, (2.6, 18.8, 5.8)),
         (ATTACK_TICKS, GUARD),
     ],
@@ -673,8 +676,8 @@ ATTACKS = {
         (0, GUARD),
         swing("low_cut", 3.5, (-4, 32, 6), (-32, 0, 58), -62, -42, 62, (1.6, 19.2, 4.8), throw=(4, 8, 2)),
         swing("low_cut", 6.2, (-6, 36, 8), (-34, 0, 62), -64, -46, 66, (1.4, 19.3, 4.6), throw=(5, 9, 2)),
-        swing("low_cut", 8, (22, -22, -6), (-55, 0, 0), -10, 40, -30, (3.8, 17.8, 6.0), throw=(-3, -6, -4)),
-        swing("low_cut", 11, (26, -36, -6), (-45, 0, -18), -15, 38 if LONG else 46, -48, (4.2, 17.6, 5.6), throw=(-4, -7, -5)),
+        swing("low_cut", 8, (22, -22, -6), (-55, 0, 0), -10, 40 - FLAT, -30, (3.8, 17.8, 6.0), throw=(-3, -6, -4)),
+        swing("low_cut", 11, (26, -36, -6), (-45, 0, -18), -15, (38 if LONG else 46) - FLAT, -48, (4.2, 17.6, 5.6), throw=(-4, -7, -5)),
         swing("low_cut", 15, (12, -10, 0), (-30, 0, 4), -40, 10, 6, (3.0, 18.4, 5.8)),
         swing("low_cut", 18.5, (6, 12, 0), (-44, 0, 13), -52, -40, -10, (2.2, 18.9, 6.0)),
         (ATTACK_TICKS, GUARD),

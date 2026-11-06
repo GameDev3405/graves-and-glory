@@ -43,6 +43,7 @@ XBOW_LOOSE = {n for ns in XBOW_FRAMES.values() for n in ns}
 # troop id: (art dir, module, Troop attribute, weapon module, weapon id (tiers <id>, <id>_t2, <id>_t3), weapon rotation in the fist)
 TROOPS = {
     "sentinel": ("sentinel", "build_sentinel", "SENTINEL", "build_longsword", "longsword", (-90, 0, 90)),
+    "gl_marshal": ("gl_marshal", "build_gl_marshal", "MARSHAL", "build_marshal_sword", "marshal_sword", (-90, 0, 90)),
     "revenant": ("revenant", "build_revenant", "REVENANT", "build_gb_notched_sword", "notched_sword", (-90, 0, 90)),
     "tc_raider": ("tc_raider", "build_tc_raider", "TC_RAIDER", "build_house_weapons", "cutlass", (-90, 0, 90)),
     # a spear (both fists on the shaft; build_spear_anims solves the left fist to it) rides the right fist like a blade
@@ -51,6 +52,9 @@ TROOPS = {
     "tc_admiral": ("tc_admiral", "build_tc_admiral", "TC_ADMIRAL", "build_house_weapons", "admiral_trident", (-90, 0, 90)),
     # an axe rides the right fist like a sword, rolled half a turn about the haft so the bit faces the foe in guard and leads every chop
     "ic_breaker": ("ic_breaker", "build_ic_breaker", "IC_BREAKER", "build_ic_weapons", "ic_axe", (-90, 0, -90)),
+    # a scythe rides the right fist like the greataxe (both fists on the haft, solved by the spear builder), rolled so the
+    # blade (weapon +x) is placed as the axe's bit is
+    "reaper": ("reaper", "build_reaper", "REAPER", "build_gb_scythe", "scythe", (-90, 0, -90)),
     "ic_hearthguard": ("ic_hearthguard", "build_ic_hearthguard", "IC_HEARTHGUARD", "build_house_weapons", "hearth_axe", (-90, 0, -90)),
     # a bow (kind "bow") rides the left fist; its rest and three draw frames are child bones the renderer switches between
     "archer": ("archer", "build_archer", "ARCHER", "build_bows", "order_bow", BOW_ROT, "bow"),

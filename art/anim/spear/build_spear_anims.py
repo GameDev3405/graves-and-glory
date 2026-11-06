@@ -36,7 +36,12 @@ SPEAR_TROOPS = {"wm_tusk": {"gear": {"kilt": 0.4, "trophy": 0.7}},
                 # The Iron Clans breaker swings a two-handed greataxe (art/anim/greataxe): it borrows this builder's solver, footing,
                 # carry, hits and falls, and keys its own swings.
                 "ic_breaker": {"gear": {"cape": 0.5, "tabard": 0.3, "tabard_skirt": 0.3, "apron": 0.3}, "death_lookahead": True,
-                               "death_step": 0.25, "death_top": 0.15}}
+                               "death_step": 0.25, "death_top": 0.15},
+                # The Graveborn reaper swings a two-handed scythe (art/anim/scythe), the same way the breaker swings its axe.
+                "reaper": {"gear": {"shroud": 0.6, "plate_cape": 0.4, "mantle": 0.15, "sash_tails": 0.7, "rags": 0.6, "cord": 0.7,
+                                    "hood_drape": 0.4}, "death_lookahead": True, "death_step": 0.25, "death_top": 0.15,
+                           "soft": ("rags", "sash_tails", "cord", "shroud"),
+                           "hip_drop": 0.4}}   # its legs are 0.3 px short of the shared wide stance: it stands a little lower
 ST = SPEAR_TROOPS[TROOP]
 LOOKAHEAD = ST.get("death_lookahead", False)   # per troop: wrist turn planned backwards through the fall (see flat_weapon)
 RX = ST.get("rear_x", 0.0)        # per-troop shift of the thrust contact fist outward, keeping the butt out of a wider torso
@@ -54,14 +59,17 @@ W = "weapon_t1"                 # every tier's spear shares the pivot and axes
 # ------------------------------------------------------------------------------------------------
 
 _HAND_TO_W = K.world({}, "right_hand")[:3, :3].T @ K.world({}, W)[:3, :3]
-GRIP = (-6.0, 14.0, 0.0)            # right_hand-local: the hand pivot, where the fist holds the shaft
-FIST_L = (6.0, 12.5, 0.0)           # left_forearm-local: the centre of the left fist
+# The fist pivots come from the rig: (-6, 14) on the stock arm, (-5, 13) on a slimmer one (the reaper's bony arms).
+_PIV = {b["name"]: b["pivot"] for b in _GEO}
+GX, GY = float(_PIV["right_hand"][0]), float(_PIV["right_hand"][1])
+GRIP = (GX, GY, 0.0)                # right_hand-local: the hand pivot, where the fist holds the shaft
+FIST_L = (float(_PIV["left_hand"][0]), float(_PIV["left_hand"][1]) - 1.5, 0.0)   # left_forearm-local: the left fist's centre
 _WY = [c["origin"][1] + k * c["size"][1] for b in _GEO if b["name"].startswith("weapon_t") for c in b.get("cubes", []) for k in (0, 1)]
-BUTT, TIP = min(_WY) - 14.0, max(_WY) - 14.0
+BUTT, TIP = min(_WY) - GY, max(_WY) - GY
 
 
 def S(s):
-    return (-6.0, 14.0 + s, 0.0)
+    return (GX, GY + s, 0.0)
 
 
 def unit(v):
@@ -254,12 +262,12 @@ def shaft_hits(pose, margin=0.3):
 # ------------------------------------------------------------------------------------------------
 
 _KN_HIPS, _KN_FEET = K.READY_HIPS, dict(K.READY_FEET)
-READY_HIPS = ((0.0, 20.0, 0.0), (0.0, -1.3, 0.1))
+READY_HIPS = ((0.0, 20.0, 0.0), (0.0, -1.3 - ST.get("hip_drop", 0.0), 0.1))
 READY_FEET = {"left": ((3.4, 2.0, 2.4), 14.0), "right": ((-3.2, 2.0, -2.2), -6.0)}
 K.READY_HIPS, K.READY_FEET = READY_HIPS, READY_FEET
 STANCE_LEGS = {
     "ready": {"hips": READY_HIPS, "left": (3.4, 2.0, 2.4), "right": (-3.2, 2.0, -2.2), "yaw": (-6.0, 14.0)},
-    "brace": {"hips": ((0.0, 24.0, 0.0), (0.0, -1.5, 0.2)), "left": (3.0, 2.0, 3.0), "right": (-2.8, 2.0, -2.8), "yaw": (-8.0, 16.0)},
+    "brace": {"hips": ((0.0, 24.0, 0.0), (0.0, -1.5 - ST.get("hip_drop", 0.0), 0.2)), "left": (3.0, 2.0, 3.0), "right": (-2.8, 2.0, -2.8), "yaw": (-8.0, 16.0)},
     "wall": {"hips": ((4.0, 28.0, 0.0), (0.0, -3.4, 0.6)), "left": (3.4, 2.0, 4.2), "right": (-3.2, 2.0, -4.0), "yaw": (-10.0, 22.0)},
 }
 

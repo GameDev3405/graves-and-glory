@@ -1,0 +1,105 @@
+{
+ "troop": "gl_marshal",
+ "tiers": [
+  1,
+  2,
+  3
+ ],
+ "faces": 1,
+ "bones": {
+  "root": {},
+  "hips": {},
+  "torso": {},
+  "head": {},
+  "helm": {
+   "tag": "helm"
+  },
+  "crown": {
+   "stages": [
+    3
+   ],
+   "tag": "helm"
+  },
+  "right_arm": {},
+  "right_forearm": {},
+  "right_hand": {},
+  "right_couter": {},
+  "right_cuff": {},
+  "right_pauldron": {},
+  "left_arm": {},
+  "left_forearm": {},
+  "left_hand": {},
+  "shield": {
+   "tag": "shield"
+  },
+  "shield_face": {
+   "team": true,
+   "tag": "shield"
+  },
+  "left_couter": {},
+  "left_cuff": {},
+  "left_pauldron": {},
+  "gorget": {},
+  "fur_collar": {
+   "stages": [
+    2,
+    3
+   ]
+  },
+  "cape": {
+   "team": true
+  },
+  "cape_t2": {
+   "stages": [
+    2
+   ],
+   "team": true
+  },
+  "cape_t3": {
+   "stages": [
+    3
+   ],
+   "team": true
+  },
+  "surcoat": {
+   "team": true
+  },
+  "right_leg": {},
+  "right_shin": {},
+  "right_foot": {},
+  "right_boot": {},
+  "right_toe": {},
+  "right_knee": {},
+  "right_skirt": {
+   "team": true
+  },
+  "left_leg": {},
+  "left_shin": {},
+  "left_foot": {},
+  "left_boot": {},
+  "left_toe": {},
+  "left_knee": {},
+  "left_skirt": {
+   "team": true
+  },
+  "belt": {},
+  "weapon_t1": {
+   "stages": [
+    1
+   ],
+   "tag": "weapon"
+  },
+  "weapon_t2": {
+   "stages": [
+    2
+   ],
+   "tag": "weapon"
+  },
+  "weapon_t3": {
+   "stages": [
+    3
+   ],
+   "tag": "weapon"
+  }
+ }
+}
