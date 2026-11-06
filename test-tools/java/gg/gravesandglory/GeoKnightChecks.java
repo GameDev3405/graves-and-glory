@@ -41,8 +41,22 @@ final class GeoKnightChecks implements Phase1Checks.Suite {
     static final double GAP = RANGED ? 10 : 2;
     /** Ticks into the foe's swing (a bow: its draw) it is killed; the swing must show 2 ticks before that. */
     static final int KILL_AT = RANGED ? 12 : 4;
-    /** Clip ticks the frame checks expect (a bow clip draws, holds and recovers over 26; a crossbow's shot, kick and span over its first 30), and the gap window between swings. */
-    static final int FRAMES = XBOW ? 30 : RANGED ? 26 : 22, GAP_T = XBOW ? 55 : RANGED ? 31 : 22;
+    /** A melee troop's attack clip length in ticks, read from its exported animation file (the longest attack_ clip): the knight's
+     *  are 22, a heavier swing's longer, and every tick of it is a frame to catch, with the gap window opening when it ends. */
+    static final int MELEE_T = meleeTicks();
+    static int meleeTicks() {
+        try (var in = GeoKnightChecks.class.getResourceAsStream("/assets/gravesandglory/animations/troop/" + TROOP + ".animation.json")) {
+            if (in == null) return 22;
+            var anims = com.google.gson.JsonParser.parseReader(new java.io.InputStreamReader(in, java.nio.charset.StandardCharsets.UTF_8)).getAsJsonObject().getAsJsonObject("animations");
+            double len = 0;
+            for (var e : anims.entrySet())
+                if (e.getKey().startsWith("attack_") && !e.getKey().endsWith("_legs") && e.getValue().getAsJsonObject().has("animation_length"))
+                    len = Math.max(len, e.getValue().getAsJsonObject().get("animation_length").getAsDouble());
+            return len > 0 ? (int) Math.round(len * 20) : 22;
+        } catch (Exception e) { return 22; }
+    }
+    /** Clip ticks the frame checks expect (a bow clip draws, holds and recovers over 26; a crossbow's shot, kick and span over its first 30; a melee clip its own length), and the gap window between swings. */
+    static final int FRAMES = XBOW ? 30 : RANGED ? 26 : MELEE_T, GAP_T = XBOW ? 55 : RANGED ? 31 : MELEE_T;
     static final Gait.Mode[] MODES = {Gait.Mode.WALK, Gait.Mode.RUN};
     /** March directions per view, seen from the camera north of the line looking south: side on, head on, three-quarter. */
     static final String[] MARCH_VIEWS = {"side", "front", "threequarter"};
@@ -536,9 +550,11 @@ final class GeoKnightChecks implements Phase1Checks.Suite {
                 if (d == null || !d.mode.equals("stand")) { if (k > 200) { Phase1Checks.report("p1-geo-" + TROOP + "-attack", false, "duel never ran"); next(tick, 9); } return; }
                 watch(c, d);
                 // Tick 0 is weight 0 by design (the same pose as the frame before it), and the client often hears of a swing a
-                // fraction of a tick after it starts, so it is saved when caught but not required: ticks 1-21 (far: 2-20) are.
+                // fraction of a tick after it starts, so it is saved when caught but not required: ticks 1 to FRAMES-1 (far: the even
+                // ones) of every variant are (the knight: 3 clips, ticks 1-21, far 2-20).
                 // A bow duel at range always shoots the same arc, so one clip's frames: ticks 1-25 (far: 2-24).
-                int want = XBOW ? (far ? 14 : 29) : RANGED ? (far ? 12 : 25) : (far ? 3 * 10 : 3 * 21);
+                int nv = Tactics.variants(d.us[0].spec.family()).size();
+                int want = XBOW ? (far ? 14 : 29) : RANGED ? (far ? 12 : 25) : nv * (far ? (FRAMES - 1) / 2 : FRAMES - 1);
                 if (k > 30 && c.world != null) {
                     var e = c.world.getEntityById(d.us[0].mob.getId());
                     AttackController ac = e == null ? null : AttackController.LIVE.get(e);

@@ -49,6 +49,9 @@ TROOPS = {
     "wm_tusk": ("wm_tusk", "build_wm_tusk", "WM_TUSK", "build_house_weapons", "boar_spear", (-90, 0, 90)),
     "tc_tideguard": ("tc_tideguard", "build_tc_tideguard", "TC_TIDEGUARD", "build_house_weapons", "coral_trident", (-90, 0, 90)),
     "tc_admiral": ("tc_admiral", "build_tc_admiral", "TC_ADMIRAL", "build_house_weapons", "admiral_trident", (-90, 0, 90)),
+    # an axe rides the right fist like a sword, rolled half a turn about the haft so the bit faces the foe in guard and leads every chop
+    "ic_breaker": ("ic_breaker", "build_ic_breaker", "IC_BREAKER", "build_ic_weapons", "ic_axe", (-90, 0, -90)),
+    "ic_hearthguard": ("ic_hearthguard", "build_ic_hearthguard", "IC_HEARTHGUARD", "build_house_weapons", "hearth_axe", (-90, 0, -90)),
     # a bow (kind "bow") rides the left fist; its rest and three draw frames are child bones the renderer switches between
     "archer": ("archer", "build_archer", "ARCHER", "build_bows", "order_bow", BOW_ROT, "bow"),
     "longbow": ("longbow", "build_longbow", "LONGBOW", "build_bows", "longbow", BOW_ROT, "bow"),
@@ -117,6 +120,8 @@ def rigify(src, weapon_rot, kind="blade", hang=None):
                     cape_pivot = a
                     add(Bone("cape", "torso", rot=bn.rot, team=True), "torso", a)
                 bn.rot = [0, 0, 0]
+                if bn.name == "cape":   # a source bone named plain "cape" (ic_breaker) hangs under the container
+                    bn.name = "cape_cloth"
                 add(bn, "cape", a)
                 continue
             full = [b for b in bn.boxes if b.size[1] == 12 and b.origin[1] + a[1] == 0]

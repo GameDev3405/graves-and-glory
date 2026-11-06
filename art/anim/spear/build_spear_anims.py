@@ -32,7 +32,11 @@ GEO_BONES = {b["name"] for b in _GEO}
 SPEAR_TROOPS = {"wm_tusk": {"gear": {"kilt": 0.4, "trophy": 0.7}},
                 "tc_tideguard": {"gear": {"tabard": 0.35}, "rear_x": -0.6, "death_lookahead": True},
                 "tc_admiral": {"gear": {"cape": 0.35, "tails_l": 0.7, "tails_r": 0.7}, "rear_x": -0.6, "death_lookahead": True, "death_top": 0.15, "death_step": 0.25,
-                                  "soft": ("hair_adrift", "kelp_", "plume", "tails_", "sash_end")}}
+                                  "soft": ("hair_adrift", "kelp_", "plume", "tails_", "sash_end")},
+                # The Iron Clans breaker swings a two-handed greataxe (art/anim/greataxe): it borrows this builder's solver, footing,
+                # carry, hits and falls, and keys its own swings.
+                "ic_breaker": {"gear": {"cape": 0.5, "tabard": 0.3, "tabard_skirt": 0.3, "apron": 0.3}, "death_lookahead": True,
+                               "death_step": 0.25, "death_top": 0.15}}
 ST = SPEAR_TROOPS[TROOP]
 LOOKAHEAD = ST.get("death_lookahead", False)   # per troop: wrist turn planned backwards through the fall (see flat_weapon)
 RX = ST.get("rear_x", 0.0)        # per-troop shift of the thrust contact fist outward, keeping the butt out of a wider torso
