@@ -37,7 +37,7 @@ final class GeoTroopRenderer<E extends MobEntity> extends GeoReplacedEntityRende
     private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger("gravesandglory/geo");
     static final boolean ENABLED = !"false".equals(System.getProperty("gravesandglory.geoTroops"));
     /** The troops drawn this way. */
-    private static final Set<String> TROOPS = Set.of("knight", "sentinel", "revenant", "tc_raider");
+    private static final Set<String> TROOPS = Set.of("knight", "sentinel", "revenant", "tc_raider", "archer", "longbow", "wm_hunter", "bonebow");
     /** Sides with a painted sheet; any other side draws in linen. */
     private static final Set<String> SIDES = Set.of("gold", "violet", "crimson", "teal", "company", "linen");
 
@@ -45,7 +45,9 @@ final class GeoTroopRenderer<E extends MobEntity> extends GeoReplacedEntityRende
     static boolean handles(TroopModels.Look l) { return ENABLED && l != null && TROOPS.contains(l.troop().id()); }
 
     /** One bone's show rule: armour or weapon stages (empty for always), face variants (empty for every face), and whether it is the shield's. */
-    private record Rule(String bone, Set<Integer> stages, Set<Integer> variants, boolean weapon, boolean shield) {}
+    private record Rule(String bone, Set<Integer> stages, Set<Integer> variants, boolean weapon, boolean shield, int frame) {}
+    /** A bow's draw frames (tag "draw", bone bow_t&lt;n&gt;_&lt;frame&gt;): the one shown is the "draw" bone's x position, which the clips key. */
+    private static final List<String> FRAMES = List.of("rest", "pull_0", "pull_1", "pull_2");
 
     private final Model geo;
     private List<Rule> rules;
@@ -82,7 +84,7 @@ final class GeoTroopRenderer<E extends MobEntity> extends GeoReplacedEntityRende
         // Parents first (the rig file's order), so a shown bone never sits under a hidden one's hidden children.
         for (Rule r : rules) {
             boolean show = (!r.shield || shieldShown)
-                && (r.stages.isEmpty() || r.stages.contains(r.weapon ? weaponTier : armour))
+                && (r.stages.isEmpty() || r.stages.contains(r.weapon || r.frame >= 0 ? weaponTier : armour))
                 && TroopFaces.shows(r.variants, face, faces);
             model.getBone(r.bone).ifPresent(b -> b.setHidden(!show));
         }
@@ -108,7 +110,9 @@ final class GeoTroopRenderer<E extends MobEntity> extends GeoReplacedEntityRende
                 for (var entry : rig.getAsJsonObject("bones").entrySet()) {
                     JsonObject b = entry.getValue().getAsJsonObject();
                     String tag = b.has("tag") ? b.get("tag").getAsString() : "";
-                    out.add(new Rule(entry.getKey(), ints(b, "stages"), ints(b, "variants"), tag.equals("weapon"), tag.equals("shield")));
+                    int frame = -1;
+                    if (tag.equals("draw")) for (int i = 0; i < FRAMES.size(); i++) if (entry.getKey().endsWith("_" + FRAMES.get(i))) frame = i;
+                    out.add(new Rule(entry.getKey(), ints(b, "stages"), ints(b, "variants"), tag.equals("weapon"), tag.equals("shield"), frame));
                 }
             } catch (Exception ex) {
                 LOG.error("Could not read {}", id, ex);
@@ -116,6 +120,9 @@ final class GeoTroopRenderer<E extends MobEntity> extends GeoReplacedEntityRende
         } else LOG.error("Missing troop rig {}", id);
         faces = count;
         rules = out;
+        java.util.Map<String, Integer> draws = new java.util.HashMap<>();
+        for (Rule r : out) if (r.frame >= 0) draws.put(r.bone, r.frame);
+        geo.drawBones = draws;
     }
 
     private static Set<Integer> ints(JsonObject o, String key) {
@@ -128,6 +135,8 @@ final class GeoTroopRenderer<E extends MobEntity> extends GeoReplacedEntityRende
     static final class Model extends GeoModel<GeoTroop> {
         private final Identifier model, animations;
         Identifier texture;
+        /** The bow's draw-frame bones and their frame (0 rest to 3 full draw); empty for a troop without a bow. Set by rules(). */
+        java.util.Map<String, Integer> drawBones = java.util.Map.of();
         Model(String troop) {
             model = new Identifier(MOD, "geo/troop/" + troop + ".geo.json");
             animations = new Identifier(MOD, "animations/troop/" + troop + ".animation.json");
@@ -144,6 +153,13 @@ final class GeoTroopRenderer<E extends MobEntity> extends GeoReplacedEntityRende
          */
         @Override
         public void setCustomAnimations(GeoTroop animatable, long instanceId, AnimationState<GeoTroop> state) {
+            // The bow shows the draw frame the clips key on the "draw" bone's x position. This runs per troop after its controllers
+            // (preRender runs before them and shows the tier's frames), so it only hides the frames not drawn now.
+            CoreGeoBone draw = drawBones.isEmpty() ? null : getAnimationProcessor().getBone("draw");
+            if (draw != null) {
+                int frame = MathHelper.clamp(Math.round(Math.abs(draw.getPosX())), 0, FRAMES.size() - 1);
+                for (var d : drawBones.entrySet()) if (d.getValue() != frame) { CoreGeoBone b = getAnimationProcessor().getBone(d.getKey()); if (b != null) b.setHidden(true); }
+            }
             CoreGeoBone head = getAnimationProcessor().getBone("head");
             EntityModelData data = state.getData(DataTickets.ENTITY_MODEL_DATA);
             if (head == null || data == null) return;

@@ -39,7 +39,9 @@ final class GeoTroop implements GeoReplacedEntity {
      * troop dies it lerps every bone into the fall the killing blow called for (DeathController). Called once per troop entity.
      */
     @Override public void registerControllers(AnimatableManager.ControllerRegistrar controllers) {
-        Gait gait = new Gait();
+        double speed = 0;
+        for (Spec.TroopsRow r : Spec.TROOPS) if (r.id().equals(troop)) { speed = r.speed(); break; }
+        Gait gait = new Gait(speed);
         controllers.add(new GaitController(this, "legs", BLEND, gait, true, s -> s.setAndContinue(LEGS[gait.mode.ordinal()])));
         controllers.add(new GaitController(this, "upper", BLEND, gait, false, s -> s.setAndContinue(UPPER[gait.mode.ordinal()])));
         StanceController stance = new StanceController(this, gait);

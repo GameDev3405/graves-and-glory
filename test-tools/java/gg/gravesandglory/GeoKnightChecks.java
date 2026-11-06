@@ -31,6 +31,14 @@ final class GeoKnightChecks implements Phase1Checks.Suite {
     /** The GeckoLib troop under test (-Dgravesandglory.geoCheckTroop, default the knight): any biped on the knight's skeleton. Its
      *  march speeds scale the knight's by its troops-row speed (the knight's is .28). Reports and shots are named p1-geo-<troop>-... */
     static final String TROOP = System.getProperty("gravesandglory.geoCheckTroop", "knight");
+    /** A bow troop (Tactics.drawsAhead): its duel is fought at range, each shot drawn a beat ahead and loosed late as Tactics does. */
+    static final boolean RANGED = Arrays.stream(Spec.TROOPS).anyMatch(r -> r.id().equals(TROOP) && r.ranged() && !r.magic() && "bow".equals(r.family()));
+    /** The duelists' spacing (blocks); a bow duel stands where neither is too close to shoot. */
+    static final double GAP = RANGED ? 10 : 2;
+    /** Ticks into the foe's swing (a bow: its draw) it is killed; the swing must show 2 ticks before that. */
+    static final int KILL_AT = RANGED ? 12 : 4;
+    /** Clip ticks the frame checks expect (a bow clip draws, holds and recovers over 26), and the gap window between swings. */
+    static final int FRAMES = RANGED ? 26 : 22, GAP_T = RANGED ? 31 : 22;
     static final Gait.Mode[] MODES = {Gait.Mode.WALK, Gait.Mode.RUN};
     /** March directions per view, seen from the camera north of the line looking south: side on, head on, three-quarter. */
     static final String[] MARCH_VIEWS = {"side", "front", "threequarter"};
@@ -57,7 +65,9 @@ final class GeoKnightChecks implements Phase1Checks.Suite {
         static final int NUDGE = 40;
         final GeoKnightChecks owner; final GravesAndGlory.Battle b; final String mode; final int start;
         final GravesAndGlory.Unit[] us;
-        final long[] seen = new long[2], last = new long[2];
+        final long[] seen = new long[2], last = new long[2], beatAt = {-1, -1};
+        /** The world tick each duelist's nudged shot left (rangedNudge): the swing log reads it a tick later, so it lands here. */
+        final long[] shotAt = {-1, -1};
         final Map<GravesAndGlory.Battle.PendingStrike, long[]> open = new HashMap<>();
         final List<long[]> swings = Collections.synchronizedList(new ArrayList<>());
         volatile int k = -1, forced;
@@ -68,7 +78,8 @@ final class GeoKnightChecks implements Phase1Checks.Suite {
             this.owner = owner; this.b = b; this.mode = mode; this.start = b.server.getTicks();
             us = new GravesAndGlory.Unit[]{owner.knights.get(2), owner.knights.get(5)};
             long now = b.world.getTime();
-            for (int j = 0; j < 2; j++) { seen[j] = us[j].swingTick; last[j] = now; }
+            // A bow duel shoots first 5 ticks in: its shots are spaced wider than a swing (draw, hold, recovery), so the walk fits two each.
+            for (int j = 0; j < 2; j++) { seen[j] = us[j].swingTick; last[j] = RANGED ? now - NUDGE + 5 : now; }
         }
     }
     static volatile Duel duel;
@@ -284,32 +295,58 @@ final class GeoKnightChecks implements Phase1Checks.Suite {
         var f = d.us[1];
         if (d.mode.equals("walk")) {
             double x = cx - 6 + SPEEDS[0] * Math.max(0, Math.min(k - WALK0, WALK));
-            stand(d.us[0], x, cz, -90); stand(f, x + 2, cz, 90);
-        } else { stand(d.us[0], cx - 1, cz, -90); stand(f, cx + 1, cz, 90); }
+            stand(d.us[0], x, cz, -90); stand(f, x + GAP, cz, 90);
+        } else { stand(d.us[0], cx - 1, cz, -90); stand(f, cx - 1 + GAP, cz, 90); }
         for (int j = 0; j < 2; j++) {
             var u = d.us[j];
             if (u.swingTick != d.seen[j] && u.swingTick >= 0) {
                 d.seen[j] = u.swingTick; d.last[j] = now;
                 GravesAndGlory.Battle.PendingStrike ps = null;
                 for (var st : b.strikes) if (st.attacker() == u && st.swungAt() == u.swungAt) ps = st;
-                long[] row = {u.mob.getId(), u.swingTick, u.lastVariant, ps == null ? 0 : ps.landsAt() - ps.swungAt(), ps == null ? now : -1};
+                // A shot (Projectiles.loose) stamps its swing at the loose: its clip's impact plus its hold before, landing now.
+                long[] row = RANGED
+                    ? new long[]{u.mob.getId(), u.swingTick, u.catchVariant, Tactics.variants(u.spec.family()).get(u.catchVariant).impactTicks(), d.shotAt[j] >= 0 ? d.shotAt[j] : now, Projectiles.hold(u)}
+                    : new long[]{u.mob.getId(), u.swingTick, u.lastVariant, ps == null ? 0 : ps.landsAt() - ps.swungAt(), ps == null ? now : -1, 0};
                 d.swings.add(row);
-                if (ps != null) d.open.put(ps, row);
-                if (j == 1 && d.mode.equals("death") && k > 20 && d.killSwing < 0) d.killSwing = u.swingTick;
+                if (ps != null && !RANGED) d.open.put(ps, row);
+                if (!RANGED && j == 1 && d.mode.equals("death") && k > 20 && d.killSwing < 0) d.killSwing = u.swingTick;
             }
         }
         for (var it = d.open.entrySet().iterator(); it.hasNext(); ) { var en = it.next(); if (!b.strikes.contains(en.getKey())) { en.getValue()[4] = now; it.remove(); } }
-        if (d.killSwing >= 0 && d.killedAt < 0 && now - d.killSwing == 4) {
+        if (d.killSwing >= 0 && d.killedAt < 0 && now - d.killSwing == KILL_AT) {
             f.mob.setInvulnerable(false); f.mob.kill(); d.killedAt = now; d.killedDead = f.mob.isDead();
         }
         for (int j = 0; j < 2; j++) {
             var u = d.us[j]; LivingEntity enemy = d.us[1 - j].mob;
+            if (RANGED) { rangedNudge(d, j, k, now); continue; }
             if (u.mob.isAlive() && enemy.isAlive() && now - d.last[j] > Duel.NUDGE && b.time >= u.stunnedUntil && !Tactics.pending(b, u)) {
                 u.nextAttack = b.time + u.spec.cooldown(); u.mob.swingHand(Hand.MAIN_HAND);
                 Tactics.shoot(b, u, enemy, b.time, false);
                 d.forced++; d.last[j] = now;
             }
         }
+    }
+
+    /**
+     * A bow duelist's shot, as Tactics' beat makes it: the beat before, its draw is announced (Projectiles.drawAhead, 10 ahead); on its
+     * beat its cooldown is taken, and the arrow leaves its loose ticks later (Tactics.looseLate). The battle's own beat is kept off
+     * (nextAttack far ahead) so only these shots play.
+     */
+    void rangedNudge(Duel d, int j, int k, long now) {
+        var b = d.b; var u = d.us[j]; LivingEntity enemy = d.us[1 - j].mob;
+        u.nextAttack = b.time + 1000;
+        if (d.beatAt[j] >= 0) {
+            if (now < d.beatAt[j]) return;
+            d.beatAt[j] = -1;
+            if (u.mob.isAlive() && enemy.isAlive() && b.time >= u.stunnedUntil) { u.mob.swingHand(Hand.MAIN_HAND); Tactics.shoot(b, u, enemy, b.time, true); d.shotAt[j] = now; }
+            return;
+        }
+        if (!u.mob.isAlive() || !enemy.isAlive() || now - d.last[j] <= Duel.NUDGE || b.time < u.stunnedUntil || Tactics.pending(b, u)) return;
+        if (Projectiles.drawAhead(b, u, enemy, 10) <= 0) return;
+        d.beatAt[j] = now + 10 + Projectiles.looseTicks(u);
+        d.forced++; d.last[j] = now;
+        if (j == 1 && d.mode.equals("death") && k > 20 && d.killSwing < 0)
+            d.killSwing = Projectiles.shotStart(u.mob.getUuid(), now + 10, Tactics.variants(u.spec.family()).get(0).impactTicks());
     }
 
     /** Puts the camera (the player's eye) at (x, z) looking along yaw. */
@@ -325,9 +362,14 @@ final class GeoKnightChecks implements Phase1Checks.Suite {
     static final double[][] ATTACK_EYES = {{0, -4.5, 0, 8}, {1.5, 3.5, 144.5, 8}, {0, -16, 0, 3}};
     /** Frames taken this view (clip:tick), and the client's view of every swing: id:start to variant, and to its clip's impact tick. */
     final Set<String> taken = new HashSet<>();
+    /** Frames a quickened late wind-up stepped past between two ticks (drawn between harness samples, so no shot of their own). */
+    final Set<String> stepped = new HashSet<>();
     final Map<String, Integer> clientVariant = new HashMap<>();
     final Map<String, Double> clientImpact = new HashMap<>();
+    /** Swings (id:start) whose troop the client drew at some frame of the clip: one behind the camera all along can show nothing. */
+    final Set<String> clientDrawn = new HashSet<>();
     double minImpactLegsW = 2, maxWalkLegsW = 0, maxOnsetLegsW = 0; int walkSettledSamples;
+    String minImpactWhy = "";
     double minImpactW = 2, maxGapW = 0, maxDeadW = 0, maxBeforeDeathW = 0, foeBackMin = 9;
     /** The foe's backing speed each swinging sample: a server hitch dips the smoothed speed for a frame (as in readBack), so the median must
      *  read a real backpedal and the minimum only that it never walked forward. */
@@ -350,13 +392,15 @@ final class GeoKnightChecks implements Phase1Checks.Suite {
             long latest = Long.MIN_VALUE;
             for (var a : MotionEvents.Client.attacks(id)) if (a.startTick() <= ac.shownAt) latest = Math.max(latest, a.startTick());
             if (ac.shownStart != Long.MIN_VALUE && ac.shownImpact >= 0) clientImpact.putIfAbsent(id + ":" + ac.shownStart, ac.shownImpact);
+            if (ac.shownAt > now - 1) for (var a : MotionEvents.Client.attacks(id)) if (a.startTick() <= ac.shownAt && ac.shownAt <= a.startTick() + 30) clientDrawn.add(id + ":" + a.startTick());
             boolean dead = ac.shownDeath >= 0;
             double t = ac.shownAt - latest;
             if (!dead && latest != Long.MIN_VALUE && ac.shownStart == latest && ac.shownImpact >= 0 && Math.abs(ac.shownT - ac.shownImpact) <= 1) {
+                if (ac.shownWeight < minImpactW) minImpactWhy = String.format("%d:%d at %.2f t %.2f seen %.2f", id, latest, ac.shownAt, ac.shownT, ac.shownSeenAt);
                 minImpactW = Math.min(minImpactW, ac.shownWeight); impactSamples++;
                 if (d.mode.equals("stand")) minImpactLegsW = Math.min(minImpactLegsW, ac.shownLegsWeight);
             }
-            if (!dead && latest != Long.MIN_VALUE && t >= 22 && t <= 24.5) { maxGapW = Math.max(maxGapW, ac.shownWeight); gapSamples++; }
+            if (!dead && latest != Long.MIN_VALUE && t >= GAP_T && t <= GAP_T + 2.5) { maxGapW = Math.max(maxGapW, ac.shownWeight); gapSamples++; }
             Gait g = Gait.LIVE.get(e);
             if (d.mode.equals("walk") && d.k > WALK0 + 6 && d.k < WALK0 + WALK && ac.shownWeight > .5) {
                 walkSwingSamples++;
@@ -368,7 +412,7 @@ final class GeoKnightChecks implements Phase1Checks.Suite {
                 if (u == d.us[1] && g != null) { foeBackMin = Math.min(foeBackMin, -g.speed); foeBack.add(-g.speed); }
             }
             if (d.mode.equals("death") && u == d.us[1] && e instanceof LivingEntity l) {
-                if (!dead && d.killSwing >= 0 && ac.shownAt - d.killSwing >= 2 && ac.shownAt - d.killSwing <= 4) maxBeforeDeathW = Math.max(maxBeforeDeathW, ac.shownWeight);
+                if (!dead && d.killSwing >= 0 && ac.shownAt - d.killSwing >= KILL_AT - 2 && ac.shownAt - d.killSwing <= KILL_AT) maxBeforeDeathW = Math.max(maxBeforeDeathW, ac.shownWeight);
                 if (ac.shownDeath >= AttackController.DEATH_OUT) { deadSamples++; maxDeadW = Math.max(maxDeadW, ac.shownWeight); }
                 if (l.deathTime >= 1 && g != null && g.mode != Gait.Mode.IDLE) deadWrong.add(g.mode + "@" + l.deathTime);
             }
@@ -380,20 +424,22 @@ final class GeoKnightChecks implements Phase1Checks.Suite {
      * marker equals the server's impact delay, and the strike landed exactly that many ticks after the swing began.
      */
     void syncReport(Duel d) {
-        int ok = 0, n = 0; List<String> bad = new ArrayList<>();
+        int ok = 0, n = 0, unseen = 0; List<String> bad = new ArrayList<>();
         long cut = d.b.world.getTime() - 12;
         synchronized (d.swings) {
             for (long[] r : d.swings) {
                 if (r[1] > cut) continue;
-                n++;
                 String key = r[0] + ":" + r[1];
+                // A troop behind the camera for its whole clip (a bow duel's foe, 10 blocks off, in the three-quarter view) is never drawn.
+                if (!clientImpact.containsKey(key) && !clientDrawn.contains(key)) { unseen++; continue; }
+                n++;
                 Integer v = clientVariant.get(key); Double imp = clientImpact.get(key);
-                boolean good = v != null && v == r[2] && imp != null && imp == r[3] && r[4] - r[1] == r[3];
+                boolean good = v != null && v == r[2] && imp != null && imp == r[3] && r[4] - r[1] == r[3] + r[5];
                 if (good) ok++; else if (bad.size() < 6) bad.add(String.format("%s v%d/%s delay%d clip%s landed+%d", key, r[2], v, r[3], imp, r[4] - r[1]));
             }
         }
         Phase1Checks.report("p1-geo-" + TROOP + "-attack-sync-" + d.mode, n >= 4 && ok == n,
-            ok + "/" + n + " swings matched (variant, clip impact = server delay = landing)" + (d.forced > 0 ? ", " + d.forced + " nudged" : "") + (bad.isEmpty() ? "" : ", bad " + bad));
+            ok + "/" + n + " swings matched (variant, clip impact = server delay = landing)" + (d.forced > 0 ? ", " + d.forced + " nudged" : "") + (unseen > 0 ? ", " + unseen + " off camera" : "") + (bad.isEmpty() ? "" : ", bad " + bad));
     }
 
     void turn(float yaw) {
@@ -474,9 +520,9 @@ final class GeoKnightChecks implements Phase1Checks.Suite {
                 double[] eyeAt = ATTACK_EYES[i];
                 boolean far = view.equals("far");
                 if (k == 1) {
-                    taken.clear();
+                    taken.clear(); stepped.clear();
                     if (i == 0) {
-                        clientVariant.clear(); clientImpact.clear(); minImpactW = 2; minImpactLegsW = 2; maxGapW = 0; impactSamples = gapSamples = 0;
+                        clientVariant.clear(); clientImpact.clear(); clientDrawn.clear(); minImpactW = 2; minImpactLegsW = 2; maxGapW = 0; impactSamples = gapSamples = 0;
                         Phase1Checks.server(c, b -> duel = new Duel(this, b, "stand"));
                     }
                     Phase1Checks.server(c, b -> eye(b, cx + eyeAt[0], cz + eyeAt[1], (float) eyeAt[2], (float) eyeAt[3]));
@@ -487,7 +533,8 @@ final class GeoKnightChecks implements Phase1Checks.Suite {
                 watch(c, d);
                 // Tick 0 is weight 0 by design (the same pose as the frame before it), and the client often hears of a swing a
                 // fraction of a tick after it starts, so it is saved when caught but not required: ticks 1-21 (far: 2-20) are.
-                int want = far ? 3 * 10 : 3 * 21;
+                // A bow duel at range always shoots the same arc, so one clip's frames: ticks 1-25 (far: 2-24).
+                int want = RANGED ? (far ? 12 : 25) : (far ? 3 * 10 : 3 * 21);
                 if (k > 30 && c.world != null) {
                     var e = c.world.getEntityById(d.us[0].mob.getId());
                     AttackController ac = e == null ? null : AttackController.LIVE.get(e);
@@ -495,19 +542,26 @@ final class GeoKnightChecks implements Phase1Checks.Suite {
                     // Its window is half a tick (weight there is at most .10) so a slow harness frame rate still lands in it.
                     if (ac != null && ac.shownT >= 0 && (ac.shownWeight > 0 || ac.shownT < .5)) {
                         int tt = (int) Math.round(ac.shownT);
-                        if (Math.abs(ac.shownT - tt) <= (tt == 0 ? .5 : .3) && tt < 22 && (!far || tt % 2 == 0) && taken.add(ac.shownClip + ":" + tt))
+                        // A late bow draw's quickened wind-up runs its clip faster than the clock, so a tick can step past a frame's .3 window.
+                        if (Math.abs(ac.shownT - tt) <= (tt == 0 || ac.shownRate > 1.05 ? .5 : .3) && tt < FRAMES && (!far || tt % 2 == 0) && taken.add(ac.shownClip + ":" + tt))
                             Phase1Checks.shot(c, String.format("geo-" + TROOP + "-attack-%s-%s-%02d", view, ac.shownClip.replace("attack_", ""), tt));
+                        // At rate r the clip moves r frames a tick, so the frames within r/2 of this sample play between it and its
+                        // neighbours (every render frame in play); the harness samples once a tick and counts them as stepped past.
+                        if (ac.shownRate > 1.05)
+                            for (int f = (int) Math.ceil(ac.shownT - ac.shownRate / 2); f <= Math.floor(ac.shownT + ac.shownRate / 2); f++)
+                                if (f > 0 && f < FRAMES && (!far || f % 2 == 0) && !taken.contains(ac.shownClip + ":" + f)) stepped.add(ac.shownClip + ":" + f);
                     }
                 }
-                int got = (int) taken.stream().filter(f -> !f.endsWith(":0")).count();
+                stepped.removeAll(taken);
+                int shotN = (int) taken.stream().filter(f -> !f.endsWith(":0")).count(), got = shotN + stepped.size();
                 if (got >= want || k > 1200) {
-                    Phase1Checks.report("p1-geo-" + TROOP + "-attack-frames-" + view, got >= want, got + "/" + want + " clip frames of the own knight (tick 0 optional: "
-                        + (taken.size() - got) + "/3 caught)");
+                    Phase1Checks.report("p1-geo-" + TROOP + "-attack-frames-" + view, got >= want, got + "/" + want + " clip frames of the own knight (" + stepped.size() + " stepped past in a quickened wind-up; tick 0 optional: "
+                        + (taken.size() - shotN) + "/3 caught)");
                     if (++i < ATTACK_VIEWS.length) next(tick, 5);
                     else {
                         syncReport(d);
                         Phase1Checks.report("p1-geo-" + TROOP + "-attack-plays", impactSamples > 10 && minImpactW > .9 && gapSamples > 4 && maxGapW == 0,
-                            String.format("weight at impact (+-1 tick) min %.4f over %d samples; between swings max %.5f over %d", minImpactW, impactSamples, maxGapW, gapSamples));
+                            String.format("weight at impact (+-1 tick) min %.4f (%s) over %d samples; between swings max %.5f over %d", minImpactW, minImpactWhy, impactSamples, maxGapW, gapSamples));
                         Phase1Checks.report("p1-geo-" + TROOP + "-attack-footwork", impactSamples > 10 && minImpactLegsW > .9,
                             String.format("standing: attack legs weight at impact min %.4f over %d samples", minImpactLegsW, impactSamples));
                         duel = null; i = 0; next(tick, 6);
@@ -517,7 +571,7 @@ final class GeoKnightChecks implements Phase1Checks.Suite {
             case 6 -> {
                 // Walking attack: the own knight presses forward at walk speed, the foe backs away, both swinging.
                 if (k == 1) {
-                    clientVariant.clear(); clientImpact.clear(); minImpactW = 2; impactSamples = 0; walkSwingSamples = 0; maxWalkLegsW = 0; maxOnsetLegsW = 0; walkSettledSamples = 0; walkWrong.clear(); foeBackMin = 9; foeBack.clear(); lastShot = -1;
+                    clientVariant.clear(); clientImpact.clear(); clientDrawn.clear(); minImpactW = 2; impactSamples = 0; walkSwingSamples = 0; maxWalkLegsW = 0; maxOnsetLegsW = 0; walkSettledSamples = 0; walkWrong.clear(); foeBackMin = 9; foeBack.clear(); lastShot = -1;
                     Phase1Checks.server(c, b -> { duel = new Duel(this, b, "walk"); eye(b, cx, cz + 5, 180, 8); });
                 }
                 if (k == 3) { c.setScreen(null); c.options.hudHidden = true; }
@@ -554,8 +608,8 @@ final class GeoKnightChecks implements Phase1Checks.Suite {
                 }
                 if ((d.killedAt >= 0 && c.world != null && c.world.getTime() - d.killedAt > 20) || k > 600) {
                     Phase1Checks.report("p1-geo-" + TROOP + "-attack-death", d.killedAt >= 0 && d.killedDead && maxBeforeDeathW > 0 && deadSamples > 5 && maxDeadW == 0 && deadWrong.isEmpty(),
-                        String.format("killed %s (dead %s); weight 2-4 ticks into the swing max %.3f; once faded (dead 3+ ticks) max %.5f over %d samples; gait %s",
-                            d.killedAt >= 0 ? "at +4" : "never", d.killedDead, maxBeforeDeathW, maxDeadW, deadSamples, deadWrong.isEmpty() ? "IDLE" : "wrong " + deadWrong));
+                        String.format("killed %s (dead %s); weight %d-%d ticks into the swing max %.3f; once faded (dead 3+ ticks) max %.5f over %d samples; gait %s",
+                            d.killedAt >= 0 ? "at +" + KILL_AT : "never", d.killedDead, KILL_AT - 2, KILL_AT, maxBeforeDeathW, maxDeadW, deadSamples, deadWrong.isEmpty() ? "IDLE" : "wrong " + deadWrong));
                     duel = null; i = 0; next(tick, 8);
                 }
             }

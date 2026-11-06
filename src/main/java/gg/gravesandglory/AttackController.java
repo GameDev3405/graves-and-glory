@@ -39,11 +39,15 @@ final class AttackController extends AnimationController<GeoTroop> {
     static final double DEATH_OUT = 3;
 
     private final String family;
+    /** Whether this troop's shots hold their full draw (Tactics.drawsAhead: a non-magic ranged bow troop), as Projectiles.hold does on the server. */
+    private final boolean draws;
     /** The stance layer, whose standing factor scales the swing's footwork (attack_&lt;name&gt;_legs): planted feet never slide. */
     private final StanceController stance;
     /** The swing being tracked for the late-arrival fade: its start tick and the world time it was first seen. */
     private long seenStart = Long.MIN_VALUE;
     private double seenAt;
+    /** The animation time of the last frame this troop was drawn: a troop the camera did not draw (culled) hears nothing late. */
+    private double drawnAt = Double.NEGATIVE_INFINITY;
     /**
      * What the last frame showed, for the in-game checks (test-tools GeoKnightChecks): the strongest swing weight applied, the newest
      * swing's start tick, clip and clip time, and that clip's impact tick (its "timeline" impact marker, -1 if none). Never read in play.
@@ -51,6 +55,10 @@ final class AttackController extends AnimationController<GeoTroop> {
     double shownWeight, shownLegsWeight, shownT = -1, shownImpact = -1;
     /** That frame's animation time (world ticks plus partial), and how far into dying the troop was (deathTime plus partial; -1 alive). */
     double shownAt = -1, shownDeath = -1;
+    /** When the newest swing was first heard of (its late-arrival fade's start). */
+    double shownSeenAt = -1;
+    /** How fast the newest swing's clip ran against the world clock that frame (above 1: a late wind-up quickened). */
+    double shownRate = 1;
     long shownStart = Long.MIN_VALUE;
     String shownClip = "";
     private boolean listed;
@@ -61,8 +69,10 @@ final class AttackController extends AnimationController<GeoTroop> {
         super(troop, "attack", 0, s -> PlayState.STOP);
         this.stance = stance;
         String f = "";
-        for (Spec.TroopsRow r : Spec.TROOPS) if (r.id().equals(troop.troop)) { f = r.family(); break; }
+        boolean d = false;
+        for (Spec.TroopsRow r : Spec.TROOPS) if (r.id().equals(troop.troop)) { f = r.family(); d = r.ranged() && !r.magic() && "bow".equals(f); break; }
         family = f;
+        draws = d;
     }
 
     /** The clip a swing plays: attack_&lt;variant id without its family prefix&gt;, e.g. sword_shield_thrust plays attack_thrust. */
@@ -90,16 +100,39 @@ final class AttackController extends AnimationController<GeoTroop> {
         }
         MotionInput.Attack latest = null;
         for (MotionInput.Attack a : MotionEvents.Client.attacks(e.getId())) if (a.startTick() <= now && (latest == null || a.startTick() > latest.startTick())) latest = a;
-        if (latest != null && latest.startTick() != seenStart) { seenStart = latest.startTick(); seenAt = now; }
+        // A swing first seen when the troop comes back into view (it was not drawn last frame) was not heard late: the clip plays
+        // from its real time at full weight instead of fading in, so panning onto a troop mid-shot shows the shot as it is.
+        boolean wasDrawn = now - drawnAt <= 1.5;
+        drawnAt = now;
+        if (latest != null && latest.startTick() != seenStart) { seenStart = latest.startTick(); seenAt = wasDrawn ? now : Math.min(now, latest.startTick()); }
 
         // Oldest first: each playing swing blends over what is already on the bones.
         for (MotionInput.Attack a : MotionEvents.Client.attacks(e.getId())) {
             if (a.variant() < 0 || a.variant() >= variants.size()) continue;
-            double t = now - a.startTick();
-            if (t < 0) continue;
+            double raw = now - a.startTick();
+            if (raw < 0) continue;
             Animation clip = model.getAnimation(animatable, clipName(family, variants.get(a.variant()).id()));
-            if (clip == null || t >= clip.length()) continue;
-            double w = Math.min(smooth(t / FADE_IN), smooth((clip.length() - t) / FADE_OUT)) * death;
+            if (clip == null) continue;
+            // A bow shot holds its full draw Seed.hold ticks (the server started its clip that much earlier, Projectiles.shotStart),
+            // so the loose still lands on the impact marker. The held span stretches over the clip's own full-to-impact hold (its
+            // trembling aim) rather than freezing a frame (STYLE.md rule 2: alive even when still).
+            int hold = draws ? Projectiles.seed(e.getUuid()).hold() : 0;
+            double full = hold > 0 ? marker(clip, "full") : -1;
+            double held = hold > 0 ? impact(clip) : -1;
+            if (full < 0 || held <= full) hold = 0;
+            double len = clip.length() + hold;
+            if (raw >= len) continue;
+            double t = raw;
+            if (hold > 0 && raw > full)
+                t = raw < held + hold ? full + (raw - full) * (held - full) / (held - full + hold) : raw - hold;
+            // A swing first heard of a tick or more after it began (a bow's draw is announced one beat, 10 ticks, ahead of a loose its
+            // clip reaches 16 or more ticks after it starts) plays its whole wind-up, quickened, from when it arrived up to its full
+            // draw (a melee swing: its impact), so the loose or the blow still lands on the server's tick.
+            double late = a.startTick() == seenStart ? seenAt - seenStart : 0;
+            double until = hold > 0 ? full : impact(clip);
+            double rate = 1;
+            if (late >= 1 && until - late >= 2 && raw < until) { rate = until / (until - late); t = Math.max(0, (raw - late) * rate); }
+            double w = Math.min(smooth(raw / FADE_IN), smooth((len - raw) / FADE_OUT)) * death;
             if (a == latest || a.startTick() == seenStart) w *= smooth((now - seenAt) / LATE_IN);
             if (w > 0) apply(clip, t, bones, (float) w);
             // Standing, the swing's own footwork (STYLE.md rule 4) plays over the legs: the step in, the hip drop, the step back.
@@ -110,13 +143,16 @@ final class AttackController extends AnimationController<GeoTroop> {
                 shownLegsWeight = Math.max(shownLegsWeight, lw);
             }
             shownWeight = Math.max(shownWeight, w);
-            if (a == latest) { shownStart = a.startTick(); shownT = t; shownClip = clip.name(); shownImpact = impact(clip); }
+            if (a == latest) { shownStart = a.startTick(); shownT = t; shownClip = clip.name(); shownImpact = impact(clip); shownSeenAt = a.startTick() == seenStart ? seenAt : -1; shownRate = rate; }
         }
     }
 
     /** The clip's impact tick: its "timeline" marker named impact (build_anims.py IMPACT), or -1. */
-    static double impact(Animation clip) {
-        for (var k : clip.keyFrames().customInstructions()) if ("impact".equals(k.getInstructions())) return k.getStartTick();
+    static double impact(Animation clip) { return marker(clip, "impact"); }
+
+    /** The tick of the clip's "timeline" marker with this name (build_anims.py: impact; a bow shot's full draw: full), or -1. */
+    static double marker(Animation clip, String name) {
+        for (var k : clip.keyFrames().customInstructions()) if (name.equals(k.getInstructions())) return k.getStartTick();
         return -1;
     }
 

@@ -18,7 +18,7 @@ The texture per tier and side is the skin sheet over the side's cloth sheet over
 
     python art/anim/common/troop_rig.py <troop> [out dir]
 """
-import importlib, json, os, sys
+import importlib, json, math, os, sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ART = os.path.normpath(os.path.join(HERE, "..", ".."))
@@ -29,11 +29,21 @@ import handlib as H                                           # noqa: E402
 from handlib import Box, Bone, pack, paint_box, on, SIDES    # noqa: E402
 import build_swords as SW                                     # noqa: E402
 
+# The bow in the left fist (build_anims solves it, see BOW_ROT there): the grip frame's +y (top nock) along the fist's
+# through-axis, its back (+x) out along the knuckles toward the target, the string toward the archer.
+BOW_ROT = (-90, 0, -90)
+BOW_FRAMES = ("rest", "pull_0", "pull_1", "pull_2")
 # troop id: (art dir, module, Troop attribute, weapon module, weapon id (tiers <id>, <id>_t2, <id>_t3), weapon rotation in the fist)
 TROOPS = {
     "sentinel": ("sentinel", "build_sentinel", "SENTINEL", "build_longsword", "longsword", (-90, 0, 90)),
     "revenant": ("revenant", "build_revenant", "REVENANT", "build_gb_notched_sword", "notched_sword", (-90, 0, 90)),
     "tc_raider": ("tc_raider", "build_tc_raider", "TC_RAIDER", "build_house_weapons", "cutlass", (-90, 0, 90)),
+    # a bow (kind "bow") rides the left fist; its rest and three draw frames are child bones the renderer switches between
+    "archer": ("archer", "build_archer", "ARCHER", "build_bows", "order_bow", BOW_ROT, "bow"),
+    "longbow": ("longbow", "build_longbow", "LONGBOW", "build_bows", "longbow", BOW_ROT, "bow"),
+    "bonebow": ("bonebow", "build_bonebow", "BONEBOW", "build_gb_bone_bow", "bone_bow", BOW_ROT, "bow"),
+    "stalker": ("stalker", "build_stalker", "STALKER", "build_gb_frost_bow", "frost_bow", BOW_ROT, "bow"),
+    "wm_hunter": ("wm_hunter", "build_wm_hunter", "WM_HUNTER", "build_bows", "order_bow", BOW_ROT, "bow"),
 }
 SHIELD_AT = (-1, 4, -1.5)     # the knight's grip: in the left fist by its strap, face to the front
 WAIST, SPLIT = 8.5, ((12, 8), (12, 0))
@@ -54,7 +64,7 @@ def absolute(B):
     return a
 
 
-def rigify(src, weapon_rot):
+def rigify(src, weapon_rot, kind="blade"):
     """The troop's handlib bones re-hung on the knight's skeleton (pivots relative to the parent)."""
     src = [bn for bn in src if bn.name not in DROP]
     for bn in src:   # a troop's own foot (the raider's) is shin gear: it rides the rig's foot like a boot
@@ -144,20 +154,28 @@ def rigify(src, weapon_rot):
     walk("")
     assert len(order) == len(out), "orphans: " + ", ".join(bn.name for bn in out if bn.name not in seen)
     for t in (1, 2, 3):
-        order.append(Bone(f"weapon_t{t}", "right_hand", stages=[t], tag="weapon", rot=weapon_rot))
+        if kind == "bow":   # the bow in the left fist; one child bone a draw frame, shown by the "draw" channel
+            order.append(Bone(f"weapon_t{t}", "left_hand", stages=[t], tag="weapon", rot=weapon_rot))
+            for f in BOW_FRAMES:
+                order.append(Bone(f"bow_t{t}_{f}", f"weapon_t{t}", stages=[t], tag="draw"))
+        else:
+            order.append(Bone(f"weapon_t{t}", "right_hand", stages=[t], tag="weapon", rot=weapon_rot))
+    if kind == "bow":   # the draw channel: an empty bone whose position x the attack clips key to the frame index
+        order.append(Bone("draw", "root"))
     del names
     return order
 
 
 class Rig:
     def __init__(s, tid):
-        d, mod, attr, wmod, s.wid, wrot = TROOPS[tid]
+        d, mod, attr, wmod, s.wid, wrot, *kind = TROOPS[tid]
+        s.kind = kind[0] if kind else "blade"
         sys.path.insert(0, os.path.join(ART, "hand", d))
         s.tid, s.troop = tid, getattr(importlib.import_module(mod), attr)
         s.weapon = importlib.import_module(wmod)
         s.skin, s.cloth = s.troop.skin, s.troop.cloth
         s.wy = s.skin[1] + s.cloth[1]
-        s.B = rigify(s.troop.bones(), wrot)
+        s.B = rigify(s.troop.bones(), wrot, s.kind)
         s.tiers = tuple(s.troop.tiers)
 
     def weapon_cubes(s, t):
@@ -185,8 +203,22 @@ class Rig:
             s.cloths[side] = img
         sheets, s.uvs, s.cubes = [], {}, {}
         assert SW.SHEET_W * len(s.tiers) <= s.skin[0], "weapon sheets wider than the skin"
+        s.frames, s.col = {}, {}
         for t in s.tiers:
-            s.cubes[t] = s.weapon_cubes(t)
+            if s.kind == "bow":   # as build_bows.project: the rest frame's solid cubes, the arrow, one shared string column
+                wid = s.wid if t == 1 else f"{s.wid}_t{t}"
+                frames, _ = s.weapon.TIERS[wid][0]().frames()
+                s.frames[t] = frames
+                Th = importlib.import_module("build_bows").Thread
+                solid = [c for c in frames["rest"] if not isinstance(c, Th)]
+                names = {c.name.split("/")[1] for c in solid}
+                solid += [c for c in frames["pull_2"] if not isinstance(c, Th) and c.name.split("/")[1] not in names]
+                longest = max(c.n for cs in frames.values() for c in cs if isinstance(c, Th))
+                col = SW.Cube("stringcol", [0, 0, 0], [1, int(math.ceil(longest)), 1], "linen", SW.flat(importlib.import_module("build_bows").STRING),
+                              skip=[f for f in SW.FACES if f != "north"])
+                s.cubes[t] = [SW.Cube(c.name.split("/")[1], c.lo, c.hi, c.mat, c.paint, c.skip, c.turn, c.pivot) for c in solid] + [col]
+            else:
+                s.cubes[t] = s.weapon_cubes(t)
             colour, _, uv = SW.pack(s.cubes[t])
             sheets.append(colour)
             dx = SW.SHEET_W * (t - 1)
@@ -218,13 +250,26 @@ class Rig:
                 c = {"origin": [r(o[0]), r(24 - (o[1] + b.size[1])), r(o[2])], "size": list(b.size), "uv": uv}
                 if b.dil: c["inflate"] = b.dil
                 cs.append(c)
-            if bn.tag == "weapon" and keep(bn):
-                t = int(bn.name[-1]); hx, hy, hz = j["pivot"]
-                for sc in s.cubes[t]:
+            wcubes = ()
+            if bn.tag == "weapon" and keep(bn) and s.kind != "bow":
+                t = int(bn.name[-1]); wcubes = s.cubes[t]
+            if bn.tag == "draw" and keep(bn):
+                t, frame = int(bn.name[5]), bn.name[7:]
+                wcubes = s.frames[t][frame]
+            if wcubes:
+                hx, hy, hz = j["pivot"]
+                for sc in wcubes:
                     faces = {}
-                    for f in SW.FACES:
-                        if (sc.name, f) not in s.uvs[t]: continue
-                        x0, y0, x1, y1 = s.uvs[t][(sc.name, f)]
+                    base = sc.name.split("/")[-1]
+                    if isinstance(sc, getattr(s.weapon, "Thread", ())):   # the string reads the shared string column
+                        ux, uy = s.uvs[t][("stringcol", "north")][:2]
+                        dims = {"north": (sc.w, sc.n), "south": (sc.w, sc.n), "east": (2 * sc.hz, sc.n), "west": (2 * sc.hz, sc.n),
+                                "up": (sc.w, 2 * sc.hz), "down": (sc.w, 2 * sc.hz)}
+                        for f in SW.FACES:
+                            faces[f] = {"uv": [ux, uy], "uv_size": [r(dims[f][0]), r(dims[f][1])]}
+                    for f in (SW.FACES if not faces else ()):
+                        if (base, f) not in s.uvs[t] or f in getattr(sc, "skip", ()): continue
+                        x0, y0, x1, y1 = s.uvs[t][(base, f)]
                         faces[f] = ({"uv": [x0, y1], "uv_size": [x1 - x0, y0 - y1]} if f == "down"
                                     else {"uv": [x0, y0], "uv_size": [x1 - x0, y1 - y0]})
                     c = {"origin": [r(hx + sc.lo[0]), r(hy + sc.lo[1]), r(hz + sc.lo[2])],
@@ -246,9 +291,10 @@ class Rig:
             for bn in s.B}}
 
 
-def shows(bn, tier, face=0, shield=True):
+def shows(bn, tier, face=0, shield=True, frame="rest"):
     if bn.stages and tier not in bn.stages: return False
     if bn.variants is not None and face not in bn.variants: return False
+    if bn.tag == "draw" and not bn.name.endswith(frame): return False
     return shield or bn.tag != "shield"
 
 
@@ -263,6 +309,11 @@ def main():
         for side in SIDES:
             R.texture(t, side).save(os.path.join(out, f"{tid}_t{t}_{side}.png"))
         json.dump(R.geo(lambda bn: shows(bn, t)), open(os.path.join(out, "preview", f"t{t}.geo.json"), "w"))
+        if R.kind == "bow":   # one preview per draw frame, plus every frame at once for renders that switch frames by bone scale
+            for f in BOW_FRAMES:
+                json.dump(R.geo(lambda bn, f=f: shows(bn, t, frame=f)), open(os.path.join(out, "preview", f"t{t}_{f}.geo.json"), "w"))
+            json.dump(R.geo(lambda bn: shows(bn, t) or (bn.tag == "draw" and f"_t{t}_" in bn.name)),
+                      open(os.path.join(out, "preview", f"t{t}_all.geo.json"), "w"))
     print(f"{tid}: {len(R.B)} bones, texture {R.skin[0]}x{R.height}, {os.path.normpath(out)}")
 
 

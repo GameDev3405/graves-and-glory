@@ -1,0 +1,256 @@
+{
+ "troop": "longbow",
+ "tiers": [
+  1,
+  2,
+  3
+ ],
+ "faces": 4,
+ "bones": {
+  "root": {},
+  "hips": {},
+  "torso": {},
+  "head": {},
+  "face_v0": {
+   "variants": [
+    0
+   ]
+  },
+  "face_v1": {
+   "variants": [
+    1
+   ]
+  },
+  "face_v2": {
+   "variants": [
+    2
+   ]
+  },
+  "face_v3": {
+   "variants": [
+    3
+   ]
+  },
+  "felt_cap": {
+   "stages": [
+    1
+   ],
+   "tag": "helm"
+  },
+  "kettle": {
+   "stages": [
+    2,
+    3
+   ],
+   "tag": "helm"
+  },
+  "long_feather": {
+   "stages": [
+    3
+   ],
+   "tag": "helm"
+  },
+  "right_arm": {},
+  "right_forearm": {},
+  "right_hand": {},
+  "left_arm": {},
+  "left_forearm": {},
+  "left_hand": {},
+  "jerkin_t1": {
+   "stages": [
+    1
+   ],
+   "team": true
+  },
+  "jerkin_t2": {
+   "stages": [
+    2
+   ],
+   "team": true
+  },
+  "jerkin_t3": {
+   "stages": [
+    3
+   ],
+   "team": true
+  },
+  "tall_quiver": {},
+  "right_leg": {},
+  "right_shin": {},
+  "right_foot": {},
+  "right_knee": {
+   "stages": [
+    3
+   ]
+  },
+  "right_boot_cuff": {
+   "stages": [
+    2,
+    3
+   ]
+  },
+  "right_jack": {},
+  "right_skirt_t1": {
+   "stages": [
+    1
+   ],
+   "team": true
+  },
+  "right_skirt_t2": {
+   "stages": [
+    2
+   ],
+   "team": true
+  },
+  "right_skirt_t3": {
+   "stages": [
+    3
+   ],
+   "team": true
+  },
+  "left_leg": {},
+  "left_shin": {},
+  "left_foot": {},
+  "left_knee": {
+   "stages": [
+    3
+   ]
+  },
+  "left_boot_cuff": {
+   "stages": [
+    2,
+    3
+   ]
+  },
+  "left_jack": {},
+  "left_skirt_t1": {
+   "stages": [
+    1
+   ],
+   "team": true
+  },
+  "left_skirt_t2": {
+   "stages": [
+    2
+   ],
+   "team": true
+  },
+  "left_skirt_t3": {
+   "stages": [
+    3
+   ],
+   "team": true
+  },
+  "jerkin_t1_skirt": {
+   "stages": [
+    1
+   ],
+   "team": true
+  },
+  "jerkin_t2_skirt": {
+   "stages": [
+    2
+   ],
+   "team": true
+  },
+  "jerkin_t3_skirt": {
+   "stages": [
+    3
+   ],
+   "team": true
+  },
+  "belt": {},
+  "pouch": {},
+  "weapon_t1": {
+   "stages": [
+    1
+   ],
+   "tag": "weapon"
+  },
+  "bow_t1_rest": {
+   "stages": [
+    1
+   ],
+   "tag": "draw"
+  },
+  "bow_t1_pull_0": {
+   "stages": [
+    1
+   ],
+   "tag": "draw"
+  },
+  "bow_t1_pull_1": {
+   "stages": [
+    1
+   ],
+   "tag": "draw"
+  },
+  "bow_t1_pull_2": {
+   "stages": [
+    1
+   ],
+   "tag": "draw"
+  },
+  "weapon_t2": {
+   "stages": [
+    2
+   ],
+   "tag": "weapon"
+  },
+  "bow_t2_rest": {
+   "stages": [
+    2
+   ],
+   "tag": "draw"
+  },
+  "bow_t2_pull_0": {
+   "stages": [
+    2
+   ],
+   "tag": "draw"
+  },
+  "bow_t2_pull_1": {
+   "stages": [
+    2
+   ],
+   "tag": "draw"
+  },
+  "bow_t2_pull_2": {
+   "stages": [
+    2
+   ],
+   "tag": "draw"
+  },
+  "weapon_t3": {
+   "stages": [
+    3
+   ],
+   "tag": "weapon"
+  },
+  "bow_t3_rest": {
+   "stages": [
+    3
+   ],
+   "tag": "draw"
+  },
+  "bow_t3_pull_0": {
+   "stages": [
+    3
+   ],
+   "tag": "draw"
+  },
+  "bow_t3_pull_1": {
+   "stages": [
+    3
+   ],
+   "tag": "draw"
+  },
+  "bow_t3_pull_2": {
+   "stages": [
+    3
+   ],
+   "tag": "draw"
+  },
+  "draw": {}
+ }
+}

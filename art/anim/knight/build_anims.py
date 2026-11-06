@@ -181,6 +181,12 @@ Z3 = (0.0, 0.0, 0.0)
 FREE_WRIST = (0.0, 0.0, 0.0)   # a free fist: the wrist in line with the forearm
 
 
+# The targets below are set for the knight's shoulder (left_arm pivot 5, 22, 0); a troop whose shoulder sits elsewhere (the
+# skeletons' at y 23) carries them with it, so a fist the knight reaches is reached the same from that shoulder. (The loaded
+# pivots are in world axes: the knight's left shoulder is at x -5.)
+SHOULDER_D = np.asarray(MODEL.bones["left_arm"].pivot, dtype=float) - np.array([-5.0, 22.0, 0.0])
+
+
 def _fist(arm, fore):
     M = world({"left_arm": (arm, (0, 0, 0)), "left_forearm": ((fore, 0, 0), (0, 0, 0))}, "left_hand")
     return (M @ np.r_[MODEL.bones["left_hand"].pivot / 16.0, 1.0])[:3] * 16.0
@@ -189,7 +195,7 @@ def _fist(arm, fore):
 def fist_arm(target, roll=-4.0, guess=None):
     """left_arm (x, y, roll) and left_forearm x putting the fist at target; the upper arm's roll (- out) is given."""
     x = np.array(guess if guess is not None else (-20.0, 20.0, -80.0), dtype=float)
-    t = np.asarray(target, dtype=float)
+    t = np.asarray(target, dtype=float) + SHOULDER_D
     f = lambda v: _fist((v[0], v[1], roll), v[2])
     for _ in range(80):
         a = f(x)
@@ -1192,6 +1198,9 @@ def mirror(keys):
     return out
 
 
+HELD = ("sword", "shield")   # bone-name parts of carried gear: it drags on the ground, the body never pivots on it
+
+
 def death_clip(keys, start, name):
     """keys: [(tick, ease into this key, {bone: rot})]; each key changes only the bones it names."""
     frames = [(0, None, {b: start[b][0] for b in DEATH_BONES})]
@@ -1216,7 +1225,7 @@ def death_clip(keys, start, name):
         P, owner = body_corners(pose)
         low = int(np.argmin(P[:, 1]))
         if held is None:
-            held = np.array([("sword" in o or "shield" in o) for o in owner])
+            held = np.array([any(h in o for h in HELD) for o in owner])
         pivot = int(np.argmin(np.where(held, np.inf, P[:, 1])))
         if prev is None:
             base_y = P[low, 1]

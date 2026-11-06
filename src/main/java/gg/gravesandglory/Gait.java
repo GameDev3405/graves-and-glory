@@ -19,8 +19,12 @@ import java.util.WeakHashMap;
  * frame advances it.
  */
 final class Gait {
-    /** Ground speed bands in blocks per tick, with hysteresis so a unit hovering at a band edge does not flicker between clips. */
-    static final double IDLE_TO_WALK = .06, WALK_TO_IDLE = .04, WALK_TO_RUN = .22, RUN_TO_WALK = .20;
+    /**
+     * Ground speed bands in blocks per tick, with hysteresis so a unit hovering at a band edge does not flicker between clips. The
+     * walk/run bands are a knight's (troops-row speed {@link #KNIGHT_SPEED}); each troop scales them by its own speed, so a slow
+     * heavy troop's run (a sentinel's .236) still clears its band instead of sitting on the knight's.
+     */
+    static final double IDLE_TO_WALK = .06, WALK_TO_IDLE = .04, WALK_TO_RUN = .22, RUN_TO_WALK = .20, KNIGHT_SPEED = .28;
     /** Speed smoothing, in ticks: long enough to hide the client's per-tick position steps, short enough to start within 2 ticks. */
     static final double SMOOTH = 1.5;
     /**
@@ -30,6 +34,15 @@ final class Gait {
     static final double TREND = 4;
 
     enum Mode { IDLE, WALK, RUN }
+
+    /** This troop's walk/run bands: the knight's scaled by its troops-row speed. */
+    private final double toRun, toWalk;
+
+    Gait(double troopSpeed) {
+        double k = troopSpeed > 0 ? troopSpeed / KNIGHT_SPEED : 1;
+        toRun = WALK_TO_RUN * k;
+        toWalk = RUN_TO_WALK * k;
+    }
 
     /** Loop position in cycles, 0..1. */
     double phase;
@@ -65,7 +78,7 @@ final class Gait {
         // drops to the walk only once both have slowed: after a hitch the fast speed is back up while the trend still lags.
         double s = Math.abs(speed), t = Math.abs(trend);
         mode = s < (mode == Mode.IDLE ? IDLE_TO_WALK : WALK_TO_IDLE) ? Mode.IDLE
-            : (mode == Mode.RUN ? Math.max(s, t) > RUN_TO_WALK : t > WALK_TO_RUN) ? Mode.RUN : Mode.WALK;
+            : (mode == Mode.RUN ? Math.max(s, t) > toWalk : t > toRun) ? Mode.RUN : Mode.WALK;
         if (e instanceof LivingEntity l && (l.isDead() || l.deathTime > 0)) mode = Mode.IDLE;
         if (stride > 0) phase = wrap(phase + dt * speed / stride);
     }
