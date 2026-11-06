@@ -42,9 +42,10 @@ final class GeoTroop implements GeoReplacedEntity {
         Gait gait = new Gait();
         controllers.add(new GaitController(this, "legs", BLEND, gait, true, s -> s.setAndContinue(LEGS[gait.mode.ordinal()])));
         controllers.add(new GaitController(this, "upper", BLEND, gait, false, s -> s.setAndContinue(UPPER[gait.mode.ordinal()])));
-        controllers.add(new StanceController(this, gait));
-        controllers.add(new AttackController(this));
-        controllers.add(new HitController(this));
+        StanceController stance = new StanceController(this, gait);
+        controllers.add(stance);
+        controllers.add(new AttackController(this, stance));
+        controllers.add(new HitController(this, stance));
         controllers.add(new DeathController(this));
     }
 

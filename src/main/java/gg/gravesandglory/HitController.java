@@ -41,10 +41,15 @@ final class HitController extends AnimationController<GeoTroop> {
     final double[] shownMix = new double[4];
     private final double[] mixBuf = new double[4];
     private boolean listed;
+    /** The stance layer, whose standing factor scales each reaction's footwork (&lt;clip&gt;_legs): a walking troop keeps its gait. */
+    private final StanceController stance;
+    /** That frame's footwork weight, for the in-game checks. */
+    double shownLegsWeight;
     static final Map<Entity, HitController> LIVE = Collections.synchronizedMap(new WeakHashMap<>());
 
-    HitController(GeoTroop troop) {
+    HitController(GeoTroop troop, StanceController stance) {
         super(troop, "hit", 0, s -> PlayState.STOP);
+        this.stance = stance;
     }
 
     /** The share of each directional clip (front, back, right, left) for a blow from {@code bearing} degrees (+ from the right). */
@@ -63,7 +68,8 @@ final class HitController extends AnimationController<GeoTroop> {
         MotionInput.Hit latest = null;
         for (MotionInput.Hit h : MotionEvents.Client.hits(e.getId())) if (h.tick() <= now && (latest == null || h.tick() >= latest.tick())) latest = h;
         if (latest != null && latest.tick() != seenTick) { seenTick = latest.tick(); seenAt = now; }
-        shownScale = 0; shownT = -1; shownClip = "";
+        shownScale = 0; shownT = -1; shownClip = ""; shownLegsWeight = 0;
+        double still = AttackController.smooth(stance.still());
         double[] m = mixBuf;
         for (MotionInput.Hit h : MotionEvents.Client.hits(e.getId())) {
             double t = now - h.tick();
@@ -75,6 +81,7 @@ final class HitController extends AnimationController<GeoTroop> {
                 if (clip == null || t >= clip.length()) continue;
                 if (h.tick() == seenTick) k *= AttackController.smooth((now - seenAt) / LATE_IN);
                 add(clip, t, bones, (float) k);
+                legs(model, clip, t, bones, k * still);
                 if (h == latest) { shownClip = clip.name(); shownScale = k; shownT = t; java.util.Arrays.fill(shownMix, 0); }
                 continue;
             }
@@ -88,10 +95,20 @@ final class HitController extends AnimationController<GeoTroop> {
                 Animation clip = model.getAnimation(animatable, "hit_" + w + "_" + DIRS[i]);
                 if (clip == null || t >= clip.length()) continue;
                 add(clip, t, bones, (float) (k * m[i]));
+                legs(model, clip, t, bones, k * m[i] * still);
                 any = true;
             }
             if (any && h == latest) { shownClip = "hit_" + w; shownScale = k; shownT = t; System.arraycopy(m, 0, shownMix, 0, 4); }
         }
+    }
+
+    /** Adds the footwork under {@code clip} (its _legs clip: hips, legs and feet, rotations and the hips' drop), times {@code k}. */
+    private void legs(CoreGeoModel<GeoTroop> model, Animation clip, double t, Map<String, CoreGeoBone> bones, double k) {
+        if (k <= 0) return;
+        Animation legs = model.getAnimation(animatable, clip.name() + "_legs");
+        if (legs == null || t >= legs.length()) return;
+        add(legs, t, bones, (float) k);
+        shownLegsWeight += k;   // total footwork weight this frame (bearing mixes split it across clips)
     }
 
     /** Adds the clip's offsets at {@code t}, times {@code k}, to every bone it keys. The clips start and end at zero. */
@@ -105,6 +122,12 @@ final class HitController extends AnimationController<GeoTroop> {
             bone.setRotY(bone.getRotY() + k * AttackController.sample(rot.yKeyframes(), t));
             bone.setRotZ(bone.getRotZ() + k * AttackController.sample(rot.zKeyframes(), t));
             bone.markRotationAsChanged();
+            var pos = b.positionKeyFrames();
+            if (pos.xKeyframes().isEmpty()) continue;
+            bone.setPosX(bone.getPosX() + k * AttackController.sample(pos.xKeyframes(), t));
+            bone.setPosY(bone.getPosY() + k * AttackController.sample(pos.yKeyframes(), t));
+            bone.setPosZ(bone.getPosZ() + k * AttackController.sample(pos.zKeyframes(), t));
+            bone.markPositionAsChanged();
         }
     }
 }

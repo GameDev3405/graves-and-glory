@@ -138,7 +138,7 @@ final class GeoKnightChecks implements Phase1Checks.Suite {
     volatile int deathVictim = -1;
     int deathFrames;
     double deathMaxT, deathPrevT;
-    double hitMaxScale;
+    double hitMaxScale, hitMaxLegs;
     int hitFrames;
 
     /** Places the camera for a stance or hit view (server thread) and returns the knights' yaw for it. */
@@ -322,6 +322,7 @@ final class GeoKnightChecks implements Phase1Checks.Suite {
     final Set<String> taken = new HashSet<>();
     final Map<String, Integer> clientVariant = new HashMap<>();
     final Map<String, Double> clientImpact = new HashMap<>();
+    double minImpactLegsW = 2, maxWalkLegsW = 0, maxOnsetLegsW = 0; int walkSettledSamples;
     double minImpactW = 2, maxGapW = 0, maxDeadW = 0, maxBeforeDeathW = 0, foeBackMin = 9;
     int impactSamples, gapSamples, walkSwingSamples, deadSamples;
     final Set<String> walkWrong = new LinkedHashSet<>(), deadWrong = new LinkedHashSet<>();
@@ -344,11 +345,16 @@ final class GeoKnightChecks implements Phase1Checks.Suite {
             double t = ac.shownAt - latest;
             if (!dead && latest != Long.MIN_VALUE && ac.shownStart == latest && ac.shownImpact >= 0 && Math.abs(ac.shownT - ac.shownImpact) <= 1) {
                 minImpactW = Math.min(minImpactW, ac.shownWeight); impactSamples++;
+                if (d.mode.equals("stand")) minImpactLegsW = Math.min(minImpactLegsW, ac.shownLegsWeight);
             }
             if (!dead && latest != Long.MIN_VALUE && t >= 22 && t <= 24.5) { maxGapW = Math.max(maxGapW, ac.shownWeight); gapSamples++; }
             Gait g = Gait.LIVE.get(e);
             if (d.mode.equals("walk") && d.k > WALK0 + 6 && d.k < WALK0 + WALK && ac.shownWeight > .5) {
                 walkSwingSamples++;
+                StanceController st = StanceController.LIVE.get(e);
+                // The footwork fades out over the 3 ticks still takes to reach 0 once the gait walks (no pop); after that it must be gone.
+                if (st != null && st.shownStill <= .001) { maxWalkLegsW = Math.max(maxWalkLegsW, ac.shownLegsWeight); walkSettledSamples++; }
+                else maxOnsetLegsW = Math.max(maxOnsetLegsW, ac.shownLegsWeight);
                 if (g == null || g.mode != Gait.Mode.WALK) walkWrong.add((u == d.us[0] ? "own" : "foe") + ":" + (g == null ? "none" : g.mode) + "@" + d.k);
                 if (u == d.us[1] && g != null) foeBackMin = Math.min(foeBackMin, -g.speed);
             }
@@ -461,7 +467,7 @@ final class GeoKnightChecks implements Phase1Checks.Suite {
                 if (k == 1) {
                     taken.clear();
                     if (i == 0) {
-                        clientVariant.clear(); clientImpact.clear(); minImpactW = 2; maxGapW = 0; impactSamples = gapSamples = 0;
+                        clientVariant.clear(); clientImpact.clear(); minImpactW = 2; minImpactLegsW = 2; maxGapW = 0; impactSamples = gapSamples = 0;
                         Phase1Checks.server(c, b -> duel = new Duel(this, b, "stand"));
                     }
                     Phase1Checks.server(c, b -> eye(b, cx + eyeAt[0], cz + eyeAt[1], (float) eyeAt[2], (float) eyeAt[3]));
@@ -493,6 +499,8 @@ final class GeoKnightChecks implements Phase1Checks.Suite {
                         syncReport(d);
                         Phase1Checks.report("p1-geo-" + TROOP + "-attack-plays", impactSamples > 10 && minImpactW > .9 && gapSamples > 4 && maxGapW == 0,
                             String.format("weight at impact (+-1 tick) min %.4f over %d samples; between swings max %.5f over %d", minImpactW, impactSamples, maxGapW, gapSamples));
+                        Phase1Checks.report("p1-geo-" + TROOP + "-attack-footwork", impactSamples > 10 && minImpactLegsW > .9,
+                            String.format("standing: attack legs weight at impact min %.4f over %d samples", minImpactLegsW, impactSamples));
                         duel = null; i = 0; next(tick, 6);
                     }
                 }
@@ -500,7 +508,7 @@ final class GeoKnightChecks implements Phase1Checks.Suite {
             case 6 -> {
                 // Walking attack: the own knight presses forward at walk speed, the foe backs away, both swinging.
                 if (k == 1) {
-                    clientVariant.clear(); clientImpact.clear(); minImpactW = 2; impactSamples = 0; walkSwingSamples = 0; walkWrong.clear(); foeBackMin = 9; lastShot = -1;
+                    clientVariant.clear(); clientImpact.clear(); minImpactW = 2; impactSamples = 0; walkSwingSamples = 0; maxWalkLegsW = 0; maxOnsetLegsW = 0; walkSettledSamples = 0; walkWrong.clear(); foeBackMin = 9; lastShot = -1;
                     Phase1Checks.server(c, b -> { duel = new Duel(this, b, "walk"); eye(b, cx, cz + 5, 180, 8); });
                 }
                 if (k == 3) { c.setScreen(null); c.options.hudHidden = true; }
@@ -511,6 +519,9 @@ final class GeoKnightChecks implements Phase1Checks.Suite {
                 if (dk != lastShot && dk >= WALK0 + 10 && dk < WALK0 + WALK - 4) { lastShot = dk; Phase1Checks.shot(c, String.format("geo-" + TROOP + "-attack-walk-%02d", dk - WALK0)); }
                 if (dk >= WALK0 + WALK + 4 || k > 600) {
                     syncReport(d);
+                    Phase1Checks.report("p1-geo-" + TROOP + "-attack-walk-gait-legs", walkSettledSamples > 10 && maxWalkLegsW == 0,
+                        String.format("walking: attack legs weight max %.4f over %d settled swinging samples (gait keeps the legs); onset fade peak %.3f",
+                            maxWalkLegsW, walkSettledSamples, maxOnsetLegsW));
                     Phase1Checks.report("p1-geo-" + TROOP + "-attack-walk", walkSwingSamples > 10 && walkWrong.isEmpty() && impactSamples > 2 && minImpactW > .9 && foeBackMin > .1,
                         String.format("%d swinging samples, gait while swinging %s; weight at impact min %.3f over %d; foe backing speed min %.3f",
                             walkSwingSamples, walkWrong.isEmpty() ? "always WALK" : "wrong " + walkWrong, minImpactW, impactSamples, foeBackMin));
@@ -602,11 +613,11 @@ final class GeoKnightChecks implements Phase1Checks.Suite {
                 int w = HIT_WEIGHT[hi];
                 float bearing = HIT_BEARING[hi];
                 String clip = blocked ? "hit_block" : w == 0 ? "hit_light" : "hit_medium";
-                int len = blocked ? 10 : w == 0 ? 9 : 16;
+                int len = blocked ? 11 : w == 0 ? 9 : 16;
                 double scale = blocked ? HitController.BLOCK_SCALE[w] : w >= 2 ? HitController.HEAVY : 1;
                 if (k == 1) {
                     if (first) hitBad.clear();
-                    taken.clear(); hitMaxScale = 0; hitFrames = 0; hitAt = -1;
+                    taken.clear(); hitMaxScale = 0; hitMaxLegs = 0; hitFrames = 0; hitAt = -1;
                     Phase1Checks.server(c, b -> {
                         hold(b, "", blocked, view(b, view, false));
                         if (first) hitAll(b, 0, 0, false); // starts the ready guard, so the first case is not also its fade in
@@ -625,6 +636,7 @@ final class GeoKnightChecks implements Phase1Checks.Suite {
                         }
                         if (!hc.shownClip.equals(clip) && hitBad.size() < 40) hitBad.add(name + "/" + view + " clip " + hc.shownClip + "@" + String.format("%.1f", hc.shownT));
                         hitMaxScale = Math.max(hitMaxScale, hc.shownScale);
+                        hitMaxLegs = Math.max(hitMaxLegs, hc.shownLegsWeight);
                         if (!blocked) {
                             double[] m = new double[4]; HitController.mix(bearing, m);
                             for (int q = 0; q < 4; q++) if (Math.abs(m[q] - hc.shownMix[q]) > .01) { if (hitBad.size() < 40) hitBad.add(name + " mix " + Arrays.toString(hc.shownMix)); break; }
@@ -637,9 +649,11 @@ final class GeoKnightChecks implements Phase1Checks.Suite {
                     if (hc == null) hitBad.add(name + "/" + view + " no hit layer");
                     else if (!hc.shownClip.isEmpty()) hitBad.add(name + "/" + view + " still playing " + hc.shownClip + " at " + hc.shownT);
                     if (hitMaxScale < .95 * scale || hitMaxScale > 1.001 * scale) hitBad.add(String.format("%s/%s peak scale %.3f want %.3f", name, view, hitMaxScale, scale));
+                    // the knights stand, so each reaction's footwork (skid, give, replant) plays at the blow's full scale
+                    if (hitMaxLegs < .9 * scale || hitMaxLegs > 1.001 * scale) hitBad.add(String.format("%s/%s footwork %.3f want %.3f", name, view, hitMaxLegs, scale));
                     int need = far ? len / 4 : len / 2;
                     if (hitFrames < need) hitBad.add(name + "/" + view + " frames " + hitFrames + "/" + need);
-                    System.out.println(String.format("[p1] hit %s/%s frames %d scale %.3f", name, view, hitFrames, hitMaxScale));
+                    System.out.println(String.format("[p1] hit %s/%s frames %d scale %.3f legs %.3f", name, view, hitFrames, hitMaxScale, hitMaxLegs));
                     if (++i < HIT_CASES.length * HIT_VIEWS.length) next(tick, 10);
                     else {
                         Phase1Checks.report("p1-geo-" + TROOP + "-hit", hitBad.isEmpty(), HIT_CASES.length + " blows x " + HIT_VIEWS.length

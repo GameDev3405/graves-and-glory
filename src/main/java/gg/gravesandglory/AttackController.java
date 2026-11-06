@@ -39,6 +39,8 @@ final class AttackController extends AnimationController<GeoTroop> {
     static final double DEATH_OUT = 3;
 
     private final String family;
+    /** The stance layer, whose standing factor scales the swing's footwork (attack_&lt;name&gt;_legs): planted feet never slide. */
+    private final StanceController stance;
     /** The swing being tracked for the late-arrival fade: its start tick and the world time it was first seen. */
     private long seenStart = Long.MIN_VALUE;
     private double seenAt;
@@ -46,7 +48,7 @@ final class AttackController extends AnimationController<GeoTroop> {
      * What the last frame showed, for the in-game checks (test-tools GeoKnightChecks): the strongest swing weight applied, the newest
      * swing's start tick, clip and clip time, and that clip's impact tick (its "timeline" impact marker, -1 if none). Never read in play.
      */
-    double shownWeight, shownT = -1, shownImpact = -1;
+    double shownWeight, shownLegsWeight, shownT = -1, shownImpact = -1;
     /** That frame's animation time (world ticks plus partial), and how far into dying the troop was (deathTime plus partial; -1 alive). */
     double shownAt = -1, shownDeath = -1;
     long shownStart = Long.MIN_VALUE;
@@ -55,8 +57,9 @@ final class AttackController extends AnimationController<GeoTroop> {
     /** Each drawn troop's attack layer, for the checks; weak, so unloaded troops drop out. */
     static final Map<Entity, AttackController> LIVE = Collections.synchronizedMap(new WeakHashMap<>());
 
-    AttackController(GeoTroop troop) {
+    AttackController(GeoTroop troop, StanceController stance) {
         super(troop, "attack", 0, s -> PlayState.STOP);
+        this.stance = stance;
         String f = "";
         for (Spec.TroopsRow r : Spec.TROOPS) if (r.id().equals(troop.troop)) { f = r.family(); break; }
         family = f;
@@ -74,6 +77,7 @@ final class AttackController extends AnimationController<GeoTroop> {
         if (e == null || e.getWorld() == null || family.isEmpty()) return;
         if (!listed) { listed = true; LIVE.put(e, this); }
         shownWeight = 0;
+        shownLegsWeight = 0;
         List<Spec.AttackVariantsRow> variants = Tactics.variants(family);
         if (variants.isEmpty()) return;
         double now = e.getWorld().getTime() + state.getPartialTick();
@@ -98,6 +102,13 @@ final class AttackController extends AnimationController<GeoTroop> {
             double w = Math.min(smooth(t / FADE_IN), smooth((clip.length() - t) / FADE_OUT)) * death;
             if (a == latest || a.startTick() == seenStart) w *= smooth((now - seenAt) / LATE_IN);
             if (w > 0) apply(clip, t, bones, (float) w);
+            // Standing, the swing's own footwork (STYLE.md rule 4) plays over the legs: the step in, the hip drop, the step back.
+            double lw = w * smooth(stance.still());
+            Animation legs = lw > 0 ? model.getAnimation(animatable, clip.name() + "_legs") : null;
+            if (legs != null && t < legs.length()) {
+                apply(legs, t, bones, (float) lw);
+                shownLegsWeight = Math.max(shownLegsWeight, lw);
+            }
             shownWeight = Math.max(shownWeight, w);
             if (a == latest) { shownStart = a.startTick(); shownT = t; shownClip = clip.name(); shownImpact = impact(clip); }
         }

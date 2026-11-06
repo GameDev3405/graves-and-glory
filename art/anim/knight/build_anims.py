@@ -508,48 +508,122 @@ def key(torso, arm, fore, blade, blade_out, fist, face=None, throw=Z3):
             "left_forearm": sh["left_forearm"], "left_hand": sh["left_hand"], "_face": face}
 
 
-# Shield fist targets (fist_arm): the guard holds it before the left chest; a cut swings it out to the left.
-FIST_GUARD = (2.5, 19.0, 5.5)
-GUARD = key((2, 0, 0), (-6, 0, 6), -36, 0, 30, FIST_GUARD)
+def front(fist, yaw):
+    """A shield-fist target turned about the torso's vertical axis so it lands where `fist` would after the body
+    yaws by `yaw` (animation degrees, the torso's signs): passing minus a body yaw keeps the fist in front."""
+    c = TORSO_PIVOT
+    a = math.radians(yaw)
+    x, z = fist[0] - c[0], fist[2] - c[2]
+    return (c[0] + x * math.cos(a) - z * math.sin(a), fist[1], c[2] + x * math.sin(a) + z * math.cos(a))
 
-# (tick, pose). Anticipation draws the weapon away from the target, the drive accelerates into the impact
-# key, follow-through carries past it, recovery settles back to the guard.
+
+TORSO_PIVOT = tuple((world({}, "torso") @ np.r_[MODEL.bones["torso"].pivot / 16.0, 1.0])[:3] * 16.0)
+
+
+# Shield fist targets (fist_arm): the guard holds it before the chest; a cut swings it out to the left.
+FIST_GUARD = (2.0, 19.0, 6.2)
+
+
+def skey(torso, arm, fore, blade, blade_out, fist, hips=Z3, tilt=0.0, head=None):
+    """A stance key: like key(), with the shield set upright over the stance's hips (STANCE_LEGS), tilted by tilt
+    (+ top forward), and an optional head override."""
+    k = key(torso, arm, fore, blade, blade_out, fist, upright(torso, hips, keep=0.85, turn=0.65, tilt=tilt))
+    if head is not None:
+        k["head"] = head
+    return k
+
+
+# The guard (docs/anim-rebuild/STYLE.md rule 1, Kort's reference reel): a ready pose, not a rest pose. The sword hand rides
+# forward at the chest with the blade angled up and a little across the body, the shield is held out covering the torso, the
+# left shoulder leads over the staggered feet of the ready footing (STANCE_LEGS "ready"). Every swing starts and ends on it.
+READY = skey((5, 14, 0), (-44, 0, 14), -50, -44, -12, FIST_GUARD, hips=(0, 6, 0))
+GUARD = READY
+LONG = TROOP == "sentinel"   # the Templar's 25-31 px longsword follows through flatter, so its tip clears the ground
+
+# The standing footwork under each swing (STYLE.md rule 4): the hips coil back with the load, the lead (right) foot steps
+# in and plants by the impact tick while the hips drop and drive forward into a wide, deep stance, then the foot steps
+# back to the ready footing and the hips rise. hips: (tick, rot, pos) keys (pos z+ is backward in this rig) from and to STANCE_LEGS "ready"; steps:
+# (side, lift tick, plant tick, ankle target px, foot yaw). A foot not stepping stays planted where it is.
+READY_HIPS = ((0.0, 6.0, 0.0), (0.0, -1.1, 0.1))
+ATTACK_LEGS = {
+    "thrust": {"hips": [(0, *READY_HIPS), (3, (-2, 12, 0), (0.2, -1.3, 0.4)), (5.2, (-3, 14, 0), (0.2, -1.4, 0.5)),
+                        (7, (5, -4, 0), (-0.1, -2.3, -1.3)), (9, (6, -6, 0), (-0.2, -2.5, -1.5)),
+                        (12.5, (3, 0, 0), (0.0, -1.9, -0.9)), (17, (0, 6, 0), (0.0, -1.2, -0.2)), (ATTACK_TICKS, *READY_HIPS)],
+               "steps": [("right", 4.0, 6.6, (-3.6, 2.0, 4.8), -10.0), ("right", 12.5, 16.5, (-3.4, 2.0, 2.0), -12.0)]},
+    "overhead": {"hips": [(0, *READY_HIPS), (4, (-5, 11, 0), (0.1, -1.5, 0.8)), (7.5, (-7, 13, 0), (0.1, -1.7, 1.2)),
+                          (10, (6, -6, 0), (-0.1, -2.6, -1.2)), (13, (7, -8, 0), (-0.1, -2.8, -1.3)),
+                          (17, (2, 2, 0), (0.0, -1.6, -0.6)), (ATTACK_TICKS, *READY_HIPS)],
+                 "steps": [("right", 6.8, 9.6, (-3.8, 2.0, 4.6), -10.0), ("right", 14.5, 18.5, (-3.4, 2.0, 2.0), -12.0)]},
+    "low_cut": {"hips": [(0, *READY_HIPS), (3.5, (-2, 14, 0), (0.3, -1.3, 0.3)), (6.2, (-2, 16, 0), (0.3, -1.4, 0.3)),
+                         (8, (6, -8, -2), (-0.4, -2.8, -0.9)), (11, (7, -12, -2), (-0.5, -3.0, -1)),
+                         (15, (3, 0, 0), (0.0, -1.8, -0.5)), (ATTACK_TICKS, *READY_HIPS)],
+                "steps": [("right", 5.0, 7.6, (-4.8, 2.0, 3.6), -18.0), ("right", 13.0, 17.5, (-3.4, 2.0, 2.0), -12.0)]},
+}
+READY_FEET = {"right": ((-3.4, 2.0, 2.0), -12.0), "left": ((3.2, 2.0, -2.0), 7.0)}
+
+
+def hips_yaw(name, t):
+    """The attack_<name>_legs hips yaw at tick t (linear between its keys)."""
+    ks = [(k[0], k[1][1]) for k in ATTACK_LEGS[name]["hips"]]
+    for (t0, y0), (t1, y1) in zip(ks, ks[1:]):
+        if t0 <= t <= t1:
+            return y0 + (y1 - y0) * (t - t0) / (t1 - t0)
+    return ks[-1][1]
+
+
+def swing(name, t, torso, arm, fore, blade, blade_out, fist, throw=Z3, trail=0.8):
+    """A (tick, key) of attack `name` whose shield fist and face stay in front of the body: the target (given as if
+    the body faced front) is turned back against `trail` of the torso's and the legs clip's hips yaw, so the twist into
+    a blow carries the shield across only a little (STYLE.md rule 9: it trails, it is never glued) instead of
+    swinging it behind the back."""
+    yaw = min(0.0, torso[1] + hips_yaw(name, t))     # only the twist into the blow; the load keeps its shield pull-in
+    face = upright(torso, (0.0, hips_yaw(name, t), 0.0), keep=0.7, turn=0.8)
+    for k in range(int(round(trail * 10)), -1, -1):     # as much of `trail` as the arm can reach
+        try:
+            return (t, key(torso, arm, fore, blade, blade_out, front(fist, -0.1 * k * yaw), face, throw))
+        except ValueError:
+            pass
+    raise ValueError("shield fist unreachable in %s at %s" % (name, t))
+
+
+# (tick, pose). Each swing has the reel's phases (STYLE.md rule 5): a load held long enough to read, with the shield pulled
+# in to the chest (rule 7), a fast drive into the impact key, a follow-through that overshoots past it, a gather, then a
+# settle that eases back onto the exact guard. The torso twists and leans into every blow (rule 3); the legs, hips and feet
+# play the matching attack_<name>_legs clip while the knight stands (ATTACK_LEGS).
 ATTACKS = {
-    "thrust": [   # impact 7: body. Chamber the blade at the hip, then drive straight out with the shoulder.
+    "thrust": [   # impact 7: body. Coil the blade back at the hip, hold, then drive straight out behind the shoulder.
         (0, GUARD),
-        (4, key((-3, 20, 0), (22, 0, 14), -96, -4, 0, (2.0, 19.5, 6.0), throw=(4, 6, 0))),
-        (7, key((13, -20, 0), (-88, 0, 2), -4, 4, -4, (6.5, 18.0, 3.5), throw=(-8, -14, -8))),
-        (9, key((14, -22, 0), (-90, 0, 0), -2, 6, -6, (6.5, 18.0, 3.5), throw=(-10, -16, -10))),
-        (12, key((10, -14, 0), (-55, 0, 4), -40, 0, 4, (5.0, 18.0, 4.0), throw=(-4, -8, -4))),   # draw the arm back: no held lunge
-        (15, key((5, -4, 0), (-30, 0, 8), -50, -4, 14, (3.5, 18.5, 5.0))),
+        swing("thrust", 3, (-4, 26, 0), (18, 0, 16), -100, -4, 4, (1.6, 19.4, 4.8), throw=(4, 8, 2)),
+        swing("thrust", 5.2, (-6, 30, 2), (22, 0, 16), -104, -6, 4, (1.4, 19.5, 4.6), throw=(5, 9, 2)),
+        swing("thrust", 7, (16, -24, 0), (-88, 0, 2), -2, 4, -4, (3.4, 18.4, 6.4), throw=(-3, -6, -3)),
+        swing("thrust", 9, (20, -28, 0), (-92, 0, -2), 0, 8, -8, (3.6, 18.2, 6.2), throw=(-4, -7, -4)),
+        swing("thrust", 12.5, (12, -12, 0), (-58, 0, 6), -38, -12, 0, (2.8, 18.6, 6.0), throw=(-2, -4, -2)),
+        swing("thrust", 17, (6, 12, 0), (-46, 0, 13), -50, -42, -10, (2.2, 18.9, 6.0)),
         (ATTACK_TICKS, GUARD),
     ],
-    "overhead": [   # impact 10: head. Raise the blade behind the head, come over the top, cut down through.
+    "overhead": [   # impact 10: head. Raise the blade over the back, hold it high, then cut down through and across.
         (0, GUARD),
-        (6, key((-8, 12, 0), (-165, 0, 18), -70, -150, 0, (2.0, 20.0, 6.0), throw=(-6, 4, 4))),
-        (8, key((2, 4, 0), (-150, 0, 14), -28, -80, 0, (2.5, 19.5, 6.0))),
-        (10, key((12, -8, 0), (-100, 0, 6), -10, 22, 0, (5.0, 18.0, 4.0), throw=(-6, -10, -6))),
-        # follow-through pitched so the tip stops just above the ground over the ready footing's lowered hips
-        (12, key((18, -14, 0), (-58, 0, 2), -12, 46, 0, (6.0, 17.5, 3.5), throw=(-10, -14, -10))),
-        (14, key((18, -14, 0), (-44, 0, 2), -12, 50, 0, (6.0, 17.5, 3.5), throw=(-8, -12, -8))),
-        (18, key((8, -4, 0), (-18, 0, 6), -34, 25, 18, (4.0, 18.0, 4.5))),
+        swing("overhead", 4, (-10, 13, 0), (-160, 0, 18), -68, -140, 0, (1.6, 20.0, 5.0), throw=(-6, 4, 4)),
+        swing("overhead", 7.5, (-15, 17, 2), (-170, 0, 20), -74, -158, 0, (1.4, 20.2, 4.8), throw=(-6, 4, 4)),
+        swing("overhead", 8.8, (2, 4, 0), (-150, 0, 14), -28, -80, 0, (2.4, 19.5, 5.6)),
+        swing("overhead", 10, (16, -10, 0), (-100, 0, 6), -8, 22, 0, (3.6, 18.2, 6.2), throw=(-3, -5, -3)),
+        swing("overhead", 12, (22, -16, 0), (-58, 0, 2), -12, 26 if LONG else 32, -6, (4.0, 17.9, 5.8), throw=(-4, -6, -4)),
+        swing("overhead", 14, (22, -18, 0), (-46, 0, 2), -12, 30 if LONG else 36, -10, (4.0, 17.9, 5.8), throw=(-4, -6, -4)),
+        swing("overhead", 18, (8, 8, 0), (-40, 0, 12), -52, -34, -8, (2.6, 18.8, 5.8)),
         (ATTACK_TICKS, GUARD),
     ],
-    "low_cut": [   # impact 8: legs. Cock the blade high on the right, sweep down and across at the shins.
+    "low_cut": [   # impact 8: legs. Cock the blade high on the right, hold, sweep down and across at the shins, low.
         (0, GUARD),
-        (5, key((-2, 30, 4), (-30, 0, 55), -60, -40, 60, (2.0, 19.0, 6.0), throw=(4, 8, 2))),
-        (8, key((20, -20, -4), (-55, 0, 0), -10, 40, -30, (6.0, 17.0, 3.5), throw=(-8, -14, -8))),
-        (11, key((22, -32, -4), (-45, 0, -18), -15, 50, -45, (6.5, 17.0, 3.0), throw=(-10, -16, -12))),
-        (16, key((8, -8, 0), (-20, 0, 4), -35, 20, 10, (4.0, 18.0, 4.5))),
+        swing("low_cut", 3.5, (-4, 32, 6), (-32, 0, 58), -62, -42, 62, (1.6, 19.2, 4.8), throw=(4, 8, 2)),
+        swing("low_cut", 6.2, (-6, 36, 8), (-34, 0, 62), -64, -46, 66, (1.4, 19.3, 4.6), throw=(5, 9, 2)),
+        swing("low_cut", 8, (22, -22, -6), (-55, 0, 0), -10, 40, -30, (3.8, 17.8, 6.0), throw=(-3, -6, -4)),
+        swing("low_cut", 11, (26, -36, -6), (-45, 0, -18), -15, 38 if LONG else 46, -48, (4.2, 17.6, 5.6), throw=(-4, -7, -5)),
+        swing("low_cut", 15, (12, -10, 0), (-30, 0, 4), -40, 10, 6, (3.0, 18.4, 5.8)),
+        swing("low_cut", 18.5, (6, 12, 0), (-44, 0, 13), -52, -40, -10, (2.2, 18.9, 6.0)),
         (ATTACK_TICKS, GUARD),
     ],
 }
 
-# A longer blade (the Templar's 25-31 px longsword) follows through flatter, so its tip clears the ground.
-if TROOP == "sentinel":
-    ATTACKS["overhead"][4] = (12, key((18, -14, 0), (-58, 0, 2), -12, 38, 0, (6.0, 17.5, 3.5), throw=(-10, -14, -10)))
-    ATTACKS["overhead"][5] = (14, key((18, -14, 0), (-44, 0, 2), -12, 42, 0, (6.0, 17.5, 3.5), throw=(-8, -12, -8)))
-    ATTACKS["low_cut"][3] = (11, key((22, -32, -4), (-45, 0, -18), -15, 42, -45, (6.5, 17.0, 3.0), throw=(-10, -16, -12)))
 
 
 def monotone(ts, vs):
@@ -587,13 +661,85 @@ def sample_keys(keys, t):
 IMPACT = {"thrust": 7, "overhead": 10, "low_cut": 8}
 
 
+def curve(keys, t):
+    """keys: (tick, (a, b, c)) pairs; the monotone curve through them at tick t, per component."""
+    ts = [k[0] for k in keys]
+    i = max(0, min(len(ts) - 2, next((j for j in range(len(ts) - 1) if t < ts[j + 1]), len(ts) - 2)))
+    h = ts[i + 1] - ts[i]
+    s = min(1.0, max(0.0, (t - ts[i]) / h))
+    out = []
+    for c in range(len(keys[0][1])):
+        vs = [k[1][c] for k in keys]
+        m = monotone(ts, vs)
+        out.append(hermite(vs[i], vs[i + 1], m[i] * h, m[i + 1] * h, s))
+    return tuple(out)
+
+
+def feet_at(steps, t):
+    """Each foot's (ankle px, yaw, sole pitch) at tick t: planted between steps; while stepping it travels on an eased
+    line, lifted up to 1.4 px, the toe raised mid-swing and the heel striking first."""
+    feet = {side: (np.array(p), y, 0.0) for side, (p, y) in READY_FEET.items()}
+    for side, t0, t1, to, yaw, *lift in steps:
+        lift = lift[0] if lift else 1.4     # 0: a skid, the sole dragged flat along the ground
+        p0, y0, _ = feet[side]
+        if t <= t0:
+            continue
+        u = min(1.0, (t - t0) / (t1 - t0))
+        e = smooth(u)
+        pos = p0 + (np.array(to) - p0) * e
+        pos[1] += lift * math.sin(math.pi * u)
+        feet[side] = (pos, y0 + (yaw - y0) * e, 10.0 * lift / 1.4 * math.sin(math.pi * u))
+    return feet
+
+
+def attack_legs(spec, ticks=ATTACK_TICKS):
+    hips_rot = [(k[0], k[1]) for k in spec["hips"]]
+    hips_pos = [(k[0], k[2]) for k in spec["hips"]]
+    n = ticks * SUB
+    out, guesses = [], {}
+    for i in range(n + 1):
+        t = i / SUB
+        hips = (curve(hips_rot, t), curve(hips_pos, t))
+        pose = {"hips": hips}
+        f = {"hips": hips}
+        feet = feet_at(spec["steps"], t)
+        for side in ("right", "left"):
+            pose[side + "_leg"] = ((0, -hips[0][1], 0), (0, 0, 0))
+            at, yaw, pitch = feet[side]
+            lr, sr, fr = leg_pose(pose, side, at, pitch, foot_yaw=yaw, guess=guesses.get(side))
+            guesses[side] = (lr[0], lr[2], sr[0])
+            f[side + "_leg"], f[side + "_shin"], f[side + "_foot"] = (lr, None), (sr, None), (fr, None)
+        out.append(f)
+    return out
+
+
+def cape_lag(samples, legs=None):
+    """Secondary motion (STYLE.md rule 9): the cape trails the body. It swings out behind by how fast the torso (and hips,
+    standing) turned and pitched over the last two ticks, and sways against the turn, so it lags every drive and settles."""
+    lag = 2 * SUB
+    def body(i):
+        tr = samples[max(0, i)]["torso"][0]
+        hr = legs[max(0, i)]["hips"][0] if legs else Z3
+        return np.array(tr) + np.array(hr)
+    for i, s in enumerate(samples):
+        d = body(i) - body(i - lag)
+        swing = min(15.0, 0.45 * abs(d[0]) + 0.3 * abs(d[1]))
+        sway = max(-5.0, min(5.0, -0.15 * d[1]))
+        hang = 0.7 * max(0.0, body(i)[0])     # cloth hangs plumb: a forward lean lifts the back away under it
+        s["cape"] = ((2.0 + swing - hang, 0.0, sway), None)
+    return samples
+
+
 def attack_clips():
     n = ATTACK_TICKS * SUB
     out = {}
     for name, keys in ATTACKS.items():
-        clip = bake([sample_keys(keys, i / SUB) for i in range(n + 1)], ATTACK_TICKS, loop=False)
+        legs = attack_legs(ATTACK_LEGS[name])
+        upper = cape_lag([sample_keys(keys, i / SUB) for i in range(n + 1)], legs)
+        clip = bake(upper, ATTACK_TICKS, loop=False)
         clip["timeline"] = {fmt_t(IMPACT[name] / TPS): "impact"}
         out["attack_" + name] = clip
+        out["attack_%s_legs" % name] = bake(legs, ATTACK_TICKS, loop=False)
     return out
 
 
@@ -614,18 +760,9 @@ def attack_clips():
 STANCE_TICKS = 40
 
 
-def skey(torso, arm, fore, blade, blade_out, fist, hips=Z3, tilt=0.0, head=None):
-    """A stance key: like key(), with the shield set upright over the stance's hips (STANCE_LEGS), tilted by tilt
-    (+ top forward), and an optional head override."""
-    k = key(torso, arm, fore, blade, blade_out, fist, upright(torso, hips, keep=0.85, turn=0.65, tilt=tilt))
-    if head is not None:
-        k["head"] = head
-    return k
-
-
 STANCE_UPPER = {
     # ready stands on its own footing (STANCE_LEGS "ready"), so the shield is set upright over those hips.
-    "ready": skey((5, 14, 0), (-22, 0, 12), -62, -28, -4, FIST_GUARD, hips=(0, 6, 0)),
+    "ready": READY,
     # brace: the sword rides low by the right hip, point forward and a little down, under the shield's edge.
     "brace": skey((8, 16, 0), (-10, 0, 14), -48, 18, -4, (2.5, 18.0, 5.5), hips=(0, 10, 0)),
     # *_up: the fist rises to the shoulder so the rim covers the eyes.
@@ -651,36 +788,45 @@ STANCE_LEGS = {
 }
 
 
-def stance_upper(pose):
+# How alive each stance's loop is (STYLE.md rule 2): the ready guard breathes visibly and rocks its weight centre, forward,
+# centre, back (WEIGHT, a quarter cycle behind the breath); the brace and the wall hold still behind their shields.
+STANCE_LIFE = {"ready": 2.0}
+WEIGHT = 0.5 * math.pi
+
+
+def stance_upper(pose, life=1.0):
     n = STANCE_TICKS * SUB
     out = []
     for i in range(n + 1):
         u = (i % n) / n
-        br = math.sin(2 * math.pi * u)
+        br = life * math.sin(2 * math.pi * u)
+        wt = (life - 1.0) * math.sin(2 * math.pi * u - WEIGHT)   # + weight forward
         f = {b: (tuple(v), None) for b, v in pose.items()}
         tx, ty, tz = pose["torso"]
-        f["torso"] = ((tx + 0.8 * br, ty, tz), None)
+        f["torso"] = ((tx + 0.8 * br + 1.2 * wt, ty - 1.0 * wt, tz), None)
         hx, hy, hz = pose["head"]
-        f["head"] = ((hx - 0.5 * br, hy, hz), None)
+        f["head"] = ((hx - 0.5 * br - 0.9 * wt, hy + 0.6 * wt, hz), None)
         ax, ay, az = pose["right_arm"]
-        f["right_arm"] = ((ax - 0.6 * br, ay, az), None)
+        f["right_arm"] = ((ax - 0.6 * br - 0.8 * wt, ay, az), None)
         sx, sy, sz = pose["left_arm"]
-        f["left_arm"] = ((sx - 0.8 * br, sy, sz), None)
+        f["left_arm"] = ((sx - 0.8 * br - 0.6 * wt, sy, sz), None)
         fx_, fy_, fz_ = f["_face"][0]
-        lag = math.sin(2 * math.pi * u - 0.6)              # the shield settles a beat after the breath
+        lag = life * math.sin(2 * math.pi * u - 0.6)       # the shield settles a beat after the breath
         f["_face"] = ((fx_ + 1.5 * lag, fy_ + 0.8 * lag, fz_ - 0.6 * lag), None)
         out.append(regrip(f))
     return bake(out, STANCE_TICKS)
 
 
-def stance_legs(spec):
+def stance_legs(spec, life=1.0):
     n = STANCE_TICKS * SUB
     out, guesses = [], {}
     for i in range(n + 1):
         u = (i % n) / n
-        br = math.sin(2 * math.pi * u)
+        br = life * math.sin(2 * math.pi * u)
+        wt = (life - 1.0) * math.sin(2 * math.pi * u - WEIGHT)
         (rx, ry, rz), (px, py, pz) = spec["hips"]
-        hips = ((rx, ry, rz), (px, py - 0.1 * br, pz))
+        # the weight rides forward over the lead foot (hips forward, a touch lower, tipped in) and back over the rear one
+        hips = ((rx + 1.0 * wt, ry - 1.5 * wt, rz), (px, py - 0.1 * br - 0.12 * abs(wt), pz - 0.4 * wt))
         pose = {"hips": hips}
         f = {"hips": hips}
         for side in ("right", "left"):
@@ -694,8 +840,8 @@ def stance_legs(spec):
 
 
 def stance_clips():
-    out = {"stance_%s_upper" % k: stance_upper(v) for k, v in STANCE_UPPER.items()}
-    out.update({"stance_%s_legs" % k: stance_legs(v) for k, v in STANCE_LEGS.items()})
+    out = {"stance_%s_upper" % k: stance_upper(v, STANCE_LIFE.get(k, 1.0)) for k, v in STANCE_UPPER.items()}
+    out.update({"stance_%s_legs" % k: stance_legs(v, STANCE_LIFE.get(k, 1.0)) for k, v in STANCE_LEGS.items()})
     return out
 
 
@@ -740,11 +886,12 @@ def scaled(o, k):
 # The peak offset of a light blow from each direction, degrees. Front: the chest is driven back and the
 # head snaps back; back: the body is pitched forward; right: the right shoulder is driven back and the
 # body bends away to the left; left mirrors it.
+# Big and readable (STYLE.md rule 8): a medium blow (2.2x these) throws the torso about 30 degrees and flings the sword arm wide.
 HIT_PEAK = {
-    "front": shield_keep(off(torso=(-9, 0, 0), head=(-8, 0, 0), rarm=(-6, 0, 6), larm=(-4, 0, -4)), tilt=-4),
-    "back": shield_keep(off(torso=(7, 0, 0), head=(3, 0, 0), rarm=(6, 0, 4), larm=(6, 0, -4)), tilt=3),
-    "right": shield_keep(off(torso=(-3, 8, 5), head=(0, 4, 2), rarm=(5, 0, 4), larm=(-3, 0, -3))),
-    "left": shield_keep(off(torso=(-3, -8, -5), head=(0, -4, -2), rarm=(-3, 0, 3), larm=(5, 0, -4))),
+    "front": shield_keep(off(torso=(-13, 5, 0), head=(-10, -2, 0), rarm=(-14, 0, 30), larm=(-4, 0, -6)), tilt=-5),
+    "back": shield_keep(off(torso=(10, 0, 0), head=(4, 0, 0), rarm=(8, 0, 14), larm=(8, 0, -6)), tilt=4),
+    "right": shield_keep(off(torso=(-4, 12, 7), head=(0, 5, 3), rarm=(8, 0, 22), larm=(-3, 0, -4))),
+    "left": shield_keep(off(torso=(-4, -12, -7), head=(0, -5, -3), rarm=(-4, 0, 12), larm=(8, 0, -8))),
 }
 HIT_TICKS = {"light": 9, "medium": 16}
 LIGHT = 0.5   # a light flinch reaches half the stagger's first key
@@ -754,15 +901,17 @@ def hit_keys(peak, weight):
     if weight == "light":    # a flinch: snap to the peak in 1.5 ticks, a small rebound, settled by t9
         p = scaled(peak, LIGHT)
         return [(0, ZERO), (1.5, p), (4, scaled(p, -0.15)), (6.5, scaled(p, 0.05)), (9, ZERO)]
-    # a stagger: driven further and held a beat, then the body recovers past centre and settles
-    return [(0, ZERO), (2, scaled(peak, 2.2)), (4.5, scaled(peak, 2.0)), (9, scaled(peak, -0.35)),
-            (12.5, scaled(peak, 0.1)), (16, ZERO)]
+    # a stagger: thrown and held a beat, a quick catch, a gather that overshoots centre a little, then planted in guard
+    return [(0, ZERO), (2, scaled(peak, 2.2)), (4, scaled(peak, 2.05)), (7, scaled(peak, 0.35)), (10, scaled(peak, -0.4)),
+            (13, scaled(peak, 0.08)), (16, ZERO)]
 
 
-# the shield arm is thrown up and forward into the blow, then driven back by it as the body gives
-BLOCK_PEAK = shield_keep(off(torso=(-6, -10, 0), head=(-4, 6, 0), rarm=(-2, 0, 4), larm=(-14, -10, -8), lfore=26),
-                         tilt=-8)
-BLOCK_TICKS = 10
+# A blocked blow (STYLE.md rule 7): the shield is driven back into the chest and the body gives (absorb), holds, then shoves
+# the shield out past the guard before settling.
+BLOCK_GUARD = shield_keep(off(torso=(3, -9, 0), head=(-2, 5, 0), rarm=(-2, 0, 4), larm=(-16, -6, -4), lfore=14), tilt=2)
+BLOCK_ABSORB = shield_keep(off(torso=(-11, -13, 0), head=(-6, 7, 0), rarm=(-4, 0, 10), larm=(13, -7, -7), lfore=-24), tilt=-10)
+BLOCK_SHOVE = shield_keep(off(torso=(10, -9, 0), head=(4, 5, 0), rarm=(3, 0, 3), larm=(-26, -10, -7), lfore=38), tilt=7)
+BLOCK_TICKS = 11
 
 
 def hit_clips():
@@ -772,8 +921,63 @@ def hit_clips():
             keys = hit_keys(peak, weight)
             out["hit_%s_%s" % (weight, d)] = bake([sample_keys(keys, i / SUB) for i in range(ticks * SUB + 1)],
                                                   ticks, loop=False)
-    keys = [(0, ZERO), (1.5, BLOCK_PEAK), (4, scaled(BLOCK_PEAK, 0.55)), (7, scaled(BLOCK_PEAK, -0.08)), (BLOCK_TICKS, ZERO)]
+    keys = [(0, ZERO), (0.8, BLOCK_GUARD), (2.2, BLOCK_ABSORB), (3.8, scaled(BLOCK_ABSORB, 0.85)), (6, BLOCK_SHOVE),
+            (8.5, scaled(BLOCK_SHOVE, 0.2)), (BLOCK_TICKS, ZERO)]
     out["hit_block"] = bake([sample_keys(keys, i / SUB) for i in range(BLOCK_TICKS * SUB + 1)], BLOCK_TICKS, loop=False)
+    out.update(hit_legs_clips())
+    return out
+
+
+# Footwork under the hit reactions (STYLE.md rules 4 and 8; the reel's hit "catch, guard, gather, plant" and block "skid, guard,
+# absorb, shove, plant, settle"). Absolute hips keys and foot steps like ATTACK_LEGS, from and to the ready footing; baked as
+# offsets from it, because HitController adds them (times how still the troop stands) on top of the stance legs. A stagger
+# skids the struck-side foot (lift 0: dragged flat), then lifts and replants it on the gather; a flinch only gives at the knees.
+HIT_LEGS = {
+    "front": {"hips": [(0, *READY_HIPS), (2, (-5, 9, 0), (0.0, -1.7, 0.9)), (4, (-4, 9, 0), (0.0, -1.8, 1.0)),
+                       (7, (2, 4, 0), (0.0, -1.6, 0.3)), (10, (-1, 7, 0), (0.0, -1.2, 0.0)), (16, *READY_HIPS)],
+              "steps": [("right", 0.4, 2.6, (-3.4, 2.0, 0.9), -14.0, 0.0), ("right", 7.5, 11.5, (-3.4, 2.0, 2.0), -12.0, 1.0)]},
+    "back": {"hips": [(0, *READY_HIPS), (2, (5, 4, 0), (0.0, -1.6, -0.7)), (4, (4, 4, 0), (0.0, -1.7, -0.8)),
+                      (7, (-1, 7, 0), (0.0, -1.4, -0.2)), (10, (0.5, 6, 0), (0.0, -1.15, 0.15)), (16, *READY_HIPS)],
+             "steps": [("right", 0.4, 2.6, (-3.4, 2.0, 3.0), -12.0, 0.0), ("right", 7.5, 11.5, (-3.4, 2.0, 2.0), -12.0, 1.0)]},
+    "right": {"hips": [(0, *READY_HIPS), (2, (-2, 14, 3), (0.0, -1.6, 0.5)), (4, (-2, 13, 3), (0.0, -1.7, 0.5)),
+                       (7, (1, 4, 0), (0.0, -1.4, 0.1)), (10, (0, 6.5, 0), (0.0, -1.15, 0.1)), (16, *READY_HIPS)],
+              "steps": [("right", 0.4, 2.6, (-3.6, 2.0, 1.0), -20.0, 0.0), ("right", 7.5, 11.5, (-3.4, 2.0, 2.0), -12.0, 1.0)]},
+    "left": {"hips": [(0, *READY_HIPS), (2, (-2, -2, -3), (0.0, -1.6, 0.5)), (4, (-2, -1, -3), (0.0, -1.7, 0.5)),
+                      (7, (1, 8, 0), (0.0, -1.4, 0.1)), (10, (0, 5.5, 0), (0.0, -1.15, 0.1)), (16, *READY_HIPS)],
+             "steps": [("left", 0.4, 2.6, (3.4, 2.0, -2.9), 10.0, 0.0), ("left", 7.5, 11.5, (3.2, 2.0, -2.0), 7.0, 1.0)]},
+}
+BLOCK_LEGS = {"hips": [(0, *READY_HIPS), (1.2, (-3, 8, 0), (0.0, -1.7, 0.8)), (3.2, (-2, 8, 0), (0.0, -2.2, 0.9)),
+                       (6, (5, 2, 0), (0.0, -1.6, -0.6)), (8.5, (1, 5, 0), (0.0, -1.2, 0.0)), (BLOCK_TICKS, *READY_HIPS)],
+              "steps": [("right", 0.2, 1.6, (-3.4, 2.0, 1.2), -13.0, 0.0), ("left", 0.2, 1.6, (3.2, 2.0, -2.7), 7.0, 0.0),
+                        ("right", 5.0, 8.0, (-3.4, 2.0, 2.0), -12.0, 1.0), ("left", 6.5, 10.0, (3.2, 2.0, -2.0), 7.0, 0.3)]}
+
+
+def legs_offset(samples):
+    """Absolute leg samples minus the ready footing: rotation and hips position offsets for an additive layer."""
+    ready = attack_legs({"hips": [(0, *READY_HIPS), (1, *READY_HIPS)], "steps": []}, ticks=1)[0]
+    out = []
+    for s in samples:
+        f = {}
+        for b, (rot, pos) in s.items():
+            r0, p0 = ready[b]
+            f[b] = (tuple(wrap(a - c) for a, c in zip(rot, r0)),
+                    tuple(a - c for a, c in zip(pos, p0)) if pos is not None else None)
+        out.append(f)
+    return out
+
+
+def hit_legs_clips():
+    out = {}
+    r_rot, r_pos = READY_HIPS
+    for d, spec in HIT_LEGS.items():
+        med = HIT_TICKS["medium"]
+        out["hit_medium_%s_legs" % d] = bake(legs_offset(attack_legs(spec, ticks=med)), med, loop=False)
+        k2 = spec["hips"][1]   # a flinch: the knees give a little toward the stagger's first key, no step
+        mid = lambda k: (tuple(a + k * (b - a) for a, b in zip(r_rot, k2[1])), tuple(a + k * (b - a) for a, b in zip(r_pos, k2[2])))
+        lt = HIT_TICKS["light"]
+        light = {"hips": [(0, *READY_HIPS), (1.5, *mid(0.45)), (4, *mid(-0.08)), (lt, *READY_HIPS)], "steps": []}
+        out["hit_light_%s_legs" % d] = bake(legs_offset(attack_legs(light, ticks=lt)), lt, loop=False)
+    out["hit_block_legs"] = bake(legs_offset(attack_legs(BLOCK_LEGS, ticks=BLOCK_TICKS)), BLOCK_TICKS, loop=False)
     return out
 
 

@@ -39,6 +39,9 @@ final class StanceController extends AnimationController<GeoTroop> {
     /** Each pose's ramp, 0..1, by clip name; insertion order is the blend order. */
     private final Map<String, Double> ramps = new LinkedHashMap<>();
     private double still = 1, last = Double.NaN;
+
+    /** How still the troop stands this frame, 0 moving to 1 planted (eased by the caller); the attack layer scales footwork by it. */
+    double still() { return still; }
     /** Per-bone blend accumulator, reused every frame: rot xyz, pos xyz, rot weight, pos weight. */
     private final Map<String, float[]> acc = new HashMap<>();
     /** What the last frame chose and showed, for the in-game checks (GeoKnightChecks). Never read in play. */
