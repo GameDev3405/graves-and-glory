@@ -310,7 +310,7 @@ final class Tactics {
                     int late=Projectiles.looseTicks(u);
                     if(late>0){u.looseAt=time+late;u.looseTarget=enemy;} // Kort Q70: a bow troop's shot leaves late ticks on (looseLate)
                     else shoot(battle,u,enemy,time,ranged);
-                }else if(drawsAhead(u)&&time+10>=u.nextAttack&&time+10>=u.stunnedUntil&&!pending(battle,u)&&!Abilities.tooClose(u,nearest))Projectiles.drawAhead(battle,u,enemy,10); // the beat before a bow's shot: its draw starts now, the arrow still leaves on the next beat (cosmetic, R110 Plan B)
+                }else if(announcesAhead(u)&&time+10>=u.nextAttack&&time+10>=u.stunnedUntil&&!pending(battle,u)&&!Abilities.tooClose(u,nearest))Projectiles.drawAhead(battle,u,enemy,10); // the beat before a bow's or crossbow's shot: its clip is announced now, the shot still leaves on the next beat (cosmetic, R110 Plan B)
             }else if(post&&ranged){toSlot(battle,u,a,time,speed); // a ranged troop on a post shoots what it can reach from there and never walks off after the rest
             }else if(volley){toSlot(battle,u,a,time,speed); // a ranged troop on a Charge never closes on its target: it runs on down the path and stops once it can shoot
             }else if(!holdSiege&&leash(u,a,hold,holdSiege,slotted,slot,keep,engage,enemy.getPos())){
@@ -596,7 +596,9 @@ final class Tactics {
     }
     /** Late shots lost (looseLate) since the server started. */
     static int looseLost;
-    /** Whether a troop's shot is announced a beat early (Projectiles.drawAhead): a bow's, whose clip draws for its 10 impact ticks before the loose (R110 Plan B; the crossbow and thrower families have no clips yet). */
+    /** Whether a troop's shot is announced a beat early (Projectiles.drawAhead), so its clip's wind-up plays before the loose instead of fading in late: a bow's or a crossbow's (cosmetic; the thrower family has no clip yet). */
+    static boolean announcesAhead(GravesAndGlory.Unit u){return u.spec.ranged()&&!u.spec.magic()&&("bow".equals(u.spec.family())||"crossbow".equals(u.spec.family()));}
+    /** Whether a troop's shot draws ahead with Kort Q70's loose and hold seeds (Projectiles.looseTicks, hold): a bow's, whose clip draws for its 10 impact ticks before the loose (R110 Plan B). */
     static boolean drawsAhead(GravesAndGlory.Unit u){return u.spec.ranged()&&!u.spec.magic()&&"bow".equals(u.spec.family());}
     /** Whether this troop has a blow pending (Battle.strikes): one at most, so its next swing waits for it. */
     static boolean pending(GravesAndGlory.Battle b,GravesAndGlory.Unit u){if(u.looseAt>=0)return true;for(var s:b.strikes)if(s.attacker()==u)return true;return false;}

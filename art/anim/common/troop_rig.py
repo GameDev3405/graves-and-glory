@@ -33,17 +33,29 @@ import build_swords as SW                                     # noqa: E402
 # through-axis, its back (+x) out along the knuckles toward the target, the string toward the archer.
 BOW_ROT = (-90, 0, -90)
 BOW_FRAMES = ("rest", "pull_0", "pull_1", "pull_2")
+# A crossbow (kind "crossbow") rides the right fist. Its string and bolt change through a shot, so they hang on three frame bones
+# under the same "draw" channel the bow uses (GeoTroopRenderer shows the frame whose suffix the channel picks), keeping the bow's names:
+#   rest   (channel 0, the default) loaded: the art's spanned string and the bolt on the rail
+#   pull_0 (channel 1)             spent: the string slack straight across the prod, no bolt
+#   pull_1 (channel 2)             spanned: the string back on the lock, no bolt yet
+XBOW_FRAMES = {"rest": ("string_l", "string_r", "bolt"), "pull_0": ("string_slack",), "pull_1": ("string_l", "string_r")}
+XBOW_LOOSE = {n for ns in XBOW_FRAMES.values() for n in ns}
 # troop id: (art dir, module, Troop attribute, weapon module, weapon id (tiers <id>, <id>_t2, <id>_t3), weapon rotation in the fist)
 TROOPS = {
     "sentinel": ("sentinel", "build_sentinel", "SENTINEL", "build_longsword", "longsword", (-90, 0, 90)),
     "revenant": ("revenant", "build_revenant", "REVENANT", "build_gb_notched_sword", "notched_sword", (-90, 0, 90)),
     "tc_raider": ("tc_raider", "build_tc_raider", "TC_RAIDER", "build_house_weapons", "cutlass", (-90, 0, 90)),
+    # a spear (both fists on the shaft; build_spear_anims solves the left fist to it) rides the right fist like a blade
+    "wm_tusk": ("wm_tusk", "build_wm_tusk", "WM_TUSK", "build_house_weapons", "boar_spear", (-90, 0, 90)),
+    "tc_tideguard": ("tc_tideguard", "build_tc_tideguard", "TC_TIDEGUARD", "build_house_weapons", "coral_trident", (-90, 0, 90)),
+    "tc_admiral": ("tc_admiral", "build_tc_admiral", "TC_ADMIRAL", "build_house_weapons", "admiral_trident", (-90, 0, 90)),
     # a bow (kind "bow") rides the left fist; its rest and three draw frames are child bones the renderer switches between
     "archer": ("archer", "build_archer", "ARCHER", "build_bows", "order_bow", BOW_ROT, "bow"),
     "longbow": ("longbow", "build_longbow", "LONGBOW", "build_bows", "longbow", BOW_ROT, "bow"),
     "bonebow": ("bonebow", "build_bonebow", "BONEBOW", "build_gb_bone_bow", "bone_bow", BOW_ROT, "bow"),
     "stalker": ("stalker", "build_stalker", "STALKER", "build_gb_frost_bow", "frost_bow", BOW_ROT, "bow"),
     "wm_hunter": ("wm_hunter", "build_wm_hunter", "WM_HUNTER", "build_bows", "order_bow", BOW_ROT, "bow"),
+    "ic_arbalist": ("ic_arbalist", "build_ic_arbalist", "IC_ARBALIST", "build_ic_weapons", "ic_crossbow", (-90, 0, 90), "crossbow"),
 }
 SHIELD_AT = (-1, 4, -1.5)     # the knight's grip: in the left fist by its strap, face to the front
 WAIST, SPLIT = 8.5, ((12, 8), (12, 0))
@@ -160,7 +172,10 @@ def rigify(src, weapon_rot, kind="blade"):
                 order.append(Bone(f"bow_t{t}_{f}", f"weapon_t{t}", stages=[t], tag="draw"))
         else:
             order.append(Bone(f"weapon_t{t}", "right_hand", stages=[t], tag="weapon", rot=weapon_rot))
-    if kind == "bow":   # the draw channel: an empty bone whose position x the attack clips key to the frame index
+            if kind == "crossbow":
+                for f in XBOW_FRAMES:
+                    order.append(Bone(f"bow_t{t}_{f}", f"weapon_t{t}", stages=[t], tag="draw"))
+    if kind in ("bow", "crossbow"):   # the draw channel: an empty bone whose position x the attack clips key to the frame index
         order.append(Bone("draw", "root"))
     del names
     return order
@@ -217,6 +232,14 @@ class Rig:
                 col = SW.Cube("stringcol", [0, 0, 0], [1, int(math.ceil(longest)), 1], "linen", SW.flat(importlib.import_module("build_bows").STRING),
                               skip=[f for f in SW.FACES if f != "north"])
                 s.cubes[t] = [SW.Cube(c.name.split("/")[1], c.lo, c.hi, c.mat, c.paint, c.skip, c.turn, c.pivot) for c in solid] + [col]
+            elif s.kind == "crossbow":   # the solid stock on weapon_t<n>, the string and bolt split into the frame bones
+                cubes = s.weapon_cubes(t)
+                sl = next(c for c in cubes if c.name == "string_l")
+                cubes.append(SW.Cube("string_slack", [-7, 14, 0.5], [7, 15, 1.5], sl.mat, sl.paint, skip=("up", "down")))
+                by = {c.name: c for c in cubes}
+                s.frames[t] = {f: [by[n] for n in ns] for f, ns in XBOW_FRAMES.items()}
+                s.solid = {**getattr(s, "solid", {}), t: [c for c in cubes if c.name not in XBOW_LOOSE]}
+                s.cubes[t] = cubes
             else:
                 s.cubes[t] = s.weapon_cubes(t)
             colour, _, uv = SW.pack(s.cubes[t])
@@ -252,7 +275,7 @@ class Rig:
                 cs.append(c)
             wcubes = ()
             if bn.tag == "weapon" and keep(bn) and s.kind != "bow":
-                t = int(bn.name[-1]); wcubes = s.cubes[t]
+                t = int(bn.name[-1]); wcubes = s.solid[t] if s.kind == "crossbow" else s.cubes[t]
             if bn.tag == "draw" and keep(bn):
                 t, frame = int(bn.name[5]), bn.name[7:]
                 wcubes = s.frames[t][frame]
@@ -309,8 +332,8 @@ def main():
         for side in SIDES:
             R.texture(t, side).save(os.path.join(out, f"{tid}_t{t}_{side}.png"))
         json.dump(R.geo(lambda bn: shows(bn, t)), open(os.path.join(out, "preview", f"t{t}.geo.json"), "w"))
-        if R.kind == "bow":   # one preview per draw frame, plus every frame at once for renders that switch frames by bone scale
-            for f in BOW_FRAMES:
+        if R.kind in ("bow", "crossbow"):   # one preview per draw frame, plus every frame at once for renders that switch frames by bone scale
+            for f in (BOW_FRAMES if R.kind == "bow" else XBOW_FRAMES):
                 json.dump(R.geo(lambda bn, f=f: shows(bn, t, frame=f)), open(os.path.join(out, "preview", f"t{t}_{f}.geo.json"), "w"))
             json.dump(R.geo(lambda bn: shows(bn, t) or (bn.tag == "draw" and f"_t{t}_" in bn.name)),
                       open(os.path.join(out, "preview", f"t{t}_all.geo.json"), "w"))

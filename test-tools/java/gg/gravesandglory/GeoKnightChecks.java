@@ -31,14 +31,18 @@ final class GeoKnightChecks implements Phase1Checks.Suite {
     /** The GeckoLib troop under test (-Dgravesandglory.geoCheckTroop, default the knight): any biped on the knight's skeleton. Its
      *  march speeds scale the knight's by its troops-row speed (the knight's is .28). Reports and shots are named p1-geo-<troop>-... */
     static final String TROOP = System.getProperty("gravesandglory.geoCheckTroop", "knight");
-    /** A bow troop (Tactics.drawsAhead): its duel is fought at range, each shot drawn a beat ahead and loosed late as Tactics does. */
-    static final boolean RANGED = Arrays.stream(Spec.TROOPS).anyMatch(r -> r.id().equals(TROOP) && r.ranged() && !r.magic() && "bow".equals(r.family()));
+    /** A bow or crossbow troop (Tactics.announcesAhead): its duel is fought at range, each shot announced a beat ahead (a bow's loosed late) as Tactics does. */
+    static final boolean RANGED = Arrays.stream(Spec.TROOPS).anyMatch(r -> r.id().equals(TROOP) && r.ranged() && !r.magic() && ("bow".equals(r.family()) || "crossbow".equals(r.family())));
+    /** A crossbow troop: its 50-tick clip shoots, spans and reloads, so its shots are spaced wider (nudgeR) and its gap window sits after the reload. */
+    static final boolean XBOW = RANGED && Arrays.stream(Spec.TROOPS).anyMatch(r -> r.id().equals(TROOP) && "crossbow".equals(r.family()));
+    /** Ticks without a shot before a ranged duelist is made to shoot again: a crossbow standing waits 60 (its cooldown) so the gap after its 50-tick clip shows; walking, 40 (clips 51 ticks apart) so the 70-tick walk fits two shots each. */
+    static int nudgeR(String mode) { return XBOW && !mode.equals("walk") ? 60 : 40; }
     /** The duelists' spacing (blocks); a bow duel stands where neither is too close to shoot. */
     static final double GAP = RANGED ? 10 : 2;
     /** Ticks into the foe's swing (a bow: its draw) it is killed; the swing must show 2 ticks before that. */
     static final int KILL_AT = RANGED ? 12 : 4;
-    /** Clip ticks the frame checks expect (a bow clip draws, holds and recovers over 26), and the gap window between swings. */
-    static final int FRAMES = RANGED ? 26 : 22, GAP_T = RANGED ? 31 : 22;
+    /** Clip ticks the frame checks expect (a bow clip draws, holds and recovers over 26; a crossbow's shot, kick and span over its first 30), and the gap window between swings. */
+    static final int FRAMES = XBOW ? 30 : RANGED ? 26 : 22, GAP_T = XBOW ? 55 : RANGED ? 31 : 22;
     static final Gait.Mode[] MODES = {Gait.Mode.WALK, Gait.Mode.RUN};
     /** March directions per view, seen from the camera north of the line looking south: side on, head on, three-quarter. */
     static final String[] MARCH_VIEWS = {"side", "front", "threequarter"};
@@ -79,7 +83,7 @@ final class GeoKnightChecks implements Phase1Checks.Suite {
             us = new GravesAndGlory.Unit[]{owner.knights.get(2), owner.knights.get(5)};
             long now = b.world.getTime();
             // A bow duel shoots first 5 ticks in: its shots are spaced wider than a swing (draw, hold, recovery), so the walk fits two each.
-            for (int j = 0; j < 2; j++) { seen[j] = us[j].swingTick; last[j] = RANGED ? now - NUDGE + 5 : now; }
+            for (int j = 0; j < 2; j++) { seen[j] = us[j].swingTick; last[j] = RANGED ? now - nudgeR(mode) + 5 : now; }
         }
     }
     static volatile Duel duel;
@@ -341,12 +345,12 @@ final class GeoKnightChecks implements Phase1Checks.Suite {
             if (u.mob.isAlive() && enemy.isAlive() && b.time >= u.stunnedUntil) { u.mob.swingHand(Hand.MAIN_HAND); Tactics.shoot(b, u, enemy, b.time, true); d.shotAt[j] = now; }
             return;
         }
-        if (!u.mob.isAlive() || !enemy.isAlive() || now - d.last[j] <= Duel.NUDGE || b.time < u.stunnedUntil || Tactics.pending(b, u)) return;
+        if (!u.mob.isAlive() || !enemy.isAlive() || now - d.last[j] <= nudgeR(d.mode) || b.time < u.stunnedUntil || Tactics.pending(b, u)) return;
         if (Projectiles.drawAhead(b, u, enemy, 10) <= 0) return;
         d.beatAt[j] = now + 10 + Projectiles.looseTicks(u);
         d.forced++; d.last[j] = now;
         if (j == 1 && d.mode.equals("death") && k > 20 && d.killSwing < 0)
-            d.killSwing = Projectiles.shotStart(u.mob.getUuid(), now + 10, Tactics.variants(u.spec.family()).get(0).impactTicks());
+            { int imp = Tactics.variants(u.spec.family()).get(0).impactTicks(); d.killSwing = Tactics.drawsAhead(u) ? Projectiles.shotStart(u.mob.getUuid(), now + 10, imp) : now + 10 - imp; }
     }
 
     /** Puts the camera (the player's eye) at (x, z) looking along yaw. */
@@ -534,7 +538,7 @@ final class GeoKnightChecks implements Phase1Checks.Suite {
                 // Tick 0 is weight 0 by design (the same pose as the frame before it), and the client often hears of a swing a
                 // fraction of a tick after it starts, so it is saved when caught but not required: ticks 1-21 (far: 2-20) are.
                 // A bow duel at range always shoots the same arc, so one clip's frames: ticks 1-25 (far: 2-24).
-                int want = RANGED ? (far ? 12 : 25) : (far ? 3 * 10 : 3 * 21);
+                int want = XBOW ? (far ? 14 : 29) : RANGED ? (far ? 12 : 25) : (far ? 3 * 10 : 3 * 21);
                 if (k > 30 && c.world != null) {
                     var e = c.world.getEntityById(d.us[0].mob.getId());
                     AttackController ac = e == null ? null : AttackController.LIVE.get(e);
