@@ -31,12 +31,16 @@ GEO_BONES = {b["name"] for b in _GEO}
 # Secondary cloth (STYLE.md rule 9): the knight's cape lag, given to each troop's hanging gear at a scale.
 SPEAR_TROOPS = {"wm_tusk": {"gear": {"kilt": 0.4, "trophy": 0.7}},
                 "tc_tideguard": {"gear": {"tabard": 0.35}, "rear_x": -0.6, "death_lookahead": True},
-                "tc_admiral": {"gear": {"cape": 0.35, "tails_l": 0.7, "tails_r": 0.7}, "rear_x": -0.6, "death_lookahead": True,
-                                  "soft": ("hair_", "kelp_", "plume", "tails_", "sash_end")}}
+                "tc_admiral": {"gear": {"cape": 0.35, "tails_l": 0.7, "tails_r": 0.7}, "rear_x": -0.6, "death_lookahead": True, "death_top": 0.15, "death_step": 0.25,
+                                  "soft": ("hair_adrift", "kelp_", "plume", "tails_", "sash_end")}}
 ST = SPEAR_TROOPS[TROOP]
 LOOKAHEAD = ST.get("death_lookahead", False)   # per troop: wrist turn planned backwards through the fall (see flat_weapon)
 RX = ST.get("rear_x", 0.0)        # per-troop shift of the thrust contact fist outward, keeping the butt out of a wider torso
 K.SOFT = ST.get("soft", ())   # per troop: hanging hair and kelp never hold the falling body up (knight death_clip)
+TOP_W = ST.get("death_top", 0.0)  # per troop: cost per px the dropped weapon's top stands above TOP_OK (keeps it low in a roll)
+TOP_OK = 8.0
+DEATH_STEP = ST.get("death_step", 0.5)  # per troop: key spacing of the solved fall; 0.25 matches the bake, so a fast wrist swing
+                                        # cannot dip the weapon under the floor between keys
 W = "weapon_t1"                 # every tier's spear shares the pivot and axes
 
 # ------------------------------------------------------------------------------------------------
@@ -642,6 +646,13 @@ def ramp(t, a, b):
     return k * k * (3 - 2 * k)
 
 
+def body_ground(P, owner, isw):
+    """The floor the dropped weapon must clear: the body's lowest point, not counting soft hanging strands, which hang
+    below it until death_clip settles them on the ground."""
+    hard = ~isw & np.array([not any(o.startswith(h) for h in K.SOFT) for o in owner], dtype=bool)
+    return P[hard, 1].min()
+
+
 def flat_hand(pose, ref):
     """The right wrist rotation letting the spear drop: it lies along the ground, flat or tipped from the fist with its butt or
     point on the ground, clear of the body, and as near `ref` as that allows."""
@@ -649,7 +660,7 @@ def flat_hand(pose, ref):
     q["right_hand"] = (ref, Z3)
     P, owner = _CORNERS(q)
     isw = np.array([is_weapon(o) for o in owner])
-    ground = P[~isw, 1].min()
+    ground = body_ground(P, owner, isw)
     boxes = _boxes(P, owner)
     L = np.linalg.inv(K.world(q, "right_hand")) @ np.c_[P[isw] / 16.0, np.ones(int(isw.sum()))].T
     best = None
@@ -663,7 +674,8 @@ def flat_hand(pose, ref):
                 Wp = (K.world(q, "right_hand") @ L)[:3].T * 16.0
                 low = Wp[:, 1].min() - ground
                 cost = (_inside(Wp, boxes) + 3.0 * max(0.0, -low) + 0.6 * abs(low - 0.2) + turn_deg(h, ref) / 45.0
-                        + abs(tilt) / 60.0 + (0.5 if sgn < 0 else 0.0))
+                        + abs(tilt) / 60.0 + (0.5 if sgn < 0 else 0.0)
+                        + TOP_W * max(0.0, Wp[:, 1].max() - ground - TOP_OK))
                 if best is None or cost < best[0]:
                     best = (cost, h)
     return best[1]
@@ -691,7 +703,7 @@ def ground_hand(pose, rot, prev):
     q["right_hand"] = (rot, Z3)
     P, owner = _CORNERS(q)
     isw = np.array([is_weapon(o) for o in owner])
-    ground = P[~isw, 1].min()
+    ground = body_ground(P, owner, isw)
     if P[isw, 1].min() - ground >= GROUND_CLEAR:
         return rot
     keep = np.array([not any(a in o for a in ("left_arm", "left_forearm", "left_hand")) for o in owner])
@@ -741,9 +753,10 @@ def near_euler(r, prev):
     return min(cands, key=lambda e: sum((e[i] - prev[i]) ** 2 for i in range(3)))
 
 
-def flat_weapon(keys, start, t0, t1, step=0.5):
-    """Re-key the fall every half tick with the right wrist solved: free, then easing from t0 to the spear lying flat by
-    t1, always tipped clear of the ground and swinging at most MAX_WRIST_TURN per tick."""
+def flat_weapon(keys, start, t0, t1, step=None):
+    """Re-key the fall every half tick (DEATH_STEP) with the right wrist solved: free, then easing from t0 to the spear lying
+    flat by t1, always tipped clear of the ground and swinging at most MAX_WRIST_TURN per tick."""
+    step = DEATH_STEP if step is None else step
     end = keys[-1][0]
     out, ref, prev = [], None, start["right_hand"][0]
     for t in np.arange(step, end + step / 2, step):
