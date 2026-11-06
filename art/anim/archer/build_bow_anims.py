@@ -640,7 +640,10 @@ def flat_bow(keys, start, t0, t1):
 
 def death_clips():
     start = K.idle_start()
-    falls = {"death_back": K.DEATH_BACK, "death_forward": K.DEATH_FORWARD,
+    back = K.DEATH_BACK
+    if TROOP == "stalker":   # the wide mantle swallows a bow laid by the hip: the bow arm flings out wide as it lands
+        back = K.roll_keys(back, start, 6, {t: {"left_arm": (-30, 0, -90), "left_forearm": (0, 0, 0)} for t in range(7, 21)})
+    falls = {"death_back": back, "death_forward": K.DEATH_FORWARD,
              "death_left": K.roll_keys(K.DEATH_LEFT, start, 13, ROLL_LEFT),
              "death_right": K.roll_keys(K.DEATH_RIGHT, start, 13, K.ROLL_RIGHT)}
     return {n: K.death_clip(flat_bow(k, start, *FLAT_AT[n]), start, n) for n, k in falls.items()}
