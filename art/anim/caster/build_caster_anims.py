@@ -268,13 +268,14 @@ if ROBED:   # caster v2: the knees give less under the robe (a deep dip would dr
     K.BLOCK_LEGS = _shallow(K.BLOCK_LEGS)
 
 
-def stance_legs(spec, life=1.0, ticks=K.STANCE_TICKS):
+def stance_legs(spec, life=1.0, ticks=K.STANCE_TICKS, ready=False):
     n = ticks * SUB
     out, guesses = [], {}
+    a_br, a_wt, _ = K.feel.stance_amps(life, ready)   # ready: everything x V2_READY_SWAY_SCALE; else the excess x V2_SWAY_SCALE
     for i in range(n + 1):
         u = (i % n) / n
-        br = life * math.sin(2 * math.pi * u)
-        wt = (life - 1.0) * math.sin(2 * math.pi * u - K.WEIGHT)
+        br = a_br * math.sin(2 * math.pi * u)
+        wt = a_wt * math.sin(2 * math.pi * u - K.WEIGHT)
         (rx, ry, rz), (px, py, pz) = spec["hips"]
         hips = ((rx + 1.5 * wt, ry + 2.2 * wt, rz - 1.6 * wt),
                 (px + 0.35 * wt, py - 0.1 * br - 0.12 * abs(wt) - 0.22 * max(0.0, wt), pz - 0.6 * wt))
@@ -770,19 +771,21 @@ def gait_upper(g, c, run):
 STANCE_KEYS["shield_up"] = STANCE_KEYS["ready"]
 LIFE = {"ready": 3.4, "brace": 1.6, "wall": 1.4, "ward": 2.0, "shield_up": 3.4}
 IDLE_LIFE = 2.2
+READY_LIKE = ("ready", "shield_up")   # shield_up is the ready pose: both ride V2_READY_SWAY_SCALE
 
 
-def stance_upper(k, life, legs_spec, ticks=K.STANCE_TICKS):
+def stance_upper(k, life, legs_spec, ticks=K.STANCE_TICKS, ready=False):
     n = ticks * SUB
+    a_br, a_wt, _ = K.feel.stance_amps(life, ready)
     sol = Solver()
     out = []
     hips = (legs_spec or STANCE_LEGS["ready"])["hips"]
     legs = {"hips": hips}
     for i in range(n + 1):
         u = (i % n) / n
-        br = life * math.sin(2 * math.pi * u)
-        wt = (life - 1.0) * math.sin(2 * math.pi * u - K.WEIGHT)
-        wl = (life - 1.0) * math.sin(2 * math.pi * u - K.WEIGHT - 0.7)
+        br = a_br * math.sin(2 * math.pi * u)
+        wt = a_wt * math.sin(2 * math.pi * u - K.WEIGHT)
+        wl = a_wt * math.sin(2 * math.pi * u - K.WEIGHT - 0.7)
         tx, ty, tz = k["torso"]
         torso = (tx + 0.8 * br + 1.8 * wt, ty + 1.4 * wt, tz + 1.2 * wt)
         gaze = tuple(np.array(k["head"]) + np.array([-0.3 * br, 0.0, 0.0]))
@@ -800,8 +803,8 @@ def stance_upper(k, life, legs_spec, ticks=K.STANCE_TICKS):
 
 
 def stance_clips():
-    out = {"stance_%s_upper" % k: stance_upper(v, LIFE[k], STANCE_LEGS.get(k)) for k, v in STANCE_KEYS.items()}
-    out.update({"stance_%s_legs" % k: stance_legs(v, K.STANCE_LIFE.get(k, 1.0)) for k, v in STANCE_LEGS.items()})
+    out = {"stance_%s_upper" % k: stance_upper(v, LIFE[k], STANCE_LEGS.get(k), ready=k in READY_LIKE) for k, v in STANCE_KEYS.items()}
+    out.update({"stance_%s_legs" % k: stance_legs(v, K.STANCE_LIFE.get(k, 1.0), ready=k in READY_LIKE) for k, v in STANCE_LEGS.items()})
     return out
 
 
@@ -816,11 +819,12 @@ K.idle_clips = idle_clips    # the death falls start from the guard
 # ------------------------------------------------------------------------------------------------
 
 off = K.off
+hb, hb_front = K.hb, K.hb_front   # Kort's polish: how far a blow throws the spine and head BACK (art/anim/common/feel.py)
 HIT_PEAK = {
-    "front": off(torso=(-17, -10, 0), head=(-12, 3, 0), rarm=(-10, 0, 14), larm=(-24, 0, -40), lfore=-14),
+    "front": off(torso=(hb_front(-17), -10, 0), head=(hb(-12), 3, 0), rarm=(-10, 0, 14), larm=(-24, 0, -40), lfore=-14),
     "back": off(torso=(12, 0, 0), head=(5, 0, 0), rarm=(10, 0, 10), larm=(14, 0, -24)),
-    "right": off(torso=(-5, 14, 8), head=(0, 6, 3), rarm=(6, 0, 10), larm=(-12, 0, -22)),
-    "left": off(torso=(-5, -14, -8), head=(0, -6, -3), rarm=(-10, 0, 14), larm=(12, 0, -30)),
+    "right": off(torso=(hb(-5), 14, 8), head=(0, 6, 3), rarm=(6, 0, 10), larm=(-12, 0, -22)),
+    "left": off(torso=(hb(-5), -14, -8), head=(0, -6, -3), rarm=(-10, 0, 14), larm=(12, 0, -30)),
 }
 
 
@@ -828,7 +832,7 @@ def hit_clips():
     out = {}
     for weight, ticks in K.HIT_TICKS.items():
         for dname, peak in HIT_PEAK.items():
-            keys = K.hit_keys(peak, weight)
+            keys = K.front_onset(K.hit_keys(peak, weight), dname, weight)
             out["hit_%s_%s" % (weight, dname)] = K.bake([K.sample_keys(keys, i / SUB) for i in range(ticks * SUB + 1)], ticks,
                                                        loop=False)
     out["hit_block"] = out["hit_light_front"]
@@ -1428,19 +1432,20 @@ def dump(path, ticks):
     print("dumped", len(rows), "poses to", path)
 
 
+SW = K.V2_SWAY_SCALE   # Kort's polish: the pelvis sway and roll of the gait (art/anim/common/feel.py)
 # caster v2 gaits (the GaitController reference speeds .16 / .26 kept): a quicker, shorter stride, the feet skimming low
 # and the hips level, so the robe glides; the feet set wide enough apart that the hooves never cross
 GAITS = {t: (
     K.Gait("walk", ticks=6, speed=0.16, duty=0.5, heel=4, toe_off=8, front=3.85, lift=0.9, lift_peak=0.5,
-           hip_drop=0.95, bob=0.2, bob_phase=0.06, sway=0.2, yaw=3.0, roll=0.8, lane=2.5),
+           hip_drop=0.95, bob=0.2, bob_phase=0.06, sway=0.2 * SW, yaw=3.0, roll=0.8 * SW, lane=2.5),
     K.Gait("run", ticks=5, speed=0.26, duty=0.4, heel=4, toe_off=10, front=3.8, lift=1.5, lift_peak=0.5,
-           hip_drop=1.7, bob=0.3, bob_phase=0.19, sway=0.2, yaw=4.0, roll=1.0, pitch_hips=2.0, lane=2.5))
+           hip_drop=1.7, bob=0.3, bob_phase=0.19, sway=0.2 * SW, yaw=4.0, roll=1.0 * SW, pitch_hips=2.0, lane=2.5))
          for t in ("wm_seer", "tc_mist", "mage", "hexer")}
 # the mage's run is a quicker, shorter scurry (4-tick lap, same speed): the shorter stride lets the hips stay high (less
 # drop and bob), so the hem clears the floor without the side panels splaying out (run roll 26 -> 12 deg, the walk's 11)
 GAITS["mage"] = (GAITS["mage"][0],
                  K.Gait("run", ticks=4, speed=0.26, duty=0.4, heel=4, toe_off=10, front=3.3, lift=1.2, lift_peak=0.5,
-                        hip_drop=1.0, bob=0.15, bob_phase=0.19, sway=0.2, yaw=4.0, roll=1.0, pitch_hips=2.0, lane=2.5))
+                        hip_drop=1.0, bob=0.15, bob_phase=0.19, sway=0.2 * SW, yaw=4.0, roll=1.0 * SW, pitch_hips=2.0, lane=2.5))
 GAITS["hexer"] = (GAITS["hexer"][0], GAITS["mage"][1])   # the gravecaller's robe is the same bell: the same scurry
 
 

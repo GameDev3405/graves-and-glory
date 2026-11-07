@@ -53,20 +53,12 @@ OUT = (HERE if TROOP == "knight" else HERE.parent / TROOP) / "out" / f"{TROOP}.a
 V2 = os.environ.get("GG_V2") != "0"
 if os.environ.get("GG_V2_OUT"):
     OUT = Path(os.environ["GG_V2_OUT"])
-# Polish scales (Kort, 2026-11-07: "way too much sway", "heavy hits break their back"). 1.0 builds the approved v2 motion exactly;
-# GG_V2_SWAY / GG_V2_HIT_BACK override them for trials (and are ignored under GG_V2=0).
-#   V2_SWAY_SCALE      the back-and-forth body sway: the idle weight shift, the stance weight rock (torso/head/pelvis/arm trail,
-#                      shield trailing) and the walk/run pelvis roll, lateral hip shift, shoulder roll and shield rock. Breathing,
-#                      the gait's yaw/counter-twist and the arm swing are not sway and stay.
-#   V2_HIT_BACK_SCALE  how far a blow throws the spine and head BACKWARD (negative pitch on torso, head, pelvis and the shield tilt
-#                      of the hit clips). Forward pitch, the recovery overshoot, twist, the stagger step and knee give are unchanged.
-V2_SWAY_SCALE = float(os.environ.get("GG_V2_SWAY", 1.0)) if V2 else 1.0
-V2_HIT_BACK_SCALE = float(os.environ.get("GG_V2_HIT_BACK", 1.0)) if V2 else 1.0
-
-
-def hb(x):
-    """A pitch (degrees, - is back) with its backward part scaled by V2_HIT_BACK_SCALE."""
-    return x * V2_HIT_BACK_SCALE if x < 0 else x
+# Polish scales (Kort, 2026-11-07: sway trial variant B). They live in ONE place for every biped builder:
+# art/anim/common/feel.py (V2_SWAY_SCALE 0.4, V2_HIT_BACK_SCALE 0.35, V2_READY_SWAY_SCALE 0.25; GG_V2_SWAY / GG_V2_HIT_BACK /
+# GG_V2_READY_SWAY override them for trials, and 1.0 rebuilds the previous v2 motion). Read at call time through feel.sway() etc.
+sys.path.insert(0, str(HERE.parent / "common"))
+import feel  # noqa: E402
+from feel import V2_SWAY_SCALE, V2_HIT_BACK_SCALE, V2_READY_SWAY_SCALE, hb, hb_front  # noqa: E402,F401
 SUB = 4                     # samples per tick in generated clips
 TPS = 20.0
 
@@ -211,6 +203,12 @@ def _fist(arm, fore):
     return (M @ np.r_[MODEL.bones["left_hand"].pivot / 16.0, 1.0])[:3] * 16.0
 
 
+# hexer and bonebow import this module only as a library: their own builders replace the knight attack set, but the import still
+# lays out the shieldless knight swings (FREE_FIST), whose free-hand targets sit about a pixel past those two shorter arms. The
+# targets are unused for them, so the reach check is loosened for these two instead of aborting the import (HEAD no longer built).
+FIST_TOL = 3.0 if TROOP in ("hexer", "bonebow") else 0.25
+
+
 def fist_arm(target, roll=-4.0, guess=None):
     """left_arm (x, y, roll) and left_forearm x putting the fist at target; the upper arm's roll (- out) is given."""
     x = np.array(guess if guess is not None else (-20.0, 20.0, -80.0), dtype=float)
@@ -232,7 +230,7 @@ def fist_arm(target, roll=-4.0, guess=None):
             step *= 10 / n
         x += step
         x[2] = min(0.0, max(-150.0, x[2]))        # the elbow only flexes
-    if np.linalg.norm(t - f(x)) > 0.25:     # a quarter pixel: the arm is near straight there
+    if np.linalg.norm(t - f(x)) > FIST_TOL:     # a quarter pixel: the arm is near straight there
         raise ValueError("fist unreachable: target %s got %s" % (np.round(t, 2), np.round(f(x), 2)))
     return (x[0], x[1], roll), x[2]
 
@@ -476,7 +474,7 @@ IDLE_TICKS = 60
 
 
 def idle_clips(sway=None):
-    k = V2_SWAY_SCALE if sway is None else sway    # idle_start passes 1.0: the falls start from the approved idle pose
+    k = feel.sway() if sway is None else sway    # idle_start passes 1.0: the falls start from the approved idle pose
     n = IDLE_TICKS * SUB
     legs, upper = [], []
     guesses = {}
@@ -1161,14 +1159,15 @@ if V2:
 WEIGHT = 0.5 * math.pi
 
 
-def stance_upper(pose, life=1.0):
+def stance_upper(pose, life=1.0, ready=False):
     n = STANCE_TICKS * SUB
     out = []
+    a_br, a_wt, a_lag = feel.stance_amps(life, ready)   # ready: all of it x V2_READY_SWAY_SCALE; else the excess x V2_SWAY_SCALE
     for i in range(n + 1):
         u = (i % n) / n
-        br = life * math.sin(2 * math.pi * u)
-        wt = V2_SWAY_SCALE * (life - 1.0) * math.sin(2 * math.pi * u - WEIGHT)   # + weight forward
-        wl = V2_SWAY_SCALE * (life - 1.0) * math.sin(2 * math.pi * u - WEIGHT - 0.7)   # the arms trail the torso by a few ticks
+        br = a_br * math.sin(2 * math.pi * u)
+        wt = a_wt * math.sin(2 * math.pi * u - WEIGHT)   # + weight forward
+        wl = a_wt * math.sin(2 * math.pi * u - WEIGHT - 0.7)   # the arms trail the torso by a few ticks
         f = {b: (tuple(v), None) for b, v in pose.items()}
         tx, ty, tz = pose["torso"]
         f["torso"] = ((tx + 0.8 * br + 1.8 * wt, ty - 1.4 * wt, tz - 1.2 * wt), None)
@@ -1182,19 +1181,20 @@ def stance_upper(pose, life=1.0):
             f["left_arm"] = ((sx - 1.2 * br + 2.2 * wl, sy, sz - 1.3 * wl), None)
             f["left_forearm"] = ((pose["left_forearm"][0] - 1.6 * br, 0.0, 0.0), None)
         fx_, fy_, fz_ = f["_face"][0]
-        lag = V2_SWAY_SCALE * life * math.sin(2 * math.pi * u - 0.6)   # the shield settles a beat after the breath
+        lag = a_lag * math.sin(2 * math.pi * u - 0.6)   # the shield settles a beat after the breath
         f["_face"] = ((fx_ + 1.5 * lag, fy_ + 0.8 * lag, fz_ - 0.6 * lag), None)
         out.append(regrip(f))
     return bake(out, STANCE_TICKS)
 
 
-def stance_legs(spec, life=1.0):
+def stance_legs(spec, life=1.0, ready=False):
     n = STANCE_TICKS * SUB
     out, guesses = [], {}
+    a_br, a_wt, _ = feel.stance_amps(life, ready)
     for i in range(n + 1):
         u = (i % n) / n
-        br = life * math.sin(2 * math.pi * u)
-        wt = V2_SWAY_SCALE * (life - 1.0) * math.sin(2 * math.pi * u - WEIGHT)
+        br = a_br * math.sin(2 * math.pi * u)
+        wt = a_wt * math.sin(2 * math.pi * u - WEIGHT)
         (rx, ry, rz), (px, py, pz) = spec["hips"]
         # the weight rides forward over the lead foot (hips forward, a touch lower, tipped in) and back over the rear one
         # and sideways onto it (readable from the front): the hips slide and roll toward the lead side, the lead knee sinks
@@ -1213,8 +1213,8 @@ def stance_legs(spec, life=1.0):
 
 
 def stance_clips():
-    out = {"stance_%s_upper" % k: stance_upper(v, STANCE_LIFE.get(k, 1.0)) for k, v in STANCE_UPPER.items()}
-    out.update({"stance_%s_legs" % k: stance_legs(v, STANCE_LIFE.get(k, 1.0)) for k, v in STANCE_LEGS.items()})
+    out = {"stance_%s_upper" % k: stance_upper(v, STANCE_LIFE.get(k, 1.0), k == "ready") for k, v in STANCE_UPPER.items()}
+    out.update({"stance_%s_legs" % k: stance_legs(v, STANCE_LIFE.get(k, 1.0), k == "ready") for k, v in STANCE_LEGS.items()})
     return out
 
 
@@ -1256,19 +1256,31 @@ def scaled(o, k):
     return {b: tuple(k * c for c in v) for b, v in o.items()}
 
 
+ONSET_FIRST_TICK = 0.38   # share of the front blow's tick-2 peak reached after tick 1: the rest lands in the second tick
+
+
+def front_onset(keys, d, weight):
+    """Polish (Kort, 2026-11-07): a front medium/heavy blow ramps in over two ticks instead of snapping to its peak. Inserts a
+    tick-1 key at ONSET_FIRST_TICK of the first peak key (tick 2). The clip length, the later keys and every other direction or
+    weight are unchanged."""
+    if d != "front" or weight != "medium" or len(keys) < 3 or not (1.0 < keys[1][0] <= 2.0):
+        return keys
+    return [keys[0], (1.0, scaled(keys[1][1], ONSET_FIRST_TICK))] + list(keys[1:])
+
+
 # The peak offset of a light blow from each direction, degrees. Front: the chest is driven back and the
 # head snaps back; back: the body is pitched forward; right: the right shoulder is driven back and the
 # body bends away to the left; left mirrors it.
 # Big and readable (STYLE.md rule 8): a medium blow (2.2x these) throws the torso about 30 degrees and flings the sword arm wide.
 HIT_PEAK = {
-    "front": shield_keep(off(torso=(hb(-13), 5, 0), head=(hb(-10), -2, 0), rarm=(-14, 0, 30), larm=(-4, 0, -6)), tilt=hb(-5)),
+    "front": shield_keep(off(torso=(hb_front(-13), 5, 0), head=(hb(-10), -2, 0), rarm=(-14, 0, 30), larm=(-4, 0, -6)), tilt=hb(-5)),
     "back": shield_keep(off(torso=(10, 0, 0), head=(4, 0, 0), rarm=(8, 0, 14), larm=(8, 0, -6)), tilt=4),
     "right": shield_keep(off(torso=(hb(-4), 12, 7), head=(0, 5, 3), rarm=(8, 0, 22), larm=(-3, 0, -4))),
     "left": shield_keep(off(torso=(hb(-4), -12, -7), head=(0, -5, -3), rarm=(-4, 0, 12), larm=(8, 0, -8))),
 }
 if not SHIELD:   # no shield to take it (review 2026-11-06): thrown harder, twisting back, both arms flung wide
     HIT_PEAK = {
-        "front": shield_keep(off(torso=(hb(-17), 10, 0), head=(hb(-12), -3, 0), rarm=(-20, 0, 42), larm=(-10, 0, -18), lfore=-12)),
+        "front": shield_keep(off(torso=(hb_front(-17), 10, 0), head=(hb(-12), -3, 0), rarm=(-20, 0, 42), larm=(-10, 0, -18), lfore=-12)),
         "back": shield_keep(off(torso=(12, 0, 0), head=(5, 0, 0), rarm=(10, 0, 20), larm=(10, 0, -14))),
         "right": shield_keep(off(torso=(hb(-5), 14, 8), head=(0, 6, 3), rarm=(10, 0, 28), larm=(-6, 0, -10))),
         "left": shield_keep(off(torso=(hb(-5), -14, -8), head=(0, -6, -3), rarm=(-6, 0, 16), larm=(10, 0, -16))),
@@ -1300,6 +1312,7 @@ def hit_clips():
         for d, peak in HIT_PEAK.items():
             keys = hit_keys(peak, weight)
             if V2:
+                keys = front_onset(keys, d, weight)
                 samples = hit_samples(keys, weight, d, ticks)
             else:
                 samples = [sample_keys(keys, i / SUB) for i in range(ticks * SUB + 1)]
@@ -1368,7 +1381,7 @@ if V2:
         return [(0, ZERO), (2, scaled(a, 2.3)), (4.5, scaled(a, 2.15)), (7.5, scaled(a, 0.55)), (10.5, ZERO), (16, ZERO)]
 
     def hit_samples(keys, weight, d, ticks):
-        ak = hit_arm_keys(d, weight)
+        ak = front_onset(hit_arm_keys(d, weight), d, weight)
         out = []
         for i in range(ticks * SUB + 1):
             s, a = sample_keys(keys, i / SUB), sample_keys(ak, i / SUB)
@@ -1575,7 +1588,8 @@ def _ease(kind, s):
 
 def idle_start():
     """Idle frame 0, every death bone, so the fall blends in from where the knight stood."""
-    legs, upper = idle_clips(1.0)   # unscaled: the falls are not part of the sway trial
+    with feel.unscaled():   # the falls start from the approved v2 idle pose: not part of the sway polish. (A family replaces
+        legs, upper = idle_clips()   # idle_clips with its own zero-argument version; the scales are read at call time.)
     out = {}
     for clip in (legs, upper):
         for b, ch in clip["bones"].items():

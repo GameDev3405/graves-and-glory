@@ -303,18 +303,18 @@ if V2C:
     # pelvis well off the footing and a short lifted step catches it (the rear foot back for a blow from the front, the lead
     # foot forward from behind, the far foot out sideways), then the feet walk home; a light blow only gives at the knees.
     _KH2 = {
-        "front": {"hips": [(0, *_KN_HIPS), (2, (-6, 9, 0), (0.0, -1.9, 1.6)), (4.5, (-5, 9, 0), (0.0, -2.1, 1.9)),
-                           (7.5, (1, 5, 0), (0.0, -1.8, 1.3)), (10.5, (-1, 7, 0), (0.0, -1.3, 0.5)), (16, *_KN_HIPS)],
+        "front": {"hips": [(0, *_KN_HIPS), (2, (K.hb(-6), 9, 0), (0.0, -1.9, 1.6)), (4.5, (K.hb(-5), 9, 0), (0.0, -2.1, 1.9)),
+                           (7.5, (1, 5, 0), (0.0, -1.8, 1.3)), (10.5, (K.hb(-1), 7, 0), (0.0, -1.3, 0.5)), (16, *_KN_HIPS)],
                   "steps": [("left", 1.0, 3.8, (3.3, 2.0, -4.0), 9.0, 0.8), ("right", 3.5, 6.5, (-3.4, 2.0, 0.6), -13.0, 0.6),
                             ("left", 9.0, 12.5, (3.2, 2.0, -2.0), 7.0, 0.8), ("right", 11.5, 15.0, (-3.4, 2.0, 2.0), -12.0, 0.8)]},
         "back": {"hips": [(0, *_KN_HIPS), (2, (6, 4, 0), (0.0, -1.8, -1.2)), (4.5, (5, 4, 0), (0.0, -1.9, -1.4)),
                           (7.5, (-1, 7, 0), (0.0, -1.6, -0.8)), (10.5, (0.5, 6, 0), (0.0, -1.2, -0.2)), (16, *_KN_HIPS)],
                  "steps": [("right", 1.0, 3.8, (-3.5, 2.0, 3.5), -12.0, 0.8), ("left", 3.5, 6.5, (3.2, 2.0, -0.6), 7.0, 0.6),
                            ("left", 9.0, 12.5, (3.2, 2.0, -2.0), 7.0, 0.8), ("right", 11.5, 15.0, (-3.4, 2.0, 2.0), -12.0, 0.8)]},
-        "right": {"hips": [(0, *_KN_HIPS), (2, (-2, 14, 4), (1.0, -1.8, 0.5)), (4.5, (-2, 13, 4), (1.2, -1.9, 0.5)),
+        "right": {"hips": [(0, *_KN_HIPS), (2, (K.hb(-2), 14, 4), (1.0, -1.8, 0.5)), (4.5, (K.hb(-2), 13, 4), (1.2, -1.9, 0.5)),
                            (7.5, (1, 4, 0), (0.6, -1.6, 0.2)), (10.5, (0, 6.5, 0), (0.1, -1.2, 0.1)), (16, *_KN_HIPS)],
                   "steps": [("left", 1.0, 3.8, (4.9, 2.0, -2.2), 12.0, 0.8), ("left", 9.0, 12.5, (3.2, 2.0, -2.0), 7.0, 0.8)]},
-        "left": {"hips": [(0, *_KN_HIPS), (2, (-2, -2, -4), (-1.0, -1.8, 0.5)), (4.5, (-2, -1, -4), (-1.2, -1.9, 0.5)),
+        "left": {"hips": [(0, *_KN_HIPS), (2, (K.hb(-2), -2, -4), (-1.0, -1.8, 0.5)), (4.5, (K.hb(-2), -1, -4), (-1.2, -1.9, 0.5)),
                           (7.5, (1, 8, 0), (-0.6, -1.6, 0.2)), (10.5, (0, 5.5, 0), (-0.1, -1.2, 0.1)), (16, *_KN_HIPS)],
                  "steps": [("right", 1.0, 3.8, (-5.0, 2.0, 1.6), -18.0, 0.8), ("right", 9.0, 12.5, (-3.4, 2.0, 2.0), -12.0, 0.8)]},
     }
@@ -333,14 +333,15 @@ if V2C:
                            "yaw": (-10.0, 22.0)}
 
 
-def stance_legs(spec, life=1.0, ticks=K.STANCE_TICKS):
+def stance_legs(spec, life=1.0, ticks=K.STANCE_TICKS, ready=False):
     """The knight's stance legs, mirrored for the left lead: the weight rides forward over the left foot and back over the right."""
     n = ticks * SUB
     out, guesses = [], {}
+    a_br, a_wt, _ = K.feel.stance_amps(life, ready)   # ready: everything x V2_READY_SWAY_SCALE; else the excess x V2_SWAY_SCALE
     for i in range(n + 1):
         u = (i % n) / n
-        br = life * math.sin(2 * math.pi * u)
-        wt = (life - 1.0) * math.sin(2 * math.pi * u - K.WEIGHT)
+        br = a_br * math.sin(2 * math.pi * u)
+        wt = a_wt * math.sin(2 * math.pi * u - K.WEIGHT)
         (rx, ry, rz), (px, py, pz) = spec["hips"]
         hips = ((rx + 1.5 * wt, ry + 2.2 * wt, rz - 1.6 * wt),
                 (px + 0.35 * wt, py - 0.1 * br - 0.12 * abs(wt) - 0.22 * max(0.0, wt), pz - 0.6 * wt))
@@ -606,19 +607,21 @@ if V2C:
 STANCE_KEYS["shield_up"] = STANCE_KEYS["ready"]
 LIFE = {"ready": 3.4, "brace": 1.6, "wall": 1.4, "ward": 2.0, "shield_up": 3.4}
 IDLE_LIFE = 2.2
+READY_LIKE = ("ready", "shield_up")   # shield_up is the ready pose: both ride V2_READY_SWAY_SCALE
 
 
-def stance_upper(k, life, legs_spec, ticks=K.STANCE_TICKS):
+def stance_upper(k, life, legs_spec, ticks=K.STANCE_TICKS, ready=False):
     n = ticks * SUB
+    a_br, a_wt, _ = K.feel.stance_amps(life, ready)
     sol = Solver()
     out = []
     hips = (legs_spec or STANCE_LEGS["ready"])["hips"]
     legs = {"hips": hips}
     for i in range(n + 1):
         u = (i % n) / n
-        br = life * math.sin(2 * math.pi * u)
-        wt = (life - 1.0) * math.sin(2 * math.pi * u - K.WEIGHT)
-        wl = (life - 1.0) * math.sin(2 * math.pi * u - K.WEIGHT - 0.7)
+        br = a_br * math.sin(2 * math.pi * u)
+        wt = a_wt * math.sin(2 * math.pi * u - K.WEIGHT)
+        wl = a_wt * math.sin(2 * math.pi * u - K.WEIGHT - 0.7)
         tx, ty, tz = k["torso"]
         torso = (tx + 0.8 * br + 1.8 * wt, ty + 1.4 * wt, tz + 1.2 * wt)
         gaze = tuple(np.array(k["head"]) + np.array([-0.3 * br, 0.0, 0.0]))
@@ -633,10 +636,10 @@ def stance_upper(k, life, legs_spec, ticks=K.STANCE_TICKS):
 
 
 def stance_clips():
-    out = {"stance_%s_upper" % k: stance_upper(v, LIFE[k], STANCE_LEGS.get(k)) for k, v in STANCE_KEYS.items()}
+    out = {"stance_%s_upper" % k: stance_upper(v, LIFE[k], STANCE_LEGS.get(k), ready=k in READY_LIKE) for k, v in STANCE_KEYS.items()}
     # V2: the brace and the line rock their weight with the upper body (it already does), not on stiff legs
     life = (lambda k: K.STANCE_LIFE.get(k, LIFE[k])) if V2C else (lambda k: K.STANCE_LIFE.get(k, 1.0))
-    out.update({"stance_%s_legs" % k: stance_legs(v, life(k)) for k, v in STANCE_LEGS.items()})
+    out.update({"stance_%s_legs" % k: stance_legs(v, life(k), ready=k in READY_LIKE) for k, v in STANCE_LEGS.items()})
     return out
 
 
@@ -651,11 +654,12 @@ K.idle_clips = idle_clips    # the death falls start from the guard
 # ------------------------------------------------------------------------------------------------
 
 off = K.off
+hb, hb_front = K.hb, K.hb_front   # Kort's polish: how far a blow throws the spine and head BACK (art/anim/common/feel.py)
 HIT_PEAK = {
-    "front": off(torso=(-17, -10, 0), head=(-12, 4, 0), rarm=(-8, 0, 6), larm=(-8, 0, -5), lfore=-6),
+    "front": off(torso=(hb_front(-17), -10, 0), head=(hb(-12), 4, 0), rarm=(-8, 0, 6), larm=(-8, 0, -5), lfore=-6),
     "back": off(torso=(12, 0, 0), head=(5, 0, 0), rarm=(6, 0, 4), larm=(6, 0, -4)),
-    "right": off(torso=(-5, 14, 8), head=(0, 6, 3), rarm=(4, 0, 8), larm=(-4, 0, -4)),
-    "left": off(torso=(-5, -14, -8), head=(0, -6, -3), rarm=(-4, 0, 4), larm=(4, 0, -8)),
+    "right": off(torso=(hb(-5), 14, 8), head=(0, 6, 3), rarm=(4, 0, 8), larm=(-4, 0, -4)),
+    "left": off(torso=(hb(-5), -14, -8), head=(0, -6, -3), rarm=(-4, 0, 4), larm=(4, 0, -8)),
 }
 
 
@@ -678,7 +682,7 @@ def hit_clips():
     out = {}
     for weight, ticks in K.HIT_TICKS.items():
         for dname, peak in HIT_PEAK.items():
-            keys = hit_keys(peak, weight)
+            keys = K.front_onset(hit_keys(peak, weight), dname, weight)
             out["hit_%s_%s" % (weight, dname)] = K.bake([K.sample_keys(keys, i / SUB) for i in range(ticks * SUB + 1)], ticks,
                                                        loop=False)
     out["hit_block"] = out["hit_light_front"]

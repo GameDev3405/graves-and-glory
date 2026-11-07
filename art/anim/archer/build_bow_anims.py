@@ -147,12 +147,13 @@ def idle_v2_clips():
     drops, its knee softens), the chest counter-tilts so the head stays level, and both arms trail the torso a beat late, the
     bow swinging a little at the thigh. One breath and one full shift (right, centre, left, centre) per 3 s loop."""
     n = K.IDLE_TICKS * SUB
+    SWAY = K.feel.sway()      # Kort's variant B: the weight shift and the arm trail at V2_SWAY_SCALE (breath is not sway)
     legs, upper, guesses = [], [], {}
     for i in range(n + 1):
         u = (i % n) / n
         br = math.sin(2 * math.pi * u)
-        sh = math.sin(2 * math.pi * u + 0.6)              # + weight over the right foot
-        lag = math.sin(2 * math.pi * u + 0.6 - 0.9)       # the arms follow the shift a few ticks late
+        sh = SWAY * math.sin(2 * math.pi * u + 0.6)       # + weight over the right foot
+        lag = SWAY * math.sin(2 * math.pi * u + 0.6 - 0.9)   # the arms follow the shift a few ticks late
         hips = ((0.4 * br, 2.2 * sh, 2.4 * sh), (-0.8 * sh, -0.6 - 0.14 * br - 0.16 * abs(sh), 0.0))   # +z roll lifts the right hip
         pose = {"hips": hips}
         out = {"hips": hips}
@@ -512,16 +513,18 @@ STANCE_UPPER = {
 }
 STANCE_UPPER["shield_up"] = STANCE_UPPER["ready"]
 LIFE = {"ready": 3.4, "brace": 1.6, "wall": 1.4, "ward": 2.0, "shield_up": 3.4}
+READY_LIKE = ("ready", "shield_up")     # these loops run at V2_READY_SWAY_SCALE (0.25); the other stances at V2_SWAY_SCALE
 
 
-def stance_upper(pose, life):
+def stance_upper(pose, life, ready=False):
     n = K.STANCE_TICKS * SUB
     out = []
+    a_br, a_wt, a_lag = K.feel.stance_amps(life, ready)    # ready: everything at V2_READY_SWAY_SCALE; others: the rock at V2_SWAY_SCALE
     for i in range(n + 1):
         u = (i % n) / n
-        br = life * math.sin(2 * math.pi * u)
-        wt = (life - 1.0) * math.sin(2 * math.pi * u - K.WEIGHT)
-        wl = (life - 1.0) * math.sin(2 * math.pi * u - K.WEIGHT - 0.7)
+        br = a_br * math.sin(2 * math.pi * u)
+        wt = a_wt * math.sin(2 * math.pi * u - K.WEIGHT)
+        wl = a_wt * math.sin(2 * math.pi * u - K.WEIGHT - 0.7)
         f = {b: (tuple(v), None) for b, v in pose.items()}
         tx, ty, tz = pose["torso"]
         f["torso"] = ((tx + 0.8 * br + 1.8 * wt, ty - 1.4 * wt, tz - 1.2 * wt), None)
@@ -531,7 +534,7 @@ def stance_upper(pose, life):
         f["right_arm"] = ((ax - 0.6 * br - 1.3 * wl, ay, az + 0.6 * wl), None)
         sx, sy, sz = pose["left_arm"]   # the bow arm steadier than the string hand: it keeps the bow on line
         f["left_arm"] = ((sx - 0.5 * br - 0.8 * wl, sy, sz), None)
-        f["left_hand"] = ((pose["left_hand"][0] + 0.8 * math.sin(2 * math.pi * u - 0.6) * life, 0.0, 0.0), None)
+        f["left_hand"] = ((pose["left_hand"][0] + 0.8 * math.sin(2 * math.pi * u - 0.6) * a_lag, 0.0, 0.0), None)
         f["quiver"] = ((0.3 * br, 0.0, pose["quiver"][2]), None)
         out.append(f)
     return K.bake(gear(out), K.STANCE_TICKS)
@@ -549,8 +552,8 @@ if V2:
 
 
 def stance_clips():
-    out = {"stance_%s_upper" % k: stance_upper(v, LIFE[k]) for k, v in STANCE_UPPER.items()}
-    out.update({"stance_%s_legs" % k: K.stance_legs(v, STANCE_LEGS_LIFE.get(k, 1.0)) for k, v in STANCE_LEGS.items()})
+    out = {"stance_%s_upper" % k: stance_upper(v, LIFE[k], k in READY_LIKE) for k, v in STANCE_UPPER.items()}
+    out.update({"stance_%s_legs" % k: K.stance_legs(v, STANCE_LEGS_LIFE.get(k, 1.0), k in READY_LIKE) for k, v in STANCE_LEGS.items()})
     return out
 
 
@@ -560,10 +563,10 @@ def stance_clips():
 
 off = K.off
 HIT_PEAK = {
-    "front": off(torso=(-17, 10, 0), head=(-12, -3, 0), rarm=(-20, 0, 42), larm=(-10, 0, -18), lfore=-12),
+    "front": off(torso=(K.hb_front(-17), 10, 0), head=(K.hb(-12), -3, 0), rarm=(-20, 0, 42), larm=(-10, 0, -18), lfore=-12),
     "back": off(torso=(12, 0, 0), head=(5, 0, 0), rarm=(10, 0, 20), larm=(10, 0, -14)),
-    "right": off(torso=(-5, 14, 8), head=(0, 6, 3), rarm=(10, 0, 28), larm=(-6, 0, -10)),
-    "left": off(torso=(-5, -14, -8), head=(0, -6, -3), rarm=(-6, 0, 16), larm=(10, 0, -16)),
+    "right": off(torso=(K.hb(-5), 14, 8), head=(0, 6, 3), rarm=(10, 0, 28), larm=(-6, 0, -10)),
+    "left": off(torso=(K.hb(-5), -14, -8), head=(0, -6, -3), rarm=(-6, 0, 16), larm=(10, 0, -16)),
 }
 
 
@@ -634,18 +637,18 @@ def string_arm_keys(peak, weight):
 
 
 V2_HIT_LEGS = {   # the knight's v2 hit footwork, from the same ready footing (READY_HIPS, feet as STANCE_LEGS["ready"])
-    "front": {"hips": [(0, *K.READY_HIPS), (2, (-6, 9, 0), (0.0, -1.9, 1.6)), (4.5, (-5, 9, 0), (0.0, -2.1, 1.9)),
-                       (7.5, (1, 5, 0), (0.0, -1.8, 1.3)), (10.5, (-1, 7, 0), (0.0, -1.3, 0.5)), (16, *K.READY_HIPS)],
+    "front": {"hips": [(0, *K.READY_HIPS), (2, (K.hb(-6), 9, 0), (0.0, -1.9, 1.6)), (4.5, (K.hb(-5), 9, 0), (0.0, -2.1, 1.9)),
+                       (7.5, (1, 5, 0), (0.0, -1.8, 1.3)), (10.5, (K.hb(-1), 7, 0), (0.0, -1.3, 0.5)), (16, *K.READY_HIPS)],
               "steps": [("left", 1.0, 3.8, (3.3, 2.0, -4.0), 9.0, 0.8), ("right", 3.5, 6.5, (-3.4, 2.0, 0.6), -13.0, 0.6),
                         ("left", 9.0, 12.5, (3.2, 2.0, -2.0), 7.0, 0.8), ("right", 11.5, 15.0, (-3.4, 2.0, 2.0), -12.0, 0.8)]},
     "back": {"hips": [(0, *K.READY_HIPS), (2, (6, 4, 0), (0.0, -1.8, -1.2)), (4.5, (5, 4, 0), (0.0, -1.9, -1.4)),
-                      (7.5, (-1, 7, 0), (0.0, -1.6, -0.8)), (10.5, (0.5, 6, 0), (0.0, -1.2, -0.2)), (16, *K.READY_HIPS)],
+                      (7.5, (K.hb(-1), 7, 0), (0.0, -1.6, -0.8)), (10.5, (0.5, 6, 0), (0.0, -1.2, -0.2)), (16, *K.READY_HIPS)],
              "steps": [("right", 1.0, 3.8, (-3.5, 2.0, 3.5), -12.0, 0.8), ("left", 3.5, 6.5, (3.2, 2.0, -0.6), 7.0, 0.6),
                        ("left", 9.0, 12.5, (3.2, 2.0, -2.0), 7.0, 0.8), ("right", 11.5, 15.0, (-3.4, 2.0, 2.0), -12.0, 0.8)]},
-    "right": {"hips": [(0, *K.READY_HIPS), (2, (-2, 14, 4), (1.0, -1.8, 0.5)), (4.5, (-2, 13, 4), (1.2, -1.9, 0.5)),
+    "right": {"hips": [(0, *K.READY_HIPS), (2, (K.hb(-2), 14, 4), (1.0, -1.8, 0.5)), (4.5, (K.hb(-2), 13, 4), (1.2, -1.9, 0.5)),
                        (7.5, (1, 4, 0), (0.6, -1.6, 0.2)), (10.5, (0, 6.5, 0), (0.1, -1.2, 0.1)), (16, *K.READY_HIPS)],
               "steps": [("left", 1.0, 3.8, (4.9, 2.0, -2.2), 12.0, 0.8), ("left", 9.0, 12.5, (3.2, 2.0, -2.0), 7.0, 0.8)]},
-    "left": {"hips": [(0, *K.READY_HIPS), (2, (-2, -2, -4), (-1.0, -1.8, 0.5)), (4.5, (-2, -1, -4), (-1.2, -1.9, 0.5)),
+    "left": {"hips": [(0, *K.READY_HIPS), (2, (K.hb(-2), -2, -4), (-1.0, -1.8, 0.5)), (4.5, (K.hb(-2), -1, -4), (-1.2, -1.9, 0.5)),
                       (7.5, (1, 8, 0), (-0.6, -1.6, 0.2)), (10.5, (0, 5.5, 0), (-0.1, -1.2, 0.1)), (16, *K.READY_HIPS)],
              "steps": [("right", 1.0, 3.8, (-5.0, 2.0, 1.6), -18.0, 0.8), ("right", 9.0, 12.5, (-3.4, 2.0, 2.0), -12.0, 0.8)]},
 }
@@ -656,6 +659,7 @@ def v2_hit_clips():
     for weight, ticks in K.HIT_TICKS.items():
         for d, peak in HIT_PEAK.items():
             keys, bk, sk = v2_hit_keys(peak, weight, V2_BODY[d]), bow_arm_keys(d, weight), string_arm_keys(K.scaled(peak, V2_BODY[d]), weight)
+            keys, bk, sk = (K.front_onset(x, d, weight) for x in (keys, bk, sk))   # a 2-tick onset on the front medium blow (no one-tick snap)
             samples = []
             for i in range(ticks * SUB + 1):
                 s, b, r = K.sample_keys(keys, i / SUB), K.sample_keys(bk, i / SUB), K.sample_keys(sk, i / SUB)
