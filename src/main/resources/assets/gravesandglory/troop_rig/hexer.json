@@ -109,16 +109,19 @@
   "left_leg": {},
   "left_shin": {},
   "left_foot": {},
-  "burial_robe": {},
   "cord": {},
   "vestment_skirt": {
    "team": true
   },
+  "skirt_front": {},
   "vestment_front": {
    "team": true
   },
+  "skirt_back": {},
   "vestment_back": {
    "team": true
-  }
+  },
+  "skirt_right": {},
+  "skirt_left": {}
  }
 }
