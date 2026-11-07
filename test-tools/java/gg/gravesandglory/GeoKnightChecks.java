@@ -179,6 +179,7 @@ final class GeoKnightChecks implements Phase1Checks.Suite {
     final List<String> deathBad = new ArrayList<>();
     volatile int deathVictim = -1;
     int deathFrames;
+    String deathShown = "";
     double deathMaxT, deathPrevT;
     double hitMaxScale, hitMaxLegs;
     int hitFrames;
@@ -763,7 +764,7 @@ final class GeoKnightChecks implements Phase1Checks.Suite {
                 // the last frame while the body lies; every tick of the fall and two of the lie are shot.
                 String name = DEATH_CASES[i], want = DeathController.clipFor(DEATH_BEARING[i]);
                 if (k == 1) {
-                    taken.clear(); deathFrames = 0; deathMaxT = -1; deathVictim = -1; deathPrevT = -1;
+                    taken.clear(); deathFrames = 0; deathMaxT = -1; deathShown = ""; deathVictim = -1; deathPrevT = -1;
                     Phase1Checks.server(c, b -> {
                         hold = null;
                         GravesAndGlory.Unit v = null;
@@ -786,7 +787,9 @@ final class GeoKnightChecks implements Phase1Checks.Suite {
                     DeathController dc = DeathController.LIVE.get(e);
                     if (dc == null) { if (deathBad.size() < 40) deathBad.add(name + " no death layer"); }
                     else if (e.deathTime > 0) {
-                        if (!dc.shownClip.equals(want) && deathBad.size() < 40) deathBad.add(name + " clip " + dc.shownClip + " want " + want);
+                        String dropped = want + DeathController.drop(e.getUuid());
+                        if (!dc.shownClip.equals(want) && !dc.shownClip.equals(dropped) && deathBad.size() < 40) deathBad.add(name + " clip " + dc.shownClip + " want " + dropped);
+                        deathShown = dc.shownClip;
                         if (e.deathTime >= 3 && dc.shownWeight < .999 && deathBad.size() < 40) deathBad.add(String.format("%s weight %.3f at death %d", name, dc.shownWeight, e.deathTime));
                         if (dc.shownT + .01 < deathPrevT && deathBad.size() < 40) deathBad.add(String.format("%s clip time went back %.2f->%.2f", name, deathPrevT, dc.shownT));
                         deathPrevT = dc.shownT; deathMaxT = Math.max(deathMaxT, dc.shownT);
@@ -801,7 +804,7 @@ final class GeoKnightChecks implements Phase1Checks.Suite {
                     if (deathVictim < 0) deathBad.add(name + " no live knight");
                     if (deathMaxT < BattleMath.DEATH_FALL_TICKS - .01) deathBad.add(String.format("%s clip time only reached %.2f", name, deathMaxT));
                     if (deathFrames < 18) deathBad.add(name + " frames " + deathFrames);
-                    System.out.println(String.format("[p1] death %s frames %d max t %.2f", name, deathFrames, deathMaxT));
+                    System.out.println(String.format("[p1] death %s frames %d max t %.2f clip %s", name, deathFrames, deathMaxT, deathShown));
                     if (++i < DEATH_CASES.length) next(tick, 11);
                     else {
                         Phase1Checks.report("p1-geo-" + TROOP + "-death", deathBad.isEmpty(), DEATH_CASES.length + " lethal blows: fall clip by bearing, "

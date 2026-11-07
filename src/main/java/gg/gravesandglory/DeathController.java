@@ -23,7 +23,9 @@ import java.util.WeakHashMap;
  * The fall is picked once, on the first dead frame, from the lethal blow's bearing (MotionEvents hit_v1; else the newest blow, else
  * the entity id so deaths with no blow vary): a blow from the front throws it on its back, from behind it pitches face down, from
  * its right it falls on its left side and from its left on its right. The clip plays on deathTime, lands by
- * BattleMath.DEATH_FALL_TICKS and holds its last frame while the corpse lies and fades (BodyCache). Nothing here feeds back.
+ * BattleMath.DEATH_FALL_TICKS and holds its last frame while the corpse lies and fades (BodyCache). Where the troop has them, a
+ * gear variant of the fall ({@link #drop}: keep the gear, drop the weapon, drop both) is picked from the entity's UUID. Nothing here
+ * feeds back.
  */
 final class DeathController extends AnimationController<GeoTroop> {
     /** Blend from the living pose into the fall over this many ticks of deathTime. */
@@ -61,6 +63,14 @@ final class DeathController extends AnimationController<GeoTroop> {
         return h != null ? clipFor(h.bearing()) : CLIPS[Math.floorMod(id * 31 + 7, CLIPS.length)];
     }
 
+    /** Gear variants of a fall: keep everything, drop the weapon, drop both. Troops without the drop clips play the plain fall. */
+    static final String[] DROPS = {"", "_drop1", "_drop2"};
+
+    /** The gear variant this troop dies with: cosmetic, stable per entity. */
+    static String drop(java.util.UUID id) {
+        return DROPS[(int) Math.floorMod(MotionMath.mix(id.hashCode()), (long) DROPS.length)];
+    }
+
     @Override
     public void process(CoreGeoModel<GeoTroop> model, AnimationState<GeoTroop> state, Map<String, CoreGeoBone> bones,
                         Map<String, BoneSnapshot> snapshots, double seekTime, boolean crashWhenCantFindBone) {
@@ -69,7 +79,10 @@ final class DeathController extends AnimationController<GeoTroop> {
         if (!listed) { listed = true; LIVE.put(e, this); }
         shownWeight = 0; shownT = -1; shownClip = "";
         if (!(e instanceof LivingEntity l) || !(l.isDead() || l.deathTime > 0)) { latched = null; return; }
-        if (latched == null) latched = pick(MotionEvents.Client.hits(e.getId()), e.getId());
+        if (latched == null) {
+            String fall = pick(MotionEvents.Client.hits(e.getId()), e.getId()), dropped = fall + drop(e.getUuid());
+            latched = model.getAnimation(animatable, dropped) != null ? dropped : fall;
+        }
         Animation clip = model.getAnimation(animatable, latched);
         if (clip == null) return;
         double dt = l.deathTime + state.getPartialTick();
