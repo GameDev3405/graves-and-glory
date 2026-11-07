@@ -25,6 +25,8 @@ public final class CampaignMaps {
     static net.minecraft.util.math.Vec3d padCentre(int team){return padCenter(team);}
     record Road(int ax,int az,int bx,int bz,int width){}
     static List<Road> roads=new ArrayList<>(),building=roads;
+    /** How many objectives (capture points) a map has: the three crossings, plus the two flank outposts of Kingsfield (map 4). Read by the lobby without building the map. */
+    public static int objectiveCount(int map){return map==4?5:3;}
     public static synchronized void select(int index){
         selected=Math.max(0,Math.min(Spec.MAPS.length-1,index));
         var structures=new ArrayList<Spec.StructuresRow>();var scenery=new ArrayList<Spec.SceneryRow>();
@@ -32,7 +34,7 @@ public final class CampaignMaps {
         String[] names=switch(selected){case 1->new String[]{"Supply Yard","Iron Gate","Watch Hill"};case 2->new String[]{"Caravan Refuge","Pass Crossing","Signal Ridge"};case 3->new String[]{"Logging Camp","Old Causeway","Moon Shrine"};case 4->new String[]{"North Ford","Kings Bridge","South Ford"};default->new String[]{"Mill Hamlet","Trade Crossing","River Shrine"};};
         int[] zs=selected==1?new int[]{-130,0,130}:selected==4?new int[]{-160,0,160}:selected==2?new int[]{-155,0,155}:new int[]{-145,0,145};
         // Kingsfield adds a raised outpost on each flank, placed with half-turn symmetry so neither side is favoured.
-        boolean flanks=selected==4;var points=new Spec.PointsRow[flanks?5:3];
+        boolean flanks=selected==4;var points=new Spec.PointsRow[objectiveCount(selected)];
         for(int i=0;i<3;i++){
             int z=zs[i],rx=(int)riverX(z),px=rx+(flanks?0:i==0?-29:i==2?29:0);
             points[flanks?i*2:i]=new Spec.PointsRow(""+(char)('A'+(flanks?i*2:i)),names[i],px,z,17,8,64);
