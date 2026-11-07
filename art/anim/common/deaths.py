@@ -40,6 +40,7 @@ DEATH_TICKS = 20
 DEATH_BONES = ()
 GEAR = {}
 bake = None
+POSE_FIX = None       # optional: a builder's pose -> pose (a rig's follower bones, e.g. a boot that follows its foot), applied before every fk
 
 
 def configure(heavy, bake, sub, ticks, bones, gear):
@@ -136,6 +137,8 @@ class D3Geo:
         self.centroid = ref        # bone-local (blocks) centroid of each piece, for its flight
 
     def fk(self, pose):
+        if POSE_FIX is not None:
+            pose = POSE_FIX(pose)
         M = {}
         for n in self.model.order:
             b = self.model.bones[n]
@@ -301,6 +304,8 @@ def d3_body(keys, start, geo):
         low = int(np.argmin(P[:, 1]))
         if prev is None:
             base_y = P[low, 1]
+            if -0.5 < base_y < -0.05:      # a sole cube inflated past the foot (the Revenant's boot, -0.3): the floor is y 0
+                base_y = 0.0
         else:
             d = prev[low] - P[low]
             shift += (d[0], 0.0, d[2])
