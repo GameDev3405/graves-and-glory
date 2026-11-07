@@ -10,6 +10,21 @@
 
 **Spec:** `docs/superpowers/specs/2026-11-07-player-combat-design.md` (approved by Kort 2026-11-07). Base: `main` at `cbbd3641`.
 
+**Kort's decisions (2026-11-07):**
+- **G3, port timing:** build Phases 1 to 4 now, before the 1.21.1 port. Phase 5 (the bot warlord body) comes after the port.
+- **G0:** approved by that same answer. Phases 1 to 4 may change gameplay as this plan says.
+- **Pass thresholds** (Kort: "use them"):
+  - the warlord wins at least 14 of 20 fights against 8 footmen;
+  - it survives at least 6 s standing still among them;
+  - it loses at least 16 of 20 lone charges into braced spears;
+  - a newcomer beats a veteran 30 to 50% of the time;
+  - warlords make at most 35% of troop kills in bot sims.
+- G1 tuning sign-offs and playtests are still Kort's.
+- **Orchestrator calls on the open questions:**
+  - the gear cap's damage includes the ranged stat;
+  - the leaderless action-bar note goes to the downed player only;
+  - greatswords and greataxes keep their own sweep instead of also cleaving.
+
 ## Global Constraints
 
 - Follow spec sections 5, 7 and 8 exactly. Non-goals (section 4): no parry, dodge, combo, morale, routing, enemy markers or glow, no bonus damage against players, and no relic changes.
