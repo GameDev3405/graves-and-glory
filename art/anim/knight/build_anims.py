@@ -1816,19 +1816,22 @@ if V2 and SHIELD:   # V2: the shield arm swings wide as the body rolls onto it, 
 # still beside the body.
 # ------------------------------------------------------------------------------------------------
 
-D3 = TROOP == "knight" and V2
+D3_TROOPS = ("knight", "sentinel")            # one shield troop at a time (2026-11-07)
+D3 = TROOP in D3_TROOPS and V2
+D3_WPN = "sword" if TROOP == "knight" else "weapon"   # the held weapon's bone prefix (<prefix>_t1..t3)
 D3_SLERP = ("right_hand", "left_hand")
 D3_HAND = {"sword": "right_hand", "shield": "left_hand"}
-D3_REF = {"sword": "sword_t3", "shield": "shield"}           # the bone whose transform each piece is solved on
-D3_BONES = {"sword": ("sword_t1", "sword_t2", "sword_t3"), "shield": ("shield",)}
-D3_FIST = {"sword": ("right_forearm", "right_cuff", "right_glove"), "shield": ("left_forearm", "left_cuff", "left_glove")}
+D3_REF = {"sword": D3_WPN + "_t3", "shield": "shield"}           # the bone whose transform each piece is solved on
+D3_BONES = {"sword": tuple(D3_WPN + "_t%d" % i for i in (1, 2, 3)), "shield": ("shield",)}
+D3_FIST = {p: tuple(b for b in bs if b in HEAVY.bones)           # the troop's own forearm pieces (no glove or cuff on some)
+           for p, bs in {"sword": ("right_forearm", "right_cuff", "right_glove"), "shield": ("left_forearm", "left_cuff", "left_glove")}.items()}
 D3_G = 1.0          # px per tick^2: the falls are stylised fast, so dropped gear falls as fast to match them
 D3_SLIP = 3.5      # px/tick, the most sideways speed a dropped piece leaves the hand with
 D3_LAT = 0.75       # px: surface lattice step of the gear for the clearance checks
 
 
 def _d3_part(bone):
-    return "sword" if bone.startswith("sword") else "shield" if bone.startswith("shield") else "body"
+    return "sword" if bone.startswith(D3_WPN) else "shield" if bone.startswith("shield") else "body"
 
 
 class D3Geo:

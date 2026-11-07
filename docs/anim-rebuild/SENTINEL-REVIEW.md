@@ -31,3 +31,33 @@ These changes are shared, so the knight's idle and block changed with them (see 
   - The holds have no breath; add a small chest rise.
   - In the front view the blade hides behind the hip.
 - **To verify:** foot sliding can't be checked at sheet size.
+
+# Sentinel: v2 style + v4 deaths (2026-11-07)
+
+The sentinel now builds in the v2 shield style (Kort approved v2 as the default for shield units), so its whole set changed, not only the deaths. It also has the knight's 12 v4 deaths: `death_{back,forward,left,right}`, each plus `_drop1` (drops the longsword) and `_drop2` (drops the longsword and the shield). The D3 death system in `art/anim/knight/build_anims.py` now takes the held weapon's own bones (`weapon_t1..t3`) and the troop's own forearm pieces (the sentinel has cuffs and no glove).
+
+- **Byte-identical:** these troops build byte-identical with the HEAD builder and the new builder: knight, gl_marshal, revenant (both direct), ic_hearthguard (axe builder), archer (bow builder), ic_arbalist (crossbow builder), wm_tusk (spear builder) and tc_harpooner (thrower builder). D3 stays gated on `D3_TROOPS`.
+- **Review (Sonnet, high effort): SHIP WITH MINORS.** It covered the whole set (gait, stances, idle, 3 attacks, 7 hits, 12 deaths) from contact sheets and the full reel. No blockers.
+- **Harness (geo-knight, `GRAVES_GEO_CHECK_TROOP=sentinel`):**
+  - Run 1: 22 p1 and 1 `=false`. That failure was the march run-side check, which the lag played as WALK. The suite rollup line follows from it.
+  - Rerun: 22 p1 and 0 `=false`.
+  - The death clips that played included `death_back`, `death_forward`, `death_forward_drop1`, `death_left_drop1` and `death_right_drop1`.
+
+## Open minors (v2 + v4, polish, not blocking)
+
+Most of these come from the shared v2 builder, so they apply to the knight as well.
+
+- **Thrust:** at t=11 the blade is yawed out to the right, then snaps forward by t=13. Cap the yaw at about 30 degrees, or add an in-between.
+- **Low cut:** it ends about 25-30 degrees blade-down at t=15-18, which reads as a chop more than a flat sweep.
+- **Overhead:** the hilt sits tight to the helmet at t=11-13. A slight clip can't be ruled out at sheet size. The wind-up at t=0-4 barely moves.
+- **Heavy front hit:** the onset at t=1-3 is soft.
+- **Side and behind hits:** direction reads mostly from torso lean. Add about 20% more head and shoulder turn.
+- **Raised-shield stances:** only slightly higher than the base poses.
+- **Combat-ready idle:** breath and weight shift are subtle (about 1.5x wanted). This is a carry-over minor.
+- **death_back:** the fall is fast (upright at t=8, flat at t=13), with no visible back steps.
+- **death_back (kept shield):** settles from upright to flat after landing. This is the clatter; it should not slide.
+- **death_forward:** the knee buckle is hard to see; it reads as a stiff face-plant.
+- **death_forward_drop2:** the dropped shield looks slightly tilted, not fully flat.
+- **death_left:** ends half-down: a slumped kneel and lean, with the kept sword diagonal.
+- **death_left_drop2:** the shield lies flat beside the hips, partly under the slumped body. The builder's clearance check passes, but confirm it in game.
+- **Not seen in game:** only the harness and the offline reel were run.
