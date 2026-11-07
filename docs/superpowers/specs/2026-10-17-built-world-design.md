@@ -1,3 +1,5 @@
+> Historical (superseded 2026-11-07): see PLAN-TO-1.0.md / WORKFLOW.md
+
 # Phase 3 design: the built world
 
 Version 1, 2026-10-17. **Proposal for Kort's sign-off**; nothing is built.

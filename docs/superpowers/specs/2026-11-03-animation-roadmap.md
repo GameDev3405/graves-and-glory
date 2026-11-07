@@ -2,7 +2,7 @@
 
 ## 1. Intro
 
-This is the overnight result: one spec and one plan for each of 16 unit families. Nothing is built yet; no clip has been authored from these. The order is most troops first (bow, caster, spear, sword), then the single-unit families, then the animals and the golem.
+This is the overnight result: one spec and one plan for each of 16 unit families. Status 2026-11-07: the knight (sword and shield) is built and is the template. Its v2 set and v4 deaths were approved by Kort on 2026-11-07 (branch `anim/geckolib-rebuild`, `781c12ee`, not yet in `main`); the other 15 families are not built from these specs yet. The family-by-family rebuild now follows the knight builder, and this roadmap is the original overnight plan. The order is most troops first (bow, caster, spear, sword), then the single-unit families, then the animals and the golem.
 
 Grading: a Sonnet reviewer graded each spec out of 10. Each spec got at most two fix rounds, and the final grade is the one after round 2. Caster and greatsword stopped after round 1 (their v2 is final). Final scores run 6.5 to 7.8, so none is "done"; each spec lists its known gaps.
 
@@ -191,7 +191,7 @@ Why: families with models and existing tooling give real clips with no coordinat
 
 ## 6. Not yet approved
 
-The knight hits v2 is uncommitted and waits for your approval: 9 hit clips (`hit_body`, `hit_head`, `hit_legs`, each with `_2` and `_3`) in `clips/biped/sword_shield/`, with the worst step 14.7 degrees per tick against the 15 limit. The sword and axe_shield specs both depend on these files landing.
+The knight hits v2 was committed (`a4bb848b`, 2026-11-03) and Kort approved the knight v2 set and v4 deaths on 2026-11-07. It was: 9 hit clips (`hit_body`, `hit_head`, `hit_legs`, each with `_2` and `_3`) in `clips/biped/sword_shield/`, with the worst step 14.7 degrees per tick against the 15 limit. The sword and axe_shield specs both depend on these files landing.
 
 ## 7. Kort's rulings (2026-11-04)
 

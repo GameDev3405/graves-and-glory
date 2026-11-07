@@ -1,3 +1,5 @@
+> Superseded (2026-11-07): `PLAN-TO-1.0.md` is the scope and sequencing, `BOARD.md` the state and `WORKFLOW.md` the model routing. Kept as the vision-to-milestones map; do not treat its next-actions as work orders.
+
 # Graves and Glory roadmap v2
 
 2026-10-28. Working roadmap written from Kort's statements and the current docs. It supersedes the sequencing in `VISION-AND-ROADMAP.md` section 11; the approved execution plan is `PLAN-TO-1.0.md`. The vision's pitch, pillars, Houses, commander, battle and economy sections still stand except where section 3 below says otherwise. Policy and approval gates are in `WORKFLOW.md`: gameplay, save, protocol and dependency changes need Kort's decision; nothing is pushed, published or merged on a gameplay branch without him.

@@ -1,3 +1,5 @@
+> Historical (superseded 2026-11-07): see PLAN-TO-1.0.md / WORKFLOW.md
+
 # Phase 4: modes and campaign chapter 1, design
 
 ## Questions for Kort

@@ -69,7 +69,7 @@ and at the end of a pass fold its durable lessons into `references/lessons.md`.
 ## Routing
 
 - **Opus** keys and fixes animation: attacks, joints, weapon facing, gait and anything that failed a review. Kort's
-  current routing is Opus medium for hard work and Opus xhigh when stuck; follow the newest WORKFLOW.md and memory.
+  current routing (2026-11-07) is Opus 5.5 at medium effort for animation; xhigh only when a task explicitly needs it, never Fable. Follow docs/WORKFLOW.md.
 - **Sonnet** (high for simple work) may run mechanical steps: running the harness, building the contact sheet,
   re-running checks, lint scripts, doc updates. It does not author or re-key attacks.
 - **The reviewer** is always a fresh subagent with no stake in the work (Sonnet 5.5, `claude-sonnet-5-5`, at medium effort, per Kort 2026-11-04).
