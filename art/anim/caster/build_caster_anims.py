@@ -45,6 +45,12 @@ CAST_TROOPS = {
               "soft": ("hood_tail", "vestment_front", "vestment_back", "vestment_skirt", "cord"),   # the burial robe is stiff
               # the lantern body hangs below the pole tip, off the axis: its centre, top and bottom are probed too
               "probe": ((-5.0, 10.0, -5.5), (-5.0, 12.5, -5.5), (-5.0, 7.5, -5.5), (-6.5, 10.0, -5.5), (-3.5, 10.0, -5.5))},
+    # the mist-caller's driftwood rod runs along local -z from the fist with the conch at its tip (each tier its own bone)
+    "tc_mist": {"W": "rod", "focus": "rod", "a": (0, 0, -1), "b": (0, 1, 0),
+                "gear": {"hood_peak": 0.3, "right_kelp_hood": 0.35, "left_kelp_hood": 0.35, "mist_back": 0.6, "sash_tail": 0.3,
+                         "charm": 0.5},
+                "soft": ("hood_peak", "right_kelp_hood", "left_kelp_hood", "mist_back", "right_mist", "left_mist", "sash_tail",
+                         "charm")},   # the kelp, mist strips and sash hang loose; the robe skirt and hem are stiff
 }
 ST = CAST_TROOPS[TROOP]
 K.SOFT = ST["soft"]
@@ -368,7 +374,53 @@ def hexer_set():
     return g, attack, legs, stances, carry
 
 
-GUARD, ATTACK_KEYS, ATTACK_LEGS, STANCE_KEYS, CARRY = {"mage": mage_set, "hexer": hexer_set}[TROOP]()
+def tc_mist_set():
+    """The mist caller. The guard: the driftwood rod held up and forward before the lead shoulder, the conch tilted at the
+    foe, the free hand open low. The cast is a backhand fan sweep (not the mage's overhead thrust or the hexer's underhand
+    swing) that spreads the fog: the right shoulder turns forward and the body sinks as the rod is drawn across the chest
+    and back past the left side, the free hand swung back; the load winds further; the hips open and the rod sweeps flat
+    out through the front, levelled at the foe on the impact tick as the free hand is flung wide the other way (the arms
+    part the mist); the sweep carries on out to the right, recover, settle."""
+    g = KEY((5, 10, 0), (4, 0, 0), (1.5, -4.5, 6.4), aim(48, -16), u=UP, lp=(-30, 0, -14, -30))
+    gather = KEY((3, -18, 0), (5, 0, 0), (4.0, -5.5, 5.0), aim(22, 62), u=UP, lp=(-15, 0, -18, -30))
+    # the load: the right shoulder turned forward and the rod drawn across the chest and back past the left side, the conch tipped up to show past the shoulder,
+    # the off hand swung back and out
+    load = KEY((8, -34, 0), (6, 0, 0), (5.0, -5.0, 3.2), aim(18, 105), u=UP, lp=(30, 0, -25, -15))
+    # the wind keeps tightening through the held load (sinking and turning further), so it builds rather than parks
+    held = nudge(load, torso=(2, -4, 0), head=(1, 0, 0), R=(0.2, -0.3, -0.2), d=aim(14, 112), lp=(5, 0, -3, 0))
+    # the sweep comes out flat: the fist leads across the front, the rod trailing behind it
+    drive = KEY((10, -16, 0), (5, 0, 0), (3.2, -4.6, 5.8), aim(2, 48), u=UP, lp=(-30, 0, -45, -10))
+    # the release: the hips open and the arm sweeps out, the rod levelled at the foe, the off hand flung wide to the left
+    release = KEY((20, -12, 0), (6, 0, 0), (0.4, -2.6, 7.6), aim(-5, -2), u=UP, lp=(-45, 0, -75, -10))
+    over = KEY((22, -6, -2), (6, 0, 0), (-2.4, -2.8, 7.0), aim(-4, -38), u=UP, lp=(-40, 0, -80, -10))
+    recover = KEY((12, 2, 0), (5, 0, 0), (-1.2, -4.6, 6.2), aim(16, -30), u=UP, lp=(-40, 0, -40, -30))
+    near = nudge(g, torso=(3, -3, 0), R=(-0.2, 0.2, 0.0), d=aim(32, -14))
+    settle = nudge(g, R=(0.0, 0.1, 0.0), d=aim(36, -11))
+    attack = [(0, g), (2.5, gather), (4.5, load), (8.4, held), (9.1, drive), (IMPACT, release), (11.8, over), (16.0, recover),
+              (22.0, near), (28.0, settle), (ATTACK_TICKS, g)]
+    R0, R1 = READY_HIPS
+    legs = {"hips": [(0, R0, R1), (1.8, (2.0, 2.0, 0.0), (0.0, -1.6, -0.4)), (4.0, (4.0, 6.0, 0.0), (0.0, -2.0, -0.8)), (8.4, (5.0, 2.0, 0.0), (0.0, -2.5, -1.1)),
+                     (IMPACT, (12.0, 22.0, 0.0), (0.0, -3.4, 2.0)), (11.8, (13.0, 30.0, -2.0), (0.0, -3.7, 2.2)),
+                     (16.0, (5.0, 24.0, 0.0), (0.0, -2.4, 1.0)), (24.0, (1.0, 18.0, 0.0), (0.0, -1.5, 0.3)),
+                     (30.0, R0, R1), (ATTACK_TICKS, R0, R1)],
+            "steps": [("left", 6.8, 9.8, (3.7, 2.0, 5.0), 18.0), ("right", 10.4, 14.0, (-3.0, 2.0, 0.0), -4.0, 0.6),
+                      ("left", 20.0, 26.0, (3.4, 2.0, 2.4), 14.0), ("right", 24.0, 30.0, (-3.2, 2.0, -2.2), -6.0)]}
+    stances = {
+        "ready": g,
+        # brace (Hold position): a deep crouch, the rod held low and level over the ground before the lead knee, the
+        # conch at the foe, the off hand low and palm down
+        "brace": KEY((24, 8, 0), (10, 0, 0), (0.6, -7.0, 3.8), aim(-22, -4), u=UP, lp=(-40, 0, -14, -55)),
+        # wall (Hold the line): standing tall, the rod raised high overhead with the conch to the sky, the off hand
+        # raised beside it
+        "wall": KEY((0, 6, 0), (-6, 0, 0), (0.0, 6.6, 4.4), aim(68, 0), u=FWD, lp=(-100, 0, -25, -20)),
+        # ward (fall back): the rod held crosswise before the chest as a bar, the off hand up to fend
+        "ward": KEY((2, 8, 0), (2, 0, 0), (1.5, -4.0, 6.5), unit((1.0, 0.05, 0.15)), u=UP, lp=(-80, 0, -25, -75)),
+    }
+    carry = {"walk": 45.0, "run": 20.0, "u": UP}
+    return g, attack, legs, stances, carry
+
+
+GUARD, ATTACK_KEYS, ATTACK_LEGS, STANCE_KEYS, CARRY = {"mage": mage_set, "hexer": hexer_set, "tc_mist": tc_mist_set}[TROOP]()
 
 
 def attack_keys():

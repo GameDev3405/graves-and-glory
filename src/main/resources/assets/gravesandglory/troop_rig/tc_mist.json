@@ -1,0 +1,118 @@
+{
+ "troop": "tc_mist",
+ "tiers": [
+  1,
+  2,
+  3
+ ],
+ "faces": 1,
+ "bones": {
+  "root": {},
+  "hips": {},
+  "torso": {},
+  "head": {},
+  "hood": {},
+  "hood_peak": {},
+  "right_kelp_hood": {},
+  "left_kelp_hood": {},
+  "hood_band": {
+   "stages": [
+    2,
+    3
+   ]
+  },
+  "hood_pearl": {
+   "stages": [
+    3
+   ]
+  },
+  "right_arm": {},
+  "right_forearm": {},
+  "right_hand": {},
+  "rod": {
+   "stages": [
+    1
+   ],
+   "tag": "weapon"
+  },
+  "rod_t2": {
+   "stages": [
+    2
+   ],
+   "tag": "weapon"
+  },
+  "rod_t3": {
+   "stages": [
+    3
+   ],
+   "tag": "weapon"
+  },
+  "right_bell": {},
+  "right_mist": {
+   "stages": [
+    3
+   ]
+  },
+  "right_bracer": {
+   "stages": [
+    2,
+    3
+   ]
+  },
+  "right_pauldron": {
+   "stages": [
+    2,
+    3
+   ]
+  },
+  "left_arm": {},
+  "left_forearm": {},
+  "left_hand": {},
+  "left_bell": {},
+  "left_mist": {
+   "stages": [
+    3
+   ]
+  },
+  "left_bracer": {
+   "stages": [
+    2,
+    3
+   ]
+  },
+  "left_pauldron": {
+   "stages": [
+    2,
+    3
+   ]
+  },
+  "mantle": {},
+  "sash": {
+   "team": true
+  },
+  "mantle_plate": {
+   "stages": [
+    2,
+    3
+   ]
+  },
+  "mist_back": {
+   "stages": [
+    3
+   ]
+  },
+  "right_leg": {},
+  "right_shin": {},
+  "right_foot": {},
+  "left_leg": {},
+  "left_shin": {},
+  "left_foot": {},
+  "skirt": {},
+  "skirt_hem": {},
+  "belt": {},
+  "charm": {},
+  "sash_tail": {
+   "team": true
+  }
+ }
+}
