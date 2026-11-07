@@ -211,6 +211,11 @@ final class Abilities {
             .min(Comparator.comparingDouble(v -> v.mob.getHealth() / v.mob.getMaxHealth())).orElse(null);
     }
 
+    /** Whether the troop's spell is a caster's blight (the hexer's): its cast clip is sent at the release (attack) and announced a beat early (Tactics.tick), cosmetic only. */
+    static boolean castsAhead(GravesAndGlory.Unit u) {
+        return "caster".equals(u.spec.family()) && "blight".equals(row(u).mechanic());
+    }
+
     /** Whether the troop's attack beat shoots a projectile that sends attack_v1 at its release (Projectiles.loose): a ranged troop whose ability is not a mend (cast on its own cooldown, mend) or a spell (blight, mist: a bolt with no attack event). */
     static boolean shoots(GravesAndGlory.Unit u) {
         return u.spec.ranged() && switch (row(u).mechanic()) {case "blight", "mist", "mend" -> false; default -> true;};
@@ -280,6 +285,7 @@ final class Abilities {
                 u.windupUntil = time + (row.windupTicks() > 0 ? row.windupTicks() : D.spellWindupTicks());
                 u.abilityAt = time + (row.cooldownTicks() > 0 ? row.cooldownTicks() : D.abilityCooldownTicks());
                 Projectiles.bolt(b, u, u.spellCenter);
+                if (castsAhead(u)) Projectiles.loose(u, 0); // cosmetic (Kort 2026-11-06): the hexer's cast clip, stamped so its impact lands on this release; the early copy Tactics sends a beat ahead is the same event
                 return true;
             }
             case "mend" -> { return false; }

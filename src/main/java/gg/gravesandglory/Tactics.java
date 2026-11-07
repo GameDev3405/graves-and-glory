@@ -311,6 +311,7 @@ final class Tactics {
                     if(late>0){u.looseAt=time+late;u.looseTarget=enemy;} // Kort Q70: a bow troop's shot leaves late ticks on (looseLate)
                     else shoot(battle,u,enemy,time,ranged);
                 }else if(announcesAhead(u)&&time+10>=u.nextAttack&&time+10>=u.stunnedUntil&&!pending(battle,u)&&!Abilities.tooClose(u,nearest))Projectiles.drawAhead(battle,u,enemy,10); // the beat before a bow's or crossbow's shot: its clip is announced now, the shot still leaves on the next beat (cosmetic, R110 Plan B)
+                else if(Abilities.castsAhead(u)&&time+10>=u.nextAttack&&time+10>=u.abilityAt&&time+10>=u.stunnedUntil&&!pending(battle,u)&&!Abilities.tooClose(u,nearest))Projectiles.drawAhead(battle,u,enemy,10); // the beat before the hexer's blight leaves (its spell cooldown ready too): its cast clip is announced now, at the start tick Abilities.attack's release stamps (cosmetic, Kort 2026-11-06)
             }else if(post&&ranged){toSlot(battle,u,a,time,speed); // a ranged troop on a post shoots what it can reach from there and never walks off after the rest
             }else if(volley){toSlot(battle,u,a,time,speed); // a ranged troop on a Charge never closes on its target: it runs on down the path and stops once it can shoot
             }else if(!holdSiege&&leash(u,a,hold,holdSiege,slotted,slot,keep,engage,enemy.getPos())){

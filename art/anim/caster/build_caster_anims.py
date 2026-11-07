@@ -9,7 +9,8 @@ solved right fist. Each key names where the right fist sits from the right shoul
 
 The focus's own axes differ per troop: (a, b) are the focus-local directions put onto d and u. The mage's sun staff runs along
 its local +y with the disc's face along local z (a = +y, b = -z: the disc faces u); the seer's wand and the mist-caller's rod
-run along local -z (a = -z, b = +y).
+run along local -z (a = -z, b = +y). The hexer's grave lantern hangs below a short pole that runs along local -z from the fist
+(a = -z, b = +y: the lantern hangs opposite u); its body sits off the axis, so it is probed at its own points too.
 
 The cast (attack_cast, caster_cast impactTicks 10): from the guard the caster gathers, the focus raised over the head and the
 load held; then the body drives forward and the focus is thrust at the foe, the spell leaving on the server's impact tick; an
@@ -39,6 +40,11 @@ CAST_TROOPS = {
     "mage": {"W": "weapon_t1", "focus": "weapon_", "a": (0, 1, 0), "b": (0, 0, -1),
              "gear": {"shoulder_cape": 0.5, "vestment_skirt": 0.35, "cord": 0.6},
              "soft": ("shoulder_cape", "vestment_skirt", "cord")},   # the robe panels are stiff: a fallen body rests on them
+    "hexer": {"W": "lantern", "focus": "lantern", "a": (0, 0, -1), "b": (0, 1, 0),
+              "gear": {"hood_tail": 0.4, "vestment_front": 0.3, "vestment_back": 0.3, "vestment_skirt": 0.35, "cord": 0.6},
+              "soft": ("hood_tail", "vestment_front", "vestment_back", "vestment_skirt", "cord"),   # the burial robe is stiff
+              # the lantern body hangs below the pole tip, off the axis: its centre, top and bottom are probed too
+              "probe": ((-5.0, 10.0, -5.5), (-5.0, 12.5, -5.5), (-5.0, 7.5, -5.5), (-6.5, 10.0, -5.5), (-3.5, 10.0, -5.5))},
 }
 ST = CAST_TROOPS[TROOP]
 K.SOFT = ST["soft"]
@@ -167,6 +173,11 @@ def shaft_hits(pose, margin=0.3):
         for name, o, axes in boxes:
             if all(margin < (p - o) @ a < L - margin for a, L in axes):
                 hits.append((round(float(s), 1), name))
+    for j, q in enumerate(ST.get("probe", ())):
+        p = wpoint(pose, q)
+        for name, o, axes in boxes:
+            if all(margin < (p - o) @ a < L - margin for a, L in axes):
+                hits.append(("L%d" % j, name))
     return hits
 
 
@@ -311,7 +322,53 @@ def mage_set():
     return g, attack, legs, stances, carry
 
 
-GUARD, ATTACK_KEYS, ATTACK_LEGS, STANCE_KEYS, CARRY = {"mage": mage_set}[TROOP]()
+def hexer_set():
+    """The gravecaller. The guard: the lantern held out before the body on its short pole, the light hanging at the belly, the
+    free hand open low. The cast is an underhand swing (a censer's, not the mage's overhead gather): the body coils back and
+    sinks over the rear foot as the lantern is swept down and back past the right hip, the free hand reaching out to mark the
+    foe; the load is held low; the hips drive forward over the lead foot and the lantern swings up through the front and is
+    thrust at the foe at chest height, the curse leaving on the impact tick, the off hand flung after it; overshoot, recover,
+    settle."""
+    g = KEY((6, 10, 0), (6, 0, 0), (1.5, -4.6, 6.2), aim(14, -6), u=UP, lp=(-45, 0, -12, -40))
+    gather = KEY((-2, 22, 0), (6, 0, 0), (-1.2, -7.0, 3.2), aim(-18, -18), u=UP, lp=(-70, 0, -8, -30))
+    # the load: the lantern swept low and back past the right hip, the body coiled round over the rear foot, the off hand
+    # stretched out at the foe
+    low = KEY((-6, 26, 0), (8, 0, 0), (-2.4, -6.6, -2.0), aim(-32, -26), u=UP, lp=(-88, 0, -14, -10))
+    # the coil keeps winding through the held load (sinking and turning further), so it builds rather than parks
+    held = nudge(low, torso=(-6, 12, 0), head=(2, 0, 0), R=(-0.6, -0.1, -1.0), d=aim(-42, -32))
+    # the swing comes through wide of the right hip, not across the body
+    drive = KEY((10, -2, 0), (6, 0, 0), (-2.8, -5.8, 4.2), aim(4, -14), u=UP, lp=(-70, 0, -4, -30))
+    # the release: the hips and chest drive through, the arm swung up and out, the lantern thrust at the foe
+    release = KEY((29, -18, 0), (2, 0, 0), (0.2, -1.0, 7.7), aim(24, 6), u=UP, lp=(-85, 0, 10, -8))
+    over = KEY((32, -22, -2), (3, 0, 0), (0.6, -0.2, 7.6), aim(30, 9), u=UP, lp=(-78, 0, 14, -10))
+    recover = KEY((12, 0, 0), (6, 0, 0), (0.4, -3.6, 6.8), aim(20, -2), u=UP, lp=(-55, 0, 0, -35))
+    near = nudge(g, torso=(3, -3, 0), R=(0.0, 0.3, 0.1), d=aim(17, -5))
+    settle = nudge(g, R=(0.0, 0.15, 0.05), d=aim(15, -6))
+    attack = [(0, g), (2.5, gather), (4.5, low), (8.4, held), (9.3, drive), (IMPACT, release), (11.8, over), (16.0, recover),
+              (22.0, near), (28.0, settle), (ATTACK_TICKS, g)]
+    R0, R1 = READY_HIPS
+    legs = {"hips": [(0, R0, R1), (4.0, (-3.0, 32.0, 0.0), (0.0, -1.9, -0.8)), (8.4, (-5.0, 38.0, 0.0), (0.0, -2.5, -1.15)),
+                     (IMPACT, (11.0, 2.0, 0.0), (0.0, -3.4, 2.0)), (11.8, (12.0, -3.0, -2.0), (0.0, -3.7, 2.2)),
+                     (16.0, (5.0, 10.0, 0.0), (0.0, -2.4, 1.0)), (24.0, (1.0, 18.0, 0.0), (0.0, -1.5, 0.3)),
+                     (30.0, R0, R1), (ATTACK_TICKS, R0, R1)],
+            "steps": [("left", 6.8, 9.8, (3.7, 2.0, 5.0), 18.0), ("right", 10.4, 14.0, (-3.0, 2.0, 0.0), -4.0, 0.6),
+                      ("left", 20.0, 26.0, (3.4, 2.0, 2.4), 14.0), ("right", 24.0, 30.0, (-3.2, 2.0, -2.2), -6.0)]}
+    stances = {
+        "ready": g,
+        # brace (Hold position): a deep crouch, the lantern held low and close before the lead knee, shielded, the off hand
+        # low on the knee
+        "brace": KEY((26, 8, 0), (10, 0, 0), (0.0, -7.4, 3.4), aim(-16, -4), u=UP, lp=(-40, 0, -10, -60)),
+        # wall (Hold the line): standing tall, the lantern raised high at arm's length as a warding light, the off hand
+        # raised flat beside it
+        "wall": KEY((0, 6, 0), (-6, 0, 0), (0.4, 4.2, 6.5), aim(38, 6), u=UP, lp=(-120, 0, -12, -10)),
+        # ward (fall back): the lantern pulled in to the chest, the pole up across the body, the off hand up to fend
+        "ward": KEY((2, 8, 0), (2, 0, 0), (1.4, -3.8, 5.8), unit((0.45, 0.7, 0.55)), u=UP, lp=(-70, 0, -30, -70)),
+    }
+    carry = {"walk": 12.0, "run": 2.0, "u": UP}
+    return g, attack, legs, stances, carry
+
+
+GUARD, ATTACK_KEYS, ATTACK_LEGS, STANCE_KEYS, CARRY = {"mage": mage_set, "hexer": hexer_set}[TROOP]()
 
 
 def attack_keys():
@@ -799,10 +856,12 @@ def flat_weapon(keys, start, t0, t1, step=None):
 # propped on its bell sleeves and leg robes.
 # Per-troop final-pose changes to the knight falls (tick: bone: rotation): the side falls lie on the cowl and robe
 # with the arm tucked under rather than propped on the bell sleeve.
-DEATH_TWEAK = {"mage": {
+_ROBE_SIDE_FALLS = {
     "death_left": {17: {"head": (-15, 0, 30), "right_arm": (-30, 0, 20)}, 20: {"head": (-20, 0, 30), "right_arm": (-30, 0, 20)}},
     "death_right": {17: {"root": (10, 90, -88), "left_arm": (0, 0, -20)}, 20: {"root": (10, 100, -88), "left_arm": (0, 0, -20)}},
-}}.get(TROOP, {})
+}
+# the hexer takes only the left-fall tuck: its right fall already lies lower untweaked (probe 2026-11-06)
+DEATH_TWEAK = {"mage": _ROBE_SIDE_FALLS, "hexer": {"death_left": _ROBE_SIDE_FALLS["death_left"]}}.get(TROOP, {})
 
 
 def _tweak(keys, name):
