@@ -52,6 +52,8 @@ final class AttackController extends AnimationController<GeoTroop> {
      * What the last frame showed, for the in-game checks (test-tools GeoKnightChecks): the strongest swing weight applied, the newest
      * swing's start tick, clip and clip time, and that clip's impact tick (its "timeline" impact marker, -1 if none). Never read in play.
      */
+    /** `still` at or below this counts as walking: the swing's standing footwork is off (weight exactly 0). */
+    static final double STILL_SETTLED = .001;
     double shownWeight, shownLegsWeight, shownT = -1, shownImpact = -1;
     /** That frame's animation time (world ticks plus partial), and how far into dying the troop was (deathTime plus partial; -1 alive). */
     double shownAt = -1, shownDeath = -1;
@@ -136,7 +138,10 @@ final class AttackController extends AnimationController<GeoTroop> {
             if (a == latest || a.startTick() == seenStart) w *= smooth((now - seenAt) / LATE_IN);
             if (w > 0) apply(clip, t, bones, (float) w);
             // Standing, the swing's own footwork (STYLE.md rule 4) plays over the legs: the step in, the hip drop, the step back.
-            double lw = w * smooth(stance.still());
+            // Once the gait has walked long enough for `still` to settle (<= STILL_SETTLED) the footwork is gone outright, not left as a
+            // smooth(still) residue of a few millionths: the walk checks (and any later layer that tests weight > 0) see exactly 0.
+            double sv = stance.still();
+            double lw = sv <= STILL_SETTLED ? 0 : w * smooth(sv);
             Animation legs = lw > 0 ? model.getAnimation(animatable, clip.name() + "_legs") : null;
             if (legs != null && t < legs.length()) {
                 apply(legs, t, bones, (float) lw);

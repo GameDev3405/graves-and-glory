@@ -123,7 +123,10 @@ final class GeoKnightChecks implements Phase1Checks.Suite {
      */
     static final class Hold {
         final GeoKnightChecks owner; final String stance; final boolean shield; final float yaw;
-        Hold(GeoKnightChecks owner, String stance, boolean shield, float yaw) { this.owner = owner; this.stance = stance; this.shield = shield; this.yaw = yaw; }
+        /** Capture only: the aim pitch sent with the stance (degrees, + down) and a walk speed (blocks per tick, 0 = stand) backing away from where it faces. */
+        final float aim; final double walk;
+        Hold(GeoKnightChecks owner, String stance, boolean shield, float yaw) { this(owner, stance, shield, yaw, 0, 0); }
+        Hold(GeoKnightChecks owner, String stance, boolean shield, float yaw, float aim, double walk) { this.owner = owner; this.stance = stance; this.shield = shield; this.yaw = yaw; this.aim = aim; this.walk = walk; }
     }
     static volatile Hold hold;
     volatile long changedAt = -1, hitAt = -1;
@@ -134,16 +137,23 @@ final class GeoKnightChecks implements Phase1Checks.Suite {
         for (int j = 0; j < knights.size(); j++) {
             var u = knights.get(j);
             if (!u.mob.isAlive()) continue;
-            stand(u, lineX(j), cz, h.yaw);
-            Tactics.set(u, h.stance, 0); Tactics.shield(u.mob, h.shield);
+            if (h.walk > 0) {
+                // Capture: retreat along the line backing away from the way the troop faces, from 2 blocks before its mark.
+                double rad = Math.toRadians(h.yaw), dx = Math.sin(rad), dz = -Math.cos(rad);
+                double s = h.walk * Math.max(0, u.mob.getWorld().getTime() - changedAt) - 2;
+                stand(u, lineX(j) + dx * s, cz + dz * s, h.yaw);
+            } else stand(u, lineX(j), cz, h.yaw);
+            Tactics.set(u, h.stance, h.aim); Tactics.shield(u.mob, h.shield);
         }
     }
 
     /** Holds every knight in a stance (server thread); a new stance or shield stamps changedAt. */
-    void hold(GravesAndGlory.Battle b, String stance, boolean shield, float yaw) {
+    void hold(GravesAndGlory.Battle b, String stance, boolean shield, float yaw) { hold(b, stance, shield, yaw, 0, 0); }
+
+    void hold(GravesAndGlory.Battle b, String stance, boolean shield, float yaw, float aim, double walk) {
         Hold was = hold;
-        if (was == null || !was.stance.equals(stance) || was.shield != shield) changedAt = b.world.getTime();
-        Hold h = new Hold(this, stance, shield, yaw);
+        if (was == null || !was.stance.equals(stance) || was.shield != shield || was.aim != aim) changedAt = b.world.getTime();
+        Hold h = new Hold(this, stance, shield, yaw, aim, walk);
         hold = h; serverHold(h);
     }
 
@@ -161,6 +171,24 @@ final class GeoKnightChecks implements Phase1Checks.Suite {
     static final String[][] STANCE_CASES = Arrays.stream(ALL_STANCE_CASES).filter(sc -> SHIELD || sc[2].equals("0")).toArray(String[][]::new);
     /** close: the tier III own knight three-quarter at 3.5 blocks; side: the line side on from 8; far: the line from 16. */
     static final String[] STANCE_VIEWS = {"close", "side", "far"};
+    /**
+     * Capture only (GRAVES_GEO_CAPTURE=1 runs just this, GRAVES_GEO_CAPTURE=with adds it before the checks; never a check): the stance clips shot in game at 0, 45
+     * and 90 degrees from the camera, named p1-geo-<troop>-cap-<case>-<angle>-<ticks since the stance began>.png. Cases: name, stance, aim pitch, walk speed,
+     * shot ticks, line (the line of six from 8 blocks, one angle). Rally shots are the up beat, the hold, the way down and the tick after it ends.
+     */
+    static final String CAPTURE = System.getenv("GRAVES_GEO_CAPTURE");
+    static final int[] CAP_YAW = {180, 135, 90};
+    static final String[] CAP_ANG = {"000", "045", "090"};
+    static final Object[][] CAP_CASES = {
+        {"hold", "hold", 0f, 0.0, new int[]{30}, false},
+        {"rest", "ranged_rest", 0f, 0.0, new int[]{30}, false},
+        {"rally", "rally", 0f, 0.0, new int[]{3, 6, 10, 15, 17, 19, 20, 21, 22, 24, 26, 30}, false},
+        {"aim-up45", "ranged_aim", -45f, 0.0, new int[]{36}, false},
+        {"aim-level", "ranged_aim", 0f, 0.0, new int[]{36}, false},
+        {"aim-down30", "ranged_aim", 30f, 0.0, new int[]{36}, false},
+        {"fallback", "fall_back", 0f, .169, new int[]{8, 14, 20}, false},
+        {"rally-line", "rally", 0f, 0.0, new int[]{10}, true},
+    };
     final Map<Integer, Long> stanceLag = new TreeMap<>();
     final List<String> stanceBad = new ArrayList<>();
 
@@ -500,7 +528,7 @@ final class GeoKnightChecks implements Phase1Checks.Suite {
                 if (k > 100) {
                     if (!placed) { Phase1Checks.report("p1-geo-" + TROOP + "-placed", false, "could not place knights: " + why); next(tick, 9); return; }
                     Phase1Checks.report("p1-geo-" + TROOP + "-placed", true, "six knights");
-                    i = 0; next(tick, 2);
+                    i = 0; next(tick, CAPTURE != null ? 30 : 2);
                 }
             }
             case 2 -> {
@@ -814,6 +842,30 @@ final class GeoKnightChecks implements Phase1Checks.Suite {
                         next(tick, 9);
                     }
                 }
+            }
+            case 30 -> {
+                int ci = i / CAP_YAW.length, vi = i % CAP_YAW.length;
+                if (ci >= CAP_CASES.length) { Phase1Checks.server(c, b -> hold = null); i = 0; next(tick, "only".equals(CAPTURE) || "1".equals(CAPTURE) ? 9 : 2); return; }
+                Object[] cc = CAP_CASES[ci];
+                boolean line = (Boolean) cc[5];
+                if (line && vi > 0) { i++; next(tick, 30); return; }
+                int[] shots = (int[]) cc[4];
+                float yaw = CAP_YAW[vi];
+                if (k == 1) {
+                    lastShot = -1;
+                    // a different quiet stance first so the next view restarts the stance clip from tick 0 (the same stance twice would not; no stance at all lets the AI throw or aim)
+                    Phase1Checks.server(c, b -> {
+                        hold(b, "hold".equals(cc[1]) ? "ranged_rest" : "hold", false, yaw, 0f, 0.0);
+                        if (line) camera(b, 0, 8, 8); else camera(b, -3, 3.5, 3);
+                    });
+                }
+                if (k == 14) Phase1Checks.server(c, b -> hold(b, (String) cc[1], false, yaw, (Float) cc[2], (Double) cc[3]));
+                if (k == 3) { c.setScreen(null); c.options.hudHidden = true; }
+                if (k > 14 && c.world != null && changedAt >= 0) {
+                    long t = c.world.getTime() - changedAt;
+                    for (int s : shots) if (t == s && s != lastShot) { lastShot = s; Phase1Checks.shot(c, String.format("geo-" + TROOP + "-cap-%s-%s-%02d", cc[0], CAP_ANG[vi], s)); }
+                }
+                if (k > 14 + shots[shots.length - 1] + 12) { i++; next(tick, 30); }
             }
             case 9 -> {
                 c.options.setPerspective(Perspective.FIRST_PERSON); c.options.hudHidden = false;

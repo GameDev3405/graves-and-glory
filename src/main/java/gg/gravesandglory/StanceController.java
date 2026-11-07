@@ -51,10 +51,19 @@ final class StanceController extends AnimationController<GeoTroop> {
     boolean shownShield;
     private boolean listed;
     /**
-     * AIM_PITCH_HOOK: the aim pitch the server sent with a ranged_aim stance (degrees, positive down; 0 in any other stance), refreshed every frame. Nothing reads it
-     * yet: a later pass bends the spine and arms by it over {@code stance_aim_upper}, which for now plays as authored at pitch 0.
+     * AIM_PITCH_HOOK: the aim pitch the server sent with a ranged_aim stance (degrees, positive down; 0 in any other stance), refreshed every frame. It is eased into
+     * {@link #aimSmooth} and read each frame to weight {@code stance_aim_upper} (authored at pitch 0) against {@code stance_aim_up_upper} (-45) and
+     * {@code stance_aim_down_upper} (+30), so the bow, draw arm and spine follow the aim.
      */
     private float aimPitch;
+    /** The aim pitch eased toward the sent one (degrees, positive down), so a re-aim glides instead of stepping. */
+    private float aimSmooth;
+    /** The pitched copies of the aim pose: weights blend the level clip with these (-45 up, +30 down) by the smoothed pitch. */
+    static final String AIM = "stance_aim_upper", AIM_UP = "stance_aim_up_upper", AIM_DOWN = "stance_aim_down_upper";
+    static final float AIM_UP_DEG = 45, AIM_DOWN_DEG = 30;
+    /** The tick the current rally began (the rally clip plays once and holds its last pose, unlike the other stance clips, which loop). */
+    private double rallyStart = Double.NaN;
+    private boolean rallyOn;
     /** The ranged_aim pitch this frame (AIM_PITCH_HOOK), 0 when not aiming. */
     float aimPitch() { return aimPitch; }
     static final Map<Entity, StanceController> LIVE = Collections.synchronizedMap(new WeakHashMap<>());
@@ -81,6 +90,7 @@ final class StanceController extends AnimationController<GeoTroop> {
             case "ranged_aim" -> new String[]{"stance_aim_upper", null};
             case "ranged_rest" -> new String[]{"stance_rest_upper", null};
             case "hold" -> new String[]{"stance_hold_upper", "stance_hold_legs"};
+            case "fall_back" -> new String[]{"stance_fallback_upper", "stance_fallback_legs"};
             default -> null;
         };
         if (own != null) {
@@ -112,7 +122,7 @@ final class StanceController extends AnimationController<GeoTroop> {
         boolean shield = e instanceof LivingEntity l && l.isUsingItem();
         MotionEvents.Stance sent = MotionEvents.Client.stance(e.getId());
         String stance = sent.name();
-        aimPitch = stance.equals("ranged_aim") ? sent.aimPitch() : 0; // AIM_PITCH_HOOK: stored for a later pass that bends the spine and arms
+        aimPitch = stance.equals("ranged_aim") ? sent.aimPitch() : 0; // AIM_PITCH_HOOK: read below as aimSmooth, which blends the three aim clips
         long recent = Long.MIN_VALUE;
         for (MotionInput.Attack a : MotionEvents.Client.attacks(e.getId())) recent = Math.max(recent, a.startTick());
         for (MotionInput.Hit h : MotionEvents.Client.hits(e.getId())) recent = Math.max(recent, h.tick());
@@ -122,10 +132,20 @@ final class StanceController extends AnimationController<GeoTroop> {
         String[] want = dead ? new String[]{null, null} : target(stance, shield, fighting, k -> model.getAnimation(animatable, k) != null);
         shownStance = stance; shownShield = shield; shownStill = still;
 
+        boolean rallying = "stance_rally_upper".equals(want[0]);
+        if (rallying && !rallyOn) rallyStart = now;
+        rallyOn = rallying;
+        boolean aiming = AIM.equals(want[0]);
+        aimSmooth = aiming ? aimSmooth + (aimPitch - aimSmooth) * (float) Math.min(1, dt / 3) : 0;
+        float up = aiming ? clamp01(-aimSmooth / AIM_UP_DEG) : 0, down = aiming ? clamp01(aimSmooth / AIM_DOWN_DEG) : 0;
+        String[] pitched = aiming ? new String[]{AIM_UP, AIM_DOWN} : new String[0];
+
         for (String w : want) if (w != null) ramps.putIfAbsent(w, 0.0);
+        for (String w : pitched) if (model.getAnimation(animatable, w) != null) ramps.putIfAbsent(w, 0.0);
         for (Map.Entry<String, Double> r : ramps.entrySet()) {
             String k = r.getKey();
-            r.setValue(step(r.getValue(), k.equals(want[0]) || k.equals(want[1]) ? 1 : 0, dt / RAMP));
+            boolean on = k.equals(want[0]) || k.equals(want[1]) || (aiming && (k.equals(AIM_UP) || k.equals(AIM_DOWN)));
+            r.setValue(step(r.getValue(), on ? 1 : 0, dt / RAMP));
         }
 
         for (float[] a : acc.values()) java.util.Arrays.fill(a, 0);
@@ -134,14 +154,22 @@ final class StanceController extends AnimationController<GeoTroop> {
             String k = r.getKey();
             double w = AttackController.smooth(r.getValue());
             boolean legs = k.endsWith("_legs");
-            if (legs || k.equals("stance_ready_upper")) w *= AttackController.smooth(still);
+            // the fall-back legs are a walk of their own: they play while the troop moves, so they are not scaled by standing
+            if ((legs && !k.equals("stance_fallback_legs")) || k.equals("stance_ready_upper")) w *= AttackController.smooth(still);
+            if (aiming && (k.equals(AIM) || k.equals(AIM_UP) || k.equals(AIM_DOWN))) {
+                // the level aim and its two pitched copies share the aim's weight by the smoothed pitch (the three weights sum to 1)
+                w *= k.equals(AIM_UP) ? up : k.equals(AIM_DOWN) ? down : 1 - up - down;
+            }
             if (w <= 0) continue;
             Animation clip = model.getAnimation(animatable, k);
             if (clip == null) continue;
             if (legs ? w > shownLegsWeight : w > shownUpperWeight) {
                 if (legs) { shownLegs = k; shownLegsWeight = w; } else { shownUpper = k; shownUpperWeight = w; }
             }
-            accumulate(clip, now % clip.length(), bones, (float) w);
+            // the rally plays once from its start and holds its last pose; the rest loop
+            double clipTime = k.equals("stance_rally_upper") && !Double.isNaN(rallyStart)
+                    ? Math.min(Math.max(0, now - rallyStart), clip.length()) : now % clip.length();
+            accumulate(clip, clipTime, bones, (float) w);
         }
         ramps.values().removeIf(v -> v <= 0);
         apply(bones);
@@ -201,6 +229,8 @@ final class StanceController extends AnimationController<GeoTroop> {
             }
         }
     }
+
+    private static float clamp01(float v) { return Math.max(0, Math.min(1, v)); }
 
     private static float lerp(float a, float b, float w) { return a + (b - a) * w; }
 }
