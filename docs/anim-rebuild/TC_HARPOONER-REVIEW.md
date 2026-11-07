@@ -24,3 +24,23 @@ The Tidecaller Harpooner, the first thrower: a harpoon (trident visual) carried 
 - **Coil:** better than round 1, but there is no visible hold, and the hip drop is slight.
 - **Stances:** ward is distinct. Brace is a shallow crouch. The reviewer saw Hold the line as close to guard at its first frames.
 - The other three death sheets were not reopened in round 2. Hits, idle and locomotion showed no regressions.
+
+## v2 feel (2026-11-07, branch anim/v2-ranged)
+
+The Knight v2 feel (see `ARCHER-REVIEW.md`, "v2 feel"), built by `art/anim/thrower/build_thrower_anims.py`. The throw (`attack_throw`, 1.8 s, impact tick 8) and the four deaths are byte-identical to the previous export (the deaths keep the old guard: only the shipped idle uses the new weight-cycle amplitude), so the server sync is unchanged.
+
+Changed clips:
+- **Idle:** the guard weight cycle at a higher amplitude (hips shift over one foot and back, the harpoon trails the breath).
+- **Brace:** lower and wider than ready, leaning forward, the harpoon pointed down at the charge; the wall legs carry the same cycle as the upper body.
+- **Hits:** graded light / medium / heavy with the knight's v2 leg work mirrored for the thrower; the unshielded front hit is scaled to 0.85 so the heavy blow does not read as a tumble.
+
+- **Probe.** Shaft in the body: 0 samples in the walk, run and throw. Throw fist error: max 2.2 px (unchanged). Feet and torso clear the floor in the unchanged deaths. Deaths and throw byte-identical to HEAD.
+- **Review.** Sonnet high, 2 rounds.
+  - Round 1: FIX (brace not distinct from ready; idle weight shift mild). Hits and the throw / draw-next passed.
+  - Round 2: **PASS.** Brace is clearly apart from ready; no clipping, spear-through-head or floating feet.
+- **Open minors.**
+  - Idle lateral hip shift is still subtle from the front; it reads mainly as head and spear-tip movement.
+  - Heavy front hit (t=6): the harpoon sits close to the head silhouette; no clip found.
+  - Walk and run sheet samples are hard to judge at the cycle period.
+- **Harness.** geo-knight suite with `GRAVES_GEO_CHECK_TROOP=tc_harpooner`: **22 `[p1] p1-` lines, 0 `=false`** (two "Can't keep up" log lines, no lag failure).
+- Video: `group_d2_v2` (ic_arbalist, then tc_harpooner).

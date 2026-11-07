@@ -513,7 +513,45 @@ def idle_clips():
     return legs, K.bake(upper, K.IDLE_TICKS)
 
 
-K.idle_clips = idle_clips    # the death falls start from the arbalist's idle frame
+K.idle_clips = idle_clips    # the death falls start from the arbalist's idle frame (kept as is: deaths are not part of v2)
+
+# V2 feel (Kort, 2026-11-07: "the whole feel and flow of [the Knight's] movements, its weight shifts, and style"). V2 is on by
+# default with the knight builder's flag (GG_V2=0 builds the old clips). The shot and the haul are untouched.
+V2 = K.V2
+
+
+def idle_v2_clips():
+    """At ease with a real weight cycle (STYLE.md rule 2): the hips slide over one foot and back (contrapposto: the free hip
+    drops, its knee softens), the chest counter-tilts so the head stays level, and both arms trail the torso a beat late, the
+    crossbow swinging a little at the thigh. One breath and one full shift (right, centre, left, centre) per 3 s loop."""
+    n = K.IDLE_TICKS * SUB
+    legs, upper, guesses = [], [], {}
+    for i in range(n + 1):
+        u = (i % n) / n
+        br = math.sin(2 * math.pi * u)
+        sh = math.sin(2 * math.pi * u + 0.6)              # + weight over the right foot
+        lag = math.sin(2 * math.pi * u + 0.6 - 0.9)       # the arms follow the shift a few ticks late
+        hips = ((0.5 * br, 4.5 * sh, 5.0 * sh), (-2.0 * sh, -0.8 - 0.14 * br - 0.3 * abs(sh), 0.0))   # +z roll lifts the right hip
+        pose = {"hips": hips}
+        out = {"hips": hips}
+        for side, foot in (("right", (-2.4, 2.0, 0.6)), ("left", (2.4, 2.0, -0.4))):
+            pose[side + "_leg"] = ((0, -hips[0][1], 0), (0, 0, 0))
+            lr, sr, fr = K.leg_pose(pose, side, foot, 0.0, foot_yaw=(-6 if side == "right" else 6), guess=guesses.get(side))
+            guesses[side] = (lr[0], lr[2], sr[0])
+            out[side + "_leg"], out[side + "_shin"], out[side + "_foot"] = (lr, None), (sr, None), (fr, None)
+        legs.append(out)
+        s = {"torso": ((1.0 + 0.9 * br, -1.6 * sh, -2.6 * sh), None),   # shoulders tilt against the pelvis
+             "head": ((-1.0 - 0.5 * br, 0.75 * math.sin(4 * math.pi * u - 1.0) - 0.6 * sh, -1.8 * sh), None),
+             "right_arm": ((CARRY_R[0] - 0.6 * br + 2.0 * lag, 0.0, CARRY_R[2] + 0.5 * br + 1.0 * max(0.0, lag)), None),
+             "right_forearm": ((CARRY_RF - 1.2 * lag, 0.0, 0.0), None),
+             "left_arm": ((-3.0 - 0.5 * br - 2.4 * lag, 0.0, -5.0 - 0.4 * br - 1.2 * max(0.0, -lag)), None),
+             "left_forearm": ((-16.0 - 1.4 * lag, 0.0, 0.0), None), "left_hand": ((2.0 * lag, 0.0, 0.0), None),
+             "hood_cape": ((0.6 + 0.5 * br, 0.0, 0.8 * lag), None), "quiver": ((0.8 * lag, 0.0, 0.6 * lag), None)}
+        pose = fk_pose(s, {"hips": hips})
+        s["right_hand"] = (carry_hand(pose, -10.0 + 1.5 * lag), None)   # world line: the stock stays level through the sway
+        upper.append(s)
+    return K.bake(legs, K.IDLE_TICKS), K.bake(upper, K.IDLE_TICKS)
+
 
 _CORNERS = K.body_corners
 
@@ -548,6 +586,16 @@ STANCE_KEYS = {
 STANCE_KEYS["shield_up"] = STANCE_KEYS["ready"]
 LIFE = {"ready": 3.4, "brace": 1.6, "wall": 1.4, "ward": 2.0, "shield_up": 3.4}
 
+STANCE_LEGS = dict(K.STANCE_LEGS)
+STANCE_LEGS_LIFE = dict(K.STANCE_LIFE)
+if V2:
+    # V2: the three commands read apart from the ready footing. brace sinks a step lower and wider (the knight's v2 brace);
+    # the wall stays the deepest. The legs of the brace and the wall carry the same weight cycle as their upper bodies, so the
+    # hips move with the chest instead of holding still under it.
+    STANCE_LEGS["brace"] = {"hips": ((2.0, 10.0, 0.0), (0.0, -2.2, 0.5)), "right": (-3.8, 2.0, 2.8), "left": (3.6, 2.0, -2.8),
+                            "yaw": (-16.0, 9.0)}
+    STANCE_LEGS_LIFE.update({"brace": LIFE["brace"], "wall": LIFE["wall"]})
+
 
 def stance_upper(k, life, legs_spec):
     n = K.STANCE_TICKS * SUB
@@ -577,8 +625,8 @@ def stance_upper(k, life, legs_spec):
 def stance_clips():
     out = {}
     for k, v in STANCE_KEYS.items():
-        out["stance_%s_upper" % k] = stance_upper(v, LIFE[k], None)
-    out.update({"stance_%s_legs" % k: K.stance_legs(v, K.STANCE_LIFE.get(k, 1.0)) for k, v in K.STANCE_LEGS.items()})
+        out["stance_%s_upper" % k] = stance_upper(v, LIFE[k], STANCE_LEGS["brace"]["hips"] if V2 and k == "brace" else None)
+    out.update({"stance_%s_legs" % k: K.stance_legs(v, STANCE_LEGS_LIFE.get(k, 1.0)) for k, v in STANCE_LEGS.items()})
     return out
 
 
@@ -603,6 +651,78 @@ def hit_clips():
             out["hit_%s_%s" % (weight, d)] = K.bake([K.sample_keys(keys, i / SUB) for i in range(ticks * SUB + 1)], ticks, loop=False)
     out["hit_block"] = out["hit_light_front"]
     out.update(K.hit_legs_clips())
+    return out
+
+
+# V2 hits (the knight's v2 grading, rebuilt for the crossbow): a light blow is a flinch at the knees; a medium blow shifts the
+# pelvis well off the footing and takes a short lifted recovery step; heavy (HitController: medium x1.55) is the stagger. The
+# body keys are the knight's v2 timing. Both arms ride their own tracks that open outward and never fold back across the body:
+# the crossbow arm (right) is held out through a blow from the front, then comes home with the gather; the free arm is flung
+# out with the body and gathers without overshooting inward.
+V2_LIGHT = 0.4
+V2_BODY = {"front": 0.85, "back": 1.0, "right": 1.0, "left": 1.0}   # the unshielded front throw read as a tumble at heavy
+ARM_BONES = {"left": ("left_arm", "left_forearm", "left_hand"), "right": ("right_arm", "right_forearm", "right_hand")}
+
+
+def v2_keys(peak, weight, hold=False):
+    sc = K.scaled
+    if weight == "light":
+        p = sc(peak, V2_LIGHT)
+        return [(0, K.ZERO), (1.5, p), (4, sc(p, -0.12)), (6.5, sc(p, 0.04)), (9, K.ZERO)]
+    if hold:    # held out and down through the whole throw, then home with the gather
+        return [(0, K.ZERO), (2, sc(peak, 2.3)), (4.5, sc(peak, 2.0)), (7.5, sc(peak, 0.9)), (10.5, sc(peak, 0.2)), (16, K.ZERO)]
+    return [(0, K.ZERO), (2, sc(peak, 2.3)), (4.5, sc(peak, 2.15)), (7.5, sc(peak, 0.55)), (10.5, sc(peak, -0.35)),
+            (13, sc(peak, 0.08)), (16, K.ZERO)]
+
+
+def only(peak, bones):
+    return {b: (peak[b] if b in bones else Z3) for b in peak}
+
+
+V2_HIT_LEGS = {   # the knight's v2 hit footwork, from the same ready footing (READY_HIPS, feet as STANCE_LEGS["ready"])
+    "front": {"hips": [(0, *K.READY_HIPS), (2, (-6, 9, 0), (0.0, -1.9, 1.6)), (4.5, (-5, 9, 0), (0.0, -2.1, 1.9)),
+                       (7.5, (1, 5, 0), (0.0, -1.8, 1.3)), (10.5, (-1, 7, 0), (0.0, -1.3, 0.5)), (16, *K.READY_HIPS)],
+              "steps": [("left", 1.0, 3.8, (3.3, 2.0, -4.0), 9.0, 0.8), ("right", 3.5, 6.5, (-3.4, 2.0, 0.6), -13.0, 0.6),
+                        ("left", 9.0, 12.5, (3.2, 2.0, -2.0), 7.0, 0.8), ("right", 11.5, 15.0, (-3.4, 2.0, 2.0), -12.0, 0.8)]},
+    "back": {"hips": [(0, *K.READY_HIPS), (2, (6, 4, 0), (0.0, -1.8, -1.2)), (4.5, (5, 4, 0), (0.0, -1.9, -1.4)),
+                      (7.5, (-1, 7, 0), (0.0, -1.6, -0.8)), (10.5, (0.5, 6, 0), (0.0, -1.2, -0.2)), (16, *K.READY_HIPS)],
+             "steps": [("right", 1.0, 3.8, (-3.5, 2.0, 3.5), -12.0, 0.8), ("left", 3.5, 6.5, (3.2, 2.0, -0.6), 7.0, 0.6),
+                       ("left", 9.0, 12.5, (3.2, 2.0, -2.0), 7.0, 0.8), ("right", 11.5, 15.0, (-3.4, 2.0, 2.0), -12.0, 0.8)]},
+    "right": {"hips": [(0, *K.READY_HIPS), (2, (-2, 14, 4), (1.0, -1.8, 0.5)), (4.5, (-2, 13, 4), (1.2, -1.9, 0.5)),
+                       (7.5, (1, 4, 0), (0.6, -1.6, 0.2)), (10.5, (0, 6.5, 0), (0.1, -1.2, 0.1)), (16, *K.READY_HIPS)],
+              "steps": [("left", 1.0, 3.8, (4.9, 2.0, -2.2), 12.0, 0.8), ("left", 9.0, 12.5, (3.2, 2.0, -2.0), 7.0, 0.8)]},
+    "left": {"hips": [(0, *K.READY_HIPS), (2, (-2, -2, -4), (-1.0, -1.8, 0.5)), (4.5, (-2, -1, -4), (-1.2, -1.9, 0.5)),
+                      (7.5, (1, 8, 0), (-0.6, -1.6, 0.2)), (10.5, (0, 5.5, 0), (-0.1, -1.2, 0.1)), (16, *K.READY_HIPS)],
+             "steps": [("right", 1.0, 3.8, (-5.0, 2.0, 1.6), -18.0, 0.8), ("right", 9.0, 12.5, (-3.4, 2.0, 2.0), -12.0, 0.8)]},
+}
+
+
+def v2_hit_clips():
+    out = {}
+    for weight, ticks in K.HIT_TICKS.items():
+        for d, peak in HIT_PEAK.items():
+            pk = K.scaled(peak, V2_BODY[d])
+            armed = ARM_BONES["left"] + ARM_BONES["right"]
+            body = only(pk, [b for b in pk if b not in armed])
+            tracks = [(v2_keys(body, weight), None), (v2_keys(only(pk, ARM_BONES["right"]), weight, hold=d == "front"), "right"),
+                      (v2_keys(only(pk, ARM_BONES["left"]), weight), "left")]
+            samples = []
+            for i in range(ticks * SUB + 1):
+                s = {}
+                for keys, side in tracks:
+                    v = K.sample_keys(keys, i / SUB)
+                    s.update(v if side is None else {x: v[x] for x in ARM_BONES[side]})
+                samples.append(s)
+            out["hit_%s_%s" % (weight, d)] = K.bake(samples, ticks, loop=False)
+    out["hit_block"] = out["hit_light_front"]
+    saved = K.HIT_LEGS
+    K.HIT_LEGS = V2_HIT_LEGS     # K.hit_legs_clips reads the module global; restored at once (nothing else reads it here)
+    try:
+        legs = K.hit_legs_clips()
+    finally:
+        K.HIT_LEGS = saved
+    legs["hit_block_legs"] = legs["hit_light_front_legs"]
+    out.update(legs)
     return out
 
 
@@ -757,10 +877,10 @@ def main():
     if os.environ.get("XBOW_DUMP"):
         dump(os.environ["XBOW_DUMP"], [float(x) for x in os.environ.get("XBOW_TICKS", "0,2.6,5.2,10,14,19,21,28,33.5,40").split(",")])
         return
-    idle_legs, idle_upper = idle_clips()
+    idle_legs, idle_upper = idle_v2_clips() if V2 else idle_clips()
     anims = {"walk_legs": K.gait_legs(K.WALK), "walk_upper": gait_upper(K.WALK, K.WALK_CARRY, False),
              "run_legs": K.gait_legs(K.RUN), "run_upper": gait_upper(K.RUN, K.RUN_CARRY, True),
-             "idle_legs": idle_legs, "idle_upper": idle_upper, **attack_clips(), **stance_clips(), **hit_clips(),
+             "idle_legs": idle_legs, "idle_upper": idle_upper, **attack_clips(), **stance_clips(), **(v2_hit_clips() if V2 else hit_clips()),
              **death_clips()}
     only_rig(anims)
     K.OUT.parent.mkdir(parents=True, exist_ok=True)

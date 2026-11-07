@@ -525,6 +525,21 @@ STANCE_KEYS = {
 STANCE_KEYS["shield_up"] = STANCE_KEYS["ready"]
 LIFE = {"ready": 3.4, "brace": 1.6, "wall": 1.4, "ward": 2.0, "shield_up": 3.4}
 IDLE_LIFE = 2.2
+IDLE_LIFE_V2 = IDLE_LIFE
+
+# V2 feel (Kort, 2026-11-07: "the whole feel and flow of [the Knight's] movements, its weight shifts, and style"). V2 is on by
+# default with the knight builder's flag (GG_V2=0 builds the old clips). The throw is untouched.
+V2 = K.V2
+STANCE_LEGS_LIFE = dict(K.STANCE_LIFE)
+if V2:
+    # V2: the three commands read apart from the ready footing. brace sinks a step lower and wider, mirrored from the knight's v2
+    # brace (hips down, feet out); the wall stays the deepest. The legs of the brace and the wall carry the same weight cycle as
+    # their upper bodies, so the hips move with the chest instead of holding still under it.
+    STANCE_LEGS["brace"] = {"hips": ((5.0, 28.0, 0.0), (0.0, -3.4, 0.8)), "left": (4.4, 2.0, 4.0), "right": (-4.2, 2.0, -4.0),
+                            "yaw": (-12.0, 20.0)}
+    STANCE_KEYS["brace"] = KEY((22, 12, 0), (2, 0, 0), (-0.5, -1.0, 1.5), aim(-14, -4), lp=(-60, 0, -14, -40))   # set low, the point down at the charge
+    IDLE_LIFE_V2 = 3.4       # the idle weight cycle: a clear hip shift over the guard, not just a breath
+    STANCE_LEGS_LIFE.update({"brace": LIFE["brace"], "wall": LIFE["wall"]})
 
 
 def stance_upper(k, life, legs_spec, ticks=K.STANCE_TICKS):
@@ -557,12 +572,13 @@ def stance_upper(k, life, legs_spec, ticks=K.STANCE_TICKS):
 
 def stance_clips():
     out = {"stance_%s_upper" % k: stance_upper(v, LIFE[k], STANCE_LEGS.get(k)) for k, v in STANCE_KEYS.items()}
-    out.update({"stance_%s_legs" % k: stance_legs(v, K.STANCE_LIFE.get(k, 1.0)) for k, v in STANCE_LEGS.items()})
+    out.update({"stance_%s_legs" % k: stance_legs(v, STANCE_LEGS_LIFE.get(k, 1.0)) for k, v in STANCE_LEGS.items()})
     return out
 
 
-def idle_clips():
-    return stance_legs(STANCE_LEGS["ready"], IDLE_LIFE, K.IDLE_TICKS), stance_upper(GUARD, IDLE_LIFE, None, K.IDLE_TICKS)
+def idle_clips(life=None):
+    life = IDLE_LIFE if life is None else life
+    return stance_legs(STANCE_LEGS["ready"], life, K.IDLE_TICKS), stance_upper(GUARD, life, None, K.IDLE_TICKS)
 
 
 K.idle_clips = idle_clips    # the death falls start from the guard
@@ -589,6 +605,82 @@ def hit_clips():
                                                        loop=False)
     out["hit_block"] = out["hit_light_front"]
     out.update(K.hit_legs_clips())
+    return out
+
+
+# V2 hits (the knight's v2 grading, rebuilt for the harpoon): a light blow is a flinch at the knees; a medium blow shifts the
+# pelvis well off the footing and takes a short lifted recovery step; heavy (HitController: medium x1.55) is the stagger. The
+# body keys are the knight's v2 timing. Both arms ride their own tracks that open outward and never fold back across the body:
+# the harpoon arm (right) is held out through a blow from the front, then comes home with the gather; the free arm is flung
+# out with the body and gathers without overshooting inward. The footwork is the knight's v2 table, mirrored onto this guard.
+V2_LIGHT = 0.4
+V2_BODY = {"front": 0.85, "back": 1.0, "right": 1.0, "left": 1.0}   # the unshielded front throw read as a tumble at heavy
+ARM_BONES = {"left": ("left_arm", "left_forearm", "left_hand"), "right": ("right_arm", "right_forearm", "right_hand")}
+
+
+def v2_keys(peak, weight, hold=False):
+    sc = K.scaled
+    if weight == "light":
+        p = sc(peak, V2_LIGHT)
+        return [(0, K.ZERO), (1.5, p), (4, sc(p, -0.12)), (6.5, sc(p, 0.04)), (9, K.ZERO)]
+    if hold:    # held out and down through the whole throw, then home with the gather
+        return [(0, K.ZERO), (2, sc(peak, 2.3)), (4.5, sc(peak, 2.0)), (7.5, sc(peak, 0.9)), (10.5, sc(peak, 0.2)), (16, K.ZERO)]
+    return [(0, K.ZERO), (2, sc(peak, 2.3)), (4.5, sc(peak, 2.15)), (7.5, sc(peak, 0.55)), (10.5, sc(peak, -0.35)),
+            (13, sc(peak, 0.08)), (16, K.ZERO)]
+
+
+def only(peak, bones):
+    return {b: (peak[b] if b in bones else Z3) for b in peak}
+
+
+_R = _KN_HIPS     # the knight's ready hips: the table is the knight's v2 footwork, mirrored below onto this guard
+_V2_KNIGHT_LEGS = {
+    "front": {"hips": [(0, *_R), (2, (-6, 9, 0), (0.0, -1.9, 1.6)), (4.5, (-5, 9, 0), (0.0, -2.1, 1.9)),
+                       (7.5, (1, 5, 0), (0.0, -1.8, 1.3)), (10.5, (-1, 7, 0), (0.0, -1.3, 0.5)), (16, *_R)],
+              "steps": [("left", 1.0, 3.8, (3.3, 2.0, -4.0), 9.0, 0.8), ("right", 3.5, 6.5, (-3.4, 2.0, 0.6), -13.0, 0.6),
+                        ("left", 9.0, 12.5, (3.2, 2.0, -2.0), 7.0, 0.8), ("right", 11.5, 15.0, (-3.4, 2.0, 2.0), -12.0, 0.8)]},
+    "back": {"hips": [(0, *_R), (2, (6, 4, 0), (0.0, -1.8, -1.2)), (4.5, (5, 4, 0), (0.0, -1.9, -1.4)),
+                      (7.5, (-1, 7, 0), (0.0, -1.6, -0.8)), (10.5, (0.5, 6, 0), (0.0, -1.2, -0.2)), (16, *_R)],
+             "steps": [("right", 1.0, 3.8, (-3.5, 2.0, 3.5), -12.0, 0.8), ("left", 3.5, 6.5, (3.2, 2.0, -0.6), 7.0, 0.6),
+                       ("left", 9.0, 12.5, (3.2, 2.0, -2.0), 7.0, 0.8), ("right", 11.5, 15.0, (-3.4, 2.0, 2.0), -12.0, 0.8)]},
+    "right": {"hips": [(0, *_R), (2, (-2, 14, 4), (1.0, -1.8, 0.5)), (4.5, (-2, 13, 4), (1.2, -1.9, 0.5)),
+                       (7.5, (1, 4, 0), (0.6, -1.6, 0.2)), (10.5, (0, 6.5, 0), (0.1, -1.2, 0.1)), (16, *_R)],
+              "steps": [("left", 1.0, 3.8, (4.9, 2.0, -2.2), 12.0, 0.8), ("left", 9.0, 12.5, (3.2, 2.0, -2.0), 7.0, 0.8)]},
+    "left": {"hips": [(0, *_R), (2, (-2, -2, -4), (-1.0, -1.8, 0.5)), (4.5, (-2, -1, -4), (-1.2, -1.9, 0.5)),
+                      (7.5, (1, 8, 0), (-0.6, -1.6, 0.2)), (10.5, (0, 5.5, 0), (-0.1, -1.2, 0.1)), (16, *_R)],
+             "steps": [("right", 1.0, 3.8, (-5.0, 2.0, 1.6), -18.0, 0.8), ("right", 9.0, 12.5, (-3.4, 2.0, 2.0), -12.0, 0.8)]},
+}
+# the same direction swap as the old table above (a blow from the knight's right lands on this guard's left)
+V2_HIT_LEGS = {"front": mirror_legs(_V2_KNIGHT_LEGS["front"]), "back": mirror_legs(_V2_KNIGHT_LEGS["back"]),
+               "right": mirror_legs(_V2_KNIGHT_LEGS["left"]), "left": mirror_legs(_V2_KNIGHT_LEGS["right"])}
+
+
+def v2_hit_clips():
+    out = {}
+    for weight, ticks in K.HIT_TICKS.items():
+        for dname, peak in HIT_PEAK.items():
+            pk = K.scaled(peak, V2_BODY[dname])
+            armed = ARM_BONES["left"] + ARM_BONES["right"]
+            body = only(pk, [b for b in pk if b not in armed])
+            tracks = [(v2_keys(body, weight), None), (v2_keys(only(pk, ARM_BONES["right"]), weight, hold=dname == "front"), "right"),
+                      (v2_keys(only(pk, ARM_BONES["left"]), weight), "left")]
+            samples = []
+            for i in range(ticks * SUB + 1):
+                smp = {}
+                for keys, side in tracks:
+                    v = K.sample_keys(keys, i / SUB)
+                    smp.update(v if side is None else {x: v[x] for x in ARM_BONES[side]})
+                samples.append(smp)
+            out["hit_%s_%s" % (weight, dname)] = K.bake(samples, ticks, loop=False)
+    out["hit_block"] = out["hit_light_front"]
+    saved = K.HIT_LEGS
+    K.HIT_LEGS = V2_HIT_LEGS     # K.hit_legs_clips reads the module global; restored at once (nothing else reads it here)
+    try:
+        legs = K.hit_legs_clips()
+    finally:
+        K.HIT_LEGS = saved
+    legs["hit_block_legs"] = legs["hit_light_front_legs"]
+    out.update(legs)
     return out
 
 
@@ -855,10 +947,10 @@ def main():
     if os.environ.get("THROW_DUMP"):
         dump(os.environ["THROW_DUMP"], [float(x) for x in os.environ.get("THROW_TICKS", "0,3,5,7.4,8,10,13,16.5,18.5,21,25,29").split(",")])
         return
-    idle_legs, idle_upper = idle_clips()
+    idle_legs, idle_upper = idle_clips(IDLE_LIFE_V2 if V2 else None)   # the death falls keep the old guard (K.idle_clips)
     anims = {"walk_legs": K.gait_legs(K.WALK), "walk_upper": gait_upper(K.WALK, K.WALK_CARRY, False),
              "run_legs": K.gait_legs(K.RUN), "run_upper": gait_upper(K.RUN, K.RUN_CARRY, True),
-             "idle_legs": idle_legs, "idle_upper": idle_upper, **attack_clips(), **stance_clips(), **hit_clips(),
+             "idle_legs": idle_legs, "idle_upper": idle_upper, **attack_clips(), **stance_clips(), **(v2_hit_clips() if V2 else hit_clips()),
              **death_clips()}
     only_rig(anims)
     K.OUT.parent.mkdir(parents=True, exist_ok=True)
