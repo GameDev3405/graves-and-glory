@@ -1816,7 +1816,7 @@ if V2 and SHIELD:   # V2: the shield arm swings wide as the body rolls onto it, 
 # still beside the body.
 # ------------------------------------------------------------------------------------------------
 
-D3_TROOPS = ("knight", "sentinel", "gl_marshal")           # one shield troop at a time (2026-11-07)
+D3_TROOPS = ("knight", "sentinel", "gl_marshal", "ic_hearthguard")   # one shield troop at a time (2026-11-07)
 D3 = TROOP in D3_TROOPS and V2
 D3_WPN = "sword" if TROOP == "knight" else "weapon"   # the held weapon's bone prefix (<prefix>_t1..t3)
 D3_SLERP = ("right_hand", "left_hand")
@@ -1986,7 +1986,8 @@ def _d3_tracks(keys, start):
     tr = {b: [(0.0, None, tuple(map(float, start[b][0])))] for b in DEATH_BONES}
     for t, ease, k in sorted(keys, key=lambda x: x[0]):
         for b, r in k.items():
-            tr[b].append((float(t), ease, tuple(map(float, r))))
+            if b in tr:                   # a rig without a cape (ic_hearthguard) skips the cape keys
+                tr[b].append((float(t), ease, tuple(map(float, r))))
     return tr
 
 
