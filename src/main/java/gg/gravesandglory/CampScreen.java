@@ -17,6 +17,10 @@ import static gg.gravesandglory.GravesAndGloryClient.*;
  *  the battle report (results) is WarTableReport's two papers. */
 final class CampScreen extends ArmyScreen {
     String page;float scale=1;int offset;String key="";long requestAt;
+    /** The latest command the 300 ms throttle held back, or null; tick() sends it when the throttle allows. */
+    String pending;
+    /** state() as last built, and what it was built from: a snapshot revision and the running and ready flags. */
+    String stateCache="";int stateRev=-1;boolean stateRunning,stateReady;
     /** The War Table home (page home), kept while this screen lives so its focus and animation survive a rebuild. */
     WarTableHome home;
     /** The War Table recruit page (page recruit), kept while the page is open; leaving the page drops it, so a later visit opens on the first House. */
@@ -36,7 +40,7 @@ final class CampScreen extends ArmyScreen {
     final Set<Integer> held=new HashSet<>();
     /** Whether a key is down now, as GLFW has it (the checks stand in for it). */
     static IntPredicate keyDown=k->InputUtil.isKeyPressed(MinecraftClient.getInstance().getWindow().getHandle(),k);
-    CampScreen(String page){super("Banner camp");if("forge".equals(page))gearTab="forge";this.page=alias(page);for(int k:watched())if(keyDown.test(k))held.add(k);}
+    CampScreen(String page){super("Banner camp");WarTablePages.forgetPicks();if("forge".equals(page))gearTab="forge";this.page=alias(page);for(int k:watched())if(keyDown.test(k))held.add(k);}
     /** The keys the War Table acts on (its pages' keys, Tab, the arrows) and the menu key, which closes it. */
     static List<Integer> watched(){
         List<Integer> keys=new ArrayList<>(List.of(GLFW.GLFW_KEY_ESCAPE,GLFW.GLFW_KEY_ENTER,GLFW.GLFW_KEY_KP_ENTER,GLFW.GLFW_KEY_SPACE,GLFW.GLFW_KEY_TAB,GLFW.GLFW_KEY_LEFT,GLFW.GLFW_KEY_RIGHT,GLFW.GLFW_KEY_UP,GLFW.GLFW_KEY_DOWN));
@@ -59,8 +63,8 @@ final class CampScreen extends ArmyScreen {
     String value(String name){return social().has(name)?social().get(name).getAsString():"";}
     int number(String name,int fallback){return social().has(name)?social().get(name).getAsInt():fallback;}
     JsonArray rows(String name){return social().has(name)?social().getAsJsonArray(name):new JsonArray();}
-    /** Sends cmd to the server unless a command went less than 300 ms ago; returns whether it went. */
-    boolean action(String cmd){if(System.currentTimeMillis()-requestAt<300)return false;requestAt=System.currentTimeMillis();CampaignClient.notice="";CampaignClient.dismissed="";send(cmd);return true;} // what the player does next speaks anew: a notice he left behind by changing page shows again if the server answers with the same words (review fix round 2)
+    /** Sends cmd to the server unless a command went less than 300 ms ago; returns whether it went. A command the throttle holds back is kept (the latest one wins) and goes from tick() once the throttle allows, so a quick second click is delayed, not lost. */
+    boolean action(String cmd){long now=System.currentTimeMillis();if(now-requestAt<300){pending=cmd;return false;}pending=null;requestAt=now;CampaignClient.notice="";CampaignClient.dismissed="";send(cmd);return true;} // what the player does next speaks anew: a notice he left behind by changing page shows again if the server answers with the same words (review fix round 2)
     /** Turns the table to another page (an old name goes through alias); the keyboard's focus starts afresh there. */
     void page(String next){if(CampaignClient.rollShowing())CampaignClient.revealUntil=0;CampaignClient.dismissed=CampaignClient.notice;if("forge".equals(next))gearTab="forge";page=alias(next);if(!page.equals("gear"))arsenal=null;offset=0;if(!page.equals("recruit"))recruit=null;if(!page.equals("troop"))troopSheet=null;if(!page.equals("lobby"))lobby=null;if(!page.equals("results"))report=null;if(pages!=null&&!pages.page.equals(page))pages=null;super.clearAndInit();}
     void rebuild(){clearAndInit();}
@@ -71,7 +75,9 @@ final class CampScreen extends ArmyScreen {
     boolean briefing(){return page.equals("train")||page.equals("home")&&"campaign".equals(CampaignClient.homeMode);}
     static boolean isWarTable(String page){return "home".equals(page)||"recruit".equals(page)||"troop".equals(page)||"lobby".equals(page)||"results".equals(page)||"gear".equals(page)||WarTablePages.NAMES.contains(page);}
     UiButton add(UiButton b){return addDrawableChild(b);}
-    String state(){return CampaignClient.social.toString()+CampaignClient.progression.toString()+CampaignClient.profile.gold+CampaignClient.profile.owned.keySet()+CampaignClient.profile.pity+CampaignClient.profile.campaignCleared+CampaignClient.difficulty+running+ready+RecruitPages.stateKey(CampaignClient.profile);}
+    /** The camp state's key, rebuilt only when a snapshot arrived (CampaignClient.revision) or the running/ready flags moved: tick() asks 20 times a second and the key is a large string. */
+    String state(){if(stateRev==CampaignClient.revision&&stateRunning==running&&stateReady==ready)return stateCache;stateRev=CampaignClient.revision;stateRunning=running;stateReady=ready;return stateCache=buildState();}
+    String buildState(){return CampaignClient.social.toString()+CampaignClient.progression.toString()+CampaignClient.profile.gold+CampaignClient.profile.owned.keySet()+CampaignClient.profile.pity+CampaignClient.profile.campaignCleared+CampaignClient.difficulty+running+ready+RecruitPages.stateKey(CampaignClient.profile);}
     /** The widgets of the War Table page shown, by name: home's, the recruit page's or WarTablePages'; none on the old pages. */
     Map<String,UiButton> widgets(){
         if(page.equals("home")&&home!=null)return home.buttons;
@@ -115,7 +121,9 @@ final class CampScreen extends ArmyScreen {
             var practice=button("PRACTICE",x+w/2+7,203,w/2-7,b->action("camp:practice"));practice.active=!running; // a button is 20 high and a primary 26: 3 lower, so both labels sit on one line
         }
     }
-    @Override public void tick(){if(home!=null&&page.equals("home"))home.tick();if(recruit!=null&&page.equals("recruit"))recruit.tick();if(troopSheet!=null&&page.equals("troop"))troopSheet.tick();if(lobby!=null&&page.equals("lobby"))lobby.tick();if(report!=null&&page.equals("results"))report.tick();if(arsenal!=null&&page.equals("gear"))arsenal.tick();if(pages!=null&&pages.page.equals(page))pages.tick();if(!key.equals(state()))clearAndInit();if(running&&!CampaignClient.waiting)close();}
+    @Override public void tick(){if(home!=null&&page.equals("home"))home.tick();if(recruit!=null&&page.equals("recruit"))recruit.tick();if(troopSheet!=null&&page.equals("troop"))troopSheet.tick();if(lobby!=null&&page.equals("lobby"))lobby.tick();if(report!=null&&page.equals("results"))report.tick();if(arsenal!=null&&page.equals("gear"))arsenal.tick();if(pages!=null&&pages.page.equals(page))pages.tick();if(!key.equals(state()))clearAndInit();flushPending();if(running&&!CampaignClient.waiting)close();}
+    /** Sends the command the throttle held back, once 300 ms have passed since the last. */
+    void flushPending(){if(pending!=null&&System.currentTimeMillis()-requestAt>=300){String cmd=pending;pending=null;action(cmd);}}
     /** The troops one recruitment roll in this House can give: its Commons, Rares and Epic in sheet order (Legendaries come from Pacts). */
     static List<Spec.TroopsRow> pool(String house){return Arrays.stream(Spec.TROOPS).filter(t->t.house().equals(house)&&!t.rarity().equals("legendary")).toList();}
     static int weight(Spec.TroopsRow t){var r=RosterMath.rarityRow(t.rarity());return r==null?0:r.rollWeight();}
