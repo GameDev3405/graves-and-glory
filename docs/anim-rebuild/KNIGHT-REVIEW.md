@@ -37,3 +37,12 @@ The sentinel shares this builder, so its fix rounds changed the knight too:
 - **Block shove:** less head pitch, with the shield arm further out.
 
 The knight was re-exported with both. See SENTINEL-REVIEW.md for what remains open.
+
+## v2 style (approved by Kort, 2026-11-06)
+
+Kort approved the v2 style after watching an old-vs-new video, and it is now the default in `art/anim/knight/build_anims.py` (`GG_V2=0` builds the old style).
+
+- **Style:** each blow is driven from the pelvis, with the sword on its own lane outside the shield rim. Hits are graded (light flinch, medium shift, heavy stagger), deaths buckle the knees first, and the ready, brace and hold stances read apart at gameplay scale.
+- **Hit fix:** a front hit knocks the sword arm out wide to the right and it is back on guard in about 0.25 s. The shield is untouched, and the fold-in is removed from the other hits.
+- **Harness:** `geo-knight` check on the knight passed with 22 `[p1] p1-` lines and 0 `=false`.
+- **Other troops:** sentinel, gl_marshal and the other users of this builder are not re-exported yet; they pick up v2 on their next rebuild.

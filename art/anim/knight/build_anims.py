@@ -48,6 +48,11 @@ SHIELD = TROOP in ("knight", "sentinel", "ic_hearthguard", "gl_marshal")
 PREVIEW = HERE / "out" / "A" / "preview" if TROOP == "knight" else HERE.parent / TROOP / "out" / "preview"
 GEO = PREVIEW / "t1.geo.json"
 OUT = (HERE if TROOP == "knight" else HERE.parent / TROOP) / "out" / f"{TROOP}.animation.json"
+# V2 (Kort approved 2026-11-06) is the default: attack drive and sword lane, graded hits, deaths, distinct stances, and front
+# hits that open the sword arm outward. GG_V2=0 builds the old style. GG_V2_OUT, if set, redirects the output file.
+V2 = os.environ.get("GG_V2") != "0"
+if os.environ.get("GG_V2_OUT"):
+    OUT = Path(os.environ["GG_V2_OUT"])
 SUB = 4                     # samples per tick in generated clips
 TPS = 20.0
 
@@ -570,6 +575,9 @@ def skey(torso, arm, fore, blade, blade_out, fist, hips=Z3, tilt=0.0, head=None)
 # forward at the chest with the blade angled up and a little across the body, the shield is held out covering the torso, the
 # left shoulder leads over the staggered feet of the ready footing (STANCE_LEGS "ready"). Every swing starts and ends on it.
 READY = skey((5, 14, 0), (-44, 0, 14), -50, -44, -12, FIST_GUARD if SHIELD else FREE_GUARD, hips=(0, 6, 0))
+if V2 and SHIELD:   # V2: the shield fist sits 3 px further left and the blade rides straight up, outside the rim, not laid over it
+    FIST_GUARD = (5.0, 19.0, 5.6)
+    READY = skey((5, 14, 0), (-44, 0, 20), -50, -44, -4, FIST_GUARD, hips=(0, 6, 0))
 GUARD = READY
 LONG = TROOP in ("sentinel", "gl_marshal")   # the Templar's 25-31 px longsword (and the Marshal's 24-32 px broadsword) follows through flatter, so its tip clears the ground
 # The Marshal's broadsword reaches lower still: its cuts carry flatter by this much more (review 2026-11-06: the low cut's tip
@@ -601,6 +609,30 @@ if not SHIELD:   # the shieldless overhead load rocks back and drops the hips fr
     ATTACK_LEGS["overhead"]["hips"][2] = (4, (-8, 11, 0), (0.1, -1.9, 0.9))
     ATTACK_LEGS["overhead"]["hips"][3] = (7.5, (-11, 13, 0), (0.1, -2.3, 1.3))
 READY_FEET = {"right": ((-3.4, 2.0, 2.0), -12.0), "left": ((3.2, 2.0, -2.0), 7.0)}
+if V2 and SHIELD:
+    # V2 (review round 2): each blow is driven from the pelvis. The hips load first, back and over the rear (left) foot, a beat
+    # before the torso coils; the drive carries them forward over the lead foot as it plants on the impact; then the rear foot
+    # follows a short catch step so the follow-through lands on a supported base, and both feet walk back to the ready footing.
+    ATTACK_LEGS = {
+        "thrust": {"hips": [(0, *READY_HIPS), (2, (-1, 10, 1), (0.4, -1.3, 0.5)), (4.5, (-3, 15, 1.5), (0.6, -1.5, 0.8)),
+                            (5.6, (-3, 15, 1.5), (0.5, -1.6, 0.7)), (7, (4, -6, -1), (-0.4, -2.4, -1.4)),
+                            (9, (5, -8, -1), (-0.5, -2.6, -1.7)), (12, (3, -3, 0), (-0.2, -2.2, -2.2)),
+                            (16.5, (1, 4, 0), (0.1, -1.6, -1.0)), (ATTACK_TICKS, *READY_HIPS)],
+                   "steps": [("right", 4.6, 6.8, (-3.7, 2.0, 5.2), -10.0), ("left", 8.5, 11.0, (3.2, 2.0, 0.4), 6.0, 1.0),
+                             ("right", 13.0, 16.5, (-3.4, 2.0, 2.0), -12.0), ("left", 16.0, 19.5, (3.2, 2.0, -2.0), 7.0)]},
+        "overhead": {"hips": [(0, *READY_HIPS), (2.5, (-3, 9, 1), (0.4, -1.3, 0.6)), (5, (-6, 12, 2), (0.7, -1.6, 1.1)),
+                              (7.8, (-7, 13, 2), (0.7, -1.7, 1.2)), (10, (5, -5, -1), (-0.4, -2.6, -1.4)),
+                              (12.5, (6, -7, -1), (-0.5, -2.8, -1.7)), (15, (3, -2, 0), (-0.2, -2.3, -2.3)),
+                              (18.5, (1, 3, 0), (0.1, -1.6, -1.0)), (ATTACK_TICKS, *READY_HIPS)],
+                     "steps": [("right", 7.0, 9.6, (-3.9, 2.0, 5.0), -10.0), ("left", 11.5, 14.0, (3.2, 2.0, 0.4), 6.0, 1.0),
+                               ("right", 15.0, 18.5, (-3.4, 2.0, 2.0), -12.0), ("left", 18.0, 21.0, (3.2, 2.0, -2.0), 7.0)]},
+        "low_cut": {"hips": [(0, *READY_HIPS), (2, (-1, 10, 1), (0.4, -1.3, 0.4)), (4.5, (-2, 15, 2), (0.6, -1.5, 0.6)),
+                             (6.4, (-2, 16, 2), (0.6, -1.6, 0.6)), (8, (6, -8, -3), (-0.6, -3.0, -1.2)),
+                             (10.5, (7, -11, -3), (-0.7, -3.1, -1.4)), (13, (3, -3, 0), (-0.4, -2.5, -2.0)),
+                             (17.5, (1, 3, 0), (0.1, -1.7, -1.0)), (ATTACK_TICKS, *READY_HIPS)],
+                    "steps": [("right", 5.0, 7.6, (-5.0, 2.0, 4.0), -18.0), ("left", 10.5, 13.0, (3.4, 2.0, 0.0), 4.0, 1.0),
+                              ("right", 14.0, 17.5, (-3.4, 2.0, 2.0), -12.0), ("left", 17.0, 20.5, (3.2, 2.0, -2.0), 7.0)]},
+    }
 
 
 def hips_yaw(name, t):
@@ -684,6 +716,172 @@ ATTACKS = {
     ],
 }
 
+if V2 and SHIELD:
+    # V2: the same phases on the sword's own lane. The shield fist rides 3 px further left (FIST_GUARD); the cuts come down and
+    # finish on the sword side, tip out (blade_out +), instead of dragging the blade across the shield; the torso leans less and
+    # turns less, the pelvis and feet (ATTACK_LEGS) carry the drive; the low cut lifts the shield over the head as the body drops.
+    ATTACKS = {
+        "thrust": [
+            (0, GUARD),
+            swing("thrust", 3, (-3, 22, 0), (16, 0, 18), -98, -4, 4, (4.8, 19.4, 5.0), throw=(4, 8, 2)),
+            swing("thrust", 5.4, (-5, 26, 2), (20, 0, 18), -102, -6, 4, (4.6, 19.5, 4.8), throw=(5, 9, 2)),
+            swing("thrust", 7, (12, -18, 0), (-88, 0, 8), -2, 4, -2, (5.4, 18.4, 6.2), throw=(-3, -6, -3)),
+            swing("thrust", 9, (15, -21, 0), (-92, 0, 6), 0, 8, -4, (5.6, 18.2, 6.0), throw=(-4, -7, -4)),
+            swing("thrust", 12.5, (8, -8, 0), (-58, 0, 10), -38, -12, -2, (5.2, 18.6, 5.8), throw=(-2, -4, -2)),
+            swing("thrust", 17, (5, 12, 0), (-46, 0, 18), -50, -42, -4, (5.0, 18.9, 5.6)),
+            (ATTACK_TICKS, GUARD),
+        ],
+        "overhead": [
+            (0, GUARD),
+            swing("overhead", 2.5, (-3, 12, 0), (-110, 0, 22), -60, -100, 4, (4.8, 19.2, 5.2), throw=(-3, 2, 2)),
+            swing("overhead", 5, (-8, 14, 0), (-160, 0, 26), -68, -140, 4, (4.8, 19.0, 5.0), throw=(-6, 4, 4)),
+            swing("overhead", 7.8, (-11, 17, 2), (-170, 0, 28), -74, -158, 4, (4.8, 19.0, 4.8), throw=(-6, 4, 4)),
+            swing("overhead", 8.9, (1, 4, 0), (-150, 0, 22), -28, -80, 4, (5.0, 19.2, 5.6)),
+            swing("overhead", 10, (11, -4, 0), (-100, 0, 16), -8, 22, 6, (5.4, 18.2, 6.2), throw=(-3, -5, -3)),
+            swing("overhead", 12.5, (14, -7, 0), (-54, 0, 20), -12, 30, 10, (5.6, 17.9, 5.8), throw=(-4, -6, -4)),
+            swing("overhead", 15, (12, -8, 0), (-46, 0, 16), -14, 32, 10, (5.6, 17.9, 5.8), throw=(-3, -5, -3)),
+            swing("overhead", 18.5, (6, 8, 0), (-40, 0, 16), -52, -34, -4, (5.2, 18.8, 5.6)),
+            (ATTACK_TICKS, GUARD),
+        ],
+        "low_cut": [
+            (0, GUARD),
+            swing("low_cut", 3.5, (-3, 28, 6), (-32, 0, 58), -62, -42, 62, (4.6, 20.4, 4.8), throw=(4, 8, 2)),
+            swing("low_cut", 6.4, (-5, 32, 8), (-34, 0, 62), -64, -46, 66, (4.4, 20.6, 4.6), throw=(5, 9, 2)),
+            swing("low_cut", 8, (15, -8, -4), (-58, 0, 16), -10, 28, 8, (5.4, 21.0, 6.0), throw=(-3, -6, -4)),
+            swing("low_cut", 10.5, (16, -12, -4), (-50, 0, 14), -14, 24, 2, (5.8, 21.2, 5.6), throw=(-4, -7, -5)),
+            swing("low_cut", 13, (10, -4, 0), (-34, 0, 16), -40, 10, 6, (5.4, 19.8, 5.8)),
+            swing("low_cut", 17.5, (5, 12, 0), (-44, 0, 18), -52, -40, -4, (5.0, 18.9, 5.6)),
+            (ATTACK_TICKS, GUARD),
+        ],
+    }
+
+
+
+# ---- V2: the sword lane (review round 2). The sword and the sword forearm stay outside the shield's rim on every sample:
+# never behind or through it, and over its face only a clear pixel in front. Each swing's keys are laid on the sword side of
+# the rim; where the arm still has to pass the rim, the shield gives way (its fist eases left and back, its face opens) by
+# just the amount the lane needs, a tick early, and comes back as the blade clears.
+LANE_BONES = ("sword_t3", "right_forearm", "right_cuff", "right_couter")
+LANE_PAD = 0.5          # px: lateral clearance past the rim
+LANE_FRONT = -5.2       # shield px: a point at least a pixel in front of the boss (face plane at -3.6, boss front -4.2)
+LANE_BACK = 3.5         # shield px: deeper behind the shield than this (its handle ends at 0.6) the torso hides the blade
+# The give at full strength: fist target (torso px, x+ left, z+ forward) and shield face (animation degrees).
+LANE_GIVE = ((3.0, -0.8, -1.6), (0.0, 22.0, 0.0))
+
+
+def _lane_lattice(cube, step=1.0):
+    lo, hi = cube.corners.min(0), cube.corners.max(0)
+    ax = [np.linspace(lo[i], hi[i], max(2, int(math.ceil((hi[i] - lo[i]) * 16 / step)) + 1)) for i in range(3)]
+    g = np.stack(np.meshgrid(*ax, indexing="ij"), -1).reshape(-1, 3)
+    on = np.zeros(len(g), bool)
+    for i in range(3):
+        on |= np.isclose(g[:, i], lo[i]) | np.isclose(g[:, i], hi[i])
+    return g[on]
+
+
+_LANE = {}
+
+
+def _lane_setup(model):
+    if _LANE:
+        return _LANE
+    pts = []
+    for ci, b in enumerate(model.cube_bone):
+        if b in LANE_BONES:
+            cube = model.cube_list[ci]
+            cp = cube.pivot / 16.0
+            Cr = rg._T(*cp) @ rg._Rz(cube.rot[2]) @ rg._Ry(cube.rot[1]) @ rg._Rx(cube.rot[0]) @ rg._T(*(-cp))
+            L = _lane_lattice(cube)
+            pts.append((b, L @ Cr[:3, :3].T + Cr[:3, 3]))
+    rects = [(c.corners.min(0)[:2] * 16, c.corners.max(0)[:2] * 16)
+             for ci, c in enumerate(model.cube_list) if model.cube_bone[ci] == "shield"]
+    _LANE.update(pts=pts, rects=rects)
+    return _LANE
+
+
+def lane_margin(frame, model=None):
+    """Smallest lane margin (px, >= 0 is clear) of the sword and sword forearm against the shield for an upper frame
+    {bone: (rot, pos)}; also how many of the points pass over the shield's face (in front of it)."""
+    model = model or HEAVY
+    L = _lane_setup(model)
+    M = {}
+    for n in model.order:
+        b = model.bones[n]
+        rot, pos = frame.get(n, (Z3, Z3))
+        M[n] = _bone_mat(b, rot, pos, M[b.parent] if b.parent is not None else rg.WORLD_FLIP)
+    Si = np.linalg.inv(M["shield"])
+    worst, front = 1e9, 0
+    for b, P in L["pts"]:
+        W = P @ M[b][:3, :3].T + M[b][:3, 3]
+        q = (W @ Si[:3, :3].T + Si[:3, 3]) * 16.0
+        lat = np.full(len(q), 1e9)
+        for lo, hi in L["rects"]:
+            d = np.maximum(lo - q[:, :2], q[:, :2] - hi)
+            out = np.linalg.norm(np.maximum(d, 0), axis=1)
+            lat = np.minimum(lat, np.where(d.max(1) < 0, d.max(1), out))
+        m = np.maximum(np.maximum(lat - LANE_PAD, LANE_FRONT - q[:, 2]), q[:, 2] - LANE_BACK)
+        worst = min(worst, float(m.min()))
+        front += int(((lat < LANE_PAD) & (q[:, 2] < LANE_FRONT)).sum())
+    return worst, front
+
+
+def _give(frame, s, face):
+    """frame with the shield given way by s (0..1) of LANE_GIVE, face being the frame's shield face before the give."""
+    if s <= 0:
+        return frame
+    arm, fore = frame["left_arm"][0], frame["left_forearm"][0][0]
+    fist = _fist(arm, fore) - SHOULDER_D
+    tgt = fist + s * np.array(LANE_GIVE[0])
+    a2, f2 = fist_arm(tgt, arm[2], guess=(arm[0], arm[1], fore))
+    fc = tuple(f + s * g for f, g in zip(face, LANE_GIVE[1]))
+    out = dict(frame)
+    out["left_arm"], out["left_forearm"] = (a2, None), ((f2, 0.0, 0.0), None)
+    out["left_hand"] = (grip(a2, f2, fc), None)
+    return out
+
+
+def lane_fix(keys, n, lead=2.0, hold_after=1.0):
+    """Samples keys (n + 1 samples), giving the shield way wherever the sword lane needs it: the least give per sample that
+    clears it (to LANE_GIVE), widened lead ticks before and hold_after ticks after, eased, then checked again."""
+    raw = [sample_keys(keys, i / SUB, keep_face=True) for i in range(n + 1)]
+    faces = [r["_face"][0] for r in raw]
+    base = [regrip(dict(r)) for r in raw]
+    need = np.zeros(n + 1)
+    for i, f in enumerate(base):
+        if lane_margin(f)[0] >= 0:
+            continue
+        for s in np.linspace(0.1, 1.0, 10):
+            if lane_margin(_give(f, s, faces[i]))[0] >= 0:
+                need[i] = s
+                break
+        else:
+            need[i] = 1.0
+    a, b = int(lead * SUB), int(hold_after * SUB)
+    wide = np.array([need[max(0, i - b):i + a + 1].max() for i in range(n + 1)])
+    k = np.array([1, 2, 3, 4, 3, 2, 1], float)
+    k /= k.sum()
+    soft = np.convolve(np.r_[[wide[0]] * 3, wide, [wide[-1]] * 3], k, mode="valid")
+    s = np.maximum(soft, need)
+    s[0] = s[-1] = 0.0 if need[0] == need[-1] == 0 else s[0]
+    # the eased give can itself close the lane where the raw pose was clear (the shield turns into an arm that was beside
+    # it): those samples take the nearest give that clears, pinned, and the rest are eased around them again
+    pinned = np.zeros(n + 1, bool)
+    grid = np.linspace(0.0, 1.0, 21)
+    for _ in range(3):
+        bad = [i for i in range(n + 1) if lane_margin(_give(base[i], float(s[i]), faces[i]))[0] < 0]
+        if not bad:
+            break
+        for i in bad:
+            ms = np.array([lane_margin(_give(base[i], float(g), faces[i]))[0] for g in grid])
+            ok = grid[ms >= 0]
+            s[i] = ok[np.argmin(abs(ok - s[i]))] if len(ok) else grid[np.argmax(ms)]
+            pinned[i] = True
+        sm = np.convolve(np.r_[[s[0]], s, [s[-1]]], np.array([1, 2, 1], float) / 4, mode="valid")
+        s = np.where(pinned, s, sm)
+        if need[0] == need[-1] == 0:
+            s[0] = s[-1] = 0.0
+    out = [_give(f, float(v), faces[i]) for i, (f, v) in enumerate(zip(base, s))]
+    return out, s, [lane_margin(f) for f in out]
 
 
 def monotone(ts, vs):
@@ -700,7 +898,7 @@ def monotone(ts, vs):
     return m
 
 
-def sample_keys(keys, t):
+def sample_keys(keys, t, keep_face=False):
     ts = [k[0] for k in keys]
     out = {}
     for b in UPPER_BONES + (("_face",) if "_face" in keys[0][1] else ()):
@@ -713,7 +911,7 @@ def sample_keys(keys, t):
             s = min(1.0, max(0.0, (t - ts[i]) / h))
             rot.append(hermite(vs[i], vs[i + 1], m[i] * h, m[i + 1] * h, s))
         out[b] = (tuple(rot), None)
-    return regrip(out) if "_face" in out else out
+    return regrip(out) if "_face" in out and not keep_face else out
 
 
 # Each swing's impact tick: its attackVariants row's impactTicks (sheets), where the server lands the blow.
@@ -795,7 +993,13 @@ def attack_clips():
     out = {}
     for name, keys in ATTACKS.items():
         legs = attack_legs(ATTACK_LEGS[name])
-        upper = cape_lag([sample_keys(keys, i / SUB) for i in range(n + 1)], legs)
+        if V2 and SHIELD:
+            upper, give, lanes = lane_fix(keys, n)
+            print("lane %-9s give max %.2f  margin min %.2f px  over-face samples %d" % (
+                name, give.max(), min(m for m, _ in lanes), sum(1 for _, f in lanes if f)))
+            upper = cape_lag(upper, legs)
+        else:
+            upper = cape_lag([sample_keys(keys, i / SUB) for i in range(n + 1)], legs)
         clip = bake(upper, ATTACK_TICKS, loop=False)
         clip["timeline"] = {fmt_t(IMPACT[name] / TPS): "impact"}
         out["attack_" + name] = clip
@@ -838,6 +1042,21 @@ if not SHIELD:   # no rim to hide behind (review 2026-11-06): the wall keeps che
     STANCE_UPPER["wall"] = STANCE_UPPER["wall_up"] = skey((12, 22, 0), (-62, -24, 8), -46, -28, -8, sf("wall", None),
                                                           hips=(4, 16, 0), head=(-14, -18, 0))
 
+if V2 and SHIELD:
+    # V2 (review round 2): the commands read apart at gameplay scale. ready stands tallest, shield upright; brace sinks a
+    # step lower and wider, the shield's top tipped forward to meet the blow, the sword low on the right past the rim; the
+    # wall is the deepest and most closed, chest down behind a shield tipped further forward, the sword level past the
+    # shield's right edge for the next man's line; the ward leans back as it gives ground, the shield's top tipped back,
+    # the point low and out on the sword side. The sword stays on its own lane, outside the rim, in every one.
+    STANCE_UPPER.update({
+        "brace": skey((12, 16, 0), (-24, 0, 30), -52, -20, 4, (5.5, 18.0, 6.0), hips=(2, 10, 0), tilt=5),
+        "brace_up": skey((13, 18, 0), (-28, 0, 30), -56, -20, 4, (5.5, 22.0, 6.0), hips=(2, 10, 0), tilt=2),
+        "wall": skey((22, 14, 0), (-52, 0, 26), -40, -6, 0, (6.0, 17.0, 6.0), hips=(4, 16, 0), tilt=9),
+        "wall_up": skey((24, 14, 0), (-60, 0, 26), -36, -4, 0, (6.0, 21.0, 6.0), hips=(4, 16, 0), tilt=4),
+        "shield_up": skey((6, 16, 0), (-30, 0, 26), -76, -40, 4, (5.5, 22.0, 6.0)),
+        "ward": skey((-6, 8, 0), (-30, 0, 30), -50, 20, 12, (5.0, 18.0, 5.6), tilt=-6),
+    })
+
 # Feet (ankle targets, px) and hips (rot, pos) for the two set stances; yaw is each foot's turn (right, left).
 STANCE_LEGS = {
     # ready: the fighting footing every standing swing plays over (Kort, 2026-11-05: not upright with the feet together).
@@ -853,7 +1072,10 @@ STANCE_LEGS = {
 
 # How alive each stance's loop is (STYLE.md rule 2): the ready guard breathes visibly and rocks its weight centre, forward,
 # centre, back (WEIGHT, a quarter cycle behind the breath); the brace and the wall hold still behind their shields.
-STANCE_LIFE = {"ready": 3.0 if SHIELD else 4.2}   # no shield to hold still: the shieldless guard rocks more
+STANCE_LIFE = {"ready": 3.0 if SHIELD else 4.2}
+if V2 and SHIELD:
+    STANCE_LEGS["brace"] = {"hips": ((2.0, 10.0, 0.0), (0.0, -2.2, 0.5)), "right": (-3.8, 2.0, 2.8), "left": (3.6, 2.0, -2.8),
+                            "yaw": (-16.0, 9.0)}   # no shield to hold still: the shieldless guard rocks more
 WEIGHT = 0.5 * math.pi
 
 
@@ -995,10 +1217,15 @@ def hit_clips():
     for weight, ticks in HIT_TICKS.items():
         for d, peak in HIT_PEAK.items():
             keys = hit_keys(peak, weight)
-            out["hit_%s_%s" % (weight, d)] = bake([sample_keys(keys, i / SUB) for i in range(ticks * SUB + 1)],
-                                                  ticks, loop=False)
+            if V2 and SHIELD:
+                samples = hit_samples(keys, weight, d, ticks)
+            else:
+                samples = [sample_keys(keys, i / SUB) for i in range(ticks * SUB + 1)]
+            out["hit_%s_%s" % (weight, d)] = bake(samples, ticks, loop=False)
     keys = [(0, ZERO), (0.8, BLOCK_GUARD), (2.2, BLOCK_ABSORB), (3.8, scaled(BLOCK_ABSORB, 0.85)), (5.6, BLOCK_SHOVE),
             (6.8, scaled(BLOCK_SHOVE, 0.9)), (9, scaled(BLOCK_SHOVE, 0.15)), (BLOCK_TICKS, ZERO)]
+    if V2 and SHIELD:
+        keys = BLOCK_KEYS
     out["hit_block"] = bake([sample_keys(keys, i / SUB) for i in range(BLOCK_TICKS * SUB + 1)], BLOCK_TICKS, loop=False)
     out.update(hit_legs_clips())
     return out
@@ -1027,6 +1254,70 @@ BLOCK_LEGS = {"hips": [(0, *READY_HIPS), (1.2, (-4.5, 9, 0), (0.0, -2.0, 1.15)),
                        (BLOCK_TICKS, *READY_HIPS)],
               "steps": [("right", 0.2, 1.6, (-3.4, 2.0, 0.7), -13.0, 0.0), ("left", 0.2, 1.6, (3.2, 2.0, -3.1), 7.0, 0.0),
                         ("right", 5.0, 8.0, (-3.4, 2.0, 2.0), -12.0, 1.0), ("left", 6.5, 10.0, (3.2, 2.0, -2.0), 7.0, 0.3)]}
+if V2 and SHIELD:
+    # V2 (review round 2): graded. A light blow is a flinch at the knees. A medium blow shifts the pelvis well off the footing
+    # and the knight takes a short lifted recovery step to catch it (rear foot back for a blow from the front, lead foot
+    # forward from behind, the far foot out sideways), then walks the foot home. A blocked blow is taken at the shield
+    # elbow first; the body only follows a beat later and gives less, and the feet barely skid.
+    LIGHT = 0.4
+
+    def hit_keys(peak, weight):
+        if weight == "light":
+            p = scaled(peak, LIGHT)
+            return [(0, ZERO), (1.5, p), (4, scaled(p, -0.12)), (6.5, scaled(p, 0.04)), (9, ZERO)]
+        return [(0, ZERO), (2, scaled(peak, 2.3)), (4.5, scaled(peak, 2.15)), (7.5, scaled(peak, 0.55)), (10.5, scaled(peak, -0.35)),
+                (13, scaled(peak, 0.08)), (16, ZERO)]
+
+    # V2 (Kort, 2026-11-06): the sword arm opens up under a blow, it never folds in. A blow from the front knocks it a little
+    # wide (the elbow lifts off the body, the point swings out to the right and a touch back) and it is back on guard in about
+    # 5 ticks; from behind or the sides it keeps its pitch but turns out, not in, and never overshoots back across the body.
+    # The fist and the blade stay on the sword side and outside the shield. The torso, head and shield arm are unchanged.
+    HIT_ARM = {d: dict(ZERO, right_arm=v) for d, v in (("front", (-8, 14, -8)), ("back", (8, 4, 0)), ("right", (8, 4, 0)),
+                                                         ("left", (-4, 8, 0)))}
+
+    def hit_arm_keys(d, weight):
+        a = HIT_ARM[d]
+        if d == "front":
+            if weight == "light":
+                return [(0, ZERO), (1.5, scaled(a, 0.6)), (3.5, scaled(a, 0.2)), (5.5, ZERO), (9, ZERO)]
+            return [(0, ZERO), (2, a), (3.5, scaled(a, 0.6)), (5.5, scaled(a, 0.15)), (7, ZERO), (16, ZERO)]
+        if weight == "light":
+            return [(0, ZERO), (1.5, scaled(a, LIGHT)), (4, scaled(a, 0.05)), (6.5, ZERO), (9, ZERO)]
+        return [(0, ZERO), (2, scaled(a, 2.3)), (4.5, scaled(a, 2.15)), (7.5, scaled(a, 0.55)), (10.5, ZERO), (16, ZERO)]
+
+    def hit_samples(keys, weight, d, ticks):
+        ak = hit_arm_keys(d, weight)
+        out = []
+        for i in range(ticks * SUB + 1):
+            s, a = sample_keys(keys, i / SUB), sample_keys(ak, i / SUB)
+            s.update({b: a[b] for b in ("right_arm", "right_forearm", "right_hand")})
+            out.append(s)
+        return out
+
+    HIT_LEGS = {
+        "front": {"hips": [(0, *READY_HIPS), (2, (-6, 9, 0), (0.0, -1.9, 1.6)), (4.5, (-5, 9, 0), (0.0, -2.1, 1.9)),
+                           (7.5, (1, 5, 0), (0.0, -1.8, 1.3)), (10.5, (-1, 7, 0), (0.0, -1.3, 0.5)), (16, *READY_HIPS)],
+                  "steps": [("left", 1.0, 3.8, (3.3, 2.0, -4.0), 9.0, 0.8), ("right", 3.5, 6.5, (-3.4, 2.0, 0.6), -13.0, 0.6),
+                            ("left", 9.0, 12.5, (3.2, 2.0, -2.0), 7.0, 0.8), ("right", 11.5, 15.0, (-3.4, 2.0, 2.0), -12.0, 0.8)]},
+        "back": {"hips": [(0, *READY_HIPS), (2, (6, 4, 0), (0.0, -1.8, -1.2)), (4.5, (5, 4, 0), (0.0, -1.9, -1.4)),
+                          (7.5, (-1, 7, 0), (0.0, -1.6, -0.8)), (10.5, (0.5, 6, 0), (0.0, -1.2, -0.2)), (16, *READY_HIPS)],
+                 "steps": [("right", 1.0, 3.8, (-3.5, 2.0, 3.5), -12.0, 0.8), ("left", 3.5, 6.5, (3.2, 2.0, -0.6), 7.0, 0.6),
+                           ("left", 9.0, 12.5, (3.2, 2.0, -2.0), 7.0, 0.8), ("right", 11.5, 15.0, (-3.4, 2.0, 2.0), -12.0, 0.8)]},
+        "right": {"hips": [(0, *READY_HIPS), (2, (-2, 14, 4), (1.0, -1.8, 0.5)), (4.5, (-2, 13, 4), (1.2, -1.9, 0.5)),
+                           (7.5, (1, 4, 0), (0.6, -1.6, 0.2)), (10.5, (0, 6.5, 0), (0.1, -1.2, 0.1)), (16, *READY_HIPS)],
+                  "steps": [("left", 1.0, 3.8, (4.9, 2.0, -2.2), 12.0, 0.8), ("left", 9.0, 12.5, (3.2, 2.0, -2.0), 7.0, 0.8)]},
+        "left": {"hips": [(0, *READY_HIPS), (2, (-2, -2, -4), (-1.0, -1.8, 0.5)), (4.5, (-2, -1, -4), (-1.2, -1.9, 0.5)),
+                          (7.5, (1, 8, 0), (-0.6, -1.6, 0.2)), (10.5, (0, 5.5, 0), (-0.1, -1.2, 0.1)), (16, *READY_HIPS)],
+                 "steps": [("right", 1.0, 3.8, (-5.0, 2.0, 1.6), -18.0, 0.8), ("right", 9.0, 12.5, (-3.4, 2.0, 2.0), -12.0, 0.8)]},
+    }
+    BLOCK_ELBOW = shield_keep(off(torso=(-1, -2, 0), head=(-1, 1, 0), rarm=(-1, 0, 2), larm=(14, -5, -6), lfore=-26), tilt=-6)
+    BLOCK_ABSORB = shield_keep(off(torso=(-8, -8, 0), head=(-5, 4, 0), rarm=(-4, 0, 8), larm=(18, -7, -7), lfore=-30), tilt=-10)
+    BLOCK_SHOVE = shield_keep(off(torso=(7, -6, 0), head=(-2, 4, 0), rarm=(3, 0, 2), larm=(-40, -8, -6), lfore=44), tilt=9)
+    BLOCK_KEYS = [(0, ZERO), (1.0, BLOCK_ELBOW), (2.6, BLOCK_ABSORB), (4.2, scaled(BLOCK_ABSORB, 0.85)), (6.0, BLOCK_SHOVE),
+                  (7.2, scaled(BLOCK_SHOVE, 0.9)), (9, scaled(BLOCK_SHOVE, 0.15)), (BLOCK_TICKS, ZERO)]
+    BLOCK_LEGS = {"hips": [(0, *READY_HIPS), (1.2, (-1, 7, 0), (0.0, -1.3, 0.3)), (3.0, (-3, 8, 0), (0.0, -1.9, 0.75)),
+                           (5.8, (4, 2, 0), (0.0, -1.6, -0.4)), (8, (1, 5, 0), (0.0, -1.2, 0.0)), (BLOCK_TICKS, *READY_HIPS)],
+                  "steps": [("right", 1.4, 3.0, (-3.4, 2.0, 1.3), -13.0, 0.0), ("right", 6.0, 9.0, (-3.4, 2.0, 2.0), -12.0, 0.6)]}
 
 
 def legs_offset(samples):
@@ -1404,6 +1695,67 @@ for _t, _e, _k in DEATH_RIGHT:
     if _t == 20:
         _k.update({"left_arm": (-60, 0, -60), "right_arm": (30, 0, 30), "right_hand": (-40, 80, -30)})
 
+if V2 and SHIELD:
+    # V2 (review round 2): support goes first (the knees buckle before the body is thrown), the pelvis drops, then the body
+    # meets the ground in order (seat or knees, back or chest, then the head), the sword arm and the shield arm land on
+    # beats of their own, and the body gives a small secondary settle before it lies still.
+    DEATH_BACK = [
+        (2, "out", {"root": (-3, 0, 0), "torso": (-6, 0, 0), "head": (-10, 0, 0), "right_arm": (-20, 0, 12),
+                    "right_leg": (-14, 0, 4), "left_leg": (-16, 0, -3), "right_shin": (36, 0, 0), "left_shin": (44, 0, 0)}),
+        (5, "in", {"root": (-18, 0, 0), "torso": (-16, 0, 0), "head": (-22, 0, 0),
+                   "right_arm": (-60, 0, 28), "right_forearm": (-30, 0, 0), "left_arm": (-30, 30, -10),
+                   "right_leg": (-42, 0, 4), "left_leg": (-46, 0, -3), "right_shin": (78, 0, 0), "left_shin": (84, 0, 0)}),
+        # the seat lands first, the back still up
+        (8.5, "in", {"root": (-52, 0, 0), "torso": (-12, 0, 0), "head": (-14, 0, 0), "right_arm": (-48, 0, 50),
+                     "left_arm": (-22, 20, -30), "right_leg": (-36, 0, 4), "left_leg": (-46, 0, -6),
+                     "right_shin": (60, 0, 0), "left_shin": (80, 0, 0)}),
+        # then the back, the head still lifted a beat behind it
+        (11, "in", {"root": (-86, 0, 0), "hips": (0, 0, 0), "torso": (-6, 0, 0), "head": (-8, 0, 0),
+                    "right_arm": (-30, 0, 72), "right_forearm": (-20, 0, 0), "left_arm": (-10, 10, -55),
+                    "right_leg": (-20, 0, 4), "right_shin": (25, 0, 0), "left_leg": (-40, 0, -6), "left_shin": (70, 0, 0),
+                    "right_foot": (20, 0, 0), "left_foot": (20, 0, 0), "cape": (8, 0, 0)}),
+        (12.5, "in", {"root": (-80, 0, 0), "head": (20, 0, 0), "left_shin": (64, 0, 0)}),
+        # the sword arm drops and the blade lies flat
+        (14.5, "io", {"right_arm": (18, 0, 80), "right_forearm": (0, 0, 0), "right_hand": (-90, -75, 105), "head": (34, 16, 0)}),
+        # the shield arm lands on its own beat
+        (16.5, "in", {"left_arm": (20, 0, -40), "left_forearm": (-30, 0, 0), "left_hand": (-180, 0, -90)}),
+        # a small secondary settle: the body rocks back onto the ground and the knee sinks
+        (18, "out", {"root": (-84, 0, 0), "head": (42, 26, 0), "left_shin": (56, 0, 0)}),
+        (20, "io", {"root": (-82, 0, 0), "head": (45, 28, 0), "right_arm": (20, 0, 80), "left_shin": (58, 0, 0)}),
+    ]
+    DEATH_FORWARD = [
+        (2, "out", {"root": (4, 0, 0), "torso": (6, 0, 0), "head": (-8, 0, 0), "right_arm": (12, 0, 14),
+                    "right_leg": (-14, 0, 4), "left_leg": (-14, 0, -4), "right_shin": (42, 0, 0), "left_shin": (46, 0, 0)}),
+        # the pelvis drops straight down onto both knees
+        (5.5, "in", {"root": (-2, 0, 0), "hips": (0, 0, 0), "torso": (6, 0, 0), "head": (22, 0, 0),
+                     "right_arm": (-5, 0, 12), "right_forearm": (-15, 0, 0), "left_arm": (5, 25, -12),
+                     "right_leg": (0, 0, 4), "left_leg": (0, 0, -4), "right_shin": (92, 0, 0), "left_shin": (92, 0, 0),
+                     "right_foot": (30, 0, 0), "left_foot": (30, 0, 0)}),
+        (7.5, "out", {"root": (-7, 0, 0), "torso": (-2, 0, 0), "head": (12, 0, 0), "left_arm": (-20, 20, -40)}),
+        # the arms come up and forward as it tips, so the chest, not the blade or the shield rim, meets the ground
+        (10, "io", {"root": (6, 0, 0), "torso": (12, 0, 0), "head": (30, 0, 0), "right_arm": (-40, 0, 40),
+                    "left_arm": (-50, 20, -50)}),
+        (12.5, "in", {"root": (34, 0, 0), "torso": (10, 0, 0), "head": (25, 20, 0), "left_arm": (-130, 20, -70),
+                      "right_arm": (-90, 0, 40), "right_forearm": (-20, 0, 0), "right_shin": (70, 0, 0), "left_shin": (70, 0, 0)}),
+        # the chest lands, the head still up, both arms flung out past the head
+        (14.5, "in", {"root": (84, -18, 0), "torso": (8, 0, 0), "head": (5, 10, 0), "right_arm": (-160, 0, 25),
+                      "right_forearm": (-70, 0, 0), "left_arm": (-170, 0, -90), "left_forearm": (-80, 0, 0),
+                      "right_leg": (0, 0, 4), "left_leg": (0, 0, -4), "right_shin": (10, 0, 0),
+                      "left_shin": (12, 0, 0), "cape": (10, 0, 0)}),
+        (15.5, "in", {"head": (-15, 0, 0)}),
+        # the sword arm settles and the blade turns flat, then the shield arm
+        (16.5, "io", {"right_arm": (-170, 0, 25), "right_forearm": (-70, 0, 0), "right_hand": (0, -42, -85)}),
+        (18, "in", {"left_arm": (-175, 0, -95), "left_forearm": (-86, 0, 0), "left_hand": (0, 0, 0)}),
+        (19, "out", {"root": (78, -20, 0), "head": (-25, 0, 0), "right_shin": (18, 0, 0), "left_shin": (20, 0, 0)}),
+        (20, "io", {"root": (80, -20, 0), "torso": (10, 0, 0), "head": (-20, 0, 0), "right_arm": (-170, 0, 25),
+                    "right_hand": (0, -45, -90), "left_arm": (-175, 0, -95), "right_shin": (12, 0, 0), "left_shin": (14, 0, 0)}),
+    ]
+    # the side falls: the far knee and the near knee give a beat before the body is knocked over, and a secondary settle
+    DEATH_LEFT.insert(0, (1.6, "out", {"left_leg": (-12, 0, -3), "left_shin": (34, 0, 0), "right_shin": (18, 0, 0)}))
+    DEATH_RIGHT.insert(0, (1.6, "out", {"right_leg": (-12, 0, 3), "right_shin": (34, 0, 0), "left_shin": (18, 0, 0)}))
+    DEATH_LEFT.insert(-1, (18.5, "out", {"root": (10, -84, 90), "torso": (0, 0, -12)}))
+    DEATH_RIGHT.insert(-1, (18.5, "out", {"root": (10, 84, -90), "torso": (0, 0, 12)}))
+
 
 def pose_at(keys, start, tick):
     """Every death bone's rotation at `tick`, eased between the keys as death_clip does."""
@@ -1445,6 +1797,9 @@ ROLL_RIGHT = _sweep("right", {14: ((-120, 0, 0), -30, (0, 0, 0)), 15: ((-150, 0,
                               18: ((-165, -15, -15), -45, (-25, 25, -25)),
                               # the sword arm settles out past the head, the blade turned flat on the ground
                               19: ((-150, -30, -30), -30, (-45, 45, -45)), 20: ((-150, -30, -30), -30, (-45, 45, -45))})
+if V2 and SHIELD:   # V2: the shield arm swings wide as the body rolls onto it, so the rim does not prop the torso (4.1 -> 1.4 px)
+    for _t, _a in ((15, (-48, 0, -72)), (16, (-53, 0, -88)), (17, (-55, 0, -70))):
+        ROLL_RIGHT.setdefault(_t, {})["left_arm"] = _a
 
 
 def death_clips():
