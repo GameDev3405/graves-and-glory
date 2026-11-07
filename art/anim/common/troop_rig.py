@@ -89,7 +89,12 @@ HANG = {"tc_admiral": {"kelp_hem": "left_shin"}}
 #   skirt, fringe   the source bones replaced
 #   top, hem        the panels' top and bottom rows (handlib y, the floor at 24)
 #   w, d            the skirt's width and depth inside the panels (the front and back panels sit outside d, the sides inside w)
-ROBE = {"wm_seer": {"skirt": "skirt", "fringe": "hem_fringe", "top": 12, "hem": 22, "w": 9, "d": 5}}
+#   tiers           (a robe in bell tiers, tc_mist) each tier's (rows, w, d, source bone, box index): a panel steps out a tier at a
+#                   time, each tier painted by its source box's painter; the source tiers' bones are all replaced
+ROBE = {"wm_seer": {"skirt": "skirt", "fringe": "hem_fringe", "top": 12, "hem": 22, "w": 9, "d": 5},
+        # the three tiers keep their paint; the top tier gives a row to the waist so the hem clears the floor by 1.5 px
+        "tc_mist": {"skirt": "skirt", "fringe": "skirt_hem", "top": 11.5,
+                    "tiers": ((3, 9, 5, "skirt", 0), (3, 10, 6, "skirt", 1), (5, 11, 7, "skirt_hem", 0))}}
 
 
 def lined(paint):
@@ -120,6 +125,29 @@ def panel_paint(paint, inner):
         if face in ("front", "back", "top", "bottom") or face == {"left": "right", "right": "left"}.get(inner): return paint(face, w, h)
         return paint("right", w, h)
     return p
+
+
+def robe_tiers(robed, R):
+    """A tiered robe's panel bones (troop_rig.ROBE "tiers"): each panel one bone at the waist with a box per tier, every tier a
+    px out from the one above, so the bell steps down as the source did; front and back span the tier's width, the sides sit
+    inside it."""
+    top, d0 = R["top"], R["tiers"][0][2] / 2 - 0.5
+    out = []
+    for name, ax, sg, inner in (("skirt_front", 2, -1, "back"), ("skirt_back", 2, 1, "front"),
+                                ("skirt_right", 0, -1, "left"), ("skirt_left", 0, 1, "right")):
+        piv = [0.0, top, 0.0]
+        piv[ax] = sg * (d0 if ax == 2 else R["tiers"][0][1] / 2 - 0.5)
+        boxes, y = [], 0.0
+        for rows, w, d, src, i in R["tiers"]:
+            sp = robed[src].boxes[i].paint[0]
+            o, sz = [-w / 2, y, -d / 2], [w, rows, d]
+            o[ax], sz[ax] = sg * ((d if ax == 2 else w) / 2 - 0.5) - 0.5 - piv[ax], 1
+            pp = panel_paint(sp, inner)
+            boxes.append(Box(o, sz, (lambda pp: lambda f, ww, hh: pp("top" if f == "bottom" else f, ww, hh))(pp),
+                             dil=0.05 if ax == 2 else 0.0))
+            y += rows
+        out.append((Bone(name, "hips", boxes=boxes), piv))
+    return out
 
 
 def robe_panels(skirt, fringe, R):
@@ -219,11 +247,9 @@ def rigify(src, weapon_rot, kind="blade", hang=None, robe=None):
     for bn, par, a in later:
         add(bn, par, a)
     if robe:
-        for bn, a in robe_panels(robed[robe["skirt"]], robed.get(robe.get("fringe")), robe):
+        panels = robe_tiers(robed, robe) if "tiers" in robe else robe_panels(robed[robe["skirt"]], robed.get(robe.get("fringe")), robe)
+        for bn, a in panels:
             add(bn, bn.parent, a)
-        for bn in out:   # the legs move inside the robe, unseen: their bones stay, their boxes go (the hooves ride the feet)
-            if bn.name in ("right_leg", "left_leg", "right_shin", "left_shin"):
-                bn.boxes = []
     # shin gear from y 3 down moves to the foot (boot, toe); a troop with no boot gets the shin's own bottom rows
     for side in ("right", "left"):
         shin, foot = f"{side}_shin", f"{side}_foot"
@@ -239,6 +265,10 @@ def rigify(src, weapon_rot, kind="blade", hang=None, robe=None):
             full, c0 = sb.cut
             f = next(bn for bn in out if bn.name == foot)
             f.boxes = [Box((sb.origin[0], 0, sb.origin[2]), (sb.size[0], 2, sb.size[2]), sb.paint, sb.dil, sb.sheet, cut=(full, full - 2))]
+    if robe:
+        for bn in out:   # the legs move inside the robe, unseen: their bones stay, their boxes go (the hooves or feet ride the feet)
+            if bn.name in ("right_leg", "left_leg", "right_shin", "left_shin"):
+                bn.boxes = []
     # the order the geometry wants: a parent before its children
     order, seen = [], set()
     kids = {}

@@ -1,0 +1,27 @@
+{
+ "troop": "tc_mist",
+ "release_tick": 10,
+ "frame": "body: x left, y up from the feet, z forward; blocks",
+ "offset": [
+  -0.213,
+  1.259,
+  1.383
+ ],
+ "tiers": {
+  "rod": [
+   -0.213,
+   1.272,
+   1.29
+  ],
+  "rod_t2": [
+   -0.213,
+   1.259,
+   1.383
+  ],
+  "rod_t3": [
+   -0.213,
+   1.237,
+   1.538
+  ]
+ }
+}

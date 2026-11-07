@@ -107,12 +107,14 @@
   "left_leg": {},
   "left_shin": {},
   "left_foot": {},
-  "skirt": {},
-  "skirt_hem": {},
   "belt": {},
   "charm": {},
   "sash_tail": {
    "team": true
-  }
+  },
+  "skirt_front": {},
+  "skirt_back": {},
+  "skirt_right": {},
+  "skirt_left": {}
  }
 }
