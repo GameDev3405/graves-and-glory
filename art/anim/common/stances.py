@@ -109,6 +109,39 @@ def pitch(r, deg):
     return from_mat(_rx(-math.radians(deg)) @ to_mat(r))
 
 
+def slerp(r0, r1, k):
+    """The Euler rotation k of the way (geodesic, k may exceed 1 for overshoot) from the Euler rotation r0 to r1."""
+    R0, R1 = to_mat(r0), to_mat(r1)
+    d = R0.T @ R1
+    ang = math.acos(max(-1.0, min(1.0, (np.trace(d) - 1) / 2)))
+    if ang < 1e-6:
+        return np.array(r0, float) + (np.array(r1, float) - np.array(r0, float)) * k
+    if math.pi - ang < 1e-4:
+        w, v = np.linalg.eigh((d + d.T) / 2)
+        ax = v[:, int(np.argmax(w))]
+    else:
+        ax = np.array([d[2, 1] - d[1, 2], d[0, 2] - d[2, 0], d[1, 0] - d[0, 1]]) / (2 * math.sin(ang))
+    a = ang * k
+    K = np.array([[0, -ax[2], ax[1]], [ax[2], 0, -ax[0]], [-ax[1], ax[0], 0]])
+    Rk = np.eye(3) + math.sin(a) * K + (1 - math.cos(a)) * (K @ K)
+    return from_mat(R0 @ Rk)
+
+
+def unwrap(vs):
+    """Each row of vs (Euler degrees over time) moved onto the equivalent triple nearest the row before it, so a continuous motion never flips branch."""
+    out = np.array(vs, float)
+    for i in range(1, len(out)):
+        prev, cur = out[i - 1], out[i]
+        best = None
+        for alt in (cur, np.array([cur[0] + 180, 180 - cur[1], cur[2] + 180])):
+            c = alt + 360 * np.round((prev - alt) / 360)
+            d = float(np.abs(c - prev).sum())
+            if best is None or d < best[0]:
+                best = (d, c)
+        out[i] = best[1]
+    return out
+
+
 # ---------------------------------------------------------------------------------------------- envelopes
 def smooth(x): x = min(1.0, max(0.0, x)); return x * x * (3 - 2 * x)
 def ease_out(x): x = min(1.0, max(0.0, x)); return 1 - (1 - x) ** 3
@@ -164,6 +197,8 @@ def bake(frames, ticks, loop):
                 continue
             vs = np.array([f[b][idx] if f.get(b, (None, None))[idx] is not None else (frames[0][b][idx] if frames[0][b][idx] is not None else np.zeros(3))
                            for f in frames], float)
+            if idx == 0:
+                vs = unwrap(vs)
             keep = thin(ts, vs, tol)
             ent[chan] = {(f"{ts[i]:.4f}".rstrip("0").rstrip(".") if ts[i] else "0.0"): [round(float(x), 3) for x in vs[i]] for i in keep}
         bones[b] = ent
@@ -227,7 +262,7 @@ RALLY = {
     "spear":   dict(arm="both", lift=62, keep=0.0, tilt=0, fore=None),
     "axe":     dict(arm="both", lift=62, keep=0.0, tilt=0, fore=None),
     "bow":     dict(arm="left", lift=84, keep=1.0, tilt=0, fore=-12, out=-11, chest=(-2, -1)),   # quiver on the back: no lean, the head stays out of the arrows
-    "xbow":    dict(arm="right", lift=125, keep=0.45, tilt=0, fore=-10),
+    "xbow":    dict(arm="right", lift=125, keep=0.45, tilt=0, fore=-10, out=-25),   # the crossbow overhead beside the head, the face clear
     "thrower": dict(arm="right", lift=14, keep=0.0, tilt=0, fore=-70),
     "staff":   dict(arm="right", lift=70, keep=1.0, tilt=0, fore=-35),
     "focus":   dict(arm="right", lift=80, keep=0.5, tilt=0, fore=-25),
@@ -238,7 +273,7 @@ RALLY = {
 # nothing passes through the head or chest); the arm goes there from ready along a straight Euler line scaled by the envelope.
 RALLY_POSE = {
     # harpoon thrust straight up over the head, tip leaning a hair forward
-    "tc_harpooner": dict(right_arm=[-169.2, 60.0, -17.7], right_forearm=[-5.5, -20.0, 3.2], right_hand=[60.0, -25.0, 0.3]),
+    "tc_harpooner": dict(right_arm=[-178.9, -24.5, -11.1], right_forearm=[-144.7, -1.6, -4.1], right_hand=[-111.2, 6.8, 5.5]),
     # lantern raised high beside the head
     "hexer": dict(right_arm=[-56.8, 53.7, 92.5], right_forearm=[-9.5, -8.9, 12.9], right_hand=[28.1, -18.7, -6.1]),
 }
@@ -248,8 +283,22 @@ RALLY_POSE = {
 RALLY_OFF = {"hexer": dict(lift=30, fore=-40)}
 
 
+RALLY_WAY = {
+    # the way down, solved tick by tick so the spear sweeps overhead -> forward in the sagittal plane (no side swing, clear of the head); tick 20 is the ready pose
+    "tc_harpooner": {
+        13: dict(right_arm=[-178.9, -24.5, -11.1], right_forearm=[-144.7, -1.6, -4.1], right_hand=[-111.2, 6.8, 5.5]),
+        14: dict(right_arm=[-177.5, -24.1, -10.9], right_forearm=[-143.3, -2.0, -3.6], right_hand=[-109.7, 6.7, 4.9]),
+        15: dict(right_arm=[-173.9, -23.1, -10.4], right_forearm=[-140.1, -2.8, -2.4], right_hand=[-105.7, 6.3, 3.5]),
+        16: dict(right_arm=[-169.2, -21.7, -9.5], right_forearm=[-135.3, -3.9, -0.8], right_hand=[-100.8, 6.1, 1.9]),
+        17: dict(right_arm=[-164.1, -20.6, -8.8], right_forearm=[-130.0, -4.8, 0.7], right_hand=[-95.7, 5.8, 0.3]),
+        18: dict(right_arm=[-159.5, -19.1, -7.6], right_forearm=[-124.9, -5.4, 2.3], right_hand=[-91.2, 5.8, -0.5]),
+        19: dict(right_arm=[-156.6, -18.9, -6.9], right_forearm=[-121.5, -5.7, 3.1], right_hand=[-87.4, 5.8, -1.5]),
+    },
+}
+
+
 # per troop, per bone: ticks that bone waits before coming down (it still arrives at ready by tick 20), so the weapon sweeps back clear of the head
-RALLY_LAG = {"tc_harpooner": dict(right_forearm=3, right_hand=4)}
+RALLY_LAG = {}
 # per troop, per bone: the way up eases in (envelope ** power) so the weapon rises clear of the head instead of cutting through it
 RALLY_UP = {"tc_harpooner": dict(right_arm=2.0, right_forearm=1.5)}
 
@@ -261,11 +310,19 @@ def rally_pose(tr, e, c, t=None):
     if tr.tid in RALLY_POSE:
         off = "left" if cfg["arm"] == "right" else "right"
         chest(P, torso_x=-7 * c, head_x=-10 * c, off=off)
+        way = RALLY_WAY.get(tr.tid)
         for b, tgt in RALLY_POSE[tr.tid].items():
+            if way and t is not None and t >= 13:
+                # on the solved way down: geodesic between the whole-tick waypoints, the last one being the ready pose
+                i = min(int(t), 19); k = t - i
+                a = np.array(way[i][b], float)
+                z = np.array(way[i + 1][b], float) if i + 1 in way else np.array(tr.ready[b][0], float)
+                P[b][0] = slerp(a, z, k)
+                continue
             eb = e if t is None or b not in RALLY_LAG.get(tr.tid, {}) else rally_env_late(t, RALLY_LAG[tr.tid][b])
             if t is not None and t < 13 and b in RALLY_UP.get(tr.tid, {}):
                 eb = snap_up(min(t / 5.0, 1.0) ** RALLY_UP[tr.tid][b], 0.07)
-            P[b][0] = P[b][0] + (np.array(tgt, float) - P[b][0]) * eb
+            P[b][0] = slerp(P[b][0], np.array(tgt, float), eb)     # geodesic, so the weapon sweeps a clean arc instead of an Euler tangle
         if tr.tid in RALLY_OFF:  # the free hand lifts a little, open, as if gathering the glow
             o = RALLY_OFF[tr.tid]
             P[f"{off}_arm"][0] = pitch(P[f"{off}_arm"][0], -o['lift'] * e)
@@ -285,11 +342,19 @@ def rally_pose(tr, e, c, t=None):
     return P
 
 
+END_ON_HOLD = {"tc_harpooner", "archer", "ic_arbalist", "mage"}
+
+
 def build_rally(tr):
     def fn(t):
         e = rally_env(t)
         c = rally_env(t, lead=1.2)
         P = rally_pose(tr, e, c, t)
+        if tr.tid in END_ON_HOLD:         # the last 7 ticks also settle into the hold pose, so the clip ends exactly on it
+            H = hold_pose(tr, 0.0); kh = smooth((t - 13) / 7.0)
+            for b in P:
+                if b in H and kh > 0:
+                    P[b][0] = slerp(P[b][0], H[b][0], kh)
         w = smooth((t - 5) / 2.0) * (1 - smooth((t - 12) / 1.0))
         P["head"][0][1] += 0.8 * w * math.sin((t - 5) * math.pi * 0.5)
         P["torso"][0][0] += 0.5 * w * math.sin((t - 5) * math.pi * 0.5)
@@ -298,6 +363,9 @@ def build_rally(tr):
 
 
 # ---------------------------------------------------------------------------------------------- hold (A1)
+XH = [30, -15, 10]      # xbow hold: right arm lift, right arm tuck, left arm out (the crossbow diagonal across the chest)
+
+
 def hold_pose(tr, phase):
     """Weight low and centred, the weapon up and pointed at the threat; phase 0..1 round the 48 tick breath."""
     P = copy_pose(tr.ready)
@@ -313,11 +381,14 @@ def hold_pose(tr, phase):
             lift_arm(P, s, 14, keep=0.0)
     elif g == "bow":
         chest(P, torso_x=1, head_x=-3)
-        lift_arm(P, "left", 24, keep=1.0)        # the bow comes up on the threat, the string hand to the chest
+        lift_arm(P, "left", 38, keep=1.0)        # the bow comes up on the threat at chest height, the string hand to the chest
         P["right_arm"][0] = pitch(P["right_arm"][0], -6)
+        P["right_arm"][0][2] -= 28               # the free arm tucked in, not flared
     elif g == "xbow":
         chest(P, torso_x=1, head_x=-3)
-        lift_arm(P, "right", 12, keep=1.0)
+        lift_arm(P, "right", XH[0], keep=1.0)
+        P["right_arm"][0][2] += XH[1]
+        P["left_arm"][0][2] += XH[2]
     elif g == "thrower":
         chest(P, torso_x=1, head_x=-2)
         lift_arm(P, "left", 25, keep=0.0)        # the off hand points at the target over the cocked arm
@@ -376,12 +447,18 @@ def build_fallback(tr):
     N = int(round(L * TPS))
     if g == "shield":
         base = pose_at(tr.anims["stance_shield_up_upper"], 0.0)
-    elif g in ("spear", "onehand", "axe", "thrower"):
+    elif g in ("spear", "onehand", "axe"):
         base = pose_at(tr.anims["stance_ward_upper"], 0.0)
     else:
         base = copy_pose(tr.ready)
-        if g == "bow":
-            lift_arm(base, "left", -22, keep=1.0)             # the bow low across the body
+        if g == "thrower":
+            lift_arm(base, "right", 60, keep=0.0)             # the harpoon upright, tip over the back shoulder, never out sideways
+            base["right_forearm"][0][0] -= 30
+            base["left_arm"][0] = pitch(base["left_arm"][0], 28)
+        elif g == "bow":
+            lift_arm(base, "left", -22, keep=1.0)             # the bow hand at the waist (forearm bent up to the belt line), the bow low
+            base["left_forearm"][0][0] -= 45
+            base["left_hand"][0][0] += 32
             base["right_arm"][0] = pitch(base["right_arm"][0], 12)
         elif g == "xbow":
             lift_arm(base, "right", -25, keep=1.0)
@@ -451,7 +528,7 @@ def build_rest(tr):
             lift_arm(P, "right", -28, keep=1.0)
             P["left_arm"][0] = pitch(P["left_arm"][0], 14)
         elif g == "thrower":
-            lift_arm(P, "right", -70, keep=1.0)
+            lift_arm(P, "right", -70, keep=0.0)      # the harpoon points down and across the body, not out like a bar
             P["left_arm"][0] = pitch(P["left_arm"][0], 28)
         elif g == "staff":
             lift_arm(P, "right", -16, keep=1.0)
@@ -483,18 +560,35 @@ def aim_base(tr):
     return base
 
 
+# per troop: how much of the aim pitch the chest, the arms and the head take (the head looks along it)
+AIM_GAIN = {"tc_harpooner": (0.35, 0.9, -0.2), "ic_arbalist": (0.35, 0.8, -0.2)}
+AIM_ARM_Z = {"mage": {"right_arm": (32.0, 0.0)}, "hexer": {"right_arm": (0.0, -18.0)}}
+AIM_TWIST = {"tc_harpooner": -16}     # per troop: extra chest yaw (degrees) so the aim reads side-on
+AIM_WORLD = {"tc_harpooner"}
+
+
 def aim_pitched(tr, base, deg, phase):
     """The aim pose pitched `deg` (+ down): the chest takes 0.35 of it, the arms the rest, the head looks along it."""
     P = copy_pose(base)
     if tr.gear == "bow":
         # side-on views hid the bow behind the chest: open the chest toward the camera side and push the bow arm out
         P["torso"][0][1] -= 12
-        P["left_arm"][0][2] -= 6
+        P["left_arm"][0][2] -= 21        # the bow arm 15 degrees further off the face line
         P["head"][0][1] += 8
-    P["torso"][0] = pitch(P["torso"][0], 0.35 * deg)
+        if "quiver" in P:   # the arrows stab the head and shoulder when the chest turns and leans: drop the quiver back and down
+            P["quiver"] = [np.array([0.0, 0.0, -16.0]), np.array([0.0, -5.0, 2.0])]
+    for b, dz in AIM_ARM_Z.get(tr.tid, {}).items():    # per troop arm roll offsets (e.g. the mage's staff arm tucked in)
+        P[b][0][2] += dz[0] * max(0.0, deg / 30.0) + dz[1] * max(0.0, -deg / 45.0)     # (down, up) offsets, in degrees
+    P["torso"][0][1] += AIM_TWIST.get(tr.tid, 0.0)
+    gt, ga, gh = AIM_GAIN.get(tr.tid, (0.35, 0.65, -0.2))
+    P["torso"][0] = pitch(P["torso"][0], gt * deg)
     for s in ("left", "right"):
-        P[f"{s}_arm"][0] = pitch(P[f"{s}_arm"][0], 0.65 * deg)
-    P["head"][0] = pitch(P["head"][0], -0.2 * deg)
+        if tr.tid in AIM_WORLD:    # the chest is turned side-on, so pitch the arms about the world's lateral axis (through the shoulder), not the chest's
+            Rt = to_mat(P["torso"][0])
+            P[f"{s}_arm"][0] = from_mat(Rt.T @ _rx(-math.radians(ga * deg)) @ Rt @ to_mat(P[f"{s}_arm"][0]))
+        else:
+            P[f"{s}_arm"][0] = pitch(P[f"{s}_arm"][0], ga * deg)
+    P["head"][0] = pitch(P["head"][0], gh * deg)
     # the held draw trembles a little
     tr_ = math.sin(2 * math.pi * phase * 3)
     P["torso"][0][0] += 0.25 * tr_

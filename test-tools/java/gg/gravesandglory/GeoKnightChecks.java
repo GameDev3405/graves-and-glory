@@ -142,7 +142,7 @@ final class GeoKnightChecks implements Phase1Checks.Suite {
                 double rad = Math.toRadians(h.yaw), dx = Math.sin(rad), dz = -Math.cos(rad);
                 double s = h.walk * Math.max(0, u.mob.getWorld().getTime() - changedAt) - 2;
                 stand(u, lineX(j) + dx * s, cz + dz * s, h.yaw);
-            } else stand(u, lineX(j), cz, h.yaw);
+            } else stand(u, lineX(j), cz + (CAPTURE != null && Math.abs(h.yaw - 180) > 1 && j >= 3 ? -12 : 0), h.yaw); // capture, side views: the far half of the line steps back so no troop faces a neighbour (a neighbour in front starts its attack clip over the stance)
             Tactics.set(u, h.stance, h.aim); Tactics.shield(u.mob, h.shield);
         }
     }
@@ -856,7 +856,7 @@ final class GeoKnightChecks implements Phase1Checks.Suite {
                     // a different quiet stance first so the next view restarts the stance clip from tick 0 (the same stance twice would not; no stance at all lets the AI throw or aim)
                     Phase1Checks.server(c, b -> {
                         hold(b, "hold".equals(cc[1]) ? "ranged_rest" : "hold", false, yaw, 0f, 0.0);
-                        if (line) camera(b, 0, 8, 8); else camera(b, -3, 3.5, 3);
+                        if (line) camera(b, 0, 8, 8); else camera(b, -3, "fallback".equals(cc[0]) ? 5.0 : 3.5, 3);
                     });
                 }
                 if (k == 14) Phase1Checks.server(c, b -> hold(b, (String) cc[1], false, yaw, (Float) cc[2], (Double) cc[3]));
