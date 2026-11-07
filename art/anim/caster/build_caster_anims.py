@@ -39,7 +39,8 @@ GEO_BONES = {b["name"] for b in _GEO}
 CAST_TROOPS = {
     "mage": {"W": "weapon_t1", "focus": "weapon_", "a": (0, 1, 0), "b": (0, 0, -1),
              "gear": {"shoulder_cape": 0.5, "vestment_skirt": 0.35, "cord": 0.6},
-             "soft": ("shoulder_cape", "vestment_skirt", "cord")},   # the robe panels are stiff: a fallen body rests on them
+             "soft": ("shoulder_cape", "vestment_skirt", "cord"),   # the robe panels are stiff: a fallen body rests on them
+             "body": ("cowl", "face_v0", "mantle")},   # the head's own bone is empty: the cowl and face hold its boxes
     "hexer": {"W": "lantern", "focus": "lantern", "a": (0, 0, -1), "b": (0, 1, 0),
               "gear": {"hood_tail": 0.4, "vestment_front": 0.3, "vestment_back": 0.3, "vestment_skirt": 0.35, "cord": 0.6},
               "soft": ("hood_tail", "vestment_front", "vestment_back", "vestment_skirt", "cord"),   # the burial robe is stiff
@@ -56,7 +57,7 @@ CAST_TROOPS = {
                 "gear": {"sash_tail": 0.3}, "soft": ("sash_tail",)},
 }
 ST = CAST_TROOPS[TROOP]
-ROBED = TROOP in ("wm_seer", "tc_mist")   # caster v2: the hanging robe (troop_rig.ROBE), upright footing, the gliding gait
+ROBED = TROOP in ("wm_seer", "tc_mist", "mage")   # caster v2: the hanging robe (troop_rig.ROBE), upright footing, the gliding gait
 K.SOFT = ST["soft"]
 LOOKAHEAD = True
 DEATH_STEP = 0.25
@@ -142,6 +143,24 @@ def reach(pose, target, prior, warm=None, w=0.02):
     return x, np.linalg.norm(f(x)[:3]) / 4.0
 
 
+LGRIP = tuple(map(float, _PIV["left_hand"]))
+
+
+def reach_left(pose, ls, prior, warm=None, w=0.02):
+    """The left arm (x, y, z), forearm x and the shaft point s (px from the grip) putting the left fist on the focus's axis,
+    nearest the prior arm and ls; s stays 3.5 px clear of the right fist on ls's side, inside the shaft."""
+    prior = np.asarray(prior[:4], float)
+    lo, hi = (3.5, TIP - 5.0) if ls >= 0 else (BUTT + 1.0, -3.5)
+
+    def f(x):
+        p = K.point(K.world(_arm("left", pose, x), "left_hand"), LGRIP)
+        return np.concatenate([4.0 * (p - wpoint(pose, S(x[4]))), w * (x[:4] - prior), [0.05 * (x[4] - ls)]])
+
+    x0 = np.r_[prior, min(hi, max(lo, ls))] if warm is None else warm
+    x = gn(f, x0, clamp=lambda x: np.r_[x[:3], min(-2.0, max(-150.0, x[3])), min(hi, max(lo, x[4]))])
+    return x, np.linalg.norm(f(x)[:3]) / 4.0
+
+
 def wpoint(pose, a):
     return K.point(K.world(pose, W), a)
 
@@ -168,7 +187,7 @@ def body_boxes(pose):
     P, owner = K.body_corners(pose)
     out = []
     for c in range(0, len(owner), 8):
-        if owner[c] not in ("torso", "hips", "head", "right_leg", "left_leg", "right_shin", "left_shin"):
+        if owner[c] not in ("torso", "hips", "head", "right_leg", "left_leg", "right_shin", "left_shin") + ST.get("body", ()):
             continue
         out.append((owner[c], P[c], [(ax / np.linalg.norm(ax), np.linalg.norm(ax)) for ax in (P[c + 1] - P[c], P[c + 2] - P[c], P[c + 6] - P[c])
                                      if np.linalg.norm(ax) > 1e-6]))
@@ -282,10 +301,13 @@ RP = (-150.0, 0.0, 30.0, -90.0)
 LP = (-55.0, 0.0, -12.0, -35.0)
 
 
-def KEY(torso, gaze, R, d, u=SIDE, rp=RP, lp=LP, q=0.0, Lq=QGRIP):
+def KEY(torso, gaze, R, d, u=SIDE, rp=RP, lp=LP, q=0.0, Lq=QGRIP, lh=0.0, ls=0.0):
+    """lh: how far the left hand is on the focus (0 the free arm at lp, 1 the left fist solved onto the shaft); ls: the shaft
+    point (px from the grip along a) the left fist prefers."""
     d, u = frame(d, u)
     return {"torso": tuple(map(float, torso)), "head": tuple(map(float, gaze)), "R": tuple(map(float, R)), "d": tuple(d),
-            "u": tuple(u), "rp": tuple(map(float, rp)), "lp": tuple(map(float, lp)), "q": (float(q),), "Lq": tuple(map(float, Lq))}
+            "u": tuple(u), "rp": tuple(map(float, rp)), "lp": tuple(map(float, lp)), "q": (float(q),), "Lq": tuple(map(float, Lq)),
+            "lh": (float(lh),), "ls": (float(ls),)}
 
 
 def nudge(k, **kw):
@@ -306,42 +328,60 @@ IMPACT = 10         # caster_cast impactTicks: the spell leaves
 
 
 def mage_set():
-    """The sun mage. The guard: the staff held up before the lead shoulder, the sun disc high and facing the foe, the free hand
-    open at the belly. The cast: the body coils back over the rear foot as the staff is swept up overhead and both arms rise
-    to gather the light; the load is held; the body drives forward over the lead foot and the staff is thrust at the foe, the
-    disc presented, the off hand flung after it; overshoot, recover, settle."""
-    g = KEY((4, 10, 0), GAZE, (-1.5, -5.0, 6.5), aim(78, -12), u=FWD, lp=(-60, 0, -10, -45))
-    # the gather keeps the staff a hand forward of the cowl and out to the right, so in side view it rises clear of the body
-    gather = KEY((-5, 20, 0), (2, 0, 0), (-2.5, -2.5, 6.6), aim(86, -6), u=FWD, lp=(-95, 0, -25, -40))
-    up = KEY((-11, 25, 0), (-8, 0, 0), (-2.4, 2.6, 7.1), aim(89, -8), u=FWD, lp=(-160, 0, -30, -20))
-    # the load: the body keeps coiling back and round over the rear foot while the staff is held up
-    held = nudge(up, torso=(-4, 5, 0), head=(-2, 0, 0), R=(0.0, 0.3, 0.0), d=aim(92, -8), lp=(-8, 0, -4, 0))
-    drive = KEY((8, -8, 0), (2, 0, 0), (0.8, 2.4, 6.6), aim(48, 14), u=FWD, lp=(-120, 0, 0, -30))
-    # the release: the hips and chest drive and twist through, the arm thrown out and the staff levelled at the foe
-    release = KEY((26, -20, 0), (8, 0, 0), (1.3, 0.4, 7.7), aim(26, 9), u=FWD, lp=(-75, 0, 12, -5))
-    over = KEY((30, -24, -2), (9, 0, 0), (1.5, -0.4, 7.8), aim(17, 11), u=FWD, lp=(-65, 0, 16, -6))
-    recover = KEY((12, -4, 0), (5, 0, 0), (0.0, -3.5, 7.0), aim(62, -6), u=FWD, lp=(-65, 0, 0, -40))
-    near = nudge(g, torso=(3, -3, 0), R=(0.0, 0.3, -0.1), d=aim(72, -10))
-    settle = nudge(g, R=(0.0, 0.15, -0.1), d=aim(79, -12))
-    attack = [(0, g), (2.5, gather), (4.5, up), (8.4, held), (9.3, drive), (IMPACT, release), (11.8, over), (16.0, recover),
-              (22.0, near), (28.0, settle), (ATTACK_TICKS, g)]
+    """The Sunweaver, caster style v2 (docs/anim-rebuild/CASTER-V2-DESIGN.md: the staff heal). The guard: upright, the 35 px
+    sun staff held upright before the lead shoulder, the free hand relaxed at the hip. The heal: the hips load back first,
+    then both hands raise the staff (the left fist solved onto the shaft below the right), the body arching back and the gaze
+    following the sun up; the light is held with a tremor; the hips drive forward over the lead foot, the torso follows, the
+    left hand lets go and the staff tips toward the ally, the heal leaving the sun on the release tick, the left hand open
+    after it as a blessing; overshoot, recover, settle. The arm reach (8 px) against the tall cowl keeps both fists at chest
+    height: the staff is tilted out to the right so the shaft rises beside the head, not through it."""
+    lp_rest = (-12, 0, -12, -40)          # the off hand relaxed at the hip, by the sash
+    g = KEY((3, 8, 0), (4, 0, 0), (-1.5, -5.0, 6.5), aim(78, -12), u=FWD, rp=(-40, 0, 10, -40), lp=lp_rest)
+    load = nudge(g, torso=(-2, 2, 0), head=(-2, -2, 0), R=(0.3, 0.6, 0.1), d=aim(80, -16))
+    # the raise: both hands come onto the staff and lift it, the left fist below the right
+    gather = KEY((-3, 6, 0), (-4, -8, 0), (0.0, -1.5, 6.8), unit((-0.3, 0.93, 0.15)), u=FWD, rp=(-80, 0, 10, -40),
+                 lp=(-60, 0, -15, -50), lh=0.6, ls=-6)
+    up = KEY((-6, 4, 0), (-10, -16, 0), (1.0, 1.5, 6.8), unit((-0.45, 0.88, 0.1)), u=FWD, rp=(-110, 0, 10, -40),
+             lp=(-90, 0, -20, -50), lh=1, ls=-6)
+    # the light is held: a tremor, the arch deepening a little
+    held = nudge(up, torso=(-1, 1, 0), head=(-2, 0, 0), R=(0.0, 0.2, 0.0))
+    held2 = nudge(up, torso=(-2, 2, 0), head=(-1, 0, 0), R=(0.1, 0.3, 0.1), d=unit((-0.48, 0.87, 0.12)))
+    # the drive: the hips have gone first; the torso follows, the left hand comes off and the staff starts to tip
+    drive = KEY((6, -4, 0), (2, -6, 0), (0.0, 1.2, 7.3), aim(56, 0), u=FWD, rp=(-100, 0, 0, -20), lp=(-90, 0, 0, -30),
+                lh=0.35, ls=-6)
+    # the release: the staff tipped at the ally, the heal leaves the sun, the left hand open forward after it
+    release = KEY((16, -10, 0), (6, 0, 0), (-1.0, 0.0, 7.8), aim(30, 10), u=FWD, rp=(-95, 0, 0, -10), lp=(-85, 0, 10, -10))
+    over = nudge(release, torso=(3, -2, 0), head=(1, 0, 0), R=(0.0, -0.4, 0.0), d=aim(24, 12), lp=(5, 0, 2, 0))
+    drift = nudge(over, torso=(2, -1, 0), head=(1, 0, 0), R=(0.0, -0.3, 0.0), d=aim(22, 12))   # the heal carries on past release
+    recover = KEY((8, 2, 0), (5, 0, 0), (-1.0, -3.0, 7.0), aim(60, -6), u=FWD, rp=(-70, 0, 10, -30), lp=(-40, 0, -10, -40))
+    near = nudge(g, torso=(2, -2, 0), R=(0.0, 0.3, -0.1), d=aim(72, -10))
+    settle = nudge(g, R=(0.0, 0.15, -0.1), d=aim(76, -12))
+    attack = [(0, g), (1.5, load), (2.8, gather), (4.5, up), (6.5, held), (8.4, held2), (9.0, drive), (IMPACT, release),
+              (11.8, over), (13.6, drift), (16.0, recover), (22.0, near), (28.0, settle), (ATTACK_TICKS, g)]
     R0, R1 = READY_HIPS
-    legs = {"hips": [(0, R0, R1), (4.0, (-4.0, 30.0, 0.0), (0.0, -1.4, -0.7)), (8.4, (-6.0, 34.0, 0.0), (0.0, -1.7, -1.0)),
-                     (IMPACT, (10.0, 0.0, 0.0), (0.0, -3.5, 1.8)), (11.8, (12.0, -4.0, -2.0), (0.0, -3.8, 2.1)),
-                     (16.0, (5.0, 10.0, 0.0), (0.0, -2.4, 1.0)), (24.0, (1.0, 18.0, 0.0), (0.0, -1.5, 0.3)),
+    # the Knight's weight shift: the hips load back before the arms move and drive forward before the torso does
+    legs = {"hips": [(0, R0, R1), (1.5, (-2.0, 10.0, 0.0), (0.0, -1.0, -0.4)), (4.5, (-2.0, 12.0, 0.0), (0.0, -1.1, -0.4)),
+                     (7.6, (-3.0, 13.0, 0.0), (0.0, -1.15, -0.5)), (9.0, (6.0, 3.0, 0.0), (0.0, -1.4, 0.8)),
+                     (IMPACT, (8.0, 0.0, 0.0), (0.0, -1.6, 1.2)), (11.8, (9.0, -2.0, 0.0), (0.0, -1.7, 1.4)),
+                     (16.0, (4.0, 6.0, 0.0), (0.0, -1.3, 0.7)), (24.0, (1.0, 12.0, 0.0), (0.0, -1.0, 0.3)),
                      (30.0, R0, R1), (ATTACK_TICKS, R0, R1)],
-            "steps": [("left", 6.8, 9.8, (3.7, 2.0, 5.0), 18.0), ("right", 10.4, 14.0, (-3.0, 2.0, 0.0), -4.0, 0.6),
-                      ("left", 20.0, 26.0, (3.4, 2.0, 2.4), 14.0), ("right", 24.0, 30.0, (-3.2, 2.0, -2.2), -6.0)]}
+            # short glides under the robe: the lead foot slides forward as the hips drive, the rear foot drags after
+            "steps": [("left", 7.8, 10.0, (2.9, 2.0, 2.6), 12.0, 0.3), ("right", 10.2, 13.0, (-2.8, 2.0, 0.2), -4.0, 0.3),
+                      ("left", 20.0, 25.0, (2.9, 2.0, 1.1), 10.0, 0.3), ("right", 23.0, 28.0, (-2.8, 2.0, -1.1), -6.0, 0.3)]}
     stances = {
         "ready": g,
-        # brace (Hold position): a deep crouch, hunched over the staff planted upright beside the lead foot, the off
-        # hand low on the knee
-        "brace": KEY((16, 6, 0), (2, 0, 0), (-2.2, -4.6, 5.6), aim(90, -4), u=FWD, lp=(-55, 0, -10, -45)),
-        # wall (Hold the line): standing tall, the staff pushed out in front and leaned forward as a barrier, the off
-        # hand raised flat behind it
-        "wall": KEY((4, 6, 0), (0, 0, 0), (1.0, -3.5, 7.1), aim(68, 8), u=FWD, lp=(-100, 0, -15, -15)),
-        # ward (fall back): the staff slanted across the body as a bar, the off hand up to fend
-        "ward": KEY((2, 8, 0), (0, 0, 0), (2.5, -5.0, 5.0), unit((0.6, 0.75, 0.25)), u=FWD, lp=(-70, 0, -30, -70)),
+        # brace (Hold position): upright, both arms up, the staff held crosswise as a guard bar at the brow, in front of the
+        # cowl (the 8 px arms cannot lift it over the crown), the sun out to the left; no crouch
+        "brace": KEY((4, 4, 0), (-16, 0, 0), (1.5, 3.5, 7.0), unit((1, 0.12, 0)), u=FWD, rp=(-150, 0, 10, -30),
+                     lp=(-150, 0, -10, -20), lh=1, ls=9),
+        # wall (Hold the line): the staff levelled at the foe in both hands like a pike, the sun head out front at chest
+        # height, the butt by the right hip; the shoulders turn to bring the left hand forward on the shaft, the head stays on
+        # the foe (v1's one-handed raised staff read as the guard from the front)
+        "wall": KEY((8, 30, 0), (-2, -21, 0), (0.5, -5.0, 5.0), aim(12, 15), u=FWD, rp=(-60, 0, 10, -30), lp=(-70, 0, -10, -30),
+                    lh=1, ls=6),
+        # ward (fall back): both hands on the staff, slanted across the body as a bar, low on the right, the sun high left
+        "ward": KEY((2, 12, 0), (2, 0, 0), (2.0, -5.5, 5.4), unit((0.62, 0.56, 0.26)), u=FWD, rp=(-40, 0, 20, -40),
+                    lp=(-80, 0, -10, -60), lh=1, ls=8),
     }
     carry = {"walk": 75.0, "run": 35.0, "u": FWD}
     return g, attack, legs, stances, carry
@@ -533,8 +573,10 @@ class Solver:
     def __init__(self):
         self.warm = None
         self.worst = 0.0
+        self.lwarm = None
+        self.lworst = 0.0
 
-    def pose(self, legs, torso, head, R, d, u, rp, lp, q=0.0, Lq=QGRIP, extra=None, w=0.02):
+    def pose(self, legs, torso, head, R, d, u, rp, lp, q=0.0, Lq=QGRIP, extra=None, w=0.02, lh=0.0, ls=0.0):
         s = {"torso": (tuple(torso), None), "head": (tuple(head), None)}
         if extra:
             s.update(extra)
@@ -548,16 +590,26 @@ class Solver:
         s["right_arm"], s["right_forearm"] = (tuple(x[:3]), None), ((x[3], 0.0, 0.0), None)
         pose = fk_pose(s, legs)
         s["right_hand"] = (hold_wrist(pose, d, u), None)
+        if lh > 1e-4:   # the left fist on the shaft (both-handed focus): solved, then blended in from the free arm by lh
+            pose = fk_pose(s, legs)
+            x, e = reach_left(pose, ls, lp, self.lwarm)
+            self.lwarm = x
+            if lh >= 0.999:
+                self.lworst = max(self.lworst, e)
+            lp = tuple(np.asarray(lp[:4], float) + min(1.0, lh) * (x[:4] - np.asarray(lp[:4], float)))
+        else:
+            self.lwarm = None
         s["left_arm"], s["left_forearm"] = (tuple(lp[:3]), None), ((lp[3], 0.0, 0.0), None)
         s["left_hand"] = (Z3, None)
         return s
 
 
 def sample(keys, legs_at, sol, t, extra=None, w=0.02):
-    v = {n: interp(keys, t, n) for n in ("torso", "head", "R", "d", "u", "rp", "lp", "q", "Lq")}
+    v = {n: interp(keys, t, n) for n in ("torso", "head", "R", "d", "u", "rp", "lp", "q", "Lq", "lh", "ls")}
     d, u = frame(v["d"], v["u"])
     head = head_local(v["head"], v["torso"], legs_at["hips"][0])
-    return sol.pose(legs_at, v["torso"], head, v["R"], d, u, v["rp"], v["lp"], max(0.0, min(1.0, v["q"][0])), v["Lq"], extra, w)
+    return sol.pose(legs_at, v["torso"], head, v["R"], d, u, v["rp"], v["lp"], max(0.0, min(1.0, v["q"][0])), v["Lq"], extra, w,
+                    max(0.0, min(1.0, v["lh"][0])), v["ls"][0])
 
 
 def gear(samples, legs=None):
@@ -592,7 +644,8 @@ def attack_clip():
         if h:
             hits.append((t, h[0]))
         out.append(s)
-    print("attack_cast: fist err max %.3f px, samples with the focus in the body %d %s" % (sol.worst, len(hits), hits[:8]))
+    print("attack_cast: fist err max %.3f px (left on the shaft %.3f), samples with the focus in the body %d %s"
+          % (sol.worst, sol.lworst, len(hits), hits[:8]))
     return out, legs
 
 
@@ -717,7 +770,7 @@ def stance_upper(k, life, legs_spec, ticks=K.STANCE_TICKS):
         dd = np.array(k["d"]) + np.array([0.0, 0.006 * br + 0.01 * wl, 0.0])
         lp = np.array(k["lp"]) + np.array([-0.8 * wl, 0.0, 0.0, -1.2 * wl])
         d, uu = frame(dd, k["u"])
-        s = sol.pose(legs, torso, head, R, d, uu, k["rp"], lp)
+        s = sol.pose(legs, torso, head, R, d, uu, k["rp"], lp, lh=k["lh"][0], ls=k["ls"][0])
         out.append(s)
     out = gear(out)
     out[-1] = out[0]
@@ -795,7 +848,7 @@ PANELS = {"skirt_front": (2, 1.0, -2.0, -3.0, 0, (-4.5, 4.5), ("right", "left"))
           "skirt_left": (0, -1.0, 3.5, 4.5, 2, (-2.5, 2.5), ("left",))}
 HEM_Y = 2.0          # the hem's local height (bedrock px); the pivot rides the hips at 12
 FEET = "_hoof"       # the bone whose boxes are the feet showing under the hem
-if TROOP == "tc_mist":   # the bell robe steps out a px a tier (troop_rig.ROBE tiers): inner faces at the middle tier, outer at
+if TROOP in ("tc_mist", "mage"):   # the bell robe steps out a px a tier (troop_rig.ROBE tiers): inner faces at the middle tier, outer at
     # the hem's; its hem hangs to 1.5 px; no hooves, the feet are the shins' bottom rows on the foot bones
     PANELS = {"skirt_front": (2, 1.0, -2.0, -3.5, 0, (-5.0, 5.0), ("right", "left")),
               "skirt_back": (2, -1.0, 2.0, 3.5, 0, (-5.0, 5.0), ("right", "left")),
@@ -870,7 +923,7 @@ def robe_frame(pose):
     return Mh, np.array(line), np.array(hoof), thigh
 
 
-def _slack(P, rot, F, live):
+def _slack(P, rot, F, live, leg_r=None):
     """How far inside its limits the panel is at rot (negative: a leg or hoof out through it, or the hem in the floor)."""
     Mh, line, hoof, _ = F
     a, sg, inner, outer, la, (l0, l1), _legs = PANELS[P]
@@ -878,7 +931,7 @@ def _slack(P, rot, F, live):
     Li = np.linalg.inv(L)
     q = _bed((Li @ line.T).T)
     m = (q[:, 1] >= HEM_Y + 0.5) & (q[:, la] >= l0) & (q[:, la] <= l1)
-    s = min([np.inf] + list(sg * (q[m, a] - inner) - LEG_R))
+    s = min([np.inf] + list(sg * (q[m, a] - inner) - (LEG_R if leg_r is None else leg_r)))
     q = _bed((Li @ hoof.T).T)
     m = (q[:, la] >= l0 - 0.5) & (q[:, la] <= l1 + 0.5)
     # a hoof point pokes by the least of how far it is outside the outer face and how far above the hem (one just under the hem
@@ -926,6 +979,20 @@ def panel_pose(pose, live=True):
                     hi = mid
                 else:
                     lo = mid
+        if not live and TROOP == "mage":   # a dead mage's robe falls shut: each panel folds in onto the legs and feet as far
+            lo = hi                        # as they let it, so the hem does not gape open round empty space
+            lr = 0.1 if a == 2 else None   # the legs have no boxes: front and back fold right in to the leg line and close
+            while lo > -20.0 and _slack(P, _panel_rot(P, lo - 2.0, pitch), F, live, lr) >= 0:
+                lo -= 2.0
+            if lo > -20.0:
+                bad = lo - 2.0
+                for _ in range(4):
+                    mid = 0.5 * (lo + bad)
+                    if _slack(P, _panel_rot(P, mid, pitch), F, live, lr) >= 0:
+                        lo = mid
+                    else:
+                        bad = mid
+            hi = lo
         out[P] = (tuple(round(v, 4) for v in _panel_rot(P, hi, pitch)), None)
     return out
 
@@ -1224,7 +1291,19 @@ _SEER_FALLS = {
                         19: {"left_arm": (-180, 0, 10), "left_forearm": (0, 0, 0)},
                         20: {"left_arm": (-180, 0, 10), "left_forearm": (0, 0, 0)}},
 }
-DEATH_TWEAK = {"mage": _ROBE_SIDE_FALLS, "hexer": {"death_left": _ROBE_SIDE_FALLS["death_left"]},
+# the mage lies out straight-legged (the knight's tucked knees push the hanging robe out edge-on): the robe folds flat
+_MAGE_FALLS = {n: {t: dict(k) for t, k in v.items()} for n, v in _SEER_FALLS.items() if n != "death_forward"}
+for _n, _ticks in {"death_back": {11: {"right_leg": (-8, 0, 3), "right_shin": (12, 0, 0), "left_leg": (-14, 0, -4),
+                                       "left_shin": (24, 0, 0)}, 12.5: {"left_shin": (22, 0, 0)}, 18: {"left_shin": (18, 0, 0)},
+                                  20: {"left_shin": (20, 0, 0)}},
+                   "death_left": {11: {"left_leg": (-12, 0, -3), "left_shin": (20, 0, 0), "right_leg": (-18, 0, 0),
+                                       "right_shin": (24, 0, 0)}},
+                   "death_right": {11: {"right_leg": (-12, 0, 3), "right_shin": (20, 0, 0), "left_leg": (-18, 0, 0),
+                                        "left_shin": (24, 0, 0)}}}.items():
+    for _t, _k in _ticks.items():
+        _MAGE_FALLS.setdefault(_n, {}).setdefault(_t, {}).update(_k)
+DEATH_TWEAK = {"mage": _MAGE_FALLS,
+               "hexer": {"death_left": _ROBE_SIDE_FALLS["death_left"]},
                "wm_seer": _SEER_FALLS,
                # the mist caller's robe hangs like the seer's: the same flat-armed falls (no snout, so no head turn face down)
                "tc_mist": {n: k for n, k in _SEER_FALLS.items() if n != "death_forward"}}.get(TROOP, {})
@@ -1320,7 +1399,13 @@ GAITS = {t: (
     K.Gait("walk", ticks=6, speed=0.16, duty=0.5, heel=4, toe_off=8, front=3.85, lift=0.9, lift_peak=0.5,
            hip_drop=0.95, bob=0.2, bob_phase=0.06, sway=0.2, yaw=3.0, roll=0.8, lane=2.5),
     K.Gait("run", ticks=5, speed=0.26, duty=0.4, heel=4, toe_off=10, front=3.8, lift=1.5, lift_peak=0.5,
-           hip_drop=1.7, bob=0.3, bob_phase=0.19, sway=0.2, yaw=4.0, roll=1.0, pitch_hips=2.0, lane=2.5)) for t in ("wm_seer", "tc_mist")}
+           hip_drop=1.7, bob=0.3, bob_phase=0.19, sway=0.2, yaw=4.0, roll=1.0, pitch_hips=2.0, lane=2.5))
+         for t in ("wm_seer", "tc_mist", "mage")}
+# the mage's run is a quicker, shorter scurry (4-tick lap, same speed): the shorter stride lets the hips stay high (less
+# drop and bob), so the hem clears the floor without the side panels splaying out (run roll 26 -> 12 deg, the walk's 11)
+GAITS["mage"] = (GAITS["mage"][0],
+                 K.Gait("run", ticks=4, speed=0.26, duty=0.4, heel=4, toe_off=10, front=3.3, lift=1.2, lift_peak=0.5,
+                        hip_drop=1.0, bob=0.15, bob_phase=0.19, sway=0.2, yaw=4.0, roll=1.0, pitch_hips=2.0, lane=2.5))
 
 
 def tip_json():
@@ -1339,7 +1424,7 @@ def tip_json():
     # world x is the troop's left: the standing right shoulder sits at -x
     assert K.point(K.world({}, "right_arm"), SHOULDER)[0] < 0
     return {"troop": TROOP, "release_tick": IMPACT, "frame": "body: x left, y up from the feet, z forward; blocks",
-            "offset": tiers.get(ST["focus"] + "_t2", tiers.get(ST["focus"])), "tiers": tiers}
+            "offset": tiers.get(ST["focus"].rstrip("_") + "_t2", tiers.get(ST["focus"])), "tiers": tiers}
 
 
 def main():

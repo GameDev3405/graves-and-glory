@@ -75,17 +75,17 @@
   "right_leg": {},
   "right_shin": {},
   "right_foot": {},
-  "right_shin_robe": {},
-  "right_robe": {},
   "left_leg": {},
   "left_shin": {},
   "left_foot": {},
-  "left_shin_robe": {},
-  "left_robe": {},
   "vestment_skirt": {
    "team": true
   },
   "cord": {},
+  "skirt_front": {},
+  "skirt_back": {},
+  "skirt_right": {},
+  "skirt_left": {},
   "weapon_t1": {
    "stages": [
     1

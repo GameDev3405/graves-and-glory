@@ -91,10 +91,15 @@ HANG = {"tc_admiral": {"kelp_hem": "left_shin"}}
 #   w, d            the skirt's width and depth inside the panels (the front and back panels sit outside d, the sides inside w)
 #   tiers           (a robe in bell tiers, tc_mist) each tier's (rows, w, d, source bone, box index): a panel steps out a tier at a
 #                   time, each tier painted by its source box's painter; the source tiers' bones are all replaced
+#   drop            (optional) further source bones removed, not rebuilt (the mage's left-leg robe tiers, the right side's paint both)
 ROBE = {"wm_seer": {"skirt": "skirt", "fringe": "hem_fringe", "top": 12, "hem": 22, "w": 9, "d": 5},
         # the three tiers keep their paint; the top tier gives a row to the waist so the hem clears the floor by 1.5 px
         "tc_mist": {"skirt": "skirt", "fringe": "skirt_hem", "top": 11.5,
-                    "tiers": ((3, 9, 5, "skirt", 0), (3, 10, 6, "skirt", 1), (5, 11, 7, "skirt_hem", 0))}}
+                    "tiers": ((3, 9, 5, "skirt", 0), (3, 10, 6, "skirt", 1), (5, 11, 7, "skirt_hem", 0))},
+        # the sunweaver's robe is built per leg (two thigh tiers and a shin hem tier on each side): the right side's tiers paint
+        # one hanging skirt round both legs, the left side's are dropped; same bell as the mist caller's, hem 1.5 px up
+        "mage": {"skirt": "right_robe", "fringe": "right_shin_robe", "drop": ("left_robe", "left_shin_robe"), "top": 11.5,
+                 "tiers": ((4, 9, 5, "right_robe", 0), (3, 10, 6, "right_robe", 1), (4, 11, 7, "right_shin_robe", 0))}}
 
 
 def lined(paint):
@@ -139,12 +144,15 @@ def robe_tiers(robed, R):
         piv[ax] = sg * (d0 if ax == 2 else R["tiers"][0][1] / 2 - 0.5)
         boxes, y = [], 0.0
         for rows, w, d, src, i in R["tiers"]:
-            sp = robed[src].boxes[i].paint[0]
             o, sz = [-w / 2, y, -d / 2], [w, rows, d]
             o[ax], sz[ax] = sg * ((d if ax == 2 else w) / 2 - 0.5) - 0.5 - piv[ax], 1
-            pp = panel_paint(sp, inner)
-            boxes.append(Box(o, sz, (lambda pp: lambda f, ww, hh: pp("top" if f == "bottom" else f, ww, hh))(pp),
-                             dil=0.05 if ax == 2 else 0.0))
+            wrap = lambda pp: lambda f, ww, hh: pp("top" if f == "bottom" else f, ww, hh)
+            src_paint = robed[src].boxes[i].paint
+            if 0 in src_paint:
+                paint = wrap(panel_paint(src_paint[0], inner))
+            else:   # a per-tier painter (the mage's robe tiers): each tier's panel keeps its own paint
+                paint = {t: wrap(panel_paint(sp, inner)) for t, sp in src_paint.items()}
+            boxes.append(Box(o, sz, paint, dil=0.05 if ax == 2 else 0.0))
             y += rows
         out.append((Bone(name, "hips", boxes=boxes), piv))
     return out
@@ -174,7 +182,7 @@ def rigify(src, weapon_rot, kind="blade", hang=None, robe=None):
     robed = {}
     if robe:   # the robe's source bones leave the rigid path; robe_panels rebuilds them
         robed = {bn.name: bn for bn in src if bn.name in (robe["skirt"], robe.get("fringe"))}
-        src = [bn for bn in src if bn.name not in robed]
+        src = [bn for bn in src if bn.name not in robed and bn.name not in robe.get("drop", ())]
     for bn in src:   # a held part (a caster's lantern, wand or rod) shows at its weapon tiers, which follow the troop's tier
         if getattr(bn, "weapon_tiers", None) and not bn.stages:
             bn.stages = list(bn.weapon_tiers)
