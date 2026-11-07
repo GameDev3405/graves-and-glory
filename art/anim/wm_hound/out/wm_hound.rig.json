@@ -1,0 +1,151 @@
+{
+ "troop": "wm_hound",
+ "tiers": [
+  1,
+  2,
+  3
+ ],
+ "faces": 1,
+ "bones": {
+  "root": {},
+  "body": {},
+  "chest": {},
+  "head": {},
+  "muzzle": {},
+  "jaw": {},
+  "fangs": {
+   "stages": [
+    1
+   ]
+  },
+  "fangs_t2": {
+   "stages": [
+    2
+   ]
+  },
+  "fangs_t3": {
+   "stages": [
+    3
+   ]
+  },
+  "ear_right": {},
+  "ear_left": {},
+  "collar": {},
+  "toggles": {},
+  "skullcap": {
+   "stages": [
+    2,
+    3
+   ]
+  },
+  "tooth_collar": {
+   "stages": [
+    2,
+    3
+   ]
+  },
+  "antler_tuft_right": {
+   "stages": [
+    3
+   ]
+  },
+  "antler_tuft_left": {
+   "stages": [
+    3
+   ]
+  },
+  "throat_skull": {
+   "stages": [
+    3
+   ]
+  },
+  "front_right_leg": {},
+  "front_right_shin": {},
+  "front_right_foot": {},
+  "right_wrap": {
+   "stages": [
+    2,
+    3
+   ]
+  },
+  "front_left_leg": {},
+  "front_left_shin": {},
+  "front_left_foot": {},
+  "left_wrap": {
+   "stages": [
+    2,
+    3
+   ]
+  },
+  "spikes": {},
+  "saddle": {
+   "team": true
+  },
+  "spikes_ii": {
+   "stages": [
+    2,
+    3
+   ]
+  },
+  "right_shoulder_plate": {
+   "stages": [
+    2,
+    3
+   ]
+  },
+  "right_shoulder_tusks": {
+   "stages": [
+    3
+   ]
+  },
+  "left_shoulder_plate": {
+   "stages": [
+    2,
+    3
+   ]
+  },
+  "left_shoulder_tusks": {
+   "stages": [
+    3
+   ]
+  },
+  "tail": {},
+  "back_right_leg": {},
+  "back_right_shin": {},
+  "back_right_foot": {},
+  "right_back_wrap": {
+   "stages": [
+    2,
+    3
+   ]
+  },
+  "back_left_leg": {},
+  "back_left_shin": {},
+  "back_left_foot": {},
+  "left_back_wrap": {
+   "stages": [
+    2,
+    3
+   ]
+  },
+  "back_spikes": {},
+  "saddle_rump": {
+   "team": true
+  },
+  "right_flank_plate": {
+   "stages": [
+    3
+   ]
+  },
+  "left_flank_plate": {
+   "stages": [
+    3
+   ]
+  },
+  "spine_plates": {
+   "stages": [
+    3
+   ]
+  }
+ }
+}
