@@ -82,6 +82,14 @@ DROP = {"arms_folded"}
 # Per troop, body-hung gear re-hung on a leg bone: a strand that reaches the floor from the hips would sink through it
 # whenever the guard bends the knees, so it rides the shin it hangs behind instead (same place in the rest pose).
 HANG = {"tc_admiral": {"kelp_hem": "left_shin"}}
+# Per troop, a robe hung as cloth (caster style v2, docs/anim-rebuild/CASTER-V2-DESIGN.md): the source skirt (and its tier fringe)
+# becomes four hip-hung panels, front, back and the two sides, each on its own bone at the hip line so the clips swing it with the
+# leg behind it; the legs keep their bones but lose their boxes, so only the feet (hooves) show below the hem. The panels reuse the
+# skirt's painter; a panel's inner face is its plain side paint darkened as the lining.
+#   skirt, fringe   the source bones replaced
+#   top, hem        the panels' top and bottom rows (handlib y, the floor at 24)
+#   w, d            the skirt's width and depth inside the panels (the front and back panels sit outside d, the sides inside w)
+ROBE = {"wm_seer": {"skirt": "skirt", "fringe": "hem_fringe", "top": 12, "hem": 22, "w": 9, "d": 5}}
 
 
 def lined(paint):
@@ -98,9 +106,47 @@ def absolute(B):
     return a
 
 
-def rigify(src, weapon_rot, kind="blade", hang=None):
+def dimmed(paint, k=0.55):
+    def p(face, w, h):
+        return [[tuple(int(v * k) for v in c[:3]) + tuple(c[3:]) if c else c for c in row] for row in paint("right", w, h)]
+    return p
+
+
+def panel_paint(paint, inner):
+    """A robe panel's faces: its outer face, top and bottom as the skirt's, the inner face the lining, the edges plain side paint."""
+    lining = dimmed(paint)
+    def p(face, w, h):
+        if face == inner: return lining(face, w, h)
+        if face in ("front", "back", "top", "bottom") or face == {"left": "right", "right": "left"}.get(inner): return paint(face, w, h)
+        return paint("right", w, h)
+    return p
+
+
+def robe_panels(skirt, fringe, R):
+    """The hanging robe's panel bones under the hips, with absolute pivots: (bone, absolute pivot)."""
+    sp = skirt.boxes[0].paint[0]
+    fp = fringe.boxes[0].paint[0] if fringe is not None else None
+    hw, hd, top, h = R["w"] / 2, R["d"] / 2, R["top"], R["hem"] - R["top"]
+    out = []
+    for name, piv, org, size, inner, dil in (
+            ("skirt_front", (0, top, -hd), (-hw, 0, -0.5), (R["w"], h, 1), "back", 0.05),
+            ("skirt_back", (0, top, hd), (-hw, 0, -0.5), (R["w"], h, 1), "front", 0.05),
+            ("skirt_right", (-hw + 0.5, top, 0), (-0.5, 0, -hd), (1, h, R["d"]), "left", 0.0),
+            ("skirt_left", (hw - 0.5, top, 0), (-0.5, 0, -hd), (1, h, R["d"]), "right", 0.0)):
+        out.append((Bone(name, "hips", boxes=[Box(org, size, panel_paint(sp, inner), dil=dil)]), piv))
+        if fp is not None:   # the tier's hem fringe, the panel's bottom row
+            fb = fringe.boxes[0]
+            out.append((Bone(name + "_fringe", name, stages=fringe.stages, boxes=[Box((org[0], h - 1, org[2]), (size[0], 1, size[2]), fp, dil=fb.dil)]), piv))
+    return out
+
+
+def rigify(src, weapon_rot, kind="blade", hang=None, robe=None):
     """The troop's handlib bones re-hung on the knight's skeleton (pivots relative to the parent)."""
     src = [bn for bn in src if bn.name not in DROP]
+    robed = {}
+    if robe:   # the robe's source bones leave the rigid path; robe_panels rebuilds them
+        robed = {bn.name: bn for bn in src if bn.name in (robe["skirt"], robe.get("fringe"))}
+        src = [bn for bn in src if bn.name not in robed]
     for bn in src:   # a held part (a caster's lantern, wand or rod) shows at its weapon tiers, which follow the troop's tier
         if getattr(bn, "weapon_tiers", None) and not bn.stages:
             bn.stages = list(bn.weapon_tiers)
@@ -172,6 +218,12 @@ def rigify(src, weapon_rot, kind="blade", hang=None):
             add(foot, bn.name, [a[0], a[1] + 4, a[2]])
     for bn, par, a in later:
         add(bn, par, a)
+    if robe:
+        for bn, a in robe_panels(robed[robe["skirt"]], robed.get(robe.get("fringe")), robe):
+            add(bn, bn.parent, a)
+        for bn in out:   # the legs move inside the robe, unseen: their bones stay, their boxes go (the hooves ride the feet)
+            if bn.name in ("right_leg", "left_leg", "right_shin", "left_shin"):
+                bn.boxes = []
     # shin gear from y 3 down moves to the foot (boot, toe); a troop with no boot gets the shin's own bottom rows
     for side in ("right", "left"):
         shin, foot = f"{side}_shin", f"{side}_foot"
@@ -223,7 +275,7 @@ class Rig:
         s.weapon = importlib.import_module(wmod) if wmod else None
         s.skin, s.cloth = s.troop.skin, s.troop.cloth
         s.wy = s.skin[1] + s.cloth[1]
-        s.B = rigify(s.troop.bones(), wrot, s.kind, HANG.get(tid))
+        s.B = rigify(s.troop.bones(), wrot, s.kind, HANG.get(tid), ROBE.get(tid))
         s.tiers = tuple(s.troop.tiers)
 
     def weapon_cubes(s, t):

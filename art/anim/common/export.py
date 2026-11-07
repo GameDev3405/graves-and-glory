@@ -3,7 +3,8 @@
 python art/anim/common/export.py <troop>
 
 geo/troop/<troop>.geo.json, troop_rig/<troop>.json, textures/entity/troop/<troop>_geo/t<tier>_<side>.png,
-animations/troop/<troop>.animation.json  (as art/anim/knight/export.py does for the knight)
+animations/troop/<troop>.animation.json  (as art/anim/knight/export.py does for the knight); and, for a caster v2 troop whose
+build wrote out/<troop>.tip.json (CAST_TIP), data/gravesandglory/cast_tip/<troop>.json, its prop tip for Projectiles.castFrom
 """
 import shutil, sys
 from pathlib import Path
@@ -27,7 +28,12 @@ def main():
     n = 0
     for png in sorted(src.glob(f"{tid}_t*_*.png")):
         shutil.copyfile(png, tex / f"{png.stem[len(tid) + 1:]}.png"); n += 1
-    print(f"exported {tid}: geo, rig, {n} textures, clips")
+    tip = src / f"{tid}.tip.json"
+    if tip.exists():
+        dst = ASSETS.parents[1] / "data/gravesandglory/cast_tip"
+        dst.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(tip, dst / f"{tid}.json")
+    print(f"exported {tid}: geo, rig, {n} textures, clips" + (", cast tip" if tip.exists() else ""))
 
 
 if __name__ == "__main__":

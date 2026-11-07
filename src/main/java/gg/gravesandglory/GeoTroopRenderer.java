@@ -37,7 +37,7 @@ final class GeoTroopRenderer<E extends MobEntity> extends GeoReplacedEntityRende
     private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger("gravesandglory/geo");
     static final boolean ENABLED = !"false".equals(System.getProperty("gravesandglory.geoTroops"));
     /** The troops drawn this way. */
-    private static final Set<String> TROOPS = Set.of("knight", "sentinel", "revenant", "tc_raider", "archer", "longbow", "wm_hunter", "bonebow", "stalker", "ic_arbalist", "wm_tusk", "tc_tideguard", "tc_admiral", "ic_hearthguard", "ic_breaker", "gl_marshal", "tc_harpooner", "mage", "hexer", "tc_mist");
+    private static final Set<String> TROOPS = Set.of("knight", "sentinel", "revenant", "tc_raider", "archer", "longbow", "wm_hunter", "bonebow", "stalker", "ic_arbalist", "wm_tusk", "tc_tideguard", "tc_admiral", "ic_hearthguard", "ic_breaker", "gl_marshal", "tc_harpooner", "mage", "hexer", "tc_mist", "wm_seer");
     /** Sides with a painted sheet; any other side draws in linen. */
     private static final Set<String> SIDES = Set.of("gold", "violet", "crimson", "teal", "company", "linen");
 

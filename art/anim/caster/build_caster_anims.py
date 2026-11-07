@@ -51,6 +51,9 @@ CAST_TROOPS = {
                          "charm": 0.5},
                 "soft": ("hood_peak", "right_kelp_hood", "left_kelp_hood", "mist_back", "right_mist", "left_mist", "sash_tail",
                          "charm")},   # the kelp, mist strips and sash hang loose; the robe skirt and hem are stiff
+    # the Bloodhowl seer's bone wand runs along local -z from the fist (caster style v2: point and shoot, the hanging robe)
+    "wm_seer": {"W": "wand", "focus": "wand", "a": (0, 0, -1), "b": (0, 1, 0),
+                "gear": {"sash_tail": 0.3}, "soft": ("sash_tail",)},
 }
 ST = CAST_TROOPS[TROOP]
 K.SOFT = ST["soft"]
@@ -195,12 +198,21 @@ def shaft_hits(pose, margin=0.3):
 _KN_HIPS, _KN_FEET = K.READY_HIPS, dict(K.READY_FEET)
 READY_HIPS = ((0.0, 20.0, 0.0), (0.0, -1.3, 0.1))
 READY_FEET = {"left": ((3.4, 2.0, 2.4), 14.0), "right": ((-3.2, 2.0, -2.2), -6.0)}
+if TROOP == "wm_seer":   # caster v2: upright, the feet close under the hanging robe, the hem clear of the floor
+    READY_HIPS = ((0.0, 16.0, 0.0), (0.0, -0.9, 0.1))
+    READY_FEET = {"left": ((2.9, 2.0, 1.1), 10.0), "right": ((-2.8, 2.0, -1.1), -6.0)}
 K.READY_HIPS, K.READY_FEET = READY_HIPS, READY_FEET
 STANCE_LEGS = {
     "ready": {"hips": READY_HIPS, "left": (3.4, 2.0, 2.4), "right": (-3.2, 2.0, -2.2), "yaw": (-6.0, 14.0)},
     "brace": {"hips": ((6.0, 24.0, 0.0), (0.0, -3.4, 0.6)), "left": (3.6, 2.0, 3.4), "right": (-3.4, 2.0, -3.6), "yaw": (-10.0, 22.0)},
     "wall": {"hips": ((0.0, 14.0, 0.0), (0.0, -1.1, 0.2)), "left": (3.2, 2.0, 2.8), "right": (-3.0, 2.0, -2.4), "yaw": (-6.0, 14.0)},
 }
+if TROOP == "wm_seer":   # caster v2: no shield crouch; the brace stands upright on a slightly wider footing, the wall leans in
+    STANCE_LEGS = {
+        "ready": {"hips": READY_HIPS, "left": (2.9, 2.0, 1.1), "right": (-2.8, 2.0, -1.1), "yaw": (-6.0, 10.0)},
+        "brace": {"hips": ((-2.0, 6.0, 0.0), (0.0, -0.8, -0.1)), "left": (3.1, 2.0, 0.6), "right": (-3.1, 2.0, -0.6), "yaw": (-10.0, 10.0)},
+        "wall": {"hips": ((3.0, 10.0, 0.0), (0.0, -1.0, 0.4)), "left": (2.8, 2.0, 1.6), "right": (-2.7, 2.0, -1.3), "yaw": (-6.0, 8.0)},
+    }
 
 
 def _mirror_hips(rot, pos):
@@ -224,6 +236,12 @@ _KH = K.HIT_LEGS
 K.HIT_LEGS = {"front": mirror_legs(_KH["front"]), "back": mirror_legs(_KH["back"]),
               "right": mirror_legs(_KH["left"]), "left": mirror_legs(_KH["right"])}
 K.BLOCK_LEGS = mirror_legs(K.BLOCK_LEGS)
+if TROOP == "wm_seer":   # caster v2: the knees give less under the robe (a deep dip would drop the hem to the floor)
+    def _shallow(spec, k=0.6):
+        y0 = READY_HIPS[1][1]
+        return {"hips": [(t, r, (p[0], y0 + k * (p[1] - y0), p[2])) for t, r, p in spec["hips"]], "steps": spec["steps"]}
+    K.HIT_LEGS = {d: _shallow(s) for d, s in K.HIT_LEGS.items()}
+    K.BLOCK_LEGS = _shallow(K.BLOCK_LEGS)
 
 
 def stance_legs(spec, life=1.0, ticks=K.STANCE_TICKS):
@@ -420,7 +438,63 @@ def tc_mist_set():
     return g, attack, legs, stances, carry
 
 
-GUARD, ATTACK_KEYS, ATTACK_LEGS, STANCE_KEYS, CARRY = {"mage": mage_set, "hexer": hexer_set, "tc_mist": tc_mist_set}[TROOP]()
+def wm_seer_set():
+    """The Bloodhowl seer, caster style v2 (docs/anim-rebuild/CASTER-V2-DESIGN.md): the cast goes through the 6 px bone wand
+    and the off hand never joins it. The guard: upright, the wand held low and forward at the foe, the free hand relaxed at
+    the belt. Point and shoot: over ticks 0-4 the body turns side-on (the right shoulder to the foe, the right foot gliding
+    forward) as the wand hand comes up past the chest; 4-9 the arm is thrust straight out at the foe, elbow locked, and the
+    wand holds steady while it charges; the wrist cocks, and on the release tick it flicks and the bolt leaves the tip, a
+    small recoil running back through the shoulder; then back to the guard. The totem staff stays strapped to the back."""
+    lp_rest = (-12, 0, -12, -40)          # the off hand relaxed at the hip, by the belt
+    g = KEY((3, 8, 0), GAZE, (1.0, -6.0, 5.0), aim(-6, -8), u=UP, rp=(-40, 0, 10, -20), lp=lp_rest)
+    # the turn: the shoulders come round side-on and the wand hand rises past the chest, the wand tipping up
+    turn = KEY((2, -16, 0), GAZE, (2.4, -3.2, 4.2), aim(30, 18), u=UP, rp=(-60, 0, 20, -60), lp=(-10, 0, -12, -40))
+    chest = KEY((1, -28, 0), GAZE, (2.2, -0.6, 4.2), aim(58, 8), u=UP, rp=(-85, 0, 25, -85), lp=(-8, 0, -12, -42))
+    # point: the arm straight out at the foe, the elbow locked, the wand level along it
+    point = KEY((0, -32, 0), GAZE, (0.0, 0.5, 7.95), aim(2, 0), u=UP, rp=(-90, 0, 0, -5), lp=(-8, 0, -12, -42))
+    # the charge: the wand holds steady, a breath of tremor only
+    charge = nudge(point, R=(0.0, 0.05, -0.02), d=aim(2.5, 0.3))
+    held = nudge(point, R=(0.0, 0.02, -0.03), d=aim(1.8, -0.2), lp=(-1, 0, 0, -1))
+    # the wrist cocks up before it flicks (wide enough to read at a distance: the flick spans 30 degrees)
+    cock = nudge(point, R=(0.0, 0.15, -0.05), d=aim(22, 0))
+    # the release: the flick down at the foe, the bolt leaves the tip
+    release = nudge(point, R=(0.0, 0.1, 0.0), d=aim(-8, 0))
+    # the recoil back through the shoulder: the fist kicks up and back, the torso rocks back
+    recoil = KEY((-2, -30, 0), GAZE, (0.0, 1.2, 6.7), aim(10, 2), u=UP, rp=(-95, 0, 0, -20), lp=(-10, 0, -12, -42))
+    back = KEY((0, -24, 0), GAZE, (0.4, -0.4, 6.8), aim(4, 0), u=UP, rp=(-80, 0, 5, -25), lp=(-10, 0, -12, -42))
+    recover = KEY((2, -6, 0), GAZE, (0.8, -4.0, 6.0), aim(-2, -4), u=UP, rp=(-55, 0, 10, -20), lp=lp_rest)
+    near = nudge(g, torso=(0, -2, 0), R=(0.0, 0.2, 0.0), d=aim(-5, -7))
+    settle = nudge(g, R=(0.0, 0.05, 0.0))
+    attack = [(0, g), (2.0, turn), (3.6, chest), (5.0, point), (7.0, charge), (8.6, held), (9.4, cock), (IMPACT, release),
+              (11.4, recoil), (14.0, back), (19.0, recover), (24.0, near), (29.0, settle), (ATTACK_TICKS, g)]
+    R0, R1 = READY_HIPS
+    side_on = (0.0, -14.0, 0.0)
+    legs = {"hips": [(0, R0, R1), (2.0, (0.0, 2.0, 0.0), (0.0, -0.9, 0.0)), (4.5, side_on, (0.0, -1.0, -0.1)),
+                     (9.0, (0.0, -15.0, 0.0), (0.0, -1.0, -0.1)), (IMPACT, (0.0, -15.0, 0.0), (0.0, -1.0, -0.1)),
+                     (11.4, (-1.0, -14.0, 0.0), (0.0, -1.0, 0.4)), (14.0, (0.0, -13.0, 0.0), (0.0, -1.0, 0.2)),
+                     (22.0, (0.0, 4.0, 0.0), (0.0, -0.9, 0.1)), (30.0, R0, R1), (ATTACK_TICKS, R0, R1)],
+            # short glides: the right foot slides forward under the robe as the body turns side-on, the left eases back
+            "steps": [("right", 0.8, 4.2, (-2.6, 2.0, 1.2), -24.0, 0.3), ("left", 2.0, 5.0, (2.9, 2.0, -0.4), 2.0, 0.3),
+                      ("left", 18.0, 23.0, (2.9, 2.0, 1.1), 10.0, 0.3), ("right", 21.0, 27.0, (-2.8, 2.0, -1.1), -6.0, 0.3)]}
+    stances = {
+        "ready": g,
+        # brace (Hold position): upright, both arms up, the wand held overhead crosswise as a guard bar, the off hand
+        # raised flat to the other end; no crouch
+        "brace": KEY((-2, 4, 0), (2, 0, 0), (2.0, 7.5, 1.0), (1.0, 0.0, 0.0), u=FWD, rp=(-170, 0, 10, -30),
+                     lp=(-165, 0, -20, -10)),
+        # wall (Hold the line): leaning in, the wand pointed up and out at the foe at arm's length, the off hand pushed
+        # forward open below it, a warding pair at chest height
+        "wall": KEY((6, 2, 0), (0, 0, 0), (0.5, 3.5, 7.0), aim(45, 0), u=UP, rp=(-120, 0, 5, -10), lp=(-95, 0, -20, -10)),
+        # ward (fall back): turned away, the wand slanted low across the body, the off hand up beside the face
+        "ward": KEY((2, -25, 0), (0, 0, 0), (3.5, -3.5, 3.5), unit((0.7, -0.6, 0.3)), u=UP, rp=(-60, 0, 30, -70),
+                    lp=(-70, 0, -30, -70)),
+    }
+    carry = {"walk": -30.0, "run": -10.0, "u": UP}
+    return g, attack, legs, stances, carry
+
+
+GUARD, ATTACK_KEYS, ATTACK_LEGS, STANCE_KEYS, CARRY = {"mage": mage_set, "hexer": hexer_set, "tc_mist": tc_mist_set,
+                                                       "wm_seer": wm_seer_set}[TROOP]()
 
 
 def attack_keys():
@@ -697,6 +771,210 @@ def body_corners_no_weapon(pose, model=K.HEAVY):
 
 K.body_corners = body_corners_no_weapon
 
+# ------------------------------------------------------------------------------------------------
+# Caster v2 hanging robe (wm_seer only; troop_rig.ROBE): four skirt panels hung from the hips, the legs' own boxes empty.
+# Every clip that moves the legs also keys the panels: each panel hangs plumb (or follows its thigh a little) and is
+# swung out by the least angle that keeps the leg line behind its inner face and the hoof tops behind its outer face,
+# with the hem off the floor. In a death the robe folds with the body (it follows the legs, no gravity or floor).
+# ------------------------------------------------------------------------------------------------
+
+# panel: (axis across its face, inward sign, inner face, outer face, axis along its width, width, legs it covers)
+PANELS = {"skirt_front": (2, 1.0, -2.0, -3.0, 0, (-4.5, 4.5), ("right", "left")),
+          "skirt_back": (2, -1.0, 2.0, 3.0, 0, (-4.5, 4.5), ("right", "left")),
+          "skirt_right": (0, 1.0, -3.5, -4.5, 2, (-2.5, 2.5), ("right",)),
+          "skirt_left": (0, -1.0, 3.5, 4.5, 2, (-2.5, 2.5), ("left",))}
+HEM_Y = 2.0          # the hem's local height (bedrock px); the pivot rides the hips at 12
+LEG_R = 0.75         # the leg line stays this far behind a panel's inner face
+HEM_CLEAR = 0.15     # px the hem keeps above the floor while alive
+ROBE = {"death": False}
+
+
+def _hl(Mi, w):
+    """World px -> hips-local homogeneous model coords."""
+    return Mi @ np.array([w[0] / 16.0, w[1] / 16.0, w[2] / 16.0, 1.0])
+
+
+def _bed(q):
+    return np.stack([-q[..., 0] * 16.0, q[..., 1] * 16.0, q[..., 2] * 16.0], axis=-1)
+
+
+def _model(b):
+    return np.array([-b[0] / 16.0, b[1] / 16.0, b[2] / 16.0, 1.0])
+
+
+def _panel_rot(P, out, pitch=0.0):
+    a = PANELS[P][0]
+    return (_SIGN[P] * out, 0.0, 0.0) if a == 2 else (pitch * _FSIGN, 0.0, _SIGN[P] * out)
+
+
+def _sign_of(P, rot):
+    a, sg = PANELS[P][0], PANELS[P][1]
+    piv = np.array(_PIV[P], float)
+    hem = _model((piv[0], HEM_Y, piv[2]))
+    return -sg * (_bed(K.local(P, rot) @ hem)[a] - _bed(hem)[a])
+
+
+_SIGN, _FSIGN = {}, 1.0
+if TROOP == "wm_seer":
+    _SIGN = {P: (1.0 if _sign_of(P, (5.0, 0, 0) if PANELS[P][0] == 2 else (0, 0, 5.0)) > 0 else -1.0) for P in PANELS}
+    _h = _model((_PIV["skirt_right"][0], HEM_Y, 0.0))
+    _FSIGN = 1.0 if _bed(K.local("skirt_right", (5.0, 0, 0)) @ _h)[2] < _bed(_h)[2] else -1.0   # + swings the hem forward
+    # the hoof boxes as points every 0.25 px along their 12 edges (corners alone miss an edge across a panel's corner)
+    _HOOF = {s: [tuple(o[d] + sz[d] * (e[d] if d != ax else f) for d in range(3)) for b in _GEO if b["name"] == s + "_hoof"
+                 for c in b["cubes"] for o, sz in [(c["origin"], c["size"])] for ax in range(3)
+                 for e in [(i, j, k) for i in (0, 1) for j in (0, 1) for k in (0, 1)] if e[ax] == 0
+                 for f in np.linspace(0.0, 1.0, max(2, int(round(sz[ax] * 4)) + 1))]
+             for s in ("right", "left")}
+
+
+def robe_frame(pose):
+    """The legs in hips-local bedrock px: the leg line (hip-knee-ankle, every px), the hoof corners, the thighs; and the
+    hips' world matrix."""
+    Mh = K.world(pose, "hips")
+    Mi = np.linalg.inv(Mh)
+    line, hoof, thigh = [], [], {}
+    for s in ("right", "left"):
+        hip = K.point(K.world(pose, s + "_leg"), _PIV[s + "_leg"])
+        knee = K.point(K.world(pose, s + "_shin"), _PIV[s + "_shin"])
+        Mf = K.world(pose, s + "_foot")
+        ankle = K.point(Mf, _PIV[s + "_foot"])
+        for p0, p1, last in ((hip, knee, False), (knee, ankle, True)):
+            n = max(2, int(np.linalg.norm(p1 - p0)) + 1)
+            for i in range(n + (0 if last else 0)):
+                f = i / n
+                if last and np.linalg.norm(p1 - p0) * (1 - f) < 1.0:
+                    continue
+                line.append(_hl(Mi, p0 + (p1 - p0) * f))
+        Mo = K.world(pose, s + "_hoof")
+        hoof += [_hl(Mi, K.point(Mo, c)) for c in _HOOF[s]]
+        thigh[s] = _bed(_hl(Mi, knee)) - _bed(_hl(Mi, hip))
+        thigh[s + "_ankle"] = _bed(_hl(Mi, ankle)) - _bed(_hl(Mi, hip))
+    return Mh, np.array(line), np.array(hoof), thigh
+
+
+def _slack(P, rot, F, live):
+    """How far inside its limits the panel is at rot (negative: a leg or hoof out through it, or the hem in the floor)."""
+    Mh, line, hoof, _ = F
+    a, sg, inner, outer, la, (l0, l1), _legs = PANELS[P]
+    L = K.local(P, rot)
+    Li = np.linalg.inv(L)
+    q = _bed((Li @ line.T).T)
+    m = (q[:, 1] >= HEM_Y + 0.5) & (q[:, la] >= l0) & (q[:, la] <= l1)
+    s = min([np.inf] + list(sg * (q[m, a] - inner) - LEG_R))
+    q = _bed((Li @ hoof.T).T)
+    m = (q[:, la] >= l0 - 0.5) & (q[:, la] <= l1 + 0.5)
+    # a hoof point pokes by the least of how far it is outside the outer face and how far above the hem (one just under the hem
+    # that sticks out is the foot showing below the robe, not a poke)
+    s = min([s] + list(np.maximum(sg * (q[m, a] - outer), HEM_Y - q[m, 1]) - 0.05))
+    if live:
+        hem = []
+        for lat in (l0, l1):
+            for d in (inner, outer):
+                b = [0.0, HEM_Y, 0.0]
+                b[la], b[a] = lat, d
+                hem.append((Mh @ L @ _model(b))[1] * 16.0)
+        s = min(s, min(hem) - HEM_CLEAR)
+    return s
+
+
+def _angle(o, down):
+    return math.degrees(math.atan2(o, down))
+
+
+def panel_pose(pose, live=True):
+    """{panel: (rot, None)} for a pose that has the hips and legs."""
+    F = robe_frame(pose)
+    Mh, _, _, thigh = F
+    g = _bed(np.linalg.inv(Mh[:3, :3]) @ np.array([0.0, -1.0, 0.0]) / 16.0)
+    out = {}
+    for P, (a, sg, inner, outer, la, wid, legs) in PANELS.items():
+        follow = max(_angle(-sg * thigh[s][a], -thigh[s][1]) for s in legs)
+        grav = _angle(-sg * g[a], -g[1])
+        pref = max(grav, 0.5 * follow) if live else 0.9 * follow
+        pitch = 0.0
+        if a == 0:   # a side panel also swings in its own plane with its leg's stride: its hem follows the hoof (hip to ankle), not
+            k = thigh[legs[0] + "_ankle"]   # the knee, so a bent knee forward never leaves the heel out behind the panel
+            pitch = 0.8 * _angle(-k[2], -k[1])
+        lo = hi = pref
+        if _slack(P, _panel_rot(P, pref, pitch), F, live) < 0:
+            hi = pref
+            while hi < 90.0:
+                lo, hi = hi, min(90.0, hi + 2.0)
+                if _slack(P, _panel_rot(P, hi, pitch), F, live) >= 0:
+                    break
+            for _ in range(4):
+                mid = 0.5 * (lo + hi)
+                if _slack(P, _panel_rot(P, mid, pitch), F, live) >= 0:
+                    hi = mid
+                else:
+                    lo = mid
+        out[P] = (tuple(round(v, 4) for v in _panel_rot(P, hi, pitch)), None)
+    return out
+
+
+def robe_metrics(pose, live=True):
+    """(leg line margin behind the inner faces, hoof margin inside the outer faces, hem height above the floor) in px for
+    a pose whose panels are keyed: the least over the panels. Leg >= 0, hoof >= 0 and hem > 0 (alive) pass."""
+    F = robe_frame(pose)
+    Mh, line, hoof, _ = F
+    leg = hf = hem = np.inf
+    for P, (a, sg, inner, outer, la, (l0, l1), legs) in PANELS.items():
+        L = K.local(P, pose.get(P, (Z3, None))[0])
+        Li = np.linalg.inv(L)
+        q = _bed((Li @ line.T).T)
+        m = (q[:, 1] >= HEM_Y + 0.5) & (q[:, la] >= l0) & (q[:, la] <= l1)
+        leg = min([leg] + list(sg * (q[m, a] - inner)))
+        q = _bed((Li @ hoof.T).T)
+        m = (q[:, 1] > HEM_Y + 0.05) & (q[:, la] >= l0 - 0.5) & (q[:, la] <= l1 + 0.5)
+        hf = min([hf] + list(sg * (q[m, a] - outer)))
+        for lat in (l0, l1):
+            for d in (inner, outer):
+                b = [0.0, HEM_Y, 0.0]
+                b[la], b[a] = lat, d
+                hem = min(hem, (Mh @ L @ _model(b))[1] * 16.0)
+    return leg, hf, hem
+
+
+def add_panels(samples, live=None):
+    live = (not ROBE["death"]) if live is None else live
+    for s in samples:
+        if "skirt_front" in s or "right_leg" not in s:
+            continue
+        pose = {b: (v[0], v[1] or Z3) for b, v in s.items()}
+        s.update(panel_pose(pose, live))
+    return samples
+
+
+if TROOP == "wm_seer":
+    _bake_plain = K.bake
+    K.bake = lambda samples, *a, **kw: _bake_plain(add_panels(samples), *a, **kw)
+
+    def _legs_offset(samples):
+        """K.legs_offset with the panels: both the absolute samples and the ready footing get theirs first."""
+        ready = K.attack_legs({"hips": [(0, *READY_HIPS), (1, *READY_HIPS)], "steps": []}, ticks=1)[0]
+        add_panels([ready], True)
+        add_panels(samples, True)
+        out = []
+        for s in samples:
+            f = {}
+            for b, (rot, pos) in s.items():
+                r0, p0 = ready[b]
+                f[b] = (tuple(K.wrap(x - c) for x, c in zip(rot, r0)),
+                        tuple(x - c for x, c in zip(pos, p0)) if pos is not None else None)
+            out.append(f)
+        return out
+
+    K.legs_offset = _legs_offset
+    _corners_plain = K.body_corners
+
+    def _corners_robe(pose, model=K.HEAVY):
+        """In a death the panels fold with the legs before the corners are taken, so the fall grounds the folded robe."""
+        if ROBE["death"]:
+            add_panels([pose], False)
+        return _corners_plain(pose, model)
+
+    K.body_corners = _corners_robe
+
 FLAT_AT = {"death_back": (8, 12), "death_forward": (13, 16), "death_left": (9, 13), "death_right": (9, 13)}
 _ARMED = ("right_arm", "right_forearm", "right_hand", "right_wrap", "right_bracer") + FOCI
 
@@ -913,7 +1191,23 @@ _ROBE_SIDE_FALLS = {
     "death_right": {17: {"root": (10, 90, -88), "left_arm": (0, 0, -20)}, 20: {"root": (10, 100, -88), "left_arm": (0, 0, -20)}},
 }
 # the hexer takes only the left-fall tuck: its right fall already lies lower untweaked (probe 2026-11-06)
-DEATH_TWEAK = {"mage": _ROBE_SIDE_FALLS, "hexer": {"death_left": _ROBE_SIDE_FALLS["death_left"]}}.get(TROOP, {})
+# the seer's robe is a stiff hanging skirt, so a fall must not land on a braced arm: on its back the arms settle out wide and
+# flat, face down the wolf head turns aside onto its cheek (the snout would prop it), and in a side roll the arm the body
+# rolls over lies straight out past the head on the ground instead of bent under it (grid 2026-11-06: torso gap 0.3 back,
+# 1.4 face down, ~0.1 over the robe's own floor on the sides)
+_SEER_FALLS = {
+    "death_back": {16: {"right_arm": (-40, 0, 80), "left_arm": (-30, 0, -40), "left_forearm": (0, 0, 0)},
+                   20: {"right_arm": (-40, 0, 80)}},
+    "death_forward": {18: {"head": (-25, 60, 0)}, 20: {"head": (-20, 70, 0)}},
+    "death_right_roll": {18: {"right_arm": (-180, 0, -5), "right_forearm": (-20, 0, 0)},
+                         19: {"right_arm": (-180, 0, -10), "right_forearm": (0, 0, 0)},
+                         20: {"right_arm": (-180, 0, -10), "right_forearm": (0, 0, 0)}},
+    "death_left_roll": {18: {"left_arm": (-180, 0, -10), "left_forearm": (-30, 0, 0)},
+                        19: {"left_arm": (-180, 0, 10), "left_forearm": (0, 0, 0)},
+                        20: {"left_arm": (-180, 0, 10), "left_forearm": (0, 0, 0)}},
+}
+DEATH_TWEAK = {"mage": _ROBE_SIDE_FALLS, "hexer": {"death_left": _ROBE_SIDE_FALLS["death_left"]},
+               "wm_seer": _SEER_FALLS}.get(TROOP, {})
 
 
 def _tweak(keys, name):
@@ -965,6 +1259,17 @@ def death_clips():
         K.bake = bake
 
 
+if TROOP == "wm_seer":
+    _death_clips_plain = death_clips
+
+    def death_clips():
+        ROBE["death"] = True
+        try:
+            return _death_clips_plain()
+        finally:
+            ROBE["death"] = False
+
+
 # ------------------------------------------------------------------------------------------------
 
 def only_rig(anims):
@@ -976,6 +1281,8 @@ def only_rig(anims):
 def dump(path, ticks):
     """Key-pose check: the throw's whole body at the given ticks (or the guard, tick -1), as still.py pose rows."""
     upper, legs = attack_clip()
+    if TROOP == "wm_seer":
+        add_panels(legs)
     rows = []
     for t in ticks:
         i = int(round(t * SUB))
@@ -987,13 +1294,47 @@ def dump(path, ticks):
     print("dumped", len(rows), "poses to", path)
 
 
+# caster v2 gaits (the GaitController reference speeds .16 / .26 kept): a quicker, shorter stride, the feet skimming low
+# and the hips level, so the robe glides; the feet set wide enough apart that the hooves never cross
+GAITS = {"wm_seer": (
+    K.Gait("walk", ticks=6, speed=0.16, duty=0.5, heel=4, toe_off=8, front=3.85, lift=0.9, lift_peak=0.5,
+           hip_drop=0.95, bob=0.2, bob_phase=0.06, sway=0.2, yaw=3.0, roll=0.8, lane=2.5),
+    K.Gait("run", ticks=5, speed=0.26, duty=0.4, heel=4, toe_off=10, front=3.8, lift=1.5, lift_peak=0.5,
+           hip_drop=1.7, bob=0.3, bob_phase=0.19, sway=0.2, yaw=4.0, roll=1.0, pitch_hips=2.0, lane=2.5))}
+
+
+def tip_json():
+    """Where the bolt leaves: the wand tip on the release sample, in the troop's body frame (blocks; x to its left, y up
+    from the feet, z forward), for the server (Projectiles) to rotate by body yaw. One per wand tier."""
+    upper, legs = attack_clip()
+    i = int(round(IMPACT * SUB))
+    p = fk_pose(upper[i], legs[i])
+    tiers = {}
+    for b in sorted(n for n in GEO_BONES if n.startswith(ST["focus"])):
+        fs = [float(_A @ (np.array(c["origin"]) + np.array(c["size"]) * np.array(k) - np.array(GRIP)))
+              for bb in _GEO if bb["name"] == b for c in bb.get("cubes", []) for k in ((0, 0, 0), (1, 1, 1))]
+        if fs:
+            w = K.point(K.world(p, b), S(max(fs)))
+            tiers[b] = [round(float(w[0]) / 16.0, 3), round(float(w[1]) / 16.0, 3), round(float(w[2]) / 16.0, 3)]
+    # world x is the troop's left: the standing right shoulder sits at -x
+    assert K.point(K.world({}, "right_arm"), SHOULDER)[0] < 0
+    return {"troop": TROOP, "release_tick": IMPACT, "frame": "body: x left, y up from the feet, z forward; blocks",
+            "offset": tiers.get(ST["focus"] + "_t2", tiers.get(ST["focus"])), "tiers": tiers}
+
+
 def main():
+    if os.environ.get("CAST_TIP"):
+        t = tip_json()
+        Path(os.environ["CAST_TIP"]).write_text(json.dumps(t, indent=1) + "\n")
+        print("tip", t)
+        return
     if os.environ.get("CAST_DUMP"):
         dump(os.environ["CAST_DUMP"], [float(x) for x in os.environ.get("CAST_TICKS", "0,3,5.5,8,9.3,10,12,16,22,28").split(",")])
         return
     idle_legs, idle_upper = idle_clips()
-    anims = {"walk_legs": K.gait_legs(K.WALK), "walk_upper": gait_upper(K.WALK, K.WALK_CARRY, False),
-             "run_legs": K.gait_legs(K.RUN), "run_upper": gait_upper(K.RUN, K.RUN_CARRY, True),
+    walk, run = GAITS.get(TROOP, (K.WALK, K.RUN))
+    anims = {"walk_legs": K.gait_legs(walk), "walk_upper": gait_upper(walk, K.WALK_CARRY, False),
+             "run_legs": K.gait_legs(run), "run_upper": gait_upper(run, K.RUN_CARRY, True),
              "idle_legs": idle_legs, "idle_upper": idle_upper, **attack_clips(), **stance_clips(), **hit_clips(),
              **death_clips()}
     only_rig(anims)
