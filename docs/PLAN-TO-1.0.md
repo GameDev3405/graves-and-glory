@@ -32,7 +32,7 @@ Policy still applies: `docs/WORKFLOW.md`. Gameplay, save, protocol and dependenc
 - The War Table, recruit, Armoury, banner, contracts, chapter and friends pages, restyled and visually accepted.
 - Six-player 3v3 on a dedicated server: lobby, match, rewards, return, reconnect, restart and persistence.
 - Full tier art for all thirty troops, full animation pass, complete audio cues, strict package gate, clean install.
-- Troop art status (Kort 2026-11-07): Kort says tier I to III art is already done for all thirty troops. This conflicts with the section 1 inventory (21 troops without their own model on 2026-10-28) and the Phase 4B art tasks; the 4B gate (4B.6, 4B.7, strict `build_skins --verify`) stays as the proof, and the inventory is to be re-counted before any 4B work is started or dropped.
+- Troop art status (re-counted 2026-11-07 on main e771d5f1): all thirty troops have their own model (`models/troop/<id>.json`, listed in `index.json`) and tier I, II and III skins (`textures/entity/troop/<id>_s1..s3.png`), confirming Kort. The section 1 inventory (21 without a model) and the 21-model estimate and risk rows below describe 2026-10-28 and are superseded. Still open for 4B: the visual review (4B.7, 30/30 at 9/10) and the strict `build_skins --verify` gate.
 - Distribution: Modrinth and CurseForge both at launch, plus the self-host server kit (single server, file-based profiles).
 - The official hosted network (next subsection).
 
