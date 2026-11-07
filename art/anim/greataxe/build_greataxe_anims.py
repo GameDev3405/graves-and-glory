@@ -10,7 +10,8 @@ ic_breaker (axe family, sheets/design.json) swings a two-handed greataxe. Its th
                  then brought over the top and down, bit first, the upper hand sliding down to the lower; it bites low and is
                  wrenched back up.
   side_hew       impact 12, body, heavy: the body coils right with the axe cocked back behind the right hip, held, then the hips
-                 and shoulders unwind and drive it flat across from right to left, carrying on round past the left side.
+                 and shoulders unwind and drive it flat across from right to left, carrying on round past the left side
+                 (v2: the recovery then raises the axe up in front on the left, rolling it evenly back to the guard).
   haft_jab       impact 7, body, light: the haft brought level across the chest, hands wide, and shoved straight out into the
                  foe (a cross-check), then pulled back to the guard.
 Each clip lasts ATTACK_TICKS (28) inside the variant's 32-tick cooldown, carries the timeline "impact" marker on the server's
@@ -22,6 +23,7 @@ the hew's level (u ~ +y).
 """
 from __future__ import annotations
 
+import math
 import os
 import sys
 from pathlib import Path
@@ -147,7 +149,30 @@ if SP.V2C:
     _hi = [t for t, _ in ATTACKS["side_hew"]].index(11.5)
     ATTACKS["side_hew"].insert(_hi, (11.25, AKEY((10.5, 16, -1.5), (6.5, 0, 0), (-4.6, 15.8, 9.0), aim(11, -76), u=(0.08, 1, 0),
                                                  Ls=3.5, rp=(-65, 0, 22, -25), lp=(-71, -25, -15, -32))))
-    _HOME = [("left", 19.0, 22.5, (3.4, 2.0, 2.4), 14.0, 1.0), ("right", 22.0, 25.5, (-3.2, 2.0, -2.2), -6.0, 0.8)]
+    # The hew's recovery raises the axe up in front on the left instead of carrying it on round behind the back: the old
+    # path left the right hand a full turn off its start, so the clip spun the arm round while it faded back to the stance.
+    _ri = [t for t, _ in ATTACKS["side_hew"]].index(21)
+    ATTACKS["side_hew"][_ri] = (21, AKEY((14, -4, 0), (6, 0, 0), (-3.2, 15.0, 7.5), aim(68, 30), bit=Zf, Ls=4.5))
+    # The axe rolls a long way between the follow-through (t17) and that key, and a straight blend of d and u passes u
+    # through the shaft (the hand flips over in a quarter tick). A t19 key on the shortest turn between the two keeps it
+    # rolling evenly; its other channels are the curve's own values there.
+    def _turn_key(keys, t, ta, tb):
+        ka, kb = dict(keys)[ta], dict(keys)[tb]
+
+        def F(k):
+            d, u = np.asarray(k["d"]), np.asarray(k["u"])
+            return np.column_stack([d, u, np.cross(d, u)])
+        Fa = F(ka)
+        Rr = F(kb) @ Fa.T
+        th = math.acos(max(-1.0, min(1.0, (np.trace(Rr) - 1) / 2)))
+        ax = unit(np.array([Rr[2, 1] - Rr[1, 2], Rr[0, 2] - Rr[2, 0], Rr[1, 0] - Rr[0, 1]]))
+        h, Kx = th * (t - ta) / (tb - ta), np.array([[0, -ax[2], ax[1]], [ax[2], 0, -ax[0]], [-ax[1], ax[0], 0]])
+        Fm = (np.eye(3) + math.sin(h) * Kx + (1 - math.cos(h)) * Kx @ Kx) @ Fa
+        k = {n: tuple(float(v) for v in np.ravel(SP.interp(keys, t, n))) for n in ka}
+        k["d"], k["u"] = tuple(Fm[:, 0]), tuple(Fm[:, 1])
+        return k
+    ATTACKS["side_hew"].insert(_ri, (19, _turn_key(ATTACKS["side_hew"], 19, 17, 21)))
+    _HOME =[("left", 19.0, 22.5, (3.4, 2.0, 2.4), 14.0, 1.0), ("right", 22.0, 25.5, (-3.2, 2.0, -2.2), -6.0, 0.8)]
     ATTACK_LEGS = {
         "overhead_chop": {"hips": [(0, *READY_HIPS), (3, (-3, 25, -0.5), (-0.3, -1.5, 0.7)), (6.5, (-7, 30, -1.5), (-0.6, -1.9, 1.3)),
                                    (9.3, (-8, 30, -1.5), (-0.6, -2.0, 1.3)), (10.5, (-3, 25, 0), (-0.3, -2.3, 0.6)),
@@ -218,6 +243,75 @@ def probe():
 
 SP.GUARD, SP.ATTACKS, SP.IMPACT, SP.ATTACK_LEGS, SP.ATTACK_TICKS = GUARD, ATTACKS, IMPACT, ATTACK_LEGS, ATTACK_TICKS
 SP.STANCE_KEYS, SP.attack_clip = STANCE_KEYS, attack_clip
+
+
+def _rot(e):
+    x, y, z = np.radians(e)
+    cx, sx, cy, sy, cz, sz = np.cos(x), np.sin(x), np.cos(y), np.sin(y), np.cos(z), np.sin(z)
+    return (np.array([[cz, -sz, 0], [sz, cz, 0], [0, 0, 1]]) @ np.array([[cy, 0, sy], [0, 1, 0], [-sy, 0, cy]])
+            @ np.array([[1, 0, 0], [0, cx, -sx], [0, sx, cx]]))
+
+
+def _ang(A, B):
+    return float(np.degrees(np.arccos(np.clip((np.trace(A.T @ B) - 1) / 2, -1.0, 1.0))))
+
+
+def _seg_cost(p, q):
+    A, B, M = _rot(p), _rot(q), _rot([(p[i] + q[i]) / 2 for i in range(3)])
+    return _ang(M, A) + _ang(M, B) - _ang(A, B) + 1e-4 * sum((p[i] - q[i]) ** 2 for i in range(3))
+
+
+def rebranch(vals):
+    """Per key, the equivalent euler triple that keeps linear euler blending on (near) the shortest rotation, the first key
+    fixed and the last key within 180 deg of it on every axis (the game blends the clip's eulers with the stance's, so a
+    last key on another branch spins the bone a full turn during the fade-out). None if the end has no such triple."""
+    def cands(v):
+        x, y, z = v
+        return [(f[0] + 360 * a, f[1], f[2] + 360 * c) for f in ((x, y, z), (x + 180, 180 - y, z + 180))
+                for a in range(-2, 3) for c in range(-2, 3)]
+    first = tuple(vals[0])
+    C = [[first]] + [cands(v) for v in vals[1:]]
+    C[-1] = [c for c in C[-1] if all(abs(c[i] - first[i]) <= 180 for i in range(3))]
+    if not C[-1]:
+        return None
+    cost, back = [0.0], [[0]]
+    for k in range(1, len(C)):
+        nc, nb = [], []
+        for c in C[k]:
+            best = min(range(len(C[k - 1])), key=lambda j: cost[j] + _seg_cost(C[k - 1][j], c))
+            nc.append(cost[best] + _seg_cost(C[k - 1][best], c)); nb.append(best)
+        cost, back = nc, back + [nb]
+    j, out = min(range(len(cost)), key=lambda q: cost[q]), []
+    for k in range(len(C) - 1, -1, -1):
+        out.append(C[k][j]); j = back[k][j]
+    out = [[round(v, 3) for v in t] for t in out[::-1]]
+    assert all(_ang(_rot(a), _rot(b)) < 1e-2 for a, b in zip(vals, out))
+    return out
+
+
+_attack_clips = SP.attack_clips
+
+
+def attack_clips():
+    """The spear builder's attack clips, every rotation channel that ends more than 180 deg off its start re-branched."""
+    out = _attack_clips()
+    for name, clip in out.items():
+        for bone, ch in clip["bones"].items():
+            r = ch.get("rotation")
+            if not isinstance(r, dict) or len(r) < 2:
+                continue
+            ks = sorted(r, key=float)
+            if all(abs(r[ks[-1]][i] - r[ks[0]][i]) <= 180 for i in range(3)):
+                continue
+            new = rebranch([r[k] for k in ks])
+            print("%s %s: end %s off its start; re-branched %s" % (name, bone, r[ks[-1]], "to %s" % new[-1] if new else "FAILED"))
+            if new:
+                ch["rotation"] = {k: v for k, v in zip(ks, new)}
+    return out
+
+
+if SP.V2C:
+    SP.attack_clips = attack_clips
 
 if __name__ == "__main__":
     if os.environ.get("GREATAXE_PROBE"):
