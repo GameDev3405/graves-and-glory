@@ -27,3 +27,22 @@ The second spear unit, the Tide Court tideguard. It uses the shared spear builde
 - **Left death** (t677, front view): arm and spear overlap for a moment in the pile.
 - **Low sweep** (t368→t369): a quick drop of the spear to horizontal. It reads as a fast strike, not a pop.
 - At contact the thrust and the low sweep both end near horizontal, so they look somewhat alike.
+
+## v2 feel (2026-11-07)
+
+The knight's approved v2 style is ported to the spear builder (`art/anim/spear/build_spear_anims.py`), the same port as wm_tusk, kept to the tideguard's own spear and set-back rear hand. `GG_V2=0` builds the old style. Deaths are unchanged.
+
+- **Pelvis-driven blows:** the thrust, high thrust and low sweep each load into the back hip, then the pelvis turns and drops into the blow and the spear follows the hips. Both fists stay on the shaft.
+- **Low sweep:** its yaw keys follow the set-back rear hand, so the shaft stays clear of the torso under the new pelvis lead.
+- **Graded hits:** a light blow is a knee flinch at 0.4 of the peak. A medium blow throws the upper body further, holds it a beat, shifts the pelvis and catches it with a recovery step. A heavy blow plays the medium clip at 1.55 times its size, so it reads as a stagger. A blow from behind keeps the spear point off the ground (it went 1.8 px under the floor before).
+- **Idle:** the knight's weight cycle (breath, then a slow shift from foot to foot).
+- **Stances:** ready is a forward guard. Brace crouches deep with the point raised. Hold the line sets the spear level, feet wide and the torso side-on. Ward turns the torso with the point up. All four read apart.
+- **Probe:** no shaft or fist in the body (the old hit from behind had 5 samples), nothing below the floor, no new pops.
+- **Byte identity:** knight, archer and gl_marshal build byte-identical to HEAD.
+- **Review (Sonnet high, sheets and the knight v2 comparison): PASS WITH MINORS**, no fix round. Its question whether the medium hits finish at guard after the sheet's last frame (t12) was checked in the clip data: every hit clip ends exactly on its first key (medium 16 ticks, light 9).
+- **Harness:** `geo-knight` with tc_tideguard: 22 `[p1]` checks, 0 false (stance, hit, attack and death checks all passed; the server lagged during start-up only).
+- **New minors:**
+  - The thrust's fastest joint step is 109 deg/tick on the left forearm at t6.5 (87 before). It reads as the snap of the lunge.
+  - Thrust and low-sweep contacts both end near level; the sweep reads apart by its deeper crouch and shoulder swing.
+  - Brace is close to ready in profile (crouch depth and spear angle only).
+  - The idle shift is subtle next to the knight's.

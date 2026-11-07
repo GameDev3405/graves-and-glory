@@ -22,3 +22,22 @@ The third spear unit, the Tide Court admiral, with a trident, a cape, coat tails
 - **Late deaths** (t24+, three-quarter and front views): the trident head sits slightly under the torso silhouette.
 - **Kelp hem**: it can sit about 0.4 px into the leg at the extreme of a stride.
 - The reel's resolution makes the soft parts (hair, kelp, tails) hard to judge finely.
+
+## v2 feel (2026-11-07)
+
+The knight's approved v2 style is ported to the spear builder (`art/anim/spear/build_spear_anims.py`), the same port as wm_tusk and tc_tideguard, kept to the admiral's own spear and command bearing. `GG_V2=0` builds the old style. Deaths are unchanged.
+
+- **Pelvis-driven blows:** the thrust, high thrust and low sweep each load into the back hip, then the pelvis turns and drops into the blow and the spear follows the hips, point leading. Both fists stay on the shaft.
+- **Graded hits:** a light blow is a knee flinch at 0.4 of the peak. A medium blow throws the upper body further, holds it a beat, shifts the pelvis and catches it with a recovery step. A heavy blow plays the medium clip at 1.55 times its size, so it reads as a stagger. A blow from behind no longer drives the spear through the body and under the floor (HEAD: 5 shaft-in-body samples, the point 2.9 px under the soles).
+- **Idle:** the knight's weight cycle (breath, then a slow shift from foot to foot).
+- **Stances:** ready is a forward guard. Brace raises the point at an angle. Hold the line sets the spear level, low and wide. Ward turns the body with the point up. All four read apart.
+- **Probe:** no shaft or fist in the body in any clip, nothing below the floor beyond the sole depth HEAD already had, no new pops.
+- **Byte identity:** knight, archer and gl_marshal build byte-identical to HEAD.
+- **Review (Sonnet high, sheets, the knight v2 and tideguard v2 comparison): PASS WITH MINORS**, no fix round.
+- **Harness:** `geo-knight` with tc_admiral, run twice (the machine was loaded by other builds): 22 `[p1]` checks each run. Run 1 failed only the three march-run checks under server lag (up to 199 ticks behind, run clocked as walk); run 2 failed only attack-sync-walk (3 swings sampled, all nudged by lag) and the suite roll-up. Every check passed in one of the two runs; the gait clips are unchanged from HEAD.
+- **New minors:**
+  - The light hit from the front barely moves before t6, so the flinch reads a little late.
+  - From the front the hip load reads only from t8 (it is clear from the side).
+  - The plain idle's weight shift is subtle next to the knight's.
+  - The medium front hit throws the spear tip high and wide, the largest silhouette change of the set.
+  - The thrust's fastest joint step is 109 deg/tick on the left forearm at t6.5 (as the tideguard); it reads as the lunge snap.
