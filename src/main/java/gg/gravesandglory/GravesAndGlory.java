@@ -316,6 +316,8 @@ public final class GravesAndGlory implements ModInitializer {
         boolean temporary;long expiresAt;
         /** Battle time until which the troop is stunned (a slam, a bear's roar). */
         long stunnedUntil;
+        /** The stance and aim pitch the troop's last beat chose by its order (Tactics.show), shown or not: while it is stunned its clients see "stunned" instead, and this is what they are sent the tick the stun ends. */
+        String orderStance="";float orderPitch;
         /** True once a Graveborn troop has risen again; it rises once. */
         boolean rose;
         /** Blocks walked since this troop's last attack, for Pounce (Abilities.unitTick adds the ground covered each tick; onHit sets it back to 0). */

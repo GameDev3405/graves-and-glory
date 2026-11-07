@@ -441,7 +441,7 @@ public final class TroopMotion {
                 drive(m,r,false,80,(i,now)->boundsIn(now,0,0,0,0,0,"hold",0,false,i<4,i>=4,i>=4?(i-4)*.05:0,null,h));
             }
             for(String s:BattleMath.STANCES)for(float aim:new float[]{-60,60})for(boolean up:new boolean[]{false,true}){
-                double sp=s.equals("run")||s.equals("fall_back")||s.equals("shield_move")?1:0;
+                double sp=s.equals("run")||s.equals("charge")||s.equals("fall_back")||s.equals("shield_move")?1:0;
                 drive(m,r,up,30,(i,now)->boundsIn(now,i*sp,sp,-85,-60,0,s,aim,up,up,false,0,null,null));
             }
         }finally{m.getPart().traverse().forEach(ModelPart::resetTransform);}

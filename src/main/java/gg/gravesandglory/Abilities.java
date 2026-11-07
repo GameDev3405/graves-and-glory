@@ -431,8 +431,9 @@ final class Abilities {
         double reach = radius * radius;
         for (var e : enemies(b, u.squad.team)) {
             if (e == except || e.squaredDistanceTo(at) > reach) continue;
+            if (knockback != 0 && !anchored(b, e) && !Combat.structure(e)) KNOCKED.put(e.getId(), b.time); // its hit_v1 (sent inside resolve) carries the knockback flag; knock below marks it again
             float applied = Combat.resolve(b, u, e, base, "slam", true);
-            if (applied <= 0) continue;
+            if (applied <= 0) { KNOCKED.remove(e.getId()); continue; }
             struck++;
             BattleEffects.flash(b, new Vec3d(e.getX(), e.getBodyY(.6), e.getZ()), u.squad.team);
             if (e.isAlive() && !Combat.structure(e)) knock(b, e, at, fallback, knockback);
@@ -488,7 +489,16 @@ final class Abilities {
         if (dx * dx + dz * dz < 1e-6) { dx = fallback.x - e.getX(); dz = fallback.z - e.getZ(); }
         e.takeKnockback(strength, dx, dz);
         e.velocityModified = true;
+        KNOCKED.values().removeIf(t -> t < b.time); // only this tick's throws count
+        KNOCKED.put(e.getId(), b.time);
     }
+    /**
+     * Entity ids thrown by knock, with the battle tick: the hit_v1 of the blow that threw them carries the knockback flag (Combat.resolve sends it after the
+     * blow's on-hit abilities, which is when a shield bash's throw has happened; splash marks its targets before their blow). Server thread only.
+     */
+    static final Map<Integer, Long> KNOCKED = new HashMap<>();
+    /** Whether this entity was thrown (or is about to be: splash marks it) this battle tick; reading it spends the mark. */
+    static boolean takeKnocked(GravesAndGlory.Battle b, LivingEntity e) { Long t = KNOCKED.remove(e.getId()); return t != null && t == b.time; }
 
     /** Every living enemy of a team that a blow can fall on: the other side's troops, its seated commanders in the field and its structures. */
     static List<LivingEntity> enemies(GravesAndGlory.Battle b, int team) {

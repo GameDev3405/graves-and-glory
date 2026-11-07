@@ -131,10 +131,13 @@ public final class Combat {
         LANDED.put(attacker, b.time);
         if (crash) FormationRules.spendChargeHit(attacker); // the first LANDED blow spends it (Task 6 review I1): one that did not land (hurt cooldown, invulnerable) keeps it
         if (crash) Abilities.knock(b, target, attacker.mob.getPos(), target.getPos().subtract(attacker.mob.getRotationVector().multiply(1, 0, 1)), D.chargeKnockback()); // an anchored troop stays (knock)
-        if (victim != null) sendHit(attacker, target, kind, melee, area, structure(target), hit, cooldown, BattleMath.lostHealth(before, target.getHealth() + target.getAbsorptionAmount()), impactY, watchers);
+        double lost = BattleMath.lostHealth(before, target.getHealth() + target.getAbsorptionAmount()); // read before the on-hit abilities below, as the hit once was
+        boolean lethal = !target.isAlive();
         // Ruling (Task 6 review M1): a killing blow levels its striker inside target.damage (AFTER_DEATH, lane A), so onHit below reads his new rows: the level
         // up lands at the kill and its first benefit is that same blow (a pierce, a cleave or a slam at the new share, Reap at level 3).
         if (!secondary) Abilities.onHit(b, attacker, target, amount, kind);
+        // The hit_v1 goes after the on-hit abilities so it can say the blow threw its target (a Shield bash's knockback, a charge crash, a splash: Abilities.knock).
+        if (victim != null) sendHit(attacker, target, kind, melee, area, structure(target), hit, cooldown, lost, impactY, watchers, lethal, Abilities.takeKnocked(b, target));
         return amount;
     }
 
@@ -143,9 +146,9 @@ public final class Combat {
      * swing that landed it (Unit.blowVariant, else the family's first swing); a shot's zone from the height it struck at; a blow with no direction (area)
      * in the body. Its weight (BattleMath.hitWeight) is the larger of its swing's and the share of the victim's maximum health it really lost (lost: health
      * and absorption before less after); inside the victim's hurt cooldown (cooldown) the lost share alone, so a blow that took little reads light. Its signed bearing is from
-     * the attacker (0 on a structure); it is blocked when a raised-shield counters row applied (CounterMath.blocked), and lethal when the victim died of it.
+     * the attacker (0 on a structure); it is blocked when a raised-shield counters row applied (CounterMath.blocked), and lethal when the victim died of it (as the blow left it, before its on-hit abilities); knockback when the blow also threw it (Abilities.knock, hit_v1 flag 4).
      */
-    static void sendHit(GravesAndGlory.Unit attacker, LivingEntity target, String kind, boolean melee, boolean area, boolean structure, CounterMath.Hit hit, boolean cooldown, double lost, double impactY, List<net.minecraft.server.network.ServerPlayerEntity> watchers) {
+    static void sendHit(GravesAndGlory.Unit attacker, LivingEntity target, String kind, boolean melee, boolean area, boolean structure, CounterMath.Hit hit, boolean cooldown, double lost, double impactY, List<net.minecraft.server.network.ServerPlayerEntity> watchers, boolean lethal, boolean knockback) {
         var D = Spec.COMBATDISCIPLINE[0];
         var rows = Tactics.variants(attacker.spec.family());
         Spec.AttackVariantsRow swing = rows.isEmpty() ? null : melee && attacker.blowVariant >= 0 && attacker.blowVariant < rows.size() ? rows.get(attacker.blowVariant) : rows.get(0);
@@ -153,7 +156,7 @@ public final class Combat {
         String zone = area ? "body" : melee ? (swing == null ? "body" : swing.zone()) : Double.isNaN(impactY) ? "body" : BattleMath.zone(impactY, target.getY(), target.getHeight());
         float bearing = structure ? 0 : (float) BattleMath.signedBearing(target.getYaw(), attacker.mob.getX() - target.getX(), attacker.mob.getZ() - target.getZ());
         int weight = BattleMath.hitWeight(swing == null ? 0 : BattleMath.weightIndex(swing.weight()), cooldown, lost, target.getMaxHealth(), D.mediumHitShare(), D.heavyHitShare());
-        MotionEvents.sendHit(target, hitKind, zone, bearing, weight, CounterMath.blocked(hit, Spec.COUNTERS), !target.isAlive(), watchers);
+        MotionEvents.sendHit(target, hitKind, zone, bearing, weight, CounterMath.blocked(hit, Spec.COUNTERS), lethal, knockback, watchers);
     }
 
     /** The commander classes' share of the factor: the attacker side's (Champion's infantry aura, Warden's archers, Mark Prey) times the target side's (Stand Fast). */

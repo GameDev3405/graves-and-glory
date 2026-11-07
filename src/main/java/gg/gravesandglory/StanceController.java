@@ -16,6 +16,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.function.Predicate;
 import java.util.WeakHashMap;
 
 /**
@@ -49,6 +50,13 @@ final class StanceController extends AnimationController<GeoTroop> {
     double shownUpperWeight, shownLegsWeight, shownStill;
     boolean shownShield;
     private boolean listed;
+    /**
+     * AIM_PITCH_HOOK: the aim pitch the server sent with a ranged_aim stance (degrees, positive down; 0 in any other stance), refreshed every frame. Nothing reads it
+     * yet: a later pass bends the spine and arms by it over {@code stance_aim_upper}, which for now plays as authored at pitch 0.
+     */
+    private float aimPitch;
+    /** The ranged_aim pitch this frame (AIM_PITCH_HOOK), 0 when not aiming. */
+    float aimPitch() { return aimPitch; }
     static final Map<Entity, StanceController> LIVE = Collections.synchronizedMap(new WeakHashMap<>());
 
     StanceController(GeoTroop troop, Gait gait) {
@@ -56,14 +64,35 @@ final class StanceController extends AnimationController<GeoTroop> {
         this.gait = gait;
     }
 
-    /** The upper and legs pose for a stance name, a raised shield and recent fighting (either may be null: none). */
-    static String[] target(String stance, boolean shield, boolean fighting) {
+    /** The upper and legs pose for a stance name, a raised shield and recent fighting (either may be null: none), for a model whose file has every clip. */
+    static String[] target(String stance, boolean shield, boolean fighting) { return target(stance, shield, fighting, k -> true); }
+
+    /**
+     * The same, for a model that has only the clips {@code has} names. The newer stances (charge, stunned, rally, ranged_aim, ranged_rest, hold) prefer a clip of
+     * their own ({@code charge_run_upper}, {@code stun_upper}/{@code stun_legs}, {@code stance_rally_upper}, {@code stance_aim_upper}, {@code stance_rest_upper},
+     * {@code stance_hold_upper}/{@code stance_hold_legs}); a model with none of a stance's clips gets what it got before the stance had any (charge as run: none;
+     * the others as the default), so a clip not yet authored changes nothing. A model with only some of a pair plays those and leaves the other empty.
+     */
+    static String[] target(String stance, boolean shield, boolean fighting, Predicate<String> has) {
+        String[] own = switch (stance) {
+            case "charge" -> new String[]{"charge_run_upper", null};
+            case "stunned" -> new String[]{"stun_upper", "stun_legs"};
+            case "rally" -> new String[]{"stance_rally_upper", null};
+            case "ranged_aim" -> new String[]{"stance_aim_upper", null};
+            case "ranged_rest" -> new String[]{"stance_rest_upper", null};
+            case "hold" -> new String[]{"stance_hold_upper", "stance_hold_legs"};
+            default -> null;
+        };
+        if (own != null) {
+            String up = own[0] != null && has.test(own[0]) ? own[0] : null, legs = own[1] != null && has.test(own[1]) ? own[1] : null;
+            if (up != null || legs != null) return new String[]{up, legs};
+        }
         return switch (stance) {
             case "wall" -> new String[]{shield ? "stance_wall_up_upper" : "stance_wall_upper", "stance_wall_legs"};
             case "brace" -> new String[]{shield ? "stance_brace_up_upper" : "stance_brace_upper", "stance_brace_legs"};
             case "shield_move" -> new String[]{"stance_shield_up_upper", null};
             case "fall_back" -> new String[]{shield ? "stance_shield_up_upper" : "stance_ward_upper", null};
-            case "run" -> new String[]{null, null};
+            case "run", "charge" -> new String[]{null, null};
             default -> new String[]{shield ? "stance_shield_up_upper" : fighting ? "stance_ready_upper" : null,
                     fighting ? "stance_ready_legs" : null};
         };
@@ -81,14 +110,16 @@ final class StanceController extends AnimationController<GeoTroop> {
 
         boolean dead = e instanceof LivingEntity l && (l.isDead() || l.deathTime > 0);
         boolean shield = e instanceof LivingEntity l && l.isUsingItem();
-        String stance = MotionEvents.Client.stance(e.getId()).name();
+        MotionEvents.Stance sent = MotionEvents.Client.stance(e.getId());
+        String stance = sent.name();
+        aimPitch = stance.equals("ranged_aim") ? sent.aimPitch() : 0; // AIM_PITCH_HOOK: stored for a later pass that bends the spine and arms
         long recent = Long.MIN_VALUE;
         for (MotionInput.Attack a : MotionEvents.Client.attacks(e.getId())) recent = Math.max(recent, a.startTick());
         for (MotionInput.Hit h : MotionEvents.Client.hits(e.getId())) recent = Math.max(recent, h.tick());
         boolean fighting = recent != Long.MIN_VALUE && now - recent < FIGHTING;
         boolean standing = gait.mode == Gait.Mode.IDLE;
         still = step(still, standing ? 1 : 0, dt / STILL);
-        String[] want = dead ? new String[]{null, null} : target(stance, shield, fighting);
+        String[] want = dead ? new String[]{null, null} : target(stance, shield, fighting, k -> model.getAnimation(animatable, k) != null);
         shownStance = stance; shownShield = shield; shownStill = still;
 
         for (String w : want) if (w != null) ramps.putIfAbsent(w, 0.0);
