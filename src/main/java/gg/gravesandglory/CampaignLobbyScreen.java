@@ -31,7 +31,7 @@ public class CampaignLobbyScreen extends GravesAndGloryClient.ArmyScreen {
         start=null;slots.clear();leadControls.clear();key=stateKey();int cw=(width-36)/3;
         String[] names={"Battle setup","Your banner","Custom lobby"};
         for(int i=0;i<3;i++){final int t=i;button((tab==i?"> ":"")+names[i]+(i==2&&invited()?" *":""),16+i*(cw+4),43,cw,b->{if(t==0)client.setScreen(new CampScreen("home"));else if(t==2)client.setScreen(new CampScreen("friends"));else{tab=t;clearAndInit();}});}
-        button("Visuals & sound",width-156,17,140,b->client.setScreen(new PresentationScreen()));
+        button("Visuals & sound",width-156,17,140,b->client.setScreen(new PresentationScreen(this)));
         if(tab==0){
             int lw=(width-52)*2/3,rx=28+lw,rw=width-rx-16;
             String[] modes={"ai","1","2","3","4"};int bw=lw/5;
