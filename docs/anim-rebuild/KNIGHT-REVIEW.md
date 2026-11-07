@@ -46,3 +46,28 @@ Kort approved the v2 style after watching an old-vs-new video, and it is now the
 - **Hit fix:** a front hit knocks the sword arm out wide to the right and it is back on guard in about 0.25 s. The shield is untouched, and the fold-in is removed from the other hits.
 - **Harness:** `geo-knight` check on the knight passed with 22 `[p1] p1-` lines and 0 `=false`.
 - **Other troops:** sentinel, gl_marshal and the other users of this builder are not re-exported yet; they pick up v2 on their next rebuild.
+
+## Deaths v3 (2026-11-06)
+
+Kort: the old falls looked glitchy, with the sword and shield clipping. The four deaths are rebuilt as twelve clips, gated to `TROOP == "knight" and V2` (`d3_death_clips`). Other troops build byte-identical output.
+
+- **Clips:** `death_back|forward|left|right`, each with `_drop1` (the sword is let go) and `_drop2` (sword and shield). 20 ticks each, holding the last frame.
+- **Body:** eased per-bone tracks, grounded on the body's own corners (no gear propping, no slide, no rebound). The wrists slerp, and their euler angles are unwrapped.
+- **Held gear:** a per-sample shoulder plus wrist correction (`d3_clear`, a pattern search, gaussian-smoothed) keeps the blade and shield off the floor and out of the body and the other piece.
+- **Dropped gear:** baked into the gear bones' own keys, with no rig change.
+  - It leaves with the hand's velocity and spin, capped at 3.5 px/tick sideways (a dead hand lets go, it does not throw). It then falls under gravity to where it would land, moved out from under the body.
+  - If the straight flight would cross the body, the path bows out (`off*sin(pi*u)`) just enough to clear it. If no bow clears it, the landing moves 3 px further out and the search runs again.
+  - The landing spot is checked against the body from just before touch until the end of the clip.
+  - It lands on one end, tips flat, gives one small clatter and lies still before the clip ends.
+- **Probes** (px = 1/16 block):
+  - Floor: the worst is -0.42 px (kept sword, death_left). Dropped gear never goes below 0.
+  - Gear in body: the worst is 0.77 px (kept shield into left_pauldron, death_right). Dropped gear reaches 0.45 px at most, when the sword grip slides out at release. Sword into shield reaches 0.49 px at most.
+  - Rotation rate: the largest local rate is 69.8 deg/tick (forward_drop2 shield, in flight). GeckoLib's linear euler interpolation between the 0.25-tick keys stays within 1.6 deg of the true slerp.
+  - Settling: dropped gear is still by tick 11.8-19.0.
+  - Other clips: gl_marshal and archer build byte-identical. The knight's non-death clips are identical to HEAD.
+- **Review:** one independent Sonnet review, verdict SHIP-WITH-MINORS. These minors are open:
+  1. right_drop2: the shield comes to rest partly on the dropped sword, so the two read as a pile.
+  2. death_left: the kept sword hangs straight down beside the shield, like a planted stake. This is the stiffest of the resting poses.
+  3. Early releases (ticks 5-6): the gear can reach the floor while the knight is still mostly upright.
+  4. back clips: the kept arm keeps easing until about tick 18, and the dropped gear makes a small settle at about tick 19. It reads as a soft settle, not a rebound.
+- **Java (not done here):** in DeathController.process, after `latched = pick(...)`, take a stable per-entity suffix, e.g. `floorMod(mix(uuid.hashCode()), 3)` into `{"", "_drop1", "_drop2"}`. Then try `model.getAnimation(animatable, latched + suffix)` and fall back to `latched` when it is null. The gear bones need no Java change.
