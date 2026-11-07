@@ -23,15 +23,25 @@ public final class FrontMenuScreen extends Screen {
     }
     private int columnWidth(){return Math.max(96,Math.min(150,width*3/10));}
     private int columnX(){return Math.max(6,width/32);}
-    private int maxTop(){return page.equals("home")?Math.max(30,height-26-108):Math.max(76,height/2-38);}
+    /** Home: the row pitch (22, squeezed to 20, the buttons' own height, on a very short screen) so all five buttons end 4 px or more above the bottom. */
+    private int homePitch(){return Math.max(20,Math.min(22,(height-4-Math.max(30,height-134)-20)/4));}
+    private int maxTop(){
+        if(page.equals("home"))return Math.min(Math.max(30,height-26-108),height-4-(4*homePitch()+20));
+        int top=Math.max(76,height/2-38);
+        // Friends: the buttons, then the two hint lines, then Back, all kept on screen (the title area gives way on a very short one)
+        return page.equals("friends")?Math.min(top,height-4-(friendsBack()+20)):top;
+    }
+    /** Friends: Back's offset from the top of the buttons, below the last action button and the two hint lines (26 px for both). */
+    private int friendsBack(){return 22*(GravesAndGloryClient.launcherContext?3:2)+34;}
     @Override protected void init(){
         int top=maxTop();
         if(page.equals("home")){
+            int p=homePitch();
             button("Enter camp / Practice",top,true,()->GravesAndGloryClient.startCamp(client,false));
-            button("Play with friends",top+22,false,()->client.setScreen(new FrontMenuScreen("friends")));
-            button("Settings",top+44,false,()->client.setScreen(new OptionsScreen(this,client.options)));
-            button("Credits",top+66,false,()->client.setScreen(new FrontMenuScreen("credits")));
-            button("Quit game",top+88,false,client::scheduleStop);
+            button("Play with friends",top+p,false,()->client.setScreen(new FrontMenuScreen("friends")));
+            button("Settings",top+2*p,false,()->client.setScreen(new OptionsScreen(this,client.options)));
+            button("Credits",top+3*p,false,()->client.setScreen(new FrontMenuScreen("credits")));
+            button("Quit game",top+4*p,false,client::scheduleStop);
         }else if(page.equals("friends")){
             button("Host a camp on this network",top,true,()->GravesAndGloryClient.startCamp(client,true));
             button("Join a server",top+22,false,()->client.setScreen(new MultiplayerScreen(this)));
@@ -39,7 +49,7 @@ public final class FrontMenuScreen extends Screen {
                 if(GravesAndGloryClient.join.isEmpty())GravesAndGloryClient.startCamp(client,true);
                 else GravesAndGloryClient.connectOrHost(client);
             });
-            button("Back",top+88,false,()->client.setScreen(new FrontMenuScreen()));
+            button("Back",top+friendsBack(),false,()->client.setScreen(new FrontMenuScreen()));
         }else button("Back",height-40,false,()->client.setScreen(new FrontMenuScreen()));
     }
     @Override public void render(DrawContext g,int mx,int my,float delta){
@@ -56,8 +66,12 @@ public final class FrontMenuScreen extends Screen {
         g.drawCenteredTextWithShadow(textRenderer,"Collect an army. Command the battlefield.",width/2,54,DarkUi.PAPER);
         if(page.equals("friends")){
             g.drawCenteredTextWithShadow(textRenderer,"PLAY WITH FRIENDS",width/2,maxTop()-17,DarkUi.GOLD);
-            g.drawCenteredTextWithShadow(textRenderer,"Hosting shares this camp on your local network.",width/2,height/2+54,DarkUi.MUTED);
-            g.drawCenteredTextWithShadow(textRenderer,"Remote friends need a reachable server or launcher relay.",width/2,height/2+67,DarkUi.MUTED);
+            {
+                // the two hint lines sit between the last action button and Back, 26 px for both
+                int hy=maxTop()+22*(GravesAndGloryClient.launcherContext?3:2)+2;
+                g.drawCenteredTextWithShadow(textRenderer,"Hosting shares this camp on your local network.",width/2,hy,DarkUi.MUTED);
+                g.drawCenteredTextWithShadow(textRenderer,"Remote friends need a reachable server or launcher relay.",width/2,hy+13,DarkUi.MUTED);
+            }
         }
         if(page.equals("credits")){
             int y=height/2-30;
