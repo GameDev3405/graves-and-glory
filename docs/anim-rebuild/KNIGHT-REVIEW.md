@@ -71,3 +71,26 @@ Kort: the old falls looked glitchy, with the sword and shield clipping. The four
   3. Early releases (ticks 5-6): the gear can reach the floor while the knight is still mostly upright.
   4. back clips: the kept arm keeps easing until about tick 18, and the dropped gear makes a small settle at about tick 19. It reads as a soft settle, not a rebound.
 - **Java (not done here):** in DeathController.process, after `latched = pick(...)`, take a stable per-entity suffix, e.g. `floorMod(mix(uuid.hashCode()), 3)` into `{"", "_drop1", "_drop2"}`. Then try `model.getAnimation(animatable, latched + suffix)` and fall back to `latched` when it is null. The gear bones need no Java change.
+
+## Deaths v4 (2026-11-06)
+
+Kort, on the v1 death reel: the dropped sword fell too far from the hand and ended up on the shield's side of the body. He asked for a longer grip and a drop on the side it was held. This happened in several clips. Only the eight drop variants and the kept death_forward arm change. gl_marshal and archer build byte-identical.
+
+- **Landing spot (`_d3_beside`):** the rest spot is searched beside the releasing hand, on the hand's side of the hips-to-head midline. Steps go out from the hand and along the body, nearest first (`D3_BESIDE_STEPS`), with a 1 px gap. The body's final frame is checked first because it is cheap, then the zone from touch to the end. The cost is distance from the hand plus 0.06 per degree of turn.
+- **Grip:** releases are later, with the hand near the floor.
+
+  | Variant | Sword release tick | Sword landing distance from the hand (px) | Shield release tick | Shield landing distance from the hand (px) |
+  |---|---|---|---|---|
+  | back | 13.0 | 7.7 | 14.0 | 8.8 |
+  | forward | 12.0 | 7.4 | 12.25 | 13.9 |
+  | left | 12.75 | 14.9-15.1 | 13.0 | 8.7 |
+  | right | 11.75 | 8.3 | 13.5 | 11.7 |
+
+  The release ticks are on the 20-tick clip. Distances are horizontal, in px.
+- **death_forward:** the right-hand rest is now `(-60, 15, -60)`, blade out along his right, so the drop1/2 sword no longer crosses under him. The smallest margin to the midline is 11.2 px.
+- **Probes:** dropped gear never goes below the floor (min y 0). No dropped piece moves between ticks 18 and 20, and every piece is still by tick 14.4-17.9. The sword lands on the hand's side in every clip. Flight briefly grazes the midline by 0.5 px (right sword, left_drop2 shield).
+- **Review:** one independent Sonnet review of the v2 reel (dense ticks 10-20 sheets plus close-ups) gave APPROVE with no blockers. These minors are open:
+  1. left_drop2 and right_drop2: the sword hilt sits against the shield rim. They touch but do not overlap.
+  2. left_drop1/2: the right hand is the upper arm when he falls left, and it cannot get within about 10 px of the floor without entering the body. The sword therefore lands about 15 px out, in front of the belly and past the kept shield. It is on his right, but Kort should confirm that it reads as "same side".
+  3. forward_drop2: after the shield lands flat, it shifts outward about half its width (a clatter, not a pop).
+  4. The v3 minor about the death_left kept sword hanging like a stake was not addressed in this pass. In the back clips, the dropped gear is now still by tick 17.5 (it was about 19), but the kept arm's slow easing was not changed.

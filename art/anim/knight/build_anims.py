@@ -2065,9 +2065,9 @@ def d3_drop(samples, geo, part, spec, ground):
     Rr = held[ir][:3, :3]
     w = _d3_log(Rr @ held[ir - 1][:3, :3].T) * SUB                       # rad per tick, world
     # the rest: long axis (local y) along the yaw, face normal (local z) up or down, lying on the ground
-    yaw = math.radians(spec["yaw"])
+    yaw = math.radians(spec.get("yaw", 0.0))                           # "beside" specs solve their own rest below
     ay = np.array([math.sin(yaw), 0.0, math.cos(yaw)])
-    az = np.array([0.0, float(spec["flip"]), 0.0])
+    az = np.array([0.0, float(spec.get("flip", 1)), 0.0])
     R_rest = np.column_stack([np.cross(ay, az), ay, az])
     cis = geo.cubes[part]
 
@@ -2086,7 +2086,17 @@ def d3_drop(samples, geo, part, spec, ground):
         W = place(R_rest, np.array([x, 0.0, z]), geo.centroid[part])
         W[1, 3] += (ground - gc(W)[:, 1].min()) / 16.0
         return W
-    if "land" in spec:
+    if spec.get("beside"):
+        # v4: it falls flat right beside the hand that let it go, on that hand's side of the body
+        c0 = cen(held[ir])
+        T0 = (v[1] + math.sqrt(max(0.0, v[1] ** 2 + 2.0 * D3_G * max(0.0, c0[1] - ground - 1.0)))) / D3_G
+        obst = [ci for ci in range(len(geo.bone)) if geo.part[ci] != part]
+        i_land = max(ir + 1, int(round((spec["release"] + T0) * SUB)) - 6)
+        zone = [_d3_boxes(geo, Ms[i], obst) for i in sorted(set(list(range(i_land, n, 2)) + [n - 1]))]
+        bes = _d3_beside(geo, Ms[ir], Ms[-1], held[ir], hand, part, rel, gc, ground, zone)
+        W_rest, R_rest, ay = bes["W"], bes["R"], bes["ay"]
+        spec = dict(spec, lead=bes["lead"])
+    elif "land" in spec:
         W_rest = rest_at(*spec["land"])
     else:
         # where it would fall with no push but gravity, moved straight out from under the body (and any other
@@ -2121,7 +2131,12 @@ def d3_drop(samples, geo, part, spec, ground):
             if "land" in spec:
                 break
             land_out += 3.0
-            W_rest = rest_at(*(bx + out * (step + land_out)))
+            if spec.get("beside"):
+                bes = _d3_beside(geo, Ms[ir], Ms[-1], held[ir], hand, part, rel, gc, ground, zone, land_out)
+                W_rest, R_rest, ay = bes["W"], bes["R"], bes["ay"]
+                spec = dict(spec, lead=bes["lead"])
+            else:
+                W_rest = rest_at(*(bx + out * (step + land_out)))
         ok = True
         # landing: tilted about the horizontal axis across the long axis, one end down, that end's corner on the ground
         ax_t = np.cross(ay, np.array([0.0, 1.0, 0.0]))
@@ -2225,6 +2240,12 @@ def d3_drop(samples, geo, part, spec, ground):
                 ok = False
         if ok:
             break
+    hw = _d3_pivot(Ms[ir], hand)
+    gp = (W_rest @ np.linalg.inv(held[ir]) @ np.r_[hw / 16.0, 1.0])[:3] * 16.0
+    rep["grip_hand"] = round(float(np.linalg.norm((gp - hw)[[0, 2]])), 1)
+    rep["grip_hand_end"] = round(float(np.linalg.norm((gp - _d3_pivot(Ms[-1], hand))[[0, 2]])), 1)
+    rep["hand_h"] = round(float(hw[1] - ground), 1)
+    rep["land_out"], rep["swerve"] = land_out, round(float(np.linalg.norm(off)), 1)
     prev_anim = None
     for i in range(n):
         tick = i / SUB
@@ -2290,6 +2311,62 @@ def _d3_pen(P, boxes):
     q = np.einsum("nk,bkj->bnj", P, R) - np.einsum("bk,bkj->bj", t, R)[:, None, :]
     d = np.minimum(q - lo[:, None, :], hi[:, None, :] - q).min(2)
     return max(0.0, float(d.max()))
+
+
+D3_GAP = ((0, 0.0, 0), (1.0, 0, 0), (-1.0, 0, 0), (0, 0, 1.0), (0, 0, -1.0), (0, 0.75, 0))
+# where a let-go piece may lie, nearest first: k px straight out from the hand to its side of the body, j px along it
+D3_BESIDE_STEPS = sorted(((float(k), float(j)) for k in np.arange(0.0, 28.01, 0.5) for j in range(-10, 11)),
+                         key=lambda kj: math.hypot(*kj))
+
+
+def _d3_beside(geo, Mr, Mf, Wh, hand, part, rel, gc, ground, zone, extra=0.0):
+    """Where a let-go piece lies (v4, Kort 2026-11-06: "drop the sword on the same side he was holding it"): the
+    spot the hand let go of it, on the floor, the piece turned as little as it can from how it was held, then moved
+    out to the hand's side of the body's midline (hips to head at rest), or along the body, the nearest spot where every
+    corner is on that side and it is a clear gap (1 px) off the body and the other piece. Returns its rest matrix, rotation, long axis,
+    which end lands first, and how far it was moved out."""
+    hw = _d3_pivot(Mr, hand)
+    g_loc = (np.linalg.inv(Wh) @ np.r_[hw / 16.0, 1.0])[:3]          # the grip, in the piece's own frame
+    hips, head = _d3_pivot(Mf, "hips"), _d3_pivot(Mf, "head")
+    a = hips[[0, 2]]
+    u = (head - hips)[[0, 2]]
+    u /= max(1e-6, np.linalg.norm(u))
+    hx = hw[[0, 2]]
+    w = hx - a
+    sg = 1.0 if u[0] * w[1] - u[1] * w[0] >= 0.0 else -1.0
+    nrm = sg * np.array([-u[1], u[0]])                                  # out from the midline, the hand's way
+    Rh = Wh[:3, :3]
+    aw, zw = Rh[:, 1], Rh[:, 2]
+    yaw0 = math.atan2(aw[0], aw[2]) if math.hypot(aw[0], aw[2]) > 0.3 else math.atan2(u[0], u[1])
+    f0 = 1.0 if zw[1] >= 0.0 else -1.0
+    best = None
+    for flip in (f0, -f0):
+        for dyaw in (0, 20, -20, 40, -40, 60, -60, 90, -90, 120, -120, 150, -150, 180):
+            ay = np.array([math.sin(yaw0 + math.radians(dyaw)), 0.0, math.cos(yaw0 + math.radians(dyaw))])
+            R = np.column_stack([np.cross(ay, np.array([0.0, flip, 0.0])), ay, np.array([0.0, flip, 0.0])])
+            base = 0.06 * math.degrees(float(np.linalg.norm(_d3_log(R @ Rh.T))))
+            if best is not None and base >= best[0]:
+                continue
+            for k, j in D3_BESIDE_STEPS:
+                if best is not None and base + math.hypot(k, j) >= best[0]:
+                    break
+                t = hx + nrm * (k + extra) + u * j
+                W = np.eye(4)
+                W[:3, :3] = R
+                W[:3, 3] = np.array([t[0], 0.0, t[1]]) / 16.0 - R @ g_loc
+                W[1, 3] += (ground - gc(W)[:, 1].min()) / 16.0
+                if float(((gc(W)[:, [0, 2]] - a) @ nrm).min()) < 0.0:
+                    continue
+                G = geo.lattice({b: W @ r for b, r in rel.items()}, part)
+                if _d3_pen(G, zone[-1]) > 0.0:                          # cheap first: the body as it ends
+                    continue
+                if all(_d3_pen(G + np.array(o), z) == 0.0 for z in zone for o in D3_GAP):
+                    best = (base + math.hypot(k, j), W, R, ay, k)
+                    break
+    if best is None:
+        raise RuntimeError("no clear rest beside the %s hand" % part)
+    _, W, R, ay, k = best
+    return {"W": W, "R": R, "ay": ay, "lead": 1 if aw[1] < 0.0 else -1, "out": k + extra}
 
 
 def d3_clear(samples, geo, part, ground, upto=None):
@@ -2424,7 +2501,7 @@ D3_FORWARD = [
                 "right_foot": (60, 0, 0), "left_foot": (60, 0, 0), "cape": (10, 0, 0)}),
     (15.5, "out", {"head": (-8, 30, 0)}),
 ]
-D3_FORWARD_ARMS = {"right": (14, (-28.1, -40.3, 65.6), (-4.7, 0, 0), (-0.6, -30.7, -28.1)),
+D3_FORWARD_ARMS = {"right": (14, (-28.1, -40.3, 65.6), (-4.7, 0, 0), (-60, 15, -60)),     # blade out along his right
                    "left": (15, (-5.8, 7.8, -64.7), (-29.9, 0, 0), (35.8, -6.1, -7.3))}
 
 # Struck from its right: the blow twists the chest round, both knees give, and it crumples onto its left side,
@@ -2463,21 +2540,24 @@ def d3_keys(direction, arms=None):
 # Dropped gear: the tick it leaves the hand, where its centre comes to rest (world px x, z: +x the knight's left,
 # +z his front), the heading of its long axis (deg), face up or down, the lean it lands with and its clatter.
 _D3_SWORD = {
-    "back": {"release": 7.5, "yaw": 160, "flip": 1, "tilt": 12, "bounce": 3.0},
-    "forward": {"release": 6, "yaw": 20, "flip": 1, "tilt": 10, "bounce": 3.0},
-    "left": {"release": 9, "yaw": 80, "flip": 1, "tilt": 12, "bounce": 3.0},
-    "right": {"release": 5, "yaw": -70, "flip": -1, "tilt": 10, "bounce": 3.0},
+    "back": {"release": 13.0, "beside": True, "tilt": 12, "bounce": 3.0, "tip": 1.2, "b1": 0.6, "b2": 0.7},
+    "forward": {"release": 12.0, "beside": True, "tilt": 10, "bounce": 3.0, "tip": 1.2, "b1": 0.6, "b2": 0.7},
+    "left": {"release": 12.75, "beside": True, "tilt": 12, "bounce": 3.0, "tip": 0.9, "b1": 0.45, "b2": 0.55},
+    "right": {"release": 11.75, "beside": True, "tilt": 10, "bounce": 3.0, "tip": 1.2, "b1": 0.6, "b2": 0.7},
 }
 _D3_SHIELD = {
-    "back": {"release": 8.5, "yaw": 10, "flip": -1, "tilt": 10, "bounce": 2.5, "tip": 1.2, "b1": 0.7, "b2": 0.8},
-    "forward": {"release": 9.5, "yaw": -70, "flip": -1, "tilt": 10, "bounce": 2.5, "tip": 1.2, "b1": 0.7, "b2": 0.8},
-    "left": {"release": 5, "yaw": 70, "flip": -1, "tilt": 10, "bounce": 2.5, "tip": 1.2, "b1": 0.7, "b2": 0.8},
-    "right": {"release": 9, "yaw": 100, "flip": -1, "tilt": 10, "bounce": 2.5, "tip": 1.2, "b1": 0.7, "b2": 0.8},
+    "back": {"release": 14.0, "beside": True, "tilt": 10, "bounce": 2.5, "tip": 1.0, "b1": 0.5, "b2": 0.6},
+    "forward": {"release": 12.25, "beside": True, "tilt": 10, "bounce": 2.5, "tip": 1.0, "b1": 0.5, "b2": 0.6},
+    "left": {"release": 13.0, "beside": True, "tilt": 10, "bounce": 2.5, "tip": 1.0, "b1": 0.5, "b2": 0.6},
+    "right": {"release": 13.5, "beside": True, "tilt": 10, "bounce": 2.5, "tip": 0.8, "b1": 0.45, "b2": 0.5},
 }
 D3_DROPS = {}
 for _d in ("back", "forward", "left", "right"):
     D3_DROPS[(_d, "_drop1")] = {"sword": _D3_SWORD[_d]}
     D3_DROPS[(_d, "_drop2")] = {"sword": _D3_SWORD[_d], "shield": _D3_SHIELD[_d]}
+
+
+D3_REPORT = {}
 
 
 def d3_death_clips(start):
@@ -2495,7 +2575,7 @@ def d3_death_clips(start):
                 d3_clear(sm, geo, part, ground, up)
                 d3_clear(sm, geo, part, ground, up)
             for part, spec in drops.items():
-                d3_drop(sm, geo, part, spec, ground)
+                D3_REPORT[(d + suf, part)] = d3_drop(sm, geo, part, spec, ground)
             c = bake(sm, DEATH_TICKS, loop=False)
             c["loop"] = "hold_on_last_frame"
             out["death_" + d + suf] = c
