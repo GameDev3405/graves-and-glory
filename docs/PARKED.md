@@ -6,7 +6,7 @@ add to it, never remove from it. Date and source on each line.
 ## Gameplay
 - Mounts for commanders (2026-10-17, Roblox comparison; waits for formation code to settle).
 - Hit-stop on commander hits (2026-10-17 night session).
-- Capture-the-banner mode (night session; now planned as "Banner" in the roadmap).
+- Capture-the-banner mode (night session; now planned as "Convoy" in the roadmap).
 - Flank/rear/morale (night session; now planned in Phase 1).
 - Daily seeds (night session).
 - Ping wheel (night session).
@@ -65,7 +65,7 @@ Kort pictures up to a thousand concurrent players a year out and wants the serve
 - campaignBattles.map is not checked by preflight; a bad index only stops the battle in game, with a notice to the player.
 - Three primary buttons on the camp home (THE LONG MARCH / BATTLE 1, OPEN RECRUITMENT, PARTY WITH FRIENDS); whether the other two step down while battle 1 is unwon is left for the UI pass.
 - MVP exact tie on equal non-zero kills and seconds crowns each viewer's own first row (2026-10-18, Phase 1 Task 7); a viewer-independent tiebreak (owner id) if it is ever noticed.
-- UNPARKED 2026-10-31 by Kort: Banner mode: supply-wagon escort variant (2026-10-18, Phase 4 spec question 1). Banner variant for 4C.2, used by campaign battle 4, needs its own spec.
+- UNPARKED 2026-10-31 by Kort: Convoy mode (renamed from Banner, Kort 2026-11-07): supply-wagon escort variant (2026-10-18, Phase 4 spec question 1). Convoy variant for 4C.2, used by campaign battle 4, needs its own spec.
 
 ## Media shoot: stills, trailer, gameplay footage (2026-10-18, parked by Kort)
 

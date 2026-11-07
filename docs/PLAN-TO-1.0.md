@@ -14,7 +14,7 @@ Policy still applies: `docs/WORKFLOW.md`. Gameplay, save, protocol and dependenc
 | Deadline | None public. Dependency-ordered, quality-gated; a soft internal target only, and no public date until a release candidate is clean (Kort 2026-11-07). Estimates are planning ranges, not promises |
 | Troop art | All thirty troops with complete tier I to III art, faces, portraits, weapons and PBR maps |
 | Story | Six campaign battles with briefing cards, bonus objectives and a Pact. No storybook scenes, named cast, voice or staged sets in 1.0 |
-| Modes | Domination, Siege, Survival and Banner by 1.0. Siege is the first new mode and the slice mode |
+| Modes | Domination, Siege, Survival and Convoy by 1.0. Siege is the first new mode and the slice mode |
 | Maps | Two-map slice first, all five by 1.0. The builder server is the canonical editable world |
 | Map authoring | AI builds the lobby and maps; Kort and one friend can join the persistent builder server and edit anything, any time |
 | Platform | Minecraft 1.20.1, Fabric, Java 17. No loader change |
@@ -27,7 +27,7 @@ Policy still applies: `docs/WORKFLOW.md`. Gameplay, save, protocol and dependenc
 
 - Five Houses, thirty troops, four rarities, evolve lines, rank stars, House traits, six commander classes with actives.
 - Five authored battle maps plus the rebuilt camp lobby, all adopted from the builder worlds.
-- Four modes: Domination, Siege, Survival, Banner.
+- Four modes: Domination, Siege, Survival, Convoy.
 - Campaign chapter one: six battles, one per House plus a finale, using all four modes and all five maps, with briefings and one bonus objective per battle.
 - The War Table, recruit, Armoury, banner, contracts, chapter and friends pages, restyled and visually accepted.
 - Six-player 3v3 on a dedicated server: lobby, match, rewards, return, reconnect, restart and persistence.
@@ -43,7 +43,14 @@ Moved from 0.2 into 1.0. Work is Phase 7.
 - **Hosting.** Kort rents Kinetic Hosting (12 GB plan, about $16 a month, 4 splits; figures from kinetichosting.com, to confirm at checkout). Bought only after a local prototype (proxy, lobby and one battle server) runs on Kort's PC.
 - **Architecture.** A Velocity proxy, one lobby server and N battle servers. Each battle server runs today's one-battle-per-server code (`Campaign.java`: one battle per server); there is no multi-arena refactor. Fabric servers behind Velocity need a forwarding mod (for example FabricProxy-Lite); to verify on 1.20.1 in the prototype.
 - **Hub.** The Old Hold is the network hub: spawn, queues, parties and the store. The camp and War Table space live inside it.
-- **Matchmaking.** Per-mode unranked queues (Domination, Siege, Survival, Banner) for solo players and for parties of up to three, who queue together or challenge each other. Bots fill empty seats after 60 s. Ranked play is post-1.0.
+- **Matchmaking.** Designed with Kort 2026-11-07 (`DECISIONS.md`, "Matchmaking and parties"). Ranked play is post-1.0.
+  - Queues: per-mode and unranked, for Domination, Siege, Convoy (Frostmarch escort) and Survival. PvP queues offer 1v1, 2v2, 3v3 and 4v4. Survival is co-op: queue groups of 2, 3 or 4; solo Survival starts from the hub without queueing, with allied bots. The full 6-battle campaign is solo or party only, never in the public queue.
+  - Entry: a Play menu from a hotbar item (mode, then size), a `/queue` command, and walk-up war banners, one per mode, in the Old Hold.
+  - Matching: by banner power band, strict at first and wider with waiting (suggested 20 s strict, 40 s wider, then anyone). Bots fill empty seats after 60 s, at a difficulty that matches the match's power band. Queued battles pay full rewards even when most seats are bots.
+  - Match found: a 10 s countdown, then an automatic move. Cancelling in the countdown counts as a leave.
+  - Parties: up to 4 (`SocialHub.PARTY_LIMIT`). Commands `/party invite`, `accept`, `leave`, `kick` and a Party menu. Only the leader queues. Party power is the average of the members' banner power. A "Fill with strangers" toggle, default on; off, empty seats go to bots. A party may split across sides: each member picks Dawn or Dusk in the party menu, the leader's Queue button works only once each side fits the chosen size, and split friends fight each other. A party larger than the total seats of a size cannot queue that size (orchestrator's call, not yet Kort-approved). Party-versus-party private challenges (any mode, map and size) stay, through the private room and War Table lobby.
+  - Leavers: a stand-in bot takes the side; the seat stays reserved until the battle ends and the leaver may rejoin at any time (this replaces the `MatchRules.HOLD_SECONDS` = 120 s release on the network). The queue never sends new players into a running battle. Repeat leavers get a short queue cooldown (about 5 min after 3 leaves in an hour).
+  - After a battle: results, then back to the hub with the party kept. The leader gets a "Queue again" button for the same mode and size.
 - **Progress.** One shared SQL database (MySQL) for the official network, read and written by all servers. The solo campaign keeps separate local progress and the two never mix. The self-host kit keeps file-based profiles.
 - **Version check.** A server refuses a client with a mismatched mod version, with a clear message and the download link. Every player must install the mod (`fabric.mod.json` environment `"*"`).
 - **Moderation.** Ban, kick, mute, a chat filter, staff permissions (LuckPerms) and a report command that logs to Discord. Staff: Kort as owner plus one or two trusted friends.
@@ -69,7 +76,7 @@ Moved from 0.2 into 1.0. Work is Phase 7.
 | Troop art | On `main`, 6 Gilded troops have own models; 4 have full tier I to III skins, mage and Lord Marshal have tier I only; the other 24 have no own model. `work/troop-models-house` adds three more at stage 1 (self-scored 8/10, not gate-accepted), not merged | 21 troops still without their own model after the branch merges; every troop at tier II and III, with faces, portraits, PBR maps, weapons and veteran trims |
 | Animation | 18 code clips per rig; pass 1 on six Order troops is WIP; 1 to 3.7 px clipping remains; no clip reached 9; bow revert unrendered | Pass 1 sign-off with recorded exceptions, pass 2 signature attacks and charge, formation march |
 | Maps | Five generated maps plus generated camp; Phase 3 built world merged but parked at its screenshot gate; builder server runs six saved worlds | Adoption pipeline, AI build tool, camp redesign, final map detail, all five adopted |
-| Modes | Domination only | Mode frame, Siege, Survival, Banner, mode bots and gates |
+| Modes | Domination only | Mode frame, Siege, Survival, Convoy, mode bots and gates |
 | Campaign | One battle (`march-1`), seated as 1v1 practice; `size`, `difficulty` and `map` are not fully validated | Six battles, real sizes, bonus objectives, order lock, briefings, Pact |
 | Multiplayer | Lobby, pads, parties, host hand-over, six-player rules (8 max, 4 per team) in code | Real 3v3 baseline, reconnect and restart proof |
 | Balance | Gilded dominant; Graveborn 17.5 percent vs Gilded; Wildmoot and Tidecallers near zero; Dawn seat bias 65 to 85 percent | Structural fixes, then a full round robin on adopted maps and modes |
@@ -85,7 +92,7 @@ Two things decide the 1.0 date: **art throughput** and **map adoption**. Everyth
 ```
 Art pipeline + 21 new models, 5 tier upgrades ........ 5 to 7 months
 Map Forge + camp + five map adoptions ................ 3 to 5 months
-Mode frame -> Siege -> Survival -> Banner ............ 3 to 4 months
+Mode frame -> Siege -> Survival -> Convoy ............ 3 to 4 months
 Campaign data + six battles .......................... 6 to 8 weeks
 Six-player baseline -> slice -> release .............. 3 sessions across the plan
 Balance and hardening ................................ 2 to 3 months
@@ -236,7 +243,7 @@ Goal: all five maps, all four modes, six campaign battles, all thirty troops at 
 | ID | Task | Effort | Owner | Evidence |
 |---|---|---|---|---|
 | 4C.1 | Survival: waves, shrine, director squad, wave economy, solo and co-op | XL | Agent | `p4-survival-*` |
-| 4C.2 | Banner: stands, carriers, drops, roles, escort decision if taken | XL | Agent | `p4-banner-*` |
+| 4C.2 | Convoy (Frostmarch escort): supply wagon, road path, escort and attack roles, drops | XL | Agent | `p4-convoy-*` |
 | 4C.3 | Skirmish and Practice picker, mode and map selection, bot fill per mode | M | Agent | UI suites |
 | 4C.4 | Mode bot runs and mode gate; mode teardown, crash and map switch | L | Agent | `mode_gate.py` |
 | 4C.5 | Mode HUD, feed, briefing and report lines for every mode | M | Agent | Visual gate |
@@ -245,7 +252,7 @@ Goal: all five maps, all four modes, six campaign battles, all thirty troops at 
 
 | ID | Task | Effort | Owner | Evidence |
 |---|---|---|---|---|
-| 4D.1 | Six campaign battles: Training Field (Rivergate, Domination), Iron Gate (Ironhold, Siege), Long Night (Hollowwood, Survival), Frozen Standard (Frostmarch, Banner), Five Crossings (Kingsfield, Domination), Last Watch (Ironhold, mixed finale) | L | Agent + Kort | `campaignBattles` rows |
+| 4D.1 | Six campaign battles: Training Field (Rivergate, Domination), Iron Gate (Ironhold, Siege), Long Night (Hollowwood, Survival), Frozen Standard (Frostmarch, Convoy), Five Crossings (Kingsfield, Domination), Last Watch (Ironhold, mixed finale) | L | Agent + Kort | `campaignBattles` rows |
 | 4D.2 | Briefing cards, reasons, lessons and one bonus objective per battle | M | Agent | Copy, UI |
 | 4D.3 | Order lock, chapter completion, Pact grant, bonus shards and Renown | M | Agent | Campaign tests |
 | 4D.4 | Campaign playthrough, rewards and persistence; no practice seating, no 1v1 default | L | Agent + Kort | Full chapter run |
@@ -310,7 +317,7 @@ Goal: an official network where strangers queue for unranked matches, with progr
 |---|---|---|---|---|
 | 7.1 | Local prototype: Velocity proxy, lobby server and one battle server on Kort's PC; test the Fabric forwarding mod (FabricProxy-Lite or equivalent) on 1.20.1; a client joins the lobby, is sent to the battle server and returns | L | Agent | 1.4 |
 | 7.2 | Dedicated-server measurement: MSPT, heap and bandwidth of one battle server and of the lobby with players on a real dedicated server (the EULA is Kort's call, Q79); decide battle servers per 12 GB plan and the capacity cap | M | Agent + Kort | 7.1 |
-| 7.3 | Matchmaking: per-mode unranked queues in the Old Hold for solo players and parties up to three; party queue and challenge; allocate a free battle server; 60 s bot fill; return to the hub after the match | L | Agent | 7.1, 3.4 |
+| 7.3 | Matchmaking and parties (design in section 0.1 and `DECISIONS.md` 2026-11-07): per-mode unranked size queues (PvP 1v1 to 4v4, Survival groups of 2 to 4), Play menu, `/queue` and war banners; banner-power bands and 60 s bot fill; parties up to 4 with `/party` commands, a Party menu and Dawn/Dusk side picks; 10 s match-found countdown; allocate a free battle server; stand-in bot and reserved seat for leavers, leave cooldown; party kept on return to the hub with a Queue again button; private party challenges | L | Agent | 7.1, 3.4 |
 | 7.4 | Shared database: MySQL schema and access layer for the official network profiles, rewards and cosmetics, read and written by every server; migrations and backups; the solo campaign stays on separate local progress and never mixes; the self-host kit keeps file profiles | L | Agent | 7.1 |
 | 7.5 | Old Hold as hub: spawn, queue pads, party and store areas; the camp and War Table space inside it; version check with a clear message and the download link | L | Agent + Kort | 7.3, 2A.6 |
 | 7.6 | Moderation: ban, kick, mute, chat filter, LuckPerms staff roles (Kort plus one or two friends), a report command logging to Discord, an audit log | M | Agent + Kort | 7.1 |
@@ -322,7 +329,7 @@ Acceptance checks:
 
 - 7.1: on Kort's PC, a real client logs in through the proxy, appears in the lobby, is moved to the battle server, plays a bot match to the end and returns to the lobby; the forwarding mod works or an alternative is recorded; no multi-arena change was needed.
 - 7.2: a report with dedicated-server MSPT p95 under 50 ms at six players, heap per battle server, bandwidth per player and the measured number of battle servers one 12 GB plan holds; the 4-split plan is confirmed or the plan size changes. This gate precedes any purchase.
-- 7.3: three real clients queue solo and as a party of up to three; a challenge between two parties starts a match; an empty seat fills with a bot after 60 s; two battles run at once on two servers; a crashed battle server returns its players to the hub.
+- 7.3: real clients queue solo and as a party of up to 4 in each of the four modes at the offered sizes (1v1 to 4v4; Survival 2 to 4); a party split across Dawn and Dusk queues only when each side fits the size and its members fight each other; a party larger than a size's total seats cannot queue it; a match found shows the 10 s countdown and moves players automatically, and cancelling counts as a leave; an empty seat fills with a bot after 60 s at the match's power band difficulty and the match pays full rewards; with "Fill with strangers" off, empty seats go to bots; a leaver is replaced by a stand-in bot, can rejoin after more than 120 s while the battle runs, and the queue never sends a new player into that battle; 3 leaves in an hour starts a queue cooldown of about 5 min; after the battle the party returns to the hub intact and the leader's Queue again repeats the mode and size; a challenge between two parties starts a private match; two battles run at once on two servers; a crashed battle server returns its players to the hub.
 - 7.4: two servers read and write the same profile; a restart and a reconnect keep it; a restore from backup is tested; the local solo campaign file is untouched by network play and the reverse.
 - 7.5: a client with a mismatched mod version is refused with the message and the download link; every existing camp station works in the hub.
 - 7.6: each moderation command works from a staff account and is refused for a player; a report reaches Discord with the reporter, target and time; a muted player cannot chat on any server.
@@ -395,7 +402,7 @@ The Phase 4 plan is 28 tasks. 1.0 needs tasks 1 to 12 and 28. Tasks 13 to 27 are
 | Mode feed and briefing lines | 3 |
 | Siege world pieces and mode | 4, 5 |
 | Survival | 6 |
-| Banner | 7 |
+| Convoy | 7 |
 | Skirmish and Practice picker | 8 |
 | Mode bots and gate | 9 |
 | Campaign schema, order, bonuses, real sizes | 10, 11 |
@@ -409,11 +416,11 @@ Campaign battle table for 1.0, using all five maps and all four modes:
 | 1 | The Training Field | Rivergate | Domination | Gilded Order |
 | 2 | The Iron Gate | Ironhold | Siege | Ironclad |
 | 3 | The Long Night | Hollowwood | Survival | Graveborn |
-| 4 | The Frozen Standard | Frostmarch | Banner | Wildmoot |
+| 4 | The Frozen Standard | Frostmarch | Convoy | Wildmoot |
 | 5 | The Five Crossings | Kingsfield | Domination | Tidecallers |
 | 6 | The Last Watch | Ironhold | Siege, mixed | All Houses |
 
-Each battle has a briefing card, one lesson line per new system, one bonus objective worth shards, and a fixed enemy banner. The campaign is solo in 1.0; co-op campaign is post-1.0.
+Each battle has a briefing card, one lesson line per new system, one bonus objective worth shards, and a fixed enemy banner. The campaign is solo in 1.0; co-op campaign is post-1.0. It is only ever played solo or as a party, never from the public queue (Kort 2026-11-07).
 
 ## 7. Approved decisions
 
