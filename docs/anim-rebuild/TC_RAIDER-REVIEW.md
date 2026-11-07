@@ -33,3 +33,23 @@ First shieldless one-handed sword unit, built alongside the revenant. It shares 
   - run lean and left-arm pump;
   - ward blade guard line and stiff ward arm;
   - no skid step on hits.
+
+# Tc_raider: v2 style + v4 deaths (2026-11-07)
+
+The tc_raider now builds in the knight's v2 style, rebuilt for one hand and an empty off hand, and has the 12 v4 deaths: `death_{back,forward,left,right}`, each plus `_drop1` and `_drop2` (both drop the cutlass). Deaths come from the shared module `art/anim/common/deaths.py`.
+
+- **Style:** pelvis-driven drive, graded light/medium/heavy hits, doubled idle weight shift, distinct stances. The off arm is a counterweight: it flares out on the overhead wind-up, folds across the chest on the thrust and comes up on hits. Attack clip lengths and impact keyframes are unchanged (server sync).
+- **Per-troop tuning:** the overhead and low cut use tc_raider-only arm and blade values (`CU` in the builder). The cutlass otherwise clipped the head and leg and reached 1.4-1.8 px below the floor.
+- **Byte-identical:** knight, sentinel, gl_marshal and ic_hearthguard build identically with and without these changes.
+- **Review (Sonnet, high effort): PASS.** It covered gait, stances, 3 attacks, 7 hit sheets and all 12 deaths from contact sheets. No blockers. The reviewer thought the blade in `death_right` might dip below the floor. The probe puts it at -0.06 px, so it does not.
+- **Harness (geo-knight, `GRAVES_GEO_CHECK_TROOP=tc_raider`):** 22 p1 lines and 0 `=false`. The log shows 3 "Can't keep up" lines and no check failed.
+
+## Open minors (v2 + v4, polish, not blocking)
+
+- **Idle and walk:** the idle weight cycle and the off-arm counterswing are faint at sheet scale.
+- **Stances:** Hold brace and Shield wall are almost the same pose.
+- **Attacks:** the thrust, overhead and low cut share one recovery pose.
+- **Overhead:** the tip passes close to the lead leg at t=18.
+- **death_forward / death_right (kept weapon):** the cutlass is 0.10 and 0.06 px into the floor at its lowest.
+- **death_forward drop1/drop2:** the probe flags POP? on the weapon throw (138 deg/tick at t12.5), as the knight does on its throws.
+- **Not seen in game:** only the harness and the offline reel were run.
