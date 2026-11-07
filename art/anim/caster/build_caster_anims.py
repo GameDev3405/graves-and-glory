@@ -14,7 +14,9 @@ run along local -z (a = -z, b = +y). The hexer's grave lantern hangs below a sho
 
 The cast (attack_cast, caster_cast impactTicks 10): from the guard the caster gathers, the focus raised over the head and the
 load held; then the body drives forward and the focus is thrust at the foe, the spell leaving on the server's impact tick; an
-overshoot, a recovery and the settle back into guard.
+overshoot, a recovery and the settle back into guard. The hexer's cast is the lantern thrust instead: hauled in to the chest,
+driven out at the foe and held while the light gathers, then shoved, the blight leaving the lantern on the impact tick
+(cast_tip/hexer.json is the lantern glass).
 """
 import json, math, os, sys
 from pathlib import Path
@@ -42,10 +44,12 @@ CAST_TROOPS = {
              "soft": ("shoulder_cape", "vestment_skirt", "cord"),   # the robe panels are stiff: a fallen body rests on them
              "body": ("cowl", "face_v0", "mantle")},   # the head's own bone is empty: the cowl and face hold its boxes
     "hexer": {"W": "lantern", "focus": "lantern", "a": (0, 0, -1), "b": (0, 1, 0),
-              "gear": {"hood_tail": 0.4, "vestment_front": 0.3, "vestment_back": 0.3, "vestment_skirt": 0.35, "cord": 0.6},
-              "soft": ("hood_tail", "vestment_front", "vestment_back", "vestment_skirt", "cord"),   # the burial robe is stiff
+              # the vestment halves ride the robe's front and back panels (troop_rig.HANG) and flutter a little on them
+              "gear": {"hood_tail": 0.4, "vestment_front": 0.2, "vestment_back": 0.2, "vestment_skirt": 0.35, "cord": 0.6},
+              "soft": ("hood_tail", "vestment_front", "vestment_back", "vestment_skirt", "cord"),   # the robe panels are stiff
               # the lantern body hangs below the pole tip, off the axis: its centre, top and bottom are probed too
-              "probe": ((-5.0, 10.0, -5.5), (-5.0, 12.5, -5.5), (-5.0, 7.5, -5.5), (-6.5, 10.0, -5.5), (-3.5, 10.0, -5.5))},
+              "probe": ((-5.0, 10.0, -5.5), (-5.0, 12.5, -5.5), (-5.0, 7.5, -5.5), (-6.5, 10.0, -5.5), (-3.5, 10.0, -5.5)),
+              "tip": (-5.0, 10.0, -5.5)},   # the blight leaves the lantern's glass, not the pole's end
     # the mist-caller's driftwood rod runs along local -z from the fist with the conch at its tip (each tier its own bone)
     "tc_mist": {"W": "rod", "focus": "rod", "a": (0, 0, -1), "b": (0, 1, 0),
                 "gear": {"hood_peak": 0.3, "right_kelp_hood": 0.35, "left_kelp_hood": 0.35, "mist_back": 0.6, "sash_tail": 0.3,
@@ -57,7 +61,7 @@ CAST_TROOPS = {
                 "gear": {"sash_tail": 0.3}, "soft": ("sash_tail",)},
 }
 ST = CAST_TROOPS[TROOP]
-ROBED = TROOP in ("wm_seer", "tc_mist", "mage")   # caster v2: the hanging robe (troop_rig.ROBE), upright footing, the gliding gait
+ROBED = TROOP in ("wm_seer", "tc_mist", "mage", "hexer")   # caster v2: the hanging robe (troop_rig.ROBE), upright footing, the gliding gait
 K.SOFT = ST["soft"]
 LOOKAHEAD = True
 DEATH_STEP = 0.25
@@ -388,46 +392,64 @@ def mage_set():
 
 
 def hexer_set():
-    """The gravecaller. The guard: the lantern held out before the body on its short pole, the light hanging at the belly, the
-    free hand open low. The cast is an underhand swing (a censer's, not the mage's overhead gather): the body coils back and
-    sinks over the rear foot as the lantern is swept down and back past the right hip, the free hand reaching out to mark the
-    foe; the load is held low; the hips drive forward over the lead foot and the lantern swings up through the front and is
-    thrust at the foe at chest height, the curse leaving on the impact tick, the off hand flung after it; overshoot, recover,
-    settle."""
-    g = KEY((6, 10, 0), (6, 0, 0), (1.5, -4.6, 6.2), aim(14, -6), u=UP, lp=(-45, 0, -12, -40))
-    gather = KEY((-2, 22, 0), (6, 0, 0), (-1.2, -7.0, 3.2), aim(-18, -18), u=UP, lp=(-70, 0, -8, -30))
-    # the load: the lantern swept low and back past the right hip, the body coiled round over the rear foot, the off hand
-    # stretched out at the foe
-    low = KEY((-6, 26, 0), (8, 0, 0), (-2.4, -6.6, -2.0), aim(-32, -26), u=UP, lp=(-88, 0, -14, -10))
-    # the coil keeps winding through the held load (sinking and turning further), so it builds rather than parks
-    held = nudge(low, torso=(-6, 12, 0), head=(2, 0, 0), R=(-0.6, -0.1, -1.0), d=aim(-42, -32))
-    # the swing comes through wide of the right hip, not across the body
-    drive = KEY((10, -2, 0), (6, 0, 0), (-2.8, -5.8, 4.2), aim(4, -14), u=UP, lp=(-70, 0, -4, -30))
-    # the release: the hips and chest drive through, the arm swung up and out, the lantern thrust at the foe
-    release = KEY((29, -18, 0), (2, 0, 0), (0.2, -1.0, 7.7), aim(24, 6), u=UP, lp=(-85, 0, 10, -8))
-    over = KEY((32, -22, -2), (3, 0, 0), (0.6, -0.2, 7.6), aim(30, 9), u=UP, lp=(-78, 0, 14, -10))
-    recover = KEY((12, 0, 0), (6, 0, 0), (0.4, -3.6, 6.8), aim(20, -2), u=UP, lp=(-55, 0, 0, -35))
-    near = nudge(g, torso=(3, -3, 0), R=(0.0, 0.3, 0.1), d=aim(17, -5))
-    settle = nudge(g, R=(0.0, 0.15, 0.05), d=aim(15, -6))
-    attack = [(0, g), (2.5, gather), (4.5, low), (8.4, held), (9.3, drive), (IMPACT, release), (11.8, over), (16.0, recover),
-              (22.0, near), (28.0, settle), (ATTACK_TICKS, g)]
+    """The Gravecaller, caster style v2 (docs/anim-rebuild/CASTER-V2-DESIGN.md: the lantern thrust, the point and shoot made
+    heavy and held). The guard: upright, the grave lantern held out before the belly on its short pole, hanging, the free hand
+    relaxed at the hip. The thrust: the hips load back first, then the lantern is hauled in to the chest, the shoulders
+    turning the right side away; the arm drives it out at the foe at chest height, slower than a wand, and holds it there at
+    arm's length while the light gathers, a heavy tremor in the arm; the hips drive forward over the lead foot, the lantern
+    heaves up a touch and is shoved at the foe, the blight leaving the lantern on the release tick; the lantern kicks up on
+    its pole, the body comes back and settles into guard. The off hand never joins the cast: it hangs and swings back as the
+    right side drives."""
+    lp_rest = (-12, 0, -12, -40)          # the off hand relaxed at the hip, by the cord
+    g = KEY((3, 8, 0), GAZE, (1.2, -5.0, 6.0), aim(12, -6), u=UP, rp=(-45, 0, 10, -25), lp=lp_rest)
+    # the load: the weight goes back onto the rear foot before the arm moves (the hips lead, see legs)
+    load = nudge(g, torso=(-2, 4, 0), head=(-1, 0, 0), R=(0.0, 0.3, -0.5), d=aim(16, -8))
+    # the haul: the lantern drawn in to the chest, the pole tipped up, the right side turned away
+    haul = KEY((-4, 18, 0), (2, 0, 0), (1.8, -2.4, 5.9), aim(48, 8), u=UP, rp=(-80, 0, 25, -100), lp=(-18, 0, -12, -44))
+    coil = nudge(haul, torso=(-1, 3, 0), R=(-0.1, 0.2, -0.2), d=aim(52, 10))
+    # the push: the arm drives the lantern out at the foe, heavy, the shoulder coming round
+    push = KEY((6, -10, 0), (3, 0, 0), (0.2, 0.2, 7.5), aim(14, 2), u=UP, rp=(-88, 0, 5, -15), lp=(-4, 0, -12, -38))
+    # held at arm's length while the light gathers: the arm locked, a heavy tremor, the lantern swaying on its pole
+    held = KEY((7, -12, 0), (3, 0, 0), (0.0, 0.4, 7.9), aim(9, 0), u=UP, rp=(-90, 0, 0, -5), lp=(-2, 0, -12, -36))
+    held2 = nudge(held, torso=(0.5, -0.5, 0), R=(0.05, -0.12, -0.05), d=aim(7.5, 0.8))
+    held3 = nudge(held, torso=(0.8, -1, 0), R=(-0.05, 0.1, -0.08), d=aim(10.5, -0.6))
+    # the heave: the hips have gone forward; the shoulder holds back a beat and the lantern lifts a touch on its pole
+    heave = nudge(held, torso=(-1, 2, 0), R=(0.0, 0.35, -0.5), d=aim(20, 0))
+    # the release: the shoulder follows the hips through, the lantern is shoved at the foe and the blight leaves it
+    release = KEY((14, -26, 0), (5, 0, 0), (0.0, 0.9, 7.9), aim(2, 0), u=UP, rp=(-90, 0, 0, -3), lp=(8, 0, -14, -30))
+    # the kick: the lantern bounces up on its pole and the arm gives back through the shoulder
+    kick = KEY((10, -20, 0), (4, 0, 0), (0.0, 2.2, 6.9), aim(36, 2), u=UP, rp=(-95, 0, 0, -20), lp=(5, 0, -12, -32))
+    back = KEY((5, -8, 0), (4, 0, 0), (0.6, -1.6, 6.8), aim(10, -2), u=UP, rp=(-75, 0, 5, -20), lp=(-4, 0, -12, -38))
+    recover = KEY((3, 4, 0), GAZE, (1.0, -4.4, 6.1), aim(14, -5), u=UP, rp=(-52, 0, 10, -24), lp=lp_rest)
+    near = nudge(g, torso=(1, -2, 0), R=(0.0, 0.2, 0.0), d=aim(13, -6))
+    settle = nudge(g, R=(0.0, 0.05, 0.0))
+    attack = [(0, g), (1.5, load), (3.0, haul), (4.6, coil), (6.4, push), (7.2, held), (8.0, held2), (8.8, held3),
+              (9.4, heave), (IMPACT, release), (11.6, kick), (14.0, back), (17.0, recover), (22.0, near), (29.0, settle),
+              (ATTACK_TICKS, g)]
     R0, R1 = READY_HIPS
-    legs = {"hips": [(0, R0, R1), (4.0, (-3.0, 32.0, 0.0), (0.0, -1.9, -0.8)), (8.4, (-5.0, 38.0, 0.0), (0.0, -2.5, -1.15)),
-                     (IMPACT, (11.0, 2.0, 0.0), (0.0, -3.4, 2.0)), (11.8, (12.0, -3.0, -2.0), (0.0, -3.7, 2.2)),
-                     (16.0, (5.0, 10.0, 0.0), (0.0, -2.4, 1.0)), (24.0, (1.0, 18.0, 0.0), (0.0, -1.5, 0.3)),
-                     (30.0, R0, R1), (ATTACK_TICKS, R0, R1)],
-            "steps": [("left", 6.8, 9.8, (3.7, 2.0, 5.0), 18.0), ("right", 10.4, 14.0, (-3.0, 2.0, 0.0), -4.0, 0.6),
-                      ("left", 20.0, 26.0, (3.4, 2.0, 2.4), 14.0), ("right", 24.0, 30.0, (-3.2, 2.0, -2.2), -6.0)]}
+    # the Knight's weight shift: the hips load back and turn the right side away before the arm moves, and drive forward,
+    # the right side coming round over the lead foot, before the shoulder does
+    legs = {"hips": [(0, R0, R1), (1.5, (-2.0, 22.0, 0.0), (0.0, -1.0, -0.4)), (4.6, (-3.0, 24.0, 0.0), (0.0, -1.1, -0.5)),
+                     (6.4, (0.0, 14.0, 0.0), (0.0, -1.0, -0.1)), (8.6, (0.0, 13.0, 0.0), (0.0, -1.0, -0.1)),
+                     (9.4, (6.0, 2.0, 0.0), (0.0, -1.3, 0.8)), (IMPACT, (8.0, -2.0, 0.0), (0.0, -1.5, 1.2)),
+                     (11.8, (8.0, -4.0, 0.0), (0.0, -1.6, 1.3)), (16.0, (4.0, 6.0, 0.0), (0.0, -1.3, 0.7)),
+                     (24.0, (1.0, 12.0, 0.0), (0.0, -1.0, 0.3)), (30.0, R0, R1), (ATTACK_TICKS, R0, R1)],
+            # short glides under the robe: the lead foot slides forward as the hips drive, the rear foot drags after
+            "steps": [("left", 8.2, 10.0, (2.9, 2.0, 2.6), 12.0, 0.3), ("right", 10.2, 13.0, (-2.8, 2.0, 0.2), -4.0, 0.3),
+                      ("left", 20.0, 25.0, (2.9, 2.0, 1.1), 10.0, 0.3), ("right", 23.0, 28.0, (-2.8, 2.0, -1.1), -6.0, 0.3)]}
     stances = {
         "ready": g,
-        # brace (Hold position): a deep crouch, the lantern held low and close before the lead knee, shielded, the off hand
-        # low on the knee
-        "brace": KEY((26, 8, 0), (10, 0, 0), (0.0, -7.4, 3.4), aim(-16, -4), u=UP, lp=(-40, 0, -10, -60)),
-        # wall (Hold the line): standing tall, the lantern raised high at arm's length as a warding light, the off hand
-        # raised flat beside it
-        "wall": KEY((0, 6, 0), (-6, 0, 0), (0.4, 4.2, 6.5), aim(38, 6), u=UP, lp=(-120, 0, -12, -10)),
-        # ward (fall back): the lantern pulled in to the chest, the pole up across the body, the off hand up to fend
-        "ward": KEY((2, 8, 0), (2, 0, 0), (1.4, -3.8, 5.8), unit((0.45, 0.7, 0.55)), u=UP, lp=(-70, 0, -30, -70)),
+        # brace (Hold position): upright, both arms up, the lantern lifted high over the head on its pole as a warding light,
+        # the off hand raised flat beside it; no crouch
+        "brace": KEY((-2, 4, 0), (2, 0, 0), (1.0, 7.6, 2.0), aim(25, 35), u=UP, rp=(-170, 0, 10, -30),
+                     lp=(-165, 0, -20, -10)),
+        # wall (Hold the line): leaning in, the lantern held out at the foe at arm's length, high, the off hand pushed
+        # forward open below it
+        "wall": KEY((6, 2, 0), (0, 0, 0), (0.5, 3.0, 7.2), aim(30, 0), u=UP, rp=(-120, 0, 5, -10), lp=(-95, 0, -20, -10)),
+        # ward (fall back): shrinking away, the right side turned back, the lantern hugged in at the chest on the left, the
+        # off hand up beside the face to fend
+        "ward": KEY((4, 20, 0), (0, 0, 0), (3.0, -3.0, 4.0), unit((0.6, 0.35, 0.5)), u=UP, rp=(-60, 0, 30, -70),
+                    lp=(-70, 0, -30, -70)),
     }
     carry = {"walk": 12.0, "run": 2.0, "u": UP}
     return g, attack, legs, stances, carry
@@ -835,7 +857,7 @@ def body_corners_no_weapon(pose, model=K.HEAVY):
 K.body_corners = body_corners_no_weapon
 
 # ------------------------------------------------------------------------------------------------
-# Caster v2 hanging robe (wm_seer, tc_mist; troop_rig.ROBE): four skirt panels hung from the hips, the legs' own boxes empty.
+# Caster v2 hanging robe (wm_seer, tc_mist, mage, hexer; troop_rig.ROBE): four skirt panels hung from the hips, the legs' own boxes empty.
 # Every clip that moves the legs also keys the panels: each panel hangs plumb (or follows its thigh a little) and is
 # swung out by the least angle that keeps the leg line behind its inner face and the hoof tops behind its outer face,
 # with the hem off the floor. In a death the robe folds with the body (it follows the legs, no gravity or floor).
@@ -855,8 +877,21 @@ if TROOP in ("tc_mist", "mage"):   # the bell robe steps out a px a tier (troop_
               "skirt_right": (0, 1.0, -4.0, -5.5, 2, (-3.0, 3.0), ("right",)),
               "skirt_left": (0, -1.0, 4.0, 5.5, 2, (-3.0, 3.0), ("left",))}
     HEM_Y, FEET = 1.5, "_foot"
+if TROOP == "hexer":   # the gravecaller's burial robe: the same bell a px wider and deeper (tiers 10/11/12 wide, 6/7/8 deep)
+    PANELS = {"skirt_front": (2, 1.0, -2.5, -4.0, 0, (-5.5, 5.5), ("right", "left")),
+              "skirt_back": (2, -1.0, 2.5, 4.0, 0, (-5.5, 5.5), ("right", "left")),
+              "skirt_right": (0, 1.0, -4.5, -6.0, 2, (-3.5, 3.5), ("right",)),
+              "skirt_left": (0, -1.0, 4.5, 6.0, 2, (-3.5, 3.5), ("left",))}
+    HEM_Y, FEET = 1.5, "_foot"
 LEG_R = 0.75         # the leg line stays this far behind a panel's inner face
+SIDE_PITCH = 0.8     # how much of its leg's stride a side panel's hem follows
+SIDE_FOLLOW = 0.5    # how much of its thigh's splay a side panel follows (front and back: 0.5)
+SIDE_HEM_CLEAR = None   # px a side panel's hem keeps above the floor (None: HEM_CLEAR)
 HEM_CLEAR = 0.15     # px the hem keeps above the floor while alive
+if TROOP == "hexer":   # the burial robe's side panels hang straight: seen edge-on from the front a splayed side panel reads as a
+    # spindly leg under the hem, so they follow the stride and the thigh less and may graze the floor at a corner (0.2 px) rather
+    # than kick out to clear it
+    SIDE_PITCH, SIDE_FOLLOW, SIDE_HEM_CLEAR = 0.2, 0.25, -0.2
 ROBE = {"death": False}
 
 
@@ -944,7 +979,7 @@ def _slack(P, rot, F, live, leg_r=None):
                 b = [0.0, HEM_Y, 0.0]
                 b[la], b[a] = lat, d
                 hem.append((Mh @ L @ _model(b))[1] * 16.0)
-        s = min(s, min(hem) - HEM_CLEAR)
+        s = min(s, min(hem) - (SIDE_HEM_CLEAR if a == 0 and SIDE_HEM_CLEAR is not None else HEM_CLEAR))
     return s
 
 
@@ -961,11 +996,11 @@ def panel_pose(pose, live=True):
     for P, (a, sg, inner, outer, la, wid, legs) in PANELS.items():
         follow = max(_angle(-sg * thigh[s][a], -thigh[s][1]) for s in legs)
         grav = _angle(-sg * g[a], -g[1])
-        pref = max(grav, 0.5 * follow) if live else 0.9 * follow
+        pref = max(grav, (SIDE_FOLLOW if a == 0 else 0.5) * follow) if live else 0.9 * follow
         pitch = 0.0
         if a == 0:   # a side panel also swings in its own plane with its leg's stride: its hem follows the hoof (hip to ankle), not
             k = thigh[legs[0] + "_ankle"]   # the knee, so a bent knee forward never leaves the heel out behind the panel
-            pitch = 0.8 * _angle(-k[2], -k[1])
+            pitch = SIDE_PITCH * _angle(-k[2], -k[1])
         lo = hi = pref
         if _slack(P, _panel_rot(P, pref, pitch), F, live) < 0:
             hi = pref
@@ -979,7 +1014,7 @@ def panel_pose(pose, live=True):
                     hi = mid
                 else:
                     lo = mid
-        if not live and TROOP == "mage":   # a dead mage's robe falls shut: each panel folds in onto the legs and feet as far
+        if not live and TROOP in ("mage", "hexer"):   # a dead mage's robe falls shut: each panel folds in onto the legs and feet as far
             lo = hi                        # as they let it, so the hem does not gape open round empty space
             lr = 0.1 if a == 2 else None   # the legs have no boxes: front and back fold right in to the leg line and close
             while lo > -20.0 and _slack(P, _panel_rot(P, lo - 2.0, pitch), F, live, lr) >= 0:
@@ -1275,7 +1310,6 @@ _ROBE_SIDE_FALLS = {
     "death_left": {17: {"head": (-15, 0, 30), "right_arm": (-30, 0, 20)}, 20: {"head": (-20, 0, 30), "right_arm": (-30, 0, 20)}},
     "death_right": {17: {"root": (10, 90, -88), "left_arm": (0, 0, -20)}, 20: {"root": (10, 100, -88), "left_arm": (0, 0, -20)}},
 }
-# the hexer takes only the left-fall tuck: its right fall already lies lower untweaked (probe 2026-11-06)
 # the seer's robe is a stiff hanging skirt, so a fall must not land on a braced arm: on its back the arms settle out wide and
 # flat, face down the wolf head turns aside onto its cheek (the snout would prop it), and in a side roll the arm the body
 # rolls over lies straight out past the head on the ground instead of bent under it (grid 2026-11-06: torso gap 0.3 back,
@@ -1303,7 +1337,8 @@ for _n, _ticks in {"death_back": {11: {"right_leg": (-8, 0, 3), "right_shin": (1
     for _t, _k in _ticks.items():
         _MAGE_FALLS.setdefault(_n, {}).setdefault(_t, {}).update(_k)
 DEATH_TWEAK = {"mage": _MAGE_FALLS,
-               "hexer": {"death_left": _ROBE_SIDE_FALLS["death_left"]},
+               # caster v2: the gravecaller lies out straight-legged as the sunweaver does, so its hanging robe folds flat
+               "hexer": _MAGE_FALLS,
                "wm_seer": _SEER_FALLS,
                # the mist caller's robe hangs like the seer's: the same flat-armed falls (no snout, so no head turn face down)
                "tc_mist": {n: k for n, k in _SEER_FALLS.items() if n != "death_forward"}}.get(TROOP, {})
@@ -1400,12 +1435,13 @@ GAITS = {t: (
            hip_drop=0.95, bob=0.2, bob_phase=0.06, sway=0.2, yaw=3.0, roll=0.8, lane=2.5),
     K.Gait("run", ticks=5, speed=0.26, duty=0.4, heel=4, toe_off=10, front=3.8, lift=1.5, lift_peak=0.5,
            hip_drop=1.7, bob=0.3, bob_phase=0.19, sway=0.2, yaw=4.0, roll=1.0, pitch_hips=2.0, lane=2.5))
-         for t in ("wm_seer", "tc_mist", "mage")}
+         for t in ("wm_seer", "tc_mist", "mage", "hexer")}
 # the mage's run is a quicker, shorter scurry (4-tick lap, same speed): the shorter stride lets the hips stay high (less
 # drop and bob), so the hem clears the floor without the side panels splaying out (run roll 26 -> 12 deg, the walk's 11)
 GAITS["mage"] = (GAITS["mage"][0],
                  K.Gait("run", ticks=4, speed=0.26, duty=0.4, heel=4, toe_off=10, front=3.3, lift=1.2, lift_peak=0.5,
                         hip_drop=1.0, bob=0.15, bob_phase=0.19, sway=0.2, yaw=4.0, roll=1.0, pitch_hips=2.0, lane=2.5))
+GAITS["hexer"] = (GAITS["hexer"][0], GAITS["mage"][1])   # the gravecaller's robe is the same bell: the same scurry
 
 
 def tip_json():
@@ -1419,7 +1455,7 @@ def tip_json():
         fs = [float(_A @ (np.array(c["origin"]) + np.array(c["size"]) * np.array(k) - np.array(GRIP)))
               for bb in _GEO if bb["name"] == b for c in bb.get("cubes", []) for k in ((0, 0, 0), (1, 1, 1))]
         if fs:
-            w = K.point(K.world(p, b), S(max(fs)))
+            w = K.point(K.world(p, b), ST.get("tip", S(max(fs))))
             tiers[b] = [round(float(w[0]) / 16.0, 3), round(float(w[1]) / 16.0, 3), round(float(w[2]) / 16.0, 3)]
     # world x is the troop's left: the standing right shoulder sits at -x
     assert K.point(K.world({}, "right_arm"), SHOULDER)[0] < 0

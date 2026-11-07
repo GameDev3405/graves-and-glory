@@ -81,7 +81,9 @@ WAIST, SPLIT = 8.5, ((12, 8), (12, 0))
 DROP = {"arms_folded"}
 # Per troop, body-hung gear re-hung on a leg bone: a strand that reaches the floor from the hips would sink through it
 # whenever the guard bends the knees, so it rides the shin it hangs behind instead (same place in the rest pose).
-HANG = {"tc_admiral": {"kelp_hem": "left_shin"}}
+HANG = {"tc_admiral": {"kelp_hem": "left_shin"},
+        # the gravecaller's team vestment hangs over the robe front and back: it rides those robe panels (troop_rig.ROBE)
+        "hexer": {"vestment_front": "skirt_front", "vestment_back": "skirt_back"}}
 # Per troop, a robe hung as cloth (caster style v2, docs/anim-rebuild/CASTER-V2-DESIGN.md): the source skirt (and its tier fringe)
 # becomes four hip-hung panels, front, back and the two sides, each on its own bone at the hip line so the clips swing it with the
 # leg behind it; the legs keep their bones but lose their boxes, so only the feet (hooves) show below the hem. The panels reuse the
@@ -99,7 +101,11 @@ ROBE = {"wm_seer": {"skirt": "skirt", "fringe": "hem_fringe", "top": 12, "hem": 
         # the sunweaver's robe is built per leg (two thigh tiers and a shin hem tier on each side): the right side's tiers paint
         # one hanging skirt round both legs, the left side's are dropped; same bell as the mist caller's, hem 1.5 px up
         "mage": {"skirt": "right_robe", "fringe": "right_shin_robe", "drop": ("left_robe", "left_shin_robe"), "top": 11.5,
-                 "tiers": ((4, 9, 5, "right_robe", 0), (3, 10, 6, "right_robe", 1), (4, 11, 7, "right_shin_robe", 0))}}
+                 "tiers": ((4, 9, 5, "right_robe", 0), (3, 10, 6, "right_robe", 1), (4, 11, 7, "right_shin_robe", 0))},
+        # the gravecaller's burial robe is one bone of three ragged tiers, a px wider and deeper than the sunweaver's: each tier's
+        # box paints its own tier; hem 1.5 px up, so the feet show (v1's robe sat on the floor)
+        "hexer": {"skirt": "burial_robe", "top": 11.5,
+                  "tiers": ((4, 10, 6, "burial_robe", 0), (3, 11, 7, "burial_robe", 1), (4, 12, 8, "burial_robe", 2))}}
 
 
 def lined(paint):
@@ -252,12 +258,12 @@ def rigify(src, weapon_rot, kind="blade", hang=None, robe=None):
             bn.boxes[0].size[1] -= 2          # the shin stops inside the boot, as the knight's
             foot = Bone(f"{side}_foot", bn.name)
             add(foot, bn.name, [a[0], a[1] + 4, a[2]])
-    for bn, par, a in later:
-        add(bn, par, a)
-    if robe:
+    if robe:   # the panels before the re-hung gear, which may hang on them
         panels = robe_tiers(robed, robe) if "tiers" in robe else robe_panels(robed[robe["skirt"]], robed.get(robe.get("fringe")), robe)
         for bn, a in panels:
             add(bn, bn.parent, a)
+    for bn, par, a in later:
+        add(bn, par, a)
     # shin gear from y 3 down moves to the foot (boot, toe); a troop with no boot gets the shin's own bottom rows
     for side in ("right", "left"):
         shin, foot = f"{side}_shin", f"{side}_foot"
