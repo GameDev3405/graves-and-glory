@@ -397,6 +397,8 @@ final class GeoKnightChecks implements Phase1Checks.Suite {
     final Map<String, Double> clientImpact = new HashMap<>();
     /** Swings (id:start) whose troop the client drew at some frame of the clip: one behind the camera all along can show nothing. */
     final Set<String> clientDrawn = new HashSet<>();
+    /** The client tick each swing was first listed: a frame drawn before that did not know of it, so it cannot count as drawn. */
+    final Map<String, Long> clientKnown = new HashMap<>();
     double minImpactLegsW = 2, maxWalkLegsW = 0, maxOnsetLegsW = 0; int walkSettledSamples;
     String minImpactWhy = "";
     double minImpactW = 2, maxGapW = 0, maxDeadW = 0, maxBeforeDeathW = 0, foeBackMin = 9;
@@ -414,14 +416,14 @@ final class GeoKnightChecks implements Phase1Checks.Suite {
         for (var u : d.us) {
             int id = u.mob.getId();
             var e = c.world.getEntityById(id);
-            for (var a : MotionEvents.Client.attacks(id)) clientVariant.putIfAbsent(id + ":" + a.startTick(), a.variant());
+            for (var a : MotionEvents.Client.attacks(id)) { clientVariant.putIfAbsent(id + ":" + a.startTick(), a.variant()); clientKnown.putIfAbsent(id + ":" + a.startTick(), now); }
             AttackController ac = e == null ? null : AttackController.LIVE.get(e);
             if (ac == null || ac.shownAt < 0) continue;
             // Everything below judges the last frame drawn, at that frame's own time (a frame can trail the client tick by one or more).
             long latest = Long.MIN_VALUE;
             for (var a : MotionEvents.Client.attacks(id)) if (a.startTick() <= ac.shownAt) latest = Math.max(latest, a.startTick());
             if (ac.shownStart != Long.MIN_VALUE && ac.shownImpact >= 0) clientImpact.putIfAbsent(id + ":" + ac.shownStart, ac.shownImpact);
-            if (ac.shownAt > now - 1) for (var a : MotionEvents.Client.attacks(id)) if (a.startTick() <= ac.shownAt && ac.shownAt <= a.startTick() + 30) clientDrawn.add(id + ":" + a.startTick());
+            if (ac.shownAt > now - 1) for (var a : MotionEvents.Client.attacks(id)) if (a.startTick() <= ac.shownAt && ac.shownAt <= a.startTick() + 30 && ac.shownAt > clientKnown.getOrDefault(id + ":" + a.startTick(), Long.MAX_VALUE)) clientDrawn.add(id + ":" + a.startTick());
             boolean dead = ac.shownDeath >= 0;
             double t = ac.shownAt - latest;
             if (!dead && latest != Long.MIN_VALUE && ac.shownStart == latest && ac.shownImpact >= 0 && Math.abs(ac.shownT - ac.shownImpact) <= 1) {
@@ -551,7 +553,7 @@ final class GeoKnightChecks implements Phase1Checks.Suite {
                 if (k == 1) {
                     taken.clear(); stepped.clear();
                     if (i == 0) {
-                        clientVariant.clear(); clientImpact.clear(); clientDrawn.clear(); minImpactW = 2; minImpactLegsW = 2; maxGapW = 0; impactSamples = gapSamples = 0;
+                        clientVariant.clear(); clientImpact.clear(); clientDrawn.clear(); clientKnown.clear(); minImpactW = 2; minImpactLegsW = 2; maxGapW = 0; impactSamples = gapSamples = 0;
                         Phase1Checks.server(c, b -> duel = new Duel(this, b, "stand"));
                     }
                     Phase1Checks.server(c, b -> eye(b, cx + eyeAt[0], cz + eyeAt[1], (float) eyeAt[2], (float) eyeAt[3]));
@@ -602,7 +604,7 @@ final class GeoKnightChecks implements Phase1Checks.Suite {
             case 6 -> {
                 // Walking attack: the own knight presses forward at walk speed, the foe backs away, both swinging.
                 if (k == 1) {
-                    clientVariant.clear(); clientImpact.clear(); clientDrawn.clear(); minImpactW = 2; impactSamples = 0; walkSwingSamples = 0; maxWalkLegsW = 0; maxOnsetLegsW = 0; walkSettledSamples = 0; walkWrong.clear(); foeBackMin = 9; foeBack.clear(); lastShot = -1;
+                    clientVariant.clear(); clientImpact.clear(); clientDrawn.clear(); clientKnown.clear(); minImpactW = 2; impactSamples = 0; walkSwingSamples = 0; maxWalkLegsW = 0; maxOnsetLegsW = 0; walkSettledSamples = 0; walkWrong.clear(); foeBackMin = 9; foeBack.clear(); lastShot = -1;
                     Phase1Checks.server(c, b -> { duel = new Duel(this, b, "walk"); eye(b, cx, cz + 5, 180, 8); });
                 }
                 if (k == 3) { c.setScreen(null); c.options.hudHidden = true; }

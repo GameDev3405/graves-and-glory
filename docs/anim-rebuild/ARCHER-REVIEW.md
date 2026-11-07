@@ -54,3 +54,30 @@ The first bow unit. Its clips come from `art/anim/archer/build_bow_anims.py`, wh
   - run lean and arm swing
   - hit_light_front amplitude
   - hood and quiver lag
+
+## v2 feel (2026-11-07, branch anim/v2-bow)
+
+The Knight v2 feel, brought over in `art/anim/archer/build_bow_anims.py`; the knight builder is not edited. The draw, the shot and the deaths are unchanged, and the deaths are byte-identical to the previous export.
+
+- **Idle.** A weight cycle (contrapposto): the pelvis shifts and rolls so the standing hip lifts, and the shoulders tilt against it. Breath and head drift are layered on top.
+- **Stances.** Brace and hold the line get their own footing (`STANCE_LEGS` v2 and `STANCE_LEGS_LIFE`), so they read apart from combat ready. This closes the round-1 minor "push them apart".
+- **Hits.** These are graded like the Knight's.
+  - Light: a knee flinch.
+  - Medium: the pelvis shifts.
+  - Heavy: a stagger, with the bow arm opening outward and never folding in.
+  - Every direction gets the Knight's v2 footwork.
+  - The front body hit is scaled to 0.85 (`V2_BODY`), so medium and heavy read apart.
+  - The bow arm opens wider and holds open (`BOW_ARM`).
+- **Probe.**
+  - No bow or fist in the body in the hits, idle or stances. The volley still has 2 bow points in `hood_t3`, which is pre-existing.
+  - Floor: hits -0.38 to -0.58 px, wall -0.91 px (the boot cuff, as at baseline).
+  - Largest hit pop: 19.1 px/t, at the heavy front peak.
+- **Review.** Sonnet high, 2 rounds, verdict SHIP WITH MINORS. Round 2 resolved the medium/heavy grading and improved the heavy front tumble.
+- **Open minors.**
+  - Heavy front, side view, still leans deeper than the Knight's heaviest hit, about 45-55 degrees at the peak.
+  - Heavy front, front view: the bow hand and bow top overlap the chin for about 2 ticks. This is depth only; the 3/4 view shows clearance.
+  - Medium front: a possible snap around ticks 4-7.
+  - The idle hip tilt is hard to see from the front.
+  - Wall stance: the string fist beside the helm can read as a salute (pre-existing pose).
+  - Medium from behind pitches about 50 degrees, near the limit.
+- Video: `archer_v2feel`.
