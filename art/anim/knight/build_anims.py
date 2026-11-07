@@ -53,6 +53,20 @@ OUT = (HERE if TROOP == "knight" else HERE.parent / TROOP) / "out" / f"{TROOP}.a
 V2 = os.environ.get("GG_V2") != "0"
 if os.environ.get("GG_V2_OUT"):
     OUT = Path(os.environ["GG_V2_OUT"])
+# Polish scales (Kort, 2026-11-07: "way too much sway", "heavy hits break their back"). 1.0 builds the approved v2 motion exactly;
+# GG_V2_SWAY / GG_V2_HIT_BACK override them for trials (and are ignored under GG_V2=0).
+#   V2_SWAY_SCALE      the back-and-forth body sway: the idle weight shift, the stance weight rock (torso/head/pelvis/arm trail,
+#                      shield trailing) and the walk/run pelvis roll, lateral hip shift, shoulder roll and shield rock. Breathing,
+#                      the gait's yaw/counter-twist and the arm swing are not sway and stay.
+#   V2_HIT_BACK_SCALE  how far a blow throws the spine and head BACKWARD (negative pitch on torso, head, pelvis and the shield tilt
+#                      of the hit clips). Forward pitch, the recovery overshoot, twist, the stagger step and knee give are unchanged.
+V2_SWAY_SCALE = float(os.environ.get("GG_V2_SWAY", 1.0)) if V2 else 1.0
+V2_HIT_BACK_SCALE = float(os.environ.get("GG_V2_HIT_BACK", 1.0)) if V2 else 1.0
+
+
+def hb(x):
+    """A pitch (degrees, - is back) with its backward part scaled by V2_HIT_BACK_SCALE."""
+    return x * V2_HIT_BACK_SCALE if x < 0 else x
 SUB = 4                     # samples per tick in generated clips
 TPS = 20.0
 
@@ -353,10 +367,10 @@ class Gait:
 
 
 WALK = Gait("walk", ticks=8, speed=0.16, duty=0.58, heel=15, toe_off=26, front=4.8, lift=2.6, lift_peak=0.4,
-            hip_drop=1.1, bob=0.55, bob_phase=0.06, sway=0.3, yaw=4.0, roll=1.5)
+            hip_drop=1.1, bob=0.55, bob_phase=0.06, sway=0.3 * V2_SWAY_SCALE, yaw=4.0, roll=1.5 * V2_SWAY_SCALE)
 # A run: shorter contact, a flight phase, the hips lowest at mid stance, knees more bent.
 RUN = Gait("run", ticks=7, speed=0.26, duty=0.38, heel=6, toe_off=34, front=4.4, lift=3.6, lift_peak=0.45,
-           hip_drop=2.1, bob=0.7, bob_phase=0.19, sway=0.2, yaw=6.0, roll=2.0)
+           hip_drop=2.1, bob=0.7, bob_phase=0.19, sway=0.2 * V2_SWAY_SCALE, yaw=6.0, roll=2.0 * V2_SWAY_SCALE)
 
 
 # ------------------------------------------------------------------------------------------------
@@ -397,9 +411,9 @@ class Carry:
 # Shield hold (Kort, 2026-11-05): the shield is carried upright in the fist in front of the left chest, rocking a little
 # against the stride instead of swinging flat on the forearm.
 WALK_CARRY = Carry(lean=3, twist=4.0, arm=11, arm_lag=0.04, shield=1.6, fore=-42, blade=0, follow=5, fist=(3.0, 17.5, 4.5),
-                   head_keep=0.85, cape=(5, 2.0), arm_out=7.0, arm_base=-6.0, blade_out=34.0, roll=1.6, sway=5.0)
+                   head_keep=0.85, cape=(5, 2.0), arm_out=7.0, arm_base=-6.0, blade_out=34.0, roll=1.6 * V2_SWAY_SCALE, sway=5.0 * V2_SWAY_SCALE)
 RUN_CARRY = Carry(lean=14, twist=4.0, arm=24, arm_lag=0.05, shield=2.0, fore=-62, blade=-12, follow=2, fist=(2.5, 18.5, 4.6),
-                  head_keep=0.8, cape=(16, 3.5), arm_out=16.0, arm_base=-14.0, blade_out=20.0, roll=1.2, sway=8.0)
+                  head_keep=0.8, cape=(16, 3.5), arm_out=16.0, arm_base=-14.0, blade_out=20.0, roll=1.2 * V2_SWAY_SCALE, sway=8.0 * V2_SWAY_SCALE)
 
 
 def upper_pose(g, c, u):
@@ -461,14 +475,15 @@ def gait_upper(g, c):
 IDLE_TICKS = 60
 
 
-def idle_clips():
+def idle_clips(sway=None):
+    k = V2_SWAY_SCALE if sway is None else sway    # idle_start passes 1.0: the falls start from the approved idle pose
     n = IDLE_TICKS * SUB
     legs, upper = [], []
     guesses = {}
     for i in range(n + 1):
         u = (i % n) / n
         br = math.sin(2 * math.pi * u)                    # one breath per loop
-        sh = math.sin(2 * math.pi * u + 0.6)              # a slow weight shift, slightly out of step
+        sh = k * math.sin(2 * math.pi * u + 0.6)          # a slow weight shift, slightly out of step
         hips = ((0.0, 0.6 * sh, -0.5 * sh), (0.25 * sh, -0.55 - 0.12 * br, 0.0))
         pose = {"hips": hips}
         out = {"hips": hips}
@@ -480,7 +495,7 @@ def idle_clips():
             out[side + "_leg"], out[side + "_shin"], out[side + "_foot"] = (lr, None), (sr, None), (fr, None)
         legs.append(out)
         tor = (1.0 + 0.7 * br, -0.6 * sh, 0.5 * sh)
-        lag = math.sin(2 * math.pi * u - 0.5)               # the shield's weight follows the breath a beat late
+        lag = k * math.sin(2 * math.pi * u - 0.5)           # the shield's weight follows the breath a beat late
         if SHIELD:
             shd = hold((3.0 + 0.25 * sh, 17.5 + 0.35 * br, 4.5 + 0.2 * lag),
                        (-0.6 * tor[0] + 1.5 * lag, -0.4 * (hips[0][1] + tor[1]) + 1.2 * sh,
@@ -490,7 +505,7 @@ def idle_clips():
                    "left_hand": FREE_WRIST}
         upper.append({
             "torso": (tor, None),
-            "head": ((-1.0 - 0.4 * br, 1.5 * math.sin(2 * math.pi * u * 2 - 1.0) * 0.5, -0.3 * sh), None),
+            "head": ((-1.0 - 0.4 * br, k * 1.5 * math.sin(2 * math.pi * u * 2 - 1.0) * 0.5, -0.3 * sh), None),
             "right_arm": ((-2.0 - 0.6 * br, 0.0, 3.0 + 0.5 * br), None),
             "right_forearm": ((-22.0, 0.0, 0.0), None),
             "right_hand": ((40.0, 0.0, 0.0), None),
@@ -1085,8 +1100,8 @@ def stance_upper(pose, life=1.0):
     for i in range(n + 1):
         u = (i % n) / n
         br = life * math.sin(2 * math.pi * u)
-        wt = (life - 1.0) * math.sin(2 * math.pi * u - WEIGHT)   # + weight forward
-        wl = (life - 1.0) * math.sin(2 * math.pi * u - WEIGHT - 0.7)   # the arms trail the torso by a few ticks
+        wt = V2_SWAY_SCALE * (life - 1.0) * math.sin(2 * math.pi * u - WEIGHT)   # + weight forward
+        wl = V2_SWAY_SCALE * (life - 1.0) * math.sin(2 * math.pi * u - WEIGHT - 0.7)   # the arms trail the torso by a few ticks
         f = {b: (tuple(v), None) for b, v in pose.items()}
         tx, ty, tz = pose["torso"]
         f["torso"] = ((tx + 0.8 * br + 1.8 * wt, ty - 1.4 * wt, tz - 1.2 * wt), None)
@@ -1100,7 +1115,7 @@ def stance_upper(pose, life=1.0):
             f["left_arm"] = ((sx - 1.2 * br + 2.2 * wl, sy, sz - 1.3 * wl), None)
             f["left_forearm"] = ((pose["left_forearm"][0] - 1.6 * br, 0.0, 0.0), None)
         fx_, fy_, fz_ = f["_face"][0]
-        lag = life * math.sin(2 * math.pi * u - 0.6)       # the shield settles a beat after the breath
+        lag = V2_SWAY_SCALE * life * math.sin(2 * math.pi * u - 0.6)   # the shield settles a beat after the breath
         f["_face"] = ((fx_ + 1.5 * lag, fy_ + 0.8 * lag, fz_ - 0.6 * lag), None)
         out.append(regrip(f))
     return bake(out, STANCE_TICKS)
@@ -1112,7 +1127,7 @@ def stance_legs(spec, life=1.0):
     for i in range(n + 1):
         u = (i % n) / n
         br = life * math.sin(2 * math.pi * u)
-        wt = (life - 1.0) * math.sin(2 * math.pi * u - WEIGHT)
+        wt = V2_SWAY_SCALE * (life - 1.0) * math.sin(2 * math.pi * u - WEIGHT)
         (rx, ry, rz), (px, py, pz) = spec["hips"]
         # the weight rides forward over the lead foot (hips forward, a touch lower, tipped in) and back over the rear one
         # and sideways onto it (readable from the front): the hips slide and roll toward the lead side, the lead knee sinks
@@ -1179,17 +1194,17 @@ def scaled(o, k):
 # body bends away to the left; left mirrors it.
 # Big and readable (STYLE.md rule 8): a medium blow (2.2x these) throws the torso about 30 degrees and flings the sword arm wide.
 HIT_PEAK = {
-    "front": shield_keep(off(torso=(-13, 5, 0), head=(-10, -2, 0), rarm=(-14, 0, 30), larm=(-4, 0, -6)), tilt=-5),
+    "front": shield_keep(off(torso=(hb(-13), 5, 0), head=(hb(-10), -2, 0), rarm=(-14, 0, 30), larm=(-4, 0, -6)), tilt=hb(-5)),
     "back": shield_keep(off(torso=(10, 0, 0), head=(4, 0, 0), rarm=(8, 0, 14), larm=(8, 0, -6)), tilt=4),
-    "right": shield_keep(off(torso=(-4, 12, 7), head=(0, 5, 3), rarm=(8, 0, 22), larm=(-3, 0, -4))),
-    "left": shield_keep(off(torso=(-4, -12, -7), head=(0, -5, -3), rarm=(-4, 0, 12), larm=(8, 0, -8))),
+    "right": shield_keep(off(torso=(hb(-4), 12, 7), head=(0, 5, 3), rarm=(8, 0, 22), larm=(-3, 0, -4))),
+    "left": shield_keep(off(torso=(hb(-4), -12, -7), head=(0, -5, -3), rarm=(-4, 0, 12), larm=(8, 0, -8))),
 }
 if not SHIELD:   # no shield to take it (review 2026-11-06): thrown harder, twisting back, both arms flung wide
     HIT_PEAK = {
-        "front": shield_keep(off(torso=(-17, 10, 0), head=(-12, -3, 0), rarm=(-20, 0, 42), larm=(-10, 0, -18), lfore=-12)),
+        "front": shield_keep(off(torso=(hb(-17), 10, 0), head=(hb(-12), -3, 0), rarm=(-20, 0, 42), larm=(-10, 0, -18), lfore=-12)),
         "back": shield_keep(off(torso=(12, 0, 0), head=(5, 0, 0), rarm=(10, 0, 20), larm=(10, 0, -14))),
-        "right": shield_keep(off(torso=(-5, 14, 8), head=(0, 6, 3), rarm=(10, 0, 28), larm=(-6, 0, -10))),
-        "left": shield_keep(off(torso=(-5, -14, -8), head=(0, -6, -3), rarm=(-6, 0, 16), larm=(10, 0, -16))),
+        "right": shield_keep(off(torso=(hb(-5), 14, 8), head=(0, 6, 3), rarm=(10, 0, 28), larm=(-6, 0, -10))),
+        "left": shield_keep(off(torso=(hb(-5), -14, -8), head=(0, -6, -3), rarm=(-6, 0, 16), larm=(10, 0, -16))),
     }
 HIT_TICKS = {"light": 9, "medium": 16}
 LIGHT = 0.5   # a light flinch reaches half the stagger's first key
@@ -1295,18 +1310,18 @@ if V2 and SHIELD:
         return out
 
     HIT_LEGS = {
-        "front": {"hips": [(0, *READY_HIPS), (2, (-6, 9, 0), (0.0, -1.9, 1.6)), (4.5, (-5, 9, 0), (0.0, -2.1, 1.9)),
-                           (7.5, (1, 5, 0), (0.0, -1.8, 1.3)), (10.5, (-1, 7, 0), (0.0, -1.3, 0.5)), (16, *READY_HIPS)],
+        "front": {"hips": [(0, *READY_HIPS), (2, (hb(-6), 9, 0), (0.0, -1.9, 1.6)), (4.5, (hb(-5), 9, 0), (0.0, -2.1, 1.9)),
+                           (7.5, (1, 5, 0), (0.0, -1.8, 1.3)), (10.5, (hb(-1), 7, 0), (0.0, -1.3, 0.5)), (16, *READY_HIPS)],
                   "steps": [("left", 1.0, 3.8, (3.3, 2.0, -4.0), 9.0, 0.8), ("right", 3.5, 6.5, (-3.4, 2.0, 0.6), -13.0, 0.6),
                             ("left", 9.0, 12.5, (3.2, 2.0, -2.0), 7.0, 0.8), ("right", 11.5, 15.0, (-3.4, 2.0, 2.0), -12.0, 0.8)]},
         "back": {"hips": [(0, *READY_HIPS), (2, (6, 4, 0), (0.0, -1.8, -1.2)), (4.5, (5, 4, 0), (0.0, -1.9, -1.4)),
                           (7.5, (-1, 7, 0), (0.0, -1.6, -0.8)), (10.5, (0.5, 6, 0), (0.0, -1.2, -0.2)), (16, *READY_HIPS)],
                  "steps": [("right", 1.0, 3.8, (-3.5, 2.0, 3.5), -12.0, 0.8), ("left", 3.5, 6.5, (3.2, 2.0, -0.6), 7.0, 0.6),
                            ("left", 9.0, 12.5, (3.2, 2.0, -2.0), 7.0, 0.8), ("right", 11.5, 15.0, (-3.4, 2.0, 2.0), -12.0, 0.8)]},
-        "right": {"hips": [(0, *READY_HIPS), (2, (-2, 14, 4), (1.0, -1.8, 0.5)), (4.5, (-2, 13, 4), (1.2, -1.9, 0.5)),
+        "right": {"hips": [(0, *READY_HIPS), (2, (hb(-2), 14, 4), (1.0, -1.8, 0.5)), (4.5, (hb(-2), 13, 4), (1.2, -1.9, 0.5)),
                            (7.5, (1, 4, 0), (0.6, -1.6, 0.2)), (10.5, (0, 6.5, 0), (0.1, -1.2, 0.1)), (16, *READY_HIPS)],
                   "steps": [("left", 1.0, 3.8, (4.9, 2.0, -2.2), 12.0, 0.8), ("left", 9.0, 12.5, (3.2, 2.0, -2.0), 7.0, 0.8)]},
-        "left": {"hips": [(0, *READY_HIPS), (2, (-2, -2, -4), (-1.0, -1.8, 0.5)), (4.5, (-2, -1, -4), (-1.2, -1.9, 0.5)),
+        "left": {"hips": [(0, *READY_HIPS), (2, (hb(-2), -2, -4), (-1.0, -1.8, 0.5)), (4.5, (hb(-2), -1, -4), (-1.2, -1.9, 0.5)),
                           (7.5, (1, 8, 0), (-0.6, -1.6, 0.2)), (10.5, (0, 5.5, 0), (-0.1, -1.2, 0.1)), (16, *READY_HIPS)],
                  "steps": [("right", 1.0, 3.8, (-5.0, 2.0, 1.6), -18.0, 0.8), ("right", 9.0, 12.5, (-3.4, 2.0, 2.0), -12.0, 0.8)]},
     }
@@ -1471,7 +1486,7 @@ def _ease(kind, s):
 
 def idle_start():
     """Idle frame 0, every death bone, so the fall blends in from where the knight stood."""
-    legs, upper = idle_clips()
+    legs, upper = idle_clips(1.0)   # unscaled: the falls are not part of the sway trial
     out = {}
     for clip in (legs, upper):
         for b, ch in clip["bones"].items():
