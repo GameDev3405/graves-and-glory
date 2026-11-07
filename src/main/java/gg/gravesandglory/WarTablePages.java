@@ -1231,6 +1231,20 @@ final class WarTablePages {
     /** What claiming key (daily:<slot>, weekly or founders:<tier>) would pay with arg (a House, or at tier 20 a Rare troop): Progression.claim run
      *  on a copy of the state with the contract finished and the tier reached, so the reward words come from the game's own rule. */
     static Progression.Grant payOf(String key, String arg) {
+        var now = progression();
+        if (payRevision != CampaignClient.revision || payFor != now) { payCache.clear(); payRevision = CampaignClient.revision; payFor = now; }
+        String at = arg == null ? key : key + "|" + arg;
+        var hit = payCache.get(at);
+        if (hit == null) { hit = payOfNow(key, arg); payCache.put(at, hit); }
+        return hit;
+    }
+
+    /** payOf's answers for the snapshot they were worked out from (CampaignClient.revision and the progression it carried): the Contracts page asks four times a frame and the state only moves with a snapshot. */
+    private static final Map<String, Progression.Grant> payCache = new HashMap<>();
+    private static int payRevision = -1;
+    private static Progression.State payFor;
+
+    private static Progression.Grant payOfNow(String key, String arg) {
         var s = copyOf(progression());
         s.dailyBattles = Math.max(s.dailyBattles, 3); s.dailyCaptures = Math.max(s.dailyCaptures, 1); s.dailyOrders = Math.max(s.dailyOrders, 10);
         s.weeklyBattles = Math.max(s.weeklyBattles, Progression.WEEKLY_BATTLES);
