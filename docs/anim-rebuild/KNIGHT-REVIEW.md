@@ -94,3 +94,12 @@ Kort, on the v1 death reel: the dropped sword fell too far from the hand and end
   2. left_drop1/2: the right hand is the upper arm when he falls left, and it cannot get within about 10 px of the floor without entering the body. The sword therefore lands about 15 px out, in front of the belly and past the kept shield. It is on his right, but Kort should confirm that it reads as "same side".
   3. forward_drop2: after the shield lands flat, it shifts outward about half its width (a clatter, not a pop).
   4. The v3 minor about the death_left kept sword hanging like a stake was not addressed in this pass. In the back clips, the dropped gear is now still by tick 17.5 (it was about 19), but the kept arm's slow easing was not changed.
+
+## Approval (2026-11-07)
+
+Kort approved the v4 deaths ("the animations are looking great"), including the left-fall sword landing about 15 px out on his right side. These next steps are approved:
+
+1. In game, each troop picks one of `""`, `_drop1` or `_drop2` (a stable pick per entity). A troop without drop clips falls back to the plain direction clip.
+2. The 12 deaths are copied, each with its own gear, to sentinel, gl_marshal and ic_hearthguard.
+
+The Knight's set (v2 style plus the v4 deaths) is the template for the other troops. Which troops reuse which parts is being worked out with Kort.
