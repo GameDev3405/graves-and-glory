@@ -25,7 +25,7 @@ Policy still applies: `docs/WORKFLOW.md`. Gameplay, save, protocol and dependenc
 
 ### 0.1 What 1.0 must contain
 
-- Five Houses, thirty troops, four rarities, evolve lines, rank stars, House traits, six commander classes with actives.
+- Five Houses, thirty troops, four rarities, evolve lines, rank stars, House traits, gear-driven combat with relics on keys 1 to 3 (the six commander classes were removed by gear combat).
 - Five authored battle maps plus the rebuilt camp lobby, all adopted from the builder worlds.
 - Four modes: Domination, Siege, Survival, Convoy.
 - Campaign chapter one: six battles, one per House plus a finale, using all four modes and all five maps, with briefings and one bonus objective per battle.
@@ -85,7 +85,7 @@ Moved from 0.2 into 1.0. Work is Phase 7.
 | Area | Current state | The gap to 1.0 |
 |---|---|---|
 | Troops and Houses | 30 troops, 5 Houses, rarities, stars, evolve data, House traits, 6 classes and actives, in-match levels and gear | Balance and art, not code |
-| Troop art | On `main`, 6 Gilded troops have own models; 4 have full tier I to III skins, mage and Lord Marshal have tier I only; the other 24 have no own model. `work/troop-models-house` adds three more at stage 1 (self-scored 8/10, not gate-accepted), not merged | 21 troops still without their own model after the branch merges; every troop at tier II and III, with faces, portraits, PBR maps, weapons and veteran trims |
+| Troop art | Recounted 2026-11-07 on `main`: all 30 troops have their own models and tier I to III skins. The 2026-10-28 count (6 Gilded models, 21 troops without one) is superseded | None for models. The 4B visual review (4B.7, 30/30 at 9/10) and the strict `build_skins --verify` check remain the gate |
 | Animation | 18 code clips per rig; pass 1 on six Order troops is WIP; 1 to 3.7 px clipping remains; no clip reached 9; bow revert unrendered | Pass 1 sign-off with recorded exceptions, pass 2 signature attacks and charge, formation march |
 | Maps | Five generated maps plus generated camp; Phase 3 built world merged but parked at its screenshot gate; builder server runs six saved worlds | Adoption pipeline, AI build tool, camp redesign, final map detail, all five adopted |
 | Modes | Domination only | Mode frame, Siege, Survival, Convoy, mode bots and gates |
