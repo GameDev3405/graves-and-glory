@@ -1,6 +1,6 @@
 # Player combat: the Warlord
 
-2026-11-07. Status: draft for Kort's approval. Comes from a question-by-question interview with Kort (the "grill") on 2026-11-07.
+2026-11-07. Status: approved by Kort 2026-11-07. Comes from a question-by-question interview with Kort (the "grill") on 2026-11-07.
 
 ## 1. Why
 
