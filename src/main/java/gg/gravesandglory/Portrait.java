@@ -76,7 +76,14 @@ final class Portrait {
     /** The scale e's renderer gives its model about the feet (LivingEntityRenderer.scale), read from the renderer itself: 1 for a
      *  renderer that does not scale, or one that is not a LivingEntityRenderer. */
     static float modelScale(LivingEntity e) {
-        var renderer = MinecraftClient.getInstance().getEntityRenderDispatcher().getRenderer(e);
+        Object renderer = MinecraftClient.getInstance().getEntityRenderDispatcher().getRenderer(e);
+        // A troop with no model of its own is drawn by the vanilla renderer TroopRenderer wraps, which applies its own scale:
+        // probe that one (TroopRenderer.scale itself applies none). A troop with a model draws unscaled, so reads 1.
+        if (renderer instanceof TroopRenderer<?> troop) {
+            var look = TroopModels.resolve(e);
+            if (look != null && TroopModels.modelOf(look.troop().id()) != null) return 1f;
+            renderer = troop.vanilla();
+        }
         if (!(renderer instanceof LivingEntityRendererAccessor living)) return 1f;
         MatrixStack probe = new MatrixStack();
         living.gravesandglory$scale(e, probe, 1f);
