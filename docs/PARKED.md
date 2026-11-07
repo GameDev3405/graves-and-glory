@@ -6,7 +6,7 @@ add to it, never remove from it. Date and source on each line.
 ## Gameplay
 - Mounts for commanders (2026-10-17, Roblox comparison; waits for formation code to settle).
 - Hit-stop on commander hits (2026-10-17 night session).
-- Capture-the-banner mode (night session; now planned as "Banner" in the roadmap).
+- Capture-the-banner mode (night session; now planned as "Convoy" in the roadmap).
 - Flank/rear/morale (night session; now planned in Phase 1).
 - Daily seeds (night session).
 - Ping wheel (night session).
@@ -29,7 +29,7 @@ add to it, never remove from it. Date and source on each line.
 
 ## Platform
 - Melty listing 0.2.0: left live for now, not updated (2026-10-17 decision to drop Melty).
-- Public matchmaking, Velocity proxy, moderation tools (Codex milestones 5 and 6; Phase 6).
+- Public matchmaking, Velocity proxy, moderation tools (Codex milestones 5 and 6; Phase 6). Unparked by Kort 2026-11-07: now in 1.0 scope as Phase 7 of `PLAN-TO-1.0.md` (backlog NET-1 to NET-5). Ranked play stays parked.
 - FancyMenu/Drippy loading screens (Codex research; native screens chosen instead).
 - FTB Quests as a contract framework (Codex research; custom contracts chosen).
 
@@ -44,6 +44,8 @@ add to it, never remove from it. Date and source on each line.
 - Muster lanes for fewer than four armies (2026-10-18, Phase 1 Task 5b): spawn rows are now centred for any army count, so three armies form at z -22, 0 and +22, on the gravel files between MapDressing's lanes; the four trampled lanes and lane standards still sit at (i-1.5)*22. Redraw them per army count when Phase 3 rebuilds the bases.
 
 ## Public network brainstorm (2026-10-18, parked by Kort: friends first)
+
+Update 2026-11-07: Kort approved a first version of this network for 1.0 (Velocity proxy, lobby, battle servers, MySQL, moderation, Tebex cosmetics, Kinetic Hosting, capped beta). The thousand-player ambition, ranked play and reserved queue slots stay parked. See `PLAN-TO-1.0.md` Phase 7.
 
 Kort pictures up to a thousand concurrent players a year out and wants the server to pay for itself or better. Parked until Phase 5 (friends) holds. Notes to pick up then:
 - Architecture: one Battle per server process means a proxy (Velocity) plus a pool of match servers behind one lobby; a 160-troop match is close to one CPU core. Measure matches-per-machine with the Task 5 bot simulation before sizing anything.
@@ -63,7 +65,7 @@ Kort pictures up to a thousand concurrent players a year out and wants the serve
 - campaignBattles.map is not checked by preflight; a bad index only stops the battle in game, with a notice to the player.
 - Three primary buttons on the camp home (THE LONG MARCH / BATTLE 1, OPEN RECRUITMENT, PARTY WITH FRIENDS); whether the other two step down while battle 1 is unwon is left for the UI pass.
 - MVP exact tie on equal non-zero kills and seconds crowns each viewer's own first row (2026-10-18, Phase 1 Task 7); a viewer-independent tiebreak (owner id) if it is ever noticed.
-- UNPARKED 2026-10-31 by Kort: Banner mode: supply-wagon escort variant (2026-10-18, Phase 4 spec question 1). Banner variant for 4C.2, used by campaign battle 4, needs its own spec.
+- UNPARKED 2026-10-31 by Kort: Convoy mode (renamed from Banner, Kort 2026-11-07): supply-wagon escort variant (2026-10-18, Phase 4 spec question 1). Convoy variant for 4C.2, used by campaign battle 4, needs its own spec.
 
 ## Media shoot: stills, trailer, gameplay footage (2026-10-18, parked by Kort)
 
@@ -172,5 +174,5 @@ Kort wants to open each map himself, make all the building and block changes he 
 - Pixel House glyphs beside the CampDisplays labels (UI pass hook).
 - Supply house rules (`docs/superpowers/specs/2026-10-22-supply-houses-design.md` sections 4 to 9 and 11): their own plan, written and run after the base merge, before 0.5.0; until then the houses are inert buildings with white (neutral) flags and unlit braziers (Phase 3 Task 8b).
 - Clearance for husk-height units (1.95) at carpet, slab or trapdoor cells: map 2 four wagon props plus gray carpet and snow in `fm-refuge`; map 3 red carpet in `hw-logging-camp` and spruce slabs in `hw-sawmill`; none is on a bot route (Phase 3 Task 9 fix 2, 2026-10-24). Dusk wither skeletons (2.4 tall) are not scanned; the -115.3 and -91.3 stuck points on map 3 are unexplained.
-- Camp redesign, "The Last Watch" (2026-10-24; Kort pasted an outside brainstorm and asked for answers): a mercenary company camped in an old burial fortress. Ideas to adopt or test in a blockout: a hearth court with the physical war table at the centre (today the army/class station is on the ridge, y77, about 85 blocks from the War Gates); armoury, class and training close together; two marked assembly bays and a short departure ritual at the gates; the graveyard kept as the emotional anchor (curated record of campaign milestones and chapters, not every defeat); terrain variety (outcrop, stream, 1 to 3 block terraces); one material and colour family per House district. Needs its own spec after the War Table UI gate; stations move in `sheets/design.json` campStations/campPieces, pieces are structure files, and a layout change rebuilds the camp terrain once (CampWorld hash).
+- Superseded by the Old Hold (Kort, concept C, 2026-11-04; Q129): camp redesign, "The Last Watch" (2026-10-24; Kort pasted an outside brainstorm and asked for answers): a mercenary company camped in an old burial fortress. Ideas to adopt or test in a blockout: a hearth court with the physical war table at the centre (today the army/class station is on the ridge, y77, about 85 blocks from the War Gates); armoury, class and training close together; two marked assembly bays and a short departure ritual at the gates; the graveyard kept as the emotional anchor (curated record of campaign milestones and chapters, not every defeat); terrain variety (outcrop, stream, 1 to 3 block terraces); one material and colour family per House district. Needs its own spec after the War Table UI gate; stations move in `sheets/design.json` campStations/campPieces, pieces are structure files, and a layout change rebuilds the camp terrain once (CampWorld hash).
 - `botCommand.archerThreatCount` and `botCommand.archerThreatRange` (2026-10-29, animation rework Task 1): read only by the removed Hard bot Shieldwall tactic, so nothing reads them now. Kept in the sheet because another branch edits the same botCommand rows; remove them (and any preflight bounds) after those merges, or reuse them if a bot rule needs an archer threat again.
