@@ -39,3 +39,25 @@ A crossbow shot's attack_v1 event was only sent at the loose. Its clip therefore
 - **Left forearm** comes near the head during the span (t319.8–322.8).
 - **Heavy hit** reads extreme.
 - **Death ground contact** is hard to judge at reel size.
+
+## v2 feel (2026-11-07, branch anim/v2-ranged)
+
+The Knight v2 feel (see `ARCHER-REVIEW.md`, "v2 feel"), built by `art/anim/crossbow/build_crossbow_anims.py` with the crossbow's own values. The shot (`attack_loose`, 2.5 s, impact tick 4) and the four deaths are byte-identical to the previous export, so the server sync is unchanged.
+
+Changed clips:
+- **Idle:** a contrapposto weight cycle (hips slide over one foot and back, the free hip drops, the chest counter-tilts, the arms trail a beat late). One breath and one full shift per 3 s loop.
+- **Brace:** a deeper, wider stance (hips down, feet out, yaw set apart from the ready footing) with the crossbow held out front.
+- **Hits:** graded light / medium / heavy. Light is a small flinch at the knees; medium and heavy are pelvis-driven staggers; the crossbow arm opens outward in the front hits.
+
+- **Probe.** Shaft or fist in the body: 0 samples in every clip. Grip error in the shot: max 3.7 px (unchanged). Deaths and shot byte-identical to HEAD.
+- **Review.** Sonnet high, 2 rounds.
+  - Round 1: FIX on the idle (weak weight shift); stances, hits and reload passed.
+  - Round 2: idle amplitude raised and the chest counter-tilt relaxed; still judged FIX for the idle (low-resolution sheets), no new clipping or pops. Two fix rounds spent, so the rest is recorded as a minor.
+- **Open minors.**
+  - Plain idle weight shift is still subtle from the front on the contact sheets (hip roll about 5 degrees, 2 px slide); check it in-engine.
+  - Walk and run show little pelvis sway on the sheets.
+  - Light hit is close to idle at t=1-6.
+  - Medium hit from behind (t=12) drops the crossbow low; heavy front (t=6) pitches the head close to the chest plate; medium hit from the right splays the arms.
+  - Brace and hold-the-line are close from the front.
+- **Harness.** geo-knight suite with `GRAVES_GEO_CHECK_TROOP=ic_arbalist`: **22 `[p1] p1-` lines, 0 `=false`** (a first launch hit a transient classpath failure before any check ran; the rerun passed, with two "Can't keep up" log lines and no lag failure).
+- Video: `group_d2_v2` (ic_arbalist, then tc_harpooner).
