@@ -47,7 +47,7 @@ Moved from 0.2 into 1.0. Work is Phase 7.
 - **Progress.** One shared SQL database (MySQL) for the official network, read and written by all servers. The solo campaign keeps separate local progress and the two never mix. The self-host kit keeps file-based profiles.
 - **Version check.** A server refuses a client with a mismatched mod version, with a clear message and the download link. Every player must install the mod (`fabric.mod.json` environment `"*"`).
 - **Moderation.** Ban, kick, mute, a chat filter, staff permissions (LuckPerms) and a report command that logs to Discord. Staff: Kort as owner plus one or two trusted friends.
-- **Monetisation.** A cosmetic store through Tebex (Kort sets up the account): banner designs, troop skins and colourways, titles and ranks, Old Hold lobby effects. Nothing that changes stats, per the Minecraft EULA and commercial usage guidelines. Excalibur: re-ask Maffhew before any paid feature (see `DECISIONS.md`, 2026-10-28).
+- **Monetisation.** A cosmetic store through Tebex (Kort sets up the account): banner designs, troop skins and colourways, titles and ranks, Old Hold lobby effects. Nothing that changes stats, per the Minecraft EULA and commercial usage guidelines. Excalibur: no store item may use or show Excalibur art (Kort 2026-11-07, instead of re-asking Maffhew; see `DECISIONS.md`).
 - **Launch order.** Open beta on the network for the Discord, capped at about 50 players, on a release-candidate build; then 1.0 on Modrinth and CurseForge the same day the server opens, with listings pointing at the server.
 - **Work order.** Build the network (proxy, lobby, queues, database) in parallel with Kort's map design; balance after the maps are done.
 - **Measured facts.** One 3v3 bot battle: about 500 MB server heap, p95 tick 7 to 9.4 ms, map build about 25 s (about 85 s cold) on the integrated server (`docs/reports/perf-targets-2026-11-02.md`). Dedicated-server MSPT has never been measured, so the network capacity figures are unproven until task 7.2.
@@ -314,7 +314,7 @@ Goal: an official network where strangers queue for unranked matches, with progr
 | 7.4 | Shared database: MySQL schema and access layer for the official network profiles, rewards and cosmetics, read and written by every server; migrations and backups; the solo campaign stays on separate local progress and never mixes; the self-host kit keeps file profiles | L | Agent | 7.1 |
 | 7.5 | Old Hold as hub: spawn, queue pads, party and store areas; the camp and War Table space inside it; version check with a clear message and the download link | L | Agent + Kort | 7.3, 2A.6 |
 | 7.6 | Moderation: ban, kick, mute, chat filter, LuckPerms staff roles (Kort plus one or two friends), a report command logging to Discord, an audit log | M | Agent + Kort | 7.1 |
-| 7.7 | Cosmetic store: Tebex account (Kort), delivery of banner designs, troop skins and colourways, titles and ranks, Old Hold lobby effects; cosmetics change no stats; EULA and commercial-guideline review; re-ask Maffhew before any paid feature | L | Agent + Kort | 7.4 |
+| 7.7 | Cosmetic store: Tebex account (Kort), delivery of banner designs, troop skins and colourways, titles and ranks, Old Hold lobby effects; cosmetics change no stats; EULA and commercial-guideline review; no store item uses or shows Excalibur art | L | Agent + Kort | 7.4 |
 | 7.8 | Rent Kinetic Hosting (12 GB, 4 splits), deploy the network, backups, restart and health checks, an operations runbook | M | Kort + Agent | 7.1 to 7.4, 7.6 |
 | 7.9 | Open beta for the Discord, capped at about 50 players, on a release-candidate build; collect defects; then launch: 1.0 on Modrinth and CurseForge the same day the server opens | M | Kort + friends | 7.8, Phase 5, 6.1 to 6.5 |
 
@@ -481,7 +481,7 @@ Phase 7 runs in parallel, so it adds no sequential time unless the beta defects 
 | Fabric servers behind Velocity do not forward player identity on 1.20.1 | The network design fails | Test FabricProxy-Lite or an alternative in the 7.1 prototype before buying anything |
 | Dedicated-server MSPT was never measured and a 12 GB plan holds fewer battle servers than hoped | Queues back up; cap lower than 50 | 7.2 measures before purchase; cap the beta; bots fill seats; upgrade the plan only after data |
 | Strangers online: abuse, griefing, chat risk | Reputation, Discord load | 7.6 moderation, report command, chat filter, staff roster, beta capped at about 50 |
-| Cosmetic store breaks the Minecraft EULA or the Excalibur licence | Takedown or dispute | Cosmetics only, no stat effects, 7.7 review, re-ask Maffhew before any paid feature |
+| Cosmetic store breaks the Minecraft EULA or the Excalibur licence | Takedown or dispute | Cosmetics only, no stat effects, 7.7 review, no Excalibur art in the store (open risk: the pack is CC BY-NC-ND and ships in the modpack of a monetised server) |
 | Shared database loses or mixes profiles | Player loss | Separate solo and network progress, backups and restore test, migration checks (7.4) |
 
 ## 10. First ten actions
