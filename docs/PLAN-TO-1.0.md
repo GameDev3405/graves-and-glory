@@ -44,7 +44,7 @@ Moved from 0.2 into 1.0. Work is Phase 7.
 - **Architecture.** A Velocity proxy, one lobby server and N battle servers. Each battle server runs today's one-battle-per-server code (`Campaign.java`: one battle per server); there is no multi-arena refactor. Fabric servers behind Velocity need a forwarding mod (for example FabricProxy-Lite); to verify on 1.20.1 in the prototype.
 - **Hub.** The Old Hold is the network hub: spawn, queues, parties and the store. The camp and War Table space live inside it.
 - **Matchmaking.** Designed with Kort 2026-11-07 (`DECISIONS.md`, "Matchmaking and parties"). Ranked play is post-1.0.
-  - Queues: per-mode and unranked, for Domination, Siege, Convoy (Frostmarch escort) and Survival. PvP queues offer 1v1, 2v2, 3v3 and 4v4. Survival is co-op: queue groups of 2, 3 or 4; solo Survival starts from the hub without queueing, with allied bots. The full 6-battle campaign is solo or party only, never in the public queue.
+  - Queues: per-mode and unranked, for Domination, Siege, Convoy (Frostmarch escort) and Survival. PvP queues offer 1v1, 2v2, 3v3 and 4v4. Survival is co-op: queue groups of 2, 3 or 4; solo Survival starts from the hub without queueing, with allied bots. The full 6-battle campaign is solo only in 1.0 (party campaign post-1.0) and never in the public queue.
   - Entry: a Play menu from a hotbar item (mode, then size), a `/queue` command, and walk-up war banners, one per mode, in the Old Hold.
   - Matching: by banner power band, strict at first and wider with waiting (suggested 20 s strict, 40 s wider, then anyone). Bots fill empty seats after 60 s, at a difficulty that matches the match's power band. Queued battles pay full rewards even when most seats are bots.
   - Match found: a 10 s countdown, then an automatic move. Cancelling in the countdown counts as a leave.
@@ -420,7 +420,7 @@ Campaign battle table for 1.0, using all five maps and all four modes:
 | 5 | The Five Crossings | Kingsfield | Domination | Tidecallers |
 | 6 | The Last Watch | Ironhold | Siege, mixed | All Houses |
 
-Each battle has a briefing card, one lesson line per new system, one bonus objective worth shards, and a fixed enemy banner. The campaign is solo in 1.0; co-op campaign is post-1.0. It is only ever played solo or as a party, never from the public queue (Kort 2026-11-07).
+Each battle has a briefing card, one lesson line per new system, one bonus objective worth shards, and a fixed enemy banner. The campaign is solo in 1.0; co-op (party) campaign is post-1.0. It is never played from the public queue (Kort 2026-11-07).
 
 ## 7. Approved decisions
 
