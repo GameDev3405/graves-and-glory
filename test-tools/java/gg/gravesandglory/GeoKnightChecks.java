@@ -31,10 +31,12 @@ final class GeoKnightChecks implements Phase1Checks.Suite {
     /** The GeckoLib troop under test (-Dgravesandglory.geoCheckTroop, default the knight): any biped on the knight's skeleton. Its
      *  march speeds scale the knight's by its troops-row speed (the knight's is .28). Reports and shots are named p1-geo-<troop>-... */
     static final String TROOP = System.getProperty("gravesandglory.geoCheckTroop", "knight");
+    /** The mage: a caster whose spell is a mend (Abilities.mend, announced a beat ahead there, not by Tactics.announcesAhead), so its duel is a ranged one whose release is the mend shot (Projectiles.fire "mend"), not Tactics.shoot. */
+    static final boolean CAST = Arrays.stream(Spec.TROOPS).anyMatch(r -> r.id().equals(TROOP) && r.ranged() && r.magic() && "caster".equals(r.family()) && "mend".equals(Abilities.row(r).mechanic()));
     /** A bow, crossbow or thrower troop (Tactics.announcesAhead): its duel is fought at range, each shot announced a beat ahead (a bow's loosed late) as Tactics does. */
-    static final boolean RANGED = Arrays.stream(Spec.TROOPS).anyMatch(r -> r.id().equals(TROOP) && r.ranged() && !r.magic() && ("bow".equals(r.family()) || "crossbow".equals(r.family()) || "thrower".equals(r.family())));
-    /** A thrower: one throw clip (its own length, read like a melee clip's) per shot, with the gap window just after it. */
-    static final boolean THROW = RANGED && Arrays.stream(Spec.TROOPS).anyMatch(r -> r.id().equals(TROOP) && "thrower".equals(r.family()));
+    static final boolean RANGED = Arrays.stream(Spec.TROOPS).anyMatch(r -> r.id().equals(TROOP) && r.ranged() && !r.magic() && ("bow".equals(r.family()) || "crossbow".equals(r.family()) || "thrower".equals(r.family()))) || CAST;
+    /** A thrower or a mage: one throw or cast clip (its own length, read like a melee clip's) per shot, with the gap window just after it. */
+    static final boolean THROW = RANGED && (CAST || Arrays.stream(Spec.TROOPS).anyMatch(r -> r.id().equals(TROOP) && "thrower".equals(r.family())));
     /** A crossbow troop: its 50-tick clip shoots, spans and reloads, so its shots are spaced wider (nudgeR) and its gap window sits after the reload. */
     static final boolean XBOW = RANGED && Arrays.stream(Spec.TROOPS).anyMatch(r -> r.id().equals(TROOP) && "crossbow".equals(r.family()));
     /** Ticks without a shot before a ranged duelist is made to shoot again: a crossbow standing waits 60 (its cooldown) so the gap after its 50-tick clip shows; walking, 40 (clips 51 ticks apart) so the 70-tick walk fits two shots each. */
@@ -350,7 +352,8 @@ final class GeoKnightChecks implements Phase1Checks.Suite {
     /**
      * A bow duelist's shot, as Tactics' beat makes it: the beat before, its draw is announced (Projectiles.drawAhead, 10 ahead); on its
      * beat its cooldown is taken, and the arrow leaves its loose ticks later (Tactics.looseLate). The battle's own beat is kept off
-     * (nextAttack far ahead) so only these shots play.
+     * (nextAttack far ahead) so only these shots play. A mage's release is the mend shot Abilities.mend fires (a heal of 0 at the
+     * foe duelist), announced the same way (Abilities.mend calls Projectiles.drawAhead with the same arguments).
      */
     void rangedNudge(Duel d, int j, int k, long now) {
         var b = d.b; var u = d.us[j]; LivingEntity enemy = d.us[1 - j].mob;
@@ -358,7 +361,7 @@ final class GeoKnightChecks implements Phase1Checks.Suite {
         if (d.beatAt[j] >= 0) {
             if (now < d.beatAt[j]) return;
             d.beatAt[j] = -1;
-            if (u.mob.isAlive() && enemy.isAlive() && b.time >= u.stunnedUntil) { u.mob.swingHand(Hand.MAIN_HAND); Tactics.shoot(b, u, enemy, b.time, true); d.shotAt[j] = now; }
+            if (u.mob.isAlive() && enemy.isAlive() && b.time >= u.stunnedUntil) { u.mob.swingHand(Hand.MAIN_HAND); if (CAST) Projectiles.fire(b, u, enemy, "mend", 0f); else Tactics.shoot(b, u, enemy, b.time, true); d.shotAt[j] = now; }
             return;
         }
         if (!u.mob.isAlive() || !enemy.isAlive() || now - d.last[j] <= nudgeR(d.mode) || b.time < u.stunnedUntil || Tactics.pending(b, u)) return;

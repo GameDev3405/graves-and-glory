@@ -188,11 +188,12 @@ final class Abilities {
      * ally as the heal is sent.
      */
     static void mend(GravesAndGlory.Battle b, GravesAndGlory.Unit u, Spec.AbilitiesRow row, long time) {
-        if (time < u.abilityAt || time < u.stunnedUntil) return; // a stunned mender sends nothing (Shield bash, Rise Again: no attacks, no casts); her cooldown waits for the stun to end
-        var mob = u.mob;
-        double radius = row.radius() > 0 ? row.radius() : D.healRadius();
-        var ally = b.units.stream().filter(v -> v.squad.team == u.squad.team && v.mob.isAlive() && v.mob.getHealth() < v.mob.getMaxHealth() && v.mob.squaredDistanceTo(mob) < radius * radius && mob.canSee(v.mob))
-            .min(Comparator.comparingDouble(v -> v.mob.getHealth() / v.mob.getMaxHealth())).orElse(null);
+        if (time < u.abilityAt || time < u.stunnedUntil) { // a stunned mender sends nothing (Shield bash, Rise Again: no attacks, no casts); her cooldown waits for the stun to end
+            // Cosmetic early announce (Kort 2026-11-06, as a bow's draw): the beat before the mend leaves, its cast clip is announced now, at the start tick the release will stamp (Projectiles.drawAhead), so the client drops the release's copy.
+            if (time + 10 >= u.abilityAt && time + 10 >= u.stunnedUntil) { var next = mendTarget(b, u, row); if (next != null) Projectiles.drawAhead(b, u, next.mob, 10); }
+            return;
+        }
+        var ally = mendTarget(b, u, row);
         if (ally == null) return;
         double amount = row.amount() > 0 ? row.amount() : D.healAmount();
         Projectiles.fire(b, u, ally.mob, "mend", (float) (amount * b.campaign.damage(u) * Veterans.outputFactor(u)));
@@ -200,6 +201,19 @@ final class Abilities {
         var dawnlight = rider(u, "mend");
         if (dawnlight != null && dawnlight.cleanse()) Statuses.cleanse(b, u, ally.mob);
         u.abilityAt = time + (row.cooldownTicks() > 0 ? row.cooldownTicks() : D.abilityCooldownTicks());
+    }
+
+    /** The ally a mender would send a heal to now: the most hurt in sight within the row's radius, null for none. */
+    static GravesAndGlory.Unit mendTarget(GravesAndGlory.Battle b, GravesAndGlory.Unit u, Spec.AbilitiesRow row) {
+        var mob = u.mob;
+        double radius = row.radius() > 0 ? row.radius() : D.healRadius();
+        return b.units.stream().filter(v -> v.squad.team == u.squad.team && v.mob.isAlive() && v.mob.getHealth() < v.mob.getMaxHealth() && v.mob.squaredDistanceTo(mob) < radius * radius && mob.canSee(v.mob))
+            .min(Comparator.comparingDouble(v -> v.mob.getHealth() / v.mob.getMaxHealth())).orElse(null);
+    }
+
+    /** Whether the troop's attack beat shoots a projectile that sends attack_v1 at its release (Projectiles.loose): a ranged troop whose ability is not a mend (cast on its own cooldown, mend) or a spell (blight, mist: a bolt with no attack event). */
+    static boolean shoots(GravesAndGlory.Unit u) {
+        return u.spec.ranged() && switch (row(u).mechanic()) {case "blight", "mist", "mend" -> false; default -> true;};
     }
 
     /**

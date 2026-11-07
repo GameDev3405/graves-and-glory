@@ -69,6 +69,12 @@ TROOPS = {
     "ic_arbalist": ("ic_arbalist", "build_ic_arbalist", "IC_ARBALIST", "build_ic_weapons", "ic_crossbow", (-90, 0, 90), "crossbow"),
     # a harpoon (kind "thrower") rides the right fist like a spear; it is thrown, so it hangs on the draw channel's rest frame
     "tc_harpooner": ("tc_harpooner", "build_tc_harpooner", "TC_HARPOONER", "build_house_weapons", "harpoon", (-90, 0, 90), "thrower"),
+    # casters: the Sunweaver's staff rides the right fist like a blade, upright with the sun to the front when the forearm is level (kind "staff"); the others
+    # hold a part modelled into the troop's own right hand (kind "held": the lantern, the wand, the rod), with no weapon_t<n> bones
+    "mage": ("mage", "build_mage", "MAGE", "build_sun_staff", "sun_staff", (-90, 0, 0), "staff"),
+    "hexer": ("hexer", "build_hexer", "HEXER", None, None, None, "held"),
+    "wm_seer": ("wm_seer", "build_wm_seer", "WM_SEER", None, None, None, "held"),
+    "tc_mist": ("tc_mist", "build_tc_mist", "TC_MIST", None, None, None, "held"),
 }
 SHIELD_AT = (-1, 4, -1.5)     # the knight's grip: in the left fist by its strap, face to the front
 WAIST, SPLIT = 8.5, ((12, 8), (12, 0))
@@ -95,6 +101,9 @@ def absolute(B):
 def rigify(src, weapon_rot, kind="blade", hang=None):
     """The troop's handlib bones re-hung on the knight's skeleton (pivots relative to the parent)."""
     src = [bn for bn in src if bn.name not in DROP]
+    for bn in src:   # a held part (a caster's lantern, wand or rod) shows at its weapon tiers, which follow the troop's tier
+        if getattr(bn, "weapon_tiers", None) and not bn.stages:
+            bn.stages = list(bn.weapon_tiers)
     for bn in src:   # a troop's own foot (the raider's) is shin gear: it rides the rig's foot like a boot
         if bn.name in ("right_foot", "left_foot"):
             bn.name += "_gear"
@@ -189,7 +198,7 @@ def rigify(src, weapon_rot, kind="blade", hang=None):
             seen.add(bn.name); order.append(bn); walk(bn.name)
     walk("")
     assert len(order) == len(out), "orphans: " + ", ".join(bn.name for bn in out if bn.name not in seen)
-    for t in (1, 2, 3):
+    for t in ((1, 2, 3) if kind != "held" else ()):
         if kind == "bow":   # the bow in the left fist; one child bone a draw frame, shown by the "draw" channel
             order.append(Bone(f"weapon_t{t}", "left_hand", stages=[t], tag="weapon", rot=weapon_rot))
             for f in BOW_FRAMES:
@@ -211,7 +220,7 @@ class Rig:
         s.kind = kind[0] if kind else "blade"
         sys.path.insert(0, os.path.join(ART, "hand", d))
         s.tid, s.troop = tid, getattr(importlib.import_module(mod), attr)
-        s.weapon = importlib.import_module(wmod)
+        s.weapon = importlib.import_module(wmod) if wmod else None
         s.skin, s.cloth = s.troop.skin, s.troop.cloth
         s.wy = s.skin[1] + s.cloth[1]
         s.B = rigify(s.troop.bones(), wrot, s.kind, HANG.get(tid))
@@ -243,6 +252,9 @@ class Rig:
         sheets, s.uvs, s.cubes = [], {}, {}
         assert SW.SHEET_W * len(s.tiers) <= s.skin[0], "weapon sheets wider than the skin"
         s.frames, s.col = {}, {}
+        if s.weapon is None:   # a held part: painted on the troop's own skin, no weapon sheet
+            s.wsheet, s.height = None, s.wy
+            return
         for t in s.tiers:
             if s.kind == "bow":   # as build_bows.project: the rest frame's solid cubes, the arrow, one shared string column
                 wid = s.wid if t == 1 else f"{s.wid}_t{t}"
@@ -280,7 +292,8 @@ class Rig:
 
     def texture(s, tier, side):
         img = Image.new("RGBA", (s.skin[0], s.height), (0, 0, 0, 0))
-        img.paste(s.skins[tier], (0, 0)); img.paste(s.cloths[side], (0, s.skin[1])); img.paste(s.wsheet, (0, s.wy))
+        img.paste(s.skins[tier], (0, 0)); img.paste(s.cloths[side], (0, s.skin[1]))
+        if s.wsheet is not None: img.paste(s.wsheet, (0, s.wy))
         return img
 
     def geo(s, keep=lambda bn: True):
@@ -302,7 +315,7 @@ class Rig:
                 if b.dil: c["inflate"] = b.dil
                 cs.append(c)
             wcubes = ()
-            if bn.tag == "weapon" and keep(bn) and s.kind != "bow":
+            if bn.tag == "weapon" and keep(bn) and s.kind not in ("bow", "held"):
                 t = int(bn.name[-1]); wcubes = s.solid[t] if s.kind in ("crossbow", "thrower") else s.cubes[t]
             if bn.tag == "draw" and keep(bn):
                 t, frame = int(bn.name[5]), bn.name[7:]
