@@ -1,3 +1,5 @@
+> Historical (superseded 2026-11-07): see PLAN-TO-1.0.md / WORKFLOW.md
+
 # Phase 4: Modes and Campaign Chapter 1 Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.

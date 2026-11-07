@@ -1,3 +1,5 @@
+> Historical (superseded 2026-11-07): see PLAN-TO-1.0.md / WORKFLOW.md
+
 # Lobby and server research
 
 Status: research and recommendation only. No code changed. Written 2026-10-16.

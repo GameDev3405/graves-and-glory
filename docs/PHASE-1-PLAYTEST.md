@@ -1,3 +1,5 @@
+> Historical (superseded 2026-11-07): see PLAN-TO-1.0.md / WORKFLOW.md
+
 # Phase 1 playtest gate: Graves and Glory 0.4.0
 
 For Kort. Three fights (about 45 minutes), then four questions. Phase 1, the solo game, closes only when you say it feels good.

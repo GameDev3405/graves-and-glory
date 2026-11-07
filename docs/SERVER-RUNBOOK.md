@@ -1,3 +1,5 @@
+> Historical (superseded 2026-11-07): see PLAN-TO-1.0.md / WORKFLOW.md (superseded only for the hosted network: it was written for Tailscale, not the Velocity network)
+
 # Match server runbook (task 3.5)
 
 Kit: `tools/server-kit/` (full detail in its `README.md`). Target for the six-player slice test: `C:\GGMatch` on tjepkema-server, port **25580**, Tailscale only. Do not touch the builder (25570) or Kingdom ports (25565-25567, 25571). Deploying is Kort's step.

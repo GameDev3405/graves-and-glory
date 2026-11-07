@@ -1,3 +1,5 @@
+> Historical (superseded 2026-11-07): see PLAN-TO-1.0.md / WORKFLOW.md
+
 # Phase 2 balance log
 
 Every House batch of Phase 2 ends with a bot-vs-bot balance gate. This file holds the gate rules, the run recipe, the result of every run and the tuning log. The plan is `docs/superpowers/plans/2026-10-17-phase-2-houses.md` (section "Bot balance run").

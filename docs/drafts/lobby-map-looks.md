@@ -1,3 +1,5 @@
+> Historical (superseded 2026-11-07): see PLAN-TO-1.0.md / WORKFLOW.md
+
 # DRAFT: lobby and map screen looks (War Table), for Kort to pick
 
 Status: DRAFT, 2026-11-01. Nothing here is built. Each look must still pass the 9 of 10 bar in `docs/UI-GATE.md` and `work/ui-concepts/GRADING-RUBRIC.md`.

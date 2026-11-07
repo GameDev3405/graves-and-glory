@@ -1,3 +1,5 @@
+> Historical (superseded 2026-11-07): see PLAN-TO-1.0.md / WORKFLOW.md
+
 # Phase 2 playtest gate (Kort)
 
 Branch `phase-2-houses`. Four sessions, about 20 minutes each. Tick `[x] yes` or `[x] no` on each line; the free-text answers are the ones that matter most. Nothing here is published; the build stays in the local `dist/`.

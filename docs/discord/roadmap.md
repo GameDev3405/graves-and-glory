@@ -1,3 +1,5 @@
+> Historical (superseded 2026-11-07): see PLAN-TO-1.0.md / WORKFLOW.md (pre-network draft: written before the hosted network and the Old Hold hub)
+
 # Roadmap
 
 *DRAFT for Kort to confirm. Only publicly shareable, approved direction is listed. Dates are intentionally absent.*
