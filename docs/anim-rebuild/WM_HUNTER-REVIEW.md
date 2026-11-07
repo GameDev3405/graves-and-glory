@@ -26,3 +26,25 @@ The third bow unit. It uses the archer's bow builder (`GG_BOW_TROOP=wm_hunter py
 - **Death behind.** One bow limb rests raised 30–45°.
 - **hit_light_front amplitude.** It is weak.
 - **Cape lag.** It was not visible from the reel's cameras, so it is unconfirmed.
+
+## v2 feel (2026-11-07, branch anim/v2-bow)
+
+The same Knight v2 feel as the archer (see `ARCHER-REVIEW.md`, "v2 feel"), built by `art/anim/archer/build_bow_anims.py` with the hunter's own CHAR values. The draw, the shot and the deaths are unchanged, and the deaths are byte-identical to the previous export.
+
+In the medium hit from the right, the bow arm opens less: `BOW_ARM_RIGHT` (-4, -8, -11). With the archer's values the bow went into the left leg and shin (10 points); it is 0 now.
+
+- **Probe.**
+  - No bow or fist in the body in any hit, idle or stance.
+  - Pre-existing and unchanged: the volley has 1 bow point in the head, and the held direct shot has 1 in the left shin.
+  - Floor: hits -0.29 to -0.58 px.
+  - Largest hit pop: 26.0 px/t, at the heavy front peak, at the bow tip.
+- **Review.** Sonnet high, 1 round, verdict SHIP WITH MINORS.
+  - Stances read clearly apart and the hits are graded.
+  - The bow arm never crosses the face or body. The only face overlap is the accepted front-view depth overlap at the heavy peak.
+  - No floor breaks, pops or wrong facing seen.
+- **Open minors.**
+  - The medium hit from behind bends the torso about 70-80 degrees forward, stronger than the front heavy hit. Cap it near 50 degrees.
+  - Heavy front peak leans about 55-65 degrees, past the archer's 45-55.
+  - The plain idle weight shift is subtle.
+- **Harness.** geo-knight suite with `GRAVES_GEO_CHECK_TROOP=wm_hunter`: 22 `[p1] p1-` lines, 0 `=false`.
+- Video: `wm_hunter_v2feel`.

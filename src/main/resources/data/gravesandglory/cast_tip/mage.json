@@ -1,0 +1,27 @@
+{
+ "troop": "mage",
+ "release_tick": 10,
+ "frame": "body: x left, y up from the feet, z forward; blocks",
+ "offset": [
+  -0.077,
+  2.134,
+  2.215
+ ],
+ "tiers": {
+  "weapon_t1": [
+   -0.124,
+   1.978,
+   1.949
+  ],
+  "weapon_t2": [
+   -0.077,
+   2.134,
+   2.215
+  ],
+  "weapon_t3": [
+   -0.077,
+   2.134,
+   2.215
+  ]
+ }
+}

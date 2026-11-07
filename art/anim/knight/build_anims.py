@@ -1816,7 +1816,7 @@ if V2 and SHIELD:   # V2: the shield arm swings wide as the body rolls onto it, 
 # still beside the body.
 # ------------------------------------------------------------------------------------------------
 
-D3_TROOPS = ("knight", "sentinel")            # one shield troop at a time (2026-11-07)
+D3_TROOPS = ("knight", "sentinel", "gl_marshal")           # one shield troop at a time (2026-11-07)
 D3 = TROOP in D3_TROOPS and V2
 D3_WPN = "sword" if TROOP == "knight" else "weapon"   # the held weapon's bone prefix (<prefix>_t1..t3)
 D3_SLERP = ("right_hand", "left_hand")

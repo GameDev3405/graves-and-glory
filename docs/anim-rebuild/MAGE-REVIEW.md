@@ -1,4 +1,51 @@
-# mage review record (2026-11-06)
+# mage review record (2026-11-07, caster v2)
+
+The Sunweaver Mage, the first caster: a 35 px sun staff held in the right fist, robes and a cowl. Its clips come from the caster builder (`art/anim/caster/build_caster_anims.py`, `GG_CAST_TROOP=mage`). Its rig comes from `art/anim/common/troop_rig.py mage`. It was redone on 2026-11-07 in caster style v2, following the wm_seer pilot (`WM_SEER-REVIEW.md`) and the mist caller (`TC_MIST-REVIEW.md`). The wm_seer, tc_mist and hexer built output is byte-identical; every mage change branches on the troop (`ROBED` now covers the mage too).
+
+## v2 (2026-11-07)
+
+- **Robe:** one hanging skirt rebuilt as four panels under the hips (front, back and two sides), each in three stepped tiers (`troop_rig.ROBE["mage"]`).
+  - The mage's source robe was built per leg. The right side's tiers paint the whole skirt round both legs, and the left side's are dropped (`drop`). Each tier keeps its own paint (per-tier painter in `robe_tiers`).
+  - The panels pivot at the waist (`top` 11.5). The hem sits at geo 1.5, the same bell as the mist caller's. The legs keep their bones but lose their boxes, so only the boots show.
+  - Each panel swings with the leg behind it (the builder's `PANELS` solver, `HEM_Y` 1.5, `HEM_CLEAR` 0.15, `LEG_R` 0.75). The walk and run glide; side-panel roll is about 11 degrees in both.
+- **Attack (the staff heal), 36 ticks, release on tick 10 (`impact`), `drawAhead` unchanged:**
+  - **Ticks 0-1.5:** the hips load back first (Knight-style weight shift), before the arms move.
+  - **Ticks 2.8-4.5:** both hands come onto the staff (the left fist solved onto the shaft below the right) and raise it. The body arches back and the gaze follows the sun up.
+  - **Ticks 4.5-8.4:** the light is held with a small tremor and a deepening arch.
+  - **Tick 9:** the hips drive forward over the lead foot and the torso follows. The left hand comes off and the staff starts to tip.
+  - **Tick 10:** the staff is tipped at the ally and the heal leaves the sun. The left hand is open forward after it, as a blessing.
+  - **After:** overshoot at 11.8, a drift at 13.6 (the heal carries on), recover at 16, settled on guard by 28-30.
+  - Lead-foot and rear-foot glides under the robe (`attack_cast_legs`). Fist error at most 0.29 px.
+  - The head glow is the existing emissive (art), not the clip.
+- **Stances:**
+  - **Brace (Hold position):** upright, both arms up, the staff crosswise as a guard bar at the brow, the sun out to the left. No crouch. The 8 px arms cannot lift it over the tall cowl, so it sits in front of it.
+  - **Wall (Hold the line):** the staff levelled at the foe in both hands like a pike, the sun at chest height, the butt by the right hip, the shoulders turned to bring the left hand forward.
+  - **Ward (fall back):** both hands on the staff slanted across the body as a bar, low on the right and the sun high left.
+- **Locomotion:** the walk is the seer-style short glide. The run is a 4-tick scurry under the robe (v2 round 1 had spider legs at the longer stride). The staff butt carries 2.6 px (walk) and 7.0 px (run) above the ground.
+- **Hits:** the shared graded set (light and medium per bearing, plus block), with the robe panels following the legs.
+- **Deaths:** the seer's flat-armed falls except `death_forward` (`DEATH_TWEAK["mage"]`, `_MAGE_FALLS`), with straighter legs in the back, left and right falls so the robe lies flat. The staff is laid flat beside the hand. A dead mage's robe panels fold inward in 2-degree steps then bisect, down to 0.1 px off the leg line for front and back (the legs have no boxes), so the hem does not gape. Rest heights (min-y, px):
+
+  | Fall | Rest heights |
+  |---|---|
+  | Back | hips 0.79, feet 1.66, torso 2.39, arms 3.07 |
+  | Forward | arms 0.0, hips 0.28, feet 2.25, torso 2.39 |
+  | Left | arms 0.0, torso 3.62, hips 4.85, feet 6.13 |
+  | Right | arms 0.0, torso 3.62, hips 5.04, feet 6.42 |
+
+- **Robe probe** (the seer's poke-through probe): live clips have a worst leg-line margin of 0.75 px, the deepest boot poke is 0.03 px (under 0.25), and the lowest live hem is 0.15 px above the floor; fails: none. The deaths have 0.09-0.10 px leg margins by design and the hems stay above the floor (lowest 0.07 px).
+- **Tip origin (cosmetic only, approved):** `data/gravesandglory/cast_tip/mage.json` has offset (-0.077, 2.134, 2.215) blocks for the t2 and t3 staff, and t1 (-0.124, 1.978, 1.949). Damage, healing, ticks and targeting are unchanged.
+- **Review (Sonnet high):**
+  - **Round 1: FIX NEEDED.** Run spider legs; wall duplicated the guard; the death robe was not flat. Fixed by the 4-tick run lap, the two-handed pike wall, and straighter-legged falls with the inward robe fold.
+  - **Round 2: SHIP WITH MINORS except deaths (FIX NEEDED).** Run, wall and cast PASS. Deaths: a dark hollow read at the hem end in the back and left falls.
+  - **Fix round 2 (the last allowed, verified by the animator only, not re-reviewed):** the front and back panels of a dead mage now close to 0.1 px off the leg line. The death reel (`mage_v3/reel3d`) shows the panels tight round the boots. The remaining dark squares at the hem end are the two boot soles (4x4, brown rimmed) seen end-on, which is the boot texture, not an opening in the robe.
+- **In-game checks (final v2 clips): PASS, 22 of 22, 0 false** (`harness3.log`).
+  - The pre-fix-round-2 clips also passed 22 of 22 (`harness1.log`).
+  - The first run on the final clips failed one check: march walk side, client speed 0.089-0.222 against 0.175, under "Can't keep up" server lag while other workers' builds ran. That check reads entity motion (`Gait.update`), not the clips. The rerun passed.
+  - Cast frames: 35 of 35 in the side and three-quarter views, and 17 of 17 far.
+  - 9 of 9 standing and 4 of 4 walking casts matched the server release.
+  - The tip log reads `cast tip mage: from (-281.285, 67.134, 7.577) eye (-283.5, 66.74, 7.5) body yaw -90`, so the heal leaves the sun head, about 0.4 blocks above the eyes.
+
+## v1 record (2026-11-06, superseded)
 
 The Sunweaver Mage, the first caster: a sun staff held in the right fist, robes and a cowl. Its clips come from the new caster builder (`art/anim/caster/build_caster_anims.py`). Its rig comes from `art/anim/common/troop_rig.py mage` (staff `build_sun_staff`, held at (-90, 0, 0)).
 
@@ -8,21 +55,21 @@ The Sunweaver Mage, the first caster: a sun staff held in the right fist, robes 
 - **Deaths:** hard robe panels, with the robes lifted off the ground over ticks 0-4.
 - **Gameplay (Kort approved, 2026-11-06, cosmetic only):** the mage's cast is its heal (`Abilities.mend`), not an enemy attack beat. On the beat before a heal, `mend()` announces the cast 10 ticks early (`Projectiles.drawAhead`), so the wind-up plays before the release. The later `loose` sends the same event, and the client drops the repeat. `Tactics.announcesAhead` now admits a magic caster only when its attack shoots a bolt (`Abilities.shoots`): wm_seer yes, hexer and tc_mist no. Damage, healing and release ticks are unchanged.
 - **Checks:** `GeoKnightChecks` has a `CAST` flag (the mage). It runs the ranged duel with frames over the 36-tick cast clip, and releases a 0-heal mend at the foe as a stand-in.
+- **Review round 1 (Sonnet high, reel `reel_mage_v1`): FIX NEEDED.** The cast was weak, wall looked like brace, and the deaths had floor offsets.
+- **Review round 2 (Sonnet high, reel `reel_mage_v2`): SHIP WITH MINORS.** The cast has a full-body drive, the stances are distinct, and the deaths rest on the floor. Probe: cast fist error at most 0.54 px. Lowest legs in death_forward went from -2.22 to 0.95 px.
+- **In-game checks** (round 2 clips): PASS, 22 of 22 checks, 0 false. 35 of 35 cast frames caught side and three-quarter (17 of 17 far). All 9 standing and 4 walking casts matched the server release. Weight at the release is 1.0, and 0 between casts.
+- **Verdict: finished** (superseded by v2). Video: `mage_v2.mp4`.
 
 ## Review
 
-- **Round 1 (Sonnet high, reel `reel_mage_v1`): FIX NEEDED.** The cast was weak, wall looked like brace, and the deaths had floor offsets.
-- **Round 2 (Sonnet high, reel `reel_mage_v2`): SHIP WITH MINORS.** The cast has a full-body drive, the stances are distinct, and the deaths rest on the floor. Probe: cast fist error at most 0.54 px. Lowest legs in death_forward went from -2.22 to 0.95 px.
-- **In-game checks** (round 2 clips): PASS, 22 of 22 checks, 0 false. 35 of 35 cast frames caught side and three-quarter (17 of 17 far). All 9 standing and 4 walking casts matched the server release. Weight at the release is 1.0, and 0 between casts.
-- **Verdict: finished.** Video: `mage_v2.mp4`.
+- **v2 verdict: SHIP WITH MINORS, pending one look at the death hem.** Run, wall and cast passed review round 2. The death hem fix (round 2) was checked by the animator on the reel and the probe, not by the reviewer. Video: `mage_v3c.mp4`.
 
 ## Open minors (polish, not blocking)
 
-- **Cast, pure side view (ticks 3-8):** the staff overlaps the cowl in projection. It does not pass through it.
-- **Wall:** the staff is only about 20 degrees forward, so it does not read strongly as a barrier.
-- **Brace:** it reads shallower in the blended reel than in the still poses.
-- **Side falls:** the hips sit about 3-4 px up, hidden by the robe.
-- Hits were not reopened closely in round 2. The tick 0-4 robe lift was not checked on the reel.
-- Locomotion is the same as round 1; there is no walk-to-run pop.
+- **Death hem end:** the boot soles are dark and read as a hollow when a fall is seen end-on (back and left falls). A lighter sole texture would fix it (art, out of animation scope).
+- **Wall:** in the side and three-quarter views it resembles the cast release. Dropping the front fist 2 px or rolling the staff would separate it.
+- **Cast:** the frames around tick 4 (f608 and f610 in the reel) are nearly identical, a short hold.
+- **Cast, round 1 minors not reopened:** a small hip dip; the brace bar sits at mouth level rather than above the brow.
+- **Hits:** the shaft crosses the face in the medium hits.
+- **Side falls:** the hips rest about 5 px up, hidden by the robe.
 - The early announce needs a hurt ally in sight on the beat before the heal. The harness checks the announce and release timing, but not `Abilities.mend` itself.
-- wm_seer is not on GeckoLib yet. Its legacy renderer now gets the early attack events (deduplicated, but untested).
