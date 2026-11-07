@@ -42,6 +42,12 @@ SPEAR_TROOPS = {"wm_tusk": {"gear": {"kilt": 0.4, "trophy": 0.7}},
                                     "hood_drape": 0.4}, "death_lookahead": True, "death_step": 0.25, "death_top": 0.15,
                            "soft": ("rags", "sash_tails", "cord", "shroud")}}
 ST = SPEAR_TROOPS[TROOP]
+# V2 feel (group C, 2026-11-07): the knight's v2 weight and flow on the two-handed shaft. Each blow is driven from the pelvis
+# (the hips load back over the rear foot first, the arms follow, the hips drive forward over the lead foot on the impact and
+# the rear foot catches up); hits are graded (a light knee flinch, a medium pelvis shift with a lifted recovery step); every
+# stance rocks its weight and the stances read apart (ready tallest, brace lower and wider, the line deepest, the ward leaning
+# back). Only these troops: the reaper and the rest keep the old build. GG_V2=0 builds the old style.
+V2C = TROOP in ("wm_tusk", "tc_tideguard", "tc_admiral", "ic_breaker") and os.environ.get("GG_V2") != "0"
 LOOKAHEAD = ST.get("death_lookahead", False)   # per troop: wrist turn planned backwards through the fall (see flat_weapon)
 RX = ST.get("rear_x", 0.0)        # per-troop shift of the thrust contact fist outward, keeping the butt out of a wider torso
 K.SOFT = ST.get("soft", ())   # per troop: hanging hair and kelp never hold the falling body up (knight death_clip)
@@ -292,6 +298,39 @@ _KH = K.HIT_LEGS
 K.HIT_LEGS = {"front": mirror_legs(_KH["front"]), "back": mirror_legs(_KH["back"]),
               "right": mirror_legs(_KH["left"]), "left": mirror_legs(_KH["right"])}
 K.BLOCK_LEGS = mirror_legs(K.BLOCK_LEGS)
+if V2C:
+    # The knight's v2 footwork under blows (right lead, its own footing), mirrored like the above. A medium blow shifts the
+    # pelvis well off the footing and a short lifted step catches it (the rear foot back for a blow from the front, the lead
+    # foot forward from behind, the far foot out sideways), then the feet walk home; a light blow only gives at the knees.
+    _KH2 = {
+        "front": {"hips": [(0, *_KN_HIPS), (2, (-6, 9, 0), (0.0, -1.9, 1.6)), (4.5, (-5, 9, 0), (0.0, -2.1, 1.9)),
+                           (7.5, (1, 5, 0), (0.0, -1.8, 1.3)), (10.5, (-1, 7, 0), (0.0, -1.3, 0.5)), (16, *_KN_HIPS)],
+                  "steps": [("left", 1.0, 3.8, (3.3, 2.0, -4.0), 9.0, 0.8), ("right", 3.5, 6.5, (-3.4, 2.0, 0.6), -13.0, 0.6),
+                            ("left", 9.0, 12.5, (3.2, 2.0, -2.0), 7.0, 0.8), ("right", 11.5, 15.0, (-3.4, 2.0, 2.0), -12.0, 0.8)]},
+        "back": {"hips": [(0, *_KN_HIPS), (2, (6, 4, 0), (0.0, -1.8, -1.2)), (4.5, (5, 4, 0), (0.0, -1.9, -1.4)),
+                          (7.5, (-1, 7, 0), (0.0, -1.6, -0.8)), (10.5, (0.5, 6, 0), (0.0, -1.2, -0.2)), (16, *_KN_HIPS)],
+                 "steps": [("right", 1.0, 3.8, (-3.5, 2.0, 3.5), -12.0, 0.8), ("left", 3.5, 6.5, (3.2, 2.0, -0.6), 7.0, 0.6),
+                           ("left", 9.0, 12.5, (3.2, 2.0, -2.0), 7.0, 0.8), ("right", 11.5, 15.0, (-3.4, 2.0, 2.0), -12.0, 0.8)]},
+        "right": {"hips": [(0, *_KN_HIPS), (2, (-2, 14, 4), (1.0, -1.8, 0.5)), (4.5, (-2, 13, 4), (1.2, -1.9, 0.5)),
+                           (7.5, (1, 4, 0), (0.6, -1.6, 0.2)), (10.5, (0, 6.5, 0), (0.1, -1.2, 0.1)), (16, *_KN_HIPS)],
+                  "steps": [("left", 1.0, 3.8, (4.9, 2.0, -2.2), 12.0, 0.8), ("left", 9.0, 12.5, (3.2, 2.0, -2.0), 7.0, 0.8)]},
+        "left": {"hips": [(0, *_KN_HIPS), (2, (-2, -2, -4), (-1.0, -1.8, 0.5)), (4.5, (-2, -1, -4), (-1.2, -1.9, 0.5)),
+                          (7.5, (1, 8, 0), (-0.6, -1.6, 0.2)), (10.5, (0, 5.5, 0), (-0.1, -1.2, 0.1)), (16, *_KN_HIPS)],
+                 "steps": [("right", 1.0, 3.8, (-5.0, 2.0, 1.6), -18.0, 0.8), ("right", 9.0, 12.5, (-3.4, 2.0, 2.0), -12.0, 0.8)]},
+    }
+    K.HIT_LEGS = {"front": mirror_legs(_KH2["front"]), "back": mirror_legs(_KH2["back"]),
+                  "right": mirror_legs(_KH2["left"]), "left": mirror_legs(_KH2["right"])}
+    # a blow taken on the shaft: the arms take it first, the body gives a beat later and less, the feet barely skid
+    K.BLOCK_LEGS = mirror_legs({"hips": [(0, *_KN_HIPS), (1.2, (-1, 7, 0), (0.0, -1.3, 0.3)), (3.0, (-3, 8, 0), (0.0, -1.9, 0.75)),
+                                         (5.8, (4, 2, 0), (0.0, -1.6, -0.4)), (8, (1, 5, 0), (0.0, -1.2, 0.0)),
+                                         (K.BLOCK_TICKS, *_KN_HIPS)],
+                                "steps": [("right", 1.4, 3.0, (-3.4, 2.0, 1.3), -13.0, 0.0),
+                                          ("right", 6.0, 9.0, (-3.4, 2.0, 2.0), -12.0, 0.6)]})
+    # the commands read apart at gameplay scale: brace a step lower and wider than the guard, the line deepest and longest
+    STANCE_LEGS["brace"] = {"hips": ((2.0, 24.0, 0.0), (0.0, -2.4, 0.5)), "left": (3.8, 2.0, 3.0), "right": (-3.6, 2.0, -3.0),
+                            "yaw": (-10.0, 18.0)}
+    STANCE_LEGS["wall"] = {"hips": ((5.0, 28.0, 0.0), (0.0, -3.7, 0.7)), "left": (3.6, 2.0, 4.6), "right": (-3.4, 2.0, -4.3),
+                           "yaw": (-10.0, 22.0)}
 
 
 def stance_legs(spec, life=1.0, ticks=K.STANCE_TICKS):
@@ -390,6 +429,62 @@ ATTACK_LEGS = {
                   "steps": [("left", 1.5, 4.5, (4.4, 2.0, 3.0), 22.0, 1.2), ("right", 6.0, 9.0, (-2.8, 2.0, -1.4), -24.0, 0.0),
                             ("left", 13.0, 17.0, (3.4, 2.0, 2.4), 14.0, 1.0), ("right", 15.0, 19.0, (-3.2, 2.0, -2.2), -6.0, 0.6)]},
 }
+
+if V2C:
+    # V2: the pelvis drives. The hips load first (by t2 they are going back and open over the rear right foot, full by t4.5,
+    # held to t5.6); the arms follow them into the draw and are still drawing as the hips start forward, so the shaft leaves
+    # last (the t5.9 key: no one-tick pop off the load). On the impact the hips drive over the lead foot, the torso leaning
+    # and turning less than before, and the rear foot catches up behind the lunge (t8.5-11) before both feet walk home.
+    # The high thrust coils down deep and springs up; the low sweep ends with the point down at the shins, not level.
+    ATTACKS = {
+        "thrust": [
+            (0, GUARD),
+            (2.5, KEY((10, 24, 0), (2, 0, 0), (-5.0, 13.8, -3.0), aim(10, 20), Ls=10.5)),
+            (5.0, KEY((8, 28, 0), (2, 0, 0), (-5.4, 13.6, -4.8), aim(10, 22), Ls=12.0)),
+            (5.9, KEY((9, 26, 0), (3, 0, 0), (-5.3, 13.6, -4.0), aim(10, 21), Ls=11.3)),
+            (7, KEY((26, 5, 0), (7, 0, 0), (-4.0 + RX, 13.2, 10.0), aim(3, 10), Ls=2.5)),
+            (9, KEY((29, 6, 0), (7, 0, 0), (-4.2 + RX, 13.4, 11.0), aim(2, 11), Ls=2.0)),
+            (12, KEY((19, 10, 0), (5, 0, 0), (-3.5, 14.0, 7.0), aim(8, 14), Ls=4.5)),
+            (17, nudge(GUARD, O=(0.2, 0.0, 0.6), torso=(1, -1, 0))),
+            (22, GUARD)],
+        "high_thrust": [
+            (0, GUARD),
+            (2.5, KEY((7, 27, 0), (0, 0, 0), (-5.0, 11.6, -3.2), aim(6, 21), Ls=10.5)),
+            (5.0, KEY((8, 30, 0), (-3, 0, 0), (-5.2, 9.8, -4.0), aim(4, 22), Ls=11.0)),
+            (5.9, KEY((9, 27, 0), (-4, 0, 0), (-5.2, 10.3, -3.4), aim(7, 21), Ls=10.5)),
+            (7, KEY((18, 6, 0), (-7, 0, 0), (-4.8, 18.0, 9.6), aim(21, 10), Ls=2.5)),
+            (9, KEY((20, 8, 0), (-7, 0, 0), (-5.2, 18.8, 10.4), aim(23, 12), Ls=2.0)),
+            (12, KEY((13, 10, 0), (0, 0, 0), (-3.5, 16.5, 6.5), aim(16, 14), Ls=4.5)),
+            (17, nudge(GUARD, O=(0.2, 0.3, 0.6), torso=(0, -1, 0))),
+            (22, GUARD)],
+        "low_sweep": [
+            (0, GUARD),
+            (3, KEY((12, 28, 0), (8, 8, 0), (-5.0, 13.0, 0.0), aim(5, 36), Ls=7.5)),
+            (5.5, KEY((10, 34, 0), (10, 10, 0), (-5.5, 12.8, -1.0), aim(2, 45), Ls=8.0)),
+            (6.8, KEY((17, 22, 0), (14, 5, 0), (-6.0, 12.0, 2.0), aim(-4, 30), Ls=6.0)),
+            (8, KEY((26, 6, 0), (20, 0, 0), (-6.2, 11.3, 3.8), aim(-8, 10 - 6 * RX), Ls=4.0)),
+            (10.5, KEY((27, 6, 0), (20, -4, 0), (-7.2, 11.3, 4.2), aim(-8, 3 - 8 * RX), Ls=4.0)),  # a wider torso turns the point left, the butt out
+            (14, KEY((20, 8, 0), (10, 0, 0), (-6.0, 13.0, 3.0), aim(2, 8), Ls=5.0)),
+            (18, nudge(GUARD, O=(0.2, 0.0, 0.5), torso=(1, -2, 0))),
+            (22, GUARD)],
+    }
+    _HOME = [("left", 13.0, 16.5, (3.4, 2.0, 2.4), 14.0, 1.0), ("right", 16.0, 19.5, (-3.2, 2.0, -2.2), -6.0, 0.8)]
+    ATTACK_LEGS = {
+        "thrust": {"hips": [(0, *READY_HIPS), (2, (-2, 26, -0.5), (-0.3, -1.5, 0.7)), (4.5, (-4, 33, -1.5), (-0.6, -1.9, 1.4)),
+                            (5.6, (-4, 33, -1.5), (-0.5, -2.0, 1.3)), (7, (7, 6, 1), (0.4, -3.0, -2.8)),
+                            (9, (8, 4, 1), (0.5, -3.2, -3.1)), (12, (4, 10, 0), (0.2, -2.5, -2.2)),
+                            (16.5, (1, 17, 0), (0.0, -1.6, -0.6)), (22, *READY_HIPS)],
+                   "steps": [("left", 4.6, 6.8, (3.6, 2.0, 6.8), 12.0, 1.4), ("right", 8.5, 11.0, (-3.1, 2.0, 0.4), -8.0, 1.0)] + _HOME},
+        "high_thrust": {"hips": [(0, *READY_HIPS), (2, (-1, 26, -0.5), (0.0, -1.8, 0.6)), (4.5, (-3, 32, -1.5), (-0.3, -3.0, 1.1)),
+                                 (5.6, (-3, 32, -1.5), (-0.4, -3.4, 1.0)), (7, (1, 6, 1), (0.2, -1.7, -2.2)),
+                                 (9, (2, 5, 1), (0.3, -1.6, -2.5)), (12, (1, 11, 0), (0.1, -1.5, -1.8)),
+                                 (16.5, (0, 18, 0), (0.0, -1.4, -0.5)), (22, *READY_HIPS)],
+                        "steps": [("left", 4.6, 6.8, (3.6, 2.0, 6.2), 12.0, 1.3), ("right", 8.5, 11.0, (-3.1, 2.0, 0.2), -8.0, 1.0)] + _HOME},
+        "low_sweep": {"hips": [(0, *READY_HIPS), (2.5, (1, 27, -0.5), (-0.3, -1.8, 0.4)), (5.5, (4, 33, -1.5), (-0.4, -2.3, 0.5)),
+                               (8, (10, 4, 1), (0.0, -3.1, -0.5)), (10.5, (11, 2, 1), (-0.1, -3.2, -0.6)), (14, (6, 6, 0), (0.0, -2.4, -0.3)),
+                               (18, (1, 16, 0), (0.0, -1.5, 0.0)), (22, *READY_HIPS)],
+                      "steps": ATTACK_LEGS["low_sweep"]["steps"]},
+    }
 
 
 def gear(samples, legs=None):
@@ -502,6 +597,12 @@ STANCE_KEYS = {
     # ward: giving ground, upright, the point raised to fend
     "ward": KEY((4, 12, 0), (0, 0, 0), (-4.5, 14.5, 1.5), aim(24, 16), Ls=6.5),
 }
+if V2C:
+    # V2: brace sunk a step lower over its wider feet (the fists ride down with the hips), the ward leaning back as it gives ground
+    # the brace sets the point steeply, a pike grounded against a charge, so its silhouette parts from the guard
+    STANCE_KEYS["brace"] = KEY((18, 16, 0), (2, 0, 0), (-5.0, 10.9, 0.5), aim(32, 14), Ls=7.0)
+    STANCE_KEYS["wall"] = KEY((22, 18, 0), (6, 0, 0), (-4.0, 13.2, 3.2), aim(5, 12), Ls=5.0)
+    STANCE_KEYS["ward"] = KEY((-4, 10, 0), (-2, 0, 0), (-4.5, 14.6, 1.0), aim(26, 16), Ls=6.5)
 STANCE_KEYS["shield_up"] = STANCE_KEYS["ready"]
 LIFE = {"ready": 3.4, "brace": 1.6, "wall": 1.4, "ward": 2.0, "shield_up": 3.4}
 IDLE_LIFE = 2.2
@@ -533,7 +634,9 @@ def stance_upper(k, life, legs_spec, ticks=K.STANCE_TICKS):
 
 def stance_clips():
     out = {"stance_%s_upper" % k: stance_upper(v, LIFE[k], STANCE_LEGS.get(k)) for k, v in STANCE_KEYS.items()}
-    out.update({"stance_%s_legs" % k: stance_legs(v, K.STANCE_LIFE.get(k, 1.0)) for k, v in STANCE_LEGS.items()})
+    # V2: the brace and the line rock their weight with the upper body (it already does), not on stiff legs
+    life = (lambda k: K.STANCE_LIFE.get(k, LIFE[k])) if V2C else (lambda k: K.STANCE_LIFE.get(k, 1.0))
+    out.update({"stance_%s_legs" % k: stance_legs(v, life(k)) for k, v in STANCE_LEGS.items()})
     return out
 
 
@@ -556,11 +659,26 @@ HIT_PEAK = {
 }
 
 
+hit_keys = K.hit_keys
+if V2C:
+    # A blow from behind throws the chest forward; the arms lift against it so the long haft stays near level and its point
+    # does not drive into the ground ahead.
+    HIT_PEAK["back"] = off(torso=(12, 0, 0), head=(5, 0, 0), rarm=(-7, 0, 4), larm=(-7, 0, -4))
+    # V2 grading: a light blow is a smaller flinch (0.4 of the stagger's first key), a medium one is thrown further, held a
+    # beat longer and caught slower
+    def hit_keys(peak, weight):
+        if weight == "light":
+            p = K.scaled(peak, 0.4)
+            return [(0, K.ZERO), (1.5, p), (4, K.scaled(p, -0.12)), (6.5, K.scaled(p, 0.04)), (9, K.ZERO)]
+        return [(0, K.ZERO), (2, K.scaled(peak, 2.3)), (4.5, K.scaled(peak, 2.15)), (7.5, K.scaled(peak, 0.55)),
+                (10.5, K.scaled(peak, -0.35)), (13, K.scaled(peak, 0.08)), (16, K.ZERO)]
+
+
 def hit_clips():
     out = {}
     for weight, ticks in K.HIT_TICKS.items():
         for dname, peak in HIT_PEAK.items():
-            keys = K.hit_keys(peak, weight)
+            keys = hit_keys(peak, weight)
             out["hit_%s_%s" % (weight, dname)] = K.bake([K.sample_keys(keys, i / SUB) for i in range(ticks * SUB + 1)], ticks,
                                                        loop=False)
     out["hit_block"] = out["hit_light_front"]

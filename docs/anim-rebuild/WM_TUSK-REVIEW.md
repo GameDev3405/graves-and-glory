@@ -30,3 +30,20 @@ The first spear unit, the Warmonger tusk. Its builder is new and shared by the s
 - **Left death** (t660–677): the spear turns quickly while the body rolls. It is continuous, with no spin.
 - **Behind death** (t614): the spear tip reaches floor level at the feet. It touches but does not go below.
 - **Run carry:** the butt passes close to the ground (5.3 px at the lowest).
+
+## v2 feel (2026-11-07)
+
+The knight's approved v2 style is ported to the spear builder (`art/anim/spear/build_spear_anims.py`), adapted to a two-handed spear. It is on for wm_tusk, tc_tideguard and tc_admiral (and the ic_breaker greataxe builder); `GG_V2=0` builds the old style. Deaths are unchanged.
+
+- **Pelvis-driven blows:** each attack loads into the back hip, then the pelvis turns and drops into the lunge, and the spear follows the hips instead of leading with the arms. Both fists stay on the shaft.
+- **Graded hits:** a light blow is a knee flinch at 0.4 of the peak. A medium blow throws the upper body further and holds it a beat, shifts the pelvis off the footing, and catches it with a recovery step (the knight's hit legs). A heavy blow plays the medium clip at 1.55 times its size, so it reads as a stagger. A blow from behind throws the chest forward with both arms lifted, so the spear point stays off the ground.
+- **Idle:** the knight's weight cycle (breath, then a slow shift from foot to foot).
+- **Stances:** ready holds the spear level at guard. Brace sets the point steeply, like a pike grounded against a charge. Hold the line crouches with the spear low and level. Ward, for walking backward, angles the point up. All four read apart at gameplay scale.
+- **Probe:** no shaft or fist in the body, nothing below the floor, no new pops.
+- **Byte identity:** knight, archer and gl_marshal build byte-identical to HEAD.
+- **Review (Sonnet high, sheets and the knight v2 comparison): PASS WITH MINORS.** One fix round: brace was too close to ready, so its point was raised (aim 20 to 32). The new stances sheet was checked by eye; there was no second review.
+- **Harness:** `geo-knight` check on wm_tusk passed with 22 `[p1] p1-` lines and 0 `=false`. An earlier run under heavy machine load ("Can't keep up") missed one stance-blend timing check (weight 0.98 instead of 1 at k30); the rerun passed.
+- **New minors:**
+  - The light hit is barely readable from the front (t1–6). It matches the approved knight's light flinch.
+  - Medium from the right is subtle, and its recovery step is hard to see.
+  - The thrust pop and the low run carry (both listed above) are no worse.

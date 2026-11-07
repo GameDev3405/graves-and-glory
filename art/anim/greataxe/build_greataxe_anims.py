@@ -135,6 +135,44 @@ STANCE_KEYS = {
 }
 STANCE_KEYS["shield_up"] = STANCE_KEYS["ready"]
 
+if SP.V2C:
+    # v2 feel (the Knight's): the pelvis loads first and fires first. Every swing loads the hips back over the rear (right)
+    # foot during the wind-up, the hips start forward a beat before the arms leave the top, drive over the planted lead on
+    # the impact, a rear catch step follows, then both feet come home. The chop's settle no longer lifts at atk 20.
+    ATTACKS["overhead_chop"][-3] = (21, AKEY((18, 6, 0), (8, 0, 0), (-3.4, 15.4, 7.2), aim(48, 0), bit=Zf, Ls=4.6))
+    # The mid-arc keys carry the butt clear of the chest now that the pelvis leads the drop.
+    _ci = [t for t, _ in ATTACKS["overhead_chop"]].index(11.5)
+    ATTACKS["overhead_chop"][_ci] = (11.5, AKEY((12, 2, 0), (9, 0, 0), (-2.8, 19.2, 8.6), aim(40, 14), u=UP_CHOP, Ls=3.5,
+                                               rp=(-115, 0, 8, -25), lp=(-110, -10, 0, -25)))
+    _hi = [t for t, _ in ATTACKS["side_hew"]].index(11.5)
+    ATTACKS["side_hew"].insert(_hi, (11.25, AKEY((10.5, 16, -1.5), (6.5, 0, 0), (-4.6, 15.8, 9.0), aim(11, -76), u=(0.08, 1, 0),
+                                                 Ls=3.5, rp=(-65, 0, 22, -25), lp=(-71, -25, -15, -32))))
+    _HOME = [("left", 19.0, 22.5, (3.4, 2.0, 2.4), 14.0, 1.0), ("right", 22.0, 25.5, (-3.2, 2.0, -2.2), -6.0, 0.8)]
+    ATTACK_LEGS = {
+        "overhead_chop": {"hips": [(0, *READY_HIPS), (3, (-3, 25, -0.5), (-0.3, -1.5, 0.7)), (6.5, (-7, 30, -1.5), (-0.6, -1.9, 1.3)),
+                                   (9.3, (-8, 30, -1.5), (-0.6, -2.0, 1.3)), (10.5, (-3, 25, 0), (-0.3, -2.3, 0.6)),
+                                   (12, (9, 8, 1), (0.4, -3.2, -1.8)), (14, (11, 5, 1), (0.5, -3.6, -2.1)),
+                                   (17, (9, 8, 0), (0.3, -3.2, -1.7)), (22, (3, 16, 0), (0.0, -1.9, -0.6)), (T, *READY_HIPS)],
+                          "steps": [("left", 9.8, 11.8, (3.6, 2.0, 5.6), 12.0, 1.4), ("right", 14.5, 17.5, (-3.1, 2.0, -0.2), -8.0, 1.0)]
+                          + _HOME},
+        "side_hew": {"hips": [(0, *READY_HIPS), (3, (-1, 28, 0), (-0.3, -1.6, 0.6)), (6.5, (-3, 38, -1), (-0.6, -1.9, 1.0)),
+                              (9.3, (-3, 41, -1), (-0.6, -2.0, 1.0)), (10.5, (-1, 32, -1), (-0.4, -2.2, 0.5)),
+                              (12, (6, 2, -2), (0.3, -3.1, -1.2)), (14, (8, -10, -3), (0.4, -3.3, -1.3)),
+                              (17, (6, -8, -2), (0.3, -3.0, -1.1)), (22, (2, 12, 0), (0.0, -1.8, -0.4)), (T, *READY_HIPS)],
+                     "steps": ATTACK_LEGS["side_hew"]["steps"]},
+        "haft_jab": {"hips": [(0, *READY_HIPS), (2.5, (-3, 24, -0.5), (-0.4, -1.6, 0.9)), (5.0, (-5, 27, -1), (-0.6, -1.8, 1.2)),
+                              (6.0, (-1, 20, 0), (-0.2, -2.2, 0.2)), (7, (7, 10, 1), (0.4, -2.9, -2.2)),
+                              (9, (8, 8, 1), (0.5, -3.1, -2.5)), (13, (4, 14, 0), (0.2, -2.3, -1.6)), (19, (0, 19, 0), (0.0, -1.5, -0.4)),
+                              (T, *READY_HIPS)],
+                     "steps": [("left", 4.8, 6.8, (3.6, 2.0, 5.5), 12.0, 1.3), ("right", 9.0, 12.0, (-3.1, 2.0, 0.0), -8.0, 1.0),
+                               ("left", 14.0, 18.5, (3.4, 2.0, 2.4), 14.0, 1.0), ("right", 17.0, 20.5, (-3.2, 2.0, -2.2), -6.0, 0.8)]},
+    }
+    # Stances that read apart at gameplay scale: brace sunk with the haft upright before the face, wall crouched forward with
+    # the head levelled at the foe, ward leaning back with the haft high and level across the chest.
+    STANCE_KEYS["brace"] = AKEY((14, 12, 0), (2, 0, 0), (-1.5, 10.8, 5.2), (-3.0, 17.0, 1.6), bit=Zf, Ls=7.0)
+    STANCE_KEYS["wall"] = AKEY((26, 16, 0), (8, 0, 0), (-2.6, 12.4, 6.2), aim(18, 4), bit=Zf, Ls=5.0)
+    STANCE_KEYS["ward"] = AKEY((-4, 12, 0), (-2, 0, 0), (-3.5, 16.8, 1.6), aim(16, 80), bit=Y, Ls=9.0)
+
 
 def attack_clip(name):
     keys, legs = ATTACKS[name], K.attack_legs(ATTACK_LEGS[name], ticks=ATTACK_TICKS)
