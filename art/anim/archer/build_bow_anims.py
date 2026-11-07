@@ -589,6 +589,12 @@ V2_LIGHT = 0.4
 # the other directions keep the knight's v2 amplitude.
 V2_BODY = {"front": 0.85, "back": 1.0, "right": 1.0, "left": 1.0}
 BOW_ARM = {"front": (6, -12, -26), "back": (8, -4, -6), "right": (-4, -8, -4), "left": (8, -4, -6)}
+# A blow from the right throws the body over the bow side: the longbow's tall stave then dips its lower tip under the ground,
+# and the hide hunter's bow, carried low, swings into its own left leg. Those two open the bow arm wider (it lifts and stands
+# the lower limb clear of the leg).
+BOW_ARM_RIGHT = {"longbow": (-4, -8, -11), "wm_hunter": (-4, -8, -11)}
+if TROOP in BOW_ARM_RIGHT:
+    BOW_ARM["right"] = BOW_ARM_RIGHT[TROOP]
 ARM_BONES = {"left": ("left_arm", "left_forearm", "left_hand"), "right": ("right_arm", "right_forearm", "right_hand")}
 
 
@@ -613,6 +619,9 @@ def bow_arm_keys(d, weight):
         return [(0, K.ZERO), (2, a), (4.5, sc(a, 0.9)), (7.5, sc(a, 0.4)), (10.5, K.ZERO), (16, K.ZERO)]
     if weight == "light":
         return [(0, K.ZERO), (1.5, sc(a, V2_LIGHT)), (4, sc(a, 0.05)), (6.5, K.ZERO), (9, K.ZERO)]
+    if d == "right" and TROOP == "longbow":   # the stave tip stays off the ground while the hips are still low (to ~t11)
+        return [(0, K.ZERO), (2, sc(a, 2.3)), (4.5, sc(a, 2.3)), (7.5, sc(a, 1.8)), (10.5, sc(a, 0.9)), (13, sc(a, 0.2)),
+                (16, K.ZERO)]
     return [(0, K.ZERO), (2, sc(a, 2.3)), (4.5, sc(a, 2.15)), (7.5, sc(a, 0.55)), (10.5, K.ZERO), (16, K.ZERO)]
 
 
