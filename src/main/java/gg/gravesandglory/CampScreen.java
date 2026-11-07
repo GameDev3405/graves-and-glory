@@ -17,8 +17,9 @@ import static gg.gravesandglory.GravesAndGloryClient.*;
  *  the battle report (results) is WarTableReport's two papers. */
 final class CampScreen extends ArmyScreen {
     String page;float scale=1;int offset;String key="";long requestAt;
-    /** The latest command the 300 ms throttle held back, or null; tick() sends it when the throttle allows. */
-    String pending;
+    /** The commands the 300 ms throttle held back, oldest first (at most QUEUE_MAX); tick() sends one each time the throttle allows. */
+    final ArrayDeque<String> queue=new ArrayDeque<>();
+    static final int QUEUE_MAX=8;
     /** state() as last built, and what it was built from: a snapshot revision and the running and ready flags. */
     String stateCache="";int stateRev=-1;boolean stateRunning,stateReady;
     /** The War Table home (page home), kept while this screen lives so its focus and animation survive a rebuild. */
@@ -63,8 +64,9 @@ final class CampScreen extends ArmyScreen {
     String value(String name){return social().has(name)?social().get(name).getAsString():"";}
     int number(String name,int fallback){return social().has(name)?social().get(name).getAsInt():fallback;}
     JsonArray rows(String name){return social().has(name)?social().getAsJsonArray(name):new JsonArray();}
-    /** Sends cmd to the server unless a command went less than 300 ms ago; returns whether it went. A command the throttle holds back is kept (the latest one wins) and goes from tick() once the throttle allows, so a quick second click is delayed, not lost. */
-    boolean action(String cmd){long now=System.currentTimeMillis();if(now-requestAt<300){pending=cmd;return false;}pending=null;requestAt=now;CampaignClient.notice="";CampaignClient.dismissed="";send(cmd);return true;} // what the player does next speaks anew: a notice he left behind by changing page shows again if the server answers with the same words (review fix round 2)
+    /** Sends cmd to the server unless a command went less than 300 ms ago; true when it went or was queued, false when the queue is full. A command the throttle holds back waits in order and goes from tick() as the throttle allows, so quick clicks are delayed, not lost; the same command twice in a row in the queue counts once. */
+    boolean action(String cmd){long now=System.currentTimeMillis();if(!queue.isEmpty()||now-requestAt<300){if(cmd.equals(queue.peekLast()))return true;if(queue.size()>=QUEUE_MAX)return false;queue.add(cmd);return true;}transmit(cmd,now);return true;}
+    void transmit(String cmd,long now){requestAt=now;CampaignClient.notice="";CampaignClient.dismissed="";send(cmd);} // what the player does next speaks anew: a notice he left behind by changing page shows again if the server answers with the same words (review fix round 2)
     /** Turns the table to another page (an old name goes through alias); the keyboard's focus starts afresh there. */
     void page(String next){if(CampaignClient.rollShowing())CampaignClient.revealUntil=0;CampaignClient.dismissed=CampaignClient.notice;if("forge".equals(next))gearTab="forge";page=alias(next);if(!page.equals("gear"))arsenal=null;offset=0;if(!page.equals("recruit"))recruit=null;if(!page.equals("troop"))troopSheet=null;if(!page.equals("lobby"))lobby=null;if(!page.equals("results"))report=null;if(pages!=null&&!pages.page.equals(page))pages=null;super.clearAndInit();}
     void rebuild(){clearAndInit();}
@@ -122,8 +124,8 @@ final class CampScreen extends ArmyScreen {
         }
     }
     @Override public void tick(){if(home!=null&&page.equals("home"))home.tick();if(recruit!=null&&page.equals("recruit"))recruit.tick();if(troopSheet!=null&&page.equals("troop"))troopSheet.tick();if(lobby!=null&&page.equals("lobby"))lobby.tick();if(report!=null&&page.equals("results"))report.tick();if(arsenal!=null&&page.equals("gear"))arsenal.tick();if(pages!=null&&pages.page.equals(page))pages.tick();if(!key.equals(state()))clearAndInit();flushPending();if(running&&!CampaignClient.waiting)close();}
-    /** Sends the command the throttle held back, once 300 ms have passed since the last. */
-    void flushPending(){if(pending!=null&&System.currentTimeMillis()-requestAt>=300){String cmd=pending;pending=null;action(cmd);}}
+    /** Sends the oldest queued command once 300 ms have passed since the last. */
+    void flushPending(){long now=System.currentTimeMillis();if(!queue.isEmpty()&&now-requestAt>=300)transmit(queue.poll(),now);}
     /** The troops one recruitment roll in this House can give: its Commons, Rares and Epic in sheet order (Legendaries come from Pacts). */
     static List<Spec.TroopsRow> pool(String house){return Arrays.stream(Spec.TROOPS).filter(t->t.house().equals(house)&&!t.rarity().equals("legendary")).toList();}
     static int weight(Spec.TroopsRow t){var r=RosterMath.rarityRow(t.rarity());return r==null?0:r.rollWeight();}

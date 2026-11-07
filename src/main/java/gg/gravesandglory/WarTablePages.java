@@ -586,6 +586,20 @@ final class WarTablePages {
         return out;
     }
 
+    /** The banner as the server will have it once the commands already sent or queued land: the snapshot's, with each Add, Remove and
+     *  seat click applied (BannerDrop.apply, the server's own rule) until the snapshot catches up or PLANNED_MS pass. A click resolves its
+     *  seat from this, so rapid clicks before the next snapshot do not all pick the same stale seat. */
+    static List<String> line() {
+        var snap = CampaignClient.profile.banner;
+        if (planned != null && (planned.equals(snap) || System.currentTimeMillis() - plannedAt > PLANNED_MS)) planned = null;
+        return planned != null ? planned : snap;
+    }
+    private static List<String> planned;
+    private static long plannedAt;
+    private static final long PLANNED_MS = 2500;
+    /** Notes a slot command just sent or queued: the projected banner moves on by it. */
+    static void planSlot(int slot, String id) { planned = BannerDrop.apply(line(), slot, id, dropRules()); plannedAt = System.currentTimeMillis(); }
+
     /** The copies of a troop in the deployment. */
     static int copies(String troop) { return java.util.Collections.frequency(CampaignClient.profile.banner, troop); }
     /** The seats a troop takes in the deployment: each copy takes its slot weight (an Epic two, a Legendary four). */
@@ -596,14 +610,14 @@ final class WarTablePages {
     static int used() { int n = 0; for (var id : CampaignClient.profile.banner) if (!id.equals(RosterMath.EMPTY)) n++; return n; }
     /** The seat a wide troop starts in when seat i is one of its later halves, else i itself. */
     static int unitSeat(int i) {
-        var line = CampaignClient.profile.banner;
+        var line = line();
         int j = Math.min(i, line.size() - 1);
         while (j > 0 && RosterMath.MARKER.equals(line.get(j))) j--;
         return Math.max(0, j);
     }
     /** The first seat of a run of w free seats in a row, or -1 when no run is long enough. */
     static int firstRun(int w) {
-        var line = CampaignClient.profile.banner;
+        var line = line();
         for (int i = 0; i + w <= line.size(); i++) {
             boolean run = true;
             for (int k = 0; k < w && run; k++) run = line.get(i + k).equals(EMPTY);
@@ -617,7 +631,7 @@ final class WarTablePages {
         String rarity = c.rarityOf(troop);
         if (rarity != null) {
             int units = 0;
-            for (var id : CampaignClient.profile.banner) if (rarity.equals(c.rarityOf(id))) units++;
+            for (var id : line()) if (rarity.equals(c.rarityOf(id))) units++;
             int max = RosterMath.bannerMax(rarity);
             if (units >= max) return "A banner holds " + max + " " + rarity + " troop" + (max == 1 ? "" : "s") + ".";
         }
@@ -726,13 +740,18 @@ final class WarTablePages {
     void army(int i, String how) {
         var roll = owned();
         if (i >= roll.size()) return;
-        String troop = roll.get(i).troopId(); var line = CampaignClient.profile.banner; // integration: p2 takes slot:<i>:<id>, not army:
+        String troop = roll.get(i).troopId(); var line = line(); // integration: p2 takes slot:<i>:<id>, not army:
         int at = how.equals("add") ? firstRun(weight(troop)) : line.lastIndexOf(troop);
-        if (at >= 0) send("slot:" + at + ":" + (how.equals("add") ? troop : EMPTY));
+        String id = how.equals("add") ? troop : EMPTY;
+        if (at >= 0 && send("slot:" + at + ":" + id)) planSlot(at, id);
     }
 
     /** A seat click: the troop goes in the seat; emptying a later half of a wide troop empties the troop's own seat (the server repacks). */
-    void place(int seat, String troop) { if (troop != null) send("slot:" + (EMPTY.equals(troop) ? unitSeat(seat) : seat) + ":" + troop); }
+    void place(int seat, String troop) {
+        if (troop == null) return;
+        int at = EMPTY.equals(troop) ? unitSeat(seat) : seat;
+        if (send("slot:" + at + ":" + troop)) planSlot(at, troop);
+    }
 
     // ============================================================================================================ drag and drop
 
@@ -856,7 +875,7 @@ final class WarTablePages {
             fly(false, null);
             return;
         }
-        pend = plan; pendBase = new ArrayList<>(CampaignClient.profile.banner); pendStep = 0; pendAt = ticks;
+        planned = null; pend = plan; pendBase = new ArrayList<>(CampaignClient.profile.banner); pendStep = 0; pendAt = ticks;
         optimistic = plan.commands().size() > 1 ? plan.result() : null;
         int s = seatAt(x, y);
         fly(true, s >= 0 ? buttons.get("seat-" + s) : null);
