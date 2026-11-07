@@ -29,7 +29,7 @@ add to it, never remove from it. Date and source on each line.
 
 ## Platform
 - Melty listing 0.2.0: left live for now, not updated (2026-10-17 decision to drop Melty).
-- Public matchmaking, Velocity proxy, moderation tools (Codex milestones 5 and 6; Phase 6).
+- Public matchmaking, Velocity proxy, moderation tools (Codex milestones 5 and 6; Phase 6). Unparked by Kort 2026-11-07: now in 1.0 scope as Phase 7 of `PLAN-TO-1.0.md` (backlog NET-1 to NET-5). Ranked play stays parked.
 - FancyMenu/Drippy loading screens (Codex research; native screens chosen instead).
 - FTB Quests as a contract framework (Codex research; custom contracts chosen).
 
@@ -44,6 +44,8 @@ add to it, never remove from it. Date and source on each line.
 - Muster lanes for fewer than four armies (2026-10-18, Phase 1 Task 5b): spawn rows are now centred for any army count, so three armies form at z -22, 0 and +22, on the gravel files between MapDressing's lanes; the four trampled lanes and lane standards still sit at (i-1.5)*22. Redraw them per army count when Phase 3 rebuilds the bases.
 
 ## Public network brainstorm (2026-10-18, parked by Kort: friends first)
+
+Update 2026-11-07: Kort approved a first version of this network for 1.0 (Velocity proxy, lobby, battle servers, MySQL, moderation, Tebex cosmetics, Kinetic Hosting, capped beta). The thousand-player ambition, ranked play and reserved queue slots stay parked. See `PLAN-TO-1.0.md` Phase 7.
 
 Kort pictures up to a thousand concurrent players a year out and wants the server to pay for itself or better. Parked until Phase 5 (friends) holds. Notes to pick up then:
 - Architecture: one Battle per server process means a proxy (Velocity) plus a pool of match servers behind one lobby; a 160-troop match is close to one CPU core. Measure matches-per-machine with the Task 5 bot simulation before sizing anything.
