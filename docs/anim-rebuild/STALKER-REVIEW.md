@@ -20,3 +20,26 @@ The fifth and last bow unit, the barrow stalker. It uses the archer's bow builde
 - **Deaths** drift or clip at the reel panel's edges (camera framing).
 - **Brace, hold the line and ward** read close to combat ready (same as the archer).
 - **Foot slide** could not be confirmed at thumbnail size.
+
+## v2 feel (2026-11-07, branch anim/v2-bow)
+
+The same Knight v2 feel as the archer (see `ARCHER-REVIEW.md`, "v2 feel"), built by `art/anim/archer/build_bow_anims.py` with the stalker's own CHAR values. The stalker character is a patient hunter, set low with the deepest sink. The draw, the shot and the deaths are unchanged, and the deaths are byte-identical to the previous export.
+
+- **Probe.**
+  - No bow or fist in the body in any clip.
+  - Floor: hits -0.39 to -0.48 px; hold the line -0.62 px; brace -0.46 px (the mantle hem and boots, as at baseline).
+  - Largest hit pop: 27.9 px/t, at the heavy front peak, at the bow tip. The volley reaches 32.2 px/t.
+- **Review.** Sonnet high, 1 round, verdict SHIP WITH MINORS.
+  - Reads like the Knight: hits graded, stances apart (brace wide and low, hold the line forward).
+  - The bow arm swings out and back in the heavy hit and never folds in. In the front view at the heavy start, the bow tip sits near the chin; this is depth overlap only, as for the archer.
+  - No clipping through the body or mantle, and no floor breaks, pops or wrong facing seen.
+- **Open minors.**
+  - Heavy front peak leans about 55-65 degrees, slightly past the archer's accepted 45-55.
+  - Medium hits from behind (about 60 degrees forward) and from the left (the head pitched far down) read close to heavy. Their recovery cells are still hunched.
+  - The plain idle weight shift is faint in the front view. The deepest sink shows in brace and combat ready more than in the idle.
+- **Harness.** geo-knight suite with `GRAVES_GEO_CHECK_TROOP=stalker`: 22 `[p1] p1-` lines, 2 `=false`.
+  - `attack-sync-stand` matched 8 of 9 swings; one swing logged `clipnull`.
+  - The suite line is false only because that check failed.
+  - The attack clips are byte-identical to the previous export, so this is not caused by this pass. The archer showed the same miss, under lag.
+  - Not rerun: the client budget for this pass ran out.
+- Video: `stalker_v2feel`.
