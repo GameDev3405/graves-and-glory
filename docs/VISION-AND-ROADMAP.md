@@ -1,3 +1,5 @@
+> Historical vision doc (2026-10-17), superseded by `PLAN-TO-1.0.md` for scope. Model routing is in `WORKFLOW.md`. Lines below are corrected only where they contradict Kort's current decisions.
+
 # Graves and Glory: vision and roadmap
 
 Version 1, 2026-10-17. Written from Kort's answers in the orchestrator session.
@@ -18,13 +20,13 @@ collect. Grim world, heroic moments. Minecraft 1.20.1, Fabric.
 
 | Topic | Decision |
 |---|---|
-| Next goal | Make it feel great solo. Then bring friends in. Public later. |
+| Next goal | Make it feel great solo. Then bring friends in. Public server, matchmaking and moderation are now in 1.0 (`PLAN-TO-1.0.md`). |
 | Visual bar | Hand-built world (camp, landmarks) plus custom UI art. Claude builds structures and draws pixel UI/portraits. |
-| Commander | Both: hero classes that fight and general classes that command. Player chooses. |
-| Progression | Long chase: ~30 troops, rarity tiers, evolve lines, duplicates rank units up. Earned only, no real money. |
-| Factions | Drop Dawn vs Dusk. Houses you mix freely with set bonuses. Teams are just banner colours. |
+| Commander | Removed: commander classes are gone; gear drives combat (`PLAN-TO-1.0.md`). Was: hero and general classes. |
+| Progression | Long chase: ~30 troops, rarity tiers, evolve lines, duplicates rank units up. Earned by play; the only paid items are cosmetics in the store (`PLAN-TO-1.0.md`). |
+| Factions | Dawn vs Dusk removed. Houses you mix freely with set bonuses. Teams are just banner colours. |
 | Tone | Grim but heroic. |
-| Modes | Domination, Siege (attack/defend), Survival waves (solo/co-op), Capture the banner / escort. |
+| Modes | Domination, Siege (attack/defend), Survival waves (solo/co-op), Convoy (Frostmarch escort) in place of Banner. |
 | Solo | Campaign and skirmish from the start; campaign reuses skirmish maps. |
 | Workflow | Claude orchestrates alone, owns the repo. Codex is out unless handed a task doc. |
 | Melty | Dropped. Modrinth/Prism first, CurseForge second. Leave the 0.2.0 listing alone for now. |
@@ -46,9 +48,9 @@ Builder's calls made by the orchestrator (flagged, not Kort's words):
 - A new profile starts with every House's Commons. Rares come from
   recruitment, the Legendary of each House from campaign chapter completion or
   mastery. Migration: Dawn troops map to Gilded Order equivalents, Dusk to
-  Graveborn, rank and gold carried over.
+  Graveborn, rank and gold carried over. (Dawn and Dusk are removed.)
 - Phase 4 modes retrofit existing maps (Siege on Ironhold, Survival on
-  Hollowwood, Banner on Rivergate). Purpose-built fortress and shrine maps are
+  Hollowwood, Convoy on Frostmarch). Purpose-built fortress and shrine maps are
   Phase 6 content, not Phase 4.
 - All troop skins and House readability must work on vanilla textures with the
   modpack's own assets; it ships no third-party resource packs (Kort,
@@ -105,7 +107,9 @@ Why this fits the game: Houses let the collection be large without making
 sides unbalanced, and set bonuses give a reason to collect deep in one House
 and a reason to mix. Every House has a readable silhouette on the field.
 
-## 5. The commander
+## 5. The commander (removed)
+
+Removed: commander classes and their actives were dropped by gear combat. Class passives live in gear stats, set bonuses and perks, and the actives are relics on keys 1 to 3. Original proposal kept below for history.
 
 Two tracks, six classes at launch, one active ability each on a long cooldown
 plus one passive. The player picks a class in camp.
@@ -218,7 +222,7 @@ roster at one star, with a visible next goal at every point.
   Excalibur, Clarent and the Fresh Animations patch were the known cases.
 - Dedicated server kit stays and is the friends-phase host on tjepkema-server.
 - Versioning: 0.4.x for the solo rework, 0.5.x when friends join, 1.0 at
-  public.
+  public (the hosted network is part of 1.0).
 
 ## 11. Roadmap
 
@@ -245,12 +249,12 @@ public. Each phase ends with a Kort playtest and a screenshot-verified build.
 ### Phase 2: Houses and the long chase (4 to 6 weeks)
 - Roster sheet (30 troops, stats, costs, mobs, abilities) for sign-off.
 - Data model: Houses, rarity, evolve lines, rank stars, shards; migration from
-  Dawn/Dusk profiles.
+  Dawn/Dusk profiles (Dawn and Dusk are removed).
 - Implement troops in batches of one House at a time, each with skins,
   portraits, cards and a bot test.
 - House traits and counters on the field.
 - Recruitment, evolve and mastery screens; chapter re-authored.
-- Commander classes with actives (six).
+- Commander classes with actives (six). Removed: replaced by gear.
 - Playtest gate: a full roster can be collected and a mixed banner feels
   different from a pure one.
 
@@ -261,7 +265,7 @@ public. Each phase ends with a Kort playtest and a screenshot-verified build.
 - Playtest gate: screenshots of camp and each map match the tone.
 
 ### Phase 4: modes and campaign chapter 1 (4 weeks)
-- Siege on Ironhold, Survival on Hollowwood, Banner on Rivergate.
+- Siege on Ironhold, Survival on Hollowwood, Convoy (Frostmarch escort) in place of Banner.
 - Campaign chapter 1: six battles with briefings and bonus objectives.
 - Playtest gate: Kort finishes chapter 1 in one sitting and wants chapter 2.
 
@@ -272,16 +276,13 @@ public. Each phase ends with a Kort playtest and a screenshot-verified build.
 - Modrinth/Prism package friends can install in one step.
 - Playtest gate: a 3v3 with friends, nobody needs Kort's help to join.
 
-### Phase 6: public (later)
-- CurseForge listing, public server, matchmaking, moderation. The Codex
-  checklist milestones 5 and 6 cover this and stay parked until Phase 5 holds.
+### Phase 6: public (now in 1.0)
+- CurseForge listing, public server, matchmaking and moderation are in the 1.0 scope. See `PLAN-TO-1.0.md` (Phase 7, hosted network).
 
 ## 12. How work gets done
 
 - One orchestrator session (this one) owns the plan, the repo and the gates.
-- Each task goes to a subagent sized to it: Opus 5.5 medium for design-heavy
-  code, Sonnet 5.5 extra-high for ordinary implementation, Haiku 5.5 max for
-  runs, screenshots and checks.
+- Model and effort routing: see `WORKFLOW.md`.
 - Every feature task ends with a screenshot or log from a running game, taken
   by a tester subagent, before it is called done.
 - Kort plays at phase gates and whenever he wants; nothing launches while he
