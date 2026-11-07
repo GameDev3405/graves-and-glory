@@ -67,7 +67,7 @@ public final class CampaignClient {
         if(!j.has("forge")||!j.get("forge").isJsonObject())return;var f=j.getAsJsonObject("forge");if(!f.has("n"))return;
         try{forgeRoll=new ForgeRoll(f.get("n").getAsInt(),f.get("item").getAsString(),f.get("rarity").getAsString(),f.get("relic").getAsString(),f.get("duplicate").getAsBoolean(),f.get("refund").getAsInt());}catch(RuntimeException ignored){}
     }
-    static void forget(){forgeRoll=null;lastRoll=null;rollAt=0;received=false;revealUntil=0;armoury=LevelMath.Armoury.EMPTY;}
+    static void forget(){forgeRoll=null;lastRoll=null;rollAt=0;received=false;revealUntil=0;armoury=LevelMath.Armoury.EMPTY;lastRunning=false;profileTooLarge=false;WarTablePages.forgetPicks();}
     /** This army's Armoury from the last state_v9 (armouryHere and the buy states per banner troop type, LevelMath.decodeArmoury); empty before the first state, after a disconnect and until the server fills it (Task 5). The Armoury tab and the Iron Ledger glint read it. */
     static LevelMath.Armoury armoury=LevelMath.Armoury.EMPTY;
     /** Reads the snapshot's lastRoll; a new one (another n) after the first snapshot starts the reveal. */
@@ -82,6 +82,8 @@ public final class CampaignClient {
     public static boolean cinematic(){return camera!=null;}
     /** The notice the player left behind by changing page: the server keeps sending it with every state packet, so the client hides that text until the server says something else (no protocol change; review I1). acceptedStates counts the state packets read (the harness waits for two). */
     static int acceptedStates;
+    /** Counts the snapshots accepted: screens cache what they build from the snapshot and rebuild it when this moves. */
+    static int revision;
     static String shownNotice(){return notice.equals(dismissed)?"":notice;}
     /** Takes the notice of a state packet: a different text ends the dismissal of the old one (the same words stay dismissed until the player acts or another text comes). */
     static void acceptNotice(String next){if(!next.equals(notice))dismissed="";notice=next;}
@@ -90,9 +92,20 @@ public final class CampaignClient {
     static boolean previousHud;
     static ArmorStandEntity camera;static Perspective previous;static int cameraTicks;
     static Path collection(MinecraftClient c){return c.runDirectory.toPath().resolve((Diagnostics.active()?"gravesandglory/test-collections/":"gravesandglory/collections/")+c.getSession().getUuid()+".json");}
+    /** The most UTF-8 bytes of collection JSON one profile_v1 packet carries: a client-to-server custom payload is capped at 32767 bytes, and the string's length prefix takes up to 3 of them. The server reads the string with the same cap (GravesAndGlory, Campaign.importProfile). */
+    static final int PROFILE_MAX_BYTES=32000;
+    /** Set once the player has been told the collection is too big to send, so the notice shows once per join, not with every snapshot. */
+    static boolean profileTooLarge;
+    /** The collection file as compact JSON: the file is pretty-printed for people, and the server's Gson reads either form, so the packet drops the whitespace (typically a third of a large file). */
+    static String compactProfile(String json){return JsonParser.parseString(json).toString();}
+    /** Sends the collection for the server's first-visit import; a collection too big for one packet is not sent and the player is told once. */
     static void sendProfile(MinecraftClient c){
-        try{Path path=collection(c);String json=Files.exists(path)?Files.readString(path):Campaign.JSON.toJson(new Profile());if(json.length()<16000&&ClientPlayNetworking.canSend(GravesAndGlory.PROFILE)){var packet=PacketByteBufs.create();packet.writeString(json);ClientPlayNetworking.send(GravesAndGlory.PROFILE,packet);}}catch(Exception ignored){}
-
+        try{Path path=collection(c);String json=compactProfile(Files.exists(path)?Files.readString(path):Campaign.JSON.toJson(new Profile()));
+            if(json.getBytes(java.nio.charset.StandardCharsets.UTF_8).length>PROFILE_MAX_BYTES){
+                if(!profileTooLarge){profileTooLarge=true;if(c.player!=null)c.player.sendMessage(Text.literal("Your collection file is too large to sync with this world; it stays on disk unchanged."),true);System.err.println("[Graves and Glory] Collection is too large for one packet; not sent.");}
+                return;}
+            if(ClientPlayNetworking.canSend(GravesAndGlory.PROFILE)){var packet=PacketByteBufs.create();packet.writeString(json,PROFILE_MAX_BYTES);ClientPlayNetworking.send(GravesAndGlory.PROFILE,packet);}
+        }catch(Exception ignored){}
     }
     /** The snapshot's battleMode block (Campaign: the round's mode while one runs): the HUD reads its track maxima and number formats. */
     static JsonObject battleMode=new JsonObject();
@@ -106,6 +119,7 @@ public final class CampaignClient {
     static boolean showsPoints(){try{return !battleMode.has("points")||battleMode.get("points").getAsBoolean();}catch(Exception e){return true;}}
     static String ledgerFormat(int i){try{return battleMode.getAsJsonArray("format").get(i).getAsString();}catch(Exception e){return "plain";}}
     static void accept(MinecraftClient c,String json,boolean running){
+        revision++;
         try{JsonObject j=JsonParser.parseString(json).getAsJsonObject();if(!j.has("profile"))return; /* "{}": the server could not fit this snapshot; keep the last camp state */var nextProfile=Campaign.JSON.fromJson(j.get("profile"),Profile.class);if(received&&nextProfile.owned!=null&&nextProfile.owned.size()>profile.owned.size()){for(var unit:Spec.TROOPS)if(nextProfile.owned.containsKey(unit.id())&&!profile.owned.containsKey(unit.id()))revealUnit=unit.name();revealUntil=System.currentTimeMillis()+2400;}nextProfile.sanitize();profile=nextProfile;acceptRoll(j,!received);acceptForge(j);received=true;
             if(j.has("sides")){var s=j.getAsJsonArray("sides");if(s.size()==2)sides=new String[]{s.get(0).getAsString(),s.get(1).getAsString()};}
             if(j.has("banner")){var list=new java.util.ArrayList<String>();for(var e:j.getAsJsonArray("banner"))list.add(e.getAsString());banner=list;}social=j.has("social")?j.getAsJsonObject("social"):new JsonObject();battleMode=j.has("battleMode")?j.getAsJsonObject("battleMode"):new JsonObject();progression=j.has("progression")?j.getAsJsonObject("progression"):new JsonObject();if(j.has("progression"))profile.progression=Campaign.JSON.fromJson(progression,Progression.State.class);players=j.getAsJsonArray("players");party=j.getAsJsonObject("party");lead=party.get("lead").getAsBoolean();
@@ -118,7 +132,7 @@ public final class CampaignClient {
             if(!running)end(c);
             result=j.has("result")?j.getAsJsonObject("result"):new JsonObject();
             if(!running&&result.has("id")&&!result.get("id").getAsString().equals(shownResult)){reportOpened(result.get("id").getAsString());c.setScreen(new CampScreen("results"));}
-            else if(!running&&lastRunning&&!(c.currentScreen instanceof CampScreen)&&!(c.currentScreen instanceof CampaignLobbyScreen))c.setScreen(new CampScreen("home"));lastRunning=running;
+            else if(!running&&lastRunning&&c.currentScreen==null)c.setScreen(new CampScreen("home"));lastRunning=running;
             if(!j.get("collectionReady").getAsBoolean()){sendProfile(c);return;}String saved=Campaign.JSON.toJson(profile);if(saved.equals(lastSaved))return;lastSaved=saved;Path path=collection(c);Files.createDirectories(path.getParent());Path tmp=path.resolveSibling(path.getFileName()+".tmp");Files.writeString(tmp,saved);Files.move(tmp,path,StandardCopyOption.REPLACE_EXISTING);
         }catch(Exception e){System.err.println("[Graves and Glory] Collection sync could not be saved: "+e.getClass().getSimpleName());}
     }
