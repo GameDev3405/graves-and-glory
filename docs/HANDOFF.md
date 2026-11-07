@@ -1,41 +1,36 @@
-# Current handoff — 2026-11-02
+# Current handoff: 2026-11-07
 
 ## Where we are
 
-`main` is the 0.5.0 development integration, at `dfec25d` on 2026-11-03 (local only, not pushed). It is not a published release. The Phase 0 baseline passed fast 22/22 and game 23/23 at `f1f6047`; a release verify at `01b0c77` (2026-11-03) passed, package and readback included; verify game passed at `3885d32`. Six-player, live dedicated-server, animation and map gates remain open. The merge log is `work/MERGE-QUEUE.md`, Kort's answers are in `work/ANSWERS-2026-11-0*.md` and open questions in `work/PENDING-QUESTIONS.md` (in the main checkout, `C:/Users/kortt/Melty/bannerbound`).
+`main` is the 0.5.1 development integration at `2fc30f50` (2026-11-07), checked out in `C:/Users/kortt/Melty/bannerbound-mainmerge`. It is local only, not pushed, and not a published release. `mod_version` is 0.5.1; the 0.5.1 candidate (`release/0.5.1`, `c99fe907`, rc2 notes `52fa325a`) was cut on 2026-11-04 and not published. The candidate record `docs/releases/current-candidate.json` is at `bb2d85c4` and needs a refresh before any candidate is claimed.
 
-Approved plan: [PLAN-TO-1.0.md](PLAN-TO-1.0.md), approved 2026-10-28. The single board is [BOARD.md](BOARD.md); it is the place to read row by row state. Phase 0 is done, Phase 1 is done except the animation merge (1.5) and the 0.5.1 cut (1.10), and Phases 2 to 6 are in progress.
+Approved plan: [PLAN-TO-1.0.md](PLAN-TO-1.0.md) (approved 2026-10-28). The 1.0 plan with the hosted network (Phase 7) is on branch `docs/plan-1.0-network` and is not in `main` until Kort merges it. The single board is [BOARD.md](BOARD.md). Policy is [WORKFLOW.md](WORKFLOW.md), including Kort's model rules of 2026-11-07.
 
 Merged and in `main`:
 
-- Five Houses, thirty troops, six commander classes, House traits and abilities; in-match levels, gear tiers, Veterans/Statuses and the Armoury tab.
-- Troop art for all five Houses at tiers I to III: Gilded (flagships, tiers II/III), Ironclad, Wildmoot (with the Tusk), Tidecallers (sea-blue Tideguard) and Graveborn, plus the troop rework (`c26a3d8`) and the `.bbmodel` round-trip. Each was approved by Kort on 2026-11-02.
-- War Table claims, recruit, class cards, the troop sheet, Armoury, Banner and Field pages, the campaign card and the six-seat lobby; the report layout and the accessibility pass.
-- Modes: Domination, Siege (185 s clock, 15 s yard hold, stage-0 cap 50%), Convoy (slowed wagon, escort 12/20) and Survival, with Siege bots, `tools/mode_gate.py` and sheet-driven feed, ledger and report lines (draft text).
-- Campaign: schema 3, order lock, bonus payout, all six battles playing and paying in their own mode, victory gold, and pay by time seated (battles 2 to 3 are 2v2, 4 to 6 are 3v3). Briefings for battles 2 to 6 are drafts for Kort to edit.
-- Map engine slice 1 and plans 2 to 4 (engine map slot, AI handoff, building library) and the editor files for the five maps; Map Forge and the Ironhold surface; docs `MAP-STANDARDS.md`, `ART-STYLE-GUIDE.md` and the economy check.
-- Server kit (`3fa9dd1`), perf baseline, slice dry runs, QA rules (partial pay for a stopped match, ops-only `/warp`, 2 minute reconnect hold), arena autosave skipped in battle, and the teleport-sync minors.
-- House balance Set A, arrow speed, and the House audit probe (no stat changes). Audio cues (`audio/cues`).
-- Release tooling: strict package, Modrinth and CurseForge exports, Excalibur 1.20 bundled unmodified with credit (Kort approved), release notes draft and README refresh.
+- Five Houses, thirty troops (all with their own models), House traits and abilities, in-match levels, Veterans and Statuses, the Armoury tab.
+- Troop art for all five Houses at tiers I to III, the House identity set and recolour, hand-authored with the `art/hand` builders. Elbows and knees for biped troops (`37494090`, 2026-11-04). Attack clips for every troop family (`1be70ff9`), checked in game for all 30 troops with fixes D1 to D6 (`1d3f2edd`, QA polish, Kort signed off 2026-11-04).
+- Commander gear, plans 1 to 3: foundation and save v4 (`a38e4218`), the Arsenal screen and Blacksmith (`9c13ed6d`), gear combat with relics on keys 1 to 3 (`82ace819`). The commander classes are removed. Gear art and the House armour sets are merged.
+- Command UI (`e771d5f1`, 2026-11-05): left-edge order panel, formations, custom numbered groups, charge with overhead camera. Excalibur look kept off weapons (`6442b1af`, 2026-11-05).
+- Audit fixes (2026-11-07): `fix/ui-polish` (`1c440dd5`) and `fix/client-state` (`2fc30f50`), including the deleted `EntranceOverlayMixin`.
+- War Table pages and the six-seat lobby; Domination, Siege, Convoy and Survival; campaign battles 1 to 6; bots; map engine; the dedicated server kit and server download; title screen; audio cues (Kort's picks, layers, order sounds); release tooling and notes.
 
 Awaiting Kort, not in `main`:
 
-- Commander gear foundation (plan 1 of the gear index, branch `feat/gear-foundation`, local, not pushed or merged): data tables and preflight rules, `Gear`, `Forge`, `GearWire`, `GearCommands`, save v4 with the 3-to-4 migration and the starter set, Forge marks on a settled match, the `gear_v1` sync and the `gear:` and `forge:` ORDER commands. It adds no UI or art, and its numbers are placeholders for the balance step (g). Next: (c) gear screen, (d) gear in combat and class removal, (f) gear art, per `docs/superpowers/plans/2026-11-03-commander-gear-index.md`.
-- Commander gear (c), the **Arsenal** screen (branch `feat/gear-screen`, local, not pushed or merged): the I key opens it in camp only, and the Blacksmith stands 6 blocks south of the quartermaster and opens its Forge tab. The Arsenal tab has stats, Worn, relics, filters, sorts, tooltips with compare lines, equip and shift-click breakdown (Epic and above confirm). The Forge tab has slot rolls with a 1.5 s reveal, pity, odds, break down duplicates, repair all and add a row. The real-client suite is `ui-gear` (`GearScreenChecks`); the reference is `docs/visual-references/06-gear-screen-layout-a.png`. Discord drafts (start-here, roadmap, new how-to-play) wait for Kort. Left for after gear combat Task 1: the commander preview in the frame, perk and set-bonus texts, and relics on keys 1 to 3 with H removed.
-- Gear combat (plan 2, branch `feat/gear-combat`, local, not pushed or merged): gear drives combat, so the commander classes are gone. Class passives live in gear stats, set bonuses and perks; the six class actives are now relics (`relicTuning` sheet, `Commander.tuning`); the `classes` table, `class:` command, class picker and class cards are removed, and the lobby and War Table show the gear role instead. `Profile.commander` stays as the legacy id that picks the starter role and relic, and `ProfileMigration` still maps old class ids. QA rows M1 to M33 in `QA-MATRIX.md` (`GRAVES_PHASE1_CHECKS=gear-combat`).
-- Command UI (branch `feat/command-ui`, local, not pushed or merged): the left-edge order panel replaces the old command screens. R opens or closes it (no Screen; the cursor stays free and the left click picks a group pill, a pennant or a tray cell), Z attack, X charge, C follow me, V retreat and B formation work with it closed on the last selection, and Shift keeps the panel open after an order. Number keys pick pills (shapes while the tray is open). Holding X for 4 ticks lifts the overhead charge camera (mouse turns the arrow, release sends the Charge; an accessibility toggle keeps it overhead). Orders show feedback on the troops (outlines, pulses, the rally pose) and in the event feed, custom numbered groups come from the Armoury loadout, and bots and lessons use the five orders. The panel does not capture the cursor while the HUD is hidden (F1) or a cinematic runs, and keyboard-bound attack and use are swallowed while it captures. Real-client suites are `Smoke,OrderIntake,Keys,OrderBehaviour,FormationRules,Panel,Feedback,ChargeCamera,BotOrders,CustomGroups,EndToEnd`, run with `GRAVES_COMMAND_UI_CHECKS=<Suite>[,...]` (see `HOW-TO-EDIT.md` section 7); `EndToEnd` plays one battle with the real keys (R, Archers, B, Line, ground click, Shift-Z, X with the camera, C, V), reads each order on the server and rejoins clean. Screenshots for review are in `work/cmdui-shots/` (not committed). Verification record: `.superpowers/sdd/2026-11-04-command-ui/task-13-report.md`.
-- Maps: Kort designs all five maps himself in the map engine editor (2026-11-02) and signs off each master layout. Agents do not build layouts.
-- Animation rework (1.5), `work/anim-rework`: merge approved (Q62) but the branch conflicts with `main` in 10 files and its session is merging `main` in. Animation editor `work/anim-edit`: Kort poses the guard himself.
-- Audio, `audio/pixabay` (`fa54d8e`): not listened to yet.
-- Vanilla-trait audit branches `claude/trait-audit-573141` and `claude/audit-measure-5b5fc8`: Kort picks traits B to F after measure A.
-- Text and choices: mode text in game (Q19a), briefings 2 to 6 (Q74), battle 6 mix (Q76), difficulty ramp (Q77), battle 2 bonus switch (Q78), the CurseForge app import (Q75), 1080p, 1440p and 4K checks (VIS-01).
-- Server EULA (Q79): the teleport-sync live check and the dedicated-server smoke test need a server EULA accepted in a scratch folder. Agents do not accept it.
+- `docs/plan-1.0-network`: the hosted network, matchmaking and Old Hold hub designs (Kort's 2026-11-07 grilling sessions), plus the PLAN-TO-1.0, BACKLOG, DECISIONS and PARKED updates. Awaits his review and merge.
+- `feat/oldhold-wiring` (two commits ahead of `main`): the Old Hold lobby (concept C, Q129) and the showcase pieces. Awaits his in-game walk. No hub feature work starts before the layout is locked. `feat/lobby-oldhold` holds an unreviewed WIP commit of lobby terrain, preserved only.
+- `qa/fix-ingame` is a QA harness branch. It is never merged.
+- The Axiom and Ledger mod download for the builder server (`BUILDER-SERVER.md`) awaits Kort's yes.
+- Lobby and map sign-offs: Kort designs all five maps in the map engine editor and signs off each master layout. Agents do not build layouts.
+- Knight v2 and v4 deaths: approved 2026-11-07 as the template for other troops (`anim/geckolib-rebuild`, `781c12ee`, not in `main`). Which units reuse which parts is still open with Kort.
+- Text and choices: mode text in game (Q19a), briefings 2 to 6 (Q74), the CurseForge app import (Q75), 1080p, 1440p and 4K checks (VIS-01), audio polish (Q123).
+- Server EULA: see Constraints.
 
 Not done:
 
-- Six networked players on a real baseline; dedicated-server reconnect, restart and persistence on a live server.
+- Six networked players on a real baseline; dedicated-server reconnect, restart and persistence on a live server; everything in Phase 7.
 - Kort's map designs and their adoption; the balance retake and bot round robin on them.
-- Title screen, House identity set (4B.5), final art gate, 5.6 QA runs, release candidate record and final session; publish only on Kort's explicit go.
+- Final art gate (4B.7), 5.6 QA re-run on current `main`, release candidate record refresh and final session; publish only on Kort's explicit go.
 
 ## Branch map
 
@@ -43,8 +38,12 @@ Most session branches are merged. A branch being an ancestor of `main` is a merg
 
 | Branch | Purpose |
 |---|---|
-| `main` | Current 0.5.0 development integration. |
-| `work/anim-rework` | Animation rework, merge approved, waiting on its session. |
+| `main` | Current 0.5.1 development integration. |
+| `work/anim-rework` | Original jointed-troop commits, superseded by `37494090`. Keep; do not merge. |
+| `docs/plan-1.0-network` | 1.0 hosted network plan, awaiting Kort's review and merge. |
+| `feat/oldhold-wiring`, `feat/lobby-oldhold` | Old Hold lobby; awaiting Kort's in-game walk. |
+| `anim/geckolib-rebuild` | Knight v2 and v4 deaths, approved 2026-11-07. |
+| `qa/fix-ingame` | QA harness, never merged. |
 | `work/anim-edit` | Animation editor, awaiting Kort. |
 | `audio/pixabay` | Pixabay audio set, awaiting Kort's listen. |
 | `claude/trait-audit-573141`, `claude/audit-measure-5b5fc8` | Vanilla-trait audit and measurement. |
@@ -57,12 +56,12 @@ Tags: `v0.4.0` marks the old `main`; `v0.5.0-dev.20261028` marks the earlier `c4
 
 ## Candidate and evidence
 
-`docs/releases/current-candidate.json` is authoritative for the current identity, jar hash, verification paths and known issues; it predates the 2026-11-02 merges and needs a refresh before any candidate is claimed. `docs/reports/cleanup-2026-10-28.md` records the branch and documentation cleanup. The old `552a8c6` preview is historical, with a real Quartermaster clipping defect; do not label it current or six-player verified. Full runtime evidence remains in each worktree's `work/` directory and was not deleted.
+`docs/releases/current-candidate.json` is authoritative for the current identity, jar hash, verification paths and known issues; it predates the 2026-11-05 to 2026-11-07 merges and needs a refresh before any candidate is claimed. `docs/reports/cleanup-2026-10-28.md` records the branch and documentation cleanup. The old `552a8c6` preview is historical, with a real Quartermaster clipping defect; do not label it current or six-player verified. Full runtime evidence remains in each worktree's `work/` directory and was not deleted.
 
 ## Next actions
 
-1. Kort: the awaiting items above. Maps come first, since adoption, the bot round robin and the balance retake all wait on them.
-2. Agents, without Kort, a server EULA or new maps: re-run release verify on current `main`, refresh the candidate record and release notes, re-run art QA on the tier II/III art, run the QA matrix rows that need no server, and re-run the mode gate.
+1. Kort: review and merge `docs/plan-1.0-network`; walk the Old Hold in game (`feat/oldhold-wiring`) and lock the layout; say yes or no to the Axiom and Ledger download; sign off lobby and map layouts as he designs them. Network hub features (task 7.5) and the rest of Phase 7 wait on the walk and the merge.
+2. Agents, without Kort, a server EULA or new maps: refresh the candidate record and release notes on current `main` (`2fc30f50`), re-run release verify and the QA rows that need no server, re-run the mode gate, then roll the knight template to the next units once Kort says which.
 3. Keep `docs/BOARD.md` current as each task moves; it is the single board.
 
 ## Constraints
