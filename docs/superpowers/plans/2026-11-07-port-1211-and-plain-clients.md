@@ -27,6 +27,7 @@ Reaching both goals means two jobs, in this order: port the mod to 1.21.1 with a
 - Gentle nudge to the modpack: a hub sign plus one chat line on first join that links it. Nothing during battles.
 - The modpack is published on both Modrinth and CurseForge.
 - Timing: the beta is modpack-only. Plain support is built during the beta and must be ready for the 1.0 launch.
+- Bedrock (added 2026-11-07, same session): Bedrock players (phone, Windows, Xbox, PlayStation, Switch) join the same server through Geyser and Floodgate, as a later phase (P8) after plain support works, aimed at after 1.0. Consoles join through the friend list (MCXboxBroadcast: add the server's Xbox account once). They play the plain version; the Bedrock pack is pushed by Geyser on join (no download). Not a Marketplace add-on: Marketplace content cannot join a Java server.
 
 ### 2.2 Claude's calls (Kort can override any of these)
 
@@ -172,7 +173,22 @@ Scope: one battle on a dedicated server with a vanilla 1.21.1 client (no modpack
 | P7.2 | Verify scripts (`verify_modrinth.py`, `verify_curseforge.py`) updated and passing | Green |
 | P7.3 | Nothing is published. Kort publishes | Release record notes the pending go |
 
-Total, if sequential: roughly 20 to 35 weeks (estimate). P3 to P5 overlap the beta and Phase 7 network work, so the added calendar time depends on how much runs in parallel.
+### P8: Bedrock players through Geyser (about 3 to 6 weeks, estimate; after P6 passes; aimed at after 1.0, not a 1.0 gate)
+
+Bedrock clients are translated to Java by Geyser, so to the server a Bedrock player is a plain player (P3 and P4). No Marketplace add-on: Marketplace content runs only in Bedrock worlds, Realms or a Bedrock server and cannot join this Java server.
+
+| ID | Task | Acceptance |
+|---|---|---|
+| P8.1 | Geyser and Floodgate on the Velocity proxy, beside ViaVersion; Floodgate lets Bedrock players join without a Java account; Floodgate players are detected as plain | A Bedrock client (Windows) joins the hub and a battle |
+| P8.2 | Bedrock resource pack: convert the plain pack's item and gear icons and chest-menu art (Geyser custom item mappings); Geyser pushes it on join, no player download | Icons and menus readable on Bedrock |
+| P8.3 | HUD fallback: custom font glyphs are the weakest Geyser path; any glyph that does not render gets a text or bar fallback for Bedrock | Every HUD value readable on Bedrock |
+| P8.4 | Controls on touch and controller: hotbar orders, swap-hand key equivalent, chest menus, aiming orders | All orders usable on a phone and a controller |
+| P8.5 | Console joining: MCXboxBroadcast (Geyser extension) shows the server as a joinable friend session; a dedicated Xbox account for it; player guide text. BedrockConnect (DNS) noted as the fallback. Featured-server status needs a Microsoft partnership and is out of scope | Xbox, PlayStation and Switch players join from the Friends tab |
+| P8.6 | Mixed QA: Bedrock, plain Java and modpack players in one battle; fairness (P6.2) holds; Java combat rules apply to Bedrock players | Kort signs off |
+
+Unverified: Geyser's and MCXboxBroadcast's current versions and their support for the 1.21.1 backend behind ViaVersion; Floodgate on Velocity with our handshake detection; how far Geyser custom items and glyphs carry our pack.
+
+Total, if sequential: roughly 20 to 35 weeks (estimate), plus P8 after launch. P3 to P5 overlap the beta and Phase 7 network work, so the added calendar time depends on how much runs in parallel.
 
 ## 6. Where it slots into `PLAN-TO-1.0.md`
 
