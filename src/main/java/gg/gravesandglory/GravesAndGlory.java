@@ -126,7 +126,7 @@ public final class GravesAndGlory implements ModInitializer {
             String command=buf.readString(128);
             server.execute(() -> { if(battle!=null) battle.command(player,command); });
         });
-        ServerPlayNetworking.registerGlobalReceiver(PROFILE,(server,p,handler,buf,responder)->{String json=buf.readString(16000);server.execute(()->{if(battle!=null)battle.campaign.importProfile(p,json);});});
+        ServerPlayNetworking.registerGlobalReceiver(PROFILE,(server,p,handler,buf,responder)->{String json=buf.readString(32000);server.execute(()->{if(battle!=null)battle.campaign.importProfile(p,json);});});
         ServerPlayNetworking.registerGlobalReceiver(PING,(server,p,handler,buf,responder)->{String kind=buf.readString(16);double x=buf.readDouble(),z=buf.readDouble();server.execute(()->{if(battle!=null)battle.ping(p,kind,x,z);});});
         ServerPlayNetworking.registerGlobalReceiver(TACTICAL, (server, player, handler, buf, responder) -> {
             String group=buf.readString(16), action=buf.readString(16), formation=buf.readString(16);
