@@ -1097,7 +1097,9 @@ final class GeoKnightChecks implements Phase1Checks.Suite {
                             Phase1Checks.shot(c, String.format("slash-%s-%s-%02d", view, ac.shownClip.replace("attack_", ""), tt));
                     }
                 }
-                long got = taken.stream().filter(f -> f.startsWith("attack_overhead")).count() >= FRAMES - 1 && taken.stream().filter(f -> f.startsWith("attack_low_cut")).count() >= FRAMES - 1 ? 1 : 0;
+                // both slash clips (the sword troops' overhead and low_cut, the axe's overhead_chop and hook_hew) shot through
+                long got = taken.stream().collect(java.util.stream.Collectors.groupingBy(f -> f.substring(0, f.indexOf(':')), java.util.stream.Collectors.counting()))
+                        .values().stream().filter(n -> n >= FRAMES - 1).count() >= 2 ? 1 : 0;
                 if (got == 1 || k > 1500) {
                     System.out.println("[p1] slash view " + view + " frames " + taken.size() + " k " + k);
                     if (++i < SLASH_VIEWS.length) next(tick, 33); else { duel = null; i = 0; next(tick, 9); }
