@@ -598,6 +598,21 @@ final class GeoKnightChecks implements Phase1Checks.Suite {
             ok + "/" + n + " swings matched (variant, clip impact = server delay = landing)" + (d.forced > 0 ? ", " + d.forced + " nudged" : "") + (unseen > 0 ? ", " + unseen + " off camera" : "") + (bad.isEmpty() ? "" : ", bad " + bad));
     }
 
+
+    /** Capture only (GRAVES_GEO_CAPTURE=slash, never a check): slash review views around the own knight (it faces +x, its sword arm is the +z side): name, offset x, offset z, height above the usual eye, yaw. */
+    static final Object[][] SLASH_VIEWS = {
+        {"r090", 0.9, 3.4, 0.0, 180f}, {"r045", 2.6, 2.6, 0.0, 135f}, {"r135", -2.2, 2.2, 0.0, -135f},
+        {"close", 1.2, 1.8, 0.0, 146.3f}, {"top", 0.3, 0.6, 4.5, 180f}};
+    void slashEye(GravesAndGlory.Battle b, Object[] v) {
+        var p = b.server.getPlayerManager().getPlayer(player);
+        if (p == null) return;
+        double ox = (Double) v[1], oz = (Double) v[2], dy = (Double) v[3];
+        boolean top = ((String) v[0]).equals("top");
+        float pitch = top ? 90f : (float) Math.toDegrees(Math.atan2(.15 + dy, Math.hypot(ox, oz)));
+        p.setNoGravity(true);
+        p.networkHandler.requestTeleport(cx - 1 + ox, cy - .45 + dy, cz + oz, (Float) v[4], pitch);
+    }
+
     void turn(float yaw) {
         for (var u : knights) { u.mob.setYaw(yaw); u.mob.setBodyYaw(yaw); u.mob.setHeadYaw(yaw); u.mob.prevYaw = yaw; }
     }
@@ -626,7 +641,7 @@ final class GeoKnightChecks implements Phase1Checks.Suite {
                 if (k > 100) {
                     if (!placed) { Phase1Checks.report("p1-geo-" + TROOP + "-placed", false, "could not place knights: " + why); next(tick, 9); return; }
                     Phase1Checks.report("p1-geo-" + TROOP + "-placed", true, "six knights");
-                    i = 0; next(tick, "gaps".equals(CAPTURE) ? 32 : "video".equals(CAPTURE) || "stunfix".equals(CAPTURE) ? 31 : CAPTURE != null ? 30 : 2);
+                    i = 0; next(tick, "gaps".equals(CAPTURE) ? 32 : "slash".equals(CAPTURE) ? 33 : "video".equals(CAPTURE) || "stunfix".equals(CAPTURE) ? 31 : CAPTURE != null ? 30 : 2);
                 }
             }
             case 2 -> {
@@ -1060,6 +1075,33 @@ final class GeoKnightChecks implements Phase1Checks.Suite {
                 if (k >= 15 && k < 15 + frames) Phase1Checks.shot(c, String.format("geo-" + TROOP + "-vid-%02d-%03d", i, k - 15));
                 if (k == 15) System.out.println("[p1] video segment " + i + " " + label);
                 if (k >= 15 + frames + 2) { i++; fixS = Double.NaN; next(tick, 31); }
+            }
+            case 33 -> {
+                // Capture only: slash swings (not the thrust) from several views, one shot per client tick as the swing plays.
+                Object[] sv = SLASH_VIEWS[i];
+                String view = (String) sv[0];
+                if (k == 1) {
+                    taken.clear();
+                    if (i == 0) Phase1Checks.server(c, b -> duel = new Duel(this, b, "stand"));
+                    Phase1Checks.server(c, b -> slashEye(b, sv));
+                }
+                if (k == 3) { c.setScreen(null); c.options.hudHidden = true; }
+                Duel d = duel;
+                if (d == null || !d.mode.equals("stand")) { if (k > 200) next(tick, 9); return; }
+                if (k > 30 && c.world != null) {
+                    var e = c.world.getEntityById(d.us[0].mob.getId());
+                    AttackController ac = e == null ? null : AttackController.LIVE.get(e);
+                    if (ac != null && ac.shownT >= 0 && !ac.shownClip.contains("thrust") && (ac.shownWeight > 0 || ac.shownT < .5)) {
+                        int tt = (int) Math.round(ac.shownT);
+                        if (Math.abs(ac.shownT - tt) <= .3 && tt < FRAMES && taken.add(ac.shownClip + ":" + tt))
+                            Phase1Checks.shot(c, String.format("slash-%s-%s-%02d", view, ac.shownClip.replace("attack_", ""), tt));
+                    }
+                }
+                long got = taken.stream().filter(f -> f.startsWith("attack_overhead")).count() >= FRAMES - 1 && taken.stream().filter(f -> f.startsWith("attack_low_cut")).count() >= FRAMES - 1 ? 1 : 0;
+                if (got == 1 || k > 1500) {
+                    System.out.println("[p1] slash view " + view + " frames " + taken.size() + " k " + k);
+                    if (++i < SLASH_VIEWS.length) next(tick, 33); else { duel = null; i = 0; next(tick, 9); }
+                }
             }
             case 9 -> {
                 c.options.setPerspective(Perspective.FIRST_PERSON); c.options.hudHidden = false;

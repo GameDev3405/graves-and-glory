@@ -774,6 +774,141 @@ if V2 and SHIELD:
         ],
     }
 
+if V2 and SHIELD and TROOP in ("knight", "sentinel", "gl_marshal"):
+    # Knight slash rebuild (review 2026-11-08: "the shoulder locks up and it just uses its elbow and the twist of its body").
+    # The shoulder now carries the blade: it keeps rising and drawing back through the whole load (no frozen hold), drives the
+    # arc (low_cut t6-8: shoulder ~40% of the blade path, was -15%; overhead t8-10: 36%, ahead of the elbow), and overshoots
+    # 20-30 deg past the impact before settling over ~2 ticks. The hips lead the torso by about a tick both ways, the hips drop
+    # ~1 px deeper on a wider lead step, the forearm reaches near full extension on the impact tick and the wrist snaps ~15 deg
+    # past the line. The keys were solved by IK from torso-local wrist/elbow/blade targets (dense keys through the arc so the
+    # monotone curves do not stall), checked against lane_fix (shield lane), the body and the floor. Impact ticks, the ready
+    # start/end and every other clip are unchanged. Sentinel and gl_marshal take the same keys, then SLASH_FIT below: their
+    # swords run ~3.8 px further behind the grip (pommel at local y 4, the knight's at ~7.8), so the same pose drags the
+    # pommel through the tabard and torso as the blade sweeps in and through the gorget, collar and helm in the overhead
+    # follow-through (and the marshal's tip below the floor); the fit nudges a window of keys only where that happened.
+    ATTACK_LEGS["low_cut"] = {
+        "hips": [
+            (0, (0, 6, 0), (0, -1.1, 0.1)),
+            (1.5, (-1, 11, 1), (0.4, -1.4, 0.4)),
+            (3.5, (-2, 17, 2), (0.6, -1.8, 0.6)),
+            (5.4, (-2, 19, 2), (0.6, -2.1, 0.7)),
+            (6.2, (-1, 16, 1), (0.4, -2.2, 0.5)),
+            (7, (3, 4, -1), (-0.2, -2.7, -0.4)),
+            (8, (7, -10, -3), (-0.6, -3.2, -1.6)),
+            (9, (8, -14, -3), (-0.7, -3.3, -1.8)),
+            (10, (8, -14, -3), (-0.7, -3.3, -1.8)),
+            (11.5, (6, -9, -2), (-0.5, -3, -1.8)),
+            (13.5, (3, -3, 0), (-0.3, -2.5, -1.9)),
+            (17.5, (1, 3, 0), (0.1, -1.7, -1)),
+            (22, (0, 6, 0), (0, -1.1, 0.1)),
+        ],
+        "steps": [
+            ('right', 4.6, 7.4, (-5.6, 2, 4.6), -20),
+            ('left', 10, 12.8, (3.6, 2, 0.2), 4, 1),
+            ('right', 14, 17.5, (-3.4, 2, 2), -12),
+            ('left', 17, 20.5, (3.2, 2, -2), 7),
+        ],
+    }
+    ATTACK_LEGS["overhead"] = {
+        "hips": [
+            (0, (0, 6, 0), (0, -1.1, 0.1)),
+            (2.5, (-3, 9, 1), (0.4, -1.3, 0.6)),
+            (5, (-6, 13, 2), (0.7, -1.7, 1.1)),
+            (7.4, (-7, 15, 2), (0.7, -1.9, 1.2)),
+            (8.2, (-6, 13, 2), (0.6, -2, 1)),
+            (9, (0, 4, 0), (0.1, -2.5, 0)),
+            (10, (6, -6, -1), (-0.5, -3, -1.6)),
+            (11, (6, -9, -1), (-0.6, -3.2, -1.9)),
+            (12.5, (5, -8, -1), (-0.5, -3.1, -1.9)),
+            (15, (3, -2, 0), (-0.2, -2.4, -2.2)),
+            (18.5, (1, 3, 0), (0.1, -1.6, -1)),
+            (22, (0, 6, 0), (0, -1.1, 0.1)),
+        ],
+        "steps": [
+            ('right', 7, 9.6, (-4.4, 2, 5.4), -12),
+            ('left', 11.5, 14, (3.4, 2, 0.4), 6, 1),
+            ('right', 15, 18.5, (-3.4, 2, 2), -12),
+            ('left', 18, 21, (3.2, 2, -2), 7),
+        ],
+    }
+    ATTACKS["low_cut"] = [
+        (0, GUARD),
+        swing("low_cut", 1.5, (4, 19, 2), (-52.6, 39.5, 12.8), -62.2, -60.8, 6.1, (4.8, 19.8, 5.2), throw=(2, 4, 1)),
+        swing("low_cut", 3.5, (-1, 26, 5), (-68.2, 69.2, 11.7), -62.7, -83.1, 15.6, (4.6, 20.4, 4.8), throw=(4, 8, 2)),
+        swing("low_cut", 5.3, (-3, 31, 7), (-79.2, 84.9, 14.7), -49.5, -88.2, 36.7, (4.4, 20.6, 4.6), throw=(5, 9, 2)),
+        swing("low_cut", 6, (-4, 33, 8), (-81.4, 93.8, 22.7), -39.1, -80.4, 48.3, (4.4, 20.6, 4.6), throw=(5, 9, 2)),
+        swing("low_cut", 6.4, (-1.8, 28.9, 6.1), (-80.3, 89.4, 20.7), -28.9, -62.4, 53.3, (4.93, 20.84, 4.74), throw=(4, 6.9, 1.5), trail=0.78),
+        swing("low_cut", 6.8, (2.9, 20.3, 2.5), (-85.2, 74.4, 5.8), -17.5, -46.6, 53.4, (5.96, 21.35, 4.96), throw=(2, 2.8, 0.5), trail=0.73),
+        swing("low_cut", 7, (5, 16, 1), (-98.2, 61.8, -12.8), -15.6, -57.4, 49.9, (6.4, 21.6, 5), throw=(1, 1, 0), trail=0.7),
+        swing("low_cut", 7.2, (7, 11.7, -0.1), (-107.6, 50, -30.4), -15.2, -59.4, 37.8, (6.75, 21.85, 4.97), throw=(-0, -0.4, -0.6), trail=0.67),
+        swing("low_cut", 7.6, (11, 2, -2), (-95.7, 37.4, -34.2), -10.5, -24.9, 15.3, (7.4, 22.4, 4.8), throw=(-2, -3, -2), trail=0.6),
+        swing("low_cut", 8, (15, -8, -4), (-72.1, 15.7, -22.3), -3, 12.8, -3.4, (8, 23, 4.6), throw=(-3, -6, -4), trail=0.5),
+        swing("low_cut", 8.4, (16.2, -11.8, -4.6), (-53.9, -0.1, 2.7), -3, 20.4, -13.9, (8.24, 23.41, 4.39), throw=(-3.6, -6.6, -4.6), trail=0.5),
+        swing("low_cut", 8.8, (16.9, -14.1, -5), (-44.9, -14.4, 19.4), -6.2, 15.4, -14.6, (8.38, 23.71, 4.23), throw=(-3.9, -7, -5), trail=0.5),
+        swing("low_cut", 9, (17, -15, -5), (-42.4, -21.6, 27.3), -8.6, 10.7, -10.6, (8.4, 23.8, 4.2), throw=(-4, -7, -5), trail=0.5),
+        swing("low_cut", 9.2, (17, -15.8, -5), (-41.7, -26.6, 31.5), -10.2, 7.2, -7.4, (8.4, 23.86, 4.2), throw=(-4, -7, -5), trail=0.5),
+        swing("low_cut", 9.6, (17, -17.4, -5), (-40.9, -32.3, 34.6), -12.6, 2.9, -6, (8.4, 23.96, 4.2), throw=(-4, -7, -5), trail=0.5),
+        swing("low_cut", 10, (17, -18, -5), (-40.4, -35.6, 36.9), -14.9, 0.3, -4.5, (8.4, 24, 4.2), throw=(-4, -7, -5), trail=0.5),
+        swing("low_cut", 10.4, (16.5, -17.3, -4.6), (-39.8, -35.2, 37.9), -17, -1.3, -2.5, (8.28, 23.86, 4.27), throw=(-3.9, -6.8, -4.8), trail=0.51),
+        swing("low_cut", 10.8, (15.3, -15.6, -3.6), (-38.7, -32.1, 37.3), -19, -3.4, -0.5, (7.99, 23.53, 4.45), throw=(-3.6, -6.2, -4.2), trail=0.54),
+        swing("low_cut", 11.2, (13.9, -13.5, -2.6), (-37.6, -27.7, 35.9), -20.9, -5.5, 0.9, (7.64, 23.11, 4.66), throw=(-3.3, -5.5, -3.5), trail=0.57),
+        swing("low_cut", 11.5, (13, -12, -2), (-36.9, -24.4, 34.6), -22.1, -6.9, 1.1, (7.4, 22.8, 4.8), throw=(-3, -5, -3), trail=0.6),
+        swing("low_cut", 13.5, (9, -2, 0), (-37.7, -5.8, 30.6), -26.9, -17.1, 5, (5.8, 20.4, 5.6)),
+        swing("low_cut", 17.5, (5, 12, 0), (-44, 0, 18), -52, -40, -4, (5, 18.9, 5.6)),
+        (ATTACK_TICKS, GUARD),
+    ]
+    ATTACKS["overhead"] = [
+        (0, GUARD),
+        swing("overhead", 2, (-2, 12, 0), (-70.8, 23.6, 15), -55.2, -63, 4.3, (4.8, 19.2, 5.2), throw=(-3, 2, 2)),
+        swing("overhead", 4.5, (-7, 14, 1), (-109.3, 35.4, -7.5), -62.2, -99.7, 7.7, (4.8, 19, 5), throw=(-6, 4, 4)),
+        swing("overhead", 7, (-10, 16, 2), (-151.6, 14.5, -21.7), -65.7, -145.4, 5.9, (4.8, 19, 4.8), throw=(-6, 4, 4)),
+        swing("overhead", 8, (-12, 18, 3), (-164.7, 7.8, -22.1), -64.1, -157.4, 3.4, (4.8, 19, 4.8), throw=(-6, 4, 4)),
+        swing("overhead", 8.4, (-9.2, 15.2, 2.4), (-158.8, 11.6, -17.6), -53.1, -135.1, 1.4, (4.86, 19.06, 5.04), throw=(-4.2, 2.8, 2.8)),
+        swing("overhead", 8.6, (-7, 13, 2), (-153.3, 14.2, -14.5), -45.1, -120.2, 0.6, (4.9, 19.1, 5.2), throw=(-3, 2, 2)),
+        swing("overhead", 8.8, (-4.6, 10.6, 1.7), (-146.3, 16.4, -11), -38.9, -103.7, 0.2, (4.93, 19.14, 5.33), throw=(-1.8, 1.4, 1.4)),
+        swing("overhead", 9.2, (1, 5, 1), (-129.1, 13.2, -2.2), -27.6, -62.3, 0.5, (5, 19.2, 5.6)),
+        swing("overhead", 9.6, (6, 0, 0), (-110.1, 4.8, 0.4), -13.5, -16.9, 0.7, (5.2, 18.8, 5.9), throw=(-2, -3, -2)),
+        swing("overhead", 10, (11, -4, 0), (-94.2, 0.3, 3.1), -3, 23.9, -0.8, (5.4, 18.2, 6.2), throw=(-3, -5, -3)),
+        swing("overhead", 10.4, (12.3, -6.1, -0.3), (-85.1, 2.5, 6.2), -3.4, 28.3, -2.5, (5.51, 18.01, 6.15), throw=(-3.6, -5.6, -3.6)),
+        swing("overhead", 10.8, (12.9, -7.6, -0.9), (-76.8, 7.5, 11.4), -4.6, 31.9, -4.7, (5.59, 17.91, 6.05), throw=(-3.9, -6, -3.9)),
+        swing("overhead", 11, (13, -8, -1), (-72.1, 8.9, 16.1), -5.7, 34.3, -5.6, (5.6, 17.9, 6), throw=(-4, -6, -4)),
+        swing("overhead", 11.2, (12.9, -8.3, -1), (-67.9, 9.4, 20.9), -6.6, 37.2, -6.5, (5.6, 17.9, 5.95), throw=(-4, -6, -4)),
+        swing("overhead", 11.6, (12.5, -8.8, -1), (-61, 10.4, 27.9), -8.3, 43.8, -9.2, (5.6, 17.9, 5.85), throw=(-4, -6, -4)),
+        swing("overhead", 12, (12, -9, -1), (-56.1, 6.5, 36.8), -10.6, 49.4, -12.3, (5.6, 17.9, 5.8), throw=(-4, -6, -4)),
+        swing("overhead", 12.4, (11.7, -8.9, -0.8), (-54.5, -0.1, 45.6), -12.5, 51.4, -13.7, (5.6, 17.9, 5.8), throw=(-3.9, -5.9, -3.9)),
+        swing("overhead", 13.5, (11, -8, 0), (-53.7, -5.4, 53.5), -15.1, 49.6, -14.3, (5.6, 17.9, 5.8), throw=(-3, -5, -3)),
+        swing("overhead", 15.5, (9, -4, 0), (-54.6, 0.2, 44.7), -25.7, 24.6, -8.2, (5.5, 18.1, 5.8), throw=(-2, -4, -2)),
+        swing("overhead", 18.5, (6, 8, 0), (-40, 0, 16), -52, -34, -4, (5.2, 18.8, 5.6)),
+        (ATTACK_TICKS, GUARD),
+    ]
+
+    # Per-troop clearance fit for the longer-handled swords: (window start, window end, (arm x, y, z, forearm x, hand x, hand y)
+    # degrees added to every key in the window, weighted by a cosine bump so the window edges, the guard and the ready pose
+    # stay put). Found by a clearance search (sword lattice vs every body cube, floor above 0.4 px, no pose change at the
+    # edges) and then re-checked through lane_fix.
+    SLASH_FIT = {
+        "sentinel": {"low_cut": (6.4, 9.4, (-4.8, 0.0, 28.3, -1.9, -1.0, 0.1)),
+                     "overhead": (9.6, 16.5, (-0.4, -1.3, -8.5, 0.2, -25.9, -0.9))},
+        "gl_marshal": {"low_cut": (6.4, 9.4, (-17.5, 0.2, 13.1, -0.6, -0.1, -0.9)),
+                       "overhead": (9.6, 16.5, (0.8, -1.7, -2.4, 0.0, -27.3, 1.2))},
+    }
+
+    def slash_fit(keys, t0, t1, d):
+        out = []
+        for t, k in keys:
+            w = 0.5 - 0.5 * math.cos(2 * math.pi * (t - t0) / (t1 - t0)) if t0 < t < t1 else 0.0
+            if w > 0 and isinstance(k, dict):
+                k = dict(k)
+                a, f, h = k["right_arm"], k["right_forearm"], k["right_hand"]
+                k["right_arm"] = (a[0] + w * d[0], a[1] + w * d[1], a[2] + w * d[2])
+                k["right_forearm"] = (f[0] + w * d[3], f[1], f[2])
+                k["right_hand"] = (h[0] + w * d[4], h[1] + w * d[5], h[2])
+            out.append((t, k))
+        return out
+
+    for _name, (_t0, _t1, _d) in SLASH_FIT.get(TROOP, {}).items():
+        ATTACKS[_name] = slash_fit(ATTACKS[_name], _t0, _t1, _d)
+
 
 if V2 and not SHIELD:
     # V2 shieldless: the same phases and ticks as the shield V2 (the pelvis in ATTACK_LEGS carries the drive, so the torso leans
@@ -830,6 +965,9 @@ if V2 and not SHIELD:
 # the rim; where the arm still has to pass the rim, the shield gives way (its fist eases left and back, its face opens) by
 # just the amount the lane needs, a tick early, and comes back as the blade clears.
 LANE_BONES = ("sword_t3", "right_forearm", "right_cuff", "right_couter")
+# sentinel and gl_marshal name their blade weapon_t3, so the lane never saw it: the slash blades crossed the shield by up to 2.7 px.
+if TROOP in ("sentinel", "gl_marshal"):
+    LANE_BONES = ("weapon_t3",) + LANE_BONES[1:]
 LANE_PAD = 0.5          # px: lateral clearance past the rim
 LANE_FRONT = -5.2       # shield px: a point at least a pixel in front of the boss (face plane at -3.6, boss front -4.2)
 LANE_BACK = 3.5         # shield px: deeper behind the shield than this (its handle ends at 0.6) the torso hides the blade
@@ -908,10 +1046,16 @@ def _give(frame, s, face):
     return out
 
 
-def lane_fix(keys, n, lead=2.0, hold_after=1.0):
+def lane_fix(keys, n, lead=2.0, hold_after=1.0, roll=None):
     """Samples keys (n + 1 samples), giving the shield way wherever the sword lane needs it: the least give per sample that
-    clears it (to LANE_GIVE), widened lead ticks before and hold_after ticks after, eased, then checked again."""
+    clears it (to LANE_GIVE), widened lead ticks before and hold_after ticks after, eased, then checked again. roll (degrees
+    per sample, edge_roll) turns the sword about its own blade axis in the fist first, so the lane sees the rolled sword."""
     raw = [sample_keys(keys, i / SUB, keep_face=True) for i in range(n + 1)]
+    if roll is not None:
+        prev = None
+        for r, d in zip(raw, roll):
+            prev = roll_hand(r["right_hand"][0], d, prev) if d else r["right_hand"][0]
+            r["right_hand"] = (prev, None)
     faces = [r["_face"][0] for r in raw]
     base = [regrip(dict(r)) for r in raw]
     need = np.zeros(n + 1)
@@ -950,6 +1094,177 @@ def lane_fix(keys, n, lead=2.0, hold_after=1.0):
             s[0] = s[-1] = 0.0
     out = [_give(f, float(v), faces[i]) for i, (f, v) in enumerate(zip(base, s))]
     return out, s, [lane_margin(f) for f in out]
+
+
+# ---- Edge lead (review 2026-11-08, Kort: "towards the end of the slash the blade turns flat against the enemy it's hitting, I
+# want it to keep the blade facing the enemy with the 'sharp' end"). The swing's arm and blade path stay as approved; only the
+# sword's roll about its own blade axis changes. The sword bone pivots on the wrist pivot and its blade axis runs through that
+# pivot (all three swords), and right_hand carries no geometry of its own, so turning right_hand about the blade axis rolls the
+# sword in the fist without moving its tip, its blade line or the glove. Per sample the roll that lays the edge (the blade
+# cube's width, local x) along the tip's motion (projected across the blade) is the target from the drive's start (tip at
+# EDGE_ARC_SPEED) through the follow-through (tip still at EDGE_MIN_SPEED or more in the strike's direction). The roll actually
+# used is the cheapest path over a 5-degree grid (dynamic programming) through that window, EDGE_IN ticks before it and EDGE_OUT
+# ticks of the return after it, starting and ending on the swing's own grip (roll 0): it pays for the edge off the motion past
+# EDGE_TOL (weighted by tip speed), for the rolled crossguard or pommel cutting deeper into the body than the unrolled swing
+# did (EDGE_CLIP_OK px free) or closing the shield lane, and for rolling fast. Guard, keys and every other clip are unchanged.
+# clip names that get the edge roll: the knight slash block's troops (their shoulder-driven low_cut and overhead)
+# The marshal's low_cut is left out: with its hooked crossguard and broad pommel every roll that keeps the edge leading after
+# the impact cuts the hilt into the torso and belt and closes the shield lane (arm path unchanged); that needs Kort's call.
+EDGE_LEAD = (("low_cut", "overhead") if TROOP in ("knight", "sentinel") else ("overhead",) if TROOP == "gl_marshal" else ()
+             ) if V2 and SHIELD else ()
+EDGE_MIN_SPEED = 4.0    # px per tick of the blade tip
+EDGE_ARC_SPEED = 15.0   # px per tick: the drive (the arc starts at the first sample this fast within 3 ticks of the impact)
+EDGE_IN = 1.0           # ticks
+EDGE_OUT = 4.0          # ticks
+EDGE_TOL = 12.0         # degrees of the edge off the motion that cost nothing
+EDGE_CLIP_OK = 0.3      # px of sword in the body that cost nothing (or the unrolled swing's own depth, if deeper)
+EDGE_RATE = 25.0        # degrees per sample (a quarter tick): the fastest roll
+EDGE_CLIP_COST = 40.0   # per px of sword deeper in the body than allowed (an edge 18 deg off at speed costs 1)
+EDGE_LANE_COST = 10.0   # per px the roll closes the shield lane further than the unrolled swing
+EDGE_BONE = next((b for b in ("sword_t3", "weapon_t3") if b in MODEL.bones), None)
+# body cubes the sword is tested against: everything but the sword arm, the sword and the shield (the lane covers the shield)
+EDGE_SKIP = ("right_arm", "right_forearm", "right_hand", "right_pauldron", "right_couter", "right_cuff", "right_glove", "shield")
+
+
+def roll_hand(rot, deg, prev=None):
+    """right_hand animation degrees turned by deg about the sword's blade axis (hand frame), on the Euler branch nearest prev."""
+    b = MODEL.bones["right_hand"]
+    w = MODEL.bones[EDGE_BONE]
+    R = local("right_hand", rot)[:3, :3]
+    Rw = rg._Rz(w.rot[2])[:3, :3] @ rg._Ry(w.rot[1])[:3, :3] @ rg._Rx(w.rot[0])[:3, :3]
+    a = Rw @ np.array([0.0, 1.0, 0.0])
+    t = math.radians(deg)
+    K = np.array([[0, -a[2], a[1]], [a[2], 0, -a[0]], [-a[1], a[0], 0]])
+    e = np.array(decompose_zyx(R @ (np.eye(3) + math.sin(t) * K + (1 - math.cos(t)) * K @ K)))
+    assert not np.any(b.rot), "right_hand has a rest rotation"
+    ref = np.array(prev if prev is not None else rot, dtype=float)
+    best = None
+    for c in (e, np.array([e[0] - 180.0, -180.0 - e[1], e[2] + 180.0])):
+        c = ref + (c - ref + 180.0) % 360.0 - 180.0
+        if best is None or np.abs(c - ref).sum() < np.abs(best - ref).sum():
+            best = c
+    return tuple(float(v) for v in best)
+
+
+def _mats(frame, model=None):
+    model = model or HEAVY
+    M = {}
+    for nme in model.order:
+        bn = model.bones[nme]
+        rot, pos = frame.get(nme, (Z3, Z3))
+        M[nme] = _bone_mat(bn, rot, pos, M[bn.parent] if bn.parent is not None else rg.WORLD_FLIP)
+    return M
+
+
+_EDGE = {}
+
+
+def _edge_setup():
+    if _EDGE:
+        return _EDGE
+    sw, body = [], []
+    for ci, b in enumerate(HEAVY.cube_bone):
+        c = HEAVY.cube_list[ci]
+        cp = c.pivot / 16.0
+        Cr = rg._T(*cp) @ rg._Rz(c.rot[2]) @ rg._Ry(c.rot[1]) @ rg._Rx(c.rot[0]) @ rg._T(*(-cp))
+        if b == EDGE_BONE:
+            sw.append(_lane_lattice(c) @ Cr[:3, :3].T + Cr[:3, 3])
+        elif b not in EDGE_SKIP and not b.startswith(("sword_", "weapon_", "shield_face")):
+            body.append((b, Cr, c.corners.min(0), c.corners.max(0)))
+    _EDGE.update(sw=np.concatenate(sw), body=body)
+    return _EDGE
+
+
+def edge_costs(frame, rolls):
+    """For one frame and each roll: (deepest sword point inside a body cube, px; the shield lane margin, px)."""
+    S = _edge_setup()
+    M = _mats(frame)
+    inv = [(np.linalg.inv(M[b] @ Cr), lo, hi) for b, Cr, lo, hi in S["body"]]
+    hand = HEAVY.bones["right_hand"]
+    out = []
+    for r in rolls:
+        f = dict(frame)
+        f["right_hand"] = (roll_hand(frame["right_hand"][0], r), None)
+        Mh = _bone_mat(hand, f["right_hand"][0], None, M["right_forearm"])
+        Ms = _bone_mat(HEAVY.bones[EDGE_BONE], Z3, None, Mh)
+        W = S["sw"] @ Ms[:3, :3].T + Ms[:3, 3]
+        deep = 0.0
+        for Mi, lo, hi in inv:
+            q = W @ Mi[:3, :3].T + Mi[:3, 3]
+            deep = max(deep, float((np.minimum(q - lo, hi - q).min(1) * 16.0).max()))
+        out.append((deep, lane_margin(f)[0]))
+    return out
+
+
+def edge_roll(name, keys, legs, n, report=False):
+    """Roll (degrees per sample) that keeps the sword's edge leading through attack `name` (see EDGE_LEAD)."""
+    cubes = [HEAVY.cube_list[i] for i, b in enumerate(HEAVY.cube_bone) if b == EDGE_BONE]
+    blade = max(cubes, key=lambda c: np.ptp(c.corners[:, 1]))
+    tip = np.array([blade.corners[:, 0].mean(), max(c.corners[:, 1].max() for c in cubes), blade.corners[:, 2].mean(), 1.0])
+    frames = []
+    for i in range(n + 1):
+        f = regrip(sample_keys(keys, i / SUB, keep_face=True))
+        f.update(legs[i])
+        frames.append(f)
+    Ms = [_mats(f)[EDGE_BONE] for f in frames]
+    P = np.array([(M @ tip)[:3] * 16.0 for M in Ms])
+    want, speed = np.zeros(n + 1), np.zeros(n + 1)
+    for i in range(1, n + 1):
+        v = P[i] - P[i - 1]
+        L = Ms[i][:3, :3] @ np.array([0.0, 1.0, 0.0])
+        E = Ms[i][:3, :3] @ np.array([1.0, 0.0, 0.0])
+        vp = v - (v @ L) * L
+        speed[i] = np.linalg.norm(v) * SUB
+        if np.linalg.norm(vp) > 1e-9:
+            th = math.degrees(math.atan2(float(np.cross(E, vp) @ L), float(E @ vp)))
+            want[i] = (th + 90.0) % 180.0 - 90.0
+    imp = IMPACT[name] * SUB
+    vimp = P[imp] - P[imp - 1]
+    i0 = next(i for i in range(imp - 3 * SUB, imp + 1) if speed[i] >= EDGE_ARC_SPEED)
+    i1 = imp
+    while i1 + 1 <= n and speed[i1 + 1] >= EDGE_MIN_SPEED and (P[i1 + 1] - P[i1]) @ vimp > 0:
+        i1 += 1
+    s0, s1 = max(1, i0 - int(round(EDGE_IN * SUB))), min(n - 1, i1 + int(round(EDGE_OUT * SUB)))
+    R = np.arange(-90.0, 270.1, 5.0)
+    z = int(np.argmin(abs(R)))
+    cost = np.zeros((s1 - s0 + 1, len(R)))
+    info = {}
+    for k, i in enumerate(range(s0, s1 + 1)):
+        cs = edge_costs(frames[i], R)
+        d0, m0 = cs[z]
+        for j, (d, m) in enumerate(cs):
+            x = max(0.0, d - max(EDGE_CLIP_OK, d0))
+            c = EDGE_CLIP_COST * x + EDGE_LANE_COST * max(0.0, min(0.0, m0) - m)
+            if i0 <= i <= i1:
+                e = abs((want[i] - R[j] + 90.0) % 180.0 - 90.0)
+                c += min(1.0, speed[i] / 10.0) * (max(0.0, e - EDGE_TOL) / 6.0) ** 2
+            cost[k, j] = c
+        info[i] = cs
+    # dynamic programming from roll 0 before s0 to roll 0 after s1, the roll changing at most EDGE_RATE per sample
+    step = np.abs(R[:, None] - R[None, :])
+    trans = np.where(step <= EDGE_RATE + 1e-9, 0.02 * (step / 5.0) ** 2, np.inf)
+    acc = trans[z] + cost[0]
+    back = []
+    for k in range(1, len(cost)):
+        tot = acc[:, None] + trans
+        back.append(np.argmin(tot, 0))
+        acc = tot.min(0) + cost[k]
+    j = int(np.argmin(acc + trans[:, z]))
+    path = [j]
+    for bk in reversed(back):
+        j = int(bk[j])
+        path.append(j)
+    path = path[::-1]
+    roll = np.zeros(n + 1)
+    roll[s0:s1 + 1] = R[path]
+    if report:
+        err = [abs((want[i] - roll[i] + 90.0) % 180.0 - 90.0) for i in range(i0, i1 + 1)]
+        ex = [(info[i][p][0] - max(EDGE_CLIP_OK, info[i][z][0]), i) for i, p in zip(range(s0, s1 + 1), path)]
+        print("edge %-9s lead t%.2f-t%.2f (tip >= %.0f px/tick, strike direction), roll %+.0f..%+.0f deg, t%.2f-t%.2f;"
+              " edge off the motion max %.0f deg (t%.2f); extra sword in body max %.2f px (t%.2f); roll rate max %.0f deg/tick" % (
+                  name, i0 / SUB, i1 / SUB, EDGE_MIN_SPEED, roll.min(), roll.max(), s0 / SUB, s1 / SUB, max(err),
+                  (i0 + int(np.argmax(err))) / SUB, max(ex)[0], max(ex)[1] / SUB, np.abs(np.diff(roll)).max() * SUB))
+    return roll
 
 
 def monotone(ts, vs):
@@ -1062,7 +1377,8 @@ def attack_clips():
     for name, keys in ATTACKS.items():
         legs = attack_legs(ATTACK_LEGS[name])
         if V2 and SHIELD:
-            upper, give, lanes = lane_fix(keys, n)
+            roll = edge_roll(name, keys, legs, n, report=True) if name in EDGE_LEAD else None
+            upper, give, lanes = lane_fix(keys, n, roll=roll)
             print("lane %-9s give max %.2f  margin min %.2f px  over-face samples %d" % (
                 name, give.max(), min(m for m, _ in lanes), sum(1 for _, f in lanes if f)))
             upper = cape_lag(upper, legs)
