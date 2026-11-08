@@ -909,6 +909,34 @@ if V2 and SHIELD and TROOP in ("knight", "sentinel", "gl_marshal"):
     for _name, (_t0, _t1, _d) in SLASH_FIT.get(TROOP, {}).items():
         ATTACKS[_name] = slash_fit(ATTACKS[_name], _t0, _t1, _d)
 
+    # Marshal low_cut follow-through path (review 2026-11-08, Kort: "Adjust its arm path"), so its edge can lead (EDGE_LEAD):
+    # with the approved path the hooked crossguard and broad pommel cut into the torso, belt, hips and right leg whenever the
+    # sword rolled edge-on after the impact. From the late drive on, the upper arm swings a little further forward and out
+    # (x -8, z +8) and turns out (y +16), and the elbow opens 3 deg, so the fist carries the hilt clear of the body through
+    # the follow-through. Weight 0 up to t7.2 (the wind-up through t7 is untouched), smoothstep to 1 by t8.6, held to t11,
+    # back to 0 by t14.5 (the gather and the guard are untouched). Found by a coordinate-descent clearance search (edge within
+    # 10 deg of the tip's motion t6.75-t9.75, sword vs body under 0.15 px, shield lane 0.15 px, floor 1 px), then checked
+    # through edge_roll and lane_fix.
+    SLASH_FOLLOW = {"gl_marshal": {"low_cut": ((7.2, 8.6, 11.0, 14.5), (-8.0, 16.0, 8.0, 3.0, 0.0, 0.0))}}
+
+    def slash_follow(keys, win, d):
+        ta, tb, tc, td = win
+        out = []
+        for t, k in keys:
+            if ta < t < td and isinstance(k, dict):
+                s = (t - ta) / (tb - ta) if t < tb else 1.0 if t <= tc else (td - t) / (td - tc)
+                w = s * s * (3 - 2 * s)
+                k = dict(k)
+                a, f, h = k["right_arm"], k["right_forearm"], k["right_hand"]
+                k["right_arm"] = (a[0] + w * d[0], a[1] + w * d[1], a[2] + w * d[2])
+                k["right_forearm"] = (f[0] + w * d[3], f[1], f[2])
+                k["right_hand"] = (h[0] + w * d[4], h[1] + w * d[5], h[2])
+            out.append((t, k))
+        return out
+
+    for _name, (_win, _d) in SLASH_FOLLOW.get(TROOP, {}).items():
+        ATTACKS[_name] = slash_follow(ATTACKS[_name], _win, _d)
+
 
 if V2 and not SHIELD:
     # V2 shieldless: the same phases and ticks as the shield V2 (the pelvis in ATTACK_LEGS carries the drive, so the torso leans
@@ -1108,10 +1136,9 @@ def lane_fix(keys, n, lead=2.0, hold_after=1.0, roll=None):
 # EDGE_TOL (weighted by tip speed), for the rolled crossguard or pommel cutting deeper into the body than the unrolled swing
 # did (EDGE_CLIP_OK px free) or closing the shield lane, and for rolling fast. Guard, keys and every other clip are unchanged.
 # clip names that get the edge roll: the knight slash block's troops (their shoulder-driven low_cut and overhead)
-# The marshal's low_cut is left out: with its hooked crossguard and broad pommel every roll that keeps the edge leading after
-# the impact cuts the hilt into the torso and belt and closes the shield lane (arm path unchanged); that needs Kort's call.
-EDGE_LEAD = (("low_cut", "overhead") if TROOP in ("knight", "sentinel") else ("overhead",) if TROOP == "gl_marshal" else ()
-             ) if V2 and SHIELD else ()
+# The marshal's low_cut takes it too since its follow-through arm path was adjusted (SLASH_FOLLOW): on the approved path its
+# hooked crossguard and broad pommel cut into the torso and belt whenever the edge led after the impact.
+EDGE_LEAD = ("low_cut", "overhead") if V2 and SHIELD and TROOP in ("knight", "sentinel", "gl_marshal") else ()
 EDGE_MIN_SPEED = 4.0    # px per tick of the blade tip
 EDGE_ARC_SPEED = 15.0   # px per tick: the drive (the arc starts at the first sample this fast within 3 ticks of the impact)
 EDGE_IN = 1.0           # ticks
