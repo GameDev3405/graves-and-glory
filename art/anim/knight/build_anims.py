@@ -774,7 +774,7 @@ if V2 and SHIELD:
         ],
     }
 
-if V2 and SHIELD and TROOP == "knight":
+if V2 and SHIELD and TROOP in ("knight", "sentinel", "gl_marshal"):
     # Knight slash rebuild (review 2026-11-08: "the shoulder locks up and it just uses its elbow and the twist of its body").
     # The shoulder now carries the blade: it keeps rising and drawing back through the whole load (no frozen hold), drives the
     # arc (low_cut t6-8: shoulder ~40% of the blade path, was -15%; overhead t8-10: 36%, ahead of the elbow), and overshoots
@@ -782,7 +782,10 @@ if V2 and SHIELD and TROOP == "knight":
     # ~1 px deeper on a wider lead step, the forearm reaches near full extension on the impact tick and the wrist snaps ~15 deg
     # past the line. The keys were solved by IK from torso-local wrist/elbow/blade targets (dense keys through the arc so the
     # monotone curves do not stall), checked against lane_fix (shield lane), the body and the floor. Impact ticks, the ready
-    # start/end and every other clip are unchanged; sentinel and gl_marshal keep the shared V2 SHIELD keys above.
+    # start/end and every other clip are unchanged. Sentinel and gl_marshal take the same keys, then SLASH_FIT below: their
+    # swords run ~3.8 px further behind the grip (pommel at local y 4, the knight's at ~7.8), so the same pose drags the
+    # pommel through the tabard and torso as the blade sweeps in and through the gorget, collar and helm in the overhead
+    # follow-through (and the marshal's tip below the floor); the fit nudges a window of keys only where that happened.
     ATTACK_LEGS["low_cut"] = {
         "hips": [
             (0, (0, 6, 0), (0, -1.1, 0.1)),
@@ -879,6 +882,33 @@ if V2 and SHIELD and TROOP == "knight":
         (ATTACK_TICKS, GUARD),
     ]
 
+    # Per-troop clearance fit for the longer-handled swords: (window start, window end, (arm x, y, z, forearm x, hand x, hand y)
+    # degrees added to every key in the window, weighted by a cosine bump so the window edges, the guard and the ready pose
+    # stay put). Found by a clearance search (sword lattice vs every body cube, floor above 0.4 px, no pose change at the
+    # edges) and then re-checked through lane_fix.
+    SLASH_FIT = {
+        "sentinel": {"low_cut": (6.4, 9.4, (-4.8, 0.0, 28.3, -1.9, -1.0, 0.1)),
+                     "overhead": (9.6, 16.5, (-0.4, -1.3, -8.5, 0.2, -25.9, -0.9))},
+        "gl_marshal": {"low_cut": (6.4, 9.4, (-17.5, 0.2, 13.1, -0.6, -0.1, -0.9)),
+                       "overhead": (9.6, 16.5, (0.8, -1.7, -2.4, 0.0, -27.3, 1.2))},
+    }
+
+    def slash_fit(keys, t0, t1, d):
+        out = []
+        for t, k in keys:
+            w = 0.5 - 0.5 * math.cos(2 * math.pi * (t - t0) / (t1 - t0)) if t0 < t < t1 else 0.0
+            if w > 0 and isinstance(k, dict):
+                k = dict(k)
+                a, f, h = k["right_arm"], k["right_forearm"], k["right_hand"]
+                k["right_arm"] = (a[0] + w * d[0], a[1] + w * d[1], a[2] + w * d[2])
+                k["right_forearm"] = (f[0] + w * d[3], f[1], f[2])
+                k["right_hand"] = (h[0] + w * d[4], h[1] + w * d[5], h[2])
+            out.append((t, k))
+        return out
+
+    for _name, (_t0, _t1, _d) in SLASH_FIT.get(TROOP, {}).items():
+        ATTACKS[_name] = slash_fit(ATTACKS[_name], _t0, _t1, _d)
+
 
 if V2 and not SHIELD:
     # V2 shieldless: the same phases and ticks as the shield V2 (the pelvis in ATTACK_LEGS carries the drive, so the torso leans
@@ -935,6 +965,9 @@ if V2 and not SHIELD:
 # the rim; where the arm still has to pass the rim, the shield gives way (its fist eases left and back, its face opens) by
 # just the amount the lane needs, a tick early, and comes back as the blade clears.
 LANE_BONES = ("sword_t3", "right_forearm", "right_cuff", "right_couter")
+# sentinel and gl_marshal name their blade weapon_t3, so the lane never saw it: the slash blades crossed the shield by up to 2.7 px.
+if TROOP in ("sentinel", "gl_marshal"):
+    LANE_BONES = ("weapon_t3",) + LANE_BONES[1:]
 LANE_PAD = 0.5          # px: lateral clearance past the rim
 LANE_FRONT = -5.2       # shield px: a point at least a pixel in front of the boss (face plane at -3.6, boss front -4.2)
 LANE_BACK = 3.5         # shield px: deeper behind the shield than this (its handle ends at 0.6) the torso hides the blade
