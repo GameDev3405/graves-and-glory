@@ -41,7 +41,7 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
 /**
- * The builder server (Kort 2026-11-03): one save (gg-build) holding seven canvases at once, the flat dimensions gravesandglory:build_(camp, lobby, rivergate, ironhold,
+ * The builder server (Kort 2026-11-03): one save (gg-build) holding six canvases at once (the camp canvas dropped 2026-11-08), the flat dimensions gravesandglory:build_(lobby, rivergate, ironhold,
  * frostmarch, hollowwood, kingsfield) of the built-in gg_build data pack, which only -Dgg.build registers. Each canvas is painted once with its plan (BuildWorlds) and
  * marked by gg-build.json in its dimension folder; a marked canvas is never painted or regenerated again. There is no Battle, no unit, no NPC, no bot and no match.
  * Everyone is creative and op (once, on first join); /map lists the canvases and takes the caller to one, /warp moves them within the canvas they stand in, vanilla
@@ -92,6 +92,7 @@ final class BuildMode {
                 .then(CommandManager.argument("name",StringArgumentType.word())
                     .suggests((c,b)->{var p=c.getSource().getPlayer();var plan=p==null?null:plan(p);return CommandSource.suggestMatching(plan==null?List.of():plan.warps().keySet(),b);})
                     .executes(c->warp(c.getSource(),StringArgumentType.getString(c,"name")))));
+            dispatcher.register(CommandManager.literal("handbook").executes(c->{var p=c.getSource().getPlayer();if(p==null)return 0;BuildHandbook.give(p);return 1;})); // any player (B2)
             dispatcher.register(CommandManager.literal("backup").requires(s->s.hasPermissionLevel(2)).executes(c->{backup(server,"command");c.getSource().sendFeedback(()->Text.literal("Backup written to backups/"+SAVE),false);return 1;}));
             dispatcher.register(CommandManager.literal("map").requires(s->s.hasPermissionLevel(2))
                 .executes(c->listWorlds(c.getSource()))
@@ -172,6 +173,7 @@ final class BuildMode {
         for(var player:list){
             if(player.isDisconnected()||s.getPlayerManager().getPlayer(player.getUuid())!=player)continue;
             player.changeGameMode(GameMode.CREATIVE);
+            BuildHandbook.giveOnce(s,player);
             if(plan(player)==null)arrive(player,PLANS.get("lobby"));
         }
     }
