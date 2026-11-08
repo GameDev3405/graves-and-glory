@@ -327,8 +327,7 @@ public final class RelicEffects {
                 le.velocityModified = true;
                 Abilities.slow(b, le, 1, (int) Math.round(c.value2()));
             }
-            Vec3d look = flatLook(p);
-            b.world.spawnParticles(ParticleTypes.SWEEP_ATTACK, p.getX() + look.x, p.getBodyY(.5), p.getZ() + look.z, 3, .4, .2, .4, 0);
+            // No vanilla SWEEP_ATTACK burst (Kort, 2026-11-08: no vanilla sweep anywhere).
             Audio.at(b, AudioCues.Cue.RELIC_USE_EARTH, p.getPos(), "r" + p.getId());
             return true;
         }
