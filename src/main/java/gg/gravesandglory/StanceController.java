@@ -71,8 +71,12 @@ final class StanceController extends AnimationController<GeoTroop> {
     private double stunStart = Double.NaN, stunEnd = Double.NaN, shuffle;
     private boolean stunOn;
     static final double STUN_ENTRY = 4;
-    /** Ticks for a stun pose to come in (fast, so the snap lands with the hit) and to go out (slower, under the shake-off). */
-    static final double STUN_IN = 1, STUN_OUT = 5;
+    /**
+     * Ticks for a stun pose to come in (fast, so the snap lands with the hit) and to go out (slower, under the shake-off). The pose that replaces the stun (the ready
+     * guard, the order's stance, the walk legs) comes in over the same {@link #STUN_OUT} ticks, so the two crossfade evenly instead of the new pose arriving in two ticks
+     * while the stun is still half there; the shake-off clip is stretched over the same span.
+     */
+    static final double STUN_IN = 1, STUN_OUT = 8;
     /** The stun legs ease into the dazed stance over this many ticks (the upper body still snaps in {@link #STUN_IN}), and the legs the stun replaces hand over at the same pace. */
     static final double STUN_LEGS_IN = 3;
     static final String STUN_OUT_CLIP = "stun_out_upper";
@@ -161,11 +165,13 @@ final class StanceController extends AnimationController<GeoTroop> {
 
         for (String w : want) if (w != null) ramps.putIfAbsent(w, 0.0);
         for (String w : pitched) if (model.getAnimation(animatable, w) != null) ramps.putIfAbsent(w, 0.0);
+        // the stun is going out (a stun pose still has weight): what takes over rises as slowly as the stun falls
+        boolean handover = !stunning && (ramps.getOrDefault("stun_upper", 0.0) > 0 || ramps.getOrDefault("stun_legs", 0.0) > 0);
         for (Map.Entry<String, Double> r : ramps.entrySet()) {
             String k = r.getKey();
             boolean on = k.equals(want[0]) || k.equals(want[1]) || (aiming && (k.equals(AIM_UP) || k.equals(AIM_DOWN)));
             r.setValue(step(r.getValue(), on ? 1 : 0, dt / (isStun(k) ? (on ? (k.endsWith("_legs") ? STUN_LEGS_IN : STUN_IN) : STUN_OUT)
-                    : stunning && k.endsWith("_legs") ? STUN_LEGS_IN : RAMP)));
+                    : stunning && k.endsWith("_legs") ? STUN_LEGS_IN : handover && on ? STUN_OUT : RAMP)));
         }
 
         for (float[] a : acc.values()) java.util.Arrays.fill(a, 0);
@@ -203,7 +209,7 @@ final class StanceController extends AnimationController<GeoTroop> {
         apply(bones);
         // the shake-off: for the clip's length after the stun ends, the head shakes and the chest straightens over the stun pose fading out
         Animation out = Double.isNaN(stunEnd) || now < stunEnd ? null : model.getAnimation(animatable, STUN_OUT_CLIP);
-        if (out != null && now - stunEnd < out.length()) addClip(out, now - stunEnd, bones);
+        if (out != null && now - stunEnd < STUN_OUT) addClip(out, (now - stunEnd) * out.length() / STUN_OUT, bones);
     }
 
     /** Share of the walk legs mixed into the stun legs at a full drift (a slow slide that is no longer the knockback itself). */
@@ -256,9 +262,12 @@ final class StanceController extends AnimationController<GeoTroop> {
             var rot = b.rotationKeyFrames();
             if (!rot.xKeyframes().isEmpty()) {
                 BoneSnapshot init = bone.getInitialSnapshot();
-                a[0] += w * (AttackController.sample(rot.xKeyframes(), t) + init.getRotX());
-                a[1] += w * (AttackController.sample(rot.yKeyframes(), t) + init.getRotY());
-                a[2] += w * (AttackController.sample(rot.zKeyframes(), t) + init.getRotZ());
+                // every pose is taken on the branch nearest what the gait wrote, so poses written either side of the gimbal blend as one rotation
+                float[] to = AttackController.near(bone.getRotX(), bone.getRotY(), bone.getRotZ(), AttackController.sample(rot.xKeyframes(), t) + init.getRotX(),
+                        AttackController.sample(rot.yKeyframes(), t) + init.getRotY(), AttackController.sample(rot.zKeyframes(), t) + init.getRotZ());
+                a[0] += w * to[0];
+                a[1] += w * to[1];
+                a[2] += w * to[2];
                 a[6] += w;
             }
             var pos = b.positionKeyFrames();
@@ -282,9 +291,10 @@ final class StanceController extends AnimationController<GeoTroop> {
             if (bone == null) continue;
             if (a[6] > 0) {
                 float k = Math.min(1, a[6]);
-                bone.setRotX(lerp(bone.getRotX(), a[0] / a[6], k));
-                bone.setRotY(lerp(bone.getRotY(), a[1] / a[6], k));
-                bone.setRotZ(lerp(bone.getRotZ(), a[2] / a[6], k));
+                float[] r = AttackController.principal(lerp(bone.getRotX(), a[0] / a[6], k), lerp(bone.getRotY(), a[1] / a[6], k), lerp(bone.getRotZ(), a[2] / a[6], k));
+                bone.setRotX(r[0]);
+                bone.setRotY(r[1]);
+                bone.setRotZ(r[2]);
                 bone.markRotationAsChanged();
             }
             if (a[7] > 0) {

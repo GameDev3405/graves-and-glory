@@ -52,6 +52,11 @@ final class GeoGaps {
     volatile float vyaw;
     volatile int probeId = -1;
     final StringBuilder foot = new StringBuilder();
+    /** Per rendered frame of the probed unit: the model-space position of each listed bone's pivot, a point 1 block in front of it (-z) and a point 1 block below it (-y). */
+    final StringBuilder pose = new StringBuilder();
+    static final String[] POSE_BONES = {"torso", "head", "right_arm", "left_arm", "right_hand", "left_hand"};
+    static final int WOUND = Integer.parseInt(System.getenv().getOrDefault("GRAVES_GEO_WOUND", "0"));
+    static final boolean EVERY_TICK = System.getenv("GRAVES_GEO_EVERYTICK") != null;
     long lastProbe = Long.MIN_VALUE; float lastTd = -1;
     String lastStun = "";
 
@@ -82,7 +87,7 @@ final class GeoGaps {
     boolean stepBash(MinecraftClient c, int k) {
         if (run >= 3) { GeoTroopRenderer.PROBE = null; return true; }
         int rk = k - runStart;
-        if (rk == 1) { armed = false; if (GeoTroopRenderer.PROBE == null) installProbe(c); foot.setLength(0); Phase1Checks.server(c, b -> setupBash(b, run)); }
+        if (rk == 1) { armed = false; if (GeoTroopRenderer.PROBE == null) installProbe(c); foot.setLength(0); pose.setLength(0); Phase1Checks.server(c, b -> setupBash(b, run)); }
         if (rk == H) Phase1Checks.server(c, this::strike);
         String ang = GeoKnightChecks.CAP_ANG[run];
         var e = c.world == null ? null : c.world.getEntityById(victimId);
@@ -91,9 +96,9 @@ final class GeoGaps {
             StanceController st = StanceController.LIVE.get(e);
             AttackController at = AttackController.LIVE.get(e);
             long wt = c.world.getTime();
-            if (st != null && g != null) System.out.println(String.format("[gb] %s %s t=%03d wt=%d gait=%s sp=%.3f still=%.2f stance=%s up=%s@%.2f legs=%s@%.2f atk=%s@%.2f cam=%.1f,%.1f ent=%.1f,%.1f snap=%s",
+            if (st != null && g != null) System.out.println(String.format("[gb] %s %s t=%03d wt=%d gait=%s sp=%.3f still=%.2f stance=%s up=%s@%.2f legs=%s@%.2f atk=%s@%.2f cam=%.1f,%.1f ent=%.1f,%.1f yaw=%.0f/%.0f/%.0f snap=%s",
                 troop, ang, rk - H, wt, g.mode, g.speed, st.shownStill, st.shownStance, st.shownUpper, st.shownUpperWeight, st.shownLegs, st.shownLegsWeight,
-                at == null ? "" : at.shownClip, at == null ? 0 : at.shownWeight, c.player.getX() - o.cx, c.player.getZ() - o.cz, e.getX() - o.cx, e.getZ() - o.cz, snap));
+                at == null ? "" : at.shownClip, at == null ? 0 : at.shownWeight, c.player.getX() - o.cx, c.player.getZ() - o.cz, e.getX() - o.cx, e.getZ() - o.cz, e.getYaw(), e instanceof LivingEntity ly ? ly.getBodyYaw() : 0f, e instanceof LivingEntity lh ? lh.getHeadYaw() : 0f, snap));
         }
         if (rk == H + 5 && c.world != null) for (var en : c.world.getEntities()) if (en instanceof LivingEntity le && !(en instanceof net.minecraft.entity.player.PlayerEntity))
             System.out.println(String.format("[gb] ent id=%d vic=%b %s pos=%.2f,%.2f,%.2f yaw=%.0f", en.getId(), en.getId() == victimId, en.getType().getUntranslatedName(), en.getX() - o.cx, en.getY(), en.getZ() - o.cz, en.getYaw()));
@@ -113,8 +118,10 @@ final class GeoGaps {
         int rk = k - 2;
         if (rk == 1) { Phase1Checks.server(c, this::setupCharge); installProbe(c); }
         if (rk == CHARGE_ORDER) Phase1Checks.server(c, this::order);
+        // a mender casts at the wounded: GRAVES_GEO_WOUND=<ticks> hurts three of her squad-mates that many ticks after the order, so the cast lands mid-run
+        if (WOUND > 0 && rk == CHARGE_ORDER + WOUND) Phase1Checks.server(c, b -> { for (int j : new int[]{1, 3, 5}) squad.get(j).mob.setHealth(squad.get(j).mob.getMaxHealth() * 0.4f); });
         if (rk >= CHARGE_ORDER - 2 && rk <= CHARGE_ORDER + CHARGE_LEN) {
-            if (rk % 2 == 0) Phase1Checks.shot(c, String.format("geo-%s-gap-charge-%03d", troop, rk - CHARGE_ORDER + 10));
+            if (EVERY_TICK || rk % 2 == 0) Phase1Checks.shot(c, String.format("geo-%s-gap-charge-%03d", troop, rk - CHARGE_ORDER + 10));
             for (int j : new int[]{2, 5}) {
                 if (j >= squadIds.length) continue;
                 var e = c.world == null ? null : c.world.getEntityById(squadIds[j]);
@@ -130,6 +137,7 @@ final class GeoGaps {
         if (rk > CHARGE_ORDER + CHARGE_LEN) {
             GeoTroopRenderer.PROBE = null;
             try { Files.writeString(Path.of(c.runDirectory.getPath(), "gaps-foot-" + troop + ".csv"), foot.toString()); } catch (IOException ex) { System.out.println("[gc] foot csv: " + ex); }
+            try { Files.writeString(Path.of(c.runDirectory.getPath(), "gaps-pose-" + troop + ".csv"), pose.toString()); } catch (IOException ex) { System.out.println("[gc] pose csv: " + ex); }
             Phase1Checks.report("p1-geo-" + troop + "-gap-charge", phase == 4, "charge ordered, " + snap);
             return true;
         }
@@ -140,6 +148,8 @@ final class GeoGaps {
 
     void saveFoot(MinecraftClient c, String tag) {
         try { Files.writeString(Path.of(c.runDirectory.getPath(), "gaps-foot-" + troop + "-" + tag + ".csv"), foot.toString()); } catch (IOException ex) { System.out.println("[gb] foot csv: " + ex); }
+        try { Files.writeString(Path.of(c.runDirectory.getPath(), "gaps-pose-" + troop + "-" + tag + ".csv"), pose.toString()); } catch (IOException ex) { System.out.println("[gb] pose csv: " + ex); }
+        pose.setLength(0);
     }
 
     // ---------------------------------------------------------------- foot probe
@@ -167,6 +177,17 @@ final class GeoGaps {
                 }
             }
             foot.append(row).append('\n');
+            StringBuilder pr = new StringBuilder(String.format(Locale.ROOT, "%.4f", wt + td));
+            for (String name : POSE_BONES) {
+                var bone = model.getBone(name).orElse(null);
+                if (bone == null) { pr.append(",0,0,0,0,0,0,0,0,0"); continue; }
+                var m = bone.getLocalSpaceMatrix();
+                for (float[] pt : new float[][]{{0, 0, 0}, {0, 0, -1}, {0, -1, 0}}) {
+                    Vector4f v = m.transform(new Vector4f(pt[0], pt[1], pt[2], 1f));
+                    pr.append(String.format(Locale.ROOT, ",%.5f,%.5f,%.5f", v.x(), v.y(), v.z()));
+                }
+            }
+            pose.append(pr).append('\n');
         };
     }
 

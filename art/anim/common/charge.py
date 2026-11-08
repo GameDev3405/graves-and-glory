@@ -33,6 +33,8 @@ from stances import (Troop, GEAR, bake, frames_of, lift_arm, pitch, copy_pose, p
 CORE = ("torso", "head", "left_arm", "right_arm", "left_forearm", "right_forearm", "left_hand", "right_hand")
 TAU = 2 * math.pi
 MELEE = {"shield", "onehand", "spear", "axe"}
+SHIELD_LEAN, ONEHAND_LEAN = 22.0, 22.0   # the torso's forward lean in the charge (degrees; A7 asks 15-20 from upright, the guard already carries about 4)
+AIM_UP = -6.0                            # the blade's pitch in the sword gear, as the sum of the chain's x rotations: 6 degrees above level
 
 
 def v3(x=0.0, y=0.0, z=0.0):
@@ -69,29 +71,38 @@ def set_fore(P, side, x, keep=0.0):
 # ---------------------------------------------------------------------------------------------- the melee carries
 # Each returns (pose, cfg): the static charge carry, and the dynamic amounts: yaw (torso yaw swing), pump (left, right arm x swing),
 # roll (torso roll swing), bob (torso pitch bob), both degrees. The pose is built with the torso already leaned.
+def couch_sword(P, side, arm_x, fore_x, aim, arm_z, hand_y=None):
+    """The sword arm set so the blade lies along the line of the stride: the weapon bone is the hand's blade-forward at rest (rotation [90, 0, -90]),
+    so the blade's pitch above level is minus the sum of the x rotations down the chain (torso, arm, forearm, hand) and `aim` is that sum.
+    Chest-high hand (the elbow bent, the forearm close to level) with the point forward and a touch up."""
+    a, f, h = f"{side}_arm", f"{side}_forearm", f"{side}_hand"
+    P[a][0] = np.array([arm_x, 0.0, arm_z], float)
+    P[f][0] = np.array([fore_x, 0.0, 0.0], float)
+    hy = P[h][0][1] if hand_y is None else hand_y
+    P[h][0] = np.array([aim - (P["torso"][0][0] + arm_x + fore_x), hy, 0.0], float)
+
+
 def carry_shield(tr):
-    """The shield thrust forward and high, the sword cocked back at the shoulder, blade forward."""
+    """The shield thrust forward and high, the sword levelled forward at chest height, point on the enemy (A7)."""
     U = pose_at(tr.anims["stance_shield_up_upper"], 0.0, upper_only=True)
     P = copy_pose(tr.ready)
     for b in CORE:
         if b in U:
             P[b] = [np.array(U[b][0], float), None]
-    lift_arm(P, "right", 32, keep=0.35)                 # the sword arm cocked up and back
-    set_fore(P, "right", -92, 0.0)
-    lean(P, 14, keep_l=0.85, keep_r=0.45)
+    lean(P, SHIELD_LEAN - P["torso"][0][0], keep_l=0.85, keep_r=0.0)
     P["torso"][0][1] = 8.0
-    return P, dict(yaw=4.0, pump=(3.5, 9.0), roll=2.0, bob=1.5)
+    couch_sword(P, "right", -58, -60, AIM_UP, 12)
+    return P, dict(yaw=4.0, pump=(3.5, 5.0), roll=2.0, bob=1.5)
 
 
 def carry_onehand(tr):
-    """No shield: the sword levelled forward at the hip-high couch, the free arm pumping hard."""
+    """No shield: the sword levelled forward at chest height, point on the enemy, the free arm pumping hard (A7)."""
     P = copy_pose(tr.ready)
-    lift_arm(P, "right", 26, keep=0.3)
-    set_fore(P, "right", -70, 0.0)
+    lean(P, ONEHAND_LEAN - P["torso"][0][0], keep_l=0.0, keep_r=0.0)
     P["left_arm"][0][2] -= 6
-    lean(P, 18, keep_l=0.0, keep_r=0.5)
     P["torso"][0][1] = 6.0
-    return P, dict(yaw=6.0, pump=(30.0, 7.0), roll=2.5, bob=1.8)
+    couch_sword(P, "right", -58, -62, AIM_UP, 10)
+    return P, dict(yaw=6.0, pump=(30.0, 4.0), roll=2.5, bob=1.8)
 
 
 def carry_spear(tr):
