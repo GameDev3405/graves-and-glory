@@ -73,6 +73,8 @@ final class StanceController extends AnimationController<GeoTroop> {
     static final double STUN_ENTRY = 4;
     /** Ticks for a stun pose to come in (fast, so the snap lands with the hit) and to go out (slower, under the shake-off). */
     static final double STUN_IN = 1, STUN_OUT = 5;
+    /** The stun legs ease into the dazed stance over this many ticks (the upper body still snaps in {@link #STUN_IN}), and the legs the stun replaces hand over at the same pace. */
+    static final double STUN_LEGS_IN = 3;
     static final String STUN_OUT_CLIP = "stun_out_upper";
     /** The ranged_aim pitch this frame (AIM_PITCH_HOOK), 0 when not aiming. */
     float aimPitch() { return aimPitch; }
@@ -159,7 +161,8 @@ final class StanceController extends AnimationController<GeoTroop> {
         for (Map.Entry<String, Double> r : ramps.entrySet()) {
             String k = r.getKey();
             boolean on = k.equals(want[0]) || k.equals(want[1]) || (aiming && (k.equals(AIM_UP) || k.equals(AIM_DOWN)));
-            r.setValue(step(r.getValue(), on ? 1 : 0, dt / (isStun(k) ? (on ? STUN_IN : STUN_OUT) : RAMP)));
+            r.setValue(step(r.getValue(), on ? 1 : 0, dt / (isStun(k) ? (on ? (k.endsWith("_legs") ? STUN_LEGS_IN : STUN_IN) : STUN_OUT)
+                    : stunning && k.endsWith("_legs") ? STUN_LEGS_IN : RAMP)));
         }
 
         for (float[] a : acc.values()) java.util.Arrays.fill(a, 0);
@@ -169,7 +172,8 @@ final class StanceController extends AnimationController<GeoTroop> {
             double w = AttackController.smooth(r.getValue());
             boolean legs = k.endsWith("_legs");
             // the fall-back legs are a walk of their own: they play while the troop moves, so they are not scaled by standing
-            if ((legs && !k.equals("stance_fallback_legs")) || k.equals("stance_ready_upper")) w *= AttackController.smooth(still);
+            // the stun legs are not: a stunned troop is slid by a knockback or still moving, and its legs must hold the dazed stance through that, not hand back to the gait's walk
+            if ((legs && !k.equals("stance_fallback_legs") && !k.equals("stun_legs")) || k.equals("stance_ready_upper")) w *= AttackController.smooth(still);
             if (aiming && (k.equals(AIM) || k.equals(AIM_UP) || k.equals(AIM_DOWN))) {
                 // the level aim and its two pitched copies share the aim's weight by the smoothed pitch (the three weights sum to 1)
                 w *= k.equals(AIM_UP) ? up : k.equals(AIM_DOWN) ? down : 1 - up - down;
