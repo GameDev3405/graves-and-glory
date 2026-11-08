@@ -143,7 +143,9 @@ public final class Structures {
         BlockPos pivot=pivot(size),origin=new BlockPos(cx,y,cz).subtract(pivot);
         StructurePlacementData data=new StructurePlacementData().setRotation(turn).setMirror(BlockMirror.NONE).setIgnoreEntities(true).setUpdateNeighbors(false).addProcessor(BlockIgnoreStructureProcessor.IGNORE_STRUCTURE_BLOCKS).setPosition(pivot);
         boolean any=template.place(w,origin,origin,data,w.getRandom(),Block.NOTIFY_LISTENERS);
-        return log(new Placed(id,any?piece.blocks():0,System.nanoTime()-started,footprint(size,cx,y,cz,rotation),false,row));
+        BlockBox box=footprint(size,cx,y,cz,rotation);
+        Props.scanBox(w,box); // prop anchors in the piece get their parts, turned with it (plan task S8)
+        return log(new Placed(id,any?piece.blocks():0,System.nanoTime()-started,box,false,row));
     }
 
     // ---- landmarks (Phase 3): one piece per tick after the column build of a map ----
@@ -234,6 +236,8 @@ public final class Structures {
             StructureTemplate template=w.getStructureTemplateManager().createTemplate(nbt);
             StructurePlacementData data=new StructurePlacementData().setIgnoreEntities(true).setUpdateNeighbors(false).addProcessor(BlockIgnoreStructureProcessor.IGNORE_STRUCTURE_BLOCKS);
             template.place(w,saved.origin(),saved.origin(),data,w.getRandom(),Block.NOTIFY_LISTENERS);
+            BlockPos o=saved.origin();Vec3i s=saved.size();
+            Props.scanBox(w,new BlockBox(o.getX(),o.getY(),o.getZ(),o.getX()+s.getX()-1,o.getY()+s.getY()-1,o.getZ()+s.getZ()-1)); // the piece's props go, the old ones come back
             Files.deleteIfExists(saved.file());
             return true;
         }catch(Exception e){System.err.println("[Graves and Glory] structure could not be restored: "+saved.tag()+": "+e);return false;}
