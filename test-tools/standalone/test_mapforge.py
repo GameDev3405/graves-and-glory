@@ -790,6 +790,26 @@ class ScanTest(unittest.TestCase):
         self.assertIn('capture-x: 1 block(s) in the locked band', text)
         self.assertIn('no walking route to capture-x', text)
 
+    def test_routes_treat_barrier_solid(self):
+        """A prop's barrier cells (Props.place, plan task S9) are solid to routes: a 1-wide corridor plugged by a barrier
+        column, even a one-high one (an anvil, a trough), is not walked through or over."""
+        def corridor():
+            w = self._world()
+            for x in range(-5, 6):
+                for z in range(-6, 7):
+                    if z != 0:
+                        for y in (65, 66, 67, 68):
+                            w.set((x, y, z), Cell(normalize('stone')))
+            return w
+        open_route = scan_mod.scan(self._manifest(), corridor(), None, ((-20, -20), (20, 20)))['spawns'][0]['routes']['capture-x']
+        self.assertIsNotNone(open_route)
+        for height in (1, 2):
+            w = corridor()
+            for y in range(65, 65 + height):
+                w.set((0, y, 0), Cell(normalize('barrier')))
+            plugged = scan_mod.scan(self._manifest(), w, None, ((-20, -20), (20, 20)))['spawns'][0]['routes']['capture-x']
+            self.assertTrue(plugged is None or plugged > open_route, f'{height}-high barrier plug: route {plugged} vs {open_route}')
+
 
 ANCHOR_CMD = 'gravesandglory:prop/forge floor=minecraft:stone_bricks'
 

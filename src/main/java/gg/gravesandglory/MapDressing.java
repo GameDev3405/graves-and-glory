@@ -11,8 +11,11 @@ final class MapDressing {
     final ServerWorld w;final int map=CampaignMaps.selected;
     final Block lamp,post,cover,coverTop,pave,trim,plank,log;
     final List<int[]> lamps=new ArrayList<>();
+    /** Columns within one block of a prop's footprint (its solid and light cells and its anchor) in this world, read once from the live props (plan task S9). */
+    final Set<Long> nearProps;
     MapDressing(ServerWorld w){
         this.w=w;
+        nearProps=propColumns(w);
         lamp=map==3?Blocks.SOUL_LANTERN:Blocks.LANTERN;
         post=switch(map){case 1->Blocks.STONE_BRICK_WALL;case 2,3->Blocks.SPRUCE_FENCE;case 4->Blocks.OAK_FENCE;default->Blocks.DARK_OAK_FENCE;};
         cover=switch(map){case 1->Blocks.CRACKED_STONE_BRICKS;case 2->Blocks.PACKED_ICE;case 3->Blocks.MOSSY_COBBLESTONE;case 4->Blocks.STONE_BRICKS;default->Blocks.COBBLESTONE;};
@@ -47,8 +50,18 @@ final class MapDressing {
     static boolean nearRiver(int map,int x,int z){return Math.abs(x-Arena.riverX(z))<(map==3?11:8);}
     boolean nearRiver(int x,int z){return nearRiver(map,x,z);}
     static boolean nearTree(int x,int z){for(var s:Spec.SCENERY)if(Math.abs(x-s.x())<=s.width()/2+1&&Math.abs(z-s.z())<=s.width()/2+1)return true;return false;}
-    /** Open ground a prop may stand on: off roads (with a shoulder), river, bridges, structures, muster lanes and trees, and level. */
+    static Set<Long> propColumns(ServerWorld w){
+        Set<Long> out=new HashSet<>();
+        for(var l:Props.live(w)){
+            List<BlockPos> cells=new ArrayList<>(Props.solidCells(l.def(),l.anchor(),l.facing()));cells.add(l.anchor());
+            for(var li:l.def().lights())cells.add(Props.lightCell(l.def(),l.anchor(),l.facing(),li));
+            for(var c:cells)for(int dx=-1;dx<=1;dx++)for(int dz=-1;dz<=1;dz++)out.add(ChunkPos.toLong(c.getX()+dx,c.getZ()+dz));
+        }
+        return out;
+    }
+    /** Open ground a prop may stand on: off props (one block round their footprint), off roads (with a shoulder), river, bridges, structures, muster lanes and trees, and level. */
     boolean free(int x,int z,double shoulder){
+        if(nearProps.contains(ChunkPos.toLong(x,z)))return false; // on or next to a prop
         if(Math.abs(x)>GravesAndGlory.R.arenaHalfX()-4||Math.abs(z)>GravesAndGlory.R.arenaHalfZ()-4)return false;
         if(CampaignMaps.roadDistance(x,z)<shoulder||Math.abs(x-Arena.riverX(z))<(map==3?12:9)||onStructure(x,z,1)||muster(x,z)||nearTree(x,z))return false;
         int y=h(x,z);return Math.abs(h(x+1,z)-y)<=1&&Math.abs(h(x-1,z)-y)<=1&&Math.abs(h(x,z+1)-y)<=1&&Math.abs(h(x,z-1)-y)<=1;
