@@ -1046,10 +1046,16 @@ def _give(frame, s, face):
     return out
 
 
-def lane_fix(keys, n, lead=2.0, hold_after=1.0):
+def lane_fix(keys, n, lead=2.0, hold_after=1.0, roll=None):
     """Samples keys (n + 1 samples), giving the shield way wherever the sword lane needs it: the least give per sample that
-    clears it (to LANE_GIVE), widened lead ticks before and hold_after ticks after, eased, then checked again."""
+    clears it (to LANE_GIVE), widened lead ticks before and hold_after ticks after, eased, then checked again. roll (degrees
+    per sample, edge_roll) turns the sword about its own blade axis in the fist first, so the lane sees the rolled sword."""
     raw = [sample_keys(keys, i / SUB, keep_face=True) for i in range(n + 1)]
+    if roll is not None:
+        prev = None
+        for r, d in zip(raw, roll):
+            prev = roll_hand(r["right_hand"][0], d, prev) if d else r["right_hand"][0]
+            r["right_hand"] = (prev, None)
     faces = [r["_face"][0] for r in raw]
     base = [regrip(dict(r)) for r in raw]
     need = np.zeros(n + 1)
@@ -1088,6 +1094,177 @@ def lane_fix(keys, n, lead=2.0, hold_after=1.0):
             s[0] = s[-1] = 0.0
     out = [_give(f, float(v), faces[i]) for i, (f, v) in enumerate(zip(base, s))]
     return out, s, [lane_margin(f) for f in out]
+
+
+# ---- Edge lead (review 2026-11-08, Kort: "towards the end of the slash the blade turns flat against the enemy it's hitting, I
+# want it to keep the blade facing the enemy with the 'sharp' end"). The swing's arm and blade path stay as approved; only the
+# sword's roll about its own blade axis changes. The sword bone pivots on the wrist pivot and its blade axis runs through that
+# pivot (all three swords), and right_hand carries no geometry of its own, so turning right_hand about the blade axis rolls the
+# sword in the fist without moving its tip, its blade line or the glove. Per sample the roll that lays the edge (the blade
+# cube's width, local x) along the tip's motion (projected across the blade) is the target from the drive's start (tip at
+# EDGE_ARC_SPEED) through the follow-through (tip still at EDGE_MIN_SPEED or more in the strike's direction). The roll actually
+# used is the cheapest path over a 5-degree grid (dynamic programming) through that window, EDGE_IN ticks before it and EDGE_OUT
+# ticks of the return after it, starting and ending on the swing's own grip (roll 0): it pays for the edge off the motion past
+# EDGE_TOL (weighted by tip speed), for the rolled crossguard or pommel cutting deeper into the body than the unrolled swing
+# did (EDGE_CLIP_OK px free) or closing the shield lane, and for rolling fast. Guard, keys and every other clip are unchanged.
+# clip names that get the edge roll: the knight slash block's troops (their shoulder-driven low_cut and overhead)
+# The marshal's low_cut is left out: with its hooked crossguard and broad pommel every roll that keeps the edge leading after
+# the impact cuts the hilt into the torso and belt and closes the shield lane (arm path unchanged); that needs Kort's call.
+EDGE_LEAD = (("low_cut", "overhead") if TROOP in ("knight", "sentinel") else ("overhead",) if TROOP == "gl_marshal" else ()
+             ) if V2 and SHIELD else ()
+EDGE_MIN_SPEED = 4.0    # px per tick of the blade tip
+EDGE_ARC_SPEED = 15.0   # px per tick: the drive (the arc starts at the first sample this fast within 3 ticks of the impact)
+EDGE_IN = 1.0           # ticks
+EDGE_OUT = 4.0          # ticks
+EDGE_TOL = 12.0         # degrees of the edge off the motion that cost nothing
+EDGE_CLIP_OK = 0.3      # px of sword in the body that cost nothing (or the unrolled swing's own depth, if deeper)
+EDGE_RATE = 25.0        # degrees per sample (a quarter tick): the fastest roll
+EDGE_CLIP_COST = 40.0   # per px of sword deeper in the body than allowed (an edge 18 deg off at speed costs 1)
+EDGE_LANE_COST = 10.0   # per px the roll closes the shield lane further than the unrolled swing
+EDGE_BONE = next((b for b in ("sword_t3", "weapon_t3") if b in MODEL.bones), None)
+# body cubes the sword is tested against: everything but the sword arm, the sword and the shield (the lane covers the shield)
+EDGE_SKIP = ("right_arm", "right_forearm", "right_hand", "right_pauldron", "right_couter", "right_cuff", "right_glove", "shield")
+
+
+def roll_hand(rot, deg, prev=None):
+    """right_hand animation degrees turned by deg about the sword's blade axis (hand frame), on the Euler branch nearest prev."""
+    b = MODEL.bones["right_hand"]
+    w = MODEL.bones[EDGE_BONE]
+    R = local("right_hand", rot)[:3, :3]
+    Rw = rg._Rz(w.rot[2])[:3, :3] @ rg._Ry(w.rot[1])[:3, :3] @ rg._Rx(w.rot[0])[:3, :3]
+    a = Rw @ np.array([0.0, 1.0, 0.0])
+    t = math.radians(deg)
+    K = np.array([[0, -a[2], a[1]], [a[2], 0, -a[0]], [-a[1], a[0], 0]])
+    e = np.array(decompose_zyx(R @ (np.eye(3) + math.sin(t) * K + (1 - math.cos(t)) * K @ K)))
+    assert not np.any(b.rot), "right_hand has a rest rotation"
+    ref = np.array(prev if prev is not None else rot, dtype=float)
+    best = None
+    for c in (e, np.array([e[0] - 180.0, -180.0 - e[1], e[2] + 180.0])):
+        c = ref + (c - ref + 180.0) % 360.0 - 180.0
+        if best is None or np.abs(c - ref).sum() < np.abs(best - ref).sum():
+            best = c
+    return tuple(float(v) for v in best)
+
+
+def _mats(frame, model=None):
+    model = model or HEAVY
+    M = {}
+    for nme in model.order:
+        bn = model.bones[nme]
+        rot, pos = frame.get(nme, (Z3, Z3))
+        M[nme] = _bone_mat(bn, rot, pos, M[bn.parent] if bn.parent is not None else rg.WORLD_FLIP)
+    return M
+
+
+_EDGE = {}
+
+
+def _edge_setup():
+    if _EDGE:
+        return _EDGE
+    sw, body = [], []
+    for ci, b in enumerate(HEAVY.cube_bone):
+        c = HEAVY.cube_list[ci]
+        cp = c.pivot / 16.0
+        Cr = rg._T(*cp) @ rg._Rz(c.rot[2]) @ rg._Ry(c.rot[1]) @ rg._Rx(c.rot[0]) @ rg._T(*(-cp))
+        if b == EDGE_BONE:
+            sw.append(_lane_lattice(c) @ Cr[:3, :3].T + Cr[:3, 3])
+        elif b not in EDGE_SKIP and not b.startswith(("sword_", "weapon_", "shield_face")):
+            body.append((b, Cr, c.corners.min(0), c.corners.max(0)))
+    _EDGE.update(sw=np.concatenate(sw), body=body)
+    return _EDGE
+
+
+def edge_costs(frame, rolls):
+    """For one frame and each roll: (deepest sword point inside a body cube, px; the shield lane margin, px)."""
+    S = _edge_setup()
+    M = _mats(frame)
+    inv = [(np.linalg.inv(M[b] @ Cr), lo, hi) for b, Cr, lo, hi in S["body"]]
+    hand = HEAVY.bones["right_hand"]
+    out = []
+    for r in rolls:
+        f = dict(frame)
+        f["right_hand"] = (roll_hand(frame["right_hand"][0], r), None)
+        Mh = _bone_mat(hand, f["right_hand"][0], None, M["right_forearm"])
+        Ms = _bone_mat(HEAVY.bones[EDGE_BONE], Z3, None, Mh)
+        W = S["sw"] @ Ms[:3, :3].T + Ms[:3, 3]
+        deep = 0.0
+        for Mi, lo, hi in inv:
+            q = W @ Mi[:3, :3].T + Mi[:3, 3]
+            deep = max(deep, float((np.minimum(q - lo, hi - q).min(1) * 16.0).max()))
+        out.append((deep, lane_margin(f)[0]))
+    return out
+
+
+def edge_roll(name, keys, legs, n, report=False):
+    """Roll (degrees per sample) that keeps the sword's edge leading through attack `name` (see EDGE_LEAD)."""
+    cubes = [HEAVY.cube_list[i] for i, b in enumerate(HEAVY.cube_bone) if b == EDGE_BONE]
+    blade = max(cubes, key=lambda c: np.ptp(c.corners[:, 1]))
+    tip = np.array([blade.corners[:, 0].mean(), max(c.corners[:, 1].max() for c in cubes), blade.corners[:, 2].mean(), 1.0])
+    frames = []
+    for i in range(n + 1):
+        f = regrip(sample_keys(keys, i / SUB, keep_face=True))
+        f.update(legs[i])
+        frames.append(f)
+    Ms = [_mats(f)[EDGE_BONE] for f in frames]
+    P = np.array([(M @ tip)[:3] * 16.0 for M in Ms])
+    want, speed = np.zeros(n + 1), np.zeros(n + 1)
+    for i in range(1, n + 1):
+        v = P[i] - P[i - 1]
+        L = Ms[i][:3, :3] @ np.array([0.0, 1.0, 0.0])
+        E = Ms[i][:3, :3] @ np.array([1.0, 0.0, 0.0])
+        vp = v - (v @ L) * L
+        speed[i] = np.linalg.norm(v) * SUB
+        if np.linalg.norm(vp) > 1e-9:
+            th = math.degrees(math.atan2(float(np.cross(E, vp) @ L), float(E @ vp)))
+            want[i] = (th + 90.0) % 180.0 - 90.0
+    imp = IMPACT[name] * SUB
+    vimp = P[imp] - P[imp - 1]
+    i0 = next(i for i in range(imp - 3 * SUB, imp + 1) if speed[i] >= EDGE_ARC_SPEED)
+    i1 = imp
+    while i1 + 1 <= n and speed[i1 + 1] >= EDGE_MIN_SPEED and (P[i1 + 1] - P[i1]) @ vimp > 0:
+        i1 += 1
+    s0, s1 = max(1, i0 - int(round(EDGE_IN * SUB))), min(n - 1, i1 + int(round(EDGE_OUT * SUB)))
+    R = np.arange(-90.0, 270.1, 5.0)
+    z = int(np.argmin(abs(R)))
+    cost = np.zeros((s1 - s0 + 1, len(R)))
+    info = {}
+    for k, i in enumerate(range(s0, s1 + 1)):
+        cs = edge_costs(frames[i], R)
+        d0, m0 = cs[z]
+        for j, (d, m) in enumerate(cs):
+            x = max(0.0, d - max(EDGE_CLIP_OK, d0))
+            c = EDGE_CLIP_COST * x + EDGE_LANE_COST * max(0.0, min(0.0, m0) - m)
+            if i0 <= i <= i1:
+                e = abs((want[i] - R[j] + 90.0) % 180.0 - 90.0)
+                c += min(1.0, speed[i] / 10.0) * (max(0.0, e - EDGE_TOL) / 6.0) ** 2
+            cost[k, j] = c
+        info[i] = cs
+    # dynamic programming from roll 0 before s0 to roll 0 after s1, the roll changing at most EDGE_RATE per sample
+    step = np.abs(R[:, None] - R[None, :])
+    trans = np.where(step <= EDGE_RATE + 1e-9, 0.02 * (step / 5.0) ** 2, np.inf)
+    acc = trans[z] + cost[0]
+    back = []
+    for k in range(1, len(cost)):
+        tot = acc[:, None] + trans
+        back.append(np.argmin(tot, 0))
+        acc = tot.min(0) + cost[k]
+    j = int(np.argmin(acc + trans[:, z]))
+    path = [j]
+    for bk in reversed(back):
+        j = int(bk[j])
+        path.append(j)
+    path = path[::-1]
+    roll = np.zeros(n + 1)
+    roll[s0:s1 + 1] = R[path]
+    if report:
+        err = [abs((want[i] - roll[i] + 90.0) % 180.0 - 90.0) for i in range(i0, i1 + 1)]
+        ex = [(info[i][p][0] - max(EDGE_CLIP_OK, info[i][z][0]), i) for i, p in zip(range(s0, s1 + 1), path)]
+        print("edge %-9s lead t%.2f-t%.2f (tip >= %.0f px/tick, strike direction), roll %+.0f..%+.0f deg, t%.2f-t%.2f;"
+              " edge off the motion max %.0f deg (t%.2f); extra sword in body max %.2f px (t%.2f); roll rate max %.0f deg/tick" % (
+                  name, i0 / SUB, i1 / SUB, EDGE_MIN_SPEED, roll.min(), roll.max(), s0 / SUB, s1 / SUB, max(err),
+                  (i0 + int(np.argmax(err))) / SUB, max(ex)[0], max(ex)[1] / SUB, np.abs(np.diff(roll)).max() * SUB))
+    return roll
 
 
 def monotone(ts, vs):
@@ -1200,7 +1377,8 @@ def attack_clips():
     for name, keys in ATTACKS.items():
         legs = attack_legs(ATTACK_LEGS[name])
         if V2 and SHIELD:
-            upper, give, lanes = lane_fix(keys, n)
+            roll = edge_roll(name, keys, legs, n, report=True) if name in EDGE_LEAD else None
+            upper, give, lanes = lane_fix(keys, n, roll=roll)
             print("lane %-9s give max %.2f  margin min %.2f px  over-face samples %d" % (
                 name, give.max(), min(m for m, _ in lanes), sum(1 for _, f in lanes if f)))
             upper = cape_lag(upper, legs)
