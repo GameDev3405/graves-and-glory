@@ -27,7 +27,7 @@ public final class PropDefCheck {
    check(d.category().equals("smithy")&&!d.name().isBlank(),IDS[i]+": category smithy and a display name");
    check(d.sx()==SIZES[i][0]&&d.sy()==SIZES[i][1]&&d.sz()==SIZES[i][2],IDS[i]+": size per the contract table");
    check(d.solid().size()==SOLID[i],IDS[i]+": "+SOLID[i]+" solid cells, got "+d.solid().size());
-   check(d.effects().isEmpty(),IDS[i]+": no effects yet (S5 adds them)");
+   check(i<=1?!d.effects().isEmpty():d.effects().isEmpty(),IDS[i]+(i<=1?": forge and anvil have alive effects (S5)":": no effects (S5 animates the forge and anvil only)"));
    List<String> models=i==0?List.of("hearth","hood","coals"):List.of(IDS[i]);
    check(d.parts().size()==models.size(),IDS[i]+": parts per the contract table");
    for(int p=0;p<models.size();p++){

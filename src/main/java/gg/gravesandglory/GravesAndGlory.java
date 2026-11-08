@@ -79,6 +79,7 @@ public final class GravesAndGlory implements ModInitializer {
         ServerLifecycleEvents.SERVER_STOPPING.register(server -> {if(battle!=null){battle.campaign.voidMatch(MatchRules.Ending.STOPPED);Abilities.serverStopping(battle);battle.clearCorpses();}});
         if (BuildMode.active()) BuildMode.init();
         Props.init(); // prop kit: defs, /prop, anchor scanner (no registry entries)
+        PropTicker.init(); // prop kit: proximity-gated alive effects, /prop stats
         ServerLifecycleEvents.SERVER_STARTED.register(server -> {
             // Only the dedicated Graves and Glory save belongs to this mod.
             String level = server.getSaveProperties().getLevelName();

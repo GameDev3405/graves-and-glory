@@ -10,5 +10,7 @@
     [0, 0, 0]
   ],
   "lights": [],
-  "effects": []
+  "effects": [
+    {"kind": "sound", "id": "minecraft:block.anvil.use", "x": 0.5, "y": 1.0, "z": 0.5, "every": 200, "chance": 0.2, "volume": 0.3}
+  ]
 }

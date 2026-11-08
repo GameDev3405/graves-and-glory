@@ -65,6 +65,8 @@ public final class Props {
     static final float VIEW_RANGE=4f;
     /** Ticks a loaded chunk waits for its entities before the scan gives up on it. */
     static final int CHUNK_WAIT=200;
+    /** Alive effects play only while a player in the same world is within this many blocks of the anchor cell (S5). */
+    public static final double RANGE=24.0;
 
     /** Defs by id, reloaded from {@code data/<ns>/gg_props/*.json} on every data reload. */
     public static volatile Map<String,PropDef> DEFS=Map.of();
@@ -316,6 +318,12 @@ public final class Props {
         Map<Long,Integer> pending=PENDING_CHUNKS.get(w);if(pending!=null)pending.remove(chunk.getPos().toLong());
         Map<BlockPos,Live> m=LIVE.get(w);
         if(m!=null){ChunkPos cp=chunk.getPos();m.keySet().removeIf(a->(a.getX()>>4)==cp.x&&(a.getZ()>>4)==cp.z);}
+    }
+
+    /** The live map's values as they are, without the anchor check or a copy (the S5 ticker's cheap pass); do not modify. */
+    static java.util.Collection<Live> liveView(ServerWorld w){
+        Map<BlockPos,Live> m=LIVE.get(w);
+        return m==null?List.of():m.values();
     }
 
     /** The props known to be in loaded chunks of {@code w}; entries whose anchor has gone are dropped. */
