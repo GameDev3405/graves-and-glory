@@ -57,6 +57,8 @@ final class GeoGaps {
     static final String[] POSE_BONES = {"torso", "head", "right_arm", "left_arm", "right_hand", "left_hand"};
     static final int WOUND = Integer.parseInt(System.getenv().getOrDefault("GRAVES_GEO_WOUND", "0"));
     static final boolean EVERY_TICK = System.getenv("GRAVES_GEO_EVERYTICK") != null;
+    /** GRAVES_GEO_HOLDYAW=1: the bash victim's server yaw is held at its start facing, so the stun exit can be judged without the AI's turn toward its target. */
+    static final boolean HOLDYAW = System.getenv("GRAVES_GEO_HOLDYAW") != null;
     long lastProbe = Long.MIN_VALUE; float lastTd = -1;
     String lastStun = "";
 
@@ -300,6 +302,7 @@ final class GeoGaps {
                 Tactics.set(v, "", 0);
             } else {
                 v.mob.setHealth(v.mob.getMaxHealth());
+                if (HOLDYAW) { var m = v.mob; m.setYaw(vyaw); m.setBodyYaw(vyaw); m.setHeadYaw(vyaw); }
                 attacker.nextAttack = b.time + 400; attacker.abilityAt = b.time + 400;
                 attacker.mob.setVelocity(0, 0, 0);
             }
