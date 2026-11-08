@@ -68,7 +68,7 @@ final class StanceController extends AnimationController<GeoTroop> {
      * The stun clips (stun_upper, stun_legs) are one hit-snap entry of {@link #STUN_ENTRY} ticks followed by a loop of the rest of the clip: they play from the tick the
      * stun began (so the snap shows once), then repeat from the end of the entry. {@code stunEnd} is the tick the stun stopped, for the additive shake-off over the next ticks.
      */
-    private double stunStart = Double.NaN, stunEnd = Double.NaN;
+    private double stunStart = Double.NaN, stunEnd = Double.NaN, shuffle;
     private boolean stunOn;
     static final double STUN_ENTRY = 4;
     /** Ticks for a stun pose to come in (fast, so the snap lands with the hit) and to go out (slower, under the shake-off). */
@@ -153,6 +153,7 @@ final class StanceController extends AnimationController<GeoTroop> {
         if (stunning && !stunOn) { stunStart = now; stunEnd = Double.NaN; }
         if (!stunning && stunOn) stunEnd = now;
         stunOn = stunning;
+        double drift = stunDrift(dt, stunning);
         boolean aiming = AIM.equals(want[0]);
         aimSmooth = aiming ? aimSmooth + (aimPitch - aimSmooth) * (float) Math.min(1, dt / 3) : 0;
         float up = aiming ? clamp01(-aimSmooth / AIM_UP_DEG) : 0, down = aiming ? clamp01(aimSmooth / AIM_DOWN_DEG) : 0;
@@ -182,6 +183,9 @@ final class StanceController extends AnimationController<GeoTroop> {
                 // the level aim and its two pitched copies share the aim's weight by the smoothed pitch (the three weights sum to 1)
                 w *= k.equals(AIM_UP) ? up : k.equals(AIM_DOWN) ? down : 1 - up - down;
             }
+            // a stunned troop that has stopped being thrown but still drifts (the server stuns attacks, not movement) shuffles: the walk legs share the pose
+            // in proportion to how fast it drifts, so the feet are carried by the stride clock rather than skating on the dazed stance
+            if (k.equals("stun_legs")) w *= 1 - STUN_SHUFFLE * drift;
             if (w <= 0) continue;
             Animation clip = model.getAnimation(animatable, k);
             if (clip == null) continue;
@@ -200,6 +204,19 @@ final class StanceController extends AnimationController<GeoTroop> {
         // the shake-off: for the clip's length after the stun ends, the head shakes and the chest straightens over the stun pose fading out
         Animation out = Double.isNaN(stunEnd) || now < stunEnd ? null : model.getAnimation(animatable, STUN_OUT_CLIP);
         if (out != null && now - stunEnd < out.length()) addClip(out, now - stunEnd, bones);
+    }
+
+    /** Share of the walk legs mixed into the stun legs at a full drift (a slow slide that is no longer the knockback itself). */
+    static final double STUN_SHUFFLE = 0.6;
+
+    /** Ticks the shuffle takes to come in and out: slow enough that the knockback slowing through its band and a unit reversing at a standstill do not make the legs pulse. */
+    static final double STUN_SHUFFLE_RAMP = 6;
+
+    /** The shuffle share, 0 planted or still being thrown up to 1 drifting at walking pace; eased, and held while the stun legs are still fading out so their weight does not bump. */
+    private double stunDrift(double dt, boolean stunning) {
+        double s = Math.abs(gait.speed);
+        shuffle = step(shuffle, (stunning || ramps.getOrDefault("stun_legs", 0.0) > 0) && s > 0.05 && s < 0.30 ? 1 : 0, dt / STUN_SHUFFLE_RAMP);
+        return shuffle;
     }
 
     private static boolean isStun(String clip) { return clip.equals("stun_upper") || clip.equals("stun_legs"); }

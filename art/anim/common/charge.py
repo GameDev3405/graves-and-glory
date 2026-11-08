@@ -107,8 +107,12 @@ def carry_spear(tr):
 def carry_axe(tr):
     """Both hands on the haft, the axe cocked high at the shoulder, ready to fall."""
     P = copy_pose(tr.ready)
-    lift_arm(P, "right", 14, keep=0.1)          # lower than a shoulder cock: the axe head rides beside the helmet, not on it
-    lift_arm(P, "left", 6, keep=0.0)
+    # both arms lifted together keep the haft rigid: it leans well forward (about 45 degrees from upright), so the axe head hangs out
+    # ahead of the face and clear of the helmet at every angle, instead of standing beside it
+    lift_arm(P, "right", 42, keep=0.0)
+    lift_arm(P, "left", 34, keep=0.0)
+    P["right_arm"][0][2] += 14                   # both arms rolled the same way: the haft leans to the right, so the head sits off the helmet and shows from the front
+    P["left_arm"][0][2] += 14
     lean(P, 10, keep_l=0.5, keep_r=0.4)
     P["torso"][0][1] = 6.0
     return P, dict(yaw=5.0, pump=(4.0, 4.0), roll=2.0, bob=2.0, together=True)
@@ -127,17 +131,20 @@ def carry_ranged(tr):
         for b, r in S.AIM_POSE[tr.tid][0.0].items():
             if b in CORE:
                 P[b] = [np.array(r, float), None]
+    caster = tr.gear in ("staff", "focus")
     if tr.gear == "staff":
-        lift_arm(P, "right", 14, keep=0.5)      # the staff carried angled forward ahead of the body, not upright at the side
+        lift_arm(P, "right", 30, keep=0.4)      # the staff carried angled well forward ahead of the body, the head of it up and out, not upright at the side
+        P["left_forearm"][0][0] = min(P["left_forearm"][0][0], -50)   # the off hand open and forward, ready to cast
     elif tr.gear == "focus":
-        lift_arm(P, "left", 12, keep=0.0)       # the focus pushed out ahead
-    lean(P, 6, keep_l=1.0, keep_r=1.0)
-    return P, dict(yaw=2.0, pump=(0.0, 0.0), roll=1.0, bob=2.0 if tr.gear in ("staff", "focus") else 1.2, free=ranged_free(tr))
+        lift_arm(P, "left", 26, keep=0.0)       # the focus held out ahead at chest height, ready to cast
+        P["left_forearm"][0][0] = min(P["left_forearm"][0][0], -30)
+    lean(P, 2 if caster else 6, keep_l=1.0, keep_r=1.0)   # casters stay upright; the rest lean a little
+    return P, dict(yaw=3.0 if caster else 2.0, pump=(0.0, 0.0), roll=1.0, bob=2.8 if caster else 1.2, free=ranged_free(tr))
 
 
 def ranged_free(tr):
     """The arm that holds no weapon swings a little with the stride: (side, degrees)."""
-    return {"bow": ("right", 5.0), "xbow": ("left", 5.0), "thrower": ("left", 6.0), "staff": ("left", 4.0), "focus": ("left", 4.0)}[tr.gear]
+    return {"bow": ("right", 5.0), "xbow": ("left", 5.0), "thrower": ("left", 6.0), "staff": ("left", 3.0), "focus": ("right", 12.0)}[tr.gear]
 
 
 CARRY = {"shield": carry_shield, "onehand": carry_onehand, "spear": carry_spear, "axe": carry_axe}

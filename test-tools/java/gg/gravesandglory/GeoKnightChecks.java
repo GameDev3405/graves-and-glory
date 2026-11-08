@@ -328,6 +328,7 @@ final class GeoKnightChecks implements Phase1Checks.Suite {
     final List<GravesAndGlory.Unit> knights = new ArrayList<>();
     int stage, at, i;
 
+    GeoGaps gaps;
     void next(int tick, int s) { stage = s; at = tick; }
 
     @Override public void cleanup(MinecraftClient c) {
@@ -625,7 +626,7 @@ final class GeoKnightChecks implements Phase1Checks.Suite {
                 if (k > 100) {
                     if (!placed) { Phase1Checks.report("p1-geo-" + TROOP + "-placed", false, "could not place knights: " + why); next(tick, 9); return; }
                     Phase1Checks.report("p1-geo-" + TROOP + "-placed", true, "six knights");
-                    i = 0; next(tick, "video".equals(CAPTURE) || "stunfix".equals(CAPTURE) ? 31 : CAPTURE != null ? 30 : 2);
+                    i = 0; next(tick, "gaps".equals(CAPTURE) ? 32 : "video".equals(CAPTURE) || "stunfix".equals(CAPTURE) ? 31 : CAPTURE != null ? 30 : 2);
                 }
             }
             case 2 -> {
@@ -979,6 +980,11 @@ final class GeoKnightChecks implements Phase1Checks.Suite {
                     for (int s : shots) if (t == s && s != lastShot) { lastShot = s; Phase1Checks.shot(c, String.format("geo-" + TROOP + "-cap-%s-%s-%02d", cc[0], CAP_ANG[vi], s)); }
                 }
                 if (k > t0 + shots[shots.length - 1] + 12) { i++; next(tick, 30); }
+            }
+            case 32 -> {
+                // Real-gameplay gap captures (GeoGaps): a real shield bash, or a real Charge order.
+                if (gaps == null) gaps = new GeoGaps(this);
+                if (gaps.step(c, k)) { GeoGaps.live = null; next(tick, 9); }
             }
             case 31 -> {
                 List<Object[]> segs = videoSegments();
