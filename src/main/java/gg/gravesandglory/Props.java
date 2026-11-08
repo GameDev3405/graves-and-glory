@@ -16,6 +16,7 @@ import net.minecraft.block.LightBlock;
 import net.minecraft.block.entity.BlockEntity;
 import net.minecraft.block.entity.CommandBlockBlockEntity;
 import net.minecraft.command.CommandSource;
+import net.minecraft.command.argument.BlockArgumentParser;
 import net.minecraft.command.argument.BlockPosArgumentType;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityType;
@@ -23,6 +24,7 @@ import net.minecraft.entity.decoration.DisplayEntity;
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.nbt.NbtList;
 import net.minecraft.nbt.NbtString;
+import net.minecraft.registry.Registries;
 import net.minecraft.resource.Resource;
 import net.minecraft.resource.ResourceManager;
 import net.minecraft.resource.ResourceType;
@@ -52,7 +54,7 @@ import java.util.TreeMap;
 
 /**
  * Props in the world (prop kit plan task S4). No registry entries: a prop is a vanilla command block (the anchor, one block under the anchor
- * cell, {@code facing} = prop facing, {@code Command} = {@code gravesandglory:prop/<id>}, never run), {@code barrier} blocks on its solid
+ * cell, {@code facing} = prop facing, {@code Command} = {@code gravesandglory:prop/<id> floor=<state>}, the floor block it replaced, never run), {@code barrier} blocks on its solid
  * cells, {@code light} blocks on its light cells and one {@code item_display} per part, tagged {@code gg_prop}, {@code gg_prop@x,y,z}
  * (anchor cell) and {@code gg_prop#<cmd>} (which part). The anchor is the truth: the scanner (chunk load, {@link #scanBox}) spawns missing
  * parts, discards duplicates and discards parts whose anchor is gone.
@@ -60,7 +62,7 @@ import java.util.TreeMap;
 public final class Props {
     private Props(){}
     static final org.slf4j.Logger LOG=org.slf4j.LoggerFactory.getLogger("gravesandglory");
-    public static final String TAG="gg_prop",ANCHOR_PREFIX="gravesandglory:prop/";
+    public static final String TAG="gg_prop",ANCHOR_PREFIX="gravesandglory:prop/",FLOOR_KEY="floor=";
     /** Item display view range multiplier, so props show at build distances. */
     static final float VIEW_RANGE=4f;
     /** Ticks a loaded chunk waits for its entities before the scan gives up on it. */
@@ -142,6 +144,25 @@ public final class Props {
 
     /** Places prop {@code id} with its anchor cell at {@code anchorCell}; "" on success, else the refusal text and nothing changed. */
     public static String place(ServerWorld w,String id,BlockPos anchorCell,int facing){
+        String why=check(w,id,anchorCell,facing);
+        if(!why.isEmpty())return why;
+        PropDef d=DEFS.get(id);
+        BlockPos base=anchorCell.down();
+        List<BlockPos> solid=solidCells(d,anchorCell,facing);
+        BlockState floor=w.getBlockState(base);
+        w.setBlockState(base,Blocks.COMMAND_BLOCK.getDefaultState().with(CommandBlock.FACING,Direction.byName(PropGeometry.direction(facing))).with(CommandBlock.CONDITIONAL,false),3);
+        if(w.getBlockEntity(base) instanceof CommandBlockBlockEntity cb){
+            cb.getCommandExecutor().setCommand(anchorCommand(id,floor));cb.setAuto(false);cb.markDirty();
+        }
+        for(BlockPos p:solid)w.setBlockState(p,Blocks.BARRIER.getDefaultState(),3);
+        for(PropDef.Light l:d.lights())w.setBlockState(lightCell(d,anchorCell,facing,l),Blocks.LIGHT.getDefaultState().with(LightBlock.LEVEL_15,l.level()),3);
+        ensureParts(w,anchorCell.toImmutable(),d,facing);
+        return "";
+    }
+
+    /** Whether prop {@code id} could be placed with its anchor cell at {@code anchorCell}: "" if so, else the refusal text. Changes nothing
+     *  (the S6 ghost turns red on a refusal). */
+    public static String check(ServerWorld w,String id,BlockPos anchorCell,int facing){
         PropDef d=DEFS.get(id);
         if(d==null)return "Unknown prop "+id;
         if(facing!=0&&facing!=90&&facing!=180&&facing!=270)return "Facing must be 0, 90, 180 or 270, not "+facing;
@@ -158,14 +179,27 @@ public final class Props {
             boolean ok=p.equals(base)?anchorFree(w,p):free(w.getBlockState(p));
             if(!ok)return "Overlap at "+p.getX()+" "+p.getY()+" "+p.getZ()+" ("+w.getBlockState(p).getBlock().getName().getString()+")";
         }
-        w.setBlockState(base,Blocks.COMMAND_BLOCK.getDefaultState().with(CommandBlock.FACING,Direction.byName(PropGeometry.direction(facing))).with(CommandBlock.CONDITIONAL,false),3);
-        if(w.getBlockEntity(base) instanceof CommandBlockBlockEntity cb){
-            cb.getCommandExecutor().setCommand(ANCHOR_PREFIX+id);cb.setAuto(false);cb.markDirty();
-        }
-        for(BlockPos p:solid)w.setBlockState(p,Blocks.BARRIER.getDefaultState(),3);
-        for(PropDef.Light l:d.lights())w.setBlockState(lightCell(d,anchorCell,facing,l),Blocks.LIGHT.getDefaultState().with(LightBlock.LEVEL_15,l.level()),3);
-        ensureParts(w,anchorCell.toImmutable(),d,facing);
         return "";
+    }
+
+    /** The anchor's {@code Command} text: {@code gravesandglory:prop/<id> floor=<block state>}, the floor block the anchor replaced (vanilla
+     *  keeps no custom NBT key on a command block, so the floor rides in the text; remove puts it back). */
+    static String anchorCommand(String id,BlockState floor){
+        return ANCHOR_PREFIX+id+" "+FLOOR_KEY+BlockArgumentParser.stringifyBlockState(floor);
+    }
+    /** The prop id of an anchor {@code Command} text, or null if it is not one. */
+    static String anchorId(String cmd){
+        if(cmd==null||!cmd.startsWith(ANCHOR_PREFIX))return null;
+        int sp=cmd.indexOf(' ',ANCHOR_PREFIX.length());
+        return cmd.substring(ANCHOR_PREFIX.length(),sp<0?cmd.length():sp);
+    }
+    /** The floor block saved in an anchor {@code Command} text; air when there is none or it no longer parses. */
+    static BlockState anchorFloor(String cmd){
+        int i=cmd==null?-1:cmd.indexOf(" "+FLOOR_KEY);
+        if(i<0)return Blocks.AIR.getDefaultState();
+        String s=cmd.substring(i+1+FLOOR_KEY.length()).trim();
+        try{return BlockArgumentParser.block(Registries.BLOCK.getReadOnlyWrapper(),s,false).blockState();}
+        catch(Exception x){LOG.warn("[props] anchor floor {} does not parse: {}",s,x.getMessage());return Blocks.AIR.getDefaultState();}
     }
 
     /** Removes the prop covering {@code anyFootprintCell} (a solid or light cell, or its anchor): exactly its cells, anchor and parts. */
@@ -176,7 +210,8 @@ public final class Props {
         for(Entity e:parts(w,anchor))e.discard();
         for(BlockPos p:solidCells(l.def(),anchor,l.facing()))if(w.getBlockState(p).isOf(Blocks.BARRIER))w.setBlockState(p,Blocks.AIR.getDefaultState(),3);
         for(PropDef.Light li:l.def().lights()){BlockPos p=lightCell(l.def(),anchor,l.facing(),li);if(w.getBlockState(p).isOf(Blocks.LIGHT))w.setBlockState(p,Blocks.AIR.getDefaultState(),3);}
-        w.setBlockState(anchor.down(),Blocks.AIR.getDefaultState(),3);
+        BlockState floor=w.getBlockEntity(anchor.down()) instanceof CommandBlockBlockEntity cb?anchorFloor(cb.getCommandExecutor().getCommand()):Blocks.AIR.getDefaultState();
+        w.setBlockState(anchor.down(),floor,3);
         Map<BlockPos,Live> m=LIVE.get(w);if(m!=null)m.remove(anchor);
         return true;
     }
@@ -207,8 +242,9 @@ public final class Props {
         BlockEntity be=w.getBlockEntity(base);
         if(!(be instanceof CommandBlockBlockEntity cb))return null;
         String cmd=cb.getCommandExecutor().getCommand();
-        if(cmd==null||!cmd.startsWith(ANCHOR_PREFIX))return null;
-        PropDef d=DEFS.get(cmd.substring(ANCHOR_PREFIX.length()));
+        String id=anchorId(cmd);
+        if(id==null)return null;
+        PropDef d=DEFS.get(id);
         int facing=PropGeometry.facingOf(s.get(CommandBlock.FACING).asString());
         if(d==null||facing<0)return null;
         return new Live(anchor.toImmutable(),d,facing);
