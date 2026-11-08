@@ -97,6 +97,15 @@ def mirror(keys):
 D3_SLERP = ("right_hand", "left_hand")   # wrists eased by slerp in every fall, gear or not
 D3_G = 1.0          # px per tick^2: the falls are stylised fast, so dropped gear falls as fast to match them
 D3_SLIP = 3.5      # px/tick, the most sideways speed a dropped piece leaves the hand with
+D3_DOWN = 2.5      # px/tick, the most downward speed it leaves with: a falling arm does not slam it into the floor
+D3_VH = 3.0        # px/tick, the fastest sideways drift a dropped piece may need to reach its rest: the flight is stretched to fit
+D3_WMAX = 25.0    # deg per tick, the fastest a released piece is allowed to turn in flight
+D3_HOPMAX = 8.0    # px, the highest hop that stands in for gravity on a long low flight
+D3_TTOUCH = 17.5   # tick: the latest a released piece may touch down, so its tip and clatter finish inside the clip
+D3_SWBIG = 6.0     # px: a clearing swerve wider than this is shaped smoothly end to end (sin^2), else a quicker ease-in
+D3_SWACC = 25.0    # px/tick^2: a clearing swerve that would bend harder than this stretches the flight (up to the touch cap)
+D3_RELAX = 0.5     # ticks: a released piece sheds the hand's extra speed (what the slip and down caps remove) over this time, not in one tick
+D3_TMIN = 1.5      # ticks, the shortest flight: a released piece never teleports to its rest
 D3_LAT = 0.75       # px: surface lattice step of the gear for the clearance checks
 
 
@@ -339,10 +348,13 @@ def d3_drop(samples, geo, part, spec, ground):
     cen = lambda W: (W @ c_loc)[:3] * 16.0
     v = (cen(held[ir]) - cen(held[ir - 1])) * SUB                      # px per tick
     # a dead hand lets go, it does not throw: the slip keeps the hand's heading but not a flailing arm's speed
+    v_raw = v.copy()
     hs = float(np.linalg.norm(v[[0, 2]]))
     if hs > D3_SLIP:
         v[[0, 2]] *= D3_SLIP / hs
-    v[1] = min(v[1], 1.0)
+    v[1] = min(max(v[1], -D3_DOWN), 1.0)
+    dv = v_raw - v                                                     # the speed the hand had that the piece sheds
+    relax = lambda tau: dv * D3_RELAX * (1.0 - math.exp(-tau / D3_RELAX))
     Rr = held[ir][:3, :3]
     w = _d3_log(Rr @ held[ir - 1][:3, :3].T) * SUB                       # rad per tick, world
     # the rest: long axis (local y) along the yaw, face normal (local z) up or down, lying on the ground
@@ -406,127 +418,157 @@ def d3_drop(samples, geo, part, spec, ground):
                    for o in ((0, 0.0, 0), (1.5, 0, 0), (-1.5, 0, 0), (0, 0, 1.5), (0, 0, -1.5), (0, 1.0, 0))):
                 break
     # if nothing clears it in the air it lands a little further out and tries again
+    tcap = max(D3_TMIN, D3_TTOUCH - spec["release"])
+    fb_last = (0.0, np.zeros(3))
     land_out = 0.0
-    for _try in range(4):
-        if _try:
-            if "land" in spec:
+    for stretch in (1.0, 1.25, 1.6, 2.0):
+        land_out = 0.0
+        for _try in range(4):
+            if _try:
+                if "land" in spec:
+                    break
+                land_out += 3.0
+                if spec.get("beside"):
+                    bes = _d3_beside(geo, Ms[ir], Ms[-1], held[ir], hand, part, rel, gc, ground, zone, land_out)
+                    W_rest, R_rest, ay = bes["W"], bes["R"], bes["ay"]
+                    spec = dict(spec, lead=bes["lead"])
+                else:
+                    W_rest = rest_at(*(bx + out * (step + land_out)))
+            ok = True
+            # landing: tilted about the horizontal axis across the long axis, one end down, that end's corner on the ground
+            ax_t = np.cross(ay, np.array([0.0, 1.0, 0.0]))
+            ax_t /= np.linalg.norm(ax_t)
+            tilt = math.radians(spec["tilt"])
+            Pr = gc(W_rest)
+            bot = Pr[(Pr[:, 1] < ground + 1e-3)]
+            ends = (bot[np.argmax(bot @ ay)], bot[np.argmin(bot @ ay)])
+
+            def about(pivot, theta):
+                """W_rest rocked by theta about the bottom edge through pivot, then set down so its lowest corner is on
+                the ground: it rolls on whatever part of it touches, never into the floor."""
+                Rt = _d3_exp(ax_t * theta)
+                W = np.eye(4)
+                W[:3, :3] = Rt
+                W[:3, 3] = pivot / 16.0 - Rt @ (pivot / 16.0)
+                W = W @ W_rest
+                W[1, 3] += (ground - gc(W)[:, 1].min()) / 16.0
+                return W
+            # landing: one end down, the other lifted by tilt (lead > 0: the end along +yaw lands first)
+            tilt = math.radians(spec["tilt"])
+            k_lead = 0 if spec.get("lead", 1) > 0 else 1
+            lead, trail = ends[k_lead], ends[1 - k_lead]
+            # the trailing end must be the raised one
+            iw = np.linalg.inv(W_rest)
+            pl, pt = iw @ np.r_[lead / 16.0, 1.0], iw @ np.r_[trail / 16.0, 1.0]
+            rise = lambda W: (W @ pt)[1] - (W @ pl)[1]
+            sg = 1.0 if rise(about(lead, tilt)) >= rise(about(lead, -tilt)) else -1.0
+            tipped = lambda theta: about(lead, theta * sg)
+            # the clatter: the down end kicks back up off the ground, rocking about the other end
+            bounced = lambda theta: about(trail, -theta * sg)
+            W_land = tipped(tilt)
+            # flight: the centroid leaves with the hand's velocity under a constant acceleration that lands it at W_land;
+            # its vertical part is gravity, which sets the flight time
+            c0, c1 = cen(held[ir]), cen(W_land)
+            dy = c1[1] - c0[1]
+            T = (v[1] + math.sqrt(max(0.0, v[1] ** 2 - 2.0 * D3_G * dy))) / D3_G
+            rT = _d3_log(W_land[:3, :3] @ Rr.T)
+            # a piece that has to turn far (a shield propped on its edge toppling flat) takes the time to do it
+            T = max(T, D3_TMIN, float(np.linalg.norm((c1 - c0)[[0, 2]])) / D3_VH,
+                    math.degrees(float(np.linalg.norm(rT))) / D3_WMAX)
+            T = min(T * stretch, tcap)
+            acc = 2.0 * (c1 - c0 - v * T - relax(T)) / T ** 2
+            # a long flight from near the floor is a hop under gravity, not a slide along the floor: the arc's
+            # height is what makes up the rest of gravity over the flight time
+            hop = min(D3_HOPMAX, max(0.0, (D3_G + float(acc[1])) * T ** 2 / 8.0))
+            tc = spec["release"] + T
+            t_tip, t_b1, t_b2 = spec.get("tip", 1.6), spec.get("b1", 0.9), spec.get("b2", 1.0)
+            rep = {"release": spec["release"], "flight": round(T, 2), "hop": round(hop, 1), "touch": round(tc, 2), "still": round(tc + t_tip + t_b1 + t_b2, 2),
+                   "v": tuple(np.round(v, 2)), "acc": tuple(np.round(acc, 2)), "spin": round(math.degrees(np.linalg.norm(rT)), 1)}
+            def fly(tau, off):
+                u = tau / T
+                h10, h01, h11 = u ** 3 - 2 * u ** 2 + u, -2 * u ** 3 + 3 * u ** 2, u ** 3 - u ** 2
+                r = h10 * T * w + h01 * rT + h11 * rT
+                R = _d3_exp(r) @ Rr
+                W = np.eye(4)
+                W[:3, :3] = R
+                # the swerve eases in (no sideways kick at the release) and dies away at the touch
+                if float(np.linalg.norm(off)) > D3_SWBIG:
+                    shape = math.sin(math.pi * u) ** 2          # a wide detour must not bend sharply anywhere
+                else:
+                    ramp = min(1.0, u / 0.35)
+                    shape = math.sin(math.pi * u) * ramp * ramp * (3.0 - 2.0 * ramp)
+                c = c0 + v * tau + relax(tau) + 0.5 * acc * tau ** 2 + off * shape
+                c[1] += hop * 4.0 * u * (1.0 - u)
+                W[:3, 3] = c / 16.0 - R @ geo.centroid[part]
+                W[1, 3] += max(0.0, ground - gc(W)[:, 1].min()) / 16.0     # an end swung low just before touch rides up
+                return W
+            # in the air it clears the body and the other piece: a sideways swerve that grows and dies away over the
+            # flight (zero at the hand and at touch), the smallest that keeps it out
+            hand_arm = _d3_desc(GEAR[part]["arm"].replace("_arm", "_forearm"))
+            fl = [i for i in range(ir + 1, n) if i / SUB - spec["release"] < T]
+            obst_all = [ci for ci in range(len(geo.bone)) if geo.part[ci] != part]
+            obst_far = [ci for ci in obst_all if geo.bone[ci] not in hand_arm]
+            fboxes = {i: _d3_boxes(geo, Ms[i], obst_far if i / SUB - spec["release"] < 1.5 else obst_all) for i in fl}
+
+            def fpen_of(off):
+                worst = (0.0, None)
+                for i in fl:
+                    W = fly(i / SUB - spec["release"], off)
+                    G = geo.lattice({b: W @ r for b, r in rel.items()}, part)[::2]
+                    pz = _d3_pen(G, fboxes[i])
+                    if pz > worst[0]:
+                        worst = (pz, i)
+                return worst
+            off = np.zeros(3)
+            base = fpen_of(off)
+            if base[0] > 0.15:
+                i = base[1]
+                Wb = fly(i / SUB - spec["release"], off)
+                away = cen(Wb) - geo.corners(Ms[i], geo.cubes["body"]).mean(0)
+                away[1] = 0.0
+                away /= max(1e-6, np.linalg.norm(away))
+                side = np.cross(np.array([0.0, 1.0, 0.0]), v / max(1e-6, np.linalg.norm(v)))
+                side[1] = 0.0
+                side /= max(1e-6, np.linalg.norm(side))
+                up = np.array([0.0, 1.0, 0.0])
+                obst_i = obst_far if i / SUB - spec["release"] < 1.5 else obst_all
+                _, who = geo.depth(Ms[i], geo.lattice({b: Wb @ r for b, r in rel.items()}, part), obst_i)
+                hit = None if who is None else cen(Wb) - geo.corners(Ms[i], [ci for ci in obst_i if geo.bone[ci] == who]).mean(0)
+                hit = away if who is None else hit / max(1e-6, np.linalg.norm(hit))
+                back = -v / max(1e-6, np.linalg.norm(v))
+                best = None
+                fb = (base[0], np.zeros(3))
+                for d in (hit, away, up, (away + up) / math.sqrt(2.0), side, -side, back):
+                    for k in np.arange(0.5, 16.01, 0.5):
+                        if best is not None and k >= best[0]:
+                            break
+                        p = fpen_of(d * k)[0]
+                        if p <= 0.15:
+                            if best is None or k < best[0]:
+                                best = (k, d)
+                            break
+                        if p < fb[0] - 1e-6:
+                            fb = (p, d * k)
+                if best is not None:
+                    off = best[1] * best[0]
+                else:
+                    ok = False
+                    fb_last = (base[0], fb)
+            if ok:
                 break
-            land_out += 3.0
-            if spec.get("beside"):
-                bes = _d3_beside(geo, Ms[ir], Ms[-1], held[ir], hand, part, rel, gc, ground, zone, land_out)
-                W_rest, R_rest, ay = bes["W"], bes["R"], bes["ay"]
-                spec = dict(spec, lead=bes["lead"])
-            else:
-                W_rest = rest_at(*(bx + out * (step + land_out)))
-        ok = True
-        # landing: tilted about the horizontal axis across the long axis, one end down, that end's corner on the ground
-        ax_t = np.cross(ay, np.array([0.0, 1.0, 0.0]))
-        ax_t /= np.linalg.norm(ax_t)
-        tilt = math.radians(spec["tilt"])
-        Pr = gc(W_rest)
-        bot = Pr[(Pr[:, 1] < ground + 1e-3)]
-        ends = (bot[np.argmax(bot @ ay)], bot[np.argmin(bot @ ay)])
-
-        def about(pivot, theta):
-            """W_rest rocked by theta about the bottom edge through pivot, then set down so its lowest corner is on
-            the ground: it rolls on whatever part of it touches, never into the floor."""
-            Rt = _d3_exp(ax_t * theta)
-            W = np.eye(4)
-            W[:3, :3] = Rt
-            W[:3, 3] = pivot / 16.0 - Rt @ (pivot / 16.0)
-            W = W @ W_rest
-            W[1, 3] += (ground - gc(W)[:, 1].min()) / 16.0
-            return W
-        # landing: one end down, the other lifted by tilt (lead > 0: the end along +yaw lands first)
-        tilt = math.radians(spec["tilt"])
-        k_lead = 0 if spec.get("lead", 1) > 0 else 1
-        lead, trail = ends[k_lead], ends[1 - k_lead]
-        # the trailing end must be the raised one
-        iw = np.linalg.inv(W_rest)
-        pl, pt = iw @ np.r_[lead / 16.0, 1.0], iw @ np.r_[trail / 16.0, 1.0]
-        rise = lambda W: (W @ pt)[1] - (W @ pl)[1]
-        sg = 1.0 if rise(about(lead, tilt)) >= rise(about(lead, -tilt)) else -1.0
-        tipped = lambda theta: about(lead, theta * sg)
-        # the clatter: the down end kicks back up off the ground, rocking about the other end
-        bounced = lambda theta: about(trail, -theta * sg)
-        W_land = tipped(tilt)
-        # flight: the centroid leaves with the hand's velocity under a constant acceleration that lands it at W_land;
-        # its vertical part is gravity, which sets the flight time
-        c0, c1 = cen(held[ir]), cen(W_land)
-        dy = c1[1] - c0[1]
-        T = (v[1] + math.sqrt(max(0.0, v[1] ** 2 - 2.0 * D3_G * dy))) / D3_G
-        acc = 2.0 * (c1 - c0 - v * T) / T ** 2
-        rT = _d3_log(W_land[:3, :3] @ Rr.T)
-        tc = spec["release"] + T
-        t_tip, t_b1, t_b2 = spec.get("tip", 1.6), spec.get("b1", 0.9), spec.get("b2", 1.0)
-        rep = {"release": spec["release"], "flight": round(T, 2), "touch": round(tc, 2), "still": round(tc + t_tip + t_b1 + t_b2, 2),
-               "v": tuple(np.round(v, 2)), "acc": tuple(np.round(acc, 2)), "spin": round(math.degrees(np.linalg.norm(rT)), 1)}
-        def fly(tau, off):
-            u = tau / T
-            h10, h01, h11 = u ** 3 - 2 * u ** 2 + u, -2 * u ** 3 + 3 * u ** 2, u ** 3 - u ** 2
-            r = h10 * T * w + h01 * rT + h11 * rT
-            R = _d3_exp(r) @ Rr
-            W = np.eye(4)
-            W[:3, :3] = R
-            c = c0 + v * tau + 0.5 * acc * tau ** 2 + off * math.sin(math.pi * u)
-            W[:3, 3] = c / 16.0 - R @ geo.centroid[part]
-            W[1, 3] += max(0.0, ground - gc(W)[:, 1].min()) / 16.0     # an end swung low just before touch rides up
-            return W
-        # in the air it clears the body and the other piece: a sideways swerve that grows and dies away over the
-        # flight (zero at the hand and at touch), the smallest that keeps it out
-        hand_arm = _d3_desc(GEAR[part]["arm"].replace("_arm", "_forearm"))
-        fl = [i for i in range(ir + 1, n) if i / SUB - spec["release"] < T]
-        obst_all = [ci for ci in range(len(geo.bone)) if geo.part[ci] != part]
-        obst_far = [ci for ci in obst_all if geo.bone[ci] not in hand_arm]
-        fboxes = {i: _d3_boxes(geo, Ms[i], obst_far if i / SUB - spec["release"] < 1.5 else obst_all) for i in fl}
-
-        def fpen_of(off):
-            worst = (0.0, None)
-            for i in fl:
-                W = fly(i / SUB - spec["release"], off)
-                G = geo.lattice({b: W @ r for b, r in rel.items()}, part)[::2]
-                pz = _d3_pen(G, fboxes[i])
-                if pz > worst[0]:
-                    worst = (pz, i)
-            return worst
-        off = np.zeros(3)
-        base = fpen_of(off)
-        if base[0] > 0.15:
-            i = base[1]
-            Wb = fly(i / SUB - spec["release"], off)
-            away = cen(Wb) - geo.corners(Ms[i], geo.cubes["body"]).mean(0)
-            away[1] = 0.0
-            away /= max(1e-6, np.linalg.norm(away))
-            side = np.cross(np.array([0.0, 1.0, 0.0]), v / max(1e-6, np.linalg.norm(v)))
-            side[1] = 0.0
-            side /= max(1e-6, np.linalg.norm(side))
-            up = np.array([0.0, 1.0, 0.0])
-            obst_i = obst_far if i / SUB - spec["release"] < 1.5 else obst_all
-            _, who = geo.depth(Ms[i], geo.lattice({b: Wb @ r for b, r in rel.items()}, part), obst_i)
-            hit = None if who is None else cen(Wb) - geo.corners(Ms[i], [ci for ci in obst_i if geo.bone[ci] == who]).mean(0)
-            hit = away if who is None else hit / max(1e-6, np.linalg.norm(hit))
-            back = -v / max(1e-6, np.linalg.norm(v))
-            best = None
-            for d in (hit, away, up, (away + up) / math.sqrt(2.0), side, -side, back):
-                for k in np.arange(0.5, 16.01, 0.5):
-                    if best is not None and k >= best[0]:
-                        break
-                    if fpen_of(d * k)[0] <= 0.15:
-                        if best is None or k < best[0]:
-                            best = (k, d)
-                        break
-            if best is not None:
-                off = best[1] * best[0]
-            else:
-                ok = False
-        if ok:
+        sw_acc = (19.7 if float(np.linalg.norm(off)) > D3_SWBIG else 52.4) * float(np.linalg.norm(off)) / T ** 2
+        if not ok or sw_acc <= D3_SWACC or T >= tcap - 1e-6:
             break
+        land_out = 0.0
+    if not ok and fb_last[0] > 0.5 and fb_last[1][0] < 0.5 * fb_last[0] and float(np.linalg.norm(fb_last[1][1])) <= 16.0:
+        off = fb_last[1][1]      # nothing clears it: take the swerve that comes nearest to
     hw = _d3_pivot(Ms[ir], hand)
     gp = (W_rest @ np.linalg.inv(held[ir]) @ np.r_[hw / 16.0, 1.0])[:3] * 16.0
     rep["grip_hand"] = round(float(np.linalg.norm((gp - hw)[[0, 2]])), 1)
     rep["grip_hand_end"] = round(float(np.linalg.norm((gp - _d3_pivot(Ms[-1], hand))[[0, 2]])), 1)
     rep["hand_h"] = round(float(hw[1] - ground), 1)
     rep["land_out"], rep["swerve"] = land_out, round(float(np.linalg.norm(off)), 1)
+    rep["stretch"], rep["clear"] = stretch, bool(ok)
     prev_anim = None
     for i in range(n):
         tick = i / SUB
