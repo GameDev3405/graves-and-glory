@@ -64,6 +64,16 @@ final class StanceController extends AnimationController<GeoTroop> {
     /** The tick the current rally began (the rally clip plays once and holds its last pose, unlike the other stance clips, which loop). */
     private double rallyStart = Double.NaN;
     private boolean rallyOn;
+    /**
+     * The stun clips (stun_upper, stun_legs) are one hit-snap entry of {@link #STUN_ENTRY} ticks followed by a loop of the rest of the clip: they play from the tick the
+     * stun began (so the snap shows once), then repeat from the end of the entry. {@code stunEnd} is the tick the stun stopped, for the additive shake-off over the next ticks.
+     */
+    private double stunStart = Double.NaN, stunEnd = Double.NaN;
+    private boolean stunOn;
+    static final double STUN_ENTRY = 4;
+    /** Ticks for a stun pose to come in (fast, so the snap lands with the hit) and to go out (slower, under the shake-off). */
+    static final double STUN_IN = 1, STUN_OUT = 5;
+    static final String STUN_OUT_CLIP = "stun_out_upper";
     /** The ranged_aim pitch this frame (AIM_PITCH_HOOK), 0 when not aiming. */
     float aimPitch() { return aimPitch; }
     static final Map<Entity, StanceController> LIVE = Collections.synchronizedMap(new WeakHashMap<>());
@@ -135,6 +145,10 @@ final class StanceController extends AnimationController<GeoTroop> {
         boolean rallying = "stance_rally_upper".equals(want[0]);
         if (rallying && !rallyOn) rallyStart = now;
         rallyOn = rallying;
+        boolean stunning = "stun_upper".equals(want[0]) || "stun_legs".equals(want[1]);
+        if (stunning && !stunOn) { stunStart = now; stunEnd = Double.NaN; }
+        if (!stunning && stunOn) stunEnd = now;
+        stunOn = stunning;
         boolean aiming = AIM.equals(want[0]);
         aimSmooth = aiming ? aimSmooth + (aimPitch - aimSmooth) * (float) Math.min(1, dt / 3) : 0;
         float up = aiming ? clamp01(-aimSmooth / AIM_UP_DEG) : 0, down = aiming ? clamp01(aimSmooth / AIM_DOWN_DEG) : 0;
@@ -145,7 +159,7 @@ final class StanceController extends AnimationController<GeoTroop> {
         for (Map.Entry<String, Double> r : ramps.entrySet()) {
             String k = r.getKey();
             boolean on = k.equals(want[0]) || k.equals(want[1]) || (aiming && (k.equals(AIM_UP) || k.equals(AIM_DOWN)));
-            r.setValue(step(r.getValue(), on ? 1 : 0, dt / RAMP));
+            r.setValue(step(r.getValue(), on ? 1 : 0, dt / (isStun(k) ? (on ? STUN_IN : STUN_OUT) : RAMP)));
         }
 
         for (float[] a : acc.values()) java.util.Arrays.fill(a, 0);
@@ -168,11 +182,38 @@ final class StanceController extends AnimationController<GeoTroop> {
             }
             // the rally plays once from its start and holds its last pose; the rest loop
             double clipTime = k.equals("stance_rally_upper") && !Double.isNaN(rallyStart)
-                    ? Math.min(Math.max(0, now - rallyStart), clip.length()) : now % clip.length();
+                    ? Math.min(Math.max(0, now - rallyStart), clip.length()) : isStun(k) && !Double.isNaN(stunStart)
+                    ? stunTime(now - stunStart, clip.length()) : now % clip.length();
             accumulate(clip, clipTime, bones, (float) w);
         }
         ramps.values().removeIf(v -> v <= 0);
         apply(bones);
+        // the shake-off: for the clip's length after the stun ends, the head shakes and the chest straightens over the stun pose fading out
+        Animation out = Double.isNaN(stunEnd) || now < stunEnd ? null : model.getAnimation(animatable, STUN_OUT_CLIP);
+        if (out != null && now - stunEnd < out.length()) addClip(out, now - stunEnd, bones);
+    }
+
+    private static boolean isStun(String clip) { return clip.equals("stun_upper") || clip.equals("stun_legs"); }
+
+    /** The stun clip time {@code elapsed} ticks after the stun began: the entry once, then the rest of the clip on a loop. */
+    static double stunTime(double elapsed, double length) {
+        elapsed = Math.max(0, elapsed);
+        if (elapsed < length || length <= STUN_ENTRY) return Math.min(elapsed, length);
+        return STUN_ENTRY + (elapsed - STUN_ENTRY) % (length - STUN_ENTRY);
+    }
+
+    /** Adds an additive clip's offsets at {@code t} to every bone it keys (the clip starts and ends at zero). */
+    private static void addClip(Animation clip, double t, Map<String, CoreGeoBone> bones) {
+        for (BoneAnimation b : clip.boneAnimations()) {
+            CoreGeoBone bone = bones.get(b.boneName());
+            if (bone == null) continue;
+            var rot = b.rotationKeyFrames();
+            if (rot.xKeyframes().isEmpty()) continue;
+            bone.setRotX(bone.getRotX() + AttackController.sample(rot.xKeyframes(), t));
+            bone.setRotY(bone.getRotY() + AttackController.sample(rot.yKeyframes(), t));
+            bone.setRotZ(bone.getRotZ() + AttackController.sample(rot.zKeyframes(), t));
+            bone.markRotationAsChanged();
+        }
     }
 
     /** Moves {@code v} toward {@code to} by at most {@code by}. */
