@@ -14,7 +14,7 @@ import java.util.regex.Pattern;
 public final class HandbookText {
     private HandbookText(){}
 
-    public static final String TITLE="Graves and Glory Builder Handbook",AUTHOR="Graves and Glory";
+    public static final String TITLE="Builder Handbook",AUTHOR="Graves and Glory";
     public static final int LINE_CHARS=19,PAGE_LINES=14,PAGE_CHARS=1023,MAX_PAGES=100;
     /** A bound key: {key:key.use} and the like. */
     public static final Pattern KEY=Pattern.compile("\\{key:([a-z0-9_.]+)\\}");

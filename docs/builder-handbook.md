@@ -3,7 +3,7 @@
 Source text for `HandbookText.pages(...)`. Each `---` is one book page; a Minecraft book page holds about 14 lines of
 19 characters, so pages are short.
 
-Kort, 2026-11-08: tools only (no lore, no What-is-G&G page, no rules page, no map briefs). Approved by Kort as written, 2026-11-08.
+Book title "Builder Handbook" (vanilla caps titles at 32 characters). Kort, 2026-11-08: tools only (no lore, no What-is-G&G page, no rules page, no map briefs). Approved by Kort as written, 2026-11-08.
 The world list on the `/map` page comes from `BuildWorlds.ids()` at run time.
 
 Keys are written as `{key:<binding>}`: the book shows the reader's own binding (the UI standard forbids hardcoded keys). Defaults: `key.use` Use (right mouse), `key.attack` Attack (left mouse), `key.voice_chat` V, `key.voice_chat_group` G, `key.disable_voice_chat` N, `key.mute_microphone` M, `gui.xaero_enlarge_map` Z, `gui.xaero_new_waypoint` B, `gui.xaero_waypoints_key` U, `gui.xaero_open_map` M.

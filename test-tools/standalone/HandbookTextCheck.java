@@ -11,6 +11,7 @@ public final class HandbookTextCheck {
     public static void main(String[] args){
         var worlds=List.of("lobby","rivergate","ironhold","frostmarch","hollowwood","kingsfield");
         var pages=HandbookText.pages(worlds);
+        check(HandbookText.TITLE.length()<=32&&HandbookText.AUTHOR.length()<=32,"vanilla refuses book titles over 32 chars");
         check(!pages.isEmpty()&&pages.size()<=HandbookText.MAX_PAGES,"1..100 pages: "+pages.size());
         for(int i=0;i<pages.size();i++){
             String p=pages.get(i);
