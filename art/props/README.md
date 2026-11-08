@@ -25,8 +25,9 @@ that is not 1 texel per model px).
 | `quench_trough` | 2×1×1 | (0,0,0) | `quench_trough` | x 0..32, y 0..15 |
 | `grindstone_bench` | 2×2×1 | (0,0,0) | `grindstone_bench` | x 0..32, y 0..30, z -2..15 |
 
-CMD = `7310000 + 10*propIndex + partIndex` per the plan (note to SYSTEMS: that gives forge/hearth 7310000, outside the
-plan's own valid range 7310001..7310999; the art preview pack uses `+1`).
+CMD = `7310001 + 10*propIndex + partIndex` (SYSTEMS `PropDef`, agreed 2026-11-08): forge hearth/hood/coals
+7310001..7310003, anvil 7310011, weapon_rack 7310021, shield_rack 7310031, quench_trough 7310041, grindstone_bench
+7310051. The pack builder assigns CMDs from the defs; the models carry no numbers.
 
 ## Look
 - Chunky: 1 texel per model px (16 px a block), like the troops and vanilla blocks. One sheet per prop, shelf-packed.
