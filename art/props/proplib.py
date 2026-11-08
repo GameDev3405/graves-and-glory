@@ -49,12 +49,12 @@ LEATHER = fixed("321A15", "462B20", "5A3E2C", "6E553D", "826E52")
 IRON = make_ramp("5E636E")            # dull blacksmith iron: hood bands, tools, racks' fittings
 STONE = make_ramp("7D7A76")           # hearth stone, close to vanilla stone bricks
 SOOT = make_ramp("403B3C")            # blackened firebox stone
-BARK = make_ramp("5A4231")            # stump bark
+BARK = make_ramp("6E523C")            # stump bark
 ENDWOOD = make_ramp("9A7A55", 0.16)   # cut end of the stump (rings)
 COAL = fixed("151317", "221E23", "312B30", "443B3E", "5A4E4E")
 HOT = fixed("5A1608", "9C2A0A", "D2520F", "F2902A", "FFD25E")   # glowing coals (full-bright part)
 WATER = fixed("13283F", "1E3D5E", "2C5A84", "4378A6", "6C9EC6")
-GRIT = make_ramp("8F8A80", 0.14)      # grindstone wheel (sandstone grey)
+GRIT = make_ramp("7A7468", 0.18)      # grindstone wheel (sandstone grey)
 
 # House shield fields, from art/house/<house>/banner.png and mark16.png
 HOUSE = {
@@ -91,10 +91,10 @@ def h3(*a):
 
 class Mat:
     """A material: ramp, base tone and a pattern(face, P, c, r, w, h) -> tone delta (or a colour tuple)."""
-    def __init__(s, ramp, base=2, pattern=None, edges=True, lit=True):
-        s.ramp, s.base, s.pattern, s.edges, s.lit = ramp, base, pattern, edges, lit
+    def __init__(s, ramp, base=2, pattern=None, edges=True, lit=True, top=1):
+        s.ramp, s.base, s.pattern, s.edges, s.lit, s.top = ramp, base, pattern, edges, lit, top
     def __call__(s, face, P, c, r, w, h):
-        t = s.base + (LIT[face] if s.lit else 0)
+        t = s.base + ((s.top if face == "up" else LIT[face]) if s.lit else 0)
         if s.pattern:
             d = s.pattern(face, P, c, r, w, h)
             if isinstance(d, tuple): return d
@@ -186,7 +186,10 @@ def pat_coal(face, P, c, r, w, h):
 
 def pat_hot(face, P, c, r, w, h):
     """The firebox glow on the inner walls: hot near the bottom, darker up."""
-    return (HOT[1] if r >= h - 2 else (HOT[0] if r >= h - 4 else SOOT[0]))
+    if r >= h - 2: return HOT[2]
+    if r >= h - 4: return HOT[1]
+    if r >= h - 6: return HOT[0]
+    return SOOT[0]
 
 def pat_water(face, P, c, r, w, h):
     x, y, z = P
@@ -220,9 +223,10 @@ def flat(ramp, tone):
     return Mat(ramp, tone, edges=False, lit=False)
 
 MAT = {
-    "stone": Mat(STONE, 2, pat_brick),
-    "stone_top": Mat(STONE, 2, lambda f, P, c, r, w, h: (-1 if h3(*P, 41) < 0.05 else 0)),
-    "soot": Mat(SOOT, 2, pat_brick),
+    "stone": Mat(STONE, 2, pat_brick, top=0),
+    "stone_top": Mat(STONE, 2, lambda f, P, c, r, w, h: (-1 if h3(*P, 41) < 0.05 else 0), top=0),
+    "soot": Mat(SOOT, 2, pat_brick, top=0),
+    "anvil": Mat(STEEL, 2, pat_iron),
     "hotwall": Mat(SOOT, 2, pat_hot, edges=False),
     "coal": Mat(COAL, 2, pat_coal, edges=False, lit=False),
     "iron": Mat(IRON, 2, pat_iron),
