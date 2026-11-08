@@ -1,0 +1,14 @@
+{
+  "id": "anvil",
+  "category": "smithy",
+  "name": "Anvil",
+  "size": [1, 1, 1],
+  "parts": [
+    {"model": "anvil", "cmd": 7310011, "glow": false}
+  ],
+  "solid": [
+    [0, 0, 0]
+  ],
+  "lights": [],
+  "effects": []
+}

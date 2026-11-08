@@ -1,0 +1,17 @@
+{
+  "id": "weapon_rack",
+  "category": "smithy",
+  "name": "Weapon Rack",
+  "size": [2, 2, 1],
+  "parts": [
+    {"model": "weapon_rack", "cmd": 7310021, "glow": false}
+  ],
+  "solid": [
+    [0, 0, 0],
+    [1, 0, 0],
+    [0, 1, 0],
+    [1, 1, 0]
+  ],
+  "lights": [],
+  "effects": []
+}
