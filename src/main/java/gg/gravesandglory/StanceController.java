@@ -76,6 +76,8 @@ final class StanceController extends AnimationController<GeoTroop> {
     /** The stun legs ease into the dazed stance over this many ticks (the upper body still snaps in {@link #STUN_IN}), and the legs the stun replaces hand over at the same pace. */
     static final double STUN_LEGS_IN = 3;
     static final String STUN_OUT_CLIP = "stun_out_upper";
+    /** The charge upper-body cycle: as long as the run legs and timed by the same stride clock (Gait.phase), not by world time. */
+    static final String CHARGE = "charge_run_upper";
     /** The ranged_aim pitch this frame (AIM_PITCH_HOOK), 0 when not aiming. */
     float aimPitch() { return aimPitch; }
     static final Map<Entity, StanceController> LIVE = Collections.synchronizedMap(new WeakHashMap<>());
@@ -174,6 +176,8 @@ final class StanceController extends AnimationController<GeoTroop> {
             // the fall-back legs are a walk of their own: they play while the troop moves, so they are not scaled by standing
             // the stun legs are not: a stunned troop is slid by a knockback or still moving, and its legs must hold the dazed stance through that, not hand back to the gait's walk
             if ((legs && !k.equals("stance_fallback_legs") && !k.equals("stun_legs")) || k.equals("stance_ready_upper")) w *= AttackController.smooth(still);
+            // the charge arms are a stride-locked cycle: a troop standing still in the charge stance falls back to its idle upper body
+            if (k.equals(CHARGE)) w *= AttackController.smooth(1 - still);
             if (aiming && (k.equals(AIM) || k.equals(AIM_UP) || k.equals(AIM_DOWN))) {
                 // the level aim and its two pitched copies share the aim's weight by the smoothed pitch (the three weights sum to 1)
                 w *= k.equals(AIM_UP) ? up : k.equals(AIM_DOWN) ? down : 1 - up - down;
@@ -187,7 +191,8 @@ final class StanceController extends AnimationController<GeoTroop> {
             // the rally plays once from its start and holds its last pose; the rest loop
             double clipTime = k.equals("stance_rally_upper") && !Double.isNaN(rallyStart)
                     ? Math.min(Math.max(0, now - rallyStart), clip.length()) : isStun(k) && !Double.isNaN(stunStart)
-                    ? stunTime(now - stunStart, clip.length()) : now % clip.length();
+                    ? stunTime(now - stunStart, clip.length()) : k.equals(CHARGE)
+                    ? gait.phase * clip.length() : now % clip.length();   // the charge arms swing in step with the run legs, which the stride clock drives
             accumulate(clip, clipTime, bones, (float) w);
         }
         ramps.values().removeIf(v -> v <= 0);

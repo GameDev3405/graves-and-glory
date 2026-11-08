@@ -54,7 +54,7 @@ STUN_ARMS = {
     "shield":  [("right", 34, 0.00, -25, 0.00, 0), ("left", 10, 1.00, -32, 0.80, -12)],      # the sword sags, the shield drops to the side
     "onehand": [("right", 34, 0.00, -25, 0.00, 0), ("left", 20, 0.00, -22, 0.00, -6)],
     "spear":   [("right", 26, 0.50, None, 0, 0), ("left", 26, 0.50, None, 0, 0)],             # the spear drops in both hands, the tip low
-    "axe":     [("right", 30, 0.30, None, 0, 0), ("left", 30, 0.30, None, 0, 0)],
+    "axe":     [("right", 62, 0.10, -14, 0.0, 2), ("left", 58, 0.10, -20, 0.0, -2)],               # the axe hangs loose from the hands at the hips, the haft sagging forward
     "bow":     [("left", 26, 0.60, None, 0, -4), ("right", 30, 0.00, -10, 0.0, 0)],            # the bow hangs from the fist, the string hand drops
     "xbow":    [("right", 32, 0.60, None, 0, 0), ("left", 18, 0.00, -15, 0.0, 0)],
     "thrower": [],                                                                              # explicit low-carry pose below
