@@ -142,7 +142,7 @@ final class GeoKnightChecks implements Phase1Checks.Suite {
                 double rad = Math.toRadians(h.yaw), dx = Math.sin(rad), dz = -Math.cos(rad);
                 double s = h.walk * Math.max(0, u.mob.getWorld().getTime() - changedAt) - 2;
                 stand(u, lineX(j) + dx * s, cz + dz * s, h.yaw);
-            } else stand(u, lineX(j), cz + (CAPTURE != null && Math.abs(h.yaw - 180) > 1 && j >= 3 ? -12 : 0), h.yaw); // capture, side views: the far half of the line steps back so no troop faces a neighbour (a neighbour in front starts its attack clip over the stance)
+            } else stand(u, lineX(j), cz + (CAPTURE != null && Math.abs(h.yaw - 180) > 1 && j >= 3 && !videoLine ? -12 : 0), h.yaw); // capture, side views: the far half of the line steps back so no troop faces a neighbour (a neighbour in front starts its attack clip over the stance)
             Tactics.set(u, h.stance, h.aim); Tactics.shield(u.mob, h.shield);
         }
     }
@@ -189,6 +189,28 @@ final class GeoKnightChecks implements Phase1Checks.Suite {
         {"fallback", "fall_back", 0f, .169, new int[]{8, 14, 20}, false},
         {"rally-line", "rally", 0f, 0.0, new int[]{10}, true},
     };
+    /**
+     * Capture only, never a check (GRAVES_GEO_CAPTURE=video): the review video. A frame is saved every client tick (20 fps) as
+     * p1-geo-<troop>-vid-<segment>-<frame>.png. Segments: label, stance, camera yaw, line of six, frames, aim sweep, walk speed.
+     */
+    /** Video capture of the line of six: all six stay on their marks (the far half does not step back). */
+    static volatile boolean videoLine;
+    static List<Object[]> videoSegments() {
+        List<Object[]> v = new ArrayList<>();
+        v.add(new Object[]{"rally-line-030", "rally", 150f, true, 60, false, 0.0});
+        v.add(new Object[]{"hold-045", "hold", 135f, false, 60, false, 0.0});
+        if (!"knight".equals(TROOP)) v.add(new Object[]{"rest-045", "ranged_rest", 135f, false, 40, false, 0.0});
+        if (!"knight".equals(TROOP)) v.add(new Object[]{"aim-sweep-045", "ranged_aim", 135f, false, 90, true, 0.0});
+        if (!"knight".equals(TROOP)) v.add(new Object[]{"aim-sweep-000", "ranged_aim", 180f, false, 90, true, 0.0});
+        v.add(new Object[]{"fall_back-045", "fall_back", 135f, false, 60, false, .169});
+        v.add(new Object[]{"fall_back-090", "fall_back", 90f, false, 60, false, .169});
+        return v;
+    }
+    /** Aim pitch (degrees, + down) at video frame f: held at -45 for the stance blend-in, then -45 up to +30 and back over 80 frames, eased. */
+    static float sweepPitch(int f) {
+        double u = Math.max(0, Math.min(1, (f - 10) / 80.0)), t = u < .5 ? 2 * u : 2 - 2 * u;
+        return (float) (-45 + 75 * (t * t * (3 - 2 * t)));
+    }
     final Map<Integer, Long> stanceLag = new TreeMap<>();
     final List<String> stanceBad = new ArrayList<>();
 
@@ -528,7 +550,7 @@ final class GeoKnightChecks implements Phase1Checks.Suite {
                 if (k > 100) {
                     if (!placed) { Phase1Checks.report("p1-geo-" + TROOP + "-placed", false, "could not place knights: " + why); next(tick, 9); return; }
                     Phase1Checks.report("p1-geo-" + TROOP + "-placed", true, "six knights");
-                    i = 0; next(tick, CAPTURE != null ? 30 : 2);
+                    i = 0; next(tick, "video".equals(CAPTURE) ? 31 : CAPTURE != null ? 30 : 2);
                 }
             }
             case 2 -> {
@@ -866,6 +888,29 @@ final class GeoKnightChecks implements Phase1Checks.Suite {
                     for (int s : shots) if (t == s && s != lastShot) { lastShot = s; Phase1Checks.shot(c, String.format("geo-" + TROOP + "-cap-%s-%s-%02d", cc[0], CAP_ANG[vi], s)); }
                 }
                 if (k > 14 + shots[shots.length - 1] + 12) { i++; next(tick, 30); }
+            }
+            case 31 -> {
+                List<Object[]> segs = videoSegments();
+                if (i >= segs.size()) { Phase1Checks.server(c, b -> hold = null); i = 0; next(tick, 9); return; }
+                Object[] sg = segs.get(i);
+                String label = (String) sg[0], stance = (String) sg[1];
+                float yaw = (Float) sg[2];
+                boolean line = (Boolean) sg[3], sweep = (Boolean) sg[5];
+                int frames = (Integer) sg[4];
+                double walk = (Double) sg[6];
+                if (k == 1) {
+                    videoLine = line;
+                    Phase1Checks.server(c, b -> {
+                        hold(b, "hold".equals(stance) ? "ranged_rest" : "hold", false, yaw, 0f, 0.0);
+                        if (line) camera(b, 0, 9, 6); else camera(b, -3, walk > 0 ? 5.0 : 3.5, 3);
+                    });
+                }
+                if (k == 3) { c.setScreen(null); c.options.hudHidden = true; }
+                if (k == 14 && !sweep) Phase1Checks.server(c, b -> hold(b, stance, false, yaw, 0f, walk));
+                if (k >= 14 && sweep) { float pitch = sweepPitch(Math.max(0, k - 15)); Phase1Checks.server(c, b -> hold(b, stance, false, yaw, pitch, 0.0)); }
+                if (k >= 15 && k < 15 + frames) Phase1Checks.shot(c, String.format("geo-" + TROOP + "-vid-%02d-%03d", i, k - 15));
+                if (k == 15) System.out.println("[p1] video segment " + i + " " + label);
+                if (k >= 15 + frames + 2) { i++; next(tick, 31); }
             }
             case 9 -> {
                 c.options.setPerspective(Perspective.FIRST_PERSON); c.options.hudHidden = false;
