@@ -379,6 +379,13 @@ def hold_pose(tr, phase):
         chest(P, torso_x=2, head_x=-3)
         for s in ("left", "right"):
             lift_arm(P, s, 14, keep=0.0)
+    elif tr.tid == "archer":
+        # the bow fist at the chest (a 38 lift put it at the mouth); the free arm hangs by the ribs with the fist at the belt
+        # front (solved by IK so the elbow stays in at the side and the forearm clears the jerkin)
+        chest(P, torso_x=1, head_x=-3)
+        lift_arm(P, "left", 12, keep=1.0)
+        P["right_arm"][0] = np.array([-41.7, -34.8, 12.9])
+        P["right_forearm"][0] = np.array([-42.5, -2.3, -5.8])
     elif g == "bow":
         chest(P, torso_x=1, head_x=-3)
         lift_arm(P, "left", 38, keep=1.0)        # the bow comes up on the threat at chest height, the string hand to the chest
@@ -452,9 +459,15 @@ def build_fallback(tr):
     else:
         base = copy_pose(tr.ready)
         if g == "thrower":
-            lift_arm(base, "right", 60, keep=0.0)             # the harpoon upright, tip over the back shoulder, never out sideways
-            base["right_forearm"][0][0] -= 30
-            base["left_arm"][0] = pitch(base["left_arm"][0], 28)
+            # one-handed low carry (solved in the render frame with the chest(-3, -1) below applied): the right fist at the right hip
+            # front, the harpoon through it pointing forward-down (17 deg) toward the troop's left, across the body; the left fist a
+            # guard at the belly. Minecraft arms are too short for a two-handed low grip. Static: no arm keys move, so no swing.
+            base["right_arm"][0] = np.array([-39.65, 6.52, -13.67])
+            base["right_forearm"][0] = np.array([-20.02, 2.34, 13.19])
+            base["right_hand"][0] = np.array([-98.54, 21.65, 114.96])
+            base["left_arm"][0] = np.array([-19.82, 2.98, -5.2])
+            base["left_forearm"][0] = np.array([-45.72, -4.14, -9.8])
+            base["left_hand"][0] = np.array([0.0, 0.0, 0.0])
         elif g == "bow":
             lift_arm(base, "left", -22, keep=1.0)             # the bow hand at the waist (forearm bent up to the belt line), the bow low
             base["left_forearm"][0][0] -= 45
@@ -562,15 +575,43 @@ def aim_base(tr):
 
 # per troop: how much of the aim pitch the chest, the arms and the head take (the head looks along it)
 AIM_GAIN = {"tc_harpooner": (0.35, 0.9, -0.2), "ic_arbalist": (0.35, 0.8, -0.2)}
-AIM_ARM_Z = {"mage": {"right_arm": (32.0, 0.0)}, "hexer": {"right_arm": (0.0, -18.0)}}
+AIM_ARM_Z = {"mage": {"right_arm": (32.0, 0.0)}}
+# per troop and aim pitch: rows set after the pitch gains. Hexer up (-45): the gains lifted the lantern (held across the chest) into
+# the face line; the upper arm swings out to the troop's right instead (IK, forearm and wrist kept), so the lantern rides out and
+# up beside the shoulder and the face stays clear at 000 and 045 through the whole level-to-up blend.
+AIM_ROWS = {"hexer": {-45.0: {"right_arm": [9.51, -20.14, 96.02]}}}
 AIM_TWIST = {"tc_harpooner": -16}     # per troop: extra chest yaw (degrees) so the aim reads side-on
 AIM_WORLD = {"tc_harpooner"}
+# per troop and aim pitch (0 level, -45 up, 30 down): whole-pose presets solved by IK against the in-game head look (the game adds
+# its clamped head pitch to the head's JSON x). Archer: chest side-on, the nock at the right jaw, the arrow on the aim line, the bow
+# arm straight, the draw elbow behind the arrow, the face clear at 000 and 045; the quiver tipped so its arrows clear the hood.
+AIM_POSE = {"archer": {
+    0.0: {"head": [-143.45, -86.64, 143.5], "left_arm": [-49.06, -0.41, 9.7], "left_forearm": [-46.35, -13.38, -30.65], "left_hand": [3.82, 19.31, -59.47], "right_arm": [-72.26, -10.6, -4.34], "right_forearm": [-28.82, -9.73, -36.65], "torso": [-178.0, 87.3, 180.0]},
+    -45.0: {"head": [-131.0, -78.23, 170.35], "left_arm": [-59.48, 1.53, 38.82], "left_forearm": [-76.33, -23.75, -29.95], "left_hand": [-45.44, 54.97, -73.17], "right_arm": [-84.15, -21.12, 29.73], "right_forearm": [-22.61, -2.65, -13.19], "torso": [-106.78, 57.48, 248.04]},
+    30.0: {"head": [-150.31, -87.03, 137.75], "left_arm": [-50.29, 20.58, -3.5], "left_forearm": [-0.49, -0.06, -14.29], "left_hand": [33.1, -22.52, -92.59], "right_arm": [-100.95, 10.61, -10.07], "right_forearm": [14.84, 8.14, -57.3], "torso": [-258.01, 77.51, 100.22]},
+}, "tc_harpooner": {
+    # javelin cock: the throwing arm raised out and back so the fist sits above and behind the shoulder, the spear lying in the fist
+    # (wrist under 20 degrees) on the aim line raised by a cock (spear 69 / 45 / 26 degrees up at -45 / level / +30) so the shaft
+    # passes above the face from the throwing side; the off arm straight at the target; scored for a clear face at 000, 045 and 090
+    # and no spear contact with the head, body or arms at every pitch between
+    # (these presets replace AIM_TWIST / AIM_GAIN / AIM_WORLD for the harpooner)
+    0.0: {"head": [6.7, -11.56, -1.35], "left_arm": [-60.76, -17.89, 4.06], "left_forearm": [-26.63, -0.97, -4.09], "left_hand": [0.0, 0.0, 0.0], "right_arm": [-25.67, 34.45, 60.48], "right_forearm": [-14.28, 9.9, 69.31], "right_hand": [12.56, -12.99, -1.44], "torso": [-6.56, 11.64, 0.0]},
+    -45.0: {"head": [6.51, -5.0, 0.02], "left_arm": [-98.24, -42.21, -22.78], "left_forearm": [-27.64, -1.83, -7.45], "left_hand": [0.0, 0.0, 0.0], "right_arm": [-41.34, 37.93, 49.53], "right_forearm": [-8.95, 6.2, 69.33], "right_hand": [16.03, -7.47, -1.05], "torso": [-13.31, 4.86, -1.17]},
+    30.0: {"head": [-10.5, -5.05, 0.53], "left_arm": [-66.37, -30.93, 21.59], "left_forearm": [-25.46, -0.33, -1.47], "left_hand": [0.0, 0.0, 0.0], "right_arm": [-8.39, 31.58, 66.58], "right_forearm": [-2.55, 2.21, 81.93], "right_hand": [15.07, -6.57, -0.87], "torso": [15.01, 5.02, 0.8]},
+}}
+AIM_POSE_COMMON = {"archer": {"right_hand": ([0, 0, 0], None), "draw": ([0, 0, 0], [2, 0, 0]), "quiver": ([0, 0, 15], [0, -2, 1]),
+                              "hood_cape": ([-0.87, 0, 0], None), "tippet": ([-0.58, 0, 0], None)}}
 
 
 def aim_pitched(tr, base, deg, phase):
     """The aim pose pitched `deg` (+ down): the chest takes 0.35 of it, the arms the rest, the head looks along it."""
     P = copy_pose(base)
-    if tr.gear == "bow":
+    if tr.tid in AIM_POSE:
+        rows = dict(AIM_POSE_COMMON.get(tr.tid, {}))
+        rows.update({b: (r, None) for b, r in AIM_POSE[tr.tid][deg].items()})
+        for b, (r, q) in rows.items():
+            P[b] = [np.array(r, float), None if q is None else np.array(q, float)]
+    elif tr.gear == "bow":
         # side-on views hid the bow behind the chest: open the chest toward the camera side and push the bow arm out
         P["torso"][0][1] -= 12
         P["left_arm"][0][2] -= 21        # the bow arm 15 degrees further off the face line
@@ -579,16 +620,19 @@ def aim_pitched(tr, base, deg, phase):
             P["quiver"] = [np.array([0.0, 0.0, -16.0]), np.array([0.0, -5.0, 2.0])]
     for b, dz in AIM_ARM_Z.get(tr.tid, {}).items():    # per troop arm roll offsets (e.g. the mage's staff arm tucked in)
         P[b][0][2] += dz[0] * max(0.0, deg / 30.0) + dz[1] * max(0.0, -deg / 45.0)     # (down, up) offsets, in degrees
-    P["torso"][0][1] += AIM_TWIST.get(tr.tid, 0.0)
-    gt, ga, gh = AIM_GAIN.get(tr.tid, (0.35, 0.65, -0.2))
-    P["torso"][0] = pitch(P["torso"][0], gt * deg)
-    for s in ("left", "right"):
-        if tr.tid in AIM_WORLD:    # the chest is turned side-on, so pitch the arms about the world's lateral axis (through the shoulder), not the chest's
-            Rt = to_mat(P["torso"][0])
-            P[f"{s}_arm"][0] = from_mat(Rt.T @ _rx(-math.radians(ga * deg)) @ Rt @ to_mat(P[f"{s}_arm"][0]))
-        else:
-            P[f"{s}_arm"][0] = pitch(P[f"{s}_arm"][0], ga * deg)
-    P["head"][0] = pitch(P["head"][0], gh * deg)
+    if tr.tid not in AIM_POSE:     # presets are already pitched
+        P["torso"][0][1] += AIM_TWIST.get(tr.tid, 0.0)
+        gt, ga, gh = AIM_GAIN.get(tr.tid, (0.35, 0.65, -0.2))
+        P["torso"][0] = pitch(P["torso"][0], gt * deg)
+        for s in ("left", "right"):
+            if tr.tid in AIM_WORLD:    # the chest is turned side-on, so pitch the arms about the world's lateral axis (through the shoulder), not the chest's
+                Rt = to_mat(P["torso"][0])
+                P[f"{s}_arm"][0] = from_mat(Rt.T @ _rx(-math.radians(ga * deg)) @ Rt @ to_mat(P[f"{s}_arm"][0]))
+            else:
+                P[f"{s}_arm"][0] = pitch(P[f"{s}_arm"][0], ga * deg)
+        P["head"][0] = pitch(P["head"][0], gh * deg)
+    for b, r in AIM_ROWS.get(tr.tid, {}).get(deg, {}).items():
+        P[b][0] = np.array(r, float)
     # the held draw trembles a little
     tr_ = math.sin(2 * math.pi * phase * 3)
     P["torso"][0][0] += 0.25 * tr_

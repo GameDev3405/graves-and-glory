@@ -157,6 +157,17 @@ final class GeoKnightChecks implements Phase1Checks.Suite {
         hold = h; serverHold(h);
     }
 
+    /**
+     * Capture only (server thread): on, no troop attacks or casts for the next 400 ticks, so the battle AI never plays its attack_throw or cast
+     * clip over the stance being shot (a harpooner in reach of the far half threw during r2 shots); off lifts it when the captures end.
+     */
+    void quiet(GravesAndGlory.Battle b, boolean on) {
+        for (var u : knights) {
+            if (on) { u.nextAttack = Math.max(u.nextAttack, b.time + 400); u.abilityAt = Math.max(u.abilityAt, b.time + 400); }
+            else { u.nextAttack = Math.min(u.nextAttack, b.time); u.abilityAt = Math.min(u.abilityAt, b.time); }
+        }
+    }
+
     /** The same blow on every live knight (server thread), stamped hitAt. */
     void hitAll(GravesAndGlory.Battle b, float bearing, int weight, boolean blocked) {
         hitAt = b.world.getTime();
@@ -867,7 +878,7 @@ final class GeoKnightChecks implements Phase1Checks.Suite {
             }
             case 30 -> {
                 int ci = i / CAP_YAW.length, vi = i % CAP_YAW.length;
-                if (ci >= CAP_CASES.length) { Phase1Checks.server(c, b -> hold = null); i = 0; next(tick, "only".equals(CAPTURE) || "1".equals(CAPTURE) ? 9 : 2); return; }
+                if (ci >= CAP_CASES.length) { Phase1Checks.server(c, b -> { hold = null; quiet(b, false); }); i = 0; next(tick, "only".equals(CAPTURE) || "1".equals(CAPTURE) ? 9 : 2); return; }
                 Object[] cc = CAP_CASES[ci];
                 boolean line = (Boolean) cc[5];
                 if (line && vi > 0) { i++; next(tick, 30); return; }
@@ -877,11 +888,11 @@ final class GeoKnightChecks implements Phase1Checks.Suite {
                     lastShot = -1;
                     // a different quiet stance first so the next view restarts the stance clip from tick 0 (the same stance twice would not; no stance at all lets the AI throw or aim)
                     Phase1Checks.server(c, b -> {
-                        hold(b, "hold".equals(cc[1]) ? "ranged_rest" : "hold", false, yaw, 0f, 0.0);
+                        quiet(b, true); hold(b, "hold".equals(cc[1]) ? "ranged_rest" : "hold", false, yaw, 0f, 0.0);
                         if (line) camera(b, 0, 8, 8); else camera(b, -3, "fallback".equals(cc[0]) ? 5.0 : 3.5, 3);
                     });
                 }
-                if (k == 14) Phase1Checks.server(c, b -> hold(b, (String) cc[1], false, yaw, (Float) cc[2], (Double) cc[3]));
+                if (k == 14) Phase1Checks.server(c, b -> { quiet(b, true); hold(b, (String) cc[1], false, yaw, (Float) cc[2], (Double) cc[3]); });
                 if (k == 3) { c.setScreen(null); c.options.hudHidden = true; }
                 if (k > 14 && c.world != null && changedAt >= 0) {
                     long t = c.world.getTime() - changedAt;
@@ -891,7 +902,7 @@ final class GeoKnightChecks implements Phase1Checks.Suite {
             }
             case 31 -> {
                 List<Object[]> segs = videoSegments();
-                if (i >= segs.size()) { Phase1Checks.server(c, b -> hold = null); i = 0; next(tick, 9); return; }
+                if (i >= segs.size()) { Phase1Checks.server(c, b -> { hold = null; quiet(b, false); }); i = 0; next(tick, 9); return; }
                 Object[] sg = segs.get(i);
                 String label = (String) sg[0], stance = (String) sg[1];
                 float yaw = (Float) sg[2];
@@ -901,12 +912,12 @@ final class GeoKnightChecks implements Phase1Checks.Suite {
                 if (k == 1) {
                     videoLine = line;
                     Phase1Checks.server(c, b -> {
-                        hold(b, "hold".equals(stance) ? "ranged_rest" : "hold", false, yaw, 0f, 0.0);
+                        quiet(b, true); hold(b, "hold".equals(stance) ? "ranged_rest" : "hold", false, yaw, 0f, 0.0);
                         if (line) camera(b, 0, 9, 6); else camera(b, -3, walk > 0 ? 5.0 : 3.5, 3);
                     });
                 }
                 if (k == 3) { c.setScreen(null); c.options.hudHidden = true; }
-                if (k == 14 && !sweep) Phase1Checks.server(c, b -> hold(b, stance, false, yaw, 0f, walk));
+                if (k == 14 && !sweep) Phase1Checks.server(c, b -> { quiet(b, true); hold(b, stance, false, yaw, 0f, walk); });
                 if (k >= 14 && sweep) { float pitch = sweepPitch(Math.max(0, k - 15)); Phase1Checks.server(c, b -> hold(b, stance, false, yaw, pitch, 0.0)); }
                 if (k >= 15 && k < 15 + frames) Phase1Checks.shot(c, String.format("geo-" + TROOP + "-vid-%02d-%03d", i, k - 15));
                 if (k == 15) System.out.println("[p1] video segment " + i + " " + label);
