@@ -21,6 +21,7 @@ public final class OrderRulesCheck {
         check(BattleMath.loadFormation(null).equals("line"), "A missing formation loads as line");
         check(BattleMath.STANCES.indexOf("rally") == 9, "rally is stance 9, appended");
         check(BattleMath.STANCES.indexOf("ranged_aim") == 8, "ranged_aim keeps stance 8");
+        check(BattleMath.STANCES.indexOf("charge") == 10 && BattleMath.STANCES.indexOf("stunned") == 11, "charge is stance 10 and stunned 11, appended");
         System.out.println("OrderRulesCheck: " + count + " checks passed");
     }
 }

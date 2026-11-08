@@ -123,10 +123,17 @@ final class GeoKnightChecks implements Phase1Checks.Suite {
      */
     static final class Hold {
         final GeoKnightChecks owner; final String stance; final boolean shield; final float yaw;
-        Hold(GeoKnightChecks owner, String stance, boolean shield, float yaw) { this.owner = owner; this.stance = stance; this.shield = shield; this.yaw = yaw; }
+        /** Capture only: the aim pitch sent with the stance (degrees, + down) and a walk speed (blocks per tick, 0 = stand) backing away from where it faces. */
+        final float aim; final double walk;
+        Hold(GeoKnightChecks owner, String stance, boolean shield, float yaw) { this(owner, stance, shield, yaw, 0, 0); }
+        Hold(GeoKnightChecks owner, String stance, boolean shield, float yaw, float aim, double walk) { this.owner = owner; this.stance = stance; this.shield = shield; this.yaw = yaw; this.aim = aim; this.walk = walk; }
     }
     static volatile Hold hold;
     volatile long changedAt = -1, hitAt = -1;
+    /** Capture (charge) only: the camera offset last set by camera(), tracked along with a running squad, the forward offset a stopped run holds (NaN while running), and the world tick a mid-charge volley looses. */
+    volatile double camDx, camDist, fixS = Double.NaN;
+    volatile float camPitch;
+    volatile long shootAt = -1;
 
     double lineX(int slot) { return cx + (slot < 3 ? -7 + slot * 2 : 3 + (slot - 3) * 2); }
 
@@ -134,23 +141,59 @@ final class GeoKnightChecks implements Phase1Checks.Suite {
         for (int j = 0; j < knights.size(); j++) {
             var u = knights.get(j);
             if (!u.mob.isAlive()) continue;
-            stand(u, lineX(j), cz, h.yaw);
-            Tactics.set(u, h.stance, 0); Tactics.shield(u.mob, h.shield);
+            if (h.walk < 0 || !Double.isNaN(fixS)) {
+                // Capture (charge): run forward along the line at -walk blocks per tick (-1 = the troop's real run speed) from its mark, or stand where the run stopped (fixS);
+                // the camera keeps the same offset to the line, so the squad stays framed as it runs.
+                double rad = Math.toRadians(h.yaw), dx = Math.sin(rad), dz = -Math.cos(rad), v = h.walk == -1.0 ? SPEEDS[1] : -h.walk;
+                double s = !Double.isNaN(fixS) ? fixS : -v * Math.max(0, u.mob.getWorld().getTime() - changedAt);
+                stand(u, lineX(j) + dx * s, cz + dz * s, h.yaw);
+                if (j == knights.size() - 1) {
+                    var p = u.mob.getServer().getPlayerManager().getPlayer(player);
+                    if (p != null && !"stunfix".equals(CAPTURE)) p.networkHandler.requestTeleport(cx + camDx + dx * s, cy - .45, cz - camDist + dz * s, 0, camPitch);
+                }
+            } else if (h.walk > 0) {
+                // Capture: retreat along the line backing away from the way the troop faces, from 2 blocks before its mark.
+                double rad = Math.toRadians(h.yaw), dx = Math.sin(rad), dz = -Math.cos(rad);
+                double s = h.walk * Math.max(0, u.mob.getWorld().getTime() - changedAt) - 2;
+                stand(u, lineX(j) + dx * s, cz + dz * s, h.yaw);
+            } else stand(u, lineX(j), cz + (CAPTURE != null && Math.abs(h.yaw - 180) > 1 && j >= 3 && !videoLine ? -12 : 0), h.yaw); // capture, side views: the far half of the line steps back so no troop faces a neighbour (a neighbour in front starts its attack clip over the stance)
+            // capture: a held "stunned" stance is also a real stun (far ahead), so the battle beat's Tactics.stunStance does not drop it; any other hold ends it
+            if (h.stance.equals("stunned")) u.stunnedUntil = Long.MAX_VALUE / 4; else if (u.stunnedUntil == Long.MAX_VALUE / 4) u.stunnedUntil = 0;
+            Tactics.set(u, h.stance, h.aim); Tactics.shield(u.mob, h.shield);
         }
     }
 
     /** Holds every knight in a stance (server thread); a new stance or shield stamps changedAt. */
-    void hold(GravesAndGlory.Battle b, String stance, boolean shield, float yaw) {
+    void hold(GravesAndGlory.Battle b, String stance, boolean shield, float yaw) { hold(b, stance, shield, yaw, 0, 0); }
+
+    void hold(GravesAndGlory.Battle b, String stance, boolean shield, float yaw, float aim, double walk) {
         Hold was = hold;
-        if (was == null || !was.stance.equals(stance) || was.shield != shield) changedAt = b.world.getTime();
-        Hold h = new Hold(this, stance, shield, yaw);
+        if (was == null || !was.stance.equals(stance) || was.shield != shield || was.aim != aim) changedAt = b.world.getTime();
+        Hold h = new Hold(this, stance, shield, yaw, aim, walk);
         hold = h; serverHold(h);
+    }
+
+    /**
+     * Capture only (server thread): on, no troop attacks or casts for the next 400 ticks, so the battle AI never plays its attack_throw or cast
+     * clip over the stance being shot (a harpooner in reach of the far half threw during r2 shots); off lifts it when the captures end.
+     */
+    void quiet(GravesAndGlory.Battle b, boolean on) {
+        for (var u : knights) {
+            if (on) { u.nextAttack = Math.max(u.nextAttack, b.time + 400); u.abilityAt = Math.max(u.abilityAt, b.time + 400); }
+            else { u.nextAttack = Math.min(u.nextAttack, b.time); u.abilityAt = Math.min(u.abilityAt, b.time); }
+        }
     }
 
     /** The same blow on every live knight (server thread), stamped hitAt. */
     void hitAll(GravesAndGlory.Battle b, float bearing, int weight, boolean blocked) {
         hitAt = b.world.getTime();
         for (var u : knights) if (u.mob.isAlive()) MotionEvents.sendHit(u.mob, "slash", "body", bearing, weight, blocked, false);
+    }
+
+    /** The same blow with the knockback flag (a bash, a slam): the client plays hit_knockback. Capture only; the body is not moved here (the server moves it in play). */
+    void hitAll(GravesAndGlory.Battle b, float bearing, int weight, boolean blocked, boolean knockback) {
+        hitAt = b.world.getTime();
+        for (var u : knights) if (u.mob.isAlive()) MotionEvents.sendHit(u.mob, "slash", "body", bearing, weight, blocked, false, knockback, MotionEvents.watchers(u.mob));
     }
 
     /** Stance cases: name, order stance, shield raised. "ready" is no order stance while fighting (a light blow starts it). */
@@ -161,6 +204,87 @@ final class GeoKnightChecks implements Phase1Checks.Suite {
     static final String[][] STANCE_CASES = Arrays.stream(ALL_STANCE_CASES).filter(sc -> SHIELD || sc[2].equals("0")).toArray(String[][]::new);
     /** close: the tier III own knight three-quarter at 3.5 blocks; side: the line side on from 8; far: the line from 16. */
     static final String[] STANCE_VIEWS = {"close", "side", "far"};
+    /**
+     * Capture only (GRAVES_GEO_CAPTURE=1 runs just this, GRAVES_GEO_CAPTURE=with adds it before the checks; never a check): the stance clips shot in game at 0, 45
+     * and 90 degrees from the camera, named p1-geo-<troop>-cap-<case>-<angle>-<ticks since the stance began>.png. Cases: name, stance, aim pitch, walk speed,
+     * shot ticks, line (the line of six from 8 blocks, one angle). Rally shots are the up beat, the hold, the way down and the tick after it ends.
+     */
+    static final String CAPTURE = System.getenv("GRAVES_GEO_CAPTURE");
+    static final int[] CAP_YAW = {180, 135, 90};
+    static final String[] CAP_ANG = {"000", "045", "090"};
+    static final Object[][] CAP_CASES = {
+        {"hold", "hold", 0f, 0.0, new int[]{30}, false},
+        {"rest", "ranged_rest", 0f, 0.0, new int[]{30}, false},
+        {"rally", "rally", 0f, 0.0, new int[]{3, 6, 10, 15, 17, 19, 20, 21, 22, 24, 26, 30}, false},
+        {"aim-up45", "ranged_aim", -45f, 0.0, new int[]{36}, false},
+        {"aim-level", "ranged_aim", 0f, 0.0, new int[]{36}, false},
+        {"aim-down30", "ranged_aim", 30f, 0.0, new int[]{36}, false},
+        {"fallback", "fall_back", 0f, .169, new int[]{8, 14, 20}, false},
+        {"rally-line", "rally", 0f, 0.0, new int[]{10}, true},
+    };
+    /**
+     * Capture only (GRAVES_GEO_CAPTURE=react runs just this, then the knockback-then-stun video segment; never a check): the Batch 2 reaction clips. The 7th element is the kind:
+     * stun (hold "stunned"; shots count from its start: the hit-snap entry at 0..4, the dazed loop, the seam at 24 = 4), stunexit (a knockback and a stun, 2 s later the stun
+     * ends; shots count from the end), knock (a knockback blow on a troop in the ready guard; shots count from the blow), hitmed (the same blow without the flag, to compare).
+     */
+    static final Object[][] REACT_CASES = {
+        {"stun", "stunned", 0f, 0.0, new int[]{0, 1, 2, 4, 5, 10, 15, 24}, false, "stun"},
+        {"stunexit", "", 0f, 0.0, new int[]{2, 4, 6, 8}, false, "stunexit"},
+        {"knock", "", 0f, 0.0, new int[]{2, 4, 6, 8, 11, 15}, false, "knock"},
+        {"hitmed", "", 0f, 0.0, new int[]{2, 4, 6, 8, 11, 15}, false, "hitmed"},
+    };
+    /**
+     * Capture only (GRAVES_GEO_CAPTURE=charge runs just this; never a check): the Batch 3 charge. The squad runs forward at the troop's real run speed (walk -1) in the
+     * charge stance beside the same run in the plain run stance, one shot a tick over a stride (shots 20..28 after the stance began), then the line of six charging.
+     * GRAVES_GEO_CHARGE_VIDEO=1 adds the video segments after the sheets.
+     */
+    static final int[] CHARGE_SHOTS = {20, 21, 22, 23, 24, 25, 26, 27, 28};
+    static final Object[][] CHARGE_CASES = {
+        {"charge", "charge", 0f, -1.0, CHARGE_SHOTS, false},
+        {"run", "run", 0f, -1.0, CHARGE_SHOTS, false},
+        {"charge-line", "charge", 0f, -1.0, new int[]{24}, true},
+    };
+    static Object[][] capCases() { return "react".equals(CAPTURE) ? REACT_CASES : "charge".equals(CAPTURE) ? CHARGE_CASES : CAP_CASES; }
+
+    /**
+     * Capture only, never a check (GRAVES_GEO_CAPTURE=video): the review video. A frame is saved every client tick (20 fps) as
+     * p1-geo-<troop>-vid-<segment>-<frame>.png. Segments: label, stance, camera yaw, line of six, frames, aim sweep, walk speed.
+     */
+    /** Video capture of the line of six: all six stay on their marks (the far half does not step back). */
+    static volatile boolean videoLine;
+    static List<Object[]> videoSegments() {
+        List<Object[]> v = new ArrayList<>();
+        if ("charge".equals(CAPTURE)) { // the squad charging, the plain run beside it, the line of six, and (ranged troops) the advance that stops to shoot
+            v.add(new Object[]{"charge-045", "charge", 135f, false, 56, false, -1.0});
+            v.add(new Object[]{"run-045", "run", 135f, false, 40, false, -1.0});
+            v.add(new Object[]{"charge-line-150", "charge", 150f, true, 60, false, -1.0});
+            if (RANGED) v.add(new Object[]{"charge-shoot-090", "charge", 270f, true, 120, false, -1.0, "chargeshoot"});
+            return v;
+        }
+        if ("stunfix".equals(CAPTURE)) { // a bash: the knockback slide and the stun on the same tick, at the three review angles, then the stun ends
+            v.add(new Object[]{"stunfix-000", "", 180f, false, 110, false, 0.0, "stunfix"});
+            v.add(new Object[]{"stunfix-045", "", 135f, false, 110, false, 0.0, "stunfix"});
+            v.add(new Object[]{"stunfix-090", "", 270f, false, 110, false, 0.0, "stunfix"});
+            return v;
+        }
+        if ("react".equals(CAPTURE)) { // a light blow (the ready guard), a knockback, a 2 s stun, then the stun ends
+            v.add(new Object[]{"knockstun-045", "", 135f, false, 92, false, 0.0, "knockstun"});
+            return v;
+        }
+        v.add(new Object[]{"rally-line-030", "rally", 150f, true, 60, false, 0.0});
+        v.add(new Object[]{"hold-045", "hold", 135f, false, 60, false, 0.0});
+        if (!"knight".equals(TROOP)) v.add(new Object[]{"rest-045", "ranged_rest", 135f, false, 40, false, 0.0});
+        if (!"knight".equals(TROOP)) v.add(new Object[]{"aim-sweep-045", "ranged_aim", 135f, false, 90, true, 0.0});
+        if (!"knight".equals(TROOP)) v.add(new Object[]{"aim-sweep-000", "ranged_aim", 180f, false, 90, true, 0.0});
+        v.add(new Object[]{"fall_back-045", "fall_back", 135f, false, 60, false, .169});
+        v.add(new Object[]{"fall_back-090", "fall_back", 90f, false, 60, false, .169});
+        return v;
+    }
+    /** Aim pitch (degrees, + down) at video frame f: held at -45 for the stance blend-in, then -45 up to +30 and back over 80 frames, eased. */
+    static float sweepPitch(int f) {
+        double u = Math.max(0, Math.min(1, (f - 10) / 80.0)), t = u < .5 ? 2 * u : 2 - 2 * u;
+        return (float) (-45 + 75 * (t * t * (3 - 2 * t)));
+    }
     final Map<Integer, Long> stanceLag = new TreeMap<>();
     final List<String> stanceBad = new ArrayList<>();
 
@@ -204,6 +328,7 @@ final class GeoKnightChecks implements Phase1Checks.Suite {
     final List<GravesAndGlory.Unit> knights = new ArrayList<>();
     int stage, at, i;
 
+    GeoGaps gaps;
     void next(int tick, int s) { stage = s; at = tick; }
 
     @Override public void cleanup(MinecraftClient c) {
@@ -482,6 +607,7 @@ final class GeoKnightChecks implements Phase1Checks.Suite {
         var p = b.server.getPlayerManager().getPlayer(player);
         if (p == null) return;
         p.setNoGravity(true);
+        camDx = dx; camDist = dist; camPitch = pitch;
         p.networkHandler.requestTeleport(cx + dx, cy - .45, cz - dist, 0, pitch);
     }
 
@@ -500,7 +626,7 @@ final class GeoKnightChecks implements Phase1Checks.Suite {
                 if (k > 100) {
                     if (!placed) { Phase1Checks.report("p1-geo-" + TROOP + "-placed", false, "could not place knights: " + why); next(tick, 9); return; }
                     Phase1Checks.report("p1-geo-" + TROOP + "-placed", true, "six knights");
-                    i = 0; next(tick, 2);
+                    i = 0; next(tick, "gaps".equals(CAPTURE) ? 32 : "video".equals(CAPTURE) || "stunfix".equals(CAPTURE) ? 31 : CAPTURE != null ? 30 : 2);
                 }
             }
             case 2 -> {
@@ -814,6 +940,126 @@ final class GeoKnightChecks implements Phase1Checks.Suite {
                         next(tick, 9);
                     }
                 }
+            }
+            case 30 -> {
+                int ci = i / CAP_YAW.length, vi = i % CAP_YAW.length;
+                if (ci >= capCases().length) {
+                    boolean react = "react".equals(CAPTURE) || "charge".equals(CAPTURE) && System.getenv("GRAVES_GEO_CHARGE_VIDEO") != null;
+                    Phase1Checks.server(c, b -> { hold = null; fixS = Double.NaN; quiet(b, react); });
+                    i = 0; next(tick, react ? 31 : "only".equals(CAPTURE) || "1".equals(CAPTURE) || "charge".equals(CAPTURE) ? 9 : 2); return;
+                }
+                Object[] cc = capCases()[ci];
+                String kind = cc.length > 6 ? (String) cc[6] : "";
+                boolean line = (Boolean) cc[5];
+                if (line && vi > 0) { i++; next(tick, 30); return; }
+                int[] shots = (int[]) cc[4];
+                float yaw = CAP_YAW[vi];
+                if (k == 1) {
+                    lastShot = -1;
+                    // a different quiet stance first so the next view restarts the stance clip from tick 0 (the same stance twice would not; no stance at all lets the AI throw or aim)
+                    Phase1Checks.server(c, b -> {
+                        quiet(b, true); hold(b, "hold".equals(cc[1]) ? "ranged_rest" : "hold", false, yaw, 0f, 0.0);
+                        fixS = Double.NaN;
+                        if (line) camera(b, 0, 8, 8); else camera(b, -3, "fallback".equals(cc[0]) || "charge".equals(CAPTURE) ? 5.0 : 3.5, 3);
+                    });
+                }
+                // the reaction kinds: when the shots start (k) and what they count from; the rest hold the stance at k == 14 and count from its change
+                boolean knockKind = kind.equals("knock") || kind.equals("hitmed");
+                int t0 = kind.equals("stunexit") ? 54 : knockKind ? 40 : 14;
+                if (k == 14) Phase1Checks.server(c, b -> {
+                    quiet(b, true);
+                    hold(b, kind.equals("stunexit") ? "stunned" : (String) cc[1], false, yaw, (Float) cc[2], (Double) cc[3]);
+                    if (kind.equals("stunexit")) hitAll(b, 0, 1, false, true); // a bash: the knockback and the stun together
+                    if (knockKind) hitAll(b, 0, 0, false); // a light blow first: the ready guard
+                });
+                if (k == 54 && kind.equals("stunexit")) Phase1Checks.server(c, b -> hold(b, "", false, yaw, 0f, 0.0));
+                if (k == 40 && knockKind) Phase1Checks.server(c, b -> hitAll(b, 0, 1, false, kind.equals("knock")));
+                if (k == 3) { c.setScreen(null); c.options.hudHidden = true; }
+                if (k >= t0 && c.world != null && (knockKind ? hitAt >= 0 : changedAt >= 0)) {
+                    long t = c.world.getTime() - (knockKind ? hitAt : changedAt);
+                    for (int s : shots) if (t == s && s != lastShot) { lastShot = s; Phase1Checks.shot(c, String.format("geo-" + TROOP + "-cap-%s-%s-%02d", cc[0], CAP_ANG[vi], s)); }
+                }
+                if (k > t0 + shots[shots.length - 1] + 12) { i++; next(tick, 30); }
+            }
+            case 32 -> {
+                // Real-gameplay gap captures (GeoGaps): a real shield bash, or a real Charge order.
+                if (gaps == null) gaps = new GeoGaps(this);
+                if (gaps.step(c, k)) { GeoGaps.live = null; next(tick, 9); }
+            }
+            case 31 -> {
+                List<Object[]> segs = videoSegments();
+                if (i >= segs.size()) { Phase1Checks.server(c, b -> { hold = null; quiet(b, false); }); i = 0; next(tick, 9); return; }
+                Object[] sg = segs.get(i);
+                String label = (String) sg[0], stance = (String) sg[1];
+                float yaw = (Float) sg[2];
+                boolean line = (Boolean) sg[3], sweep = (Boolean) sg[5];
+                int frames = (Integer) sg[4];
+                double walk = (Double) sg[6];
+                boolean knockstun = sg.length > 7 && "knockstun".equals(sg[7]);
+                boolean chargeShoot = sg.length > 7 && "chargeshoot".equals(sg[7]);
+                boolean stunfix = sg.length > 7 && "stunfix".equals(sg[7]);
+                if (k == 1) {
+                    videoLine = line;
+                    Phase1Checks.server(c, b -> {
+                        fixS = Double.NaN; shootAt = -1;
+                        quiet(b, true); hold(b, "hold".equals(stance) ? "ranged_rest" : "hold", false, yaw, 0f, 0.0);
+                        if (line) camera(b, 0, chargeShoot ? 7.5 : 9, chargeShoot ? 5 : 6); else camera(b, -3, walk != 0 || "stunfix".equals(CAPTURE) ? 5.0 : 3.5, 3);
+                    });
+                }
+                if (chargeShoot) {
+                    // the squad advances in the charge stance, then (as Tactics does with an enemy in reach) stops in ranged_aim and the first three shoot at the other three
+                    if (k == 14) Phase1Checks.server(c, b -> { quiet(b, true); hold(b, "charge", false, yaw, 0f, walk); });
+                    if (k == 50) Phase1Checks.server(c, b -> {
+                        fixS = -SPEEDS[1] * Math.max(0, b.world.getTime() - changedAt);
+                        hold(b, "ranged_aim", false, yaw, 0f, 0.0);
+                    });
+                    if (k == 60) Phase1Checks.server(c, b -> {
+                        for (int j = 0; j < 3; j++) Projectiles.drawAhead(b, knights.get(j), knights.get(j + 3).mob, 10);
+                        shootAt = b.world.getTime() + 10 + Projectiles.looseTicks(knights.get(0));
+                    });
+                    if (k > 60 && shootAt >= 0) Phase1Checks.server(c, b -> {
+                        if (shootAt < 0 || b.world.getTime() < shootAt) return;
+                        shootAt = -1;
+                        for (int j = 0; j < 3; j++) {
+                            var u = knights.get(j); LivingEntity foe = knights.get(j + 3).mob;
+                            u.nextAttack = b.time + 1000; u.mob.swingHand(Hand.MAIN_HAND);
+                            if (CAST) Projectiles.fire(b, u, foe, "mend", 0f); else { if (SPELL) u.abilityAt = 0; Tactics.shoot(b, u, foe, b.time, true); }
+                        }
+                    });
+                }
+                if (k == 3) { c.setScreen(null); c.options.hudHidden = true; }
+                if (stunfix) {
+                    // Capture only (GRAVES_GEO_CAPTURE=stunfix): a bash as the server plays it. The knockback hit and the stun land on the same tick (k = 34) and the body slides
+                    // backwards (first 0.9 blocks/tick, x0.546 a tick: about 1.9 blocks over 6 ticks); the stun lasts 40 ticks, then ends. The camera tracks the slide.
+                    if (k == 14) Phase1Checks.server(c, b -> { quiet(b, true); fixS = 0; hold(b, "", false, yaw, 0f, 0.0); });
+                    if (k > 14) Phase1Checks.server(c, b -> camera(b, -3, 5.0, 3)); // the camera pinned every tick (a slide or a hit must not push it)
+                    if (k == 34) Phase1Checks.server(c, b -> { hitAll(b, 0, 1, false, true); hold(b, "stunned", false, yaw, 0f, 0.0); });
+                    if (k >= 34 && k < 50) {
+                        double sl = 0, v = 0.9;
+                        for (int q = 0; q <= k - 34; q++) { sl += v; v *= 0.546; }
+                        final double slide = sl;
+                        Phase1Checks.server(c, b -> fixS = slide);
+                    }
+                    if (k == 74) Phase1Checks.server(c, b -> hold(b, "", false, yaw, 0f, 0.0));
+                    if (k >= 15 && k < 15 + frames && c.world != null) {
+                        var e = c.world.getEntityById(knights.get(0).mob.getId());
+                        Gait g = e == null ? null : Gait.LIVE.get(e);
+                        StanceController st = e == null ? null : StanceController.LIVE.get(e);
+                        if (st != null && g != null) System.out.println(String.format("[sf] %s f=%03d gait=%s sp=%.3f still=%.2f up=%s@%.2f legs=%s@%.2f", label, k - 15, g.mode, g.speed, st.shownStill, st.shownUpper, st.shownUpperWeight, st.shownLegs, st.shownLegsWeight));
+                    }
+                } else if (knockstun) {
+                    // a light blow (the ready guard), a knockback, then a 2 s stun (40 ticks), then the stun ends
+                    if (k == 14) Phase1Checks.server(c, b -> { quiet(b, true); hold(b, "", false, yaw, 0f, 0.0); hitAll(b, 0, 0, false); });
+                    if (k == 30) Phase1Checks.server(c, b -> hitAll(b, 0, 1, false, true));
+                    if (k == 50) Phase1Checks.server(c, b -> hold(b, "stunned", false, yaw, 0f, 0.0));
+                    if (k == 90) Phase1Checks.server(c, b -> hold(b, "", false, yaw, 0f, 0.0));
+                } else if (chargeShoot) {
+                    // handled above
+                } else if (k == 14 && !sweep) Phase1Checks.server(c, b -> { quiet(b, true); hold(b, stance, false, yaw, 0f, walk); });
+                if (k >= 14 && sweep) { float pitch = sweepPitch(Math.max(0, k - 15)); Phase1Checks.server(c, b -> hold(b, stance, false, yaw, pitch, 0.0)); }
+                if (k >= 15 && k < 15 + frames) Phase1Checks.shot(c, String.format("geo-" + TROOP + "-vid-%02d-%03d", i, k - 15));
+                if (k == 15) System.out.println("[p1] video segment " + i + " " + label);
+                if (k >= 15 + frames + 2) { i++; fixS = Double.NaN; next(tick, 31); }
             }
             case 9 -> {
                 c.options.setPerspective(Perspective.FIRST_PERSON); c.options.hudHidden = false;

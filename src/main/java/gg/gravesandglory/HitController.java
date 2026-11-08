@@ -75,7 +75,7 @@ final class HitController extends AnimationController<GeoTroop> {
             double t = now - h.tick();
             if (t < 0) continue;
             double k;
-            if (h.blocked()) {
+            if (h.blocked() && !(h.knockback() && model.getAnimation(animatable, "hit_knockback") != null)) { // a thrown target shows the throw even behind a shield, when the model has one
                 k = BLOCK_SCALE[Math.max(0, Math.min(2, h.weight()))];
                 Animation clip = model.getAnimation(animatable, "hit_block");
                 if (clip == null || t >= clip.length()) continue;
@@ -85,7 +85,18 @@ final class HitController extends AnimationController<GeoTroop> {
                 if (h == latest) { shownClip = clip.name(); shownScale = k; shownT = t; java.util.Arrays.fill(shownMix, 0); }
                 continue;
             }
-            String w = h.weight() == 0 ? "light" : "medium";
+            if (h.knockback()) { // thrown: the model's own hit_knockback (and hit_knockback_legs) when it has one; else the medium stagger below
+                Animation clip = model.getAnimation(animatable, "hit_knockback");
+                if (clip != null && t < clip.length()) {
+                    k = h.weight() >= 2 ? HEAVY : 1;
+                    if (h.tick() == seenTick) k *= AttackController.smooth((now - seenAt) / LATE_IN);
+                    add(clip, t, bones, (float) k);
+                    legs(model, clip, t, bones, k * still);
+                    if (h == latest) { shownClip = clip.name(); shownScale = k; shownT = t; java.util.Arrays.fill(shownMix, 0); }
+                    continue;
+                }
+            }
+            String w = h.weight() == 0 && !h.knockback() ? "light" : "medium";
             k = h.weight() >= 2 ? HEAVY : 1;
             if (h.tick() == seenTick) k *= AttackController.smooth((now - seenAt) / LATE_IN);
             mix(h.bearing(), m);

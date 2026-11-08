@@ -26,11 +26,16 @@ final class GaitController extends AnimationController<GeoTroop> {
 
     final Gait gait;
     final boolean owner;
+    private final int blend;
+    private Gait.Mode lastMode = Gait.Mode.IDLE;
+    /** A walk-to-run (or back) switch: no timed blend, and the stride clock keeps its phase, so the feet stay on the stride clock instead of skating through the blend. */
+    private boolean keepPhase;
 
     GaitController(GeoTroop troop, String name, int transition, Gait gait, boolean owner, AnimationStateHandler<GeoTroop> handler) {
         super(troop, name, transition, handler);
         this.gait = gait;
         this.owner = owner;
+        this.blend = transition;
     }
 
     /** The playing clip's reference speed, or 0 when no gait clip is running. */
@@ -43,7 +48,12 @@ final class GaitController extends AnimationController<GeoTroop> {
                         Map<String, BoneSnapshot> snapshots, double seekTime, boolean crashWhenCantFindBone) {
         Entity e = state.getData(DataTickets.ENTITY);
         if (e != null) gait.update(e, seekTime);
+        Gait.Mode m = gait.mode;
+        if (m != lastMode && m != Gait.Mode.IDLE && lastMode != Gait.Mode.IDLE) { transitionLength = 0; keepPhase = true; }
+        else if (!keepPhase) transitionLength = blend;
+        lastMode = m;
         super.process(model, state, bones, snapshots, seekTime, crashWhenCantFindBone);
+        if (keepPhase && !shouldResetTick && getAnimationState() == State.RUNNING) keepPhase = false;
         if (owner) {
             double ref = getAnimationState() == State.RUNNING ? playingRef() : 0;
             gait.stride = ref > 0 ? ref * currentAnimation.animation().length() : 0;
@@ -57,6 +67,7 @@ final class GaitController extends AnimationController<GeoTroop> {
         if (shouldResetTick) {
             // The transition into this loop just finished on its first frame: start the stride clock there.
             super.adjustTick(tick);
+            if (keepPhase) { keepPhase = false; return gait.phase * currentAnimation.animation().length(); }
             if (owner) gait.phase = 0;
             return 0;
         }

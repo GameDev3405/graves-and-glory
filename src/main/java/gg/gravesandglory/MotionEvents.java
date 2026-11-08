@@ -31,7 +31,7 @@ public final class MotionEvents {
     private MotionEvents() {}
     /** A troop's swing: a varInt entity id, a varInt index into its family's attackVariants rows (Tactics.variants, Battle's pick) and a varLong world tick it began on. */
     public static final Identifier ATTACK = new Identifier("gravesandglory", "attack_v1");
-    /** A blow that struck a troop: a varInt entity id, byte kind (KINDS), byte zone (ZONES), float signed bearing (BattleMath.signedBearing), byte weight (0-2), byte flags (1 blocked, 2 lethal), varLong world tick. */
+    /** A blow that struck a troop: a varInt entity id, byte kind (KINDS), byte zone (ZONES), float signed bearing (BattleMath.signedBearing), byte weight (0-2), byte flags (1 blocked, 2 lethal, 4 knockback: the blow also threw the troop, Abilities.knock; an old client ignores the bit), varLong world tick. */
     public static final Identifier HIT = new Identifier("gravesandglory", "hit_v1");
     /**
      * A troop's stance: a varInt entity id, byte index into STANCES and a float aimPitch (Projectiles.aimPitch: degrees, positive down as MotionInput.aimPitch
@@ -72,13 +72,16 @@ public final class MotionEvents {
         return sendHit(victim, kind, zone, bearing, weight, blocked, lethal, watchers(victim));
     }
     static int sendHit(LivingEntity victim, String kind, String zone, float bearing, int weight, boolean blocked, boolean lethal, Collection<ServerPlayerEntity> players) {
+        return sendHit(victim, kind, zone, bearing, weight, blocked, lethal, false, players);
+    }
+    static int sendHit(LivingEntity victim, String kind, String zone, float bearing, int weight, boolean blocked, boolean lethal, boolean knockback, Collection<ServerPlayerEntity> players) {
         int k = Math.max(0, KINDS.indexOf(kind)), z = ZONES.indexOf(zone), sent = 0;
         if (z < 0) z = 1;
         long tick = victim.getWorld().getTime();
         for (ServerPlayerEntity p : players) {
             if (!ServerPlayNetworking.canSend(p, HIT)) continue;
             PacketByteBuf buf = PacketByteBufs.create(); buf.writeVarInt(victim.getId()); buf.writeByte(k); buf.writeByte(z); buf.writeFloat(bearing);
-            buf.writeByte(Math.max(0, Math.min(2, weight))); buf.writeByte((blocked ? 1 : 0) | (lethal ? 2 : 0)); buf.writeVarLong(tick);
+            buf.writeByte(Math.max(0, Math.min(2, weight))); buf.writeByte((blocked ? 1 : 0) | (lethal ? 2 : 0) | (knockback ? 4 : 0)); buf.writeVarLong(tick);
             ServerPlayNetworking.send(p, HIT, buf); sent++;
         }
         hitSends += sent; return sent;
@@ -199,7 +202,7 @@ public final class MotionEvents {
         static void hit(boolean known, int id, int kind, int zone, float bearing, int weight, int flags, long tick) {
             if (!known) return;
             String k = kind >= 0 && kind < KINDS.size() ? KINDS.get(kind) : "blunt", z = zone >= 0 && zone < ZONES.size() ? ZONES.get(zone) : "body";
-            push(HITS, id, new MotionInput.Hit(k, z, bearing, BattleMath.weightOrdinal(weight), (flags & 1) != 0, (flags & 2) != 0, tick));
+            push(HITS, id, new MotionInput.Hit(k, z, bearing, BattleMath.weightOrdinal(weight), (flags & 1) != 0, (flags & 2) != 0, (flags & 4) != 0, tick));
         }
         static void stance(int id, int index, float aimPitch) {
             String name = index >= 0 && index < MotionEvents.STANCES.size() ? MotionEvents.STANCES.get(index) : "";

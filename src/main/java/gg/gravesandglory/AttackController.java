@@ -52,6 +52,8 @@ final class AttackController extends AnimationController<GeoTroop> {
      * What the last frame showed, for the in-game checks (test-tools GeoKnightChecks): the strongest swing weight applied, the newest
      * swing's start tick, clip and clip time, and that clip's impact tick (its "timeline" impact marker, -1 if none). Never read in play.
      */
+    /** `still` at or below this counts as walking: the swing's standing footwork is off (weight exactly 0). */
+    static final double STILL_SETTLED = .001;
     double shownWeight, shownLegsWeight, shownT = -1, shownImpact = -1;
     /** That frame's animation time (world ticks plus partial), and how far into dying the troop was (deathTime plus partial; -1 alive). */
     double shownAt = -1, shownDeath = -1;
@@ -136,7 +138,10 @@ final class AttackController extends AnimationController<GeoTroop> {
             if (a == latest || a.startTick() == seenStart) w *= smooth((now - seenAt) / LATE_IN);
             if (w > 0) apply(clip, t, bones, (float) w);
             // Standing, the swing's own footwork (STYLE.md rule 4) plays over the legs: the step in, the hip drop, the step back.
-            double lw = w * smooth(stance.still());
+            // Once the gait has walked long enough for `still` to settle (<= STILL_SETTLED) the footwork is gone outright, not left as a
+            // smooth(still) residue of a few millionths: the walk checks (and any later layer that tests weight > 0) see exactly 0.
+            double sv = stance.still();
+            double lw = sv <= STILL_SETTLED ? 0 : w * smooth(sv);
             Animation legs = lw > 0 ? model.getAnimation(animatable, clip.name() + "_legs") : null;
             if (legs != null && t < legs.length()) {
                 apply(legs, t, bones, (float) lw);
@@ -164,9 +169,12 @@ final class AttackController extends AnimationController<GeoTroop> {
             var rot = b.rotationKeyFrames();
             if (!rot.xKeyframes().isEmpty()) {
                 BoneSnapshot init = bone.getInitialSnapshot();
-                bone.setRotX(lerp(bone.getRotX(), sample(rot.xKeyframes(), t) + init.getRotX(), w));
-                bone.setRotY(lerp(bone.getRotY(), sample(rot.yKeyframes(), t) + init.getRotY(), w));
-                bone.setRotZ(lerp(bone.getRotZ(), sample(rot.zKeyframes(), t) + init.getRotZ(), w));
+                float[] to = near(bone.getRotX(), bone.getRotY(), bone.getRotZ(), sample(rot.xKeyframes(), t) + init.getRotX(),
+                        sample(rot.yKeyframes(), t) + init.getRotY(), sample(rot.zKeyframes(), t) + init.getRotZ());
+                float[] r = principal(lerp(bone.getRotX(), to[0], w), lerp(bone.getRotY(), to[1], w), lerp(bone.getRotZ(), to[2], w));
+                bone.setRotX(r[0]);
+                bone.setRotY(r[1]);
+                bone.setRotZ(r[2]);
                 bone.markRotationAsChanged();
             }
             var pos = b.positionKeyFrames();
@@ -198,4 +206,32 @@ final class AttackController extends AnimationController<GeoTroop> {
     }
 
     private static float lerp(float a, float b, float w) { return a + (b - a) * w; }
+
+    private static final float PI = (float) Math.PI, TAU = 2 * PI;
+
+    /** {@code a} plus a whole number of turns, as near {@code ref} as it gets. */
+    private static float wrapTo(float a, float ref) { return a - TAU * Math.round((a - ref) / TAU); }
+
+    /**
+     * The Euler triple (radians, applied Z then Y then X as GeckoLib does) with the same rotation as (x, y, z) that lies nearest the pose (rx, ry, rz): each angle taken
+     * within half a turn of the reference, or the other triple of the pair, (x + 180, 180 - y, z + 180), when that is nearer. Blending two poses angle by angle is only
+     * sound between triples on the same branch: a pose written past the gimbal (the open aim stance has its torso at about (-178, 87, 180) degrees, the same rotation as
+     * (2, 93, 0)) lerped against one written plainly sweeps through a tumble that is nothing like either, for the ticks the blend lasts.
+     */
+    static float[] near(float rx, float ry, float rz, float x, float y, float z) {
+        float ax = wrapTo(x, rx), ay = wrapTo(y, ry), az = wrapTo(z, rz);
+        float bx = wrapTo(x + PI, rx), by = wrapTo(PI - y, ry), bz = wrapTo(z + PI, rz);
+        float da = sq(ax - rx) + sq(ay - ry) + sq(az - rz), db = sq(bx - rx) + sq(by - ry) + sq(bz - rz);
+        return db < da - 1e-4f ? new float[]{bx, by, bz} : new float[]{ax, ay, az};
+    }
+
+    /** The same rotation with Y inside a quarter turn (the branch the clips are written on and the head look and the other offsets are added to), when it was not already. */
+    static float[] principal(float x, float y, float z) {
+        if (Math.abs(y) <= PI / 2) return new float[]{x, y, z};
+        y = wrapTo(y, 0);
+        if (Math.abs(y) <= PI / 2) return new float[]{x, y, z};
+        return new float[]{wrapTo(x + PI, 0), (y > 0 ? PI : -PI) - y, wrapTo(z + PI, 0)};
+    }
+
+    private static float sq(float v) { return v * v; }
 }

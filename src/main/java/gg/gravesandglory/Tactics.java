@@ -84,7 +84,19 @@ final class Tactics {
         boolean shield=u.tags.contains("shield"),spear=u.tags.contains("spear");
         boolean formed=GravesAndGlory.Battle.walls(u,a.order)&&GravesAndGlory.Battle.horizontalDistance(u.mob.getPos(),b.formation(u))<=N.arrivalTolerance()*N.arrivalTolerance();
         String stance=BattleMath.stance(a.order,shield,spear,u.spec.ranged(),formed,aiming,shield&&u.mob.isUsingItem());
-        set(u,stance,stance.equals("ranged_aim")?pitch:0);
+        u.orderStance=stance;u.orderPitch=stance.equals("ranged_aim")?pitch:0;
+        String shown=BattleMath.shownStance(u.orderStance,b.time,u.stunnedUntil);
+        set(u,shown,shown.equals("stunned")?0:u.orderPitch);
+    }
+    /**
+     * A stunned troop (Unit.stunnedUntil: a Shield bash, Rise Again, a bear's roar) shows "stunned" over its order's stance, sent the tick the stun begins (this runs
+     * every tick, not only on the beat) and replaced by the order's stance (the last one a beat chose, orderStance) the tick it ends. A commander is never a Unit,
+     * so Statuses never stuns him and this never runs for him.
+     */
+    static void stunStance(GravesAndGlory.Unit u,long time){
+        String shown=BattleMath.shownStance(u.orderStance,time,u.stunnedUntil);
+        if(shown.equals("stunned"))set(u,shown,0);
+        else if(u.stance.equals("stunned"))set(u,shown,u.orderPitch);
     }
     /** How far (degrees) an aiming troop's aim moves before its clients hear of it again. */
     static final float AIM_STEP=.25f;
@@ -226,6 +238,7 @@ final class Tactics {
         if(u.lockedTarget!=null&&!u.lockedTarget.isAlive())u.lockedTarget=null; // a fallen enemy lies a while (Task 7): drop it at once, not on the next beat
         if(u.mob.getTarget()!=null&&!u.mob.getTarget().isAlive())u.mob.setTarget(null);
         if(u.looseAt>=0&&time>=u.looseAt)looseLate(battle,u,time); // Kort Q70: a bow troop's shot leaves its loose ticks after the beat that took it
+        stunStance(u,time);
         if(time%10!=u.slot%10){brace(battle,u);shieldStance(u);stretch(battle,u,battle.assignment(u),time);return;} // the shield and a wall troop's last stretch every tick; everything else on the unit's 10-tick beat
         u.place=null; // the beat reads the slot again
         var mob=u.mob;var s=u.squad;var a=battle.assignment(u);

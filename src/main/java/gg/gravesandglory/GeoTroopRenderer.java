@@ -75,7 +75,13 @@ final class GeoTroopRenderer<E extends MobEntity> extends GeoReplacedEntityRende
         String side = l.side() != null && SIDES.contains(l.side()) ? l.side() : "linen";
         geo.texture = new Identifier(MOD, "textures/entity/troop/" + animatable.troop + "_geo/t" + armour + "_" + side + ".png");
         render(e, yaw, tickDelta, matrices, consumers, light);
+        Probe pr = PROBE;
+        if (pr != null) pr.seen(e, geo.getBakedModel(geo.getModelResource(animatable)), tickDelta);
     }
+
+    /** Test harness only (null in play): called after each troop draw with the entity's baked model, whose bones then hold this draw's matrices once a probe asks for them. */
+    interface Probe { void seen(net.minecraft.entity.Entity e, BakedGeoModel model, float tickDelta); }
+    static volatile Probe PROBE;
 
     @Override
     public void preRender(MatrixStack poseStack, GeoTroop animatable, BakedGeoModel model, VertexConsumerProvider bufferSource, VertexConsumer buffer,
