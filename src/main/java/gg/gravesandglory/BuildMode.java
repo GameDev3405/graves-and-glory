@@ -174,6 +174,7 @@ final class BuildMode {
             if(player.isDisconnected()||s.getPlayerManager().getPlayer(player.getUuid())!=player)continue;
             player.changeGameMode(GameMode.CREATIVE);
             BuildHandbook.giveOnce(s,player);
+            PropPack.send(player); // the prop server resource pack, when -Dgg.propPack.file is set (S7)
             if(plan(player)==null)arrive(player,PLANS.get("lobby"));
         }
     }

@@ -19,6 +19,27 @@ The hardened supervisor, boot task, backup schedule, offsite copy and health che
 
 Backups: `C:\GGBuild\backups\gg-build\<timestamp>.zip` (the whole save, every dimension); keep 48 hours, then one per day for 14 days. The old per-world folders `gg-build-<world>` and `backups\<world>` from before 2026-11-03 are left as they were.
 
+## Prop resource pack (prop kit S7)
+The props are item models in a server resource pack, `dist/props/gg-props-<sha8>.zip`, built by `python tools/build_prop_pack.py` (it also writes `dist/props/gg-props-latest.sha1`). `PropPack` sends it to every player on join (in build mode once they are settled in a canvas) with the prompt "Graves and Glory props". It is off unless the server starts with `-Dgg.propPack.file`; game servers start without it and send nothing.
+
+System properties (Java flags before `-jar`):
+- `-Dgg.propPack.file=<zip or folder>`: the zip, or a folder holding `gg-props-latest.sha1` (for example a copy of `dist/props`), meaning the zip that file names. The sha1 is always computed from the file at start and on `/prop pack reload`, never typed by hand.
+- `-Dgg.propPack.url=<url>`: where players download it. Ending in `/` it is a folder and the pack name `gg-props-<sha8>.zip` is added, so each new pack gets a new URL; otherwise it is used as is.
+- `-Dgg.propPack.port=<port>` (optional): the server itself serves the pack over HTTP (the JDK's built-in server) at `http://<host>:<port>/gg-props-<sha8>.zip`. Without `gg.propPack.url` the URL is `http://<server-ip or localhost>:<port>/...`; with a blank `server-ip` that is `localhost`, which only works for a client on the same PC, so set `gg.propPack.url` to the public address for everyone else. The HTTP server stops with the Minecraft server.
+- `-Dgg.propPack.required=true|false`: default true on the builder server. A client that declines a required pack is disconnected; with false it may decline and plays without props (barriers only).
+
+Hosting options:
+- **Embedded port** (simplest): pick a free TCP port, open it the same way as the game port (a playit TCP tunnel or Tailscale), and set `gg.propPack.url` to the public address ending in `/`, for example `-Dgg.propPack.file=C:\GGBuild\props -Dgg.propPack.port=<port> -Dgg.propPack.url=http://<public host>:<public port>/`. Nothing else to run.
+- **External host** (later the planned proxy pack host, or any static file host with HTTPS): upload the zip, set `gg.propPack.url` to the folder URL ending in `/` (or the file URL), and leave `gg.propPack.port` unset. `gg.propPack.file` still points at the same zip on the server so the sha1 matches what players download.
+
+Updating the props (no jar change, no builder-pack reinstall):
+1. A new or changed prop def must reach the server: the next jar, or a data pack holding `data/gravesandglory/gg_props/<id>.json` in the save's `datapacks/` folder, then `/reload`. Art-only changes skip this step.
+2. `python tools/build_prop_pack.py`, then copy `gg-props-<sha8>.zip` and `gg-props-latest.sha1` into the server's pack folder (and upload the zip to the external host, if one is used).
+3. In game or over RCON: `/prop pack reload` (op 2). It re-reads the file, computes the new sha1 and resends the pack to everyone online; their client reloads resources and stays connected. Players joining later get the new pack.
+4. If the reload fails (missing file, sha1 not matching `gg-props-latest.sha1`), the last good pack stays and the error is printed.
+
+`start-build-server.ps1` does not pass these flags yet; add them to its `-ArgumentList` before `-jar` when the pack goes live.
+
 ## Operations
 - Start/stop: scheduled task `GGBuilderServer` (runs at machine boot as SYSTEM, hidden, so the server is up whenever the PC is on). The script relaunches after a crash; a clean `/stop` (or an RCON `stop`) ends it, and `Start-ScheduledTask GGBuilderServer` starts it again. Prefer the admin scripts below over killing `java`.
 - Admin console (added 2026-11-03): RCON listens on 25575 and is for this PC only. Two Windows Firewall block rules (IPv4 and IPv6, `Graves and Glory RCON 25575 ...`) drop everything but loopback, and 25575 is not in the playit tunnel. The password is in `C:\GGBuild\server.properties` and `C:\GGBuild\admin\rcon.secret`; both, and `admin\`, are readable by SYSTEM and Administrators only. Never paste it anywhere. Run these from an admin PowerShell on the server PC, or over ssh as `powershell -File C:\GGBuild\admin\<script>.ps1`:

@@ -23,6 +23,7 @@ class PropNoRegistry(unittest.TestCase):
     def test_no_registry_entries(self):
         files = prop_sources()
         self.assertTrue((SRC / 'BuildHandbook.java').is_file())
+        self.assertIn(SRC / 'PropPack.java', files, 'PropPack.java (S7) is missing')
         for f in files:
             text = f.read_text(encoding='utf8')
             for pattern, name in FORBIDDEN:
