@@ -57,6 +57,10 @@ started: 2026-11-01T19:41:08   mods: graves-and-glory-0.5.0.jar 37f29dc4
 - WARN: newest backup older than 24 hours, no backup for the current world, or 5 or more overload warnings. DOWN: no answer.
 - Read-only: it never starts, stops or signals anything.
 
+## Prop resource pack
+
+Off by default. To send the prop pack, add Java flags before `-jar` in `start-build-server.ps1` (it does not pass them yet): `-Dgg.propPack.file=<zip, or a folder with gg-props-latest.sha1>`, plus either `-Dgg.propPack.port=<free port>` (the server serves the zip itself; open that port like the game port) or an external host, and `-Dgg.propPack.url=<public URL, ending in / for a folder>`. `-Dgg.propPack.required=false` lets players decline. Update: rebuild with `python tools/build_prop_pack.py`, copy the zip and `gg-props-latest.sha1` into the pack folder (upload the zip too when hosted elsewhere), then RCON `prop pack reload`. No restart. Details and hosting options: `docs/BUILDER-SERVER.md`, "Prop resource pack".
+
 ## Stopping and updating
 
 - Stop for good: stop the `GGBuilderServer` task (or close the supervisor window), then stop the Java process that the supervisor started; its PID is in `server.pid`. Do not stop other Java processes on this PC (the Kingdom servers and any game clients are separate).

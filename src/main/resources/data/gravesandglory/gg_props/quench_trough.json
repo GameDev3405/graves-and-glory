@@ -1,0 +1,15 @@
+{
+  "id": "quench_trough",
+  "category": "smithy",
+  "name": "Quench Trough",
+  "size": [2, 1, 1],
+  "parts": [
+    {"model": "quench_trough", "cmd": 7310041, "glow": false}
+  ],
+  "solid": [
+    [0, 0, 0],
+    [1, 0, 0]
+  ],
+  "lights": [],
+  "effects": []
+}

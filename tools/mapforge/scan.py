@@ -51,12 +51,17 @@ class Grid:
         c = self.blocks.get((x, y, z))
         return c is not None and block_name(c.state) == 'minecraft:water'
 
+    def barrier(self, x, y, z):
+        c = self.blocks.get((x, y, z))
+        return c is not None and block_name(c.state) == 'minecraft:barrier'
+
     def stands(self, x, z):
-        """y of every standing spot in the column: solid below, two free cells, not under 3+ blocks of water."""
+        """y of every standing spot in the column: solid below, two free cells, not under 3+ blocks of water. A barrier
+        (a prop's solid cell, Props.place) is solid and never a floor: routes go round props, not through or over them."""
         out = []
         for y in self.cols.get((x, z), ()):
             s = y + 1
-            if not self.solid(x, y, z) or self.solid(x, s, z) or self.solid(x, s + 1, z):
+            if not self.solid(x, y, z) or self.barrier(x, y, z) or self.solid(x, s, z) or self.solid(x, s + 1, z):
                 continue
             d = 0
             while d < 3 and self.water(x, s + d, z):

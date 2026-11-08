@@ -5,6 +5,7 @@ The extra mods are Modrinth download entries listed in tools/builder-server/buil
 Local file only; it publishes nothing. Not part of the game release.
 
     python tools/builder-server/make_builder_pack.py [--source PACK.mrpack] [--out PACK-builder.mrpack]
+    python tools/builder-server/make_builder_pack.py --server-jars   (prints the jars that belong in the server's mods/)
 """
 import argparse, json, pathlib, re, sys, zipfile
 
@@ -18,7 +19,13 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--source', type=pathlib.Path, help='game pack to start from (default dist/graves-and-glory-<mod_version>.mrpack)')
     ap.add_argument('--out', type=pathlib.Path, help='output (default: source name with -builder before .mrpack)')
+    ap.add_argument('--server-jars', action='store_true', help="print the builder jars (side server or both) for the server's mods/ and exit")
     args = ap.parse_args()
+    if args.server_jars:
+        for m in json.loads(MODS.read_text(encoding='utf8'))['mods']:
+            if m['side'] in ('server', 'both'):
+                print(m['filename'])
+        return
     version = re.search(r'^mod_version=(.+)$', (ROOT / 'gradle.properties').read_text(encoding='utf8'), re.M).group(1).strip()
     source = args.source or ROOT / 'dist' / f'graves-and-glory-{version}.mrpack'
     out = args.out or source.with_name(source.name[:-len('.mrpack')] + '-builder.mrpack')
