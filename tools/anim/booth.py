@@ -107,13 +107,17 @@ def build(repo, config_path, target, out_root="work/booth", batch=None, clips=No
         raise BoothError("these inputs are not committed, so the batch would not match the lane commit: %s"
                          % ", ".join(dirty))
 
+    if target in ("main", "master"):
+        raise BoothError("the booth never targets %s; name the branch the lane merges into" % target)
     lane_sha = bg.resolve(repo, "HEAD")
     lane = bg._text(bg._git(repo, "rev-parse", "--abbrev-ref", "HEAD")).strip()
+    if lane == "HEAD":
+        raise BoothError("check out the lane branch first: the worktree is on a detached commit")
     target_sha = bg.resolve(repo, target)
     by_name = {c.name: c for c in cfg.clips}
 
     if batch is None:
-        rnd, old = 1, {}
+        rnd, old, partial = 1, {}, clips is not None
         batch = "%s-%s-%s" % (cfg.troop, datetime.date.today().strftime("%Y%m%d"), lane_sha[:7])
         batch_dir = os.path.join(out_abs, batch)
         if os.path.exists(batch_dir):
@@ -147,7 +151,9 @@ def build(repo, config_path, target, out_root="work/booth", batch=None, clips=No
             raise BoothError("the config no longer lists clips of batch %s: %s" % (batch, ", ".join(gone)))
         previous_sha = prev["submitted_sha"]
         created_at = prev["created_at"]
-        names = [c.name for c in cfg.clips]      # a clip added to the config since the last round joins the batch
+        partial = bool(prev.get("partial"))
+        # A batch limited with --clips keeps its clips. A full batch also takes clips added to the config since.
+        names = [c.name for c in cfg.clips if not partial or c.name in old]
 
     shown = ["art/anim/%s" % cfg.family, *cfg.input_paths(), cfg_rel]
     others = bg.other_files(repo, target_sha, lane_sha, shown)
@@ -170,15 +176,17 @@ def build(repo, config_path, target, out_root="work/booth", batch=None, clips=No
                 if (was["previous_sha"], was["reference_sha"] or target_sha) != (previous_sha, target_sha):
                     render = None
             ref = srcs.reference(clip, target_sha)
+            # A clip that was in no earlier round was never rejected: its Previous is the target branch.
+            before = previous_sha if was is not None else target_sha
             if render is None:
-                render = br.render_clip({"new": srcs.new(clip), "previous": srcs.previous(clip, previous_sha),
+                render = br.render_clip({"new": srcs.new(clip), "previous": srcs.previous(clip, before),
                                          "reference": ref}, cfg.foot_bones, ss=ss)
             sheet = "round-%d/%s.webp" % (rnd, name)
             sections = bp.pack_sheet(render, os.path.join(stage, name + ".webp"))
             entries.append({"name": name, "ticks": render.ticks, "impact_tick": clip.impact_tick,
                             "frame_hash": render.frame_hash, "sheet": sheet, "changed": True, "round": rnd,
                             "sections": sections, "numbers": render.numbers, "flags": render.flags,
-                            "previous_sha": previous_sha, "reference_sha": target_sha if ref is not None else None})
+                            "previous_sha": before, "reference_sha": target_sha if ref is not None else None})
 
         def sheet_file(e):
             if e["changed"]:
@@ -197,7 +205,7 @@ def build(repo, config_path, target, out_root="work/booth", batch=None, clips=No
 
     manifest = {"batch": batch, "round": rnd, "troop": cfg.troop, "lane": lane, "submitted_sha": lane_sha,
                 "target": target, "target_sha": target_sha, "previous_sha": previous_sha, "created_at": created_at,
-                "other_files": others, "clips": entries}
+                "partial": partial, "other_files": others, "clips": entries}
     db = os.path.join(batch_dir, "db")
     shutil.rmtree(db, ignore_errors=True)
     doc = {k: v for k, v in manifest.items() if k != "clips"}
@@ -232,11 +240,19 @@ def build_parser():
 
 
 def decide_dir(repo, batch_dir):
-    """The decision for a batch folder: its manifest.json, its verdict.json if present, and the lane's HEAD."""
+    """The decision for a batch folder: its manifest.json, its verdict.json if present, and the lane branch's tip.
+    The tip is read from the lane branch itself, so the answer is the same from any checkout of the repository."""
     mpath = os.path.join(batch_dir, "manifest.json")
     if not os.path.isfile(mpath):
         raise BoothError("no manifest.json in %s" % batch_dir)
     manifest = _read_json(mpath)
+    lane = manifest.get("lane") if isinstance(manifest, dict) else None
+    if not isinstance(lane, str) or not lane or lane == "HEAD":
+        raise BoothError("this batch names no lane branch; build it again from the lane branch")
+    try:
+        tip = bg.resolve(os.path.abspath(repo), "refs/heads/" + lane)
+    except BoothError:
+        raise BoothError("the lane branch of this batch is not in this repository")
     vpath = os.path.join(batch_dir, "verdict.json")
     verdict = None
     if os.path.isfile(vpath):
@@ -246,7 +262,7 @@ def decide_dir(repo, batch_dir):
             return {"action": "invalid", "problems": ["verdict.json is not valid JSON"]}
         if verdict is None:
             return {"action": "invalid", "problems": ["verdict is not an object"]}
-    return bv.decide(manifest, verdict, bg.resolve(os.path.abspath(repo), "HEAD"))
+    return bv.decide(manifest, verdict, tip)
 
 
 def main(argv=None):

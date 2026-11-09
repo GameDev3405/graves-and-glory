@@ -207,9 +207,10 @@ function realStore(db) {
   const docs = s => s.docs.map(d => ({ id: d.id, doc: d.data() })).filter(x => x.doc);
   return {
     watchBatches: (cb, err) => db.collection("batches").onSnapshot(s => cb(docs(s), s.metadata.fromCache), err),
-    watchVerdicts: (cb, err) => db.collection("verdicts").onSnapshot(s => cb(Object.fromEntries(docs(s).map(x => [x.id, x.doc]))), err),
+    watchVerdicts: (cb, err) => db.collection("verdicts").onSnapshot(s => cb(Object.fromEntries(docs(s).map(x => [x.id, x.doc])), s.metadata.fromCache), err),
     watchClips: (id, cb, err) => db.collection("batches/" + id + "/clips").onSnapshot(s => cb(docs(s).map(x => x.doc)), err),
     saveVerdict: (id, doc) => db.doc("verdicts/" + id).set(doc),
+    readVerdict: id => db.doc("verdicts/" + id).get().then(d => d.exists ? d.data() : null),
     sheet: clip => new Promise((res, rej) => {
       if (!/^[A-Za-z0-9]{32}$/.test(str(clip.sheet_asset))) return rej(new Error("no sheet"));
       const im = new Image();
@@ -239,9 +240,10 @@ function demoStore() {
   return {
     failSheet: false,
     watchBatches: cb => { later(() => cb(batches, false)); return () => {}; },
-    watchVerdicts: cb => { later(() => cb(verdicts)); return () => {}; },
+    watchVerdicts: cb => { later(() => cb(verdicts, false)); return () => {}; },
     watchClips: (id, cb) => { later(() => cb(id === batches[0].id ? clips : [clips[0]])); return () => {}; },
     saveVerdict: (id, doc) => new Promise(res => later(() => { verdicts[id] = doc; res(); })),
+    readVerdict: id => Promise.resolve(verdicts[id] || null),
     sheet(clip) { return new Promise((res, rej) => setTimeout(() => this.failSheet && clip.name === "walk" ? rej(new Error("demo")) : res({ demo: clip.demo }), 150)); },
   };
 }
@@ -289,26 +291,47 @@ function sheetDraw(cv, image, clip, viewer, f, far) {
 // ---- state ---------------------------------------------------------------------------------------------------
 let store = null;
 const S = { batches: null, verdicts: {}, open: null, clips: null, far: false, cards: [], sig: "", seen: new Set(),
-  writes: {}, confirm: false, slow: false, dead: false, unsubClips: null, ui: null };
+  writes: {}, live: false, confirm: false, slow: false, dead: false, unsubClips: null, ui: null };
 const batchOf = id => (S.batches || []).find(b => b.id === id) || null;
 const verdictOf = id => norm(S.verdicts[id]);
 const busy = id => { const w = S.writes[id]; return !!w && (w.busy || w.failed); };
 const validClip = c => c && typeof c.name === "string" && typeof c.frame_hash === "string" && Number.isInteger(c.ticks) && c.ticks > 0 && Array.isArray(c.sections);
 
+// Saving. The whole verdict document is written, one write at a time. Verdict snapshots are ignored while a write
+// is on its way or has failed, so a half-saved decision is never replaced on screen; "missed" records that one came,
+// and the document is then read again from the server once the write is through.
+const writeOf = id => S.writes[id] || (S.writes[id] = { busy: false, dirty: false, failed: false, missed: false });
+const shown = () => { S.open ? syncBatch() : renderQueue(); };
+function take(id, doc) { if (doc) S.verdicts[id] = doc; else delete S.verdicts[id]; }
 function push(id) {
-  const w = S.writes[id] || (S.writes[id] = { busy: false, dirty: false, failed: false });
+  const w = writeOf(id);
   if (w.busy) { w.dirty = true; return; }
-  w.busy = true; w.failed = false; syncSave();
+  w.busy = true; w.failed = false; shown();
   store.saveVerdict(id, S.verdicts[id]).then(() => {
     w.busy = false;
-    if (w.dirty) { w.dirty = false; push(id); } else syncSave();
-  }, () => { w.busy = false; w.dirty = false; w.failed = true; syncSave(); });
+    if (w.dirty) { w.dirty = false; return push(id); }
+    if (!w.missed) return shown();
+    w.missed = false; w.busy = true;
+    store.readVerdict(id).then(doc => { w.busy = false; if (w.dirty) { w.dirty = false; return push(id); } take(id, doc); shown(); },
+      () => { w.busy = false; shown(); });
+  }, () => { w.busy = false; w.dirty = false; w.failed = true; shown(); });
+}
+// Retry after a failed save: look at the server first, and never write over a review that was sent meanwhile.
+function retry(id) {
+  const w = writeOf(id), b = batchOf(id);
+  if (w.busy || !w.failed) return;
+  w.busy = true; shown();
+  store.readVerdict(id).then(doc => {
+    w.busy = false;
+    if (b && Booth.isLocked(b.doc, norm(doc))) { w.failed = false; w.missed = false; take(id, doc); return shown(); }
+    push(id);
+  }, () => { w.busy = false; shown(); });
 }
 function edit(fn) {
   const b = batchOf(S.open);
   if (!b) return;
   const cur = verdictOf(b.id);
-  if (Booth.isLocked(b.doc, cur)) return;
+  if (!S.live || Booth.isLocked(b.doc, cur)) return;
   S.verdicts[b.id] = fn(cur);
   S.confirm = false;
   push(b.id);
@@ -382,7 +405,7 @@ function approveAll() {
 }
 function send() {
   const b = batchOf(S.open);
-  if (!b || !Booth.canSend(b.doc, ordered(b).filter(c => !c.missing), verdictOf(b.id))) return;
+  if (!b || !S.live || !Booth.canSend(b.doc, ordered(b).filter(c => !c.missing), verdictOf(b.id))) return;
   const cur = verdictOf(b.id), names = new Set(b.doc.clip_order);
   // Only this batch's clips travel: an entry for a clip the batch no longer lists would make the verdict invalid.
   const doc = { sent_round: b.doc.round, clips: Object.fromEntries(Object.entries(cur.clips).filter(([n]) => names.has(n))) };
@@ -396,7 +419,7 @@ function syncSave() {
   if (!ui) return;
   ui.save.className = "save" + (w && w.failed ? " fail" : "");
   ui.save.replaceChildren(w && w.failed ? "Not saved" : w && w.busy ? "Saving…" : w ? "Saved" : "",
-    w && w.failed ? h("button", { type: "button", class: "small", text: "Retry", onclick: () => push(S.open) }) : "");
+    w && w.failed ? h("button", { type: "button", class: "small", text: "Retry", onclick: () => retry(S.open) }) : "");
 }
 
 function buildCard(clip) {
@@ -469,7 +492,7 @@ function syncBatch() {
   const ui = S.ui, b = batchOf(S.open);
   if (!ui) return;
   if (!b) { closeBatch(); return renderQueue(); }
-  const v = verdictOf(b.id), locked = Booth.isLocked(b.doc, v), clips = ordered(b), real = clips.filter(c => !c.missing);
+  const v = verdictOf(b.id), locked = Booth.isLocked(b.doc, v), frozen = locked || !S.live, w = S.writes[b.id], clips = ordered(b), real = clips.filter(c => !c.missing);
   ui.title.replaceChildren(str(b.doc.troop) || b.id, h("span", { class: "sub", text: [b.id, str(b.doc.lane), "round " + str(b.doc.round)].filter(Boolean).join(" · ") }));
   const files = (Array.isArray(b.doc.other_files) ? b.doc.other_files : []).filter(f => typeof f === "string");
   const wasOpen = ui.files.open;
@@ -490,31 +513,32 @@ function syncBatch() {
   ui.count.textContent = S.clips === null ? "Loading clips…" : decided + " of " + clips.length + " decided";
   for (const c of S.cards) {
     if (c.clip.missing) continue;
-    const st = Booth.clipState(c.clip, v), e = rejected(v, c.clip), off = locked || c.sheet !== "ok";
+    const st = Booth.clipState(c.clip, v), e = rejected(v, c.clip), off = frozen || c.sheet !== "ok";
     c.el.className = "card" + (st === "undecided" ? "" : " " + st);
     c.approve.classList.toggle("on", st === "approved"); c.reject.classList.toggle("on", st === "rejected");
     c.approve.disabled = c.reject.disabled = off;
     c.why.hidden = !e;
     const tags = e ? known(e.tags) : [], pins = e ? pinsOf(e, c.clip) : [];
-    c.tagButtons.forEach(btn => { const on = tags.includes(btn.dataset.tag); btn.classList.toggle("on", on); btn.setAttribute("aria-pressed", String(on)); btn.disabled = locked; });
-    c.pin.disabled = locked;
+    c.tagButtons.forEach(btn => { const on = tags.includes(btn.dataset.tag); btn.classList.toggle("on", on); btn.setAttribute("aria-pressed", String(on)); btn.disabled = frozen; });
+    c.pin.disabled = frozen;
     c.tagCount = tags.length;
     c.pin.textContent = "Mark tick " + Math.floor(c.t) + (tags.length ? " · " + plural(tags.length, "tag", "tags") : "");
     c.pinned.replaceChildren(...pins.map((p, i) => h("li", {}, h("span", { text: "tick " + p.tick }), h("span", { text: p.tags.map(k => TAG_LABEL[k]).join(", ") || "no tag" }),
-      h("button", { type: "button", class: "small", text: "remove", disabled: locked, onclick: () => edit(x => Booth.unpin(x, c.clip, i)) }))));
+      h("button", { type: "button", class: "small", text: "remove", disabled: frozen, onclick: () => edit(x => Booth.unpin(x, c.clip, i)) }))));
     const last = Math.max(1, c.clip.ticks - 1), mark = (tick, cls) => { const m = h("i", { class: cls, title: cls ? "impact" : "pin" }); m.style.left = (tick / last * 100) + "%"; return m; };
     c.marks.replaceChildren(Number.isInteger(c.clip.impact_tick) ? mark(c.clip.impact_tick, "impact") : "", ...pins.map(p => mark(p.tick, "")));
   }
   const unseen = S.cards.filter(c => !S.seen.has(c.key)).length, undecided = real.filter(c => Booth.clipState(c, v) === "undecided").length;
   const can = Booth.canSend(b.doc, real, v), nRej = real.filter(c => Booth.clipState(c, v) === "rejected").length;
-  ui.all.disabled = locked || !undecided || unseen > 0 || S.clips === null;
-  ui.send.disabled = !can; ui.send.hidden = S.confirm && can;
+  ui.all.disabled = frozen || !undecided || unseen > 0 || S.clips === null;
+  ui.send.disabled = !can || !S.live; ui.send.hidden = S.confirm && can;
   ui.confirm.hidden = !(S.confirm && can);
   ui.confirmText.textContent = "Send " + (real.length - nRej) + " approved, " + nRej + " rejected? This locks the batch until the lane sends a new round.";
-  ui.hint.textContent = locked ? "" : S.clips === null ? "" : unseen > 0 && undecided ? "Approve all unlocks once every clip has been on screen (" + unseen + " to go)." : undecided ? plural(undecided, "clip", "clips") + " still to decide." : "Every clip is decided.";
+  ui.hint.textContent = locked ? "" : !S.live ? "Getting the latest review data. Decisions unlock when it arrives." : S.clips === null ? "" : unseen > 0 && undecided ? "Approve all unlocks once every clip has been on screen (" + unseen + " to go)." : undecided ? plural(undecided, "clip", "clips") + " still to decide." : "Every clip is decided.";
   ui.status.hidden = !locked;
-  ui.status.className = "note " + (nRej ? "bad" : "ok");
-  ui.status.textContent = !locked ? "" : nRej ? "Review sent: " + plural(nRej, "clip", "clips") + " rejected. The lane agent reworks them and sends a new round; this batch reopens then."
+  ui.status.className = "note " + (nRej || (w && w.failed) ? "bad" : "ok");
+  ui.status.textContent = !locked ? "" : w && w.failed ? "Review not sent: saving it failed. Press Retry at the top."
+    : w && w.busy ? "Sending the review…" : nRej ? "Review sent: " + plural(nRej, "clip", "clips") + " rejected. The lane agent reworks them and sends a new round; this batch reopens then."
     : "Review sent: every clip approved. The lane agent merges this lane.";
   syncSave();
 }
@@ -542,10 +566,12 @@ function fail() { S.dead = true; closeBatch(); renderQueue(); }
 function boot() {
   renderQueue();
   const timer = setTimeout(() => { S.slow = true; if (!S.open) renderQueue(); }, 10000);
-  store.watchVerdicts(map => {
+  store.watchVerdicts((map, cached) => {
+    if (!cached) S.live = true;
+    for (const id in S.writes) if (busy(id)) S.writes[id].missed = true;
     for (const id in S.verdicts) if (!busy(id) && !(id in map)) delete S.verdicts[id];
     for (const id in map) if (!busy(id)) S.verdicts[id] = map[id];
-    S.open ? syncBatch() : renderQueue();
+    shown();
   }, fail);
   store.watchBatches((list, cached) => {
     if (!cached) { clearTimeout(timer); S.slow = false; }
@@ -556,6 +582,8 @@ function boot() {
 }
 (async () => {
   if (DEMO) { store = demoStore(); return boot(); }
+  // #test: a check script supplies the store and reads the state. It shows no data of its own.
+  if (location.hash === "#test") { Booth.start = st => { store = st; boot(); }; Booth.peek = () => S; Booth.loadSheet = loadSheet; return; }
   let db = null;
   try { db = window.claude && typeof window.claude.use === "function" ? await window.claude.use("db") : null; } catch (e) { db = null; }
   if (!db) return message("Sign in to claude.ai to review.");

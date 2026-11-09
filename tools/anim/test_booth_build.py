@@ -177,6 +177,39 @@ class BuildTest(unittest.TestCase):
         with self.assertRaises(BoothError):
             self.build(batch="rig-20000101-abcdef0")
 
+    def test_later_round_keeps_a_clips_batch_to_its_clips(self):
+        m1 = self.build(clips=["wave"])
+        self.assertTrue(m1["partial"])
+        nudge(self.repo, "head_bob", "head")
+        commit(self.repo, "touch another clip")
+        m2 = self.build(batch=m1["batch"])
+        self.assertEqual([c["name"] for c in m2["clips"]], ["wave"])
+        self.assertTrue(m2["partial"])
+
+    def test_clip_added_in_a_later_round_compares_against_target(self):
+        m1 = self.build()
+        self.assertFalse(m1["partial"])
+        data = read_json(os.path.join(self.repo, *ANIM.split("/")))
+        data["animations"]["nod"] = data["animations"]["head_bob"]
+        write_json(self.repo, ANIM, data)
+        write_json(self.repo, CFG, config([{"name": "arm_swing", "impact_tick": 7, "reference": "head_bob"},
+                                           {"name": "head_bob"}, {"name": "wave"}, {"name": "nod"}]))
+        commit(self.repo, "add nod")
+        m2 = self.build(batch=m1["batch"])
+        n = self.clip(m2, "nod")
+        self.assertEqual((n["previous_sha"], n["changed"], n["round"]), (self.target_sha, True, 2))
+        self.assertEqual(self.viewers(m2, "nod"), {"new"})
+
+    def test_main_target_and_detached_head_refused(self):
+        git(self.repo, "branch", "main", "target")
+        with self.assertRaises(BoothError) as cm:
+            booth.build(self.repo, CFG, "main", ss=1)
+        self.assertIn("main", str(cm.exception))
+        git(self.repo, "checkout", "-q", "--detach")
+        with self.assertRaises(BoothError) as cm:
+            self.build()
+        self.assertIn("branch", str(cm.exception))
+
     def test_size_budget(self):
         with self.assertRaises(BoothError) as cm:
             self.build(budget_bytes=1000)

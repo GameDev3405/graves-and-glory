@@ -44,7 +44,8 @@ class DecideTest(unittest.TestCase):
 
     def test_merge_when_all_approved_sent_and_tip_matches(self):
         self.assertEqual(bv.decide(manifest(), verdict(), TIP),
-                         {"action": "merge", "message": "Kort approved in review booth, batch rig-20261109-abcdef0"})
+                         {"action": "merge", "sha": TIP,
+                          "message": "Kort approved in review booth, batch rig-20261109-abcdef0"})
 
     def test_wait_when_not_sent(self):
         self.assertEqual(bv.decide(manifest(), verdict(sent=0), TIP), {"action": "wait", "undecided": []})
@@ -139,6 +140,9 @@ class DecideCliTest(unittest.TestCase):
         os.makedirs(self.dir)
         m = manifest()
         m["submitted_sha"] = self.tip
+        m["lane"] = git(self.repo, "rev-parse", "--abbrev-ref", "HEAD").strip()
+        self.lane = m["lane"]
+        self.m = m
         with open(os.path.join(self.dir, "manifest.json"), "w", encoding="utf-8") as f:
             json.dump(m, f)
 
@@ -162,6 +166,28 @@ class DecideCliTest(unittest.TestCase):
         commit(self.repo, "moved")
         code, got, _ = self.run_cli(verdict())
         self.assertEqual((code, got["action"]), (0, "resubmit"))
+
+    def test_cli_decide_follows_the_lane_branch_not_the_checkout(self):
+        git(self.repo, "checkout", "-q", "-b", "elsewhere")
+        put(self.repo, "a.txt", "z")
+        commit(self.repo, "other work")
+        code, got, _ = self.run_cli(verdict())
+        self.assertEqual((code, got["action"], got.get("sha")), (0, "merge", self.tip))
+        git(self.repo, "checkout", "-q", self.lane)
+        put(self.repo, "a.txt", "y")
+        commit(self.repo, "lane moved")
+        git(self.repo, "checkout", "-q", "elsewhere")
+        code, got, _ = self.run_cli(verdict())
+        self.assertEqual((code, got["action"]), (0, "resubmit"))
+
+    def test_cli_decide_refuses_a_batch_without_a_lane_branch(self):
+        for lane in ("HEAD", "no-such-branch", None, 7):
+            m = dict(self.m, lane=lane)
+            with open(os.path.join(self.dir, "manifest.json"), "w", encoding="utf-8") as f:
+                json.dump(m, f)
+            code, got, err = self.run_cli(verdict())
+            self.assertEqual(code, 2, lane)
+            self.assertTrue(err.startswith("error:"), lane)
 
     def test_cli_verdict_not_json(self):
         with open(os.path.join(self.dir, "verdict.json"), "w", encoding="utf-8") as f:

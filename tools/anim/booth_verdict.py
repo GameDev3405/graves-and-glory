@@ -91,4 +91,4 @@ def decide(manifest, verdict, lane_tip):
                 for n in names if given[n]["verdict"] == "rejected"]
     if rejected:
         return {"action": "fix", "clips": rejected}
-    return {"action": "merge", "message": "Kort approved in review booth, batch %s" % manifest["batch"]}
+    return {"action": "merge", "sha": manifest["submitted_sha"], "message": "Kort approved in review booth, batch %s" % manifest["batch"]}
