@@ -222,7 +222,7 @@ def build(repo, config_path, target, out_root="work/booth", batch=None, clips=No
 
     manifest = {"batch": batch, "round": rnd, "troop": cfg.troop, "lane": lane, "submitted_sha": lane_sha,
                 "target": target, "target_sha": target_sha, "previous_sha": previous_sha, "created_at": created_at,
-                "partial": partial, "other_files": others, "clips": entries}
+                "partial": partial, "other_files": others, "inputs": shown, "clips": entries}
     db = os.path.join(batch_dir, "db")
     shutil.rmtree(db, ignore_errors=True)
     doc = {k: v for k, v in manifest.items() if k != "clips"}
@@ -279,7 +279,15 @@ def decide_dir(repo, batch_dir):
             return {"action": "invalid", "problems": ["verdict.json is not valid JSON"]}
         if verdict is None:
             return {"action": "invalid", "problems": ["verdict is not an object"]}
-    return bv.decide(manifest, verdict, tip)
+    result = bv.decide(manifest, verdict, tip)
+    if result["action"] == "land":
+        # land.py rebases the lane on main: if main changed what Kort was shown since the batch was built, what lands
+        # would differ from what he approved, so the batch is built again on the new main first.
+        moved = bg.changed_between(os.path.abspath(repo), manifest["target_sha"], bg.resolve(os.path.abspath(repo), "refs/heads/main"),
+                                   result["inputs"])
+        if moved:
+            return {"action": "resubmit", "reason": "main changed reviewed inputs since the batch was built: %s" % ", ".join(moved)}
+    return result
 
 
 def main(argv=None):

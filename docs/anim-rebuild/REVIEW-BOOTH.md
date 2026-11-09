@@ -22,8 +22,9 @@ there, and `booth.py decide` turns his verdict into the lane's next step.
    found in it.
 7. **Act** on `python tools/anim/booth.py decide --batch-dir work/booth/<batch>`:
    - `land`: the batch targets `main` (the usual case since 2026-11-09: lanes branch from `main`). Run the printed
-     `python tools/land.py <lane>`; it lands the lane tip, which `decide` has just confirmed is the commit Kort
-     reviewed. Then delete the batch's uploaded sheets from the booth.
+     `python tools/land.py <lane>`. `decide` has checked that the lane tip is the commit Kort reviewed and that
+     `main` has not changed any of the batch's shown files since the build (else it says `resubmit`); land.py rebases
+     the lane on `main`, so the landed sha differs but the reviewed files are the same. Then delete the batch's uploaded sheets from the booth.
    - `merge`: merge the printed `sha` (the commit Kort reviewed, not whatever the branch points at by then)
      locally into the batch's target branch with the printed message, then delete the
      batch's uploaded sheets from the booth.

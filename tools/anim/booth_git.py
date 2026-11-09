@@ -54,6 +54,14 @@ def other_files(repo, target_sha, lane_sha, shown):
     return sorted(n for n in names if not _under(n, shown))
 
 
+def changed_between(repo, a, b, paths):
+    """Those files equal to or under paths that differ between commits a and b, sorted."""
+    if not paths:
+        return []
+    r = _git(repo, "-c", "core.quotepath=false", "diff", "--name-only", "-z", a, b, "--", *paths)
+    return sorted(n for n in _text(r).split("\0") if n)
+
+
 def dirty_inputs(repo, paths):
     """Those of paths that are untracked, missing, modified or staged, in the order given."""
     if not paths:

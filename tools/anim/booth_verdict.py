@@ -6,6 +6,7 @@ so text planted in a verdict cannot reach an agent through an error message.
 """
 from __future__ import annotations
 
+import shlex
 import re
 
 TAGS = ("too_stiff", "too_slow", "too_fast", "clipping", "wrong_weapon_angle", "no_weight", "feet_slide",
@@ -96,5 +97,6 @@ def decide(manifest, verdict, lane_tip):
     if manifest.get("target") == "main":
         lane = manifest["lane"]
         return {"action": "land", "sha": manifest["submitted_sha"], "lane": lane,
-                "command": "python tools/land.py %s" % lane, "message": message}
+                "command": "python tools/land.py %s" % shlex.quote(lane), "inputs": list(manifest.get("inputs") or []),
+                "message": message}
     return {"action": "merge", "sha": manifest["submitted_sha"], "message": message}

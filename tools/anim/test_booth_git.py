@@ -95,6 +95,16 @@ class GitTest(unittest.TestCase):
         got = bg.other_files(self.repo, self.target_sha, lane, ["art/anim/spear", "assets", "src", "art/anim/common"])
         self.assertEqual(got, ["art/anim/spearman/x.py"])
 
+    def test_changed_between_sees_only_listed_paths(self):
+        git(self.repo, "checkout", "-q", "target")
+        put(self.repo, "src/Later.java", "target moved on")
+        later = commit(self.repo, "unrelated")
+        self.assertEqual(bg.changed_between(self.repo, self.target_sha, later, ["assets/x.geo.json", "art/anim/spear"]), [])
+        put(self.repo, "assets/x.geo.json", "main changed the geo")
+        moved = commit(self.repo, "geo on target")
+        self.assertEqual(bg.changed_between(self.repo, self.target_sha, moved, ["assets/x.geo.json", "art/anim/spear"]),
+                         ["assets/x.geo.json"])
+
     def test_other_files_uses_merge_base(self):
         git(self.repo, "checkout", "-q", "target")
         put(self.repo, "src/Later.java", "target moved on")

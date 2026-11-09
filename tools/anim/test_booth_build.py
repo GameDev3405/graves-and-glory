@@ -6,6 +6,7 @@ import shutil
 import sys
 import tempfile
 import unittest
+from unittest import mock
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
@@ -199,6 +200,23 @@ class BuildTest(unittest.TestCase):
         n = self.clip(m2, "nod")
         self.assertEqual((n["previous_sha"], n["changed"], n["round"]), (self.target_sha, True, 2))
         self.assertEqual(self.viewers(m2, "nod"), {"new"})
+
+    def test_main_target_lands_unless_main_changed_reviewed_inputs(self):
+        git(self.repo, "branch", "main", "target")
+        m = booth.build(self.repo, CFG, "main", ss=1)
+        self.assertEqual(m["target"], "main")
+        self.assertIn(ANIM, m["inputs"])
+        land = {"action": "land", "sha": m["submitted_sha"], "lane": "lane", "inputs": m["inputs"]}
+        with mock.patch.object(booth.bv, "decide", return_value=dict(land)):
+            git(self.repo, "checkout", "-q", "main")
+            put(self.repo, "src/Other.java", "unrelated")
+            commit(self.repo, "main moves on elsewhere")
+            self.assertEqual(booth.decide_dir(self.repo, self.folder(m))["action"], "land")
+            nudge(self.repo, "head_bob", "head")
+            commit(self.repo, "main changes a reviewed clip")
+            got = booth.decide_dir(self.repo, self.folder(m))
+        self.assertEqual(got["action"], "resubmit")
+        self.assertIn(ANIM, got["reason"])
 
     def test_master_target_and_detached_head_refused(self):
         git(self.repo, "branch", "master", "target")

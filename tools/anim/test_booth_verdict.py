@@ -48,10 +48,11 @@ class DecideTest(unittest.TestCase):
                           "message": "Kort approved in review booth, batch rig-20261109-abcdef0"})
 
     def test_land_when_approved_batch_targets_main(self):
-        m = dict(manifest(), target="main", lane="anim/troop-x")
+        m = dict(manifest(), target="main", lane="anim/troop-x", inputs=["art/anim/fam"])
         self.assertEqual(bv.decide(m, verdict(), TIP),
                          {"action": "land", "sha": TIP, "lane": "anim/troop-x",
                           "command": "python tools/land.py anim/troop-x",
+                          "inputs": ["art/anim/fam"],
                           "message": "Kort approved in review booth, batch rig-20261109-abcdef0"})
 
     def test_wait_when_not_sent(self):
