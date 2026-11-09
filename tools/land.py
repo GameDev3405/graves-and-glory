@@ -198,6 +198,7 @@ def main(argv=None):
     if a.dry_run:
         try: return land(a)
         except Stop as e: print('land: ' + str(e), file=sys.stderr); return e.code
+        except subprocess.CalledProcessError as e: print(f'land: git failed: {(e.stderr or "").strip()}', file=sys.stderr); return EXIT_GIT
     lock = common/'land.lock'
     try: fd = os.open(lock, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
     except FileExistsError:
