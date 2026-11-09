@@ -58,6 +58,8 @@ TROOPS = {
     "ic_breaker": ("ic_breaker", "build_ic_breaker", "IC_BREAKER", "build_ic_weapons", "ic_axe", (-90, 0, -90)),
     # a scythe rides the right fist like the greataxe (both fists on the haft, solved by the spear builder), rolled so the
     # blade (weapon +x) is placed as the axe's bit is
+    # the Hollow King's 36 px greatsword rides the right fist like the revenant's sword, on his larger skeleton (BIG)
+    "gb_hollowking": ("gb_hollowking", "build_gb_hollowking", "HOLLOWKING", "build_gb_grave_sword", "grave_sword", (-90, 0, 90)),
     "reaper": ("reaper", "build_reaper", "REAPER", "build_gb_scythe", "scythe", (-90, 0, -90)),
     "ic_hearthguard": ("ic_hearthguard", "build_ic_hearthguard", "IC_HEARTHGUARD", "build_house_weapons", "hearth_axe", (-90, 0, -90)),
     # a bow (kind "bow") rides the left fist; its rest and three draw frames are child bones the renderer switches between
@@ -78,6 +80,12 @@ TROOPS = {
 }
 SHIELD_AT = (-1, 4, -1.5)     # the knight's grip: in the left fist by its strap, face to the front
 WAIST, SPLIT = 8.5, ((12, 8), (12, 0))
+# Per troop, a skeleton larger than the knight's (the Hollow King: body 10x14x5 on 14 px legs, the floor at handlib y 28). The same
+# bones and joints, scaled to his art: ground the floor's handlib y; hips/torso the waist split's pivots (handlib y) and boxes
+# ((origin, size, cut)); waist the WAIST line; ankle px from the shin pivot to the foot (the knight's 4), at his boot's ankle 2 px
+# over the floor as the knight's and the clips' foot plans fit him unchanged. Every other troop takes the knight's numbers.
+BIG = {"gb_hollowking": {"ground": 28, "hips": (14, ((-5, -5, -2.5), (10, 5, 5), (14, 9))),
+                         "torso": (11, ((-5, -11, -2.5), (10, 10, 5), (14, 0))), "waist": 10.0, "ankle": 5.7}}
 DROP = {"arms_folded"}
 # Per troop, body-hung gear re-hung on a leg bone: a strand that reaches the floor from the hips would sink through it
 # whenever the guard bends the knees, so it rides the shin it hangs behind instead (same place in the rest pose).
@@ -182,8 +190,8 @@ def robe_panels(skirt, fringe, R):
     return out
 
 
-def rigify(src, weapon_rot, kind="blade", hang=None, robe=None):
-    """The troop's handlib bones re-hung on the knight's skeleton (pivots relative to the parent)."""
+def rigify(src, weapon_rot, kind="blade", hang=None, robe=None, big=None):
+    """The troop's handlib bones re-hung on the knight's skeleton (pivots relative to the parent); big (BIG) scales it."""
     src = [bn for bn in src if bn.name not in DROP]
     robed = {}
     if robe:   # the robe's source bones leave the rigid path; robe_panels rebuilds them
@@ -208,10 +216,17 @@ def rigify(src, weapon_rot, kind="blade", hang=None, robe=None):
 
     body = next(bn for bn in src if bn.name == "body")
     bb = body.boxes[0]
-    root = add(Bone("root", ""), "", (0, 24, 0))
-    hips = add(Bone("hips", "root", boxes=[Box((-4, -4, -2), (8, 4, 4), bb.paint, dil=0.05, cut=SPLIT[0])]), "root", (0, 12, 0))
-    torso = add(Bone("torso", "hips", boxes=[Box((-4, -9, -2), (8, 9, 4), bb.paint, cut=SPLIT[1])]), "hips", (0, 9, 0))
+    if big:
+        (hy, (ho, hs, hc)), (ty, (to, ts, tc)) = big["hips"], big["torso"]
+        root = add(Bone("root", ""), "", (0, big["ground"], 0))
+        hips = add(Bone("hips", "root", boxes=[Box(ho, hs, bb.paint, dil=0.05, cut=hc)]), "root", (0, hy, 0))
+        torso = add(Bone("torso", "hips", boxes=[Box(to, ts, bb.paint, cut=tc)]), "hips", (0, ty, 0))
+    else:
+        root = add(Bone("root", ""), "", (0, 24, 0))
+        hips = add(Bone("hips", "root", boxes=[Box((-4, -4, -2), (8, 4, 4), bb.paint, dil=0.05, cut=SPLIT[0])]), "root", (0, 12, 0))
+        torso = add(Bone("torso", "hips", boxes=[Box((-4, -9, -2), (8, 9, 4), bb.paint, cut=SPLIT[1])]), "hips", (0, 9, 0))
     del root, hips, torso
+    waist, ankle = (big["waist"], big["ankle"]) if big else (WAIST, 4)
     cape_pivot = None
     hang, later = hang or {}, []
     for bn in src:
@@ -240,7 +255,7 @@ def rigify(src, weapon_rot, kind="blade", hang=None, robe=None):
                 add(Bone(bn.name + "_skirt", "hips", stages=bn.stages, tag=bn.tag, team=bn.team, variants=bn.variants, boxes=[lo]), "hips", (0, 12, 0))
                 continue
             top = min(b.origin[1] for b in bn.boxes) + a[1] if bn.boxes else 0
-            add(bn, "hips" if top >= WAIST else "torso", a)
+            add(bn, "hips" if top >= waist else "torso", a)
             continue
         if par == "root":   # the legs
             add(bn, "hips", a)
@@ -257,7 +272,7 @@ def rigify(src, weapon_rot, kind="blade", hang=None, robe=None):
             side = bn.name[:-5]
             bn.boxes[0].size[1] -= 2          # the shin stops inside the boot, as the knight's
             foot = Bone(f"{side}_foot", bn.name)
-            add(foot, bn.name, [a[0], a[1] + 4, a[2]])
+            add(foot, bn.name, [a[0], a[1] + ankle, a[2]])
     if robe:   # the panels before the re-hung gear, which may hang on them
         panels = robe_tiers(robed, robe) if "tiers" in robe else robe_panels(robed[robe["skirt"]], robed.get(robe.get("fringe")), robe)
         for bn, a in panels:
@@ -271,7 +286,7 @@ def rigify(src, weapon_rot, kind="blade", hang=None, robe=None):
         for bn in out:
             if bn.parent == shin and bn.boxes and min(b.origin[1] for b in bn.boxes) >= 3:
                 bn.parent = foot
-                bn.pivot = [bn.pivot[0], bn.pivot[1] - 4, bn.pivot[2]]
+                bn.pivot = [bn.pivot[0], bn.pivot[1] - ankle, bn.pivot[2]]
                 at[bn.name] = [at[bn.name][0], at[bn.name][1], at[bn.name][2]]
                 booted = True
         if not booted:
@@ -324,7 +339,8 @@ class Rig:
         s.weapon = importlib.import_module(wmod) if wmod else None
         s.skin, s.cloth = s.troop.skin, s.troop.cloth
         s.wy = s.skin[1] + s.cloth[1]
-        s.B = rigify(s.troop.bones(), wrot, s.kind, HANG.get(tid), ROBE.get(tid))
+        s.B = rigify(s.troop.bones(), wrot, s.kind, HANG.get(tid), ROBE.get(tid), BIG.get(tid))
+        s.ground = BIG[tid]["ground"] if tid in BIG else 24   # the floor's handlib y: geo y is ground - y
         s.tiers = tuple(s.troop.tiers)
 
     def weapon_cubes(s, t):
@@ -406,13 +422,13 @@ class Rig:
             absp[bn.name] = ap
             j = {"name": bn.name}
             if bn.parent: j["parent"] = bn.parent
-            j["pivot"] = [r(ap[0]), r(24 - ap[1]), r(ap[2])]
+            j["pivot"] = [r(ap[0]), r(s.ground - ap[1]), r(ap[2])]
             if any(bn.rot): j["rotation"] = [r(-bn.rot[0]), r(bn.rot[1]), r(-bn.rot[2])]
             cs = []
             for b in (bn.boxes if keep(bn) else ()):
                 o = [ap[i] + b.origin[i] for i in range(3)]
                 uv = list(b.uv) if b.sheet == "skin" else [b.uv[0], b.uv[1] + s.skin[1]]
-                c = {"origin": [r(o[0]), r(24 - (o[1] + b.size[1])), r(o[2])], "size": list(b.size), "uv": uv}
+                c = {"origin": [r(o[0]), r(s.ground - (o[1] + b.size[1])), r(o[2])], "size": list(b.size), "uv": uv}
                 if b.dil: c["inflate"] = b.dil
                 cs.append(c)
             wcubes = ()
