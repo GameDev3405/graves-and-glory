@@ -99,7 +99,9 @@ final class Gait {
         if (was == Mode.IDLE && mode != Mode.IDLE) movedAt = time;
         else if (was != Mode.IDLE && mode == Mode.IDLE && time - movedAt < MIN_MOVE) mode = was;
         if (e instanceof LivingEntity l && (l.isDead() || l.deathTime > 0)) mode = Mode.IDLE;
-        if (stride > 0) phase = wrap(phase + (speed < 0 ? -step : step) / stride);
+        // Setting off and cruising walk the rendered distance. Slowing down keeps the smoothed speed: the stop is as it was (polish batch 2: the rendered-distance clock made the stop slide worse).
+        boolean slowing = s < t - .002;
+        if (stride > 0) phase = wrap(phase + (slowing ? dt * speed : speed < 0 ? -step : step) / stride);
     }
 
     static double wrap(double p) { return p - Math.floor(p); }

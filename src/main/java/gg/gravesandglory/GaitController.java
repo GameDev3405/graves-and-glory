@@ -24,7 +24,7 @@ import java.util.Map;
  * Setting off from a standstill is handled apart from GeckoLib's transition, which blends over several ticks toward the clip's first frame while the body already
  * travels (the planted feet are carried with it: about 3.5 px a tick for ~4 ticks). The clip instead starts at once on the phase whose legs sit nearest the idle pose
  * ({@link #matchPhase}), and this controller blends the idle pose it was holding into the moving clip itself, over {@code startBlend} ticks, with the clip already
- * running on the stride clock. Stopping keeps GeckoLib's transition into idle, at {@code stopBlend} ticks.
+ * running on the stride clock. Stopping keeps GeckoLib's transition into idle.
  */
 final class GaitController extends AnimationController<GeoTroop> {
     /** Reference speed of each gait clip (blocks per tick) as built by art/anim/knight/build_anims.py; the clip name is its key prefix. */
@@ -34,7 +34,7 @@ final class GaitController extends AnimationController<GeoTroop> {
 
     final Gait gait;
     final boolean owner;
-    private final int blend, stopBlend;
+    private final int blend;
     /** Ticks the idle pose is blended into a moving clip after setting off from a standstill (see the class comment). */
     private final double startBlend;
     /** What this controller last wrote to the bones its clip keys (rotation xyz, position xyz), and the idle pose being blended out of while a start blend runs. */
@@ -45,12 +45,11 @@ final class GaitController extends AnimationController<GeoTroop> {
     /** A walk-to-run (or back) switch: no timed blend, and the stride clock keeps its phase, so the feet stay on the stride clock instead of skating through the blend. */
     private boolean keepPhase;
 
-    GaitController(GeoTroop troop, String name, int transition, int stopBlend, double startBlend, Gait gait, boolean owner, AnimationStateHandler<GeoTroop> handler) {
+    GaitController(GeoTroop troop, String name, int transition, double startBlend, Gait gait, boolean owner, AnimationStateHandler<GeoTroop> handler) {
         super(troop, name, transition, handler);
         this.gait = gait;
         this.owner = owner;
         this.blend = transition;
-        this.stopBlend = stopBlend;
         this.startBlend = startBlend;
     }
 
@@ -72,7 +71,7 @@ final class GaitController extends AnimationController<GeoTroop> {
             from = copy(out); fromAt = seekTime;
             if (owner) gait.phase = matchPhase(model, bones, m == Gait.Mode.RUN ? "run_legs" : "walk_legs");
         }
-        else if (!keepPhase) transitionLength = m == Gait.Mode.IDLE ? stopBlend : blend;
+        else if (!keepPhase) transitionLength = blend;
         lastMode = m;
         super.process(model, state, bones, snapshots, seekTime, crashWhenCantFindBone);
         if (keepPhase && !shouldResetTick && getAnimationState() == State.RUNNING) keepPhase = false;
