@@ -334,33 +334,36 @@ IMPACT = 10         # caster_cast impactTicks: the spell leaves
 
 def mage_set():
     """The Sunweaver, caster style v2 (docs/anim-rebuild/CASTER-V2-DESIGN.md: the staff heal). The guard: upright, the 35 px
-    sun staff held upright before the lead shoulder, the free hand relaxed at the hip. The heal: the hips load back first,
-    then both hands raise the staff (the left fist solved onto the shaft below the right), the body arching back and the gaze
+    sun staff held upright before the lead shoulder, gripped 40% up its shaft, the free hand relaxed at the hip. The heal: the hips
+    load back first, then both hands raise the staff (the left fist solved onto the shaft above the right), the body arching back and the gaze
     following the sun up; the light is held with a tremor; the hips drive forward over the lead foot, the torso follows, the
     left hand lets go and the staff tips toward the ally, the heal leaving the sun on the release tick, the left hand open
     after it as a blessing; overshoot, recover, settle. The arm reach (8 px) against the tall cowl keeps both fists at chest
     height: the staff is tilted out to the right so the shaft rises beside the head, not through it."""
     lp_rest = (-12, 0, -12, -40)          # the off hand relaxed at the hip, by the sash
-    g = KEY((3, 8, 0), (4, 0, 0), (-1.5, -5.0, 6.5), aim(78, -12), u=FWD, rp=(-40, 0, 10, -40), lp=lp_rest)
-    load = nudge(g, torso=(-2, 2, 0), head=(-2, -2, 0), R=(0.3, 0.6, 0.1), d=aim(80, -16))
-    # the raise: both hands come onto the staff and lift it, the left fist below the right
-    gather = KEY((-3, 6, 0), (-4, -8, 0), (0.0, -1.5, 6.8), unit((-0.3, 0.93, 0.15)), u=FWD, rp=(-80, 0, 10, -40),
-                 lp=(-60, 0, -15, -50), lh=0.6, ls=-6)
-    up = KEY((-6, 4, 0), (-10, -16, 0), (1.0, 1.5, 6.8), unit((-0.45, 0.88, 0.1)), u=FWD, rp=(-110, 0, 10, -40),
-             lp=(-90, 0, -20, -50), lh=1, ls=-6)
+    # the staff is gripped about 40% up its shaft (troop_rig.GRIP_SLIDE), a walking staff: the fist at the belly, the staff all
+    # but upright with its butt by the lead foot an ankle's height off the ground and the sun well over the cowl
+    g = KEY((3, 8, 0), (4, 0, 0), (-2.0, -3.0, 6.0), aim(86, -14), u=FWD, rp=(-40, 0, 10, -40), lp=lp_rest)
+    load = nudge(g, torso=(-2, 2, 0), head=(-2, -2, 0), R=(0.3, 0.6, 0.1), d=aim(84, -18))
+    # the raise: both hands come onto the staff and lift it, the left fist above the right (the staff slants up across the
+    # chest to the left, the only place both 8 px arms reach the shaft one over the other, clear of the cowl)
+    gather = KEY((-3, 6, 0), (-4, -8, 0), (2.5, -2.5, 6.5), unit((0.35, 0.9, 0.2)), u=FWD, rp=(-80, 0, 10, -40),
+                 lp=(-60, 0, -15, -50), lh=0.6, ls=4.5)
+    up = KEY((-6, 4, 0), (-10, -16, 0), (3.0, -0.5, 6.5), unit((0.45, 0.85, 0.2)), u=FWD, rp=(-110, 0, 10, -40),
+             lp=(-90, 0, -20, -50), lh=1, ls=4.5)
     # the light is held: a tremor, the arch deepening a little
     held = nudge(up, torso=(-1, 1, 0), head=(-2, 0, 0), R=(0.0, 0.2, 0.0))
-    held2 = nudge(up, torso=(-2, 2, 0), head=(-1, 0, 0), R=(0.1, 0.3, 0.1), d=unit((-0.48, 0.87, 0.12)))
+    held2 = nudge(up, torso=(-2, 2, 0), head=(-1, 0, 0), R=(0.1, 0.3, 0.1), d=unit((0.48, 0.83, 0.24)))
     # the drive: the hips have gone first; the torso follows, the left hand comes off and the staff starts to tip
     drive = KEY((6, -4, 0), (2, -6, 0), (0.0, 1.2, 7.3), aim(56, 0), u=FWD, rp=(-100, 0, 0, -20), lp=(-90, 0, 0, -30),
-                lh=0.35, ls=-6)
+                lh=0.0, ls=4.5)   # the left is off: tipped forward, the shaft above the right fist is out of its reach
     # the release: the staff tipped at the ally, the heal leaves the sun, the left hand open forward after it
     release = KEY((16, -10, 0), (6, 0, 0), (-1.0, 0.0, 7.8), aim(30, 10), u=FWD, rp=(-95, 0, 0, -10), lp=(-85, 0, 10, -10))
     over = nudge(release, torso=(3, -2, 0), head=(1, 0, 0), R=(0.0, -0.4, 0.0), d=aim(24, 12), lp=(5, 0, 2, 0))
     drift = nudge(over, torso=(2, -1, 0), head=(1, 0, 0), R=(0.0, -0.3, 0.0), d=aim(22, 12))   # the heal carries on past release
-    recover = KEY((8, 2, 0), (5, 0, 0), (-1.0, -3.0, 7.0), aim(60, -6), u=FWD, rp=(-70, 0, 10, -30), lp=(-40, 0, -10, -40))
-    near = nudge(g, torso=(2, -2, 0), R=(0.0, 0.3, -0.1), d=aim(72, -10))
-    settle = nudge(g, R=(0.0, 0.15, -0.1), d=aim(76, -12))
+    recover = KEY((8, 2, 0), (5, 0, 0), (-2.0, -2.5, 6.0), aim(86, -14), u=FWD, rp=(-70, 0, 10, -30), lp=(-40, 0, -10, -40))
+    near = nudge(g, torso=(2, -2, 0), R=(0.0, 0.3, -0.1), d=aim(82, -12))
+    settle = nudge(g, R=(0.0, 0.15, -0.1), d=aim(85, -14))
     attack = [(0, g), (1.5, load), (2.8, gather), (4.5, up), (6.5, held), (8.4, held2), (9.0, drive), (IMPACT, release),
               (11.8, over), (13.6, drift), (16.0, recover), (22.0, near), (28.0, settle), (ATTACK_TICKS, g)]
     R0, R1 = READY_HIPS
@@ -388,7 +391,8 @@ def mage_set():
         "ward": KEY((2, 12, 0), (2, 0, 0), (2.0, -5.5, 5.4), unit((0.62, 0.56, 0.26)), u=FWD, rp=(-40, 0, 20, -40),
                     lp=(-80, 0, -10, -60), lh=1, ls=8),
     }
-    carry = {"walk": 75.0, "run": 35.0, "u": FWD}
+    # the walk carries the staff higher in the fist (upper arm forward, forearm near level), so the longer butt clears the ground
+    carry = {"walk": 75.0, "run": 35.0, "u": FWD, "R": (-30.0, 0.0, 6.0), "RF": -75.0}
     return g, attack, legs, stances, carry
 
 
@@ -716,18 +720,19 @@ def mend_sunweaver():
     chest opening and the head tipping back after it; at the release the left hand leaves the shaft and both arms open outward,
     the staff leaning out to the right, the light spreading; the bloom is held, then everything floats back to the guard."""
     g = GUARD
-    breath = nudge(g, torso=(-1, -2, 0), head=(-2, -2, 0), R=(0.2, 0.3, 0.0), d=aim(80, -14))
-    gather = KEY((-3, 5, 0), (-6, -6, 0), (0.0, -1.2, 6.8), unit((-0.25, 0.95, 0.15)), u=FWD, rp=(-80, 0, 10, -40),
-                 lp=(-60, 0, -15, -50), lh=0.7, ls=-6)
-    up = KEY((-7, 2, 0), (-18, -4, 0), (0.8, 1.5, 6.7), unit((-0.38, 0.92, 0.08)), u=FWD, rp=(-110, 0, 10, -40),
-             lp=(-95, 0, -20, -50), lh=1, ls=-6)
+    breath = nudge(g, torso=(-1, -2, 0), head=(-2, -2, 0), R=(0.2, 0.3, 0.0), d=aim(85, -16))
+    # both hands on the shaft, the left above the right (as the cast's raise), the staff slanting up across the chest
+    gather = KEY((-3, 5, 0), (-6, -6, 0), (2.5, -2.5, 6.5), unit((0.35, 0.9, 0.2)), u=FWD, rp=(-80, 0, 10, -40),
+                 lp=(-60, 0, -15, -50), lh=0.7, ls=4.5)
+    up = KEY((-7, 2, 0), (-18, -4, 0), (3.5, 0.0, 6.0), unit((0.45, 0.86, 0.2)), u=FWD, rp=(-110, 0, 10, -40),
+             lp=(-95, 0, -20, -50), lh=1, ls=4.5)
     peak = nudge(up, torso=(-1, 0, 0), head=(-3, 0, 0), R=(0.0, 0.3, 0.0))
     # the arms open: the right fist out to the right, the staff leaning out with it; the left arm raised wide, open
-    opened = KEY((-9, 0, 0), (-20, 0, 0), (-4.2, 1.2, 5.6), unit((-0.5, 0.85, 0.1)), u=FWD, rp=(-100, 0, 30, -20),
+    opened = KEY((-9, 0, 0), (-20, 0, 0), (-4.2, 1.2, 5.6), unit((-0.5, 0.85, 0.0)), u=FWD, rp=(-100, 0, 30, -20),
                  lp=(-80, 0, -62, -12))
     bloom = nudge(opened, torso=(-1, 0, 0), head=(-2, 0, 0), R=(-0.2, 0.2, 0.0), lp=(-4, 0, -4, 0))
-    recover = KEY((0, 6, 0), (-2, -2, 0), (-1.8, -3.0, 6.6), aim(76, -14), u=FWD, rp=(-50, 0, 10, -40), lp=(-25, 0, -20, -40))
-    near = nudge(g, torso=(1, -1, 0), R=(0.0, 0.2, -0.1), d=aim(76, -12))
+    recover = KEY((0, 6, 0), (-2, -2, 0), (-2.0, -2.5, 6.0), aim(86, -14), u=FWD, rp=(-50, 0, 10, -40), lp=(-25, 0, -20, -40))
+    near = nudge(g, torso=(1, -1, 0), R=(0.0, 0.2, -0.1), d=aim(84, -14))
     keys = [(0, g), (2.0, breath), (4.6, gather), (7.4, up), (9.0, peak), (9.5, nudge(peak, lh=(0.5,))), (11.2, opened),
             (13.4, bloom), (16.0, recover), (18.4, near), (20, g)]
     R0, R1 = READY_HIPS
@@ -904,8 +909,9 @@ def gait_pose(g, c, u, run, legs):
         ra = (-24.0 + 0.45 * c.arm * sw, 0.0, 9.0)
         rf = (-50.0 + 0.3 * c.arm * min(0.0, -sw), 0.0, 0.0)
     else:
-        ra = (CARRY_R[0] + 0.45 * c.arm * sw, 0.0, CARRY_R[2])
-        rf = (CARRY_RF - 0.3 * c.arm * max(0.0, -sw), 0.0, 0.0)
+        cr, crf = CARRY.get("R", CARRY_R), CARRY.get("RF", CARRY_RF)   # per troop: the mage carries its staff higher
+        ra = (cr[0] + 0.45 * c.arm * sw, 0.0, cr[2])
+        rf = (crf - 0.3 * c.arm * max(0.0, -sw), 0.0, 0.0)
     s = {"torso": ((tx, ty, tz), None), "head": (head, None), "right_arm": (ra, None), "right_forearm": (rf, None),
          "left_arm": (la, None), "left_forearm": (lf, None), "left_hand": (Z3, None)}
     pose = fk_pose(s, legs)

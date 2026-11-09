@@ -544,7 +544,7 @@ def build_rest(tr):
             lift_arm(P, "right", -70, keep=0.0)      # the harpoon points down and across the body, not out like a bar
             P["left_arm"][0] = pitch(P["left_arm"][0], 28)
         elif g == "staff":
-            lift_arm(P, "right", -16, keep=1.0)
+            lift_arm(P, "right", -6, keep=1.0)        # gripped 40% up the shaft: a deeper drop plants the butt in the floor
             P["left_arm"][0] = pitch(P["left_arm"][0], 14)
         else:
             lift_arm(P, "right", -24, keep=0.8)
