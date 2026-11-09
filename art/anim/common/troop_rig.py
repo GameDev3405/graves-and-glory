@@ -283,6 +283,11 @@ def rigify(src, weapon_rot, kind="blade", hang=None, robe=None):
         for bn in out:   # the legs move inside the robe, unseen: their bones stay, their boxes go (the hooves or feet ride the feet)
             if bn.name in ("right_leg", "left_leg", "right_shin", "left_shin"):
                 bn.boxes = []
+    # the lower box of each jointed limb (forearm, shin) is inset (handlib.JOINT_INSET), as the knight's: it shares the upper box's cross-section
+    # through the overlap, so in a bend their side faces stayed coplanar and the two textures z-fought. A robed troop's boxless shins skip it.
+    for bn in out:
+        if bn.name in ("right_forearm", "left_forearm", "right_shin", "left_shin") and bn.boxes:
+            bn.boxes[0].dil = round(bn.boxes[0].dil - H.JOINT_INSET, 6)
     # the order the geometry wants: a parent before its children
     order, seen = [], set()
     kids = {}
