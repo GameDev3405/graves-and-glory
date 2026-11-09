@@ -200,6 +200,43 @@ class Land(unittest.TestCase):
         self.assertEqual(self.r.land(), 0)
         self.assertIn('attributes', self.r.log())
 
+    def test_primary_checkout_is_never_retired(self):
+        # Kort's layout: the primary checkout (holding .git) is on a work branch; main lives in a linked worktree.
+        prim, home = pathlib.Path(self.tmp.name)/'prim', pathlib.Path(self.tmp.name)/'home'
+        prim.mkdir(); git(prim, 'init', '-q', '-b', 'trunk'); git(prim, 'config', 'user.email', 't@t'); git(prim, 'config', 'user.name', 't')
+        commit(prim, 'a.txt', 'a\n', 'base'); git(prim, 'branch', 'main'); git(prim, 'worktree', 'add', '-q', str(home), 'main')
+        commit(prim, 'b.txt', 'b\n', 'work on the primary branch')
+        r = land.main(['trunk', '--repo', str(home), '--verify-cmd', PASS, '--status-dir', str(self.r.status)])
+        self.assertEqual(r, land.EXIT_USAGE)
+        self.assertTrue((prim/'.git').is_dir())
+        self.assertNotIn('work on the primary branch', git(home, 'log', '--format=%s', 'main'))
+
+    def test_locked_worktree_is_refused(self):
+        git(self.r.m, 'worktree', 'lock', str(self.r.w))
+        self.assertEqual(self.r.land(), land.EXIT_USAGE)
+        self.assertTrue(self.r.w.exists())
+        git(self.r.m, 'worktree', 'unlock', str(self.r.w))
+
+    def test_lane_mid_merge_is_refused_and_left_alone(self):
+        commit(self.r.w, 'b.txt', 'lane b\n', 'conflicting')
+        subprocess.run(['git', '-C', str(self.r.w), 'merge', 'main'], capture_output=True)  # leaves a conflicted merge
+        self.assertEqual(self.r.land(), land.EXIT_DIRTY)
+        self.assertTrue((pathlib.Path(git(self.r.w, 'rev-parse', '--absolute-git-dir'))/'MERGE_HEAD').exists())
+
+    def test_unknown_main_branch_is_a_usage_error(self):
+        self.assertEqual(land.main(['lane', '--repo', str(self.r.m), '--main', 'nope', '--verify-cmd', PASS]), land.EXIT_USAGE)
+
+    def test_dry_run_takes_no_lock(self):
+        lock = pathlib.Path(git(self.r.m, 'rev-parse', '--path-format=absolute', '--git-common-dir'))/'land.lock'
+        lock.write_text('1 other\n')
+        try: self.assertEqual(self.r.land('--dry-run'), 0)
+        finally: lock.unlink()
+
+    def test_default_status_dir_is_beside_primary_checkout(self):
+        nested = self.r.m/'.claude/worktrees/x'
+        git(self.r.m, 'worktree', 'add', '-q', '-b', 'x', str(nested))
+        self.assertEqual(state.default_status_dir(nested), self.r.m.parent/'status')
+
     def test_never_pushes(self):
         src = (TOOLS/'land.py').read_text() + (TOOLS/'state.py').read_text()
         self.assertNotIn("'push'", src); self.assertNotIn('"push"', src)
@@ -241,7 +278,9 @@ class State(unittest.TestCase):
             cases = {
                 'a': ('## State\nbuilding clips\n## Questions for Kort\n- which units reuse the death?\n', 'building clips', 'which units reuse the death?'),
                 'b': ('1. State: idle\n2. Questions for Kort: (none)\n', 'idle', None),
-                'c': ('> State: x\n> Questions for Kort: N/A - nothing blocking\n', 'x', None),
+                'c': ('> State: x\n> Questions for Kort: N/A.\n', 'x', None),
+                'e': ('State: y\nQuestions for Kort: None, but pick a map\n', 'y', 'None, but pick a map'),
+                'f': ('State: z\nQuestions for Kort: none\n- Q1: which map?\n', 'z', 'none Q1: which map?'),
                 'd': ('State:\n  waiting on Kort\nQuestions for Kort: pick a map → yes or no\n', 'waiting on Kort', 'pick a map → yes or no'),
             }
             for name, (text, st, q) in cases.items():

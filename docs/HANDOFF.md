@@ -17,11 +17,12 @@ Plan: [PLAN-TO-1.0.md](PLAN-TO-1.0.md), including the hosted network (Phase 7). 
 
 - Walk the Old Hold in game (`feat/oldhold-wiring`, concept C, Q129) and lock the layout. No hub feature work starts before that.
 - Maps: Kort designs all five maps in the map engine editor and signs off each master layout. Agents do not build layouts.
-- Knight v2 and v4 deaths are approved (2026-11-07) as the template for other troops; which units reuse which parts is still open.
+- Animation: the GeckoLib rebuild landed in `main` on 2026-11-09 (`a7811c4d`). Only the knight (approved 2026-11-07, template for other troops) plays on GeckoLib by default; the other rebuilt troops are behind `-Dgravesandglory.geoTroops=all` until each passes the review booth. Which units reuse which knight parts is still open.
 - Text and choices: mode text in game (Q19a), briefings 2 to 6 (Q74), the CurseForge app import (Q75), audio polish (Q123). Open rows with age (VIS-01, SLICE-03 and the rest) are in STATE.md.
 - Server EULA: see Constraints.
 - The Axiom and Ledger mod download for the builder server was listed as awaiting Kort's yes on 2026-11-07; later builder merges pin both. Not re-verified.
 - Release: `docs/releases/current-candidate.json` identifies the 2026-11-04 build and predates later merges; refresh it before any candidate is claimed. Publish only on Kort's explicit go. The old `552a8c6` preview is historical, with a real Quartermaster clipping defect; do not label it current or six-player verified.
+- Agent work that needs no Kort: refresh the candidate record and release notes on current `main`, re-run release verify, the QA rows that need no server (5.6) and the mode gate.
 - Not done: six networked players on a real baseline, dedicated-server reconnect and persistence on a live server, everything in Phase 7, balance retake on Kort's maps, final art gate (4B.7).
 
 ## Branches kept on purpose
@@ -30,8 +31,8 @@ STATE.md lists open lanes; these purposes it cannot know. An ancestor of `main` 
 
 - `qa/fix-ingame`: QA harness. Never merged.
 - `feat/oldhold-wiring`: Old Hold lobby and showcase pieces; waits on Kort's walk.
-- `anim/geckolib-rebuild`: knight v2 and v4 deaths; not in `main`.
-- `work/anim-edit`: one animation-editor tooling commit; merge any time.
+- `anim/geckolib-rebuild`: the animation rebuild line; merged up to `090d5809` through `a7811c4d`. Later commits (from `d49383c4`, the scorecard) land per troop through the booth.
+- `work/anim-edit`: one animation-editor tooling commit; awaits Kort.
 - `work/anim-rework`: superseded original jointed-troop commits (superseded by `37494090`). Do not merge; kept only as tag `archive/cleanup-2026-11/work/anim-rework`.
 - `feat/lobby-oldhold`: unreviewed WIP lobby terrain, preserved only as tag `archive/cleanup-2026-11/feat/lobby-oldhold`.
 - `claude/trait-audit-573141`, `claude/audit-measure-5b5fc8`, `heraldic-units` (reference sheets, worktree in `Documents/gg-hx`), `release/0.5.1` and `release/0.5.1-rc2` (0.5.1 candidate, both fully in `main`): kept by the 2026-11-09 prune. Its full keep list is in `docs/superpowers/plans/2026-11-09-workspace-cleanup.md`.

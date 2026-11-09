@@ -94,7 +94,7 @@ One row per started task or task done in `main`; unlisted tasks in each phase ha
 | 4D.3 | Order lock, chapter completion, Pact grant, bonus shards | Agent | Done 2026-10-31 | `8e39637`, `3fdf85e`, `649bcb0` (chapter gold and Rare price from the sheet) |
 | 4D.4 | Campaign playthrough | Agent + Kort | Agent checks done; Kort's playthrough not done | `docs/reports/ingame-check-2026-11-02.md` |
 | 4D.5 | Preflight validation of campaign rows | Agent | Done 2026-10-31 | `tools/preflight.py` validates order, House, bonus and the `placeholder` column |
-| 4E.1 to 4E.3 | Animation passes | Agent + Kort | In progress; 4E.1 and the attack clips of 4E.2 merged | `b4dfef01`, `1be70ff9`; knight on `anim/geckolib-rebuild` |
+| 4E.1 to 4E.3 | Animation passes | Agent + Kort | In progress; 4E.1 and the attack clips of 4E.2 merged | `b4dfef01`, `1be70ff9`; GeckoLib rebuild merged `a7811c4d` (knight on by default) |
 | 4F.1, 4F.6 | War Table pages, 1440p layouts | Agent + Kort | In progress | `30e3f3f`, `b693cca`; VIS-01 windows unchecked by Kort |
 | 4F.2 | Report layout | Agent | Done | `7e1e0f0`, `d932922`, `7951be8`; Q18 approved the tabs |
 | 4F.3 | Title screen | Agent + Kort | Done 2026-11-04 | `c2dc2cd9` art; wired and merged `ef8d2817` (Q112) |

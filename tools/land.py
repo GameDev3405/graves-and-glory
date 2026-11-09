@@ -20,7 +20,8 @@ After main has moved, cleanup problems never undo the landing; they are reported
 
 Exit codes: 0 landed, 1 dirty lane, 2 rebase failed, 3 verify failed, 4 main or the lane moved during
 verify, 5 merge refused, 6 landed but cleanup incomplete (message says what is left), 7 another land is
-running, 64 usage. Run it only for a branch Kort (or the coordinator on his behalf) approved for main.
+running, 8 a git command failed before main moved (nothing landed), 64 usage (this includes a lane that is
+the primary checkout or a locked worktree: land never retires those). Run it only for a branch Kort (or the coordinator on his behalf) approved for main.
 """
 import argparse, datetime, json, os, pathlib, re, shlex, shutil, stat, subprocess, sys
 
@@ -30,7 +31,7 @@ import state
 
 GENERATED = ['src/main/java/gg/gravesandglory/Spec.java', 'sheets/preflight.json']
 DISPOSABLE = ['build', '.gradle']  # rebuilt by Gradle; not evidence
-EXIT_DIRTY, EXIT_REBASE, EXIT_VERIFY, EXIT_MOVED, EXIT_MERGE, EXIT_CLEANUP, EXIT_BUSY, EXIT_USAGE = 1, 2, 3, 4, 5, 6, 7, 64
+EXIT_DIRTY, EXIT_REBASE, EXIT_VERIFY, EXIT_MOVED, EXIT_MERGE, EXIT_CLEANUP, EXIT_BUSY, EXIT_GIT, EXIT_USAGE = 1, 2, 3, 4, 5, 6, 7, 8, 64
 
 class Stop(Exception):
     def __init__(self, code, msg): super().__init__(msg); self.code = code
@@ -69,8 +70,10 @@ def retire_worktree(ops, wt, archive, branch, tip):
     tree = archive/'tree'
     try: os.rename(wt, tree)
     except OSError as e:
-        return [f'worktree kept: could not move {wt} ({e.strerror}); something has a file open there. Close it and remove the worktree by hand']
-    if admin.parent.name == 'worktrees': rm_tree(admin)
+        return [f'worktree kept whole: could not move {wt} to {tree} ({e.strerror}); usually a program has a file or folder open'
+                ' there, or the two are on different drives. Close it, then `git worktree remove` it by hand']
+    if admin.parent.name != 'worktrees': return [f'worktree moved but not unregistered: unexpected git dir {admin}']
+    rm_tree(admin)  # <common>/worktrees/<name>; land() refuses the primary checkout and locked worktrees
     run(ops, 'worktree', 'prune', check=False)  # drops only registrations whose folder is gone
     for name in filter(None, tracked):
         try: (tree/name).unlink()
@@ -109,6 +112,11 @@ def land(a):
     ops = home['path'] if home else git(repo, 'rev-parse', '--path-format=absolute', '--git-common-dir')  # never the lane itself
     if a.branch == a.main: raise Stop(EXIT_USAGE, f'cannot land {a.main} on itself')
     if not lane: raise Stop(EXIT_USAGE, f'branch {a.branch!r} has no worktree; land rebases and verifies in the branch\'s own worktree')
+    if lane is trees[0] or pathlib.Path(git(lane['path'], 'rev-parse', '--absolute-git-dir')).parent.name != 'worktrees':
+        raise Stop(EXIT_USAGE, f'{lane["path"]} is the primary checkout of the repository (it holds .git); land only takes'
+                   ' branches from linked worktrees. Make a worktree for the branch, or land it by hand')
+    if lane.get('locked') and not a.keep_worktree:
+        raise Stop(EXIT_USAGE, f'{lane["path"]} is locked (git worktree lock); unlock it or pass --keep-worktree')
     wt = pathlib.Path(lane['path']); base = git(ops, 'rev-parse', a.main)
     ahead = int(git(ops, 'rev-list', '--count', f'{a.main}..{a.branch}'))
     if not ahead: raise Stop(EXIT_USAGE, f'{a.branch} has nothing that is not already on {a.main}')
@@ -120,6 +128,8 @@ def land(a):
             (', commit docs/STATE.md' if home else ', no STATE.md (no checkout of main)'))
         return 0
 
+    if any((wt/git(wt, 'rev-parse', '--git-path', d)).exists() for d in ('rebase-merge', 'rebase-apply', 'MERGE_HEAD')):
+        raise Stop(EXIT_DIRTY, f'{wt} is in the middle of a rebase or merge; finish or abort it first')
     for p in clear_generated_noise(wt): say(f'restored line-ending noise in {p}')
     if dirty := dirt(wt): raise Stop(EXIT_DIRTY, f'{wt} has uncommitted changes; commit or discard them first:\n  ' + '\n  '.join(dirty[:20]))
 
@@ -128,7 +138,7 @@ def land(a):
     if r.returncode:
         conflicts = git(wt, 'diff', '--name-only', '--diff-filter=U')
         if any((wt/git(wt, 'rev-parse', '--git-path', d)).exists() for d in ('rebase-merge', 'rebase-apply')):
-            run(wt, 'rebase', '--abort', check=False)  # only abort a rebase this run started
+            run(wt, 'rebase', '--abort', check=False)  # land refused earlier if one was already in progress
         detail = ('conflicting files:\n  ' + conflicts.replace('\n', '\n  ')) if conflicts else (r.stderr or r.stdout).strip()
         raise Stop(EXIT_REBASE, f'rebase failed and was aborted; {a.branch} is unchanged. {detail}')
     tip = git(wt, 'rev-parse', 'HEAD')
@@ -174,12 +184,20 @@ def main(argv=None):
     p.add_argument('branch'); p.add_argument('--main', default='main')
     p.add_argument('--repo', default=str(ROOT), help='any checkout of the repository')
     p.add_argument('--verify-cmd', default=f'"{sys.executable}" tools/verify.py fast')
-    p.add_argument('--status-dir', default=str(state.STATUS_DIR))
+    p.add_argument('--status-dir', help='lead status folder (default: status/ beside the primary checkout)')
     p.add_argument('--keep-worktree', action='store_true'); p.add_argument('--dry-run', action='store_true')
     p.add_argument('--now', help=argparse.SUPPRESS)
     a = p.parse_args(argv)
     a.now = datetime.datetime.fromisoformat(a.now) if a.now else datetime.datetime.now(datetime.timezone.utc)
-    common = pathlib.Path(git(a.repo, 'rev-parse', '--path-format=absolute', '--git-common-dir'))
+    try:
+        common = pathlib.Path(git(a.repo, 'rev-parse', '--path-format=absolute', '--git-common-dir'))
+        git(a.repo, 'rev-parse', '--verify', '--quiet', a.main)
+        a.status_dir = a.status_dir or str(state.default_status_dir(a.repo))
+    except subprocess.CalledProcessError as e:
+        print(f'land: {(e.stderr or "").strip() or e} (is --repo a checkout and --main a branch?)', file=sys.stderr); return EXIT_USAGE
+    if a.dry_run:
+        try: return land(a)
+        except Stop as e: print('land: ' + str(e), file=sys.stderr); return e.code
     lock = common/'land.lock'
     try: fd = os.open(lock, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
     except FileExistsError:
@@ -189,6 +207,8 @@ def main(argv=None):
         return land(a)
     except Stop as e:
         print('land: ' + str(e), file=sys.stderr); return e.code
+    except subprocess.CalledProcessError as e:  # raised only before main moves; after that problems are collected
+        print(f'land: git failed, nothing landed: {" ".join(map(str, e.cmd))}\n{(e.stderr or "").strip()}', file=sys.stderr); return EXIT_GIT
     finally: lock.unlink(missing_ok=True)
 
 if __name__ == '__main__':

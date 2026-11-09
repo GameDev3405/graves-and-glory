@@ -29,8 +29,13 @@ def worktrees(repo):
         f = dict(l.split(' ', 1) if ' ' in l else (l, True) for l in record.splitlines() if l)
         if 'worktree' in f:
             out.append(dict(path=f['worktree'], head=f.get('HEAD', ''), branch=str(f.get('branch', '')).removeprefix('refs/heads/') or None,
-                            prunable='prunable' in f))
+                            prunable='prunable' in f, locked='locked' in f))
     return out
+
+def default_status_dir(repo):
+    """status/ beside the primary checkout (C:/Users/kortt/Melty/status for bannerbound), from whichever checkout runs this."""
+    trees = worktrees(repo)
+    return pathlib.Path(trees[0]['path']).parent/'status' if trees else STATUS_DIR
 
 KEYS = ('state', 'done since last', 'next', 'blocked', 'questions for kort', 'questions')
 
@@ -48,9 +53,11 @@ def read_status(path):
         elif not line: pass
     return fields
 
+NONE = {'', 'none', 'none yet', 'none so far', 'none for now', 'nothing', 'nothing yet', 'no', 'no questions', 'n/a', '-', '0'}
+
 def is_none(value):
-    v = re.sub(r'[().\s]+$', '', re.sub(r'^[(\s]+', '', (value or '').strip().lower()))
-    return v in {'', 'no', 'n/a', '-', '0', 'no questions', 'none', 'nothing'} or v.startswith(('none ', 'none,', 'none yet', 'nothing ', 'no questions', 'n/a '))
+    """Only a wholly empty answer counts: 'None, but pick a map' is a question, and so is anything unrecognised."""
+    return re.sub(r'^[(\s]+|[().!\s]+$', '', (value or '').strip().lower()) in NONE
 
 def question_rows(repo, ref):
     """Table rows of QUESTIONS-FOR-KORT.md on `ref`, each with the commit time of its line (git blame)."""
@@ -133,11 +140,11 @@ def render(s, full=False):
 
 def main(argv=None):
     p = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    p.add_argument('--repo', default=str(ROOT)); p.add_argument('--status-dir', default=str(STATUS_DIR))
+    p.add_argument('--repo', default=str(ROOT)); p.add_argument('--status-dir', help='default: status/ beside the primary checkout')
     p.add_argument('--out'); p.add_argument('--main', default='main')
     p.add_argument('--full', action='store_true', help='one line per lane, no folding of lane families')
     a = p.parse_args(argv)
-    text = render(collect(a.repo, a.status_dir, main=a.main), a.full)
+    text = render(collect(a.repo, a.status_dir or default_status_dir(a.repo), main=a.main), a.full)
     if a.out:
         out = pathlib.Path(a.out); out = out if out.is_absolute() else pathlib.Path(a.repo)/out
         out.parent.mkdir(parents=True, exist_ok=True); out.write_text(text, encoding='utf8', newline='\n')
