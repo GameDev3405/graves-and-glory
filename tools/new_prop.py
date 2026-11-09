@@ -87,6 +87,7 @@ def main(argv=None):
     a.add_argument('--category', default=None, help='prop menu category (default: the use)')
     a.add_argument('--setting', default='TODO (House, map or place; or "any")')
     a.add_argument('--parts', default=None, help='comma list of part models (default: the id). One part unless it must exceed -16..32')
+    a.add_argument('--block', type=int, default=None, help='CMD block the lead assigned; required when builders work in parallel worktrees')
     a.add_argument('--glow', default='', help='comma list of parts drawn full-bright (coals, lanterns)')
     o = a.parse_args(argv)
 
@@ -107,7 +108,9 @@ def main(argv=None):
     folder, deff = ART / pid, DEFS / (pid + '.json')
     if folder.exists() or deff.exists(): sys.exit('%s exists already; refusing to overwrite' % (folder if folder.exists() else deff))
 
-    block = next_block(defs)
+    block = next_block(defs) if o.block is None else o.block
+    used = {(p['cmd'] - CMD_MIN) // 10 for d in defs for p in d.get('parts', [])} if o.block is not None else set()
+    if block in used: sys.exit('CMD block %d is already used on this branch' % block)
     cmds = [CMD_MIN + 10 * block + i for i in range(len(parts))]
     if cmds[-1] > CMD_MAX or len(parts) > 10: sys.exit('no custom_model_data room (block %d, %d parts)' % (block, len(parts)))
 
