@@ -8,7 +8,7 @@ import java.util.function.Function;
 
 /**
  * The one-time upgrades of a commander profile: schema 1 (Dawn and Dusk, 12 troops) to schema 2 (spec 6.3), and schema 2 to
- * schema 3 (plan 2C.3: the Long March battles won and bonuses paid), schema 3 to 4 (commander gear) and schema 4 to 5 (custom groups). Pure: JSON goes through the parse and write functions the
+ * schema 3 (plan 2C.3: the Long March battles won and bonuses paid), schema 3 to 4 (commander gear), schema 4 to 5 (custom groups) and schema 5 to 6 (the chapter 1 campaign reset). Pure: JSON goes through the parse and write functions the
  * caller passes, so the standalone ProfileMigrationCheck needs no Gson.
  */
 public final class ProfileMigration {
@@ -148,6 +148,22 @@ public final class ProfileMigration {
     static Profile v4toV5(Profile p) {
         p.customGroups = new ArrayList<>();
         p.schema = 5;
+        return p;
+    }
+
+    /**
+     * Schema 5 to 6 (chapter 1 "The Oath", brief M1; Kort D5, 2026-11-09), in place, and returns the same profile: the campaign progress of the
+     * retired march-* battles resets. battlesWon, bonusClaimed and campaignCleared empty (every id a schema 5 save holds is a march-era one; a
+     * schema 2 save's battlesWon, which v2toV3 rebuilt from its old cleared count, goes too) and chapter 1 leaves writChapters, so clearing The
+     * Oath pays its Pact. The Pacts held (writs), owned troops (Legendaries included), currencies and gear are kept as they are. Sets schema 6,
+     * so the reset runs once.
+     */
+    static Profile v5toV6(Profile p) {
+        p.battlesWon = new LinkedHashSet<>();
+        p.bonusClaimed = new LinkedHashSet<>();
+        p.campaignCleared = 0;
+        if (p.writChapters != null) p.writChapters.remove(1);
+        p.schema = 6;
         return p;
     }
 

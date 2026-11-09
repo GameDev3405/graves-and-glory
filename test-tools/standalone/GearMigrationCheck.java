@@ -47,7 +47,7 @@ public final class GearMigrationCheck {
             Profile p = load(file);
             check(p.schema == Profile.SCHEMA, "schema is current, got " + p.schema);
             check(p.gold == 950 && p.commander.equals("marshal"), "gold and commander are unchanged");
-            check(p.battlesWon.equals(before.battlesWon) && p.battlesWon.equals(Set.of("march-1")), "battlesWon is unchanged: " + p.battlesWon);
+            check(before.battlesWon.equals(Set.of("march-1")) && p.battlesWon.isEmpty(), "battlesWon: the gear step keeps it; the chapter 1 reset (schema 6) then empties the march-era win: " + p.battlesWon);
             check(p.owned.keySet().equals(before.owned.keySet()) && p.banner.equals(before.banner), "owned troops and banner are unchanged");
             check(p.gear.size() == 5, "a marshal gets 5 starter pieces, got " + p.gear.size());
             check(items(p).equals(new TreeSet<>(List.of("commander_helm", "commander_chest", "commander_legs", "commander_boots", "war_banner"))), "the commander set and the banner: " + items(p));
@@ -144,17 +144,17 @@ public final class GearMigrationCheck {
             check(f.gear.size() == 6 && f.relics.equals(Set.of("stand_fast")) && f.relicSlots.get(0).equals("stand_fast"), "a fresh champion has the 6 bruiser pieces and stand_fast");
             check(f.schema == Profile.SCHEMA && f.gearPower == 6, "fresh is the current schema with gear power 6");
 
-            // newer-save: a schema-6 file (newer than Profile.SCHEMA) survives a load and a save attempt byte for byte, and the profile is read-only for the session
-            String future = "{\"schema\": 6, \"gold\": 123, \"futureField\": {\"a\": [1, 2, 3]}}";
+            // newer-save: a schema-7 file (newer than Profile.SCHEMA) survives a load and a save attempt byte for byte, and the profile is read-only for the session
+            String future = "{\"schema\": 7, \"gold\": 123, \"futureField\": {\"a\": [1, 2, 3]}}";
             Path newer = root.resolve("future.json");
             Files.writeString(newer, future);
             byte[] futureBytes = Files.readAllBytes(newer);
             Profile fut = load(newer);
-            check(fut.readOnly && fut.schema == 6, "a schema-6 profile loads read-only and keeps schema 6, got " + fut.schema);
+            check(fut.readOnly && fut.schema == 7, "a schema-7 profile loads read-only and keeps schema 7, got " + fut.schema);
             check(!JSON.toJson(fut).contains("readOnly"), "the read-only flag is never saved");
             fut.gold = 999;
             ProfileMigration.saveProfile(fut, newer, JSON.toJson(fut));
-            check(Arrays.equals(Files.readAllBytes(newer), futureBytes), "the save attempt leaves the schema-6 file byte for byte");
+            check(Arrays.equals(Files.readAllBytes(newer), futureBytes), "the save attempt leaves the schema-7 file byte for byte");
             check(!Files.exists(root.resolve("future.json.bak")) && !Files.exists(root.resolve("future.json.tmp")) && !Files.exists(root.resolve("future.v3.json")), "no backup or temp file appears beside it");
             Path normal = root.resolve("normal.json");
             Profile ok = new Profile();

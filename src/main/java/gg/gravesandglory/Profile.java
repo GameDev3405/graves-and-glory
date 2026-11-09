@@ -3,7 +3,7 @@ package gg.gravesandglory;
 import java.util.*;
 
 /**
- * A commander's saved collection, schema 5 (spec 6.2, plan 2C.3, commander gear spec, command UI custom groups): the banner, the owned troops with stars and mastery, per
+ * A commander's saved collection, schema 6 (spec 6.2, plan 2C.3, commander gear spec, command UI custom groups): the banner, the owned troops with stars and mastery, per
  * House shards, Renown and Epic pity, the Long March battles won and bonuses paid, and the commander's gear, relics and Forge marks. Server-owned JSON, one file per player
  * (Campaign.profile loads it, migrating an older file first). Pure, so the standalone checks compile it.
  */
@@ -16,7 +16,7 @@ public final class Profile {
     static final class Owned { int copies=1, stars=1, kills, survived, mastery; String variant="base"; }
 
     /** The current profile schema; ProfileMigration upgrades older files to it. */
-    static final int SCHEMA = 5;
+    static final int SCHEMA = 6;
     /** Schema 5: the most custom numbered groups a commander keeps, and the longest group name. */
     static final int MAX_CUSTOM_GROUPS = 4, GROUP_NAME_MAX = 12;
     /** One custom numbered group (command UI): its number 1..MAX_CUSTOM_GROUPS, a short name and the troop type ids it orders. */
@@ -71,6 +71,7 @@ public final class Profile {
         if (schema < 3) ProfileMigration.v2toV3(this, Spec.CAMPAIGNBATTLES);
         if (schema < 4) ProfileMigration.v3toV4(this);
         if (schema < 5) ProfileMigration.v4toV5(this);
+        if (schema < 6) ProfileMigration.v5toV6(this);
         if (schema > SCHEMA) readOnly = true; // a save from a newer build: kept as it is, never written by this one
         else schema = SCHEMA;
         if (progression == null) progression = new Progression.State();

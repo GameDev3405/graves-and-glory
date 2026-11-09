@@ -107,7 +107,7 @@ public final class ProfileMigrationCheck {
     static final String V2_SAVE = "{\"schema\":2,\"gold\":77,\"banner\":\"knight,archer\",\"campaignCleared\":1,\"writs\":1,\"writChapters\":\"1\"}";
     static Set<String> march(int n) {
         Set<String> ids = new LinkedHashSet<>();
-        for (int i = 1; i <= n; i++) ids.add("march-" + i);
+        for (int i = 1; i <= n; i++) ids.add("oath-" + i); // v2toV3 rebuilds battlesWon from the current sheet's rows
         return ids;
     }
 
@@ -158,7 +158,7 @@ public final class ProfileMigrationCheck {
         check(moved.xp == 4321 && moved.claims.equals(Set.of("founders:20", "daily:0")) && moved.titles.equals(Set.of("Recruit", "Scout", "Vanguard")) && moved.title.equals("Vanguard"), "mig-progression: xp, claims and titles (Vanguard too) are copied unchanged");
         // profile defaults and the sanitizer
         var blank = new Profile();
-        check(blank.schema == 5 && blank.banner.equals(RosterMath.starterBanner()) && blank.commander.equals("champion") && blank.bannerColour.equals("gold"), "profile-default: schema 5, the starter banner, champion, gold");
+        check(blank.schema == 6 && blank.banner.equals(RosterMath.starterBanner()) && blank.commander.equals("champion") && blank.bannerColour.equals("gold"), "profile-default: schema 6, the starter banner, champion, gold");
         check(blank.owned.keySet().equals(COMMONS) && new ArrayList<>(blank.owned.keySet()).equals(List.of("knight", "archer", "revenant", "bonebow", "wm_hound", "wm_hunter", "ic_hearthguard", "ic_arbalist", "tc_raider", "tc_harpooner"))
             && blank.owned.values().stream().allMatch(o -> o.copies == 1 && o.stars == 1) && RosterMath.validBanner(blank.banner, cat, blank.owned.keySet()) == null, "profile-default: one copy of each of the 10 Commons, in sheet order, so the starter banner is valid");
         var p = new Profile();
@@ -179,7 +179,7 @@ public final class ProfileMigrationCheck {
         check(RosterMath.validBanner(p.banner, cat, p.owned.keySet()) == null && p.banner.equals(line("knight*12,mage,^,mage,^,empty*4")), "sanitize: a banner that fails validBanner is repacked");
         check(p.commander.equals("champion") && p.bannerColour.equals("gold"), "sanitize: an unknown class maps to champion and an unknown colour to gold");
         check(zeros(p.shards) && zeros(p.renown) && zeros(p.pity), "sanitize: shards, renown and pity hold the five House keys at 0 or more, and nothing else");
-        check(p.gold == 0 && p.wins == 3 && p.progression != null && p.schema == 5, "sanitize: gold and wins clamp; a missing progression is rebuilt");
+        check(p.gold == 0 && p.wins == 3 && p.progression != null && p.schema == 6, "sanitize: gold and wins clamp; a missing progression is rebuilt");
         var valid = new Profile();
         for (String id : COMMONS) valid.owned.put(id, owned(1, 1));
         valid.banner = new ArrayList<>(line("revenant*12,bonebow*8"));
@@ -188,40 +188,40 @@ public final class ProfileMigrationCheck {
         // schema 3 (plan 2C.3): a fresh save, v2toV3 in memory, the sanitizer and a round trip
         var newSave = new Profile();
         newSave.sanitize(cat, CLASSES, SIDES, HOUSES);
-        check(newSave.schema == 5 && newSave.customGroups.isEmpty() && newSave.battlesWon.isEmpty() && newSave.bonusClaimed.isEmpty() && newSave.campaignCleared == 0, "fresh-save: schema 5, no custom group, no battle won, no bonus claimed, campaignCleared 0");
+        check(newSave.schema == 6 && newSave.customGroups.isEmpty() && newSave.battlesWon.isEmpty() && newSave.bonusClaimed.isEmpty() && newSave.campaignCleared == 0, "fresh-save: schema 6, no custom group, no battle won, no bonus claimed, campaignCleared 0");
         var old = parseV2(V2_SAVE.replace("\"campaignCleared\":1", "\"campaignCleared\":6"));
         check(ProfileMigration.v2toV3(old, Spec.CAMPAIGNBATTLES) == old && old.schema == 3 && old.battlesWon.equals(march(6)) && old.bonusClaimed.isEmpty() && old.writs == 1, "v2toV3: in place; campaignCleared 6 gives all six battles, writs kept");
         var unmigrated = parseV2(V2_SAVE);
         unmigrated.sanitize(cat, CLASSES, SIDES, HOUSES);
-        check(unmigrated.schema == 5 && unmigrated.battlesWon.equals(march(1)) && unmigrated.campaignCleared == 1, "sanitize: a schema-2 profile that skipped the file upgrade runs v2toV3 first");
+        check(unmigrated.schema == 6 && unmigrated.battlesWon.isEmpty() && unmigrated.campaignCleared == 0 && unmigrated.writs == 1 && unmigrated.writChapters.isEmpty(), "sanitize: a schema-2 profile that skipped the file upgrade runs v2toV3 first, then the chapter 1 reset (writs kept)");
         var broken = new Profile();
-        broken.battlesWon = new LinkedHashSet<>(List.of("march-1", "march-3", "march-9")); broken.bonusClaimed = new LinkedHashSet<>(List.of("b1_hold_all", "b_bogus")); broken.campaignCleared = 5;
+        broken.battlesWon = new LinkedHashSet<>(List.of("oath-1", "oath-3", "oath-9")); broken.bonusClaimed = new LinkedHashSet<>(List.of("o1_hold_all", "b_bogus")); broken.campaignCleared = 5;
         broken.sanitize(cat, CLASSES, SIDES, HOUSES);
-        check(broken.battlesWon.equals(Set.of("march-1", "march-3")) && broken.bonusClaimed.equals(Set.of("b1_hold_all")) && broken.campaignCleared == 1, "sanitize: unknown battle and bonus ids are dropped; campaignCleared is the unbroken run from march-1 (1, not 5)");
+        check(broken.battlesWon.equals(Set.of("oath-1", "oath-3")) && broken.bonusClaimed.equals(Set.of("o1_hold_all")) && broken.campaignCleared == 1, "sanitize: unknown battle and bonus ids are dropped; campaignCleared is the unbroken run from oath-1 (1, not 5)");
         var nulls = new Profile();
         nulls.battlesWon = null; nulls.bonusClaimed = null;
         nulls.sanitize(cat, CLASSES, SIDES, HOUSES);
         check(nulls.battlesWon != null && nulls.bonusClaimed != null, "sanitize: missing battlesWon and bonusClaimed are rebuilt empty");
         var saved = new Profile();
-        saved.battlesWon = new LinkedHashSet<>(march(2)); saved.bonusClaimed = new LinkedHashSet<>(List.of("b1_hold_all")); saved.writs = 0; saved.gold = 55;
+        saved.battlesWon = new LinkedHashSet<>(march(2)); saved.bonusClaimed = new LinkedHashSet<>(List.of("o1_hold_all")); saved.writs = 0; saved.gold = 55;
         saved.sanitize(cat, CLASSES, SIDES, HOUSES);
         var loaded = parseV2(write(saved));
         loaded.sanitize(cat, CLASSES, SIDES, HOUSES);
-        check(write(loaded).equals(write(saved)) && loaded.battlesWon.equals(march(2)) && loaded.bonusClaimed.equals(Set.of("b1_hold_all")) && loaded.campaignCleared == 2 && loaded.schema == 5, "round-trip: a schema 5 save loads and saves back unchanged (battlesWon, bonusClaimed, campaignCleared 2)");
+        check(write(loaded).equals(write(saved)) && loaded.battlesWon.equals(march(2)) && loaded.bonusClaimed.equals(Set.of("o1_hold_all")) && loaded.campaignCleared == 2 && loaded.schema == 6, "round-trip: a schema 6 save loads and saves back unchanged (battlesWon, bonusClaimed, campaignCleared 2)");
         // schema 5 (command UI custom groups): a schema-4 file loads with no custom group and saves as schema 5; a schema-5 file round-trips
         String v4Save = "{\"schema\":4,\"gold\":66,\"banner\":\"knight,archer\",\"campaignCleared\":2,\"writs\":0,\"writChapters\":\"\",\"battlesWon\":\"march-1,march-2\",\"bonusClaimed\":\"\"}";
         var four = parseV2(v4Save);
         check(four.customGroups == null && four.schema == 4, "v4-fixture: a schema-4 file carries no customGroups key");
         four.sanitize(cat, CLASSES, SIDES, HOUSES);
-        check(four.schema == 5 && four.customGroups != null && four.customGroups.isEmpty() && four.gold == 66 && four.battlesWon.equals(march(2)) && !four.readOnly, "v4toV5: a schema-4 profile loads with customGroups empty, every other field kept, schema 5, writable");
-        check(write(four).contains("\"schema\":5") && write(four).contains("\"customGroups\":\"\""), "v4toV5: the loaded schema-4 profile saves as schema 5 with an empty customGroups");
+        check(four.schema == 6 && four.customGroups != null && four.customGroups.isEmpty() && four.gold == 66 && four.battlesWon.isEmpty() && !four.readOnly, "v4toV5: a schema-4 profile loads with customGroups empty, other fields kept, its march wins reset (schema 6), writable");
+        check(write(four).contains("\"schema\":6") && write(four).contains("\"customGroups\":\"\""), "v4toV5: the loaded schema-4 profile saves as schema 6 with an empty customGroups");
         check(ProfileMigration.v4toV5(parseV2(v4Save)).schema == 5, "v4toV5: sets schema 5");
         var grouped = new Profile();
         grouped.customGroups = new ArrayList<>(List.of(new Profile.CustomGroup(2, "Flank", List.of("archer", "bonebow")), new Profile.CustomGroup(1, "Line", List.of("knight"))));
         grouped.sanitize(cat, CLASSES, SIDES, HOUSES);
         var reread = parseV2(write(grouped));
         reread.sanitize(cat, CLASSES, SIDES, HOUSES);
-        check(reread.schema == 5 && reread.customGroups.equals(grouped.customGroups) && write(reread).equals(write(grouped))
+        check(reread.schema == 6 && reread.customGroups.equals(grouped.customGroups) && write(reread).equals(write(grouped))
             && reread.customGroups.equals(List.of(new Profile.CustomGroup(1, "Line", List.of("knight")), new Profile.CustomGroup(2, "Flank", List.of("archer", "bonebow")))), "v5-round-trip: a schema-5 file with two custom groups loads and saves back unchanged, sorted by number");
         var messy = new Profile();
         messy.customGroups = new ArrayList<>(Arrays.asList(null, new Profile.CustomGroup(1, "  A very long group name  ", Arrays.asList("knight", "knight", "bogus", null)), new Profile.CustomGroup(1, "Dup", List.of()),
@@ -229,9 +229,9 @@ public final class ProfileMigrationCheck {
         messy.sanitize(cat, CLASSES, SIDES, HOUSES);
         check(messy.customGroups.size() == 4 && messy.customGroups.get(0).equals(new Profile.CustomGroup(1, "A very long", List.of("knight"))) && messy.customGroups.get(2).equals(new Profile.CustomGroup(3, "Group 3", List.of()))
             && messy.customGroups.stream().mapToInt(Profile.CustomGroup::number).boxed().toList().equals(List.of(1, 2, 3, 4)), "custom-sanitize: nulls, repeats and numbers outside 1..4 go; names trim to 12 and default to Group n; unknown or repeated troop ids go");
-        var newer = parseV2(v4Save.replace("\"schema\":4", "\"schema\":6"));
+        var newer = parseV2(v4Save.replace("\"schema\":4", "\"schema\":7"));
         newer.sanitize(cat, CLASSES, SIDES, HOUSES);
-        check(newer.readOnly && newer.schema == 6, "read-only: a schema-6 profile from a newer build is still kept read-only");
+        check(newer.readOnly && newer.schema == 7, "read-only: a schema-7 profile from a newer build is kept read-only");
         // the file upgrade
         Path dir = Files.createTempDirectory("gravesandglory-profile-migration-check-");
         try {
@@ -257,16 +257,16 @@ public final class ProfileMigrationCheck {
             Path v2 = dir.resolve("e5.json"), v2Backup = dir.resolve("e5.v2.json");
             Files.writeString(v2, V2_SAVE);
             Profile up = upgrade(v2);
-            check(up != null && up.schema == 4 && up.battlesWon.equals(march(1)) && up.bonusClaimed.isEmpty(), "mig-v2: schema 2 with campaignCleared 1 becomes schema 4 with battlesWon [march-1] and no bonus claimed");
+            check(up != null && up.schema == 4 && up.battlesWon.equals(march(1)) && up.bonusClaimed.isEmpty(), "mig-v2: schema 2 with campaignCleared 1 becomes schema 4 with battlesWon [oath-1] (the reset empties it on sanitize) and no bonus claimed");
             check(up.gold == 77 && up.banner.equals(List.of("knight", "archer")) && up.campaignCleared == 1 && up.writs == 1 && up.writChapters.equals(Set.of(1)), "mig-v2: gold, banner, campaignCleared, writs and writChapters are kept unchanged");
             check(Files.readString(v2Backup).equals(V2_SAVE) && !Files.exists(dir.resolve("e5.v1.json")) && Files.readString(v2).equals(write(up)), "mig-v2: <id>.v2.json is a byte copy of the schema-2 file, no .v1.json, and <id>.json is the schema 4 file");
             byte[] v3Bytes = Files.readAllBytes(v2);
             check(upgrade(v2) == null && Arrays.equals(Files.readAllBytes(v2), v3Bytes) && Files.readString(v2Backup).equals(V2_SAVE), "mig-v2-idempotent: a schema 4 file returns null; both files are unchanged");
             Path deep = dir.resolve("f6.json");
             Files.writeString(deep, V2_SAVE.replace("\"campaignCleared\":1", "\"campaignCleared\":3"));
-            check(upgrade(deep).battlesWon.equals(march(3)), "mig-v2: campaignCleared 3 gives march-1, march-2 and march-3");
+            check(upgrade(deep).battlesWon.equals(march(3)), "mig-v2: campaignCleared 3 gives the first three rows");
             check(Files.readString(dir.resolve("a1.v2.json")).contains("\"schema\":2") && !Files.readString(dir.resolve("a1.v2.json")).contains("battlesWon"), "mig-file: a schema-1 file also keeps its schema-2 image once as <id>.v2.json");
-            check(migrated.battlesWon.equals(march(1)) && migrated.bonusClaimed.isEmpty() && migrated.campaignCleared == 1, "mig-file: schema 1 runs on to schema 3; campaignCleared 1 gives battlesWon [march-1]");
+            check(migrated.battlesWon.equals(march(1)) && migrated.bonusClaimed.isEmpty() && migrated.campaignCleared == 1, "mig-file: schema 1 runs on to schema 3; campaignCleared 1 gives battlesWon [oath-1] before sanitize");
             Path stuck = dir.resolve("d4.json");
             Files.write(stuck, original);
             Files.createDirectory(dir.resolve("d4.tmp")); // <id>.tmp cannot be written as a file
