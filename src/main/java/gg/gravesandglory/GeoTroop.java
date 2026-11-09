@@ -23,6 +23,11 @@ final class GeoTroop implements GeoReplacedEntity {
 
     /** Blend time between locomotion clips, ticks. */
     static final int BLEND = 4;
+    /**
+     * Setting off, ticks (polish batch 1, foot slide): the legs blend the idle pose into the moving clip over a tick and a half, since the planted feet are
+     * carried with the body for as long as they blend; the arms take longer. Stopping is unchanged: GeckoLib's transition into idle, at {@link #BLEND}.
+     */
+    static final double LEGS_START_BLEND = 1.5, UPPER_START_BLEND = 4;
     private static final RawAnimation[] LEGS = loops("legs"), UPPER = loops("upper");
 
     private static RawAnimation[] loops(String layer) {
@@ -42,8 +47,8 @@ final class GeoTroop implements GeoReplacedEntity {
         double speed = 0;
         for (Spec.TroopsRow r : Spec.TROOPS) if (r.id().equals(troop)) { speed = r.speed(); break; }
         Gait gait = new Gait(speed);
-        controllers.add(new GaitController(this, "legs", BLEND, gait, true, s -> s.setAndContinue(LEGS[gait.mode.ordinal()])));
-        controllers.add(new GaitController(this, "upper", BLEND, gait, false, s -> s.setAndContinue(UPPER[gait.mode.ordinal()])));
+        controllers.add(new GaitController(this, "legs", BLEND, LEGS_START_BLEND, gait, true, s -> s.setAndContinue(LEGS[gait.mode.ordinal()])));
+        controllers.add(new GaitController(this, "upper", BLEND, UPPER_START_BLEND, gait, false, s -> s.setAndContinue(UPPER[gait.mode.ordinal()])));
         StanceController stance = new StanceController(this, gait);
         controllers.add(stance);
         controllers.add(new AttackController(this, stance));

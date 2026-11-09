@@ -32,6 +32,8 @@ final class Gait {
      * which the fast average follows and which must not flip a running troop into its walk for a few frames.
      */
     static final double TREND = 4;
+    /** Fewest ticks a troop that has set off stays out of the idle pose: a nudge or a push that the raw step catches must not flicker idle, walk, idle. */
+    static final double MIN_MOVE = 3;
 
     enum Mode { IDLE, WALK, RUN }
 
@@ -53,18 +55,30 @@ final class Gait {
     Mode mode = Mode.IDLE;
     /** Ground distance one loop of the clip being played covers, blocks; 0 while no gait clip plays (the phase then holds). */
     double stride;
-    private double last = Double.NaN;
+    private double last = Double.NaN, lastRx = Double.NaN, lastRz = Double.NaN, movedAt = Double.NaN;
     /** Each drawn troop's clock, for the in-game checks (test-tools GeoKnightChecks); weak, so unloaded troops drop out. */
     static final Map<Entity, Gait> LIVE = Collections.synchronizedMap(new WeakHashMap<>());
 
-    /** Advances the clock to animation time {@code time} (ticks) from the entity's motion over its last tick. */
-    void update(Entity e, double time) {
+    /** Advances the clock to animation time {@code time} (ticks); the partial tick is taken from the time's fraction. */
+    void update(Entity e, double time) { update(e, time, time - Math.floor(time)); }
+
+    /**
+     * Advances the clock to animation time {@code time} (ticks) from the entity's motion. {@code partial} is the frame's partial tick, which places the render position
+     * the stride clock is walked along.
+     */
+    void update(Entity e, double time, double partial) {
         if (time == last) return;
         if (Double.isNaN(last)) LIVE.put(e, this);
         // First sight, or back in view after not being drawn: the old averages describe another moment, so start from now.
         boolean fresh = Double.isNaN(last) || time - last > 4;
         double dt = fresh ? 0 : Math.max(0, time - last);
         last = time;
+        // The ground the troop really covered since the last frame, at its render position: the stride clock walks this, not the smoothed speed, which lags a troop that
+        // sets off or stops (the server accelerates it over a few ticks) and lets the planted foot slide by the difference.
+        double rx = e.prevX + (e.getX() - e.prevX) * partial, rz = e.prevZ + (e.getZ() - e.prevZ) * partial;
+        double step = fresh || Double.isNaN(lastRx) ? 0 : Math.hypot(rx - lastRx, rz - lastRz);
+        lastRx = rx; lastRz = rz;
+        if (step > 1.0) step = 0; // a teleport, not a step
         double vx = e.getX() - e.prevX, vz = e.getZ() - e.prevZ, v = Math.sqrt(vx * vx + vz * vz);
         if (v > 1.0) v = 0; // a teleport, not a step
         float yaw = e instanceof LivingEntity l ? l.bodyYaw : e.getYaw();
@@ -77,10 +91,17 @@ final class Gait {
         // Starting and stopping follow the fast speed (feet must not slide); walk against run follows the steadier trend. A runner
         // drops to the walk only once both have slowed: after a hitch the fast speed is back up while the trend still lags.
         double s = Math.abs(speed), t = Math.abs(trend);
-        mode = s < (mode == Mode.IDLE ? IDLE_TO_WALK : WALK_TO_IDLE) ? Mode.IDLE
+        // A planted troop sets off on the raw step, a tick or two before the smoothed speed shows it: every tick it waits in the idle pose is a tick its feet are carried.
+        double gate = mode == Mode.IDLE ? Math.max(s, v) : s;
+        Mode was = mode;
+        mode = gate < (mode == Mode.IDLE ? IDLE_TO_WALK : WALK_TO_IDLE) ? Mode.IDLE
             : (mode == Mode.RUN ? Math.max(s, t) > toWalk : t > toRun) ? Mode.RUN : Mode.WALK;
+        if (was == Mode.IDLE && mode != Mode.IDLE) movedAt = time;
+        else if (was != Mode.IDLE && mode == Mode.IDLE && time - movedAt < MIN_MOVE) mode = was;
         if (e instanceof LivingEntity l && (l.isDead() || l.deathTime > 0)) mode = Mode.IDLE;
-        if (stride > 0) phase = wrap(phase + dt * speed / stride);
+        // Setting off and cruising walk the rendered distance. Slowing down keeps the smoothed speed: the stop is as it was (polish batch 2: the rendered-distance clock made the stop slide worse).
+        boolean slowing = s < t - .002;
+        if (stride > 0) phase = wrap(phase + (slowing ? dt * speed : speed < 0 ? -step : step) / stride);
     }
 
     static double wrap(double p) { return p - Math.floor(p); }
