@@ -10,7 +10,7 @@ import os, sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from proplib import E, Prop, Mat, MAT, make_ramp, fixed, h3, HOUSE, LINEN, LEATHER, STEEL, WATER, STONE, WOOD  # noqa: F401
 
-RED = make_ramp("9A3028")      # wax seal, route ink, marker
+RED = make_ramp("982418")      # wax seal, route ink, marker
 FIELD = make_ramp("6B7F45")    # map: fields
 INK = LEATHER[1]
 
@@ -47,37 +47,46 @@ def text_lines(rows):
     return art
 
 
-MAP = [  # inner 10 x 12, h hills, g fields, w river, x target, k village
+MAP = [  # inner 10 x 12, h hills, g fields, w river, k village
     ".hh...gg..",
-    "hhh.ggg.x.",
+    "hhh.ggg...",
     ".h..gggg..",
     "..k..gg...",
     "..........",
-    "ww........",
-    "..wwww....",
-    "......www.",
-    "........ww",
-    ".....ggg..",
+    "wwwwwww...",
+    "...wwwwwww",
+    "..........",
+    "........gg",
+    ".....ggggg",
     "....gggg..",
-    "...gggg...",
+    "...ggg....",
 ]
-ROUTE = {(8, 3), (7, 4), (7, 5), (6, 6), (5, 7), (4, 8), (4, 9), (3, 10), (2, 11)}
+# dashed route, start bottom-left, fording the river at x=5, ending in the red X (grid x, y; inner coords)
+ROUTE = [(2, 10), (3, 10), (3, 9), (4, 8), (5, 7), (5, 6), (5, 5), (6, 4), (7, 4), (8, 3)]
+ROUTE_ON = {pt for i, pt in enumerate(ROUTE) if i % 4 != 3}
+MARK_X = {(7, 0), (9, 0), (8, 1), (7, 2), (9, 2)}
 
 
 def map_art(gx, gy, w, h):
     ix, iy = gx - 1, gy - 1
+    if (ix, iy) in MARK_X: return RED[2]
+    if (ix, iy) in ROUTE_ON: return RED[2]
     ch = MAP[iy][ix]
-    if (ix, iy) == (8, 1): return RED[3]
-    if ix + iy and (ix, iy) in ROUTE and (ix + iy) % 3 != 0: return RED[2]
     return {"h": STONE[3], "g": FIELD[2], "w": WATER[3], "k": INK}.get(ch)
 
 
+SEAL = [".XXX.", "XXXXX", "XXXXX", ".XXX."]
+
+
 def seal(gx, gy, w, h):
-    if 3 <= gx <= 5 and h - 5 <= gy <= h - 3: return RED[2] if (gx, gy) != (3, h - 5) else RED[3]
+    lx, ly = gx - 2, gy - 9
+    if 0 <= ly < 4 and 0 <= lx < 5 and SEAL[ly][lx] == "X":
+        if (lx, ly) == (1, 1): return RED[3]
+        return RED[1] if (ly == 3 or lx == 4) else RED[2]
     return None
 
 
-CONTRACT_ROWS = {3: (2, 5), 4: (2, 5), 6: (1, 7), 8: (1, 6), 10: (1, 7), 11: (1, 4)}
+CONTRACT_ROWS = {2: (2, 5), 3: (2, 5), 5: (1, 7), 7: (1, 6)}
 NOTICE_ROWS = {2: (1, 4), 4: (1, 3), 5: (1, 4), 7: (1, 3)}
 SCRAP_ROWS = {2: (1, 5), 4: (1, 3)}
 
