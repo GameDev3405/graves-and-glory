@@ -78,6 +78,8 @@ public final class Props {
     public record Live(BlockPos anchor,PropDef def,int facing){}
 
     private static final Map<World,Map<BlockPos,Live>> LIVE=new HashMap<>();
+    /** Anchor depth last found per anchor cell, so {@link #anchorBase} reads one block per call in the usual case. */
+    private static final Map<World,Map<BlockPos,Integer>> DEPTHS=new HashMap<>();
     private static final Map<World,Map<Long,Integer>> PENDING_CHUNKS=new HashMap<>();
     private static final Map<World,List<Entity>> PENDING_ENTITIES=new HashMap<>();
 
@@ -92,7 +94,7 @@ public final class Props {
             if(e instanceof DisplayEntity.ItemDisplayEntity&&e.getCommandTags().contains(TAG))PENDING_ENTITIES.computeIfAbsent(w,k->new ArrayList<>()).add(e);
         });
         ServerTickEvents.END_WORLD_TICK.register(Props::tick);
-        ServerWorldEvents.UNLOAD.register((server,w)->{LIVE.remove(w);PENDING_CHUNKS.remove(w);PENDING_ENTITIES.remove(w);});
+        ServerWorldEvents.UNLOAD.register((server,w)->{LIVE.remove(w);DEPTHS.remove(w);PENDING_CHUNKS.remove(w);PENDING_ENTITIES.remove(w);});
         CommandRegistrationCallback.EVENT.register((d,access,env)->d.register(CommandManager.literal("prop").requires(s->s.hasPermissionLevel(2))
             .then(CommandManager.literal("place").then(CommandManager.argument("id",StringArgumentType.word()).suggests((c,b)->CommandSource.suggestMatching(DEFS.keySet(),b))
                 .then(CommandManager.argument("pos",BlockPosArgumentType.blockPos()).then(CommandManager.argument("facing",IntegerArgumentType.integer(0,270)).executes(c->{
@@ -197,6 +199,7 @@ public final class Props {
             if(!loaded(w,p))return "Out of world at "+p.getX()+" "+p.getY()+" "+p.getZ()+" (not loaded)";
         }
         for(BlockPos p:all)if(!free(w.getBlockState(p)))return "Overlap at "+p.getX()+" "+p.getY()+" "+p.getZ()+" ("+w.getBlockState(p).getBlock().getName().getString()+")";
+        if(anchorBase(w,anchorCell)!=null)return "Overlap at "+anchorCell.getX()+" "+anchorCell.getY()+" "+anchorCell.getZ()+" (another prop's anchor cell)";
         if(hiddenBase(w,anchorCell,all,null,null)==null){ // fallback: the anchor goes in the floor directly under the cell (it shows)
             BlockPos p=anchorCell.down();
             if(w.isOutOfHeightLimit(p)||!w.getWorldBorder().contains(p))return "Out of world at "+p.getX()+" "+p.getY()+" "+p.getZ();
@@ -288,12 +291,18 @@ public final class Props {
     }
     /** The anchor command block of anchor cell {@code anchor} ({@code depth=} blocks under it), or null. */
     static BlockPos anchorBase(ServerWorld w,BlockPos anchor){
-        for(int d=1;d<=MAX_DEPTH;d++){
+        Map<BlockPos,Integer> cache=DEPTHS.computeIfAbsent(w,k->new HashMap<>());
+        Integer known=cache.get(anchor);
+        // the last depth found here first, then 2 (a new anchor), 1 (an old or fallback one), then deeper
+        for(int i=known==null?1:0;i<=MAX_DEPTH;i++){
+            int d=i==0?known:i==1?2:i==2?1:i;
+            if(i>0&&known!=null&&d==known)continue;
             BlockPos base=anchor.down(d);
-            if(w.isOutOfHeightLimit(base))return null;
+            if(w.isOutOfHeightLimit(base))continue;
             Live l=readBase(w,base);
-            if(l!=null&&l.anchor().equals(anchor))return base;
+            if(l!=null&&l.anchor().equals(anchor)){cache.put(anchor.toImmutable(),d);return base;}
         }
+        cache.remove(anchor);
         return null;
     }
     /** The prop whose anchor command block is at {@code base}; null if it is not one or its id is unknown. */
@@ -429,6 +438,8 @@ public final class Props {
         Map<Long,Integer> pending=PENDING_CHUNKS.get(w);if(pending!=null)pending.remove(chunk.getPos().toLong());
         Map<BlockPos,Live> m=LIVE.get(w);
         if(m!=null){ChunkPos cp=chunk.getPos();m.keySet().removeIf(a->(a.getX()>>4)==cp.x&&(a.getZ()>>4)==cp.z);}
+        Map<BlockPos,Integer> dm=DEPTHS.get(w);
+        if(dm!=null){ChunkPos cp=chunk.getPos();dm.keySet().removeIf(a->(a.getX()>>4)==cp.x&&(a.getZ()>>4)==cp.z);}
     }
 
     /** The live map's values as they are, without the anchor check or a copy (the S5 ticker's cheap pass); do not modify. */
