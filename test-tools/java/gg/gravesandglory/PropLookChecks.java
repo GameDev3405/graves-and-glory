@@ -59,7 +59,11 @@ final class PropLookChecks implements Phase1Checks.Suite {
         for (int i = 0; i < PROPS.size(); i++) {
             int[] a = anchor(i); String why = Props.place(w, PROPS.get(i).id(), new net.minecraft.util.math.BlockPos(a[0], a[1], a[2]), 0);
             Phase1Checks.report("p1-prop-place-" + PROPS.get(i).id(), why.isEmpty(), why.isEmpty() ? "placed through Props.place, facing north" : why);
+            var cell = new net.minecraft.util.math.BlockPos(a[0], a[1], a[2]); var base = Props.anchorBase(w, cell);
+            boolean hidden = why.isEmpty() && base != null && base.getY() < a[1] - 1 && w.getBlockState(cell.down()).isOf(net.minecraft.block.Blocks.GRASS_BLOCK);
+            Phase1Checks.report("p1-prop-anchor-hidden-" + PROPS.get(i).id(), hidden, "anchor at " + (base == null ? "none" : base.toShortString()) + ", floor " + w.getBlockState(cell.down()).getBlock());
         }
+        if (!PROPS.isEmpty()) oldAnchor(w, PROPS.get(0).id(), new net.minecraft.util.math.BlockPos(ox, oy, oz - 20));
         var own = b.squads.get(p.getUuid());
         for (int i = 0; i < PROPS.size(); i++) {
             var d = PROPS.get(i); int[] a = anchor(i);
@@ -76,6 +80,21 @@ final class PropLookChecks implements Phase1Checks.Suite {
             }
         }
         built = true; say("platform at " + ox + " " + oy + " " + oz + (own == null ? " (no squad: no knights)" : ""));
+    }
+
+    /** An anchor in the old format (one block under its cell, no depth=) is found by the scanner, moved down out of sight, and removed with
+     *  its floor and the block under it put back. */
+    static void oldAnchor(net.minecraft.server.world.ServerWorld w, String id, net.minecraft.util.math.BlockPos cell) {
+        var under = cell.down(); var deep = cell.down(2);
+        w.setBlockState(under, net.minecraft.block.Blocks.COMMAND_BLOCK.getDefaultState().with(net.minecraft.block.CommandBlock.FACING, net.minecraft.util.math.Direction.NORTH), 3);
+        if (w.getBlockEntity(under) instanceof net.minecraft.block.entity.CommandBlockBlockEntity cb) { cb.getCommandExecutor().setCommand(Props.ANCHOR_PREFIX + id + " floor=minecraft:grass_block"); cb.setAuto(false); cb.markDirty(); }
+        int found = Props.scanBox(w, new net.minecraft.util.math.BlockBox(cell.getX() - 2, cell.getY() - 4, cell.getZ() - 2, cell.getX() + 2, cell.getY() + 2, cell.getZ() + 2));
+        var l = Props.readAnchor(w, cell);
+        boolean moved = found == 1 && l != null && w.getBlockState(under).isOf(net.minecraft.block.Blocks.GRASS_BLOCK) && w.getBlockState(deep).isOf(net.minecraft.block.Blocks.COMMAND_BLOCK) && !Props.parts(w, cell).isEmpty();
+        Phase1Checks.report("p1-prop-old-anchor-scan", moved, "found " + found + ", under " + w.getBlockState(under).getBlock() + ", deep " + w.getBlockState(deep).getBlock() + ", parts " + Props.parts(w, cell).size());
+        boolean removed = Props.remove(w, cell) && Props.readAnchor(w, cell) == null && Props.parts(w, cell).isEmpty()
+            && w.getBlockState(under).isOf(net.minecraft.block.Blocks.GRASS_BLOCK) && w.getBlockState(deep).isOf(net.minecraft.block.Blocks.DIRT);
+        Phase1Checks.report("p1-prop-old-anchor-remove", removed, "under " + w.getBlockState(under).getBlock() + ", deep " + w.getBlockState(deep).getBlock());
     }
 
     /** Camera at the front-left (north-west) of prop i at distance d, eye height, looking at its middle. */
