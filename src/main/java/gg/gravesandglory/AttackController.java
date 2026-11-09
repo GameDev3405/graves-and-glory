@@ -3,6 +3,7 @@ package gg.gravesandglory;
 import com.eliotlash.mclib.math.IValue;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.LivingEntity;
+import net.minecraft.entity.attribute.EntityAttributes;
 import software.bernie.geckolib.constant.DataTickets;
 import software.bernie.geckolib.core.animatable.model.CoreGeoBone;
 import software.bernie.geckolib.core.animatable.model.CoreGeoModel;
@@ -39,6 +40,17 @@ final class AttackController extends AnimationController<GeoTroop> {
     static final double DEATH_OUT = 3;
 
     private final String family;
+    /**
+     * A caster whose cast is its ability (a mend, a blight, a mist: work/anim-clip-spec C3, C4, C6): the clip named after its Spec ability
+     * id, played in place of attack_cast when the troop's clip file has it, else null. {@link #windup}: the ability's windup ticks (the spell
+     * takes effect that long after the cast event's impact).
+     */
+    private final String abilityClip;
+    private final int windup;
+    /** The Seer's howl (spec C7): played when its own howl speed modifier (Abilities.HOWL) appears; there is no cast event for it. */
+    private final boolean howls;
+    private boolean howlOn, howlSeenOff;
+    private double howlAt = Double.NEGATIVE_INFINITY;
     /** Whether this troop's shots hold their full draw (Tactics.drawsAhead: a non-magic ranged bow troop), as Projectiles.hold does on the server. */
     private final boolean draws;
     /** The stance layer, whose standing factor scales the swing's footwork (attack_&lt;name&gt;_legs): planted feet never slide. */
@@ -62,6 +74,10 @@ final class AttackController extends AnimationController<GeoTroop> {
     /** How fast the newest swing's clip ran against the world clock that frame (above 1: a late wind-up quickened). */
     double shownRate = 1;
     long shownStart = Long.MIN_VALUE;
+    /** Ticks the newest swing's clip starts after its start tick (an ability clip shifted onto its windup's end; else 0). */
+    double shownLead;
+    /** The world tick the newest howl clip drawn started on (NaN: none yet); kept apart from the swing's shown fields. */
+    double howlShown = Double.NaN;
     String shownClip = "";
     private boolean listed;
     /** Each drawn troop's attack layer, for the checks; weak, so unloaded troops drop out. */
@@ -72,9 +88,21 @@ final class AttackController extends AnimationController<GeoTroop> {
         this.stance = stance;
         String f = "";
         boolean d = false;
-        for (Spec.TroopsRow r : Spec.TROOPS) if (r.id().equals(troop.troop)) { f = r.family(); d = r.ranged() && !r.magic() && "bow".equals(f); break; }
+        String ab = null;
+        int wu = 0;
+        boolean hw = false;
+        for (Spec.TroopsRow r : Spec.TROOPS) if (r.id().equals(troop.troop)) {
+            f = r.family(); d = r.ranged() && !r.magic() && "bow".equals(f);
+            var row = Abilities.row(r);
+            if ("caster".equals(f)) switch (row.mechanic()) { case "mend", "blight", "mist" -> { ab = r.ability(); wu = Math.max(0, row.windupTicks()); } default -> {} }
+            hw = "aura".equals(row.mechanic()) && "timer".equals(row.trigger());
+            break;
+        }
         family = f;
         draws = d;
+        abilityClip = ab;
+        windup = wu;
+        howls = hw;
     }
 
     /** The clip a swing plays: attack_&lt;variant id without its family prefix&gt;, e.g. sword_shield_thrust plays attack_thrust. */
@@ -111,10 +139,14 @@ final class AttackController extends AnimationController<GeoTroop> {
         // Oldest first: each playing swing blends over what is already on the bones.
         for (MotionInput.Attack a : MotionEvents.Client.attacks(e.getId())) {
             if (a.variant() < 0 || a.variant() >= variants.size()) continue;
-            double raw = now - a.startTick();
-            if (raw < 0) continue;
-            Animation clip = model.getAnimation(animatable, clipName(family, variants.get(a.variant()).id()));
+            // A caster's ability clip: the cast event starts impactTicks before the spell leaves and the spell takes effect windup ticks
+            // after that, so the clip is shifted to put its own impact marker on that tick (a mend: 0; a blight or a mist: 10).
+            Animation clip = abilityClip == null ? null : model.getAnimation(animatable, abilityClip);
+            double lead = clip == null ? 0 : variants.get(a.variant()).impactTicks() + windup - impact(clip);
+            if (clip == null) clip = model.getAnimation(animatable, clipName(family, variants.get(a.variant()).id()));
             if (clip == null) continue;
+            double raw = now - a.startTick() - lead;
+            if (raw < 0) continue;
             // A bow shot holds its full draw Seed.hold ticks (the server started its clip that much earlier, Projectiles.shotStart),
             // so the loose still lands on the impact marker. The held span stretches over the clip's own full-to-impact hold (its
             // trembling aim) rather than freezing a frame (STYLE.md rule 2: alive even when still).
@@ -130,7 +162,7 @@ final class AttackController extends AnimationController<GeoTroop> {
             // A swing first heard of a tick or more after it began (a bow's draw is announced one beat, 10 ticks, ahead of a loose its
             // clip reaches 16 or more ticks after it starts) plays its whole wind-up, quickened, from when it arrived up to its full
             // draw (a melee swing: its impact), so the loose or the blow still lands on the server's tick.
-            double late = a.startTick() == seenStart ? seenAt - seenStart : 0;
+            double late = a.startTick() == seenStart ? seenAt - seenStart - lead : 0;
             double until = hold > 0 ? full : impact(clip);
             double rate = 1;
             if (late >= 1 && until - late >= 2 && raw < until) { rate = until / (until - late); t = Math.max(0, (raw - late) * rate); }
@@ -148,8 +180,35 @@ final class AttackController extends AnimationController<GeoTroop> {
                 shownLegsWeight = Math.max(shownLegsWeight, lw);
             }
             shownWeight = Math.max(shownWeight, w);
-            if (a == latest) { shownStart = a.startTick(); shownT = t; shownClip = clip.name(); shownImpact = impact(clip); shownSeenAt = a.startTick() == seenStart ? seenAt : -1; shownRate = rate; }
+            if (a == latest) { shownStart = a.startTick(); shownT = t; shownClip = clip.name(); shownImpact = impact(clip); shownSeenAt = a.startTick() == seenStart ? seenAt : -1; shownRate = rate; shownLead = lead; }
         }
+        if (howls && e instanceof LivingEntity l) howl(model, l, now, wasDrawn, bones, death);
+    }
+
+    /**
+     * The Seer's howl (spec C7): the server gives every howled troop, the Seer too, its howl speed modifier on the howl's tick (Abilities.howl)
+     * and takes it off when the howl ends, so the modifier appearing on this Seer while it is drawn starts its howl clip from that frame
+     * (the attribute sync can trail the howl by a tick or two). A Seer first seen with the modifier on, or coming back into view, does not
+     * howl. The clip blends over the swings like one, its _legs footwork over the standing legs.
+     */
+    private void howl(CoreGeoModel<GeoTroop> model, LivingEntity l, double now, boolean wasDrawn, Map<String, CoreGeoBone> bones, double death) {
+        var speed = l.getAttributeInstance(EntityAttributes.GENERIC_MOVEMENT_SPEED);
+        boolean on = speed != null && speed.getModifier(Abilities.HOWL) != null;
+        if (on && !howlOn && howlSeenOff && wasDrawn) howlAt = Math.floor(now);
+        if (!on) howlSeenOff = true;
+        howlOn = on;
+        double raw = now - howlAt;
+        if (raw < 0 || raw > 200) return;
+        Animation clip = model.getAnimation(animatable, "howl");
+        if (clip == null || raw >= clip.length()) return;
+        double w = Math.min(smooth(raw / FADE_IN), smooth((clip.length() - raw) / FADE_OUT)) * death;
+        if (w <= 0) return;
+        apply(clip, raw, bones, (float) w);
+        double sv = stance.still();
+        double lw = sv <= STILL_SETTLED ? 0 : w * smooth(sv);
+        Animation legs = lw > 0 ? model.getAnimation(animatable, "howl_legs") : null;
+        if (legs != null && raw < legs.length()) apply(legs, raw, bones, (float) lw);
+        howlShown = howlAt;
     }
 
     /** The clip's impact tick: its "timeline" marker named impact (build_anims.py IMPACT), or -1. */

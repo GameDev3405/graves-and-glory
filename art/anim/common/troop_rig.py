@@ -114,6 +114,12 @@ ROBE = {"wm_seer": {"skirt": "skirt", "fringe": "hem_fringe", "top": 12, "hem": 
         # box paints its own tier; hem 1.5 px up, so the feet show (v1's robe sat on the floor)
         "hexer": {"skirt": "burial_robe", "top": 11.5,
                   "tiers": ((4, 10, 6, "burial_robe", 0), (3, 11, 7, "burial_robe", 1), (4, 12, 8, "burial_robe", 2))}}
+# Per troop, a held part that hangs and swings (Kort 2026-11-09: "the lantern is really stiff, give it some physics"): each listed
+# bone's boxes at or below the hang line (handlib y >= at[1]: the chain, cap, glass, base and drop, not the crook) move to a child
+# bone <name>_hang whose pivot is the hang point `at` (from the part's own pivot, handlib px), so the clips can swing the lantern on
+# its chain while the crook stays in the fist. Same boxes, same paint and UVs, same rest geometry; the swing keys are baked by
+# art/anim/common/hang_swing.py. A hang bone shows at its part's tiers.
+SWING = {"hexer": {"parts": ("lantern", "lantern_t2", "lantern_t3"), "at": (0, 0, -5.5)}}
 
 
 def lined(paint):
@@ -190,7 +196,7 @@ def robe_panels(skirt, fringe, R):
     return out
 
 
-def rigify(src, weapon_rot, kind="blade", hang=None, robe=None, big=None):
+def rigify(src, weapon_rot, kind="blade", hang=None, robe=None, big=None, swing=None):
     """The troop's handlib bones re-hung on the knight's skeleton (pivots relative to the parent); big (BIG) scales it."""
     src = [bn for bn in src if bn.name not in DROP]
     robed = {}
@@ -303,6 +309,15 @@ def rigify(src, weapon_rot, kind="blade", hang=None, robe=None, big=None):
     for bn in out:
         if bn.name in ("right_forearm", "left_forearm", "right_shin", "left_shin") and bn.boxes:
             bn.boxes[0].dil = round(bn.boxes[0].dil - H.JOINT_INSET, 6)
+    if swing:   # a hanging part: its hung boxes onto a <name>_hang child at the hang point (SWING)
+        for bn in [b for b in out if b.name in swing["parts"]]:
+            av = swing["at"]
+            hung = [b for b in bn.boxes if b.origin[1] >= av[1]]
+            bn.boxes = [b for b in bn.boxes if b.origin[1] < av[1]]
+            for b in hung:
+                b.origin = [b.origin[i] - av[i] for i in range(3)]
+            add(Bone(bn.name + "_hang", bn.name, stages=bn.stages, tag=bn.tag, boxes=hung), bn.name,
+                [at[bn.name][i] + av[i] for i in range(3)])
     # the order the geometry wants: a parent before its children
     order, seen = [], set()
     kids = {}
@@ -339,7 +354,7 @@ class Rig:
         s.weapon = importlib.import_module(wmod) if wmod else None
         s.skin, s.cloth = s.troop.skin, s.troop.cloth
         s.wy = s.skin[1] + s.cloth[1]
-        s.B = rigify(s.troop.bones(), wrot, s.kind, HANG.get(tid), ROBE.get(tid), BIG.get(tid))
+        s.B = rigify(s.troop.bones(), wrot, s.kind, HANG.get(tid), ROBE.get(tid), BIG.get(tid), SWING.get(tid))
         s.ground = BIG[tid]["ground"] if tid in BIG else 24   # the floor's handlib y: geo y is ground - y
         s.tiers = tuple(s.troop.tiers)
 
