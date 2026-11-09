@@ -70,5 +70,5 @@ Moving means updating every path that names the old folders: `CLAUDE.md`, `START
 - Free space on C: went from 172.5 GB to 248.2 GB: about 75.7 GB freed.
 - Worktrees: 107 down to 30 (main, base checkout, `gg-hx`, the 22 animation-rebuild lanes, anim-edit, oldhold, rc051, reel, builder-release, qa-fix-ingame).
 - Branches: 223 deleted, each first tagged `archive/cleanup-2026-11/<branch>` (232 tags including detached heads). 44 branches remain.
-- `git fsck --connectivity-only` passes; `git worktree list` has no prunable entries; `verify.py fast --offline` passes in main.
+- `git fsck --connectivity-only` passes; `git worktree list` has no prunable entries. `verify.py fast --offline` in main: 547 of 549 pass. The 2 failures come from Kort's uncommitted edits in main (deleted `music_calm_1.ogg`, changed `maps/sample/design.json`), not from the prune.
 - Left on purpose (not merged and not in an approved group): `anim/attack-clips`, `anim/joints-on-main`, `art/gilded-proportions`, `claude/audit-measure-5b5fc8`, `claude/ironclad-art-a-f8b99d`, `claude/ironclad-art-b-197667`, `claude/trait-audit-573141`, `measure/main-2026-11-02`, `media/shoot-2`, `ui/title-slowmo`, `work/house-audit`, and the `qa/*` and `release/*` branches.
