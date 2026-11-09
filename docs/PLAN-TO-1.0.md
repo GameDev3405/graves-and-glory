@@ -13,7 +13,7 @@ Policy still applies: `docs/WORKFLOW.md`. Gameplay, save, protocol and dependenc
 | Finish line | Full vision 1.0: five Houses, thirty troops, five maps, four modes, six-battle campaign, six-player multiplayer, full tier art, public-ready package and the official hosted network. A fixed feature list: 1.0 ships when every item is in and works |
 | Deadline | None public. Dependency-ordered, quality-gated; a soft internal target only, and no public date until a release candidate is clean (Kort 2026-11-07). Estimates are planning ranges, not promises |
 | Troop art | All thirty troops with complete tier I to III art, faces, portraits, weapons and PBR maps |
-| Story | Six campaign battles with briefing cards, bonus objectives and a Pact. No storybook scenes, named cast, voice or staged sets in 1.0 |
+| Story | Six campaign battles with briefing cards, after-battle lines, bonus objectives and a Pact. Aldric, a shipped Legendary, speaks in briefings and after lines. No storybook scenes, new named cast, voice or staged sets in 1.0. Approved by Kort on 2026-11-09 |
 | Modes | Domination, Siege, Survival and Convoy by 1.0. Siege is the first new mode and the slice mode |
 | Maps | Two-map slice first, all five by 1.0. The builder server is the canonical editable world |
 | Map authoring | AI builds the lobby and maps; Kort and one friend can join the persistent builder server and edit anything, any time |
@@ -427,16 +427,16 @@ The Phase 4 plan is 28 tasks. 1.0 needs tasks 1 to 12 and 28. Tasks 13 to 27 are
 | Campaign card, briefing, Pact report | 12 |
 | Final regression | 28 |
 
-Campaign battle table for 1.0, using all five maps and all four modes:
+Campaign battle table for 1.0: chapter 1, The Oath (the `oath-*` rows; Kort 2026-11-09, chapter 1 build brief):
 
-| # | Battle | Map | Mode | House introduced |
-|---|---|---|---|---|
-| 1 | The Training Field | Rivergate | Domination | Gilded Order |
-| 2 | The Iron Gate | Ironhold | Siege | Ironclad |
-| 3 | The Long Night | Hollowwood | Survival | Graveborn |
-| 4 | The Frozen Standard | Frostmarch | Convoy | Wildmoot |
-| 5 | The Five Crossings | Kingsfield | Domination | Tidecallers |
-| 6 | The Last Watch | Ironhold | Siege, mixed | All Houses |
+| # | Battle | Map | Mode | Enemy | Allies | Ebb |
+|---|---|---|---|---|---|---|
+| 1 | The Drowned Crossings | Rivergate | Domination | Tidecallers, 1 army | none | no |
+| 2 | The Moon Shrine Watch | Hollowwood | Survival | The dead (Survival waves) | Gilded Order | no |
+| 3 | Smoke at Ironhold | Ironhold | Siege | Tidecallers, 2 armies | Ironclad | no |
+| 4 | The Hunters' Road | Frostmarch | Convoy | Wildmoot, 2 armies | Gilded Order | yes |
+| 5 | The Grazing Grounds | Hollowwood | Domination | Wildmoot, 3 armies | Gilded Order, Gilded Order | yes |
+| 6 | The Antlered Alpha | Kingsfield | Domination | Wildmoot, 3 armies | Gilded Order, Gilded Order | yes |
 
 Each battle has a briefing card, one lesson line per new system, one bonus objective worth shards, and a fixed enemy banner. The campaign is solo in 1.0; co-op (party) campaign is post-1.0. It is never played from the public queue (Kort 2026-11-07).
 
