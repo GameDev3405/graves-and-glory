@@ -196,5 +196,22 @@ class KeyframeOrderTest(unittest.TestCase):
         self.assertEqual([list(k[1]) for k in kf], [[1, 2, 3], [4, 5, 6]])
 
 
+class UnionBoundsTest(unittest.TestCase):
+    def test_union_and_shared_camera_size(self):
+        a = (np.array([-1.0, 0.0, -0.5]), np.array([1.0, 2.0, 0.5]))
+        b = (np.array([-0.5, 0.0, -2.0]), np.array([0.5, 3.0, 0.2]))
+        lo, hi = rg.union_bounds([a, b])
+        np.testing.assert_allclose(lo, [-1.0, 0.0, -2.0])
+        np.testing.assert_allclose(hi, [1.0, 3.0, 0.5])
+        for dist in ("near", "game16"):
+            c1 = rg.make_cameras(["three_quarter"], (lo, hi), dist)[0]
+            c2 = rg.make_cameras(["three_quarter"], rg.union_bounds([b, a]), dist)[0]
+            self.assertEqual((c1.W, c1.H, c1.cx, c1.cy), (c2.W, c2.H, c2.cx, c2.cy))
+
+    def test_empty_list_raises(self):
+        with self.assertRaises(rg.GeoError):
+            rg.union_bounds([])
+
+
 if __name__ == "__main__":
     unittest.main()

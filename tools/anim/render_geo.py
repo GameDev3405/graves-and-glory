@@ -1305,6 +1305,16 @@ def compute_bounds(scene, ticks):
     return lo, hi
 
 
+def union_bounds(bounds):
+    """Smallest (min, max) box holding every (min, max) in bounds, so several scenes can share one camera."""
+    bounds = list(bounds)
+    if not bounds:
+        raise GeoError("union_bounds needs at least one bounds pair")
+    lo = np.min([np.asarray(b[0], dtype=np.float64) for b in bounds], axis=0)
+    hi = np.max([np.asarray(b[1], dtype=np.float64) for b in bounds], axis=0)
+    return lo, hi
+
+
 def compose_row(imgs, names, tick, clip_label):
     H = max(i.shape[0] for i in imgs)
     gap = 4
