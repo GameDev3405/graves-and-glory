@@ -1,0 +1,354 @@
+diff --git a/art/hand/reaper/build_reaper.py b/art/hand/reaper/build_reaper.py
+index 80fbceff..309f4334 100644
+--- a/art/hand/reaper/build_reaper.py
++++ b/art/hand/reaper/build_reaper.py
+@@ -23,12 +23,27 @@ import house_stub
+ 
+ SKIN = (128, 128)
+ CLOTH = (128, 64)
+-SHROUD = ramp("08070a", "120f13", "1c181d", "272227", "35303a", "484250")   # black cloth with a cold violet-grey cast
++SHROUD = ramp("09080c", "131017", "1d1922", "28232d", "36303b", "4a4350")   # black cloth, one cold violet-grey hue (was 260-300)
+ LEAN = 7        # degrees the body leans forward; the arms stand back up, the head half way
+ INK_EYE = hx("07060a")
+ 
+ def rnd(*key): return random.Random("reaper-%s" % (key,))
+ 
++def fall(y, h, top=1, foot=-1):
++    """Top-to-bottom light: the top fifth a step up, the lower third a step down, the last tenth of a long face two."""
++    if h < 4: return 0
++    t = y / (h - 1)
++    if t < 0.2: return top
++    if t > 0.9 and h >= 10: return foot - 1
++    return foot if t > 0.66 else 0
++
++def keep_mask(old, new):
++    """Paint `new` only where `old` is opaque, so the alpha mask stays the approved one texel for texel."""
++    def paint(face, w, h):
++        a, b = old(face, w, h), new(face, w, h)
++        return [[(b[y][x] if b[y][x] is not None else a[y][x]) if a[y][x] is not None else None for x in range(w)] for y in range(h)]
++    return paint
++
+ def sh(R, base, face, x=0, w=0, fold=0):
+     """Ramp index for a texel: lit by face and by column, an optional fold line every `fold` columns."""
+     v = base + LIT[face]
+@@ -48,7 +63,7 @@ def grime(g, R, key, n, step=-1, rows_=None):
+     return g
+ 
+ # ---- bare bone limbs with violet wraps ----
+-def bone_limb(joints=(), wraps=(), base=3, key="bl", ends_dark=False):
++def bone_limb(joints=(), wraps=(), base=3, key="bl", ends_dark=False, inner=None, under=0):
+     """2 px bone: a knuckle (dark seam, light ball) at each joint row, a violet wrap on each wrap row."""
+     def paint(face, w, h):
+         g = blank(w, h)
+@@ -59,6 +74,7 @@ def bone_limb(joints=(), wraps=(), base=3, key="bl", ends_dark=False):
+                 if y in joints: i = clamp(BN, base - 2)
+                 elif y - 1 in joints: i = clamp(BN, base + 1)
+                 if y == h - 1: i = clamp(BN, base - 1)
++                if face == inner or y < under: i = BN[max(0, BN.index(i) - 1)]   # the inner face between the legs, the rows under the mantle
+                 g[y][x] = i
+         for y in wraps:
+             if 0 <= y < h and face not in ("top", "bottom"):
+@@ -67,10 +83,11 @@ def bone_limb(joints=(), wraps=(), base=3, key="bl", ends_dark=False):
+     return paint
+ 
+ def arm(side):
+-    return bone_limb(joints=(5,), wraps=(9, 10) if side == "right" else (8, 9, 10), key="arm" + side)
++    return bone_limb(joints=(5,), wraps=(9, 10) if side == "right" else (8, 9, 10), key="arm" + side, under=2)
+ 
+ def leg(side):
+-    return bone_limb(joints=(6,), wraps=(3, 11, 12) if side == "right" else (4, 11, 12), key="leg" + side)
++    return bone_limb(joints=(6,), wraps=(3, 11, 12) if side == "right" else (4, 11, 12), key="leg" + side,
++                     inner="left" if side == "right" else "right", under=1)
+ 
+ def foot(face, w, h):
+     g = [[clamp(BN, 2 + LIT[face] + (lightx(face, x, w) if face not in ("top", "bottom") else 0)) for x in range(w)] for y in range(h)]
+@@ -80,22 +97,25 @@ def foot(face, w, h):
+ 
+ # ---- the skull, set deep in the hood ----
+ SKULL = """
+-dddddddd
+-dbbbbbbd
+-bbbbbbbb
+-BEEBBEEB
+-BkkBBkkB
+-BBBkkBBB
+-BtTtTtTt
++DDDDDDDD
++DdddddDD
++dbbBbbdD
++bEEBBEEd
++bkkBBkkd
++bBBkkBbd
++dtTtTtTd
+ .TTTTTT.
+ """
+ def skull(face, w, h):
+-    p = {"d": BN[1], "b": BN[2], "B": BN[3], "t": BN[4], "T": BN[2], "k": INK_EYE, "E": SOUL[1]}
++    p = {"D": BN[0], "d": BN[1], "b": BN[2], "B": BN[3], "t": BN[4], "T": BN[2], "k": INK_EYE, "E": SOUL[1]}   # D: the hood's shadow on the brow
+     if face == "front":
+         g = grid(SKULL, p)
+         for y in (6, 7):                                                  # a gaping jaw: the mouth in shadow
+             for x in (2, 4, 6): g[y][x] = BN[0] if y == 6 and x == 4 else g[y][x]
+         return g
++    if face == "back":                    # coplanar with the hood's back: paint it as the hood's own cloth so the two read as one
++        hb = hood("back", w + 2, h + 2)
++        return [[hb[y + 1][x + 1] for x in range(w)] for y in range(h)]
+     g = blank(w, h)
+     for y in range(h):
+         for x in range(w):
+@@ -113,37 +133,58 @@ def skull_lit(face, w, h):
+     return g
+ 
+ # ---- the hood: black cloth, a deep opening, a ragged lip ----
++FOLDS = {"right": (3, 7), "left": (2, 6), "back": (3, 6)}    # long folds hanging from the crown, hand-placed per face
++
++def cloth_v(face, x, w, y, h, base, folds=(), from_row=0):
++    """Cloth: face and column light, top-down falloff, and long folds (a dark valley with a lit ridge on its light side)."""
++    v = base + LIT[face] + lightx(face, x, w) + fall(y, h)
++    if y >= from_row:
++        lit_low = face in ("front", "left")            # which way the light comes across the face
++        for c in folds:
++            if x == c: v -= 1
++            elif x == (c - 1 if lit_low else c + 1): v += 1
++    return v
++
+ def hood(face, w, h):
+     g = blank(w, h)
+-    for y in range(h):
+-        for x in range(w):
+-            g[y][x] = sh(SHROUD, 3, face, x, w, fold=3)
++    if face in ("top", "bottom"):
++        for y in range(h):                               # rows run back to front; the front lit, the back in shade
++            for x in range(w):
++                g[y][x] = SHROUD[1] if face == "bottom" else clamp(SHROUD, 4 + (1 if y == h - 1 and x < w // 2 else 0) - (1 if y == 0 or x == w - 1 else 0))
++    else:
++        for y in range(h):
++            for x in range(w): g[y][x] = clamp(SHROUD, cloth_v(face, x, w, y, h, 3, FOLDS.get(face, ()), 2)
++                                               + (1 if face != "front" and lightx(face, x, w) > 0 and y < h - 3 else 0))   # the lit edge's rim
+     if face == "front":
+         for y in range(2, h):
+             for x in range(2, w - 2): g[y][x] = None                       # the opening: 6 wide, down to the chin
+-        for x in range(1, w - 1): g[1][x] = SHROUD[1]                      # the brow's shadow line
+-        for y in range(2, h): g[y][1] = SHROUD[5] if y % 2 else SHROUD[4]; g[y][w - 2] = SHROUD[2]   # the lit lip on the right
+-        for x in range(2, w - 2): g[2][x] = SHROUD[5] if x % 2 else SHROUD[4]
+-        for y in range(h): g[y][0] = SHROUD[2]; g[y][w - 1] = SHROUD[1]
++        for x in range(w):
++            g[0][x] = SHROUD[5 if x < 4 else 4 if x < w - 3 else 3]       # the crown's rim light, from the top left
++            g[1][x] = SHROUD[4 if x < 2 else 3 if x < w - 2 else 2]
++        for x in range(2, w - 2): g[2][x] = SHROUD[5 if x < 4 else 4 if x < w - 4 else 3]   # the lip over the brow
++        for y in range(2, h):
++            g[y][0] = SHROUD[3 if y < 5 else 2 if y < h - 2 else 1]       # the outer edge turning away
++            g[y][1] = SHROUD[5 if y < 4 else 4 if y < 7 else 3]           # the lit lip, fading down
++            g[y][w - 2] = SHROUD[2 if y < 6 else 1]                       # the shaded lip
++            g[y][w - 1] = SHROUD[1 if y < 6 else 0]
+     if face == "bottom":
+         for y in range(1, h - 1):
+             for x in range(1, w - 1): g[y][x] = None
+-    if face == "top":
+-        for x in range(w): g[h // 2][x] = SHROUD[1]
+     if face in ("left", "right", "back"):
+-        g[h - 2] = [V[1 + (x % 2)] for x in range(w)]                       # a violet cord round the hood's base
++        g[h - 2] = [V[3] if lightx(face, x, w) > 0 else V[1] if lightx(face, x, w) < 0 else V[2] for x in range(w)]   # the violet cord, lit toward the light
+         r = rnd("hood", face)
+         g[h - 1] = [SHROUD[1] if r.random() < 0.7 else None for _ in range(w)]
+-    return grime(g, SHROUD, ("hood", face), 8, 1)
++    return g
+ 
+ def peak(face, w, h):
+-    g = [[sh(SHROUD, 3, face, x, w, fold=2) for x in range(w)] for _ in range(h)]
+-    if face not in ("top", "bottom"):
+-        for x in range(w): g[0][x] = SHROUD[4]
+-    return g
++    if face in ("top", "bottom"):
++        return [[SHROUD[1] if face == "bottom" else clamp(SHROUD, 4 + (1 if y == h - 1 and x < (w + 1) // 2 else 0) - (1 if x == w - 1 else 0))
++                 for x in range(w)] for y in range(h)]
++    return [[clamp(SHROUD, 3 + LIT[face] + lightx(face, x, w) + (1 if y == 0 else 0)) for x in range(w)] for y in range(h)]
+ 
+ def drape(face, w, h):
+-    g = [[sh(SHROUD, 2, face, x, w, fold=2) for x in range(w)] for _ in range(h)]
++    g = [[clamp(SHROUD, cloth_v(face, x, w, y, h, 2, (2, 5) if w >= 7 else ())) if face not in ("top", "bottom") else SHROUD[1 if face == "bottom" else 3]
++          for x in range(w)] for y in range(h)]
+     if face not in ("top", "bottom"):
+         r = rnd("drape", face)
+         for x in range(w):
+@@ -159,7 +200,7 @@ def body(face, w, h):
+             if face in ("top", "bottom"): g[y][x] = clamp(GI, 3 + (1 if face == "top" else -2)); continue
+             plate_ = y < 9
+             if plate_:
+-                i = 3 + LIT[face] + lightx(face, x, w) + (1 if y == 0 else 0)
++                i = 3 + LIT[face] + lightx(face, x, w) + (1 if y == 0 and lightx(face, x, w) >= 0 else 0) - (1 if y == 7 else 0)
+                 g[y][x] = clamp(GI, i)
+             else:                                                         # bare ribs under the plate
+                 rib = (y % 2 == 0)
+@@ -196,28 +237,34 @@ def collar(face, w, h):
+     g = blank(w, h)
+     for y in range(h):
+         for x in range(w):
+-            g[y][x] = clamp(GI, 4 + LIT[face] + (lightx(face, x, w) if face not in ("top", "bottom") else 0) + (1 if y == 0 else 0))
++            lx = lightx(face, x, w) if face not in ("top", "bottom") else (1 if x < 2 else -1 if x >= w - 2 else 0)
++            g[y][x] = clamp(GI, 3 + LIT[face] + lx + (2 if y == 0 and lx > 0 else 1 if y == 0 else 0))   # iron: a hard lit edge, dark body
+     if face == "top":
+         for y in range(1, h - 1):
+             for x in range(1, w - 1): g[y][x] = None                      # open at the neck for the hood
+     if face == "front" or face == "back":
+         for x in range(w): g[h - 1][x] = V[1 + (x % 2)]
+-    return grime(g, GI, ("collar", face), 6, 1)
++    return g
+ 
+ def cape(face, w, h):
+     g = blank(w, h)
+     for y in range(h):
+         for x in range(w):
+-            if face in ("top", "bottom"): g[y][x] = clamp(GI, 3 if face == "top" else 1); continue
+-            i = 4 + LIT[face] + (lightx(face, x, w) if face in ("front", "back") else 0)
+-            if (x + y) % 4 == 0: i -= 1                                    # scale-like lames
+-            if y % 3 == 0: i += 1
++            if face == "bottom": g[y][x] = GI[1]; continue
++            if face == "top":                            # the shoulders' top: rows back to front, lit at the front left
++                lx = 1 if x < w // 4 else -1 if x >= w - w // 4 else 0
++                g[y][x] = clamp(GI, 4 + lx + (1 if y >= h - 2 else -1 if y < 2 else 0) + (1 if lx > 0 and y >= 2 else 0)); continue   # shoulder rim
++            lx = lightx(face, x, w)
++            i = 3 + LIT[face] + lx + (1 if y == 0 else 0) + (1 if y == 0 and lx > 0 else 0)    # the lit lip of the lame
+             g[y][x] = clamp(GI, i)
+     if face not in ("top", "bottom"):
+         r = rnd("cape", face)
+         for x in range(w):
+-            g[h - 2][x] = V[1 + (x + 1) % 3 // 2 + 1] if face != "back" else V[2]        # the violet binding
++            lx = lightx(face, x, w)
++            g[h - 2][x] = V[3 if lx > 0 else 2 if lx == 0 else 1] if face != "back" else V[2]     # the violet binding
+             g[h - 1][x] = GI[1] if r.random() < 0.55 else None            # the ragged hem
++        if face == "front":
++            for x in (2, w - 3): g[1][x] = GI[5 if x < w // 2 else 4]      # rivets
+     if face == "bottom":
+         for y in range(1, h - 1):
+             for x in range(1, w - 1): g[y][x] = None
+@@ -229,17 +276,26 @@ def rag(length_cut, key, front=False):
+     def paint(face, w, h):
+         g = blank(w, h)
+         r = rnd("rag", key, face)
++        fc = rnd("ragfold", key, face).randrange(1, w) if w >= 3 else None       # one long fold per strip, below its top two rows
+         for y in range(h):
+             for x in range(w):
+-                g[y][x] = sh(SHROUD, 2 if face != "back" else 3, face, x, w, fold=2) if face not in ("top", "bottom") else SHROUD[2]
++                if face in ("top", "bottom"): g[y][x] = SHROUD[2]; continue
++                lx = lightx(face, x, w)
++                v = 3 + LIT[face] + lx + fall(y, h, 0, -1) - (1 if y < 2 else 0)
++                if face in ("front", "back") and y >= 2:
++                    if lx > 0: v += 1                     # the strip's lit edge: a violet-grey rim that parts it from the next
++                    if fc is not None:
++                        if x == fc: v -= 1
++                        elif x == fc - 1 and lx <= 0: v += 1   # the fold's lit ridge, a step over the body, down to the hem
++                g[y][x] = clamp(SHROUD, v)
+         if face in ("front", "back"):
+             for x in range(w):
+-                g[h - 2][x] = V[2 if x % 2 else 1]
++                g[h - 2][x] = V[3 if x == 0 else 2]
+                 depth = r.randrange(0, length_cut + 1)
+                 for y in range(h - depth, h): g[y][x] = None
+                 if depth == 0: g[h - 1][x] = SHROUD[1]
+             for y in range(h):
+-                if r.random() < 0.15: g[y][0] = SHROUD[1]
++                if r.random() < 0.15 and g[y][0] is None: g[y][0] = SHROUD[1]   # a loose thread (the approved mask)
+         return g
+     return paint
+ 
+@@ -294,6 +350,69 @@ def cloth_painter(spec, side):
+     if spec == "sash": return sash(T, M)
+     return sash_tail(T, M, spec[1])
+ 
++# ---- tier plate (local: graveborn.py is shared). II: salvaged grave-iron a clear step lighter than the mantle, hard
++# specular edges and violet piping. III: black plate, its rim chased in gilt, violet piping kept under it. ----
++def tplate(tier, seed="tp", ridge=False):
++    def paint(face, w, h):
++        g = blank(w, h); r = rnd("tplate", seed, face)
++        black = tier == 3
++        for y in range(h):
++            for x in range(w):
++                if face in ("top", "bottom"):           # rows back to front: the front row and left column catch the light
++                    if face == "bottom": g[y][x] = GI[1]; continue
++                    v = (3 if black else 4) + (1 if y == h - 1 else 0) + (1 if x == 0 else -1 if x == w - 1 else 0)
++                    g[y][x] = clamp(GI, v)
++                    if black and (y == h - 1 or x == 0) and w >= 3: g[y][x] = GILT[4 if x == 0 or x < w // 2 else 3]
++                    continue
++                lx = lightx(face, x, w)
++                v = (2 if black else 4) + LIT[face] + lx + fall(y, h, 0, -1)
++                g[y][x] = clamp(GI, v)
++        if face in ("top", "bottom"): return g
++        for x in range(w):                                # the rolled top edge
++            lx = lightx(face, x, w)
++            g[0][x] = (GILT[4 if lx > 0 else 3 if lx == 0 else 2] if black else GI[clamp(range(7), 5 + LIT[face] + lx)])
++        if h >= 3:                                        # the foot: violet piping (II) / gilt chasing over violet (III)
++            for x in range(w):
++                lx = lightx(face, x, w)
++                g[h - 1][x] = V[3 if lx >= 0 and face != "left" else 2]
++                if black and h >= 4: g[h - 2][x] = GILT[2 if lx < 0 or face == "left" else 3]
++        if face in ("front", "back") and w >= 4 and h >= 3:
++            g[1][1] = GILT[4] if black else GI[6]          # a rivet and one specular glint, by the light
++            g[1][w - 2] = GILT[2] if black else GI[4]
++            if ridge and h >= 4:
++                c = w // 2
++                for y in range(1, h - (2 if black else 1)): g[y][c - 1] = GI[5 if black else 6] if y < 3 else GI[4 if black else 5]; g[y][c] = GI[1 if black else 2]
++        if not black and face in ("front", "right", "back", "left") and w * h >= 12:   # two pits where the iron was struck
++            for _ in range(2):
++                x, y = r.randrange(1, w), r.randrange(1, max(2, h - 1))
++                if g[y][x] in GI: g[y][x] = GI[max(0, GI.index(g[y][x]) - 1)]
++        return g
++    return paint
++
++def tspike(tier):
++    """A pauldron spike: iron from the root, a bone tip (II) or a gilt tip (III)."""
++    def paint(face, w, h):
++        g = [[clamp(GI, 3 + LIT[face] + (lightx(face, x, w) if face not in ("top", "bottom") else 0) + (y * 2) // max(1, h)) for x in range(w)] for y in range(h)]
++        if face in ("top", "bottom"): return [[(GILT[4] if tier == 3 else BN[4]) if face == "top" else GI[1]] * w for _ in range(h)]
++        g[0] = [GILT[4] if tier == 3 else BN[4]] * w
++        if h > 2: g[1] = [GILT[2] if tier == 3 else BN[2]] * w
++        return g
++    return paint
++
++def tgilt(seed="tg"):
++    """Funeral gilt, flat (guide 4): tone 3, the top-left a tone up, the foot and the shade end a tone down."""
++    def paint(face, w, h):
++        out = []
++        for y in range(h):
++            row = []
++            for x in range(w):
++                if face in ("top", "bottom"): row.append(GILT[4 if face == "top" and x < w // 2 else 3 if face == "top" else 1]); continue
++                lx = lightx(face, x, w)
++                row.append(clamp(GILT, 3 + LIT[face] + (1 if lx > 0 and y == 0 else 0) - (1 if lx < 0 else 0) - (1 if y == h - 1 and h > 1 else 0)))
++            out.append(row)
++        return out
++    return paint
++
+ # ---- assembling ----
+ def glow(bone, box):
+     return skull_lit if bone.name == "head" else None
+@@ -338,9 +457,9 @@ def bones():
+         Box((1.5, 0, 0.1), (3, 21, 1), rag(5, "sc")),
+         Box((4.5, 0, 0.4), (1, 13, 1), rag(3, "sd"))]))
+     # tier II, the Harvester: salvaged grave-iron plate piped in violet
+-    P2 = lambda seed, worn=0.12: per_tier(lambda t: gb_plate(t, seed, worn), (2, 3))
+-    SP = per_tier(lambda t: gb_spike(GI, 3, 3), (2, 3))
+-    B.append(Bone("breastplate", "body", stages=[2, 3], boxes=[Box((-3.5, -12, -2.7), (7, 6, 5.4), P2("bpl"), dil=0.15)]))
++    P2 = lambda seed, worn=0.12, ridge=False: per_tier(lambda t: keep_mask(gb_plate(t, seed, worn), tplate(t, seed, ridge)), (2, 3))
++    SP = per_tier(lambda t: keep_mask(gb_spike(GI, 3, 3), tspike(t)), (2, 3))
++    B.append(Bone("breastplate", "body", stages=[2, 3], boxes=[Box((-3.5, -12, -2.7), (7, 6, 5.4), P2("bpl", ridge=True), dil=0.15)]))
+     for side, sx, rz in (("right", -1, 12), ("left", 1, -12)):
+         B.append(Bone(f"{side}_pauldron", f"{side}_arm", (0, -0.3, 0), rot=(0, 0, rz), stages=[2, 3], boxes=[
+             Box((-3, -3.2, -3.2), (6, 3, 6.4), P2("pd" + side), dil=0.3),
+@@ -349,12 +468,12 @@ def bones():
+         B.append(Bone(f"{side}_greave", f"{side}_shin", stages=[2, 3], boxes=[Box((-1.7, -2.5, -1.7), (3.4, 3, 3.4), P2("gv" + side), dil=0.1)]))
+     B.append(Bone("hood_rim", "head", stages=[2, 3], boxes=[Box((-5.3, -1.0, -5.3), (10.6, 1.2, 1.2), gb_band(V, 1, BN), dil=0.05)]))
+     # tier III, the Lord of Scythes: gilt crown ring and tines, tall spikes, a gilt collar and a gilt-hemmed shroud
+-    B.append(Bone("hood_ring", "head", stages=[3], boxes=[Box((-5.3, -9.2, -5.3), (10.6, 1.4, 10.6), gb_gilt("hr"), dil=0.05)]))
++    B.append(Bone("hood_ring", "head", stages=[3], boxes=[Box((-5.3, -9.2, -5.3), (10.6, 1.4, 10.6), keep_mask(gb_gilt("hr"), tgilt("hr")), dil=0.05)]))
+     for i, (x, z, h) in enumerate([(-4.2, -4.0, 6), (-1.4, -4.6, 9), (1.4, -4.6, 9), (4.2, -4.0, 6)]):
+-        B.append(Bone(f"crown_tine{i}", "head", stages=[3], boxes=[Box((x - 0.5, -9.2 - h, z - 0.5), (1, h, 1), gb_spike(GILT, 3, 2))]))
+-    B.append(Bone("gilt_collar", "body", stages=[3], boxes=[Box((-3.6, -13.4, -2.8), (7.2, 1.6, 5.6), gb_gilt("gc"), dil=0.1)]))
++        B.append(Bone(f"crown_tine{i}", "head", stages=[3], boxes=[Box((x - 0.5, -9.2 - h, z - 0.5), (1, h, 1), keep_mask(gb_spike(GILT, 3, 2), tgilt("tine")))]))
++    B.append(Bone("gilt_collar", "body", stages=[3], boxes=[Box((-3.6, -13.4, -2.8), (7.2, 1.6, 5.6), keep_mask(gb_gilt("gc"), tgilt("gc")), dil=0.1)]))
+     B.append(Bone("plate_cape", "body", (0, -12, 2.6), rot=(8, 0, 0), stages=[3], boxes=[
+-        Box((-4, 0.5, 1.2), (8, 4, 0.8), gb_plate(3, "pcp"), dil=0.1)]))
++        Box((-4, 0.5, 1.2), (8, 4, 0.8), keep_mask(gb_plate(3, "pcp"), tplate(3, "pcp")), dil=0.1)]))
+     return B
+ 
+ MAGE_NOTE = ("Graveborn Grave Reaper (unit identity, Graveborn): tall bone wraith, biped, a deep black hood with the skull deep inside and "
