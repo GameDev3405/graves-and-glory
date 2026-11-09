@@ -10,6 +10,7 @@ import net.minecraft.server.command.ServerCommandSource;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.text.Text;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 
 /**
@@ -18,13 +19,16 @@ import java.nio.file.Path;
  *   gg.propPack.url       where players download it (ending in "/": a folder, the pack name is added)
  *   gg.propPack.port      optional: serve the file here with the JDK HTTP server at /gg-props-&lt;sha8&gt;.zip; the url then defaults to it
  *   gg.propPack.required  default true in build mode, false elsewhere; a client that declines a required pack disconnects
- * No gg.propPack.file: nothing is sent and no HTTP server starts, so game servers are unchanged. /prop pack reload (op 2) re-reads the file and
+ *   gg.packwiz.dir        optional: a packwiz pack folder (tools/builder-server/make_packwiz.py) served read-only at /pack/... on gg.propPack.port,
+ *                         so the builder pack updates itself; each request reads the file fresh, so publishing is copying the folder in
+ * No gg.propPack.file: nothing is sent. The HTTP server starts only with gg.propPack.port and gg.propPack.file or gg.packwiz.dir, so game servers
+ * are unchanged. /prop pack reload (op 2) re-reads the file and
  * resends to everyone online. No registry entries.
  */
 public final class PropPack {
     private PropPack(){}
 
-    static final String FILE="gg.propPack.file",URL="gg.propPack.url",PORT="gg.propPack.port",REQUIRED="gg.propPack.required";
+    static final String FILE="gg.propPack.file",URL="gg.propPack.url",PORT="gg.propPack.port",REQUIRED="gg.propPack.required",PACKWIZ="gg.packwiz.dir";
     static final String PROMPT="Graves and Glory props";
 
     static volatile PropPackFile.Pack pack;
@@ -33,29 +37,34 @@ public final class PropPack {
     static int port;
 
     static boolean configured(){String f=System.getProperty(FILE);return f!=null&&!f.isBlank();}
+    static Path packwiz(){String d=System.getProperty(PACKWIZ);return d==null||d.isBlank()?null:Path.of(d.trim());}
     static void log(String text){System.out.println("[Graves and Glory prop pack] "+text);}
 
     public static void init(){
         CommandRegistrationCallback.EVENT.register((d,access,env)->d.register(CommandManager.literal("prop").requires(s->s.hasPermissionLevel(2))
             .then(CommandManager.literal("pack").then(CommandManager.literal("reload").executes(c->reload(c.getSource()))))));
-        if(!configured()){
+        if(!configured()&&packwiz()==null){
             if(System.getProperty(URL)!=null||System.getProperty(PORT)!=null)log(URL+"/"+PORT+" set without "+FILE+"; nothing is sent (the sha1 comes from the file)");
             return;
         }
         ServerLifecycleEvents.SERVER_STARTED.register(PropPack::start);
         ServerLifecycleEvents.SERVER_STOPPED.register(s->stop());
         // In build mode BuildMode.settleJoined sends it once the player is settled in a canvas; elsewhere on join.
-        if(!BuildMode.active())ServerPlayConnectionEvents.JOIN.register((h,sender,s)->send(h.player));
+        if(configured()&&!BuildMode.active())ServerPlayConnectionEvents.JOIN.register((h,sender,s)->send(h.player));
     }
 
     static void start(MinecraftServer server){
         host=server.getServerIp();
         try{port=PropPackFile.port(System.getProperty(PORT));}catch(IllegalArgumentException e){log(e.getMessage()+"; no embedded server");port=0;}
-        load();
-        if(port>0){
-            try{http=PropPackFile.serve(port,()->pack);log("serving on port "+port);}
+        if(configured())load();
+        Path wiz=packwiz();
+        if(wiz!=null&&!Files.isDirectory(wiz)){log(PACKWIZ+" "+wiz+" is not a folder; the packwiz pack is not served");wiz=null;}
+        if(wiz!=null&&port<=0)log(PACKWIZ+" set without "+PORT+"; the packwiz pack is not served");
+        if(port>0&&(configured()||wiz!=null)){
+            try{http=PropPackFile.serve(port,()->pack,wiz);log("serving on port "+port+(wiz==null?"":", packwiz pack "+wiz.toAbsolutePath()+" at /pack/pack.toml"));}
             catch(IOException e){log("could not serve on port "+port+": "+e);port=0;}
         }
+        if(!configured())return;
         String url=url();
         if(url==null)log("no "+URL+" and no embedded server; nothing is sent");
         else log("players get "+url+(required()?" (required)":" (optional)"));

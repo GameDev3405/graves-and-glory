@@ -61,6 +61,15 @@ started: 2026-11-01T19:41:08   mods: graves-and-glory-0.5.0.jar 37f29dc4
 
 Off by default. To send the prop pack, add Java flags before `-jar` in `start-build-server.ps1` (it does not pass them yet): `-Dgg.propPack.file=<zip, or a folder with gg-props-latest.sha1>`, plus either `-Dgg.propPack.port=<free port>` (the server serves the zip itself; open that port like the game port) or an external host, and `-Dgg.propPack.url=<public URL, ending in / for a folder>`. `-Dgg.propPack.required=false` lets players decline. Update: rebuild with `python tools/build_prop_pack.py`, copy the zip and `gg-props-latest.sha1` into the pack folder (upload the zip too when hosted elsewhere), then RCON `prop pack reload`. No restart. Details and hosting options: `docs/BUILDER-SERVER.md`, "Prop resource pack".
 
+## Self-updating builder pack
+
+Builders import one Prism instance zip once; it updates itself on every launch from a packwiz folder this server serves. Details: `docs/BUILDER-SERVER.md`, "Self-updating builder pack".
+
+- Build the one-time install: `python tools/builder-server/make_builder_pack.py --prism` writes `dist/graves-and-glory-<ver>-builder-prism.zip` (needs the two pinned packwiz jars in `work/packwiz-dl/`; `--base-url` defaults to `http://usc-tx-b5-i1-s.kineticpanel.net:25589/pack/`). Builders: Prism, Add Instance, Import, the zip.
+- Build the pack: `python tools/builder-server/make_packwiz.py` writes `dist/builder-packwiz/` (refuses on any pin mismatch).
+- Server folder: copy `dist/builder-packwiz/` to `builder-packwiz/` next to `mods/`. Java flags before `-jar`: `-Dgg.packwiz.dir=builder-packwiz -Dgg.propPack.port=25589`. The log line `[Graves and Glory prop pack] serving on port 25589, packwiz pack ... at /pack/pack.toml` confirms it.
+- Publish an update: rebuild (`make_packwiz.py`), replace the server's `builder-packwiz/` contents with the new output, done. No restart; the next launch of each builder instance pulls the change and removes dropped files.
+
 ## Stopping and updating
 
 - Stop for good: stop the `GGBuilderServer` task (or close the supervisor window), then stop the Java process that the supervisor started; its PID is in `server.pid`. Do not stop other Java processes on this PC (the Kingdom servers and any game clients are separate).

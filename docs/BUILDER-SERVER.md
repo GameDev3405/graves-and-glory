@@ -40,6 +40,34 @@ Updating the props (no jar change, no builder-pack reinstall):
 
 `start-build-server.ps1` does not pass these flags yet; add them to its `-ArgumentList` before `-jar` when the pack goes live.
 
+## Self-updating builder pack (packwiz)
+Builders install once; every launch after that updates the mods by itself. The mod's embedded HTTP server (the same one as the prop pack) serves a packwiz pack folder read-only at `/pack/`, and the Prism instance runs the packwiz installer before each launch.
+
+**What a builder downloads and imports (once):** `graves-and-glory-<ver>-builder-prism.zip` (about 4.5 MB). In Prism Launcher: Add Instance, Import, pick the zip, OK. It holds `instance.cfg`, `mmc-pack.json` (Minecraft 1.20.1, Fabric Loader 0.16.14, intermediary 1.20.1) and `.minecraft/packwiz-installer-bootstrap.jar` and `.minecraft/packwiz-installer.jar`. The pre-launch command (Prism runs it in the instance's `.minecraft` folder, `$INST_JAVA` being the instance's Java):
+
+```
+"$INST_JAVA" -jar packwiz-installer-bootstrap.jar --bootstrap-no-update --bootstrap-main-jar packwiz-installer.jar http://usc-tx-b5-i1-s.kineticpanel.net:25589/pack/pack.toml
+```
+
+`--bootstrap-no-update --bootstrap-main-jar` make the bootstrap use the shipped, pinned installer, so builders' PCs never fetch packwiz from GitHub. On first launch it downloads every client mod: the game pack's mods, shaders and resource pack, and Axiom, Distant Horizons, Simple Voice Chat, Xaero's Minimap and World Map from their pinned Modrinth URLs (hash checked), and the Graves and Glory jar from the builder server. A small packwiz window shows progress. After that only changed files are fetched and files dropped from the pack are removed. If the server is unreachable the installer reports it and the launch stops; try again when the server is up.
+
+**Publish an update** (new G&G jar, a changed pin in `builder-mods.json` or `dependencies/platform-lock.json`):
+1. `./gradlew build` (or the release build), then `python tools/builder-server/make_packwiz.py`. It writes `dist/builder-packwiz/` and refuses if any hash disagrees with its pin. With a game `.mrpack` in `dist/` (or `--game-pack`) it takes the jar and the overrides (docs) from it.
+2. Copy the contents of `dist/builder-packwiz/` into the server's pack folder, replacing it whole (delete the old files first, so dropped mods are not served).
+3. Done. Each request reads the file fresh, so no restart or command is needed; every builder's next launch pulls the change. The G&G jar on the server's own `mods/` is a separate copy: update it the usual way (stop, replace, start) when the server side must change too.
+
+**Server side** (Kinetic builder server, `usc-tx-b5-i1-s.kineticpanel.net`, game on 25566, HTTP on the second allocated port 25589/TCP). Java flags before `-jar`:
+
+```
+-Dgg.packwiz.dir=builder-packwiz -Dgg.propPack.port=25589
+```
+
+(relative to the server folder; add `-Dgg.propPack.file=props -Dgg.propPack.url=http://usc-tx-b5-i1-s.kineticpanel.net:25589/` when the prop pack goes live on the same port). Files the server needs: the `builder-packwiz/` folder (the copied output: `pack.toml`, `index.toml`, `mods/`, `shaderpacks/`, `resourcepacks/`, plus `docs/` when built from a game pack) in the server folder next to `mods/`. Nothing else: the HTTP server is the mod's, inside the Minecraft process, listening on all interfaces.
+
+The server starts when `gg.propPack.port` is set and either `gg.propPack.file` or `gg.packwiz.dir` is. It is read-only: GET and HEAD only (others 405), no directory listing (404), and a path that leaves the folder (`..`, `%2e%2e`, backslashes, drive letters, dot files, symlinks or junctions out) is 400 or 404. Content types: `.toml` text/plain, `.jar` application/java-archive, `.zip` application/zip.
+
+The packwiz installer jars are pinned in `tools/builder-server/packwiz-pins.json` (sha256 recorded from the approved downloads on 2026-11-08, not checked against an official hash; the release pages list none). `make_builder_pack.py --prism` reads them from `work/packwiz-dl/` and refuses a jar off its pin. The old `.mrpack` output (`make_builder_pack.py` without `--prism`) still works, but it does not update itself.
+
 ## Operations
 - Start/stop: scheduled task `GGBuilderServer` (runs at machine boot as SYSTEM, hidden, so the server is up whenever the PC is on). The script relaunches after a crash; a clean `/stop` (or an RCON `stop`) ends it, and `Start-ScheduledTask GGBuilderServer` starts it again. Prefer the admin scripts below over killing `java`.
 - Admin console (added 2026-11-03): RCON listens on 25575 and is for this PC only. Two Windows Firewall block rules (IPv4 and IPv6, `Graves and Glory RCON 25575 ...`) drop everything but loopback, and 25575 is not in the playit tunnel. The password is in `C:\GGBuild\server.properties` and `C:\GGBuild\admin\rcon.secret`; both, and `admin\`, are readable by SYSTEM and Administrators only. Never paste it anywhere. Run these from an admin PowerShell on the server PC, or over ssh as `powershell -File C:\GGBuild\admin\<script>.ps1`:
