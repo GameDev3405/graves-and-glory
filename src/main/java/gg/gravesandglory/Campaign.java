@@ -310,7 +310,11 @@ public final class Campaign {
     static final String MARCH_SOLO="Campaign battles are played solo. Leave your party or room first.";
     /** Why a commander cannot start a solo battle (practice or a Long March battle) now, or "" when they can: one battle at a time, solo means no party and no room (soloRule says so), and a battlefield being prepared for someone else stays theirs. */
     /** The season start dates (brief G2) from config/gravesandglory/seasons.json beside the server (the game folder in solo); none without the file. */
-    static List<java.time.LocalDate> seasonStarts(){
+    private static List<java.time.LocalDate> seasonCache=List.of();private static long seasonReadAt=Long.MIN_VALUE;
+    static List<java.time.LocalDate> seasonStarts(){ // read at most every 30 seconds: the snapshot asks every 10 ticks per player
+        long now=System.currentTimeMillis();if(now-seasonReadAt<30_000L)return seasonCache;seasonReadAt=now;seasonCache=readSeasonStarts();return seasonCache;
+    }
+    private static List<java.time.LocalDate> readSeasonStarts(){
         try{Path f=net.fabricmc.loader.api.FabricLoader.getInstance().getConfigDir().resolve("gravesandglory").resolve("seasons.json");return Files.exists(f)?MarchMath.Seasons.parse(Files.readString(f)):List.of();}
         catch(Exception e){return List.of();}
     }
@@ -928,7 +932,7 @@ public final class Campaign {
     }
     String snapshot(ServerPlayerEntity p){
         JsonObject j=new JsonObject();Profile pr=profile(p.getUuid());j.add("profile",forClient(pr));j.addProperty("collectionReady",collectionsReady.contains(p.getUuid()));j.addProperty("waiting",b.running&&(!b.squads.containsKey(p.getUuid())||!b.squads.get(p.getUuid()).seated));j.addProperty("mode",practice?"ai":Integer.toString(size));j.addProperty("fill",fill);j.addProperty("difficulty",difficulty);j.addProperty("map",map);j.addProperty("serial",serial);j.addProperty("intro",b.squads.containsKey(p.getUuid())&&b.squads.get(p.getUuid()).seated?Math.max(0,introUntil-b.time):0);j.addProperty("notice",notices.getOrDefault(p.getUuid(),""));j.addProperty("noticeSerial",noticeSerials.getOrDefault(p.getUuid(),0));j.addProperty("headline",headline);j.addProperty("tutorial",tutorialStep(p.getUuid()));JsonObject pads=new JsonObject();pads.addProperty("countdown",padCountdown<0?0:(padCountdown+19)/20);pads.addProperty("mine",onPad.getOrDefault(p.getUuid(),-1));pads.addProperty("dawn",(int)onPad.values().stream().filter(t->t==0).count());pads.addProperty("dusk",(int)onPad.values().stream().filter(t->t==1).count());pads.addProperty("size",padSize());j.add("pads",pads);
-        JsonObject battle=new JsonObject();if(activeBattle!=null){battle.addProperty("id",activeBattle.id());battle.addProperty("name",activeBattle.name());battle.addProperty("briefing",activeBattle.briefing());battle.addProperty("reason",activeBattle.reason());}j.add("battle",battle);var starts=seasonStarts();j.addProperty("season",MarchMath.Seasons.current(starts,Progression.today()));JsonArray dates=new JsonArray();for(var d:starts)dates.add(d.toString());j.add("seasonStarts",dates); // brief G2: the campaign card shows a chapter that has not opened // the Long March battle being fought, or {}
+        JsonObject battle=new JsonObject();if(activeBattle!=null){battle.addProperty("id",activeBattle.id());battle.addProperty("name",activeBattle.name());battle.addProperty("briefing",activeBattle.briefing());battle.addProperty("reason",activeBattle.reason());}j.add("battle",battle);var starts=seasonStarts();j.addProperty("season",MarchMath.Seasons.current(starts,Progression.today()));JsonArray dates=new JsonArray();for(var d:starts)dates.add(d==null?"":d.toString());j.add("seasonStarts",dates); // brief G2: the campaign card shows a chapter that has not opened // the Long March battle being fought, or {}
         JsonObject partyJson=new JsonObject();boolean member=party.contains(p.getUuid());Long until=inviteUntil.get(p.getUuid());UUID inviter=invites.get(p.getUuid());
         partyJson.addProperty("open",partyLeader!=null);partyJson.addProperty("member",member);partyJson.addProperty("lead",leader(p));partyJson.addProperty("capacity",size*2);
         partyJson.addProperty("leader",partyLeader==null?"":name(partyLeader));

@@ -147,21 +147,21 @@ public final class MarchMath {
         private Seasons() {}
         private static final java.util.regex.Pattern DATE = java.util.regex.Pattern.compile("\"([^\"]*)\"");
 
-        /** The start dates in the file's text, in order; entries that are not dates are skipped. Never throws. */
+        /** The start dates in the file's text, in order; an entry that is not a date stays as null, so the seasons after it keep their numbers. Never throws. */
         static List<java.time.LocalDate> parse(String json) {
             List<java.time.LocalDate> out = new ArrayList<>();
             if (json == null) return out;
             int open = json.indexOf('['), close = json.indexOf(']', Math.max(open, 0));
             if (open < 0 || close < 0) return out;
             var m = DATE.matcher(json.substring(open, close));
-            while (m.find()) try { out.add(java.time.LocalDate.parse(m.group(1).trim())); } catch (java.time.format.DateTimeParseException ignored) {}
+            while (m.find()) try { out.add(java.time.LocalDate.parse(m.group(1).trim())); } catch (java.time.format.DateTimeParseException bad) { out.add(null); }
             return out;
         }
 
         /** The season on this day: 1, or the highest n whose start date has come. */
         static int current(List<java.time.LocalDate> starts, java.time.LocalDate today) {
             int season = 1;
-            for (int i = 0; i < starts.size(); i++) if (!today.isBefore(starts.get(i))) season = Math.max(season, i + 1);
+            for (int i = 0; i < starts.size(); i++) if (starts.get(i) != null && !today.isBefore(starts.get(i))) season = Math.max(season, i + 1);
             return season;
         }
 
@@ -169,7 +169,7 @@ public final class MarchMath {
         static String lock(Spec.CampaignBattlesRow r, Spec.CampaignChaptersRow[] chapters, int current, List<java.time.LocalDate> starts) {
             var c = r == null ? null : chapter(r.chapter(), chapters);
             if (c == null || c.season() <= 1 || c.season() <= current) return "";
-            String on = c.season() - 1 < starts.size() ? " on " + starts.get(c.season() - 1).format(java.time.format.DateTimeFormatter.ofPattern("d MMMM yyyy", Locale.ENGLISH)) : "";
+            String on = c.season() - 1 < starts.size() && starts.get(c.season() - 1) != null ? " on " + starts.get(c.season() - 1).format(java.time.format.DateTimeFormatter.ofPattern("d MMMM yyyy", Locale.ENGLISH)) : "";
             return c.name() + " opens with season " + c.season() + on + ".";
         }
     }

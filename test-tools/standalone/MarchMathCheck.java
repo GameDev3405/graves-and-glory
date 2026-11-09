@@ -138,7 +138,9 @@ public final class MarchMathCheck {
         // season locks (brief G2): a chapter opens when the server's season reaches it, from the start dates in the server config;
         // season 1 is always open, earlier chapters stay open, the order lock still applies, and a locked chapter names its date
         var dates = MarchMath.Seasons.parse("{\"starts\": [\"2026-11-20\", \"2026-12-20\", \"bad\"]}");
-        check(dates.equals(List.of(java.time.LocalDate.of(2026, 11, 20), java.time.LocalDate.of(2026, 12, 20))), "season: start dates parse, a bad entry is skipped: " + dates);
+        check(dates.equals(Arrays.asList(java.time.LocalDate.of(2026, 11, 20), java.time.LocalDate.of(2026, 12, 20), null)), "season: start dates parse; a bad entry keeps its place as null: " + dates);
+        var gap = Arrays.asList(java.time.LocalDate.of(2026, 11, 20), null, java.time.LocalDate.of(2027, 1, 20));
+        check(MarchMath.Seasons.current(gap, java.time.LocalDate.of(2027, 1, 20)) == 3 && MarchMath.Seasons.current(gap, java.time.LocalDate.of(2027, 1, 19)) == 1, "season: a bad date never shifts the seasons after it");
         check(MarchMath.Seasons.parse("").isEmpty() && MarchMath.Seasons.parse("not json").isEmpty(), "season: a missing or broken file is no dates");
         check(MarchMath.Seasons.current(List.of(), java.time.LocalDate.of(2030, 1, 1)) == 1, "season: no dates, season 1");
         check(MarchMath.Seasons.current(dates, java.time.LocalDate.of(2026, 11, 19)) == 1 && MarchMath.Seasons.current(dates, java.time.LocalDate.of(2026, 11, 20)) == 1
