@@ -1026,7 +1026,7 @@ public final class Phase1Checks implements ClientModInitializer {
         }
     }
 
-    /** Task 6: The Long March battle 1 (sheet row march-1). campaign:march-1 switches to its map, then starts it against one Easy bot with a
+    /** Task 6: The Long March battle 1 (sheet row oath-1). campaign:oath-1 switches to its map, then starts it against one Easy bot with a
      *  briefing card in the entrance; the four lessons advance from the commands their keys send and pay rollCost gold once, though they repeat
      *  on a replay; a victory marks the battle cleared and turns its primary camp button into a normal one; a pad match never teaches.
      *  Commands run on the server tick; the client records the lessons it shows, reads the camp buttons and takes the screenshots. */
@@ -1071,7 +1071,7 @@ public final class Phase1Checks implements ClientModInitializer {
         /** Reported once: at the briefing screenshot, or when the lessons are reported if no entrance was seen. */
         void reportStart(){
             if(startReported)return;startReported=true;String name=CampaignClient.battle.has("name")?CampaignClient.battle.get("name").getAsString():"";
-            report("p1-tutorial-start",startOk&&name.equals("The Training Field")&&briefingShot,startWhy+"; client battle name \""+name+"\"; briefing screenshot "+(briefingShot?"taken "+cinematicTicks+" ticks into the entrance":"not taken (no entrance seen)"));
+            report("p1-tutorial-start",startOk&&name.equals("The Drowned Crossings")&&briefingShot,startWhy+"; client battle name \""+name+"\"; briefing screenshot "+(briefingShot?"taken "+cinematicTicks+" ticks into the entrance":"not taken (no entrance seen)"));
         }
         /** Records each new lesson value the client shows for run r; in the first run, photographs each lesson after three steady ticks on screen and compares what the panel drew with the full copy. */
         void watch(MinecraftClient c,Run r,boolean photograph){
@@ -1118,7 +1118,7 @@ public final class Phase1Checks implements ClientModInitializer {
                 if(afterAt<0){if(c.currentScreen instanceof CampScreen s&&s.page.equals("results")||++waited>=60){afterAt=tick;CampScreen.open("home");}}
                 else if(tick==afterAt+20)raiseCampaign(c);
                 else if(tick==afterAt+25){String ride=march(c);
-                    report("p1-tutorial-clear",clearOk&&CampaignClient.profile.campaignCleared==1&&"Ride to The Training Field".equals(beforeRide)&&("Ride to "+Spec.CAMPAIGNBATTLES[1].name()).equals(ride),clearWhy+"; client campaignCleared "+CampaignClient.profile.campaignCleared+"; camp home before the battle: "+beforeWhy+"; after the victory: "+describe(ride));
+                    report("p1-tutorial-clear",clearOk&&CampaignClient.profile.campaignCleared==1&&"Ride to The Drowned Crossings".equals(beforeRide)&&("Ride to "+Spec.CAMPAIGNBATTLES[1].name()).equals(ride),clearWhy+"; client campaignCleared "+CampaignClient.profile.campaignCleared+"; camp home before the battle: "+beforeWhy+"; after the victory: "+describe(ride));
                     shot(c,"tutorial-camp-after");
                 }
                 else if(tick==afterAt+30){var ride=c.currentScreen instanceof CampScreen s&&s.home!=null?s.home.button("ride"):null;
@@ -1155,15 +1155,15 @@ public final class Phase1Checks implements ClientModInitializer {
                     fresh(b);b.campaign.difficulty="normal";
                     System.out.println("[p1] tutorial start: map "+b.campaign.map+", fresh profile, gold "+gold(b)+", bots "+b.campaign.difficulty);next(b,2);
                 }
-                case 3->{b.command(sp(b),"campaign:march-1");next(b,4);}
+                case 3->{b.command(sp(b),"campaign:oath-1");next(b,4);}
                 case 4->{ // the battle starts once its map is built
                     if(!b.running){
-                        if(since(b)>START_TICKS){startWhy="no battle "+START_TICKS+" ticks after campaign:march-1 (map "+b.campaign.map+", ready "+b.ready+")";first.commands="no battle";first.over=true;next(b,6);}
+                        if(since(b)>START_TICKS){startWhy="no battle "+START_TICKS+" ticks after campaign:oath-1 (map "+b.campaign.map+", ready "+b.ready+")";first.commands="no battle";first.over=true;next(b,6);}
                         return;
                     }
                     var bots=b.squads.values().stream().filter(s->s.bot&&s.seated).toList();var own=b.squads.get(player);
                     startOk=b.campaign.size==1&&b.campaign.map==0&&bots.size()==1&&bots.get(0).tier.equals("easy")&&bots.get(0).team==1&&own!=null&&own.seated&&own.team==0&&b.campaign.difficulty.equals("normal");
-                    startWhy="running "+since(b)+" ticks after campaign:march-1, "+b.campaign.size+"v"+b.campaign.size+" on map "+b.campaign.map+", "+bots.size()+" bot(s): "+bots.stream().map(s->s.tier+" on team "+s.team).toList()+", the commander on team "+(own==null?"none":own.team)+", server bot setting still "+b.campaign.difficulty;
+                    startWhy="running "+since(b)+" ticks after campaign:oath-1, "+b.campaign.size+"v"+b.campaign.size+" on map "+b.campaign.map+", "+bots.size()+" bot(s): "+bots.stream().map(s->s.tier+" on team "+s.team).toList()+", the commander on team "+(own==null?"none":own.team)+", server bot setting still "+b.campaign.difficulty;
                     System.out.println("[p1] "+startWhy);introUntil=b.campaign.introUntil;next(b,5);
                 }
                 case 5,10->{ // one lesson command every 60 ticks after the intro
@@ -2408,7 +2408,7 @@ public final class Phase1Checks implements ClientModInitializer {
             var h=home(c);if(h==null){report("p1-ui-home-campaign-card"+tag,false,"the home closed before the card was read");return;}
             var t=WarTableHome.texts();var r=WarTableHome.rects();var row=Spec.CAMPAIGNBATTLES[0];var ch=h.button("change");
             var f=r.get("field");var b=r.get("field-bonus");
-            boolean named=row.name().equals(t.get("field-name"))&&t.get("field-rule")!=null&&t.get("field-teams")!=null&&t.get("field-teams").startsWith("Battle 1 of "+Spec.CAMPAIGNBATTLES.length);
+            boolean named=row.name().equals(t.get("field-name"))&&t.get("field-rule")!=null&&t.get("field-teams")!=null&&t.get("field-teams").startsWith("The Oath, battle 1 of "+MarchMath.inChapter(1,Spec.CAMPAIGNBATTLES).size()); // brief G3
             boolean has=t.containsKey("field-bonus")&&t.containsKey("field-bonus-reward")&&"open".equals(t.get("field-bonus-state"))&&b!=null&&f!=null&&b[1]+b[3]<=f[1]+f[3]&&b[0]>=f[0]&&b[0]+b[2]<=f[0]+f[2];
             boolean noChange=ch==null||!ch.active;
             report("p1-ui-home-campaign-card"+tag,named&&has&&noChange,"Campaign card"+(tag.isEmpty()?"":" at "+tag.substring(1))+": name \""+t.get("field-name")+"\", rule \""+t.get("field-rule")+"\", teams \""+t.get("field-teams")+"\", bonus \""+t.get("field-bonus")+"\" "+t.get("field-bonus-reward")+" ("+t.get("field-bonus-state")+") in "+str(b)+" of card "+str(f)+", Change button "+(noChange?"off":"LIVE"));
@@ -2560,7 +2560,7 @@ public final class Phase1Checks implements ClientModInitializer {
                     if(k==0)click(c,box(c,"campaign"));
                     else if(k==6){String l=label();int[] r=WarTableHome.rects().get("ride-label"),ride=box(c,"ride");int start=r==null||ride==null?-1:r[0]-ride[0],stop=r==null||ride==null?-1:r[0]+r[2]-ride[0];
                         int[] sheet=WarTableHome.rects().get("campaign"),card=WarTableHome.rects().get("field");int gap=sheet==null||card==null?-99:card[0]-(sheet[0]+sheet[2]); // the raised sheet stays off the field card
-                        modesOk&=CampaignClient.profile.campaignCleared==0&&home(c).focused==2&&l.equals("Ride to The Training Field")&&start>=57&&stop<=232&&gap>=8;
+                        modesOk&=CampaignClient.profile.campaignCleared==0&&home(c).focused==2&&l.equals("Ride to The Drowned Crossings")&&start>=57&&stop<=232&&gap>=8;
                         modesWhy+="; campaignCleared "+CampaignClient.profile.campaignCleared+", a click on Campaign: focused "+home(c).focused+", the plate \""+l+"\" from x "+start+" to "+stop+" of the plate; the raised Campaign sheet "+str(sheet)+" ends "+gap+" px left of the field card "+str(card);
                         report("p1-ui-home-modes",modesOk,modesWhy);cardWindow=new int[]{c.getWindow().getWidth(),c.getWindow().getHeight()};}
                     else if(k==8){campaignCard(c,"");}
@@ -3344,7 +3344,7 @@ public final class Phase1Checks implements ClientModInitializer {
             if(!Arrays.asList(WarTableHome.RAIL).contains(name)&&rect("here")!=null){rail=false;railWhy.append(" a plaque lit");}
             String table=WarTable.drawnTable();boolean wood=table.equals("table/oak-table-"+name);
             String title=text("title");int[] tr=rect("title");
-            boolean titled=name.equals("chapter")?title==null&&"Chapter 1 / The Founders".equals(text("chapter"))
+            boolean titled=name.equals("chapter")?title==null&&"Season pass / The Founders".equals(text("chapter"))
                 :WarTablePages.TITLES.get(name).equals(title)&&tr!=null&&Math.abs(tr[0]+tr[2]/2-(o[0]+480))<=1&&tr[1]==o[1]+84&&Integer.valueOf(DarkUi.IVORY).equals(WarTablePages.colors().get("title"));
             boolean pass=pages(c)!=null&&b.size()>=5&&out.isEmpty()&&over.isEmpty()&&art.isEmpty()&&ours&&back&&rail&&wood&&titled;
             ok&=pass;

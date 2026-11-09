@@ -643,7 +643,7 @@ public final class Phase3Checks implements ClientModInitializer {
 
     /** Task 5 (suite yard): the training yard and the tutorial hooks, with a fresh commander (campaignCleared 0 for the run, put back in cleanup).
      *  p3-yard-drillmaster (exactly one villager tagged camp:train and the camp tag within 0.5 of (-38.5,65,-303.5), and openCamp "train" opens CampScreen on page train; picture camp-train-page),
-     *  p3-yard-start (the START button of that screen gives a running battle with activeBattle march-1 within 900 ticks; then returnLobby and the battle is over),
+     *  p3-yard-start (the START button of that screen gives a running battle with activeBattle oath-1 within 900 ticks; then returnLobby and the battle is over),
      *  p3-yard-lessons (exactly four text displays tagged camp-lesson:<id> where the rows put them, their JSON holding the keybind menu, formation, attack and key.use in turn and no literal {key: marker; then menu is rebound to K,
      *  the lessons are placed again so that the client resolves the keybind afresh, and the display of lesson 1 on the client reads "Press K,"; picture camp-yard-lessons; the binding is put back),
      *  p3-yard-lesson-text (each board as the client holds it reads the sheet text with the bound key names), p3-yard-boards (each lesson is a fixed panel facing east that lies on its board's planks,
@@ -935,9 +935,9 @@ public final class Phase3Checks implements ClientModInitializer {
                 }
                 case 5->{
                     waited++;
-                    if(waited%10==0)server(c,b->{started=b.running&&b.campaign.activeBattle!=null&&b.campaign.activeBattle.id().equals("march-1");});
+                    if(waited%10==0)server(c,b->{started=b.running&&b.campaign.activeBattle!=null&&b.campaign.activeBattle.id().equals("oath-1");});
                     if(started||waited>900){
-                        report("p3-yard-start",started,started?"pressing START gave a running battle with activeBattle march-1 after about "+waited+" ticks":"no running battle with activeBattle march-1 within 900 ticks after START");
+                        report("p3-yard-start",started,started?"pressing START gave a running battle with activeBattle oath-1 after about "+waited+" ticks":"no running battle with activeBattle oath-1 within 900 ticks after START");
                         stage=6;waited=0;over=false;server(c,b->b.campaign.returnLobby());
                     }
                 }

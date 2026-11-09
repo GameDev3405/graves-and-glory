@@ -14,8 +14,8 @@ import java.util.UUID;
  * Dusk both defend on Dawn, team 1 has no banner, and wave 1 rises scaled for two banners. Round 2, solo: the rule, clock, court
  * (base and barracks), night and flags down; the soul-fire warning, then wave 1 at its sites with the director's Graveborn tier; a
  * cleared wave pays its gold; the JSON block; the dead holding the shrine with no defender for its seconds win. Round 3: the last
- * wave cleared wins for the defenders, and teardown puts the time, the flags and the court back with no dead left. Then march-3
- * (The Long Night) starts Survival on map 3 from the campaign command. Screenshots p4-survival-rise and p4-survival-wave.
+ * wave cleared wins for the defenders, and teardown puts the time, the flags and the court back with no dead left. Then oath-2
+ * (The Moon Shrine Watch) starts Survival on map 3 from the campaign command. Screenshots p4-survival-rise and p4-survival-wave.
  */
 final class SurvivalChecks implements Phase4Checks.Suite, Phase4Checks.ServerWatch {
     static final int MAP = 3;
@@ -163,24 +163,24 @@ final class SurvivalChecks implements Phase4Checks.Suite, Phase4Checks.ServerWat
                 Houses.forceRise = null;
                 stage = 40; at = b.time;
             }
-            case 40 -> { // The Long Night starts Survival on its map from the campaign command
+            case 40 -> { // oath-2 (The Moon Shrine Watch) starts Survival on its map from the campaign command
                 var c = b.campaign;
                 if (savedProfile == null) savedProfile = Campaign.JSON.toJson(c.profile(player));
                 var pr = c.profile(player);
                 Spec.CampaignBattlesRow row = null;
-                for (var r : Spec.CAMPAIGNBATTLES) if (r.id().equals("march-3")) row = r;
-                if (row == null) { end("no march-3 row"); return; }
+                for (var r : Spec.CAMPAIGNBATTLES) if (r.id().equals("oath-2")) row = r;
+                if (row == null) { end("no oath-2 row"); return; }
                 for (var r : Spec.CAMPAIGNBATTLES) if (r.order() < row.order()) pr.battlesWon.add(r.id());
                 pr.battlesWon.remove(row.id()); pr.sanitize();
                 c.closeParty(); c.battleMode = Modes.DOMINATION;
-                b.command(p, "campaign:march-3");
+                b.command(p, "campaign:oath-2");
                 stage = 41; at = b.time;
             }
             case 41 -> {
-                if (b.time - at > 15000) { end("march-3 did not start"); return; }
+                if (b.time - at > 15000) { end("oath-2 did not start"); return; }
                 var c = b.campaign;
                 if (!b.running || c.activeBattle == null || !b.ready) return;
-                Phase4Checks.report("p4-surv-march", c.activeBattle.id().equals("march-3") && b.mode instanceof SurvivalMode && c.map == MAP, "activeBattle " + c.activeBattle.id() + ", mode " + b.mode.id() + ", map " + c.map);
+                Phase4Checks.report("p4-surv-march", c.activeBattle.id().equals("oath-2") && b.mode instanceof SurvivalMode && c.map == MAP, "activeBattle " + c.activeBattle.id() + ", mode " + b.mode.id() + ", map " + c.map);
                 c.returnLobby(); stage = 42; end(null);
             }
             default -> {}

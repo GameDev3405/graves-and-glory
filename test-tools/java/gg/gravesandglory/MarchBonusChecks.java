@@ -2,18 +2,19 @@ package gg.gravesandglory;
 
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.server.network.ServerPlayerEntity;
-import java.util.UUID;
+import java.util.*;
 
 /**
- * The march hold_all (march-1, Domination) and kill_unit (march-6, Siege) bonuses in real rounds (GRAVES_PHASE4_CHECKS=march-bonus).
- * Each battle starts with the campaign command on a profile that has won the earlier battles. hold_all: the commander's side is given
- * every point and the tracker must notice within a second. kill_unit: the Hollow King must stand in the enemy army and the player's own
- * blow strikes him down; the tracker must notice. The round is then won and the bonus must be claimed. Forced steps are named in the report.
+ * The oath hold_all bonuses (oath-1, Domination 1 v 1, and oath-6, Domination 3 v 3) in real rounds (GRAVES_PHASE4_CHECKS=march-bonus).
+ * Each battle starts with the campaign command on a profile that has won the earlier battles. Its enemy squads must field exactly the
+ * rows its enemies cell names, by lane, at the battle's tier, and no squad fields an off-chapter Legendary (chapter 1 brief N1). hold_all:
+ * the commander's side is given every point and the tracker must notice within a second. The round is then won and the bonus must be
+ * claimed. Forced steps are named in the report. The march-6 kill_unit case went with the march rows (brief D); oath-6 replaces it.
  */
 final class MarchBonusChecks implements Phase4Checks.Suite, Phase4Checks.ServerWatch {
-    static final String[] IDS = System.getenv("GRAVES_MARCH_BONUS") != null ? System.getenv("GRAVES_MARCH_BONUS").split(",") : new String[] {"march-1", "march-6"};
+    static final String[] IDS = System.getenv("GRAVES_MARCH_BONUS") != null ? System.getenv("GRAVES_MARCH_BONUS").split(",") : new String[] {"oath-1", "oath-6"};
     volatile UUID player; volatile boolean done; volatile String shot;
-    int which, stage; long at; String savedProfile; boolean spawnedKing, kingForced;
+    int which, stage; long at; String savedProfile;
 
     public int limit() { return 30000; }
     public void cleanup(MinecraftClient c) {
@@ -29,6 +30,22 @@ final class MarchBonusChecks implements Phase4Checks.Suite, Phase4Checks.ServerW
         if (done) Phase4Checks.finish(c, "march-bonus");
     }
     static String banners(GravesAndGlory.Battle b) { var out = new StringBuilder(); for (var sq : b.squads.values()) if (sq.team == 1) out.append("[lane " + sq.lane + " bot=" + sq.bot + " tier=" + sq.tier + " " + sq.banner + "]"); return out.toString(); }
+    /** Why the battle's squads do not field its own enemies (brief N1), or "" when every team 1 lane fields its enemies row at the battle's tier and no squad holds an off-chapter Legendary. Shared with MarchModesChecks. */
+    static String enemyMismatch(GravesAndGlory.Battle b, Spec.CampaignBattlesRow row) {
+        var why = new StringBuilder();
+        var ids = MarchMath.enemyIds(row);
+        for (var sq : b.squads.values()) {
+            for (String banned : List.of("gb_hollowking", "ic_colossus", "tc_admiral")) if (sq.banner != null && sq.banner.contains(banned)) why.append("team " + sq.team + " lane " + sq.lane + " fields " + banned + "; ");
+            if (sq.team != 1 || !sq.bot || ids.isEmpty()) continue;
+            String want = MarchMath.enemyId(row, sq.lane);
+            List<String> slots = null;
+            for (var r : Spec.BOTBANNERS) if (r.id().equals(want)) slots = Arrays.asList(r.slots().split(","));
+            if (slots == null || !slots.equals(sq.banner) || !sq.tier.equals(row.difficulty())) why.append("lane " + sq.lane + " wants " + want + " at " + row.difficulty() + ", fields tier " + sq.tier + " " + sq.banner + "; ");
+        }
+        long foes = b.squads.values().stream().filter(sq -> sq.team == 1 && sq.bot).count();
+        if (!ids.isEmpty() && foes != ids.size()) why.append(foes + " enemy squads, want " + ids.size() + "; ");
+        return why.toString();
+    }
     void end(String why) { if (why != null) Phase4Checks.report("p4-march-bonus-round", false, why); done = true; }
 
     public void serverTick(GravesAndGlory.Battle b) {
@@ -55,6 +72,8 @@ final class MarchBonusChecks implements Phase4Checks.Suite, Phase4Checks.ServerW
                 if (!b.running || c.activeBattle == null || !b.ready) return;
                 boolean ok = c.activeBattle.id().equals(id) && b.mode.id().equals(row.mode()) && c.map == row.map() && c.bonusTracker != null;
                 Phase4Checks.report("p4-march-bonus-start-" + id, ok, "activeBattle=" + c.activeBattle.id() + " mode=" + b.mode.id() + " map=" + c.map + " tracker=" + (c.bonusTracker == null ? "none" : c.bonusTracker.kind));
+                String foes = enemyMismatch(b, row);
+                Phase4Checks.report("p4-march-enemies-" + id, foes.isEmpty(), foes.isEmpty() ? "team 1 fields " + row.enemies() + " by lane at " + row.difficulty() + "; no off-chapter Legendary" : foes);
                 if (!ok) { end(null); return; }
                 p.getAbilities().invulnerable = true; p.sendAbilitiesUpdate();
                 stage = 2; at = b.time;
@@ -68,23 +87,7 @@ final class MarchBonusChecks implements Phase4Checks.Suite, Phase4Checks.ServerW
                         Phase4Checks.report("p4-march-bonus-hold-" + id, c.bonusTracker.heldAll, "all " + b.points.size() + " points forced to Dawn; tracker heldAll=" + c.bonusTracker.heldAll);
                         shot = "march-hold"; stage = 3; at = b.time;
                     }
-                } else if (c.bonusTracker.kind.equals("kill_unit")) {
-                    GravesAndGlory.Unit king = null;
-                    for (var u : b.units) if (u.spec.id().equals(c.bonusTracker.target) && u.mob.isAlive()) king = u;
-                    if (king == null) {
-                        if (b.time - at > 1200) { Phase4Checks.report("p4-march-bonus-kill-" + id, false, "no " + c.bonusTracker.target + " in the army; units=" + b.units.size() + "; team 1 banners " + banners(b)); end(null); }
-                        return;
-                    }
-                    king.mob.damage(p.getDamageSources().playerAttack(p), 10000f); // the player's own blow
-                    if (!king.mob.isAlive() || b.time - at > 1500) {
-                        stage = 21; at = b.time;
-                    }
                 } else end("unexpected bonus kind " + c.bonusTracker.kind);
-            }
-            case 21 -> {
-                if (b.time - at < 40) return;
-                Phase4Checks.report("p4-march-bonus-kill-" + id, c.bonusTracker.killed, "Hollow King fielded by the enemy army; "+"struck down by the player's blow; tracker killed=" + c.bonusTracker.killed);
-                shot = "march-kill"; stage = 3; at = b.time;
             }
             case 3 -> { // finish: win for Dawn
                 if (b.time - at < 40) return;
