@@ -13,6 +13,7 @@ import argparse
 import datetime
 import json
 import os
+import re
 import shutil
 import sys
 import tempfile
@@ -285,6 +286,9 @@ def decide_dir(repo, batch_dir):
         # would differ from what he approved, so the batch is built again on the new main first.
         moved = bg.changed_between(os.path.abspath(repo), manifest["target_sha"], bg.resolve(os.path.abspath(repo), "refs/heads/main"),
                                    result["inputs"])
+        # Another troop's booth config landing in the same family folder changes nothing this batch showed.
+        named = set(result["inputs"])
+        moved = [p for p in moved if p in named or not re.fullmatch(r"booth\.[^/]+\.json", p.rsplit("/", 1)[-1])]
         if moved:
             return {"action": "resubmit", "reason": "main changed reviewed inputs since the batch was built: %s" % ", ".join(moved)}
     return result
