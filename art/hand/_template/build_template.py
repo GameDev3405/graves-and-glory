@@ -116,7 +116,9 @@ def scale_rows(face, x, y, w, h):  # scales: rows offset by one, each scale lit 
     return 1 if y % 2 == 0 and (x + (y // 2) % 2) % 2 == 0 else (-1 if y % 2 == 1 else 0)
 
 def shell(role, base=None):
-    """Shell: ridged fan (ridges radiating from the bottom centre, alternating light and dark) with a bright rim on top."""
+    """Shell: ridged fan (ridges radiating from the bottom centre, alternating light and dark) with a bright rim on top; the
+    top face carries the ribs too, brightest along its front edge. Use the House TRIM or PLATE ramp (recipe A3), never a
+    vivid off-tone colour."""
     b0 = B(role) if base is None else base
     def ridge(face, x, y, w, h):
         if face in ("top", "bottom"): return 0
@@ -125,6 +127,9 @@ def shell(role, base=None):
     def paint(face, w, h):
         g = body(face, w, h)
         if face not in ("top", "bottom"): g[0] = [put(R(role), b0 + 2)] * w        # the bright rim
+        elif face == "top":                                                       # top: ribs fanning back from the lit front edge
+            for y in range(h):
+                for x in range(w): g[y][x] = put(R(role), b0 + 1 + (1 if y == h - 1 else (0 if x % 2 == 0 else -1)))
         return g
     return paint
 
@@ -154,7 +159,9 @@ def rimmed(painter, role="trim", depth=1):
 
 # ================================================================================================ 5. parts (recipe A4-A6)
 def head():
-    """EDIT (A5, personality): the face is the first thing a player reads. Brows, a scar, a beard, warpaint, a hollow eye."""
+    """EDIT (A5, personality): the face is the first thing a player reads. Brows, a scar, a beard, warpaint, a hollow eye.
+    Rows 0..1 are under the hood's brim (tier I) and rows 0..3 under the helm (tiers II-III): paint cues on rows 4..7, or
+    on row 3 only if no tier covers it. Bare skin sits at most one tone above the clothing beside it (recipe A3.5)."""
     S, Hh = R("skin"), R("hair")
     s = B("skin")
     pal = {"S": S[s + 1], "s": S[s], "d": S[s - 1], "D": S[s - 2], "w": S[-1], "e": Hh[0], "b": Hh[max(0, B("hair") - 1)],
@@ -185,17 +192,23 @@ DdssssdD""", pal)
     return paint
 
 def hood():
-    """Tier I hood in the primary cloth: tone() on every face (light crown, darker hem), folds front and back, a face window
-    cut out (None = transparent). The back is not a slab: a centre seam fold and the same top-to-bottom light."""
+    """Tier I hood in the primary cloth: tone() on every face, so each side face spans 3+ tones (light crown, mid, dark hem);
+    a lit rim round the face window; the back has two structural features (a centre seam and two folds, recipe A7.1).
+    The hood's brim hides head rows 0..1 and the tier II/III helm rows 0..3: keep the eyes (row 4) and the face cues below
+    the lowest brim of any tier (recipe A5)."""
     body = fill("padding", B("padding") + 1, folds)
+    Rp = R("padding")
     def paint(face, w, h):
         g = body(face, w, h)
         if face == "bottom": return blank(w, h)
         if face == "front":
             for y in range(2, h):
                 for x in range(1, w - 1): g[y][x] = None                     # the face window
+            for x in range(1, w - 1): g[1][x] = put(Rp, B("padding") + 3)    # the lit rim over the window (the brim's edge)
+            for y in range(2, h - 1): g[y][0] = put(Rp, B("padding") + 2)    # its lit side (the wearer's right)
         if face == "back":
-            for y in range(1, h - 1): g[y][w // 2] = put(R("padding"), tone(face, w // 2, y, w, h, B("padding")))   # seam
+            for y in range(1, h - 1): g[y][w // 2] = put(Rp, tone(face, w // 2, y, w, h, B("padding")) - 1)          # seam
+            for y in range(1, h - 1): g[y][w // 2 + 1] = put(Rp, tone(face, w // 2 + 1, y, w, h, B("padding")) + 1)  # its lit lip
         return g
     return paint
 
@@ -309,6 +322,7 @@ eFe
 def bones():
     """Bones and boxes. Keep the biped skeleton (handlib.limb joints, hand bones, arms_folded); add parts per tier with
     stages=[...]. Every tier step must ADD MASS that reads at 16 blocks (a plate, a lame, a cape), not only a stripe."""
+    TEAM_EXTRAS = True                                               # EDIT (A6): False drops the tier III crest and cape
     Bn = [Bone("root", "")]
     Bn.append(Bone("body", "root", (0, 12, 0), [Box((-4, -12, -2), (8, 12, 4), per_tier(torso))]))
     Bn.append(Bone("head", "body", (0, -12, 0), [Box((-4, -8, -4), (8, 8, 8), head())]))
@@ -328,12 +342,15 @@ def bones():
     Bn.append(Bone("helm", "head", tag="helm", stages=[2, 3], boxes=[
         Box((-4.5, -8.5, -4.5), (9, 4, 9), per_tier(helm, (2, 3))),
         Box((-0.5, -5, -4.9), (1, 3, 1), plate(base=B("plate") + 1))]))   # the nasal
+    ROLL = -14                                                       # pauldron roll in degrees, times c (see below)
     for side in ("right", "left"):
         # c is the side's sign: -1 on the wearer's right (-x), +1 on the left. Tie EVERY mirrored number to c: the x offset
-        # outward (0.5 * c) and the z roll (14 * c, which drops the outer edge on both shoulders). A hard-coded or flipped
-        # sign on one side lifts that pauldron's outer edge, and it reads as a wing. Check the front near render for symmetry.
+        # outward (0.5 * c) and the z roll (ROLL * c). ROLL is NEGATIVE: -14 * c drops the outer edge on both shoulders
+        # (verified in the front render, 2026-11-09). +14 * c lifts it and the pauldron reads as a wing.
+        # ASYMMETRIC gear (one shell shoulder, one bare arm): wrap that bone in `if side == "left":` (or build it once outside
+        # the loop with its own c); keep the other side's tier mass so the tier still reads. See recipe A2.5.
         c = -1 if side == "right" else 1
-        Bn.append(Bone(f"{side}_pauldron", f"{side}_arm", (c, -2, 0), stages=[2, 3], rot=(0, 0, 14 * c), boxes=[
+        Bn.append(Bone(f"{side}_pauldron", f"{side}_arm", (c, -2, 0), stages=[2, 3], rot=(0, 0, ROLL * c), boxes=[
             Box((-3.5, -1.5, -3.5), (7, 2, 7), per_tier(lambda t: pauldron(t, "dome"), (2, 3))),
             Box((-3.5 + 0.5 * c, 0.5, -3), (7, 2, 6), per_tier(lambda t: pauldron(t, "lame"), (2, 3)), dil=0.15)]))
         Bn.append(Bone(f"{side}_vambrace", f"{side}_forearm", stages=[2, 3], boxes=[   # centred on the forearm box (-2..2)
@@ -341,12 +358,14 @@ def bones():
         Bn.append(Bone(f"{side}_knee", f"{side}_shin", stages=[2, 3], boxes=[
             Box((-2.5, -1, -3), (5, 2, 2), plate(base=B("plate") + 1))]))
         # ---- tier III: a second pauldron lame, greaves, trim rims, crest and cape ----              EDIT (A6)
-        Bn.append(Bone(f"{side}_lame2", f"{side}_arm", (c, -2, 0), stages=[3], rot=(0, 0, 14 * c), boxes=[
+        Bn.append(Bone(f"{side}_lame2", f"{side}_arm", (c, -2, 0), stages=[3], rot=(0, 0, ROLL * c), boxes=[
             Box((-3 + 1.0 * c, 2.5, -2.5), (6, 2, 5), pauldron(3, "lame"), dil=0.2)]))
         Bn.append(Bone(f"{side}_greave", f"{side}_shin", stages=[3], boxes=[
             Box((-2, 0.5, -2), (4, 3, 4), rimmed(plate()), dil=0.4)]))
-    Bn.append(Bone("crest", "head", team=True, tag="helm", stages=[3], boxes=[Box((-1, -11, -4), (2, 2.5, 8), "crest", sheet="cloth")]))
-    Bn.append(Bone("cape", "body", (0, -12, 2.9), team=True, stages=[3], rot=(8, 0, 0), boxes=[
+    # OPTIONAL: crest and cape are team cloth for tier III. Set TEAM_EXTRAS = False (top of bones) or delete these two bones if
+    # the brief has no cape or crest; then the tier III step must come from the trim band and plate (recipe A6).
+    if TEAM_EXTRAS: Bn.append(Bone("crest", "head", team=True, tag="helm", stages=[3], boxes=[Box((-1, -11, -4), (2, 2.5, 8), "crest", sheet="cloth")]))
+    if TEAM_EXTRAS: Bn.append(Bone("cape", "body", (0, -12, 2.9), team=True, stages=[3], rot=(8, 0, 0), boxes=[
         Box((-4, 0, 0), (8, 15, 1), "cape", sheet="cloth")]))
     return Bn
 
@@ -354,6 +373,7 @@ def bones():
 PRIMARY_MIN = 0.35     # share of opaque skin texels in PRIMARY_ROLES ramps, per tier (the House reads from its main masses)
 TRIM_MAX = 0.20        # share in TRIM_ROLES ramps (that are not also primary), per tier
 CLAMP_MAX = 0.12       # share of fill() texels whose tone ran off a ramp end: pick bases with headroom (recipe A3)
+GRADIENT_TONES = 3     # lit faces (front, right): row mean tones, top to bottom, take at least this many distinct values
 GRADIENT_SKIP = ("head",)   # bones whose own boxes are exempt from the top-to-bottom test (the face grid: hair over skin)
 
 def _lum(c): return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]
@@ -391,13 +411,17 @@ def gate(troop):
                 if not on(bone, t) or not p: continue
                 for face in ("front", "back", "right", "left"):
                     g = p(face, w if face in ("front", "back") else d, full)
-                    band = max(1, full // 4)
                     def mean(ys):
                         v = [index[c] for y in ys for c in g[y] if c in index]
                         return sum(v) / len(v) if v else None
-                    top, foot = mean(range(band)), mean(range(full - band, full))
-                    if top is not None and foot is not None and top <= foot:
+                    top, foot = mean(range(max(1, -(-full // 6)))), mean(range(full - max(1, full // 4), full))
+                    if top is None or foot is None: continue
+                    if top <= foot:
                         problems.append("tier %d %s %s: %s face is flat or lit from below (mean tone top %.1f, foot %.1f)" % (t, bone.name, list(b.size), face, top, foot))
+                    elif face in ("front", "right"):
+                        span = {round(m) for m in (mean([y]) for y in range(full)) if m is not None}
+                        if len(span) < GRADIENT_TONES:
+                            problems.append("tier %d %s %s: %s face spans only %d tones top to bottom (need %d)" % (t, bone.name, list(b.size), face, len(span), GRADIENT_TONES))
     share = _CLAMP[1] / max(1, _CLAMP[0])
     print("gate: %d%% of painted texels clamped at a ramp end (max %d%%)" % (share * 100, CLAMP_MAX * 100))
     if share > CLAMP_MAX: problems.append("bases too close to a ramp end: %d%% of texels clamped" % (share * 100))

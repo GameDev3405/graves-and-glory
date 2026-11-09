@@ -105,6 +105,18 @@ class Template(unittest.TestCase):
         problems = m.gate(m.TEMPLATE)
         self.assertTrue(any('flat or lit from below' in p for p in problems), problems)
 
+    def test_gate_fails_a_two_tone_arm(self):
+        m = self.load()
+        Rm = m.R('padding')
+        m.arm = lambda: (lambda face, w, h: [[Rm[3] if y < h // 2 else Rm[2]] * w for y in range(h)])   # lit, but only 2 tones
+        problems = m.gate(m.TEMPLATE)
+        self.assertTrue(any('arm' in p and 'spans only 2 tones' in p for p in problems), problems)
+
+    def test_pauldrons_drop_their_outer_edges(self):
+        m = self.load()
+        rolls = {b.name: b.rot[2] for b in m.bones() if b.name.endswith('pauldron')}
+        self.assertEqual(rolls, {'right_pauldron': 14, 'left_pauldron': -14})
+
     def test_gate_fails_off_house_main_mass(self):
         m = self.load()
         m.PRIMARY_ROLES = ('plate',)   # tier I has no plate: its hood, gambeson and sleeves are then not a primary ramp

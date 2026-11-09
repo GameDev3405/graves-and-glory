@@ -14,7 +14,7 @@ Paths used throughout:
 - Enforced by a tool:
   - the palette (`house_palette.py check`);
   - the accent hue (`art_hue_check.py`);
-  - the template gate (`build_<tid>.py gate`): primary-ramp share, trim and accent share, top-to-bottom light on every tall face, and texels clamped at a ramp end.
+  - the template gate (`build_<tid>.py gate`): primary-ramp share, trim and accent share, top-to-bottom light on every tall face (lit faces spanning at least 3 tones), and texels clamped at a ramp end.
 - Checked by the reviewer: everything else, including structure, material cues, the tier masses, the read at 16 blocks and personality. Passing the tools does not mean the unit is good: the trial unit passed both checks and was graded 5.1.
 
 ---
@@ -60,7 +60,8 @@ Paths used throughout:
    Geometry may grow for a NEW troop, but the animation lead owns the rig contract (`handlib` `ELBOW`/`KNEE`/`HAND`, 64 bones max).
 5. **Geometry rules** (see the comment above `bones()` in the template):
    - **Centre gear on its limb.** A forearm or shin box spans x -2..2 and z -2..2 in its bone's frame. Gear goes at `(-2, y, -2)` with width 4 and stands proud through `dil` (0.3–0.4). Do not move it out with offsets.
-   - **Mirror with `c`.** `c = -1` is the wearer's right and `+1` the left. Every mirrored number takes `c`: the outward offset `0.5 * c` and the pauldron roll `rot=(0, 0, 14 * c)`, which drops the outer edge on both sides. A flipped or hard-coded sign on one side makes that pauldron a wing. Check the front near render for symmetry.
+   - **Mirror with `c`.** `c = -1` is the wearer's right and `+1` the left. Every mirrored number takes `c`: the outward offset `0.5 * c` and the pauldron roll `rot=(0, 0, ROLL * c)` with **`ROLL = -14`**, which drops the outer edge on both sides (checked in the front render, 2026-11-09). `+14 * c` lifts the outer edge and the pauldron reads as a wing. Check the front near render: both outer edges sit lower than the inner ones.
+   - **Asymmetric gear is allowed** when the brief asks for it (one shell shoulder, one bare arm, a single bracer). Build that bone for one side only, with `if side == "left":` in the loop, or once outside the loop with its own `c`. The other side still carries its tier mass (a plain pauldron, a strap), so the tier reads from both sides. Symmetry rules (A8.5 F) apply only to paired gear.
    - **Layering in front of the tabard.** The body's front face is at z -2, and the team `tabard` panel hangs at z -2.6. Chest gear that must show in front of it needs its front face nearer than z -2.65: a box at z -2 with `dil` ≥ 0.7. Alternatively, keep the tabard below the chest gear, as the template does (tabard y -5..3, breastplate y -12..-6).
    - **Flat panels.** A 0-deep box paints only its outward face. Use a separate spec for the front and back panels, as in `tabard_front` / `tabard_back`; otherwise they z-fight.
    - **Transparent texels.** A painter may return `None` for a texel; it is transparent. Use it only for deliberate cut-outs: a face window, a ragged hem or the gaps in teeth. A hole elsewhere shows the inside of the box. Never change transparency on an existing troop.
@@ -73,13 +74,22 @@ Fill `MAT = {role: (ramp name, base index)}`.
 2. **Trim and accent stay under about 20%** of visible texels together. The gate fails a tier over `TRIM_MAX`.
 3. The team cloth (tabard, cape, crest) is the side's colour, not the House's. The House must still read with the cloth hidden.
 
-   | House | primary armour | primary cloth / body | trim | accent (hue check) | reserved, notes |
-   |---|---|---|---|---|---|
-   | Gilded | `handlib.STEEL` | `handlib.LINEN` (white surcoats), `handlib.MAIL` | `handlib.GOLD` | `handlib.GOLD` (gold 42) | pale and upright; faces shown |
-   | Ironclad | `ironclad_tiers.IRON` | `ironclad.OILED`, `handlib.LEATH`, `handlib.MAIL` | `ironclad_tiers.BRASS` | `ironclad_tiers.EMBER` (ember 13) | soot iron with brass |
-   | Graveborn | `graveborn.GIRON` (base 4+, it is near black) | `graveborn.ROT`, `graveborn.RUST`, `graveborn.BONE` (the light mass) | `graveborn.GILT` | `graveborn.VIOLET` tones 1–3 (violet 269) | every troop needs one light mass |
-   | Wildmoot | `wildmoot.BONE`, `wildmoot.HORN` | `wildmoot.HIDE`, `wildmoot.FUR`, `wildmoot.GREYFUR` | `wildmoot.HORN` | `wildmoot.OCHRE` (ochre 32) | blood red only as wraps |
-   | Tidecallers | `tidecallers.BRONZE`; `tidecallers.DEEP` (tier III plate) | `build_tc_raider.NAVY`, `tidecallers.DEEP`, `tidecallers.BARN` | `tidecallers.WARM` | `tidecallers.SEA` (sea blue 210) | `tidecallers.CORAL` reserved for the Trident Guard |
+   Every ramp in a House palette is one of five kinds:
+   - **plate**: the only ramps that count as a tier II/III mass (A6);
+   - **primary cloth/body**: with plate, these are the `PRIMARY_ROLES`, the big masses;
+   - **secondary**: details and props (rope, cork, pearl rivets, barnacles, kelp, fur trim, wood). They are neither primary nor trim, and each stays a small part. Put their roles in neither tuple;
+   - **trim**: the House trim metal, in `TRIM_ROLES`;
+   - **accent**: the hue-check colour, in `TRIM_ROLES`.
+
+   | House | plate (tier II/III mass) | primary cloth / body | secondary (small parts only) | trim | accent (hue check) | reserved, notes |
+   |---|---|---|---|---|---|---|
+   | Gilded | `handlib.STEEL` | `handlib.LINEN` (white surcoats), `handlib.MAIL`, `build_archer.PAD` | `handlib.LEATH`, `build_mage.ROPE`, `build_gl_marshal.FUR`, `build_longbow.FELT` / `PLUME` | `handlib.GOLD` | `handlib.GOLD` (gold 42) | pale and upright; faces shown |
+   | Ironclad | `ironclad_tiers.IRON` | `ironclad.OILED`, `handlib.MAIL`, `handlib.LEATH` | `ironclad.FUR`, `ironclad_tiers.HORN`, `build_ic_ballista.OAK` / `ROPE` | `ironclad_tiers.BRASS` | `ironclad_tiers.EMBER` (ember 13) | soot iron with brass |
+   | Graveborn | `graveborn.GIRON` (base 4+, it is near black) | `graveborn.ROT`, `graveborn.RUST`, `graveborn.BONE` (the light mass), `build_reaper.SHROUD` | `graveborn.MOSS`, `graveborn.FROST`, `graveborn.SOUL` (eyes only) | `graveborn.GILT` | `graveborn.VIOLET` tones 1–3 (violet 269) | every troop needs one light mass |
+   | Wildmoot | `wildmoot.BONE`, `wildmoot.CHITIN` | `wildmoot.HIDE`, `wildmoot.FUR`, `wildmoot.GREYFUR` | `wildmoot.WOOD`, `BARK`, `CLAY`, `SILK`, `FEATHER`, `BLOOD` (wraps only) | `wildmoot.HORN` | `wildmoot.OCHRE` (ochre 32) | `GLOWCLAY` eyes only |
+   | Tidecallers | `tidecallers.BRONZE` (tier II), `tidecallers.DEEP` (tier III), `build_tc_raider.SHELL` / `SCUTE` (shell plate) | `build_tc_raider.NAVY`, `build_tc_admiral.COAT`, `build_tc_harpooner.OIL` (oilskin) | `build_tc_raider.ROPE`, `build_tc_admiral.ANCHOR` (cork, fittings), `tidecallers.PEARL` (rivets, teeth; **not plate**), `tidecallers.BARN`, `tidecallers.KELP` | `tidecallers.WARM` (`build_tc_admiral.GILT` on officers) | `tidecallers.SEA` (sea blue 210) | `tidecallers.CORAL` reserved for the Trident Guard |
+
+   A ramp missing from this table is secondary until the lead says otherwise.
 
 4. **Base index by ramp length.** Painters move a texel from its base by -3 to +2: top face +1, lit column +1, top band +1, pattern ±1, recesses -2. Off the ramp, the tone clamps and the form is lost. The gate fails above 12% clamped.
 
@@ -97,6 +107,8 @@ Fill `MAT = {role: (ramp name, base index)}`.
    - boots and recesses.
 
    Every troop needs **one light mass** that reads at 16 blocks: bone, rime, gilt, linen or flesh. Neighbouring materials sit two or more tones apart where they touch.
+
+   **Skin against clothing.** Bare skin (face, forearms, chest) is not the light mass unless the brief says so (a Wildmoot boar-kin, a bare-chested brute). Its base tone sits at most **one value step** above the lit tone of the clothing beside it. Compare by eye in the preview, or by luminance (`0.21 R + 0.72 G + 0.07 B`): skin no more than about 15% brighter. Over dark clothing (oilskin, `GIRON`, navy), drop the skin base by one, or give the torso a light element (a bone, linen or plate panel) so the face is not the brightest thing on the body.
 6. **Adding a role** (rope, shell, oilskin, fur):
    - add `"rope": ("<ramp>", base)` to `MAT`;
    - paint it with `fill("rope", pattern=rope_twist)`, or with `R("rope")` / `B("rope")` in your own painter;
@@ -112,7 +124,8 @@ Build **every** painter on the template's `fill()` / `tone()`. A painter that wr
 2. **Lit column.** Add `lightx(face, x, w)` on the side faces. The wearer's right (the viewer's left) is lit.
 3. **Top-to-bottom light on every tall face (h ≥ 6), front AND back.** Use +1 on the top sixth and -1 on the bottom quarter. On short faces, use a +1 rim on the top row and a -1 seam on the bottom row. This fixes audit finding 1, the biggest lever.
    - Limbs are painted as one 12-row face (`Box cut`), so `fill()` lights them from shoulder to wrist and from hip to sole.
-   - The template's `hood()` shows a hood lit the same way, with a back seam fold, so the back of the hood is not a slab.
+   - **Measured:** every lit face (front, right) of a box 6+ rows tall spans **at least 3 tones** top to bottom (row mean tones, by ramp index), and every side face is lighter at its top than at its foot. The gate checks both; a pattern alone (two alternating tones) does not pass.
+   - The template's `hood()` is the model for a hood: a lit rim over the face window (base +2) and down its lit side, a crown-to-hem gradient on every face, and a back with a centre seam and its lit lip plus two folds, so the back is not a slab.
 4. **Recesses go dark.** Use 1–2 steps down under a brim, under a belt, between the legs, and under a pauldron.
 5. **Legs get a shadow band.** Each leg needs:
    - a knee crease;
@@ -135,7 +148,7 @@ Build **every** painter on the template's `fill()` / `tone()`. A painter that wr
    | leather | flat mid tones, a soft lit top edge, a dark seam; at most one hand-placed scuff | `fill("leather")` |
    | rope, cord | a diagonal twist: a light strand, a mid tone, a dark groove | `rope_twist` |
    | oilskin, wet hide | a dark matte field with one bright gloss streak along each fold (+2) | `gloss_fold` |
-   | shell | a ridged fan from the bottom centre, alternating light and dark, with a bright top rim | `shell(role)` |
+   | shell | a ridged fan from the bottom centre, alternating light and dark, with a bright top rim; the top face ribbed too, brightest at its front edge. In a House plate or trim ramp (Tidecallers: `build_tc_raider.SHELL`, `WARM`), never a vivid off-tone colour | `shell(role)` |
    | scales | offset rows, each scale lit on its upper edge | `scale_rows` |
    | fur | clumps 2–3 texels wide in strands along the growth, lit tips; never single-texel dither | write it on `fill()` |
    | bone | the light mass: pale, one crack line along the long axis, darker at the root | write it on `fill()` |
@@ -147,7 +160,11 @@ Build **every** painter on the template's `fill()` / `tone()`. A painter that wr
    - a scar;
    - a beard, a braid or warpaint;
    - a hollow eye, a jaw or an open visor slit.
-2. Give the troop one signature part, its **mark**, from the brief. Paint it with the strongest value contrast on the model.
+   **Brims hide rows.** In the template, the hood's brim covers head rows 0–1 (tier I) and the helm covers rows 0–3 (tiers II–III). Put the eyes and face cues on rows the headgear of **every** tier leaves open (rows 4–7 in the template). Check the front near render of each tier: if a cue is gone, move it down or cut the brim.
+2. Give the troop one signature part, its **mark**, from the brief (a net, a horn, a lantern, a shell shoulder). It must read at 16 blocks:
+   - paint it in **one dark and one light tone**, at least 3 steps apart on the ramp, never in mid tones only;
+   - make it a **lattice or a shape with parts at least 2 texels wide**: a net is a 2-texel light cord grid over dark gaps, not a 1-texel check;
+   - give it the strongest value contrast on the model, and put it where the far front view sees it (the chest, a shoulder, a hand).
 3. Pose cues are geometry and meta (`HUNCH`, `idleArms`), agreed with the animation lead.
 
 ### A6. Tiers I → II → III: each tier adds visible mass
@@ -158,15 +175,19 @@ Build **every** painter on the template's `fill()` / `tone()`. A painter that wr
 | II | **a new mass in a House PLATE ramp**, with a distinct silhouette in the far render: a breastplate, pauldrons or a helm. Not a stripe, not a grey blob of another material. | plate breastplate, pauldrons, open helm, vambraces, knee cops, mail below the plate |
 | III | more mass **plus one continuous trim structure at least 2 texels wide and about 15 texels long**: a rim band right round the breastplate, a baldric, the edge of a mantle. Never scattered trim dots. | breastplate rim band 2 rows deep (`rimmed(..., depth=2)`), second pauldron lame, greaves, team crest and cape |
 
+"Plate ramp" means the **plate** column of the A3 table, nothing else: `PEARL`, `BARN`, rope, fur or leather never make the tier II mass.
+
 1. Use `stages=[2, 3]` on new bones, and `per_tier(f, (2, 3))` to repaint shared boxes.
-2. Each tier is cumulative and is the same soldier (no new silhouette per tier, decision 7.4).
-3. Test: at the `far` render, squint. Can you tell I from II from III by shape alone? If II differs only by a line, add a plate. If III reads as noise, merge the trim into one band. This fixes audit finding 5.
+2. The template's tier III **crest and cape are optional** team cloth. Set `TEAM_EXTRAS = False` at the top of `bones()` (or delete those two bones) when the brief has none; the tier III step must then come from the trim band and more plate.
+3. Each tier is cumulative and is the same soldier (no new silhouette per tier, decision 7.4).
+4. Test: at the `far` render, squint. Can you tell I from II from III by shape alone? If II differs only by a line, add a plate. If III reads as noise, merge the trim into one band. This fixes audit finding 5.
 
 ### A7. The back continues the front; team cloth; the accent share
 
-1. **Back.** Paint the back faces with the same care as the front: hair or hood round the head, the nape, folds and hem on the back panel, the plate's rim continuing round.
+1. **Back.** Paint the back faces with the same care as the front: hair or hood round the head, the nape, folds and hem on the back panel, the plate's rim continuing round. Each big back face (torso, hood, cape, back plate) carries **at least 2 structural features**: a seam, a fold, an edge highlight, a strap, a rim. The template's hood back has a seam with a lit lip and two folds; the torso back has quilting rows under the tabard's folds and hem.
 2. **Team colour lives only on the cloth sheet**, through `cloth_painter`, from `palette.ramps("team")`. Never put team hues on the skin.
 3. **House accent** goes in fixed paint on the skin: belts, wrist wraps, piping on the plate foot, cords and stitching. The accent is gold, violet, ochre, ember or sea blue, depending on the House.
+4. **Trim, shell and accent tones come from the House's own trim and accent ramps** (A3 table), so their chroma matches the rest of the troop. No vivid off-tone accent: no saturated orange, red or teal that is in no House ramp, and no tone from a ramp of another troop's mark. If a detail looks dull, raise its value contrast, not its saturation.
    - `tools/art_hue_check.py` must PASS (the band ≥ 10% of saturated texels).
    - Graveborn violet counts only `VIOLET[0..3]`.
 
@@ -195,16 +216,17 @@ Run from the repo root. In the commands below, `<b>` is `art/hand/<tid>/build_<t
    ```
    Add `--distance game16` for the 16-block render.
 4. **The 16-block gate.** Open each tier's `t<N>_far.png` at 1x, with no zoom, and write down three answers. If any answer needs zooming or guessing, it is a fail: fix the values or the masses first.
-   1. the role (a shield, a caster, an archer, a beast, ...);
+   1. the role (a shield, a caster, an archer, a beast, ...). **Objective bar:** the unit's identity mark (A5.2) is visible at 1x as a distinct shape, at least 2 texels across, and in a different value from what surrounds it;
    2. the tier;
    3. the House.
-5. **Self-check** against the rubric (audit section 2). Score A–F and write the scores down.
-   - [ ] A: one top-left light; **every limb and the hood (or helm) show light to dark, on the front AND the back**; recesses dark; head and torso lighter than the legs.
-   - [ ] B: every material is told apart by its cue (A4.7), not only by its hue.
+5. **Self-check** against the rubric (audit section 2). Score A–G and write the scores down.
+   - [ ] A: one top-left light; **every limb and the hood (or helm) show light to dark, on the front AND the back, across at least 3 tones**; recesses dark; head and torso lighter than the legs; bare skin no more than one step above the clothing beside it.
+   - [ ] B: every material is told apart by its cue (A4.7), not only by its hue; trim and shell use the House trim ramp (A7.4).
    - [ ] C: the main masses are in the House's primary ramps (A3); trim and accent stay under about 20%; the accent is visible.
    - [ ] D: tier II adds a plate-ramp mass with its own silhouette; tier III adds a continuous trim band at least 2 texels wide.
    - [ ] E: the 16-block gate (step 4) passes for every tier.
-   - [ ] F: no orphan texels or holes; the back and sides are finished; seams line up at box edges, the elbow and the knee; the pauldrons are symmetric.
+   - [ ] F: no orphan texels or holes; each big back face has 2+ structural features (A7.1); seams line up at box edges, the elbow and the knee; paired pauldrons are symmetric with both outer edges down.
+   - [ ] G: the mark (A5.2) is a dark-and-light shape, 2+ texels wide, visible in every far render; the face cues are not hidden by a brim.
 
    **The self-check is not the grade.** Self-scores ran about 3 points high in the trial. Use the self-check to find what to fix, not to report a score.
 6. **Palette check** (must print `OK`):
@@ -292,7 +314,7 @@ A new House's look is **Kort's decision**. Steps 1–4 are a proposal for him, n
 - [ ] Tiers I, II and III preview; there are ≤ 64 bones; there is no pack overflow.
 - [ ] `python <b> gate` passes, `house_palette.py check --dir` is OK, and `art_hue_check.py --dir` passes.
 - [ ] The 16-block gate (A8.4) is answered for each tier: role, tier and House.
-- [ ] Tier II adds a plate-ramp mass, tier III a continuous trim band; the back is finished; the legs have a shadow band; the pauldrons are symmetric.
+- [ ] Tier II adds a plate-ramp mass, tier III a continuous trim band; each big back face has 2+ structural features; the legs have a shadow band; paired pauldrons drop their outer edges; the mark reads at 1x.
 - [ ] The weapon is an existing id, or is marked `weapon: TODO`.
 - [ ] A fresh Sonnet-high reviewer grades the renders with the rubric. The grade is ≥ 8 on every line, or the open lines are listed after two fix rounds.
 - [ ] Nothing goes to Kort before that review.
