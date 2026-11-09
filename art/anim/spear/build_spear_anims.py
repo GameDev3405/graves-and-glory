@@ -487,6 +487,75 @@ if V2C:
                       "steps": ATTACK_LEGS["low_sweep"]["steps"]},
     }
 
+# Spear rollout 2 (Kort, 2026-11-09: the slash recipe on the low sweep). The old sweep swung the point to the right while the
+# hips and torso unwound to the left, so the wrists did twice the arc against the body. Now the point winds up out past the
+# rear (right) hip and sweeps left with the body: the hips lead the unwind by about a tick, the torso follows and the
+# shoulder carries the fist forward into an extended contact, the point sweeps on past the foe and the body settles back.
+# The grip is planned in the chest's frame: the shaft never points right of the chest's own forward (r, degrees left of it,
+# stays >= 16), and the rear fist sits out beside the hip on the load, so the 14 px butt passes outside the right hip
+# instead of across the belly. The wrist rolls the blade flat (phi 90) through the sweep so its edge, not its flat, leads.
+# Keys are planned as (chest pose, fist in the chest frame, world elevation, chest-relative yaw r, roll phi) and baked every
+# quarter tick into the solver's world keys, so the interpolation follows the body's arc instead of cutting a chord through it.
+# Impact stays on t8.
+if V2C:
+    def _chest(legs_i, torso):
+        T = K.world(fk_pose({"torso": (tuple(torso), None)}, legs_i), "torso")
+        R = T[:3, :3] @ K.world({}, "torso")[:3, :3].T
+        f = R @ np.array([0.0, 0.0, 1.0])
+        return T, R, math.degrees(math.atan2(f[0], f[2]))
+
+    def _to_chest(T, O):
+        v = np.linalg.inv(T) @ np.r_[np.asarray(O) / 16.0, 1.0]
+        return (-v[0] * 16.0, v[1] * 16.0, -v[2] * 16.0)
+
+    def _sweep_keys(plan, legs_spec, step=0.25):
+        legs = K.attack_legs(legs_spec)
+        T0, _, cy0 = _chest(legs[0], GUARD["torso"])
+        d0 = np.array(GUARD["d"])
+        g = {"torso": GUARD["torso"], "head": GUARD["head"], "O": _to_chest(T0, GUARD["O"]),
+             "ev": (math.degrees(math.asin(d0[1])),), "r": (math.degrees(math.atan2(d0[0], d0[2])) - cy0,), "phi": (0.0,),
+             "Ls": GUARD["Ls"], "rp": GUARD["rp"], "lp": GUARD["lp"]}
+        rows = [(0.0, g)] + [(t, {**g, **{k: (tuple(v) if isinstance(v, (tuple, list)) else (v,)) for k, v in kv.items()}})
+                             for t, kv in plan] + [(22.0, g)]
+        out = []
+        for t in np.arange(0.0, 22.0 + 1e-9, step):
+            if 0.0 < t < plan[0][0] or plan[-1][0] < t < 22.0:
+                continue                      # off the planned span: the guard ends ease in and out on their own keys
+            v = {n: K.curve([(k[0], k[1][n]) for k in rows], t) for n in g}
+            out.append((float(t), _plan_key(legs[int(round(t * SUB))], v)))
+        out[0], out[-1] = (0.0, GUARD), (22.0, GUARD)
+        return out
+
+    def _plan_key(legs_i, v):
+        T, R, cy = _chest(legs_i, v["torso"])
+        d = aim(v["ev"][0], cy + v["r"][0])
+        ph = math.radians(v["phi"][0])
+        up = np.array([0.0, 1.0, 0.0]) - d[1] * d
+        u = math.cos(ph) * level_u(d) + math.sin(ph) * unit(up)
+        o = v["O"]
+        k = KEY(v["torso"], v["head"], K.point(T, (o[0], o[1], -o[2])), d, Ls=v["Ls"][0], rp=v["rp"], lp=v["lp"])
+        k["u"] = tuple(unit(u))
+        return k
+
+    # chest frame px: +x the troop's left, +y up, +z forward. r: shaft yaw left of the chest's forward. ev: world elevation.
+    SWEEP_PLAN = [
+        (3.0, {"torso": (12, 26, 0), "head": (8, 6, 0), "O": (-7.0, 16.0, -1.0), "ev": 2, "r": 32, "phi": 60, "Ls": 8.5}),
+        (5.5, {"torso": (10, 34, 0), "head": (10, 8, 0), "O": (-6.5, 18.5, -1.0), "ev": -3, "r": 33, "phi": 90, "Ls": 8.0}),
+        (6.5, {"torso": (13, 31, 0), "head": (13, 5, 0), "O": (-6.5, 16.8, -1.0), "ev": -6, "r": 33, "phi": 90, "Ls": 8.0}),
+        (7.25, {"torso": (18, 24, 0), "head": (17, 4, 0), "O": (-6.6, 15.6, 2.0), "ev": -8, "r": 31, "phi": 90, "Ls": 6.5}),
+        (8.0, {"torso": (24, 14, 0), "head": (20, 1, 0), "O": (-4.9, 15.0, 4.8), "ev": -9, "r": 33, "phi": 90, "Ls": 4.0}),
+        (9.25, {"torso": (27, 4, 0), "head": (20, -3, 0), "O": (-4.3, 14.6, 5.5), "ev": -9, "r": 38, "phi": 90, "Ls": 5.0}),
+        (10.5, {"torso": (26, -2, 0), "head": (19, -4, 0), "O": (-3.8, 14.8, 5.0), "ev": -8, "r": 42, "phi": 85, "Ls": 4.0}),
+        (14.0, {"torso": (20, 6, 0), "head": (10, 0, 0), "O": (-4.0, 15.5, 3.0), "ev": 2, "r": 45, "phi": 40, "Ls": 6.0}),
+        (18.0, {"torso": (15, 13, 0), "head": (5, 0, 0), "phi": 5}),
+    ]
+    ATTACK_LEGS["low_sweep"] = {
+        "hips": [(0, *READY_HIPS), (2.5, (1, 27, -0.5), (-0.3, -1.8, 0.4)), (5.5, (4, 33, -1.5), (-0.4, -2.3, 0.5)),
+                 (7.0, (7, 16, 0.5), (-0.1, -2.8, -0.2)), (8, (10, 8, 1), (0.0, -3.1, -0.5)), (10.5, (11, -1, 1), (-0.1, -3.2, -0.6)),
+                 (14, (6, 6, 0), (0.0, -2.4, -0.3)), (18, (1, 16, 0), (0.0, -1.5, 0.0)), (22, *READY_HIPS)],
+        "steps": ATTACK_LEGS["low_sweep"]["steps"]}
+    ATTACKS["low_sweep"] = _sweep_keys(SWEEP_PLAN, ATTACK_LEGS["low_sweep"])
+
 
 def gear(samples, legs=None):
     """Secondary motion (STYLE.md rule 9): the knight's cape lag, scaled onto each hanging piece of the troop's gear."""
