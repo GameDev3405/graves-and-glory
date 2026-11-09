@@ -4,7 +4,7 @@
   "name": "Muster Board",
   "size": [2, 3, 1],
   "parts": [
-    {"model": "muster_board", "cmd": 7310061, "glow": false}
+    {"model": "muster_board", "cmd": 7310091, "glow": false}
   ],
   "solid": [
     [0, 0, 0],
