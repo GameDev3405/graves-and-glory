@@ -1,0 +1,579 @@
+[
+ {
+  "id": "rev-legs",
+  "troop": "revenant",
+  "house": "graveborn",
+  "tiers": [
+   1,
+   2,
+   3
+  ],
+  "region": {
+   "bones": [
+    "right_leg",
+    "left_leg",
+    "right_shin",
+    "left_shin"
+   ]
+  },
+  "region_bbox_by_tier": {
+   "1": [
+    0,
+    16,
+    32,
+    38
+   ],
+   "2": [
+    0,
+    16,
+    32,
+    38
+   ],
+   "3": [
+    0,
+    16,
+    32,
+    38
+   ]
+  },
+  "swaps": [
+   {
+    "from": "#1e231d",
+    "to": "#3e463a"
+   },
+   {
+    "from": "#2a3028",
+    "to": "#56604f"
+   },
+   {
+    "from": "#161a12",
+    "to": "#36402a"
+   },
+   {
+    "from": "#262e1e",
+    "to": "#4f5a3c"
+   }
+  ],
+  "ramp": "graveborn.GSKIN",
+  "pct_texels_by_tier": {
+   "1": 8.58,
+   "2": 5.87,
+   "3": 5.43
+  },
+  "pct_texels_max": 8.58,
+  "why": "Legs sit on the two near-black GSKIN/MOSS shades and fuse into one dark column at 16 blocks; two steps up separates legs from boots and gives the lower body a mid band."
+ },
+ {
+  "id": "rev-boots",
+  "troop": "revenant",
+  "house": "graveborn",
+  "tiers": [
+   1,
+   2,
+   3
+  ],
+  "region": {
+   "bones": [
+    "right_boot",
+    "left_boot"
+   ]
+  },
+  "region_bbox_by_tier": {
+   "1": [
+    24,
+    38,
+    60,
+    46
+   ],
+   "2": [
+    24,
+    38,
+    60,
+    46
+   ],
+   "3": [
+    24,
+    38,
+    60,
+    46
+   ]
+  },
+  "swaps": [
+   {
+    "from": "#54406a",
+    "to": "#332c24"
+   },
+   {
+    "from": "#7a6494",
+    "to": "#625746"
+   }
+  ],
+  "ramp": "graveborn.VIOLET",
+  "pct_texels_by_tier": {
+   "1": 1.08,
+   "2": 0.74,
+   "3": 0.68
+  },
+  "pct_texels_max": 1.08,
+  "why": "The purple trim stripe repeats at equal weight on helm, belt and boots; swapping the boot stripe to the House rot-leather keeps purple on helm and belt only, so the trim reads as a deliberate accent."
+ },
+ {
+  "id": "bb-pauldrons",
+  "troop": "bonebow",
+  "house": "graveborn",
+  "tiers": [
+   2,
+   3
+  ],
+  "region": {
+   "bones": [
+    "skull_pauldron",
+    "right_pauldron"
+   ]
+  },
+  "region_bbox_by_tier": {
+   "2": [
+    32,
+    28,
+    98,
+    49
+   ],
+   "3": [
+    32,
+    28,
+    98,
+    49
+   ]
+  },
+  "swaps": [
+   {
+    "from": "#171516",
+    "to": "#2b2826"
+   },
+   {
+    "from": "#221f1e",
+    "to": "#3d3936"
+   }
+  ],
+  "ramp": "graveborn.GIRON",
+  "pct_texels_by_tier": {
+   "2": 1.87,
+   "3": 1.79
+  },
+  "pct_texels_max": 1.87,
+  "why": "T2/T3 pauldrons read as solid black blocks; lifting the two darkest iron shades restores a plate edge while staying darker than the bone."
+ },
+ {
+  "id": "rp-robe-light",
+  "troop": "reaper",
+  "house": "graveborn",
+  "tiers": [
+   1,
+   2,
+   3
+  ],
+  "region": {
+   "bones": [
+    "shroud",
+    "rags"
+   ],
+   "faces": [
+    "top",
+    "north",
+    "east",
+    "west",
+    "south"
+   ],
+   "rows": [
+    0.0,
+    0.5
+   ]
+  },
+  "region_bbox_by_tier": {
+   "1": [
+    0,
+    0,
+    124,
+    54
+   ],
+   "2": [
+    0,
+    0,
+    124,
+    54
+   ],
+   "3": [
+    0,
+    0,
+    124,
+    54
+   ]
+  },
+  "swaps": [
+   {
+    "from": "#120f13",
+    "to": "#272227"
+   },
+   {
+    "from": "#1c181d",
+    "to": "#35303a"
+   }
+  ],
+  "ramp": "build_reaper.SHROUD",
+  "pct_texels_by_tier": {
+   "1": 8.01,
+   "2": 6.43,
+   "3": 5.63
+  },
+  "pct_texels_max": 8.01,
+  "why": "Robe is one near-black fill; lifting the upper half two steps gives top-to-bottom light so the cloth reads as hanging fabric, not a void."
+ },
+ {
+  "id": "rp-drape",
+  "troop": "reaper",
+  "house": "graveborn",
+  "tiers": [
+   1,
+   2,
+   3
+  ],
+  "region": {
+   "bones": [
+    "hood_drape"
+   ]
+  },
+  "region_bbox_by_tier": {
+   "1": [
+    16,
+    59,
+    34,
+    66
+   ],
+   "2": [
+    16,
+    59,
+    34,
+    66
+   ],
+   "3": [
+    16,
+    59,
+    34,
+    66
+   ]
+  },
+  "swaps": [
+   {
+    "from": "#08070a",
+    "to": "#1c181d"
+   },
+   {
+    "from": "#120f13",
+    "to": "#272227"
+   }
+  ],
+  "ramp": "build_reaper.SHROUD",
+  "pct_texels_by_tier": {
+   "1": 2.08,
+   "2": 1.67,
+   "3": 1.46
+  },
+  "pct_texels_max": 2.08,
+  "why": "Hood drape uses the darkest shroud shades so the hood back blends into the robe; two steps up separates the drape."
+ },
+ {
+  "id": "hx-hood",
+  "troop": "hexer",
+  "house": "graveborn",
+  "tiers": [
+   1,
+   2,
+   3
+  ],
+  "region": {
+   "bones": [
+    "burial_hood",
+    "hood_tail"
+   ]
+  },
+  "region_bbox_by_tier": {
+   "1": [
+    0,
+    0,
+    80,
+    75
+   ],
+   "2": [
+    0,
+    0,
+    80,
+    75
+   ],
+   "3": [
+    0,
+    0,
+    80,
+    75
+   ]
+  },
+  "swaps": [
+   {
+    "from": "#0c0b0c",
+    "to": "#221f1e"
+   },
+   {
+    "from": "#171516",
+    "to": "#2b2826"
+   }
+  ],
+  "ramp": "graveborn.GIRON",
+  "pct_texels_by_tier": {
+   "1": 5.58,
+   "2": 4.81,
+   "3": 4.61
+  },
+  "pct_texels_max": 5.58,
+  "why": "Hood is a black cube that swallows the head silhouette; lifting the two darkest iron shades shows the hood form against the robe."
+ },
+ {
+  "id": "mg-shins",
+  "troop": "mage",
+  "house": "gilded",
+  "tiers": [
+   1,
+   2,
+   3
+  ],
+  "region": {
+   "bones": [
+    "right_shin",
+    "left_shin",
+    "right_shin_robe",
+    "left_shin_robe"
+   ],
+   "faces": [
+    "north",
+    "east",
+    "west",
+    "south"
+   ]
+  },
+  "region_bbox_by_tier": {
+   "1": [
+    0,
+    40,
+    88,
+    66
+   ],
+   "2": [
+    0,
+    40,
+    88,
+    66
+   ],
+   "3": [
+    0,
+    40,
+    88,
+    66
+   ]
+  },
+  "swaps": [
+   {
+    "from": "#d9d5c6",
+    "to": "#b9b4a4"
+   },
+   {
+    "from": "#b9b4a4",
+    "to": "#8e897c"
+   }
+  ],
+  "ramp": "build_mage.WHITE",
+  "pct_texels_by_tier": {
+   "1": 2.94,
+   "2": 2.71,
+   "3": 2.58
+  },
+  "pct_texels_max": 2.94,
+  "why": "White robe is one value top to bottom; one step darker on the lower legs gives a shadow band so cowl and chest read as the lit mass."
+ },
+ {
+  "id": "rd-helm-gaps",
+  "troop": "tc_raider",
+  "house": "tidecallers",
+  "tiers": [
+   1,
+   2,
+   3
+  ],
+  "region": {
+   "bones": [
+    "helm",
+    "helm_back"
+   ]
+  },
+  "region_bbox_by_tier": {
+   "1": [
+    28,
+    0,
+    102,
+    66
+   ],
+   "2": [
+    28,
+    0,
+    102,
+    66
+   ],
+   "3": [
+    28,
+    0,
+    102,
+    66
+   ]
+  },
+  "swaps": [
+   {
+    "from": "#0d1a10",
+    "to": "#1c3322"
+   }
+  ],
+  "ramp": "build_tc_raider.SHELL",
+  "pct_texels_by_tier": {
+   "1": 8.95,
+   "2": 7.32,
+   "3": 6.45
+  },
+  "pct_texels_max": 8.95,
+  "why": "Shell helm is about 45% the near-black shade, so it reads as a flat dark cap; one step up keeps the scute lines but lets the shell green read."
+ },
+ {
+  "id": "rd-helm-top",
+  "troop": "tc_raider",
+  "house": "tidecallers",
+  "tiers": [
+   1,
+   2,
+   3
+  ],
+  "region": {
+   "bones": [
+    "helm"
+   ],
+   "faces": [
+    "top"
+   ]
+  },
+  "region_bbox_by_tier": {
+   "1": [
+    48,
+    0,
+    82,
+    64
+   ],
+   "2": [
+    48,
+    0,
+    82,
+    64
+   ],
+   "3": [
+    48,
+    0,
+    82,
+    64
+   ]
+  },
+  "swaps": [
+   {
+    "from": "#325238",
+    "to": "#4d7448"
+   },
+   {
+    "from": "#4d7448",
+    "to": "#6f9560"
+   },
+   {
+    "from": "#6f9560",
+    "to": "#9bb883"
+   }
+  ],
+  "ramp": "build_tc_raider.SHELL",
+  "pct_texels_by_tier": {
+   "1": 2.94,
+   "2": 2.4,
+   "3": 2.12
+  },
+  "pct_texels_max": 2.94,
+  "why": "No shell highlight; lifting the top face gives the helm a lit crown at game distance."
+ },
+ {
+  "id": "mi-hood",
+  "troop": "tc_mist",
+  "house": "tidecallers",
+  "tiers": [
+   1,
+   2,
+   3
+  ],
+  "region": {
+   "bones": [
+    "hood",
+    "hood_peak"
+   ],
+   "faces": [
+    "top",
+    "north",
+    "east",
+    "west",
+    "south"
+   ],
+   "rows": [
+    0.0,
+    0.5
+   ]
+  },
+  "region_bbox_by_tier": {
+   "1": [
+    0,
+    0,
+    40,
+    70
+   ],
+   "2": [
+    0,
+    0,
+    40,
+    70
+   ],
+   "3": [
+    0,
+    0,
+    40,
+    70
+   ]
+  },
+  "swaps": [
+   {
+    "from": "#0a1426",
+    "to": "#11264a"
+   },
+   {
+    "from": "#11264a",
+    "to": "#1a3f6a"
+   },
+   {
+    "from": "#1a3f6a",
+    "to": "#2a5e8a"
+   }
+  ],
+  "ramp": "tidecallers.SEA",
+  "pct_texels_by_tier": {
+   "1": 4.03,
+   "2": 3.26,
+   "3": 3.05
+  },
+  "pct_texels_max": 4.03,
+  "why": "Hood is a dark navy slab around a small face; lifting its upper half one step puts light on the head so the caster reads at 16 blocks."
+ }
+]
