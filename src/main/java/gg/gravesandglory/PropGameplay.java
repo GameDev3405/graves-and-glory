@@ -53,6 +53,8 @@ public final class PropGameplay {
     /** Siege placements this round, by commander; reset when the battle's round number changes. */
     private static final Map<UUID,Integer> PLACED=new HashMap<>();
     private static int placedRound=-1;
+    /** The battle placedRound counts in: a new Battle in the same JVM restarts its round numbers. */
+    private static GravesAndGlory.Battle placedBattle;
     /** The swing a player's full-swing counts from: the server never resets a player's attack cooldown on a block swing, so this does. */
     static final float FULL_SWING=.9f;
     static final double SWING_REACH=4.5;
@@ -60,6 +62,7 @@ public final class PropGameplay {
 
     public static void init(){
         ServerWorldEvents.UNLOAD.register((server,w)->DAMAGE.remove(w));
+        net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents.SERVER_STOPPED.register(server->{DAMAGE.clear();PLACED.clear();placedBattle=null;placedRound=-1;});
         CommandRegistrationCallback.EVENT.register((d,access,env)->d.register(CommandManager.literal("barricade")
             .executes(c->startSiege(c.getSource().getPlayerOrThrow(),SIEGE_PROP))
             .then(CommandManager.argument("id",StringArgumentType.word()).suggests((c,b)->CommandSource.suggestMatching(siegeIds(),b))
@@ -85,7 +88,9 @@ public final class PropGameplay {
 
     /** The damage the prop at this anchor cell has taken (0 when none or not destructible). */
     public static int damage(ServerWorld w,BlockPos anchor){Map<BlockPos,Integer> m=DAMAGE.get(w);return m==null?0:m.getOrDefault(anchor,0);}
-    /** Forgets a removed prop's damage (Props.remove). */
+    /** Forgets every prop's damage in w: a round starts or ends (Battle.startRound, BattleMode.teardown). */
+    public static void clear(ServerWorld w){DAMAGE.remove(w);}
+    /** Forgets a prop's damage at this anchor cell (Props.remove, and Props.place for a fresh prop where one went another way: a restore, a scan). */
     static void forget(ServerWorld w,BlockPos anchor){Map<BlockPos,Integer> m=DAMAGE.get(w);if(m!=null)m.remove(anchor);}
 
     /** One hit of {@code amount} on the destructible prop at anchor cell {@code anchor}; at its hp it is removed. Returns whether it took the hit. */
@@ -133,7 +138,11 @@ public final class PropGameplay {
         int n=0;for(Props.Live l:near(w,at,radius))if(hit(w,l.anchor(),l.def().gameplay().siegeHit(),why))n++;return n;
     }
     /** A vanilla explosion (ExplosionMixin): siege fire within its power, at least 2 blocks. */
-    public static void explosion(ServerWorld w,Vec3d at,float power){siegeFire(w,at,Math.max(2,power),"an explosion");}
+    public static void explosion(ServerWorld w,Vec3d at,float power){
+        var b=GravesAndGlory.battle;
+        if(b==null||!b.running||b.world!=w)return; // a battle's explosions only: TNT or a creeper in the lobby or a build world leaves props alone
+        siegeFire(w,at,Math.max(2,power),"an explosion");
+    }
 
     /**
      * A battle player's swing (HandSwingMixin): a heavy hit on the destructible prop whose barrier he is looking at within reach, when the swing is
@@ -142,7 +151,9 @@ public final class PropGameplay {
      */
     public static boolean swing(ServerPlayerEntity p){
         var b=GravesAndGlory.battle;
-        if(b==null||!b.running||p.isSpectator()||!(p.getWorld() instanceof ServerWorld w))return false;
+        if(b==null||!b.running||p.isSpectator()||!(p.getWorld() instanceof ServerWorld w)||w!=b.world)return false;
+        var s=b.squads.get(p.getUuid());
+        if(s==null||!s.seated)return false; // a seated commander of either side; a waiting player, an op or a spectator does not
         if(p.getAttackCooldownProgress(.5f)<FULL_SWING)return false;
         HitResult hr=p.raycast(SWING_REACH,1f,false);
         if(hr.getType()!=HitResult.Type.BLOCK)return false;
@@ -202,7 +213,7 @@ public final class PropGameplay {
 
     /** How many props this commander placed in the battle's current round. */
     static int placed(GravesAndGlory.Battle b,UUID owner){
-        if(placedRound!=b.rounds){PLACED.clear();placedRound=b.rounds;}
+        if(placedBattle!=b||placedRound!=b.rounds){PLACED.clear();placedBattle=b;placedRound=b.rounds;}
         return PLACED.getOrDefault(owner,0);
     }
 

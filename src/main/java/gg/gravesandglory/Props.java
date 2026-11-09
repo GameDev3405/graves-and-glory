@@ -184,6 +184,7 @@ public final class Props {
         for(BlockPos p:solid)w.setBlockState(p,Blocks.BARRIER.getDefaultState(),3);
         for(PropDef.Light l:d.lights())w.setBlockState(lightCell(d,anchorCell,facing,l),Blocks.LIGHT.getDefaultState().with(LightBlock.LEVEL_15,l.level()),3);
         ensureParts(w,anchorCell.toImmutable(),d,facing);
+        PropGameplay.forget(w,anchorCell); // a fresh prop starts whole, whatever stood here before
         return "";
     }
 

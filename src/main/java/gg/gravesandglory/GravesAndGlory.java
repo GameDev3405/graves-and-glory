@@ -1157,6 +1157,7 @@ public final class GravesAndGlory implements ModInitializer {
             if(!mode.teardown(this))System.err.println("[Graves and Glory] startRound: "+saves.size()+" saved piece(s) of the last "+mode.id()+" round could not be restored; the marker keeps them.");
             if(!Modes.registered(campaign.battleMode)||!Modes.hosts(campaign.battleMode,campaign.map))campaign.battleMode=Modes.DOMINATION;
             mode=Modes.create(campaign.battleMode);
+            PropGameplay.clear(world); // a round's gameplay props start whole
             roundSeconds=mode.row.roundSeconds();
             Projectiles.clear(this);strikes.clear();Abilities.clearBanners(this);Houses.reset(this);FeedEvents.clear();clearProgression();clearIntel();
             campaign.prepareRound();

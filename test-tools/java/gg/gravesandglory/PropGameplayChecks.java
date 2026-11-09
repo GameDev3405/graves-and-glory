@@ -98,6 +98,9 @@ final class PropGameplayChecks implements Phase1Checks.Suite {
         report("siege-fire", standing && sLeft.isEmpty(), "first shell leaves it at 3 of 6 (" + standing + "), second: " + (sLeft.isEmpty() ? "removed, floor restored" : sLeft));
         // an explosion counts as siege fire (no block damage)
         BlockPos e = cell(2); Props.place(w, ID, e, 0);
+        b.running = false; // outside a battle an explosion leaves props alone
+        try { w.createExplosion(null, e.getX() + .5, oy + 1, e.getZ() + 2.5, 3f, World.ExplosionSourceType.NONE); } finally { b.running = true; }
+        report("explosion-no-battle", PropGameplay.damage(w, e) == 0, "an explosion with no battle running: damage " + PropGameplay.damage(w, e));
         w.createExplosion(null, e.getX() + .5, oy + 1, e.getZ() + 2.5, 3f, World.ExplosionSourceType.NONE);
         report("explosion", PropGameplay.damage(w, e) == 3, "an explosion 2 blocks off: damage " + PropGameplay.damage(w, e));
         Props.remove(w, e);

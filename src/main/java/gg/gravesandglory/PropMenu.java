@@ -256,6 +256,10 @@ public final class PropMenu {
             if(hit.getType()==HitResult.Type.BLOCK)pl.at=((BlockHitResult)hit).getBlockPos().up().toImmutable();
             if(pl.at==null)continue;
             var battle=GravesAndGlory.battle;
+            if(pl.siege){ // a Siege placement ends with its window, its cap or its round, so it never keeps taking the player's uses
+                String over=battle==null?"No battle is running.":PropGameplay.siegeRefusal(battle,battle.squads.get(p.getUuid()),pl.id,null);
+                if(!over.isEmpty()){clearGhost(pl);it.remove();p.sendMessage(Text.literal(over).formatted(Formatting.RED),false);continue;}
+            }
             String why=!pl.siege?Props.check(p.getServerWorld(),pl.id,pl.at,pl.facing):battle==null?"No battle is running.":PropGameplay.siegeCheck(battle,battle.squads.get(p.getUuid()),pl.id,pl.at,pl.facing);
             boolean red=!why.isEmpty();
             if(red!=pl.red||pl.ghosts.isEmpty()){clearGhost(pl);pl.red=red;spawnGhost(p.getServerWorld(),pl,d);}
