@@ -1,3 +1,5 @@
+> Historical (superseded 2026-11-07): see PLAN-TO-1.0.md / WORKFLOW.md
+
 # SLICE-1 checkpoint briefing (M2 scoping)
 
 2026-10-28. Draft for Kort. Nothing here is approved or built. Sources read: `docs/WORKFLOW.md`, `docs/ROADMAP-v2.md` (M2, M3, M5, section 5), `docs/ANIMATION-PLAN.md`, `docs/BUILDER-SERVER.md`, `docs/PARKED.md` ("Hand-built live maps"), `docs/BACKLOG.md`, `docs/QUESTIONS-FOR-KORT.md`. Assumptions are marked [A]. Gameplay, save and protocol changes need Kort's approval; nothing is pushed.

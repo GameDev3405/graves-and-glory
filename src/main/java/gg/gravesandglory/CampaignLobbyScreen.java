@@ -31,7 +31,7 @@ public class CampaignLobbyScreen extends GravesAndGloryClient.ArmyScreen {
         start=null;slots.clear();leadControls.clear();key=stateKey();int cw=(width-36)/3;
         String[] names={"Battle setup","Your banner","Custom lobby"};
         for(int i=0;i<3;i++){final int t=i;button((tab==i?"> ":"")+names[i]+(i==2&&invited()?" *":""),16+i*(cw+4),43,cw,b->{if(t==0)client.setScreen(new CampScreen("home"));else if(t==2)client.setScreen(new CampScreen("friends"));else{tab=t;clearAndInit();}});}
-        button("Visuals & sound",width-156,17,140,b->client.setScreen(new PresentationScreen()));
+        button("Visuals & sound",width-156,17,140,b->client.setScreen(new PresentationScreen(this)));
         if(tab==0){
             int lw=(width-52)*2/3,rx=28+lw,rw=width-rx-16;
             String[] modes={"ai","1","2","3","4"};int bw=lw/5;
@@ -122,7 +122,7 @@ public class CampaignLobbyScreen extends GravesAndGloryClient.ArmyScreen {
             text(g,"COMMANDERS",rx,85,rw,DarkUi.IVORY);int y=144;
             for(var element:CampaignClient.players){var p=element.getAsJsonObject();int faction=p.get("team").getAsInt();
                 DarkUi.crest(g,rx,y-2,12,faction==1);DarkUi.teamMark(g,faction,rx+16,y);text(g,p.get("name").getAsString(),rx+27,y,rw-27,DarkUi.teamColor(faction));y+=13;}
-            text(g,"700 x 500 blocks / 3 objectives",24,height-68,lw-16,DarkUi.MUTED);
+            text(g,"700 x 500 blocks / "+CampaignMaps.objectiveCount(CampaignClient.map)+" objectives",24,height-68,lw-16,DarkUi.MUTED);
             int total=CampaignClient.mode.equals("ai")?2:Integer.parseInt(CampaignClient.mode)*2;
             text(g,total+" commander slots",rx,height-72,rw,DarkUi.MUTED);
             String hint=CampaignClient.lead?(hasResult?"Choose the battlefield, then open a custom lobby to play again.":"Choose your battlefield, then start from the Custom lobby tab."):(hasResult?"Stand on a pad or open a custom lobby to play again.":"Only the custom lobby lead chooses the battlefield. Stand on a pad to quick-match.");

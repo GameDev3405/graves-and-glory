@@ -66,6 +66,20 @@ final class MapRuns {
     }
     private void seal(){if(openLen>0){columns.add(Arrays.copyOf(open,openLen));openLen=0;}}
     List<int[]> columns(){seal();return columns;}
+    /** One box per chunk the columns touch, from the lowest to the highest cell listed in that chunk. */
+    List<net.minecraft.util.math.BlockBox> chunkBoxes(){
+        Map<Long,int[]> ys=new LinkedHashMap<>();
+        for(int[] col:columns()){
+            int lo=col[2],hi=col[col.length-3]+col[col.length-2]-1;
+            ys.merge(((long)(col[0]>>4)<<32)|((col[1]>>4)&0xffffffffL),new int[]{lo,hi},(a,b)->new int[]{Math.min(a[0],b[0]),Math.max(a[1],b[1])});
+        }
+        List<net.minecraft.util.math.BlockBox> out=new ArrayList<>(ys.size());
+        for(var e:ys.entrySet()){
+            int cx=(int)(e.getKey()>>32),cz=(int)(long)e.getKey();
+            out.add(new net.minecraft.util.math.BlockBox(cx<<4,e.getValue()[0],cz<<4,(cx<<4)+15,e.getValue()[1],(cz<<4)+15));
+        }
+        return out;
+    }
     long cells(){long c=0;for(int[] col:columns())for(int k=2;k<col.length;k+=3)c+=col[k+1];return c;}
 
     // ---- digests ----

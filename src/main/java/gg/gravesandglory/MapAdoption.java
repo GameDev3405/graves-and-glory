@@ -54,6 +54,7 @@ public final class MapAdoption {
             }
             case APPLY->{
                 if(!apply.step(w,APPLY_BUDGET))return false;
+                for(var box:runs.chunkBoxes())Props.scanBox(w,box); // prop anchors the overlay wrote get their parts (plan task S8)
                 phase=Phase.DONE;status="adopted "+runs.cells()+" cells ("+apply.changed+" changed) in "+(System.nanoTime()-startedAt)/1_000_000+" ms";
                 System.out.println("[Graves and Glory] map adoption: "+Spec.MAPS[map].id()+" "+status);
                 Diagnostics.report("map-adoption",true,null);runs=null;apply=null;check=null;

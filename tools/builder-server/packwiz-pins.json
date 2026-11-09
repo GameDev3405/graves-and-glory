@@ -1,0 +1,20 @@
+{
+  "approvedBy": "Kort 2026-11-08",
+  "note": "packwiz installer jars for the self-updating builder pack. The sha256 values were recorded from the approved downloads on 2026-11-08; the release pages list no hashes, so they are recorded, not checked against an official hash. make_builder_pack.py --prism refuses a jar whose size or sha256 differs. Put the downloaded jars in work/packwiz-dl/ (gitignored) or pass --packwiz-jars.",
+  "files": [
+    {
+      "name": "packwiz-installer-bootstrap.jar",
+      "version": "0.0.3",
+      "url": "https://github.com/packwiz/packwiz-installer-bootstrap/releases/download/v0.0.3/packwiz-installer-bootstrap.jar",
+      "size": 98989,
+      "sha256": "a8fbb24dc604278e97f4688e82d3d91a318b98efc08d5dbfcbcbcab6443d116c"
+    },
+    {
+      "name": "packwiz-installer.jar",
+      "version": "0.5.14",
+      "url": "https://github.com/packwiz/packwiz-installer/releases/download/v0.5.14/packwiz-installer.jar",
+      "size": 4378828,
+      "sha256": "c9f646908d340d84773948a9a7d98bc1dae250d35e1016dc6e2b8459760b5598"
+    }
+  ]
+}

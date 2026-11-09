@@ -15,9 +15,19 @@ import json
 
 from .structure import block_name
 
-NONSOLID = ('air', 'water', 'lava', 'short_grass', 'tall_grass', 'fern', 'flower', 'torch', 'banner', 'sign', 'button', 'lever',
-            'vine', 'carpet', 'light', 'ladder', 'rail', 'pressure_plate', 'fire', 'cobweb', 'poppy', 'dandelion', 'sapling',
-            'dead_bush', 'rose_bush', 'tripwire', 'snow', 'moss_carpet', 'sweet_berry_bush')
+# Walk-through blocks, matched by exact name or by a whole-word suffix. Plain substring tests were wrong: 'air' matched
+# stairs, 'light' matched light_gray_wool and daylight_detector, 'fire' matched fire_coral_block.
+NONSOLID = frozenset((
+    'air', 'cave_air', 'void_air', 'water', 'lava', 'short_grass', 'tall_grass', 'grass', 'fern', 'large_fern',
+    'torch', 'wall_torch', 'soul_torch', 'soul_wall_torch', 'redstone_torch', 'redstone_wall_torch', 'torchflower',
+    'lever', 'vine', 'glow_lichen', 'light', 'ladder', 'rail', 'powered_rail', 'detector_rail', 'activator_rail',
+    'fire', 'soul_fire', 'cobweb', 'tripwire', 'tripwire_hook', 'snow', 'redstone_wire', 'string',
+    'poppy', 'dandelion', 'cornflower', 'allium', 'azure_bluet', 'blue_orchid', 'oxeye_daisy', 'lily_of_the_valley',
+    'wither_rose', 'sunflower', 'lilac', 'rose_bush', 'peony', 'pink_petals', 'dead_bush', 'sweet_berry_bush',
+    'seagrass', 'tall_seagrass', 'kelp', 'kelp_plant', 'sugar_cane',
+    'cave_vines', 'cave_vines_plant', 'weeping_vines', 'weeping_vines_plant', 'twisting_vines', 'twisting_vines_plant',
+))
+NONSOLID_SUFFIXES = ('_banner', '_sign', '_button', '_carpet', '_pressure_plate', '_sapling', '_tulip')
 STEPS = ((1, 0), (-1, 0), (0, 1), (0, -1), (1, 1), (1, -1), (-1, 1), (-1, -1))
 
 
@@ -25,7 +35,7 @@ def _solid(state):
     name = block_name(state).split(':')[-1]
     if name == 'snow_block':
         return True
-    return not any(k in name for k in NONSOLID)
+    return name not in NONSOLID and not name.endswith(NONSOLID_SUFFIXES)
 
 
 class Grid:
@@ -51,12 +61,17 @@ class Grid:
         c = self.blocks.get((x, y, z))
         return c is not None and block_name(c.state) == 'minecraft:water'
 
+    def barrier(self, x, y, z):
+        c = self.blocks.get((x, y, z))
+        return c is not None and block_name(c.state) == 'minecraft:barrier'
+
     def stands(self, x, z):
-        """y of every standing spot in the column: solid below, two free cells, not under 3+ blocks of water."""
+        """y of every standing spot in the column: solid below, two free cells, not under 3+ blocks of water. A barrier
+        (a prop's solid cell, Props.place) is solid and never a floor: routes go round props, not through or over them."""
         out = []
         for y in self.cols.get((x, z), ()):
             s = y + 1
-            if not self.solid(x, y, z) or self.solid(x, s, z) or self.solid(x, s + 1, z):
+            if not self.solid(x, y, z) or self.barrier(x, y, z) or self.solid(x, s, z) or self.solid(x, s + 1, z):
                 continue
             d = 0
             while d < 3 and self.water(x, s + d, z):

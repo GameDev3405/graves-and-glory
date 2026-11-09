@@ -760,6 +760,17 @@ class RenderTest(unittest.TestCase):
 class ScanTest(unittest.TestCase):
     """The read-only layout scan on a tiny flat world: routes, a blocked capture band and a walled-off spawn."""
 
+    def test_solid_rule_uses_whole_names_not_substrings(self):
+        def solid(name):
+            return scan_mod._solid(normalize(name))
+        for name in ('oak_stairs', 'light_gray_wool', 'light_blue_concrete', 'daylight_detector', 'fire_coral_block',
+                     'flower_pot', 'lightning_rod', 'snow_block', 'stone', 'water_cauldron'):
+            self.assertTrue(solid(name), name)
+        for name in ('air', 'water', 'light', 'grass', 'short_grass', 'torch', 'wall_torch', 'oak_sign', 'red_banner',
+                     'stone_button', 'white_carpet', 'oak_pressure_plate', 'oak_sapling', 'red_tulip', 'rail', 'fire',
+                     'snow', 'poppy', 'vine', 'ladder'):
+            self.assertFalse(solid(name), name)
+
     def _world(self):
         w = World('scan')
         for x in range(-12, 13):
@@ -789,6 +800,84 @@ class ScanTest(unittest.TestCase):
         text = ' | '.join(rep['problems'])
         self.assertIn('capture-x: 1 block(s) in the locked band', text)
         self.assertIn('no walking route to capture-x', text)
+
+    def test_routes_treat_barrier_solid(self):
+        """A prop's barrier cells (Props.place, plan task S9) are solid to routes: a 1-wide corridor plugged by a barrier
+        column, even a one-high one (an anvil, a trough), is not walked through or over."""
+        def corridor():
+            w = self._world()
+            for x in range(-5, 6):
+                for z in range(-6, 7):
+                    if z != 0:
+                        for y in (65, 66, 67, 68):
+                            w.set((x, y, z), Cell(normalize('stone')))
+            return w
+        open_route = scan_mod.scan(self._manifest(), corridor(), None, ((-20, -20), (20, 20)))['spawns'][0]['routes']['capture-x']
+        self.assertIsNotNone(open_route)
+        for height in (1, 2):
+            w = corridor()
+            for y in range(65, 65 + height):
+                w.set((0, y, 0), Cell(normalize('barrier')))
+            plugged = scan_mod.scan(self._manifest(), w, None, ((-20, -20), (20, 20)))['spawns'][0]['routes']['capture-x']
+            self.assertTrue(plugged is None or plugged > open_route, f'{height}-high barrier plug: route {plugged} vs {open_route}')
+
+
+ANCHOR_CMD = 'gravesandglory:prop/forge floor=minecraft:stone_bricks'
+
+
+def anchor_tag(cmd=ANCHOR_CMD):
+    """The prop anchor block entity (Props.anchorCommand, plan task S4): a command block that never runs."""
+    return nbt.compound({'id': nbt.string('minecraft:command_block'), 'Command': nbt.string(cmd), 'auto': nbt.byte(0)})
+
+
+class PropAnchorTest(unittest.TestCase):
+    """Plan task S8: the prop anchor (command_block[facing=<dir>], Command gravesandglory:prop/<id> floor=<state>)
+    keeps its text through every mapforge path and turns its facing with the piece."""
+
+    def test_rotate_anchor_facing(self):
+        cb = 'minecraft:command_block[conditional=false,facing=%s]'
+        self.assertEqual(rotate_state(cb % 'north', 90), cb % 'east')
+        self.assertEqual(rotate_state(cb % 'north', 180), cb % 'south')
+        self.assertEqual(rotate_state(cb % 'north', 270), cb % 'west')
+        self.assertEqual(rotate_state(cb % 'west', 90), cb % 'north')
+        for vertical in ('up', 'down'):
+            self.assertEqual(rotate_state(cb % vertical, 90), cb % vertical)
+
+    def test_export_import_keeps_anchor_nbt(self):
+        from mapforge import runs
+        w = flat(size=4, y=10, block='minecraft:stone_bricks')
+        w.set((1, 11, 1), Cell.from_tag('minecraft:command_block[conditional=false,facing=north]', anchor_tag()))
+        with tempfile.TemporaryDirectory() as d:
+            w.export_structure((0, 10, 0), (3, 12, 3)).save(pathlib.Path(d, 'smithy.nbt'))
+            back = World.from_structure(Structure.load(pathlib.Path(d, 'smithy.nbt')), (0, 10, 0))
+            self.assertEqual(back.get((1, 11, 1)).be_tag()['Command'].value, ANCHOR_CMD)
+            self.assertEqual(back.digest(), w.digest())
+            box = ((0, 10, 0), (3, 12, 3))
+            base = runs.from_world(flat(size=4, y=10, block='minecraft:stone_bricks'), 'capture', {'map': 't'}, box)
+            final = runs.from_world(back, 'capture', {'map': 't'}, box)
+            final.write(pathlib.Path(d, 'final.runs'))
+            final = runs.Runs.read(pathlib.Path(d, 'final.runs'))
+            overlay = runs.diff(base, final)
+            overlay.write(pathlib.Path(d, 'o.runs'))
+            overlay = runs.Runs.read(pathlib.Path(d, 'o.runs'))
+            self.assertIn((1, 11, 1), overlay.be)
+            applied = runs.to_world(runs.apply(overlay, base), World)
+            cell = applied.get((1, 11, 1))
+            self.assertEqual(cell.state, 'minecraft:command_block[conditional=false,facing=north]')
+            self.assertEqual(cell.be_tag()['Command'].value, ANCHOR_CMD)
+
+    def test_structure_op_rotates_anchor(self):
+        s = Structure((3, 2, 3), ['minecraft:stone_bricks', 'minecraft:command_block[conditional=false,facing=north]'],
+                      [((0, 0, 0), 0, None), ((2, 0, 0), 1, anchor_tag())])
+        with tempfile.TemporaryDirectory() as d:
+            s.save(pathlib.Path(d, 'p.nbt'))
+            for rot, facing in ((0, 'north'), (90, 'east'), (180, 'south'), (270, 'west')):
+                ch = compile_plan(plan([{'op': 'structure', 'file': 'p.nbt', 'at': [5, 10, 5], 'rotation': rot}]), World('t'), d)
+                at = to_world(s.size, (5, 10, 5), rot, (2, 0, 0))
+                cell = ch[at][1]
+                self.assertEqual(cell.state, 'minecraft:command_block[conditional=false,facing=%s]' % facing, rot)
+                self.assertEqual(cell.be_tag()['Command'].value, ANCHOR_CMD)
+            self.assertEqual(to_world(s.size, (5, 10, 5), 90, (2, 0, 0)), (6, 10, 6))
 
 
 class PillowMissingTest(unittest.TestCase):

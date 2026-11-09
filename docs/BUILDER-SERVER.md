@@ -3,10 +3,11 @@
 Creative server for the map/lobby builder. Hosted on tjepkema-server (`C:\GGBuild`). Public address `jensen-index.tun.ply.gg` through the playit tunnel (boot task `GGPlayit`, forwarding to `127.0.0.1:25570`); on Tailscale also `100.72.202.38:25570`. The server listens on all interfaces (`server-ip=` blank). Join with the Graves and Glory modpack. Whitelist is off (Kort 2026-11-03): anyone with the address and a real Minecraft account can join (`online-mode=true`), and every player becomes op (level 4) on their first join.
 
 ## For the builder
-- All seven worlds are loaded at once: `camp`, `lobby`, `rivergate`, `ironhold`, `frostmarch`, `hollowwood`, `kingsfield`. `/map` lists them and says which one you are in; `/map <name>` takes only you to that world's arrival point, instantly. You log back in where you left.
+- All six worlds are loaded at once: `lobby`, `rivergate`, `ironhold`, `frostmarch`, `hollowwood`, `kingsfield`. `/map` lists them and says which one you are in; `/map <name>` takes only you to that world's arrival point, instantly. You log back in where you left.
+- The builder handbook (a written book: how to use `/map`, `/warp`, props, Axiom, WorldEdit, voice chat and the maps) is given once on first join (`gg-build-handbook.txt`); `/handbook` gives another copy to anyone. Text: `docs/builder-handbook.md`.
 - `/warp` lists the places of the world you are in; `/warp <name>` teleports there.
 - Every world is a blank flat canvas: grass at y 64, dirt below, stone down to y 32, nothing under that. Planned spots are only 1-block concrete outlines set into the ground with oak signs naming them. Outlines and signs are guides: break, move or build over them. Each canvas is painted once, the first time the server starts, and never again.
-- `lobby` and `camp`: the Last Watch camp plan (plan 2A.6, Kort 2026-11-02), 192 x 192 (x and z -96 to 95, a light gray edge line). Warps: `spawn`, `hearth-court`, `war-table`, `party-lectern`, `tent-ironclad`, `tent-gilded`, `tent-graveborn`, `tent-wildmoot`, `tent-tidecallers`, `graveyard`, `armoury`, `training-yard`, `pad-dawn`, `pad-dusk`, `assembly-bay-1`, `assembly-bay-2`, `war-gates`. North is -z. The layout is in `LobbyCanvas.java`.
+- `lobby`: the Old Hold camp plan (the separate `camp` canvas was dropped 2026-11-08; its stations live in the Old Hold; old `build_camp` data on a server is left in place, unused) (plan 2A.6; it replaced the Last Watch camp of Kort 2026-11-02, Q129), 192 x 192 (x and z -96 to 95, a light gray edge line). Warps: `spawn`, `hearth-court`, `war-table`, `party-lectern`, `tent-ironclad`, `tent-gilded`, `tent-graveborn`, `tent-wildmoot`, `tent-tidecallers`, `graveyard`, `armoury`, `training-yard`, `pad-dawn`, `pad-dusk`, `assembly-bay-1`, `assembly-bay-2`, `war-gates`. North is -z. The layout is in `LobbyCanvas.java`.
 - Each map: the size a battle builds today (light gray edge at x ±366, z ±266; white playable border at x ±350, z ±250, where the battle's barrier wall stands). Outlined from the map tables (`CampaignMaps.select`, the landmarks and supply-house sheets): both teams' gates (brown), barracks (black) and spawns (light blue Dawn, blue Dusk), capture points (red circles of their capture radius), lane crossings (cyan), supply houses (yellow), and every road and lane as a lime line. Warps: `center`, `gate-dawn`, `barracks-dawn`, `spawn-dawn`, the same for `dusk`, `point-a`..., `lane-north`, `lane-middle`, `lane-south`, `house-<id>`. The layout is in `BuildWorlds.java`.
 - Creative, peaceful, always daytime, no mobs, no units, no match. Only what you build exists.
 - Your builds are saved: vanilla autosave every 5 minutes, a backup zip every 30 minutes while someone is online, on stop, and on `/backup` (op).
@@ -17,6 +18,55 @@ Creative server for the map/lobby builder. Hosted on tjepkema-server (`C:\GGBuil
 The hardened supervisor, boot task, backup schedule, offsite copy and health check are in `tools/builder-server/README.md`.
 
 Backups: `C:\GGBuild\backups\gg-build\<timestamp>.zip` (the whole save, every dimension); keep 48 hours, then one per day for 14 days. The old per-world folders `gg-build-<world>` and `backups\<world>` from before 2026-11-03 are left as they were.
+
+## Prop resource pack (prop kit S7)
+The props are item models in a server resource pack, `dist/props/gg-props-<sha8>.zip`, built by `python tools/build_prop_pack.py` (it also writes `dist/props/gg-props-latest.sha1`). `PropPack` sends it to every player on join (in build mode once they are settled in a canvas) with the prompt "Graves and Glory props". It is off unless the server starts with `-Dgg.propPack.file`; game servers start without it and send nothing.
+
+System properties (Java flags before `-jar`):
+- `-Dgg.propPack.file=<zip or folder>`: the zip, or a folder holding `gg-props-latest.sha1` (for example a copy of `dist/props`), meaning the zip that file names. The sha1 is always computed from the file at start and on `/prop pack reload`, never typed by hand.
+- `-Dgg.propPack.url=<url>`: where players download it. Ending in `/` it is a folder and the pack name `gg-props-<sha8>.zip` is added, so each new pack gets a new URL; otherwise it is used as is.
+- `-Dgg.propPack.port=<port>` (optional): the server itself serves the pack over HTTP (the JDK's built-in server) at `http://<host>:<port>/gg-props-<sha8>.zip`. Without `gg.propPack.url` the URL is `http://<server-ip or localhost>:<port>/...`; with a blank `server-ip` that is `localhost`, which only works for a client on the same PC, so set `gg.propPack.url` to the public address for everyone else. The HTTP server stops with the Minecraft server.
+- `-Dgg.propPack.required=true|false`: default true on the builder server. A client that declines a required pack is disconnected; with false it may decline and plays without props (barriers only).
+
+Hosting options:
+- **Embedded port** (simplest): pick a free TCP port, open it the same way as the game port (a playit TCP tunnel or Tailscale), and set `gg.propPack.url` to the public address ending in `/`, for example `-Dgg.propPack.file=C:\GGBuild\props -Dgg.propPack.port=<port> -Dgg.propPack.url=http://<public host>:<public port>/`. Nothing else to run.
+- **External host** (later the planned proxy pack host, or any static file host with HTTPS): upload the zip, set `gg.propPack.url` to the folder URL ending in `/` (or the file URL), and leave `gg.propPack.port` unset. `gg.propPack.file` still points at the same zip on the server so the sha1 matches what players download.
+
+Updating the props (no jar change, no builder-pack reinstall):
+1. A new or changed prop def must reach the server: the next jar, or a data pack holding `data/gravesandglory/gg_props/<id>.json` in the save's `datapacks/` folder, then `/reload`. Art-only changes skip this step.
+2. `python tools/build_prop_pack.py`, then copy `gg-props-<sha8>.zip` and `gg-props-latest.sha1` into the server's pack folder (and upload the zip to the external host, if one is used).
+3. In game or over RCON: `/prop pack reload` (op 2). It re-reads the file, computes the new sha1 and resends the pack to everyone online; their client reloads resources and stays connected. Players joining later get the new pack.
+4. If the reload fails (missing file, sha1 not matching `gg-props-latest.sha1`), the last good pack stays and the error is printed.
+
+`start-build-server.ps1` does not pass these flags yet; add them to its `-ArgumentList` before `-jar` when the pack goes live.
+
+## Self-updating builder pack (packwiz)
+Builders install once; every launch after that updates the mods by itself. The mod's embedded HTTP server (the same one as the prop pack) serves a packwiz pack folder read-only at `/pack/`, and the Prism instance runs the packwiz installer before each launch.
+
+**What a builder downloads and imports (once):** `graves-and-glory-<ver>-builder-prism.zip` (about 4.5 MB). In Prism Launcher: Add Instance, Import, pick the zip, OK. It holds `instance.cfg`, `mmc-pack.json` (Minecraft 1.20.1, Fabric Loader 0.16.14, intermediary 1.20.1) and `.minecraft/packwiz-installer-bootstrap.jar` and `.minecraft/packwiz-installer.jar`. The pre-launch command (Prism runs it in the instance's `.minecraft` folder, `$INST_JAVA` being the instance's Java):
+
+```
+"$INST_JAVA" -jar packwiz-installer-bootstrap.jar --bootstrap-no-update --bootstrap-main-jar packwiz-installer.jar http://usc-tx-b5-i1-s.kineticpanel.net:25589/pack/pack.toml
+```
+
+`--bootstrap-no-update --bootstrap-main-jar` make the bootstrap use the shipped, pinned installer, so builders' PCs never fetch packwiz from GitHub. On first launch it downloads every client mod: the game pack's mods, shaders and resource pack, and Axiom, Distant Horizons, Simple Voice Chat, Xaero's Minimap and World Map from their pinned Modrinth URLs (hash checked), and the Graves and Glory jar from the builder server. A small packwiz window shows progress. After that only changed files are fetched and files dropped from the pack are removed. If the server is unreachable the installer reports it and the launch stops; try again when the server is up.
+
+**Publish an update** (new G&G jar, a changed pin in `builder-mods.json` or `dependencies/platform-lock.json`):
+1. `./gradlew build` (or the release build), then `python tools/builder-server/make_packwiz.py`. It writes `dist/builder-packwiz/` and refuses if any hash disagrees with its pin. With a game `.mrpack` in `dist/` (or `--game-pack`) it takes the jar and the overrides (docs) from it.
+2. Copy the contents of `dist/builder-packwiz/` into the server's pack folder, replacing it whole (delete the old files first, so dropped mods are not served).
+3. Done. Each request reads the file fresh, so no restart or command is needed; every builder's next launch pulls the change. The G&G jar on the server's own `mods/` is a separate copy: update it the usual way (stop, replace, start) when the server side must change too.
+
+**Server side** (Kinetic builder server, `usc-tx-b5-i1-s.kineticpanel.net`, game on 25566, HTTP on the second allocated port 25589/TCP). Java flags before `-jar`:
+
+```
+-Dgg.packwiz.dir=builder-packwiz -Dgg.propPack.port=25589
+```
+
+(relative to the server folder; add `-Dgg.propPack.file=props -Dgg.propPack.url=http://usc-tx-b5-i1-s.kineticpanel.net:25589/` when the prop pack goes live on the same port). Files the server needs: the `builder-packwiz/` folder (the copied output: `pack.toml`, `index.toml`, `mods/`, `shaderpacks/`, `resourcepacks/`, plus `docs/` when built from a game pack) in the server folder next to `mods/`. Nothing else: the HTTP server is the mod's, inside the Minecraft process, listening on all interfaces.
+
+The server starts when `gg.propPack.port` is set and either `gg.propPack.file` or `gg.packwiz.dir` is. It is read-only: GET and HEAD only (others 405), no directory listing (404), and a path that leaves the folder (`..`, `%2e%2e`, backslashes, drive letters, dot files, symlinks or junctions out) is 400 or 404. Content types: `.toml` text/plain, `.jar` application/java-archive, `.zip` application/zip.
+
+The packwiz installer jars are pinned in `tools/builder-server/packwiz-pins.json` (sha256 recorded from the approved downloads on 2026-11-08, not checked against an official hash; the release pages list none). `make_builder_pack.py --prism` reads them from `work/packwiz-dl/` and refuses a jar off its pin. The old `.mrpack` output (`make_builder_pack.py` without `--prism`) still works, but it does not update itself.
 
 ## Operations
 - Start/stop: scheduled task `GGBuilderServer` (runs at machine boot as SYSTEM, hidden, so the server is up whenever the PC is on). The script relaunches after a crash; a clean `/stop` (or an RCON `stop`) ends it, and `Start-ScheduledTask GGBuilderServer` starts it again. Prefer the admin scripts below over killing `java`.
@@ -41,6 +91,9 @@ Backups: `C:\GGBuild\backups\gg-build\<timestamp>.zip` (the whole save, every di
 Approved 2026-11-03 for the builder server and a builder-only client pack. They are not part of the game release (`dependencies/manifest.json`, release packs and `tools/package.py` are untouched). Exact files, versions and hashes: `tools/builder-server/builder-mods.json`.
 - **Axiom** (editor: selections, copy/paste, gizmos, big brushes). Needed on the server and on the client. Builders install the builder pack, `dist/graves-and-glory-0.5.0-builder.mrpack`, made by `python tools/builder-server/make_builder_pack.py` from the finished game pack (it adds only the client mods and never rebuilds or publishes anything). Without the builder pack Axiom does not appear in game.
 - **Distant Horizons 3.3.3-1.20.1** (client only; far-away terrain for builders). It is in the builder pack marked client required and server unsupported, so nothing goes on the server. Not yet tried in game. Entry in `tools/builder-server/builder-mods.json`.
+- **Simple Voice Chat 2.6.22** (Kort 2026-11-08; server and client). Proximity voice plus groups. The server listens on UDP 24454 by default; on the hosted builder server set `port=` in `config/voicechat/voicechat-server.properties` to an allocated UDP port. Keys: V (first press sets up push to talk or voice activation; push to talk has no default key), G groups, M mute, N voice chat off.
+- **Xaero's Minimap 26.6.0 and Xaero's World Map 1.47.0** (Kort 2026-11-08; client only, nothing on the server). Keys: B new waypoint, U waypoints, Z enlarge minimap, M world map. M is also voice chat mute by default; the handbook tells builders to move one.
+- Server jars: `python tools/builder-server/make_builder_pack.py --server-jars` prints every builder jar that belongs in the server's `mods/` (side server or both).
 - **WorldEdit** (server side; the client copy is optional). Wand is the wooden axe: left click sets position 1, right click sets position 2. Then `//set <block>`, `//replace`, `//copy`, `//paste`, `//undo`, `//redo`, `//rotate`, `//schem save <name>`.
 - **Ledger** (server side, needs Fabric Language Kotlin). Logs every block change by player. `/ledger inspect` toggles click inspection of a block. `/ledger search <filters>` finds actions (for example `source:QuakeMoney42 time:1d`). `/ledger rollback <filters>` undoes them (same filters, for example `/ledger rollback source:awesome34 time:2h range:30`); `/ledger restore <filters>` re-applies a rollback. Search first, then roll back. Ledger needs op.
 - Server jars to copy into `C:\GGBuild\mods` next to the game jar and Fabric API: `Axiom-6.1.5-for-MC1.20.1.jar`, `worldedit-mod-7.2.15.jar`, `ledger-1.2.8.jar`, `fabric-language-kotlin-1.10.20+kotlin.1.9.24.jar`. Stop the server first. The pins are the newest builds that run on Fabric Loader 0.16.14 and Fabric API 0.92.2.

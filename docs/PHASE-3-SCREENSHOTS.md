@@ -1,3 +1,5 @@
+> Historical (superseded 2026-11-07): see PLAN-TO-1.0.md / WORKFLOW.md
+
 # Phase 3 screenshot gate: the built world
 
 For Kort. Eleven contact sheets (frames 480x270, five to a row, read left to right, top to bottom), then a walk-through in the game. Phase 3, the built world, closes only when you say it does. Nothing below is merged, pushed or uploaded.

@@ -2,40 +2,81 @@
 
 2026-10-28. Approved by Kort on 2026-10-28. Status: Phase 0 in progress. This is the execution plan for the full-vision 1.0, built from `ROADMAP-v2.md`, `VISION-AND-ROADMAP.md`, the Phase 4 plan, `PARKED.md`, the six-player test plan, the art pipeline and the current candidate. It does not replace the roadmap; it turns the roadmap into ordered work and closes the open M2 and M5 questions with Kort's answers of 2026-10-28.
 
+**Changed by Kort 2026-11-07.** After an interview Kort fixed the 1.0 feature list (below) and moved the official hosted network, previously post-1.0, into 1.0. Changes: distribution (Modrinth and CurseForge both at launch), public matchmaking, moderation, a rented server and cosmetic monetisation are now in scope (section 0.1, "Hosted network", and the new Phase 7); section 0.2 and decision 7.6 are amended; Phase 6 depends on Phase 7. Scope is a fixed feature list, not a date: 1.0 ships when every item is in and works, with a soft internal target and no public date until a release candidate is clean. No other 1.0 content changes. **Also changed by Kort 2026-11-07 (port and plain clients):** the target moves to Minecraft 1.21.1 and Java 21, ported before the network work; the modpack becomes optional for 1.0 (plain players use vanilla mobs, hotbar orders, chest menus and a required server resource pack). See Phase 7A and `docs/superpowers/plans/2026-11-07-port-1211-and-plain-clients.md`.
+
 Policy still applies: `docs/WORKFLOW.md`. Gameplay, save, protocol and dependency changes need Kort. Nothing is published, pushed or merged without him. `Spec.java` is generated from `sheets/design.json`; never hand-edit it.
 
 ## 0. Locked scope
 
 | Decision | Answer |
 |---|---|
-| Finish line | Full vision 1.0: five Houses, thirty troops, five maps, four modes, six-battle campaign, six-player multiplayer, full tier art, public-ready package |
-| Deadline | None. Dependency-ordered, quality-gated. Estimates are planning ranges, not promises |
+| Finish line | Full vision 1.0: five Houses, thirty troops, five maps, four modes, six-battle campaign, six-player multiplayer, full tier art, public-ready package and the official hosted network. A fixed feature list: 1.0 ships when every item is in and works |
+| Deadline | None public. Dependency-ordered, quality-gated; a soft internal target only, and no public date until a release candidate is clean (Kort 2026-11-07). Estimates are planning ranges, not promises |
 | Troop art | All thirty troops with complete tier I to III art, faces, portraits, weapons and PBR maps |
 | Story | Six campaign battles with briefing cards, bonus objectives and a Pact. No storybook scenes, named cast, voice or staged sets in 1.0 |
-| Modes | Domination, Siege, Survival and Banner by 1.0. Siege is the first new mode and the slice mode |
+| Modes | Domination, Siege, Survival and Convoy by 1.0. Siege is the first new mode and the slice mode |
 | Maps | Two-map slice first, all five by 1.0. The builder server is the canonical editable world |
 | Map authoring | AI builds the lobby and maps; Kort and one friend can join the persistent builder server and edit anything, any time |
-| Platform | Minecraft 1.20.1, Fabric, Java 17. No loader change |
+| Platform | Minecraft 1.21.1, Fabric, Java 21. No loader change. Ported from 1.20.1 before the network work (Kort 2026-11-07; Phase 7A) |
 | Six players | First real 3v3 network baseline within 1 to 3 months; the content slice follows |
-| 1.0 distribution | Modrinth `.mrpack` and Prism first, CurseForge second, plus the dedicated server kit. Public matchmaking is post-1.0 |
+| 1.0 distribution | Modrinth and CurseForge both at launch (Kort 2026-11-07; no longer "CurseForge second"), plus Prism import and the self-host server kit (single server, file-based profiles) |
+| Public matchmaking | In 1.0 (Kort 2026-11-07): the official hosted network, section 0.1 and Phase 7. Per-mode unranked queues for solo players and parties; ranked is post-1.0 |
 | Versioning | 0.5.x until the slice, 0.6.x for content-complete, 1.0.0 at release |
 
 ### 0.1 What 1.0 must contain
 
-- Five Houses, thirty troops, four rarities, evolve lines, rank stars, House traits, six commander classes with actives.
+- Five Houses, thirty troops, four rarities, evolve lines, rank stars, House traits, gear-driven combat with relics on keys 1 to 3 (the six commander classes were removed by gear combat).
 - Five authored battle maps plus the rebuilt camp lobby, all adopted from the builder worlds.
-- Four modes: Domination, Siege, Survival, Banner.
+- Four modes: Domination, Siege, Survival, Convoy.
 - Campaign chapter one: six battles, one per House plus a finale, using all four modes and all five maps, with briefings and one bonus objective per battle.
 - The War Table, recruit, Armoury, banner, contracts, chapter and friends pages, restyled and visually accepted.
 - Six-player 3v3 on a dedicated server: lobby, match, rewards, return, reconnect, restart and persistence.
 - Full tier art for all thirty troops, full animation pass, complete audio cues, strict package gate, clean install.
+- Troop art status (re-counted 2026-11-07 on main e771d5f1): all thirty troops have their own model (`models/troop/<id>.json`, listed in `index.json`) and tier I, II and III skins (`textures/entity/troop/<id>_s1..s3.png`), confirming Kort. The section 1 inventory (21 without a model) and the 21-model estimate and risk rows below describe 2026-10-28 and are superseded. Still open for 4B: the visual review (4B.7, 30/30 at 9/10) and the strict `build_skins --verify` gate.
+- Distribution: Modrinth and CurseForge both at launch, plus the self-host server kit (single server, file-based profiles).
+- The official hosted network (next subsection).
+
+#### Hosted network (Kort 2026-11-07)
+
+Moved from 0.2 into 1.0. Work is Phase 7.
+
+- **Hosting.** Kort rents Kinetic Hosting (12 GB plan, about $16 a month, 4 splits; figures from kinetichosting.com, to confirm at checkout). Bought only after a local prototype (proxy, lobby and one battle server) runs on Kort's PC.
+- **Architecture.** A Velocity proxy, one lobby server and N battle servers. Each battle server runs today's one-battle-per-server code (`Campaign.java`: one battle per server); there is no multi-arena refactor. Fabric servers behind Velocity need a forwarding mod (for example FabricProxy-Lite); to verify on 1.20.1 in the prototype.
+- **Hub.** The Old Hold is the network hub: spawn, queues, parties and the store. The camp and War Table space live inside it.
+  - Design (Kort 2026-11-07, `DECISIONS.md` "Network hub (Old Hold)"): the Old Hold is one shared world. Camp stations (Recruit, Banner, Forge, Quartermaster and the rest) open each player's own profile screens; there are no per-player instances.
+  - Copies: when a hub fills (about 60; the cap is set after measuring in 7.2) the network opens another identical copy (Hub 1, Hub 2 and so on). Parties and friends land in the same copy. `/hub <n>` switches.
+  - Hide players: a hotbar item and a setting; party members and friends stay visible.
+  - First join: a short skippable Drillmaster lesson (about 2 min, built on the existing lessons and `Profile.tutorialDone`). Returning players spawn in the arrival square.
+  - Layout: arrival square, war room, market, training yard and the five House halls. The war room is the queue hall: the four mode war banners (Domination, Siege, Convoy, Survival) and the party-challenge table. The Dawn/Dusk ready pads are retired from the hub; the seat and ready War Table page opens only after the move to the battle server.
+  - Hotbar (fixed, locked): Play (compass), Party, Camp/Profile, Wardrobe, Hide players, Hub selector. The duel kit and parkour swap it temporarily.
+  - Activities: training dummies and lesson boards; an opt-in duel ring in the training yard (vanilla sword-and-shield PvP, fixed kit, own gear and progress do not count, `/duel <name>`, no rewards); a timed parkour route with checkpoints up the mountain cliffs above the Old Hold, built from the planned mountain pieces. A queue pop always wins: after the 10 s countdown a player mid-duel or mid-parkour is pulled out, the duel ends with no result and the parkour run is discarded.
+  - Weekly boards in the arrival square read from the shared database: top Renown, most wins, best parkour time, reset weekly. No ranked ladder.
+  - Wardrobe stall in the market: preview every cosmetic (banners, troop skins, titles, lobby effects) on yourself, equip owned ones, and link to the Tebex store for the rest (delivered on next join).
+  - Lobby effects are particle trails plus a one-off arrival flourish; hub only, never in battle, and hidden when the viewer hides players.
+  - Chat is per hub copy; party chat (`/pc`) and private messages (`/msg`) work network-wide; the moderation filter applies everywhere.
+  - Order: Kort walks the Old Hold in game (`feat/oldhold-wiring`) before any hub feature work starts, so the layout is locked. Beta ships with the arrival square, war room and queue hall, market with the Wardrobe, training yard with dummies and duel ring, and the five House halls. Parkour cliffs and leaderboards land between beta and launch (task 7.10).
+- **Matchmaking.** Designed with Kort 2026-11-07 (`DECISIONS.md`, "Matchmaking and parties"). Ranked play is post-1.0.
+  - Queues: per-mode and unranked, for Domination, Siege, Convoy (Frostmarch escort) and Survival. PvP queues offer 1v1, 2v2, 3v3 and 4v4. Survival is co-op: queue groups of 2, 3 or 4; solo Survival starts from the hub without queueing, with allied bots. The full 6-battle campaign is solo only in 1.0 (party campaign post-1.0) and never in the public queue.
+  - Entry: a Play menu from a hotbar item (mode, then size), a `/queue` command, and walk-up war banners, one per mode, in the Old Hold.
+  - Matching: by banner power band, strict at first and wider with waiting (suggested 20 s strict, 40 s wider, then anyone). Bots fill empty seats after 60 s, at a difficulty that matches the match's power band. Queued battles pay full rewards even when most seats are bots.
+  - Match found: a 10 s countdown, then an automatic move. Cancelling in the countdown counts as a leave.
+  - Parties: up to 4 (`SocialHub.PARTY_LIMIT`). Commands `/party invite`, `accept`, `leave`, `kick` and a Party menu. Only the leader queues. Party power is the average of the members' banner power. A "Fill with strangers" toggle, default on; off, empty seats go to bots. A party may split across sides: each member picks Dawn or Dusk in the party menu, the leader's Queue button works only once each side fits the chosen size, and split friends fight each other. A party larger than the total seats of a size cannot queue that size (orchestrator's call, not yet Kort-approved). Party-versus-party private challenges (any mode, map and size) stay, through the private room and War Table lobby.
+  - Leavers: a stand-in bot takes the side; the seat stays reserved until the battle ends and the leaver may rejoin at any time (this replaces the `MatchRules.HOLD_SECONDS` = 120 s release on the network). The queue never sends new players into a running battle. Repeat leavers get a short queue cooldown (about 5 min after 3 leaves in an hour).
+  - After a battle: results, then back to the hub with the party kept. The leader gets a "Queue again" button for the same mode and size.
+- **Progress.** One shared SQL database (MySQL) for the official network, read and written by all servers. The solo campaign keeps separate local progress and the two never mix. The self-host kit keeps file-based profiles.
+- **Version check and plain clients.** The modpack is optional (Kort 2026-11-07). A client that announces the mod must match the server's mod version and build, or it is refused with a clear message and the download link; a modpack client must be exactly 1.21.1. A client without the mod is a plain player and joins with a vanilla 1.21.1 or newer client (older clients are refused) through ViaVersion on the proxy. Plain players accept a required server resource pack and can play everything; see the port and plain-client plan.
+- **Moderation.** Ban, kick, mute, a chat filter, staff permissions (LuckPerms) and a report command that logs to Discord. Staff: Kort as owner plus one or two trusted friends.
+- **Monetisation.** A cosmetic store through Tebex (Kort sets up the account): banner designs, troop skins and colourways, titles and ranks, Old Hold lobby effects. Nothing that changes stats, per the Minecraft EULA and commercial usage guidelines. Excalibur: no store item may use or show Excalibur art (Kort 2026-11-07, instead of re-asking Maffhew; see `DECISIONS.md`).
+- **Launch order.** Open beta on the network for the Discord, capped at about 50 players, on a release-candidate build; then 1.0 on Modrinth and CurseForge the same day the server opens, with listings pointing at the server.
+- **Work order.** Build the network (proxy, lobby, queues, database) in parallel with Kort's map design; balance after the maps are done.
+- **Measured facts.** One 3v3 bot battle: about 500 MB server heap, p95 tick 7 to 9.4 ms, map build about 25 s (about 85 s cold) on the integrated server (`docs/reports/perf-targets-2026-11-02.md`). Dedicated-server MSPT has never been measured, so the network capacity figures are unproven until task 7.2.
 
 ### 0.2 What 1.0 does not contain
 
 - Storybook scenes, voice acting, named cast, staged sets, companions and camp story (Phase 4 tasks 13 to 27). These become the 1.1 story update if Kort still wants them.
-- Public matchmaking, accounts, moderation, a rented public server or monetisation. These remain the public-service project after 1.0.
+- Ranked play and ladders, accounts beyond Minecraft sign-in, paid access or anything that changes stats, and more than one hosted region. Public matchmaking, moderation, the rented server and cosmetic monetisation moved into 1.0 on 2026-11-07 (section 0.1, Phase 7).
 - Mounts, extra chapters, additional maps, media shoots and a console port.
-- A Minecraft version change.
+- A Minecraft version change other than the one-time port from 1.20.1 to 1.21.1 (Kort 2026-11-07, Phase 7A). Clients older than 1.21.1, mob retextures and separate queues for plain players are also out.
 
 ## 1. Baseline: what exists on 2026-10-28
 
@@ -44,10 +85,10 @@ Policy still applies: `docs/WORKFLOW.md`. Gameplay, save, protocol and dependenc
 | Area | Current state | The gap to 1.0 |
 |---|---|---|
 | Troops and Houses | 30 troops, 5 Houses, rarities, stars, evolve data, House traits, 6 classes and actives, in-match levels and gear | Balance and art, not code |
-| Troop art | On `main`, 6 Gilded troops have own models; 4 have full tier I to III skins, mage and Lord Marshal have tier I only; the other 24 have no own model. `work/troop-models-house` adds three more at stage 1 (self-scored 8/10, not gate-accepted), not merged | 21 troops still without their own model after the branch merges; every troop at tier II and III, with faces, portraits, PBR maps, weapons and veteran trims |
+| Troop art | Recounted 2026-11-07 on `main`: all 30 troops have their own models and tier I to III skins. The 2026-10-28 count (6 Gilded models, 21 troops without one) is superseded | None for models. The 4B visual review (4B.7, 30/30 at 9/10) and the strict `build_skins --verify` check remain the gate |
 | Animation | 18 code clips per rig; pass 1 on six Order troops is WIP; 1 to 3.7 px clipping remains; no clip reached 9; bow revert unrendered | Pass 1 sign-off with recorded exceptions, pass 2 signature attacks and charge, formation march |
 | Maps | Five generated maps plus generated camp; Phase 3 built world merged but parked at its screenshot gate; builder server runs six saved worlds | Adoption pipeline, AI build tool, camp redesign, final map detail, all five adopted |
-| Modes | Domination only | Mode frame, Siege, Survival, Banner, mode bots and gates |
+| Modes | Domination only | Mode frame, Siege, Survival, Convoy, mode bots and gates |
 | Campaign | One battle (`march-1`), seated as 1v1 practice; `size`, `difficulty` and `map` are not fully validated | Six battles, real sizes, bonus objectives, order lock, briefings, Pact |
 | Multiplayer | Lobby, pads, parties, host hand-over, six-player rules (8 max, 4 per team) in code | Real 3v3 baseline, reconnect and restart proof |
 | Balance | Gilded dominant; Graveborn 17.5 percent vs Gilded; Wildmoot and Tidecallers near zero; Dawn seat bias 65 to 85 percent | Structural fixes, then a full round robin on adopted maps and modes |
@@ -63,7 +104,7 @@ Two things decide the 1.0 date: **art throughput** and **map adoption**. Everyth
 ```
 Art pipeline + 21 new models, 5 tier upgrades ........ 5 to 7 months
 Map Forge + camp + five map adoptions ................ 3 to 5 months
-Mode frame -> Siege -> Survival -> Banner ............ 3 to 4 months
+Mode frame -> Siege -> Survival -> Convoy ............ 3 to 4 months
 Campaign data + six battles .......................... 6 to 8 weeks
 Six-player baseline -> slice -> release .............. 3 sessions across the plan
 Balance and hardening ................................ 2 to 3 months
@@ -129,7 +170,7 @@ Goal: make art and maps repeatable, and put the mode and campaign frame under th
 | 2A.3 | Build `tools/mapforge/`: JSON and NBT operation format, structure placement, terrain stamping, region locks, dry-run and rollback | L | Agent | Generator, sample batch |
 | 2A.4 | Adoption spike: choose generated base plus edit overlay versus full snapshot; prototype on a 64x64 camp region, measure file size, apply time and determinism | L | Agent + Kort | Spike report, decision |
 | 2A.5 | Adoption pipeline: `export` from builder world, validate, bake into the mod, version stamp, mismatch refusal, load after generation, walk and route checks on the final blocks | XL | Agent | Round-trip test |
-| 2A.6 | Rebuild the camp lobby: The Last Watch layout, hearth court, war table, House tents, armoury and training cluster, assembly bays, graveyard, War Gates; preserve every station function | XL | Agent + Kort | Blockout, walkthrough, screenshots |
+| 2A.6 | Rebuild the camp lobby: the Old Hold layout (the network hub, section 0.1 and task 7.5), hearth court, war table, House tents, armoury and training cluster, assembly bays, graveyard, War Gates; preserve every station function | XL | Agent + Kort | Blockout, walkthrough, screenshots |
 | 2A.7 | Map standards: palette, road widths, capture circles, cover, sight lines, landmark rules, walk and route suites, bot path checks | M | Agent | `docs/MAP-STANDARDS.md` |
 | 2A.8 | Server update loop: after each candidate, stop, back up, swap jar and map artifacts, restart, smoke join; never overwrite a world without a backup | M | Agent | Update script, runbook |
 
@@ -214,7 +255,7 @@ Goal: all five maps, all four modes, six campaign battles, all thirty troops at 
 | ID | Task | Effort | Owner | Evidence |
 |---|---|---|---|---|
 | 4C.1 | Survival: waves, shrine, director squad, wave economy, solo and co-op | XL | Agent | `p4-survival-*` |
-| 4C.2 | Banner: stands, carriers, drops, roles, escort decision if taken | XL | Agent | `p4-banner-*` |
+| 4C.2 | Convoy (Frostmarch escort): supply wagon, road path, escort and attack roles, drops | XL | Agent | `p4-convoy-*` |
 | 4C.3 | Skirmish and Practice picker, mode and map selection, bot fill per mode | M | Agent | UI suites |
 | 4C.4 | Mode bot runs and mode gate; mode teardown, crash and map switch | L | Agent | `mode_gate.py` |
 | 4C.5 | Mode HUD, feed, briefing and report lines for every mode | M | Agent | Visual gate |
@@ -223,7 +264,7 @@ Goal: all five maps, all four modes, six campaign battles, all thirty troops at 
 
 | ID | Task | Effort | Owner | Evidence |
 |---|---|---|---|---|
-| 4D.1 | Six campaign battles: Training Field (Rivergate, Domination), Iron Gate (Ironhold, Siege), Long Night (Hollowwood, Survival), Frozen Standard (Frostmarch, Banner), Five Crossings (Kingsfield, Domination), Last Watch (Ironhold, mixed finale) | L | Agent + Kort | `campaignBattles` rows |
+| 4D.1 | Six campaign battles: Training Field (Rivergate, Domination), Iron Gate (Ironhold, Siege), Long Night (Hollowwood, Survival), Frozen Standard (Frostmarch, Convoy), Five Crossings (Kingsfield, Domination), Last Watch (Ironhold, mixed finale) | L | Agent + Kort | `campaignBattles` rows |
 | 4D.2 | Briefing cards, reasons, lessons and one bonus objective per battle | M | Agent | Copy, UI |
 | 4D.3 | Order lock, chapter completion, Pact grant, bonus shards and Renown | M | Agent | Campaign tests |
 | 4D.4 | Campaign playthrough, rewards and persistence; no practice seating, no 1v1 default | L | Agent + Kort | Full chapter run |
@@ -272,13 +313,49 @@ Exit: balance accepted, performance targets met, QA matrix green, six players ha
 | ID | Task | Effort | Owner | Evidence |
 |---|---|---|---|---|
 | 6.1 | Strict package: all art, no harness, dependency pins, Excalibur bundled unmodified with credit, licence checks | M | Agent | `verify.py release` |
-| 6.2 | Modrinth `.mrpack`, Prism import, CurseForge export, server kit | M | Agent + Kort | Artifacts |
+| 6.2 | Modrinth `.mrpack`, Prism import, CurseForge export (both listings prepared for the same-day launch), server kit | M | Agent + Kort | Artifacts |
 | 6.3 | Fresh-machine install test with no dev environment; a friend installs from the pack alone | M | Kort + friend | Install report |
 | 6.4 | Release candidate record, `v1.0.0` tag, release notes, README, HANDOFF and BACKLOG final | S | Agent | Candidate record |
 | 6.5 | Final six-player session on the release build; Kort's sign-off | M | Kort + friends | Signed checklist |
-| 6.6 | Publish only on Kort's explicit go | S | Kort | Release URL |
+| 6.6 | Publish on Modrinth and CurseForge the same day the network opens (7.9), only on Kort's explicit go; listings point at the server | S | Kort | Release URLs |
 
-Exit: a downloadable 1.0 that a new player can install, a server kit that a friend can run, and a recorded acceptance run.
+Exit: a downloadable 1.0 that a new player can install, a server kit that a friend can run, an open official network, and a recorded acceptance run. Phase 6 starts after Phase 5 and after Phase 7 reaches the beta exit.
+
+### Phase 7A: Port to Minecraft 1.21.1 and plain-client support (added by Kort 2026-11-07)
+
+Detailed plan: `docs/superpowers/plans/2026-11-07-port-1211-and-plain-clients.md` (steps P0 to P7). Order: feature freeze and port (P0, P1) first, before the Phase 7 network work, so that task 7.1 and everything after it is built on 1.21.1; then a plain-client spike (P2) as a go/no-go gate shown to Kort; then the mod-optional server, plain front end, ViaVersion and mixed-client QA (P3 to P6), built during the modpack-only beta; then the Modrinth and CurseForge modpack packaging (P7). Rough size: about 20 to 35 weeks if sequential (estimate); the port itself is about 6 to 12 weeks (estimate). Exit: the mod runs on 1.21.1 with saves intact, a plain player completes a full mixed-client battle, fairness checks match, and Kort signs off. Plain-client support is a 1.0 release gate (Appendix B).
+
+### Phase 7: Official hosted network (added by Kort 2026-11-07)
+
+Goal: an official network where strangers queue for unranked matches, with progress in a shared database, moderation and a cosmetic store. Phase 7 runs in parallel with Kort's map design and Phases 2 to 4 (starting after the Phase 1 close), and finishes before task 6.6. Order is fixed: local prototype, then Kinetic, then beta, then launch. Nothing is bought, opened, published or charged without Kort's explicit go; gameplay, save and protocol changes still need Kort. Hosting facts are from kinetichosting.com and are to be confirmed at checkout.
+
+| ID | Task | Effort | Owner | Depends on |
+|---|---|---|---|---|
+| 7.1 | Local prototype: Velocity proxy, lobby server and one battle server on Kort's PC; test the Fabric forwarding mod (FabricProxy-Lite or equivalent) on 1.20.1; a client joins the lobby, is sent to the battle server and returns | L | Agent | 1.4 |
+| 7.2 | Dedicated-server measurement: MSPT, heap and bandwidth of one battle server and of the lobby with players on a real dedicated server (the EULA is Kort's call, Q79); decide battle servers per 12 GB plan and the capacity cap | M | Agent + Kort | 7.1 |
+| 7.3 | Matchmaking and parties (design in section 0.1 and `DECISIONS.md` 2026-11-07): per-mode unranked size queues (PvP 1v1 to 4v4, Survival groups of 2 to 4), Play menu, `/queue` and war banners; banner-power bands and 60 s bot fill; parties up to 4 with `/party` commands, a Party menu and Dawn/Dusk side picks; 10 s match-found countdown; allocate a free battle server; stand-in bot and reserved seat for leavers, leave cooldown; party kept on return to the hub with a Queue again button; private party challenges | L | Agent | 7.1, 3.4 |
+| 7.4 | Shared database: MySQL schema and access layer for the official network profiles, rewards and cosmetics, read and written by every server; migrations and backups; the solo campaign stays on separate local progress and never mixes; the self-host kit keeps file profiles | L | Agent | 7.1 |
+| 7.5 | Network hub (Old Hold), beta set: one shared hub world with hub copies (cap from 7.2) and `/hub <n>`; arrival square, war room as queue hall (four mode war banners, party-challenge table; the Dawn/Dusk ready pads retired, the seat/ready War Table page only on the battle server), market with the Wardrobe stall, training yard with dummies and the opt-in duel ring, five House halls; camp stations open each player's own profile screens; fixed locked hotbar (Play, Party, Camp/Profile, Wardrobe, Hide players, Hub selector); hide-players toggle; skippable first-join Drillmaster lesson; per-copy chat with network-wide `/pc` and `/msg`; a queue pop pulls players out of a duel; version check with a clear message and the download link | XL | Agent + Kort | 7.3, 2A.6, Kort's in-game walk of the Old Hold (`feat/oldhold-wiring`) |
+| 7.6 | Moderation: ban, kick, mute, chat filter, LuckPerms staff roles (Kort plus one or two friends), a report command logging to Discord, an audit log | M | Agent + Kort | 7.1 |
+| 7.7 | Cosmetic store: Tebex account (Kort), delivery of banner designs, troop skins and colourways, titles and ranks, Old Hold lobby effects; cosmetics change no stats; EULA and commercial-guideline review; no store item uses or shows Excalibur art | L | Agent + Kort | 7.4 |
+| 7.8 | Rent Kinetic Hosting (12 GB, 4 splits), deploy the network, backups, restart and health checks, an operations runbook | M | Kort + Agent | 7.1 to 7.4, 7.6 |
+| 7.9 | Open beta for the Discord, capped at about 50 players, on a release-candidate build; collect defects; then launch: 1.0 on Modrinth and CurseForge the same day the server opens | M | Kort + friends | 7.8, Phase 5, 6.1 to 6.5 |
+| 7.10 | Network hub, post-beta set (between beta and launch): timed parkour route up the mountain cliffs with checkpoints, built from the planned mountain pieces; weekly boards in the arrival square (top Renown, most wins, best parkour time) read from the shared database and reset weekly; lobby-effect trails and arrival flourish wired to the Wardrobe (hub only, hidden when the viewer hides players); a queue pop discards a parkour run | L | Agent + Kort | 7.4, 7.5, 7.7 |
+
+Acceptance checks:
+
+- 7.1: on Kort's PC, a real client logs in through the proxy, appears in the lobby, is moved to the battle server, plays a bot match to the end and returns to the lobby; the forwarding mod works or an alternative is recorded; no multi-arena change was needed.
+- 7.2: a report with dedicated-server MSPT p95 under 50 ms at six players, heap per battle server, bandwidth per player and the measured number of battle servers one 12 GB plan holds; the 4-split plan is confirmed or the plan size changes. This gate precedes any purchase.
+- 7.3: real clients queue solo and as a party of up to 4 in each of the four modes at the offered sizes (1v1 to 4v4; Survival 2 to 4); a party split across Dawn and Dusk queues only when each side fits the size and its members fight each other; a party larger than a size's total seats cannot queue it; a match found shows the 10 s countdown and moves players automatically, and cancelling counts as a leave; an empty seat fills with a bot after 60 s at the match's power band difficulty and the match pays full rewards; with "Fill with strangers" off, empty seats go to bots; a leaver is replaced by a stand-in bot, can rejoin after more than 120 s while the battle runs, and the queue never sends a new player into that battle; 3 leaves in an hour starts a queue cooldown of about 5 min; after the battle the party returns to the hub intact and the leader's Queue again repeats the mode and size; a challenge between two parties starts a private match; two battles run at once on two servers; a crashed battle server returns its players to the hub.
+- 7.4: two servers read and write the same profile; a restart and a reconnect keep it; a restore from backup is tested; the local solo campaign file is untouched by network play and the reverse.
+- 7.5: a modpack client with a mismatched mod version is refused with the message and the download link, and a plain client is admitted (Phase 7A); every existing camp station works in the hub and opens the player's own profile; two players land in one hub world and a full copy opens Hub 2, with a party and friends landing together and `/hub <n>` switching; hide players hides strangers but not party members or friends; a first-time player gets the skippable Drillmaster lesson and a returning player spawns in the arrival square; the war banners queue each mode and the seat/ready War Table page appears only after the move to the battle server; the fixed hotbar cannot be rearranged, and the duel kit swaps it and restores it; a duel needs both players to opt in and gives no rewards and no progress; a queue pop after the 10 s countdown pulls a player out of a duel with no result; chat stays in its hub copy while `/pc` and `/msg` reach other copies and servers; the layout matches the version Kort walked and locked.
+- 7.6: each moderation command works from a staff account and is refused for a player; a report reaches Discord with the reporter, target and time; a muted player cannot chat on any server.
+- 7.7: a Tebex test-mode purchase grants a cosmetic on every server; no cosmetic changes a stat (checked against the sheet); the store text passes the commercial-guideline review.
+- 7.8: a fresh deploy from the runbook works; backups restore; the network survives a proxy restart and a battle-server crash.
+- 7.9: a beta of about 50 players over several sessions with no blocker or major open; the version-matched release candidate is the build on Modrinth and CurseForge at launch; Kort's explicit go is recorded.
+- 7.10: a timed parkour run records checkpoints and a best time, and a queue pop mid-run discards it; the weekly boards show Renown, wins and best parkour time from the shared database and reset on the weekly boundary; a lobby trail and arrival flourish show in the hub only, never in battle, and are hidden for a viewer who hides players.
+
+Exit: the official network runs on Kinetic with queues, the Old Hold hub, shared progress, moderation and the store; the beta has no open blocker or major; Modrinth and CurseForge listings are ready to go live the same day the server opens.
 
 ## 4. Map Forge: how AI builds and how the server stays editable
 
@@ -343,7 +420,7 @@ The Phase 4 plan is 28 tasks. 1.0 needs tasks 1 to 12 and 28. Tasks 13 to 27 are
 | Mode feed and briefing lines | 3 |
 | Siege world pieces and mode | 4, 5 |
 | Survival | 6 |
-| Banner | 7 |
+| Convoy | 7 |
 | Skirmish and Practice picker | 8 |
 | Mode bots and gate | 9 |
 | Campaign schema, order, bonuses, real sizes | 10, 11 |
@@ -357,11 +434,11 @@ Campaign battle table for 1.0, using all five maps and all four modes:
 | 1 | The Training Field | Rivergate | Domination | Gilded Order |
 | 2 | The Iron Gate | Ironhold | Siege | Ironclad |
 | 3 | The Long Night | Hollowwood | Survival | Graveborn |
-| 4 | The Frozen Standard | Frostmarch | Banner | Wildmoot |
+| 4 | The Frozen Standard | Frostmarch | Convoy | Wildmoot |
 | 5 | The Five Crossings | Kingsfield | Domination | Tidecallers |
 | 6 | The Last Watch | Ironhold | Siege, mixed | All Houses |
 
-Each battle has a briefing card, one lesson line per new system, one bonus objective worth shards, and a fixed enemy banner. The campaign is solo in 1.0; co-op campaign is post-1.0.
+Each battle has a briefing card, one lesson line per new system, one bonus objective worth shards, and a fixed enemy banner. The campaign is solo in 1.0; co-op (party) campaign is post-1.0. It is never played from the public queue (Kort 2026-11-07).
 
 ## 7. Approved decisions
 
@@ -391,6 +468,10 @@ Decision: solo only for 1.0. Co-op campaign needs separate reward, seat and save
 
 Decision: downloadable Modrinth and Prism release plus the self-hosted server kit. No public matchmaking, accounts, moderation or paid service in 1.0. Those are the public-service project, and they need their own security and hosting plan.
 
+**Amended by Kort 2026-11-07:** superseded. 1.0 ships on Modrinth and CurseForge at once, the self-host kit stays, and the official hosted network (matchmaking, moderation, a rented server, cosmetic store) is in 1.0 as Phase 7. Ranked play stays post-1.0.
+
+**Distribution, amended again by Kort 2026-11-07:** the release is a modpack published on both Modrinth (`.mrpack`) and CurseForge (the Prism import and self-host kit stay). The modpack is optional: plain players with a vanilla 1.21.1 or newer client can join the official network and play everything, with simpler visuals and controls. Nothing is published without Kort's go.
+
 ### 7.7 Performance target
 
 Decision: working targets of 60 fps on each six-player test machine, server MSPT p95 under 50 ms and map build under 60 seconds. Confirm after the Phase 3 baseline; do not tune to a number before measuring.
@@ -405,9 +486,11 @@ Decision: working targets of 60 fps on each six-player test machine, server MSPT
 | 3. Six-player slice | 8 to 12 weeks | after 2 | Two maps, Siege, 3v3, dedicated server |
 | 4. Content completion | 20 to 30 weeks | during 3 | All maps, modes, campaign, art |
 | 5. Balance and hardening | 8 to 12 weeks | after 4 | Balance, performance, QA green |
-| 6. 1.0 release | 3 to 4 weeks | after 5 | Strict package, six-player sign-off |
+| 6. 1.0 release | 3 to 4 weeks | after 5 and 7 | Strict package, six-player sign-off |
+| 7A. Port to 1.21.1 and plain clients | About 20 to 35 weeks if sequential (estimate); port 6 to 12 | now (freeze first); before 7 | Port signed off; plain spike gate; mixed-client QA |
+| 7. Official hosted network | To be set after 7.2 | after 1; parallel with 2 to 4 | Local prototype, Kinetic, beta at about 50 players |
 
-The sum is roughly 50 to 75 weeks if every phase is sequential. With art, maps and modes running in parallel, the realistic range is **10 to 14 months of steady work**. The six-player baseline is the near-term deliverable: **1 to 2 months**. The slice is roughly **4 to 6 months**. No calendar date is promised; review bandwidth and art quality are the real limits.
+Phase 7 runs in parallel, so it adds no sequential time unless the beta defects do; set its range after the 7.1 prototype and the 7.2 measurement. The sum of phases 0 to 6 is roughly 50 to 75 weeks if every phase is sequential. With art, maps and modes running in parallel, the realistic range is **10 to 14 months of steady work**. The six-player baseline is the near-term deliverable: **1 to 2 months**. The slice is roughly **4 to 6 months**. No calendar date is promised; review bandwidth and art quality are the real limits.
 
 ## 9. Risks and mitigations
 
@@ -423,6 +506,12 @@ The sum is roughly 50 to 75 weeks if every phase is sequential. With art, maps a
 | Profile or protocol change breaks old camps | Player loss | Schema 3 migration tests for v1 and v2; version gate; keep the original file |
 | Performance collapses with 160 troops and six players | Unplayable | Measure at the slice and at content-complete; Aikar flags; performance mods only after a measurement |
 | Kort becomes the review bottleneck | Queues stall | Batch visual gates per House or map; threshold 9; agents fix before review |
+| Fabric servers behind Velocity do not forward player identity on 1.21.1 | The network design fails | Test FabricProxy-Lite or an alternative in the 7.1 prototype before buying anything |
+| Dedicated-server MSPT was never measured and a 12 GB plan holds fewer battle servers than hoped | Queues back up; cap lower than 50 | 7.2 measures before purchase; cap the beta; bots fill seats; upgrade the plan only after data |
+| Port and plain-client work overrun, or plain support narrows after the spike | Network and hub slip; plain players cannot play everything | Feature freeze and time-boxed port; the P2 spike gate before the large plain build; see the port plan risks |
+| Strangers online: abuse, griefing, chat risk | Reputation, Discord load | 7.6 moderation, report command, chat filter, staff roster, beta capped at about 50 |
+| Cosmetic store breaks the Minecraft EULA or the Excalibur licence | Takedown or dispute | Cosmetics only, no stat effects, 7.7 review, no Excalibur art in the store (open risk: the pack is CC BY-NC-ND and ships in the modpack of a monetised server) |
+| Shared database loses or mixes profiles | Player loss | Separate solo and network progress, backups and restore test, migration checks (7.4) |
 
 ## 10. First ten actions
 
@@ -462,8 +551,10 @@ git ls-remote --heads origin
 - Game tier passes, including Phase 1, 2, 3 and 4 suites.
 - Strict package passes with no stopgap art and no harness classes.
 - Excalibur bundled unmodified, credited, licence recorded.
-- Modrinth `.mrpack` and Prism import tested on a clean machine.
+- Modrinth `.mrpack`, CurseForge export and Prism import tested on a clean machine.
+- Plain-client gate: a vanilla 1.21.1 client without the modpack completes a full battle mixed with modpack players (P6 of the port plan), the fairness check shows identical cooldowns and reach, and the version matrix (1.21.1, a mid 1.21.x, the latest) passes.
 - Server kit starts, accepts six players, backs up and restarts.
+- Official network: Phase 7 acceptance checks pass; the beta has no open blocker or major; Modrinth and CurseForge listings point at the server and go live the same day it opens.
 - Profile migration from schema 1 and 2 passes.
 - Six-player release test passes with no blockers or majors.
 - Candidate record, tag, release notes, README and HANDOFF agree.
@@ -472,5 +563,5 @@ git ls-remote --heads origin
 ## Appendix C: What moves after 1.0
 
 - Storybook: Phase 4 tasks 13 to 27, voice, cast, sets, companions, camp story.
-- Public service: matchmaking, accounts, moderation, hosting economics, paid cosmetics only if Kort chooses.
+- Public service beyond the 1.0 network (matchmaking, moderation, hosting and the cosmetic store moved into 1.0 on 2026-11-07): ranked play and ladders, more regions, larger capacity, paid access.
 - Extra chapters, more maps, mounts, media and a platform port.

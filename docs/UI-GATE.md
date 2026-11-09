@@ -1,3 +1,5 @@
+> Historical (superseded 2026-11-07): see PLAN-TO-1.0.md / WORKFLOW.md
+
 # UI gate for Kort
 
 Written 2026-10-23 by the no-game half of UI Task 8; scores updated the same day by the in-game leftovers run (client on, head 38ffe38 plus one harness commit). Every score below is graded against `work/ui-concepts/GRADING-RUBRIC.md`; nothing under 9 passes. "Reviewer" means a Task review graded it; "gate" means this run's side-by-side (screenshot beside its mockup, plus a greyscale copy) graded it.

@@ -1,0 +1,17 @@
+{
+  "id": "shield_rack",
+  "category": "smithy",
+  "name": "Shield Rack",
+  "size": [2, 2, 1],
+  "parts": [
+    {"model": "shield_rack", "cmd": 7310031, "glow": false}
+  ],
+  "solid": [
+    [0, 0, 0],
+    [1, 0, 0],
+    [0, 1, 0],
+    [1, 1, 0]
+  ],
+  "lights": [],
+  "effects": []
+}

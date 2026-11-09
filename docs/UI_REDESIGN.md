@@ -1,3 +1,5 @@
+> Historical (superseded 2026-11-07): see PLAN-TO-1.0.md / WORKFLOW.md
+
 # Graves and Glory 0.3.0 interface and depth
 
 Implemented screens use the actual troops, classes, maps, prices, and server actions. Concept-image names, abilities, and costs were illustrative and were not substituted into gameplay.

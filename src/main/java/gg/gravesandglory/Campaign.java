@@ -135,7 +135,7 @@ public final class Campaign {
     boolean save(UUID id){try{var pr=profile(id);ProfileMigration.saveProfile(pr,directory.resolve(id+".json"),JSON.toJson(pr));return true;
         }catch(Exception e){System.err.println("[Graves and Glory] Could not save commander collection: "+e.getClass().getSimpleName());notice(id,"Collection could not be saved; check disk space.");return false;}}
     void importProfile(ServerPlayerEntity p,String json){
-        if(json.length()>16000)return;
+        if(json.length()>32000)return;
         // The server's saved collection is the only source of truth. The client's copy is a display cache.
         // It is imported once, on a first visit to a single-player or LAN world with no record yet, so
         // existing collections carry over; dedicated servers never accept one.

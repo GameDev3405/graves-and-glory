@@ -78,6 +78,10 @@ public final class GravesAndGlory implements ModInitializer {
         // A match the server stops is void: no rewards, no losses, armies to camp (MatchRules). Then the banners come down.
         ServerLifecycleEvents.SERVER_STOPPING.register(server -> {if(battle!=null){battle.campaign.voidMatch(MatchRules.Ending.STOPPED);Abilities.serverStopping(battle);battle.clearCorpses();}});
         if (BuildMode.active()) BuildMode.init();
+        Props.init(); // prop kit: defs, /prop, anchor scanner (no registry entries)
+        PropTicker.init(); // prop kit: proximity-gated alive effects, /prop stats
+        PropMenu.init(); // prop kit: /prop menu, ghost placement, hit-to-remove
+        PropPack.init(); // prop kit: server resource pack delivery, /prop pack reload (only with -Dgg.propPack.file)
         ServerLifecycleEvents.SERVER_STARTED.register(server -> {
             // Only the dedicated Graves and Glory save belongs to this mod.
             String level = server.getSaveProperties().getLevelName();
@@ -126,7 +130,7 @@ public final class GravesAndGlory implements ModInitializer {
             String command=buf.readString(128);
             server.execute(() -> { if(battle!=null) battle.command(player,command); });
         });
-        ServerPlayNetworking.registerGlobalReceiver(PROFILE,(server,p,handler,buf,responder)->{String json=buf.readString(16000);server.execute(()->{if(battle!=null)battle.campaign.importProfile(p,json);});});
+        ServerPlayNetworking.registerGlobalReceiver(PROFILE,(server,p,handler,buf,responder)->{String json=buf.readString(32000);server.execute(()->{if(battle!=null)battle.campaign.importProfile(p,json);});});
         ServerPlayNetworking.registerGlobalReceiver(PING,(server,p,handler,buf,responder)->{String kind=buf.readString(16);double x=buf.readDouble(),z=buf.readDouble();server.execute(()->{if(battle!=null)battle.ping(p,kind,x,z);});});
         ServerPlayNetworking.registerGlobalReceiver(TACTICAL, (server, player, handler, buf, responder) -> {
             String group=buf.readString(16), action=buf.readString(16), formation=buf.readString(16);

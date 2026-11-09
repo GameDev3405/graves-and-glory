@@ -13,7 +13,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * The builder server's seven canvases (Kort 2026-11-03): camp, lobby and one per map, each a flat dimension gravesandglory:build_(id) of the gg_build data pack
+ * The builder server's seven canvases (Kort 2026-11-03; the camp canvas dropped 2026-11-08, its stations live in the Old Hold lobby): lobby and one per map, each a flat dimension gravesandglory:build_(id) of the gg_build data pack
  * (resourcepacks/gg_build, registered only in build mode). A plan is what BuildMode paints once on a canvas, and its /warp names. Camp and lobby carry the
  * LobbyCanvas camp plan. A map canvas carries the map's key points from CampaignMaps.select (the same tables a battle builds from): the edge of the ground a
  * battle lays, the playable border, both teams' gates, barracks and spawns, the capture points, the lane crossings, the supply houses and every road as a line.
@@ -21,14 +21,14 @@ import java.util.Map;
 final class BuildWorlds {
     record Plan(String id,RegistryKey<World> key,List<LobbyCanvas.Area> areas,List<LobbyCanvas.Line> lines,Map<String,double[]> warps){}
 
-    static List<String> ids(){var all=new ArrayList<String>();all.add("camp");all.add("lobby");for(var m:Spec.MAPS)all.add(m.id());return all;}
+    static List<String> ids(){var all=new ArrayList<String>();all.add("lobby");for(var m:Spec.MAPS)all.add(m.id());return all;}
     static RegistryKey<World> key(String id){return RegistryKey.of(RegistryKeys.WORLD,new Identifier("gravesandglory","build_"+id));}
     static String safe(String id){return id.toLowerCase().replaceAll("[^a-z0-9_-]","_");}
 
-    /** Every plan, camp and lobby first, then the maps in Spec.MAPS order. Selects each map in turn (build mode has no battle to disturb). */
+    /** Every plan, the lobby first, then the maps in Spec.MAPS order. Selects each map in turn (build mode has no battle to disturb). */
     static List<Plan> plans(){
         var all=new ArrayList<Plan>();
-        for(String id:List.of("camp","lobby")){var warps=new LinkedHashMap<String,double[]>();LobbyCanvas.warps(warps);all.add(new Plan(id,key(id),LobbyCanvas.plan(),List.of(),warps));}
+        for(String id:List.of("lobby")){var warps=new LinkedHashMap<String,double[]>();LobbyCanvas.warps(warps);all.add(new Plan(id,key(id),LobbyCanvas.plan(),List.of(),warps));}
         for(int m=0;m<Spec.MAPS.length;m++)all.add(map(m));
         return all;
     }

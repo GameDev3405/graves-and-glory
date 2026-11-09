@@ -1,6 +1,6 @@
 # Board: PLAN-TO-1.0
 
-2026-11-04, checked against `main` at `ebd38de3`. The single visible state for the 1.0 plan. One row per task in the active phases; later phases get one row until they start. Every row names an owner, a state and the evidence that settles it. If this board and another document disagree, fix both in the same commit.
+2026-11-07, checked against `main` at `2fc30f50` (rows not touched by the 11-05 to 11-07 merges were last checked against `ebd38de3` on 2026-11-04). The single visible state for the 1.0 plan. One row per task in the active phases; later phases get one row until they start. Every row names an owner, a state and the evidence that settles it. If this board and another document disagree, fix both in the same commit.
 
 States: **Done**, **In progress**, **Awaiting Kort** (work finished, visual or merge decision pending), **Awaiting merge** (finished on a branch, not in `main`), **Blocked** (a named task must land first), **Skipped**, **Not started**.
 
@@ -28,12 +28,12 @@ Phase 0 is done.
 | 1.2 | Armoury restyle | Agent + Kort | Done 2026-10-31 | `711ae89` merged at `27ddf58` |
 | 1.3 | Banner and Field page polish | Agent | Done 2026-10-31 | `cc88186` (House-edged portraits, Banner drag and drop, `ui-bannerfield` suite); polish `a1287c4`, `77f1931`, `d6af93f`; drag `81c047f`, `7a5bc40` |
 | 1.4 | Harness Narrator parity | Agent | Done 2026-10-29 | `reports/phase-1-4-harness-narrator-2026-10-29.md`; fix `18522ba` |
-| 1.5 | Animation pass 1 | Agent + Kort | Done 2026-11-04 for the merged work; six commits stay on the branch, not in `main` | Merged as `b4dfef01` (Kort approved once the motion checks were stable, Q62, Q106): slower bow shots, bow cooldowns +25%, settling hips, bow twist, `anim_edit` rig. `work/anim-rework` replaced `work/anim-rebase` (tag `archive/anim-rebase-2026-11-02`); Kort accepted the known flaws (Q63, Q70, Q46b, Q57) and closed Q28, so no editor pass from him is needed. **Not superseded by `anim/attack-clips`:** `git branch --merged main` does not list `work/anim-rework`. Its old tip `463641a` is in `main`, but the branch has since moved to `95d98c1f` and `git cherry main work/anim-rework` shows all six later commits as unmerged: elbows and knees for batches 1 to 3 of the biped troops (`071b7ffb`, `d5f92d0d`, `3fdbc22d`), the Revenant's 64-bone fix (`3cff44ff`), a jointed-troops contact sheet (`95d98c1f`) and an EULA note (`cbad2289`). `main` has no forearm or shin bones in `stalker`, `bonebow` or `revenant`, and `attack-clips` (`1be70ff9`) does not carry those commits. No Kort approval is recorded for them |
+| 1.5 | Animation pass 1 | Agent + Kort | Done 2026-11-04 | Merged as `b4dfef01` (Kort approved once the motion checks were stable, Q62, Q106): slower bow shots, bow cooldowns +25%, settling hips, bow twist, `anim_edit` rig. `work/anim-rework` replaced `work/anim-rebase` (tag `archive/anim-rebase-2026-11-02`); Kort accepted the known flaws (Q63, Q70, Q46b, Q57) and closed Q28, so no editor pass from him is needed. **Jointed troops are in `main`:** elbows and knees for the biped troops were rebuilt on `main`'s 2 px joint overlap and merged as `37494090` (`anim/joints-on-main`, Kort approved 2026-11-04), with the Revenant's 64-bone fix and the contact sheet. The six old commits on `work/anim-rework` (`95d98c1f`) are the superseded originals and are not merged; keep the branch, do not merge it |
 | 1.6 | Merge the House troop models | Agent + Kort | Done 2026-11-02 | `work/models-rebase` is archived as tag `archive/models-rebase-2026-11-02`. In `main`: `art/knight-1x`, Gilded flagships (`bd05fa2`), Gilded tiers II/III (`92e8828`, Q42), troop rework `c26a3d8` (six troops keep original art with the grip fix; new Ballista and Mortar), and the Ironclad rows under 2B.3 and 2B.4 |
 | 1.7 | Art production line | Agent | Done 2026-11-02 | Hand-authored `art/hand` builders per House, now in `main` for all five Houses (see 2B.3 and 4B.1 to 4B.4); the `.bbmodel` round-trip is 2B.1 |
 | 1.8 | Six-player network baseline | Kort + friends + Agent | Skipped by Kort 2026-10-28 | Method kept in `SIX-PLAYER-TEST-PLAN.md` |
 | 1.9 | Fix blockers and majors from 1.8 | Agent | Blocked on 1.8 | Not started |
-| 1.10 | Cut 0.5.1 | Agent + Kort | Not started, unblocked | Kort wanted a 0.5.1 candidate cut once the animation merge landed (2026-11-03); it landed as `b4dfef01`. 1.6 and 1.7 are done and 1.9 is moot while 1.8 is skipped. `mod_version` is still `0.5.0`; the candidate record (`docs/releases/current-candidate.json`, `bb2d85c4`) is the 1.0 release candidate path, so say whether 0.5.1 is still wanted before the RC |
+| 1.10 | Cut 0.5.1 | Agent + Kort | Done as a candidate 2026-11-04; not published | `release/0.5.1` merged as `c99fe907` (version 0.5.1, candidate `v0.5.1-rc1`) and rc2 notes as `52fa325a`. `mod_version` is `0.5.1`. Nothing is published; the 1.0 release candidate path is still the candidate record (`docs/releases/current-candidate.json`, `bb2d85c4`, older than the 11-05 to 11-07 merges and needing a refresh) |
 
 ## Phases 2 to 6
 
@@ -94,7 +94,7 @@ One row per started task or task done in `main`; unlisted tasks in each phase ha
 | 4D.3 | Order lock, chapter completion, Pact grant, bonus shards | Agent | Done 2026-10-31 | `8e39637`, `3fdf85e`, `649bcb0` (chapter gold and Rare price from the sheet) |
 | 4D.4 | Campaign playthrough | Agent + Kort | Agent checks done; Kort's playthrough not done | In-game bonus check merged (`docs/reports/ingame-check-2026-11-02.md`); harness suites `march-modes` and `march-bonus`. Kort has not played the six battles end to end; the rulings that shape them are in (`aaae785`) |
 | 4D.5 | Preflight validation of campaign rows | Agent | Done 2026-10-31 | `tools/preflight.py` validates order, House, bonus and the `placeholder` column |
-| 4E.1 to 4E.3 | Animation passes | Agent + Kort | In progress; 4E.1 and the attack clips of 4E.2 merged | Pass 1 `b4dfef01` (row 1.5). Attack clips for every troop family (biped, crew, creatures, colossus), two review fix rounds, backward elbows fixed, Kort approved the merge after both fix rounds (his fix list was Q119): `1be70ff9` (`anim/attack-clips`, `art/clips/build_attacks.py`, contact sheets under `docs/review`). Troop-animation skill (method, Kort's rules, A to F review loop, Sonnet 5.5 medium reviewer) `5756ecb3`, `b990d74b`, lessons `bdfe6101`, `58cc9715`. Open: elbows and knees for biped batches 1 to 3 stay on `work/anim-rework` (row 1.5); charge and formation march not recorded; Kort has not checked the attack clips in game |
+| 4E.1 to 4E.3 | Animation passes | Agent + Kort | In progress; 4E.1 and the attack clips of 4E.2 merged | Pass 1 `b4dfef01` (row 1.5). Attack clips for every troop family (biped, crew, creatures, colossus), two review fix rounds, backward elbows fixed, Kort approved the merge after both fix rounds (his fix list was Q119): `1be70ff9` (`anim/attack-clips`, `art/clips/build_attacks.py`, contact sheets under `docs/review`). Troop-animation skill (method, Kort's rules, A to F review loop, Sonnet 5.5 medium reviewer) `5756ecb3`, `b990d74b`, lessons `bdfe6101`, `58cc9715`. Elbows and knees for the biped troops merged as `37494090` (row 1.5). Open: the knight v2 set and v4 deaths (Kort approved 2026-11-07, branch `anim/geckolib-rebuild`) are not in `main` yet; charge and formation march not recorded; Kort has not checked the attack clips in game |
 | 4F.1, 4F.6 | War Table pages, 1440p layouts | Agent + Kort | In progress | 3x scale `30e3f3f`; troop sheet, Armoury, Banner and Field, lobby and campaign card (`b693cca`) merged. Kort has not checked the 1080p, 1440p and 4K windows (VIS-01) |
 | 4F.2 | Report layout | Agent | Done | In `main` (`7e1e0f0`, `d932922`, `7951be8`; ui-report suite passed in game); the mode block and the Battle, Troops and Chapter tabs were approved (Q18) |
 | 4F.3 | Title screen | Agent + Kort | Done 2026-11-04 | Painted key art and menu mock approved 2026-11-03 (`c2dc2cd9`, `art/title-painted`); wired behind the front menu and merged as `ef8d2817`, Kort approved (Q112). The slow-motion fight shots idea was not built |
@@ -112,7 +112,20 @@ Kort approved the design on 2026-11-03 (Q95, catalogue Q98, calls Q99 and Q100 t
 | GEAR-2 | Gear combat: stats, set bonuses, perks, relics on keys 1 to 3; commander classes removed | Agent | Done 2026-11-04 | `82ace819`; QA re-run after it `577daa8b` |
 | GEAR-4 | Gear art: 4 sets at 5 rarities, 12 weapons, 12 relic icons, 140 grid icons, weapon clips | Agent + Kort | Done 2026-11-04 | `fc2bad30` (Ashen Vigil rebuilt after grader review, shield clear of head, no gauntlets, Q108); `docs/reports/gear-art/` |
 | GEAR-5 | House armour sets: Oathbound, Barrow Warden, Thornhide, Forgewall, Tidewrought | Agent + Kort | Done 2026-11-04 | Art `035d9c1f` (Kort, Q121; head clip, Forgewall stacks and the 1.06 rule fixed, Q115); data and stats wired as drafted `3663087d` (Q113, Q122); wearable by anyone |
-| GEAR-6 | Command UI (orders, formations, charge) | Agent + Kort | In progress; needs Kort's yes to merge | `feat/command-ui` in `bannerbound-cmdui` at `0f82a253`: design and plan `f083739a` (Q117), sheet numbers `c5b7f84d`, harness runner and smoke suite `670b5b6b`, `0f82a253`. Built subagent-driven with the planner defaults accepted (Q120). Not in `main` |
+| GEAR-6 | Command UI (orders, formations, charge) | Agent + Kort | Done 2026-11-05 | Merged as `e771d5f1` (`feat/command-ui`, Kort approved 2026-11-05): design and plan `f083739a` (Q117), sheet numbers `c5b7f84d`, harness runner and smoke suite `670b5b6b`, `0f82a253`. Built subagent-driven with the planner defaults accepted (Q120). Overhead charge camera, formation outlines, custom numbered groups, command report `d1a76246`. Kort's in-game look at the panel is not recorded |
+
+### Merged 2026-11-05 to 2026-11-07
+
+Kort approved each merge. `main` is `2fc30f50`.
+
+| Date | Merge | What it holds |
+|---|---|---|
+| 2026-11-04 | `37494090` `anim/joints-on-main` | Elbows and knees for the biped troops (see row 1.5) |
+| 2026-11-04 | `1d3f2edd` `qa/polish-1104` | In-game attack check for all 30 troops and fixes D1-D6 (reaper, mortar, colossus, brute); Kort signed off |
+| 2026-11-05 | `6442b1af` `fix/excalibur-weapons` | Excalibur look stays off weapons: own armory and weapons packs above it, on by default |
+| 2026-11-05 | `e771d5f1` `feat/command-ui` | Command UI, GEAR-6 (row above) |
+| 2026-11-07 | `1c440dd5` `fix/ui-polish` | Audit UI fixes U4, U5, U10, U18, U20, M1, M5: front menu Quit and Back on short windows, Presentation Back and Esc, map screen ping row and M, lobby objective count, portrait scale probe |
+| 2026-11-07 | `2fc30f50` `fix/client-state` | Audit fixes U1, U2, U13, U15, U7/U14: large collection sync, rejoin and battle end keep their screens, War Table FIFO command queue, Contracts page cache; the unregistered `EntranceOverlayMixin` is deleted (`382b6586`) |
 
 ### Phase 5: balance and hardening
 
@@ -137,18 +150,27 @@ Kort approved the design on 2026-11-03 (Q95, catalogue Q98, calls Q99 and Q100 t
 |---|---|---|
 | 2. Production lines: Map Forge, art line, mode frame | In progress (every 2A, 2B and 2C row is done except Kort's read of the mode text) | Plan section 3, 2A to 2C |
 | 3. Six-player slice | In progress (3.2 to 3.6 and 3.8 done, 3.7 prepped; 3.1 and 3.9 wait on Kort, and a real six-player round needs Kort) | Plan section 3, tasks 3.1 to 3.9 |
-| 4. Content completion | In progress (4B.1 to 4B.5, 4C, 4D.1, 4D.3, 4D.5, 4F.3, 4F.4 and gear done; 4E animation partly merged; maps wait on Kort; command UI in progress) | Plan section 3, tasks 4A to 4F |
+| 4. Content completion | In progress (4B.1 to 4B.5, 4C, 4D.1, 4D.3, 4D.5, 4F.3, 4F.4, gear and the command UI done; 4E animation partly merged; maps wait on Kort) | Plan section 3, tasks 4A to 4F |
 | 5. Balance, performance, hardening | In progress (5.1, 5.4 and 5.5 done, 5.6 142 PASS with Kort rows open) | Plan section 3, tasks 5.1 to 5.8 |
 | 6. 1.0 release | In progress (6.1 and 6.2 tooling done, 6.3 dry run passed; release blocked, not accepted) | Plan section 3, tasks 6.1 to 6.6 |
+| 7. Official hosted network | Not started; plan on `docs/plan-1.0-network` awaits Kort | Plan section 3, tasks 7.1 to 7.10 (on that branch) |
 
-## Open lanes at 2026-11-04
+### Phase 7: official hosted network
 
-Every other session branch is merged into `main` or archived, except the two rows marked unmerged. Gear art, the House gear sets, the title screen and the audio branches are merged.
+| ID | Task | Owner | State | Evidence |
+|---|---|---|---|---|
+| 7.1 to 7.10 | Hosted network: Velocity proxy and lobby prototype, dedicated-server measurement, matchmaking and parties, shared database, Old Hold network hub, moderation, cosmetic store (Tebex), Kinetic deployment, open beta, post-beta hub set | Kort + Agent | Not started; plan awaits Kort's review and merge | Added by Kort 2026-11-07. Plan, designs and backlog NET-1 to NET-6 are on branch `docs/plan-1.0-network` (`PLAN-TO-1.0.md` section 0.1 and Phase 7, `DECISIONS.md`, `BACKLOG.md`), not in `main`. No hub feature work until Kort walks the Old Hold in game (`feat/oldhold-wiring`) |
+
+## Open lanes at 2026-11-07
+
+Every other session branch is merged into `main` or archived, except the rows below. Gear art, the House gear sets, the title screen and the audio branches are merged.
 
 | Lane | Branch | Plan task | Waits on |
 |---|---|---|---|
-| Command UI | `feat/command-ui` (in `C:/Users/kortt/Melty/bannerbound-cmdui`, `0f82a253`) | GEAR-6 | Build in progress; needs Kort's yes to merge (design and plan approved, Q117, Q120) |
-| Jointed troops, batches 1 to 3 | `work/anim-rework` (`95d98c1f`, six commits not in `main`) | 1.5, 4E | A decision to merge or drop; no Kort approval recorded |
+| Old Hold lobby | `feat/oldhold-wiring` (two commits ahead of `main`) | 2A.6, 7.5 | Kort's in-game walk of the Old Hold (Q129); no hub feature work until then |
+| Hosted network plan | `docs/plan-1.0-network` | 0.1, Phase 7 | Kort's review and merge (hosted network, matchmaking, Old Hold hub designs) |
+| Knight v2 and v4 deaths | `anim/geckolib-rebuild` (`781c12ee`) | 4E | Approved 2026-11-07 as the troop template; merge not yet decided |
+| QA harness | `qa/fix-ingame` | none | Never merged; a harness branch |
 | Audio polish | none | 4F.4 | 15 "None fit" cues need new takes; 14 events have no game moment, and ambience and overtime music may need a layer system (Q123, optional) |
 | Maps | `maps/` in `main` | 3.1, 4A | Kort's own designs and layout sign-off |
 | Real six-player round | none | 3.7 | Kort and friends; scratch-folder EULA is allowed for smoke tests only (Q79) |
@@ -161,7 +183,7 @@ Three kinds of claim, kept apart on purpose.
 |---|---|
 | Verified by a run | Baseline fast 22/22 and game 23/23 at `f1f6047` (old); verify game passed on `aaae785`, `4fe40e9` and `09a65cd` (merge log); release verify of a clean checkout passed at `9c2d5f1`, package and readback included; the `.mrpack` launcher test; the merge log in `work/MERGE-QUEUE.md`. `test_sample_builds_clean` failed earlier on Kort's unsaved map edits and passed at `bb2d85c4`. QA client rows A2, A3, I1 to I4, D22 and E10 pass (`6c5a4c4`, `3cd82ef`); kit smoke and teleport sync pass (`4c971e7`); perf targets met except spawn spike and lobby save (`726a5fb`). Release verify of a clean checkout passed again at `987f3458` (2026-11-03, offline, package and readback included). 2026-11-04: fast and release verify pass at `bb2d85c4` (`c07aff33`); verify game (combat smoke, one client) passes at `5344c9e5`; QA matrix 142 PASS, 0 FAIL; the pre-RC dry run built and installed all four downloads and joined a kit server. The mode gate FAILS Siege, Convoy and Domination at `bb2d85c4` (Kort accepted it, Q118) |
 | Visually accepted | The War Table troop sheet and Armoury (Kort, 2026-10-31); all five Houses' tier I to III art, approved in Kort's 2026-11-02 rounds (Q42, Q45, Q47, Q64, Q65, Q69, Q71, Q72); the House identity set and recolour (Q81, Q82); the Pixabay audio cues (Q24); the commander gear catalogue and four sets (Q98, Q104) and their art (Q108); the House armour sets and their gear data (Q121, Q122); the title screen (Q112); Kort's audio picks (Q107). The animation rework and attack clips were approved to merge (Q106, seventeenth round) but no visual check by Kort is recorded. Kort has not read the mode text, played the six battles or checked the 1440p and 4K windows |
-| Not done at all | Six networked players on a real baseline, dedicated-server reconnect and restart under real players, the 0.5.1 cut, jointed troops batches 1 to 3, the command UI merge, Kort's five map designs and their adoption, balance retake on those maps, a CurseForge app import test, the final art gate and the 1.0 version bump. The audio sample trims (Q83) are done (`4f301f0d`) |
+| Not done at all | Six networked players on a real baseline, dedicated-server reconnect and restart under real players, the 0.5.1 publish, Kort's five map designs and their adoption, balance retake on those maps, a CurseForge app import test, the final art gate and the 1.0 version bump. The audio sample trims (Q83) are done (`4f301f0d`) |
 
 ## Where the authoritative records live
 

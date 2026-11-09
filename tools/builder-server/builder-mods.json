@@ -61,6 +61,54 @@
       "sha512": "2ac0a2fd34fe17bb3a3764bb53838f00595998a7e0b4bd70c5068aa9244626c6b0e622af548f97a1614dbb0b7c3df29b6d313edfc890d572dc361591c2a176c0",
       "side": "client",
       "note": "Distant Horizons, client only (Kort 2026-11-03): far terrain for builders on their own machine, nothing on the server. Modrinth lists 3.3.3-1.20.1 for Minecraft 1.20.1, Fabric and Forge, no declared dependencies; the pack marks it server unsupported. Not launched in game yet."
+    },
+    {
+      "project": "indium",
+      "version": "1.0.36+mc1.20.1",
+      "filename": "indium-1.0.36+mc1.20.1.jar",
+      "url": "https://cdn.modrinth.com/data/Orvt0mRa/versions/nQHYSjxO/indium-1.0.36%2Bmc1.20.1.jar",
+      "size": 105382,
+      "sha1": "d824614e7a173d273167969f427702f51846aca7",
+      "sha512": "7c5a1851f1fc08ae69318e151d07151fabba6cda2a24616c9251e1a4e5b969453e88b97d60f926271d60e3511bfc6fa05a64a108466efb7f29bec4519547e0c9",
+      "side": "client",
+      "approvedBy": "Kort 2026-11-08",
+      "note": "Indium, client only (Kort 2026-11-08): Distant Horizons refuses to start with Sodium unless Indium is present. Its fabric.mod.json needs sodium ~0.5.11, which accepts the pack's 0.5.13."
+    },
+    {
+      "project": "simple-voice-chat",
+      "version": "fabric-1.20.1-2.6.22",
+      "filename": "voicechat-fabric-1.20.1-2.6.22.jar",
+      "url": "https://cdn.modrinth.com/data/9eGKb6K1/versions/u5T0ji6n/voicechat-fabric-1.20.1-2.6.22.jar",
+      "size": 5279173,
+      "sha1": "389d1b23340cb3ef547b021cfd6378b1bb1bd22a",
+      "sha512": "e6d6a23b9e94a47446d8f2797182031f2f1c7710dc9540e0e3a7fea17a4fa675ca9655dd49566cbacc4b033b8a4b289f545846fba63e280970d8efa34891c7d2",
+      "side": "both",
+      "approvedBy": "Kort 2026-11-08",
+      "note": "Proximity and group voice chat (Kort 2026-11-08). Server and client. Listens on UDP 24454 by default; on Kinetic set port= in config/voicechat/voicechat-server.properties to an allocated port. Keys: V setup/menu, G groups, M mute, N off; push to talk has no default key (chosen on first V)."
+    },
+    {
+      "project": "xaeros-minimap",
+      "version": "fabric-1.20.1-26.6.0",
+      "filename": "xaerominimap-fabric-1.20.1-26.6.0.jar",
+      "url": "https://cdn.modrinth.com/data/1bokaNcj/versions/PTqhBV8t/xaerominimap-fabric-1.20.1-26.6.0.jar",
+      "size": 2229001,
+      "sha1": "6f51d266bac01f03d8d3a36d3a68c68cb6313ce8",
+      "sha512": "8d8c3d69f13e62530b0046bf6620b72fb770c9ae63dff3b9f640481f379bae49bf0fc76f11f18a1cd088c2abc74bb7b09bdfbcfd18dffa3a6392c2aff160d4c3",
+      "side": "client",
+      "approvedBy": "Kort 2026-11-08",
+      "note": "Minimap and waypoints for builders (Kort 2026-11-08). Client only, needs Fabric API. Keys: B new waypoint, U waypoints, Z enlarge."
+    },
+    {
+      "project": "xaeros-world-map",
+      "version": "fabric-1.20.1-1.47.0",
+      "filename": "xaeroworldmap-fabric-1.20.1-1.47.0.jar",
+      "url": "https://cdn.modrinth.com/data/NcUtCpym/versions/rjV8OOdS/xaeroworldmap-fabric-1.20.1-1.47.0.jar",
+      "size": 1451783,
+      "sha1": "eab3fd66485e245c824de40657877c41df5d247d",
+      "sha512": "f8ad494c46ef1e557bf6ab68fbcbc409e25f4973725e0c2c4b8376e1e32ae66c494b4506c0eb55e1a6ea4cbe5ee1b1390e83565ff2fe60c17048b7429027c0f6",
+      "side": "client",
+      "approvedBy": "Kort 2026-11-08",
+      "note": "Full world map for builders (Kort 2026-11-08). Client only, needs Fabric API. Key M (same default as voice chat mute)."
     }
   ]
 }

@@ -5,7 +5,12 @@ import net.minecraft.text.Text;
 
 final class PresentationScreen extends GravesAndGloryClient.ArmyScreen {
     float scale=1;int selected;
-    PresentationScreen(){super("Visuals and sound");}
+    /** The screen that opened this one (the lobby or the camp's pause page), which Back and Esc return to; null opens the war council. */
+    private final net.minecraft.client.gui.screen.Screen parent;
+    /** Opened from whatever screen is showing now. */
+    PresentationScreen(){this(net.minecraft.client.MinecraftClient.getInstance().currentScreen);}
+    PresentationScreen(net.minecraft.client.gui.screen.Screen parent){super("Visuals and sound");this.parent=parent instanceof PresentationScreen?null:parent;}
+    private void leave(){client.setScreen(parent!=null?parent:new GravesAndGloryClient.LobbyScreen());}
     @Override protected void init(){
         Presentation.load();selected=Presentation.shader();scale=Math.min(1,Math.min(client.getWindow().getScaledWidth()/640f,client.getWindow().getScaledHeight()/360f));width=(int)(client.getWindow().getScaledWidth()/scale);height=(int)(client.getWindow().getScaledHeight()/scale);
         for(int i=0;i<4;i++){final int n=i;button((i==selected?"> ":"")+Presentation.SHADERS[i],30+i%2*190,94+i/2*55,180,b->{Presentation.selectShader(n);clearAndInit();});}
@@ -17,7 +22,7 @@ final class PresentationScreen extends GravesAndGloryClient.ArmyScreen {
         button(HudSize.label(),208,222,222,b->{HudSize.cycle();clearAndInit();});
         button("Minecraft sound levels",width-205,222,175,b->client.setScreen(new net.minecraft.client.gui.screen.option.SoundOptionsScreen(this,client.options)));
         button("Troop depth: "+(Presentation.troopDepth?"ON":"OFF"),30,252,145,b->{Presentation.troopDepth=!Presentation.troopDepth;Presentation.save();clearAndInit();});
-        button("Back to war council",30,height-53,220,b->client.setScreen(new GravesAndGloryClient.LobbyScreen()));
+        button(parent==null||parent instanceof CampaignLobbyScreen?"Back to war council":"Back",30,height-53,220,b->leave());
     }
     @Override public boolean mouseClicked(double x,double y,int b){return super.mouseClicked(x/scale,y/scale,b);}
     @Override public boolean mouseReleased(double x,double y,int b){return super.mouseReleased(x/scale,y/scale,b);}
@@ -34,5 +39,5 @@ final class PresentationScreen extends GravesAndGloryClient.ArmyScreen {
         g.drawText(textRenderer,textRenderer.trimToWidth(Presentation.notice,width-60),30,height-24,DarkUi.GOLD,false);
         super.render(g,(int)(mx/scale),(int)(my/scale),delta);g.getMatrices().pop();
     }
-    @Override public void close(){client.setScreen(new GravesAndGloryClient.LobbyScreen());}
+    @Override public void close(){leave();}
 }

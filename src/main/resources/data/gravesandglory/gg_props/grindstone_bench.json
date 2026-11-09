@@ -1,0 +1,15 @@
+{
+  "id": "grindstone_bench",
+  "category": "smithy",
+  "name": "Grindstone Bench",
+  "size": [2, 2, 1],
+  "parts": [
+    {"model": "grindstone_bench", "cmd": 7310051, "glow": false}
+  ],
+  "solid": [
+    [0, 0, 0],
+    [1, 0, 0]
+  ],
+  "lights": [],
+  "effects": []
+}

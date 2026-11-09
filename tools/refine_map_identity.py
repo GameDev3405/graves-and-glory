@@ -1,7 +1,7 @@
 from pathlib import Path
 import json
 r=Path(__file__).resolve().parents[1]
-p=r/'src/main/resources/gravesandglory.mixins.json';d=json.loads(p.read_text());d['client'].append('EntranceOverlayMixin');p.write_text(json.dumps(d,indent=2))
+# (Removed 2026-11-07: a line here appended the deleted EntranceOverlayMixin to mixins.json.)
 p=r/'src/main/java/gg/gravesandglory/CampaignMaps.java';s=p.read_text();s=s.replace('Spec.STRUCTURES=structures.toArray', '''if(selected==1){
             structures.removeIf(st->st.kind().equals("farm")||st.kind().equals("mill")||st.kind().equals("shrine"));
             structures.add(s("supply_barn","house",-105,-160,24,18,11,"wood",64));

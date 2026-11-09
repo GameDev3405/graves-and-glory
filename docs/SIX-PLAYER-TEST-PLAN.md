@@ -1,3 +1,5 @@
+> Historical (superseded 2026-11-07): see PLAN-TO-1.0.md / WORKFLOW.md (superseded only for the hosted network: it was written for Tailscale, not the Velocity network)
+
 # Six-player test plan (SLICE-1, SLICE-03)
 
 2026-10-28. Approved as the Phase 1 baseline method; not scheduled or run. Kort skipped the 3v3 baseline on 2026-10-28 ("skip the 6 player game") and directed work to continue on the roadmap. Baseline first, then acceptance. Sources read: `docs/WORKFLOW.md`, `docs/SETUP.md`, `docs/SLICE-1-CHECKPOINT.md`, `docs/DECISIONS.md` (SLICE-1 scoping answers, Excalibur), `docs/BUILDER-SERVER.md`, `docs/ROADMAP-v2.md` (M6), `tools/builder-server/start-build-server.ps1`, `tools/export_server.py`. [A] = assumption. No server was run and nothing was deployed.
