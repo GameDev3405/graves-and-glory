@@ -25,7 +25,7 @@ def _load(house):
 def _rgba(h): h = h.lstrip("#"); return (int(h[0:2], 16), int(h[2:4], 16), int(h[4:6], 16), 255)
 
 def ramps(house):
-    """{ramp name: [RGBA, ...]} for the house, each ramp dark to light (only the shades the approved textures use)."""
+    """{ramp name: [RGBA, ...]} for the house, each ramp dark to light, complete as defined in code (index-based painters work; unused shades have used_by == [])."""
     return {n: [_rgba(e["hex"]) for e in r["colors"]] for n, r in _load(house)["ramps"].items()}
 
 def loose(house):

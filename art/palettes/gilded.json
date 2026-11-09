@@ -2,46 +2,45 @@
  "name": "gilded",
  "ramps": {
   "build_archer.HOSE": {
-   "defined": 6,
    "colors": [
     {
      "hex": "#15130f",
-     "troops": [
+     "used_by": [
       "archer",
       "longbow"
      ]
     },
     {
      "hex": "#26221b",
-     "troops": [
+     "used_by": [
       "archer",
       "longbow"
      ]
     },
     {
      "hex": "#3a3328",
-     "troops": [
+     "used_by": [
       "archer",
       "longbow"
      ]
     },
     {
      "hex": "#4f4636",
-     "troops": [
+     "used_by": [
       "archer",
       "longbow"
      ]
     },
     {
      "hex": "#675c47",
-     "troops": [
+     "used_by": [
       "archer",
       "longbow"
      ]
     },
     {
      "hex": "#84775c",
-     "troops": [
+     "used_by": [
       "archer",
       "longbow"
      ]
@@ -49,63 +48,73 @@
    ]
   },
   "build_archer.IVORY": {
-   "defined": 5,
    "colors": [
     {
+     "hex": "#4a3e2c",
+     "used_by": []
+    },
+    {
      "hex": "#7c6b50",
-     "troops": [
+     "used_by": [
       "archer"
      ]
     },
     {
+     "hex": "#ab9a78",
+     "used_by": []
+    },
+    {
+     "hex": "#d2c4a0",
+     "used_by": []
+    },
+    {
      "hex": "#eee4c8",
-     "troops": [
+     "used_by": [
       "archer"
      ]
     }
    ]
   },
   "build_archer.PAD": {
-   "defined": 6,
    "colors": [
     {
      "hex": "#2e261c",
-     "troops": [
+     "used_by": [
       "archer",
       "longbow"
      ]
     },
     {
      "hex": "#4f4332",
-     "troops": [
+     "used_by": [
       "archer",
       "longbow"
      ]
     },
     {
      "hex": "#776650",
-     "troops": [
+     "used_by": [
       "archer",
       "longbow"
      ]
     },
     {
      "hex": "#9b8a6c",
-     "troops": [
+     "used_by": [
       "archer",
       "longbow"
      ]
     },
     {
      "hex": "#bcab88",
-     "troops": [
+     "used_by": [
       "archer",
       "longbow"
      ]
     },
     {
      "hex": "#d8caa6",
-     "troops": [
+     "used_by": [
       "archer",
       "longbow"
      ]
@@ -113,299 +122,294 @@
    ]
   },
   "build_gl_marshal.BLACK": {
-   "defined": 7,
    "colors": [
     {
      "hex": "#0f0e13",
-     "troops": [
+     "used_by": [
       "gl_marshal"
      ]
     },
     {
      "hex": "#1b1a21",
-     "troops": [
+     "used_by": [
       "gl_marshal"
      ]
     },
     {
      "hex": "#28262f",
-     "troops": [
+     "used_by": [
       "gl_marshal"
      ]
     },
     {
      "hex": "#36343e",
-     "troops": [
+     "used_by": [
       "gl_marshal"
      ]
     },
     {
      "hex": "#4a4853",
-     "troops": [
+     "used_by": [
       "gl_marshal"
      ]
     },
     {
      "hex": "#625f6c",
-     "troops": [
+     "used_by": [
       "gl_marshal"
      ]
     },
     {
      "hex": "#86838f",
-     "troops": [
+     "used_by": [
       "gl_marshal"
      ]
     }
    ]
   },
   "build_gl_marshal.FUR": {
-   "defined": 5,
    "colors": [
     {
      "hex": "#1e1712",
-     "troops": [
+     "used_by": [
       "gl_marshal"
      ]
     },
     {
      "hex": "#33271d",
-     "troops": [
+     "used_by": [
       "gl_marshal"
      ]
     },
     {
      "hex": "#4b3a2b",
-     "troops": [
+     "used_by": [
       "gl_marshal"
      ]
     },
     {
      "hex": "#65513d",
-     "troops": [
+     "used_by": [
       "gl_marshal"
      ]
     },
     {
      "hex": "#806a52",
-     "troops": [
+     "used_by": [
       "gl_marshal"
      ]
     }
    ]
   },
   "build_longbow.FELT": {
-   "defined": 6,
    "colors": [
     {
      "hex": "#1a1510",
-     "troops": [
+     "used_by": [
       "longbow"
      ]
     },
     {
      "hex": "#2e261c",
-     "troops": [
+     "used_by": [
       "archer",
       "longbow"
      ]
     },
     {
      "hex": "#463a2a",
-     "troops": [
+     "used_by": [
       "longbow"
      ]
     },
     {
      "hex": "#5f4f39",
-     "troops": [
+     "used_by": [
       "longbow"
      ]
     },
     {
      "hex": "#7a6749",
-     "troops": [
+     "used_by": [
       "longbow"
      ]
+    },
+    {
+     "hex": "#97835e",
+     "used_by": []
     }
    ]
   },
   "build_longbow.PLUME": {
-   "defined": 3,
    "colors": [
     {
      "hex": "#f6f3ea",
-     "troops": [
+     "used_by": [
       "longbow"
      ]
     },
     {
      "hex": "#dcd6c8",
-     "troops": [
+     "used_by": [
       "longbow"
      ]
     },
     {
      "hex": "#aaa293",
-     "troops": [
+     "used_by": [
       "longbow"
      ]
     }
    ]
   },
   "build_mage.ROPE": {
-   "defined": 4,
    "colors": [
     {
      "hex": "#6a5a3a",
-     "troops": [
+     "used_by": [
       "mage"
      ]
     },
     {
      "hex": "#9c8858",
-     "troops": [
+     "used_by": [
       "mage"
      ]
     },
     {
      "hex": "#c8b57e",
-     "troops": [
+     "used_by": [
       "mage"
      ]
     },
     {
      "hex": "#e6d8a6",
-     "troops": [
+     "used_by": [
       "mage"
      ]
     }
    ]
   },
   "build_mage.SAGE_HAIR": {
-   "defined": 4,
    "colors": [
     {
      "hex": "#6a6a70",
-     "troops": [
+     "used_by": [
       "mage"
      ]
     },
     {
      "hex": "#9c9ca4",
-     "troops": [
+     "used_by": [
       "mage"
      ]
     },
     {
      "hex": "#c8c8ce",
-     "troops": [
+     "used_by": [
       "mage"
      ]
     },
     {
      "hex": "#e8e8ea",
-     "troops": [
+     "used_by": [
       "mage"
      ]
     }
    ]
   },
   "build_mage.WHITE": {
-   "defined": 6,
    "colors": [
     {
      "hex": "#5e5a52",
-     "troops": [
+     "used_by": [
       "mage"
      ]
     },
     {
      "hex": "#8e897c",
-     "troops": [
+     "used_by": [
       "mage"
      ]
     },
     {
      "hex": "#b9b4a4",
-     "troops": [
+     "used_by": [
       "mage"
      ]
     },
     {
      "hex": "#d9d5c6",
-     "troops": [
+     "used_by": [
       "mage"
      ]
     },
     {
      "hex": "#efece0",
-     "troops": [
+     "used_by": [
       "mage"
      ]
     },
     {
      "hex": "#fbf9f1",
-     "troops": [
+     "used_by": [
       "mage"
      ]
     }
    ]
   },
   "build_sentinel.DARK": {
-   "defined": 6,
    "colors": [
     {
      "hex": "#121118",
-     "troops": [
+     "used_by": [
       "sentinel"
      ]
     },
     {
      "hex": "#1e1c25",
-     "troops": [
+     "used_by": [
       "sentinel"
      ]
     },
     {
      "hex": "#2b2833",
-     "troops": [
+     "used_by": [
       "sentinel"
      ]
     },
     {
      "hex": "#3a3644",
-     "troops": [
+     "used_by": [
       "sentinel"
      ]
     },
     {
      "hex": "#4d4858",
-     "troops": [
+     "used_by": [
       "sentinel"
      ]
     },
     {
      "hex": "#625c70",
-     "troops": [
+     "used_by": [
       "sentinel"
      ]
     }
    ]
   },
   "handlib.GOLD": {
-   "defined": 7,
    "colors": [
     {
      "hex": "#2c1909",
-     "troops": [
+     "used_by": [
       "gl_marshal",
       "sentinel"
      ]
     },
     {
      "hex": "#583513",
-     "troops": [
+     "used_by": [
       "archer",
       "gl_marshal",
       "knight",
@@ -415,7 +419,7 @@
     },
     {
      "hex": "#89581b",
-     "troops": [
+     "used_by": [
       "archer",
       "gl_marshal",
       "knight",
@@ -426,7 +430,7 @@
     },
     {
      "hex": "#b8852a",
-     "troops": [
+     "used_by": [
       "archer",
       "gl_marshal",
       "knight",
@@ -437,7 +441,7 @@
     },
     {
      "hex": "#dcb145",
-     "troops": [
+     "used_by": [
       "archer",
       "gl_marshal",
       "knight",
@@ -448,7 +452,7 @@
     },
     {
      "hex": "#f2d877",
-     "troops": [
+     "used_by": [
       "archer",
       "gl_marshal",
       "knight",
@@ -459,7 +463,7 @@
     },
     {
      "hex": "#fff5c4",
-     "troops": [
+     "used_by": [
       "gl_marshal",
       "knight",
       "mage",
@@ -469,11 +473,10 @@
    ]
   },
   "handlib.HAIRS.black": {
-   "defined": 4,
    "colors": [
     {
      "hex": "#0c0a0c",
-     "troops": [
+     "used_by": [
       "archer",
       "knight",
       "longbow",
@@ -482,7 +485,7 @@
     },
     {
      "hex": "#1a161a",
-     "troops": [
+     "used_by": [
       "archer",
       "knight",
       "longbow",
@@ -491,21 +494,24 @@
     },
     {
      "hex": "#2c262a",
-     "troops": [
+     "used_by": [
       "archer",
       "knight",
       "longbow",
       "sentinel"
      ]
+    },
+    {
+     "hex": "#423a3c",
+     "used_by": []
     }
    ]
   },
   "handlib.HAIRS.brown": {
-   "defined": 4,
    "colors": [
     {
      "hex": "#1c120c",
-     "troops": [
+     "used_by": [
       "archer",
       "knight",
       "longbow",
@@ -514,7 +520,7 @@
     },
     {
      "hex": "#3a2618",
-     "troops": [
+     "used_by": [
       "archer",
       "knight",
       "longbow",
@@ -523,21 +529,24 @@
     },
     {
      "hex": "#5a3c24",
-     "troops": [
+     "used_by": [
       "archer",
       "knight",
       "longbow",
       "sentinel"
      ]
+    },
+    {
+     "hex": "#7c5634",
+     "used_by": []
     }
    ]
   },
   "handlib.HAIRS.grey": {
-   "defined": 4,
    "colors": [
     {
      "hex": "#3a3a40",
-     "troops": [
+     "used_by": [
       "archer",
       "gl_marshal",
       "knight",
@@ -547,7 +556,7 @@
     },
     {
      "hex": "#66666e",
-     "troops": [
+     "used_by": [
       "archer",
       "gl_marshal",
       "knight",
@@ -557,7 +566,7 @@
     },
     {
      "hex": "#9a9aa2",
-     "troops": [
+     "used_by": [
       "archer",
       "gl_marshal",
       "knight",
@@ -567,18 +576,17 @@
     },
     {
      "hex": "#c8c8cc",
-     "troops": [
+     "used_by": [
       "gl_marshal"
      ]
     }
    ]
   },
   "handlib.LEATH": {
-   "defined": 6,
    "colors": [
     {
      "hex": "#1c100b",
-     "troops": [
+     "used_by": [
       "archer",
       "gl_marshal",
       "knight",
@@ -589,7 +597,7 @@
     },
     {
      "hex": "#362114",
-     "troops": [
+     "used_by": [
       "archer",
       "gl_marshal",
       "knight",
@@ -600,7 +608,7 @@
     },
     {
      "hex": "#54341e",
-     "troops": [
+     "used_by": [
       "archer",
       "gl_marshal",
       "knight",
@@ -611,7 +619,7 @@
     },
     {
      "hex": "#764b2d",
-     "troops": [
+     "used_by": [
       "archer",
       "gl_marshal",
       "knight",
@@ -622,7 +630,7 @@
     },
     {
      "hex": "#9a6a42",
-     "troops": [
+     "used_by": [
       "archer",
       "gl_marshal",
       "knight",
@@ -632,7 +640,7 @@
     },
     {
      "hex": "#c09068",
-     "troops": [
+     "used_by": [
       "archer",
       "knight",
       "longbow"
@@ -641,53 +649,51 @@
    ]
   },
   "handlib.LINEN": {
-   "defined": 6,
    "colors": [
     {
      "hex": "#3a3024",
-     "troops": [
+     "used_by": [
       "archer"
      ]
     },
     {
      "hex": "#675641",
-     "troops": [
+     "used_by": [
       "archer"
      ]
     },
     {
      "hex": "#958262",
-     "troops": [
+     "used_by": [
       "archer"
      ]
     },
     {
      "hex": "#bfac86",
-     "troops": [
+     "used_by": [
       "archer"
      ]
     },
     {
      "hex": "#ddcfaa",
-     "troops": [
+     "used_by": [
       "archer",
       "longbow"
      ]
     },
     {
      "hex": "#f5edd8",
-     "troops": [
+     "used_by": [
       "archer"
      ]
     }
    ]
   },
   "handlib.MAIL": {
-   "defined": 6,
    "colors": [
     {
      "hex": "#121319",
-     "troops": [
+     "used_by": [
       "archer",
       "gl_marshal",
       "knight",
@@ -697,7 +703,7 @@
     },
     {
      "hex": "#23262f",
-     "troops": [
+     "used_by": [
       "archer",
       "gl_marshal",
       "knight",
@@ -707,7 +713,7 @@
     },
     {
      "hex": "#373c4a",
-     "troops": [
+     "used_by": [
       "archer",
       "gl_marshal",
       "knight",
@@ -717,7 +723,7 @@
     },
     {
      "hex": "#525a6b",
-     "troops": [
+     "used_by": [
       "archer",
       "gl_marshal",
       "knight",
@@ -727,7 +733,7 @@
     },
     {
      "hex": "#737d90",
-     "troops": [
+     "used_by": [
       "archer",
       "knight",
       "longbow",
@@ -736,7 +742,7 @@
     },
     {
      "hex": "#9ba5b5",
-     "troops": [
+     "used_by": [
       "archer",
       "knight",
       "longbow",
@@ -746,11 +752,14 @@
    ]
   },
   "handlib.SKINS.brown": {
-   "defined": 5,
    "colors": [
     {
+     "hex": "#24140e",
+     "used_by": []
+    },
+    {
      "hex": "#4a2c1c",
-     "troops": [
+     "used_by": [
       "archer",
       "knight",
       "longbow",
@@ -760,7 +769,7 @@
     },
     {
      "hex": "#6e4430",
-     "troops": [
+     "used_by": [
       "archer",
       "knight",
       "longbow",
@@ -770,7 +779,7 @@
     },
     {
      "hex": "#905c40",
-     "troops": [
+     "used_by": [
       "archer",
       "knight",
       "longbow",
@@ -780,7 +789,7 @@
     },
     {
      "hex": "#b07a58",
-     "troops": [
+     "used_by": [
       "archer",
       "knight",
       "longbow",
@@ -791,11 +800,14 @@
    ]
   },
   "handlib.SKINS.fair": {
-   "defined": 5,
    "colors": [
     {
+     "hex": "#4a2a20",
+     "used_by": []
+    },
+    {
      "hex": "#8a5340",
-     "troops": [
+     "used_by": [
       "archer",
       "knight",
       "longbow",
@@ -805,7 +817,7 @@
     },
     {
      "hex": "#c08068",
-     "troops": [
+     "used_by": [
       "archer",
       "knight",
       "longbow",
@@ -815,7 +827,7 @@
     },
     {
      "hex": "#e2aa8c",
-     "troops": [
+     "used_by": [
       "archer",
       "knight",
       "longbow",
@@ -825,7 +837,7 @@
     },
     {
      "hex": "#f4ccb0",
-     "troops": [
+     "used_by": [
       "archer",
       "knight",
       "longbow",
@@ -836,11 +848,14 @@
    ]
   },
   "handlib.SKINS.olive": {
-   "defined": 5,
    "colors": [
     {
+     "hex": "#3c2618",
+     "used_by": []
+    },
+    {
      "hex": "#6e4630",
-     "troops": [
+     "used_by": [
       "archer",
       "knight",
       "longbow",
@@ -850,7 +865,7 @@
     },
     {
      "hex": "#a06c4c",
-     "troops": [
+     "used_by": [
       "archer",
       "knight",
       "longbow",
@@ -860,7 +875,7 @@
     },
     {
      "hex": "#c8926c",
-     "troops": [
+     "used_by": [
       "archer",
       "knight",
       "longbow",
@@ -870,7 +885,7 @@
     },
     {
      "hex": "#e0b48e",
-     "troops": [
+     "used_by": [
       "archer",
       "knight",
       "longbow",
@@ -881,11 +896,14 @@
    ]
   },
   "handlib.SKINS.pale": {
-   "defined": 5,
    "colors": [
     {
+     "hex": "#4c3430",
+     "used_by": []
+    },
+    {
      "hex": "#8c6458",
-     "troops": [
+     "used_by": [
       "archer",
       "gl_marshal",
       "knight",
@@ -896,7 +914,7 @@
     },
     {
      "hex": "#bc9282",
-     "troops": [
+     "used_by": [
       "archer",
       "gl_marshal",
       "knight",
@@ -907,7 +925,7 @@
     },
     {
      "hex": "#dcb6a4",
-     "troops": [
+     "used_by": [
       "archer",
       "gl_marshal",
       "knight",
@@ -918,7 +936,7 @@
     },
     {
      "hex": "#f0d6c8",
-     "troops": [
+     "used_by": [
       "archer",
       "gl_marshal",
       "knight",
@@ -930,11 +948,10 @@
    ]
   },
   "handlib.STEEL": {
-   "defined": 7,
    "colors": [
     {
      "hex": "#15161f",
-     "troops": [
+     "used_by": [
       "archer",
       "knight",
       "longbow",
@@ -943,7 +960,7 @@
     },
     {
      "hex": "#282c3b",
-     "troops": [
+     "used_by": [
       "archer",
       "knight",
       "longbow",
@@ -953,7 +970,7 @@
     },
     {
      "hex": "#414a5d",
-     "troops": [
+     "used_by": [
       "archer",
       "knight",
       "longbow",
@@ -962,7 +979,7 @@
     },
     {
      "hex": "#617086",
-     "troops": [
+     "used_by": [
       "archer",
       "knight",
       "longbow",
@@ -972,7 +989,7 @@
     },
     {
      "hex": "#8a97ab",
-     "troops": [
+     "used_by": [
       "archer",
       "knight",
       "longbow",
@@ -982,7 +999,7 @@
     },
     {
      "hex": "#b9c4d1",
-     "troops": [
+     "used_by": [
       "archer",
       "knight",
       "longbow",
@@ -992,7 +1009,7 @@
     },
     {
      "hex": "#eef3f6",
-     "troops": [
+     "used_by": [
       "archer",
       "knight",
       "longbow",
@@ -1002,25 +1019,32 @@
    ]
   },
   "handlib.TEAM.linen.cloth": {
-   "defined": 5,
    "colors": [
     {
      "hex": "#3a3024",
-     "troops": [
+     "used_by": [
       "archer"
      ]
     },
     {
      "hex": "#675641",
-     "troops": [
+     "used_by": [
       "archer"
      ]
     },
     {
      "hex": "#958262",
-     "troops": [
+     "used_by": [
       "archer"
      ]
+    },
+    {
+     "hex": "#c4b28d",
+     "used_by": []
+    },
+    {
+     "hex": "#e6dab8",
+     "used_by": []
     }
    ]
   }
@@ -1028,14 +1052,14 @@
  "loose": [
   {
    "hex": "#0e0c12",
-   "troops": [
+   "used_by": [
     "knight",
     "sentinel"
    ]
   },
   {
    "hex": "#2a1a10",
-   "troops": [
+   "used_by": [
     "archer",
     "knight",
     "longbow",
@@ -1045,7 +1069,7 @@
   },
   {
    "hex": "#3a2a1c",
-   "troops": [
+   "used_by": [
     "archer",
     "knight",
     "longbow",
@@ -1055,7 +1079,7 @@
   },
   {
    "hex": "#3c5a78",
-   "troops": [
+   "used_by": [
     "archer",
     "knight",
     "longbow",
@@ -1065,13 +1089,13 @@
   },
   {
    "hex": "#4a5a6a",
-   "troops": [
+   "used_by": [
     "gl_marshal"
    ]
   },
   {
    "hex": "#5a6a5a",
-   "troops": [
+   "used_by": [
     "archer",
     "knight",
     "longbow",
@@ -1081,41 +1105,41 @@
   },
   {
    "hex": "#8e8676",
-   "troops": [
+   "used_by": [
     "archer",
     "longbow"
    ]
   },
   {
    "hex": "#b9b2a2",
-   "troops": [
+   "used_by": [
     "archer",
     "longbow"
    ]
   },
   {
    "hex": "#d8d2c4",
-   "troops": [
+   "used_by": [
     "archer",
     "longbow"
    ]
   },
   {
    "hex": "#ffe9a0",
-   "troops": [
+   "used_by": [
     "mage"
    ]
   },
   {
    "hex": "#f2eee4",
-   "troops": [
+   "used_by": [
     "archer",
     "longbow"
    ]
   },
   {
    "hex": "#f2efe8",
-   "troops": [
+   "used_by": [
     "archer",
     "gl_marshal",
     "knight",
@@ -1126,15 +1150,17 @@
   },
   {
    "hex": "#fff8dc",
-   "troops": [
+   "used_by": [
     "mage"
    ]
   }
  ],
  "counts": {
-  "colors": 124,
+  "colors": 136,
+  "used": 124,
   "ramps": 24,
-  "grouped": 111,
+  "ramp_shades": 127,
+  "unused_shades": 12,
   "loose": 13
  },
  "ref": "54e5d339",

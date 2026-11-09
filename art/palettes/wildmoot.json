@@ -2,11 +2,10 @@
  "name": "wildmoot",
  "ramps": {
   "build_wm_hound.SPIKE_R": {
-   "defined": 7,
    "colors": [
     {
      "hex": "#3b2c24",
-     "troops": [
+     "used_by": [
       "wm_hound",
       "wm_hunter",
       "wm_seer",
@@ -16,7 +15,7 @@
     },
     {
      "hex": "#58443a",
-     "troops": [
+     "used_by": [
       "wm_hound",
       "wm_hunter",
       "wm_seer",
@@ -26,7 +25,7 @@
     },
     {
      "hex": "#7a6252",
-     "troops": [
+     "used_by": [
       "wm_hound",
       "wm_hunter",
       "wm_seer",
@@ -36,7 +35,7 @@
     },
     {
      "hex": "#675b47",
-     "troops": [
+     "used_by": [
       "wm_hound",
       "wm_hunter",
       "wm_oldhorn",
@@ -47,7 +46,7 @@
     },
     {
      "hex": "#9a8d71",
-     "troops": [
+     "used_by": [
       "wm_hound",
       "wm_hunter",
       "wm_oldhorn",
@@ -58,7 +57,7 @@
     },
     {
      "hex": "#c9bd9f",
-     "troops": [
+     "used_by": [
       "wm_hound",
       "wm_hunter",
       "wm_oldhorn",
@@ -69,7 +68,7 @@
     },
     {
      "hex": "#e6dfc8",
-     "troops": [
+     "used_by": [
       "wm_hound",
       "wm_hunter",
       "wm_oldhorn",
@@ -81,75 +80,77 @@
    ]
   },
   "build_wm_oldhorn.FEATHER": {
-   "defined": 5,
    "colors": [
     {
+     "hex": "#2a2620",
+     "used_by": []
+    },
+    {
      "hex": "#5a544a",
-     "troops": [
+     "used_by": [
       "wm_oldhorn"
      ]
     },
     {
      "hex": "#8a8476",
-     "troops": [
+     "used_by": [
       "wm_oldhorn"
      ]
     },
     {
      "hex": "#b8b2a2",
-     "troops": [
+     "used_by": [
       "wm_oldhorn"
      ]
     },
     {
      "hex": "#dcd6c4",
-     "troops": [
+     "used_by": [
       "wm_oldhorn"
      ]
     }
    ]
   },
   "handlib.LEATH": {
-   "defined": 6,
    "colors": [
     {
      "hex": "#1c100b",
-     "troops": [
+     "used_by": [
       "wm_hunter",
       "wm_tusk"
      ]
     },
     {
      "hex": "#362114",
-     "troops": [
+     "used_by": [
       "wm_hunter",
       "wm_tusk"
      ]
     },
     {
      "hex": "#54341e",
-     "troops": [
+     "used_by": [
       "wm_hunter",
       "wm_tusk"
      ]
     },
     {
      "hex": "#764b2d",
-     "troops": [
+     "used_by": [
       "wm_hunter",
       "wm_tusk"
      ]
     },
     {
      "hex": "#9a6a42",
-     "troops": [
+     "used_by": [
       "wm_hunter",
       "wm_tusk"
      ]
     },
     {
      "hex": "#c09068",
-     "troops": [
+     "used_by": [
       "wm_hunter",
       "wm_tusk"
      ]
@@ -157,73 +158,74 @@
    ]
   },
   "wildmoot.BARK": {
-   "defined": 5,
    "colors": [
     {
      "hex": "#16100b",
-     "troops": [
+     "used_by": [
       "wm_hound",
       "wm_oldhorn"
      ]
     },
     {
      "hex": "#2c2017",
-     "troops": [
+     "used_by": [
       "wm_hound",
       "wm_oldhorn"
      ]
     },
     {
      "hex": "#4a3626",
-     "troops": [
+     "used_by": [
       "wm_hound",
       "wm_oldhorn"
      ]
     },
     {
      "hex": "#634a35",
-     "troops": [
+     "used_by": [
       "wm_hound",
       "wm_oldhorn"
      ]
     },
     {
      "hex": "#7e6249",
-     "troops": [
+     "used_by": [
       "wm_oldhorn"
      ]
     }
    ]
   },
   "wildmoot.BLOOD": {
-   "defined": 4,
    "colors": [
     {
+     "hex": "#2a0e0b",
+     "used_by": []
+    },
+    {
      "hex": "#4a1a15",
-     "troops": [
+     "used_by": [
       "wm_stalker"
      ]
     },
     {
      "hex": "#6e2a22",
-     "troops": [
+     "used_by": [
       "wm_seer"
      ]
     },
     {
      "hex": "#8e3a2e",
-     "troops": [
+     "used_by": [
       "wm_seer"
      ]
     }
    ]
   },
   "wildmoot.BONE": {
-   "defined": 6,
    "colors": [
     {
      "hex": "#33291f",
-     "troops": [
+     "used_by": [
       "wm_hound",
       "wm_hunter",
       "wm_oldhorn",
@@ -234,7 +236,7 @@
     },
     {
      "hex": "#675b47",
-     "troops": [
+     "used_by": [
       "wm_hound",
       "wm_hunter",
       "wm_oldhorn",
@@ -245,7 +247,7 @@
     },
     {
      "hex": "#9a8d71",
-     "troops": [
+     "used_by": [
       "wm_hound",
       "wm_hunter",
       "wm_oldhorn",
@@ -256,7 +258,7 @@
     },
     {
      "hex": "#c9bd9f",
-     "troops": [
+     "used_by": [
       "wm_hound",
       "wm_hunter",
       "wm_oldhorn",
@@ -267,7 +269,7 @@
     },
     {
      "hex": "#e6dfc8",
-     "troops": [
+     "used_by": [
       "wm_hound",
       "wm_hunter",
       "wm_oldhorn",
@@ -278,7 +280,7 @@
     },
     {
      "hex": "#f7f3e4",
-     "troops": [
+     "used_by": [
       "wm_hound",
       "wm_hunter",
       "wm_oldhorn",
@@ -290,58 +292,64 @@
    ]
   },
   "wildmoot.CHITIN": {
-   "defined": 6,
    "colors": [
     {
      "hex": "#0c0e0b",
-     "troops": [
+     "used_by": [
       "wm_stalker"
      ]
     },
     {
      "hex": "#161a13",
-     "troops": [
+     "used_by": [
       "wm_stalker"
      ]
     },
     {
      "hex": "#23291f",
-     "troops": [
+     "used_by": [
       "wm_stalker"
      ]
     },
     {
      "hex": "#343c2e",
-     "troops": [
+     "used_by": [
       "wm_stalker"
      ]
     },
     {
      "hex": "#4a5440",
-     "troops": [
+     "used_by": [
       "wm_stalker"
      ]
     },
     {
      "hex": "#64705a",
-     "troops": [
+     "used_by": [
       "wm_stalker"
      ]
     }
    ]
   },
   "wildmoot.CLAY": {
-   "defined": 5,
    "colors": [
     {
+     "hex": "#4a4030",
+     "used_by": []
+    },
+    {
+     "hex": "#7a6c52",
+     "used_by": []
+    },
+    {
      "hex": "#a8987a",
-     "troops": [
+     "used_by": [
       "wm_stalker"
      ]
     },
     {
      "hex": "#c8b48a",
-     "troops": [
+     "used_by": [
       "wm_hound",
       "wm_hunter",
       "wm_oldhorn",
@@ -351,7 +359,7 @@
     },
     {
      "hex": "#e2d4b0",
-     "troops": [
+     "used_by": [
       "wm_hound",
       "wm_oldhorn"
      ]
@@ -359,53 +367,55 @@
    ]
   },
   "wildmoot.FUR": {
-   "defined": 5,
    "colors": [
     {
      "hex": "#24170e",
-     "troops": [
+     "used_by": [
       "wm_hound"
      ]
     },
     {
      "hex": "#43291a",
-     "troops": [
+     "used_by": [
       "wm_hound"
      ]
     },
     {
      "hex": "#673f25",
-     "troops": [
+     "used_by": [
       "wm_hound"
      ]
     },
     {
      "hex": "#885836",
-     "troops": [
+     "used_by": [
       "wm_hound"
      ]
     },
     {
      "hex": "#a97650",
-     "troops": [
+     "used_by": [
       "wm_hound"
      ]
     }
    ]
   },
   "wildmoot.GLOWCLAY": {
-   "defined": 3,
    "colors": [
     {
+     "hex": "#8a6a30",
+     "used_by": []
+    },
+    {
      "hex": "#d8b060",
-     "troops": [
+     "used_by": [
       "wm_oldhorn",
       "wm_seer"
      ]
     },
     {
      "hex": "#ffe0a0",
-     "troops": [
+     "used_by": [
       "wm_oldhorn",
       "wm_seer"
      ]
@@ -413,11 +423,10 @@
    ]
   },
   "wildmoot.GREYFUR": {
-   "defined": 6,
    "colors": [
     {
      "hex": "#2a2622",
-     "troops": [
+     "used_by": [
       "wm_hunter",
       "wm_oldhorn",
       "wm_seer",
@@ -426,7 +435,7 @@
     },
     {
      "hex": "#4a443c",
-     "troops": [
+     "used_by": [
       "wm_hunter",
       "wm_oldhorn",
       "wm_seer",
@@ -435,7 +444,7 @@
     },
     {
      "hex": "#6a6258",
-     "troops": [
+     "used_by": [
       "wm_hunter",
       "wm_oldhorn",
       "wm_seer",
@@ -444,7 +453,7 @@
     },
     {
      "hex": "#7d7468",
-     "troops": [
+     "used_by": [
       "wm_hunter",
       "wm_oldhorn",
       "wm_seer",
@@ -453,7 +462,7 @@
     },
     {
      "hex": "#9a9284",
-     "troops": [
+     "used_by": [
       "wm_hunter",
       "wm_oldhorn",
       "wm_seer",
@@ -462,7 +471,7 @@
     },
     {
      "hex": "#bab3a4",
-     "troops": [
+     "used_by": [
       "wm_hunter",
       "wm_oldhorn",
       "wm_seer",
@@ -472,11 +481,10 @@
    ]
   },
   "wildmoot.HIDE": {
-   "defined": 6,
    "colors": [
     {
      "hex": "#1b120c",
-     "troops": [
+     "used_by": [
       "wm_hunter",
       "wm_seer",
       "wm_tusk"
@@ -484,7 +492,7 @@
     },
     {
      "hex": "#3a2619",
-     "troops": [
+     "used_by": [
       "wm_hunter",
       "wm_seer",
       "wm_tusk"
@@ -492,7 +500,7 @@
     },
     {
      "hex": "#5c4029",
-     "troops": [
+     "used_by": [
       "wm_hunter",
       "wm_seer",
       "wm_tusk"
@@ -500,7 +508,7 @@
     },
     {
      "hex": "#82603c",
-     "troops": [
+     "used_by": [
       "wm_hunter",
       "wm_seer",
       "wm_tusk"
@@ -508,7 +516,7 @@
     },
     {
      "hex": "#a98258",
-     "troops": [
+     "used_by": [
       "wm_hunter",
       "wm_seer",
       "wm_tusk"
@@ -516,7 +524,7 @@
     },
     {
      "hex": "#cfae80",
-     "troops": [
+     "used_by": [
       "wm_hunter",
       "wm_tusk"
      ]
@@ -524,11 +532,10 @@
    ]
   },
   "wildmoot.HORN": {
-   "defined": 5,
    "colors": [
     {
      "hex": "#0f0b09",
-     "troops": [
+     "used_by": [
       "wm_hound",
       "wm_hunter",
       "wm_oldhorn",
@@ -539,7 +546,7 @@
     },
     {
      "hex": "#231915",
-     "troops": [
+     "used_by": [
       "wm_hound",
       "wm_hunter",
       "wm_oldhorn",
@@ -550,7 +557,7 @@
     },
     {
      "hex": "#3b2c24",
-     "troops": [
+     "used_by": [
       "wm_hound",
       "wm_hunter",
       "wm_seer",
@@ -560,7 +567,7 @@
     },
     {
      "hex": "#58443a",
-     "troops": [
+     "used_by": [
       "wm_hound",
       "wm_hunter",
       "wm_seer",
@@ -570,7 +577,7 @@
     },
     {
      "hex": "#7a6252",
-     "troops": [
+     "used_by": [
       "wm_hound",
       "wm_hunter",
       "wm_seer",
@@ -581,11 +588,10 @@
    ]
   },
   "wildmoot.OCHRE": {
-   "defined": 5,
    "colors": [
     {
      "hex": "#3e2208",
-     "troops": [
+     "used_by": [
       "wm_hound",
       "wm_hunter",
       "wm_oldhorn",
@@ -596,7 +602,7 @@
     },
     {
      "hex": "#683e14",
-     "troops": [
+     "used_by": [
       "wm_hound",
       "wm_hunter",
       "wm_oldhorn",
@@ -607,7 +613,7 @@
     },
     {
      "hex": "#8e5c20",
-     "troops": [
+     "used_by": [
       "wm_hound",
       "wm_hunter",
       "wm_oldhorn",
@@ -618,7 +624,7 @@
     },
     {
      "hex": "#b07c36",
-     "troops": [
+     "used_by": [
       "wm_hound",
       "wm_hunter",
       "wm_oldhorn",
@@ -629,7 +635,7 @@
     },
     {
      "hex": "#cc9c5e",
-     "troops": [
+     "used_by": [
       "wm_hound",
       "wm_hunter",
       "wm_oldhorn",
@@ -641,11 +647,10 @@
    ]
   },
   "wildmoot.PIG": {
-   "defined": 5,
    "colors": [
     {
      "hex": "#2c1612",
-     "troops": [
+     "used_by": [
       "wm_hunter",
       "wm_seer",
       "wm_tusk"
@@ -653,7 +658,7 @@
     },
     {
      "hex": "#5e332a",
-     "troops": [
+     "used_by": [
       "wm_hunter",
       "wm_seer",
       "wm_tusk"
@@ -661,7 +666,7 @@
     },
     {
      "hex": "#8c5a48",
-     "troops": [
+     "used_by": [
       "wm_hunter",
       "wm_seer",
       "wm_tusk"
@@ -669,7 +674,7 @@
     },
     {
      "hex": "#b3806a",
-     "troops": [
+     "used_by": [
       "wm_hunter",
       "wm_seer",
       "wm_tusk"
@@ -677,7 +682,7 @@
     },
     {
      "hex": "#d6a994",
-     "troops": [
+     "used_by": [
       "wm_hunter",
       "wm_seer",
       "wm_tusk"
@@ -686,93 +691,98 @@
    ]
   },
   "wildmoot.SILK": {
-   "defined": 5,
    "colors": [
     {
      "hex": "#6e6a60",
-     "troops": [
+     "used_by": [
       "wm_stalker"
      ]
     },
     {
      "hex": "#9a958a",
-     "troops": [
+     "used_by": [
       "wm_stalker"
      ]
     },
     {
      "hex": "#c4c0b4",
-     "troops": [
+     "used_by": [
       "wm_stalker"
      ]
     },
     {
      "hex": "#e2dfd6",
-     "troops": [
+     "used_by": [
       "wm_stalker"
      ]
     },
     {
      "hex": "#f6f4ee",
-     "troops": [
+     "used_by": [
       "wm_stalker"
      ]
     }
    ]
   },
   "wildmoot.SNOUT": {
-   "defined": 5,
    "colors": [
     {
      "hex": "#2a1a14",
-     "troops": [
+     "used_by": [
       "wm_hound"
      ]
     },
     {
      "hex": "#3a2620",
-     "troops": [
+     "used_by": [
       "wm_hound"
      ]
     },
     {
      "hex": "#5e4034",
-     "troops": [
+     "used_by": [
       "wm_hound"
      ]
     },
     {
      "hex": "#7e5a4a",
-     "troops": [
+     "used_by": [
       "wm_hound"
      ]
+    },
+    {
+     "hex": "#9c786a",
+     "used_by": []
     }
    ]
   },
   "wildmoot.WOOD": {
-   "defined": 5,
    "colors": [
     {
+     "hex": "#1a120c",
+     "used_by": []
+    },
+    {
      "hex": "#36241a",
-     "troops": [
+     "used_by": [
       "wm_seer"
      ]
     },
     {
      "hex": "#563a26",
-     "troops": [
+     "used_by": [
       "wm_seer"
      ]
     },
     {
      "hex": "#7a5436",
-     "troops": [
+     "used_by": [
       "wm_seer"
      ]
     },
     {
      "hex": "#9c7248",
-     "troops": [
+     "used_by": [
       "wm_seer"
      ]
     }
@@ -782,7 +792,7 @@
  "loose": [
   {
    "hex": "#0e0c12",
-   "troops": [
+   "used_by": [
     "wm_hunter",
     "wm_stalker",
     "wm_tusk"
@@ -790,14 +800,14 @@
   },
   {
    "hex": "#2e2418",
-   "troops": [
+   "used_by": [
     "wm_oldhorn",
     "wm_seer"
    ]
   },
   {
    "hex": "#524230",
-   "troops": [
+   "used_by": [
     "wm_hound",
     "wm_oldhorn",
     "wm_seer"
@@ -805,7 +815,7 @@
   },
   {
    "hex": "#7a6648",
-   "troops": [
+   "used_by": [
     "wm_hound",
     "wm_oldhorn",
     "wm_seer"
@@ -813,7 +823,7 @@
   },
   {
    "hex": "#a08a66",
-   "troops": [
+   "used_by": [
     "wm_hound",
     "wm_oldhorn",
     "wm_seer"
@@ -821,7 +831,7 @@
   },
   {
    "hex": "#c8b48e",
-   "troops": [
+   "used_by": [
     "wm_hound",
     "wm_oldhorn",
     "wm_seer"
@@ -829,7 +839,7 @@
   },
   {
    "hex": "#e8dcc0",
-   "troops": [
+   "used_by": [
     "wm_hound",
     "wm_oldhorn",
     "wm_seer"
@@ -837,9 +847,11 @@
   }
  ],
  "counts": {
-  "colors": 87,
+  "colors": 94,
+  "used": 87,
   "ramps": 18,
-  "grouped": 80,
+  "ramp_shades": 94,
+  "unused_shades": 7,
   "loose": 7
  },
  "ref": "54e5d339",

@@ -2,454 +2,458 @@
  "name": "tidecallers",
  "ramps": {
   "build_tc_admiral.ANCHOR": {
-   "defined": 6,
    "colors": [
     {
+     "hex": "#1e1408",
+     "used_by": []
+    },
+    {
      "hex": "#3a2812",
-     "troops": [
+     "used_by": [
       "tc_admiral"
      ]
     },
     {
      "hex": "#5a4020",
-     "troops": [
+     "used_by": [
       "tc_admiral"
      ]
     },
     {
      "hex": "#7a5a30",
-     "troops": [
+     "used_by": [
       "tc_admiral"
      ]
     },
     {
      "hex": "#967846",
-     "troops": [
+     "used_by": [
       "tc_admiral"
      ]
     },
     {
      "hex": "#bfa070",
-     "troops": [
+     "used_by": [
       "tc_admiral"
      ]
     }
    ]
   },
   "build_tc_admiral.COAT": {
-   "defined": 6,
    "colors": [
     {
      "hex": "#0c1830",
-     "troops": [
+     "used_by": [
       "tc_admiral"
      ]
     },
     {
      "hex": "#16305c",
-     "troops": [
+     "used_by": [
       "tc_admiral"
      ]
     },
     {
      "hex": "#214c80",
-     "troops": [
+     "used_by": [
       "tc_admiral"
      ]
     },
     {
      "hex": "#2e6297",
-     "troops": [
+     "used_by": [
       "tc_admiral"
      ]
     },
     {
      "hex": "#6691b7",
-     "troops": [
+     "used_by": [
       "tc_admiral"
      ]
     },
     {
      "hex": "#9ab6cc",
-     "troops": [
+     "used_by": [
       "tc_admiral"
      ]
     }
    ]
   },
   "build_tc_admiral.FELT": {
-   "defined": 5,
    "colors": [
     {
      "hex": "#0b0f1a",
-     "troops": [
+     "used_by": [
       "tc_admiral"
      ]
     },
     {
      "hex": "#171d2c",
-     "troops": [
+     "used_by": [
       "tc_admiral"
      ]
     },
     {
      "hex": "#242d42",
-     "troops": [
+     "used_by": [
       "tc_admiral"
      ]
     },
     {
      "hex": "#34405a",
-     "troops": [
+     "used_by": [
       "tc_admiral"
      ]
     },
     {
      "hex": "#4a5a7a",
-     "troops": [
+     "used_by": [
       "tc_admiral"
      ]
     }
    ]
   },
   "build_tc_admiral.GILT": {
-   "defined": 6,
    "colors": [
     {
+     "hex": "#241a08",
+     "used_by": []
+    },
+    {
      "hex": "#4a3815",
-     "troops": [
+     "used_by": [
       "tc_admiral"
      ]
     },
     {
      "hex": "#6f5a26",
-     "troops": [
+     "used_by": [
       "tc_admiral"
      ]
     },
     {
      "hex": "#96783a",
-     "troops": [
+     "used_by": [
       "tc_admiral"
      ]
     },
     {
      "hex": "#b89a54",
-     "troops": [
+     "used_by": [
       "tc_admiral"
      ]
     },
     {
      "hex": "#dcc487",
-     "troops": [
+     "used_by": [
       "tc_admiral"
      ]
     }
    ]
   },
   "build_tc_admiral.HAIR": {
-   "defined": 6,
    "colors": [
     {
      "hex": "#14223a",
-     "troops": [
+     "used_by": [
       "tc_admiral"
      ]
     },
     {
      "hex": "#2a4466",
-     "troops": [
+     "used_by": [
       "tc_admiral"
      ]
     },
     {
      "hex": "#4a6a8e",
-     "troops": [
+     "used_by": [
       "tc_admiral"
      ]
     },
     {
      "hex": "#7a98b4",
-     "troops": [
+     "used_by": [
       "tc_admiral"
      ]
     },
     {
      "hex": "#b0c4d4",
-     "troops": [
+     "used_by": [
       "tc_admiral"
      ]
     },
     {
      "hex": "#e2ecf2",
-     "troops": [
+     "used_by": [
       "tc_admiral"
      ]
     }
    ]
   },
   "build_tc_admiral.PALE": {
-   "defined": 6,
    "colors": [
     {
      "hex": "#2c3a3c",
-     "troops": [
+     "used_by": [
       "tc_admiral"
      ]
     },
     {
      "hex": "#52666a",
-     "troops": [
+     "used_by": [
       "tc_admiral"
      ]
     },
     {
      "hex": "#7e9694",
-     "troops": [
+     "used_by": [
       "tc_admiral"
      ]
     },
     {
      "hex": "#a9bfbb",
-     "troops": [
+     "used_by": [
       "tc_admiral"
      ]
     },
     {
      "hex": "#cfdcd6",
-     "troops": [
+     "used_by": [
       "tc_admiral"
      ]
     },
     {
      "hex": "#ecf4ee",
-     "troops": [
+     "used_by": [
       "tc_admiral"
      ]
     }
    ]
   },
   "build_tc_brute.HIDE": {
-   "defined": 6,
    "colors": [
     {
      "hex": "#070f16",
-     "troops": [
+     "used_by": [
       "tc_brute"
      ]
     },
     {
      "hex": "#11222c",
-     "troops": [
+     "used_by": [
       "tc_brute"
      ]
     },
     {
      "hex": "#1f3d48",
-     "troops": [
+     "used_by": [
       "tc_brute"
      ]
     },
     {
      "hex": "#33606a",
-     "troops": [
+     "used_by": [
       "tc_brute"
      ]
     },
     {
      "hex": "#52848a",
-     "troops": [
+     "used_by": [
       "tc_brute"
      ]
     },
     {
      "hex": "#82aaa8",
-     "troops": [
+     "used_by": [
       "tc_brute"
      ]
     }
    ]
   },
   "build_tc_brute.KELP": {
-   "defined": 5,
    "colors": [
     {
      "hex": "#0d140a",
-     "troops": [
+     "used_by": [
       "tc_brute"
      ]
     },
     {
      "hex": "#1c2a12",
-     "troops": [
+     "used_by": [
       "tc_brute"
      ]
     },
     {
      "hex": "#30431a",
-     "troops": [
+     "used_by": [
       "tc_brute"
      ]
     },
     {
      "hex": "#4c6528",
-     "troops": [
+     "used_by": [
       "tc_brute"
      ]
     },
     {
      "hex": "#788c3e",
-     "troops": [
+     "used_by": [
       "tc_brute"
      ]
     }
    ]
   },
   "build_tc_brute.TENT": {
-   "defined": 6,
    "colors": [
     {
      "hex": "#0c1030",
-     "troops": [
+     "used_by": [
       "tc_brute"
      ]
     },
     {
      "hex": "#182058",
-     "troops": [
+     "used_by": [
       "tc_brute"
      ]
     },
     {
      "hex": "#2a3c88",
-     "troops": [
+     "used_by": [
       "tc_brute"
      ]
     },
     {
      "hex": "#4262b0",
-     "troops": [
+     "used_by": [
       "tc_brute"
      ]
     },
     {
      "hex": "#7a9ede",
-     "troops": [
+     "used_by": [
       "tc_brute"
      ]
     },
     {
      "hex": "#bcd2f2",
-     "troops": [
+     "used_by": [
       "tc_brute"
      ]
     }
    ]
   },
   "build_tc_harpooner.IRON": {
-   "defined": 6,
    "colors": [
     {
+     "hex": "#12141a",
+     "used_by": []
+    },
+    {
+     "hex": "#262a33",
+     "used_by": []
+    },
+    {
      "hex": "#3f4550",
-     "troops": [
+     "used_by": [
       "tc_harpooner"
      ]
     },
     {
      "hex": "#5d6672",
-     "troops": [
+     "used_by": [
       "tc_harpooner"
      ]
     },
     {
      "hex": "#808a96",
-     "troops": [
+     "used_by": [
       "tc_harpooner"
      ]
     },
     {
      "hex": "#a9b2bb",
-     "troops": [
+     "used_by": [
       "tc_harpooner"
      ]
     }
    ]
   },
   "build_tc_harpooner.OIL": {
-   "defined": 6,
    "colors": [
     {
      "hex": "#1c1608",
-     "troops": [
+     "used_by": [
       "tc_harpooner"
      ]
     },
     {
      "hex": "#382b10",
-     "troops": [
+     "used_by": [
       "tc_harpooner"
      ]
     },
     {
      "hex": "#5a4818",
-     "troops": [
+     "used_by": [
       "tc_harpooner"
      ]
     },
     {
      "hex": "#80692a",
-     "troops": [
+     "used_by": [
       "tc_harpooner"
      ]
     },
     {
      "hex": "#a38a3e",
-     "troops": [
+     "used_by": [
       "tc_harpooner"
      ]
     },
     {
      "hex": "#c4ad62",
-     "troops": [
+     "used_by": [
       "tc_harpooner"
      ]
     }
    ]
   },
   "build_tc_harpooner.TAR": {
-   "defined": 5,
    "colors": [
     {
      "hex": "#0c0a0a",
-     "troops": [
+     "used_by": [
       "tc_admiral",
       "tc_harpooner"
      ]
     },
     {
      "hex": "#1c1612",
-     "troops": [
+     "used_by": [
       "tc_admiral",
       "tc_harpooner"
      ]
     },
     {
      "hex": "#30261c",
-     "troops": [
+     "used_by": [
       "tc_admiral",
       "tc_harpooner"
      ]
     },
     {
      "hex": "#483a2a",
-     "troops": [
+     "used_by": [
       "tc_admiral",
       "tc_harpooner"
      ]
     },
     {
      "hex": "#62503a",
-     "troops": [
+     "used_by": [
       "tc_admiral",
       "tc_harpooner"
      ]
@@ -457,110 +461,114 @@
    ]
   },
   "build_tc_mist.DRIFT": {
-   "defined": 5,
    "colors": [
     {
+     "hex": "#1a1612",
+     "used_by": []
+    },
+    {
      "hex": "#322a22",
-     "troops": [
+     "used_by": [
       "tc_mist"
      ]
     },
     {
      "hex": "#524738",
-     "troops": [
+     "used_by": [
       "tc_mist"
      ]
     },
     {
      "hex": "#75664f",
-     "troops": [
+     "used_by": [
       "tc_mist"
      ]
     },
     {
      "hex": "#9a8a6c",
-     "troops": [
+     "used_by": [
       "tc_mist"
      ]
     }
    ]
   },
   "build_tc_mist.GREY": {
-   "defined": 5,
    "colors": [
     {
      "hex": "#14191c",
-     "troops": [
+     "used_by": [
       "tc_mist"
      ]
     },
     {
      "hex": "#2b3538",
-     "troops": [
+     "used_by": [
       "tc_mist"
      ]
     },
     {
      "hex": "#4b5b5f",
-     "troops": [
+     "used_by": [
       "tc_mist"
      ]
     },
     {
      "hex": "#72868a",
-     "troops": [
+     "used_by": [
       "tc_mist"
      ]
     },
     {
      "hex": "#9db0b2",
-     "troops": [
+     "used_by": [
       "tc_mist"
      ]
     }
    ]
   },
   "build_tc_mist.MIST": {
-   "defined": 6,
    "colors": [
     {
      "hex": "#2a3a4a",
-     "troops": [
+     "used_by": [
       "tc_mist"
      ]
     },
     {
      "hex": "#4a5e70",
-     "troops": [
+     "used_by": [
       "tc_mist"
      ]
     },
     {
      "hex": "#6e8496",
-     "troops": [
+     "used_by": [
       "tc_mist"
      ]
     },
     {
      "hex": "#98aebc",
-     "troops": [
+     "used_by": [
       "tc_mist"
      ]
     },
     {
+     "hex": "#c2d4dc",
+     "used_by": []
+    },
+    {
      "hex": "#e4eef0",
-     "troops": [
+     "used_by": [
       "tc_mist"
      ]
     }
    ]
   },
   "build_tc_raider.BLOAT": {
-   "defined": 6,
    "colors": [
     {
      "hex": "#16262a",
-     "troops": [
+     "used_by": [
       "tc_harpooner",
       "tc_raider",
       "tc_tideguard"
@@ -568,36 +576,39 @@
     },
     {
      "hex": "#2a4246",
-     "troops": [
+     "used_by": [
       "tc_raider"
      ]
     },
     {
      "hex": "#456466",
-     "troops": [
+     "used_by": [
       "tc_raider"
      ]
     },
     {
      "hex": "#6a8a86",
-     "troops": [
+     "used_by": [
       "tc_raider"
      ]
     },
     {
      "hex": "#93b0a8",
-     "troops": [
+     "used_by": [
       "tc_raider"
      ]
+    },
+    {
+     "hex": "#bcd0c8",
+     "used_by": []
     }
    ]
   },
   "build_tc_raider.FLESH": {
-   "defined": 5,
    "colors": [
     {
      "hex": "#16262a",
-     "troops": [
+     "used_by": [
       "tc_harpooner",
       "tc_raider",
       "tc_tideguard"
@@ -605,7 +616,7 @@
     },
     {
      "hex": "#2f4a4e",
-     "troops": [
+     "used_by": [
       "tc_harpooner",
       "tc_raider",
       "tc_tideguard"
@@ -613,7 +624,7 @@
     },
     {
      "hex": "#507174",
-     "troops": [
+     "used_by": [
       "tc_harpooner",
       "tc_raider",
       "tc_tideguard"
@@ -621,7 +632,7 @@
     },
     {
      "hex": "#7a9c9a",
-     "troops": [
+     "used_by": [
       "tc_harpooner",
       "tc_raider",
       "tc_tideguard"
@@ -629,7 +640,7 @@
     },
     {
      "hex": "#a6c4c0",
-     "troops": [
+     "used_by": [
       "tc_harpooner",
       "tc_raider",
       "tc_tideguard"
@@ -638,18 +649,17 @@
    ]
   },
   "build_tc_raider.KELP": {
-   "defined": 6,
    "colors": [
     {
      "hex": "#0e170a",
-     "troops": [
+     "used_by": [
       "tc_admiral",
       "tc_harpooner"
      ]
     },
     {
      "hex": "#1d2f12",
-     "troops": [
+     "used_by": [
       "tc_admiral",
       "tc_harpooner",
       "tc_raider"
@@ -657,7 +667,7 @@
     },
     {
      "hex": "#2f4a1c",
-     "troops": [
+     "used_by": [
       "tc_admiral",
       "tc_harpooner",
       "tc_raider"
@@ -665,7 +675,7 @@
     },
     {
      "hex": "#4a6a2a",
-     "troops": [
+     "used_by": [
       "tc_admiral",
       "tc_harpooner",
       "tc_mist",
@@ -674,7 +684,7 @@
     },
     {
      "hex": "#6a8a40",
-     "troops": [
+     "used_by": [
       "tc_admiral",
       "tc_harpooner",
       "tc_mist",
@@ -683,7 +693,7 @@
     },
     {
      "hex": "#8fa56d",
-     "troops": [
+     "used_by": [
       "tc_admiral",
       "tc_harpooner"
      ]
@@ -691,50 +701,48 @@
    ]
   },
   "build_tc_raider.NAVY": {
-   "defined": 5,
    "colors": [
     {
      "hex": "#0e1320",
-     "troops": [
+     "used_by": [
       "tc_harpooner",
       "tc_raider"
      ]
     },
     {
      "hex": "#18202f",
-     "troops": [
+     "used_by": [
       "tc_harpooner",
       "tc_raider"
      ]
     },
     {
      "hex": "#232e42",
-     "troops": [
+     "used_by": [
       "tc_harpooner",
       "tc_raider"
      ]
     },
     {
      "hex": "#33425a",
-     "troops": [
+     "used_by": [
       "tc_harpooner",
       "tc_raider"
      ]
     },
     {
      "hex": "#4e6078",
-     "troops": [
+     "used_by": [
       "tc_harpooner"
      ]
     }
    ]
   },
   "build_tc_raider.ROPE": {
-   "defined": 5,
    "colors": [
     {
      "hex": "#2a2218",
-     "troops": [
+     "used_by": [
       "tc_harpooner",
       "tc_mist",
       "tc_raider"
@@ -742,7 +750,7 @@
     },
     {
      "hex": "#4a3d2b",
-     "troops": [
+     "used_by": [
       "tc_harpooner",
       "tc_mist",
       "tc_raider"
@@ -750,7 +758,7 @@
     },
     {
      "hex": "#6e5d44",
-     "troops": [
+     "used_by": [
       "tc_harpooner",
       "tc_mist",
       "tc_raider"
@@ -758,7 +766,7 @@
     },
     {
      "hex": "#8f7d5e",
-     "troops": [
+     "used_by": [
       "tc_admiral",
       "tc_harpooner",
       "tc_mist",
@@ -767,7 +775,7 @@
     },
     {
      "hex": "#b09d78",
-     "troops": [
+     "used_by": [
       "tc_admiral",
       "tc_harpooner",
       "tc_mist",
@@ -777,96 +785,116 @@
    ]
   },
   "build_tc_raider.SCUTE": {
-   "defined": 5,
    "colors": [
     {
+     "hex": "#2a2a16",
+     "used_by": []
+    },
+    {
      "hex": "#4b4a28",
-     "troops": [
+     "used_by": [
       "tc_raider"
      ]
     },
     {
+     "hex": "#6e6a3c",
+     "used_by": []
+    },
+    {
      "hex": "#958e58",
-     "troops": [
+     "used_by": [
       "tc_raider"
      ]
+    },
+    {
+     "hex": "#b9b07a",
+     "used_by": []
     }
    ]
   },
   "build_tc_raider.SHELL": {
-   "defined": 6,
    "colors": [
     {
      "hex": "#0d1a10",
-     "troops": [
+     "used_by": [
       "tc_raider"
      ]
     },
     {
      "hex": "#1c3322",
-     "troops": [
+     "used_by": [
       "tc_raider"
      ]
     },
     {
      "hex": "#325238",
-     "troops": [
+     "used_by": [
       "tc_raider"
      ]
     },
     {
      "hex": "#4d7448",
-     "troops": [
+     "used_by": [
       "tc_raider"
      ]
     },
     {
      "hex": "#6f9560",
-     "troops": [
+     "used_by": [
       "tc_raider"
      ]
+    },
+    {
+     "hex": "#9bb883",
+     "used_by": []
     }
    ]
   },
   "handlib.LEATH": {
-   "defined": 6,
    "colors": [
     {
      "hex": "#1c100b",
-     "troops": [
+     "used_by": [
       "tc_raider",
       "tc_tideguard"
      ]
     },
     {
      "hex": "#362114",
-     "troops": [
+     "used_by": [
       "tc_raider",
       "tc_tideguard"
      ]
     },
     {
      "hex": "#54341e",
-     "troops": [
+     "used_by": [
       "tc_raider",
       "tc_tideguard"
      ]
     },
     {
      "hex": "#764b2d",
-     "troops": [
+     "used_by": [
       "tc_raider",
       "tc_tideguard"
      ]
+    },
+    {
+     "hex": "#9a6a42",
+     "used_by": []
+    },
+    {
+     "hex": "#c09068",
+     "used_by": []
     }
    ]
   },
   "tidecallers.BARN": {
-   "defined": 5,
    "colors": [
     {
      "hex": "#2c3234",
-     "troops": [
+     "used_by": [
       "tc_admiral",
       "tc_brute",
       "tc_harpooner",
@@ -876,7 +904,7 @@
     },
     {
      "hex": "#52595a",
-     "troops": [
+     "used_by": [
       "tc_admiral",
       "tc_brute",
       "tc_harpooner",
@@ -887,7 +915,7 @@
     },
     {
      "hex": "#7e8582",
-     "troops": [
+     "used_by": [
       "tc_admiral",
       "tc_brute",
       "tc_harpooner",
@@ -898,7 +926,7 @@
     },
     {
      "hex": "#a9aea6",
-     "troops": [
+     "used_by": [
       "tc_admiral",
       "tc_brute",
       "tc_harpooner",
@@ -909,7 +937,7 @@
     },
     {
      "hex": "#cfd2c8",
-     "troops": [
+     "used_by": [
       "tc_admiral",
       "tc_brute",
       "tc_harpooner",
@@ -921,11 +949,10 @@
    ]
   },
   "tidecallers.BRONZE": {
-   "defined": 6,
    "colors": [
     {
      "hex": "#2a1608",
-     "troops": [
+     "used_by": [
       "tc_admiral",
       "tc_brute",
       "tc_harpooner",
@@ -936,7 +963,7 @@
     },
     {
      "hex": "#553014",
-     "troops": [
+     "used_by": [
       "tc_admiral",
       "tc_brute",
       "tc_harpooner",
@@ -947,7 +974,7 @@
     },
     {
      "hex": "#86521e",
-     "troops": [
+     "used_by": [
       "tc_admiral",
       "tc_brute",
       "tc_harpooner",
@@ -958,7 +985,7 @@
     },
     {
      "hex": "#b57a30",
-     "troops": [
+     "used_by": [
       "tc_admiral",
       "tc_brute",
       "tc_harpooner",
@@ -969,7 +996,7 @@
     },
     {
      "hex": "#d9a455",
-     "troops": [
+     "used_by": [
       "tc_admiral",
       "tc_brute",
       "tc_harpooner",
@@ -980,7 +1007,7 @@
     },
     {
      "hex": "#f0cf8c",
-     "troops": [
+     "used_by": [
       "tc_admiral",
       "tc_brute",
       "tc_harpooner",
@@ -991,52 +1018,50 @@
    ]
   },
   "tidecallers.CORAL": {
-   "defined": 6,
    "colors": [
     {
      "hex": "#3f3230",
-     "troops": [
+     "used_by": [
       "tc_tideguard"
      ]
     },
     {
      "hex": "#6f5d57",
-     "troops": [
+     "used_by": [
       "tc_tideguard"
      ]
     },
     {
      "hex": "#a08d82",
-     "troops": [
+     "used_by": [
       "tc_tideguard"
      ]
     },
     {
      "hex": "#cdbcad",
-     "troops": [
+     "used_by": [
       "tc_tideguard"
      ]
     },
     {
      "hex": "#e8dccd",
-     "troops": [
+     "used_by": [
       "tc_tideguard"
      ]
     },
     {
      "hex": "#faf4e8",
-     "troops": [
+     "used_by": [
       "tc_tideguard"
      ]
     }
    ]
   },
   "tidecallers.DEEP": {
-   "defined": 7,
    "colors": [
     {
      "hex": "#060c18",
-     "troops": [
+     "used_by": [
       "tc_admiral",
       "tc_brute",
       "tc_harpooner",
@@ -1047,7 +1072,7 @@
     },
     {
      "hex": "#0c1a33",
-     "troops": [
+     "used_by": [
       "tc_admiral",
       "tc_brute",
       "tc_harpooner",
@@ -1058,7 +1083,7 @@
     },
     {
      "hex": "#13294f",
-     "troops": [
+     "used_by": [
       "tc_admiral",
       "tc_brute",
       "tc_harpooner",
@@ -1069,7 +1094,7 @@
     },
     {
      "hex": "#1c3a68",
-     "troops": [
+     "used_by": [
       "tc_admiral",
       "tc_brute",
       "tc_harpooner",
@@ -1080,7 +1105,7 @@
     },
     {
      "hex": "#2a5384",
-     "troops": [
+     "used_by": [
       "tc_admiral",
       "tc_brute",
       "tc_harpooner",
@@ -1091,7 +1116,7 @@
     },
     {
      "hex": "#3f6f9e",
-     "troops": [
+     "used_by": [
       "tc_admiral",
       "tc_brute",
       "tc_harpooner",
@@ -1102,7 +1127,7 @@
     },
     {
      "hex": "#6f97ba",
-     "troops": [
+     "used_by": [
       "tc_admiral",
       "tc_brute",
       "tc_harpooner",
@@ -1113,18 +1138,17 @@
    ]
   },
   "tidecallers.PEARL": {
-   "defined": 5,
    "colors": [
     {
      "hex": "#6a706c",
-     "troops": [
+     "used_by": [
       "tc_harpooner",
       "tc_mist"
      ]
     },
     {
      "hex": "#8e948f",
-     "troops": [
+     "used_by": [
       "tc_admiral",
       "tc_harpooner",
       "tc_mist",
@@ -1133,7 +1157,7 @@
     },
     {
      "hex": "#b4bab4",
-     "troops": [
+     "used_by": [
       "tc_admiral",
       "tc_mist",
       "tc_tideguard"
@@ -1141,7 +1165,7 @@
     },
     {
      "hex": "#d8dcd4",
-     "troops": [
+     "used_by": [
       "tc_admiral",
       "tc_mist",
       "tc_tideguard"
@@ -1149,7 +1173,7 @@
     },
     {
      "hex": "#eef1ec",
-     "troops": [
+     "used_by": [
       "tc_admiral",
       "tc_brute",
       "tc_harpooner",
@@ -1161,11 +1185,10 @@
    ]
   },
   "tidecallers.SEA": {
-   "defined": 6,
    "colors": [
     {
      "hex": "#0a1426",
-     "troops": [
+     "used_by": [
       "tc_admiral",
       "tc_brute",
       "tc_harpooner",
@@ -1176,7 +1199,7 @@
     },
     {
      "hex": "#11264a",
-     "troops": [
+     "used_by": [
       "tc_admiral",
       "tc_brute",
       "tc_harpooner",
@@ -1187,7 +1210,7 @@
     },
     {
      "hex": "#1a3f6a",
-     "troops": [
+     "used_by": [
       "tc_admiral",
       "tc_brute",
       "tc_harpooner",
@@ -1198,7 +1221,7 @@
     },
     {
      "hex": "#2a5e8a",
-     "troops": [
+     "used_by": [
       "tc_admiral",
       "tc_brute",
       "tc_harpooner",
@@ -1209,7 +1232,7 @@
     },
     {
      "hex": "#5e88a6",
-     "troops": [
+     "used_by": [
       "tc_admiral",
       "tc_brute",
       "tc_harpooner",
@@ -1220,7 +1243,7 @@
     },
     {
      "hex": "#9db8c4",
-     "troops": [
+     "used_by": [
       "tc_admiral",
       "tc_brute",
       "tc_harpooner",
@@ -1232,25 +1255,24 @@
    ]
   },
   "tidecallers.WARM": {
-   "defined": 6,
    "colors": [
     {
      "hex": "#3a2010",
-     "troops": [
+     "used_by": [
       "tc_brute",
       "tc_mist"
      ]
     },
     {
      "hex": "#6a3e18",
-     "troops": [
+     "used_by": [
       "tc_brute",
       "tc_mist"
      ]
     },
     {
      "hex": "#9a6224",
-     "troops": [
+     "used_by": [
       "tc_admiral",
       "tc_brute",
       "tc_harpooner",
@@ -1261,7 +1283,7 @@
     },
     {
      "hex": "#c48a36",
-     "troops": [
+     "used_by": [
       "tc_admiral",
       "tc_brute",
       "tc_harpooner",
@@ -1272,7 +1294,7 @@
     },
     {
      "hex": "#e2b060",
-     "troops": [
+     "used_by": [
       "tc_admiral",
       "tc_brute",
       "tc_harpooner",
@@ -1283,7 +1305,7 @@
     },
     {
      "hex": "#f6dc9c",
-     "troops": [
+     "used_by": [
       "tc_brute"
      ]
     }
@@ -1293,31 +1315,31 @@
  "loose": [
   {
    "hex": "#8f6530",
-   "troops": [
+   "used_by": [
     "tc_raider"
    ]
   },
   {
    "hex": "#a38a5e",
-   "troops": [
+   "used_by": [
     "tc_raider"
    ]
   },
   {
    "hex": "#c9d0c6",
-   "troops": [
+   "used_by": [
     "tc_raider"
    ]
   },
   {
    "hex": "#c4d2cf",
-   "troops": [
+   "used_by": [
     "tc_raider"
    ]
   },
   {
    "hex": "#cff3e4",
-   "troops": [
+   "used_by": [
     "tc_admiral",
     "tc_brute",
     "tc_harpooner",
@@ -1326,15 +1348,17 @@
   },
   {
    "hex": "#e8f0ec",
-   "troops": [
+   "used_by": [
     "tc_raider"
    ]
   }
  ],
  "counts": {
-  "colors": 162,
+  "colors": 175,
+  "used": 162,
   "ramps": 30,
-  "grouped": 156,
+  "ramp_shades": 170,
+  "unused_shades": 13,
   "loose": 6
  },
  "ref": "54e5d339",

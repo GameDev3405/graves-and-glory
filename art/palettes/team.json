@@ -2,65 +2,79 @@
  "name": "team",
  "ramps": {
   "build_ic_ballista.BRASS": {
-   "defined": 7,
    "colors": [
     {
+     "hex": "#1c1208",
+     "used_by": []
+    },
+    {
+     "hex": "#3a2610",
+     "used_by": []
+    },
+    {
      "hex": "#5e3f16",
-     "troops": [
+     "used_by": [
       "ic_colossus"
      ]
     },
     {
      "hex": "#8a5e22",
-     "troops": [
+     "used_by": [
       "ic_ballista",
       "ic_colossus",
       "ic_mortar"
      ]
     },
     {
+     "hex": "#b4863c",
+     "used_by": []
+    },
+    {
      "hex": "#d9b465",
-     "troops": [
+     "used_by": [
       "ic_ballista",
       "ic_colossus",
       "ic_mortar"
      ]
+    },
+    {
+     "hex": "#f0dc9c",
+     "used_by": []
     }
    ]
   },
   "build_longbow.WHITE": {
-   "defined": 5,
    "colors": [
     {
      "hex": "#6a6458",
-     "troops": [
+     "used_by": [
       "gl_marshal"
      ]
     },
     {
      "hex": "#9a9484",
-     "troops": [
+     "used_by": [
       "gl_marshal",
       "longbow"
      ]
     },
     {
      "hex": "#c4bfaf",
-     "troops": [
+     "used_by": [
       "gl_marshal",
       "longbow"
      ]
     },
     {
      "hex": "#e2ddcd",
-     "troops": [
+     "used_by": [
       "gl_marshal",
       "longbow"
      ]
     },
     {
      "hex": "#f4f1e6",
-     "troops": [
+     "used_by": [
       "gl_marshal",
       "longbow"
      ]
@@ -68,57 +82,90 @@
    ]
   },
   "build_tc_admiral.GILT": {
-   "defined": 6,
    "colors": [
     {
+     "hex": "#241a08",
+     "used_by": []
+    },
+    {
+     "hex": "#4a3815",
+     "used_by": []
+    },
+    {
      "hex": "#6f5a26",
-     "troops": [
+     "used_by": [
       "tc_admiral"
      ]
     },
     {
      "hex": "#96783a",
-     "troops": [
+     "used_by": [
       "tc_admiral"
      ]
+    },
+    {
+     "hex": "#b89a54",
+     "used_by": []
+    },
+    {
+     "hex": "#dcc487",
+     "used_by": []
     }
    ]
   },
   "graveborn.VIOLET": {
-   "defined": 6,
    "colors": [
     {
+     "hex": "#1e1528",
+     "used_by": []
+    },
+    {
      "hex": "#362645",
-     "troops": [
+     "used_by": [
       "bonebow"
      ]
     },
     {
      "hex": "#54406a",
-     "troops": [
+     "used_by": [
       "bonebow"
      ]
     },
     {
      "hex": "#7a6494",
-     "troops": [
+     "used_by": [
       "bonebow"
      ]
+    },
+    {
+     "hex": "#a28fba",
+     "used_by": []
+    },
+    {
+     "hex": "#d2c6d8",
+     "used_by": []
     }
    ]
   },
   "handlib.GOLD": {
-   "defined": 7,
    "colors": [
     {
+     "hex": "#2c1909",
+     "used_by": []
+    },
+    {
+     "hex": "#583513",
+     "used_by": []
+    },
+    {
      "hex": "#89581b",
-     "troops": [
+     "used_by": [
       "knight"
      ]
     },
     {
      "hex": "#b8852a",
-     "troops": [
+     "used_by": [
       "archer",
       "gl_marshal",
       "hexer",
@@ -132,7 +179,7 @@
     },
     {
      "hex": "#dcb145",
-     "troops": [
+     "used_by": [
       "archer",
       "gl_marshal",
       "hexer",
@@ -145,7 +192,7 @@
     },
     {
      "hex": "#f2d877",
-     "troops": [
+     "used_by": [
       "archer",
       "gl_marshal",
       "hexer",
@@ -157,42 +204,52 @@
     },
     {
      "hex": "#fff5c4",
-     "troops": [
+     "used_by": [
       "hexer"
      ]
     }
    ]
   },
   "handlib.LEATH": {
-   "defined": 6,
    "colors": [
     {
+     "hex": "#1c100b",
+     "used_by": []
+    },
+    {
+     "hex": "#362114",
+     "used_by": []
+    },
+    {
      "hex": "#54341e",
-     "troops": [
+     "used_by": [
       "archer"
      ]
     },
     {
      "hex": "#764b2d",
-     "troops": [
+     "used_by": [
       "archer"
      ]
     },
     {
      "hex": "#9a6a42",
-     "troops": [
+     "used_by": [
       "archer",
       "longbow"
      ]
+    },
+    {
+     "hex": "#c09068",
+     "used_by": []
     }
    ]
   },
   "handlib.LINEN": {
-   "defined": 6,
    "colors": [
     {
      "hex": "#3a3024",
-     "troops": [
+     "used_by": [
       "archer",
       "gb_hollowking",
       "hexer",
@@ -217,7 +274,7 @@
     },
     {
      "hex": "#675641",
-     "troops": [
+     "used_by": [
       "archer",
       "bonebow",
       "gb_hollowking",
@@ -249,7 +306,7 @@
     },
     {
      "hex": "#958262",
-     "troops": [
+     "used_by": [
       "archer",
       "bonebow",
       "gb_hollowking",
@@ -280,21 +337,32 @@
       "wm_stalker",
       "wm_tusk"
      ]
+    },
+    {
+     "hex": "#bfac86",
+     "used_by": []
+    },
+    {
+     "hex": "#ddcfaa",
+     "used_by": []
+    },
+    {
+     "hex": "#f5edd8",
+     "used_by": []
     }
    ]
   },
   "handlib.STEEL": {
-   "defined": 7,
    "colors": [
     {
      "hex": "#15161f",
-     "troops": [
+     "used_by": [
       "knight"
      ]
     },
     {
      "hex": "#282c3b",
-     "troops": [
+     "used_by": [
       "archer",
       "gl_marshal",
       "hexer",
@@ -308,7 +376,7 @@
     },
     {
      "hex": "#414a5d",
-     "troops": [
+     "used_by": [
       "archer",
       "gl_marshal",
       "hexer",
@@ -321,7 +389,7 @@
     },
     {
      "hex": "#617086",
-     "troops": [
+     "used_by": [
       "archer",
       "gl_marshal",
       "hexer",
@@ -330,15 +398,26 @@
       "mage",
       "sentinel"
      ]
+    },
+    {
+     "hex": "#8a97ab",
+     "used_by": []
+    },
+    {
+     "hex": "#b9c4d1",
+     "used_by": []
+    },
+    {
+     "hex": "#eef3f6",
+     "used_by": []
     }
    ]
   },
   "handlib.TEAM.company.cloth": {
-   "defined": 5,
    "colors": [
     {
      "hex": "#0b0d14",
-     "troops": [
+     "used_by": [
       "archer",
       "gb_hollowking",
       "hexer",
@@ -363,7 +442,7 @@
     },
     {
      "hex": "#171c29",
-     "troops": [
+     "used_by": [
       "archer",
       "bonebow",
       "gb_hollowking",
@@ -395,7 +474,7 @@
     },
     {
      "hex": "#25304a",
-     "troops": [
+     "used_by": [
       "archer",
       "bonebow",
       "gb_hollowking",
@@ -429,7 +508,7 @@
     },
     {
      "hex": "#374767",
-     "troops": [
+     "used_by": [
       "archer",
       "bonebow",
       "gb_hollowking",
@@ -464,7 +543,7 @@
     },
     {
      "hex": "#51658a",
-     "troops": [
+     "used_by": [
       "archer",
       "bonebow",
       "gl_marshal",
@@ -498,11 +577,10 @@
    ]
   },
   "handlib.TEAM.crimson.cloth": {
-   "defined": 5,
    "colors": [
     {
      "hex": "#23080c",
-     "troops": [
+     "used_by": [
       "archer",
       "gb_hollowking",
       "hexer",
@@ -527,7 +605,7 @@
     },
     {
      "hex": "#4e1018",
-     "troops": [
+     "used_by": [
       "archer",
       "bonebow",
       "gb_hollowking",
@@ -559,7 +637,7 @@
     },
     {
      "hex": "#821a22",
-     "troops": [
+     "used_by": [
       "archer",
       "bonebow",
       "gb_hollowking",
@@ -593,7 +671,7 @@
     },
     {
      "hex": "#b22d2e",
-     "troops": [
+     "used_by": [
       "archer",
       "bonebow",
       "gb_hollowking",
@@ -628,7 +706,7 @@
     },
     {
      "hex": "#d95c4f",
-     "troops": [
+     "used_by": [
       "archer",
       "bonebow",
       "gl_marshal",
@@ -662,11 +740,10 @@
    ]
   },
   "handlib.TEAM.gold.cloth": {
-   "defined": 5,
    "colors": [
     {
      "hex": "#3b2207",
-     "troops": [
+     "used_by": [
       "archer",
       "gb_hollowking",
       "hexer",
@@ -691,7 +768,7 @@
     },
     {
      "hex": "#6c430f",
-     "troops": [
+     "used_by": [
       "archer",
       "bonebow",
       "gb_hollowking",
@@ -723,7 +800,7 @@
     },
     {
      "hex": "#a06c18",
-     "troops": [
+     "used_by": [
       "archer",
       "bonebow",
       "gb_hollowking",
@@ -757,7 +834,7 @@
     },
     {
      "hex": "#cf9a2a",
-     "troops": [
+     "used_by": [
       "archer",
       "bonebow",
       "gb_hollowking",
@@ -792,7 +869,7 @@
     },
     {
      "hex": "#efc75a",
-     "troops": [
+     "used_by": [
       "archer",
       "bonebow",
       "gl_marshal",
@@ -826,11 +903,10 @@
    ]
   },
   "handlib.TEAM.linen.cloth": {
-   "defined": 5,
    "colors": [
     {
      "hex": "#3a3024",
-     "troops": [
+     "used_by": [
       "archer",
       "gb_hollowking",
       "hexer",
@@ -855,7 +931,7 @@
     },
     {
      "hex": "#675641",
-     "troops": [
+     "used_by": [
       "archer",
       "bonebow",
       "gb_hollowking",
@@ -887,7 +963,7 @@
     },
     {
      "hex": "#958262",
-     "troops": [
+     "used_by": [
       "archer",
       "bonebow",
       "gb_hollowking",
@@ -921,7 +997,7 @@
     },
     {
      "hex": "#c4b28d",
-     "troops": [
+     "used_by": [
       "archer",
       "bonebow",
       "gb_hollowking",
@@ -956,7 +1032,7 @@
     },
     {
      "hex": "#e6dab8",
-     "troops": [
+     "used_by": [
       "archer",
       "bonebow",
       "gl_marshal",
@@ -990,11 +1066,10 @@
    ]
   },
   "handlib.TEAM.teal.cloth": {
-   "defined": 5,
    "colors": [
     {
      "hex": "#06201f",
-     "troops": [
+     "used_by": [
       "archer",
       "gb_hollowking",
       "hexer",
@@ -1019,7 +1094,7 @@
     },
     {
      "hex": "#0d4341",
-     "troops": [
+     "used_by": [
       "archer",
       "bonebow",
       "gb_hollowking",
@@ -1051,7 +1126,7 @@
     },
     {
      "hex": "#166a64",
-     "troops": [
+     "used_by": [
       "archer",
       "bonebow",
       "gb_hollowking",
@@ -1085,7 +1160,7 @@
     },
     {
      "hex": "#23978b",
-     "troops": [
+     "used_by": [
       "archer",
       "bonebow",
       "gb_hollowking",
@@ -1120,7 +1195,7 @@
     },
     {
      "hex": "#5cc5b4",
-     "troops": [
+     "used_by": [
       "archer",
       "bonebow",
       "gl_marshal",
@@ -1154,11 +1229,10 @@
    ]
   },
   "handlib.TEAM.violet.cloth": {
-   "defined": 5,
    "colors": [
     {
      "hex": "#1a1029",
-     "troops": [
+     "used_by": [
       "archer",
       "gb_hollowking",
       "hexer",
@@ -1183,7 +1257,7 @@
     },
     {
      "hex": "#33204f",
-     "troops": [
+     "used_by": [
       "archer",
       "bonebow",
       "gb_hollowking",
@@ -1215,7 +1289,7 @@
     },
     {
      "hex": "#513585",
-     "troops": [
+     "used_by": [
       "archer",
       "bonebow",
       "gb_hollowking",
@@ -1249,7 +1323,7 @@
     },
     {
      "hex": "#7655b4",
-     "troops": [
+     "used_by": [
       "archer",
       "bonebow",
       "gb_hollowking",
@@ -1284,7 +1358,7 @@
     },
     {
      "hex": "#a185da",
-     "troops": [
+     "used_by": [
       "archer",
       "bonebow",
       "gl_marshal",
@@ -1318,11 +1392,14 @@
    ]
   },
   "ironclad_tiers.EMBER": {
-   "defined": 6,
    "colors": [
     {
+     "hex": "#1f0a06",
+     "used_by": []
+    },
+    {
      "hex": "#4a1608",
-     "troops": [
+     "used_by": [
       "ic_arbalist",
       "ic_breaker",
       "ic_colossus",
@@ -1331,7 +1408,7 @@
     },
     {
      "hex": "#7a2a0c",
-     "troops": [
+     "used_by": [
       "ic_arbalist",
       "ic_ballista",
       "ic_breaker",
@@ -1342,7 +1419,7 @@
     },
     {
      "hex": "#993f12",
-     "troops": [
+     "used_by": [
       "ic_arbalist",
       "ic_ballista",
       "ic_breaker",
@@ -1352,20 +1429,23 @@
     },
     {
      "hex": "#c8966f",
-     "troops": [
+     "used_by": [
       "ic_ballista",
       "ic_colossus",
       "ic_mortar"
      ]
+    },
+    {
+     "hex": "#ecc9a6",
+     "used_by": []
     }
    ]
   },
   "ironclad_tiers.IRON": {
-   "defined": 7,
    "colors": [
     {
      "hex": "#0d0e14",
-     "troops": [
+     "used_by": [
       "ic_ballista",
       "ic_colossus",
       "ic_mortar"
@@ -1373,28 +1453,32 @@
     },
     {
      "hex": "#1a1c25",
-     "troops": [
+     "used_by": [
       "ic_arbalist",
       "ic_breaker",
       "ic_hearthguard"
      ]
     },
     {
+     "hex": "#2c303b",
+     "used_by": []
+    },
+    {
      "hex": "#444a58",
-     "troops": [
+     "used_by": [
       "ic_breaker"
      ]
     },
     {
      "hex": "#62697a",
-     "troops": [
+     "used_by": [
       "ic_arbalist",
       "ic_hearthguard"
      ]
     },
     {
      "hex": "#8a92a2",
-     "troops": [
+     "used_by": [
       "ic_arbalist",
       "ic_breaker",
       "ic_hearthguard"
@@ -1402,7 +1486,7 @@
     },
     {
      "hex": "#bcc3cf",
-     "troops": [
+     "used_by": [
       "ic_arbalist"
      ]
     }
@@ -1412,15 +1496,17 @@
  "loose": [
   {
    "hex": "#4a4134",
-   "troops": [
+   "used_by": [
     "bonebow"
    ]
   }
  ],
  "counts": {
-  "colors": 66,
+  "colors": 91,
+  "used": 66,
   "ramps": 16,
-  "grouped": 65,
+  "ramp_shades": 93,
+  "unused_shades": 25,
   "loose": 1
  },
  "ref": "54e5d339",

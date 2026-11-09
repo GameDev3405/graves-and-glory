@@ -3,9 +3,10 @@
 
   python tools/art/house_palette.py extract [--ref 54e5d339]
       Read every shipped troop skin (s1-s3, veteran, e) at a git ref and write art/palettes/<house>.json for each House
-      plus art/palettes/team.json (everything in team_cloth_*). Colours that match a ramp defined in code (a module-level
-      list of RGBA tuples in handlib, the House modules or a builder) are grouped under its module-qualified name, dark to
-      light; the rest go in "loose". Every colour lists the troops that use it.
+      plus art/palettes/team.json (everything in team_cloth_*). A code ramp (a module-level
+      list of RGBA tuples in handlib, the House modules or a builder) that matches two or more used colours is stored whole,
+      dark to light, under its module-qualified name; shades no troop uses have "used_by": []. The rest of the used
+      colours go in "loose". Every colour lists the troops that use it.
   python tools/art/house_palette.py check [ids...] [--ref R [--repo P]] [--dir D --house H] [--json]
       Fail (exit 1) when a texture uses a colour outside its House palette plus the team palette (cloth: team only).
       No ids: every troop in sheets/design.json. --ref reads the PNGs from git (--repo: another worktree) instead of disk.
@@ -144,19 +145,22 @@ def catalog(tr):
 def lum(c): return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]
 
 def build_palette(label, used, candidates):
-    """used: {rgb: sorted troop ids}; candidates: {ramp name: [rgb...]} -> palette dict."""
+    """used: {rgb: sorted troop ids}; candidates: {ramp name: [rgb...]} -> palette dict. A ramp that matches at least two
+    used colours is stored whole, as defined in code (dark to light); shades no troop uses have "used_by": []."""
     ramps = {}
     for name, r in sorted(candidates.items()):
-        hit = [c for c in r if c in used]
-        if len(hit) >= 2: ramps[name] = (len(r), hit)
-    grouped = {c for _, (_, hit) in ramps.items() for c in hit}
+        if sum(1 for c in r if c in used) >= 2: ramps[name] = r
+    grouped = {c for r in ramps.values() for c in r if c in used}
+    in_ramps = {c for r in ramps.values() for c in r}
     loose = sorted((c for c in used if c not in grouped), key=lambda c: (lum(c), c))
-    def entry(c): return {"hex": hexs(c), "troops": used[c]}
+    def entry(c): return {"hex": hexs(c), "used_by": used.get(c, [])}
+    shades = sum(len(r) for r in ramps.values())
     return {
         "name": label,
-        "ramps": {n: {"defined": d, "colors": [entry(c) for c in hit]} for n, (d, hit) in ramps.items()},
+        "ramps": {n: {"colors": [entry(c) for c in r]} for n, r in ramps.items()},
         "loose": [entry(c) for c in loose],
-        "counts": {"colors": len(used), "ramps": len(ramps), "grouped": len(grouped), "loose": len(loose)},
+        "counts": {"colors": len(in_ramps) + len(loose), "used": len(used), "ramps": len(ramps), "ramp_shades": shades,
+                   "unused_shades": len([c for r in ramps.values() for c in r if c not in used]), "loose": len(loose)},
     }
 
 def cmd_extract(a):
@@ -186,14 +190,14 @@ def cmd_extract(a):
         p.update(meta); p["troops"] = sorted(t for t, h in tr.items() if h == house)
         p["files"] = "<id>_s1..s3, <id>_veteran, <id>_e*"
         write_json(os.path.join(PAL_DIR, house + ".json"), p)
-        print("%-12s %3d colours: %d in %d ramps, %d loose" % (house, p["counts"]["colors"], p["counts"]["grouped"], p["counts"]["ramps"], p["counts"]["loose"]))
+        print_counts(house, p)
     allc = {}
     for m in cat.values(): allc.update(m)
     used = {c: sorted(t) for c, t in team_used.items()}
     p = build_palette("team", used, allc)
     p.update(meta); p["troops"] = sorted(tr); p["files"] = "team_cloth_<side> in every troop folder"
     write_json(os.path.join(PAL_DIR, "team.json"), p)
-    print("%-12s %3d colours: %d in %d ramps, %d loose" % ("team", p["counts"]["colors"], p["counts"]["grouped"], p["counts"]["ramps"], p["counts"]["loose"]))
+    print_counts("team", p)
     cross = collections.defaultdict(set)
     for house, u in house_used.items():
         for c in u: cross[c].add(house)
@@ -201,6 +205,10 @@ def cmd_extract(a):
     print("colours shared by more than one House: %d" % len(shared))
     if not a.no_show:
         for h in list(house_used) + ["team"]: draw_swatch(load_palette(h), os.path.join(PAL_DIR, h + ".png"))
+
+def print_counts(n, p):
+    c = p["counts"]
+    print("%-12s %3d used; %d ramps (%d shades, %d unused), %d loose" % (n, c["used"], c["ramps"], c["ramp_shades"], c["unused_shades"], c["loose"]))
 
 def write_json(path, obj):
     with open(path, "w", encoding="utf-8", newline="\n") as f:
@@ -211,7 +219,7 @@ def write_json(path, obj):
 def load_palette(name):
     with open(os.path.join(PAL_DIR, name + ".json"), encoding="utf-8") as f: return json.load(f)
 def palette_set(p):
-    s = {unhex(e["hex"]) for r in p["ramps"].values() for e in r["colors"]}
+    s = {unhex(e["hex"]) for r in p["ramps"].values() for e in r["colors"]}   # whole ramps, used or not
     s |= {unhex(e["hex"]) for e in p["loose"]}
     return s
 
@@ -283,19 +291,22 @@ def font(size):
 
 def draw_swatch(p, out, cell=22, label_w=210, per_row=24):
     f = font(12)
-    rows = [(n, [unhex(e["hex"]) for e in r["colors"]]) for n, r in p["ramps"].items()]
-    loose = [unhex(e["hex"]) for e in p["loose"]]
+    rows = [(n, [(unhex(e["hex"]), bool(e["used_by"])) for e in r["colors"]]) for n, r in p["ramps"].items()]
+    loose = [(unhex(e["hex"]), True) for e in p["loose"]]
     for i in range(0, len(loose), per_row):
         rows.append(("loose" if i == 0 else "", loose[i:i + per_row]))
     width = label_w + cell * max([per_row] + [len(r) for _, r in rows]) + 8
     head = 28
     im = Image.new("RGB", (width, head + cell * len(rows) + 6), (24, 24, 28))
     d = ImageDraw.Draw(im)
-    d.text((6, 7), "%s: %d colours, %d ramps, %d loose" % (p["name"], p["counts"]["colors"], p["counts"]["ramps"], p["counts"]["loose"]), fill=(235, 235, 235), font=f)
+    d.text((6, 7), "%s: %d ramps (%d shades, %d unused, crossed), %d loose" % (p["name"], p["counts"]["ramps"], p["counts"]["ramp_shades"], p["counts"]["unused_shades"], p["counts"]["loose"]), fill=(235, 235, 235), font=f)
     for i, (n, cs) in enumerate(rows):
         y = head + i * cell
         d.text((6, y + 4), n, fill=(200, 200, 205), font=f)
-        for j, c in enumerate(cs): d.rectangle([label_w + j * cell, y + 1, label_w + (j + 1) * cell - 2, y + cell - 2], fill=c)
+        for j, (c, used) in enumerate(cs):
+            box = [label_w + j * cell, y + 1, label_w + (j + 1) * cell - 2, y + cell - 2]
+            d.rectangle(box, fill=c)
+            if not used: d.line([box[0] + 3, box[1] + 3, box[2] - 3, box[3] - 3], fill=(255, 0, 255), width=2)
     im.save(out)
 
 def cmd_show(a):
