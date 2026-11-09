@@ -32,6 +32,8 @@ final class Gait {
      * which the fast average follows and which must not flip a running troop into its walk for a few frames.
      */
     static final double TREND = 4;
+    /** Fewest ticks a troop that has set off stays out of the idle pose: a nudge or a push that the raw step catches must not flicker idle, walk, idle. */
+    static final double MIN_MOVE = 3;
 
     enum Mode { IDLE, WALK, RUN }
 
@@ -53,7 +55,7 @@ final class Gait {
     Mode mode = Mode.IDLE;
     /** Ground distance one loop of the clip being played covers, blocks; 0 while no gait clip plays (the phase then holds). */
     double stride;
-    private double last = Double.NaN, lastRx = Double.NaN, lastRz = Double.NaN;
+    private double last = Double.NaN, lastRx = Double.NaN, lastRz = Double.NaN, movedAt = Double.NaN;
     /** Each drawn troop's clock, for the in-game checks (test-tools GeoKnightChecks); weak, so unloaded troops drop out. */
     static final Map<Entity, Gait> LIVE = Collections.synchronizedMap(new WeakHashMap<>());
 
@@ -91,8 +93,11 @@ final class Gait {
         double s = Math.abs(speed), t = Math.abs(trend);
         // A planted troop sets off on the raw step, a tick or two before the smoothed speed shows it: every tick it waits in the idle pose is a tick its feet are carried.
         double gate = mode == Mode.IDLE ? Math.max(s, v) : s;
+        Mode was = mode;
         mode = gate < (mode == Mode.IDLE ? IDLE_TO_WALK : WALK_TO_IDLE) ? Mode.IDLE
             : (mode == Mode.RUN ? Math.max(s, t) > toWalk : t > toRun) ? Mode.RUN : Mode.WALK;
+        if (was == Mode.IDLE && mode != Mode.IDLE) movedAt = time;
+        else if (was != Mode.IDLE && mode == Mode.IDLE && time - movedAt < MIN_MOVE) mode = was;
         if (e instanceof LivingEntity l && (l.isDead() || l.deathTime > 0)) mode = Mode.IDLE;
         if (stride > 0) phase = wrap(phase + (speed < 0 ? -step : step) / stride);
     }

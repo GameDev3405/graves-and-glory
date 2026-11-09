@@ -84,13 +84,16 @@ final class GaitController extends AnimationController<GeoTroop> {
         }
     }
 
-    /** What the bones this controller's clip keys read now, kept for the next start. */
+    /**
+     * What this controller's bones read now, kept for the next start. Every bone it has ever keyed is read, not only those of the clip playing: a bone the idle clip leaves unkeyed
+     * would otherwise keep the stale mid-stride value of the moving clip, and the next start would blend out of a pose the troop never held.
+     */
     private void capture(Map<String, CoreGeoBone> bones) {
-        if (currentAnimation == null) return;
-        for (BoneAnimation b : currentAnimation.animation().boneAnimations()) {
-            CoreGeoBone bone = bones.get(b.boneName());
+        if (currentAnimation != null) for (BoneAnimation b : currentAnimation.animation().boneAnimations()) out.computeIfAbsent(b.boneName(), k -> new float[6]);
+        for (Map.Entry<String, float[]> en : out.entrySet()) {
+            CoreGeoBone bone = bones.get(en.getKey());
             if (bone == null) continue;
-            float[] a = out.computeIfAbsent(b.boneName(), k -> new float[6]);
+            float[] a = en.getValue();
             a[0] = bone.getRotX(); a[1] = bone.getRotY(); a[2] = bone.getRotZ();
             a[3] = bone.getPosX(); a[4] = bone.getPosY(); a[5] = bone.getPosZ();
         }
