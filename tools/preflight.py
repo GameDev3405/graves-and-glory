@@ -562,9 +562,12 @@ for b in data['botCommand']:
 for b in data['botBanners']:
     name=f'botBanners/{b["id"]}';parts=b['id'].split('_')
     mixed=parts[0]=='mix' and len(parts)>=4
+    allyrow=parts[0]=='ally' # a battle's dedicated ally row (chapter 1 brief A2): ally_<house>_<difficulty>[_b], named only in allies
     allowed=set(parts[1:-1]) if mixed else {b['house']}
     if b['house'] not in houses or b['difficulty'] not in difficulties: errors.append(f'{name}: house or difficulty does not resolve')
-    if b['id']!=(f'mix_{b["house"]}_{"_".join(parts[2:-1])}_{b["difficulty"]}' if mixed else f'{b["house"]}_{b["difficulty"]}') or len(allowed)!=len(parts)-2 and mixed or not allowed<=set(houses): errors.append(f'{name}: id must be <house>_<difficulty>, or mix_<house>_<second house>[_<more Houses>]_<difficulty> with house the first House and each House once')
+    if allyrow: shape=b['id'] in (f'ally_{b["house"]}_{b["difficulty"]}',f'ally_{b["house"]}_{b["difficulty"]}_b')
+    else: shape=not(b['id']!=(f'mix_{b["house"]}_{"_".join(parts[2:-1])}_{b["difficulty"]}' if mixed else f'{b["house"]}_{b["difficulty"]}') or len(allowed)!=len(parts)-2 and mixed or not allowed<=set(houses))
+    if not shape: errors.append(f'{name}: id must be <house>_<difficulty>, mix_<house>_<second house>[_<more Houses>]_<difficulty> with house the first House and each House once, or ally_<house>_<difficulty>[_b]')
     slots=b['slots'].split(',')
     if len(slots)!=squad: errors.append(f'{name}: {len(slots)} entries, not {squad}')
     pending,weights,units,last=0,0,{},None
@@ -591,6 +594,36 @@ bonus_rows={o['id']:o for o in data.get('bonusObjectives',[])}
 march=data['campaignBattles']
 if sorted(r['order'] for r in march)!=list(range(1,len(march)+1)): errors.append('campaignBattles: orders must run 1, 2, 3 and on, each once (MarchMath reads the order lock from them)')
 used_bonus=[r['bonus'] for r in march]
+def story_text(where,text):
+    # campaign story lines (chapter 1 brief N2): at most 160 characters, ASCII, no exclamation mark, no dash as punctuation (a hyphen inside a
+    # word, boar-kin, is not one); {key:name} is allowed, the client fills it in (HintText.expand)
+    if not text.strip(): errors.append(f'{where}: the line is empty')
+    if len(text)>160: errors.append(f'{where}: {len(text)} characters; at most 160')
+    if not text.isascii(): errors.append(f'{where}: player text must be ASCII')
+    if '!' in text: errors.append(f'{where}: no exclamation marks in player text')
+    if re.search(r'(^|\s)-+(\s|$)|--',text): errors.append(f'{where}: no dash as punctuation in player text')
+# Chapters (chapter 1 brief G1, G2, N2): one row per chapter the battles name. banner own fields the player's collection; house fields
+# bannerRow, a botBanners row of the chapter's House that no tier pool ever draws. season is when the chapter unlocks (season 1 always
+# open) and never falls as chapters climb. chapterEnd shows once, when the chapter's Pact is granted.
+chapter_rows={c['chapter']:c for c in data.get('campaignChapters',[])}
+chapter_banner_rows={c['bannerRow'] for c in chapter_rows.values() if c['bannerRow']!='none'}
+last_season=1
+for c in sorted(chapter_rows.values(),key=lambda c:c['chapter']):
+    where=f'campaignChapters/{c["id"]}'
+    if c['house'] not in houses: errors.append(f'{where}: house {c["house"]} is not a houses id')
+    if c['banner'] not in ('own','house'): errors.append(f'{where}: banner must be own or house')
+    elif c['banner']=='house':
+        row=next((b for b in data['botBanners'] if b['id']==c['bannerRow']),None)
+        if row is None or row['house']!=c['house']: errors.append(f'{where}: a house banner names a botBanners row of its House in bannerRow')
+    elif c['bannerRow']!='none': errors.append(f'{where}: an own banner names no bannerRow (none)')
+    if not isinstance(c['season'],int) or c['season']<last_season: errors.append(f'{where}: season {c["season"]} is under {last_season}; seasons start at 1 and never fall as chapters climb')
+    else: last_season=c['season']
+    story_text(f'{where}/chapterEnd',c['chapterEnd'])
+    if not c['placeholder'].strip(): errors.append(f'{where}: placeholder is blank; it lists the open cells, or reads none')
+if len({c['id'] for c in chapter_rows.values()})!=len(chapter_rows): errors.append('campaignChapters: ids must be distinct')
+ally_named={a for r in march if r['allies']!='none' for a in r['allies'].split(',')}
+for b in data['botBanners']:
+    if b['id'].startswith('ally_') and b['id'] not in ally_named and b['id'] not in chapter_banner_rows: errors.append(f"botBanners/{b['id']}: an ally row must be named in some battle's allies (or be a chapter's bannerRow); it never joins a tier pool")
 for r in march:
     where=f'campaignBattles/{r["id"]}'
     if r['chapter']<1: errors.append(f'{where}: chapter {r["chapter"]} is under 1')
@@ -608,6 +641,16 @@ for r in march:
         if len(ally)!=r['size']-1 or len(set(ally))!=len(ally): errors.append(f'{where}: allies names {len(ally)} rows; it needs {r["size"]-1} distinct rows, one per allied bot seat (size - 1)')
         for a in ally:
             if a not in banner_ids: errors.append(f'{where}: allies {a} is not a botBanners id')
+    # enemies (chapter 1 brief N1): none (tier and lane picking), or the botBanners rows team 1's bot seats field by lane, one per seat (size); never an ally row
+    if r['enemies']!='none':
+        foe=r['enemies'].split(',');banner_ids={b['id'] for b in data['botBanners']}
+        if len(foe)!=r['size']: errors.append(f'{where}: enemies names {len(foe)} rows; it needs {r["size"]}, one per enemy seat (size)')
+        for e in foe:
+            if e not in banner_ids: errors.append(f'{where}: enemies {e} is not a botBanners id')
+            elif e.startswith('ally_') or e in chapter_banner_rows: errors.append(f'{where}: enemies {e} is an ally row; ally and chapter banner rows are reserved')
+    if r['chapter'] not in chapter_rows: errors.append(f'{where}: chapter {r["chapter"]} has no campaignChapters row')
+    if not isinstance(r['ebb'],bool): errors.append(f'{where}: ebb must be true or false')
+    story_text(f'{where}/after',r['after'])
     stage_bonus=bonus_rows.get(r['bonus'],{})
     if stage_bonus.get('kind')=='stage_by' and (r['mode']!='siege' or stage_bonus['target'] not in SIEGE_STAGES): errors.append(f'{where}: a stage_by bonus needs a siege battle and a target of {", ".join(SIEGE_STAGES)} (SiegeMode feeds those stages)')
 for o in bonus_rows.values():

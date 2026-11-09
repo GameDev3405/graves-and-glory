@@ -4988,133 +4988,154 @@
       "botOnlyMarksPct": 0.5
     }
   ],
+  "campaignChapters": [
+    {
+      "id": "oath",
+      "chapter": 1,
+      "name": "The Oath",
+      "house": "gilded",
+      "banner": "own",
+      "bannerRow": "none",
+      "season": 1,
+      "chapterEnd": "Aldric, alone with the Charter. The lamps flicker once. I swore to protect every person under it. I would like to read it again.",
+      "placeholder": "none"
+    }
+  ],
   "campaignBattles": [
     {
-      "id": "march-1",
+      "id": "oath-1",
       "chapter": 1,
       "order": 1,
-      "name": "The Training Field",
+      "name": "The Drowned Crossings",
       "map": 0,
       "size": 1,
       "difficulty": "easy",
       "lessons": true,
-      "briefing": "Dusk raiders hold the river road. Take the crossings and teach your banner to follow you.",
-      "reason": "The road west must open before the march begins.",
+      "briefing": "Tidecaller raiders hold the river crossings above the drowned coast. Take them one at a time and teach your banner to follow you.",
+      "reason": "The Charter says every wrong is answered. This one first.",
       "mode": "domination",
       "house": "gilded",
-      "bonus": "b1_hold_all",
+      "bonus": "o1_hold_all",
       "allies": "none",
+      "enemies": "tidecallers_easy",
+      "after": "A Sunweaver's light sputters in her hand. Aldric: Damp powder. See that it is dry.",
+      "ebb": false,
       "placeholder": "none"
     },
     {
-      "id": "march-2",
+      "id": "oath-2",
       "chapter": 1,
       "order": 2,
-      "name": "The Iron Gate",
+      "name": "The Moon Shrine Watch",
+      "map": 3,
+      "size": 2,
+      "difficulty": "easy",
+      "lessons": false,
+      "briefing": "The graves of Hollowwood are opening under the moon. Hold the shrine with the Order's second banner until the dead lie still.",
+      "reason": "The dead wear colours no one has worn in a lifetime.",
+      "mode": "survival",
+      "house": "gilded",
+      "bonus": "o2_lose8",
+      "allies": "ally_gilded_easy",
+      "enemies": "none",
+      "after": "Aldric reads the faded colours. Tengervald. Struck from the relief list two lifetimes ago. Someone is still answering for it.",
+      "ebb": false,
+      "placeholder": "none"
+    },
+    {
+      "id": "oath-3",
+      "chapter": 1,
+      "order": 3,
+      "name": "Smoke at Ironhold",
       "map": 1,
       "size": 2,
       "difficulty": "normal",
       "lessons": false,
-      "briefing": "The Ironclad hold their gate and will not open it. Break it with the engines, then take the keep behind it.",
-      "reason": "The march cannot go north past a shut iron gate.",
+      "briefing": "Tidecallers hold the Ironhold gate and the Ironclad cannot take it back alone. Bring their engines up, break the gate, take the keep.",
+      "reason": "The river under Ironhold runs the wrong colour. No one asks why.",
       "mode": "siege",
-      "house": "ironclad",
-      "bonus": "b2_gate_by",
-      "allies": "none",
-      "placeholder": "briefing,reason (draft text 2026-11-02 for Kort to edit, Q74)"
+      "house": "gilded",
+      "bonus": "o3_gate_by",
+      "allies": "ally_ironclad_normal",
+      "enemies": "tidecallers_normal,tidecallers_normal",
+      "after": "The smith thanks the Order and does not meet Aldric's eye. A dying raider says one word. Admiral.",
+      "ebb": false,
+      "placeholder": "none"
     },
     {
-      "id": "march-3",
+      "id": "oath-4",
       "chapter": 1,
-      "order": 3,
-      "name": "The Long Night",
-      "map": 3,
+      "order": 4,
+      "name": "The Hunters' Road",
+      "map": 2,
       "size": 2,
       "difficulty": "normal",
       "lessons": false,
-      "briefing": "The graves of Hollowwood are opening under the moon. Hold the shrine and keep your banner standing until the dead lie still.",
-      "reason": "The march must camp at the shrine tonight, and so must the dead.",
-      "mode": "survival",
-      "house": "graveborn",
-      "bonus": "b3_lose8",
-      "allies": "none",
-      "placeholder": "briefing,reason (draft text 2026-11-02 for Kort to edit, Q74)"
-    },
-    {
-      "id": "march-4",
-      "chapter": 1,
-      "order": 4,
-      "name": "The Frozen Standard",
-      "map": 2,
-      "size": 3,
-      "difficulty": "hard",
-      "lessons": false,
-      "briefing": "The Wildmoot hunt the pass and the wagon with our standard must cross it. Walk beside it and do not let it be stopped.",
-      "reason": "Without its standard the march is only a crowd of armed men.",
+      "briefing": "The council orders the grazing lands cleared for the quarry road. The wagon carries the hunters. Walk beside it through the pass.",
+      "reason": "Aldric read the order twice. This is the hunt again.",
       "mode": "convoy",
-      "house": "wildmoot",
-      "bonus": "b4_never_rolled",
-      "allies": "none",
-      "placeholder": "briefing,reason (draft text 2026-11-02 for Kort to edit, Q74); Kort 2026-10-31: a convoy escort; mode and bonus set by the approved convoy spec"
+      "house": "gilded",
+      "bonus": "o4_never_rolled",
+      "allies": "ally_gilded_normal",
+      "enemies": "wildmoot_normal,wildmoot_normal",
+      "after": "A boar-kin hunter in the snow: We hid for a hundred years. We stopped hiding.",
+      "ebb": true,
+      "placeholder": "none"
     },
     {
-      "id": "march-5",
+      "id": "oath-5",
       "chapter": 1,
       "order": 5,
-      "name": "The Five Crossings",
+      "name": "The Grazing Grounds",
+      "map": 3,
+      "size": 3,
+      "difficulty": "normal",
+      "lessons": false,
+      "briefing": "The grass is ripe and the order is to burn it. Take the grazing grounds before the herds come back for them.",
+      "reason": "The quarry road needs the plain. The herds were there first.",
+      "mode": "domination",
+      "house": "gilded",
+      "bonus": "o5_lose12",
+      "allies": "ally_gilded_normal,ally_gilded_normal_b",
+      "enemies": "wildmoot_normal,wildmoot_normal,wildmoot_normal",
+      "after": "The fire does not catch. A quarryman says the stone is cold in the cut.",
+      "ebb": true,
+      "placeholder": "none"
+    },
+    {
+      "id": "oath-6",
+      "chapter": 1,
+      "order": 6,
+      "name": "The Antlered Alpha",
       "map": 4,
       "size": 3,
       "difficulty": "hard",
       "lessons": false,
-      "briefing": "Tidecaller raiders have come up out of the water to take Kingsfield. Hold the fords and bridges, and strike where they are thin.",
-      "reason": "Kingsfield is where every road meets, and the march needs them.",
+      "briefing": "The quarry road is open and the Wildmoot have come to close it. Old Horn leads them. Hold the five crossings and break his line.",
+      "reason": "At the cut lies a carved stone the size of a house.",
       "mode": "domination",
-      "house": "tidecallers",
-      "bonus": "b5_hold_all",
-      "allies": "none",
-      "placeholder": "briefing,reason (draft text 2026-11-02 for Kort to edit, Q74)"
-    },
-    {
-      "id": "march-6",
-      "chapter": 1,
-      "order": 6,
-      "name": "The Last Watch",
-      "map": 1,
-      "size": 3,
-      "difficulty": "hard",
-      "lessons": false,
-      "briefing": "The Hollow King has taken the keep at Ironhold. The Houses you met stand with you now. Break his gate and strike him down yourself.",
-      "reason": "The king in the keep ends the march, or the march ends.",
-      "mode": "siege",
-      "house": "graveborn",
-      "bonus": "b6_kill_hollowking",
-      "allies": "mix_gilded_ironclad_wildmoot_normal,mix_tidecallers_graveborn_normal",
-      "placeholder": "briefing,reason (draft text 2026-11-02 for Kort to edit, Q74); Kort 2026-11-02 (Q76, Q77): Siege with allied bot banners from all five Houses; hard, the top tier, with the allies one tier below so the enemy outclasses your side"
+      "house": "gilded",
+      "bonus": "o6_hold_all",
+      "allies": "ally_gilded_normal,ally_gilded_normal_b",
+      "enemies": "wildmoot_hard,wildmoot_normal,wildmoot_normal",
+      "after": "The Wildmoot line breaks and Old Horn withdraws. Aldric asks what the stone is. Stone, says the quarryman. Aldric orders it covered.",
+      "ebb": true,
+      "placeholder": "none"
     }
   ],
   "bonusObjectives": [
     {
-      "id": "b1_hold_all",
+      "id": "o1_hold_all",
       "kind": "hold_all",
       "value": 0,
       "target": "none",
       "shards": 5,
       "gold": 40,
       "text": "Hold all three crossings at the same moment.",
-      "placeholder": "gold (draft value)"
+      "placeholder": "none"
     },
     {
-      "id": "b2_gate_by",
-      "kind": "stage_by",
-      "value": 360,
-      "target": "gate",
-      "shards": 5,
-      "gold": 40,
-      "text": "Break the gate inside six minutes.",
-      "placeholder": "none (Kort 2026-11-02, Q78: option 2A now battle 2 is Siege)"
-    },
-    {
-      "id": "b3_lose8",
+      "id": "o2_lose8",
       "kind": "lose_at_most",
       "value": 8,
       "target": "none",
@@ -5124,33 +5145,43 @@
       "placeholder": "none"
     },
     {
-      "id": "b4_never_rolled",
+      "id": "o3_gate_by",
+      "kind": "stage_by",
+      "value": 360,
+      "target": "gate",
+      "shards": 5,
+      "gold": 40,
+      "text": "Break the gate inside six minutes.",
+      "placeholder": "value (360 seconds: check in the sim, chapter 1 brief D)"
+    },
+    {
+      "id": "o4_never_rolled",
       "kind": "never_rolled",
       "value": 0,
       "target": "none",
       "shards": 5,
       "gold": 40,
       "text": "Never let the wagon roll back.",
-      "placeholder": "gold (draft value; Kort picked option A on 2026-10-31, convoy spec 11)"
+      "placeholder": "none"
     },
     {
-      "id": "b5_hold_all",
+      "id": "o5_lose12",
+      "kind": "lose_at_most",
+      "value": 12,
+      "target": "none",
+      "shards": 5,
+      "gold": 50,
+      "text": "Lose no more than 12 troops.",
+      "placeholder": "value (12 troops: tune in the sim, chapter 1 brief D)"
+    },
+    {
+      "id": "o6_hold_all",
       "kind": "hold_all",
       "value": 0,
       "target": "none",
       "shards": 5,
-      "gold": 50,
-      "text": "Hold all five crossings at the same moment.",
-      "placeholder": "none"
-    },
-    {
-      "id": "b6_kill_hollowking",
-      "kind": "kill_unit",
-      "value": 0,
-      "target": "gb_hollowking",
-      "shards": 5,
       "gold": 60,
-      "text": "Strike down the Hollow King with your own banner.",
+      "text": "Hold all five crossings at the same moment.",
       "placeholder": "none"
     }
   ],
@@ -5710,7 +5741,7 @@
       "yaw": 0.0,
       "halfX": 2,
       "halfZ": 2,
-      "label": "FOUNDERS CHAPTER / 30 tiers"
+      "label": "FOUNDERS SEASON PASS / 30 tiers"
     },
     {
       "id": "steward",
@@ -10832,16 +10863,28 @@
       "slots": "wm_oldhorn,^,^,^,wm_hound,wm_hound,wm_hunter,wm_hunter,wm_stalker,wm_tusk,mage,^,knight,knight,knight,knight,archer,archer,sentinel,longbow"
     },
     {
-      "id": "mix_gilded_ironclad_wildmoot_normal",
+      "id": "ally_gilded_easy",
       "house": "gilded",
-      "difficulty": "normal",
-      "slots": "mage,^,knight,knight,knight,archer,sentinel,longbow,ic_mortar,^,ic_hearthguard,ic_hearthguard,ic_arbalist,ic_breaker,wm_hound,wm_hound,wm_hound,wm_hunter,wm_stalker,wm_tusk"
+      "difficulty": "easy",
+      "slots": "knight,knight,knight,knight,knight,knight,knight,knight,archer,archer,archer,archer,archer,archer,sentinel,sentinel,sentinel,longbow,longbow,longbow"
     },
     {
-      "id": "mix_tidecallers_graveborn_normal",
-      "house": "tidecallers",
+      "id": "ally_gilded_normal",
+      "house": "gilded",
       "difficulty": "normal",
-      "slots": "tc_brute,^,tc_raider,tc_raider,tc_raider,tc_raider,tc_harpooner,tc_harpooner,tc_tideguard,tc_mist,hexer,^,revenant,revenant,revenant,revenant,bonebow,bonebow,reaper,stalker"
+      "slots": "mage,^,knight,knight,knight,knight,knight,knight,archer,archer,archer,archer,sentinel,sentinel,sentinel,sentinel,longbow,longbow,longbow,longbow"
+    },
+    {
+      "id": "ally_gilded_normal_b",
+      "house": "gilded",
+      "difficulty": "normal",
+      "slots": "mage,^,knight,knight,knight,knight,knight,knight,archer,archer,archer,archer,sentinel,sentinel,sentinel,sentinel,longbow,longbow,longbow,longbow"
+    },
+    {
+      "id": "ally_ironclad_normal",
+      "house": "ironclad",
+      "difficulty": "normal",
+      "slots": "ic_mortar,^,ic_hearthguard,ic_hearthguard,ic_hearthguard,ic_hearthguard,ic_hearthguard,ic_hearthguard,ic_arbalist,ic_arbalist,ic_arbalist,ic_arbalist,ic_breaker,ic_breaker,ic_breaker,ic_breaker,ic_ballista,ic_ballista,ic_ballista,ic_ballista"
     }
   ],
   "troopNotes": [

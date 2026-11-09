@@ -172,13 +172,13 @@ public final class HousesCheck {
     }
     /** Task 11 review minor 3: a Pact pays for a chapter only when every battle of it is cleared, pinned on a two-battle chapter (the sheet's chapter 1 has one). */
     static void pacts() {
-        var rows = List.of(march("march-1", 1, 1), march("march-2", 1, 2), march("march-3", 2, 3));
+        var rows = List.of(march("oath-1", 1, 1), march("oath-2", 1, 2), march("oath-3", 2, 3));
         check(pactChapters(rows, 0, Set.of()).isEmpty(), "pacts: nothing cleared pays nothing");
         check(pactChapters(rows, 1, Set.of()).isEmpty(), "pacts: battle 1 of a two-battle chapter cleared pays no Pact (every battle of the chapter, not any)");
         check(pactChapters(rows, 2, Set.of()).equals(List.of(1)), "pacts: both battles of chapter 1 cleared pay its Pact: " + pactChapters(rows, 2, Set.of()));
         check(pactChapters(rows, 3, Set.of(1)).equals(List.of(2)) && pactChapters(rows, 3, Set.of(1, 2)).isEmpty(), "pacts: a chapter already paid pays again never");
         check(pactChapters(rows, 3, Set.of()).equals(List.of(1, 2)), "pacts: two chapters cleared at once pay two, in chapter order");
-        check(pactChapters(Arrays.asList(Spec.CAMPAIGNBATTLES), Spec.CAMPAIGNBATTLES.length, Set.of()).size() == Arrays.stream(Spec.CAMPAIGNBATTLES).map(Spec.CampaignBattlesRow::chapter).distinct().count(), "pacts: the sheet's Long March cleared pays one Pact a chapter");
+        check(pactChapters(Arrays.asList(Spec.CAMPAIGNBATTLES), Spec.CAMPAIGNBATTLES.length, Set.of()).size() == Arrays.stream(Spec.CAMPAIGNBATTLES).map(Spec.CampaignBattlesRow::chapter).distinct().count(), "pacts: the sheet's campaign cleared pays one Pact a chapter");
     }
     /**
      * The troop card's counter lines (Task 12, fix round 1): CounterMath.cardRows with the troop's attack-kind tags on its outgoing side, on a
@@ -200,7 +200,7 @@ public final class HousesCheck {
     }
     static List<String> ids(List<CounterMath.CardRow> rows) { return rows.stream().map(r -> r.id() + (r.incoming() ? "<" : ">")).toList();
     }
-    static Spec.CampaignBattlesRow march(String id, int chapter, int order) { return new Spec.CampaignBattlesRow(id, chapter, order, id, 0, 1, "easy", false, "", "", "domination", "gilded", "b1_hold_all", "none", "none"); }
+    static Spec.CampaignBattlesRow march(String id, int chapter, int order) { return new Spec.CampaignBattlesRow(id, chapter, order, id, 0, 1, "easy", false, "", "", "domination", "gilded", "o1_hold_all", "none", "none", "", false, "none"); }
     /** The re-authored Founders chapter (spec 4.8) and the House-aware contract claims (spec 4.5), through Progression.claim alone. */
     static void founders() {
         var s = tier30();

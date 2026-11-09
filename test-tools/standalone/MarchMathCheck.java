@@ -2,7 +2,7 @@ package gg.gravesandglory;
 
 import java.util.*;
 
-/** Pure Long March bookkeeping (plan 2C.3): the six-battle sheet, the order lock, settling a battle and the bonus trackers. Never shipped. */
+/** Pure campaign bookkeeping (plan 2C.3, chapter 1 "The Oath"): the six-battle sheet, the order lock, settling a battle and the bonus trackers. Never shipped. */
 public final class MarchMathCheck {
     static int checks;
     static void check(boolean pass, String message) {
@@ -13,43 +13,45 @@ public final class MarchMathCheck {
     static final List<String> HOUSES = Profile.houseOrder();
     static Set<String> won(String... ids) { return new LinkedHashSet<>(List.of(ids)); }
     static Spec.CampaignBattlesRow row(int order) { return MarchMath.byOrder(ROWS).get(order - 1); }
+    static Spec.CampaignBattlesRow synthetic(int size) { return battle("x", 1, 1, size, "none", "none"); }
+    /** A test row: the fields the bookkeeping reads, the rest blank. */
+    static Spec.CampaignBattlesRow battle(String id, int chapter, int order, int size, String allies, String enemies) {
+        return new Spec.CampaignBattlesRow(id, chapter, order, id, 0, size, "easy", false, "", "", "domination", "gilded", "none", allies, enemies, "", false, "none");
+    }
 
     public static void main(String[] args) {
-        // sheet: the plan's six battles, in order, on the plan's maps and modes
-        String[][] plan = {{"The Training Field", "rivergate", "domination", "gilded"}, {"The Iron Gate", "ironhold", "siege", "ironclad"}, {"The Long Night", "hollowwood", "survival", "graveborn"},
-            {"The Frozen Standard", "frostmarch", "convoy", "wildmoot"}, {"The Five Crossings", "kingsfield", "domination", "tidecallers"}, {"The Last Watch", "ironhold", "siege", "graveborn"}};
+        // sheet: chapter 1 "The Oath" (chapter-1-battles.md section 5, Kort 2026-11-09): six battles in order, on their maps and modes, all Gilded
+        String[][] plan = {{"The Drowned Crossings", "rivergate", "domination", "easy"}, {"The Moon Shrine Watch", "hollowwood", "survival", "easy"}, {"Smoke at Ironhold", "ironhold", "siege", "normal"},
+            {"The Hunters' Road", "frostmarch", "convoy", "normal"}, {"The Grazing Grounds", "hollowwood", "domination", "normal"}, {"The Antlered Alpha", "kingsfield", "domination", "hard"}};
+        int[] sizes = {1, 2, 2, 2, 3, 3};
         check(ROWS.length == 6, "sheet: six campaign battles");
         for (int i = 0; i < 6; i++) {
             var r = row(i + 1);
-            check(r.id().equals("march-" + (i + 1)) && r.name().equals(plan[i][0]) && Spec.MAPS[r.map()].id().equals(plan[i][1]) && r.mode().equals(plan[i][2]) && r.house().equals(plan[i][3]), "sheet: battle " + (i + 1) + " is " + plan[i][0] + " on " + plan[i][1]);
-            check(MarchMath.bonus(r, Spec.BONUSOBJECTIVES) != null && !r.placeholder().isBlank(), "sheet: battle " + (i + 1) + " names a bonus objective and a placeholder note");
+            check(r.id().equals("oath-" + (i + 1)) && r.name().equals(plan[i][0]) && Spec.MAPS[r.map()].id().equals(plan[i][1]) && r.mode().equals(plan[i][2]) && r.difficulty().equals(plan[i][3]) && r.size() == sizes[i], "sheet: battle " + (i + 1) + " is " + plan[i][0] + " on " + plan[i][1]);
+            check(r.house().equals("gilded") && r.chapter() == 1 && r.placeholder().equals("none") && r.lessons() == (i == 0), "sheet: battle " + (i + 1) + " is Gilded, chapter 1, settled, lessons on battle 1 only");
+            var bonus = MarchMath.bonus(r, Spec.BONUSOBJECTIVES);
+            check(bonus != null && bonus.id().startsWith("o" + (i + 1) + "_") && !bonus.kind().equals("kill_unit"), "sheet: battle " + (i + 1) + " names its own oath bonus, never kill_unit");
+            check(!r.after().isBlank() && r.ebb() == (i >= 3), "sheet: battle " + (i + 1) + " has an after line; the ebb is on battles 4 to 6 only");
         }
-        // Kort 2026-10-31: Siege joined the lobby, so The Iron Gate is back on siege and its placeholder note no longer names a stand-in
-        var b2 = MarchMath.bonus(row(2), Spec.BONUSOBJECTIVES);
-        check(!row(2).placeholder().contains("siege") && b2.id().equals("b2_gate_by") && b2.kind().equals("stage_by") && b2.value() == 360 && b2.target().equals("gate"), "sheet: battle 2 runs as siege with its break-the-gate-by-360-s bonus (Kort 2026-11-02, Q78)");
-        // Kort 2026-11-02 (Q77): the ramp, battles 2 and 3 normal, 4 and 5 hard, 6 hard (the top tier) with its allies a tier below
-        String[] ramp = {"easy", "normal", "normal", "hard", "hard", "hard"};
-        for (int i = 0; i < 6; i++) check(row(i + 1).difficulty().equals(ramp[i]) && !row(i + 1).placeholder().startsWith("difficulty"), "sheet: battle " + (i + 1) + " is " + ramp[i]);
+        String[][] kinds = {{"hold_all", "0"}, {"lose_at_most", "8"}, {"stage_by", "360"}, {"never_rolled", "0"}, {"lose_at_most", "12"}, {"hold_all", "0"}};
+        for (int i = 0; i < 6; i++) { var bonus = MarchMath.bonus(row(i + 1), Spec.BONUSOBJECTIVES); check(bonus.kind().equals(kinds[i][0]) && bonus.value() == Integer.parseInt(kinds[i][1]), "sheet: battle " + (i + 1) + "'s bonus is " + kinds[i][0] + " " + kinds[i][1]); }
+        check(MarchMath.bonus(row(3), Spec.BONUSOBJECTIVES).target().equals("gate"), "sheet: battle 3 breaks the gate by 360 seconds");
+        check(Arrays.stream(Spec.CAMPAIGNBATTLES).noneMatch(r -> r.id().startsWith("march-")) && Arrays.stream(Spec.BONUSOBJECTIVES).noneMatch(b -> b.id().matches("b[0-9]_.*")), "sheet: no march-* row or bonus id remains");
+        // allies (brief A2): dedicated ally rows, one per allied seat, each reserved from every tier's pool
+        String[][] allyPlan = {{}, {"ally_gilded_easy"}, {"ally_ironclad_normal"}, {"ally_gilded_normal"}, {"ally_gilded_normal", "ally_gilded_normal_b"}, {"ally_gilded_normal", "ally_gilded_normal_b"}};
+        for (int i = 0; i < 6; i++) {
+            check(MarchMath.allyIds(row(i + 1)).equals(List.of(allyPlan[i])), "sheet: battle " + (i + 1) + "'s allies are " + Arrays.toString(allyPlan[i]));
+            for (String a : allyPlan[i]) check(MarchMath.reservedAlly(a, ROWS) && Arrays.stream(Spec.BOTBANNERS).anyMatch(x -> x.id().equals(a)), "sheet: ally " + a + " exists and is reserved");
+        }
+        check(!MarchMath.reservedAlly("gilded_normal", ROWS) && !MarchMath.reservedAlly("tidecallers_easy", ROWS), "allies: the House rows the ally rows copy stay in their tier's pool");
         check(Spec.BOTCOMMAND[Spec.BOTCOMMAND.length - 1].id().equals(row(6).difficulty()), "sheet: battle 6 plays the last (hardest) botCommand tier");
-        // Kort 2026-11-02 (Q76): battle 6 is Siege with allied bot banners from all five Houses, one per allied seat, a tier below the enemy and reserved from every tier's pool
-        Set<String> allyHouses = new HashSet<>();
-        var allies = MarchMath.allyIds(row(6));
-        for (String a : allies) {
-            var bb = Arrays.stream(Spec.BOTBANNERS).filter(x -> x.id().equals(a)).findFirst().orElse(null);
-            check(bb != null && !bb.difficulty().equals(row(6).difficulty()) && MarchMath.reservedAlly(a, ROWS), "sheet: ally " + a + " exists, sits below battle 6's tier and is reserved");
-            for (String t : bb.slots().split(",")) for (var tr : Spec.TROOPS) if (tr.id().equals(t)) allyHouses.add(tr.house());
-        }
-        check(row(6).mode().equals("siege") && allies.size() == row(6).size() - 1 && allyHouses.size() == Spec.HOUSES.length, "sheet: battle 6's allies field all five Houses (" + allyHouses + ")");
-        for (int i = 1; i <= 5; i++) check(MarchMath.allyIds(row(i)).isEmpty(), "sheet: battle " + i + " names no allies");
-        check(!MarchMath.reservedAlly("gilded_hard", ROWS), "allies: an unnamed row stays in its tier's pool");
-        check(row(1).placeholder().equals("none") && row(1).lessons() && !row(6).placeholder().contains("house"), "sheet: battle 1 is final; battle 6's house is settled");
         var b1 = MarchMath.bonus(row(1), Spec.BONUSOBJECTIVES);
-        check(b1.id().equals("b1_hold_all") && b1.kind().equals("hold_all") && b1.shards() == 5, "sheet: battle 1's bonus holds all three crossings for 5 shards");
+        check(b1.id().equals("o1_hold_all") && b1.kind().equals("hold_all") && b1.shards() == 5, "sheet: battle 1's bonus holds all three crossings for 5 shards");
         // cleared, lockedBy, nextUnwon, chapterDone
-        check(MarchMath.cleared(won(), ROWS) == 0 && MarchMath.cleared(won("march-1", "march-2"), ROWS) == 2 && MarchMath.cleared(won("march-1", "march-3"), ROWS) == 1 && MarchMath.cleared(won("march-2"), ROWS) == 0, "cleared: the unbroken run from march-1");
-        check(MarchMath.lockedBy(row(1), won(), ROWS) == null && MarchMath.lockedBy(row(2), won(), ROWS) == row(1) && MarchMath.lockedBy(row(2), won("march-1"), ROWS) == null, "lockedBy: battle 1 is open; battle 2 waits for battle 1");
-        check(MarchMath.lockedBy(row(4), won("march-1", "march-3"), ROWS) == row(2) && MarchMath.lockedBy(row(1), won("march-2"), ROWS) == null, "lockedBy: the lowest unwon earlier battle; a replay of a won battle is open");
-        check(MarchMath.nextUnwon(won(), ROWS) == row(1) && MarchMath.nextUnwon(won("march-1", "march-2"), ROWS) == row(3) && MarchMath.nextUnwon(won("march-1", "march-2", "march-3", "march-4", "march-5", "march-6"), ROWS) == null, "nextUnwon: the next battle, null when all six are won");
+        check(MarchMath.cleared(won(), ROWS) == 0 && MarchMath.cleared(won("oath-1", "oath-2"), ROWS) == 2 && MarchMath.cleared(won("oath-1", "oath-3"), ROWS) == 1 && MarchMath.cleared(won("oath-2"), ROWS) == 0, "cleared: the unbroken run from oath-1");
+        check(MarchMath.lockedBy(row(1), won(), ROWS) == null && MarchMath.lockedBy(row(2), won(), ROWS) == row(1) && MarchMath.lockedBy(row(2), won("oath-1"), ROWS) == null, "lockedBy: battle 1 is open; battle 2 waits for battle 1");
+        check(MarchMath.lockedBy(row(4), won("oath-1", "oath-3"), ROWS) == row(2) && MarchMath.lockedBy(row(1), won("oath-2"), ROWS) == null, "lockedBy: the lowest unwon earlier battle; a replay of a won battle is open");
+        check(MarchMath.nextUnwon(won(), ROWS) == row(1) && MarchMath.nextUnwon(won("oath-1", "oath-2"), ROWS) == row(3) && MarchMath.nextUnwon(won("oath-1", "oath-2", "oath-3", "oath-4", "oath-5", "oath-6"), ROWS) == null, "nextUnwon: the next battle, null when all six are won");
         int chapter = row(1).chapter();
         Set<String> all = won();
         for (var r : ROWS) if (r.chapter() == chapter) all.add(r.id());
@@ -57,7 +59,7 @@ public final class MarchMathCheck {
         // settle
         Set<String> battles = won(), claimed = won();
         var first = MarchMath.settle(row(1), b1, true, true, battles, claimed, HOUSES, ROWS);
-        check(first.firstWin() && first.cleared() == 1 && first.bonusPaid() && first.bonusShards() == 5 && first.bonusGold() == b1.gold() && first.bonusHouse().equals("gilded") && battles.equals(won("march-1")) && claimed.equals(won("b1_hold_all")), "settle: a first win with the bonus kept records march-1 and pays 5 Gilded shards and the bonus gold once");
+        check(first.firstWin() && first.cleared() == 1 && first.bonusPaid() && first.bonusShards() == 5 && first.bonusGold() == b1.gold() && first.bonusHouse().equals("gilded") && battles.equals(won("oath-1")) && claimed.equals(won("o1_hold_all")), "settle: a first win with the bonus kept records oath-1 and pays 5 Gilded shards and the bonus gold once");
         var replay = MarchMath.settle(row(1), b1, true, true, battles, claimed, HOUSES, ROWS);
         check(!replay.firstWin() && !replay.bonusPaid() && replay.bonusShards() == 0 && replay.bonusGold() == 0 && replay.bonusHouse() == null && replay.cleared() == 1, "settle: a replay pays no bonus again");
         Set<String> lostBattles = won(), lostClaimed = won();
@@ -68,7 +70,7 @@ public final class MarchMathCheck {
         check(plain.firstWin() && !plain.bonusPaid() && missed.isEmpty(), "settle: a win with the bonus missed records the battle but pays no bonus, which stays open");
         Set<String> sixClaimed = won();
         var finale = MarchMath.settle(row(6), MarchMath.bonus(row(6), Spec.BONUSOBJECTIVES), true, true, won(), sixClaimed, HOUSES, ROWS);
-        check(finale.bonusPaid() && finale.bonusShards() == 5 && finale.bonusGold() == 60 && finale.bonusHouse().equals("graveborn") && sixClaimed.equals(won("b6_kill_hollowking")), "settle: battle 6 pays 5 Graveborn shards and 60 gold once the bonus is kept");
+        check(finale.bonusPaid() && finale.bonusShards() == 5 && finale.bonusGold() == 60 && finale.bonusHouse().equals("gilded") && sixClaimed.equals(won("o6_hold_all")), "settle: battle 6 pays 5 Gilded shards and 60 gold once the bonus is kept");
         var b4 = new MarchMath.Tracker(MarchMath.bonus(row(4), Spec.BONUSOBJECTIVES));
         check(b4.kept(true, 1), "tracker: battle 4's never_rolled bonus is kept on a win with no roll back");
         b4.rolled();
@@ -107,9 +109,9 @@ public final class MarchMathCheck {
         // seat size (plan 2C.6): a March battle seats its row's size per team, practice seats one, and nothing leaves the six-seat lobby
         check(MarchMath.seatSize(null) == 1, "seatSize: practice (no row) is one a side");
         for (var r : ROWS) check(MarchMath.seatSize(r) == Math.max(1, Math.min(3, r.size())), "seatSize: " + r.id() + " follows its row's size within 1 to 3");
-        var big = new Spec.CampaignBattlesRow("x", 1, 1, "x", 0, 9, "easy", false, "", "", "domination", "gilded", "none", "none", "none");
-        var zero = new Spec.CampaignBattlesRow("x", 1, 1, "x", 0, 0, "easy", false, "", "", "domination", "gilded", "none", "none", "none");
-        var two = new Spec.CampaignBattlesRow("x", 1, 1, "x", 0, 2, "easy", false, "", "", "domination", "gilded", "none", "none", "none");
+        var big = synthetic(9);
+        var zero = synthetic(0);
+        var two = synthetic(2);
         check(MarchMath.seatSize(big) == 3 && MarchMath.seatSize(zero) == 1 && MarchMath.seatSize(two) == 2, "seatSize: held to 1..3 (9 -> 3, 0 -> 1, 2 -> 2)");
         System.out.println("MarchMathCheck: " + checks + " checks passed");
     }

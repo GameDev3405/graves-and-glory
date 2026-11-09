@@ -30,7 +30,7 @@ class EconomyModelSheetTest(unittest.TestCase):
         base, extra = em.chapter_gold(self.data)
         edited['campaign'][0]['victoryGold'] += 10
         for b in edited['bonusObjectives']:
-            if b['id'] == 'b6_kill_hollowking':
+            if b['id'] == 'o6_hold_all':
                 b['gold'] += 25
         n = sum(1 for b in edited['campaignBattles'] if b['chapter'] == 1)
         self.assertEqual(em.chapter_gold(edited), (base + 10 * n, extra + 25))
