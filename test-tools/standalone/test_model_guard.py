@@ -25,8 +25,29 @@ class ModelGuard(unittest.TestCase):
         self.assertTrue(self.denied(pre('Workflow', script="agent('x', {model: 'fable', label: 'a'})")))
         self.assertIsNone(model_guard.decide(pre('Workflow', script="agent('write a fable', {model: 'sonnet'})")))
 
+    def test_json_quoted_workflow_key_and_bad_input(self):
+        self.assertTrue(self.denied(pre('Workflow', script='agent("x", {"model": "fable"})')))
+        self.assertIsNone(model_guard.decide(pre('Workflow', script="const m = pick(); agent('x', {model: m})")))  # known gap, documented
+        self.assertIsNone(model_guard.decide({'hook_event_name': 'PreToolUse', 'tool_name': 'Agent', 'tool_input': 'oops'}))
+
+    def test_agent_file_front_matter_is_checked(self):
+        import tempfile, os
+        with tempfile.TemporaryDirectory() as d:
+            agents = pathlib.Path(d)/'.claude'/'agents'; agents.mkdir(parents=True)
+            (agents/'teller.md').write_text('---\nname: teller\nmodel: fable\n---\nTells fables.\n')
+            (agents/'coder.md').write_text('---\nname: coder\nmodel: sonnet\n---\nWrites a fable parser.\n')
+            old = os.environ.pop('CLAUDE_PROJECT_DIR', None)
+            try:
+                p = lambda **a: {**pre('Agent', **a), 'cwd': d}
+                self.assertTrue(self.denied(p(subagent_type='teller', prompt='x')))
+                self.assertIsNone(model_guard.decide(p(subagent_type='teller', model='sonnet')))  # explicit model wins
+                self.assertIsNone(model_guard.decide(p(subagent_type='coder')))
+                self.assertIsNone(model_guard.decide(p(subagent_type='../teller')))
+            finally:
+                if old is not None: os.environ['CLAUDE_PROJECT_DIR'] = old
+
     def test_session_on_fable_is_warned(self):
-        for model in ['claude-fable-5-1', {'id': 'claude-fable-5-1', 'display_name': 'Fable 5.1'}]:
+        for model in ['claude-fable-5-1', {'id': 'claude-fable-5-1', 'display_name': 'Fable 5.1'}, {'id': 'x', 'display_name': 'Fable 5.1'}]:
             r = model_guard.decide({'hook_event_name': 'SessionStart', 'model': model})
             self.assertIn('Do no work', r['hookSpecificOutput']['additionalContext'])
         self.assertIsNone(model_guard.decide({'hook_event_name': 'SessionStart', 'model': 'claude-opus-5-5'}))
@@ -38,6 +59,16 @@ class ModelGuard(unittest.TestCase):
         self.assertEqual(json.loads(out.stdout)['hookSpecificOutput']['permissionDecision'], 'deny')
         bad = run('not json')
         self.assertEqual((bad.returncode, bad.stdout), (0, ''))
+
+    def test_template_command_survives_a_missing_script(self):
+        hooks = json.loads((TOOLS/'claude-hooks.json').read_text())['hooks']
+        cmds = [h['command'] for e in hooks['PreToolUse'] + hooks['SessionStart'] for h in e['hooks'] if 'model_guard' in h['command']]
+        self.assertTrue(cmds and all(c.endswith('|| exit 0') for c in cmds))
+        import shutil
+        sh = shutil.which('bash') or shutil.which('sh')
+        if sh:  # hooks run through a POSIX shell; a missing script must exit 0, not 2 (2 would block the Agent call)
+            r = subprocess.run([sh, '-c', f'"{sys.executable}" "/no/such/model_guard.py" || exit 0'], capture_output=True)
+            self.assertEqual(r.returncode, 0)
 
     def test_template_installs_both_hooks(self):
         hooks = json.loads((TOOLS/'claude-hooks.json').read_text())['hooks']

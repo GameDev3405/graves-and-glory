@@ -16,7 +16,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python \"$CLAUDE_PROJECT_DIR/tools/model_guard.py\"",
+            "command": "python \"$CLAUDE_PROJECT_DIR/tools/model_guard.py\" || exit 0",
             "timeout": 10
           }
         ]
@@ -27,7 +27,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python \"$CLAUDE_PROJECT_DIR/tools/model_guard.py\"",
+            "command": "python \"$CLAUDE_PROJECT_DIR/tools/model_guard.py\" || exit 0",
             "timeout": 10
           }
         ]

@@ -15,7 +15,7 @@ Approved by Kort on 2026-10-25 by requesting execution of optimization proposal 
   - Sonnet 5.5 at high effort for routine work, checks and reviews.
   - Opus 5.5 at medium effort for complicated or important work.
   - When stuck, escalate to Opus 5.5 at high effort. xhigh only when a task explicitly needs it.
-  - Never any Fable model, in the main session or any subagent. The hook `tools/model_guard.py` (see SETUP.md) blocks Fable subagents.
+  - Never any Fable model, in the main session or any subagent. The hook `tools/model_guard.py` (see SETUP.md) blocks Fable subagents and workflows it can see; its known gaps are in SETUP.md.
   - Everything gets reviewed: one fresh Sonnet 5.5 high review per change.
 - Sessions (Kort, 2026-11-09): one coordinator plus six leads (animation, unit textures, lore, props, workflow, UI). Leads use subagents, not further sessions. Nobody works in the `main` checkout; branches reach `main` only through `tools/land.py`. One writer per file/checkout. Each brief names outcome, checkout/base, owned files, exact references, acceptance checks, model/effort, stop condition and report path. Fresh workers for unrelated work; resume only related fixes.
 - Up to two automatic correction rounds. Batch concrete defects (clipping, unreadable labels, failed controls, persistence, state). If material defects remain, mark incomplete/blocked, retain evidence and move to independent approved work. Never pass a broken result to satisfy the cap.
