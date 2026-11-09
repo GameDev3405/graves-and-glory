@@ -124,7 +124,7 @@ final class DeathController extends AnimationController<GeoTroop> {
             if (e.getWorld() == null) return;
             double now = e.getWorld().getTime() + state.getPartialTick();
             double[] at = rising(model, animatable, e, now);
-            if (at == null) return;
+            if (at == null) { lastRise = null; return; }
             Animation clip = model.getAnimation(animatable, at[0] == 0 ? FAKE : RISE);
             double elapsed = now - MotionEvents.Client.rise(e.getId()).tick();
             double w = AttackController.smooth(elapsed / FADE_IN) * AttackController.smooth((at[2] - elapsed) / RISE_OUT);
