@@ -306,7 +306,7 @@ public final class Campaign {
         }
         return false;
     }
-    static final String MARCH_SOLO="The Long March is played solo. Leave your party or room first.";
+    static final String MARCH_SOLO="Campaign battles are played solo. Leave your party or room first.";
     /** Why a commander cannot start a solo battle (practice or a Long March battle) now, or "" when they can: one battle at a time, solo means no party and no room (soloRule says so), and a battlefield being prepared for someone else stays theirs. */
     String soloRefusal(UUID id,String soloRule){
         if(b.running)return "Wait until the current battle finishes.";
@@ -522,7 +522,7 @@ public final class Campaign {
         var t=Arrays.stream(Spec.TROOPS).filter(x->x.house().equals(house)&&x.rarity().equals("legendary")).findFirst().orElse(null);if(t==null)return;
         if(pr.owned.containsKey(t.id())){notice(who,t.name()+" is in your collection already.");return;}
         var R=Spec.RECRUITMENT[0];int renown=pr.renown.getOrDefault(house,0),shards=pr.shards.getOrDefault(house,0);String name=RosterMath.houseName(house);
-        if(pact&&pr.writs<1){notice(who,"You hold no Pact. Clear every battle of a Long March chapter to earn one.");return;}
+        if(pact&&pr.writs<1){notice(who,"You hold no Pact. Clear every battle of a campaign chapter to earn one.");return;}
         if(!pact&&renown<R.renownForLegendary()){notice(who,t.name()+" answers at "+R.renownForLegendary()+" "+name+" Renown. You have "+renown+".");return;}
         if(!pact&&shards<R.legendaryShards()){notice(who,t.name()+" costs "+R.legendaryShards()+" "+name+" shards. You have "+shards+".");return;}
         String before=JSON.toJson(pr);

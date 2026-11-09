@@ -95,6 +95,12 @@ public final class MarchMath {
     static List<String> allyIds(Spec.CampaignBattlesRow r) { return r == null || r.allies().equals("none") ? List.of() : Arrays.asList(r.allies().split(",")); }
 
     /** The campaignChapters row of a chapter number, or null. */
+    /** The name of the chapter a battle belongs to ("The Oath"), or "The campaign" for a battle without a chapter row. */
+    static String chapterName(Spec.CampaignBattlesRow r, Spec.CampaignChaptersRow[] chapters) {
+        var c = r == null ? null : chapter(r.chapter(), chapters);
+        return c == null ? "The campaign" : c.name();
+    }
+
     static Spec.CampaignChaptersRow chapter(int chapter, Spec.CampaignChaptersRow[] chapters) {
         for (var c : chapters) if (c.chapter() == chapter) return c;
         return null;

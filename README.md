@@ -36,7 +36,7 @@ The branded title menu waits for your choice. Enter camp opens a walled courtyar
 
 Play with friends offers local-network hosting and the normal server browser. Hosting announces its LAN address in chat. Friend parties hold up to four commanders and persist in that host's world across matches and restarts. Invite an online commander, accept, then create or join a private room by code. Each member confirms readiness; the host selects 1v1–4v4, map and bot fill. Parties move teams together and never silently split. Results retain the room for a rematch. Rooms are temporary and end at server restart; parties persist. One battle runs at a time while other rooms wait in camp. Private rooms are code-based, without passwords or spectator mode.
 
-The free, nonexpiring Founders chapter ends at tier 30 (7,500 XP). Eligible matches grant 100 XP, plus 50 for victory. Daily and weekly contracts add claimable gold and XP. Twenty-four tiers grant 25 gold; every fifth tier grants a title, ending with Bannerlord. The current chapter has a clear endpoint; future chapters, troops and cosmetic rewards can extend it. Rewards never raise combat stats.
+The free, nonexpiring Founders season pass ends at tier 30 (7,500 XP). Eligible matches grant 100 XP, plus 50 for victory. Daily and weekly contracts add claimable gold and XP. Twenty-four tiers grant 25 gold; every fifth tier grants a title, ending with Bannerlord. The current season pass has a clear endpoint; future seasons, troops and cosmetic rewards can extend it. Rewards never raise combat stats.
 
 Arrange twenty deployment slots before battle: place any unlocked unit type in any front or rear slot, or leave slots empty. There is no required ratio of troop types. These positions control initial deployment; battlefield orders and formations take over when issued. Losing a soldier never removes its permanent unlock.
 
@@ -135,7 +135,7 @@ and a group card flashes when its troops take hits. A shattered group, or one
 taken from behind, routs with a horn and rallies; orders given during the rout
 apply on regroup. Barracks recruits march out from a point your side has held
 for ten seconds near the fight. Bots come in Easy, Normal and Hard (Bots button
-in the camp guide). The Long March battle 1, The Training Field, teaches
+in the camp guide). The Oath, the first campaign chapter, opens with The Drowned Crossings, which teaches
 command with lessons that name your own keys, and every match ends with a
 battle report of kills, losses, gold and time on points, with an MVP.
 Verified by automated checks in an isolated development client; bot tier

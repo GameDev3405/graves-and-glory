@@ -524,12 +524,14 @@ final class WarTableReport {
     void longMarch(DrawContext g, int x, int y) {
         var prof = CampaignClient.profile;
         int total = Spec.CAMPAIGNBATTLES.length, won = Math.min(total, MarchMath.cleared(prof.battlesWon, Spec.CAMPAIGNBATTLES));
-        head(g, "march", "The Long March", won + " of " + total + " won", x, y, TEXT_W);
-        y += 18;
         var next = MarchMath.nextUnwon(prof.battlesWon, Spec.CAMPAIGNBATTLES);
-        y = block(g, "march-next", next == null ? "Every battle of the Long March is won." : "Next, battle " + next.order() + ": " + next.name() + ".", x, y, TEXT_W, 2, DarkUi.INK_TEXT);
+        var rows = MarchMath.byOrder(Spec.CAMPAIGNBATTLES);
+        String name = MarchMath.chapterName(next != null ? next : rows.isEmpty() ? null : rows.get(rows.size() - 1), Spec.CAMPAIGNCHAPTERS);
+        head(g, "march", name, won + " of " + total + " won", x, y, TEXT_W);
+        y += 18;
+        y = block(g, "march-next", next == null ? "Every battle of " + name + " is won." : "Next, battle " + next.order() + ": " + next.name() + ".", x, y, TEXT_W, 2, DarkUi.INK_TEXT);
         y = block(g, "march-bonuses", "Bonuses claimed: " + prof.bonusClaimed.size() + " of " + Spec.BONUSOBJECTIVES.length + ".", x, y, TEXT_W, 1, DarkUi.SEPIA);
-        String pact = prof.writs > 0 ? "Pacts held: " + prof.writs + "." : "You hold no Pact. Clear every battle of a Long March chapter to earn one.";
+        String pact = prof.writs > 0 ? "Pacts held: " + prof.writs + "." : "You hold no Pact. Clear every battle of a campaign chapter to earn one.";
         block(g, "march-pacts", pact, x, y, TEXT_W, 2, prof.writs > 0 ? DarkUi.INK_TEXT : DarkUi.SEPIA);
     }
 

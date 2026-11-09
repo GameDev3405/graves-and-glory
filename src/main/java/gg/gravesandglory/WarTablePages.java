@@ -30,7 +30,7 @@ final class WarTablePages {
     /** The pages this class draws. The field has no plaque on the rail: home's Change opens it. */
     static final List<String> NAMES = List.of("banner", "contracts", "chapter", "friends", "field");
     /** Each page's focal title (the Chapter's is its chapter block). */
-    static final Map<String, String> TITLES = Map.of("banner", "Your Banner", "contracts", "Contracts", "chapter", "Founders Chapter", "friends", "Friends", "field", "The Field");
+    static final Map<String, String> TITLES = Map.of("banner", "Your Banner", "contracts", "Contracts", "chapter", "Founders Season Pass", "friends", "Friends", "field", "The Field");
     static final int TITLE_X = 480, TITLE_Y = 84;
     // The rail's camp plaques are home's (WarTableHome.RAIL, RAIL_X, RAIL_LABELS, RAIL_W): one source, no copy here.
     /** The notice line: its first line's top, 12 px under the lowest content of every page; its lines 13 px apart, centred on the
@@ -1780,9 +1780,9 @@ final class WarTablePages {
      *  is a widget, paintClaim). */
     void block(DrawContext g, int hx, int ox, int oy, int tier, Progression.State p) {
         var font = font();
-        g.drawText(font, "Chapter 1", hx + 480, oy + 80, DarkUi.MUTED, false);
+        g.drawText(font, "Season pass", hx + 480, oy + 80, DarkUi.MUTED, false);
         g.drawText(font, DarkUi.heading("The Founders"), hx + 480, oy + 92, DarkUi.BRASS, false);
-        textsDrawn.put("chapter", "Chapter 1 / The Founders");
+        textsDrawn.put("chapter", "Season pass / The Founders");
         rectsDrawn.put("seal", UiTex.draw(g, "chapter/seal-tier-big", hx + 480, oy + 144));
         String n = String.valueOf(tier);
         g.drawText(font, n, hx + 502 - font.getWidth(n) / 2, oy + 162, DarkUi.CHIP_TEXT, false);
