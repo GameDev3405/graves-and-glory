@@ -328,6 +328,7 @@ def cmd_show(a):
     names = houses_of(tr) + ["team"] if a.name == "all" else [a.name]
     for n in names:
         out = a.out if (a.out and a.name != "all") else os.path.join(PAL_DIR, n + ".png")
+        os.makedirs(os.path.dirname(os.path.abspath(out)), exist_ok=True)
         draw_swatch(load_palette(n), out); print(out)
 
 

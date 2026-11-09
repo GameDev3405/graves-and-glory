@@ -85,6 +85,43 @@ class Template(unittest.TestCase):
                 r = run(ROOT / 'tools/art_hue_check.py', '--dir', out, '--house', house)
                 self.assertEqual(r.returncode, 0, house + r.stdout)
 
+    def test_gate_passes_every_preset(self):
+        for house in ('gilded', 'graveborn', 'wildmoot', 'ironclad', 'tidecallers'):
+            r = run(TEMPLATE, 'gate', '--house=' + house)
+            self.assertEqual(r.returncode, 0, house + r.stdout)
+            self.assertIn('gate PASS', r.stdout)
+
+    def load(self):
+        import importlib.util
+        spec = importlib.util.spec_from_file_location('build_template_under_test', TEMPLATE)
+        m = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(m)
+        return m
+
+    def test_gate_fails_a_flat_arm(self):
+        m = self.load()
+        Rm = m.R('padding')
+        m.arm = lambda: (lambda face, w, h: [[Rm[2]] * w for _ in range(h)])   # a flat painter: no light at all
+        problems = m.gate(m.TEMPLATE)
+        self.assertTrue(any('flat or lit from below' in p for p in problems), problems)
+
+    def test_gate_fails_off_house_main_mass(self):
+        m = self.load()
+        m.PRIMARY_ROLES = ('plate',)   # tier I has no plate: its hood, gambeson and sleeves are then not a primary ramp
+        problems = m.gate(m.TEMPLATE)
+        self.assertTrue(any(p.startswith('tier 1: primary ramps cover') for p in problems), problems)
+
+    def test_material_cues_differ(self):
+        m = self.load()
+        w, h = 6, 12
+        grids = {name: m.fill('padding', pattern=getattr(m, name))('front', w, h) for name in ('rope_twist', 'gloss_fold')}
+        grids['shell'] = m.shell('plate')('front', w, h)
+        for name, g in grids.items():
+            flat = [c for row in g for c in row]
+            self.assertTrue(all(c is not None for c in flat), name)
+            self.assertGreaterEqual(len(set(flat)), 3, name)
+        self.assertNotEqual(grids['rope_twist'], grids['gloss_fold'])
+
     def test_never_installs(self):
         r = run(TEMPLATE, 'install')
         self.assertNotEqual(r.returncode, 0)
