@@ -239,6 +239,7 @@ final class Tactics {
         if(u.mob.getTarget()!=null&&!u.mob.getTarget().isAlive())u.mob.setTarget(null);
         if(u.looseAt>=0&&time>=u.looseAt)looseLate(battle,u,time); // Kort Q70: a bow troop's shot leaves its loose ticks after the beat that took it
         stunStance(u,time);
+        if(time<u.downUntil){u.mob.getNavigation().stop();u.mob.setTarget(null);u.mob.setAttacking(false);return;} // the Undying King down and rising (Houses.UNDYING_DOWN): no move, no turn, no act
         if(time%10!=u.slot%10){brace(battle,u);shieldStance(u);stretch(battle,u,battle.assignment(u),time);return;} // the shield and a wall troop's last stretch every tick; everything else on the unit's 10-tick beat
         u.place=null; // the beat reads the slot again
         var mob=u.mob;var s=u.squad;var a=battle.assignment(u);

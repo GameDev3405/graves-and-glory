@@ -60,6 +60,13 @@ final class GeoKnightChecks implements Phase1Checks.Suite {
     static final int MELEE_T = meleeTicks();
     /** Capture only: how many swing (cut or sweep) clips the troop has, at most 2: its attack_ clips that are not a thrust or a jab. */
     static final int SLASH_N = slashClips();
+    /** Whether the troop has its own hit_knockback: without it a throw plays the medium stagger (HitController), so a pull from behind does too. */
+    static final boolean KNOCKBACK_CLIP = hasClip("hit_knockback");
+    static boolean hasClip(String clip) {
+        try (var in = GeoKnightChecks.class.getResourceAsStream("/assets/gravesandglory/animations/troop/" + TROOP + ".animation.json")) {
+            return in != null && com.google.gson.JsonParser.parseReader(new java.io.InputStreamReader(in, java.nio.charset.StandardCharsets.UTF_8)).getAsJsonObject().getAsJsonObject("animations").has(clip);
+        } catch (Exception e) { return true; }
+    }
     static boolean isSlash(String clip) { return !clip.contains("thrust") && !clip.contains("jab"); }
     static int slashClips() {
         try (var in = GeoKnightChecks.class.getResourceAsStream("/assets/gravesandglory/animations/troop/" + TROOP + ".animation.json")) {
@@ -354,14 +361,20 @@ final class GeoKnightChecks implements Phase1Checks.Suite {
     /**
      * The rise (rise_v1): a troop whose level 3 row is the rise (Abilities.riseRow: the Hollow King's Undying King) takes a lethal
      * blow through Combat.resolve with the rise's roll forced (Houses.forceRise), so Houses.allowDeath keeps it alive and sends
-     * rise_v1. Its client must play fake_death then rise over every layer (DeathController.riseAt), ending on the span's last tick.
+     * rise_v1. The server must keep it down (stunned and still) the whole display, Houses.UNDYING_DOWN; its client must play fake_death
+     * then rise over every layer (DeathController.riseAt), ending on the span's last tick. Cases: the rise seen three-quarter and side
+     * on (the troop's once-only rise is re-armed between them: Unit.rose cleared), then "death": a second lethal blow RISE_KILL ticks
+     * into a rise (it rose already, so it dies) must not snap to a fall from the guard (DeathController.COLLAPSE: fake_death).
      * FAKE_T and RISE_T: the clip lengths (gb_hollowking.animation.json); the span is the server's window, or both clips when it is 0.
      */
     static final double FAKE_T = 30, RISE_T = 40;
+    static final String[] RISE_CASES = {"threequarter", "side", "death"};
+    static final int RISE_KILL = 45;
     final List<String> riseBad = new ArrayList<>();
-    volatile long riseTick = -2;
+    volatile long riseTick = -2, riseStun = -1, riseDown = -1, riseKilledAt = -1;
     volatile int riseWindow = -1, riseSent = -1;
-    volatile boolean riseRose, riseAlive;
+    volatile boolean riseRose, riseAlive, riseKilled;
+    int riseDeathFrames; String riseDeathClips = "";
     /** Whether the tier III troop has the rise row: -1 until the server has answered. */
     volatile int riseRow = -1;
     volatile int riseVictim = -1;
@@ -1018,10 +1031,11 @@ final class GeoKnightChecks implements Phase1Checks.Suite {
             case 12 -> {
                 // Pulled: the tier III own troop (slot 2) is dragged toward a live foe (foe()) by the server's pull path at k25, the
                 // others stood out of the way; its hit layer is shot every tick of the reaction and checked: clip (front hit_pulled,
-                // back hit_knockback), scale, footwork, gone after; the server must have sent the pulled flag and moved it.
+                // back hit_knockback, or the medium stagger when the troop has none), scale, footwork, gone after; the server must
+                // have sent the pulled flag and moved it.
                 String name = PULL_CASES[i][0], view = PULL_CASES[i][1];
                 boolean back = name.equals("back");
-                String want = back ? "hit_knockback" : "hit_pulled";
+                String want = back ? (KNOCKBACK_CLIP ? "hit_knockback" : "hit_medium") : "hit_pulled";
                 if (k == 1) {
                     if (i == 0) pullBad.clear();
                     taken.clear(); pullMaxScale = 0; pullMaxLegs = 0; pullFrames = 0; pullMoved = Double.NaN; pullSent = -1; pullClips = ""; hitAt = -1;
@@ -1084,7 +1098,7 @@ final class GeoKnightChecks implements Phase1Checks.Suite {
                     System.out.println(String.format("[p1] pulled %s/%s clips %sframes %d scale %.3f legs %.3f moved %.2f sends %d", name, view, pullClips, pullFrames, pullMaxScale, pullMaxLegs, pullMoved, pullSent));
                     if (++i < PULL_CASES.length) next(tick, 12);
                     else {
-                        Phase1Checks.report("p1-geo-" + TROOP + "-hit-pulled", pullBad.isEmpty(), PULL_CASES.length + " pulls by the server path (front: hit_pulled, back: hit_knockback): "
+                        Phase1Checks.report("p1-geo-" + TROOP + "-hit-pulled", pullBad.isEmpty(), PULL_CASES.length + " pulls by the server path (front: hit_pulled, back: " + (KNOCKBACK_CLIP ? "hit_knockback" : "hit_medium, no hit_knockback") + "): "
                             + "flag sent, body moved, clip, scale, footwork, frames, gone after" + (pullBad.isEmpty() ? "" : "; bad " + pullBad.subList(0, Math.min(8, pullBad.size()))));
                         Phase1Checks.server(c, b -> quiet(b, false));
                         riseRow = -1; i = 0; next(tick, 13);
@@ -1092,22 +1106,31 @@ final class GeoKnightChecks implements Phase1Checks.Suite {
                 }
             }
             case 13 -> {
-                // The rise: only a troop whose tier III has the rise row (the Hollow King). Lethal blow at k20 through Combat.resolve with
-                // the roll forced; every tick of the rise's span is shot; the death layer must show fake_death then rise at weight 1, the
-                // rise ending on the span's last tick, and nothing once it is over.
+                // The rise: only a troop whose tier III has the rise row (the Hollow King). Per case, a lethal blow at k20 through
+                // Combat.resolve with the roll forced; every client tick is shot; the death layer must show fake_death then rise at
+                // weight 1, the rise ending on the span's last tick, nothing once it is over; the server must hold it down that long.
+                // "death": a second lethal blow RISE_KILL ticks in kills it, and its death layer must sink from the rise into fake_death.
+                String rc = RISE_CASES[i];
+                boolean killCase = rc.equals("death");
                 if (riseRow == 0) { next(tick, 11); return; }
                 if (k > 200 && riseRow < 0) { Phase1Checks.report("p1-geo-" + TROOP + "-rise", false, "the server never answered"); next(tick, 11); return; }
                 if (k == 1) {
-                    riseBad.clear(); taken.clear(); riseFrames = 0; risePhase = 0; riseMaxFakeT = -1; riseMaxT = -1; riseFirstRise = -1; riseMinW = 2;
-                    riseTick = -2; riseWindow = -1; riseSent = -1; riseVictim = -1;
+                    if (i == 0) riseBad.clear();
+                    taken.clear(); riseFrames = 0; risePhase = 0; riseMaxFakeT = -1; riseMaxT = -1; riseFirstRise = -1; riseMinW = 2;
+                    riseTick = -2; riseWindow = -1; riseSent = -1; riseVictim = -1; riseStun = -1; riseDown = -1; riseKilledAt = -1; riseKilled = false;
+                    riseDeathFrames = 0; riseDeathClips = "";
                     Phase1Checks.server(c, b -> {
-                        var v = knights.get(2); var f = knights.get(foe());
+                        var v = knights.get(2);
                         if (Abilities.riseRow(v) == null) { riseRow = 0; return; }
+                        if (!v.mob.isAlive()) { riseRow = 0; return; }
                         hold = null; quiet(b, true);
                         for (int j = 0; j < knights.size(); j++) if (j != 2 && j != foe()) stand(knights.get(j), cx + (j < 3 ? -20 - j * 3 : 20 + j * 3), cz - 30, 0);
-                        stand(v, cx, cz, 135); stand(f, cx + 3, cz + 3, -45); // the foe behind it, out of the frame
+                        v.rose = false; v.mob.setHealth(v.mob.getMaxHealth()); v.stunnedUntil = 0; v.downUntil = 0; // re-armed: the rise is once a battle
+                        boolean side = rc.equals("side");
+                        stand(v, cx, cz, side ? 90 : 135);
+                        stand(knights.get(foe()), side ? cx + 4 : cx + 3, side ? cz + 3 : cz + 3, side ? 90 : -45); // the striker, out of the frame
                         riseVictim = v.mob.getId();
-                        eye(b, cx - 4, cz - 2.5, -58, 14);
+                        if (side) eye(b, cx - 2, cz - 7, 0, 6); else eye(b, cx - 4, cz - 2.5, -58, 14);
                         riseRow = 1;
                     });
                 }
@@ -1119,43 +1142,67 @@ final class GeoKnightChecks implements Phase1Checks.Suite {
                     try { Combat.resolve(b, f, v.mob, v.mob.getMaxHealth() * 50, "slam", true); }
                     finally { Houses.forceRise = null; v.mob.setInvulnerable(true); }
                     riseRose = v.rose; riseAlive = v.mob.isAlive(); riseSent = MotionEvents.riseSends - sends; riseTick = v.riseTick; riseWindow = v.riseWindow;
+                    riseStun = v.stunnedUntil - b.time; riseDown = v.downUntil - b.time;
+                });
+                if (killCase && k == 20 + RISE_KILL && riseRow == 1) Phase1Checks.server(c, b -> {
+                    var v = knights.get(2); var f = knights.get(foe());
+                    v.mob.setInvulnerable(false); v.mob.timeUntilRegen = 0;
+                    try { Combat.resolve(b, f, v.mob, v.mob.getMaxHealth() * 50, "slam", true); }
+                    finally { if (v.mob.isAlive()) v.mob.setInvulnerable(true); }
+                    riseKilled = !v.mob.isAlive(); riseKilledAt = b.world.getTime();
                 });
                 double span = riseWindow > 0 ? riseWindow : FAKE_T + RISE_T;
+                if (k >= 18 && k <= 20 + span + 4 && c.world != null && riseRow == 1) { Phase1Checks.shot(c, String.format("geo-" + TROOP + "-rise-%s-%03d", rc, k - 18)); riseFrames++; }
                 if (k > 20 && riseTick >= 0 && c.world != null && c.world.getEntityById(riseVictim) instanceof LivingEntity e) {
                     DeathController dc = DeathController.LIVE.get(e);
                     MotionEvents.Rise r = MotionEvents.Client.rise(riseVictim);
-                    if (r != null && (r.tick() != riseTick || r.window() != riseWindow) && riseBad.size() < 40) riseBad.add("client heard " + r + " server tick " + riseTick + " window " + riseWindow);
-                    if (dc == null) { if (riseBad.size() < 40) riseBad.add("no death layer"); }
-                    else if (dc.shownRiseElapsed >= 0) {
+                    if (r != null && (r.tick() != riseTick || r.window() != riseWindow) && riseBad.size() < 40) riseBad.add(rc + " client heard " + r + " server tick " + riseTick + " window " + riseWindow);
+                    if (dc == null) { if (riseBad.size() < 40) riseBad.add(rc + " no death layer"); }
+                    else if (e.isDead() || e.deathTime > 0) {
+                        // killed mid-rise: from its first dead frame the layer sinks into fake_death, never a fall from the guard
+                        if (!riseDeathClips.contains(dc.shownClip + " ")) riseDeathClips += dc.shownClip + " ";
+                        if (!dc.shownClip.equals(DeathController.FAKE) && riseBad.size() < 40) riseBad.add(rc + " dead mid-rise shows " + dc.shownClip + " at death " + e.deathTime);
+                        riseDeathFrames++;
+                    } else if (dc.shownRiseElapsed >= 0) {
                         double el = dc.shownRiseElapsed;
-                        if (Math.abs(dc.shownRiseSpan - span) > .01 && riseBad.size() < 40) riseBad.add("span " + dc.shownRiseSpan + " want " + span);
+                        if (Math.abs(dc.shownRiseSpan - span) > .01 && riseBad.size() < 40) riseBad.add(rc + " span " + dc.shownRiseSpan + " want " + span);
                         double[] want = DeathController.riseAt(el, riseWindow, FAKE_T, RISE_T);
                         String wc = want == null ? "" : want[0] == 0 ? DeathController.FAKE : DeathController.RISE;
-                        if (!dc.shownClip.equals(wc) && riseBad.size() < 40) riseBad.add(String.format("clip %s want %s at %.1f", dc.shownClip, wc, el));
-                        if (dc.shownClip.equals(DeathController.FAKE)) { if (risePhase > 0 && riseBad.size() < 40) riseBad.add("fake_death after rise at " + el); riseMaxFakeT = Math.max(riseMaxFakeT, dc.shownT); }
+                        if (!dc.shownClip.equals(wc) && riseBad.size() < 40) riseBad.add(String.format("%s clip %s want %s at %.1f", rc, dc.shownClip, wc, el));
+                        if (dc.shownClip.equals(DeathController.FAKE)) { if (risePhase > 0 && riseBad.size() < 40) riseBad.add(rc + " fake_death after rise at " + el); riseMaxFakeT = Math.max(riseMaxFakeT, dc.shownT); }
                         if (dc.shownClip.equals(DeathController.RISE)) { if (risePhase == 0) { risePhase = 1; riseFirstRise = el; } riseMaxT = Math.max(riseMaxT, dc.shownT); }
                         if (el >= DeathController.FADE_IN + .5 && el <= span - DeathController.RISE_OUT - .5) riseMinW = Math.min(riseMinW, dc.shownWeight);
-                        int tt = (int) Math.round(el);
-                        if (Math.abs(el - tt) <= .3 && taken.add("rise:" + tt)) { Phase1Checks.shot(c, String.format("geo-" + TROOP + "-rise-%02d", tt)); riseFrames++; }
-                    } else if (e.isAlive() && !dc.shownClip.isEmpty() && riseBad.size() < 40) riseBad.add("death layer " + dc.shownClip + " outside the rise");
+                    } else if (e.isAlive() && !dc.shownClip.isEmpty() && riseBad.size() < 40) riseBad.add(rc + " death layer " + dc.shownClip + " outside the rise");
                 }
                 if (k == 20 + (int) span + 12) {
                     var e = c.world == null ? null : c.world.getEntityById(riseVictim);
                     DeathController dc = e == null ? null : DeathController.LIVE.get(e);
-                    if (riseSent < 1) riseBad.add("rise_v1 sends " + riseSent);
-                    if (!riseRose || !riseAlive) riseBad.add("server rose " + riseRose + " alive " + riseAlive);
-                    if (dc == null || !dc.shownClip.isEmpty()) riseBad.add("after the span the death layer shows " + (dc == null ? "none" : dc.shownClip));
-                    if (!(e instanceof LivingEntity l) || !l.isAlive() || l.deathTime > 0) riseBad.add("not standing after the rise");
-                    if (riseMaxFakeT < FAKE_T - 1.5) riseBad.add(String.format("fake_death reached %.2f", riseMaxFakeT));
-                    if (riseMaxT < RISE_T - 1.5) riseBad.add(String.format("rise reached %.2f, its end must meet the span's", riseMaxT));
-                    if (Math.abs(riseFirstRise - (span - RISE_T)) > 1.5) riseBad.add(String.format("rise began at %.2f, want %.2f", riseFirstRise, span - RISE_T));
-                    if (riseMinW < .999) riseBad.add(String.format("weight dipped to %.3f inside the span", riseMinW));
-                    if (riseFrames < span * .6) riseBad.add("frames " + riseFrames + "/" + (int) span);
-                    System.out.println(String.format("[p1] rise window %d span %.0f frames %d fake max %.2f rise from %.2f max %.2f min w %.3f sends %d", riseWindow, span, riseFrames, riseMaxFakeT, riseFirstRise, riseMaxT, riseMinW, riseSent));
-                    Phase1Checks.report("p1-geo-" + TROOP + "-rise", riseBad.isEmpty(), "lethal blow through Combat.resolve, rise forced: server rose and sent rise_v1, client fake_death then rise "
-                        + "over a " + (int) span + " tick span (window " + riseWindow + "), weight 1, rise ending on the span, gone after" + (riseBad.isEmpty() ? "" : "; bad " + riseBad.subList(0, Math.min(8, riseBad.size()))));
+                    if (riseSent < 1) riseBad.add(rc + " rise_v1 sends " + riseSent);
+                    if (!riseRose || !riseAlive) riseBad.add(rc + " server rose " + riseRose + " alive " + riseAlive);
+                    if (riseStun < span || riseDown < span || riseWindow != (int) riseStun) riseBad.add(rc + " server down " + riseDown + " stunned " + riseStun + " window " + riseWindow + ", want the span " + span);
+                    if (killCase) {
+                        if (!riseKilled) riseBad.add(rc + " the second blow did not kill it");
+                        if (riseDeathFrames < 10) riseBad.add(rc + " dead frames " + riseDeathFrames);
+                        if (riseFirstRise < 0) riseBad.add(rc + " never reached the rise before the kill");
+                    } else {
+                        if (dc == null || !dc.shownClip.isEmpty()) riseBad.add(rc + " after the span the death layer shows " + (dc == null ? "none" : dc.shownClip));
+                        if (!(e instanceof LivingEntity l) || !l.isAlive() || l.deathTime > 0) riseBad.add(rc + " not standing after the rise");
+                        if (riseMaxT < RISE_T - 1.5) riseBad.add(String.format("%s rise reached %.2f, its end must meet the span's", rc, riseMaxT));
+                    }
+                    if (riseMaxFakeT < FAKE_T - 1.5) riseBad.add(String.format("%s fake_death reached %.2f", rc, riseMaxFakeT));
+                    if (Math.abs(riseFirstRise - (span - RISE_T)) > 1.5) riseBad.add(String.format("%s rise began at %.2f, want %.2f", rc, riseFirstRise, span - RISE_T));
+                    if (riseMinW < .999) riseBad.add(String.format("%s weight dipped to %.3f inside the span", rc, riseMinW));
+                    if (riseFrames < span * .6) riseBad.add(rc + " frames " + riseFrames + "/" + (int) span);
+                    System.out.println(String.format("[p1] rise %s window %d stun %d down %d span %.0f frames %d fake max %.2f rise from %.2f max %.2f min w %.3f sends %d%s", rc, riseWindow, riseStun, riseDown,
+                        span, riseFrames, riseMaxFakeT, riseFirstRise, riseMaxT, riseMinW, riseSent, killCase ? " killed " + riseKilled + " dead frames " + riseDeathFrames + " clips " + riseDeathClips : ""));
                     Phase1Checks.server(c, b -> quiet(b, false));
-                    i = 0; next(tick, 11);
+                    if (++i < RISE_CASES.length) next(tick, 13);
+                    else {
+                        Phase1Checks.report("p1-geo-" + TROOP + "-rise", riseBad.isEmpty(), "lethal blow through Combat.resolve, rise forced, three-quarter and side: server rose, held it down "
+                            + (int) span + " ticks and sent rise_v1, client fake_death then rise over the span, weight 1, the rise ending on it, gone after; killed "
+                            + RISE_KILL + " ticks in: fake_death from the first dead frame" + (riseBad.isEmpty() ? "" : "; bad " + riseBad.subList(0, Math.min(8, riseBad.size()))));
+                        i = 0; next(tick, 11);
+                    }
                 }
             }
             case 11 -> {

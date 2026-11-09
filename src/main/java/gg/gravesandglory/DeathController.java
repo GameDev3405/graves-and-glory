@@ -29,7 +29,10 @@ import java.util.WeakHashMap;
  * <p>
  * A troop that rose instead of dying (rise_v1: Rise Again, the Hollow King's Undying King) and whose model has {@link #FAKE} and {@link #RISE}
  * plays them here too, alive, over every other layer: it falls (fake_death, held on its last frame) and stands back up (rise), timed by
- * {@link #riseAt} so the rise ends on the tick the server's window ends; the stance layer shows no stun meanwhile.
+ * {@link #riseAt} so the rise ends on the tick the server's window ends; the stance layer shows no stun meanwhile. Killed for good during it
+ * (blows still land), it does not snap to a fall from the guard: still falling, the fall plays on and holds; risen off the ground, the pose
+ * it died in sinks back into the fall's last frame (face down) over {@link #COLLAPSE} ticks; back on its feet (the rise's last
+ * {@link #RISE_STOOD} ticks, the guard), it falls as any troop does.
  */
 final class DeathController extends AnimationController<GeoTroop> {
     /** Blend from the living pose into the fall over this many ticks of deathTime. */
@@ -39,9 +42,13 @@ final class DeathController extends AnimationController<GeoTroop> {
     static final String FAKE = "fake_death", RISE = "rise";
     /** Ticks the rise fades back into the live layers at its end (its last frame is the ready guard, which the live layers show by then). */
     static final double RISE_OUT = 4;
+    /** A troop killed while risen off the ground sinks back face down over this many ticks; in the rise's last RISE_STOOD ticks it stands (the guard) and falls as usual. */
+    static final double COLLAPSE = 8, RISE_STOOD = 6;
 
     /** The fall this troop latched, or null while alive. */
     private String latched;
+    /** The rise the last live frame showed ({phase 0 fake_death or 1 rise, clip time, weight}), or null; and, latched at a death during it, that state. */
+    private double[] lastRise, riseDeath;
     /** What the last frame showed, for the in-game checks (GeoKnightChecks): clip, clip time and weight; for a rise, the ticks since it fired and its span. Never read in play. */
     String shownClip = "";
     double shownT = -1, shownWeight, shownRiseElapsed = -1, shownRiseSpan;
@@ -113,7 +120,7 @@ final class DeathController extends AnimationController<GeoTroop> {
         if (!listed) { listed = true; LIVE.put(e, this); }
         shownWeight = 0; shownT = -1; shownClip = ""; shownRiseElapsed = -1;
         if (!(e instanceof LivingEntity l) || !(l.isDead() || l.deathTime > 0)) {
-            latched = null;
+            latched = null; riseDeath = null; lastRise = null;
             if (e.getWorld() == null) return;
             double now = e.getWorld().getTime() + state.getPartialTick();
             double[] at = rising(model, animatable, e, now);
@@ -123,11 +130,31 @@ final class DeathController extends AnimationController<GeoTroop> {
             double w = AttackController.smooth(elapsed / FADE_IN) * AttackController.smooth((at[2] - elapsed) / RISE_OUT);
             if (w > 0) AttackController.apply(clip, at[1], bones, (float) w);
             shownClip = clip.name(); shownT = at[1]; shownWeight = w; shownRiseElapsed = elapsed; shownRiseSpan = at[2];
+            lastRise = new double[]{at[0], at[1], w};
             return;
         }
         if (latched == null) {
             String fall = pick(MotionEvents.Client.hits(e.getId()), e.getId()), dropped = fall + drop(e.getUuid());
             latched = model.getAnimation(animatable, dropped) != null ? dropped : fall;
+            Animation rise = model.getAnimation(animatable, RISE);
+            if (lastRise != null && rise != null && model.getAnimation(animatable, FAKE) != null && (lastRise[0] == 0 || lastRise[1] < rise.length() - RISE_STOOD))
+                riseDeath = lastRise;
+            lastRise = null;
+        }
+        if (riseDeath != null) { // killed mid-rise: from the pose it died in, never from the guard
+            Animation fake = model.getAnimation(animatable, FAKE), rise = model.getAnimation(animatable, RISE);
+            double dt = l.deathTime + state.getPartialTick();
+            if (riseDeath[0] == 0) { // still falling (or lying): the fall plays on and holds its last frame
+                double t = Math.min(fake.length(), riseDeath[1] + dt), w = Math.max(riseDeath[2], AttackController.smooth(dt / FADE_IN));
+                AttackController.apply(fake, t, bones, (float) w);
+                shownClip = fake.name(); shownT = t; shownWeight = w;
+            } else { // risen off the ground: that pose, sinking back face down
+                AttackController.apply(rise, riseDeath[1], bones, (float) riseDeath[2]);
+                double k = AttackController.smooth(dt / COLLAPSE);
+                AttackController.apply(fake, fake.length(), bones, (float) k);
+                shownClip = fake.name(); shownT = fake.length(); shownWeight = k;
+            }
+            return;
         }
         Animation clip = model.getAnimation(animatable, latched);
         if (clip == null) return;

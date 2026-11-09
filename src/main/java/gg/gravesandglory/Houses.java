@@ -179,6 +179,13 @@ final class Houses {
         return false;
     }
 
+    /**
+     * The Undying King's rise (his own rise row, Abilities.riseRow) keeps him down this many ticks at least (Kort 2026-11-09): stunned and still, no move, no turn, no
+     * attack, no cast, while his clients show the fall and the resurrection (gb_hollowking fake_death 30 + rise 40, DeathController.riseAt), the rise ending as he is
+     * free. The row's durationTicks still stands when it is longer. Blows still land on him meanwhile. Rise Again (the Graveborn trait) is unchanged: its row's stun.
+     */
+    static final int UNDYING_DOWN = 70;
+
     /** Harness hook: true makes every Rise Again roll succeed, false makes it fail, null leaves it to the dice. */
     static Boolean forceRise;
 
@@ -195,7 +202,7 @@ final class Houses {
      * A rise sets its health to value2 of its maximum, marks it rose, stuns it for the row's durationTicks (Tactics skips its attacks, and a spell it had begun is lost) and returns
      * false, which skips vanilla's death and AFTER_DEATH: so the army loses nothing, the enemy earns no kill and the death log gains no entry.
      * A soldier's own rise row (N7, Undying King: Abilities.riseRow, his level-3 row) lets him rise too, Legendary or not, at its own chance (amount2), added to the
-     * trait's where both apply; such a rise takes the row's health share (amount) and stun (durationTicks). It is the same once-only path, and the soldier keeps
+     * trait's where both apply; such a rise takes the row's health share (amount) and stun (durationTicks, at least UNDYING_DOWN, lying still). It is the same once-only path, and the soldier keeps
      * his level, kills and gear: he never died. Its clients hear of the rise (MotionEvents.RISE, presentation only).
      */
     static boolean allowDeath(LivingEntity e, DamageSource src) {
@@ -209,7 +216,8 @@ final class Houses {
         if (!trait && own == null) return true;
         if (!rolls(b, (trait ? t.value() : 0) + (own != null ? own.amount2() : 0))) return true;
         u.rose = true;
-        u.stunnedUntil = b.time + (own != null ? own.durationTicks() : t.durationTicks());
+        u.stunnedUntil = b.time + (own != null ? Math.max(own.durationTicks(), UNDYING_DOWN) : t.durationTicks());
+        if (own != null) { u.downUntil = u.stunnedUntil; e.setVelocity(0, e.getVelocity().y, 0); u.mob.getNavigation().stop(); } // the King lies still where he fell
         u.spellCenter = null; // a stunned caster loses the spell it had begun
         e.setHealth((float) ((own != null ? own.amount() : t.value2()) * e.getMaxHealth()));
         BattleEffects.soul(b, e.getPos());
