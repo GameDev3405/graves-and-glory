@@ -218,6 +218,14 @@ public final class Structures {
         BlockBox box=footprint(piece.template().getSize(),cx,y,cz,rotation);
         Vec3i span=new Vec3i(box.getMaxX()-box.getMinX()+1,box.getMaxY()-box.getMinY()+1,box.getMaxZ()-box.getMinZ()+1);
         BlockPos origin=new BlockPos(box.getMinX(),box.getMinY(),box.getMinZ());
+        Saved saved=snapshot(w,origin,span,tag);
+        if(saved==null)return null;
+        place(w,id,cx,y,cz,rotation);
+        return saved;
+    }
+    /** Saves the blocks of the box at origin of size span under mode-saved/<tag>.nbt, for restore; null when the file cannot be written. A mode that
+     *  changes the map without a piece (Siege's defender barricades, PropGameplay) saves its box with this first. */
+    public static Saved snapshot(ServerWorld w,BlockPos origin,Vec3i span,String tag){
         StructureTemplate snapshot=new StructureTemplate();
         snapshot.saveFromWorld(w,origin,span,false,net.minecraft.block.Blocks.STRUCTURE_VOID);
         Path file=savedDir(w).resolve(tag+".nbt");
@@ -225,7 +233,6 @@ public final class Structures {
             Files.createDirectories(file.getParent());
             NbtIo.writeCompressed(snapshot.writeNbt(new NbtCompound()),file.toFile());
         }catch(Exception e){System.err.println("[Graves and Glory] structure could not be saved: "+tag+": "+e);return null;}
-        place(w,id,cx,y,cz,rotation);
         return new Saved(tag,file,origin,span);
     }
     /** Puts a saved box back and deletes its file; false when the file is gone or cannot be read. */

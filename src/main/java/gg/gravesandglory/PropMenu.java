@@ -67,6 +67,8 @@ public final class PropMenu {
     /** A player's placement in progress. */
     static final class Placing{
         final String id;int facing;final int homeSlot;BlockPos at;boolean red;String why="";
+        /** A Siege defender's placement (PropGameplay): no op needed, the Siege rules checked and the box saved for the round's teardown. */
+        boolean siege;
         final List<Entity> ghosts=new ArrayList<>();
         Placing(String id,int homeSlot){this.id=id;this.homeSlot=homeSlot;}
     }
@@ -99,7 +101,8 @@ public final class PropMenu {
             if(hand!=Hand.MAIN_HAND)return ActionResult.FAIL;
             if(p.isSneaking()){cancel(p,"Placement cancelled");return ActionResult.FAIL;}
             BlockPos at=hit.getBlockPos().up();
-            String why=Props.place(p.getServerWorld(),pl.id,at,pl.facing);
+            var battle=GravesAndGlory.battle;
+            String why=pl.siege?(battle==null?"No battle is running.":PropGameplay.siegePlace(battle,battle.squads.get(p.getUuid()),pl.id,at,pl.facing)):Props.place(p.getServerWorld(),pl.id,at,pl.facing);
             if(!why.isEmpty()){p.sendMessage(Text.literal(why).formatted(Formatting.RED),false);return ActionResult.FAIL;}
             PropDef d=Props.DEFS.get(pl.id);
             p.sendMessage(Text.literal("Placed "+(d==null?pl.id:d.name())+" at "+at.toShortString()+", facing "+pl.facing),false);
@@ -209,6 +212,13 @@ public final class PropMenu {
             .append(Text.keybind("key.sneak")).append(" + ").append(Text.keybind("key.use")).append(" or /prop to cancel"),false);
     }
 
+    /** Starts a Siege defender's placement of prop id (PropGameplay's /barricade): the same ghost, checked and placed under the Siege rules. */
+    static void startSiege(ServerPlayerEntity p,String id){
+        start(p,id);
+        Placing pl=PLACING.get(p.getUuid());
+        if(pl!=null)pl.siege=true;
+    }
+
     static void cancel(ServerPlayerEntity p,String text){
         end(p.getUuid());
         p.sendMessage(Text.literal(text),true);
@@ -239,13 +249,14 @@ public final class PropMenu {
             ServerPlayerEntity p=server.getPlayerManager().getPlayer(e.getKey());
             Placing pl=e.getValue();
             PropDef d=Props.DEFS.get(pl.id);
-            if(p==null||p.isRemoved()||!p.isAlive()||d==null||!p.hasPermissionLevel(2)){clearGhost(pl);it.remove();continue;}
+            if(p==null||p.isRemoved()||!p.isAlive()||d==null||!pl.siege&&!p.hasPermissionLevel(2)){clearGhost(pl);it.remove();continue;}
             if(!pl.ghosts.isEmpty()&&pl.ghosts.get(0).getWorld()!=p.getWorld())clearGhost(pl);
             turn(p,pl);
             HitResult hit=p.raycast(p.isCreative()?5.0:4.5,1f,false);
             if(hit.getType()==HitResult.Type.BLOCK)pl.at=((BlockHitResult)hit).getBlockPos().up().toImmutable();
             if(pl.at==null)continue;
-            String why=Props.check(p.getServerWorld(),pl.id,pl.at,pl.facing);
+            var battle=GravesAndGlory.battle;
+            String why=!pl.siege?Props.check(p.getServerWorld(),pl.id,pl.at,pl.facing):battle==null?"No battle is running.":PropGameplay.siegeCheck(battle,battle.squads.get(p.getUuid()),pl.id,pl.at,pl.facing);
             boolean red=!why.isEmpty();
             if(red!=pl.red||pl.ghosts.isEmpty()){clearGhost(pl);pl.red=red;spawnGhost(p.getServerWorld(),pl,d);}
             else moveGhost(pl,d);

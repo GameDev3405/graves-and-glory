@@ -15,5 +15,6 @@
     [2, 1, 0]
   ],
   "lights": [],
-  "effects": []
+  "effects": [],
+  "gameplay": {"hp": 6, "heavyHit": 2, "siegeHit": 3, "heavyDamage": 6, "cover": 0.25, "coverRange": 2, "siegeCap": 4, "siegeSeconds": 90, "siegeRadius": 48}
 }

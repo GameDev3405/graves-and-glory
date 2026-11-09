@@ -259,6 +259,7 @@ public final class Props {
         BlockState floor=base!=null&&w.getBlockEntity(base) instanceof CommandBlockBlockEntity cb?anchorFloor(cb.getCommandExecutor().getCommand()):Blocks.AIR.getDefaultState();
         if(base!=null)w.setBlockState(base,floor,3);
         Map<BlockPos,Live> m=LIVE.get(w);if(m!=null)m.remove(anchor);
+        PropGameplay.forget(w,anchor);
         return true;
     }
 

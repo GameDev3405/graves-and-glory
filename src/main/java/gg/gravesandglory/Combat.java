@@ -115,7 +115,9 @@ public final class Combat {
         // chargeBonusMultiplier beside the counters rows C5 and C6, then chargeKnockback below).
         float block = kind.equals("arrow") ? FormationRules.arrowBlock(b, victim, attacker.mob) : 0f;
         boolean crash = kind.equals("melee") && !secondary && FormationRules.firstChargeHit(b, attacker);
-        float amount = (float) (base * veteran * total * (1 - block) * (crash ? D.chargeBonusMultiplier() : 1));
+        // A gameplay prop's cover (stake barricade, Kort 2026-11-09): a ranged shot at a target standing just behind one deals 1 - its cover, its own factor outside the clamp like the shield wall's.
+        double cover = secondary ? 1 : PropGameplay.coverFactor(b, attacker, target, kind);
+        float amount = (float) (base * veteran * total * (1 - block) * cover * (crash ? D.chargeBonusMultiplier() : 1));
         boolean anchored = victim != null && Abilities.anchored(b, victim);
         Vec3d stood = target.getVelocity();
         var watchers = victim == null ? List.<net.minecraft.server.network.ServerPlayerEntity>of() : List.copyOf(MotionEvents.watchers(target)); // read before a killing blow can take the troop from its trackers

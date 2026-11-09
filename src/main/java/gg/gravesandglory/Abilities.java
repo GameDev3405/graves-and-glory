@@ -223,6 +223,7 @@ final class Abilities {
             if (knell != null && !v.mob.isAlive()) raise(b, u, v, knell);
         }
         for (var st : new java.util.ArrayList<>(b.structures)) if (st.team() != u.squad.team && st.isAlive() && st.squaredDistanceTo(u.spellCenter) < radius * radius) Combat.resolve(b, u, st, base, "blight", false); // a shell bursts on a supply banner too (counters row C10 for a siege troop)
+        if (u.tags.contains("siege")) PropGameplay.siegeFire(b.world, u.spellCenter, radius, "a shell"); // a siege troop's shell is siege fire on a destructible prop (stake barricade)
         var firepot = rider(u, "mist");
         if (firepot != null) {
             b.mists.add(new Mist(u.squad.team, u.spellCenter, firepot.radius(), time + firepot.durationTicks(), u, firepot, null));
@@ -409,6 +410,7 @@ final class Abilities {
     static int splash(GravesAndGlory.Battle b, GravesAndGlory.Unit u, Vec3d at, LivingEntity except, float base, double radius, double knockback, Vec3d fallback) {
         int struck = 0;
         double reach = radius * radius;
+        PropGameplay.slam(b.world, at, radius); // a heavy hit on a destructible prop in reach (stake barricade)
         for (var e : enemies(b, u.squad.team)) {
             if (e == except || e.squaredDistanceTo(at) > reach) continue;
             float applied = Combat.resolve(b, u, e, base, "slam", true);

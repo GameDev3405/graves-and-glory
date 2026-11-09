@@ -2,7 +2,7 @@
   "required": true,
   "package": "gg.gravesandglory.mixin",
   "compatibilityLevel": "JAVA_17",
-  "mixins": ["ContactFeedbackMixin", "AutosaveMixin", "ShieldCooldownMixin", "BowDrawMixin", "CorpseMixin", "HitEventMixin", "ShotAttitudeMixin"],
+  "mixins": ["ContactFeedbackMixin", "AutosaveMixin", "ShieldCooldownMixin", "BowDrawMixin", "CorpseMixin", "HitEventMixin", "ShotAttitudeMixin", "PropSwingMixin", "PropExplosionMixin"],
   "client": [
     "CommandInputMixin",
     "PanelInputMixin",
