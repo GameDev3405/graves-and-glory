@@ -485,7 +485,10 @@ def build_hold(tr):
 # entry depth. Bows: the string arm, pitched back 12 deg off the ready guard, ran its forearm (and the bonebow's and stalker's
 # bracers) into the jerkin's flank (pen_limb 0.75-1.39 px, limit 0.6); the arm swings a few degrees out from the ribs instead.
 BOW_FALLBACK_FIT = {"right_arm": (0.0, 0.0, 9.0), "right_forearm": (0.0, -12.0, 0.0)}
-FALLBACK_FIT = {t: BOW_FALLBACK_FIT for t in ("archer", "longbow", "bonebow", "stalker", "wm_hunter")}
+# revenant: its ward pose sank both vambraces into the breastplate (scorecard pen_limb 1.01 px); the sword arm lifts 8 deg forward
+# with the forearm turned 12 deg, the free fist swings 8 deg out and 4 deg forward (now under 0.4 px).
+FALLBACK_FIT = {**{t: BOW_FALLBACK_FIT for t in ("archer", "longbow", "bonebow", "stalker", "wm_hunter")},
+                "revenant": {"right_arm": (-8.0, 0.0, 0.0), "right_forearm": (0.0, 12.0, 0.0), "left_arm": (-4.0, 0.0, -8.0)}}
 
 
 def fallback_fit(tr, base):
