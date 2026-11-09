@@ -71,13 +71,18 @@ TROOPS = {
     "ic_arbalist": ("ic_arbalist", "build_ic_arbalist", "IC_ARBALIST", "build_ic_weapons", "ic_crossbow", (-90, 0, 90), "crossbow"),
     # a harpoon (kind "thrower") rides the right fist like a spear; it is thrown, so it hangs on the draw channel's rest frame
     "tc_harpooner": ("tc_harpooner", "build_tc_harpooner", "TC_HARPOONER", "build_house_weapons", "harpoon", (-90, 0, 90), "thrower"),
-    # casters: the Sunweaver's staff rides the right fist like a blade, upright with the sun to the front when the forearm is level (kind "staff"); the others
+    # casters: the Sunweaver's staff rides the right fist like a blade, upright with the sun to the front when the forearm is level (kind "staff"),
+    # gripped part way up the shaft (GRIP_SLIDE); the others
     # hold a part modelled into the troop's own right hand (kind "held": the lantern, the wand, the rod), with no weapon_t<n> bones
     "mage": ("mage", "build_mage", "MAGE", "build_sun_staff", "sun_staff", (-90, 0, 0), "staff"),
     "hexer": ("hexer", "build_hexer", "HEXER", None, None, None, "held"),
     "wm_seer": ("wm_seer", "build_wm_seer", "WM_SEER", None, None, None, "held"),
     "tc_mist": ("tc_mist", "build_tc_mist", "TC_MIST", None, None, None, "held"),
 }
+# Per troop and tier, how far the fist sits up the weapon's shaft from the weapon art's own grip (px along the grip frame's +y): the
+# weapon's cubes slide down the shaft by it, the bone's pivot (the fist) stays. The Sunweaver holds the staff about 40% up its
+# length as a walking staff (Kort 2026-11-09: "towards the middle more"), not by its leather grip a third of the way up.
+GRIP_SLIDE = {"mage": {1: 3.0, 2: 4.5, 3: 5.5}}
 SHIELD_AT = (-1, 4, -1.5)     # the knight's grip: in the left fist by its strap, face to the front
 WAIST, SPLIT = 8.5, ((12, 8), (12, 0))
 # Per troop, a skeleton larger than the knight's (the Hollow King: body 10x14x5 on 14 px legs, the floor at handlib y 28). The same
@@ -454,6 +459,7 @@ class Rig:
                 wcubes = s.frames[t][frame]
             if wcubes:
                 hx, hy, hz = j["pivot"]
+                hy -= GRIP_SLIDE.get(s.tid, {}).get(t, 0)
                 for sc in wcubes:
                     faces = {}
                     base = sc.name.split("/")[-1]
