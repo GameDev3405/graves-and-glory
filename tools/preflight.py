@@ -887,9 +887,17 @@ for sheet,rows in data.items():
     out.append(f'public record {name}('+','.join(typ(rows[0][c])+' '+c for c in cols)+') {}')
     out.append(f'public static {name}[] {sheet.upper()} = new {name}[] {{'+','.join('new '+name+'('+','.join(literal(r[c]) for c in cols)+')' for r in rows)+'};')
 out.append('}')
+def write_if_changed(path,text):
+    # An unchanged output is left alone: Gradle's compileJava reruns this script while verify's other steps read
+    # Spec.java, and rewriting the same bytes would truncate it under them for a moment. Same encoding both ways.
+    try:
+        with open(path,newline='') as f:
+            if f.read()==text: return
+    except (OSError,UnicodeDecodeError): pass
+    path.write_text(text,newline='\n')
 dest=root/'src/main/java/gg/gravesandglory/Spec.java'
 dest.parent.mkdir(parents=True,exist_ok=True)
-dest.write_text('\n'.join(out),newline='\n')  # LF on every OS, as .gitattributes says; CRLF showed as modified in every worktree
+write_if_changed(dest,'\n'.join(out))  # LF on every OS, as .gitattributes says; CRLF showed as modified in every worktree
 report={'filledCells':cells,'unfilledCells':[],'unresolvedReferences':[],'runtimeVerification':'pending; tracked separately in verification.json'}
-(root/'sheets/preflight.json').write_text(json.dumps(report,indent=2),newline='\n')
+write_if_changed(root/'sheets/preflight.json',json.dumps(report,indent=2))
 print(f'Preflight clean: {cells} filled cells; every row generates a Java record. Runtime verification pending.')

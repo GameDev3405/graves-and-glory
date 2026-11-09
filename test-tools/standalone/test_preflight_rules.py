@@ -4,6 +4,7 @@ The copy holds only what preflight reads (the sheet, the assets, the troop art j
 sheets/preflight.json are never touched. The first test runs the untouched sheet through the same copy, so a refusal below is the rule's, not the copy's.
 """
 import json
+import os
 import pathlib
 import shutil
 import subprocess
@@ -55,6 +56,20 @@ class PreflightRules(unittest.TestCase):
         # .gitattributes says eol=lf for both outputs; CRLF made them show as modified in every Windows worktree.
         for name in ['src/main/java/gg/gravesandglory/Spec.java', 'sheets/preflight.json']:
             self.assertNotIn(b'\r', (self.root / name).read_bytes(), name)
+
+    def test_unchanged_outputs_are_not_rewritten(self):
+        """verify runs Gradle (whose compileJava reruns preflight) beside steps that read Spec.java: an unchanged output keeps
+        its file untouched, a stale one is still replaced."""
+        self.assertEqual(self.run_preflight()[0], 0)
+        spec = self.root / 'src/main/java/gg/gravesandglory/Spec.java'; report = self.root / 'sheets/preflight.json'
+        good = spec.read_bytes()
+        for p in (spec, report):
+            os.utime(p, ns=(1_000_000_000, 1_000_000_000))
+        self.assertEqual(self.run_preflight()[0], 0)
+        self.assertEqual((spec.stat().st_mtime_ns, report.stat().st_mtime_ns), (1_000_000_000, 1_000_000_000))
+        spec.write_bytes(b'stale')
+        self.assertEqual(self.run_preflight()[0], 0)
+        self.assertEqual(spec.read_bytes(), good)
 
     def refuses(self, mutate, *words):
         code, out = self.run_preflight(mutate)

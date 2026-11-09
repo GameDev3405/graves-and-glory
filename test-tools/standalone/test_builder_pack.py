@@ -26,7 +26,8 @@ def load(path, name):
 def fake_jar(version='9.9.9'):
     buf = io.BytesIO()
     with zipfile.ZipFile(buf, 'w') as z:
-        z.writestr('fabric.mod.json', json.dumps({'id': 'gravesandglory', 'version': version}))
+        # a fixed entry time: writestr(name) stamps the clock, so two calls a 2 s tick apart made test_deterministic flaky
+        z.writestr(zipfile.ZipInfo('fabric.mod.json', (2026, 1, 1, 0, 0, 0)), json.dumps({'id': 'gravesandglory', 'version': version}))
     return buf.getvalue()
 
 

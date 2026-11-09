@@ -1,5 +1,6 @@
 """Reproducible local verification. Logs and exact input identity live in work/verify/."""
-import argparse, datetime, hashlib, json, os, pathlib, shutil, subprocess, sys
+import argparse, datetime, hashlib, json, os, pathlib, shutil, subprocess, sys, threading
+from concurrent.futures import ThreadPoolExecutor
 from release_config import source_identity
 ROOT=pathlib.Path(__file__).resolve().parents[1]
 def require_game_evidence(path):
@@ -43,6 +44,7 @@ def run(args):
     def hashes(): return {n:hashlib.sha256((ROOT/n).read_bytes()).hexdigest() for n in generated}
     report['generated_before']=hashes()
     env=dict(os.environ,PYTHONIOENCODING='utf-8')
+    lock=threading.Lock()
     def step(name,cmd,timeout=600):
         log=out/(name+'.log')
         with log.open('w',encoding='utf8') as stream:
@@ -53,11 +55,18 @@ def run(args):
                 if os.name=='nt': subprocess.run(['taskkill','/PID',str(child.pid),'/T','/F'],stdout=stream,stderr=subprocess.STDOUT)
                 else: child.kill()
                 child.wait(); code=124
-        report['checks'].append(dict(name=name,command=[str(c) for c in cmd],exit_code=code,log=str(log)))
-        print(name+': '+('PASS' if code==0 else 'FAIL '+str(code)),flush=True)
-        if code:
-            print('\n'.join(log.read_text(encoding='utf8',errors='replace').splitlines()[-18:]))
-            raise RuntimeError(name+' failed; full log '+str(log))
+        with lock:
+            report['checks'].append(dict(name=name,command=[str(c) for c in cmd],exit_code=code,log=str(log)))
+            print(name+': '+('PASS' if code==0 else 'FAIL '+str(code)),flush=True)
+            if code: print('\n'.join(log.read_text(encoding='utf8',errors='replace').splitlines()[-18:]),flush=True)
+        if code: raise RuntimeError(name+' failed; full log '+str(log))
+    def together(canon,*lanes):
+        """Runs independent lanes of steps at once; every lane runs to its end, then the first failure (in lane order) is raised.
+        Each step keeps its own log and exit code; the report lists the steps in canon's order, as the sequential run did."""
+        with ThreadPoolExecutor(len(lanes)) as pool: futures=[pool.submit(lane) for lane in lanes]
+        errors=[f.exception() for f in futures if f.exception()]
+        report['checks'].sort(key=lambda c: canon.index(c['name']) if c['name'] in canon else -1)
+        if errors: raise errors[0]
     try:
         game_guard()
         jdk=java_home(); env['JAVA_HOME']=str(jdk); env['PATH']=str(jdk/'bin')+os.pathsep+env['PATH']
@@ -65,12 +74,6 @@ def run(args):
         if args.offline: gradle+=['--offline']
         step('preflight',[sys.executable,'tools/preflight.py'])
         tested_identity=source_identity()
-        step('python-tests',[sys.executable,'-m','unittest','discover','-s','test-tools/standalone','-p','test_*.py'])
-        step('ui-standard',[sys.executable,'test-tools/standalone/test_ui_standard.py'])
-        # test_build_skins is already included in unittest discovery; do not run it twice.
-        step('ui-assets',[sys.executable,'tools/build_ui_art.py','--verify'])
-        step('skin-assets',[sys.executable,'tools/build_skins.py','--verify'])
-        step('clips',[sys.executable,'tools/clips.py','--verify'])
         gson=list((pathlib.Path.home()/'.gradle/caches/modules-2/files-2.1/com.google.code.gson/gson/2.10.1').glob('*/*.jar'))
         if not gson: raise RuntimeError('Gson 2.10.1 missing; run documented online setup once')
         classes=out/'classes'; classes.mkdir()
@@ -79,11 +82,27 @@ def run(args):
         sources=[ROOT/'src/main/java/gg/gravesandglory'/(n+'.java') for n in names]
         sources+=[ROOT/'test-tools/java/gg/gravesandglory/SoleSlide.java']  # pure geometry the motion grade shares with SoleSlideCheck
         sources+=[ROOT/'test-tools/java/gg/gravesandglory/StepWindows.java']  # the grade's event windows and authored ratios, pinned by StepWindowsCheck
+        # The steps below share no outputs (each Python check paints into its own temp dir, javac into work/verify, Gradle into
+        # build/), so they run at once. The guard runs first because java-compile and build start here.
         game_guard()
-        step('java-compile',[jdk/'bin/javac','--release','17','-cp',gson[0],'-d',classes,*sources,*checks])
-        for test in checks: step(test.stem,[jdk/'bin/java','-cp',str(classes)+os.pathsep+str(gson[0]),'gg.gravesandglory.'+test.stem])
-        game_guard()
-        step('build',[*gradle,'build','compileLocalTestTools','-x','test'],1200)
+        cpus=os.cpu_count() or 2
+        def java_lane():
+            step('java-compile',[jdk/'bin/javac','--release','17','-cp',gson[0],'-d',classes,*sources,*checks])
+            run_check=lambda test: step(test.stem,[jdk/'bin/java','-cp',str(classes)+os.pathsep+str(gson[0]),'gg.gravesandglory.'+test.stem])
+            with ThreadPoolExecutor(max(1,min(6,cpus//4))) as pool: futures=[pool.submit(run_check,t) for t in checks]
+            errors=[f.exception() for f in futures if f.exception()]
+            if errors: raise errors[0]
+        canon=['preflight','python-tests','ui-standard','ui-assets','skin-assets','clips','java-compile',*(t.stem for t in checks),'build']
+        together(canon,
+            # One process per test module (slow modules split by recorded times); the same discovery, every id accounted for.
+            lambda: step('python-tests',[sys.executable,'tools/parallel_tests.py','test-tools/standalone','--pattern','test_*.py','--times',ROOT/'work/verify/python-test-times.json']),
+            lambda: step('ui-standard',[sys.executable,'test-tools/standalone/test_ui_standard.py']),
+            # test_build_skins is already included in unittest discovery; do not run it twice.
+            lambda: step('ui-assets',[sys.executable,'tools/build_ui_art.py','--verify']),
+            lambda: step('skin-assets',[sys.executable,'tools/build_skins.py','--verify']),
+            lambda: step('clips',[sys.executable,'tools/clips.py','--verify']),
+            java_lane,
+            lambda: step('build',[*gradle,'build','compileLocalTestTools','-x','test'],1200))
         if args.tier=='release':
             # Strict package gate; no stopgap bypass and no upload.
             step('package',[sys.executable,'tools/package.py'])

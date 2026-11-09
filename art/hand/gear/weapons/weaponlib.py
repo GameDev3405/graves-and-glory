@@ -214,14 +214,32 @@ def frames(bones, pose):
         mats[bn.name], offs[bn.name] = render.mul(pm, render.rot(*pose.get(bn.name, bn.rot))), o
     return mats, offs
 
+_ROT = {}
+def _rot(angles):
+    """render.rot, memoised: the reach search asks for the same few thousand angle triples again and again."""
+    key = tuple(angles)
+    if key not in _ROT: _ROT[key] = render.rot(*key)
+    return _ROT[key]
+
 def reach(w, pose):
     """The left arm's angles that bring the left hand nearest the weapon's second grip, by a coarse then a fine search."""
     bones = mannequin.bones(); parent = HOLDS[w.hold][0]
     target_local = hold_point(w.hold, (0, w.grips[1], 0))
     mats, offs = frames(bones, pose)
     T = [offs[parent][i] + render.app(mats[parent], target_local)[i] for i in range(3)]
+    # Only left_arm and the bones under it move with a; the rest come from one frames() pass. Same arithmetic, same order,
+    # so err is bit-identical to frames(bones, dict(pose, left_arm=a))["left_hand"], only without redoing the whole body.
+    moved = {"left_arm"}
+    for bn in bones:
+        if bn.parent in moved: moved.add(bn.name)
+    sub = [bn for bn in bones if bn.name in moved]
     def err(a):
-        m, o = frames(bones, dict(pose, left_arm=a)); h = o["left_hand"]
+        m, o = dict(mats), dict(offs); p = dict(pose, left_arm=a)
+        for bn in sub:
+            pm, po = m.get(bn.parent, render.rot(0, 0, 0)), o.get(bn.parent, [0, 0, 0])
+            o[bn.name] = [po[i] + render.app(pm, bn.pivot)[i] for i in range(3)]
+            m[bn.name] = render.mul(pm, _rot(p.get(bn.name, bn.rot)))
+        h = o["left_hand"]
         return sum((h[i] - T[i]) ** 2 for i in range(3))
     best = min(((p, y, rl) for p in range(-150, 31, 10) for y in range(-90, 91, 15) for rl in range(-90, 91, 30)), key=err)
     best = min(((best[0] + dp, best[1] + dy, best[2] + dr) for dp in range(-8, 9, 2) for dy in range(-12, 13, 3) for dr in range(-24, 25, 6)), key=err)

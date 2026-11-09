@@ -58,17 +58,48 @@ def check_entry(name, e, w, h):
         raise SystemExit('build_ui_art: %s: %s' % (name, '; '.join(problems)))
 
 
-def paint(out):
-    """paints every manifest entry into out/<folder>/<name>.png and writes out/atlas.json; returns the atlas"""
-    textures = {}
-    for name, e in manifest().items():
-        im = e.paint()
-        im = getattr(im, 'im', im).convert('RGBA')
+def paint_one(out, name):
+    """paints one manifest entry into out/<name>.png; returns (name, width, height), or (name, None, why) when its
+    slices do not fit, in which case nothing is saved"""
+    e = manifest()[name]
+    im = e.paint()
+    im = getattr(im, 'im', im).convert('RGBA')
+    try:
         check_entry(name, e, im.width, im.height)
-        path = out / (name + '.png')
-        path.parent.mkdir(parents=True, exist_ok=True)
-        im.save(path, 'PNG')
-        textures[name] = {'w': im.width, 'h': im.height, 'ox': e.ox, 'oy': e.oy, 'kind': e.kind,
+    except SystemExit as bad:
+        return name, None, str(bad)
+    path = Path(out) / (name + '.png')
+    path.parent.mkdir(parents=True, exist_ok=True)
+    im.save(path, 'PNG')
+    return name, im.width, im.height
+
+
+def jobs():
+    """worker processes for paint: BUILD_UI_ART_JOBS, else half the CPUs up to 8 (1 paints in this process, in order)"""
+    try:
+        return max(1, int(os.environ['BUILD_UI_ART_JOBS']))
+    except (KeyError, ValueError):
+        return max(1, min(8, (os.cpu_count() or 2) // 2))
+
+
+def paint(out):
+    """paints every manifest entry into out/<folder>/<name>.png and writes out/atlas.json; returns the atlas.
+    Each entry's pixels come from its own painter alone, so the entries are painted by several worker processes at once
+    (each with PYTHONHASHSEED=0, inherited); the atlas still lists them in manifest order."""
+    entries = manifest()
+    n = jobs()
+    if n > 1:
+        from concurrent.futures import ProcessPoolExecutor
+        with ProcessPoolExecutor(n) as pool:
+            done = {r[0]: r for r in pool.map(paint_one, [str(out)] * len(entries), list(entries))}
+    else:
+        done = {name: paint_one(out, name) for name in entries}
+    textures = {}
+    for name, e in entries.items():
+        _, w, h = done[name]
+        if w is None:
+            raise SystemExit(h)
+        textures[name] = {'w': w, 'h': h, 'ox': e.ox, 'oy': e.oy, 'kind': e.kind,
                           'l': e.l, 't': e.t, 'r': e.r, 'b': e.b, 'frames': e.frames}
     lines = ['%s:%s' % (json.dumps(k), json.dumps(v, separators=(',', ':'))) for k, v in textures.items()]
     (out / 'atlas.json').write_text('{"python":"3.12","textures":{\n' + ',\n'.join(lines) + '\n}}\n',
