@@ -334,6 +334,38 @@ final class GeoKnightChecks implements Phase1Checks.Suite {
     double hitMaxScale, hitMaxLegs;
     int hitFrames;
 
+    /**
+     * Pulled cases (hit_v1 flag 8): name and view. The tier III own troop is dragged PULL blocks toward the tier III foe, PULL_FROM blocks
+     * in front of it (front: the client plays hit_pulled, a forward stumble) or behind it (back: dragged backwards, hit_knockback), by
+     * the server's own path, in the Undertow's order: Abilities.pulls marks it (markPulled), Combat.resolve lands the blow and sends its
+     * hit_v1 (the pulled flag from Abilities.takePulled), then Abilities.pull moves it. Nothing holds it in place meanwhile.
+     */
+    static final String[][] PULL_CASES = {{"front", "side"}, {"front", "threequarter"}, {"back", "side"}};
+    static final double PULL = 1.5, PULL_FROM = 5;
+    final List<String> pullBad = new ArrayList<>();
+    volatile double pullMoved = Double.NaN;
+    volatile int pullSent = -1;
+    double pullMaxScale, pullMaxLegs;
+    int pullFrames;
+    String pullClips = "";
+
+    /**
+     * The rise (rise_v1): a troop whose level 3 row is the rise (Abilities.riseRow: the Hollow King's Undying King) takes a lethal
+     * blow through Combat.resolve with the rise's roll forced (Houses.forceRise), so Houses.allowDeath keeps it alive and sends
+     * rise_v1. Its client must play fake_death then rise over every layer (DeathController.riseAt), ending on the span's last tick.
+     * FAKE_T and RISE_T: the clip lengths (gb_hollowking.animation.json); the span is the server's window, or both clips when it is 0.
+     */
+    static final double FAKE_T = 30, RISE_T = 40;
+    final List<String> riseBad = new ArrayList<>();
+    volatile long riseTick = -2;
+    volatile int riseWindow = -1, riseSent = -1;
+    volatile boolean riseRose, riseAlive;
+    /** Whether the tier III troop has the rise row: -1 until the server has answered. */
+    volatile int riseRow = -1;
+    volatile int riseVictim = -1;
+    int riseFrames, risePhase;
+    double riseMaxFakeT = -1, riseMaxT = -1, riseFirstRise = -1, riseMinW = 2;
+
     /** Places the camera for a stance or hit view (server thread) and returns the knights' yaw for it. */
     float view(GravesAndGlory.Battle b, String view, boolean stances) {
         switch (view) {
@@ -977,8 +1009,151 @@ final class GeoKnightChecks implements Phase1Checks.Suite {
                         Phase1Checks.report("p1-geo-" + TROOP + "-hit", hitBad.isEmpty(), HIT_CASES.length + " blows x " + HIT_VIEWS.length
                             + " views: clip, bearing mix, peak scale, frames, and gone after the clip" + (hitBad.isEmpty() ? "" : "; bad " + hitBad.subList(0, Math.min(8, hitBad.size()))));
                         Phase1Checks.server(c, b -> hold = null);
-                        i = 0; next(tick, 11);
+                        i = 0; next(tick, 12);
                     }
+                }
+            }
+            case 12 -> {
+                // Pulled: the tier III own troop (slot 2) is dragged toward the tier III foe (slot 5) by the server's pull path at k25, the
+                // others stood out of the way; its hit layer is shot every tick of the reaction and checked: clip (front hit_pulled,
+                // back hit_knockback), scale, footwork, gone after; the server must have sent the pulled flag and moved it.
+                String name = PULL_CASES[i][0], view = PULL_CASES[i][1];
+                boolean back = name.equals("back");
+                String want = back ? "hit_knockback" : "hit_pulled";
+                if (k == 1) {
+                    if (i == 0) pullBad.clear();
+                    taken.clear(); pullMaxScale = 0; pullMaxLegs = 0; pullFrames = 0; pullMoved = Double.NaN; pullSent = -1; pullClips = ""; hitAt = -1;
+                    Phase1Checks.server(c, b -> {
+                        hold = null; quiet(b, true);
+                        for (int j = 0; j < knights.size(); j++) if (j != 2 && j != 5) stand(knights.get(j), cx + (j < 3 ? -20 - j * 3 : 20 + j * 3), cz - 30, 0);
+                        var v = knights.get(2); var f = knights.get(5);
+                        float yaw = view.equals("side") ? 90 : 135;
+                        // the puller: in front of the victim (side view along its facing, three-quarter 45 degrees off it) or right behind it
+                        float at = back ? yaw + 180 : view.equals("side") ? yaw : yaw + 45;
+                        double fx = cx - Math.sin(Math.toRadians(at)) * PULL_FROM, fz = cz + Math.cos(Math.toRadians(at)) * PULL_FROM;
+                        stand(v, cx, cz, yaw);
+                        stand(f, fx, fz, (float) Math.toDegrees(Math.atan2(-(cx - fx), cz - fz)));
+                        if (view.equals("side")) eye(b, cx - 2, cz - 6.5, 0, 8); else eye(b, cx - 4, cz - 2.5, -58, 14);
+                    });
+                }
+                if (k == 3) { c.setScreen(null); c.options.hudHidden = true; }
+                if (k == 25) Phase1Checks.server(c, b -> {
+                    var v = knights.get(2); var f = knights.get(5);
+                    if (!v.mob.isAlive() || !f.mob.isAlive()) { pullSent = -2; return; }
+                    Vec3d from = f.mob.getPos();
+                    double before = Math.hypot(v.mob.getX() - from.x, v.mob.getZ() - from.z);
+                    int sends = MotionEvents.pulledSends;
+                    hitAt = b.world.getTime();
+                    v.mob.setInvulnerable(false);
+                    try {
+                        if (Abilities.pulls(b, v.mob, from, PULL)) Abilities.markPulled(b, v.mob);
+                        Combat.resolve(b, f, v.mob, 1f, "slam", true);
+                        Abilities.PULLED.remove(v.mob.getId());
+                        Abilities.pull(b, f, v.mob, from, PULL);
+                    } finally { v.mob.setInvulnerable(true); v.mob.setHealth(v.mob.getMaxHealth()); }
+                    pullSent = MotionEvents.pulledSends - sends;
+                    pullMoved = before - Math.hypot(v.mob.getX() - from.x, v.mob.getZ() - from.z);
+                });
+                if (k > 25 && hitAt >= 0 && c.world != null) {
+                    var e = c.world.getEntityById(knights.get(2).mob.getId());
+                    HitController hc = e == null ? null : HitController.LIVE.get(e);
+                    if (hc != null && hc.shownT >= 0) {
+                        int tt = (int) Math.round(hc.shownT);
+                        if (Math.abs(hc.shownT - tt) <= .3 && taken.add(name + view + ":" + tt)) {
+                            Phase1Checks.shot(c, String.format("geo-" + TROOP + "-pull-%s-%s-%02d", name, view, tt));
+                            pullFrames++;
+                        }
+                        if (!pullClips.contains(hc.shownClip)) pullClips += hc.shownClip + " ";
+                        if (!hc.shownClip.equals(want) && pullBad.size() < 40) pullBad.add(name + "/" + view + " clip " + hc.shownClip + "@" + String.format("%.1f", hc.shownT));
+                        pullMaxScale = Math.max(pullMaxScale, hc.shownScale);
+                        pullMaxLegs = Math.max(pullMaxLegs, hc.shownLegsWeight);
+                    }
+                }
+                if (k == 25 + 40) {
+                    var e = c.world == null ? null : c.world.getEntityById(knights.get(2).mob.getId());
+                    HitController hc = e == null ? null : HitController.LIVE.get(e);
+                    if (hc == null) pullBad.add(name + "/" + view + " no hit layer");
+                    else if (!hc.shownClip.isEmpty()) pullBad.add(name + "/" + view + " still playing " + hc.shownClip + " at " + hc.shownT);
+                    if (pullSent < 1) pullBad.add(name + "/" + view + " pulled hit_v1 sends " + pullSent);
+                    if (!(pullMoved > PULL - .2)) pullBad.add(String.format("%s/%s moved %.2f toward the puller, want %.2f", name, view, pullMoved, PULL));
+                    if (pullMaxScale < .95 || pullMaxScale > HitController.HEAVY * 1.001) pullBad.add(String.format("%s/%s peak scale %.3f", name, view, pullMaxScale));
+                    if (pullMaxLegs < .5) pullBad.add(String.format("%s/%s footwork %.3f", name, view, pullMaxLegs));
+                    if (pullFrames < 6) pullBad.add(name + "/" + view + " frames " + pullFrames);
+                    System.out.println(String.format("[p1] pulled %s/%s clips %sframes %d scale %.3f legs %.3f moved %.2f sends %d", name, view, pullClips, pullFrames, pullMaxScale, pullMaxLegs, pullMoved, pullSent));
+                    if (++i < PULL_CASES.length) next(tick, 12);
+                    else {
+                        Phase1Checks.report("p1-geo-" + TROOP + "-hit-pulled", pullBad.isEmpty(), PULL_CASES.length + " pulls by the server path (front: hit_pulled, back: hit_knockback): "
+                            + "flag sent, body moved, clip, scale, footwork, frames, gone after" + (pullBad.isEmpty() ? "" : "; bad " + pullBad.subList(0, Math.min(8, pullBad.size()))));
+                        Phase1Checks.server(c, b -> quiet(b, false));
+                        riseRow = -1; i = 0; next(tick, 13);
+                    }
+                }
+            }
+            case 13 -> {
+                // The rise: only a troop whose tier III has the rise row (the Hollow King). Lethal blow at k20 through Combat.resolve with
+                // the roll forced; every tick of the rise's span is shot; the death layer must show fake_death then rise at weight 1, the
+                // rise ending on the span's last tick, and nothing once it is over.
+                if (riseRow == 0) { next(tick, 11); return; }
+                if (k > 200 && riseRow < 0) { Phase1Checks.report("p1-geo-" + TROOP + "-rise", false, "the server never answered"); next(tick, 11); return; }
+                if (k == 1) {
+                    riseBad.clear(); taken.clear(); riseFrames = 0; risePhase = 0; riseMaxFakeT = -1; riseMaxT = -1; riseFirstRise = -1; riseMinW = 2;
+                    riseTick = -2; riseWindow = -1; riseSent = -1; riseVictim = -1;
+                    Phase1Checks.server(c, b -> {
+                        var v = knights.get(2); var f = knights.get(5);
+                        if (Abilities.riseRow(v) == null) { riseRow = 0; return; }
+                        hold = null; quiet(b, true);
+                        for (int j = 0; j < knights.size(); j++) if (j != 2 && j != 5) stand(knights.get(j), cx + (j < 3 ? -20 - j * 3 : 20 + j * 3), cz - 30, 0);
+                        stand(v, cx, cz, 135); stand(f, cx + 3, cz + 3, -45); // the foe behind it, out of the frame
+                        riseVictim = v.mob.getId();
+                        eye(b, cx - 4, cz - 2.5, -58, 14);
+                        riseRow = 1;
+                    });
+                }
+                if (k == 3) { c.setScreen(null); c.options.hudHidden = true; }
+                if (k == 20 && riseRow == 1) Phase1Checks.server(c, b -> {
+                    var v = knights.get(2); var f = knights.get(5);
+                    int sends = MotionEvents.riseSends;
+                    v.mob.setInvulnerable(false); Houses.forceRise = Boolean.TRUE;
+                    try { Combat.resolve(b, f, v.mob, v.mob.getMaxHealth() * 50, "slam", true); }
+                    finally { Houses.forceRise = null; v.mob.setInvulnerable(true); }
+                    riseRose = v.rose; riseAlive = v.mob.isAlive(); riseSent = MotionEvents.riseSends - sends; riseTick = v.riseTick; riseWindow = v.riseWindow;
+                });
+                double span = riseWindow > 0 ? riseWindow : FAKE_T + RISE_T;
+                if (k > 20 && riseTick >= 0 && c.world != null && c.world.getEntityById(riseVictim) instanceof LivingEntity e) {
+                    DeathController dc = DeathController.LIVE.get(e);
+                    MotionEvents.Rise r = MotionEvents.Client.rise(riseVictim);
+                    if (r != null && (r.tick() != riseTick || r.window() != riseWindow) && riseBad.size() < 40) riseBad.add("client heard " + r + " server tick " + riseTick + " window " + riseWindow);
+                    if (dc == null) { if (riseBad.size() < 40) riseBad.add("no death layer"); }
+                    else if (dc.shownRiseElapsed >= 0) {
+                        double el = dc.shownRiseElapsed;
+                        if (Math.abs(dc.shownRiseSpan - span) > .01 && riseBad.size() < 40) riseBad.add("span " + dc.shownRiseSpan + " want " + span);
+                        double[] want = DeathController.riseAt(el, riseWindow, FAKE_T, RISE_T);
+                        String wc = want == null ? "" : want[0] == 0 ? DeathController.FAKE : DeathController.RISE;
+                        if (!dc.shownClip.equals(wc) && riseBad.size() < 40) riseBad.add(String.format("clip %s want %s at %.1f", dc.shownClip, wc, el));
+                        if (dc.shownClip.equals(DeathController.FAKE)) { if (risePhase > 0 && riseBad.size() < 40) riseBad.add("fake_death after rise at " + el); riseMaxFakeT = Math.max(riseMaxFakeT, dc.shownT); }
+                        if (dc.shownClip.equals(DeathController.RISE)) { if (risePhase == 0) { risePhase = 1; riseFirstRise = el; } riseMaxT = Math.max(riseMaxT, dc.shownT); }
+                        if (el >= DeathController.FADE_IN + .5 && el <= span - DeathController.RISE_OUT - .5) riseMinW = Math.min(riseMinW, dc.shownWeight);
+                        int tt = (int) Math.round(el);
+                        if (Math.abs(el - tt) <= .3 && taken.add("rise:" + tt)) { Phase1Checks.shot(c, String.format("geo-" + TROOP + "-rise-%02d", tt)); riseFrames++; }
+                    } else if (e.isAlive() && !dc.shownClip.isEmpty() && riseBad.size() < 40) riseBad.add("death layer " + dc.shownClip + " outside the rise");
+                }
+                if (k == 20 + (int) span + 12) {
+                    var e = c.world == null ? null : c.world.getEntityById(riseVictim);
+                    DeathController dc = e == null ? null : DeathController.LIVE.get(e);
+                    if (riseSent < 1) riseBad.add("rise_v1 sends " + riseSent);
+                    if (!riseRose || !riseAlive) riseBad.add("server rose " + riseRose + " alive " + riseAlive);
+                    if (dc == null || !dc.shownClip.isEmpty()) riseBad.add("after the span the death layer shows " + (dc == null ? "none" : dc.shownClip));
+                    if (!(e instanceof LivingEntity l) || !l.isAlive() || l.deathTime > 0) riseBad.add("not standing after the rise");
+                    if (riseMaxFakeT < FAKE_T - 1.5) riseBad.add(String.format("fake_death reached %.2f", riseMaxFakeT));
+                    if (riseMaxT < RISE_T - 1.5) riseBad.add(String.format("rise reached %.2f, its end must meet the span's", riseMaxT));
+                    if (Math.abs(riseFirstRise - (span - RISE_T)) > 1.5) riseBad.add(String.format("rise began at %.2f, want %.2f", riseFirstRise, span - RISE_T));
+                    if (riseMinW < .999) riseBad.add(String.format("weight dipped to %.3f inside the span", riseMinW));
+                    if (riseFrames < span * .6) riseBad.add("frames " + riseFrames + "/" + (int) span);
+                    System.out.println(String.format("[p1] rise window %d span %.0f frames %d fake max %.2f rise from %.2f max %.2f min w %.3f sends %d", riseWindow, span, riseFrames, riseMaxFakeT, riseFirstRise, riseMaxT, riseMinW, riseSent));
+                    Phase1Checks.report("p1-geo-" + TROOP + "-rise", riseBad.isEmpty(), "lethal blow through Combat.resolve, rise forced: server rose and sent rise_v1, client fake_death then rise "
+                        + "over a " + (int) span + " tick span (window " + riseWindow + "), weight 1, rise ending on the span, gone after" + (riseBad.isEmpty() ? "" : "; bad " + riseBad.subList(0, Math.min(8, riseBad.size()))));
+                    Phase1Checks.server(c, b -> quiet(b, false));
+                    i = 0; next(tick, 11);
                 }
             }
             case 11 -> {
