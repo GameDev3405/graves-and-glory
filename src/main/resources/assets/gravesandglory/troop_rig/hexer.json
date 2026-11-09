@@ -37,13 +37,31 @@
    ],
    "tag": "weapon"
   },
+  "lantern_hang": {
+   "stages": [
+    1
+   ],
+   "tag": "weapon"
+  },
   "lantern_t2": {
    "stages": [
     2
    ],
    "tag": "weapon"
   },
+  "lantern_t2_hang": {
+   "stages": [
+    2
+   ],
+   "tag": "weapon"
+  },
   "lantern_t3": {
+   "stages": [
+    3
+   ],
+   "tag": "weapon"
+  },
+  "lantern_t3_hang": {
    "stages": [
     3
    ],
