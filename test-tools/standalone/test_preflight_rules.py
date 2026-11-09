@@ -52,6 +52,9 @@ class PreflightRules(unittest.TestCase):
         code, out = self.run_preflight()
         self.assertEqual(code, 0, out)
         self.assertIn('Preflight clean', out)
+        # .gitattributes says eol=lf for both outputs; CRLF made them show as modified in every Windows worktree.
+        for name in ['src/main/java/gg/gravesandglory/Spec.java', 'sheets/preflight.json']:
+            self.assertNotIn(b'\r', (self.root / name).read_bytes(), name)
 
     def refuses(self, mutate, *words):
         code, out = self.run_preflight(mutate)

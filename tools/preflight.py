@@ -889,7 +889,7 @@ for sheet,rows in data.items():
 out.append('}')
 dest=root/'src/main/java/gg/gravesandglory/Spec.java'
 dest.parent.mkdir(parents=True,exist_ok=True)
-dest.write_text('\n'.join(out))
+dest.write_text('\n'.join(out),newline='\n')  # LF on every OS, as .gitattributes says; CRLF showed as modified in every worktree
 report={'filledCells':cells,'unfilledCells':[],'unresolvedReferences':[],'runtimeVerification':'pending; tracked separately in verification.json'}
-(root/'sheets/preflight.json').write_text(json.dumps(report,indent=2))
+(root/'sheets/preflight.json').write_text(json.dumps(report,indent=2),newline='\n')
 print(f'Preflight clean: {cells} filled cells; every row generates a Java record. Runtime verification pending.')
