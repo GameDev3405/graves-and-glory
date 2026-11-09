@@ -6,6 +6,10 @@ textures; `tools/build_skins.py --verify` proves they match), then renders the p
 offline renderer `tools/anim/render_geo.py` (on `anim/geckolib-rebuild`; pass its path with --renderer).
 
   python tools/art/texture_audit_render.py --renderer <render_geo.py> --out <dir> [--side crimson] [ids...]
+  python tools/art/texture_audit_render.py --renderer <render_geo.py> --out <dir> --builder <build_x.py> [--id X] [--house H] [--name N]
+      one builder that is not (yet) in sheets/design.json: a new troop or art/hand/_template/build_template.py. The id
+      defaults to the file name less "build_" (the builder must write <id>_t<N> previews); --house is passed on to the
+      template as --house=H and labels the sheet.
 
 Writes <out>/<id>/t<N>_near.png, t<N>_far.png and one contact sheet per House: <out>/house_<house>.png.
 """
@@ -27,9 +31,10 @@ def run(cmd):
         raise SystemExit("failed: %s\n%s%s" % (" ".join(cmd), r.stdout, r.stderr))
 
 
-def render_troop(tid, renderer, out, side):
+def render_troop(tid, renderer, out, side, script=None, extra=()):
     pv = os.path.join(out, "_preview", tid)
-    run([sys.executable, os.path.join(ROOT, "art", "hand", tid, "build_%s.py" % tid), "preview", pv, side])
+    script = script or os.path.join(ROOT, "art", "hand", tid, "build_%s.py" % tid)
+    run([sys.executable, script, "preview", pv, side] + list(extra))
     tiers = sorted(int(f[len(tid) + 2:-9]) for f in os.listdir(pv) if f.startswith(tid + "_t") and f.endswith(".geo.json"))
     td = os.path.join(out, tid); os.makedirs(td, exist_ok=True)
     for t in tiers:
@@ -98,8 +103,22 @@ def main():
     ap.add_argument("--out", required=True)
     ap.add_argument("--side", default="crimson")
     ap.add_argument("--sheets-only", action="store_true", help="reuse existing renders")
+    ap.add_argument("--builder", help="render this builder script instead of the design.json troops")
+    ap.add_argument("--id", help="with --builder: the troop id its previews are named by")
+    ap.add_argument("--house", help="with --builder: the House (labels the sheet; the template takes it as --house=H)")
+    ap.add_argument("--name", help="with --builder: the display name on the sheet")
     ap.add_argument("ids", nargs="*")
     a = ap.parse_args()
+    if a.builder:
+        script = os.path.abspath(a.builder)
+        tid = a.id or os.path.splitext(os.path.basename(script))[0].replace("build_", "", 1)
+        house, name = a.house or "new", a.name or tid
+        extra = ["--house=" + a.house] if a.house and os.path.basename(script) == "build_template.py" else []
+        tiers = [1, 2, 3] if a.sheets_only else render_troop(tid, a.renderer, a.out, a.side, script, extra)
+        troop_sheet(tid, name, tiers, a.out)
+        house_sheet(house, [(tid, name, tiers)], a.out)
+        print(tid, "tiers", tiers, "->", os.path.join(a.out, "troop_%s.png" % tid), flush=True)
+        return
     by_house = {}
     for tid, house, name in troops():
         if a.ids and tid not in a.ids:

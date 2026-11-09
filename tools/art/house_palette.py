@@ -13,6 +13,10 @@
       --dir D checks a builder's preview output (skin_s*.png, cloth_*.png) against --house.
   python tools/art/house_palette.py show <house|team|all> [out.png]
       Swatch PNG of a palette, ramps as labelled rows (default art/palettes/<house>.png).
+  python tools/art/house_palette.py register <house> <module> [--with handlib.LEATH,handlib.SKINS.fair] [--force]
+      A NEW House: write art/palettes/<house>.json (+ swatch) from every module-level ramp of art/hand/common/<module>.py
+      (or a .py path), plus any named shared ramps, so palette.ramps(<house>) and check --house <house> work before the
+      House has troops. Refuses an existing palette (the five are locked) unless --force. docs/art/TEXTURE-RECIPE.md part B.
 
 Opaque means alpha > 0; the shipped troop sheets have no partial alpha.
 """
@@ -41,6 +45,13 @@ def troops():
     with open(os.path.join(REPO, "sheets", "design.json"), encoding="utf-8") as f:
         return {t["id"]: t["house"] for t in json.load(f)["troops"]}
 def houses_of(tr): return sorted(set(tr.values()))
+def house_modules(house):
+    """The House's own ramp modules: the fixed table, else the "modules" a registered palette recorded."""
+    if house in HOUSE_MODULES: return HOUSE_MODULES[house]
+    p = os.path.join(PAL_DIR, house + ".json")
+    if os.path.exists(p):
+        with open(p, encoding="utf-8") as f: return json.load(f).get("modules", [])
+    return []
 
 def git(repo, *args, binary=False):
     p = subprocess.run(["git", "-C", repo] + list(args), capture_output=True)
@@ -118,6 +129,9 @@ def catalog(tr):
     order = [("handlib", os.path.join(COMMON, "handlib.py"))]
     for n in ("graveborn", "ironclad_tiers", "tidecallers", "wildmoot"): order.append((n, os.path.join(COMMON, n + ".py")))
     order.append(("ironclad", os.path.join(HAND, "ic_breaker", "ironclad.py")))
+    for h in sorted(set(tr.values())):   # registered Houses' modules (register)
+        for n in house_modules(h):
+            if n not in [o[0] for o in order]: order.append((n, os.path.join(COMMON, n + ".py")))
     for tid in tr: order.append(("build_" + tid, os.path.join(HAND, tid, "build_%s.py" % tid)))
     seen_ids, seen_sets, out = set(), [], {}
     real_stdout = sys.stdout
@@ -180,7 +194,7 @@ def cmd_extract(a):
             for c in colour_usage(src.load(tid, n)): team_used[c].add(tid)
     def cands(house):
         c = {}
-        for m in ["handlib"] + HOUSE_MODULES[house] + ["build_" + t for t, h in tr.items() if h == house]:
+        for m in ["handlib"] + house_modules(house) + ["build_" + t for t, h in tr.items() if h == house]:
             c.update(cat.get(m, {}))
         return c
     meta = {"ref": a.ref, "source": "shipped troop textures at that git ref; ramps imported from the working tree"}
@@ -317,6 +331,44 @@ def cmd_show(a):
         draw_swatch(load_palette(n), out); print(out)
 
 
+# ---------------------------------------------------------------------------------------------- register
+SHARED_MODULES = ("handlib", "graveborn", "ironclad_tiers", "tidecallers", "wildmoot")
+
+def cmd_register(a):
+    house = a.house
+    if not re.match(r"^[a-z][a-z0-9_]*$", house) or house == "team": sys.exit("bad House id %r (lower case, not 'team')" % house)
+    out = os.path.join(a.pal_dir or PAL_DIR, house + ".json")
+    if os.path.exists(out) and not a.force:
+        sys.exit("%s exists: palettes are locked; changing an existing House is Kort's decision (--force only for a new, unshipped House)" % out)
+    path = a.module if a.module.endswith(".py") else os.path.join(COMMON, a.module + ".py")
+    if not os.path.isfile(path): sys.exit("no module %s" % path)
+    modname = os.path.splitext(os.path.basename(path))[0]
+    if COMMON not in sys.path: sys.path.insert(0, COMMON)
+    found = dict(module_ramps(modname, load_module(modname, path)))
+    if not found: sys.exit("%s defines no module-level ramps (lists of RGBA tuples, e.g. X = ramp(...))" % path)
+    if a.with_:
+        shared = {}
+        for m in SHARED_MODULES: shared.update(dict(module_ramps(m, load_module(m, os.path.join(COMMON, m + ".py")))))
+        for n in a.with_.split(","):
+            n = n.strip()
+            if n not in shared: sys.exit("no shared ramp %r; e.g. %s" % (n, ", ".join(sorted(shared)[:12])))
+            found[n] = shared[n]
+    for n, r in found.items():
+        if len(r) < 4: print("warning: ramp %s has %d tones; the recipe wants 5 to 7" % (n, len(r)), file=sys.stderr)
+        if any(lum(r[i]) > lum(r[i + 1]) for i in range(len(r) - 1)): sys.exit("ramp %s is not dark to light" % n)
+    def entry(c): return {"hex": hexs(c), "used_by": []}
+    shades = sum(len(r) for r in found.values())
+    p = {"name": house, "ramps": {n: {"colors": [entry(c) for c in r]} for n, r in sorted(found.items())}, "loose": [],
+         "counts": {"colors": len({tuple(c[:3]) for r in found.values() for c in r}), "used": 0, "ramps": len(found),
+                    "ramp_shades": shades, "unused_shades": shades, "loose": 0},
+         "modules": [modname], "troops": [],
+         "source": "registered from %s before any troop shipped; run extract once its troops ship" % os.path.basename(path)}
+    os.makedirs(os.path.dirname(out), exist_ok=True)
+    write_json(out, p)
+    if not a.no_show: draw_swatch(p, out[:-5] + ".png")
+    print("registered %s: %d ramps, %d shades -> %s" % (house, len(found), shades, out))
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = ap.add_subparsers(dest="cmd", required=True)
@@ -324,8 +376,11 @@ def main():
     c = sub.add_parser("check"); c.add_argument("ids", nargs="*"); c.add_argument("--dir"); c.add_argument("--house")
     c.add_argument("--ref"); c.add_argument("--repo"); c.add_argument("--json", action="store_true")
     s = sub.add_parser("show"); s.add_argument("name"); s.add_argument("out", nargs="?")
+    r = sub.add_parser("register"); r.add_argument("house"); r.add_argument("module"); r.add_argument("--with", dest="with_")
+    r.add_argument("--force", action="store_true"); r.add_argument("--no-show", action="store_true")
+    r.add_argument("--pal-dir", help=argparse.SUPPRESS)   # tests write elsewhere
     a = ap.parse_args()
-    {"extract": cmd_extract, "check": cmd_check, "show": cmd_show}[a.cmd](a)
+    {"extract": cmd_extract, "check": cmd_check, "show": cmd_show, "register": cmd_register}[a.cmd](a)
 
 if __name__ == "__main__":
     main()
