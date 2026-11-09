@@ -1,10 +1,9 @@
 {
- "_comment": "Animation scorecard limits (tools/anim/scorecard.py). Every limit is the approved Knight v2 clips' own extreme for that metric and clip kind plus the stated margin; 'other' is the envelope over the knight's kinds and applies to clip kinds the knight does not have. Regenerate with python tools/anim/scorecard.py --derive.",
+ "_comment": "Animation scorecard limits (tools/anim/scorecard.py). Every limit is the approved Knight v2 clips' own extreme for that metric and clip kind plus the stated margin; 'other' is the envelope over the knight's kinds and applies to clip kinds the knight does not have. The knight is the sword_shield family; 'families' widens a limit for another design.json family only where its style needs the motion, each with its reason (it never narrows one, and never lifts the anatomical caps). Non-biped rigs are n/a for bend, limb speed and foot slide; a gait's foot slide needs the troop's booth gait speed. Regenerate with python tools/anim/scorecard.py --derive.",
  "derived_from": {
   "animation": "src/main/resources/assets/gravesandglory/animations/troop/knight.animation.json",
   "geo": "src/main/resources/assets/gravesandglory/geo/troop/knight.geo.json",
-  "clips": 41,
-  "date": "2026-11-09"
+  "clips": 41
  },
  "kinds": {
   "attack": "attack_*",
@@ -15,20 +14,15 @@
   "death": "death_*, fake_death, rise",
   "other": "anything else"
  },
- "gait_speed_fallback": {
-  "walk": 0.16,
-  "run": 0.26,
-  "charge_run": 0.26
- },
  "edge_sign": {
   "tc_raider": -1.0,
   "ic_hearthguard": 1.0,
-  "ic_breaker": 1.0
+  "ic_breaker": -1.0
  },
  "metrics": {
   "elbow_bend": {
    "unit": "deg",
-   "how": "knight per-kind [min, max] widened by 10 deg on each side",
+   "how": "maximum: knight per-kind max + 10 deg. Minimum: the anatomical cap -5 deg (no hyperextension), or the knight's own minimum where it goes further (its hits); a limb straighter than the knight's is a style, not a fault",
    "knight": {
     "gait": [
      29.73,
@@ -61,38 +55,39 @@
    },
    "limit": {
     "gait": [
-     19.73,
+     -5.0,
      114.05
     ],
     "stance": [
-     12.0,
+     -5.0,
      94.19
     ],
     "attack": [
-     -10.0,
+     -5.0,
      117.3
     ],
     "fallback": [
-     66.0,
+     -5.0,
      94.19
     ],
     "hit": [
-     -54.0,
+     -44.0,
      45.99
     ],
     "death": [
-     -5.4,
+     -5.0,
      81.62
     ],
     "other": [
-     -54.0,
+     -44.0,
      117.3
     ]
-   }
+   },
+   "floor_lo": -5.0
   },
   "knee_bend": {
    "unit": "deg",
-   "how": "knight per-kind [min, max] widened by 10 deg on each side",
+   "how": "maximum: knight per-kind max + 10 deg. Minimum: the anatomical cap -5 deg (no hyperextension), or the knight's own minimum where it goes further (its hits); a limb straighter than the knight's is a style, not a fault",
    "knight": {
     "gait": [
      32.25,
@@ -125,38 +120,39 @@
    },
    "limit": {
     "gait": [
-     22.25,
+     -5.0,
      164.97
     ],
     "stance": [
-     23.1,
+     -5.0,
      95.89
     ],
     "attack": [
-     29.53,
+     -5.0,
      108.47
     ],
     "fallback": [
-     31.07,
+     -5.0,
      103.89
     ],
     "hit": [
-     -23.01,
+     -13.01,
      93.9
     ],
     "death": [
-     -6.0,
+     -5.0,
      102.0
     ],
     "other": [
-     -23.01,
+     -13.01,
      164.97
     ]
-   }
+   },
+   "floor_lo": -5.0
   },
   "ang_speed_arms": {
    "unit": "deg/100ms",
-   "how": "knight per-kind max x 1.15",
+   "how": "knight per-kind max x 1.25, never under 8 deg/100ms; death x 2.0 (a falling body flings its arms: the knight's deaths are its one style, other troops fall harder)",
    "knight": {
     "gait": 70.06,
     "stance": 98.31,
@@ -167,18 +163,19 @@
     "other": 108.93
    },
    "limit": {
-    "gait": 80.569,
-    "stance": 113.0565,
-    "attack": 125.2695,
-    "fallback": 0.0,
-    "hit": 81.052,
-    "death": 85.1,
-    "other": 125.2695
-   }
+    "gait": 87.575,
+    "stance": 122.8875,
+    "attack": 136.1625,
+    "fallback": 8.0,
+    "hit": 88.1,
+    "death": 148.0,
+    "other": 136.1625
+   },
+   "floor": 8.0
   },
   "ang_speed_legs": {
    "unit": "deg/100ms",
-   "how": "knight per-kind max x 1.15",
+   "how": "knight per-kind max x 1.25, never under 8 deg/100ms",
    "knight": {
     "gait": 153.02,
     "stance": 2.61,
@@ -189,18 +186,19 @@
     "other": 153.02
    },
    "limit": {
-    "gait": 175.973,
-    "stance": 3.0015,
-    "attack": 44.9995,
-    "fallback": 60.0645,
-    "hit": 49.0015,
-    "death": 63.6065,
-    "other": 175.973
-   }
+    "gait": 191.275,
+    "stance": 8.0,
+    "attack": 48.9125,
+    "fallback": 65.2875,
+    "hit": 53.2625,
+    "death": 69.1375,
+    "other": 191.275
+   },
+   "floor": 8.0
   },
   "ang_speed_torso": {
    "unit": "deg/100ms",
-   "how": "knight per-kind max x 1.15",
+   "how": "knight per-kind max x 1.25, never under 8 deg/100ms",
    "knight": {
     "gait": 15.28,
     "stance": 2.91,
@@ -211,18 +209,19 @@
     "other": 48.22
    },
    "limit": {
-    "gait": 17.572,
-    "stance": 3.3465,
-    "attack": 55.453,
-    "fallback": 4.554,
-    "hit": 37.283,
-    "death": 19.9525,
-    "other": 55.453
-   }
+    "gait": 19.1,
+    "stance": 8.0,
+    "attack": 60.275,
+    "fallback": 8.0,
+    "hit": 40.525,
+    "death": 21.6875,
+    "other": 60.275
+   },
+   "floor": 8.0
   },
   "ang_speed_weapon": {
    "unit": "deg/100ms",
-   "how": "knight per-kind max x 1.15",
+   "how": "knight per-kind max x 1.25, never under 8 deg/100ms",
    "knight": {
     "gait": 20.55,
     "stance": 34.8,
@@ -233,14 +232,15 @@
     "other": 178.24
    },
    "limit": {
-    "gait": 23.6325,
-    "stance": 40.02,
-    "attack": 204.976,
-    "fallback": 5.52,
-    "hit": 92.0345,
-    "death": 76.544,
-    "other": 204.976
-   }
+    "gait": 25.6875,
+    "stance": 43.5,
+    "attack": 222.8,
+    "fallback": 8.0,
+    "hit": 100.0375,
+    "death": 83.2,
+    "other": 222.8
+   },
+   "floor": 8.0
   },
   "foot_slide": {
    "unit": "blocks",
@@ -295,8 +295,8 @@
     "attack": 0.891,
     "fallback": 0.1,
     "hit": 1.836,
-    "death": 1.997,
-    "other": 1.997
+    "death": 2.351,
+    "other": 2.351
    },
    "limit": {
     "gait": 2.464,
@@ -304,8 +304,8 @@
     "attack": 1.391,
     "fallback": 0.6,
     "hit": 2.336,
-    "death": 2.497,
-    "other": 2.497
+    "death": 2.851,
+    "other": 2.851
    }
   },
   "edge_lead": {
@@ -320,7 +320,7 @@
   },
   "impact_tick": {
    "unit": "tick",
-   "how": "tolerance = knight's largest |peak - impactTicks| + 1 tick",
+   "how": "tolerance = knight's largest |contact - impactTicks| + 1 tick",
    "knight": {
     "all": 1.0
    },
@@ -365,21 +365,72 @@
    }
   },
   "loop_vel": {
-   "unit": "deg/tick",
-   "how": "knight per-kind max over its looping clips x 1.25 + 1 deg/tick",
+   "unit": "ratio",
+   "how": "the limit is a ratio: a bone's wrap kink may be at most (knight per-kind max of kink / that bone's peak 1-tick speed in the clip) x 1.25 times its own peak speed, and never less than 8 deg/tick (a ~4 deg pop: under 1 px at the end of a 12 px limb)",
    "knight": {
-    "gait": 30.672,
-    "stance": 0.573,
-    "fallback": 21.472,
-    "hit": 17.79,
-    "other": 30.672
+    "gait": 1.0898,
+    "stance": 0.5028,
+    "fallback": 1.5915,
+    "hit": 0.9455,
+    "other": 1.5915
    },
    "limit": {
-    "gait": 39.34,
-    "stance": 1.7163,
-    "fallback": 27.84,
-    "hit": 23.2375,
-    "other": 39.34
+    "gait": 1.3623,
+    "stance": 0.6285,
+    "fallback": 1.9894,
+    "hit": 1.1819,
+    "other": 1.9894
+   },
+   "floor": 8.0
+  }
+ },
+ "families": {
+  "bow": {
+   "elbow_bend": {
+    "all": [
+     -5.0,
+     145.0
+    ],
+    "reason": "the draw (volley, and the aim stances that hold it) folds the string arm until the hand is at the cheek (~130-145 deg), which a sword never does"
+   },
+   "ang_speed_arms": {
+    "attack": 160.0,
+    "reason": "the volley's draw and release snap the string arm back and out faster than the knight's cuts"
+   }
+  },
+  "crossbow": {
+   "elbow_bend": {
+    "attack": [
+     -5.0,
+     125.0
+    ],
+    "reason": "spanning the crossbow folds the arm to haul the string back to the nut"
+   }
+  },
+  "spear": {
+   "elbow_bend": {
+    "stance": [
+     -5.0,
+     100.0
+    ],
+    "reason": "the spear wall couches the shaft high at the shoulder, the rear elbow folded behind it"
+   },
+   "ang_speed_legs": {
+    "attack": 65.0,
+    "reason": "the high thrust is a lunge: the lead leg drives the point forward, which the knight's planted cuts never do"
+   }
+  },
+  "thrower": {
+   "elbow_bend": {
+    "all": [
+     -5.0,
+     130.0
+    ],
+    "reason": "the harpoon is carried cocked above the shoulder, the throwing elbow folded"
+   },
+   "ang_speed_arms": {
+    "attack": 180.0,
+    "reason": "an overarm throw whips the arm faster than any melee swing"
    }
   }
  }

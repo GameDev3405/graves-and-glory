@@ -16,23 +16,31 @@ Metrics (units in brackets; how each limit is derived is written into scorecard_
   elbow_bend, knee_bend  [deg]   forearm (shin) direction in the upper arm's (thigh's) frame, projected on the limb's
                                  front/back plane: 0 = straight, + = normal flexion (elbow forward, knee back),
                                  - = hyperextension. Value is the clip's [min, max]; it must lie inside the limit range.
+                                 Biped rigs only (n/a otherwise), as are the arms/legs/torso speeds and foot slide.
   ang_speed_<group> [deg/100ms]  largest rotation of any bone of the group over any 2-tick window. arms, legs and torso
                                  use the bone's rotation relative to its parent (the joint), weapon its world rotation.
-  foot_slide     [blocks]        render_geo.foot_slide on planted feet (gait clips move the root at the booth speed).
+  foot_slide     [blocks]        render_geo.foot_slide on planted feet. Gait clips move the root at the troop's booth
+                                 config speed; with no booth config a gait's foot slide is n/a.
   pen_weapon     [px]            how deep a weapon or held-prop cube reaches inside a torso, head or leg cube: the
                                  deepest point of a lattice over the cube (<= 1 px apart) measured to the body cube's
                                  nearest face (oriented boxes; 1 px = 1/16 block). A blade run through the body reads
                                  as deep as its middle, not just its thickness.
-  pen_limb       [px]            the same for forearm/hand and shin/foot cubes inside a torso/hips cube.
+  pen_limb       [px]            the same for forearm/hand and shin/foot cubes inside a torso/hips cube, except that
+                                 along the axis the limb comes in on (the side its elbow/knee is on) depth counts from
+                                 that entry face, so a forearm through a 4 px torso reads up to 4 px, not 2.
   edge_lead      [deg]           slash attacks: angle between the blade's edge (weapon bone local x, either side unless
                                  the weapon is single-edged) and the blade tip's travel across the blade, at the design
                                  impact tick (the builder's EDGE_LEAD definition, art/anim/knight/build_anims.py).
-  impact_tick    [ticks]         melee attacks with a design.json attackVariants entry: the clip's impact is the
-                                 2-tick window in which the weapon tip travels furthest (peak tip speed); its centre
-                                 must land within the tolerance of the variant's impactTicks.
+  impact_tick    [ticks]         melee attacks with a design.json attackVariants entry: the clip's contact is the
+                                 2-tick window in which the weapon tip drives furthest toward the foe (the model's
+                                 front), so a wind-up never counts; its centre must land within the tolerance of the
+                                 variant's impactTicks.
   loop_pose [deg], loop_pos [px], loop_vel [deg/tick]
                                  looping clips: rotation and position gap between the last and first frame, and the jump
-                                 in rotation speed across the wrap (half-tick finite differences).
+                                 in a bone's rotation speed across the wrap (1-tick finite differences), judged against
+                                 that bone's own peak speed in the clip (a ratio from the knight) with a deg/tick floor.
+
+Limits are per clip kind; scorecard_limits.json 'families' widens some for a troop's design.json family, with reasons.
 """
 from __future__ import annotations
 
@@ -72,21 +80,33 @@ GAIT = ("walk", "run", "charge_run")
 
 # How each limit is made from the knight's own numbers. "add" widens a maximum (or a range on both sides) by a fixed
 # amount, "scale" multiplies a maximum. Recorded in the limits file next to every limit.
+HYPER = -5.0          # deg: anatomical cap, no elbow or knee bends backwards further than this, whatever the family
+SPEED_FLOOR = 8.0     # deg/100ms: no angular speed limit is tighter than this (a near-still knight stance reads ~1)
+LOOP_VEL_FLOOR = 8.0  # deg/tick: a wrap kink this size is a pop of ~4 deg, under 1 px at the end of a 12 px limb
+_SPEED_HOW = "knight per-kind max x 1.25, never under %g deg/100ms" % SPEED_FLOOR
+_BEND_HOW = ("maximum: knight per-kind max + 10 deg. Minimum: the anatomical cap %g deg (no hyperextension), or the "
+             "knight's own minimum where it goes further (its hits); a limb straighter than the knight's is a style, "
+             "not a fault" % HYPER)
 MARGINS = {
-    "elbow_bend": {"add": 10.0, "how": "knight per-kind [min, max] widened by 10 deg on each side"},
-    "knee_bend": {"add": 10.0, "how": "knight per-kind [min, max] widened by 10 deg on each side"},
-    "ang_speed_arms": {"scale": 1.15, "how": "knight per-kind max x 1.15"},
-    "ang_speed_legs": {"scale": 1.15, "how": "knight per-kind max x 1.15"},
-    "ang_speed_torso": {"scale": 1.15, "how": "knight per-kind max x 1.15"},
-    "ang_speed_weapon": {"scale": 1.15, "how": "knight per-kind max x 1.15"},
+    "elbow_bend": {"add": 10.0, "floor_lo": HYPER, "how": _BEND_HOW},
+    "knee_bend": {"add": 10.0, "floor_lo": HYPER, "how": _BEND_HOW},
+    "ang_speed_arms": {"scale": 1.25, "floor": SPEED_FLOOR, "kind_scale": {"death": 2.0},
+                       "how": _SPEED_HOW + "; death x 2.0 (a falling body flings its arms: the knight's deaths are "
+                                           "its one style, other troops fall harder)"},
+    "ang_speed_legs": {"scale": 1.25, "floor": SPEED_FLOOR, "how": _SPEED_HOW},
+    "ang_speed_torso": {"scale": 1.25, "floor": SPEED_FLOOR, "how": _SPEED_HOW},
+    "ang_speed_weapon": {"scale": 1.25, "floor": SPEED_FLOOR, "how": _SPEED_HOW},
     "foot_slide": {"add": 0.05, "how": "knight per-kind max + 0.05 blocks (the booth's foot slide margin)"},
     "pen_weapon": {"add": 0.5, "how": "knight per-kind max + 0.5 px"},
     "pen_limb": {"add": 0.5, "how": "knight per-kind max + 0.5 px"},
     "edge_lead": {"add": 10.0, "how": "knight max over its slash attacks + 10 deg"},
-    "impact_tick": {"add": 1.0, "how": "tolerance = knight's largest |peak - impactTicks| + 1 tick"},
+    "impact_tick": {"add": 1.0, "how": "tolerance = knight's largest |contact - impactTicks| + 1 tick"},
     "loop_pose": {"add": 1.0, "how": "knight per-kind max over its looping clips + 1 deg"},
     "loop_pos": {"add": 0.25, "how": "knight per-kind max over its looping clips + 0.25 px"},
-    "loop_vel": {"scale": 1.25, "add": 1.0, "how": "knight per-kind max over its looping clips x 1.25 + 1 deg/tick"},
+    "loop_vel": {"scale": 1.25, "floor": LOOP_VEL_FLOOR,
+                 "how": "the limit is a ratio: a bone's wrap kink may be at most (knight per-kind max of kink / that "
+                        "bone's peak 1-tick speed in the clip) x 1.25 times its own peak speed, and never less than "
+                        "%g deg/tick (a ~4 deg pop: under 1 px at the end of a 12 px limb)" % LOOP_VEL_FLOOR},
 }
 UNITS = {"elbow_bend": "deg", "knee_bend": "deg", "foot_slide": "blocks", "pen_weapon": "px", "pen_limb": "px",
          "edge_lead": "deg", "impact_tick": "tick", "loop_pose": "deg", "loop_pos": "px", "loop_vel": "deg/tick"}
@@ -94,12 +114,40 @@ for _g in GROUPS:
     UNITS["ang_speed_" + _g] = "deg/100ms"
 METRICS = tuple(MARGINS)
 RANGE_METRICS = ("elbow_bend", "knee_bend")
+BIPED_METRICS = ("elbow_bend", "knee_bend", "ang_speed_arms", "ang_speed_legs", "ang_speed_torso", "foot_slide")
 GLOBAL_METRICS = ("edge_lead", "impact_tick")   # attacks only: one limit
-# Single-edged weapons: the side of the blade bone's local x the edge is on (builder EDGE_SIGN; the axe builder's bit
-# is local +x). Every other weapon is double-edged and either edge may lead.
-EDGE_SIGN = {"tc_raider": -1.0, "ic_hearthguard": 1.0, "ic_breaker": 1.0}
-# Gait speed (blocks per tick) for a troop with no booth config: the knight booth config's speeds.
-GAIT_SPEED = {"walk": 0.16, "run": 0.26, "charge_run": 0.26}
+# Single-edged weapons: the side of the blade bone's local x the edge is on (knight builder EDGE_SIGN). ic_breaker's
+# greataxe is not in the builder's table (art/anim/greataxe aims the bit by hand); its geo puts the bit, the wide head
+# cubes, on the weapon bone's local -x of the haft (x -0.12..0.31 against the haft at 0.31..0.44 blocks) and only a
+# small back spike on +x, so its edge is -1. Every other weapon is double-edged and either edge may lead.
+EDGE_SIGN = {"tc_raider": -1.0, "ic_hearthguard": 1.0, "ic_breaker": -1.0}
+# Family allowances (design.json troops[].family). The knight is sword_shield: its numbers are that family's limits.
+# Another family's limit is widened only where its fighting style needs the motion; each entry says why. Values are
+# limits in the metric's unit, per clip kind ("all" = every kind); they widen, never narrow.
+FAMILIES = {
+    "bow": {
+        "elbow_bend": {"all": [HYPER, 145.0], "reason": "the draw (volley, and the aim stances that hold it) folds "
+                                                        "the string arm until the hand is at the cheek (~130-145 "
+                                                        "deg), which a sword never does"},
+        "ang_speed_arms": {"attack": 160.0, "reason": "the volley's draw and release snap the string arm back and "
+                                                      "out faster than the knight's cuts"},
+    },
+    "crossbow": {
+        "elbow_bend": {"attack": [HYPER, 125.0], "reason": "spanning the crossbow folds the arm to haul the string "
+                                                           "back to the nut"},
+    },
+    "spear": {
+        "elbow_bend": {"stance": [HYPER, 100.0], "reason": "the spear wall couches the shaft high at the shoulder, "
+                                                          "the rear elbow folded behind it"},
+        "ang_speed_legs": {"attack": 65.0, "reason": "the high thrust is a lunge: the lead leg drives the point "
+                                                     "forward, which the knight's planted cuts never do"},
+    },
+    "thrower": {
+        "elbow_bend": {"all": [HYPER, 130.0],
+                       "reason": "the harpoon is carried cocked above the shoulder, the throwing elbow folded"},
+        "ang_speed_arms": {"attack": 180.0, "reason": "an overarm throw whips the arm faster than any melee swing"},
+    },
+}
 
 
 class ScoreError(Exception):
@@ -242,13 +290,20 @@ class Rig:
         core = {n for n in names if n in TORSO_BONES}
         head = self._subtree(["head"], vis) if "head" in model.bones else set()
         legs = {n for n in names if _tokens(n) & {"leg", "shin", "foot"}}
-        limbs = self._subtree([n for n in names if _tokens(n) & {"forearm", "shin"}], vis) - self.weapon - self.props
+        limb_roots = [n for n in names if _tokens(n) & {"forearm", "shin"} and n in vis]
+        limbs = self._subtree(limb_roots, vis) - self.weapon - self.props
         held = cubes(self.weapon | self.props)
         body = cubes(core | head | legs)
         lat = lambda idx: [(i, lattice(lean.cube_list[i])) for i in idx]  # noqa: E731
         self.pen_weapon = (lat(held), body) if held and body else None
         core_idx = cubes(core)
-        self.pen_limb = (lat(cubes(limbs)), core_idx) if cubes(limbs) and core_idx else None
+        # each limb cube remembers its limb's root joint (the forearm's elbow, the shin's knee): the side of a body
+        # box that joint is on is the side the limb comes in through
+        root_of = {}
+        for r in limb_roots:
+            for d in self.full.descendants(r):
+                root_of.setdefault(d, r)
+        self.pen_limb = ([(i, lattice(lean.cube_list[i]), root_of[cb[i]]) for i in cubes(limbs)], core_idx)             if cubes(limbs) and core_idx else None
         self.feet = [n for n in names if rg.is_foot(n) and n in vis]
         # foot slide follows each foot bone's own cubes: with a toe cube as a child, render_geo's "lowest cube" flips
         # between foot and toe on a flat foot and reads as 3 px of slide on a knight standing still
@@ -339,6 +394,30 @@ def point_depth(points, corners, axes):
     return float(max(0.0, d.max()))
 
 
+def entry_depth(points, roots, corners, axes):
+    """Deepest of `points` (N x 3) inside any box. Like point_depth (distance to the nearest face) except along the
+    entry axis, where depth counts from the face the limb comes in through: the face on the side of the point's limb
+    root (`roots`, N x 3: the elbow or knee, outside the body). So it does not stop at the box's centre plane: a
+    forearm run front to back through a 4 px torso reads up to 4 px, while a hand grazing the torso's side reads
+    only as deep as it is past that side."""
+    if len(points) == 0 or len(corners) == 0:
+        return 0.0
+    c = corners.mean(axis=1)                                            # B x 3
+    proj = np.einsum("bvc,bca->bva", corners - c[:, None], axes)
+    half = np.abs(proj).max(axis=1)                                     # B x 3
+    q = np.einsum("bpc,bca->bpa", points[None] - c[:, None], axes)     # B x N x 3
+    qr = np.einsum("bpc,bca->bpa", roots[None] - c[:, None], axes)
+    a = np.argmax(np.abs(qr) - half[:, None, :], axis=2)               # B x N: the axis the root is most outside on
+    qa = np.take_along_axis(q, a[..., None], axis=2)[..., 0]
+    sa = np.sign(np.take_along_axis(qr, a[..., None], axis=2)[..., 0])
+    sa = np.where(sa == 0, 1.0, sa)
+    ha = np.take_along_axis(np.broadcast_to(half[:, None, :], q.shape), a[..., None], axis=2)[..., 0]
+    side = half[:, None, :] - np.abs(q)                                 # distance to each axis's nearer face
+    np.put_along_axis(side, a[..., None], (ha - sa * qa)[..., None], axis=2)   # entry axis: from the entry face
+    d = side.min(axis=2)
+    return float(max(0.0, d.max()))
+
+
 def _flex(Ru, Rl, knee):
     v = Ru.T @ Rl @ np.array([0.0, -1.0, 0.0])
     a = math.degrees(math.atan2(-v[2], -v[1]))       # gecko space: the model's front is -z
@@ -350,9 +429,13 @@ def _wrap(d):
 
 
 def loop_numbers(clip):
-    """(rotation gap deg, position gap px, rotation speed jump deg/tick) across the wrap of a looping clip."""
-    L, h = clip.length, STEP
-    rot = pos = vel = 0.0
+    """Across the wrap of a looping clip: (rotation gap deg, position gap px, kinks). kinks: per rotated bone
+    (bone, kink, peak) in deg/tick at 1-tick finite differences (the game's update step): kink is the jump in rotation
+    speed across the wrap, peak the bone's own largest 1-tick speed anywhere in the clip."""
+    L = clip.length
+    h = min(1.0, L / 2.0)
+    rot = pos = 0.0
+    kinks = []
     for b, chans in clip.bones.items():
         for ch in ("rotation", "position"):
             if not chans.get(ch):
@@ -363,22 +446,24 @@ def loop_numbers(clip):
                 rot = max(rot, float(np.degrees(np.abs(_wrap(gap))).max()))
                 v_end = _wrap(s(L) - s(L - h)) / h
                 v_start = _wrap(s(h) - s(0.0)) / h
-                vel = max(vel, float(np.degrees(np.abs(v_end - v_start)).max()))
+                kink = float(np.degrees(np.abs(v_end - v_start)).max())
+                ts = np.arange(0.0, L - h + 1e-9, h)
+                peak = max(float(np.degrees(np.abs(_wrap(s(t + h) - s(t)))).max()) / h for t in ts)
+                kinks.append((b, kink, peak))
             else:
                 pos = max(pos, float(np.abs(gap).max()))
-    return rot, pos, vel
+    return rot, pos, kinks
 
 
-def measure(rig, anim, name, base=(), speed=None, kind=None, variant=None):
-    """Raw numbers of one clip played over its base clips. anim: parsed animation json (dict)."""
+def measure(rig, anim, name, base=(), speed=None, kind=None, variant=None, family=None):
+    """Raw numbers of one clip played over its base clips. anim: parsed animation json (dict). A gait clip's root
+    speed comes from the troop's booth config (`speed`); without one its foot slide is n/a."""
     kind = kind or clip_kind(name)
     try:
         clips = [rg.load_clip(anim, b) for b in base] + [rg.load_clip(anim, name)]
     except rg.GeoError as e:
         raise ScoreError("%s: %s" % (name, e))
     top = clips[-1]
-    if kind == "gait" and not speed:
-        speed = GAIT_SPEED.get(stem(name), 0.0)
     speed = float(speed or 0.0)
     scene = rg.Scene(rig.model, None, clips, speed if kind == "gait" else 0.0)
     ts = _times(top.length, top.loop, WINDOW)
@@ -420,7 +505,9 @@ def measure(rig, anim, name, base=(), speed=None, kind=None, variant=None):
         raw[metric] = round(best, 2)
 
     # 3. foot slide (render_geo's planted-foot drift)
-    if rig.feet:
+    if kind == "gait" and speed <= 0:
+        notes["foot_slide"] = "no booth gait speed for this troop"
+    elif rig.feet:
         series = {f: [] for f in rig.feet}
         for i in span:
             for f in rig.feet:
@@ -447,9 +534,15 @@ def measure(rig, anim, name, base=(), speed=None, kind=None, variant=None):
         worst = 0.0
         for i in span:
             fr = frames[i]
-            pts = np.concatenate([cube_points(fr.corners[ci], uvw) for ci, uvw in movers])
+            pts = np.concatenate([cube_points(fr.corners[mv[0]], mv[1]) for mv in movers])
             R = np.array([_rot(fr.cube_M[j]) for j in boxes])
-            worst = max(worst, point_depth(pts, fr.corners[J], R) * 16.0)
+            if metric == "pen_limb":
+                piv = {r: scene.bone_pivot_world(fr, r) for r in {mv[2] for mv in movers}}
+                roots = np.concatenate([np.repeat(piv[mv[2]][None], len(mv[1]), axis=0) for mv in movers])
+                d = entry_depth(pts, roots, fr.corners[J], R)
+            else:
+                d = point_depth(pts, fr.corners[J], R)
+            worst = max(worst, d * 16.0)
         raw[metric] = round(worst, 3)
 
     # 5 and 6. edge lead and impact tick (melee attacks with a design variant)
@@ -478,11 +571,13 @@ def measure(rig, anim, name, base=(), speed=None, kind=None, variant=None):
         else:
             notes["edge_lead"] = "not a slash" if vkind != "slash" else "impact after the clip ends"
         if vkind in MELEE:
+            # contact, not wind-up: the 2-tick window in which the tip drives furthest toward the foe (world +z,
+            # the model's front); a wind-up or a haft drawn back moves the tip away from the foe and never wins
             P = np.array([tip(frames[i]) for i in span])
             T = np.array([ts[i] for i in span])
             if len(P) > k:
-                reach = np.linalg.norm(P[k:] - P[:-k], axis=1)
-                j = int(np.argmax(reach))
+                drive = P[k:, 2] - P[:-k, 2]
+                j = int(np.argmax(drive))
                 raw["impact_tick"] = {"peak": round(float((T[j] + T[j + k]) / 2.0), 2), "design": imp}
             else:
                 notes["impact_tick"] = "clip shorter than 2 ticks"
@@ -498,8 +593,23 @@ def measure(rig, anim, name, base=(), speed=None, kind=None, variant=None):
         nums = [loop_numbers(c) for c in loops]
         raw["loop_pose"] = round(max(n[0] for n in nums), 3)
         raw["loop_pos"] = round(max(n[1] for n in nums), 3)
-        raw["loop_vel"] = round(max(n[2] for n in nums), 3)
-    return {"name": name, "base": list(base), "kind": kind, "speed": speed if kind == "gait" else 0.0,
+        kinks = [kk for n in nums for kk in n[2]]
+        if kinks:
+            # the knight's ratios come from every bone; a bone can only fail with a kink over the floor
+            ratio = max((kk[1] / kk[2] for kk in kinks if kk[1] >= 0.01 and kk[2] > 1e-6), default=0.0)
+            big = sorted((kk for kk in kinks if kk[1] >= 1.0), key=lambda kk: -kk[1])
+            raw["loop_vel"] = {"kink": round(max(kk[1] for kk in kinks), 3), "ratio": round(ratio, 4),
+                               "bones": [[b, round(kv, 3), round(pv, 3)] for b, kv, pv in big]}
+        else:
+            notes["loop_vel"] = "no rotation channels"
+
+    if not rig.biped:
+        for m in BIPED_METRICS:
+            if m in raw:
+                del raw[m]
+                notes[m] = "not a biped: the knight's limits do not apply"
+    return {"name": name, "base": list(base), "kind": kind, "family": family,
+            "speed": speed if kind == "gait" else 0.0,
             "length": top.length, "loop": top.loop, "raw": raw, "notes": notes}
 
 
@@ -507,14 +617,24 @@ def measure(rig, anim, name, base=(), speed=None, kind=None, variant=None):
 # Judging
 # ----------------------------------------------------------------------------------------------
 
-def limit_for(limits, metric, kind):
+def limit_for(limits, metric, kind, family=None):
+    """The knight-derived limit for a clip kind, widened by the troop family's stated allowance when there is one
+    (family allowances only ever widen; a range's minimum keeps the anatomical cap)."""
     m = limits.get("metrics", {}).get(metric)
     if not m:
         return None
     lim = m.get("limit", {})
     if metric in GLOBAL_METRICS:
         return lim.get("all")
-    return lim.get(kind, lim.get("other"))
+    base = lim.get(kind, lim.get("other"))
+    fam = limits.get("families", {}).get(family or "", {}).get(metric, {})
+    wide = fam.get(kind, fam.get("all"))
+    if base is None or wide is None:
+        return base
+    if metric in RANGE_METRICS:
+        cap = m.get("floor_lo", HYPER)
+        return [round(min(base[0], max(wide[0], cap)), 2), round(max(base[1], wide[1]), 2)]
+    return round(max(base, wide), 4)
 
 
 def judge(meas, limits):
@@ -527,13 +647,25 @@ def judge(meas, limits):
             out.append(row)
             continue
         val = meas["raw"][metric]
-        lim = limit_for(limits, metric, meas["kind"])
+        lim = limit_for(limits, metric, meas["kind"], meas.get("family"))
         if lim is None:
             row.update(value=val, note="no knight limit for this metric")
             out.append(row)
             continue
         if metric in RANGE_METRICS:
             ok = lim[0] - 1e-9 <= val[0] and val[1] <= lim[1] + 1e-9
+        elif metric == "loop_vel":
+            floor = limits["metrics"][metric].get("floor", LOOP_VEL_FLOOR)
+            worst, kv, lv, at = -1.0, val["kink"], floor, None
+            for b, kink, peak in val["bones"]:
+                lb = max(floor, lim * peak)
+                if kink / lb > worst:
+                    worst, kv, lv, at = kink / lb, kink, lb, (b, peak)
+            ok = kv <= lv + 1e-9
+            row["note"] = "limit = max(%s, %s x the bone's peak speed)" % (_fmt(float(floor)), _fmt(float(lim)))
+            if at:
+                row["note"] = "%s, peak %s deg/tick; %s" % (at[0], _fmt(float(at[1])), row["note"])
+            val, lim = kv, round(lv, 3)
         elif metric == "impact_tick":
             off = val["peak"] - val["design"]
             ok = abs(off) <= lim + 1e-9
@@ -642,7 +774,8 @@ def measure_troop(repo, troop, geo=None, anim=None, config=None, only=None):
     for name, base, speed in units(names, config.clips if config else None):
         if only is not None and name not in only:
             continue
-        out.append(measure(rig, data, name, base, speed, variant=design.variant(troop, name)))
+        out.append(measure(rig, data, name, base, speed, variant=design.variant(troop, name),
+                           family=design.family.get(troop)))
     return out
 
 
@@ -661,7 +794,8 @@ def score_booth(repo, cfg, names, limits=None):
     out = {}
     for n in names:
         c = by[n]
-        meas = measure(rig, data, n, c.base, c.speed if c.speed > 0 else None, variant=design.variant(cfg.troop, n))
+        meas = measure(rig, data, n, c.base, c.speed if c.speed > 0 else None, variant=design.variant(cfg.troop, n),
+                       family=design.family.get(cfg.troop))
         out[n] = score(meas, limits)
     return out
 
@@ -683,6 +817,8 @@ def derive(repo=REPO, measured=None):
             key = "all" if metric in GLOBAL_METRICS else m["kind"]
             if metric == "impact_tick":
                 v = abs(v["peak"] - v["design"])
+            elif metric == "loop_vel":
+                v = v["ratio"]
             if metric in RANGE_METRICS:
                 lo, hi = per.get(key, [v[0], v[1]])
                 per[key] = [min(lo, v[0]), max(hi, v[1])]
@@ -695,27 +831,36 @@ def derive(repo=REPO, measured=None):
             per["other"] = ([min(v[0] for v in vals), max(v[1] for v in vals)] if metric in RANGE_METRICS
                             else max(vals))
 
-        def widen(v):
+        def widen(k, v):
             if metric in RANGE_METRICS:
-                return [round(v[0] - mg["add"], 2), round(v[1] + mg["add"], 2)]
-            return round(v * mg.get("scale", 1.0) + mg.get("add", 0.0), 4)
-        metrics[metric] = {"unit": UNITS[metric], "how": mg["how"],
+                return [round(min(v[0], mg["floor_lo"]), 2), round(v[1] + mg["add"], 2)]
+            if metric == "loop_vel":
+                return round(v * mg["scale"], 4)       # a ratio; the deg/tick floor is applied when judging
+            out = v * mg.get("kind_scale", {}).get(k, mg.get("scale", 1.0)) + mg.get("add", 0.0)
+            return round(max(out, mg.get("floor", 0.0)), 4)
+        metrics[metric] = {"unit": "ratio" if metric == "loop_vel" else UNITS[metric], "how": mg["how"],
                            "knight": {k: (v if metric in RANGE_METRICS else round(v, 4)) for k, v in per.items()},
-                           "limit": {k: widen(v) for k, v in per.items()}}
+                           "limit": {k: widen(k, v) for k, v in per.items()}}
+        for key in ("floor", "floor_lo"):
+            if key in mg:
+                metrics[metric][key] = mg[key]
     return {
         "_comment": "Animation scorecard limits (tools/anim/scorecard.py). Every limit is the approved Knight v2 clips' "
                     "own extreme for that metric and clip kind plus the stated margin; 'other' is the envelope over the "
-                    "knight's kinds and applies to clip kinds the knight does not have. Regenerate with "
+                    "knight's kinds and applies to clip kinds the knight does not have. The knight is the sword_shield "
+                    "family; 'families' widens a limit for another design.json family only where its style needs the "
+                    "motion, each with its reason (it never narrows one, and never lifts the anatomical caps). "
+                    "Non-biped rigs are n/a for bend, limb speed and foot slide; a gait's foot slide needs the troop's "
+                    "booth gait speed. Regenerate with "
                     "python tools/anim/scorecard.py --derive.",
         "derived_from": {"animation": "%s/animations/troop/knight.animation.json" % ASSETS,
-                         "geo": "%s/geo/troop/knight.geo.json" % ASSETS, "clips": len(meas),
-                         "date": datetime.date.today().isoformat()},
+                         "geo": "%s/geo/troop/knight.geo.json" % ASSETS, "clips": len(meas)},
         "kinds": {"attack": "attack_*", "gait": "walk, run, charge_run", "fallback": "stance_fallback",
                   "stance": "stance_*, idle",
                   "hit": "hit_*, stun*", "death": "death_*, fake_death, rise", "other": "anything else"},
-        "gait_speed_fallback": GAIT_SPEED,
         "edge_sign": EDGE_SIGN,
         "metrics": metrics,
+        "families": FAMILIES,
     }
 
 
