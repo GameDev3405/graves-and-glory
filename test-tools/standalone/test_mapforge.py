@@ -760,6 +760,17 @@ class RenderTest(unittest.TestCase):
 class ScanTest(unittest.TestCase):
     """The read-only layout scan on a tiny flat world: routes, a blocked capture band and a walled-off spawn."""
 
+    def test_solid_rule_uses_whole_names_not_substrings(self):
+        def solid(name):
+            return scan_mod._solid(normalize(name))
+        for name in ('oak_stairs', 'light_gray_wool', 'light_blue_concrete', 'daylight_detector', 'fire_coral_block',
+                     'flower_pot', 'lightning_rod', 'snow_block', 'stone', 'water_cauldron'):
+            self.assertTrue(solid(name), name)
+        for name in ('air', 'water', 'light', 'grass', 'short_grass', 'torch', 'wall_torch', 'oak_sign', 'red_banner',
+                     'stone_button', 'white_carpet', 'oak_pressure_plate', 'oak_sapling', 'red_tulip', 'rail', 'fire',
+                     'snow', 'poppy', 'vine', 'ladder'):
+            self.assertFalse(solid(name), name)
+
     def _world(self):
         w = World('scan')
         for x in range(-12, 13):
