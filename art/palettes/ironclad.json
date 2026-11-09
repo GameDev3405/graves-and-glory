@@ -1,0 +1,901 @@
+{
+ "name": "ironclad",
+ "ramps": {
+  "build_ic_ballista.BRASS": {
+   "defined": 7,
+   "colors": [
+    {
+     "hex": "#1c1208",
+     "troops": [
+      "ic_colossus"
+     ]
+    },
+    {
+     "hex": "#3a2610",
+     "troops": [
+      "ic_ballista",
+      "ic_colossus",
+      "ic_mortar"
+     ]
+    },
+    {
+     "hex": "#5e3f16",
+     "troops": [
+      "ic_ballista",
+      "ic_colossus",
+      "ic_mortar"
+     ]
+    },
+    {
+     "hex": "#8a5e22",
+     "troops": [
+      "ic_ballista",
+      "ic_colossus",
+      "ic_mortar"
+     ]
+    },
+    {
+     "hex": "#b4863c",
+     "troops": [
+      "ic_ballista",
+      "ic_colossus",
+      "ic_mortar"
+     ]
+    },
+    {
+     "hex": "#d9b465",
+     "troops": [
+      "ic_ballista",
+      "ic_colossus",
+      "ic_mortar"
+     ]
+    },
+    {
+     "hex": "#f0dc9c",
+     "troops": [
+      "ic_ballista",
+      "ic_colossus",
+      "ic_mortar"
+     ]
+    }
+   ]
+  },
+  "build_ic_ballista.OAK": {
+   "defined": 6,
+   "colors": [
+    {
+     "hex": "#140d08",
+     "troops": [
+      "ic_ballista",
+      "ic_colossus",
+      "ic_mortar"
+     ]
+    },
+    {
+     "hex": "#2b1c0f",
+     "troops": [
+      "ic_ballista",
+      "ic_mortar"
+     ]
+    },
+    {
+     "hex": "#46301a",
+     "troops": [
+      "ic_ballista",
+      "ic_colossus",
+      "ic_mortar"
+     ]
+    },
+    {
+     "hex": "#644826",
+     "troops": [
+      "ic_ballista",
+      "ic_colossus",
+      "ic_mortar"
+     ]
+    },
+    {
+     "hex": "#846236",
+     "troops": [
+      "ic_ballista",
+      "ic_colossus",
+      "ic_mortar"
+     ]
+    },
+    {
+     "hex": "#a58250",
+     "troops": [
+      "ic_ballista",
+      "ic_colossus",
+      "ic_mortar"
+     ]
+    }
+   ]
+  },
+  "build_ic_ballista.ROPE": {
+   "defined": 6,
+   "colors": [
+    {
+     "hex": "#372c1f",
+     "troops": [
+      "ic_ballista"
+     ]
+    },
+    {
+     "hex": "#58472f",
+     "troops": [
+      "ic_ballista"
+     ]
+    },
+    {
+     "hex": "#7d6746",
+     "troops": [
+      "ic_ballista"
+     ]
+    },
+    {
+     "hex": "#a08a64",
+     "troops": [
+      "ic_ballista"
+     ]
+    },
+    {
+     "hex": "#c0ae86",
+     "troops": [
+      "ic_ballista"
+     ]
+    }
+   ]
+  },
+  "build_ic_hearthguard.BEARD": {
+   "defined": 5,
+   "colors": [
+    {
+     "hex": "#5a2410",
+     "troops": [
+      "ic_hearthguard"
+     ]
+    },
+    {
+     "hex": "#8a3c18",
+     "troops": [
+      "ic_hearthguard"
+     ]
+    },
+    {
+     "hex": "#b8642a",
+     "troops": [
+      "ic_hearthguard"
+     ]
+    }
+   ]
+  },
+  "handlib.GOLD": {
+   "defined": 7,
+   "colors": [
+    {
+     "hex": "#89581b",
+     "troops": [
+      "ic_hearthguard"
+     ]
+    },
+    {
+     "hex": "#b8852a",
+     "troops": [
+      "ic_hearthguard"
+     ]
+    },
+    {
+     "hex": "#dcb145",
+     "troops": [
+      "ic_hearthguard"
+     ]
+    },
+    {
+     "hex": "#f2d877",
+     "troops": [
+      "ic_hearthguard"
+     ]
+    }
+   ]
+  },
+  "handlib.HAIRS.black": {
+   "defined": 4,
+   "colors": [
+    {
+     "hex": "#0c0a0c",
+     "troops": [
+      "ic_ballista",
+      "ic_mortar"
+     ]
+    },
+    {
+     "hex": "#1a161a",
+     "troops": [
+      "ic_ballista",
+      "ic_mortar"
+     ]
+    },
+    {
+     "hex": "#2c262a",
+     "troops": [
+      "ic_ballista",
+      "ic_mortar"
+     ]
+    }
+   ]
+  },
+  "handlib.HAIRS.brown": {
+   "defined": 4,
+   "colors": [
+    {
+     "hex": "#1c120c",
+     "troops": [
+      "ic_ballista",
+      "ic_mortar"
+     ]
+    },
+    {
+     "hex": "#3a2618",
+     "troops": [
+      "ic_ballista",
+      "ic_mortar"
+     ]
+    },
+    {
+     "hex": "#5a3c24",
+     "troops": [
+      "ic_ballista",
+      "ic_mortar"
+     ]
+    }
+   ]
+  },
+  "handlib.HAIRS.grey": {
+   "defined": 4,
+   "colors": [
+    {
+     "hex": "#3a3a40",
+     "troops": [
+      "ic_ballista",
+      "ic_mortar"
+     ]
+    },
+    {
+     "hex": "#66666e",
+     "troops": [
+      "ic_ballista",
+      "ic_mortar"
+     ]
+    },
+    {
+     "hex": "#9a9aa2",
+     "troops": [
+      "ic_ballista",
+      "ic_mortar"
+     ]
+    }
+   ]
+  },
+  "handlib.LEATH": {
+   "defined": 6,
+   "colors": [
+    {
+     "hex": "#362114",
+     "troops": [
+      "ic_hearthguard"
+     ]
+    },
+    {
+     "hex": "#54341e",
+     "troops": [
+      "ic_hearthguard"
+     ]
+    },
+    {
+     "hex": "#764b2d",
+     "troops": [
+      "ic_hearthguard"
+     ]
+    },
+    {
+     "hex": "#9a6a42",
+     "troops": [
+      "ic_hearthguard"
+     ]
+    }
+   ]
+  },
+  "handlib.MAIL": {
+   "defined": 6,
+   "colors": [
+    {
+     "hex": "#121319",
+     "troops": [
+      "ic_breaker",
+      "ic_hearthguard"
+     ]
+    },
+    {
+     "hex": "#23262f",
+     "troops": [
+      "ic_arbalist",
+      "ic_breaker",
+      "ic_hearthguard"
+     ]
+    },
+    {
+     "hex": "#373c4a",
+     "troops": [
+      "ic_arbalist",
+      "ic_breaker",
+      "ic_hearthguard"
+     ]
+    },
+    {
+     "hex": "#525a6b",
+     "troops": [
+      "ic_arbalist",
+      "ic_breaker",
+      "ic_hearthguard"
+     ]
+    },
+    {
+     "hex": "#737d90",
+     "troops": [
+      "ic_arbalist",
+      "ic_breaker",
+      "ic_hearthguard"
+     ]
+    },
+    {
+     "hex": "#9ba5b5",
+     "troops": [
+      "ic_arbalist",
+      "ic_breaker"
+     ]
+    }
+   ]
+  },
+  "handlib.SKINS.brown": {
+   "defined": 5,
+   "colors": [
+    {
+     "hex": "#4a2c1c",
+     "troops": [
+      "ic_ballista",
+      "ic_mortar"
+     ]
+    },
+    {
+     "hex": "#6e4430",
+     "troops": [
+      "ic_ballista",
+      "ic_mortar"
+     ]
+    },
+    {
+     "hex": "#905c40",
+     "troops": [
+      "ic_ballista",
+      "ic_mortar"
+     ]
+    },
+    {
+     "hex": "#b07a58",
+     "troops": [
+      "ic_ballista",
+      "ic_mortar"
+     ]
+    }
+   ]
+  },
+  "handlib.SKINS.fair": {
+   "defined": 5,
+   "colors": [
+    {
+     "hex": "#8a5340",
+     "troops": [
+      "ic_ballista",
+      "ic_mortar"
+     ]
+    },
+    {
+     "hex": "#c08068",
+     "troops": [
+      "ic_ballista",
+      "ic_hearthguard",
+      "ic_mortar"
+     ]
+    },
+    {
+     "hex": "#e2aa8c",
+     "troops": [
+      "ic_ballista",
+      "ic_hearthguard",
+      "ic_mortar"
+     ]
+    },
+    {
+     "hex": "#f4ccb0",
+     "troops": [
+      "ic_ballista",
+      "ic_mortar"
+     ]
+    }
+   ]
+  },
+  "handlib.SKINS.olive": {
+   "defined": 5,
+   "colors": [
+    {
+     "hex": "#6e4630",
+     "troops": [
+      "ic_ballista",
+      "ic_mortar"
+     ]
+    },
+    {
+     "hex": "#a06c4c",
+     "troops": [
+      "ic_arbalist",
+      "ic_ballista",
+      "ic_mortar"
+     ]
+    },
+    {
+     "hex": "#c8926c",
+     "troops": [
+      "ic_arbalist",
+      "ic_ballista",
+      "ic_mortar"
+     ]
+    },
+    {
+     "hex": "#e0b48e",
+     "troops": [
+      "ic_ballista",
+      "ic_mortar"
+     ]
+    }
+   ]
+  },
+  "handlib.SKINS.pale": {
+   "defined": 5,
+   "colors": [
+    {
+     "hex": "#8c6458",
+     "troops": [
+      "ic_ballista",
+      "ic_mortar"
+     ]
+    },
+    {
+     "hex": "#bc9282",
+     "troops": [
+      "ic_ballista",
+      "ic_mortar"
+     ]
+    },
+    {
+     "hex": "#dcb6a4",
+     "troops": [
+      "ic_ballista",
+      "ic_mortar"
+     ]
+    },
+    {
+     "hex": "#f0d6c8",
+     "troops": [
+      "ic_ballista",
+      "ic_mortar"
+     ]
+    }
+   ]
+  },
+  "ironclad.FUR": {
+   "defined": 6,
+   "colors": [
+    {
+     "hex": "#17130f",
+     "troops": [
+      "ic_arbalist",
+      "ic_breaker"
+     ]
+    },
+    {
+     "hex": "#2e2720",
+     "troops": [
+      "ic_arbalist",
+      "ic_breaker"
+     ]
+    },
+    {
+     "hex": "#4a4034",
+     "troops": [
+      "ic_arbalist",
+      "ic_breaker"
+     ]
+    },
+    {
+     "hex": "#6b5e4c",
+     "troops": [
+      "ic_arbalist",
+      "ic_breaker"
+     ]
+    },
+    {
+     "hex": "#8e7f68",
+     "troops": [
+      "ic_arbalist",
+      "ic_breaker"
+     ]
+    },
+    {
+     "hex": "#b3a68c",
+     "troops": [
+      "ic_arbalist",
+      "ic_breaker"
+     ]
+    }
+   ]
+  },
+  "ironclad.OILED": {
+   "defined": 5,
+   "colors": [
+    {
+     "hex": "#120d0a",
+     "troops": [
+      "ic_arbalist",
+      "ic_ballista",
+      "ic_breaker",
+      "ic_hearthguard",
+      "ic_mortar"
+     ]
+    },
+    {
+     "hex": "#2a1a10",
+     "troops": [
+      "ic_arbalist",
+      "ic_ballista",
+      "ic_breaker",
+      "ic_hearthguard",
+      "ic_mortar"
+     ]
+    },
+    {
+     "hex": "#4a2f1b",
+     "troops": [
+      "ic_arbalist",
+      "ic_ballista",
+      "ic_breaker",
+      "ic_hearthguard",
+      "ic_mortar"
+     ]
+    },
+    {
+     "hex": "#6a4528",
+     "troops": [
+      "ic_arbalist",
+      "ic_ballista",
+      "ic_breaker",
+      "ic_hearthguard",
+      "ic_mortar"
+     ]
+    },
+    {
+     "hex": "#8a5f3a",
+     "troops": [
+      "ic_arbalist",
+      "ic_ballista",
+      "ic_breaker",
+      "ic_hearthguard",
+      "ic_mortar"
+     ]
+    }
+   ]
+  },
+  "ironclad_tiers.BRASS": {
+   "defined": 5,
+   "colors": [
+    {
+     "hex": "#3e2b12",
+     "troops": [
+      "ic_ballista",
+      "ic_breaker",
+      "ic_colossus",
+      "ic_hearthguard",
+      "ic_mortar"
+     ]
+    },
+    {
+     "hex": "#664a20",
+     "troops": [
+      "ic_arbalist",
+      "ic_ballista",
+      "ic_breaker",
+      "ic_colossus",
+      "ic_hearthguard",
+      "ic_mortar"
+     ]
+    },
+    {
+     "hex": "#85642a",
+     "troops": [
+      "ic_arbalist",
+      "ic_ballista",
+      "ic_breaker",
+      "ic_colossus",
+      "ic_hearthguard",
+      "ic_mortar"
+     ]
+    },
+    {
+     "hex": "#997530",
+     "troops": [
+      "ic_arbalist",
+      "ic_ballista",
+      "ic_breaker",
+      "ic_colossus",
+      "ic_hearthguard",
+      "ic_mortar"
+     ]
+    },
+    {
+     "hex": "#c8a870",
+     "troops": [
+      "ic_arbalist",
+      "ic_ballista",
+      "ic_breaker",
+      "ic_colossus",
+      "ic_hearthguard",
+      "ic_mortar"
+     ]
+    }
+   ]
+  },
+  "ironclad_tiers.EMBER": {
+   "defined": 6,
+   "colors": [
+    {
+     "hex": "#1f0a06",
+     "troops": [
+      "ic_ballista",
+      "ic_breaker",
+      "ic_hearthguard"
+     ]
+    },
+    {
+     "hex": "#4a1608",
+     "troops": [
+      "ic_arbalist",
+      "ic_ballista",
+      "ic_breaker",
+      "ic_colossus",
+      "ic_hearthguard"
+     ]
+    },
+    {
+     "hex": "#7a2a0c",
+     "troops": [
+      "ic_arbalist",
+      "ic_ballista",
+      "ic_breaker",
+      "ic_colossus",
+      "ic_hearthguard",
+      "ic_mortar"
+     ]
+    },
+    {
+     "hex": "#993f12",
+     "troops": [
+      "ic_arbalist",
+      "ic_ballista",
+      "ic_breaker",
+      "ic_colossus",
+      "ic_hearthguard",
+      "ic_mortar"
+     ]
+    },
+    {
+     "hex": "#c8966f",
+     "troops": [
+      "ic_arbalist",
+      "ic_ballista",
+      "ic_breaker",
+      "ic_colossus",
+      "ic_hearthguard",
+      "ic_mortar"
+     ]
+    },
+    {
+     "hex": "#ecc9a6",
+     "troops": [
+      "ic_ballista",
+      "ic_breaker",
+      "ic_colossus",
+      "ic_hearthguard",
+      "ic_mortar"
+     ]
+    }
+   ]
+  },
+  "ironclad_tiers.HORN": {
+   "defined": 5,
+   "colors": [
+    {
+     "hex": "#2e2820",
+     "troops": [
+      "ic_colossus",
+      "ic_hearthguard"
+     ]
+    },
+    {
+     "hex": "#574d3e",
+     "troops": [
+      "ic_colossus",
+      "ic_hearthguard"
+     ]
+    },
+    {
+     "hex": "#857862",
+     "troops": [
+      "ic_colossus",
+      "ic_hearthguard"
+     ]
+    },
+    {
+     "hex": "#b3a68a",
+     "troops": [
+      "ic_colossus",
+      "ic_hearthguard"
+     ]
+    },
+    {
+     "hex": "#d9cfb4",
+     "troops": [
+      "ic_colossus",
+      "ic_hearthguard"
+     ]
+    }
+   ]
+  },
+  "ironclad_tiers.IRON": {
+   "defined": 7,
+   "colors": [
+    {
+     "hex": "#0d0e14",
+     "troops": [
+      "ic_arbalist",
+      "ic_ballista",
+      "ic_breaker",
+      "ic_colossus",
+      "ic_hearthguard",
+      "ic_mortar"
+     ]
+    },
+    {
+     "hex": "#1a1c25",
+     "troops": [
+      "ic_arbalist",
+      "ic_ballista",
+      "ic_breaker",
+      "ic_colossus",
+      "ic_hearthguard",
+      "ic_mortar"
+     ]
+    },
+    {
+     "hex": "#2c303b",
+     "troops": [
+      "ic_arbalist",
+      "ic_ballista",
+      "ic_breaker",
+      "ic_colossus",
+      "ic_hearthguard",
+      "ic_mortar"
+     ]
+    },
+    {
+     "hex": "#444a58",
+     "troops": [
+      "ic_arbalist",
+      "ic_ballista",
+      "ic_breaker",
+      "ic_colossus",
+      "ic_hearthguard",
+      "ic_mortar"
+     ]
+    },
+    {
+     "hex": "#62697a",
+     "troops": [
+      "ic_arbalist",
+      "ic_ballista",
+      "ic_breaker",
+      "ic_colossus",
+      "ic_hearthguard",
+      "ic_mortar"
+     ]
+    },
+    {
+     "hex": "#8a92a2",
+     "troops": [
+      "ic_arbalist",
+      "ic_ballista",
+      "ic_breaker",
+      "ic_colossus",
+      "ic_hearthguard",
+      "ic_mortar"
+     ]
+    },
+    {
+     "hex": "#bcc3cf",
+     "troops": [
+      "ic_arbalist",
+      "ic_ballista",
+      "ic_breaker",
+      "ic_colossus",
+      "ic_hearthguard",
+      "ic_mortar"
+     ]
+    }
+   ]
+  }
+ },
+ "loose": [
+  {
+   "hex": "#0e0c12",
+   "troops": [
+    "ic_arbalist",
+    "ic_breaker",
+    "ic_hearthguard"
+   ]
+  },
+  {
+   "hex": "#3a2a1c",
+   "troops": [
+    "ic_ballista",
+    "ic_mortar"
+   ]
+  },
+  {
+   "hex": "#3c5a78",
+   "troops": [
+    "ic_ballista",
+    "ic_mortar"
+   ]
+  },
+  {
+   "hex": "#5a6a5a",
+   "troops": [
+    "ic_ballista",
+    "ic_mortar"
+   ]
+  },
+  {
+   "hex": "#f2efe8",
+   "troops": [
+    "ic_ballista",
+    "ic_mortar"
+   ]
+  }
+ ],
+ "counts": {
+  "colors": 99,
+  "ramps": 20,
+  "grouped": 94,
+  "loose": 5
+ },
+ "ref": "54e5d339",
+ "source": "shipped troop textures at that git ref; ramps imported from the working tree",
+ "troops": [
+  "ic_arbalist",
+  "ic_ballista",
+  "ic_breaker",
+  "ic_colossus",
+  "ic_hearthguard",
+  "ic_mortar"
+ ],
+ "files": "<id>_s1..s3, <id>_veteran, <id>_e*"
+}

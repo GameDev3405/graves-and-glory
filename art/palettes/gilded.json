@@ -1,0 +1,1151 @@
+{
+ "name": "gilded",
+ "ramps": {
+  "build_archer.HOSE": {
+   "defined": 6,
+   "colors": [
+    {
+     "hex": "#15130f",
+     "troops": [
+      "archer",
+      "longbow"
+     ]
+    },
+    {
+     "hex": "#26221b",
+     "troops": [
+      "archer",
+      "longbow"
+     ]
+    },
+    {
+     "hex": "#3a3328",
+     "troops": [
+      "archer",
+      "longbow"
+     ]
+    },
+    {
+     "hex": "#4f4636",
+     "troops": [
+      "archer",
+      "longbow"
+     ]
+    },
+    {
+     "hex": "#675c47",
+     "troops": [
+      "archer",
+      "longbow"
+     ]
+    },
+    {
+     "hex": "#84775c",
+     "troops": [
+      "archer",
+      "longbow"
+     ]
+    }
+   ]
+  },
+  "build_archer.IVORY": {
+   "defined": 5,
+   "colors": [
+    {
+     "hex": "#7c6b50",
+     "troops": [
+      "archer"
+     ]
+    },
+    {
+     "hex": "#eee4c8",
+     "troops": [
+      "archer"
+     ]
+    }
+   ]
+  },
+  "build_archer.PAD": {
+   "defined": 6,
+   "colors": [
+    {
+     "hex": "#2e261c",
+     "troops": [
+      "archer",
+      "longbow"
+     ]
+    },
+    {
+     "hex": "#4f4332",
+     "troops": [
+      "archer",
+      "longbow"
+     ]
+    },
+    {
+     "hex": "#776650",
+     "troops": [
+      "archer",
+      "longbow"
+     ]
+    },
+    {
+     "hex": "#9b8a6c",
+     "troops": [
+      "archer",
+      "longbow"
+     ]
+    },
+    {
+     "hex": "#bcab88",
+     "troops": [
+      "archer",
+      "longbow"
+     ]
+    },
+    {
+     "hex": "#d8caa6",
+     "troops": [
+      "archer",
+      "longbow"
+     ]
+    }
+   ]
+  },
+  "build_gl_marshal.BLACK": {
+   "defined": 7,
+   "colors": [
+    {
+     "hex": "#0f0e13",
+     "troops": [
+      "gl_marshal"
+     ]
+    },
+    {
+     "hex": "#1b1a21",
+     "troops": [
+      "gl_marshal"
+     ]
+    },
+    {
+     "hex": "#28262f",
+     "troops": [
+      "gl_marshal"
+     ]
+    },
+    {
+     "hex": "#36343e",
+     "troops": [
+      "gl_marshal"
+     ]
+    },
+    {
+     "hex": "#4a4853",
+     "troops": [
+      "gl_marshal"
+     ]
+    },
+    {
+     "hex": "#625f6c",
+     "troops": [
+      "gl_marshal"
+     ]
+    },
+    {
+     "hex": "#86838f",
+     "troops": [
+      "gl_marshal"
+     ]
+    }
+   ]
+  },
+  "build_gl_marshal.FUR": {
+   "defined": 5,
+   "colors": [
+    {
+     "hex": "#1e1712",
+     "troops": [
+      "gl_marshal"
+     ]
+    },
+    {
+     "hex": "#33271d",
+     "troops": [
+      "gl_marshal"
+     ]
+    },
+    {
+     "hex": "#4b3a2b",
+     "troops": [
+      "gl_marshal"
+     ]
+    },
+    {
+     "hex": "#65513d",
+     "troops": [
+      "gl_marshal"
+     ]
+    },
+    {
+     "hex": "#806a52",
+     "troops": [
+      "gl_marshal"
+     ]
+    }
+   ]
+  },
+  "build_longbow.FELT": {
+   "defined": 6,
+   "colors": [
+    {
+     "hex": "#1a1510",
+     "troops": [
+      "longbow"
+     ]
+    },
+    {
+     "hex": "#2e261c",
+     "troops": [
+      "archer",
+      "longbow"
+     ]
+    },
+    {
+     "hex": "#463a2a",
+     "troops": [
+      "longbow"
+     ]
+    },
+    {
+     "hex": "#5f4f39",
+     "troops": [
+      "longbow"
+     ]
+    },
+    {
+     "hex": "#7a6749",
+     "troops": [
+      "longbow"
+     ]
+    }
+   ]
+  },
+  "build_longbow.PLUME": {
+   "defined": 3,
+   "colors": [
+    {
+     "hex": "#f6f3ea",
+     "troops": [
+      "longbow"
+     ]
+    },
+    {
+     "hex": "#dcd6c8",
+     "troops": [
+      "longbow"
+     ]
+    },
+    {
+     "hex": "#aaa293",
+     "troops": [
+      "longbow"
+     ]
+    }
+   ]
+  },
+  "build_mage.ROPE": {
+   "defined": 4,
+   "colors": [
+    {
+     "hex": "#6a5a3a",
+     "troops": [
+      "mage"
+     ]
+    },
+    {
+     "hex": "#9c8858",
+     "troops": [
+      "mage"
+     ]
+    },
+    {
+     "hex": "#c8b57e",
+     "troops": [
+      "mage"
+     ]
+    },
+    {
+     "hex": "#e6d8a6",
+     "troops": [
+      "mage"
+     ]
+    }
+   ]
+  },
+  "build_mage.SAGE_HAIR": {
+   "defined": 4,
+   "colors": [
+    {
+     "hex": "#6a6a70",
+     "troops": [
+      "mage"
+     ]
+    },
+    {
+     "hex": "#9c9ca4",
+     "troops": [
+      "mage"
+     ]
+    },
+    {
+     "hex": "#c8c8ce",
+     "troops": [
+      "mage"
+     ]
+    },
+    {
+     "hex": "#e8e8ea",
+     "troops": [
+      "mage"
+     ]
+    }
+   ]
+  },
+  "build_mage.WHITE": {
+   "defined": 6,
+   "colors": [
+    {
+     "hex": "#5e5a52",
+     "troops": [
+      "mage"
+     ]
+    },
+    {
+     "hex": "#8e897c",
+     "troops": [
+      "mage"
+     ]
+    },
+    {
+     "hex": "#b9b4a4",
+     "troops": [
+      "mage"
+     ]
+    },
+    {
+     "hex": "#d9d5c6",
+     "troops": [
+      "mage"
+     ]
+    },
+    {
+     "hex": "#efece0",
+     "troops": [
+      "mage"
+     ]
+    },
+    {
+     "hex": "#fbf9f1",
+     "troops": [
+      "mage"
+     ]
+    }
+   ]
+  },
+  "build_sentinel.DARK": {
+   "defined": 6,
+   "colors": [
+    {
+     "hex": "#121118",
+     "troops": [
+      "sentinel"
+     ]
+    },
+    {
+     "hex": "#1e1c25",
+     "troops": [
+      "sentinel"
+     ]
+    },
+    {
+     "hex": "#2b2833",
+     "troops": [
+      "sentinel"
+     ]
+    },
+    {
+     "hex": "#3a3644",
+     "troops": [
+      "sentinel"
+     ]
+    },
+    {
+     "hex": "#4d4858",
+     "troops": [
+      "sentinel"
+     ]
+    },
+    {
+     "hex": "#625c70",
+     "troops": [
+      "sentinel"
+     ]
+    }
+   ]
+  },
+  "handlib.GOLD": {
+   "defined": 7,
+   "colors": [
+    {
+     "hex": "#2c1909",
+     "troops": [
+      "gl_marshal",
+      "sentinel"
+     ]
+    },
+    {
+     "hex": "#583513",
+     "troops": [
+      "archer",
+      "gl_marshal",
+      "knight",
+      "mage",
+      "sentinel"
+     ]
+    },
+    {
+     "hex": "#89581b",
+     "troops": [
+      "archer",
+      "gl_marshal",
+      "knight",
+      "longbow",
+      "mage",
+      "sentinel"
+     ]
+    },
+    {
+     "hex": "#b8852a",
+     "troops": [
+      "archer",
+      "gl_marshal",
+      "knight",
+      "longbow",
+      "mage",
+      "sentinel"
+     ]
+    },
+    {
+     "hex": "#dcb145",
+     "troops": [
+      "archer",
+      "gl_marshal",
+      "knight",
+      "longbow",
+      "mage",
+      "sentinel"
+     ]
+    },
+    {
+     "hex": "#f2d877",
+     "troops": [
+      "archer",
+      "gl_marshal",
+      "knight",
+      "longbow",
+      "mage",
+      "sentinel"
+     ]
+    },
+    {
+     "hex": "#fff5c4",
+     "troops": [
+      "gl_marshal",
+      "knight",
+      "mage",
+      "sentinel"
+     ]
+    }
+   ]
+  },
+  "handlib.HAIRS.black": {
+   "defined": 4,
+   "colors": [
+    {
+     "hex": "#0c0a0c",
+     "troops": [
+      "archer",
+      "knight",
+      "longbow",
+      "sentinel"
+     ]
+    },
+    {
+     "hex": "#1a161a",
+     "troops": [
+      "archer",
+      "knight",
+      "longbow",
+      "sentinel"
+     ]
+    },
+    {
+     "hex": "#2c262a",
+     "troops": [
+      "archer",
+      "knight",
+      "longbow",
+      "sentinel"
+     ]
+    }
+   ]
+  },
+  "handlib.HAIRS.brown": {
+   "defined": 4,
+   "colors": [
+    {
+     "hex": "#1c120c",
+     "troops": [
+      "archer",
+      "knight",
+      "longbow",
+      "sentinel"
+     ]
+    },
+    {
+     "hex": "#3a2618",
+     "troops": [
+      "archer",
+      "knight",
+      "longbow",
+      "sentinel"
+     ]
+    },
+    {
+     "hex": "#5a3c24",
+     "troops": [
+      "archer",
+      "knight",
+      "longbow",
+      "sentinel"
+     ]
+    }
+   ]
+  },
+  "handlib.HAIRS.grey": {
+   "defined": 4,
+   "colors": [
+    {
+     "hex": "#3a3a40",
+     "troops": [
+      "archer",
+      "gl_marshal",
+      "knight",
+      "longbow",
+      "sentinel"
+     ]
+    },
+    {
+     "hex": "#66666e",
+     "troops": [
+      "archer",
+      "gl_marshal",
+      "knight",
+      "longbow",
+      "sentinel"
+     ]
+    },
+    {
+     "hex": "#9a9aa2",
+     "troops": [
+      "archer",
+      "gl_marshal",
+      "knight",
+      "longbow",
+      "sentinel"
+     ]
+    },
+    {
+     "hex": "#c8c8cc",
+     "troops": [
+      "gl_marshal"
+     ]
+    }
+   ]
+  },
+  "handlib.LEATH": {
+   "defined": 6,
+   "colors": [
+    {
+     "hex": "#1c100b",
+     "troops": [
+      "archer",
+      "gl_marshal",
+      "knight",
+      "longbow",
+      "mage",
+      "sentinel"
+     ]
+    },
+    {
+     "hex": "#362114",
+     "troops": [
+      "archer",
+      "gl_marshal",
+      "knight",
+      "longbow",
+      "mage",
+      "sentinel"
+     ]
+    },
+    {
+     "hex": "#54341e",
+     "troops": [
+      "archer",
+      "gl_marshal",
+      "knight",
+      "longbow",
+      "mage",
+      "sentinel"
+     ]
+    },
+    {
+     "hex": "#764b2d",
+     "troops": [
+      "archer",
+      "gl_marshal",
+      "knight",
+      "longbow",
+      "mage",
+      "sentinel"
+     ]
+    },
+    {
+     "hex": "#9a6a42",
+     "troops": [
+      "archer",
+      "gl_marshal",
+      "knight",
+      "longbow",
+      "sentinel"
+     ]
+    },
+    {
+     "hex": "#c09068",
+     "troops": [
+      "archer",
+      "knight",
+      "longbow"
+     ]
+    }
+   ]
+  },
+  "handlib.LINEN": {
+   "defined": 6,
+   "colors": [
+    {
+     "hex": "#3a3024",
+     "troops": [
+      "archer"
+     ]
+    },
+    {
+     "hex": "#675641",
+     "troops": [
+      "archer"
+     ]
+    },
+    {
+     "hex": "#958262",
+     "troops": [
+      "archer"
+     ]
+    },
+    {
+     "hex": "#bfac86",
+     "troops": [
+      "archer"
+     ]
+    },
+    {
+     "hex": "#ddcfaa",
+     "troops": [
+      "archer",
+      "longbow"
+     ]
+    },
+    {
+     "hex": "#f5edd8",
+     "troops": [
+      "archer"
+     ]
+    }
+   ]
+  },
+  "handlib.MAIL": {
+   "defined": 6,
+   "colors": [
+    {
+     "hex": "#121319",
+     "troops": [
+      "archer",
+      "gl_marshal",
+      "knight",
+      "longbow",
+      "sentinel"
+     ]
+    },
+    {
+     "hex": "#23262f",
+     "troops": [
+      "archer",
+      "gl_marshal",
+      "knight",
+      "longbow",
+      "sentinel"
+     ]
+    },
+    {
+     "hex": "#373c4a",
+     "troops": [
+      "archer",
+      "gl_marshal",
+      "knight",
+      "longbow",
+      "sentinel"
+     ]
+    },
+    {
+     "hex": "#525a6b",
+     "troops": [
+      "archer",
+      "gl_marshal",
+      "knight",
+      "longbow",
+      "sentinel"
+     ]
+    },
+    {
+     "hex": "#737d90",
+     "troops": [
+      "archer",
+      "knight",
+      "longbow",
+      "sentinel"
+     ]
+    },
+    {
+     "hex": "#9ba5b5",
+     "troops": [
+      "archer",
+      "knight",
+      "longbow",
+      "sentinel"
+     ]
+    }
+   ]
+  },
+  "handlib.SKINS.brown": {
+   "defined": 5,
+   "colors": [
+    {
+     "hex": "#4a2c1c",
+     "troops": [
+      "archer",
+      "knight",
+      "longbow",
+      "mage",
+      "sentinel"
+     ]
+    },
+    {
+     "hex": "#6e4430",
+     "troops": [
+      "archer",
+      "knight",
+      "longbow",
+      "mage",
+      "sentinel"
+     ]
+    },
+    {
+     "hex": "#905c40",
+     "troops": [
+      "archer",
+      "knight",
+      "longbow",
+      "mage",
+      "sentinel"
+     ]
+    },
+    {
+     "hex": "#b07a58",
+     "troops": [
+      "archer",
+      "knight",
+      "longbow",
+      "mage",
+      "sentinel"
+     ]
+    }
+   ]
+  },
+  "handlib.SKINS.fair": {
+   "defined": 5,
+   "colors": [
+    {
+     "hex": "#8a5340",
+     "troops": [
+      "archer",
+      "knight",
+      "longbow",
+      "mage",
+      "sentinel"
+     ]
+    },
+    {
+     "hex": "#c08068",
+     "troops": [
+      "archer",
+      "knight",
+      "longbow",
+      "mage",
+      "sentinel"
+     ]
+    },
+    {
+     "hex": "#e2aa8c",
+     "troops": [
+      "archer",
+      "knight",
+      "longbow",
+      "mage",
+      "sentinel"
+     ]
+    },
+    {
+     "hex": "#f4ccb0",
+     "troops": [
+      "archer",
+      "knight",
+      "longbow",
+      "mage",
+      "sentinel"
+     ]
+    }
+   ]
+  },
+  "handlib.SKINS.olive": {
+   "defined": 5,
+   "colors": [
+    {
+     "hex": "#6e4630",
+     "troops": [
+      "archer",
+      "knight",
+      "longbow",
+      "mage",
+      "sentinel"
+     ]
+    },
+    {
+     "hex": "#a06c4c",
+     "troops": [
+      "archer",
+      "knight",
+      "longbow",
+      "mage",
+      "sentinel"
+     ]
+    },
+    {
+     "hex": "#c8926c",
+     "troops": [
+      "archer",
+      "knight",
+      "longbow",
+      "mage",
+      "sentinel"
+     ]
+    },
+    {
+     "hex": "#e0b48e",
+     "troops": [
+      "archer",
+      "knight",
+      "longbow",
+      "mage",
+      "sentinel"
+     ]
+    }
+   ]
+  },
+  "handlib.SKINS.pale": {
+   "defined": 5,
+   "colors": [
+    {
+     "hex": "#8c6458",
+     "troops": [
+      "archer",
+      "gl_marshal",
+      "knight",
+      "longbow",
+      "mage",
+      "sentinel"
+     ]
+    },
+    {
+     "hex": "#bc9282",
+     "troops": [
+      "archer",
+      "gl_marshal",
+      "knight",
+      "longbow",
+      "mage",
+      "sentinel"
+     ]
+    },
+    {
+     "hex": "#dcb6a4",
+     "troops": [
+      "archer",
+      "gl_marshal",
+      "knight",
+      "longbow",
+      "mage",
+      "sentinel"
+     ]
+    },
+    {
+     "hex": "#f0d6c8",
+     "troops": [
+      "archer",
+      "gl_marshal",
+      "knight",
+      "longbow",
+      "mage",
+      "sentinel"
+     ]
+    }
+   ]
+  },
+  "handlib.STEEL": {
+   "defined": 7,
+   "colors": [
+    {
+     "hex": "#15161f",
+     "troops": [
+      "archer",
+      "knight",
+      "longbow",
+      "sentinel"
+     ]
+    },
+    {
+     "hex": "#282c3b",
+     "troops": [
+      "archer",
+      "knight",
+      "longbow",
+      "mage",
+      "sentinel"
+     ]
+    },
+    {
+     "hex": "#414a5d",
+     "troops": [
+      "archer",
+      "knight",
+      "longbow",
+      "sentinel"
+     ]
+    },
+    {
+     "hex": "#617086",
+     "troops": [
+      "archer",
+      "knight",
+      "longbow",
+      "mage",
+      "sentinel"
+     ]
+    },
+    {
+     "hex": "#8a97ab",
+     "troops": [
+      "archer",
+      "knight",
+      "longbow",
+      "mage",
+      "sentinel"
+     ]
+    },
+    {
+     "hex": "#b9c4d1",
+     "troops": [
+      "archer",
+      "knight",
+      "longbow",
+      "mage",
+      "sentinel"
+     ]
+    },
+    {
+     "hex": "#eef3f6",
+     "troops": [
+      "archer",
+      "knight",
+      "longbow",
+      "sentinel"
+     ]
+    }
+   ]
+  },
+  "handlib.TEAM.linen.cloth": {
+   "defined": 5,
+   "colors": [
+    {
+     "hex": "#3a3024",
+     "troops": [
+      "archer"
+     ]
+    },
+    {
+     "hex": "#675641",
+     "troops": [
+      "archer"
+     ]
+    },
+    {
+     "hex": "#958262",
+     "troops": [
+      "archer"
+     ]
+    }
+   ]
+  }
+ },
+ "loose": [
+  {
+   "hex": "#0e0c12",
+   "troops": [
+    "knight",
+    "sentinel"
+   ]
+  },
+  {
+   "hex": "#2a1a10",
+   "troops": [
+    "archer",
+    "knight",
+    "longbow",
+    "mage",
+    "sentinel"
+   ]
+  },
+  {
+   "hex": "#3a2a1c",
+   "troops": [
+    "archer",
+    "knight",
+    "longbow",
+    "mage",
+    "sentinel"
+   ]
+  },
+  {
+   "hex": "#3c5a78",
+   "troops": [
+    "archer",
+    "knight",
+    "longbow",
+    "mage",
+    "sentinel"
+   ]
+  },
+  {
+   "hex": "#4a5a6a",
+   "troops": [
+    "gl_marshal"
+   ]
+  },
+  {
+   "hex": "#5a6a5a",
+   "troops": [
+    "archer",
+    "knight",
+    "longbow",
+    "mage",
+    "sentinel"
+   ]
+  },
+  {
+   "hex": "#8e8676",
+   "troops": [
+    "archer",
+    "longbow"
+   ]
+  },
+  {
+   "hex": "#b9b2a2",
+   "troops": [
+    "archer",
+    "longbow"
+   ]
+  },
+  {
+   "hex": "#d8d2c4",
+   "troops": [
+    "archer",
+    "longbow"
+   ]
+  },
+  {
+   "hex": "#ffe9a0",
+   "troops": [
+    "mage"
+   ]
+  },
+  {
+   "hex": "#f2eee4",
+   "troops": [
+    "archer",
+    "longbow"
+   ]
+  },
+  {
+   "hex": "#f2efe8",
+   "troops": [
+    "archer",
+    "gl_marshal",
+    "knight",
+    "longbow",
+    "mage",
+    "sentinel"
+   ]
+  },
+  {
+   "hex": "#fff8dc",
+   "troops": [
+    "mage"
+   ]
+  }
+ ],
+ "counts": {
+  "colors": 124,
+  "ramps": 24,
+  "grouped": 111,
+  "loose": 13
+ },
+ "ref": "54e5d339",
+ "source": "shipped troop textures at that git ref; ramps imported from the working tree",
+ "troops": [
+  "archer",
+  "gl_marshal",
+  "knight",
+  "longbow",
+  "mage",
+  "sentinel"
+ ],
+ "files": "<id>_s1..s3, <id>_veteran, <id>_e*"
+}

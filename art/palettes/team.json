@@ -1,0 +1,1461 @@
+{
+ "name": "team",
+ "ramps": {
+  "build_ic_ballista.BRASS": {
+   "defined": 7,
+   "colors": [
+    {
+     "hex": "#5e3f16",
+     "troops": [
+      "ic_colossus"
+     ]
+    },
+    {
+     "hex": "#8a5e22",
+     "troops": [
+      "ic_ballista",
+      "ic_colossus",
+      "ic_mortar"
+     ]
+    },
+    {
+     "hex": "#d9b465",
+     "troops": [
+      "ic_ballista",
+      "ic_colossus",
+      "ic_mortar"
+     ]
+    }
+   ]
+  },
+  "build_longbow.WHITE": {
+   "defined": 5,
+   "colors": [
+    {
+     "hex": "#6a6458",
+     "troops": [
+      "gl_marshal"
+     ]
+    },
+    {
+     "hex": "#9a9484",
+     "troops": [
+      "gl_marshal",
+      "longbow"
+     ]
+    },
+    {
+     "hex": "#c4bfaf",
+     "troops": [
+      "gl_marshal",
+      "longbow"
+     ]
+    },
+    {
+     "hex": "#e2ddcd",
+     "troops": [
+      "gl_marshal",
+      "longbow"
+     ]
+    },
+    {
+     "hex": "#f4f1e6",
+     "troops": [
+      "gl_marshal",
+      "longbow"
+     ]
+    }
+   ]
+  },
+  "build_tc_admiral.GILT": {
+   "defined": 6,
+   "colors": [
+    {
+     "hex": "#6f5a26",
+     "troops": [
+      "tc_admiral"
+     ]
+    },
+    {
+     "hex": "#96783a",
+     "troops": [
+      "tc_admiral"
+     ]
+    }
+   ]
+  },
+  "graveborn.VIOLET": {
+   "defined": 6,
+   "colors": [
+    {
+     "hex": "#362645",
+     "troops": [
+      "bonebow"
+     ]
+    },
+    {
+     "hex": "#54406a",
+     "troops": [
+      "bonebow"
+     ]
+    },
+    {
+     "hex": "#7a6494",
+     "troops": [
+      "bonebow"
+     ]
+    }
+   ]
+  },
+  "handlib.GOLD": {
+   "defined": 7,
+   "colors": [
+    {
+     "hex": "#89581b",
+     "troops": [
+      "knight"
+     ]
+    },
+    {
+     "hex": "#b8852a",
+     "troops": [
+      "archer",
+      "gl_marshal",
+      "hexer",
+      "knight",
+      "longbow",
+      "mage",
+      "reaper",
+      "sentinel",
+      "stalker"
+     ]
+    },
+    {
+     "hex": "#dcb145",
+     "troops": [
+      "archer",
+      "gl_marshal",
+      "hexer",
+      "knight",
+      "longbow",
+      "mage",
+      "reaper",
+      "sentinel"
+     ]
+    },
+    {
+     "hex": "#f2d877",
+     "troops": [
+      "archer",
+      "gl_marshal",
+      "hexer",
+      "knight",
+      "longbow",
+      "mage",
+      "sentinel"
+     ]
+    },
+    {
+     "hex": "#fff5c4",
+     "troops": [
+      "hexer"
+     ]
+    }
+   ]
+  },
+  "handlib.LEATH": {
+   "defined": 6,
+   "colors": [
+    {
+     "hex": "#54341e",
+     "troops": [
+      "archer"
+     ]
+    },
+    {
+     "hex": "#764b2d",
+     "troops": [
+      "archer"
+     ]
+    },
+    {
+     "hex": "#9a6a42",
+     "troops": [
+      "archer",
+      "longbow"
+     ]
+    }
+   ]
+  },
+  "handlib.LINEN": {
+   "defined": 6,
+   "colors": [
+    {
+     "hex": "#3a3024",
+     "troops": [
+      "archer",
+      "gb_hollowking",
+      "hexer",
+      "ic_arbalist",
+      "ic_ballista",
+      "ic_breaker",
+      "ic_hearthguard",
+      "ic_mortar",
+      "knight",
+      "longbow",
+      "revenant",
+      "sentinel",
+      "tc_brute",
+      "tc_harpooner",
+      "tc_raider",
+      "tc_tideguard",
+      "wm_hound",
+      "wm_oldhorn",
+      "wm_stalker",
+      "wm_tusk"
+     ]
+    },
+    {
+     "hex": "#675641",
+     "troops": [
+      "archer",
+      "bonebow",
+      "gb_hollowking",
+      "gl_marshal",
+      "hexer",
+      "ic_arbalist",
+      "ic_ballista",
+      "ic_breaker",
+      "ic_hearthguard",
+      "ic_mortar",
+      "knight",
+      "longbow",
+      "reaper",
+      "revenant",
+      "sentinel",
+      "stalker",
+      "tc_brute",
+      "tc_harpooner",
+      "tc_mist",
+      "tc_raider",
+      "tc_tideguard",
+      "wm_hound",
+      "wm_hunter",
+      "wm_oldhorn",
+      "wm_seer",
+      "wm_stalker",
+      "wm_tusk"
+     ]
+    },
+    {
+     "hex": "#958262",
+     "troops": [
+      "archer",
+      "bonebow",
+      "gb_hollowking",
+      "gl_marshal",
+      "hexer",
+      "ic_arbalist",
+      "ic_ballista",
+      "ic_breaker",
+      "ic_hearthguard",
+      "ic_mortar",
+      "knight",
+      "longbow",
+      "mage",
+      "reaper",
+      "revenant",
+      "sentinel",
+      "stalker",
+      "tc_admiral",
+      "tc_brute",
+      "tc_harpooner",
+      "tc_mist",
+      "tc_raider",
+      "tc_tideguard",
+      "wm_hound",
+      "wm_hunter",
+      "wm_oldhorn",
+      "wm_seer",
+      "wm_stalker",
+      "wm_tusk"
+     ]
+    }
+   ]
+  },
+  "handlib.STEEL": {
+   "defined": 7,
+   "colors": [
+    {
+     "hex": "#15161f",
+     "troops": [
+      "knight"
+     ]
+    },
+    {
+     "hex": "#282c3b",
+     "troops": [
+      "archer",
+      "gl_marshal",
+      "hexer",
+      "knight",
+      "longbow",
+      "mage",
+      "reaper",
+      "sentinel",
+      "stalker"
+     ]
+    },
+    {
+     "hex": "#414a5d",
+     "troops": [
+      "archer",
+      "gl_marshal",
+      "hexer",
+      "knight",
+      "longbow",
+      "mage",
+      "reaper",
+      "sentinel"
+     ]
+    },
+    {
+     "hex": "#617086",
+     "troops": [
+      "archer",
+      "gl_marshal",
+      "hexer",
+      "knight",
+      "longbow",
+      "mage",
+      "sentinel"
+     ]
+    }
+   ]
+  },
+  "handlib.TEAM.company.cloth": {
+   "defined": 5,
+   "colors": [
+    {
+     "hex": "#0b0d14",
+     "troops": [
+      "archer",
+      "gb_hollowking",
+      "hexer",
+      "ic_arbalist",
+      "ic_ballista",
+      "ic_breaker",
+      "ic_hearthguard",
+      "ic_mortar",
+      "knight",
+      "longbow",
+      "revenant",
+      "sentinel",
+      "tc_brute",
+      "tc_harpooner",
+      "tc_raider",
+      "tc_tideguard",
+      "wm_hound",
+      "wm_oldhorn",
+      "wm_stalker",
+      "wm_tusk"
+     ]
+    },
+    {
+     "hex": "#171c29",
+     "troops": [
+      "archer",
+      "bonebow",
+      "gb_hollowking",
+      "gl_marshal",
+      "hexer",
+      "ic_arbalist",
+      "ic_ballista",
+      "ic_breaker",
+      "ic_hearthguard",
+      "ic_mortar",
+      "knight",
+      "longbow",
+      "reaper",
+      "revenant",
+      "sentinel",
+      "stalker",
+      "tc_brute",
+      "tc_harpooner",
+      "tc_mist",
+      "tc_raider",
+      "tc_tideguard",
+      "wm_hound",
+      "wm_hunter",
+      "wm_oldhorn",
+      "wm_seer",
+      "wm_stalker",
+      "wm_tusk"
+     ]
+    },
+    {
+     "hex": "#25304a",
+     "troops": [
+      "archer",
+      "bonebow",
+      "gb_hollowking",
+      "gl_marshal",
+      "hexer",
+      "ic_arbalist",
+      "ic_ballista",
+      "ic_breaker",
+      "ic_hearthguard",
+      "ic_mortar",
+      "knight",
+      "longbow",
+      "mage",
+      "reaper",
+      "revenant",
+      "sentinel",
+      "stalker",
+      "tc_admiral",
+      "tc_brute",
+      "tc_harpooner",
+      "tc_mist",
+      "tc_raider",
+      "tc_tideguard",
+      "wm_hound",
+      "wm_hunter",
+      "wm_oldhorn",
+      "wm_seer",
+      "wm_stalker",
+      "wm_tusk"
+     ]
+    },
+    {
+     "hex": "#374767",
+     "troops": [
+      "archer",
+      "bonebow",
+      "gb_hollowking",
+      "gl_marshal",
+      "hexer",
+      "ic_arbalist",
+      "ic_ballista",
+      "ic_breaker",
+      "ic_colossus",
+      "ic_hearthguard",
+      "ic_mortar",
+      "knight",
+      "longbow",
+      "mage",
+      "reaper",
+      "revenant",
+      "sentinel",
+      "stalker",
+      "tc_admiral",
+      "tc_brute",
+      "tc_harpooner",
+      "tc_mist",
+      "tc_raider",
+      "tc_tideguard",
+      "wm_hound",
+      "wm_hunter",
+      "wm_oldhorn",
+      "wm_seer",
+      "wm_stalker",
+      "wm_tusk"
+     ]
+    },
+    {
+     "hex": "#51658a",
+     "troops": [
+      "archer",
+      "bonebow",
+      "gl_marshal",
+      "hexer",
+      "ic_arbalist",
+      "ic_ballista",
+      "ic_breaker",
+      "ic_hearthguard",
+      "ic_mortar",
+      "knight",
+      "longbow",
+      "mage",
+      "reaper",
+      "revenant",
+      "sentinel",
+      "stalker",
+      "tc_admiral",
+      "tc_brute",
+      "tc_harpooner",
+      "tc_mist",
+      "tc_raider",
+      "tc_tideguard",
+      "wm_hound",
+      "wm_hunter",
+      "wm_oldhorn",
+      "wm_seer",
+      "wm_stalker",
+      "wm_tusk"
+     ]
+    }
+   ]
+  },
+  "handlib.TEAM.crimson.cloth": {
+   "defined": 5,
+   "colors": [
+    {
+     "hex": "#23080c",
+     "troops": [
+      "archer",
+      "gb_hollowking",
+      "hexer",
+      "ic_arbalist",
+      "ic_ballista",
+      "ic_breaker",
+      "ic_hearthguard",
+      "ic_mortar",
+      "knight",
+      "longbow",
+      "revenant",
+      "sentinel",
+      "tc_brute",
+      "tc_harpooner",
+      "tc_raider",
+      "tc_tideguard",
+      "wm_hound",
+      "wm_oldhorn",
+      "wm_stalker",
+      "wm_tusk"
+     ]
+    },
+    {
+     "hex": "#4e1018",
+     "troops": [
+      "archer",
+      "bonebow",
+      "gb_hollowking",
+      "gl_marshal",
+      "hexer",
+      "ic_arbalist",
+      "ic_ballista",
+      "ic_breaker",
+      "ic_hearthguard",
+      "ic_mortar",
+      "knight",
+      "longbow",
+      "reaper",
+      "revenant",
+      "sentinel",
+      "stalker",
+      "tc_brute",
+      "tc_harpooner",
+      "tc_mist",
+      "tc_raider",
+      "tc_tideguard",
+      "wm_hound",
+      "wm_hunter",
+      "wm_oldhorn",
+      "wm_seer",
+      "wm_stalker",
+      "wm_tusk"
+     ]
+    },
+    {
+     "hex": "#821a22",
+     "troops": [
+      "archer",
+      "bonebow",
+      "gb_hollowking",
+      "gl_marshal",
+      "hexer",
+      "ic_arbalist",
+      "ic_ballista",
+      "ic_breaker",
+      "ic_hearthguard",
+      "ic_mortar",
+      "knight",
+      "longbow",
+      "mage",
+      "reaper",
+      "revenant",
+      "sentinel",
+      "stalker",
+      "tc_admiral",
+      "tc_brute",
+      "tc_harpooner",
+      "tc_mist",
+      "tc_raider",
+      "tc_tideguard",
+      "wm_hound",
+      "wm_hunter",
+      "wm_oldhorn",
+      "wm_seer",
+      "wm_stalker",
+      "wm_tusk"
+     ]
+    },
+    {
+     "hex": "#b22d2e",
+     "troops": [
+      "archer",
+      "bonebow",
+      "gb_hollowking",
+      "gl_marshal",
+      "hexer",
+      "ic_arbalist",
+      "ic_ballista",
+      "ic_breaker",
+      "ic_colossus",
+      "ic_hearthguard",
+      "ic_mortar",
+      "knight",
+      "longbow",
+      "mage",
+      "reaper",
+      "revenant",
+      "sentinel",
+      "stalker",
+      "tc_admiral",
+      "tc_brute",
+      "tc_harpooner",
+      "tc_mist",
+      "tc_raider",
+      "tc_tideguard",
+      "wm_hound",
+      "wm_hunter",
+      "wm_oldhorn",
+      "wm_seer",
+      "wm_stalker",
+      "wm_tusk"
+     ]
+    },
+    {
+     "hex": "#d95c4f",
+     "troops": [
+      "archer",
+      "bonebow",
+      "gl_marshal",
+      "hexer",
+      "ic_arbalist",
+      "ic_ballista",
+      "ic_breaker",
+      "ic_hearthguard",
+      "ic_mortar",
+      "knight",
+      "longbow",
+      "mage",
+      "reaper",
+      "revenant",
+      "sentinel",
+      "stalker",
+      "tc_admiral",
+      "tc_brute",
+      "tc_harpooner",
+      "tc_mist",
+      "tc_raider",
+      "tc_tideguard",
+      "wm_hound",
+      "wm_hunter",
+      "wm_oldhorn",
+      "wm_seer",
+      "wm_stalker",
+      "wm_tusk"
+     ]
+    }
+   ]
+  },
+  "handlib.TEAM.gold.cloth": {
+   "defined": 5,
+   "colors": [
+    {
+     "hex": "#3b2207",
+     "troops": [
+      "archer",
+      "gb_hollowking",
+      "hexer",
+      "ic_arbalist",
+      "ic_ballista",
+      "ic_breaker",
+      "ic_hearthguard",
+      "ic_mortar",
+      "knight",
+      "longbow",
+      "revenant",
+      "sentinel",
+      "tc_brute",
+      "tc_harpooner",
+      "tc_raider",
+      "tc_tideguard",
+      "wm_hound",
+      "wm_oldhorn",
+      "wm_stalker",
+      "wm_tusk"
+     ]
+    },
+    {
+     "hex": "#6c430f",
+     "troops": [
+      "archer",
+      "bonebow",
+      "gb_hollowking",
+      "gl_marshal",
+      "hexer",
+      "ic_arbalist",
+      "ic_ballista",
+      "ic_breaker",
+      "ic_hearthguard",
+      "ic_mortar",
+      "knight",
+      "longbow",
+      "reaper",
+      "revenant",
+      "sentinel",
+      "stalker",
+      "tc_brute",
+      "tc_harpooner",
+      "tc_mist",
+      "tc_raider",
+      "tc_tideguard",
+      "wm_hound",
+      "wm_hunter",
+      "wm_oldhorn",
+      "wm_seer",
+      "wm_stalker",
+      "wm_tusk"
+     ]
+    },
+    {
+     "hex": "#a06c18",
+     "troops": [
+      "archer",
+      "bonebow",
+      "gb_hollowking",
+      "gl_marshal",
+      "hexer",
+      "ic_arbalist",
+      "ic_ballista",
+      "ic_breaker",
+      "ic_hearthguard",
+      "ic_mortar",
+      "knight",
+      "longbow",
+      "mage",
+      "reaper",
+      "revenant",
+      "sentinel",
+      "stalker",
+      "tc_admiral",
+      "tc_brute",
+      "tc_harpooner",
+      "tc_mist",
+      "tc_raider",
+      "tc_tideguard",
+      "wm_hound",
+      "wm_hunter",
+      "wm_oldhorn",
+      "wm_seer",
+      "wm_stalker",
+      "wm_tusk"
+     ]
+    },
+    {
+     "hex": "#cf9a2a",
+     "troops": [
+      "archer",
+      "bonebow",
+      "gb_hollowking",
+      "gl_marshal",
+      "hexer",
+      "ic_arbalist",
+      "ic_ballista",
+      "ic_breaker",
+      "ic_colossus",
+      "ic_hearthguard",
+      "ic_mortar",
+      "knight",
+      "longbow",
+      "mage",
+      "reaper",
+      "revenant",
+      "sentinel",
+      "stalker",
+      "tc_admiral",
+      "tc_brute",
+      "tc_harpooner",
+      "tc_mist",
+      "tc_raider",
+      "tc_tideguard",
+      "wm_hound",
+      "wm_hunter",
+      "wm_oldhorn",
+      "wm_seer",
+      "wm_stalker",
+      "wm_tusk"
+     ]
+    },
+    {
+     "hex": "#efc75a",
+     "troops": [
+      "archer",
+      "bonebow",
+      "gl_marshal",
+      "hexer",
+      "ic_arbalist",
+      "ic_ballista",
+      "ic_breaker",
+      "ic_hearthguard",
+      "ic_mortar",
+      "knight",
+      "longbow",
+      "mage",
+      "reaper",
+      "revenant",
+      "sentinel",
+      "stalker",
+      "tc_admiral",
+      "tc_brute",
+      "tc_harpooner",
+      "tc_mist",
+      "tc_raider",
+      "tc_tideguard",
+      "wm_hound",
+      "wm_hunter",
+      "wm_oldhorn",
+      "wm_seer",
+      "wm_stalker",
+      "wm_tusk"
+     ]
+    }
+   ]
+  },
+  "handlib.TEAM.linen.cloth": {
+   "defined": 5,
+   "colors": [
+    {
+     "hex": "#3a3024",
+     "troops": [
+      "archer",
+      "gb_hollowking",
+      "hexer",
+      "ic_arbalist",
+      "ic_ballista",
+      "ic_breaker",
+      "ic_hearthguard",
+      "ic_mortar",
+      "knight",
+      "longbow",
+      "revenant",
+      "sentinel",
+      "tc_brute",
+      "tc_harpooner",
+      "tc_raider",
+      "tc_tideguard",
+      "wm_hound",
+      "wm_oldhorn",
+      "wm_stalker",
+      "wm_tusk"
+     ]
+    },
+    {
+     "hex": "#675641",
+     "troops": [
+      "archer",
+      "bonebow",
+      "gb_hollowking",
+      "gl_marshal",
+      "hexer",
+      "ic_arbalist",
+      "ic_ballista",
+      "ic_breaker",
+      "ic_hearthguard",
+      "ic_mortar",
+      "knight",
+      "longbow",
+      "reaper",
+      "revenant",
+      "sentinel",
+      "stalker",
+      "tc_brute",
+      "tc_harpooner",
+      "tc_mist",
+      "tc_raider",
+      "tc_tideguard",
+      "wm_hound",
+      "wm_hunter",
+      "wm_oldhorn",
+      "wm_seer",
+      "wm_stalker",
+      "wm_tusk"
+     ]
+    },
+    {
+     "hex": "#958262",
+     "troops": [
+      "archer",
+      "bonebow",
+      "gb_hollowking",
+      "gl_marshal",
+      "hexer",
+      "ic_arbalist",
+      "ic_ballista",
+      "ic_breaker",
+      "ic_hearthguard",
+      "ic_mortar",
+      "knight",
+      "longbow",
+      "mage",
+      "reaper",
+      "revenant",
+      "sentinel",
+      "stalker",
+      "tc_admiral",
+      "tc_brute",
+      "tc_harpooner",
+      "tc_mist",
+      "tc_raider",
+      "tc_tideguard",
+      "wm_hound",
+      "wm_hunter",
+      "wm_oldhorn",
+      "wm_seer",
+      "wm_stalker",
+      "wm_tusk"
+     ]
+    },
+    {
+     "hex": "#c4b28d",
+     "troops": [
+      "archer",
+      "bonebow",
+      "gb_hollowking",
+      "gl_marshal",
+      "hexer",
+      "ic_arbalist",
+      "ic_ballista",
+      "ic_breaker",
+      "ic_colossus",
+      "ic_hearthguard",
+      "ic_mortar",
+      "knight",
+      "longbow",
+      "mage",
+      "reaper",
+      "revenant",
+      "sentinel",
+      "stalker",
+      "tc_admiral",
+      "tc_brute",
+      "tc_harpooner",
+      "tc_mist",
+      "tc_raider",
+      "tc_tideguard",
+      "wm_hound",
+      "wm_hunter",
+      "wm_oldhorn",
+      "wm_seer",
+      "wm_stalker",
+      "wm_tusk"
+     ]
+    },
+    {
+     "hex": "#e6dab8",
+     "troops": [
+      "archer",
+      "bonebow",
+      "gl_marshal",
+      "hexer",
+      "ic_arbalist",
+      "ic_ballista",
+      "ic_breaker",
+      "ic_hearthguard",
+      "ic_mortar",
+      "knight",
+      "longbow",
+      "mage",
+      "reaper",
+      "revenant",
+      "sentinel",
+      "stalker",
+      "tc_admiral",
+      "tc_brute",
+      "tc_harpooner",
+      "tc_mist",
+      "tc_raider",
+      "tc_tideguard",
+      "wm_hound",
+      "wm_hunter",
+      "wm_oldhorn",
+      "wm_seer",
+      "wm_stalker",
+      "wm_tusk"
+     ]
+    }
+   ]
+  },
+  "handlib.TEAM.teal.cloth": {
+   "defined": 5,
+   "colors": [
+    {
+     "hex": "#06201f",
+     "troops": [
+      "archer",
+      "gb_hollowking",
+      "hexer",
+      "ic_arbalist",
+      "ic_ballista",
+      "ic_breaker",
+      "ic_hearthguard",
+      "ic_mortar",
+      "knight",
+      "longbow",
+      "revenant",
+      "sentinel",
+      "tc_brute",
+      "tc_harpooner",
+      "tc_raider",
+      "tc_tideguard",
+      "wm_hound",
+      "wm_oldhorn",
+      "wm_stalker",
+      "wm_tusk"
+     ]
+    },
+    {
+     "hex": "#0d4341",
+     "troops": [
+      "archer",
+      "bonebow",
+      "gb_hollowking",
+      "gl_marshal",
+      "hexer",
+      "ic_arbalist",
+      "ic_ballista",
+      "ic_breaker",
+      "ic_hearthguard",
+      "ic_mortar",
+      "knight",
+      "longbow",
+      "reaper",
+      "revenant",
+      "sentinel",
+      "stalker",
+      "tc_brute",
+      "tc_harpooner",
+      "tc_mist",
+      "tc_raider",
+      "tc_tideguard",
+      "wm_hound",
+      "wm_hunter",
+      "wm_oldhorn",
+      "wm_seer",
+      "wm_stalker",
+      "wm_tusk"
+     ]
+    },
+    {
+     "hex": "#166a64",
+     "troops": [
+      "archer",
+      "bonebow",
+      "gb_hollowking",
+      "gl_marshal",
+      "hexer",
+      "ic_arbalist",
+      "ic_ballista",
+      "ic_breaker",
+      "ic_hearthguard",
+      "ic_mortar",
+      "knight",
+      "longbow",
+      "mage",
+      "reaper",
+      "revenant",
+      "sentinel",
+      "stalker",
+      "tc_admiral",
+      "tc_brute",
+      "tc_harpooner",
+      "tc_mist",
+      "tc_raider",
+      "tc_tideguard",
+      "wm_hound",
+      "wm_hunter",
+      "wm_oldhorn",
+      "wm_seer",
+      "wm_stalker",
+      "wm_tusk"
+     ]
+    },
+    {
+     "hex": "#23978b",
+     "troops": [
+      "archer",
+      "bonebow",
+      "gb_hollowking",
+      "gl_marshal",
+      "hexer",
+      "ic_arbalist",
+      "ic_ballista",
+      "ic_breaker",
+      "ic_colossus",
+      "ic_hearthguard",
+      "ic_mortar",
+      "knight",
+      "longbow",
+      "mage",
+      "reaper",
+      "revenant",
+      "sentinel",
+      "stalker",
+      "tc_admiral",
+      "tc_brute",
+      "tc_harpooner",
+      "tc_mist",
+      "tc_raider",
+      "tc_tideguard",
+      "wm_hound",
+      "wm_hunter",
+      "wm_oldhorn",
+      "wm_seer",
+      "wm_stalker",
+      "wm_tusk"
+     ]
+    },
+    {
+     "hex": "#5cc5b4",
+     "troops": [
+      "archer",
+      "bonebow",
+      "gl_marshal",
+      "hexer",
+      "ic_arbalist",
+      "ic_ballista",
+      "ic_breaker",
+      "ic_hearthguard",
+      "ic_mortar",
+      "knight",
+      "longbow",
+      "mage",
+      "reaper",
+      "revenant",
+      "sentinel",
+      "stalker",
+      "tc_admiral",
+      "tc_brute",
+      "tc_harpooner",
+      "tc_mist",
+      "tc_raider",
+      "tc_tideguard",
+      "wm_hound",
+      "wm_hunter",
+      "wm_oldhorn",
+      "wm_seer",
+      "wm_stalker",
+      "wm_tusk"
+     ]
+    }
+   ]
+  },
+  "handlib.TEAM.violet.cloth": {
+   "defined": 5,
+   "colors": [
+    {
+     "hex": "#1a1029",
+     "troops": [
+      "archer",
+      "gb_hollowking",
+      "hexer",
+      "ic_arbalist",
+      "ic_ballista",
+      "ic_breaker",
+      "ic_hearthguard",
+      "ic_mortar",
+      "knight",
+      "longbow",
+      "revenant",
+      "sentinel",
+      "tc_brute",
+      "tc_harpooner",
+      "tc_raider",
+      "tc_tideguard",
+      "wm_hound",
+      "wm_oldhorn",
+      "wm_stalker",
+      "wm_tusk"
+     ]
+    },
+    {
+     "hex": "#33204f",
+     "troops": [
+      "archer",
+      "bonebow",
+      "gb_hollowking",
+      "gl_marshal",
+      "hexer",
+      "ic_arbalist",
+      "ic_ballista",
+      "ic_breaker",
+      "ic_hearthguard",
+      "ic_mortar",
+      "knight",
+      "longbow",
+      "reaper",
+      "revenant",
+      "sentinel",
+      "stalker",
+      "tc_brute",
+      "tc_harpooner",
+      "tc_mist",
+      "tc_raider",
+      "tc_tideguard",
+      "wm_hound",
+      "wm_hunter",
+      "wm_oldhorn",
+      "wm_seer",
+      "wm_stalker",
+      "wm_tusk"
+     ]
+    },
+    {
+     "hex": "#513585",
+     "troops": [
+      "archer",
+      "bonebow",
+      "gb_hollowking",
+      "gl_marshal",
+      "hexer",
+      "ic_arbalist",
+      "ic_ballista",
+      "ic_breaker",
+      "ic_hearthguard",
+      "ic_mortar",
+      "knight",
+      "longbow",
+      "mage",
+      "reaper",
+      "revenant",
+      "sentinel",
+      "stalker",
+      "tc_admiral",
+      "tc_brute",
+      "tc_harpooner",
+      "tc_mist",
+      "tc_raider",
+      "tc_tideguard",
+      "wm_hound",
+      "wm_hunter",
+      "wm_oldhorn",
+      "wm_seer",
+      "wm_stalker",
+      "wm_tusk"
+     ]
+    },
+    {
+     "hex": "#7655b4",
+     "troops": [
+      "archer",
+      "bonebow",
+      "gb_hollowking",
+      "gl_marshal",
+      "hexer",
+      "ic_arbalist",
+      "ic_ballista",
+      "ic_breaker",
+      "ic_colossus",
+      "ic_hearthguard",
+      "ic_mortar",
+      "knight",
+      "longbow",
+      "mage",
+      "reaper",
+      "revenant",
+      "sentinel",
+      "stalker",
+      "tc_admiral",
+      "tc_brute",
+      "tc_harpooner",
+      "tc_mist",
+      "tc_raider",
+      "tc_tideguard",
+      "wm_hound",
+      "wm_hunter",
+      "wm_oldhorn",
+      "wm_seer",
+      "wm_stalker",
+      "wm_tusk"
+     ]
+    },
+    {
+     "hex": "#a185da",
+     "troops": [
+      "archer",
+      "bonebow",
+      "gl_marshal",
+      "hexer",
+      "ic_arbalist",
+      "ic_ballista",
+      "ic_breaker",
+      "ic_hearthguard",
+      "ic_mortar",
+      "knight",
+      "longbow",
+      "mage",
+      "reaper",
+      "revenant",
+      "sentinel",
+      "stalker",
+      "tc_admiral",
+      "tc_brute",
+      "tc_harpooner",
+      "tc_mist",
+      "tc_raider",
+      "tc_tideguard",
+      "wm_hound",
+      "wm_hunter",
+      "wm_oldhorn",
+      "wm_seer",
+      "wm_stalker",
+      "wm_tusk"
+     ]
+    }
+   ]
+  },
+  "ironclad_tiers.EMBER": {
+   "defined": 6,
+   "colors": [
+    {
+     "hex": "#4a1608",
+     "troops": [
+      "ic_arbalist",
+      "ic_breaker",
+      "ic_colossus",
+      "ic_hearthguard"
+     ]
+    },
+    {
+     "hex": "#7a2a0c",
+     "troops": [
+      "ic_arbalist",
+      "ic_ballista",
+      "ic_breaker",
+      "ic_colossus",
+      "ic_hearthguard",
+      "ic_mortar"
+     ]
+    },
+    {
+     "hex": "#993f12",
+     "troops": [
+      "ic_arbalist",
+      "ic_ballista",
+      "ic_breaker",
+      "ic_colossus",
+      "ic_mortar"
+     ]
+    },
+    {
+     "hex": "#c8966f",
+     "troops": [
+      "ic_ballista",
+      "ic_colossus",
+      "ic_mortar"
+     ]
+    }
+   ]
+  },
+  "ironclad_tiers.IRON": {
+   "defined": 7,
+   "colors": [
+    {
+     "hex": "#0d0e14",
+     "troops": [
+      "ic_ballista",
+      "ic_colossus",
+      "ic_mortar"
+     ]
+    },
+    {
+     "hex": "#1a1c25",
+     "troops": [
+      "ic_arbalist",
+      "ic_breaker",
+      "ic_hearthguard"
+     ]
+    },
+    {
+     "hex": "#444a58",
+     "troops": [
+      "ic_breaker"
+     ]
+    },
+    {
+     "hex": "#62697a",
+     "troops": [
+      "ic_arbalist",
+      "ic_hearthguard"
+     ]
+    },
+    {
+     "hex": "#8a92a2",
+     "troops": [
+      "ic_arbalist",
+      "ic_breaker",
+      "ic_hearthguard"
+     ]
+    },
+    {
+     "hex": "#bcc3cf",
+     "troops": [
+      "ic_arbalist"
+     ]
+    }
+   ]
+  }
+ },
+ "loose": [
+  {
+   "hex": "#4a4134",
+   "troops": [
+    "bonebow"
+   ]
+  }
+ ],
+ "counts": {
+  "colors": 66,
+  "ramps": 16,
+  "grouped": 65,
+  "loose": 1
+ },
+ "ref": "54e5d339",
+ "source": "shipped troop textures at that git ref; ramps imported from the working tree",
+ "troops": [
+  "archer",
+  "bonebow",
+  "gb_hollowking",
+  "gl_marshal",
+  "hexer",
+  "ic_arbalist",
+  "ic_ballista",
+  "ic_breaker",
+  "ic_colossus",
+  "ic_hearthguard",
+  "ic_mortar",
+  "knight",
+  "longbow",
+  "mage",
+  "reaper",
+  "revenant",
+  "sentinel",
+  "stalker",
+  "tc_admiral",
+  "tc_brute",
+  "tc_harpooner",
+  "tc_mist",
+  "tc_raider",
+  "tc_tideguard",
+  "wm_hound",
+  "wm_hunter",
+  "wm_oldhorn",
+  "wm_seer",
+  "wm_stalker",
+  "wm_tusk"
+ ],
+ "files": "team_cloth_<side> in every troop folder"
+}

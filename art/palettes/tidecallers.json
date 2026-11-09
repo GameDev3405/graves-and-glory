@@ -1,0 +1,1351 @@
+{
+ "name": "tidecallers",
+ "ramps": {
+  "build_tc_admiral.ANCHOR": {
+   "defined": 6,
+   "colors": [
+    {
+     "hex": "#3a2812",
+     "troops": [
+      "tc_admiral"
+     ]
+    },
+    {
+     "hex": "#5a4020",
+     "troops": [
+      "tc_admiral"
+     ]
+    },
+    {
+     "hex": "#7a5a30",
+     "troops": [
+      "tc_admiral"
+     ]
+    },
+    {
+     "hex": "#967846",
+     "troops": [
+      "tc_admiral"
+     ]
+    },
+    {
+     "hex": "#bfa070",
+     "troops": [
+      "tc_admiral"
+     ]
+    }
+   ]
+  },
+  "build_tc_admiral.COAT": {
+   "defined": 6,
+   "colors": [
+    {
+     "hex": "#0c1830",
+     "troops": [
+      "tc_admiral"
+     ]
+    },
+    {
+     "hex": "#16305c",
+     "troops": [
+      "tc_admiral"
+     ]
+    },
+    {
+     "hex": "#214c80",
+     "troops": [
+      "tc_admiral"
+     ]
+    },
+    {
+     "hex": "#2e6297",
+     "troops": [
+      "tc_admiral"
+     ]
+    },
+    {
+     "hex": "#6691b7",
+     "troops": [
+      "tc_admiral"
+     ]
+    },
+    {
+     "hex": "#9ab6cc",
+     "troops": [
+      "tc_admiral"
+     ]
+    }
+   ]
+  },
+  "build_tc_admiral.FELT": {
+   "defined": 5,
+   "colors": [
+    {
+     "hex": "#0b0f1a",
+     "troops": [
+      "tc_admiral"
+     ]
+    },
+    {
+     "hex": "#171d2c",
+     "troops": [
+      "tc_admiral"
+     ]
+    },
+    {
+     "hex": "#242d42",
+     "troops": [
+      "tc_admiral"
+     ]
+    },
+    {
+     "hex": "#34405a",
+     "troops": [
+      "tc_admiral"
+     ]
+    },
+    {
+     "hex": "#4a5a7a",
+     "troops": [
+      "tc_admiral"
+     ]
+    }
+   ]
+  },
+  "build_tc_admiral.GILT": {
+   "defined": 6,
+   "colors": [
+    {
+     "hex": "#4a3815",
+     "troops": [
+      "tc_admiral"
+     ]
+    },
+    {
+     "hex": "#6f5a26",
+     "troops": [
+      "tc_admiral"
+     ]
+    },
+    {
+     "hex": "#96783a",
+     "troops": [
+      "tc_admiral"
+     ]
+    },
+    {
+     "hex": "#b89a54",
+     "troops": [
+      "tc_admiral"
+     ]
+    },
+    {
+     "hex": "#dcc487",
+     "troops": [
+      "tc_admiral"
+     ]
+    }
+   ]
+  },
+  "build_tc_admiral.HAIR": {
+   "defined": 6,
+   "colors": [
+    {
+     "hex": "#14223a",
+     "troops": [
+      "tc_admiral"
+     ]
+    },
+    {
+     "hex": "#2a4466",
+     "troops": [
+      "tc_admiral"
+     ]
+    },
+    {
+     "hex": "#4a6a8e",
+     "troops": [
+      "tc_admiral"
+     ]
+    },
+    {
+     "hex": "#7a98b4",
+     "troops": [
+      "tc_admiral"
+     ]
+    },
+    {
+     "hex": "#b0c4d4",
+     "troops": [
+      "tc_admiral"
+     ]
+    },
+    {
+     "hex": "#e2ecf2",
+     "troops": [
+      "tc_admiral"
+     ]
+    }
+   ]
+  },
+  "build_tc_admiral.PALE": {
+   "defined": 6,
+   "colors": [
+    {
+     "hex": "#2c3a3c",
+     "troops": [
+      "tc_admiral"
+     ]
+    },
+    {
+     "hex": "#52666a",
+     "troops": [
+      "tc_admiral"
+     ]
+    },
+    {
+     "hex": "#7e9694",
+     "troops": [
+      "tc_admiral"
+     ]
+    },
+    {
+     "hex": "#a9bfbb",
+     "troops": [
+      "tc_admiral"
+     ]
+    },
+    {
+     "hex": "#cfdcd6",
+     "troops": [
+      "tc_admiral"
+     ]
+    },
+    {
+     "hex": "#ecf4ee",
+     "troops": [
+      "tc_admiral"
+     ]
+    }
+   ]
+  },
+  "build_tc_brute.HIDE": {
+   "defined": 6,
+   "colors": [
+    {
+     "hex": "#070f16",
+     "troops": [
+      "tc_brute"
+     ]
+    },
+    {
+     "hex": "#11222c",
+     "troops": [
+      "tc_brute"
+     ]
+    },
+    {
+     "hex": "#1f3d48",
+     "troops": [
+      "tc_brute"
+     ]
+    },
+    {
+     "hex": "#33606a",
+     "troops": [
+      "tc_brute"
+     ]
+    },
+    {
+     "hex": "#52848a",
+     "troops": [
+      "tc_brute"
+     ]
+    },
+    {
+     "hex": "#82aaa8",
+     "troops": [
+      "tc_brute"
+     ]
+    }
+   ]
+  },
+  "build_tc_brute.KELP": {
+   "defined": 5,
+   "colors": [
+    {
+     "hex": "#0d140a",
+     "troops": [
+      "tc_brute"
+     ]
+    },
+    {
+     "hex": "#1c2a12",
+     "troops": [
+      "tc_brute"
+     ]
+    },
+    {
+     "hex": "#30431a",
+     "troops": [
+      "tc_brute"
+     ]
+    },
+    {
+     "hex": "#4c6528",
+     "troops": [
+      "tc_brute"
+     ]
+    },
+    {
+     "hex": "#788c3e",
+     "troops": [
+      "tc_brute"
+     ]
+    }
+   ]
+  },
+  "build_tc_brute.TENT": {
+   "defined": 6,
+   "colors": [
+    {
+     "hex": "#0c1030",
+     "troops": [
+      "tc_brute"
+     ]
+    },
+    {
+     "hex": "#182058",
+     "troops": [
+      "tc_brute"
+     ]
+    },
+    {
+     "hex": "#2a3c88",
+     "troops": [
+      "tc_brute"
+     ]
+    },
+    {
+     "hex": "#4262b0",
+     "troops": [
+      "tc_brute"
+     ]
+    },
+    {
+     "hex": "#7a9ede",
+     "troops": [
+      "tc_brute"
+     ]
+    },
+    {
+     "hex": "#bcd2f2",
+     "troops": [
+      "tc_brute"
+     ]
+    }
+   ]
+  },
+  "build_tc_harpooner.IRON": {
+   "defined": 6,
+   "colors": [
+    {
+     "hex": "#3f4550",
+     "troops": [
+      "tc_harpooner"
+     ]
+    },
+    {
+     "hex": "#5d6672",
+     "troops": [
+      "tc_harpooner"
+     ]
+    },
+    {
+     "hex": "#808a96",
+     "troops": [
+      "tc_harpooner"
+     ]
+    },
+    {
+     "hex": "#a9b2bb",
+     "troops": [
+      "tc_harpooner"
+     ]
+    }
+   ]
+  },
+  "build_tc_harpooner.OIL": {
+   "defined": 6,
+   "colors": [
+    {
+     "hex": "#1c1608",
+     "troops": [
+      "tc_harpooner"
+     ]
+    },
+    {
+     "hex": "#382b10",
+     "troops": [
+      "tc_harpooner"
+     ]
+    },
+    {
+     "hex": "#5a4818",
+     "troops": [
+      "tc_harpooner"
+     ]
+    },
+    {
+     "hex": "#80692a",
+     "troops": [
+      "tc_harpooner"
+     ]
+    },
+    {
+     "hex": "#a38a3e",
+     "troops": [
+      "tc_harpooner"
+     ]
+    },
+    {
+     "hex": "#c4ad62",
+     "troops": [
+      "tc_harpooner"
+     ]
+    }
+   ]
+  },
+  "build_tc_harpooner.TAR": {
+   "defined": 5,
+   "colors": [
+    {
+     "hex": "#0c0a0a",
+     "troops": [
+      "tc_admiral",
+      "tc_harpooner"
+     ]
+    },
+    {
+     "hex": "#1c1612",
+     "troops": [
+      "tc_admiral",
+      "tc_harpooner"
+     ]
+    },
+    {
+     "hex": "#30261c",
+     "troops": [
+      "tc_admiral",
+      "tc_harpooner"
+     ]
+    },
+    {
+     "hex": "#483a2a",
+     "troops": [
+      "tc_admiral",
+      "tc_harpooner"
+     ]
+    },
+    {
+     "hex": "#62503a",
+     "troops": [
+      "tc_admiral",
+      "tc_harpooner"
+     ]
+    }
+   ]
+  },
+  "build_tc_mist.DRIFT": {
+   "defined": 5,
+   "colors": [
+    {
+     "hex": "#322a22",
+     "troops": [
+      "tc_mist"
+     ]
+    },
+    {
+     "hex": "#524738",
+     "troops": [
+      "tc_mist"
+     ]
+    },
+    {
+     "hex": "#75664f",
+     "troops": [
+      "tc_mist"
+     ]
+    },
+    {
+     "hex": "#9a8a6c",
+     "troops": [
+      "tc_mist"
+     ]
+    }
+   ]
+  },
+  "build_tc_mist.GREY": {
+   "defined": 5,
+   "colors": [
+    {
+     "hex": "#14191c",
+     "troops": [
+      "tc_mist"
+     ]
+    },
+    {
+     "hex": "#2b3538",
+     "troops": [
+      "tc_mist"
+     ]
+    },
+    {
+     "hex": "#4b5b5f",
+     "troops": [
+      "tc_mist"
+     ]
+    },
+    {
+     "hex": "#72868a",
+     "troops": [
+      "tc_mist"
+     ]
+    },
+    {
+     "hex": "#9db0b2",
+     "troops": [
+      "tc_mist"
+     ]
+    }
+   ]
+  },
+  "build_tc_mist.MIST": {
+   "defined": 6,
+   "colors": [
+    {
+     "hex": "#2a3a4a",
+     "troops": [
+      "tc_mist"
+     ]
+    },
+    {
+     "hex": "#4a5e70",
+     "troops": [
+      "tc_mist"
+     ]
+    },
+    {
+     "hex": "#6e8496",
+     "troops": [
+      "tc_mist"
+     ]
+    },
+    {
+     "hex": "#98aebc",
+     "troops": [
+      "tc_mist"
+     ]
+    },
+    {
+     "hex": "#e4eef0",
+     "troops": [
+      "tc_mist"
+     ]
+    }
+   ]
+  },
+  "build_tc_raider.BLOAT": {
+   "defined": 6,
+   "colors": [
+    {
+     "hex": "#16262a",
+     "troops": [
+      "tc_harpooner",
+      "tc_raider",
+      "tc_tideguard"
+     ]
+    },
+    {
+     "hex": "#2a4246",
+     "troops": [
+      "tc_raider"
+     ]
+    },
+    {
+     "hex": "#456466",
+     "troops": [
+      "tc_raider"
+     ]
+    },
+    {
+     "hex": "#6a8a86",
+     "troops": [
+      "tc_raider"
+     ]
+    },
+    {
+     "hex": "#93b0a8",
+     "troops": [
+      "tc_raider"
+     ]
+    }
+   ]
+  },
+  "build_tc_raider.FLESH": {
+   "defined": 5,
+   "colors": [
+    {
+     "hex": "#16262a",
+     "troops": [
+      "tc_harpooner",
+      "tc_raider",
+      "tc_tideguard"
+     ]
+    },
+    {
+     "hex": "#2f4a4e",
+     "troops": [
+      "tc_harpooner",
+      "tc_raider",
+      "tc_tideguard"
+     ]
+    },
+    {
+     "hex": "#507174",
+     "troops": [
+      "tc_harpooner",
+      "tc_raider",
+      "tc_tideguard"
+     ]
+    },
+    {
+     "hex": "#7a9c9a",
+     "troops": [
+      "tc_harpooner",
+      "tc_raider",
+      "tc_tideguard"
+     ]
+    },
+    {
+     "hex": "#a6c4c0",
+     "troops": [
+      "tc_harpooner",
+      "tc_raider",
+      "tc_tideguard"
+     ]
+    }
+   ]
+  },
+  "build_tc_raider.KELP": {
+   "defined": 6,
+   "colors": [
+    {
+     "hex": "#0e170a",
+     "troops": [
+      "tc_admiral",
+      "tc_harpooner"
+     ]
+    },
+    {
+     "hex": "#1d2f12",
+     "troops": [
+      "tc_admiral",
+      "tc_harpooner",
+      "tc_raider"
+     ]
+    },
+    {
+     "hex": "#2f4a1c",
+     "troops": [
+      "tc_admiral",
+      "tc_harpooner",
+      "tc_raider"
+     ]
+    },
+    {
+     "hex": "#4a6a2a",
+     "troops": [
+      "tc_admiral",
+      "tc_harpooner",
+      "tc_mist",
+      "tc_raider"
+     ]
+    },
+    {
+     "hex": "#6a8a40",
+     "troops": [
+      "tc_admiral",
+      "tc_harpooner",
+      "tc_mist",
+      "tc_raider"
+     ]
+    },
+    {
+     "hex": "#8fa56d",
+     "troops": [
+      "tc_admiral",
+      "tc_harpooner"
+     ]
+    }
+   ]
+  },
+  "build_tc_raider.NAVY": {
+   "defined": 5,
+   "colors": [
+    {
+     "hex": "#0e1320",
+     "troops": [
+      "tc_harpooner",
+      "tc_raider"
+     ]
+    },
+    {
+     "hex": "#18202f",
+     "troops": [
+      "tc_harpooner",
+      "tc_raider"
+     ]
+    },
+    {
+     "hex": "#232e42",
+     "troops": [
+      "tc_harpooner",
+      "tc_raider"
+     ]
+    },
+    {
+     "hex": "#33425a",
+     "troops": [
+      "tc_harpooner",
+      "tc_raider"
+     ]
+    },
+    {
+     "hex": "#4e6078",
+     "troops": [
+      "tc_harpooner"
+     ]
+    }
+   ]
+  },
+  "build_tc_raider.ROPE": {
+   "defined": 5,
+   "colors": [
+    {
+     "hex": "#2a2218",
+     "troops": [
+      "tc_harpooner",
+      "tc_mist",
+      "tc_raider"
+     ]
+    },
+    {
+     "hex": "#4a3d2b",
+     "troops": [
+      "tc_harpooner",
+      "tc_mist",
+      "tc_raider"
+     ]
+    },
+    {
+     "hex": "#6e5d44",
+     "troops": [
+      "tc_harpooner",
+      "tc_mist",
+      "tc_raider"
+     ]
+    },
+    {
+     "hex": "#8f7d5e",
+     "troops": [
+      "tc_admiral",
+      "tc_harpooner",
+      "tc_mist",
+      "tc_raider"
+     ]
+    },
+    {
+     "hex": "#b09d78",
+     "troops": [
+      "tc_admiral",
+      "tc_harpooner",
+      "tc_mist",
+      "tc_raider"
+     ]
+    }
+   ]
+  },
+  "build_tc_raider.SCUTE": {
+   "defined": 5,
+   "colors": [
+    {
+     "hex": "#4b4a28",
+     "troops": [
+      "tc_raider"
+     ]
+    },
+    {
+     "hex": "#958e58",
+     "troops": [
+      "tc_raider"
+     ]
+    }
+   ]
+  },
+  "build_tc_raider.SHELL": {
+   "defined": 6,
+   "colors": [
+    {
+     "hex": "#0d1a10",
+     "troops": [
+      "tc_raider"
+     ]
+    },
+    {
+     "hex": "#1c3322",
+     "troops": [
+      "tc_raider"
+     ]
+    },
+    {
+     "hex": "#325238",
+     "troops": [
+      "tc_raider"
+     ]
+    },
+    {
+     "hex": "#4d7448",
+     "troops": [
+      "tc_raider"
+     ]
+    },
+    {
+     "hex": "#6f9560",
+     "troops": [
+      "tc_raider"
+     ]
+    }
+   ]
+  },
+  "handlib.LEATH": {
+   "defined": 6,
+   "colors": [
+    {
+     "hex": "#1c100b",
+     "troops": [
+      "tc_raider",
+      "tc_tideguard"
+     ]
+    },
+    {
+     "hex": "#362114",
+     "troops": [
+      "tc_raider",
+      "tc_tideguard"
+     ]
+    },
+    {
+     "hex": "#54341e",
+     "troops": [
+      "tc_raider",
+      "tc_tideguard"
+     ]
+    },
+    {
+     "hex": "#764b2d",
+     "troops": [
+      "tc_raider",
+      "tc_tideguard"
+     ]
+    }
+   ]
+  },
+  "tidecallers.BARN": {
+   "defined": 5,
+   "colors": [
+    {
+     "hex": "#2c3234",
+     "troops": [
+      "tc_admiral",
+      "tc_brute",
+      "tc_harpooner",
+      "tc_mist",
+      "tc_raider"
+     ]
+    },
+    {
+     "hex": "#52595a",
+     "troops": [
+      "tc_admiral",
+      "tc_brute",
+      "tc_harpooner",
+      "tc_mist",
+      "tc_raider",
+      "tc_tideguard"
+     ]
+    },
+    {
+     "hex": "#7e8582",
+     "troops": [
+      "tc_admiral",
+      "tc_brute",
+      "tc_harpooner",
+      "tc_mist",
+      "tc_raider",
+      "tc_tideguard"
+     ]
+    },
+    {
+     "hex": "#a9aea6",
+     "troops": [
+      "tc_admiral",
+      "tc_brute",
+      "tc_harpooner",
+      "tc_mist",
+      "tc_raider",
+      "tc_tideguard"
+     ]
+    },
+    {
+     "hex": "#cfd2c8",
+     "troops": [
+      "tc_admiral",
+      "tc_brute",
+      "tc_harpooner",
+      "tc_mist",
+      "tc_raider",
+      "tc_tideguard"
+     ]
+    }
+   ]
+  },
+  "tidecallers.BRONZE": {
+   "defined": 6,
+   "colors": [
+    {
+     "hex": "#2a1608",
+     "troops": [
+      "tc_admiral",
+      "tc_brute",
+      "tc_harpooner",
+      "tc_mist",
+      "tc_raider",
+      "tc_tideguard"
+     ]
+    },
+    {
+     "hex": "#553014",
+     "troops": [
+      "tc_admiral",
+      "tc_brute",
+      "tc_harpooner",
+      "tc_mist",
+      "tc_raider",
+      "tc_tideguard"
+     ]
+    },
+    {
+     "hex": "#86521e",
+     "troops": [
+      "tc_admiral",
+      "tc_brute",
+      "tc_harpooner",
+      "tc_mist",
+      "tc_raider",
+      "tc_tideguard"
+     ]
+    },
+    {
+     "hex": "#b57a30",
+     "troops": [
+      "tc_admiral",
+      "tc_brute",
+      "tc_harpooner",
+      "tc_mist",
+      "tc_raider",
+      "tc_tideguard"
+     ]
+    },
+    {
+     "hex": "#d9a455",
+     "troops": [
+      "tc_admiral",
+      "tc_brute",
+      "tc_harpooner",
+      "tc_mist",
+      "tc_raider",
+      "tc_tideguard"
+     ]
+    },
+    {
+     "hex": "#f0cf8c",
+     "troops": [
+      "tc_admiral",
+      "tc_brute",
+      "tc_harpooner",
+      "tc_raider",
+      "tc_tideguard"
+     ]
+    }
+   ]
+  },
+  "tidecallers.CORAL": {
+   "defined": 6,
+   "colors": [
+    {
+     "hex": "#3f3230",
+     "troops": [
+      "tc_tideguard"
+     ]
+    },
+    {
+     "hex": "#6f5d57",
+     "troops": [
+      "tc_tideguard"
+     ]
+    },
+    {
+     "hex": "#a08d82",
+     "troops": [
+      "tc_tideguard"
+     ]
+    },
+    {
+     "hex": "#cdbcad",
+     "troops": [
+      "tc_tideguard"
+     ]
+    },
+    {
+     "hex": "#e8dccd",
+     "troops": [
+      "tc_tideguard"
+     ]
+    },
+    {
+     "hex": "#faf4e8",
+     "troops": [
+      "tc_tideguard"
+     ]
+    }
+   ]
+  },
+  "tidecallers.DEEP": {
+   "defined": 7,
+   "colors": [
+    {
+     "hex": "#060c18",
+     "troops": [
+      "tc_admiral",
+      "tc_brute",
+      "tc_harpooner",
+      "tc_mist",
+      "tc_raider",
+      "tc_tideguard"
+     ]
+    },
+    {
+     "hex": "#0c1a33",
+     "troops": [
+      "tc_admiral",
+      "tc_brute",
+      "tc_harpooner",
+      "tc_mist",
+      "tc_raider",
+      "tc_tideguard"
+     ]
+    },
+    {
+     "hex": "#13294f",
+     "troops": [
+      "tc_admiral",
+      "tc_brute",
+      "tc_harpooner",
+      "tc_mist",
+      "tc_raider",
+      "tc_tideguard"
+     ]
+    },
+    {
+     "hex": "#1c3a68",
+     "troops": [
+      "tc_admiral",
+      "tc_brute",
+      "tc_harpooner",
+      "tc_mist",
+      "tc_raider",
+      "tc_tideguard"
+     ]
+    },
+    {
+     "hex": "#2a5384",
+     "troops": [
+      "tc_admiral",
+      "tc_brute",
+      "tc_harpooner",
+      "tc_mist",
+      "tc_raider",
+      "tc_tideguard"
+     ]
+    },
+    {
+     "hex": "#3f6f9e",
+     "troops": [
+      "tc_admiral",
+      "tc_brute",
+      "tc_harpooner",
+      "tc_mist",
+      "tc_raider",
+      "tc_tideguard"
+     ]
+    },
+    {
+     "hex": "#6f97ba",
+     "troops": [
+      "tc_admiral",
+      "tc_brute",
+      "tc_harpooner",
+      "tc_raider",
+      "tc_tideguard"
+     ]
+    }
+   ]
+  },
+  "tidecallers.PEARL": {
+   "defined": 5,
+   "colors": [
+    {
+     "hex": "#6a706c",
+     "troops": [
+      "tc_harpooner",
+      "tc_mist"
+     ]
+    },
+    {
+     "hex": "#8e948f",
+     "troops": [
+      "tc_admiral",
+      "tc_harpooner",
+      "tc_mist",
+      "tc_tideguard"
+     ]
+    },
+    {
+     "hex": "#b4bab4",
+     "troops": [
+      "tc_admiral",
+      "tc_mist",
+      "tc_tideguard"
+     ]
+    },
+    {
+     "hex": "#d8dcd4",
+     "troops": [
+      "tc_admiral",
+      "tc_mist",
+      "tc_tideguard"
+     ]
+    },
+    {
+     "hex": "#eef1ec",
+     "troops": [
+      "tc_admiral",
+      "tc_brute",
+      "tc_harpooner",
+      "tc_mist",
+      "tc_raider",
+      "tc_tideguard"
+     ]
+    }
+   ]
+  },
+  "tidecallers.SEA": {
+   "defined": 6,
+   "colors": [
+    {
+     "hex": "#0a1426",
+     "troops": [
+      "tc_admiral",
+      "tc_brute",
+      "tc_harpooner",
+      "tc_mist",
+      "tc_raider",
+      "tc_tideguard"
+     ]
+    },
+    {
+     "hex": "#11264a",
+     "troops": [
+      "tc_admiral",
+      "tc_brute",
+      "tc_harpooner",
+      "tc_mist",
+      "tc_raider",
+      "tc_tideguard"
+     ]
+    },
+    {
+     "hex": "#1a3f6a",
+     "troops": [
+      "tc_admiral",
+      "tc_brute",
+      "tc_harpooner",
+      "tc_mist",
+      "tc_raider",
+      "tc_tideguard"
+     ]
+    },
+    {
+     "hex": "#2a5e8a",
+     "troops": [
+      "tc_admiral",
+      "tc_brute",
+      "tc_harpooner",
+      "tc_mist",
+      "tc_raider",
+      "tc_tideguard"
+     ]
+    },
+    {
+     "hex": "#5e88a6",
+     "troops": [
+      "tc_admiral",
+      "tc_brute",
+      "tc_harpooner",
+      "tc_mist",
+      "tc_raider",
+      "tc_tideguard"
+     ]
+    },
+    {
+     "hex": "#9db8c4",
+     "troops": [
+      "tc_admiral",
+      "tc_brute",
+      "tc_harpooner",
+      "tc_mist",
+      "tc_raider",
+      "tc_tideguard"
+     ]
+    }
+   ]
+  },
+  "tidecallers.WARM": {
+   "defined": 6,
+   "colors": [
+    {
+     "hex": "#3a2010",
+     "troops": [
+      "tc_brute",
+      "tc_mist"
+     ]
+    },
+    {
+     "hex": "#6a3e18",
+     "troops": [
+      "tc_brute",
+      "tc_mist"
+     ]
+    },
+    {
+     "hex": "#9a6224",
+     "troops": [
+      "tc_admiral",
+      "tc_brute",
+      "tc_harpooner",
+      "tc_mist",
+      "tc_raider",
+      "tc_tideguard"
+     ]
+    },
+    {
+     "hex": "#c48a36",
+     "troops": [
+      "tc_admiral",
+      "tc_brute",
+      "tc_harpooner",
+      "tc_mist",
+      "tc_raider",
+      "tc_tideguard"
+     ]
+    },
+    {
+     "hex": "#e2b060",
+     "troops": [
+      "tc_admiral",
+      "tc_brute",
+      "tc_harpooner",
+      "tc_mist",
+      "tc_raider",
+      "tc_tideguard"
+     ]
+    },
+    {
+     "hex": "#f6dc9c",
+     "troops": [
+      "tc_brute"
+     ]
+    }
+   ]
+  }
+ },
+ "loose": [
+  {
+   "hex": "#8f6530",
+   "troops": [
+    "tc_raider"
+   ]
+  },
+  {
+   "hex": "#a38a5e",
+   "troops": [
+    "tc_raider"
+   ]
+  },
+  {
+   "hex": "#c9d0c6",
+   "troops": [
+    "tc_raider"
+   ]
+  },
+  {
+   "hex": "#c4d2cf",
+   "troops": [
+    "tc_raider"
+   ]
+  },
+  {
+   "hex": "#cff3e4",
+   "troops": [
+    "tc_admiral",
+    "tc_brute",
+    "tc_harpooner",
+    "tc_mist"
+   ]
+  },
+  {
+   "hex": "#e8f0ec",
+   "troops": [
+    "tc_raider"
+   ]
+  }
+ ],
+ "counts": {
+  "colors": 162,
+  "ramps": 30,
+  "grouped": 156,
+  "loose": 6
+ },
+ "ref": "54e5d339",
+ "source": "shipped troop textures at that git ref; ramps imported from the working tree",
+ "troops": [
+  "tc_admiral",
+  "tc_brute",
+  "tc_harpooner",
+  "tc_mist",
+  "tc_raider",
+  "tc_tideguard"
+ ],
+ "files": "<id>_s1..s3, <id>_veteran, <id>_e*"
+}

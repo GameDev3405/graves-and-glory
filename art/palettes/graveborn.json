@@ -1,0 +1,660 @@
+{
+ "name": "graveborn",
+ "ramps": {
+  "build_reaper.SHROUD": {
+   "defined": 6,
+   "colors": [
+    {
+     "hex": "#08070a",
+     "troops": [
+      "reaper"
+     ]
+    },
+    {
+     "hex": "#120f13",
+     "troops": [
+      "reaper"
+     ]
+    },
+    {
+     "hex": "#1c181d",
+     "troops": [
+      "reaper"
+     ]
+    },
+    {
+     "hex": "#272227",
+     "troops": [
+      "reaper"
+     ]
+    },
+    {
+     "hex": "#35303a",
+     "troops": [
+      "reaper"
+     ]
+    },
+    {
+     "hex": "#484250",
+     "troops": [
+      "reaper"
+     ]
+    }
+   ]
+  },
+  "build_stalker.FC": {
+   "defined": 7,
+   "colors": [
+    {
+     "hex": "#24323b",
+     "troops": [
+      "stalker"
+     ]
+    },
+    {
+     "hex": "#2d4757",
+     "troops": [
+      "stalker"
+     ]
+    },
+    {
+     "hex": "#466a7e",
+     "troops": [
+      "stalker"
+     ]
+    },
+    {
+     "hex": "#7a8e96",
+     "troops": [
+      "stalker"
+     ]
+    },
+    {
+     "hex": "#93a7ae",
+     "troops": [
+      "stalker"
+     ]
+    },
+    {
+     "hex": "#b8c8cc",
+     "troops": [
+      "stalker"
+     ]
+    },
+    {
+     "hex": "#dce3e2",
+     "troops": [
+      "stalker"
+     ]
+    }
+   ]
+  },
+  "graveborn.BONE": {
+   "defined": 6,
+   "colors": [
+    {
+     "hex": "#3a3328",
+     "troops": [
+      "bonebow",
+      "gb_hollowking",
+      "hexer",
+      "reaper",
+      "stalker"
+     ]
+    },
+    {
+     "hex": "#5e5544",
+     "troops": [
+      "bonebow",
+      "gb_hollowking",
+      "hexer",
+      "reaper",
+      "revenant",
+      "stalker"
+     ]
+    },
+    {
+     "hex": "#857b66",
+     "troops": [
+      "bonebow",
+      "gb_hollowking",
+      "hexer",
+      "reaper",
+      "revenant",
+      "stalker"
+     ]
+    },
+    {
+     "hex": "#a89f87",
+     "troops": [
+      "bonebow",
+      "gb_hollowking",
+      "hexer",
+      "reaper",
+      "revenant",
+      "stalker"
+     ]
+    },
+    {
+     "hex": "#c9c1a8",
+     "troops": [
+      "bonebow",
+      "gb_hollowking",
+      "hexer",
+      "reaper",
+      "revenant",
+      "stalker"
+     ]
+    },
+    {
+     "hex": "#e4decb",
+     "troops": [
+      "bonebow",
+      "gb_hollowking",
+      "hexer",
+      "reaper",
+      "revenant",
+      "stalker"
+     ]
+    }
+   ]
+  },
+  "graveborn.FROST": {
+   "defined": 7,
+   "colors": [
+    {
+     "hex": "#26323a",
+     "troops": [
+      "stalker"
+     ]
+    },
+    {
+     "hex": "#3e4e57",
+     "troops": [
+      "stalker"
+     ]
+    },
+    {
+     "hex": "#5c6f78",
+     "troops": [
+      "stalker"
+     ]
+    },
+    {
+     "hex": "#7a8e96",
+     "troops": [
+      "stalker"
+     ]
+    },
+    {
+     "hex": "#93a7ae",
+     "troops": [
+      "stalker"
+     ]
+    },
+    {
+     "hex": "#b8c8cc",
+     "troops": [
+      "stalker"
+     ]
+    },
+    {
+     "hex": "#dce3e2",
+     "troops": [
+      "stalker"
+     ]
+    }
+   ]
+  },
+  "graveborn.GILT": {
+   "defined": 5,
+   "colors": [
+    {
+     "hex": "#2e1e0e",
+     "troops": [
+      "bonebow",
+      "gb_hollowking",
+      "hexer",
+      "reaper",
+      "revenant",
+      "stalker"
+     ]
+    },
+    {
+     "hex": "#482e16",
+     "troops": [
+      "bonebow",
+      "gb_hollowking",
+      "hexer",
+      "reaper",
+      "revenant",
+      "stalker"
+     ]
+    },
+    {
+     "hex": "#6f5026",
+     "troops": [
+      "bonebow",
+      "gb_hollowking",
+      "hexer",
+      "reaper",
+      "revenant",
+      "stalker"
+     ]
+    },
+    {
+     "hex": "#96783a",
+     "troops": [
+      "bonebow",
+      "gb_hollowking",
+      "hexer",
+      "reaper",
+      "revenant",
+      "stalker"
+     ]
+    },
+    {
+     "hex": "#bdaa6a",
+     "troops": [
+      "bonebow",
+      "gb_hollowking",
+      "hexer",
+      "reaper",
+      "revenant",
+      "stalker"
+     ]
+    }
+   ]
+  },
+  "graveborn.GIRON": {
+   "defined": 7,
+   "colors": [
+    {
+     "hex": "#0c0b0c",
+     "troops": [
+      "bonebow",
+      "gb_hollowking",
+      "hexer",
+      "reaper",
+      "revenant",
+      "stalker"
+     ]
+    },
+    {
+     "hex": "#171516",
+     "troops": [
+      "bonebow",
+      "gb_hollowking",
+      "hexer",
+      "reaper",
+      "revenant",
+      "stalker"
+     ]
+    },
+    {
+     "hex": "#221f1e",
+     "troops": [
+      "bonebow",
+      "gb_hollowking",
+      "hexer",
+      "reaper",
+      "revenant",
+      "stalker"
+     ]
+    },
+    {
+     "hex": "#2b2826",
+     "troops": [
+      "bonebow",
+      "gb_hollowking",
+      "hexer",
+      "reaper",
+      "revenant",
+      "stalker"
+     ]
+    },
+    {
+     "hex": "#3d3936",
+     "troops": [
+      "bonebow",
+      "gb_hollowking",
+      "hexer",
+      "reaper",
+      "revenant",
+      "stalker"
+     ]
+    },
+    {
+     "hex": "#55504b",
+     "troops": [
+      "bonebow",
+      "gb_hollowking",
+      "hexer",
+      "reaper",
+      "revenant",
+      "stalker"
+     ]
+    },
+    {
+     "hex": "#746d66",
+     "troops": [
+      "bonebow",
+      "gb_hollowking",
+      "hexer",
+      "reaper",
+      "revenant",
+      "stalker"
+     ]
+    }
+   ]
+  },
+  "graveborn.GSKIN": {
+   "defined": 6,
+   "colors": [
+    {
+     "hex": "#1e231d",
+     "troops": [
+      "revenant"
+     ]
+    },
+    {
+     "hex": "#2a3028",
+     "troops": [
+      "revenant"
+     ]
+    },
+    {
+     "hex": "#3e463a",
+     "troops": [
+      "revenant"
+     ]
+    },
+    {
+     "hex": "#56604f",
+     "troops": [
+      "revenant"
+     ]
+    },
+    {
+     "hex": "#6f7a66",
+     "troops": [
+      "revenant"
+     ]
+    },
+    {
+     "hex": "#8a9480",
+     "troops": [
+      "revenant"
+     ]
+    }
+   ]
+  },
+  "graveborn.MOSS": {
+   "defined": 6,
+   "colors": [
+    {
+     "hex": "#161a12",
+     "troops": [
+      "bonebow",
+      "revenant"
+     ]
+    },
+    {
+     "hex": "#262e1e",
+     "troops": [
+      "bonebow",
+      "revenant"
+     ]
+    },
+    {
+     "hex": "#36402a",
+     "troops": [
+      "bonebow",
+      "revenant"
+     ]
+    },
+    {
+     "hex": "#4f5a3c",
+     "troops": [
+      "bonebow",
+      "revenant"
+     ]
+    },
+    {
+     "hex": "#6a7552",
+     "troops": [
+      "bonebow",
+      "revenant"
+     ]
+    },
+    {
+     "hex": "#87906a",
+     "troops": [
+      "bonebow"
+     ]
+    }
+   ]
+  },
+  "graveborn.ROT": {
+   "defined": 6,
+   "colors": [
+    {
+     "hex": "#141210",
+     "troops": [
+      "bonebow",
+      "hexer",
+      "revenant"
+     ]
+    },
+    {
+     "hex": "#221e1a",
+     "troops": [
+      "bonebow",
+      "gb_hollowking",
+      "hexer",
+      "revenant"
+     ]
+    },
+    {
+     "hex": "#332c24",
+     "troops": [
+      "bonebow",
+      "gb_hollowking",
+      "hexer",
+      "revenant"
+     ]
+    },
+    {
+     "hex": "#4a4134",
+     "troops": [
+      "bonebow",
+      "hexer",
+      "revenant"
+     ]
+    },
+    {
+     "hex": "#625746",
+     "troops": [
+      "bonebow",
+      "gb_hollowking",
+      "hexer",
+      "revenant"
+     ]
+    },
+    {
+     "hex": "#7a6e5a",
+     "troops": [
+      "bonebow",
+      "gb_hollowking",
+      "hexer",
+      "revenant"
+     ]
+    }
+   ]
+  },
+  "graveborn.RUST": {
+   "defined": 6,
+   "colors": [
+    {
+     "hex": "#1e130d",
+     "troops": [
+      "revenant"
+     ]
+    },
+    {
+     "hex": "#34221a",
+     "troops": [
+      "revenant"
+     ]
+    },
+    {
+     "hex": "#4e3324",
+     "troops": [
+      "revenant"
+     ]
+    },
+    {
+     "hex": "#6b4a33",
+     "troops": [
+      "revenant"
+     ]
+    },
+    {
+     "hex": "#8a6444",
+     "troops": [
+      "revenant"
+     ]
+    },
+    {
+     "hex": "#a8805a",
+     "troops": [
+      "revenant"
+     ]
+    }
+   ]
+  },
+  "graveborn.SOUL": {
+   "defined": 4,
+   "colors": [
+    {
+     "hex": "#3e5a6e",
+     "troops": [
+      "gb_hollowking",
+      "hexer"
+     ]
+    },
+    {
+     "hex": "#7fa8c4",
+     "troops": [
+      "bonebow",
+      "gb_hollowking",
+      "hexer",
+      "reaper",
+      "revenant",
+      "stalker"
+     ]
+    },
+    {
+     "hex": "#cfefff",
+     "troops": [
+      "gb_hollowking",
+      "hexer",
+      "reaper",
+      "stalker"
+     ]
+    },
+    {
+     "hex": "#f2fcff",
+     "troops": [
+      "gb_hollowking",
+      "hexer",
+      "reaper",
+      "stalker"
+     ]
+    }
+   ]
+  },
+  "graveborn.VIOLET": {
+   "defined": 6,
+   "colors": [
+    {
+     "hex": "#362645",
+     "troops": [
+      "bonebow",
+      "gb_hollowking",
+      "hexer",
+      "reaper",
+      "stalker"
+     ]
+    },
+    {
+     "hex": "#54406a",
+     "troops": [
+      "bonebow",
+      "gb_hollowking",
+      "hexer",
+      "reaper",
+      "revenant",
+      "stalker"
+     ]
+    },
+    {
+     "hex": "#7a6494",
+     "troops": [
+      "bonebow",
+      "gb_hollowking",
+      "hexer",
+      "reaper",
+      "revenant",
+      "stalker"
+     ]
+    },
+    {
+     "hex": "#a28fba",
+     "troops": [
+      "revenant"
+     ]
+    }
+   ]
+  }
+ },
+ "loose": [
+  {
+   "hex": "#07060a",
+   "troops": [
+    "bonebow",
+    "gb_hollowking",
+    "reaper"
+   ]
+  },
+  {
+   "hex": "#0a0809",
+   "troops": [
+    "hexer"
+   ]
+  },
+  {
+   "hex": "#07090c",
+   "troops": [
+    "stalker"
+   ]
+  }
+ ],
+ "counts": {
+  "colors": 69,
+  "ramps": 12,
+  "grouped": 66,
+  "loose": 3
+ },
+ "ref": "54e5d339",
+ "source": "shipped troop textures at that git ref; ramps imported from the working tree",
+ "troops": [
+  "bonebow",
+  "gb_hollowking",
+  "hexer",
+  "reaper",
+  "revenant",
+  "stalker"
+ ],
+ "files": "<id>_s1..s3, <id>_veteran, <id>_e*"
+}

@@ -1,0 +1,856 @@
+{
+ "name": "wildmoot",
+ "ramps": {
+  "build_wm_hound.SPIKE_R": {
+   "defined": 7,
+   "colors": [
+    {
+     "hex": "#3b2c24",
+     "troops": [
+      "wm_hound",
+      "wm_hunter",
+      "wm_seer",
+      "wm_stalker",
+      "wm_tusk"
+     ]
+    },
+    {
+     "hex": "#58443a",
+     "troops": [
+      "wm_hound",
+      "wm_hunter",
+      "wm_seer",
+      "wm_stalker",
+      "wm_tusk"
+     ]
+    },
+    {
+     "hex": "#7a6252",
+     "troops": [
+      "wm_hound",
+      "wm_hunter",
+      "wm_seer",
+      "wm_stalker",
+      "wm_tusk"
+     ]
+    },
+    {
+     "hex": "#675b47",
+     "troops": [
+      "wm_hound",
+      "wm_hunter",
+      "wm_oldhorn",
+      "wm_seer",
+      "wm_stalker",
+      "wm_tusk"
+     ]
+    },
+    {
+     "hex": "#9a8d71",
+     "troops": [
+      "wm_hound",
+      "wm_hunter",
+      "wm_oldhorn",
+      "wm_seer",
+      "wm_stalker",
+      "wm_tusk"
+     ]
+    },
+    {
+     "hex": "#c9bd9f",
+     "troops": [
+      "wm_hound",
+      "wm_hunter",
+      "wm_oldhorn",
+      "wm_seer",
+      "wm_stalker",
+      "wm_tusk"
+     ]
+    },
+    {
+     "hex": "#e6dfc8",
+     "troops": [
+      "wm_hound",
+      "wm_hunter",
+      "wm_oldhorn",
+      "wm_seer",
+      "wm_stalker",
+      "wm_tusk"
+     ]
+    }
+   ]
+  },
+  "build_wm_oldhorn.FEATHER": {
+   "defined": 5,
+   "colors": [
+    {
+     "hex": "#5a544a",
+     "troops": [
+      "wm_oldhorn"
+     ]
+    },
+    {
+     "hex": "#8a8476",
+     "troops": [
+      "wm_oldhorn"
+     ]
+    },
+    {
+     "hex": "#b8b2a2",
+     "troops": [
+      "wm_oldhorn"
+     ]
+    },
+    {
+     "hex": "#dcd6c4",
+     "troops": [
+      "wm_oldhorn"
+     ]
+    }
+   ]
+  },
+  "handlib.LEATH": {
+   "defined": 6,
+   "colors": [
+    {
+     "hex": "#1c100b",
+     "troops": [
+      "wm_hunter",
+      "wm_tusk"
+     ]
+    },
+    {
+     "hex": "#362114",
+     "troops": [
+      "wm_hunter",
+      "wm_tusk"
+     ]
+    },
+    {
+     "hex": "#54341e",
+     "troops": [
+      "wm_hunter",
+      "wm_tusk"
+     ]
+    },
+    {
+     "hex": "#764b2d",
+     "troops": [
+      "wm_hunter",
+      "wm_tusk"
+     ]
+    },
+    {
+     "hex": "#9a6a42",
+     "troops": [
+      "wm_hunter",
+      "wm_tusk"
+     ]
+    },
+    {
+     "hex": "#c09068",
+     "troops": [
+      "wm_hunter",
+      "wm_tusk"
+     ]
+    }
+   ]
+  },
+  "wildmoot.BARK": {
+   "defined": 5,
+   "colors": [
+    {
+     "hex": "#16100b",
+     "troops": [
+      "wm_hound",
+      "wm_oldhorn"
+     ]
+    },
+    {
+     "hex": "#2c2017",
+     "troops": [
+      "wm_hound",
+      "wm_oldhorn"
+     ]
+    },
+    {
+     "hex": "#4a3626",
+     "troops": [
+      "wm_hound",
+      "wm_oldhorn"
+     ]
+    },
+    {
+     "hex": "#634a35",
+     "troops": [
+      "wm_hound",
+      "wm_oldhorn"
+     ]
+    },
+    {
+     "hex": "#7e6249",
+     "troops": [
+      "wm_oldhorn"
+     ]
+    }
+   ]
+  },
+  "wildmoot.BLOOD": {
+   "defined": 4,
+   "colors": [
+    {
+     "hex": "#4a1a15",
+     "troops": [
+      "wm_stalker"
+     ]
+    },
+    {
+     "hex": "#6e2a22",
+     "troops": [
+      "wm_seer"
+     ]
+    },
+    {
+     "hex": "#8e3a2e",
+     "troops": [
+      "wm_seer"
+     ]
+    }
+   ]
+  },
+  "wildmoot.BONE": {
+   "defined": 6,
+   "colors": [
+    {
+     "hex": "#33291f",
+     "troops": [
+      "wm_hound",
+      "wm_hunter",
+      "wm_oldhorn",
+      "wm_seer",
+      "wm_stalker",
+      "wm_tusk"
+     ]
+    },
+    {
+     "hex": "#675b47",
+     "troops": [
+      "wm_hound",
+      "wm_hunter",
+      "wm_oldhorn",
+      "wm_seer",
+      "wm_stalker",
+      "wm_tusk"
+     ]
+    },
+    {
+     "hex": "#9a8d71",
+     "troops": [
+      "wm_hound",
+      "wm_hunter",
+      "wm_oldhorn",
+      "wm_seer",
+      "wm_stalker",
+      "wm_tusk"
+     ]
+    },
+    {
+     "hex": "#c9bd9f",
+     "troops": [
+      "wm_hound",
+      "wm_hunter",
+      "wm_oldhorn",
+      "wm_seer",
+      "wm_stalker",
+      "wm_tusk"
+     ]
+    },
+    {
+     "hex": "#e6dfc8",
+     "troops": [
+      "wm_hound",
+      "wm_hunter",
+      "wm_oldhorn",
+      "wm_seer",
+      "wm_stalker",
+      "wm_tusk"
+     ]
+    },
+    {
+     "hex": "#f7f3e4",
+     "troops": [
+      "wm_hound",
+      "wm_hunter",
+      "wm_oldhorn",
+      "wm_seer",
+      "wm_stalker",
+      "wm_tusk"
+     ]
+    }
+   ]
+  },
+  "wildmoot.CHITIN": {
+   "defined": 6,
+   "colors": [
+    {
+     "hex": "#0c0e0b",
+     "troops": [
+      "wm_stalker"
+     ]
+    },
+    {
+     "hex": "#161a13",
+     "troops": [
+      "wm_stalker"
+     ]
+    },
+    {
+     "hex": "#23291f",
+     "troops": [
+      "wm_stalker"
+     ]
+    },
+    {
+     "hex": "#343c2e",
+     "troops": [
+      "wm_stalker"
+     ]
+    },
+    {
+     "hex": "#4a5440",
+     "troops": [
+      "wm_stalker"
+     ]
+    },
+    {
+     "hex": "#64705a",
+     "troops": [
+      "wm_stalker"
+     ]
+    }
+   ]
+  },
+  "wildmoot.CLAY": {
+   "defined": 5,
+   "colors": [
+    {
+     "hex": "#a8987a",
+     "troops": [
+      "wm_stalker"
+     ]
+    },
+    {
+     "hex": "#c8b48a",
+     "troops": [
+      "wm_hound",
+      "wm_hunter",
+      "wm_oldhorn",
+      "wm_seer",
+      "wm_stalker"
+     ]
+    },
+    {
+     "hex": "#e2d4b0",
+     "troops": [
+      "wm_hound",
+      "wm_oldhorn"
+     ]
+    }
+   ]
+  },
+  "wildmoot.FUR": {
+   "defined": 5,
+   "colors": [
+    {
+     "hex": "#24170e",
+     "troops": [
+      "wm_hound"
+     ]
+    },
+    {
+     "hex": "#43291a",
+     "troops": [
+      "wm_hound"
+     ]
+    },
+    {
+     "hex": "#673f25",
+     "troops": [
+      "wm_hound"
+     ]
+    },
+    {
+     "hex": "#885836",
+     "troops": [
+      "wm_hound"
+     ]
+    },
+    {
+     "hex": "#a97650",
+     "troops": [
+      "wm_hound"
+     ]
+    }
+   ]
+  },
+  "wildmoot.GLOWCLAY": {
+   "defined": 3,
+   "colors": [
+    {
+     "hex": "#d8b060",
+     "troops": [
+      "wm_oldhorn",
+      "wm_seer"
+     ]
+    },
+    {
+     "hex": "#ffe0a0",
+     "troops": [
+      "wm_oldhorn",
+      "wm_seer"
+     ]
+    }
+   ]
+  },
+  "wildmoot.GREYFUR": {
+   "defined": 6,
+   "colors": [
+    {
+     "hex": "#2a2622",
+     "troops": [
+      "wm_hunter",
+      "wm_oldhorn",
+      "wm_seer",
+      "wm_tusk"
+     ]
+    },
+    {
+     "hex": "#4a443c",
+     "troops": [
+      "wm_hunter",
+      "wm_oldhorn",
+      "wm_seer",
+      "wm_tusk"
+     ]
+    },
+    {
+     "hex": "#6a6258",
+     "troops": [
+      "wm_hunter",
+      "wm_oldhorn",
+      "wm_seer",
+      "wm_tusk"
+     ]
+    },
+    {
+     "hex": "#7d7468",
+     "troops": [
+      "wm_hunter",
+      "wm_oldhorn",
+      "wm_seer",
+      "wm_tusk"
+     ]
+    },
+    {
+     "hex": "#9a9284",
+     "troops": [
+      "wm_hunter",
+      "wm_oldhorn",
+      "wm_seer",
+      "wm_tusk"
+     ]
+    },
+    {
+     "hex": "#bab3a4",
+     "troops": [
+      "wm_hunter",
+      "wm_oldhorn",
+      "wm_seer",
+      "wm_tusk"
+     ]
+    }
+   ]
+  },
+  "wildmoot.HIDE": {
+   "defined": 6,
+   "colors": [
+    {
+     "hex": "#1b120c",
+     "troops": [
+      "wm_hunter",
+      "wm_seer",
+      "wm_tusk"
+     ]
+    },
+    {
+     "hex": "#3a2619",
+     "troops": [
+      "wm_hunter",
+      "wm_seer",
+      "wm_tusk"
+     ]
+    },
+    {
+     "hex": "#5c4029",
+     "troops": [
+      "wm_hunter",
+      "wm_seer",
+      "wm_tusk"
+     ]
+    },
+    {
+     "hex": "#82603c",
+     "troops": [
+      "wm_hunter",
+      "wm_seer",
+      "wm_tusk"
+     ]
+    },
+    {
+     "hex": "#a98258",
+     "troops": [
+      "wm_hunter",
+      "wm_seer",
+      "wm_tusk"
+     ]
+    },
+    {
+     "hex": "#cfae80",
+     "troops": [
+      "wm_hunter",
+      "wm_tusk"
+     ]
+    }
+   ]
+  },
+  "wildmoot.HORN": {
+   "defined": 5,
+   "colors": [
+    {
+     "hex": "#0f0b09",
+     "troops": [
+      "wm_hound",
+      "wm_hunter",
+      "wm_oldhorn",
+      "wm_seer",
+      "wm_stalker",
+      "wm_tusk"
+     ]
+    },
+    {
+     "hex": "#231915",
+     "troops": [
+      "wm_hound",
+      "wm_hunter",
+      "wm_oldhorn",
+      "wm_seer",
+      "wm_stalker",
+      "wm_tusk"
+     ]
+    },
+    {
+     "hex": "#3b2c24",
+     "troops": [
+      "wm_hound",
+      "wm_hunter",
+      "wm_seer",
+      "wm_stalker",
+      "wm_tusk"
+     ]
+    },
+    {
+     "hex": "#58443a",
+     "troops": [
+      "wm_hound",
+      "wm_hunter",
+      "wm_seer",
+      "wm_stalker",
+      "wm_tusk"
+     ]
+    },
+    {
+     "hex": "#7a6252",
+     "troops": [
+      "wm_hound",
+      "wm_hunter",
+      "wm_seer",
+      "wm_stalker",
+      "wm_tusk"
+     ]
+    }
+   ]
+  },
+  "wildmoot.OCHRE": {
+   "defined": 5,
+   "colors": [
+    {
+     "hex": "#3e2208",
+     "troops": [
+      "wm_hound",
+      "wm_hunter",
+      "wm_oldhorn",
+      "wm_seer",
+      "wm_stalker",
+      "wm_tusk"
+     ]
+    },
+    {
+     "hex": "#683e14",
+     "troops": [
+      "wm_hound",
+      "wm_hunter",
+      "wm_oldhorn",
+      "wm_seer",
+      "wm_stalker",
+      "wm_tusk"
+     ]
+    },
+    {
+     "hex": "#8e5c20",
+     "troops": [
+      "wm_hound",
+      "wm_hunter",
+      "wm_oldhorn",
+      "wm_seer",
+      "wm_stalker",
+      "wm_tusk"
+     ]
+    },
+    {
+     "hex": "#b07c36",
+     "troops": [
+      "wm_hound",
+      "wm_hunter",
+      "wm_oldhorn",
+      "wm_seer",
+      "wm_stalker",
+      "wm_tusk"
+     ]
+    },
+    {
+     "hex": "#cc9c5e",
+     "troops": [
+      "wm_hound",
+      "wm_hunter",
+      "wm_oldhorn",
+      "wm_seer",
+      "wm_stalker",
+      "wm_tusk"
+     ]
+    }
+   ]
+  },
+  "wildmoot.PIG": {
+   "defined": 5,
+   "colors": [
+    {
+     "hex": "#2c1612",
+     "troops": [
+      "wm_hunter",
+      "wm_seer",
+      "wm_tusk"
+     ]
+    },
+    {
+     "hex": "#5e332a",
+     "troops": [
+      "wm_hunter",
+      "wm_seer",
+      "wm_tusk"
+     ]
+    },
+    {
+     "hex": "#8c5a48",
+     "troops": [
+      "wm_hunter",
+      "wm_seer",
+      "wm_tusk"
+     ]
+    },
+    {
+     "hex": "#b3806a",
+     "troops": [
+      "wm_hunter",
+      "wm_seer",
+      "wm_tusk"
+     ]
+    },
+    {
+     "hex": "#d6a994",
+     "troops": [
+      "wm_hunter",
+      "wm_seer",
+      "wm_tusk"
+     ]
+    }
+   ]
+  },
+  "wildmoot.SILK": {
+   "defined": 5,
+   "colors": [
+    {
+     "hex": "#6e6a60",
+     "troops": [
+      "wm_stalker"
+     ]
+    },
+    {
+     "hex": "#9a958a",
+     "troops": [
+      "wm_stalker"
+     ]
+    },
+    {
+     "hex": "#c4c0b4",
+     "troops": [
+      "wm_stalker"
+     ]
+    },
+    {
+     "hex": "#e2dfd6",
+     "troops": [
+      "wm_stalker"
+     ]
+    },
+    {
+     "hex": "#f6f4ee",
+     "troops": [
+      "wm_stalker"
+     ]
+    }
+   ]
+  },
+  "wildmoot.SNOUT": {
+   "defined": 5,
+   "colors": [
+    {
+     "hex": "#2a1a14",
+     "troops": [
+      "wm_hound"
+     ]
+    },
+    {
+     "hex": "#3a2620",
+     "troops": [
+      "wm_hound"
+     ]
+    },
+    {
+     "hex": "#5e4034",
+     "troops": [
+      "wm_hound"
+     ]
+    },
+    {
+     "hex": "#7e5a4a",
+     "troops": [
+      "wm_hound"
+     ]
+    }
+   ]
+  },
+  "wildmoot.WOOD": {
+   "defined": 5,
+   "colors": [
+    {
+     "hex": "#36241a",
+     "troops": [
+      "wm_seer"
+     ]
+    },
+    {
+     "hex": "#563a26",
+     "troops": [
+      "wm_seer"
+     ]
+    },
+    {
+     "hex": "#7a5436",
+     "troops": [
+      "wm_seer"
+     ]
+    },
+    {
+     "hex": "#9c7248",
+     "troops": [
+      "wm_seer"
+     ]
+    }
+   ]
+  }
+ },
+ "loose": [
+  {
+   "hex": "#0e0c12",
+   "troops": [
+    "wm_hunter",
+    "wm_stalker",
+    "wm_tusk"
+   ]
+  },
+  {
+   "hex": "#2e2418",
+   "troops": [
+    "wm_oldhorn",
+    "wm_seer"
+   ]
+  },
+  {
+   "hex": "#524230",
+   "troops": [
+    "wm_hound",
+    "wm_oldhorn",
+    "wm_seer"
+   ]
+  },
+  {
+   "hex": "#7a6648",
+   "troops": [
+    "wm_hound",
+    "wm_oldhorn",
+    "wm_seer"
+   ]
+  },
+  {
+   "hex": "#a08a66",
+   "troops": [
+    "wm_hound",
+    "wm_oldhorn",
+    "wm_seer"
+   ]
+  },
+  {
+   "hex": "#c8b48e",
+   "troops": [
+    "wm_hound",
+    "wm_oldhorn",
+    "wm_seer"
+   ]
+  },
+  {
+   "hex": "#e8dcc0",
+   "troops": [
+    "wm_hound",
+    "wm_oldhorn",
+    "wm_seer"
+   ]
+  }
+ ],
+ "counts": {
+  "colors": 87,
+  "ramps": 18,
+  "grouped": 80,
+  "loose": 7
+ },
+ "ref": "54e5d339",
+ "source": "shipped troop textures at that git ref; ramps imported from the working tree",
+ "troops": [
+  "wm_hound",
+  "wm_hunter",
+  "wm_oldhorn",
+  "wm_seer",
+  "wm_stalker",
+  "wm_tusk"
+ ],
+ "files": "<id>_s1..s3, <id>_veteran, <id>_e*"
+}
