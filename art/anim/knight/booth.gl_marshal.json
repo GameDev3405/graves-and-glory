@@ -1,0 +1,362 @@
+{
+  "troop": "gl_marshal",
+  "family": "knight",
+  "geo": "src/main/resources/assets/gravesandglory/geo/troop/gl_marshal.geo.json",
+  "textures": [
+    "src/main/resources/assets/gravesandglory/textures/entity/troop/gl_marshal_geo/t3_crimson.png"
+  ],
+  "anim": "src/main/resources/assets/gravesandglory/animations/troop/gl_marshal.animation.json",
+  "foot_bones": [
+    "left_foot",
+    "right_foot"
+  ],
+  "reference": {
+    "geo": "src/main/resources/assets/gravesandglory/geo/troop/knight.geo.json",
+    "textures": [
+      "src/main/resources/assets/gravesandglory/textures/entity/troop/knight_geo/t3_crimson.png"
+    ],
+    "anim": "src/main/resources/assets/gravesandglory/animations/troop/knight.animation.json"
+  },
+  "clips": [
+    {
+      "name": "walk_upper",
+      "base": [
+        "walk_legs"
+      ],
+      "reference_base": [
+        "walk_legs"
+      ],
+      "speed": 0.16,
+      "reference": "walk_upper"
+    },
+    {
+      "name": "run_upper",
+      "base": [
+        "run_legs"
+      ],
+      "reference_base": [
+        "run_legs"
+      ],
+      "speed": 0.26,
+      "reference": "run_upper"
+    },
+    {
+      "name": "idle_upper",
+      "base": [
+        "idle_legs"
+      ],
+      "reference_base": [
+        "idle_legs"
+      ],
+      "reference": "idle_upper"
+    },
+    {
+      "name": "attack_thrust",
+      "base": [
+        "attack_thrust_legs"
+      ],
+      "reference_base": [
+        "attack_thrust_legs"
+      ],
+      "impact_tick": 7,
+      "reference": "attack_thrust"
+    },
+    {
+      "name": "attack_overhead",
+      "base": [
+        "attack_overhead_legs"
+      ],
+      "reference_base": [
+        "attack_overhead_legs"
+      ],
+      "impact_tick": 10,
+      "reference": "attack_overhead"
+    },
+    {
+      "name": "attack_low_cut",
+      "base": [
+        "attack_low_cut_legs"
+      ],
+      "reference_base": [
+        "attack_low_cut_legs"
+      ],
+      "impact_tick": 8,
+      "reference": "attack_low_cut"
+    },
+    {
+      "name": "stance_ready_upper",
+      "base": [
+        "stance_ready_legs"
+      ],
+      "reference_base": [
+        "stance_ready_legs"
+      ],
+      "reference": "stance_ready_upper"
+    },
+    {
+      "name": "stance_brace_upper",
+      "base": [
+        "stance_brace_legs"
+      ],
+      "reference_base": [
+        "stance_brace_legs"
+      ],
+      "reference": "stance_brace_upper"
+    },
+    {
+      "name": "stance_brace_up_upper",
+      "base": [
+        "stance_brace_legs"
+      ],
+      "reference_base": [
+        "stance_brace_legs"
+      ],
+      "reference": "stance_brace_up_upper"
+    },
+    {
+      "name": "stance_wall_upper",
+      "base": [
+        "stance_wall_legs"
+      ],
+      "reference_base": [
+        "stance_wall_legs"
+      ],
+      "reference": "stance_wall_upper"
+    },
+    {
+      "name": "stance_wall_up_upper",
+      "base": [
+        "stance_wall_legs"
+      ],
+      "reference_base": [
+        "stance_wall_legs"
+      ],
+      "reference": "stance_wall_up_upper"
+    },
+    {
+      "name": "stance_shield_up_upper",
+      "base": [
+        "stance_ready_legs"
+      ],
+      "reference_base": [
+        "stance_ready_legs"
+      ],
+      "reference": "stance_shield_up_upper"
+    },
+    {
+      "name": "stance_ward_upper",
+      "base": [
+        "stance_ready_legs"
+      ],
+      "reference_base": [
+        "stance_ready_legs"
+      ],
+      "reference": "stance_ward_upper"
+    },
+    {
+      "name": "stance_rally_upper",
+      "base": [
+        "stance_ready_legs"
+      ],
+      "reference_base": [
+        "stance_ready_legs"
+      ],
+      "reference": "stance_rally_upper"
+    },
+    {
+      "name": "stance_fallback_upper",
+      "base": [
+        "stance_fallback_legs"
+      ],
+      "reference_base": [
+        "stance_fallback_legs"
+      ],
+      "reference": "stance_fallback_upper"
+    },
+    {
+      "name": "charge_run_upper",
+      "base": [
+        "run_legs"
+      ],
+      "reference_base": [
+        "run_legs"
+      ],
+      "speed": 0.26,
+      "reference": "charge_run_upper"
+    },
+    {
+      "name": "stun_upper",
+      "base": [
+        "stun_legs"
+      ],
+      "reference_base": [
+        "stun_legs"
+      ],
+      "reference": "stun_upper"
+    },
+    {
+      "name": "stun_out_upper",
+      "base": [
+        "stun_legs"
+      ],
+      "reference_base": [
+        "stun_legs"
+      ],
+      "reference": "stun_out_upper"
+    },
+    {
+      "name": "hit_knockback",
+      "base": [
+        "hit_knockback_legs"
+      ],
+      "reference_base": [
+        "hit_knockback_legs"
+      ],
+      "reference": "hit_knockback"
+    },
+    {
+      "name": "hit_light_front",
+      "base": [
+        "hit_light_front_legs"
+      ],
+      "reference_base": [
+        "hit_light_front_legs"
+      ],
+      "reference": "hit_light_front"
+    },
+    {
+      "name": "hit_light_back",
+      "base": [
+        "hit_light_back_legs"
+      ],
+      "reference_base": [
+        "hit_light_back_legs"
+      ],
+      "reference": "hit_light_back"
+    },
+    {
+      "name": "hit_light_right",
+      "base": [
+        "hit_light_right_legs"
+      ],
+      "reference_base": [
+        "hit_light_right_legs"
+      ],
+      "reference": "hit_light_right"
+    },
+    {
+      "name": "hit_light_left",
+      "base": [
+        "hit_light_left_legs"
+      ],
+      "reference_base": [
+        "hit_light_left_legs"
+      ],
+      "reference": "hit_light_left"
+    },
+    {
+      "name": "hit_medium_front",
+      "base": [
+        "hit_medium_front_legs"
+      ],
+      "reference_base": [
+        "hit_medium_front_legs"
+      ],
+      "reference": "hit_medium_front"
+    },
+    {
+      "name": "hit_medium_back",
+      "base": [
+        "hit_medium_back_legs"
+      ],
+      "reference_base": [
+        "hit_medium_back_legs"
+      ],
+      "reference": "hit_medium_back"
+    },
+    {
+      "name": "hit_medium_right",
+      "base": [
+        "hit_medium_right_legs"
+      ],
+      "reference_base": [
+        "hit_medium_right_legs"
+      ],
+      "reference": "hit_medium_right"
+    },
+    {
+      "name": "hit_medium_left",
+      "base": [
+        "hit_medium_left_legs"
+      ],
+      "reference_base": [
+        "hit_medium_left_legs"
+      ],
+      "reference": "hit_medium_left"
+    },
+    {
+      "name": "hit_block",
+      "base": [
+        "hit_block_legs"
+      ],
+      "reference_base": [
+        "hit_block_legs"
+      ],
+      "reference": "hit_block"
+    },
+    {
+      "name": "hit_pulled",
+      "base": [
+        "hit_pulled_legs"
+      ]
+    },
+    {
+      "name": "death_back",
+      "reference": "death_back"
+    },
+    {
+      "name": "death_back_drop1",
+      "reference": "death_back_drop1"
+    },
+    {
+      "name": "death_back_drop2",
+      "reference": "death_back_drop2"
+    },
+    {
+      "name": "death_forward",
+      "reference": "death_forward"
+    },
+    {
+      "name": "death_forward_drop1",
+      "reference": "death_forward_drop1"
+    },
+    {
+      "name": "death_forward_drop2",
+      "reference": "death_forward_drop2"
+    },
+    {
+      "name": "death_left",
+      "reference": "death_left"
+    },
+    {
+      "name": "death_left_drop1",
+      "reference": "death_left_drop1"
+    },
+    {
+      "name": "death_left_drop2",
+      "reference": "death_left_drop2"
+    },
+    {
+      "name": "death_right",
+      "reference": "death_right"
+    },
+    {
+      "name": "death_right_drop1",
+      "reference": "death_right_drop1"
+    },
+    {
+      "name": "death_right_drop2",
+      "reference": "death_right_drop2"
+    }
+  ]
+}
