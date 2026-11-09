@@ -1,0 +1,386 @@
+{
+ "_comment": "Animation scorecard limits (tools/anim/scorecard.py). Every limit is the approved Knight v2 clips' own extreme for that metric and clip kind plus the stated margin; 'other' is the envelope over the knight's kinds and applies to clip kinds the knight does not have. Regenerate with python tools/anim/scorecard.py --derive.",
+ "derived_from": {
+  "animation": "src/main/resources/assets/gravesandglory/animations/troop/knight.animation.json",
+  "geo": "src/main/resources/assets/gravesandglory/geo/troop/knight.geo.json",
+  "clips": 41,
+  "date": "2026-11-09"
+ },
+ "kinds": {
+  "attack": "attack_*",
+  "gait": "walk, run, charge_run",
+  "fallback": "stance_fallback",
+  "stance": "stance_*, idle",
+  "hit": "hit_*, stun*",
+  "death": "death_*, fake_death, rise",
+  "other": "anything else"
+ },
+ "gait_speed_fallback": {
+  "walk": 0.16,
+  "run": 0.26,
+  "charge_run": 0.26
+ },
+ "edge_sign": {
+  "tc_raider": -1.0,
+  "ic_hearthguard": 1.0,
+  "ic_breaker": 1.0
+ },
+ "metrics": {
+  "elbow_bend": {
+   "unit": "deg",
+   "how": "knight per-kind [min, max] widened by 10 deg on each side",
+   "knight": {
+    "gait": [
+     29.73,
+     104.05
+    ],
+    "stance": [
+     22.0,
+     84.19
+    ],
+    "attack": [
+     0.0,
+     107.3
+    ],
+    "fallback": [
+     76.0,
+     84.19
+    ],
+    "hit": [
+     -44.0,
+     35.99
+    ],
+    "death": [
+     4.6,
+     71.62
+    ],
+    "other": [
+     -44.0,
+     107.3
+    ]
+   },
+   "limit": {
+    "gait": [
+     19.73,
+     114.05
+    ],
+    "stance": [
+     12.0,
+     94.19
+    ],
+    "attack": [
+     -10.0,
+     117.3
+    ],
+    "fallback": [
+     66.0,
+     94.19
+    ],
+    "hit": [
+     -54.0,
+     45.99
+    ],
+    "death": [
+     -5.4,
+     81.62
+    ],
+    "other": [
+     -54.0,
+     117.3
+    ]
+   }
+  },
+  "knee_bend": {
+   "unit": "deg",
+   "how": "knight per-kind [min, max] widened by 10 deg on each side",
+   "knight": {
+    "gait": [
+     32.25,
+     154.97
+    ],
+    "stance": [
+     33.1,
+     85.89
+    ],
+    "attack": [
+     39.53,
+     98.47
+    ],
+    "fallback": [
+     41.07,
+     93.89
+    ],
+    "hit": [
+     -13.01,
+     83.9
+    ],
+    "death": [
+     4.0,
+     92.0
+    ],
+    "other": [
+     -13.01,
+     154.97
+    ]
+   },
+   "limit": {
+    "gait": [
+     22.25,
+     164.97
+    ],
+    "stance": [
+     23.1,
+     95.89
+    ],
+    "attack": [
+     29.53,
+     108.47
+    ],
+    "fallback": [
+     31.07,
+     103.89
+    ],
+    "hit": [
+     -23.01,
+     93.9
+    ],
+    "death": [
+     -6.0,
+     102.0
+    ],
+    "other": [
+     -23.01,
+     164.97
+    ]
+   }
+  },
+  "ang_speed_arms": {
+   "unit": "deg/100ms",
+   "how": "knight per-kind max x 1.15",
+   "knight": {
+    "gait": 70.06,
+    "stance": 98.31,
+    "attack": 108.93,
+    "fallback": 0.0,
+    "hit": 70.48,
+    "death": 74.0,
+    "other": 108.93
+   },
+   "limit": {
+    "gait": 80.569,
+    "stance": 113.0565,
+    "attack": 125.2695,
+    "fallback": 0.0,
+    "hit": 81.052,
+    "death": 85.1,
+    "other": 125.2695
+   }
+  },
+  "ang_speed_legs": {
+   "unit": "deg/100ms",
+   "how": "knight per-kind max x 1.15",
+   "knight": {
+    "gait": 153.02,
+    "stance": 2.61,
+    "attack": 39.13,
+    "fallback": 52.23,
+    "hit": 42.61,
+    "death": 55.31,
+    "other": 153.02
+   },
+   "limit": {
+    "gait": 175.973,
+    "stance": 3.0015,
+    "attack": 44.9995,
+    "fallback": 60.0645,
+    "hit": 49.0015,
+    "death": 63.6065,
+    "other": 175.973
+   }
+  },
+  "ang_speed_torso": {
+   "unit": "deg/100ms",
+   "how": "knight per-kind max x 1.15",
+   "knight": {
+    "gait": 15.28,
+    "stance": 2.91,
+    "attack": 48.22,
+    "fallback": 3.96,
+    "hit": 32.42,
+    "death": 17.35,
+    "other": 48.22
+   },
+   "limit": {
+    "gait": 17.572,
+    "stance": 3.3465,
+    "attack": 55.453,
+    "fallback": 4.554,
+    "hit": 37.283,
+    "death": 19.9525,
+    "other": 55.453
+   }
+  },
+  "ang_speed_weapon": {
+   "unit": "deg/100ms",
+   "how": "knight per-kind max x 1.15",
+   "knight": {
+    "gait": 20.55,
+    "stance": 34.8,
+    "attack": 178.24,
+    "fallback": 4.8,
+    "hit": 80.03,
+    "death": 66.56,
+    "other": 178.24
+   },
+   "limit": {
+    "gait": 23.6325,
+    "stance": 40.02,
+    "attack": 204.976,
+    "fallback": 5.52,
+    "hit": 92.0345,
+    "death": 76.544,
+    "other": 204.976
+   }
+  },
+  "foot_slide": {
+   "unit": "blocks",
+   "how": "knight per-kind max + 0.05 blocks (the booth's foot slide margin)",
+   "knight": {
+    "gait": 0.029,
+    "stance": 0.0004,
+    "attack": 0.0019,
+    "fallback": 0.5242,
+    "hit": 0.4928,
+    "death": 0.2542,
+    "other": 0.5242
+   },
+   "limit": {
+    "gait": 0.079,
+    "stance": 0.0504,
+    "attack": 0.0519,
+    "fallback": 0.5742,
+    "hit": 0.5428,
+    "death": 0.3042,
+    "other": 0.5742
+   }
+  },
+  "pen_weapon": {
+   "unit": "px",
+   "how": "knight per-kind max + 0.5 px",
+   "knight": {
+    "gait": 1.882,
+    "stance": 0.99,
+    "attack": 1.529,
+    "fallback": 0.513,
+    "hit": 1.934,
+    "death": 4.642,
+    "other": 4.642
+   },
+   "limit": {
+    "gait": 2.382,
+    "stance": 1.49,
+    "attack": 2.029,
+    "fallback": 1.013,
+    "hit": 2.434,
+    "death": 5.142,
+    "other": 5.142
+   }
+  },
+  "pen_limb": {
+   "unit": "px",
+   "how": "knight per-kind max + 0.5 px",
+   "knight": {
+    "gait": 1.964,
+    "stance": 1.29,
+    "attack": 0.891,
+    "fallback": 0.1,
+    "hit": 1.836,
+    "death": 1.997,
+    "other": 1.997
+   },
+   "limit": {
+    "gait": 2.464,
+    "stance": 1.79,
+    "attack": 1.391,
+    "fallback": 0.6,
+    "hit": 2.336,
+    "death": 2.497,
+    "other": 2.497
+   }
+  },
+  "edge_lead": {
+   "unit": "deg",
+   "how": "knight max over its slash attacks + 10 deg",
+   "knight": {
+    "all": 9.1
+   },
+   "limit": {
+    "all": 19.1
+   }
+  },
+  "impact_tick": {
+   "unit": "tick",
+   "how": "tolerance = knight's largest |peak - impactTicks| + 1 tick",
+   "knight": {
+    "all": 1.0
+   },
+   "limit": {
+    "all": 2.0
+   }
+  },
+  "loop_pose": {
+   "unit": "deg",
+   "how": "knight per-kind max over its looping clips + 1 deg",
+   "knight": {
+    "gait": 0.0,
+    "stance": 0.272,
+    "fallback": 0.0,
+    "hit": 18.728,
+    "other": 18.728
+   },
+   "limit": {
+    "gait": 1.0,
+    "stance": 1.272,
+    "fallback": 1.0,
+    "hit": 19.728,
+    "other": 19.728
+   }
+  },
+  "loop_pos": {
+   "unit": "px",
+   "how": "knight per-kind max over its looping clips + 0.25 px",
+   "knight": {
+    "gait": 0.0,
+    "stance": 0.0,
+    "fallback": 0.0,
+    "hit": 0.844,
+    "other": 0.844
+   },
+   "limit": {
+    "gait": 0.25,
+    "stance": 0.25,
+    "fallback": 0.25,
+    "hit": 1.094,
+    "other": 1.094
+   }
+  },
+  "loop_vel": {
+   "unit": "deg/tick",
+   "how": "knight per-kind max over its looping clips x 1.25 + 1 deg/tick",
+   "knight": {
+    "gait": 30.672,
+    "stance": 0.573,
+    "fallback": 21.472,
+    "hit": 17.79,
+    "other": 30.672
+   },
+   "limit": {
+    "gait": 39.34,
+    "stance": 1.7163,
+    "fallback": 27.84,
+    "hit": 23.2375,
+    "other": 39.34
+   }
+  }
+ }
+}

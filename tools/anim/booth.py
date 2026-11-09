@@ -24,6 +24,7 @@ import booth_git as bg  # noqa: E402
 import booth_pack as bp  # noqa: E402
 import booth_render as br  # noqa: E402
 import booth_verdict as bv  # noqa: E402
+import scorecard as sc  # noqa: E402
 from booth_config import BoothError, load_config  # noqa: E402
 
 BYTES_PER_CLIP = 40 * 1024 * 1024 // 20      # 20 clips stay under 40 MB
@@ -92,6 +93,20 @@ class _Sources:
         return src
 
 
+def scorecard_gate(repo, cfg, names):
+    """Score the batch's clips (tools/anim/scorecard.py); a batch with a failing clip is not built."""
+    try:
+        cards = sc.score_booth(repo, cfg, names)
+    except (sc.ScoreError, sc.rg.GeoError, OSError, ValueError) as e:
+        raise BoothError("cannot score the clips: %s" % e)
+    bad = sc.failures([cards[n] for n in names])
+    if bad:
+        raise BoothError("%d metric(s) fail the animation scorecard (limits from the approved knight, "
+                         "tools/anim/scorecard_limits.json); fix the clips before building:\n  %s"
+                         % (len(bad), "\n  ".join(bad)))
+    return {n: {"pass": c["pass"], "kind": c["kind"], "metrics": c["metrics"]} for n, c in cards.items()}
+
+
 def build(repo, config_path, target, out_root="work/booth", batch=None, clips=None, ss=2, budget_bytes=None):
     repo = os.path.abspath(repo)
     cfg_abs = config_path if os.path.isabs(config_path) else os.path.join(repo, config_path)
@@ -155,6 +170,7 @@ def build(repo, config_path, target, out_root="work/booth", batch=None, clips=No
         # A batch limited with --clips keeps its clips. A full batch also takes clips added to the config since.
         names = [c.name for c in cfg.clips if not partial or c.name in old]
 
+    cards = scorecard_gate(repo, cfg, names)
     shown = ["art/anim/%s" % cfg.family, *cfg.input_paths(), cfg_rel]
     others = bg.other_files(repo, target_sha, lane_sha, shown)
 
@@ -186,6 +202,7 @@ def build(repo, config_path, target, out_root="work/booth", batch=None, clips=No
             entries.append({"name": name, "ticks": render.ticks, "impact_tick": clip.impact_tick,
                             "frame_hash": render.frame_hash, "sheet": sheet, "changed": True, "round": rnd,
                             "sections": sections, "numbers": render.numbers, "flags": render.flags,
+                            "scorecard": cards[name],
                             "previous_sha": before, "reference_sha": target_sha if ref is not None else None})
 
         def sheet_file(e):

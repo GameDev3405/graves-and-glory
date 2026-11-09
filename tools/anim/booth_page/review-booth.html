@@ -62,6 +62,9 @@ details.files ul { margin: 8px 0 2px; padding: 0; list-style: none; font-family:
 .head h2 { font-family: var(--mono); font-weight: 500; font-size: 16px; margin: 0; overflow-wrap: anywhere; min-width: 0; }
 .meta { font-family: var(--mono); font-size: 12px; color: var(--muted); display: flex; flex-wrap: wrap; gap: 4px 12px; }
 .meta .warn { color: var(--bad); } .meta .fresh { color: var(--brass); }
+.score { font-family: var(--mono); font-size: 11px; color: var(--muted); display: flex; flex-wrap: wrap; gap: 3px 10px; margin: 0; padding: 0; list-style: none; }
+.score li { white-space: nowrap; } .score li.fail { color: var(--bad); font-weight: 600; } .score li.na { opacity: .55; }
+.score li.sum { color: var(--ok); } .score li.sum.fail { color: var(--bad); }
 .views { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
 .view { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
 .view span { font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
@@ -225,7 +228,13 @@ function demoStore() {
   const sec = (viewers, t) => viewers.flatMap(v => ["near", "game16"].map(d => ({ viewer: v, distance: d, y: 0, cell_w: 300, cell_h: 300, cols: 12, frames: t })));
   const clip = (name, ticks, impact, kind, viewers, hash, slide, flag) => ({ name, ticks, impact_tick: impact, frame_hash: hash.repeat(64),
     sheet: "round-1/" + name + ".webp", sheet_asset: null, changed: true, round: 1, sections: sec(viewers, ticks),
-    numbers: { foot_slide: slide, foot_slide_reference: slide == null ? null : 0.19 }, flags: flag ? ["foot_slide"] : [], demo: kind });
+    numbers: { foot_slide: slide, foot_slide_reference: slide == null ? null : 0.19 }, flags: flag ? ["foot_slide"] : [], demo: kind,
+    scorecard: { pass: true, kind: "attack", metrics: [
+      { id: "elbow_bend", unit: "deg", status: "pass", value: [0, 102.65], limit: [-10, 117.3] },
+      { id: "ang_speed_arms", unit: "deg/100ms", status: "pass", value: 108.93, limit: 125.27 },
+      { id: "pen_weapon", unit: "px", status: "pass", value: 1.03, limit: 2.03 },
+      { id: "edge_lead", unit: "deg", status: "n/a", value: null, limit: null, note: "not a slash" },
+      { id: "impact_tick", unit: "tick", status: "pass", value: 6.5, limit: [5, 9], design: 7 }] } });
   const all = ["reference", "previous", "new"];
   const clips = [clip("attack_thrust", 21, 7, 2, all, "a", null), clip("walk", 25, null, 0, ["reference", "new"], "b", 0.31, true),
     clip("death_back", 31, 18, 5, ["previous", "new"], "c", null)];
@@ -422,6 +431,25 @@ function syncSave() {
     w && w.failed ? h("button", { type: "button", class: "small", text: "Retry", onclick: () => retry(S.open) }) : "");
 }
 
+// The scorecard (tools/anim/scorecard.py): per metric value against the limit derived from the approved knight.
+const SCORE_LABELS = { elbow_bend: "elbow", knee_bend: "knee", ang_speed_arms: "arm spd", ang_speed_legs: "leg spd",
+  ang_speed_torso: "torso spd", ang_speed_weapon: "weapon spd", foot_slide: "foot slide", pen_weapon: "weapon in body",
+  pen_limb: "limb in body", edge_lead: "edge", impact_tick: "impact", loop_pose: "loop pose", loop_pos: "loop pos", loop_vel: "loop vel" };
+function scoreRow(card) {
+  if (!card || !Array.isArray(card.metrics)) return null;
+  const f = x => typeof x === "number" && isFinite(x) ? String(+x.toFixed(2)) : Array.isArray(x) ? x.map(f).join("…") : "?";
+  const bad = card.metrics.filter(m => m && m.status === "fail").length;
+  return h("ul", { class: "score", "aria-label": "Scorecard" },
+    h("li", { class: "sum" + (bad ? " fail" : ""), text: bad ? "scorecard: " + plural(bad, "fail", "fails") : "scorecard: pass" }),
+    card.metrics.filter(m => m && typeof m.id === "string").map(m => {
+      const label = SCORE_LABELS[m.id] || str(m.id, 30), unit = str(m.unit, 12);
+      if (m.status !== "pass" && m.status !== "fail") return h("li", { class: "na", title: str(m.note), text: label + " n/a" });
+      const lim = Array.isArray(m.limit) ? " in " + f(m.limit) : " ≤ " + f(m.limit);
+      return h("li", { class: m.status === "fail" ? "fail" : "", title: unit,
+        text: label + " " + f(m.value) + lim + " " + unit + (m.status === "fail" ? " FAIL" : "") });
+    }));
+}
+
 function buildCard(clip) {
   const c = { clip, t: 0, playing: !still, sheet: "idle", src: null, near: false, drawn: -1, canvases: [], key: clip.name + ":" + clip.frame_hash };
   const el = c.el = h("section", { class: "card" });
@@ -435,7 +463,8 @@ function buildCard(clip) {
   el.append(h("div", { class: "head" }, h("h2", { text: clip.name }), h("div", { class: "meta" },
     clip.round > 1 && clip.changed ? h("span", { class: "fresh", text: "reworked in round " + clip.round }) : null,
     h("span", { text: Number.isInteger(clip.impact_tick) ? "impact tick " + clip.impact_tick : "no impact tick" }),
-    num(n.foot_slide) ? h("span", { class: flagged ? "warn" : "", text: "foot slide " + num(n.foot_slide) + (num(n.foot_slide_reference) ? " (reference " + num(n.foot_slide_reference) + ")" : "") }) : null)));
+    num(n.foot_slide) ? h("span", { class: flagged ? "warn" : "", text: "foot slide " + num(n.foot_slide) + (num(n.foot_slide_reference) ? " (reference " + num(n.foot_slide_reference) + ")" : "") }) : null)),
+    scoreRow(clip.scorecard));
   const near = clip.sections.find(s => s.viewer === "new" && s.distance === "near") || clip.sections[0] || { cell_w: 1, cell_h: 1 };
   const ratio = near.cell_w + " / " + near.cell_h;
   el.append(h("div", { class: "views" }, VIEWERS.map(([key, label, none], i) => {

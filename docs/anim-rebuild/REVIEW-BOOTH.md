@@ -39,6 +39,9 @@ there, and `booth.py decide` turns his verdict into the lane's next step.
   Kort's session.
 - The batch lists every file the lane changed outside the troop's animation files. Kort's approval covers the whole
   lane merge, so keep unrelated changes out of an animation lane.
+- `build` first runs the animation scorecard (`tools/anim/scorecard.py`, limits in `tools/anim/scorecard_limits.json`
+  derived from the approved Knight v2) on the batch's clips and refuses the batch, listing clip, metric, value and
+  limit, when any clip fails. Each clip's scorecard is packed into its database document and shown under the clip.
 - Foot slide is shown for clips with a `speed` above 0 and is flagged only when it is more than 0.05 blocks worse than
   the reference clip.
 - Design: `docs/superpowers/specs/2026-11-09-review-booth-design.md`.

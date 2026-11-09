@@ -33,9 +33,9 @@ def nudge(repo, clip, bone, by=25):
     data = read_json(os.path.join(repo, *ANIM.split("/")))
     chans = data["animations"][clip]["bones"][bone]
     ch = chans.get("rotation") or chans["position"]
-    v = ch[sorted(ch)[0]]
-    vec = v["vector"] if isinstance(v, dict) and "vector" in v else v
-    vec[2] = vec[2] + by
+    for v in ch.values():       # every key, so a looping clip still meets itself at the wrap (the scorecard checks it)
+        vec = v["vector"] if isinstance(v, dict) and "vector" in v else v
+        vec[2] = vec[2] + by
     write_json(repo, ANIM, data)
 
 
