@@ -123,6 +123,19 @@ public final class MarchMath {
     /** The botBanners id team 1's bot in this lane fields: the battle's enemies row at lane % rows; null when the battle names none, so tier and lane picking choose. */
     static String enemyId(Spec.CampaignBattlesRow r, int lane) { var ids = enemyIds(r); return ids.isEmpty() ? null : ids.get(Math.floorMod(lane, ids.size())); }
 
+    /** The botBanners row the commander fields in this battle when its chapter sets banner house (brief G1), or null to field their own banner. */
+    static String houseBannerRow(Spec.CampaignBattlesRow r, Spec.CampaignChaptersRow[] chapters) {
+        var c = r == null ? null : chapter(r.chapter(), chapters);
+        return c != null && c.banner().equals("house") && !c.bannerRow().equals("none") ? c.bannerRow() : null;
+    }
+
+    /** Whether a botBanners row is kept out of every tier's pool: some battle's ally or some chapter's House banner. */
+    static boolean reserved(String id, Spec.CampaignBattlesRow[] rows, Spec.CampaignChaptersRow[] chapters) {
+        if (reservedAlly(id, rows)) return true;
+        for (var c : chapters) if (c.bannerRow().equals(id)) return true;
+        return false;
+    }
+
     /** Whether a botBanners row is reserved as some battle's allies, so it never joins a tier's pool (Campaign.fieldableBotBanners). */
     static boolean reservedAlly(String id, Spec.CampaignBattlesRow[] rows) { for (var r : rows) if (allyIds(r).contains(id)) return true; return false; }
 

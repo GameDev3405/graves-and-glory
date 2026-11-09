@@ -354,6 +354,7 @@ public final class Campaign {
      *  cannot be fielded yet left empty. */
     List<String> banner(GravesAndGlory.Squad s){
         if(s.bot)return botBanner(s);
+        String house=MarchMath.houseBannerRow(activeBattle,Spec.CAMPAIGNCHAPTERS);if(house!=null)return bannerRow(house); // a house chapter fields its fixed House banner, never the collection (brief G1)
         var room=activeRoom.isEmpty()?null:social.rooms.get(activeRoom);
         if(room!=null&&room.members.contains(s.owner))return houseBanner(room,s.owner);
         return RosterMath.fieldable(profile(s.owner).banner,RosterMath.Catalog.fromSpec(),RosterMath.fieldableHouses());
@@ -391,7 +392,7 @@ public final class Campaign {
     /** The botBanners rows of a tier, in sheet order, whose every troop belongs to a fieldable House (houses.fieldable), less the rows a battle reserves as allies. */
     static List<Spec.BotBannersRow> fieldableBotBanners(String tier){
         var catalog=RosterMath.Catalog.fromSpec();var fieldable=RosterMath.fieldableHouses();List<Spec.BotBannersRow> out=new ArrayList<>();
-        for(var row:Spec.BOTBANNERS)if(row.difficulty().equals(tier)&&!MarchMath.reservedAlly(row.id(),Spec.CAMPAIGNBATTLES)&&Arrays.stream(row.slots().split(",")).allMatch(id->id.equals(RosterMath.MARKER)||id.equals(RosterMath.EMPTY)||fieldable.contains(catalog.houseOf(id))))out.add(row);
+        for(var row:Spec.BOTBANNERS)if(row.difficulty().equals(tier)&&!MarchMath.reserved(row.id(),Spec.CAMPAIGNBATTLES,Spec.CAMPAIGNCHAPTERS)&&Arrays.stream(row.slots().split(",")).allMatch(id->id.equals(RosterMath.MARKER)||id.equals(RosterMath.EMPTY)||fieldable.contains(catalog.houseOf(id))))out.add(row);
         return out;
     }
     /** Units in the banner a commander would field now; 0 means he has no army to bring. */

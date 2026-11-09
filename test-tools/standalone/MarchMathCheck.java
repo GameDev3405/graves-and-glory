@@ -19,6 +19,8 @@ public final class MarchMathCheck {
         return new Spec.CampaignBattlesRow(id, chapter, order, id, 0, size, "easy", false, "", "", "domination", "gilded", "none", allies, enemies, "", false, "none");
     }
 
+    static Spec.CampaignChaptersRow oathChapter() { return MarchMath.chapter(1, Spec.CAMPAIGNCHAPTERS); }
+
     public static void main(String[] args) {
         // sheet: chapter 1 "The Oath" (chapter-1-battles.md section 5, Kort 2026-11-09): six battles in order, on their maps and modes, all Gilded
         String[][] plan = {{"The Drowned Crossings", "rivergate", "domination", "easy"}, {"The Moon Shrine Watch", "hollowwood", "survival", "easy"}, {"Smoke at Ironhold", "ironhold", "siege", "normal"},
@@ -125,6 +127,14 @@ public final class MarchMathCheck {
         }
         check(MarchMath.enemyId(row(2), 0) == null && MarchMath.enemyId(null, 0) == null, "enemies: a battle with none (Survival's director) falls back to tier and lane picking");
         check(MarchMath.enemyId(row(1), 3).equals("tidecallers_easy"), "enemies: a lane past the list wraps");
+        // the House banner per chapter (brief G1): a house chapter fields its own botBanners row for the commander, never the collection;
+        // an own chapter (The Oath) fields the commander's banner; the house row never joins a tier's pool
+        check(MarchMath.houseBannerRow(row(1), Spec.CAMPAIGNCHAPTERS) == null && MarchMath.houseBannerRow(null, Spec.CAMPAIGNCHAPTERS) == null, "banner: The Oath fields the commander's own banner");
+        var wild = new Spec.CampaignChaptersRow[]{oathChapter(), new Spec.CampaignChaptersRow("hunt", 2, "The Hunt", "wildmoot", "house", "ally_wildmoot_normal", 2, "End.", "none")};
+        var huntBattle = battle("hunt-1", 2, 7, 1, "none", "gilded_normal");
+        check("ally_wildmoot_normal".equals(MarchMath.houseBannerRow(huntBattle, wild)) && MarchMath.houseBannerRow(row(1), wild) == null, "banner: a house chapter's battle fields its House row; its other chapters keep their own banner");
+        check(MarchMath.reserved("ally_wildmoot_normal", ROWS, wild) && !MarchMath.reserved("wildmoot_normal", ROWS, wild), "banner: a chapter's House row is reserved from the bot pools; a plain tier row is not");
+        check(MarchMath.reserved("ally_gilded_easy", Spec.CAMPAIGNBATTLES, Spec.CAMPAIGNCHAPTERS) && !MarchMath.reserved("gilded_easy", Spec.CAMPAIGNBATTLES, Spec.CAMPAIGNCHAPTERS), "banner: ally rows stay reserved");
         // after lines and the chapter end (brief N2): the battle's line on a win only; the chapter's end line with its Pact, once
         var oath = MarchMath.chapter(1, Spec.CAMPAIGNCHAPTERS);
         check(oath != null && oath.name().equals("The Oath") && oath.chapterEnd().startsWith("Aldric, alone with the Charter.") && MarchMath.chapter(9, Spec.CAMPAIGNCHAPTERS) == null, "chapter: chapter 1 is The Oath with its end line; an unknown chapter is null");
