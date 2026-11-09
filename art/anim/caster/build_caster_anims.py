@@ -702,6 +702,181 @@ def attack_clips():
 
 
 # ------------------------------------------------------------------------------------------------
+# Ability clips (work/anim-clip-spec-2026-11-07.md C3, C4, C6, C7): one per caster, named after its Spec ability id, built on the
+# same keys, solver, gear lag and robe panels as the cast. Each is a once-clip from the guard back to the guard, with its own
+# _legs footwork and a "timeline" impact marker on the release. The client plays it in place of attack_cast (AttackController
+# .abilityClip): the server's cast event starts impactTicks (10) before the spell leaves; the clip is shifted so its impact
+# marker lands on the tick the spell takes effect (the send for a mend, the windup's end for a blight or a mist). The howl has no
+# cast event: the client starts it when the Seer's own howl speed modifier appears (AttackController.howl).
+# ------------------------------------------------------------------------------------------------
+
+def mend_sunweaver():
+    """C3 the Sunweaver's heal, 20 ticks, release on 10 (the server sends the mend 10 ticks after the cast event's start). Calm
+    and slow, unlike the attack cast's drive at the ally: a breath in, both hands lift the sun staff straight up to the sky, the
+    chest opening and the head tipping back after it; at the release the left hand leaves the shaft and both arms open outward,
+    the staff leaning out to the right, the light spreading; the bloom is held, then everything floats back to the guard."""
+    g = GUARD
+    breath = nudge(g, torso=(-1, -2, 0), head=(-2, -2, 0), R=(0.2, 0.3, 0.0), d=aim(80, -14))
+    gather = KEY((-3, 5, 0), (-6, -6, 0), (0.0, -1.2, 6.8), unit((-0.25, 0.95, 0.15)), u=FWD, rp=(-80, 0, 10, -40),
+                 lp=(-60, 0, -15, -50), lh=0.7, ls=-6)
+    up = KEY((-7, 2, 0), (-18, -4, 0), (0.8, 1.5, 6.7), unit((-0.38, 0.92, 0.08)), u=FWD, rp=(-110, 0, 10, -40),
+             lp=(-95, 0, -20, -50), lh=1, ls=-6)
+    peak = nudge(up, torso=(-1, 0, 0), head=(-3, 0, 0), R=(0.0, 0.3, 0.0))
+    # the arms open: the right fist out to the right, the staff leaning out with it; the left arm raised wide, open
+    opened = KEY((-9, 0, 0), (-20, 0, 0), (-4.2, 1.2, 5.6), unit((-0.5, 0.85, 0.1)), u=FWD, rp=(-100, 0, 30, -20),
+                 lp=(-80, 0, -62, -12))
+    bloom = nudge(opened, torso=(-1, 0, 0), head=(-2, 0, 0), R=(-0.2, 0.2, 0.0), lp=(-4, 0, -4, 0))
+    recover = KEY((0, 6, 0), (-2, -2, 0), (-1.8, -3.0, 6.6), aim(76, -14), u=FWD, rp=(-50, 0, 10, -40), lp=(-25, 0, -20, -40))
+    near = nudge(g, torso=(1, -1, 0), R=(0.0, 0.2, -0.1), d=aim(76, -12))
+    keys = [(0, g), (2.0, breath), (4.6, gather), (7.4, up), (9.0, peak), (9.5, nudge(peak, lh=(0.5,))), (11.2, opened),
+            (13.4, bloom), (16.0, recover), (18.4, near), (20, g)]
+    R0, R1 = READY_HIPS
+    legs = {"hips": [(0, R0, R1), (2.0, (0.0, 15.0, 0.0), (0.0, -1.05, 0.0)), (4.6, (-1.0, 13.0, 0.0), (0.0, -1.0, -0.2)),
+                     (7.4, (-3.0, 11.0, 0.0), (0.0, -0.6, -0.3)), (11.2, (-3.0, 12.0, 0.0), (0.0, -0.55, -0.2)),
+                     (13.4, (-2.0, 13.0, 0.0), (0.0, -0.65, -0.1)), (17.0, (0.0, 15.0, 0.0), (0.0, -0.9, 0.1)), (20, R0, R1)],
+            "steps": []}
+    return "mend_sunweaver", 20, 10, keys, legs
+
+
+def blight_gravecaller():
+    """C4 the Gravecaller's blight, 30 ticks: a 20-tick windup, the release on 20 (the server's windup end, when the blight
+    strikes), a 10-tick recover. The grave lantern is hauled up overhead in the right hand while the left hand claws out at the
+    foe; the body hunches and draws in, trembling, as the blight gathers; a last lift and arch, then both arms slam down, the
+    lantern and the claw pointing at the foe's ground, the hips dropping; the body rebounds and settles into the guard."""
+    g = GUARD
+    load = nudge(g, torso=(-2, 4, 0), head=(-1, 0, 0), R=(0.0, 0.4, -0.4), d=aim(20, -8))
+    claw = (-80, 0, 4, -40)        # the left arm out at the foe, the elbow bent: a claw
+    lift = KEY((0, 10, 0), (0, 0, 0), (-0.5, 3.0, 5.5), aim(60, 10), u=UP, rp=(-130, 0, 10, -40), lp=(-55, 0, -6, -45))
+    over = KEY((4, 6, 0), (2, 0, 0), (-2.6, 7.4, 1.0), aim(50, -25), u=UP, rp=(-170, 0, 10, -30), lp=claw)
+    # drawing in: the hunch deepens, the claw pulls in a little, a tremor in both arms
+    hunch = KEY((10, 4, 0), (4, 0, 0), (-2.6, 7.3, 1.2), aim(48, -22), u=UP, rp=(-170, 0, 10, -30), lp=(-75, 0, 6, -55))
+    hunch2 = nudge(hunch, torso=(1, -1, 0), R=(0.1, -0.15, 0.05), d=aim(46, -20), lp=(2, 0, 1, -3))
+    hunch3 = nudge(hunch, torso=(2, 1, 0), R=(-0.1, 0.1, -0.05), d=aim(50, -24), lp=(-2, 0, -1, 2))
+    hunch4 = nudge(hunch, torso=(3, 0, 0), R=(0.05, -0.1, 0.1), d=aim(47, -21), lp=(1, 0, 1, -5))
+    # the last lift: the lantern up and back, the chest arching, the claw drawn back to strike
+    coil = KEY((-3, 4, 0), (-2, 0, 0), (-2.4, 7.6, 0.4), aim(62, -15), u=UP, rp=(-175, 0, 10, -30), lp=(-110, 0, -4, -60))
+    # the slam: both arms down at the foe's ground, the torso driven forward
+    slam = KEY((18, 0, 0), (12, 0, 0), (0.4, -2.6, 7.3), aim(-42, 0), u=UP, rp=(-75, 0, 0, -8), lp=(-55, 0, 0, -8))
+    sink = nudge(slam, torso=(2, 0, 0), head=(1, 0, 0), R=(0.0, -0.3, -0.1), d=aim(-46, 0), lp=(3, 0, 0, 0))
+    rebound = KEY((9, 2, 0), (6, 0, 0), (0.8, -2.0, 6.8), aim(-12, -2), u=UP, rp=(-70, 0, 5, -15), lp=(-35, 0, -8, -30))
+    recover = KEY((4, 6, 0), GAZE, (1.1, -4.4, 6.1), aim(10, -5), u=UP, rp=(-50, 0, 10, -24), lp=(-15, 0, -12, -40))
+    near = nudge(g, torso=(1, -1, 0), R=(0.0, 0.15, 0.0), d=aim(13, -6))
+    keys = [(0, g), (2.0, load), (5.0, lift), (8.0, over), (10.5, hunch), (12.5, hunch2), (14.5, hunch3), (16.5, hunch4),
+            (18.6, coil), (20, slam), (21.6, sink), (24.0, rebound), (27.0, recover), (28.8, near), (30, g)]
+    R0, R1 = READY_HIPS
+    legs = {"hips": [(0, R0, R1), (2.0, (-2.0, 20.0, 0.0), (0.0, -1.0, -0.4)), (8.0, (2.0, 18.0, 0.0), (0.0, -1.1, -0.3)),
+                     (16.5, (5.0, 16.0, 0.0), (0.0, -1.35, -0.2)), (18.6, (-2.0, 18.0, 0.0), (0.0, -0.95, -0.4)),
+                     (20, (8.0, 8.0, 0.0), (0.0, -1.6, 0.9)), (21.6, (9.0, 7.0, 0.0), (0.0, -1.7, 1.0)),
+                     (24.0, (5.0, 10.0, 0.0), (0.0, -1.3, 0.6)), (28.0, (1.0, 15.0, 0.0), (0.0, -0.95, 0.2)), (30, R0, R1)],
+            # the lead foot slides in under the slam, then back
+            "steps": [("left", 18.6, 20.0, (2.9, 2.0, 2.2), 12.0, 0.3), ("left", 24.0, 28.5, (2.9, 2.0, 1.1), 10.0, 0.3)]}
+    return "blight_gravecaller", 30, 20, keys, legs
+
+
+def mist():
+    """C6 the Mist Caller's mist, 30 ticks, release on 20 (the server's windup end, when the cloud lands). Slow and tidal: the
+    rod and the free hand draw up and across to the left as the hips wind that way; the body folds forward and both hands sink
+    to the ground at the left, then sweep low across in a wide arc, the hips turning through to the right; at the release the
+    sweep ends wide at the right, the conch flicking out, the mist laid; the body rises and drifts back to the guard."""
+    g = GUARD
+    draw = KEY((-2, -22, 0), (0, -10, 0), (4.6, -1.0, 5.0), aim(20, 40), u=UP, rp=(-90, 0, -10, -60), lp=(-40, 0, -45, -30))
+    sink = KEY((30, -26, 0), (-12, -26, 0), (4.8, -5.2, 4.2), aim(-35, 55), u=UP, rp=(-70, 0, -15, -30), lp=(-45, 0, -55, -15))
+    sweep_l = KEY((36, -18, 0), (-14, -22, 0), (3.6, -6.0, 4.6), aim(-40, 40), u=UP, rp=(-60, 0, -5, -15), lp=(-55, 0, -40, -10))
+    sweep_c = KEY((38, 0, 0), (-14, 0, 0), (0.6, -6.0, 4.2), aim(-40, 0), u=UP, rp=(-60, 0, 10, -10), lp=(-60, 0, -10, -10))
+    sweep_r = KEY((34, 20, 0), (-12, 22, 0), (-3.6, -5.8, 4.4), aim(-36, -45), u=UP, rp=(-55, 0, 30, -10), lp=(-62, 0, 18, -12))
+    # the release: the sweep ends wide at the right, the rod flicks out level, the free hand open behind it
+    flick = KEY((20, 28, 0), (-6, 28, 0), (-4.8, -3.6, 4.6), aim(-8, -60), u=UP, rp=(-70, 0, 40, -8), lp=(-70, 0, 22, -8))
+    drift = nudge(flick, torso=(-2, 1, 0), head=(-1, 0, 0), R=(-0.2, 0.3, 0.0), d=aim(-2, -62))
+    rise = KEY((8, 12, 0), (0, 8, 0), (-1.0, -4.0, 5.8), aim(4, -25), u=UP, rp=(-55, 0, 20, -20), lp=(-30, 0, -10, -30))
+    near = nudge(g, torso=(1, -2, 0), R=(0.0, 0.2, 0.0), d=aim(12, -9))
+    keys = [(0, g), (4.0, draw), (8.0, sink), (11.5, sweep_l), (15.0, sweep_c), (18.0, sweep_r), (20, flick), (22.0, drift),
+            (25.5, rise), (28.4, near), (30, g)]
+    R0, R1 = READY_HIPS
+    legs = {"hips": [(0, R0, R1), (4.0, (-1.0, -6.0, 0.0), (0.0, -0.85, -0.2)), (8.0, (4.0, -10.0, 0.0), (0.0, -1.5, 0.0)),
+                     (11.5, (5.0, -2.0, 0.0), (0.0, -1.6, 0.2)), (15.0, (5.0, 14.0, 0.0), (0.0, -1.65, 0.3)),
+                     (18.0, (4.0, 30.0, 0.0), (0.0, -1.6, 0.3)), (20, (3.0, 36.0, 0.0), (0.0, -1.45, 0.3)),
+                     (22.0, (2.0, 35.0, 0.0), (0.0, -1.35, 0.25)), (25.5, (1.0, 22.0, 0.0), (0.0, -1.05, 0.15)), (30, R0, R1)],
+            # the right foot glides out wide as the body folds, and back as it rises
+            "steps": [("right", 5.0, 9.0, (-3.4, 2.0, -0.6), -14.0, 0.3), ("right", 23.0, 28.0, (-2.8, 2.0, -1.1), -6.0, 0.3)]}
+    return "mist", 30, 20, keys, legs
+
+
+def howl():
+    """C7 the Bloodhowl Seer's howl, 25 ticks: gather 6 (a crouch and an inhale, the arms drawn in), the howl held 14 with a
+    slight shake (the head thrown back, the chest pushed out and up, both arms spread wide and down, the bone wand in the right
+    fist), release 5 back to the guard. The impact marker is the howl's onset (6)."""
+    g = GUARD
+    crouch = KEY((14, 4, 0), (10, 0, 0), (1.6, -4.0, 4.6), aim(-30, 10), u=UP, rp=(-45, 0, 15, -70), lp=(-30, 0, 5, -70))
+    inhale = nudge(crouch, torso=(2, 0, 0), head=(2, 0, 0), R=(0.0, -0.2, -0.2))
+    spread = KEY((-16, 0, 0), (-34, 0, 0), (-5.6, -4.2, 2.6), aim(-30, -80), u=UP, rp=(-25, 0, 55, -10), lp=(-20, 0, -58, -10))
+    keys = [(0, g), (3.0, crouch), (5.0, inhale), (7.0, spread)]
+    # the howl held: a slight shake (head, chest and both arms tremble on a short, uneven beat)
+    shake = [((0.0, 0.0, 1.2), (0.0, 2.5, 0.0), (0.1, 0.12, 0.0)), ((0.6, 0.0, -1.0), (0.0, -2.0, 0.0), (-0.1, -0.1, 0.05)),
+             ((0.0, 0.0, 0.9), (0.0, 1.8, 0.0), (0.05, 0.1, -0.05)), ((0.5, 0.0, -1.2), (0.0, -2.4, 0.0), (-0.1, -0.12, 0.0))]
+    t, j = 8.2, 0
+    while t < 18.5:
+        tz, hd, r = shake[j % len(shake)]
+        keys.append((t, nudge(spread, torso=tz, head=hd, R=r, lp=(0, 0, (1.5 if j % 2 else -1.5), 0))))
+        t += 1.3
+        j += 1
+    keys += [(19.5, nudge(spread, torso=(2, 0, 0), head=(4, 0, 0))), (22.5, nudge(g, torso=(2, 0, 0), R=(0.0, -0.3, 0.0))), (25, g)]
+    R0, R1 = READY_HIPS
+    legs = {"hips": [(0, R0, R1), (3.0, (5.0, 15.0, 0.0), (0.0, -1.45, -0.3)), (5.0, (6.0, 15.0, 0.0), (0.0, -1.55, -0.35)),
+                     (7.0, (-4.0, 16.0, 0.0), (0.0, -0.6, 0.1)), (19.5, (-3.0, 16.0, 0.0), (0.0, -0.65, 0.1)),
+                     (22.5, (0.0, 16.0, 0.0), (0.0, -0.85, 0.1)), (25, R0, R1)],
+            "steps": []}
+    return "howl", 25, 6, keys, legs
+
+
+ABILITIES = {"mage": mend_sunweaver, "hexer": blight_gravecaller, "tc_mist": mist, "wm_seer": howl}
+
+
+def ability_clips():
+    name, ticks, release, keys, spec = ABILITIES[TROOP]()
+    legs = K.attack_legs(spec, ticks=ticks)
+    sol = Solver()
+    out, hits = [], []
+    for i in range(ticks * SUB + 1):
+        t = i / SUB
+        s = sample(keys, legs[i], sol, t)
+        h = shaft_hits(fk_pose(s, legs[i]))
+        if h:
+            hits.append((t, h[0]))
+        out.append(s)
+    print("%s: fist err max %.3f px (left on the shaft %.3f), samples with the focus in the body %d %s"
+          % (name, sol.worst, sol.lworst, len(hits), hits[:8]))
+    if hits:
+        print("  focus-in-body ticks:", sorted({(round(t), h[1]) for t, h in hits}))
+    upper = gear(out, legs)
+    clip = K.bake(upper, ticks, loop=False)
+    rewind(clip)
+    clip["timeline"] = {K.fmt_t(release / TPS): "impact"}
+    return {name: clip, name + "_legs": K.bake(legs, ticks, loop=False)}
+
+
+ASSET_ANIMS = HERE.parents[2] / "src/main/resources/assets/gravesandglory/animations/troop"
+
+
+def splice(clips, paths):
+    """Adds (or, on a re-run, replaces in place) only these clips in each animation file, after attack_cast_legs; every other
+    clip stays byte for byte as it was."""
+    for path in paths:
+        doc = json.loads(path.read_text(encoding="utf-8"))
+        old = {k: v for k, v in doc["animations"].items() if k not in clips}
+        new, placed = {}, False
+        for k, v in old.items():
+            new[k] = v
+            if k == "attack_cast_legs":
+                new.update(clips)
+                placed = True
+        if not placed:
+            new.update(clips)
+        doc["animations"] = new
+        path.write_bytes(json.dumps(doc, indent=1).encode("utf-8"))
+        print("spliced", ", ".join(clips), "into", path)
+
+
+# ------------------------------------------------------------------------------------------------
 # Carry: the focus held up in the right fist (per troop: CARRY pitch walking / running, u its face), the left arm free.
 # ------------------------------------------------------------------------------------------------
 
@@ -1474,6 +1649,14 @@ def main():
         Path(os.environ["CAST_TIP"]).write_text(json.dumps(t, indent=1) + "\n")
         print("tip", t)
         return
+    if os.environ.get("GG_CAST_ABILITY"):   # the ability clip only, spliced into the built and the exported clip files
+        clips = only_rig(ability_clips())
+        if os.environ["GG_CAST_ABILITY"] == "splice":
+            splice(clips, [K.OUT, ASSET_ANIMS / f"{TROOP}.animation.json"])
+        else:
+            Path(os.environ["GG_CAST_ABILITY"]).write_text(json.dumps({"format_version": "1.8.0", "animations": clips}, indent=1))
+            print("wrote", os.environ["GG_CAST_ABILITY"], "clips:", ", ".join(clips))
+        return
     if os.environ.get("CAST_DUMP"):
         dump(os.environ["CAST_DUMP"], [float(x) for x in os.environ.get("CAST_TICKS", "0,3,5.5,8,9.3,10,12,16,22,28").split(",")])
         return
@@ -1481,7 +1664,7 @@ def main():
     walk, run = GAITS.get(TROOP, (K.WALK, K.RUN))
     anims = {"walk_legs": K.gait_legs(walk), "walk_upper": gait_upper(walk, K.WALK_CARRY, False),
              "run_legs": K.gait_legs(run), "run_upper": gait_upper(run, K.RUN_CARRY, True),
-             "idle_legs": idle_legs, "idle_upper": idle_upper, **attack_clips(), **stance_clips(), **hit_clips(),
+             "idle_legs": idle_legs, "idle_upper": idle_upper, **attack_clips(), **ability_clips(), **stance_clips(), **hit_clips(),
              **death_clips()}
     only_rig(anims)
     K.OUT.parent.mkdir(parents=True, exist_ok=True)

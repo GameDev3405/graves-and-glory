@@ -44,18 +44,31 @@ final class GeoKnightChecks implements Phase1Checks.Suite {
     /** A crossbow troop: its 50-tick clip shoots, spans and reloads, so its shots are spaced wider (nudgeR) and its gap window sits after the reload. */
     static final boolean XBOW = RANGED && Arrays.stream(Spec.TROOPS).anyMatch(r -> r.id().equals(TROOP) && "crossbow".equals(r.family()));
     /** Ticks without a shot before a ranged duelist is made to shoot again: a crossbow standing waits 60 (its cooldown) so the gap after its 50-tick clip shows; walking, 40 (clips 51 ticks apart) so the 70-tick walk fits two shots each. */
-    static int nudgeR(String mode) { return XBOW && !mode.equals("walk") ? 60 : 40; }
+    static int nudgeR(String mode) { return XBOW && !mode.equals("walk") ? 60 : mode.equals("walk") ? 40 : 40 + ablLead; } // standing, an ability cast's clip runs ablLead ticks later, so its gap window does too
     /** The duelists' spacing (blocks); a bow duel stands where neither is too close to shoot. */
     static final double GAP = RANGED ? 10 : 2;
     /** Ticks into the foe's swing (a bow: its draw) it is killed; the swing must show 2 ticks before that. */
     static final int KILL_AT = RANGED ? 12 : 4;
     /** A melee troop's attack clip length in ticks, read from its exported animation file (the longest attack_ clip): the knight's
      *  are 22, a heavier swing's longer, and every tick of it is a frame to catch, with the gap window opening when it ends. */
+    /** A caster whose cast is its ability (a mend, a blight, a mist): its cast plays the ability clip, shifted so its impact lands ABL_WINDUP ticks after the cast event's (AttackController). */
+    static final boolean ABL_CAST = Arrays.stream(Spec.TROOPS).anyMatch(r -> r.id().equals(TROOP) && "caster".equals(r.family()) && switch (Abilities.row(r).mechanic()) { case "mend", "blight", "mist" -> true; default -> false; });
+    static final int ABL_WINDUP = ABL_CAST ? Arrays.stream(Spec.TROOPS).filter(r -> r.id().equals(TROOP)).mapToInt(r -> Math.max(0, Abilities.row(r).windupTicks())).findFirst().orElse(0) : 0;
+    static final String ABILITY_CLIP = Arrays.stream(Spec.TROOPS).filter(r -> r.id().equals(TROOP)).map(Spec.TroopsRow::ability).findFirst().orElse("");
+    /** Ticks an ability cast's clip starts after its cast event's start tick (caster_cast impactTicks 10 + ABL_WINDUP - the clip's impact marker), set by meleeTicks. */
+    static int ablLead;
     static final int MELEE_T = meleeTicks();
     static int meleeTicks() {
         try (var in = GeoKnightChecks.class.getResourceAsStream("/assets/gravesandglory/animations/troop/" + TROOP + ".animation.json")) {
             if (in == null) return 22;
             var anims = com.google.gson.JsonParser.parseReader(new java.io.InputStreamReader(in, java.nio.charset.StandardCharsets.UTF_8)).getAsJsonObject().getAsJsonObject("animations");
+            // A mend, blight or mist caster's cast plays its ability clip (AttackController.abilityClip), so its frames are that clip's.
+            var ab = ABL_CAST ? anims.getAsJsonObject(ABILITY_CLIP) : null;
+            if (ab != null && ab.has("animation_length")) {
+                if (ab.has("timeline")) for (var m : ab.getAsJsonObject("timeline").entrySet())
+                    if ("impact".equals(m.getValue().getAsString())) ablLead = Tactics.variants("caster").get(0).impactTicks() + ABL_WINDUP - (int) Math.round(Double.parseDouble(m.getKey()) * 20);
+                return (int) Math.round(ab.get("animation_length").getAsDouble() * 20);
+            }
             double len = 0;
             for (var e : anims.entrySet())
                 if (e.getKey().startsWith("attack_") && !e.getKey().endsWith("_legs") && e.getValue().getAsJsonObject().has("animation_length"))
@@ -114,6 +127,7 @@ final class GeoKnightChecks implements Phase1Checks.Suite {
             March m = run; if (m != null) m.owner.serverMarch(m, server.getTicks() - m.start);
             Duel d = duel; if (d != null) d.owner.serverDuel(d, server.getTicks() - d.start);
             Hold h = GeoKnightChecks.hold; if (h != null) h.owner.serverHold(h);
+            Runnable f = GeoKnightChecks.ablFire; if (f != null) f.run();
         });
     }
     /**
@@ -156,7 +170,7 @@ final class GeoKnightChecks implements Phase1Checks.Suite {
                 double rad = Math.toRadians(h.yaw), dx = Math.sin(rad), dz = -Math.cos(rad);
                 double s = h.walk * Math.max(0, u.mob.getWorld().getTime() - changedAt) - 2;
                 stand(u, lineX(j) + dx * s, cz + dz * s, h.yaw);
-            } else stand(u, lineX(j), cz + (CAPTURE != null && Math.abs(h.yaw - 180) > 1 && j >= 3 && !videoLine ? -12 : 0), h.yaw); // capture, side views: the far half of the line steps back so no troop faces a neighbour (a neighbour in front starts its attack clip over the stance)
+            } else stand(u, lineX(j), cz + (CAPTURE != null && stage >= 30 && Math.abs(h.yaw - 180) > 1 && j >= 3 && !videoLine ? -12 : 0), h.yaw); // capture, side views: the far half of the line steps back so no troop faces a neighbour (a neighbour in front starts its attack clip over the stance)
             // capture: a held "stunned" stance is also a real stun (far ahead), so the battle beat's Tactics.stunStance does not drop it; any other hold ends it
             if (h.stance.equals("stunned")) u.stunnedUntil = Long.MAX_VALUE / 4; else if (u.stunnedUntil == Long.MAX_VALUE / 4) u.stunnedUntil = 0;
             Tactics.set(u, h.stance, h.aim); Tactics.shield(u.mob, h.shield);
@@ -547,8 +561,8 @@ final class GeoKnightChecks implements Phase1Checks.Suite {
             // Everything below judges the last frame drawn, at that frame's own time (a frame can trail the client tick by one or more).
             long latest = Long.MIN_VALUE;
             for (var a : MotionEvents.Client.attacks(id)) if (a.startTick() <= ac.shownAt) latest = Math.max(latest, a.startTick());
-            if (ac.shownStart != Long.MIN_VALUE && ac.shownImpact >= 0) clientImpact.putIfAbsent(id + ":" + ac.shownStart, ac.shownImpact);
-            if (ac.shownAt > now - 1) for (var a : MotionEvents.Client.attacks(id)) if (a.startTick() <= ac.shownAt && ac.shownAt <= a.startTick() + 30 && ac.shownAt > clientKnown.getOrDefault(id + ":" + a.startTick(), Long.MAX_VALUE)) clientDrawn.add(id + ":" + a.startTick());
+            if (ac.shownStart != Long.MIN_VALUE && ac.shownImpact >= 0) clientImpact.putIfAbsent(id + ":" + ac.shownStart, ac.shownImpact + ac.shownLead);
+            if (ac.shownAt > now - 1) for (var a : MotionEvents.Client.attacks(id)) if (a.startTick() + ablLead <= ac.shownAt && ac.shownAt <= a.startTick() + ablLead + (ABL_CAST ? Math.min(30, MELEE_T - 1) : 30) && ac.shownAt > clientKnown.getOrDefault(id + ":" + a.startTick(), Long.MAX_VALUE)) clientDrawn.add(id + ":" + a.startTick());
             boolean dead = ac.shownDeath >= 0;
             double t = ac.shownAt - latest;
             if (!dead && latest != Long.MIN_VALUE && ac.shownStart == latest && ac.shownImpact >= 0 && Math.abs(ac.shownT - ac.shownImpact) <= 1) {
@@ -556,7 +570,7 @@ final class GeoKnightChecks implements Phase1Checks.Suite {
                 minImpactW = Math.min(minImpactW, ac.shownWeight); impactSamples++;
                 if (d.mode.equals("stand")) minImpactLegsW = Math.min(minImpactLegsW, ac.shownLegsWeight);
             }
-            if (!dead && latest != Long.MIN_VALUE && t >= GAP_T && t <= GAP_T + 2.5) { maxGapW = Math.max(maxGapW, ac.shownWeight); gapSamples++; }
+            if (!dead && latest != Long.MIN_VALUE && t >= GAP_T + ablLead && t <= GAP_T + ablLead + 2.5) { maxGapW = Math.max(maxGapW, ac.shownWeight); gapSamples++; }
             Gait g = Gait.LIVE.get(e);
             if (d.mode.equals("walk") && d.k > WALK0 + 6 && d.k < WALK0 + WALK && ac.shownWeight > .5) {
                 walkSwingSamples++;
@@ -590,7 +604,7 @@ final class GeoKnightChecks implements Phase1Checks.Suite {
                 if (!clientImpact.containsKey(key) && !clientDrawn.contains(key)) { unseen++; continue; }
                 n++;
                 Integer v = clientVariant.get(key); Double imp = clientImpact.get(key);
-                boolean good = v != null && v == r[2] && imp != null && imp == r[3] && r[4] - r[1] == r[3] + r[5];
+                boolean good = v != null && v == r[2] && imp != null && imp == r[3] + ABL_WINDUP && r[4] - r[1] == r[3] + r[5]; // an ability cast's clip lands on its windup's end
                 if (good) ok++; else if (bad.size() < 6) bad.add(String.format("%s v%d/%s delay%d clip%s landed+%d", key, r[2], v, r[3], imp, r[4] - r[1]));
             }
         }
@@ -626,6 +640,60 @@ final class GeoKnightChecks implements Phase1Checks.Suite {
         p.networkHandler.requestTeleport(cx + dx, cy - .45, cz - dist, 0, pitch);
     }
 
+    /**
+     * Capture (GRAVES_GEO_CAPTURE=ability; abilitywith runs the checks after it), plus one check: the troop's ability clip (work/anim-clip-spec
+     * C3 mend, C4 blight, C6 mist, C7 howl) cast for real by the server on the own three (Projectiles.fire for a mend, Abilities.attack for a
+     * blight or a mist, Abilities.howl for the howl), shot every tick at 0, 45 and 90 degrees from the camera as
+     * p1-geo-<troop>-abl-<angle>-<ticks from the clip's start, +10>.png. p1-geo-<troop>-ability-sync: on the own tier III the frame the client's
+     * clip crosses its impact marker lands on the server's tick (the mend's send, the blight's or mist's windup end); the howl, which has no
+     * cast event, starts within 3 ticks of the server's howl (the attribute sync's delay).
+     */
+    /** The mend's release, run on the server tick exactly 10 ticks after its announce (as Abilities.mend's next beat), then cleared. */
+    static volatile Runnable ablFire;
+    /** The client tick the cast was queued on: the howl has no server start tick on the client, so its clip start is judged on the client's clock. */
+    double ablClientCast = Double.NaN;
+    volatile long ablServer = Long.MIN_VALUE;
+    volatile int ablSubject = -1;
+    double ablCross = Double.NaN, ablPrevT = -1, ablClipStart = Double.NaN;
+    int ablChecked;
+    final List<String> ablBad = new ArrayList<>();
+
+    /**
+     * Casts the troop's ability on the own three for real (server thread); ablServer is the own tier III's release in world ticks. A mend is
+     * announced (phase 0: Projectiles.drawAhead, as Abilities.mend does the beat before) and sent 10 ticks later (phase 1); the rest cast at phase 0.
+     */
+    /** Ends any howl on the line (a natural one before the stage, or the last view's, which lasts as long as a view): the client sees its modifier off, so the next cast's howl starts on its edge. */
+    void unhowl() {
+        for (var u : knights) {
+            u.howlUntil = 0;
+            var speed = u.mob.getAttributeInstance(net.minecraft.entity.attribute.EntityAttributes.GENERIC_MOVEMENT_SPEED);
+            if (speed != null) speed.removeModifier(Abilities.HOWL);
+        }
+    }
+
+    void castAbility(GravesAndGlory.Battle b, int phase) {
+        long now = b.world.getTime();
+        for (int s = 0; s < 3; s++) {
+            var u = knights.get(s);
+            u.abilityAt = 0; u.stunnedUntil = 0;
+            var row = Abilities.row(u);
+            long rel = now;
+            boolean mend = row.mechanic().equals("mend");
+            if (mend != (phase == 1) && !(mend && phase == 0)) continue;
+            if (mend && phase == 0) {
+                Projectiles.drawAhead(b, u, knights.get(s == 0 ? 1 : 0).mob, 10);
+                if (s == 2) { ablServer = now + 10; ablSubject = u.mob.getId(); long at = now + 10; ablFire = () -> { if (b.world.getTime() >= at) { ablFire = null; castAbility(b, 1); } }; }
+                continue;
+            }
+            switch (row.mechanic()) {
+                case "mend" -> Projectiles.fire(b, u, knights.get(s == 0 ? 1 : 0).mob, "mend", 0f);
+                case "blight", "mist" -> { Abilities.attack(b, u, knights.get(5 - s).mob, b.time); rel = now + (u.windupUntil - b.time); }
+                default -> Abilities.howl(b, u, row, b.time);
+            }
+            if (s == 2) { ablServer = rel; ablSubject = u.mob.getId(); }
+        }
+    }
+
     public void step(MinecraftClient c, int tick) {
         if (tick > 30000 && stage != 9 && stage < 99) { Phase1Checks.report("p1-geo-" + TROOP + "-timeout", false, "stuck at stage " + stage); next(tick, 9); }
         int k = tick - at;
@@ -641,7 +709,7 @@ final class GeoKnightChecks implements Phase1Checks.Suite {
                 if (k > 100) {
                     if (!placed) { Phase1Checks.report("p1-geo-" + TROOP + "-placed", false, "could not place knights: " + why); next(tick, 9); return; }
                     Phase1Checks.report("p1-geo-" + TROOP + "-placed", true, "six knights");
-                    i = 0; next(tick, "gaps".equals(CAPTURE) ? 32 : "slash".equals(CAPTURE) ? 33 : "video".equals(CAPTURE) || "stunfix".equals(CAPTURE) ? 31 : CAPTURE != null ? 30 : 2);
+                    i = 0; next(tick, "ability".equals(CAPTURE) || "abilitywith".equals(CAPTURE) ? 40 : "gaps".equals(CAPTURE) ? 32 : "slash".equals(CAPTURE) ? 33 : "video".equals(CAPTURE) || "stunfix".equals(CAPTURE) ? 31 : CAPTURE != null ? 30 : 2);
                 }
             }
             case 2 -> {
@@ -1103,6 +1171,50 @@ final class GeoKnightChecks implements Phase1Checks.Suite {
                 if (got == 1 || k > 1500) {
                     System.out.println("[p1] slash view " + view + " frames " + taken.size() + " k " + k);
                     if (++i < SLASH_VIEWS.length) next(tick, 33); else { duel = null; i = 0; next(tick, 9); }
+                }
+            }
+            case 40 -> {
+                if (i >= CAP_YAW.length) {
+                    Phase1Checks.server(c, b -> { hold = null; quiet(b, false); });
+                    Phase1Checks.report("p1-geo-" + TROOP + "-ability-sync", ablBad.isEmpty() && ablChecked == CAP_YAW.length,
+                        ABILITY_CLIP + ": " + ablChecked + " casts" + (ablBad.isEmpty() ? ("howl".equals(ABILITY_CLIP) ? ", clip starts within 3 ticks of the howl" : ", release on the server tick") : ": " + String.join("; ", ablBad)));
+                    i = 0; next(tick, "abilitywith".equals(CAPTURE) ? 2 : 9); return;
+                }
+                float yaw = CAP_YAW[i];
+                if (k == 1) {
+                    ablServer = Long.MIN_VALUE; ablSubject = -1; ablCross = Double.NaN; ablPrevT = -1; ablClipStart = Double.NaN; lastShot = Integer.MIN_VALUE;
+                    Phase1Checks.server(c, b -> { quiet(b, true); hold(b, "", false, yaw, 0f, 0.0); camera(b, -3, 3.5, 3); unhowl(); });
+                }
+                if (k == 3) { c.setScreen(null); c.options.hudHidden = true; }
+                if (k == 40) { Phase1Checks.server(c, b -> castAbility(b, 0)); ablClientCast = c.world == null ? Double.NaN : c.world.getTime(); }
+                if (k > 40 && c.world != null && ablSubject >= 0) {
+                    var e = c.world.getEntityById(ablSubject);
+                    AttackController ac = e == null ? null : AttackController.LIVE.get(e);
+                    if (ac != null && "howl".equals(ABILITY_CLIP) && ac.howlShown >= ablServer - 5) ablClipStart = ac.howlShown;
+                    else if (ac != null && ABILITY_CLIP.equals(ac.shownClip) && ac.shownStart >= ablServer - 60) {
+                        ablClipStart = ac.shownStart + ac.shownLead;
+                        if (ablPrevT >= 0 && ablPrevT < ac.shownImpact && ac.shownT >= ac.shownImpact && Double.isNaN(ablCross))
+                            ablCross = ac.shownAt - (ac.shownT - ac.shownImpact) / ac.shownRate;
+                        ablPrevT = ac.shownT;
+                    }
+                    if (!Double.isNaN(ablClipStart)) {
+                        int t = (int) (c.world.getTime() - Math.round(ablClipStart));
+                        if (t != lastShot && t >= -2 && t <= 32) { lastShot = t; Phase1Checks.shot(c, String.format("geo-" + TROOP + "-abl-%s-%02d", CAP_ANG[i], t + 10)); }
+                    }
+                }
+                if (k == 120) {
+                    ablChecked++;
+                    String v = CAP_ANG[i];
+                    if ("howl".equals(ABILITY_CLIP)) {
+                        double d = ablClipStart - ablClientCast;
+                        if (Double.isNaN(d) || d < 0 || d > 3) ablBad.add(v + " howl started " + d + " client ticks after the cast was queued");
+                        else System.out.println("[geo-ability] " + v + " howl clip start - cast (client clock) = " + d);
+                    } else {
+                        double d = ablCross - ablServer;
+                        if (Double.isNaN(d) || Math.abs(d) > 0.6) ablBad.add(v + " release " + d + " ticks off the server tick");
+                        else System.out.println("[geo-ability] " + v + " release frame - server tick = " + String.format("%.3f", d));
+                    }
+                    i++; next(tick, 40);
                 }
             }
             case 9 -> {
