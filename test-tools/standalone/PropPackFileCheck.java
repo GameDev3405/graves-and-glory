@@ -10,7 +10,8 @@ import java.nio.file.Path;
 import java.util.Arrays;
 
 /** Prop pack delivery (prop kit plan task S7): pack name, sha1 from the bytes, folder resolution through gg-props-latest.sha1, url building,
- *  required default, port parsing, and the embedded HTTP server serving exactly /gg-props-<sha8>.zip with the current bytes. */
+ *  required default, port parsing, and the embedded HTTP server serving exactly /gg-props-<sha8>.zip with the current bytes; plus the packwiz
+ *  folder at /pack/...: path guard (.., encoded, absolute, backslash, symlink out), read-only, no listing, fresh reads, content types. */
 public final class PropPackFileCheck {
  static int count;static void check(boolean pass,String text){count++;if(!pass)throw new AssertionError(text);}
  static boolean refuses(Runnable r){try{r.run();return false;}catch(IllegalArgumentException e){return true;}}
@@ -20,6 +21,69 @@ public final class PropPackFileCheck {
   int code=c.getResponseCode();
   if(code==200)try(InputStream in=c.getInputStream()){body[0]=in.readAllBytes();}
   c.disconnect();return code;
+ }
+
+ /** A raw request line, so nothing on the client side normalizes the path. Returns the status code. */
+ static int raw(int port,String method,String path)throws IOException{
+  try(java.net.Socket s=new java.net.Socket("localhost",port)){
+   s.getOutputStream().write((method+" "+path+" HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n").getBytes(java.nio.charset.StandardCharsets.ISO_8859_1));
+   String line=new String(s.getInputStream().readNBytes(12),java.nio.charset.StandardCharsets.ISO_8859_1);
+   return Integer.parseInt(line.substring(9,12));
+  }
+ }
+ static String type(int port,String path)throws IOException{
+  HttpURLConnection c=(HttpURLConnection)URI.create("http://localhost:"+port+path).toURL().openConnection();
+  c.getResponseCode();String t=c.getContentType();c.disconnect();return t;
+ }
+
+ static void packwiz()throws Exception{
+  Path base=Files.createTempDirectory("gg-packwiz");
+  Path root=Files.createDirectories(base.resolve("pack"));
+  try{
+   Files.writeString(root.resolve("pack.toml"),"name = \"x\"\n");
+   Files.createDirectories(root.resolve("mods"));
+   Files.writeString(root.resolve("mods/a.pw.toml"),"name = \"a\"\n");
+   Files.write(root.resolve("mods/graves-and-glory-0.5.1.jar"),zip("jar"));
+   Files.writeString(root.resolve("mods/x+y.txt"),"plus");
+   Files.writeString(base.resolve("secret.txt"),"outside");
+   Files.writeString(root.resolve(".hidden"),"h");
+   check(PropPackFile.packwizFile(root,"/pack/pack.toml")!=null&&PropPackFile.packwizFile(root,"/pack/mods/a.pw.toml")!=null,"guard: plain files resolve");
+   check(PropPackFile.packwizFile(root,"/pack/mods/x+y.txt")!=null,"guard: + is a literal plus");
+   check(PropPackFile.packwizFile(root,"/pack/mods%2Fa.pw.toml")!=null,"guard: encoded slash inside the folder is fine");
+   for(String bad:new String[]{"/pack/../secret.txt","/pack/%2e%2e/secret.txt","/pack/%2E%2E/secret.txt","/pack/mods/../../secret.txt","/pack/%2e%2e%2fsecret.txt",
+     "/pack/..%5csecret.txt","/pack/mods\\..\\..\\secret.txt","/pack/C:/Windows/win.ini","/pack//etc/passwd","/pack/"+base.resolve("secret.txt").toString().replace('\\','/'),
+     "/pack/","/pack/mods","/pack/mods/","/pack/./pack.toml","/pack/.hidden","/pack/%00pack.toml","/pack/%zz","/secret.txt","/pack/missing.toml"})
+    check(PropPackFile.packwizFile(root,bad)==null,"guard refuses "+bad);
+   check(PropPackFile.packwizFile(null,"/pack/pack.toml")==null,"guard: no folder, nothing");
+   boolean linked=false;
+   try{Files.createSymbolicLink(root.resolve("out.txt"),base.resolve("secret.txt"));linked=true;}catch(IOException|UnsupportedOperationException|SecurityException e){}
+   if(linked)check(PropPackFile.packwizFile(root,"/pack/out.txt")==null,"guard: a symlink out of the folder is refused");
+   else System.out.println("PropPackFileCheck: symlinks not permitted here; symlink-out case skipped");
+   check(PropPackFile.contentType("pack.toml").startsWith("text/plain")&&PropPackFile.contentType("a.JAR").equals("application/java-archive")
+    &&PropPackFile.contentType("p.zip").equals("application/zip")&&PropPackFile.contentType("x.bin").equals("application/octet-stream"),"content types");
+
+   HttpServer http=PropPackFile.serve(0,()->null,root);
+   try{
+    int port=http.getAddress().getPort();byte[][] body=new byte[1][];
+    check(get(port,"/pack/pack.toml",body)==200&&new String(body[0]).equals("name = \"x\"\n"),"serves pack.toml");
+    check(type(port,"/pack/pack.toml").startsWith("text/plain")&&type(port,"/pack/mods/graves-and-glory-0.5.1.jar").equals("application/java-archive"),"served content types");
+    check(get(port,"/pack/mods/graves-and-glory-0.5.1.jar",body)==200&&Arrays.equals(body[0],zip("jar")),"serves the jar bytes");
+    Files.writeString(root.resolve("pack.toml"),"name = \"y\"\n");
+    check(get(port,"/pack/pack.toml",body)==200&&new String(body[0]).equals("name = \"y\"\n"),"reads fresh: a copied-in update is served at once");
+    check(raw(port,"HEAD","/pack/pack.toml")==200,"HEAD allowed");
+    for(String m:new String[]{"POST","PUT","DELETE"})check(raw(port,m,"/pack/pack.toml")==405,m+" is 405");
+    check(raw(port,"GET","/pack/")==404&&raw(port,"GET","/pack/mods/")==404&&raw(port,"GET","/pack/mods")==404,"no directory listing");
+    check(raw(port,"GET","/pack/missing.toml")==404,"missing file 404");
+    for(String bad:new String[]{"/pack/../secret.txt","/pack/%2e%2e/secret.txt","/pack/%2E%2e%2Fsecret.txt","/pack/mods/../../secret.txt","/pack/..%5csecret.txt"}){
+     int code=raw(port,"GET",bad);check(code==400||code==404,"over HTTP refused ("+code+"): "+bad);
+    }
+    check(raw(port,"GET","/secret.txt")==404&&raw(port,"GET","/")==404,"outside /pack/ and no prop pack: 404");
+    Files.delete(root.resolve("mods/a.pw.toml"));
+    check(raw(port,"GET","/pack/mods/a.pw.toml")==404,"a removed file is gone at once");
+   }finally{http.stop(0);}
+  }finally{
+   try(var w=Files.walk(base)){for(Path p:(Iterable<Path>)w.sorted(java.util.Comparator.reverseOrder())::iterator)Files.deleteIfExists(p);}
+  }
  }
 
  public static void main(String[] args)throws Exception{
@@ -76,6 +140,7 @@ public final class PropPackFileCheck {
    try(var s=Files.list(dir)){for(Path p:(Iterable<Path>)s::iterator)Files.delete(p);}
    Files.delete(dir);
   }
+  packwiz();
   System.out.println("PropPackFileCheck: "+count+" checks passed");
  }
 }
