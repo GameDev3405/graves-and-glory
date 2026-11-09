@@ -329,11 +329,11 @@ function renderQueue() {
     h("span", { class: "meta" }, h("span", { text: str(b.doc.lane) }), h("span", { text: plural((b.doc.clip_order || []).length, "clip", "clips") }),
       h("span", { text: "round " + str(b.doc.round) }), h("span", { text: age(b.doc.created_at) })));
   const open = sorted.filter(b => !Booth.isLocked(b.doc, S.verdicts[b.id])), done = sorted.filter(b => Booth.isLocked(b.doc, S.verdicts[b.id])).reverse().slice(0, 8);
-  app.replaceChildren(bar,
+  app.replaceChildren(...[bar,
     open.length ? h("h2", { class: "sec", text: "Waiting for review" }) : null,
     open.length ? h("div", { class: "queue" }, open.map(row)) : h("div", { class: "center" }, h("strong", { text: "Nothing waiting for review." }), h("span", { text: "New batches appear here when a lane agent submits one." })),
     done.length ? h("h2", { class: "sec", text: "Reviewed" }) : null,
-    done.length ? h("div", { class: "queue done" }, done.map(row)) : null);
+    done.length ? h("div", { class: "queue done" }, done.map(row)) : null].filter(Boolean));
 }
 
 // ---- batch view ----------------------------------------------------------------------------------------------
