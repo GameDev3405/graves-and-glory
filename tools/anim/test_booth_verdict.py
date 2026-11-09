@@ -47,6 +47,13 @@ class DecideTest(unittest.TestCase):
                          {"action": "merge", "sha": TIP,
                           "message": "Kort approved in review booth, batch rig-20261109-abcdef0"})
 
+    def test_land_when_approved_batch_targets_main(self):
+        m = dict(manifest(), target="main", lane="anim/troop-x")
+        self.assertEqual(bv.decide(m, verdict(), TIP),
+                         {"action": "land", "sha": TIP, "lane": "anim/troop-x",
+                          "command": "python tools/land.py anim/troop-x",
+                          "message": "Kort approved in review booth, batch rig-20261109-abcdef0"})
+
     def test_wait_when_not_sent(self):
         self.assertEqual(bv.decide(manifest(), verdict(sent=0), TIP), {"action": "wait", "undecided": []})
 

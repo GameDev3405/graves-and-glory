@@ -122,8 +122,8 @@ def build(repo, config_path, target, out_root="work/booth", batch=None, clips=No
         raise BoothError("these inputs are not committed, so the batch would not match the lane commit: %s"
                          % ", ".join(dirty))
 
-    if target in ("main", "master"):
-        raise BoothError("the booth never targets %s; name the branch the lane merges into" % target)
+    if target == "master":
+        raise BoothError("the booth never targets master; use main (decide then says to land the lane with tools/land.py)")
     lane_sha = bg.resolve(repo, "HEAD")
     lane = bg._text(bg._git(repo, "rev-parse", "--abbrev-ref", "HEAD")).strip()
     if lane == "HEAD":
@@ -246,7 +246,7 @@ def build_parser():
     b = sub.add_parser("build", help="render a batch into work/booth/<batch-id>/")
     b.add_argument("--repo", default=".", help="lane worktree (default: current directory)")
     b.add_argument("--config", required=True, help="art/anim/<family>/booth.<troop>.json")
-    b.add_argument("--target", required=True, help="branch the lane will merge into")
+    b.add_argument("--target", required=True, help="branch the lane will merge into; main means the lane lands with tools/land.py")
     b.add_argument("--batch", default=None, help="existing batch id: add a round after fixes")
     b.add_argument("--clips", default=None, help="comma list: limit a first round to these clips")
     b.add_argument("--ss", type=int, default=2, help="supersampling factor (default 2)")

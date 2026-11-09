@@ -200,11 +200,11 @@ class BuildTest(unittest.TestCase):
         self.assertEqual((n["previous_sha"], n["changed"], n["round"]), (self.target_sha, True, 2))
         self.assertEqual(self.viewers(m2, "nod"), {"new"})
 
-    def test_main_target_and_detached_head_refused(self):
-        git(self.repo, "branch", "main", "target")
+    def test_master_target_and_detached_head_refused(self):
+        git(self.repo, "branch", "master", "target")
         with self.assertRaises(BoothError) as cm:
-            booth.build(self.repo, CFG, "main", ss=1)
-        self.assertIn("main", str(cm.exception))
+            booth.build(self.repo, CFG, "master", ss=1)
+        self.assertIn("master", str(cm.exception))
         git(self.repo, "checkout", "-q", "--detach")
         with self.assertRaises(BoothError) as cm:
             self.build()

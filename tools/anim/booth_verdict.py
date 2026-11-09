@@ -72,7 +72,8 @@ def validate(verdict, manifest):
 
 
 def decide(manifest, verdict, lane_tip):
-    """What the lane does next: invalid, wait, resubmit, fix or merge (checked in that order)."""
+    """What the lane does next: invalid, wait, resubmit, fix, then merge (or land, for a batch that targets main), checked in that order.
+    main is reached only through tools/land.py, which lands the lane tip; resubmit above guarantees that tip is the reviewed commit."""
     names = [c["name"] for c in manifest["clips"]]
     if verdict is None:
         return {"action": "wait", "undecided": names}
@@ -91,4 +92,9 @@ def decide(manifest, verdict, lane_tip):
                 for n in names if given[n]["verdict"] == "rejected"]
     if rejected:
         return {"action": "fix", "clips": rejected}
-    return {"action": "merge", "sha": manifest["submitted_sha"], "message": "Kort approved in review booth, batch %s" % manifest["batch"]}
+    message = "Kort approved in review booth, batch %s" % manifest["batch"]
+    if manifest.get("target") == "main":
+        lane = manifest["lane"]
+        return {"action": "land", "sha": manifest["submitted_sha"], "lane": lane,
+                "command": "python tools/land.py %s" % lane, "message": message}
+    return {"action": "merge", "sha": manifest["submitted_sha"], "message": message}
