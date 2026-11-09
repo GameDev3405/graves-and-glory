@@ -58,7 +58,7 @@ STUN_ARMS = {
     "bow":     [("left", 26, 0.60, None, 0, -4), ("right", 30, 0.00, -10, 0.0, 0)],            # the bow hangs from the fist, the string hand drops
     "xbow":    [("right", 32, 0.60, None, 0, 0), ("left", 18, 0.00, -15, 0.0, 0)],
     "thrower": [],                                                                              # explicit low-carry pose below
-    "staff":   [("right", 18, 0.90, None, 0, 0), ("left", 14, 0.00, -20, 0.0, -4)],           # the staff stays up, planted for support
+    "staff":   [("right", 8, -1.60, None, 0, 0),  ("left", 14, 0.00, -20, 0.0, -4)],           # the staff stays up, planted for support (grip 40% up: the wrist tips the head forward so the butt clears the floor)
     "focus":   [("right", 26, 0.50, None, 0, 0), ("left", 14, 0.00, -20, 0.0, -4)],
 }
 # the harpooner's one-handed low carry (the same solved pose as its fall-back guard): the harpoon hangs forward-down, clear of the legs

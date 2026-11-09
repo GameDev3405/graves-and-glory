@@ -60,6 +60,23 @@ The Sunweaver Mage, the first caster: a sun staff held in the right fist, robes 
 - **In-game checks** (round 2 clips): PASS, 22 of 22 checks, 0 false. 35 of 35 cast frames caught side and three-quarter (17 of 17 far). All 9 standing and 4 walking casts matched the server release. Weight at the release is 1.0, and 0 between casts.
 - **Verdict: finished** (superseded by v2). Video: `mage_v2.mp4`.
 
+## Staff grip (2026-11-09)
+
+Kort: the mage held its staff at the bottom like a wand. It now holds it about 40% up the shaft, like a walking staff, and the casts are two-handed.
+
+- **Rig:** `troop_rig.GRIP_SLIDE["mage"]` slides the staff cubes down through the right fist: t1 3.0, t2 4.5, t3 5.5 px. The fist is now 40% up the shaft on every tier. Mage only; the hexer, wm_seer, tc_mist and knight build output is byte-identical.
+- **Clips (`build_caster_anims.py` mage):**
+  - Guard, idle, walk and run carry the staff upright, with the butt 1.2 to 4.3 px off the floor. The fist is higher (`CARRY["R"]`, `"RF"`).
+  - The cast and `mend_sunweaver` raise the staff in both hands, with the left fist 4.5 px above the right (`ls`). The left hand comes off at the drive, as before.
+  - Release and impact ticks are unchanged.
+- **Downstream:**
+  - The rest stance drops the staff arm 6 degrees, not 16. The stun drops it 8 degrees with the head tipped forward (`STUN_ARMS["staff"]`). Without this the longer butt went into the floor.
+  - Stances, charge and reactions were rerun, and heldprop was rerun on the deaths.
+  - The cast tip moved (offset y 2.13 to 1.99, z 2.22 to 1.98 blocks; cosmetic).
+- **Probe (staff axis into the body or robe):** at most 0.55 px on every changed clip, except deaths and aim_up, which are unchanged from before (cowl 0.85 to 1.33 px). The `death_right` butt dips 0.8 px while the staff falls.
+- **In game:** 22 of 22 checks, 0 false.
+- **Minor:** the grip wrap texture now shows below the fist. It needs a model or texture move (out of animation scope).
+
 ## Review
 
 - **v2 verdict: SHIP WITH MINORS, pending one look at the death hem.** Run, wall and cast passed review round 2. The death hem fix (round 2) was checked by the animator on the reel and the probe, not by the reviewer. Video: `mage_v3c.mp4`.
