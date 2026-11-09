@@ -253,11 +253,29 @@ def quench_trough():
 
 ALL = [forge, anvil, weapon_rack, shield_rack, quench_trough, grindstone_bench]
 
+def model_props():
+    """Props made with the workflow (docs/props/WORKFLOW.md): art/props/<id>/model.py, each with build() -> Prop."""
+    import importlib.util
+    out = []
+    for pid in sorted(os.listdir(HERE)):
+        path = os.path.join(HERE, pid, "model.py")
+        if not os.path.isfile(path): continue
+        spec = importlib.util.spec_from_file_location("prop_model_" + pid, path)
+        mod = importlib.util.module_from_spec(spec); spec.loader.exec_module(mod)
+        out.append((pid, mod.build))
+    return out
+
+def builders():
+    """(id, build) for every prop: the smithy set above, then every art/props/<id>/model.py."""
+    return [(f.__name__, f) for f in ALL] + model_props()
+
 def main(argv):
     want = set(argv[1:])
-    for f in ALL:
+    for pid, f in builders():
+        if want and pid not in want: continue
         p = f()
-        if not want or p.id in want: write(p, HERE)
+        assert p.id == pid, "%s: build() returned prop id %r" % (pid, p.id)
+        write(p, HERE)
 
 if __name__ == "__main__":
     main(sys.argv)
