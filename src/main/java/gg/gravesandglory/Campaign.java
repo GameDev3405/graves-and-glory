@@ -707,7 +707,7 @@ public final class Campaign {
     boolean leash=true;
     void tick(){
         if(b.time%20==0)expireNotices();
-        if(b.running){if(b.time%20==0)releaseExpiredHolds();if(b.time%600==0)checkpoint();}
+        if(b.running){BattleEffects.flickers(b);if(b.time%20==0)releaseExpiredHolds();if(b.time%600==0)checkpoint();}
         if(pendingBattle!=null&&b.ready){ // the map of a campaign battle is built: it starts unless something changed meanwhile
             var row=pendingBattle;UUID id=pendingCommander;pendingBattle=null;pendingCommander=null;
             var host=b.server.getPlayerManager().getPlayer(id);String refused=host==null?"":soloRefusal(id,MARCH_SOLO);

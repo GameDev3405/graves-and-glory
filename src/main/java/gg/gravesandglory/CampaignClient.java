@@ -191,6 +191,8 @@ public final class CampaignClient {
         if(!extra.isEmpty()){y+=3;int ink=bonusClaimed()?DarkUi.MUTED:DarkUi.GOLD;for(var line:extra){g.drawText(font,line,w/2-font.getWidth(line)/2,y,ink,false);y+=11;}}
     }
     /** The battle being fought as its campaignBattles row, or null (a room, practice). */
+    /** The glimpur ebb (brief N3) on this caster's glow: 1 unless a running campaign battle sets ebb and the caster is mid-flicker. Keyed on the network id and world time, as the server's particles and sound are. */
+    static float ebbGlow(net.minecraft.entity.Entity e){var row=GravesAndGloryClient.battleActive()?marchRow():null;return MarchMath.Ebb.glow(row!=null&&row.ebb(),e.getId(),e.getWorld().getTime());}
     static Spec.CampaignBattlesRow marchRow(){return MarchMath.row(text(battle,"id"),Spec.CAMPAIGNBATTLES);}
     /** Whether the bonus of the battle being fought has paid before (plan 2C.5). */
     static boolean bonusClaimed(){var b=MarchMath.bonus(marchRow(),Spec.BONUSOBJECTIVES);return b!=null&&profile.bonusClaimed.contains(b.id());}

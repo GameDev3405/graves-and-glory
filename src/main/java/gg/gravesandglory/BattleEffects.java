@@ -74,12 +74,21 @@ public final class BattleEffects {
             }break;
         }
     }
+    /** The ebb row of the running campaign battle, if it sets ebb (brief N3). */
+    static boolean ebb(GravesAndGlory.Battle b){var row=b.running?b.campaign.activeBattle:null;return row!=null&&row.ebb();}
+    static boolean ebbing(GravesAndGlory.Battle b,GravesAndGlory.Unit u){return MarchMath.Ebb.glow(ebb(b),u.mob.getId(),b.world.getTime())<1f;}
+    /** Each tick of an ebb battle: a caster whose flicker starts gives a faint gutter, as a candle snuffed (presentation only). */
+    static void flickers(GravesAndGlory.Battle b){
+        if(!ebb(b))return;long t=b.world.getTime();
+        for(var u:b.units)if(u.spec.magic()&&u.mob.isAlive()&&MarchMath.Ebb.starts(true,u.mob.getId(),t))
+            b.world.playSound(null,u.mob.getX(),u.mob.getY(),u.mob.getZ(),net.minecraft.sound.SoundEvents.BLOCK_CANDLE_EXTINGUISH,net.minecraft.sound.SoundCategory.HOSTILE,.35f,.8f);
+    }
     static void strike(GravesAndGlory.Battle b,GravesAndGlory.Unit u,LivingEntity enemy){
         if(!u.spec.ranged()){
             // No vanilla SWEEP_ATTACK here: the swing animation carries the blow (Kort, 2026-11-08).
             flash(b,new Vec3d(enemy.getX(),enemy.getBodyY(.6),enemy.getZ()),u.squad.team);
             Audio.swing(b,u); // a blade's swish (AudioCues.SWORD_SWING); the landed blow has its own sound in Combat.resolve
-        }else if(u.spec.magic()){
+        }else if(u.spec.magic()&&!ebbing(b,u)){ // mid-flicker in an ebb battle the caster's particles fade with its glow
             b.world.spawnParticles(u.squad.team==0?ParticleTypes.ENCHANT:ParticleTypes.SOUL,u.mob.getX(),u.mob.getY()+1.3,u.mob.getZ(),8,.4,.4,.4,.03);
         }
     }

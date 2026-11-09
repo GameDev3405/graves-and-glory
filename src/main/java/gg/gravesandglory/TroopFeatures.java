@@ -73,8 +73,8 @@ final class TroopFeatures {
         final TroopRenderer<T> r;Glow(TroopRenderer<T> r){super(r);this.r=r;}
         @Override public void render(MatrixStack m,VertexConsumerProvider v,int light,T e,float limbAngle,float limbDistance,float tickDelta,float age,float headYaw,float headPitch){
             var l=r.look;if(l==null||e.isInvisible())return;Identifier glow=TroopModels.glow(l,r.far);if(glow==null)return;
-            TroopModel<T> model=getContextModel();model.pass=BodyCache.ARMOUR;
-            try{model.render(m,v.getBuffer(RenderLayer.getEyes(glow)),FULL_BRIGHT,OverlayTexture.DEFAULT_UV,1f,1f,1f,1f);}finally{model.pass=BodyCache.BODY;}
+            TroopModel<T> model=getContextModel();model.pass=BodyCache.ARMOUR;float g=l.troop().magic()?CampaignClient.ebbGlow(e):1f; // the glimpur ebb dims a caster's glow now and then
+            try{model.render(m,v.getBuffer(RenderLayer.getEyes(glow)),FULL_BRIGHT,OverlayTexture.DEFAULT_UV,g,g,g,1f);}finally{model.pass=BodyCache.BODY;}
         }
     }
 
@@ -95,7 +95,7 @@ final class TroopFeatures {
             m.push();for(ModelPart p:path)p.rotate(m);w.grip(m);
             int quads=mesh.render(m.peek(),v.getBuffer(RenderLayer.getEntityCutout(w.texture())),light,LivingEntityRenderer.getOverlay(e,0f),1f,1f,1f,1f,limit);
             // the glow pass draws the same mesh again through the eyes layer: weaponQuads counts the mesh once, weaponGlowDraws the extra passes
-            if(w.glow()!=null){mesh.render(m.peek(),v.getBuffer(RenderLayer.getEyes(w.glow())),FULL_BRIGHT,OverlayTexture.DEFAULT_UV,1f,1f,1f,1f,limit);weaponGlowDraws++;}
+            if(w.glow()!=null){float g=r.look.troop().magic()?CampaignClient.ebbGlow(e):1f;mesh.render(m.peek(),v.getBuffer(RenderLayer.getEyes(w.glow())),FULL_BRIGHT,OverlayTexture.DEFAULT_UV,g,g,g,1f,limit);weaponGlowDraws++;}
             m.pop();r.weaponDrawn=true;r.weaponId=w.id();r.weaponFrame=frame;r.weaponFar=far;r.weaponQuads=quads;
         }
     }
