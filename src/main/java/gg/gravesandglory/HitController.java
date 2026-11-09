@@ -22,7 +22,9 @@ import java.util.WeakHashMap;
  * The reaction plays from the tick the blow landed (MotionEvents hit_v1). A blow from the front drives the chest back, one from
  * the right drives the right shoulder back and bends the body away; the four directional clips are mixed by the blow's bearing.
  * Light blows flinch, medium and heavy ones stagger (heavy deeper). A blow the shield took plays the block instead: the shield arm
- * is driven back and the body absorbs it. Nothing here feeds back to the server.
+ * is driven back and the body absorbs it. A blow that threw the troop (hit_v1 flag 4) plays hit_knockback; one that dragged it toward
+ * its striker (flag 8, the Harpoon, the Undertow) plays hit_pulled, a forward stumble toward the puller, or, with the puller behind it,
+ * the throw (it is dragged backwards). Each falls back to the stagger on a model without the clip. Nothing here feeds back to the server.
  */
 final class HitController extends AnimationController<GeoTroop> {
     /** A blow first heard of late still eases in over this many ticks from when it arrived (see AttackController.LATE_IN). */
@@ -31,6 +33,8 @@ final class HitController extends AnimationController<GeoTroop> {
     static final double HEAVY = 1.55;
     static final double[] BLOCK_SCALE = {0.6, 1.0, 1.3};
     static final String[] DIRS = {"front", "back", "right", "left"};
+    /** The pulled reaction (hit_v1 flag 8) and its footwork (hit_pulled_legs). */
+    static final String PULLED = "hit_pulled";
 
     private long seenTick = Long.MIN_VALUE;
     private double seenAt;
@@ -75,7 +79,21 @@ final class HitController extends AnimationController<GeoTroop> {
             double t = now - h.tick();
             if (t < 0) continue;
             double k;
-            if (h.blocked() && !(h.knockback() && model.getAnimation(animatable, "hit_knockback") != null)) { // a thrown target shows the throw even behind a shield, when the model has one
+            // pulled: toward a puller in front, the forward stumble; toward one behind, dragged backwards, the throw
+            boolean front = Math.abs(((h.bearing() % 360) + 540) % 360 - 180) <= 90;
+            boolean pulled = h.pulled() && front && model.getAnimation(animatable, PULLED) != null;
+            boolean thrown = h.knockback() || (h.pulled() && !front);
+            if (pulled) { // the forward stumble, shown even behind a shield (it is the drag, not the blow)
+                Animation clip = model.getAnimation(animatable, PULLED);
+                if (t >= clip.length()) continue;
+                k = h.weight() >= 2 ? HEAVY : 1;
+                if (h.tick() == seenTick) k *= AttackController.smooth((now - seenAt) / LATE_IN);
+                add(clip, t, bones, (float) k);
+                legs(model, clip, t, bones, k * still);
+                if (h == latest) { shownClip = clip.name(); shownScale = k; shownT = t; java.util.Arrays.fill(shownMix, 0); }
+                continue;
+            }
+            if (h.blocked() && !(thrown && model.getAnimation(animatable, "hit_knockback") != null)) { // a thrown target shows the throw even behind a shield, when the model has one
                 k = BLOCK_SCALE[Math.max(0, Math.min(2, h.weight()))];
                 Animation clip = model.getAnimation(animatable, "hit_block");
                 if (clip == null || t >= clip.length()) continue;
@@ -85,7 +103,7 @@ final class HitController extends AnimationController<GeoTroop> {
                 if (h == latest) { shownClip = clip.name(); shownScale = k; shownT = t; java.util.Arrays.fill(shownMix, 0); }
                 continue;
             }
-            if (h.knockback()) { // thrown: the model's own hit_knockback (and hit_knockback_legs) when it has one; else the medium stagger below
+            if (thrown) { // thrown: the model's own hit_knockback (and hit_knockback_legs) when it has one; else the medium stagger below
                 Animation clip = model.getAnimation(animatable, "hit_knockback");
                 if (clip != null && t < clip.length()) {
                     k = h.weight() >= 2 ? HEAVY : 1;
@@ -96,7 +114,7 @@ final class HitController extends AnimationController<GeoTroop> {
                     continue;
                 }
             }
-            String w = h.weight() == 0 && !h.knockback() ? "light" : "medium";
+            String w = h.weight() == 0 && !thrown && !h.pulled() ? "light" : "medium";
             k = h.weight() >= 2 ? HEAVY : 1;
             if (h.tick() == seenTick) k *= AttackController.smooth((now - seenAt) / LATE_IN);
             mix(h.bearing(), m);

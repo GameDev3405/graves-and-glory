@@ -26,17 +26,25 @@ import java.util.WeakHashMap;
  * BattleMath.DEATH_FALL_TICKS and holds its last frame while the corpse lies and fades (BodyCache). Where the troop has them, a
  * gear variant of the fall ({@link #drop}: keep the gear, drop the weapon, drop both) is picked from the entity's UUID. Nothing here
  * feeds back.
+ * <p>
+ * A troop that rose instead of dying (rise_v1: Rise Again, the Hollow King's Undying King) and whose model has {@link #FAKE} and {@link #RISE}
+ * plays them here too, alive, over every other layer: it falls (fake_death, held on its last frame) and stands back up (rise), timed by
+ * {@link #riseAt} so the rise ends on the tick the server's window ends; the stance layer shows no stun meanwhile.
  */
 final class DeathController extends AnimationController<GeoTroop> {
     /** Blend from the living pose into the fall over this many ticks of deathTime. */
     static final double FADE_IN = 2;
     static final String[] CLIPS = {"death_back", "death_forward", "death_left", "death_right"};
+    /** The rise clips (a model has both or the rise plays as before: the stun). */
+    static final String FAKE = "fake_death", RISE = "rise";
+    /** Ticks the rise fades back into the live layers at its end (its last frame is the ready guard, which the live layers show by then). */
+    static final double RISE_OUT = 4;
 
     /** The fall this troop latched, or null while alive. */
     private String latched;
-    /** What the last frame showed, for the in-game checks (GeoKnightChecks): clip, clip time and weight. Never read in play. */
+    /** What the last frame showed, for the in-game checks (GeoKnightChecks): clip, clip time and weight; for a rise, the ticks since it fired and its span. Never read in play. */
     String shownClip = "";
-    double shownT = -1, shownWeight;
+    double shownT = -1, shownWeight, shownRiseElapsed = -1, shownRiseSpan;
     private boolean listed;
     static final Map<Entity, DeathController> LIVE = Collections.synchronizedMap(new WeakHashMap<>());
 
@@ -71,14 +79,52 @@ final class DeathController extends AnimationController<GeoTroop> {
         return DROPS[(int) Math.floorMod(MotionMath.mix(id.hashCode()), (long) DROPS.length)];
     }
 
+    /**
+     * Where a rise is {@code elapsed} ticks after it fired: {0 (fake_death) or 1 (rise), clip time, span}, or null before it or once it is over. The span is
+     * the server's window (the ticks it keeps the troop out of the fight); a window of 0 (the troop fights on at once: the Hollow King's row) plays the clips
+     * at their own length instead, cosmetic. A span as long as both clips or longer plays the fall, holds its last frame and starts the rise so it ends on
+     * the span's last tick; a shorter one plays both clips quickened to fit it.
+     */
+    static double[] riseAt(double elapsed, int window, double fake, double rise) {
+        double span = window > 0 ? window : fake + rise;
+        if (elapsed < 0 || elapsed >= span || fake <= 0 || rise <= 0) return null;
+        if (span >= fake + rise) {
+            double start = span - rise;
+            return elapsed < start ? new double[]{0, Math.min(elapsed, fake), span} : new double[]{1, elapsed - start, span};
+        }
+        double s = span / (fake + rise);
+        return elapsed < fake * s ? new double[]{0, elapsed / s, span} : new double[]{1, Math.min(rise, (elapsed - fake * s) / s), span};
+    }
+
+    /** The rise the troop is in at world time {@code now} ({@link #riseAt}), or null: none heard, none in its span, or its model lacks either clip. */
+    static double[] rising(CoreGeoModel<GeoTroop> model, GeoTroop troop, Entity e, double now) {
+        MotionEvents.Rise r = MotionEvents.Client.rise(e.getId());
+        if (r == null) return null;
+        Animation fake = model.getAnimation(troop, FAKE), rise = model.getAnimation(troop, RISE);
+        if (fake == null || rise == null) return null;
+        return riseAt(now - r.tick(), r.window(), fake.length(), rise.length());
+    }
+
     @Override
     public void process(CoreGeoModel<GeoTroop> model, AnimationState<GeoTroop> state, Map<String, CoreGeoBone> bones,
                         Map<String, BoneSnapshot> snapshots, double seekTime, boolean crashWhenCantFindBone) {
         Entity e = state.getData(DataTickets.ENTITY);
         if (e == null) return;
         if (!listed) { listed = true; LIVE.put(e, this); }
-        shownWeight = 0; shownT = -1; shownClip = "";
-        if (!(e instanceof LivingEntity l) || !(l.isDead() || l.deathTime > 0)) { latched = null; return; }
+        shownWeight = 0; shownT = -1; shownClip = ""; shownRiseElapsed = -1;
+        if (!(e instanceof LivingEntity l) || !(l.isDead() || l.deathTime > 0)) {
+            latched = null;
+            if (e.getWorld() == null) return;
+            double now = e.getWorld().getTime() + state.getPartialTick();
+            double[] at = rising(model, animatable, e, now);
+            if (at == null) return;
+            Animation clip = model.getAnimation(animatable, at[0] == 0 ? FAKE : RISE);
+            double elapsed = now - MotionEvents.Client.rise(e.getId()).tick();
+            double w = AttackController.smooth(elapsed / FADE_IN) * AttackController.smooth((at[2] - elapsed) / RISE_OUT);
+            if (w > 0) AttackController.apply(clip, at[1], bones, (float) w);
+            shownClip = clip.name(); shownT = at[1]; shownWeight = w; shownRiseElapsed = elapsed; shownRiseSpan = at[2];
+            return;
+        }
         if (latched == null) {
             String fall = pick(MotionEvents.Client.hits(e.getId()), e.getId()), dropped = fall + drop(e.getUuid());
             latched = model.getAnimation(animatable, dropped) != null ? dropped : fall;

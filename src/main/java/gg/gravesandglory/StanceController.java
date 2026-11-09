@@ -140,6 +140,8 @@ final class StanceController extends AnimationController<GeoTroop> {
         boolean shield = e instanceof LivingEntity l && l.isUsingItem();
         MotionEvents.Stance sent = MotionEvents.Client.stance(e.getId());
         String stance = sent.name();
+        // a troop that rose plays its fall and rise on the death layer instead of the stun (rise_v1), where its model has them
+        if (stance.equals("stunned") && DeathController.rising(model, animatable, e, now) != null) stance = "";
         aimPitch = stance.equals("ranged_aim") ? sent.aimPitch() : 0; // AIM_PITCH_HOOK: read below as aimSmooth, which blends the three aim clips
         long recent = Long.MIN_VALUE;
         for (MotionInput.Attack a : MotionEvents.Client.attacks(e.getId())) recent = Math.max(recent, a.startTick());

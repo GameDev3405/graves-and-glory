@@ -1,6 +1,9 @@
-"""The Moot Hound's clips (animation rebuild, v2), written to out/wm_hound.animation.json.
+"""The Moot Hound's clips (animation rebuild, v2), written to out/wm_hound.animation.json (GG_HOUND_OUT, if set, redirects it).
 
     python art/anim/wm_hound/build_wm_hound_anims.py
+
+hit_pulled / hit_pulled_legs (hit_v1 flag 8: dragged toward its striker) are additive like the other hits: the forequarters lurch forward,
+the head and chest are yanked toward the puller, the ears flatten, the front paws reach forward to catch it, the hind paws scramble after.
 
 A quadruped on the knight's controllers. Layers: *_legs keys body (the rump, parent of all) and the twelve leg bones; *_upper,
 attack and hit clips key chest, head, jaw, ears and tail. Paired clips share length and clock, so every paw is placed by IK
@@ -673,6 +676,44 @@ def hit(kind, d):
     return L, fn
 
 
+PULL_T = 14.0
+
+
+def hit_pull():
+    """Dragged toward a striker in front (a harpoon, an undertow): the body lurches forward and dips, the head and chest are yanked out,
+    the front paws reach forward and catch, the hind paws scramble after; everything back by PULL_T."""
+    L = PULL_T
+
+    def fn(t):
+        ru, rb, rf = ready_pose(0)
+        a = K([(0, 0), (1.5, 1.0), (4.0, 0.9), (L * 0.6, 0.3), (L, 0)])(t)
+        rec = damp(t, 3.0, L * 0.45, L * 0.25)
+        up = {b: {ch: list(v) for ch, v in ru[b].items()} for b in ru}
+        body = {ch: list(v) for ch, v in rb.items()}
+        feet = dict(rf)
+        body["position"][2] += -2.6 * a                # anim z+ is back: the body lurches forward
+        body["position"][1] += -0.7 * a
+        body["rotation"][0] += 5 * a                     # the forequarters dip
+        up["chest"]["rotation"][0] += 9 * a
+        up["head"]["rotation"][0] += 12 * a - 16 * K([(0, 0), (0.8, 1), (2.5, 0), (L, 0)])(t) + 5 * rec   # the head trails, then stretches out
+        up["jaw"]["rotation"][0] += 14 * K([(0, 0), (1, 1), (3, 0.6), (L * 0.6, 0), (L, 0)])(t)
+        for e, sg in (("ear_right", 1), ("ear_left", -1)):
+            up[e]["rotation"][0] += 26 * a
+            up[e]["rotation"][2] += 8 * a * sg
+        up["tail"]["rotation"][0] += 22 * a              # the tail streams back
+        pushv = np.array([0.0, 0.0, 1.0])               # world forward (anim z- is world +z)
+        for i, l in enumerate(["front_left", "front_right", "back_left", "back_right"]):
+            b0 = rf[l][0]
+            b1 = b0 + pushv * (2.2 if l.startswith("front") else 1.4)
+            s0 = 1.6 + i * 1.3
+            if t < 9.5:
+                feet[l] = step(b0, b1, (t - s0) / 2.2, 1.2, 25, l.startswith("front"))
+            else:
+                feet[l] = step(b1, b0, (t - 9.8 - i * 0.6) / 2.2, 0.8, 18, l.startswith("front"))
+        return up, body, feet
+    return L, fn
+
+
 # deaths -------------------------------------------------------------------------------------------------
 LIMP = {"front": [-25, 0, 18, 30], "back": [30, 0, -24, 25]}
 # per fall: how far it rolls over (1 = flat on its side), the head's final pitch (+ chin tucked), the legs' extra fold
@@ -805,10 +846,22 @@ def main():
                 delta.append(dd)
             CLIPS[nm] = bake(delta, L, False, UPPER)
             CLIPS[nm + "_legs"] = bake(delta, L, False, LOWER)
+    L, fn = hit_pull()
+    s, w = sample_clip("hit_pulled", L, fn, loop=False); report["hit_pulled"] = w
+    delta = []
+    for smp in s:
+        dd = {}
+        for b in UPPER + LOWER:
+            dd[b] = {"rotation": [a - c for a, c in zip(smp[b]["rotation"], ready0[b]["rotation"])]}
+            if b in ("body", "throat_skull"):
+                dd[b]["position"] = [a - c for a, c in zip(smp[b].get("position", [0, 0, 0]), ready0[b].get("position", [0, 0, 0]))]
+        delta.append(dd)
+    CLIPS["hit_pulled"] = bake(delta, L, False, UPPER)
+    CLIPS["hit_pulled_legs"] = bake(delta, L, False, LOWER)
     for d in ("back", "forward", "left", "right"):
         death_clip(d)
     out = {"format_version": "1.8.0", "animations": CLIPS}
-    path = os.path.join(HERE, "out", "wm_hound.animation.json")
+    path = os.environ.get("GG_HOUND_OUT") or os.path.join(HERE, "out", "wm_hound.animation.json")
     json.dump(out, open(path, "w"), separators=(",", ":"))
     print("wrote", path, len(CLIPS), "clips; worst IK miss px:",
           ", ".join(f"{k} {v:.2f}" for k, v in report.items() if v > 0.05) or "none > 0.05")

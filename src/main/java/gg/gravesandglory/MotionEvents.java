@@ -31,16 +31,24 @@ public final class MotionEvents {
     private MotionEvents() {}
     /** A troop's swing: a varInt entity id, a varInt index into its family's attackVariants rows (Tactics.variants, Battle's pick) and a varLong world tick it began on. */
     public static final Identifier ATTACK = new Identifier("gravesandglory", "attack_v1");
-    /** A blow that struck a troop: a varInt entity id, byte kind (KINDS), byte zone (ZONES), float signed bearing (BattleMath.signedBearing), byte weight (0-2), byte flags (1 blocked, 2 lethal, 4 knockback: the blow also threw the troop, Abilities.knock; an old client ignores the bit), varLong world tick. */
+    /** A blow that struck a troop: a varInt entity id, byte kind (KINDS), byte zone (ZONES), float signed bearing (BattleMath.signedBearing), byte weight (0-2), byte flags (1 blocked, 2 lethal, 4 knockback: the blow also threw the troop, Abilities.knock; 8 pulled: the blow also dragged the troop toward its
+     * striker, Abilities.pull; an old client ignores the bits it does not know), varLong world tick. */
     public static final Identifier HIT = new Identifier("gravesandglory", "hit_v1");
     /**
      * A troop's stance: a varInt entity id, byte index into STANCES and a float aimPitch (Projectiles.aimPitch: degrees, positive down as MotionInput.aimPitch
      * and Minecraft's pitch, so a lofted volley is negative; 0 unless ranged_aim). The client stores it as sent and MotionInput reads it unchanged. Replaces stance_v1.
      */
     public static final Identifier STANCE = new Identifier("gravesandglory", "stance_v2");
+    /**
+     * A troop rose instead of dying (Houses.allowDeath: Rise Again, the Hollow King's Undying King): a varInt entity id, a varLong world tick the rise fired on and a
+     * varInt window, the ticks the server keeps it out of the fight (its stun: Unit.stunnedUntil less the battle time; 0 when it fights on at once). Presentation
+     * only: a client whose model has fake_death and rise plays them (DeathController) instead of the stun; one without them keeps the stun. An old client never
+     * registers the channel, so it is never sent one and keeps the stun; a new client on an old server hears none and keeps the stun.
+     */
+    public static final Identifier RISE = new Identifier("gravesandglory", "rise_v1");
     public static final List<String> STANCES = BattleMath.STANCES, KINDS = BattleMath.KINDS, ZONES = BattleMath.ZONES;
     /** Packets sent since the server started, for the live checks: attacks, hits, stances on a change, stances and attacks on START_TRACKING, and on a late channel registration. */
-    static volatile int attackSends, hitSends, stanceSends, trackingSends, registerSends;
+    static volatile int attackSends, hitSends, stanceSends, trackingSends, registerSends, riseSends, pulledSends;
     /**
      * The entities a troop's blow is being dealt to now (Combat.resolve), with how deep: the hit Combat sends is that target's own, so HitEventMixin sends
      * none for damage to it meanwhile. Damage to any other entity inside the resolve (thorns on the attacker, a splash) still sends its own. Server thread only.
@@ -51,6 +59,8 @@ public final class MotionEvents {
         RESOLVING.merge(target, 1, Integer::sum);
         try { return damage.getAsBoolean(); } finally { RESOLVING.computeIfPresent(target, (k, n) -> n > 1 ? n - 1 : null); }
     }
+    /** A rise as the client holds it: the world tick it fired on and the server's window in ticks (0: the troop fights on at once). */
+    public record Rise(long tick, int window) {}
     /** A stance as the client holds it. */
     public record Stance(String name, float aimPitch) { public static final Stance NONE = new Stance("", 0); }
 
@@ -75,16 +85,37 @@ public final class MotionEvents {
         return sendHit(victim, kind, zone, bearing, weight, blocked, lethal, false, players);
     }
     static int sendHit(LivingEntity victim, String kind, String zone, float bearing, int weight, boolean blocked, boolean lethal, boolean knockback, Collection<ServerPlayerEntity> players) {
+        return sendHit(victim, kind, zone, bearing, weight, blocked, lethal, knockback, false, players);
+    }
+    /** The same, with the pulled flag (8): the blow also dragged the troop toward its striker (Abilities.pull: the Harpoon, the Undertow). */
+    static int sendHit(LivingEntity victim, String kind, String zone, float bearing, int weight, boolean blocked, boolean lethal, boolean knockback, boolean pulled, Collection<ServerPlayerEntity> players) {
         int k = Math.max(0, KINDS.indexOf(kind)), z = ZONES.indexOf(zone), sent = 0;
         if (z < 0) z = 1;
         long tick = victim.getWorld().getTime();
         for (ServerPlayerEntity p : players) {
             if (!ServerPlayNetworking.canSend(p, HIT)) continue;
             PacketByteBuf buf = PacketByteBufs.create(); buf.writeVarInt(victim.getId()); buf.writeByte(k); buf.writeByte(z); buf.writeFloat(bearing);
-            buf.writeByte(Math.max(0, Math.min(2, weight))); buf.writeByte((blocked ? 1 : 0) | (lethal ? 2 : 0) | (knockback ? 4 : 0)); buf.writeVarLong(tick);
+            buf.writeByte(Math.max(0, Math.min(2, weight))); buf.writeByte((blocked ? 1 : 0) | (lethal ? 2 : 0) | (knockback ? 4 : 0) | (pulled ? 8 : 0)); buf.writeVarLong(tick);
             ServerPlayNetworking.send(p, HIT, buf); sent++;
         }
-        hitSends += sent; return sent;
+        hitSends += sent; if (pulled) pulledSends += sent; return sent;
+    }
+    /** Sends a troop's rise (RISE) to every player tracking it: the world tick it fired on (Unit.riseTick) and the server's window (Unit.riseWindow). Returns how many it sent. */
+    public static int sendRise(GravesAndGlory.Unit u) { return sendRise(u, watchers(u.mob)); }
+    static int sendRise(GravesAndGlory.Unit u, Collection<ServerPlayerEntity> players) {
+        int sent = 0;
+        for (ServerPlayerEntity p : players) {
+            if (!ServerPlayNetworking.canSend(p, RISE)) continue;
+            PacketByteBuf buf = PacketByteBufs.create(); buf.writeVarInt(u.mob.getId()); buf.writeVarLong(u.riseTick); buf.writeVarInt(u.riseWindow);
+            ServerPlayNetworking.send(p, RISE, buf); sent++;
+        }
+        riseSends += sent; return sent;
+    }
+    /** World ticks past a rise's window (or past its start, for a window of 0) that a player catching up is still sent it; the client plays what is left of it. */
+    static final int RISE_CATCHUP = 100;
+    /** The troop's rise to a player catching up, while it may still show. Returns how many it sent. */
+    static int catchUpRise(GravesAndGlory.Unit u, ServerPlayerEntity p) {
+        return u.riseTick >= 0 && u.mob.getWorld().getTime() - u.riseTick < Math.max(u.riseWindow, 0) + RISE_CATCHUP ? sendRise(u, List.of(p)) : 0;
     }
     /** Sends a troop's stance (STANCES) and its aim pitch to every player tracking it. Returns how many it sent. */
     public static int sendStance(GravesAndGlory.Unit u, String stance, float aimPitch) { return sendStance(u, stance, aimPitch, watchers(u.mob)); }
@@ -133,14 +164,14 @@ public final class MotionEvents {
     /** The troop's newest swing to a player catching up, with the world tick it began on, while it still shows (swingCurrent). Returns how many it sent. */
     static int catchUpAttack(GravesAndGlory.Unit u, ServerPlayerEntity p) { return swingCurrent(u) ? sendAttack(u, u.catchVariant, u.swingTick, List.of(p)) : 0; }
     /** What a player who registers the channels late is owed for a troop his client already has: its stance and its current swing. Returns how many it sent. */
-    static int catchUp(GravesAndGlory.Unit u, ServerPlayerEntity p) { return catchUpStance(u, p) + catchUpAttack(u, p); }
+    static int catchUp(GravesAndGlory.Unit u, ServerPlayerEntity p) { return catchUpStance(u, p) + catchUpAttack(u, p) + catchUpRise(u, p); }
     /**
      * What a player who starts tracking a troop is owed (START_TRACKING, which Fabric fires before the entity's spawn packet): its stance now (the client
      * keeps a stance for an id it does not have yet) and its current swing on a server task, after the spawn packet has gone (the client drops a swing for
      * an id its world does not have). The task sends it only while the player still tracks the living troop. Returns how many it sent now.
      */
     static int startTracking(GravesAndGlory.Unit u, ServerPlayerEntity p) {
-        int sent = catchUpStance(u, p);
+        int sent = catchUpStance(u, p) + catchUpRise(u, p); // a rise, like a stance, is kept for an id the client does not have yet
         if (swingCurrent(u)) p.server.send(new ServerTask(p.server.getTicks(), () -> {
             if (!u.mob.isAlive() || !PlayerLookup.tracking(u.mob).contains(p)) return;
             int late = catchUpAttack(u, p); trackingSends += late; Tactics.trackingSends += late;
@@ -167,6 +198,11 @@ public final class MotionEvents {
         static final Map<Integer, Deque<MotionInput.Attack>> ATTACKS = new ConcurrentHashMap<>();
         static final Map<Integer, Deque<MotionInput.Hit>> HITS = new ConcurrentHashMap<>();
         static final Map<Integer, Stance> STANCES = new ConcurrentHashMap<>();
+        /** Each troop's newest rise (rise_v1), kept like a stance for an id the world does not have yet. */
+        static final Map<Integer, Rise> RISES = new ConcurrentHashMap<>();
+        /** The troop's newest rise, or null. */
+        public static Rise rise(int id) { return RISES.get(id); }
+        static void rise(int id, long tick, int window) { RISES.put(id, new Rise(tick, Math.max(0, window))); }
         /** The one empty queue attacks and hits return for an id with none, so no frame allocates one: read only, never added to. */
         private static final Deque<?> NONE = new ArrayDeque<>(0);
         /** The troop's recent swings, oldest first (empty for none). Read only. */
@@ -202,13 +238,13 @@ public final class MotionEvents {
         static void hit(boolean known, int id, int kind, int zone, float bearing, int weight, int flags, long tick) {
             if (!known) return;
             String k = kind >= 0 && kind < KINDS.size() ? KINDS.get(kind) : "blunt", z = zone >= 0 && zone < ZONES.size() ? ZONES.get(zone) : "body";
-            push(HITS, id, new MotionInput.Hit(k, z, bearing, BattleMath.weightOrdinal(weight), (flags & 1) != 0, (flags & 2) != 0, (flags & 4) != 0, tick));
+            push(HITS, id, new MotionInput.Hit(k, z, bearing, BattleMath.weightOrdinal(weight), (flags & 1) != 0, (flags & 2) != 0, (flags & 4) != 0, (flags & 8) != 0, tick)); // higher bits (a newer server's) are ignored
         }
         static void stance(int id, int index, float aimPitch) {
             String name = index >= 0 && index < MotionEvents.STANCES.size() ? MotionEvents.STANCES.get(index) : "";
             if (name.isEmpty()) STANCES.remove(id); else STANCES.put(id, new Stance(name, aimPitch));
         }
-        static void forget(int id) { ATTACKS.remove(id); HITS.remove(id); STANCES.remove(id); }
-        static void clear() { ATTACKS.clear(); HITS.clear(); STANCES.clear(); }
+        static void forget(int id) { ATTACKS.remove(id); HITS.remove(id); STANCES.remove(id); RISES.remove(id); }
+        static void clear() { ATTACKS.clear(); HITS.clear(); STANCES.clear(); RISES.clear(); }
     }
 }

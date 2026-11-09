@@ -117,6 +117,8 @@ public final class GravesAndGloryClient implements ClientModInitializer {
             MotionEvents.Client.attack(id,variant,start,e==null?MotionEvents.Client.NO_ENTITY:t==null?MotionEvents.Client.UNKNOWN_TROOP:Tactics.variants(t.family()).size());});});
         ClientPlayNetworking.registerGlobalReceiver(MotionEvents.HIT,(client,handler,buf,responder)->{int id=buf.readVarInt(),kind=buf.readByte(),zone=buf.readByte();float bearing=buf.readFloat();int weight=buf.readByte(),flags=buf.readByte();long tick=buf.readVarLong();
             client.execute(()->MotionEvents.Client.hit(client.world!=null&&client.world.getEntityById(id)!=null,id,kind,zone,bearing,weight,flags,tick));});
+        // rise_v1: a troop rose instead of dying; kept, like a stance, for an id the world may not have yet (DeathController plays it).
+        ClientPlayNetworking.registerGlobalReceiver(MotionEvents.RISE,(client,handler,buf,responder)->{int id=buf.readVarInt();long tick=buf.readVarLong();int window=buf.readVarInt();client.execute(()->MotionEvents.Client.rise(id,tick,window));});
         ClientEntityEvents.ENTITY_UNLOAD.register((entity,world)->{TroopMotion.forget(entity.getId());MotionEvents.Client.forget(entity.getId());});
         // A soldier's rank (rank_v1): level, weapon tier and armour tier by entity id, for the troop renderer, the chevrons and the portraits (Task 9).
         RankSync.registerClient();

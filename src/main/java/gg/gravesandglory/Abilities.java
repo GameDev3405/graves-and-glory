@@ -365,7 +365,7 @@ final class Abilities {
                 if (!target.isAlive() || Combat.structure(target) || !offCooldown(b, u, row, second)) return;
                 if (row.status().equals("slow")) {
                     slow(b, u, target, row);
-                    if (row.knockback() < 0) pull(b, u, target, u.mob.getPos(), -row.knockback()); // the Harpooner's: a negative knockback drags the target toward the shooter
+                    if (row.knockback() < 0 && pull(b, u, target, u.mob.getPos(), -row.knockback())) markPulled(b, target); // the Harpooner's: a negative knockback drags the target toward the shooter; its hit_v1 (sent after onHit) says so
                 } else Statuses.apply(b, u, target, row);
             }
             case "slam" -> {
@@ -499,6 +499,15 @@ final class Abilities {
     static final Map<Integer, Long> KNOCKED = new HashMap<>();
     /** Whether this entity was thrown (or is about to be: splash marks it) this battle tick; reading it spends the mark. */
     static boolean takeKnocked(GravesAndGlory.Battle b, LivingEntity e) { Long t = KNOCKED.remove(e.getId()); return t != null && t == b.time; }
+    /**
+     * Entity ids dragged by pull, with the battle tick: the hit_v1 of the blow that pulled them carries the pulled flag (8). The Harpoon's pull comes after its blow
+     * and before the hit_v1 (Combat.resolve sends it after onHit); the Undertow's comes after its blow, so it marks its targets before (pullStep). Server thread only.
+     * Presentation only: nothing else reads it.
+     */
+    static final Map<Integer, Long> PULLED = new HashMap<>();
+    static void markPulled(GravesAndGlory.Battle b, LivingEntity e) { PULLED.values().removeIf(t -> t < b.time); PULLED.put(e.getId(), b.time); }
+    /** Whether this entity was pulled (or is about to be) this battle tick; reading it spends the mark. */
+    static boolean takePulled(GravesAndGlory.Battle b, LivingEntity e) { Long t = PULLED.remove(e.getId()); return t != null && t == b.time; }
 
     /** Every living enemy of a team that a blow can fall on: the other side's troops, its seated commanders in the field and its structures. */
     static List<LivingEntity> enemies(GravesAndGlory.Battle b, int team) {
@@ -542,20 +551,32 @@ final class Abilities {
      * cleared, which also cancels the knockback the blow that pulled it gave (a sliding pull would be undone by it); a commander, whose position his client owns,
      * gets the velocity that carries him about that far. A structure is never moved, and nor is an anchored troop.
      */
-    static void pull(GravesAndGlory.Battle b, LivingEntity e, Vec3d toward, double blocks) { pull(b, null, e, toward, blocks); }
+    static boolean pull(GravesAndGlory.Battle b, LivingEntity e, Vec3d toward, double blocks) { return pull(b, null, e, toward, blocks); }
 
-    /** The same pull by a troop: from, when not null, is logged as a helper on a target that can be pulled (Veterans.helped: kill credit, design 3.2). */
-    static void pull(GravesAndGlory.Battle b, GravesAndGlory.Unit from, LivingEntity e, Vec3d toward, double blocks) {
-        if (Combat.structure(e) || blocks <= 0 || anchored(b, e)) return;
+    /** The same pull by a troop: from, when not null, is logged as a helper on a target that can be pulled (Veterans.helped: kill credit, design 3.2). Returns whether it moved it. */
+    static boolean pull(GravesAndGlory.Battle b, GravesAndGlory.Unit from, LivingEntity e, Vec3d toward, double blocks) {
+        if (Combat.structure(e) || blocks <= 0 || anchored(b, e)) return false;
         if (from != null) Veterans.helped(b, from, e);
         double dx = toward.x - e.getX(), dz = toward.z - e.getZ(), distance = Math.hypot(dx, dz);
-        var resist = e.getAttributeInstance(EntityAttributes.GENERIC_KNOCKBACK_RESISTANCE);
-        double step = Math.min(blocks * (1 - (resist == null ? 0 : resist.getValue())), distance - PULL_STOP);
-        if (step < 0.05 || distance < 1e-6) return;
+        double step = pullStep(e, toward, blocks);
+        if (step < 0.05 || distance < 1e-6) return false;
         Vec3d by = new Vec3d(dx / distance * step, 0, dz / distance * step);
         if (e instanceof ServerPlayerEntity) e.setVelocity(by.multiply(PLAYER_PULL));
         else { e.move(MovementType.SELF, by); e.setVelocity(0, e.getVelocity().y, 0); }
         e.velocityModified = true;
+        return true;
+    }
+
+    /** How far pull would drag the entity (blocks, before walls; under 0.05 it is not moved): blocks less its knockback resistance, never closer than PULL_STOP. */
+    static double pullStep(LivingEntity e, Vec3d toward, double blocks) {
+        double distance = Math.hypot(toward.x - e.getX(), toward.z - e.getZ());
+        var resist = e.getAttributeInstance(EntityAttributes.GENERIC_KNOCKBACK_RESISTANCE);
+        return Math.min(blocks * (1 - (resist == null ? 0 : resist.getValue())), distance - PULL_STOP);
+    }
+
+    /** Whether pull would move the entity now (the Undertow marks its targets with this before their blow, whose hit_v1 then says pulled). */
+    static boolean pulls(GravesAndGlory.Battle b, LivingEntity e, Vec3d toward, double blocks) {
+        return !Combat.structure(e) && blocks > 0 && !anchored(b, e) && Math.hypot(toward.x - e.getX(), toward.z - e.getZ()) >= 1e-6 && pullStep(e, toward, blocks) >= 0.05;
     }
 
     /** A walking body's horizontal velocity carries it about 2.2 times that far over the ticks that follow, on ordinary ground (the friction series 1 / (1 - 0.546)): what a commander's pull is scaled by. */
@@ -1013,7 +1034,9 @@ final class Abilities {
         float base = (float) (row.amount() * b.campaign.damage(u));
         Vec3d at = u.mob.getPos();
         for (var e : caught) {
+            if (pulls(b, e, at, -row.knockback())) markPulled(b, e); // its hit_v1, sent inside resolve, carries the pulled flag (presentation only)
             Combat.resolve(b, u, e, base, "slam", true);
+            PULLED.remove(e.getId()); // spent by that hit_v1, or none was sent (the blow did not land): either way no later blow this tick reads it
             if (!e.isAlive()) continue;
             if (row.statusTicks() > 0) slow(b, u, e, row);
             pull(b, u, e, at, -row.knockback());

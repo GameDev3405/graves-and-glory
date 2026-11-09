@@ -196,7 +196,7 @@ final class Houses {
      * false, which skips vanilla's death and AFTER_DEATH: so the army loses nothing, the enemy earns no kill and the death log gains no entry.
      * A soldier's own rise row (N7, Undying King: Abilities.riseRow, his level-3 row) lets him rise too, Legendary or not, at its own chance (amount2), added to the
      * trait's where both apply; such a rise takes the row's health share (amount) and stun (durationTicks). It is the same once-only path, and the soldier keeps
-     * his level, kills and gear: he never died.
+     * his level, kills and gear: he never died. Its clients hear of the rise (MotionEvents.RISE, presentation only).
      */
     static boolean allowDeath(LivingEntity e, DamageSource src) {
         var b = GravesAndGlory.battle;
@@ -213,6 +213,9 @@ final class Houses {
         u.spellCenter = null; // a stunned caster loses the spell it had begun
         e.setHealth((float) ((own != null ? own.amount() : t.value2()) * e.getMaxHealth()));
         BattleEffects.soul(b, e.getPos());
+        // presentation only (rise_v1): its clients play the fall and the rise (fake_death, rise) over the stun, where its model has them
+        u.riseTick = e.getWorld().getTime(); u.riseWindow = (int) Math.max(0, u.stunnedUntil - b.time);
+        MotionEvents.sendRise(u);
         return false;
     }
 
