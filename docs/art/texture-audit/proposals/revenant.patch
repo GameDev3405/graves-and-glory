@@ -1,5 +1,5 @@
 ﻿diff --git a/art/hand/revenant/build_revenant.py b/art/hand/revenant/build_revenant.py
-index 5f001223..1a606288 100644
+index 5f001223..f1c6035c 100644
 --- a/art/hand/revenant/build_revenant.py
 +++ b/art/hand/revenant/build_revenant.py
 @@ -19,7 +19,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
@@ -48,16 +48,8 @@ index 5f001223..1a606288 100644
 -        r = rng(seed, face, w, h); g = blank(w, h)
 -        bloom = {(x // 2, y // 2): r.random() for x in range(w) for y in range(h)}
 +        r = rng(seed, face, w, h); g = blank(w, h); ph = r.randrange(3)
-         for y in range(h):
-             for x in range(w):
--                v = lit(face, x, w, base + 1) + ((1 if x % 2 == 0 else 0) if y % 2 == 0 else (-1 if x % 2 else 0))
--                if face not in ("top", "bottom") and y == 0: v += 1
--                roll = r.random()
--                if roll < flake: v += 1
--                elif roll < flake + 0.10: v -= 2
--                if bloom[(x // 2, y // 2)] < patch: g[y][x] = clamp(RUST, v - 1)
--                else: g[y][x] = clamp(GIRON, v + 1)
--                if r.random() < moss: g[y][x] = MOSS[1 + r.randrange(3)]
++        for y in range(h):
++            for x in range(w):
 +                f = (x + ph) % 3
 +                v = litv(face, x, y, w, h, base) + (1 if f == 0 else (-1 if f == 2 else 0)) * (face not in ("top", "bottom"))
 +                if r.random() < wear * 0.4: v -= 1
@@ -72,8 +64,16 @@ index 5f001223..1a606288 100644
 +    def paint(face, w, h):
 +        g = blank(w, h)
 +        side = face not in ("top", "bottom")
-+        for y in range(h):
-+            for x in range(w):
+         for y in range(h):
+             for x in range(w):
+-                v = lit(face, x, w, base + 1) + ((1 if x % 2 == 0 else 0) if y % 2 == 0 else (-1 if x % 2 else 0))
+-                if face not in ("top", "bottom") and y == 0: v += 1
+-                roll = r.random()
+-                if roll < flake: v += 1
+-                elif roll < flake + 0.10: v -= 2
+-                if bloom[(x // 2, y // 2)] < patch: g[y][x] = clamp(RUST, v - 1)
+-                else: g[y][x] = clamp(GIRON, v + 1)
+-                if r.random() < moss: g[y][x] = MOSS[1 + r.randrange(3)]
 +                hole = 1 if (y % 2 == 1 and (x + y // 2) % 2 == 0) else 0
 +                v = base + 2 + lift + LIT[face] - hole
 +                if side:
@@ -85,12 +85,19 @@ index 5f001223..1a606288 100644
          return g
      return paint
  
-@@ -124,9 +149,12 @@ def jaw():
+@@ -124,9 +149,19 @@ def jaw():
  def coif():
      """The rusted coif: mail over the skull, a violet cord tied across the brow, the face window cut open."""
      def paint(face, w, h):
 -        g = rust_mail(3, "cf", 0.06, 0.08)(face, w, h)
-+        g = rust_mail(3, "cf", 0.06, 0.08, lift=1)(face, w, h)
++        g = rust_mail(3, "cf", 0.06, 0.08, lift=0 if face == "back" else 1)(face, w, h)   # the back a step under the front
++        if face == "top":                                              # the crown: lit front-left (row h-1 is the front edge),
++            for y in range(h):                                         # falling to a dark back edge, a dark rim at the sides
++                for x in range(w):
++                    hole = 1 if (y % 2 == 1 and (x + y // 2) % 2 == 0) else 0
++                    v = 3 + (2 * y) // max(1, h - 1) + (1 if x < w // 2 else 0) - hole
++                    if x in (0, w - 1) or y == 0: v = min(v, 3) - (0 if x == 0 and y > 0 else 1)
++                    g[y][x] = clamp(GIRON, v)
          if face in ("front", "back", "left", "right"):
 -            for x in range(w): g[1][x] = VIOLET[2 + (x % 2)]          # the brow cord
 +            for x in range(w): g[1][x] = VIOLET[1 + (x % 2)]          # the brow cord (second to the belt: a step darker)
@@ -100,7 +107,7 @@ index 5f001223..1a606288 100644
              for x in range(w):
                  if face != "front" or x in (0, w - 1): g[h - 1][x] = clamp(RUST, 1 + x % 2)
          if face == "front":
-@@ -153,7 +181,7 @@ def glow_fn(bone, box):
+@@ -153,7 +188,7 @@ def glow_fn(bone, box):
  
  def visor():
      """The rusted visor: a plate over the lower face with vertical breathing slits, rust at its rim, the eyes left open above."""
@@ -109,7 +116,7 @@ index 5f001223..1a606288 100644
      def paint(face, w, h):
          g = base(face, w, h)
          if face == "front":
-@@ -184,43 +212,53 @@ def torso():
+@@ -184,43 +219,53 @@ def torso():
                  g[y][3] = BONE[3 if y % 2 else 2]; g[y][4] = G[0]                         # the spine
              for y in range(2, 10):
                  g[y][2] = g[y][5] = G[1] if y % 3 else G[2]
@@ -174,7 +181,7 @@ index 5f001223..1a606288 100644
          if face not in ("top", "bottom"): jag(g, 0, "ep" + face, 2, 0.8)
          return g
      return paint
-@@ -243,13 +281,16 @@ def arm():
+@@ -243,13 +288,16 @@ def arm():
          r = rng("ar", face, w); g = blank(w, h)
          for y in range(h):
              for x in range(w):
@@ -192,7 +199,7 @@ index 5f001223..1a606288 100644
          for y in range(edge[0] + 2, h - 2):                              # the radius, bare through the flesh
              xx = 1 if face in ("front", "right") else w - 2
              if face != "back": g[y][xx] = BONE[2 + (y % 2)] if y % 3 else BONE[4]
-@@ -263,20 +304,21 @@ def wrist():
+@@ -263,20 +311,21 @@ def wrist():
          g = blank(w, h)
          for y in range(h):
              for x in range(w):
@@ -214,21 +221,27 @@ index 5f001223..1a606288 100644
              for x in range(w):
 -                g[y][x] = clamp(GSKIN, lit(face, x, w, 2) + r.choice((-1, 0, 0, 1)))
 +                r.choice((-1, 0, 0, 1))
-+                g[y][x] = clamp(GSKIN, lit(face, x, w, 2) - (1 if y >= h - 3 else 0))   # the bare shin, darkening into the boot
++                g[y][x] = clamp(GSKIN, lit(face, x, w, 3) + (1 if lightx(face, x, w) > 0 else 0) - (1 if y >= h - 3 else 0))   # the bare shin, darkening into the boot
          if face == "bottom": return g
          c = cloth(face, w, h)
          edge = [5 + r.randrange(4) for _ in range(w)]
-@@ -293,15 +335,57 @@ def leg():
+@@ -293,15 +342,63 @@ def leg():
  def boot():
      """A rotted grave-boot: split dark leather bound with violet cord across the instep."""
      def paint(face, w, h):
 -        g = surf(ROT, 3, "bt", 0.12)(face, w, h)
-+        g = surf(ROT, 1, "bt", 0.0)(face, w, h)
++        g = surf(ROT, 2, "bt", 0.0)(face, w, h)
          if face not in ("top", "bottom"):
 -            for x in range(w): g[0][x] = VIOLET[2 + x % 2]
 +            for x in range(w): g[0][x] = VIOLET[1 + x % 2] if x % 3 != 2 else ROT[3]   # the ankle cord, third in rank
++            if h > 3:
++                for x in range(w): g[1][x] = clamp(ROT, 1 + (1 if lightx(face, x, w) > 0 else 0))   # the ankle's shadow band
++            for y in range(1, h):
++                for x in range(w):
++                    if lightx(face, x, w) > 0 and y < h - 1: g[y][x] = clamp(ROT, 4 - (1 if y == 1 and h > 3 else 0))   # the lit column
              for x in range(w): g[h - 1][x] = ROT[0]
-+            if face == "front" and h > 2: g[1][1] = ROT[4]                  # a wet glint on the toe cap
++            if face == "front" and h > 2:
++                for x in range(1, w - 1): g[h - 2][x] = ROT[4] if x <= w // 2 else ROT[3]   # the toe cap, lit from the left
          return g
      return paint
  
@@ -279,7 +292,7 @@ index 5f001223..1a606288 100644
  
  # ---- the team tabard, in shreds (cloth sheet) ----
  def shred(T, seed, taper):
-@@ -312,7 +396,7 @@ def shred(T, seed, taper):
+@@ -312,7 +409,7 @@ def shred(T, seed, taper):
          r = rng("td", seed, face, w, h)
          for y in range(h):
              for x in range(w):
@@ -288,7 +301,7 @@ index 5f001223..1a606288 100644
                  g[y][x] = clamp(T, v)
                  if y > 3 and r.random() < 0.05: g[y][x] = None
          for x in range(w):                                              # the diagonal-cut, uneven foot
-@@ -370,35 +454,35 @@ def bones():
+@@ -370,35 +467,35 @@ def bones():
          B.append(Bone(f"tabard_b{i}", "body", (0, -7, 0), team=True, rot=(rx, 0, 0), boxes=[
              Box((x0, 0, 3.0 + 0.1 * i), (w, ln, 0), ("t", "b%d" % i, i + 2), sheet="cloth")]))
      # tier II, the Revenant: salvaged grave-iron plate over the rags, piped in violet
@@ -338,7 +351,7 @@ index 5f001223..1a606288 100644
      B.append(Bone("gilt_collar", "body", stages=[3], boxes=[Box((-4.5, -13.5, -2.8), (9, 1, 5.6), gb_gilt("gc"), dil=0.1)]))
      B.append(Bone("gilt_buckle", "body", stages=[3], boxes=[Box((-1, -4.6, -2.9), (2, 2, 0.8), gb_gilt("gk"), dil=0.1)]))
      B.append(Bone("gilt_rim_r", "right_arm", (-1, -2.5, 0), rot=(0, 0, 8), stages=[3], boxes=[Box((-3, -1, -3), (6, 1, 6), gb_gilt("grr"), dil=0.5)]))
-@@ -406,8 +490,8 @@ def bones():
+@@ -406,8 +503,8 @@ def bones():
      # tier III, the Grave Knight: a slitted rusted visor, a coif ridge, a plate over the left pauldron, a team half-cape
      B.append(Bone("visor", "head", stages=[3], boxes=[Box((-4, -3.9, -4.9), (8, 2, 1), visor(), dil=0.1)]))
      B.append(Bone("pauldron_cap", "left_arm", (1, -2.5, 0), rot=(0, 0, -12), stages=[3], boxes=[
