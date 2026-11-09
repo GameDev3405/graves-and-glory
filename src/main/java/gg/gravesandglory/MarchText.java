@@ -17,9 +17,4 @@ final class MarchText {
     static String rewardShort(Spec.BonusObjectivesRow bonus) {
         return "+" + bonus.shards() + " shards, +" + bonus.gold() + " gold";
     }
-
-    /** The card's second line: "Battle 2 of 6, Normal", with the sides ("3 v 3") once a battle seats more than one a side. */
-    static String battleLine(Spec.CampaignBattlesRow row, int total, String tierName) {
-        return "Battle " + row.order() + " of " + total + ", " + (row.size() > 1 ? row.size() + " v " + row.size() + ", " : "") + tierName;
-    }
 }

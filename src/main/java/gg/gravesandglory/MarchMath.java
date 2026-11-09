@@ -95,6 +95,21 @@ public final class MarchMath {
     static List<String> allyIds(Spec.CampaignBattlesRow r) { return r == null || r.allies().equals("none") ? List.of() : Arrays.asList(r.allies().split(",")); }
 
     /** The campaignChapters row of a chapter number, or null. */
+    /** A chapter's battles in order. */
+    static List<Spec.CampaignBattlesRow> inChapter(int chapter, Spec.CampaignBattlesRow[] rows) {
+        List<Spec.CampaignBattlesRow> out = new ArrayList<>();
+        for (var r : byOrder(rows)) if (r.chapter() == chapter) out.add(r);
+        return out;
+    }
+
+    /** A battle's number within its chapter, from 1 (brief G3). */
+    static int number(Spec.CampaignBattlesRow r, Spec.CampaignBattlesRow[] rows) { return inChapter(r.chapter(), rows).indexOf(r) + 1; }
+
+    /** The campaign card's second line (brief G3): "The Oath, battle 2 of 6, Normal", with the sides ("3 v 3") once a battle seats more than one a side. */
+    static String battleLine(Spec.CampaignBattlesRow r, Spec.CampaignBattlesRow[] rows, Spec.CampaignChaptersRow[] chapters, String tierName) {
+        return chapterName(r, chapters) + ", battle " + number(r, rows) + " of " + inChapter(r.chapter(), rows).size() + ", " + (r.size() > 1 ? r.size() + " v " + r.size() + ", " : "") + tierName;
+    }
+
     /** The name of the chapter a battle belongs to ("The Oath"), or "The campaign" for a battle without a chapter row. */
     static String chapterName(Spec.CampaignBattlesRow r, Spec.CampaignChaptersRow[] chapters) {
         var c = r == null ? null : chapter(r.chapter(), chapters);

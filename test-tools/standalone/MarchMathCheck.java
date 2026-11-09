@@ -152,6 +152,12 @@ public final class MarchMathCheck {
         check(MarchMath.Seasons.lock(null, seasons, 1, dates).isEmpty(), "season: no battle, no lock");
         var withHunt = new Spec.CampaignBattlesRow[]{row(1), row(2), row(3), row(4), row(5), row(6), hunt1};
         check(MarchMath.lockedBy(hunt1, Set.of(), withHunt) != null, "season: the order lock still applies, so a late joiner starts at chapter 1");
+        // chapter-aware text (brief G3): the card names the chapter and counts within it
+        check(MarchMath.battleLine(row(1), Spec.CAMPAIGNBATTLES, Spec.CAMPAIGNCHAPTERS, "Easy").equals("The Oath, battle 1 of 6, Easy"), "line: " + MarchMath.battleLine(row(1), Spec.CAMPAIGNBATTLES, Spec.CAMPAIGNCHAPTERS, "Easy"));
+        check(MarchMath.battleLine(row(6), Spec.CAMPAIGNBATTLES, Spec.CAMPAIGNCHAPTERS, "Hard").equals("The Oath, battle 6 of 6, 3 v 3, Hard"), "line: sides once more than one a side: " + MarchMath.battleLine(row(6), Spec.CAMPAIGNBATTLES, Spec.CAMPAIGNCHAPTERS, "Hard"));
+        var twoChapters = new Spec.CampaignBattlesRow[]{row(1), row(2), row(3), row(4), row(5), row(6), battle("hunt-1", 2, 7, 1, "none", "gilded_normal"), battle("hunt-2", 2, 8, 1, "none", "gilded_normal")};
+        var huntChapters = new Spec.CampaignChaptersRow[]{oathChapter(), new Spec.CampaignChaptersRow("hunt", 2, "The Hunt", "wildmoot", "own", "none", 2, "End.", "none")};
+        check(MarchMath.battleLine(twoChapters[7], twoChapters, huntChapters, "Easy").equals("The Hunt, battle 2 of 2, Easy") && MarchMath.number(twoChapters[6], twoChapters) == 1 && MarchMath.inChapter(1, twoChapters).size() == 6, "line: a second chapter counts from 1 within itself");
         // after lines and the chapter end (brief N2): the battle's line on a win only; the chapter's end line with its Pact, once
         var oath = MarchMath.chapter(1, Spec.CAMPAIGNCHAPTERS);
         check(oath != null && oath.name().equals("The Oath") && oath.chapterEnd().startsWith("Aldric, alone with the Charter.") && MarchMath.chapter(9, Spec.CAMPAIGNCHAPTERS) == null, "chapter: chapter 1 is The Oath with its end line; an unknown chapter is null");

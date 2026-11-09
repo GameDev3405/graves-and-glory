@@ -436,12 +436,15 @@ final class WarTableHome {
         int n = switch (focused) { case 0 -> 1; case 2 -> row.size(); default -> CampaignClient.padSize; };
         String tier = CampaignClient.tierName(march ? row.difficulty() : CampaignClient.difficulty);
         String rule = Modes.ruleLine(march ? row.mode() : Modes.DOMINATION);
-        String teams = march ? MarchText.battleLine(row, Spec.CAMPAIGNBATTLES.length, tier) : n + " v " + n + ", " + tier + (n == 1 ? " bot" : " bots");
-        centred(g, DarkUi.body(rule), x + 84, y + 120, DarkUi.SEPIA);
-        centred(g, DarkUi.body(teams), x + 84, y + 132, DarkUi.SEPIA);
+        String teams = march ? MarchMath.battleLine(row, Spec.CAMPAIGNBATTLES, Spec.CAMPAIGNCHAPTERS, tier) : n + " v " + n + ", " + tier + (n == 1 ? " bot" : " bots");
+        var font = MinecraftClient.getInstance().textRenderer;
+        var teamLines = font.wrapLines(DarkUi.body(teams), 150); // the chapter-aware line (brief G3) takes two lines when it outgrows the card
+        int top = teamLines.size() > 1 ? 116 : 120, step = teamLines.size() > 1 ? 10 : 12;
+        centred(g, DarkUi.body(rule), x + 84, y + top, DarkUi.SEPIA);
+        for (int i = 0; i < Math.min(2, teamLines.size()); i++) g.drawText(font, teamLines.get(i), x + 84 - font.getWidth(teamLines.get(i)) / 2, y + top + step * (i + 1), DarkUi.SEPIA, false);
         String closed = march ? CampaignClient.seasonLock(row) : "";
         if (!closed.isEmpty()) { // brief G2: the chapter's season has not begun; its date replaces the bonus
-            var font = MinecraftClient.getInstance().textRenderer; var lines = font.wrapLines(DarkUi.body(closed), 136);
+            var lines = font.wrapLines(DarkUi.body(closed), 136);
             for (int i = 0; i < Math.min(2, lines.size()); i++) g.drawText(font, lines.get(i), x + 16, y + 148 + i * 11, DarkUi.SEPIA, false);
             textsDrawn.put("field-season", closed);
         } else if (march) bonus(g, row, x + 16, y + 148, 136);
