@@ -94,6 +94,23 @@ public final class MarchMath {
     /** The botBanners ids a battle row names as its commander's bot allies (campaignBattles.allies, Kort 2026-11-02, Q76); empty for none or no row. */
     static List<String> allyIds(Spec.CampaignBattlesRow r) { return r == null || r.allies().equals("none") ? List.of() : Arrays.asList(r.allies().split(",")); }
 
+    /** The campaignChapters row of a chapter number, or null. */
+    static Spec.CampaignChaptersRow chapter(int chapter, Spec.CampaignChaptersRow[] chapters) {
+        for (var c : chapters) if (c.chapter() == chapter) return c;
+        return null;
+    }
+
+    /** The battle's after line (campaignBattles.after, brief N2) for the result screen: shown after a win only; "" otherwise. */
+    static String afterLine(Spec.CampaignBattlesRow r, boolean won) { return r == null || !won ? "" : r.after(); }
+
+    /** The chapter end lines (campaignChapters.chapterEnd) of the chapters whose Pact this battle granted, in order; "" when it granted none. A
+     *  chapter's Pact is granted once (writChapters), so its end line shows once, the first time its last battle is won. */
+    static String chapterEndLine(Collection<Integer> granted, Spec.CampaignChaptersRow[] chapters) {
+        List<String> out = new ArrayList<>();
+        for (int n : granted) { var c = chapter(n, chapters); if (c != null && !c.chapterEnd().isBlank()) out.add(c.chapterEnd()); }
+        return String.join(" ", out);
+    }
+
     /** The botBanners ids a battle names as its enemies by lane (campaignBattles.enemies, chapter 1 brief N1); empty for none or no row. */
     static List<String> enemyIds(Spec.CampaignBattlesRow r) { return r == null || r.enemies().equals("none") ? List.of() : Arrays.asList(r.enemies().split(",")); }
 
@@ -102,6 +119,47 @@ public final class MarchMath {
 
     /** Whether a botBanners row is reserved as some battle's allies, so it never joins a tier's pool (Campaign.fieldableBotBanners). */
     static boolean reservedAlly(String id, Spec.CampaignBattlesRow[] rows) { for (var r : rows) if (allyIds(r).contains(id)) return true; return false; }
+
+    /**
+     * The glimpur ebb (chapter 1 brief N3): in a battle whose row sets ebb, every caster troop (troops.magic) on both sides now and then
+     * flickers, its own glow and particles fading for a moment with a faint sound. Presentation only; nothing here touches combat. Pure and
+     * keyed on the entity's network id and the world time, so the server (particles, sound) and every client (glow) agree without a packet.
+     * Once per PERIOD ticks each caster dims for LENGTH ticks at a point of the period its id and the period pick; windows never touch.
+     */
+    static final class Ebb {
+        private Ebb() {}
+        /** Ticks between a caster's flickers (20 seconds) and how long one lasts (1.5 seconds). */
+        static final int PERIOD = 400, LENGTH = 30;
+        /** The glow left at the bottom of a flicker: faded, never dark. */
+        static final float LOW = 0.2f;
+
+        /** Where in its period this caster's flicker starts, from 0 to PERIOD - 2 * LENGTH (so a window ends LENGTH before the next can start). */
+        static int start(int entity, long period) {
+            long h = entity * 0x9E3779B97F4A7C15L ^ period * 0xC2B2AE3D27D4EB4FL;
+            h ^= h >>> 31; h *= 0x94D049BB133111EBL; h ^= h >>> 29;
+            return (int) Math.floorMod(h, (long) (PERIOD - 2 * LENGTH));
+        }
+
+        /** How far into its flicker the caster is at this world tick, or -1 outside one (and always without the battle's ebb). */
+        static int into(boolean ebb, int entity, long time) {
+            if (!ebb) return -1;
+            long period = Math.floorDiv(time, PERIOD);
+            long in = time - period * PERIOD - start(entity, period);
+            return in >= 0 && in < LENGTH ? (int) in : -1;
+        }
+
+        /** The caster's glow brightness, 1 outside a flicker: a sputter between LOW and 0.6 for the first 12 ticks, LOW, then a climb back over the last 6. */
+        static float glow(boolean ebb, int entity, long time) {
+            int in = into(ebb, entity, time);
+            if (in < 0) return 1f;
+            if (in < 12) return (in / 2) % 2 == 0 ? LOW : 0.6f;
+            if (in < LENGTH - 6) return LOW;
+            return LOW + (0.9f - LOW) * (in - (LENGTH - 6)) / 6f;
+        }
+
+        /** Whether the caster's flicker begins on this tick: the server plays the faint sound once then. */
+        static boolean starts(boolean ebb, int entity, long time) { return into(ebb, entity, time) == 0; }
+    }
 
     /**
      * One round's bonus objective (the closed kinds of Phase 4 spec 11). The round feeds it events; kept reads the result at the finish. The

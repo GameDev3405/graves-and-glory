@@ -416,6 +416,7 @@ final class WarTableReport {
             for (int c = 0; c < keys.length; c++) lineRight(g, "commander-" + i + "-" + keys[c], row.get(keys[c]).getAsInt() + (c == 3 ? "s" : ""), right[c], ry, ink);
             ry += TABLE_STEP;
         }
+        ry = story(g, r, x, ry);
         // the Houses of the banner
         JsonArray houses = r.has("houses") ? r.getAsJsonArray("houses") : new JsonArray();
         if (houses.isEmpty()) return;
@@ -423,8 +424,24 @@ final class WarTableReport {
         head(g, "houses", "Houses", null, x, ry, TEXT_W);
         ry += 18;
         for (int i = 0; i < houses.size(); i++) {
+            if (ry + 16 > y + CONTENT_END) break; // a campaign story above can leave room for fewer House rows; never draw past the sheet
             ry = houseRow(g, i, houses.get(i).getAsJsonObject(), x, ry);
         }
+    }
+
+    /** A campaign battle's story under the commanders (chapter 1 brief N2): the after line of a win, then the chapter's end line the first
+     *  time its last battle is won; {key:name} reads the player's own keys. Returns the y under it (unchanged when there is none). */
+    int story(DrawContext g, JsonObject r, int x, int y) {
+        var m = r.has("march") ? r.getAsJsonObject("march") : null;
+        String after = m != null && m.has("after") ? HintText.expand(m.get("after").getAsString(), GravesAndGloryClient::hint) : "";
+        String end = m != null && m.has("chapterEnd") ? HintText.expand(m.get("chapterEnd").getAsString(), GravesAndGloryClient::hint) : "";
+        if (after.isEmpty() && end.isEmpty()) return y;
+        y += 10;
+        head(g, "story", "After the battle", null, x, y, TEXT_W);
+        y += 18;
+        if (!after.isEmpty()) y = block(g, "story-after", after, x, y, TEXT_W, 3, DarkUi.INK_TEXT) + 4;
+        if (!end.isEmpty()) y = block(g, "story-end", end, x, y, TEXT_W, 3, DarkUi.SEPIA) + 4;
+        return y;
     }
 
     int houseRow(DrawContext g, int i, JsonObject h, int x, int y) {

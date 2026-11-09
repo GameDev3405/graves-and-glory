@@ -125,6 +125,39 @@ public final class MarchMathCheck {
         }
         check(MarchMath.enemyId(row(2), 0) == null && MarchMath.enemyId(null, 0) == null, "enemies: a battle with none (Survival's director) falls back to tier and lane picking");
         check(MarchMath.enemyId(row(1), 3).equals("tidecallers_easy"), "enemies: a lane past the list wraps");
+        // after lines and the chapter end (brief N2): the battle's line on a win only; the chapter's end line with its Pact, once
+        var oath = MarchMath.chapter(1, Spec.CAMPAIGNCHAPTERS);
+        check(oath != null && oath.name().equals("The Oath") && oath.chapterEnd().startsWith("Aldric, alone with the Charter.") && MarchMath.chapter(9, Spec.CAMPAIGNCHAPTERS) == null, "chapter: chapter 1 is The Oath with its end line; an unknown chapter is null");
+        for (var r : ROWS) check(MarchMath.afterLine(r, true).equals(r.after()) && MarchMath.afterLine(r, false).isEmpty(), "after: " + r.id() + "'s line shows on a win and never on a loss");
+        check(MarchMath.afterLine(null, true).isEmpty(), "after: no battle, no line");
+        check(MarchMath.chapterEndLine(List.of(1), Spec.CAMPAIGNCHAPTERS).equals(oath.chapterEnd()) && MarchMath.chapterEndLine(List.of(), Spec.CAMPAIGNCHAPTERS).isEmpty() && MarchMath.chapterEndLine(List.of(9), Spec.CAMPAIGNCHAPTERS).isEmpty(), "chapterEnd: shown with the chapter's Pact grant, else nothing");
+        Set<Integer> paidChapters = new LinkedHashSet<>();
+        int shown = 0;
+        for (int round = 0; round < 3; round++) { // the chapter's last battle won three times: the Pact, and so the end line, comes once
+            var granted = RosterMath.pactChapters(Arrays.asList(ROWS), 6, paidChapters);
+            paidChapters.addAll(granted);
+            if (!MarchMath.chapterEndLine(granted, Spec.CAMPAIGNCHAPTERS).isEmpty()) shown++;
+        }
+        check(shown == 1, "chapterEnd: the end line shows once over repeated wins of the last battle (" + shown + ")");
+        // the glimpur ebb (brief N3): casters' glow dims now and then in ebb battles; never off, never in sync, never without the flag
+        int dimmed = 0, starts = 0, windows = 0; boolean was = false, syncedAll = true;
+        for (long t = 0; t < 24000; t++) {
+            float g = MarchMath.Ebb.glow(true, 41, t);
+            check(g >= MarchMath.Ebb.LOW && g <= 1f, "ebb: glow stays within LOW..1 at tick " + t);
+            check(MarchMath.Ebb.glow(false, 41, t) == 1f, "ebb: no flag, full glow");
+            check(g == MarchMath.Ebb.glow(true, 41, t), "ebb: deterministic per entity and world time, so server and client agree");
+            boolean now = g < 1f;
+            if (now) dimmed++;
+            if (now && !was) windows++;
+            if (MarchMath.Ebb.starts(true, 41, t)) { starts++; check(now && !was, "ebb: starts marks the first dim tick at " + t); }
+            check(!MarchMath.Ebb.starts(false, 41, t), "ebb: no flag, no flicker sound");
+            if (now != (MarchMath.Ebb.glow(true, 42, t) < 1f)) syncedAll = false;
+            was = now;
+        }
+        check(starts == windows && windows >= 40 && windows <= 80, "ebb: about one flicker per 20 seconds over 20 minutes (" + windows + ")");
+        check(dimmed > 24000 * 0.03 && dimmed < 24000 * 0.15, "ebb: dim now and then, not most of the time (" + dimmed + " of 24000 ticks)");
+        check(!syncedAll, "ebb: two casters do not flicker in step");
+        check(MarchMath.Ebb.LOW > 0f && MarchMath.Ebb.LOW < 0.5f, "ebb: a dimmed glow fades, it never goes fully dark");
         // seat size (plan 2C.6): a March battle seats its row's size per team, practice seats one, and nothing leaves the six-seat lobby
         check(MarchMath.seatSize(null) == 1, "seatSize: practice (no row) is one a side");
         for (var r : ROWS) check(MarchMath.seatSize(r) == Math.max(1, Math.min(3, r.size())), "seatSize: " + r.id() + " follows its row's size within 1 to 3");

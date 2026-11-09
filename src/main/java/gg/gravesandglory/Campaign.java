@@ -607,8 +607,8 @@ public final class Campaign {
             var slots=RosterMath.houseSlots(s.banner,RosterMath.Catalog.fromSpec());
             var paid=eligible?RosterMath.prorate(RosterMath.matchRewards(slots,Houses.thresholds(Spec.HOUSES[0].id()),Profile.houseOrder(),credited),seated,seconds):NO_REWARDS; // every House has the same slot thresholds (HousesCheck)
             paid.shards().forEach((h,n)->p.shards.merge(h,n,Integer::sum));paid.renown().forEach((h,n)->p.renown.merge(h,n,Integer::sum));
-            List<String> titles=eligible?ledger(p,s):List.of();int pacts=pacts(p);
-            boolean saved=save(id);JsonObject report=new JsonObject();report.addProperty("id",matchId);report.addProperty("outcome",winner<0?"DRAW":s.team==winner?"VICTORY":"BATTLE COMPLETE");report.addProperty("map",Spec.MAPS[map].name());report.addProperty("seconds",seconds);report.addProperty("saved",saved);report.addProperty("eligible",eligible);report.addProperty("gold",saved?earned:0);report.addProperty("forgeMarks",saved?marks:0);report.addProperty("xp",saved?p.progression.xp-priorXp:0);report.addProperty("beforeXp",priorXp);report.add("squads",reportSquads(s));report.add("points",reportPoints());report.add("houses",reportHouses(s,slots,saved?paid:NO_REWARDS));report.add("levels",reportLevels(s));report.add("mode",reportMode());if(activeBattle!=null)report.add("march",reportMarch(p,credited,march,pacts));results.put(id,report);
+            List<String> titles=eligible?ledger(p,s):List.of();List<Integer> pactChapters=pacts(p);int pacts=pactChapters.size();
+            boolean saved=save(id);JsonObject report=new JsonObject();report.addProperty("id",matchId);report.addProperty("outcome",winner<0?"DRAW":s.team==winner?"VICTORY":"BATTLE COMPLETE");report.addProperty("map",Spec.MAPS[map].name());report.addProperty("seconds",seconds);report.addProperty("saved",saved);report.addProperty("eligible",eligible);report.addProperty("gold",saved?earned:0);report.addProperty("forgeMarks",saved?marks:0);report.addProperty("xp",saved?p.progression.xp-priorXp:0);report.addProperty("beforeXp",priorXp);report.add("squads",reportSquads(s));report.add("points",reportPoints());report.add("houses",reportHouses(s,slots,saved?paid:NO_REWARDS));report.add("levels",reportLevels(s));report.add("mode",reportMode());if(activeBattle!=null)report.add("march",reportMarch(p,credited,march,pactChapters));results.put(id,report);
             if(!saved){profiles.put(id,JSON.fromJson(before,Profile.class));standing(id,"Match reward could not be saved. Progress was not changed; check disk space.");continue;}
             String extra=(march!=null&&march.bonusPaid()?" / bonus objective: +"+march.bonusShards()+" "+RosterMath.houseName(march.bonusHouse())+" shards, +"+march.bonusGold()+" gold":"")+(pacts>0?" / "+(pacts==1?"a Pact":pacts+" Pacts")+" earned":"")+(titles.isEmpty()?"":" / new title"+(titles.size()==1?" ":"s ")+String.join(", ",titles));
             standing(id,(winner<0?"Draw":s.team==winner?"Victory":"Battle complete")+" / +"+earned+" collection gold"+(!eligible?" (reward requires 3 minutes of play)":percent<100?" (pro-rated: you were seated for "+percent+"% of the match)":"")+(marks>0?" / +"+marks+" Forge marks":"")+extra);
@@ -641,23 +641,24 @@ public final class Campaign {
     }
     /** The title a mastery reward gives (its title: part, "title:Veteran" or "frame:brass;title:Master"), or null when it gives none. */
     static String masteryTitle(String reward){for(String part:reward.split(";"))if(part.startsWith("title:")&&part.length()>6)return part.substring(6);return null;}
-    /** A Pact (spec 4.4) for each Long March chapter whose every battle is cleared (campaignBattles order up to campaignCleared) and that has not paid one yet (writChapters). Returns how many were granted. */
-    static int pacts(Profile p){
+    /** A Pact (spec 4.4) for each Long March chapter whose every battle is cleared (campaignBattles order up to campaignCleared) and that has not paid one yet (writChapters). Returns the chapters granted. */
+    static List<Integer> pacts(Profile p){
         var chapters=RosterMath.pactChapters(Arrays.asList(Spec.CAMPAIGNBATTLES),p.campaignCleared,p.writChapters);
         for(int chapter:chapters){p.writs++;p.writChapters.add(chapter);}
-        return chapters.size();
+        return chapters;
     }
     /**
      * The report's Long March block (plan 2C.5), read by the War Table report: the battle, whether it was won, how its bonus ended ("paid", "claimed" earlier,
      * "missed", "lost" with the battle, or "none" without a bonus row), what the bonus pays, the Pacts this battle earned and the Pacts now held. Display only;
      * every figure was settled before this call.
      */
-    JsonObject reportMarch(Profile p,boolean won,MarchMath.Settled march,int pacts){
+    JsonObject reportMarch(Profile p,boolean won,MarchMath.Settled march,List<Integer> granted){int pacts=granted.size();
         JsonObject j=new JsonObject();var bonus=MarchMath.bonus(activeBattle,Spec.BONUSOBJECTIVES);
         j.addProperty("id",activeBattle.id());j.addProperty("name",activeBattle.name());j.addProperty("order",activeBattle.order());j.addProperty("won",won);
         String state=bonus==null?"none":!won?"lost":march!=null&&march.bonusPaid()?"paid":p.bonusClaimed.contains(bonus.id())?"claimed":"missed";
         j.addProperty("bonus",bonus==null?"":bonus.text());j.addProperty("bonusState",state);j.addProperty("bonusShards",bonus==null?0:bonus.shards());j.addProperty("bonusGold",bonus==null?0:bonus.gold());
         j.addProperty("house",activeBattle.house());j.addProperty("pacts",pacts);j.addProperty("writs",p.writs);
+        j.addProperty("after",MarchMath.afterLine(activeBattle,won));j.addProperty("chapterEnd",MarchMath.chapterEndLine(granted,Spec.CAMPAIGNCHAPTERS)); // brief N2: the win's line, and the chapter's end line with its Pact
         return j;
     }
     /** The report's House rows (MatchStats.houseRows): every House the fielded banner has slots in, its banner tier, its trait seconds this round, and what the match paid it (0 when nothing was saved). */
