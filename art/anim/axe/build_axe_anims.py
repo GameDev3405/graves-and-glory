@@ -120,12 +120,23 @@ K.ROLL_LEFT = K._sweep("left", {14: ((-120, 0, -30), -60, (90, 0, 0)), 15: ((-15
                                 16: ((-180, 0, -30), -40, (45, 0, -45)),
                                 **{t: ((-180, 0, -30), -20, (0, 0, -90)) for t in range(17, 21)}})
 
+# Per-swing edge roll pacing (the knight builder's EDGE_RATE, deg per sample, and EDGE_IN, ticks of turn before the drive).
+# overhead_chop (scorecard 2026-11-09): the bit's half turn ran at the knight's 25 deg/sample in two ticks of the load
+# (right_hand 179.5 deg/100ms, limit 136.2, a flick). It now starts as the axe is lifted (6 ticks ahead of the drive) and turns
+# at 15 deg/sample, so the head is turned over by the top of the load; the hold, the drive and the impact are unchanged.
+EDGE_PACE = {"overhead_chop": (15.0, 6.0)}
+
+
 def attack_clips():
     n = ATTACK_TICKS * SUB
     out = {}
     for name, keys in ATTACKS.items():
         legs = K.attack_legs(K.ATTACK_LEGS[name], ticks=ATTACK_TICKS)
-        upper = cloth_lag(K.rolled(keys, n, K.edge_roll(name, keys, legs, n, report=True)), legs)   # the bit leads (EDGE_SIGN)
+        pace = (K.EDGE_RATE, K.EDGE_IN)
+        K.EDGE_RATE, K.EDGE_IN = EDGE_PACE.get(name, pace)
+        roll = K.edge_roll(name, keys, legs, n, report=True)
+        K.EDGE_RATE, K.EDGE_IN = pace
+        upper = cloth_lag(K.rolled(keys, n, roll), legs)   # the bit leads (EDGE_SIGN)
         clip = K.bake(upper, ATTACK_TICKS, loop=False)
         clip["timeline"] = {K.fmt_t(IMPACT[name] / K.TPS): "impact"}
         out["attack_" + name] = clip
