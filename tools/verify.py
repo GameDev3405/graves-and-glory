@@ -102,7 +102,7 @@ def run(args):
             lambda: step('skin-assets',[sys.executable,'tools/build_skins.py','--verify']),
             lambda: step('clips',[sys.executable,'tools/clips.py','--verify']),
             java_lane,
-            lambda: step('build',[*gradle,'build','compileLocalTestTools','-x','test'],1200))
+            lambda: (game_guard(),step('build',[*gradle,'build','compileLocalTestTools','-x','test'],1200)))  # the guard again right before Gradle, as before
         if args.tier=='release':
             # Strict package gate; no stopgap bypass and no upload.
             step('package',[sys.executable,'tools/package.py'])

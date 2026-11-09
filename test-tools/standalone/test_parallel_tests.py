@@ -81,6 +81,21 @@ class ParallelTests(unittest.TestCase):
         code, out = self.run_tool(d)
         self.assertEqual(code, 1, out)
 
+    def test_the_working_directory_comes_first_on_sys_path_as_with_python_m_unittest(self):
+        d = self.tree({'rootonly_helper.py': 'VALUE = 7\n'})
+        (d / 'tests').mkdir()
+        (d / 'tests' / 'test_path.py').write_text(textwrap.dedent('''
+            import os, sys, unittest
+            class P(unittest.TestCase):
+                def test_cwd_first(self):
+                    import rootonly_helper
+                    self.assertEqual(rootonly_helper.VALUE, 7)
+                    self.assertNotIn(os.path.join(os.getcwd(), 'tools'), sys.path[:2])
+                    self.assertEqual(os.path.normcase(sys.path[1]), os.path.normcase(os.getcwd()))   # [0] is the start dir
+            '''), encoding='utf-8')
+        p = subprocess.run([sys.executable, str(TOOL), 'tests', '--jobs', '1'], capture_output=True, text=True, cwd=d)
+        self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
+
     def test_nothing_discovered_exits_five_like_unittest(self):
         d = self.tree({'test_empty.py': 'x = 1\n'})
         code, out = self.run_tool(d)

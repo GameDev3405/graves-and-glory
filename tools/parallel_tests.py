@@ -132,11 +132,16 @@ def run(start, pattern, jobs, times_file=None, out=sys.stdout):
 
 
 if __name__ == '__main__':
+    # `python -m unittest` puts the working directory first on sys.path; running this file would put tools/ there instead.
+    # Parent and child (which inherits the cwd) both swap it back, so test imports resolve as in the old discovery.
+    sys.path[0] = os.getcwd()
     if sys.argv[1:2] == ['--child']:
         sys.exit(child(*sys.argv[2:6]))
     p = argparse.ArgumentParser()
     p.add_argument('start'); p.add_argument('--pattern', default='test_*.py')
-    p.add_argument('--jobs', type=int, default=max(1, min(12, (os.cpu_count() or 2) // 2)))
+    # A third of the CPUs, at most 8: verify runs this beside Gradle, the UI painters and the Java checks, and a few tests
+    # time themselves (test_mapengine_terrain's full-size speed), so the machine is not packed to the last core.
+    p.add_argument('--jobs', type=int, default=max(1, min(8, (os.cpu_count() or 3) // 3)))
     p.add_argument('--times')
     a = p.parse_args()
     sys.exit(run(a.start, a.pattern, a.jobs, a.times))
