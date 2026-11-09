@@ -335,7 +335,7 @@ final class GeoKnightChecks implements Phase1Checks.Suite {
     int hitFrames;
 
     /**
-     * Pulled cases (hit_v1 flag 8): name and view. The tier III own troop is dragged PULL blocks toward the tier III foe, PULL_FROM blocks
+     * Pulled cases (hit_v1 flag 8): name and view. The tier III own troop is dragged PULL blocks toward a live foe (foe()), PULL_FROM blocks
      * in front of it (front: the client plays hit_pulled, a forward stumble) or behind it (back: dragged backwards, hit_knockback), by
      * the server's own path, in the Undertow's order: Abilities.pulls marks it (markPulled), Combat.resolve lands the blow and sends its
      * hit_v1 (the pulled flag from Abilities.takePulled), then Abilities.pull moves it. Nothing holds it in place meanwhile.
@@ -345,6 +345,8 @@ final class GeoKnightChecks implements Phase1Checks.Suite {
     final List<String> pullBad = new ArrayList<>();
     volatile double pullMoved = Double.NaN;
     volatile int pullSent = -1;
+    /** The puller (and the rise's striker): the first live foe, tier III first (the attack death duel killed slot 5). Server thread. */
+    int foe() { for (int j : new int[] {5, 4, 3}) if (knights.get(j).mob.isAlive()) return j; return 5; }
     double pullMaxScale, pullMaxLegs;
     int pullFrames;
     String pullClips = "";
@@ -1014,7 +1016,7 @@ final class GeoKnightChecks implements Phase1Checks.Suite {
                 }
             }
             case 12 -> {
-                // Pulled: the tier III own troop (slot 2) is dragged toward the tier III foe (slot 5) by the server's pull path at k25, the
+                // Pulled: the tier III own troop (slot 2) is dragged toward a live foe (foe()) by the server's pull path at k25, the
                 // others stood out of the way; its hit layer is shot every tick of the reaction and checked: clip (front hit_pulled,
                 // back hit_knockback), scale, footwork, gone after; the server must have sent the pulled flag and moved it.
                 String name = PULL_CASES[i][0], view = PULL_CASES[i][1];
@@ -1025,8 +1027,8 @@ final class GeoKnightChecks implements Phase1Checks.Suite {
                     taken.clear(); pullMaxScale = 0; pullMaxLegs = 0; pullFrames = 0; pullMoved = Double.NaN; pullSent = -1; pullClips = ""; hitAt = -1;
                     Phase1Checks.server(c, b -> {
                         hold = null; quiet(b, true);
-                        for (int j = 0; j < knights.size(); j++) if (j != 2 && j != 5) stand(knights.get(j), cx + (j < 3 ? -20 - j * 3 : 20 + j * 3), cz - 30, 0);
-                        var v = knights.get(2); var f = knights.get(5);
+                        for (int j = 0; j < knights.size(); j++) if (j != 2 && j != foe()) stand(knights.get(j), cx + (j < 3 ? -20 - j * 3 : 20 + j * 3), cz - 30, 0);
+                        var v = knights.get(2); var f = knights.get(foe());
                         float yaw = view.equals("side") ? 90 : 135;
                         // the puller: in front of the victim (side view along its facing, three-quarter 45 degrees off it) or right behind it
                         float at = back ? yaw + 180 : view.equals("side") ? yaw : yaw + 45;
@@ -1038,7 +1040,7 @@ final class GeoKnightChecks implements Phase1Checks.Suite {
                 }
                 if (k == 3) { c.setScreen(null); c.options.hudHidden = true; }
                 if (k == 25) Phase1Checks.server(c, b -> {
-                    var v = knights.get(2); var f = knights.get(5);
+                    var v = knights.get(2); var f = knights.get(foe());
                     if (!v.mob.isAlive() || !f.mob.isAlive()) { pullSent = -2; return; }
                     Vec3d from = f.mob.getPos();
                     double before = Math.hypot(v.mob.getX() - from.x, v.mob.getZ() - from.z);
@@ -1099,10 +1101,10 @@ final class GeoKnightChecks implements Phase1Checks.Suite {
                     riseBad.clear(); taken.clear(); riseFrames = 0; risePhase = 0; riseMaxFakeT = -1; riseMaxT = -1; riseFirstRise = -1; riseMinW = 2;
                     riseTick = -2; riseWindow = -1; riseSent = -1; riseVictim = -1;
                     Phase1Checks.server(c, b -> {
-                        var v = knights.get(2); var f = knights.get(5);
+                        var v = knights.get(2); var f = knights.get(foe());
                         if (Abilities.riseRow(v) == null) { riseRow = 0; return; }
                         hold = null; quiet(b, true);
-                        for (int j = 0; j < knights.size(); j++) if (j != 2 && j != 5) stand(knights.get(j), cx + (j < 3 ? -20 - j * 3 : 20 + j * 3), cz - 30, 0);
+                        for (int j = 0; j < knights.size(); j++) if (j != 2 && j != foe()) stand(knights.get(j), cx + (j < 3 ? -20 - j * 3 : 20 + j * 3), cz - 30, 0);
                         stand(v, cx, cz, 135); stand(f, cx + 3, cz + 3, -45); // the foe behind it, out of the frame
                         riseVictim = v.mob.getId();
                         eye(b, cx - 4, cz - 2.5, -58, 14);
@@ -1111,7 +1113,7 @@ final class GeoKnightChecks implements Phase1Checks.Suite {
                 }
                 if (k == 3) { c.setScreen(null); c.options.hudHidden = true; }
                 if (k == 20 && riseRow == 1) Phase1Checks.server(c, b -> {
-                    var v = knights.get(2); var f = knights.get(5);
+                    var v = knights.get(2); var f = knights.get(foe());
                     int sends = MotionEvents.riseSends;
                     v.mob.setInvulnerable(false); Houses.forceRise = Boolean.TRUE;
                     try { Combat.resolve(b, f, v.mob, v.mob.getMaxHealth() * 50, "slam", true); }
