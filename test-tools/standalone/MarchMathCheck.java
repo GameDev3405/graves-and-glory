@@ -106,6 +106,25 @@ public final class MarchMathCheck {
         check(!kill.kept(true, 60), "tracker kill_unit: another squad's kill or another troop does not count");
         kill.killed("revenant", true);
         check(kill.kept(true, 60), "tracker kill_unit: the target troop by the player's own squad");
+        // enemies (brief N1): team 1's bot seats field the battle's enemies rows by lane; no off-chapter Legendary on either side
+        String[][] foes = {{"tidecallers_easy"}, {}, {"tidecallers_normal", "tidecallers_normal"}, {"wildmoot_normal", "wildmoot_normal"}, {"wildmoot_normal", "wildmoot_normal", "wildmoot_normal"}, {"wildmoot_hard", "wildmoot_normal", "wildmoot_normal"}};
+        Set<String> offChapter = Set.of("gb_hollowking", "ic_colossus", "tc_admiral");
+        for (int i = 0; i < 6; i++) {
+            var r = row(i + 1);
+            check(MarchMath.enemyIds(r).equals(List.of(foes[i])), "enemies: battle " + (i + 1) + " names " + Arrays.toString(foes[i]));
+            List<String> fielded = new ArrayList<>();
+            if (!r.mode().equals("survival")) for (int lane = 0; lane < MarchMath.seatSize(r); lane++) fielded.add(MarchMath.enemyId(r, lane));
+            check(fielded.equals(List.of(foes[i])), "enemies: battle " + (i + 1) + "'s enemy seats field exactly " + Arrays.toString(foes[i]) + ", got " + fielded);
+            List<String> sides = new ArrayList<>(fielded); sides.addAll(MarchMath.allyIds(r));
+            int oldHorn = 0;
+            for (String id : sides) {
+                var bb = Arrays.stream(Spec.BOTBANNERS).filter(x -> x.id().equals(id)).findFirst().orElseThrow();
+                for (String t : bb.slots().split(",")) { check(!offChapter.contains(t), "enemies: no off-chapter Legendary (" + t + ") in battle " + (i + 1)); if (t.equals("wm_oldhorn")) oldHorn++; }
+            }
+            check(oldHorn == (i == 5 ? 1 : 0), "enemies: Old Horn takes the field once, in battle 6 only (battle " + (i + 1) + ": " + oldHorn + ")");
+        }
+        check(MarchMath.enemyId(row(2), 0) == null && MarchMath.enemyId(null, 0) == null, "enemies: a battle with none (Survival's director) falls back to tier and lane picking");
+        check(MarchMath.enemyId(row(1), 3).equals("tidecallers_easy"), "enemies: a lane past the list wraps");
         // seat size (plan 2C.6): a March battle seats its row's size per team, practice seats one, and nothing leaves the six-seat lobby
         check(MarchMath.seatSize(null) == 1, "seatSize: practice (no row) is one a side");
         for (var r : ROWS) check(MarchMath.seatSize(r) == Math.max(1, Math.min(3, r.size())), "seatSize: " + r.id() + " follows its row's size within 1 to 3");

@@ -94,6 +94,12 @@ public final class MarchMath {
     /** The botBanners ids a battle row names as its commander's bot allies (campaignBattles.allies, Kort 2026-11-02, Q76); empty for none or no row. */
     static List<String> allyIds(Spec.CampaignBattlesRow r) { return r == null || r.allies().equals("none") ? List.of() : Arrays.asList(r.allies().split(",")); }
 
+    /** The botBanners ids a battle names as its enemies by lane (campaignBattles.enemies, chapter 1 brief N1); empty for none or no row. */
+    static List<String> enemyIds(Spec.CampaignBattlesRow r) { return r == null || r.enemies().equals("none") ? List.of() : Arrays.asList(r.enemies().split(",")); }
+
+    /** The botBanners id team 1's bot in this lane fields: the battle's enemies row at lane % rows; null when the battle names none, so tier and lane picking choose. */
+    static String enemyId(Spec.CampaignBattlesRow r, int lane) { var ids = enemyIds(r); return ids.isEmpty() ? null : ids.get(Math.floorMod(lane, ids.size())); }
+
     /** Whether a botBanners row is reserved as some battle's allies, so it never joins a tier's pool (Campaign.fieldableBotBanners). */
     static boolean reservedAlly(String id, Spec.CampaignBattlesRow[] rows) { for (var r : rows) if (allyIds(r).contains(id)) return true; return false; }
 

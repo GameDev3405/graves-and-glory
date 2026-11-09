@@ -366,9 +366,10 @@ public final class Campaign {
      *  never borrows troops he has not placed; he picks another House or puts that House's troops in his banner first. */
     String houseRefusal(SocialHub.Room r,UUID m){if(r==null||houseUnits(r,m)>0)return "";String h=RosterMath.houseName(lobbyHouse(r,m));
         return "Your banner holds no "+h+" troops. Pick another House, or add "+h+" troops on the Banner page.";}
-    /** A bot's banner (the botBanners sheet, spec 6.1): of the botBanners rows for its tier whose troops all belong to fieldable Houses, the one at lane % rows; Normal rows for a tier with none, the starter banner if no row fits. */
+    /** A bot's banner (the botBanners sheet, spec 6.1): a campaign ally's row, a campaign enemy's row (campaignBattles.enemies by lane), else of the botBanners rows for its tier whose troops all belong to fieldable Houses, the one at lane % rows; Normal rows for a tier with none, the starter banner if no row fits. */
     List<String> botBanner(GravesAndGlory.Squad s){
         var ally=allyRow(s);if(ally!=null)return new ArrayList<>(Arrays.asList(ally.slots().split(",")));
+        if(s.team==1){String foe=MarchMath.enemyId(activeBattle,s.lane);if(foe!=null)for(var row:Spec.BOTBANNERS)if(row.id().equals(foe))return new ArrayList<>(Arrays.asList(row.slots().split(",")));} // a campaign battle's own enemy by lane (chapter 1 brief N1), at the battle's tier
         var rows=fieldableBotBanners(s.tier);if(rows.isEmpty())rows=fieldableBotBanners("normal");
         if(rows.isEmpty())return RosterMath.starterBanner();
         var boss=bossBanner(s);if(boss!=null)return boss;
