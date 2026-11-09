@@ -63,7 +63,7 @@ def frost_bow(tier=1):
         bands = [(1, "gilt", gilt), (3, "gilt", gilt)]
     wid = "frost_bow" + ("" if tier == 1 else "_t%d" % tier)
     return BW.make(wid, {1: NOTE, 2: NOTE2, 3: NOTE3}[tier], root=3, segs=segs, wood=(F, PALE), nock=nock, grip=grip, risers=risers,
-                   extras=extras, bands=bands, draw=(3.2, 5.65))
+                   extras=extras, bands=bands, draw=(3.2, BW.FULL_DRAW))
 
 NOTE = ("The Barrow Stalker's frost bow (Graveborn), hand-authored at 1 texel a px on the order bow's geometry: pale grave-wood "
         "limbs with a frost-grey rimed back, a black grave-iron riser and nocks capped in rime, a violet-wound grip and knee "

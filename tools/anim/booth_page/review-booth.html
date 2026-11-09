@@ -1,0 +1,594 @@
+<title>Review Booth</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* A dark screening room. Queue of batches, then per batch: a sticky bar and one card per clip with three
+   synced viewers (reference, previous, new), one transport under them, and the verdict controls below. */
+:root {
+  color-scheme: dark;
+  --bg: #14181a; --panel: #1d2326; --stage: #0e1112; --line: #323b3f;
+  --fg: #e6e2d6; --muted: #98a09c; --brass: #c9a24a; --brass-ink: #1a1508;
+  --ok: #6fb37c; --bad: #d9705f; --figure: #b9c2c6; --steel: #e9eef0; --shield: #7d5a3a;
+  --display: "Cinzel", Georgia, serif;
+  --body: "IBM Plex Sans", system-ui, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, monospace;
+}
+@media (prefers-color-scheme: light) { :root:not([data-theme="dark"]) {
+  color-scheme: light;
+  --bg: #eceae3; --panel: #f8f7f2; --stage: #dcd9cf; --line: #c3bfb1;
+  --fg: #1f2325; --muted: #5d6462; --brass: #8a6a1c; --brass-ink: #fffaf0;
+  --ok: #2f7d43; --bad: #b3402e; --figure: #4a5357; --steel: #23292c; --shield: #7d5a3a;
+} }
+:root[data-theme="light"] {
+  color-scheme: light;
+  --bg: #eceae3; --panel: #f8f7f2; --stage: #dcd9cf; --line: #c3bfb1;
+  --fg: #1f2325; --muted: #5d6462; --brass: #8a6a1c; --brass-ink: #fffaf0;
+  --ok: #2f7d43; --bad: #b3402e; --figure: #4a5357; --steel: #23292c; --shield: #7d5a3a;
+}
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--fg); font-family: var(--body); font-size: 15px; line-height: 1.45; }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--bg); }
+.wrap { max-width: 980px; margin: 0 auto; padding-block: 0 48px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+.bar { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--bg);
+  border-bottom: 1px solid var(--line); padding-block: 12px; display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; }
+.bar h1 { font-family: var(--display); font-size: 19px; margin: 0; letter-spacing: .03em; text-wrap: balance; flex: 1 1 200px; min-width: 0; overflow-wrap: anywhere; }
+.bar .sub { color: var(--muted); font-size: 13px; display: block; font-family: var(--body); letter-spacing: 0; font-weight: 400; }
+.progress { font-family: var(--mono); font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; display: flex; flex-wrap: wrap; gap: 6px 8px; align-items: center; min-width: 0; }
+.pips { display: inline-flex; flex-wrap: wrap; gap: 3px; }
+.pip { width: 10px; height: 6px; background: var(--line); }
+.pip.approved { background: var(--ok); } .pip.rejected { background: var(--bad); }
+.badge { font-family: var(--mono); font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: var(--brass-ink); background: var(--brass); padding: 2px 8px; }
+.save { font-family: var(--mono); font-size: 12px; color: var(--muted); display: inline-flex; gap: 8px; align-items: center; }
+.save.fail { color: var(--bad); }
+.note { margin: 14px 0 0; padding: 8px 12px; border-left: 3px solid var(--brass); color: var(--muted); font-size: 13px; }
+.note.bad { border-color: var(--bad); color: var(--fg); }
+.note.ok { border-color: var(--ok); color: var(--fg); }
+.center { margin: 18vh auto 0; max-width: 40ch; text-align: center; color: var(--muted); }
+.center strong { display: block; font-family: var(--display); font-size: 19px; color: var(--fg); letter-spacing: .03em; margin-bottom: 6px; text-wrap: balance; }
+h2.sec { margin: 26px 0 8px; font-size: 13px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); font-weight: 500; }
+.queue { display: flex; flex-direction: column; gap: 8px; }
+.queue button { display: flex; flex-wrap: wrap; gap: 2px 14px; align-items: baseline; text-align: left; background: var(--panel); padding: 12px 14px; }
+.queue .name { font-family: var(--display); font-size: 17px; letter-spacing: .03em; flex: 1 1 160px; min-width: 0; overflow-wrap: anywhere; }
+.queue .meta { flex: 0 1 auto; }
+.queue.done button { background: transparent; }
+details.files { margin-top: 14px; border: 1px solid var(--line); padding: 8px 12px; font-size: 13px; }
+details.files summary { cursor: pointer; color: var(--fg); }
+details.files ul { margin: 8px 0 2px; padding: 0; list-style: none; font-family: var(--mono); font-size: 12px; color: var(--muted); overflow-wrap: anywhere; display: flex; flex-direction: column; gap: 3px; }
+.cards { display: flex; flex-direction: column; gap: 20px; margin-top: 14px; }
+.card { background: var(--panel); border: 1px solid var(--line); padding: 14px; display: flex; flex-direction: column; gap: 12px; }
+.card.approved { border-color: var(--ok); } .card.rejected { border-color: var(--bad); }
+.head { display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: baseline; }
+.head h2 { font-family: var(--mono); font-weight: 500; font-size: 16px; margin: 0; overflow-wrap: anywhere; min-width: 0; }
+.meta { font-family: var(--mono); font-size: 12px; color: var(--muted); display: flex; flex-wrap: wrap; gap: 4px 12px; }
+.meta .warn { color: var(--bad); } .meta .fresh { color: var(--brass); }
+.views { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.view { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.view span { font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
+.view.new span { color: var(--brass); }
+canvas, .none { width: 100%; max-width: 100%; aspect-ratio: 1 / 1; background: var(--stage); display: block; }
+.none { border: 1px dashed var(--line); background: transparent; display: flex; align-items: center; justify-content: center;
+  text-align: center; color: var(--muted); font-size: 12px; padding: 4px; }
+.sheet { font-size: 13px; color: var(--muted); display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; }
+.sheet.fail { color: var(--bad); }
+.transport { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.scrub { flex: 1 1 80px; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.scrub input[type=range] { width: 100%; margin: 0; accent-color: var(--brass); }
+.frame { font-family: var(--mono); font-size: 13px; font-variant-numeric: tabular-nums; min-width: 9ch; text-align: right; }
+.marks { position: relative; height: 6px; margin-inline: 8px; }
+.marks i { position: absolute; top: 0; width: 3px; height: 6px; background: var(--bad); transform: translateX(-1px); }
+.marks i.impact { background: var(--brass); }
+button { font: inherit; color: var(--fg); background: transparent; border: 1px solid var(--line); padding: 7px 12px; cursor: pointer; min-height: 38px; border-radius: 0; }
+button:hover:not(:disabled) { border-color: var(--fg); }
+button:disabled { opacity: .45; cursor: not-allowed; }
+button:focus-visible, input:focus-visible, summary:focus-visible { outline: 2px solid var(--brass); outline-offset: 2px; }
+button.sq { min-width: 38px; padding: 7px 0; font-family: var(--mono); }
+button.small { min-height: 28px; padding: 2px 8px; font-size: 12px; }
+button.on { background: var(--fg); color: var(--bg); border-color: var(--fg); }
+.verdict { display: flex; flex-wrap: wrap; gap: 8px; }
+.verdict button { flex: 1 1 130px; font-weight: 600; }
+.approve.on { background: var(--ok); border-color: var(--ok); color: var(--stage); }
+.reject.on { background: var(--bad); border-color: var(--bad); color: var(--stage); }
+.why { display: flex; flex-direction: column; gap: 10px; border-top: 1px dashed var(--line); padding-top: 12px; }
+.why p { margin: 0; font-size: 13px; color: var(--muted); }
+.tags { display: flex; flex-wrap: wrap; gap: 6px; }
+.tags button { font-size: 13px; min-height: 34px; padding: 5px 10px; }
+.pin, .send { background: var(--brass); color: var(--brass-ink); border-color: var(--brass); font-weight: 600; }
+.pinrow { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.pinned { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; font-family: var(--mono); font-size: 13px; }
+.pinned li { display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: center; }
+.foot { margin-top: 24px; display: flex; flex-direction: column; gap: 10px; }
+.foot .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.foot p { margin: 0; font-size: 13px; color: var(--muted); }
+</style>
+
+<div class="wrap" id="app"></div>
+
+<script>
+(() => {
+"use strict";
+// Tags are this page's own fixed list. Stored strings are only ever matched against it, never shown.
+const TAGS = [["too_stiff", "Too stiff"], ["too_slow", "Too slow"], ["too_fast", "Too fast"], ["clipping", "Clipping"],
+  ["wrong_weapon_angle", "Wrong weapon angle"], ["no_weight", "No weight"], ["feet_slide", "Feet slide"], ["hard_to_read", "Hard to read"]];
+const TAG_KEYS = TAGS.map(t => t[0]);
+const TAG_LABEL = Object.fromEntries(TAGS);
+const VIEWERS = [["reference", "Reference", "No reference"], ["previous", "Previous", "New clip"], ["new", "New", ""]];
+const TPS = 20;
+
+// ---- pure logic (window.Booth) -------------------------------------------------------------------------------
+const known = tags => TAG_KEYS.filter(k => Array.isArray(tags) && tags.includes(k));
+const norm = v => (v && typeof v === "object" && v.clips && typeof v.clips === "object" && !Array.isArray(v.clips))
+  ? { sent_round: Number.isInteger(v.sent_round) && v.sent_round > 0 ? v.sent_round : 0, clips: v.clips }
+  : { sent_round: 0, clips: {} };
+const entryOf = (v, clip) => {
+  const e = norm(v).clips[clip.name];
+  return e && typeof e === "object" && e.frame_hash === clip.frame_hash && (e.verdict === "approved" || e.verdict === "rejected") ? e : null;
+};
+const pinsOf = (e, clip) => (Array.isArray(e.pins) ? e.pins : [])
+  .filter(p => p && Number.isInteger(p.tick) && p.tick >= 0 && (!clip.ticks || p.tick < clip.ticks))
+  .map(p => ({ tick: p.tick, tags: known(p.tags) }));
+const withEntry = (v, clip, e) => {
+  const n = norm(v), clips = Object.assign({}, n.clips);
+  if (e) clips[clip.name] = e; else delete clips[clip.name];
+  return { sent_round: n.sent_round, clips };
+};
+const rejected = (v, clip) => { const e = entryOf(v, clip); return e && e.verdict === "rejected" ? e : null; };
+const Booth = {
+  TAGS: TAG_KEYS,
+  frameRect(section, tick) {
+    const i = Math.max(0, Math.min(section.frames - 1, Math.floor(tick)));
+    return { x: (i % section.cols) * section.cell_w, y: section.y + Math.floor(i / section.cols) * section.cell_h, w: section.cell_w, h: section.cell_h };
+  },
+  clipState(clip, v) { const e = entryOf(v, clip); return e ? e.verdict : "undecided"; },
+  isLocked(batch, v) { return Number.isInteger(batch.round) && batch.round > 0 && norm(v).sent_round === batch.round; },
+  canSend(batch, clips, v) {
+    if (!clips.length || Booth.isLocked(batch, v)) return false;
+    if (Array.isArray(batch.clip_order) && !batch.clip_order.every(n => clips.some(c => c.name === n))) return false;
+    return clips.every(c => Booth.clipState(c, v) !== "undecided");
+  },
+  // verdict: "approved", "rejected" or null (back to undecided). Approving clears tags and pins.
+  setVerdict(v, clip, verdict) {
+    if (verdict !== "approved" && verdict !== "rejected") return withEntry(v, clip, null);
+    const cur = verdict === "rejected" ? rejected(v, clip) : null;
+    return withEntry(v, clip, { verdict, tags: cur ? known(cur.tags) : [], pins: cur ? pinsOf(cur, clip) : [], frame_hash: clip.frame_hash });
+  },
+  toggleTag(v, clip, tag) {
+    const cur = rejected(v, clip);
+    if (!cur || !TAG_KEYS.includes(tag)) return norm(v);
+    const has = known(cur.tags), tags = TAG_KEYS.filter(k => (k === tag) !== has.includes(k));
+    return withEntry(v, clip, { verdict: "rejected", tags, pins: pinsOf(cur, clip), frame_hash: clip.frame_hash });
+  },
+  // Pins the given tags to a tick; tags moved onto a pin leave the clip-level list.
+  pin(v, clip, tick, tags) {
+    const cur = rejected(v, clip);
+    if (!cur || !Number.isInteger(tick) || tick < 0 || (clip.ticks && tick >= clip.ticks)) return norm(v);
+    const mine = known(tags), pins = pinsOf(cur, clip), at = pins.find(p => p.tick === tick);
+    if (at) at.tags = known(at.tags.concat(mine)); else pins.push({ tick, tags: mine });
+    pins.sort((a, b) => a.tick - b.tick);
+    return withEntry(v, clip, { verdict: "rejected", tags: known(cur.tags).filter(k => !mine.includes(k)), pins, frame_hash: clip.frame_hash });
+  },
+  unpin(v, clip, index) {
+    const cur = rejected(v, clip);
+    if (!cur) return norm(v);
+    const pins = pinsOf(cur, clip).filter((_, i) => i !== index);
+    return withEntry(v, clip, { verdict: "rejected", tags: known(cur.tags), pins, frame_hash: clip.frame_hash });
+  },
+};
+window.Booth = Booth;
+
+// ---- small helpers -------------------------------------------------------------------------------------------
+const app = document.getElementById("app");
+function h(tag, props, ...kids) {
+  const e = document.createElement(tag);
+  for (const k in props || {}) {
+    const val = props[k];
+    if (k === "class") e.className = val;
+    else if (k === "text") e.textContent = val;
+    else if (k.startsWith("on")) e.addEventListener(k.slice(2), val);
+    else if (val === true) e.setAttribute(k, "");
+    else if (val !== false && val != null) e.setAttribute(k, val);
+  }
+  for (const kid of kids.flat()) if (kid != null) e.append(kid);
+  return e;
+}
+const str = (x, max = 120) => (typeof x === "string" ? x : x == null ? "" : String(x)).slice(0, max);
+const plural = (n, one, many) => n + " " + (n === 1 ? one : many);
+function age(iso) {
+  const ms = Date.now() - Date.parse(iso);
+  if (!isFinite(ms)) return "";
+  const m = Math.max(0, Math.round(ms / 60000));
+  return m < 1 ? "just now" : m < 60 ? m + " min ago" : m < 1440 ? Math.round(m / 60) + " h ago" : plural(Math.round(m / 1440), "day", "days") + " ago";
+}
+const DEMO = location.hash === "#demo";
+const still = matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+// ---- stores --------------------------------------------------------------------------------------------------
+function realStore(db) {
+  const docs = s => s.docs.map(d => ({ id: d.id, doc: d.data() })).filter(x => x.doc);
+  return {
+    watchBatches: (cb, err) => db.collection("batches").onSnapshot(s => cb(docs(s), s.metadata.fromCache), err),
+    watchVerdicts: (cb, err) => db.collection("verdicts").onSnapshot(s => cb(Object.fromEntries(docs(s).map(x => [x.id, x.doc])), s.metadata.fromCache), err),
+    watchClips: (id, cb, err) => db.collection("batches/" + id + "/clips").onSnapshot(s => cb(docs(s).map(x => x.doc)), err),
+    saveVerdict: (id, doc) => db.doc("verdicts/" + id).set(doc),
+    readVerdict: id => db.doc("verdicts/" + id).get().then(d => d.exists ? d.data() : null),
+    sheet: clip => new Promise((res, rej) => {
+      if (!/^[A-Za-z0-9]{32}$/.test(str(clip.sheet_asset))) return rej(new Error("no sheet"));
+      const im = new Image();
+      im.onload = () => res({ image: im });
+      im.onerror = () => rej(new Error("load"));
+      im.src = "/_blob/" + clip.sheet_asset;
+    }),
+  };
+}
+
+function demoStore() {
+  const sec = (viewers, t) => viewers.flatMap(v => ["near", "game16"].map(d => ({ viewer: v, distance: d, y: 0, cell_w: 300, cell_h: 300, cols: 12, frames: t })));
+  const clip = (name, ticks, impact, kind, viewers, hash, slide, flag) => ({ name, ticks, impact_tick: impact, frame_hash: hash.repeat(64),
+    sheet: "round-1/" + name + ".webp", sheet_asset: null, changed: true, round: 1, sections: sec(viewers, ticks),
+    numbers: { foot_slide: slide, foot_slide_reference: slide == null ? null : 0.19 }, flags: flag ? ["foot_slide"] : [], demo: kind });
+  const all = ["reference", "previous", "new"];
+  const clips = [clip("attack_thrust", 21, 7, 2, all, "a", null), clip("walk", 25, null, 0, ["reference", "new"], "b", 0.31, true),
+    clip("death_back", 31, 18, 5, ["previous", "new"], "c", null)];
+  const now = Date.now(), iso = ms => new Date(now - ms).toISOString();
+  const batches = [
+    { id: "sentinel-20261109-d3m0aaa", doc: { batch: "sentinel-20261109-d3m0aaa", round: 1, troop: "sentinel", lane: "anim/v2-shield", target: "anim/geckolib-rebuild",
+      created_at: iso(42 * 60000), clip_order: clips.map(c => c.name), other_files: ["src/main/java/gg/gravesandglory/client/anim/ClipLibrary.java", "docs/anim-rebuild/shield-notes.md"] } },
+    { id: "knight-20261107-d3m0bbb", doc: { batch: "knight-20261107-d3m0bbb", round: 2, troop: "knight", lane: "anim/v2-knight", created_at: iso(2 * 86400000), clip_order: ["attack_thrust"], other_files: [] } },
+  ];
+  const verdicts = { "knight-20261107-d3m0bbb": { sent_round: 2, clips: { attack_thrust: { verdict: "approved", tags: [], pins: [], frame_hash: "a".repeat(64) } } } };
+  const later = fn => setTimeout(fn, 60);
+  return {
+    failSheet: false,
+    watchBatches: cb => { later(() => cb(batches, false)); return () => {}; },
+    watchVerdicts: cb => { later(() => cb(verdicts, false)); return () => {}; },
+    watchClips: (id, cb) => { later(() => cb(id === batches[0].id ? clips : [clips[0]])); return () => {}; },
+    saveVerdict: (id, doc) => new Promise(res => later(() => { verdicts[id] = doc; res(); })),
+    readVerdict: id => Promise.resolve(verdicts[id] || null),
+    sheet(clip) { return new Promise((res, rej) => setTimeout(() => this.failSheet && clip.name === "walk" ? rej(new Error("demo")) : res({ demo: clip.demo }), 150)); },
+  };
+}
+
+// Placeholder figure for demo clips. v: 0 reference (held load, fast strike), 1 previous (even, mushy), 2 new.
+const ease = t => t * t * (3 - 2 * t);
+function demoPose(kind, impact, frames, v, f) {
+  const t = f / frames, ti = (impact == null ? frames / 2 : impact) / frames;
+  let a, drop = 0, lean = 0;
+  if (v === 1 || kind === 0) a = -1.1 * Math.sin(2 * Math.PI * t) * (v === 1 ? 0.6 : 1);
+  else {
+    const hold = v === 0 ? 0.14 : 0.10, w = Math.max(0.05, ti - hold - 0.07);
+    if (t < w) a = -2.4 * ease(t / w);
+    else if (t < ti - 0.07) a = -2.4 - 0.08 * Math.sin((t - w) * 40);
+    else if (t < ti + 0.03) { const k = (t - (ti - 0.07)) / 0.10; a = -2.4 + 3.6 * k; drop = 5 * k; lean = 0.25 * k; }
+    else { const k = Math.min(1, (t - ti - 0.03) / (1 - ti - 0.03)); a = 1.2 * (1 - ease(k)); drop = 5 * (1 - ease(k)); lean = 0.25 * (1 - ease(k)); }
+  }
+  const tilt = kind === 5 ? -1.45 * ease(Math.min(1, t * 1.4)) * (v === 1 ? 0.8 : 1) : lean;
+  return { a, drop, tilt, stride: kind === 0 ? Math.sin(2 * Math.PI * t) : 0 };
+}
+function demoDraw(cv, clip, v, f, far, colors) {
+  const g = cv.getContext("2d"), W = cv.width, H = cv.height, s = (far ? 0.42 : 1) * W / 150, p = demoPose(clip.demo, clip.impact_tick, clip.ticks, v, f);
+  g.clearRect(0, 0, W, H);
+  g.fillStyle = colors.line; g.fillRect(0, H * 0.84, W, 2 * W / 150);
+  g.save(); g.translate(W / 2, H * 0.84); g.scale(s, s); g.rotate(p.tilt); g.translate(0, p.drop);
+  g.fillStyle = colors.figure;
+  g.fillRect(-11 - 4 * p.stride, -46, 9, 46); g.fillRect(2 + 4 * p.stride, -46, 9, 46);
+  g.fillRect(-13, -84, 26, 40); g.fillRect(-10, -104, 20, 20);
+  g.fillStyle = colors.shield; g.fillRect(-24, -82, 10, 30);
+  g.translate(12, -80); g.rotate(p.a);
+  g.fillStyle = colors.figure; g.fillRect(-4, 0, 8, 26);
+  g.fillStyle = colors.steel; g.fillRect(-2, 24, 4, 40);
+  g.restore();
+}
+function sheetDraw(cv, image, clip, viewer, f, far) {
+  const sec = clip.sections.find(s => s.viewer === viewer && s.distance === (far ? "game16" : "near"))
+    || clip.sections.find(s => s.viewer === viewer);
+  if (!sec) return;
+  const g = cv.getContext("2d"), r = Booth.frameRect(sec, f), k = Math.min(1, cv.width / r.w, cv.height / r.h);
+  g.fillStyle = "rgb(226,226,226)"; g.fillRect(0, 0, cv.width, cv.height);        // the renderer's sky colour
+  g.imageSmoothingEnabled = k < 1;
+  g.drawImage(image, r.x, r.y, r.w, r.h, Math.round((cv.width - r.w * k) / 2), Math.round((cv.height - r.h * k) / 2), Math.round(r.w * k), Math.round(r.h * k));
+}
+
+// ---- state ---------------------------------------------------------------------------------------------------
+let store = null;
+const S = { batches: null, verdicts: {}, open: null, clips: null, far: false, cards: [], sig: "", seen: new Set(),
+  writes: {}, live: false, confirm: false, slow: false, dead: false, unsubClips: null, ui: null };
+const batchOf = id => (S.batches || []).find(b => b.id === id) || null;
+const verdictOf = id => norm(S.verdicts[id]);
+const busy = id => { const w = S.writes[id]; return !!w && (w.busy || w.failed); };
+const validClip = c => c && typeof c.name === "string" && typeof c.frame_hash === "string" && Number.isInteger(c.ticks) && c.ticks > 0 && Array.isArray(c.sections);
+
+// Saving. The whole verdict document is written, one write at a time. Verdict snapshots are ignored while a write
+// is on its way or has failed, so a half-saved decision is never replaced on screen; "missed" records that one came,
+// and the document is then read again from the server once the write is through.
+const writeOf = id => S.writes[id] || (S.writes[id] = { busy: false, dirty: false, failed: false, missed: false });
+const shown = () => { S.open ? syncBatch() : renderQueue(); };
+function take(id, doc) { if (doc) S.verdicts[id] = doc; else delete S.verdicts[id]; }
+function push(id) {
+  const w = writeOf(id);
+  if (w.busy) { w.dirty = true; return; }
+  w.busy = true; w.failed = false; shown();
+  store.saveVerdict(id, S.verdicts[id]).then(() => {
+    w.busy = false;
+    if (w.dirty) { w.dirty = false; return push(id); }
+    if (!w.missed) return shown();
+    w.missed = false; w.busy = true;
+    store.readVerdict(id).then(doc => { w.busy = false; if (w.dirty) { w.dirty = false; return push(id); } take(id, doc); shown(); },
+      () => { w.busy = false; shown(); });
+  }, () => { w.busy = false; w.dirty = false; w.failed = true; shown(); });
+}
+// Retry after a failed save: look at the server first, and never write over a review that was sent meanwhile.
+function retry(id) {
+  const w = writeOf(id), b = batchOf(id);
+  if (w.busy || !w.failed) return;
+  w.busy = true; shown();
+  store.readVerdict(id).then(doc => {
+    w.busy = false;
+    if (b && Booth.isLocked(b.doc, norm(doc))) { w.failed = false; w.missed = false; take(id, doc); return shown(); }
+    push(id);
+  }, () => { w.busy = false; shown(); });
+}
+function edit(fn) {
+  const b = batchOf(S.open);
+  if (!b) return;
+  const cur = verdictOf(b.id);
+  if (!S.live || Booth.isLocked(b.doc, cur)) return;
+  S.verdicts[b.id] = fn(cur);
+  S.confirm = false;
+  push(b.id);
+  syncBatch();
+}
+
+// ---- queue view ----------------------------------------------------------------------------------------------
+function badge() { return DEMO ? h("span", { class: "badge", text: "Demo data" }) : null; }
+function message(title, body) { app.replaceChildren(h("div", { class: "center" }, h("strong", { text: title }), body ? h("span", { text: body }) : null)); }
+function renderQueue() {
+  S.ui = null; S.cards = [];
+  const bar = h("div", { class: "bar" }, h("h1", {}, "Review Booth", h("span", { class: "sub", text: "Graves and Glory animation batches" })), badge());
+  if (S.dead) return app.replaceChildren(bar, h("p", { class: "note bad", text: "The review data is not available right now. Reload the page to try again." }));
+  if (!S.batches) return app.replaceChildren(bar, h("p", { class: "note", text: S.slow ? "The review data can't be reached yet. Still trying." : "Loading batches…" }));
+  const sorted = S.batches.slice().sort((a, b) => str(a.doc.created_at).localeCompare(str(b.doc.created_at)) || a.id.localeCompare(b.id));
+  const row = b => h("button", { type: "button", onclick: () => openBatch(b.id) },
+    h("span", { class: "name", text: str(b.doc.troop) || b.id }),
+    h("span", { class: "meta" }, h("span", { text: str(b.doc.lane) }), h("span", { text: plural((b.doc.clip_order || []).length, "clip", "clips") }),
+      h("span", { text: "round " + str(b.doc.round) }), h("span", { text: age(b.doc.created_at) })));
+  const open = sorted.filter(b => !Booth.isLocked(b.doc, S.verdicts[b.id])), done = sorted.filter(b => Booth.isLocked(b.doc, S.verdicts[b.id])).reverse().slice(0, 8);
+  app.replaceChildren(...[bar,
+    open.length ? h("h2", { class: "sec", text: "Waiting for review" }) : null,
+    open.length ? h("div", { class: "queue" }, open.map(row)) : h("div", { class: "center" }, h("strong", { text: "Nothing waiting for review." }), h("span", { text: "New batches appear here when a lane agent submits one." })),
+    done.length ? h("h2", { class: "sec", text: "Reviewed" }) : null,
+    done.length ? h("div", { class: "queue done" }, done.map(row)) : null].filter(Boolean));
+}
+
+// ---- batch view ----------------------------------------------------------------------------------------------
+function openBatch(id) {
+  if (!batchOf(id)) return;
+  closeBatch();
+  S.open = id; S.clips = null; S.sig = ""; S.confirm = false; S.seen = new Set();
+  try { S.unsubClips = store.watchClips(id, clips => { S.clips = clips.filter(validClip); syncBatch(); }, fail); } catch (e) { fail(); }
+  const ui = S.ui = {};
+  ui.title = h("h1", {});
+  ui.count = h("span", {}); ui.pips = h("span", { class: "pips" });
+  ui.save = h("span", { class: "save", role: "status" });
+  ui.far = h("button", { type: "button", "aria-pressed": "false", text: "Game distance", onclick: () => { S.far = !S.far; ui.far.classList.toggle("on", S.far); ui.far.setAttribute("aria-pressed", String(S.far)); S.cards.forEach(c => { c.drawn = -1; }); } });
+  ui.far.classList.toggle("on", S.far);
+  ui.fail = DEMO ? h("button", { type: "button", "aria-pressed": "false", text: "Fail sheet", onclick: () => { store.failSheet = !store.failSheet; ui.fail.classList.toggle("on", store.failSheet); ui.fail.setAttribute("aria-pressed", String(store.failSheet)); const c = S.cards.find(x => x.clip.name === "walk"); if (c) loadSheet(c, true); } }) : null;
+  ui.status = h("p", { class: "note", hidden: true });
+  ui.files = h("details", { class: "files" });
+  ui.cards = h("div", { class: "cards" });
+  ui.all = h("button", { type: "button", text: "Approve all undecided", onclick: approveAll });
+  ui.send = h("button", { type: "button", class: "send", text: "Send review", onclick: () => { S.confirm = true; syncBatch(); } });
+  ui.hint = h("p", {});
+  ui.confirmText = h("p", {});
+  ui.confirm = h("div", { class: "row", hidden: true }, ui.confirmText,
+    h("button", { type: "button", class: "send", text: "Confirm send", onclick: send }), h("button", { type: "button", text: "Cancel", onclick: () => { S.confirm = false; syncBatch(); } }));
+  app.replaceChildren(
+    h("div", { class: "bar" }, h("button", { type: "button", class: "sq", "aria-label": "Back to queue", text: "←", onclick: () => { closeBatch(); renderQueue(); } }),
+      ui.title, badge(), h("div", { class: "progress" }, ui.count, ui.pips, ui.save), ui.far, ui.fail),
+    ui.status, ui.files, ui.cards, h("div", { class: "foot" }, h("div", { class: "row" }, ui.all, ui.send), ui.confirm, ui.hint));
+  window.scrollTo(0, 0);
+  syncBatch();
+}
+function closeBatch() {
+  if (S.unsubClips) { try { S.unsubClips(); } catch (e) {} }
+  S.unsubClips = null; S.open = null; S.clips = null; S.cards = []; S.ui = null;
+  seenWatch.disconnect(); nearWatch.disconnect();
+}
+function ordered(b) {
+  const by = Object.fromEntries((S.clips || []).map(c => [c.name, c]));
+  return (Array.isArray(b.doc.clip_order) ? b.doc.clip_order : []).filter(n => typeof n === "string").map(n => by[n] || { name: n, missing: true });
+}
+function approveAll() {
+  const b = batchOf(S.open);
+  if (!b) return;
+  const ok = new Set(S.cards.filter(c => c.sheet === "ok").map(c => c.clip.name));
+  edit(v => ordered(b).reduce((acc, c) => !c.missing && ok.has(c.name) && Booth.clipState(c, acc) === "undecided" ? Booth.setVerdict(acc, c, "approved") : acc, v));
+}
+function send() {
+  const b = batchOf(S.open);
+  if (!b || !S.live || !Booth.canSend(b.doc, ordered(b).filter(c => !c.missing), verdictOf(b.id))) return;
+  const cur = verdictOf(b.id), names = new Set(b.doc.clip_order);
+  // Only this batch's clips travel: an entry for a clip the batch no longer lists would make the verdict invalid.
+  const doc = { sent_round: b.doc.round, clips: Object.fromEntries(Object.entries(cur.clips).filter(([n]) => names.has(n))) };
+  S.verdicts[b.id] = doc; S.confirm = false;
+  if (DEMO) console.log("BOOTH_VERDICT " + JSON.stringify(doc));
+  push(b.id);
+  syncBatch();
+}
+function syncSave() {
+  const ui = S.ui, w = S.writes[S.open];
+  if (!ui) return;
+  ui.save.className = "save" + (w && w.failed ? " fail" : "");
+  ui.save.replaceChildren(w && w.failed ? "Not saved" : w && w.busy ? "Saving…" : w ? "Saved" : "",
+    w && w.failed ? h("button", { type: "button", class: "small", text: "Retry", onclick: () => retry(S.open) }) : "");
+}
+
+function buildCard(clip) {
+  const c = { clip, t: 0, playing: !still, sheet: "idle", src: null, near: false, drawn: -1, canvases: [], key: clip.name + ":" + clip.frame_hash };
+  const el = c.el = h("section", { class: "card" });
+  el._card = c;
+  if (clip.missing) {
+    el.append(h("div", { class: "head" }, h("h2", { text: clip.name })), h("p", { class: "sheet", text: "Waiting for this clip's frames to be submitted." }));
+    return c;
+  }
+  const n = clip.numbers || {}, flagged = Array.isArray(clip.flags) && clip.flags.includes("foot_slide");
+  const num = x => typeof x === "number" && isFinite(x) ? x.toFixed(2) : null;
+  el.append(h("div", { class: "head" }, h("h2", { text: clip.name }), h("div", { class: "meta" },
+    clip.round > 1 && clip.changed ? h("span", { class: "fresh", text: "reworked in round " + clip.round }) : null,
+    h("span", { text: Number.isInteger(clip.impact_tick) ? "impact tick " + clip.impact_tick : "no impact tick" }),
+    num(n.foot_slide) ? h("span", { class: flagged ? "warn" : "", text: "foot slide " + num(n.foot_slide) + (num(n.foot_slide_reference) ? " (reference " + num(n.foot_slide_reference) + ")" : "") }) : null)));
+  const near = clip.sections.find(s => s.viewer === "new" && s.distance === "near") || clip.sections[0] || { cell_w: 1, cell_h: 1 };
+  const ratio = near.cell_w + " / " + near.cell_h;
+  el.append(h("div", { class: "views" }, VIEWERS.map(([key, label, none], i) => {
+    const has = clip.sections.some(s => s.viewer === key);
+    let box;
+    if (has) { box = h("canvas", { width: near.cell_w, height: near.cell_h, role: "img", "aria-label": label + " frames" }); c.canvases.push([box, key, i]); }
+    else box = h("div", { class: "none", text: none });
+    box.style.aspectRatio = ratio;
+    return h("div", { class: "view" + (key === "new" ? " new" : "") }, h("span", { text: label }), box);
+  })));
+  c.sheetNote = h("div", { class: "sheet", text: "Loading frames…" });
+  c.play = h("button", { type: "button", class: "sq", "aria-label": "Play or pause", onclick: () => { c.playing = !c.playing; syncTransport(c); } });
+  c.scrub = h("input", { type: "range", min: "0", max: String(clip.ticks - 1), value: "0", "aria-label": "Tick", oninput: () => { c.playing = false; c.t = +c.scrub.value; syncTransport(c); } });
+  c.readout = h("span", { class: "frame" });
+  const step = d => () => { c.playing = false; c.t = (Math.floor(c.t) + d + clip.ticks) % clip.ticks; syncTransport(c); };
+  c.marks = h("div", { class: "marks" });
+  el.append(c.sheetNote, h("div", { class: "transport" }, c.play, h("button", { type: "button", class: "sq", "aria-label": "Back one tick", text: "◂", onclick: step(-1) }),
+    h("button", { type: "button", class: "sq", "aria-label": "Forward one tick", text: "▸", onclick: step(1) }), h("div", { class: "scrub" }, c.scrub, c.marks), c.readout));
+  const verdict = which => () => edit(v => Booth.setVerdict(v, clip, Booth.clipState(clip, v) === which ? null : which));
+  c.approve = h("button", { type: "button", class: "approve", text: "Approve", onclick: verdict("approved") });
+  c.reject = h("button", { type: "button", class: "reject", text: "Reject", onclick: verdict("rejected") });
+  c.tagButtons = TAGS.map(([key, label]) => h("button", { type: "button", "data-tag": key, text: label, "aria-pressed": "false", onclick: () => edit(v => Booth.toggleTag(v, clip, key)) }));
+  c.pin = h("button", { type: "button", class: "pin", onclick: () => { c.playing = false; const tick = Math.floor(c.t); edit(v => Booth.pin(v, clip, tick, (rejected(v, clip) || {}).tags || [])); syncTransport(c); } });
+  c.pinned = h("ul", { class: "pinned" });
+  c.why = h("div", { class: "why", hidden: true }, h("p", { text: "What's wrong? Tap tags. To pin them to a moment, pause on the tick and tap Mark." }),
+    h("div", { class: "tags" }, c.tagButtons), h("div", { class: "pinrow" }, c.pin), c.pinned);
+  el.append(h("div", { class: "verdict" }, c.approve, c.reject), c.why);
+  syncTransport(c);
+  return c;
+}
+function syncTransport(c) {
+  if (!c.play) return;
+  const tick = Math.floor(c.t);
+  c.play.textContent = c.playing ? "❚❚" : "▶";
+  c.scrub.value = String(tick);
+  c.readout.textContent = "t " + String(tick).padStart(2, "0") + " / " + (c.clip.ticks - 1);
+  const n = c.tagCount || 0;
+  c.pin.textContent = "Mark tick " + tick + (n ? " · " + plural(n, "tag", "tags") : "");
+  c.shown = tick; c.drawn = -1;
+}
+function loadSheet(c, again) {
+  if (c.clip.missing || (c.sheet !== "idle" && !again)) return;
+  c.sheet = "loading"; c.src = null;
+  c.sheetNote.className = "sheet"; c.sheetNote.hidden = false; c.sheetNote.replaceChildren("Loading frames…");
+  syncBatch();
+  store.sheet(c.clip).then(src => { c.sheet = "ok"; c.src = src; c.drawn = -1; c.sheetNote.hidden = true; syncBatch(); },
+    () => { c.sheet = "fail"; c.sheetNote.className = "sheet fail";
+      c.sheetNote.replaceChildren("Frames did not load", h("button", { type: "button", class: "small", text: "Retry", onclick: () => loadSheet(c, true) })); syncBatch(); });
+}
+const seenWatch = new IntersectionObserver(es => { let any = false; es.forEach(e => { if (e.isIntersecting && e.target._card && !S.seen.has(e.target._card.key)) { S.seen.add(e.target._card.key); any = true; } }); if (any) syncBatch(); }, { threshold: 0.25 });
+const nearWatch = new IntersectionObserver(es => es.forEach(e => { const c = e.target._card; if (!c) return; c.near = e.isIntersecting; if (c.near) loadSheet(c); }), { rootMargin: "500px 0px" });
+
+function syncBatch() {
+  const ui = S.ui, b = batchOf(S.open);
+  if (!ui) return;
+  if (!b) { closeBatch(); return renderQueue(); }
+  const v = verdictOf(b.id), locked = Booth.isLocked(b.doc, v), frozen = locked || !S.live, w = S.writes[b.id], clips = ordered(b), real = clips.filter(c => !c.missing);
+  ui.title.replaceChildren(str(b.doc.troop) || b.id, h("span", { class: "sub", text: [b.id, str(b.doc.lane), "round " + str(b.doc.round)].filter(Boolean).join(" · ") }));
+  const files = (Array.isArray(b.doc.other_files) ? b.doc.other_files : []).filter(f => typeof f === "string");
+  const wasOpen = ui.files.open;
+  ui.files.replaceChildren(h("summary", { text: files.length ? plural(files.length, "other file", "other files") + " changed on this lane (approving covers them)" : "Animation files only" }),
+    files.length ? h("ul", {}, files.map(f => h("li", { text: str(f, 300) }))) : h("ul", {}, h("li", { text: "This lane changed nothing outside the troop's animation files." })));
+  ui.files.open = wasOpen;
+  // Cards are rebuilt only when the set of clips or their frames change; verdict changes just re-sync them.
+  const sig = S.clips === null ? "" : clips.map(c => c.name + ":" + (c.missing ? "-" : c.frame_hash + ":" + str(c.sheet_asset))).join("|");
+  if (sig !== S.sig) {
+    S.sig = sig;
+    seenWatch.disconnect(); nearWatch.disconnect();
+    S.cards = clips.map(buildCard);
+    ui.cards.replaceChildren(...S.cards.map(c => c.el));
+    S.cards.forEach(c => { seenWatch.observe(c.el); nearWatch.observe(c.el); });
+  }
+  let decided = 0;
+  ui.pips.replaceChildren(...clips.map(c => { const st = c.missing ? "undecided" : Booth.clipState(c, v); if (st !== "undecided") decided++; return h("i", { class: "pip " + st }); }));
+  ui.count.textContent = S.clips === null ? "Loading clips…" : decided + " of " + clips.length + " decided";
+  for (const c of S.cards) {
+    if (c.clip.missing) continue;
+    const st = Booth.clipState(c.clip, v), e = rejected(v, c.clip), off = frozen || c.sheet !== "ok";
+    c.el.className = "card" + (st === "undecided" ? "" : " " + st);
+    c.approve.classList.toggle("on", st === "approved"); c.reject.classList.toggle("on", st === "rejected");
+    c.approve.disabled = c.reject.disabled = off;
+    c.why.hidden = !e;
+    const tags = e ? known(e.tags) : [], pins = e ? pinsOf(e, c.clip) : [];
+    c.tagButtons.forEach(btn => { const on = tags.includes(btn.dataset.tag); btn.classList.toggle("on", on); btn.setAttribute("aria-pressed", String(on)); btn.disabled = frozen; });
+    c.pin.disabled = frozen;
+    c.tagCount = tags.length;
+    c.pin.textContent = "Mark tick " + Math.floor(c.t) + (tags.length ? " · " + plural(tags.length, "tag", "tags") : "");
+    c.pinned.replaceChildren(...pins.map((p, i) => h("li", {}, h("span", { text: "tick " + p.tick }), h("span", { text: p.tags.map(k => TAG_LABEL[k]).join(", ") || "no tag" }),
+      h("button", { type: "button", class: "small", text: "remove", disabled: frozen, onclick: () => edit(x => Booth.unpin(x, c.clip, i)) }))));
+    const last = Math.max(1, c.clip.ticks - 1), mark = (tick, cls) => { const m = h("i", { class: cls, title: cls ? "impact" : "pin" }); m.style.left = (tick / last * 100) + "%"; return m; };
+    c.marks.replaceChildren(Number.isInteger(c.clip.impact_tick) ? mark(c.clip.impact_tick, "impact") : "", ...pins.map(p => mark(p.tick, "")));
+  }
+  const unseen = S.cards.filter(c => !S.seen.has(c.key)).length, undecided = real.filter(c => Booth.clipState(c, v) === "undecided").length;
+  const can = Booth.canSend(b.doc, real, v), nRej = real.filter(c => Booth.clipState(c, v) === "rejected").length;
+  ui.all.disabled = frozen || !undecided || unseen > 0 || S.clips === null;
+  ui.send.disabled = !can || !S.live; ui.send.hidden = S.confirm && can;
+  ui.confirm.hidden = !(S.confirm && can);
+  ui.confirmText.textContent = "Send " + (real.length - nRej) + " approved, " + nRej + " rejected? This locks the batch until the lane sends a new round.";
+  ui.hint.textContent = locked ? "" : !S.live ? "Getting the latest review data. Decisions unlock when it arrives." : S.clips === null ? "" : unseen > 0 && undecided ? "Approve all unlocks once every clip has been on screen (" + unseen + " to go)." : undecided ? plural(undecided, "clip", "clips") + " still to decide." : "Every clip is decided.";
+  ui.status.hidden = !locked;
+  ui.status.className = "note " + (nRej || (w && w.failed) ? "bad" : "ok");
+  ui.status.textContent = !locked ? "" : w && w.failed ? "Review not sent: saving it failed. Press Retry at the top."
+    : w && w.busy ? "Sending the review…" : nRej ? "Review sent: " + plural(nRej, "clip", "clips") + " rejected. The lane agent reworks them and sends a new round; this batch reopens then."
+    : "Review sent: every clip approved. The lane agent merges this lane.";
+  syncSave();
+}
+
+// ---- playback ------------------------------------------------------------------------------------------------
+let last = 0;
+function frame(now) {
+  const dt = Math.min(0.25, (now - last) / 1000 || 0); last = now;
+  let colors = null;
+  for (const c of S.cards) {
+    if (c.clip.missing) continue;
+    if (c.playing) c.t = (c.t + dt * TPS) % c.clip.ticks;
+    const tick = Math.floor(c.t);
+    if (tick !== c.shown) { const p = c.playing; syncTransport(c); c.playing = p; }
+    if (!c.near || c.sheet !== "ok" || c.drawn === tick) continue;
+    c.drawn = tick;
+    if (c.src.demo != null && !colors) { const cs = getComputedStyle(document.documentElement), g = n => cs.getPropertyValue(n); colors = { line: g("--line"), figure: g("--figure"), shield: g("--shield"), steel: g("--steel") }; }
+    for (const [cv, key, i] of c.canvases) c.src.image ? sheetDraw(cv, c.src.image, c.clip, key, tick, S.far) : demoDraw(cv, c.clip, i, tick, S.far, colors);
+  }
+  requestAnimationFrame(frame);
+}
+
+// ---- start ---------------------------------------------------------------------------------------------------
+function fail() { S.dead = true; closeBatch(); renderQueue(); }
+function boot() {
+  renderQueue();
+  const timer = setTimeout(() => { S.slow = true; if (!S.open) renderQueue(); }, 10000);
+  store.watchVerdicts((map, cached) => {
+    if (!cached) S.live = true;
+    for (const id in S.writes) if (busy(id)) S.writes[id].missed = true;
+    for (const id in S.verdicts) if (!busy(id) && !(id in map)) delete S.verdicts[id];
+    for (const id in map) if (!busy(id)) S.verdicts[id] = map[id];
+    shown();
+  }, fail);
+  store.watchBatches((list, cached) => {
+    if (!cached) { clearTimeout(timer); S.slow = false; }
+    S.batches = list.filter(b => b.doc && typeof b.doc === "object");
+    S.open ? syncBatch() : renderQueue();
+  }, e => { clearTimeout(timer); fail(e); });
+  requestAnimationFrame(frame);
+}
+(async () => {
+  if (DEMO) { store = demoStore(); return boot(); }
+  // #test: a check script supplies the store and reads the state. It shows no data of its own.
+  if (location.hash === "#test") { Booth.start = st => { store = st; boot(); }; Booth.peek = () => S; Booth.loadSheet = loadSheet; return; }
+  let db = null;
+  try { db = window.claude && typeof window.claude.use === "function" ? await window.claude.use("db") : null; } catch (e) { db = null; }
+  if (!db) return message("Sign in to claude.ai to review.");
+  store = realStore(db);
+  boot();
+})();
+})();
+</script>

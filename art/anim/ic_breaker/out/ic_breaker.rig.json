@@ -1,0 +1,165 @@
+{
+ "troop": "ic_breaker",
+ "tiers": [
+  1,
+  2,
+  3
+ ],
+ "faces": 1,
+ "bones": {
+  "root": {},
+  "hips": {},
+  "torso": {},
+  "head": {},
+  "helm": {
+   "tag": "helm"
+  },
+  "helm_plume": {
+   "tag": "helm"
+  },
+  "bevor": {
+   "stages": [
+    2,
+    3
+   ],
+   "tag": "helm"
+  },
+  "comb": {
+   "stages": [
+    3
+   ],
+   "tag": "helm"
+  },
+  "right_arm": {},
+  "right_forearm": {},
+  "right_hand": {},
+  "right_cuff": {},
+  "right_gauntlet": {
+   "stages": [
+    2,
+    3
+   ]
+  },
+  "right_pauldron": {},
+  "right_boss": {
+   "stages": [
+    2,
+    3
+   ]
+  },
+  "right_spikes": {
+   "stages": [
+    3
+   ]
+  },
+  "left_arm": {},
+  "left_forearm": {},
+  "left_hand": {},
+  "left_cuff": {},
+  "left_gauntlet": {
+   "stages": [
+    2,
+    3
+   ]
+  },
+  "left_pauldron": {},
+  "left_boss": {
+   "stages": [
+    2,
+    3
+   ]
+  },
+  "left_spikes": {
+   "stages": [
+    3
+   ]
+  },
+  "fur_collar": {},
+  "tabard": {
+   "team": true
+  },
+  "cape": {
+   "team": true
+  },
+  "cape_cloth": {
+   "team": true
+  },
+  "right_leg": {},
+  "right_shin": {},
+  "right_foot": {},
+  "right_boot": {},
+  "right_knee": {},
+  "right_knee_wing": {
+   "stages": [
+    2,
+    3
+   ]
+  },
+  "right_greave": {
+   "stages": [
+    3
+   ]
+  },
+  "right_skirt": {
+   "team": true
+  },
+  "left_leg": {},
+  "left_shin": {},
+  "left_foot": {},
+  "left_boot": {},
+  "left_knee": {},
+  "left_knee_wing": {
+   "stages": [
+    2,
+    3
+   ]
+  },
+  "left_greave": {
+   "stages": [
+    3
+   ]
+  },
+  "left_skirt": {
+   "team": true
+  },
+  "tabard_skirt": {
+   "team": true
+  },
+  "belt": {},
+  "right_tasset": {
+   "stages": [
+    2,
+    3
+   ]
+  },
+  "left_tasset": {
+   "stages": [
+    2,
+    3
+   ]
+  },
+  "apron": {
+   "stages": [
+    3
+   ]
+  },
+  "weapon_t1": {
+   "stages": [
+    1
+   ],
+   "tag": "weapon"
+  },
+  "weapon_t2": {
+   "stages": [
+    2
+   ],
+   "tag": "weapon"
+  },
+  "weapon_t3": {
+   "stages": [
+    3
+   ],
+   "tag": "weapon"
+  }
+ }
+}

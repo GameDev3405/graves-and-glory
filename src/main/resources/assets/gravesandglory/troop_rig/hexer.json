@@ -1,0 +1,145 @@
+{
+ "troop": "hexer",
+ "tiers": [
+  1,
+  2,
+  3
+ ],
+ "faces": 1,
+ "bones": {
+  "root": {},
+  "hips": {},
+  "torso": {},
+  "head": {},
+  "death_mask": {},
+  "burial_hood": {
+   "tag": "helm"
+  },
+  "hood_tail": {
+   "tag": "helm"
+  },
+  "halo": {
+   "stages": [
+    3
+   ]
+  },
+  "mask_stone": {
+   "stages": [
+    3
+   ]
+  },
+  "right_arm": {},
+  "right_forearm": {},
+  "right_hand": {},
+  "lantern": {
+   "stages": [
+    1
+   ],
+   "tag": "weapon"
+  },
+  "lantern_hang": {
+   "stages": [
+    1
+   ],
+   "tag": "weapon"
+  },
+  "lantern_t2": {
+   "stages": [
+    2
+   ],
+   "tag": "weapon"
+  },
+  "lantern_t2_hang": {
+   "stages": [
+    2
+   ],
+   "tag": "weapon"
+  },
+  "lantern_t3": {
+   "stages": [
+    3
+   ],
+   "tag": "weapon"
+  },
+  "lantern_t3_hang": {
+   "stages": [
+    3
+   ],
+   "tag": "weapon"
+  },
+  "right_cuff": {
+   "stages": [
+    2,
+    3
+   ]
+  },
+  "right_sleeve": {},
+  "left_arm": {},
+  "left_forearm": {},
+  "left_hand": {},
+  "left_cuff": {
+   "stages": [
+    2,
+    3
+   ]
+  },
+  "left_sleeve": {},
+  "mantle": {},
+  "candle_r": {},
+  "candle_l": {},
+  "girdle": {},
+  "beads": {},
+  "vestment": {
+   "team": true
+  },
+  "plate_gorget": {
+   "stages": [
+    2,
+    3
+   ]
+  },
+  "right_pauldron": {
+   "stages": [
+    2,
+    3
+   ]
+  },
+  "left_pauldron": {
+   "stages": [
+    2,
+    3
+   ]
+  },
+  "girdle_plate": {
+   "stages": [
+    2,
+    3
+   ]
+  },
+  "gilt_gorget": {
+   "stages": [
+    3
+   ]
+  },
+  "right_leg": {},
+  "right_shin": {},
+  "right_foot": {},
+  "left_leg": {},
+  "left_shin": {},
+  "left_foot": {},
+  "cord": {},
+  "vestment_skirt": {
+   "team": true
+  },
+  "skirt_front": {},
+  "vestment_front": {
+   "team": true
+  },
+  "skirt_back": {},
+  "vestment_back": {
+   "team": true
+  },
+  "skirt_right": {},
+  "skirt_left": {}
+ }
+}

@@ -1,0 +1,178 @@
+{
+ "troop": "wm_seer",
+ "tiers": [
+  1,
+  2,
+  3
+ ],
+ "faces": 1,
+ "bones": {
+  "root": {},
+  "hips": {},
+  "torso": {},
+  "head": {},
+  "snout": {},
+  "ear_r": {},
+  "ear_l": {},
+  "antler_r": {},
+  "antler_r_tine3": {
+   "stages": [
+    2,
+    3
+   ]
+  },
+  "antler_r_crown": {
+   "stages": [
+    3
+   ]
+  },
+  "antler_l": {},
+  "antler_l_tine3": {
+   "stages": [
+    2,
+    3
+   ]
+  },
+  "antler_l_crown": {
+   "stages": [
+    3
+   ]
+  },
+  "right_arm": {},
+  "right_forearm": {},
+  "right_hand": {},
+  "wand": {
+   "stages": [
+    1
+   ],
+   "tag": "weapon"
+  },
+  "wand_t2": {
+   "stages": [
+    2
+   ],
+   "tag": "weapon"
+  },
+  "wand_t3": {
+   "stages": [
+    3
+   ],
+   "tag": "weapon"
+  },
+  "right_cuff": {},
+  "right_bracer": {
+   "stages": [
+    2,
+    3
+   ]
+  },
+  "right_shoulder": {
+   "stages": [
+    2,
+    3
+   ]
+  },
+  "right_shoulder_tusks": {
+   "stages": [
+    3
+   ]
+  },
+  "left_arm": {},
+  "left_forearm": {},
+  "left_hand": {},
+  "left_cuff": {},
+  "left_bracer": {
+   "stages": [
+    2,
+    3
+   ]
+  },
+  "left_shoulder": {
+   "stages": [
+    2,
+    3
+   ]
+  },
+  "left_shoulder_tusks": {
+   "stages": [
+    3
+   ]
+  },
+  "shawl": {},
+  "necklace": {},
+  "sash": {
+   "team": true
+  },
+  "staff": {},
+  "plaques": {
+   "stages": [
+    2,
+    3
+   ]
+  },
+  "feather_mantle": {
+   "stages": [
+    2,
+    3
+   ]
+  },
+  "breastplate": {
+   "stages": [
+    2,
+    3
+   ]
+  },
+  "staff_skulls": {
+   "stages": [
+    3
+   ]
+  },
+  "bone_collar": {
+   "stages": [
+    3
+   ]
+  },
+  "chest_skull": {
+   "stages": [
+    3
+   ]
+  },
+  "right_leg": {},
+  "right_shin": {},
+  "right_foot": {},
+  "right_hoof": {},
+  "left_leg": {},
+  "left_shin": {},
+  "left_foot": {},
+  "left_hoof": {},
+  "belt": {},
+  "trinkets": {},
+  "sash_tail": {
+   "team": true
+  },
+  "skirt_front": {},
+  "skirt_front_fringe": {
+   "stages": [
+    3
+   ]
+  },
+  "skirt_back": {},
+  "skirt_back_fringe": {
+   "stages": [
+    3
+   ]
+  },
+  "skirt_right": {},
+  "skirt_right_fringe": {
+   "stages": [
+    3
+   ]
+  },
+  "skirt_left": {},
+  "skirt_left_fringe": {
+   "stages": [
+    3
+   ]
+  }
+ }
+}

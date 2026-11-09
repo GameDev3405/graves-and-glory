@@ -188,11 +188,12 @@ final class Abilities {
      * ally as the heal is sent.
      */
     static void mend(GravesAndGlory.Battle b, GravesAndGlory.Unit u, Spec.AbilitiesRow row, long time) {
-        if (time < u.abilityAt || time < u.stunnedUntil) return; // a stunned mender sends nothing (Shield bash, Rise Again: no attacks, no casts); her cooldown waits for the stun to end
-        var mob = u.mob;
-        double radius = row.radius() > 0 ? row.radius() : D.healRadius();
-        var ally = b.units.stream().filter(v -> v.squad.team == u.squad.team && v.mob.isAlive() && v.mob.getHealth() < v.mob.getMaxHealth() && v.mob.squaredDistanceTo(mob) < radius * radius && mob.canSee(v.mob))
-            .min(Comparator.comparingDouble(v -> v.mob.getHealth() / v.mob.getMaxHealth())).orElse(null);
+        if (time < u.abilityAt || time < u.stunnedUntil) { // a stunned mender sends nothing (Shield bash, Rise Again: no attacks, no casts); her cooldown waits for the stun to end
+            // Cosmetic early announce (Kort 2026-11-06, as a bow's draw): the beat before the mend leaves, its cast clip is announced now, at the start tick the release will stamp (Projectiles.drawAhead), so the client drops the release's copy.
+            if (time + 10 >= u.abilityAt && time + 10 >= u.stunnedUntil) { var next = mendTarget(b, u, row); if (next != null) Projectiles.drawAhead(b, u, next.mob, 10); }
+            return;
+        }
+        var ally = mendTarget(b, u, row);
         if (ally == null) return;
         double amount = row.amount() > 0 ? row.amount() : D.healAmount();
         Projectiles.fire(b, u, ally.mob, "mend", (float) (amount * b.campaign.damage(u) * Veterans.outputFactor(u)));
@@ -200,6 +201,24 @@ final class Abilities {
         var dawnlight = rider(u, "mend");
         if (dawnlight != null && dawnlight.cleanse()) Statuses.cleanse(b, u, ally.mob);
         u.abilityAt = time + (row.cooldownTicks() > 0 ? row.cooldownTicks() : D.abilityCooldownTicks());
+    }
+
+    /** The ally a mender would send a heal to now: the most hurt in sight within the row's radius, null for none. */
+    static GravesAndGlory.Unit mendTarget(GravesAndGlory.Battle b, GravesAndGlory.Unit u, Spec.AbilitiesRow row) {
+        var mob = u.mob;
+        double radius = row.radius() > 0 ? row.radius() : D.healRadius();
+        return b.units.stream().filter(v -> v.squad.team == u.squad.team && v.mob.isAlive() && v.mob.getHealth() < v.mob.getMaxHealth() && v.mob.squaredDistanceTo(mob) < radius * radius && mob.canSee(v.mob))
+            .min(Comparator.comparingDouble(v -> v.mob.getHealth() / v.mob.getMaxHealth())).orElse(null);
+    }
+
+    /** Whether the troop's spell is a caster's blight or mist (the hexer's, the mist caller's): its cast clip is sent at the release (attack) and announced a beat early (Tactics.tick), cosmetic only. */
+    static boolean castsAhead(GravesAndGlory.Unit u) {
+        return "caster".equals(u.spec.family()) && switch (row(u).mechanic()) {case "blight", "mist" -> true; default -> false;};
+    }
+
+    /** Whether the troop's attack beat shoots a projectile that sends attack_v1 at its release (Projectiles.loose): a ranged troop whose ability is not a mend (cast on its own cooldown, mend) or a spell (blight, mist: a bolt with no attack event). */
+    static boolean shoots(GravesAndGlory.Unit u) {
+        return u.spec.ranged() && switch (row(u).mechanic()) {case "blight", "mist", "mend" -> false; default -> true;};
     }
 
     /**
@@ -266,6 +285,7 @@ final class Abilities {
                 u.windupUntil = time + (row.windupTicks() > 0 ? row.windupTicks() : D.spellWindupTicks());
                 u.abilityAt = time + (row.cooldownTicks() > 0 ? row.cooldownTicks() : D.abilityCooldownTicks());
                 Projectiles.bolt(b, u, u.spellCenter);
+                if (castsAhead(u)) Projectiles.loose(u, 0); // cosmetic (Kort 2026-11-06): the hexer's and mist caller's cast clip, stamped so its impact lands on this release; the early copy Tactics sends a beat ahead is the same event
                 return true;
             }
             case "mend" -> { return false; }
@@ -345,7 +365,7 @@ final class Abilities {
                 if (!target.isAlive() || Combat.structure(target) || !offCooldown(b, u, row, second)) return;
                 if (row.status().equals("slow")) {
                     slow(b, u, target, row);
-                    if (row.knockback() < 0) pull(b, u, target, u.mob.getPos(), -row.knockback()); // the Harpooner's: a negative knockback drags the target toward the shooter
+                    if (row.knockback() < 0 && pull(b, u, target, u.mob.getPos(), -row.knockback())) markPulled(b, target); // the Harpooner's: a negative knockback drags the target toward the shooter; its hit_v1 (sent after onHit) says so
                 } else Statuses.apply(b, u, target, row);
             }
             case "slam" -> {
@@ -411,8 +431,9 @@ final class Abilities {
         double reach = radius * radius;
         for (var e : enemies(b, u.squad.team)) {
             if (e == except || e.squaredDistanceTo(at) > reach) continue;
+            if (knockback != 0 && !anchored(b, e) && !Combat.structure(e)) KNOCKED.put(e.getId(), b.time); // its hit_v1 (sent inside resolve) carries the knockback flag; knock below marks it again
             float applied = Combat.resolve(b, u, e, base, "slam", true);
-            if (applied <= 0) continue;
+            if (applied <= 0) { KNOCKED.remove(e.getId()); continue; }
             struck++;
             BattleEffects.flash(b, new Vec3d(e.getX(), e.getBodyY(.6), e.getZ()), u.squad.team);
             if (e.isAlive() && !Combat.structure(e)) knock(b, e, at, fallback, knockback);
@@ -468,7 +489,25 @@ final class Abilities {
         if (dx * dx + dz * dz < 1e-6) { dx = fallback.x - e.getX(); dz = fallback.z - e.getZ(); }
         e.takeKnockback(strength, dx, dz);
         e.velocityModified = true;
+        KNOCKED.values().removeIf(t -> t < b.time); // only this tick's throws count
+        KNOCKED.put(e.getId(), b.time);
     }
+    /**
+     * Entity ids thrown by knock, with the battle tick: the hit_v1 of the blow that threw them carries the knockback flag (Combat.resolve sends it after the
+     * blow's on-hit abilities, which is when a shield bash's throw has happened; splash marks its targets before their blow). Server thread only.
+     */
+    static final Map<Integer, Long> KNOCKED = new HashMap<>();
+    /** Whether this entity was thrown (or is about to be: splash marks it) this battle tick; reading it spends the mark. */
+    static boolean takeKnocked(GravesAndGlory.Battle b, LivingEntity e) { Long t = KNOCKED.remove(e.getId()); return t != null && t == b.time; }
+    /**
+     * Entity ids dragged by pull, with the battle tick: the hit_v1 of the blow that pulled them carries the pulled flag (8). The Harpoon's pull comes after its blow
+     * and before the hit_v1 (Combat.resolve sends it after onHit); the Undertow's comes after its blow, so it marks its targets before (pullStep). Server thread only.
+     * Presentation only: nothing else reads it.
+     */
+    static final Map<Integer, Long> PULLED = new HashMap<>();
+    static void markPulled(GravesAndGlory.Battle b, LivingEntity e) { PULLED.values().removeIf(t -> t < b.time); PULLED.put(e.getId(), b.time); }
+    /** Whether this entity was pulled (or is about to be) this battle tick; reading it spends the mark. */
+    static boolean takePulled(GravesAndGlory.Battle b, LivingEntity e) { Long t = PULLED.remove(e.getId()); return t != null && t == b.time; }
 
     /** Every living enemy of a team that a blow can fall on: the other side's troops, its seated commanders in the field and its structures. */
     static List<LivingEntity> enemies(GravesAndGlory.Battle b, int team) {
@@ -512,20 +551,32 @@ final class Abilities {
      * cleared, which also cancels the knockback the blow that pulled it gave (a sliding pull would be undone by it); a commander, whose position his client owns,
      * gets the velocity that carries him about that far. A structure is never moved, and nor is an anchored troop.
      */
-    static void pull(GravesAndGlory.Battle b, LivingEntity e, Vec3d toward, double blocks) { pull(b, null, e, toward, blocks); }
+    static boolean pull(GravesAndGlory.Battle b, LivingEntity e, Vec3d toward, double blocks) { return pull(b, null, e, toward, blocks); }
 
-    /** The same pull by a troop: from, when not null, is logged as a helper on a target that can be pulled (Veterans.helped: kill credit, design 3.2). */
-    static void pull(GravesAndGlory.Battle b, GravesAndGlory.Unit from, LivingEntity e, Vec3d toward, double blocks) {
-        if (Combat.structure(e) || blocks <= 0 || anchored(b, e)) return;
+    /** The same pull by a troop: from, when not null, is logged as a helper on a target that can be pulled (Veterans.helped: kill credit, design 3.2). Returns whether it moved it. */
+    static boolean pull(GravesAndGlory.Battle b, GravesAndGlory.Unit from, LivingEntity e, Vec3d toward, double blocks) {
+        if (Combat.structure(e) || blocks <= 0 || anchored(b, e)) return false;
         if (from != null) Veterans.helped(b, from, e);
         double dx = toward.x - e.getX(), dz = toward.z - e.getZ(), distance = Math.hypot(dx, dz);
-        var resist = e.getAttributeInstance(EntityAttributes.GENERIC_KNOCKBACK_RESISTANCE);
-        double step = Math.min(blocks * (1 - (resist == null ? 0 : resist.getValue())), distance - PULL_STOP);
-        if (step < 0.05 || distance < 1e-6) return;
+        double step = pullStep(e, toward, blocks);
+        if (step < 0.05 || distance < 1e-6) return false;
         Vec3d by = new Vec3d(dx / distance * step, 0, dz / distance * step);
         if (e instanceof ServerPlayerEntity) e.setVelocity(by.multiply(PLAYER_PULL));
         else { e.move(MovementType.SELF, by); e.setVelocity(0, e.getVelocity().y, 0); }
         e.velocityModified = true;
+        return true;
+    }
+
+    /** How far pull would drag the entity (blocks, before walls; under 0.05 it is not moved): blocks less its knockback resistance, never closer than PULL_STOP. */
+    static double pullStep(LivingEntity e, Vec3d toward, double blocks) {
+        double distance = Math.hypot(toward.x - e.getX(), toward.z - e.getZ());
+        var resist = e.getAttributeInstance(EntityAttributes.GENERIC_KNOCKBACK_RESISTANCE);
+        return Math.min(blocks * (1 - (resist == null ? 0 : resist.getValue())), distance - PULL_STOP);
+    }
+
+    /** Whether pull would move the entity now (the Undertow marks its targets with this before their blow, whose hit_v1 then says pulled). */
+    static boolean pulls(GravesAndGlory.Battle b, LivingEntity e, Vec3d toward, double blocks) {
+        return !Combat.structure(e) && blocks > 0 && !anchored(b, e) && Math.hypot(toward.x - e.getX(), toward.z - e.getZ()) >= 1e-6 && pullStep(e, toward, blocks) >= 0.05;
     }
 
     /** A walking body's horizontal velocity carries it about 2.2 times that far over the ticks that follow, on ordinary ground (the friction series 1 / (1 - 0.546)): what a commander's pull is scaled by. */
@@ -983,7 +1034,9 @@ final class Abilities {
         float base = (float) (row.amount() * b.campaign.damage(u));
         Vec3d at = u.mob.getPos();
         for (var e : caught) {
+            if (pulls(b, e, at, -row.knockback())) markPulled(b, e); // its hit_v1, sent inside resolve, carries the pulled flag (presentation only)
             Combat.resolve(b, u, e, base, "slam", true);
+            PULLED.remove(e.getId()); // spent by that hit_v1, or none was sent (the blow did not land): either way no later blow this tick reads it
             if (!e.isAlive()) continue;
             if (row.statusTicks() > 0) slow(b, u, e, row);
             pull(b, u, e, at, -row.knockback());

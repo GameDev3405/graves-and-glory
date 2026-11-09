@@ -1,0 +1,208 @@
+{
+ "troop": "tc_admiral",
+ "tiers": [
+  1,
+  2,
+  3
+ ],
+ "faces": 1,
+ "bones": {
+  "root": {},
+  "hips": {},
+  "torso": {},
+  "head": {},
+  "hair_back": {},
+  "hair_lock_r": {},
+  "hair_lock_l": {},
+  "hair_adrift_l": {},
+  "hair_adrift_r": {},
+  "hat_crown": {
+   "tag": "helm"
+  },
+  "hat_wing_r": {
+   "tag": "helm"
+  },
+  "hat_wing_l": {
+   "tag": "helm"
+  },
+  "hat_peak": {
+   "tag": "helm"
+  },
+  "hat_back": {
+   "tag": "helm"
+  },
+  "cockade": {
+   "tag": "helm"
+  },
+  "plume_a": {
+   "tag": "helm"
+  },
+  "plume_b": {
+   "tag": "helm"
+  },
+  "kelp_hat": {},
+  "hat_band": {
+   "stages": [
+    2,
+    3
+   ],
+   "tag": "helm"
+  },
+  "hat_pearl0": {
+   "stages": [
+    3
+   ],
+   "tag": "helm"
+  },
+  "hat_pearl1": {
+   "stages": [
+    3
+   ],
+   "tag": "helm"
+  },
+  "hat_pearl2": {
+   "stages": [
+    3
+   ],
+   "tag": "helm"
+  },
+  "hat_pearl3": {
+   "stages": [
+    3
+   ],
+   "tag": "helm"
+  },
+  "hat_pearl4": {
+   "stages": [
+    3
+   ],
+   "tag": "helm"
+  },
+  "hat_pearl5": {
+   "stages": [
+    3
+   ],
+   "tag": "helm"
+  },
+  "hat_pearl6": {
+   "stages": [
+    3
+   ],
+   "tag": "helm"
+  },
+  "hat_pearl7": {
+   "stages": [
+    3
+   ],
+   "tag": "helm"
+  },
+  "plume_c": {
+   "stages": [
+    3
+   ],
+   "tag": "helm"
+  },
+  "cape": {
+   "team": true
+  },
+  "collar": {},
+  "right_arm": {},
+  "right_forearm": {},
+  "right_hand": {},
+  "right_vambrace": {
+   "stages": [
+    2,
+    3
+   ]
+  },
+  "right_epaulette": {},
+  "right_fringe": {},
+  "right_pauldron": {
+   "stages": [
+    2,
+    3
+   ]
+  },
+  "left_arm": {},
+  "left_forearm": {},
+  "left_hand": {},
+  "left_vambrace": {
+   "stages": [
+    2,
+    3
+   ]
+  },
+  "left_epaulette": {},
+  "left_fringe": {},
+  "left_pauldron": {
+   "stages": [
+    2,
+    3
+   ]
+  },
+  "belt": {},
+  "cravat": {
+   "team": true
+  },
+  "tails_l": {},
+  "tails_r": {},
+  "barnacles": {},
+  "kelp_epaulette": {},
+  "anchor": {},
+  "cuirass": {
+   "stages": [
+    2,
+    3
+   ]
+  },
+  "gorget_pearl": {
+   "stages": [
+    3
+   ]
+  },
+  "right_leg": {},
+  "right_shin": {},
+  "right_foot": {},
+  "right_foot_gear": {},
+  "right_greave": {
+   "stages": [
+    2,
+    3
+   ]
+  },
+  "left_leg": {},
+  "left_shin": {},
+  "left_foot": {},
+  "left_foot_gear": {},
+  "kelp_boot": {},
+  "left_greave": {
+   "stages": [
+    2,
+    3
+   ]
+  },
+  "kelp_hem": {},
+  "sash_end": {
+   "team": true
+  },
+  "kelp_sash": {},
+  "weapon_t1": {
+   "stages": [
+    1
+   ],
+   "tag": "weapon"
+  },
+  "weapon_t2": {
+   "stages": [
+    2
+   ],
+   "tag": "weapon"
+  },
+  "weapon_t3": {
+   "stages": [
+    3
+   ],
+   "tag": "weapon"
+  }
+ }
+}

@@ -354,15 +354,28 @@ public final class BattleMathCheck {
             "holdStance: shield or spear brace, a formed shield wall wall, anyone else hold");
         check(BattleMath.stance("hold", false, false, false, false, false, false).equals("hold") && BattleMath.stance("hold", true, false, false, true, false, true).equals("wall") && BattleMath.stance("hold", false, true, false, false, false, false).equals("brace"),
             "stance on Hold: the plain-hold rule");
-        check(BattleMath.stance("fall_back", true, false, false, false, false, true).equals("fall_back") && BattleMath.stance("charge", false, false, false, false, false, false).equals("run") && BattleMath.stance("retreat", false, false, true, false, true, false).equals("run")
-            && BattleMath.stance("attack", false, false, false, false, false, false).isEmpty(), "stance: Fall Back fall_back, Charge and Retreat run, other orders none");
+        check(BattleMath.stance("fall_back", true, false, false, false, false, true).equals("fall_back") && BattleMath.stance("charge", false, false, false, false, false, false).equals("charge") && BattleMath.stance("retreat", false, false, true, false, true, false).equals("run")
+            && BattleMath.stance("attack", false, false, false, false, false, false).isEmpty(), "stance: Fall Back fall_back, Charge charge, Retreat run, other orders none");
         check(BattleMath.stance("attack", false, false, true, false, false, false).equals("ranged_rest") && BattleMath.stance("attack", false, false, true, false, true, false).equals("ranged_aim")
             && BattleMath.stance("hold", false, false, true, false, true, false).equals("ranged_aim") && BattleMath.stance("hold", false, false, true, false, false, false).equals("hold") && BattleMath.stance("fall_back", false, false, true, false, true, false).equals("fall_back"),
             "stance: a ranged troop aims at an enemy in sight and reach on any order but a run or Fall Back; with none it rests, or holds on Hold");
         check(BattleMath.stance("attack", true, false, false, false, false, true).equals("shield_move") && BattleMath.stance("attack", true, false, false, false, false, false).isEmpty() && BattleMath.stance("move", false, false, false, false, false, true).isEmpty(),
             "stance: a shield troop moving with its shield up is shield_move");
-        for (String name : List.of("hold", "brace", "wall", "shield_move", "fall_back", "run", "ranged_rest", "ranged_aim")) check(BattleMath.STANCES.indexOf(name) > 0, "STANCES holds " + name);
-        check(BattleMath.STANCES.equals(List.of("", "hold", "brace", "wall", "shield_move", "fall_back", "run", "ranged_rest", "ranged_aim", "rally")), "STANCES in the stance_v2 wire order (the command UI's rally appended)");
+        // charge (stance 10) and stunned (11): a melee charge, a ranged troop's charge (aiming stops to shoot on any order but a run), retreat run for both, stunned never from stance()
+        check(BattleMath.stance("charge", false, false, false, false, false, false).equals("charge") && BattleMath.stance("charge", true, false, false, false, false, true).equals("charge") && BattleMath.stance("charge", false, true, false, false, false, false).equals("charge"),
+            "stance: a melee Charge is charge, shield up or not");
+        check(BattleMath.stance("charge", false, false, true, false, false, false).equals("charge") && BattleMath.stance("charge", false, false, true, false, true, false).equals("ranged_aim"),
+            "stance: a ranged troop on a Charge charges, and aims (stops to shoot) once an enemy is in sight and reach");
+        check(BattleMath.stance("retreat", false, false, false, false, false, false).equals("run") && BattleMath.stance("retreat", false, false, true, false, true, false).equals("run") && BattleMath.stance("retreat", false, false, true, false, false, false).equals("run"),
+            "stance: Retreat is run for melee and for ranged, aiming or not");
+        check(BattleMath.STANCES.indexOf("charge") == 10 && BattleMath.STANCES.indexOf("stunned") == 11 && BattleMath.STANCES.size() == 12, "charge is stance 10 and stunned 11, appended");
+        for (String order : List.of("", "hold", "attack", "follow", "charge", "retreat", "fall_back")) check(!BattleMath.stance(order, true, true, true, true, true, true).equals("stunned") && !BattleMath.stance(order, false, false, false, false, false, false).equals("stunned"),
+            "stance(" + order + ") never answers stunned: the server shows it over the order's stance while Unit.stunnedUntil runs (Tactics.stunStance)");
+        // stunned overrides every order's stance while battle time is before stunnedUntil, and the order's returns the tick the stun ends
+        for (String shownOrder : List.of("", "hold", "brace", "wall", "shield_move", "fall_back", "run", "ranged_rest", "ranged_aim", "rally", "charge")) check(BattleMath.shownStance(shownOrder, 99, 100).equals("stunned") && BattleMath.shownStance(shownOrder, 100, 100).equals(shownOrder) && BattleMath.shownStance(shownOrder, 5, 0).equals(shownOrder),
+            "shownStance: stunned over " + (shownOrder.isEmpty() ? "none" : shownOrder) + " until stunnedUntil, then the order's");
+        for (String name : List.of("hold", "brace", "wall", "shield_move", "fall_back", "run", "ranged_rest", "ranged_aim", "rally", "charge", "stunned")) check(BattleMath.STANCES.indexOf(name) > 0, "STANCES holds " + name);
+        check(BattleMath.STANCES.equals(List.of("", "hold", "brace", "wall", "shield_move", "fall_back", "run", "ranged_rest", "ranged_aim", "rally", "charge", "stunned")), "STANCES in the stance_v2 wire order (the command UI's rally, then charge and stunned, appended)");
         // hit_v1's kind from Combat.resolve's kind, the shooter's family and its swing's attackVariants kind
         check(BattleMath.hitKind("slam", "blunt", "blunt").equals("blunt") && BattleMath.hitKind("slam", "bow", "arrow").equals("blunt"), "hitKind: a slam is blunt");
         check(BattleMath.hitKind("bolt", "caster", "magic").equals("magic") && BattleMath.hitKind("blight", "caster", "magic").equals("magic"), "hitKind: a caster's bolt and blight are magic");

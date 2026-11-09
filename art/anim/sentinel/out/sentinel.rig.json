@@ -1,0 +1,243 @@
+{
+ "troop": "sentinel",
+ "tiers": [
+  1,
+  2,
+  3
+ ],
+ "faces": 4,
+ "bones": {
+  "root": {},
+  "hips": {},
+  "torso": {},
+  "head": {},
+  "face_v0": {
+   "variants": [
+    0
+   ]
+  },
+  "face_v1": {
+   "variants": [
+    1
+   ]
+  },
+  "face_v2": {
+   "variants": [
+    2
+   ]
+  },
+  "face_v3": {
+   "variants": [
+    3
+   ]
+  },
+  "helm": {
+   "tag": "helm"
+  },
+  "helm_snout": {
+   "stages": [
+    2,
+    3
+   ],
+   "tag": "helm"
+  },
+  "helm_comb": {
+   "stages": [
+    2
+   ],
+   "tag": "helm"
+  },
+  "helm_cross": {
+   "stages": [
+    3
+   ],
+   "tag": "helm"
+  },
+  "mantling": {
+   "stages": [
+    3
+   ],
+   "team": true,
+   "tag": "helm"
+  },
+  "right_arm": {},
+  "right_forearm": {},
+  "right_hand": {},
+  "right_couter": {
+   "stages": [
+    2,
+    3
+   ]
+  },
+  "right_cuff": {},
+  "right_spaulder": {
+   "stages": [
+    1
+   ]
+  },
+  "right_pauldron": {
+   "stages": [
+    2,
+    3
+   ]
+  },
+  "left_arm": {},
+  "left_forearm": {},
+  "left_hand": {},
+  "shield": {
+   "tag": "shield"
+  },
+  "shield_face_t1": {
+   "stages": [
+    1,
+    2
+   ],
+   "team": true
+  },
+  "shield_face_t3": {
+   "stages": [
+    3
+   ],
+   "team": true
+  },
+  "left_couter": {
+   "stages": [
+    2,
+    3
+   ]
+  },
+  "left_cuff": {},
+  "left_spaulder": {
+   "stages": [
+    1
+   ]
+  },
+  "left_pauldron": {
+   "stages": [
+    2,
+    3
+   ]
+  },
+  "tabard_t1": {
+   "stages": [
+    1,
+    2
+   ],
+   "team": true
+  },
+  "tabard_t3": {
+   "stages": [
+    3
+   ],
+   "team": true
+  },
+  "gorget": {
+   "stages": [
+    2,
+    3
+   ]
+  },
+  "cape": {
+   "team": true
+  },
+  "cape_t2": {
+   "stages": [
+    2
+   ],
+   "team": true
+  },
+  "cape_t3": {
+   "stages": [
+    3
+   ],
+   "team": true
+  },
+  "collar": {
+   "stages": [
+    2,
+    3
+   ],
+   "team": true
+  },
+  "right_leg": {},
+  "right_shin": {},
+  "right_foot": {},
+  "right_boot": {},
+  "right_toe": {
+   "stages": [
+    2,
+    3
+   ]
+  },
+  "right_knee": {},
+  "right_skirt_t1": {
+   "stages": [
+    1,
+    2
+   ],
+   "team": true
+  },
+  "right_skirt_t3": {
+   "stages": [
+    3
+   ],
+   "team": true
+  },
+  "left_leg": {},
+  "left_shin": {},
+  "left_foot": {},
+  "left_boot": {},
+  "left_toe": {
+   "stages": [
+    2,
+    3
+   ]
+  },
+  "left_knee": {},
+  "left_skirt_t1": {
+   "stages": [
+    1,
+    2
+   ],
+   "team": true
+  },
+  "left_skirt_t3": {
+   "stages": [
+    3
+   ],
+   "team": true
+  },
+  "tabard_t1_skirt": {
+   "stages": [
+    1,
+    2
+   ],
+   "team": true
+  },
+  "tabard_t3_skirt": {
+   "stages": [
+    3
+   ],
+   "team": true
+  },
+  "belt": {},
+  "weapon_t1": {
+   "stages": [
+    1
+   ],
+   "tag": "weapon"
+  },
+  "weapon_t2": {
+   "stages": [
+    2
+   ],
+   "tag": "weapon"
+  },
+  "weapon_t3": {
+   "stages": [
+    3
+   ],
+   "tag": "weapon"
+  }
+ }
+}

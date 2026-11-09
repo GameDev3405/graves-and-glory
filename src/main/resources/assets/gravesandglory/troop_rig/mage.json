@@ -1,0 +1,108 @@
+{
+ "troop": "mage",
+ "tiers": [
+  1,
+  2,
+  3
+ ],
+ "faces": 4,
+ "bones": {
+  "root": {},
+  "hips": {},
+  "torso": {},
+  "head": {},
+  "face_v0": {
+   "variants": [
+    0
+   ]
+  },
+  "face_v1": {
+   "variants": [
+    1
+   ]
+  },
+  "face_v2": {
+   "variants": [
+    2
+   ]
+  },
+  "face_v3": {
+   "variants": [
+    3
+   ]
+  },
+  "cowl": {
+   "tag": "helm"
+  },
+  "sun_crown": {
+   "stages": [
+    3
+   ],
+   "tag": "helm"
+  },
+  "right_arm": {},
+  "right_forearm": {},
+  "right_hand": {},
+  "right_bell": {},
+  "right_spaulder": {
+   "stages": [
+    2,
+    3
+   ]
+  },
+  "left_arm": {},
+  "left_forearm": {},
+  "left_hand": {},
+  "left_bell": {},
+  "left_spaulder": {
+   "stages": [
+    2,
+    3
+   ]
+  },
+  "mantle": {},
+  "brooch": {},
+  "vestment": {
+   "team": true
+  },
+  "cincture": {},
+  "shoulder_cape": {
+   "stages": [
+    2,
+    3
+   ]
+  },
+  "right_leg": {},
+  "right_shin": {},
+  "right_foot": {},
+  "left_leg": {},
+  "left_shin": {},
+  "left_foot": {},
+  "vestment_skirt": {
+   "team": true
+  },
+  "cord": {},
+  "skirt_front": {},
+  "skirt_back": {},
+  "skirt_right": {},
+  "skirt_left": {},
+  "weapon_t1": {
+   "stages": [
+    1
+   ],
+   "tag": "weapon"
+  },
+  "weapon_t2": {
+   "stages": [
+    2
+   ],
+   "tag": "weapon"
+  },
+  "weapon_t3": {
+   "stages": [
+    3
+   ],
+   "tag": "weapon"
+  }
+ }
+}

@@ -1,0 +1,180 @@
+{
+ "troop": "wm_tusk",
+ "tiers": [
+  1,
+  2,
+  3
+ ],
+ "faces": 1,
+ "bones": {
+  "root": {},
+  "hips": {},
+  "torso": {},
+  "head": {},
+  "snout": {},
+  "ears": {},
+  "tusks": {},
+  "cap": {
+   "tag": "helm"
+  },
+  "headband": {
+   "team": true,
+   "tag": "helm"
+  },
+  "brow_plate": {
+   "stages": [
+    2,
+    3
+   ],
+   "tag": "helm"
+  },
+  "right_cap_tusk": {
+   "stages": [
+    2,
+    3
+   ],
+   "tag": "helm"
+  },
+  "left_cap_tusk": {
+   "stages": [
+    2,
+    3
+   ],
+   "tag": "helm"
+  },
+  "tusk_crown": {
+   "stages": [
+    3
+   ],
+   "tag": "helm"
+  },
+  "right_crown_tusk": {
+   "stages": [
+    3
+   ],
+   "tag": "helm"
+  },
+  "right_crown_horn": {
+   "stages": [
+    3
+   ],
+   "tag": "helm"
+  },
+  "left_crown_tusk": {
+   "stages": [
+    3
+   ],
+   "tag": "helm"
+  },
+  "left_crown_horn": {
+   "stages": [
+    3
+   ],
+   "tag": "helm"
+  },
+  "tusk_rings": {
+   "stages": [
+    3
+   ]
+  },
+  "right_arm": {},
+  "right_forearm": {},
+  "right_hand": {},
+  "right_wrap": {
+   "team": true
+  },
+  "pauldron": {},
+  "pauldron_spikes": {},
+  "pauldron_spike_ii": {
+   "stages": [
+    2,
+    3
+   ]
+  },
+  "right_arm_band": {
+   "stages": [
+    3
+   ]
+  },
+  "left_arm": {},
+  "left_forearm": {},
+  "left_hand": {},
+  "left_wrap": {
+   "team": true
+  },
+  "left_pauldron": {
+   "stages": [
+    2,
+    3
+   ]
+  },
+  "left_arm_band": {
+   "stages": [
+    3
+   ]
+  },
+  "mantle": {},
+  "belt": {},
+  "tooth_necklace": {
+   "stages": [
+    2,
+    3
+   ]
+  },
+  "hip_skull": {
+   "stages": [
+    2,
+    3
+   ]
+  },
+  "mantle_grey": {
+   "stages": [
+    3
+   ]
+  },
+  "right_leg": {},
+  "right_shin": {},
+  "right_foot": {},
+  "right_hoof": {},
+  "right_shin_guard": {},
+  "right_knee": {
+   "stages": [
+    2,
+    3
+   ]
+  },
+  "left_leg": {},
+  "left_shin": {},
+  "left_foot": {},
+  "left_hoof": {},
+  "left_shin_guard": {},
+  "left_knee": {
+   "stages": [
+    2,
+    3
+   ]
+  },
+  "trophy": {},
+  "kilt": {
+   "team": true
+  },
+  "weapon_t1": {
+   "stages": [
+    1
+   ],
+   "tag": "weapon"
+  },
+  "weapon_t2": {
+   "stages": [
+    2
+   ],
+   "tag": "weapon"
+  },
+  "weapon_t3": {
+   "stages": [
+    3
+   ],
+   "tag": "weapon"
+  }
+ }
+}

@@ -1,0 +1,179 @@
+{
+ "troop": "ic_arbalist",
+ "tiers": [
+  1,
+  2,
+  3
+ ],
+ "faces": 1,
+ "bones": {
+  "root": {},
+  "hips": {},
+  "torso": {},
+  "head": {},
+  "helm": {
+   "tag": "helm"
+  },
+  "bevor": {
+   "stages": [
+    2,
+    3
+   ],
+   "tag": "helm"
+  },
+  "comb": {
+   "stages": [
+    3
+   ],
+   "tag": "helm"
+  },
+  "goggles": {
+   "stages": [
+    3
+   ],
+   "tag": "helm"
+  },
+  "right_arm": {},
+  "right_forearm": {},
+  "right_hand": {},
+  "right_bracer": {
+   "stages": [
+    2,
+    3
+   ]
+  },
+  "right_pauldron": {},
+  "shoulder_plate": {
+   "stages": [
+    3
+   ]
+  },
+  "left_arm": {},
+  "left_forearm": {},
+  "left_hand": {},
+  "left_bracer": {
+   "stages": [
+    2,
+    3
+   ]
+  },
+  "left_pauldron": {},
+  "fur_mantle": {},
+  "tabard": {
+   "team": true
+  },
+  "fauld": {},
+  "belt": {},
+  "halfcape": {
+   "team": true
+  },
+  "quiver": {},
+  "quiver_t3": {
+   "stages": [
+    3
+   ]
+  },
+  "right_leg": {},
+  "right_shin": {},
+  "right_foot": {},
+  "right_boot": {},
+  "right_greave": {
+   "stages": [
+    3
+   ]
+  },
+  "right_knee": {},
+  "right_skirt": {
+   "team": true
+  },
+  "left_leg": {},
+  "left_shin": {},
+  "left_foot": {},
+  "left_boot": {},
+  "left_greave": {
+   "stages": [
+    3
+   ]
+  },
+  "left_knee": {},
+  "left_skirt": {
+   "team": true
+  },
+  "tabard_skirt": {
+   "team": true
+  },
+  "weapon_t1": {
+   "stages": [
+    1
+   ],
+   "tag": "weapon"
+  },
+  "bow_t1_rest": {
+   "stages": [
+    1
+   ],
+   "tag": "draw"
+  },
+  "bow_t1_pull_0": {
+   "stages": [
+    1
+   ],
+   "tag": "draw"
+  },
+  "bow_t1_pull_1": {
+   "stages": [
+    1
+   ],
+   "tag": "draw"
+  },
+  "weapon_t2": {
+   "stages": [
+    2
+   ],
+   "tag": "weapon"
+  },
+  "bow_t2_rest": {
+   "stages": [
+    2
+   ],
+   "tag": "draw"
+  },
+  "bow_t2_pull_0": {
+   "stages": [
+    2
+   ],
+   "tag": "draw"
+  },
+  "bow_t2_pull_1": {
+   "stages": [
+    2
+   ],
+   "tag": "draw"
+  },
+  "weapon_t3": {
+   "stages": [
+    3
+   ],
+   "tag": "weapon"
+  },
+  "bow_t3_rest": {
+   "stages": [
+    3
+   ],
+   "tag": "draw"
+  },
+  "bow_t3_pull_0": {
+   "stages": [
+    3
+   ],
+   "tag": "draw"
+  },
+  "bow_t3_pull_1": {
+   "stages": [
+    3
+   ],
+   "tag": "draw"
+  },
+  "draw": {}
+ }
+}

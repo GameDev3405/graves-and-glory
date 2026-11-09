@@ -1,0 +1,27 @@
+{
+ "troop": "hexer",
+ "release_tick": 10,
+ "frame": "body: x left, y up from the feet, z forward; blocks",
+ "offset": [
+  -0.216,
+  1.044,
+  1.119
+ ],
+ "tiers": {
+  "lantern": [
+   -0.216,
+   1.044,
+   1.119
+  ],
+  "lantern_t2": [
+   -0.216,
+   1.044,
+   1.119
+  ],
+  "lantern_t3": [
+   -0.216,
+   1.044,
+   1.119
+  ]
+ }
+}

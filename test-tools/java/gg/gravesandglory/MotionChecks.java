@@ -592,7 +592,7 @@ public final class MotionChecks {
                 (i, now) -> in(now, 0, 0, 0, 0, 0, "hold", 0, false, i < 4, i >= 4, i >= 4 ? (i - 4) * .05 : 0, null, hit));
         }
         for (String s : BattleMath.STANCES) for (float aim : new float[]{-60, 60}) for (boolean up : new boolean[]{false, true}) {
-            double sp = s.equals("run") || s.equals("fall_back") || s.equals("shield_move") ? 1 : 0;
+            double sp = s.equals("run") || s.equals("charge") || s.equals("fall_back") || s.equals("shield_move") ? 1 : 0;
             run(m, reach, w, "stance '" + s + "' aim " + aim + (up ? " shield up" : ""), 30, up,
                 (i, now) -> in(now, i * sp, sp, -85, -60, 0, s, aim, up, up, false, 0, null, null));
         }

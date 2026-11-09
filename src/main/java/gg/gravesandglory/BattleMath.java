@@ -189,9 +189,10 @@ public final class BattleMath {
     /**
      * The stances a troop shows its clients, in stance_v2's wire order (the byte is the index): none, hold-ready, brace, the formed shield wall,
      * shield-up moving, fall back, run, ranged lowered and ranged aiming (spec 6.4), then the command UI's rally (weapons raised on an order's
-     * acknowledgement). New stances are appended, never inserted: the index is the wire byte.
+     * acknowledgement), charge (a Charge's run, its own pose since the animation rework: run stays the Retreat's) and stunned (while Unit.stunnedUntil
+     * runs; it overrides the order's stance). New stances are appended, never inserted: the index is the wire byte.
      */
-    public static final List<String> STANCES = List.of("", "hold", "brace", "wall", "shield_move", "fall_back", "run", "ranged_rest", "ranged_aim", "rally");
+    public static final List<String> STANCES = List.of("", "hold", "brace", "wall", "shield_move", "fall_back", "run", "ranged_rest", "ranged_aim", "rally", "charge", "stunned");
     /**
      * An order id as the command UI reads it (OrderRules.loadOrder): the old Move and Hold are both the player's Formation order, hold; the
      * other sheet orders stay; anything unknown or missing is the squad default, follow. Bots, Siege and Muster still issue move internally.
@@ -211,15 +212,17 @@ public final class BattleMath {
     public static String holdStance(boolean shield, boolean spear, boolean formed) { return shield && formed ? "wall" : shield || spear ? "brace" : "hold"; }
     /**
      * A troop's stance (stance_v2) from the order it fights under (an arrived Move or Retreat group's is Hold): Hold by the plain-hold rule
-     * (holdStance), Fall Back fall_back, Charge and Retreat run, any other order none. A ranged troop with an enemy in sight and in reach
-     * (aiming) aims on any order but a run or Fall Back, and with none rests (on Hold it holds); a shield troop on another order walking with
-     * its shield up (shieldUp) is shield_move.
+     * (holdStance), Fall Back fall_back, Charge charge, Retreat run, any other order none. A ranged troop with an enemy in sight and in reach
+     * (aiming) aims on any order but a Retreat's run or Fall Back (so on a Charge it stops to shoot, as Tactics lets it), and with none rests
+     * (on Hold it holds, on a Charge it charges); a shield troop on another order walking with its shield up (shieldUp) is shield_move.
+     * Stunned is not here: Tactics shows it over this while the troop is stunned.
      */
     public static String stance(String order, boolean shield, boolean spear, boolean ranged, boolean formed, boolean aiming, boolean shieldUp) {
         String base = switch (order) {
             case "hold" -> holdStance(shield, spear, formed);
             case "fall_back" -> "fall_back";
-            case "charge", "retreat" -> "run";
+            case "charge" -> "charge";
+            case "retreat" -> "run";
             default -> "";
         };
         if (ranged && aiming && !base.equals("run") && !base.equals("fall_back")) return "ranged_aim";
@@ -227,6 +230,8 @@ public final class BattleMath {
         if (shield && shieldUp && base.isEmpty()) return "shield_move";
         return base;
     }
+    /** The stance a troop shows: "stunned" while battle time is before its stunnedUntil, else the stance its order gave (stance). */
+    public static String shownStance(String orderStance, long time, long stunnedUntil) { return time < stunnedUntil ? "stunned" : orderStance; }
     /** hit_v1's kinds in wire order (the byte is the index): the three melee kinds, the two shot kinds and magic (spec 6.4). */
     public static final List<String> KINDS = List.of("stab", "slash", "blunt", "arrow", "bolt", "magic");
     /** hit_v1's zones in wire order (the byte is the index). */

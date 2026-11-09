@@ -84,7 +84,19 @@ final class Tactics {
         boolean shield=u.tags.contains("shield"),spear=u.tags.contains("spear");
         boolean formed=GravesAndGlory.Battle.walls(u,a.order)&&GravesAndGlory.Battle.horizontalDistance(u.mob.getPos(),b.formation(u))<=N.arrivalTolerance()*N.arrivalTolerance();
         String stance=BattleMath.stance(a.order,shield,spear,u.spec.ranged(),formed,aiming,shield&&u.mob.isUsingItem());
-        set(u,stance,stance.equals("ranged_aim")?pitch:0);
+        u.orderStance=stance;u.orderPitch=stance.equals("ranged_aim")?pitch:0;
+        String shown=BattleMath.shownStance(u.orderStance,b.time,u.stunnedUntil);
+        set(u,shown,shown.equals("stunned")?0:u.orderPitch);
+    }
+    /**
+     * A stunned troop (Unit.stunnedUntil: a Shield bash, Rise Again, a bear's roar) shows "stunned" over its order's stance, sent the tick the stun begins (this runs
+     * every tick, not only on the beat) and replaced by the order's stance (the last one a beat chose, orderStance) the tick it ends. A commander is never a Unit,
+     * so Statuses never stuns him and this never runs for him.
+     */
+    static void stunStance(GravesAndGlory.Unit u,long time){
+        String shown=BattleMath.shownStance(u.orderStance,time,u.stunnedUntil);
+        if(shown.equals("stunned"))set(u,shown,0);
+        else if(u.stance.equals("stunned"))set(u,shown,u.orderPitch);
     }
     /** How far (degrees) an aiming troop's aim moves before its clients hear of it again. */
     static final float AIM_STEP=.25f;
@@ -226,6 +238,8 @@ final class Tactics {
         if(u.lockedTarget!=null&&!u.lockedTarget.isAlive())u.lockedTarget=null; // a fallen enemy lies a while (Task 7): drop it at once, not on the next beat
         if(u.mob.getTarget()!=null&&!u.mob.getTarget().isAlive())u.mob.setTarget(null);
         if(u.looseAt>=0&&time>=u.looseAt)looseLate(battle,u,time); // Kort Q70: a bow troop's shot leaves its loose ticks after the beat that took it
+        stunStance(u,time);
+        if(time<u.downUntil){u.mob.getNavigation().stop();u.mob.setTarget(null);u.mob.setAttacking(false);return;} // the Undying King down and rising (Houses.UNDYING_DOWN): no move, no turn, no act
         if(time%10!=u.slot%10){brace(battle,u);shieldStance(u);stretch(battle,u,battle.assignment(u),time);return;} // the shield and a wall troop's last stretch every tick; everything else on the unit's 10-tick beat
         u.place=null; // the beat reads the slot again
         var mob=u.mob;var s=u.squad;var a=battle.assignment(u);
@@ -310,7 +324,8 @@ final class Tactics {
                     int late=Projectiles.looseTicks(u);
                     if(late>0){u.looseAt=time+late;u.looseTarget=enemy;} // Kort Q70: a bow troop's shot leaves late ticks on (looseLate)
                     else shoot(battle,u,enemy,time,ranged);
-                }else if(drawsAhead(u)&&time+10>=u.nextAttack&&time+10>=u.stunnedUntil&&!pending(battle,u)&&!Abilities.tooClose(u,nearest))Projectiles.drawAhead(battle,u,enemy,10); // the beat before a bow's shot: its draw starts now, the arrow still leaves on the next beat (cosmetic, R110 Plan B)
+                }else if(announcesAhead(u)&&time+10>=u.nextAttack&&time+10>=u.stunnedUntil&&!pending(battle,u)&&!Abilities.tooClose(u,nearest))Projectiles.drawAhead(battle,u,enemy,10); // the beat before a bow's or crossbow's shot: its clip is announced now, the shot still leaves on the next beat (cosmetic, R110 Plan B)
+                else if(Abilities.castsAhead(u)&&time+10>=u.nextAttack&&time+10>=u.abilityAt&&time+10>=u.stunnedUntil&&!pending(battle,u)&&!Abilities.tooClose(u,nearest))Projectiles.drawAhead(battle,u,enemy,10); // the beat before the hexer's blight or the mist caller's mist leaves (its spell cooldown ready too): its cast clip is announced now, at the start tick Abilities.attack's release stamps (cosmetic, Kort 2026-11-06)
             }else if(post&&ranged){toSlot(battle,u,a,time,speed); // a ranged troop on a post shoots what it can reach from there and never walks off after the rest
             }else if(volley){toSlot(battle,u,a,time,speed); // a ranged troop on a Charge never closes on its target: it runs on down the path and stops once it can shoot
             }else if(!holdSiege&&leash(u,a,hold,holdSiege,slotted,slot,keep,engage,enemy.getPos())){
@@ -596,7 +611,9 @@ final class Tactics {
     }
     /** Late shots lost (looseLate) since the server started. */
     static int looseLost;
-    /** Whether a troop's shot is announced a beat early (Projectiles.drawAhead): a bow's, whose clip draws for its 10 impact ticks before the loose (R110 Plan B; the crossbow and thrower families have no clips yet). */
+    /** Whether a troop's shot is announced a beat early (Projectiles.drawAhead), so its clip's wind-up plays before the loose instead of fading in late: a bow's, a crossbow's, a thrower's or a bolt-shooting caster's (the Seer's; Kort 2026-11-06). The mage's mend is announced in Abilities.mend on its own cooldown; the blight and mist spells make no attack event (cosmetic). */
+    static boolean announcesAhead(GravesAndGlory.Unit u){if(u.spec.magic())return u.spec.ranged()&&"caster".equals(u.spec.family())&&Abilities.shoots(u);return u.spec.ranged()&&("bow".equals(u.spec.family())||"crossbow".equals(u.spec.family())||"thrower".equals(u.spec.family()));}
+    /** Whether a troop's shot draws ahead with Kort Q70's loose and hold seeds (Projectiles.looseTicks, hold): a bow's, whose clip draws for its 10 impact ticks before the loose (R110 Plan B). */
     static boolean drawsAhead(GravesAndGlory.Unit u){return u.spec.ranged()&&!u.spec.magic()&&"bow".equals(u.spec.family());}
     /** Whether this troop has a blow pending (Battle.strikes): one at most, so its next swing waits for it. */
     static boolean pending(GravesAndGlory.Battle b,GravesAndGlory.Unit u){if(u.looseAt>=0)return true;for(var s:b.strikes)if(s.attacker()==u)return true;return false;}

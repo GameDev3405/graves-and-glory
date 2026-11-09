@@ -149,7 +149,7 @@ public final class Projectiles {
         return variant;
     }
     /**
-     * Bow-draw fix Plan B (R110), cosmetic only: on the beat before a bow troop's shot (Tactics.tick calls it when the next beat, ahead ticks
+     * Bow-draw fix Plan B (R110), cosmetic only, also for a crossbow (Tactics.announcesAhead): on the beat before a bow troop's shot (Tactics.tick calls it when the next beat, ahead ticks
      * from now, reaches nextAttack), the attack_v1 loose will send, sent now. loose stamps its swing impactTicks before the tick the shot
      * leaves; ahead ticks from now that is now + ahead - impactTicks, the same startTick and, for the same arc, the same variant, so the
      * client starts the clip now (the draw plays before the loose) and drops loose's copy as the event it already has (MotionEngine.events).
@@ -160,7 +160,8 @@ public final class Projectiles {
         var rows=Tactics.variants(u.spec.family());if(rows.isEmpty())return 0;
         Vec3d from=u.mob.getEyePos(),to=aim(target);String kind=Abilities.visual(u);
         int variant=shotVariant(u,rows,arc(b,u,from,to,kind.equals("arrow")||kind.equals("trident")).peak());
-        long start=shotStart(u.mob.getUuid(),u.mob.getWorld().getTime()+ahead,rows.get(variant).impactTicks());if(start<0)return 0;
+        long beat=u.mob.getWorld().getTime()+ahead;int impact=rows.get(variant).impactTicks();
+        long start=Tactics.drawsAhead(u)?shotStart(u.mob.getUuid(),beat,impact):beat-impact;if(start<0)return 0; // a crossbow has no loose or hold seed: loose stamps beat - impact
         return MotionEvents.sendAttack(u,variant,start);
     }
     public static void fire(GravesAndGlory.Battle b,GravesAndGlory.Unit u,LivingEntity target,String kind,float amount){
@@ -186,7 +187,7 @@ public final class Projectiles {
             a.setVelocity(nose.normalize().multiply(SPAWN_NUDGE));
             visual=a;
         }
-        b.shots.add(new Shot(u,u.squad,target,kind,amount,from,b.time,lands,visual,null,peak,travel,new Vec3d[]{to}));
+        b.shots.add(new Shot(u,u.squad,target,kind,amount,arrow?from:castFrom(u),b.time,lands,visual,null,peak,travel,new Vec3d[]{to}));
         // Queued first, then spawned: the load handler also runs for a new spawn, and discards a tagged arrow that no queued shot owns.
         if(visual!=null){
             // Spawned barely moving, then given the first tick's step along the curve (R26) in a velocity update. The spawn goes out at once with the
@@ -196,10 +197,35 @@ public final class Projectiles {
             visual.setVelocity(step);visual.velocityModified=true;
         }
     }
+    /**
+     * Caster v2 tip origin (Kort, 2026-11), cosmetic only: where a caster's drawn shot (a bolt, a mend) starts, the tip of its prop on its release frame.
+     * The troop's cast_tip resource (art/anim/caster/build_caster_anims.py tip_json, copied by export.py) holds that tip in its body frame (blocks: x to
+     * its left, y up from its feet, z forward); here it is turned by the body yaw and set on the feet. A troop with no cast_tip keeps its eyes. Only the
+     * visual's start moves: the flight's ticks, the arc, the damage, the targeting and the cooldowns are still worked out from the eyes, as before.
+     */
+    static Vec3d castFrom(GravesAndGlory.Unit u){
+        double[] o=TIPS.computeIfAbsent(u.spec.id(),Projectiles::castTip);
+        if(o.length<3)return u.mob.getEyePos();
+        double yaw=Math.toRadians(u.mob.getBodyYaw()),s=Math.sin(yaw),c=Math.cos(yaw);
+        Vec3d from=u.mob.getPos().add(o[0]*c-o[2]*s,o[1],o[0]*s+o[2]*c); // left (cos, 0, sin), forward (-sin, 0, cos)
+        if(TIP_LOGS.getAndIncrement()<4)TIP_LOG.info("cast tip {}: from {} eye {} body yaw {}",u.spec.id(),from,u.mob.getEyePos(),u.mob.getBodyYaw());
+        return from;
+    }
+    private static final java.util.Map<String,double[]> TIPS=new java.util.concurrent.ConcurrentHashMap<>();
+    private static final java.util.concurrent.atomic.AtomicInteger TIP_LOGS=new java.util.concurrent.atomic.AtomicInteger();
+    private static final org.slf4j.Logger TIP_LOG=org.slf4j.LoggerFactory.getLogger("gravesandglory/cast-tip");
+    /** A troop's cast tip offset (blocks, body frame) from data/gravesandglory/cast_tip/<troop>.json, or none. */
+    static double[] castTip(String troop){
+        try(var in=Projectiles.class.getResourceAsStream("/data/gravesandglory/cast_tip/"+troop+".json")){
+            if(in==null)return new double[0];
+            var a=com.google.gson.JsonParser.parseReader(new java.io.InputStreamReader(in,java.nio.charset.StandardCharsets.UTF_8)).getAsJsonObject().getAsJsonArray("offset");
+            return new double[]{a.get(0).getAsDouble(),a.get(1).getAsDouble(),a.get(2).getAsDouble()};
+        }catch(Exception e){return new double[0];}
+    }
     /** The blight bolt flies to the spell's fixed centre and arrives on the tick the spell bursts. */
     public static void bolt(GravesAndGlory.Battle b,GravesAndGlory.Unit u,Vec3d center){
         long lands=Math.max(b.time+C.projectileMinTicks(),u.windupUntil);
-        b.shots.add(new Shot(u,u.squad,null,"bolt",0,u.mob.getEyePos(),b.time,lands,null,center.add(0,.5,0)));
+        b.shots.add(new Shot(u,u.squad,null,"bolt",0,castFrom(u),b.time,lands,null,center.add(0,.5,0)));
     }
 
     public static void tick(GravesAndGlory.Battle b){

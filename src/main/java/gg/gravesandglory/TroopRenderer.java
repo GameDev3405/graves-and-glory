@@ -73,12 +73,16 @@ public final class TroopRenderer<T extends MobEntity> extends LivingEntityRender
     /** What the layers bound and drew in the current draw (TroopFeatures writes them), and the matrix it started with. */
     Identifier boundSkin,clothSheet,trimSheet;long clothMask;boolean weaponDrawn,shieldDrawn,weaponFar;String reliefKey,weaponId;int weaponFrame=-1,weaponQuads;private float tilt;private final Matrix4f start=new Matrix4f(),delta=new Matrix4f();
     private final Vector3f up=new Vector3f();
+    /** The GeckoLib draws of the rebuilt troops (GeoTroopRenderer.handles), one per troop id, made on first draw. */
+    private final java.util.Map<String,GeoTroopRenderer<T>> geo=new java.util.HashMap<>();
+    private final EntityRendererFactory.Context ctx;
 
     /** Built with an empty placeholder model: entity renderers and TroopModelLoader reload in either order. */
     public TroopRenderer(EntityRendererFactory.Context ctx,EntityRenderer<? super T> vanilla,float shadowRadius){
         super(ctx,TroopModel.empty(),shadowRadius);this.vanilla=vanilla;baseShadow=shadowOpacity;
         addFeature(new TroopFeatures.Outer<>(this));addFeature(new TroopFeatures.Trim<>(this));addFeature(new TroopFeatures.Cloth<>(this));addFeature(new TroopFeatures.Glow<>(this));
         addFeature(new TroopFeatures.Weapon<>(this));addFeature(new TroopFeatures.Shield<>(this,ctx.getHeldItemRenderer()));
+        this.ctx=ctx;
     }
     /** The vanilla renderer every non-troop mob of this type draws through. */
     public EntityRenderer<? super T> vanilla(){return vanilla;}
@@ -93,6 +97,11 @@ public final class TroopRenderer<T extends MobEntity> extends LivingEntityRender
         if(BodyCache.hidden(e.getId()))return;
         float alpha=BodyCache.opaque?1f:fade;if(alpha<=0f)return;
         TroopModels.Look l=TroopModels.resolve(e);TroopModel<T> m=l==null?null:TroopModels.modelOf(l.troop().id());
+        if(GeoTroopRenderer.handles(l)){
+            if(TroopModels.held(e,l))return;
+            GeoTroopRenderer<T> g=geo.computeIfAbsent(l.troop().id(),id->new GeoTroopRenderer<>(ctx,id));
+            faded(e,alpha,tickDelta,consumers,v->{g.draw(e,l,yaw,tickDelta,matrices,v,light);TroopChevrons.draw(e,l,null,matrices,v,dispatcher);});return;
+        }
         if(m==null){faded(e,alpha,tickDelta,consumers,v->{vanilla.render(e,yaw,tickDelta,matrices,v,light);TroopChevrons.draw(e,l,null,matrices,v,dispatcher);});return;}
         if(TroopModels.held(e,l))return;
         int parts=BodyCache.parts;

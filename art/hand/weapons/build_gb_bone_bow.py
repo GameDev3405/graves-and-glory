@@ -87,7 +87,7 @@ def bone_bow(tier=1):
         bands = [(1, "gilt", gilt), (3, "gilt", gilt)]
     wid = "bone_bow" + ("" if tier == 1 else "_t%d" % tier)
     return BW.make(wid, wid, root=3, segs=segs, wood=(WOOD, WOOD), nock=nock, grip=grip, risers=risers,
-                   extras=extras, bands=bands, draw=(3.2, 5.65))
+                   extras=extras, bands=bands, draw=(3.2, BW.FULL_DRAW))
 
 NOTE = ("The Bone Archer's bow (Graveborn), hand-authored at 1 texel a px: the Order Archer's recurve geometry in black "
         "grave-wood staves alternating with bone strips lashed in violet sinew, a leather and violet-cord grip between two bone "

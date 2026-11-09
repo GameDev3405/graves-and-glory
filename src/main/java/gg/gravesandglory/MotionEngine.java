@@ -464,6 +464,8 @@ public final class MotionEngine {
             case "hold": return shieldUp ? "shield" : "guard";
             case "rally": return "rally"; // weapons raised for an order's acknowledgement (OrderFeedback), shield or no shield
             case "run": return enemy ? "guard" : "carry";
+            case "charge": return "charge"; // no clip of its own in this engine: stanceChain falls back through charge_run, run, carry
+            case "stunned": return "stunned"; // likewise: stun, hit, idle
             default:
         }
         if (stance.equals("shield_move") || shieldUp) return "shield";
@@ -472,7 +474,8 @@ public final class MotionEngine {
 
     private static final String[] CARRY = {"carry", "idle"}, GUARD = {"guard", "carry", "idle"}, BRACE = {"brace", "guard", "carry", "idle"},
             WALL = {"wall", "shield", "brace", "guard", "carry", "idle"}, SHIELD = {"shield", "wall", "guard", "carry", "idle"},
-            AIM = {"aim", "guard", "carry", "idle"}, REST = {"rest", "carry", "idle"}, RALLY = {"rally", "guard", "carry", "idle"}, IDLE = {"idle", "carry"}, NONE = {};
+            AIM = {"aim", "guard", "carry", "idle"}, REST = {"rest", "carry", "idle"}, RALLY = {"rally", "guard", "carry", "idle"},
+            CHARGE = {"charge_run", "run", "carry", "idle"}, STUNNED = {"stun", "hit", "idle"}, IDLE = {"idle", "carry"}, NONE = {};
 
     /** Where a family without a stance clip falls back to, nearest first. Shared arrays: never modify. */
     static String[] stanceChain(String key) {
@@ -485,6 +488,8 @@ public final class MotionEngine {
             case "aim": return AIM;
             case "rest": return REST;
             case "rally": return RALLY;
+            case "charge": return CHARGE;
+            case "stunned": return STUNNED;
             case "dead": return NONE;
             default: return IDLE;
         }

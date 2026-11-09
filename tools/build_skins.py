@@ -2861,7 +2861,8 @@ def owned_files(out):
     for folder in (MODELS, TEXTURES):
         if (out / folder).is_dir():
             found += [p.relative_to(out).as_posix() for p in (out / folder).rglob('*') if p.is_file()]
-    return sorted(found)
+    # <troop>_geo/ texture folders belong to the GeckoLib rig exporter (art/anim/common/export.py), not to this build.
+    return sorted(f for f in found if not any(part.endswith('_geo') for part in f.split('/')[:-1]))
 
 
 def export(root: Path, out: Path) -> dict:

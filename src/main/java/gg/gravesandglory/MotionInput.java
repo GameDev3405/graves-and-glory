@@ -37,7 +37,11 @@ public record MotionInput(double time, double limbAngle, double limbSpeed, doubl
 
     /**
      * A blow landed at {@code tick}. bearing: yaw of the blow relative to the victim's facing in degrees, 0 from the front,
-     * 180 from behind, negative from the victim's left. weight: 0 light, 1 medium, 2 heavy.
+     * 180 from behind, negative from the victim's left. weight: 0 light, 1 medium, 2 heavy. knockback: the blow also threw the victim (hit_v1 flag 4);
+     * pulled: it also dragged the victim toward the striker (hit_v1 flag 8, Abilities.pull).
      */
-    public record Hit(String kind, String zone, float bearing, int weight, boolean blocked, boolean lethal, long tick) {}
+    public record Hit(String kind, String zone, float bearing, int weight, boolean blocked, boolean lethal, boolean knockback, boolean pulled, long tick) {
+        public Hit(String kind, String zone, float bearing, int weight, boolean blocked, boolean lethal, long tick) { this(kind, zone, bearing, weight, blocked, lethal, false, false, tick); }
+        public Hit(String kind, String zone, float bearing, int weight, boolean blocked, boolean lethal, boolean knockback, long tick) { this(kind, zone, bearing, weight, blocked, lethal, knockback, false, tick); }
+    }
 }

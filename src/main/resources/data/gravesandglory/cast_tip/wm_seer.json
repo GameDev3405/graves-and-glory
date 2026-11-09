@@ -1,0 +1,27 @@
+{
+ "troop": "wm_seer",
+ "release_tick": 10,
+ "frame": "body: x left, y up from the feet, z forward; blocks",
+ "offset": [
+  -0.213,
+  1.28,
+  1.227
+ ],
+ "tiers": {
+  "wand": [
+   -0.213,
+   1.298,
+   1.104
+  ],
+  "wand_t2": [
+   -0.213,
+   1.28,
+   1.227
+  ],
+  "wand_t3": [
+   -0.213,
+   1.263,
+   1.351
+  ]
+ }
+}

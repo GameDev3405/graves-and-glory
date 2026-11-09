@@ -1,0 +1,219 @@
+{
+ "troop": "revenant",
+ "tiers": [
+  1,
+  2,
+  3
+ ],
+ "faces": 1,
+ "bones": {
+  "root": {},
+  "hips": {},
+  "torso": {},
+  "head": {},
+  "jaw": {},
+  "coif": {
+   "tag": "helm"
+  },
+  "brow_plate": {
+   "stages": [
+    2,
+    3
+   ]
+  },
+  "helm_plates": {
+   "stages": [
+    2,
+    3
+   ]
+  },
+  "visor": {
+   "stages": [
+    3
+   ]
+  },
+  "right_arm": {},
+  "right_forearm": {},
+  "right_hand": {},
+  "right_wrist": {},
+  "right_vambrace": {
+   "stages": [
+    2,
+    3
+   ]
+  },
+  "right_epaulet": {},
+  "right_plate": {
+   "stages": [
+    2,
+    3
+   ]
+  },
+  "right_spike2": {
+   "stages": [
+    2,
+    3
+   ]
+  },
+  "gilt_rim_r": {
+   "stages": [
+    3
+   ]
+  },
+  "left_arm": {},
+  "left_forearm": {},
+  "left_hand": {},
+  "left_wrist": {},
+  "chain": {},
+  "left_vambrace": {
+   "stages": [
+    2,
+    3
+   ]
+  },
+  "left_pauldron": {},
+  "shard": {},
+  "left_cap2": {
+   "stages": [
+    2
+   ]
+  },
+  "gilt_rim_l": {
+   "stages": [
+    3
+   ]
+  },
+  "pauldron_cap": {
+   "stages": [
+    3
+   ]
+  },
+  "tabard_chest": {
+   "team": true
+  },
+  "tabard_f0": {
+   "team": true
+  },
+  "tabard_f1": {
+   "team": true
+  },
+  "tabard_f2": {
+   "team": true
+  },
+  "tabard_b0": {
+   "team": true
+  },
+  "tabard_b1": {
+   "team": true
+  },
+  "tabard_b2": {
+   "team": true
+  },
+  "plate_gorget": {
+   "stages": [
+    2,
+    3
+   ]
+  },
+  "breastplate": {
+   "stages": [
+    2,
+    3
+   ]
+  },
+  "gilt_collar": {
+   "stages": [
+    3
+   ]
+  },
+  "gilt_buckle": {
+   "stages": [
+    3
+   ]
+  },
+  "half_cape": {
+   "stages": [
+    3
+   ],
+   "team": true
+  },
+  "cape": {
+   "team": true
+  },
+  "cape_clasp": {
+   "stages": [
+    3
+   ]
+  },
+  "right_leg": {},
+  "right_shin": {},
+  "right_foot": {},
+  "right_boot": {},
+  "right_knee_cop": {
+   "stages": [
+    2,
+    3
+   ]
+  },
+  "right_cuisse": {
+   "stages": [
+    2,
+    3
+   ]
+  },
+  "left_leg": {},
+  "left_shin": {},
+  "left_foot": {},
+  "left_boot": {},
+  "left_knee_cop": {
+   "stages": [
+    2,
+    3
+   ]
+  },
+  "left_cuisse": {
+   "stages": [
+    2,
+    3
+   ]
+  },
+  "sk_f0": {},
+  "sk_f1": {},
+  "sk_f2": {},
+  "sk_b0": {},
+  "sk_b1": {},
+  "sk_b2": {},
+  "sk_r": {},
+  "sk_l": {},
+  "tasset_r": {
+   "stages": [
+    2,
+    3
+   ]
+  },
+  "tasset_l": {
+   "stages": [
+    2,
+    3
+   ]
+  },
+  "weapon_t1": {
+   "stages": [
+    1
+   ],
+   "tag": "weapon"
+  },
+  "weapon_t2": {
+   "stages": [
+    2
+   ],
+   "tag": "weapon"
+  },
+  "weapon_t3": {
+   "stages": [
+    3
+   ],
+   "tag": "weapon"
+  }
+ }
+}
