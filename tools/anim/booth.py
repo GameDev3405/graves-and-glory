@@ -23,6 +23,7 @@ if HERE not in sys.path:
 import booth_git as bg  # noqa: E402
 import booth_pack as bp  # noqa: E402
 import booth_render as br  # noqa: E402
+import booth_verdict as bv  # noqa: E402
 from booth_config import BoothError, load_config  # noqa: E402
 
 BYTES_PER_CLIP = 40 * 1024 * 1024 // 20      # 20 clips stay under 40 MB
@@ -224,7 +225,28 @@ def build_parser():
     b.add_argument("--batch", default=None, help="existing batch id: add a round after fixes")
     b.add_argument("--clips", default=None, help="comma list: limit a first round to these clips")
     b.add_argument("--ss", type=int, default=2, help="supersampling factor (default 2)")
+    d = sub.add_parser("decide", help="read verdict.json in a batch folder and print what to do next")
+    d.add_argument("--repo", default=".", help="lane worktree (default: current directory)")
+    d.add_argument("--batch-dir", required=True, help="work/booth/<batch-id>")
     return p
+
+
+def decide_dir(repo, batch_dir):
+    """The decision for a batch folder: its manifest.json, its verdict.json if present, and the lane's HEAD."""
+    mpath = os.path.join(batch_dir, "manifest.json")
+    if not os.path.isfile(mpath):
+        raise BoothError("no manifest.json in %s" % batch_dir)
+    manifest = _read_json(mpath)
+    vpath = os.path.join(batch_dir, "verdict.json")
+    verdict = None
+    if os.path.isfile(vpath):
+        try:
+            verdict = _read_json(vpath)
+        except ValueError:
+            return {"action": "invalid", "problems": ["verdict.json is not valid JSON"]}
+        if verdict is None:
+            return {"action": "invalid", "problems": ["verdict is not an object"]}
+    return bv.decide(manifest, verdict, bg.resolve(os.path.abspath(repo), "HEAD"))
 
 
 def main(argv=None):
@@ -240,6 +262,10 @@ def main(argv=None):
                   % (m["batch"], m["round"], len(m["clips"]), len(changed), size / 1048576.0, len(m["other_files"])))
             print(folder)
             return 0
+        if args.cmd == "decide":
+            result = decide_dir(args.repo, args.batch_dir)
+            print(json.dumps(result, indent=1))
+            return 2 if result["action"] == "invalid" else 0
     except BoothError as e:
         print("error: %s" % e, file=sys.stderr)
         return 2
