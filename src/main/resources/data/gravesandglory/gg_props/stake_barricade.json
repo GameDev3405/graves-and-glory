@@ -1,0 +1,19 @@
+{
+  "id": "stake_barricade",
+  "category": "fieldworks",
+  "name": "Stake Barricade",
+  "size": [3, 2, 1],
+  "parts": [
+    {"model": "stake_barricade", "cmd": 7310071, "glow": false}
+  ],
+  "solid": [
+    [0, 0, 0],
+    [1, 0, 0],
+    [2, 0, 0],
+    [0, 1, 0],
+    [1, 1, 0],
+    [2, 1, 0]
+  ],
+  "lights": [],
+  "effects": []
+}

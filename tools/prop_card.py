@@ -138,7 +138,16 @@ def main(argv=None):
     els = ps.elements_of(parts)
     sx, sy, sz = d["size"]; px, pz = (sx - 1) // 2, (sz - 1) // 2
     box = ((-16 * px, 0, -16 * pz), (16 * (sx - px), 16 * sy, 16 * (sz - pz)))
-    lo = [min(e[0][i] for e in els) for i in range(3)]; hi = [max(e[1][i] for e in els) for i in range(3)]
+    import numpy as np
+    corners = []   # every element corner, rotation applied, so a leaning stake's tip counts
+    for frm, to, rot, *_ in els:
+        for cx in (frm[0], to[0]):
+            for cy in (frm[1], to[1]):
+                for cz in (frm[2], to[2]):
+                    q = np.array([cx, cy, cz], float)
+                    if rot: q = ps.rot_matrix(rot[0], rot[1]) @ (q - rot[2]) + rot[2]
+                    corners.append(q)
+    C = np.array(corners); lo = [round(float(v), 1) for v in C.min(0)]; hi = [round(float(v), 1) for v in C.max(0)]
     over = [max(box[0][i] - lo[i], hi[i] - box[1][i]) for i in range(3)]
     if lo[1] < 0 or max(over) > 2:
         chk("footprint", "FAIL", "model x %g..%g y %g..%g z %g..%g vs footprint %s..%s" % (lo[0], hi[0], lo[1], hi[1], lo[2], hi[2], box[0], box[1]))
@@ -176,11 +185,13 @@ def main(argv=None):
     kn1, kn4 = ps.knight_front(1), ps.knight_front(4)
     r1 = [ps.on_swatch(kn1, "grass", 1)] if kn1 else []
     r1 += [ps.on_swatch(ps.render(els, tex, 0, 0, 1), "grass", 1), ps.on_swatch(ps.render(els, tex, 35, 25, 1), "stone", 1)]
-    views = [("front", 0, 0), ("3/4 front-east", 35, 25), ("3/4 front-west", -35, 25), ("east side", 90, 10), ("back", 180, 15), ("top", 0, 89)]
+    views = [("front", 0, 0), ("3/4 front-east", 35, 25), ("3/4 front-west", -35, 25), ("east side", 90, 10), ("back", 180, 15), ("top, front at bottom", 0, 89)]
     r4 = ([ps.on_swatch(kn4, "grass", 4)] if kn4 else []) + [ps.on_swatch(ps.render(els, tex, y, p, 4), "stone" if i else "grass", 4) for i, (_, y, p) in enumerate(views)]
     rows = [ps.compose([ps.compose(r1, label="1x game scale"), ps.compose(r4, label="4x: " + ", ".join(v[0] for v in views))])]
     rows.append(collision_map(d, fill))
-    shot_files = sorted(f for f in (os.listdir(shots) if os.path.isdir(shots) else []) if f.endswith(".png"))
+    order = ["near-day", "near-night", "far-day", "far-night"]
+    shot_files = sorted((f for f in (os.listdir(shots) if os.path.isdir(shots) else []) if f.endswith(".png")),
+                        key=lambda f: next((i for i, k in enumerate(order) if f.endswith(k + ".png")), 9))
     if shot_files:
         ims = []
         for f in shot_files[:4]:

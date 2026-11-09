@@ -69,20 +69,34 @@ read it first. The short version a builder needs:
 - Units are model px (16 = 1 block). Origin is the min corner of the anchor cell `((sx-1)//2, 0, (sz-1)//2)`; the
   footprint in px is printed at the top of the scaffolded `model.py`. **The front faces north (-z, smaller z).**
 - One element: `E((x1,y1,z1), (x2,y2,z2), "material", skip="down", name="what it is", faces={"up": "other"}, rot=("y", 22.5, (ox,oy,oz)))`.
-  Whole-px coordinates only (density check). Rotations: one axis, multiples of 22.5 degrees. `skip` the faces nobody sees
+  Whole-px coordinates only (density check). Rotations: one axis, -45, -22.5, 22.5 or 45 degrees. Put the rotation
+  origin on the element's bottom edge on the side it leans toward (for a stake leaning north, its north-bottom edge);
+  any other origin swings a corner below the floor or out of the footprint and the card fails. `skip` the faces nobody sees
   (bottoms on the floor, faces buried in another element).
 - A part's elements stay inside -16..32 on every axis (3 blocks). A taller prop uses a second part stored shifted:
-  `Prop(id, {"base": base, "top": top}, shift={"top": (0, 32, 0)})` with `top` modelled at y-32. Wider props split the
-  same way on x or z. Glowing parts (coals, lantern glass) are their own part listed in `glow=(...)` and in the def.
+  `Prop(id, {"base": base, "top": top}, shift={"top": (0, 32, 0)})`. Model **both parts in the real prop frame** (the top
+  part's elements at y 32..64); the builder subtracts the shift when it stores the part and the game adds it back. Every
+  element of a part must lie inside -16..32 after the shift, so an element crossing y=32 is split in two. Wider props
+  split the same way on x or z. A prop exactly 3 cells tall (y 0..48) can instead stay one part with `shift={"<id>": (0, 16, 0)}`
+  (stored y -16..32). Glowing parts (coals, lantern glass) are their own part listed in `glow=(...)` and in the def.
 - Materials come from `proplib.MAT`: `stone`, `stone_top`, `soot`, `iron`, `steel`, `anvil`, `gilt`, `wood_x|y|z`
   (grain along the axis), `swood_*` (stained), `plank_x|z`, `leather`, `linen`, `water`, `stump`, `endgrain`, `grit`,
   `coal`, `hotwall`. A new material is `Mat(make_ramp("RRGGBB"), 2, pattern)`; patterns are small functions returning a
   tone delta (-1, 0, +1). House colours are `HOUSE[house]["field"|"charge"]`. Every texel must come from a ramp
   (palette check); never paint raw colours or gradients.
+- Custom texture (a map, papers, a crest): `E` also takes a painter object instead of a material, as `ShieldPaint` in
+  `build_props.py` does. A painter must list the ramps it uses in a `ramps` attribute or the palette check fails.
+- Face orientation: on the north (front) face, texture column 0 is at max x, which is the viewer's left; lettering and
+  maps painted by column come out mirrored unless you count from the right. The card's front view is drawn as seen from
+  the north, so higher x is on the left.
+- Examples: the six forge-set props are functions in `art/props/build_props.py` (read `forge` and `anvil`); `stone_hand`
+  and `stake_barricade` are `model.py` examples.
 - Light is baked by `Mat` (top +1, north and east lit, south and west -1, underside -2). Do not add shading by hand.
 - Look: chunky, readable, troop scale. A few big shapes first; detail is 1-2 px insets, bands, pegs, nails. No noise,
-  no single-pixel speckle fields, no smooth gradients, no thin 1 px parts longer than about 8 px (they shimmer in game).
+  no single-pixel speckle fields, no smooth gradients, no thin 1 px parts longer than about 8 px (they shimmer in game). Flat 1 px boards or papers seen face-on are fine; the rule is about rods and wires.
 - Budget: 64 elements target (96 hard), sheet 128 px (256 only over 8 cells). The forge (the flagship) is 61.
+- If a build stops on an `AssertionError` naming an element outside -16..32, the part's `.json` is left half written;
+  fix the element and build again (the next build rewrites it).
 - Build and look: `python art/props/build_props.py <id>` writes `<part>.json`, `<id>.png` and `<id>.bbmodel`
   (open the `.bbmodel` in Blockbench to look around; edits there are lost, the script is the source).
 - Set the def's `solid` cells to match the model (the card's collision map shows fill per cell), and `lights` /
@@ -183,3 +197,22 @@ What cost time or quality, and the fix in this workflow:
   states them and the card puts numbers, checks and a collision map next to the pictures.
 - In-game shots placed the Knight so it overlapped some props and the far shots were too far for small props; the card
   keeps the in-game shots secondary to the turnaround and the reviewer checks scale on both.
+
+## Sonnet test (2026-11-09): where the instructions failed
+
+A Sonnet-high worker built `muster_board` (lobby) from this page alone, in its own worktree, in about 9 minutes and 125k
+tokens; card passed and in-game shots passed on the second try. Where it had to read code instead of this page (all fixed
+above unless noted):
+
+1. A part's -16..32 limit did not say how to handle a prop exactly 3 cells tall (single part, shift 16).
+2. Custom painters were not mentioned; it had to read `ShieldPaint`.
+3. The palette check failed on its own ramps; the `ramps` attribute on painters was undocumented.
+4. North-face column order (column 0 = viewer's left) was undocumented; its map came out mirrored once.
+5. "Props live in model.py" had no worked example; the forge set lives in `build_props.py`.
+6. The thin-part rule did not say whether flat papers count.
+7. Not fixed: the brief's collision prompt has no example for thin boards over open cells.
+8. Not fixed: the first `prop_shot` run crashed on a test-tools `NoClassDefFoundError` (`BuildMode`, `Veterans$Tally`)
+   unrelated to the prop; a rerun passed. Rerun once before debugging. Step 4 has no progress output.
+
+The lead's own slip: the first draft said shifted parts are modelled at y 0..32; they are modelled in the real frame.
+The worker and the stone hand both hit it before the fix.
