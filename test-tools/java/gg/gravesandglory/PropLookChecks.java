@@ -64,6 +64,13 @@ final class PropLookChecks implements Phase1Checks.Suite {
             Phase1Checks.report("p1-prop-anchor-hidden-" + PROPS.get(i).id(), hidden, "anchor at " + (base == null ? "none" : base.toShortString()) + ", floor " + w.getBlockState(cell.down()).getBlock());
         }
         if (!PROPS.isEmpty()) oldAnchor(w, PROPS.get(0).id(), new net.minecraft.util.math.BlockPos(ox, oy, oz - 20));
+        if (!PROPS.isEmpty()) { // no buried cell (air under the floor): the anchor falls back to the floor under the cell
+            var cell = new net.minecraft.util.math.BlockPos(ox + 10, oy, oz - 20);
+            w.setBlockState(cell.down(2), net.minecraft.block.Blocks.AIR.getDefaultState(), 3); w.setBlockState(cell.down(3), net.minecraft.block.Blocks.AIR.getDefaultState(), 3);
+            String why = Props.place(w, PROPS.get(0).id(), cell, 0); var base = Props.anchorBase(w, cell);
+            boolean ok = why.isEmpty() && cell.down().equals(base) && Props.remove(w, cell) && w.getBlockState(cell.down()).isOf(net.minecraft.block.Blocks.GRASS_BLOCK);
+            Phase1Checks.report("p1-prop-anchor-fallback", ok, why.isEmpty() ? "anchor at " + (base == null ? "none" : base.toShortString()) + ", floor after remove " + w.getBlockState(cell.down()).getBlock() : why);
+        }
         var own = b.squads.get(p.getUuid());
         for (int i = 0; i < PROPS.size(); i++) {
             var d = PROPS.get(i); int[] a = anchor(i);

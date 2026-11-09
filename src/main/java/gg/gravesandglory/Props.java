@@ -54,7 +54,7 @@ import java.util.TreeMap;
 
 /**
  * Props in the world (prop kit plan task S4). No registry entries: a prop is a vanilla command block (the anchor, buried {@code depth} blocks
- * under the anchor cell so it never shows, {@code facing} = prop facing, {@code Command} = {@code gravesandglory:prop/<id> depth=<n> floor=<state>},
+ * under the anchor cell so it does not show (in the floor directly under when no buried cell exists), {@code facing} = prop facing, {@code Command} = {@code gravesandglory:prop/<id> depth=<n> floor=<state>},
  * the block it replaced, never run; an old anchor without {@code depth=} sits one block under and moves down on scan), {@code barrier} blocks on its solid
  * cells, {@code light} blocks on its light cells and one {@code item_display} per part, tagged {@code gg_prop}, {@code gg_prop@x,y,z}
  * (anchor cell) and {@code gg_prop#<cmd>} (which part). The anchor is the truth: the scanner (chunk load, {@link #scanBox}) spawns missing
@@ -173,6 +173,10 @@ public final class Props {
         PropDef d=DEFS.get(id);
         List<BlockPos> solid=solidCells(d,anchorCell,facing);
         BlockPos base=hiddenBase(w,anchorCell,cells(d,anchorCell,facing),null,null);
+        if(base==null){
+            base=anchorCell.down();
+            LOG.warn("[props] no hidden cell for the anchor of {} at {}: anchor in the floor at {}, where it shows",id,anchorCell.toShortString(),base.toShortString());
+        }
         setAnchor(w,base,Blocks.COMMAND_BLOCK.getDefaultState().with(CommandBlock.FACING,Direction.byName(PropGeometry.direction(facing))).with(CommandBlock.CONDITIONAL,false),
             id,anchorCell.getY()-base.getY());
         for(BlockPos p:solid)w.setBlockState(p,Blocks.BARRIER.getDefaultState(),3);
@@ -193,8 +197,12 @@ public final class Props {
             if(!loaded(w,p))return "Out of world at "+p.getX()+" "+p.getY()+" "+p.getZ()+" (not loaded)";
         }
         for(BlockPos p:all)if(!free(w.getBlockState(p)))return "Overlap at "+p.getX()+" "+p.getY()+" "+p.getZ()+" ("+w.getBlockState(p).getBlock().getName().getString()+")";
-        if(hiddenBase(w,anchorCell,all,null,null)==null)
-            return "No solid ground to hide the anchor in under "+anchorCell.getX()+" "+anchorCell.getY()+" "+anchorCell.getZ()+" (needs opaque blocks 2 or more deep)";
+        if(hiddenBase(w,anchorCell,all,null,null)==null){ // fallback: the anchor goes in the floor directly under the cell (it shows)
+            BlockPos p=anchorCell.down();
+            if(w.isOutOfHeightLimit(p)||!w.getWorldBorder().contains(p))return "Out of world at "+p.getX()+" "+p.getY()+" "+p.getZ();
+            if(!loaded(w,p))return "Out of world at "+p.getX()+" "+p.getY()+" "+p.getZ()+" (not loaded)";
+            if(all.contains(p)||!anchorFree(w,p))return "Overlap at "+p.getX()+" "+p.getY()+" "+p.getZ()+" ("+w.getBlockState(p).getBlock().getName().getString()+")";
+        }
         return "";
     }
     /** The solid and light cells of a prop. */
