@@ -136,4 +136,4 @@ Later:
 3. A season is one month.
 4. The Bound Host is an NPC enemy faction in season 5; the giants an NPC enemy in season 6.
 5. New maps only where the story needs them (seasons 4, 5, 6 by default).
-6. Proposed, awaiting Kort (season locks): a chapter unlocks when its season starts, set by a server date; earlier chapters stay open forever; the order lock still applies, so a late joiner starts at chapter 1.
+6. Season locks (Kort, 2026-11-09): a chapter unlocks when its season starts, set by a server date; earlier chapters stay open forever; the order lock still applies, so a late joiner starts at chapter 1.

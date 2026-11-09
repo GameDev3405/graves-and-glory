@@ -1,6 +1,6 @@
 # Build brief: campaign chapter 1 "The Oath" and the season gates
 
-Status: A, B (N1 to N4, M1, G1) and C approved by Kort, 2026-11-09 (`kort-decisions-2026-11-09.md`, items 4, 5 and 8). G2 and G3 are proposed and wait for Kort. Revised after a second Sonnet-high review. Written by the lore lead for whichever session the coordinator assigns; the lore lead does not edit code or `sheets/design.json`. Design source: `chapter-1-battles.md`. Base: `main` at `54e5d339` or later.
+Status: all of A to C approved by Kort, 2026-11-09 (`kort-decisions-2026-11-09.md`, items 4, 5, 8 and 12). Revised after a second Sonnet-high review. Written by the lore lead for whichever session the coordinator assigns; the lore lead does not edit code or `sheets/design.json`. Design source: `chapter-1-battles.md`. Base: `main` at `54e5d339` or later.
 
 Outcome: the six chapter 1 battles play as designed, with the right enemies, after-battle text and the glimpur ebb; "The Long March" is gone from player text and "chapter" means a campaign chapter only; old campaign progress resets safely; the campaign is ready for chapter 2 one month after 1.0.
 
@@ -21,8 +21,8 @@ Outcome: the six chapter 1 battles play as designed, with the right enemies, aft
 | N4 | Retire the old words in player text. "The Long March": `CampaignClient.java:176` header becomes "THE OATH"; `Campaign.java:309,524`; `WarTableReport.java:510,513,515` ("The Long March" becomes "The Oath", the chapter's name); `Progression.java:128`; `README.md:138`. "Chapter" for the season pass: `Progression.java:128` "Founders chapter", `WarTablePages.java:33` page title "Founders Chapter" and the "Chapter 1 / The Founders" block (`WarTablePages.java:1783-1785`) become "Founders season pass" or "Season pass". These are hard-coded Java strings, not sheet text. Code comments may stay. | as listed | S |
 | M1 | Profile step for the reset. `Profile.sanitize` already drops unknown `battlesWon` and `bonusClaimed` ids, so the `march-*` entries vanish on load. Add one step that clears chapter 1 from `writChapters`, so clearing the oath chapter pays its Pact; Pacts already held (`writs`) and owned troops stay. Bump the schema only if the migration code requires it. | `ProfileMigration.java`, `Profile.java`, `RosterMath.pactChapters` | S |
 | G1 | **House banner per chapter.** A chapter setting `banner: own | house`. With `house`, the player fields a fixed banner of the chapter's House (one sheet row per chapter) instead of their collection. Chapter 1 stays `own`. Needed for chapter 2 (Wildmoot), one month after 1.0. | `Campaign.java:359` | M |
-| G2 | **Season locks (proposed, waits for Kort).** A chapter field `season`; a chapter's rows unlock when the server's current season reaches it, set from a server date config (there is no season clock today; `Progression.SEASON` is only the pass id). Earlier chapters stay open forever; the order lock still applies, so a late joiner starts at chapter 1. Solo campaigns read the same date. | `MarchMath.lockedBy`, server config | M |
-| G3 | **Chapter-aware text (proposed with G2).** "Battle N of 6" (`MarchText.battleLine`) and the War Table campaign card name the chapter and count within it. | `MarchText`, `WarTableHome.java:416-441` | S |
+| G2 | **Season locks (approved).** A chapter field `season`; a chapter's rows unlock when the server's current season reaches it, set from a server date config (there is no season clock today; `Progression.SEASON` is only the pass id). Earlier chapters stay open forever; the order lock still applies, so a late joiner starts at chapter 1. Solo campaigns read the same date. | `MarchMath.lockedBy`, server config | M |
+| G3 | **Chapter-aware text.** "Battle N of 6" (`MarchText.battleLine`) and the War Table campaign card name the chapter and count within it. | `MarchText`, `WarTableHome.java:416-441` | S |
 
 G1 to G3 were judged "before season 2"; with one-month seasons they ship with the 1.0 campaign code or within its first month. Chapter 2's Convoy ambush battle plays as Domination on Frostmarch unless an ambush side is built; no code is asked for it here.
 
@@ -40,7 +40,7 @@ G1 to G3 were judged "before season 2"; with one-month seasons they ship with th
 - A profile with old `march-*` clears and a Pact claimed for chapter 1 loads with chapter 1 at 0 of 6, its `writs` and troops intact, and earns one Pact on clearing the oath chapter.
 - One full chapter run in a harness: each after line appears once per win, the chapter-end line shows once, the ebb shows on casters in battles 4 to 6 with no violet on the Wildmoot, and no "Long March" or "Founders Chapter" string appears on any screen.
 - Bonus tuning: `lose_at_most 12` (oath-5) and the 360 second gate (oath-3) checked in the sim and adjusted if no bot run clears them.
-- G1: a chapter with `banner: house` fields its House row, never the player's collection. G2 (if approved): a chapter whose season has not started is locked and says when it opens.
+- G1: a chapter with `banner: house` fields its House row, never the player's collection. G2: a chapter whose season has not started is locked and says when it opens.
 - `docs/WORKFLOW.md` rules apply; nothing is pushed or published.
 
 ## E. Not in this brief

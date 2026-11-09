@@ -14,6 +14,7 @@ Kort answered the eleven decisions on the lore page (https://claude.ai/artifact/
 | 8 | Old progress | New ids `oath-1` to `oath-6`. Campaign progress for the old battles resets; Pacts already held and Legendaries already bought are kept. Save change approved through this answer. |
 | 9 | New enemy factions | The Bound Host as an NPC enemy faction in season 5; the giants as an NPC enemy in season 6. |
 | 10 | Names | Kort asked the lore lead to name everything, with meaning. See `names.md`. |
+| 12 | Season locks | Approved: a chapter unlocks when its season starts (server date config); earlier chapters stay open forever; the order lock stays, so a new player starts at chapter 1. |
 | 11 | Reviews | Kort will review the lore bible and the chapter 2 to 5 outlines once they are brought up to date. |
 
 Consequence of one-month seasons: a new map every month is more than Kort's map time allows, so the default is a new map only where the story needs a place the shipped five cannot be (seasons 4, 5 and 6); seasons 2 and 3 reuse shipped maps with new dressing. Each season after 1.0 still ships its chapter, at least one unit, and its giant thread step. See `season-framework.md`.
