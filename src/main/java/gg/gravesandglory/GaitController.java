@@ -4,10 +4,13 @@ import net.minecraft.entity.Entity;
 import software.bernie.geckolib.constant.DataTickets;
 import software.bernie.geckolib.core.animatable.model.CoreGeoBone;
 import software.bernie.geckolib.core.animatable.model.CoreGeoModel;
+import software.bernie.geckolib.core.animation.Animation;
 import software.bernie.geckolib.core.animation.AnimationController;
 import software.bernie.geckolib.core.animation.AnimationState;
+import software.bernie.geckolib.core.keyframe.BoneAnimation;
 import software.bernie.geckolib.core.state.BoneSnapshot;
 
+import java.util.HashMap;
 import java.util.Map;
 
 /**
@@ -17,6 +20,11 @@ import java.util.Map;
  * GeckoLib transitions always blend into a clip's first frame. The {@code owner} (the legs layer) therefore restarts the shared
  * phase at 0 the moment its transition into a gait clip ends, so the blend lands exactly where the stride clock starts and nothing
  * snaps; the arms layer, registered after it, reads the same phase.
+ * <p>
+ * Setting off from a standstill is handled apart from GeckoLib's transition, which blends over several ticks toward the clip's first frame while the body already
+ * travels (the planted feet are carried with it: about 3.5 px a tick for ~4 ticks). The clip instead starts at once on the phase whose legs sit nearest the idle pose
+ * ({@link #matchPhase}), and this controller blends the idle pose it was holding into the moving clip itself, over {@code startBlend} ticks, with the clip already
+ * running on the stride clock. Stopping keeps GeckoLib's transition into idle, at {@code stopBlend} ticks.
  */
 final class GaitController extends AnimationController<GeoTroop> {
     /** Reference speed of each gait clip (blocks per tick) as built by art/anim/knight/build_anims.py; the clip name is its key prefix. */
@@ -26,16 +34,24 @@ final class GaitController extends AnimationController<GeoTroop> {
 
     final Gait gait;
     final boolean owner;
-    private final int blend;
+    private final int blend, stopBlend;
+    /** Ticks the idle pose is blended into a moving clip after setting off from a standstill (see the class comment). */
+    private final double startBlend;
+    /** What this controller last wrote to the bones its clip keys (rotation xyz, position xyz), and the idle pose being blended out of while a start blend runs. */
+    private final Map<String, float[]> out = new HashMap<>();
+    private Map<String, float[]> from;
+    private double fromAt;
     private Gait.Mode lastMode = Gait.Mode.IDLE;
     /** A walk-to-run (or back) switch: no timed blend, and the stride clock keeps its phase, so the feet stay on the stride clock instead of skating through the blend. */
     private boolean keepPhase;
 
-    GaitController(GeoTroop troop, String name, int transition, Gait gait, boolean owner, AnimationStateHandler<GeoTroop> handler) {
+    GaitController(GeoTroop troop, String name, int transition, int stopBlend, double startBlend, Gait gait, boolean owner, AnimationStateHandler<GeoTroop> handler) {
         super(troop, name, transition, handler);
         this.gait = gait;
         this.owner = owner;
         this.blend = transition;
+        this.stopBlend = stopBlend;
+        this.startBlend = startBlend;
     }
 
     /** The playing clip's reference speed, or 0 when no gait clip is running. */
@@ -47,17 +63,95 @@ final class GaitController extends AnimationController<GeoTroop> {
     public void process(CoreGeoModel<GeoTroop> model, AnimationState<GeoTroop> state, Map<String, CoreGeoBone> bones,
                         Map<String, BoneSnapshot> snapshots, double seekTime, boolean crashWhenCantFindBone) {
         Entity e = state.getData(DataTickets.ENTITY);
-        if (e != null) gait.update(e, seekTime);
+        if (e != null) gait.update(e, seekTime, state.getPartialTick());
         Gait.Mode m = gait.mode;
         if (m != lastMode && m != Gait.Mode.IDLE && lastMode != Gait.Mode.IDLE) { transitionLength = 0; keepPhase = true; }
-        else if (!keepPhase) transitionLength = blend;
+        else if (m != lastMode && m != Gait.Mode.IDLE && !out.isEmpty()) {
+            // setting off from a standstill: straight into the moving clip on the phase that matches the idle pose, blended by hand
+            transitionLength = 0; keepPhase = true;
+            from = copy(out); fromAt = seekTime;
+            if (owner) gait.phase = matchPhase(model, bones, m == Gait.Mode.RUN ? "run_legs" : "walk_legs");
+        }
+        else if (!keepPhase) transitionLength = m == Gait.Mode.IDLE ? stopBlend : blend;
         lastMode = m;
         super.process(model, state, bones, snapshots, seekTime, crashWhenCantFindBone);
         if (keepPhase && !shouldResetTick && getAnimationState() == State.RUNNING) keepPhase = false;
+        if (from != null) blendFrom(bones, AttackController.smooth((seekTime - fromAt) / startBlend), seekTime - fromAt >= startBlend);
+        capture(bones);
         if (owner) {
             double ref = getAnimationState() == State.RUNNING ? playingRef() : 0;
             gait.stride = ref > 0 ? ref * currentAnimation.animation().length() : 0;
         }
+    }
+
+    /** What the bones this controller's clip keys read now, kept for the next start. */
+    private void capture(Map<String, CoreGeoBone> bones) {
+        if (currentAnimation == null) return;
+        for (BoneAnimation b : currentAnimation.animation().boneAnimations()) {
+            CoreGeoBone bone = bones.get(b.boneName());
+            if (bone == null) continue;
+            float[] a = out.computeIfAbsent(b.boneName(), k -> new float[6]);
+            a[0] = bone.getRotX(); a[1] = bone.getRotY(); a[2] = bone.getRotZ();
+            a[3] = bone.getPosX(); a[4] = bone.getPosY(); a[5] = bone.getPosZ();
+        }
+    }
+
+    private static Map<String, float[]> copy(Map<String, float[]> m) {
+        Map<String, float[]> c = new HashMap<>();
+        for (Map.Entry<String, float[]> en : m.entrySet()) c.put(en.getKey(), en.getValue().clone());
+        return c;
+    }
+
+    /** Lerps each bone from the idle pose it held at the start toward what the moving clip wrote this frame, by {@code w}; done once the blend has run its length. */
+    private void blendFrom(Map<String, CoreGeoBone> bones, double w, boolean done) {
+        float k = (float) w;
+        for (Map.Entry<String, float[]> en : from.entrySet()) {
+            CoreGeoBone bone = bones.get(en.getKey());
+            if (bone == null) continue;
+            float[] a = en.getValue();
+            float[] r = AttackController.near(a[0], a[1], a[2], bone.getRotX(), bone.getRotY(), bone.getRotZ());
+            bone.setRotX(a[0] + (r[0] - a[0]) * k);
+            bone.setRotY(a[1] + (r[1] - a[1]) * k);
+            bone.setRotZ(a[2] + (r[2] - a[2]) * k);
+            bone.setPosX(a[3] + (bone.getPosX() - a[3]) * k);
+            bone.setPosY(a[4] + (bone.getPosY() - a[4]) * k);
+            bone.setPosZ(a[5] + (bone.getPosZ() - a[5]) * k);
+            bone.markRotationAsChanged();
+            bone.markPositionAsChanged();
+        }
+        if (done) from = null;
+    }
+
+    /** How much a bone's turn moves the foot, by name: a thigh most, a shin half, a foot little; 0 for every other bone. */
+    private static double legWeight(String bone) {
+        return bone.endsWith("leg") ? 1 : bone.endsWith("shin") ? .5 : bone.endsWith("foot") ? .15 : 0;
+    }
+
+    /**
+     * The phase (0..1) of the gait clip {@code name} whose leg rotations lie nearest the pose this controller was holding, so a troop that sets off steps out of the idle
+     * stance without its planted foot jumping. 0 when the model lacks the clip or its leg bones.
+     */
+    private double matchPhase(CoreGeoModel<GeoTroop> model, Map<String, CoreGeoBone> bones, String name) {
+        Animation clip = model.getAnimation(animatable, name);
+        if (clip == null) return 0;
+        final int steps = 48;
+        double best = Double.MAX_VALUE, at = 0;
+        for (int i = 0; i < steps; i++) {
+            double t = clip.length() * i / steps, cost = 0;
+            for (BoneAnimation b : clip.boneAnimations()) {
+                double w = legWeight(b.boneName());
+                float[] now = out.get(b.boneName());
+                CoreGeoBone bone = bones.get(b.boneName());
+                var rot = b.rotationKeyFrames();
+                if (w == 0 || now == null || bone == null || rot.xKeyframes().isEmpty()) continue;
+                BoneSnapshot init = bone.getInitialSnapshot();
+                float[] to = AttackController.near(now[0], now[1], now[2], AttackController.sample(rot.xKeyframes(), t) + init.getRotX(),
+                        AttackController.sample(rot.yKeyframes(), t) + init.getRotY(), AttackController.sample(rot.zKeyframes(), t) + init.getRotZ());
+                cost += w * (Math.abs(to[0] - now[0]) + Math.abs(to[1] - now[1]) + Math.abs(to[2] - now[2]));
+            }
+            if (cost < best) { best = cost; at = (double) i / steps; }
+        }
+        return at;
     }
 
     @Override
