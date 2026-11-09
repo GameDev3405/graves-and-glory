@@ -123,6 +123,42 @@ public final class MarchMath {
     /** The botBanners id team 1's bot in this lane fields: the battle's enemies row at lane % rows; null when the battle names none, so tier and lane picking choose. */
     static String enemyId(Spec.CampaignBattlesRow r, int lane) { var ids = enemyIds(r); return ids.isEmpty() ? null : ids.get(Math.floorMod(lane, ids.size())); }
 
+    /**
+     * Season locks (brief G2). The server config file config/gravesandglory/seasons.json holds {"starts": ["YYYY-MM-DD", ...]}: season n
+     * starts on starts[n - 1] (UTC). Without the file, or before the first date, it is season 1; season 1 is always open. A chapter's battles
+     * open once the current season reaches the chapter's season and stay open after; the order lock (lockedBy) still applies on top.
+     */
+    static final class Seasons {
+        private Seasons() {}
+        private static final java.util.regex.Pattern DATE = java.util.regex.Pattern.compile("\"([^\"]*)\"");
+
+        /** The start dates in the file's text, in order; entries that are not dates are skipped. Never throws. */
+        static List<java.time.LocalDate> parse(String json) {
+            List<java.time.LocalDate> out = new ArrayList<>();
+            if (json == null) return out;
+            int open = json.indexOf('['), close = json.indexOf(']', Math.max(open, 0));
+            if (open < 0 || close < 0) return out;
+            var m = DATE.matcher(json.substring(open, close));
+            while (m.find()) try { out.add(java.time.LocalDate.parse(m.group(1).trim())); } catch (java.time.format.DateTimeParseException ignored) {}
+            return out;
+        }
+
+        /** The season on this day: 1, or the highest n whose start date has come. */
+        static int current(List<java.time.LocalDate> starts, java.time.LocalDate today) {
+            int season = 1;
+            for (int i = 0; i < starts.size(); i++) if (!today.isBefore(starts.get(i))) season = Math.max(season, i + 1);
+            return season;
+        }
+
+        /** Why this battle's chapter is not open yet ("The Hunt opens with season 2 on 20 December 2026."), or "" when it is open. */
+        static String lock(Spec.CampaignBattlesRow r, Spec.CampaignChaptersRow[] chapters, int current, List<java.time.LocalDate> starts) {
+            var c = r == null ? null : chapter(r.chapter(), chapters);
+            if (c == null || c.season() <= 1 || c.season() <= current) return "";
+            String on = c.season() - 1 < starts.size() ? " on " + starts.get(c.season() - 1).format(java.time.format.DateTimeFormatter.ofPattern("d MMMM yyyy", Locale.ENGLISH)) : "";
+            return c.name() + " opens with season " + c.season() + on + ".";
+        }
+    }
+
     /** The botBanners row the commander fields in this battle when its chapter sets banner house (brief G1), or null to field their own banner. */
     static String houseBannerRow(Spec.CampaignBattlesRow r, Spec.CampaignChaptersRow[] chapters) {
         var c = r == null ? null : chapter(r.chapter(), chapters);

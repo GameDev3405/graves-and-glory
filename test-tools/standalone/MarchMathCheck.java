@@ -135,6 +135,23 @@ public final class MarchMathCheck {
         check("ally_wildmoot_normal".equals(MarchMath.houseBannerRow(huntBattle, wild)) && MarchMath.houseBannerRow(row(1), wild) == null, "banner: a house chapter's battle fields its House row; its other chapters keep their own banner");
         check(MarchMath.reserved("ally_wildmoot_normal", ROWS, wild) && !MarchMath.reserved("wildmoot_normal", ROWS, wild), "banner: a chapter's House row is reserved from the bot pools; a plain tier row is not");
         check(MarchMath.reserved("ally_gilded_easy", Spec.CAMPAIGNBATTLES, Spec.CAMPAIGNCHAPTERS) && !MarchMath.reserved("gilded_easy", Spec.CAMPAIGNBATTLES, Spec.CAMPAIGNCHAPTERS), "banner: ally rows stay reserved");
+        // season locks (brief G2): a chapter opens when the server's season reaches it, from the start dates in the server config;
+        // season 1 is always open, earlier chapters stay open, the order lock still applies, and a locked chapter names its date
+        var dates = MarchMath.Seasons.parse("{\"starts\": [\"2026-11-20\", \"2026-12-20\", \"bad\"]}");
+        check(dates.equals(List.of(java.time.LocalDate.of(2026, 11, 20), java.time.LocalDate.of(2026, 12, 20))), "season: start dates parse, a bad entry is skipped: " + dates);
+        check(MarchMath.Seasons.parse("").isEmpty() && MarchMath.Seasons.parse("not json").isEmpty(), "season: a missing or broken file is no dates");
+        check(MarchMath.Seasons.current(List.of(), java.time.LocalDate.of(2030, 1, 1)) == 1, "season: no dates, season 1");
+        check(MarchMath.Seasons.current(dates, java.time.LocalDate.of(2026, 11, 19)) == 1 && MarchMath.Seasons.current(dates, java.time.LocalDate.of(2026, 11, 20)) == 1
+            && MarchMath.Seasons.current(dates, java.time.LocalDate.of(2026, 12, 19)) == 1 && MarchMath.Seasons.current(dates, java.time.LocalDate.of(2026, 12, 20)) == 2, "season: season 2 starts on its date, not before");
+        var seasons = new Spec.CampaignChaptersRow[]{oathChapter(), new Spec.CampaignChaptersRow("hunt", 2, "The Hunt", "wildmoot", "own", "none", 2, "End.", "none")};
+        var hunt1 = battle("hunt-1", 2, 7, 1, "none", "gilded_normal");
+        check(MarchMath.Seasons.lock(row(1), seasons, 1, dates).isEmpty() && MarchMath.Seasons.lock(row(6), seasons, 1, List.of()).isEmpty(), "season: The Oath (season 1) is always open");
+        check(MarchMath.Seasons.lock(hunt1, seasons, 1, dates).equals("The Hunt opens with season 2 on 20 December 2026."), "season: a chapter before its season is locked and names its date: " + MarchMath.Seasons.lock(hunt1, seasons, 1, dates));
+        check(MarchMath.Seasons.lock(hunt1, seasons, 1, List.of()).equals("The Hunt opens with season 2."), "season: with no date set it names the season");
+        check(MarchMath.Seasons.lock(hunt1, seasons, 2, dates).isEmpty() && MarchMath.Seasons.lock(row(1), seasons, 2, dates).isEmpty(), "season: in season 2 chapter 2 opens and chapter 1 stays open");
+        check(MarchMath.Seasons.lock(null, seasons, 1, dates).isEmpty(), "season: no battle, no lock");
+        var withHunt = new Spec.CampaignBattlesRow[]{row(1), row(2), row(3), row(4), row(5), row(6), hunt1};
+        check(MarchMath.lockedBy(hunt1, Set.of(), withHunt) != null, "season: the order lock still applies, so a late joiner starts at chapter 1");
         // after lines and the chapter end (brief N2): the battle's line on a win only; the chapter's end line with its Pact, once
         var oath = MarchMath.chapter(1, Spec.CAMPAIGNCHAPTERS);
         check(oath != null && oath.name().equals("The Oath") && oath.chapterEnd().startsWith("Aldric, alone with the Charter.") && MarchMath.chapter(9, Spec.CAMPAIGNCHAPTERS) == null, "chapter: chapter 1 is The Oath with its end line; an unknown chapter is null");

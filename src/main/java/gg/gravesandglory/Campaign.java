@@ -231,6 +231,7 @@ public final class Campaign {
             if(row==null)return true;
             if(row.map()<0||row.map()>=Spec.MAPS.length){notice(p.getUuid(),row.name()+" cannot start: its map is missing.");return true;}
             var lock=MarchMath.lockedBy(row,profile(p.getUuid()).battlesWon,Spec.CAMPAIGNBATTLES);if(lock!=null){notice(p.getUuid(),"Win "+lock.name()+" first.");return true;} // plan 2C.3: the March is won in order
+            var starts=seasonStarts();String closed=MarchMath.Seasons.lock(row,Spec.CAMPAIGNCHAPTERS,MarchMath.Seasons.current(starts,Progression.today()),starts);if(!closed.isEmpty()){notice(p.getUuid(),closed);return true;} // brief G2: a chapter opens with its season
             if(!Modes.registered(row.mode())||!Modes.hosts(row.mode(),row.map())){notice(p.getUuid(),row.name()+" cannot start yet: its mode arrives with the mode frame.");return true;} // survival and banner come with plan 2C.4
             String refused=soloRefusal(p.getUuid(),MARCH_SOLO);if(!refused.isEmpty()){notice(p.getUuid(),refused);return true;}
             pendingBattle=row;pendingCommander=p.getUuid();
@@ -308,6 +309,11 @@ public final class Campaign {
     }
     static final String MARCH_SOLO="Campaign battles are played solo. Leave your party or room first.";
     /** Why a commander cannot start a solo battle (practice or a Long March battle) now, or "" when they can: one battle at a time, solo means no party and no room (soloRule says so), and a battlefield being prepared for someone else stays theirs. */
+    /** The season start dates (brief G2) from config/gravesandglory/seasons.json beside the server (the game folder in solo); none without the file. */
+    static List<java.time.LocalDate> seasonStarts(){
+        try{Path f=net.fabricmc.loader.api.FabricLoader.getInstance().getConfigDir().resolve("gravesandglory").resolve("seasons.json");return Files.exists(f)?MarchMath.Seasons.parse(Files.readString(f)):List.of();}
+        catch(Exception e){return List.of();}
+    }
     String soloRefusal(UUID id,String soloRule){
         if(b.running)return "Wait until the current battle finishes.";
         if(social.group(id).size()>1||social.room(id)!=null)return soloRule;
@@ -922,7 +928,7 @@ public final class Campaign {
     }
     String snapshot(ServerPlayerEntity p){
         JsonObject j=new JsonObject();Profile pr=profile(p.getUuid());j.add("profile",forClient(pr));j.addProperty("collectionReady",collectionsReady.contains(p.getUuid()));j.addProperty("waiting",b.running&&(!b.squads.containsKey(p.getUuid())||!b.squads.get(p.getUuid()).seated));j.addProperty("mode",practice?"ai":Integer.toString(size));j.addProperty("fill",fill);j.addProperty("difficulty",difficulty);j.addProperty("map",map);j.addProperty("serial",serial);j.addProperty("intro",b.squads.containsKey(p.getUuid())&&b.squads.get(p.getUuid()).seated?Math.max(0,introUntil-b.time):0);j.addProperty("notice",notices.getOrDefault(p.getUuid(),""));j.addProperty("noticeSerial",noticeSerials.getOrDefault(p.getUuid(),0));j.addProperty("headline",headline);j.addProperty("tutorial",tutorialStep(p.getUuid()));JsonObject pads=new JsonObject();pads.addProperty("countdown",padCountdown<0?0:(padCountdown+19)/20);pads.addProperty("mine",onPad.getOrDefault(p.getUuid(),-1));pads.addProperty("dawn",(int)onPad.values().stream().filter(t->t==0).count());pads.addProperty("dusk",(int)onPad.values().stream().filter(t->t==1).count());pads.addProperty("size",padSize());j.add("pads",pads);
-        JsonObject battle=new JsonObject();if(activeBattle!=null){battle.addProperty("id",activeBattle.id());battle.addProperty("name",activeBattle.name());battle.addProperty("briefing",activeBattle.briefing());battle.addProperty("reason",activeBattle.reason());}j.add("battle",battle); // the Long March battle being fought, or {}
+        JsonObject battle=new JsonObject();if(activeBattle!=null){battle.addProperty("id",activeBattle.id());battle.addProperty("name",activeBattle.name());battle.addProperty("briefing",activeBattle.briefing());battle.addProperty("reason",activeBattle.reason());}j.add("battle",battle);var starts=seasonStarts();j.addProperty("season",MarchMath.Seasons.current(starts,Progression.today()));JsonArray dates=new JsonArray();for(var d:starts)dates.add(d.toString());j.add("seasonStarts",dates); // brief G2: the campaign card shows a chapter that has not opened // the Long March battle being fought, or {}
         JsonObject partyJson=new JsonObject();boolean member=party.contains(p.getUuid());Long until=inviteUntil.get(p.getUuid());UUID inviter=invites.get(p.getUuid());
         partyJson.addProperty("open",partyLeader!=null);partyJson.addProperty("member",member);partyJson.addProperty("lead",leader(p));partyJson.addProperty("capacity",size*2);
         partyJson.addProperty("leader",partyLeader==null?"":name(partyLeader));

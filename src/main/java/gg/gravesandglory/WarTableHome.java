@@ -267,6 +267,7 @@ final class WarTableHome {
 
     String rideLabel() {
         if (GravesAndGloryClient.running) return "A battle is under way";
+        if (focused == 2 && !CampaignClient.seasonLock(next()).isEmpty()) return "Opens with season " + MarchMath.chapter(next().chapter(), Spec.CAMPAIGNCHAPTERS).season();
         return switch (focused) { case 0 -> "Begin practice"; case 2 -> "Ride to " + next().name(); default -> "Open the war council"; };
     }
 
@@ -276,7 +277,7 @@ final class WarTableHome {
         if (GravesAndGloryClient.running) return;
         switch (focused) {
             case 0 -> screen.action("camp:practice");
-            case 2 -> screen.action("campaign:" + next().id());
+            case 2 -> { if (CampaignClient.seasonLock(next()).isEmpty()) screen.action("campaign:" + next().id()); } // a chapter whose season has not begun waits (brief G2)
             default -> screen.page("lobby"); // the War Table lobby (plan 3.4): seats, Houses, classes and the host's orders; the war gates' pads still work in camp
         }
     }
@@ -438,7 +439,12 @@ final class WarTableHome {
         String teams = march ? MarchText.battleLine(row, Spec.CAMPAIGNBATTLES.length, tier) : n + " v " + n + ", " + tier + (n == 1 ? " bot" : " bots");
         centred(g, DarkUi.body(rule), x + 84, y + 120, DarkUi.SEPIA);
         centred(g, DarkUi.body(teams), x + 84, y + 132, DarkUi.SEPIA);
-        if (march) bonus(g, row, x + 16, y + 148, 136);
+        String closed = march ? CampaignClient.seasonLock(row) : "";
+        if (!closed.isEmpty()) { // brief G2: the chapter's season has not begun; its date replaces the bonus
+            var font = MinecraftClient.getInstance().textRenderer; var lines = font.wrapLines(DarkUi.body(closed), 136);
+            for (int i = 0; i < Math.min(2, lines.size()); i++) g.drawText(font, lines.get(i), x + 16, y + 148 + i * 11, DarkUi.SEPIA, false);
+            textsDrawn.put("field-season", closed);
+        } else if (march) bonus(g, row, x + 16, y + 148, 136);
         rectsDrawn.put("field", new int[]{x, y, 168, 188});
         textsDrawn.put("field-name", march ? row.name() : map.name());
         textsDrawn.put("field-map", map.name());
