@@ -20,7 +20,10 @@ from booth_config import BoothError  # noqa: E402
 VIEWERS = ("reference", "previous", "new")
 DISTANCES = ("near", "game16")
 VIEW = "three_quarter"
-FOOT_SLIDE_LIMIT = 0.05      # blocks; docs/anim-rebuild/PLAN.md
+# Foot slide is the renderer's planted-foot drift, in blocks. It is only measured on clips that travel (root speed
+# above 0), and it is flagged when it is this much worse than the reference clip's own figure: the approved Knight
+# walk measures about 0.19 by this metric (the foot rolls heel to toe), so a fixed 0.05 limit would flag everything.
+FOOT_SLIDE_MARGIN = 0.05
 
 
 @dataclass
@@ -64,6 +67,21 @@ def _scene(source, viewer):
     return scene, list(range(_ticks_of(clips[-1])))
 
 
+def _slide(scene_ticks, source, foot_bones, fallback=False):
+    """Planted-foot drift in blocks, or None when the clip does not travel or no foot bone is found.
+    fallback: when none of foot_bones exist in this model (a reference troop), use the renderer's name match."""
+    if source.speed <= 0:
+        return None
+    scene, ticks = scene_ticks
+    names = foot_bones
+    if fallback and foot_bones and not any(n in scene.model.bones for n in foot_bones):
+        names = None
+    with contextlib.redirect_stderr(io.StringIO()):       # the renderer warns on stderr when no foot bone matches
+        rep = rg.build_report(scene, ticks, foot_names=names, ground=0.0)
+    drift = rep["foot_slide"].get("max_drift")
+    return None if drift is None else float(drift)
+
+
 def _hash(frames_by_distance):
     h = hashlib.sha256()
     for dist in DISTANCES:
@@ -93,10 +111,8 @@ def render_clip(sources, foot_bones=None, ss=2):
                                      marker_top=float(hi[1]))
                 out.append(np.ascontiguousarray(np.asarray(img)[..., :3], dtype=np.uint8))
             frames[v][dist] = out
-    sc, ticks = scenes["new"]
-    with contextlib.redirect_stderr(io.StringIO()):       # the renderer warns on stderr when no foot bone matches
-        rep = rg.build_report(sc, ticks, foot_names=foot_bones, ground=0.0)
-    drift = rep["foot_slide"].get("max_drift")
-    numbers = {"foot_slide": None if drift is None else float(drift)}
-    flags = ["foot_slide"] if drift is not None and drift > FOOT_SLIDE_LIMIT else []
-    return ClipRender(frames, len(ticks), _hash(frames["new"]), numbers, flags)
+    slide = _slide(scenes["new"], sources["new"], foot_bones)
+    ref = _slide(scenes["reference"], sources["reference"], foot_bones, fallback=True) if "reference" in scenes else None
+    numbers = {"foot_slide": slide, "foot_slide_reference": ref if slide is not None else None}
+    flags = ["foot_slide"] if slide is not None and ref is not None and slide > ref + FOOT_SLIDE_MARGIN else []
+    return ClipRender(frames, len(scenes["new"][1]), _hash(frames["new"]), numbers, flags)

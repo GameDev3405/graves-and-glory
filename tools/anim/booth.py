@@ -84,7 +84,7 @@ class _Sources:
     def reference(self, clip, sha):
         if clip.reference is None:
             return None
-        src = self._old(sha, self.cfg.reference, clip.reference, clip.reference_base, 0.0)
+        src = self._old(sha, self.cfg.reference, clip.reference, clip.reference_base, clip.speed)
         if src is None:
             raise BoothError("clip %r: reference clip %r is not on the target branch at %s"
                              % (clip.name, clip.reference, sha[:7]))

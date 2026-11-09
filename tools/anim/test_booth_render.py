@@ -100,17 +100,34 @@ class RenderTest(unittest.TestCase):
         # a different reference with the same bounds (it walks, so its frames differ) leaves New's hash unchanged
         self.assertEqual(base, run(src("arm_swing"), src("arm_swing", speed=0.05)))
 
-    def test_foot_slide_flag(self):
-        slid = br.render_clip({"reference": None, "previous": None, "new": src("walk_sliding", speed=0.05)}, ss=1)
-        self.assertGreater(slid.numbers["foot_slide"], 0.05)
-        self.assertEqual(slid.flags, ["foot_slide"])
-        ok = br.render_clip({"reference": None, "previous": None, "new": src("walk_planted", speed=0.05)}, ss=1)
-        self.assertLessEqual(ok.numbers["foot_slide"], 0.05)
-        self.assertEqual(ok.flags, [])
+    def one(self, new, ref=None, **kw):
+        return br.render_clip({"reference": ref, "previous": None, "new": new}, ss=1, **kw)
+
+    def test_foot_slide_flagged_when_worse_than_reference(self):
+        r = self.one(src("walk_sliding", speed=0.05), src("walk_planted", speed=0.05))
+        self.assertGreater(r.numbers["foot_slide"], r.numbers["foot_slide_reference"] + 0.05)
+        self.assertEqual(r.flags, ["foot_slide"])
+
+    def test_foot_slide_not_flagged_when_like_reference(self):
+        r = self.one(src("walk_planted", speed=0.05), src("walk_planted", speed=0.05))
+        self.assertEqual(r.numbers["foot_slide"], r.numbers["foot_slide_reference"])
+        self.assertEqual(r.flags, [])
+        both_slide = self.one(src("walk_sliding", speed=0.05), src("walk_sliding", speed=0.05))
+        self.assertEqual(both_slide.flags, [])
+
+    def test_foot_slide_without_reference_is_a_number_only(self):
+        r = self.one(src("walk_sliding", speed=0.05))
+        self.assertGreater(r.numbers["foot_slide"], 0.05)
+        self.assertIsNone(r.numbers["foot_slide_reference"])
+        self.assertEqual(r.flags, [])
+
+    def test_foot_slide_only_measured_for_moving_clips(self):
+        r = self.one(src("walk_sliding", speed=0.0), src("walk_planted", speed=0.05))
+        self.assertEqual(r.numbers, {"foot_slide": None, "foot_slide_reference": None})
+        self.assertEqual(r.flags, [])
 
     def test_no_foot_bones_gives_no_number(self):
-        r = br.render_clip({"reference": None, "previous": None, "new": src("arm_swing")},
-                           foot_bones=["no_such_bone"], ss=1)
+        r = self.one(src("walk_sliding", speed=0.05), src("walk_planted", speed=0.05), foot_bones=["no_such_bone"])
         self.assertIsNone(r.numbers["foot_slide"])
         self.assertEqual(r.flags, [])
 
