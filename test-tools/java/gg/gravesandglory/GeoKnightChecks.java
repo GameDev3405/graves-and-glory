@@ -58,6 +58,18 @@ final class GeoKnightChecks implements Phase1Checks.Suite {
     /** Ticks an ability cast's clip starts after its cast event's start tick (caster_cast impactTicks 10 + ABL_WINDUP - the clip's impact marker), set by meleeTicks. */
     static int ablLead;
     static final int MELEE_T = meleeTicks();
+    /** Capture only: how many swing (cut or sweep) clips the troop has, at most 2: its attack_ clips that are not a thrust or a jab. */
+    static final int SLASH_N = slashClips();
+    static boolean isSlash(String clip) { return !clip.contains("thrust") && !clip.contains("jab"); }
+    static int slashClips() {
+        try (var in = GeoKnightChecks.class.getResourceAsStream("/assets/gravesandglory/animations/troop/" + TROOP + ".animation.json")) {
+            if (in == null) return 2;
+            var anims = com.google.gson.JsonParser.parseReader(new java.io.InputStreamReader(in, java.nio.charset.StandardCharsets.UTF_8)).getAsJsonObject().getAsJsonObject("animations");
+            int n = 0;
+            for (var k : anims.keySet()) if (k.startsWith("attack_") && !k.endsWith("_legs") && isSlash(k)) n++;
+            return Math.max(1, Math.min(2, n));
+        } catch (Exception e) { return 2; }
+    }
     static int meleeTicks() {
         try (var in = GeoKnightChecks.class.getResourceAsStream("/assets/gravesandglory/animations/troop/" + TROOP + ".animation.json")) {
             if (in == null) return 22;
@@ -1159,15 +1171,15 @@ final class GeoKnightChecks implements Phase1Checks.Suite {
                 if (k > 30 && c.world != null) {
                     var e = c.world.getEntityById(d.us[0].mob.getId());
                     AttackController ac = e == null ? null : AttackController.LIVE.get(e);
-                    if (ac != null && ac.shownT >= 0 && !ac.shownClip.contains("thrust") && (ac.shownWeight > 0 || ac.shownT < .5)) {
+                    if (ac != null && ac.shownT >= 0 && isSlash(ac.shownClip) && (ac.shownWeight > 0 || ac.shownT < .5)) {
                         int tt = (int) Math.round(ac.shownT);
                         if (Math.abs(ac.shownT - tt) <= .3 && tt < FRAMES && taken.add(ac.shownClip + ":" + tt))
                             Phase1Checks.shot(c, String.format("slash-%s-%s-%02d", view, ac.shownClip.replace("attack_", ""), tt));
                     }
                 }
-                // both slash clips (the sword troops' overhead and low_cut, the axe's overhead_chop and hook_hew) shot through
+                // every slash clip (at most 2: the sword troops' overhead and low_cut, the axes' chop and hew, the spear's low_sweep) shot through
                 long got = taken.stream().collect(java.util.stream.Collectors.groupingBy(f -> f.substring(0, f.indexOf(':')), java.util.stream.Collectors.counting()))
-                        .values().stream().filter(n -> n >= FRAMES - 1).count() >= 2 ? 1 : 0;
+                        .values().stream().filter(n -> n >= FRAMES - 1).count() >= SLASH_N ? 1 : 0;
                 if (got == 1 || k > 1500) {
                     System.out.println("[p1] slash view " + view + " frames " + taken.size() + " k " + k);
                     if (++i < SLASH_VIEWS.length) next(tick, 33); else { duel = null; i = 0; next(tick, 9); }

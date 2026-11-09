@@ -106,10 +106,16 @@ def point(M, bedrock_px):
 
 
 SIDES = {"right": -1.9, "left": 1.9}
+ANKLE_Y = 2.0
+# The Hollow King (troop_rig.BIG): legs at x 2.5, the foot bone at his boot's ankle, 2 px over its sole (bedrock y 1.3).
+HK = TROOP == "gb_hollowking"
+if HK:
+    SIDES, ANKLE_Y = {"right": -2.5, "left": 2.5}, 1.3
+HK_REACH = 9.0 / 8.0     # his shoulder-to-fist length over the knight's
 
 
 def ankle_px(side):
-    return (SIDES[side], 2.0, 0.0)
+    return (SIDES[side], ANKLE_Y, 0.0)
 
 
 # ------------------------------------------------------------------------------------------------
@@ -213,6 +219,9 @@ def fist_arm(target, roll=-4.0, guess=None):
     """left_arm (x, y, roll) and left_forearm x putting the fist at target; the upper arm's roll (- out) is given."""
     x = np.array(guess if guess is not None else (-20.0, 20.0, -80.0), dtype=float)
     t = np.asarray(target, dtype=float) + SHOULDER_D
+    if HK:   # his left shoulder sits at the troop's left x 7 (the loaded pivot's x is mirrored) on a 9 px arm whose fist hangs
+        # straight under it: the knight's fist offset from its own hanging fist (6, 14, 0 at rest), scaled to his reach, from his (7, 17, 0)
+        t = np.array([7.0, 26.0, 0.0]) + (np.asarray(target, dtype=float) - np.array([6.0, 22.0, 0.0])) * HK_REACH
     f = lambda v: _fist((v[0], v[1], roll), v[2])
     for _ in range(80):
         a = f(x)
@@ -369,6 +378,12 @@ WALK = Gait("walk", ticks=8, speed=0.16, duty=0.58, heel=15, toe_off=26, front=4
 # A run: shorter contact, a flight phase, the hips lowest at mid stance, knees more bent.
 RUN = Gait("run", ticks=7, speed=0.26, duty=0.38, heel=6, toe_off=34, front=4.4, lift=3.6, lift_peak=0.45,
            hip_drop=2.1, bob=0.7, bob_phase=0.19, sway=0.2 * V2_SWAY_SCALE, yaw=6.0, roll=2.0 * V2_SWAY_SCALE)
+if HK:   # the Hollow King's menacing slow walk: the same ground speed (GaitController.refSpeed) in fewer, longer strides on his
+    # longer legs, each step planted with weight (a deeper hip drop and bob, the body rolling over the stance leg); a heavy run
+    WALK = Gait("walk", ticks=10, speed=0.16, duty=0.6, heel=12, toe_off=22, front=6.0, lift=2.4, lift_peak=0.38,
+                hip_drop=2.2, bob=0.8, bob_phase=0.08, sway=0.5 * V2_SWAY_SCALE, yaw=5.0, roll=2.6 * V2_SWAY_SCALE, lane=2.5)
+    RUN = Gait("run", ticks=8, speed=0.26, duty=0.42, heel=6, toe_off=30, front=5.4, lift=3.4, lift_peak=0.45,
+               hip_drop=2.6, bob=0.9, bob_phase=0.19, sway=0.3 * V2_SWAY_SCALE, yaw=6.0, roll=2.4 * V2_SWAY_SCALE, lane=2.5)
 
 
 # ------------------------------------------------------------------------------------------------
@@ -594,7 +609,7 @@ if V2 and SHIELD:   # V2: the shield fist sits 3 px further left and the blade r
     FIST_GUARD = (5.0, 19.0, 5.6)
     READY = skey((5, 14, 0), (-44, 0, 20), -50, -44, -4, FIST_GUARD, hips=(0, 6, 0))
 GUARD = READY
-LONG = TROOP in ("sentinel", "gl_marshal")   # the Templar's 25-31 px longsword (and the Marshal's 24-32 px broadsword) follows through flatter, so its tip clears the ground
+LONG = TROOP in ("sentinel", "gl_marshal", "gb_hollowking")   # the Templar's 25-31 px longsword (and the Marshal's 24-32 px broadsword) follows through flatter, so its tip clears the ground
 # The Marshal's broadsword reaches lower still: its cuts carry flatter by this much more (review 2026-11-06: the low cut's tip
 # and the overhead's follow-through dipped under the soles).
 FLAT = float(os.environ.get("GG_FLAT", 18.0 if TROOP == "gl_marshal" else 0.0))
@@ -990,7 +1005,7 @@ if V2 and not SHIELD:
         ],
     }
 
-if V2 and not SHIELD and TROOP in ("revenant", "tc_raider"):
+if V2 and not SHIELD and TROOP in ("revenant", "tc_raider", "gb_hollowking"):
     # The shoulder-driven slash on the one-hand troops (rollout 2026-11-08): the knight's SLASH_LEGS and SLASH_ROWS (shoulder
     # ~40% of the arc, high lift and draw-back, hips a tick ahead of the torso, forearm near straight at contact, wrist snap,
     # shoulder carried past the impact, mid-arc keys), with no rim to pass, so the empty hand counter-swings instead: it
@@ -1017,7 +1032,7 @@ if V2 and not SHIELD and TROOP in ("revenant", "tc_raider"):
     # the load rocks back deeper and sits lower without a shield to hide behind (as the shieldless overhead did)
     ATTACK_LEGS["overhead"]["hips"][1:5] = [(2.5, (-4, 9, 1), (0.4, -1.5, 0.7)), (5, (-9, 13, 2), (0.7, -2.0, 1.2)),
                                             (7.4, (-11, 15, 2), (0.7, -2.3, 1.4)), (8.2, (-9, 13, 2), (0.6, -2.3, 1.1))]
-    SLASH_FIT = {"revenant": {}, "tc_raider": {"low_cut": (6.5, 12.5, (0, 0, 6, 0, -20, 0)), "overhead": (8.5, 15.5, (-18, 0, 0, 0, -8, 0))}}
+    SLASH_FIT = {"revenant": {}, "gb_hollowking": {}, "tc_raider": {"low_cut": (6.5, 12.5, (0, 0, 6, 0, -20, 0)), "overhead": (8.5, 15.5, (-18, 0, 0, 0, -8, 0))}}
     for _name, (_t0, _t1, _d) in SLASH_FIT[TROOP].items():
         ATTACKS[_name] = slash_fit(ATTACKS[_name], _t0, _t1, _d)
 
@@ -1173,7 +1188,7 @@ def lane_fix(keys, n, lead=2.0, hold_after=1.0, roll=None):
 # The marshal's low_cut takes it too since its follow-through arm path was adjusted (SLASH_FOLLOW): on the approved path its
 # hooked crossguard and broad pommel cut into the torso and belt whenever the edge led after the impact.
 EDGE_LEAD = (("low_cut", "overhead") if TROOP in ("knight", "sentinel", "gl_marshal") else ()
-             ) if V2 and SHIELD else ("low_cut", "overhead") if V2 and TROOP in ("revenant", "tc_raider") else ()
+             ) if V2 and SHIELD else ("low_cut", "overhead") if V2 and TROOP in ("revenant", "tc_raider", "gb_hollowking") else ()
 # A single-edged weapon has one edge to lead with (the side of the blade's local x it is on); a double-edged sword either.
 # The cutlass's edge is on its convex side, by the knuckle bow (local -x); the axe's bit is local +x (the axe builder).
 EDGE_SIGN = {"tc_raider": -1.0, "ic_hearthguard": 1.0}.get(TROOP)
@@ -1484,7 +1499,37 @@ def attack_clips():
         clip["timeline"] = {fmt_t(IMPACT[name] / TPS): "impact"}
         out["attack_" + name] = clip
         out["attack_%s_legs" % name] = bake(legs, ATTACK_TICKS, loop=False)
-    return out
+    return hk_attacks(out) if HK else out
+
+
+# The Hollow King's greatsword swings (attackVariants family greatsword: overhead_cleave 12, side_cut 12, thrust 7 impact ticks; his
+# cooldown 30): the one-hand slash and thrust above, retimed piecewise (tick knots, old -> new) so each impact key lands on his row's
+# tick. The load is drawn out and held (the weight of the blade), the drive keeps its speed, the recovery is slower, and every clip
+# still starts and ends on the guard.
+HK_ATTACKS = {"overhead": ("overhead_cleave", ((0, 0), (7.8, 10.0), (10, 12), (22, 28))),
+              "low_cut": ("side_cut", ((0, 0), (6.4, 10.2), (8, 12), (22, 28))),
+              "thrust": ("thrust", ((0, 0), (7, 7), (22, 27)))}
+
+
+def hk_attacks(out):
+    res = {}
+    for old, (new, knots) in HK_ATTACKS.items():
+        ko, kn = [k[0] for k in knots], [k[1] for k in knots]
+        assert IMPACT[old] in ko, old
+        for suffix in ("", "_legs"):
+            clip = out["attack_" + old + suffix]
+            bones = {}
+            for b, chans in clip["bones"].items():
+                bones[b] = {}
+                for c, keys in chans.items():
+                    rt = {fmt_t(float(np.interp(float(t) * TPS, ko, kn)) / TPS): v for t, v in keys.items()}
+                    assert len(rt) == len(keys), (old, b, c)   # no two keys on one time
+                    bones[b][c] = rt
+            nc = {"loop": False, "animation_length": round(kn[-1] / TPS, 6), "bones": bones}
+            if suffix == "":
+                nc["timeline"] = {fmt_t(kn[ko.index(IMPACT[old])] / TPS): "impact"}
+            res["attack_" + new + suffix] = nc
+    return res
 
 
 # ------------------------------------------------------------------------------------------------
@@ -2338,7 +2383,7 @@ if V2 and SHIELD:   # V2: the shield arm swings wide as the body rolls onto it, 
 # this builder configures it with its own geometry, bake function and gear.
 # ------------------------------------------------------------------------------------------------
 
-D3_TROOPS = ("knight", "sentinel", "gl_marshal", "ic_hearthguard", "revenant", "tc_raider")   # one shield troop at a time (2026-11-07)
+D3_TROOPS = ("knight", "sentinel", "gl_marshal", "ic_hearthguard", "revenant", "tc_raider", "gb_hollowking")   # one shield troop at a time (2026-11-07)
 D3 = TROOP in D3_TROOPS and V2
 D3_WPN = "sword" if TROOP == "knight" else "weapon"   # the held weapon's bone prefix (<prefix>_t1..t3)
 sys.path.insert(0, str(HERE.parent / "common"))
@@ -2411,6 +2456,15 @@ def main():
              "run_legs": gait_legs(RUN), "run_upper": gait_upper(RUN, RUN_CARRY),
              "idle_legs": idle_legs, "idle_upper": idle_upper, **attack_clips(), **stance_clips(), **hit_clips(),
              **death_clips()}
+    if HK:   # the Undying King's fake death and rise (anim spec C12), from his own fall and guard
+        sys.path.insert(0, str(HERE.parent / "gb_hollowking"))
+        import hk_rise  # noqa: E402
+        ready = {}
+        for clip in (anims["stance_ready_legs"], anims["stance_ready_upper"]):
+            for b, ch in clip["bones"].items():
+                pos = ch.get("position", {}).get("0.0")
+                ready[b] = (tuple(ch["rotation"]["0.0"]), tuple(pos) if pos else None)
+        anims.update(hk_rise.clips(idle_start(), ready, bake))
     OUT.parent.mkdir(parents=True, exist_ok=True)
     OUT.write_text(json.dumps({"format_version": "1.8.0", "animations": anims}, indent=1), encoding="utf-8")
     print("wrote", OUT, "clips:", ", ".join(anims))

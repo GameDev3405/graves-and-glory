@@ -1,0 +1,212 @@
+{
+ "troop": "gb_hollowking",
+ "tiers": [
+  1,
+  2,
+  3
+ ],
+ "faces": 1,
+ "bones": {
+  "root": {},
+  "hips": {},
+  "torso": {},
+  "head": {},
+  "jaw_wire": {
+   "tag": "helm"
+  },
+  "crown": {
+   "tag": "helm"
+  },
+  "crown_bent": {
+   "tag": "helm"
+  },
+  "crown_tall0": {
+   "stages": [
+    2,
+    3
+   ]
+  },
+  "crown_tall1": {
+   "stages": [
+    2,
+    3
+   ]
+  },
+  "crown_tall2": {
+   "stages": [
+    2,
+    3
+   ]
+  },
+  "crown_halo": {
+   "stages": [
+    3
+   ]
+  },
+  "crown_spire0": {
+   "stages": [
+    3
+   ]
+  },
+  "crown_spire1": {
+   "stages": [
+    3
+   ]
+  },
+  "crown_spire2": {
+   "stages": [
+    3
+   ]
+  },
+  "crown_spire3": {
+   "stages": [
+    3
+   ]
+  },
+  "crown_spire4": {
+   "stages": [
+    3
+   ]
+  },
+  "crown_stone": {
+   "stages": [
+    3
+   ]
+  },
+  "gorget": {},
+  "collar_back": {},
+  "clasp": {},
+  "right_arm": {},
+  "right_forearm": {},
+  "right_hand": {},
+  "right_elbow": {},
+  "right_vambrace": {
+   "stages": [
+    2,
+    3
+   ]
+  },
+  "right_pauldron": {},
+  "tine_r": {
+   "stages": [
+    2,
+    3
+   ]
+  },
+  "left_arm": {},
+  "left_forearm": {},
+  "left_hand": {},
+  "left_elbow": {},
+  "left_vambrace": {
+   "stages": [
+    2,
+    3
+   ]
+  },
+  "left_pauldron": {},
+  "tine_l": {
+   "stages": [
+    2,
+    3
+   ]
+  },
+  "cloak_a": {
+   "team": true
+  },
+  "train_a": {
+   "team": true
+  },
+  "cloak_b": {
+   "team": true
+  },
+  "train_b": {
+   "team": true
+  },
+  "cloak_c": {
+   "team": true
+  },
+  "train_c": {
+   "team": true
+  },
+  "gorget_ring": {
+   "stages": [
+    2,
+    3
+   ]
+  },
+  "collar_bar": {
+   "stages": [
+    3
+   ]
+  },
+  "rib_rail_r": {
+   "stages": [
+    3
+   ]
+  },
+  "spine_fan_r": {
+   "stages": [
+    3
+   ]
+  },
+  "rib_rail_l": {
+   "stages": [
+    3
+   ]
+  },
+  "spine_fan_l": {
+   "stages": [
+    3
+   ]
+  },
+  "spine_fan_c": {
+   "stages": [
+    3
+   ]
+  },
+  "right_leg": {},
+  "right_shin": {},
+  "right_foot": {},
+  "right_foot_gear": {},
+  "right_knee": {},
+  "right_cuisse": {
+   "stages": [
+    2,
+    3
+   ]
+  },
+  "left_leg": {},
+  "left_shin": {},
+  "left_foot": {},
+  "left_foot_gear": {},
+  "left_knee": {},
+  "left_cuisse": {
+   "stages": [
+    2,
+    3
+   ]
+  },
+  "belt": {},
+  "hip_r": {},
+  "hip_l": {},
+  "rags": {},
+  "weapon_t1": {
+   "stages": [
+    1
+   ],
+   "tag": "weapon"
+  },
+  "weapon_t2": {
+   "stages": [
+    2
+   ],
+   "tag": "weapon"
+  },
+  "weapon_t3": {
+   "stages": [
+    3
+   ],
+   "tag": "weapon"
+  }
+ }
+}

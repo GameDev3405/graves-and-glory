@@ -26,6 +26,8 @@ os.environ["GG_ANIM_TROOP"] = TROOP
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE.parent / "knight"))
 import build_anims as K  # noqa: E402
+sys.path.insert(0, str(HERE.parent / "common"))
+import hang_swing  # noqa: E402
 
 SUB, TPS, Z3 = K.SUB, K.TPS, K.Z3
 np = K.np
@@ -877,6 +879,7 @@ def splice(clips, paths):
         if not placed:
             new.update(clips)
         doc["animations"] = new
+        hang_swing.key_doc(TROOP, doc, log=False)   # a hanging focus (the hexer's lantern): its swing re-keyed over every clip
         path.write_bytes(json.dumps(doc, indent=1).encode("utf-8"))
         print("spliced", ", ".join(clips), "into", path)
 
@@ -1673,6 +1676,7 @@ def main():
              "idle_legs": idle_legs, "idle_upper": idle_upper, **attack_clips(), **ability_clips(), **stance_clips(), **hit_clips(),
              **death_clips()}
     only_rig(anims)
+    hang_swing.key_doc(TROOP, {"animations": anims})   # a hanging focus (the hexer's lantern): the swing baked over every clip
     K.OUT.parent.mkdir(parents=True, exist_ok=True)
     K.OUT.write_text(json.dumps({"format_version": "1.8.0", "animations": anims}, indent=1), encoding="utf-8")
     print("wrote", K.OUT, "clips:", ", ".join(anims))

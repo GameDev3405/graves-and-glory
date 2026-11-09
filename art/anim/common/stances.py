@@ -34,7 +34,7 @@ ROT_TOL, POS_TOL = 0.02, 0.002
 GEAR = {}
 for g, names in {
     "shield": "knight sentinel ic_hearthguard gl_marshal",
-    "onehand": "revenant tc_raider",
+    "onehand": "revenant tc_raider gb_hollowking",
     "spear": "wm_tusk tc_tideguard tc_admiral",
     "axe": "ic_breaker",
     "bow": "archer longbow wm_hunter bonebow stalker",
@@ -679,6 +679,8 @@ def merge(tr, clips, out_path):
     if not placed:
         ordered.update(clips)
     doc = dict(tr.doc); doc["animations"] = ordered
+    import hang_swing   # a troop with a hanging part (troop_rig.SWING: the hexer's lantern): its swing re-keyed over every clip
+    hang_swing.key_doc(tr.tid, doc, log=False)
     out_path.parent.mkdir(parents=True, exist_ok=True)
     with open(out_path, "w", newline="\n") as fh:
         fh.write(json.dumps(doc, indent=1))
