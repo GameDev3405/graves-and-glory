@@ -1,6 +1,6 @@
 # Chapter 3 outline: "The Forge Below" (Ironclad, Brassjaw)
 
-Status: draft for Kort's review, 2026-11-09. Same ground rules as `chapter-1-outline-2026-11-09.md` and `lore-bible-2026-11-09.md`; the approved design wins any disagreement. Calls I made alone are marked **[call]**. No mechanics, rosters or map layouts change.
+Status: Draft for Kort's review, updated 2026-11-09 with his decisions and the names in docs/lore/names.md. Arrives in season 3. Same ground rules as `chapter-1-outline-2026-11-09.md` and `lore-bible-2026-11-09.md`; the approved design wins any disagreement. Calls I made alone are marked **[call]**. No mechanics, rosters or map layouts change.
 
 ## What the chapter does
 
@@ -12,16 +12,20 @@ Brassjaw leads. **[call]** Speakers are Brassjaw and a smith (titled, not named)
 
 ## Shape
 
-Six battles **[call]**, fixed difficulty, order lock, shipped modes only.
+Six battles **[call]**, fixed difficulty, order lock, shipped modes only. Season 3 has no new map: the chapter reuses shipped maps, with Ironhold and Frostmarch dressed with pulsing redstone veins over Kharuun (`docs/lore/season-framework.md`).
 
-| # | Battle | Map | Mode | Difficulty | Enemy | Allies |
-|---|---|---|---|---|---|---|
-| 1 | The Burned Caravans | Frostmarch Pass | Convoy (escort) | Easy | Wildmoot | none |
-| 2 | The Supply Yard | Ironhold Siege | Domination | Normal | Wildmoot | none |
-| 3 | The Dens | Hollowwood Reach | Domination | Normal | Wildmoot | none |
-| 4 | The Settling Weirs | Rivergate Valley | Domination | Normal | Tidecallers | none |
-| 5 | The Slag Run | Kingsfield Crossroads | Domination | Normal | Tidecallers | none |
-| 6 | The Drowned Tide | Rivergate Valley | Domination (five points) | Hard | Tidecallers (Vael) | none |
+| # | Battle | Map | Mode | Difficulty | Enemy | Allies | Tactic |
+|---|---|---|---|---|---|---|---|
+| 1 | The Burned Caravans | Frostmarch Pass | Convoy (escort) | Easy | Wildmoot | none | Escort against fast raiders: a slow wall beside the wagon |
+| 2 | The Supply Yard | Ironhold Siege | Domination | Normal | Wildmoot | none | Holding ground with heavy troops and engines |
+| 3 | The Dens | Hollowwood Reach | Domination | Normal | Wildmoot | none | Pushing into cover without being flanked |
+| 4 | The Settling Weirs | Rivergate Valley | Domination | Normal | Tidecallers | none | Denying the water: hold the banks, not the river |
+| 5 | The Slag Run | Kingsfield Crossroads | Domination (five points) | Normal | Tidecallers | none | Range against mist: when to close instead of shoot |
+| 6 | The Drowned Tide | Rivergate Valley | Domination (three points) | Hard | Tidecallers (Vael) | none | All arms against the Legendary on her own ground |
+
+**[call]** Battle 6 plays as three points: Rivergate has three, and five points belongs to Kingsfield, which chapter 3 already uses in battle 5. The river is Vael's ground.
+
+**[call]** Battle 6's bonus must not be killing Vael: the engine's `kill_unit` bonus only pays on a kill, and she withdraws alive for chapter 4. Use hold all points or a loss cap instead.
 
 ## Pages
 
@@ -61,7 +65,7 @@ Six battles **[call]**, fixed difficulty, order lock, shipped modes only.
 
 ### Page 8: The Drowned Tide
 1. `c3_b6_before` (stage, Rivergate, fog). Admiral Vael waits on the water.
-2. `battle_6` The Drowned Tide (Domination, five points, Hard). Vael is a Legendary in a bot banner with no boss rules.
+2. `battle_6` The Drowned Tide (Domination, three points, Hard). Vael is a Legendary in a bot banner with no boss rules.
 3. `c3_b6_after` (stage). The Tidecaller line breaks and Vael withdraws into the river; if the player's banner struck her, Brassjaw says so. She lives either way, for chapter 4.
 4. `c3_forge_end` (book, one still, unskippable first time). The Colossus's chest-plate redstone glows in time with a distant pulse, which then stops. His line: "The veins pulse. They pulse toward the mountain. Something is pulling." Chapter 4.
 
@@ -81,7 +85,7 @@ Brassjaw: blunt, slow, a man who builds. The smith: dry, practical, tired. A Tid
 ## What this chapter leaves for others
 
 - Chapter 4 opens on the poisoned river from the Tidecallers' side.
-- Season 2: the Ironclad, hoping to be treated as kin, are refused.
+- Act II: the Ironclad, hoping to be treated as kin, are refused.
 
 ## Open for Kort
 

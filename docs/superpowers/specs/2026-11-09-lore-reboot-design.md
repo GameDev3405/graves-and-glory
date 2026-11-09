@@ -1,5 +1,7 @@
 # Lore reboot: the giants' land
 
+> **Amended 2026-11-09 (evening), Kort's decisions:** read this design together with `docs/lore/kort-decisions-2026-11-09.md` and `docs/lore/names.md`. Its story "seasons" 1, 2 and 3 are now Acts I, II and III; server seasons are one month and bring one chapter each, so 1.0 ships chapter 1 only. Placeholder names below are replaced by `names.md` (Eldmark is Wakeland). The carved eye is a carved stone shape. The text below is otherwise unchanged as approved.
+
 Status: approved by Kort, 2026-11-09. Lore bible and chapter 1 outline drafted in `docs/drafts/` (`lore-bible-2026-11-09.md`, `chapter-1-outline-2026-11-09.md`). Written from a brainstorm with Kort the same day. It replaces the lore of `2026-10-18-campaign-story-design.md` (the Long March, the Barrowlands, the Horn, Edric Vane) and the House flavour text in `2026-10-17-houses-design.md` section 1.2. Nothing is built. Calls I made alone are marked **[call]**; everything else is Kort's decision.
 
 ## 1. Intent and why

@@ -1,6 +1,6 @@
 # Chapter 1 "The Oath": battle design for 1.0
 
-Status: draft for Kort's review, 2026-11-09, lore lead; revised after one Sonnet-high review the same day. Turns `docs/drafts/chapter-1-outline-2026-11-09.md` into six playable battles, checked against `main` at `54e5d339` (`sheets/design.json`, `Campaign.java`, `MarchMath.java`, `Modes.java`, `CampaignMaps.java`). Proposals are marked **[call]**. This document edits no code and no sheet.
+Status: approved by Kort, 2026-11-09 (`kort-decisions-2026-11-09.md`), after one Sonnet-high review. Lore lead. Turns `docs/drafts/chapter-1-outline-2026-11-09.md` into six playable battles, checked against `main` at `54e5d339` (`sheets/design.json`, `Campaign.java`, `MarchMath.java`, `Modes.java`, `CampaignMaps.java`). Proposals are marked **[call]**. This document edits no code and no sheet.
 
 Tie-breaker from Kort (2026-11-09): 1.0 is remembered for deep tactics and battles that look and feel great. **Every battle below teaches or tests one tactic**, named on its "Tactic" line.
 
@@ -19,7 +19,7 @@ The six shipped battles (`march-1` to `march-6`) are sheet rows with map, mode, 
 | Legendaries in enemy armies | every hard-tier row leads with one | battle 6 uses `wildmoot_hard` for Old Horn |
 | Bonus kinds | `hold_all`, `lose_at_most`, `stage_by`, `win_within`, `never_rolled`, `kill_unit` | five of them used; new `bonusObjectives` rows needed (S2) |
 | **Enemy House chosen per battle** | **no**: bots come from tier rows in sheet order by lane. Today's briefings already name enemies the code does not field, and a 3v3 hard battle pulls `graveborn_hard`, which would put the Hollow King in chapter 1 | **needs code (N1), required** |
-| **The player commands the chapter's House** | **no**: the player fields their own collection banner (`Campaign.java:359`) | **decision for Kort (D1)** |
+| **The player commands the chapter's House** | **no**: the player fields their own collection banner (`Campaign.java:359`) | **decided: own banner in 1.0 (D1)** |
 | Text after a battle | no: only the briefing card before it | **needs code (N2), required** for the design's seeds |
 | Magic flicker on casters (the glimpur ebb) | no | **needs code (N3)**; the approved design plants it in 1.0 |
 | Storybook pages, stills, stage scenes, card items, archive | no; `PLAN-TO-1.0.md:16` keeps them out of 1.0 | moved to a later story layer (section 6) |
@@ -50,7 +50,7 @@ Player text: ASCII, no dashes as punctuation, no exclamation marks. Counts are i
 
 ### Battle 2: The Moon Shrine Watch
 
-- **Story beat.** At the edge of the realm the graves open. The dead wear the colours of an old levy. Aldric reads them after: Tengervald, a realm the confederacy struck from its relief list a lifetime ago. Nobody names the Skeleton King.
+- **Story beat.** At the edge of the realm the graves open. The dead wear the colours of an old levy. Aldric reads them after: Tengervald, a realm the confederacy struck from its relief list two lifetimes ago. Nobody names the Skeleton King.
 - **Map and mode.** Hollowwood Reach, Survival. 2v2, easy.
 - **Armies.** Player plus one allied Gilded banner (`ally_gilded_easy`, S1). Enemy: the shipped Survival director (Risen, Bone Archers, Grave Reapers, Barrow Stalkers, Gravecallers) under the moon. Waves grow by half for the second banner (`survivalPerBanner`). No code needed.
 - **Tactic.** Hold a position. No enemy commander and no points: shields in front of the shrine, archers behind, and no chasing into the trees.
@@ -58,7 +58,7 @@ Player text: ASCII, no dashes as punctuation, no exclamation marks. Counts are i
 - **Text.**
   - Briefing: "The graves of Hollowwood are opening under the moon. Hold the shrine with the Order's second banner until the dead lie still."
   - Reason: "The dead wear colours no one has worn in a lifetime."
-  - After (N2): "Aldric reads the faded colours. Tengervald. Struck from the relief list a lifetime ago. Someone is still answering for it."
+  - After (N2): "Aldric reads the faded colours. Tengervald. Struck from the relief list two lifetimes ago. Someone is still answering for it."
 - **Lore note.** These are the Skeleton King's bound dead, played by the Graveborn troops. Chapter 1 never calls them Graveborn. An art tell (intact binding sigils on the bound dead, cut cords on the rebels) would separate them later; proposal only. "Tengervald" is a placeholder name; using it in player text needs Kort's yes (D3).
 
 ### Battle 3: Smoke at Ironhold
@@ -103,7 +103,7 @@ Player text: ASCII, no dashes as punctuation, no exclamation marks. Counts are i
 - **Map and mode.** Kingsfield Crossroads, Domination (five points). 3v3, hard.
 - **Armies.** Player plus `ally_gilded_normal` twice, one tier below (S1), so the finale is hard but not lonely. Enemy (N1): `wildmoot_hard` on lane 0, led by Old Horn, and `wildmoot_normal` on lanes 1 and 2, so only one Old Horn takes the field.
 - **Tactic.** Spread or concentrate. Five points thin both armies, and Old Horn's charge slam breaks formations; the player decides where to mass and answers the Legendary with their own banner.
-- **Learns or unlocks.** Clearing the chapter pays the Pact (a Legendary). Bonus `hold_all`: hold all five points at once (the shipped `b5_hold_all`). **[call]** Not `kill_unit`: that bonus can only be earned by killing him, and the story needs him alive for chapter 2. Old Horn can still fall in battle as a troop, as every Legendary can; the after line says the line breaks and he withdraws.
+- **Learns or unlocks.** Clearing the chapter pays the Pact (a Legendary). Bonus `hold_all`: hold all five points at once (a new bonus id of the shipped kind). **[call]** Not `kill_unit`: that bonus can only be earned by killing him, and the story needs him alive for chapter 2. Old Horn can still fall in battle as a troop, as every Legendary can; the after line says the line breaks and he withdraws.
 - **Text.**
   - Briefing: "The quarry road is open and the Wildmoot have come to close it. Old Horn leads them. Hold the five crossings and break his line."
   - Reason: "At the cut lies a carved stone the size of a house."
@@ -130,12 +130,12 @@ Without N2 the 1.0 chapter keeps only the old colours (battle 2 reason) and the 
 | oath-2 | 2 | The Moon Shrine Watch | hollowwood | 2 | easy | survival | no | lose_at_most 8 | ally_gilded_easy | (director) |
 | oath-3 | 3 | Smoke at Ironhold | ironhold | 2 | normal | siege | no | stage_by gate 360 | ally_ironclad_normal | tidecallers_normal |
 | oath-4 | 4 | The Hunters' Road | frostmarch | 2 | normal | convoy | no | never_rolled | ally_gilded_normal | wildmoot_normal |
-| oath-5 | 5 | The Grazing Grounds | hollowwood | 3 | normal | domination | no | lose_at_most 12 | ally_gilded_normal x2 | wildmoot_normal x3 |
-| oath-6 | 6 | The Antlered Alpha | kingsfield | 3 | hard | domination | no | hold_all 5 | ally_gilded_normal x2 | wildmoot_hard, wildmoot_normal x2 |
+| oath-5 | 5 | The Grazing Grounds | hollowwood | 3 | normal | domination | no | lose_at_most 12 | ally_gilded_normal, ally_gilded_normal_b | wildmoot_normal x3 |
+| oath-6 | 6 | The Antlered Alpha | kingsfield | 3 | hard | domination | no | hold_all 5 | ally_gilded_normal, ally_gilded_normal_b | wildmoot_hard, wildmoot_normal x2 |
 
-- **Ids.** **[call]** New ids, not `march-1` to `march-6`. Keeping the old ids would show new battles as cleared in old profiles (old march-2 was a Siege, new battle 2 is Survival) and keep spent bonus ids and a paid Pact. New ids need a decision on old progress: reset chapter 1 for everyone, or migrate (count old clears as new clears) with a `ProfileMigration` step. That is a save change for Kort (D5).
+- **Ids.** New ids `oath-1` to `oath-6` (Kort, D5). Old campaign progress resets: a `ProfileMigration` step clears won battles and claimed bonuses of the retired `march-*` rows, and keeps Pacts held and Legendaries bought. Keeping the old ids would have shown new battles as cleared.
 - **Bonus house.** Every row pays Gilded shards, since the chapter is Gilded's. The War Table's per-House glyph on the campaign card then shows one House throughout.
-- **Bonus rows.** `lose_at_most 12` is a new `bonusObjectives` row; the others reuse shipped kinds with new ids.
+- **Bonus rows.** Every battle gets a new `bonusObjectives` id (shipped kinds); none reuses a `march-*` bonus id, so old claims cannot block new bonuses.
 - All briefings are 133 characters or fewer and all reasons 64 or fewer (script check).
 
 ## 6. What moves to a later story layer
@@ -155,10 +155,12 @@ Sizes are rough: S under a day, M a few days.
 - **D1 follow-up, chapter House banner (M).** Only if Kort picks (b).
 - **Verification.** Rewrite the `p4-march-*` campaign checks for the new rows; re-run the sim gate and the bot-quality checks after the sheet changes; one full chapter run in a harness.
 
-## 8. Decisions for Kort
+## 8. Decided (Kort, 2026-11-09)
 
-- **D1. Whose troops in chapter 1?** (a) Their own collection banner, as today, with Gilded banners beside them (no code); (b) a fixed Gilded banner for the chapter (new code, campaign rules). **[call] Recommend (a) for 1.0 and (b) before season 2.**
-- **D2.** Approve N1 and N4 (required), N2 and N3 (required for the design's seeds), and the plan amendment that lets Aldric speak in after lines?
-- **D3.** The battles, names and lines as drafted, including "every wrong is answered" and the placeholder name Tengervald in player text.
-- **D4.** A carved stone at a Kingsfield quarry cut, a stone hand on Rivergate and a statue on Ironhold, in your map designs?
-- **D5.** New battle ids: reset chapter 1 progress, or migrate old clears?
+- **D1.** The player's own collection banner in 1.0, with Gilded banners beside them. A fixed House banner per chapter is built before season 2, which with one-month seasons means with the 1.0 campaign code.
+- **D2.** N1 to N4, S1 and S2 approved, and the `PLAN-TO-1.0.md:16` amendment letting Aldric speak in after lines.
+- **D3.** Battles, names and lines approved as drafted.
+- **D4.** The carved stone at a Kingsfield quarry cut, a stone hand on Rivergate and a statue on Ironhold go into Kort's map designs.
+- **D5.** New ids; old campaign progress resets, held Pacts and bought Legendaries stay.
+
+Names follow `names.md`. Chapter 1's player text uses only Tengervald, the Charter and Aldric; Wakeland, Highheart and the Concord may appear in a later story layer.

@@ -1,6 +1,6 @@
 # Chapter 2 outline: "The Long Grass" (Wildmoot, Old Horn)
 
-Status: draft for Kort's review, 2026-11-09. Same ground rules as `chapter-1-outline-2026-11-09.md` and `lore-bible-2026-11-09.md`; the approved design wins any disagreement. Calls I made alone are marked **[call]**. No mechanics, rosters or map layouts change.
+Status: Draft for Kort's review, updated 2026-11-09 with his decisions and the names in docs/lore/names.md. Arrives in season 2, one month after 1.0. Same ground rules as `chapter-1-outline-2026-11-09.md` and `lore-bible-2026-11-09.md`; the approved design wins any disagreement. Calls I made alone are marked **[call]**. No mechanics, rosters or map layouts change.
 
 ## What the chapter does
 
@@ -12,18 +12,20 @@ Old Horn leads. **[call]** The only speakers are Old Horn, a boar-kin hunter and
 
 ## Shape
 
-Six battles **[call]**, fixed difficulty, order lock, shipped modes only (Domination anywhere, Convoy on Frostmarch, Siege on Ironhold).
+Six battles **[call]**, fixed difficulty, order lock, shipped modes only (Domination anywhere, Convoy on Frostmarch, Siege on Ironhold). Season 2 has no new map: the chapter reuses shipped maps, with Kingsfield and Hollowwood dressed as the withering plains over Ommeru (`docs/lore/season-framework.md`).
 
-| # | Battle | Map | Mode | Difficulty | Enemy | Allies |
-|---|---|---|---|---|---|---|
-| 1 | The Ashes | Hollowwood Reach | Domination | Easy | Gilded | none |
-| 2 | The Stone Cut | Kingsfield Crossroads | Domination | Normal | Gilded | none |
-| 3 | The Hunting Camp | Rivergate Valley | Domination | Normal | Gilded | none |
-| 4 | The Caravan Road | Frostmarch Pass | Convoy (ambush) | Normal | Ironclad | none |
-| 5 | The Smelter Road | Rivergate Valley | Domination | Normal | Ironclad | none |
-| 6 | The Forge Colossus | Ironhold Siege | Siege (attack) | Hard | Ironclad (Brassjaw) | none |
+| # | Battle | Map | Mode | Difficulty | Enemy | Allies | Tactic |
+|---|---|---|---|---|---|---|---|
+| 1 | The Ashes | Hollowwood Reach | Domination | Easy | Gilded | none | Pack hunting: three on one, strike from behind |
+| 2 | The Stone Cut | Kingsfield Crossroads | Domination (five points) | Normal | Gilded | none | Speed: raid the weakest point, then the next |
+| 3 | The Hunting Camp | Rivergate Valley | Domination | Normal | Gilded | none | Flanking a shield line instead of meeting it |
+| 4 | The Caravan Road | Frostmarch Pass | Convoy (ambush) | Normal | Ironclad | none | Ambush: stop the wagon by striking its escort |
+| 5 | The Smelter Road | Rivergate Valley | Domination | Normal | Ironclad | none | Fighting armour: pick targets, avoid the heavy line |
+| 6 | The Forge Colossus | Ironhold Siege | Siege (attack) | Hard | Ironclad (Brassjaw) | none | Assaulting walls without engines; answer the Legendary |
 
 **[call]** Battle 4 needs the Wildmoot on the defence (ambush) side of Convoy. The convoy spec fixes campaign battle 4 as an escort; I assume a campaign chapter can set the side per battle. If not, battle 4 becomes a Domination on Frostmarch.
+
+**[call]** Battle 6's bonus must not be killing Brassjaw: the engine's `kill_unit` bonus only pays on a kill, and he withdraws alive for chapter 3. Use a stage bonus (break the gate in time) or a loss cap instead.
 
 ## Pages
 
@@ -34,13 +36,13 @@ Six battles **[call]**, fixed difficulty, order lock, shipped modes only (Domina
 
 ### Page 2: The Ashes of Hollowwood
 1. `c2_b1_before` (stage, Hollowwood). The Gilded camp sits on the burnt grazing grounds.
-2. `battle_1` The Ashes (Domination, Easy; lessons stay).
+2. `battle_1` The Ashes (Domination, Easy).
 3. `c2_b1_after` (stage). The grass at the edge of the burn is dying where no fire touched it. The herd-mother: "It is leaving. Something is pulling it." Hint 1.
 
 ### Page 3: The Stone Cut
 1. `c2_b2_before` (stage, Kingsfield, dawn). The quarry road the Gilded opened across Wildmoot ground. A half-uncovered stone shape sits in the cut.
 2. `battle_2` The Stone Cut (Domination, Normal).
-3. `c2_b2_after` (stage). The boar-kin hunter touches the stone and goes still. "It is warm." Nobody explains it.
+3. `c2_b2_after` (stage). The boar-kin hunter touches the stone and goes still. "It is warm." In chapter 1 the stone was cold; it is waking. Nobody explains it.
 
 ### Page 4: The Hunting Camp
 1. `c2_b3_before` (stage, Rivergate). The camp the hunters ran from. A tally of Wildmoot kills on a post.
@@ -65,7 +67,7 @@ Six battles **[call]**, fixed difficulty, order lock, shipped modes only (Domina
 1. `c2_b6_before` (stage, Ironhold, dusk). The assault on the gate. Brassjaw stands in the keep.
 2. `battle_6` The Forge Colossus (Siege, Hard). Brassjaw is a Legendary in a bot banner with no boss rules.
 3. `c2_b6_after` (stage). The gate breaks and Brassjaw withdraws into the mountain; if the player's banner struck him, Old Horn says so. He lives either way, for chapter 3.
-4. `c2_myth_end` (book, one still, unskippable first time). Old Horn on a hill at night with the herds streaming past him uphill, the ground breathing once beneath them. His line: "We hid for a hundred years. We have not stopped being afraid. Now the ground is afraid too." Chapter 3.
+4. `c2_myth_end` (book, one still, unskippable first time). Old Horn on a hill at night with the herds streaming past him uphill, the grass flattening once as if in a wind no one feels. His line: "We hid for a hundred years. We have not stopped being afraid. Now the herds are afraid of something I cannot see." Chapter 3.
 
 ## Where the hints live
 
@@ -85,7 +87,7 @@ Old Horn: loud, short lines, grief that sounds like anger. The boar-kin hunter: 
 
 - Chapter 3 opens on the Ironclad's burning caravans from the Ironclad's side.
 - Chapter 1's quarry stone gets a second look; do not explain it.
-- Season 2: the Wildmoot fight with no terms offered.
+- Act II: the Wildmoot fight with no terms offered.
 
 ## Open for Kort
 

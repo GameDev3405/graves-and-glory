@@ -1,6 +1,6 @@
 # Season framework: the campaign after 1.0
 
-Status: draft for Kort's review, 2026-11-09, lore lead. Builds on the approved reboot design (`docs/superpowers/specs/2026-11-09-lore-reboot-design.md`), the lore bible draft and the chapter 2 to 5 outlines in `docs/drafts/`. Proposals are marked **[call]**. Nothing here changes mechanics, saves or protocol; every new unit, map, mode or House listed is a proposal that needs Kort's yes and its own design.
+Status: Kort's decisions of 2026-11-09 applied (`kort-decisions-2026-11-09.md`): one chapter per season, seasons one month long, story seasons renamed acts, Bound Host and giants as NPC factions in seasons 5 and 6. Names follow `names.md`. Lore lead, 2026-11-09. Builds on the approved reboot design (`docs/superpowers/specs/2026-11-09-lore-reboot-design.md`), the lore bible draft and the chapter 2 to 5 outlines in `docs/drafts/`. Proposals are marked **[call]**. Nothing here changes mechanics, saves or protocol; every new unit, map, mode or House listed is a proposal that needs Kort's yes and its own design.
 
 ## 1. What changed today and how this document reconciles it
 
@@ -8,7 +8,7 @@ Kort decided on 2026-11-09: chapter 1 (six battles) ships in 1.0, and chapters 2
 
 The approved design used "season" for a story act: season 1 was all five chapters, season 2 was the giants waking, season 3 the resolution. With one chapter per season, those labels no longer fit. **[call]** This document renames the design's three story seasons to **acts** and keeps everything else:
 
-| Act | Was called | Seasons (proposed) | Job |
+| Act | Was called | Seasons (one month each) | Job |
 |---|---|---|---|
 | I. The Ring | season 1 | 1 to 5 | The Houses fight over old wrongs, one House chapter per season. Giants only hinted. Ends with the spire's light. |
 | II. The Waking | season 2 | 6 to 8 | Orruvan wakes under the capital. Giants are a non-playable enemy. The Houses split; the Gilded are offered terms. |
@@ -26,7 +26,7 @@ A season is one story beat plus content that serves it. **[call]** A standard se
 1. **One campaign chapter**: six solo battles, one House's side, order-locked after the previous chapter.
 2. **One spotlight House**: the chapter's House gets the season's new unit and its season pass art.
 3. **One to two new units**, at least one for the spotlight House.
-4. **One new map**, the place the chapter's story needs and the shipped five cannot stand in for.
+4. **A new map only where the story needs one** the shipped five cannot stand in for. With one-month seasons this is seasons 4, 5 and 6 (the Drowned Coast, Tengervald, Highheart). Seasons 2 and 3 reuse shipped maps with new dressing.
 5. **Optionally one mode or mode variant**, only when the chapter's story needs a way of fighting the shipped four cannot give.
 6. **One step of the giant thread**: a new relic, hint or world change visible in the hub and on maps (section 4).
 7. **Rarely, a House or faction**: at most one new faction per act, at the act's turning point. Splinter groups inside an existing House (section 6 hooks) are new units for that House, not factions.
@@ -39,14 +39,14 @@ Each row is a proposal; content counts follow section 2. "New unit" names a role
 
 | Season | Chapter | Spotlight | New units (proposal) | New map (place, what it shows) | Mode (proposal) | Faction | Giant thread step |
 |---|---|---|---|---|---|---|---|
-| 1 (1.0) | 1 "The Oath" | Gilded | none (30 shipped) | none (5 shipped) | 4 shipped | 5 Houses | Spells sputter; the eye in the quarry; relics on maps. |
-| 2 | 2 "The Long Grass" | Wildmoot | a herd beast (heavy, non-speaking) | The Long Grass: open plains on the plains elder, withering where nothing burned | Convoy ambush side, if not built for 1.0 | none | Herds flee uphill in the hub; grass withers on one map. |
-| 3 | 3 "The Forge Below" | Ironclad | a redstone engineer or mech | Thruggsen Deeps: a mine and forge cut into the mountain, redstone veins that pulse | none needed | none | Redstone in the hub pulses toward the mountains; forges cool. |
+| 1 (1.0) | 1 "The Oath" | Gilded | none (30 shipped) | none (5 shipped) | 4 shipped | 5 Houses | Spells sputter; the carved stone shape at the quarry; relics on maps. |
+| 2 | 2 "The Long Grass" | Wildmoot | a herd beast (heavy, non-speaking) | none: shipped maps dressed with withering grass | Convoy ambush side, if not built for 1.0 | none | Herds flee uphill in the hub; grass withers on one map. |
+| 3 | 3 "The Forge Below" | Ironclad | a redstone engineer or mech | none: Ironhold and Frostmarch dressed with pulsing redstone veins over Kharuun | none needed | none | Redstone in the hub pulses toward the mountains; forges cool. |
 | 4 | 4 "The Drowning" | Tidecallers | a tide caster | The Drowned Coast: the eleven towns half under water | Tide variant: points shift as water rises **[call]** | none | The tide pulls inland in the hub; Tidecaller glow fades. |
-| 5 | 5 "The Rest" | Graveborn | a freed unit (cut binding) | Tengervald: the dying realm, the king's barrows | Alliance Survival: two or three Houses against the bound host **[call]** | **The Bound Host** (the Skeleton King's army) as an NPC enemy faction | The spire's light. End of Act I. |
-| 6 | 6 (Act II opens) | all Houses | a giant enemy set (non-playable) | The Capital: the confederacy's city on Orruvan's chest | Giant siege: co-op defence **[call]** | **Giants** as a non-playable enemy | Orruvan wakes. The giants are named. |
-| 7 | 7 | Gilded, then Ironclad | Unsworn units (Gilded who took terms) and Kin-seeker units (Ironclad) **[call]** | the Thruggsen elder's mountain | as needed | none (splinters are units of their Houses) | Terms offered; Forge refused as kin. |
-| 8 | 8 | Wildmoot, Tidecallers, Graveborn | per House | the plains and sea elders' bodies | as needed | none | The Houses with no terms fight. The Skeleton King hunts all. End of Act II. |
+| 5 | 5 "The Rest" | Graveborn | a freed unit (cut binding) | Tengervald: Halvard's dying realm and its barrows, over Ysmorren | Alliance Survival: two or three Houses against the bound host **[call]** | **The Bound Host** (the Skeleton King's army) as an NPC enemy faction | The spire's light. End of Act I. |
+| 6 | 6 (Act II opens) | all Houses | a giant enemy set (non-playable) | Highheart: the Concord's capital on Orruvan's chest, over the Last Breath | Giant siege: co-op defence **[call]** | **Giants** as a non-playable enemy | Orruvan wakes. The giants are named. |
+| 7 | 7 | Gilded, then Ironclad | Unsworn units (Gilded who took terms) and Kin-seeker units (Ironclad) **[call]** | Kharuun's mountain | as needed | none (splinters are units of their Houses) | Terms offered; Forge refused as kin. |
+| 8 | 8 | Wildmoot, Tidecallers, Graveborn | per House | Ommeru's plains, Thalluun's sea floor | as needed | none | The Houses with no terms fight. The Skeleton King hunts all. End of Act II. |
 | 9 to 11 | 9 to 11 (Act III) | all | giant units | elder bodies, then beyond the sea | as needed | **Giants as a playable House** | The elders wake, the king is executed, Orruvan chooses to live. |
 | 12 on | new arcs | open | open | Demacrus and other lands | open | new peoples (section 6) | Shared glimpur: a new kind of magic. |
 
@@ -117,6 +117,8 @@ Gates before season 2:
 - **Economy.** Each chapter pays a Pact, which buys a Legendary: one free Legendary per season. Check with the economy model.
 - **Convoy ambush side** for chapter 2 battle 4, or that battle becomes Domination.
 
+**With one-month seasons, season 2 arrives one month after 1.0.** Every gate above therefore has to ship with 1.0 or in its first month. **[call]** Build the House banner, season gating and the late-joiner rule together with the approved chapter 1 code (N1 to N4).
+
 Later:
 - A House per battle within one chapter (Act II).
 - An NPC enemy faction with its own roster (the Bound Host in season 5, giants in season 6). Survival's waves are the nearest existing piece.
@@ -125,12 +127,13 @@ Later:
 
 **A lite season [call].** If a season is short on time it still ships its chapter and its giant thread step; the new map, unit and mode can slip to the next season. The chapter is the season's spine.
 
-**Older drafts.** The chapter 2 to 5 outlines and the lore bible say "season 2" and "season 3" for the story parts; read them as Act II and Act III. Elder names in all documents are placeholders until Kort confirms them.
+**Older drafts.** The chapter 2 to 5 outlines and the lore bible say "season 2" and "season 3" for the story parts; read them as Act II and Act III. Names in all documents follow `names.md` (Wakeland, Highheart, the Concord, Merudaal, Halvard the Holdfast, the five elders).
 
-## 8. Decisions for Kort
+## 8. Decided (Kort, 2026-11-09)
 
-1. One chapter per season (Act I over seasons 1 to 5), or two chapters per season (Act I over seasons 1 to 3)?
-2. Rename the design's story seasons to acts as above?
-3. Season length. The pace of the giant thread depends on it.
-4. The Bound Host as an NPC enemy faction in season 5, and giants as an NPC enemy in season 6?
-5. A new map per season as the default?
+1. One chapter per season; Act I is seasons 1 to 5.
+2. The design's story seasons are Acts I to III.
+3. A season is one month.
+4. The Bound Host is an NPC enemy faction in season 5; the giants an NPC enemy in season 6.
+5. New maps only where the story needs them (seasons 4, 5, 6 by default).
+6. Proposed, awaiting Kort (season locks): a chapter unlocks when its season starts, set by a server date; earlier chapters stay open forever; the order lock still applies, so a late joiner starts at chapter 1.

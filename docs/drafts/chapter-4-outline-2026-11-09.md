@@ -1,6 +1,6 @@
 # Chapter 4 outline: "The Drowning" (Tidecallers, Admiral Vael)
 
-Status: draft for Kort's review, 2026-11-09. Same ground rules as `chapter-1-outline-2026-11-09.md` and `lore-bible-2026-11-09.md`; the approved design wins any disagreement. Calls I made alone are marked **[call]**. No mechanics, rosters or map layouts change.
+Status: Draft for Kort's review, updated 2026-11-09 with his decisions and the names in docs/lore/names.md. Arrives in season 4. Same ground rules as `chapter-1-outline-2026-11-09.md` and `lore-bible-2026-11-09.md`; the approved design wins any disagreement. Calls I made alone are marked **[call]**. No mechanics, rosters or map layouts change.
 
 ## What the chapter does
 
@@ -8,20 +8,22 @@ The player commands the Tidecallers, sea and water people made by human spells. 
 
 Hints: the tide pulls inland; the Tidecallers' glow fades. Folk myth: the Deep Mother (Thalluun). Nobody names the giants.
 
-Vael leads. **[call]** Speakers are Vael and a tide-singer (titled, not named). Aldric appears in battle 6 and is carried into season 2.
+Vael leads. **[call]** Speakers are Vael and a tide-singer (titled, not named). Aldric appears in battle 6 and is carried into Act II.
 
 ## Shape
 
-Six battles **[call]**, fixed difficulty, order lock, shipped modes only.
+Six battles **[call]**, fixed difficulty, order lock, shipped modes only. Season 4 may ship a new map, the Drowned Coast (the eleven towns half under water). **[call]** It can replace the reused map for one battle, best battle 4, where a town goes under; otherwise the table stands on shipped maps.
 
-| # | Battle | Map | Mode | Difficulty | Enemy | Allies |
-|---|---|---|---|---|---|---|
-| 1 | The Sick River | Rivergate Valley | Domination | Easy | Ironclad | none |
-| 2 | The Smelter Gate | Ironhold Siege | Siege (attack) | Normal | Ironclad | none |
-| 3 | The Slag Heap | Kingsfield Crossroads | Domination | Normal | Ironclad | none |
-| 4 | The Rising Water | Rivergate Valley | Domination | Normal | Gilded | none |
-| 5 | The Coast Road | Frostmarch Pass | Domination | Normal | Gilded | none |
-| 6 | The Marshal's Line | Kingsfield Crossroads | Domination (five points) | Hard | Gilded (Aldric) | none |
+| # | Battle | Map | Mode | Difficulty | Enemy | Allies | Tactic |
+|---|---|---|---|---|---|---|---|
+| 1 | The Sick River | Rivergate Valley | Domination | Easy | Ironclad | none | Using the water: fight from the river where you are faster |
+| 2 | The Smelter Gate | Ironhold Siege | Siege (attack) | Normal | Ironclad | none | Mist and brutes against walls and engines |
+| 3 | The Slag Heap | Kingsfield Crossroads | Domination (five points) | Normal | Ironclad | none | Wearing down armour: pull heavies apart |
+| 4 | The Rising Water | Rivergate Valley, or the Drowned Coast **[call]** | Domination | Normal | Gilded | none | Breaking a shield line with casters |
+| 5 | The Coast Road | Frostmarch Pass | Domination | Normal | Gilded | none | Deny the enemy's water speed: fight them on hard ground |
+| 6 | The Marshal's Line | Kingsfield Crossroads | Domination (five points) | Hard | Gilded (Aldric) | none | Spread against a disciplined line; answer the Legendary |
+
+**[call]** Battle 6's bonus must not be killing Aldric: the engine's `kill_unit` bonus only pays on a kill, and he withdraws alive for Act II. Use hold all five points instead.
 
 ## Pages
 
@@ -62,7 +64,7 @@ Six battles **[call]**, fixed difficulty, order lock, shipped modes only.
 ### Page 8: The Marshal's Line
 1. `c4_b6_before` (stage, Kingsfield, dawn). Aldric holds a line of the Order.
 2. `battle_6` The Marshal's Line (Domination, five points, Hard). Aldric is a Legendary in a bot banner with no boss rules.
-3. `c4_b6_after` (stage). The Order's line breaks and Aldric withdraws; if the player's banner struck him, Vael says so. He lives either way, for season 2.
+3. `c4_b6_after` (stage). The Order's line breaks and Aldric withdraws; if the player's banner struck him, Vael says so. He lives either way, for Act II.
 4. `c4_tide_end` (book, one still, unskippable first time). The sea retreating from the ruins of the coast towns and then turning back. Vael's line: "The tide goes inland now. The Deep Mother is leaning." Chapter 5.
 
 ## Where the hints live
@@ -70,7 +72,7 @@ Six battles **[call]**, fixed difficulty, order lock, shipped modes only.
 | Hint | Where | Reading |
 |---|---|---|
 | The glow fades | `c4_b1_after` | Glimpur leaving the sea. |
-| The tide pulls inland | `c4_tide`, `c4_b5_after`, `c4_tide_end` | Thalluun and the sea floor, toward the capital. |
+| The tide pulls inland | `c4_tide`, `c4_b5_after`, `c4_tide_end` | Thalluun and the sea floor, toward Highheart. |
 | Everything leans one way | `c4_b2_after` | The spire pulling glimpur home. |
 | The Deep Mother | `c4_myth` | Thalluun, told as a lullaby. |
 
@@ -82,7 +84,7 @@ Vael: fluid, calm on the surface, furious beneath. The tide-singer: soft, close 
 
 - Chapter 5 opens on the Houses' distrust of the Graveborn.
 - Chapter 1 and this chapter are a matched pair: the same eleven towns, two sides.
-- Season 2: the Tidecallers fight with no terms offered.
+- Act II: the Tidecallers fight with no terms offered.
 
 ## Open for Kort
 
