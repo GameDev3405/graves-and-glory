@@ -137,7 +137,7 @@ public final class Combat {
         // up lands at the kill and its first benefit is that same blow (a pierce, a cleave or a slam at the new share, Reap at level 3).
         if (!secondary) Abilities.onHit(b, attacker, target, amount, kind);
         // The hit_v1 goes after the on-hit abilities so it can say the blow threw its target (a Shield bash's knockback, a charge crash, a splash: Abilities.knock).
-        if (victim != null) sendHit(attacker, target, kind, melee, area, structure(target), hit, cooldown, lost, impactY, watchers, lethal, Abilities.takeKnocked(b, target));
+        if (victim != null) sendHit(attacker, target, kind, melee, area, structure(target), hit, cooldown, lost, impactY, watchers, lethal, Abilities.takeKnocked(b, target), Abilities.takePulled(b, target));
         return amount;
     }
 
@@ -149,6 +149,10 @@ public final class Combat {
      * the attacker (0 on a structure); it is blocked when a raised-shield counters row applied (CounterMath.blocked), and lethal when the victim died of it (as the blow left it, before its on-hit abilities); knockback when the blow also threw it (Abilities.knock, hit_v1 flag 4).
      */
     static void sendHit(GravesAndGlory.Unit attacker, LivingEntity target, String kind, boolean melee, boolean area, boolean structure, CounterMath.Hit hit, boolean cooldown, double lost, double impactY, List<net.minecraft.server.network.ServerPlayerEntity> watchers, boolean lethal, boolean knockback) {
+        sendHit(attacker, target, kind, melee, area, structure, hit, cooldown, lost, impactY, watchers, lethal, knockback, false);
+    }
+    /** The same, with the pulled flag (hit_v1 flag 8: the blow also dragged its target toward the striker, Abilities.pull). */
+    static void sendHit(GravesAndGlory.Unit attacker, LivingEntity target, String kind, boolean melee, boolean area, boolean structure, CounterMath.Hit hit, boolean cooldown, double lost, double impactY, List<net.minecraft.server.network.ServerPlayerEntity> watchers, boolean lethal, boolean knockback, boolean pulled) {
         var D = Spec.COMBATDISCIPLINE[0];
         var rows = Tactics.variants(attacker.spec.family());
         Spec.AttackVariantsRow swing = rows.isEmpty() ? null : melee && attacker.blowVariant >= 0 && attacker.blowVariant < rows.size() ? rows.get(attacker.blowVariant) : rows.get(0);
@@ -156,7 +160,7 @@ public final class Combat {
         String zone = area ? "body" : melee ? (swing == null ? "body" : swing.zone()) : Double.isNaN(impactY) ? "body" : BattleMath.zone(impactY, target.getY(), target.getHeight());
         float bearing = structure ? 0 : (float) BattleMath.signedBearing(target.getYaw(), attacker.mob.getX() - target.getX(), attacker.mob.getZ() - target.getZ());
         int weight = BattleMath.hitWeight(swing == null ? 0 : BattleMath.weightIndex(swing.weight()), cooldown, lost, target.getMaxHealth(), D.mediumHitShare(), D.heavyHitShare());
-        MotionEvents.sendHit(target, hitKind, zone, bearing, weight, CounterMath.blocked(hit, Spec.COUNTERS), lethal, knockback, watchers);
+        MotionEvents.sendHit(target, hitKind, zone, bearing, weight, CounterMath.blocked(hit, Spec.COUNTERS), lethal, knockback, pulled, watchers);
     }
 
     /** The commander classes' share of the factor: the attacker side's (Champion's infantry aura, Warden's archers, Mark Prey) times the target side's (Stand Fast). */

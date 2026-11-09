@@ -320,6 +320,10 @@ public final class GravesAndGlory implements ModInitializer {
         String orderStance="";float orderPitch;
         /** True once a Graveborn troop has risen again; it rises once. */
         boolean rose;
+        /** The world tick (getTime) it rose on, -1 never, and the ticks the rise kept it out of the fight (its stun): rise_v1's fields, and what a late joiner's catch-up reads (MotionEvents.catchUpRise). Presentation only. */
+        long riseTick=-1;int riseWindow;
+        /** Battle time until which it lies where it rose and stands up (the Undying King's rise, Houses.UNDYING_DOWN): Tactics moves, turns and acts it not at all. */
+        long downUntil;
         /** Blocks walked since this troop's last attack, for Pounce (Abilities.unitTick adds the ground covered each tick; onHit sets it back to 0). */
         double travelSinceAttack;
         /** Where the troop stood on its last tick, for travelSinceAttack. Null before its first tick. */

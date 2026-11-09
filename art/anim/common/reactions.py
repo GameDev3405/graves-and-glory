@@ -1,6 +1,8 @@
-"""Batch 2 reaction clips for the finished biped troops: the stun loop and the knockback hit.
+"""Batch 2 reaction clips for the finished biped troops: the stun loop, the knockback hit and the pulled hit.
 
-python art/anim/common/reactions.py <troop|all> [--out DIR]
+python art/anim/common/reactions.py <troop|all> [--out DIR] [--only CLIP,CLIP]
+
+--only merges just the named clips (and their _legs), e.g. --only hit_pulled: every other clip in the file stays as it is.
 
 Reads the troop's exported clip file, builds the new clips from the troop's own ready pose (the stun) or as additive deltas (the
 knockback), and merges ONLY the new clips back with stances.merge, so every other clip stays byte for byte as it was.
@@ -16,6 +18,10 @@ Clips (see work/anim-clip-spec B2 and B3):
   hit_knockback           20 ticks, ADDITIVE like every hit clip (starts and ends at 0, no root travel; the server moves the body): the
                           torso thrown back and the head whipped, the arms flung out; hit_knockback_legs the footwork: the hips drop and
                           lean back, two stumbling steps (back foot first), then the recovery. Bigger than hit_medium on every joint.
+  hit_pulled              14 ticks, ADDITIVE (hit_v1 flag 8: a harpoon or an undertow dragged the troop toward its striker; the server
+                          moves the body): the torso yanked forward with the head lagging then lifting to the puller, the arms flung
+                          forward and flailing; hit_pulled_legs the feet dragging (legs trailing, toes down), a catching step (the right
+                          foot reaches forward and plants, the left follows), then the recovery. Zero at both ends.
 """
 import argparse
 import math
@@ -32,6 +38,7 @@ CORE_UP = {"head", "torso", "left_arm", "right_arm", "left_forearm", "right_fore
 STUN_ENTRY, STUN_LOOP = 4, 20
 STUN_TICKS = STUN_ENTRY + STUN_LOOP
 KB_TICKS, OUT_TICKS = 20, 6
+PULL_TICKS = 14
 TAU = 2 * math.pi
 
 
@@ -263,22 +270,121 @@ def build_knockback_legs(tr):
     return bake(frames_of(KB_TICKS, fn), KB_TICKS, False)
 
 
+# ---------------------------------------------------------------------------------------------- pulled
+# per gear and side: (arm x, outward z magnitude, forearm x, hand x), the forward fling at full strength (additive, degrees; arm x negative =
+# raised forward, forearm x positive = the elbow opening). Two hands on one shaft (spear, axe) move together so the grip holds.
+PULL_ARMS = {
+    "shield":  dict(left=(-36, 16, 14, 0), right=(-50, 20, 16, -10)),      # the shield swings forward less than the sword hand
+    "onehand": dict(left=(-58, 18, 20, 0), right=(-48, 18, 16, -10)),      # the free fist reaches for balance
+    "spear":   dict(left=(-28, 6, 8, 0), right=(-28, 6, 8, -6)),
+    "axe":     dict(left=(-30, 6, 8, 0), right=(-30, 6, 8, -6)),
+    "bow":     dict(left=(-40, 14, 10, -8), right=(-55, 20, 20, 0)),
+    "xbow":    dict(left=(-46, 16, 14, 0), right=(-36, 12, 10, -10)),
+    "thrower": dict(left=(-55, 18, 18, 0), right=(-38, 12, 10, -12)),
+    "staff":   dict(left=(-52, 18, 18, 0), right=(-30, 10, 8, -8)),
+    "focus":   dict(left=(-52, 18, 18, 0), right=(-38, 12, 10, -10)),
+}
+TWO_HANDED = {"spear", "axe"}
+
+
+def pull_env(t):
+    """The yank: in over 2 ticks, a short hold, out by tick 13 with a small straightening overshoot (the catch). 1 at the peak, 0 at 0 and 14."""
+    if t < 2:
+        return ease_out(t / 2.0)
+    if t < 5:
+        return 1.0 - 0.15 * smooth((t - 2) / 3.0)
+    r = min(1.0, (t - 5) / 8.0)
+    return 0.85 * (1 - smooth(r)) - 0.12 * math.sin(math.pi * r) ** 2 * (1 if r > 0.5 else 0.0)
+
+
+def pull_env_arms(t):
+    """The arms trail half a tick, fly forward with an overshoot, then flail back down: 0 by tick 12."""
+    if t < 0.5:
+        return 0.0
+    if t < 3:
+        return snap_up((t - 0.5) / 2.5, 0.15)
+    r = min(1.0, (t - 3) / 9.0)
+    return (1 - smooth(r)) * (1 + 0.15 * math.sin(TAU * 1.5 * r) * (1 - r))
+
+
+def build_pulled(tr):
+    cfg = PULL_ARMS[tr.gear]
+    ex = extras_up(tr)
+    two = tr.gear in TWO_HANDED
+
+    def fn(t):
+        e, ea = pull_env(t), pull_env_arms(t)
+        flail = pulse(t, 2.0, 4.0, 10.0) * math.sin(TAU * t / 4.0)
+        out = {}
+        out["torso"] = (v3(26 * e, 4 * e, 0.0), None)
+        # the head lags the yank (thrown up for a beat), then lifts to the puller against the bent chest, and nods as it recovers
+        out["head"] = (v3(-14 * e - 10 * pulse(t, 0.0, 1.2, 3.5) + 6 * pulse(t, 4.0, 7.0, 12.0), 0.0, 0.0), None)
+        for side, sgn in (("left", -1), ("right", 1)):
+            ax, az, fx, hx = cfg[side]
+            wob = 0.0 if two else sgn * 8 * flail          # the free arms flail out of step; a shared shaft stays in both hands
+            out[f"{side}_arm"] = (v3(ax * ea + wob, sgn * az * ea, 0.0), None)
+            out[f"{side}_forearm"] = (v3(fx * ea, 0.0, 0.0), None)
+            out[f"{side}_hand"] = (v3(hx * ea, 0.0, 0.0), None)
+        for b in ex:             # cloth and quivers hang plumb against the yanked chest, then swing in a beat late
+            out[b] = (v3(-0.8 * 26 * lag(pull_env, t, 1.5) + 5 * math.sin(math.pi * min(1.0, t / 12.0)) * (1 - e * 0.5), 0.0, 0.0), None)
+        return out
+
+    up = bake(frames_of(PULL_TICKS, fn), PULL_TICKS, False)
+    return up, build_pulled_legs(tr)
+
+
+def build_pulled_legs(tr):
+    ex = [b for b in tr.ready_legs if b not in ("hips", "left_leg", "right_leg", "left_shin", "right_shin", "left_foot", "right_foot")]
+
+    def fn(t):
+        e = pull_env(t)
+        drag = smooth(t / 1.5) * (1 - smooth((t - 3.5) / 4.0))            # the feet trail behind the yanked body, toes scraping
+        hold = smooth(t / 2.0) * (1 - smooth((t - 9.0) / 5.0))           # knees bent through the stumble
+        stepR = pulse(t, 3.5, 6.5, 10.0)                                   # the catch: the right foot reaches forward and plants
+        stepL = pulse(t, 7.0, 9.5, 12.5)                                   # the left follows, shorter
+        out = {}
+        for side, st, ot, reach in (("left", stepL, stepR, 22), ("right", stepR, stepL, 34)):
+            legstep, shinstep = -reach * st + 8 * ot, (30 + reach * 0.35) * st
+            leg = 16 * drag + 6 * hold + legstep
+            shin = 14 * drag + 10 * hold + shinstep
+            foot = 16 * drag - (0.55 * legstep + 0.9 * shinstep) - (0.55 * 6 + 0.9 * 10) * hold
+            out[f"{side}_leg"] = (v3(leg, 0.0, (-1 if side == "left" else 1) * 3 * hold), None)
+            out[f"{side}_shin"] = (v3(shin, 0.0, 0.0), None)
+            out[f"{side}_foot"] = (v3(foot, 0.0, 0.0), None)
+            if f"{side}_boot" in ex:
+                out[f"{side}_boot"] = (v3(foot, 0.0, 0.0), None)
+        avg = (out["left_leg"][0][0] + out["right_leg"][0][0]) / 2
+        for b in ex:
+            if b.startswith("skirt_"):
+                k = 0.4 if b.endswith(("front", "back")) else 0.15
+                out[b] = (v3(k * avg, 0.0, 0.0), None)
+        out["hips"] = (v3(10 * e, 3 * (stepR - stepL), 0.0),
+                       v3(0.0, -1.0 * hold - 0.4 * (stepL + stepR), -0.6 * e))
+        return out
+    return bake(frames_of(PULL_TICKS, fn), PULL_TICKS, False)
+
+
 # ---------------------------------------------------------------------------------------------- build / merge
 def build_all(tr):
     clips = {}
     clips["stun_upper"], clips["stun_legs"] = build_stun(tr)
     clips["stun_out_upper"] = build_stun_out(tr)
     clips["hit_knockback"], clips["hit_knockback_legs"] = build_knockback(tr)
+    clips["hit_pulled"], clips["hit_pulled_legs"] = build_pulled(tr)
     return clips
 
 
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("troop"); ap.add_argument("--out")
+    ap.add_argument("--only", help="comma list of clips to merge (each with its _legs); the rest of the file is left as it is")
     a = ap.parse_args()
     for tid in (list(GEAR) if a.troop == "all" else [a.troop]):
         tr = Troop(tid)
         clips = build_all(tr)
+        if a.only:
+            keep = {n for c in a.only.split(",") for n in (c, c + "_legs")}
+            clips = {k: v for k, v in clips.items() if k in keep}
         dst = Path(a.out) / f"{tid}.animation.json" if a.out else tr.path
         merge(tr, clips, dst)
         print(f"{tid}: {', '.join(clips)} -> {dst}")
