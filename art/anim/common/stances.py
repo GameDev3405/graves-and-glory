@@ -34,7 +34,7 @@ ROT_TOL, POS_TOL = 0.02, 0.002
 GEAR = {}
 for g, names in {
     "shield": "knight sentinel ic_hearthguard gl_marshal",
-    "onehand": "revenant tc_raider",
+    "onehand": "revenant tc_raider gb_hollowking",
     "spear": "wm_tusk tc_tideguard tc_admiral",
     "axe": "ic_breaker",
     "bow": "archer longbow wm_hunter bonebow stalker",
