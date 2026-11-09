@@ -20,7 +20,7 @@ for p in ("hand/common", "hand/knight", "hand/weapons", "anim/knight"):
     sys.path.insert(0, os.path.join(ART, p))
 from PIL import Image                                         # noqa: E402
 import handlib as H                                           # noqa: E402
-from handlib import Box, Bone, limb, pack, paint_box, on, SIDES, ELBOW, KNEE, HAND, per_tier  # noqa: E402
+from handlib import Box, Bone, limb, pack, paint_box, on, SIDES, ELBOW, KNEE, HAND, JOINT_INSET, per_tier  # noqa: E402
 import build_knight as K                                      # noqa: E402
 import build_swords as SW                                     # noqa: E402
 
@@ -76,10 +76,11 @@ def bones(P):
         Box((-5, 0, 0), (10, 17, 1), "cape", sheet="cloth"), Box((-4.5, -0.5, -1.5), (9, 2, 2), "collar", sheet="cloth")]))
     # arms (shoulder, elbow, hand: the hand bone is the grip point) and legs (hip, knee, ankle)
     for side, x, ox in (("right", -5, -3), ("left", 5, -1)):
-        B += limb(f"{side}_arm", "torso", (x, -7, 0), (ox, -2, -2), per_tier(g("arm")), f"{side}_forearm", ELBOW[side])
+        # the forearm and shin are inset (JOINT_INSET) so their side faces never z-fight the upper arm's and thigh's in a bend
+        B += limb(f"{side}_arm", "torso", (x, -7, 0), (ox, -2, -2), per_tier(g("arm")), f"{side}_forearm", ELBOW[side], inset=JOINT_INSET)
         B.append(Bone(f"{side}_hand", f"{side}_forearm", HAND))
     for side, x in (("right", -1.9), ("left", 1.9)):
-        leg = limb(f"{side}_leg", "hips", (x, 0, 0), (-2, 0, -2), per_tier(g("leg")), f"{side}_shin", KNEE)
+        leg = limb(f"{side}_leg", "hips", (x, 0, 0), (-2, 0, -2), per_tier(g("leg")), f"{side}_shin", KNEE, inset=JOINT_INSET)
         # The shin stops 2 px above the sole, inside the boot (which covers the bottom 3 px): ending at the sole, its back corner
         # sank 0.75 px into the ground whenever the knee bent. The box keeps its top rows, so the texture is unchanged above the boot.
         leg[1].boxes[0].size[1] -= 2

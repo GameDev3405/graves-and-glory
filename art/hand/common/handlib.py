@@ -191,11 +191,16 @@ HAND = (0, 4, 0)
 # positive forearm rx (a backwards elbow) or a negative shin rx (a backwards knee) can never reach the screen.
 JOINT_LIMITS = {"_forearm": (-150, 0), "_shin": (0, 150)}
 JOINT_OVERLAP = 2  # px a limb's lower box reaches past its hinge into the upper box (review 2026-11-04 section 1.3)
+# px the lower box of a jointed limb is shrunk on every side (a negative inflate) where a rig opts in (limb inset=JOINT_INSET): the
+# lower box shares the upper's cross-section through the overlap, so a bent knee or elbow left their side faces coplanar and the two
+# textures z-fought in stripes. Inset, the upper box's faces always win; 0.1 px is under a texel yet resolves in depth to ~70 blocks.
+JOINT_INSET = 0.1
 
-def limb(name, parent, pivot, origin, paint, lower, joint, size=(4, 12, 4), dil=0.0, sheet="skin", limit=None, upper_h=6, rot=(0, 0, 0)):
+def limb(name, parent, pivot, origin, paint, lower, joint, size=(4, 12, 4), dil=0.0, sheet="skin", limit=None, upper_h=6, rot=(0, 0, 0), inset=0.0):
     """A jointed limb as two bones: `name` at pivot with the upper box at origin, and `lower` at joint (in the upper bone's frame)
     with the lower box under it, both painted from the one painter of the whole limb (Box cut). Returns [upper bone, lower bone].
-    rot: the upper bone's rest rotation (a leaning troop's arms stand back up); the lower bone has none of its own."""
+    rot: the upper bone's rest rotation (a leaning troop's arms stand back up); the lower bone has none of its own.
+    inset: px the lower box is shrunk on every side (JOINT_INSET), so the joint's coplanar side faces never z-fight; UVs unchanged."""
     w, h, d = size
     if limit is None:  # a hinge bends one way: an elbow flexes (rx <= 0), a knee folds back (rx >= 0); see JOINT_LIMITS
         limit = next((v for k, v in JOINT_LIMITS.items() if lower.endswith(k)), None)
@@ -204,7 +209,7 @@ def limb(name, parent, pivot, origin, paint, lower, joint, size=(4, 12, 4), dil=
     o = min(JOINT_OVERLAP, upper_h)
     lo = [origin[0] - joint[0], origin[1] + upper_h - o - joint[1], origin[2] - joint[2]]
     return [Bone(name, parent, pivot, [Box(origin, (w, upper_h, d), paint, dil, sheet, cut=(h, 0))], rot=rot),
-            Bone(lower, name, joint, [Box(lo, (w, h - upper_h + o, d), paint, dil, sheet, cut=(h, upper_h - o))], limit=limit)]
+            Bone(lower, name, joint, [Box(lo, (w, h - upper_h + o, d), paint, dil - inset, sheet, cut=(h, upper_h - o))], limit=limit)]
 
 def arms(painter, right=None):
     """The biped's two jointed arms with their hands (right painter, then left; one painter serves both when right is None)."""
