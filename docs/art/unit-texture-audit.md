@@ -82,9 +82,11 @@ House means: Graveborn 4.9, Tidecallers 5.7, Wildmoot 6.4, Gilded 6.7, Ironclad 
 5. **Tier II is often a trim pass.** Lord Marshal, Brassjaw, Ballista Crew, Order Archer and Grave Reaper change too little from I to II to read at 16 blocks. Tier steps need one new value mass (a plate, a mantle, a hood colour), not only a stripe.
 6. **Seams and strays** are rare but present: the Grave Reaper hood back, the Hollow King's red scrap below the heel and flat cape back, single-texel spikes on the Admiral's tier III hat.
 
-## 5. Order of work (proposed, for Kort)
+## 5. Order of work (approved by Kort, 2026-11-09)
 
 Weakest first, one troop per commit, each with before/after renders and a Sonnet-high review, batched for Kort: the five Graveborn troops (Risen, Grave Reaper, Gravecaller, Barrow Stalker, Bone Archer), then the Tidecallers noise troops (Harpooner, Mist Caller, Brute, Admiral), then the remaining Gilded, Wildmoot and Ironclad troops by rank. The strongest troops get only the cross-troop fixes (leg shadow bands, tier II mass). Shared House ramps (`art/hand/common/graveborn.py` and siblings) are not changed without Kort's say, since they recolour six troops at once.
+
+Kort's approval (2026-11-09): rubric accepted, order approved, the three repaints approved. Conditions for every repaint: keep the 3D depth style (top-left light, shaded form on every face), and make each character feel alive with its own personality. Value lifts of one or two ramp steps are allowed where the 16-block read needs them; spend tokens only where the read at game distance improves.
 
 ## 6. Contact sheets
 
