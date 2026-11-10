@@ -43,8 +43,8 @@ Anti-goals (this fails even if it works)
 - A match is best of 5: the first side to win 3 rounds wins. **(Kort)**
 - Each round: pick phase (45 seconds **(Kort)**), the 6-second round intro as today, then the round under the mode's normal rules.
 - A round ends by the mode's own win condition or its timer. The mode decides the round winner exactly as it decides the battle winner today. Today every mode ends the battle by calling `campaign.finish`, which pays rewards and returns everyone to the lobby; that splits into "round end" (score, round gold, next pick phase) and "match end" (rewards, lobby). Persistent rewards are paid once, at match end.
-- Round length: today's `roundSeconds` are per battle: Domination 900 s, Convoy 420 s, Siege 185 s. Siege already fits. **(my call)** Each mode gets a `matchRoundSeconds` value aimed at a match of 20 to 30 minutes; for Domination that means about 4 to 5 minutes instead of 15, which changes how it plays and needs Kort's eye (section 10).
-- Sides: Domination is symmetric, so sides stay. Siege (one side always attacks) and Convoy (one side escorts) are not, so in those modes the roles swap every round **(my call)**; who takes which role in a fifth round is open (section 10).
+- Round length: today's `roundSeconds` are per battle: Domination 900 s, Convoy 420 s, Siege 185 s. Siege already fits. **(my call)** Each mode gets a `matchRoundSeconds` value aimed at a match of 20 to 30 minutes; for Domination that is about 4 to 5 minutes instead of 15 **(Kort)**.
+- Sides: Domination is symmetric, so sides stay. Siege (one side always attacks) and Convoy (one side escorts) are not, so in those modes the roles swap every round **(my call)**, and in a fifth round the roles are assigned at random **(Kort)**.
 - Draws: a drawn round (possible in Domination) gives nobody a round win and both sides the loss gold. If no side has 3 wins after 5 rounds, the side with more round wins takes the match; if still level, one extra round is played **(my call)**.
 - Survival is outside this match system: it has no opposing commander and no clock. It stays a single run with one pick phase at the start; the soft 20 and the price rules apply, and wave gold works as today **(my call)**.
 - Teams can be up to 4 commanders (`playersPerTeam`), so everything here must hold for 4v4, not only 3v3.
@@ -61,7 +61,7 @@ One currency: battle gold, the existing in-battle gold. It exists only during a 
 - No transfers between teammates. **(Kort)**
 
 ### 3.3 The army
-- Survivors of a round carry into the next round at no cost. **(Kort)** They return at full health **(my call)**. Whether they also keep the levels and Armoury tiers they earned is open (section 10); today those are wiped at every round start.
+- Survivors of a round carry into the next round at no cost. **(Kort)** They return at full health **(my call)**. They keep the levels and Armoury tiers they earned **(Kort)**; today those are wiped at every round start.
 - Dead units are gone. To have them again you buy them again.
 - So from round 2 on, the pick phase is mostly about replacing losses and adding to what lived.
 - Rarity caps stay: at most 1 Legendary and 2 Epics alive or queued per commander. **(Kort)** Today these caps exist only as limits on the saved banner (`rarities.bannerMax`); they become limits on the living army.
@@ -162,17 +162,13 @@ Tests
 7. Campaign budgets.
 8. Performance test, sims, tuning.
 
-When: **my recommendation** is to build after the 1.21.1 port, so it is built once. Kort has not decided this.
+When: after the 1.21.1 port, so it is built once. **(Kort)**
 
 ## 10. Open for Kort
 
-1. Round length for Domination in a best-of-5 match (section 3.1): about 4 to 5 minutes instead of 15.
-2. Build now on 1.20.1, or after the port.
-3. Siege and Convoy: roles swap each round (my call). Who attacks or escorts in a fifth round?
-4. Do survivors keep the levels and Armoury tiers they earned in earlier rounds? Keeping them rewards protecting units and strengthens the snowball; wiping them is today's behaviour.
-5. "Any troop you own" stays within today's House rules for a room (my call). Say so if you meant every troop regardless of House.
-6. The starting numbers in sections 3.2 and 3.4 are mine; he may want to set the feel himself (how much gold is left in round 1, how fast the slot fee climbs).
-7. Campaign bonus objectives that count fallen troops ("lose fewer than 8") were written for an army of 20; they need new numbers under budgets.
+1. "Any troop you own" stays within today's House rules for a room (my call). Say so if you meant every troop regardless of House.
+2. The starting numbers in sections 3.2 and 3.4 are mine; he may want to set the feel himself (how much gold is left in round 1, how fast the slot fee climbs).
+3. Campaign bonus objectives that count fallen troops ("lose fewer than 8") were written for an army of 20; they need new numbers under budgets.
 
 ## 11. Left to the builder
 
