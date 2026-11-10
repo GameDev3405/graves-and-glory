@@ -59,6 +59,9 @@ Every family builder imports the knight builder for gait, leg IK, stance legs, h
 `TROOP = os.environ.get(...)` lines and `ROLLOUT-PLAN.md`; group F troops (wm_stalker, wm_oldhorn, tc_brute,
 ic_ballista, ic_mortar, ic_colossus, reaper) have no GeckoLib set yet and are new work.
 
+Builder commands here use Git Bash's `VAR=x cmd` form. In PowerShell: `$env:GG_ANIM_TROOP = 'sentinel'; python
+art/anim/knight/build_anims.py` (then `Remove-Item Env:GG_ANIM_TROOP`).
+
 Useful switches (knight builder): `--check` prints each gait clip's foot-contact drift; `GG_V2=0` builds the
 pre-v2 style; `GG_V2_OUT=<path>` redirects the output (for an A/B reel without touching `out/`).
 
@@ -118,8 +121,9 @@ Write renders under `work/` (untracked); commit only what a review record cites.
 ## 6. In-game harness (geo-knight)
 
 The suite (`test-tools/java/gg/gravesandglory/GeoKnightChecks.java`) places the troop, marches it, duels, hits and
-kills it, and asserts impact sync, clip choice, weights and deaths. Run it from the lane worktree in Git Bash, within
-the client ceiling, with no other client running from that checkout:
+kills it, and asserts impact sync, clip choice, weights and deaths. Run it from the lane worktree in Git Bash (as below),
+within the client ceiling (five clients across all worktrees, at most 30 minutes each), with no other client running
+from that checkout:
 
 ```
 export JAVA_HOME="C:/Program Files/Eclipse Adoptium/jdk-17.0.19.10-hotspot"
@@ -128,7 +132,8 @@ GRAVES_ROADMAP_TEST_ROOT="$ROOT" GRAVES_PHASE1_CHECKS=geo-knight GRAVES_GEO_CHEC
   ./gradlew.bat runClient -PlocalIntegration --offline -I test-tools/isolated-checks.gradle > "$ROOT/gradle.log" 2>&1
 grep -c "^\[p1\] p1-" "$ROOT/gradle.log"; grep -c "=false" "$ROOT/gradle.log"
 ```
-Pass: 22 `[p1] p1-` lines and 0 `=false`. `GRAVES_GEO_TROOPS=all` is needed for any troop still in `PREVIEW`.
+In PowerShell set each variable first (`$env:GRAVES_PHASE1_CHECKS = 'geo-knight'`, and so on), then run the same
+`.\gradlew.bat` line. Pass: 22 `[p1] p1-` lines and 0 `=false`. `GRAVES_GEO_TROOPS=all` is needed for any troop still in `PREVIEW`.
 Screens land under the run root. A loaded machine can fail a speed or sample-count check (see IC_BREAKER-REVIEW.md);
 rerun once before diagnosing, and record both runs. Performance: `GRAVES_PHASE1_CHECKS=geo-perf` (PLAN.md).
 
@@ -143,7 +148,8 @@ any sheet edit run `python tools/preflight.py`, which regenerates `Spec.java`; n
 
 ```
 python tools/anim/scorecard.py --troop <troop>     # exit 0
-python tools/verify.py fast                        # never launches Minecraft; includes the anim tool tests
+python -m unittest discover -s tools/anim          # the anim tool tests (scorecard, booth, render_geo)
+python tools/verify.py fast                        # never launches Minecraft; NOT the anim tool tests (it runs test-tools/standalone)
 python tools/verify.py game                        # client tier; defers while a client from this checkout runs
 python tools/land.py <branch> --dry-run            # only when booth.py decide says land
 ```

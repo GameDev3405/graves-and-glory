@@ -15,7 +15,8 @@ passed review goes to Kort's review booth.
    dropped. Timing, gameplay and art-direction questions go to Kort.
 4. **Fix round.** Batch every concrete defect into one round. Rebuild, re-export, re-score, re-render.
 5. **Re-review.** A new reviewer re-grades only the changed areas and the open findings, with the previous report.
-6. **Stop rule.** At most two fix rounds. If anything is still below the gate, stop: record the remaining minors in
+6. **Stop rule.** At most two review fix rounds. Booth fix rounds (after Kort rejects clips) are counted separately,
+   two at most, per `docs/anim-rebuild/REVIEW-BOOTH.md`. If anything is still below the gate, stop: record the remaining minors in
    `docs/anim-rebuild/<TROOP>-REVIEW.md`, escalate blockers with evidence and what would unblock them (Opus high,
    Kort's ruling, a rig change), and move to independent work. Never lower the bar to finish.
 7. **Harness, then booth.** Run the geo-knight suite (pipeline.md section 6), commit, and submit the booth batch.
@@ -36,6 +37,10 @@ follow-through. Each grade needs findings; a letter alone is not a review.
 | F | Missing, wrong clip shown, broken in several respects, or unreadable. |
 
 **Gate:** player-facing animation needs A in every graded cell. One D or F fails the troop regardless of average.
+
+**Verdicts:** SHIP = every cell A. SHIP WITH MINORS = every cell A or B, with each B item recorded under open minors
+in `docs/anim-rebuild/<TROOP>-REVIEW.md`. FIX = any C, D or F in round 1 or 2. ESCALATE = any cell still below B after
+round 2, or a finding that needs Kort.
 
 ### Automatic grade caps
 

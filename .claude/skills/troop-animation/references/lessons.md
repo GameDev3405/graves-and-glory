@@ -4,6 +4,10 @@ Sources: `docs/anim-rebuild/PLAN.md` (review log), `KNIGHT-REVIEW.md`, the per-t
 legacy clip history (2026-11-03/04). Each lesson is the failure, then the fix that worked. When a review finds the
 same mistake twice, add it here and, if it can be measured, ask for a scorecard metric.
 
+Lessons log: during a pass keep a dated `work/anim-lessons-YYYY-MM-DD.md` in your lane worktree (untracked): what
+went wrong, how it was found (reviewer, check, Kort), the fix, the commit. At the end of the pass fold the durable
+lessons into this file with their commit hashes.
+
 ## 1. Weapon facing (Kort: "this mistake keeps coming back")
 
 - Check the weapon on every frame, not only contact, in front, side and three-quarter views. A clean pose with the
@@ -23,7 +27,8 @@ same mistake twice, add it here and, if it can be measured, ask for a scorecard 
 
 - Every blow is driven from the pelvis (v2 style): hips drop and turn, torso leans, head follows, arms finish. Arms
   alone read stiff (knight round 1: "overhead load was arms only").
-- Wind-up held long enough to read; contact fast; follow-through overshoots and ends low; settle eases to the exact
+- Wind-up held long enough to read (STYLE.md rule 5; the legacy rule of thumb was a 150-250 ms hold, and the knight
+  review asked for the overhead load to read as one pose over 0.30-0.45 s); contact fast; follow-through overshoots and ends low; settle eases to the exact
   guard. A wind-up that passes vertical and comes back reads as a hitch: keep the rise monotone.
 - Each attack has its own `_legs` clip (plant, step, hip drop at contact) for the standing case; walking keeps the
   gait legs.

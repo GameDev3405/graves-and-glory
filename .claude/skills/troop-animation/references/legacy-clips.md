@@ -36,6 +36,8 @@ python tools/clips.py --verify                      # committed JSON matches sou
 python tools/verify.py fast
 ```
 
-In-game evidence for old clips comes from the client harness (`GRAVES_PHASE2_CHECKS=turn` or `motion-grade`, see
-`test-tools/isolated-checks.gradle`), never desktop computer-use. The review loop and rubric in `review-loop.md`
-apply unchanged; cite clip JSON keys instead of builder lines.
+Legacy troops have no scorecard, no booth and no geo-knight harness. Evidence is `python tools/clips.py --verify`
+plus the motion-grade harness sheets (`GRAVES_PHASE2_CHECKS=motion-grade`, or `turn`; see
+`test-tools/isolated-checks.gradle`; `anim_edit.py preview` prints the command), never desktop computer-use. The
+review loop and rubric in `review-loop.md` apply; cite clip JSON keys instead of builder lines. Kort approves in chat
+("show me first") before the lane lands through `tools/land.py`.

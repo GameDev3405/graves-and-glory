@@ -48,7 +48,8 @@ grep -n "APPROVED =\|PREVIEW =" src/main/java/gg/gravesandglory/GeoTroopRenderer
 
 1. **Find the builder** (pipeline.md section 2) and read its docstring. Check who else it builds.
 2. **Edit the builder**, not its output.
-3. **Build** with the troop's env var, e.g. `GG_ANIM_TROOP=sentinel python art/anim/knight/build_anims.py`. Expect
+3. **Build** with the troop's env var (Git Bash form; PowerShell in pipeline.md section 2), e.g.
+   `GG_ANIM_TROOP=sentinel python art/anim/knight/build_anims.py`. Expect
    `art/anim/<troop>/out/<troop>.animation.json` to change. Rebuild every other troop on that builder: their
    `out/` must stay byte-identical (`git status --short art/anim` shows only your troop) unless the change is meant
    for all of them.
@@ -92,8 +93,8 @@ Status:          implemented / tested / visually inspected / accepted, each yes 
 No push and no publish. Branches reach `main` only through `tools/land.py`, and an animation lane lands only when
 `booth.py decide` says so (see Review booth below); uploading a batch to the booth is the only allowed upload. One
 writer per checkout and file; do not touch a builder or troop another worker owns. Keep unrelated changes out of an
-animation lane (Kort's booth approval covers the whole lane). Gameplay timing, saves and protocol need Kort; ask
-him through AskUserQuestion, batched.
+animation lane (Kort's booth approval covers the whole lane). Gameplay timing, saves and protocol need Kort. A
+subagent returns its questions to its caller; the lead asks Kort, through AskUserQuestion, batched.
 
 ## Review booth (GeckoLib lanes)
 
