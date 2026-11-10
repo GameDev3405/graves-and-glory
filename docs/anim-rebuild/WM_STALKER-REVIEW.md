@@ -114,3 +114,13 @@ Command: geo-knight phase-1 checks with `GRAVES_GEO_CHECK_TROOP=wm_stalker`.
 - The Blockbench MCP was unavailable (ECONNREFUSED), so all work went through the Python builder and render_geo previews.
 - Round 1 (Sonnet high) came back fix-first; this record covers its fixes. Round 2 is with the orchestrator.
 - Tier III spurs dig 1.5 px into the floor in death_left, and tier II/III ridge plates sink 0.26 px in death_back.
+
+## Port to main (2026-11-09): scorecard loop seams
+
+On main the scorecard failed three looping clips on `loop_vel` (walk_upper 72.8 vs 51.2 deg/tick on left_leg_1_low,
+run_upper 178.5 vs 121.6 on left_leg_1, stun_upper 23.7 vs 19.5 on left_leg_3_low). Fixes in the builder, no timing change:
+walk and run start a third and a fifth of a stride in (`WALK_T0` 2, `RUN_T0` 1 tick) so the wrap no longer lands on a
+claw's touchdown or lift-off; the run's sac bounce phase moves 0.42 -> 0.36 of a stride; the stun snap starts at 0.75
+on frame 0, as the knight's does (the controller loops ticks 4..24, so tick 0 plays once). Only walk, run and stun
+changed; scorecard 26 clips, 0 failing. Not yet re-rendered or re-reviewed. The old branch's AttackController ensnare
+hook was not ported (gameplay code).

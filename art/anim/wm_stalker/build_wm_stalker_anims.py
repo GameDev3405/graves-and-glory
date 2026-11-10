@@ -392,6 +392,9 @@ def idle(t):
 # walk: the alternating tetrapod, quick and low ---------------------------------------------------------------
 WALK_P, WALK_V, WALK_D = 6.0, 2.56, 0.52
 WALK_H = 7.8
+# Where the looping clip starts in the stride: a third of a cycle in, so the clip's wrap falls between the touchdowns and
+# lift-offs (a plant or lift exactly on the seam reads as a pop at the loop point: scorecard loop_vel).
+WALK_T0 = 2.0
 
 
 def tetrapod(t, period, v, D, lift_f, lift_b, stagger=0.03, base=None):
@@ -405,6 +408,7 @@ def tetrapod(t, period, v, D, lift_f, lift_b, stagger=0.03, base=None):
 
 
 def walk(t):
+    t = t + WALK_T0
     u0 = t / WALK_P
     feet = tetrapod(t, WALK_P, WALK_V, WALK_D, 2.4, 2.0,
                     base=lambda l: rest_tip(l, 0, 0, (-1.5 if idx(l) == 1 else 1.0 if idx(l) == 4 else 0)))
@@ -422,9 +426,11 @@ def walk(t):
 # run: the same tetrapod at a scuttle, lower, the abdomen bouncing behind ----------------------------------------
 RUN_P, RUN_V, RUN_D = 5.0, 4.16, 0.42
 RUN_H = 7.3
+RUN_T0 = 1.0         # as WALK_T0: the wrap sits clear of the plants and lift-offs
 
 
 def run(t):
+    t = t + RUN_T0
     u0 = t / RUN_P
     feet = tetrapod(t, RUN_P, RUN_V, RUN_D, 3.0, 2.4, 0.04,
                     base=lambda l: rest_tip(l, 0.4, 0, (-1.0 if idx(l) == 1 else 0.6 if idx(l) == 4 else 0)))
@@ -434,7 +440,7 @@ def run(t):
     up = U(thorax=(1.5, -0.6 * sway, 0), head=(-4 - 0.8 * stp, -1.0 * sway, 0),
            abd=(3 + 4.5 * lag, -4.0 * wave(t, RUN_P, 0.32), 1.5 * wave(t, RUN_P, 0.4)),
            palps=-12 + 5 * lag, fang=-4, mand=4,
-           sacs=(-4 * math.cos(4 * math.pi * (u0 - 0.42)), -3 * wave(t, RUN_P, 0.5), 0))
+           sacs=(-4 * math.cos(4 * math.pi * (u0 - 0.36)), -3 * wave(t, RUN_P, 0.5), 0))
     body = B(RUN_H, (0.15 * sway, -0.3 * stp, 0), (2.0 + 0.6 * stp, 1.2 * sway, -0.6 * sway))
     return up, body, feet
 
@@ -758,7 +764,8 @@ STUN_ENTRY, STUN_LOOP = 4, 20
 
 def stun(t):
     ph = (max(t, STUN_ENTRY) - STUN_ENTRY) / STUN_LOOP          # 0..1 over the loop
-    sn = K([(0, 0), (1.2, 1), (2.5, 0.7), (4, 0)])(t) if t < 4 else 0.0   # the snap entry
+    sn = K([(0, 0.75), (1.2, 1), (2.5, 0.7), (4, 0)])(t) if t < 4 else 0.0   # the snap entry, already landing on frame 0
+    # (as the knight's: the controller loops ticks 4..24, so tick 0 is only ever played once, straight off the hit)
     wob = math.sin(2 * math.pi * ph)
     wob2 = math.cos(2 * math.pi * ph)
     up = U(thorax=(3 + 2 * wob2 - 10 * sn, 0, 3 * wob), head=(8 + 5 * wob2 - 18 * sn, 7 * wob, 6 * wob2),
