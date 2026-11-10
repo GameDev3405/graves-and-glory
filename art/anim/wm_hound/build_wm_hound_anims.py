@@ -434,9 +434,14 @@ def idle(t):
 # walk: a trot, diagonal pairs ----------------------------------------------------------------------
 WALK_P, WALK_V, WALK_D = 6.0, 2.56, 0.32
 WALK_Y = -0.75
+# Where each gait loop's seam falls (fraction of a cycle). The paw strikes are the sharpest turns of the shins; the seam sits
+# between them (chosen where every bone, the shins and the swinging pendant included, turns least across the wrap) so the loop wraps
+# through smooth motion. Only the clip's start moves: GaitController picks its starting phase by pose.
+WALK_SEAM, RUN_SEAM = 0.08, 0.125
 
 
 def walk(t):
+    t = t + WALK_SEAM * WALK_P
     u0 = t / WALK_P
     ph = {"front_right": 0.0, "back_left": 0.02, "front_left": 0.5, "back_right": 0.52}
     feet = {}
@@ -463,6 +468,7 @@ RUN_Y = -0.9
 
 
 def run(t):
+    t = t + RUN_SEAM * RUN_P
     u0 = t / RUN_P
     ph = {"back_left": 0.0, "back_right": 0.1, "front_right": 0.45, "front_left": 0.56}
     feet = {}
@@ -564,12 +570,13 @@ def bite(t):
     body = {"position": [0.3 * shake, -1.5 - 0.7 * max(draw, 0) - 0.3 * max(-draw, 0), -0.6 + 1.6 * draw],
             "rotation": [3 - 4.5 * draw, 0, 1.5 * shake]}
     feet = dict(rf)
+    # the lead paw reaches out and a little wide of the dropping chest, folded less, so its shin and wrap clear the brisket
     fr0 = REST_SOLE["front_right"] + [-0.3, 0, 0.8]
-    fr1 = fr0 + [0, 0, 2.6]
+    fr1 = fr0 + [-0.5, 0, 2.6]
     if t < 9.5:
-        feet["front_right"] = step(fr0, fr1, (t - 4.2) / 3.3, 1.8, 30, True, 6)
+        feet["front_right"] = step(fr0, fr1, (t - 4.2) / 3.3, 1.1, 18, True, 6)
     else:
-        feet["front_right"] = step(fr1, fr0, (t - 11.0) / 3.5, 1.2, 25, True)
+        feet["front_right"] = step(fr1, fr0, (t - 11.0) / 3.5, 0.6, 12, True)
     w = ss((t - 12.0) / 3.5)
     return blend_ready(t, up, body, feet, w)
 
