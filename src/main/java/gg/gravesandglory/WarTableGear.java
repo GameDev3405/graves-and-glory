@@ -289,14 +289,19 @@ final class WarTableGear {
         g.drawText(font(), t, b[0] + (b[2] - font().getWidth(t)) / 2, b[1] + (b[3] - 8) / 2, DarkUi.SEPIA, false);
     }
 
-    /** A piece in a box: its icon (the art track's gear/<item> when the atlas has it, else a rarity-coloured placeholder with the
+    /** The atlas name of a piece's picture: gear/<item>_r1 (Common) to _r5 (Legendary), one drawing per rarity. */
+    static String pieceArt(String item, String rarity) { return "gear/" + item + "_r" + (Gear.rarityIndex(rarity) + 1); }
+    /** The atlas name of a relic's picture: relic/<id>. */
+    static String relicArt(String id) { return "relic/" + id; }
+
+    /** A piece in a box: its icon (the art track's gear/<item>_rN when the atlas has it, else a rarity-coloured placeholder with the
      *  item's initials), the rarity border, the durability bar, and the worn mark, duplicate badge and broken dim. */
     static void pieceIcon(DrawContext g, GearWire.View v, Gear.Piece p, int[] b, boolean hot, boolean wornMark, boolean duplicate) {
         var it = Gear.item(p.item);
         int ink = rarityInk(p.rarity), x = b[0], y = b[1], s = b[2];
         g.fill(x, y, x + s, y + s, DarkUi.TAB_IDLE);
         g.fill(x + 2, y + 2, x + s - 2, y + s - 2, fade(ink, 0x40));
-        String art = "gear/" + p.item;
+        String art = pieceArt(p.item, p.rarity);
         if (UiTex.has(art)) UiTex.draw(g, art, x + (s - UiTex.entry(art).w()) / 2, y + (s - UiTex.entry(art).h()) / 2);
         else {
             var t = DarkUi.heading(initials(it.name()));
@@ -316,12 +321,12 @@ final class WarTableGear {
         if (duplicate) UiTex.draw(g, "table/wax-badge", x + s - 13, y + 3);
     }
 
-    /** A relic in a box: an IVORY placeholder with its initials (or gear/<relic> art), its role small under them. */
+    /** A relic in a box: its relic/<id> art (or an IVORY placeholder with its initials), its role small under them. */
     static void relicIcon(DrawContext g, String id, int[] b, boolean hot, boolean slotted) {
         var r = Gear.relic(id);
         int x = b[0], y = b[1], s = b[2];
         g.fill(x, y, x + s, y + s, DarkUi.TAB_IDLE);
-        String art = "gear/" + id;
+        String art = relicArt(id);
         if (UiTex.has(art)) UiTex.draw(g, art, x + (s - UiTex.entry(art).w()) / 2, y + (s - UiTex.entry(art).h()) / 2);
         else if (r != null) {
             var t = DarkUi.heading(initials(r.name()));
