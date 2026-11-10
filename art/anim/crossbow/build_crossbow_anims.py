@@ -243,8 +243,10 @@ def attack_keys():
     """The shot and the reload. The span, haul and load keys carry the stock a little out from the hips and the chest, and the
     torso folds a touch further over it, so the right forearm passes outside the body (pen_limb, scratch atkopt.py)."""
     tense = nudge(AIM, torso=(0.5, 1.0, 0.0), head=(1.0, 0.0, 0.0))
-    kick = nudge(pitched(AIM, 9.0), O=(-0.4, 1.6, -1.6), torso=(-5.0, 2.0, 0.0), head=(-4.0, 2.0, 0.0))
-    kick2 = nudge(pitched(AIM, 5.0), O=(-0.2, 0.5, -0.6), torso=(-2.0, 1.0, 0.0), head=(-1.0, 1.0, 0.0))
+    # the kick: the stock drives back into the shoulder (2.8 px) and the prod jumps, the chest rocks back and the right shoulder
+    # turns away with it (review round 1: the old 5 degree kick did not read at 16 blocks)
+    kick = nudge(pitched(AIM, 12.0), O=(-0.6, 2.2, -2.8), torso=(-9.0, 4.0, 0.0), head=(-6.0, 3.0, 0.0))
+    kick2 = nudge(pitched(AIM, 6.0), O=(-0.3, 0.9, -1.2), torso=(-4.0, 2.0, 0.0), head=(-2.0, 1.5, 0.0))
     lower = about_butt(AIM, 20.0, 10.0, torso=(-1.2, -1.3, 0.0), head=(6.0, 14.0, 6.0), shift=(-1.37, 3.27, 0.1),
                        Lw=(FORE_STOCK[0], AIM["Lw"][1] + 1.8, FORE_STOCK[2]))
     span = nudge(SPAN, O=(-1.5, 0.75, -2.6), torso=(1.9, 3.0, 0.0))
@@ -654,10 +656,10 @@ STANCE_KEYS = {
     # over the braced legs
     "brace": _onto_hips(about_butt(pitched(AIM, -6.0), -1.5, 1.8, torso=(3.8, 3.0, 0.0), head=(3.7, 10.0, 6.0),
                                    shift=(-0.88, -0.76, 0.49), Lw=(FORE_STOCK[0], 17.15, FORE_STOCK[2])), STANCE_LEGS["brace"]["hips"]),
-    # wall: the line crouched behind its front, leaning into it; the stock still at the shoulder, the prod dipped at the ground
-    # a few strides ahead
-    "wall": _onto_hips(about_butt(AIM, 16.0, 2.2, torso=(4.5, 6.0, 0.0), head=(7.2, 10.0, 6.0), shift=(-1.24, 0.57, 1.22),
-                                  Lw=(FORE_STOCK[0], 18.5, FORE_STOCK[2])), STANCE_LEGS["wall"]["hips"]),
+    # wall: the line crouched behind its front, folded over the crossbow; the stock still at the shoulder, the prod dipped 27
+    # degrees at the ground a few strides ahead (the brace levels it at the charge: 23 degrees apart, review round 1)
+    "wall": _onto_hips(about_butt(AIM, 27.42, 2.06, torso=(9.99, 3.78, 0.0), head=(9.5, 10.0, 6.0), shift=(-1.0, 0.71, 3.0),
+                                  Lw=(FORE_STOCK[0], 17.11, FORE_STOCK[2])), STANCE_LEGS["wall"]["hips"]),
     # ward: giving ground, leaning back, the crossbow raised flat across the chest as a bar, prod out to the left, top forward
     # (the chest square to the threat, not turned: turned 10 degrees the left fist sat on the left shoulder, the elbow at 107)
     "ward": KEY((-6, -5, 0), (4, 3, 0), (-4.5, 18.0, 7.5), (1.0, 0.12, 0.2), u=(0.0, 0.0, 1.0), rp=(-70, 0, 20, -60),
@@ -720,9 +722,18 @@ def stance_clips():
 # stances.py's hold legs: hips between the ready and the brace hips (0.55 of the way), sat 0.35 lower
 HOLD_HIPS = tuple(tuple(a + 0.55 * (b - a) for a, b in zip(r, q)) for r, q in zip(K.READY_HIPS, STANCE_LEGS["brace"]["hips"]))
 HOLD_HIPS = (HOLD_HIPS[0], (HOLD_HIPS[1][0], HOLD_HIPS[1][1] - 0.35, HOLD_HIPS[1][2]))
-# hold: the stock still at the shoulder and the prod up on the threat (6 degrees down, against the ready's 12), the weight low
-HOLD = _onto_hips(about_butt(AIM, 6.0, 4.0, torso=(1.5, 3.5, 0.0), head=(5.0, 8.0, 5.0), shift=(-1.2, 1.0, -0.5),
-                             Lw=(FORE_STOCK[0], 18.0, FORE_STOCK[2])), HOLD_HIPS)
+# hold: port arms, its own order (review round 1: the shouldered hold read as the ready at 16 blocks). The chest squared to the
+# front (20 degrees of yaw against the aim's 51), the butt at the right hip, the crossbow slanted up across the body, the prod 50
+# degrees up at the left shoulder, the left fist under the fore-stock before the chest: held ready, not aimed. Searched in scratch
+# holdsrch.py: pen_weapon 0.57 px, pen_limb 0.90 px, elbows 50 / 70; right arm 54, right hand 93, torso 37 degrees from the ready.
+def port_key(tx=2.0, ty=20.0, butt=(-5.5, 15.0, -5.0), elev=50.0, yaw=40.0, left_y=18.0):
+    T = K.world({"hips": HOLD_HIPS, "torso": ((tx, ty, 0.0), Z3)}, "torso")
+    d, u = aim(elev, yaw)
+    return KEY((tx, ty, 0.0), (4.0, -ty - HOLD_HIPS[0][1], 0.0), K.point(T, butt) + 7.0 * d, d, u,
+               Lw=(FORE_STOCK[0], left_y, FORE_STOCK[2]), rp=(-40, 0, 10, -60), lp=(-60, -20, 0, -50))
+
+
+HOLD = port_key()
 # aim at the troop's look pitched up (-45, the stance's up) and down (+30): the same outer-shoulder mount, re-searched per
 # pitch (scratch elevopt.py): leaning back under a high shot, folded over a low one
 AIM_UP = shoulder_key({"torso": (-18.2, 60.95, 0.0), "butt": (-6.29, 16.66, -4.0), "yaw": 0.32, "elev": 45.0, "left_y": 16.5},
@@ -788,7 +799,7 @@ def rest_upper():
 
 
 RALLY_TICKS = 20
-RALLY_HOLD_FROM = 13.0      # the last 7 ticks settle into the hold pose, so the clip ends exactly on it (stances.py's END_ON_HOLD)
+RALLY_HOLD_FROM = 16.0      # the last 4 ticks settle onto the hold clip (port arms) joint by joint, so the clip ends exactly on it (stances.py's END_ON_HOLD)
 
 
 def rally_upper(hold_clip):
@@ -802,7 +813,15 @@ def rally_upper(hold_clip):
              np.array(READY["O"]) + np.array([0.0, 4.0, -1.0]), d_up, u_up, Lw=(FORE_STOCK[0], 18.0, FORE_STOCK[2]),
              rp=READY["rp"], lp=READY["lp"])
     shake = nudge(up, O=(0.0, 0.5, 0.2), torso=(-0.8, 0.0, 0.0))
-    keys = [(0.0, READY), (5.0, up), (7.5, shake), (10.0, up), (RALLY_HOLD_FROM, up), (RALLY_TICKS, READY)]
+    # the chest turns square toward the hold's port arms through the whole clip (37 degrees: done in the last ticks alone it
+    # turned at 12 deg / 100 ms against the stance's 8), the head holding its look
+    dt = np.array(HOLD["torso"]) - np.array(READY["torso"]) + np.array([0.0, HOLD_HIPS[0][1] - K.READY_HIPS[0][1], 0.0])
+    sq = lambda k, t: nudge(k, torso=tuple(dt * t / RALLY_TICKS * (0, 1, 0)), head=tuple(-dt * t / RALLY_TICKS * (0, 1, 0)))
+    # then the crossbow is solved down into the port arms (the hold over the ready hips: the chest keeps its world turn), so the
+    # stock passes in front of the helm, not through it as a joint-angle blend took it
+    port = nudge(HOLD, torso=(0.0, HOLD_HIPS[0][1] - K.READY_HIPS[0][1], 0.0), head=(0.0, K.READY_HIPS[0][1] - HOLD_HIPS[0][1], 0.0))
+    keys = [(0.0, READY), (5.0, sq(up, 5.0)), (7.5, sq(shake, 7.5)), (10.0, sq(up, 10.0)), (11.0, sq(up, 11.0)),
+            (RALLY_HOLD_FROM, port), (RALLY_TICKS, port)]
     sol = Solver()
     legs = {"hips": K.READY_HIPS}
     out = []
