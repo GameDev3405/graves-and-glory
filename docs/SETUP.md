@@ -23,6 +23,10 @@ Release runs fast then strict package.py and verify_package.py, checking source 
 
 Every run saves result.json, exact commands/exit codes, full logs, source identity and generated-file hashes in work/verify. Failures return nonzero with a short excerpt. Preserve candidate artifacts under unique paths before rebuilding; update releases/current-candidate.json only with checks for that exact identity. Old sheets/verification.json evidence is historical unless its identity matches.
 
+## Kort's inbox
+
+One private page lists everything that waits on Kort, in priority order, about an hour a day. Each lead puts every such item on its own line in its status file (`status/<lead>.md`) in this exact form, and deletes the line once Kort answers: `- kort: <one plain sentence> | open: <https link, path or none> | min: <minutes> | prio: <1 now, 2 this week, 3 whenever>`. Missing minutes count as 5 and a missing priority as 2. A status file with no such line shows its old `questions for Kort` text as one item (marked old-style note). Booth batches without a `verdict.json` are picked up from every worktree automatically. Run `python tools/inbox.py` (options `--status-dir`, `--repo`, `--out`, `--budget 60`, `--json`); it writes `work/inbox/index.html` and prints a one-line summary. Publish/refresh: a session runs the command and republishes the file with the Artifact tool to the same URL (the URL is recorded in docs/HANDOFF.md once published).
+
 ## Graph and Claude setup
 
 The viewer uses readable code-group names from docs/graph-labels.json. Names are matched to reviewed symbol anchors, so cluster renumbering does not rename a group to an unrelated subsystem. Newly discovered groups fall back to their actual file/symbol names. tools/graph_state.py refresh applies these names and regenerates graph.html after local clustering, with no external naming model. The names describe inferred code groups, not strict gameplay architecture boundaries.
