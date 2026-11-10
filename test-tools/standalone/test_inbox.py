@@ -27,6 +27,11 @@ class Parse(unittest.TestCase):
         got = inbox.parse_kort_lines(line, 'anim-lead')
         self.assertEqual(len(got), 1, line); return got[0]
 
+    def test_huge_minutes_fall_back_and_bold_stays_in_the_ask(self):
+        i = self.one('- **kort:** Pick **one** | min: ' + '9' * 5000)
+        self.assertEqual((i['ask'], i['min']), ('Pick **one**', 5))
+        self.assertEqual(self.one('- **Kort**: x | prio: 1')['prio'], 1)
+
     def test_full_line(self):
         i = self.one('- kort: Pick a banner colour | open: https://claude.ai/artifact/abc | min: 10 | prio: 1')
         self.assertEqual((i['ask'], i['open'], i['min'], i['prio'], i['lead'], i['old_style']), ('Pick a banner colour', 'https://claude.ai/artifact/abc', 10, 1, 'anim-lead', False))
@@ -127,6 +132,24 @@ class Collect(unittest.TestCase):
         booth(self.lane, 'ic-1', clips=1, troop='ic_hearthguard')
         self.assertEqual(self.collect()[0]['ask'], "Watch Hearthguard's animations (1 clip) and approve or reject each")
 
+    def test_git_trouble_shows_the_batch(self):
+        head = git(self.repo, 'rev-parse', 'HEAD')
+        for target in ('--output=x', 'no-such-branch'):
+            self.assertFalse(inbox.already_in_target(self.repo, dict(submitted_sha=head, target=target)), target)
+        real = inbox.subprocess.run
+        def no_git(*a, **k): raise FileNotFoundError('git')
+        inbox.subprocess.run = no_git
+        try: self.assertFalse(inbox.already_in_target(self.repo, dict(submitted_sha=head, target='main')))
+        finally: inbox.subprocess.run = real
+
+    def test_same_batch_in_two_worktrees_listed_once(self):
+        booth(self.repo, 'dup-1', clips=1); booth(self.lane, 'dup-1', clips=1)
+        self.assertEqual([i['batch'] for i in self.collect()], ['dup-1'])
+
+    def test_binary_status_file_is_fine(self):
+        (self.status/'odd-lead.md').write_bytes(b'\xff\xfe\x00kort\x00: \x80\x81\n')
+        self.assertIsInstance(self.collect(), list)
+
     def test_missing_status_dir_is_fine(self):
         self.assertEqual(inbox.collect(self.repo, self.status/'nope'), [])
 
@@ -214,7 +237,7 @@ class Cli(unittest.TestCase):
         code, out = self.run_cli()
         page = self.repo/'work'/'inbox'/'index.html'
         self.assertEqual(code, 0); self.assertTrue(page.is_file())
-        self.assertIn(str(page), out); self.assertIn('2 items, 65 min; today: 1 items, 10 min', out)
+        self.assertIn(str(page), out); self.assertIn('2 items, 65 min; today: 1 item, 10 min', out)
 
     def test_explicit_out_and_empty(self):
         code, out = self.run_cli('--out', str(self.repo/'x'/'p.html'))

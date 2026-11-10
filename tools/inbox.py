@@ -33,7 +33,8 @@ def parse_kort_lines(text, lead):
     """Items from the `- kort: ask | open: x | min: n | prio: p` lines of one status file."""
     items = []
     for raw in text.splitlines():
-        m = KORT_LINE.match(raw.replace('**', ''))
+        label = re.match(r'[^:]*:(?:\*\*)?', raw)  # strip bold from the `**kort:**` / `**Kort**:` label only; the ask keeps its **
+        m = KORT_LINE.match(label.group().replace('**', '') + raw[label.end():] if label else raw)
         if not m: continue
         ask, *rest = FIELD_SPLIT.split(m.group(1).strip())
         ask = ask.strip()
@@ -42,7 +43,7 @@ def parse_kort_lines(text, lead):
         for part in rest:
             k, _, v = part.partition(':'); fields.setdefault(k.strip().lower(), v.strip())
         open_ = fields.get('open', '')
-        mins = re.match(r'\d+', fields.get('min', ''))
+        mins = re.match(r'\d{1,4}(?!\d)', fields.get('min', ''))
         prio = re.match(r'[123]\b', fields.get('prio', ''))
         items.append(make_item('question', lead, ask, None if state.is_none(open_) else open_,
                                int(mins.group()) if mins and int(mins.group()) > 0 else DEFAULT_MIN,
@@ -70,8 +71,9 @@ def status_items(status_dir):
 def already_in_target(repo, data):
     """A batch whose reviewed commit already reached its target branch (an old or test batch) no longer waits on Kort."""
     sha, target = str(data.get('submitted_sha') or ''), str(data.get('target') or '')
-    if not re.fullmatch(r'[0-9a-f]{7,40}', sha) or not re.fullmatch(r'[\w./-]+', target): return False
-    r = subprocess.run(['git', '-C', str(repo), 'merge-base', '--is-ancestor', sha, target], capture_output=True)
+    if not re.fullmatch(r'[0-9a-f]{7,40}', sha) or not re.fullmatch(r'\w[\w./-]*', target): return False
+    try: r = subprocess.run(['git', '-C', str(repo), 'merge-base', '--is-ancestor', sha, target], capture_output=True, timeout=10)
+    except (OSError, subprocess.SubprocessError): return False  # no git: show the batch rather than hide it
     return r.returncode == 0
 
 def booth_items(repo):
@@ -80,7 +82,9 @@ def booth_items(repo):
     except Exception: return items
     for tree in trees:
         if tree['prunable']: continue
-        for batch_json in sorted(pathlib.Path(tree['path']).glob('work/booth/*/db/batch.json')):
+        try: batches = sorted(pathlib.Path(tree['path']).glob('work/booth/*/db/batch.json'))
+        except OSError: continue
+        for batch_json in batches:
             try:
                 folder = batch_json.parent.parent
                 if (folder/'verdict.json').exists(): continue
@@ -116,10 +120,11 @@ def split_today(items, budget):
 def minutes(items): return sum(i['min'] for i in items)
 
 def summary(items, today, later):
-    return f'{len(items)} items, {minutes(items)} min; today: {len(today)} items, {minutes(today)} min'
+    n = lambda k: f"{k} item{'s' if k != 1 else ''}"
+    return f'{n(len(items))}, {minutes(items)} min; today: {n(len(today))}, {minutes(today)} min'
 
 CSS = """
-:root{--bg:#f6f3ee;--card:#fffdf9;--ink:#1f1b16;--muted:#6b6358;--line:#e2dccf;--accent:#7a2e22;--on-accent:#fff;--p1:#a8321f;--p2:#8a5a00;--p3:#4f6b4a}
+:root{color-scheme:light dark;--bg:#f6f3ee;--card:#fffdf9;--ink:#1f1b16;--muted:#6b6358;--line:#e2dccf;--accent:#7a2e22;--on-accent:#fff;--p1:#a8321f;--p2:#8a5a00;--p3:#4f6b4a}
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--bg:#17140f;--card:#211d17;--ink:#f2ece1;--muted:#a79d8d;--line:#352f26;--accent:#e0a58f;--on-accent:#1f1b16;--p1:#ff9a85;--p2:#e8b95a;--p3:#9fc79a}}
 :root[data-theme="dark"]{--bg:#17140f;--card:#211d17;--ink:#f2ece1;--muted:#a79d8d;--line:#352f26;--accent:#e0a58f;--on-accent:#1f1b16;--p1:#ff9a85;--p2:#e8b95a;--p3:#9fc79a}
 *{box-sizing:border-box}
