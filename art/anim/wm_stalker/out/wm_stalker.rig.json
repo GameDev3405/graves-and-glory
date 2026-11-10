@@ -1,0 +1,172 @@
+{
+ "troop": "wm_stalker",
+ "tiers": [
+  1,
+  2,
+  3
+ ],
+ "faces": 1,
+ "bones": {
+  "root": {},
+  "body": {},
+  "thorax": {},
+  "head": {},
+  "mask": {},
+  "palps": {},
+  "fangs": {
+   "stages": [
+    1
+   ]
+  },
+  "fangs_t2": {
+   "stages": [
+    2
+   ]
+  },
+  "fangs_t3": {
+   "stages": [
+    3
+   ]
+  },
+  "mandible_right": {
+   "stages": [
+    3
+   ]
+  },
+  "mandible_left": {
+   "stages": [
+    3
+   ]
+  },
+  "crest": {
+   "stages": [
+    3
+   ]
+  },
+  "abdomen": {},
+  "sacs": {},
+  "cords": {},
+  "backcloth": {
+   "team": true
+  },
+  "sacs_ii": {
+   "stages": [
+    2,
+    3
+   ]
+  },
+  "abdomen_plates": {
+   "stages": [
+    2,
+    3
+   ]
+  },
+  "cord_beads": {
+   "stages": [
+    2,
+    3
+   ]
+  },
+  "trophy": {
+   "stages": [
+    3
+   ]
+  },
+  "ridge_plates": {
+   "stages": [
+    2,
+    3
+   ]
+  },
+  "carapace": {
+   "stages": [
+    2,
+    3
+   ]
+  },
+  "left_leg_1": {},
+  "left_leg_1_low": {},
+  "left_leg_1_guard": {
+   "stages": [
+    2,
+    3
+   ]
+  },
+  "left_leg_1_spur": {
+   "stages": [
+    3
+   ]
+  },
+  "left_leg_2": {},
+  "left_leg_2_low": {},
+  "left_leg_2_guard": {
+   "stages": [
+    2,
+    3
+   ]
+  },
+  "left_leg_2_spur": {
+   "stages": [
+    3
+   ]
+  },
+  "left_leg_3": {},
+  "left_leg_3_low": {},
+  "left_leg_3_guard": {
+   "stages": [
+    2,
+    3
+   ]
+  },
+  "left_leg_4": {},
+  "left_leg_4_low": {},
+  "left_leg_4_guard": {
+   "stages": [
+    2,
+    3
+   ]
+  },
+  "right_leg_1": {},
+  "right_leg_1_low": {},
+  "right_leg_1_guard": {
+   "stages": [
+    2,
+    3
+   ]
+  },
+  "right_leg_1_spur": {
+   "stages": [
+    3
+   ]
+  },
+  "right_leg_2": {},
+  "right_leg_2_low": {},
+  "right_leg_2_guard": {
+   "stages": [
+    2,
+    3
+   ]
+  },
+  "right_leg_2_spur": {
+   "stages": [
+    3
+   ]
+  },
+  "right_leg_3": {},
+  "right_leg_3_low": {},
+  "right_leg_3_guard": {
+   "stages": [
+    2,
+    3
+   ]
+  },
+  "right_leg_4": {},
+  "right_leg_4_low": {},
+  "right_leg_4_guard": {
+   "stages": [
+    2,
+    3
+   ]
+  }
+ }
+}

@@ -19,7 +19,7 @@ final class GeoTroops {
      *  keeps the old model and clips until its batch is approved; then it moves from PREVIEW to here. */
     static final Set<String> APPROVED = Set.of("knight", "sentinel", "gl_marshal", "ic_hearthguard", "revenant");
     /** Rebuilt troops not yet approved: drawn through GeckoLib only with -Dgravesandglory.geoTroops=all (lane testing). */
-    static final Set<String> PREVIEW = Set.of("tc_raider", "archer", "longbow", "wm_hunter", "bonebow", "stalker", "ic_arbalist", "wm_tusk", "tc_tideguard", "tc_admiral", "ic_breaker", "tc_harpooner", "mage", "hexer", "tc_mist", "wm_seer", "wm_hound", "gb_hollowking");
+    static final Set<String> PREVIEW = Set.of("tc_raider", "archer", "longbow", "wm_hunter", "bonebow", "stalker", "ic_arbalist", "wm_tusk", "tc_tideguard", "tc_admiral", "ic_breaker", "tc_harpooner", "mage", "hexer", "tc_mist", "wm_seer", "wm_hound", "gb_hollowking", "wm_stalker");
 
     /** Whether the troop draws through GeckoLib on this JVM's settings. */
     static boolean drawn(String troop) { return drawn(troop, ENABLED, ALL); }
