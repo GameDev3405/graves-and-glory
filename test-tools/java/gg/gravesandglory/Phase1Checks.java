@@ -1484,7 +1484,7 @@ public final class Phase1Checks implements ClientModInitializer {
         boolean finished,keepLesson,sealsOk,smallOk=true,abilityOk,edgeOk;String sealsWhy="",smallWhy="",abilityWhy="",edgeWhy="";List<BattleHud.CardDraw> two=List.of();
         // p1-ui-chat-lift (controller addition A, client thread): the chat above the left column in battle, in place in camp; the
         // chat text size p1-ui-chat-edge changed, to put back (-1: unchanged)
-        int campLift=-1;boolean chatOk=true,goldOk=true;int goldSeen=0;String chatWhy="",goldWhy="";double chatScale=-1;
+        int campLift=-1,traitSeen,traitChips;boolean traitOk=true;String traitWhy="";boolean chatOk=true,goldOk=true;int goldSeen=0;String chatWhy="",goldWhy="";double chatScale=-1;
         // the window sweep (UI Tasks 8a and 8c, client thread): the HUD size (HudSize), the pass (0 A, 1 B, 2 C, 3 D), ticks the
         // pass's state has held; the frames p1-ui-small-window and p1-ui-hud-layout measured, p1-ui-hud-scale's windows, the
         // footprint's five, and the chat's lines frame by frame
@@ -1777,6 +1777,7 @@ public final class Phase1Checks implements ClientModInitializer {
                     report("p1-ui-hud-layout",layoutOk&&layoutSeen==frames,"in "+layoutSeen+" frames (wanted "+frames+") the plates as BattleHud drew them against UiMath.hudLayout for the state the pass set, one layout for the draw and the fit (the Task 8a review's Minor 3): "+(layoutWhy.isEmpty()?"every one equal":layoutWhy));
                     report("p1-ui-hud-gold",goldOk&&goldSeen==frames,"the gold readout in "+goldSeen+" frames (wanted "+frames+"): drawn as \"n gold\", on the canvas, apart from the cards, the hint slip and the chat"+(goldWhy.isEmpty()?"":"; "+goldWhy));
                     report("p1-ui-chat-lift",chatOk&&campLift==0,"in camp the chat moved "+campLift+" GUI px; closed/open lines frame by frame: "+chatLines+(chatWhy.isEmpty()?"":"; "+chatWhy));
+                    report("p1-ui-hud-traits",traitOk&&traitSeen==frames&&traitChips>0,"the House trait chips (not in the hint layer) in "+traitSeen+" frames (wanted "+frames+"), at most "+traitChips+" at once (wanted at least 1): each with its tier numeral, on the canvas, apart from the cards, gold, hint slip, feed, lesson and chat"+(traitWhy.isEmpty()?"":"; "+traitWhy));
                     report("p1-ui-hud-scale",scaleOk&&scaleSeen==3*WINDOWS.length,"the battle HUD at each size (UI Task 8c: Compact at the kit scale on every window, Standard and Large a step up where the whole HUD fits beside vanilla's bars): "+scaleWhy+(scaleSeen==3*WINDOWS.length?"":"; only "+scaleSeen+" of "+3*WINDOWS.length+" windows measured")+(Arrays.stream(WINDOWS).allMatch(v->v[6]==v[5])?"; Large draws as Standard at every one of these windows (no step further fits them)":""));
                     report("p1-ui-hud-footprint",footOk&&footSeen==5,"the HUD's plates (cards and chips, the key strip, the feed leaf, the hint slip, the lesson note, the respawn card) as a share of the screen in the default battle state (three groups, the army selected, the hint layer down, a feed line, no lesson, the commander up: pass C at Compact), against the HUD before this task ("+BASELINE_AREA+" canvas px at Task 8a's scale, run ui-8c-base-211317), at most half of it and the centre band clear at the brief's five windows: "+footWhy+(footSeen==5?"":"; only "+footSeen+" of the five measured"));
                     window(c,960,540,1);
@@ -1924,13 +1925,24 @@ public final class Phase1Checks implements ClientModInitializer {
             List<String> onBars=new ArrayList<>();if(chat!=null)for(var e:bars.entrySet())if(!e.getKey().equals("the crosshair")&&meets(chat,e.getValue()))onBars.add(e.getKey()); // UI Task 8c
             boolean clear=dr!=null&&!meets(dr,cross);
             // p1-ui-hud-gold: the gold readout is drawn with its text, on the screen, and meets neither the cards, the hint slip nor the chat
-            {int[] gb=r.get("gold");String gt=BattleHud.texts().get("gold");List<String> why=new ArrayList<>();
-                if(gb==null)why.add("no gold rect");else{
+            {int[] gb=r.get("gold");String gt=BattleHud.texts().get("gold");List<String> why=new ArrayList<>();boolean layer=r.containsKey("hints"); // the hint layer hides the readout (UiMath.hudLayout)
+                if(layer){if(gb!=null)why.add("drawn in the hint layer");gt="0 gold";}
+                else if(gb==null)why.add("no gold rect");else{
                     if(gb[0]<0||gb[1]<0||gb[0]+gb[2]>cw||gb[1]+gb[3]>ch)why.add("off the "+cw+"x"+ch+" canvas at "+box(gb));
                     for(var e:r.entrySet())if((e.getKey().startsWith("card-")||e.getKey().equals("hints"))&&meets(gb,e.getValue()))why.add("meets "+e.getKey()+" "+box(e.getValue()));
                     if(chat!=null&&meets(gb,chat))why.add("meets the chat "+box(chat));}
                 if(gt==null||!gt.matches("[0-9]+ gold"))why.add("text \""+gt+"\" (wanted \"<n> gold\")");
                 goldOk&=why.isEmpty();goldSeen++;if(!why.isEmpty())goldWhy+=(goldWhy.isEmpty()?"":"; ")+at+": "+String.join(", ",why);}
+            // p1-ui-hud-traits: a chip for each House the client has a tier in, drawn with its numeral, on the canvas, apart from the cards, the gold readout, the hint slip and the chat
+            {List<String> why=new ArrayList<>();boolean layer=r.containsKey("hints");var ids=layer?List.<String>of():BattleHud.houseIds(); // the hint layer hides the chips (UiMath.hudLayout)
+                if(layer)for(var e:r.keySet())if(e.startsWith("trait-"))why.add(e+" drawn in the hint layer");
+                for(String id:ids){int[] cb=r.get("trait-"+id);String ct=BattleHud.texts().get("trait-"+id);
+                    if(cb==null){why.add(id+" has no chip");continue;}
+                    if(ct==null||!ct.equals(MatchStats.roman(GravesAndGloryClient.houses.get(id))))why.add(id+" numeral \""+ct+"\"");
+                    if(cb[0]<0||cb[1]<0||cb[0]+cb[2]>cw||cb[1]+cb[3]>ch)why.add(id+" off the canvas at "+box(cb));
+                    for(var e:r.entrySet()){String k=e.getKey();if(!k.equals("trait-"+id)&&(k.startsWith("card-")||k.equals("hints")||k.equals("gold")||k.equals("feed")||k.equals("lesson")||k.equals("respawn")||k.startsWith("trait-"))&&meets(cb,e.getValue()))why.add(id+" meets "+k+" "+box(e.getValue()));}
+                    if(chat!=null&&meets(cb,chat))why.add(id+" meets the chat "+box(chat));}
+                traitOk&=why.isEmpty();traitSeen++;traitChips=Math.max(traitChips,ids.size());if(!why.isEmpty())traitWhy+=(traitWhy.isEmpty()?"":"; ")+at+": "+String.join(", ",why);}
             boolean apart=chat!=null&&dr[1]>=0&&top!=UiMath.NO_COLUMN&&chat[1]+chat[3]<=top&&ChatPlacement.drawnLines==shown&&(want<0?shown>=1:shown==want)&&clear&&hit.isEmpty()&&onBars.isEmpty();chatOk&=apart;
             chatLines.append(chatLines.length()==0?"":", ").append(s[0]).append("x").append(s[1]).append(" GUI ").append(s[2]).append(" ").append(HudSize.NAMES[size]).append(" ").append("ABCD".charAt(pass)).append(" ").append(shown).append(want<0||shown==want?"":" (want "+want+")");
             if(!apart)chatWhy+=(chatWhy.isEmpty()?"":"; ")+at+" closed: chat scale "+hud.getChatScale()+", lifted "+ChatPlacement.lift(sh)+" GUI px, "+ChatPlacement.drawnLines+" lines drawn at canvas "+box(chat)+" (GUI "+box(dr)+"), the column's top at "+top+", the crosshair at GUI "+box(cross)+(clear?" clear":" COVERED")+(hit.isEmpty()?", apart from every element of the HUD":", meeting "+hit)+(onBars.isEmpty()?", off vanilla's bars":", on "+onBars)+"; it shows "+shown+" lines"+(want<0?"":" (wanted "+want+")")+", WRONG";
@@ -1975,7 +1987,7 @@ public final class Phase1Checks implements ClientModInitializer {
             List<String> fielded=new ArrayList<>();for(String id:Morale.GROUPS){var g=group(id);if(g!=null&&g.full()>0)fielded.add(id);}
             int lines=0;var font=c.textRenderer;
             if(pass<2){int indent=font.getWidth(DarkUi.small(BattleHud.lessonTag(lessonStep)))+UiMath.LESSON_TAG_GAP;lines=UiMath.lessonLines(GravesAndGloryClient.lessonText(lessonStep),indent,UiMath.LESSON_TEXT_W,v->font.getWidth(DarkUi.small(v))).size();}
-            return new UiMath.HudState(GravesAndGloryClient.owners.length,fielded,CommandMode.selected,pass==1||pass==3,lines,pass==0,true);
+            return new UiMath.HudState(GravesAndGloryClient.owners.length,fielded,CommandMode.selected,pass==1||pass==3,lines,pass==0,true,BattleHud.houseIds());
         }
         /** p1-ui-hud-size-setting (UI Task 8c, item 2): the Visuals and sound screen's Battle HUD button names the size and cycles
          *  Compact, Standard, Large and back to Compact; each press saves gravesandglory/hud.json at once, a launch reads the same back
@@ -3364,10 +3376,24 @@ public final class Phase1Checks implements ClientModInitializer {
         /** layout(c,name) for the scales: its line, clearing scalesOk (not ok) when wrong. */
         String scaled(MinecraftClient c,String name){boolean was=ok;ok=true;String line=layout(c,name);scalesOk&=ok;ok=was;return line;}
         /** 1280x720 GUI 3: the page centred on a canvas of 1280x720 (origin 160,90), the table's planks covering it, and layout's rules. */
+        /** The Banner page's House trait rows (Houses of the banner shown, T3): each House with slots has its row drawn with a progress text, on the canvas, apart from the sheet, the roll, the role plaques and every widget; at least one House is at a threshold. */
+        List<String> traitFaults(MinecraftClient c){
+            List<String> bad=new ArrayList<>();int w=UiCanvas.width(),h=UiCanvas.height();var rows=WarTablePages.traitRows();var b=boxes(c);var all=WarTablePages.rects();
+            if(rows.isEmpty())bad.add("no House has a slot in the banner");
+            if(rows.stream().noneMatch(r->r.tier()>0))bad.add("no House is at a threshold, so the rows show no trait");
+            for(var r:rows){String id=r.house().id();int[] box=rect("trait-"+id);String t=text("trait-"+id);
+                if(box==null||t==null){bad.add(id+" row not drawn (shown only for the Houses that fit)");continue;}
+                if(!t.matches("[0-9]+ (/ [0-9]+|slots)"))bad.add(id+" progress \""+t+"\"");
+                if(!UiHomeChecks.inside(box,w,h))bad.add(id+" "+str(box)+" off the "+w+"x"+h+" canvas");
+                for(var e:all.entrySet()){String k=e.getKey();if((k.equals("sheet")||k.equals("roll")||k.equals("mark")||k.startsWith("role-")||k.startsWith("trait-")&&!k.equals("trait-"+id))&&UiHomeChecks.overlap(box,e.getValue()))bad.add(id+" meets "+k+" "+str(e.getValue()));}
+                for(var e:b.entrySet())if(UiHomeChecks.overlap(box,e.getValue()))bad.add(id+" meets widget "+e.getKey()+" "+str(e.getValue()));}
+            return bad;
+        }
+        String traits(MinecraftClient c,String name){if(!name.equals("banner"))return "";var f=traitFaults(c);scalesOk&=f.isEmpty();return "; House trait rows "+WarTablePages.traitRows().size()+" (detail level "+text("trait-level")+")"+(f.isEmpty()?" drawn, on the canvas and apart":" WRONG: "+f);}
         String mid(MinecraftClient c,String name){
             int[] o=WarTable.origin(),t=rect("table");int w=UiCanvas.width(),h=UiCanvas.height();
             boolean placed=pages(c)!=null&&w==1280&&h==720&&UiCanvas.k()==1&&o[0]==160&&o[1]==90&&t!=null&&t[0]<=0&&t[1]<=0&&t[0]+t[2]>=w&&t[1]+t[3]>=h;scalesOk&=placed;
-            return "origin "+o[0]+","+o[1]+", table "+str(t)+(placed?"":" WRONG")+", "+scaled(c,name);
+            return "origin "+o[0]+","+o[1]+", table "+str(t)+(placed?"":" WRONG")+", "+scaled(c,name)+traits(c,name);
         }
         /** 854x480 GUI 2, the first-launch window: the compact page (UI Task 8b-2; Kort, 2026-10-22: everything must fit, every page,
          *  no noted crop). Every widget inside the canvas, none overlapping, and every box the page drew and every widget 12 px inside,
@@ -3380,7 +3406,7 @@ public final class Phase1Checks implements ClientModInitializer {
             int[] title=rect("title"),back=b.get("back");String table=WarTable.drawnTable();
             boolean pass=pages(c)!=null&&WarTable.compact()&&w==854&&h==480&&UiCanvas.k()==1&&b.size()>=5&&out.isEmpty()&&over.isEmpty()&&bad.isEmpty()
                 &&Arrays.equals(back,new int[]{12,12,120,28})&&table.equals("table/oak-table-"+name);scalesOk&=pass;
-            return "canvas "+w+"x"+h+" (k "+UiCanvas.k()+", compact "+WarTable.compact()+"), "+b.size()+" widgets, outside the canvas "+out+", overlapping "+over+", not fitting "+bad+", back "+str(back)+", the title "+(title==null?"none (the chapter block)":str(title))+", the oak "+table+(pass?"":" WRONG");
+            return "canvas "+w+"x"+h+" (k "+UiCanvas.k()+", compact "+WarTable.compact()+"), "+b.size()+" widgets, outside the canvas "+out+", overlapping "+over+", not fitting "+bad+", back "+str(back)+", the title "+(title==null?"none (the chapter block)":str(title))+", the oak "+table+(pass?"":" WRONG")+traits(c,name);
         }
         /** 1920x974 GUI 1, a maximized window on a 1080p screen: the page stays centred on the big-canvas oak (UI Task 8b-2), which
          *  runs to every edge with no floor (read from the framebuffer as home's check reads it), the rail runs the width, and
@@ -3391,7 +3417,7 @@ public final class Phase1Checks implements ClientModInitializer {
             boolean placed=pages(c)!=null&&cw==1920&&ch==974&&k==1&&o[0]==480&&o[1]==217&&Arrays.equals(t,new int[]{tx,ty,WarTable.TABLE_W,WarTable.TABLE_H})&&rect("floor")==null&&rail!=null&&rail[2]==cw;
             var floor=UiHomeChecks.oakToEdges(c);
             scalesOk&=placed&&floor.isEmpty();
-            return "origin "+o[0]+","+o[1]+", table "+str(t)+", rail "+str(rail)+(placed?"":" WRONG")+"; the edges "+(floor.isEmpty()?"oak all round, no floor":"not oak at "+floor+" WRONG")+"; "+scaled(c,name);
+            return "origin "+o[0]+","+o[1]+", table "+str(t)+", rail "+str(rail)+(placed?"":" WRONG")+"; the edges "+(floor.isEmpty()?"oak all round, no floor":"not oak at "+floor+" WRONG")+"; "+scaled(c,name)+traits(c,name);
         }
 
         public void step(MinecraftClient c,int tick){
@@ -3532,6 +3558,7 @@ public final class Phase1Checks implements ClientModInitializer {
                     int[] hr=rect("roll-hint");int last=o[1]+WarTablePages.ROW_TOP+WarTablePages.ROW_H*(WarTablePages.ROWS-1);
                     boolean foot=roll.size()>=WarTablePages.ROWS||WarTablePages.ROLL_HINT.equals(text("roll-hint"))&&in(hr,rect("roll"))&&hr[1]>=last&&hr[1]+hr[3]<=last+WarTablePages.ROW_H;
                     ok&=foot;why+="; the hint \""+text("roll-hint")+"\" at "+str(hr)+(foot?" in the roll's last place":" WRONG (the last place "+last+" to "+(last+WarTablePages.ROW_H)+", the roll "+str(rect("roll"))+")");
+                    var tf=traitFaults(c);ok&=tf.isEmpty();why+="; House trait rows "+WarTablePages.traitRows().size()+(tf.isEmpty()?" drawn, on the page and apart":" WRONG: "+tf);
                     click(c,box(c,"row-1"));next(tick);}
                 // a step that reads the page as a frame drew it (its words, marks and art) waits for the frame: on a busy machine the client
                 // can run more than one tick before it draws, so the snapshot can land with the last frame still showing the old state.

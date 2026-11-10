@@ -586,6 +586,8 @@ public final class UiMath {
     /** The gold readout: a chip-sized plate (CARD_W x GOLD_H) GOLD_GAP px above the column's top (the hint slip while it shows, else
      *  the spine's top). */
     public static final int GOLD_H = 18, GOLD_GAP = 8;
+    /** The House trait chips: one chip (glyph and tier numeral) per House at tier I or higher, on the gold readout's row, TRAIT_GAP px right of it. */
+    public static final int TRAIT_W = 38, TRAIT_H = 18, TRAIT_GAP = 4, TRAIT_STEP = 40;
 
     /** Round gold a squad earns per income tick, as the server pays it (BattleMode.income): passive gold plus held points' gold
      *  under the objective cap, each scaled by the mode's row. */
@@ -700,7 +702,10 @@ public final class UiMath {
      *  (infantry, ranged, support), the selection ("all" for the whole army, else a group's id; anything else selects none), the
      *  hint layer up (the hint slip), the lesson's lines (0 for none: no tutorial, or an order being aimed), the commander down (the
      *  respawn card) and a feed line alive (the feed leaf). */
-    public record HudState(int points, List<String> groups, String selected, boolean hints, int lessonLines, boolean respawn, boolean feed) {}
+    public record HudState(int points, List<String> groups, String selected, boolean hints, int lessonLines, boolean respawn, boolean feed, List<String> houses) {
+        /** The state with no House trait chips. */
+        public HudState(int points, List<String> groups, String selected, boolean hints, int lessonLines, boolean respawn, boolean feed) { this(points, groups, selected, hints, lessonLines, respawn, feed, List.of()); }
+    }
 
     /** The default battle state the footprint budget is measured in (UI Task 8c): three points, the three groups fielded, the whole
      *  army selected (as a round starts), the hint layer down, a feed line alive, no lesson, the commander up. */
@@ -729,7 +734,14 @@ public final class UiMath {
         if (n > 0) r.put("spine", new int[]{COLUMN_LEFT, first - 4, 9, bottom - first + 8});
         for (int i = 0; i < n; i++) r.put("card-" + gs.get(i), new int[]{CARD_X, tops[i], CARD_W, heights[i]});
         if (s.hints()) r.put("hints", new int[]{CARD_X, first - HINTS_ABOVE, HINTS_W, HINTS_H});
-        r.put("gold", new int[]{CARD_X, (s.hints() ? first - HINTS_ABOVE : first - 4) - GOLD_GAP - GOLD_H, CARD_W, GOLD_H});
+        // The gold readout hangs above the spine's top with the House chips on its row, right of it. The hint layer (the slip up) shows neither:
+        // a plate above the slip lifts the column and pushes the open chat off the screen at 1080p GUI 4, and no spot beside the slip clears
+        // the crosshair, the respawn card and vanilla's bars at every window, so the layer keeps the column as it was before them.
+        if (!s.hints()) {
+            int goldY = first - 4 - GOLD_GAP - GOLD_H;
+            r.put("gold", new int[]{CARD_X, goldY, CARD_W, GOLD_H});
+            for (int i = 0; i < s.houses().size(); i++) r.put("trait-" + s.houses().get(i), new int[]{CARD_X + CARD_W + TRAIT_GAP + TRAIT_STEP * i, goldY, TRAIT_W, TRAIT_H});
+        }
         int[] respawn = s.respawn() ? new int[]{cx - 100, respawnY(h, crosshairTop(sh, g, kk)), 200, 28} : null;
         if (s.lessonLines() > 0) {
             int[] lesson = {LESSON_X, LESSON_Y, LESSON_W, lessonHeight(s.lessonLines())};
@@ -834,7 +846,7 @@ public final class UiMath {
         int top = NO_COLUMN;
         for (var e : r.entrySet()) {
             String k = e.getKey();
-            if (k.equals("spine") || k.equals("hints") || k.equals("gold") || k.startsWith("card-")) top = top == NO_COLUMN ? e.getValue()[1] : Math.min(top, e.getValue()[1]);
+            if (k.equals("spine") || k.equals("hints") || k.equals("gold") || k.startsWith("trait-") || k.startsWith("card-")) top = top == NO_COLUMN ? e.getValue()[1] : Math.min(top, e.getValue()[1]);
         }
         return top;
     }

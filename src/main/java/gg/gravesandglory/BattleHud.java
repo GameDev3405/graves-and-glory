@@ -115,7 +115,7 @@ public final class BattleHud {
      *  next join): the last battle's records go with it, since no HUD frame runs without a world to clear them, and ChatPlacement
      *  reads rects() before the next world's first frame. That is what the frame drew, the lesson wrap and the lines drawn from it,
      *  and the hint layer's round clock. */
-    static void reset(){goldSeen=-1;gainAmount=0;clear();wrappedCopy=null;wrappedTag=null;wrappedLines=List.of();wrappedJoined="";roundShownMs=0;GravesAndGloryClient.lessonDrawn=List.of();}
+    static void reset(){goldSeen=-1;tiersSeen=null;gainAmount=0;clear();wrappedCopy=null;wrappedTag=null;wrappedLines=List.of();wrappedJoined="";roundShownMs=0;GravesAndGloryClient.lessonDrawn=List.of();}
     /** The lesson copy the cached wrap was made for; null after a reset or a resource reload. */
     static String wrappedFor(){return wrappedCopy;}
 
@@ -139,6 +139,7 @@ public final class BattleHud {
                 seals(g,font,at,rectsDrawn,sealsDrawn,textsDrawn);
                 column(g,font,s,at,rectsDrawn,cardsDrawn,textsDrawn);
                 gold(g,font,at,now,rectsDrawn,textsDrawn);
+                houses(g,font,at,now,rectsDrawn,textsDrawn);
                 lesson(g,font,at,rectsDrawn,textsDrawn);
                 respawn(g,font,at,rectsDrawn,textsDrawn);
                 feed(g,font,size,now,at,rectsDrawn,textsDrawn);
@@ -160,7 +161,37 @@ public final class BattleHud {
         List<String> fielded=new ArrayList<>();
         for(String id:Morale.GROUPS){var grp=group(id);if(grp!=null&&grp.full()>0)fielded.add(id);}
         int step=CampaignClient.tutorial,lines=step<0||step>3||CommandMode.active()?0:lesson(font,step).size();
-        return new UiMath.HudState(GravesAndGloryClient.owners.length,List.copyOf(fielded),CommandMode.selected,altLayer(),lines,GravesAndGloryClient.respawn>0,!EventFeed.lines(now).isEmpty());
+        return new UiMath.HudState(GravesAndGloryClient.owners.length,List.copyOf(fielded),CommandMode.selected,altLayer(),lines,GravesAndGloryClient.respawn>0,!EventFeed.lines(now).isEmpty(),houseIds());
+    }
+
+    /** The Houses the client's army has a trait tier in (GravesAndGloryClient.houses, from the state packet), in House order. */
+    static List<String> houseIds(){
+        List<String> out=new ArrayList<>();
+        for(var h:Spec.HOUSES)if(GravesAndGloryClient.houses.getOrDefault(h.id(),0)>0)out.add(h.id());
+        return out;
+    }
+
+    /** The tiers of the last frame, null until the first frame of a battle: a change after it is one line on the feed. */
+    private static Map<String,Integer> tiersSeen;
+
+    /** The House trait chips, one per House at tier I or higher: its glyph and the tier in Roman numerals, in the accent's text ink on a dark plate.
+     *  A tier that moves between frames (troops fell, or the army grew) pushes one notice line to the feed. */
+    static void houses(DrawContext g,TextRenderer font,Map<String,int[]> at,long now,Map<String,int[]> r,Map<String,String> tx){
+        var tiers=GravesAndGloryClient.houses;
+        if(tiersSeen!=null)for(var h:Spec.HOUSES){
+            int was=tiersSeen.getOrDefault(h.id(),0),is=tiers.getOrDefault(h.id(),0);
+            if(was!=is)EventFeed.push("notice",GravesAndGloryClient.team,is==0?RosterMath.houseName(h.id())+" trait lost":RosterMath.houseName(h.id())+" trait "+(is<was?"fell":"rose")+" to tier "+MatchStats.roman(is),now);
+        }
+        if(tiersSeen!=null||!tiers.isEmpty())tiersSeen=new HashMap<>(tiers); // the baseline is the first tiers the battle shows, so those are not announced
+        for(String id:houseIds()){
+            int[] box=at.get("trait-"+id);if(box==null)continue;
+            Spec.HousesRow row=null;for(var h:Spec.HOUSES)if(h.id().equals(id))row=h;if(row==null)continue;
+            int tier=tiers.get(id);String numeral=MatchStats.roman(tier);
+            g.fill(box[0],box[1],box[0]+box[2],box[1]+box[3],DarkUi.OAK0);g.fill(box[0]+1,box[1]+1,box[0]+box[2]-1,box[1]+box[3]-1,DarkUi.TRACK);
+            g.drawTexture(new Identifier(row.glyph()),box[0]+2,box[1]+1,0f,0f,16,16,16,16);
+            g.drawText(font,numeral,box[0]+21,box[1]+5,UiMath.accentText(row.accent()),true);
+            r.put("trait-"+id,box);tx.put("trait-"+id,numeral);
+        }
     }
 
     /** The group's last record from the server, or null. */
@@ -276,7 +307,7 @@ public final class BattleHud {
         long age=now-gainMs;
         if(gainAmount>0&&age<GAIN_MS){
             int a=Math.round(255*(1-age/(float)GAIN_MS));
-            if(a>=8){String gain="+"+gainAmount;g.drawText(font,gain,x+box[2]+6,y+5,(a<<24)|(DarkUi.BRASS_HI&0xffffff),true);tx.put("gold-gain",gain);}
+            if(a>=8){String gain="+"+gainAmount;g.drawText(font,gain,x+10+font.getWidth(main)+8,y+5,(a<<24)|(DarkUi.BRASS_HI&0xffffff),true);tx.put("gold-gain",gain);}
         }
     }
 

@@ -1171,7 +1171,109 @@ final class WarTablePages {
         int step = shown.size() <= 4 ? CLASS_STEP : CLASS_STEP * 4 / shown.size(); // a fifth plaque packs the column into the four's height
         for (int i = 0; i < shown.size(); i++) paintRole(g, shown.get(i), mine, x, oy + CLASS_Y + step * i);
         int top = oy + CLASS_Y + CLASS_STEP * 4 + 8;
-        textsDrawn.put("bonus", String.join(" ", lines(g, "Wear two or four pieces of one set to unlock its bonuses. Gear and relics are changed in the Arsenal.", x, top, BONUS_W, 4, DarkUi.MUTED)));
+        var bonus = lines(g, "Wear two or four pieces of one set to unlock its bonuses. Gear and relics are changed in the Arsenal.", x, top, BONUS_W, 4, DarkUi.MUTED);
+        textsDrawn.put("bonus", String.join(" ", bonus));
+        int limit = rectsDrawn.containsKey("sheet") ? rectsDrawn.get("sheet")[1] + rectsDrawn.get("sheet")[3] - 10 : top + 200;
+        if (WarTable.compact()) limit = Math.min(limit, WarTable.compactOrigin()[1] + C_BANNER_NOTICE_Y - 4); // the notice stands under the bonus on the compact page
+        traits(g, x, top + 13 * bonus.size() + 8, limit);
+    }
+
+    /** One House of the banner for the trait rows: the House, the slots the banner fields of it, its thresholds and the tier they reach. */
+    record TraitRow(Spec.HousesRow house, int slots, int[] thresholds, int tier) {}
+    static final int TRAIT_HEAD = 14, TRAIT_NAME = 13, TRAIT_PIPS = 11, TRAIT_LINE = 11, TRAIT_GAP = 6;
+
+    /** The Houses the banner shown fields at least one slot of, the most slots first (House order among equals); a House with none is left out. */
+    static List<TraitRow> traitRows() {
+        var slots = RosterMath.houseSlots(shownLine(), RosterMath.Catalog.fromSpec());
+        List<TraitRow> out = new ArrayList<>();
+        for (var h : Spec.HOUSES) {
+            int n = slots.getOrDefault(h.id(), 0);
+            int[] thr = Houses.thresholds(h.id());
+            if (n > 0 && thr.length > 0) out.add(new TraitRow(h, n, thr, RosterMath.traitTier(n, thr)));
+        }
+        out.sort((a, b) -> Integer.compare(b.slots(), a.slots()));
+        return out;
+    }
+
+    /** The text of a House's trait at a tier, "" for none. */
+    static String traitText(String house, int tier) {
+        var t = CounterMath.trait(Spec.HOUSETRAITS, house, tier);
+        return t == null ? "" : t.text();
+    }
+
+    private List<String> traitLines(String s, int w) {
+        var font = font();
+        return s.isEmpty() ? List.of() : UiMath.lines(s, w, 8, t -> font.getWidth(DarkUi.small(t)));
+    }
+
+    /** What a row's detail says at a level: 2 the tier reached and the next tier greyed, 1 the tier reached only, 0 nothing. */
+    private List<String> traitCurrent(TraitRow r, int w) {
+        return traitLines(r.tier() > 0 ? traitText(r.house().id(), r.tier()) : "No trait yet.", w);
+    }
+
+    private int traitHeight(TraitRow r, int level, int w) {
+        int h = TRAIT_NAME + TRAIT_PIPS;
+        if (level >= 1) h += 2 + TRAIT_LINE * traitCurrent(r, w).size();
+        if (level >= 2 && r.tier() < 3) h += 2 + TRAIT_LINE * traitLines(traitText(r.house().id(), r.tier() + 1), w).size();
+        return h;
+    }
+
+    /** The House trait rows under the roles' note, from top down to bottom: per House its name and tier, the slots fielded against the next
+     *  threshold, three pips for the thresholds, the trait text of the tier reached and, greyed, the next tier's. The most detail that fits
+     *  every row is drawn; at the least a row is its name, progress and pips, and a row that does not fit is left out. */
+    void traits(DrawContext g, int x, int top, int bottom) {
+        var rows = traitRows();
+        if (rows.isEmpty()) return;
+        var font = font();
+        int w = BONUS_W - 4, y0 = top + TRAIT_HEAD, level = 2, count = rows.size();
+        for (; level >= 0; level--) {
+            int sum = 0;
+            for (var r : rows) sum += traitHeight(r, level, w) + TRAIT_GAP;
+            if (y0 + sum - TRAIT_GAP <= bottom) break;
+        }
+        if (level < 0) { // not even the bare rows fit: keep those that do
+            level = 0; int sum = 0; count = 0;
+            for (var r : rows) { sum += traitHeight(r, 0, w) + TRAIT_GAP; if (y0 + sum - TRAIT_GAP > bottom) break; count++; }
+            if (count == 0) return;
+        }
+        g.drawText(font, DarkUi.heading("House traits"), x, top, DarkUi.BRASS, false);
+        int y = y0;
+        for (int i = 0; i < count; i++) {
+            var r = rows.get(i);
+            String id = r.house().id();
+            int accent = UiMath.accentText(r.house().accent()), top0 = y;
+            g.drawTexture(new Identifier(r.house().glyph()), x, y, 12, 12, 0f, 0f, 16, 16, 16, 16);
+            String name = RosterMath.houseName(id) + (r.tier() > 0 ? " " + MatchStats.roman(r.tier()) : "");
+            g.drawText(font, DarkUi.heading(name), x + 16, y + 1, r.tier() > 0 ? accent : DarkUi.MUTED, false);
+            String progress = r.tier() >= 3 ? r.slots() + " slots" : r.slots() + " / " + r.thresholds()[r.tier()];
+            int pw = font.getWidth(DarkUi.small(progress));
+            g.drawText(font, DarkUi.small(progress), x + w - pw, y + 1, DarkUi.IVORY, false);
+            y += TRAIT_NAME;
+            int px = x + 16;
+            for (int t = 0; t < r.thresholds().length; t++) {
+                boolean met = r.slots() >= r.thresholds()[t];
+                if (met) g.fill(px, y + 1, px + 8, y + 9, DarkUi.opaque(r.house().accent()));
+                g.drawBorder(px, y + 1, 8, 8, met ? DarkUi.BRASS_HI : DarkUi.MUTED);
+                String n = Integer.toString(r.thresholds()[t]);
+                g.drawText(font, DarkUi.small(n), px + 11, y, met ? DarkUi.IVORY : DarkUi.MUTED, false);
+                px += 11 + font.getWidth(DarkUi.small(n)) + 8;
+            }
+            y += TRAIT_PIPS;
+            if (level >= 1) {
+                y += 2;
+                var cur = traitCurrent(r, w);
+                for (var line : cur) { g.drawText(font, DarkUi.small(line), x, y, DarkUi.IVORY, false); y += TRAIT_LINE; }
+                textsDrawn.put("trait-text-" + id, String.join(" ", cur));
+            }
+            if (level >= 2 && r.tier() < 3) {
+                y += 2;
+                for (var line : traitLines(traitText(id, r.tier() + 1), w)) { g.drawText(font, DarkUi.small(line), x, y, DarkUi.MUTED, false); y += TRAIT_LINE; }
+            }
+            rectsDrawn.put("trait-" + id, new int[]{x, top0, w, y - top0});
+            textsDrawn.put("trait-" + id, progress);
+            y += TRAIT_GAP;
+        }
+        textsDrawn.put("trait-level", Integer.toString(level));
     }
 
     /** The role plaques: the four starter roles, and the commander's own role under them when it is a House set (the column holds five, not nine). */
