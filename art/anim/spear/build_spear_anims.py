@@ -29,7 +29,7 @@ K.DEATH_BONES = tuple(b for b in K.DEATH_BONES if b != "cape")
 _GEO = json.loads((HERE.parent / TROOP / "out" / f"{TROOP}.geo.json").read_text())["minecraft:geometry"][0]["bones"]
 GEO_BONES = {b["name"] for b in _GEO}
 # Secondary cloth (STYLE.md rule 9): the knight's cape lag, given to each troop's hanging gear at a scale.
-SPEAR_TROOPS = {"wm_tusk": {"gear": {"kilt": 0.4, "trophy": 0.7}},
+SPEAR_TROOPS = {"wm_tusk": {"gear": {"kilt": 0.4, "trophy": 0.7}, "fall": {"death_back": {"step": 0.25, "turn": 36.0}}},
                 "tc_tideguard": {"gear": {"tabard": 0.35}, "rear_x": -0.6, "death_lookahead": True, "no_lookahead": ("death_left",)},
                 "tc_admiral": {"gear": {"cape": 0.35, "tails_l": 0.7, "tails_r": 0.7}, "rear_x": -0.6, "death_lookahead": True, "death_top": 0.15, "death_step": 0.25,
                                   "soft": ("hair_adrift", "kelp_", "plume", "tails_", "sash_end")},
@@ -56,6 +56,8 @@ RX = ST.get("rear_x", 0.0)        # per-troop shift of the thrust contact fist o
 K.SOFT = ST.get("soft", ())   # per troop: hanging hair and kelp never hold the falling body up (knight death_clip)
 TOP_W = ST.get("death_top", 0.0)  # per troop: cost per px the dropped weapon's top stands above TOP_OK (keeps it low in a roll)
 TOP_OK = 8.0
+FALL = ST.get("fall", {})   # per troop and fall: its own key spacing and wrist-turn cap (wm_tusk's fall back from the wide
+# guard swung the spear 97 deg/100ms at the 45 deg/tick cap, limit 83.2)
 DEATH_STEP = ST.get("death_step", 0.5)  # per troop: key spacing of the solved fall; 0.25 matches the bake, so a fast wrist swing
                                         # cannot dip the weapon under the floor between keys
 W = "weapon_t1"                 # every tier's spear shares the pivot and axes
@@ -385,6 +387,16 @@ def sample(keys, legs_at, sol, t):  # noqa: F811  (replaces the core's: the head
 
 GAZE = (4.0, 0.0, 0.0)
 GUARD = KEY((14, 15, 0), GAZE, (-4.5, 13.5, 2.0), aim(12, 18), Ls=6.0)
+# Forearm clearance (2026-11-09): Minecraft forearms are 4 px square and hang inward of their pivot, so a fist held before the
+# belly with the elbow at the chest's side face sinks the forearm into the torso (scorecard pen_limb). The spearmen hold the
+# guard wide: the rear fist out beside the hip, its arm long, the lead arm reaching forward and out so the forearm passes in
+# front of the chest, the hands 10 px apart on the haft, the shaft raised 18 deg. The elbows stay open (under 23 deg), so the
+# daze (reactions.py, from the ready arms) stays inside the hit limits. The arm angles are the key's own priors, solved so the
+# shaft runs through both fists.
+WIDE = TROOP in ("wm_tusk", "tc_tideguard", "tc_admiral")
+if WIDE:
+    GUARD = KEY((14, 15, 0), GAZE, (-7.43, 12.82, -0.87), aim(18.5, 20.3), Ls=10.1, rp=(-45.88, -20.69, 15.09, -2.02),
+                lp=(-117.23, 26.98, -81.1, -22.28))
 ATTACK_TICKS = K.ATTACK_TICKS     # 22
 IMPACT = {"thrust": 7, "high_thrust": 7, "low_sweep": 8}
 
@@ -559,6 +571,69 @@ if V2C:
         "steps": ATTACK_LEGS["low_sweep"]["steps"]}
     ATTACKS["low_sweep"] = _sweep_keys(SWEEP_PLAN, ATTACK_LEGS["low_sweep"])
 
+# The wide guard's thrusts (forearm clearance, 2026-11-09): each key's arms refitted so both forearms stay out of the chest and
+# hips (the draw holds the rear fist out beside the hip, not against it; the drive carries the lead elbow out in front), the
+# fists and shaft within about 2 px and 6 deg of the old keys. Timing, torso and head unchanged; t17 and t22 ride the guard.
+# In-between keys (t6.4 and t6.7 on the drive, t13.5 and t15 on the way home) hold the elbows out through the blends; their torso
+# and head are the curve's own values there.
+if WIDE:
+    def _refit(name, keys):
+        ATTACKS[name] = sorted({**dict(ATTACKS[name]), **keys}.items())
+
+    _refit("thrust", {
+        2.5: KEY((10, 24, 0), (2, 0, 0), (-7.14, 13.29, -3.96), aim(10.82, 21.82), Ls=13.26, rp=(-4.35, -14.09, 12.01, -43.92), lp=(-18.8, 0, 0, -71.2)),
+        5.0: KEY((8, 28, 0), (2, 0, 0), (-7.17, 13.21, -5.25), aim(11.19, 14.84), Ls=12.97, rp=(-8.48, -15.86, 13.86, -45.32), lp=(-19.68, 0, 0, -68.95)),
+        5.9: KEY((9, 26, 0), (3, 0, 0), (-7.01, 12.97, -4.22), aim(8.35, 18.27), Ls=13.02, rp=(1.87, -17.51, 16.65, -53.64), lp=(-20.14, 0.01, 8.5, -67.79)),
+        6.4: KEY((16.28, 16.35, 0), (4.98, 0, 0), (-7.16, 12.52, 1.92), aim(7.17, 27.19), Ls=10.05, rp=(1.09, -28.02, 19.49, -65.98), lp=(-49.05, 25.42, 0, -42.25)),
+        6.7: KEY((22.05, 9.24, 0), (6.26, 0, 0), (-4.67, 12.73, 8.83), aim(11.92, 34.13), Ls=4.96, rp=(-39.06, -27.4, -0.01, -50.94), lp=(-70.62, 32.06, 2.22, -24.18)),
+        7.0: KEY((26, 5, 0), (7, 0, 0), (-1.73 + RX, 12.56, 10.71), aim(5.24, 20.45), Ls=2.77, rp=(-55.81, -38.12, 0, -34.19), lp=(-84.09, 36.83, -3.64, -5.84)),
+        9.0: KEY((29, 6, 0), (7, 0, 0), (-1.33 + RX, 12.26, 11.71), aim(2.91, 17.06), Ls=2.48, rp=(-63.76, -38.89, 0, -29.37), lp=(-87.85, 36.87, 0.57, -2.15)),
+        12.0: KEY((19, 10, 0), (5, 0, 0), (-3.77, 14.34, 9.19), aim(10.73, 18.72), Ls=3.21, rp=(-54.84, -37.19, 0, -35.16), lp=(-85.05, 33.95, -2.33, -2.39)),
+        13.5: KEY((17.24, 11.51, 0), (4.55, 0, 0), (-5.51, 14.4, 7.26), aim(17.26, 27.82), Ls=5.18, rp=(-40.96, -27.29, 0, -48.21), lp=(-86.4, 30.7, -2.36, -2.08)),
+        15.0: KEY((16.05, 12.79, 0), (4.23, 0, 0), (-7.38, 12.77, 2.69), aim(19.67, 26.07), Ls=8.78, rp=(-19.84, -19.33, 13.3, -36.63), lp=(-79, 31.97, 0, -2)),
+        14.25: KEY((16.59, 12.19, 0), (4.37, 0, 0), (-7.03, 13.5, 5.17), aim(20.37, 31.20), Ls=7.20, rp=(-32.98, -22.56, 14.24, -43.48), lp=(-83.79, 31.18, -1.23, -2.01)),
+    })
+    _refit("high_thrust", {
+        2.5: KEY((7, 27, 0), (0, 0, 0), (-6.62, 12.53, -3.71), aim(8.58, 19.39), Ls=13.13, rp=(-17.73, -23.42, 14.04, -18.44), lp=(-25.94, -1.43, -1.28, -50.77)),
+        5.0: KEY((8, 30, 0), (-3, 0, 0), (-6.83, 11.36, -4.5), aim(5.82, 15.17), Ls=12.59, rp=(-21.29, -24.85, 15.17, -20.59), lp=(-26.8, -6.24, 4.75, -43.37)),
+        5.9: KEY((9, 27, 0), (-4, 0, 0), (-6.59, 11.12, -3.7), aim(5.77, 19.23), Ls=12.94, rp=(-15.97, -22.94, 12.85, -13.94), lp=(-28.14, -8.59, 10.6, -41.25)),
+        6.4: KEY((12.93, 17.1, 0), (-5.53, 0, 0), (-7.17, 12.53, 2.4), aim(15.91, 30.33), Ls=9.13, rp=(-22.73, -25.21, 15.12, -28.94), lp=(-50.27, 22.93, 8.7, -32.28)),
+        6.7: KEY((15.92, 10.11, 0), (-6.47, 0, 0), (-4.1, 15.49, 8.17), aim(21.37, 30.08), Ls=4.44, rp=(-46.76, -32.74, -0.05, -43.24), lp=(-71.4, 30.39, 13.01, -18.6)),
+        7.0: KEY((18, 6, 0), (-7, 0, 0), (-1.69 + RX, 16.48, 9.85), aim(20.34, 17.40), Ls=2.61, rp=(-64.45, -39.3, 0, -29.6), lp=(-80.42, 35.91, 9.53, -9.58)),
+        9.0: KEY((20, 8, 0), (-7, 0, 0), (-1.90 + RX, 17.37, 10.91), aim(22.68, 18.81), Ls=2.48, rp=(-73.4, -38.52, 0, -31.81), lp=(-90.82, 37.62, 7.42, -8.04)),
+        12.0: KEY((13, 10, 0), (0, 0, 0), (-3.7, 16.64, 8.3), aim(18.11, 17.86), Ls=3.28, rp=(-57.04, -38.16, 0, -32.96), lp=(-83.96, 32.71, 0.96, -3.5)),
+        13.5: KEY((13.22, 11.29, 0), (1.78, 0, 0), (-5.24, 16.01, 6.79), aim(20.65, 26.65), Ls=4.89, rp=(-43.55, -29.9, 0.01, -46.35), lp=(-84.79, 30.15, 1.17, -2.46)),
+        15.0: KEY((13.61, 12.64, 0), (3.07, 0, 0), (-7.35, 13.43, 2.41), aim(21.60, 26.61), Ls=8.70, rp=(-21.23, -21.16, 14.18, -34.96), lp=(-78.13, 31.47, 0, -2)),
+        14.25: KEY((13.41, 11.98, 0), (2.5, 0, 0), (-6.9, 14.6, 4.85), aim(22.93, 31.76), Ls=6.97, rp=(-35.21, -24.92, 15.54, -42.25), lp=(-83.22, 30.89, -1.83, -2.49)),
+    })
+    # The low sweep on the wide guard: the same chest-frame plan, each row's fists and arms refitted for forearm clearance (the
+    # shaft swings a little higher, near level, so the rear forearm passes outside the hip rather than through it).
+    SWEEP_PLAN = [
+        (3.0, {"torso": (12, 26, 0), "head": (8, 6, 0), "O": (-6.87, 16.31, -0.74), "ev": 5.13, "r": 37.8, "phi": 60, "Ls": 11.53, "rp": (31.05, -11.02, 6.98, -83.8), "lp": (-92.23, 37.95, -0.08, -4.26)}),
+        (5.5, {"torso": (10, 34, 0), "head": (10, 8, 0), "O": (-6.88, 17.64, -0.69), "ev": -1.08, "r": 38.23, "phi": 90, "Ls": 11.06, "rp": (44.9, -10.21, 9.44, -108.06), "lp": (-92.85, 39.52, -0.04, -6.89)}),
+        (6.5, {"torso": (13, 31, 0), "head": (13, 5, 0), "O": (-6.85, 17.28, -0.7), "ev": -3.38, "r": 38.6, "phi": 90, "Ls": 11.18, "rp": (41.28, -9.85, 8.43, -102.2), "lp": (-92.02, 38.95, 0, -7.11)}),
+        (7.25, {"torso": (18, 24, 0), "head": (17, 4, 0), "O": (-6.73, 16.78, 1.19), "ev": -1.95, "r": 43.87, "phi": 90, "Ls": 9.81, "rp": (16.29, -16.16, 11.04, -92.35), "lp": (-93.32, 39.7, 0, -6.66)}),
+        (8.0, {"torso": (24, 14, 0), "head": (20, 1, 0), "O": (-5.42, 16.86, 3.66), "ev": -0.09, "r": 48.23, "phi": 90, "Ls": 7.33, "rp": (-19.21, -37.36, 21.96, -77.37), "lp": (-93.26, 39.82, 0, -6.81)}),
+        (9.25, {"torso": (27, 4, 0), "head": (20, -3, 0), "O": (-5.03, 16.63, 4.28), "ev": 0.19, "r": 49.5, "phi": 90, "Ls": 6.91, "rp": (-40.47, -49.04, 39.66, -63.68), "lp": (-90.99, 38.19, 0.01, -7.33)}),
+        (10.5, {"torso": (26, -2, 0), "head": (19, -4, 0), "O": (-4.51, 16.79, 4.68), "ev": 0.43, "r": 50.22, "phi": 85, "Ls": 6.28, "rp": (-58.37, -52.96, 54.84, -59.39), "lp": (-92.31, 37.21, 0.02, -2.17)}),
+        (14.0, {"torso": (20, 6, 0), "head": (10, 0, 0), "O": (-4.98, 16.38, 4.44), "ev": 7.05, "r": 52.25, "phi": 40, "Ls": 7.05, "rp": (-51.5, -53.23, 49.26, -55.03), "lp": (-89.58, 35.8, 0, -4.55)}),
+        (18.0, {"torso": (15, 13, 0), "head": (5, 0, 0), "O": (-4.18, 18.29, 5.75), "ev": 15.86, "r": 56.98, "phi": 5, "Ls": 7.26, "rp": (-64.83, -39.47, 52.56, -63.13), "lp": (-98.36, 26.7, 0, -12.49)}),
+    ]
+    ATTACKS["low_sweep"] = _sweep_keys(SWEEP_PLAN, ATTACK_LEGS["low_sweep"])
+    if TROOP == "tc_admiral":   # the admiral's rig (its wider cuffs) wants its own refit of the same plan
+        SWEEP_PLAN = [
+            (3.0, {"torso": (12, 26, 0), "head": (8, 6, 0), "O": (-7.02, 16.45, -0.65), "ev": 6.55, "r": 39.07, "phi": 60, "Ls": 12.46, "rp": (51.46, -11.98, 8.67, -85.8), "lp": (-83.77, 34.75, -15.59, -3.87)}),
+            (5.5, {"torso": (10, 34, 0), "head": (10, 8, 0), "O": (-7.04, 17.41, -0.57), "ev": 0.49, "r": 40.42, "phi": 90, "Ls": 12.12, "rp": (60.95, -11.99, 10.79, -103.49), "lp": (-84.35, 35.11, -17.07, -3.68)}),
+            (6.5, {"torso": (13, 31, 0), "head": (13, 5, 0), "O": (-7.03, 17.38, -0.62), "ev": -2.39, "r": 40.36, "phi": 90, "Ls": 12.15, "rp": (61.23, -11.97, 10.48, -102.96), "lp": (-85.15, 35.13, -16.34, -2.91)}),
+            (7.25, {"torso": (18, 24, 0), "head": (17, 4, 0), "O": (-6.97, 17.05, 1.09), "ev": -2.67, "r": 45.23, "phi": 90, "Ls": 10.92, "rp": (38.51, -13.28, 13.38, -96.11), "lp": (-85.5, 35.66, -15.23, -3.14)}),
+            (8.0, {"torso": (24, 14, 0), "head": (20, 1, 0), "O": (-6.06, 17.41, 3.5), "ev": -0.28, "r": 49.46, "phi": 90, "Ls": 8.79, "rp": (7.39, -27.79, 21.74, -87.41), "lp": (-86.58, 35.62, -8.1, -2)}),
+            (9.25, {"torso": (27, 4, 0), "head": (20, -3, 0), "O": (-5.56, 17.21, 4.17), "ev": -0.67, "r": 50.39, "phi": 90, "Ls": 8.02, "rp": (-9.11, -40.23, 34.02, -76.13), "lp": (-83.64, 35.69, -11.67, -5.03)}),
+            (10.5, {"torso": (26, -2, 0), "head": (19, -4, 0), "O": (-5.03, 17.37, 4.64), "ev": 0.49, "r": 50.79, "phi": 85, "Ls": 7.38, "rp": (-24.29, -45.72, 46.33, -71.88), "lp": (-83.79, 35.1, -13.57, -4.24)}),
+            (14.0, {"torso": (20, 6, 0), "head": (10, 0, 0), "O": (-5.23, 16.89, 4.59), "ev": 7.7, "r": 52.49, "phi": 40, "Ls": 7.8, "rp": (-27.12, -48.83, 49.3, -63.58), "lp": (-83.84, 34.63, -17.91, -3.68)}),
+            (18.0, {"torso": (15, 13, 0), "head": (5, 0, 0), "O": (-4.38, 18.25, 5.59), "ev": 15.41, "r": 56.1, "phi": 5, "Ls": 7.17, "rp": (-39.85, -39.24, 50.08, -66.67), "lp": (-87.69, 29.12, -16.3, -6.35)}),
+        ]
+        ATTACKS["low_sweep"] = _sweep_keys(SWEEP_PLAN, ATTACK_LEGS["low_sweep"])
+
 
 def gear(samples, legs=None):
     """Secondary motion (STYLE.md rule 9): the knight's cape lag, scaled onto each hanging piece of the troop's gear."""
@@ -676,6 +751,14 @@ if V2C:
     STANCE_KEYS["brace"] = KEY((18, 16, 0), (2, 0, 0), (-5.0, 10.9, 0.5), aim(32, 14), Ls=7.0)
     STANCE_KEYS["wall"] = KEY((22, 18, 0), (6, 0, 0), (-4.0, 13.2, 3.2), aim(5, 12), Ls=5.0)
     STANCE_KEYS["ward"] = KEY((-4, 10, 0), (-2, 0, 0), (-4.5, 14.6, 1.0), aim(26, 16), Ls=6.5)
+if WIDE:
+    # the wide guard's stances: the same rule (fists out from the body, elbows out), each its own silhouette
+    STANCE_KEYS["brace"] = KEY((18, 16, 0), (2, 0, 0), (-7.27, 12.3, 1.88), aim(28.07, 15.05), Ls=8.75, rp=(-77.28, -36.97, 29.76, -5.42),
+                               lp=(-98.23, 23.21, -7.23, -27.18))
+    STANCE_KEYS["wall"] = KEY((22, 18, 0), (6, 0, 0), (-8.58, 13, 1.02), aim(6, 16), Ls=9.34, rp=(-58.15, -30.01, 58, -81.92),
+                              lp=(-93.42, 17.38, 8.51, -32.74))
+    STANCE_KEYS["ward"] = KEY((-4, 10, 0), (-2, 0, 0), (-8.14, 16.36, -2.27), aim(25.1, 30.5), Ls=11.2, rp=(0.66, -35.1, 39.51, -85.05),
+                              lp=(-112.44, 7.82, -90.92, -46.43))   # the fall back walks on it: clear of the bobbing hips too
 STANCE_KEYS["shield_up"] = STANCE_KEYS["ready"]
 LIFE = {"ready": 3.4, "brace": 1.6, "wall": 1.4, "ward": 2.0, "shield_up": 3.4}
 IDLE_LIFE = 2.2
@@ -972,11 +1055,12 @@ def near_euler(r, prev):
     return min(cands, key=lambda e: sum((e[i] - prev[i]) ** 2 for i in range(3)))
 
 
-def flat_weapon(keys, start, t0, t1, step=None, look=None):
+def flat_weapon(keys, start, t0, t1, step=None, look=None, turn=None):
     """Re-key the fall every half tick (DEATH_STEP) with the right wrist solved: free, then easing from t0 to the spear lying
     flat by t1, always tipped clear of the ground and swinging at most MAX_WRIST_TURN per tick."""
     step = DEATH_STEP if step is None else step
     look = LOOKAHEAD if look is None else look
+    turn_cap = MAX_WRIST_TURN if turn is None else turn
     end = keys[-1][0]
     out, ref, prev = [], None, start["right_hand"][0]
     for t in np.arange(step, end + step / 2, step):
@@ -989,7 +1073,7 @@ def flat_weapon(keys, start, t0, t1, step=None, look=None):
             ref = flat_hand(pose, ref or prev)
             hand = slerp_rot(hand, ref, ramp(t, t0 - 1, t1))
         r = ground_hand(pose, hand, prev)
-        turn, cap = turn_deg(prev, r), MAX_WRIST_TURN * step
+        turn, cap = turn_deg(prev, r), turn_cap * step
         if look:                                       # solve every key free first; the turn cap is applied backwards below
             out.append((t, f, pose, r))
             prev = r
@@ -1003,7 +1087,7 @@ def flat_weapon(keys, start, t0, t1, step=None, look=None):
         return out
     # Look-ahead: walking back from the end, a key the next one is too far from turns part-way towards it, so the wrist
     # starts swinging early instead of flipping late; then a forward pass caps whatever is left.
-    cap = MAX_WRIST_TURN * step
+    cap = turn_cap * step
     rs = [o[3] for o in out]
     for i in range(len(rs) - 2, -1, -1):
         if out[i][0] < 3.0:                            # the first ticks keep the forward solve: the arm drops the spear
@@ -1035,7 +1119,7 @@ def death_clips():
     falls = {"death_back": back, "death_forward": K.DEATH_FORWARD,
              "death_left": K.roll_keys(K.DEATH_LEFT, start, 13, K.ROLL_LEFT),
              "death_right": K.roll_keys(K.DEATH_RIGHT, start, 13, K.ROLL_RIGHT)}
-    return {n: K.death_clip(flat_weapon(k, start, *FLAT_AT[n], look=LOOKAHEAD and n not in NO_LOOKAHEAD), start, n)
+    return {n: K.death_clip(flat_weapon(k, start, *FLAT_AT[n], look=LOOKAHEAD and n not in NO_LOOKAHEAD, **FALL.get(n, {})), start, n)
             for n, k in falls.items()}
 
 

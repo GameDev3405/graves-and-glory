@@ -118,12 +118,10 @@ def carry_spear(tr):
 def carry_axe(tr):
     """Both hands on the haft, the axe cocked high at the shoulder, ready to fall."""
     P = copy_pose(tr.ready)
-    # both arms lifted together keep the haft rigid: it leans well forward (about 45 degrees from upright), so the axe head hangs out
-    # ahead of the face and clear of the helmet at every angle, instead of standing beside it
-    lift_arm(P, "right", 42, keep=0.0)
-    lift_arm(P, "left", 34, keep=0.0)
-    P["right_arm"][0][2] += 14                   # both arms rolled the same way: the haft leans to the right, so the head sits off the helmet and shows from the front
-    P["left_arm"][0][2] += 14
+    # both arms lifted together (the same lift, so the left fist stays on the haft) from the wide port guard: the axe tips on from
+    # the shoulder, its head clear of the helmet (the old 42/34 lift and roll drove the haft into the breastplate from that guard)
+    lift_arm(P, "right", 30, keep=0.0)
+    lift_arm(P, "left", 30, keep=0.0)
     lean(P, 10, keep_l=0.5, keep_r=0.4)
     P["torso"][0][1] = 6.0
     return P, dict(yaw=5.0, pump=(4.0, 4.0), roll=2.0, bob=2.0, together=True)

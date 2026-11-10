@@ -261,7 +261,7 @@ RALLY = {
     "shield":  dict(arm="right", lift=105, keep=0.55, tilt=-0, fore=-22),
     "onehand": dict(arm="right", lift=105, keep=0.55, tilt=-0, fore=-22),
     "spear":   dict(arm="both", lift=48, keep=0.0, tilt=0, fore=None),   # was 62 (see RALLY_RISE)
-    "axe":     dict(arm="both", lift=48, keep=0.0, tilt=0, fore=None),
+    "axe":     dict(arm="both", lift=40, keep=0.0, tilt=-10, fore=None, out=-10),   # from the wide port guard a 48 deg heave put the haft into the breastplate: a lower heave, the head tipped on and the arms rolled off the chest
     "bow":     dict(arm="left", lift=84, keep=1.0, tilt=0, fore=-12, out=-11, chest=(-2, -1)),   # quiver on the back: no lean, the head stays out of the arrows
     "xbow":    dict(arm="right", lift=125, keep=0.45, tilt=0, fore=-10, out=-25),   # the crossbow overhead beside the head, the face clear
     "thrower": dict(arm="right", lift=14, keep=0.0, tilt=0, fore=-70),
