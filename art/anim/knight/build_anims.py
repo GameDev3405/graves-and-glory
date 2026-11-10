@@ -1046,7 +1046,7 @@ if V2 and not SHIELD and TROOP in ("revenant", "tc_raider", "gb_hollowking"):
     # the load rocks back deeper and sits lower without a shield to hide behind (as the shieldless overhead did)
     ATTACK_LEGS["overhead"]["hips"][1:5] = [(2.5, (-4, 9, 1), (0.4, -1.5, 0.7)), (5, (-9, 13, 2), (0.7, -2.0, 1.2)),
                                             (7.4, (-11, 15, 2), (0.7, -2.3, 1.4)), (8.2, (-9, 13, 2), (0.6, -2.3, 1.1))]
-    SLASH_FIT = {"revenant": {}, "gb_hollowking": {}, "tc_raider": {"low_cut": (6.5, 12.5, (0, 0, 6, 0, -20, 0)), "overhead": (8.5, 15.5, (-18, 0, 0, 0, -8, 0))}}
+    SLASH_FIT = {"revenant": {}, "gb_hollowking": {}, "tc_raider": {"low_cut": (6.5, 12.5, (0, 0, 6, 0, -18, 0)), "overhead": (8.5, 15.5, (-18, 0, 0, 0, -8, 0))}}
     for _name, (_t0, _t1, _d) in SLASH_FIT[TROOP].items():
         ATTACKS[_name] = slash_fit(ATTACKS[_name], _t0, _t1, _d)
 
