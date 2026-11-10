@@ -129,24 +129,32 @@ def aim(elev, yaw):
     return frame(d, (0.0, 1.0, 0.0))
 
 
-def KEY(torso, head, O, d, u=(0, 1, 0), Lw=FORE_STOCK, Lq=QUIVER, m=0.0, rp=(-40, 0, 10, -40), lp=(-50, -20, 0, -40)):
+def KEY(torso, head, O, d, u=(0, 1, 0), Lw=FORE_STOCK, Lq=QUIVER, m=0.0, rp=(-40, 0, 10, -40), lp=(-50, -20, 0, -40), lm=1.0, pw=0.02):
+    """lm: how far the left fist goes to its point on the crossbow (1 holding it, 0 free at its prior lp). pw: how hard the
+    two-handed solve holds the arms to their priors rp / lp (the elbows' swivel), 0.02 a light pull."""
     d, u = frame(d, u)
     return {"torso": tuple(map(float, torso)), "head": tuple(map(float, head)), "O": tuple(map(float, O)), "d": tuple(d),
             "u": tuple(u), "Lw": tuple(map(float, Lw)), "Lq": tuple(map(float, Lq)), "m": (float(m),),
-            "rp": tuple(map(float, rp)), "lp": tuple(map(float, lp))}
+            "rp": tuple(map(float, rp)), "lp": tuple(map(float, lp)), "lm": (float(lm),), "pw": (float(pw),)}
 
 
-def shoulder_key():
-    """The shouldered aim (solved once, scratch xaim): the butt in the right shoulder's pocket, the cheek on the stock, the
-    left fist under the fore-stock, the torso turned side-on (yaw 38) so the left shoulder leads."""
-    pose = {"hips": (K.READY_HIPS[0], K.READY_HIPS[1]), "torso": ((4, 38, 0), Z3),
-            "right_arm": ((-50.65, -56.63, -41.18), Z3), "right_forearm": ((0.05, 0, 0), Z3), "right_hand": ((53.51, 62.98, -16.84), Z3)}
-    M = K.world(pose, W)
-    O = K.point(K.world(pose, "right_hand"), GRIP)
-    d = unit(wpoint(pose, (-6, 28, 0)) - wpoint(pose, (-6, 7, 0)))
-    u = unit(wpoint(pose, (-6, 20, -2)) - wpoint(pose, (-6, 20, 0)))
-    del M
-    return KEY((4, 38, 0), (-6, -40, -10), O, d, u, rp=(-50.65, -56.63, -41.18, -2.0), lp=(-55.37, -1.89, 7.85, -39.67))
+# The shouldered aim. The butt goes on the OUTER shoulder, over the joint (torso-local x -7.3, outside the chest's side at
+# x -4), not into the chest: with this rig's short arms a butt in front of the chest leaves the grip out of the right arm's
+# reach, and the solve then drags the stock (and the t3 butt crossbar) 2 px into the chest. The torso turns well side-on
+# (yaw 51, the left shoulder leading), the stock levelled straight down the line, the left fist under the stock just ahead of
+# the lock, the head turned down the stock with the cheek dropped to it. Searched with the scorecard's own pen_weapon /
+# pen_limb (scratch shoulder.py): pen_weapon 1.0 px, pen_limb 1.27 px, grip error 0.24 px.
+SHOULDER = {"torso": (5.7, 51.2, 0.0), "butt": (-7.27, 22.57, -3.73), "yaw": 4.5, "elev": 0.0, "left_y": 16.67}
+
+
+def shoulder_key(spec=SHOULDER, head=None):
+    torso = spec["torso"]
+    T = K.world({"hips": K.READY_HIPS, "torso": (torso, Z3)}, "torso")
+    d, u = aim(spec["elev"], spec["yaw"])
+    O = K.point(T, spec["butt"]) + 7.0 * d        # the grip is 7 px up the stock from the butt (weapon y7 -> y14)
+    head = head or (6.0, -torso[1] - K.READY_HIPS[0][1] + spec["yaw"], -8.0)
+    return KEY(torso, head, O, d, u, Lw=(FORE_STOCK[0], spec["left_y"], FORE_STOCK[2]),
+               rp=(-50.65, -56.63, -41.18, -2.0), lp=(-55.37, -1.89, 7.85, -39.67))
 
 
 AIM = shoulder_key()
@@ -159,6 +167,8 @@ def nudge(k, **kw):
             q[n] = tuple(a + b for a, b in zip(k[n], v))
         elif n in ("torso", "head"):
             q[n] = tuple(a + b for a, b in zip(k[n], v))
+        elif n in ("lm", "pw"):
+            q[n] = (float(v),)
         else:
             q[n] = v
     return q
@@ -198,7 +208,9 @@ def about_butt(k, down, inward=0.0, torso=Z3, head=Z3, shift=Z3, **kw):
 
 # The low guard: the shouldered aim with the prod tipped 30 degrees down and swung a touch across the body about the butt,
 # which stays near the shoulder (a low ready), so the snap to the cheek is short and the left fist never leaves the fore-stock.
-READY = about_butt(AIM, 30.0, 20.0, torso=(2.0, -4.0, 0.0), head=(4.0, 10.0, 6.0))
+# (The numbers of READY, brace and wall were searched with the scorecard's pen_weapon / pen_limb, scratch abopt.py.)
+READY = about_butt(AIM, 12.0, 6.5, torso=(0.2, 5.1, 0.0), head=(6.4, 10.0, 6.0), shift=(-1.41, 1.5, -1.06),
+                   Lw=(FORE_STOCK[0], 18.8, FORE_STOCK[2]))
 # The span: the stock swung across the body, butt at the right hip, prod up at the left front; the left fist on the spent string.
 SPAN = KEY((4, -12, 0), (10, 22, 0), (-4.0, 12.0, 4.0), (10.0, 6.0, 7.0), u=(0, 0.3, -1), Lw=STRING_SPENT,
            rp=(-20, 0, -10, -30), lp=(-73, 34, 5, -24))
@@ -220,20 +232,47 @@ ATTACK_TICKS = 50
 IMPACT = 4          # crossbow_loose impactTicks: the bolt leaves
 
 
+def blend(a, b, k):
+    """A key part way from a to b, every channel linear (the stock's line and top squared again)."""
+    q = {n: tuple(np.asarray(a[n], float) + (np.asarray(b[n], float) - np.asarray(a[n], float)) * k) for n in a}
+    q["d"], q["u"] = map(tuple, frame(q["d"], q["u"]))
+    return q
+
+
 def attack_keys():
+    """The shot and the reload. The span, haul and load keys carry the stock a little out from the hips and the chest, and the
+    torso folds a touch further over it, so the right forearm passes outside the body (pen_limb, scratch atkopt.py)."""
     tense = nudge(AIM, torso=(0.5, 1.0, 0.0), head=(1.0, 0.0, 0.0))
     kick = nudge(pitched(AIM, 9.0), O=(-0.4, 1.6, -1.6), torso=(-5.0, 2.0, 0.0), head=(-4.0, 2.0, 0.0))
     kick2 = nudge(pitched(AIM, 5.0), O=(-0.2, 0.5, -0.6), torso=(-2.0, 1.0, 0.0), head=(-1.0, 1.0, 0.0))
-    lower = about_butt(AIM, 20.0, 10.0, torso=(1.0, -8.0, 0.0), head=(6.0, 14.0, 6.0))
-    reach_q = nudge(QUIVER_K, Lq=(QUIVER[0], QUIVER[1] + 1.5, QUIVER[2] + 0.5))
-    draw_q = nudge(QUIVER_K, torso=(1.0, 4.0, 0.0), Lq=(QUIVER[0] + 0.5, QUIVER[1] + 4.0, QUIVER[2] - 1.0))
+    lower = about_butt(AIM, 20.0, 10.0, torso=(-1.2, -1.3, 0.0), head=(6.0, 14.0, 6.0), shift=(-1.37, 3.27, 0.1),
+                       Lw=(FORE_STOCK[0], AIM["Lw"][1] + 1.8, FORE_STOCK[2]))
+    span = nudge(SPAN, O=(-1.5, 0.75, -2.6), torso=(1.9, 3.0, 0.0))
+    haul_a = nudge(HAUL_A, O=(-0.44, -0.74, -2.0), torso=(4.0, 2.0, 0.0))
+    haul_b = nudge(HAUL_B, O=(-0.3, -0.5, -1.5), torso=(3.0, 1.5, 0.0))
+    # the fist takes the bolt by its head, high over the quiver's mouth, so the elbow does not fold past its limit
+    reach_q = nudge(QUIVER_K, Lq=(QUIVER[0], QUIVER[1] + 3.0, QUIVER[2] + 0.5))
+    take_q = nudge(QUIVER_K, Lq=(QUIVER[0], QUIVER[1] + 2.0, QUIVER[2]))
+    draw_q = nudge(QUIVER_K, torso=(1.0, 4.0, 0.0), Lq=(QUIVER[0] + 0.5, QUIVER[1] + 5.0, QUIVER[2] - 1.0))
+    # laying the bolt: the right elbow held out to the side (its prior pulled harder) so the forearm stays off the chest
+    out_r = dict(rp=(-5.0, -15.0, 8.0, -105.0), pw=0.25)
+    load = nudge(LOAD, O=(-0.96, 0.0, -1.28), torso=(-0.66, -4.84, 0.0), Lw=(RAIL[0], RAIL[1] + 1.7, RAIL[2]), **out_r)
+    load_in = nudge(LOAD_IN, O=(-0.45, -1.1, -2.85), **out_r)
+    home = nudge(READY, O=(-2.0, 1.8, -1.5), torso=(-1.0, 1.0, 0.0))      # the stock swung back out round the hip to the guard
     settle = nudge(READY, O=(0.0, 0.4, 0.6), torso=(1.0, 2.0, 0.0))
+    # the swings between the side-on shoulder and the square-on haul: the grip is carried out round the front on the way, so the
+    # right arm stays reaching instead of folding in through the chest
+    swing_in = nudge(blend(lower, span, 0.5), O=(-1.5, 0.0, 2.0), lm=0.0, lp=(-60, -10, 0, -50))
+    swing_in["d"], swing_in["u"] = blend(lower, span, 0.6)["d"], blend(lower, span, 0.6)["u"]   # the stock turns early
+    swing_out = nudge(blend(nudge(haul_b, torso=(-1, 1, 1)), reach_q, 0.5), O=(-1.5, 0.0, 2.0))
     return [(0, READY), (2.6, AIM), (IMPACT, tense),                                  # snap to the shoulder, loose
-            (5.2, kick), (7.0, kick2), (10.0, lower),                                 # the kick off the cheek, the stock lowered
-            (14.0, SPAN), (16.0, nudge(SPAN, Lw=(STRING_SIDE, 28.0, 0.6))),           # swung across, the fist hooks the string
-            (19.0, HAUL_A), (21.0, HAUL_B), (22.5, nudge(HAUL_B, torso=(-1, 1, 1))),  # the haul; the string drops into the nut
-            (26.0, reach_q), (28.0, QUIVER_K), (30.0, draw_q),                        # over the shoulder, a bolt drawn up
-            (33.5, LOAD), (35.0, LOAD_IN),                                            # laid on the rail, pressed home
+            (5.2, kick), (7.0, kick2), (9.6, lower), (11.8, swing_in),               # the kick off the cheek, the stock lowered
+            (14.0, span), (16.0, nudge(span, Lw=(STRING_SIDE, 28.0, 0.6))),           # swung across, the fist hooks the string
+            (19.0, haul_a), (21.0, haul_b), (22.5, nudge(haul_b, torso=(-1, 1, 1))),  # the haul; the string drops into the nut
+            (24.25, swing_out), (26.0, reach_q), (28.0, take_q), (30.0, draw_q),                        # over the shoulder, a bolt drawn up
+            (31.8, nudge(blend(draw_q, load, 0.5), rp=(-25.0, -20.0, 0.0, -80.0), pw=0.15)),
+            (33.5, load), (35.0, load_in), (36.0, nudge(blend(load_in, home, 0.5), rp=(-35.0, -25.0, 0.0, -65.0), pw=0.15)),
+            (37.0, home),                              # laid on the rail, pressed home
             (40.0, settle), (44.0, nudge(READY, O=(0.0, -0.3, -0.2))), (ATTACK_TICKS, READY)]
 
 
@@ -260,7 +299,8 @@ def attack_legs():
                      (21.0, (5.0, -11.0, -1.5), (0.0, -2.6, -0.5)), (23.0, (3.0, -9.0, -1.0), (0.0, -2.2, -0.4)),
                      (28.0, (1.0, 2.0, 0.0), (0.0, -1.4, 0.0)), (34.0, (2.0, 4.0, 0.0), (0.0, -1.3, 0.1)),
                      (42.0, R0, R1), (ATTACK_TICKS, R0, R1)],
-            "steps": [("left", 10.5, 14.0, (4.6, 2.0, 0.2), 14.0), ("left", 37.0, 41.0, (3.2, 2.0, -2.0), 7.0)]}
+            # the lead (left) foot steps out wide for the haul (it already leads, so the step is mostly sideways), then home
+            "steps": [("left", 10.5, 14.0, (5.0, 2.0, 2.4), 18.0)] + rehome([("left", 37.0, 41.0, (3.2, 2.0, -2.0), 7.0)])}
     return K.attack_legs(spec, ticks=ATTACK_TICKS)
 
 
@@ -281,7 +321,7 @@ class Solver:
         self.warm = {"right": None, "left": None}
         self.worst = {"right": 0.0, "left": 0.0}
 
-    def pose(self, legs, torso, head, O, d, u, left, rp, lp, lm=1.0, extra=None, quiver=None, m=0.0):
+    def pose(self, legs, torso, head, O, d, u, left, rp, lp, lm=1.0, extra=None, quiver=None, m=0.0, pw=0.02):
         """left: a world point, or None for a free left arm keyed by lp. lm (0-1): how far the left fist goes to it.
         quiver (with m, 0-1): the second contact, the bolt in the quiver. Between the two the arms blend joint angle by joint
         angle (the fist arcs up over the shoulder) rather than the fist's target sliding through the body."""
@@ -293,7 +333,7 @@ class Solver:
         if left is not None and lm >= 1.0:
             # both hands on the crossbow: the left fist's contact is held hard, the grip point is a soft target, so a
             # crossbow out of the left arm's reach slides back toward the body instead of the fist floating free of it
-            x, y, eo, el = self.joint(pose, np.asarray(O), d, u, left, np.asarray(rp, float), lp)
+            x, y, eo, el = self.joint(pose, np.asarray(O), d, u, left, np.asarray(rp, float), lp, pw=pw)
             if m > 0.0:
                 xs, e = reach("right", pose, np.asarray(O), rp, self.warm.get("rs"))
                 self.warm["rs"] = xs
@@ -334,7 +374,7 @@ class Solver:
         s["left_hand"] = (Z3, None)
         return s
 
-    def joint(self, pose, O, d, u, left, rp, lp, wo=1.0):
+    def joint(self, pose, O, d, u, left, rp, lp, wo=1.0, pw=0.02):
         prior = np.r_[rp, lp]
         warm = prior if self.warm["right"] is None or self.warm["left"] is None else np.r_[self.warm["right"], self.warm["left"]]
 
@@ -347,7 +387,7 @@ class Solver:
             p = build(z)
             g = K.point(K.world(p, "right_hand"), GRIP)
             fl = K.point(K.world(p, "left_forearm"), FIST_L)
-            return np.concatenate([wo * (g - O), 4.0 * (fl - left(p)), 0.02 * (z - prior)])
+            return np.concatenate([wo * (g - O), 4.0 * (fl - left(p)), pw * (z - prior)])
 
         clamp = lambda z: np.r_[z[:3], min(-2.0, max(-150.0, z[3])), z[4:7], min(-2.0, max(-150.0, z[7]))]
         z = gn(f, warm, clamp=clamp)
@@ -366,7 +406,7 @@ def quiver_target(Lq):
 
 def solve_keys(keys, legs_at, t):
     """One sample of a keyed clip."""
-    v = {n: interp(keys, t, n) for n in ("torso", "head", "O", "d", "u", "Lw", "Lq", "m", "rp", "lp")}
+    v = {n: interp(keys, t, n) for n in ("torso", "head", "O", "d", "u", "Lw", "Lq", "m", "rp", "lp", "lm", "pw")}
     v["mq"] = max(0.0, min(1.0, v["m"][0]))
     return v, left_target(v["Lw"])
 
@@ -380,7 +420,7 @@ def attack_clip():
         t = i / SUB
         v, left = solve_keys(keys, legs, t)
         s = sol.pose(legs[i], v["torso"], v["head"], v["O"], v["d"], v["u"], left, v["rp"][:4], v["lp"][:4],
-                     quiver=quiver_target(v["Lq"]), m=v["mq"])
+                     lm=min(1.0, max(0.0, v["lm"][0])), quiver=quiver_target(v["Lq"]), m=v["mq"], pw=v["pw"][0])
         s["draw"] = (Z3, (draw_at(t), 0.0, 0.0))
         out.append(s)
     print("attack_loose: grip err max %.3f px, left fist err max %.3f px" % (sol.worst["right"], sol.worst["left"]))
@@ -520,6 +560,9 @@ K.idle_clips = idle_clips    # the death falls start from the arbalist's idle fr
 V2 = K.V2
 
 
+IDLE_OUT = 2.5     # at ease the crossbow arm hangs a little wider than in the walk, so the stock clears the hip as the shoulders roll
+
+
 def idle_v2_clips():
     """At ease with a real weight cycle (STYLE.md rule 2): the hips slide over one foot and back (contrapposto: the free hip
     drops, its knee softens), the chest counter-tilts so the head stays level, and both arms trail the torso a beat late, the
@@ -543,7 +586,7 @@ def idle_v2_clips():
         legs.append(out)
         s = {"torso": ((1.0 + 0.9 * br, -1.6 * sh, -2.6 * sh), None),   # shoulders tilt against the pelvis
              "head": ((-1.0 - 0.5 * br, 0.75 * math.sin(4 * math.pi * u - 1.0) - 0.6 * sh, -1.8 * sh), None),
-             "right_arm": ((CARRY_R[0] - 0.6 * br + 2.0 * lag, 0.0, CARRY_R[2] + 0.5 * br + 1.0 * max(0.0, lag)), None),
+             "right_arm": ((CARRY_R[0] - 0.6 * br + 2.0 * lag, 0.0, CARRY_R[2] + IDLE_OUT + 0.5 * br + 1.0 * max(0.0, lag)), None),
              "right_forearm": ((CARRY_RF - 1.2 * lag, 0.0, 0.0), None),
              "left_arm": ((-3.0 - 0.5 * br - 2.4 * lag, 0.0, -5.0 - 0.4 * br - 1.2 * max(0.0, -lag)), None),
              "left_forearm": ((-16.0 - 1.4 * lag, 0.0, 0.0), None), "left_hand": ((2.0 * lag, 0.0, 0.0), None),
@@ -575,37 +618,69 @@ K.body_corners = body_corners_no_weapon
 # Stances: the low guard, solved; StanceController plays ready (fighting), brace / wall (Hold), ward (fall_back).
 # ------------------------------------------------------------------------------------------------
 
+# The arbalist's own footing: the shooter's stance, left foot leading and the rear (right) foot turned out under the shouldered
+# stock, the hips of the knight's guard (the shot and the haul start from them). brace sinks lower and wider, side-on; the wall
+# is the deepest crouch, the weight forward over the lead knee.
+READY_FEET = {"left": ((3.6, 2.0, 2.0), 10.0), "right": ((-3.4, 2.0, -2.6), -24.0)}
+_KN_FEET = dict(K.READY_FEET)
+K.READY_FEET = READY_FEET
+
+
+def rehome(steps):
+    """Footwork keyed from the knight's footing moved onto the arbalist's: each step lands as far from this troop's home foot as
+    it did from the knight's (and turned as much), so a step home lands home."""
+    out = []
+    for side, t0, t1, to, yaw, *rest in steps:
+        (kp, ky), (hp, hy) = _KN_FEET[side], READY_FEET[side]
+        out.append((side, t0, t1, tuple(a - b + c for a, b, c in zip(to, kp, hp)), yaw - ky + hy, *rest))
+    return out
+STANCE_LEGS = {
+    "ready": {"hips": K.READY_HIPS, "left": READY_FEET["left"][0], "right": READY_FEET["right"][0], "yaw": (-24.0, 10.0)},
+    "brace": {"hips": ((3.0, 16.0, 0.0), (0.0, -2.4, 0.0)), "left": (4.2, 2.0, 3.0), "right": (-3.8, 2.0, -3.4), "yaw": (-30.0, 8.0)},
+    "wall": {"hips": ((7.0, 22.0, 0.0), (0.0, -3.6, -0.2)), "left": (3.8, 2.0, 4.2), "right": (-3.6, 2.0, -4.6), "yaw": (-34.0, 4.0)},
+}
+STANCE_LEGS_LIFE = dict(K.STANCE_LIFE)
+
+
+def _onto_hips(k, hips):
+    """A key solved over the ready hips moved onto other hips: the torso keeps its world yaw, the grip drops with the hips."""
+    (r0, p0), (r1, p1) = K.READY_HIPS, hips
+    return nudge(k, torso=(0.0, r0[1] - r1[1], 0.0), O=(0.0, p1[1] - p0[1], p1[2] - p0[2]))
+
+
 STANCE_KEYS = {
     "ready": READY,
-    # brace: lower over the braced legs, the crossbow raised to the chest and laid ready to shoulder
-    "brace": KEY((10, 22, 0), (-8, -26, 0), (-3.0, 13.5, 5.0), (0.15, -0.08, 1.0), rp=(-45, 10, 8, -55), lp=(-55, -25, 0, -55)),
-    # wall: the formed line, crouched, the crossbow shouldered low and ready, the cheek near the stock
-    "wall": KEY((14, 30, 0), (-12, -32, -6), (-2.5, 15.0, 4.0), (0.2, -0.05, 1.0), rp=(-60, 0, 0, -45), lp=(-60, -25, 0, -45)),
-    # ward: giving ground, leaning back, the crossbow held across the body, nose up toward the foe
-    "ward": KEY((-6, 16, 0), (2, -20, 0), (-2.5, 13.0, 5.0), (0.25, 0.2, 1.0), rp=(-40, 10, 8, -55), lp=(-50, -25, 0, -55)),
+    # brace: the stock shouldered on the outer shoulder and the cheek on it, levelled a touch low at the charge's chest, side-on
+    # over the braced legs
+    "brace": _onto_hips(about_butt(pitched(AIM, -6.0), -1.5, 1.8, torso=(3.8, 3.0, 0.0), head=(3.7, 10.0, 6.0),
+                                   shift=(-0.88, -0.76, 0.49), Lw=(FORE_STOCK[0], 17.15, FORE_STOCK[2])), STANCE_LEGS["brace"]["hips"]),
+    # wall: the line crouched behind its front, leaning into it; the stock still at the shoulder, the prod dipped at the ground
+    # a few strides ahead
+    "wall": _onto_hips(about_butt(AIM, 16.0, 2.2, torso=(4.5, 6.0, 0.0), head=(7.2, 10.0, 6.0), shift=(-1.24, 0.57, 1.22),
+                                  Lw=(FORE_STOCK[0], 18.5, FORE_STOCK[2])), STANCE_LEGS["wall"]["hips"]),
+    # ward: giving ground, leaning back, the crossbow raised flat across the chest as a bar, prod out to the left, top forward
+    # (the chest square to the threat, not turned: turned 10 degrees the left fist sat on the left shoulder, the elbow at 107)
+    "ward": KEY((-6, -5, 0), (4, 3, 0), (-4.5, 18.0, 7.5), (1.0, 0.12, 0.2), u=(0.0, 0.0, 1.0), rp=(-70, 0, 20, -60),
+                lp=(-60, -10, -10, -50)),
+    # shield_up: moving with the guard up: the crossbow held upright before the face, the prod a cover across it
+    "shield_up": KEY((2, 6, 0), (-2, -6, 0), (-3.5, 16.5, 7.0), (0.25, 1.0, 0.15), u=(0.0, 0.0, 1.0), rp=(-80, 0, 15, -60),
+                     lp=(-80, -10, -10, -60)),
 }
-STANCE_KEYS["shield_up"] = STANCE_KEYS["ready"]
 LIFE = {"ready": 3.4, "brace": 1.6, "wall": 1.4, "ward": 2.0, "shield_up": 3.4}
+STANCE_LEGS_LIFE.update({"brace": LIFE["brace"], "wall": LIFE["wall"]})
 READY_LIKE = ("ready", "shield_up")     # these loops run at V2_READY_SWAY_SCALE (0.25); the other stances at V2_SWAY_SCALE
-
-STANCE_LEGS = dict(K.STANCE_LEGS)
-STANCE_LEGS_LIFE = dict(K.STANCE_LIFE)
-if V2:
-    # V2: the three commands read apart from the ready footing. brace sinks a step lower and wider (the knight's v2 brace);
-    # the wall stays the deepest. The legs of the brace and the wall carry the same weight cycle as their upper bodies, so the
-    # hips move with the chest instead of holding still under it.
-    STANCE_LEGS["brace"] = {"hips": ((2.0, 10.0, 0.0), (0.0, -2.2, 0.5)), "right": (-3.8, 2.0, 2.8), "left": (3.6, 2.0, -2.8),
-                            "yaw": (-16.0, 9.0)}
-    STANCE_LEGS_LIFE.update({"brace": LIFE["brace"], "wall": LIFE["wall"]})
+# warm the solve up on the loop's own last sample, so the first sample lands on the same arm branch as the rest and the loop
+# closes without a jump
+PREWARM = ("ready", "brace", "wall", "ward", "shield_up")
 
 
-def stance_upper(k, life, legs_spec, ready=False):
+def stance_upper(k, life, hips, ready=False, prewarm=False):
     n = K.STANCE_TICKS * SUB
     sol = Solver()
     out = []
-    legs = {"hips": (legs_spec[0], legs_spec[1])} if legs_spec else {"hips": K.READY_HIPS}
+    legs = {"hips": hips}
     a_br, a_wt, _ = K.feel.stance_amps(life, ready)    # ready: everything at V2_READY_SWAY_SCALE; others: the rock at V2_SWAY_SCALE
-    for i in range(n + 1):
+    for i in ([n - 1, n - 1] if prewarm else []) + list(range(n + 1)):
         u = (i % n) / n
         br = a_br * math.sin(2 * math.pi * u)
         wt = a_wt * math.sin(2 * math.pi * u - K.WEIGHT)
@@ -620,6 +695,7 @@ def stance_upper(k, life, legs_spec, ready=False):
         s = sol.pose(legs, torso, head, O, dd, k["u"], left_target(k["Lw"], k["Lq"], 0.0), k["rp"], k["lp"])
         s["quiver"] = ((0.3 * br, 0.0, 0.0), None)
         out.append(s)
+    out = out[2:] if prewarm else out
     out = gear(out)
     out[-1] = out[0]
     return K.bake(out, K.STANCE_TICKS)
@@ -628,8 +704,134 @@ def stance_upper(k, life, legs_spec, ready=False):
 def stance_clips():
     out = {}
     for k, v in STANCE_KEYS.items():
-        out["stance_%s_upper" % k] = stance_upper(v, LIFE[k], STANCE_LEGS["brace"]["hips"] if V2 and k == "brace" else None, k in READY_LIKE)
+        hips = STANCE_LEGS.get(k, STANCE_LEGS["ready"])["hips"]
+        out["stance_%s_upper" % k] = stance_upper(v, LIFE[k], hips, k in READY_LIKE, k in PREWARM)
     out.update({"stance_%s_legs" % k: K.stance_legs(v, STANCE_LEGS_LIFE.get(k, 1.0), k in READY_LIKE) for k, v in STANCE_LEGS.items()})
+    out.update(order_clips())
+    return out
+
+
+# ------------------------------------------------------------------------------------------------
+# The order stances (rally, hold, fall back, rest, aim). common/stances.py makes these for every other troop by turning the
+# ready pose's joints; for the crossbow those turns drove the stock into the chest, so the arbalist's are solved here, each
+# its own crossbowman's posture, and stances.py leaves them alone (its BUILDER_OWNS). Their legs stay stances.py's.
+# ------------------------------------------------------------------------------------------------
+
+# stances.py's hold legs: hips between the ready and the brace hips (0.55 of the way), sat 0.35 lower
+HOLD_HIPS = tuple(tuple(a + 0.55 * (b - a) for a, b in zip(r, q)) for r, q in zip(K.READY_HIPS, STANCE_LEGS["brace"]["hips"]))
+HOLD_HIPS = (HOLD_HIPS[0], (HOLD_HIPS[1][0], HOLD_HIPS[1][1] - 0.35, HOLD_HIPS[1][2]))
+# hold: the stock still at the shoulder and the prod up on the threat (6 degrees down, against the ready's 12), the weight low
+HOLD = _onto_hips(about_butt(AIM, 6.0, 4.0, torso=(1.5, 3.5, 0.0), head=(5.0, 8.0, 5.0), shift=(-1.2, 1.0, -0.5),
+                             Lw=(FORE_STOCK[0], 18.0, FORE_STOCK[2])), HOLD_HIPS)
+# aim at the troop's look pitched up (-45, the stance's up) and down (+30): the same outer-shoulder mount, re-searched per
+# pitch (scratch elevopt.py): leaning back under a high shot, folded over a low one
+AIM_UP = shoulder_key({"torso": (-18.2, 60.95, 0.0), "butt": (-6.29, 16.66, -4.0), "yaw": 0.32, "elev": 45.0, "left_y": 16.5},
+                      head=(6.0 - 0.6 * 45.0, -60.95 - 6.0 + 0.32, -8.0))
+AIM_DOWN = shoulder_key({"torso": (16.78, 61.19, 0.0), "butt": (-7.09, 25.16, -4.06), "yaw": 6.31, "elev": -30.0, "left_y": 17.4},
+                        head=(6.0 + 0.6 * 30.0, -61.19 - 6.0 + 6.31, -8.0))
+
+
+def stance_loop(k, life, hips, ticks, ready=False, sway=1.0):
+    """stance_upper over `ticks` (its loops are K.STANCE_TICKS long), the solve warmed on its own last sample."""
+    old = K.STANCE_TICKS
+    K.STANCE_TICKS = ticks
+    try:
+        return stance_upper(k, life * sway, hips, ready, True)
+    finally:
+        K.STANCE_TICKS = old
+
+
+def one_hand(torso, head, ra, rf, la, lf, pitch, hips, quiver=0.0):
+    """A one-handed carry: the right fist holds the stock, the crossbow's line pitched in the world (+ up), aimed ahead."""
+    s = {"torso": (tuple(torso), None), "head": (tuple(head), None), "right_arm": (tuple(ra), None),
+         "right_forearm": ((rf, 0.0, 0.0), None), "left_arm": (tuple(la), None), "left_forearm": ((lf, 0.0, 0.0), None),
+         "left_hand": (Z3, None)}
+    s["right_hand"] = (carry_hand(fk_pose(s, {"hips": hips}), pitch), None)
+    s["quiver"] = ((quiver, 0.0, 0.0), None)
+    return s
+
+
+def fk_loop(fn, ticks):
+    n = ticks * SUB
+    out = gear([fn(i / n) for i in range(n + 1)])
+    out[-1] = out[0]
+    return K.bake(out, ticks)
+
+
+def fallback_upper():
+    """Backing off, a step every walk cycle: the crossbow levelled one-handed from the hip at the threat (the right elbow out
+    from the ribs, the stock clear of the flank), the left fist up as a guard; the chest bobs with the step and the bow stays
+    on target. stances.py's fall-back legs (walk_legs backwards, hips 0.6 side-on and dropped) carry it."""
+    hips = ((0.0, 0.6 * K.READY_HIPS[0][1], 0.0), (0.0, -1.6, 0.0))
+
+    def fn(u):
+        ph = 2 * math.pi * u
+        tx, ty = -3.0 + 0.9 * math.cos(2 * ph), 1.6 * math.sin(ph)
+        return one_hand((tx, ty, 0.0), (-tx + 2.0, -ty - hips[0][1], 0.0), (-28.0 + 1.2 * math.cos(2 * ph), 0.0, 16.0), -40.0,
+                        (-12.0, 0.0, -14.0), -28.0, -4.0 - 1.5 * math.cos(2 * ph), hips, 0.8 * math.cos(2 * ph))
+    return fk_loop(fn, K.WALK.ticks)
+
+
+def rest_upper():
+    """At ease between volleys: the crossbow hangs from the right fist by the thigh, prod down, the left arm loose; the chest
+    sinks and the head takes a slow look round."""
+    hips = K.READY_HIPS
+
+    def fn(u):
+        ph = 2 * math.pi * u
+        br = math.sin(ph)
+        tx, ty = -3.0 + 0.9 * br, -6.0 + 1.5 * math.sin(ph + 0.9)
+        return one_hand((tx, ty, 0.0), (1.0 - 0.6 * br, 8.0 - ty - hips[0][1] + 5.0 * math.sin(ph), 0.0),
+                        (-6.0 + 0.6 * br, 0.0, 9.0), -22.0, (-2.0 - 0.6 * br, 0.0, -6.0), -14.0, -38.0 + 1.0 * br, hips,
+                        0.4 * br)
+    return fk_loop(fn, 48)
+
+
+RALLY_TICKS = 20
+RALLY_HOLD_FROM = 13.0      # the last 7 ticks settle into the hold pose, so the clip ends exactly on it (stances.py's END_ON_HOLD)
+
+
+def rally_upper(hold_clip):
+    """The rally: the chest rises and opens, the head comes up with the shout, and the crossbow goes up two-handed, the prod
+    at the sky (30 degrees up) and the grip lifted to the chin, shaken once at the top, then down into the hold. (A one-handed
+    thrust overhead flipped the solve and swung the stock past the stance's 43.5 deg / 100 ms; this rig's arms only lift the
+    grip 4 px with both hands on, searched in scratch rally.py: pen_weapon 0.56 px, pen_limb 1.03 px.)"""
+    yaw = math.degrees(math.atan2(READY["d"][0], READY["d"][2]))
+    d_up, u_up = aim(30.0, yaw)
+    up = KEY((READY["torso"][0] - 4.0, READY["torso"][1], 0.0), (READY["head"][0] - 15.0, READY["head"][1], READY["head"][2]),
+             np.array(READY["O"]) + np.array([0.0, 4.0, -1.0]), d_up, u_up, Lw=(FORE_STOCK[0], 18.0, FORE_STOCK[2]),
+             rp=READY["rp"], lp=READY["lp"])
+    shake = nudge(up, O=(0.0, 0.5, 0.2), torso=(-0.8, 0.0, 0.0))
+    keys = [(0.0, READY), (5.0, up), (7.5, shake), (10.0, up), (RALLY_HOLD_FROM, up), (RALLY_TICKS, READY)]
+    sol = Solver()
+    legs = {"hips": K.READY_HIPS}
+    out = []
+    for i in range(RALLY_TICKS * SUB + 1):
+        t = i / SUB
+        v, left = solve_keys(keys, None, t)
+        out.append(sol.pose(legs, v["torso"], v["head"], v["O"], v["d"], v["u"], left, v["rp"][:4], v["lp"][:4],
+                            lm=min(1.0, max(0.0, v["lm"][0])), pw=v["pw"][0]))
+    out = gear(out)
+    # settle onto the hold clip's first frame, joint by joint
+    h0 = {b: np.array(ch["rotation"]["0.0"] if "0.0" in ch["rotation"] else list(ch["rotation"].values())[0], float)
+          for b, ch in hold_clip["bones"].items() if "rotation" in ch}
+    for i, s in enumerate(out):
+        k = max(0.0, min(1.0, (i / SUB - RALLY_HOLD_FROM) / (RALLY_TICKS - RALLY_HOLD_FROM)))
+        k = k * k * (3 - 2 * k)
+        for b, r in h0.items():
+            if b in s and k > 0:
+                s[b] = (tuple(np.array(s[b][0], float) + (r - np.array(s[b][0], float)) * k), s[b][1])
+    return K.bake(out, RALLY_TICKS, loop=False)
+
+
+def order_clips():
+    out = {"stance_hold_upper": stance_loop(HOLD, 2.0, HOLD_HIPS, 48),
+           "stance_fallback_upper": fallback_upper(),
+           "stance_rest_upper": rest_upper(),
+           "stance_aim_upper": stance_loop(nudge(AIM, torso=(0.5, 1.0, 0.0), head=(1.0, 0.0, 0.0)), 1.0, K.READY_HIPS, 40, sway=0.6),
+           "stance_aim_up_upper": stance_loop(AIM_UP, 1.0, K.READY_HIPS, 40, sway=0.6),
+           "stance_aim_down_upper": stance_loop(AIM_DOWN, 1.0, K.READY_HIPS, 40, sway=0.6)}
+    out["stance_rally_upper"] = rally_upper(out["stance_hold_upper"])
     return out
 
 
@@ -639,7 +841,7 @@ def stance_clips():
 
 off = K.off
 HIT_PEAK = {
-    "front": off(torso=(K.hb_front(-17), -10, 0), head=(K.hb(-12), 3, 0), rarm=(-10, 0, 18), larm=(-20, 0, -42), lfore=-12),
+    "front": off(torso=(K.hb_front(-17), -10, 0), head=(K.hb(-12), 3, 0), rarm=(-10, 0, 18), larm=(-19, 0, -40), lfore=-12),
     "back": off(torso=(12, 0, 0), head=(5, 0, 0), rarm=(10, 0, 14), larm=(10, 0, -20)),
     "right": off(torso=(K.hb(-5), 14, 8), head=(0, 6, 3), rarm=(6, 0, 10), larm=(-10, 0, -16)),
     "left": off(torso=(K.hb(-5), -14, -8), head=(0, -6, -3), rarm=(-10, 0, 16), larm=(10, 0, -28)),
@@ -698,6 +900,10 @@ V2_HIT_LEGS = {   # the knight's v2 hit footwork, from the same ready footing (R
                       (7.5, (1, 8, 0), (-0.6, -1.6, 0.2)), (10.5, (0, 5.5, 0), (-0.1, -1.2, 0.1)), (16, *K.READY_HIPS)],
              "steps": [("right", 1.0, 3.8, (-5.0, 2.0, 1.6), -18.0, 0.8), ("right", 9.0, 12.5, (-3.4, 2.0, 2.0), -12.0, 0.8)]},
 }
+
+
+for _spec in V2_HIT_LEGS.values():
+    _spec["steps"] = rehome(_spec["steps"])
 
 
 def v2_hit_clips():
@@ -803,9 +1009,13 @@ def ramp(t, a, b):
     return k * k * (3 - 2 * k)
 
 
+FLAT_TURN = 20.0     # degrees a tick the dropped crossbow may turn in the fist (a bigger jump read as a flip: ang_speed)
+
+
 def flat_hand(pose, ref):
     """The right wrist rotation letting the crossbow drop: it lies along the ground, flat or tipped from the fist with its butt or
-    prod on the ground, clear of the body, and as near `ref` as that allows."""
+    prod on the ground, clear of the body, and as near `ref` as that allows (never more than FLAT_TURN from it: the crossbow
+    settles tick by tick, it does not flip over to a better lie)."""
     q = dict(pose)
     q["right_hand"] = (ref, Z3)
     P, owner = _CORNERS(q)
@@ -813,41 +1023,69 @@ def flat_hand(pose, ref):
     ground = P[~isw, 1].min()
     boxes = _boxes(P, owner)
     L = np.linalg.inv(K.world(q, "right_hand")) @ np.c_[P[isw] / 16.0, np.ones(int(isw.sum()))].T
-    best = None
+    def score(h, tilt, sgn):
+        q["right_hand"] = (h, Z3)
+        Wp = (K.world(q, "right_hand") @ L)[:3].T * 16.0
+        low = Wp[:, 1].min() - ground
+        return (_inside(Wp, boxes) + 3.0 * max(0.0, -low) + 0.6 * abs(low - 0.2) + turn_deg(h, ref) / 45.0
+                + abs(tilt) / 60.0 + (0.5 if sgn < 0 else 0.0))
+    best = (score(ref, 0, 1.0), ref)
     for phi in range(0, 360, 10):
         for tilt in range(-60, 65, 5):
             c, s = math.cos(math.radians(phi)), math.sin(math.radians(phi))
             d = np.array([c * math.cos(math.radians(tilt)), math.sin(math.radians(tilt)), s * math.cos(math.radians(tilt))])
             for sgn in (1.0, -1.0):
                 h = hold_wrist(pose, d, (0.0, sgn, 0.0))
-                q["right_hand"] = (h, Z3)
-                Wp = (K.world(q, "right_hand") @ L)[:3].T * 16.0
-                low = Wp[:, 1].min() - ground
-                cost = (_inside(Wp, boxes) + 3.0 * max(0.0, -low) + 0.6 * abs(low - 0.2) + turn_deg(h, ref) / 45.0
-                        + abs(tilt) / 60.0 + (0.5 if sgn < 0 else 0.0))
-                if best is None or cost < best[0]:
+                if turn_deg(h, ref) > FLAT_TURN:
+                    continue
+                cost = score(h, tilt, sgn)
+                if cost < best[0]:
                     best = (cost, h)
     return best[1]
+
+
+def euler_near(r, prev):
+    """The rotation r written as the euler triple nearest `prev` (each zyx rotation has two, each angle mod 360), so the keys
+    between ticks interpolate the short way round instead of through a flip."""
+    r = np.asarray(r, float)
+    cands = [r, np.array([r[0] - 180.0, -180.0 - r[1], r[2] + 180.0])]
+    cands = [prev + (c - prev + 180.0) % 360.0 - 180.0 for c in cands]
+    return min(cands, key=lambda c: float(np.abs(c - prev).sum()))
 
 
 def flat_weapon(keys, start, t0, t1):
     end = keys[-1][0]
     overs, ref = {}, None
+    prev = np.asarray(K.pose_at(keys, start, t0 - 1)["right_hand"], float)
     for t in range(t0, end + 1):
         f = K.pose_at(keys, start, t)
         pose = {b: (r, Z3) for b, r in f.items()}
         ref = flat_hand(pose, ref or f["right_hand"])
-        overs[t] = {"right_hand": slerp_rot(f["right_hand"], ref, ramp(t, t0 - 1, t1))}
+        prev = euler_near(slerp_rot(f["right_hand"], ref, ramp(t, t0 - 1, t1)), prev)
+        overs[t] = {"right_hand": tuple(prev)}
     t_key = max(k[0] for k in keys if k[0] <= t0 - 1)
     return K.roll_keys(keys, start, t_key, overs)
 
 
+# the knight's roll onto the right side, its sword arm's sweep up past the head eased in over one more tick: with the crossbow
+# in the fist the 40 degree first tick swung the stock at 90 degrees / 100 ms (ang_speed_weapon)
+ROLL_RIGHT = {t: dict(v) for t, v in K.ROLL_RIGHT.items()}
+ROLL_RIGHT[14]["right_arm"], ROLL_RIGHT[15]["right_arm"] = (-102.0, 0.0, 0.0), (-128.0, 0.0, 0.0)
+
+
 def death_clips():
-    start = K.idle_start()
-    falls = {"death_back": K.DEATH_BACK, "death_forward": K.DEATH_FORWARD,
-             "death_left": K.roll_keys(K.DEATH_LEFT, start, 13, K.ROLL_LEFT),
-             "death_right": K.roll_keys(K.DEATH_RIGHT, start, 13, K.ROLL_RIGHT)}
-    return {n: K.death_clip(flat_weapon(k, start, *FLAT_AT[n]), start, n) for n, k in falls.items()}
+    # the falls start from the idle frame (the knight's at-ease feet), not from the shooter's footing: their footwork keeps the
+    # knight's home feet, so they stay the approved falls
+    saved = K.READY_FEET
+    K.READY_FEET = _KN_FEET
+    try:
+        start = K.idle_start()
+        falls = {"death_back": K.DEATH_BACK, "death_forward": K.DEATH_FORWARD,
+                 "death_left": K.roll_keys(K.DEATH_LEFT, start, 13, K.ROLL_LEFT),
+                 "death_right": K.roll_keys(K.DEATH_RIGHT, start, 13, ROLL_RIGHT)}
+        return {n: K.death_clip(flat_weapon(k, start, *FLAT_AT[n]), start, n) for n, k in falls.items()}
+    finally:
+        K.READY_FEET = saved
 
 
 # ------------------------------------------------------------------------------------------------

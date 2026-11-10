@@ -790,7 +790,11 @@ def build_aim(tr):
 # rally, hold (upper and legs), fall back (upper; the walk-backwards legs stay here), rest and the aims. Stalker is not listed.
 _BOW_OWNS = {"stance_rally_upper", "stance_hold_upper", "stance_hold_legs", "stance_fallback_upper", "stance_rest_upper",
              "stance_aim_upper", "stance_aim_up_upper", "stance_aim_down_upper"}
-BUILDER_OWNS = {t: _BOW_OWNS for t in ("archer", "longbow", "bonebow", "wm_hunter")}
+# ic_arbalist: the order stances its own builder solves and exports (the crossbow's turned ready pose drove the stock into the
+# chest); build_all leaves these to it, so a re-run keeps the builder's clips
+BUILDER_OWNS = {**{t: _BOW_OWNS for t in ("archer", "longbow", "bonebow", "wm_hunter")},
+                "ic_arbalist": {"stance_rally_upper", "stance_hold_upper", "stance_fallback_upper", "stance_rest_upper",
+                                "stance_aim_upper", "stance_aim_up_upper", "stance_aim_down_upper"}}
 
 
 def build_all(tr):
