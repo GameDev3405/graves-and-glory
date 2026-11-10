@@ -75,6 +75,12 @@ def overlay_lookup(q, toks, hints):
         if sk:
             out(f"== {q.strip()}: skipped as too generic ({sk['why']}); sheet rows: " + ', '.join(f'{r[1]}:{r[2]} ({r[0]})' for r in sk['rows'][:4]) + '. Use rg for its other places.')
         return None
+    meta = o.get('meta', {})
+    sk = meta.get('skipped', {}).get(q.strip())
+    if sk:
+        out(f"note: {q.strip()} is too generic for text links ({sk['why']}); readers below are partial, use rg for the rest.")
+    if meta.get('audio_drift'):
+        out('WARNING: Audio.java changed shape since the sound mirror was written; sound routes may be stale: ' + '; '.join(meta['audio_drift'])[:300])
     best = max(s for s, _ in scored)
     # keep entities at the best tier; a clip entity is only wanted when it is what the query names
     chosen = [e for s, e in scored if s == best]

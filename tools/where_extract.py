@@ -10,7 +10,7 @@ row, every place the id appears), and every key of the `rules` row (Java and Pyt
 match more than MAX_ID_HITS places (block, shield, main, ...), are skipped and listed in meta.skipped; where.py says so when asked for one.
 Run: python tools/where_extract.py        (about 10 s; land.py runs it after the graph refresh, a lane runs it once by hand)
 """
-import argparse, collections, json, pathlib, re, subprocess, sys, time
+import argparse, collections, json, os, pathlib, re, shutil, subprocess, sys, time
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 OUT = ROOT / 'work' / 'where' / 'overlay.json'
@@ -643,6 +643,9 @@ def thin_aliases(ov):
 def main():
     ap = argparse.ArgumentParser(description='Build work/where/overlay.json (every troop, every design-sheet id, the rules keys)')
     ap.parse_args()
+    if shutil.which('rg') is None:
+        print('where_extract: ripgrep (rg) is not on PATH; overlay not built', file=sys.stderr)
+        return 2
     t0 = time.time()
     dz, allf = Design(), files()
     tables, records = spec_tables()
@@ -677,8 +680,10 @@ def main():
     thin_aliases(ov)
     problems = audio_shape_problems()
     for pr in problems: print('WARNING: ' + pr, file=sys.stderr)
-    OUT.write_text(json.dumps({'meta': {'built': time.strftime('%Y-%m-%d %H:%M'), 'troops': troop_ids, 'sections': sorted({s_ for s_, _ in dz.rows}), 'ids': covered,
+    tmp = OUT.with_suffix('.tmp')
+    tmp.write_text(json.dumps({'meta': {'built': time.strftime('%Y-%m-%d %H:%M'), 'troops': troop_ids, 'sections': sorted({s_ for s_, _ in dz.rows}), 'ids': covered,
                                         'skipped': skipped, 'audio_drift': problems}, 'nodes': ov.nodes, 'edges': ov.edges}, separators=(',', ':')), encoding='utf-8')
+    os.replace(tmp, OUT)
     print(f'overlay: {len(ov.nodes)} nodes, {len(ov.edges)} edges, {len(troop_ids)} troops, {covered} sheet ids, {len(skipped)} generic ids skipped '
           f'-> {OUT.relative_to(ROOT)} ({OUT.stat().st_size // 1024} KB, rg pass {t1 - t0:.1f}s, total {time.time() - t0:.1f}s)')
     return 0
