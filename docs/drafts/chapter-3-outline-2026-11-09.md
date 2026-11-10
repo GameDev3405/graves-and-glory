@@ -1,6 +1,6 @@
 # Chapter 3 outline: "The Forge Below" (Ironclad, Brassjaw)
 
-Status: Draft for Kort's review, updated 2026-11-09 with his decisions and the names in docs/lore/names.md. Arrives in season 3. Same ground rules as `chapter-1-outline-2026-11-09.md` and `lore-bible-2026-11-09.md`; the approved design wins any disagreement. Calls I made alone are marked **[call]**. No mechanics, rosters or map layouts change.
+Status: Approved by Kort on 2026-11-10 (mana is called glimpur only). Updated 2026-11-09 with his decisions and the names in docs/lore/names.md. Arrives in season 3. Same ground rules as `chapter-1-outline-2026-11-09.md` and `lore-bible-2026-11-09.md`; the approved design wins any disagreement. Calls I made alone are marked **[call]**. No mechanics, rosters or map layouts change.
 
 ## What the chapter does
 

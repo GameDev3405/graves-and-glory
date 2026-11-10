@@ -1,6 +1,6 @@
 # Chapter 1 outline: "The Oath" (Gilded Order, Lord Marshal Aldric)
 
-Status: Draft for Kort's review, updated 2026-11-09 with his decisions and the names in docs/lore/names.md. Follows `docs/drafts/lore-bible-2026-11-09.md` and the approved design `docs/superpowers/specs/2026-11-09-lore-reboot-design.md`. Calls I made alone are marked **[call]**. Nothing here changes mechanics, rosters or map layouts.
+Status: Approved by Kort on 2026-11-10 (mana is called glimpur only). Updated 2026-11-09 with his decisions and the names in docs/lore/names.md. Follows `docs/drafts/lore-bible-2026-11-09.md` and the approved design `docs/superpowers/specs/2026-11-09-lore-reboot-design.md`. Calls I made alone are marked **[call]**. Nothing here changes mechanics, rosters or map layouts.
 
 **Superseded in part.** The battle table and the battle-level text here are superseded by `docs/lore/chapter-1-battles.md` (approved by Kort, 2026-11-09), which ships in 1.0; the table below now mirrors it. The pages, stills and scenes are kept as the script for a later story layer (`PLAN-TO-1.0.md` keeps the storybook out of 1.0). Where the two differ, `chapter-1-battles.md` wins.
 

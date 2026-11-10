@@ -1,10 +1,10 @@
 # Graves and Glory lore bible
 
-Status: Draft for Kort's review, updated 2026-11-09 with his decisions and the names in docs/lore/names.md. Expands the approved design `docs/superpowers/specs/2026-11-09-lore-reboot-design.md`. If this bible and the design disagree, the design wins and this file is wrong; Kort's decisions of 2026-11-09 (`docs/lore/kort-decisions-2026-11-09.md`), `docs/lore/names.md` and `docs/lore/season-framework.md` win over both where they speak. The design's story "seasons" are read here as Acts I to III. Calls I made alone are marked **[call]**; everything else is Kort's decision. Nothing here changes mechanics.
+Status: Approved by Kort on 2026-11-10 (mana is called glimpur only). Updated 2026-11-09 with his decisions and the names in docs/lore/names.md. Expands the approved design `docs/superpowers/specs/2026-11-09-lore-reboot-design.md`. If this bible and the design disagree, the design wins and this file is wrong; Kort's decisions of 2026-11-09 (`docs/lore/kort-decisions-2026-11-09.md`), `docs/lore/names.md` and `docs/lore/season-framework.md` win over both where they speak. The design's story "seasons" are read here as Acts I to III. Calls I made alone are marked **[call]**; everything else is Kort's decision. Nothing here changes mechanics.
 
 ## 1. The saga in one paragraph
 
-The land, which humans call Wakeland, is the bodies of earthen giants. Ages ago they grew tired of being alive, built a spire, Merudaal, "the Last Breath", that breathed their meru out for good, and crumbled into mountains, plains and sea floor. The meru leaked out as glimpur, and it is the magic in every living thing. Now the spire has woken. The giants are rising, calm and courteous, and they want every drop of glimpur destroyed so it can never be used for harm. They are right that it has been, above all by humans. They are monstrous because the cure is the end of four Houses, and they threw the meru away themselves. Act I (seasons 1 to 5; chapter 1 ships in 1.0) is five Houses fighting over old wrongs while the land quietly shows signs of life. The saga ends when the giants choose to live and share what they threw away.
+The land, which humans call Wakeland, is the bodies of earthen giants. Ages ago they grew tired of being alive, built a spire, Merudaal, "the Last Breath", that breathed their glimpur out for good, and crumbled into mountains, plains and sea floor. The meru leaked out as glimpur, and it is the magic in every living thing. Now the spire has woken. The giants are rising, calm and courteous, and they want every drop of glimpur destroyed so it can never be used for harm. They are right that it has been, above all by humans. They are monstrous because the cure is the end of four Houses, and they threw the glimpur away themselves. Act I (seasons 1 to 5; chapter 1 ships in 1.0) is five Houses fighting over old wrongs while the land quietly shows signs of life. The saga ends when the giants choose to live and share what they threw away.
 
 ## 2. Glossary
 
@@ -12,8 +12,8 @@ The land, which humans call Wakeland, is the bodies of earthen giants. Ages ago 
 |---|---|
 | Wakeland | The land, the settlers' name for it: the wake their ships cut from Demacrus, and the watch kept over the dead. The land is a body about to wake. |
 | Giants, elders | The earthen giants. Each elder is one body, one region. Machine-and-crystal civilization. Their own name for themselves stays open until Act III. |
-| The spire, Merudaal | "The Last Breath". The giants built it to breathe their meru out for good. It lies under Highheart. Humans have never seen it and do not know its name until a giant speaks it in Act II. Its waking is the saga's trigger. |
-| Glimpur | The human word for the giants' last breath. The giants call it **meru**, breath. Every unit's magic. Looks like a violet-white shimmer. When the spire pulls it home, magic ebbs. |
+| The spire, Merudaal | "The Last Breath". The giants built it to breathe their glimpur out for good. It lies under Highheart. Humans have never seen it and do not know its name until a giant speaks it in Act II. Its waking is the saga's trigger. |
+| Glimpur | The giants' last breath, and its only name, used by humans and giants alike. Every unit's magic. Looks like a violet-white shimmer. When the spire pulls it home, magic ebbs. |
 | The cure | The giants' word for destroying all glimpur. For the four non-human Houses it means extinction. |
 | Terms | What the giants offer: give up magic and stay. Offered only to the Gilded. |
 | The Concord | The realms of humans who came from Demacrus, sharing one capital and the Gilded Order as their army. "Of one heart"; it never asked whose hearts counted. |
@@ -36,7 +36,7 @@ The land, which humans call Wakeland, is the bodies of earthen giants. Ages ago 
 
 **[call]** Dates are for consistency, not for display.
 
-- Ages ago: the giants build Merudaal, breathe out their meru, and crumble. Glimpur spreads into everything.
+- Ages ago: the giants build Merudaal, breathe out their glimpur, and crumble. Glimpur spreads into everything.
 - About 900 years ago: Ironclad's ancestors land from Demacrus; the Concord's realms follow and build Highheart on Orruvan's chest, above Merudaal.
 - The following centuries: the Gilded hunt the Wildmoot; mages bombard the sea; the Ironclad tap and graft redstone.
 - About 150 years ago: in Tengervald, the dying realm the Concord looked away from, Halvard learns to bind the dead with glimpur. The binding is the first great misuse and the one that trips the spire.
@@ -58,12 +58,12 @@ The names are confirmed in `docs/lore/names.md` (Kort may veto any one). Giant n
 
 **Orruvan.** The most tired of the giants. It woke because the spire pulled it back, not because it wants to be alive. The cure is its grief, not its crusade. Convincing it that life is worth living is the saga's emotional ending.
 
-**Voice.** Calm, courteous, inevitable, never raised. Violet-white glow in the meru they pull. They offer terms; they never threaten.
+**Voice.** Calm, courteous, inevitable, never raised. Violet-white glow in the glimpur they pull. They offer terms; they never threaten.
 
 **What they want and why it frightens.** They want all glimpur destroyed so it cannot be used for harm. They are right about the harm. They are wrong in three ways the Houses can say aloud:
 - The cure ends four Houses, and the giants count them as residue, not people.
 - Every House except the Gilded is, in the giants' eyes, an outcome of glimpur used for evil, so no terms are offered to them.
-- The giants threw the meru away themselves, out of weariness, and now claim to guard it.
+- The giants threw the glimpur away themselves, out of weariness, and now claim to guard it.
 
 **What angers them most.** The Skeleton King's binding. The dead are meant to rest.
 

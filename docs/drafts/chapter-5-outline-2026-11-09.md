@@ -1,6 +1,6 @@
 # Chapter 5 outline: "The Rest" (Graveborn, the Hollow King)
 
-Status: Draft for Kort's review, updated 2026-11-09 with his decisions and the names in docs/lore/names.md. Arrives in season 5, the end of Act I. Same ground rules as `chapter-1-outline-2026-11-09.md` and `lore-bible-2026-11-09.md`; the approved design wins any disagreement. Calls I made alone are marked **[call]**. No House mechanics or playable rosters change; the Bound Host's NPC roster is new content for season 5.
+Status: Approved by Kort on 2026-11-10 (mana is called glimpur only). Updated 2026-11-09 with his decisions and the names in docs/lore/names.md. Arrives in season 5, the end of Act I. Same ground rules as `chapter-1-outline-2026-11-09.md` and `lore-bible-2026-11-09.md`; the approved design wins any disagreement. Calls I made alone are marked **[call]**. No House mechanics or playable rosters change; the Bound Host's NPC roster is new content for season 5.
 
 ## What the chapter does
 

@@ -16,5 +16,6 @@ Kort answered the eleven decisions on the lore page (https://claude.ai/artifact/
 | 10 | Names | Kort asked the lore lead to name everything, with meaning. See `names.md`. |
 | 12 | Season locks | Approved: a chapter unlocks when its season starts (server date config); earlier chapters stay open forever; the order lock stays, so a new player starts at chapter 1. |
 | 11 | Reviews | Kort will review the lore bible and the chapter 2 to 5 outlines once they are brought up to date. |
+| 13 | Bible and outlines (2026-11-10) | Approved: the lore bible and the chapter 1 to 5 outlines. One change: the magic has one name, **glimpur**. "Meru" is no longer a name for it; the root meru (breath) stays only inside Merudaal and Ommeru. |
 
 Consequence of one-month seasons: a new map every month is more than Kort's map time allows, so the default is a new map only where the story needs a place the shipped five cannot be (seasons 4, 5 and 6); seasons 2 and 3 reuse shipped maps with new dressing. Each season after 1.0 still ships its chapter, at least one unit, and its giant thread step. See `season-framework.md`.

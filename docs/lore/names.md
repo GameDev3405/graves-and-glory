@@ -10,7 +10,7 @@ Two languages carry the names. Humans name things for what they see and want, an
 |---|---|
 | orru | enough, finished |
 | van | counted, measured |
-| meru | breath; also the giants' word for glimpur |
+| meru | breath |
 | om | wide |
 | daal | last |
 | khar | fire |
@@ -20,14 +20,14 @@ Two languages carry the names. Humans name things for what they see and want, an
 | thal | deep |
 | luun | mother, the one who holds |
 
-Glimpur is the human word. The giants call it **meru**, their breath. Every House's magic is the giants' last breath, breathed out on purpose.
+Glimpur is the only name for it, used by humans and giants alike. Every House's magic is the giants' last breath, breathed out on purpose.
 
 ## Places and powers
 
 | Thing | Name | Meaning |
 |---|---|---|
 | The land | **Wakeland** | The settlers from Demacrus named it for the long wake their ships cut across the sea. In their old speech a wake is also the watch kept over the dead before burial. The land is a body, and it is about to wake. The name is true three ways and the people who chose it meant only the first. |
-| The spire | **Merudaal**, "the Last Breath" | The giants built it to breathe their meru out for good. Humans have never seen it and have no name for it; the player first hears this one from a giant in Act II. |
+| The spire | **Merudaal**, "the Last Breath" | The giants built it to breathe their glimpur out for good. Humans have never seen it and have no name for it; the player first hears this one from a giant in Act II. |
 | The capital | **Highheart** | The founders built on the high ground because the stone there was always warm. The city stands on Orruvan's chest, over its heart and over the Last Breath. |
 | The confederacy | **the Concord** | Concord means "of one heart": the realms bound together under the Charter. The Concord never asked whose hearts counted, which is the Charter's gap. |
 | The Charter | **the Concord Charter** | Unchanged in use: "the Charter" in speech. |
