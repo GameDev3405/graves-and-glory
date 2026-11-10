@@ -177,6 +177,6 @@ git status --short                          # empty
 python tools/land.py unit/<tid> --dry-run
 python tools/land.py unit/<tid>             # only after Kort (or the coordinator for him) approves the branch for main
 ```
-Everything stages 1 to 5 list under **Commit** must be committed first; land refuses a dirty lane. `land.py` rebases on `main`, runs verify fast in the lane, fast-forwards `main`, retires the worktree and regenerates `docs/STATE.md`; it never pushes. CR-only noise on `Spec.java`/`preflight.json` is restored.
+Everything stages 1 to 5 list under **Commit** must be committed first; land refuses a dirty lane. `land.py` rebases on `main`, runs verify fast in the lane, fast-forwards `main`, retires the worktree, regenerates `docs/STATE.md` and refreshes main's graph (`--no-graph` skips; a graph failure only warns); it never pushes. CR-only noise on `Spec.java`/`preflight.json` is restored.
 **Done when** it exits 0. Exit codes: 1 dirty lane, 2 rebase failed, 3 verify failed, 4 main moved, 5 merge refused, 6 landed but cleanup incomplete, 7 another land running, 8 a git command failed before main moved, 64 usage.
 **Kort:** `- kort: Land unit/<tid> (spec, art, animation approved in booth)? | open: <commit or none> | min: 2 | prio: 2`.

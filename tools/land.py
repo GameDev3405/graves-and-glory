@@ -1,6 +1,6 @@
 """Land one finished branch on main, locally. Never pushes, tags a release or publishes.
 
-    python tools/land.py <branch> [--dry-run] [--keep-worktree] [--verify-cmd "..."]
+    python tools/land.py <branch> [--dry-run] [--keep-worktree] [--no-graph] [--verify-cmd "..."]
 
 Run it from any checkout of the repository. Steps 1 to 4 stop at the first failure with main untouched:
   1. find the branch's worktree; refuse if it has uncommitted changes (CR-only noise on the generated
@@ -17,6 +17,9 @@ After main has moved, cleanup problems never undo the landing; they are reported
      there; delete the branch only if it still points at the verified tip. Skipped with --keep-worktree
   6. regenerate docs/STATE.md (tools/state.py) and commit only that file on main; skipped with a warning
      if docs/STATE.md has uncommitted edits there
+  7. refresh main's Graphify graph (`python tools/graph_state.py refresh` in the main checkout: local AST only, no model
+     calls, output in git-ignored graphify-out/). A failure, a missing graphify or a timeout only prints a warning and never
+     changes the exit code. Skipped with --no-graph, --dry-run, or when no checkout has main checked out
 
 Exit codes: 0 landed, 1 dirty lane, 2 rebase failed, 3 verify failed, 4 main or the lane moved during
 verify, 5 merge refused, 6 landed but cleanup incomplete (message says what is left), 7 another land is
@@ -31,6 +34,7 @@ import state
 
 GENERATED = ['src/main/java/gg/gravesandglory/Spec.java', 'sheets/preflight.json']
 DISPOSABLE = ['build', '.gradle']  # rebuilt by Gradle; not evidence
+GRAPH_TIMEOUT = 600  # seconds; a refresh of the real repo is measured at well under this
 EXIT_DIRTY, EXIT_REBASE, EXIT_VERIFY, EXIT_MOVED, EXIT_MERGE, EXIT_CLEANUP, EXIT_BUSY, EXIT_GIT, EXIT_USAGE = 1, 2, 3, 4, 5, 6, 7, 8, 64
 
 class Stop(Exception):
@@ -104,6 +108,25 @@ def write_state(home, a):
     say(f'wrote {out}')
     return []
 
+def refresh_graph(home, timeout):
+    """Refresh the graph in the main checkout with that checkout's own tools/graph_state.py. Returns a warning or None; never raises."""
+    script = pathlib.Path(home)/'tools'/'graph_state.py'
+    if not script.exists(): return f'graph not refreshed: {script} does not exist'
+    try:
+        proc = subprocess.Popen([sys.executable, str(script), 'refresh'], cwd=home, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                                text=True, encoding='utf8', errors='replace')
+    except OSError as e: return f'graph not refreshed: could not start {script}: {e}'
+    try: out, _ = proc.communicate(timeout=timeout)
+    except subprocess.TimeoutExpired:
+        if os.name == 'nt': subprocess.run(['taskkill', '/F', '/T', '/PID', str(proc.pid)], capture_output=True)  # graphify children too
+        else: proc.kill()
+        proc.communicate()
+        return f'graph not refreshed: timed out after {timeout}s; run `python tools/graph_state.py refresh` in {home}'
+    tail = ' | '.join((out or '').strip().splitlines()[-3:])
+    if proc.returncode: return f'graph not refreshed (exit {proc.returncode}; graphify missing or failed): {tail}'
+    say(tail or 'graph refreshed')
+    return None
+
 def land(a):
     repo = pathlib.Path(a.repo)
     trees = state.worktrees(repo)
@@ -125,7 +148,8 @@ def land(a):
         say(f'dry run: would rebase {a.branch} ({ahead} commits) in {wt} onto {a.main} {base[:10]}, run {a.verify_cmd!r},'
             f' fast-forward {a.main}' + (f' in {home["path"]}' if home else ' (ref only; no checkout has it)') +
             ('' if a.keep_worktree else f', move {wt} to work/land and delete {a.branch}') +
-            (', commit docs/STATE.md' if home else ', no STATE.md (no checkout of main)'))
+            (', commit docs/STATE.md' if home else ', no STATE.md (no checkout of main)') +
+            ('' if a.no_graph or not home else ', refresh the graph'))
         return 0
 
     if any((wt/git(wt, 'rev-parse', '--git-path', d)).exists() for d in ('rebase-merge', 'rebase-apply', 'MERGE_HEAD')):
@@ -174,6 +198,11 @@ def land(a):
         try: problems += write_state(home['path'], a)
         except Exception as e: problems.append(f'STATE.md not regenerated: {e}')
     for p in problems: say('warning: ' + p)
+    if home and not a.no_graph:
+        say(f'refreshing the graph in {home["path"]} (local only; up to {a.graph_timeout}s)')
+        try: w = refresh_graph(home['path'], a.graph_timeout)
+        except Exception as e: w = f'graph not refreshed: {e}'
+        if w: say('warning: ' + w)  # a graph problem never changes the exit code
     return EXIT_CLEANUP if problems else 0
 
 class Parser(argparse.ArgumentParser):
@@ -186,6 +215,8 @@ def main(argv=None):
     p.add_argument('--verify-cmd', default=f'"{sys.executable}" tools/verify.py fast')
     p.add_argument('--status-dir', help='lead status folder (default: status/ beside the primary checkout)')
     p.add_argument('--keep-worktree', action='store_true'); p.add_argument('--dry-run', action='store_true')
+    p.add_argument('--no-graph', action='store_true', help='skip the graph refresh of main after landing')
+    p.add_argument('--graph-timeout', type=int, default=GRAPH_TIMEOUT, help=argparse.SUPPRESS)
     p.add_argument('--now', help=argparse.SUPPRESS)
     a = p.parse_args(argv)
     a.now = datetime.datetime.fromisoformat(a.now) if a.now else datetime.datetime.now(datetime.timezone.utc)

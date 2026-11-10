@@ -1,5 +1,5 @@
 """tools/land.py and tools/state.py: land one branch on main and regenerate docs/STATE.md, without ever pushing."""
-import datetime, os, pathlib, subprocess, sys, tempfile, unittest
+import contextlib, datetime, io, os, pathlib, subprocess, sys, tempfile, unittest
 TOOLS = pathlib.Path(__file__).resolve().parents[2]/'tools'
 sys.path.insert(0, str(TOOLS))
 import land, state
@@ -37,10 +37,16 @@ class Repo:
                           '--now', '2026-11-09T12:00:00+00:00', *extra])
     def log(self, ref='main'): return git(self.m, 'log', '--format=%s', ref).splitlines()
 
+REAL_REFRESH = land.refresh_graph
+
 class Land(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory(); self.r = Repo(self.tmp.name)
+        self.refreshes = []  # fake seam: never runs graphify
+        def fake(home, timeout): self.refreshes.append((pathlib.Path(home), timeout)); return None
+        land.refresh_graph = fake
     def tearDown(self):
+        land.refresh_graph = REAL_REFRESH
         subprocess.run(['git', '-C', str(self.r.m), 'worktree', 'prune'], capture_output=True)
         self.tmp.cleanup()
 
@@ -54,6 +60,69 @@ class Land(unittest.TestCase):
         text = (self.r.m/'docs/STATE.md').read_text()
         self.assertIn('lane work', text)  # head subject
         self.assertEqual(git(self.r.m, 'status', '--porcelain'), '')
+
+    def land_output(self, *extra, **kw):
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out): code = self.r.land(*extra, **kw)
+        return code, out.getvalue()
+
+    def test_graph_refreshed_in_main_checkout_after_success(self):
+        self.assertEqual(self.r.land(), 0)
+        self.assertEqual(self.refreshes, [(self.r.m, land.GRAPH_TIMEOUT)])
+        self.assertIn('docs: regenerate STATE.md after landing lane', self.r.log()[0])  # refresh comes after STATE.md
+
+    def test_graph_not_refreshed_when_landing_fails(self):
+        for kw in (dict(verify=FAIL),): self.assertEqual(self.r.land(**kw), land.EXIT_VERIFY)
+        (self.r.m/'a.txt').write_text('kort edit\n')
+        commit(self.r.w, 'a.txt', 'lane a\n', 'lane touches a')
+        self.assertEqual(self.r.land(), land.EXIT_MERGE)
+        self.assertEqual(self.refreshes, [])
+
+    def test_graph_not_refreshed_on_dry_run(self):
+        self.assertEqual(self.r.land('--dry-run'), 0)
+        self.assertEqual(self.refreshes, [])
+
+    def test_no_graph_flag_skips_refresh(self):
+        self.assertEqual(self.r.land('--no-graph'), 0)
+        self.assertEqual(self.refreshes, [])
+
+    def test_no_checkout_of_main_skips_refresh(self):
+        git(self.r.m, 'checkout', '-q', '-b', 'other')
+        self.assertEqual(self.r.land(), 0)
+        self.assertEqual(self.refreshes, [])
+
+    def test_refresh_warning_never_changes_exit_code(self):
+        land.refresh_graph = lambda home, timeout: 'graph not refreshed: boom'
+        code, out = self.land_output()
+        self.assertEqual(code, 0)
+        self.assertIn('warning: graph not refreshed: boom', out)
+
+    def test_refresh_exception_never_changes_exit_code(self):
+        def boom(home, timeout): raise RuntimeError('kaboom')
+        land.refresh_graph = boom
+        code, out = self.land_output()
+        self.assertEqual(code, 0)
+        self.assertIn('warning: graph not refreshed: kaboom', out)
+
+    def test_refresh_failure_missing_script_and_timeout_are_warnings(self):
+        home = pathlib.Path(self.tmp.name)/'h'; (home/'tools').mkdir(parents=True)
+        self.assertIn('does not exist', REAL_REFRESH(home, 5))
+        script = home/'tools/graph_state.py'
+        script.write_text('import sys; print("graphify: not found"); sys.exit(3)\n')
+        w = REAL_REFRESH(home, 30)
+        self.assertIn('exit 3', w); self.assertIn('graphify: not found', w)
+        script.write_text('import time; time.sleep(60)\n')
+        self.assertIn('timed out after 1s', REAL_REFRESH(home, 1))
+        script.write_text('print("Graph refreshed locally; 7 nodes")\n')
+        self.assertIsNone(REAL_REFRESH(home, 30))
+
+    def test_landing_runs_main_checkouts_own_graph_script_and_timeout_keeps_exit_0(self):
+        land.refresh_graph = REAL_REFRESH
+        commit(self.r.w, 'tools/graph_state.py', 'import time; time.sleep(60)\n', 'fake slow graph')
+        code, out = self.land_output('--graph-timeout', '1')
+        self.assertEqual(code, 0)
+        self.assertIn('warning: graph not refreshed: timed out after 1s', out)
+        self.assertEqual(git(self.r.m, 'rev-parse', 'HEAD'), git(self.r.m, 'rev-parse', 'main'))
 
     def test_verify_failure_leaves_main_and_worktree(self):
         before = git(self.r.m, 'rev-parse', 'main')
