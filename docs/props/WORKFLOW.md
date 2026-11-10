@@ -226,4 +226,4 @@ The worker and the stone hand both hit it before the fix.
 `new_prop.py` picks the next free CMD block on its own branch only, so two worktrees pick the same one (muster_board
 and stone_hand both took block 6; fixed by moving muster_board to 9). When builders work in parallel, the lead assigns
 each prop a block and the builder scaffolds with `--block N`. Blocks in use: 0-5 forge set, 6 stone_hand,
-7 stake_barricade, 8 drowned_boat, 9 muster_board. Next free: 10.
+7 stake_barricade, 8 drowned_boat (reserved; on props/ab-boat-b, not landed), 9 muster_board. Next free: 10.
