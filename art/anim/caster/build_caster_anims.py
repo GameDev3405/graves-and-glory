@@ -224,21 +224,61 @@ def shaft_hits(pose, margin=0.3):
 _KN_HIPS, _KN_FEET = K.READY_HIPS, dict(K.READY_FEET)
 READY_HIPS = ((0.0, 20.0, 0.0), (0.0, -1.3, 0.1))
 READY_FEET = {"left": ((3.4, 2.0, 2.4), 14.0), "right": ((-3.2, 2.0, -2.2), -6.0)}
-if ROBED:   # caster v2: upright, the feet close under the hanging robe, the hem clear of the floor
-    READY_HIPS = ((0.0, 16.0, 0.0), (0.0, -0.9, 0.1))
-    READY_FEET = {"left": ((2.9, 2.0, 1.1), 10.0), "right": ((-2.8, 2.0, -1.1), -6.0)}
 K.READY_HIPS, K.READY_FEET = READY_HIPS, READY_FEET
 STANCE_LEGS = {
     "ready": {"hips": READY_HIPS, "left": (3.4, 2.0, 2.4), "right": (-3.2, 2.0, -2.2), "yaw": (-6.0, 14.0)},
     "brace": {"hips": ((6.0, 24.0, 0.0), (0.0, -3.4, 0.6)), "left": (3.6, 2.0, 3.4), "right": (-3.4, 2.0, -3.6), "yaw": (-10.0, 22.0)},
     "wall": {"hips": ((0.0, 14.0, 0.0), (0.0, -1.1, 0.2)), "left": (3.2, 2.0, 2.8), "right": (-3.0, 2.0, -2.4), "yaw": (-6.0, 14.0)},
 }
-if ROBED:   # caster v2: no shield crouch; the brace stands upright on a slightly wider footing, the wall leans in
-    STANCE_LEGS = {
-        "ready": {"hips": READY_HIPS, "left": (2.9, 2.0, 1.1), "right": (-2.8, 2.0, -1.1), "yaw": (-6.0, 10.0)},
-        "brace": {"hips": ((-2.0, 6.0, 0.0), (0.0, -0.8, -0.1)), "left": (3.1, 2.0, 0.6), "right": (-3.1, 2.0, -0.6), "yaw": (-10.0, 10.0)},
-        "wall": {"hips": ((3.0, 10.0, 0.0), (0.0, -1.0, 0.4)), "left": (2.8, 2.0, 1.6), "right": (-2.7, 2.0, -1.3), "yaw": (-6.0, 8.0)},
-    }
+# Caster v2 footing (Kort's rule 6, 2026-11-10): no shield crouch and the feet close under the hanging robe, the hem clear of
+# the floor; each caster stands on its own feet. Per troop: the guard's hips (rot, pos) and feet ((x, y, z), yaw), and the
+# brace and wall footings (StanceController plays them for Hold only on a shield or spear troop, so for a caster they are the
+# caster's own version of that order, shown in the booth).
+CAST_LEGS = {
+    # the Sunweaver stands tall and square behind the planted staff, the weight even, the lead foot turned out a little
+    "mage": {"hips": ((0.0, 12.0, 0.0), (0.0, -0.8, 0.1)),
+             "left": ((3.0, 2.0, 1.3), 12.0), "right": ((-3.0, 2.0, -0.9), -8.0),
+             "brace": {"hips": ((-3.0, 4.0, 0.0), (0.0, -0.7, -0.2)), "left": (3.2, 2.0, 0.5), "right": (-3.2, 2.0, -0.5),
+                       "yaw": (-12.0, 12.0)},
+             "wall": {"hips": ((4.0, 22.0, 0.0), (0.0, -1.1, 0.4)), "left": (3.0, 2.0, 1.9), "right": (-2.8, 2.0, -1.6),
+                      "yaw": (-10.0, 16.0)}},
+    # the Gravecaller hunches over the heavy lantern: the pelvis tipped in, turned further side-on, wider and lower
+    "hexer": {"hips": ((4.0, 22.0, 0.0), (0.0, -1.25, -0.1)),
+              "left": ((3.2, 2.0, 1.4), 16.0), "right": ((-3.1, 2.0, -1.4), -10.0),
+              "brace": {"hips": ((-1.0, 12.0, 0.0), (0.0, -1.0, -0.2)), "left": (3.3, 2.0, 0.9), "right": (-3.3, 2.0, -1.0),
+                        "yaw": (-14.0, 14.0)},
+              "wall": {"hips": ((7.0, 14.0, 0.0), (0.0, -1.35, 0.4)), "left": (3.1, 2.0, 2.0), "right": (-3.0, 2.0, -1.6),
+                       "yaw": (-12.0, 12.0)}},
+    # the mist caller stands loose and open, the pelvis tipped back, the right foot level with the left and turned out (its
+    # cast steps that foot forward side-on)
+    "tc_mist": {"hips": ((-2.0, 6.0, 0.0), (0.0, -0.9, 0.2)),
+                "left": ((2.8, 2.0, 0.6), 8.0), "right": ((-2.9, 2.0, 0.1), -16.0),
+                "brace": {"hips": ((-4.0, -4.0, 0.0), (0.0, -0.8, 0.0)), "left": (2.9, 2.0, -0.3), "right": (-3.0, 2.0, 0.6),
+                          "yaw": (-20.0, 6.0)},
+                "wall": {"hips": ((2.0, -8.0, 0.0), (0.0, -1.0, 0.3)), "left": (2.9, 2.0, -0.2), "right": (-2.7, 2.0, 1.4),
+                         "yaw": (-22.0, 4.0)}},
+    # the Bloodhowl seer crouches like its pack: the hips low and tipped in, the feet wide and turned out under the robe
+    "wm_seer": {"hips": ((6.0, 18.0, 0.0), (0.0, -1.35, 0.2)),
+                "left": ((3.3, 2.0, 1.5), 18.0), "right": ((-3.2, 2.0, -1.2), -14.0),
+                "brace": {"hips": ((2.0, 10.0, 0.0), (0.0, -1.2, 0.0)), "left": (3.4, 2.0, 0.9), "right": (-3.4, 2.0, -0.9),
+                          "yaw": (-18.0, 18.0)},
+                "wall": {"hips": ((10.0, 16.0, 0.0), (0.0, -1.45, 0.5)), "left": (3.2, 2.0, 2.2), "right": (-3.1, 2.0, -1.4),
+                         "yaw": (-14.0, 16.0)}},
+}
+if ROBED:
+    _cl = CAST_LEGS[TROOP]
+    READY_HIPS = _cl["hips"]
+    READY_FEET = {"left": _cl["left"], "right": _cl["right"]}
+    K.READY_HIPS, K.READY_FEET = READY_HIPS, READY_FEET
+    STANCE_LEGS = {"ready": {"hips": READY_HIPS, "left": _cl["left"][0], "right": _cl["right"][0],
+                             "yaw": (_cl["right"][1], _cl["left"][1])},
+                   "brace": _cl["brace"], "wall": _cl["wall"]}
+
+
+def home(side, t0, t1, lift=0.8):
+    """A glide step that puts the foot back on the troop's own guard footing."""
+    p, y = READY_FEET[side]
+    return (side, t0, t1, p, y, lift)
 
 
 def _mirror_hips(rot, pos):
@@ -349,9 +389,9 @@ def mage_set():
     load = nudge(g, torso=(-2, 2, 0), head=(-2, -2, 0), R=(0.3, 0.6, 0.1), d=aim(84, -18))
     # the raise: both hands come onto the staff and lift it, the left fist above the right (the staff slants up across the
     # chest to the left, the only place both 8 px arms reach the shaft one over the other, clear of the cowl)
-    gather = KEY((-3, 6, 0), (-4, -8, 0), (2.5, -2.5, 6.5), unit((0.35, 0.9, 0.2)), u=FWD, rp=(-80, 0, 10, -40),
+    gather = KEY((-3, 6, 0), (-4, -8, 0), (2.0, -2.5, 6.8), unit((0.35, 0.9, 0.2)), u=FWD, rp=(-80, 0, 10, -40),
                  lp=(-60, 0, -15, -50), lh=0.6, ls=4.5)
-    up = KEY((-6, 4, 0), (-10, -16, 0), (3.0, -0.5, 6.5), unit((0.45, 0.85, 0.2)), u=FWD, rp=(-110, 0, 10, -40),
+    up = KEY((-6, 4, 0), (-10, -16, 0), (2.4, -0.5, 7.0), unit((0.45, 0.85, 0.2)), u=FWD, rp=(-110, 0, 10, -40),
              lp=(-90, 0, -20, -50), lh=1, ls=4.5)
     # the light is held: a tremor, the arch deepening a little
     held = nudge(up, torso=(-1, 1, 0), head=(-2, 0, 0), R=(0.0, 0.2, 0.0))
@@ -376,8 +416,8 @@ def mage_set():
                      (16.0, (4.0, 6.0, 0.0), (0.0, -1.3, 0.7)), (24.0, (1.0, 12.0, 0.0), (0.0, -1.0, 0.3)),
                      (30.0, R0, R1), (ATTACK_TICKS, R0, R1)],
             # short glides under the robe: the lead foot slides forward as the hips drive, the rear foot drags after
-            "steps": [("left", 7.8, 10.0, (2.9, 2.0, 2.6), 12.0, 0.3), ("right", 10.2, 13.0, (-2.8, 2.0, 0.2), -4.0, 0.3),
-                      ("left", 20.0, 25.0, (2.9, 2.0, 1.1), 10.0, 0.3), ("right", 23.0, 28.0, (-2.8, 2.0, -1.1), -6.0, 0.3)]}
+            "steps": [("left", 7.8, 10.0, (2.9, 2.0, 2.6), 12.0, 0.8), ("right", 10.2, 13.0, (-2.8, 2.0, 0.2), -4.0, 0.8),
+                      home("left", 20.0, 25.0), home("right", 23.0, 28.0)]}
     stances = {
         "ready": g,
         # brace (Hold position): upright, both arms up, the staff held crosswise as a guard bar at the brow, in front of the
@@ -387,11 +427,15 @@ def mage_set():
         # wall (Hold the line): the staff levelled at the foe in both hands like a pike, the sun head out front at chest
         # height, the butt by the right hip; the shoulders turn to bring the left hand forward on the shaft, the head stays on
         # the foe (v1's one-handed raised staff read as the guard from the front)
-        "wall": KEY((8, 30, 0), (-2, -21, 0), (0.5, -5.0, 5.0), aim(12, 15), u=FWD, rp=(-60, 0, 10, -30), lp=(-70, 0, -10, -30),
+        "wall": KEY((8, 30, 0), (-2, -21, 0), (-0.5, -4.6, 6.0), aim(12, 15), u=FWD, rp=(-60, 0, 10, -30), lp=(-70, 0, -10, -30),
                     lh=1, ls=6),
         # ward (fall back): both hands on the staff, slanted across the body as a bar, low on the right, the sun high left
-        "ward": KEY((2, 12, 0), (2, 0, 0), (2.0, -5.5, 5.4), unit((0.62, 0.56, 0.26)), u=FWD, rp=(-40, 0, 20, -40),
+        "ward": KEY((2, 12, 0), (2, 0, 0), (1.2, -4.6, 6.3), unit((0.62, 0.56, 0.26)), u=FWD, rp=(-40, 0, 20, -40),
                     lp=(-80, 0, -10, -60), lh=1, ls=8),
+        # shield_up (the caster's shield): the staff stood upright before the body in both fists, a pillar between the
+        # Sunweaver and the blow, the left fist above the right
+        "shield_up": KEY((2, 4, 0), (0, 0, 0), (0.5, -1.5, 6.8), aim(88, -4), u=FWD, rp=(-70, 0, 10, -40),
+                         lp=(-70, 0, -10, -50), lh=1, ls=5),
     }
     # the walk carries the staff higher in the fist (upper arm forward, forearm near level), so the longer butt clears the ground
     carry = {"walk": 75.0, "run": 35.0, "u": FWD, "R": (-30.0, 0.0, 6.0), "RF": -75.0}
@@ -407,13 +451,14 @@ def hexer_set():
     heaves up a touch and is shoved at the foe, the blight leaving the lantern on the release tick; the lantern kicks up on
     its pole, the body comes back and settles into guard. The off hand never joins the cast: it hangs and swings back as the
     right side drives."""
-    lp_rest = (-12, 0, -12, -40)          # the off hand relaxed at the hip, by the cord
-    g = KEY((3, 8, 0), GAZE, (1.2, -5.0, 6.0), aim(12, -6), u=UP, rp=(-45, 0, 10, -25), lp=lp_rest)
+    lp_rest = (-35, 0, -18, -60)          # the off hand clawed, held out low before the belly
+    # hunched over the lantern, the head pushed forward under the hood, the lantern held out clear of the robe
+    g = KEY((9, 10, 0), GAZE, (-1.8, -3.6, 6.6), aim(10, -6), u=UP, rp=(-55, 0, 20, -25), lp=lp_rest)
     # the load: the weight goes back onto the rear foot before the arm moves (the hips lead, see legs)
-    load = nudge(g, torso=(-2, 4, 0), head=(-1, 0, 0), R=(0.0, 0.3, -0.5), d=aim(16, -8))
+    load = nudge(g, torso=(-2, 4, 0), head=(-1, 0, 0), R=(-0.2, 0.3, 0.1), d=aim(16, -8))
     # the haul: the lantern drawn in to the chest, the pole tipped up, the right side turned away
-    haul = KEY((-4, 18, 0), (2, 0, 0), (1.8, -2.4, 5.9), aim(48, 8), u=UP, rp=(-80, 0, 25, -100), lp=(-18, 0, -12, -44))
-    coil = nudge(haul, torso=(-1, 3, 0), R=(-0.1, 0.2, -0.2), d=aim(52, 10))
+    haul = KEY((-4, 10, 0), (2, 0, 0), (-2.2, -1.4, 6.2), aim(48, 8), u=UP, rp=(-80, 0, 35, -100), lp=(-18, 0, -12, -44))
+    coil = nudge(haul, torso=(-1, 3, 0), R=(-0.1, 0.2, 0.1), d=aim(52, 10))
     # the push: the arm drives the lantern out at the foe, heavy, the shoulder coming round
     push = KEY((6, -10, 0), (3, 0, 0), (0.2, 0.2, 7.5), aim(14, 2), u=UP, rp=(-88, 0, 5, -15), lp=(-4, 0, -12, -38))
     # held at arm's length while the light gathers: the arm locked, a heavy tremor, the lantern swaying on its pole
@@ -427,7 +472,7 @@ def hexer_set():
     # the kick: the lantern bounces up on its pole and the arm gives back through the shoulder
     kick = KEY((10, -20, 0), (4, 0, 0), (0.0, 2.2, 6.9), aim(36, 2), u=UP, rp=(-95, 0, 0, -20), lp=(5, 0, -12, -32))
     back = KEY((5, -8, 0), (4, 0, 0), (0.6, -1.6, 6.8), aim(10, -2), u=UP, rp=(-75, 0, 5, -20), lp=(-4, 0, -12, -38))
-    recover = KEY((3, 4, 0), GAZE, (1.0, -4.4, 6.1), aim(14, -5), u=UP, rp=(-52, 0, 10, -24), lp=lp_rest)
+    recover = KEY((7, 6, 0), GAZE, (-1.4, -3.6, 6.6), aim(14, -5), u=UP, rp=(-55, 0, 10, -24), lp=lp_rest)
     near = nudge(g, torso=(1, -2, 0), R=(0.0, 0.2, 0.0), d=aim(13, -6))
     settle = nudge(g, R=(0.0, 0.05, 0.0))
     attack = [(0, g), (1.5, load), (3.0, haul), (4.6, coil), (6.4, push), (7.2, held), (8.0, held2), (8.8, held3),
@@ -442,21 +487,25 @@ def hexer_set():
                      (11.8, (8.0, -4.0, 0.0), (0.0, -1.6, 1.3)), (16.0, (4.0, 6.0, 0.0), (0.0, -1.3, 0.7)),
                      (24.0, (1.0, 12.0, 0.0), (0.0, -1.0, 0.3)), (30.0, R0, R1), (ATTACK_TICKS, R0, R1)],
             # short glides under the robe: the lead foot slides forward as the hips drive, the rear foot drags after
-            "steps": [("left", 8.2, 10.0, (2.9, 2.0, 2.6), 12.0, 0.3), ("right", 10.2, 13.0, (-2.8, 2.0, 0.2), -4.0, 0.3),
-                      ("left", 20.0, 25.0, (2.9, 2.0, 1.1), 10.0, 0.3), ("right", 23.0, 28.0, (-2.8, 2.0, -1.1), -6.0, 0.3)]}
+            "steps": [("left", 8.2, 10.0, (2.9, 2.0, 2.6), 12.0, 0.8), ("right", 10.2, 13.0, (-2.8, 2.0, 0.2), -4.0, 0.8),
+                      home("left", 20.0, 25.0), home("right", 23.0, 28.0)]}
     stances = {
         "ready": g,
         # brace (Hold position): upright, both arms up, the lantern lifted high over the head on its pole as a warding light,
         # the off hand raised flat beside it; no crouch
-        "brace": KEY((-2, 4, 0), (2, 0, 0), (1.0, 7.6, 2.0), aim(25, 35), u=UP, rp=(-170, 0, 10, -30),
+        "brace": KEY((-2, 4, 0), (2, 0, 0), (0.0, 5.0, 6.0), aim(30, 20), u=UP, rp=(-150, 0, 10, -30),
                      lp=(-165, 0, -20, -10)),
         # wall (Hold the line): leaning in, the lantern held out at the foe at arm's length, high, the off hand pushed
         # forward open below it
         "wall": KEY((6, 2, 0), (0, 0, 0), (0.5, 3.0, 7.2), aim(30, 0), u=UP, rp=(-120, 0, 5, -10), lp=(-95, 0, -20, -10)),
-        # ward (fall back): shrinking away, the right side turned back, the lantern hugged in at the chest on the left, the
-        # off hand up beside the face to fend
-        "ward": KEY((4, 20, 0), (0, 0, 0), (3.0, -3.0, 4.0), unit((0.6, 0.35, 0.5)), u=UP, rp=(-60, 0, 30, -70),
+        # ward (fall back): shrinking away, the head ducked, the lantern held out low to the right at arm's length to
+        # keep the foe off with its light, the off hand up beside the face to fend
+        "ward": KEY((10, 20, 0), (6, 0, 0), (-3.0, -3.0, 6.0), aim(14, -20), u=UP, rp=(-60, 0, 30, -30),
                     lp=(-70, 0, -30, -70)),
+        # shield_up: the body turned away, the lantern thrust out to the right at shoulder height as a light to hide
+        # behind, the claw up before the hood
+        "shield_up": KEY((4, -16, 0), (0, 0, 0), (-3.5, 0.5, 6.5), aim(20, -30), u=UP, rp=(-90, 0, 30, -20),
+                         lp=(-100, 0, -10, -10)),
     }
     carry = {"walk": 12.0, "run": 2.0, "u": UP}
     return g, attack, legs, stances, carry
@@ -469,13 +518,14 @@ def tc_mist_set():
     comes up past the chest, the conch tipping up; 4-9 the arm goes straight out at the foe, elbow locked, and the rod holds
     steady while the mist gathers; the wrist cocks, and on the release tick it flicks and the mist leaves the conch, a small
     recoil back through the shoulder; then back to the guard."""
-    lp_rest = (-12, 0, -12, -40)          # the off hand relaxed at the hip, by the sash
-    g = KEY((3, 8, 0), GAZE, (1.0, -6.0, 5.0), aim(14, -8), u=UP, rp=(-40, 0, 10, -20), lp=lp_rest)
+    lp_rest = (10, 0, -40, -15)           # the off palm trailing low and back, loose
+    # loose and side-on, the rod held out low before the lead hip
+    g = KEY((2, -12, 0), GAZE, (-1.2, -4.5, 6.2), aim(18, -4), u=UP, rp=(-50, 0, 15, -20), lp=lp_rest)
     # the turn: the shoulders come round side-on and the rod hand rises past the chest, the conch tipping up
-    turn = KEY((2, -16, 0), GAZE, (2.4, -3.2, 4.4), aim(34, 16), u=UP, rp=(-60, 0, 20, -60), lp=(-10, 0, -12, -40))
-    chest = KEY((1, -28, 0), GAZE, (2.0, -0.6, 4.6), aim(52, 6), u=UP, rp=(-85, 0, 25, -85), lp=(-8, 0, -12, -42))
+    turn = KEY((2, -16, 0), GAZE, (-1.0, -2.8, 6.6), aim(34, 16), u=UP, rp=(-60, 0, 20, -60), lp=(-10, 0, -36, -40))
+    chest = KEY((1, -28, 0), GAZE, (-0.2, -0.6, 6.7), aim(52, 6), u=UP, rp=(-85, 0, 25, -85), lp=(-8, 0, -36, -42))
     # point: the arm straight out at the foe, the elbow locked, the rod level along it
-    point = KEY((0, -32, 0), GAZE, (0.0, 0.5, 7.95), aim(2, 0), u=UP, rp=(-90, 0, 0, -5), lp=(-8, 0, -12, -42))
+    point = KEY((0, -32, 0), GAZE, (0.0, 0.5, 7.95), aim(2, 0), u=UP, rp=(-90, 0, 0, -5), lp=(-8, 0, -36, -42))
     # the charge: the rod holds steady, a breath of tremor only
     charge = nudge(point, R=(0.0, 0.05, -0.02), d=aim(2.5, 0.3))
     held = nudge(point, R=(0.0, 0.02, -0.03), d=aim(1.8, -0.2), lp=(-1, 0, 0, -1))
@@ -484,10 +534,10 @@ def tc_mist_set():
     # the release: the flick down at the foe, the mist leaves the conch
     release = nudge(point, R=(0.0, 0.1, 0.0), d=aim(-8, 0))
     # the recoil back through the shoulder: the fist kicks up and back, the torso rocks back
-    recoil = KEY((-2, -30, 0), GAZE, (0.0, 1.2, 6.7), aim(10, 2), u=UP, rp=(-95, 0, 0, -20), lp=(-10, 0, -12, -42))
-    back = KEY((0, -24, 0), GAZE, (0.4, -0.4, 6.8), aim(6, 0), u=UP, rp=(-80, 0, 5, -25), lp=(-10, 0, -12, -42))
-    recover = KEY((2, -6, 0), GAZE, (0.8, -4.0, 6.0), aim(8, -4), u=UP, rp=(-55, 0, 10, -20), lp=lp_rest)
-    near = nudge(g, torso=(0, -2, 0), R=(0.0, 0.2, 0.0), d=aim(11, -7))
+    recoil = KEY((-2, -30, 0), GAZE, (0.0, 1.2, 6.7), aim(10, 2), u=UP, rp=(-95, 0, 0, -20), lp=(-10, 0, -36, -42))
+    back = KEY((0, -24, 0), GAZE, (0.4, -0.4, 6.8), aim(6, 0), u=UP, rp=(-80, 0, 5, -25), lp=(-10, 0, -36, -42))
+    recover = KEY((2, -14, 0), GAZE, (-0.6, -4.0, 6.4), aim(14, -4), u=UP, rp=(-55, 0, 10, -20), lp=lp_rest)
+    near = nudge(g, torso=(0, -2, 0), R=(0.0, 0.2, 0.0), d=aim(16, -5))
     settle = nudge(g, R=(0.0, 0.05, 0.0))
     attack = [(0, g), (2.0, turn), (3.6, chest), (5.0, point), (7.0, charge), (8.6, held), (9.4, cock), (IMPACT, release),
               (11.4, recoil), (14.0, back), (19.0, recover), (24.0, near), (29.0, settle), (ATTACK_TICKS, g)]
@@ -498,20 +548,22 @@ def tc_mist_set():
                      (11.4, (-1.0, -14.0, 0.0), (0.0, -1.0, 0.4)), (14.0, (0.0, -13.0, 0.0), (0.0, -1.0, 0.2)),
                      (22.0, (0.0, 4.0, 0.0), (0.0, -0.9, 0.1)), (30.0, R0, R1), (ATTACK_TICKS, R0, R1)],
             # short glides: the right foot slides forward under the robe as the body turns side-on, the left eases back
-            "steps": [("right", 0.8, 4.2, (-2.6, 2.0, 1.2), -24.0, 0.3), ("left", 2.0, 5.0, (2.9, 2.0, -0.4), 2.0, 0.3),
-                      ("left", 18.0, 23.0, (2.9, 2.0, 1.1), 10.0, 0.3), ("right", 21.0, 27.0, (-2.8, 2.0, -1.1), -6.0, 0.3)]}
+            "steps": [("right", 0.8, 4.2, (-2.6, 2.0, 1.2), -24.0, 0.8), ("left", 2.0, 5.0, (2.9, 2.0, -0.4), 2.0, 0.8),
+                      home("left", 18.0, 23.0), home("right", 21.0, 27.0)]}
     stances = {
         "ready": g,
         # brace (Hold position): upright, both arms up, the rod held overhead crosswise as a guard bar, the off hand
         # raised to its far end; no crouch
-        "brace": KEY((-2, 4, 0), (2, 0, 0), (2.0, 7.5, 1.0), (1.0, 0.0, 0.0), u=FWD, rp=(-170, 0, 10, -30),
-                     lp=(-165, 0, -20, -10)),
-        # wall (Hold the line): leaning in, the rod raised up and out at the foe at arm's length, the conch high, the off
-        # hand pushed forward open below it
-        "wall": KEY((6, 2, 0), (0, 0, 0), (0.5, 3.5, 7.0), aim(50, 0), u=UP, rp=(-120, 0, 5, -10), lp=(-95, 0, -20, -10)),
-        # ward (fall back): turned away, the rod slanted low across the body, the off hand up beside the face
-        "ward": KEY((2, -25, 0), (0, 0, 0), (3.5, -3.5, 4.5), unit((0.7, -0.45, 0.45)), u=UP, rp=(-60, 0, 30, -70),
+        "brace": KEY((-2, -6, 0), (2, 0, 0), (-0.5, 3.5, 6.0), aim(80, 0), u=FWD, rp=(-140, 0, 10, -30),
+                     lp=(-110, 0, -25, -10)),
+        # wall (Hold the line): side-on, the rod thrust out level at the foe, low, the off palm pressed out behind it
+        "wall": KEY((6, -18, 0), (0, 0, 0), (-0.5, -1.0, 7.8), aim(-5, 0), u=UP, rp=(-90, 0, 5, -10), lp=(-60, 0, -30, -20)),
+        # ward (fall back): turned away, the rod slanted across the body, the off hand up beside the face
+        "ward": KEY((2, -25, 0), (0, 0, 0), (2.5, -2.0, 5.8), unit((0.7, 0.45, 0.5)), u=UP, rp=(-60, 0, 30, -70),
                     lp=(-70, 0, -30, -70)),
+        # shield_up: the rod stood upright before the face, the off palm flat behind it, a veil of mist between
+        "shield_up": KEY((2, -8, 0), (0, 0, 0), (1.0, 1.5, 6.5), aim(75, 0), u=FWD, rp=(-100, 0, 10, -40),
+                         lp=(-95, 0, -5, -40)),
     }
     carry = {"walk": -20.0, "run": -5.0, "u": UP}
     return g, attack, legs, stances, carry
@@ -524,8 +576,9 @@ def wm_seer_set():
     forward) as the wand hand comes up past the chest; 4-9 the arm is thrust straight out at the foe, elbow locked, and the
     wand holds steady while it charges; the wrist cocks, and on the release tick it flicks and the bolt leaves the tip, a
     small recoil running back through the shoulder; then back to the guard. The totem staff stays strapped to the back."""
-    lp_rest = (-12, 0, -12, -40)          # the off hand relaxed at the hip, by the belt
-    g = KEY((3, 8, 0), GAZE, (1.0, -6.0, 5.0), aim(-6, -8), u=UP, rp=(-40, 0, 10, -20), lp=lp_rest)
+    lp_rest = (-25, 0, -45, -55)          # the off claw held out wide, ready to rake
+    # crouched and feral, the chest over the knees, the wand held low and forward at the foe
+    g = KEY((12, 6, 0), (0, 0, 0), (-1.0, -4.0, 6.5), aim(-10, -8), u=UP, rp=(-45, 0, 15, -25), lp=lp_rest)
     # the turn: the shoulders come round side-on and the wand hand rises past the chest, the wand tipping up
     turn = KEY((2, -16, 0), GAZE, (2.4, -3.2, 4.2), aim(30, 18), u=UP, rp=(-60, 0, 20, -60), lp=(-10, 0, -12, -40))
     chest = KEY((1, -28, 0), GAZE, (2.2, -0.6, 4.2), aim(58, 8), u=UP, rp=(-85, 0, 25, -85), lp=(-8, 0, -12, -42))
@@ -541,8 +594,8 @@ def wm_seer_set():
     # the recoil back through the shoulder: the fist kicks up and back, the torso rocks back
     recoil = KEY((-2, -30, 0), GAZE, (0.0, 1.2, 6.7), aim(10, 2), u=UP, rp=(-95, 0, 0, -20), lp=(-10, 0, -12, -42))
     back = KEY((0, -24, 0), GAZE, (0.4, -0.4, 6.8), aim(4, 0), u=UP, rp=(-80, 0, 5, -25), lp=(-10, 0, -12, -42))
-    recover = KEY((2, -6, 0), GAZE, (0.8, -4.0, 6.0), aim(-2, -4), u=UP, rp=(-55, 0, 10, -20), lp=lp_rest)
-    near = nudge(g, torso=(0, -2, 0), R=(0.0, 0.2, 0.0), d=aim(-5, -7))
+    recover = KEY((8, -2, 0), GAZE, (-0.6, -4.0, 6.5), aim(-6, -4), u=UP, rp=(-55, 0, 10, -20), lp=lp_rest)
+    near = nudge(g, torso=(0, -2, 0), R=(0.0, 0.2, 0.0), d=aim(-9, -7))
     settle = nudge(g, R=(0.0, 0.05, 0.0))
     attack = [(0, g), (2.0, turn), (3.6, chest), (5.0, point), (7.0, charge), (8.6, held), (9.4, cock), (IMPACT, release),
               (11.4, recoil), (14.0, back), (19.0, recover), (24.0, near), (29.0, settle), (ATTACK_TICKS, g)]
@@ -553,20 +606,22 @@ def wm_seer_set():
                      (11.4, (-1.0, -14.0, 0.0), (0.0, -1.0, 0.4)), (14.0, (0.0, -13.0, 0.0), (0.0, -1.0, 0.2)),
                      (22.0, (0.0, 4.0, 0.0), (0.0, -0.9, 0.1)), (30.0, R0, R1), (ATTACK_TICKS, R0, R1)],
             # short glides: the right foot slides forward under the robe as the body turns side-on, the left eases back
-            "steps": [("right", 0.8, 4.2, (-2.6, 2.0, 1.2), -24.0, 0.3), ("left", 2.0, 5.0, (2.9, 2.0, -0.4), 2.0, 0.3),
-                      ("left", 18.0, 23.0, (2.9, 2.0, 1.1), 10.0, 0.3), ("right", 21.0, 27.0, (-2.8, 2.0, -1.1), -6.0, 0.3)]}
+            "steps": [("right", 0.8, 4.2, (-2.6, 2.0, 1.2), -24.0, 0.8), ("left", 2.0, 5.0, (2.9, 2.0, -0.4), 2.0, 0.8),
+                      home("left", 18.0, 23.0), home("right", 21.0, 27.0)]}
     stances = {
         "ready": g,
         # brace (Hold position): upright, both arms up, the wand held overhead crosswise as a guard bar, the off hand
         # raised flat to the other end; no crouch
-        "brace": KEY((-2, 4, 0), (2, 0, 0), (2.0, 7.5, 1.0), (1.0, 0.0, 0.0), u=FWD, rp=(-170, 0, 10, -30),
-                     lp=(-165, 0, -20, -10)),
-        # wall (Hold the line): leaning in, the wand pointed up and out at the foe at arm's length, the off hand pushed
-        # forward open below it, a warding pair at chest height
-        "wall": KEY((6, 2, 0), (0, 0, 0), (0.5, 3.5, 7.0), aim(45, 0), u=UP, rp=(-120, 0, 5, -10), lp=(-95, 0, -20, -10)),
-        # ward (fall back): turned away, the wand slanted low across the body, the off hand up beside the face
-        "ward": KEY((2, -25, 0), (0, 0, 0), (3.5, -3.5, 3.5), unit((0.7, -0.6, 0.3)), u=UP, rp=(-60, 0, 30, -70),
-                    lp=(-70, 0, -30, -70)),
+        "brace": KEY((-4, 8, 0), (-6, 0, 0), (-1.5, 6.0, 3.0), aim(70, -10), u=FWD, rp=(-150, 0, 10, -30),
+                     lp=(-150, 0, -30, -40)),
+        # wall (Hold the line): crouched in, the wand thrust low at the foe's legs, the claw spread out wide beside it
+        "wall": KEY((14, 4, 0), (0, 0, 0), (0.0, -2.5, 7.6), aim(-20, 0), u=UP, rp=(-80, 0, 5, -10), lp=(-50, 0, -40, -30)),
+        # ward (fall back): the wand across the chest, the left forearm up across the muzzle
+        "ward": KEY((6, 14, 0), (0, 0, 0), (1.5, -0.5, 6.8), unit((0.8, 0.2, 0.5)), u=UP, rp=(-60, 0, 30, -70),
+                    lp=(-110, 0, -10, -90)),
+        # shield_up: the wand up before the face, the claw thrust out to rake whatever comes
+        "shield_up": KEY((8, 6, 0), (0, 0, 0), (-0.5, 1.0, 7.2), aim(45, -10), u=FWD, rp=(-100, 0, 10, -40),
+                         lp=(-85, 0, -30, -15)),
     }
     carry = {"walk": -30.0, "run": -10.0, "u": UP}
     return g, attack, legs, stances, carry
@@ -776,7 +831,7 @@ def blight_gravecaller():
                      (20, (8.0, 8.0, 0.0), (0.0, -1.6, 0.9)), (21.6, (9.0, 7.0, 0.0), (0.0, -1.7, 1.0)),
                      (24.0, (5.0, 10.0, 0.0), (0.0, -1.3, 0.6)), (28.0, (1.0, 15.0, 0.0), (0.0, -0.95, 0.2)), (30, R0, R1)],
             # the lead foot slides in under the slam, then back
-            "steps": [("left", 18.6, 20.0, (2.9, 2.0, 2.2), 12.0, 0.3), ("left", 24.0, 28.5, (2.9, 2.0, 1.1), 10.0, 0.3)]}
+            "steps": [("left", 18.6, 20.0, (2.9, 2.0, 2.2), 12.0, 0.3), home("left", 24.0, 28.5)]}
     return "blight_gravecaller", 30, 20, keys, legs
 
 
@@ -804,7 +859,7 @@ def mist():
                      (18.0, (4.0, 30.0, 0.0), (0.0, -1.6, 0.3)), (20, (3.0, 36.0, 0.0), (0.0, -1.45, 0.3)),
                      (22.0, (2.0, 35.0, 0.0), (0.0, -1.35, 0.25)), (25.5, (1.0, 22.0, 0.0), (0.0, -1.05, 0.15)), (30, R0, R1)],
             # the right foot glides out wide as the body folds, and back as it rises
-            "steps": [("right", 5.0, 9.0, (-3.4, 2.0, -0.6), -14.0, 0.3), ("right", 23.0, 28.0, (-2.8, 2.0, -1.1), -6.0, 0.3)]}
+            "steps": [("right", 5.0, 9.0, (-3.4, 2.0, -0.6), -14.0, 0.3), home("right", 23.0, 28.0)]}
     return "mist", 30, 20, keys, legs
 
 
@@ -907,10 +962,12 @@ def gait_pose(g, c, u, run, legs):
     sw = math.cos(tw * (u - c.arm_lag))
     bob = math.cos(tw * 2 * (u - g.bob_phase - 0.06))
     la = (c.arm_base - c.arm * sw, 0.0, -c.arm_out)
-    lf = (c.fore - 0.35 * c.arm * max(0.0, sw), 0.0, 0.0)
+    # the off forearm pumps with the swing: walking it folds on the forward half only; running it eases through a full
+    # cosine (same fold at the front, open at the back) so the short run loop carries no corner
+    lf = (c.fore - (0.175 * c.arm * (1.0 + sw) if run else 0.35 * c.arm * max(0.0, sw)), 0.0, 0.0)
     if run:
         ra = (-24.0 + 0.45 * c.arm * sw, 0.0, 9.0)
-        rf = (-50.0 + 0.3 * c.arm * min(0.0, -sw), 0.0, 0.0)
+        rf = (-50.0 - 0.15 * c.arm * (1.0 + sw), 0.0, 0.0)   # a full cosine pump, as the off forearm
     else:
         cr, crf = CARRY.get("R", CARRY_R), CARRY.get("RF", CARRY_RF)   # per troop: the mage carries its staff higher
         ra = (cr[0] + 0.45 * c.arm * sw, 0.0, cr[2])
@@ -952,10 +1009,10 @@ def gait_upper(g, c, run):
 # (fighting), brace / wall (Hold), ward (fall_back).
 # ------------------------------------------------------------------------------------------------
 
-STANCE_KEYS["shield_up"] = STANCE_KEYS["ready"]
+STANCE_KEYS.setdefault("shield_up", STANCE_KEYS["ready"])
 LIFE = {"ready": 3.4, "brace": 1.6, "wall": 1.4, "ward": 2.0, "shield_up": 3.4}
 IDLE_LIFE = 2.2
-READY_LIKE = ("ready", "shield_up")   # shield_up is the ready pose: both ride V2_READY_SWAY_SCALE
+READY_LIKE = ("ready", "shield_up")   # shield_up is a guard: both ride V2_READY_SWAY_SCALE
 
 
 def stance_upper(k, life, legs_spec, ticks=K.STANCE_TICKS, ready=False):
@@ -965,7 +1022,11 @@ def stance_upper(k, life, legs_spec, ticks=K.STANCE_TICKS, ready=False):
     out = []
     hips = (legs_spec or STANCE_LEGS["ready"])["hips"]
     legs = {"hips": hips}
-    for i in range(n + 1):
+    # two laps: the first only warms the arm solves, so the loop's first sample sits on the same IK branch as its last
+    # (a cold start can land the elbow on another branch and kink the wrap)
+    for i in list(range(n)) + list(range(n + 1)):
+        if i == 0 and len(out) == n:
+            out = []
         u = (i % n) / n
         br = a_br * math.sin(2 * math.pi * u)
         wt = a_wt * math.sin(2 * math.pi * u - K.WEIGHT)
@@ -1005,7 +1066,7 @@ K.idle_clips = idle_clips    # the death falls start from the guard
 off = K.off
 hb, hb_front = K.hb, K.hb_front   # Kort's polish: how far a blow throws the spine and head BACK (art/anim/common/feel.py)
 HIT_PEAK = {
-    "front": off(torso=(hb_front(-17), -10, 0), head=(hb(-12), 3, 0), rarm=(-10, 0, 14), larm=(-24, 0, -40), lfore=-14),
+    "front": off(torso=(hb_front(-17), -10, 0), head=(hb(-12), 3, 0), rarm=(-10, 0, 14), larm=(-19, 0, -32), lfore=-12),
     "back": off(torso=(12, 0, 0), head=(5, 0, 0), rarm=(10, 0, 10), larm=(14, 0, -24)),
     "right": off(torso=(hb(-5), 14, 8), head=(0, 6, 3), rarm=(6, 0, 10), larm=(-12, 0, -22)),
     "left": off(torso=(hb(-5), -14, -8), head=(0, -6, -3), rarm=(-10, 0, 14), larm=(12, 0, -30)),
@@ -1175,8 +1236,9 @@ def _angle(o, down):
     return math.degrees(math.atan2(o, down))
 
 
-def panel_pose(pose, live=True):
-    """{panel: (rot, None)} for a pose that has the hips and legs."""
+def panel_pose(pose, live=True, pitches=None, solved=None):
+    """{panel: (rot, None)} for a pose that has the hips and legs. pitches: {side panel: its in-plane swing} to use instead of
+    the stride's own (the gait's smoothed swing); solved: a dict that receives {panel: (out angle, swing)}."""
     F = robe_frame(pose)
     Mh, _, _, thigh = F
     g = _bed(np.linalg.inv(Mh[:3, :3]) @ np.array([0.0, -1.0, 0.0]) / 16.0)
@@ -1189,6 +1251,8 @@ def panel_pose(pose, live=True):
         if a == 0:   # a side panel also swings in its own plane with its leg's stride: its hem follows the hoof (hip to ankle), not
             k = thigh[legs[0] + "_ankle"]   # the knee, so a bent knee forward never leaves the heel out behind the panel
             pitch = SIDE_PITCH * _angle(-k[2], -k[1])
+            if pitches is not None:
+                pitch = pitches[P]
         lo = hi = pref
         if _slack(P, _panel_rot(P, pref, pitch), F, live) < 0:
             hi = pref
@@ -1217,6 +1281,8 @@ def panel_pose(pose, live=True):
                         bad = mid
             hi = lo
         out[P] = (tuple(round(v, 4) for v in _panel_rot(P, hi, pitch)), None)
+        if solved is not None:
+            solved[P] = (hi, pitch)
     return out
 
 
@@ -1283,7 +1349,54 @@ if ROBED:
 
     K.body_corners = _corners_robe
 
-FLAT_AT = {"death_back": (8, 12), "death_forward": (13, 16), "death_left": (9, 13), "death_right": (9, 13)}
+
+# The robe in the gait: cloth does not follow a leg's kick on the sample; it is carried out by the stride and lets go of it a
+# little later. Each panel's swing is eased round the loop (a circular box of GAIT_CLOTH samples each side) and its opening is
+# the eased envelope of the least opening that clears the legs (a running maximum, then the same box), so it never closes
+# through a leg and the hem rounds over the top of each kick instead of snapping back at it.
+GAIT_CLOTH = 3
+
+
+def _circ_box(x, r):
+    x = np.asarray(x, float)
+    return np.mean([np.roll(x, k) for k in range(-r, r + 1)], axis=0)
+
+
+def _circ_max(x, r):
+    x = np.asarray(x, float)
+    return np.max([np.roll(x, k) for k in range(-r, r + 1)], axis=0)
+
+
+def gait_legs_robed(g):
+    n = g.ticks * SUB
+    guesses = {}
+    for i in range(n):            # warm the IK guesses on one silent lap
+        g.pose(i / n, guesses)
+    samples = [g.pose(i / n, guesses) for i in range(n)]
+    poses = [{b: (v[0], v[1] or Z3) for b, v in s.items()} for s in samples]
+    raw = []
+    for p in poses:
+        d = {}
+        panel_pose(p, True, solved=d)
+        raw.append(d)
+    side = {P: _circ_box([r[P][1] for r in raw], GAIT_CLOTH) for P in PANELS if PANELS[P][0] == 0}
+    solved = []
+    for i, p in enumerate(poses):
+        d = {}
+        panel_pose(p, True, pitches={P: float(side[P][i]) for P in side}, solved=d)
+        solved.append(d)
+    for P in PANELS:
+        opening = _circ_box(_circ_max([d[P][0] for d in solved], GAIT_CLOTH), GAIT_CLOTH)
+        for i, s in enumerate(samples):
+            s[P] = (tuple(round(v, 4) for v in _panel_rot(P, float(opening[i]), solved[i][P][1])), None)
+    samples.append(samples[0])
+    return K.bake(samples, g.ticks)
+
+
+if ROBED:
+    K.gait_legs = gait_legs_robed
+
+FLAT_AT ={"death_back": (8, 12), "death_forward": (13, 16), "death_left": (9, 13), "death_right": (9, 13)}
 _ARMED = ("right_arm", "right_forearm", "right_hand", "right_wrap", "right_bracer") + FOCI
 
 
@@ -1394,7 +1507,7 @@ def _axis_mat(axis, deg):
 
 
 GROUND_CLEAR = 1.0
-MAX_WRIST_TURN = 45.0
+MAX_WRIST_TURN = 26.0   # deg per tick: the focus turns in the falling fist no faster than the fall itself (spear lane: 36)
 
 
 def ground_hand(pose, rot, prev):
@@ -1503,9 +1616,12 @@ _ROBE_SIDE_FALLS = {
 # rolls over lies straight out past the head on the ground instead of bent under it (grid 2026-11-06: torso gap 0.3 back,
 # 1.4 face down, ~0.1 over the robe's own floor on the sides)
 _SEER_FALLS = {
-    "death_back": {16: {"right_arm": (-40, 0, 80), "left_arm": (-30, 0, -40), "left_forearm": (0, 0, 0)},
+    # the off hand drops open on the ground (the knight's -180 flip lays its shield down; a caster has none to turn)
+    "death_back": {16: {"right_arm": (-40, 0, 80), "left_arm": (-30, 0, -40), "left_forearm": (0, 0, 0),
+                        "left_hand": (-20, 0, -10)},
                    20: {"right_arm": (-40, 0, 80)}},
-    "death_forward": {18: {"head": (-25, 60, 0)}, 20: {"head": (-20, 70, 0)}},
+    # struck from behind the wand arm drops to the side rather than flinging forward from the crouched guard
+    "death_forward": {3: {"right_arm": (-15, 0, 20)}, 18: {"head": (-25, 60, 0)}, 20: {"head": (-20, 70, 0)}},
     "death_right_roll": {18: {"right_arm": (-180, 0, -5), "right_forearm": (-20, 0, 0)},
                          19: {"right_arm": (-180, 0, -10), "right_forearm": (0, 0, 0)},
                          20: {"right_arm": (-180, 0, -10), "right_forearm": (0, 0, 0)}},
@@ -1620,9 +1736,9 @@ SW = K.V2_SWAY_SCALE   # Kort's polish: the pelvis sway and roll of the gait (ar
 # caster v2 gaits (the GaitController reference speeds .16 / .26 kept): a quicker, shorter stride, the feet skimming low
 # and the hips level, so the robe glides; the feet set wide enough apart that the hooves never cross
 GAITS = {t: (
-    K.Gait("walk", ticks=6, speed=0.16, duty=0.5, heel=4, toe_off=8, front=3.85, lift=0.9, lift_peak=0.5,
+    K.Gait("walk", ticks=6, speed=0.16, duty=0.5, heel=4, toe_off=4, front=3.85, lift=0.9, lift_peak=0.5,
            hip_drop=0.95, bob=0.2, bob_phase=0.06, sway=0.2 * SW, yaw=3.0, roll=0.8 * SW, lane=2.5),
-    K.Gait("run", ticks=5, speed=0.26, duty=0.4, heel=4, toe_off=10, front=3.8, lift=1.5, lift_peak=0.5,
+    K.Gait("run", ticks=5, speed=0.26, duty=0.4, heel=4, toe_off=10, front=3.4, lift=1.5, lift_peak=0.5,
            hip_drop=1.7, bob=0.3, bob_phase=0.19, sway=0.2 * SW, yaw=4.0, roll=1.0 * SW, pitch_hips=2.0, lane=2.5))
          for t in ("wm_seer", "tc_mist", "mage", "hexer")}
 # the mage's run is a quicker, shorter scurry (4-tick lap, same speed): the shorter stride lets the hips stay high (less
