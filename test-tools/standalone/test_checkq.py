@@ -1,6 +1,7 @@
 """tools/checkq.py: the shared in-game check queue. No real Minecraft: jobs are fake python scripts (CHECKQ_FAKE_CMD), the
 machine's Java processes come from a JSON file (CHECKQ_FAKE_PROCS) and busy ports from CHECKQ_FAKE_PORTS."""
 import contextlib, io, json, os, pathlib, subprocess, sys, tempfile, time, unittest
+from unittest import mock
 TOOLS = pathlib.Path(__file__).resolve().parents[2]/'tools'
 sys.path.insert(0, str(TOOLS))
 import checkq
@@ -18,7 +19,7 @@ print('fake', kind, *args, flush=True)
 if kind == 'client':
     root = pathlib.Path('work/ingame-check')/args[0]; root.mkdir(parents=True, exist_ok=True)
     time.sleep(float(os.environ.get('FAKE_SLEEP', '0')))
-    (root/'gradle.log').write_text('suites ' + args[1] + '\nexit ' + str(code) + '\n')
+    if not os.environ.get('FAKE_NOLOG'): (root/'gradle.log').write_text('suites ' + args[1] + '\nexit ' + str(code) + '\n')
     sys.exit(0)  # like ingame_check_run.sh: the script ends 0, the gradle exit is the log's last line
 name, port = args[0], args[1]
 root = pathlib.Path.cwd()/'work'/'method'/(name + '-123456'); root.mkdir(parents=True, exist_ok=True)
@@ -39,33 +40,41 @@ def dead_pid():
     p = subprocess.Popen([sys.executable, '-c', 'pass']); p.wait(); return p.pid
 
 
-class Base(unittest.TestCase):
-    @classmethod
-    def setUpClass(cls):
-        cls.tmp = tempfile.TemporaryDirectory(); cls.base = pathlib.Path(cls.tmp.name)
-        (cls.base/'fake_job.py').write_text(FAKE)
-        cls.wt = {}
-        for n in ('lane-a', 'lane-b', 'lane-c'):
-            wt = cls.base/n; (wt/'tools').mkdir(parents=True)
-            for s in ('ingame_check_run.sh', 'balance_sim.sh'): (wt/'tools'/s).write_text('#!/bin/bash\n')
-            git(wt, 'init', '-q', '-b', 'lane/' + n); git(wt, 'add', '.')
-            git(wt, '-c', 'user.name=t', '-c', 'user.email=t@t', 'commit', '-qm', 'init')
-            cls.wt[n] = wt
-        cls.n = 0
+_SHARED = {}
 
-    @classmethod
-    def tearDownClass(cls):
-        for _ in range(20):
-            try: cls.tmp.cleanup(); return
-            except OSError: time.sleep(0.2)
+
+def setUpModule():  # one temp dir and three git lanes for the whole file (git init per class costs seconds)
+    tmp = tempfile.TemporaryDirectory(); base = pathlib.Path(tmp.name)
+    (base/'fake_job.py').write_text(FAKE)
+    wts = {}
+    for n in ('lane-a', 'lane-b', 'lane-c'):
+        wt = base/n; (wt/'tools').mkdir(parents=True)
+        for s in ('ingame_check_run.sh', 'balance_sim.sh'): (wt/'tools'/s).write_text('#!/bin/bash\n')
+        git(wt, 'init', '-q', '-b', 'lane/' + n); git(wt, 'add', '.')
+        git(wt, '-c', 'user.name=t', '-c', 'user.email=t@t', 'commit', '-qm', 'init')
+        wts[n] = wt
+    _SHARED.update(tmp=tmp, base=base, wt=wts, n=0)
+
+
+def tearDownModule():
+    for _ in range(20):
+        try: _SHARED['tmp'].cleanup(); return
+        except OSError: time.sleep(0.2)
+
+
+class Base(unittest.TestCase):
+    @property
+    def base(self): return _SHARED['base']
+    @property
+    def wt(self): return _SHARED['wt']
 
     def setUp(self):
-        type(self).n += 1
+        _SHARED['n'] += 1; self.n = _SHARED['n']
         self.q = self.base/f'q{self.n}'
         self.procs = self.base/f'procs{self.n}.json'; self.set_procs([])
-        self.env = dict(CHECKQ_DIR=str(self.q), CHECKQ_FAKE_CMD=json.dumps([sys.executable, str(self.base/'fake_job.py')]),
+        self.env = dict(CHECKQ_DIR=str(self.q), CHECKQ_FAKE_CMD=json.dumps([sys.executable, '-S', str(self.base/'fake_job.py')]),
                         CHECKQ_FAKE_PROCS=str(self.procs), CHECKQ_FAKE_PORTS='', CHECKQ_POLL='0.05', CHECKQ_NO_RUNNER='1',
-                        CHECKQ_JOB_TIMEOUT='20', CHECKQ_IDLE='1')
+                        CHECKQ_JOB_TIMEOUT='20', CHECKQ_IDLE='1', CHECKQ_TEST='1')
         self.saved = {k: os.environ.get(k) for k in self.env}
         os.environ.update(self.env)
         self.runner = None
@@ -152,7 +161,7 @@ class Submit(Base):
         jid = self.submit('lane-a')
         with contextlib.redirect_stdout(io.StringIO()):
             self.assertEqual(checkq.wait_job(jid, 0.2), 124)
-            self.assertEqual(checkq.wait_job('20990101-000000-000-ffff', 5), 2)
+            self.assertEqual(checkq.wait_job('20990101-000000-000-ffff', 5), 3)
 
 
 class Scheduling(Base):
@@ -176,7 +185,7 @@ class Scheduling(Base):
         for a, b in zip(ids, ids[1:]): self.assertLessEqual(self.result(a)['ended'], self.result(b)['started'])
 
     def test_one_job_per_worktree(self):
-        a1, a2, b = self.submit('lane-a', env={'FAKE_SLEEP': '0.4'}), self.submit('lane-a'), self.submit('lane-b', env={'FAKE_SLEEP': '0.4'})
+        a1, a2, b = self.submit('lane-a', env={'FAKE_SLEEP': '0.25'}), self.submit('lane-a'), self.submit('lane-b', env={'FAKE_SLEEP': '0.25'})
         r = self.new_runner(); r.tick()
         self.assertEqual(sorted(r.jobs), sorted([a1, b]))
         self.drive(self.done(a1, a2, b))
@@ -193,7 +202,7 @@ class Scheduling(Base):
         self.set_procs([KORT_GAME, r'java.exe net.fabricmc.devlaunchinjector.Main C:\Users\kortt\Melty\other\run',
                         'java.exe -Dfabric.dli.env=server net.fabricmc.loader.impl.launch.knot.KnotServer nogui',
                         GRADLE, 'java.exe -jar some-ide.jar'])
-        ids = [self.submit(lane, env={'FAKE_SLEEP': '0.5'}) for lane in ('lane-a', 'lane-b', 'lane-c')]
+        ids = [self.submit(lane, env={'FAKE_SLEEP': '0.3'}) for lane in ('lane-a', 'lane-b', 'lane-c')]
         r = self.new_runner(); r.tick()
         self.assertEqual(list(r.jobs), ids[:2])  # 3 other Minecraft processes + 2 queue jobs = 5
         snap = checkq.snapshot()
@@ -257,7 +266,7 @@ class Scheduling(Base):
 
     def test_sim_port_skips_busy_ports_and_result_lands_in_sim_root(self):
         os.environ['CHECKQ_FAKE_PORTS'] = '25680,25681'
-        s1 = self.submit('lane-a', 'sim', name='duels', env={'FAKE_SLEEP': '0.4'})
+        s1 = self.submit('lane-a', 'sim', name='duels', env={'FAKE_SLEEP': '0.25'})
         s2 = self.submit('lane-b', 'sim', name='p1a')
         self.new_runner(); self.drive(self.done(s1, s2))
         self.assertEqual(self.result(s1)['port'], 25682); self.assertEqual(self.result(s2)['port'], 25683)
@@ -271,6 +280,99 @@ class Scheduling(Base):
         s = self.submit('lane-a', 'sim')
         r = self.new_runner(); r.tick()
         self.assertEqual(r.jobs, {}); self.assertTrue((self.q/'jobs'/(s + '.json')).exists())
+
+    def test_minecraft_process_naming_a_running_job_worktree_is_that_job(self):
+        a = self.submit('lane-a', env={'FAKE_SLEEP': '0.6'})
+        r = self.new_runner(); r.tick()
+        self.assertEqual(list(r.jobs), [a])
+        # a's own client now shows up in the process list: 3 others + a's client (= job a) + job a = 4 slots, not 5
+        self.set_procs([KORT_GAME] * 3 + [f'java.exe net.fabricmc.devlaunchinjector.Main -cp {self.wt["lane-a"]}/build/classes'])
+        b = self.submit('lane-b', env={'FAKE_SLEEP': '0.2'})
+        r.tick()
+        self.assertEqual(sorted(r.jobs), sorted([a, b]))
+        snap = checkq.snapshot()
+        self.assertEqual((snap['slots']['minecraft_other'], snap['slots']['queue_running']), (3, 2))
+        self.drive(self.done(a, b))
+
+    def test_foreign_runner_jobs_count_only_when_its_owner_holds_the_live_lock(self):
+        other = subprocess.Popen([sys.executable, '-c', 'import time; time.sleep(60)']); self.extra.append(other)
+        (self.q/'running').mkdir(parents=True)
+        job = dict(id='20200101-000000-000-fore', kind='client', worktree=str(self.wt['lane-a']), args={'root': 'x'},
+                   runner_pid=other.pid, job_pid=other.pid)
+        checkq.write_json(self.q/'running'/'20200101-000000-000-fore.json', job)
+        r = checkq.Runner()
+        self.assertEqual(r.foreign(), [])  # the pid is alive but no lock names it: a reused pid
+        checkq.write_json(self.q/'runner.lock', dict(pid=other.pid, token='them', heartbeat=time.time()))
+        self.assertEqual([f['id'] for f in r.foreign()], ['20200101-000000-000-fore'])
+        checkq.write_json(self.q/'runner.lock', dict(pid=other.pid, token='them', heartbeat=time.time() - 600))
+        self.assertEqual(r.foreign(), [])  # stalled past the stale limit
+
+    def test_reused_pid_without_a_lock_does_not_hold_a_job_forever(self):
+        other = subprocess.Popen([sys.executable, '-c', 'import time; time.sleep(60)']); self.extra.append(other)
+        (self.q/'running').mkdir(parents=True)
+        checkq.write_json(self.q/'running'/'20200101-000000-000-reus.json',
+                          dict(id='20200101-000000-000-reus', kind='client', worktree=str(self.wt['lane-a']), args={'root': 'x'},
+                               runner_pid=other.pid, job_pid=other.pid))  # a live pid (reused after a reboot), no runner owns it
+        r = self.new_runner(); r.adopt()
+        self.assertEqual(self.result('20200101-000000-000-reus')['status'], 'error')
+        self.assertEqual(list((self.q/'running').glob('*.json')), [])
+        self.assertIsNone(other.poll())
+
+    def test_stalled_old_runner_is_taken_over_and_its_job_recorded(self):
+        old = subprocess.Popen([sys.executable, '-c', 'import time; time.sleep(60)']); self.extra.append(old)  # alive, but silent
+        (self.q/'running').mkdir(parents=True)
+        checkq.write_json(self.q/'runner.lock', dict(pid=old.pid, token='old', heartbeat=time.time() - 600))
+        checkq.write_json(self.q/'running'/'20200101-000000-000-stal.json',
+                          dict(id='20200101-000000-000-stal', kind='client', worktree=str(self.wt['lane-c']), args={'root': 'x'},
+                               runner_pid=old.pid, job_pid=old.pid))
+        self.assertFalse(checkq.runner_info()[1])
+        jid = self.submit('lane-a')
+        self.new_runner(); self.runner.adopt(); self.drive(self.done(jid))
+        self.assertEqual(self.result('20200101-000000-000-stal')['status'], 'error')
+        self.assertEqual(self.result(jid)['status'], 'passed')
+        self.assertIsNone(old.poll())  # the stalled runner's processes were left alone
+
+    def test_stale_gradle_log_from_an_earlier_run_is_not_a_pass(self):
+        root = self.wt['lane-a']/'work/ingame-check/again'; root.mkdir(parents=True, exist_ok=True)
+        old = root/'gradle.log'; old.write_text('exit 0\n')
+        os.utime(old, (time.time() - 3600, time.time() - 3600))
+        jid = self.submit('lane-a', root='again', env={'FAKE_NOLOG': '1'})
+        self.new_runner(); self.drive(self.done(jid))
+        res = self.result(jid)
+        self.assertEqual((res['status'], res['exit']), ('error', 126)); self.assertIn('older', res['note'])
+        self.assertFalse((self.q/'done'/jid/'gradle.log').exists())
+
+    def test_job_is_not_left_untracked_when_its_running_record_cannot_be_written(self):
+        real, killed = checkq.write_json, []
+        def flaky(path, data):
+            if pathlib.Path(path).parent.name == 'running': raise OSError('disk full')
+            return real(path, data)
+        spy_target = checkq.kill_tree
+        def spy(proc): killed.append(proc); return spy_target(proc)
+        jid = self.submit('lane-a', env={'FAKE_SLEEP': '30'})
+        r = self.new_runner()
+        with mock.patch.object(checkq, 'write_json', flaky), mock.patch.object(checkq, 'kill_tree', spy):
+            r.tick()
+        self.assertEqual(len(killed), 1); self.assertIsNotNone(killed[0].poll())  # the process was stopped, not leaked
+        self.assertEqual(r.jobs, {})
+        res = self.result(jid)
+        self.assertEqual(res['status'], 'error'); self.assertIn('could not start', res['note'])
+
+    def test_transient_netstat_failure_retries_the_sim_next_tick(self):
+        s = self.submit('lane-a', 'sim')
+        r = self.new_runner()
+        with mock.patch.object(checkq, 'busy_ports', side_effect=RuntimeError('netstat failed')): r.tick()
+        self.assertEqual(r.jobs, {}); self.assertTrue((self.q/'jobs'/(s + '.json')).exists()); self.assertIsNone(self.result(s))
+        self.drive(self.done(s))
+        self.assertEqual(self.result(s)['status'], 'passed')
+
+    def test_lost_lock_starts_nothing(self):
+        a = self.submit('lane-a')
+        r = self.new_runner()
+        checkq.write_json(self.q/'runner.lock', dict(pid=os.getpid(), token='someone-else', heartbeat=time.time()))
+        r.lock.lost = False  # skip beat's own check: the re-check right before launch must catch it
+        r.start_jobs(sorted((self.q/'jobs').glob('*.json')))
+        self.assertEqual(r.jobs, {}); self.assertTrue(r.lock.lost); self.assertTrue((self.q/'jobs'/(a + '.json')).exists())
 
     def test_orphan_of_a_dead_runner_is_recorded_not_killed(self):
         (self.q/'running').mkdir(parents=True)
@@ -293,6 +395,25 @@ class Locking(Base):
         self.assertEqual(checkq.read_json(lock)['token'], b.token)
         b.release(); self.assertFalse(lock.exists())
 
+    def test_unreadable_lock_is_removed_only_when_old(self):
+        self.q.mkdir(parents=True)
+        lock = self.q/'runner.lock'
+        lock.write_text('{half a file')
+        self.assertFalse(checkq.Lock().acquire())  # fresh and unreadable: might be a live lock mid-write
+        os.utime(lock, (time.time() - 600, time.time() - 600))
+        c = checkq.Lock(); self.assertTrue(c.acquire()); c.release()
+
+    def test_beat_retries_one_failed_read_before_declaring_the_lock_lost(self):
+        a = checkq.Lock(); self.assertTrue(a.acquire())
+        real, calls = checkq.read_json, []
+        def flaky(path):
+            calls.append(path)
+            return None if len(calls) == 1 else real(path)
+        with mock.patch.object(checkq, 'read_json', flaky): a.beat()
+        self.assertFalse(a.lost)
+        checkq.write_json(self.q/'runner.lock', dict(pid=os.getpid(), token='other', heartbeat=time.time()))
+        a.beat(); self.assertTrue(a.lost)
+
     def test_second_runner_refuses(self):
         a = checkq.Lock(); self.assertTrue(a.acquire())
         self.assertFalse(checkq.Lock().acquire())
@@ -301,6 +422,33 @@ class Locking(Base):
         self.assertIn('already', out.stdout)
         self.assertEqual(checkq.read_json(self.q/'runner.lock')['token'], a.token)
         a.release()
+
+
+class Hooks(Base):
+    def test_fake_hooks_ignored_without_checkq_test(self):
+        self.assertTrue(checkq.test_hooks()); self.assertEqual(checkq.fake('PORTS'), '')
+        del os.environ['CHECKQ_TEST']
+        try:
+            self.assertEqual(checkq.test_hooks(), []); self.assertIsNone(checkq.fake('CMD'))
+            self.assertNotIn('test hooks active', checkq.status_text(checkq.snapshot()))
+        finally: os.environ['CHECKQ_TEST'] = '1'
+        self.assertIn('test hooks active', checkq.status_text(checkq.snapshot()))
+
+
+class Wait(Base):
+    def test_runner_error_exit_126_and_foreign_exit_codes_pass_through(self):
+        (self.q/'jobs').mkdir(parents=True)
+        (self.q/'jobs'/'20200101-000000-000-bad0.json').write_text('{not json')
+        self.new_runner(); self.drive(self.done('20200101-000000-000-bad0'))
+        with contextlib.redirect_stdout(io.StringIO()) as out:
+            self.assertEqual(checkq.wait_job('20200101-000000-000-bad0', 5), 126)
+        self.assertIn('error', out.getvalue())
+
+    def test_wait_cli_unknown_job_is_3_not_argparses_2(self):
+        out = subprocess.run([sys.executable, SCRIPT, 'wait', '20990101-000000-000-ffff', '--timeout', '10'], env=dict(os.environ),
+                             capture_output=True, text=True, timeout=30)
+        self.assertEqual(out.returncode, 3, out.stdout + out.stderr)
+        self.assertIn('3 unknown job', subprocess.run([sys.executable, SCRIPT, 'wait', '--help'], capture_output=True, text=True).stdout)
 
 
 class Status(Base):

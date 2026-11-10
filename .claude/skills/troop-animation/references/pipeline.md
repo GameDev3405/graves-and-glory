@@ -123,7 +123,7 @@ Write renders under `work/` (untracked); commit only what a review record cites.
 The suite (`test-tools/java/gg/gravesandglory/GeoKnightChecks.java`) places the troop, marches it, duels, hits and
 kills it, and asserts impact sync, clip choice, weights and deaths. Run it from the lane worktree in Git Bash (as below),
 within the client ceiling (five clients across all worktrees, at most 30 minutes each), with no other client running
-from that checkout. Submit it through the shared queue rather than launching it yourself: `python tools/checkq.py submit client --root <troop>-r<N> --env GRAVES_PHASE1_CHECKS=geo-knight --env GRAVES_GEO_CHECK_TROOP=<troop> --env GRAVES_GEO_TROOPS=all`, then `python tools/checkq.py wait <id>` as a background shell command (docs/SETUP.md). What it runs:
+from that checkout. Submit it through the shared queue rather than launching it yourself: `python tools/checkq.py submit client --root <troop>-r<N> --env GRAVES_PHASE1_CHECKS=geo-knight --env GRAVES_GEO_CHECK_TROOP=<troop> --env GRAVES_GEO_TROOPS=all`, then `python tools/checkq.py wait <id>` as a background shell command (docs/SETUP.md). The queue's `passed` means gradle exit 0 only; the harness pass criterion below (22 `[p1] p1-` lines, 0 `=false`) must still be checked in the log. What it runs:
 
 ```
 export JAVA_HOME="C:/Program Files/Eclipse Adoptium/jdk-17.0.19.10-hotspot"

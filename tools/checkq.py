@@ -16,11 +16,11 @@ The runner (one detached process, `runner.lock` holds its pid and heartbeat) sta
 It runs tools/ingame_check_run.sh or tools/balance_sim.sh unchanged (the EULA is written only by balance_sim.sh), stops only
 the process tree it started (30 minutes, or cancel), never any other process, copies the result and log into the lane's run
 root (checkq-result.json, checkq.log) and writes done/<id>/result.json. It exits after 10 idle minutes.
-wait exits with the job's exit code; 124 timeout, 125 cancelled, 126 runner error, 2 unknown job.
+wait exits with the job's exit code; 124 timeout, 125 cancelled, 126 runner error, 3 unknown job (2 stays argparse's usage error).
 Queue folder: C:/Users/kortt/Melty/.checkq (CHECKQ_DIR overrides): jobs/ (waiting), running/, done/<id>/.
 Test seams (environment): CHECKQ_FAKE_CMD (JSON argv run instead of bash <script>), CHECKQ_FAKE_PROCS (JSON file of
-{pid, cmd} in place of the machine's Java processes), CHECKQ_FAKE_PORTS (busy ports), CHECKQ_NO_RUNNER, CHECKQ_POLL,
-CHECKQ_JOB_TIMEOUT, CHECKQ_IDLE, CHECKQ_STALE (seconds).
+{pid, cmd} in place of the machine's Java processes), CHECKQ_FAKE_PORTS (busy ports) are honoured only when CHECKQ_TEST=1
+(`status` then says "test hooks active"); CHECKQ_NO_RUNNER, CHECKQ_POLL, CHECKQ_JOB_TIMEOUT, CHECKQ_IDLE, CHECKQ_STALE (seconds).
 """
 import argparse, datetime, json, os, pathlib, re, secrets, shutil, signal, subprocess, sys, time, traceback
 
@@ -33,7 +33,7 @@ MC_MARKERS = ('devlaunchinjector', 'net.minecraft.client', '--gamedir', 'net.min
               'knotclient', 'knotserver', 'fabric-server-launch', 'minecraft_server')
 NAME_RE = re.compile(r'^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$')
 ENV_RE = re.compile(r'^[A-Z][A-Z0-9_]*$')
-EXIT_TIMEOUT, EXIT_CANCELLED, EXIT_ERROR, EXIT_UNKNOWN = 124, 125, 126, 2
+EXIT_TIMEOUT, EXIT_CANCELLED, EXIT_ERROR, EXIT_UNKNOWN = 124, 125, 126, 3
 NT = os.name == 'nt'
 NO_WINDOW = 0x08000000 if NT else 0
 
@@ -45,6 +45,13 @@ def job_timeout(): return setting('JOB_TIMEOUT', 1800.0)
 def idle_limit(): return setting('IDLE', 600.0)
 def stale_after(): return setting('STALE', 120.0)
 def poll(): return setting('POLL', 3.0)
+
+
+def fake(name):
+    """A CHECKQ_FAKE_<name> test hook, honoured only under CHECKQ_TEST=1 so a stray variable cannot fool a real queue."""
+    return os.environ.get('CHECKQ_FAKE_' + name) if os.environ.get('CHECKQ_TEST') == '1' else None
+def test_hooks():
+    return [n for n in ('CMD', 'PROCS', 'PORTS') if fake(n) is not None]
 
 
 def qdir(): return pathlib.Path(os.environ.get('CHECKQ_DIR') or DEFAULT_DIR)
@@ -88,8 +95,8 @@ def native_path(p):
 
 # ---- processes and ports -------------------------------------------------------------------------------------------
 def java_processes():
-    fake = os.environ.get('CHECKQ_FAKE_PROCS')
-    if fake: rows = read_json(fake) or []
+    fake_procs = fake('PROCS')
+    if fake_procs: rows = read_json(fake_procs) or []
     elif NT:
         shell = shutil.which('pwsh') or shutil.which('powershell')
         if not shell: raise RuntimeError('the slot count needs PowerShell (pwsh or Windows PowerShell)')
@@ -138,10 +145,12 @@ def kill_tree(proc):
 
 
 def busy_ports():
-    fake = os.environ.get('CHECKQ_FAKE_PORTS')
-    if fake is not None: return {int(p) for p in fake.split(',') if p.strip()}
-    out = subprocess.run(['netstat', '-ano'] if NT else ['netstat', '-an'], capture_output=True, text=True, errors='replace',
-                         creationflags=NO_WINDOW).stdout
+    fake_ports = fake('PORTS')
+    if fake_ports is not None: return {int(p) for p in fake_ports.split(',') if p.strip()}
+    done = subprocess.run(['netstat', '-ano'] if NT else ['netstat', '-an'], capture_output=True, text=True, errors='replace',
+                          creationflags=NO_WINDOW, timeout=60)
+    if done.returncode != 0 or not done.stdout.strip(): raise RuntimeError(f'netstat failed (exit {done.returncode})')
+    out = done.stdout
     ports = set()
     for line in out.splitlines():
         parts = line.split()
@@ -194,7 +203,8 @@ class Lock:
                 except OSError: pass
                 time.sleep(0.1); continue
             try:
-                if read_json(self.path) == info:
+                # An unreadable lock (info None) is removed only when it is also old: a failed read of a live lock is not stale.
+                if read_json(self.path) == info and (info is not None or (self.path.exists() and not lock_live(None, self.path))):
                     try: self.path.unlink()
                     except FileNotFoundError: pass
             finally:
@@ -204,9 +214,16 @@ class Lock:
 
     def beat(self):
         if self.lost: return
-        info = read_json(self.path)
-        if not isinstance(info, dict) or info.get('token') != self.token: self.lost = True; return
+        if not self.owned(): self.lost = True; return
         write_json(self.path, self.content())
+
+    def owned(self):
+        """The lock file names this runner. A read that fails once (a reader racing the atomic move) is retried before 'no'."""
+        for attempt in range(2):
+            info = read_json(self.path)
+            if isinstance(info, dict) and info.get('token') == self.token: return True
+            if attempt == 0: time.sleep(0.05)
+        return False
 
     def release(self):
         info = read_json(self.path)
@@ -220,6 +237,13 @@ def runner_info():
     if not path.exists(): return None, False
     info = read_json(path)
     return info, lock_live(info, path)
+
+
+def owner_alive(pid):
+    """A running/ job's runner is alive only if it is the live lock holder: a bare pid may be reused after a reboot."""
+    info, alive = runner_info()
+    try: return alive and isinstance(info, dict) and int(info.get('pid')) == int(pid)
+    except (TypeError, ValueError): return False
 
 
 def ensure_runner():
@@ -307,14 +331,14 @@ class Runner:
         for p in sub('running').glob('*.json'):
             if p.stem in self.jobs: continue
             info = read_json(p)
-            if isinstance(info, dict) and info.get('runner_pid') != os.getpid() and pid_alive(info.get('runner_pid')): out.append(info)
+            if isinstance(info, dict) and info.get('runner_pid') != os.getpid() and owner_alive(info.get('runner_pid')): out.append(info)
         return out
 
     def adopt(self):
         """Jobs left in running/ by a runner that died: recorded as errors; their processes are left alone."""
         for p in sorted(sub('running').glob('*.json')):
             info = read_json(p)
-            if isinstance(info, dict) and info.get('runner_pid') != os.getpid() and pid_alive(info.get('runner_pid')): continue
+            if isinstance(info, dict) and info.get('runner_pid') != os.getpid() and owner_alive(info.get('runner_pid')): continue
             if p.stem in self.jobs: continue
             jid = p.stem
             try:
@@ -372,9 +396,12 @@ class Runner:
                 if any(same_path(wt, h) for h in held) or any(path_in(p.get('cmd'), wt) for p in other): continue
                 port = None
                 if job['kind'] == 'sim':
-                    busy = busy_ports() | ports
+                    try: busy = busy_ports() | ports
+                    except Exception as e:  # a transient netstat failure is not the job's fault: try again next tick
+                        self.say(f'{jid}: could not list ports, retrying next tick: {e}'); continue
                     port = next((p for p in PORTS if p not in busy), None)
                     if port is None: continue
+                if not self.lock.owned(): self.lock.lost = True; return  # another runner took over: start nothing
                 claimed = sub('running')/f'{jid}.json'
                 try: os.replace(path, claimed)
                 except OSError: continue  # cancelled meanwhile
@@ -396,8 +423,8 @@ class Runner:
         if not wt.is_dir(): raise RuntimeError(f'worktree {wt} is gone')
         args = job['args']
         tail = [args['root'], args.get('suites', '')] if job['kind'] == 'client' else [args['name'], str(port), *args.get('gradle_args', [])]
-        fake = os.environ.get('CHECKQ_FAKE_CMD')
-        if fake: cmd = json.loads(fake) + [job['kind']] + tail
+        fake_cmd = fake('CMD')
+        if fake_cmd: cmd = json.loads(fake_cmd) + [job['kind']] + tail
         else:
             if not (wt/SCRIPTS[job['kind']]).exists(): raise RuntimeError(f'{SCRIPTS[job["kind"]]} missing in {wt}')
             cmd = [bash(), SCRIPTS[job['kind']]] + tail
@@ -411,8 +438,10 @@ class Runner:
         except Exception: log.close(); raise
         started = time.time()
         info = dict(job, id=jid, started=stamp(started), port=port, runner_pid=os.getpid(), job_pid=proc.pid)
-        write_json(sub('running')/f'{jid}.json', info)
-        self.jobs[jid] = dict(job=info, proc=proc, log=log, started_ts=started, port=port)
+        self.jobs[jid] = dict(job=info, proc=proc, log=log, started_ts=started, port=port)  # tracked before anything can fail
+        try: write_json(sub('running')/f'{jid}.json', info)
+        except Exception:
+            self.jobs.pop(jid, None); kill_tree(proc); log.close(); raise
         self.say(f'{jid}: started {job["kind"]} in {wt} (pid {proc.pid}{", port " + str(port) if port else ""})')
 
     def finish(self, jid, code=None, note=''):
@@ -428,9 +457,15 @@ class Runner:
         if job['kind'] == 'client':
             run_root = wt/'work'/'ingame-check'/job['args']['root']
             glog = run_root/'gradle.log'
-            gtext = glog.read_text(encoding='utf8', errors='replace') if glog.exists() else ''
-            if glog.exists(): shutil.copyfile(glog, d/'gradle.log')
-            parsed = client_exit(gtext)
+            try: stale_log = glog.exists() and glog.stat().st_mtime < r['started_ts'] - 2
+            except OSError: stale_log = False
+            if stale_log:  # left by an earlier run with the same --root: its exit line is not this job's
+                parsed = None
+                if code is None: note = 'gradle.log is older than this job (a stale exit line from an earlier run was ignored)'
+            else:
+                gtext = glog.read_text(encoding='utf8', errors='replace') if glog.exists() else ''
+                if glog.exists(): shutil.copyfile(glog, d/'gradle.log')
+                parsed = client_exit(gtext)
         else:
             run_root = sim_root(text, job['args']['name'])
             parsed = sim_exit(text)
@@ -438,7 +473,7 @@ class Runner:
             rc = r['proc'].returncode
             if parsed is not None: code = parsed
             elif rc: code = rc if 0 < rc < 256 else 1
-            else: code, note = EXIT_ERROR, 'the script ended without an exit line'
+            else: code, note = EXIT_ERROR, note or 'the script ended without an exit line'
         record(jid, job, code, status_of(code), note=note, log=log if log.exists() else None, run_root=run_root,
                started=job.get('started'), port=r['port'])
         (sub('running')/f'{jid}.json').unlink(missing_ok=True); (sub('running')/f'{jid}.cancel').unlink(missing_ok=True)
@@ -548,7 +583,8 @@ def snapshot():
         slots = dict(limit=SLOTS, minecraft_other=None, queue_running=len(running), used=None, error=str(e))
     runner = dict(alive=alive, pid=info.get('pid') if isinstance(info, dict) else None,
                   heartbeat=stamp(info['heartbeat']) if isinstance(info, dict) and isinstance(info.get('heartbeat'), (int, float)) else None)
-    return dict(queue=str(qdir()).replace('\\', '/'), runner=runner, slots=slots, waiting=waiting, running=running, recent=recent)
+    return dict(queue=str(qdir()).replace('\\', '/'), runner=runner, slots=slots, waiting=waiting, running=running, recent=recent,
+                test_hooks=test_hooks())
 
 
 def describe(j):
@@ -566,6 +602,7 @@ def ago(iso):
 
 def status_text(s):
     lines = [f'Check queue: {s["queue"]}']
+    if s.get('test_hooks'): lines.append(f'test hooks active ({", ".join("CHECKQ_FAKE_" + n for n in s["test_hooks"])}); this is not the real machine')
     r = s['runner']
     lines.append(f'Runner: running (pid {r["pid"]}, heartbeat {r["heartbeat"]})' if r['alive'] else 'Runner: not running (submit or wait starts it)')
     sl = s['slots']
@@ -590,7 +627,11 @@ def main(argv=None):
     c.add_argument('--env', action='append', default=[], metavar='NAME=VALUE')
     m = kinds.add_parser('sim'); m.add_argument('--name', required=True); m.add_argument('--env', action='append', default=[], metavar='NAME=VALUE')
     m.add_argument('gradle_args', nargs=argparse.REMAINDER)
-    w = cmds.add_parser('wait'); w.add_argument('id'); w.add_argument('--timeout', type=float)
+    w = cmds.add_parser('wait', description="Blocks until the job has a result and exits with the job's exit code.",
+                        epilog="exit codes: the job's own; 124 timeout (--timeout elapsed; the job goes on), 125 cancelled, "
+                               "126 queue error, 3 unknown job id.")
+    w.add_argument('id'); w.add_argument('--timeout', type=float, default=0, metavar='S',
+                   help='give up after S seconds (exit 124); 0 or omitted waits forever')
     st = cmds.add_parser('status'); st.add_argument('--json', action='store_true')
     x = cmds.add_parser('cancel'); x.add_argument('id')
     cmds.add_parser('runner')
