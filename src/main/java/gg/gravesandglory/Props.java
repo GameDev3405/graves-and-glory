@@ -53,8 +53,9 @@ import java.util.Set;
 import java.util.TreeMap;
 
 /**
- * Props in the world (prop kit plan task S4). No registry entries: a prop is a vanilla command block (the anchor, one block under the anchor
- * cell, {@code facing} = prop facing, {@code Command} = {@code gravesandglory:prop/<id> floor=<state>}, the floor block it replaced, never run), {@code barrier} blocks on its solid
+ * Props in the world (prop kit plan task S4). No registry entries: a prop is a vanilla command block (the anchor, buried {@code depth} blocks
+ * under the anchor cell so it does not show (in the floor directly under when no buried cell exists), {@code facing} = prop facing, {@code Command} = {@code gravesandglory:prop/<id> depth=<n> floor=<state>},
+ * the block it replaced, never run; an old anchor without {@code depth=} sits one block under and moves down on scan), {@code barrier} blocks on its solid
  * cells, {@code light} blocks on its light cells and one {@code item_display} per part, tagged {@code gg_prop}, {@code gg_prop@x,y,z}
  * (anchor cell) and {@code gg_prop#<cmd>} (which part). The anchor is the truth: the scanner (chunk load, {@link #scanBox}) spawns missing
  * parts, discards duplicates and discards parts whose anchor is gone.
@@ -62,7 +63,9 @@ import java.util.TreeMap;
 public final class Props {
     private Props(){}
     static final org.slf4j.Logger LOG=org.slf4j.LoggerFactory.getLogger("gravesandglory");
-    public static final String TAG="gg_prop",ANCHOR_PREFIX="gravesandglory:prop/",FLOOR_KEY="floor=";
+    public static final String TAG="gg_prop",ANCHOR_PREFIX="gravesandglory:prop/",FLOOR_KEY="floor=",DEPTH_KEY="depth=";
+    /** How deep under the anchor cell place looks for a buried cell for the anchor (the floor block under the cell stays). */
+    static final int MAX_DEPTH=12;
     /** Item display view range multiplier, so props show at build distances. */
     static final float VIEW_RANGE=4f;
     /** Ticks a loaded chunk waits for its entities before the scan gives up on it. */
@@ -75,6 +78,8 @@ public final class Props {
     public record Live(BlockPos anchor,PropDef def,int facing){}
 
     private static final Map<World,Map<BlockPos,Live>> LIVE=new HashMap<>();
+    /** Anchor depth last found per anchor cell, so {@link #anchorBase} reads one block per call in the usual case. */
+    private static final Map<World,Map<BlockPos,Integer>> DEPTHS=new HashMap<>();
     private static final Map<World,Map<Long,Integer>> PENDING_CHUNKS=new HashMap<>();
     private static final Map<World,List<Entity>> PENDING_ENTITIES=new HashMap<>();
 
@@ -89,7 +94,7 @@ public final class Props {
             if(e instanceof DisplayEntity.ItemDisplayEntity&&e.getCommandTags().contains(TAG))PENDING_ENTITIES.computeIfAbsent(w,k->new ArrayList<>()).add(e);
         });
         ServerTickEvents.END_WORLD_TICK.register(Props::tick);
-        ServerWorldEvents.UNLOAD.register((server,w)->{LIVE.remove(w);PENDING_CHUNKS.remove(w);PENDING_ENTITIES.remove(w);});
+        ServerWorldEvents.UNLOAD.register((server,w)->{LIVE.remove(w);DEPTHS.remove(w);PENDING_CHUNKS.remove(w);PENDING_ENTITIES.remove(w);});
         CommandRegistrationCallback.EVENT.register((d,access,env)->d.register(CommandManager.literal("prop").requires(s->s.hasPermissionLevel(2))
             .then(CommandManager.literal("place").then(CommandManager.argument("id",StringArgumentType.word()).suggests((c,b)->CommandSource.suggestMatching(DEFS.keySet(),b))
                 .then(CommandManager.argument("pos",BlockPosArgumentType.blockPos()).then(CommandManager.argument("facing",IntegerArgumentType.integer(0,270)).executes(c->{
@@ -133,12 +138,33 @@ public final class Props {
 
     /** A cell a prop may take: air or replaceable, and not another prop's barrier or light. */
     static boolean free(BlockState s){return (s.isAir()||s.isReplaceable())&&!s.isOf(Blocks.LIGHT)&&!s.isOf(Blocks.BARRIER);}
-    /** The anchor replaces the floor block under the anchor cell: anything but another anchor, a block entity, a prop cell or an
-     *  unbreakable block. */
+    /** The anchor may replace a block: anything but another anchor, a block entity, a prop cell or an unbreakable block. */
     static boolean anchorFree(ServerWorld w,BlockPos p){
         BlockState s=w.getBlockState(p);
         return w.getBlockEntity(p)==null&&!s.isOf(Blocks.BARRIER)&&!s.isOf(Blocks.LIGHT)&&s.getHardness(w,p)>=0;
     }
+    /** Where the anchor of a prop with its anchor cell at {@code anchorCell} goes: the first cell 2 to {@link #MAX_DEPTH} blocks under it that
+     *  the anchor may replace and that is buried (every neighbour an opaque full cube or out of the world), so the floor block under the
+     *  cell stays and no face of the anchor shows; null if there is none. {@code skip}: cells the prop takes; {@code oldBase} (or null)
+     *  reads as {@code oldFloor}, for moving an old anchor whose floor is not back yet. */
+    static BlockPos hiddenBase(ServerWorld w,BlockPos anchorCell,List<BlockPos> skip,BlockPos oldBase,BlockState oldFloor){
+        for(int d=2;d<=MAX_DEPTH;d++){
+            BlockPos p=anchorCell.down(d);
+            if(w.isOutOfHeightLimit(p))return null;
+            if(!loaded(w,p)||!w.getWorldBorder().contains(p)||skip.contains(p)||!anchorFree(w,p))continue;
+            boolean buried=true;
+            for(Direction dir:Direction.values()){
+                BlockPos q=p.offset(dir);
+                if(w.isOutOfHeightLimit(q))continue;
+                if(!loaded(w,q)){buried=false;break;}
+                BlockState s=q.equals(oldBase)?oldFloor:w.getBlockState(q);
+                if(!s.isOpaqueFullCube(w,q)){buried=false;break;}
+            }
+            if(buried)return p.toImmutable();
+        }
+        return null;
+    }
+    static boolean loaded(ServerWorld w,BlockPos p){return w.getChunkManager().isChunkLoaded(p.getX()>>4,p.getZ()>>4);}
 
     // ---- place / remove ---------------------------------------------------------------------------------------------------------------
 
@@ -147,16 +173,18 @@ public final class Props {
         String why=check(w,id,anchorCell,facing);
         if(!why.isEmpty())return why;
         PropDef d=DEFS.get(id);
-        BlockPos base=anchorCell.down();
         List<BlockPos> solid=solidCells(d,anchorCell,facing);
-        BlockState floor=w.getBlockState(base);
-        w.setBlockState(base,Blocks.COMMAND_BLOCK.getDefaultState().with(CommandBlock.FACING,Direction.byName(PropGeometry.direction(facing))).with(CommandBlock.CONDITIONAL,false),3);
-        if(w.getBlockEntity(base) instanceof CommandBlockBlockEntity cb){
-            cb.getCommandExecutor().setCommand(anchorCommand(id,floor));cb.setAuto(false);cb.markDirty();
+        BlockPos base=hiddenBase(w,anchorCell,cells(d,anchorCell,facing),null,null);
+        if(base==null){
+            base=anchorCell.down();
+            LOG.warn("[props] no hidden cell for the anchor of {} at {}: anchor in the floor at {}, where it shows",id,anchorCell.toShortString(),base.toShortString());
         }
+        setAnchor(w,base,Blocks.COMMAND_BLOCK.getDefaultState().with(CommandBlock.FACING,Direction.byName(PropGeometry.direction(facing))).with(CommandBlock.CONDITIONAL,false),
+            id,anchorCell.getY()-base.getY());
         for(BlockPos p:solid)w.setBlockState(p,Blocks.BARRIER.getDefaultState(),3);
         for(PropDef.Light l:d.lights())w.setBlockState(lightCell(d,anchorCell,facing,l),Blocks.LIGHT.getDefaultState().with(LightBlock.LEVEL_15,l.level()),3);
         ensureParts(w,anchorCell.toImmutable(),d,facing);
+        PropGameplay.forget(w,anchorCell); // a fresh prop starts whole, whatever stood here before
         return "";
     }
 
@@ -166,26 +194,47 @@ public final class Props {
         PropDef d=DEFS.get(id);
         if(d==null)return "Unknown prop "+id;
         if(facing!=0&&facing!=90&&facing!=180&&facing!=270)return "Facing must be 0, 90, 180 or 270, not "+facing;
-        BlockPos base=anchorCell.down();
-        List<BlockPos> solid=solidCells(d,anchorCell,facing);
-        List<BlockPos> all=new ArrayList<>(solid);
-        for(PropDef.Light l:d.lights())all.add(lightCell(d,anchorCell,facing,l));
-        all.add(base);
+        List<BlockPos> all=cells(d,anchorCell,facing);
         for(BlockPos p:all){
             if(w.isOutOfHeightLimit(p)||!w.getWorldBorder().contains(p))return "Out of world at "+p.getX()+" "+p.getY()+" "+p.getZ();
-            if(!w.getChunkManager().isChunkLoaded(p.getX()>>4,p.getZ()>>4))return "Out of world at "+p.getX()+" "+p.getY()+" "+p.getZ()+" (not loaded)";
+            if(!loaded(w,p))return "Out of world at "+p.getX()+" "+p.getY()+" "+p.getZ()+" (not loaded)";
         }
-        for(BlockPos p:all){
-            boolean ok=p.equals(base)?anchorFree(w,p):free(w.getBlockState(p));
-            if(!ok)return "Overlap at "+p.getX()+" "+p.getY()+" "+p.getZ()+" ("+w.getBlockState(p).getBlock().getName().getString()+")";
+        for(BlockPos p:all)if(!free(w.getBlockState(p)))return "Overlap at "+p.getX()+" "+p.getY()+" "+p.getZ()+" ("+w.getBlockState(p).getBlock().getName().getString()+")";
+        if(anchorBase(w,anchorCell)!=null)return "Overlap at "+anchorCell.getX()+" "+anchorCell.getY()+" "+anchorCell.getZ()+" (another prop's anchor cell)";
+        if(hiddenBase(w,anchorCell,all,null,null)==null){ // fallback: the anchor goes in the floor directly under the cell (it shows)
+            BlockPos p=anchorCell.down();
+            if(w.isOutOfHeightLimit(p)||!w.getWorldBorder().contains(p))return "Out of world at "+p.getX()+" "+p.getY()+" "+p.getZ();
+            if(!loaded(w,p))return "Out of world at "+p.getX()+" "+p.getY()+" "+p.getZ()+" (not loaded)";
+            if(all.contains(p)||!anchorFree(w,p))return "Overlap at "+p.getX()+" "+p.getY()+" "+p.getZ()+" ("+w.getBlockState(p).getBlock().getName().getString()+")";
         }
         return "";
     }
+    /** The solid and light cells of a prop. */
+    static List<BlockPos> cells(PropDef d,BlockPos anchorCell,int facing){
+        List<BlockPos> all=solidCells(d,anchorCell,facing);
+        for(PropDef.Light l:d.lights())all.add(lightCell(d,anchorCell,facing,l));
+        return all;
+    }
+    /** Puts an anchor command block ({@code state}) at {@code base}, {@code depth} under its anchor cell, saving the block it replaces. */
+    static void setAnchor(ServerWorld w,BlockPos base,BlockState state,String id,int depth){
+        BlockState floor=w.getBlockState(base);
+        w.setBlockState(base,state,3);
+        if(w.getBlockEntity(base) instanceof CommandBlockBlockEntity cb){
+            cb.getCommandExecutor().setCommand(anchorCommand(id,depth,floor));cb.setAuto(false);cb.markDirty();
+        }
+    }
 
-    /** The anchor's {@code Command} text: {@code gravesandglory:prop/<id> floor=<block state>}, the floor block the anchor replaced (vanilla
-     *  keeps no custom NBT key on a command block, so the floor rides in the text; remove puts it back). */
-    static String anchorCommand(String id,BlockState floor){
-        return ANCHOR_PREFIX+id+" "+FLOOR_KEY+BlockArgumentParser.stringifyBlockState(floor);
+    /** The anchor's {@code Command} text: {@code gravesandglory:prop/<id> depth=<n> floor=<block state>}, how far under the anchor cell it
+     *  sits and the block it replaced (vanilla keeps no custom NBT key on a command block, so both ride in the text; remove puts it back). */
+    static String anchorCommand(String id,int depth,BlockState floor){
+        return ANCHOR_PREFIX+id+" "+DEPTH_KEY+depth+" "+FLOOR_KEY+BlockArgumentParser.stringifyBlockState(floor);
+    }
+    /** How far under its anchor cell an anchor sits: its {@code depth=}, or 1 for an old anchor without one. */
+    static int anchorDepth(String cmd){
+        int i=cmd==null?-1:cmd.indexOf(" "+DEPTH_KEY);
+        if(i<0)return 1;
+        int a=i+1+DEPTH_KEY.length(),b=cmd.indexOf(' ',a);
+        try{int d=Integer.parseInt(cmd.substring(a,b<0?cmd.length():b));return d>=1&&d<=MAX_DEPTH?d:1;}catch(NumberFormatException x){return 1;}
     }
     /** The prop id of an anchor {@code Command} text, or null if it is not one. */
     static String anchorId(String cmd){
@@ -210,9 +259,11 @@ public final class Props {
         for(Entity e:parts(w,anchor))e.discard();
         for(BlockPos p:solidCells(l.def(),anchor,l.facing()))if(w.getBlockState(p).isOf(Blocks.BARRIER))w.setBlockState(p,Blocks.AIR.getDefaultState(),3);
         for(PropDef.Light li:l.def().lights()){BlockPos p=lightCell(l.def(),anchor,l.facing(),li);if(w.getBlockState(p).isOf(Blocks.LIGHT))w.setBlockState(p,Blocks.AIR.getDefaultState(),3);}
-        BlockState floor=w.getBlockEntity(anchor.down()) instanceof CommandBlockBlockEntity cb?anchorFloor(cb.getCommandExecutor().getCommand()):Blocks.AIR.getDefaultState();
-        w.setBlockState(anchor.down(),floor,3);
+        BlockPos base=anchorBase(w,anchor);
+        BlockState floor=base!=null&&w.getBlockEntity(base) instanceof CommandBlockBlockEntity cb?anchorFloor(cb.getCommandExecutor().getCommand()):Blocks.AIR.getDefaultState();
+        if(base!=null)w.setBlockState(base,floor,3);
         Map<BlockPos,Live> m=LIVE.get(w);if(m!=null)m.remove(anchor);
+        PropGameplay.forget(w,anchor);
         return true;
     }
 
@@ -221,12 +272,12 @@ public final class Props {
         int r=1;
         for(PropDef d:DEFS.values())r=Math.max(r,Math.max(d.sx(),Math.max(d.sy(),d.sz())));
         BlockPos.Mutable p=new BlockPos.Mutable();
-        for(int dy=-r;dy<=1;dy++)for(int dx=-r;dx<=r;dx++)for(int dz=-r;dz<=r;dz++){
+        for(int dy=-r-MAX_DEPTH;dy<=1;dy++)for(int dx=-r;dx<=r;dx++)for(int dz=-r;dz<=r;dz++){
             p.set(cell.getX()+dx,cell.getY()+dy,cell.getZ()+dz);
             if(!w.getBlockState(p).isOf(Blocks.COMMAND_BLOCK))continue;
-            BlockPos anchor=p.up();
-            Live l=readAnchor(w,anchor);
+            Live l=readBase(w,p);
             if(l==null)continue;
+            BlockPos anchor=l.anchor();
             if(cell.equals(p))return anchor;
             for(BlockPos c:solidCells(l.def(),anchor,l.facing()))if(c.equals(cell))return anchor;
             for(PropDef.Light li:l.def().lights())if(lightCell(l.def(),anchor,l.facing(),li).equals(cell))return anchor;
@@ -234,9 +285,29 @@ public final class Props {
         return null;
     }
 
-    /** The prop whose anchor cell is {@code anchor}, read from the command block under it; null if there is none or its id is unknown. */
+    /** The prop whose anchor cell is {@code anchor}, read from its command block under it; null if there is none or its id is unknown. */
     static Live readAnchor(ServerWorld w,BlockPos anchor){
-        BlockPos base=anchor.down();
+        BlockPos base=anchorBase(w,anchor);
+        return base==null?null:readBase(w,base);
+    }
+    /** The anchor command block of anchor cell {@code anchor} ({@code depth=} blocks under it), or null. */
+    static BlockPos anchorBase(ServerWorld w,BlockPos anchor){
+        Map<BlockPos,Integer> cache=DEPTHS.computeIfAbsent(w,k->new HashMap<>());
+        Integer known=cache.get(anchor);
+        // the last depth found here first, then 2 (a new anchor), 1 (an old or fallback one), then deeper
+        for(int i=known==null?1:0;i<=MAX_DEPTH;i++){
+            int d=i==0?known:i==1?2:i==2?1:i;
+            if(i>0&&known!=null&&d==known)continue;
+            BlockPos base=anchor.down(d);
+            if(w.isOutOfHeightLimit(base))continue;
+            Live l=readBase(w,base);
+            if(l!=null&&l.anchor().equals(anchor)){cache.put(anchor.toImmutable(),d);return base;}
+        }
+        cache.remove(anchor);
+        return null;
+    }
+    /** The prop whose anchor command block is at {@code base}; null if it is not one or its id is unknown. */
+    static Live readBase(ServerWorld w,BlockPos base){
         BlockState s=w.getBlockState(base);
         if(!s.isOf(Blocks.COMMAND_BLOCK))return null;
         BlockEntity be=w.getBlockEntity(base);
@@ -247,7 +318,7 @@ public final class Props {
         PropDef d=DEFS.get(id);
         int facing=PropGeometry.facingOf(s.get(CommandBlock.FACING).asString());
         if(d==null||facing<0)return null;
-        return new Live(anchor.toImmutable(),d,facing);
+        return new Live(base.up(anchorDepth(cmd)).toImmutable(),d,facing);
     }
 
     // ---- parts -------------------------------------------------------------------------------------------------------------------------
@@ -311,15 +382,29 @@ public final class Props {
             WorldChunk chunk=w.getChunkManager().getWorldChunk(cx,cz);
             if(chunk==null)continue;
             for(BlockPos base:new ArrayList<>(chunk.getBlockEntities().keySet())){
-                if(!box.contains(base.up())&&!box.contains(base))continue;
-                Live l=readAnchor(w,base.up());
-                if(l==null)continue;
+                Live l=readBase(w,base);
+                if(l==null||!box.contains(l.anchor())&&!box.contains(base))continue;
+                migrate(w,base,l,box);
                 ensureParts(w,l.anchor(),l.def(),l.facing());found++;
             }
         }
         Box area=new Box(box.getMinX(),box.getMinY(),box.getMinZ(),box.getMaxX()+1,box.getMaxY()+1,box.getMaxZ()+1);
         for(Entity e:new ArrayList<>(w.getEntitiesByType(EntityType.ITEM_DISPLAY,area,e->e.getCommandTags().contains(TAG))))checkPart(w,e);
         return found;
+    }
+
+    /** Moves an old anchor (one block under its cell, so it shows) down to a hidden cell inside {@code box} and puts its floor block back;
+     *  leaves it where it is (still working) when there is no such cell. */
+    static void migrate(ServerWorld w,BlockPos base,Live l,BlockBox box){
+        if(!(w.getBlockEntity(base) instanceof CommandBlockBlockEntity cb))return;
+        String cmd=cb.getCommandExecutor().getCommand();
+        if(cmd.contains(" "+DEPTH_KEY))return;
+        BlockState floor=anchorFloor(cmd);
+        BlockPos to=hiddenBase(w,l.anchor(),cells(l.def(),l.anchor(),l.facing()),base,floor);
+        if(to==null||!box.contains(to))return;
+        setAnchor(w,to,w.getBlockState(base),l.def().id(),l.anchor().getY()-to.getY());
+        w.setBlockState(base,floor,3);
+        LOG.info("[props] moved the anchor of {} at {} down to {}",l.def().id(),l.anchor().toShortString(),to.toShortString());
     }
 
     /** Discards a prop part whose anchor is gone or that its anchor's def does not have. */
@@ -354,6 +439,8 @@ public final class Props {
         Map<Long,Integer> pending=PENDING_CHUNKS.get(w);if(pending!=null)pending.remove(chunk.getPos().toLong());
         Map<BlockPos,Live> m=LIVE.get(w);
         if(m!=null){ChunkPos cp=chunk.getPos();m.keySet().removeIf(a->(a.getX()>>4)==cp.x&&(a.getZ()>>4)==cp.z);}
+        Map<BlockPos,Integer> dm=DEPTHS.get(w);
+        if(dm!=null){ChunkPos cp=chunk.getPos();dm.keySet().removeIf(a->(a.getX()>>4)==cp.x&&(a.getZ()>>4)==cp.z);}
     }
 
     /** The live map's values as they are, without the anchor check or a copy (the S5 ticker's cheap pass); do not modify. */

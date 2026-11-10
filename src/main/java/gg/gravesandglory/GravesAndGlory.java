@@ -81,6 +81,7 @@ public final class GravesAndGlory implements ModInitializer {
         Props.init(); // prop kit: defs, /prop, anchor scanner (no registry entries)
         PropTicker.init(); // prop kit: proximity-gated alive effects, /prop stats
         PropMenu.init(); // prop kit: /prop menu, ghost placement, hit-to-remove
+        PropGameplay.init(); // gameplay props: destructible, cover, Siege /barricade
         PropPack.init(); // prop kit: server resource pack delivery, /prop pack reload (only with -Dgg.propPack.file)
         ServerLifecycleEvents.SERVER_STARTED.register(server -> {
             // Only the dedicated Graves and Glory save belongs to this mod.
@@ -1162,6 +1163,7 @@ public final class GravesAndGlory implements ModInitializer {
             if(!mode.teardown(this))System.err.println("[Graves and Glory] startRound: "+saves.size()+" saved piece(s) of the last "+mode.id()+" round could not be restored; the marker keeps them.");
             if(!Modes.registered(campaign.battleMode)||!Modes.hosts(campaign.battleMode,campaign.map))campaign.battleMode=Modes.DOMINATION;
             mode=Modes.create(campaign.battleMode);
+            PropGameplay.clear(world); // a round's gameplay props start whole
             roundSeconds=mode.row.roundSeconds();
             Projectiles.clear(this);strikes.clear();Abilities.clearBanners(this);Houses.reset(this);FeedEvents.clear();clearProgression();clearIntel();
             campaign.prepareRound();

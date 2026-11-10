@@ -138,7 +138,7 @@ public final class SiegeMode extends BattleMode {
     /** Attackers take the yard, the gate and the keep; defenders hold them. */
     @Override
     public String howToSide(GravesAndGlory.Battle b, GravesAndGlory.Squad s) {
-        return s.team == 0 ? "attack" : "defend";
+        return s == null || s.team == 0 ? "attack" : "defend"; // the lobby's preview has no viewer squad (Campaign.snapshot)
     }
 
     /** The gate's landmark row on Ironhold, or null when the map has no gate. */

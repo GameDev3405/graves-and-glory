@@ -22,8 +22,11 @@ import java.util.Set;
  *  "parts":[{"model":"anvil","cmd":7310011,"glow":false}],          // glow optional, default false
  *  "solid":[[x,y,z], ...],                                          // explicit cell list, non-empty, no repeats
  *  "lights":[{"x":0,"y":2,"z":0,"level":12}],                       // optional; never on a solid cell
- *  "effects":[{"kind":"particle|sound","id":"minecraft:...","x":..,"y":..,"z":..,"spread":..,"count":..,"every":..,"chance":..,"volume":..,"pitch":..}]}
+ *  "effects":[{"kind":"particle|sound","id":"minecraft:...","x":..,"y":..,"z":..,"spread":..,"count":..,"every":..,"chance":..,"volume":..,"pitch":..}],
+ *  "gameplay":{"hp":6,"heavyHit":2,"siegeHit":3,"heavyDamage":6,"cover":0.25,"coverRange":2,"siegeCap":4,"siegeSeconds":90,"siegeRadius":48}}  // optional
  * </pre>
+ * {@code gameplay} (optional, {@link Gameplay}) makes a prop a gameplay object that {@link PropGameplay} acts on; every field is optional and 0 turns
+ * that effect off.
  * {@code solid} is always the explicit list of [x,y,z] cells (no shorthand), so the file reads the same as the record.
  *
  * <p>Custom model data: parts are {@code minecraft:paper} items keyed by CMD = {@link #cmd}{@code (propIndex, partIndex)} =
@@ -32,11 +35,19 @@ import java.util.Set;
  * {@code 7310001..7310999}, so numbering starts at 7310001 (forge hearth 7310001, hood 7310002, coals 7310003, anvil 7310011, ...). A prop's
  * menu icon is its first part.
  */
-public record PropDef(String id,String category,String name,int sx,int sy,int sz,List<Part> parts,List<int[]> solid,List<Light> lights,List<Effect> effects){
+public record PropDef(String id,String category,String name,int sx,int sy,int sz,List<Part> parts,List<int[]> solid,List<Light> lights,List<Effect> effects,Gameplay gameplay){
     public static final int CMD_MIN=7310001,CMD_MAX=7310999;
     public record Part(String model,int cmd,boolean glow){}
     public record Light(int x,int y,int z,int level){}
     public record Effect(String kind,String id,double x,double y,double z,double spread,int count,int every,double chance,float volume,float pitch){}
+    /**
+     * A gameplay prop's rules (stake barricade, Kort 2026-11-09), read by {@link PropGameplay}. Destructible when hp > 0: a heavy melee hit (a
+     * player's full swing with a weapon of at least heavyDamage attack damage, a troop's slam or trample splash) takes heavyHit, siege fire (a siege
+     * troop's shell burst or shot into it, an explosion) takes siegeHit; at 0 it is removed. cover: the share of a ranged troop shot a target standing
+     * within coverRange blocks behind it (away from the shooter) is spared. siegeCap: how many a Siege defender may place in the first siegeSeconds
+     * of the round within siegeRadius blocks of the Outer Yard (0: none).
+     */
+    public record Gameplay(int hp,int heavyHit,int siegeHit,double heavyDamage,double cover,double coverRange,int siegeCap,int siegeSeconds,double siegeRadius){}
 
     /** The CMD of part {@code part} of the prop at table index {@code prop}: 7310001 + 10*prop + part. */
     public static int cmd(int prop,int part){return CMD_MIN+10*prop+part;}
@@ -68,7 +79,7 @@ public record PropDef(String id,String category,String name,int sx,int sy,int sz
         }
         if(parts.isEmpty())throw bad(id,"parts","must not be empty");
 
-        PropDef shape=new PropDef(id,category,name,sx,sy,sz,List.of(),List.of(),List.of(),List.of());
+        PropDef shape=new PropDef(id,category,name,sx,sy,sz,List.of(),List.of(),List.of(),List.of(),null);
         List<int[]> solid=new ArrayList<>();Set<String> cells=new HashSet<>();
         for(JsonElement e:arr(o,"solid",id)){
             if(!e.isJsonArray()||e.getAsJsonArray().size()!=3)throw bad(id,"solid","each cell must be [x,y,z]");
@@ -105,7 +116,16 @@ public record PropDef(String id,String category,String name,int sx,int sy,int sz
             if(chance<0||chance>1)throw bad(id,"effects.chance","must be 0..1");
             effects.add(new Effect(kind,eid,x,y,z,dbl(f,"spread",0,id),count,every,chance,(float)dbl(f,"volume",1,id),(float)dbl(f,"pitch",1,id)));
         }
-        return new PropDef(id,category,name,sx,sy,sz,List.copyOf(parts),List.copyOf(solid),List.copyOf(lights),List.copyOf(effects));
+        Gameplay gameplay=null;
+        if(o.has("gameplay")){
+            JsonObject g=obj(o.get("gameplay"),id,"gameplay");
+            gameplay=new Gameplay((int)gnum(g,"hp",0,id),(int)gnum(g,"heavyHit",1,id),(int)gnum(g,"siegeHit",1,id),gnum(g,"heavyDamage",0,id),
+                gnum(g,"cover",0,id),gnum(g,"coverRange",2,id),(int)gnum(g,"siegeCap",0,id),(int)gnum(g,"siegeSeconds",0,id),gnum(g,"siegeRadius",0,id));
+            if(gameplay.hp()<0||gameplay.heavyHit()<0||gameplay.siegeHit()<0||gameplay.siegeCap()<0||gameplay.siegeSeconds()<0)throw bad(id,"gameplay","counts must not be negative");
+            if(gameplay.cover()<0||gameplay.cover()>1)throw bad(id,"gameplay.cover","must be 0..1");
+            if(gameplay.coverRange()<0||gameplay.coverRange()>8)throw bad(id,"gameplay.coverRange","must be 0..8");
+        }
+        return new PropDef(id,category,name,sx,sy,sz,List.copyOf(parts),List.copyOf(solid),List.copyOf(lights),List.copyOf(effects),gameplay);
     }
 
     static IllegalArgumentException bad(String id,String field,String text){return new IllegalArgumentException("prop "+id+": "+field+": "+text);}
@@ -129,6 +149,12 @@ public record PropDef(String id,String category,String name,int sx,int sy,int sz
         double d=e.getAsDouble();
         if(d!=Math.rint(d))throw bad(id,field,d+" is not a whole number");
         return (int)d;
+    }
+    static double gnum(JsonObject o,String field,double fallback,String id){
+        JsonElement e=o.get(field);
+        if(e==null)return fallback;
+        if(!e.isJsonPrimitive()||!e.getAsJsonPrimitive().isNumber())throw bad(id,"gameplay."+field,"not a number");
+        return e.getAsDouble();
     }
     static double dbl(JsonObject o,String field,double fallback,String id){
         JsonElement e=o.get(field);

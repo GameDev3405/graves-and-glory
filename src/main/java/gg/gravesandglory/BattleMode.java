@@ -36,6 +36,7 @@ public abstract class BattleMode {
         for(int i=b.saves.size()-1;i>=0;i--)if(Structures.restore(b.world,b.saves.get(i)))b.saves.remove(i);
         else System.err.println("[Graves and Glory] "+id()+" teardown kept saved piece "+b.saves.get(i).tag()+": it could not be restored.");
         undo(b);
+        PropGameplay.clear(b.world); // gameplay props' damage ends with the round
         return b.saves.isEmpty();
     }
     /** The mode's own part of teardown, after the saved pieces are back: raise flags it took down, remove what it spawned. Idempotent. */

@@ -63,6 +63,13 @@ public final class PropDefCheck {
   check(r!=null&&r.contains("lights"),"A light outside the size is refused naming lights: "+r);
   r=refusal(def("[{\"model\":\"a\",\"cmd\":7310001}]","[[0,0,0],[0,0,0]]","[]"));
   check(r!=null&&r.contains("solid"),"A repeated solid cell is refused naming solid: "+r);
+  PropDef bar=PropDef.parse(Files.readString(Path.of(DIR+"stake_barricade.json")));
+  check(bar.gameplay()!=null&&bar.gameplay().hp()==6&&bar.gameplay().heavyHit()==2&&bar.gameplay().siegeHit()==3&&bar.gameplay().cover()==.25&&bar.gameplay().siegeCap()==4,"Stake barricade gameplay: hp 6, heavy 2, siege 3, cover 0.25, Siege cap 4");
+  check(PropDef.parse(ok).gameplay()==null&&forge.gameplay()==null,"A def without a gameplay block has none");
+  String gp=ok.substring(0,ok.length()-1)+",\"gameplay\":{\"hp\":3}}";
+  check(PropDef.parse(gp).gameplay().cover()==0&&PropDef.parse(gp).gameplay().siegeCap()==0,"Gameplay fields default to off");
+  r=refusal(ok.substring(0,ok.length()-1)+",\"gameplay\":{\"cover\":1.5}}");
+  check(r!=null&&r.contains("cover"),"Cover over 1 is refused naming cover: "+r);
   r=refusal("{\"id\":\"t\"}");
   check(r!=null&&!r.isEmpty(),"A def missing its fields is refused: "+r);
   r=refusal("not json");
