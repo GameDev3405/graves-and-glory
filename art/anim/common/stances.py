@@ -375,6 +375,11 @@ def build_rally(tr):
 XH = [30, -15, 10]      # xbow hold: right arm lift, right arm tuck, left arm out (the crossbow diagonal across the chest)
 
 
+# Per troop clearance fit of the hold: degrees added to an arm bone's JSON Euler. wm_hunter: the tucked string arm ran its forearm into
+# the hide jerkin's flank (pen_limb 1.97 px, limit 1.79); the forearm turns 8 deg out from the ribs (1.65 px).
+HOLD_FIT = {"wm_hunter": {"right_forearm": (0.0, -8.0, 0.0)}}
+
+
 def hold_pose(tr, phase):
     """Weight low and centred, the weapon up and pointed at the threat; phase 0..1 round the 48 tick breath."""
     P = copy_pose(tr.ready)
@@ -416,6 +421,8 @@ def hold_pose(tr, phase):
         chest(P, torso_x=1, head_x=-3)
         lift_arm(P, "left", 52, keep=0.0)        # the off hand holds the focus forward
         lift_arm(P, "right", 10, keep=0.6)
+    for b, d in HOLD_FIT.get(tr.tid, {}).items():
+        P[b][0] = P[b][0] + np.array(d, float)
     # breath and a slow weight shift (period 48 ticks, so the loop closes)
     P["torso"][0][0] += 0.7 * br
     P["head"][0][0] += -0.4 * br
@@ -454,6 +461,25 @@ def build_hold(tr):
 
 
 # ---------------------------------------------------------------------------------------------- fall back (A5)
+# Per troop clearance fit of the fall-back guard: degrees added to the JSON Euler (x, y, z) of an arm bone. The weapon hand is then
+# re-solved so the weapon keeps its world orientation (the guard reads the same). Found by a small grid search on the scorecard's own
+# entry depth. Bows: the string arm, pitched back 12 deg off the ready guard, ran its forearm (and the bonebow's and stalker's
+# bracers) into the jerkin's flank (pen_limb 0.75-1.39 px, limit 0.6); the arm swings a few degrees out from the ribs instead.
+BOW_FALLBACK_FIT = {"right_arm": (0.0, 0.0, 9.0), "right_forearm": (0.0, -12.0, 0.0)}
+FALLBACK_FIT = {t: BOW_FALLBACK_FIT for t in ("archer", "longbow", "bonebow", "stalker", "wm_hunter")}
+
+
+def fallback_fit(tr, base):
+    fit = FALLBACK_FIT.get(tr.tid)
+    if not fit:
+        return
+    arm, fore, hand = (f"{tr.arm}_{b}" for b in ("arm", "forearm", "hand"))
+    world = to_mat(base[arm][0]) @ to_mat(base[fore][0]) @ to_mat(base[hand][0])
+    for b, d in fit.items():
+        base[b][0] = np.array(base[b][0], float) + np.array(d, float)
+    base[hand][0] = from_mat((to_mat(base[arm][0]) @ to_mat(base[fore][0])).T @ world)
+
+
 def build_fallback(tr):
     """Upper: a guard (shield up, a ward, the weapon low across the body for ranged, the focus raised for casters) bobbing with the
     8 tick step. Legs: walk_legs backwards at 0.7 of its amplitude, same cycle."""
@@ -489,6 +515,7 @@ def build_fallback(tr):
             if g == "staff":
                 lift_arm(base, "left", 20, keep=0.0)
     base = {b: [np.array(r, float), None if q is None else np.array(q, float)] for b, (r, q) in base.items()}
+    fallback_fit(tr, base)
     chest(base, torso_x=-3, head_x=-1)
     if g in ("shield", "spear", "onehand", "axe", "thrower") and "head" in base:
         pass
@@ -583,7 +610,9 @@ def aim_base(tr):
 
 
 # per troop: how much of the aim pitch the chest, the arms and the head take (the head looks along it)
-AIM_GAIN = {"tc_harpooner": (0.35, 0.9, -0.2), "ic_arbalist": (0.35, 0.8, -0.2)}
+# stalker: aiming up, the upper bow limb ran into the fur cowl (pen_weapon 2.35 px, limit 1.49); its chest takes half the pitch and
+# the head looks along the aim, which carries the cowl back off the limb (1.12 px).
+AIM_GAIN = {"tc_harpooner": (0.35, 0.9, -0.2), "ic_arbalist": (0.35, 0.8, -0.2), "stalker": (0.5, 0.5, 0.2)}
 AIM_ARM_Z = {"mage": {"right_arm": (32.0, 0.0)}}
 # per troop and aim pitch: rows set after the pitch gains. Hexer up (-45): the gains lifted the lantern (held across the chest) into
 # the face line; the upper arm swings out to the troop's right instead (IK, forearm and wrist kept), so the lantern rides out and
@@ -594,10 +623,13 @@ AIM_WORLD = {"tc_harpooner"}
 # per troop and aim pitch (0 level, -45 up, 30 down): whole-pose presets solved by IK against the in-game head look (the game adds
 # its clamped head pitch to the head's JSON x). Archer: chest side-on, the nock at the right jaw, the arrow on the aim line, the bow
 # arm straight, the draw elbow behind the arrow, the face clear at 000 and 045; the quiver tipped so its arrows clear the hood.
+# Refit (scorecard): at 000 the bow arm lifts 2.5 deg so the bow's lower limb clears the front shin (pen_weapon 1.72 -> 0.92 px); at
+# +30 the draw arm is re-solved with the fist held on the string (elbow no longer reads hyperextended: -27 -> +3 deg) and the bow
+# hand turns 2-3 deg so the lower limb clears the front thigh (1.59 -> 0.91 px). Nock moves under 0.35 px, the arrow line under 0.2 px.
 AIM_POSE = {"archer": {
-    0.0: {"head": [-143.45, -86.64, 143.5], "left_arm": [-49.06, -0.41, 9.7], "left_forearm": [-46.35, -13.38, -30.65], "left_hand": [3.82, 19.31, -59.47], "right_arm": [-72.26, -10.6, -4.34], "right_forearm": [-28.82, -9.73, -36.65], "torso": [-178.0, 87.3, 180.0]},
+    0.0: {"head": [-143.45, -86.64, 143.5], "left_arm": [-51.62, -1.06, 9.45], "left_forearm": [-47.96, -13.66, -30.12], "left_hand": [1.97, 18.95, -59.54], "right_arm": [-72.26, -10.6, -4.34], "right_forearm": [-28.82, -9.73, -36.65], "torso": [-178.0, 87.3, 180.0]},
     -45.0: {"head": [-131.0, -78.23, 170.35], "left_arm": [-59.48, 1.53, 38.82], "left_forearm": [-76.33, -23.75, -29.95], "left_hand": [-45.44, 54.97, -73.17], "right_arm": [-84.15, -21.12, 29.73], "right_forearm": [-22.61, -2.65, -13.19], "torso": [-106.78, 57.48, 248.04]},
-    30.0: {"head": [-150.31, -87.03, 137.75], "left_arm": [-50.29, 20.58, -3.5], "left_forearm": [-0.49, -0.06, -14.29], "left_hand": [33.1, -22.52, -92.59], "right_arm": [-100.95, 10.61, -10.07], "right_forearm": [14.84, 8.14, -57.3], "torso": [-258.01, 77.51, 100.22]},
+    30.0: {"head": [-150.31, -87.03, 137.75], "left_arm": [-51.18, 20.15, -3.58], "left_forearm": [-0.52, -0.41, -14.51], "left_hand": [33.1, -25.17, -94.87], "right_arm": [-91.15, 11.59, -8.12], "right_forearm": [-1.52, 8.03, -59.65], "torso": [-258.01, 77.51, 100.22]},
 }, "tc_harpooner": {
     # javelin cock: the throwing arm raised out and back so the fist sits above and behind the shoulder, the spear lying in the fist
     # (wrist under 20 degrees) on the aim line raised by a cock (spear 69 / 45 / 26 degrees up at -45 / level / +30) so the shaft
