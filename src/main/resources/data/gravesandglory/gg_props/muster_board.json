@@ -1,0 +1,15 @@
+{
+  "id": "muster_board",
+  "category": "lobby",
+  "name": "Muster Board",
+  "size": [2, 3, 1],
+  "parts": [
+    {"model": "muster_board", "cmd": 7310091, "glow": false}
+  ],
+  "solid": [
+    [0, 0, 0],
+    [1, 0, 0]
+  ],
+  "lights": [],
+  "effects": []
+}
