@@ -1,0 +1,141 @@
+{
+ "troop": "wm_hound",
+ "family": "wm_hound",
+ "geo": "src/main/resources/assets/gravesandglory/geo/troop/wm_hound.geo.json",
+ "textures": [
+  "src/main/resources/assets/gravesandglory/textures/entity/troop/wm_hound_geo/t3_crimson.png"
+ ],
+ "anim": "src/main/resources/assets/gravesandglory/animations/troop/wm_hound.animation.json",
+ "foot_bones": [
+  "front_left_foot",
+  "front_right_foot",
+  "back_left_foot",
+  "back_right_foot"
+ ],
+ "clips": [
+  {
+   "name": "attack_bite",
+   "base": [
+    "attack_bite_legs"
+   ],
+   "impact_tick": 8
+  },
+  {
+   "name": "attack_lunge",
+   "base": [
+    "attack_lunge_legs"
+   ],
+   "impact_tick": 8
+  },
+  {
+   "name": "death_back"
+  },
+  {
+   "name": "death_forward"
+  },
+  {
+   "name": "death_left"
+  },
+  {
+   "name": "death_right"
+  },
+  {
+   "name": "idle_upper",
+   "base": [
+    "idle_legs"
+   ]
+  },
+  {
+   "name": "walk_upper",
+   "base": [
+    "walk_legs"
+   ],
+   "speed": 0.16
+  },
+  {
+   "name": "run_upper",
+   "base": [
+    "run_legs"
+   ],
+   "speed": 0.26
+  },
+  {
+   "name": "stance_ready_upper",
+   "base": [
+    "stance_ready_legs"
+   ]
+  },
+  {
+   "name": "stance_brace_upper",
+   "base": [
+    "stance_brace_legs"
+   ]
+  },
+  {
+   "name": "stance_wall_upper",
+   "base": [
+    "stance_wall_legs"
+   ]
+  },
+  {
+   "name": "stance_ward_upper",
+   "base": [
+    "stance_ready_legs"
+   ]
+  },
+  {
+   "name": "hit_light_front",
+   "base": [
+    "hit_light_front_legs"
+   ]
+  },
+  {
+   "name": "hit_light_back",
+   "base": [
+    "hit_light_back_legs"
+   ]
+  },
+  {
+   "name": "hit_light_right",
+   "base": [
+    "hit_light_right_legs"
+   ]
+  },
+  {
+   "name": "hit_light_left",
+   "base": [
+    "hit_light_left_legs"
+   ]
+  },
+  {
+   "name": "hit_medium_front",
+   "base": [
+    "hit_medium_front_legs"
+   ]
+  },
+  {
+   "name": "hit_medium_back",
+   "base": [
+    "hit_medium_back_legs"
+   ]
+  },
+  {
+   "name": "hit_medium_right",
+   "base": [
+    "hit_medium_right_legs"
+   ]
+  },
+  {
+   "name": "hit_medium_left",
+   "base": [
+    "hit_medium_left_legs"
+   ]
+  },
+  {
+   "name": "hit_pulled",
+   "base": [
+    "hit_pulled_legs"
+   ]
+  }
+ ]
+}
