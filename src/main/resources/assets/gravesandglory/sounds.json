@@ -960,6 +960,23 @@
       }
     ]
   },
+  "glimpur_ebb": {
+    "subtitle": "subtitles.gravesandglory.glimpur_ebb",
+    "sounds": [
+      {
+        "name": "gravesandglory:glimpur_ebb_1",
+        "stream": false
+      },
+      {
+        "name": "gravesandglory:glimpur_ebb_2",
+        "stream": false
+      },
+      {
+        "name": "gravesandglory:glimpur_ebb_3",
+        "stream": false
+      }
+    ]
+  },
   "relic_use_lightning": {
     "subtitle": "subtitles.gravesandglory.relic_use_lightning",
     "sounds": [

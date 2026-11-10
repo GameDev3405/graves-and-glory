@@ -81,7 +81,7 @@ public final class BattleEffects {
     static void flickers(GravesAndGlory.Battle b){
         if(!ebb(b))return;long t=b.world.getTime();
         for(var u:b.units)if(u.spec.magic()&&u.mob.isAlive()&&MarchMath.Ebb.starts(true,u.mob.getId(),t))
-            b.world.playSound(null,u.mob.getX(),u.mob.getY(),u.mob.getZ(),net.minecraft.sound.SoundEvents.BLOCK_CANDLE_EXTINGUISH,net.minecraft.sound.SoundCategory.HOSTILE,.35f,.8f);
+            Audio.at(b,AudioCues.Cue.GLIMPUR_EBB,u.mob.getPos(),"ebb"+u.mob.getId()); // a faint gutter of failing magic (see tools/audio/make_glimpur_ebb.py)
     }
     static void strike(GravesAndGlory.Battle b,GravesAndGlory.Unit u,LivingEntity enemy){
         if(!u.spec.ranged()){

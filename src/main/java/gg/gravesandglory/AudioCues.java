@@ -93,6 +93,8 @@ public final class AudioCues {
         RELIC_USE_LIGHTNING("relic_use_lightning", null, .6f, 1f, "hostile", Scope.NEARBY, 20, "A lightning relic crackles", 2),
         VETERAN_LEVELUP("veteran_levelup", null, .5f, 1f, "hostile", Scope.NEARBY, 20, "A veteran rises", 2),
         WAGON_WHEELS("wagon_wheels", null, .4f, 1f, "players", Scope.ALL, 200, "Wagon wheels turn"),
+        // Chapter 1 ebb: a caster's glow gutters for 1.5 s (BattleEffects.flickers). Own files, tools/audio/make_glimpur_ebb.py.
+        GLIMPUR_EBB("glimpur_ebb", null, .6f, 1f, "hostile", Scope.NEARBY, 20, "Magic gutters", 2),
         // Server cue to every seated player: the convoy's overtime beat.
         OVERTIME_DRUM_PULSE("overtime_drum_pulse", null, .6f, 1f, "players", Scope.ALL, 140, "Overtime drums beat"),
         // Client only, from the War Table screens (UiSounds.play): master category, no spatial position.
