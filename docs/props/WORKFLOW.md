@@ -39,6 +39,10 @@ and up to four in-game shots.
 | 6 approval | Kort | - |
 | 7 ship | lead | Sonnet 5.5 high |
 
+Routing confirmed by Kort (2026-11-09) after a blind test: Sonnet 5.5 high and Opus 5.5 medium built the same prop from
+the same brief and landed at the same review score for similar tokens; Kort picked the Sonnet build. So Sonnet 5.5 high
+is the default builder; Opus 5.5 medium builds only flagship and story props (the O rows in `PROP-LIST.md`).
+
 Never a Fable model. One writer per checkout; builders work in their own worktree or on disjoint `art/props/<id>/` folders
 and defs. At most four game clients across the workspace; `prop_shot.py` is one client and refuses to start when a client
 from the same checkout is running.
