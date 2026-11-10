@@ -167,8 +167,16 @@ CARRY = {"shield": carry_shield, "onehand": carry_onehand, "spear": carry_spear,
 
 
 # ---------------------------------------------------------------------------------------------- the clip
+# Ticks added to LP for a troop whose 4-tick run_legs has the left leg forward exactly on the wrap (the mage and the hexer, whose gait
+# is sampled with GAIT_PHASE in the caster builder). With LP on a whole tick the stride-rate swing and the twice-a-cycle bob hit their
+# extremes at tick 0, so the 1-tick speed jumps across the wrap (loop_vel twice the peak). Half a tick (1/8 of the stride, about 25 ms)
+# moves the samples off the extremes (earlier, not later: later puts the hexer lantern swing on its wrap); the arms stay in step.
+LP_SHIFT = {"mage": -0.5, "hexer": -0.5}
+
+
 def build_charge(tr):
     n, lp = cycle(tr)
+    lp += LP_SHIFT.get(tr.tid, 0.0)
     base, cfg = (CARRY[tr.gear] if tr.gear in MELEE else carry_ranged)(tr)
     yaw0 = base["torso"][0][1]
 

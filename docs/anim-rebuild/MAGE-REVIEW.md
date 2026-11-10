@@ -90,3 +90,11 @@ Kort: the mage held its staff at the bottom like a wand. It now holds it about 4
 - **Hits:** the shaft crosses the face in the medium hits.
 - **Side falls:** the hips rest about 5 px up, hidden by the robe.
 - The early announce needs a hurt ally in sight on the beat before the heal. The harness checks the announce and release timing, but not `Abilities.mend` itself.
+
+## Caster fix round 1 (2026-11-10, branch anim/fix-caster)
+
+- **Stances:** shield_up has the staff centred and lifted. Hold has the staff tipped at the foe (`HOLD_TROOP` row; it also feeds the rally ending and charge_run_upper).
+- **Gait loops:** walk and run are sampled 0.28 of a cycle later (`GAIT_PHASE`), and charge_run_upper LP is moved half a tick earlier (`LP_SHIFT`). Clip lengths are unchanged.
+  - Before: run torso 16 vs 10.9, right foot 59.8 vs 41.0.
+  - After: worst run_legs left_leg 55.4 vs 55.7.
+  - The scorecard has 35 clips, 0 failing.

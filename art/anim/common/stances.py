@@ -410,7 +410,7 @@ XH = [30, -15, 10]      # xbow hold: right arm lift, right arm tuck, left arm ou
 HOLD_FIT = {"wm_hunter": {"right_forearm": (0.0, -8.0, 0.0)}}
 
 
-def _hold_raider(P):
+def _hold_raider(P, tr):
     """Crouched side-on, the cutlass cocked high over the sword shoulder to cut, the free hand out low fending."""
     chest(P, torso_x=4, torso_y=10, head_x=-6, head_y=-10, off="left")
     lift_arm(P, "right", 48, keep=0.35)
@@ -419,7 +419,7 @@ def _hold_raider(P):
     P["left_arm"][0][2] -= 10
 
 
-def _hold_revenant(P):
+def _hold_revenant(P, tr):
     """Hunched over the threat, the notched sword out stiffly with the point up at it, the free hand reaching to grab."""
     chest(P, torso_x=6, head_x=2, off="left")
     lift_arm(P, "right", 20, keep=0.35)
@@ -428,7 +428,22 @@ def _hold_revenant(P):
     P["left_forearm"][0][0] = max(P["left_forearm"][0][0] + 18, -14.0)
 
 
-HOLD_OWN = {"tc_raider": _hold_raider, "revenant": _hold_revenant}
+def _hold_row(h):
+    """A hold from a data row: the chest lean and head (deg), the right arm's lift (negative lowers it), how much of that the
+    wrist gives back (keep), the weapon's extra tip (tilt), the right forearm's bend and the left arm's lift and bend."""
+    def hold(P, tr):
+        chest(P, torso_x=h["torso_x"], head_x=h["head_x"], off=tr.off)
+        lift_arm(P, "right", h["right"], keep=h["keep"], tilt=h.get("tilt", 0.0), fore=h["fore"])
+        lift_arm(P, "left", h["left"], keep=0.0, fore=h.get("left_fore"))
+    return hold
+
+
+# per troop hold (inert for every troop not listed). The casters' rows each read apart from their guard at 16 blocks (caster
+# review F1/F3, 2026-11-10): the gravecaller carries its lantern low and forward, hunched over it; the sunweaver tips its upright
+# staff over at the foe, the sun out in front of the cowl.
+HOLD_OWN = {"tc_raider": _hold_raider, "revenant": _hold_revenant,
+            "hexer": _hold_row(dict(torso_x=6, head_x=-4, right=-16, keep=1.0, fore=-6, left=30, left_fore=-30)),
+            "mage": _hold_row(dict(torso_x=4, head_x=-3, right=24, keep=1.0, tilt=40, fore=None, left=40, left_fore=-38))}
 
 
 def hold_pose(tr, phase):
@@ -437,7 +452,7 @@ def hold_pose(tr, phase):
     g = tr.gear
     br = math.sin(2 * math.pi * phase)
     if tr.tid in HOLD_OWN:
-        HOLD_OWN[tr.tid](P)
+        HOLD_OWN[tr.tid](P, tr)
     elif g in ("onehand",):
         chest(P, torso_x=2, head_x=-3, off="left")
         lift_arm(P, "right", 12, keep=0.55)

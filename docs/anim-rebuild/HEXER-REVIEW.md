@@ -78,3 +78,11 @@ Redone in caster style v2 (`CASTER-V2-DESIGN.md`), the last of the four casters 
 - **Right fall:** the lantern swings out to the side during the tumble (plausible, not broken).
 - **Shared with the mage, not reopened:** the heavy front hit folds about 80 degrees with a rebound (knight hit keys); the deaths have a long static end with no separate lantern settle; there is a walk and run seam pop; the run has little forward lean; the ward walk's back foot flicks.
 - The early announce needs the blight ability to be off cooldown on the beat before the cast. The harness checks the announce and release timing through `Tactics.shoot`, not the live blight targeting itself.
+
+## Caster fix round 1 (2026-11-10, branch anim/fix-caster)
+
+- **F1 stances:** ready, ward, shield_up and hold now read apart at game16 three-quarter (`work/caster_sheet/casters_stances_game16_3q.png`): ready has the lantern at the belly, ward lifts it before the face at shoulder height, shield_up holds it out beside the hood, and hold carries it low near the lead knee (`HOLD_TROOP` row in `stances.py`).
+- **F2 deaths:** the rebuilt falls are deployed, with no old clip left, so nothing snaps on tick 0. The focus is capped per fall (`FOCUS_WORLD_TURN`, `WRIST_TURN`). ang_speed_weapon readings: back 35.1, forward 62.7, left 67.0, right 33.4 (limit 83.2).
+- **F3 gait loops:** walk and run are sampled 0.28 of a cycle later (`GAIT_PHASE`), and charge_run_upper LP is moved half a tick earlier (`charge.py LP_SHIFT`). Clip lengths are unchanged. The scorecard has 35 clips, 0 failing.
+  - Why the right foot: the old wrap fell on a stride extreme of the 4-tick run_legs (the base clip), so the 1-tick speed reversed there.
+- **Open minors:** at game16, rally, brace, wall and rest are still close to ready (not in this round's scope). The run_legs left_leg wrap sits at 1.355 against a limit of 1.362, so the margin is thin.

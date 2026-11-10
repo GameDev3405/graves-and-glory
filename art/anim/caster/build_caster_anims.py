@@ -432,10 +432,11 @@ def mage_set():
         # ward (fall back): both hands on the staff, slanted across the body as a bar, low on the right, the sun high left
         "ward": KEY((2, 12, 0), (2, 0, 0), (1.2, -4.6, 6.3), unit((0.62, 0.56, 0.26)), u=FWD, rp=(-40, 0, 20, -40),
                     lp=(-80, 0, -10, -60), lh=1, ls=8),
-        # shield_up (the caster's shield): the staff stood upright before the body in both fists, a pillar between the
-        # Sunweaver and the blow, the left fist above the right
-        "shield_up": KEY((2, 4, 0), (0, 0, 0), (0.5, -1.5, 6.8), aim(88, -4), u=FWD, rp=(-70, 0, 10, -40),
-                         lp=(-70, 0, -10, -50), lh=1, ls=5),
+        # shield_up (the caster's shield): the staff lifted high before the face in both fists and held upright, a pillar
+        # between the Sunweaver and the blow, the sun over the cowl, the left fist above the right (review F3 2026-11-10: held
+        # at the belly it read as the guard at 16 blocks)
+        "shield_up": KEY((-2, 4, 0), (-6, 0, 0), (1.5, 2.5, 6.6), aim(88, -4), u=FWD, rp=(-120, 0, 10, -30),
+                         lp=(-120, 0, -10, -30), lh=1, ls=5),
     }
     # the walk carries the staff higher in the fist (upper arm forward, forearm near level), so the longer butt clears the ground
     carry = {"walk": 75.0, "run": 35.0, "u": FWD, "R": (-30.0, 0.0, 6.0), "RF": -75.0}
@@ -498,13 +499,13 @@ def hexer_set():
         # wall (Hold the line): leaning in, the lantern held out at the foe at arm's length, high, the off hand pushed
         # forward open below it
         "wall": KEY((6, 2, 0), (0, 0, 0), (0.5, 3.0, 7.2), aim(30, 0), u=UP, rp=(-120, 0, 5, -10), lp=(-95, 0, -20, -10)),
-        # ward (fall back): shrinking away, the head ducked, the lantern held out low to the right at arm's length to
-        # keep the foe off with its light, the off hand up beside the face to fend
-        "ward": KEY((10, 20, 0), (6, 0, 0), (-3.0, -3.0, 6.0), aim(14, -20), u=UP, rp=(-60, 0, 30, -30),
-                    lp=(-70, 0, -30, -70)),
-        # shield_up: the body turned away, the lantern thrust out to the right at shoulder height as a light to hide
-        # behind, the claw up before the hood
-        "shield_up": KEY((4, -16, 0), (0, 0, 0), (-3.5, 0.5, 6.5), aim(20, -30), u=UP, rp=(-90, 0, 30, -20),
+        # ward (fall back): drawn back, the head ducked, the lantern lifted up before the face at shoulder height to keep
+        # the foe off with its light, the claw open out wide (review F1 2026-11-10: the old low ward read as the guard)
+        "ward": KEY((-4, 6, 0), (6, 0, 0), (-3.0, 4.5, 5.5), aim(45, -40), u=UP, rp=(-130, 0, 30, -10),
+                    lp=(-90, 0, -30, -50)),
+        # shield_up: the body turned away, the lantern held up beside the hood on the arm raised out to the side, a light
+        # to hide behind, the claw up before the face
+        "shield_up": KEY((4, -10, 0), (2, 0, 0), (-4.8, 5.8, 1.0), aim(50, -90), u=UP, rp=(-150, 0, 60, -20),
                          lp=(-100, 0, -10, -10)),
     }
     carry = {"walk": 12.0, "run": 2.0, "u": UP}
@@ -985,8 +986,21 @@ def gait_pose(g, c, u, run, legs):
     return s
 
 
+# Per troop: where in the stride the gait clips start (a fraction of the cycle, the same for the walk and the run so the
+# GaitController's walk-run switch, which keeps the phase, still lands foot for foot). The 4-tick run sampled a tick at a time
+# turns at its wrap exactly on the stride's extremes (the shoulders' and arms' peak swing, the planted foot's toe-off), which the
+# scorecard's loop_vel reads as a kink twice the peak speed (review 2026-11-10: torso 16 vs 10.9, right foot 59.8 vs 41.0);
+# starting a little over a quarter stride later puts the wrap between them. The motion itself is unchanged.
+GAIT_PHASE = {"mage": 0.28, "hexer": 0.28}
+
+
+def gait_u(g, u):
+    ph = GAIT_PHASE.get(TROOP, 0.0)
+    return u if not ph else (u + ph) % 1.0
+
+
 def _legs_samples(g, n):
-    return [{"hips": (g.hips(i / n)[0], g.hips(i / n)[1])} for i in range(n)]
+    return [{"hips": g.hips(gait_u(g, i / n))} for i in range(n)]
 
 
 def gait_upper(g, c, run):
@@ -996,7 +1010,7 @@ def gait_upper(g, c, run):
     carry.arm_base = -4.0 if not run else -16.0
     carry.arm_out = 6.0 if not run else 10.0
     carry.fore = -18.0 if not run else -50.0
-    samples = [gait_pose(g, carry, i / n, run, lsamp[i]) for i in range(n)]
+    samples = [gait_pose(g, carry, gait_u(g, i / n), run, lsamp[i]) for i in range(n)]
     low = min(wpoint(fk_pose(s, l), S(BUTT))[1] for s, l in zip(samples, lsamp))
     hits = sum(bool(shaft_hits(fk_pose(s, l))) for s, l in zip(samples, lsamp))
     print("%s carry: butt lowest %.1f px above the ground, samples with the focus in the body %d" % (g.name, low, hits))
@@ -1371,8 +1385,8 @@ def gait_legs_robed(g):
     n = g.ticks * SUB
     guesses = {}
     for i in range(n):            # warm the IK guesses on one silent lap
-        g.pose(i / n, guesses)
-    samples = [g.pose(i / n, guesses) for i in range(n)]
+        g.pose(gait_u(g, i / n), guesses)
+    samples = [g.pose(gait_u(g, i / n), guesses) for i in range(n)]
     poses = [{b: (v[0], v[1] or Z3) for b, v in s.items()} for s in samples]
     raw = []
     for p in poses:
@@ -1421,13 +1435,16 @@ def _mat(q):
                      [2 * (x * z - y * w), 2 * (y * z + x * w), 1 - 2 * (x * x + y * y)]])
 
 
-def slerp_rot(r0, r1, k):
-    q0, q1 = _quat(_rot(r0)), _quat(_rot(r1))
+def _slerp_q(q0, q1, k):
     if q0 @ q1 < 0:
         q1 = -q1
     ang = math.acos(min(1.0, float(q0 @ q1)))
     q = q0 if ang < 1e-6 else (math.sin((1 - k) * ang) * q0 + math.sin(k * ang) * q1) / math.sin(ang)
-    return K.decompose_zyx(_mat(q / np.linalg.norm(q)))
+    return q / np.linalg.norm(q)
+
+
+def slerp_rot(r0, r1, k):
+    return K.decompose_zyx(_mat(_slerp_q(_quat(_rot(r0)), _quat(_rot(r1)), k)))
 
 
 def turn_deg(r0, r1):
@@ -1566,7 +1583,7 @@ def near_euler(r, prev):
     return min(cands, key=lambda e: sum((e[i] - prev[i]) ** 2 for i in range(3)))
 
 
-def flat_weapon(keys, start, t0, t1, step=None):
+def flat_weapon(keys, start, t0, t1, step=None, name=None):
     """Re-key the fall every DEATH_STEP with the right wrist solved: free, then easing from t0 to the focus lying flat by t1,
     always tipped clear of the ground, swinging at most MAX_WRIST_TURN per tick (planned backwards, then capped forwards)."""
     step = DEATH_STEP if step is None else step
@@ -1584,7 +1601,7 @@ def flat_weapon(keys, start, t0, t1, step=None):
         r = ground_hand(pose, hand, prev)
         out.append((t, f, pose, r))
         prev = r
-    cap = MAX_WRIST_TURN * step
+    cap = WRIST_TURN.get((TROOP, name), MAX_WRIST_TURN) * step
     rs = [o[3] for o in out]
     for i in range(len(rs) - 2, -1, -1):
         if out[i][0] < 3.0:
@@ -1593,14 +1610,48 @@ def flat_weapon(keys, start, t0, t1, step=None):
         if turn > cap:
             rs[i] = ground_hand(out[i][2], slerp_rot(rs[i + 1], rs[i], cap / turn), rs[i + 1])
     res, prev = [], start["right_hand"][0]
+    wcap = FOCUS_WORLD_TURN.get((TROOP, name))
+    if wcap is not None:
+        q0 = {b: (v[0], Z3) for b, v in start.items() if b in K.DEATH_BONES}
+        q0["hips"] = (start["hips"][0], start["hips"][1])
+        wprev = K.world(q0, "right_hand")[:3, :3]
     for (t, f, pose, _), r in zip(out, rs):
         turn = turn_deg(prev, r)
         if turn > cap:
             r = ground_hand(pose, slerp_rot(prev, r, cap / turn), prev)
+        if wcap is not None:
+            r, wprev = world_capped(pose, r, prev, wprev, wcap * step)
         prev = near_euler(r, prev)
         f["right_hand"] = prev
         res.append((t, "lin", f))
     return res
+
+
+# Per troop and fall (review F2 2026-11-10: these falls whipped the focus past the weapon speed limit, 83 deg/100 ms, and the
+# old clips were kept instead, snapping from the new guard on tick 0). FOCUS_WORLD_TURN: the most the focus may turn in the
+# world per tick (deg): where the fall's own arm swing (the roll throws the arm out past the head) would whip a focus held
+# rigid in the fist, the wrist gives against the swing and the focus follows a beat behind. WRIST_TURN: MAX_WRIST_TURN for
+# that fall, where the wrist's own turn to lay the focus down is the whip. The gravecaller's lantern also swings on its chain
+# (hang_swing, up to ~30 deg/100 ms on top), so its pole is held slower.
+FOCUS_WORLD_TURN = {("hexer", "death_right"): 18.0, ("hexer", "death_left"): 24.0, ("wm_seer", "death_right"): 30.0}
+WRIST_TURN = {("hexer", "death_left"): 13.0}
+
+
+def world_capped(pose, r, prev, wprev, cap):
+    """The wrist rotation nearest `r` whose world turn from `wprev` is at most `cap` degrees (kept clear of the ground), and the
+    world rotation it gives."""
+    q = dict(pose)
+    q["right_hand"] = (Z3, Z3)
+    Rp = K.world(q, "right_hand")[:3, :3]
+    q["right_hand"] = (r, Z3)
+    Rw = K.world(q, "right_hand")[:3, :3]
+    turn = math.degrees(math.acos(max(-1.0, min(1.0, (np.trace(wprev.T @ Rw) - 1.0) / 2.0))))
+    if turn > cap:
+        Rt = _mat(_slerp_q(_quat(wprev), _quat(Rw), cap / turn))
+        r = ground_hand(pose, K.decompose_zyx(Rp.T @ Rt), prev)
+        q["right_hand"] = (r, Z3)
+        Rw = K.world(q, "right_hand")[:3, :3]
+    return r, Rw
 
 
 # Per-troop tweaks on the knight's falls ({fall: {key tick: {bone: rot}}}), so the robed body lies on the ground and not
@@ -1692,7 +1743,7 @@ def death_clips():
     bake = K.bake
     K.bake = lambda samples, *a, **kw: bake(ground_robes(samples), *a, **kw)
     try:
-        return {n: K.death_clip(flat_weapon(k, start, *FLAT_AT[n]), start, n) for n, k in falls.items()}
+        return {n: K.death_clip(flat_weapon(k, start, *FLAT_AT[n], name=n), start, n) for n, k in falls.items()}
     finally:
         K.bake = bake
 

@@ -57,6 +57,10 @@ lessons into this file with their commit hashes.
   do not copy-paste the knight's falls.
 - Probe floor and gear-in-body numbers (min y, worst penetration) and record them in the review md.
 - Ranged and two-handed troops need their own gear solve on the ground (archer `flat_bow`).
+- A hanging or long focus (hexer lantern, seer wand) whips past the death weapon-speed limit even with a capped
+  wrist, because the arm and torso add their own turn. Cap the focus world rotation per (troop, fall)
+  (`FOCUS_WORLD_TURN` in the caster builder); a blanket cap can make another fall worse when the grounded hand
+  catches up late.
 
 ## 5. Gait
 
@@ -65,6 +69,10 @@ lessons into this file with their commit hashes.
 - A walk that looks like a jog: trailing shin folds too far. A locked look: sub-texel hip motion. Anything under one
   texel is invisible at our scale.
 - Gait bands scale with each troop's speed (Gait): a fast troop must not run in place at walk speed.
+- A short loop (4-tick run) whose wrap lands on a stride extreme scores a loop_vel kink of about twice the bone's
+  peak speed although the motion is continuous. Shift the sampling phase (caster `GAIT_PHASE`, same shift for walk
+  and run so GaitController's shared phase still lines up) instead of lengthening the clip; the base `run_legs`
+  counts too, so the worst bone is often a foot, not the upper body.
 
 ## 6. Evidence and review
 

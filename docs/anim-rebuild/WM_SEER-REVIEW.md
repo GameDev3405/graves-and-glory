@@ -70,3 +70,7 @@ The Bloodhowl Seer (wm_seer), the Wildmoot caster and the pilot for caster style
 - **Ward:** the head roll is strong in the front view.
 - **Hit from behind:** the hem looks lumpy in the three-quarter view. There is no poke-through.
 - **Side falls:** the torso rests about 4.9 px up on the wider robe and mantle. Check it against the ground shadow in game.
+
+## Caster fix round 1 (2026-11-10, branch anim/fix-caster)
+
+- **death_right:** the rebuilt fall is deployed, with the wand's world turn capped at 30 deg per tick (`FOCUS_WORLD_TURN`). ang_speed_weapon is 60.7 against a limit of 83.2, and there is no snap on tick 0. The scorecard has 35 clips, 0 failing.
