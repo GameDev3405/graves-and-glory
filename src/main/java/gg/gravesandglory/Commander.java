@@ -137,7 +137,7 @@ public final class Commander {
         if (t == null || r == null) { b.campaign.notice(p.getUuid(), "No relic in slot " + (slot + 1) + "."); return; }
         RelicEffects.Active active = RelicEffects.ACTIVES.get(t.effect());
         if (active == null) { b.campaign.notice(p.getUuid(), RelicEffects.NOT_READY); return; }
-        if (b.time < s.relicState.readyAt[slot]) { b.campaign.notice(p.getUuid(), activeName(t.effect()) + " is ready in " + (s.relicState.readyAt[slot] - b.time + 19) / 20 + " s."); return; }
+        if (b.time < s.relicState.readyAt[slot]) { b.campaign.notice(p.getUuid(), r.name() + " is ready in " + (s.relicState.readyAt[slot] - b.time + 19) / 20 + " s."); return; }
         if (!s.relicState.ready(slot, b.time) || !active.start(b, p, s, slot, t)) return;
         s.relicState.begin(slot, b.time, cooldownTicks(s, r), t.durationTicks());
         GravesAndGlory.sendRelics(b, s);

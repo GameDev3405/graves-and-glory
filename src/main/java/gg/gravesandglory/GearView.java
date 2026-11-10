@@ -89,6 +89,16 @@ final class GearView {
         return sum;
     }
 
+    /** A player's base movement speed attribute; gear speed is added to it (GearCombat.apply), so it is the 100% the speed percent is read against. */
+    static final double WALK_SPEED = 0.1;
+
+    /** Stat i of a piece, a total or a difference as text: speed as a percent of walk speed (value x gearCombat.speedPerPoint / 0.1, rounded), the rest by statText. */
+    static String statText(int i, double value) {
+        if (!Gear.STATS.get(i).equals("speed")) return statText(value);
+        long pct = Math.round(value * GearStats.combat().speedPerPoint() / WALK_SPEED * 100);
+        return pct == 0 ? "—" : pct + "%";
+    }
+
     /** "—" for 0, else one decimal with a trailing ".0" dropped. */
     static String statText(double value) {
         double r = Math.round(value * 10) / 10.0;
@@ -122,9 +132,10 @@ final class GearView {
         if (other == null) return List.of("Nothing worn there");
         double[] a = Gear.stats(p), b = Gear.stats(other);
         for (int i = 0; i < a.length; i++) {
-            double d = Math.round((a[i] - b[i]) * 10) / 10.0;
-            if (d > 0) out.add("▲ +" + statText(d) + " " + statWord(i) + " vs worn");
-            else if (d < 0) out.add("▼ -" + statText(-d) + " " + statWord(i) + " vs worn");
+            double d = a[i] - b[i];
+            if (statText(i, d).equals("—")) continue;
+            if (d > 0) out.add("▲ +" + statText(i, d) + " " + statWord(i) + " vs worn");
+            else if (d < 0) out.add("▼ -" + statText(i, -d) + " " + statWord(i) + " vs worn");
         }
         return out;
     }
@@ -141,7 +152,7 @@ final class GearView {
         out.add(weapon || set == null ? r.name() + " " + it.family() : r.name() + " " + SLOT_WORDS.get(it.slot()) + " · " + set.name() + " set");
         double[] s = Gear.stats(p);
         List<String> parts = new ArrayList<>();
-        for (int i = 0; i < s.length; i++) if (!statText(s[i]).equals("—")) parts.add("+" + statText(s[i]) + " " + statWord(i));
+        for (int i = 0; i < s.length; i++) if (!statText(i, s[i]).equals("—")) parts.add("+" + statText(i, s[i]) + " " + statWord(i));
         if (!parts.isEmpty()) out.add(String.join(" · ", parts));
         out.addAll(compare(v, p));
         if (Gear.rarityIndex(p.rarity) >= 3) for (var k : Spec.GEARPERKS) if (k.item().equals(p.item)) out.add(k.name() + ": " + k.text()); // Epic and above carry the item's fixed perk

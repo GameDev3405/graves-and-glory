@@ -1171,7 +1171,7 @@ final class WarTablePages {
         int step = shown.size() <= 4 ? CLASS_STEP : CLASS_STEP * 4 / shown.size(); // a fifth plaque packs the column into the four's height
         for (int i = 0; i < shown.size(); i++) paintRole(g, shown.get(i), mine, x, oy + CLASS_Y + step * i);
         int top = oy + CLASS_Y + CLASS_STEP * 4 + 8;
-        textsDrawn.put("bonus", String.join(" ", lines(g, "Wear four pieces of one set to unlock its bonuses. Gear and relics are changed in the Arsenal.", x, top, BONUS_W, 4, DarkUi.MUTED)));
+        textsDrawn.put("bonus", String.join(" ", lines(g, "Wear two or four pieces of one set to unlock its bonuses. Gear and relics are changed in the Arsenal.", x, top, BONUS_W, 4, DarkUi.MUTED)));
     }
 
     /** The role plaques: the four starter roles, and the commander's own role under them when it is a House set (the column holds five, not nine). */

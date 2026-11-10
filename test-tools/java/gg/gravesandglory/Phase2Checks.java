@@ -945,7 +945,7 @@ public final class Phase2Checks implements ClientModInitializer {
                     boolean ended=probe.ends==1&&own.relicState.until[0]==0&&own.relicState.data[0]==null&&!Commander.running(b,own)&&probe.ticks>=cycleClass.durationTicks()-3&&probe.ticks<=cycleClass.durationTicks();
                     cycleOk&=ended;cycleWhy+="; it ticked "+probe.ticks+" times and ended "+probe.ends+" time(s), abilityData cleared="+(own.relicState.data[0]==null);
                     b.campaign.notices.remove(player);wantPress=true;next(b,36);}
-                case 36->{if(since(b)<30)return;var own=b.squads.get(player);String notice=b.campaign.notices.getOrDefault(player,"");String want=Commander.activeName(cycleClass.active())+" is ready in ";
+                case 36->{if(since(b)<30)return;var own=b.squads.get(player);String notice=b.campaign.notices.getOrDefault(player,"");String want=Commander.relic(cycleClass.active()).name()+" is ready in ";
                     boolean refused=probe.starts==1&&notice.startsWith(want)&&notice.endsWith(" s.")&&own.relicState.readyAt[0]==probe.startedAt+cycleCd(own);
                     cycleOk&=refused&&activeSeen&&readyInSeen;
                     report("p2-ability-cycle",cycleOk,cycleWhy+"; a second press on cooldown: notice \""+notice+"\", starts "+probe.starts+"; the tile showed ACTIVE="+activeSeen+" and READY IN="+readyInSeen);
@@ -966,7 +966,7 @@ public final class Phase2Checks implements ClientModInitializer {
                     if(own==null){if(since(b)>100){report("p2-ability-seat",false,seatWhy+"; he never got his seat back");next(b,39);}return;}
                     boolean back=own==seat&&!own.bot&&own.seated&&probe.ends==2&&own.relicState.until[0]==0&&own.relicState.data[0]==null&&own.relicState.readyAt[0]==seatReadyAt&&!b.campaign.vacated.containsKey(player)&&Commander.relicIn(own,0).equals(Commander.relicIn(seat,0));
                     b.campaign.notices.remove(player);var p=sp(b);if(p!=null)b.command(p,"relic:0");String notice=b.campaign.notices.getOrDefault(player,"");
-                    boolean refused=probe.starts==1&&notice.startsWith(Commander.activeName(cycleClass.active())+" is ready in ");
+                    boolean refused=probe.starts==1&&notice.startsWith(Commander.relic(cycleClass.active()).name()+" is ready in ");
                     report("p2-ability-seat",seatOk&&back&&refused,seatWhy+"; he took the same seat back="+(own==seat)+" after "+since(b)+" tick(s): the stand-in's running active ended there (ends "+probe.ends+", want 2), abilityData "+own.relicState.data[0]+", the cooldown kept="+(own.relicState.readyAt[0]==seatReadyAt)+"; his press: \""+notice+"\" (starts "+probe.starts+")");
                     next(b,39);}
                 case 39->{ // p2-ability-stops: a round start and the lobby end a running active once, clear its data and reset its cooldown

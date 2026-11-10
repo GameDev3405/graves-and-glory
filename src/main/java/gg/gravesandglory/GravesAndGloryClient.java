@@ -324,9 +324,9 @@ public final class GravesAndGloryClient implements ClientModInitializer {
     /** The copy of lesson step (0 to 3), naming the player's own key binding. */
     static String lessonText(int step){
         return switch(step){
-            case 0->"Press "+hint("menu")+", choose a group and Move, then click the ground to send them.";
-            case 1->"Press "+hint("formation")+" to change formation. Line holds a front; Wedge breaks one.";
-            case 2->"Press "+hint("attack")+" and aim at an enemy or a point to send your army in.";
+            case 0->"Press "+hint("follow")+" to make your army follow you, or "+hint("retreat")+" to pull it back to you.";
+            case 1->"Press "+hint("formation")+", pick a shape, then press "+hint("confirm")+" on the ground to hold that point in it.";
+            case 2->"Press "+hint("attack")+" to send your army to attack at once. Or press "+hint("charge")+", aim and press "+hint("confirm")+" to charge.";
             default->"Press "+hint("use")+" at your barracks lectern to recruit. Trained troops march out from the held point nearest the fight.";
         };
     }

@@ -382,7 +382,7 @@ final class WarTableGear {
         for (int i = 0; i < totals.length; i++) {
             int y = l[1] + 40 + i * 21;
             g.drawText(font, DarkUi.body(GearView.statWord(i)), sx, y, DarkUi.SEPIA, false);
-            var val = DarkUi.body(GearView.statText(totals[i]));
+            var val = DarkUi.body(GearView.statText(i, totals[i]));
             g.drawText(font, val, sx + sw - font.getWidth(val), y, DarkUi.INK_TEXT, false);
             g.fill(sx, y + 14, sx + sw, y + 15, fade(DarkUi.SEPIA_LINE, 0x66));
         }
@@ -548,7 +548,7 @@ final class WarTableGear {
         int cost = Forge.rollCost(forgeSlot);
         g.drawText(font, DarkUi.heading("A roll costs " + cost + " Forge marks"), l[0] + 16, l[1] + 112, DarkUi.INK_TEXT, false);
         if (!forgeSlot.equals("relic")) {
-            int left = Math.max(1, Gear.forge().pity() - v.pity());
+            int left = Math.max(0, Gear.forge().pity() - v.pity()) + 1; // the roll made at the threshold is the guaranteed one
             var pity = DarkUi.body("Epic or better within " + left + (left == 1 ? " roll" : " rolls"));
             g.drawText(font, pity, l[0] + 16, l[1] + 132, DarkUi.SEPIA, false);
             rectsDrawn.put("pity", new int[]{l[0] + 16, l[1] + 132, font.getWidth(pity), 12});

@@ -97,11 +97,15 @@ final class RecruitView {
 
     /** The Odds note's rule for a troop already owned (a letter that brings it counts a copy toward its next star), and for a Legendary. */
     static final String COPY_RULE = "A troop you own gives a copy toward its next star.";
-    static final String LEGENDARY_RULE = "A Legendary comes from a Pact, not a letter.";
+    /** Where a Legendary comes from, the numbers read from the recruitment sheet (RecruitPages.action's rule). */
+    static String legendaryRule() {
+        var r = Spec.RECRUITMENT[0];
+        return "A Legendary comes from a Pact, or " + r.legendaryShards() + " shards and " + r.renownForLegendary() + " Renown, not a letter.";
+    }
 
     /** The Odds note's lines under its heading, before they are wrapped to the note's width: the chance of each rarity, the letters
      *  left until the House's Epic is sure, the copy rule and the Legendary's rule. */
     static List<String> note(String houseId) {
-        return List.of(oddsLine(houseId), UiMath.pityLine(pityLeft(houseId)), COPY_RULE, LEGENDARY_RULE);
+        return List.of(oddsLine(houseId), UiMath.pityLine(pityLeft(houseId)), COPY_RULE, legendaryRule());
     }
 }

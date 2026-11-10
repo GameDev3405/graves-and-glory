@@ -313,6 +313,25 @@ public final class BattleHud {
             hintRowsDrawn.add(List.copyOf(drawn));hintEndsDrawn.add(end);
         }
         r.put("hints",box);
+        var held=GravesAndGloryClient.hints;
+        if(held!=null&&held.isPressed()&&!aiming)orderKeysSlip(g,font,x+box[2]+4,y); // the full hints layer: the five order keys on a slip beside the default one
+    }
+
+    /** The full hints layer's second slip, drawn only while the hints key is held and beside the default slip, so that stays as it was:
+     *  the five order keys, each an ink chip naming the player's binding before its word, fitted to the paper as the default rows are. */
+    static void orderKeysSlip(DrawContext g,TextRenderer font,int x,int y){
+        String[][] ids={{"attack","charge","follow"},{"retreat","formation"}},words={{"Attack","Charge","Follow"},{"Retreat","Formation"}};
+        UiTex.draw(g,"hud/notice-slip",x,y);
+        for(int row=0;row<2;row++){
+            List<String> keys=new ArrayList<>(),shorts=new ArrayList<>();for(String id:ids[row]){keys.add(GravesAndGloryClient.hint(id));shorts.add(GravesAndGloryClient.hintShort(id));}
+            keys=UiMath.fitKeys(keys,shorts,Arrays.asList(words[row]),HINT_ROW_W,8,font::getWidth);
+            int kx=x+10,ky=y+(row==0?7:22);
+            for(int k=0;k<keys.size();k++){
+                String key=keys.get(k);int kw=UiMath.chipWidth(font.getWidth(key));
+                UiTex.three(g,"hud/key-chip",kx,ky,kw);g.drawText(font,key,kx+2,ky+2,DarkUi.CHIP_TEXT,false);kx+=kw+2;
+                g.drawText(font,words[row][k],kx,ky+2,DarkUi.SEPIA,false);kx+=font.getWidth(words[row][k])+8;
+            }
+        }
     }
 
     /** A plate's state, first match wins: FALLEN (none left of a fielded group), LASTSTAND (the server's last-stand bit: strength at

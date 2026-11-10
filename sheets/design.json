@@ -4119,7 +4119,7 @@
       "value1": 0.0,
       "value2": 0.0,
       "radius": 8.0,
-      "text": "Foes within 8 blocks are drawn to fight you first."
+      "text": "Half the enemy troops within 8 blocks are drawn to fight you first."
     },
     {
       "id": "healer_2",
@@ -4219,7 +4219,7 @@
       "value1": 0.0,
       "value2": 0.0,
       "radius": 6.0,
-      "text": "Foes within 6 blocks are drawn to fight you first."
+      "text": "Half the enemy troops within 6 blocks are drawn to fight you first."
     },
     {
       "id": "thornhide_2",
@@ -4249,7 +4249,7 @@
       "value1": 0.0,
       "value2": 0.0,
       "radius": 5.0,
-      "text": "Foes within 5 blocks are drawn to fight you first."
+      "text": "Half the enemy troops within 5 blocks are drawn to fight you first."
     },
     {
       "id": "forgewall_4",
