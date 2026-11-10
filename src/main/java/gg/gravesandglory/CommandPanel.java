@@ -209,10 +209,11 @@ public final class CommandPanel {
                 for (int r = 0; r < PILL_H; r++) g.fill(x + PILL_INSET[r], y + r, x + w - PILL_INSET[r], y + r + 1, 0xe6000000 | GOLD);
             } else {
                 // glass: a see-through smoked body with a pale sheen along its top, framed by the gold edge
-                int body = hov ? 0xb3141821 : 0x80141821;
+                int body = hov ? 0x8c3a4a63 : 0x664a5a73;
                 for (int r = 1; r < PILL_H - 1; r++) g.fill(x + PILL_INSET[r], y + r, x + w - PILL_INSET[r], y + r + 1, body);
-                g.fill(x + PILL_INSET[1] + 1, y + 1, x + w - PILL_INSET[1] - 1, y + 2, hov ? 0x59ffffff : 0x38ffffff);
-                g.fill(x + PILL_INSET[2], y + 2, x + w - PILL_INSET[2], y + 3, 0x1affffff);
+                for (int r = 1; r < PILL_H / 2; r++) g.fill(x + PILL_INSET[r], y + r, x + w - PILL_INSET[r], y + r + 1, hov ? 0x33ffffff : 0x26ffffff); // the sheen on the upper half
+                g.fill(x + PILL_INSET[1] + 1, y + 1, x + w - PILL_INSET[1] - 1, y + 2, hov ? 0xa6ffffff : 0x8cffffff); // the bright top highlight
+                g.fill(x + PILL_INSET[PILL_H - 2], y + PILL_H - 2, x + w - PILL_INSET[PILL_H - 2], y + PILL_H - 1, 0x40000000); // a darker foot
                 int edge = (hov ? 0xcc000000 : 0x99000000) | GOLD;
                 g.fill(x + PILL_INSET[0], y, x + w - PILL_INSET[0], y + 1, edge);
                 g.fill(x + PILL_INSET[0], y + PILL_H - 1, x + w - PILL_INSET[0], y + PILL_H, edge);
@@ -241,12 +242,13 @@ public final class CommandPanel {
             boolean hov = over(mouse, flagX, y, W, PENNANT_H, dx);
             boolean active = i == 4 && CommandSelection.trayOpen();
             boolean cooling = i == 1 && chargeLeft > 0;
-            int w = active ? W + ext : hov ? W + Math.max(2, ext / 3) : W;
+            int w = active ? W + ext : hov ? W + Math.max(4, ext / 2) : W;
             double fl = flashLeft(PENNANT + i);
             int press = fl > 0.4 ? 1 : 0;
             int x = flagX + press, yy = y + press;
             float a = active ? Math.min(1f, alpha + 0.10f) : hov ? Math.min(1f, alpha + 0.25f) : alpha;
-            float k = cooling ? 0.45f : 1f;
+            float k = cooling ? 0.55f : 1f;
+            if (cooling) a = Math.max(a, 0.75f); // darkened, but solid enough to read as a pennant over bright ground
             RenderSystem.setShaderColor(k * ((cloth >> 16) & 255) / 255f, k * ((cloth >> 8) & 255) / 255f, k * (cloth & 255) / 255f, a);
             pennant(g, "command/pennant", x, yy, w);
             if (active) {
@@ -258,11 +260,20 @@ public final class CommandPanel {
                 RenderSystem.setShaderColor(((GOLD >> 16) & 255) / 255f, ((GOLD >> 8) & 255) / 255f, (GOLD & 255) / 255f, 1f);
                 pennant(g, "command/pennant_trim", x, yy, w);
             } else {
-                RenderSystem.setShaderColor(((TRIM >> 16) & 255) / 255f, ((TRIM >> 8) & 255) / 255f, (TRIM & 255) / 255f, cooling ? 0.5f : 0.8f);
+                RenderSystem.setShaderColor(((TRIM >> 16) & 255) / 255f, ((TRIM >> 8) & 255) / 255f, (TRIM & 255) / 255f, cooling ? 0.75f : 1f);
                 pennant(g, "command/pennant_trim", x, yy, w);
             }
-            if (cooling) BattleHud.sweep(g, x + 1, yy, Math.min(1, chargeLeft / (double) chargeTotal));
-            RenderSystem.setShaderColor(1, 1, 1, cooling ? 0.55f : 1f);
+            if (cooling) {
+                // the sweep: a dark veil over the part of the body still cooling, its edge a bright gold line that moves left as Charge recharges
+                int bodyR = x + w - 16, span = bodyR - (x + 2), veil = (int) Math.round(span * Math.min(1, chargeLeft / (double) chargeTotal));
+                if (veil > 0) {
+                    g.fill(bodyR - veil, yy + 2, bodyR, yy + PENNANT_H - 2, 0x8c000000);
+                    g.fill(bodyR - veil, yy + 1, bodyR - veil + 1, yy + PENNANT_H - 1, 0xf0000000 | GOLD);
+                }
+            } else if (hov) {
+                g.fill(x + 2, yy + 2, x + w - 18, yy + PENNANT_H - 2, 0x2efff6dc); // hover: a light wash over the body
+            }
+            RenderSystem.setShaderColor(1, 1, 1, cooling ? 0.8f : 1f);
             UiTex.draw(g, ICONS[i], x + ICON_X, yy + 4);
             RenderSystem.setShaderColor(1, 1, 1, 1);
             int keyRight = x + w - KEY_PAD; // the key ends 10 px before the swallowtail notch's inner point (w - 16)
@@ -271,7 +282,7 @@ public final class CommandPanel {
             g.fill(bandL + 1, yy + 6, bandR - 1, yy + 18, band);
             g.fill(bandL, yy + 7, bandL + 1, yy + 17, band); g.fill(bandR - 1, yy + 7, bandR, yy + 17, band);
             // cream ink with the vanilla shadow reads on any House cloth (the gilded one included); gold stays on the active trim only
-            int ink = cooling ? 0xb3000000 | CREAM : 0xff000000 | CREAM;
+            int ink = cooling ? 0xd9000000 | CREAM : 0xff000000 | CREAM;
             g.drawText(font, NAMES[i], x + NAME_X, yy + 8, ink, true);
             if (!cooling) {
                 String kk = key(ORDERS[i]);

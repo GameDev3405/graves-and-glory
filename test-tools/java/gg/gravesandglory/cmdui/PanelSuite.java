@@ -26,7 +26,7 @@ import java.util.*;
 /**
  * Command UI plan Task 7: the pennant panel. Clicks go through Mouse.onCursorPos and Mouse.onMouseButton (the GLFW callbacks a real mouse
  * drives, so PanelInputMixin sees them as it would a player's); keys through CommandUiChecks.press. Screenshots of each state at 1920x1080
- * and 854x480 (open, tray and cooldown also at 2560x1440) go to <run>/command-ui/shots for the visual review. Never included in releases.
+ * and 854x480 (closed, open, hover, pills, tray and cooldown also at 2560x1440; pills also at 854x480) go to <run>/command-ui/shots for the visual review. Never included in releases.
  */
 public final class PanelSuite implements CommandUiChecks.Suite {
     UUID id;
@@ -205,24 +205,30 @@ public final class PanelSuite implements CommandUiChecks.Suite {
                 "854x480, Formation tray open while Charge cools: tray " + (tr == null ? "none" : Arrays.toString(Arrays.copyOfRange(tr, 1, 5))) + ", cooldown seconds " + (se == null ? "none" : Arrays.toString(Arrays.copyOfRange(se, 1, 5))) + ", meet=" + meet);
             CommandSelection.setTrayOpen(false);
         }
+        if (tick == 306) { CommandSelection.select("infantry", false); CommandSelection.select("ranged", true); }
         if (tick == 308) {
             sweep854 = drawn(CommandPanel.SWEEP);
-            edges(c, "cooldown-854"); shot(c, "panel-cooldown-854.png");
+            edges(c, "cooldown-854"); shot(c, "panel-cooldown-854.png"); shot(c, "panel-pills-854.png"); // Infantry and Archers selected
         }
 
-        // 1440p (2560x1440, GUI Scale 3): open, tray and the Charge still cooling
-        if (tick == 310) { CommandSelection.setTrayOpen(false); GLFW.glfwSetWindowSize(c.getWindow().getHandle(), 2560, 1440); }
+        // 1440p (2560x1440, GUI Scale 3): closed, open, hover, pills, tray and the Charge still cooling
+        if (tick == 310) { CommandSelection.setTrayOpen(false); CommandSelection.setPanelOpen(false); GLFW.glfwSetWindowSize(c.getWindow().getHandle(), 2560, 1440); }
         if (tick == 324) cursorCentre(c);
-        if (tick == 328) { edges(c, "open-2560"); shot(c, "panel-open-2560.png"); }
-        if (tick == 330) CommandSelection.order("formation", false);
-        if (tick == 334) { edges(c, "tray-2560"); shot(c, "panel-tray-2560.png"); CommandSelection.setTrayOpen(false); }
-        if (tick == 338) {
+        if (tick == 326) shot(c, "panel-closed-2560.png");
+        if (tick == 327) CommandSelection.setPanelOpen(true);
+        if (tick == 336) { edges(c, "open-2560"); shot(c, "panel-open-2560.png"); }
+        if (tick == 337) cursorTo(c, CommandPanel.PENNANT);
+        if (tick == 341) { edges(c, "hover-2560"); shot(c, "panel-hover-2560.png"); cursorCentre(c); }
+        if (tick == 344) shot(c, "panel-pills-2560.png"); // Infantry and Archers still selected
+        if (tick == 346) { CommandSelection.select("infantry", false); CommandSelection.order("formation", false); }
+        if (tick == 350) { edges(c, "tray-2560"); shot(c, "panel-tray-2560.png"); CommandSelection.setTrayOpen(false); }
+        if (tick == 354) {
             boolean sweep2560 = drawn(CommandPanel.SWEEP);
             edges(c, "cooldown-2560"); shot(c, "panel-cooldown-2560.png");
-            CommandUiChecks.report("cu-panel-left-edge", edgeFails.isEmpty() && edgeChecked >= 11,
-                edgeChecked + " frames checked (1920x1080, 854x480: open, hover, tray, cooldown; 2560x1440: open, tray, cooldown); " + (edgeFails.isEmpty() ? "every rect inside 30% (tray inside 45%)" : String.join("; ", edgeFails))
+            CommandUiChecks.report("cu-panel-left-edge", edgeFails.isEmpty() && edgeChecked >= 12,
+                edgeChecked + " frames checked (1920x1080, 854x480: open, hover, tray, cooldown; 2560x1440: open, hover, tray, cooldown); " + (edgeFails.isEmpty() ? "every rect inside 30% (tray inside 45%)" : String.join("; ", edgeFails))
                     + "; 854 cooldown sweep drawn=" + sweep854 + "; 2560 cooldown sweep drawn=" + sweep2560 + "; shots: " + String.join(", ", shotLog));
-            CommandUiChecks.report("cu-panel-overlap", overlapFails.isEmpty() && overlapChecked >= 11,
+            CommandUiChecks.report("cu-panel-overlap", overlapFails.isEmpty() && overlapChecked >= 12,
                 overlapChecked + " frames (1920x1080, 854x480 and 2560x1440): " + (overlapFails.isEmpty() ? "no panel rect meets the hint slip, a group card, the spine or the vanilla hotbar, health and armour rows; the hint slip hidden while open" : String.join("; ", overlapFails.subList(0, Math.min(6, overlapFails.size())))));
         }
         if (tick == 310 + S2560) { GLFW.glfwSetWindowSize(c.getWindow().getHandle(), initialSize[0], initialSize[1]); CommandSelection.setPanelOpen(true); CommandSelection.select("ranged", false); }
@@ -263,7 +269,7 @@ public final class PanelSuite implements CommandUiChecks.Suite {
     }
 
     /** The ticks after the 2560x1440 set moved this many later to make room for it. */
-    static final int S2560 = 34;
+    static final int S2560 = 50;
     boolean sweep854;
     List<String> pillFirst = List.of();
     boolean trayOpened, sweepDrawn;
