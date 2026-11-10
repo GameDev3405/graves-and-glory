@@ -1,0 +1,218 @@
+{
+ "troop": "bonebow",
+ "family": "archer",
+ "geo": "src/main/resources/assets/gravesandglory/geo/troop/bonebow.geo.json",
+ "textures": [
+  "src/main/resources/assets/gravesandglory/textures/entity/troop/bonebow_geo/t3_crimson.png"
+ ],
+ "anim": "src/main/resources/assets/gravesandglory/animations/troop/bonebow.animation.json",
+ "foot_bones": [
+  "left_foot",
+  "right_foot"
+ ],
+ "clips": [
+  {
+   "name": "attack_volley",
+   "base": [
+    "attack_volley_legs"
+   ],
+   "impact_tick": 16
+  },
+  {
+   "name": "attack_direct",
+   "base": [
+    "attack_direct_legs"
+   ],
+   "impact_tick": 16
+  },
+  {
+   "name": "death_back"
+  },
+  {
+   "name": "death_forward"
+  },
+  {
+   "name": "death_left"
+  },
+  {
+   "name": "death_right"
+  },
+  {
+   "name": "stance_hold_upper",
+   "base": [
+    "stance_hold_legs"
+   ]
+  },
+  {
+   "name": "stance_rest_upper",
+   "base": [
+    "stance_ready_legs"
+   ]
+  },
+  {
+   "name": "stance_aim_upper",
+   "base": [
+    "stance_ready_legs"
+   ]
+  },
+  {
+   "name": "stance_aim_up_upper",
+   "base": [
+    "stance_ready_legs"
+   ]
+  },
+  {
+   "name": "stance_aim_down_upper",
+   "base": [
+    "stance_ready_legs"
+   ]
+  },
+  {
+   "name": "walk_upper",
+   "base": [
+    "walk_legs"
+   ],
+   "speed": 0.16
+  },
+  {
+   "name": "run_upper",
+   "base": [
+    "run_legs"
+   ],
+   "speed": 0.26
+  },
+  {
+   "name": "idle_upper",
+   "base": [
+    "idle_legs"
+   ]
+  },
+  {
+   "name": "stance_ready_upper",
+   "base": [
+    "stance_ready_legs"
+   ]
+  },
+  {
+   "name": "stance_brace_upper",
+   "base": [
+    "stance_brace_legs"
+   ]
+  },
+  {
+   "name": "stance_wall_upper",
+   "base": [
+    "stance_wall_legs"
+   ]
+  },
+  {
+   "name": "stance_ward_upper",
+   "base": [
+    "stance_ready_legs"
+   ]
+  },
+  {
+   "name": "stance_shield_up_upper",
+   "base": [
+    "stance_ready_legs"
+   ]
+  },
+  {
+   "name": "stance_rally_upper",
+   "base": [
+    "stance_ready_legs"
+   ]
+  },
+  {
+   "name": "stance_fallback_upper",
+   "base": [
+    "stance_fallback_legs"
+   ]
+  },
+  {
+   "name": "hit_pulled",
+   "base": [
+    "hit_pulled_legs"
+   ]
+  },
+  {
+   "name": "charge_run_upper",
+   "base": [
+    "run_legs"
+   ],
+   "speed": 0.26
+  },
+  {
+   "name": "stun_upper",
+   "base": [
+    "stun_legs"
+   ]
+  },
+  {
+   "name": "stun_out_upper",
+   "base": [
+    "stun_legs"
+   ]
+  },
+  {
+   "name": "hit_knockback",
+   "base": [
+    "hit_knockback_legs"
+   ]
+  },
+  {
+   "name": "hit_light_front",
+   "base": [
+    "hit_light_front_legs"
+   ]
+  },
+  {
+   "name": "hit_light_back",
+   "base": [
+    "hit_light_back_legs"
+   ]
+  },
+  {
+   "name": "hit_light_right",
+   "base": [
+    "hit_light_right_legs"
+   ]
+  },
+  {
+   "name": "hit_light_left",
+   "base": [
+    "hit_light_left_legs"
+   ]
+  },
+  {
+   "name": "hit_medium_front",
+   "base": [
+    "hit_medium_front_legs"
+   ]
+  },
+  {
+   "name": "hit_medium_back",
+   "base": [
+    "hit_medium_back_legs"
+   ]
+  },
+  {
+   "name": "hit_medium_right",
+   "base": [
+    "hit_medium_right_legs"
+   ]
+  },
+  {
+   "name": "hit_medium_left",
+   "base": [
+    "hit_medium_left_legs"
+   ]
+  },
+  {
+   "name": "hit_block",
+   "base": [
+    "hit_block_legs"
+   ]
+  }
+ ]
+}
