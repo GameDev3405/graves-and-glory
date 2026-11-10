@@ -211,6 +211,29 @@ The scheduler carries unfinished work to the next tick rather than overrun. The 
 | Difficulty ladder | Hard beats Normal 65-85 percent; Normal beats Easy 60-80 percent (proposal; today's Hard-with-flank won only 9 of 20 against Normal, so the reaction and judgement knobs must be shown to open the gap) |
 | Version ladder | new bot rated at or above the previous one (TrueSkill) and beats every exploiter bot |
 
+### 7.9 Army size and match economy redesign (Kort, 2026-11-09; not specced yet)
+Source: `status/ARMY-ECONOMY-REDESIGN-2026-11-09.md`. A gold pick phase before every round (teammates see each other's picks, enemy picks hidden), gold carried between rounds with a wanted snowball, a soft 20-slot threshold with rising price and slower training past it, mid-round training kept, the same system for bots and the campaign. Today's bot does none of this: it refills a fixed banner in fixed order (`Campaign.java:745-755`).
+
+**How the architecture covers it.** The commander layer gains a **quartermaster** with three decisions, all using the same belief map and utility scoring as the rest:
+1. **Pick phase (once per round): what army to buy.** Generate a handful of candidate armies within the rarity caps (doctrine-led: swarm, balanced, elite, counter-pick), score each with a cheap fight estimate (Lanchester-style strength per gold, `CounterMath` counters) against what the bot **believes** the enemy will field: last round's seen army plus its gold estimate, never the hidden picks. It runs once per round outside battle ticks, so it can afford a few milliseconds. With a human teammate, the council reads the teammate's visible picks and fills the gaps (no doubled cavalry, someone brings ranged).
+2. **Save or spend across rounds.** A round-value estimate (rounds left, score, gold lead) decides how much to bank; personalities differ (a saver, a spender). This is new: today's bot has no match-level plan.
+3. **Mid-round reinforcement.** Train only when the squad plan needs it (a gap in the line, a counter to what was just seen), weigh the rising price past 20 against holding gold for the next round, and send new troops to a rally point as a group (already in milestone 2).
+Every purchase writes a purpose line too ("bought 6 pikes: they fielded 8 horse last round").
+
+**Milestones that change** (the plan in section 8 is otherwise kept until Kort answers):
+- 1: the metrics add gold left unspent, gold per kill, and buy-versus-enemy fit.
+- 2: "reinforcements gather" stays; bot buying stays as today until the economy is specced.
+- 3: balance sims add swarm versus elite and the snowball; costs become the main balance lever, so the Domination balance verdict must be re-run on the new economy.
+- 4: the commander gains the quartermaster (about +1-2 M tokens).
+- 7: personalities and campaign captains get an economic style; campaign difficulty moves from fixed banners to enemy gold budgets.
+- 8: the blind test should include pick-phase choices, which players will compare across rounds.
+
+**Risks to raise now.**
+- **Server budget is the real risk.** The redesign survey measured 5 to 6 ms per tick for 3v3 bot battles today (more than this report's 3.2 ms baseline, from a different run). Six commanders at the practical ceiling of about 30 slots is roughly 180 troops, and cheap troops push the troop count higher than the slot count. Today's troop target scans are O(n²) and grow with the square of army size; vanilla pathfinding and entity collisions grow at least linearly and are outside our AI's control. The design's spatial grid and capped path budget keep our AI roughly linear, but its 4 ms/8 ms target must be re-set for the hidden safety limit, and **that limit must come from a measured large-army 3v3 on a dedicated server before the price curve is tuned**, not after. Suggested: troops far from any fight think less often (level of detail).
+- **The snowball makes good bots harder to measure, not to build.** A small early edge compounds, so win rates swing more and the difficulty ladder and balance gates need more matches per verdict (and the sim must play full multi-round matches, not today's single 300 s round). It also makes a losing bot's comeback logic (when to save, when to all-in) a visible test of "plays like a person".
+- **Hidden enemy picks fit the fair-vision rule** and need no cheat; bots must not read the hidden picks during the pick phase.
+- **No other blocker.** Bigger armies suit the per-group design better than today's one-order-per-army bot.
+
 ## 8. Ranked build plan
 
 Costs are rough estimates for agent work (tokens include one review per change and sims). "Kort sees" is what changes for him.
