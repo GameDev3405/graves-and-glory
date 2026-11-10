@@ -13,6 +13,7 @@ def check():
     if not stamp.exists() or not (OUT/'graph.json').exists(): return False
     saved=json.loads(stamp.read_text()); return saved['inputs']==inputs() and saved['graph_sha256']==hashlib.sha256((OUT/'graph.json').read_bytes()).hexdigest()
 def refresh():
+    for old in (ROOT/'work').glob('graph-refresh-*'): shutil.rmtree(old,ignore_errors=True)  # stale stages; a reused pid would collide
     env=dict(os.environ,GRAPHIFY_BACKEND='none',PYTHONIOENCODING='utf-8')
     before=inputs()
     # A fresh output avoids incremental preservation of deleted paths/old semantic nodes.

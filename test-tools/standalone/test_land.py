@@ -72,7 +72,7 @@ class Land(unittest.TestCase):
         self.assertIn('docs: regenerate STATE.md after landing lane', self.r.log()[0])  # refresh comes after STATE.md
 
     def test_graph_not_refreshed_when_landing_fails(self):
-        for kw in (dict(verify=FAIL),): self.assertEqual(self.r.land(**kw), land.EXIT_VERIFY)
+        self.assertEqual(self.r.land(verify=FAIL), land.EXIT_VERIFY)
         (self.r.m/'a.txt').write_text('kort edit\n')
         commit(self.r.w, 'a.txt', 'lane a\n', 'lane touches a')
         self.assertEqual(self.r.land(), land.EXIT_MERGE)
@@ -115,6 +115,50 @@ class Land(unittest.TestCase):
         self.assertIn('timed out after 1s', REAL_REFRESH(home, 1))
         script.write_text('print("Graph refreshed locally; 7 nodes")\n')
         self.assertIsNone(REAL_REFRESH(home, 30))
+
+    def test_keyboard_interrupt_during_refresh_is_a_warning_with_exit_0(self):
+        def interrupted(home, timeout): raise KeyboardInterrupt()
+        land.refresh_graph = interrupted
+        code, out = self.land_output()
+        self.assertEqual(code, 0)
+        self.assertIn('warning: graph not refreshed: KeyboardInterrupt', out)
+
+    def test_real_refresh_runs_in_main_checkout_and_kills_child_on_interrupt(self):
+        home = pathlib.Path(self.tmp.name)/'h2'; (home/'tools').mkdir(parents=True)
+        (home/'tools/graph_state.py').write_text('import os; print("cwd=" + os.getcwd())'+chr(10))
+        seen = []
+        real_popen = subprocess.Popen
+        def spy(*a, **kw): seen.append(kw.get('cwd')); return real_popen(*a, **kw)
+        subprocess.Popen = spy
+        try: self.assertIsNone(REAL_REFRESH(home, 30))
+        finally: subprocess.Popen = real_popen
+        self.assertEqual(pathlib.Path(seen[0]), home)
+        (home/'tools/graph_state.py').write_text('import time; time.sleep(60)'+chr(10))
+        procs = []
+        def spy2(*a, **kw):
+            p = real_popen(*a, **kw); procs.append(p); real_comm = p.communicate
+            def interrupt(*ca, **ckw):
+                if ckw.get('timeout') == 30: raise KeyboardInterrupt()
+                return real_comm(*ca, **ckw)
+            p.communicate = interrupt
+            return p
+        subprocess.Popen = spy2
+        try:
+            with self.assertRaises(KeyboardInterrupt): REAL_REFRESH(home, 30)
+        finally: subprocess.Popen = real_popen
+        self.assertIsNotNone(procs[0].poll())  # child was killed
+
+    def test_refresh_removes_old_staging_folders(self):
+        import graph_state
+        root = pathlib.Path(self.tmp.name)/'g'; (root/'work/graph-refresh-1').mkdir(parents=True); (root/'work/graph-refresh-2').mkdir()
+        (root/'work/keep').mkdir()
+        orig = graph_state.ROOT
+        graph_state.ROOT = root
+        try:
+            with self.assertRaises(Exception): graph_state.refresh()  # no repo here: fails after the cleanup
+        finally: graph_state.ROOT = orig
+        self.assertFalse((root/'work/graph-refresh-1').exists()); self.assertFalse((root/'work/graph-refresh-2').exists())
+        self.assertTrue((root/'work/keep').exists())
 
     def test_landing_runs_main_checkouts_own_graph_script_and_timeout_keeps_exit_0(self):
         land.refresh_graph = REAL_REFRESH

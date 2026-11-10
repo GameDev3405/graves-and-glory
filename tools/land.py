@@ -19,14 +19,15 @@ After main has moved, cleanup problems never undo the landing; they are reported
      if docs/STATE.md has uncommitted edits there
   7. refresh main's Graphify graph (`python tools/graph_state.py refresh` in the main checkout: local AST only, no model
      calls, output in git-ignored graphify-out/). A failure, a missing graphify or a timeout only prints a warning and never
-     changes the exit code. Skipped with --no-graph, --dry-run, or when no checkout has main checked out
+     changes the exit code. The land lock is held during the refresh (up to GRAPH_TIMEOUT, 600s), so a concurrent
+     land gets exit 7. Skipped with --no-graph, --dry-run, or when no checkout has main checked out
 
 Exit codes: 0 landed, 1 dirty lane, 2 rebase failed, 3 verify failed, 4 main or the lane moved during
 verify, 5 merge refused, 6 landed but cleanup incomplete (message says what is left), 7 another land is
 running, 8 a git command failed before main moved (nothing landed), 64 usage (this includes a lane that is
 the primary checkout or a locked worktree: land never retires those). Run it only for a branch Kort (or the coordinator on his behalf) approved for main.
 """
-import argparse, datetime, json, os, pathlib, re, shlex, shutil, stat, subprocess, sys
+import argparse, datetime, json, os, pathlib, re, shlex, shutil, signal, stat, subprocess, sys
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT/'tools'))
@@ -108,20 +109,33 @@ def write_state(home, a):
     say(f'wrote {out}')
     return []
 
+def kill_tree(proc):
+    """Kill the refresh child and what it started (graphify workers), then reap it."""
+    try:
+        if os.name == 'nt': subprocess.run(['taskkill', '/F', '/T', '/PID', str(proc.pid)], capture_output=True)
+        else: os.killpg(proc.pid, signal.SIGKILL)  # the child leads its own session (start_new_session)
+    except OSError: pass
+    try: proc.communicate(timeout=10)
+    except subprocess.TimeoutExpired:
+        proc.kill()
+        try: proc.communicate(timeout=10)
+        except subprocess.TimeoutExpired: pass
+
 def refresh_graph(home, timeout):
-    """Refresh the graph in the main checkout with that checkout's own tools/graph_state.py. Returns a warning or None; never raises."""
+    """Refresh the graph in the main checkout with that checkout's own tools/graph_state.py. Returns a warning or None. The child tree is killed on any exit."""
     script = pathlib.Path(home)/'tools'/'graph_state.py'
     if not script.exists(): return f'graph not refreshed: {script} does not exist'
     try:
         proc = subprocess.Popen([sys.executable, str(script), 'refresh'], cwd=home, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-                                text=True, encoding='utf8', errors='replace')
+                                text=True, encoding='utf8', errors='replace', start_new_session=(os.name != 'nt'))
     except OSError as e: return f'graph not refreshed: could not start {script}: {e}'
-    try: out, _ = proc.communicate(timeout=timeout)
-    except subprocess.TimeoutExpired:
-        if os.name == 'nt': subprocess.run(['taskkill', '/F', '/T', '/PID', str(proc.pid)], capture_output=True)  # graphify children too
-        else: proc.kill()
-        proc.communicate()
-        return f'graph not refreshed: timed out after {timeout}s; run `python tools/graph_state.py refresh` in {home}'
+    try:
+        try: out, _ = proc.communicate(timeout=timeout)
+        except subprocess.TimeoutExpired:
+            kill_tree(proc)
+            return f'graph not refreshed: timed out after {timeout}s; run `python tools/graph_state.py refresh` in {home}'
+    finally:
+        if proc.poll() is None: kill_tree(proc)  # any exit (timeout, Ctrl-C, error) leaves no child running
     tail = ' | '.join((out or '').strip().splitlines()[-3:])
     if proc.returncode: return f'graph not refreshed (exit {proc.returncode}; graphify missing or failed): {tail}'
     say(tail or 'graph refreshed')
@@ -201,7 +215,7 @@ def land(a):
     if home and not a.no_graph:
         say(f'refreshing the graph in {home["path"]} (local only; up to {a.graph_timeout}s)')
         try: w = refresh_graph(home['path'], a.graph_timeout)
-        except Exception as e: w = f'graph not refreshed: {e}'
+        except (Exception, KeyboardInterrupt) as e: w = f'graph not refreshed: {str(e) or type(e).__name__}'
         if w: say('warning: ' + w)  # a graph problem never changes the exit code
     return EXIT_CLEANUP if problems else 0
 
