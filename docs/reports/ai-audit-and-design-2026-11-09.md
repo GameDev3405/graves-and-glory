@@ -234,6 +234,16 @@ Every purchase writes a purpose line too ("bought 6 pikes: they fielded 8 horse 
 - **Hidden enemy picks fit the fair-vision rule** and need no cheat; bots must not read the hidden picks during the pick phase.
 - **No other blocker.** Bigger armies suit the per-group design better than today's one-order-per-army bot.
 
+**Approved spec (Kort, 2026-11-10):** `docs/superpowers/specs/2026-11-09-army-economy-design.md` on branch `docs/army-economy-spec` (d40f2cfd, not in main), section 5 and the rules it uses. Built after the 1.21.1 port (its build step 6 is the bot work); nothing here is built before then. What it fixes for the bot, and how the design above takes it:
+- **Best of 5, survivors carry over** at full health with their levels and Armoury tiers; dead units are bought again. So from round 2 the quartermaster mostly decides what to replace and what to add, and must value a living veteran above a fresh buy. A unit's position in the army order sets its formation row, so the quartermaster also orders the army (shields first, ranged behind).
+- **Same gold, same prices, no hidden gold; difficulty changes decision quality only.** Matches section 7.6: Easy buys with more noise and a shorter memory of the enemy's army, Hard counter-picks and plans the save across rounds.
+- **45 s pick phase, enemy picks hidden, teammates visible.** The quartermaster decides in well under a second and waits a human-like time before Ready; with a human teammate it reads the live side panel and fills gaps.
+- **Slots past 20 queue at round start and train slowly** (`overTrainBase` 1.15 per slot past 20). Buying past 20 is a bet that arrives late, so the squad layer must plan those troops as a reserve rather than as part of the opening line.
+- **Disconnect:** a bot takes a missing commander's seat with their gold and army; the takeover must keep the human's army order and not re-buy (today's takeover uses the lobby tier and lane 0, section 4.1).
+- **Roles swap each round** in Siege and Convoy, so each bot needs both attack and defence plans per map; already covered by the mode's objective list.
+- **Budget note, sharper than above:** teams go up to 4, so up to 8 commanders, and the safety limit starts at 40 slots each. The worst case is far past this report's 160-troop budget. The spec's performance test (20, 30 and 40 slots, 3v3 and 4v4) must measure the AI's share as well, and `hardSlots` should be set with the AI's level-of-detail scheduler running, not without it.
+- **Sim harness:** `-PbotSim` must play whole best-of-5 matches with carried gold and armies; the spec's targets (round-1 winner takes the match 60 to 70 percent, a side down 0-2 can still field 16 slots) become bot-sim gates.
+
 ## 8. Ranked build plan
 
 Costs are rough estimates for agent work (tokens include one review per change and sims). "Kort sees" is what changes for him.
