@@ -721,10 +721,11 @@ def load_limits(path=LIMITS_PATH):
 def renderer_troops(repo=REPO):
     with open(os.path.join(repo, RENDERER), encoding="utf-8") as f:
         src = f.read()
-    m = re.search(r"Set<String>\s+TROOPS\s*=\s*Set\.of\(([^)]*)\)", src)
-    if not m:
-        raise ScoreError("no TROOPS set in %s" % RENDERER)
-    names = re.findall(r'"([A-Za-z0-9_]+)"', m.group(1))
+    # every GeckoLib troop: the approved ones and the previews (TROOPS before the per-troop approval switch)
+    sets = re.findall(r"Set<String>\s+(?:TROOPS|APPROVED|PREVIEW)\s*=\s*Set\.of\(([^)]*)\)", src)
+    if not sets:
+        raise ScoreError("no TROOPS, APPROVED or PREVIEW set in %s" % RENDERER)
+    names = list(dict.fromkeys(n for body in sets for n in re.findall(r'"([A-Za-z0-9_]+)"', body)))
     return [t for t in names if os.path.isfile(os.path.join(repo, ASSETS, "animations", "troop", t + ".animation.json"))]
 
 

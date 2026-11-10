@@ -265,5 +265,24 @@ class CliTest(unittest.TestCase):
         self.assertFalse(res["troops"]["rigx"][0]["pass"])
 
 
+
+class RendererTroopsTest(unittest.TestCase):
+    def test_reads_approved_and_preview_sets(self):
+        with tempfile.TemporaryDirectory() as repo:
+            src = os.path.join(repo, sc.RENDERER)
+            os.makedirs(os.path.dirname(src))
+            with open(src, "w", encoding="utf-8") as f:
+                f.write('Set<String> APPROVED = Set.of("knight");\nSet<String> PREVIEW = Set.of("archer", "ghost");\n')
+            anims = os.path.join(repo, sc.ASSETS, "animations", "troop")
+            os.makedirs(anims)
+            for t in ("knight", "archer"):
+                open(os.path.join(anims, t + ".animation.json"), "w").close()
+            self.assertEqual(sc.renderer_troops(repo), ["knight", "archer"])
+            with open(src, "w", encoding="utf-8") as f:
+                f.write("class Nothing {}\n")
+            with self.assertRaises(sc.ScoreError):
+                sc.renderer_troops(repo)
+
+
 if __name__ == "__main__":
     unittest.main()
