@@ -6,7 +6,7 @@ Sources: `- kort: <ask> | open: <link or none> | min: <minutes> | prio: <1|2|3>`
 (status/*.md), the old `questions for Kort` value of a status file with no such line, and booth batches
 (work/booth/<batch>/db/batch.json in any worktree) that have no verdict.json yet.
 """
-import argparse, datetime, html, json, math, pathlib, re, sys
+import argparse, datetime, html, json, math, pathlib, re, subprocess, sys
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 import state
@@ -67,6 +67,13 @@ def status_items(status_dir):
         items.append(make_item('question', path.stem, q, link.group().rstrip('.,;:!?') if link else None, old_style=True))
     return items
 
+def already_in_target(repo, data):
+    """A batch whose reviewed commit already reached its target branch (an old or test batch) no longer waits on Kort."""
+    sha, target = str(data.get('submitted_sha') or ''), str(data.get('target') or '')
+    if not re.fullmatch(r'[0-9a-f]{7,40}', sha) or not re.fullmatch(r'[\w./-]+', target): return False
+    r = subprocess.run(['git', '-C', str(repo), 'merge-base', '--is-ancestor', sha, target], capture_output=True)
+    return r.returncode == 0
+
 def booth_items(repo):
     items, seen = [], set()
     try: trees = state.worktrees(repo)
@@ -84,10 +91,10 @@ def booth_items(repo):
                 if not n and isinstance(data.get('clip_order'), list): n = len(data['clip_order'])
                 if n <= 0: continue
                 batch = str(data.get('batch') or folder.name)
-                if batch in seen: continue
+                if batch in seen or already_in_target(repo, data): continue
                 seen.add(batch)
-                troop = str(data.get('troop') or folder.name.split('-')[0]).replace('_', ' ').capitalize()
-                items.append(make_item('booth', 'anim-lead', f"Watch {troop}'s animations ({n} clips) and approve or reject each",
+                troop = re.sub(r'^[a-z]{2}_', '', str(data.get('troop') or folder.name.split('-')[0])).replace('_', ' ').capitalize()
+                items.append(make_item('booth', 'anim-lead', f"Watch {troop}'s animations ({n} clip{'s' if n != 1 else ''}) and approve or reject each",
                                        BOOTH_URL, math.ceil(n * 0.5), 1, batch=batch))
             except (OSError, ValueError): continue
     return items

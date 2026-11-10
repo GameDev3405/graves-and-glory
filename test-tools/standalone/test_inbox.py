@@ -113,6 +113,20 @@ class Collect(unittest.TestCase):
         booth(self.lane, 'good', clips=1)
         self.assertEqual([i['batch'] for i in self.collect()], ['good'])
 
+    def test_batch_already_in_its_target_is_not_waiting(self):
+        head = git(self.repo, 'rev-parse', 'HEAD')
+        old = booth(self.lane, 'old-1', clips=2)
+        data = json.loads((old/'db'/'batch.json').read_text()); data.update(submitted_sha=head, target='main')
+        (old/'db'/'batch.json').write_text(json.dumps(data))
+        new = booth(self.lane, 'new-1', clips=2)
+        data = json.loads((new/'db'/'batch.json').read_text()); data.update(submitted_sha='0'*40, target='main')
+        (new/'db'/'batch.json').write_text(json.dumps(data))
+        self.assertEqual([i['batch'] for i in self.collect()], ['new-1'])
+
+    def test_faction_prefix_dropped_from_troop_name(self):
+        booth(self.lane, 'ic-1', clips=1, troop='ic_hearthguard')
+        self.assertEqual(self.collect()[0]['ask'], "Watch Hearthguard's animations (1 clip) and approve or reject each")
+
     def test_missing_status_dir_is_fine(self):
         self.assertEqual(inbox.collect(self.repo, self.status/'nope'), [])
 
