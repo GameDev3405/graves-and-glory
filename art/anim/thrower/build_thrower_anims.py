@@ -283,10 +283,11 @@ def attack_keys():
     coil_a = KEY((-5, 18, 0), (3, 0, 0), (-0.6, 3.4, -5.8), aim(20, -4), lp=(-80, 0, -9, -12))
     coil = KEY((-10, 26, 0), (2, 0, 0), (-0.3, 3.8, -6.6), aim(28, -4), lp=(-95, 0, -6, -4))
     held = nudge(coil, torso=(-1.5, 2, 0), R=(0.0, 0.1, -0.3), lp=(-2, 0, 0, 0))
-    drive = KEY((4, -6, 0), (2, 0, 0), (0.0, 6.5, 0.5), aim(16, -2), lp=(-40, 0, 10, -80))
-    release = KEY((14, -22, 0), (6, 0, 0), (1.5, 1.0, 6.8), aim(-5, 0), lp=(-25, 0, 18, -115))
-    over = KEY((20, -26, -4), (10, 0, 0), (4.0, -5.0, 4.0), aim(-35, 15), lp=(-10, 0, 10, -100))
-    recover = KEY((10, -12, 0), (6, 0, 0), (1.0, -4.0, 3.5), aim(-20, 5), lp=(-30, 0, -5, -60))
+    drive = KEY((4, -6, 0), (2, 0, 0), (0.0, 6.5, 0.5), aim(16, -2), lp=(-40, 0, -4, -78))
+    # the left arm yanks in to the chest with the elbow kept out at the side, so the bracer clears the ribs
+    release = KEY((14, -22, 0), (6, 0, 0), (1.5, 1.0, 6.8), aim(-5, 0), lp=(-25, 0, -26, -90))
+    over = KEY((20, -26, -4), (10, 0, 0), (4.0, -5.0, 4.0), aim(-35, 15), lp=(-10, 0, -30, -80))
+    recover = KEY((10, -12, 0), (6, 0, 0), (1.0, -4.0, 3.5), aim(-20, 5), lp=(-30, 0, -20, -60))
     # the fist goes back over the right shoulder behind the ear and closes on the next harpoon; drawn up out of the quiver it
     # stands angled up and back past the head, the foot clear outside the right hip, then the fist carries it over
     BACK = unit((0.3, 0.85, -0.4))
@@ -297,10 +298,13 @@ def attack_keys():
     swing = KEY((2, 10, 0), (4, 2, 0), (-1.0, 4.5, -1.5), aim(50, -4), lp=(-52, 0, -12, -36))
     over_g = nudge(GUARD, R=(0.0, -0.4, 0.3), d=aim(3, -4), torso=(1, -1, 0))
     settle = nudge(GUARD, R=(0.0, 0.15, -0.1), d=aim(9, -4))
+    # on the way up to the quiver the empty fist swings out wide of the right shoulder (the elbow opens instead of folding
+    # shut against the head)
+    wide = KEY((6, -3, 0), (6, 5, 1), (-5.5, 1.0, 0.0), unit((-0.6, 0.5, -0.3)), lp=(-35, 0, -10, -50))
     return [(0, GUARD), (3.0, coil_a), (5.0, coil), (6.6, held),            # coil back over the rear foot; the load held
             (7.4, drive), (IMPACT, release),                                  # unwind and whip: the harpoon leaves
             (10.0, over), (13.0, recover),                                    # the follow-through low across the body
-            (16.5, reach_q), (18.5, grab), (20.0, draw_out), (22.0, lift),                      # over the shoulder, the next harpoon drawn up
+            (14.8, wide), (16.5, reach_q), (18.5, grab), (20.0, draw_out), (22.0, lift),                      # over the shoulder, the next harpoon drawn up
             (25.0, swing), (29.0, over_g), (33.0, settle), (ATTACK_TICKS, GUARD)]
 
 
@@ -520,10 +524,12 @@ STANCE_KEYS = {
     "brace": KEY((16, 10, 0), (2, 0, 0), (-0.5, -1.0, 1.5), aim(-6, -4), lp=(-60, 0, -14, -40)),   # set low, point down at the charge
     # wall: the formed line, crouched, the harpoon cocked high over the shoulder, the left arm out to sight
     "wall": KEY((-6, 20, 0), (3, 0, 0), (-0.4, 3.6, -6.2), aim(24, -4), lp=(-85, 0, -8, -8)),   # cocked to throw, the line poised
-    # ward: giving ground, upright, the point raised to fend
-    "ward": KEY((2, 8, 0), (0, 0, 0), (-1.0, 1.5, -2.0), aim(26, -4), lp=(-45, 0, -20, -50)),
+    # ward: giving ground, the harpoon dropped to an underhand fend before the body, the barbs raised at the foe's face
+    "ward": KEY((-2, 8, 0), (0, 0, 0), (-3.0, -7.0, 4.0), aim(30, -4), rp=(-45, 0, 15, -45), lp=(-40, 0, -18, -55)),
+    # shield_up (the harpooner has no shield; StanceController plays this when the line moves under missiles): head ducked
+    # behind the left forearm raised across the brow, the harpoon kept cocked low by the hip, point at the foe
+    "shield_up": KEY((10, 10, 0), (10, 0, 0), (-2.5, -6.0, -1.0), aim(10, -4), rp=(-25, 0, 15, -40), lp=(-140, 0, -25, -95)),
 }
-STANCE_KEYS["shield_up"] = STANCE_KEYS["ready"]
 LIFE = {"ready": 3.4, "brace": 1.6, "wall": 1.4, "ward": 2.0, "shield_up": 3.4}
 IDLE_LIFE = 2.2
 READY_LIKE = ("ready", "shield_up")     # these loops run at V2_READY_SWAY_SCALE (0.25); the other stances (and the idle) at V2_SWAY_SCALE
@@ -539,19 +545,27 @@ if V2:
     # their upper bodies, so the hips move with the chest instead of holding still under it.
     STANCE_LEGS["brace"] = {"hips": ((5.0, 28.0, 0.0), (0.0, -3.4, 0.8)), "left": (4.4, 2.0, 4.0), "right": (-4.2, 2.0, -4.0),
                             "yaw": (-12.0, 20.0)}
-    STANCE_KEYS["brace"] = KEY((22, 12, 0), (2, 0, 0), (-0.5, -1.0, 1.5), aim(-14, -4), lp=(-60, 0, -14, -40))   # set low, the point down at the charge
+    # brace: sunk on the braced legs, the harpoon cocked back at the shoulder with the barbs dipped at the charge's chest, the
+    # left arm out low pointing the line
+    STANCE_KEYS["brace"] = KEY((18, 14, 0), (2, 0, 0), (-1.0, 2.5, -4.0), aim(-8, -4), lp=(-70, 0, -14, -20))
     IDLE_LIFE_V2 = 3.4       # the idle weight cycle: a clear hip shift over the guard, not just a breath
     STANCE_LEGS_LIFE.update({"brace": LIFE["brace"], "wall": LIFE["wall"]})
 
 
-def stance_upper(k, life, legs_spec, ticks=K.STANCE_TICKS, ready=False):
+# Stances whose solve is warmed up on their own first sample: a cold first solve can land on another arm branch than the
+# warm-started samples after it, and the loop then closes on that odd sample (a wrist flip at the seam). The ready guard and the
+# wall are kept as they were (every derived stance clip starts from the ready).
+PREWARM = ("brace", "ward", "shield_up")
+
+
+def stance_upper(k, life, legs_spec, ticks=K.STANCE_TICKS, ready=False, prewarm=False):
     n = ticks * SUB
     sol = Solver()
     out = []
     hips = (legs_spec or STANCE_LEGS["ready"])["hips"]
     legs = {"hips": hips}
     a_br, a_wt, _ = K.feel.stance_amps(life, ready)
-    for i in range(n + 1):
+    for i in ([n - 1, n - 1] if prewarm else []) + list(range(n + 1)):
         u = (i % n) / n
         br = a_br * math.sin(2 * math.pi * u)
         wt = a_wt * math.sin(2 * math.pi * u - K.WEIGHT)
@@ -568,13 +582,15 @@ def stance_upper(k, life, legs_spec, ticks=K.STANCE_TICKS, ready=False):
         s = sol.pose(legs, torso, head, R, d, uu, k["rp"], lp)
         s["quiver"] = ((0.3 * br, 0.0, 0.0), None)
         out.append(s)
+    out = out[2:] if prewarm else out
     out = gear(out)
     out[-1] = out[0]
     return K.bake(out, ticks)
 
 
 def stance_clips():
-    out = {"stance_%s_upper" % k: stance_upper(v, LIFE[k], STANCE_LEGS.get(k), ready=k in READY_LIKE) for k, v in STANCE_KEYS.items()}
+    out = {"stance_%s_upper" % k: stance_upper(v, LIFE[k], STANCE_LEGS.get(k), ready=k in READY_LIKE, prewarm=k in PREWARM)
+           for k, v in STANCE_KEYS.items()}
     out.update({"stance_%s_legs" % k: stance_legs(v, STANCE_LEGS_LIFE.get(k, 1.0), ready=k in READY_LIKE) for k, v in STANCE_LEGS.items()})
     return out
 
@@ -592,7 +608,7 @@ K.idle_clips = idle_clips    # the death falls start from the guard
 
 off = K.off
 HIT_PEAK = {
-    "front": off(torso=(K.hb_front(-17), -10, 0), head=(K.hb(-12), 3, 0), rarm=(-10, 0, 14), larm=(-24, 0, -40), lfore=-14),
+    "front": off(torso=(K.hb_front(-17), -10, 0), head=(K.hb(-12), 3, 0), rarm=(-10, 0, 14), larm=(-23, 0, -38), lfore=-14),
     "back": off(torso=(12, 0, 0), head=(5, 0, 0), rarm=(10, 0, 10), larm=(14, 0, -24)),
     "right": off(torso=(K.hb(-5), 14, 8), head=(0, 6, 3), rarm=(6, 0, 10), larm=(-12, 0, -22)),
     "left": off(torso=(K.hb(-5), -14, -8), head=(0, -6, -3), rarm=(-10, 0, 14), larm=(12, 0, -30)),
@@ -915,12 +931,34 @@ def flat_weapon(keys, start, t0, t1, step=None):
     return res
 
 
+# The knight's falls start from a sword guard with the arm low; the harpooner's arm starts cocked above the shoulder, so the
+# knight's first arm key (3 ticks in, eased out) flung it down 170 deg at once. The first key takes the throwing arm only part
+# of the way (ARM_IN of it, the next key finishes the drop), and the empty left hand never turns over as the knight's shield hand
+# does to lay the shield flat: it stays open.
+ARM_IN = 0.5
+
+
+def harpoon_fall(keys, start):
+    out, first = [], True
+    for t, ease, k in keys:
+        k = dict(k)
+        if "left_hand" in k:
+            k["left_hand"] = Z3
+        if first:
+            for b in ("right_arm", "right_forearm"):
+                if b in k:
+                    k[b] = tuple(a + ARM_IN * (v - a) for a, v in zip(start[b][0], k[b]))
+            first = False
+        out.append((t, ease, k))
+    return out
+
+
 def death_clips():
     start = K.idle_start()
     falls = {"death_back": K.DEATH_BACK, "death_forward": K.DEATH_FORWARD,
              "death_left": K.roll_keys(K.DEATH_LEFT, start, 13, K.ROLL_LEFT),
              "death_right": K.roll_keys(K.DEATH_RIGHT, start, 13, K.ROLL_RIGHT)}
-    return {n: K.death_clip(flat_weapon(k, start, *FLAT_AT[n]), start, n) for n, k in falls.items()}
+    return {n: K.death_clip(flat_weapon(harpoon_fall(k, start), start, *FLAT_AT[n]), start, n) for n, k in falls.items()}
 
 
 # ------------------------------------------------------------------------------------------------

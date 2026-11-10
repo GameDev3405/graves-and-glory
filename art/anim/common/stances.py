@@ -298,10 +298,30 @@ RALLY_WAY = {
 }
 
 
+# tc_harpooner: the elbow folds no further than RALLY_FOLD (the arm's limit); the hand takes back what the forearm gives up, so
+# the harpoon keeps its line overhead.
+RALLY_FOLD = {"tc_harpooner": -125.0}
+
+
+def _fold_cap(tid, pose):
+    cap = RALLY_FOLD.get(tid)
+    if cap is None or pose["right_forearm"][0] >= cap:
+        return pose
+    d = pose["right_forearm"][0] - cap
+    return dict(pose, right_forearm=[cap] + list(pose["right_forearm"][1:]), right_hand=[pose["right_hand"][0] + d] + list(pose["right_hand"][1:]))
+
+
+RALLY_POSE = {k: _fold_cap(k, v) for k, v in RALLY_POSE.items()}
+RALLY_WAY = {k: {i: _fold_cap(k, v) for i, v in w.items()} for k, w in RALLY_WAY.items()}
+
+
 # per troop, per bone: ticks that bone waits before coming down (it still arrives at ready by tick 20), so the weapon sweeps back clear of the head
 RALLY_LAG = {}
 # per troop, per bone: the way up eases in (envelope ** power) so the weapon rises clear of the head instead of cutting through it
 RALLY_UP = {"tc_harpooner": dict(right_arm=2.0, right_forearm=1.5)}
+# per troop: the whole thrust arm rises on one smooth ramp of this many ticks instead (a long weapon swung up in a beat is too fast
+# at the tip); the harpoon goes up in one steady heave
+RALLY_RISE = {"tc_harpooner": 6.5}
 
 
 # per troop overrides of its gear's RALLY row (Kort's rule 6: the order in the troop's own manner)
@@ -328,7 +348,9 @@ def rally_pose(tr, e, c, t=None):
                 P[b][0] = slerp(a, z, k)
                 continue
             eb = e if t is None or b not in RALLY_LAG.get(tr.tid, {}) else rally_env_late(t, RALLY_LAG[tr.tid][b])
-            if t is not None and t < 13 and b in RALLY_UP.get(tr.tid, {}):
+            if t is not None and t < 13 and tr.tid in RALLY_RISE:
+                eb = smooth(t / RALLY_RISE[tr.tid])
+            elif t is not None and t < 13 and b in RALLY_UP.get(tr.tid, {}):
                 eb = snap_up(min(t / 5.0, 1.0) ** RALLY_UP[tr.tid][b], 0.07)
             P[b][0] = slerp(P[b][0], np.array(tgt, float), eb)     # geodesic, so the weapon sweeps a clean arc instead of an Euler tangle
         if tr.tid in RALLY_OFF:  # the free hand lifts a little, open, as if gathering the glow
@@ -530,6 +552,11 @@ FALLBACK_LEGS = {
                      hips=lambda ph: ((0.0, 0.0, -4.0 + 2.0 * math.sin(ph)), (0.3 * math.sin(ph), 1.0 - 0.2 * max(0.0, math.sin(ph)), 0.0))),
 }
 
+# per gear: the share of the troop's own ready hip yaw kept while backing off, and how much lower the hips sit (shooters retreat
+# side-on and crouched, in their own stance; everyone else backs off square)
+FALLBACK_SIDE_ON = {"thrower": 0.6, "xbow": 0.6}
+FALLBACK_DROP = {"thrower": 0.4, "xbow": 0.6}
+
 
 def build_fallback(tr):
     """Upper: a guard (shield up, a ward, the weapon low across the body for ranged, the focus raised for casters) bobbing with the
@@ -548,10 +575,10 @@ def build_fallback(tr):
             # one-handed low carry (solved in the render frame with the chest(-3, -1) below applied): the right fist at the right hip
             # front, the harpoon through it pointing forward-down (17 deg) toward the troop's left, across the body; the left fist a
             # guard at the belly. Minecraft arms are too short for a two-handed low grip. Static: no arm keys move, so no swing.
-            base["right_arm"][0] = np.array([-39.65, 6.52, -13.67])
+            base["right_arm"][0] = np.array([-39.65, 6.52, -1.0])    # the elbow off the flank, the forearm clear of the hip
             base["right_forearm"][0] = np.array([-20.02, 2.34, 13.19])
             base["right_hand"][0] = np.array([-98.54, 21.65, 114.96])
-            base["left_arm"][0] = np.array([-19.82, 2.98, -5.2])
+            base["left_arm"][0] = np.array([-19.82, 2.98, -28.0])   # out from the ribs so the bracer clears the belly
             base["left_forearm"][0] = np.array([-45.72, -4.14, -9.8])
             base["left_hand"][0] = np.array([0.0, 0.0, 0.0])
         elif g == "bow":
@@ -592,6 +619,9 @@ def build_fallback(tr):
             rots[(b, chan)] = (ts, vs, mean)
 
     own = FALLBACK_LEGS.get(tr.tid)
+    k = FALLBACK_SIDE_ON.get(g, 0.0)
+    side_yaw = k * float(tr.rot(tr.ready_legs, "hips")[1])
+    side_drop = FALLBACK_DROP.get(g, 0.0)
 
     def legs(t):
         out = {}
@@ -603,13 +633,20 @@ def build_fallback(tr):
             out[b] = (v, q) if chan == "rotation" else (r, v)
         for b, (r, q) in list(out.items()):
             if b == "hips":
-                q = (q if q is not None else np.zeros(3)) + np.array([0, -0.5, 0.0])
+                q = (q if q is not None else np.zeros(3)) + np.array([0, -0.5 - side_drop, 0.0])
                 if own:
                     hr, hq = own["hips"](2 * math.pi * t / N)
                     r, q = (r if r is not None else np.zeros(3)) + np.array(hr), q + np.array(hq)
                 out[b] = (r if r is not None else np.zeros(3), q)
             if r is None:
                 out[b] = (np.zeros(3), q)
+        if side_yaw:
+            # the shooter backs off side-on, as he stands: hips keep part of his own ready yaw, the legs turn back under it so the
+            # feet still step straight back
+            out["hips"] = (out["hips"][0] + np.array([0.0, side_yaw, 0.0]), out["hips"][1])
+            for b in ("right_leg", "left_leg"):
+                if b in out:
+                    out[b] = (out[b][0] + np.array([0.0, -side_yaw, 0.0]), out[b][1])
         return out
 
     leg_clip = bake(frames_of(N, legs, loop=True), N, True)
