@@ -156,10 +156,11 @@ def snap_up(x, over):
     return (1 + over) - over * smooth((x - 0.8) / 0.2)
 
 
-def rally_env(t, lead=0.0):
-    """5 ticks up with a little overshoot, 8 held, 7 back to ready. `lead` ticks early on the way up, late on the way down."""
+def rally_env(t, lead=0.0, rise=5.0):
+    """5 ticks up with a little overshoot, 8 held, 7 back to ready. `lead` ticks early on the way up, late on the way down.
+    `rise`: ticks up (RALLY_RISE), still held until tick 13."""
     if t < 13:
-        return snap_up((t + lead) / 5.0, 0.07)
+        return snap_up((t + lead) / rise, 0.07)
     return 1 - smooth((t - 13 - lead * 0.6) / 7.0)
 
 
@@ -259,8 +260,8 @@ def chest(P, torso_x=0.0, torso_y=0.0, head_x=0.0, head_y=0.0, off=None, off_kee
 RALLY = {
     "shield":  dict(arm="right", lift=105, keep=0.55, tilt=-0, fore=-22),
     "onehand": dict(arm="right", lift=105, keep=0.55, tilt=-0, fore=-22),
-    "spear":   dict(arm="both", lift=62, keep=0.0, tilt=0, fore=None),
-    "axe":     dict(arm="both", lift=62, keep=0.0, tilt=0, fore=None),
+    "spear":   dict(arm="both", lift=48, keep=0.0, tilt=0, fore=None),   # was 62 (see RALLY_RISE)
+    "axe":     dict(arm="both", lift=48, keep=0.0, tilt=0, fore=None),
     "bow":     dict(arm="left", lift=84, keep=1.0, tilt=0, fore=-12, out=-11, chest=(-2, -1)),   # quiver on the back: no lean, the head stays out of the arrows
     "xbow":    dict(arm="right", lift=125, keep=0.45, tilt=0, fore=-10, out=-25),   # the crossbow overhead beside the head, the face clear
     "thrower": dict(arm="right", lift=14, keep=0.0, tilt=0, fore=-70),
@@ -345,10 +346,18 @@ def rally_pose(tr, e, c, t=None):
 END_ON_HOLD = {"tc_harpooner", "archer", "ic_arbalist", "mage"}
 
 
+# per gear: ticks the rally takes to rise (default 5). A two-handed shaft heaved up by both arms swung the whole weapon
+# 62 deg in the first two ticks (scorecard ang_speed_weapon 60 deg/100ms, limit 43.5): spears and the greataxe heave it up
+# 48 deg over 7 ticks (about 40 deg/100ms at the snap), still overshooting and held to tick 13.
+RALLY_RISE = {"spear": 7.0, "axe": 7.0}
+
+
 def build_rally(tr):
+    rise = RALLY_RISE.get(tr.gear, 5.0)
+
     def fn(t):
-        e = rally_env(t)
-        c = rally_env(t, lead=1.2)
+        e = rally_env(t, rise=rise)
+        c = rally_env(t, lead=1.2, rise=rise)
         P = rally_pose(tr, e, c, t)
         if tr.tid in END_ON_HOLD:         # the last 7 ticks also settle into the hold pose, so the clip ends exactly on it
             H = hold_pose(tr, 0.0); kh = smooth((t - 13) / 7.0)
