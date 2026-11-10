@@ -120,7 +120,7 @@ Tuning targets for the sims (section 8), not promises:
 ## 7. What changes in the game
 
 Rules and data (`sheets/design.json`, generated `Spec.java`)
-- `rules.squadSize` becomes `softSlots`. New keys: `startGold`, `roundWinGold`, `roundLossGold`, `overPriceBase`, `overTrainBase`, `hardSlots`, `roundsToWin`, `pickSeconds`, and `matchRoundSeconds` per mode.
+- `rules.squadSize` becomes `softSlots`. New keys: `startGold`, `roundWinGold`, `roundLossGold`, `overSlotGold`, `overSlotBase`, `overTrainBase`, `hardSlots`, `roundsToWin`, `pickSeconds`, and `matchRoundSeconds` per mode.
 - Every place that reads `squadSize` as a hard limit (recruit and reinforcement checks, the training refund, deployment, `RosterMath.bannerSize`, Morale ceilings, Commander, SurvivalMode, the Armoury rows, campaign bot buying) changes to the soft rule. Temporary units (Risen and similar) are indexed after the commander's real army today, at slots at or above `squadSize`; they need their own index range that does not collide with a 30-slot army.
 - The fixed troop count per House (2/2/1/1 by rarity, enforced in preflight) is removed: Houses can grow. **(Kort)** Recruitment odds must stay correct when a House has more troops of a rarity. Nobody loses a troop.
 
