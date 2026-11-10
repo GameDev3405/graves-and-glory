@@ -38,6 +38,7 @@ class Repo:
     def log(self, ref='main'): return git(self.m, 'log', '--format=%s', ref).splitlines()
 
 REAL_REFRESH = land.refresh_graph
+REAL_WHERE = land.refresh_where
 
 class Land(unittest.TestCase):
     def setUp(self):
@@ -45,8 +46,12 @@ class Land(unittest.TestCase):
         self.refreshes = []  # fake seam: never runs graphify
         def fake(home, timeout): self.refreshes.append((pathlib.Path(home), timeout)); return None
         land.refresh_graph = fake
+        self.wheres = []  # fake seam: never runs the extractor
+        def fake_where(home, timeout): self.wheres.append((pathlib.Path(home), timeout)); return None
+        land.refresh_where = fake_where
     def tearDown(self):
         land.refresh_graph = REAL_REFRESH
+        land.refresh_where = REAL_WHERE
         subprocess.run(['git', '-C', str(self.r.m), 'worktree', 'prune'], capture_output=True)
         self.tmp.cleanup()
 
@@ -70,6 +75,46 @@ class Land(unittest.TestCase):
         self.assertEqual(self.r.land(), 0)
         self.assertEqual(self.refreshes, [(self.r.m, land.GRAPH_TIMEOUT)])
         self.assertIn('docs: regenerate STATE.md after landing lane', self.r.log()[0])  # refresh comes after STATE.md
+
+    def test_where_overlay_regenerated_in_main_checkout_after_the_graph_refresh(self):
+        order = []
+        land.refresh_graph = lambda home, timeout: order.append('graph')
+        land.refresh_where = lambda home, timeout: order.append('where')
+        self.assertEqual(self.r.land(), 0)
+        self.assertEqual(order, ['graph', 'where'])
+
+    def test_where_overlay_uses_main_checkout_and_its_own_timeout(self):
+        self.assertEqual(self.r.land(), 0)
+        self.assertEqual(self.wheres, [(self.r.m, land.WHERE_TIMEOUT)])
+
+    def test_where_overlay_not_regenerated_on_failure_dry_run_or_no_graph(self):
+        self.assertEqual(self.r.land(verify=FAIL), land.EXIT_VERIFY)
+        self.assertEqual(self.r.land('--dry-run'), 0)
+        self.assertEqual(self.wheres, [])
+        self.assertEqual(self.r.land('--no-graph'), 0)
+        self.assertEqual(self.wheres, [])
+
+    def test_where_overlay_failure_only_warns(self):
+        land.refresh_where = lambda home, timeout: 'where overlay not refreshed: boom'
+        code, out = self.land_output()
+        self.assertEqual(code, 0)
+        self.assertIn('warning: where overlay not refreshed: boom', out)
+
+    def test_where_overlay_missing_script_and_timeout_are_warnings(self):
+        home = pathlib.Path(self.tmp.name)/'h'; (home/'tools').mkdir(parents=True)
+        self.assertIn('does not exist', REAL_WHERE(home, 5))
+        (home/'tools/where_extract.py').write_text('import time; time.sleep(60)'+chr(10))
+        self.assertIn('timed out after 1s', REAL_WHERE(home, 1))
+        (home/'tools/where_extract.py').write_text('import sys; print("extract boom"); sys.exit(2)'+chr(10))
+        w = REAL_WHERE(home, 20)
+        self.assertIn('exit 2', w); self.assertIn('extract boom', w)
+
+    def test_where_overlay_exception_never_changes_exit_code(self):
+        def raising(home, timeout): raise RuntimeError('kaboom')
+        land.refresh_where = raising
+        code, out = self.land_output()
+        self.assertEqual(code, 0)
+        self.assertIn('warning: where overlay not refreshed: kaboom', out)
 
     def test_graph_not_refreshed_when_landing_fails(self):
         self.assertEqual(self.r.land(verify=FAIL), land.EXIT_VERIFY)

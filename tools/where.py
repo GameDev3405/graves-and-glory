@@ -1,4 +1,4 @@
-"""where: one command that answers "where is X / what does X link to" with a capped path:line list (trial prototype, not landed).
+"""where: one command that answers "where is X / what does X link to" with a capped path:line list .
 
 Order: (1) work/where/overlay.json (data/id links built by tools/where_extract.py), (2) main's AST graph (graphify-out/graph.json, read directly),
 (3) rg fallback. Output is grouped data / code / art / anim / sound / test / doc.
@@ -14,8 +14,9 @@ HINTS = {'data': 'data', 'sheet': 'data', 'design': 'data', 'json': None, 'code'
          'sounds': 'sound', 'audio': 'sound', 'test': 'test', 'tests': 'test', 'fixture': 'test', 'fixtures': 'test', 'doc': 'doc', 'docs': 'doc'}
 STOP = set('a an and are as at be by does do for from how in is it of on or that the this to what where which who why with used use uses read reads file files line lines '
            'find me show list all every'.split())
-REL_RANK = {'design_key': 0, 'design_row': 0, 'design_ref': 2, 'spec_field': 1, 'spec_value': 1, 'spec_row': 1, 'file': 1, 'files': 3, 'animation_json': 1, 'attack_clips': 1, 'family_clips': 2, 'weapon': 3,
-            'rig_module': 3, 'sound_arm': 3, 'plays': 4, 'sounds_json': 4, 'java_reader': 4, 'python_reader': 4, 'loaded_by': 5, 'attack_variant': 5, 'family_code': 2}
+REL_RANK = {'design_key': 0, 'design_row': 0, 'design_ref': 2, 'spec_field': 1, 'spec_value': 1, 'spec_row': 1, 'file': 1, 'files': 3, 'animation_json': 0, 'attack_clips': 1, 'family_clips': 2, 'weapon': 3,
+            'rig_module': 3, 'sound_arm': 3, 'plays': 4, 'sounds_json': 4, 'java_reader': 4, 'python_reader': 4, 'loaded_by': 5, 'attack_variant': 1, 'family_code': 2,
+            'texture_dir': 0, 'texture_dir_geo': 0, 'texture_art': 1, 'model': 1, 'builder': 0, 'builder_ref': 2, 'builder_import': 1, 'rig_entry': 2, 'spec_ref': 5}
 
 
 def norm(s):
@@ -69,10 +70,16 @@ def overlay_lookup(q, toks, hints):
         elif any(len(nm) >= 5 and nm in qn for nm in names): sc = 70
         elif any(len(t) >= 6 and difflib.get_close_matches(t, list(names), 1, 0.88) for t in tn): sc = 60
         if sc: scored.append((sc, e))
-    if not scored: return None
+    if not scored:
+        sk = o.get('meta', {}).get('skipped', {}).get(q.strip())
+        if sk:
+            out(f"== {q.strip()}: skipped as too generic ({sk['why']}); sheet rows: " + ', '.join(f'{r[1]}:{r[2]} ({r[0]})' for r in sk['rows'][:4]) + '. Use rg for its other places.')
+        return None
     best = max(s for s, _ in scored)
     # keep entities at the best tier; a clip entity is only wanted when it is what the query names
-    chosen = [e for s, e in scored if s == best][:4]
+    chosen = [e for s, e in scored if s == best]
+    if any(e['ent'] == 'troop' for e in chosen): chosen = [e for e in chosen if e['ent'] == 'troop' or e['label'] not in {t['label'] for t in chosen if t['ent'] == 'troop'}]
+    chosen = chosen[:4]
     adj = collections.defaultdict(list)
     for a, b, r in E: adj[a].append((b, r))
     result = []
@@ -106,7 +113,7 @@ def overlay_lookup(q, toks, hints):
     return result
 
 
-WEIGHT = {'data': 3, 'code': 3, 'art': 3, 'anim': 3, 'sound': 2, 'test': 2, 'doc': 1}
+WEIGHT = {'data': 4, 'code': 3, 'art': 5, 'anim': 5, 'sound': 2, 'test': 2, 'doc': 1}
 
 
 def group_key(kind, path, line, desc, rank):
@@ -294,7 +301,7 @@ def main():
     ap = argparse.ArgumentParser(prog='where.py', description='Find where a name, id or short phrase lives: path:line + one-line description, grouped by kind. '
                                  'Order: overlay (data/id links), main AST graph, rg fallback.')
     ap.add_argument('query', nargs='+', help='symbol, file, troop id, rules key or short phrase')
-    ap.add_argument('--max', type=int, default=15, metavar='N', help='cap on printed lines (default 15)')
+    ap.add_argument('--max', type=int, default=20, metavar='N', help='cap on printed lines (default 20)')
     a = ap.parse_args()
     if hasattr(sys.stdout, 'reconfigure'): sys.stdout.reconfigure(encoding='utf-8', errors='replace')
     q = ' '.join(a.query)

@@ -21,6 +21,8 @@ After main has moved, cleanup problems never undo the landing; they are reported
      calls, output in git-ignored graphify-out/). A failure, a missing graphify or a timeout only prints a warning and never
      changes the exit code. The land lock is held during the refresh (up to GRAPH_TIMEOUT, 600s), so a concurrent
      land gets exit 7. Skipped with --no-graph, --dry-run, or when no checkout has main checked out
+     Right after it, `python tools/where_extract.py` runs in the main checkout (the lookup overlay tools/where.py reads, written to
+     git-ignored work/where/; no model calls). Same rules: warn only, own timeout (WHERE_TIMEOUT, 120s), skipped with --no-graph
 
 Exit codes: 0 landed, 1 dirty lane, 2 rebase failed, 3 verify failed, 4 main or the lane moved during
 verify, 5 merge refused, 6 landed but cleanup incomplete (message says what is left), 7 another land is
@@ -36,6 +38,7 @@ import state
 GENERATED = ['src/main/java/gg/gravesandglory/Spec.java', 'sheets/preflight.json']
 DISPOSABLE = ['build', '.gradle']  # rebuilt by Gradle; not evidence
 GRAPH_TIMEOUT = 600  # seconds; a refresh of the real repo is measured at well under this
+WHERE_TIMEOUT = 120  # seconds; the where overlay extract is about 10 s
 EXIT_DIRTY, EXIT_REBASE, EXIT_VERIFY, EXIT_MOVED, EXIT_MERGE, EXIT_CLEANUP, EXIT_BUSY, EXIT_GIT, EXIT_USAGE = 1, 2, 3, 4, 5, 6, 7, 8, 64
 
 class Stop(Exception):
@@ -121,25 +124,33 @@ def kill_tree(proc):
         try: proc.communicate(timeout=10)
         except subprocess.TimeoutExpired: pass
 
-def refresh_graph(home, timeout):
-    """Refresh the graph in the main checkout with that checkout's own tools/graph_state.py. Returns a warning or None. The child tree is killed on any exit."""
-    script = pathlib.Path(home)/'tools'/'graph_state.py'
-    if not script.exists(): return f'graph not refreshed: {script} does not exist'
+def run_tool(home, rel, args, timeout, what, rerun):
+    """Run one of the main checkout's own tools as a child with a timeout. Returns a warning or None. The child tree is killed on any exit."""
+    script = pathlib.Path(home)/rel
+    if not script.exists(): return f'{what} not refreshed: {script} does not exist'
     try:
-        proc = subprocess.Popen([sys.executable, str(script), 'refresh'], cwd=home, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+        proc = subprocess.Popen([sys.executable, str(script), *args], cwd=home, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                                 text=True, encoding='utf8', errors='replace', start_new_session=(os.name != 'nt'))
-    except OSError as e: return f'graph not refreshed: could not start {script}: {e}'
+    except OSError as e: return f'{what} not refreshed: could not start {script}: {e}'
     try:
         try: out, _ = proc.communicate(timeout=timeout)
         except subprocess.TimeoutExpired:
             kill_tree(proc)
-            return f'graph not refreshed: timed out after {timeout}s; run `python tools/graph_state.py refresh` in {home}'
+            return f'{what} not refreshed: timed out after {timeout}s; run `{rerun}` in {home}'
     finally:
         if proc.poll() is None: kill_tree(proc)  # any exit (timeout, Ctrl-C, error) leaves no child running
     tail = ' | '.join((out or '').strip().splitlines()[-3:])
-    if proc.returncode: return f'graph not refreshed (exit {proc.returncode}; graphify missing or failed): {tail}'
-    say(tail or 'graph refreshed')
+    if proc.returncode: return f'{what} not refreshed (exit {proc.returncode}; {"graphify missing or failed" if what == "graph" else "extractor failed"}): {tail}'
+    say(tail or f'{what} refreshed')
     return None
+
+def refresh_graph(home, timeout):
+    """Refresh the graph in the main checkout with that checkout's own tools/graph_state.py. Returns a warning or None."""
+    return run_tool(home, 'tools/graph_state.py', ['refresh'], timeout, 'graph', 'python tools/graph_state.py refresh')
+
+def refresh_where(home, timeout):
+    """Regenerate work/where/overlay.json (git-ignored) in the main checkout with its own tools/where_extract.py. Returns a warning or None."""
+    return run_tool(home, 'tools/where_extract.py', [], timeout, 'where overlay', 'python tools/where_extract.py')
 
 def land(a):
     repo = pathlib.Path(a.repo)
@@ -217,6 +228,10 @@ def land(a):
         try: w = refresh_graph(home['path'], a.graph_timeout)
         except (Exception, KeyboardInterrupt) as e: w = f'graph not refreshed: {str(e) or type(e).__name__}'
         if w: say('warning: ' + w)  # a graph problem never changes the exit code
+        say(f'regenerating the where overlay in {home["path"]} (local only; up to {a.where_timeout}s)')
+        try: w = refresh_where(home['path'], a.where_timeout)
+        except (Exception, KeyboardInterrupt) as e: w = f'where overlay not refreshed: {str(e) or type(e).__name__}'
+        if w: say('warning: ' + w)  # nor does this one
     return EXIT_CLEANUP if problems else 0
 
 class Parser(argparse.ArgumentParser):
@@ -231,6 +246,7 @@ def main(argv=None):
     p.add_argument('--keep-worktree', action='store_true'); p.add_argument('--dry-run', action='store_true')
     p.add_argument('--no-graph', action='store_true', help='skip the graph refresh of main after landing')
     p.add_argument('--graph-timeout', type=int, default=GRAPH_TIMEOUT, help=argparse.SUPPRESS)
+    p.add_argument('--where-timeout', type=int, default=WHERE_TIMEOUT, help=argparse.SUPPRESS)
     p.add_argument('--now', help=argparse.SUPPRESS)
     a = p.parse_args(argv)
     a.now = datetime.datetime.fromisoformat(a.now) if a.now else datetime.datetime.now(datetime.timezone.utc)

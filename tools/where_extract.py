@@ -1,13 +1,16 @@
-"""Local "where is it" overlay extractor (trial prototype, not landed).
+"""Local "where is it" overlay extractor.
 
 The AST graph (graphify-out/graph.json) only knows code calls. Game links live in data and ids: sheets/design.json rows, art paths, asset names,
-Spec fields. This script finds those links by real lookup (rg, file listing, parsing design.json / Spec.java / Audio.java) and writes a SEPARATE
-overlay, work/where/overlay.json, that tools/where.py reads. It never touches graphify's graph.json.
+Spec fields. This script finds those links by real lookup (rg, file listing, parsing design.json / Spec.java / Audio.java, python imports) and
+writes a SEPARATE overlay, work/where/overlay.json, that tools/where.py reads. It never touches graphify's graph.json and calls no model.
 
-Sample covered: troops tc_raider and ic_hearthguard (every place each one lives), and every key of each design.json `rules` row (squadSize, ...).
-Add a troop: python tools/where_extract.py --troop knight. Rebuild: python tools/where_extract.py
+Covers: every troop in design.json `troops` (sheet row, Spec row, art, model, both texture folders, animation builders and their imports,
+clips, family attackVariants, sound route), every id of every other design.json section that is a list of rows with an `id` (sheet row, Spec
+row, every place the id appears), and every key of the `rules` row (Java and Python readers). Ids under 3 characters, and non-troop ids that
+match more than MAX_ID_HITS places (block, shield, main, ...), are skipped and listed in meta.skipped; where.py says so when asked for one.
+Run: python tools/where_extract.py        (about 10 s; land.py runs it after the graph refresh, a lane runs it once by hand)
 """
-import argparse, json, pathlib, re, subprocess, sys, time
+import argparse, collections, json, pathlib, re, subprocess, sys, time
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 OUT = ROOT / 'work' / 'where' / 'overlay.json'
@@ -17,8 +20,21 @@ AUDIO = 'src/main/java/gg/gravesandglory/Audio.java'
 CUES = 'src/main/java/gg/gravesandglory/AudioCues.java'
 SOUNDS = 'src/main/resources/assets/gravesandglory/sounds.json'
 SKIP = ['!tools/where*.py', '!test-tools/standalone/test_where.py', '!design-archive', '!graphify-out', '!work', '!docs/archive', '!.git', '!*.min.js']
-SAMPLE_TROOPS = ['tc_raider', 'ic_hearthguard']
 MAX_JAVA_PER_KEY = 400
+MAX_ID_HITS = 200          # a non-troop id with more text matches than this is too generic to link
+MIN_ID_LEN = 3
+PER_ID_CAP = 30            # nodes kept per id (and 3 lines per file); troops get PER_TROOP_CAP
+PER_TROOP_CAP = 120
+TEXT_EXCLUDE = ['!design-archive', '!graphify-out', '!work', '!docs/archive', '!.git', '!*.min.js', '!**/out/**', '!tools/where*.py', '!test-tools/standalone/test_where.py']
+_LINES = {}
+
+
+def line_text(path, line):
+    if path not in _LINES:
+        try: _LINES[path] = rd(path).splitlines()
+        except OSError: _LINES[path] = []
+    ls = _LINES[path]
+    return ls[line - 1] if 0 < line <= len(ls) else ''
 
 
 def rd(rel):
@@ -107,10 +123,20 @@ class Design:
             if m: rid, rline = m.group(1), i
             self.idx[i] = (sec, rid, rline)
         self.rows = {(s, r['id']): r for s, v in self.data.items() if isinstance(v, list) for r in v if isinstance(r, dict) and 'id' in r}
+        self.rowline = {}
+        self.pos = {}
+        for s, v in self.data.items():
+            if isinstance(v, list):
+                for n, r in enumerate(v):
+                    if isinstance(r, dict) and 'id' in r: self.pos[(s, r['id'])] = n
+        for i in range(1, len(self.lines) + 1):
+            sec, rid, rl = self.idx[i]
+            if rid is not None and rl == i: self.rowline[(sec, rid)] = i
 
     def describe(self, sec, rid):
         r = self.rows.get((sec, rid), {})
         bits = []
+        if sec != 'troops' and r.get('label') and not r.get('name'): bits.append(str(r['label']))
         if r.get('name'): bits.append(str(r['name']))
         if sec == 'troops': bits += [f"house {r.get('house')}", f"family {r.get('family')}"]
         elif r.get('troop'): bits.append(f"troop {r['troop']}")
@@ -128,6 +154,24 @@ def spec_tables():
         m = re.match(r'public record (\w+)Row\(([^)]*)\)', l)
         if m: records[m.group(1)] = (i, [c.split()[-1] for c in m.group(2).split(',')])
     return tables, records
+
+
+def spec_table_for(tables, section):
+    """(line, TABLE_NAME) of the generated Spec table for a design.json section, or None (record XRow <- section x)."""
+    rec = section[0].upper() + section[1:]
+    for line, (name, record) in tables.items():
+        if record == rec: return line, name
+    return None
+
+
+def row_ent(ov, dz, sec, rid):
+    """The entity for one design.json row (section, id), with its sheet row loc linked."""
+    r = dz.rows[(sec, rid)]
+    rl = dz.rowline[(sec, rid)]
+    d = dz.describe(sec, rid)
+    e = ov.ent(sec, rid, 'data', f'{sec} {rid}' + (f': {d}' if d else ''), [str(r['name'])] if r.get('name') else [], DESIGN, rl)
+    ov.link(e, ov.loc('data', DESIGN, rl, f'design.json {sec} row {rid}' + (f': {d}' if d else '')), 'design_row')
+    return e
 
 
 # ---------------------------------------------------------------- troops
@@ -218,15 +262,81 @@ def clip_names(ov, ent, relpath, tid):
     return names
 
 
-def troop(ov, dz, tid, allfiles, tables):
+TEX = 'src/main/resources/assets/gravesandglory/textures/entity/troop/'
+
+
+def troop_rig_entries():
+    """{troop id: (line, [strings of its troop_rig.py TROOPS entry])}, read once (art dir, builder module, Troop attr, weapon module, weapon id)."""
+    out = {}
+    try: lines = rd('art/anim/common/troop_rig.py').splitlines()
+    except OSError: return out
+    for i, l in enumerate(lines, 1):
+        m = re.match(r'\s*"(\w+)": \(', l)
+        if m: out[m.group(1)] = (i, re.findall(r'"([^"]+)"', l))
+    return out
+
+
+def builder_imports(allfiles):
+    """{py file: [(line, imported art file, module)]}: imports between the art/ python builders, resolved by module stem (a sys.path hint breaks ties)."""
+    pys = [f for f in allfiles if f.startswith('art/') and f.endswith('.py') and '/out/' not in f]
+    stem = collections.defaultdict(list)
+    for f in pys: stem[f.rsplit('/', 1)[-1][:-3]].append(f)
+    res = {}
+    for f in pys:
+        try: lines = rd(f).splitlines()
+        except OSError: continue
+        hint = {w for l in lines if 'sys.path' in l for w in re.findall(r'["\'](\w+)["\']', l)}
+        for i, l in enumerate(lines, 1):
+            m = re.match(r'\s*(?:import\s+(\w+)|from\s+(\w+)\s+import)', l)
+            mod = m and (m.group(1) or m.group(2))
+            c = [g for g in stem.get(mod, []) if g != f] if mod else []
+            if len(c) > 1: c = [g for g in c if g.split('/')[-2] in hint or g.split('/')[-2] == f.split('/')[-2]]
+            if len(c) == 1: res.setdefault(f, []).append((i, c[0], mod))
+    return res
+
+
+def troop_builders(ov, ent, tid, fam, hit_paths, allfiles, rigent, bidx):
+    """Animation/art builders for a troop: python files that name it, its own art/anim/<id>/ scripts, the family builder (build_<family piece>_anims.py),
+    then the art imports of each (the axe, spear and archer builders import the knight builder)."""
+    found = {}
+    pieces = [w for w in (fam or '').split('_') if len(w) >= 3 and w != 'shield']
+    for f in allfiles:
+        if not f.endswith('.py') or '/out/' in f: continue
+        name = f.rsplit('/', 1)[-1]
+        if f in hit_paths and f.startswith(('art/anim/', 'art/hand/', 'art/clips/')):
+            found.setdefault(f, 'is the animation builder that names this troop' if f.startswith('art/anim/') and not f.startswith('art/anim/common/') and name.startswith('build_') else 'names this troop')
+        elif f.startswith((f'art/anim/{tid}/', f'art/hand/{tid}/')): found.setdefault(f, "is this troop's own script")
+        elif pieces and f.startswith('art/anim/') and re.fullmatch(r'build_(\w+_)?anims\.py', name) and (
+                any(re.search(r'(^|_)%s(_|$)' % re.escape(w), name) for w in pieces) or f.split('/')[2] in pieces):
+            found.setdefault(f, f'family builder for {fam}')
+    if rigent:
+        for mod in rigent[1][1:5]:
+            for f in allfiles:
+                if f.endswith('/' + mod + '.py') and f.startswith('art/') and '/out/' not in f: found.setdefault(f, 'named in the troop_rig.py entry' if f.startswith('art/anim/') else 'art builder named in the troop_rig.py entry')
+    for f, why in sorted(found.items()):
+        line = next((i for i, l in enumerate(rd(f).splitlines(), 1) if re.search(r'(?<![A-Za-z0-9])%s(?![A-Za-z0-9])' % re.escape(tid), l)), 1)
+        ov.link(ent, ov.loc('anim' if f.startswith(('art/anim', 'art/clips')) else 'art', f, line, f'builder script ({why}) for {tid}'), 'builder' if why.startswith(('is ', 'family', 'named')) else 'builder_ref')
+    seen, todo = set(found), [f for f, why in found.items() if why.startswith(('is ', 'family', 'named'))]
+    for _ in range(1):   # one level: what each builder imports directly
+        nxt = []
+        for f in todo:
+            for line, target, mod in bidx.get(f, []):
+                n = ov.loc('anim', f, line, f'{f.rsplit("/", 1)[-1]} imports {target} (import {mod}): its clips and rig helpers come from there')
+                ov.link(ent, n, 'builder_import')
+                if target not in seen: seen.add(target); nxt.append(target)
+        todo = nxt
+
+
+def troop(ov, dz, tid, allfiles, tables, thits, rig, bidx):
     row = dz.rows[('troops', tid)]
     fam = row.get('family')
     ent = ov.ent('troop', tid, 'data', f'troop {tid} "{row["name"]}": house {row["house"]}, {row.get("group")}, family {fam}, weapon {row.get("weapon")}, ability {row.get("ability")}',
-                 [row['name']], DESIGN, dz.idx and next(i for i in range(1, len(dz.lines)) if dz.idx[i] == ('troops', tid, i)))
+                 [row['name']], DESIGN, dz.rowline[('troops', tid)])
     pat = r'(?<![A-Za-z0-9])%s(?![A-Za-z0-9])' % re.escape(tid)
-    # ---- every text hit
+    # ---- every text hit (one shared rg pass over all troop ids)
     design_rows, spec_hits, other = {}, [], {}
-    for path, line, text in rg(pat):
+    for path, line in thits.get(tid, []):
+        text = line_text(path, line)
         if path == DESIGN:
             sec, rid, rline = dz.idx[line]
             key = re.match(r'\s*"(\w+)"', text)
@@ -241,17 +351,32 @@ def troop(ov, dz, tid, allfiles, tables):
         own = rid == tid or rid.startswith(tid + '_') or dz.rows.get((sec, rid), {}).get('troop') == tid
         ov.link(ent, ov.loc('data', DESIGN, rline, f'design.json {sec} row {rid}{extra}' + (f': {d}' if d else '')), 'design_row' if own else 'design_ref')
     for line, text in spec_hits:
-        tb = tables.get(max([k for k in tables if k <= line], default=0)) if line in tables else None
         name = tables[line][0] if line in tables else 'Spec'
         ov.link(ent, ov.loc('code', SPEC, line, f'Spec.{name} generated row (from design.json {name.lower()}): ' + snippet(text, pat, 70)), 'spec_row')
+    budget = PER_TROOP_CAP
     for path, hs in sorted(other.items()):
         k = kind_of(path)
-        for line, text in hs[:40 if k in ('code', 'test') else 3]:
+        for line, text in hs[:6 if k in ('code', 'test') else 2]:
+            if budget <= 0: break
+            budget -= 1
             ov.link(ent, ov.loc(k, path, line, snippet(text, pat)), 'mentions')
-    # ---- every file whose path carries the id (models, textures, rigs, animations, art json); directories collapse
+    # ---- texture folders: legacy <id>/, GeckoLib <id>_geo/, and the painted art/troops/<id>_s*.png skins
+    explicit = set()
+    for suffix, rel, label in (('', 'texture_dir', 'legacy'), ('_geo', 'texture_dir_geo', 'GeckoLib')):
+        d = f'{TEX}{tid}{suffix}/'
+        fs = sorted(f for f in allfiles if f.startswith(d))
+        if fs:
+            explicit.add(d.rstrip('/'))
+            ov.link(ent, ov.loc('art', d, 0, f'{label} troop textures: {len(fs)} files ({fs[0].rsplit("/", 1)[-1]} ... {fs[-1].rsplit("/", 1)[-1]})'), rel)
+    skin_re = r'art/troops/%s_s\d.*\.png' % re.escape(tid)
+    skins = sorted(f for f in allfiles if re.fullmatch(skin_re, f))
+    if skins:
+        ov.link(ent, ov.loc('art', 'art/troops/', 0, f'{len(skins)} painted skin pngs: {skins[0].rsplit("/", 1)[-1]} ... {skins[-1].rsplit("/", 1)[-1]}'), 'texture_art')
+    # ---- every other file whose path carries the id (models, rigs, animations, art json); directories collapse
     bydir = {}
     for f in allfiles:
-        if re.search(pat, f) and not (f.startswith('docs/') and f.endswith(('.png', '.jpg'))): bydir.setdefault(f.rsplit('/', 1)[0], []).append(f)
+        if re.search(pat, f) and not (f.startswith('docs/') and f.endswith(('.png', '.jpg'))) and f.rsplit('/', 1)[0] not in explicit and not re.fullmatch(skin_re, f):
+            bydir.setdefault(f.rsplit('/', 1)[0], []).append(f)
     for d, fs in sorted(bydir.items()):
         k = kind_of(fs[0])
         fs.sort()
@@ -265,20 +390,17 @@ def troop(ov, dz, tid, allfiles, tables):
                 fs = [f for f in fs if f not in pngs]
             for f in fs:
                 if f.endswith('.animation.json') and '/animations/troop/' in f: continue   # the animation_json node below describes it with its clip names
-                ov.link(ent, ov.loc(k, f, 1, describe_file(f)), 'file')
-    # ---- troop_rig.py entry: art dir, builder module, weapon module, weapon id
-    rig_hits = [h for h in rg(r'^\s*"%s": \(' % re.escape(tid), ['art/anim/common/troop_rig.py'])]
-    for path, line, text in rig_hits:
-        mods = re.findall(r'"([^"]+)"', text)
-        for mod in mods[2:5]:
-            for f in allfiles:
-                if f.endswith('/' + mod + '.py') and f.startswith('art/'):
-                    ov.link(ent, ov.loc('art', f, 1, f'{mod}.py, named in the troop_rig.py entry for {tid}'), 'rig_module')
+                ov.link(ent, ov.loc(k, f, 1, describe_file(f)), 'model' if f.endswith(('.geo.json', '.bbmodel')) or '/models/' in f else 'file')
+    # ---- troop_rig.py entry (art dir, builder module, weapon module, weapon id), weapon art json, builder scripts and their imports
+    rigent = rig.get(tid)
+    if rigent:
+        mods = rigent[1]
+        ov.link(ent, ov.loc('anim', 'art/anim/common/troop_rig.py', rigent[0], f'troop_rig.py TROOPS entry for {tid}: art dir {mods[0]}, builder {mods[1] if len(mods) > 1 else ""}, weapon {mods[4] if len(mods) > 4 else ""}'), 'rig_entry')
         if len(mods) >= 5:
-            wid = mods[4]
             for f in allfiles:
-                if re.fullmatch(r'art/weapons/%s(_t\d)?\.json' % re.escape(wid), f):
-                    ov.link(ent, ov.loc('art', f, 1, f'weapon art json for {wid} (the weapon {tid} holds)'), 'weapon')
+                if re.fullmatch(r'art/weapons/%s(_t\d)?\.json' % re.escape(mods[4]), f):
+                    ov.link(ent, ov.loc('art', f, 1, f'weapon art json for {mods[4]} (the weapon {tid} holds)'), 'weapon')
+    troop_builders(ov, ent, tid, fam, {p for p, _ in thits.get(tid, [])}, allfiles, rigent, bidx)
     # ---- animation file + clip names
     for f in allfiles:
         if re.fullmatch(r'src/main/resources/assets/gravesandglory/animations/troop/%s\.animation\.json' % re.escape(tid), f):
@@ -291,12 +413,14 @@ def troop(ov, dz, tid, allfiles, tables):
                 ov.link(fn, cn, 'clip')
                 ov.link(cn, ov.loc('anim', f, line, f'clip {n} in {tid} animation json', True), 'at')
     # ---- family: clip library, attack variants, family->troop map
-    if fam:
+    if fam and ('ent', 'family', fam) in ov.keys:
+        ov.link(ent, ov.keys[('ent', 'family', fam)], 'family')
+    elif fam:
         fent = ov.ent('family', fam, 'anim', f'weapon family {fam}: attack clips and variants', [], '', 0)
         ov.link(ent, fent, 'family')
         for (sec, rid), r in dz.rows.items():
-            if r.get('family') == fam and sec != 'troops':
-                rl = next(i for i in range(1, len(dz.lines)) if dz.idx[i] == (sec, rid, i))
+            if r.get('family') == fam and sec == 'attackVariants':
+                rl = dz.rowline[(sec, rid)]
                 ov.link(fent, ov.loc('data', DESIGN, rl, f'design.json {sec} row {rid} for family {fam}: {r.get("kind", "")} impact tick {r.get("impactTicks", "")}'), 'attack_variant')
         for path, line, text in rg(r"(\(\s*'[a-z]+',\s*'%s'\s*\)|'%s':\s*\(|^def %s\()" % (fam, fam, fam), ['art/clips', 'tools', 'art/anim'], ['*.py']):
             ov.link(fent, ov.loc(kind_of(path), path, line, f'family {fam}: ' + snippet(text, fam, 80)), 'family_code')
@@ -306,16 +430,10 @@ def troop(ov, dz, tid, allfiles, tables):
         for d, fs in bd.items():
             if len(fs) > 1: ov.link(fent, ov.loc('anim', d + '/', 0, f'{len(fs)} {fam} family clip files'), 'family_clips')
             else: ov.link(fent, ov.loc('anim', fs[0], 1, f'{fam} family clip file'), 'family_clips')
-        ov.link(ent, fent, 'family')
     # ---- linked rows: ability, house
     for col, sec in (('ability', 'abilities'), ('house', 'houses')):
         v = row.get(col)
-        if v and (sec, v) in dz.rows:
-            rl = next(i for i in range(1, len(dz.lines)) if dz.idx[i] == (sec, v, i))
-            e2 = ov.ent(col, v, 'data', f'{col} {v}: ' + dz.describe(sec, v), [dz.rows[(sec, v)].get('name', '')], DESIGN, rl)
-            ov.link(ent, e2, col)
-            same = [i for k, i in ov.keys.items() if len(k) == 3 and k[:2] == (DESIGN, rl) and isinstance(k[2], str)]
-            ov.link(e2, same[0] if same else ov.loc('data', DESIGN, rl, f'design.json {sec} row {v}: ' + dz.describe(sec, v)), 'design_row')
+        if v and (sec, v) in dz.rows: ov.link(ent, row_ent(ov, dz, sec, v), col)
     sound_links(ov, ent, row, tid)
     return ent
 
@@ -405,25 +523,165 @@ def rules(ov, dz, tables, records):
             ov.link(ent, ov.loc('code', path, line, f'generates Java that reads {key}(): ' + snippet(text, r'\.%s\(\)' % key, 90)), 'java_text')
 
 
+# ---------------------------------------------------------------- audio drift guard
+# audio_arm() and meleeCue() above mirror Audio.java. These are the statements the mirror was written against; if Audio.java's arm() or
+# meleeCue() changes shape, audio_shape_problems() says so (the extractor warns, test_where fails) and the mirror must be updated.
+ARM_SHAPE = ['if (u == null || u.spec == null) return Arm.NONE;', 'String weapon = u.spec.weapon();', 'boolean armed = weapon != null && !weapon.endsWith(":air");',
+             'if (u.spec.magic()) return Arm.MAGIC;', 'if (u.spec.ranged()) return armed ? Arm.BOW : Arm.NONE;',
+             'if (!armed) return u.spec.id().equals("ic_colossus") ? Arm.HEAVY : Arm.NONE;',
+             'return weapon.endsWith("axe") || weapon.endsWith("mace") || weapon.endsWith("hammer") ? Arm.HEAVY : Arm.BLADE;']
+MELEE_SHAPE = ['if (u.spec.id().equals("wm_tusk")) return AudioCues.Cue.TUSK_ATTACK;', 'String weapon = u.spec.weapon();',
+               'if ("spear".equals(u.spec.family()) || (weapon != null && (weapon.endsWith("trident") || weapon.endsWith("spear")))) return AudioCues.Cue.SPEAR_THRUST;',
+               'return AudioCues.Cue.SWORD_SWING;']
+
+
+def java_body(text, signature):
+    """Statements of the method whose declaration contains `signature`, comments stripped, whitespace normalised ([] when not found)."""
+    i = text.find(signature)
+    if i < 0: return []
+    j = text.index('{', i)
+    depth, k = 0, j
+    while k < len(text):
+        if text[k] == '{': depth += 1
+        elif text[k] == '}':
+            depth -= 1
+            if depth == 0: break
+        k += 1
+    body = re.sub(r'/\*.*?\*/|//[^\n]*', '', text[j + 1:k], flags=re.S)
+    return [re.sub(r'\s+', ' ', l).strip() for l in body.splitlines() if l.strip()]
+
+
+def audio_shape_problems():
+    """[] when Audio.java's arm() and meleeCue() still have the shape the Python mirror encodes, else one message per method that changed."""
+    text = rd(AUDIO)
+    out = []
+    for sig, want in (('public static Arm arm(', ARM_SHAPE), ('static AudioCues.Cue meleeCue(', MELEE_SHAPE)):
+        got = java_body(text, sig)
+        if got != want:
+            out.append(f'{AUDIO}: {sig}...) changed shape; update where_extract.audio_arm()/sound_links() and ARM_SHAPE/MELEE_SHAPE (now {len(got)} statements, mirror expects {len(want)})')
+    return out
+
+
+# ---------------------------------------------------------------- one rg pass over every sheet id
+def text_hits(troop_ids, other_ids):
+    """({troop id: [(path, line)]}, {other id: [(path, line)]}) from two rg passes over the repo text (fixed-string word pass; troop pass allows an _ neighbour)."""
+    base = ['rg', '-n', '-o', '--no-heading', '--color', 'never', '--no-messages', '--max-filesize', '2M']
+    for g in TEXT_EXCLUDE: base += ['-g', g]
+
+    def run(args):
+        res = subprocess.run(base + args + ['--', '.'], cwd=ROOT, capture_output=True, encoding='utf-8', errors='replace')
+        for ln in res.stdout.splitlines():
+            m = re.match(r'(.+?):(\d+):(.*)$', ln)
+            if m: yield m.group(1).replace('\\', '/').lstrip('./'), int(m.group(2)), m.group(3)
+
+    th, oh = collections.defaultdict(list), collections.defaultdict(list)
+    seen = set()
+    OUT.parent.mkdir(parents=True, exist_ok=True)
+    idfile = OUT.parent / 'ids.txt'
+    idfile.write_text('\n'.join(sorted(other_ids)), encoding='utf-8')
+    for path, line, m in run(['-F', '-w', '-f', str(idfile)]):
+        if (m, path, line) not in seen:
+            seen.add((m, path, line)); oh[m].append((path, line))
+    alt = '|'.join(sorted(map(re.escape, troop_ids), key=len, reverse=True))
+    for path, line, m in run(['-P', '-e', r'(?<![A-Za-z0-9])(?:%s)(?![A-Za-z0-9])' % alt]):
+        if (m, path, line) not in seen:
+            seen.add((m, path, line)); th[m].append((path, line))
+    return th, oh
+
+
+KIND_ORDER = {'code': 0, 'test': 1, 'data': 2, 'anim': 3, 'art': 4, 'sound': 5, 'doc': 6}
+
+
+def id_links(ov, dz, tables, sec, rid, hits, troop_ent=None):
+    """One non-troop sheet id: sheet row, Spec constant and row, then every place the id string appears (capped).
+    A row whose id is a troop id (troopNotes) hangs on that troop's entity: only its sheet row and Spec row are added."""
+    if troop_ent is not None:
+        ov.link(troop_ent, ov.loc('data', DESIGN, dz.rowline[(sec, rid)], f'design.json {sec} row {rid}'), 'design_row')
+        tbl = spec_table_for(tables, sec)
+        if tbl and re.search(r'new \w+Row\("%s"' % re.escape(rid), line_text(SPEC, tbl[0])):
+            ov.link(troop_ent, ov.loc('code', SPEC, tbl[0], f'Spec.{tbl[1]}[{dz.pos[(sec, rid)]}] generated row for {rid} (record {sec[0].upper() + sec[1:]}Row, from design.json {sec})'), 'spec_row')
+        return troop_ent
+    e = row_ent(ov, dz, sec, rid)
+    pat = r'(?<![A-Za-z0-9])%s(?![A-Za-z0-9])' % re.escape(rid)
+    own_line = dz.rowline[(sec, rid)]
+    tbl = spec_table_for(tables, sec)
+    spec_line = tbl[0] if tbl else 0
+    if tbl and re.search(r'new \w+Row\("%s"' % re.escape(rid), line_text(SPEC, spec_line)):
+        ov.link(e, ov.loc('code', SPEC, spec_line, f'Spec.{tbl[1]}[{dz.pos[(sec, rid)]}] generated row for {rid} (record {sec[0].upper() + sec[1:]}Row, from design.json {sec})'), 'spec_row')
+    ov.nodes[e]['desc'] += f' ({len(hits)} text matches in the repo)'
+    budget = PER_ID_CAP
+    perfile = collections.Counter()
+    for path, line in sorted(hits, key=lambda h: (KIND_ORDER.get(kind_of(h[0]), 9), h[0], h[1])):
+        if budget <= 0: break
+        if path == DESIGN:
+            s2, r2, rl2 = dz.idx[line]
+            if rl2 == own_line and s2 == sec: continue
+            key = re.match(r'\s*"(\w+)"', line_text(path, line))
+            ov.link(e, ov.loc('data', DESIGN, rl2, f'design.json {s2} row {r2} references it ({key.group(1) if key else "?"})'), 'design_ref')
+        elif path == SPEC:
+            if line == spec_line or line not in tables: continue
+            ov.link(e, ov.loc('code', SPEC, line, f'Spec.{tables[line][0]} generated row mentions {rid}'), 'spec_ref')
+        else:
+            if perfile[path] >= 3: continue
+            perfile[path] += 1
+            k = kind_of(path)
+            ov.link(e, ov.loc(k, path, line, f'mentions {rid}: ' + snippet(line_text(path, line), pat, 90)), 'mentions')
+        budget -= 1
+    return e
+
+
+def thin_aliases(ov):
+    """A name shared by several entities, shorter than 4 characters, or equal to another entity's id is no alias (the id stays the lookup key)."""
+    nz = lambda a: re.sub(r'[^a-z0-9]', '', a.lower())
+    cnt = collections.Counter(nz(a) for n in ov.nodes if 'ent' in n for a in set(n['alias']))
+    labels = {nz(n['label']) for n in ov.nodes if 'ent' in n}
+    for n in ov.nodes:
+        if 'ent' in n:
+            n['alias'] = [a for a in n['alias'] if a and len(a) >= 4 and cnt[nz(a)] == 1 and nz(a) not in labels]
+
+
 def main():
-    ap = argparse.ArgumentParser(description='Build work/where/overlay.json')
-    ap.add_argument('--troop', action='append', help='extra troop id to cover (default: tc_raider, ic_hearthguard)')
-    a = ap.parse_args()
+    ap = argparse.ArgumentParser(description='Build work/where/overlay.json (every troop, every design-sheet id, the rules keys)')
+    ap.parse_args()
     t0 = time.time()
     dz, allf = Design(), files()
     tables, records = spec_tables()
     ov = Overlay()
-    ids = SAMPLE_TROOPS + (a.troop or [])
+    troop_ids = [r['id'] for r in dz.data['troops']]
+    tset = set(troop_ids)
+    all_ids = {rid for (sec, rid) in dz.rows}
+    other = sorted(i for i in all_ids - tset if len(i) >= MIN_ID_LEN)
+    th, oh = text_hits(troop_ids, other)
+    t1 = time.time()
+    rig, bidx = troop_rig_entries(), builder_imports(allf)
     ents = {}
-    for tid in ids:
-        e = troop(ov, dz, tid, allf, tables)
-        ents[e] = [ov.nodes[t]['path'] for s, t, r in ov.edges if s == e and r in ('file', 'files', 'animation_json')]
+    for tid in troop_ids:
+        e = troop(ov, dz, tid, allf, tables, th, rig, bidx)
+        ents[e] = [ov.nodes[t]['path'] for s_, t, r in ov.edges if s_ == e and r in ('file', 'files', 'animation_json')]
     loaders(ov, ents)
+    skipped, covered = {}, 0
+    for (sec, rid), r in dz.rows.items():
+        if sec == 'troops': continue
+        if rid in tset:
+            id_links(ov, dz, tables, sec, rid, [], ov.keys[('ent', 'troop', rid)])
+            continue
+        n = len(oh.get(rid, ()))
+        if len(rid) < MIN_ID_LEN or n > MAX_ID_HITS:
+            if rid not in skipped:
+                skipped[rid] = {'why': f'id shorter than {MIN_ID_LEN} characters' if len(rid) < MIN_ID_LEN else f'{n} text matches (limit {MAX_ID_HITS})', 'rows': []}
+            skipped[rid]['rows'].append([sec, DESIGN, dz.rowline[(sec, rid)]])
+            continue
+        id_links(ov, dz, tables, sec, rid, oh.get(rid, []))
+        covered += 1
     rules(ov, dz, tables, records)
-    OUT.parent.mkdir(parents=True, exist_ok=True)
-    OUT.write_text(json.dumps({'meta': {'built': time.strftime('%Y-%m-%d %H:%M'), 'troops': ids, 'sample': 'rules row keys + troops'}, 'nodes': ov.nodes, 'edges': ov.edges},
-                              separators=(',', ':')), encoding='utf-8')
-    print(f'overlay: {len(ov.nodes)} nodes, {len(ov.edges)} edges -> {OUT.relative_to(ROOT)} ({OUT.stat().st_size // 1024} KB, {time.time() - t0:.1f}s)')
+    thin_aliases(ov)
+    problems = audio_shape_problems()
+    for pr in problems: print('WARNING: ' + pr, file=sys.stderr)
+    OUT.write_text(json.dumps({'meta': {'built': time.strftime('%Y-%m-%d %H:%M'), 'troops': troop_ids, 'sections': sorted({s_ for s_, _ in dz.rows}), 'ids': covered,
+                                        'skipped': skipped, 'audio_drift': problems}, 'nodes': ov.nodes, 'edges': ov.edges}, separators=(',', ':')), encoding='utf-8')
+    print(f'overlay: {len(ov.nodes)} nodes, {len(ov.edges)} edges, {len(troop_ids)} troops, {covered} sheet ids, {len(skipped)} generic ids skipped '
+          f'-> {OUT.relative_to(ROOT)} ({OUT.stat().st_size // 1024} KB, rg pass {t1 - t0:.1f}s, total {time.time() - t0:.1f}s)')
+    return 0
 
 
 if __name__ == '__main__':
