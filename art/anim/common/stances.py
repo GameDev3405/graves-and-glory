@@ -681,6 +681,9 @@ def merge(tr, clips, out_path):
     doc = dict(tr.doc); doc["animations"] = ordered
     import hang_swing   # a troop with a hanging part (troop_rig.SWING: the hexer's lantern): its swing re-keyed over every clip
     hang_swing.key_doc(tr.tid, doc, log=False)
+    import limb_clear   # a troop whose free forearm's gear sinks into its body (limb_clear.CLEAR): those clips cleared again
+    limb_clear.key_doc(tr.tid, doc, ASSETS.parents[1] / "geo/troop" / f"{tr.tid}.geo.json", ASSETS.parents[1] / "troop_rig" / f"{tr.tid}.json",
+                       log=lambda *_: None)
     out_path.parent.mkdir(parents=True, exist_ok=True)
     with open(out_path, "w", newline="\n") as fh:
         fh.write(json.dumps(doc, indent=1))
