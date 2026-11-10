@@ -153,7 +153,14 @@ def carry_ranged(tr):
 
 def ranged_free(tr):
     """The arm that holds no weapon swings a little with the stride: (side, degrees)."""
+    if tr.tid in FREE_TROOP:
+        return FREE_TROOP[tr.tid]
     return {"bow": ("right", 5.0), "xbow": ("left", 5.0), "thrower": ("left", 6.0), "staff": ("left", 3.0), "focus": ("right", 12.0)}[tr.gear]
+
+
+# per troop overrides of ranged_free: the mist caller's long driftwood rod swings less with the stride, so its conch does not
+# whip at the head of each step
+FREE_TROOP = {"tc_mist": ("right", 10.0)}
 
 
 CARRY = {"shield": carry_shield, "onehand": carry_onehand, "spear": carry_spear, "axe": carry_axe}

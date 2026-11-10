@@ -73,6 +73,12 @@ THROWER_LOW = {"right_arm": [-39.65, 6.52, -13.67], "right_forearm": [-20.02, 2.
                "left_arm": [-19.82, 2.98, -5.2], "left_forearm": [-45.72, -4.14, -9.8], "left_hand": [0.0, 0.0, 0.0]}
 
 
+# per troop overrides of STUN_ARMS (keyed by troop id, so every other troop keeps its gear's row). The mage guards with the
+# staff fist folded 60 degrees; the daze lets that elbow open to 40 (the wrist keeps the staff's lean, so the butt stays off
+# the floor) instead of folding it further.
+STUN_ARMS_TROOP = {"mage": [("right", 8, -1.60, -40, 1.0, 0), ("left", 14, 0.00, -20, 0.0, -4)]}
+
+
 def extras_up(tr):
     return [b for b in tr.ready if b not in CORE_UP]
 
@@ -84,7 +90,7 @@ def stun_up_pose(tr, ph, s):
     if g == "thrower":
         for b, r in THROWER_LOW.items():
             P[b][0] = v3(*r)
-    for side, down, keep, fx, fkeep, out in STUN_ARMS[g]:
+    for side, down, keep, fx, fkeep, out in STUN_ARMS_TROOP.get(tr.tid, STUN_ARMS[g]):
         lift_arm(P, side, -down, keep)
         if fx is not None:
             set_fore(P, side, fx, fkeep)

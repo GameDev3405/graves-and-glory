@@ -275,13 +275,11 @@ RALLY = {
 RALLY_POSE = {
     # harpoon thrust straight up over the head, tip leaning a hair forward
     "tc_harpooner": dict(right_arm=[-178.9, -24.5, -11.1], right_forearm=[-144.7, -1.6, -4.1], right_hand=[-111.2, 6.8, 5.5]),
-    # lantern raised high beside the head
-    "hexer": dict(right_arm=[-56.8, 53.7, 92.5], right_forearm=[-9.5, -8.9, 12.9], right_hand=[28.1, -18.7, -6.1]),
 }
 
 
 # per troop: the off hand's small glow pose (arm lift, forearm bend), scaled by the envelope
-RALLY_OFF = {"hexer": dict(lift=30, fore=-40)}
+RALLY_OFF = {}
 
 
 RALLY_WAY = {
@@ -327,8 +325,11 @@ RALLY_RISE = {"tc_harpooner": 6.5}
 # per troop overrides of its gear's RALLY row (Kort's rule 6: the order in the troop's own manner)
 #   tc_raider: the cutlass brandished out to the side, the chest turned and dropped behind it
 #   revenant: the sword thrust up like the others, but the head thrown back (a howl)
+#   hexer: lifts its lantern out to the side of the hood, not over it: a lower, wider raise, so the swinging lantern stays clear
+#     of the head
 RALLY_OWN = {"tc_raider": dict(lift=104, keep=0.6, fore=-30, out=-24, chest=(-3, -6)),
-             "revenant": dict(chest=(-7, -22))}
+             "revenant": dict(chest=(-7, -22)),
+             "hexer": dict(arm="right", lift=66, keep=0.5, tilt=0, fore=-25, out=-22)}
 
 
 def rally_pose(tr, e, c, t=None):
@@ -537,12 +538,16 @@ def fallback_fit(tr, base):
     base[hand][0] = from_mat((to_mat(base[arm][0]) @ to_mat(base[fore][0])).T @ world)
 
 
-# per troop backward step: per bone amplitude (default 0.7 of walk_legs) and a hips (rot, pos) offset over the cycle
+# per troop backward step: per bone amplitude (default 0.7 of walk_legs), the hip drop in px (drop, default 0.5) and a hips
+# (rot, pos) offset over the cycle (hips, optional)
 #   ic_hearthguard (Kort's rule 6, 2026-11-10): gives ground short-stepped (0.55), shield side leading (hips yaw 7 deg toward the
 #     shield side). Its extra 0.6 px hips drop is gone (batch review 2026-11-11): the walk is not re-solved here, so the drop pushed
 #     the boot 1.33 px under the ground at tick 0 (focus check floor FAIL); without it the floor row is the family's 0.73 WARN.
 #   tc_raider: a backward shuffle turned side-on behind the cutlass, the hips rolling from foot to foot
 #   revenant: the lead leg steps, the rear one drags (a limp), the hips sagging onto the dragged side
+#   mage, hexer, tc_mist, wm_seer: the casters share one robed walk, so each backs off its own way (step amplitude, hip drop):
+#     the sunweaver in short upright steps, the gravecaller in a low shuffle, the mist caller in loose longer steps, the seer
+#     crouched in a wide lope
 FALLBACK_LEGS = {
     "ic_hearthguard": dict(amp={}, base=0.55, hips=lambda ph: ((0.0, 7.0, 0.0), (0.0, 0.0, 0.0))),
     "tc_raider": dict(amp={}, base=0.7,
@@ -550,6 +555,10 @@ FALLBACK_LEGS = {
     "revenant": dict(amp={"left_leg": 0.35, "left_shin": 0.3, "left_foot": 0.35, "left_boot": 0.35}, base=0.75,
                      # batch review 2026-11-11: hips 1.0 px higher (the shortened stride left the boots 1.2 px under the ground)
                      hips=lambda ph: ((0.0, 0.0, -4.0 + 2.0 * math.sin(ph)), (0.3 * math.sin(ph), 1.0 - 0.2 * max(0.0, math.sin(ph)), 0.0))),
+    "mage": dict(amp={}, base=0.55, drop=0.3),
+    "hexer": dict(amp={}, base=0.68, drop=0.8),
+    "tc_mist": dict(amp={}, base=0.8, drop=0.4),
+    "wm_seer": dict(amp={}, base=0.9, drop=1.0),
 }
 
 # per gear: the share of the troop's own ready hip yaw kept while backing off, and how much lower the hips sit (shooters retreat
@@ -633,8 +642,8 @@ def build_fallback(tr):
             out[b] = (v, q) if chan == "rotation" else (r, v)
         for b, (r, q) in list(out.items()):
             if b == "hips":
-                q = (q if q is not None else np.zeros(3)) + np.array([0, -0.5 - side_drop, 0.0])
-                if own:
+                q = (q if q is not None else np.zeros(3)) + np.array([0, -(own.get("drop", 0.5) if own else 0.5) - side_drop, 0.0])
+                if own and "hips" in own:
                     hr, hq = own["hips"](2 * math.pi * t / N)
                     r, q = (r if r is not None else np.zeros(3)) + np.array(hr), q + np.array(hq)
                 out[b] = (r if r is not None else np.zeros(3), q)
@@ -705,7 +714,10 @@ def aim_base(tr):
 # per troop: how much of the aim pitch the chest, the arms and the head take (the head looks along it)
 # stalker: aiming up, the upper bow limb ran into the fur cowl (pen_weapon 2.35 px, limit 1.49); its chest takes half the pitch and
 # the head looks along the aim, which carries the cowl back off the limb (1.12 px).
-AIM_GAIN = {"tc_harpooner": (0.35, 0.9, -0.2), "ic_arbalist": (0.35, 0.8, -0.2), "stalker": (0.5, 0.5, 0.2)}
+# the mage aims from its raised staff (attack_cast's held light): lifting the arms further drives the sun staff into the cowl,
+# so its arms take less of an up aim and the chest arches back for it
+AIM_GAIN = {"tc_harpooner": (0.35, 0.9, -0.2), "ic_arbalist": (0.35, 0.8, -0.2), "stalker": (0.5, 0.5, 0.2),
+            "mage": (0.35, 0.25, -0.2)}
 AIM_ARM_Z = {"mage": {"right_arm": (32.0, 0.0)}}
 # per troop and aim pitch: rows set after the pitch gains. Hexer up (-45): the gains lifted the lantern (held across the chest) into
 # the face line; the upper arm swings out to the troop's right instead (IK, forearm and wrist kept), so the lantern rides out and
