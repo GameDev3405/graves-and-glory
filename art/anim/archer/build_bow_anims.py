@@ -9,7 +9,8 @@ The draw channel: the bow is four sibling bones (bow_t<n>_rest / pull_0 / pull_1
 position x picks which one shows (0 rest, 1 pull_0 arrow nocked, 2 pull_1, 3 pull_2 full draw). GeoTroopRenderer reads it after the
 controllers and hides the rest. Unkeyed it is 0: the bow at rest, no arrow.
 
-The shot (attack_volley / attack_direct, impactTicks 16): reach back to the quiver, nock, raise and set, draw to the anchor (the
+The shot (attack_volley / attack_direct, impactTicks 16): reach back to the quiver, turn side-on bringing the arrow to the cheek,
+take the string there and push-pull draw (the bow arm drives the bow out as the hand draws the last few px) to the anchor (the
 "full" marker), hold, loose on the server's impact tick, the string hand flying back past the ear, then settle to the ready guard.
 AttackController holds the clip at "full" for the troop's seeded hold ticks, so a line of archers never looses in lockstep.
 """
@@ -43,7 +44,8 @@ import build_anims as K  # noqa: E402
 SUB, TPS, Z3 = K.SUB, K.TPS, K.Z3
 K.HELD = K.HELD + ("bow", "weapon")
 K.DEATH_BONES = tuple(b for b in K.DEATH_BONES if b != "cape")
-GEO_BONES = {b["name"] for b in json.loads((HERE.parent / TROOP / "out" / f"{TROOP}.geo.json").read_text())["minecraft:geometry"][0]["bones"]}
+_GEO = {b["name"]: b for b in json.loads((HERE.parent / TROOP / "out" / f"{TROOP}.geo.json").read_text())["minecraft:geometry"][0]["bones"]}
+GEO_BONES = set(_GEO)
 DRAW = {"rest": 0.0, "pull_0": 1.0, "pull_1": 2.0, "pull_2": 3.0}
 
 # ------------------------------------------------------------------------------------------------
@@ -208,6 +210,9 @@ READY = P((6, 19, 0), (-4, -23, 0), (-38, -18, -8), -14, -10, (-34, -10, 6), (-3
 REACH = P((4, -2, 0), (-2, -2, 0), (-30, -10, -6), -20, -10, (-165, 0, -15), (-60, 0, 0), quiver=(0, 0, -6))
 # nock: the arrow drawn down past the ear onto the string in front of the chest, the bow coming up
 NOCK = P((5, 14, 0), (-3, -18, 0), (-58, -26, -4), -12, -6, (-62, -20, 4), (-24, 40, 0))
+# the push draw's nock: the arrow brought down past the ear to the cheek, where the string hand takes the string
+# (the elbow up and out, on the high side, as through the draw)
+NOCK_STRING_ARM = ((-100, 5, 55), (-85, 0, 0))
 # set: bow arm up and locked at the foe, string hand on the string, shoulders turned side-on
 SET = P((4, 30, 0), (-4, -34, 0), (-82, -38, 0), 0, 0, (-80, -30, 0), (0, 40, 0))
 # full: drawn to the anchor at the jaw, the back squeezed, side-on
@@ -237,11 +242,11 @@ IMPACT = 16      # bow_volley / bow_direct impactTicks: the arrow leaves
 FULL_AT = 12     # the anchor is reached; AttackController holds here for the seeded hold
 
 
-def shot_keys(volley, up=None):
+def shot_keys(volley, up=None, nock=None):
     up = up or (raised if volley else (lambda p: p))
     tense = dict(up(FULL)); tense["torso"] = (tense["torso"][0] + 0.6, tense["torso"][1] + 1.0, 0.0)
     return [(0, READY), (2.2, mix(READY, REACH, 0.7)), (3.6, REACH), (4.6, REACH),       # reach fast, a beat in the quiver
-            (6.6, NOCK), (9, up(SET)), (FULL_AT, up(FULL)), (15.4, tense),               # nock, raise, a steady draw, held
+            (6.6, nock or NOCK), (9, up(SET)), (FULL_AT, up(FULL)), (15.4, tense),       # nock, raise, a steady draw, held
             (IMPACT, up(LOOSE)), (17.6, up(FOLLOW)), (19.5, up(mix(FOLLOW, LOOSE, 0.6))),   # loose fast, carry through
             (22.5, mix(up(SET), READY, 0.75)), (ATTACK_TICKS, READY)]                     # gather down to the guard
 
@@ -402,8 +407,52 @@ def solve_drawn(key, legs, elev):
     return pose_of(x)[1], x[9], err
 
 
-def string_arm(pose, target, guess):
-    """right_arm (x, y, z) and right_forearm x putting the fist on the string, nearest the keyed arm."""
+# The string forearm's clearance of the chest (bedrock px): the torso box and the forearm's cubes. With the fist held the arm
+# still has one free turn (the elbow swings about the shoulder-fist line); the solve spends it keeping the forearm off the chest.
+_TB = _GEO["torso"]["cubes"][0]
+TORSO_LO = np.array(_TB["origin"], dtype=float)
+TORSO_HI = TORSO_LO + np.array(_TB["size"], dtype=float)
+# Every cube on the string forearm (its bracer too, where the troop wears one), as a 3 x 3 x 3 lattice of points (forearm-local
+# bedrock px; the forearm's children carry no rotation of their own in the attack), in homogeneous form for K.world.
+_FORE_PTS = []
+for _b in _GEO.values():
+    if _b["name"] == "right_forearm" or _b.get("parent") == "right_forearm":
+        for _c in _b.get("cubes", []):
+            _o, _z, _i = np.array(_c["origin"], float), np.array(_c["size"], float), float(_c.get("inflate", 0.0))
+            for _u in np.stack(np.meshgrid(*[np.linspace(0.0, 1.0, 3)] * 3, indexing="ij"), -1).reshape(-1, 3):
+                _q = _o - _i + _u * (_z + 2 * _i)
+                _FORE_PTS.append((-_q[0] / 16.0, _q[1] / 16.0, _q[2] / 16.0, 1.0))
+FORE_PTS = np.array(_FORE_PTS).T
+CLEAR_OK = 0.4       # px of sink the clearance term lets be (the scorecard's limit is 1.39)
+CLEAR_W = 3.0
+# The string arm's keyed elbow is lifted this much (deg, on right_arm z, with x and y in proportion) while the hand rides the
+# string: it seeds the solve on the high-elbow side of the shoulder-fist line, the forearm coming down to the string from
+# above the chest line rather than across it (the low side leaves the forearm or a bracer inside the chest).
+ELBOW_LIFT = 55.0
+
+
+_FORE_PIVOT = np.array([-_GEO["right_forearm"]["pivot"][0] / 16.0, _GEO["right_forearm"]["pivot"][1] / 16.0,
+                        _GEO["right_forearm"]["pivot"][2] / 16.0, 1.0])
+_TC, _TH = (TORSO_LO + TORSO_HI) / 2.0, (TORSO_HI - TORSO_LO) / 2.0
+
+
+def chest_sink(p):
+    """How deep each point of the string forearm's cubes is inside the chest box, in px, as the scorecard reads a limb
+    (pen_limb): to the nearest face, except along the axis the elbow is outside on, where it counts from that face."""
+    M = np.linalg.inv(K.world(p, "torso")) @ K.world(p, "right_forearm")
+    W = (M @ np.c_[FORE_PTS, _FORE_PIVOT])[:3] * 16.0
+    W[0] *= -1.0
+    q = W - _TC[:, None]
+    e = q[:, -1]
+    a = int(np.argmax(np.abs(e) - _TH))
+    d = _TH[:, None] - np.abs(q[:, :-1])
+    d[a] = _TH[a] - np.sign(e[a] or 1.0) * q[a, :-1]
+    return np.maximum(0.0, d.min(axis=0))
+
+
+def string_arm(pose, target, guess, start=None):
+    """right_arm (x, y, z) and right_forearm x putting the fist on the string, the forearm off the chest, nearest the keyed arm
+    (guess), searched from `start` (the previous sample's answer, so the solve keeps one branch)."""
     g = np.array(guess, dtype=float)
 
     def f(x):
@@ -411,9 +460,15 @@ def string_arm(pose, target, guess):
         p["right_arm"] = (tuple(x[:3]), Z3)
         p["right_forearm"] = ((x[3], 0.0, 0.0), Z3)
         F = K.point(K.world(p, "right_forearm"), FIST)
-        return np.concatenate([4.0 * (F - target), 0.02 * (x - g)])
+        return np.concatenate([4.0 * (F - target), 0.02 * (x - g), CLEAR_W * np.maximum(0.0, chest_sink(p) - CLEAR_OK)])
 
-    x = gn(f, g, clamp=lambda x: np.r_[x[:3], min(0.0, max(-150.0, x[3]))])
+    clamp = lambda x: np.r_[x[:3], min(0.0, max(-150.0, x[3]))]  # noqa: E731
+    x = gn(f, g if start is None else np.array(start, dtype=float), clamp=clamp)
+    if np.linalg.norm(f(x)[:3]) > 0.4 and x[3] > -5.0:
+        # a locked elbow has no pull toward bending (the reach is flat in the elbow angle there): try again bent
+        y = gn(f, np.r_[x[:3], -60.0], clamp=clamp)
+        if np.linalg.norm(f(y)[:3]) < np.linalg.norm(f(x)[:3]):
+            x = y
     return tuple(x[:3]), (x[3], 0.0, 0.0), np.linalg.norm(f(x)[:3]) / 4.0
 
 
@@ -428,7 +483,7 @@ def ramp(t, a, b):
 
 # The draw amount: 0 the bow at rest; 1 the arrow nocked on a resting string; 3 at the anchor. The string hand brings the arrow
 # to the string, sets, then draws in one long pull that slows into the anchor; the loose snaps it back to rest.
-DRAW_KEYS = [(7.8, 1.0), (9.0, 1.15), (10.6, 2.4), (FULL_AT, 3.0), (IMPACT, 3.0)]
+DRAW_KEYS = [(8.6, 1.0), (9.5, 1.25), (10.8, 2.4), (FULL_AT, 3.0), (IMPACT, 3.0)]
 
 
 def draw_amount(t):
@@ -439,7 +494,48 @@ def draw_amount(t):
 
 AIM_IN = (4.6, 8.4)        # the bow turns onto the line as it comes up from the nock to the set
 AIM_OUT = (19.0, 23.0)     # and lets go of it as the guard returns
-STRING_IN = (5.0, 7.8)     # the string hand travels to the string, meeting it as the bow comes onto the line
+STRING_IN = (5.6, 8.6)     # the string hand travels to the string, meeting it as the bow comes onto the line
+
+# The push draw. The string hand takes the string just ahead of the cheek, PUSH px along the arrow from the anchor, and the bow
+# arm comes up bent to bring the nock there; through the draw the bow arm pushes the bow out at the foe while the string hand
+# pulls the last PUSH px back to the anchor. A string hand that met the nock out at a locked bow arm's length had to reach
+# across the chest from the far shoulder (its forearm 2.5-3.4 px inside the torso, scorecard pen_limb); here it never leaves
+# the cheek line. BOW_IN: the bow arm comes under the solve (the nock on that path) as it rises from the quiver reach; it is
+# back on its keys from the full draw on (where the solve and the keys agree: the drawn nock on the anchor).
+PUSH = 3.5
+BOW_IN = (4.6, 8.0)
+LOFT_IN = (8.6, FULL_AT)
+
+
+def push_target(pose, amt, d):
+    """World point the nock rides on: PUSH px ahead of the anchor along the aim while the string is taken, back onto the
+    anchor at full draw (amt 1 -> 3)."""
+    k = 1.0 - min(1.0, max(0.0, (amt - 1.0) / 2.0))
+    k = k * k * (3 - 2 * k)
+    return K.point(K.world(pose, "head"), ANCHOR) + PUSH * k * d
+
+
+def bow_arm(pose, target, nx, d, u, guess, start):
+    """left_arm (x, y, z) and left_forearm x putting the bow's nock (bow-local x nx) on the target with the bow on the aim,
+    nearest the keyed arm (guess), searched from `start` (the previous sample's answer, so the solve keeps one branch)."""
+    g = np.array(guess, dtype=float)
+
+    def f(x):
+        p = dict(pose)
+        p["left_arm"] = (tuple(x[:3]), Z3)
+        p["left_forearm"] = ((x[3], 0.0, 0.0), Z3)
+        p["left_hand"] = (bow_wrist(p, d, u), Z3)
+        N = K.point(K.world(p, BOW), (nx, NOCK_Y, 0.0))
+        return np.concatenate([4.0 * (N - target), 0.03 * (x - g)])
+
+    clamp = lambda x: np.r_[x[:3], min(0.0, max(-130.0, x[3]))]  # noqa: E731
+    x = gn(f, start, clamp=clamp)
+    if np.linalg.norm(f(x)[:3]) > 0.4 and x[3] > -5.0:
+        # a locked elbow has no pull toward bending (the reach is flat in the elbow angle there): try again bent
+        y = gn(f, np.r_[np.asarray(start, dtype=float)[:3], -45.0], clamp=clamp)
+        if np.linalg.norm(f(y)[:3]) < np.linalg.norm(f(x)[:3]):
+            x = y
+    return tuple(x[:3]), (x[3], 0.0, 0.0), np.linalg.norm(f(x)[:3]) / 4.0
 
 
 def shot_upper(volley):
@@ -459,12 +555,21 @@ def shot_upper(volley):
             q[b] = tuple(a + c for a, c in zip(p[b], dv))
         return q
 
-    keys = shot_keys(volley, lambda p: drawn(up(p)))
+    # the nock: the shoulders already turned side-on as the arrow comes to the string (the drawn turn), so the bow arm can
+    # bring the nock to the cheek line by the time the string hand takes it
+    nk = dict(NOCK)
+    nd = drawn(up(NOCK))
+    nk["torso"], nk["head"] = nd["torso"], nd["head"]
+    nk["right_arm"], nk["right_forearm"] = NOCK_STRING_ARM
+    keys = shot_keys(volley, lambda p: drawn(up(p)), nk)
     d, u = aim(elev, yaw)
-    out, worst = [], 0.0
+    out, worst, bow_worst, last_bow, last_str = [], 0.0, 0.0, None, None
     for i in range(ATTACK_TICKS * SUB + 1):
         t = i / SUB
         s = sample(keys, t)
+        # the volley's loft comes in with the draw: the string is taken with the bow near level (a bow already tipped to the
+        # loft and held in to the cheek lays its upper limb back into the hood) and the push lifts it onto the arc
+        d, u = aim(elev - (elev - ELEV["direct"]) * (1.0 - ramp(t, *LOFT_IN)), yaw)
         if FULL_AT <= t <= IMPACT:      # the held draw trembles (rule 2: alive even when still)
             k = math.sin(math.pi * (t - FULL_AT) / (IMPACT - FULL_AT))
             tr = 0.9 * k * math.sin(2 * math.pi * t / 2.3)
@@ -472,23 +577,42 @@ def shot_upper(volley):
                 s[b] = (tuple(a + e for a, e in zip(s[b][0], c)), None)
         pose = fk_pose(s, legs[i])
         wa = ramp(t, *AIM_IN) * (1.0 - ramp(t, *AIM_OUT))
+        amt = draw_amount(t)
+        wb = ramp(t, *BOW_IN) if t < FULL_AT else 0.0
+        if wb > 0:
+            nx = nock_x(max(amt, 1.0))
+            keyed = (*s["left_arm"][0], s["left_forearm"][0][0])
+            # the nock's path: from where the keyed arm (bow on the aim) holds it onto the push path, so the solve moves the
+            # arm only as far as it must and keeps one branch
+            q = dict(pose)
+            q["left_hand"] = (bow_wrist(q, d, u), Z3)
+            Nk = K.point(K.world(q, BOW), (nx, NOCK_Y, 0.0))
+            target = Nk + (push_target(pose, amt, d) - Nk) * wb
+            la, lf, e = bow_arm(pose, target, nx, d, u, keyed, last_bow or keyed)
+            last_bow = (*la, lf[0])
+            bow_worst = max(bow_worst, e)
+            s["left_arm"] = (la, None)
+            s["left_forearm"] = (lf, None)
+            pose = fk_pose(s, legs[i])
         if wa > 0:
             want = bow_wrist(pose, d, u)
             s["left_hand"] = (tuple(a + (b - a) * wa for a, b in zip(s["left_hand"][0], want)), None)
             pose["left_hand"] = (s["left_hand"][0], Z3)
-        amt = draw_amount(t)
         ws = ramp(t, *STRING_IN) if t < IMPACT else 0.0
         if ws > 0:
             N = K.point(K.world(pose, BOW), (nock_x(max(amt, 1.0)), NOCK_Y, 0.0))
-            ra, rf, e = string_arm(pose, N, (*s["right_arm"][0], s["right_forearm"][0][0]))
+            lift = ELBOW_LIFT * ws
+            ra, rf, e = string_arm(pose, N, (s["right_arm"][0][0] - 0.3 * lift, s["right_arm"][0][1] + 0.75 * lift,
+                                             s["right_arm"][0][2] + lift, s["right_forearm"][0][0]), last_str)
+            last_str = (*ra, rf[0])
             if ws >= 1.0:
                 worst = max(worst, e)
             s["right_arm"] = (tuple(a + (b - a) * ws for a, b in zip(s["right_arm"][0], ra)), None)
             s["right_forearm"] = (tuple(a + (b - a) * ws for a, b in zip(s["right_forearm"][0], rf)), None)
         s["draw"] = (Z3, (float(amt), 0.0, 0.0))
         out.append(s)
-    print("%s: aim yaw %.1f, anchor err %.3f px, string err max %.3f px, delta %s"
-          % (name, yaw, err, worst, {b: tuple(round(c, 1) for c in v) for b, v in delta.items()}))
+    print("%s: aim yaw %.1f, anchor err %.3f px, string err max %.3f px, push nock err max %.3f px, delta %s"
+          % (name, yaw, err, worst, bow_worst, {b: tuple(round(c, 1) for c in v) for b, v in delta.items()}))
     return out, legs
 
 
