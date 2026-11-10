@@ -1,34 +1,34 @@
 # New unit: from nothing to shippable
 
-One checklist for adding a brand-new troop. Policy wins over this page: `docs/WORKFLOW.md`, then the skills and recipes cited below. `<tid>` is the troop id (`[a-z0-9_]`, House prefix such as `wm_`, `ic_`, `tc_`, `gb_`, `gl_`), `<house>` its House, `<lead>` the lead who briefed you. Run every command from the lane worktree in Git Bash unless it says PowerShell. Checked against `main` at 0dc1f9be (2026-11-09).
+One checklist for adding a brand-new troop. Policy wins over this page: `docs/WORKFLOW.md`, then the skills and recipes cited below. `<tid>` is the new troop id (`[a-z0-9_]`, House prefix such as `wm_`, `ic_`, `tc_`, `gb_`, `gl_`), `<old>` the troop whose slot it takes, `<peer>` the shipped troop of the same family you copy from, `<house>` its House, `<lead>` the lead who briefed you. Run every command from the lane worktree in Git Bash. Checked against `main` at 6cc192ac (2026-11-09) and a dry run (placeholder `test_dummy` in the `tc_raider` slot).
 
-**Hard rules.** No push, no publish (the booth upload is the one allowed upload). Never hand-edit or commit `src/main/java/gg/gravesandglory/Spec.java` or `sheets/preflight.json`: `tools/preflight.py` writes them. Never start a Minecraft client or server yourself: in-game suites and sims go through `tools/checkq.py` (see stage 5). Never a Fable model. Reach `main` only with `tools/land.py`.
+**Hard rules.** No push, no publish (the booth upload is the one allowed upload). Never hand-edit or commit `src/main/java/gg/gravesandglory/Spec.java` or `sheets/preflight.json`: `tools/preflight.py` writes them. Never start a Minecraft client or server yourself: in-game suites and sims go through `tools/checkq.py` (docs/SETUP.md "Shared in-game check queue"). Never a Fable model. Reach `main` only with `tools/land.py`. Commands marked **(bg)** run long: start them with `run_in_background` and wait for the notification, never a polling loop.
 
-**Ask Kort** by having your lead add one line to `C:/Users/kortt/Melty/status/<lead>.md` (a worker returns the line to its lead; it does not write the status file itself):
+**Asking Kort.** A worker returns each ask to its lead in its report; the lead adds it as one line to `C:/Users/kortt/Melty/status/<lead>.md` (the folder beside the primary checkout) and deletes it once Kort answers:
 `- kort: <one plain sentence> | open: <https link, path or none> | min: <minutes> | prio: <1 now, 2 this week, 3 whenever>`
-`python tools/inbox.py` shows it (`--json` to check it parsed). Delete the line once Kort answers.
+To test a line without touching that folder: put it in `work/<you>/status/test.md` and run `python tools/inbox.py --status-dir work/<you>/status --json`.
 
 ## Command sequence (one screen)
 
 ```
 # 0  lane (the lead):  git worktree add ../bb-unit-<tid> -b unit/<tid> main ; cd ../bb-unit-<tid>
-# 1  spec      edit sheets/design.json + test-tools/standalone/HousesCheck.java ; python tools/preflight.py
-# 2  lore      git show docs/lore-lead:docs/lore/season-framework.md   (section 5, eight rules) -> pitch to lore lead
-# 3  model     mkdir -p art/hand/<tid> ; cp art/hand/_template/build_template.py art/hand/<tid>/build_<tid>.py
+# 1  spec      (Kort's yes first) edit sheets/design.json ; retire <old> (1b) ; fix every `git grep -l <old>` hit
+#              python tools/build_skins.py ; python tools/preflight.py ; python tools/verify.py fast  (bg, ~2 min)
+# 2  lore      git show docs/lore-lead:docs/lore/season-framework.md   (section 5) -> pitch, via your lead
+# 3  model     cp art/hand/_template/build_template.py art/hand/<tid>/build_<tid>.py ; edit (3)
 #              python art/hand/<tid>/build_<tid>.py preview <scratch>/pv crimson
-# 4  texture   python art/hand/<tid>/build_<tid>.py gate
-#              python tools/art/house_palette.py check --dir <scratch>/pv --house <house>
-#              python tools/art_hue_check.py --dir <scratch>/pv --house <house>
-#              (review, then)  python art/hand/<tid>/build_<tid>.py install ; python tools/build_skins.py --verify
-# 5  anim      python art/anim/common/troop_rig.py <tid>
-#              <VAR>=<tid> python <family builder>      (both from pipeline.md section 2, e.g. GG_SPEAR_TROOP, spear)
+# 4  texture   python art/hand/<tid>/build_<tid>.py gate ; house_palette.py check ; art_hue_check.py ; review
+#              python art/hand/<tid>/build_<tid>.py install ; python tools/build_skins.py --verify
+# 5  anim      register (5a) ; python art/anim/common/troop_rig.py <tid>
+#              GG_ANIM_TROOP=<tid> python art/anim/knight/build_anims.py   (bg, ~6.5 min; builder per pipeline.md 2)
 #              python art/anim/common/export.py <tid> ; python tools/anim/scorecard.py --troop <tid>
 #              python tools/checkq.py submit client --root <tid>-r1 --env GRAVES_PHASE1_CHECKS=geo-knight \
-#                  --env GRAVES_GEO_CHECK_TROOP=<tid> --env GRAVES_GEO_TROOPS=all ; python tools/checkq.py wait <id>
+#                  --env GRAVES_GEO_CHECK_TROOP=<tid> --env GRAVES_GEO_TROOPS=all ; python tools/checkq.py wait <id> (bg)
 #              python tools/anim/booth.py build --config art/anim/<family>/booth.<tid>.json --target main
 # 6  sound     nothing by default ; python -I test-tools/standalone/test_audio_events.py
-# 7  land      python tools/verify.py fast ; python tools/land.py unit/<tid> --dry-run ; python tools/land.py unit/<tid>
+# 7  land      python tools/verify.py fast (bg) ; python tools/land.py unit/<tid> --dry-run ; python tools/land.py unit/<tid>
 ```
+Measured wall times: verify fast 1.5 to 2 min; knight builder 6.5 min; troop_rig, export, scorecard about 10 s each; a render 5 s; booth build about 20 s a clip; a harness job up to 30 min (the queue's cap).
 
 ## Routing (WORKFLOW.md "Kort's model rules"; troop-animation skill "Routing")
 
@@ -42,132 +42,119 @@ Stuck after a failed fix round: Opus 5.5 high. Two fix rounds at most, then esca
 
 ## 1. Spec sheet row
 
-**Inputs.** Kort's approved design for the unit: House, rarity, role, stats, weapon family, ability, level-2/3 abilities, names. The lore never sets stats (lore rule 8); mechanics go through Kort and the balance process.
+**Inputs.** Kort's approved design: House, rarity, role, stats, weapon family, ability, level-2/3 abilities, names, and which slot it takes. The lore never sets stats (lore rule 8).
 
-**Gap, read first: a seventh troop in an existing House fails today.** `tools/preflight.py` (`HOUSE_SHAPE`) requires every House to have exactly 2 Common, 2 Rare, 1 Epic, 1 Legendary, and `test-tools/standalone/HousesCheck.java` hard-codes the 30-troop `ROSTER` and the `launchRoster()` list. So a new unit is either a replacement in a House slot, a new House (houses row, glyph `textures/gui/house/<house>.png`, `houseTraits`, palette per TEXTURE-RECIPE part B), or needs a rule change. All three are Kort decisions. Ask before editing:
-`- kort: Should <tid> replace a <house> slot, start a new House, or should a House allow more than six troops? | open: none | min: 5 | prio: 2`
+**1a. The slot (Kort decides first).** `tools/preflight.py` (`HOUSE_SHAPE`) requires every House to have exactly 2 Common, 2 Rare, 1 Epic, 1 Legendary, and `test-tools/standalone/HousesCheck.java` hard-codes the 30-troop `ROSTER` and `launchRoster()`. So a new unit replaces a troop of the same rarity, starts a new House (houses row, glyph `textures/gui/house/<house>.png`, `houseTraits`, palette per TEXTURE-RECIPE part B), or needs a rule change. Replacing changes gameplay and saves: `Profile.sanitize` drops owned ids the catalog no longer knows, so every player who owns `<old>` loses it, and banners holding it are repacked. There is no id-rename save migration (not built). Nothing below starts before Kort answers:
+`- kort: May <tid> replace <old> (players who own <old> lose it), or should it start a new House? | open: <design path> | min: 5 | prio: 2`
 
-**Rows to add in `sheets/design.json`** (copy a peer of the same House and family; every troop row must have exactly the keys of `troops[0]`, or preflight crashes generating `Spec.java`):
+**1b. Replacing `<old>` in its slot** (delete-and-add at the same sheet position; a true rename keeping the id is a re-skin, not a new unit):
+1. Rewrite `<old>`'s rows as `<tid>`'s, in place, in `sheets/design.json`: `troops` (copy `<old>`'s row and change values; every row needs exactly the keys of `troops[0]`), `houses.troops`, `troopNotes`, `levelAbilities` (`<tid>_2`, `<tid>_3`), `levelNames` (Commons/Rares), any `abilities` rows named for it, every `botBanners.slots` list (its House's three bot banners and the `mix_*` banners with that House name it many times) and `waveGroups.troop`. First check no other id contains `<old>`: `grep -o '"[a-z0-9_]*<old>[a-z0-9_]*"' sheets/design.json | sort -u`. Then `sed -i 's/<old>/<tid>/g' sheets/design.json` renames all of them (including `<old>_2`, `<old>_l2`); then read `git diff sheets/design.json` line by line.
+2. Retire the old legacy art in the order preflight demands: `git rm art/troops/<old>.json art/troops/<old>_*.png`, then `python tools/build_skins.py` (it deletes `models/troop/<old>.json` and the old textures its previous `index.json` listed, and rewrites `index.json`), then `python tools/preflight.py`. Keep `art/hand/<old>/build_<old>.py`: other builders import its ramps (the tidecallers preset imports `build_tc_raider.NAVY`).
+3. Find every other hard-coded use: `git grep -l <old> -- . ':!docs' ':!src/main/java/gg/gravesandglory/Spec.java'`. In the dry run (`tc_raider`) that was, besides the sheet and art: `test-tools/standalone/HousesCheck.java`, `LevelMathCheck.java`, `ProfileMigrationCheck.java` (fast), `GearMigrationCheck.java` (no literal id: it fails `owned troops and banner are unchanged` because the Commons changed, so grep cannot find it; verify fast does), `test-tools/java/.../Phase2Checks.java`, `AbilityLevelChecks.java` (in-game), `test-tools/qa/profile-v2-seed.json`, `test-tools/resources/fixtures/profile-v3-veteran.json`, `tools/balance_method.py`, `art/clips/build_attacks.py`, `art/title/src/key_art.py`, `GeoTroopRenderer.java`, and the animation files of stage 5 (`art/anim/**`, `tools/anim/scorecard.py`, `scorecard_limits.json`). Update the tests and fixtures to the new id; hand hits under `art/anim/**` and `tools/anim/**` to the animation lead; ask your lead before changing a migration test's expected result (that is a save decision).
+4. Leave `art/anim/<old>/` and `<old>`'s exported GeckoLib assets for the animation lead to retire.
 
-| Sheet | What | Rule preflight enforces |
-|---|---|---|
-| `troops` | the row, at its place in the House's run | `house`, `rarity` resolve; `slotWeight` = the rarity's; `ranged` true exactly when `range` > 3; `weapon`/`helmet`/`chest` are `minecraft:` ids; `family` one of `FAMILIES` (sword_shield, axe_shield, sword, axe, greatsword, spear, scythe, bow, crossbow, thrower, caster, crew, hound, spider, bear, ravager, colossus); `shield` is `none` exactly when `tags` lacks `shield`; `texture` an existing `gravesandglory:` asset or a `VANILLA_TEXTURES` path (peers use `gravesandglory:textures/entity/dawn_guard.png` or a vanilla mob); `ability` an `abilities` id; Common/Rare: `evolveLine` names a `levelNames` troop, Epic/Legendary: `none` |
-| `houses` | add `<tid>` to that House's `troops` | must equal the House's troop ids in sheet order |
-| `troopNotes` | `{id, beats, beatenBy}` | one row per troop, same order as `troops` |
-| `levelAbilities` | `<tid>_2`, `<tid>_3` | exactly one each; level 2 keeps the base ability's `mechanic` |
-| `levelNames` | `<tid>_2`, `<tid>_3` (Common/Rare only) | no name shared with another troop or level; none ends in ` (Veteran)` |
-| `abilities` | new ability rows if the design has them | ids resolve |
-| `attackVariants` | only for a new `family` | each used family has rows; melee needs one; `impactTicks` is gameplay (Kort) |
+**1c. A unit with no slot to replace** adds the same rows (troops, houses, troopNotes, levelAbilities, levelNames, abilities, `attackVariants` only for a new `family`) once Kort has changed the House rule. Rules preflight enforces: `house`/`rarity` resolve; `slotWeight` = the rarity's; `ranged` true exactly when `range` > 3; `weapon`/`helmet`/`chest` are `minecraft:` ids; `family` one of preflight's `FAMILIES`; `shield` is `none` exactly when `tags` lacks `shield`; `texture` an existing `gravesandglory:` asset or a `VANILLA_TEXTURES` path; Common/Rare `evolveLine` names a `levelNames` troop, Epic/Legendary `none`; level 2 keeps the base ability's `mechanic`; no name shared with another troop or level, none ending ` (Veteran)`; player text never says stage, evolve or Writ. `impactTicks` is gameplay (Kort). `tools/expand_design.py` is a one-off historical migration: never run it.
 
-Player text never says stage, evolve or Writ (it says level, tier or Pact). Then update `ROSTER` / `launchRoster()` in `HousesCheck.java` to match.
-
-**Commands.**
-```
-python tools/preflight.py
-python tools/verify.py fast            # background, about 2 min
-```
-`tools/expand_design.py` is a one-off historical migration: never run it.
-
-**Done when** preflight prints `Preflight clean: <n> filled cells; every row generates a Java record. Runtime verification pending.` (exit 0) and verify fast prints PASS (it runs preflight, the Python tests, `skin-assets` = `build_skins.py --verify`, `clips.py --verify`, every `test-tools/standalone/*Check.java` including HousesCheck, and the build). Commit `sheets/design.json` and the Java check only; `git status` will show the regenerated `Spec.java`/`preflight.json`: leave them uncommitted.
-
-**Common failures.** `houses/<h>: N common troops; every House has exactly 2` (the gap above). `troopNotes: one row per troops row, in the same order`. `levelAbilities: <tid> needs exactly one level-2 row`. `KeyError` in preflight: a missing column. HousesCheck failure: the roster lists were not updated.
+**Done when** `python tools/preflight.py` prints `Preflight clean: <n> filled cells; every row generates a Java record. Runtime verification pending.` and `python tools/verify.py fast` **(bg)** exits 0 (it runs every `test-tools/standalone/*Check.java` and `test_*.py`, `build_skins.py --verify`, `clips.py --verify`, the build).
+**Commit** `sheets/design.json`, the updated tests and fixtures, the `git rm` of `art/troops/<old>*`, and what build_skins changed under `src/main/resources/assets/gravesandglory/models/troop/` and `textures/entity/troop/`. Never `Spec.java` or `sheets/preflight.json`.
+**Common failures.** `art/troops/<old>.json: <old> is not a troops id` (step 2 not done). `models/troop/index.json: troops [...] must be exactly the art/troops ids` (run build_skins.py). `houses/<h>: N common troops` (slot rule). `LevelMathCheck: no troop row <old>` and other `*Check` failures (step 3). `KeyError` in preflight: a missing column.
 
 ## 2. Lore row
 
-**Where lore lives (2026-11-09).** Not on `main` yet: the reboot is on branch `docs/lore-lead` (worktree `bannerbound-lore`), page https://claude.ai/artifact/N5FnQy9GTjfB7s6Rir5LnL. Read:
+**Where lore lives (2026-11-09).** Not on `main`: branch `docs/lore-lead` (worktree `bannerbound-lore`), page https://claude.ai/artifact/N5FnQy9GTjfB7s6Rir5LnL.
 ```
-git show docs/lore-lead:docs/lore/season-framework.md      # section 5 "Rules for adding a unit"
-git show docs/lore-lead:docs/drafts/lore-bible-2026-11-09.md   # section 5, the House
+git show docs/lore-lead:docs/lore/season-framework.md          # section 5 "Rules for adding a unit"
+git show docs/lore-lead:docs/drafts/lore-bible-2026-11-09.md    # section 5, the House
 git show docs/lore-lead:docs/lore/names.md
 ```
-**Not built:** there is no per-troop lore column in `sheets/design.json` and no troop lore file. The only player text a troop carries is `troops.name`, `levelNames`, `troopNotes` and its ability rows (stage 1).
+**Not built:** no per-troop lore column in `sheets/design.json` and no troop lore file. The only player text a troop carries is `troops.name`, `levelNames`, `troopNotes` and its ability rows (stage 1).
 
-**One lore row needs:** House and species (rule 1); its magic as that House's glimpur, if any (2); one line on its place in the House's grievance, what wrong it answers or commits (3); its look within the House aesthetic, no violet on Wildmoot (4); whether it speaks (5); no giants before Act II (6); a role or title, not a new named character (7). Write it as a short pitch (name, House, the eight rules ticked, one flavour line) and send it to the lore lead for a yes.
-
-**Done when** the lore lead approves the pitch (their reply or status file). Mechanical check: `python tools/preflight.py` still clean after the names land in the sheet.
-**Kort:** only if the unit needs a new named character or a reserved look: `- kort: May <tid> be the named character <name>? | open: <pitch path> | min: 3 | prio: 2`.
+**One lore row needs:** House and species (rule 1); its magic as that House's glimpur, if any (2); one line on its place in the House's grievance (3); its look within the House aesthetic (4); whether it speaks (5); no giants before Act II (6); a role or title, not a new named character (7). Write it to `work/<tid>/lore-pitch.md` (name, House, the rules ticked, one flavour line) and put the path in your report; your lead passes it to the lore lead.
+**Done when** the lore lead approves (your lead relays it). Mechanical check: `python tools/preflight.py` still clean after the names land.
+**Kort:** only for a new named character: `- kort: May <tid> be the named character <name>? | open: work/<tid>/lore-pitch.md | min: 3 | prio: 2`.
 
 ## 3. Model
 
-**Source of truth.** A troop's geometry and paint are one Python builder, `art/hand/<tid>/build_<tid>.py`, built on `art/hand/common/handlib.py` from the template `art/hand/_template/build_template.py`. The GeckoLib model (`src/main/resources/assets/gravesandglory/geo/troop/<tid>.geo.json`) is generated from it in stage 5; the legacy model (`art/troops/<tid>.json`, `models/troop/<tid>.json`) by `install` in stage 4. Never hand-edit either.
+**Source of truth.** Geometry and paint are one builder, `art/hand/<tid>/build_<tid>.py`, on `art/hand/common/handlib.py`, from `art/hand/_template/build_template.py`. The GeckoLib model is generated from it in stage 5, the legacy model by `install` in stage 4; never hand-edit either. Look and mark come from your brief (existing roster: `docs/superpowers/specs/2026-10-17-unit-identity.md`, `docs/ART-STYLE-GUIDE.md` 10.x); missing: ask first.
 
-**Inputs.** The stage 1 row; the look and mark from your brief (existing roster: `docs/superpowers/specs/2026-10-17-unit-identity.md`, `docs/ART-STYLE-GUIDE.md` 10.x). No House, look or mark: ask before starting.
-
-**Commands** (TEXTURE-RECIPE A2, A2.4, A2.5):
 ```
 mkdir -p art/hand/<tid>
 cp art/hand/_template/build_template.py art/hand/<tid>/build_<tid>.py
-# edit: TID, HOUSE, delete the --house loop and other PRESETS, rename TEMPLATE, write NOTE, meta["weapon"]
-grep -ho '"weapon": "[a-z_]*"' art/hand/*/build_*.py | sort -u      # existing weapon ids
 python art/hand/<tid>/build_<tid>.py preview <scratch>/pv crimson
 ```
-Keep the biped skeleton the animation builders expect: `limb()` joints, the hand bones, `arms_folded`, the `tabard` bone; at most 64 bones; the rig contract (`handlib` `ELBOW`/`KNEE`/`HAND`) is the animation lead's. A new weapon is a separate task (`weapon: TODO` in NOTE). **Gap:** non-biped units (beasts, siege crews) have no template; `wm_hound` has its own rig (`art/anim/wm_hound/build_rig.py`) and wm_stalker, wm_oldhorn, tc_brute, ic_ballista, ic_mortar, ic_colossus, reaper have no GeckoLib set yet. Such a unit needs an animation-lead design first.
+Edits (TEXTURE-RECIPE A2): `TID = "<tid>"`, `HOUSE = "<house>"`; delete the `--house=` loop, the other `PRESETS` entries and the `if TID == "template"` guard; **rename the variable `TEMPLATE` to `TROOP` everywhere** (stage 5 registers the module attribute `TROOP`, and the comment on `house_stub.main` already says `TROOP`); write `NOTE`; set `meta["weapon"]` to an existing id. Weapon ids and their modules (stage 5 needs both): `grep -ho '"weapon": "[a-z_]*"' art/hand/*/build_*.py | sort -u`, then `grep -ln '"<weapon id>"' art/hand/weapons/*.py` (e.g. `cutlass` is in `build_house_weapons.py`). A new weapon is a separate task (`weapon: TODO` in NOTE). Keep the biped skeleton: `limb()` joints, hand bones, `arms_folded`, the `tabard` bone, at most 64 bones; the rig contract (`handlib` `ELBOW`/`KNEE`/`HAND`) is the animation lead's.
 
-**Done when** `preview` prints `preview written to <scratch>/pv` and writes `<tid>_t1..3.png`, `<tid>_t1..3.geo.json`, `skin_s1..3.png`, `cloth_<side>.png`, with no pack overflow.
-**Common failures.** Gear moved off its limb with offsets instead of `dil`; pauldron `ROLL` sign (+14 makes wings, use -14); chest gear hidden behind the tabard (recipe A2.5).
+**Gap:** non-biped units (beasts, siege crews) have no template; `wm_hound` has its own rig and wm_stalker, wm_oldhorn, tc_brute, ic_ballista, ic_mortar, ic_colossus, reaper have no GeckoLib set. Such a unit needs an animation-lead design first.
+**Done when** `preview` prints `preview written to <scratch>/pv` with `<tid>_t1..3.png`, `<tid>_t1..3.geo.json`, `skin_s1..3.png`, `cloth_<side>.png`, and no pack overflow.
+**Common failures.** `NameError: TEMPLATE`/`TROOP` (rename incomplete); gear moved off its limb with offsets instead of `dil`; pauldron `ROLL` +14 (wings; use -14); chest gear hidden behind the tabard (A2.5).
 
 ## 4. Texture
 
-Follow `docs/art/TEXTURE-RECIPE.md` part A exactly (part B for a new House); read `docs/art/unit-texture-audit.md` sections 2 and 4 first. Approved troops are never repainted.
-
-**Commands** (`<b>` = `art/hand/<tid>/build_<tid>.py`; the renderer is on `main` at `tools/anim/render_geo.py`, so the recipe's `git show anim/geckolib-rebuild:...` copy is not needed):
+Follow `docs/art/TEXTURE-RECIPE.md` part A exactly (part B for a new House); read `docs/art/unit-texture-audit.md` sections 2 and 4 first. Approved troops are never repainted. The renderer is on `main` at `tools/anim/render_geo.py` (no need for the recipe's `git show anim/geckolib-rebuild:` copy). `<b>` = `art/hand/<tid>/build_<tid>.py`.
 ```
 python tools/art/house_palette.py show <house> <scratch>/<house>.png
-python <b> preview <scratch>/pv crimson
-python <b> gate
+python <b> gate                                                         # must end: gate PASS
 python tools/art/texture_audit_render.py --renderer tools/anim/render_geo.py --out <scratch>/r --builder <b> --house <house>
-python tools/art/house_palette.py check --dir <scratch>/pv --house <house>
-python tools/art_hue_check.py --dir <scratch>/pv --house <house>
+python tools/art/house_palette.py check --dir <scratch>/pv --house <house>   # OK
+python tools/art_hue_check.py --dir <scratch>/pv --house <house>             # <house> PASS
 ```
-**The gate.** `python <b> gate` must end `gate PASS` (exit 0): primary share >= 35%, trim+accent <= 20%, clamped <= 12%, top-to-bottom light on tall faces. Palette check prints `OK`; hue check prints `PASS`. Then the 16-block gate (A8.4: role, tier, House at 1x on each `t<N>_far.png`) and a fresh Sonnet 5.5 high grade, >= 8 on every rubric line (A8.8). The tools passing is not the grade.
-
-**Install** (only when the lead says; the troop must already be in `sheets/design.json`):
+Renders: `<scratch>/r/troop_<tid>.png` (near and 16 blocks) and `<scratch>/r/<tid>/t<N>_far.png` (true size). The gate checks primary share >= 35%, trim+accent <= 20%, clamped <= 12%, light on tall faces. Then the 16-block gate (A8.4) and a fresh Sonnet 5.5 high grade, >= 8 on every rubric line (A8.8); the tools passing is not the grade.
+**Install** (when the lead says; the troop must be in `sheets/design.json`):
 ```
 python <b> install
-python tools/build_skins.py --verify
+python tools/build_skins.py --verify          # build_skins: <n> outputs verified
 python tools/art/house_palette.py check <tid>
 ```
-**Done when** all three exit 0 and `src/main/resources/assets/gravesandglory/models/troop/index.json` lists `<tid>` (preflight checks it equals `art/troops/*.json`).
-**Kort:** `- kort: Approve <tid>'s look (tiers I-III, near and 16 blocks)? | open: <scratch>/r/troop_<tid>.png | min: 3 | prio: 2`, only after the review grade.
-**Common failures.** A hex literal or another House's ramp (palette check fails); trim as the main mass; tier II without a plate-ramp mass; a reserved colour (`tidecallers.CORAL`): stop and ask (A9).
+**Done when** all exit 0 and `models/troop/index.json` lists `<tid>`. **Commit** `art/hand/<tid>/`, `art/troops/<tid>.json` and `<tid>_s*.png` (and `_veteran.png` if written), and the build_skins outputs under `src/main/resources/assets/gravesandglory/models/troop/` and `textures/entity/troop/`.
+**Kort**, only after the review grade: `- kort: Approve <tid>'s look (tiers I-III, near and 16 blocks)? | open: <scratch>/r/troop_<tid>.png | min: 3 | prio: 2`.
+**Common failures.** A hex literal or another House's ramp; trim as the main mass; tier II without a plate-ramp mass; a reserved colour (`tidecallers.CORAL`): stop and ask (A9).
 
 ## 5. Animation
 
-Read `.claude/skills/troop-animation/SKILL.md`, then `references/pipeline.md` and `references/lessons.md`. `art/anim/**` and `tools/anim/**` belong to the animation lead: this stage runs in a lane the animation lead approves.
+Read `.claude/skills/troop-animation/SKILL.md`, `references/pipeline.md` and `references/lessons.md`. `art/anim/**` and `tools/anim/**` belong to the animation lead: this stage runs in a lane the animation lead approves.
 
-**Inputs.** Stage 4 installed; the `family` from stage 1; the builder for that family (pipeline.md section 2). Then register the troop where the builder reads it:
-- `art/anim/common/troop_rig.py` `TROOPS`: `"<tid>": ("<tid>", "build_<tid>", "<TROOP ATTR>", "<weapon module>", "<weapon id>", <rotation>[, "bow"|"crossbow"|"thrower"])`;
-- the family builder's own table (`SPEAR_TROOPS`, `BOW_TROOPS`, `CAST_TROOPS`, `XBOW_TROOPS`, `THROW_TROOPS`), and `art/anim/common/stances.py` if the family has per-troop stances;
-- `PREVIEW` in `src/main/java/gg/gravesandglory/GeoTroopRenderer.java` (moves to `APPROVED` only when Kort's booth verdict says so).
+**5a. Register the troop** (no generator; copy `<peer>`'s entry everywhere it appears: `git grep -nw <peer> -- art/anim src/main/java`):
+- `art/anim/common/troop_rig.py` `TROOPS`: `"<tid>": ("<tid>", "build_<tid>", "TROOP", "<weapon module>", "<weapon id>", <rotation>[, "bow"|"crossbow"|"thrower"])`.
+- `art/anim/common/stances.py`: the gear group string of `<peer>` (`"onehand": "revenant tc_raider gb_hollowking"`, `"focus": ...`).
+- `src/main/java/gg/gravesandglory/GeoTroopRenderer.java` `PREVIEW` (to `APPROVED` only on the booth verdict).
+- **Sword and shield troops** (knight builder, `GG_ANIM_TROOP`) have no family table; in `art/anim/knight/build_anims.py` add `<tid>` beside `<peer>` in all six spots: `CU` (cutlass follow-through), `if V2 and not SHIELD and TROOP in (...)`, `SLASH_FIT`, the `("low_cut", "overhead") if V2 and TROOP in (...)` clip list, `EDGE_SIGN`, `D3_TROOPS`.
+- **Other families** have a per-troop table in their builder: `BOW_TROOPS` (`art/anim/archer/build_bow_anims.py`), `CAST_TROOPS` (`caster/build_caster_anims.py`), `XBOW_TROOPS` (`crossbow/build_crossbow_anims.py`), `SPEAR_TROOPS` (`spear/build_spear_anims.py`), `THROW_TROOPS` (`thrower/build_thrower_anims.py`); the greataxe builder runs through the spear builder (`SPEAR_TROOPS`); the axe builder (`axe/build_axe_anims.py`) has no table: grep it for `<peer>`. Each also imports the knight builder, so check it for `<peer>` too.
 
-**Commands.**
+**5b. Build** (the builder, its variable and timing per pipeline.md section 2):
 ```
 python art/anim/common/troop_rig.py <tid>
-GG_SPEAR_TROOP=<tid> python art/anim/spear/build_spear_anims.py      # use your family's builder and variable (pipeline.md 2)
-git status --short art/anim                                          # only <tid> changed
+GG_ANIM_TROOP=<tid> python art/anim/knight/build_anims.py         # (bg) ~6.5 min
+git status --short art/anim                                       # only <tid> and your registrations
 python art/anim/common/export.py <tid>
-python tools/anim/scorecard.py --troop <tid>
-python tools/anim/render_geo.py --geo src/main/resources/assets/gravesandglory/geo/troop/<tid>.geo.json \
-  --texture src/main/resources/assets/gravesandglory/textures/entity/troop/<tid>_geo/t3_crimson.png \
-  --anim src/main/resources/assets/gravesandglory/animations/troop/<tid>.animation.json --clip <clip>_legs \
-  --anim src/main/resources/assets/gravesandglory/animations/troop/<tid>.animation.json --clip <clip> \
-  --ticks 0:24 --views front,side,three_quarter --out work/render/<tid>-<clip>
+python tools/anim/scorecard.py --troop <tid>  --json <scratch>/sc-<tid>.json
+python tools/anim/scorecard.py --troop <peer> --json <scratch>/sc-<peer>.json
 ```
-**Harness, through the queue** (checkq is on branch `workflow/checkq`, being landed; route documented in docs/SETUP.md "Shared in-game check queue"; until it is on `main`, ask the coordinator to run it, never launch a client yourself):
+Clip names: gaits and stances are `<name>_legs` + `<name>_upper` (`walk_legs` + `walk_upper`); attacks `attack_<id>` + `attack_<id>_legs`. Render an upper clip with its legs clip:
+```
+A=src/main/resources/assets/gravesandglory
+python tools/anim/render_geo.py --geo $A/geo/troop/<tid>.geo.json --texture $A/textures/entity/troop/<tid>_geo/t3_crimson.png \
+  --anim $A/animations/troop/<tid>.animation.json --clip walk_legs --anim $A/animations/troop/<tid>.animation.json --clip walk_upper \
+  --ticks 0:24 --views front,side,three_quarter --out work/render/<tid>-walk
+```
+**Scorecard, realistically.** Exit 0 is the goal, but shipped peers are not all green (on 6cc192ac `tc_raider` fails `pen_limb` on its rally/hold/fallback stances and `death_right*`). Compare the two JSON files: a clip red on `<tid>` and red on `<peer>` with a similar value is baseline; a clip red only on `<tid>` (dry run: `attack_low_cut edge_lead` 22.3 deg, limit 19.1) is yours to fix within the two rounds, usually in the registrations (`SLASH_FIT`, `EDGE_SIGN`). Never re-derive limits. `booth.py build` refuses any red clip, so for each clip still red: record clip, metric, value, limit and the peer's value in `docs/anim-rebuild/<TID>-REVIEW.md`, build the first booth round with `--clips` listing only green clips, and hand the red list to the animation lead in your report.
+
+**5c. Harness, through the queue.** geo-knight is chosen by `GRAVES_PHASE1_CHECKS`; leave `--suites` out (it only sets `GRAVES_PHASE4_CHECKS`), so `status` shows `(no suites)`, which is right.
 ```
 python tools/checkq.py submit client --root <tid>-r1 --env GRAVES_PHASE1_CHECKS=geo-knight \
   --env GRAVES_GEO_CHECK_TROOP=<tid> --env GRAVES_GEO_TROOPS=all
-python tools/checkq.py wait <id>          # as a background shell command; exit = the job's exit code
+python tools/checkq.py wait <id>          # (bg) exit = the job's: 124 timeout, 125 cancelled, 126 queue error, 3 unknown job
 grep -c "^\[p1\] p1-" work/ingame-check/<tid>-r1/gradle.log; grep -c "=false" work/ingame-check/<tid>-r1/gradle.log
 ```
-**Booth** (SKILL.md "Review booth"): add `art/anim/<family>/booth.<tid>.json` (model: `art/anim/knight/booth.knight.json`; `impact_tick` from the builder, never invented), commit, then
-```
-python tools/anim/booth.py build --config art/anim/<family>/booth.<tid>.json --target main
-```
-upload `work/booth/<batch>/upload.txt` files to the booth with the Artifact tool and write the batch with ArtifactData as SKILL.md step 4 says. The inbox picks up `work/booth/<batch>/db/batch.json` automatically while it has no `verdict.json`: no `- kort:` line needed. After Kort reviews: save his verdict to `work/booth/<batch>/verdict.json` and act on `python tools/anim/booth.py decide --batch-dir work/booth/<batch>`.
+Pass: 22 `[p1] p1-` lines and 0 `=false`. **0 `[p1]` lines means the suite never ran** (the client crashed or failed to start): it is not a pass. Retry once (new `--root <tid>-r2`) only if the cause is clearly transient (a timeout on a loaded machine, a queue error); otherwise stop and report the job id and the first error lines of `gradle.log`. Known: in a fresh worktree the client can crash with `NoClassDefFoundError: gg/gravesandglory/BuildMode` because the main mod is not loaded (the mods list shows `gravesandglory_local_test_tools` but not `gravesandglory`). Fix: _(pending the harness debugger's outcome)_.
 
-**Done when** scorecard exits 0 (a failing clip cannot enter the booth; `booth.py build` refuses it), the harness log has 22 `[p1] p1-` lines and 0 `=false`, the Sonnet review says SHIP, and `booth.py decide` prints `merge`. Then move `<tid>` from `PREVIEW` to `APPROVED`.
-**Common failures.** The weapon points the wrong way (Kort rule 1); a clip keys a bone its controller does not own; `impact` marker differs from `attackVariants.impactTicks`; another troop's `out/` changed (the builders share the knight builder); a loaded machine failing a speed check (rerun once, record both).
+**5d. Booth** (SKILL.md "Review booth"). Config `art/anim/<family>/booth.<tid>.json`: no generator (not built). Copy the closest troop's config, e.g. `git show anim/troop-revenant:art/anim/knight/booth.revenant.json` (others: `anim/troop-ic_hearthguard:art/anim/axe/booth.ic_hearthguard.json`, `anim/fix-bow:art/anim/archer/booth.<bow troop>.json`, `art/anim/knight/booth.knight.json`), change `troop` and the asset paths, and list every clip of `<tid>.animation.json` with `base` (its legs clip), `speed` (gait speed) and `impact_tick` (the builder's `IMPACT` value, never invented). Commit it, then
+```
+python tools/anim/booth.py build --config art/anim/<family>/booth.<tid>.json --target main [--clips <green list>]
+```
+Publish per SKILL.md step 4 (Artifact upload and ArtifactData writes). A worker without those tools stops here and reports the batch folder; its lead uploads. The inbox shows the batch to Kort automatically while `work/booth/<batch>/db/batch.json` has no `verdict.json`: no `- kort:` line. After Kort reviews, save the verdict to `work/booth/<batch>/verdict.json` and run `python tools/anim/booth.py decide --batch-dir work/booth/<batch>`: `land` (target main: move `<tid>` from `PREVIEW` to `APPROVED`, then stage 7 with the printed lane), `fix` (the listed fix list, review again, next round with `--batch`), `resubmit`, `wait`, `invalid` (stop, tell your lead).
+
+**Done when** the scorecard is as above, the harness passed, the Sonnet review says SHIP, and `decide` prints `land`. **Commit** the registrations, `art/anim/<tid>/out/`, the exported assets (`geo/troop/`, `animations/troop/`, `troop_rig/`, `textures/entity/troop/<tid>_geo/`), `GeoTroopRenderer.java`, the review md and the booth config.
+**Common failures.** A weapon pointing the wrong way (Kort rule 1); a clip keying a bone its controller does not own; `impact` differing from `attackVariants.impactTicks`; another troop's `out/` changed (shared knight builder); a speed check failing on a loaded machine (rerun once, record both).
 
 ## 6. Sound
 
@@ -177,7 +164,7 @@ upload `work/booth/<batch>/upload.txt` files to the booth with the Artifact tool
 1. `src/main/resources/assets/gravesandglory/sounds/<event>_1.ogg` ... `_4.ogg`: mono Ogg Vorbis 44.1 kHz, 2 to 4 variants.
 2. `sounds.json`: event `<event>`, `"subtitle": "subtitles.gravesandglory.<event>"`, one `{"name": "gravesandglory:<event>_N", "stream": false}` per file (copy `tusk_attack`).
 3. `src/main/java/gg/gravesandglory/AudioCues.java`: `NAME("<event>", null, volume, pitch, "hostile", Scope.NEARBY, cooldown, "Subtitle text", perTickCap)`, volume .3 to .6, cap 2 or 3; subtitle in `lang/en_us.json`.
-4. Play site: `case "<tid>" -> AudioCues.Cue.NAME` in `Audio.shotCue` or `Audio.meleeCue`.
+4. Play site: `case "<tid>" -> AudioCues.Cue.NAME` in `Audio.shotCue` or `Audio.meleeCue` (and drop `<old>`'s case if it had one).
 5. Credit in `docs/AUDIO-CREDITS.md`: CC0, CC-BY or similar only; no NC/ND/SA, nothing from a game or film.
 
 **Check:** `python -I test-tools/standalone/test_audio_events.py` prints `OK` (also in verify fast, with `AudioCuesCheck`). **Not on main yet:** `tools/audio/mixfix.py --verify` (branch `audio/lead`). **Not built:** per-troop voice lines and House horns from a data file; do not wire voices by hand.
@@ -185,11 +172,11 @@ upload `work/booth/<batch>/upload.txt` files to the booth with the Artifact tool
 ## 7. Land
 
 ```
-python tools/verify.py fast                 # must PASS
-git status --short                          # clean except regenerated Spec.java / preflight.json
+python tools/verify.py fast                 # (bg) must exit 0
+git status --short                          # nothing but the regenerated Spec.java / preflight.json
 python tools/land.py unit/<tid> --dry-run
 python tools/land.py unit/<tid>             # only after Kort (or the coordinator for him) approves the branch for main
 ```
-`land.py` rebases on `main`, runs verify fast in the lane, fast-forwards `main`, retires the worktree and regenerates `docs/STATE.md`; it never pushes. CR-only noise on `Spec.java`/`preflight.json` is restored, other dirt refuses.
+Everything stages 1 to 5 list under **Commit** must be committed first; land refuses a dirty lane. `land.py` rebases on `main`, runs verify fast in the lane, fast-forwards `main`, retires the worktree and regenerates `docs/STATE.md`; it never pushes. CR-only noise on `Spec.java`/`preflight.json` is restored.
 **Done when** it exits 0. Exit codes: 1 dirty lane, 2 rebase failed, 3 verify failed, 4 main moved, 5 merge refused, 6 landed but cleanup incomplete, 7 another land running.
-**Kort:** `- kort: Land unit/<tid> (<tid>: spec, art, animation approved in booth)? | open: <commit or none> | min: 2 | prio: 2`.
+**Kort:** `- kort: Land unit/<tid> (spec, art, animation approved in booth)? | open: <commit or none> | min: 2 | prio: 2`.
