@@ -43,6 +43,10 @@ grep -n "APPROVED =\|PREVIEW =" src/main/java/gg/gravesandglory/GeoTroopRenderer
    `IMPACT`). Changing impact ticks, clip length or cooldowns needs Kort's decision.
 4. **1 texel per model pixel** (weapons 2), keep current textures, no pennant or standard on any troop's back.
 5. **Generated files are never hand-edited:** `out/*.json`, exported assets, `Spec.java`. Change the builder and rebuild.
+6. **Every clip suits this unit and its weapon** (Kort, 2026-11-10). A ranged unit's hold looks different from a
+   shield or sword unit's. Never fill a slot with another family's clip unchanged: stances such as hold, shield up,
+   wall and ward on a troop without a shield or sword get that troop's own version of the order. When a clip is
+   shared, say so in the report and show why it fits this unit.
 
 ## The loop (one change)
 
