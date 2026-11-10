@@ -267,6 +267,12 @@ def sample(keys, t):
 
 # Footwork (STYLE.md rule 4): the rear (left... the bow side) foot steps up to set the shot side-on as the arrow is nocked, the hips
 # sink and turn into the draw, the release rocks them, and the foot steps back to the ready footing as the guard returns.
+# The set step (lift, plant) per troop. The stalker's deep sink (1.6) drove its stepping knee faster than any knight leg
+# (left_shin 51.7 deg/100ms, limit 48.9): its step lifts half a tick sooner and plants a third of a tick later, so the same
+# sink is spread over a longer step. Nock, draw, full and impact ticks are unchanged.
+SET_STEP = {"stalker": (3.9, 7.7)}.get(TROOP, (4.4, 7.4))
+
+
 def shot_legs(volley):
     lean = -3.0 if volley else 1.0
     k = CHAR["sink"]
@@ -275,7 +281,7 @@ def shot_legs(volley):
                      (17.4, (lean - CHAR["rock"], 12.0, 0.0), (0.0, -1.6 * k - max(0.0, k - 1), 0.05)),
                      (21, (0.0, 8.0, 0.0), (0.0, -1.3 * k, 0.1)),
                      (ATTACK_TICKS, *K.READY_HIPS)],
-            "steps": [("left", 4.4, 7.4, (3.6, 2.0, -0.4), 14.0), ("left", 19.5, 23.5, (3.2, 2.0, -2.0), 7.0)]}
+            "steps": [("left", *SET_STEP, (3.6, 2.0, -0.4), 14.0), ("left", 19.5, 23.5, (3.2, 2.0, -2.0), 7.0)]}
 
 
 # ------------------------------------------------------------------------------------------------
@@ -628,12 +634,17 @@ def bow_arm_keys(d, weight):
     return [(0, K.ZERO), (2, sc(a, 2.3)), (4.5, sc(a, 2.15)), (7.5, sc(a, 0.55)), (10.5, K.ZERO), (16, K.ZERO)]
 
 
-def string_arm_keys(peak, weight):
+# The medium blow from the front flings the string arm out over its 2-tick onset a touch faster than the knight's arms ever move
+# (right_arm 89.4 deg/100ms, limit 88.1): its throw peaks 4% lower, the same shape and timing.
+STRING_FLING = {"front": 2.2}
+
+
+def string_arm_keys(peak, weight, d=None):
     sc = K.scaled
     a = {b: (peak[b] if b in ARM_BONES["right"] else Z3) for b in peak}
     if weight == "light":
         return [(0, K.ZERO), (1.5, sc(a, V2_LIGHT)), (4, sc(a, 0.05)), (6.5, K.ZERO), (9, K.ZERO)]
-    return [(0, K.ZERO), (2, sc(a, 2.3)), (4.5, sc(a, 2.15)), (7.5, sc(a, 0.55)), (10.5, K.ZERO), (16, K.ZERO)]
+    return [(0, K.ZERO), (2, sc(a, STRING_FLING.get(d, 2.3))), (4.5, sc(a, 2.15)), (7.5, sc(a, 0.55)), (10.5, K.ZERO), (16, K.ZERO)]
 
 
 V2_HIT_LEGS = {   # the knight's v2 hit footwork, from the same ready footing (READY_HIPS, feet as STANCE_LEGS["ready"])
@@ -658,7 +669,7 @@ def v2_hit_clips():
     out = {}
     for weight, ticks in K.HIT_TICKS.items():
         for d, peak in HIT_PEAK.items():
-            keys, bk, sk = v2_hit_keys(peak, weight, V2_BODY[d]), bow_arm_keys(d, weight), string_arm_keys(K.scaled(peak, V2_BODY[d]), weight)
+            keys, bk, sk = v2_hit_keys(peak, weight, V2_BODY[d]), bow_arm_keys(d, weight), string_arm_keys(K.scaled(peak, V2_BODY[d]), weight, d)
             keys, bk, sk = (K.front_onset(x, d, weight) for x in (keys, bk, sk))   # a 2-tick onset on the front medium blow (no one-tick snap)
             samples = []
             for i in range(ticks * SUB + 1):
