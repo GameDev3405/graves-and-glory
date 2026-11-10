@@ -115,7 +115,7 @@ public final class BattleHud {
      *  next join): the last battle's records go with it, since no HUD frame runs without a world to clear them, and ChatPlacement
      *  reads rects() before the next world's first frame. That is what the frame drew, the lesson wrap and the lines drawn from it,
      *  and the hint layer's round clock. */
-    static void reset(){clear();wrappedCopy=null;wrappedTag=null;wrappedLines=List.of();wrappedJoined="";roundShownMs=0;GravesAndGloryClient.lessonDrawn=List.of();}
+    static void reset(){goldSeen=-1;gainAmount=0;clear();wrappedCopy=null;wrappedTag=null;wrappedLines=List.of();wrappedJoined="";roundShownMs=0;GravesAndGloryClient.lessonDrawn=List.of();}
     /** The lesson copy the cached wrap was made for; null after a reset or a resource reload. */
     static String wrappedFor(){return wrappedCopy;}
 
@@ -138,6 +138,7 @@ public final class BattleHud {
                 ledger(g,font,at,rectsDrawn,textsDrawn);
                 seals(g,font,at,rectsDrawn,sealsDrawn,textsDrawn);
                 column(g,font,s,at,rectsDrawn,cardsDrawn,textsDrawn);
+                gold(g,font,at,now,rectsDrawn,textsDrawn);
                 lesson(g,font,at,rectsDrawn,textsDrawn);
                 respawn(g,font,at,rectsDrawn,textsDrawn);
                 feed(g,font,size,now,at,rectsDrawn,textsDrawn);
@@ -242,6 +243,41 @@ public final class BattleHud {
             if(box[3]==UiMath.CARD_H)card(g,font,grp,box,r,cd,tx);else chip(g,font,grp,box,army,r,cd,tx);
         }
         int[] hints=at.get("hints");if(hints!=null&&CommandPanel.slide()<=0)hintSlip(g,font,hints,r); // the open pennant panel shows every key the slip lists (Ruling 15)
+    }
+
+    /** The battle gold and income as of the last frame, for spotting a payout between frames: gold (-1 before a first frame, or after
+     *  a gap in frames: a new battle), the income the frame computed, the last payout's amount and when it showed. */
+    private static int goldSeen=-1,incomeSeen,gainAmount;private static long goldFrameMs,gainMs;
+    /** How long a payout's "+n" shows, fading out. */
+    static final long GAIN_MS=1500;
+
+    /** The income a squad on the client's team earns each tick: UiMath.goldIncome from the points the client sees owned and the
+     *  round's mode row (Domination's before the first snapshot). Matches BattleMode.income; a mode that overrides it would differ. */
+    static int income(){
+        var e=Spec.ECONOMY[0];int team=GravesAndGloryClient.team;long held=0;
+        for(int o:GravesAndGloryClient.owners)if(o==team&&team>=0)held++;
+        Spec.ModesRow row;try{row=Modes.row(CampaignClient.modeId());}catch(IllegalArgumentException x){row=Modes.row(Modes.DOMINATION);}
+        return UiMath.goldIncome(held,e.passiveGold(),e.pointGold(),e.objectiveIncomeCap(),row.passiveScale(),row.pointScale());
+    }
+
+    /** The gold readout above the group column: "n gold" and, smaller, the income per tick; a payout that is not the periodic income
+     *  (a kill) shows as "+n" beside it for GAIN_MS. */
+    static void gold(DrawContext g,TextRenderer font,Map<String,int[]> at,long now,Map<String,int[]> r,Map<String,String> tx){
+        int[] box=at.get("gold");if(box==null)return;
+        int gold=GravesAndGloryClient.gold,income=income();
+        if(goldSeen>=0&&now-goldFrameMs<1000&&gold>goldSeen){int d=gold-goldSeen;if(d!=income&&d!=incomeSeen){gainAmount=d;gainMs=now;}}
+        goldSeen=gold;incomeSeen=income;goldFrameMs=now;
+        int x=box[0],y=box[1];UiTex.draw(g,"hud/chip-plain",x,y);
+        String main=gold+" gold",sub="+"+income+" every "+Spec.ECONOMY[0].incomeSeconds()+" s";
+        g.drawText(font,DarkUi.heading(main),x+10,y+4,DarkUi.INK_TEXT,false);
+        float sc=0.75f;int sw=Math.round(font.getWidth(sub)*sc);
+        var m=g.getMatrices();m.push();m.translate(x+box[2]-10-sw,y+5.5f,0);m.scale(sc,sc,1);g.drawText(font,sub,0,0,DarkUi.SEPIA,false);m.pop();
+        r.put("gold",box);tx.put("gold",main);tx.put("gold-income",sub);
+        long age=now-gainMs;
+        if(gainAmount>0&&age<GAIN_MS){
+            int a=Math.round(255*(1-age/(float)GAIN_MS));
+            if(a>=8){String gain="+"+gainAmount;g.drawText(font,gain,x+box[2]+6,y+5,(a<<24)|(DarkUi.BRASS_HI&0xffffff),true);tx.put("gold-gain",gain);}
+        }
     }
 
     /** How far a hint-slip row may run: from 10 px into the slip to 12 px inside its box's right edge (the 164 px slip's paper ends

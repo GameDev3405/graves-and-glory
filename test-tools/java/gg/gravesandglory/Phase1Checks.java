@@ -1462,7 +1462,7 @@ public final class Phase1Checks implements ClientModInitializer {
          *  leaving one line between it and the crosshair), else above it. Open, the crosshair does not count (UI polish round 2). At
          *  Standard and Large the chat is held to the same rules, not to numbers. Last, the HUD's scale under Task 8a (the footprint's
          *  baseline) and 1 for the brief's five footprint windows. */
-        static final int[][] WINDOWS={{960,540,1,0,1,1,1,10,20,10,20,10,20,10,20,1,0},{854,480,2,0,1,1,1,4,6,1,9,4,14,1,12,1,1},{1280,720,3,0,1,1,1,6,8,6,16,6,18,6,17,1,1},{1920,1080,2,1,2,3,3,10,20,10,20,10,20,10,20,2,1},{1920,1080,4,1,2,3,3,7,9,5,15,7,19,5,17,2,1},{1280,720,2,0,1,2,2,10,14,10,20,10,20,10,20,2,0},{1366,768,2,0,1,2,2,10,15,10,20,10,20,10,20,2,1}};
+        static final int[][] WINDOWS={{960,540,1,0,1,1,1,10,20,10,20,10,20,10,20,1,0},{854,480,2,0,1,1,1,2,4,1,7,2,13,1,10,1,1},{1280,720,3,0,1,1,1,6,8,5,15,6,18,5,16,1,1},{1920,1080,2,1,2,3,3,10,20,10,20,10,20,10,20,2,1},{1920,1080,4,1,2,3,3,7,8,3,13,7,18,3,15,2,1},{1280,720,2,0,1,2,2,10,13,9,20,10,20,9,20,2,0},{1366,768,2,0,1,2,2,10,15,10,20,10,20,10,20,2,1}};
         /** Each window's screenshot; pass B adds -hints, C -battle and D -battle-hints, and a size above Compact -standard or -large. */
         static final String[] SHOTS={"ui-hud-chat","ui-hud-small","ui-hud-1280","ui-hud-1080-gui2","ui-hud-1080-gui4","ui-hud-720-gui2","ui-hud-1366"},PASS_SHOT={"","-hints","-battle","-battle-hints"},SIZE_SHOT={"","-standard","-large"};
         /** The footprint's baseline (UI Task 8c, run ui-8c-base-211317): in the default battle state the HUD before this task drew two
@@ -1484,7 +1484,7 @@ public final class Phase1Checks implements ClientModInitializer {
         boolean finished,keepLesson,sealsOk,smallOk=true,abilityOk,edgeOk;String sealsWhy="",smallWhy="",abilityWhy="",edgeWhy="";List<BattleHud.CardDraw> two=List.of();
         // p1-ui-chat-lift (controller addition A, client thread): the chat above the left column in battle, in place in camp; the
         // chat text size p1-ui-chat-edge changed, to put back (-1: unchanged)
-        int campLift=-1;boolean chatOk=true;String chatWhy="";double chatScale=-1;
+        int campLift=-1;boolean chatOk=true,goldOk=true;int goldSeen=0;String chatWhy="",goldWhy="";double chatScale=-1;
         // the window sweep (UI Tasks 8a and 8c, client thread): the HUD size (HudSize), the pass (0 A, 1 B, 2 C, 3 D), ticks the
         // pass's state has held; the frames p1-ui-small-window and p1-ui-hud-layout measured, p1-ui-hud-scale's windows, the
         // footprint's five, and the chat's lines frame by frame
@@ -1775,6 +1775,7 @@ public final class Phase1Checks implements ClientModInitializer {
                 case 43->{keepLesson=false;keepRespawn=false;CampaignClient.tutorial=-1;int frames=3*4*WINDOWS.length;
                     report("p1-ui-small-window",smallOk&&smallSeen==frames,smallSeen+" frames measured (wanted "+frames+": "+WINDOWS.length+" windows, four passes, three sizes), each against vanilla's bars as it had them, the offhand slot at every size"+(smallWhy.isEmpty()?"; in every one each plate is 12 px inside the canvas and apart, the feed leaf, lesson note and respawn card CARD_GAP rows clear of each other's and the column's inks":"; "+smallWhy));
                     report("p1-ui-hud-layout",layoutOk&&layoutSeen==frames,"in "+layoutSeen+" frames (wanted "+frames+") the plates as BattleHud drew them against UiMath.hudLayout for the state the pass set, one layout for the draw and the fit (the Task 8a review's Minor 3): "+(layoutWhy.isEmpty()?"every one equal":layoutWhy));
+                    report("p1-ui-hud-gold",goldOk&&goldSeen==frames,"the gold readout in "+goldSeen+" frames (wanted "+frames+"): drawn as \"n gold\", on the canvas, apart from the cards, the hint slip and the chat"+(goldWhy.isEmpty()?"":"; "+goldWhy));
                     report("p1-ui-chat-lift",chatOk&&campLift==0,"in camp the chat moved "+campLift+" GUI px; closed/open lines frame by frame: "+chatLines+(chatWhy.isEmpty()?"":"; "+chatWhy));
                     report("p1-ui-hud-scale",scaleOk&&scaleSeen==3*WINDOWS.length,"the battle HUD at each size (UI Task 8c: Compact at the kit scale on every window, Standard and Large a step up where the whole HUD fits beside vanilla's bars): "+scaleWhy+(scaleSeen==3*WINDOWS.length?"":"; only "+scaleSeen+" of "+3*WINDOWS.length+" windows measured")+(Arrays.stream(WINDOWS).allMatch(v->v[6]==v[5])?"; Large draws as Standard at every one of these windows (no step further fits them)":""));
                     report("p1-ui-hud-footprint",footOk&&footSeen==5,"the HUD's plates (cards and chips, the key strip, the feed leaf, the hint slip, the lesson note, the respawn card) as a share of the screen in the default battle state (three groups, the army selected, the hint layer down, a feed line, no lesson, the commander up: pass C at Compact), against the HUD before this task ("+BASELINE_AREA+" canvas px at Task 8a's scale, run ui-8c-base-211317), at most half of it and the centre band clear at the brief's five windows: "+footWhy+(footSeen==5?"":"; only "+footSeen+" of the five measured"));
@@ -1922,6 +1923,14 @@ public final class Phase1Checks implements ClientModInitializer {
             List<String> hit=new ArrayList<>();if(chat!=null)for(var e:r.entrySet())if(meets(chat,e.getValue()))hit.add(e.getKey());
             List<String> onBars=new ArrayList<>();if(chat!=null)for(var e:bars.entrySet())if(!e.getKey().equals("the crosshair")&&meets(chat,e.getValue()))onBars.add(e.getKey()); // UI Task 8c
             boolean clear=dr!=null&&!meets(dr,cross);
+            // p1-ui-hud-gold: the gold readout is drawn with its text, on the screen, and meets neither the cards, the hint slip nor the chat
+            {int[] gb=r.get("gold");String gt=BattleHud.texts().get("gold");List<String> why=new ArrayList<>();
+                if(gb==null)why.add("no gold rect");else{
+                    if(gb[0]<0||gb[1]<0||gb[0]+gb[2]>cw||gb[1]+gb[3]>ch)why.add("off the "+cw+"x"+ch+" canvas at "+box(gb));
+                    for(var e:r.entrySet())if((e.getKey().startsWith("card-")||e.getKey().equals("hints"))&&meets(gb,e.getValue()))why.add("meets "+e.getKey()+" "+box(e.getValue()));
+                    if(chat!=null&&meets(gb,chat))why.add("meets the chat "+box(chat));}
+                if(gt==null||!gt.matches("[0-9]+ gold"))why.add("text \""+gt+"\" (wanted \"<n> gold\")");
+                goldOk&=why.isEmpty();goldSeen++;if(!why.isEmpty())goldWhy+=(goldWhy.isEmpty()?"":"; ")+at+": "+String.join(", ",why);}
             boolean apart=chat!=null&&dr[1]>=0&&top!=UiMath.NO_COLUMN&&chat[1]+chat[3]<=top&&ChatPlacement.drawnLines==shown&&(want<0?shown>=1:shown==want)&&clear&&hit.isEmpty()&&onBars.isEmpty();chatOk&=apart;
             chatLines.append(chatLines.length()==0?"":", ").append(s[0]).append("x").append(s[1]).append(" GUI ").append(s[2]).append(" ").append(HudSize.NAMES[size]).append(" ").append("ABCD".charAt(pass)).append(" ").append(shown).append(want<0||shown==want?"":" (want "+want+")");
             if(!apart)chatWhy+=(chatWhy.isEmpty()?"":"; ")+at+" closed: chat scale "+hud.getChatScale()+", lifted "+ChatPlacement.lift(sh)+" GUI px, "+ChatPlacement.drawnLines+" lines drawn at canvas "+box(chat)+" (GUI "+box(dr)+"), the column's top at "+top+", the crosshair at GUI "+box(cross)+(clear?" clear":" COVERED")+(hit.isEmpty()?", apart from every element of the HUD":", meeting "+hit)+(onBars.isEmpty()?", off vanilla's bars":", on "+onBars)+"; it shows "+shown+" lines"+(want<0?"":" (wanted "+want+")")+", WRONG";
