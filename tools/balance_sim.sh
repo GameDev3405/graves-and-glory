@@ -38,5 +38,7 @@ echo "$*" > "$root/args.txt"
 echo "$root"
 export GRAVES_ROADMAP_SERVER_ROOT="$root"
 skip=(); [ -f work/method/plans/skip-tools-build ] && skip=(-x compileLocalTestTools -x localTestToolsJar)  # another of my servers holds the jar open
+# Fresh worktree: build first so Loom puts the main mod on the launch classpath.
+[ -d build/classes/java/main ] && [ -d build/resources/main ] || "$G" classes --offline > "$root/gradle-warmup.txt" 2>&1
 "$G" runServer --offline "$@" "${skip[@]}" --init-script test-tools/isolated-server.gradle > "$root/gradle-run.txt" 2>&1
 echo "gradle exit $? root $root"
