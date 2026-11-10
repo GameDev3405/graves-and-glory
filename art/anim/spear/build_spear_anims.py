@@ -30,7 +30,7 @@ _GEO = json.loads((HERE.parent / TROOP / "out" / f"{TROOP}.geo.json").read_text(
 GEO_BONES = {b["name"] for b in _GEO}
 # Secondary cloth (STYLE.md rule 9): the knight's cape lag, given to each troop's hanging gear at a scale.
 SPEAR_TROOPS = {"wm_tusk": {"gear": {"kilt": 0.4, "trophy": 0.7}},
-                "tc_tideguard": {"gear": {"tabard": 0.35}, "rear_x": -0.6, "death_lookahead": True},
+                "tc_tideguard": {"gear": {"tabard": 0.35}, "rear_x": -0.6, "death_lookahead": True, "no_lookahead": ("death_left",)},
                 "tc_admiral": {"gear": {"cape": 0.35, "tails_l": 0.7, "tails_r": 0.7}, "rear_x": -0.6, "death_lookahead": True, "death_top": 0.15, "death_step": 0.25,
                                   "soft": ("hair_adrift", "kelp_", "plume", "tails_", "sash_end")},
                 # The Iron Clans breaker swings a two-handed greataxe (art/anim/greataxe): it borrows this builder's solver, footing,
@@ -49,6 +49,9 @@ ST = SPEAR_TROOPS[TROOP]
 # back). Only these troops: the reaper and the rest keep the old build. GG_V2=0 builds the old style.
 V2C = TROOP in ("wm_tusk", "tc_tideguard", "tc_admiral", "ic_breaker") and os.environ.get("GG_V2") != "0"
 LOOKAHEAD = ST.get("death_lookahead", False)   # per troop: wrist turn planned backwards through the fall (see flat_weapon)
+# per troop: falls keyed without the look-ahead. tc_tideguard's roll to the left: the planned-back wrist turn swung the spear round
+# with the body's own roll at t11 (scorecard ang_speed_weapon 84, limit 83.2); the reactive turn keeps it under the cap.
+NO_LOOKAHEAD = ST.get("no_lookahead", ())
 RX = ST.get("rear_x", 0.0)        # per-troop shift of the thrust contact fist outward, keeping the butt out of a wider torso
 K.SOFT = ST.get("soft", ())   # per troop: hanging hair and kelp never hold the falling body up (knight death_clip)
 TOP_W = ST.get("death_top", 0.0)  # per troop: cost per px the dropped weapon's top stands above TOP_OK (keeps it low in a roll)
@@ -682,10 +685,9 @@ READY_LIKE = ("ready", "shield_up")   # shield_up is the ready pose: both ride V
 def stance_upper(k, life, legs_spec, ticks=K.STANCE_TICKS, ready=False):
     n = ticks * SUB
     a_br, a_wt, _ = K.feel.stance_amps(life, ready)
-    sol = Solver()
-    out = []
     hips = (legs_spec or STANCE_LEGS["ready"])["hips"]
     legs = {"hips": hips}
+    rows = []
     for i in range(n + 1):
         u = (i % n) / n
         br = a_br * math.sin(2 * math.pi * u)
@@ -698,7 +700,22 @@ def stance_upper(k, life, legs_spec, ticks=K.STANCE_TICKS, ready=False):
         # the shaft rides the breath a beat behind it, its point drifting
         O = np.array(k["O"]) + np.array([0.0, 0.12 * br + 0.15 * wl, 0.1 * wl])
         dd = np.array(k["d"]) + np.array([0.0, 0.006 * br + 0.01 * wl, 0.0])
-        out.append(sol.pose(legs, torso, head, O, unit(dd), k["u"], k["Ls"][0], k["rp"], k["lp"]))
+        rows.append((legs, torso, head, O, unit(dd), k["u"], k["Ls"][0], k["rp"], k["lp"]))
+    if not V2C:
+        sol = Solver()
+        out = [sol.pose(*r) for r in rows]
+    else:
+        # Loop closure: the two-arm solve has a slack direction (the elbows can swivel about the fists) that the weak arm
+        # prior barely holds, so warm-starting sample after sample let the arms creep along it and the loop ended a few
+        # degrees off its first frame (a kink at the wrap). Every sample starts from the same solution (the first frame's
+        # solved from the priors), so each is a function of its own breath phase alone and the last frame meets the first.
+        first = Solver()
+        first.pose(*rows[0])
+        anchor = first.warm.copy()
+        sol, out = Solver(), []
+        for r in rows:
+            sol.warm = anchor.copy()
+            out.append(sol.pose(*r))
     out = gear(out)
     out[-1] = out[0]
     return K.bake(out, ticks)
@@ -955,10 +972,11 @@ def near_euler(r, prev):
     return min(cands, key=lambda e: sum((e[i] - prev[i]) ** 2 for i in range(3)))
 
 
-def flat_weapon(keys, start, t0, t1, step=None):
+def flat_weapon(keys, start, t0, t1, step=None, look=None):
     """Re-key the fall every half tick (DEATH_STEP) with the right wrist solved: free, then easing from t0 to the spear lying
     flat by t1, always tipped clear of the ground and swinging at most MAX_WRIST_TURN per tick."""
     step = DEATH_STEP if step is None else step
+    look = LOOKAHEAD if look is None else look
     end = keys[-1][0]
     out, ref, prev = [], None, start["right_hand"][0]
     for t in np.arange(step, end + step / 2, step):
@@ -972,7 +990,7 @@ def flat_weapon(keys, start, t0, t1, step=None):
             hand = slerp_rot(hand, ref, ramp(t, t0 - 1, t1))
         r = ground_hand(pose, hand, prev)
         turn, cap = turn_deg(prev, r), MAX_WRIST_TURN * step
-        if LOOKAHEAD:                                  # solve every key free first; the turn cap is applied backwards below
+        if look:                                       # solve every key free first; the turn cap is applied backwards below
             out.append((t, f, pose, r))
             prev = r
             continue
@@ -981,7 +999,7 @@ def flat_weapon(keys, start, t0, t1, step=None):
         prev = near_euler(r, prev)
         f["right_hand"] = prev
         out.append((t, "lin", f))
-    if not LOOKAHEAD:
+    if not look:
         return out
     # Look-ahead: walking back from the end, a key the next one is too far from turns part-way towards it, so the wrist
     # starts swinging early instead of flipping late; then a forward pass caps whatever is left.
@@ -1006,10 +1024,19 @@ def flat_weapon(keys, start, t0, t1, step=None):
 
 def death_clips():
     start = K.idle_start()
-    falls = {"death_back": K.DEATH_BACK, "death_forward": K.DEATH_FORWARD,
+    back = K.DEATH_BACK
+    if V2C:
+        # The knight's fall from behind, from the spear guard: the guard leans the chest 14 deg forward, so the knight's first
+        # key (torso -14) whipped the spine 28 deg back in 3 ticks (scorecard ang_speed_torso 26, limit 21.7); it is thrown
+        # back to -6 there and the fall carries it on. The knight's shield hand turns over to lay the shield flat (left_hand
+        # -180 at t16, 159 deg/100ms); the spearman's left fist holds nothing by then and stays as it is.
+        back = [(t, e, {b: ((-6, 0, 0) if (t, b) == (3, "torso") else r) for b, r in k.items() if b != "left_hand"})
+                for t, e, k in K.DEATH_BACK]
+    falls = {"death_back": back, "death_forward": K.DEATH_FORWARD,
              "death_left": K.roll_keys(K.DEATH_LEFT, start, 13, K.ROLL_LEFT),
              "death_right": K.roll_keys(K.DEATH_RIGHT, start, 13, K.ROLL_RIGHT)}
-    return {n: K.death_clip(flat_weapon(k, start, *FLAT_AT[n]), start, n) for n, k in falls.items()}
+    return {n: K.death_clip(flat_weapon(k, start, *FLAT_AT[n], look=LOOKAHEAD and n not in NO_LOOKAHEAD), start, n)
+            for n, k in falls.items()}
 
 
 # ------------------------------------------------------------------------------------------------
