@@ -109,7 +109,7 @@ public final class CommandSelection {
                 afterOrder(keepOpen);
             }
             case "charge" -> {
-                if (CommandNet.Client.chargeTicksLeft() > 0) { CommandMode.cancel(); CommandMode.refuse("Charge ready in " + (CommandNet.Client.chargeTicksLeft() + 19) / 20 + "s"); return; }
+                if (CommandNet.Client.chargeTicksLeft() > 0) { CommandMode.cancel(); CommandMode.refuse("Charge is not ready yet"); return; } // no seconds: they would freeze in the feed while the Charge pennant counts down
                 trayOpen = false;
                 CommandMode.begin("charge");
                 aimKeepOpen = keepOpen;

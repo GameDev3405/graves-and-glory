@@ -26,7 +26,7 @@ import java.util.*;
 /**
  * Command UI plan Task 7: the pennant panel. Clicks go through Mouse.onCursorPos and Mouse.onMouseButton (the GLFW callbacks a real mouse
  * drives, so PanelInputMixin sees them as it would a player's); keys through CommandUiChecks.press. Screenshots of each state at 1920x1080
- * and 854x480 go to <run>/command-ui/shots for the visual review. Never included in releases.
+ * and 854x480 (open, tray and cooldown also at 2560x1440) go to <run>/command-ui/shots for the visual review. Never included in releases.
  */
 public final class PanelSuite implements CommandUiChecks.Suite {
     UUID id;
@@ -206,21 +206,32 @@ public final class PanelSuite implements CommandUiChecks.Suite {
             CommandSelection.setTrayOpen(false);
         }
         if (tick == 308) {
-            boolean sweep854 = drawn(CommandPanel.SWEEP);
+            sweep854 = drawn(CommandPanel.SWEEP);
             edges(c, "cooldown-854"); shot(c, "panel-cooldown-854.png");
-            CommandUiChecks.report("cu-panel-left-edge", edgeFails.isEmpty() && edgeChecked >= 8,
-                edgeChecked + " frames checked (1920x1080 and 854x480: open, hover, tray, cooldown); " + (edgeFails.isEmpty() ? "every rect inside 30% (tray inside 45%)" : String.join("; ", edgeFails))
-                    + "; 854 cooldown sweep drawn=" + sweep854 + "; shots: " + String.join(", ", shotLog));
-            CommandUiChecks.report("cu-panel-overlap", overlapFails.isEmpty() && overlapChecked >= 8,
-                overlapChecked + " frames (1920x1080 and 854x480): " + (overlapFails.isEmpty() ? "no panel rect meets the hint slip, a group card or the spine; the hint slip hidden while open" : String.join("; ", overlapFails.subList(0, Math.min(6, overlapFails.size())))));
         }
-        if (tick == 310) { GLFW.glfwSetWindowSize(c.getWindow().getHandle(), initialSize[0], initialSize[1]); CommandSelection.setPanelOpen(true); CommandSelection.select("ranged", false); }
+
+        // 1440p (2560x1440, GUI Scale 3): open, tray and the Charge still cooling
+        if (tick == 310) { CommandSelection.setTrayOpen(false); GLFW.glfwSetWindowSize(c.getWindow().getHandle(), 2560, 1440); }
+        if (tick == 324) cursorCentre(c);
+        if (tick == 328) { edges(c, "open-2560"); shot(c, "panel-open-2560.png"); }
+        if (tick == 330) CommandSelection.order("formation", false);
+        if (tick == 334) { edges(c, "tray-2560"); shot(c, "panel-tray-2560.png"); CommandSelection.setTrayOpen(false); }
+        if (tick == 338) {
+            boolean sweep2560 = drawn(CommandPanel.SWEEP);
+            edges(c, "cooldown-2560"); shot(c, "panel-cooldown-2560.png");
+            CommandUiChecks.report("cu-panel-left-edge", edgeFails.isEmpty() && edgeChecked >= 11,
+                edgeChecked + " frames checked (1920x1080, 854x480: open, hover, tray, cooldown; 2560x1440: open, tray, cooldown); " + (edgeFails.isEmpty() ? "every rect inside 30% (tray inside 45%)" : String.join("; ", edgeFails))
+                    + "; 854 cooldown sweep drawn=" + sweep854 + "; 2560 cooldown sweep drawn=" + sweep2560 + "; shots: " + String.join(", ", shotLog));
+            CommandUiChecks.report("cu-panel-overlap", overlapFails.isEmpty() && overlapChecked >= 11,
+                overlapChecked + " frames (1920x1080, 854x480 and 2560x1440): " + (overlapFails.isEmpty() ? "no panel rect meets the hint slip, a group card, the spine or the vanilla hotbar, health and armour rows; the hint slip hidden while open" : String.join("; ", overlapFails.subList(0, Math.min(6, overlapFails.size())))));
+        }
+        if (tick == 310 + S2560) { GLFW.glfwSetWindowSize(c.getWindow().getHandle(), initialSize[0], initialSize[1]); CommandSelection.setPanelOpen(true); CommandSelection.select("ranged", false); }
 
         // the cursor comes back: panel open, the pause screen opened and closed, the panel shut -> the cursor is locked again
-        if (tick == 314) { relockFreeBefore = !c.mouse.isCursorLocked(); c.setScreen(new net.minecraft.client.gui.screen.GameMenuScreen(true)); }
-        if (tick == 318) c.setScreen(null);
-        if (tick == 322) { relockFreeAfterResume = !c.mouse.isCursorLocked(); CommandSelection.setPanelOpen(false); }
-        if (tick == 326) {
+        if (tick == 314 + S2560) { relockFreeBefore = !c.mouse.isCursorLocked(); c.setScreen(new net.minecraft.client.gui.screen.GameMenuScreen(true)); }
+        if (tick == 318 + S2560) c.setScreen(null);
+        if (tick == 322 + S2560) { relockFreeAfterResume = !c.mouse.isCursorLocked(); CommandSelection.setPanelOpen(false); }
+        if (tick == 326 + S2560) {
             boolean locked = c.mouse.isCursorLocked();
             CommandUiChecks.report("cu-panel-relock", relockFreeBefore && relockFreeAfterResume && locked,
                 "panel open: cursor free=" + relockFreeBefore + "; after Esc and resume: free=" + relockFreeAfterResume + "; panel shut: locked=" + locked + " (window focused=" + c.isWindowFocused() + ")");
@@ -228,21 +239,21 @@ public final class PanelSuite implements CommandUiChecks.Suite {
         }
 
         // F1 (a hidden HUD): the invisible panel must not keep the cursor or take clicks
-        if (tick == 327) { hudWas = c.options.hudHidden; hudCapBefore = CommandPanel.capturing(); c.options.hudHidden = true; }
-        if (tick == 329) {
+        if (tick == 327 + S2560) { hudWas = c.options.hudHidden; hudCapBefore = CommandPanel.capturing(); c.options.hudHidden = true; }
+        if (tick == 329 + S2560) {
             boolean capHidden = CommandPanel.capturing(), locked = c.mouse.isCursorLocked();
             c.options.hudHidden = hudWas;
             CommandUiChecks.report("cu-panel-hud-hidden", hudCapBefore && !capHidden && locked,
                 "panel open: capturing=" + hudCapBefore + "; HUD hidden (F1): capturing=" + capHidden + ", cursor locked=" + locked + " (wanted capturing false, cursor locked)");
         }
         // disconnect with the panel open; the listener records the state without a world and rejoins
-        if (tick == 330) {
+        if (tick == 330 + S2560) {
             beforeDisconnect = "panel open=" + CommandSelection.panelOpen() + " selection " + CommandSelection.selected();
             disconnectStage = 1;
             c.world.disconnect();
             c.disconnect(new gg.gravesandglory.FrontMenuScreen());
         }
-        if (tick >= 331 && disconnectStage == 3 && rejoinTick < 0) rejoinTick = tick;
+        if (tick >= 331 + S2560 && disconnectStage == 3 && rejoinTick < 0) rejoinTick = tick;
         if (rejoinTick > 0 && tick == rejoinTick + 20) {
             boolean ok = afterDisconnect.contains("panel open=false") && !CommandSelection.panelOpen() && CommandSelection.selected().equals(List.of("all")) && CommandPanel.slide() <= 0;
             CommandUiChecks.report("cu-panel-disconnect", ok, "before: " + beforeDisconnect + "; without a world: " + afterDisconnect + "; after rejoin: panel open=" + CommandSelection.panelOpen()
@@ -251,6 +262,9 @@ public final class PanelSuite implements CommandUiChecks.Suite {
         }
     }
 
+    /** The ticks after the 2560x1440 set moved this many later to make room for it. */
+    static final int S2560 = 34;
+    boolean sweep854;
     List<String> pillFirst = List.of();
     boolean trayOpened, sweepDrawn;
     String chargeAimed = "", beforeDisconnect = "";
@@ -305,6 +319,13 @@ public final class PanelSuite implements CommandUiChecks.Suite {
                     overlapFails.add(state + ": panel id " + r[0] + " [" + r[1] + "," + r[2] + " " + r[3] + "x" + r[4] + "] meets " + name
                         + String.format(Locale.ROOT, " [%.0f,%.0f %.0fx%.0f]", bx, by, bw, bh));
             }
+        }
+        // nor the vanilla hotbar with the health and armour rows above it (bottom centre)
+        int[] v = CommandPanel.vanillaHud(sw, c.getWindow().getScaledHeight());
+        for (int[] r : CommandPanel.lastDrawn) {
+            if (r[0] == CommandPanel.SWEEP) continue;
+            if (r[1] < v[0] + v[2] && v[0] < r[1] + r[3] && r[2] < v[1] + v[3] && v[1] < r[2] + r[4])
+                overlapFails.add(state + ": panel id " + r[0] + " [" + r[1] + "," + r[2] + " " + r[3] + "x" + r[4] + "] meets the vanilla hotbar/health/armour [" + v[0] + "," + v[1] + " " + v[2] + "x" + v[3] + "]");
         }
     }
 

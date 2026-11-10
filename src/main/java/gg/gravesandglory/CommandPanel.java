@@ -37,6 +37,8 @@ public final class CommandPanel {
     static final String[] SHAPE_ICONS = {"command/shape_line", "command/shape_block", "command/shape_wedge", "command/shape_loose"};
     static final int CREAM = 0xfff6dc, GOLD = 0xffd27a, TRIM = 0xe6c46a, DARK = 0x1b1a1f;
     static final int[] PILL_INSET = {4, 2, 1, 1, 0, 0, 0, 0, 1, 1, 2, 4};
+    /** Pennant text layout: icon at ICON_X (16 wide), name at NAME_X, at least KEY_GAP between the name and the key, the key ending KEY_PAD before the box's end. */
+    static final int ICON_X = 4, NAME_X = 24, KEY_GAP = 6, KEY_PAD = 26;
     static final int PENNANT_H = 24, PILL_H = 12, CELL_W = 32, CELL_W_WIDE = 36, CELL_H = 44;
 
     /** What the last frame drew, {id, x, y, w, h} in GUI px (the slide's offset included). */
@@ -163,8 +165,8 @@ public final class CommandPanel {
         int poleX = 2, flagX = 7;
         // pennant width: the mockup's 150 of 960, or as long as its words need
         int words = 0;
-        for (int i = 0; i < ORDERS.length; i++) words = Math.max(words, font.getWidth(NAMES[i]) + 4 + font.getWidth(key(ORDERS[i])));
-        int W = Math.max(64, Math.max((int) Math.round(sw * 150 / 960.0), 22 + words + 24));
+        for (int i = 0; i < ORDERS.length; i++) words = Math.max(words, font.getWidth(NAMES[i]) + KEY_GAP + keySlot(font, i));
+        int W = Math.max(64, Math.max((int) Math.round(sw * 150 / 960.0), NAME_X + words + KEY_PAD));
         int ext = sw >= 600 ? (int) Math.round(W * 0.19) : Math.max(4, (int) Math.round(W * 0.08));
         W = Math.min(W, limit - flagX - ext);
         int pitch = Math.max(26, (int) Math.round(sh * 42 / 540.0));
@@ -172,14 +174,14 @@ public final class CommandPanel {
         var pills = CommandSelection.pills();
         List<int[]> pillBox = new ArrayList<>();
         List<String> pillText = new ArrayList<>();
-        int px = flagX + 2, rows = 1, rowW = 0;
+        int px = flagX + 2, rows = 1, pillPad = sw < 600 ? 6 : 10, pillGap = sw < 600 ? 2 : 3; // narrow screens: tighter pills, so they keep one row
         for (int i = 0; i < pills.size(); i++) {
             String t = pills.get(i).custom() ? pills.get(i).label() : (i < 4 && sw >= 500 ? (i + 1) + " " : "") + shortName(pills.get(i).id()); // narrow screens drop the number: one row; a custom group's pill is "<n> <name>" (Task 12)
-            int w = font.getWidth(t) + 10;
+            int w = font.getWidth(t) + pillPad;
             if (px + w > limit && px > flagX + 2) { px = flagX + 2; rows++; }
             pillBox.add(new int[]{px, rows - 1, w});
             pillText.add(t);
-            px += w + 3;
+            px += w + pillGap;
         }
         int pillsH = rows * PILL_H + (rows - 1) * 3;
         // the stack ends above the group column and hint slip (lower left); on a short screen the pennants close up to fit
@@ -206,9 +208,11 @@ public final class CommandPanel {
             if (sel) {
                 for (int r = 0; r < PILL_H; r++) g.fill(x + PILL_INSET[r], y + r, x + w - PILL_INSET[r], y + r + 1, 0xe6000000 | GOLD);
             } else {
-                RenderSystem.setShaderColor(1, 1, 1, hov ? 1f : 0.9f);
-                UiTex.nine(g, "command/pill", x, y, w, PILL_H);
-                RenderSystem.setShaderColor(1, 1, 1, 1);
+                // glass: a see-through smoked body with a pale sheen along its top, framed by the gold edge
+                int body = hov ? 0xb3141821 : 0x80141821;
+                for (int r = 1; r < PILL_H - 1; r++) g.fill(x + PILL_INSET[r], y + r, x + w - PILL_INSET[r], y + r + 1, body);
+                g.fill(x + PILL_INSET[1] + 1, y + 1, x + w - PILL_INSET[1] - 1, y + 2, hov ? 0x59ffffff : 0x38ffffff);
+                g.fill(x + PILL_INSET[2], y + 2, x + w - PILL_INSET[2], y + 3, 0x1affffff);
                 int edge = (hov ? 0xcc000000 : 0x99000000) | GOLD;
                 g.fill(x + PILL_INSET[0], y, x + w - PILL_INSET[0], y + 1, edge);
                 g.fill(x + PILL_INSET[0], y + PILL_H - 1, x + w - PILL_INSET[0], y + PILL_H, edge);
@@ -220,7 +224,7 @@ public final class CommandPanel {
                 }
             }
             String t = pillText.get(i);
-            g.drawText(font, t, x + (w - font.getWidth(t) + 1) / 2, y + 2, sel ? 0xff000000 | DARK : 0xff000000 | CREAM, false);
+            g.drawText(font, t, x + (w - font.getWidth(t) + 1) / 2, y + 2, sel ? 0xff000000 | DARK : 0xff000000 | CREAM, !sel);
             record(PILL + i, x, y, w, PILL_H, dx);
             lastAlpha.put(PILL + i, sel ? 0.9f : 1f);
         }
@@ -241,7 +245,7 @@ public final class CommandPanel {
             double fl = flashLeft(PENNANT + i);
             int press = fl > 0.4 ? 1 : 0;
             int x = flagX + press, yy = y + press;
-            float a = active || hov ? Math.min(1f, alpha + 0.10f) : alpha;
+            float a = active ? Math.min(1f, alpha + 0.10f) : hov ? Math.min(1f, alpha + 0.25f) : alpha;
             float k = cooling ? 0.45f : 1f;
             RenderSystem.setShaderColor(k * ((cloth >> 16) & 255) / 255f, k * ((cloth >> 8) & 255) / 255f, k * (cloth & 255) / 255f, a);
             pennant(g, "command/pennant", x, yy, w);
@@ -249,24 +253,33 @@ public final class CommandPanel {
                 RenderSystem.setShaderColor(((GOLD >> 16) & 255) / 255f, ((GOLD >> 8) & 255) / 255f, (GOLD & 255) / 255f, 1f);
                 pennant(g, "command/pennant_trim", x, yy, w);
                 pennant(g, "command/pennant_trim", x + 1, yy, w);
+            } else if (hov && !cooling) {
+                // hover: the trim turns full gold, so the pennant under the cursor stands out at any size
+                RenderSystem.setShaderColor(((GOLD >> 16) & 255) / 255f, ((GOLD >> 8) & 255) / 255f, (GOLD & 255) / 255f, 1f);
+                pennant(g, "command/pennant_trim", x, yy, w);
             } else {
                 RenderSystem.setShaderColor(((TRIM >> 16) & 255) / 255f, ((TRIM >> 8) & 255) / 255f, (TRIM & 255) / 255f, cooling ? 0.5f : 0.8f);
                 pennant(g, "command/pennant_trim", x, yy, w);
             }
             if (cooling) BattleHud.sweep(g, x + 1, yy, Math.min(1, chargeLeft / (double) chargeTotal));
             RenderSystem.setShaderColor(1, 1, 1, cooling ? 0.55f : 1f);
-            UiTex.draw(g, ICONS[i], x + 5, yy + 4);
+            UiTex.draw(g, ICONS[i], x + ICON_X, yy + 4);
             RenderSystem.setShaderColor(1, 1, 1, 1);
+            int keyRight = x + w - KEY_PAD; // the key ends 10 px before the swallowtail notch's inner point (w - 16)
+            // a soft dark band under the words keeps them legible over bright terrain; the cloth around it stays see-through
+            int bandL = x + NAME_X - 3, bandR = keyRight + 3, band = hov && !cooling ? 0x40000000 : 0x59000000;
+            g.fill(bandL + 1, yy + 6, bandR - 1, yy + 18, band);
+            g.fill(bandL, yy + 7, bandL + 1, yy + 17, band); g.fill(bandR - 1, yy + 7, bandR, yy + 17, band);
             // cream ink with the vanilla shadow reads on any House cloth (the gilded one included); gold stays on the active trim only
             int ink = cooling ? 0xb3000000 | CREAM : 0xff000000 | CREAM;
-            g.drawText(font, NAMES[i], x + 22, yy + 8, ink, true);
-            String kk = key(ORDERS[i]);
-            int keyRight = x + w - 24; // inside the solid body, clear of the swallowtail notch
-            g.drawText(font, kk, keyRight - font.getWidth(kk), yy + 8, cooling ? ink : 0xe6000000 | CREAM, true);
-            if (cooling) {
-                // the seconds left sit just past the swallowtail tip, clear of the icon
+            g.drawText(font, NAMES[i], x + NAME_X, yy + 8, ink, true);
+            if (!cooling) {
+                String kk = key(ORDERS[i]);
+                g.drawText(font, kk, keyRight - font.getWidth(kk), yy + 8, hov ? 0xff000000 | GOLD : 0xe6000000 | CREAM, true);
+            } else {
+                // the seconds left take the key's place (the key does nothing while Charge cools), inside the body like the key
                 String secs = (chargeLeft + 19) / 20 + "s";
-                int sx = Math.min(x + w - 2, limit - 1 - font.getWidth(secs));
+                int sx = keyRight - font.getWidth(secs);
                 g.drawText(font, secs, sx, yy + 8, 0xffffffff, true);
                 record(SWEEP, x + 1, yy, Math.max(24, sx + font.getWidth(secs) - x - 1), 24, dx);
                 lastDrawn.add(new int[]{SECS, sx + dx, yy + 8, font.getWidth(secs), 9}); // the seconds alone, for the tray check
@@ -285,12 +298,11 @@ public final class CommandPanel {
         // the Formation tray
         if (CommandSelection.trayOpen()) {
             int cells = CommandSelection.SHAPES.length, pad = 6;
-            int ax = flagX + formationW - 2;
+            int ax = flagX + formationW - 14; // the tray meets the pennant at its swallowtail notch
             int tw, th, tx, ty, cols, cw, gap;
-            // a 1x4 strip beside the pennant when it fits (wide cells first, so the names never touch), else 2x2 above it, else below
-            if (ax + pad * 2 + cells * CELL_W_WIDE + (cells - 1) * 3 <= trayLimit) { cols = 4; cw = CELL_W_WIDE; gap = 3; }
-            else if (ax + pad * 2 + cells * CELL_W + (cells - 1) * 3 <= trayLimit) { cols = 4; cw = CELL_W; gap = 3; }
-            else { cols = 2; gap = 2; cw = ax + pad * 2 + 2 * CELL_W_WIDE + gap <= trayLimit ? CELL_W_WIDE : CELL_W; }
+            // a 1x4 strip beside the pennant when it fits (cells as wide as the room allows, 5 px apart, so the names never crowd), else 2x2 above it
+            if (ax + pad * 2 + cells * CELL_W + (cells - 1) * 5 <= trayLimit) { cols = 4; gap = 5; cw = Math.min(CELL_W_WIDE, (trayLimit - ax - pad * 2 - (cells - 1) * gap) / cells); }
+            else { cols = 2; gap = 4; cw = ax + pad * 2 + 2 * CELL_W_WIDE + gap <= trayLimit ? CELL_W_WIDE : CELL_W; }
             int rowsT = (cells + cols - 1) / cols;
             tw = pad * 2 + cols * cw + (cols - 1) * gap; th = pad * 2 + rowsT * CELL_H + (rowsT - 1) * gap;
             if (cols == 4) { tx = ax; ty = formationY + PENNANT_H / 2 - th / 2; }
@@ -299,6 +311,9 @@ public final class CommandPanel {
                 // the tray would cover the cooldown seconds: slide right of them if the 45% limit allows, else drop below the Charge row
                 if (secsRight + 2 + tw <= trayLimit) tx = secsRight + 2; else ty = secsBottom + 1;
             }
+            // never over the vanilla hotbar, health and armour rows (bottom centre): lift the tray above them when it reaches into their columns
+            int[] vh = vanillaHud(sw, sh);
+            if (tx < vh[0] + vh[2] && vh[0] < tx + tw && ty + th > vh[1]) ty = vh[1] - 1 - th;
             if (ty < 2) ty = 2;
             if (ty + th > sh - 2) ty = sh - 2 - th;
             RenderSystem.setShaderColor(1, 1, 1, 1);
@@ -324,6 +339,18 @@ public final class CommandPanel {
             }
         }
     }
+
+    /** The vanilla survival HUD's box in GUI px {x, y, w, h}: the hotbar and the health and armour rows above it (as InGameHud lays them out). */
+    public static int[] vanillaHud(int sw, int sh) {
+        var p = MinecraftClient.getInstance().player;
+        float hp = p == null ? 20 : p.getMaxHealth() + p.getAbsorptionAmount();
+        int rows = Math.max(1, (int) Math.ceil(hp / 2f / 10f)), rowH = Math.max(10 - (rows - 2), 3);
+        int top = sh - 39 - (rows - 1) * rowH - 10; // the armour row sits one row above the top heart row
+        return new int[]{sw / 2 - 91, top, 182, sh - top};
+    }
+
+    /** Room a pennant keeps for its key (Charge: also its cooldown seconds, which take the key's place). */
+    static int keySlot(TextRenderer font, int i) { return Math.max(font.getWidth(key(ORDERS[i])), i == 1 ? font.getWidth("20s") : 0); }
 
     /** The pennant art (64 x 24) drawn w long: its hoist, its clean middle columns 8..19 tiled, then the swallowtail end. */
     static void pennant(DrawContext g, String name, int x, int y, int w) {
