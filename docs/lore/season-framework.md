@@ -33,6 +33,8 @@ A season is one story beat plus content that serves it. **[call]** A standard se
 
 A season never retcons an earlier one, never removes a House, and never makes an earlier chapter's battle unwinnable or wrong in hindsight.
 
+**Army economy (Kort approved 2026-11-10, spec `docs/superpowers/specs/2026-11-09-army-economy-design.md` on branch `docs/army-economy-spec`, section 6).** Campaign battles will set gold budgets (player `startGold`, rounds, enemy budget or fixed army) instead of fixed 20-slot banners; building waits for the 1.21.1 port. No story line depends on a twenty-troop banner. Army sizes in the outlines are rough strength (`size` commanders and tier), and loss-count bonuses (`lose_at_most`) get new numbers when budgets are set. Under G1 a chapter's House army becomes a House budget rather than a fixed row.
+
 ## 3. The roadmap
 
 Each row is a proposal; content counts follow section 2. "New unit" names a role, not a design. Kort designs maps; the map column gives the place and what it must show.

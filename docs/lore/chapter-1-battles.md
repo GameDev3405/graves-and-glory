@@ -138,6 +138,8 @@ Without N2 the 1.0 chapter keeps only the old colours (battle 2 reason) and the 
 - **Bonus rows.** Every battle gets a new `bonusObjectives` id (shipped kinds); none reuses a `march-*` bonus id, so old claims cannot block new bonuses.
 - All briefings are 133 characters or fewer and all reasons 64 or fewer (script check).
 
+**Army economy (Kort approved 2026-11-10, spec `docs/superpowers/specs/2026-11-09-army-economy-design.md` on branch `docs/army-economy-spec`, section 6).** Campaign battles will set gold budgets (player `startGold`, rounds, enemy budget or fixed army) instead of fixed 20-slot banners; building waits for the 1.21.1 port. No story line depends on a twenty-troop banner. Army sizes in the outlines are rough strength (`size` commanders and tier), and loss-count bonuses (`lose_at_most`) get new numbers when budgets are set. Under G1 a chapter's House army becomes a House budget rather than a fixed row. For chapter 1: battle 1 keeps a fixed army with no pick phase; the bonuses `lose_at_most 8` (oath-2) and `lose_at_most 12` (oath-5) and the ebb battles are re-checked when budgets land.
+
 ## 6. What moves to a later story layer
 
 The outline's book stills, stage scenes, the Charter card, the relief roll and the hunting tally need the storybook engine, which `PLAN-TO-1.0.md` keeps out of 1.0. They stay as that layer's script. When it arrives (season 2 at the earliest **[call]**), chapter 1 gains them without changing a battle.
