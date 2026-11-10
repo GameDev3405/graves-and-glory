@@ -124,12 +124,12 @@ def summary(items, today, later):
     return f'{n(len(items))}, {minutes(items)} min; today: {n(len(today))}, {minutes(today)} min'
 
 CSS = """
-:root{color-scheme:light dark;--bg:#f6f3ee;--card:#fffdf9;--ink:#1f1b16;--muted:#6b6358;--line:#e2dccf;--accent:#7a2e22;--on-accent:#fff;--p1:#a8321f;--p2:#8a5a00;--p3:#4f6b4a}
-@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--bg:#17140f;--card:#211d17;--ink:#f2ece1;--muted:#a79d8d;--line:#352f26;--accent:#e0a58f;--on-accent:#1f1b16;--p1:#ff9a85;--p2:#e8b95a;--p3:#9fc79a}}
-:root[data-theme="dark"]{--bg:#17140f;--card:#211d17;--ink:#f2ece1;--muted:#a79d8d;--line:#352f26;--accent:#e0a58f;--on-accent:#1f1b16;--p1:#ff9a85;--p2:#e8b95a;--p3:#9fc79a}
+:root{color-scheme:light;--bg:#f6f3ee;--card:#fffdf9;--ink:#1f1b16;--muted:#6b6358;--line:#e2dccf;--accent:#7a2e22;--on-accent:#fff;--p1:#a8321f;--p2:#8a5a00;--p3:#4f6b4a}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--bg:#17140f;--card:#211d17;--ink:#f2ece1;--muted:#a79d8d;--line:#352f26;--accent:#e0a58f;--on-accent:#1f1b16;--p1:#ff9a85;--p2:#e8b95a;--p3:#9fc79a;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#17140f;--card:#211d17;--ink:#f2ece1;--muted:#a79d8d;--line:#352f26;--accent:#e0a58f;--on-accent:#1f1b16;--p1:#ff9a85;--p2:#e8b95a;--p3:#9fc79a;color-scheme:dark}
 *{box-sizing:border-box}
-html,body{margin:0;overflow-x:hidden}
-body{background:var(--bg);color:var(--ink);font:17px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;padding:24px 16px 48px}
+body{margin:0}
+body{background:var(--bg);color:var(--ink);font:17px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;padding-block:24px 48px;padding-left:max(16px, env(safe-area-inset-left, 0px));padding-right:max(16px, env(safe-area-inset-right, 0px))}
 main{max-width:720px;margin:0 auto}
 h1{font-size:1.9rem;margin:0 0 4px}
 .sub{color:var(--muted);margin:0 0 28px}
@@ -160,13 +160,13 @@ def card(i):
 
 def render_html(items, today, later, now=None):
     now = now or datetime.datetime.now()
-    body = [f'<h1>Kort\'s inbox</h1>', f'<p class="sub">Updated {now:%H:%M}. About {minutes(today)} minutes today.</p>']
+    body = [f'<h1>Kort\'s inbox</h1>', f'<p class="sub">Updated {now:%A %d %B, %H:%M}. About {minutes(today)} minutes today.</p>']
     if not items: body.append('<p class="empty">Nothing waits on you.</p>')
     for title, group in (('Today', today), ('Later', later)):
         if group: body += [f'<h2>{title}</h2>'] + [card(i) for i in group]
-    return ('<!doctype html>\n<html lang="en"><head><meta charset="utf-8">'
-            '<meta name="viewport" content="width=device-width, initial-scale=1">'
-            f"<title>Kort's inbox</title><style>{CSS}</style></head><body><main>" + '\n'.join(body) + '</main></body></html>\n')
+    # An Artifact page fragment: the publisher wraps it in the document skeleton (charset, viewport, body).
+    return ("<title>Kort's inbox</title>\n" '<meta name="claude:viewport-fit-sides" content="cover">\n'
+            f'<style>{CSS}</style>\n<main>' + '\n'.join(body) + '</main>\n')
 
 def main(argv=None):
     p = argparse.ArgumentParser(description=__doc__.splitlines()[0])

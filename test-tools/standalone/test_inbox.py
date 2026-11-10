@@ -185,9 +185,11 @@ class Html(unittest.TestCase):
         self.assertIn("<title>Kort's inbox</title>", h)
         self.assertIn(':root{', h.replace(' ', '')); self.assertIn('prefers-color-scheme: dark', h)
         self.assertIn(':root:not([data-theme="light"])', h); self.assertIn(':root[data-theme="dark"]', h)
-        self.assertIn('name="viewport"', h); self.assertIn('overflow-x', h)
+        self.assertIn('name="claude:viewport-fit-sides"', h); self.assertNotIn('<body', h); self.assertNotIn('<!doctype', h.lower())
+        self.assertIn('padding-left:max(16px, env(safe-area-inset-left', h); self.assertIn('padding-right:max(16px, env(safe-area-inset-right', h)
+        self.assertIn('body{background:var(--bg)', h.replace(' ', '').replace('body{margin:0}', ''))
         self.assertNotIn('<script', h); self.assertNotRegex(h, r'src="http')
-        self.assertIn('Updated 09:30.', h); self.assertIn('About 5 minutes today.', h)
+        self.assertRegex(h, r'Updated \w+ \d\d \w+, 09:30\.'); self.assertIn('About 5 minutes today.', h)
         self.assertIn('Today', h); self.assertIn('Pick one', h); self.assertIn('Animation lead', h); self.assertIn('~5 min', h)
 
     def test_priority_words_and_later_section(self):
