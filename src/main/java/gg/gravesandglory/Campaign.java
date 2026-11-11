@@ -642,7 +642,7 @@ public final class Campaign {
             if(p.progression.titles.add(h.title()))gained.add(h.title());}
         return gained;
     }
-    /** The title a mastery reward gives (its title: part, "title:Veteran" or "frame:brass;title:Master"), or null when it gives none. */
+    /** The title a mastery reward gives (its title: part, "title:Storied" or "frame:brass;title:Master"), or null when it gives none. */
     static String masteryTitle(String reward){for(String part:reward.split(";"))if(part.startsWith("title:")&&part.length()>6)return part.substring(6);return null;}
     /** A Pact (spec 4.4) for each Long March chapter whose every battle is cleared (campaignBattles order up to campaignCleared) and that has not paid one yet (writChapters). Returns the chapters granted. */
     static List<Integer> pacts(Profile p){

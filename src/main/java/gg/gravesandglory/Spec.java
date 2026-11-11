@@ -125,7 +125,7 @@ public static LevelNamesRow[] LEVELNAMES = new LevelNamesRow[] {new LevelNamesRo
 public record RecruitmentRow(String id,int rollCost,int chosenCost,int epicPity,int legendaryShards,int renownForLegendary,double capPct,int maxStars) {}
 public static RecruitmentRow[] RECRUITMENT = new RecruitmentRow[] {new RecruitmentRow("houses",100,300,40,50,30,0.12,3)};
 public record MasteryRow(String id,int level,int kills,int matches,String reward) {}
-public static MasteryRow[] MASTERY = new MasteryRow[] {new MasteryRow("mastery_1",1,40,8,"title:Veteran"),new MasteryRow("mastery_2",2,150,25,"skin:veteran"),new MasteryRow("mastery_3",3,400,60,"frame:brass;title:Master")};
+public static MasteryRow[] MASTERY = new MasteryRow[] {new MasteryRow("mastery_1",1,40,8,"title:Storied"),new MasteryRow("mastery_2",2,150,25,"skin:veteran"),new MasteryRow("mastery_3",3,400,60,"frame:brass;title:Master")};
 public record RenownRow(String id,int level,int points,String reward) {}
 public static RenownRow[] RENOWN = new RenownRow[] {new RenownRow("renown_1",1,3,"cosmetic:pennant"),new RenownRow("renown_2",2,8,"cosmetic:trim"),new RenownRow("renown_3",3,15,"cosmetic:frame"),new RenownRow("renown_4",4,22,"cosmetic:standard"),new RenownRow("renown_5",5,30,"legendary")};
 public record BotBannersRow(String id,String house,String difficulty,String slots) {}

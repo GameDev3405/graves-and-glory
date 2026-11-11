@@ -390,7 +390,7 @@ public final class HousesCheck {
         check(progressionMultiplier(.06,.12)==1.06 && progressionMultiplier(.12,.12)==1.12 && progressionMultiplier(.2,.12)==1.12 && eq(progressionMultiplier(.03,.12),1.03), "cap clamps: stars alone");
         check(starFromCopies(1,C)==1 && starFromCopies(2,C)==2 && starFromCopies(3,C)==2 && starFromCopies(4,C)==3, "4 copies for star 3");
         check(starFromCopies(9,rarity("legendary"))==1 && starPct(1,C)==0 && eq(starPct(2,C),0.06) && eq(starPct(3,C),0.12) && eq(starPct(3,rarity("epic")),0.12), "star bonuses; Legendary stars come from shards only");
-        check(Arrays.stream(Spec.MASTERY).filter(m -> m.level() == 1).map(Spec.MasteryRow::reward).toList().equals(List.of("title:Veteran")), "Mastery I gives the title only: it unlocks nothing");
+        check(Arrays.stream(Spec.MASTERY).filter(m -> m.level() == 1).map(Spec.MasteryRow::reward).toList().equals(List.of("title:Storied")), "Mastery I gives the title only: it unlocks nothing");
         founders();
         pacts();
         cardRows();

@@ -4027,7 +4027,7 @@ public final class Phase2Checks implements ClientModInitializer {
                     var k=pr.owned.get("knight");k.kills=39;k.survived=7;k.mastery=0;
                     for(String id:List.of("archer","sentinel","longbow","mage","gl_marshal"))pr.owned.computeIfAbsent(id,x->new Profile.Owned()).mastery=1;
                     var r=pr.owned.get("revenant");r.kills=0;r.survived=0;r.mastery=0;
-                    pr.progression.titles.removeIf(t->t.endsWith(" Veteran")||t.equals("Oathsworn"));
+                    pr.progression.titles.removeIf(t->t.endsWith(" Storied")||t.equals("Oathsworn"));
                     save(b);shards0=new HashMap<>(pr.shards);renown0=new HashMap<>(pr.renown);next(b,51);}
                 case 51->{if(!skirmishBanners(b,p,0,"knight*14,revenant*6","knight*20"))return;own=b.squads.get(player);next(b,52);}
                 case 52->{if(since(b)<45)return; // a trait second or two has passed
@@ -4050,7 +4050,7 @@ public final class Phase2Checks implements ClientModInitializer {
                     part(renown(b,"gilded")-renown0.getOrDefault("gilded",0)==2&&renown(b,"graveborn")-renown0.getOrDefault("graveborn",0)==2,"Renown +"+(renown(b,"gilded")-renown0.getOrDefault("gilded",0))+" / +"+(renown(b,"graveborn")-renown0.getOrDefault("graveborn",0))+" (want +2 / +2)");
                     part(k.kills==40&&k.survived==8,"knight ledger: kills "+k.kills+" (want 39 + 1), survived "+k.survived+" (want 7 + 1)");
                     part(r.kills==1&&r.survived==0,"revenant ledger: kills "+r.kills+" (want 1: the blow before the fall; the temporary Risen's kill is no troop's), survived "+r.survived+" (want 0: only a temporary revenant lived to the end)");
-                    part(k.mastery==1&&pr.progression.titles.contains("Order Squire Veteran"),"knight Mastery "+k.mastery+" (want 1 at 40 kills and 8 matches) and the title Order Squire Veteran");
+                    part(k.mastery==1&&pr.progression.titles.contains("Order Squire Storied"),"knight Mastery "+k.mastery+" (want 1 at 40 kills and 8 matches) and the title Order Squire Storied");
                     part(pr.progression.titles.contains("Oathsworn"),"all six Gilded troops at Mastery I give the House title Oathsworn: titles "+pr.progression.titles);
                     part(seconds.getOrDefault("gilded",0)>0&&seconds.getOrDefault("graveborn",0)>0,"trait seconds before the finish "+seconds);
                     done("p2-match-rewards");wantScreen="results";next(b,61);}
@@ -5703,7 +5703,7 @@ public final class Phase2Checks implements ClientModInitializer {
                         if(wait>5&&shotDone(c)){var t=Campaign.troop("sentinel");var w=WarTableTroop.texts();var o=p.owned.get("sentinel");var next=Spec.MASTERY[1];
                             boolean page=s.page.equals("troop")&&"sentinel".equals(ttext("letter-troop"))&&"Templar".equals(ttext("letter-name"));
                             boolean stars=page&&"2".equals(ttext("letter-stars"))&&ttext("letter-line1").startsWith("Gilded Order");
-                            boolean title=page&&"Title: Veteran".equals(ttext("mastery-title"))&&"Next, Mastery 2: Mastery trim".equals(ttext("mastery-next"));
+                            boolean title=page&&"Title: Storied".equals(ttext("mastery-title"))&&"Next, Mastery 2: Mastery trim".equals(ttext("mastery-next"));
                             boolean bars=page&&trect("mastery-kills-bar")!=null&&trect("mastery-fights-bar")!=null
                                 &&("Kills "+Math.min(o==null?0:o.kills,next.kills())+" of "+next.kills()).equals(ttext("mastery-kills"))
                                 &&("Fights survived "+Math.min(o==null?0:o.survived,next.matches())+" of "+next.matches()).equals(ttext("mastery-fights"));
