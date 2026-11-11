@@ -1291,7 +1291,7 @@
       "pointScale": 1.0,
       "timeout": "score",
       "ruleLine": "Domination to {n}",
-      "summary": "Hold the points to score. First to 300. Up to 15 minutes.",
+      "summary": "Hold the points. First to 300, 15 minutes at most.",
       "howTo": "Send troops onto a point to take it; hold it to score. | Reach the target score first, or lead when time ends.",
       "howToDefend": "Send troops onto a point to take it; hold it to score. | Reach the target score first, or lead when time ends."
     },
@@ -3053,31 +3053,31 @@
       "id": "rivergate",
       "name": "Rivergate Valley",
       "theme": "river",
-      "description": "A working river town: mill, farms, trade crossing and hilltop shrine."
+      "description": "A river town: mill, farms, trade crossing and hilltop shrine."
     },
     {
       "id": "ironhold",
       "name": "Ironhold Siege",
       "theme": "fortress",
-      "description": "A breached border fortress: supply yards, gate roads and exposed flanks."
+      "description": "A breached fortress: supply yards, gate roads and exposed flanks."
     },
     {
       "id": "frostmarch",
       "name": "Frostmarch Pass",
       "theme": "snow",
-      "description": "A mountain trade pass: sheltered camps, ridge routes and a frozen gorge."
+      "description": "A mountain pass: sheltered camps, ridge routes and a frozen gorge."
     },
     {
       "id": "hollowwood",
       "name": "Hollowwood Reach",
       "theme": "forest",
-      "description": "An abandoned woodland road: old logging camps, shrines and marsh crossings."
+      "description": "A woodland road: logging camps, shrines and marsh crossings."
     },
     {
       "id": "kingsfield",
       "name": "Kingsfield Crossroads",
       "theme": "plains",
-      "description": "Five objectives: two fords, a central bridge and a raised outpost on each flank."
+      "description": "Five objectives: two fords, a central bridge, an outpost on each flank."
     }
   ],
   "gearRarities": [
@@ -5135,7 +5135,7 @@
       "target": "none",
       "shards": 5,
       "gold": 40,
-      "text": "Hold all three crossings at the same moment.",
+      "text": "Hold all three crossings at once.",
       "placeholder": "none"
     },
     {
@@ -5145,7 +5145,7 @@
       "target": "none",
       "shards": 5,
       "gold": 40,
-      "text": "Lose no more than 8 troops.",
+      "text": "Lose at most 8 troops.",
       "placeholder": "none"
     },
     {
@@ -5175,7 +5175,7 @@
       "target": "none",
       "shards": 5,
       "gold": 50,
-      "text": "Lose no more than 12 troops.",
+      "text": "Lose at most 12 troops.",
       "placeholder": "value (12 troops: tune in the sim, chapter 1 brief D)"
     },
     {
@@ -5185,7 +5185,7 @@
       "target": "none",
       "shards": 5,
       "gold": 60,
-      "text": "Hold all five crossings at the same moment.",
+      "text": "Hold all five crossings at once.",
       "placeholder": "none"
     }
   ],
@@ -11766,23 +11766,23 @@
   "tips": [
     {
       "id": "tip-01",
-      "text": "Press {key:follow} to call your army to your side. It guards you and keeps support troops behind the front line."
+      "text": "Press {key:follow} to call your army: it guards you, with support troops behind the front line."
     },
     {
       "id": "tip-02",
-      "text": "Press {key:attack} to send your army at the enemy. Press {key:retreat} to pull it back; retreating troops ignore enemies."
+      "text": "Press {key:attack} to send your army at the enemy, or {key:retreat} to pull it back; retreating troops ignore enemies."
     },
     {
       "id": "tip-03",
-      "text": "Press {key:charge} to aim a Charge. Troops run 25% faster, and a Charge needs a short rest before the next one."
+      "text": "Press {key:charge} to aim a Charge: troops run 25% faster, then need a short rest."
     },
     {
       "id": "tip-04",
-      "text": "When you aim a Charge or a formation, {key:confirm} confirms the order and {key:cancel} cancels it."
+      "text": "When aiming a Charge or formation, {key:confirm} confirms and {key:cancel} cancels."
     },
     {
       "id": "tip-05",
-      "text": "Press {key:formation} to open the formation tray. Keys 1 to 4 pick Line, Shield wall, Wedge or Loose."
+      "text": "Press {key:formation} for the formation tray; keys 1 to 4 pick Line, Shield wall, Wedge or Loose."
     },
     {
       "id": "tip-06",
@@ -11790,35 +11790,35 @@
     },
     {
       "id": "tip-07",
-      "text": "Press {key:menu} in battle to open the command panel and give orders to all troops or to one group."
+      "text": "Press {key:menu} in battle for the command panel, to order all troops or one group."
     },
     {
       "id": "tip-08",
-      "text": "The command panel closes after each order. Hold Shift while you order to keep it open."
+      "text": "The command panel closes after each order; hold Shift while ordering to keep it open."
     },
     {
       "id": "tip-09",
-      "text": "Domination: hold the points to score. The first side to 300 wins, or the side ahead after 15 minutes."
+      "text": "Domination: hold points to score; first to 300 wins, or the side ahead after 15 minutes."
     },
     {
       "id": "tip-10",
-      "text": "Every 5 seconds you earn 5 gold, plus 3 for each point your side holds, up to 9. Each kill you score adds 1."
+      "text": "Every 5 seconds you earn 5 gold, plus 3 per point your side holds (up to 9), and 1 per kill."
     },
     {
       "id": "tip-11",
-      "text": "Recruit at your barracks lectern with {key:use}. Trained troops march out from the held point nearest the fight."
+      "text": "Recruit at your barracks lectern with {key:use}; troops march out from the held point nearest the fight."
     },
     {
       "id": "tip-12",
-      "text": "An army holds 20 slots. Most troops take 1, some take 2, and the Legendaries take 4."
+      "text": "An army holds 20 slots: most troops take 1, some take 2, Legendaries take 4."
     },
     {
       "id": "tip-13",
-      "text": "A House trait switches on when your banner holds enough of that House's troops. Field more for a higher tier."
+      "text": "A House trait switches on when your banner holds enough of that House's troops; field more for a higher tier."
     },
     {
       "id": "tip-14",
-      "text": "Graveborn, tier I: a troop that falls has an 11% chance to rise once at 30% health. Legendaries do not."
+      "text": "Graveborn, tier I: a fallen troop, except a Legendary, has an 11% chance to rise once at 30% health."
     },
     {
       "id": "tip-15",
@@ -11826,15 +11826,15 @@
     },
     {
       "id": "tip-16",
-      "text": "A gear set gives a bonus at 2 pieces worn and another at 4. Change your gear in the Arsenal, in camp."
+      "text": "A gear set gives a bonus at 2 pieces worn and another at 4; change gear in the Arsenal, in camp."
     },
     {
       "id": "tip-17",
-      "text": "In the war council, the battle begins ten seconds after the last commander readies. Stand down to stop it."
+      "text": "In the war council, battle starts ten seconds after the last commander readies; Stand down stops it."
     },
     {
       "id": "tip-18",
-      "text": "The host of a war council sets the mode, the map, the seats and the bot difficulty. Everyone sees them."
+      "text": "The host of a war council sets the mode, map, seats and bot difficulty, and everyone sees them."
     },
     {
       "id": "tip-19",

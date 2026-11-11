@@ -133,7 +133,7 @@ final class LobbyChecks implements Phase1Checks.Suite, Phase1Checks.ServerWatch 
                 var t=WarTableLobby.texts();String want=WarTableLobby.summary(id),drawn=t.get("summary");var r=WarTableLobby.rects().get("summary");var sheet=WarTableLobby.rects().get("sheet");
                 boolean ok=!want.isEmpty()&&want.equals(drawn)&&r!=null&&sheet!=null&&r[0]>=sheet[0]&&r[0]+r[2]<=sheet[0]+sheet[2]&&r[0]+r[2]<=sheet[0]+WarTableLobby.PAD+WarTableLobby.TEXT_W;
                 report("p1-lobby-summary-"+id,ok,"mode "+id+": the sheet reads \""+drawn+"\" (want \""+want+"\"), width "+(r==null?-1:r[2])+" of "+WarTableLobby.TEXT_W);
-                if(mi>0){boolean fits=Modes.hosts(id,num("map"))&&("changed to fit "+WarTableLobby.modeName(id)).equals(t.get("fit-map"))&&!t.containsKey("fit-mode");
+                if(mi>0){boolean fits=Modes.hosts(id,num("map"))&&("set to fit "+WarTableLobby.modeName(id)).equals(t.get("fit-map"))&&!t.containsKey("fit-mode");
                     report("p1-lobby-fit-map-"+id,fits,"mode "+id+" took map "+num("map")+" ("+Spec.MAPS[num("map")].name()+"); beside Map: \""+t.get("fit-map")+"\"");}
                 if(mi==modes.size()-1)shot(c,"lobby-1080-host-fit");
                 mi++;modeSeen=false;mark=-99;
@@ -144,7 +144,7 @@ final class LobbyChecks implements Phase1Checks.Suite, Phase1Checks.ServerWatch 
                 if(num("map")==mapWas){if(k>200)fail(c,"p1-lobby-fit-mode","the map never moved");return;}
                 if(k<8||(k<60&&!WarTableLobby.texts().containsKey("fit-mode")))return;
                 var t=WarTableLobby.texts();
-                String want="changed to fit the map";
+                String want="set to fit the map";
                 boolean ok=Modes.hosts(str("mode"),num("map"))&&!str("mode").equals(modeWas)&&want.equals(t.get("fit-mode"));
                 report("p1-lobby-fit-mode",ok,"map "+mapWas+" -> "+num("map")+" ("+Spec.MAPS[num("map")].name()+"), the mode "+modeWas+" -> "+str("mode")+"; beside Mode: \""+t.get("fit-mode")+"\" (want \""+want+"\"); snapshot fitted \""+str("fitted")+"\" serial "+num("fitSerial")+", keys "+t.keySet());
                 sentMap=false;stage=54;

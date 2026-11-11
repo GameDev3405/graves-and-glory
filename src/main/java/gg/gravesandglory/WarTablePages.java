@@ -113,11 +113,11 @@ final class WarTablePages {
      *  column of the leader's tags, and the camp column's line on how friends reach a camp this machine runs: how to share it,
      *  or, once it is open on the network, where friends find it. */
     static final int RULE_X = 188, RULE_W = 156;
-    static final String PARTY_RULE = "A party of up to four friends always fights on one team.";
+    static final String PARTY_RULE = "A party of up to four fights as one team.";
     /** Under the seats while in a party. */
     static final String PARTY_LASTS = "The party lasts through matches and restarts.";
-    static final String CAMP_HOW = "To play together, host a camp on this network from Play with friends on the title screen; friends pick Join a server there.";
-    static final String CAMP_OPEN = "This camp is open on your network: friends pick Play with friends, then Join a server, on their title screen.";
+    static final String CAMP_HOW = "Host a camp on this network from Play with friends on the title screen; friends pick Join a server.";
+    static final String CAMP_OPEN = "Open on your network: friends pick Play with friends, then Join a server on the title screen.";
 
     // Field: the sheet; on its left a row per map (its name) and under them the line that says the war council picks the map;
     // on its right the card of the map in view with its name and description, and under them the bots' tier, its three tags
@@ -2088,7 +2088,7 @@ final class WarTablePages {
         int x = ox + CAMP_X;
         g.drawText(font, DarkUi.heading("In this camp"), x, oy + 124, DarkUi.BRASS, false);
         if (rows("camp").isEmpty()) {
-            var first = lines(g, "Commanders appear here after joining this game server.", x, oy + INVITE_Y, campW(), 2, DarkUi.MUTED);
+            var first = lines(g, "Commanders who join this server appear here.", x, oy + INVITE_Y, campW(), 2, DarkUi.MUTED);
             var server = MinecraftClient.getInstance().getServer();
             if (server != null) { // this machine runs the camp: how friends reach it (isRemote: open on the network)
                 var how = lines(g, server.isRemote() ? CAMP_OPEN : CAMP_HOW, x, oy + INVITE_Y + 13 * first.size() + 8, campW(), 4, DarkUi.MUTED);
@@ -2186,7 +2186,7 @@ final class WarTablePages {
         texturesDrawn.put("room", "table/note-room-short");
         g.drawText(font, DarkUi.heading("War council"), lx, y + 12, DarkUi.INK_TEXT, false);
         if (room.isEmpty()) {
-            var said = lines(g, "Your own battle, with friends on the teams you choose.", lx, y + 30, ROOM_W, 6, DarkUi.SEPIA);
+            var said = lines(g, "Your own battle, on teams you choose.", lx, y + 30, ROOM_W, 6, DarkUi.SEPIA);
             textsDrawn.put("room-line", String.join(" ", said));
         } else {
             var lead = DarkUi.body("You are in room");
@@ -2260,9 +2260,9 @@ final class WarTablePages {
         textsDrawn.put("card-name", map.name());
         var desc = UiMath.lines(map.description(), CARD_TEXT_W, 3, s -> font.getWidth(DarkUi.body(s)));
         for (int i = 0; i < desc.size(); i++) WarTableHome.centred(g, DarkUi.body(desc.get(i)), ox + CARD_CX, oy + CARD_Y + 110 + 13 * i, DarkUi.SEPIA);
-        String status = GravesAndGloryClient.running ? "A battle is on: the maps wait for it to end" : "The war council's host picks the map";
+        String status = GravesAndGloryClient.running ? "A battle is on: maps wait until it ends" : "The war council host picks the map";
         text(g, "status", DarkUi.body(status), status, ox + MAP_X, oy + STATUS_Y, DarkUi.INK_TEXT);
-        g.drawText(font, DarkUi.body("Open the war council from the table's home page."), ox + MAP_X, oy + STATUS_Y + 13, DarkUi.SEPIA, false);
+        g.drawText(font, DarkUi.body("Open it from the table's home page."), ox + MAP_X, oy + STATUS_Y + 13, DarkUi.SEPIA, false);
         WarTableHome.centred(g, DarkUi.heading("Bots"), ox + CARD_CX, oy + BOTS_HEAD_Y, DarkUi.INK_TEXT);
         textsDrawn.put("bots-current", CampaignClient.tierName(CampaignClient.difficulty));
         statuses(g, ox, oy);

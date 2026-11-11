@@ -301,20 +301,20 @@ final class Statuses {
 
         /** The mark's bonus in percent and its seconds (the sheet's "mark" mechanic). */
         static String mark() {
-            for (var a : Spec.ABILITIES) if (a.mechanic().equals("mark")) return "Takes " + Math.round(a.amount() * 100) + "% more from the army that marked it for " + secs(a.durationTicks()) + " s.";
-            return "Takes more from the army that marked it.";
+            for (var a : Spec.ABILITIES) if (a.mechanic().equals("mark")) return "Takes " + Math.round(a.amount() * 100) + "% more from the marking army, " + secs(a.durationTicks()) + " s.";
+            return "Takes more from the marking army.";
         }
 
         static List<Entry> entries() {
             var d = Spec.COMBATDISCIPLINE[0];
-            String bleed = "Loses " + (d.bleedDamage() == Math.rint(d.bleedDamage()) ? Integer.toString((int) d.bleedDamage()) : Double.toString(d.bleedDamage())) + " health every " + secs(d.bleedEveryTicks()) + " s, for " + lasts("bleed") + ".";
+            String bleed = "Loses " + (d.bleedDamage() == Math.rint(d.bleedDamage()) ? Integer.toString((int) d.bleedDamage()) : Double.toString(d.bleedDamage())) + " health every " + secs(d.bleedEveryTicks()) + " s for " + lasts("bleed") + ".";
             return List.of(
-                new Entry("slow", "Slowed", "Moves slower for " + lasts("slow") + ".", SLOW, 0x4A7BA6),
-                new Entry("stun", "Stunned", "Cannot attack or cast for " + lasts("stun") + ".", STUN, 0xC8A23A),
-                new Entry("weaken", "Weakened", "Deals " + weakenPct() + "% less damage for " + lasts("weaken") + ".", WEAKEN, ASH),
+                new Entry("slow", "Slowed", "Moves slower, " + lasts("slow") + ".", SLOW, 0x4A7BA6),
+                new Entry("stun", "Stunned", "Cannot attack or cast, " + lasts("stun") + ".", STUN, 0xC8A23A),
+                new Entry("weaken", "Weakened", "Deals " + weakenPct() + "% less damage, " + lasts("weaken") + ".", WEAKEN, ASH),
                 new Entry("bleed", "Bleeding", bleed, BLEED, BLOOD),
                 new Entry("mark", "Marked", mark(), MARK, MARK_COLOUR),
-                new Entry("knockback", "Knocked back", "Thrown back from the blow; a troop holding its ground is not moved.", KNOCK, 0xA66A3A));
+                new Entry("knockback", "Knocked back", "Thrown back; a troop holding its ground is not moved.", KNOCK, 0xA66A3A));
         }
         static final int MARK_COLOUR = Statuses.MARK;
     }

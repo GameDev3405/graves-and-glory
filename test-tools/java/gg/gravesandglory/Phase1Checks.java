@@ -3852,7 +3852,7 @@ public final class Phase1Checks implements ClientModInitializer {
         void field(MinecraftClient c,int tick){
             int k=at(tick);int[] o=WarTablePages.fieldCol();
             switch(sub){
-                case 0->{boolean plain="The war council's host picks the map".equals(text("status"))&&Integer.valueOf(DarkUi.INK_TEXT).equals(WarTablePages.colors().get("status"));
+                case 0->{boolean plain="The war council host picks the map".equals(text("status"))&&Integer.valueOf(DarkUi.INK_TEXT).equals(WarTablePages.colors().get("status"));
                     for(int i=0;i<Spec.MAPS.length;i++){plain&=button(c,"vote-"+i)==null&&Spec.MAPS[i].name().equals(text("map-"+i))&&Integer.valueOf(DarkUi.INK_TEXT).equals(WarTablePages.colors().get("map-"+i));}
                     ok&=plain;why+="; the page says \""+text("status")+"\""+(plain?", every row in ink and no Vote":" WRONG");fieldRow=0;click(c,box(c,"map-0"));next(tick);}
                 case 1->{int i=fieldRow;String want="table/map-"+Spec.MAPS[i].id();if(k<2||!want.equals(tex("card"))&&k<40)return; // the card as a frame drew it: waits for the frame

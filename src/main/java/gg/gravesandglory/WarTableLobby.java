@@ -327,7 +327,7 @@ final class WarTableLobby {
 
     static List<String> emptyLines() {
         var font = font();
-        return UiMath.lines("Nobody else is in this camp yet. Friends who join this game can use this code on their war council page:", POP_W - 32, 3, t -> font.getWidth(DarkUi.body(t)));
+        return UiMath.lines("No one else is in camp yet. Friends can use this code on their war council page:", POP_W - 32, 3, t -> font.getWidth(DarkUi.body(t)));
     }
 
     static String readyLabel() {
@@ -502,10 +502,10 @@ final class WarTableLobby {
         int lx = x + PAD;
         if (!inRoom()) {
             head(g, "room", "War council", null, lx, y + 18, TEXT_W);
-            String said = requestAt < 0 ? "" : ticks - requestAt <= REQUEST_TICKS ? "Opening a room for your party..." : "Could not open a room. Try again.";
+            String said = requestAt < 0 ? "" : ticks - requestAt <= REQUEST_TICKS ? "Opening a room..." : "Room did not open. Try again.";
             if (!said.isEmpty()) line(g, "status", DarkUi.body(said), said, lx, y + 40, DarkUi.SEPIA);
             head(g, "join-head", "Join by code", null, lx, y + JOIN_Y, TEXT_W);
-            line(g, "join-hint", DarkUi.body("A friend's code opens their war council."), "A friend's code opens their war council.", lx, y + JOIN_Y + 42, DarkUi.SEPIA);
+            line(g, "join-hint", DarkUi.body("A friend's code opens their council."), "A friend's code opens their council.", lx, y + JOIN_Y + 42, DarkUi.SEPIA);
             notice(g, lx, y);
             return;
         }
@@ -529,7 +529,7 @@ final class WarTableLobby {
             line(g, "count-" + t, DarkUi.body(count), count, tx + COL_W - cw, y + TEAM_Y + 1, DarkUi.SEPIA);
         }
         String host = hostName();
-        String hostLine = choosingHost ? "Choose a commander's seat to make them host." : host() ? "You host this council: you set the orders." : "Host: " + host + ". The host sets the orders.";
+        String hostLine = choosingHost ? "Pick a commander's seat to pass host." : host() ? "You host and set the orders." : "Host: " + host + ". Host sets the orders.";
         line(g, "host", DarkUi.body(hostLine), hostLine, lx, y + HOST_Y, DarkUi.SEPIA);
         String house = myHouse();
         var hr = houseRow(house);
@@ -539,7 +539,7 @@ final class WarTableLobby {
         var sr = setRow(role);
         head(g, "role", "Your role", sr == null ? "" : houseSet(sr) ? sr.name() : roleName(role) + ", " + sr.name(), lx, y + ROLE_HEAD_Y, TEXT_W);
         int worn = sr == null ? 0 : GearStats.of(CampaignClient.profile).setCounts().getOrDefault(role, 0);
-        String gearLine = UiMath.trim(worn + " of 4 " + (sr == null ? "" : sr.name()) + " pieces worn. Change gear and relics in the Arsenal.", TEXT_W, t -> font.getWidth(DarkUi.body(t)));
+        String gearLine = UiMath.trim(worn + " of 4 " + (sr == null ? "" : sr.name()) + " pieces worn. Gear and relics: Arsenal.", TEXT_W, t -> font.getWidth(DarkUi.body(t)));
         line(g, "gear", DarkUi.body(gearLine), gearLine, lx, y + ROLE_Y, DarkUi.SEPIA);
         String sum = UiMath.trim(summary(str("mode", "")), TEXT_W, t -> font.getWidth(DarkUi.body(t)));
         if (!sum.isEmpty()) line(g, "summary", DarkUi.body(sum), sum, lx, y + SUMMARY_Y, DarkUi.INK_TEXT);
@@ -837,7 +837,7 @@ final class WarTableLobby {
         int ink;
         Text t;
         if (flag("playing")) { s = "Your room is in battle."; ink = DarkUi.SEPIA; t = DarkUi.body(s); }
-        else if (waiting()) { s = "Preparing the battlefield. Stand down to stop."; ink = DarkUi.INK_TEXT; t = DarkUi.body(s); }
+        else if (waiting()) { s = "Preparing the map. Stand down to stop."; ink = DarkUi.INK_TEXT; t = DarkUi.body(s); }
         else if (seconds > 0) { s = "Battle begins in " + seconds; ink = DarkUi.INK_TEXT; t = DarkUi.focal(s); textsDrawn.put("countdown", String.valueOf(seconds)); }
         else if (!houseRefusal().isEmpty()) { s = houseRefusal(); ink = DarkUi.INK_TEXT; t = DarkUi.body(s); }
         else {
@@ -856,7 +856,7 @@ final class WarTableLobby {
     static String readyCount() {
         var all = commanders();
         long ready = all.stream().filter(r -> flag(r, "ready")).count();
-        return ready + " of " + all.size() + " ready. The battle begins ten seconds after the last.";
+        return ready + " of " + all.size() + " ready. Starts 10 s after the last.";
     }
 
     // ---- the orders note ----
@@ -871,9 +871,9 @@ final class WarTableLobby {
         line(g, null, DarkUi.body("Mode"), "Mode", lx, y + MODE_Y, DarkUi.SEPIA);
         textsDrawn.put("mode", str("mode", ""));
         boolean fit = !fitWhat.isEmpty() && ticks - fitAt < FIT_TICKS;
-        if (fit && fitWhat.equals("mode")) fitNote(g, "fit-mode", "changed to fit the map", x + NPAD + NOTE_TEXT_W, y + MODE_Y);
+        if (fit && fitWhat.equals("mode")) fitNote(g, "fit-mode", "set to fit the map", x + NPAD + NOTE_TEXT_W, y + MODE_Y);
         line(g, null, DarkUi.body("Map"), "Map", lx, y + MAP_Y, DarkUi.SEPIA);
-        if (fit && fitWhat.equals("map")) fitNote(g, "fit-map", "changed to fit " + modeName(str("mode", "")), x + NPAD + NOTE_TEXT_W, y + MAP_Y);
+        if (fit && fitWhat.equals("map")) fitNote(g, "fit-map", "set to fit " + modeName(str("mode", "")), x + NPAD + NOTE_TEXT_W, y + MAP_Y);
         int map = Math.max(0, Math.min(Spec.MAPS.length - 1, num("map", 0)));
         var m = Spec.MAPS[map];
         int cardX = x + (NOTE_W - 139) / 2;

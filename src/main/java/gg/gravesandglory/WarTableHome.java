@@ -70,7 +70,7 @@ final class WarTableHome {
 
     static final String[] MODES = {"practice", "skirmish", "campaign"};
     static final String[] NAMES = {"Practice", "Skirmish", "Campaign"};
-    static final String[] SUBTITLES = {"train against bots", "one battle, your rules", "the story, battle by battle"};
+    static final String[] SUBTITLES = {"train against bots", "one battle, your rules", "story, battle by battle"};
     /** The order sheets' centres on the page. */
     static final int[] CENTRES = {304, 480, 656};
     /** The field card's corner on the page: 8 px right of the Campaign sheet when it is raised (176 wide about 656, so its edge is
@@ -306,7 +306,7 @@ final class WarTableHome {
     }
 
     String rideLabel() {
-        if (GravesAndGloryClient.running) return "A battle is under way";
+        if (GravesAndGloryClient.running) return "Battle under way";
         if (focused == 2 && !CampaignClient.seasonLock(next()).isEmpty()) return "Opens with season " + MarchMath.chapter(next().chapter(), Spec.CAMPAIGNCHAPTERS).season();
         return switch (focused) { case 0 -> "Begin practice"; case 2 -> "Ride to " + next().name(); default -> "Open the war council"; };
     }
@@ -619,7 +619,7 @@ final class WarTableHome {
         var font = MinecraftClient.getInstance().textRenderer;
         if (GravesAndGloryClient.running) {
             UiTex.draw(g, "table/btn-iron-240x40", x, y);
-            String idle = "A battle is under way";
+            String idle = "Battle under way";
             int lx = centred(g, DarkUi.heading(idle), x + 120, y + 14, DarkUi.IVORY);
             textsDrawn.put("ride", idle);
             rectsDrawn.put("ride-label", new int[]{lx, y + 14, font.getWidth(DarkUi.heading(idle)), 11});
