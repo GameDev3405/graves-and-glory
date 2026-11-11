@@ -109,7 +109,7 @@ final class WarTableReport {
         for (int i = 0; i < WarTableHome.RAIL.length; i++) {
             final String target = WarTableHome.RAIL[i];
             int badge = target.equals("contracts") ? builtContracts : target.equals("friends") ? builtFriends : 0;
-            add(target, WarTable.plaque(WarTableHome.RAIL_X[i], WarTableHome.RAIL_W, "icon-" + target, WarTableHome.RAIL_LABELS[i], null, 0, badge, b -> screen.page(target)));
+            add(target, WarTable.plaque(WarTableHome.RAIL_X[i], WarTableHome.RAIL_W, WarTableHome.RAIL_ICONS[i], WarTableHome.RAIL_LABELS[i], null, 0, badge, b -> screen.page(target)));
         }
         int[] o = columnAt();
         int sx = o[0] + SHEET_X, sy = o[1] + TOP, nx = o[0] + NOTE_X, ny = o[1] + TOP;

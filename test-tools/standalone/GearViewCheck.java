@@ -150,6 +150,36 @@ public final class GearViewCheck {
         for (var g : worn.gear) { g.durability = 40; cost += Forge.repairCost(g); }
         check(cost > 0 && GearView.repairAllCost(view(worn)) == cost, "repair all sums the damaged pieces");
 
+        // Polish: the greyed perk hint below the perk rarity, and the notices under the Worn row.
+        var perk = Spec.GEARPERKS[0];
+        Profile pk = starter();
+        String hint = GearView.perkHintPrefix() + perk.text();
+        check(GearView.perkHintPrefix().equals("From " + Gear.rarity(GearStats.PERK_RARITY).name() + ": "), "the hint names the perk rarity from the sheet");
+        for (int i = 0; i < Spec.GEARRARITIES.length; i++) {
+            var tip = GearView.tooltip(view(pk), new Gear.Piece(500 + i, perk.item(), rarity(i), 50, 100));
+            boolean live = i >= Gear.rarityIndex(GearStats.PERK_RARITY);
+            check(tip.contains(hint) == !live, "the From hint shows only below the perk rarity (rarity " + i + ")");
+            check(tip.contains(perk.name() + ": " + perk.text()) == live, "the perk line shows only from the perk rarity (rarity " + i + ")");
+            check(tip.get(tip.size() - 1).startsWith("Click to equip"), "the action line stays last (rarity " + i + ")");
+        }
+        Spec.GearItemsRow two = null, offHand = null;
+        for (var it : Spec.GEARITEMS) { if (it.slot().equals("main") && it.hands() == 2 && two == null) two = it; if (it.slot().equals("off") && offHand == null) offHand = it; }
+        check(two != null && offHand != null, "the sheet has a two-hander and an off hand");
+        Profile sw = starter();
+        Gear.Piece big = add(sw, two.id(), rarity(0), 50, 100), shield = add(sw, offHand.id(), rarity(0), 50, 100);
+        check(Gear.equip(sw, big.uid).isEmpty(), "the two-hander goes on");
+        GearWire.View before = view(sw);
+        check(Gear.equip(sw, shield.uid).isEmpty() && sw.equipped.get("main") == null, "the off hand takes the two-hander off");
+        check(GearView.removedByEquip(before, view(sw)).equals(List.of(two.name())), "the swap names the removed two-hander");
+        GearWire.View after = view(sw);
+        Gear.unequip(sw, "helm");
+        check(GearView.removedByEquip(after, view(sw)).isEmpty(), "taking one piece off names nothing");
+        check(GearView.removedByEquip(null, after).isEmpty() && GearView.removedByEquip(after, null).isEmpty(), "no view, no notice");
+        Profile none = starter();
+        for (String slot : Gear.SLOTS) Gear.unequip(none, slot);
+        check(GearView.nothingWorn(view(none)) && !GearView.nothingWorn(view(starter())) && !GearView.nothingWorn(null), "nothingWorn reads the worn row");
+        check(GearView.STARTER_NOTICE.equals("Nothing worn. You will fight in the starter kit.") && GearView.swapNotice("Axe").equals("Axe was removed: it needs both hands."), "notice texts");
+
         System.out.println("GearViewCheck: " + checks + " checks passed");
     }
     static Profile starterCopy(Profile from) {

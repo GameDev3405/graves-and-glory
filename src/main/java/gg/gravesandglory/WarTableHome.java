@@ -60,9 +60,12 @@ final class WarTableHome {
     /** The back rail's camp plaques, the one source home and every page build them from (WarTablePages; UI Task 8b, the Task 7
      *  review's Minor 8): each page's name (its icon is table/icon-(page)), x on the page and label; each RAIL_W wide. The Camp
      *  plaque (Esc) on home and the back plaque on the pages stand left of them. */
-    static final String[] RAIL = {"recruit", "banner", "contracts", "chapter", "friends"};
-    static final int[] RAIL_X = {184, 304, 424, 544, 664};
-    static final String[] RAIL_LABELS = {"Recruit", "Banner", "Contracts", "Chapter", "Friends"};
+    static final String[] RAIL = {"recruit", "banner", "gear", "contracts", "chapter", "friends"};
+    /** Six plaques on a 116 pitch (a 4 px gap) so the last still ends inside the 854 compact page. */
+    static final int[] RAIL_X = {184, 300, 416, 532, 648, 764};
+    static final String[] RAIL_LABELS = {"Recruit", "Banner", "Arsenal", "Contracts", "Chapter", "Friends"};
+    /** Each plaque's icon: the Arsenal has no icon of its own and takes the table's, as its page header does. */
+    static final String[] RAIL_ICONS = {"icon-recruit", "icon-banner", "icon-table", "icon-contracts", "icon-chapter", "icon-friends"};
     static final int RAIL_W = 112;
 
     static final String[] MODES = {"practice", "skirmish", "campaign"};
@@ -171,7 +174,7 @@ final class WarTableHome {
         for (int i = 0; i < RAIL.length; i++) {
             final String target = RAIL[i];
             int badge = target.equals("contracts") ? contractsBadge() : target.equals("friends") ? builtFriends : 0;
-            add(target, WarTable.plaque(RAIL_X[i], RAIL_W, "icon-" + target, RAIL_LABELS[i], null, 0, badge, b -> screen.page(target)));
+            add(target, WarTable.plaque(RAIL_X[i], RAIL_W, RAIL_ICONS[i], RAIL_LABELS[i], null, 0, badge, b -> screen.page(target)));
         }
         int seated = members().size();
         int[] open = seat(seated);

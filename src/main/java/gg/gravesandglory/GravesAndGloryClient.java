@@ -297,6 +297,8 @@ public final class GravesAndGloryClient implements ClientModInitializer {
      *  team mark (sun, crescent, or the bare square while neutral) on a dark pin with its letter beside it, a ring round a contested
      *  point, capture progress as a bar in the challenger's colour with the challenger's mark; your troops as filled dots, allied
      *  troops as rings, enemy sightings as an x (a small one once only remembered). */
+    /** A group's pin letter: its id's first letter, except siege, whose S was support's too, so it takes G. */
+    static String pinLetter(String id){return id.equals("siege")?"G":id.substring(0,1).toUpperCase();}
     static void map(DrawContext g,int x,int y,int w,int h,boolean labels){
         var font=MinecraftClient.getInstance().textRenderer;
         if(mapTexture!=null)g.drawTexture(mapTexture,x,y,w,h,0f,0f,281,201,281,201);else g.fill(x,y,x+w,y+h,0xff34473b);
@@ -309,7 +311,7 @@ public final class GravesAndGloryClient implements ClientModInitializer {
         for(Marker m:markers){int px=x+(int)((m.x()+350)*w/700),pz=y+(int)((m.z()+250)*h/500);int color=m.fighting()?DarkUi.WARN:DarkUi.MAP_TROOP;DarkUi.mapMark(g,m.own()?"own":"ally",px,pz,color);if(m.fighting())g.fill(px-3,pz-4,px+4,pz-3,color);}
         for(var group:CommandMode.groups){int gx=x+(int)((group.cx()+350)*w/700),gz=y+(int)((group.cz()+250)*h/500);boolean selected=CommandSelection.isSelected(group.id());
             if(selected){int dx=x+(int)((group.x()+350)*w/700),dz=y+(int)((group.z()+250)*h/500);for(int k=0;k<=20;k++){int lx=gx+(dx-gx)*k/20,lz=gz+(dz-gz)*k/20;g.fill(lx,lz,lx+1,lz+1,DarkUi.GOLD);}g.drawBorder(dx-3,dz-3,7,7,DarkUi.GOLD);}
-            g.fill(gx-4,gz-4,gx+5,gz+5,DarkUi.MAP_GROUP);g.drawTextWithShadow(font,group.id().substring(0,1).toUpperCase(),gx-2,gz-3,group.fighting()?DarkUi.WARN:DarkUi.GOLD);
+            g.fill(gx-4,gz-4,gx+5,gz+5,DarkUi.MAP_GROUP);g.drawTextWithShadow(font,pinLetter(group.id()),gx-2,gz-3,group.fighting()?DarkUi.WARN:DarkUi.GOLD);
             if(group.fighting())g.fill(gx-4,gz+5,gx+5,gz+7,DarkUi.WARN); // a bar under the pin: fighting is a shape as well as the orange letter (4F.5)
         }
         for(var sight:sightings){int px=x+(int)((sight.x()+350)*w/700),pz=y+(int)((sight.z()+250)*h/500);if(sight.age()<20)DarkUi.mapMark(g,"enemy",px,pz,DarkUi.MAP_ENEMY);else DarkUi.mapMark(g,"enemy-old",px,pz,DarkUi.MAP_STALE);}

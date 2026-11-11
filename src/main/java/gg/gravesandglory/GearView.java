@@ -155,15 +155,55 @@ final class GearView {
         for (int i = 0; i < s.length; i++) if (!statText(i, s[i]).equals("—")) parts.add("+" + statText(i, s[i]) + " " + statWord(i));
         if (!parts.isEmpty()) out.add(String.join(" · ", parts));
         out.addAll(compare(v, p));
-        if (Gear.rarityIndex(p.rarity) >= 3) for (var k : Spec.GEARPERKS) if (k.item().equals(p.item)) out.add(k.name() + ": " + k.text()); // Epic and above carry the item's fixed perk
+        boolean perkLive = Gear.rarityIndex(p.rarity) >= Gear.rarityIndex(GearStats.PERK_RARITY); // the rarity a piece starts carrying its item's fixed perk (GearStats.perkFor)
+        for (var k : Spec.GEARPERKS) if (k.item().equals(p.item) && perkLive) out.add(k.name() + ": " + k.text());
         if (!weapon && set != null) { // the set's bonuses, each with the worn count toward it
             int n = setWorn(v, it.set());
             for (var sb : Spec.GEARSETBONUSES) if (sb.set().equals(it.set())) out.add("(" + Math.min(n, sb.pieces()) + "/" + sb.pieces() + ") " + sb.text());
         }
+        if (!perkLive) for (var k : Spec.GEARPERKS) if (k.item().equals(p.item)) out.add(perkHintPrefix() + k.text()); // greyed by the card
         out.add(p.durability <= 0 ? "Broken: half stats until repaired" : "Durability " + p.durability * 100 / Math.max(1, Gear.forge().maxDurability()) + "%");
         if (v != null && Forge.duplicate(asProfile(v), p)) out.add("Duplicate");
         out.add(worn(v, p.uid) ? "Worn" : "Click to equip · Shift-click to break down");
         return out;
+    }
+
+    /** The names of pieces a change of worn gear took off by itself: a slot that was worn before and is empty now while another
+     *  slot took a different piece (a worn two-hander leaves when an off hand goes on, and the off hand when a two-hander does).
+     *  Taking one piece off, or swapping a piece for another in its own slot, names nothing. Empty with either view missing. */
+    static List<String> removedByEquip(GearWire.View before, GearWire.View after) {
+        List<String> out = new ArrayList<>();
+        if (before == null || after == null) return out;
+        boolean took = false;
+        for (String slot : Gear.SLOTS) {
+            Integer now = after.equipped().get(slot);
+            if (now != null && !now.equals(before.equipped().get(slot))) took = true;
+        }
+        if (!took) return out;
+        for (String slot : Gear.SLOTS) {
+            Integer was = before.equipped().get(slot);
+            if (was == null || after.equipped().get(slot) != null) continue;
+            Gear.Piece p = piece(before, was);
+            if (resolves(p)) out.add(Gear.item(p.item).name());
+        }
+        return out;
+    }
+
+    /** True when no piece is worn: the commander then fights in the starter kit (GearCombat.wearing). */
+    static boolean nothingWorn(GearWire.View v) {
+        if (v == null) return false;
+        for (String slot : Gear.SLOTS) if (wornIn(v, slot) != null) return false;
+        return true;
+    }
+    static final String STARTER_NOTICE = "Nothing worn. You will fight in the starter kit.";
+    /** The line under the Worn row for 3 s after a swap took a piece off. */
+    static String swapNotice(String piece) { return piece + " was removed: it needs both hands."; }
+    static final long SWAP_NOTICE_MS = 3000;
+
+    /** "From Epic: ", the greyed hint on a piece too low to carry its perk; the rarity's name comes from the sheet. */
+    static String perkHintPrefix() {
+        var r = Gear.rarity(GearStats.PERK_RARITY);
+        return "From " + (r == null ? GearStats.PERK_RARITY : r.name()) + ": ";
     }
 
     /** How many worn pieces belong to the set. */

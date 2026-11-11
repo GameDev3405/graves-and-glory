@@ -692,6 +692,23 @@ public final class CommandPanel {
         var name = e.getCustomName();
         if (name == null || CommandMode.nameTeam(e) != GravesAndGloryClient.team || GravesAndGloryClient.team < 0) return null;
         var spec = ArmyMobs.named(name.getString());
-        return spec == null ? null : spec.group();
+        if (spec == null || !isOwn(e, spec, GravesAndGloryClient.markers)) return null;
+        return spec.group();
+    }
+
+    /** How far (blocks) a unit may stand from its marker, which the state packet sends a moment earlier. */
+    static final double OWN_MARKER_REACH = 5;
+
+    /** Whether the unit is one of this player's own troops. Allies share the team and its name colour, so the name cannot tell: the
+     *  state packet's markers can. The unit is own when the nearest marker of its troop, within reach, is an own marker. */
+    static boolean isOwn(Entity e, Spec.TroopsRow spec, List<GravesAndGloryClient.Marker> markers) {
+        GravesAndGloryClient.Marker best = null;
+        double bestD = OWN_MARKER_REACH * OWN_MARKER_REACH;
+        for (var m : markers) {
+            if (ArmyMobs.named(m.name()) != spec) continue;
+            double dx = m.x() - e.getX(), dz = m.z() - e.getZ(), d = dx * dx + dz * dz;
+            if (d <= bestD) { bestD = d; best = m; }
+        }
+        return best != null && best.own();
     }
 }

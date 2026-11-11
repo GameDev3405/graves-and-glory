@@ -136,7 +136,9 @@ class RecruitmentScreen extends ArmyScreen {
             DarkUi.label(g,"Damage",rx,163,DarkUi.MUTED);DarkUi.label(g,""+t.damage(),rx+rw-26,163,DarkUi.IVORY);
             DarkUi.label(g,"Fielded / in banner",rx,183,DarkUi.MUTED);DarkUi.label(g,roster[selected]+" / "+listed(t),rx+rw-34,183,DarkUi.IVORY);
             String ability=switch(Abilities.row(t).mechanic()){case "shield"->"Shield / frontline protection";case "mend"->"Mend / restores allied health";case "blight"->"Blight / offensive magic";default->t.group().equals("ranged")?"Ranged / attacks from distance":"Melee / frontline fighter";};
-            DarkUi.label(g,ability,rx,206,DarkUi.MUTED);
+            String own=RecruitPages.abilityLines(t).get(0); // the troop's own ability text from the sheet, as its sheet page shows it; the generic line when the sheet has none
+            if(!own.isEmpty())ability=own;
+            DarkUi.label(g,UiMath.trim(ability,rw,s->textRenderer.getWidth(DarkUi.body(s))),rx,206,DarkUi.MUTED);
             int yy=height-141;for(var line:textRenderer.wrapLines(DarkUi.body(unavailable(t)),rw)){g.drawText(textRenderer,line,rx,yy,recruit.active?DarkUi.MUTED:DarkUi.GOLD,false);yy+=11;}
         }
         DarkUi.label(g,"TRAINING  "+queued+" queued",18,height-103,DarkUi.IVORY);

@@ -2412,8 +2412,8 @@ public final class Phase1Checks implements ClientModInitializer {
      *  0) unless a check says otherwise. The checks read the widgets' canvas boxes and what WarTableHome reports the last frame
      *  drew; the pointer and the keys go to the screen as the game sends them (mouseMoved, mouseClicked, keyPressed). */
     static final class UiHomeChecks implements Suite,ServerWatch {
-        static final String[] LAYOUT_NAMES={"camp","recruit","banner","contracts","chapter","friends","practice","skirmish","campaign","change","ride"};
-        static final int[][] LAYOUT={{56,12,96,28},{184,12,112,28},{304,12,112,28},{424,12,112,28},{544,12,112,28},{664,12,112,28},{228,200,152,136},{392,188,176,160},{580,200,152,136},{796,340,80,24},{360,388,240,40}};
+        static final String[] LAYOUT_NAMES={"camp","recruit","banner","contracts","chapter","friends","practice","skirmish","campaign","change","ride","gear"};
+        static final int[][] LAYOUT={{56,12,96,28},{184,12,112,28},{300,12,112,28},{532,12,112,28},{648,12,112,28},{764,12,112,28},{228,200,152,136},{392,188,176,160},{580,200,152,136},{796,340,80,24},{360,388,240,40},{416,12,112,28}};
         static final int[] PRACTICE_LO={228,200,152,136},PRACTICE_HI={216,188,176,160},SKIRMISH_LO={404,200,152,136};
         // the server thread writes these, the client thread reads them
         volatile int stage;volatile UUID player;volatile boolean serverRunning,serverOnPad,serverRoom;volatile int padCountdown=-1;

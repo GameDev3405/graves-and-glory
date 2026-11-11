@@ -199,8 +199,19 @@ final class WarTableGear {
         };
     }
 
+    /** The swap notice under the Worn row: its text and when it began; and the view the last tick saw, to compare with. */
+    String swapNote = "";
+    long swapAt;
+    private GearWire.View lastView;
+    boolean swapShowing() { return !swapNote.isEmpty() && System.currentTimeMillis() - swapAt < GearView.SWAP_NOTICE_MS; }
+
     void tick() {
         GearWire.View v = view();
+        if (v != lastView) {
+            var gone = GearView.removedByEquip(lastView, v);
+            if (!gone.isEmpty()) { swapNote = GearView.swapNotice(String.join(" and ", gone)); swapAt = System.currentTimeMillis(); }
+            lastView = v;
+        }
         if (v != null) scroll = GearView.scrollClamp(scroll, count(v), gridRows());
         if (confirmUid >= 0 && GearView.piece(v, confirmUid) == null) confirmUid = -1;
         if (dupesConfirm && GearView.duplicatesValue(v) <= 0) dupesConfirm = false;
@@ -406,7 +417,16 @@ final class WarTableGear {
             rectsDrawn.put("worn-" + slot, b);
         }
         String set = GearView.setProgress(v);
-        if (!set.isEmpty()) g.drawText(font, DarkUi.body(set), l[0] + 16, l[1] + 264, DarkUi.SEPIA, false);
+        int noteW = l[2] - 32;
+        if (swapShowing()) {
+            String note = UiMath.trim(swapNote, noteW, t -> font.getWidth(DarkUi.body(t)));
+            g.drawText(font, DarkUi.body(note), l[0] + 16, l[1] + 264, DarkUi.ROUT_TEXT, false);
+            rectsDrawn.put("swap-note", new int[]{l[0] + 16, l[1] + 264, Math.min(noteW, font.getWidth(DarkUi.body(note))), 12});
+        } else if (GearView.nothingWorn(v)) {
+            String note = UiMath.trim(GearView.STARTER_NOTICE, noteW, t -> font.getWidth(DarkUi.body(t)));
+            g.drawText(font, DarkUi.body(note), l[0] + 16, l[1] + 264, DarkUi.SEPIA, false);
+            rectsDrawn.put("starter-note", new int[]{l[0] + 16, l[1] + 264, Math.min(noteW, font.getWidth(DarkUi.body(note))), 12});
+        } else if (!set.isEmpty()) g.drawText(font, DarkUi.body(set), l[0] + 16, l[1] + 264, DarkUi.SEPIA, false);
 
         g.drawText(font, DarkUi.heading("Relics"), l[0] + 16, l[1] + 282, DarkUi.INK_TEXT, false);
         hoverRelic = -1;
@@ -690,7 +710,7 @@ final class WarTableGear {
         List<Integer> inks = new ArrayList<>();
         for (int i = 0; i < lines.size(); i++) {
             String s = lines.get(i);
-            int ink = i == 0 ? head : s.startsWith("▲") ? DarkUi.DAWN : s.startsWith("▼") || s.startsWith("Broken") ? DarkUi.ALARM_TEXT : i == lines.size() - 1 ? DarkUi.BRASS : DarkUi.IVORY;
+            int ink = i == 0 ? head : s.startsWith("▲") ? DarkUi.DAWN : s.startsWith("▼") || s.startsWith("Broken") ? DarkUi.ALARM_TEXT : s.startsWith(GearView.perkHintPrefix()) ? DarkUi.MUTED : i == lines.size() - 1 ? DarkUi.BRASS : DarkUi.IVORY;
             if (i == 0) { rows.add(DarkUi.heading(s)); inks.add(ink); continue; }
             for (String part : UiMath.lines(s, inner, 4, t -> font.getWidth(DarkUi.body(t)))) { rows.add(DarkUi.body(part)); inks.add(ink); }
         }

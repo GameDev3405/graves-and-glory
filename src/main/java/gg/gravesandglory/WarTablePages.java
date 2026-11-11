@@ -295,7 +295,7 @@ final class WarTablePages {
             if (WarTableHome.RAIL[i].equals(page)) continue; // the open page's plaque is drawn lit (here), not a widget
             final String target = WarTableHome.RAIL[i];
             int badge = target.equals("contracts") ? builtContracts : target.equals("friends") ? builtFriends : 0;
-            add(target, WarTable.plaque(WarTableHome.RAIL_X[i], WarTableHome.RAIL_W, "icon-" + target, WarTableHome.RAIL_LABELS[i], null, 0, badge, b -> screen.page(target)));
+            add(target, WarTable.plaque(WarTableHome.RAIL_X[i], WarTableHome.RAIL_W, WarTableHome.RAIL_ICONS[i], WarTableHome.RAIL_LABELS[i], null, 0, badge, b -> screen.page(target)));
         }
         switch (page) {
             case "banner" -> initBanner();
@@ -513,7 +513,7 @@ final class WarTablePages {
         int x = WarTable.railX(WarTableHome.RAIL_X[i]);
         UiTex.draw(g, "table/plaque-112-here", x, 12);
         rectsDrawn.put("here", new int[]{x, 12, WarTableHome.RAIL_W, 28}); // the plaque's box, as the rail's widgets have theirs (the PNG adds a shadow)
-        String icon = "table/icon-" + WarTableHome.RAIL[i]; // built, as WarTable.plaque builds it
+        String icon = "table/" + WarTableHome.RAIL_ICONS[i]; // built, as WarTable.plaque builds it
         UiTex.draw(g, icon, x + 8, 19);
         String label = WarTableHome.RAIL_LABELS[i];
         text(g, "here", DarkUi.heading(label), label, x + 28, 20, DarkUi.RAIL_KEY);
