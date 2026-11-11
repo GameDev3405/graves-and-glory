@@ -85,6 +85,8 @@ final class WarTableLobby {
     long fitAt = -1000;
     /** Whether the last build laid Start now out: the page is rebuilt when that changes, since the button moves Ready aside. */
     boolean startBuilt;
+    /** Whether the last build laid the map-wait view out: the page is rebuilt when that changes. */
+    boolean waitBuilt;
 
     WarTableLobby(CampScreen screen) {
         this.screen = screen;
@@ -145,6 +147,25 @@ final class WarTableLobby {
     static String tier() { return str("difficulty", CampaignClient.difficulty); }
     /** Start now: the host's, when the room is idle and nothing but the countdown stands between it and the battle (every human ready, the seats right). */
     static boolean startNow() { return host() && idle() && !flag("preparing") && str("waiting", "x").isEmpty() && !commanders().isEmpty(); }
+    /** Test hook (ui-lobby): 0 to 100 draws the map-wait view with that percent as if the server were preparing this room's map; -1 leaves it to the server. */
+    static int previewWait = -1;
+    /** Whether the room is waiting for its map: the server is preparing it (the snapshot's preparing flag), the percent of the build is in GravesAndGloryClient.message. */
+    static boolean waiting() { return inRoom() && !flag("playing") && (flag("preparing") || previewWait >= 0); }
+    /** How far the map build is, 0 to 100: the number the server's "Preparing <map> / N%" message ends with. */
+    static int waitPercent() {
+        if (previewWait >= 0) return Math.min(100, previewWait);
+        var m = java.util.regex.Pattern.compile("(\\d+)%\\s*$").matcher(GravesAndGloryClient.message);
+        return m.find() ? Math.min(100, Integer.parseInt(m.group(1))) : 0;
+    }
+    /** The tip this wait shows: an index into Spec.TIPS chosen at random when the wait begins, -1 while no wait runs. */
+    int tipIndex = -1;
+    static final java.util.Random TIP_RANDOM = new java.util.Random();
+    /** Every tip as it reads on this client, the key hints filled in from the player's own bindings. */
+    static List<String> tipTexts() {
+        List<String> out = new ArrayList<>();
+        for (var t : Spec.TIPS) out.add(HintText.expand(t.text(), GravesAndGloryClient::hint));
+        return out;
+    }
     /** Whether the code written is a whole code. */
     boolean codeWhole() { return code.length() == CODE_LENGTH; }
     /** The camp's other commanders the pop-over lists: name, whether they stand in a party, and the room code they hold when it is open. */
@@ -185,6 +206,12 @@ final class WarTableLobby {
         }
         typing = false;
         if (inviting) { initInvite(sx, sy); return; }
+        if (waiting()) { // the map is being built: the wait view has the Stand down plate and nothing else to press
+            choosingHost = false;
+            var stand = add("ready", new UiButton(sx + (SHEET_W - 240) / 2, sy + READY_Y, 240, 40, Text.literal(readyLabel()), x -> { UiSounds.toggled(!myReady()); send("social:ready"); }, (g, x, y, w, h, hot) -> plate(g, "ready", readyLabel(), !myReady(), x, y)));
+            stand.active = idle();
+            return;
+        }
         boolean idle = idle(), host = host() && idle;
         if (!host || !heirs()) choosingHost = false;
         boolean choosing = choosingHost;
@@ -331,7 +358,9 @@ final class WarTableLobby {
             fitWhat = str("fitted", "");
             if (!fitWhat.isEmpty()) fitAt = ticks;
         }
-        boolean startWanted = inRoom() && startNow() && !choosingHost;
+        if (!waiting()) tipIndex = -1;
+        if (waiting() != waitBuilt) { waitBuilt = waiting(); screen.rebuild(); }
+        boolean startWanted = inRoom() && startNow() && !choosingHost && !waiting();
         if (startWanted != startBuilt) { startBuilt = startWanted; screen.rebuild(); }
     }
 
@@ -397,6 +426,9 @@ final class WarTableLobby {
                 rectsDrawn.put("sheet", UiTex.draw(g, "table/sheet-banner", o[0] + SHEET_X, o[1] + TOP));
                 rectsDrawn.put("note", UiTex.draw(g, "table/note-room", o[0] + NOTE_X, o[1] + TOP));
                 popover(g, o[0] + SHEET_X, o[1] + TOP);
+            } else if (waiting()) {
+                waitSheet(g, o[0] + SHEET_X, o[1] + TOP);
+                waitNote(g, o[0] + NOTE_X, o[1] + TOP);
             } else {
                 sheet(g, o[0] + SHEET_X, o[1] + TOP);
                 note(g, o[0] + NOTE_X, o[1] + TOP);
@@ -505,6 +537,102 @@ final class WarTableLobby {
         if (!sum.isEmpty()) line(g, "summary", DarkUi.body(sum), sum, lx, y + SUMMARY_Y, DarkUi.INK_TEXT);
         status(g, x, y);
         notice(g, lx, y);
+    }
+
+    // ---- the map wait: the sheet and the note while the server builds the map ----
+    /** Sheet-relative rows of the wait view: the progress bar, the side headings, the first line-up row and each row's step, the tip's heading and its first line. */
+    static final int WAIT_BAR_Y = 40, WAIT_BAR_H = 8, WAIT_TEAM_Y = 62, WAIT_ROW_Y = 82, WAIT_ROW_STEP = 22, WAIT_TIP_Y = 184, WAIT_TIP_TEXT_Y = 204, WAIT_TIP_STEP = 13, WAIT_TIP_LINES = 3;
+    /** Note-relative rows of the wait view: the card, and the mode heading with its summary below. */
+    static final int WAIT_CARD_Y = 44, WAIT_MODE_Y = 176, WAIT_SUMMARY_Y = 196, WAIT_SUMMARY_LINES = 4;
+
+    /** The sheet while the map builds: the map's name and percent, the bar, both line-ups (a commander's seal, name and House; bots say Bot) and one tip. */
+    void waitSheet(DrawContext g, int x, int y) {
+        var font = font();
+        rectsDrawn.put("sheet", UiTex.draw(g, "table/sheet-banner", x, y));
+        int lx = x + PAD, map = Math.max(0, Math.min(Spec.MAPS.length - 1, num("map", 0)));
+        String name = "Preparing " + Spec.MAPS[map].name(), pct = waitPercent() + "%";
+        head(g, "wait-percent", name, pct, lx, y + 18, TEXT_W);
+        rectsDrawn.put("wait-head", new int[]{lx, y + 18, font.getWidth(DarkUi.heading(name)), 11});
+        textsDrawn.put("wait-head", name);
+        int by = y + WAIT_BAR_Y, fillW = (TEXT_W - 2) * waitPercent() / 100;
+        g.fill(lx, by, lx + TEXT_W, by + WAIT_BAR_H, DarkUi.SEPIA_LINE);
+        g.fill(lx + 1, by + 1, lx + TEXT_W - 1, by + WAIT_BAR_H - 1, DarkUi.VELLUM);
+        g.fill(lx + 1, by + 1, lx + 1 + fillW, by + WAIT_BAR_H - 1, DarkUi.INK_TEXT);
+        rectsDrawn.put("wait-bar", new int[]{lx, by, TEXT_W, WAIT_BAR_H});
+        textsDrawn.put("wait-bar", String.valueOf(waitPercent()));
+        for (int t = 0; t < 2; t++) {
+            int tx = lx + (COL_W + COL_GAP) * t;
+            DarkUi.teamMark(g, t, tx, y + WAIT_TEAM_Y + 2);
+            String side = t == 0 ? "Dawn" : "Dusk";
+            g.drawText(font, DarkUi.heading(side), tx + 11, y + WAIT_TEAM_Y, DarkUi.INK_TEXT, false);
+            rectsDrawn.put("wait-side-" + t, new int[]{tx, y + WAIT_TEAM_Y, 11 + font.getWidth(DarkUi.heading(side)), 11});
+            textsDrawn.put("wait-side-" + t, side);
+            int row = 0;
+            for (var seat : seats(t)) {
+                boolean human = seat.kind().equals("human");
+                if (!human && !seat.kind().equals("bot")) continue;
+                int ry = y + WAIT_ROW_Y + WAIT_ROW_STEP * row;
+                String key = "wait-seat-" + t + "-" + row, who = human ? seat.name() : "Bot", house = human && houseRow(seat.house()) != null ? chipName(seat.house()) : "";
+                int hw = house.isEmpty() ? 0 : font.getWidth(DarkUi.body(house)), nx = tx + CHIP_SEAL + CHIP_SEAL_GAP;
+                if (human) seal(g, seat.house(), tx, ry, CHIP_SEAL);
+                String shown = UiMath.trim(who, COL_W - CHIP_SEAL - CHIP_SEAL_GAP - (hw == 0 ? 0 : hw + 6), s -> font.getWidth(DarkUi.body(s)));
+                g.drawText(font, DarkUi.body(shown), nx, ry + 4, human ? DarkUi.INK_TEXT : DarkUi.SEPIA, false);
+                if (hw > 0) g.drawText(font, DarkUi.body(house), tx + COL_W - hw, ry + 4, DarkUi.SEPIA, false);
+                g.fill(tx, ry + CHIP_SEAL + 2, tx + COL_W, ry + CHIP_SEAL + 3, DarkUi.SEPIA_L);
+                rectsDrawn.put(key, new int[]{tx, ry, COL_W, CHIP_SEAL});
+                textsDrawn.put(key, who);
+                textsDrawn.put(key + "-house", house);
+                row++;
+            }
+        }
+        head(g, "wait-tip-head", "Tip", null, lx, y + WAIT_TIP_Y, TEXT_W);
+        var tips = tipTexts();
+        if (tipIndex < 0 && !tips.isEmpty()) tipIndex = TIP_RANDOM.nextInt(tips.size());
+        if (tipIndex >= 0 && tipIndex < tips.size()) {
+            var lines = UiMath.lines(tips.get(tipIndex), TEXT_W, WAIT_TIP_LINES, s -> font.getWidth(DarkUi.body(s)));
+            int widest = 0;
+            for (int i = 0; i < lines.size(); i++) {
+                g.drawText(font, DarkUi.body(lines.get(i)), lx, y + WAIT_TIP_TEXT_Y + WAIT_TIP_STEP * i, DarkUi.INK_TEXT, false);
+                widest = Math.max(widest, font.getWidth(DarkUi.body(lines.get(i))));
+            }
+            rectsDrawn.put("wait-tip", new int[]{lx, y + WAIT_TIP_TEXT_Y, widest, WAIT_TIP_STEP * (lines.size() - 1) + 11});
+            textsDrawn.put("wait-tip", tips.get(tipIndex));
+            textsDrawn.put("wait-tip-drawn", String.join(" ", lines));
+        }
+        status(g, x, y);
+        notice(g, lx, y);
+    }
+
+    /** The note while the map builds: the map's card with its name, and the mode with its one line of rules. */
+    void waitNote(DrawContext g, int x, int y) {
+        var font = font();
+        rectsDrawn.put("note", UiTex.draw(g, "table/note-room", x, y));
+        int lx = x + NPAD, map = Math.max(0, Math.min(Spec.MAPS.length - 1, num("map", 0)));
+        var m = Spec.MAPS[map];
+        head(g, "wait-map-head", "Map", null, lx, y + 18, NOTE_TEXT_W);
+        String card = "table/map-" + m.id();
+        int cardX = x + (NOTE_W - 139) / 2;
+        rectsDrawn.put("wait-card", UiTex.draw(g, card, cardX, y + WAIT_CARD_Y));
+        texturesDrawn.put("wait-card", card);
+        textsDrawn.put("wait-card", m.id());
+        var nameT = DarkUi.heading(m.name());
+        WarTableHome.centred(g, nameT, x + NOTE_W / 2, y + WAIT_CARD_Y + 89, DarkUi.INK_TEXT);
+        int nw = font.getWidth(nameT);
+        rectsDrawn.put("wait-map-name", new int[]{x + NOTE_W / 2 - nw / 2, y + WAIT_CARD_Y + 89, nw, 11});
+        textsDrawn.put("wait-map-name", m.name());
+        String mode = str("mode", "");
+        head(g, "wait-mode-head", modeName(mode), null, lx, y + WAIT_MODE_Y, NOTE_TEXT_W);
+        textsDrawn.put("wait-mode-head", modeName(mode));
+        var lines = UiMath.lines(summary(mode), NOTE_TEXT_W, WAIT_SUMMARY_LINES, s -> font.getWidth(DarkUi.body(s)));
+        int widest = 0;
+        for (int i = 0; i < lines.size(); i++) {
+            g.drawText(font, DarkUi.body(lines.get(i)), lx, y + WAIT_SUMMARY_Y + 13 * i, DarkUi.SEPIA, false);
+            widest = Math.max(widest, font.getWidth(DarkUi.body(lines.get(i))));
+        }
+        if (!lines.isEmpty()) {
+            rectsDrawn.put("wait-mode-summary", new int[]{lx, y + WAIT_SUMMARY_Y, widest, 13 * (lines.size() - 1) + 11});
+            textsDrawn.put("wait-mode-summary", String.join(" ", lines));
+        }
     }
 
     /** A friend-list pop-over on the sheet: a parchment panel on the House chips' nine-slice (title, a row per other commander in camp whose Invite tag is a widget, and what to do when none), sized to its rows. */
@@ -697,7 +825,7 @@ final class WarTableLobby {
         int ink;
         Text t;
         if (flag("playing")) { s = "Your room is in battle."; ink = DarkUi.SEPIA; t = DarkUi.body(s); }
-        else if (flag("preparing")) { s = "Preparing the battlefield. Stand down to stop."; ink = DarkUi.INK_TEXT; t = DarkUi.body(s); }
+        else if (waiting()) { s = "Preparing the battlefield. Stand down to stop."; ink = DarkUi.INK_TEXT; t = DarkUi.body(s); }
         else if (seconds > 0) { s = "Battle begins in " + seconds; ink = DarkUi.INK_TEXT; t = DarkUi.focal(s); textsDrawn.put("countdown", String.valueOf(seconds)); }
         else if (!houseRefusal().isEmpty()) { s = houseRefusal(); ink = DarkUi.INK_TEXT; t = DarkUi.body(s); }
         else {

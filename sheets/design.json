@@ -11762,5 +11762,87 @@
       "site": "track",
       "note": "DRAFT (Phase 4 plan Task 6, question for Kort)"
     }
+  ],
+  "tips": [
+    {
+      "id": "tip-01",
+      "text": "Press {key:follow} to call your army to your side. It guards you and keeps support troops behind the front line."
+    },
+    {
+      "id": "tip-02",
+      "text": "Press {key:attack} to send your army at the enemy. Press {key:retreat} to pull it back; retreating troops ignore enemies."
+    },
+    {
+      "id": "tip-03",
+      "text": "Press {key:charge} to aim a Charge. Troops run 25% faster, and a Charge needs a short rest before the next one."
+    },
+    {
+      "id": "tip-04",
+      "text": "When you aim a Charge or a formation, {key:confirm} confirms the order and {key:cancel} cancels it."
+    },
+    {
+      "id": "tip-05",
+      "text": "Press {key:formation} to open the formation tray. Keys 1 to 4 pick Line, Shield wall, Wedge or Loose."
+    },
+    {
+      "id": "tip-06",
+      "text": "In a Shield wall, front-rank troops stop 75% of the arrows that strike their front."
+    },
+    {
+      "id": "tip-07",
+      "text": "Press {key:menu} in battle to open the command panel and give orders to all troops or to one group."
+    },
+    {
+      "id": "tip-08",
+      "text": "The command panel closes after each order. Hold Shift while you order to keep it open."
+    },
+    {
+      "id": "tip-09",
+      "text": "Domination: hold the points to score. The first side to 300 wins, or the side ahead after 15 minutes."
+    },
+    {
+      "id": "tip-10",
+      "text": "Every 5 seconds you earn 5 gold, plus 3 for each point your side holds, up to 9. Each kill you score adds 1."
+    },
+    {
+      "id": "tip-11",
+      "text": "Recruit at your barracks lectern with {key:use}. Trained troops march out from the held point nearest the fight."
+    },
+    {
+      "id": "tip-12",
+      "text": "An army holds 20 slots. Most troops take 1, some take 2, and the Legendaries take 4."
+    },
+    {
+      "id": "tip-13",
+      "text": "A House trait switches on when your banner holds enough of that House's troops. Field more for a higher tier."
+    },
+    {
+      "id": "tip-14",
+      "text": "Graveborn, tier I: a troop that falls has an 11% chance to rise once at 30% health. Legendaries do not."
+    },
+    {
+      "id": "tip-15",
+      "text": "Tidecallers, tier I: troops move 15% faster in water or rain, and their hits slow a foe for 1 second."
+    },
+    {
+      "id": "tip-16",
+      "text": "A gear set gives a bonus at 2 pieces worn and another at 4. Change your gear in the Arsenal, in camp."
+    },
+    {
+      "id": "tip-17",
+      "text": "In the war council, the battle begins ten seconds after the last commander readies. Stand down to stop it."
+    },
+    {
+      "id": "tip-18",
+      "text": "The host of a war council sets the mode, the map, the seats and the bot difficulty. Everyone sees them."
+    },
+    {
+      "id": "tip-19",
+      "text": "With Bots fill seats on, bots take every empty seat when the battle starts."
+    },
+    {
+      "id": "tip-20",
+      "text": "Hold {key:hints} in battle to see every key hint on screen."
+    }
   ]
 }

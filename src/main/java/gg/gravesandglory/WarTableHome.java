@@ -146,7 +146,7 @@ final class WarTableHome {
     UiButton ride, change;
     /** Practice's bot difficulty switch on the field card (Easy, Normal, Hard; difficulty:<id>, the server's setting practice plays at), in the card's second line's place; Change steps down under it. */
     final UiButton[] tiers = new UiButton[3];
-    static final int TIER_ROW_Y = 131, TIER_W = 48, TIER_GAP = 4, CHANGE_Y = 152, CHANGE_PRACTICE_Y = 152;
+    static final int TIER_ROW_Y = 131, TIER_W = 46, TIER_GAP = 7, TIER_H = 20, BONUS_Y = 146, CHANGE_Y = 152, CHANGE_PRACTICE_Y = 155;
 
     WarTableHome(CampScreen screen) {
         this.screen = screen;
@@ -190,7 +190,7 @@ final class WarTableHome {
         change = add("change", new UiButton(ox + FIELD_X + 44, oy + FIELD_Y + 152, 80, 24, Text.literal("Change"), b -> screen.page("field"), this::paintChange));
         for (int i = 0; i < tiers.length && i < Spec.BOTCOMMAND.length; i++) {
             String id = Spec.BOTCOMMAND[i].id();
-            tiers[i] = add("tier-" + id, new UiButton(ox + FIELD_X + 8 + (TIER_W + TIER_GAP) * i, oy + FIELD_Y + TIER_ROW_Y, TIER_W, 19, Text.literal(CampaignClient.tierName(id)), b -> screen.action("difficulty:" + id), (g, x, y, w, h, hot) -> paintTier(g, id, x, y, w, h, hot)));
+            tiers[i] = add("tier-" + id, new UiButton(ox + FIELD_X + 9 + (TIER_W + TIER_GAP) * i, oy + FIELD_Y + TIER_ROW_Y, TIER_W, TIER_H, Text.literal(CampaignClient.tierName(id)), b -> screen.action("difficulty:" + id), (g, x, y, w, h, hot) -> paintTier(g, id, x, y, w, h, hot)));
             tiers[i].active = !GravesAndGloryClient.running;
         }
         placeField();
@@ -216,8 +216,8 @@ final class WarTableHome {
         var t = DarkUi.heading(word);
         int tw = font.getWidth(t), lx = x + (w - tw) / 2, ink = live || on ? DarkUi.INK_TEXT : DarkUi.SEPIA;
         g.drawText(font, t, lx, y + 4, ink, false);
-        if (on) g.fill(lx, y + 14, lx + tw, y + 16, DarkUi.INK_TEXT);
-        else if (hot && live) g.fill(lx, y + 14, lx + tw, y + 15, ink);
+        if (on) g.fill(lx, y + 15, lx + tw, y + 17, DarkUi.INK_TEXT);
+        else if (hot && live) g.fill(lx, y + 15, lx + tw, y + 16, ink);
         rectsDrawn.put("tier-" + id, new int[]{x, y, w, h});
         textsDrawn.put("tier-" + id, word);
         if (on) textsDrawn.put("tier", word);
@@ -481,9 +481,9 @@ final class WarTableHome {
         String closed = march ? CampaignClient.seasonLock(row) : "";
         if (!closed.isEmpty()) { // brief G2: the chapter's season has not begun; its date replaces the bonus
             var lines = font.wrapLines(DarkUi.body(closed), 136);
-            for (int i = 0; i < Math.min(2, lines.size()); i++) g.drawText(font, lines.get(i), x + 16, y + 148 + i * 11, DarkUi.SEPIA, false);
+            for (int i = 0; i < Math.min(2, lines.size()); i++) g.drawText(font, lines.get(i), x + 16, y + BONUS_Y + i * 11, DarkUi.SEPIA, false);
             textsDrawn.put("field-season", closed);
-        } else if (march) bonus(g, row, x + 16, y + 148, 136);
+        } else if (march) bonus(g, row, x + 16, y + BONUS_Y, 136);
         rectsDrawn.put("field", new int[]{x, y, 168, 188});
         textsDrawn.put("field-name", march ? row.name() : map.name());
         textsDrawn.put("field-map", map.name());
@@ -504,8 +504,8 @@ final class WarTableHome {
         g.drawText(font, DarkUi.body(right), x + w - rw, y + 1, DarkUi.SEPIA, false);
         g.fill(x, y + 12, x + w, y + 13, DarkUi.SEPIA_LINE);
         var lines = UiMath.lines(b.text(), w, 2, s -> font.getWidth(DarkUi.body(s)));
-        for (int i = 0; i < lines.size(); i++) g.drawText(font, DarkUi.body(lines.get(i)), x, y + 16 + 11 * i, claimed ? DarkUi.SEPIA : DarkUi.INK_TEXT, false);
-        rectsDrawn.put("field-bonus", new int[]{x, y, w, 16 + 11 * lines.size()});
+        for (int i = 0; i < lines.size(); i++) g.drawText(font, DarkUi.body(lines.get(i)), x, y + 14 + 10 * i, claimed ? DarkUi.SEPIA : DarkUi.INK_TEXT, false);
+        rectsDrawn.put("field-bonus", new int[]{x, y, w, 14 + 10 * Math.max(0, lines.size() - 1) + 9});
         textsDrawn.put("field-bonus", b.text());
         textsDrawn.put("field-bonus-reward", right);
         textsDrawn.put("field-bonus-state", claimed ? "claimed" : "open");

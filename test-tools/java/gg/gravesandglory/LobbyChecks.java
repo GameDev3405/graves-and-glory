@@ -47,6 +47,33 @@ final class LobbyChecks implements Phase1Checks.Suite, Phase1Checks.ServerWatch 
         pass&=right-left<=WarTableLobby.TEXT_W&&sheet!=null&&left>=sheet[0]&&right<=sheet[0]+sheet[2];ok[0]=pass;
         return "chips "+sb.toString().trim()+", names span "+(right-left)+" canvas px of "+WarTableLobby.TEXT_W+", inside the sheet "+(sheet!=null&&left>=sheet[0]&&right<=sheet[0]+sheet[2])+", canvas k "+UiCanvas.k()+" (want "+want+")";
     }
+    /** The map-wait view's faults (empty when right): every part drawn, the percent and a tip from the list, each box inside the canvas and its own paper, and no two boxes overlapping. */
+    String waitFaults(MinecraftClient c,String at){
+        var r=WarTableLobby.rects();var t=WarTableLobby.texts();List<String> bad=new ArrayList<>();int[] sheet=r.get("sheet"),note=r.get("note");
+        List<String> onSheet=new ArrayList<>(List.of("wait-head","wait-percent","wait-bar","wait-side-0","wait-side-1","wait-seat-0-0","wait-seat-1-0","wait-tip","ready","status")),onNote=List.of("wait-card","wait-map-name","wait-mode-head","wait-mode-summary");
+        for(String k:onSheet)if(r.get(k)==null)bad.add(k+" not drawn");
+        for(String k:onNote)if(k.equals("wait-mode-head")?!t.containsKey(k):r.get(k)==null)bad.add(k+" not drawn");
+        if(!bad.isEmpty())return at+": "+bad;
+        int map=Math.max(0,Math.min(Spec.MAPS.length-1,num("map")));var m=Spec.MAPS[map];
+        if(!"37%".equals(t.get("wait-percent")))bad.add("percent reads "+t.get("wait-percent"));
+        if(!("Preparing "+m.name()).equals(t.get("wait-head")))bad.add("heading reads "+t.get("wait-head"));
+        if(!("table/map-"+m.id()).equals(WarTableLobby.textures().get("wait-card")))bad.add("card is "+WarTableLobby.textures().get("wait-card"));
+        if(!m.name().equals(t.get("wait-map-name")))bad.add("map name reads "+t.get("wait-map-name"));
+        String want=WarTableLobby.summary(str("mode"));if(want.isEmpty()||!want.equals(t.get("wait-mode-summary")))bad.add("mode summary reads \""+t.get("wait-mode-summary")+"\" (want \""+want+"\")");
+        if(!WarTableLobby.tipTexts().contains(t.get("wait-tip")))bad.add("tip \""+t.get("wait-tip")+"\" is not in the list of "+Spec.TIPS.length);
+        if(Spec.TIPS.length!=20)bad.add(Spec.TIPS.length+" tips, want 20");
+        if(!t.getOrDefault("wait-tip-drawn","").equals(t.get("wait-tip")))bad.add("the tip is cut short: drew \""+t.get("wait-tip-drawn")+"\"");
+        if(t.getOrDefault("wait-seat-0-0","").isBlank()||t.getOrDefault("wait-seat-0-0","").equals("Bot"))bad.add("Dawn's first line-up row reads \""+t.get("wait-seat-0-0")+"\"");
+        if(!"Bot".equals(t.get("wait-seat-1-0")))bad.add("Dusk's first row reads \""+t.get("wait-seat-1-0")+"\" (want Bot)");
+        if(t.getOrDefault("wait-seat-0-0-house","").isEmpty())bad.add("the commander's House is not drawn");
+        List<String> all=new ArrayList<>(onSheet);all.addAll(onNote);all.addAll(List.of("wait-seat-0-1","wait-seat-0-2","wait-seat-1-1","wait-seat-1-2"));
+        List<String> have=new ArrayList<>();for(String k:all)if(r.get(k)!=null)have.add(k);
+        for(String k:have){int[] b=r.get(k);int[] paper=onNote.contains(k)?note:sheet;
+            if(b[0]<0||b[1]<0||b[0]+b[2]>UiCanvas.width()||b[1]+b[3]>UiCanvas.height())bad.add(k+" off the canvas "+Arrays.toString(b));
+            if(paper==null||b[0]<paper[0]||b[1]<paper[1]||b[0]+b[2]>paper[0]+paper[2]||b[1]+b[3]>paper[1]+paper[3])bad.add(k+" not inside its paper "+Arrays.toString(b));}
+        for(int i=0;i<have.size();i++)for(int j=i+1;j<have.size();j++)if(overlaps(r.get(have.get(i)),r.get(have.get(j))))bad.add(have.get(i)+" overlaps "+have.get(j));
+        return bad.isEmpty()?"":at+": "+bad;
+    }
     void fail(MinecraftClient c,String id,String why){report(id,false,why);end(c);}
 
     String growthWhy="";
@@ -311,7 +338,17 @@ final class LobbyChecks implements Phase1Checks.Suite, Phase1Checks.ServerWatch 
                 if(k<4)return;var t=WarTableTroop.texts();String bad="";for(var e:t.entrySet())if(e.getValue().toLowerCase().matches(".*\b(levels?|veterans?)\b.*")&&!e.getKey().startsWith("level-")&&!e.getKey().equals("mastery-title")&&!e.getKey().equals("mastery-next")&&!e.getKey().equals("letter-name"))bad+=e.getKey()+"=\""+e.getValue()+"\" ";
                 report("p1-lobby-troop-names",bad.isEmpty()&&"Mastery".equals(WarTableTroop.texts().get("head-mastery-level"))&&"Rank in battle".equals(WarTableTroop.texts().get("head-levels")),"the Troop face's headings read "+WarTableTroop.texts().get("head-mastery-level")+" and "+WarTableTroop.texts().get("head-levels")+(bad.isEmpty()?"; no line says level or veteran":"; WRONG: "+bad));
                 window(c,2560,1440,0,true);CampScreen.open("lobby");stage=41;}
-            case 41->{if(lobby(c)==null||k<20){if(k>100)fail(c,"p1-lobby-back","lobby not back after the troop sheet");return;}press(c,"invite");stage=70;}
+            case 41->{if(lobby(c)==null||k<20){if(k>100)fail(c,"p1-lobby-back","lobby not back after the troop sheet");return;}stage=90;}
+            case 90->{ // the map wait at 2560x1440: the room waits for its map (the view forced, 37 percent), and the screen shows the card, both line-ups, the progress and one tip, inside the papers and clear of each other
+                if(k==0){WarTableLobby.previewWait=37;return;}
+                if(k<12)return;
+                String bad=waitFaults(c,"2560x1440");report("p1-lobby-map-wait-1440",bad.isEmpty(),bad.isEmpty()?"map wait at 2560x1440: card, line-ups, 37% bar and a listed tip, all inside the papers and apart":bad);
+                shot(c,"lobby-map-wait-1440");window(c,854,480,0,true);stage=91;}
+            case 91->{ // and at the smallest size the checks use
+                if(k<20)return;
+                String bad=waitFaults(c,"854x480");report("p1-lobby-map-wait-854",bad.isEmpty(),bad.isEmpty()?"map wait at 854x480: card, line-ups, 37% bar and a listed tip, all inside the papers and apart":bad);
+                shot(c,"lobby-map-wait-854");WarTableLobby.previewWait=-1;window(c,2560,1440,0,true);stage=92;}
+            case 92->{if(k<20)return;var l=lobby(c);if(l==null||l.button("invite")==null){if(k>100)fail(c,"p1-lobby-map-wait-end","the council page did not come back after the map wait");return;}press(c,"invite");stage=70;}
             case 70->{ // Invite opens the friends list as a pop-over over the page; Close puts it away
                 var l=lobby(c);if(l==null||!l.inviting||l.button("invite-close")==null||!WarTableLobby.texts().containsKey("popover")||k<6){if(k>100)fail(c,"p1-lobby-invite-popover","the pop-over did not open");else if(k>=30&&k%30==0&&l!=null&&!l.inviting)press(c,"invite");return;}
                 var pr=WarTableLobby.rects().get("popover");var sh=WarTableLobby.rects().get("sheet");

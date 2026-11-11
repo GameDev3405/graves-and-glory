@@ -2413,7 +2413,7 @@ public final class Phase1Checks implements ClientModInitializer {
      *  drew; the pointer and the keys go to the screen as the game sends them (mouseMoved, mouseClicked, keyPressed). */
     static final class UiHomeChecks implements Suite,ServerWatch {
         static final String[] LAYOUT_NAMES={"camp","recruit","banner","contracts","chapter","friends","practice","skirmish","campaign","change","ride","gear"};
-        static final int[][] LAYOUT={{56,12,96,28},{184,12,112,28},{300,12,112,28},{532,12,112,28},{648,12,112,28},{764,12,112,28},{228,200,152,136},{392,188,176,160},{580,200,152,136},{796,340,80,24},{360,388,240,40},{416,12,112,28}};
+        static final int[][] LAYOUT={{56,12,96,28},{184,12,112,28},{300,12,112,28},{532,12,112,28},{648,12,112,28},{764,12,112,28},{228,200,152,136},{392,188,176,160},{580,200,152,136},{796,343,80,24},{360,388,240,40},{416,12,112,28}};
         static final int[] PRACTICE_LO={228,200,152,136},PRACTICE_HI={216,188,176,160},SKIRMISH_LO={404,200,152,136};
         // the server thread writes these, the client thread reads them
         volatile int stage;volatile UUID player;volatile boolean serverRunning,serverRoom;
@@ -2430,7 +2430,7 @@ public final class Phase1Checks implements ClientModInitializer {
             var t=WarTableHome.texts();var r=WarTableHome.rects();var row=Spec.CAMPAIGNBATTLES[0];var ch=h.button("change");
             var f=r.get("field");var b=r.get("field-bonus");
             boolean named=row.name().equals(t.get("field-name"))&&t.get("field-rule")!=null&&t.get("field-teams")!=null&&t.get("field-teams").startsWith("The Oath, battle 1 of "+MarchMath.inChapter(1,Spec.CAMPAIGNBATTLES).size()); // brief G3
-            boolean has=t.containsKey("field-bonus")&&t.containsKey("field-bonus-reward")&&"open".equals(t.get("field-bonus-state"))&&b!=null&&f!=null&&b[1]+b[3]<=f[1]+f[3]&&b[0]>=f[0]&&b[0]+b[2]<=f[0]+f[2];
+            boolean has=t.containsKey("field-bonus")&&t.containsKey("field-bonus-reward")&&"open".equals(t.get("field-bonus-state"))&&b!=null&&f!=null&&b[1]+b[3]+6<=f[1]+f[3]&&b[0]>=f[0]+6&&b[0]+b[2]+6<=f[0]+f[2]; // at least 6 px inside the paper's edge
             boolean noChange=ch==null||!ch.active;
             report("p1-ui-home-campaign-card"+tag,named&&has&&noChange,"Campaign card"+(tag.isEmpty()?"":" at "+tag.substring(1))+": name \""+t.get("field-name")+"\", rule \""+t.get("field-rule")+"\", teams \""+t.get("field-teams")+"\", bonus \""+t.get("field-bonus")+"\" "+t.get("field-bonus-reward")+" ("+t.get("field-bonus-state")+") in "+str(b)+" of card "+str(f)+", Change button "+(noChange?"off":"LIVE"));
             shot(c,"ui-home-campaign"+tag);

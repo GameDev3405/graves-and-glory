@@ -126,7 +126,7 @@ final class WarTablePages {
     static final int FIELD_X = 220, FIELD_Y = 124, MAP_X = 236, MAP_Y = 156, MAP_STEP = 44, MAP_W = 176, STATUS_Y = 380;
     static final int CARD_X = 544, CARD_Y = 156, CARD_CX = 612, CARD_TEXT_W = 208, BOTS_HEAD_Y = 362, BOTS_Y = STATUS_Y;
     /** The Statuses paper (polish T7), standing right of the sheet on the same parchment (a cut of sheet-field), the sheet's height less its torn rim: 140 wide so the compact page's right edge holds it 12 px clear; a row per status with its glyph, name and line. */
-    static final int GLOSS_X = FIELD_X + 534, GLOSS_Y = FIELD_Y + 4, GLOSS_W = 140, GLOSS_H = 316, GLOSS_ROW_Y = 34, GLOSS_STEP = 46, GLOSS_LINES = 3;
+    static final int GLOSS_X = FIELD_X + 534, GLOSS_Y = FIELD_Y + 4, GLOSS_W = 140, GLOSS_H = 316, GLOSS_ROW_Y = 34, GLOSS_STEP = 46, GLOSS_LINES = 3, GLOSS_GAP = 7;
     static final String[] TIER_IDS = {"easy", "normal", "hard"};
     static final int[] TIER_X = {504, 576, 656}, TIER_W = {64, 72, 64};
 
@@ -2149,8 +2149,8 @@ final class WarTablePages {
                 if (entry != null) PlayerSkinDrawer.draw(g, entry.getSkinTexture(), x + 4, y + 4, 40);
             }
             UiTex.draw(g, "table/frame-rim-48", x, y);
-            String name = UiMath.trim(m.name(), PARTY_NAME_W, s -> font.getWidth(s)); // Minecraft's face: its 1 is no I (paintInvite)
-            text(g, "member-" + i, Text.literal(name), name, x + 56, y + 14, m.online() ? DarkUi.INK_TEXT : DarkUi.SEPIA);
+            String name = UiMath.trim(m.name(), PARTY_NAME_W, s -> font.getWidth(DarkUi.body(s))); // the page's body face, as the war council's seats draw a name
+            text(g, "member-" + i, DarkUi.body(name), name, x + 56, y + 14, m.online() ? DarkUi.INK_TEXT : DarkUi.SEPIA);
             text(g, "status-" + i, DarkUi.body(status(m)), status(m), x + 56, y + 28, DarkUi.SEPIA);
             rectsDrawn.put("member-" + i, new int[]{x, y, SEAT, SEAT});
         }
@@ -2247,9 +2247,11 @@ final class WarTablePages {
         g.drawText(font, DarkUi.heading("Statuses"), x + 10, y + 10, DarkUi.INK_TEXT, false);
         g.fill(x + 10, y + 24, x + GLOSS_W - 10, y + 25, DarkUi.SEPIA_LINE);
         textsDrawn.put("statuses-head", "Statuses");
-        int row = 0;
+        int prevLines = 1, ry = y + GLOSS_ROW_Y - GLOSS_STEP; // each row starts below the last row's measured text and a clear gap, so a long line never meets the next name
         for (var e : Statuses.Glossary.entries()) {
-            int ry = y + GLOSS_ROW_Y + GLOSS_STEP * row++;
+            var lines = UiMath.lines(e.line(), GLOSS_W - 20, GLOSS_LINES, v -> font.getWidth(DarkUi.body(v)));
+            ry += ry == y + GLOSS_ROW_Y - GLOSS_STEP ? GLOSS_STEP : 13 + 11 * Math.max(1, prevLines) + GLOSS_GAP;
+            prevLines = lines.size();
             int ix = x + 10;
             for (int r = 0; r < e.glyph().length; r++)
                 for (int c = 0; c < 9; c++) {
@@ -2258,7 +2260,6 @@ final class WarTablePages {
                 }
             rectsDrawn.put("status-" + e.id() + "-icon", new int[]{ix, ry + 1, 9, e.glyph().length});
             g.drawText(font, DarkUi.heading(e.name()), x + 24, ry, DarkUi.INK_TEXT, false);
-            var lines = UiMath.lines(e.line(), GLOSS_W - 20, GLOSS_LINES, v -> font.getWidth(DarkUi.body(v)));
             int right = x + 24 + font.getWidth(DarkUi.heading(e.name()));
             for (int i = 0; i < lines.size(); i++) {
                 g.drawText(font, DarkUi.body(lines.get(i)), x + 10, ry + 13 + 11 * i, DarkUi.INK_TEXT, false);
